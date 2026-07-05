@@ -1,7 +1,7 @@
-# Veritas - Community & Pro Editions
+# Veritas: Community & Pro Editions
 
 > Scoping document (Phase 0). Internal reference before open source and Pro commercialization.  
-> **Status:** validated for implementation - last updated: June 2026.
+> **Status:** validated for implementation. Last updated: June 2026.
 
 ---
 
@@ -12,7 +12,7 @@
 | **Community** | Open source, self-hosted | [AGPL-3.0](https://www.gnu.org/licenses/agpl-3.0.html) | Free |
 | **Pro** | Binary / private repo + license key | Veritas commercial license | Subscription (TBD) |
 
-**Chosen model:** Open Core - the PSA core is public; Pro value (integrations, RMM, reports, advanced SLA, etc.) remains paid.
+**Chosen model:** Open Core. The PSA core is public; Pro value (integrations, RMM, reports, advanced SLA, etc.) remains paid.
 
 ---
 
@@ -60,7 +60,7 @@
 | Teams | ❌ | ✅ |
 | Client portal | ✅ (3 accounts max) | ✅ |
 | Support SLA (hours / calculation) | ❌ | ✅ |
-| RMM - Windows agents | ✅ (25 endpoints max) | ✅ |
+| Windows RMM agents | ✅ (25 endpoints max) | ✅ |
 | Integrations (M365, CheckMK, Bitdefender, OVH, WhatsApp…) | ❌ | ✅ |
 | Maintenance (maintenance mode) | ✅ | ✅ |
 
@@ -89,7 +89,7 @@
 
 ### 2.6 Community home (validated)
 
-**Minimal** home page - no Pro dashboard:
+**Minimal** home page without the Pro dashboard:
 
 | Block | Community | Pro |
 |-------|:---------:|:---:|
@@ -99,9 +99,9 @@
 | Infra / RMM / contract / monitoring KPIs | ❌ | ✅ |
 | Quick actions to Pro modules (scheduling, infra, reports…) | ❌ | ✅ |
 
-**RSS feed administration** (sources, languages): **Pro only** - in Community, built-in default feeds are read-only.
+**RSS feed administration** (sources, languages) is **Pro only**. In Community, built-in default feeds are read-only.
 
-**SLA:** **excluded** from Community - no deadline calculation, no SLA display on tickets, no access to `/api/sla-settings`.
+**SLA** is **excluded** from Community: no deadline calculation, no SLA display on tickets, no access to `/api/sla-settings`.
 
 ## 3. Repositories
 
@@ -110,9 +110,9 @@
 | `veritas-backend` | Public | API, PostgreSQL database, migrations | Community (AGPL) + Pro hooks |
 | `veritas-frontend` | Public | React UI | Community (AGPL) + Pro hooks |
 | `veritas-agent` | Public | Windows RMM agent | Community (25 endpoints max) / Pro |
-| `veritas` (meta) | Public | Docs, Docker Compose, links | - |
+| `veritas` (meta) | Public | Docs, Docker Compose, links | n/a |
 | `veritas-pro` (future) | Private | Pro modules and routes | Pro |
-| `veritas-website` | Public or private | Marketing / pricing site | - |
+| `veritas-website` | Public or private | Marketing / pricing site | n/a |
 
 **GitHub organization:** [`veritas-msp`](https://github.com/veritas-msp)
 
@@ -131,7 +131,7 @@ Application repos are cloned **side by side** with the meta repo (listed in `.gi
 ### 4.2 Pro license
 
 - Proprietary commercial license, distinct from AGPL.
-- License key (`VERITAS_LICENSE_KEY` or validation server) - Phase 2–3 implementation.
+- License key (`VERITAS_LICENSE_KEY` or validation server), planned for Phases 2 and 3.
 
 ### 4.3 Trademark
 
@@ -145,7 +145,7 @@ Application repos are cloned **side by side** with the meta repo (listed in `.gi
 
 Legend: ✅ accessible · ⚠️ partial · ❌ blocked (`403` + `requirePro`)
 
-### 5.1 Community - allowed routes
+### 5.1 Allowed routes (Community)
 
 | Prefix | Usage |
 |--------|--------|
@@ -165,7 +165,7 @@ Legend: ✅ accessible · ⚠️ partial · ❌ blocked (`403` + `requirePro`)
 | `/api/maintenance` | Maintenance mode |
 | `/api` (support report) | Bug report |
 
-### 5.2 Pro only - blocked in Community
+### 5.2 Blocked routes (Pro only, unavailable in Community)
 
 | Prefix | Module |
 |--------|--------|
@@ -185,11 +185,11 @@ Legend: ✅ accessible · ⚠️ partial · ❌ blocked (`403` + `requirePro`)
 
 ### 5.3 Crons to disable in Community
 
-In `server.js` - do not run if `VERITAS_EDITION=community`:
+In `server.js`, do not run these if `VERITAS_EDITION=community`:
 
 - CheckMK backup sync jobs
 - Ticket mail collectors
-- Offline RMM agent sync *(kept in Community - 25 endpoint cap)*
+- Offline RMM agent sync *(kept in Community with a 25 endpoint cap)*
 - Monitoring alert scan → tickets
 - Advanced scheduling notifications (if Pro-linked)
 
@@ -204,7 +204,7 @@ Seed profiles for Community (replace current "everything enabled" profiles):
 | Community Administrator | ✅ | ✅ | ✅ | ❌ |
 | Community Agent | ✅ | ✅ | ✅ | ❌ |
 
-Pro flags (`monitoring_enabled`, `infrastructure_enabled`, etc.) remain `FALSE` in Community database - migration `20260720_community_profiles_defaults.sql`.
+Pro flags (`monitoring_enabled`, `infrastructure_enabled`, etc.) remain `FALSE` in the Community database. See migration `20260720_community_profiles_defaults.sql`.
 
 ---
 
@@ -220,24 +220,24 @@ REACT_APP_VERITAS_EDITION=community
 
 ### Phase 2 checklist
 
-- [x] `utils/edition.js` - read `VERITAS_EDITION`, default `community`, `/api/edition` payload
-- [x] `middleware/edition.js` - `requirePro` (403 + `PRO_FEATURE_REQUIRED`) and `requireProAuth` (JWT + Pro)
-- [x] `GET /api/edition` - public endpoint
-- [x] Pro mounts in `server.js` - §5.2 prefixes protected by `requirePro*`
-- [x] Pro crons §5.3 - `isPro()` on CheckMK sync, mail collectors, monitoring alerts
+- [x] `utils/edition.js`: read `VERITAS_EDITION`, default `community`, `/api/edition` payload
+- [x] `middleware/edition.js`: `requirePro` (403 + `PRO_FEATURE_REQUIRED`) and `requireProAuth` (JWT + Pro)
+- [x] `GET /api/edition`: public endpoint
+- [x] Pro mounts in `server.js`: §5.2 prefixes protected by `requirePro*`
+- [x] Pro crons §5.3: `isPro()` on CheckMK sync, mail collectors, monitoring alerts
 - [x] `.env.example` backend + frontend
-- [x] `/setup` wizard - writes `VERITAS_EDITION` + `REACT_APP_VERITAS_EDITION` (default `community`)
-- [x] Frontend `useVeritasEdition` - source of truth = backend API
-- [x] Startup log - edition displayed in console
+- [x] `/setup` wizard: writes `VERITAS_EDITION` + `REACT_APP_VERITAS_EDITION` (default `community`)
+- [x] Frontend `useVeritasEdition`: source of truth = backend API
+- [x] Startup log: edition displayed in console
 - [x] Script `npm run verify:phase2` in `veritas-backend`
-- [x] Commercial license key - Phase 5b (billing validation + admin UI)
+- [x] Commercial license key: Phase 5b (billing validation + admin UI)
 
 ### Switch to Pro in development
 
-1. **Backend** - in `veritas-backend/.env`: `VERITAS_EDITION=pro`, then restart `npm start`.
-2. **Frontend** - in `veritas-frontend/.env`: `REACT_APP_VERITAS_EDITION=pro`, then restart `npm start` (variable injected at CRA build).
+1. **Backend:** in `veritas-backend/.env`, set `VERITAS_EDITION=pro`, then restart `npm start`.
+2. **Frontend:** in `veritas-frontend/.env`, set `REACT_APP_VERITAS_EDITION=pro`, then restart `npm start` (variable injected at CRA build).
 3. Verify: `GET http://localhost:3001/api/edition` should return `{ "edition": "pro", "limits": null, "license": { "devBypass": true, ... } }`.
-4. **Profiles** - in Pro, re-enable desired modules via Administration → Agents & profiles (Community migration resets Pro flags to `FALSE`).
+4. **Profiles:** in Pro, re-enable desired modules via Administration → Agents & profiles (Community migration resets Pro flags to `FALSE`).
 
 > In **production**, Pro edition requires a `VRT-PRO-…` key validated against `veritas-billing` (see §7quinquies).
 
@@ -253,24 +253,24 @@ Expected behavior:
 
 ### Phase 3 checklist
 
-- [x] `utils/communityLimits.js` - MSP, portal, company, contact, RMM quotas + `COMMUNITY_*` codes
-- [x] `utils/ticketEditionGuard.js` - exclude professional services / deployment tickets
-- [x] Limit routes - `users`, `clients`, `contacts`, `rmm` (create / reactivate)
-- [x] SLA disabled - no `buildSlaInfoForTicket` in Community (`routes/utils/tickets.js`)
+- [x] `utils/communityLimits.js`: MSP, portal, company, contact, RMM quotas + `COMMUNITY_*` codes
+- [x] `utils/ticketEditionGuard.js`: exclude professional services / deployment tickets
+- [x] Limit routes: `users`, `clients`, `contacts`, `rmm` (create / reactivate)
+- [x] SLA disabled: no `buildSlaInfoForTicket` in Community (`routes/utils/tickets.js`)
 - [x] `GET /api/stats/home-kpis` → `403` in Community; lightweight `home-dashboard` (§2.6)
-- [x] Frontend sidebar / admin - `config/edition.js`, `useVeritasEdition`, `AdminPanel`, `AdminTickets`
-- [x] Community home - essential KPIs + quick links to Companies / Contacts / Support
-- [x] Company record - mapping, equipment, SLA, credits, professional services hidden
-- [x] Contact record - SLA, professional services, events hidden; company form without modules/SLA
-- [x] Tickets UI - SLA column hidden (`TicketPage`, `TicketDetailPage`)
-- [x] Profile migration - `20260720_community_profiles_defaults.sql`
-- [x] API errors - limit messages surfaced (`utils/apiErrors.js`, `users`, `rmm`)
+- [x] Frontend sidebar / admin: `config/edition.js`, `useVeritasEdition`, `AdminPanel`, `AdminTickets`
+- [x] Community home: essential KPIs + quick links to Companies / Contacts / Support
+- [x] Company record: mapping, equipment, SLA, credits, professional services hidden
+- [x] Contact record: SLA, professional services, events hidden; company form without modules/SLA
+- [x] Tickets UI: SLA column hidden (`TicketPage`, `TicketDetailPage`)
+- [x] Profile migration: `20260720_community_profiles_defaults.sql`
+- [x] API errors: limit messages surfaced (`utils/apiErrors.js`, `users`, `rmm`)
 - [x] Script `npm run verify:phase3` in `veritas-backend`
 
 ### Testing in Community
 
-1. **Backend** - `VERITAS_EDITION=community` in `veritas-backend/.env`, restart.
-2. **Frontend** - `REACT_APP_VERITAS_EDITION=community` in `veritas-frontend/.env`, restart.
+1. **Backend:** set `VERITAS_EDITION=community` in `veritas-backend/.env`, then restart.
+2. **Frontend:** set `REACT_APP_VERITAS_EDITION=community` in `veritas-frontend/.env`, then restart.
 3. Verify: `npm run verify:phase3` (from `veritas-backend/`).
 4. Manual walkthrough: sidebar (3 modules), admin (limited sections), company record without infra, ticket without SLA.
 
@@ -280,14 +280,14 @@ Expected behavior:
 
 ### Phase 4 checklist
 
-- [x] `docker-compose.yml` - Postgres 15, backend, frontend (Community by default)
-- [x] `.env.docker.example` - secrets, edition, same-origin URLs
-- [x] `veritas-backend/Dockerfile` - Node 20 Alpine, healthcheck `/health/live`
-- [x] `veritas-frontend/Dockerfile` - CRA build + nginx
-- [x] `veritas-frontend/nginx.conf` - proxy `/api` and `/uploads` → backend
-- [x] Persistent volumes - `veritas-db`, `veritas-uploads`
-- [x] `/setup` wizard - migrations + admin (pre-configured env in Docker)
-- [x] `README.md` - Docker quick start + local dev
+- [x] `docker-compose.yml`: Postgres 15, backend, frontend (Community by default)
+- [x] `.env.docker.example`: secrets, edition, same-origin URLs
+- [x] `veritas-backend/Dockerfile`: Node 20 Alpine, healthcheck `/health/live`
+- [x] `veritas-frontend/Dockerfile`: CRA build + nginx
+- [x] `veritas-frontend/nginx.conf`: proxy `/api` and `/uploads` → backend
+- [x] Persistent volumes: `veritas-db`, `veritas-uploads`
+- [x] `/setup` wizard: migrations + admin (pre-configured env in Docker)
+- [x] `README.md`: Docker quick start + local dev
 - [x] Script `node scripts/verify-phase4.mjs` (meta repo root)
 - [ ] `docker compose up` build tested on machine with Docker Desktop
 
@@ -308,9 +308,9 @@ node scripts/verify-phase4.mjs
 ### Phase 5 checklist
 
 - [x] README on meta + application repos
-- [x] Marketing site - `#pricing` section (Community / Pro / Advanced)
-- [x] `veritas-website/legal.html` + `privacy.html` + `terms.html` - legal & GDPR pages
-- [x] Site footer - legal links + GitHub
+- [x] Marketing site: `#pricing` section (Community / Pro / Advanced)
+- [x] `veritas-website/legal.html` + `privacy.html` + `terms.html`: legal & GDPR pages
+- [x] Site footer: legal links + GitHub
 - [x] Script `node scripts/verify-phase5.mjs`
 - [ ] Trademark registration (optional before OSS)
 - [ ] Pro EULA legal review by attorney (before sale)
@@ -323,16 +323,17 @@ Flow: **Stripe checkout** → key `VRT-PRO-XXXX-XXXX-XXXX-XXXX` (billing) → **
 
 ### Phase 5b checklist
 
-- [x] `veritas-billing` - `POST /api/license/validate` (secret `BILLING_LICENSE_API_SECRET`)
-- [x] `veritas-backend/utils/proLicense.js` - cache, refresh, dev bypass
-- [x] `veritas-backend/routes/config/license.js` - `GET/POST /api/license`, `POST /api/license/refresh` (admin JWT)
-- [x] `GET /api/edition` - `license` field (public status, no full key)
-- [x] Cron - license re-check every 15 min
-- [x] `veritas-frontend` - admin **Pro License** tab (visible in Community)
-- [x] `.env.example` backend + billing - `VERITAS_LICENSE_KEY`, `VERITAS_BILLING_API_URL`, shared secrets
-- [x] Marketing site - success page hint (Administration → Pro License)
+- [x] `veritas-billing`: `POST /api/license/validate` (secret `BILLING_LICENSE_API_SECRET`)
+- [x] `veritas-backend/constants/billing.js`: production billing URL and embedded client secret
+- [x] `veritas-backend/utils/proLicense.js`: cache, refresh, dev bypass
+- [x] `veritas-backend/routes/config/license.js`: `GET/POST /api/license`, `POST /api/license/refresh` (admin JWT)
+- [x] `GET /api/edition`: `license` field (public status, no full key)
+- [x] Cron: license re-check every 15 min
+- [x] `veritas-frontend`: admin **Pro License** tab (visible in Community)
+- [x] `.env.example` backend: `VERITAS_LICENSE_KEY`; billing URL and secret embedded in `constants/billing.js`
+- [x] Marketing site: success page hint (Administration → Pro License)
 - [x] Script `node scripts/verify-phase5b.mjs`
-- [x] Billing super-admin `/admin` - key & customer management
+- [x] Billing super-admin `/admin`: key & customer management
 - [x] Pro MSP agent limit per subscription `agentCount`
 - [x] Near-instant revocation (`LICENSE_CACHE_MS`, default 5 s)
 
@@ -340,8 +341,8 @@ Flow: **Stripe checkout** → key `VRT-PRO-XXXX-XXXX-XXXX-XXXX` (billing) → **
 
 | Service | Variables |
 |---------|-----------|
-| **veritas-billing** | `BILLING_LICENSE_API_SECRET` (shared secret) |
-| **veritas-backend** | `VERITAS_LICENSE_KEY`, `VERITAS_BILLING_API_URL`, `BILLING_LICENSE_API_SECRET` (same secret) |
+| **veritas-billing** | `BILLING_LICENSE_API_SECRET` (= secret embarqué dans `veritas-backend/constants/billing.js`) |
+| **veritas-backend** | `VERITAS_LICENSE_KEY` (clé client, saisie dans Administration → Licence Pro) |
 
 Billing statuses considered **active**: `active`, `trialing`, `past_due`. Admin revocation: `suspended`, `revoked`, `banned`.
 
@@ -374,23 +375,23 @@ Billing statuses considered **active**: `active`, `trialing`, `past_due`. Admin 
 
 | Phase | Goal | Status |
 |-------|------|--------|
-| **1 - Audit** | Secrets, git history, sensitive surface | ✅ |
-| **2 - Edition flag** | `VERITAS_EDITION`, `requirePro` middleware | ✅ |
-| **3 - Gating** | Profiles, Community quotas, routes, lightweight UI | ✅ |
-| **4 - Install** | Docker Compose, README, quick start | ✅ (static verify; compose test if Docker installed) |
-| **5 - Legal** | README, site pricing, legal pages | ✅ |
-| **6 - Publication** | GitHub push, tag `v1.0.0-community` | 🔄 in progress |
+| **1. Audit** | Secrets, git history, sensitive surface | ✅ |
+| **2. Edition flag** | `VERITAS_EDITION`, `requirePro` middleware | ✅ |
+| **3. Gating** | Profiles, Community quotas, routes, lightweight UI | ✅ |
+| **4. Install** | Docker Compose, README, quick start | ✅ (static verify; compose test if Docker installed) |
+| **5. Legal** | README, site pricing, legal pages | ✅ |
+| **6. Publication** | GitHub push, tag `v1.0.0-community` | 🔄 in progress |
 
 ### Phase 6 checklist
 
-- [x] Quick wins - `veritas-msp.com`, gitignore secrets, `install.conf` out of git
+- [x] Quick wins: `veritas-msp.com`, gitignore secrets, `install.conf` out of git
 - [x] Remotes → `veritas-msp/*` (backend, frontend, website, agent)
 - [x] Script `node scripts/verify-phase6.mjs`
-- [x] Consolidated commits per repo (phases 2–5b)
-- [x] Script `node scripts/verify-phase6.mjs` - OK
+- [x] Consolidated commits per repo (phases 2 through 5b)
+- [x] Script `node scripts/verify-phase6.mjs` (OK)
 - [x] Local tag `v1.0.0-community` on each OSS repo
 - [x] GitHub push + `veritas-msp/veritas` meta repo created
-- [ ] `veritas-billing` - separate **private** repo (outside AGPL publication)
+- [ ] `veritas-billing`: separate **private** repo (outside AGPL publication)
 
 ---
 
@@ -398,6 +399,6 @@ Billing statuses considered **active**: `active`, `trialing`, `past_due`. Admin 
 
 | Topic | Community decision |
 |-------|-------------------|
-| **SLA** | **Excluded** - no basic or advanced SLA (config, calculation, deadline display) |
-| **Home** | **Minimum** - my tickets + news (default feeds) + a few essential KPIs (§2.6) |
-| **Pro pricing** | **Marketing site** - Community / Pro / Advanced pricing section ([veritas-msp.com](https://veritas-msp.com/#pricing)); commercial EULA before sale |
+| **SLA** | **Excluded.** No basic or advanced SLA (config, calculation, deadline display). |
+| **Home** | **Minimum:** my tickets + news (default feeds) + a few essential KPIs (§2.6). |
+| **Pro pricing** | **Marketing site:** Community / Pro / Advanced pricing section ([veritas-msp.com](https://veritas-msp.com/#pricing)); commercial EULA before sale. |
