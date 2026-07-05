@@ -30,7 +30,7 @@
 | Web UI | [veritas-frontend](https://github.com/veritas-msp/veritas-frontend) |
 | Windows RMM agent | [veritas-agent](https://github.com/veritas-msp/veritas-agent) |
 
-Clone this meta repo and the application repos **side by side** in the same directory.
+Clone the application repositories into the same folder.
 
 ## Screenshots
 
@@ -83,7 +83,7 @@ Dedicated sign-in for end users: equipment, documents, and tickets from their co
 | **Docker** | [Docker Desktop](https://www.docker.com/products/docker-desktop/) or Docker Engine + Compose v2 |
 | **From source** | Node.js 20+, PostgreSQL 15+, npm, Git |
 
-Application repositories (`veritas-backend`, `veritas-frontend`) must sit **next to** this meta repo in the same parent folder. Docker Compose builds them from `./veritas-backend` and `./veritas-frontend`.
+Application repositories (`veritas-backend`, `veritas-frontend`) must sit in the same parent folder. Docker Compose builds them from `./veritas-backend` and `./veritas-frontend`.
 
 ## Quick start
 
@@ -97,9 +97,10 @@ Best for a quick production-like install on a single machine.
 
 ```bash
 mkdir veritas && cd veritas
-git clone https://github.com/veritas-msp/veritas.git .
 git clone https://github.com/veritas-msp/veritas-backend.git veritas-backend
 git clone https://github.com/veritas-msp/veritas-frontend.git veritas-frontend
+curl -fsSLO https://raw.githubusercontent.com/veritas-msp/veritas/main/docker-compose.yml
+curl -fsSLO https://raw.githubusercontent.com/veritas-msp/veritas/main/.env.docker.example
 ```
 
 **2. Configure secrets**
@@ -140,7 +141,6 @@ Best for local development with hot reload.
 
 ```bash
 mkdir veritas && cd veritas
-git clone https://github.com/veritas-msp/veritas.git .
 git clone https://github.com/veritas-msp/veritas-backend.git veritas-backend
 git clone https://github.com/veritas-msp/veritas-frontend.git veritas-frontend
 ```
