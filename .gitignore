@@ -1,0 +1,10 @@
+# Meta-repo Veritas — local files
+.env
+.env.local
+
+# Application repos (separate git repos, cloned side by side)
+veritas-backend/
+veritas-frontend/
+veritas-website/
+veritas-agent/
+veritas-billing/
