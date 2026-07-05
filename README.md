@@ -1,9 +1,9 @@
 <p align="center">
-  <img src="./docs/assets/veritas-banner.png" alt="Veritas — open source MSP platform" width="720">
+  <img src="./docs/assets/veritas-banner.png" alt="Veritas - open source MSP platform" width="720">
 </p>
 
 <p align="center">
-  <strong>Self-hosted MSP platform — PSA, ITSM, and RMM in one place.</strong>
+  <strong>Self-hosted MSP platform - PSA, ITSM, and RMM in one place.</strong>
 </p>
 
 <p align="center">
@@ -22,7 +22,7 @@
 
 ## Overview
 
-**Veritas** centralizes day-to-day MSP operations: companies and contacts (PSA), support tickets (ITSM), infrastructure supervision, and RMM — deployable on your own infrastructure.
+**Veritas** centralizes day-to-day MSP operations: companies and contacts (PSA), support tickets (ITSM), infrastructure supervision, and RMM - deployable on your own infrastructure.
 
 | Component | Repository |
 |-----------|------------|
@@ -39,7 +39,7 @@ Clone this meta repo and the application repos **side by side** in the same dire
 Ticket views, filters, and assignment for your support team.
 
 <p align="center">
-  <img src="./docs/assets/veritas-helpdesk.png" alt="Veritas helpdesk — ticket list and views" width="900">
+  <img src="./docs/assets/veritas-helpdesk.png" alt="Veritas helpdesk - ticket list and views" width="900">
 </p>
 
 ### Ticket workspace
@@ -47,15 +47,15 @@ Ticket views, filters, and assignment for your support team.
 Full ticket detail: conversation thread, properties, linked hardware, and resolution workflow.
 
 <p align="center">
-  <img src="./docs/assets/veritas-supportticket.png" alt="Veritas support ticket — conversation and ticket properties" width="900">
+  <img src="./docs/assets/veritas-supportticket.png" alt="Veritas support ticket - conversation and ticket properties" width="900">
 </p>
 
 ### Supervision center
 
-Infrastructure inventory by site and device type — servers, storage, network, workstations, and RMM agents.
+Infrastructure inventory by site and device type - servers, storage, network, workstations, and RMM agents.
 
 <p align="center">
-  <img src="./docs/assets/veritas-supervisioncenter.png" alt="Veritas supervision center — infrastructure monitoring dashboard" width="900">
+  <img src="./docs/assets/veritas-supervisioncenter.png" alt="Veritas supervision center - infrastructure monitoring dashboard" width="900">
 </p>
 
 ### Administration
@@ -63,7 +63,7 @@ Infrastructure inventory by site and device type — servers, storage, network, 
 Language, timezone, appearance, and organization settings from a single admin area.
 
 <p align="center">
-  <img src="./docs/assets/veritas-settings.png" alt="Veritas administration — general settings" width="900">
+  <img src="./docs/assets/veritas-settings.png" alt="Veritas administration - general settings" width="900">
 </p>
 
 ### Client portal
@@ -71,7 +71,7 @@ Language, timezone, appearance, and organization settings from a single admin ar
 Dedicated sign-in for end users: equipment, documents, and tickets from their company portal.
 
 <p align="center">
-  <img src="./docs/assets/veritas-login-clientportal.png" alt="Veritas client portal — sign-in page" width="900">
+  <img src="./docs/assets/veritas-login-clientportal.png" alt="Veritas client portal - sign-in page" width="900">
 </p>
 
 ---
@@ -88,7 +88,7 @@ cd veritas-backend && cp .env.example .env && npm install && npm start
 cd veritas-frontend && cp .env.example .env && npm install && npm start
 ```
 
-1. Open http://localhost:3000/setup — run migrations and create the admin account  
+1. Open http://localhost:3000/setup - run migrations and create the admin account  
 2. Sign in at http://localhost:3000/login
 
 Generate random secrets (PowerShell):
