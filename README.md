@@ -78,24 +78,103 @@ Dedicated sign-in for end users: equipment, documents, and tickets from their co
 
 ## Requirements
 
-- For local development: Node.js 20+, PostgreSQL 15+, npm
-- Optional: [Docker Desktop](https://www.docker.com/products/docker-desktop/) or Docker Engine + Compose v2 (see application repos)
+| Method | What you need |
+|--------|----------------|
+| **Docker** | [Docker Desktop](https://www.docker.com/products/docker-desktop/) or Docker Engine + Compose v2 |
+| **From source** | Node.js 20+, PostgreSQL 15+, npm, Git |
+
+Application repositories (`veritas-backend`, `veritas-frontend`) must sit **next to** this meta repo in the same parent folder. Docker Compose builds them from `./veritas-backend` and `./veritas-frontend`.
 
 ## Quick start
 
+Pick one deployment path below. Both end at the same setup wizard: http://localhost:3000/setup
+
+### Option A: Docker
+
+Best for a quick production-like install on a single machine.
+
+**1. Clone the repositories**
+
 ```bash
-cd veritas-backend && cp .env.example .env && npm install && npm start
-cd veritas-frontend && cp .env.example .env && npm install && npm start
+mkdir veritas && cd veritas
+git clone https://github.com/veritas-msp/veritas.git .
+git clone https://github.com/veritas-msp/veritas-backend.git veritas-backend
+git clone https://github.com/veritas-msp/veritas-frontend.git veritas-frontend
 ```
 
-1. Open http://localhost:3000/setup, run migrations, and create the admin account  
-2. Sign in at http://localhost:3000/login
+**2. Configure secrets**
 
-Generate random secrets (PowerShell):
+```bash
+cp .env.docker.example .env
+```
+
+Edit `.env` and set `JWT_SECRET` and `ENCRYPTION_KEY` (64 random characters each). On PowerShell:
 
 ```powershell
 -join ((48..57 + 65..90 + 97..122 | Get-Random -Count 64 | ForEach-Object {[char]$_}))
 ```
+
+**3. Start the stack**
+
+```bash
+docker compose up -d --build
+```
+
+**4. Finish setup**
+
+1. Open http://localhost:3000/setup, run migrations, and create the admin account  
+2. Sign in at http://localhost:3000/login
+
+| Service | URL |
+|---------|-----|
+| Web UI | http://localhost:3000 |
+| API (direct) | http://localhost:3001 |
+
+Data is stored in Docker volumes `veritas-db` and `veritas-uploads`.
+
+### Option B: From source (GitHub clone)
+
+Best for local development with hot reload.
+
+**1. Clone the repositories**
+
+```bash
+mkdir veritas && cd veritas
+git clone https://github.com/veritas-msp/veritas.git .
+git clone https://github.com/veritas-msp/veritas-backend.git veritas-backend
+git clone https://github.com/veritas-msp/veritas-frontend.git veritas-frontend
+```
+
+Optional: [veritas-agent](https://github.com/veritas-msp/veritas-agent) for Windows RMM endpoints.
+
+**2. PostgreSQL**
+
+Create an empty database (PostgreSQL 15+). You can leave `DATABASE_URL` empty on first run; the setup wizard will configure it.
+
+**3. Backend**
+
+```bash
+cd veritas-backend
+cp .env.example .env
+npm install
+npm start
+```
+
+**4. Frontend** (new terminal)
+
+```bash
+cd veritas-frontend
+cp .env.example .env
+npm install
+npm start
+```
+
+**5. Finish setup**
+
+1. Open http://localhost:3000/setup, run migrations, and create the admin account  
+2. Sign in at http://localhost:3000/login
+
+#### Environment variables (from source)
 
 Set in `veritas-backend/.env`:
 
@@ -103,16 +182,17 @@ Set in `veritas-backend/.env`:
 |----------|-------------|
 | `JWT_SECRET` | Session signing secret |
 | `ENCRYPTION_KEY` | Encryption key for sensitive data |
-| `DATABASE_URL` | PostgreSQL connection string |
+| `DATABASE_URL` | PostgreSQL connection string (optional until `/setup`) |
 | `VERITAS_EDITION` | `community` (default) or `pro` |
 
 Set in `veritas-frontend/.env`:
 
 | Variable | Description |
 |----------|-------------|
+| `REACT_APP_API_BASE_URL` | Backend URL without `/api` (default `http://localhost:3001`) |
 | `REACT_APP_VERITAS_EDITION` | `community` (default) or `pro` |
 
-## Services (local dev)
+## Services (from source)
 
 | Service | Port | Role |
 |---------|------|------|

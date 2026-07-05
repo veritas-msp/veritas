@@ -1,0 +1,51 @@
+services:
+  db:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_DB: veritas
+      POSTGRES_USER: veritas
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-changeme}
+    volumes:
+      - veritas-db:/var/lib/postgresql/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U veritas -d veritas"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  veritas-backend:
+    build: ./veritas-backend
+    ports:
+      - "3001:3001"
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: postgres://veritas:${POSTGRES_PASSWORD:-changeme}@db:5432/veritas
+      NODE_ENV: production
+      PROTOCOL: http
+      ALLOWED_ORIGINS: http://localhost:3000
+      FRONTEND_BASE_URL: http://localhost:3000
+      VERITAS_EDITION: ${VERITAS_EDITION:-community}
+    volumes:
+      - veritas-uploads:/app/uploads
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+
+  veritas-frontend:
+    build:
+      context: ./veritas-frontend
+      args:
+        REACT_APP_API_BASE_URL: http://localhost:3000
+        REACT_APP_VERITAS_EDITION: ${VERITAS_EDITION:-community}
+    ports:
+      - "3000:80"
+    depends_on:
+      - veritas-backend
+    restart: unless-stopped
+
+volumes:
+  veritas-db:
+  veritas-uploads:
