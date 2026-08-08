@@ -87,65 +87,41 @@ Docker Compose builds from `./veritas/backend` and `./veritas/frontend`.
 
 ## Quick start
 
-Pick one deployment path below. Both end at the same setup wizard: http://localhost:3000/setup
+Pick one deployment path below. Both end at the same setup wizard: http://SERVER_IP:3000/setup
 
-### Option A: Docker
+### Option A: Ubuntu Server (recommended)
 
-Best for a quick production-like install on a single machine.
+**Do not run `docker compose up --build` on a small VPS** — the React image build will OOM. Deploy by pulling prebuilt images:
 
-**1. Clone the repository**
+```bash
+curl -fsSL https://raw.githubusercontent.com/veritas-msp/veritas/main/scripts/install-ubuntu.sh | sudo bash
+```
+
+This installs Docker if needed, writes `/opt/veritas`, pulls `ghcr.io/veritas-msp/veritas-*`, and starts the stack. Then open `http://SERVER_IP:3000/setup`.
+
+After the first GitHub Actions publish, make the GHCR packages **Public** (GitHub → Packages → each image → Package settings → Change visibility).
+
+### Option A2: Docker (existing clone)
 
 ```bash
 git clone https://github.com/veritas-msp/veritas.git
 cd veritas
+chmod +x scripts/prepare-docker-env.sh scripts/compose-up.sh
+./scripts/prepare-docker-env.sh
+./scripts/compose-up.sh
 ```
 
-**2. Prepare `.env` (generates secrets)**
-
-```bash
-# Linux / macOS
-chmod +x scripts/prepare-docker-env.sh && ./scripts/prepare-docker-env.sh
-```
-
-```powershell
-# Windows PowerShell
-powershell -ExecutionPolicy Bypass -File .\scripts\prepare-docker-env.ps1
-```
-
-Or copy `.env.docker.example` to `.env` and set `JWT_SECRET` / `ENCRYPTION_KEY` yourself (non-empty required).
-
-**3. Start the stack** (pulls prebuilt images — works on small VPS)
-
-```bash
-# Linux / macOS
-chmod +x scripts/compose-up.sh && ./scripts/compose-up.sh
-```
-
-```powershell
-# Windows PowerShell
-powershell -ExecutionPolicy Bypass -File .\scripts\compose-up.ps1
-```
-
-Or manually:
-
-```bash
-docker compose pull
-docker compose up -d
-```
-
-Images are published to GHCR on every `main` push (`ghcr.io/veritas-msp/veritas-backend` / `veritas-frontend`). No local React build is required to deploy.
-
-To force a local image build instead: `VERITAS_PULL_POLICY=never docker compose up -d --build`.
+`docker-compose.yml` only pulls images (no local build). Contributor builds: `docker compose -f docker-compose.build.yml build`.
 
 **4. Finish setup**
 
-1. Open http://localhost:3000/setup, run migrations, and create the admin account  
-2. Sign in at http://localhost:3000/login
+1. Open http://SERVER_IP:3000/setup, run migrations, and create the admin account  
+2. Sign in at http://SERVER_IP:3000/login
 
 | Service | URL |
 |---------|-----|
-| Web UI | http://localhost:3000 |
-| API (direct) | http://localhost:3001 |
+| Web UI | http://SERVER_IP:3000 |
+| API (direct) | http://SERVER_IP:3001 |
 
 Data is stored in Docker volumes `veritas-db` and `veritas-uploads`.
 

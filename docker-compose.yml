@@ -1,3 +1,6 @@
+# Production stack — pulls prebuilt images only (no CRA build on the server).
+# For local image builds use: docker compose -f docker-compose.build.yml build
+
 services:
   db:
     image: postgres:15-alpine
@@ -16,8 +19,6 @@ services:
 
   veritas-backend:
     image: ghcr.io/veritas-msp/veritas-backend:${VERITAS_IMAGE_TAG:-latest}
-    build: ./veritas/backend
-    pull_policy: ${VERITAS_PULL_POLICY:-always}
     ports:
       - "3001:3001"
     env_file:
@@ -50,12 +51,6 @@ services:
 
   veritas-frontend:
     image: ghcr.io/veritas-msp/veritas-frontend:${VERITAS_IMAGE_TAG:-latest}
-    build:
-      context: ./veritas/frontend
-      args:
-        REACT_APP_API_BASE_URL: ""
-        REACT_APP_VERITAS_EDITION: ${VERITAS_EDITION:-community}
-    pull_policy: ${VERITAS_PULL_POLICY:-always}
     ports:
       - "3000:80"
     depends_on:

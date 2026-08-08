@@ -55,3 +55,21 @@ jobs:
             ${{ env.FRONTEND_IMAGE }}:${{ github.sha }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+
+      - name: Try make packages public
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          for pkg in veritas-backend veritas-frontend; do
+            curl -sS -X PUT \
+              -H "Accept: application/vnd.github+json" \
+              -H "Authorization: Bearer $GH_TOKEN" \
+              "https://api.github.com/user/packages/container/${pkg}/visibility" \
+              -d '{"visibility":"public"}' || true
+            curl -sS -X PUT \
+              -H "Accept: application/vnd.github+json" \
+              -H "Authorization: Bearer $GH_TOKEN" \
+              "https://api.github.com/orgs/veritas-msp/packages/container/${pkg}/visibility" \
+              -d '{"visibility":"public"}' || true
+          done
