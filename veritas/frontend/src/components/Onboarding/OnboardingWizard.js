@@ -11,7 +11,7 @@ import OnboardingHoursForm from "./OnboardingHoursForm";
 import OnboardingLicenseForm from "./OnboardingLicenseForm";
 import OnboardingAgentsStep from "./OnboardingAgentsStep";
 import { useOnboardingSetup } from "./useOnboardingSetup";
-import { activateLicense, getLicenseStatus } from "../../api/license";
+import { activateLicense, activateOfflineLicense, getLicenseStatus } from "../../api/license";
 import { showError } from "../../utils/toast";
 import { ONBOARDING_SAVE_STEP_KEYS, ONBOARDING_WIDE_CARD_KEYS, countActiveMspAgents, filterActiveMspAgents } from "./onboardingSetupShared";
 import { getEmployeeRangeOptions } from "../../constants/organizationEmployeeRanges";
@@ -50,6 +50,7 @@ export default function OnboardingWizard({
   const [licenseValid, setLicenseValid] = useState(false);
   const [licenseLoading, setLicenseLoading] = useState(false);
   const [activatingLicense, setActivatingLicense] = useState(false);
+  const [offlineImporting, setOfflineImporting] = useState(false);
   const [displayStep, setDisplayStep] = useState(step);
   const [layoutStep, setLayoutStep] = useState(step);
   const [contentVisible, setContentVisible] = useState(true);
@@ -167,6 +168,31 @@ export default function OnboardingWizard({
       close: row.close || "18:00"
     })));
   }, [setWeekSchedule]);
+  const handleOfflineLicenseFile = async (file) => {
+    setOfflineImporting(true);
+    try {
+      const text = await file.text();
+      let document;
+      try {
+        document = JSON.parse(text);
+      } catch {
+        showError(forms.license.offlineInvalidFile || forms.license.activateError);
+        return;
+      }
+      await activateOfflineLicense(document);
+      licenseActivatedRef.current = true;
+      setLicenseValid(true);
+      requestStepChange(displayStep + 1);
+    } catch (err) {
+      const msg =
+        err?.payload?.message ||
+        err?.message ||
+        forms.license.activateError;
+      showError(msg);
+    } finally {
+      setOfflineImporting(false);
+    }
+  };
   const handleContinue = async () => {
     if (ONBOARDING_SAVE_STEP_KEYS.has(current.key)) {
       const handlerName = SAVE_HANDLERS[current.key];
@@ -213,7 +239,7 @@ export default function OnboardingWizard({
   };
   const primaryActionLabel = () => {
     if (current.key === "license" && !isLast) {
-      if (activatingLicense) return forms.license.activating;
+      if (activatingLicense || offlineImporting) return forms.license.activating;
       if (licenseValid) return ui.continue;
       if (licenseKey.trim()) return ui.activateAndContinue;
       return ui.continue;
@@ -223,7 +249,7 @@ export default function OnboardingWizard({
     }
     return ui.complete;
   };
-  const isBusy = saving || activatingLicense;
+  const isBusy = saving || activatingLicense || offlineImporting;
   const handleThemeChange = nextTheme => {
     setWizardTheme(nextTheme);
     if (appTheme === "dark" !== (nextTheme === "dark")) {
@@ -253,7 +279,7 @@ export default function OnboardingWizard({
       if (licenseLoading) {
         return <p className={styles.inlineFormHint}>{forms.shared.loading}</p>;
       }
-      return <OnboardingLicenseForm labels={forms.license} licenseKey={licenseKey} onChange={setLicenseKey} disabled={isBusy || licenseValid} alreadyActive={licenseValid} />;
+      return <OnboardingLicenseForm labels={forms.license} licenseKey={licenseKey} onChange={setLicenseKey} disabled={isBusy || licenseValid} alreadyActive={licenseValid} onOfflineFile={handleOfflineLicenseFile} offlineImporting={offlineImporting} />;
     }
     return null;
   };
@@ -344,14 +370,14 @@ export default function OnboardingWizard({
                     {primaryActionLabel()}
                   </button>}
               </div>
+
+              <button type="button" className={styles.skipGuide} onClick={handleSkip} disabled={isBusy}>
+                {current.key === "license" ? ui.skipLicenseStep : ui.skip}
+              </button>
                 </motion.div> : null}
             </AnimatePresence>
           </div>
         </SetupWizardLayout>
       </div>
-
-      <button type="button" className={styles.skipGuideFixed} onClick={handleSkip} disabled={isBusy}>
-        {current.key === "license" ? ui.skipLicenseStep : ui.skip}
-      </button>
     </motion.div>;
 }

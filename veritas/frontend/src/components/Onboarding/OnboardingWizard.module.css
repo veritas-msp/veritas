@@ -298,38 +298,43 @@
   justify-content: flex-end;
 }
 
-.skipGuideFixed {
-  position: fixed;
-  right: 28px;
-  bottom: 24px;
-  z-index: 2;
-  margin: 0;
-  padding: 0;
+.skipGuide {
+  align-self: flex-end;
+  margin: 16px 0 0;
+  padding: 4px 0;
   border: none;
   background: none;
-  color: rgba(255, 255, 255, 0.58);
+  color: var(--ob-tip-text, #64748b);
   font-size: 0.82rem;
   line-height: 1.4;
   cursor: pointer;
   text-decoration: underline;
   text-underline-offset: 3px;
   text-align: right;
+  max-width: 100%;
 }
 
-.skipGuideFixed:hover:not(:disabled) {
-  color: rgba(255, 255, 255, 0.92);
+.skipGuide:hover:not(:disabled) {
+  color: var(--ob-text, #0f172a);
 }
 
-.skipGuideFixed:disabled {
+.skipGuide:disabled {
   opacity: 0.4;
   cursor: wait;
 }
 
 @media (max-width: 640px) {
-  .skipGuideFixed {
-    right: 16px;
-    bottom: 16px;
-    max-width: min(220px, 46vw);
+  .stepActions {
+    width: 100%;
+  }
+
+  .skipGuide {
+    align-self: stretch;
+    width: 100%;
+    margin-top: 20px;
+    padding: 12px 8px;
+    text-align: center;
+    font-size: 0.8rem;
   }
 }
 
@@ -363,6 +368,37 @@
   flex-wrap: wrap;
   gap: 10px 16px;
   margin-top: 4px;
+}
+
+.licenseOfflineBlock {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  margin: 4px 0 8px;
+}
+
+.licenseOfflineBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  border-radius: 10px;
+  border: 1px solid var(--ob-border, rgba(0, 0, 0, 0.12));
+  background: var(--ob-surface, #fff);
+  color: var(--ob-text);
+  font: inherit;
+  font-size: 0.9rem;
+  cursor: pointer;
+}
+
+.licenseOfflineBtn:hover:not(:disabled) {
+  border-color: var(--ob-accent-border, rgba(0, 0, 0, 0.2));
+}
+
+.licenseOfflineBtn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
 }
 
 .licenseLink {

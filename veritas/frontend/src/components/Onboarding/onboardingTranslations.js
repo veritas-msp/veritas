@@ -121,7 +121,11 @@ function buildForms(weekdays, overrides = {}) {
       pricingLink: overrides.licensePricingLink,
       recoverLink: overrides.licenseRecoverLink,
       activating: overrides.licenseActivating,
-      activateError: overrides.licenseActivateError
+      activateError: overrides.licenseActivateError,
+      offlineImport: overrides.licenseOfflineImport,
+      offlineImporting: overrides.licenseOfflineImporting,
+      offlineImportHint: overrides.licenseOfflineImportHint,
+      offlineInvalidFile: overrides.licenseOfflineInvalidFile
     }
   };
 }
@@ -223,7 +227,11 @@ const fr = {
     licensePricingLink: "Découvrir Veritas Pro",
     licenseRecoverLink: "Récupérer ma clé",
     licenseActivating: "Activation…",
-    licenseActivateError: "Activation de la licence impossible"
+    licenseActivateError: "Activation de la licence impossible",
+    licenseOfflineImport: "Importer une activation hors ligne",
+    licenseOfflineImporting: "Import…",
+    licenseOfflineImportHint: "Instance isolée : importez le fichier JSON fourni par le billing admin.",
+    licenseOfflineInvalidFile: "Fichier d'activation hors ligne invalide"
   }),
   steps: [{
     label: "Bienvenue",
@@ -375,7 +383,11 @@ const en = {
     licensePricingLink: "Discover Veritas Pro",
     licenseRecoverLink: "Recover my key",
     licenseActivating: "Activating…",
-    licenseActivateError: "Unable to activate license"
+    licenseActivateError: "Unable to activate license",
+    licenseOfflineImport: "Import offline activation",
+    licenseOfflineImporting: "Importing…",
+    licenseOfflineImportHint: "Air-gapped instance: import the JSON file issued by the billing admin.",
+    licenseOfflineInvalidFile: "Invalid offline activation file"
   }),
   steps: [{
     label: "Welcome",
@@ -527,7 +539,11 @@ const de = {
     licensePricingLink: "Veritas Pro entdecken",
     licenseRecoverLink: "Schlüssel wiederherstellen",
     licenseActivating: "Aktivierung…",
-    licenseActivateError: "Lizenzaktivierung nicht möglich"
+    licenseActivateError: "Lizenzaktivierung nicht möglich",
+    licenseOfflineImport: "Offline-Aktivierung importieren",
+    licenseOfflineImporting: "Import…",
+    licenseOfflineImportHint: "Offline-Instanz: JSON-Datei aus dem Billing-Admin importieren.",
+    licenseOfflineInvalidFile: "Ungültige Offline-Aktivierungsdatei"
   }),
   steps: [{
     label: "Willkommen",
@@ -679,7 +695,11 @@ const it = {
     licensePricingLink: "Scopri Veritas Pro",
     licenseRecoverLink: "Recupera la mia chiave",
     licenseActivating: "Attivazione…",
-    licenseActivateError: "Impossibile attivare la licenza"
+    licenseActivateError: "Impossibile attivare la licenza",
+    licenseOfflineImport: "Importa attivazione offline",
+    licenseOfflineImporting: "Importazione…",
+    licenseOfflineImportHint: "Istanza isolata: importa il file JSON fornito dall'admin billing.",
+    licenseOfflineInvalidFile: "File di attivazione offline non valido"
   }),
   steps: [{
     label: "Benvenuto",
@@ -831,7 +851,11 @@ const es = {
     licensePricingLink: "Descubrir Veritas Pro",
     licenseRecoverLink: "Recuperar mi clave",
     licenseActivating: "Activando…",
-    licenseActivateError: "No se pudo activar la licencia"
+    licenseActivateError: "No se pudo activar la licencia",
+    licenseOfflineImport: "Importar activación offline",
+    licenseOfflineImporting: "Importando…",
+    licenseOfflineImportHint: "Instancia aislada: importe el JSON emitido por el admin de billing.",
+    licenseOfflineInvalidFile: "Archivo de activación offline no válido"
   }),
   steps: [{
     label: "Bienvenida",
