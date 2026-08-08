@@ -76,60 +76,28 @@ Dedicated sign-in for end users: equipment, documents, and tickets from their co
 
 ---
 
-## Requirements
+## Deploy (production)
 
-| Method | What you need |
-|--------|----------------|
-| **Docker** | [Docker Desktop](https://www.docker.com/products/docker-desktop/) or Docker Engine + Compose v2 |
-| **From source** | Node.js 20+, PostgreSQL 15+, npm, Git |
-
-Docker Compose builds from `./veritas/backend` and `./veritas/frontend`.
-
-## Quick start
-
-Pick one deployment path below. Both end at the same setup wizard: http://SERVER_IP:3000/setup
-
-### Option A: Ubuntu Server (recommended)
-
-**Do not run `docker compose up --build` on a small VPS** — the React image build will OOM. Deploy by pulling prebuilt images:
+One command on Ubuntu Server (installs Docker if needed, pulls prebuilt images, starts Veritas):
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/veritas-msp/veritas/main/scripts/install-ubuntu.sh | sudo bash
 ```
 
-This installs Docker if needed, writes `/opt/veritas`, pulls `ghcr.io/veritas-msp/veritas-*`, and starts the stack. Then open `http://SERVER_IP:3000/setup`.
-
-After the first GitHub Actions publish, make the GHCR packages **Public** (GitHub → Packages → each image → Package settings → Change visibility).
-
-### Option A2: Docker (existing clone)
-
-```bash
-git clone https://github.com/veritas-msp/veritas.git
-cd veritas
-chmod +x scripts/prepare-docker-env.sh scripts/compose-up.sh
-./scripts/prepare-docker-env.sh
-./scripts/compose-up.sh
-```
-
-`docker-compose.yml` only pulls images (no local build). Contributor builds: `docker compose -f docker-compose.build.yml build`.
-
-**4. Finish setup**
-
-1. Open http://SERVER_IP:3000/setup, run migrations, and create the admin account  
-2. Sign in at http://SERVER_IP:3000/login
+Then open **http://SERVER_IP:3000/setup** to finish installation.
 
 | Service | URL |
 |---------|-----|
 | Web UI | http://SERVER_IP:3000 |
-| API (direct) | http://SERVER_IP:3001 |
+| API | http://SERVER_IP:3001 |
 
-Data is stored in Docker volumes `veritas-db` and `veritas-uploads`.
+Files live in `/opt/veritas`. Data is stored in Docker volumes `veritas-db` and `veritas-uploads`.
 
-### Option B: From source
+Do **not** run `docker compose up --build` on a small VPS (React build will run out of memory). Production uses images from `ghcr.io/veritas-msp/veritas-backend` and `veritas-frontend`.
 
-Best for local development with hot reload.
+## Development (from source)
 
-**1. Clone and install**
+Requires Node.js 20+, PostgreSQL 15+, npm, Git.
 
 ```bash
 git clone https://github.com/veritas-msp/veritas.git
@@ -137,59 +105,28 @@ cd veritas/veritas
 cp backend/.env.example backend/.env
 cp frontend/.env.example frontend/.env
 npm run install:all
-```
-
-**2. PostgreSQL**
-
-Create an empty database (PostgreSQL 15+). You can leave `DATABASE_URL` empty on first run; the setup wizard will configure it.
-
-**3. Run backend + frontend**
-
-```bash
 npm run dev
 ```
 
-Or in two terminals:
+Open http://localhost:3000/setup
 
-```bash
-npm run dev:api
-npm run dev:ui
-```
+| Variable | File | Description |
+|----------|------|-------------|
+| `JWT_SECRET` / `ENCRYPTION_KEY` | `backend/.env` | App secrets |
+| `DATABASE_URL` | `backend/.env` | Optional until `/setup` |
+| `VERITAS_EDITION` | `backend/.env` | `community` or `pro` |
+| `REACT_APP_API_BASE_URL` | `frontend/.env` | Default `http://localhost:3001` |
+| `REACT_APP_VERITAS_EDITION` | `frontend/.env` | `community` or `pro` |
 
-**4. Finish setup**
+| Service | Port |
+|---------|------|
+| Frontend | 3000 |
+| Backend | 3001 |
+| PostgreSQL | 5432 |
 
-1. Open http://localhost:3000/setup, run migrations, and create the admin account  
-2. Sign in at http://localhost:3000/login
+## Production tips
 
-#### Environment variables (from source)
-
-Set in `veritas/backend/.env`:
-
-| Variable | Description |
-|----------|-------------|
-| `JWT_SECRET` | Session signing secret |
-| `ENCRYPTION_KEY` | Encryption key for sensitive data |
-| `DATABASE_URL` | PostgreSQL connection string (optional until `/setup`) |
-| `VERITAS_EDITION` | `community` (default) or `pro` |
-
-Set in `veritas/frontend/.env`:
-
-| Variable | Description |
-|----------|-------------|
-| `REACT_APP_API_BASE_URL` | Backend URL without `/api` (default `http://localhost:3001`) |
-| `REACT_APP_VERITAS_EDITION` | `community` (default) or `pro` |
-
-## Services (from source)
-
-| Service | Port | Role |
-|---------|------|------|
-| Frontend | 3000 | Web UI + `/api` proxy |
-| Backend | 3001 | REST API |
-| PostgreSQL | 5432 | Database |
-
-## Production
-
-Set public URLs in backend and frontend `.env` files, then put a reverse proxy (nginx, Traefik, Caddy, …) in front of port 3000 for TLS.
+Put a reverse proxy (nginx, Traefik, Caddy, …) in front of port 3000 for TLS. Set `ALLOWED_ORIGINS` and `FRONTEND_BASE_URL` in `/opt/veritas/.env` to your public URL.
 
 ## Editions
 
