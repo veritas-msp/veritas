@@ -132,13 +132,13 @@ docker compose up -d --build
 
 Data is stored in Docker volumes `veritas-db` and `veritas-uploads`.
 
-**Small VPS (1–2 GB RAM):** the frontend image build is the heavy step. Source maps are disabled by default in Docker. If you still hit `JavaScript heap out of memory`, set in `.env`:
+**Small VPS:** the frontend image build needs about **2 GB free RAM** (or swap). Source maps are disabled in Docker. If you hit `JavaScript heap out of memory`, add swap (1–2 GB) or set in `.env`:
 
 ```bash
-NODE_MAX_OLD_SPACE_SIZE=768
+NODE_MAX_OLD_SPACE_SIZE=2048
 ```
 
-Then rebuild: `docker compose build --no-cache veritas-frontend && docker compose up -d`. Adding 1–2 GB of swap on the host also helps.
+Then rebuild: `docker compose build --no-cache veritas-frontend && docker compose up -d`. On 1 GB hosts, build the images on a larger machine (or CI) and deploy with `docker compose up -d` only.
 
 ### Option B: From source
 

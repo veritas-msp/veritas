@@ -53,8 +53,8 @@ services:
         # Empty = same-origin /api via nginx (works for localhost and remote hosts)
         REACT_APP_API_BASE_URL: ""
         REACT_APP_VERITAS_EDITION: ${VERITAS_EDITION:-community}
-        # CRA build heap (MB). Lower on 1–2 GB VPS, e.g. 768 or 1024.
-        NODE_MAX_OLD_SPACE_SIZE: ${NODE_MAX_OLD_SPACE_SIZE:-1536}
+        # CRA build heap (MB). Needs ~2 GB free RAM (or swap) during image build.
+        NODE_MAX_OLD_SPACE_SIZE: ${NODE_MAX_OLD_SPACE_SIZE:-2048}
     ports:
       - "3000:80"
     depends_on:
