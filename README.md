@@ -98,16 +98,21 @@ Best for a quick production-like install on a single machine.
 ```bash
 git clone https://github.com/veritas-msp/veritas.git
 cd veritas
-cp .env.docker.example .env
 ```
 
-**2. Configure secrets**
+**2. Prepare `.env` (generates secrets)**
 
-Edit `.env` and set `JWT_SECRET` and `ENCRYPTION_KEY` (64 random characters each). On PowerShell:
+```bash
+# Linux / macOS
+chmod +x scripts/prepare-docker-env.sh && ./scripts/prepare-docker-env.sh
+```
 
 ```powershell
--join ((48..57 + 65..90 + 97..122 | Get-Random -Count 64 | ForEach-Object {[char]$_}))
+# Windows PowerShell
+powershell -ExecutionPolicy Bypass -File .\scripts\prepare-docker-env.ps1
 ```
+
+Or copy `.env.docker.example` to `.env` and set `JWT_SECRET` / `ENCRYPTION_KEY` yourself (non-empty required).
 
 **3. Start the stack**
 

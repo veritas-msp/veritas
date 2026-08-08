@@ -24,8 +24,8 @@ services:
       DATABASE_URL: postgres://veritas:${POSTGRES_PASSWORD:-changeme}@db:5432/veritas
       NODE_ENV: production
       PROTOCOL: http
-      ALLOWED_ORIGINS: http://localhost:3000
-      FRONTEND_BASE_URL: http://localhost:3000
+      ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-http://localhost:3000}
+      FRONTEND_BASE_URL: ${FRONTEND_BASE_URL:-http://localhost:3000}
       VERITAS_EDITION: ${VERITAS_EDITION:-community}
     volumes:
       - veritas-uploads:/app/uploads
@@ -33,17 +33,31 @@ services:
       db:
         condition: service_healthy
     restart: unless-stopped
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://127.0.0.1:3001/health/live').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
+        ]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 40s
 
   veritas-frontend:
     build:
       context: ./veritas/frontend
       args:
-        REACT_APP_API_BASE_URL: http://localhost:3000
+        # Empty = same-origin /api via nginx (works for localhost and remote hosts)
+        REACT_APP_API_BASE_URL: ""
         REACT_APP_VERITAS_EDITION: ${VERITAS_EDITION:-community}
     ports:
       - "3000:80"
     depends_on:
-      - veritas-backend
+      veritas-backend:
+        condition: service_healthy
     restart: unless-stopped
 
 volumes:

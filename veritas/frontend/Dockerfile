@@ -7,10 +7,12 @@ RUN npm ci
 
 COPY . .
 
-ARG REACT_APP_API_BASE_URL=http://localhost:3000
+ARG REACT_APP_API_BASE_URL=
 ARG REACT_APP_VERITAS_EDITION=community
 ENV REACT_APP_API_BASE_URL=$REACT_APP_API_BASE_URL
 ENV REACT_APP_VERITAS_EDITION=$REACT_APP_VERITAS_EDITION
+# Avoid Create React App treating lint warnings as build errors in CI/Docker
+ENV CI=false
 
 RUN npm run build
 
