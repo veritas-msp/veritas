@@ -863,4 +863,17 @@
   .wrapper { flex-direction: column; }
   .left { flex: none; }
   .grid { grid-template-columns: 1fr; }
+
+  .right {
+    align-items: flex-start;
+    overflow: auto;
+    -webkit-overflow-scrolling: touch;
+    padding: 16px;
+    max-height: none;
+  }
+
+  .card {
+    padding: 24px 18px 28px;
+    margin-bottom: 24px;
+  }
 }

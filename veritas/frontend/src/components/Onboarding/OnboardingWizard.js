@@ -359,21 +359,23 @@ export default function OnboardingWizard({
 
               {current.tip && <p className={styles.tip}>{current.tip}</p>}
 
-              <div className={`${setupStyles.actions} ${styles.stepActions} ${current.key === "agents" ? styles.stepActionsAgents : ""}`}>
-                {displayStep > 1 && <button type="button" className={setupStyles.btnSecondary} onClick={() => requestStepChange(displayStep - 1)} disabled={isBusy}>
-                    {ui.previous}
-                  </button>}
+              <div className={styles.stepFooter}>
+                <div className={`${setupStyles.actions} ${styles.stepActions} ${current.key === "agents" ? styles.stepActionsAgents : ""}`}>
+                  {displayStep > 1 && <button type="button" className={setupStyles.btnSecondary} onClick={() => requestStepChange(displayStep - 1)} disabled={isBusy}>
+                      {ui.previous}
+                    </button>}
 
-                {isLast ? <button type="button" className={setupStyles.btnPrimary} onClick={handleFinish} disabled={isBusy}>
-                    {primaryActionLabel()}
-                  </button> : <button type="button" className={setupStyles.btnPrimary} onClick={handleContinue} disabled={isBusy}>
-                    {primaryActionLabel()}
-                  </button>}
+                  {isLast ? <button type="button" className={setupStyles.btnPrimary} onClick={handleFinish} disabled={isBusy}>
+                      {primaryActionLabel()}
+                    </button> : <button type="button" className={setupStyles.btnPrimary} onClick={handleContinue} disabled={isBusy}>
+                      {primaryActionLabel()}
+                    </button>}
+                </div>
+
+                <button type="button" className={styles.skipGuide} onClick={handleSkip} disabled={isBusy}>
+                  {current.key === "license" ? ui.skipLicenseStep : ui.skip}
+                </button>
               </div>
-
-              <button type="button" className={styles.skipGuide} onClick={handleSkip} disabled={isBusy}>
-                {current.key === "license" ? ui.skipLicenseStep : ui.skip}
-              </button>
                 </motion.div> : null}
             </AnimatePresence>
           </div>
