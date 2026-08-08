@@ -29,6 +29,8 @@ services:
       VERITAS_EDITION: ${VERITAS_EDITION:-community}
     volumes:
       - veritas-uploads:/app/uploads
+      # So the setup wizard / entrypoint can persist secrets on the host
+      - ./.env:/app/.env
     depends_on:
       db:
         condition: service_healthy

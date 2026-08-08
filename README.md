@@ -82,12 +82,10 @@ Dedicated sign-in for end users: equipment, documents, and tickets from their co
 git clone https://github.com/veritas-msp/veritas.git
 cd veritas
 cp .env.docker.example .env
-# set JWT_SECRET and ENCRYPTION_KEY (non-empty), or:
-#   chmod +x scripts/prepare-docker-env.sh && ./scripts/prepare-docker-env.sh
 docker compose up -d --build
 ```
 
-Then open **http://SERVER_IP:3000/setup**.
+Then open **http://SERVER_IP:3000/setup** (secrets and database are configured in the wizard).
 
 | Service | URL |
 |---------|-----|

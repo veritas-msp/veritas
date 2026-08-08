@@ -47,11 +47,7 @@ cd "$INSTALL_DIR"
 
 if [ ! -f .env ]; then
   cp .env.docker.example .env
-  JWT=$(openssl rand -hex 32)
-  ENC=$(openssl rand -hex 32)
-  sed -i "s/^JWT_SECRET=.*/JWT_SECRET=${JWT}/" .env
-  sed -i "s/^ENCRYPTION_KEY=.*/ENCRYPTION_KEY=${ENC}/" .env
-  echo "Generated JWT_SECRET and ENCRYPTION_KEY in .env"
+  echo "Created .env (secrets can stay empty — set in /setup or auto-generated on first start)"
 fi
 
 # Swap helps the frontend CRA build on small VPS
