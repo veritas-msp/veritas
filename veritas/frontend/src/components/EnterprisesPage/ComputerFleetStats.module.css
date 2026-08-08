@@ -1,0 +1,506 @@
+.root {
+  --msp-accent: #2b5fab;
+  --msp-accent-dark: #1a3d75;
+  --msp-accent-soft: rgba(43, 95, 171, 0.1);
+  --msp-surface: #ffffff;
+  --msp-surface-2: #f7f9fc;
+  --msp-surface-3: #f4f7fb;
+  --msp-border: #c5d0df;
+  --msp-border-light: #dde5ef;
+  --msp-text: #0f1c2e;
+  --msp-muted: #5c6b82;
+  --msp-shadow: 0 1px 2px rgba(15, 28, 46, 0.06), 0 16px 40px rgba(15, 28, 46, 0.14);
+  --fleet-metric-good: #1d6f42;
+  --fleet-metric-warn: #b45309;
+  --fleet-metric-bad: #b91c1c;
+
+  color: var(--msp-text);
+}
+
+.body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+}
+
+.kpiGrid {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 0.65rem;
+}
+
+.kpiCard {
+  display: flex;
+  gap: 0.65rem;
+  padding: 0.75rem 0.85rem;
+  border-radius: 10px;
+  border: 1px solid var(--msp-border-light);
+  background: var(--msp-surface);
+  min-width: 0;
+  box-shadow: 0 1px 2px rgba(15, 28, 46, 0.04);
+}
+
+.kpi_good {
+  border-color: color-mix(in srgb, var(--fleet-metric-good) 28%, var(--msp-border-light));
+}
+
+.kpi_warn {
+  border-color: color-mix(in srgb, var(--fleet-metric-warn) 28%, var(--msp-border-light));
+}
+
+.kpi_bad {
+  border-color: color-mix(in srgb, var(--fleet-metric-bad) 28%, var(--msp-border-light));
+}
+
+.kpiIconWrap {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 8px;
+  background: var(--msp-accent-soft);
+  flex-shrink: 0;
+}
+
+.kpiIcon {
+  font-size: 1.05rem;
+  color: var(--msp-accent);
+}
+
+.kpiBody {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.kpiLabel {
+  font-size: 0.7rem;
+  color: var(--msp-muted);
+}
+
+.kpiValue {
+  font-size: 1.05rem;
+  font-weight: 700;
+  line-height: 1.2;
+  color: var(--msp-text);
+}
+
+.kpiSub {
+  margin-top: 0.1rem;
+  font-size: 0.68rem;
+  color: var(--msp-muted);
+  line-height: 1.3;
+}
+
+.chartGrid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.65rem;
+}
+
+.chartBarGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.65rem;
+}
+
+.columns {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.75rem;
+}
+
+.panel {
+  padding: 0.8rem 0.9rem;
+  border-radius: 12px;
+  border: 1px solid var(--msp-border-light);
+  background: var(--msp-surface);
+  min-width: 0;
+  box-shadow: 0 1px 2px rgba(15, 28, 46, 0.04);
+}
+
+.panelTitle {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin: 0 0 0.75rem;
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: var(--msp-text);
+}
+
+.panelTitle svg {
+  color: var(--msp-accent);
+}
+
+.panelDesc {
+  margin: 0;
+  font-size: 0.8rem;
+  color: var(--msp-muted);
+  line-height: 1.45;
+}
+
+.metricMono {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 0.78rem;
+}
+
+.subPanelTitle {
+  margin: 0.85rem 0 0.55rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: var(--msp-muted);
+}
+
+.panelHeaderRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 0.45rem;
+}
+
+.panelHeaderRow .panelTitle {
+  margin-bottom: 0;
+}
+
+.pieBlock {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  min-height: 118px;
+}
+
+.chartGrid .pieChart {
+  width: 100px;
+  height: 100px;
+}
+
+.chartGrid .pieCenter {
+  width: 60px;
+  height: 60px;
+}
+
+.chartGrid .pieCenterValue {
+  font-size: 1rem;
+}
+
+.chartGrid .legendName {
+  font-size: 0.72rem;
+}
+
+.chartGrid .legendMeta {
+  font-size: 0.66rem;
+}
+
+.pieChart {
+  width: 132px;
+  height: 132px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  border: 1px solid var(--msp-border-light);
+}
+
+.pieCenter {
+  width: 78px;
+  height: 78px;
+  border-radius: 50%;
+  background: var(--msp-surface);
+  border: 1px solid var(--msp-border-light);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+}
+
+.pieCenterValue {
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: var(--msp-text);
+  line-height: 1;
+}
+
+.pieCenterLabel {
+  margin-top: 0.15rem;
+  font-size: 0.62rem;
+  color: var(--msp-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.legend {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  flex: 1;
+  min-width: 0;
+}
+
+.legendItem {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.45rem;
+}
+
+.legendSwatch {
+  width: 10px;
+  height: 10px;
+  border-radius: 3px;
+  margin-top: 0.2rem;
+  flex-shrink: 0;
+}
+
+.legendText {
+  display: flex;
+  flex-direction: column;
+  gap: 0.05rem;
+  min-width: 0;
+}
+
+.legendName {
+  font-size: 0.78rem;
+  font-weight: 500;
+  color: var(--msp-text);
+  line-height: 1.25;
+  word-break: break-word;
+}
+
+.legendMeta {
+  font-size: 0.7rem;
+  color: var(--msp-muted);
+}
+
+.distributionList {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+}
+
+.distributionRow {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.distributionMeta {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.5rem;
+  font-size: 0.76rem;
+}
+
+.distributionName {
+  color: var(--msp-text);
+  font-weight: 500;
+  min-width: 0;
+  word-break: break-word;
+}
+
+.distributionCount {
+  color: var(--msp-muted);
+  white-space: nowrap;
+}
+
+.distributionTrack {
+  height: 6px;
+  border-radius: 999px;
+  background: var(--msp-surface-3);
+  overflow: hidden;
+}
+
+.distributionFill {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+}
+
+.metricList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.metricList li {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.75rem;
+  font-size: 0.8rem;
+  color: var(--msp-muted);
+}
+
+.metricList strong {
+  color: var(--msp-text);
+  font-weight: 600;
+}
+
+.metricGood {
+  color: var(--fleet-metric-good) !important;
+}
+
+.metricWarn {
+  color: var(--fleet-metric-warn) !important;
+}
+
+.metricBad {
+  color: var(--fleet-metric-bad) !important;
+}
+
+.periodToggle {
+  display: inline-flex;
+  padding: 2px;
+  border-radius: 8px;
+  background: var(--msp-surface-3);
+  border: 1px solid var(--msp-border-light);
+}
+
+.periodBtn,
+.periodBtnActive {
+  border: none;
+  border-radius: 6px;
+  padding: 0.3rem 0.65rem;
+  font-size: 0.75rem;
+  font-weight: 500;
+  cursor: pointer;
+  background: transparent;
+  color: var(--msp-muted);
+}
+
+.periodBtnActive {
+  background: var(--msp-surface);
+  color: var(--msp-text);
+  box-shadow: 0 1px 2px rgba(15, 28, 46, 0.08);
+}
+
+.powerDisclaimer {
+  margin: 0 0 0.75rem;
+  font-size: 0.76rem;
+  line-height: 1.45;
+  color: var(--msp-muted);
+}
+
+.powerSummary {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.75rem;
+  margin-bottom: 0.75rem;
+}
+
+.powerHighlight {
+  padding: 0.8rem 0.95rem;
+  border-radius: 8px;
+  background: var(--msp-surface-2);
+  border: 1px solid var(--msp-border-light);
+}
+
+.powerHighlightValue {
+  display: block;
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--msp-text);
+}
+
+.powerHighlightLabel {
+  font-size: 0.72rem;
+  color: var(--msp-muted);
+}
+
+.powerBreakdown {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.powerBreakdownRow {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.75rem;
+  font-size: 0.78rem;
+  color: var(--msp-muted);
+}
+
+.powerBreakdownRow strong {
+  color: var(--msp-text);
+  white-space: nowrap;
+}
+
+.emptyHint {
+  margin: 0;
+  font-size: 0.8rem;
+  color: var(--msp-muted);
+}
+
+:global(html.dark) .root {
+  --msp-accent: #4a8fd4;
+  --msp-accent-dark: #2b5fab;
+  --msp-accent-soft: rgba(74, 143, 212, 0.15);
+  --msp-surface: #1a2540;
+  --msp-surface-2: #152035;
+  --msp-surface-3: #1e2d4a;
+  --msp-border: #2f4260;
+  --msp-border-light: #243047;
+  --msp-text: #e8edf5;
+  --msp-muted: #8fa8c4;
+  --msp-shadow: 0 1px 2px rgba(0, 0, 0, 0.28), 0 16px 40px rgba(0, 0, 0, 0.35);
+  --fleet-metric-good: #4ade80;
+  --fleet-metric-warn: #fbbf24;
+  --fleet-metric-bad: #f87171;
+}
+
+:global(html.dark) .kpiCard,
+:global(html.dark) .panel {
+  box-shadow: none;
+}
+
+@media (max-width: 1200px) {
+  .kpiGrid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .chartGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .chartBarGrid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 720px) {
+  .kpiGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .chartBarGrid,
+  .columns {
+    grid-template-columns: 1fr;
+  }
+
+  .pieBlock {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .pieChart {
+    margin: 0 auto;
+  }
+}
+
+@media (max-width: 480px) {
+  .kpiGrid {
+    grid-template-columns: 1fr;
+  }
+}

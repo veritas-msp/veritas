@@ -1,0 +1,115 @@
+
+
+.kpiRow3 {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.kpiStatic {
+  cursor: default;
+  pointer-events: none;
+}
+
+.kpiIcon_green { background: rgba(21, 209, 160, 0.12); color: #0d8a6a; }
+
+.contentScroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding-right: 2px;
+  scrollbar-width: thin;
+}
+
+.contentGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+  align-content: start;
+}
+
+.contentGridWide {
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) minmax(280px, 0.75fr);
+  gap: 1rem;
+  align-content: start;
+}
+
+.sectionPanel {
+  border: 1px solid var(--msp-border, #e2e8f0);
+  border-radius: var(--msp-radius, 16px);
+  background: var(--msp-surface, #fff);
+  box-shadow: var(--msp-shadow, 0 1px 2px rgba(15, 28, 46, 0.04));
+  overflow: hidden;
+}
+
+.sectionPanelFull {
+  grid-column: 1 / -1;
+}
+
+.sectionHeader {
+  padding: 1rem 1.15rem;
+  border-bottom: 1px solid var(--msp-border-light, #eef2f7);
+}
+
+.sectionTitle {
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--msp-text, #0f1c2e);
+}
+
+.sectionDesc {
+  margin: 0.3rem 0 0;
+  font-size: 0.78rem;
+  color: var(--msp-muted, #5c6b82);
+  line-height: 1.4;
+}
+
+.sectionBody {
+  padding: 1rem 1.15rem;
+}
+
+.heroAvatar {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #2b5fab 0%, #1e4a8a 100%);
+  color: #fff;
+  font-size: 1rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  box-shadow: 0 4px 14px rgba(43, 95, 171, 0.25);
+}
+
+.alertBanner {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  padding: 0.75rem 1rem;
+  border-radius: var(--msp-radius-sm, 10px);
+  background: rgba(220, 38, 38, 0.08);
+  border: 1px solid rgba(220, 38, 38, 0.22);
+  color: #b91c1c;
+  font-size: 0.84rem;
+  font-weight: 600;
+}
+
+.alertIcon {
+  font-size: 1.15rem;
+  flex-shrink: 0;
+}
+
+@media (max-width: 1024px) {
+  .contentGrid,
+  .contentGridWide {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 720px) {
+  .kpiRow3 {
+    grid-template-columns: 1fr;
+  }
+}

@@ -1,0 +1,242 @@
+
+.loginWrapper {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+  width: 100vw;
+  overflow: hidden;
+  position: relative;
+  background-color: #e5e7eb;
+  padding: 0;
+  margin: 0;
+}
+
+.loginWrapper::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='100%25' height='100%25' viewBox='0 0 1600 800'%3E%3Cg stroke='%23000' stroke-width='66.7' stroke-opacity='0.05' %3E%3Ccircle fill='%23e5e7eb' cx='0' cy='0' r='1800'/%3E%3Ccircle fill='%23d1d5db' cx='0' cy='0' r='1700'/%3E%3Ccircle fill='%23b8bcc0' cx='0' cy='0' r='1600'/%3E%3Ccircle fill='%23a0a4a8' cx='0' cy='0' r='1500'/%3E%3Ccircle fill='%23888c90' cx='0' cy='0' r='1400'/%3E%3Ccircle fill='%23717478' cx='0' cy='0' r='1300'/%3E%3Ccircle fill='%235a5d60' cx='0' cy='0' r='1200'/%3E%3Ccircle fill='%23434648' cx='0' cy='0' r='1100'/%3E%3Ccircle fill='%232c2f30' cx='0' cy='0' r='1000'/%3E%3Ccircle fill='%23151818' cx='0' cy='0' r='900'/%3E%3Ccircle fill='%230f1212' cx='0' cy='0' r='800'/%3E%3Ccircle fill='%230a0c0c' cx='0' cy='0' r='700'/%3E%3Ccircle fill='%23050606' cx='0' cy='0' r='600'/%3E%3Ccircle fill='%23020303' cx='0' cy='0' r='500'/%3E%3Ccircle fill='%23010101' cx='0' cy='0' r='400'/%3E%3Ccircle fill='%23000000' cx='0' cy='0' r='300'/%3E%3Ccircle fill='%23000000' cx='0' cy='0' r='200'/%3E%3Ccircle fill='%23000000' cx='0' cy='0' r='100'/%3E%3C/g%3E%3C/svg%3E");
+  background-attachment: fixed;
+  background-size: cover;
+  background-position: center;
+  animation: backgroundPulse 20s ease-in-out infinite;
+  z-index: 0;
+}
+
+@keyframes backgroundPulse {
+  0%, 100% {
+    transform: scale(1) rotate(0deg);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.1) rotate(2deg);
+    opacity: 0.95;
+  }
+}
+
+
+.statusGroup {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  display: flex;
+  gap: 12px;
+  z-index: 1000;
+}
+
+.apiStatus {
+  font-weight: 500;
+  font-size: 0.875rem;
+  cursor: default;
+  padding: 10px 16px;
+  background: #ffffff;
+  border-radius: 8px;
+  border: 1px solid #e0e0e0;
+  color: #1a1a1a;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08), 0 1px 2px rgba(0, 0, 0, 0.04);
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', Roboto, sans-serif;
+}
+
+.statusOk {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #15D1A0;
+}
+
+.statusError {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #ef4444;
+}
+
+.licenseClickable {
+  transition: all 0.2s;
+}
+
+.licenseClickable:hover {
+  background: #f5f5f5 !important;
+  border-color: #15D1A0 !important;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(21, 209, 160, 0.2), 0 2px 4px rgba(0, 0, 0, 0.08) !important;
+}
+
+
+.licenseModal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 2000;
+}
+
+.licenseModalContent {
+  background: white;
+  border-radius: 8px;
+  width: 90%;
+  max-width: 500px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.licenseModalHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1.5rem;
+  border-bottom: 1px solid #eee;
+}
+
+.licenseModalHeader h3 {
+  margin: 0;
+  color: #333;
+}
+
+.licenseModalClose {
+  background: none;
+  border: none;
+  font-size: 2rem;
+  color: #666;
+  cursor: pointer;
+  line-height: 1;
+  padding: 0;
+  width: 2rem;
+  height: 2rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.licenseModalClose:hover {
+  color: #333;
+}
+
+.licenseFormGroup {
+  padding: 1.5rem;
+}
+
+.licenseFormGroup label {
+  display: block;
+  margin-bottom: 0.5rem;
+  color: #555;
+  font-weight: 500;
+}
+
+.licenseError {
+  background-color: #fee;
+  color: #c33;
+  padding: 0.75rem;
+  border-radius: 4px;
+  margin-bottom: 1rem;
+  margin: 0 1.5rem 1rem 1.5rem;
+}
+
+.licenseFormActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 1rem;
+  padding: 1.5rem;
+  border-top: 1px solid #eee;
+}
+
+.licenseButtonCancel {
+  padding: 0.75rem;
+  background-color: #f5f5f5;
+  color: #333;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  min-width: 40px;
+}
+
+.licenseButtonCancel:hover:not(:disabled) {
+  background-color: #e5e5e5;
+  border-color: #999;
+}
+
+.licenseButtonCancel:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.licenseButtonSubmit {
+  padding: 0.75rem;
+  background-color: #15D1A0;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  min-width: 40px;
+  transition: background-color 0.2s ease;
+}
+
+.licenseButtonSubmit:hover:not(:disabled) {
+  background-color: #12b88a;
+}
+
+.licenseButtonSubmit:active:not(:disabled) {
+  background-color: #0fa578;
+}
+
+.licenseButtonSubmit:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.licenseButtonSpinner {
+  display: inline-block;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}

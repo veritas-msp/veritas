@@ -1,0 +1,548 @@
+
+
+.detailsCard {
+  background-color: transparent;
+  border-radius: 0;
+  padding: 0;
+  margin-bottom: 1.25rem;
+  width: 100%;
+}
+
+
+.tableSectionWrap {
+  margin-bottom: 2rem;
+  width: 100%;
+}
+
+.tableSectionHeaderRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.tableSectionTitle {
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--msp-text, #0f1c2e);
+}
+
+.tableSectionSeparator {
+  margin: 0 0 1rem 0;
+  padding-bottom: 0.85rem;
+  border-bottom: 2px solid var(--msp-border, #c5d0df);
+}
+
+.cardHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid var(--msp-border, #c5d0df);
+}
+
+.cardTitle {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.cardTitle h3 {
+  margin: 0;
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: var(--msp-text, #0f1c2e);
+}
+
+.cardIcon {
+  font-size: 1.5rem;
+  color: var(--msp-accent, #2b5fab);
+}
+
+
+.headerActions {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+
+.serviceAccountsRow {
+  margin: 0.35rem 0 1.25rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.serviceAccountsLeft {
+  display: flex;
+  align-items: center;
+  gap: 1.25rem;
+  flex: 1;
+  min-width: 260px;
+}
+
+.serviceAccountsSearchContainer {
+  display: flex;
+  justify-content: flex-start;
+  flex: 1;
+  min-width: 220px;
+  max-width: none;
+}
+
+.serviceAccountsSearchBox {
+  position: relative;
+  display: flex;
+  align-items: center;
+  width: 100%;
+}
+
+.serviceAccountsSearchIcon {
+  position: absolute;
+  left: 0.75rem;
+  color: var(--msp-muted, #5c6b82);
+  font-size: 0.875rem;
+  z-index: 1;
+}
+
+.serviceAccountsSearchInput {
+  width: 100%;
+  padding: 0.55rem 0.75rem 0.55rem 2rem;
+  background-color: var(--msp-surface-2, #f7f9fc);
+  border: 1px solid var(--msp-border, #c5d0df);
+  border-radius: 0.375rem;
+  color: var(--msp-text, #0f1c2e);
+  font-size: 0.875rem;
+}
+
+.serviceAccountsSearchInput:focus {
+  outline: none;
+  border-color: var(--msp-accent, #2b5fab);
+}
+
+.serviceAccountsSearchInput::placeholder {
+  color: var(--msp-muted, #5c6b82);
+}
+
+.serviceAccountsSearchClearButton {
+  position: absolute;
+  right: 0.5rem;
+  background: transparent;
+  border: none;
+  color: var(--msp-muted, #5c6b82);
+  cursor: pointer;
+  padding: 0.25rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1;
+}
+
+.serviceAccountsSearchClearButton:hover {
+  color: var(--msp-text, #0f1c2e);
+}
+
+
+.serviceAccountsOption {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.serviceAccountsSwitchBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin: 0;
+  padding: 0;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  font: inherit;
+  color: var(--msp-muted, #5c6b82);
+  user-select: none;
+}
+
+.serviceAccountsSwitchBtn:hover {
+  color: var(--msp-text, #0f1c2e);
+}
+
+.serviceAccountsSwitchBtn:focus-visible .serviceAccountsSwitchTrack {
+  box-shadow: 0 0 0 2px var(--msp-surface, #ffffff), 0 0 0 4px var(--msp-accent, #2b5fab);
+}
+
+.serviceAccountsSwitchLabel {
+  font-size: 0.875rem;
+  white-space: nowrap;
+}
+
+.serviceAccountsSwitchTrack {
+  position: relative;
+  display: inline-flex;
+  width: 2.75rem;
+  height: 1.5rem;
+  flex-shrink: 0;
+  border-radius: 999px;
+  background-color: var(--msp-surface-2, #f7f9fc);
+  border: 1px solid var(--msp-border, #c5d0df);
+  transition: background-color 0.2s ease, border-color 0.2s ease;
+}
+
+.serviceAccountsSwitchBtn:hover .serviceAccountsSwitchTrack {
+  border-color: var(--msp-accent, #2b5fab);
+}
+
+.serviceAccountsSwitchBtnOn .serviceAccountsSwitchTrack {
+  background-color: var(--msp-accent, #2b5fab);
+  border-color: var(--msp-accent, #2b5fab);
+}
+
+.serviceAccountsSwitchThumb {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: calc(1.5rem - 4px);
+  height: calc(1.5rem - 4px);
+  border-radius: 50%;
+  background-color: var(--msp-surface, #ffffff);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+  transition: transform 0.2s ease;
+  pointer-events: none;
+}
+
+.serviceAccountsSwitchBtnOn .serviceAccountsSwitchThumb {
+  transform: translateX(1.25rem);
+}
+
+
+.headerActionButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.5rem;
+  height: 2.5rem;
+  padding: 0;
+  border-radius: 0.375rem;
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.headerActionIcon {
+  font-size: 1.1rem;
+  width: 1.1rem;
+  height: 1.1rem;
+}
+
+.headerActionButtonInactive {
+  background-color: var(--msp-surface-2, #f7f9fc);
+  border-color: var(--msp-border, #c5d0df);
+  color: var(--msp-muted, #5c6b82);
+}
+
+.headerActionButtonInactive:hover {
+  background-color: var(--msp-accent, #2b5fab);
+  border-color: var(--msp-accent, #2b5fab);
+  color: #ffffff;
+}
+
+
+.pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--msp-border, #c5d0df);
+}
+
+.paginationButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.5rem;
+  height: 2.5rem;
+  padding: 0;
+  background-color: var(--msp-surface-2, #f7f9fc);
+  border: 1px solid var(--msp-border, #c5d0df);
+  border-radius: 0.375rem;
+  color: var(--msp-text, #0f1c2e);
+  cursor: pointer;
+  font-size: 0.875rem;
+  transition: all 0.2s ease;
+}
+
+.paginationButton:hover:not(:disabled) {
+  background-color: var(--msp-accent, #2b5fab);
+  border-color: var(--msp-accent, #2b5fab);
+  color: white;
+}
+
+.paginationButton:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.paginationInfo {
+  color: var(--msp-muted, #5c6b82);
+  font-size: 0.875rem;
+  padding: 0 0.5rem;
+}
+
+.tableControlsRow {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin-top: 1rem;
+}
+
+.tableControlsCenter {
+  display: flex;
+  justify-content: center;
+}
+
+
+
+.tableContainer {
+  overflow-x: auto;
+  margin-top: 1rem;
+  border-radius: 0.5rem;
+  border: 1px solid var(--msp-border, #c5d0df);
+  background-color: var(--msp-surface-2, #f7f9fc);
+}
+
+.mfaTable {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.875rem;
+}
+
+.mfaTable thead {
+  position: sticky;
+  top: 0;
+  background-color: var(--msp-surface-2, #f7f9fc);
+  z-index: 10;
+  border-bottom: 1px solid var(--msp-border, #c5d0df);
+}
+
+.mfaTable thead th {
+  padding: 0.75rem 1rem;
+  text-align: left;
+  font-weight: 600;
+  color: var(--msp-muted, #5c6b82);
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  white-space: nowrap;
+}
+
+.mfaTable tbody td {
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid var(--msp-border, #c5d0df);
+  color: var(--msp-muted, #5c6b82);
+  vertical-align: middle;
+}
+
+.mfaTable tbody tr:hover {
+  background-color: var(--msp-accent-soft, rgba(43, 95, 171, 0.1));
+}
+
+.userCell {
+  min-width: 200px;
+  max-width: 300px;
+}
+
+.userInfo {
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+}
+
+.userName {
+  font-weight: 600;
+  color: var(--msp-text, #0f1c2e);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.userEmail {
+  font-size: 0.75rem;
+  color: var(--msp-muted, #5c6b82);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+
+.mfaMethodsList {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.mfaMethodIcon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.125rem;
+  color: var(--msp-muted, #5c6b82);
+}
+
+.mfaMethodIcon svg {
+  width: 1.125rem;
+  height: 1.125rem;
+}
+
+.methodsCell {
+  min-width: 150px;
+}
+
+.registrationCell {
+  width: 120px;
+  text-align: center;
+  font-size: 0.85rem;
+  color: var(--msp-muted, #5c6b82);
+}
+
+.registrationCell span {
+  font-weight: 500;
+}
+
+.noDate {
+  color: var(--msp-muted, #5c6b82);
+}
+
+.accountCell {
+  width: 80px;
+  text-align: center;
+}
+
+.emptyRow {
+  text-align: center;
+  padding: 3rem 1rem;
+  color: var(--msp-muted, #5c6b82);
+  font-style: italic;
+  font-size: 0.875rem;
+}
+
+.loadingState,
+.errorState {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 3rem 1rem;
+  text-align: center;
+  color: var(--msp-muted, #5c6b82);
+}
+
+.loadingIcon {
+  font-size: 2rem;
+  color: var(--msp-accent, #2b5fab);
+  animation: spin 1s linear infinite;
+  margin-bottom: 1rem;
+}
+
+.errorIcon {
+  font-size: 2rem;
+  color: #ef4444;
+  margin-bottom: 1rem;
+}
+
+.retryButton {
+  margin-top: 1rem;
+  padding: 0.5rem 1rem;
+  background-color: var(--msp-accent, #2b5fab);
+  color: #ffffff;
+  border: none;
+  border-radius: 0.375rem;
+  cursor: pointer;
+  font-weight: 500;
+  transition: all 0.2s;
+}
+
+.retryButton:hover {
+  background-color: var(--msp-accent-dark, #1a3d75);
+  transform: translateY(-1px);
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+
+@media (max-width: 1024px) {
+  .mfaTable {
+    font-size: 0.8125rem;
+  }
+
+  .userCell {
+    min-width: 150px;
+    max-width: 200px;
+  }
+
+  .methodsCell {
+    min-width: 120px;
+  }
+}
+
+@media (max-width: 768px) {
+  .detailsCard {
+    padding: 1rem;
+  }
+
+  .cardHeader {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 1rem;
+  }
+
+  .mfaTable {
+    font-size: 0.75rem;
+  }
+
+  .mfaTable thead th,
+  .mfaTable tbody td {
+    padding: 0.5rem 0.75rem;
+  }
+
+  .userCell {
+    min-width: 120px;
+    max-width: 150px;
+  }
+
+  .methodsList {
+    gap: 0.25rem;
+  }
+
+  .methodIcon {
+    width: 20px;
+    height: 20px;
+  }
+}
+
+.sortableHeader {
+  padding: 0.75rem 1rem;
+  text-align: left;
+  font-weight: 600;
+  color: var(--msp-muted, #5c6b82);
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  white-space: nowrap;
+  transition: color 0.2s, background-color 0.2s;
+}
+
+.sortableHeader:hover {
+  color: var(--msp-muted, #5c6b82);
+}
+

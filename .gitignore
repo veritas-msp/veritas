@@ -1,10 +1,56 @@
-# Meta-repo Veritas — local files
+# Secrets / local env (never commit)
 .env
 .env.local
+.env.*.local
+!.env.docker.example
 
-# Application repos (separate git repos, cloned side by side)
-veritas-backend/
-veritas-frontend/
-veritas-website/
+# Separate product repos cloned beside this monorepo
 veritas-agent/
 veritas-billing/
+veritas-website/
+
+# Dependencies
+node_modules/
+**/node_modules/
+
+# Logs & process files
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pids/
+*.pid
+*.seed
+
+# Builds & caches
+**/build/
+**/dist/
+.cache/
+.eslintcache
+*.tsbuildinfo
+
+# Backend runtime data
+veritas/backend/uploads/*
+!veritas/backend/uploads/.gitkeep
+veritas/backend/reports/
+veritas/backend/.setup-complete
+
+# Native Windows agent build outputs
+veritas/RMM/Agents/windows/build/
+veritas/RMM/Agents/windows/dist/
+veritas/RMM/Agents/windows/src/**/bin/
+veritas/RMM/Agents/windows/src/**/obj/
+
+# IDE / OS
+.vscode/
+.idea/
+.DS_Store
+*.swp
+Thumbs.db
+
+# Archives / local exports
+*.zip
+*.tar.gz
+*.bak
+export.pdf

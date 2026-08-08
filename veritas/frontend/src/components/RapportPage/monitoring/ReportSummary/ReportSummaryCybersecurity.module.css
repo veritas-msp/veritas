@@ -1,0 +1,82 @@
+.cellBold {
+  font-weight: 600;
+}
+
+.statusBadge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.15rem 0.5rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.statusSuccess {
+  background: #d1fae5;
+  color: #047857;
+}
+
+.statusWarn {
+  background: #fef3c7;
+  color: #b45309;
+}
+
+.statusError {
+  background: #fee2e2;
+  color: #b91c1c;
+}
+
+.statusNeutral {
+  background: #e5e7eb;
+  color: #4b5563;
+}
+
+.statusInfo {
+  background: #dbeafe;
+  color: #1d4ed8;
+}
+
+.moduleChipRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.2rem;
+  max-width: 140px;
+}
+
+.moduleChip {
+  padding: 0.1rem 0.35rem;
+  border-radius: 4px;
+  font-size: 0.65rem;
+  background: #e0e7ff;
+  color: #4338ca;
+  font-weight: 600;
+}
+
+.infectedYes {
+  color: #dc2626;
+  font-weight: 600;
+}
+
+.infectedNo {
+  color: #059669;
+  font-weight: 600;
+}
+
+.cellMuted {
+  color: #6b7280;
+  font-size: 0.78rem;
+}
+
+.osCell {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.endpointNameCell {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-weight: 600;
+}

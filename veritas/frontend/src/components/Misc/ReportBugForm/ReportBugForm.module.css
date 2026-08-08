@@ -1,0 +1,118 @@
+
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+  max-width: 52rem;
+  margin: 0 auto;
+}
+
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+  padding: 1.35rem 1.25rem;
+  border-radius: var(--msp-radius, 16px);
+  border: 1px solid var(--msp-border, #e2e8f0);
+  background: var(--msp-surface, #fff);
+  color: var(--msp-text, #0f1c2e);
+  text-decoration: none;
+  transition: border-color 0.15s, box-shadow 0.15s, transform 0.15s;
+  position: relative;
+}
+
+.card:hover {
+  border-color: #2b5fab;
+  box-shadow: 0 8px 24px rgba(43, 95, 171, 0.1);
+  transform: translateY(-2px);
+}
+
+.card_discord:hover {
+  border-color: #5865f2;
+  box-shadow: 0 8px 24px rgba(88, 101, 242, 0.14);
+}
+
+.card_github:hover {
+  border-color: #24292f;
+  box-shadow: 0 8px 24px rgba(36, 41, 47, 0.12);
+}
+
+.cardIconWrap {
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.card_discord .cardIconWrap {
+  background: rgba(88, 101, 242, 0.12);
+}
+
+.card_github .cardIconWrap {
+  background: rgba(36, 41, 47, 0.08);
+}
+
+:global(html.dark) .card_github .cardIconWrap {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.cardIcon {
+  font-size: 1.6rem;
+}
+
+.card_discord .cardIcon {
+  color: #5865f2;
+}
+
+.card_github .cardIcon {
+  color: #24292f;
+}
+
+:global(html.dark) .card_github .cardIcon {
+  color: #e6edf3;
+}
+
+.cardBody {
+  flex: 1;
+}
+
+.cardTitle {
+  margin: 0 0 0.35rem;
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--msp-text, #0f1c2e);
+}
+
+.cardSubtitle {
+  margin: 0;
+  font-size: 0.84rem;
+  line-height: 1.5;
+  color: var(--msp-muted, #5c6b82);
+}
+
+.cardArrow {
+  position: absolute;
+  top: 1.25rem;
+  right: 1.15rem;
+  font-size: 1.1rem;
+  color: var(--msp-muted-light, #94a3b8);
+  transition: color 0.15s, transform 0.15s;
+}
+
+.card:hover .cardArrow {
+  color: #2b5fab;
+  transform: translate(2px, -2px);
+}
+
+.card_discord:hover .cardArrow {
+  color: #5865f2;
+}
+
+@media (max-width: 640px) {
+  .grid {
+    grid-template-columns: 1fr;
+  }
+}

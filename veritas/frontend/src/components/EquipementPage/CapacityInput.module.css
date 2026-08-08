@@ -1,0 +1,84 @@
+.wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.label {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--msp-muted, #5c6b82);
+}
+
+.inputShell {
+  display: flex;
+  align-items: stretch;
+  border: 1px solid var(--msp-border, #dde3ed);
+  border-radius: 12px;
+  overflow: hidden;
+  background: var(--msp-surface, #fff);
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.inputShell:focus-within {
+  border-color: var(--msp-accent, #2b5fab);
+  box-shadow: 0 0 0 3px rgba(43, 95, 171, 0.12);
+}
+
+.input {
+  flex: 1;
+  min-width: 0;
+  border: none;
+  background: transparent;
+  padding: 0.62rem 0.75rem;
+  font-size: 0.95rem;
+  font-weight: 600;
+  font-family: inherit;
+  color: var(--msp-text, #0f1c2e);
+}
+
+.input:focus {
+  outline: none;
+}
+
+.suffix {
+  display: inline-flex;
+  align-items: center;
+  padding: 0 0.85rem;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  color: var(--msp-accent, #2b5fab);
+  background: rgba(43, 95, 171, 0.08);
+  border-left: 1px solid var(--msp-border-light, #eef2f7);
+}
+
+.hint {
+  font-size: 0.72rem;
+  color: var(--msp-muted, #5c6b82);
+}
+
+.presets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin-top: 0.15rem;
+}
+
+.presetBtn {
+  border: 1px solid var(--msp-border-light, #eef2f7);
+  background: var(--msp-surface-2, #f8fafc);
+  color: var(--msp-muted, #5c6b82);
+  border-radius: 999px;
+  padding: 0.2rem 0.55rem;
+  font-size: 0.68rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.presetBtn:hover {
+  border-color: rgba(43, 95, 171, 0.35);
+  color: var(--msp-accent, #2b5fab);
+  background: rgba(43, 95, 171, 0.06);
+}

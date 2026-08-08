@@ -1,0 +1,9 @@
+.headerIconCheckmk {
+  background: linear-gradient(135deg, #76b900 0%, #5a8f00 100%);
+  box-shadow: 0 6px 16px rgba(118, 185, 0, 0.28);
+}
+
+.accentBarCheckmk {
+  height: 4px;
+  background: linear-gradient(90deg, #4d7a00 0%, #76b900 45%, #a3e635 100%);
+}

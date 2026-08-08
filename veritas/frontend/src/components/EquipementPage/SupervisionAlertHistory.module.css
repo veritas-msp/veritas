@@ -1,0 +1,334 @@
+.root {
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+  min-width: 0;
+}
+
+.toolbar {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+}
+
+.searchBox {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  width: 100%;
+  min-width: 0;
+  padding: 0.4rem 0.7rem;
+  border-radius: 10px;
+  border: 1px solid var(--msp-border, #2f4260);
+  background: var(--msp-surface, #1a2540);
+  color: var(--msp-muted, #8fa8c4);
+}
+
+.searchBox input {
+  flex: 1;
+  min-width: 0;
+  border: none;
+  background: transparent;
+  color: var(--msp-text, #e8edf5);
+  font: inherit;
+  font-size: 0.82rem;
+  outline: none;
+}
+
+.filtersBar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.45rem 0.55rem;
+}
+
+.filterGroup {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+}
+
+.filterSep {
+  width: 1px;
+  align-self: stretch;
+  min-height: 1.4rem;
+  background: var(--msp-border, #2f4260);
+  opacity: 0.7;
+}
+
+.chip {
+  border: 1px solid var(--msp-border, #2f4260);
+  background: var(--msp-surface-2, #152035);
+  color: var(--msp-muted, #8fa8c4);
+  border-radius: 999px;
+  padding: 0.28rem 0.6rem;
+  font: inherit;
+  font-size: 0.72rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.chip:hover {
+  color: var(--msp-text, #e8edf5);
+}
+
+.chipActive {
+  border-color: rgba(90, 143, 212, 0.45);
+  background: rgba(90, 143, 212, 0.14);
+  color: #a8d4ff;
+}
+
+.loading {
+  padding: 1.5rem;
+  color: var(--msp-muted, #8fa8c4);
+  font-size: 0.85rem;
+}
+
+.list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.card {
+  border: 1px solid var(--msp-border, #2f4260);
+  border-radius: 12px;
+  background: var(--msp-surface, #1a2540);
+  overflow: hidden;
+}
+
+.cardMain {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  padding: 0.7rem 0.75rem;
+  border: none;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.cardMain:hover {
+  background: rgba(90, 143, 212, 0.06);
+}
+
+.domainIcon {
+  display: grid;
+  place-items: center;
+  width: 1.6rem;
+  height: 1.6rem;
+  border-radius: 8px;
+  background: rgba(90, 143, 212, 0.1);
+  color: var(--msp-muted, #8fa8c4);
+  font-size: 0.95rem;
+  flex-shrink: 0;
+}
+
+.body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.12rem;
+  min-width: 0;
+  flex: 1;
+}
+
+.title {
+  font-size: 0.86rem;
+  font-weight: 650;
+  color: var(--msp-text, #e8edf5);
+}
+
+.meta {
+  font-size: 0.72rem;
+  color: var(--msp-muted, #8fa8c4);
+}
+
+.chevron {
+  color: var(--msp-muted, #8fa8c4);
+  font-size: 1.1rem;
+}
+
+.detail {
+  border-top: 1px solid var(--msp-border-light, #2a3a55);
+  padding: 0.65rem 0.85rem 0.85rem;
+}
+
+.detailHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 0.65rem;
+}
+
+.timelineTitle {
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--msp-muted, #8fa8c4);
+}
+
+.reopenBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  border: 1px solid var(--msp-border, #2f4260);
+  background: var(--msp-surface-2, #152035);
+  color: var(--msp-text, #e8edf5);
+  border-radius: 8px;
+  padding: 0.28rem 0.55rem;
+  font: inherit;
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.reopenBtn:hover:not(:disabled) {
+  border-color: rgba(90, 143, 212, 0.45);
+  color: #a8d4ff;
+}
+
+.reopenBtn:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+
+.timeline {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.timelineEmpty {
+  font-size: 0.75rem;
+  color: var(--msp-muted, #8fa8c4);
+  padding: 0.35rem 0;
+}
+
+.timelineItem {
+  display: grid;
+  grid-template-columns: 0.75rem 1fr;
+  gap: 0.65rem;
+  position: relative;
+  padding-bottom: 0.75rem;
+}
+
+.timelineItem:last-child {
+  padding-bottom: 0;
+}
+
+.timelineItem:not(:last-child)::before {
+  content: "";
+  position: absolute;
+  left: 0.28rem;
+  top: 0.7rem;
+  bottom: 0;
+  width: 1px;
+  background: var(--msp-border, #2f4260);
+}
+
+.timelineDot {
+  width: 0.55rem;
+  height: 0.55rem;
+  margin-top: 0.28rem;
+  border-radius: 50%;
+  background: #60a5fa;
+  box-shadow: 0 0 0 3px rgba(96, 165, 250, 0.15);
+}
+
+.timelineContent {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  min-width: 0;
+}
+
+.timelineTop {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.35rem 0.75rem;
+}
+
+.timelineTop strong {
+  font-size: 0.8rem;
+  font-weight: 650;
+  color: var(--msp-text, #e8edf5);
+}
+
+.timelineTop time {
+  font-size: 0.7rem;
+  color: var(--msp-muted, #8fa8c4);
+  font-variant-numeric: tabular-nums;
+}
+
+.timelineActor {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-size: 0.72rem;
+  color: var(--msp-muted, #8fa8c4);
+}
+
+.timelineActor svg {
+  font-size: 0.9rem;
+  opacity: 0.85;
+}
+
+.timelineNote {
+  font-style: normal;
+  font-size: 0.72rem;
+  color: var(--msp-muted-light, #6a88a8);
+}
+
+:global(html:not(.dark)) .searchBox,
+:global(html:not(.dark)) .card {
+  background: var(--msp-surface, #fff);
+  border-color: var(--msp-border, #c5d0df);
+}
+
+:global(html:not(.dark)) .chip {
+  background: var(--msp-surface-2, #f7f9fc);
+  border-color: var(--msp-border, #c5d0df);
+  color: var(--msp-muted, #5c6b82);
+}
+
+:global(html:not(.dark)) .chipActive {
+  background: rgba(43, 95, 171, 0.1);
+  border-color: rgba(43, 95, 171, 0.35);
+  color: var(--msp-accent, #2b5fab);
+}
+
+:global(html:not(.dark)) .filterSep {
+  background: var(--msp-border, #c5d0df);
+}
+
+:global(html:not(.dark)) .title,
+:global(html:not(.dark)) .timelineTop strong {
+  color: var(--msp-text, #0f1c2e);
+}
+
+:global(html:not(.dark)) .reopenBtn {
+  background: var(--msp-surface-2, #f7f9fc);
+  border-color: var(--msp-border, #c5d0df);
+  color: var(--msp-text, #0f1c2e);
+}
+
+:global(html:not(.dark)) .detail {
+  border-top-color: var(--msp-border, #c5d0df);
+}
+
+:global(html:not(.dark)) .timelineItem:not(:last-child)::before {
+  background: var(--msp-border, #c5d0df);
+}

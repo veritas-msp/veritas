@@ -1,0 +1,86 @@
+.row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.85rem;
+  padding: 0.65rem 0.75rem;
+  border-radius: 10px;
+  border: 1px solid var(--msp-border-light, #e2e8f0);
+  background: var(--msp-surface-2, #f7f9fc);
+}
+
+.copy {
+  flex: 1;
+  min-width: 0;
+}
+
+.label {
+  display: block;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--msp-text, #111827);
+}
+
+.hint {
+  margin: 0.2rem 0 0;
+  font-size: 0.75rem;
+  line-height: 1.35;
+  color: var(--msp-muted, #6b7280);
+}
+
+.switch {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.25rem;
+  border: none;
+  background: none;
+  padding: 0;
+  cursor: pointer;
+  font-family: inherit;
+  flex-shrink: 0;
+}
+
+.switch:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.track {
+  position: relative;
+  width: 2.6rem;
+  height: 1.45rem;
+  border-radius: 999px;
+  background: var(--msp-border, #c5d0df);
+  transition: background 0.2s;
+}
+
+.switchOn .track {
+  background: var(--msp-accent, #2b5fab);
+}
+
+.thumb {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 1.15rem;
+  height: 1.15rem;
+  border-radius: 999px;
+  background: var(--msp-surface, #fff);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.15);
+  transition: transform 0.2s;
+}
+
+.switchOn .thumb {
+  transform: translateX(1.15rem);
+}
+
+.state {
+  font-size: 0.68rem;
+  font-weight: 700;
+  color: var(--msp-muted, #5c6b82);
+}
+
+.switchOn .state {
+  color: var(--msp-accent-dark, #1a3d75);
+}

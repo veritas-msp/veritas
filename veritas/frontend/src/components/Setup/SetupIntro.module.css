@@ -1,0 +1,271 @@
+.overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #060d18;
+  cursor: pointer;
+  overflow: hidden;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+}
+
+.bgMesh {
+  position: absolute;
+  inset: -50%;
+  background:
+    radial-gradient(ellipse 55% 45% at 20% 30%, rgba(43, 95, 171, 0.35) 0%, transparent 55%),
+    radial-gradient(ellipse 50% 40% at 80% 70%, rgba(21, 140, 200, 0.2) 0%, transparent 50%),
+    radial-gradient(ellipse 40% 35% at 50% 50%, rgba(59, 130, 246, 0.08) 0%, transparent 60%);
+  animation: meshDrift 12s ease-in-out infinite alternate;
+}
+
+.bgGrid {
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(43, 95, 171, 0.07) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(43, 95, 171, 0.07) 1px, transparent 1px);
+  background-size: 48px 48px;
+  mask-image: radial-gradient(ellipse 70% 60% at 50% 50%, black 20%, transparent 75%);
+  animation: gridPulse 4s ease-in-out infinite;
+}
+
+.scanLine {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(96, 165, 250, 0) 20%,
+    rgba(96, 165, 250, 0.8) 50%,
+    rgba(96, 165, 250, 0) 80%,
+    transparent 100%
+  );
+  box-shadow: 0 0 24px rgba(59, 130, 246, 0.6);
+  animation: scanSweep 2.2s cubic-bezier(0.4, 0, 0.2, 1) 0.4s forwards;
+  opacity: 0;
+}
+
+.particles {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.particle {
+  position: absolute;
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  background: rgba(147, 197, 253, 0.7);
+  left: calc(4% + (var(--i) * 3.9%));
+  top: calc(12% + (var(--i) * 2.8%));
+  animation: particleFloat 3s ease-in-out infinite;
+  animation-delay: calc(var(--i) * 0.12s);
+  opacity: 0;
+}
+
+.particle:nth-child(odd) {
+  width: 2px;
+  height: 2px;
+  background: rgba(43, 95, 171, 0.9);
+}
+
+.content {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: 24px;
+  perspective: 800px;
+}
+
+.logoWrap {
+  position: relative;
+  width: 100px;
+  height: 100px;
+  margin-bottom: 28px;
+}
+
+.logoRing,
+.logoRingOuter {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  border: 2px solid transparent;
+}
+
+.logoRing {
+  border-top-color: rgba(59, 130, 246, 0.9);
+  border-right-color: rgba(59, 130, 246, 0.3);
+  animation: ringSpin 2.5s linear infinite;
+}
+
+.logoRingOuter {
+  inset: -12px;
+  border-bottom-color: rgba(21, 140, 200, 0.5);
+  border-left-color: rgba(21, 140, 200, 0.15);
+  animation: ringSpin 4s linear infinite reverse;
+}
+
+.logo {
+  position: absolute;
+  inset: 14px;
+  background: linear-gradient(145deg, #2b5fab 0%, #1e4a8c 50%, #163a6e 100%);
+  border-radius: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 2.4rem;
+  font-weight: 900;
+  color: #fff;
+  box-shadow:
+    0 0 40px rgba(43, 95, 171, 0.55),
+    0 0 80px rgba(43, 95, 171, 0.25),
+    inset 0 1px 0 rgba(255, 255, 255, 0.2);
+  animation: logoGlow 2.5s ease-in-out infinite alternate;
+}
+
+.title {
+  display: flex;
+  margin: 0 0 16px;
+  font-size: clamp(2.8rem, 10vw, 4.5rem);
+  font-weight: 800;
+  letter-spacing: 0.22em;
+  margin-right: -0.22em;
+  line-height: 1;
+}
+
+.letter {
+  display: inline-block;
+  color: #f0f6ff;
+  text-shadow:
+    0 0 20px rgba(59, 130, 246, 0.5),
+    0 0 40px rgba(43, 95, 171, 0.3);
+  transform-origin: center bottom;
+}
+
+.letter:nth-child(even) {
+  animation: letterShimmer 3s ease-in-out infinite;
+  animation-delay: calc(var(--i, 0) * 0.1s);
+}
+
+.tagline {
+  margin: 0 0 8px;
+  font-size: clamp(0.95rem, 2.5vw, 1.15rem);
+  font-weight: 500;
+  color: #94a8c4;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.subtitle {
+  margin: 0 0 32px;
+  font-size: 0.88rem;
+  color: #5a7290;
+}
+
+.progressTrack {
+  width: min(280px, 70vw);
+  height: 3px;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 99px;
+  overflow: hidden;
+  transform-origin: left center;
+}
+
+.progressBar {
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, #2b5fab, #60a5fa, #2b5fab);
+  background-size: 200% 100%;
+  border-radius: 99px;
+  transform-origin: left center;
+  animation: progressShine 1.5s linear infinite;
+  box-shadow: 0 0 12px rgba(59, 130, 246, 0.6);
+}
+
+.skip {
+  position: absolute;
+  bottom: 28px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 0.78rem;
+  color: #5a7290;
+  letter-spacing: 0.04em;
+  z-index: 3;
+}
+
+.introVersion {
+  position: absolute;
+  bottom: 28px;
+  right: 32px;
+  z-index: 3;
+}
+
+@keyframes meshDrift {
+  from { transform: translate(0, 0) rotate(0deg); }
+  to { transform: translate(3%, -2%) rotate(2deg); }
+}
+
+@keyframes gridPulse {
+  0%, 100% { opacity: 0.5; }
+  50% { opacity: 1; }
+}
+
+@keyframes scanSweep {
+  0% { top: 15%; opacity: 0; }
+  8% { opacity: 1; }
+  92% { opacity: 1; }
+  100% { top: 85%; opacity: 0; }
+}
+
+@keyframes ringSpin {
+  to { transform: rotate(360deg); }
+}
+
+@keyframes logoGlow {
+  from { box-shadow: 0 0 40px rgba(43, 95, 171, 0.45), 0 0 80px rgba(43, 95, 171, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.2); }
+  to { box-shadow: 0 0 55px rgba(59, 130, 246, 0.65), 0 0 100px rgba(43, 95, 171, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.25); }
+}
+
+@keyframes particleFloat {
+  0%, 100% { opacity: 0; transform: translateY(0) scale(0.5); }
+  20% { opacity: 0.8; }
+  50% { opacity: 1; transform: translateY(-30px) scale(1); }
+  80% { opacity: 0.4; }
+}
+
+@keyframes progressShine {
+  to { background-position: 200% 0; }
+}
+
+@keyframes letterShimmer {
+  0%, 100% { color: #f0f6ff; }
+  50% { color: #93c5fd; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bgMesh,
+  .bgGrid,
+  .scanLine,
+  .particle,
+  .logoRing,
+  .logoRingOuter,
+  .logo,
+  .progressBar {
+    animation: none !important;
+  }
+
+  .letter {
+    opacity: 1 !important;
+    transform: none !important;
+    filter: none !important;
+  }
+}

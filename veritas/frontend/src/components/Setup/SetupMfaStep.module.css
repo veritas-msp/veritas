@@ -1,0 +1,138 @@
+.wrap {
+  display: flex;
+  flex-direction: column;
+}
+
+.iconWrap {
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  background: var(--ob-accent-soft, rgba(43, 95, 171, 0.2));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 16px;
+}
+
+.icon {
+  font-size: 1.6rem;
+  color: var(--ob-accent, #2b5fab);
+}
+
+.title {
+  margin: 0 0 8px;
+  font-size: 1.35rem;
+  font-weight: 700;
+  color: var(--wz-title, #0f1c2e);
+}
+
+.text {
+  margin: 0 0 18px;
+  font-size: 0.92rem;
+  line-height: 1.5;
+  color: var(--wz-subtitle, #5a6b82);
+}
+
+.loading {
+  margin: 0;
+  font-size: 0.88rem;
+  color: var(--wz-subtitle, #5a6b82);
+}
+
+.qrWrap {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 12px;
+  padding: 12px;
+  border-radius: 10px;
+  background: #fff;
+  border: 1px solid var(--wz-input-border, #d5dde8);
+  width: fit-content;
+  margin-inline: auto;
+}
+
+.qr {
+  width: 180px;
+  height: 180px;
+  display: block;
+}
+
+.secret {
+  margin: 0 0 16px;
+  font-size: 0.8rem;
+  line-height: 1.45;
+  color: var(--wz-subtitle, #5a6b82);
+  word-break: break-all;
+}
+
+.secret code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 0.78rem;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: var(--ob-tip-bg, #f1f5f9);
+  color: var(--ob-tip-text, #334155);
+}
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.fieldLabel {
+  font-size: 0.84rem;
+  font-weight: 600;
+  color: var(--wz-field-label, #334155);
+}
+
+.field input {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid var(--wz-input-border, #d5dde8);
+  border-radius: 8px;
+  font-size: 1rem;
+  letter-spacing: 0.2em;
+  text-align: center;
+  background: var(--wz-card-bg, #fff);
+  color: var(--wz-title, #0f1c2e);
+}
+
+.field input:focus {
+  outline: none;
+  border-color: var(--ob-accent, #2b5fab);
+  box-shadow: 0 0 0 3px var(--ob-accent-soft, rgba(43, 95, 171, 0.2));
+}
+
+.fieldHint {
+  margin: 0;
+  font-size: 0.76rem;
+  color: var(--wz-subtitle, #5a6b82);
+}
+
+.actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 8px;
+}
+
+.btnPrimary {
+  padding: 10px 18px;
+  border: none;
+  border-radius: 8px;
+  background: var(--ob-accent, #2b5fab);
+  color: #fff;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.btnPrimary:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}

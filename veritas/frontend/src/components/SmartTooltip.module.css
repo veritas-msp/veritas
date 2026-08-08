@@ -1,0 +1,72 @@
+.tooltipWrapper {
+  position: relative;
+  display: inline-flex;
+}
+
+.portalTooltip {
+  width: max-content;
+  max-width: 320px;
+  background-color: #ffffff;
+  color: #1f2937;
+  text-align: center;
+  border-radius: 0.375rem;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.875rem;
+  white-space: normal;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+  font-weight: 500;
+  line-height: 1.35;
+  pointer-events: none;
+}
+
+.portalTooltipInteractive {
+  pointer-events: auto;
+}
+
+.portalShell {
+  pointer-events: none;
+}
+
+.portalShellInteractive {
+  pointer-events: auto;
+}
+
+.hoverBridge {
+  position: absolute;
+  pointer-events: auto;
+}
+
+.hoverBridge_bottom {
+  left: -24px;
+  right: -24px;
+  bottom: 100%;
+  height: 18px;
+}
+
+.hoverBridge_top {
+  left: -24px;
+  right: -24px;
+  top: 100%;
+  height: 18px;
+}
+
+.hoverBridge_right {
+  top: -24px;
+  bottom: -24px;
+  right: 100%;
+  width: 18px;
+}
+
+.hoverBridge_left {
+  top: -24px;
+  bottom: -24px;
+  left: 100%;
+  width: 18px;
+}
+
+:global(html.dark) .portalTooltip {
+  background-color: #1e2d4a;
+  color: #e8edf5;
+  border: 1px solid #3d5278;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.55);
+}

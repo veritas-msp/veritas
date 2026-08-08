@@ -1,0 +1,37 @@
+.headerIconWhatsapp {
+  background: linear-gradient(135deg, #25d366 0%, #128c7e 100%);
+  box-shadow: 0 6px 16px rgba(37, 211, 102, 0.28);
+}
+
+.accentBarWhatsapp {
+  height: 4px;
+  background: linear-gradient(90deg, #075e54 0%, #25d366 45%, #dcf8c6 100%);
+}
+
+.webhookBox {
+  margin-top: 0.85rem;
+  padding: 0.75rem 0.85rem;
+  border-radius: 10px;
+  border: 1px solid var(--msp-border, #dde3ed);
+  background: var(--msp-surface-2, #f8fafc);
+}
+
+.webhookLabel {
+  margin: 0 0 0.35rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--msp-muted, #5c6b82);
+}
+
+.webhookCode {
+  display: block;
+  margin: 0;
+  padding: 0.45rem 0.55rem;
+  border-radius: 8px;
+  background: var(--msp-surface, #fff);
+  border: 1px solid var(--msp-border-light, #eef2f7);
+  font-size: 0.72rem;
+  line-height: 1.4;
+  word-break: break-all;
+  color: var(--msp-text, #0f1c2e);
+}

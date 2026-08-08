@@ -1,0 +1,24 @@
+
+
+.planning-event-drag-source {
+  opacity: 0.58 !important;
+  transform: scale(0.98) !important;
+  filter: saturate(0.88);
+  transition:
+    transform 0.14s ease,
+    opacity 0.14s ease,
+    filter 0.14s ease;
+}
+
+.planning-event-drag-ghost {
+  transform: rotate(-1deg) scale(1.02) !important;
+  box-shadow: 0 5px 14px rgba(15, 28, 46, 0.2) !important;
+  opacity: 0.94 !important;
+  cursor: grabbing !important;
+  transition: transform 0.12s ease;
+  z-index: 9999;
+}
+
+body.planning-event-drag-active {
+  cursor: grabbing !important;
+}

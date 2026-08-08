@@ -1,0 +1,82 @@
+.dateTimeInput {
+  letter-spacing: 0;
+  font-variant-numeric: tabular-nums;
+}
+
+.dateTimeInput::-webkit-datetime-edit,
+.dateTimeInput::-webkit-datetime-edit-fields-wrapper,
+.dateTimeInput::-webkit-datetime-edit-text,
+.dateTimeInput::-webkit-datetime-edit-month-field,
+.dateTimeInput::-webkit-datetime-edit-day-field,
+.dateTimeInput::-webkit-datetime-edit-year-field,
+.dateTimeInput::-webkit-datetime-edit-hour-field,
+.dateTimeInput::-webkit-datetime-edit-minute-field,
+.dateTimeInput::-webkit-datetime-edit-ampm-field {
+  letter-spacing: 0;
+  padding: 0;
+}
+
+.footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.45rem;
+  padding: 0.75rem 1.35rem 1rem;
+  margin: 0;
+  background: var(--msp-surface, #fff);
+  border-top: 1px solid var(--msp-border, #eef2f7);
+  flex-shrink: 0;
+}
+
+.formContent {
+  flex: 1;
+  min-height: 0;
+}
+
+.form {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  flex: 1;
+  overflow: hidden;
+}
+
+.footerActions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 0.5rem;
+}
+
+.footerBtn {
+  padding: 0.32rem 0.72rem;
+  font-size: 0.8125rem;
+  border-radius: 8px;
+  min-height: 0;
+  line-height: 1.25;
+}
+
+.footerBtnPrimary {
+  box-shadow: 0 2px 8px rgba(43, 95, 171, 0.22);
+}
+
+.deleteBtn {
+  color: #dc2626;
+  border-color: rgba(220, 38, 38, 0.35);
+}
+
+@media (max-width: 768px) {
+  .footer {
+    flex-direction: row;
+    align-items: center;
+  }
+
+  .footerActions {
+    width: auto;
+  }
+
+  .footerActions .footerBtn {
+    flex: 0 0 auto;
+    justify-content: center;
+  }
+}

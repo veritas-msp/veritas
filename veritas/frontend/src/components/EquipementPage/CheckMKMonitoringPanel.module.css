@@ -1,0 +1,669 @@
+.panel {
+  position: relative;
+  border: 1px solid var(--msp-border);
+  border-radius: var(--msp-radius, 16px);
+  background: var(--msp-surface);
+  box-shadow: var(--msp-shadow);
+  overflow: hidden;
+  padding-bottom: 1rem;
+}
+
+
+.header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1.25rem;
+  margin-bottom: 0;
+  padding: 0.85rem 1.1rem;
+  border-bottom: 1px solid var(--msp-border);
+  background: linear-gradient(180deg, var(--msp-surface) 0%, var(--msp-surface-2) 100%);
+  flex-wrap: wrap;
+}
+
+.titleBlock {
+  flex: 1;
+  min-width: 200px;
+}
+
+.title {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.45rem 0.65rem;
+  font-size: 0.8125rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--msp-muted);
+  margin: 0 0 0.35rem;
+}
+
+.titleIcon {
+  color: var(--msp-accent);
+  font-size: 1rem;
+}
+
+.alias {
+  color: var(--msp-muted-light);
+  font-weight: 500;
+  font-size: 0.78rem;
+  text-transform: none;
+  letter-spacing: normal;
+}
+
+.metaRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  align-items: center;
+}
+
+.hostStateBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.15rem 0.55rem;
+  border-radius: 999px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.labelChip {
+  display: inline-flex;
+  padding: 0.12rem 0.45rem;
+  border-radius: 0.35rem;
+  border: 1px solid var(--msp-border);
+  color: var(--msp-muted);
+  font-size: 0.7rem;
+  background: var(--msp-surface-2);
+}
+
+.ipText {
+  font-size: 0.75rem;
+  color: var(--msp-muted-light);
+  font-family: ui-monospace, monospace;
+}
+
+.gaugeWrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  flex-shrink: 0;
+}
+
+.gaugeContainer {
+  position: relative;
+  width: 120px;
+  height: 68px;
+}
+
+.gaugeTrack {
+  width: 120px;
+  height: 60px;
+  border-radius: 60px 60px 0 0;
+  background: conic-gradient(from 180deg at 50% 100%, #ef4444 0deg, #f59e0b 60deg, var(--msp-accent) 120deg, var(--msp-accent) 180deg);
+  position: relative;
+  overflow: hidden;
+}
+
+.gaugeTrack::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 80px;
+  height: 40px;
+  background: var(--msp-surface);
+  border-radius: 40px 40px 0 0;
+}
+
+.gaugeNeedle {
+  position: absolute;
+  bottom: 4px;
+  left: 50%;
+  width: 3px;
+  height: 48px;
+  background: var(--msp-text);
+  transform-origin: bottom center;
+  transition: transform 0.4s ease;
+  border-radius: 2px;
+  z-index: 2;
+}
+
+.gaugeValue {
+  position: absolute;
+  bottom: 2px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--msp-accent);
+  z-index: 3;
+}
+
+.periodButtons {
+  display: flex;
+  gap: 0.25rem;
+}
+
+.periodBtn {
+  padding: 0.2rem 0.5rem;
+  font-size: 0.65rem;
+  border-radius: 0.3rem;
+  border: 1px solid var(--msp-border);
+  background: var(--msp-surface-2);
+  color: var(--msp-muted-light);
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.periodBtn:hover:not(:disabled) {
+  border-color: var(--msp-accent);
+  color: var(--msp-text);
+}
+
+.periodBtnActive {
+  background: rgba(21, 209, 160, 0.15);
+  border-color: var(--msp-accent);
+  color: var(--msp-accent);
+}
+
+.periodBtn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+
+.kpiGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(155px, 1fr));
+  gap: 0.75rem;
+  margin-bottom: 1.5rem;
+}
+
+.kpiCard {
+  background: var(--msp-surface-2);
+  border: 1px solid var(--msp-border);
+  border-radius: 0.5rem;
+  padding: 0.75rem 0.85rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  min-height: 72px;
+}
+
+.kpiLabel {
+  font-size: 0.68rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--msp-muted-light);
+  font-weight: 500;
+}
+
+.kpiValue {
+  font-size: 1.35rem;
+  font-weight: 700;
+  color: var(--msp-text);
+  line-height: 1.2;
+}
+
+.kpiSub {
+  font-size: 0.7rem;
+  color: var(--msp-muted-light);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.kpiTrendUp {
+  color: #ef4444;
+}
+
+.kpiTrendDown {
+  color: var(--msp-accent);
+}
+
+.kpiTrendFlat {
+  color: var(--msp-muted-light);
+}
+
+
+.gridLayout {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1.5rem;
+}
+
+@media (min-width: 1100px) {
+  .gridLayout {
+    grid-template-columns: 1fr 1fr;
+    align-items: start;
+  }
+}
+
+.section {
+  background: var(--msp-surface-2);
+  border: 1px solid var(--msp-border);
+  border-radius: 0.6rem;
+  overflow: hidden;
+}
+
+.sectionHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.75rem 1rem;
+  border-bottom: 2px solid var(--msp-accent);
+  flex-wrap: wrap;
+}
+
+.sectionTitle {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--msp-text);
+}
+
+.sectionTitleIcon {
+  color: var(--msp-accent);
+  font-size: 1.1rem;
+}
+
+.sectionCount {
+  font-size: 0.75rem;
+  color: var(--msp-muted-light);
+  background: var(--msp-surface-3);
+  padding: 0.15rem 0.5rem;
+  border-radius: 999px;
+}
+
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  padding: 0.65rem 1rem;
+  border-bottom: 1px solid var(--msp-border);
+  align-items: center;
+}
+
+.searchInput {
+  flex: 1;
+  min-width: 140px;
+  padding: 0.4rem 0.65rem;
+  font-size: 0.8rem;
+  border-radius: 0.35rem;
+  border: 1px solid var(--msp-border);
+  background: var(--msp-surface);
+  color: var(--msp-text);
+}
+
+.searchInput::placeholder {
+  color: var(--msp-muted-light);
+}
+
+.filterPills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+}
+
+.filterPill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.25rem 0.55rem;
+  font-size: 0.72rem;
+  border-radius: 999px;
+  border: 1px solid var(--msp-border);
+  background: transparent;
+  color: var(--msp-muted-light);
+  cursor: pointer;
+  transition: all 0.15s;
+  white-space: nowrap;
+}
+
+.filterPill:hover {
+  border-color: var(--msp-accent);
+  color: var(--msp-text);
+}
+
+.filterPillActive {
+  background: rgba(21, 209, 160, 0.12);
+  border-color: var(--msp-accent);
+  color: var(--msp-accent);
+  font-weight: 600;
+}
+
+.periodBar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+  padding: 0.5rem 1rem;
+  background: var(--msp-surface-3);
+  border-bottom: 1px solid var(--msp-border);
+  align-items: center;
+}
+
+.periodBarLabel {
+  font-size: 0.72rem;
+  color: var(--msp-muted-light);
+  margin-right: 0.25rem;
+  font-weight: 500;
+}
+
+.periodPill {
+  padding: 0.28rem 0.65rem;
+  font-size: 0.72rem;
+  border-radius: 0.35rem;
+  border: 1px solid var(--msp-border);
+  background: var(--msp-surface-2);
+  color: var(--msp-muted-light);
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.periodPill:hover {
+  border-color: var(--msp-accent);
+  color: var(--msp-text);
+}
+
+.periodPillActive {
+  background: var(--msp-accent);
+  border-color: var(--msp-accent);
+  color: #0f0f23;
+  font-weight: 600;
+}
+
+.calendarFilterBar {
+  padding: 0.55rem 1rem 0.65rem;
+  background: var(--msp-surface-3);
+  border-bottom: 1px solid var(--msp-border);
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+}
+
+.calendarFilterRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.monthInput {
+  padding: 0.28rem 0.55rem;
+  font-size: 0.8rem;
+  border-radius: 0.35rem;
+  border: 1px solid var(--msp-border);
+  background: var(--msp-surface-2);
+  color: var(--msp-text);
+  color-scheme: dark;
+  cursor: pointer;
+}
+
+.monthInput:focus {
+  outline: none;
+  border-color: var(--msp-accent);
+}
+
+.calendarClearBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border: 1px solid var(--msp-border);
+  border-radius: 0.35rem;
+  background: var(--msp-surface-2);
+  color: var(--msp-muted-light);
+  cursor: pointer;
+}
+
+.calendarClearBtn:hover {
+  border-color: #ef4444;
+  color: #ef4444;
+}
+
+.calendarActiveLabel {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--msp-accent);
+}
+
+.calendarMonthChips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+  align-items: center;
+}
+
+.calendarChipsHint {
+  font-size: 0.68rem;
+  color: var(--msp-muted-light);
+  margin-right: 0.15rem;
+}
+
+.calendarMonthChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.22rem 0.5rem;
+  font-size: 0.7rem;
+  border-radius: 999px;
+  border: 1px solid var(--msp-border);
+  background: var(--msp-surface-2);
+  color: var(--msp-muted-light);
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.calendarMonthChip:hover {
+  border-color: var(--msp-accent);
+  color: var(--msp-text);
+}
+
+.calendarMonthChipActive {
+  background: rgba(21, 209, 160, 0.15);
+  border-color: var(--msp-accent);
+  color: var(--msp-accent);
+  font-weight: 600;
+}
+
+.calendarMonthChipCount {
+  font-size: 0.62rem;
+  padding: 0.05rem 0.35rem;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+  color: inherit;
+}
+
+
+.tableWrap {
+  max-height: 420px;
+  overflow: auto;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.8rem;
+}
+
+.table thead {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: var(--msp-surface-2);
+}
+
+.table th {
+  padding: 0.55rem 0.85rem;
+  text-align: left;
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--msp-muted-light);
+  border-bottom: 1px solid var(--msp-border);
+  white-space: nowrap;
+  cursor: pointer;
+  user-select: none;
+}
+
+.table th:hover {
+  color: var(--msp-accent);
+}
+
+.table td {
+  padding: 0.55rem 0.85rem;
+  border-bottom: 1px solid var(--msp-border-light);
+  color: var(--msp-text);
+  vertical-align: middle;
+}
+
+.dataRow {
+  cursor: pointer;
+  transition: background 0.12s;
+}
+
+.dataRow:hover {
+  background: var(--msp-accent-soft);
+}
+
+.table tbody tr:nth-child(even) {
+  background: var(--msp-surface-2);
+}
+
+.statusBadge {
+  display: inline-block;
+  padding: 0.12rem 0.45rem;
+  border-radius: 0.25rem;
+  font-size: 0.65rem;
+  font-weight: 700;
+  color: #fff;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.serviceName {
+  font-weight: 500;
+  max-width: 200px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.messageCell {
+  max-width: 280px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--msp-muted);
+}
+
+.timeCell {
+  font-size: 0.72rem;
+  color: var(--msp-muted-light);
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.openBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border: none;
+  border-radius: 0.3rem;
+  background: transparent;
+  color: var(--msp-muted-light);
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.openBtn:hover {
+  background: var(--msp-accent-soft);
+  color: var(--msp-accent);
+}
+
+.emptyMsg {
+  padding: 2rem 1rem;
+  text-align: center;
+  color: var(--msp-muted);
+  font-size: 0.85rem;
+}
+
+.pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  padding: 0.65rem;
+  border-top: 1px solid var(--msp-border);
+}
+
+.pageBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border: 1px solid var(--msp-border);
+  border-radius: 0.3rem;
+  background: var(--msp-surface);
+  color: var(--msp-muted-light);
+  cursor: pointer;
+}
+
+.pageBtn:hover:not(:disabled) {
+  border-color: var(--msp-accent);
+  color: var(--msp-accent);
+}
+
+.pageBtn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.pageInfo {
+  font-size: 0.75rem;
+  color: var(--msp-muted-light);
+  padding: 0 0.5rem;
+}
+
+
+.skeleton {
+  background: linear-gradient(90deg, var(--msp-surface-3) 0%, rgba(255, 255, 255, 0.07) 50%, var(--msp-surface-3) 100%);
+  background-size: 200% 100%;
+  animation: shimmer 1.4s ease-in-out infinite;
+  border-radius: 0.35rem;
+}
+
+@keyframes shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+.skeletonHeader {
+  height: 1.5rem;
+  width: 200px;
+  margin-bottom: 0.5rem;
+}
+
+.skeletonKpi {
+  height: 72px;
+}
+
+.skeletonSection {
+  height: 320px;
+}

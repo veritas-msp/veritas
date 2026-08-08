@@ -1,0 +1,93 @@
+.overlay {
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  height: 100dvh;
+  z-index: var(--modal-overlay-z-index, 11000);
+  background-color: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(6px);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 1rem;
+  box-sizing: border-box;
+}
+
+.panel {
+  width: min(960px, 92vw);
+  max-width: 960px;
+  max-height: min(88vh, 900px);
+  display: flex;
+  flex-direction: column;
+  background: #ffffff;
+  overflow: hidden;
+  color: #1a1a1a;
+  border-radius: 12px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
+  flex: 0 1 auto;
+}
+
+.panelHeader {
+  flex-shrink: 0;
+}
+
+.body {
+  flex: 1;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 1.5rem;
+  min-height: 0;
+}
+
+.contentGrid {
+  display: grid;
+  gap: 12px;
+  min-height: 0;
+  flex: 1;
+}
+
+.contentGridSingle {
+  grid-template-columns: 1fr;
+}
+
+.contentGridDouble {
+  grid-template-columns: 1fr 1fr;
+}
+
+.hostsList {
+  overflow-y: auto;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  background: #fafafa;
+  min-height: 220px;
+  max-height: min(360px, 42vh);
+}
+
+.servicesPanel {
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  background: #fafafa;
+  min-height: 220px;
+  max-height: min(360px, 42vh);
+  display: flex;
+  flex-direction: column;
+}
+
+.footer {
+  padding: 1rem 1.5rem;
+  border-top: 1px solid #e5e7eb;
+  flex-shrink: 0;
+}
+
+@media (max-width: 768px) {
+  .contentGridDouble {
+    grid-template-columns: 1fr;
+  }
+
+  .hostsList,
+  .servicesPanel {
+    max-height: min(280px, 36vh);
+  }
+}

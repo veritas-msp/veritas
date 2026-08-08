@@ -1,0 +1,212 @@
+
+.modalOverlay {
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  height: 100dvh;
+  background-color: rgba(0, 0, 0, 0.75);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: var(--modal-overlay-z-index);
+  padding: 1rem;
+}
+
+.modalContent {
+  background-color: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 0.75rem;
+  max-width: 900px;
+  width: 100%;
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5);
+}
+
+.modalHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1.25rem 1.5rem;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.modalTitle {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin: 0;
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: #1a1a1a;
+}
+
+.modalIcon {
+  color: #15D1A0;
+  font-size: 1.25rem;
+}
+
+.modalCloseButton {
+  background: transparent;
+  border: none;
+  color: #6b7280;
+  cursor: pointer;
+  padding: 0.25rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 0.25rem;
+  transition: all 0.2s;
+}
+
+.modalCloseButton:hover {
+  background-color: #f3f4f6;
+  color: #1a1a1a;
+}
+
+.modalBody {
+  padding: 1.5rem;
+}
+
+.modalFormGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.5rem;
+}
+
+.modalFormColumn {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.modalFooter {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  padding: 1.25rem 1.5rem;
+  border-top: 1px solid #e5e7eb;
+  gap: 0.75rem;
+}
+
+.modalSaveButton {
+  padding: 0.5rem 1.25rem;
+  background-color: #15D1A0;
+  border: none;
+  border-radius: 0.375rem;
+  color: #ffffff;
+  cursor: pointer;
+  font-size: 0.875rem;
+  font-weight: 500;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.modalSaveButton:hover:not(:disabled) {
+  background-color: #0fa578;
+  transform: translateY(-1px);
+}
+
+.modalSaveButton:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+
+.formGroup {
+  margin-bottom: 1.25rem;
+}
+
+.formLabel {
+  display: block;
+  margin-bottom: 0.5rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: #1a1a1a;
+}
+
+.required {
+  color: #ef4444;
+}
+
+.formInput,
+.formSelect,
+.formTextarea {
+  width: 100%;
+  padding: 0.625rem 0.75rem;
+  border: 1px solid #e5e7eb;
+  border-radius: 0.375rem;
+  font-size: 0.875rem;
+  color: #1a1a1a;
+  background-color: #ffffff;
+  transition: all 0.2s;
+}
+
+.formInput:focus,
+.formSelect:focus,
+.formTextarea:focus {
+  outline: none;
+  border-color: #15D1A0;
+  box-shadow: 0 0 0 3px rgba(21, 209, 160, 0.1);
+}
+
+.formTextarea {
+  resize: vertical;
+  min-height: 100px;
+  font-family: inherit;
+}
+
+.formRow {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+}
+
+
+:global(.dark) .modalContent {
+  background-color: #0f0f23;
+  border-color: #2a2a4a;
+}
+
+:global(.dark) .modalHeader {
+  border-bottom-color: #2a2a4a;
+}
+
+:global(.dark) .modalTitle {
+  color: #f9fafb;
+}
+
+:global(.dark) .modalCloseButton {
+  color: #9ca3af;
+}
+
+:global(.dark) .modalCloseButton:hover {
+  background-color: #1a1a2e;
+  color: #f9fafb;
+}
+
+:global(.dark) .modalFooter {
+  border-top-color: #2a2a4a;
+}
+
+:global(.dark) .formLabel {
+  color: #f9fafb;
+}
+
+:global(.dark) .formInput,
+:global(.dark) .formSelect,
+:global(.dark) .formTextarea {
+  background-color: #1a1a2e;
+  border-color: #2a2a4a;
+  color: #f9fafb;
+}
+
+:global(.dark) .formInput:focus,
+:global(.dark) .formSelect:focus,
+:global(.dark) .formTextarea:focus {
+  border-color: #15D1A0;
+  box-shadow: 0 0 0 3px rgba(21, 209, 160, 0.2);
+}
+

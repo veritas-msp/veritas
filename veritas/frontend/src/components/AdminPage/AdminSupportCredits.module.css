@@ -1,0 +1,44 @@
+.wrap {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.summaryRow {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  flex-shrink: 0;
+}
+
+.summaryCard {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 14px 16px;
+  border-radius: 12px;
+  border: 1px solid var(--msp-border, #d8e0ea);
+  background: var(--msp-surface, #fff);
+}
+
+.summaryValue {
+  font-size: 1.35rem;
+  font-weight: 700;
+  color: var(--msp-text, #0f1c2e);
+}
+
+.summaryLabel {
+  font-size: 0.78rem;
+  color: var(--msp-muted, #64748b);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+@media (max-width: 900px) {
+  .summaryRow {
+    grid-template-columns: 1fr;
+  }
+}

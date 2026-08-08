@@ -1,0 +1,60 @@
+.pageFill {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  height: 100%;
+  overflow: hidden;
+}
+
+.pageFill :global(.cardFill) {
+  min-height: 0;
+}
+
+.communityHint {
+  flex-shrink: 0;
+  margin: 0 0 12px;
+  font-size: 0.84rem;
+  color: var(--msp-muted);
+  line-height: 1.4;
+}
+
+.proBadge {
+  margin-left: 4px;
+  vertical-align: middle;
+}
+
+.matrixLayout {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  gap: 8px;
+}
+
+.dirtyBar {
+  flex-shrink: 0;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.dirtyBadge {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 8px;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: #92400e;
+  background: #fef3c7;
+  border: 1px solid #fcd34d;
+}
+
+.editorBodyFull {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}

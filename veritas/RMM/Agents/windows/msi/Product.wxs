@@ -1,0 +1,154 @@
+﻿<?xml version="1.0" encoding="UTF-8"?>
+<Wix xmlns="http://schemas.microsoft.com/wix/2006/wi">
+  <Product
+    Id="*"
+    Name="Veritas Agent"
+    Language="1036"
+    Codepage="65001"
+    Version="1.0.12.0"
+    Manufacturer="Veritas"
+    UpgradeCode="B8F3E2A1-4C5D-6E7F-8091-A2B3C4D5E6F7">
+    <Package
+      InstallerVersion="500"
+      Compressed="yes"
+      InstallScope="perMachine"
+      Platform="x64"
+      Description="Veritas RMM Windows agent — service Windows natif"
+      Comments="Installation, mise a jour, reparation et desinstallation de Veritas Agent" />
+
+    <!--
+      Relancer le meme MSI    → maintenance (Reparer / Desinstaller)
+      MSI version plus recente → mise a jour (MajorUpgrade)
+      MSI plus ancienne        → refuse
+    -->
+    <MajorUpgrade
+      DowngradeErrorMessage="Une version plus recente de Veritas Agent est deja installee. Desinstallez-la d'abord ou utilisez une version plus recente."
+      Schedule="afterInstallInitialize" />
+    <MediaTemplate EmbedCab="yes" />
+
+    <Property Id="WIXUI_INSTALLDIR" Value="INSTALLFOLDER" />
+    <Icon Id="VeritasAgent.ico" SourceFile="veritas-agent.ico" />
+    <Property Id="ARPPRODUCTICON" Value="VeritasAgent.ico" />
+
+    <Property Id="APIURL" Secure="yes" />
+    <Property Id="TOKEN" Secure="yes" Hidden="yes" />
+    <Property Id="FAMILY" Value="ordinateurs" Secure="yes" />
+
+    <Directory Id="TARGETDIR" Name="SourceDir">
+      <Directory Id="ProgramFiles64Folder">
+        <Directory Id="VeritasDir" Name="Veritas">
+          <Directory Id="INSTALLFOLDER" Name="Agent" />
+        </Directory>
+      </Directory>
+      <Directory Id="ProgramMenuFolder">
+        <Directory Id="VeritasProgramMenu" Name="Veritas" />
+      </Directory>
+      <Directory Id="CommonAppDataFolder">
+        <Directory Id="VeritasDataRoot" Name="Veritas">
+          <Directory Id="AgentDataFolder" Name="Agent" />
+        </Directory>
+      </Directory>
+    </Directory>
+
+    <Feature Id="MainFeature" Title="Veritas Agent" Level="1" Absent="disallow" AllowAdvertise="no">
+      <ComponentGroupRef Id="AgentFiles" />
+      <ComponentRef Id="AgentDataComponent" />
+      <ComponentRef Id="ConfigureLauncher" />
+    </Feature>
+
+    <DirectoryRef Id="AgentDataFolder">
+      <Component Id="AgentDataComponent" Guid="C1111111-1111-4111-8111-111111111102">
+        <CreateFolder />
+        <RegistryValue
+          Root="HKLM"
+          Key="Software\Veritas\Agent"
+          Name="DataDir"
+          Type="string"
+          Value="[AgentDataFolder]"
+          KeyPath="yes" />
+        <RegistryValue
+          Root="HKLM"
+          Key="Software\Veritas\Agent"
+          Name="InstallDir"
+          Type="string"
+          Value="[INSTALLFOLDER]" />
+      </Component>
+    </DirectoryRef>
+
+    <DirectoryRef Id="INSTALLFOLDER">
+      <Component Id="ConfigureLauncher" Guid="C1111111-1111-4111-8111-111111111202">
+        <File Id="ConfigureVeritasAgentCmd" Source="Configure-VeritasAgent.cmd" KeyPath="yes">
+          <Shortcut
+            Id="ConfigureAgentShortcut"
+            Directory="VeritasProgramMenu"
+            Name="Configurer Veritas Agent"
+            Description="Relancer l'assistant de configuration (serveur, token, type d'equipement)"
+            WorkingDirectory="INSTALLFOLDER"
+            Icon="VeritasAgent.ico"
+            Advertise="yes" />
+        </File>
+        <RemoveFolder Id="RemoveVeritasProgramMenu" Directory="VeritasProgramMenu" On="uninstall" />
+        <RegistryValue
+          Root="HKLM"
+          Key="Software\Veritas\Agent"
+          Name="ConfigureLauncher"
+          Type="integer"
+          Value="1" />
+      </Component>
+    </DirectoryRef>
+
+    <UIRef Id="WixUI_Minimal" />
+    <WixVariable Id="WixUILicenseRtf" Value="License.rtf" />
+
+    <CustomAction
+      Id="WriteBootstrap"
+      Directory="INSTALLFOLDER"
+      ExeCommand="[INSTALLFOLDER]VeritasAgent.exe --write-bootstrap &quot;[APIURL]&quot; &quot;[TOKEN]&quot; &quot;[FAMILY]&quot;"
+      Execute="deferred"
+      Impersonate="no"
+      Return="ignore" />
+
+    <CustomAction
+      Id="ConfigureServiceRecovery"
+      Directory="INSTALLFOLDER"
+      ExeCommand="cmd.exe /c sc.exe failure VeritasAgent reset= 86400 actions= restart/60000/restart/60000/restart/60000"
+      Execute="deferred"
+      Impersonate="no"
+      Return="ignore" />
+
+    <!-- Premiere installation interactive uniquement (pas maj / repair / uninstall) -->
+    <CustomAction
+      Id="LaunchConfigureWizard"
+      Directory="INSTALLFOLDER"
+      ExeCommand="[INSTALLFOLDER]VeritasAgent.exe --configure"
+      Execute="immediate"
+      Impersonate="yes"
+      Return="asyncNoWait" />
+
+    <InstallExecuteSequence>
+      <Custom Action="WriteBootstrap" After="InstallServices">NOT REMOVE~="ALL" AND TOKEN &lt;&gt; ""</Custom>
+      <Custom Action="ConfigureServiceRecovery" After="StartServices">NOT REMOVE~="ALL" AND NOT REINSTALL</Custom>
+      <Custom Action="LaunchConfigureWizard" After="InstallFinalize">
+        NOT REMOVE~="ALL"
+        AND TOKEN = ""
+        AND NOT UPGRADINGPRODUCTCODE
+        AND NOT WIX_UPGRADE_DETECTED
+        AND NOT REINSTALL
+        AND UILevel &gt; 3
+      </Custom>
+    </InstallExecuteSequence>
+  </Product>
+</Wix>
+
+
+
+
+
+
+
+
+
+
+
+
+

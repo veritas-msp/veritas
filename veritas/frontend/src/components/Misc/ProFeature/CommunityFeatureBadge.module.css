@@ -1,0 +1,27 @@
+.badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  padding: 0.15rem 0.45rem;
+  border-radius: 999px;
+  background: linear-gradient(135deg, #64748b 0%, #475569 100%);
+  color: #fff;
+  font-size: 0.58rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  line-height: 1.2;
+  box-shadow: 0 2px 8px rgba(71, 85, 105, 0.22);
+  pointer-events: none;
+}
+
+.inline {
+  padding: 0.1rem 0.35rem;
+  font-size: 0.52rem;
+}
+
+:global(html.dark) .badge {
+  background: linear-gradient(135deg, #94a3b8 0%, #64748b 100%);
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.35);
+}

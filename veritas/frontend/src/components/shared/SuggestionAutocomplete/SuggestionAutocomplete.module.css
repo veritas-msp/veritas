@@ -1,0 +1,114 @@
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.label {
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--msp-text, #0f1c2e);
+}
+
+.required {
+  color: #dc2626;
+}
+
+.inputWrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+  border: 1px solid var(--msp-border, #dde3ed);
+  border-radius: 10px;
+  background: var(--msp-surface, #fff);
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.inputWrapOpen {
+  border-color: var(--msp-accent, #2b5fab);
+  box-shadow: 0 0 0 3px rgba(43, 95, 171, 0.12);
+}
+
+.inputWrapDisabled {
+  opacity: 0.65;
+  background: var(--msp-surface-2, #f8fafc);
+}
+
+.inputIcon {
+  position: absolute;
+  left: 0.72rem;
+  font-size: 1rem;
+  color: var(--msp-muted, #5c6b82);
+  pointer-events: none;
+}
+
+.input {
+  width: 100%;
+  border: none;
+  background: transparent;
+  padding: 0.62rem 2.2rem 0.62rem 2.35rem;
+  font-family: inherit;
+  font-size: 0.88rem;
+  color: var(--msp-text, #0f1c2e);
+}
+
+.input:focus {
+  outline: none;
+}
+
+.clearBtn {
+  position: absolute;
+  right: 0.35rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.65rem;
+  height: 1.65rem;
+  border: none;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--msp-muted, #5c6b82);
+  cursor: pointer;
+}
+
+.clearBtn:hover {
+  background: rgba(15, 28, 46, 0.06);
+  color: var(--msp-text, #0f1c2e);
+}
+
+.dropdown {
+  overflow: auto;
+  border: 1px solid var(--msp-border, #dde3ed);
+  border-radius: 10px;
+  background: var(--msp-surface, #fff);
+  box-shadow: 0 12px 32px rgba(15, 28, 46, 0.14);
+}
+
+.empty {
+  padding: 0.75rem 0.85rem;
+  font-size: 0.82rem;
+  color: var(--msp-muted, #5c6b82);
+}
+
+.option {
+  display: block;
+  width: 100%;
+  border: none;
+  background: transparent;
+  text-align: left;
+  padding: 0.55rem 0.85rem;
+  font-family: inherit;
+  font-size: 0.84rem;
+  color: var(--msp-text, #0f1c2e);
+  cursor: pointer;
+}
+
+.option:hover,
+.optionActive {
+  background: rgba(43, 95, 171, 0.08);
+}
+
+.optionSelected {
+  font-weight: 700;
+  color: var(--msp-accent, #2b5fab);
+}

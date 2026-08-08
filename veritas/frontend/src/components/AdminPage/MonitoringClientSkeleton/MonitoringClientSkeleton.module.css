@@ -1,0 +1,491 @@
+.section {
+  background-color: #f9fafb;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  padding: 20px;
+  margin-bottom: 24px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.clientSummaryLeft {
+  text-align: left;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  color: #1f2937;
+}
+
+.clientHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.clientNameLeft {
+  font-size: 1.25rem;
+  font-weight: 600;
+  margin: 0;
+  color: #111827;
+}
+
+.cardActions {
+  display: flex;
+  gap: 10px;
+}
+
+.cardActions button {
+  border: none;
+  border-radius: 6px;
+  padding: 5px 10px;
+  font-size: 16px;
+  color: #374151;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+.cardActions button:hover {
+  background: #d1d5db;
+}
+
+
+.freq {
+  font-size: 0.95rem;
+  color: #6b7280;
+}
+
+.contractBlock {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.contractTitle {
+  font-weight: 600;
+  font-size: 14px;
+  margin-bottom: 0.3rem;
+  color: #374151;
+}
+
+.contractLines p {
+  margin: 0.15rem 0;
+  font-size: 14px;
+  color: #374151;
+}
+
+.hardwareBlock {
+  margin-top: 0.5rem;
+}
+
+.clientEquipmentsIcon {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 14px;
+  color: #374151;
+}
+
+.clientEquipmentsIcon svg {
+  margin-right: 6px;
+  vertical-align: middle;
+}
+
+.modulesBlock {
+  margin-top: 0.5rem;
+}
+
+.clientModulesRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.clientModulesRow img {
+  height: 28px;
+  object-fit: contain;
+  filter: grayscale(0.15);
+  opacity: 0.9;
+  transition: transform 0.2s ease;
+}
+
+.clientModulesRow img:hover {
+  transform: scale(1.05);
+}
+
+.separator {
+  border: none;
+  height: 1px;
+  background-color: #e5e7eb;
+  width: 100%;
+}
+
+.typeInputWrapper {
+  margin-top: 2rem;
+  display: flex;
+  justify-content: center;
+}
+
+.typeInputWrapper button {
+  padding: 10px 16px;
+  background: #4f46e5;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-weight: 600;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.clientGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 20px;
+}
+
+@media (min-width: 1400px) {
+  .clientGrid {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
+
+.addClientCard {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  border: 2px dashed var(--border-primary);
+  border-radius: 14px;
+  background: var(--bg-tertiary);
+  cursor: pointer;
+  transition: background 0.2s, border-color 0.2s;
+  min-width: 180px;
+  max-width: 420px;
+  width: 100%;
+  padding: 2rem;
+  height: 320px;
+}
+
+.addClientCard:hover {
+  background-color: var(--bg-secondary);
+  border-color: var(--accent-primary);
+}
+
+.addClientContent {
+  font-size: 1.2rem;
+  font-weight: 600;
+  text-align: center;
+  color: var(--text-secondary);
+  line-height: 1.5;
+}
+
+
+.modalOverlayClient {
+  position: fixed;
+  inset: 0;
+  background-color: rgba(0, 0, 0, 0.4);
+  z-index: var(--modal-overlay-z-index);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+
+.modalConfirm {
+  background: white;
+  width: 100%;
+  max-width: 480px;
+  border-radius: 12px;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.2);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+
+.modalHeader {
+  background-color: #f3f4f6;
+  color: #374151;
+  padding: 16px 24px;
+  font-size: 16px;
+  font-weight: 600;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+
+.modalBody {
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+
+.modalInfo {
+  font-size: 14px;
+  color: #4b5563;
+}
+
+
+.modalActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 1rem;
+  padding: 1.25rem 1.5rem;
+  background-color: #fafafa;
+  border-top: 1px solid #e5e7eb;
+}
+
+
+.primaryButton {
+  background-color: #6366f1;
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 8px;
+  font-size: 14px;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.primaryButton:hover {
+  background-color: #4f46e5;
+}
+
+.secondaryButton {
+  background-color: #f3f4f6;
+  color: #374151;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 8px;
+  font-size: 14px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.secondaryButton:hover {
+  background-color: #e5e7eb;
+}
+
+.clientCard {
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-primary);
+  border-radius: 16px;
+  padding: 2rem 1.5rem 1.5rem 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.2rem;
+  min-width: 260px;
+  max-width: 420px;
+  width: 100%;
+  margin: 0 auto;
+  transition: box-shadow 0.2s, border-color 0.2s;
+}
+
+.clientCard:hover {
+  border-color: var(--accent-primary);
+}
+
+.clientHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+}
+
+.clientName {
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin: 0;
+}
+
+.cardActions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.cardActions button {
+  border: none;
+  background: transparent;
+  border-radius: 8px;
+  padding: 8px;
+  font-size: 1.35rem;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: background 0.2s, color 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.cardActions button:hover {
+  background: var(--bg-tertiary);
+  color: var(--accent-primary);
+}
+
+.cardActions button[title="Supprimer"]:hover {
+  color: #ef4444;
+}
+
+.clientInfoBlock {
+  display: flex;
+  flex-direction: column;
+  gap: 1.2rem;
+  color: var(--text-secondary);
+}
+
+.freq {
+  font-size: 1rem;
+  color: var(--text-secondary);
+}
+
+.contractBlock, .hardwareBlock, .modulesBlock {
+  margin-top: 1rem;
+}
+
+.contractTitle {
+  font-weight: 600;
+  font-size: 1rem;
+  margin-bottom: 0.3rem;
+  color: var(--text-primary);
+}
+
+.contractLines p {
+  margin: 0.15rem 0;
+  font-size: 0.97rem;
+  color: var(--text-secondary);
+}
+
+.clientEquipmentsIcon {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 0.97rem;
+  color: var(--text-secondary);
+}
+
+.clientEquipmentsIcon svg {
+  margin-right: 6px;
+  vertical-align: middle;
+}
+
+.clientModulesRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.clientModulesRow img {
+  height: 28px;
+  object-fit: contain;
+  filter: grayscale(0.15);
+  opacity: 0.9;
+  transition: transform 0.2s;
+}
+
+.clientModulesRow img:hover {
+  transform: scale(1.08);
+}
+
+.separator {
+  border: none;
+  height: 1px;
+  background-color: var(--border-primary);
+  width: 100%;
+  margin: 0.7rem 0;
+}
+
+@media (max-width: 900px) {
+  .clientCard {
+    min-width: 180px;
+    max-width: 100%;
+    padding: 1.2rem 0.7rem;
+  }
+}
+
+
+.userTableWrapper {
+  width: 100%;
+  overflow-x: auto;
+  background: white;
+  border-radius: 12px;
+  border: 1px solid var(--border-primary);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.userTable {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+
+.userTable th {
+  background: var(--bg-tertiary);
+  color: var(--text-primary);
+  font-weight: 600;
+  text-align: left;
+  padding: 1rem;
+  border-bottom: 1px solid var(--border-primary);
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.userTable td {
+  padding: 1rem;
+  border-bottom: 1px solid var(--border-primary);
+  vertical-align: middle;
+}
+
+.userTable tbody tr {
+  transition: background-color 0.2s ease;
+}
+
+.userTable tbody tr:hover {
+  background-color: var(--bg-tertiary);
+}
+
+.userRow {
+  cursor: pointer;
+}
+
+.userRow:hover {
+  background-color: var(--bg-tertiary);
+}
+
+.actionButton {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.actionButton:hover {
+  background-color: var(--bg-tertiary);
+  transform: translateY(-1px);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+
+@media (max-width: 768px) {
+  .userTableWrapper {
+    border-radius: 8px;
+  }
+  
+  .userTable th,
+  .userTable td {
+    padding: 0.75rem 0.5rem;
+    font-size: 0.8rem;
+  }
+  
+  .userTable th {
+    font-size: 0.75rem;
+  }
+}

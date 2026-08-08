@@ -1,0 +1,89 @@
+.shell {
+  max-width: 42rem;
+}
+
+.body {
+  padding: 1.1rem 1.35rem 1.25rem;
+}
+
+.expirationBanner {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.55rem;
+  padding: 0.7rem 0.85rem;
+  border-radius: 10px;
+  font-size: 0.8125rem;
+  line-height: 1.45;
+  margin-bottom: 1rem;
+  background: rgba(43, 95, 171, 0.08);
+  color: var(--msp-text, #0f1c2e);
+}
+
+.expirationBannerWarn {
+  background: rgba(245, 158, 11, 0.12);
+  color: #92400e;
+}
+
+.expirationBannerDanger {
+  background: rgba(239, 68, 68, 0.1);
+  color: #b91c1c;
+}
+
+.metricsGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 0.65rem;
+  margin-bottom: 1rem;
+}
+
+.metricCard {
+  border: 1px solid var(--msp-border, #dde3ed);
+  border-radius: 10px;
+  padding: 0.75rem 0.85rem;
+  background: var(--msp-surface, #fff);
+}
+
+.metricLabel {
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--msp-muted, #5c6b82);
+  margin-bottom: 0.35rem;
+}
+
+.metricValue {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--msp-text, #0f1c2e);
+  line-height: 1.4;
+  word-break: break-word;
+}
+
+.sectionTitle {
+  margin: 0 0 0.5rem;
+  font-size: 0.78rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--msp-muted, #5c6b82);
+}
+
+.nameServers {
+  margin: 0;
+  padding-left: 1.1rem;
+  font-size: 0.8125rem;
+  color: var(--msp-text, #0f1c2e);
+  line-height: 1.55;
+}
+
+.footer {
+  gap: 1rem;
+}
+
+.footerActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.55rem;
+  justify-content: flex-end;
+}

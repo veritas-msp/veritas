@@ -1,0 +1,1 @@
+export { useAppLocale } from "./useAppGeneralSettings";

@@ -1,0 +1,32 @@
+# Node dependencies
+/node_modules
+/.pnp
+.pnp.js
+
+# Testing
+/coverage
+
+# Production
+/build
+/dist
+
+# Cache
+/.cache
+.eslintcache
+
+# Environment variables
+.env
+.env.*
+!.env.example
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+*.log
+
+# System files
+.DS_Store
+
+# Secrets / dev artifacts (never commit)
+public/assets/code-recup-stripe.txt

@@ -1,0 +1,188 @@
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid var(--msp-border, #dde3ed);
+  background: var(--msp-surface-2, #f7f9fc);
+}
+
+.fileRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-width: 0;
+}
+
+.fileMeta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.fileIcon {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+  color: var(--msp-muted, #5c6b82);
+}
+
+.fileName {
+  font-size: 0.84rem;
+  font-weight: 600;
+  color: var(--msp-text, #0f1c2e);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.fileRemove {
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--msp-muted, #5c6b82);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.fileRemove:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--msp-danger, #dc2626) 12%, transparent);
+  color: var(--msp-danger, #dc2626);
+}
+
+.fileRemove:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.enableRow {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  cursor: pointer;
+  margin: 0;
+}
+
+.enableRowMuted {
+  cursor: not-allowed;
+}
+
+.checkbox {
+  margin-top: 3px;
+  flex-shrink: 0;
+  width: 15px;
+  height: 15px;
+  accent-color: var(--msp-accent, #2b5fab);
+}
+
+.enableCopy {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.enableTitle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.84rem;
+  font-weight: 600;
+  color: var(--msp-text, #0f1c2e);
+}
+
+.enableTitle svg {
+  width: 16px;
+  height: 16px;
+  color: var(--msp-accent, #2b5fab);
+  flex-shrink: 0;
+}
+
+.enableHint {
+  font-size: 0.75rem;
+  line-height: 1.35;
+  color: var(--msp-muted, #5c6b82);
+}
+
+.options {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding-top: 2px;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.label {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--msp-text, #374a5e);
+}
+
+.select,
+.input {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 8px 10px;
+  border: 1px solid var(--msp-border, #ccd4e0);
+  border-radius: 8px;
+  background: var(--msp-surface, #fff);
+  color: var(--msp-text, #0f1c2e);
+  font-size: 0.86rem;
+  font-family: inherit;
+}
+
+.select:focus,
+.input:focus {
+  outline: none;
+  border-color: var(--msp-accent, #2b5fab);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--msp-accent, #2b5fab) 14%, transparent);
+}
+
+.select:disabled,
+.input:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+:global(html.dark) .wrap {
+  background: var(--msp-surface-2, #152035);
+  border-color: var(--msp-border, #2a3a55);
+}
+
+:global(html.dark) .fileName,
+:global(html.dark) .enableTitle {
+  color: var(--msp-text, #e8eef8);
+}
+
+:global(html.dark) .enableHint,
+:global(html.dark) .label,
+:global(html.dark) .fileIcon {
+  color: var(--msp-muted, #8fa8c4);
+}
+
+:global(html.dark) .select,
+:global(html.dark) .input {
+  background: var(--msp-surface, #0f1c2e);
+  border-color: var(--msp-border, #2a3a55);
+  color: var(--msp-text, #e8eef8);
+}

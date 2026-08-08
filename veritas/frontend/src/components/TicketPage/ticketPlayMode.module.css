@@ -1,0 +1,81 @@
+.diceBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  border: 1px solid var(--msp-border, #e2e8f0);
+  border-radius: var(--msp-radius-sm, 10px);
+  background: var(--msp-surface, #fff);
+  color: var(--msp-muted, #5c6b82);
+  cursor: pointer;
+  font-size: 1.1rem;
+  transition: border-color 0.15s, color 0.15s, background 0.15s, box-shadow 0.15s;
+}
+
+.diceBtn:hover:not(:disabled) {
+  border-color: var(--msp-accent, #2b5fab);
+  color: var(--msp-accent, #2b5fab);
+  background: var(--msp-surface, #fff);
+  box-shadow: var(--msp-shadow, 0 1px 2px rgba(15, 28, 46, 0.04));
+}
+
+.diceBtn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.diceBtnActive {
+  border-color: rgba(43, 95, 171, 0.45);
+  color: var(--msp-accent, #2b5fab);
+  background: rgba(43, 95, 171, 0.12);
+  box-shadow: 0 0 0 1px rgba(43, 95, 171, 0.2);
+}
+
+:global(html.dark) .diceBtn {
+  background: var(--msp-surface-2, #152035);
+  border-color: var(--msp-border, #2a3a55);
+  color: var(--msp-muted, #8fa8c4);
+}
+
+:global(html.dark) .diceBtn:hover:not(:disabled) {
+  border-color: #5a8fd4;
+  color: #a8d4ff;
+  background: rgba(90, 143, 212, 0.12);
+}
+
+:global(html.dark) .diceBtnActive {
+  border-color: rgba(90, 143, 212, 0.5);
+  color: #a8d4ff;
+  background: rgba(90, 143, 212, 0.18);
+}
+
+.playModeBanner {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.4rem 0.65rem;
+  border-radius: var(--msp-radius-sm, 10px);
+  border: 1px solid rgba(43, 95, 171, 0.25);
+  background: rgba(43, 95, 171, 0.08);
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--msp-accent, #2b5fab);
+}
+
+:global(html.dark) .playModeBanner {
+  border-color: rgba(90, 143, 212, 0.35);
+  background: rgba(90, 143, 212, 0.12);
+  color: #a8d4ff;
+}
+
+.spinning {
+  animation: ticketDiceSpin 0.85s linear infinite;
+}
+
+@keyframes ticketDiceSpin {
+  to {
+    transform: rotate(360deg);
+  }
+}

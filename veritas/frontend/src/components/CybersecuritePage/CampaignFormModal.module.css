@@ -1,0 +1,162 @@
+.form {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.providerList {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(7rem, 1fr));
+  gap: 0.5rem;
+}
+
+.providerCard {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 0.35rem;
+  width: 100%;
+  padding: 0.65rem 0.4rem 0.55rem;
+  border-radius: 10px;
+  border: 1px solid var(--msp-border, #dde3ed);
+  background: var(--msp-surface, #fff);
+  cursor: pointer;
+  text-align: center;
+  font-family: inherit;
+  transition: border-color 0.15s, box-shadow 0.15s, background 0.15s;
+}
+
+.providerCard:hover:not(:disabled) {
+  border-color: rgba(43, 95, 171, 0.35);
+  box-shadow: 0 3px 10px rgba(43, 95, 171, 0.08);
+}
+
+.providerCardSelected {
+  border-color: var(--msp-accent, #2b5fab);
+  background: rgba(43, 95, 171, 0.06);
+  box-shadow: 0 0 0 1px rgba(43, 95, 171, 0.2);
+}
+
+.providerCardDisabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.providerCardIcon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.1rem;
+  height: 2.1rem;
+  border-radius: 8px;
+  background: var(--msp-surface-2, #f7f9fc);
+  color: var(--msp-accent, #2b5fab);
+  font-size: 1.15rem;
+}
+
+.providerCardIcon img {
+  width: 1.25rem;
+  height: 1.25rem;
+  object-fit: contain;
+}
+
+.providerCardLabel {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--msp-text, #0f1c2e);
+  line-height: 1.25;
+}
+
+.providerBadgeSoon {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.1rem 0.35rem;
+  border-radius: 999px;
+  font-size: 0.58rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: #92400e;
+  background: #fef3c7;
+}
+
+.tenantHint,
+.tenantWarning {
+  margin: 0.15rem 0 0;
+  font-size: 0.78rem;
+  line-height: 1.4;
+  color: var(--msp-muted, #5c6b82);
+}
+
+.tenantWarning {
+  color: #b45309;
+  background: rgba(245, 158, 11, 0.1);
+  border: 1px solid rgba(245, 158, 11, 0.28);
+  border-radius: 8px;
+  padding: 0.55rem 0.7rem;
+}
+
+.tenantCard {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  width: 100%;
+  padding: 0.7rem 0.8rem;
+  border-radius: 10px;
+  border: 1px solid var(--msp-border, #dde3ed);
+  background: var(--msp-surface-2, #f7f9fc);
+  text-align: left;
+  font-family: inherit;
+  cursor: pointer;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.tenantCard:hover:not(:disabled) {
+  border-color: rgba(43, 95, 171, 0.35);
+}
+
+.tenantCardSelected {
+  border-color: var(--msp-accent, #2b5fab);
+  box-shadow: 0 0 0 1px rgba(43, 95, 171, 0.2);
+  background: rgba(43, 95, 171, 0.06);
+}
+
+.tenantCard:disabled {
+  cursor: default;
+  opacity: 1;
+}
+
+.tenantCardIcon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.1rem;
+  height: 2.1rem;
+  border-radius: 8px;
+  background: var(--msp-surface, #fff);
+  color: var(--msp-accent, #2b5fab);
+  font-size: 1.1rem;
+  flex-shrink: 0;
+}
+
+.tenantCardMain {
+  min-width: 0;
+  flex: 1;
+}
+
+.tenantCardTitle {
+  margin: 0;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--msp-text, #0f1c2e);
+}
+
+.tenantCardMeta {
+  margin: 0.15rem 0 0;
+  font-size: 0.72rem;
+  color: var(--msp-muted, #5c6b82);
+  word-break: break-all;
+}

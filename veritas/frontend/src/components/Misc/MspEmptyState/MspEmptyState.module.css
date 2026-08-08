@@ -1,0 +1,55 @@
+.emptyState {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  padding: 2rem 1.25rem;
+  border-radius: 14px;
+  border: 1px dashed var(--msp-border, #c5d0df);
+  background: var(--msp-surface, #fff);
+  text-align: center;
+  color: var(--msp-muted, #5c6b82);
+}
+
+.emptyIcon {
+  font-size: 1.75rem;
+  opacity: 0.45;
+  color: var(--msp-accent, #2b5fab);
+}
+
+.emptyTitle {
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--msp-text, #0f1c2e);
+}
+
+.emptyText {
+  margin: 0;
+  font-size: 0.82rem;
+  max-width: 36ch;
+  line-height: 1.45;
+}
+
+.emptyAction {
+  margin-top: 0.65rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  padding: 0.5rem 0.95rem;
+  border: none;
+  border-radius: 10px;
+  background: var(--msp-accent, #2b5fab);
+  color: #fff;
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s ease, transform 0.15s ease;
+}
+
+.emptyAction:hover {
+  background: var(--msp-accent-dark, #1a3d75);
+  transform: translateY(-1px);
+}

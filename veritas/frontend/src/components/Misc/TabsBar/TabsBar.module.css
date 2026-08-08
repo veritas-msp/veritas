@@ -1,0 +1,513 @@
+
+
+.tabsBar {
+  position: fixed;
+  top: 0;
+  left: 240px;
+  right: 0;
+  height: var(--tabs-bar-height, 36px);
+  background: var(--msp-surface-2, #eef2f7);
+  border-bottom: 1px solid var(--msp-border, #c5d0df);
+  z-index: 999;
+  display: flex;
+  align-items: stretch;
+  transition: left 0.4s ease-in-out, background-color 0.3s ease, border-color 0.3s ease;
+}
+
+:global(html[data-profile-preview="1"]) .tabsBar {
+  top: var(--profile-preview-banner-height, 40px);
+}
+
+.tabsBar.sidebarCollapsed {
+  left: 64px;
+}
+
+@media screen and (max-width: 1024px) {
+  .tabsBar {
+    left: 0;
+  }
+}
+
+.tabsContainer {
+  display: flex;
+  align-items: stretch;
+  flex: 1;
+  min-width: 0;
+  height: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: thin;
+  scrollbar-color: var(--msp-border, #c5d0df) transparent;
+  padding: 0 0 0 4px;
+  gap: 2px;
+}
+
+.tabsContainer::-webkit-scrollbar {
+  height: 3px;
+}
+
+.tabsContainer::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.tabsContainer::-webkit-scrollbar-thumb {
+  background-color: var(--msp-border, #c5d0df);
+  border-radius: 2px;
+}
+
+.tab {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 6px 0 10px;
+  height: calc(100% - 4px);
+  margin-top: 4px;
+  min-width: 96px;
+  max-width: 220px;
+  background-color: transparent;
+  border: 1px solid transparent;
+  border-bottom: none;
+  border-radius: 8px 8px 0 0;
+  cursor: grab;
+  transition: background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+  position: relative;
+  flex-shrink: 0;
+  user-select: none;
+  touch-action: none;
+}
+
+.tab:active {
+  cursor: grabbing;
+}
+
+.tab:hover {
+  background-color: color-mix(in srgb, var(--msp-surface, #fff) 55%, transparent);
+  border-color: var(--msp-border-light, #dde3ed);
+}
+
+.tab.active {
+  background-color: var(--msp-page-bg, #d0d9e6);
+  border-color: var(--msp-border, #c5d0df);
+  border-bottom-color: transparent;
+  box-shadow: inset 0 -2px 0 var(--msp-accent, #2b5fab);
+  z-index: 1;
+}
+
+.tabIcon {
+  flex-shrink: 0;
+  color: var(--msp-muted-light, #8b9bb5);
+  transition: color 0.15s ease;
+}
+
+.tab.active .tabIcon {
+  color: var(--msp-accent, #2b5fab);
+}
+
+.tabLabel {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--msp-muted, #5c6b82);
+  transition: color 0.15s ease;
+}
+
+.tab.active .tabLabel {
+  color: var(--msp-text, #0f1c2e);
+  font-weight: 600;
+}
+
+.closeButton {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  margin: 0;
+  background: transparent;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  color: var(--msp-muted-light, #8b9bb5);
+  transition: opacity 0.12s ease, background-color 0.12s ease, color 0.12s ease;
+  flex-shrink: 0;
+  opacity: 0;
+  pointer-events: auto;
+  position: relative;
+  z-index: 10;
+}
+
+.tab:hover .closeButton,
+.tab.active .closeButton {
+  opacity: 0.8;
+}
+
+.closeButton:hover {
+  background-color: color-mix(in srgb, var(--msp-accent, #2b5fab) 12%, transparent);
+  color: var(--msp-text, #0f1c2e);
+  opacity: 1;
+}
+
+.closeButton:active {
+  transform: scale(0.95);
+}
+
+.sortTabsButton,
+.newTabButton {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 36px;
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: var(--msp-muted, #5c6b82);
+  font-size: 1rem;
+  cursor: pointer;
+  transition: background-color 0.15s, color 0.15s;
+}
+
+.tabsActions {
+  display: flex;
+  flex-shrink: 0;
+  align-items: stretch;
+  border-left: 1px solid var(--msp-border, #c5d0df);
+}
+
+.sortTabsButton {
+  border-right: 1px solid var(--msp-border, #c5d0df);
+}
+
+.sortTabsButton:hover,
+.newTabButton:hover {
+  background: color-mix(in srgb, var(--msp-accent, #2b5fab) 8%, transparent);
+  color: var(--msp-accent, #2b5fab);
+}
+
+.newTabButtonActive {
+  background: var(--msp-page-bg, #d0d9e6);
+  color: var(--msp-accent, #2b5fab);
+  box-shadow: inset 0 -2px 0 var(--msp-accent, #2b5fab);
+}
+
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-3px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.tab {
+  animation: slideIn 0.15s ease-out;
+}
+
+.tab.dragging {
+  opacity: 0.55;
+  cursor: grabbing !important;
+  z-index: 1000;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.14);
+}
+
+.tabStatic {
+  cursor: pointer;
+  touch-action: auto;
+}
+
+.folderGroup {
+  display: flex;
+  align-items: stretch;
+  flex-shrink: 0;
+  gap: 2px;
+}
+
+.folderWrap {
+  position: relative;
+  flex-shrink: 0;
+  display: flex;
+  align-items: stretch;
+}
+
+.folderButton {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  height: calc(100% - 4px);
+  margin-top: 4px;
+  padding: 0 8px;
+  min-width: 0;
+  max-width: 180px;
+  border: 1px solid transparent;
+  border-bottom: none;
+  border-radius: 8px 8px 0 0;
+  background: color-mix(in srgb, var(--msp-surface, #fff) 35%, transparent);
+  color: var(--msp-muted, #5c6b82);
+  cursor: pointer;
+  transition: background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+}
+
+.folderButtonCompact {
+  max-width: 72px;
+  padding: 0 6px;
+}
+
+.folderButton:hover,
+.folderButtonOpen {
+  background: color-mix(in srgb, var(--msp-surface, #fff) 55%, transparent);
+  border-color: var(--msp-border-light, #dde3ed);
+  color: var(--msp-text, #0f1c2e);
+}
+
+.folderButtonIcon {
+  flex-shrink: 0;
+  color: var(--msp-muted-light, #8b9bb5);
+}
+
+.folderButtonLabel {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.folderCount {
+  flex-shrink: 0;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--msp-accent, #2b5fab) 14%, transparent);
+  color: var(--msp-accent, #2b5fab);
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 18px;
+  text-align: center;
+}
+
+.folderChevron {
+  flex-shrink: 0;
+  opacity: 0.75;
+}
+
+.folderDropdown {
+  min-width: 240px;
+  max-width: 360px;
+  max-height: min(320px, 50vh);
+  overflow-y: auto;
+  background: var(--msp-surface, #fff);
+  border: 1px solid var(--msp-border, #c5d0df);
+  border-radius: 0 0 10px 10px;
+  box-shadow: 0 10px 28px rgba(15, 28, 46, 0.14);
+}
+
+.folderDropdownHeader {
+  padding: 8px 12px 6px;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--msp-muted-light, #8b9bb5);
+  border-bottom: 1px solid var(--msp-border-light, #dde3ed);
+}
+
+.folderTabItem {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  border-bottom: 1px solid var(--msp-border-light, #dde3ed);
+}
+
+.folderTabItem:last-child {
+  border-bottom: none;
+}
+
+.folderTabItemBtn {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border: none;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+  color: var(--msp-text, #0f1c2e);
+}
+
+.folderTabItemBtn:hover {
+  background: color-mix(in srgb, var(--msp-accent, #2b5fab) 8%, transparent);
+}
+
+.folderTabItemIcon {
+  flex-shrink: 0;
+  color: var(--msp-muted-light, #8b9bb5);
+}
+
+.folderTabItemLabel {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.folderTabItemClose {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  margin-right: 4px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--msp-muted-light, #8b9bb5);
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.folderTabItemClose:hover {
+  background: color-mix(in srgb, var(--msp-accent, #2b5fab) 12%, transparent);
+  color: var(--msp-text, #0f1c2e);
+}
+
+.tabsBarFolderMode .tabsContainer {
+  gap: 4px;
+}
+
+
+
+:global(html.dark) .tabsBar {
+  background: var(--msp-surface-2, #152035);
+  border-bottom-color: var(--msp-border, #2f4260);
+}
+
+:global(html.dark) .tabsContainer {
+  scrollbar-color: var(--msp-border, #2f4260) transparent;
+}
+
+:global(html.dark) .tabsContainer::-webkit-scrollbar-thumb {
+  background-color: var(--msp-border, #2f4260);
+}
+
+:global(html.dark) .tab:hover {
+  background-color: rgba(255, 255, 255, 0.04);
+  border-color: var(--msp-border, #2f4260);
+}
+
+:global(html.dark) .tab.active {
+  background-color: var(--msp-page-bg, #060a10);
+  border-color: var(--msp-border, #2f4260);
+  box-shadow: inset 0 -2px 0 var(--msp-accent, #4a8fd4);
+}
+
+:global(html.dark) .tabIcon {
+  color: var(--msp-muted-light, #6a88a8);
+}
+
+:global(html.dark) .tab.active .tabIcon {
+  color: var(--msp-accent, #4a8fd4);
+}
+
+:global(html.dark) .tabLabel {
+  color: var(--msp-muted, #8fa8c4);
+}
+
+:global(html.dark) .tab.active .tabLabel {
+  color: var(--msp-text, #e8edf5);
+}
+
+:global(html.dark) .closeButton:hover {
+  background-color: rgba(255, 255, 255, 0.08);
+  color: var(--msp-text, #e8edf5);
+}
+
+:global(html.dark) .tabsActions {
+  border-left-color: var(--msp-border, #2f4260);
+}
+
+:global(html.dark) .sortTabsButton {
+  border-right-color: var(--msp-border, #2f4260);
+}
+
+:global(html.dark) .sortTabsButton,
+:global(html.dark) .newTabButton {
+  color: var(--msp-muted, #8fa8c4);
+}
+
+:global(html.dark) .sortTabsButton:hover,
+:global(html.dark) .newTabButton:hover {
+  background: rgba(74, 143, 212, 0.12);
+  color: var(--msp-accent, #4a8fd4);
+}
+
+:global(html.dark) .newTabButtonActive {
+  background: var(--msp-page-bg, #060a10);
+  color: var(--msp-accent, #4a8fd4);
+  box-shadow: inset 0 -2px 0 var(--msp-accent, #4a8fd4);
+}
+
+:global(html.dark) .tab.dragging {
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.45);
+}
+
+:global(html.dark) .folderButton {
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--msp-muted, #8fa8c4);
+}
+
+:global(html.dark) .folderButton:hover,
+:global(html.dark) .folderButtonOpen {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: var(--msp-border, #2f4260);
+  color: var(--msp-text, #e8edf5);
+}
+
+:global(html.dark) .folderCount {
+  background: rgba(74, 143, 212, 0.18);
+  color: var(--msp-accent, #4a8fd4);
+}
+
+:global(html.dark) .folderDropdown {
+  background: var(--msp-surface-2, #152035);
+  border-color: var(--msp-border, #2f4260);
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.45);
+}
+
+:global(html.dark) .folderDropdownHeader {
+  color: var(--msp-muted-light, #6a88a8);
+  border-bottom-color: var(--msp-border, #2f4260);
+}
+
+:global(html.dark) .folderTabItem {
+  border-bottom-color: var(--msp-border, #2f4260);
+}
+
+:global(html.dark) .folderTabItemBtn {
+  color: var(--msp-text, #e8edf5);
+}
+
+:global(html.dark) .folderTabItemBtn:hover {
+  background: rgba(74, 143, 212, 0.12);
+}
+
+:global(html.dark) .folderTabItemClose:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--msp-text, #e8edf5);
+}

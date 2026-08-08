@@ -1,0 +1,22 @@
+.badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  padding: 0.15rem 0.45rem;
+  border-radius: 999px;
+  background: linear-gradient(135deg, #2b5fab 0%, #1a3d75 100%);
+  color: #fff;
+  font-size: 0.58rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  line-height: 1.2;
+  box-shadow: 0 2px 8px rgba(43, 95, 171, 0.22);
+  pointer-events: none;
+}
+
+.inline {
+  padding: 0.1rem 0.35rem;
+  font-size: 0.52rem;
+}

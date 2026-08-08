@@ -24,13 +24,13 @@
 
 **Veritas** centralizes day-to-day MSP operations: companies and contacts (PSA), support tickets (ITSM), infrastructure supervision, and RMM. Everything runs on your own infrastructure.
 
-| Component | Repository |
-|-----------|------------|
-| API & database | [veritas-backend](https://github.com/veritas-msp/veritas-backend) |
-| Web UI | [veritas-frontend](https://github.com/veritas-msp/veritas-frontend) |
-| Windows RMM agent | [veritas-agent](https://github.com/veritas-msp/veritas-agent) |
+| Component | Path |
+|-----------|------|
+| API & database | `veritas/backend` |
+| Web UI | `veritas/frontend` |
+| Windows RMM agent | `veritas/RMM/Agents/windows` |
 
-Clone the application repositories into the same folder.
+This repository is a monorepo: clone once, then run with Docker or from source.
 
 ## Screenshots
 
@@ -83,7 +83,7 @@ Dedicated sign-in for end users: equipment, documents, and tickets from their co
 | **Docker** | [Docker Desktop](https://www.docker.com/products/docker-desktop/) or Docker Engine + Compose v2 |
 | **From source** | Node.js 20+, PostgreSQL 15+, npm, Git |
 
-Application repositories (`veritas-backend`, `veritas-frontend`) must sit in the same parent folder. Docker Compose builds them from `./veritas-backend` and `./veritas-frontend`.
+Docker Compose builds from `./veritas/backend` and `./veritas/frontend`.
 
 ## Quick start
 
@@ -93,21 +93,15 @@ Pick one deployment path below. Both end at the same setup wizard: http://localh
 
 Best for a quick production-like install on a single machine.
 
-**1. Clone the repositories**
+**1. Clone the repository**
 
 ```bash
-mkdir veritas && cd veritas
-git clone https://github.com/veritas-msp/veritas-backend.git veritas-backend
-git clone https://github.com/veritas-msp/veritas-frontend.git veritas-frontend
-curl -fsSLO https://raw.githubusercontent.com/veritas-msp/veritas/main/docker-compose.yml
-curl -fsSLO https://raw.githubusercontent.com/veritas-msp/veritas/main/.env.docker.example
+git clone https://github.com/veritas-msp/veritas.git
+cd veritas
+cp .env.docker.example .env
 ```
 
 **2. Configure secrets**
-
-```bash
-cp .env.docker.example .env
-```
 
 Edit `.env` and set `JWT_SECRET` and `ENCRYPTION_KEY` (64 random characters each). On PowerShell:
 
@@ -133,50 +127,45 @@ docker compose up -d --build
 
 Data is stored in Docker volumes `veritas-db` and `veritas-uploads`.
 
-### Option B: From source (GitHub clone)
+### Option B: From source
 
 Best for local development with hot reload.
 
-**1. Clone the repositories**
+**1. Clone and install**
 
 ```bash
-mkdir veritas && cd veritas
-git clone https://github.com/veritas-msp/veritas-backend.git veritas-backend
-git clone https://github.com/veritas-msp/veritas-frontend.git veritas-frontend
+git clone https://github.com/veritas-msp/veritas.git
+cd veritas/veritas
+cp backend/.env.example backend/.env
+cp frontend/.env.example frontend/.env
+npm run install:all
 ```
-
-Optional: [veritas-agent](https://github.com/veritas-msp/veritas-agent) for Windows RMM endpoints.
 
 **2. PostgreSQL**
 
 Create an empty database (PostgreSQL 15+). You can leave `DATABASE_URL` empty on first run; the setup wizard will configure it.
 
-**3. Backend**
+**3. Run backend + frontend**
 
 ```bash
-cd veritas-backend
-cp .env.example .env
-npm install
-npm start
+npm run dev
 ```
 
-**4. Frontend** (new terminal)
+Or in two terminals:
 
 ```bash
-cd veritas-frontend
-cp .env.example .env
-npm install
-npm start
+npm run dev:api
+npm run dev:ui
 ```
 
-**5. Finish setup**
+**4. Finish setup**
 
 1. Open http://localhost:3000/setup, run migrations, and create the admin account  
 2. Sign in at http://localhost:3000/login
 
 #### Environment variables (from source)
 
-Set in `veritas-backend/.env`:
+Set in `veritas/backend/.env`:
 
 | Variable | Description |
 |----------|-------------|
@@ -185,7 +174,7 @@ Set in `veritas-backend/.env`:
 | `DATABASE_URL` | PostgreSQL connection string (optional until `/setup`) |
 | `VERITAS_EDITION` | `community` (default) or `pro` |
 
-Set in `veritas-frontend/.env`:
+Set in `veritas/frontend/.env`:
 
 | Variable | Description |
 |----------|-------------|
@@ -202,7 +191,7 @@ Set in `veritas-frontend/.env`:
 
 ## Production
 
-Set public URLs in backend and frontend `.env` files, then put a reverse proxy (nginx, Traefik, Caddy, …) in front of port 3000 for TLS. See each application repo for deployment details.
+Set public URLs in backend and frontend `.env` files, then put a reverse proxy (nginx, Traefik, Caddy, …) in front of port 3000 for TLS.
 
 ## Editions
 

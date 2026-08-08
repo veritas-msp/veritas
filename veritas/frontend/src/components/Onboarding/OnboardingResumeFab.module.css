@@ -1,0 +1,29 @@
+.fab {
+  position: fixed;
+  bottom: 24px;
+  left: 24px;
+  z-index: 12000;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 18px;
+  border: none;
+  border-radius: 999px;
+  background: linear-gradient(135deg, #2b5fab 0%, #1e4a8c 100%);
+  color: #fff;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: 0 8px 28px rgba(43, 95, 171, 0.45);
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.fab:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 32px rgba(43, 95, 171, 0.5);
+}
+
+.icon {
+  width: 20px;
+  height: 20px;
+}

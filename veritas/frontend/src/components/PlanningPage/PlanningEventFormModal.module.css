@@ -1,0 +1,876 @@
+.form {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.footer {
+  flex-shrink: 0;
+}
+
+.footerSpacer {
+  width: 0;
+  flex-shrink: 0;
+}
+
+.deleteBtn {
+  color: #dc2626;
+  border-color: rgba(220, 38, 38, 0.35);
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  flex-shrink: 0;
+}
+
+.deleteBtn:hover:not(:disabled) {
+  border-color: #dc2626;
+  color: #b91c1c;
+  background: rgba(220, 38, 38, 0.06);
+}
+
+
+.typeGrid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+}
+
+.typeBtn {
+  border: 1px solid var(--msp-border, #dde3ed);
+  background: var(--msp-surface, #fff);
+  color: var(--msp-text, #0f1c2e);
+  border-radius: 10px;
+  min-height: 2.25rem;
+  padding: 0.4rem 0.7rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  cursor: pointer;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  line-height: 1.2;
+  transition: border-color 0.15s, background 0.15s, color 0.15s;
+}
+
+.typeBtnIcon {
+  flex-shrink: 0;
+  font-size: 1.05rem;
+}
+
+.typeBtnLabel {
+  white-space: nowrap;
+}
+
+.typeBtn:hover {
+  border-color: var(--msp-accent, #2b5fab);
+  background: var(--msp-accent-soft, rgba(43, 95, 171, 0.08));
+}
+
+.typeBtnActive {
+  border-color: var(--msp-accent, #2b5fab);
+  background: var(--msp-accent-soft, rgba(43, 95, 171, 0.16));
+  color: var(--msp-accent, #2b5fab);
+  box-shadow: 0 0 0 1px rgba(43, 95, 171, 0.12);
+}
+
+
+.autocompleteWrapper {
+  position: relative;
+}
+
+.autocompleteDropdown {
+  position: absolute;
+  top: calc(100% + 0.3rem);
+  left: 0;
+  right: 0;
+  max-height: 220px;
+  overflow-y: auto;
+  border: 1px solid var(--msp-border, #dde3ed);
+  border-radius: 10px;
+  background: var(--msp-surface, #fff);
+  box-shadow: 0 10px 28px rgba(10, 22, 40, 0.14);
+  z-index: 30;
+}
+
+.autocompleteDropdownPortal {
+  overflow-y: auto;
+  border: 1px solid var(--msp-border, #dde3ed);
+  border-radius: 10px;
+  background: var(--msp-surface, #fff);
+  box-shadow: 0 12px 32px rgba(10, 22, 40, 0.18);
+  z-index: var(--modal-dropdown-z-index, calc(var(--modal-overlay-z-index, 11000) + 250));
+}
+
+.autocompleteOption {
+  width: 100%;
+  text-align: left;
+  border: none;
+  background: transparent;
+  padding: 0.55rem 0.8rem;
+  cursor: pointer;
+  font-size: 0.875rem;
+  color: var(--msp-text, #0f1c2e);
+  transition: background 0.12s;
+  white-space: normal;
+  word-break: break-word;
+  line-height: 1.35;
+}
+
+.autocompleteOption:hover,
+.autocompleteOptionActive {
+  background: var(--msp-accent-soft, rgba(43, 95, 171, 0.1));
+  color: var(--msp-accent, #2b5fab);
+}
+
+.autocompleteEmpty {
+  margin: 0;
+  padding: 0.65rem 0.8rem;
+  font-size: 0.8125rem;
+  color: var(--msp-muted, #5c6b82);
+}
+
+
+.richEditorWrapper {
+  border: 1px solid var(--msp-border, #dde3ed);
+  border-radius: 10px;
+  overflow: hidden;
+  background: var(--msp-surface, #fff);
+}
+
+.richEditorWrapper :global(.ql-toolbar.ql-snow) {
+  border: 0;
+  border-bottom: 1px solid var(--msp-border, #eef2f7);
+  background: var(--msp-surface-2, #f8fafc);
+}
+
+.richEditorWrapper :global(.ql-container.ql-snow) {
+  border: 0;
+  min-height: 240px;
+  font-family: inherit;
+}
+
+.richEditorWrapper :global(.ql-editor) {
+  min-height: 240px;
+  font-size: 0.875rem;
+  color: var(--msp-text, #0f1c2e);
+}
+
+.richEditorWrapper :global(.ql-editor.ql-blank::before) {
+  color: var(--msp-muted-light, #94a3b8);
+  font-style: normal;
+}
+
+
+.switchRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 0.65rem;
+  padding-top: 0.5rem;
+  border-top: 1px solid var(--msp-border, #eef2f7);
+}
+
+.switchLabel {
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: var(--msp-text, #0f1c2e);
+}
+
+.switchControl {
+  position: relative;
+  width: 44px;
+  height: 24px;
+  display: inline-flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.switchControl input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.switchSlider {
+  position: absolute;
+  inset: 0;
+  cursor: pointer;
+  border-radius: 999px;
+  background: var(--msp-border, #d1d5db);
+  transition: background-color 0.2s ease;
+}
+
+.switchSlider::before {
+  content: "";
+  position: absolute;
+  width: 18px;
+  height: 18px;
+  left: 3px;
+  top: 3px;
+  border-radius: 999px;
+  background: #fff;
+  transition: transform 0.2s ease;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
+}
+
+.switchControl input:checked + .switchSlider {
+  background: var(--msp-accent, #2b5fab);
+}
+
+.switchControl input:checked + .switchSlider::before {
+  transform: translateX(20px);
+}
+
+
+.assigneePicker {
+  position: relative;
+}
+
+.assigneePickerButton {
+  width: 100%;
+  text-align: left;
+  padding: 0.62rem 0.8rem;
+  border: 1px solid var(--msp-border, #dde3ed);
+  border-radius: 10px;
+  background: var(--msp-surface, #fff);
+  font-size: 0.875rem;
+  cursor: pointer;
+  min-height: 2.5rem;
+  display: flex;
+  align-items: center;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.assigneePickerButton:hover {
+  border-color: var(--msp-accent, #2b5fab);
+}
+
+.assigneeDropdown {
+  position: absolute;
+  top: calc(100% + 0.3rem);
+  left: 0;
+  right: 0;
+  background: var(--msp-surface, #fff);
+  border: 1px solid var(--msp-border, #dde3ed);
+  border-radius: 10px;
+  box-shadow: 0 12px 32px rgba(10, 22, 40, 0.16);
+  padding: 0.55rem;
+  z-index: 30;
+}
+
+.assigneeDropdownPortal {
+  background: var(--msp-surface, #fff);
+  border: 1px solid var(--msp-border, #dde3ed);
+  border-radius: 10px;
+  box-shadow: 0 12px 32px rgba(10, 22, 40, 0.18);
+  padding: 0.55rem;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  z-index: var(--modal-dropdown-z-index, calc(var(--modal-overlay-z-index, 11000) + 250));
+}
+
+.assigneeDropdownSearch {
+  width: 100%;
+  padding: 0.55rem 0.75rem;
+  border: 1px solid var(--msp-border, #dde3ed);
+  border-radius: 8px;
+  font-size: 0.875rem;
+  color: var(--msp-text, #0f1c2e);
+  background: var(--msp-surface, #fff);
+}
+
+.assigneeDropdownSearch:focus {
+  outline: none;
+  border-color: var(--msp-accent, #2b5fab);
+  box-shadow: 0 0 0 3px rgba(43, 95, 171, 0.12);
+}
+
+.assigneeDropdownList {
+  max-height: 180px;
+  overflow-y: auto;
+  margin-top: 0.4rem;
+  flex: 1;
+  min-height: 0;
+}
+
+.assigneeOptionCompact {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  padding: 0.4rem 0.25rem;
+  font-size: 0.8125rem;
+  color: var(--msp-text, #0f1c2e);
+  cursor: pointer;
+  border-radius: 6px;
+}
+
+.assigneeOptionCompact span {
+  white-space: normal;
+  word-break: break-word;
+  line-height: 1.35;
+}
+
+.assigneeOptionCompact:hover {
+  background: var(--msp-accent-soft, rgba(43, 95, 171, 0.06));
+}
+
+.assigneeInlineTags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+.assigneePlaceholder {
+  color: var(--msp-muted-light, #94a3b8);
+}
+
+.assigneeTag {
+  font-size: 0.72rem;
+  background: var(--msp-accent-soft, rgba(43, 95, 171, 0.12));
+  color: var(--msp-accent, #2b5fab);
+  border: 1px solid rgba(43, 95, 171, 0.28);
+  border-radius: 999px;
+  padding: 0.14rem 0.55rem;
+}
+
+.helperText {
+  margin: 0.35rem 0 0;
+  color: var(--msp-muted, #5c6b82);
+  font-size: 0.8125rem;
+  line-height: 1.4;
+}
+
+
+.objectsToolbar {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+}
+
+.objectTypeButtons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.objectTypeButton {
+  border: 1px solid var(--msp-border, #dde3ed);
+  background: var(--msp-surface, #fff);
+  border-radius: 999px;
+  padding: 0.3rem 0.65rem;
+  font-size: 0.75rem;
+  color: var(--msp-text, #0f1c2e);
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s, color 0.15s;
+}
+
+.objectTypeButton:hover {
+  border-color: var(--msp-accent, #2b5fab);
+  background: var(--msp-accent-soft, rgba(43, 95, 171, 0.08));
+}
+
+.objectTypeButtonActive {
+  border-color: var(--msp-accent, #2b5fab);
+  background: var(--msp-accent-soft, rgba(43, 95, 171, 0.16));
+  color: var(--msp-accent, #2b5fab);
+}
+
+.linkedLoader {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+  color: var(--msp-muted, #5c6b82);
+  font-size: 0.875rem;
+  padding: 0.35rem 0;
+}
+
+.loaderSpinner {
+  width: 0.95rem;
+  height: 0.95rem;
+  border-radius: 999px;
+  border: 2px solid rgba(43, 95, 171, 0.2);
+  border-top-color: var(--msp-accent, #2b5fab);
+  animation: spinLoader 0.85s linear infinite;
+}
+
+@keyframes spinLoader {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.objectList {
+  margin-top: 0.65rem;
+  border: 1px solid var(--msp-border, #dde3ed);
+  border-radius: 10px;
+  max-height: 360px;
+  overflow-y: auto;
+  background: var(--msp-surface, #fff);
+}
+
+.objectRow {
+  display: grid;
+  grid-template-columns: auto auto 1fr auto auto;
+  align-items: center;
+  gap: 0.55rem;
+  padding: 0.55rem 0.75rem;
+  border-bottom: 1px solid var(--msp-border, #eef2f7);
+  font-size: 0.8125rem;
+  cursor: pointer;
+  transition: background 0.12s;
+}
+
+.objectRow:last-child {
+  border-bottom: none;
+}
+
+.objectRow:hover {
+  background: var(--msp-surface-2, #f8fafc);
+}
+
+.objectRowIcon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1rem;
+  color: var(--msp-accent, #2b5fab);
+}
+
+.objectRowLabel {
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--msp-text, #0f1c2e);
+}
+
+.objectRowType {
+  color: var(--msp-muted, #5c6b82);
+  font-size: 0.75rem;
+}
+
+.objectRowGroup {
+  color: var(--msp-accent, #2b5fab);
+  background: var(--msp-accent-soft, rgba(43, 95, 171, 0.1));
+  border: 1px solid rgba(43, 95, 171, 0.22);
+  border-radius: 999px;
+  padding: 0.12rem 0.45rem;
+  font-size: 0.7rem;
+  white-space: nowrap;
+}
+
+
+.todoComposer {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+  padding: 0.85rem;
+  border: 1px solid var(--msp-border, #dde3ed);
+  border-radius: 12px;
+  background: var(--msp-surface-2, #f8fafc);
+}
+
+.todoComposerInput {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 0.62rem 0.8rem;
+  border: 1px solid var(--msp-border, #dde3ed);
+  border-radius: 10px;
+  background: var(--msp-surface, #fff);
+  color: var(--msp-text, #0f1c2e);
+  font-size: 0.875rem;
+  font-family: inherit;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.todoComposerInput:focus {
+  outline: none;
+  border-color: var(--msp-accent, #2b5fab);
+  box-shadow: 0 0 0 3px var(--msp-accent-soft, rgba(43, 95, 171, 0.12));
+}
+
+.todoComposerInput::placeholder {
+  color: var(--msp-muted-light, #94a3b8);
+}
+
+.todoColorPicker {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.todoColorPickerCompact {
+  max-width: 9.5rem;
+}
+
+.todoColorSwatch {
+  width: 1.35rem;
+  height: 1.35rem;
+  border-radius: 999px;
+  border: 2px solid transparent;
+  background: var(--swatch-color, #15d1a0);
+  cursor: pointer;
+  padding: 0;
+  flex-shrink: 0;
+  transition: transform 0.12s, box-shadow 0.12s;
+}
+
+.todoColorSwatch:hover {
+  transform: scale(1.06);
+}
+
+.todoColorSwatchActive {
+  box-shadow: 0 0 0 2px var(--msp-surface, #fff), 0 0 0 4px var(--swatch-color, #15d1a0);
+}
+
+.todoColorCustom {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.55rem;
+  height: 1.55rem;
+  border-radius: 999px;
+  border: 1px dashed var(--msp-border, #dde3ed);
+  background: var(--msp-surface, #fff);
+  cursor: pointer;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.todoColorCustom input {
+  width: 150%;
+  height: 150%;
+  padding: 0;
+  border: none;
+  cursor: pointer;
+}
+
+.todoAddButton {
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  border: 1px solid var(--msp-accent, #2b5fab);
+  color: #fff;
+  background: var(--msp-accent, #2b5fab);
+  border-radius: 10px;
+  min-height: 2.25rem;
+  padding: 0 0.85rem;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.todoAddButton:hover {
+  background: #234d91;
+  border-color: #234d91;
+}
+
+.todoEmpty {
+  margin: 0.85rem 0 0;
+  padding: 0.85rem 1rem;
+  border: 1px dashed var(--msp-border, #dde3ed);
+  border-radius: 10px;
+  color: var(--msp-muted, #5c6b82);
+  font-size: 0.875rem;
+  background: var(--msp-surface-2, #f8fafc);
+}
+
+.inlineComposer {
+  display: flex;
+  gap: 0.5rem;
+  align-items: flex-start;
+}
+
+.inlineAddButton {
+  margin-top: 0.1rem;
+  border: 1px solid var(--msp-accent, #2b5fab);
+  color: var(--msp-accent, #2b5fab);
+  background: transparent;
+  border-radius: 10px;
+  min-width: 2.25rem;
+  height: 2.25rem;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: background 0.15s, color 0.15s;
+}
+
+.inlineAddButton:hover {
+  background: var(--msp-accent-soft, rgba(43, 95, 171, 0.1));
+}
+
+.todoColorInput {
+  width: 2.25rem;
+  min-width: 2.25rem;
+  height: 2.25rem;
+  border: 1px solid var(--msp-border, #dde3ed);
+  border-radius: 10px;
+  padding: 0;
+  background: var(--msp-surface, #fff);
+  cursor: pointer;
+  flex-shrink: 0;
+  overflow: hidden;
+}
+
+.itemsList {
+  margin-top: 0.85rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  max-height: 320px;
+  overflow-y: auto;
+  padding-right: 0.2rem;
+}
+
+.itemRow {
+  display: grid;
+  grid-template-columns: auto auto minmax(0, 1fr) auto auto;
+  align-items: center;
+  column-gap: 0.45rem;
+  row-gap: 0.35rem;
+  border: 1px solid var(--msp-border, #dde3ed);
+  border-left: 4px solid var(--todo-color, var(--msp-accent, #2b5fab));
+  border-radius: 10px;
+  padding: 0.55rem 0.55rem 0.55rem 0.35rem;
+  background: var(--msp-surface, #fff);
+}
+
+.itemRowDragOver {
+  border-color: var(--msp-accent, #2b5fab);
+  background: var(--msp-accent-soft, rgba(43, 95, 171, 0.08));
+}
+
+.todoDragHandle {
+  border: none;
+  background: transparent;
+  color: var(--msp-muted-light, #94a3b8);
+  width: 1.25rem;
+  height: 1.25rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: grab;
+  padding: 0;
+}
+
+.todoDragHandle:active {
+  cursor: grabbing;
+}
+
+.todoDragHandle:hover {
+  color: var(--msp-muted, #5c6b82);
+}
+
+.todoCheckbox {
+  margin: 0;
+  width: 1rem;
+  height: 1rem;
+  justify-self: start;
+}
+
+.todoTextButton,
+.todoEditInput {
+  min-width: 0;
+  width: 100%;
+  text-align: left;
+  font-size: 0.875rem;
+  color: var(--msp-text, #0f1c2e);
+  box-sizing: border-box;
+}
+
+.todoTextButton {
+  border: none;
+  background: transparent;
+  padding: 0.35rem 0.45rem;
+  border-radius: 8px;
+  cursor: text;
+  white-space: normal;
+  word-break: break-word;
+  line-height: 1.35;
+}
+
+.todoTextButton:hover {
+  background: var(--msp-surface-2, #f8fafc);
+}
+
+.todoEditInput {
+  border: 1px solid var(--msp-accent, #2b5fab);
+  border-radius: 8px;
+  padding: 0.35rem 0.45rem;
+  background: var(--msp-surface, #fff);
+  font-family: inherit;
+}
+
+.todoEditInput:focus {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--msp-accent-soft, rgba(43, 95, 171, 0.12));
+}
+
+.todoRowActions {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.15rem;
+  justify-self: end;
+}
+
+.todoEditBtn {
+  border: none;
+  background: transparent;
+  color: var(--msp-muted, #5c6b82);
+  cursor: pointer;
+  padding: 0.2rem;
+  display: inline-flex;
+  align-items: center;
+  border-radius: 6px;
+  transition: background 0.12s, color 0.12s;
+}
+
+.todoEditBtn:hover {
+  background: var(--msp-surface-2, #f8fafc);
+  color: var(--msp-accent, #2b5fab);
+}
+
+.itemDone {
+  text-decoration: line-through;
+  color: var(--msp-muted, #5c6b82);
+}
+
+.itemDeleteBtn {
+  border: none;
+  background: transparent;
+  color: #dc2626;
+  cursor: pointer;
+  justify-self: end;
+  flex-shrink: 0;
+  padding: 0.2rem;
+  display: inline-flex;
+  align-items: center;
+  border-radius: 6px;
+  transition: background 0.12s;
+}
+
+.itemDeleteBtn:hover {
+  background: rgba(220, 38, 38, 0.08);
+}
+
+.noteCards {
+  margin-top: 0.85rem;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.75rem;
+}
+
+.noteCard {
+  border: 1px solid var(--msp-border, #dde3ed);
+  border-radius: 10px;
+  padding: 0.75rem;
+  background: var(--msp-surface-2, #f8fafc);
+}
+
+.noteCard p {
+  margin: 0 0 0.5rem;
+  white-space: pre-wrap;
+  font-size: 0.875rem;
+  color: var(--msp-text, #0f1c2e);
+  line-height: 1.45;
+}
+
+.noteCardFooter {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 0.72rem;
+  color: var(--msp-muted, #5c6b82);
+}
+
+
+:global(.dark) .typeBtn,
+:global(.dark) .assigneePickerButton,
+:global(.dark) .assigneeDropdown,
+:global(.dark) .autocompleteDropdown,
+:global(.dark) .objectList,
+:global(.dark) .noteCard,
+:global(.dark) .itemRow,
+:global(.dark) .todoComposer,
+:global(.dark) .todoEmpty,
+:global(.dark) .richEditorWrapper {
+  background: var(--msp-surface, #1e293b);
+  border-color: var(--msp-border, #334155);
+  color: var(--msp-text, #f1f5f9);
+}
+
+:global(.dark) .typeBtnActive,
+:global(.dark) .objectTypeButtonActive {
+  background: rgba(43, 95, 171, 0.22);
+}
+
+:global(.dark) .assigneeTag {
+  background: rgba(43, 95, 171, 0.2);
+  border-color: rgba(43, 95, 171, 0.35);
+}
+
+:global(.dark) .richEditorWrapper :global(.ql-toolbar.ql-snow) {
+  background: var(--msp-surface-2, #0f172a);
+  border-color: var(--msp-border, #334155);
+}
+
+:global(.dark) .richEditorWrapper :global(.ql-stroke) {
+  stroke: #94a3b8;
+}
+
+:global(.dark) .richEditorWrapper :global(.ql-fill) {
+  fill: #94a3b8;
+}
+
+:global(.dark) .richEditorWrapper :global(.ql-picker),
+:global(.dark) .richEditorWrapper :global(.ql-picker-label),
+:global(.dark) .richEditorWrapper :global(.ql-picker-item),
+:global(.dark) .richEditorWrapper :global(.ql-editor) {
+  color: var(--msp-text, #f1f5f9);
+}
+
+:global(.dark) .richEditorWrapper :global(.ql-snow.ql-toolbar button:hover),
+:global(.dark) .richEditorWrapper :global(.ql-snow .ql-toolbar button:hover),
+:global(.dark) .richEditorWrapper :global(.ql-snow.ql-toolbar button.ql-active),
+:global(.dark) .richEditorWrapper :global(.ql-snow .ql-toolbar button.ql-active) {
+  color: var(--msp-accent, #4a7fd4);
+}
+
+:global(.dark) .todoComposerInput,
+:global(.dark) .todoEditInput,
+:global(.dark) .todoColorCustom {
+  background: var(--msp-surface, #1e293b);
+  border-color: var(--msp-border, #334155);
+  color: var(--msp-text, #f1f5f9);
+}
+
+:global(.dark) .todoTextButton:hover,
+:global(.dark) .todoEditBtn:hover {
+  background: var(--msp-surface-2, #0f172a);
+}
+
+@media (max-width: 768px) {
+  .noteCards {
+    grid-template-columns: 1fr;
+  }
+
+  .objectRow {
+    grid-template-columns: auto auto 1fr;
+  }
+
+  .objectRowType,
+  .objectRowGroup {
+    display: none;
+  }
+}

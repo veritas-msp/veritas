@@ -1,0 +1,84 @@
+@import url('./styles/theme.css');
+@import url('./styles/modal-overlays.css');
+@import url('./styles/msp-page-grid.css');
+@import url('./styles/msp-page-insight.css');
+
+html {
+  background-color: var(--bg-primary);
+  transition: background-color 0.3s ease;
+  height: 100%;
+  overflow-x: hidden;
+}
+
+body {
+  margin: 0;
+  font-family: 'Segoe UI', 'Roboto', 'Oxygen',
+    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
+    sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  background-color: var(--bg-primary);
+  transition: background-color 0.3s ease;
+  height: 100%;
+  overflow-x: hidden;
+  color: var(--text-primary);
+}
+
+code {
+  font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
+    monospace;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+
+#root {
+  background-color: var(--bg-primary);
+  height: 100%;
+  transition: background-color 0.3s ease;
+  overflow-x: hidden;
+}
+
+
+html.dark,
+body.dark,
+#root.dark {
+  background-color: #0f0f23 !important;
+}
+
+
+html.dark::-webkit-scrollbar {
+  width: 12px;
+}
+
+html.dark::-webkit-scrollbar-track {
+  background: #1a1a2e;
+}
+
+html.dark::-webkit-scrollbar-thumb {
+  background: #3a3a5a;
+  border-radius: 6px;
+}
+
+html.dark::-webkit-scrollbar-thumb:hover {
+  background: #4a4a6a;
+}
+
+body.dark::-webkit-scrollbar {
+  width: 12px;
+}
+
+body.dark::-webkit-scrollbar-track {
+  background: #1a1a2e;
+}
+
+body.dark::-webkit-scrollbar-thumb {
+  background: #3a3a5a;
+  border-radius: 6px;
+}
+
+body.dark::-webkit-scrollbar-thumb:hover {
+  background: #4a4a6a;
+}

@@ -1,0 +1,363 @@
+.palette {
+  width: 220px;
+  border-right: 1px solid var(--msp-border-light, #eef2f7);
+  background: var(--msp-surface, #fff);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.paletteHead {
+  padding: 0.85rem 0.85rem 0.5rem;
+  border-bottom: 1px solid var(--msp-border-light, #eef2f7);
+}
+
+.paletteTitle {
+  margin: 0;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--msp-muted);
+}
+
+.paletteList {
+  padding: 0.65rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  overflow: auto;
+}
+
+.paletteItem {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  padding: 0.55rem 0.65rem;
+  border: 1px solid var(--msp-border-light, #eef2f7);
+  border-radius: 10px;
+  background: var(--msp-surface-2, #f8fafc);
+  cursor: grab;
+  font-size: 0.82rem;
+  color: var(--msp-text);
+  user-select: none;
+}
+
+.paletteItem:active {
+  cursor: grabbing;
+}
+
+.paletteItemIcon {
+  font-size: 1.05rem;
+  color: var(--msp-accent);
+}
+
+.canvasWrap {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  background: var(--msp-surface-2, #f4f7fb);
+  overflow: hidden;
+}
+
+.canvasHead {
+  padding: 1rem 1.25rem 0.75rem;
+  border-bottom: 1px solid var(--msp-border-light, #eef2f7);
+  background: var(--msp-surface, #fff);
+}
+
+.canvasTitle {
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 700;
+}
+
+.canvasDesc {
+  margin: 0.25rem 0 0;
+  font-size: 0.82rem;
+  color: var(--msp-muted);
+}
+
+.canvasBody {
+  flex: 1;
+  overflow: auto;
+  padding: 1.25rem;
+}
+
+.canvasDropZone {
+  min-height: 100%;
+  border: 2px dashed var(--msp-border, #dbe3ee);
+  border-radius: 14px;
+  background: var(--msp-surface, #fff);
+  padding: 1rem;
+  transition: border-color 0.15s, background 0.15s;
+}
+
+.canvasDropZoneActive {
+  border-color: var(--msp-accent);
+  background: var(--msp-accent-soft, rgba(59, 130, 246, 0.06));
+}
+
+.canvasEmpty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  min-height: 220px;
+  color: var(--msp-muted);
+  text-align: center;
+  font-size: 0.88rem;
+}
+
+.canvasFieldList {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+}
+
+.canvasField {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 0.65rem;
+  align-items: start;
+  padding: 0.85rem 0.9rem;
+  border: 1px solid var(--msp-border-light, #eef2f7);
+  border-radius: 12px;
+  background: var(--msp-surface, #fff);
+  cursor: pointer;
+  transition: border-color 0.12s, box-shadow 0.12s;
+}
+
+.canvasField:hover {
+  border-color: var(--msp-border, #dbe3ee);
+}
+
+.canvasFieldSelected {
+  border-color: var(--msp-accent);
+  box-shadow: 0 0 0 1px var(--msp-accent);
+}
+
+.canvasFieldDragging {
+  opacity: 0.45;
+}
+
+.canvasFieldHandle {
+  display: flex;
+  align-items: center;
+  color: var(--msp-muted);
+  cursor: grab;
+  padding-top: 0.15rem;
+}
+
+.canvasFieldHandle:active {
+  cursor: grabbing;
+}
+
+.canvasFieldPreview label {
+  display: block;
+  font-size: 0.78rem;
+  font-weight: 600;
+  margin-bottom: 0.35rem;
+}
+
+.canvasFieldPreview input,
+.canvasFieldPreview textarea,
+.canvasFieldPreview select {
+  width: 100%;
+  border: 1px solid var(--msp-border-light, #eef2f7);
+  border-radius: 8px;
+  padding: 0.45rem 0.6rem;
+  font-size: 0.82rem;
+  background: var(--msp-surface-2, #f8fafc);
+  pointer-events: none;
+}
+
+.canvasFieldMeta {
+  font-size: 0.72rem;
+  color: var(--msp-muted);
+  margin-top: 0.25rem;
+}
+
+.canvasFieldActions {
+  display: flex;
+  gap: 0.25rem;
+}
+
+.propsPanel {
+  width: 340px;
+  border-left: 1px solid var(--msp-border-light, #eef2f7);
+  background: var(--msp-surface, #fff);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.propsHead {
+  padding: 0.85rem 1rem;
+  border-bottom: 1px solid var(--msp-border-light, #eef2f7);
+}
+
+.propsTitle {
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 700;
+}
+
+.propsTabs {
+  display: flex;
+  gap: 0.35rem;
+  padding: 0.65rem 1rem 0;
+  border-bottom: 1px solid var(--msp-border-light, #eef2f7);
+}
+
+.propsTab {
+  padding: 0.45rem 0.75rem;
+  border: none;
+  border-bottom: 2px solid transparent;
+  background: none;
+  font-size: 0.82rem;
+  color: var(--msp-muted);
+  cursor: pointer;
+}
+
+.propsTabActive {
+  color: var(--msp-accent);
+  border-bottom-color: var(--msp-accent);
+  font-weight: 600;
+}
+
+.propsBody {
+  flex: 1;
+  overflow: auto;
+  padding: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+}
+
+.propsFooter {
+  padding: 0.85rem 1rem;
+  border-top: 1px solid var(--msp-border-light, #eef2f7);
+  display: flex;
+  gap: 0.5rem;
+}
+
+.builderNav {
+  width: 56px;
+  border-right: 1px solid var(--msp-border-light, #eef2f7);
+  background: var(--msp-surface, #fff);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 0.65rem 0;
+  gap: 0.35rem;
+}
+
+.builderNavBtn {
+  width: 40px;
+  height: 40px;
+  border: none;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--msp-muted);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.15rem;
+}
+
+.builderNavBtn:hover {
+  background: var(--msp-surface-2, #f4f7fb);
+  color: var(--msp-text);
+}
+
+.builderNavBtnActive {
+  background: var(--msp-accent-soft, rgba(59, 130, 246, 0.12));
+  color: var(--msp-accent);
+}
+
+.builderMain {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  overflow: hidden;
+}
+
+.builderContent {
+  flex: 1;
+  min-width: 0;
+  overflow: auto;
+  padding: 1.25rem;
+}
+
+.builderShellWide {
+  width: min(1480px, 98vw) !important;
+  max-width: 98vw !important;
+  height: min(920px, 94vh) !important;
+  max-height: 94vh !important;
+}
+
+.builderBody {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.visibilityModes {
+  display: flex;
+  gap: 0.35rem;
+  flex-wrap: wrap;
+}
+
+.visibilityModeBtn {
+  flex: 1;
+  min-width: 0;
+  padding: 0.45rem 0.55rem;
+  border: 1px solid var(--msp-border-light, #eef2f7);
+  border-radius: 8px;
+  background: var(--msp-surface-2, #f8fafc);
+  font-size: 0.78rem;
+  cursor: pointer;
+}
+
+.visibilityModeBtnActive {
+  border-color: var(--msp-accent);
+  background: var(--msp-accent-soft, rgba(59, 130, 246, 0.1));
+  color: var(--msp-accent);
+}
+
+@media (max-width: 1100px) {
+  .palette {
+    width: 180px;
+  }
+
+  .propsPanel {
+    width: 300px;
+  }
+}
+
+@media (max-width: 900px) {
+  .builderShellWide {
+    width: 100vw !important;
+    height: 100vh !important;
+    max-height: 100vh !important;
+    border-radius: 0 !important;
+  }
+
+  .palette {
+    display: none;
+  }
+
+  .propsPanel {
+    position: absolute;
+    right: 0;
+    top: 0;
+    bottom: 0;
+    z-index: 2;
+    box-shadow: -8px 0 24px rgba(15, 23, 42, 0.12);
+  }
+}

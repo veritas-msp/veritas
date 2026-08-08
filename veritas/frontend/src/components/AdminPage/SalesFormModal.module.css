@@ -1,0 +1,225 @@
+.formBlocks {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.iconSection {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+  padding-top: 0.25rem;
+}
+
+.suggestGrid {
+  display: grid;
+  gap: 1.25rem;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  margin-top: 0.65rem;
+}
+
+.assignmentPanel {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  margin-top: 0.65rem;
+}
+
+.assignmentList {
+  max-height: 9rem;
+  overflow: auto;
+  margin-top: 0.5rem;
+  border: 1px solid var(--msp-border-light, #eef2f7);
+  border-radius: 10px;
+  padding: 0.5rem 0.65rem;
+}
+
+.assignmentItem {
+  display: flex;
+  gap: 0.45rem;
+  font-size: 0.82rem;
+  padding: 0.25rem 0;
+  align-items: center;
+}
+
+.fieldRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.65rem 0;
+  border-bottom: 1px solid var(--msp-border-light, #eef2f7);
+}
+
+.fieldRowMeta {
+  font-size: 0.78rem;
+  color: var(--msp-muted);
+  margin-top: 0.15rem;
+}
+
+.hint {
+  margin: 0.5rem 0 0;
+  font-size: 0.78rem;
+  color: var(--msp-muted);
+  line-height: 1.5;
+}
+
+.chipRow {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.fieldsEditor {
+  margin-top: 1.25rem;
+}
+
+.fieldsActions {
+  display: flex;
+  gap: 0.65rem;
+  margin-top: 1rem;
+}
+
+.targetRulesWrap {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.targetRuleCard {
+  border: 1px solid var(--msp-border-light, #eef2f7);
+  border-radius: 12px;
+  padding: 1rem;
+  background: var(--msp-surface-2, rgba(255, 255, 255, 0.02));
+}
+
+.targetRuleHead {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.targetRuleTitleRow {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex: 1;
+}
+
+.targetRuleIndex {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--msp-muted);
+  min-width: 1.5rem;
+}
+
+.targetRuleActions {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.inlineCheck {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.82rem;
+  white-space: nowrap;
+}
+
+.targetRuleSection {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+  padding-top: 0.85rem;
+  border-top: 1px solid var(--msp-border-light, #eef2f7);
+}
+
+.targetRuleSection + .targetRuleSection {
+  margin-top: 0.85rem;
+}
+
+.targetRuleSectionHead {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.targetPropsGrid {
+  margin-top: 0.35rem;
+}
+
+.conditionRow {
+  display: grid;
+  grid-template-columns: minmax(120px, 1.2fr) minmax(110px, 0.9fr) minmax(120px, 1fr) auto;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.conditionHint {
+  font-size: 0.78rem;
+  color: var(--msp-muted);
+  padding: 0.45rem 0;
+}
+
+.emptyRuleHint {
+  margin: 0;
+  font-size: 0.82rem;
+  color: var(--msp-muted);
+}
+
+.linkBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--msp-accent);
+  font-size: 0.82rem;
+  cursor: pointer;
+}
+
+.addRuleBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+  width: fit-content;
+  padding: 0.55rem 0.85rem;
+  border: 1px dashed var(--msp-border);
+  border-radius: 10px;
+  background: transparent;
+  color: var(--msp-accent);
+  cursor: pointer;
+}
+
+.iconBtnDanger {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--msp-muted);
+  cursor: pointer;
+}
+
+.iconBtnDanger:hover {
+  color: #dc2626;
+  background: rgba(220, 38, 38, 0.08);
+}
+
+@media (max-width: 720px) {
+  .conditionRow {
+    grid-template-columns: 1fr;
+  }
+
+  .targetRuleHead {
+    flex-direction: column;
+  }
+}

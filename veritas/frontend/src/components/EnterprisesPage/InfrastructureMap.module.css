@@ -1,0 +1,690 @@
+.map {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.mapHeader {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.65rem 1rem;
+}
+
+.mapSummary {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.mapSummaryTotal {
+  font-size: 0.8125rem;
+  color: var(--msp-muted, #5c6b82);
+}
+
+.mapSummaryTotal strong {
+  color: var(--msp-text, #0f1c2e);
+  font-weight: 700;
+}
+
+.mapBadge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.15rem 0.5rem;
+  border-radius: 999px;
+  font-size: 0.68rem;
+  font-weight: 600;
+}
+
+.mapBadgeCritical {
+  background: rgba(239, 68, 68, 0.12);
+  color: #dc2626;
+  border: 1px solid rgba(239, 68, 68, 0.35);
+}
+
+.mapBadgeWarning {
+  background: rgba(245, 158, 11, 0.12);
+  color: #b45309;
+  border: 1px solid rgba(245, 158, 11, 0.35);
+}
+
+.legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 0.75rem;
+}
+
+.legendItem {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: 0.68rem;
+  color: var(--msp-muted, #5c6b82);
+}
+
+.legendSwatch {
+  width: 0.55rem;
+  height: 0.55rem;
+  border-radius: 2px;
+  flex-shrink: 0;
+}
+
+.mapCard {
+  border: 1px solid var(--msp-border, #e2e8f0);
+  border-radius: var(--msp-radius-sm, 10px);
+  background: linear-gradient(160deg, var(--msp-surface, #fff) 0%, var(--msp-surface-2, #f7f9fc) 100%);
+  overflow: visible;
+}
+
+.mapLegendBar {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  padding: 0 0.15rem;
+}
+
+.mapCardEmpty {
+  opacity: 0.95;
+}
+
+.mapCanvas {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 100%;
+  min-height: 0;
+  padding: 1.25rem 0.75rem 1.5rem;
+  overflow-x: auto;
+  overflow-y: visible;
+}
+
+.mapLayout {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+  width: 100%;
+  max-width: 100%;
+}
+
+.mapHoneycomb {
+  width: 100%;
+  max-width: 100%;
+  display: flex;
+  justify-content: center;
+  flex-shrink: 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+}
+
+.mapModulesBar {
+  display: flex;
+  justify-content: center;
+  width: 100%;
+  max-width: 68rem;
+  padding: 0.9rem 0.75rem 0.15rem;
+  border-top: 1px solid var(--msp-border-light, rgba(15, 28, 46, 0.08));
+}
+
+.mapModulesRow {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: flex-start;
+  gap: 1.25rem 2rem;
+  width: 100%;
+}
+
+.mapModuleGroup {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.45rem;
+  min-width: 0;
+}
+
+.mapModuleZoneLabel {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 1rem;
+  font-size: 0.62rem;
+  font-weight: 800;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--msp-muted, #5c6b82);
+  white-space: nowrap;
+  text-align: center;
+}
+
+.brickRow {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: flex-start;
+  gap: 0.4rem;
+}
+
+.brickNode {
+  border: none;
+  background: transparent;
+  padding: 0;
+  cursor: default;
+  width: 5.5rem;
+  flex-shrink: 0;
+}
+
+.brickNode:not(.brickNodePlaceholder) {
+  cursor: pointer;
+}
+
+.brickInner {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.2rem;
+  width: 5.5rem;
+  min-height: 4.9rem;
+  padding: 0.5rem 0.3rem 0.42rem;
+  border-radius: 0.55rem;
+  background: var(--brick-soft);
+  border: none;
+  box-shadow: none;
+  transition: transform 0.15s ease, background 0.15s ease;
+}
+
+.brickNode:not(.brickNodePlaceholder):hover .brickInner {
+  transform: translateY(-2px) scale(1.03);
+}
+
+.brickNodeProLocked {
+  opacity: 0.78;
+}
+
+.brickNodeComingSoon {
+  opacity: 0.82;
+}
+
+.brickNodeComingSoon .brickInner {
+  border: 1px dashed color-mix(in srgb, #d97706 35%, #e2e8f0);
+}
+
+.brickComingSoonBadge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  padding: 0.1rem 0.35rem;
+  border-radius: 999px;
+  background: rgba(245, 158, 11, 0.14);
+  color: #b45309;
+  border: 1px solid rgba(245, 158, 11, 0.35);
+  font-size: 0.52rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  line-height: 1.2;
+  pointer-events: none;
+}
+
+.brickNodeProLocked .brickInner {
+  border: 1px dashed color-mix(in srgb, var(--brick-accent, #94a3b8) 35%, #cbd5e1);
+}
+
+.brickProBadge {
+  margin-top: 0.05rem;
+  flex-shrink: 0;
+}
+
+.brickNode:focus-visible {
+  outline: none;
+}
+
+.brickNode:focus-visible .brickInner {
+  outline: none;
+}
+
+.brickIcon {
+  font-size: 1.25rem;
+  color: var(--brick-accent);
+  flex-shrink: 0;
+}
+
+.hexName,
+.brickName {
+  font-size: 0.625rem;
+  font-weight: 600;
+  line-height: 1.15;
+  text-align: center;
+  color: var(--msp-text, #0f1c2e);
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  word-break: break-word;
+}
+
+.brickName {
+  max-width: 4.2rem;
+}
+
+.brickNodePlaceholder {
+  pointer-events: none;
+  opacity: 0.55;
+}
+
+.brickNodeOk .brickIcon {
+  color: var(--brick-accent);
+}
+
+.brickNodeUnmonitored .brickInner {
+  opacity: 0.92;
+}
+
+.brickNodeIssue .brickInner {
+  box-shadow: inset 0 0 0 2px var(--brick-accent);
+}
+
+.brickNodeActive .brickInner {
+  background: var(--brick-soft);
+  transform: scale(1.03);
+}
+
+.skeletonBrick {
+  width: 5.5rem;
+  min-height: 4.9rem;
+  border-radius: 0.65rem;
+  background: linear-gradient(
+    90deg,
+    var(--msp-border-light, #eef2f7) 25%,
+    var(--msp-border, #e2e8f0) 50%,
+    var(--msp-border-light, #eef2f7) 75%
+  );
+  background-size: 200% 100%;
+  animation: infraShimmer 1.4s infinite;
+}
+
+@media (max-width: 480px) {
+  .hexClusterViewport {
+    transform: scale(0.92);
+    transform-origin: center center;
+  }
+}
+
+
+.hexClusterViewport {
+  position: relative;
+  flex-shrink: 0;
+  margin: 0 auto;
+}
+
+
+.hexCluster {
+  --hex-layout-scale: 1;
+  --hex-w: calc(6.25rem * var(--hex-layout-scale));
+  --hex-h: calc(7.2rem * var(--hex-layout-scale));
+  --hex-w-featured: calc(6.75rem * var(--hex-layout-scale));
+  --hex-h-featured: calc(7.75rem * var(--hex-layout-scale));
+  position: relative;
+  margin: 0 auto;
+  flex-shrink: 0;
+  transform-origin: center center;
+}
+
+.hexSlot {
+  --hex-w: calc(6.25rem * var(--hex-layout-scale, 1));
+  --hex-h: calc(7.2rem * var(--hex-layout-scale, 1));
+  position: absolute;
+  left: calc(50% + var(--hex-x, 0rem));
+  top: calc(50% + var(--hex-y, 0rem));
+  width: var(--hex-w);
+  transform: translate(-50%, -50%);
+}
+
+.hexSlotFeatured {
+  --hex-w: var(--hex-w-featured);
+  --hex-h: var(--hex-h-featured);
+  z-index: 2;
+}
+
+.hexSlotFeatured .hexIcon {
+  font-size: 1.35rem;
+}
+
+.hexSlotFeatured .hexName {
+  max-width: calc(4.6rem * var(--hex-layout-scale, 1));
+}
+
+.hexNodeCustom .hexName {
+  max-width: calc(5rem * var(--hex-layout-scale, 1));
+  -webkit-line-clamp: 3;
+  hyphens: auto;
+}
+
+.hexNode {
+  border: none;
+  background: transparent;
+  padding: 0;
+  cursor: pointer;
+  position: relative;
+  flex-shrink: 0;
+}
+
+.hexShape {
+  display: block;
+  width: var(--hex-w, 6.25rem);
+  height: var(--hex-h, 7.2rem);
+  position: relative;
+  transition: transform 0.15s ease;
+}
+
+.hexInner {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.2rem;
+  padding: 0.55rem 0.35rem 0.45rem;
+  clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
+  background: color-mix(in srgb, var(--hex-soft) 88%, var(--hex-accent) 12%);
+  border: none;
+  box-shadow:
+    0 2px 6px rgba(15, 28, 46, 0.1),
+    inset 0 1px 0 rgba(255, 255, 255, 0.45);
+  outline: none;
+  box-sizing: border-box;
+  transition: background 0.15s ease, transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.hexNode:hover .hexShape {
+  transform: translateY(-3px) scale(1.05);
+}
+
+.hexNode:hover .hexInner {
+  background: color-mix(in srgb, var(--hex-soft) 78%, var(--hex-accent) 22%);
+  box-shadow:
+    0 4px 10px rgba(15, 28, 46, 0.14),
+    inset 0 1px 0 rgba(255, 255, 255, 0.5);
+}
+
+.hexNode:focus-visible {
+  outline: none;
+}
+
+.hexNode:focus-visible .hexInner {
+  outline: none;
+  box-shadow: none;
+}
+
+.hexIcon {
+  font-size: calc(1.25rem * var(--hex-layout-scale, 1));
+  color: var(--hex-accent);
+  flex-shrink: 0;
+}
+
+.hexName {
+  max-width: calc(4.4rem * var(--hex-layout-scale, 1));
+  font-size: calc(0.625rem * var(--hex-layout-scale, 1));
+}
+
+.infraItemCount {
+  font-size: 0.6875rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--msp-text, #0f1c2e);
+  line-height: 1;
+  margin-top: 0.06rem;
+  letter-spacing: 0.01em;
+}
+
+.hexInner .infraItemCount {
+  font-size: calc(0.6875rem * var(--hex-layout-scale, 1));
+  color: color-mix(in srgb, var(--hex-accent, #475569) 72%, var(--msp-text, #0f1c2e));
+}
+
+.brickInner .infraItemCount {
+  color: color-mix(in srgb, var(--brick-accent, #475569) 72%, var(--msp-text, #0f1c2e));
+}
+
+.hexNodeOk .hexIcon {
+  color: var(--hex-accent);
+}
+
+.hexNodeWarning .hexIcon {
+  color: var(--hex-accent);
+}
+
+.hexNodeCritical .hexIcon {
+  color: var(--hex-accent);
+}
+
+.hexNodeUnmonitored .hexIcon {
+  color: var(--hex-accent);
+}
+
+.hexNodePlaceholder {
+  pointer-events: none;
+  opacity: 0.82;
+}
+
+.hexNodePlaceholder .hexInner {
+  background: color-mix(in srgb, var(--hex-soft) 92%, var(--hex-accent) 8%);
+  border: none;
+  box-shadow: 0 1px 4px rgba(15, 28, 46, 0.08);
+}
+
+.hexNodePlaceholder .hexShape {
+  filter: none;
+}
+
+.emptyState,
+.errorState {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 2rem 1rem;
+  text-align: center;
+  color: var(--msp-muted, #5c6b82);
+  font-size: 0.8125rem;
+  border: 1px dashed var(--msp-border, #e2e8f0);
+  border-radius: var(--msp-radius-sm, 10px);
+  background: var(--msp-surface-2, #f7f9fc);
+}
+
+.emptyIcon {
+  font-size: 2rem;
+  color: var(--msp-muted-light, #8b9bb5);
+  opacity: 0.7;
+}
+
+.emptyMapBanner {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  padding: 0.85rem 1rem;
+  border: 1px dashed var(--msp-border, #e2e8f0);
+  border-radius: var(--msp-radius-sm, 10px);
+  background: var(--msp-surface-2, #f7f9fc);
+}
+
+.emptyMapBannerIcon {
+  font-size: 1.75rem;
+  color: var(--msp-muted-light, #8b9bb5);
+  flex-shrink: 0;
+  margin-top: 0.1rem;
+}
+
+.emptyMapBannerText {
+  min-width: 0;
+}
+
+.emptyMapBannerTitle {
+  margin: 0 0 0.25rem;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--msp-text, #0f1c2e);
+  line-height: 1.35;
+}
+
+.emptyMapBannerHint {
+  margin: 0;
+  font-size: 0.75rem;
+  color: var(--msp-muted, #5c6b82);
+  line-height: 1.4;
+}
+
+.errorState {
+  flex-direction: row;
+  color: #dc2626;
+  border-color: rgba(239, 68, 68, 0.35);
+  background: rgba(239, 68, 68, 0.06);
+}
+
+
+.skeleton {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+}
+
+.skeletonLegend {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.skeletonPill {
+  width: 4.5rem;
+  height: 1.1rem;
+  border-radius: 999px;
+  background: linear-gradient(
+    90deg,
+    var(--msp-border-light, #eef2f7) 25%,
+    var(--msp-border, #e2e8f0) 50%,
+    var(--msp-border-light, #eef2f7) 75%
+  );
+  background-size: 200% 100%;
+  animation: infraShimmer 1.4s infinite;
+}
+
+.skeletonMapCard {
+  border: 1px solid var(--msp-border, #e2e8f0);
+  border-radius: var(--msp-radius-sm, 10px);
+  background: var(--msp-surface-2, #f7f9fc);
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.skeletonHex {
+  width: var(--hex-w, 6.25rem);
+  height: var(--hex-h, 7.2rem);
+  clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
+  background: linear-gradient(
+    90deg,
+    var(--msp-border-light, #eef2f7) 25%,
+    var(--msp-border, #e2e8f0) 50%,
+    var(--msp-border-light, #eef2f7) 75%
+  );
+  background-size: 200% 100%;
+  animation: infraShimmer 1.4s infinite;
+}
+
+@keyframes infraShimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+@media (min-width: 721px) {
+  .mapModuleGroup:last-child .brickRow {
+    flex-wrap: nowrap;
+  }
+}
+
+@media (max-width: 720px) {
+  .mapModulesBar {
+    padding-left: 0.25rem;
+    padding-right: 0.25rem;
+  }
+
+  .mapModulesRow {
+    gap: 1rem 1.25rem;
+  }
+}
+
+:global(html.dark) .mapCard {
+  background: linear-gradient(160deg, var(--msp-surface, #1a2540) 0%, var(--msp-surface-2, #152035) 100%);
+  border-color: var(--msp-border, #2a3a55);
+}
+
+:global(html.dark) .mapModulesBar {
+  border-top-color: var(--msp-border, #2a3a55);
+}
+
+:global(html.dark) .skeletonMapCard {
+  background: var(--msp-surface-2, #152035);
+  border-color: var(--msp-border, #2a3a55);
+}
+
+:global(html.dark) .hexName,
+:global(html.dark) .brickName {
+  color: var(--msp-text, #e8edf5);
+}
+
+:global(html.dark) .infraItemCount {
+  color: var(--msp-text, #e8edf5);
+}
+
+:global(html.dark) .hexInner .infraItemCount {
+  color: color-mix(in srgb, var(--hex-accent, #94a3b8) 65%, var(--msp-text, #e8edf5));
+}
+
+:global(html.dark) .brickInner .infraItemCount {
+  color: color-mix(in srgb, var(--brick-accent, #94a3b8) 65%, var(--msp-text, #e8edf5));
+}
+
+:global(html.dark) .hexInner {
+  background: color-mix(in srgb, var(--hex-soft) 82%, var(--hex-accent) 18%);
+  border: none;
+  box-shadow:
+    0 2px 8px rgba(0, 0, 0, 0.28),
+    inset 0 1px 0 rgba(255, 255, 255, 0.06);
+}
+
+:global(html.dark) .hexNode:hover .hexInner {
+  background: color-mix(in srgb, var(--hex-soft) 72%, var(--hex-accent) 28%);
+}
+
+:global(html.dark) .hexNodePlaceholder .hexInner {
+  background: color-mix(in srgb, var(--hex-soft) 88%, var(--hex-accent) 12%);
+  border: none;
+}
+
+:global(html.dark) .emptyState {
+  background: var(--msp-surface-2, #152035);
+  border-color: var(--msp-border, #2a3a55);
+}
+
+:global(html.dark) .emptyMapBanner {
+  background: var(--msp-surface-2, #152035);
+  border-color: var(--msp-border, #2a3a55);
+}
+
+:global(html.dark) .emptyMapBannerTitle {
+  color: var(--msp-text, #e8edf5);
+}
+
+:global(html.dark) .emptyMapBannerHint {
+  color: var(--msp-muted, #8fa8c4);
+}

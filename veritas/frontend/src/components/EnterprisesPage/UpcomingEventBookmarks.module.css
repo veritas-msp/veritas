@@ -1,0 +1,644 @@
+.bar {
+  max-width: 1600px;
+  margin: 0.55rem auto 0;
+  padding-top: 0.45rem;
+  border-top: 1px solid var(--msp-border-light, rgba(15, 28, 46, 0.06));
+}
+
+.barInPageHero {
+  max-width: 1600px;
+  margin: 0.4rem auto 0;
+  padding-top: 0;
+  border-top: 1px solid var(--msp-border-light, rgba(15, 28, 46, 0.06));
+}
+
+.heroBookmarkShell {
+  max-width: 1600px;
+  margin: 0.4rem auto 0;
+  border-top: 1px solid var(--msp-border-light, rgba(15, 28, 46, 0.06));
+}
+
+.heroBookmarkShellInPageHero,
+.barInPageHeroShell {
+  width: 100%;
+  max-width: none;
+  margin-left: 0;
+  margin-right: 0;
+}
+
+.heroBookmarkShell .barInPageHero,
+.heroBookmarkShell .barInProPanel {
+  margin-top: 0;
+  padding-top: 0.15rem;
+  border-top: none;
+}
+
+.barCollapseToggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  width: 100%;
+  margin: 0;
+  padding: 0.3rem 0.15rem 0.34rem;
+  border: none;
+  background: transparent;
+  color: var(--msp-muted);
+  cursor: pointer;
+  font-family: inherit;
+  transition: color 0.15s ease, background 0.15s ease;
+}
+
+.barCollapseToggle:hover {
+  color: var(--msp-accent);
+}
+
+.barCollapseToggleMain {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  min-width: 0;
+  flex: 1;
+}
+
+.barCollapseToggleIcon {
+  font-size: 0.92rem;
+  color: var(--msp-accent);
+  flex-shrink: 0;
+}
+
+.barCollapseToggleTitle {
+  font-size: 0.62rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.barCollapseToggleSummary {
+  font-size: 0.62rem;
+  font-weight: 500;
+  color: var(--msp-muted-light);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.barCollapseToggleBadge {
+  display: inline-flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.heroHeaderProBadge {
+  flex-shrink: 0;
+}
+
+.barCollapseChevron {
+  font-size: 1rem;
+  flex-shrink: 0;
+  color: var(--msp-muted-light);
+}
+
+.barCollapsePanel {
+  display: grid;
+  grid-template-rows: 1fr;
+  overflow: hidden;
+  opacity: 1;
+  transition:
+    grid-template-rows 0.32s cubic-bezier(0.22, 1, 0.36, 1),
+    opacity 0.22s ease;
+}
+
+.barCollapsePanel > * {
+  min-height: 0;
+  overflow: hidden;
+}
+
+.barInPageHeroCollapsed .barCollapsePanel,
+.heroBookmarkShellCollapsed .barCollapsePanel {
+  grid-template-rows: 0fr;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.barInPageHero[data-bookmarks-collapsed="false"] .barInner,
+.heroBookmarkShell[data-bookmarks-collapsed="false"] .barInner {
+  min-height: 7.55rem;
+}
+
+.barInPageHero[data-bookmarks-collapsed="false"] .track,
+.heroBookmarkShell[data-bookmarks-collapsed="false"] .track {
+  min-height: 7.35rem;
+}
+
+.barInPageHero[data-bookmarks-collapsed="true"] .barInner,
+.heroBookmarkShell[data-bookmarks-collapsed="true"] .barInner,
+.barInPageHeroCollapsed .barInner,
+.heroBookmarkShellCollapsed .barInner {
+  min-height: 0;
+}
+
+.barInPageHero[data-bookmarks-collapsed="true"] .track,
+.heroBookmarkShell[data-bookmarks-collapsed="true"] .track,
+.barInPageHeroCollapsed .track,
+.heroBookmarkShellCollapsed .track {
+  min-height: 0;
+}
+
+.barInPageHeroCollapsed,
+.heroBookmarkShellCollapsed {
+  margin-top: 0.25rem;
+}
+
+.barInProPanel {
+  margin-top: 0;
+  padding-top: 0;
+  border-top: none;
+}
+
+.barProPanel {
+  max-width: 1600px;
+  margin: 0.75rem auto 0;
+  padding: 0.65rem 0.85rem 0.75rem;
+  border-radius: 12px;
+  border: 1px solid var(--msp-border);
+  background: var(--msp-surface-2, #f4f7fb);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.55);
+}
+
+.barProHeader {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  margin-bottom: 0.45rem;
+  padding-bottom: 0.35rem;
+  border-bottom: 1px solid var(--msp-border-light, rgba(15, 28, 46, 0.08));
+}
+
+.barProTitle {
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--msp-muted);
+}
+
+.barInner {
+  display: flex;
+  align-items: stretch;
+  justify-content: flex-start;
+  gap: 0.65rem;
+  width: 100%;
+  min-height: 4.35rem;
+}
+
+.trackWrap {
+  flex: 1;
+  min-width: 0;
+  position: relative;
+}
+
+.trackWrap::before,
+.trackWrap::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 2.25rem;
+  pointer-events: none;
+  z-index: 2;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.trackWrap::before {
+  left: 0;
+  background: linear-gradient(90deg, var(--msp-surface) 15%, transparent);
+}
+
+.trackWrap::after {
+  right: 0;
+  background: linear-gradient(270deg, var(--msp-surface) 15%, transparent);
+}
+
+.trackFadeLeft::before {
+  opacity: 1;
+}
+
+.trackFadeRight::after {
+  opacity: 1;
+}
+
+.track {
+  display: flex;
+  align-items: stretch;
+  justify-content: flex-start;
+  gap: 0.45rem;
+  width: 100%;
+  min-height: 4.1rem;
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: 0.1rem 0.35rem 0.05rem;
+  scrollbar-width: thin;
+  scroll-behavior: smooth;
+}
+
+.track::-webkit-scrollbar {
+  height: 4px;
+}
+
+.track::-webkit-scrollbar-thumb {
+  background: var(--msp-border);
+  border-radius: 4px;
+}
+
+.sectionLabel {
+  flex: 0 0 auto;
+  align-self: stretch;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.15rem;
+  min-width: 3.4rem;
+  padding: 0.35rem 0.4rem;
+  border-radius: 10px;
+  border: 1px dashed var(--msp-border);
+  background: var(--msp-surface-2, var(--msp-surface));
+  color: var(--msp-muted);
+}
+
+.sectionLabelRecent {
+  border-color: color-mix(in srgb, var(--msp-muted) 35%, var(--msp-border));
+}
+
+.sectionLabelIcon {
+  font-size: 1rem;
+  color: var(--msp-accent);
+}
+
+.sectionLabelRecent .sectionLabelIcon {
+  color: var(--msp-muted);
+}
+
+.sectionLabelTitle {
+  font-size: 0.58rem;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  text-align: center;
+  line-height: 1.15;
+}
+
+.sectionLabelCount {
+  font-size: 0.62rem;
+  font-weight: 700;
+  color: var(--msp-text);
+}
+
+.sectionDivider {
+  flex: 0 0 auto;
+  align-self: stretch;
+  width: 1px;
+  margin: 0.35rem 0.15rem;
+  background: linear-gradient(
+    180deg,
+    transparent,
+    var(--msp-border) 20%,
+    var(--msp-border) 80%,
+    transparent
+  );
+}
+
+.sectionEmptyHint {
+  flex: 0 0 auto;
+  align-self: stretch;
+  display: inline-flex;
+  align-items: center;
+  font-size: 0.72rem;
+  font-weight: 500;
+  color: var(--msp-muted-light);
+  white-space: nowrap;
+  padding: 0 0.25rem;
+}
+
+.bookmark {
+  --bookmark-accent: #2b5fab;
+  flex: 0 0 auto;
+  align-self: flex-end;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  min-height: 4.1rem;
+  padding: 0;
+  border: 1px solid var(--msp-border);
+  border-radius: 0 0 10px 10px;
+  background: var(--msp-surface);
+  box-shadow: 0 4px 12px rgba(15, 28, 46, 0.05);
+  cursor: pointer;
+  text-align: left;
+}
+
+.bookmark:hover {
+  transform: translateY(-2px);
+  border-color: color-mix(in srgb, var(--bookmark-accent) 45%, var(--msp-border));
+  box-shadow: 0 8px 18px rgba(15, 28, 46, 0.09);
+}
+
+.bookmark:focus-visible {
+  outline: 2px solid var(--msp-accent);
+  outline-offset: 2px;
+}
+
+.bookmarkPast {
+  opacity: 0.9;
+}
+
+.bookmarkPast .bookmarkRibbon {
+  filter: saturate(0.7);
+}
+
+.bookmarkRibbon {
+  display: flex;
+  align-items: baseline;
+  gap: 0.3rem;
+  align-self: flex-start;
+  margin: 0 0.45rem;
+  padding: 0.25rem 0.5rem 0.3rem;
+  border-radius: 0 0 7px 7px;
+  background: var(--bookmark-accent);
+  color: #fff;
+  box-shadow: 0 2px 8px color-mix(in srgb, var(--bookmark-accent) 35%, transparent);
+}
+
+.bookmarkDay {
+  font-size: 1.05rem;
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: -0.02em;
+}
+
+.bookmarkMonth {
+  font-size: 0.58rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  opacity: 0.92;
+}
+
+.bookmarkBody {
+  display: flex;
+  flex-direction: column;
+  gap: 0.08rem;
+  padding: 0.35rem 0.55rem 0.45rem;
+  min-width: 0;
+}
+
+.bookmarkRelative {
+  font-size: 0.58rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--bookmark-accent);
+}
+
+.bookmarkTime {
+  font-size: 0.64rem;
+  font-weight: 600;
+  color: var(--msp-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.bookmarkTitle {
+  font-size: 0.74rem;
+  font-weight: 700;
+  color: var(--msp-text);
+  line-height: 1.2;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.bookmarkType {
+  font-size: 0.58rem;
+  font-weight: 600;
+  color: var(--msp-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.empty {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.45rem 0.2rem;
+  color: var(--msp-muted);
+  font-size: 0.76rem;
+  font-weight: 500;
+}
+
+.empty svg {
+  font-size: 1.05rem;
+  opacity: 0.75;
+}
+
+.barActions {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  flex: 0 0 auto;
+  margin-left: auto;
+  align-self: center;
+}
+
+.barActionBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  padding: 0;
+  border-radius: 10px;
+  border: 1px solid var(--msp-border);
+  background: var(--msp-surface);
+  color: var(--msp-text);
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: border-color 0.15s, color 0.15s, background 0.15s;
+}
+
+.barActionBtn:hover {
+  border-color: var(--msp-accent);
+  color: var(--msp-accent);
+  background: var(--msp-accent-soft);
+}
+
+.barActionBtnPrimary {
+  border-color: color-mix(in srgb, var(--msp-accent) 35%, var(--msp-border));
+  background: var(--msp-accent-soft);
+  color: var(--msp-accent);
+}
+
+.barActionBtnPrimary:hover {
+  background: var(--msp-accent);
+  color: #fff;
+  border-color: var(--msp-accent);
+}
+
+.bookmarkMenuOpen {
+  border-color: color-mix(in srgb, var(--bookmark-accent) 55%, var(--msp-border));
+  box-shadow: 0 8px 18px rgba(15, 28, 46, 0.12);
+}
+
+.eventActionMenu {
+  position: fixed;
+  z-index: 1200;
+  min-width: 240px;
+  padding: 0.4rem;
+  border: 1px solid var(--msp-border);
+  border-radius: 12px;
+  background: var(--msp-surface);
+  box-shadow: 0 12px 32px rgba(15, 28, 46, 0.14);
+}
+
+.eventActionMenuItem {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  width: 100%;
+  padding: 0.55rem 0.65rem;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--msp-text);
+  font-size: 0.8125rem;
+  font-weight: 500;
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.12s, color 0.12s;
+}
+
+.eventActionMenuItem:hover {
+  background: var(--msp-accent-soft);
+  color: var(--msp-accent);
+}
+
+.eventActionMenuItem svg,
+.eventActionMenuItem :global(svg) {
+  font-size: 1.05rem;
+  flex-shrink: 0;
+}
+
+:global(html.dark) .eventActionMenu {
+  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.35);
+}
+
+.bookmarkSkeleton {
+  flex: 0 0 auto;
+  align-self: flex-end;
+  width: 9.75rem;
+  min-height: 4.1rem;
+  border-radius: 0 0 10px 10px;
+  border: 1px solid var(--msp-border-light, var(--msp-border));
+  background: linear-gradient(
+    90deg,
+    var(--msp-border-light, #eef2f7) 25%,
+    var(--msp-border, #e2e8f0) 50%,
+    var(--msp-border-light, #eef2f7) 75%
+  );
+  background-size: 200% 100%;
+  animation: bookmarkShimmer 1.4s infinite;
+  padding: 0.45rem;
+}
+
+.bookmarkSkeletonRibbon {
+  width: 3.2rem;
+  height: 1.2rem;
+  border-radius: 0 0 7px 7px;
+  background: rgba(148, 163, 184, 0.25);
+  margin-bottom: 0.35rem;
+}
+
+.bookmarkSkeletonLine {
+  height: 0.5rem;
+  border-radius: 4px;
+  background: rgba(148, 163, 184, 0.2);
+  margin-bottom: 0.3rem;
+}
+
+.bookmarkSkeletonLineShort {
+  width: 65%;
+}
+
+@keyframes bookmarkShimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+.barActionBtn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+.barActionBtnPrimary:disabled {
+  background: var(--msp-surface-2);
+  color: var(--msp-muted);
+  border-color: var(--msp-border);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .barCollapsePanel {
+    transition: none;
+  }
+}
+
+@media (max-width: 900px) {
+  .barInner {
+    flex-wrap: wrap;
+  }
+
+  .trackWrap {
+    order: 1;
+    flex-basis: 100%;
+  }
+
+  .barActions {
+    order: 2;
+    margin-left: auto;
+  }
+}
+
+@media (max-width: 640px) {
+  .barActionBtn {
+    width: 1.85rem;
+    height: 1.85rem;
+    font-size: 0.8rem;
+  }
+}
+
+:global(html.dark) .bookmark {
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.2);
+}
+
+:global(html.dark) .barProPanel {
+  background: rgba(35, 48, 72, 0.72);
+  border-color: var(--msp-border);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+}
+
+:global(html.dark) .barProHeader {
+  border-bottom-color: rgba(255, 255, 255, 0.08);
+}
+
+:global(html.dark) .trackWrap::before {
+  background: linear-gradient(90deg, var(--msp-surface-2, var(--msp-surface)) 15%, transparent);
+}
+
+:global(html.dark) .trackWrap::after {
+  background: linear-gradient(270deg, var(--msp-surface-2, var(--msp-surface)) 15%, transparent);
+}

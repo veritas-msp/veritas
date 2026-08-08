@@ -1,0 +1,102 @@
+
+.topologyContainer {
+  width: 100%;
+  max-width: 1600px;
+  margin: 0 auto;
+  padding: 1.5rem;
+  background-color: transparent;
+  border-radius: 8px;
+  transition: all 0.3s ease;
+}
+
+.topologyContainer.dark {
+  background-color: transparent;
+  color: #e5e7eb;
+}
+
+
+.topologyViewport {
+  width: 100%;
+  overflow-x: auto;
+  overflow-y: visible;
+  padding: 1rem 0;
+  margin-bottom: 1.5rem;
+  
+  scrollbar-width: none; 
+  -ms-overflow-style: none; 
+}
+
+.topologyViewport::-webkit-scrollbar {
+  height: 0; 
+  display: none;
+}
+
+.topologyViewport::-webkit-scrollbar:horizontal {
+  display: none;
+  height: 0;
+}
+
+
+.topologySvg {
+  display: block;
+  margin: 0 auto;
+}
+
+
+.emptyState {
+  text-align: center;
+  padding: 3rem 1rem;
+  color: #6b7280;
+  font-size: 1rem;
+}
+
+.topologyContainer.dark .emptyState {
+  color: #9ca3af;
+}
+
+
+.topologyLegendContainer {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  background-color: #f9fafb;
+  border-radius: 8px;
+  border: 1px solid #e5e7eb;
+}
+
+.topologyContainer.dark .topologyLegendContainer {
+  background-color: #1f2937;
+  border-color: #374151;
+}
+
+
+.legendItem {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.875rem;
+  color: #374151;
+}
+
+.topologyContainer.dark .legendItem {
+  color: #d1d5db;
+}
+
+
+.legendIconWrapper {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+}
+
+
+.legendLabel {
+  font-weight: 500;
+  white-space: nowrap;
+}
+

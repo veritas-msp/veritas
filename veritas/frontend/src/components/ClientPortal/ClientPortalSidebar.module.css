@@ -1,0 +1,178 @@
+.navBadge {
+  margin-left: auto;
+  flex-shrink: 0;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: #f97316;
+  color: #fff;
+  font-size: 0.65rem;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+  pointer-events: none;
+}
+
+.navLink {
+  text-decoration: none;
+}
+
+.portalSidebar :global(.navList) {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.portalSidebar .navLink {
+  margin-bottom: 0;
+}
+
+.navLink:hover,
+.navLink:focus,
+.navLink:visited {
+  text-decoration: none;
+}
+
+.navLinkActive {
+  box-shadow: none;
+}
+
+.navLabel {
+  flex: 1;
+  min-width: 0;
+  font-size: 0.875rem;
+  font-weight: 500;
+  line-height: 1.3;
+  letter-spacing: 0;
+}
+
+.settingsSection {
+  padding-top: 12px;
+  margin-top: 4px;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+}
+
+:global(.sidebarCollapsed) .settingsSection {
+  align-items: center;
+}
+
+.settingsBtnRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  padding: 4px 2px 10px;
+}
+
+:global(.sidebarCollapsed) .settingsBtnRow {
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+}
+
+.portalSidebar :global(.userSection) {
+  padding-top: 12px;
+}
+
+.settingsSquareBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.04);
+  color: #8fa8c4;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s, color 0.15s, box-shadow 0.15s;
+  flex-shrink: 0;
+}
+
+.settingsSquareBtn:hover {
+  background: rgba(43, 95, 171, 0.15);
+  color: #e8edf5;
+  border-color: rgba(43, 95, 171, 0.45);
+}
+
+.settingsSquareBtnActive {
+  background: rgba(43, 95, 171, 0.35);
+  border-color: rgba(43, 95, 171, 0.65);
+  color: #ffffff;
+  box-shadow: 0 2px 8px rgba(43, 95, 171, 0.25);
+}
+
+.settingsSquareBtnIcon {
+  font-size: 1.15rem;
+  flex-shrink: 0;
+}
+
+.settingsSquareBtnFlag {
+  font-size: 1.2rem;
+  line-height: 1;
+}
+
+.langMenuDropdown {
+  z-index: 10050;
+  min-width: 220px;
+  max-width: min(280px, calc(100vw - 16px));
+  max-height: min(420px, calc(100vh - 16px));
+  background: var(--msp-surface, #ffffff);
+  border: 1px solid var(--msp-border, #e5e7eb);
+  border-radius: 10px;
+  box-shadow: 0 10px 40px var(--shadow-color, rgba(0, 0, 0, 0.12));
+  padding: 6px 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+}
+
+.langMenuDropdownTitle {
+  padding: 8px 14px 6px;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--msp-muted, #9ca3af);
+}
+
+.langMenuItem {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 10px 14px;
+  border: none;
+  background: none;
+  cursor: pointer;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--msp-text, #1f2937);
+  text-align: left;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.langMenuItem:hover {
+  background: var(--msp-surface-2, #f3f4f6);
+  color: var(--msp-text, #111827);
+}
+
+.langMenuItemActive {
+  background: var(--msp-accent-soft, rgba(43, 95, 171, 0.1));
+  color: var(--msp-accent, #2b5fab);
+}
+
+.langFlag {
+  font-size: 1.1rem;
+  line-height: 1;
+}
+
+.navSpacer {
+  flex: 1;
+  min-height: 8px;
+}

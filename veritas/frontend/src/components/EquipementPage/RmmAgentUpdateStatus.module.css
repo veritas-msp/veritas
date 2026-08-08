@@ -1,0 +1,254 @@
+.root {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+}
+
+.trigger {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.15rem;
+  height: 2.15rem;
+  border-radius: var(--msp-radius-sm, 8px);
+  border: 1px solid rgba(43, 95, 171, 0.28);
+  background: rgba(43, 95, 171, 0.1);
+  color: var(--msp-accent, #2b5fab);
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
+}
+
+.trigger:hover,
+.triggerOpen {
+  background: rgba(43, 95, 171, 0.18);
+  border-color: rgba(43, 95, 171, 0.45);
+  color: var(--msp-accent, #2b5fab);
+}
+
+.triggerIcon {
+  font-size: 1.2rem;
+}
+
+.pulse {
+  animation: rmmUpdatePulse 1.4s ease-in-out infinite;
+}
+
+@keyframes rmmUpdatePulse {
+  0%,
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  50% {
+    opacity: 0.55;
+    transform: translateY(1px);
+  }
+}
+
+.card {
+  position: absolute;
+  top: calc(100% + 0.45rem);
+  right: 0;
+  z-index: 40;
+  width: min(22rem, calc(100vw - 2rem));
+  padding: 0.9rem 1rem 1rem;
+  border-radius: 14px;
+  border: 1px solid var(--msp-border);
+  background: var(--msp-surface);
+  box-shadow: var(--msp-shadow-lg, 0 12px 32px rgba(15, 23, 42, 0.14));
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.cardHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.cardTitleRow {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.55rem;
+  min-width: 0;
+}
+
+.cardIcon {
+  font-size: 1.35rem;
+  color: var(--msp-accent, #2b5fab);
+  margin-top: 0.1rem;
+}
+
+.cardEyebrow {
+  margin: 0;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--msp-muted);
+}
+
+.cardTitle {
+  margin: 0.05rem 0 0;
+  font-size: 0.98rem;
+  font-weight: 750;
+  color: var(--msp-text);
+  line-height: 1.2;
+}
+
+.cardClose {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.6rem;
+  height: 1.6rem;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--msp-muted);
+  cursor: pointer;
+}
+
+.cardClose:hover {
+  background: var(--msp-surface-2);
+  color: var(--msp-text);
+}
+
+.versionLine {
+  margin: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.92rem;
+  color: var(--msp-muted);
+}
+
+.versionLine strong {
+  color: var(--msp-text);
+  font-weight: 750;
+}
+
+.progressBlock {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.progressMeta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  font-size: 0.8rem;
+  color: var(--msp-muted);
+}
+
+.progressMeta strong {
+  color: var(--msp-text);
+  font-variant-numeric: tabular-nums;
+}
+
+.progressTrack {
+  height: 0.45rem;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--msp-border) 85%, transparent);
+  overflow: hidden;
+}
+
+.progressFill {
+  height: 100%;
+  border-radius: inherit;
+  background: var(--msp-accent, #2b5fab);
+  transition: width 0.45s ease;
+}
+
+.progressFillPulse {
+  animation: rmmUpdateBarPulse 1.6s ease-in-out infinite;
+}
+
+.pctCapped {
+  font-weight: 650;
+  letter-spacing: 0.08em;
+  color: var(--msp-muted);
+}
+
+@keyframes rmmUpdateBarPulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.55;
+  }
+}
+
+.progressHint {
+  margin: 0;
+  font-size: 0.74rem;
+  color: var(--msp-muted);
+  line-height: 1.35;
+}
+
+.steps {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.steps li {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.8rem;
+}
+
+.stepDone {
+  color: var(--msp-accent, #2b5fab);
+}
+
+.stepActive {
+  color: var(--msp-accent, #2b5fab);
+  font-weight: 650;
+}
+
+.stepIdle {
+  color: var(--msp-muted);
+}
+
+.requestedAt {
+  margin: 0;
+  font-size: 0.74rem;
+  color: var(--msp-muted);
+}
+
+.cancelBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  align-self: stretch;
+  padding: 0.45rem 0.7rem;
+  border-radius: 8px;
+  border: 1px solid var(--msp-border);
+  background: var(--msp-surface-2, #f7f9fc);
+  color: var(--msp-muted);
+  font-size: 0.8rem;
+  font-weight: 650;
+  cursor: pointer;
+}
+
+.cancelBtn:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--msp-accent) 8%, transparent);
+  color: var(--msp-accent);
+  border-color: color-mix(in srgb, var(--msp-accent) 30%, transparent);
+}
+
+.cancelBtn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}

@@ -1,0 +1,560 @@
+import React, { useEffect, useMemo, useState } from "react";
+import { createPortal } from "react-dom";
+import { Icon } from "@iconify/react";
+import { FaTimes } from "react-icons/fa";
+import TicketConfirmModal from "./TicketConfirmModal";
+import layout from "../EnterprisesPage/EnterpriseFormModal.module.css";
+import eventStyles from "../PlanningPage/PlanningEventFormModal.module.css";
+import styles from "./TicketSalesDetailPage.module.css";
+import { useAppLocale } from "../../hooks/useAppGeneralSettings";
+import { usePlanningEventTypes } from "../PlanningPage/usePlanningEventTypes";
+import { getPlanningEventFormCopy } from "../PlanningPage/planningEventFormI18n";
+import { PLANNING_EVENT_TYPES } from "../PlanningPage/planningEventTypes";
+
+function toDatetimeLocalValue(value) {
+  if (!value) return "";
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return "";
+  const pad = n => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
+function fromDatetimeLocalValue(value) {
+  const raw = String(value || "").trim();
+  if (!raw) return null;
+  const d = new Date(raw);
+  if (Number.isNaN(d.getTime())) return null;
+  return d.toISOString();
+}
+
+function formatTaskSchedule(task, formatDateTime, rangeJoiner) {
+  if (!task?.startAt && !task?.endAt) return null;
+  if (task.startAt && task.endAt) {
+    return `${formatDateTime(task.startAt)} ${rangeJoiner} ${formatDateTime(task.endAt)}`;
+  }
+  return formatDateTime(task.startAt || task.endAt);
+}
+
+function resolveDefaultEventType(types, preferred) {
+  const list = Array.isArray(types) ? types : [];
+  if (preferred && list.some(type => type.value === preferred)) return preferred;
+  if (list.some(type => type.value === "intervention")) return "intervention";
+  return list[0]?.value || "";
+}
+
+const TASK_FORM_SECTIONS = [
+  { id: "general", icon: "mdi:text-box-outline" },
+  { id: "schedule", icon: "mdi:calendar-clock" },
+  { id: "assignee", icon: "mdi:account-outline" }
+];
+
+export default function SalesTasksPanel({
+  tasks = [],
+  users = [],
+  copy,
+  formatDateTime,
+  saving = false,
+  variant = "card",
+  canManageTasks = true,
+  onAddTask,
+  onUpdateTask,
+  onToggleTask,
+  onRemoveTask
+}) {
+  const locale = useAppLocale();
+  const catalogTypes = usePlanningEventTypes();
+  const planningFormCopy = useMemo(() => getPlanningEventFormCopy(locale, catalogTypes), [locale, catalogTypes]);
+  const selectableTypes = useMemo(() => {
+    const list = Array.isArray(planningFormCopy.planningTypes) && planningFormCopy.planningTypes.length > 0
+      ? planningFormCopy.planningTypes
+      : PLANNING_EVENT_TYPES;
+    return list.filter(type => type.formSelectable !== false && type.value !== "campagne");
+  }, [planningFormCopy.planningTypes]);
+  const typeLabels = useMemo(() => {
+    const map = {};
+    selectableTypes.forEach(type => {
+      map[type.value] = type.label;
+    });
+    return map;
+  }, [selectableTypes]);
+
+  const [open, setOpen] = useState(false);
+  const [editingTask, setEditingTask] = useState(null);
+  const [taskToDelete, setTaskToDelete] = useState(null);
+  const [activeSection, setActiveSection] = useState("general");
+  const [label, setLabel] = useState("");
+  const [eventType, setEventType] = useState("");
+  const [assigneeId, setAssigneeId] = useState("");
+  const [startLocal, setStartLocal] = useState("");
+  const [endLocal, setEndLocal] = useState("");
+  const [rangeMode, setRangeMode] = useState(false);
+
+  const userOptions = useMemo(
+    () =>
+      (Array.isArray(users) ? users : [])
+        .filter(u => u?.id)
+        .map(u => ({
+          id: String(u.id),
+          label: u.ticket_helpdesk_display_name || u.username || u.name || u.nom || u.email || String(u.id)
+        }))
+        .filter(u => u.label),
+    [users]
+  );
+
+  const isEditing = Boolean(editingTask?.id);
+  const modalCopy = copy.modal || {};
+
+  const resetForm = () => {
+    setEditingTask(null);
+    setActiveSection("general");
+    setLabel("");
+    setEventType(resolveDefaultEventType(selectableTypes));
+    setAssigneeId("");
+    setStartLocal("");
+    setEndLocal("");
+    setRangeMode(false);
+  };
+
+  const closeModal = () => {
+    if (saving) return;
+    setOpen(false);
+    resetForm();
+  };
+
+  const openCreateModal = () => {
+    resetForm();
+    setEventType(resolveDefaultEventType(selectableTypes));
+    setOpen(true);
+  };
+
+  const openEditModal = task => {
+    if (!task?.id || saving) return;
+    setEditingTask(task);
+    setActiveSection("general");
+    setLabel(String(task.label || ""));
+    setEventType(resolveDefaultEventType(selectableTypes, task.eventType || task.type));
+    setAssigneeId(task.assigneeId ? String(task.assigneeId) : "");
+    setStartLocal(toDatetimeLocalValue(task.startAt));
+    setEndLocal(toDatetimeLocalValue(task.endAt));
+    setRangeMode(Boolean(task.startAt && task.endAt));
+    setOpen(true);
+  };
+
+  useEffect(() => {
+    if (!open) return undefined;
+    const onKeyDown = event => {
+      if (event.key === "Escape" && !saving) {
+        setOpen(false);
+        resetForm();
+      }
+    };
+    document.addEventListener("keydown", onKeyDown);
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.removeEventListener("keydown", onKeyDown);
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [open, saving]);
+
+  useEffect(() => {
+    if (!open || eventType) return;
+    setEventType(resolveDefaultEventType(selectableTypes));
+  }, [open, eventType, selectableTypes]);
+
+  const sectionMeta = useMemo(
+    () => ({
+      general: Boolean(label.trim() && eventType),
+      schedule: Boolean(startLocal),
+      assignee: true
+    }),
+    [label, eventType, startLocal]
+  );
+
+  const formSections = useMemo(
+    () =>
+      TASK_FORM_SECTIONS.map(section => ({
+        ...section,
+        label: modalCopy.sections?.[section.id]?.label || section.id,
+        description: modalCopy.sections?.[section.id]?.description || ""
+      })),
+    [modalCopy]
+  );
+
+  const footerSummary = useMemo(() => {
+    const titlePart = label.trim() || modalCopy.footerUntitled || "—";
+    const typePart = typeLabels[eventType] || eventType || copy.eventTypeRequiredShort || "—";
+    const assignee = userOptions.find(u => u.id === String(assigneeId));
+    const assigneePart = assignee?.label || copy.assigneeNone;
+    return `${titlePart} · ${typePart} · ${assigneePart}`;
+  }, [label, eventType, typeLabels, assigneeId, userOptions, copy.assigneeNone, copy.eventTypeRequiredShort, modalCopy.footerUntitled]);
+
+  const canSubmit = Boolean(label.trim() && eventType && startLocal && !saving);
+
+  const handleSubmit = async event => {
+    event.preventDefault();
+    const trimmed = label.trim();
+    const selectedType = String(eventType || "").trim();
+    if (!trimmed || saving) return;
+    if (!selectedType) {
+      setActiveSection("general");
+      return;
+    }
+    if (!startLocal) {
+      setActiveSection("schedule");
+      return;
+    }
+    const assignee = userOptions.find(u => u.id === String(assigneeId));
+    const startAt = fromDatetimeLocalValue(startLocal);
+    if (!startAt) {
+      setActiveSection("schedule");
+      return;
+    }
+    const endAt = rangeMode ? fromDatetimeLocalValue(endLocal) : null;
+    const scheduleEnd = endAt && startAt && new Date(endAt) < new Date(startAt) ? startAt : endAt;
+
+    if (isEditing) {
+      const ok = await onUpdateTask?.({
+        ...editingTask,
+        label: trimmed,
+        eventType: selectedType,
+        assigneeId: assignee?.id || null,
+        assigneeLabel: assignee?.label || null,
+        startAt,
+        endAt: scheduleEnd,
+        updatedAt: new Date().toISOString()
+      });
+      if (ok === false) return;
+    } else {
+      const ok = await onAddTask?.({
+        id: `task-${Date.now()}`,
+        label: trimmed,
+        eventType: selectedType,
+        done: false,
+        assigneeId: assignee?.id || null,
+        assigneeLabel: assignee?.label || null,
+        startAt,
+        endAt: scheduleEnd,
+        createdAt: new Date().toISOString()
+      });
+      if (ok === false) return;
+    }
+    resetForm();
+    setOpen(false);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!taskToDelete?.id || saving) return;
+    await onRemoveTask?.(taskToDelete.id);
+    setTaskToDelete(null);
+  };
+
+  const deleteMessage = taskToDelete?.label
+    ? String(copy.removeConfirmMessage || "").replace("{label}", taskToDelete.label)
+    : copy.removeConfirmMessageFallback || copy.removeConfirmMessage;
+
+  const renderSectionContent = () => {
+    switch (activeSection) {
+      case "general":
+        return (
+          <>
+            <div className={layout.sectionHead}>
+              <h3 className={layout.sectionTitle}>{modalCopy.generalTitle || copy.label}</h3>
+              <p className={layout.sectionDesc}>{modalCopy.generalDesc || ""}</p>
+            </div>
+            <div className={layout.fieldStack}>
+              <div className={layout.field}>
+                <span className={`${layout.label} ${layout.labelRequired}`}>{copy.eventType || planningFormCopy.fields?.eventType}</span>
+                <div className={eventStyles.typeGrid} role="group" aria-label={copy.eventType || planningFormCopy.fields?.eventType}>
+                  {selectableTypes.map(type => (
+                    <button
+                      key={type.value}
+                      type="button"
+                      className={`${eventStyles.typeBtn} ${eventType === type.value ? eventStyles.typeBtnActive : ""}`}
+                      onClick={() => setEventType(type.value)}
+                      aria-pressed={eventType === type.value}
+                      disabled={saving}
+                    >
+                      <Icon icon={type.icon} className={eventStyles.typeBtnIcon} aria-hidden />
+                      <span className={eventStyles.typeBtnLabel}>{type.label}</span>
+                    </button>
+                  ))}
+                </div>
+                {!eventType ? <p className={styles.taskPlanningHint}>{copy.eventTypeRequired}</p> : null}
+              </div>
+              <div className={layout.field}>
+                <label className={`${layout.label} ${layout.labelRequired}`} htmlFor="sales-task-title">
+                  {copy.label}
+                </label>
+                <input
+                  id="sales-task-title"
+                  type="text"
+                  className={layout.input}
+                  value={label}
+                  onChange={e => setLabel(e.target.value)}
+                  placeholder={copy.placeholder}
+                  disabled={saving}
+                  autoFocus
+                />
+              </div>
+            </div>
+          </>
+        );
+      case "schedule":
+        return (
+          <>
+            <div className={layout.sectionHead}>
+              <h3 className={layout.sectionTitle}>{modalCopy.scheduleTitle || copy.start}</h3>
+              <p className={layout.sectionDesc}>{modalCopy.scheduleDesc || copy.planningLinkedHint || ""}</p>
+            </div>
+            <div className={layout.fieldGrid2}>
+              <div className={layout.field}>
+                <label className={`${layout.label} ${layout.labelRequired}`} htmlFor="sales-task-start">
+                  {copy.start}
+                </label>
+                <input
+                  id="sales-task-start"
+                  type="datetime-local"
+                  className={layout.input}
+                  value={startLocal}
+                  onChange={e => setStartLocal(e.target.value)}
+                  disabled={saving}
+                  required
+                />
+              </div>
+              <div className={layout.field}>
+                <label className={layout.label} htmlFor="sales-task-end">
+                  <span className={styles.taskRangeToggle}>
+                    <input type="checkbox" checked={rangeMode} onChange={e => setRangeMode(e.target.checked)} disabled={saving} />
+                    {copy.range}
+                  </span>
+                </label>
+                <input
+                  id="sales-task-end"
+                  type="datetime-local"
+                  className={layout.input}
+                  value={endLocal}
+                  onChange={e => setEndLocal(e.target.value)}
+                  disabled={saving || !rangeMode}
+                  min={startLocal || undefined}
+                />
+              </div>
+            </div>
+            {copy.planningLinkedHint ? <p className={styles.taskPlanningHint}>{copy.planningLinkedHint}</p> : null}
+          </>
+        );
+      case "assignee":
+        return (
+          <>
+            <div className={layout.sectionHead}>
+              <h3 className={layout.sectionTitle}>{modalCopy.assigneeTitle || copy.assignee}</h3>
+              <p className={layout.sectionDesc}>{modalCopy.assigneeDesc || ""}</p>
+            </div>
+            <div className={layout.fieldGrid2}>
+              <div className={`${layout.field} ${layout.fieldFull}`}>
+                <label className={layout.label} htmlFor="sales-task-assignee">
+                  {copy.assignee}
+                </label>
+                <select
+                  id="sales-task-assignee"
+                  className={layout.input}
+                  value={assigneeId}
+                  onChange={e => setAssigneeId(e.target.value)}
+                  disabled={saving}
+                >
+                  <option value="">{copy.assigneeNone}</option>
+                  {userOptions.map(user => (
+                    <option key={user.id} value={user.id}>
+                      {user.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+          </>
+        );
+      default:
+        return null;
+    }
+  };
+
+  const modal = open
+    ? createPortal(
+        <div className={layout.overlay} onClick={closeModal} role="presentation">
+          <div
+            className={`${layout.shell} ${layout.shellMedium}`}
+            onClick={e => e.stopPropagation()}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="sales-task-form-title"
+          >
+            <div className={layout.accentBar} aria-hidden />
+            <header className={layout.header}>
+              <div className={layout.headerMain}>
+                <div className={layout.headerIconWrap} aria-hidden>
+                  <Icon icon={isEditing ? "mdi:checkbox-marked-outline" : "mdi:checkbox-marked-circle-plus-outline"} />
+                </div>
+                <div className={layout.headerText}>
+                  <p className={layout.eyebrow}>{modalCopy.eyebrow || copy.title}</p>
+                  <h2 className={layout.title} id="sales-task-form-title">
+                    {isEditing ? copy.edit : copy.add}
+                  </h2>
+                  <p className={layout.subtitle}>{isEditing ? modalCopy.editSubtitle : modalCopy.createSubtitle}</p>
+                </div>
+              </div>
+              <button type="button" className={layout.closeBtn} onClick={closeModal} disabled={saving} aria-label={copy.cancel}>
+                <FaTimes />
+              </button>
+            </header>
+
+            <form
+              className={styles.taskModalForm}
+              onSubmit={handleSubmit}
+            >
+              <div className={layout.body}>
+                <nav className={layout.nav} aria-label={modalCopy.sectionsAria || copy.title}>
+                  {formSections.map(section => (
+                    <button
+                      key={section.id}
+                      type="button"
+                      className={`${layout.navItem} ${activeSection === section.id ? layout.navItemActive : ""}`}
+                      onClick={() => setActiveSection(section.id)}
+                      aria-current={activeSection === section.id ? "step" : undefined}
+                    >
+                      <Icon icon={section.icon} className={layout.navItemIcon} aria-hidden />
+                      <span className={layout.navItemText}>
+                        <span className={layout.navItemLabel}>{section.label}</span>
+                        <span className={layout.navItemHint}>{section.description}</span>
+                      </span>
+                      {sectionMeta[section.id] ? <span className={layout.navBadge}>✓</span> : null}
+                    </button>
+                  ))}
+                </nav>
+                <div className={layout.content}>{renderSectionContent()}</div>
+              </div>
+
+              <footer className={layout.footer}>
+                <span className={layout.footerHint}>{footerSummary}</span>
+                <div className={layout.footerActions}>
+                  <button type="button" className={layout.ghostBtn} onClick={closeModal} disabled={saving}>
+                    {copy.cancel}
+                  </button>
+                  <button type="submit" className={layout.primaryBtn} disabled={!canSubmit}>
+                    {saving ? (
+                      <>
+                        <Icon icon="mdi:loading" className={layout.spinning} aria-hidden />
+                        {copy.saving}
+                      </>
+                    ) : isEditing ? (
+                      <>
+                        <Icon icon="mdi:content-save-outline" aria-hidden />
+                        {copy.save}
+                      </>
+                    ) : (
+                      <>
+                        <Icon icon="mdi:check" aria-hidden />
+                        {copy.add}
+                      </>
+                    )}
+                  </button>
+                </div>
+              </footer>
+            </form>
+          </div>
+        </div>,
+        document.getElementById("modal-root") || document.body
+      )
+    : null;
+
+  return (
+    <div className={variant === "pane" ? styles.tasksInPane : styles.tasksInChat}>
+      <div className={styles.tasksInChatHead}>
+        <div className={styles.tasksInChatTitle}>
+          <Icon icon="mdi:checkbox-marked-outline" aria-hidden />
+          <span>{copy.title}</span>
+          <span className={styles.sectionMeta}>
+            {tasks.filter(t => t.done).length}/{tasks.length}
+            {saving ? ` · ${copy.saving}` : ""}
+          </span>
+        </div>
+        {canManageTasks ? (
+          <button type="button" className={styles.tasksAddTrigger} onClick={openCreateModal} disabled={saving}>
+            <Icon icon="mdi:plus" aria-hidden />
+            {copy.add}
+          </button>
+        ) : null}
+      </div>
+
+      <ul className={styles.taskChatList}>
+        {tasks.length === 0 ? <li className={styles.taskChatEmpty}>{copy.empty}</li> : null}
+        {tasks.map(task => {
+          const schedule = formatTaskSchedule(task, formatDateTime, copy.rangeJoiner);
+          const typeLabel = typeLabels[task.eventType] || typeLabels[task.type] || null;
+          return (
+            <li key={task.id} className={`${styles.taskChatItem} ${task.done ? styles.taskChatItemDone : ""}`}>
+              <button type="button" className={styles.taskCheck} onClick={() => canManageTasks && onToggleTask?.(task.id)} aria-pressed={task.done} title={task.done ? copy.markTodo : copy.markDone} disabled={!canManageTasks || saving}>
+                <Icon icon={task.done ? "mdi:checkbox-marked" : "mdi:checkbox-blank-outline"} />
+              </button>
+              <div className={styles.taskChatBody}>
+                {canManageTasks ? (
+                  <button type="button" className={styles.taskChatLabelBtn} onClick={() => openEditModal(task)} disabled={saving} title={copy.edit}>
+                    <span className={styles.taskChatLabel}>{task.label}</span>
+                  </button>
+                ) : (
+                  <span className={styles.taskChatLabel}>{task.label}</span>
+                )}
+                <div className={styles.taskChatMeta}>
+                  {typeLabel ? (
+                    <span>
+                      <Icon icon="mdi:shape-outline" aria-hidden />
+                      {typeLabel}
+                    </span>
+                  ) : null}
+                  <span>
+                    <Icon icon="mdi:account-outline" aria-hidden />
+                    {(task.assigneeId && userOptions.find(u => u.id === String(task.assigneeId))?.label) || task.assigneeLabel || copy.assigneeNone}
+                  </span>
+                  {schedule ? (
+                    <span>
+                      <Icon icon="mdi:calendar-clock" aria-hidden />
+                      {schedule}
+                    </span>
+                  ) : null}
+                </div>
+              </div>
+              {canManageTasks ? (
+                <div className={styles.taskItemActions}>
+                  <button type="button" className={styles.taskEdit} onClick={() => openEditModal(task)} aria-label={copy.edit} title={copy.edit} disabled={saving}>
+                    <Icon icon="mdi:pencil-outline" />
+                  </button>
+                  <button type="button" className={styles.taskRemove} onClick={() => setTaskToDelete(task)} aria-label={copy.remove} disabled={saving}>
+                    <Icon icon="mdi:delete-outline" />
+                  </button>
+                </div>
+              ) : null}
+            </li>
+          );
+        })}
+      </ul>
+
+      {modal}
+
+      <TicketConfirmModal
+        open={Boolean(taskToDelete)}
+        title={copy.removeConfirmTitle}
+        message={deleteMessage}
+        confirmLabel={copy.removeConfirm}
+        cancelLabel={copy.cancel}
+        variant="danger"
+        icon="mdi:delete-outline"
+        loading={saving}
+        onClose={() => {
+          if (!saving) setTaskToDelete(null);
+        }}
+        onConfirm={handleConfirmDelete}
+      />
+    </div>
+  );
+}
+
+export { toDatetimeLocalValue, fromDatetimeLocalValue };

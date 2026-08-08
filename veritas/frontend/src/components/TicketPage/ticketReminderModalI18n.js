@@ -1,0 +1,131 @@
+import { interpolate, pickLocaleMessages } from "../../i18n/translate";
+const REMINDER_MODAL_COPY = {
+  fr: {
+    eyebrow: "Planning",
+    createTitle: "Programmer une alerte",
+    editTitle: "Modifier l'alerte",
+    subtitle: "Rappel, manipulation technique ou autre · l'alerte apparaîtra dans le planning Veritas.",
+    closeAria: "Fermer",
+    ticketLabel: "Ticket",
+    untitledTicket: "Sans titre",
+    requester: "Demandeur\u00a0: {name}",
+    planningLabel: "Libellé planning",
+    titlePlaceholder: "Ex. Rappeler le demandeur, redémarrage serveur, relance fournisseur…",
+    dateLabel: "Date",
+    timeLabel: "Heure",
+    noteLabel: "Note",
+    notePlaceholder: "Détails, contexte, consignes…",
+    delete: "Supprimer",
+    cancel: "Annuler",
+    create: "Créer",
+    save: "Enregistrer",
+    busy: "…",
+    scheduleButtonTitle: "Programmer une alerte planning",
+    reminderButtonFallback: "Alerte planning"
+  },
+  en: {
+    eyebrow: "Schedule",
+    createTitle: "Schedule an alert",
+    editTitle: "Edit alert",
+    subtitle: "Reminder, technical task or other · the alert will appear in the Veritas schedule.",
+    closeAria: "Close",
+    ticketLabel: "Ticket",
+    untitledTicket: "Untitled",
+    requester: "Requester: {name}",
+    planningLabel: "Schedule label",
+    titlePlaceholder: "E.g. Call requester back, server reboot, vendor follow-up…",
+    dateLabel: "Date",
+    timeLabel: "Time",
+    noteLabel: "Note",
+    notePlaceholder: "Details, context, instructions…",
+    delete: "Delete",
+    cancel: "Cancel",
+    create: "Create",
+    save: "Save",
+    busy: "…",
+    scheduleButtonTitle: "Schedule a planning alert",
+    reminderButtonFallback: "Planning alert"
+  },
+  de: {
+    eyebrow: "Planung",
+    createTitle: "Alarm planen",
+    editTitle: "Alarm bearbeiten",
+    subtitle: "Erinnerung, technische Aufgabe oder anderes · der Alarm erscheint im Veritas-Planungskalender.",
+    closeAria: "Schließen",
+    ticketLabel: "Ticket",
+    untitledTicket: "Ohne Titel",
+    requester: "Anfragender: {name}",
+    planningLabel: "Planungsbezeichnung",
+    titlePlaceholder: "z. B. Anfragenden zurückrufen, Server-Neustart, Lieferanten-Nachverfolgung…",
+    dateLabel: "Datum",
+    timeLabel: "Uhrzeit",
+    noteLabel: "Notiz",
+    notePlaceholder: "Details, Kontext, Anweisungen…",
+    delete: "Löschen",
+    cancel: "Abbrechen",
+    create: "Erstellen",
+    save: "Speichern",
+    busy: "…",
+    scheduleButtonTitle: "Planungsalarm erstellen",
+    reminderButtonFallback: "Planungsalarm"
+  },
+  it: {
+    eyebrow: "Pianificazione",
+    createTitle: "Programma un avviso",
+    editTitle: "Modifica avviso",
+    subtitle: "Promemoria, attività tecnica o altro · l'avviso apparirà nel planning Veritas.",
+    closeAria: "Chiudi",
+    ticketLabel: "Ticket",
+    untitledTicket: "Senza titolo",
+    requester: "Richiedente: {name}",
+    planningLabel: "Etichetta planning",
+    titlePlaceholder: "Es. Richiamare il richiedente, riavvio server, sollecito fornitore…",
+    dateLabel: "Data",
+    timeLabel: "Ora",
+    noteLabel: "Nota",
+    notePlaceholder: "Dettagli, contesto, istruzioni…",
+    delete: "Elimina",
+    cancel: "Annulla",
+    create: "Crea",
+    save: "Salva",
+    busy: "…",
+    scheduleButtonTitle: "Programma un avviso nel planning",
+    reminderButtonFallback: "Avviso planning"
+  },
+  es: {
+    eyebrow: "Planificación",
+    createTitle: "Programar una alerta",
+    editTitle: "Modificar alerta",
+    subtitle: "Recordatorio, tarea técnica u otro · la alerta aparecerá en la planificación Veritas.",
+    closeAria: "Cerrar",
+    ticketLabel: "Ticket",
+    untitledTicket: "Sin título",
+    requester: "Solicitante: {name}",
+    planningLabel: "Etiqueta de planificación",
+    titlePlaceholder: "Ej. Llamar al solicitante, reinicio de servidor, seguimiento proveedor…",
+    dateLabel: "Fecha",
+    timeLabel: "Hora",
+    noteLabel: "Nota",
+    notePlaceholder: "Detalles, contexto, instrucciones…",
+    delete: "Eliminar",
+    cancel: "Cancelar",
+    create: "Crear",
+    save: "Guardar",
+    busy: "…",
+    scheduleButtonTitle: "Programar alerta en la planificación",
+    reminderButtonFallback: "Alerta de planificación"
+  }
+};
+export function getTicketReminderModalCopy(locale) {
+  const t = pickLocaleMessages(REMINDER_MODAL_COPY, locale);
+  return {
+    ...t,
+    formatRequester: name => interpolate(t.requester, {
+      name: String(name || "").trim()
+    }),
+    formatReminderButtonTitle: reminderEvent => {
+      if (!reminderEvent) return t.scheduleButtonTitle;
+      return String(reminderEvent.title || "").trim() || t.reminderButtonFallback;
+    }
+  };
+}

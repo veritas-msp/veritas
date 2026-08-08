@@ -1,0 +1,148 @@
+.panel {
+  border: 1px solid var(--msp-border, #c5d0df);
+  border-radius: var(--msp-radius, 16px);
+  background: var(--msp-surface, #fff);
+  box-shadow: var(--msp-shadow-panel, 0 6px 18px -12px rgba(15, 28, 46, 0.12));
+  padding: 0.95rem 1.1rem 1.05rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.panelCompact {
+  padding: 0.75rem 0.9rem 0.85rem;
+}
+
+.header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.titleWrap {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.55rem;
+  min-width: 0;
+}
+
+.titleIcon {
+  margin-top: 0.1rem;
+  font-size: 1.15rem;
+  color: var(--msp-accent, #2b5fab);
+  flex-shrink: 0;
+}
+
+.title {
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--msp-text, #0f1c2e);
+}
+
+.meta {
+  margin: 0.15rem 0 0;
+  font-size: 0.72rem;
+  color: var(--msp-muted-light, #8b9bb5);
+}
+
+.generateBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  height: 34px;
+  padding: 0 0.85rem;
+  border: none;
+  border-radius: var(--msp-radius-sm, 10px);
+  background: linear-gradient(135deg, var(--msp-accent, #2b5fab) 0%, var(--msp-accent-dark, #1a3d75) 100%);
+  color: #fff;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.generateBtn:disabled {
+  opacity: 0.65;
+  cursor: wait;
+}
+
+.spin {
+  animation: aiBriefingSpin 0.8s linear infinite;
+}
+
+@keyframes aiBriefingSpin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.empty {
+  margin: 0;
+  font-size: 0.82rem;
+  color: var(--msp-muted, #5c6b82);
+}
+
+.body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.summaryBlock {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.summary {
+  margin: 0;
+  font-size: 0.875rem;
+  line-height: 1.45;
+  color: var(--msp-text, #0f1c2e);
+}
+
+.sections {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 0.65rem;
+}
+
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  min-width: 0;
+}
+
+.sectionLabel {
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--msp-muted, #5c6b82);
+}
+
+.list {
+  margin: 0;
+  padding-left: 1.05rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  font-size: 0.8rem;
+  line-height: 1.4;
+  color: var(--msp-text, #0f1c2e);
+}
+
+:global(html.dark) .panel {
+  background: var(--msp-surface, #1a2540);
+  border-color: var(--msp-border, #2f4260);
+}
+
+:global(html.dark) .title,
+:global(html.dark) .summary,
+:global(html.dark) .list {
+  color: var(--msp-text, #e8edf5);
+}

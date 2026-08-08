@@ -1,0 +1,103 @@
+.formLayout {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+.colorRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  min-height: 38px;
+}
+
+.colorPresetBtn {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 2px solid var(--msp-border);
+  cursor: pointer;
+  padding: 0;
+  flex-shrink: 0;
+  transition: border-color 0.12s, transform 0.12s;
+}
+
+.colorPresetBtn:hover {
+  transform: scale(1.06);
+}
+
+.colorPresetBtnSelected {
+  border-color: var(--msp-text);
+  box-shadow: 0 0 0 2px var(--msp-surface), 0 0 0 4px color-mix(in srgb, var(--msp-text) 35%, transparent);
+}
+
+.colorCustom {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  border: 1px solid var(--msp-border);
+  border-radius: 8px;
+  background: var(--msp-surface-2);
+  cursor: pointer;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.colorCustom input[type="color"] {
+  width: 120%;
+  height: 120%;
+  padding: 0;
+  border: none;
+  cursor: pointer;
+  background: transparent;
+}
+
+.previewSection {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.previewLabel {
+  font-size: 0.72rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--msp-muted-light);
+}
+
+.previewFrame {
+  flex: 1;
+  min-height: 88px;
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--msp-border);
+  border-radius: 8px;
+  background: var(--msp-surface-2);
+  overflow: hidden;
+}
+
+.previewBanner {
+  display: flex;
+  align-items: center;
+  min-height: 40px;
+  padding: 0 14px;
+  color: #fff;
+  font-size: 0.84rem;
+  font-weight: 600;
+}
+
+.previewText {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}

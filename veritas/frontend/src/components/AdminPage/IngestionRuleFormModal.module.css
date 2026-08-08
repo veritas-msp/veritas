@@ -1,0 +1,120 @@
+.criterionList {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+}
+
+.criterionCard {
+  display: grid;
+  grid-template-columns: minmax(0, 0.9fr) minmax(0, 0.9fr) minmax(0, 1.4fr) auto;
+  gap: 0.5rem;
+  align-items: center;
+  padding: 0.75rem;
+  border-radius: 12px;
+  border: 1px solid var(--msp-border, #eef2f7);
+  background: var(--msp-surface-2, #f8fafc);
+}
+
+.criterionRemove {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border: 1px solid rgba(220, 38, 38, 0.22);
+  border-radius: 10px;
+  background: rgba(220, 38, 38, 0.06);
+  color: #dc2626;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.criterionRemove:hover:not(:disabled) {
+  background: rgba(220, 38, 38, 0.12);
+  border-color: rgba(220, 38, 38, 0.35);
+}
+
+.criterionRemove:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.addCriterionBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin-top: 0.35rem;
+  padding: 0.5rem 0.85rem;
+  border: 1px dashed var(--msp-border, #dde3ed);
+  border-radius: 10px;
+  background: transparent;
+  color: var(--msp-accent, #2b5fab);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+}
+
+.addCriterionBtn:hover:not(:disabled) {
+  border-color: var(--msp-accent, #2b5fab);
+  background: var(--msp-accent-soft, rgba(43, 95, 171, 0.06));
+}
+
+.addCriterionBtn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.criteriaHint {
+  margin: 0 0 0.85rem;
+  font-size: 0.78rem;
+  color: var(--msp-muted, #5c6b82);
+  line-height: 1.45;
+}
+
+.statusRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.75rem 0.9rem;
+  margin-bottom: 1rem;
+  border-radius: 12px;
+  border: 1px solid var(--msp-border, #eef2f7);
+  background: var(--msp-surface-2, #f8fafc);
+}
+
+.statusLabel {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--msp-text, #0f1c2e);
+}
+
+.statusHint {
+  margin: 0.15rem 0 0;
+  font-size: 0.75rem;
+  color: var(--msp-muted, #5c6b82);
+}
+
+.fieldHint {
+  margin: 0.35rem 0 0;
+  font-size: 0.75rem;
+  color: var(--msp-muted, #5c6b82);
+  line-height: 1.4;
+}
+
+.proActionHint {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  margin-top: 0.45rem;
+  font-size: 0.75rem;
+  color: var(--msp-muted, #5c6b82);
+}
+
+@media (max-width: 768px) {
+  .criterionCard {
+    grid-template-columns: 1fr;
+  }
+}

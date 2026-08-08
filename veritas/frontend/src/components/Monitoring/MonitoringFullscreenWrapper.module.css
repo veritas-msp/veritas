@@ -1,0 +1,102 @@
+
+
+.fullscreenWrapper {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 2000; 
+  background-color: var(--bg-primary);
+  transition: background-color 0.3s ease;
+  overflow: auto; 
+}
+
+.burgerButton {
+  position: fixed;
+  top: 1rem;
+  left: 1rem;
+  z-index: 2001;
+  background: linear-gradient(135deg, #1A529A 0%, #0f3a6b 100%);
+  color: white;
+  border: none;
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  transition: all 0.3s ease;
+  font-size: 1.5rem;
+}
+
+.burgerButton:hover {
+  transform: scale(1.1);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
+}
+
+.burgerButton:active {
+  transform: scale(0.95);
+}
+
+.burgerIcon {
+  display: block;
+  line-height: 1;
+}
+
+.overlay {
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  height: 100dvh;
+  background-color: rgba(0, 0, 0, 0.5);
+  z-index: 1999;
+  backdrop-filter: blur(4px);
+}
+
+@media (min-width: 1025px) {
+  .overlay {
+    display: none; 
+  }
+}
+
+.content {
+  width: 100%;
+  height: auto;
+  overflow: visible; 
+  margin-left: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+
+.scrollArea {
+  flex: 1;
+  width: 100%;
+  margin-right: 0;
+  overflow: visible;
+  padding: 0;
+}
+
+
+
+@media (max-width: 1024px) {
+  .scrollArea {
+    width: 100%;
+    margin-right: 0;
+  }
+}
+
+
+@media (max-width: 1024px) {
+  .burgerButton {
+    top: 0.75rem;
+    left: 0.75rem;
+    width: 44px;
+    height: 44px;
+    font-size: 1.3rem;
+  }
+}
+

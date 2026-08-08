@@ -1,0 +1,338 @@
+.page {
+  height: 100%;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: var(--msp-surface-2, #f7f9fc);
+  color: var(--msp-text, #0f1c2e);
+}
+
+.accentBar {
+  height: 3px;
+  flex-shrink: 0;
+}
+
+.accentBar_default {
+  background: linear-gradient(90deg, #1a3d75 0%, #2b5fab 45%, #4a7fd4 100%);
+}
+
+.accentBar_gravityzone {
+  background: linear-gradient(90deg, #b91c1c 0%, #ed1c24 45%, #f87171 100%);
+}
+
+.accentBar_mailinblack {
+  background: linear-gradient(90deg, #c2410c 0%, #e85d3a 45%, #fb923c 100%);
+}
+
+.header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1rem 1.5rem;
+  border-bottom: 1px solid var(--msp-border, #c5d0df);
+  background: var(--msp-surface, #fff);
+  flex-shrink: 0;
+}
+
+.headerLeft {
+  display: flex;
+  align-items: flex-start;
+  gap: 1rem;
+  min-width: 0;
+}
+
+.headerIconWrap {
+  width: 42px;
+  height: 42px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  color: #fff;
+  font-size: 1.25rem;
+}
+
+.headerIconWrap_gravityzone {
+  background: linear-gradient(135deg, #ed1c24 0%, #b91c1c 100%);
+  box-shadow: 0 6px 16px rgba(237, 28, 36, 0.28);
+}
+
+.headerIconWrap_mailinblack {
+  background: linear-gradient(135deg, #e85d3a 0%, #c2410c 100%);
+  box-shadow: 0 6px 16px rgba(232, 93, 58, 0.28);
+}
+
+.headerIconWrap_default {
+  background: linear-gradient(135deg, #2b5fab 0%, #1a3d75 100%);
+  box-shadow: 0 6px 16px rgba(43, 95, 171, 0.28);
+}
+
+.headerCopy {
+  min-width: 0;
+}
+
+.eyebrow {
+  margin: 0 0 0.2rem;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--msp-accent, #2b5fab);
+}
+
+.title {
+  margin: 0;
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: var(--msp-text, #0f1c2e);
+  line-height: 1.25;
+}
+
+.subtitle {
+  margin: 0.35rem 0 0;
+  font-size: 0.84rem;
+  color: var(--msp-muted, #5c6b82);
+}
+
+.backButton {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.45rem 0.75rem;
+  border: 1px solid var(--msp-border-light, #dde5ef);
+  border-radius: 8px;
+  background: var(--msp-surface, #fff);
+  color: var(--msp-muted, #5c6b82);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.backButton:hover {
+  border-color: var(--msp-accent, #2b5fab);
+  color: var(--msp-accent, #2b5fab);
+}
+
+.headerActions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-shrink: 0;
+}
+
+.actionBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.45rem 0.85rem;
+  border: 1px solid var(--msp-border-light, #dde5ef);
+  border-radius: 8px;
+  background: var(--msp-surface, #fff);
+  color: var(--msp-text, #0f1c2e);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.actionBtn:hover:not(:disabled) {
+  border-color: var(--msp-accent, #2b5fab);
+  color: var(--msp-accent, #2b5fab);
+}
+
+.actionBtnPrimary {
+  background: var(--msp-accent, #2b5fab);
+  border-color: var(--msp-accent, #2b5fab);
+  color: #fff;
+}
+
+.actionBtnPrimary:hover:not(:disabled) {
+  background: #1a3d75;
+  border-color: #1a3d75;
+  color: #fff;
+}
+
+.actionBtn:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+
+.mainLayout {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.sidebar {
+  width: 220px;
+  flex-shrink: 0;
+  border-right: 1px solid var(--msp-border-light, #e2e8f0);
+  background: var(--msp-surface, #fff);
+  overflow-y: auto;
+  padding: 0.75rem 0.55rem;
+}
+
+.navGroupLabel {
+  padding: 0.65rem 0.75rem 0.25rem;
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--msp-muted-light, #8b9bb5);
+}
+
+.navItem {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.55rem;
+  width: 100%;
+  padding: 0.6rem 0.65rem;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.navItem:hover {
+  background: var(--msp-surface-2, #f7f9fc);
+}
+
+.navItemActive {
+  background: var(--msp-accent-soft, rgba(43, 95, 171, 0.1));
+  border-color: color-mix(in srgb, var(--msp-accent, #2b5fab) 25%, transparent);
+}
+
+.navItemIcon {
+  flex-shrink: 0;
+  font-size: 1.05rem;
+  color: var(--msp-accent, #2b5fab);
+  margin-top: 0.05rem;
+}
+
+.navItemText {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  min-width: 0;
+}
+
+.navItemLabel {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--msp-text, #0f1c2e);
+}
+
+.navItemHint {
+  font-size: 0.68rem;
+  color: var(--msp-muted, #5c6b82);
+  line-height: 1.3;
+}
+
+.content {
+  flex: 1;
+  min-width: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 1rem 1.25rem 1.5rem;
+}
+
+.footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.65rem 1.25rem;
+  border-top: 1px solid var(--msp-border-light, #e2e8f0);
+  background: var(--msp-surface, #fff);
+  flex-shrink: 0;
+}
+
+.footerHint {
+  font-size: 0.75rem;
+  color: var(--msp-muted, #5c6b82);
+}
+
+.footerActions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.loadingState,
+.emptyState {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  min-height: 280px;
+  color: var(--msp-muted, #5c6b82);
+  text-align: center;
+}
+
+.spin {
+  animation: solutionPageSpin 1s linear infinite;
+}
+
+@keyframes solutionPageSpin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+:global(html.dark) .page {
+  background: #152035;
+}
+
+:global(html.dark) .header,
+:global(html.dark) .sidebar,
+:global(html.dark) .footer,
+:global(html.dark) .backButton,
+:global(html.dark) .actionBtn {
+  background: #1a2540;
+  border-color: #2f4260;
+  color: #e8edf5;
+}
+
+:global(html.dark) .subtitle,
+:global(html.dark) .footerHint,
+:global(html.dark) .navItemHint {
+  color: #8fa8c4;
+}
+
+:global(html.dark) .navItemLabel {
+  color: #e8edf5;
+}
+
+@media (max-width: 900px) {
+  .mainLayout {
+    flex-direction: column;
+  }
+
+  .sidebar {
+    width: 100%;
+    max-height: 200px;
+    border-right: none;
+    border-bottom: 1px solid var(--msp-border-light, #e2e8f0);
+  }
+}
+
+@media (max-width: 720px) {
+  .header {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .headerLeft {
+    flex-direction: column;
+  }
+}

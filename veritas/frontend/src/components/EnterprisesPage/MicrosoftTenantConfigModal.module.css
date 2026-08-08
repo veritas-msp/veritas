@@ -1,0 +1,28 @@
+.headerIconMicrosoft {
+  background: linear-gradient(135deg, #7c3aed 0%, #5b21b6 100%);
+  box-shadow: 0 6px 16px rgba(124, 58, 237, 0.28);
+}
+
+.permissionsList {
+  margin: 0.65rem 0 0;
+  padding: 0.75rem 0.75rem 0.75rem 1.25rem;
+  max-height: 220px;
+  overflow: auto;
+  border-radius: 8px;
+  border: 1px solid var(--msp-border, #dde3ed);
+  background: var(--msp-surface, #fff);
+  columns: 2;
+  column-gap: 1rem;
+}
+
+.permissionsList li {
+  break-inside: avoid;
+  margin-bottom: 0.35rem;
+  font-size: 0.78rem;
+}
+
+@media (max-width: 640px) {
+  .permissionsList {
+    columns: 1;
+  }
+}

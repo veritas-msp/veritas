@@ -1,0 +1,76 @@
+.wrap {
+  display: inline-flex;
+  align-items: center;
+  min-width: 0;
+}
+
+.wrapCompact .token {
+  font-size: 0.7rem;
+}
+
+.wrapFull {
+  flex-shrink: 0;
+}
+
+.wrapPreview {
+  max-width: 12.5rem;
+}
+
+.tokenBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  min-width: 0;
+  max-width: 100%;
+  margin: 0;
+  padding: 0.12rem 0.35rem 0.12rem 0.4rem;
+  border: 1px solid color-mix(in srgb, var(--msp-border, #e2e8f0) 90%, transparent);
+  border-radius: 6px;
+  background: transparent;
+  color: var(--msp-muted, #5c6b82);
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
+}
+
+.tokenBtn:hover {
+  color: var(--msp-accent, #2b5fab);
+  border-color: color-mix(in srgb, var(--msp-accent, #2b5fab) 35%, transparent);
+  background: color-mix(in srgb, var(--msp-accent, #2b5fab) 6%, transparent);
+}
+
+.token {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 0.72rem;
+  line-height: 1.25;
+  letter-spacing: 0.01em;
+  color: inherit;
+  background: none;
+  border: none;
+  padding: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+
+.tokenFull {
+  max-width: none;
+  overflow: visible;
+  text-overflow: unset;
+}
+
+.copyIcon {
+  flex-shrink: 0;
+  font-size: 0.85rem;
+  opacity: 0.75;
+}
+
+.tokenBtn:hover .copyIcon {
+  opacity: 1;
+}
+
+.unavailable {
+  font-size: 0.78rem;
+  color: var(--msp-text-muted, #94a3b8);
+  font-style: italic;
+}

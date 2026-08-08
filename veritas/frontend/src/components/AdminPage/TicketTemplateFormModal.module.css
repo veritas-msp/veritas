@@ -1,0 +1,228 @@
+.editorShell {
+  border: 1px solid var(--msp-border);
+  border-radius: 10px;
+  overflow: hidden;
+  background: var(--msp-surface);
+}
+
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.4rem 0.5rem;
+  border-bottom: 1px solid var(--msp-border);
+  background: var(--msp-surface-2);
+}
+
+.toolGroup {
+  display: inline-flex;
+  align-items: center;
+  gap: 1px;
+}
+
+.toolSep {
+  width: 1px;
+  height: 22px;
+  margin: 0 0.2rem;
+  background: var(--msp-border);
+  flex-shrink: 0;
+}
+
+.toolBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.25rem;
+  min-width: 30px;
+  height: 30px;
+  padding: 0 0.45rem;
+  border: none;
+  border-radius: 5px;
+  background: transparent;
+  color: var(--msp-muted);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+  transition: background 0.12s, color 0.12s;
+}
+
+.toolBtn:hover {
+  background: var(--msp-surface);
+  color: var(--msp-text);
+}
+
+.toolBtn:active {
+  background: var(--msp-accent-soft);
+  color: var(--msp-accent);
+}
+
+.toolBtnIcon {
+  min-width: 30px;
+  padding: 0;
+  font-size: 1rem;
+}
+
+.sizeBtn {
+  min-width: auto;
+  padding: 0 0.4rem;
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+.widthGroup {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.widthLabel {
+  font-size: 0.72rem;
+  font-weight: 500;
+  color: var(--msp-muted);
+  white-space: nowrap;
+}
+
+.numberStepper {
+  display: inline-flex;
+  align-items: stretch;
+  height: 30px;
+  border: 1px solid var(--msp-border);
+  border-radius: 5px;
+  overflow: hidden;
+  background: var(--msp-surface);
+}
+
+.numberInput {
+  width: 48px;
+  border: none;
+  background: transparent;
+  color: var(--msp-text);
+  text-align: center;
+  font-size: 0.78rem;
+  font-weight: 500;
+  padding: 0 0.2rem;
+  appearance: textfield;
+  -moz-appearance: textfield;
+}
+
+.numberInput:focus {
+  outline: none;
+}
+
+.numberInput::-webkit-outer-spin-button,
+.numberInput::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.numberStepperBtns {
+  display: flex;
+  flex-direction: column;
+  border-left: 1px solid var(--msp-border);
+}
+
+.stepperBtn {
+  flex: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  padding: 0;
+  border: none;
+  background: var(--msp-surface-2);
+  color: var(--msp-muted);
+  font-size: 0.65rem;
+  line-height: 1;
+  cursor: pointer;
+  transition: background 0.12s, color 0.12s;
+}
+
+.stepperBtn + .stepperBtn {
+  border-top: 1px solid var(--msp-border);
+}
+
+.stepperBtn:hover {
+  background: var(--msp-accent-soft);
+  color: var(--msp-accent);
+}
+
+.applyBtn {
+  height: 30px;
+  padding: 0 0.55rem;
+  border: 1px solid var(--msp-border);
+  border-radius: 5px;
+  background: var(--msp-surface);
+  color: var(--msp-text);
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+  transition: border-color 0.12s, background 0.12s, color 0.12s;
+}
+
+.applyBtn:hover {
+  border-color: var(--msp-accent);
+  background: var(--msp-accent-soft);
+  color: var(--msp-accent);
+}
+
+.hiddenInput {
+  display: none;
+}
+
+.editor {
+  min-height: 220px;
+  padding: 0.85rem 1rem;
+  border: none;
+  border-radius: 0;
+  background: var(--msp-surface);
+  color: var(--msp-text);
+  line-height: 1.45;
+  overflow-y: auto;
+  font-size: 0.875rem;
+}
+
+.editor:focus {
+  outline: none;
+}
+
+.variablesBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin-top: 0.75rem;
+  padding: 0.5rem 0.85rem;
+  border: 1px dashed var(--msp-border);
+  border-radius: 10px;
+  background: transparent;
+  color: var(--msp-accent);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.variablesBtn:hover {
+  border-color: var(--msp-accent);
+  background: var(--msp-accent-soft);
+}
+
+.variablesBtnLocked {
+  opacity: 0.85;
+  cursor: pointer;
+  color: var(--msp-muted);
+}
+
+.variablesBtnLocked:hover {
+  border-color: var(--msp-accent);
+  background: var(--msp-accent-soft);
+  color: var(--msp-accent);
+  opacity: 1;
+}
+
+.proBadgeInline {
+  margin-left: 0.15rem;
+}

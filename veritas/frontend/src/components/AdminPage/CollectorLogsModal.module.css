@@ -1,0 +1,179 @@
+.shell {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.body {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+  padding: 0.75rem 1.25rem 0.85rem;
+  overflow: hidden;
+}
+
+.logList {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  overflow-y: auto;
+  padding-right: 0.15rem;
+}
+
+.logItem {
+  display: grid;
+  grid-template-columns: auto auto minmax(0, 1fr);
+  gap: 0.35rem 0.5rem;
+  align-items: baseline;
+  padding: 0.38rem 0.5rem;
+  border-radius: 8px;
+  border: 1px solid var(--msp-border, #eef2f7);
+  background: var(--msp-surface, #fff);
+}
+
+.logItem_success {
+  border-color: rgba(19, 186, 142, 0.24);
+  background: rgba(19, 186, 142, 0.05);
+}
+
+.logItem_error {
+  border-color: rgba(220, 38, 38, 0.24);
+  background: rgba(220, 38, 38, 0.04);
+}
+
+.logItem_warning {
+  border-color: rgba(217, 119, 6, 0.24);
+  background: rgba(217, 119, 6, 0.05);
+}
+
+.logItem_info {
+  border-color: rgba(43, 95, 171, 0.2);
+  background: rgba(43, 95, 171, 0.04);
+}
+
+.logLevel {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.2rem;
+  padding: 0.08rem 0.32rem;
+  border-radius: 999px;
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.logLevel_success {
+  background: rgba(19, 186, 142, 0.14);
+  color: #0f766e;
+}
+
+.logLevel_error {
+  background: rgba(220, 38, 38, 0.14);
+  color: #b91c1c;
+}
+
+.logLevel_warning {
+  background: rgba(217, 119, 6, 0.14);
+  color: #b45309;
+}
+
+.logLevel_info {
+  background: rgba(43, 95, 171, 0.14);
+  color: #1d4ed8;
+}
+
+.logDate {
+  font-size: 0.7rem;
+  color: var(--msp-muted-light, #8b9bb5);
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.logMessage {
+  margin: 0;
+  font-size: 0.78rem;
+  color: var(--msp-text, #0f1c2e);
+  line-height: 1.35;
+  word-break: break-word;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.emptyState {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.55rem;
+  padding: 2rem 1rem;
+  text-align: center;
+  color: var(--msp-muted, #5c6b82);
+}
+
+.emptyIcon {
+  font-size: 2rem;
+  color: var(--msp-muted-light, #8b9bb5);
+  opacity: 0.7;
+}
+
+.emptyTitle {
+  margin: 0;
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--msp-text, #0f1c2e);
+}
+
+.emptyDesc {
+  margin: 0;
+  font-size: 0.78rem;
+  max-width: 26rem;
+  line-height: 1.4;
+}
+
+.summary {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  flex-shrink: 0;
+  padding: 0.38rem 0.6rem;
+  border-radius: 8px;
+  background: var(--msp-surface-2, #f8fafc);
+  border: 1px solid var(--msp-border, #eef2f7);
+  font-size: 0.78rem;
+  color: var(--msp-muted, #5c6b82);
+}
+
+.summary strong {
+  color: var(--msp-text, #0f1c2e);
+}
+
+.paginationWrap {
+  flex-shrink: 0;
+  padding-top: 0.35rem;
+  border-top: 1px solid var(--msp-border, #eef2f7);
+}
+
+@media (max-width: 560px) {
+  .logItem {
+    grid-template-columns: auto 1fr;
+    grid-template-rows: auto auto;
+  }
+
+  .logDate {
+    grid-column: 2;
+    justify-self: end;
+  }
+
+  .logMessage {
+    grid-column: 1 / -1;
+  }
+}

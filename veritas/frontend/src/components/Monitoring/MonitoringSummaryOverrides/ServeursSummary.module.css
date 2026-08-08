@@ -1,0 +1,780 @@
+
+.serversContainer {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  width: 100%;
+  max-width: 1400px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+
+.moduleCard {
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 1.5rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  transition: all 0.2s ease;
+}
+
+.moduleCard:hover {
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+}
+
+.dark .moduleCard {
+  background: #1e1e3f;
+  border-color: #4a4a6a;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+}
+
+.dark .moduleCard:hover {
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3);
+}
+
+
+.moduleHeader {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.moduleIcon {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: #f3f4f6;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: all 0.2s ease;
+  font-size: 18px;
+}
+
+.dark .moduleIcon {
+  background: #4a4a6a;
+}
+
+.moduleInfo {
+  flex: 1;
+}
+
+.moduleTitle {
+  font-size: 18px;
+  font-weight: 600;
+  color: #111827;
+  margin: 0 0 0.25rem 0;
+  transition: color 0.3s ease;
+}
+
+.dark .moduleTitle {
+  color: #f9fafb;
+}
+
+.moduleSubtitle {
+  font-size: 14px;
+  color: #6b7280;
+  margin: 0;
+  transition: color 0.3s ease;
+}
+
+.dark .moduleSubtitle {
+  color: #9ca3af;
+}
+
+.moduleDivider {
+  border: none;
+  height: 1px;
+  background-color: #e5e7eb;
+  margin: 1rem 0 1.5rem 0;
+}
+
+.dark .moduleDivider {
+  background-color: #4a4a6a;
+}
+
+
+.statsSection {
+  margin-bottom: 2rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.statsGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1rem;
+}
+
+.statCard {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 1rem;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  transition: all 0.2s ease;
+}
+
+.statCard:hover {
+  background: #f1f5f9;
+  border-color: #cbd5e1;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+}
+
+.dark .statCard {
+  background: #2a2a4a;
+  border-color: #4a4a6a;
+}
+
+.dark .statCard:hover {
+  background: #3a3a5a;
+  border-color: #5a5a7a;
+}
+
+.statIcon {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: #e2e8f0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  font-size: 16px;
+}
+
+.dark .statIcon {
+  background: #4a4a6a;
+}
+
+.statInfo {
+  flex: 1;
+  min-width: 0;
+}
+
+.statName {
+  font-size: 12px;
+  font-weight: 500;
+  color: #64748b;
+  margin-bottom: 0.25rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.dark .statName {
+  color: #9ca3af;
+}
+
+.statValue {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.statNumber {
+  font-size: 20px;
+  font-weight: 700;
+  color: #1e293b;
+  line-height: 1;
+}
+
+.dark .statNumber {
+  color: #f1f5f9;
+}
+
+.statLabel {
+  font-size: 12px;
+  color: #64748b;
+  font-weight: 500;
+}
+
+.dark .statLabel {
+  color: #9ca3af;
+}
+
+
+.vlanStatsSection {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 1rem;
+}
+
+.dark .vlanStatsSection {
+  background: #2a2a4a;
+  border-color: #4a4a6a;
+}
+
+.vlanStatsTitle {
+  font-size: 14px;
+  font-weight: 600;
+  color: #374151;
+  margin: 0 0 1rem 0;
+  text-align: center;
+}
+
+.dark .vlanStatsTitle {
+  color: #d1d5db;
+}
+
+.vlanStatsGrid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  justify-content: center;
+}
+
+.vlanStatItem {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  padding: 0.5rem 0.75rem;
+  transition: all 0.2s ease;
+}
+
+.vlanStatItem:hover {
+  border-color: #d1d5db;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.dark .vlanStatItem {
+  background: #1e1e3f;
+  border-color: #4a4a6a;
+}
+
+.vlanBadge {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+  white-space: nowrap;
+}
+
+.vlanCount {
+  font-size: 12px;
+  font-weight: 500;
+  color: #374151;
+}
+
+.dark .vlanCount {
+  color: #d1d5db;
+}
+
+.vlanPercentage {
+  font-size: 11px;
+  color: #6b7280;
+  font-weight: 400;
+}
+
+.dark .vlanPercentage {
+  color: #9ca3af;
+}
+
+
+.serversGrid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1.5rem;
+  width: 100%;
+}
+
+
+.serverCard {
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  transition: all 0.2s ease;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  width: 100%;
+  position: relative; 
+}
+
+.serverCard:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  transform: translateY(-1px);
+}
+
+.dark .serverCard {
+  background: #1e1e3f;
+  border-color: #4a4a6a;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+}
+
+.dark .serverCard:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+  border-color: #4a4a6a;
+}
+
+
+.cardHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
+}
+
+.dark .cardHeader {
+  border-bottom-color: #4a4a6a;
+}
+
+.headerLeft {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  flex: 1;
+}
+
+.statusDot {
+  flex-shrink: 0;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 8px;
+  margin-top: 0.5rem;
+}
+
+
+.statusDot.excellent {
+  background-color: #10b981;
+  color: #10b981;
+}
+
+
+.statusDot.good {
+  background-color: #22c55e;
+  color: #22c55e;
+}
+
+
+.statusDot.poor {
+  background-color: #eab308;
+  color: #eab308;
+}
+
+
+.statusDot.warning {
+  background-color: #f59e0b;
+  color: #f59e0b;
+}
+
+
+.statusDot.critical {
+  background-color: #ef4444;
+  color: #ef4444;
+}
+
+
+.statusDot.unknown {
+  background-color: #9ca3af;
+  color: #9ca3af;
+}
+
+.serverInfo {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.serverName {
+  font-size: 18px;
+  font-weight: 700;
+  color: #111827;
+  margin: 0;
+  line-height: 1.2;
+  letter-spacing: -0.025em;
+}
+
+.dark .serverName {
+  color: #f9fafb;
+}
+
+.serverDetailsContainer {
+  width: 100%;
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid #f3f4f6;
+}
+
+.dark .serverDetailsContainer {
+  border-bottom-color: #4a4a6a;
+}
+
+.serverDetails {
+  font-size: 13px;
+  color: #6b7280;
+  margin: 0;
+  line-height: 1.4;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  width: 100%;
+}
+
+.dark .serverDetails {
+  color: #9ca3af;
+}
+
+.physicalInfo {
+  font-size: 12px;
+  color: #9ca3af;
+  margin: 0;
+  margin-top: 0.5rem;
+  line-height: 1.4;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  width: 100%;
+  padding: 0.5rem;
+  background-color: #f9fafb;
+  border-radius: 6px;
+  border-left: 3px solid #d1d5db;
+}
+
+.dark .physicalInfo {
+  color: #6b7280;
+  background-color: #2a2a4a;
+  border-left-color: #4a4a6a;
+}
+
+.serverType {
+  display: flex;
+  flex-direction: row;
+  gap: 8px;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.vlanLabel,
+.roleLabel,
+.typeLabel {
+  font-size: 10px;
+  font-weight: 600;
+  padding: 2px 6px;
+  border-radius: 3px;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  white-space: nowrap;
+  max-width: 120px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.osIcon {
+  font-size: 14px;
+  margin-right: 4px;
+  vertical-align: baseline;
+}
+
+.osInfo {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 4px;
+}
+
+.dark .osIcon {
+  color: #9ca3af;
+}
+
+
+.metricsTable {
+  flex: 1;
+  margin-top: 0.5rem;
+}
+
+.serviceTable {
+  width: 100%;
+  border-collapse: collapse;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+  background-color: #f9fafb;
+  border: 1px solid #e5e7eb;
+}
+
+.dark .serviceTable {
+  background-color: #2a2a4a;
+  border-color: #4a4a6a;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.serviceTable th,
+.serviceTable td {
+  padding: 12px 16px;
+  text-align: center;
+  border: 1px solid #e5e7eb;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.serviceTable th:nth-child(1) {
+  width: 25%;
+  text-align: left;
+}
+
+.serviceTable th:nth-child(2),
+.serviceTable th:nth-child(3),
+.serviceTable th:nth-child(4) {
+  width: 25%;
+  min-width: 80px;
+}
+
+.dark .serviceTable th,
+.dark .serviceTable td {
+  border-color: #4a4a6a;
+}
+
+.serviceTable th {
+  background-color: #f3f4f6;
+  font-weight: 600;
+  font-size: 12px;
+  color: #374151;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.dark .serviceTable th {
+  background-color: #374151;
+  color: #e5e7eb;
+}
+
+.serviceName {
+  font-weight: 600;
+  color: #111827;
+  text-align: left;
+}
+
+.dark .serviceName {
+  color: #f9fafb;
+}
+
+
+.metricValue {
+  display: inline-block;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-weight: 600;
+  font-size: 12px;
+  min-width: 40px;
+  text-align: center;
+}
+
+.metricValueDefault {
+  background-color: #f3f4f6;
+  color: #6b7280;
+  border: 1px solid #d1d5db;
+}
+
+.dark .metricValueDefault {
+  background-color: #374151;
+  color: #9ca3af;
+  border-color: #4a4a6a;
+}
+
+.okValue {
+  background-color: #dcfce7;
+  color: #16a34a;
+  border: 1px solid #bbf7d0;
+}
+
+.dark .okValue {
+  background-color: #064e3b;
+  color: #34d399;
+  border-color: #10b981;
+}
+
+.warnValue {
+  background-color: #fef3c7;
+  color: #ca8a04;
+  border: 1px solid #fde68a;
+}
+
+.dark .warnValue {
+  background-color: #451a03;
+  color: #fbbf24;
+  border-color: #f59e0b;
+}
+
+.critValue {
+  background-color: #fee2e2;
+  color: #dc2626;
+  border: 1px solid #fecaca;
+}
+
+.dark .critValue {
+  background-color: #450a0a;
+  color: #fca5a5;
+  border-color: #f87171;
+}
+
+
+.commentSection {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+}
+
+.commentInput {
+  width: 100%;
+  padding: 10px 12px;
+  border: 2px solid #d1d5db;
+  border-radius: 8px;
+  font-size: 13px;
+  font-family: inherit;
+  resize: vertical;
+  min-height: 60px;
+  background-color: #f9fafb;
+  color: #6b7280;
+  transition: all 0.2s ease;
+  cursor: not-allowed;
+}
+
+.dark .commentInput {
+  background-color: #2a2a4a;
+  border-color: #4a4a6a;
+  color: #9ca3af;
+}
+
+.commentInput::placeholder {
+  color: #9ca3af;
+}
+
+.dark .commentInput::placeholder {
+  color: #6b7280;
+}
+
+
+.emptyState {
+  text-align: center;
+  padding: 3rem 1rem;
+  color: #6b7280;
+  font-size: 16px;
+  background: #f9fafb;
+  border-radius: 8px;
+  border: 2px dashed #d1d5db;
+  transition: all 0.3s ease;
+}
+
+.dark .emptyState {
+  background: #1e1e3f;
+  color: #9ca3af;
+  border-color: #4a4a6a;
+}
+
+
+@media (max-width: 1200px) {
+  .serversGrid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1rem;
+  }
+}
+
+@media (max-width: 768px) {
+  .serversGrid {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+  
+  .serverCard {
+    padding: 1rem;
+  }
+  
+  .cardHeader {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.75rem;
+  }
+  
+  .headerLeft {
+    width: 100%;
+  }
+  
+  .serverType {
+    align-self: flex-start;
+  }
+  
+  .serverName {
+    font-size: 15px;
+  }
+  
+  .serverDetails {
+    font-size: 12px;
+  }
+  
+  .serviceTable th,
+  .serviceTable td {
+    padding: 8px 10px;
+    font-size: 12px;
+  }
+  
+  .metricValue {
+    min-width: 35px;
+    padding: 3px 6px;
+    font-size: 11px;
+  }
+}
+
+@media (max-width: 480px) {
+  .serverCard {
+    padding: 0.75rem;
+  }
+  
+  .serverName {
+    font-size: 14px;
+  }
+  
+  .serverDetails {
+    font-size: 11px;
+  }
+  
+  .serviceTable th,
+  .serviceTable td {
+    padding: 6px 8px;
+    font-size: 11px;
+  }
+  
+  .metricValue {
+    min-width: 30px;
+    font-size: 10px;
+    padding: 2px 4px;
+  }
+}
+
+
+.mappingBadge {
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.9);
+  border: 1px solid #e5e7eb;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+}
+
+.dark .mappingBadge {
+  background: rgba(30, 30, 63, 0.9);
+  border-color: #4a4a6a;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+}

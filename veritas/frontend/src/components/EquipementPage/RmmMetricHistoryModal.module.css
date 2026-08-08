@@ -1,0 +1,169 @@
+.overlay {
+  position: fixed;
+  inset: 0;
+  z-index: var(--modal-overlay-z-index, 1100);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.25rem;
+  background: rgba(10, 22, 40, 0.55);
+  backdrop-filter: blur(8px);
+}
+
+.shell {
+  width: min(760px, 100%);
+  display: flex;
+  flex-direction: column;
+  border-radius: 18px;
+  overflow: hidden;
+  background: var(--msp-surface, #fff);
+  border: 1px solid var(--msp-border, #dde3ed);
+  box-shadow: 0 24px 64px rgba(10, 22, 40, 0.24);
+}
+
+.header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1.15rem 1.35rem 0.85rem;
+  border-bottom: 1px solid var(--msp-border, #dde3ed);
+}
+
+.headerMain {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.85rem;
+  min-width: 0;
+}
+
+.iconWrap {
+  width: 42px;
+  height: 42px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  background: rgba(43, 95, 171, 0.12);
+  color: var(--msp-accent, #2b5fab);
+  font-size: 1.35rem;
+}
+
+.title {
+  margin: 0;
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--msp-text, #0f1c2e);
+}
+
+.subtitle {
+  margin: 0.2rem 0 0;
+  font-size: 0.8125rem;
+  color: var(--msp-muted, #5c6b82);
+}
+
+.closeBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border: none;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--msp-muted, #5c6b82);
+  cursor: pointer;
+}
+
+.closeBtn:hover {
+  background: rgba(15, 28, 46, 0.06);
+  color: var(--msp-text, #0f1c2e);
+}
+
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 0.75rem 1rem;
+  padding: 0.85rem 1.35rem;
+  background: rgba(15, 28, 46, 0.02);
+  border-bottom: 1px solid var(--msp-border, #dde3ed);
+}
+
+.controlGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.controlLabel {
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--msp-muted, #5c6b82);
+}
+
+.select {
+  min-width: 9rem;
+  padding: 0.4rem 0.55rem;
+  border-radius: 8px;
+  border: 1px solid var(--msp-border, #dde3ed);
+  background: #fff;
+  font-size: 0.875rem;
+  color: var(--msp-text, #0f1c2e);
+}
+
+.periodGroup {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin-left: auto;
+}
+
+.periodBtn {
+  padding: 0.35rem 0.65rem;
+  border-radius: 999px;
+  border: 1px solid var(--msp-border, #dde3ed);
+  background: #fff;
+  font-size: 0.75rem;
+  color: var(--msp-muted, #5c6b82);
+  cursor: pointer;
+}
+
+.periodBtnActive {
+  border-color: var(--msp-accent, #2b5fab);
+  background: rgba(43, 95, 171, 0.1);
+  color: var(--msp-accent, #2b5fab);
+  font-weight: 600;
+}
+
+.body {
+  padding: 1rem 1.35rem 1.35rem;
+}
+
+.chartWrap {
+  width: 100%;
+}
+
+.hint {
+  margin: 0.65rem 0 0;
+  font-size: 0.75rem;
+  color: var(--msp-muted, #5c6b82);
+}
+
+.stateBox {
+  padding: 2rem 1rem;
+  text-align: center;
+  font-size: 0.9rem;
+  color: var(--msp-muted, #5c6b82);
+  border: 1px dashed var(--msp-border, #dde3ed);
+  border-radius: 12px;
+}
+
+.stateError {
+  color: var(--msp-text, #0f1c2e);
+  border-color: rgba(43, 95, 171, 0.35);
+  background: rgba(43, 95, 171, 0.06);
+}

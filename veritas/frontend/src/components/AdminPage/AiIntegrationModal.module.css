@@ -1,0 +1,9 @@
+.headerIconAi {
+  background: linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%);
+  box-shadow: 0 6px 16px rgba(14, 165, 233, 0.28);
+}
+
+.accentBarAi {
+  height: 4px;
+  background: linear-gradient(90deg, #0369a1 0%, #0ea5e9 45%, #7dd3fc 100%);
+}

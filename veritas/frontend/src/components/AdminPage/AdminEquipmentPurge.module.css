@@ -1,0 +1,293 @@
+.wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  min-height: 0;
+  flex: 1;
+}
+
+.panelInner {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  flex: 1;
+  gap: 12px;
+}
+
+.filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.filterSelect {
+  min-width: 160px;
+  max-width: 240px;
+  height: 36px;
+  padding: 0 10px;
+  border-radius: 8px;
+  border: 1px solid var(--msp-border);
+  background: var(--msp-surface);
+  color: var(--msp-text);
+  font-size: 0.84rem;
+}
+
+.filterSelectWrap {
+  position: relative;
+  min-width: 180px;
+  max-width: 260px;
+}
+
+.filterSelectBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.45rem;
+  width: 100%;
+  min-width: 180px;
+  height: 36px;
+  padding: 0 10px;
+  border-radius: 8px;
+  border: 1px solid var(--msp-border);
+  background: var(--msp-surface);
+  color: var(--msp-text);
+  font-size: 0.84rem;
+  font-family: inherit;
+  cursor: pointer;
+  text-align: left;
+}
+
+.filterSelectBtn:hover:not(:disabled) {
+  border-color: color-mix(in srgb, var(--msp-accent) 45%, var(--msp-border));
+}
+
+.filterSelectBtnOpen {
+  border-color: var(--msp-accent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--msp-accent) 16%, transparent);
+}
+
+.filterSelectBtn:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+
+.filterSelectBtnLabel {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+
+.filterMenu {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  border-radius: 10px;
+  border: 1px solid var(--msp-border);
+  background: var(--msp-surface);
+  box-shadow: 0 12px 32px rgba(15, 28, 46, 0.16);
+  overflow: hidden;
+}
+
+.filterMenuSearch {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.55rem 0.7rem;
+  border-bottom: 1px solid var(--msp-border-light, var(--msp-border));
+  flex-shrink: 0;
+}
+
+.filterMenuSearchIcon {
+  font-size: 1rem;
+  color: var(--msp-muted);
+  flex-shrink: 0;
+}
+
+.filterMenuSearchInput {
+  flex: 1;
+  min-width: 0;
+  border: none;
+  outline: none;
+  background: transparent;
+  color: var(--msp-text);
+  font-size: 0.84rem;
+  font-family: inherit;
+}
+
+.filterMenuList {
+  overflow: auto;
+  min-height: 0;
+  flex: 1;
+  padding: 0.3rem;
+}
+
+.filterMenuOption {
+  display: block;
+  width: 100%;
+  padding: 0.5rem 0.65rem;
+  border: none;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--msp-text);
+  font-size: 0.84rem;
+  font-family: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.filterMenuOption:hover {
+  background: color-mix(in srgb, var(--msp-accent) 10%, transparent);
+}
+
+.filterMenuOptionActive {
+  background: color-mix(in srgb, var(--msp-accent) 14%, transparent);
+  color: var(--msp-accent);
+  font-weight: 600;
+}
+
+.filterMenuEmpty {
+  padding: 0.75rem 0.65rem;
+  font-size: 0.8rem;
+  color: var(--msp-muted);
+  text-align: center;
+}
+
+.bulkBar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid var(--msp-border);
+  background: var(--msp-accent-soft);
+  flex-shrink: 0;
+}
+
+.selectAllHint {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px dashed color-mix(in srgb, var(--msp-accent) 40%, var(--msp-border));
+  background: color-mix(in srgb, var(--msp-accent) 6%, var(--msp-surface));
+  font-size: 0.84rem;
+  color: var(--msp-text);
+  flex-shrink: 0;
+}
+
+.bulkInfo {
+  font-size: 0.84rem;
+  font-weight: 600;
+  color: var(--msp-accent);
+}
+
+.bulkActions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.tableSection {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.tableWrap {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  border: 1px solid var(--msp-border);
+  border-radius: 10px;
+  background: var(--msp-surface);
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.84rem;
+}
+
+.table th,
+.table td {
+  padding: 10px 12px;
+  text-align: left;
+  border-bottom: 1px solid var(--msp-border-light);
+  vertical-align: middle;
+}
+
+.table th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: var(--msp-surface-2, var(--msp-surface));
+  font-weight: 600;
+  color: var(--msp-muted);
+  white-space: nowrap;
+}
+
+.table tbody tr:hover {
+  background: color-mix(in srgb, var(--msp-accent) 6%, transparent);
+}
+
+.checkboxCell {
+  width: 40px;
+}
+
+.checkbox {
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+}
+
+.nameCell {
+  min-width: 140px;
+}
+
+.nameMain {
+  font-weight: 600;
+  color: var(--msp-text);
+}
+
+.nameSub {
+  margin-top: 2px;
+  font-size: 0.75rem;
+  color: var(--msp-muted);
+}
+
+.muted {
+  color: var(--msp-muted);
+}
+
+.empty {
+  text-align: center;
+  padding: 2rem 1rem !important;
+  color: var(--msp-muted);
+}
+
+.hint {
+  margin: 0;
+  font-size: 0.78rem;
+  line-height: 1.4;
+  color: var(--msp-muted);
+}
+
+.bulkDeleteModalList {
+  margin: 0.75rem 0 0;
+  padding-left: 1.1rem;
+  max-height: 220px;
+  overflow: auto;
+  line-height: 1.45;
+}
+
+.bulkDeleteModalList li {
+  margin-bottom: 0.25rem;
+}

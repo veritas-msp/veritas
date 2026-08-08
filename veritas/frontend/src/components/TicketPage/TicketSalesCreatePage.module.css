@@ -1,0 +1,61 @@
+
+
+.kindKpiRow {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  width: 100%;
+}
+
+.formTypeGrid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.detailsRow {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.75rem;
+  align-items: start;
+}
+
+.salesFields {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+}
+
+.projectManagerField {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.targetRuleList {
+  margin: 0.45rem 0 0;
+  padding-left: 1.1rem;
+  color: var(--msp-muted);
+  font-size: 0.82rem;
+  line-height: 1.45;
+}
+
+.targetRuleList li + li {
+  margin-top: 0.25rem;
+}
+
+@media (max-width: 960px) {
+  .formTypeGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 520px) {
+  .kindKpiRow {
+    grid-template-columns: 1fr;
+  }
+
+  .formTypeGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .detailsRow {
+    grid-template-columns: 1fr;
+  }
+}

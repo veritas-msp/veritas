@@ -1,0 +1,71 @@
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.18rem 0.45rem;
+  border-radius: 999px;
+  border: 1.5px solid;
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  white-space: nowrap;
+  line-height: 1;
+}
+
+.badgeIcon {
+  font-size: 0.85rem;
+  flex-shrink: 0;
+}
+
+.badgeOk {
+  border-color: rgba(19, 186, 142, 0.45);
+  background: rgba(19, 186, 142, 0.1);
+  color: #13BA8E;
+}
+
+.badgeWarning {
+  border-color: rgba(245, 158, 11, 0.55);
+  background: rgba(245, 158, 11, 0.12);
+  color: #f59e0b;
+}
+
+.badgeCritical {
+  border-color: rgba(239, 68, 68, 0.6);
+  background: rgba(239, 68, 68, 0.14);
+  color: #ef4444;
+  animation: pulseCrit 2s ease-in-out infinite;
+}
+
+.badgeNoData {
+  border-color: rgba(107, 114, 128, 0.4);
+  background: rgba(107, 114, 128, 0.08);
+  color: #6b7280;
+}
+
+.dotOnly {
+  width: 10px;
+  height: 10px;
+  padding: 0;
+  border-radius: 50%;
+  border-width: 2px;
+}
+
+.dotOnly .badgeIcon {
+  display: none;
+}
+
+.dotOnly .badgeText {
+  display: none;
+}
+
+@keyframes pulseCrit {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.35); }
+  50% { box-shadow: 0 0 0 4px rgba(239, 68, 68, 0); }
+}
+
+.cellWrap {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}

@@ -1,0 +1,73 @@
+.banner {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 0 14px;
+  box-sizing: border-box;
+  background: linear-gradient(90deg, #7c2d12 0%, #c2410c 100%);
+  color: #fff;
+  font-size: 0.84rem;
+  line-height: 1.35;
+  z-index: 1200;
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.18);
+}
+
+:global(html[data-profile-preview="1"]) .banner {
+  top: var(--profile-preview-banner-height, 40px);
+}
+
+.text {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.icon {
+  flex-shrink: 0;
+  font-size: 1.15rem;
+  opacity: 0.95;
+}
+
+.text strong {
+  font-weight: 700;
+}
+
+.exitBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+  padding: 5px 12px;
+  border: 1px solid rgba(255, 255, 255, 0.45);
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.12);
+  color: #fff;
+  font-size: 0.78rem;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.exitBtn:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.22);
+}
+
+.exitBtn:disabled {
+  opacity: 0.7;
+  cursor: wait;
+}
+
+.exitBtn:focus-visible {
+  outline: 2px solid #fff;
+  outline-offset: 2px;
+}

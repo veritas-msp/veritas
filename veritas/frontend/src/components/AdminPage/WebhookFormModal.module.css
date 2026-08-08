@@ -1,0 +1,102 @@
+.typeGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.65rem;
+}
+
+.typeCard {
+  display: grid;
+  justify-items: center;
+  gap: 0.35rem;
+  text-align: center;
+  min-height: 118px;
+  padding: 0.85rem 0.65rem;
+  border: 1px solid var(--msp-border);
+  border-radius: 14px;
+  background: var(--msp-surface-2);
+  color: var(--msp-text);
+  cursor: pointer;
+  font-family: inherit;
+  transition: border-color 0.15s, background 0.15s, box-shadow 0.15s;
+}
+
+.typeCard:hover:not(:disabled) {
+  border-color: var(--msp-accent);
+  background: var(--msp-accent-soft);
+}
+
+.typeCardSelected {
+  border-color: var(--msp-accent);
+  box-shadow: 0 0 0 1px var(--msp-accent) inset;
+  background: var(--msp-accent-soft);
+}
+
+.typeCardDisabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.typeCardIcon {
+  font-size: 1.45rem;
+}
+
+.typeCardLabel {
+  font-size: 0.875rem;
+  font-weight: 700;
+}
+
+.typeCardHint {
+  font-size: 0.75rem;
+  color: var(--msp-muted);
+  line-height: 1.35;
+}
+
+.testRow {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  flex-wrap: wrap;
+  margin-top: 0.35rem;
+}
+
+.testBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.5rem 0.85rem;
+  border: 1px solid var(--msp-border);
+  border-radius: 10px;
+  background: var(--msp-surface-2);
+  color: var(--msp-text);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+  transition: border-color 0.15s, background 0.15s, color 0.15s;
+}
+
+.testBtn:hover:not(:disabled) {
+  border-color: var(--msp-accent);
+  color: var(--msp-accent);
+}
+
+.testBtn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.testMessageSuccess {
+  font-size: 0.8125rem;
+  color: #22c55e;
+}
+
+.testMessageError {
+  font-size: 0.8125rem;
+  color: #f87171;
+}
+
+@media (max-width: 768px) {
+  .typeGrid {
+    grid-template-columns: 1fr;
+  }
+}

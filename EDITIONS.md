@@ -1,7 +1,7 @@
 # Veritas: Community & Pro Editions
 
-> Scoping document (Phase 0). Internal reference before open source and Pro commercialization.  
-> **Status:** validated for implementation. Last updated: June 2026.
+> Public reference for the Open Core model (Community AGPL + Pro commercial).  
+> Last updated: August 2026.
 
 ---
 
@@ -105,18 +105,19 @@
 
 ## 3. Repositories
 
-| Repo | OSS visibility | Role | Edition |
-|------|----------------|------|---------|
-| `veritas-backend` | Public | API, PostgreSQL database, migrations | Community (AGPL) + Pro hooks |
-| `veritas-frontend` | Public | React UI | Community (AGPL) + Pro hooks |
-| `veritas-agent` | Public | Windows RMM agent | Community (25 endpoints max) / Pro |
-| `veritas` (meta) | Public | Docs, Docker Compose, links | n/a |
+| Path / repo | OSS visibility | Role | Edition |
+|-------------|----------------|------|---------|
+| `veritas` (this monorepo) | Public | Docs, Docker Compose, `veritas/backend`, `veritas/frontend`, RMM agent sources | Community (AGPL) + Pro hooks |
+| `veritas/backend` | Public (in monorepo) | API, PostgreSQL database, migrations | Community (AGPL) + Pro hooks |
+| `veritas/frontend` | Public (in monorepo) | React UI | Community (AGPL) + Pro hooks |
+| `veritas-agent` | Public (separate) | Optional standalone Windows agent packaging | Community (25 endpoints max) / Pro |
 | `veritas-pro` (future) | Private | Pro modules and routes | Pro |
 | `veritas-website` | Public or private | Marketing / pricing site | n/a |
+| `veritas-billing` | Private | License / subscription API | n/a |
 
 **GitHub organization:** [`veritas-msp`](https://github.com/veritas-msp)
 
-Application repos are cloned **side by side** with the meta repo (listed in `.gitignore`).
+Clone this monorepo once. Sibling product repos (`veritas-website`, `veritas-billing`, `veritas-agent`) stay outside the tree (listed in `.gitignore`).
 
 ---
 
@@ -124,7 +125,7 @@ Application repos are cloned **side by side** with the meta repo (listed in `.gi
 
 ### 4.1 Community code license
 
-- **Choice: AGPL-3.0** on `veritas-backend`, `veritas-frontend`, and the `veritas` meta repo.
+- **Choice: AGPL-3.0** on this monorepo (`veritas/backend`, `veritas/frontend`, docs, and Compose files).
 - **Rationale:** prevent a third party from repackaging Veritas as a competing SaaS without publishing modifications.
 - **Status:** README + `EDITIONS.md` on each repo. Site legal pages: `legal.html`, `privacy.html`, `terms.html`.
 
@@ -229,13 +230,13 @@ REACT_APP_VERITAS_EDITION=community
 - [x] `/setup` wizard: writes `VERITAS_EDITION` + `REACT_APP_VERITAS_EDITION` (default `community`)
 - [x] Frontend `useVeritasEdition`: source of truth = backend API
 - [x] Startup log: edition displayed in console
-- [x] Script `npm run verify:phase2` in `veritas-backend`
+- [x] Script `npm run verify:phase2` in `veritas/backend`
 - [x] Commercial license key: Phase 5b (billing validation + admin UI)
 
 ### Switch to Pro in development
 
-1. **Backend:** in `veritas-backend/.env`, set `VERITAS_EDITION=pro`, then restart `npm start`.
-2. **Frontend:** in `veritas-frontend/.env`, set `REACT_APP_VERITAS_EDITION=pro`, then restart `npm start` (variable injected at CRA build).
+1. **Backend:** in `veritas/backend/.env`, set `VERITAS_EDITION=pro`, then restart `npm start`.
+2. **Frontend:** in `veritas/frontend/.env`, set `REACT_APP_VERITAS_EDITION=pro`, then restart `npm start` (variable injected at CRA build).
 3. Verify: `GET http://localhost:3001/api/edition` should return `{ "edition": "pro", "limits": null, "license": { "devBypass": true, ... } }`.
 4. **Profiles:** in Pro, re-enable desired modules via Administration → Agents & profiles (Community migration resets Pro flags to `FALSE`).
 
@@ -265,13 +266,13 @@ Expected behavior:
 - [x] Tickets UI: SLA column hidden (`TicketPage`, `TicketDetailPage`)
 - [x] Profile migration: `20260720_community_profiles_defaults.sql`
 - [x] API errors: limit messages surfaced (`utils/apiErrors.js`, `users`, `rmm`)
-- [x] Script `npm run verify:phase3` in `veritas-backend`
+- [x] Script `npm run verify:phase3` in `veritas/backend`
 
 ### Testing in Community
 
-1. **Backend:** set `VERITAS_EDITION=community` in `veritas-backend/.env`, then restart.
-2. **Frontend:** set `REACT_APP_VERITAS_EDITION=community` in `veritas-frontend/.env`, then restart.
-3. Verify: `npm run verify:phase3` (from `veritas-backend/`).
+1. **Backend:** set `VERITAS_EDITION=community` in `veritas/backend/.env`, then restart.
+2. **Frontend:** set `REACT_APP_VERITAS_EDITION=community` in `veritas/frontend/.env`, then restart.
+3. Verify: `npm run verify:phase3` (from `veritas/backend/`).
 4. Manual walkthrough: sidebar (3 modules), admin (limited sections), company record without infra, ticket without SLA.
 
 ---
@@ -282,13 +283,13 @@ Expected behavior:
 
 - [x] `docker-compose.yml`: Postgres 15, backend, frontend (Community by default)
 - [x] `.env.docker.example`: secrets, edition, same-origin URLs
-- [x] `veritas-backend/Dockerfile`: Node 20 Alpine, healthcheck `/health/live`
-- [x] `veritas-frontend/Dockerfile`: CRA build + nginx
-- [x] `veritas-frontend/nginx.conf`: proxy `/api` and `/uploads` → backend
+- [x] `veritas/backend/Dockerfile`: Node 20 Alpine, healthcheck `/health/live`
+- [x] `veritas/frontend/Dockerfile`: CRA build + nginx
+- [x] `veritas/frontend/nginx.conf`: proxy `/api` and `/uploads` → backend
 - [x] Persistent volumes: `veritas-db`, `veritas-uploads`
 - [x] `/setup` wizard: migrations + admin (pre-configured env in Docker)
 - [x] `README.md`: Docker quick start + local dev
-- [x] Script `node scripts/verify-phase4.mjs` (meta repo root)
+- [x] Script `node scripts/verify-phase4.mjs` (repository root)
 - [ ] `docker compose up` build tested on machine with Docker Desktop
 
 ### Docker quick start
@@ -324,12 +325,12 @@ Flow: **Stripe checkout** → key `VRT-PRO-XXXX-XXXX-XXXX-XXXX` (billing) → **
 ### Phase 5b checklist
 
 - [x] `veritas-billing`: `POST /api/license/validate` (secret `BILLING_LICENSE_API_SECRET`)
-- [x] `veritas-backend/constants/billing.js`: production billing URL and embedded client secret
-- [x] `veritas-backend/utils/proLicense.js`: cache, refresh, dev bypass
-- [x] `veritas-backend/routes/config/license.js`: `GET/POST /api/license`, `POST /api/license/refresh` (admin JWT)
+- [x] `veritas/backend/constants/billing.js`: billing URL + secret via env (`VERITAS_BILLING_*`)
+- [x] `veritas/backend/utils/proLicense.js`: cache, refresh, dev bypass
+- [x] `veritas/backend/routes/config/license.js`: `GET/POST /api/license`, `POST /api/license/refresh` (admin JWT)
 - [x] `GET /api/edition`: `license` field (public status, no full key)
 - [x] Cron: license re-check every 15 min
-- [x] `veritas-frontend`: admin **Pro License** tab (visible in Community)
+- [x] `veritas/frontend`: admin **Pro License** tab (visible in Community)
 - [x] `.env.example` backend: `VERITAS_LICENSE_KEY`; billing URL and secret embedded in `constants/billing.js`
 - [x] Marketing site: success page hint (Administration → Pro License)
 - [x] Script `node scripts/verify-phase5b.mjs`
@@ -341,8 +342,8 @@ Flow: **Stripe checkout** → key `VRT-PRO-XXXX-XXXX-XXXX-XXXX` (billing) → **
 
 | Service | Variables |
 |---------|-----------|
-| **veritas-billing** | `BILLING_LICENSE_API_SECRET` (= secret embarqué dans `veritas-backend/constants/billing.js`) |
-| **veritas-backend** | `VERITAS_LICENSE_KEY` (clé client, saisie dans Administration → Licence Pro) |
+| **veritas-billing** | `BILLING_LICENSE_API_SECRET` (must match `VERITAS_BILLING_LICENSE_SECRET` on the app) |
+| **veritas/backend** | `VERITAS_LICENSE_KEY` (client key, Administration → Pro License) + optional `VERITAS_BILLING_LICENSE_SECRET` |
 
 Billing statuses considered **active**: `active`, `trialing`, `past_due`. Admin revocation: `suspended`, `revoked`, `banned`.
 
@@ -390,7 +391,7 @@ Billing statuses considered **active**: `active`, `trialing`, `past_due`. Admin 
 - [x] Consolidated commits per repo (phases 2 through 5b)
 - [x] Script `node scripts/verify-phase6.mjs` (OK)
 - [x] Local tag `v1.0.0-community` on each OSS repo
-- [x] GitHub push + `veritas-msp/veritas` meta repo created
+- [x] GitHub push + `veritas-msp/veritas` monorepo created
 - [ ] `veritas-billing`: separate **private** repo (outside AGPL publication)
 
 ---

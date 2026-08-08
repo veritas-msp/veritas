@@ -1,0 +1,61 @@
+
+.msp-page-grid {
+  position: relative;
+}
+
+.msp-page-grid::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  background:
+    linear-gradient(120deg, rgba(43, 95, 171, 0.08) 0%, transparent 45%),
+    radial-gradient(circle at 85% 20%, rgba(43, 95, 171, 0.12) 0%, transparent 35%),
+    repeating-linear-gradient(0deg, rgba(16, 35, 60, 0.045) 0 1px, transparent 1px 36px),
+    repeating-linear-gradient(90deg, rgba(16, 35, 60, 0.038) 0 1px, transparent 1px 36px);
+  pointer-events: none;
+  z-index: 0;
+}
+
+.msp-page-grid::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  background:
+    radial-gradient(ellipse 420px 280px at 74% 62%, rgba(59, 130, 246, 0.1) 0%, transparent 72%),
+    radial-gradient(ellipse 320px 220px at 28% 30%, rgba(37, 99, 235, 0.08) 0%, transparent 70%);
+  pointer-events: none;
+  z-index: 0;
+}
+
+
+.msp-page-grid > *,
+.msp-page-grid .mspLayout,
+.msp-page-grid .mspMain,
+.msp-page-grid .mspContent {
+  position: relative;
+  z-index: 1;
+}
+
+.msp-page-grid > header {
+  z-index: 50;
+}
+
+
+.msp-page-grid :where(.card, .kpiCard, .toolbar, .mspHero, .stateBox, .emptyState) {
+  background-color: var(--msp-surface, #fff);
+  isolation: isolate;
+}
+
+html.dark .msp-page-grid::before {
+  background:
+    linear-gradient(120deg, rgba(43, 95, 171, 0.14) 0%, transparent 45%),
+    radial-gradient(circle at 85% 20%, rgba(43, 95, 171, 0.18) 0%, transparent 35%),
+    repeating-linear-gradient(0deg, rgba(148, 163, 184, 0.032) 0 1px, transparent 1px 36px),
+    repeating-linear-gradient(90deg, rgba(148, 163, 184, 0.026) 0 1px, transparent 1px 36px);
+}
+
+html.dark .msp-page-grid::after {
+  background:
+    radial-gradient(ellipse 420px 280px at 74% 62%, rgba(59, 130, 246, 0.12) 0%, transparent 72%),
+    radial-gradient(ellipse 320px 220px at 28% 30%, rgba(37, 99, 235, 0.1) 0%, transparent 70%);
+}

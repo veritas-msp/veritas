@@ -1,0 +1,168 @@
+.page {
+  height: 100%;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  background: var(--msp-surface-2, #f7f9fc);
+  color: var(--msp-text, #0f1c2e);
+}
+
+.header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1rem 1.5rem;
+  border-bottom: 1px solid var(--msp-border, #c5d0df);
+  background: var(--msp-surface, #fff);
+  position: sticky;
+  top: 0;
+  z-index: 20;
+}
+
+.headerLeft {
+  display: flex;
+  align-items: flex-start;
+  gap: 1rem;
+  min-width: 0;
+}
+
+.headerCopy {
+  min-width: 0;
+}
+
+.backButton {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.45rem 0.75rem;
+  border: 1px solid var(--msp-border-light, #dde5ef);
+  border-radius: 8px;
+  background: var(--msp-surface, #fff);
+  color: var(--msp-muted, #5c6b82);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.backButton:hover {
+  border-color: var(--msp-accent, #2b5fab);
+  color: var(--msp-accent, #2b5fab);
+}
+
+.title {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0;
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: var(--msp-text, #0f1c2e);
+}
+
+.titleIcon {
+  font-size: 1.35rem;
+  color: var(--msp-accent, #2b5fab);
+}
+
+.subtitle {
+  margin: 0.35rem 0 0;
+  font-size: 0.84rem;
+  color: var(--msp-muted, #5c6b82);
+}
+
+.headerActions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-shrink: 0;
+}
+
+.actionBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.45rem 0.85rem;
+  border: 1px solid var(--msp-border-light, #dde5ef);
+  border-radius: 8px;
+  background: var(--msp-surface, #fff);
+  color: var(--msp-text, #0f1c2e);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.actionBtn:hover:not(:disabled) {
+  border-color: var(--msp-accent, #2b5fab);
+  color: var(--msp-accent, #2b5fab);
+}
+
+.actionBtn:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+
+.content {
+  max-width: 1680px;
+  margin: 0 auto;
+  padding: 1rem 1.5rem 2rem;
+}
+
+.loadingState,
+.emptyState {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  min-height: 280px;
+  color: var(--msp-muted, #5c6b82);
+  text-align: center;
+}
+
+.emptyIcon {
+  font-size: 2.5rem;
+  color: var(--msp-accent, #2b5fab);
+  opacity: 0.7;
+}
+
+.spin {
+  animation: fleetStatsSpin 1s linear infinite;
+}
+
+@keyframes fleetStatsSpin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+:global(html.dark) .page {
+  background: #152035;
+}
+
+:global(html.dark) .header,
+:global(html.dark) .backButton,
+:global(html.dark) .actionBtn {
+  background: #1a2540;
+  border-color: #2f4260;
+  color: #e8edf5;
+}
+
+:global(html.dark) .subtitle {
+  color: #8fa8c4;
+}
+
+@media (max-width: 720px) {
+  .header {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .headerLeft {
+    flex-direction: column;
+  }
+}

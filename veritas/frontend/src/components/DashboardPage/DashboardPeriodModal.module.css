@@ -1,0 +1,230 @@
+.shell {
+  max-width: min(520px, 100%) !important;
+  height: auto !important;
+}
+
+.modalBody {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+  flex: 0 0 auto;
+  padding: 1rem 1.35rem 0;
+  overflow-y: auto;
+}
+
+.modeSwitch {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.35rem;
+  padding: 0.28rem;
+  border: 1px solid var(--msp-border-light);
+  border-radius: 12px;
+  background: var(--msp-surface-2);
+}
+
+.modeBtn {
+  border: none;
+  border-radius: 9px;
+  background: transparent;
+  color: var(--msp-muted);
+  font-size: 0.82rem;
+  font-weight: 600;
+  padding: 0.58rem 0.75rem;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s, box-shadow 0.15s;
+  font-family: inherit;
+}
+
+.modeBtn:hover {
+  color: var(--msp-text);
+  background: color-mix(in srgb, var(--msp-surface) 70%, transparent);
+}
+
+.modeBtnActive {
+  background: var(--msp-surface);
+  color: var(--msp-accent);
+  box-shadow: 0 1px 3px rgba(15, 28, 46, 0.08);
+}
+
+:global(html.dark) .modeBtnActive {
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.28);
+}
+
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+  margin: 0;
+}
+
+.sectionTitle {
+  margin: 0;
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--msp-muted);
+}
+
+.sectionHint {
+  margin: 0;
+  font-size: 0.8rem;
+  color: var(--msp-muted);
+  line-height: 1.45;
+}
+
+.presetGrid {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 0.45rem;
+}
+
+.presetBtn {
+  grid-column: span 2;
+  border: 1px solid var(--msp-border-light);
+  background: var(--msp-surface-2);
+  color: var(--msp-text);
+  font-size: 0.8rem;
+  font-weight: 600;
+  padding: 0.58rem 0.65rem;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
+  font-family: inherit;
+  text-align: center;
+}
+
+.presetBtn:nth-child(4),
+.presetBtn:nth-child(5) {
+  grid-column: span 3;
+}
+
+.presetBtn:hover {
+  border-color: var(--msp-accent);
+  background: var(--msp-accent-soft);
+}
+
+.presetBtnActive {
+  border-color: var(--msp-accent);
+  background: var(--msp-accent-soft);
+  color: var(--msp-accent);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--msp-accent) 35%, transparent);
+}
+
+.customGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.65rem;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  min-width: 0;
+}
+
+.fieldLabel {
+  font-size: 0.76rem;
+  font-weight: 600;
+  color: var(--msp-muted);
+}
+
+.fieldInput {
+  width: 100%;
+  box-sizing: border-box;
+  border: 1px solid var(--msp-border-light);
+  background: var(--msp-surface);
+  color: var(--msp-text);
+  font-size: 0.82rem;
+  padding: 0.58rem 0.65rem;
+  border-radius: 10px;
+  font-family: inherit;
+}
+
+.fieldInput:focus {
+  outline: none;
+  border-color: var(--msp-accent);
+  box-shadow: 0 0 0 3px var(--msp-accent-soft);
+}
+
+.error {
+  margin: 0;
+  padding: 0.65rem 0.75rem;
+  border-radius: 10px;
+  background: rgba(190, 24, 93, 0.1);
+  border: 1px solid rgba(190, 24, 93, 0.25);
+  color: #be185d;
+  font-size: 0.8rem;
+}
+
+:global(html.dark) .error {
+  background: rgba(244, 114, 182, 0.12);
+  border-color: rgba(244, 114, 182, 0.28);
+  color: #f472b6;
+}
+
+.footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.55rem;
+  flex-shrink: 0;
+  margin-top: 0.85rem;
+  padding: 0.85rem 1.35rem 1rem;
+  border-top: 1px solid var(--msp-border-light);
+  background: var(--msp-surface-2);
+}
+
+.cancelBtn,
+.applyBtn {
+  border-radius: 10px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  padding: 0.52rem 0.95rem;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.cancelBtn {
+  border: 1px solid var(--msp-border-light);
+  background: var(--msp-surface);
+  color: var(--msp-text);
+}
+
+.cancelBtn:hover {
+  background: var(--msp-surface-3);
+}
+
+.applyBtn {
+  border: none;
+  background: var(--msp-accent);
+  color: #fff;
+}
+
+.applyBtn:hover {
+  filter: brightness(1.06);
+}
+
+@media (max-width: 560px) {
+  .modalBody {
+    padding-inline: 1rem;
+  }
+
+  .presetGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .presetBtn,
+  .presetBtn:nth-child(4),
+  .presetBtn:nth-child(5) {
+    grid-column: auto;
+  }
+
+  .customGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .footer {
+    padding-inline: 1rem;
+  }
+}

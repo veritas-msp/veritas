@@ -1,0 +1,53 @@
+Remaining hardcoded French accent strings (excl. *I18n* / *Translations* / *.fr.js / AdminPage): 50
+Scanned files: 483
+
+src/components/CybersecuritePage/AddJobModal.js (1) e.g. "\n          });\n        });\n      }\n    });\n  }\n  return options;\n}\ncons
+src/components/CybersecuritePage/CampaignDetailPage.js (3) e.g. ");\n      toast.success(detailCopy.toasts.reportDownloaded);\n    } catch (erro
+src/components/CybersecuritePage/CampaignSteps.js (5) e.g. "Communication orale puis écrite au client"
+src/components/CybersecuritePage/CybersecuritePage.js (1) e.g. ", error);\n          errorCount++;\n        } finally {\n          processed +=
+src/components/CybersecuritePage/MfaDetailsTable.js (1) e.g. "Error while loading des détails MFA:"
+src/components/EnterprisesPage/EnterprisesPage.js (1) e.g. "Error chargement familles matériel:"
+src/components/EquipementPage/constants/serverRoleOptions.js (11) e.g. "Hôte"
+src/components/EquipementPage/constants/storageRoleOptions.js (1) e.g. "Storage de réplication"
+src/components/EquipementPage/EquipmentAddFlowModal.js (1) e.g. ",\n      label: family.label,\n      icon: family.icon || \"mdi:devices\"\n    
+src/components/EquipementPage/EquipmentDetailPage.js (1) e.g. ", '_blank', 'noopener');\n    }\n  };\n  const handleMappingSaved = mapping => 
+src/components/EquipementPage/EquipmentDocumentsPanel.js (1) e.g. "Procédure"
+src/components/EquipementPage/equipmentFormConfig.js (3) e.g. "Câble"
+src/components/EquipementPage/EquipmentSteps/StepStockage.js (1) e.g. "Storage de réplication"
+src/components/EquipementPage/internetConnectionUtils.js (2) e.g. "Câble"
+src/components/EquipementPage/ServerSpecFields.js (1) e.g. "} className={isVirtual ? styles.volumeRowVirtual : styles.volumeRow}>\r\n      
+src/components/EquipementPage/serverSpecUtils.js (2) e.g. ";\n}\nexport function parseCpu(value, {\n  isVirtual = false\n} = {}) {\n  cons
+src/components/MainApp.js (1) e.g. ", {\n      credentials: \"include\"\n    }).then(res => res.ok ? res.json() : n
+src/components/Misc/AiBriefingPanel/AiBriefingPanel.js (17) e.g. "IA non configurée ou fonctionnalité désactivée."
+src/components/Misc/ProFeature/proFeaturePromos.js (157) e.g. "Campagnes cybersécurité"
+src/components/Misc/ProFeature/proFeatureUtils.js (5) e.g. "Carnets de crédits support"
+src/components/Misc/TabsBar/TabsBar.js (1) e.g. ";\n          if (connType.includes(\"fibre\") || connType.includes(\"fiber\") |
+src/components/Monitoring/Modules/Antispam.js (2) e.g. ", {\n          credentials: \"include\",\n          signal: controller.signal\n
+src/components/Monitoring/Modules/Antivirus.js (1) e.g. "} type=\"number\" min=\"0\" placeholder=\"0\" value={threat.count} onChange={e 
+src/components/Monitoring/Modules/Firewalls.js (1) e.g. "} onClick={e => e.stopPropagation()}>\n                    <div className={styl
+src/components/Monitoring/Modules/Sauvegarde.js (2) e.g. ");\n          allLocations.add(instance.hyperbackupDestination);\n          con
+src/components/Monitoring/Modules/Serveurs.js (1) e.g. "sécurité"
+src/components/Monitoring/MonitoringHeader.js (3) e.g. "résumé"
+src/components/Monitoring/MonitoringRenderContent.js (1) e.g. " : docName || \"default\";\n        const rawSteps = localStorage.getItem(\"mon
+src/components/Monitoring/MonitoringSummary/monitoringUtils.js (2) e.g. "coffre fort numérique"
+src/components/Monitoring/MonitoringSummaryOverrides/SauvegardeSummary.js (1) e.g. ";\n          }\n        }\n      } catch (e) {}\n    }\n    return {\n      sta
+src/components/Monitoring/MonitoringSummaryOverrides/ServeursSummary.js (1) e.g. "sécurité"
+src/components/PlanningPage/PlanningPage.js (6) e.g. ";\n}\nfunction isBusinessDay(dayMoment) {\n  const day = dayMoment.day();\n  re
+src/components/PlanningPage/usePlanningEventFormModal.js (2) e.g. "Error enregistrement événement:"
+src/components/RapportPage/exportRapportHtmlTemplate.js (3) e.g. ";\n}\nexport function buildExportPrintStyles() {\n  return `\n    :root {\n    
+src/components/RapportPage/intervention/interventionReportModel.js (2) e.g. "déjà enregistré"
+src/components/RapportPage/intervention/RapportInterventionBuilder.js (3) e.g. "déposé"
+src/components/RapportPage/monitoring/CheckMKMonitoringModal.js (1) e.g. ";\r\n  }, [reportPeriod]);\r\n  const syncedAtLabel = useMemo(() => {\r\n    if
+src/components/RapportPage/monitoring/ReportSummary/ReportSummaryCybersecurity.js (1) e.g. ";\r\n}\r\nfunction formatInt(value) {\r\n  if (value == null || Number.isNaN(Nu
+src/components/RapportPage/monitoring/ReportSummary/ReportSummaryInfrastructure.js (2) e.g. ";\n    const site = item.site || \"Sans site\";\n    const ip = item.ip || item
+src/components/RapportPage/monitoring/ReportSummary/ReportSummaryServices.js (1) e.g. "expiré"
+src/components/RapportPage/monitoring/steps/AntispamStep.js (1) e.g. "]);\n      if (alias) aliases.push(alias);\n    }\n    return {\n      lastName
+src/components/RapportPage/monitoring/steps/StockageStep.js (1) e.g. ";\n  } catch (e) {\n    return String(value);\n  }\n}\nfunction ExpirationDateC
+src/components/RapportPage/RapportPage.js (1) e.g. " : builderClient?.reportPeriod || null;\n      const result = await saveMonitor
+src/components/ServicePage/DomainMspDashboard.js (5) e.g. "expiré"
+src/components/ServicePage/domainMspUtils.js (2) e.g. "expiré"
+src/components/ServicePage/ServiceOverviewPanel.js (4) e.g. "expiré"
+src/components/Setup/setupErrors.js (7) e.g. "Unable to lire l'état d'installation."
+src/components/TicketPage/TicketAiRunbookPanel.js (3) e.g. "Fehlerbehebungs-Checkliste für dieses Ticket"
+src/components/TicketPage/TicketCreatePage.js (2) e.g. "} onMouseEnter={() => setAssigneeHighlight(idx)} onClick={() => addPreAssignee(
+src/components/TicketPage/TicketDetailPage.js (5) e.g. "}>\n                            ×\n                          </button>\n       

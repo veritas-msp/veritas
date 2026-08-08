@@ -1,0 +1,177 @@
+.headerIconDns {
+  background: linear-gradient(135deg, #2b5fab 0%, #1a3d75 100%);
+  box-shadow: 0 6px 16px rgba(43, 95, 171, 0.28);
+}
+
+.domainImportGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 0.75rem;
+}
+
+.domainImportCard {
+  border: 1px solid var(--msp-border, #dde3ed);
+  border-radius: 10px;
+  padding: 0.75rem 0.875rem;
+  background: var(--msp-surface, #fff);
+  cursor: pointer;
+  text-align: left;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
+}
+
+.domainImportCard:hover {
+  border-color: var(--msp-accent, #2b5fab);
+  box-shadow: 0 4px 12px rgba(43, 95, 171, 0.12);
+}
+
+.domainImportCardSelected {
+  border-color: var(--msp-accent, #2b5fab);
+  background: var(--msp-accent-soft, rgba(43, 95, 171, 0.08));
+}
+
+.domainImportTitle {
+  font-weight: 600;
+  color: var(--msp-text, #0f1c2e);
+  font-size: 0.9rem;
+  word-break: break-word;
+}
+
+.domainImportMeta {
+  margin-top: 0.35rem;
+  font-size: 0.75rem;
+  color: var(--msp-muted, #5c6b82);
+  line-height: 1.4;
+}
+
+.domainImportBadges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin-top: 0.45rem;
+}
+
+.domainBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.2rem;
+  padding: 0.1rem 0.45rem;
+  border-radius: 999px;
+  font-size: 0.68rem;
+  font-weight: 600;
+  background: var(--msp-surface-2, #f3f4f6);
+  color: var(--msp-text, #374151);
+}
+
+.domainBadgeOk {
+  background: rgba(16, 185, 129, 0.12);
+  color: #059669;
+}
+
+.domainBadgeWarn {
+  background: rgba(245, 158, 11, 0.12);
+  color: #d97706;
+}
+
+.importToolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.65rem;
+  margin-bottom: 0.85rem;
+}
+
+.importSearchWrap {
+  flex: 1 1 220px;
+  min-width: 0;
+}
+
+.importToolbarActions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.importHint {
+  margin: 0 0 0.85rem;
+  font-size: 0.75rem;
+  color: var(--msp-muted, #5c6b82);
+  line-height: 1.45;
+}
+
+.importTableWrap {
+  border: 1px solid var(--msp-border, #dde3ed);
+  border-radius: 10px;
+  overflow: auto;
+  max-height: min(52vh, 420px);
+}
+
+.importTable {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.8125rem;
+}
+
+.importTable th,
+.importTable td {
+  padding: 0.65rem 0.75rem;
+  text-align: left;
+  border-bottom: 1px solid var(--msp-border, #eef1f6);
+  vertical-align: middle;
+}
+
+.importTable th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: var(--msp-surface-2, #f8fafc);
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--msp-muted, #5c6b82);
+}
+
+.importTable tr:last-child td {
+  border-bottom: none;
+}
+
+.importTableRow {
+  cursor: pointer;
+  transition: background 0.12s ease;
+}
+
+.importTableRow:hover {
+  background: rgba(43, 95, 171, 0.04);
+}
+
+.importTableRowSelected {
+  background: rgba(43, 95, 171, 0.08);
+}
+
+.importTableRowDisabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.importDomainName {
+  font-weight: 600;
+  color: var(--msp-text, #0f1c2e);
+  word-break: break-word;
+}
+
+.importFooterBar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-top: 1rem;
+  padding-top: 0.85rem;
+  border-top: 1px solid var(--msp-border, #eef1f6);
+}
+
+.importSelectionSummary {
+  font-size: 0.78rem;
+  color: var(--msp-muted, #5c6b82);
+}

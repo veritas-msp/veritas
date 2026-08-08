@@ -1,0 +1,248 @@
+.emailChipField {
+  min-height: 44px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.4rem 0.65rem;
+  border: 1px solid var(--msp-border);
+  border-radius: 12px;
+  background: var(--msp-surface);
+}
+
+.emailChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  background: var(--msp-surface-3);
+  border: 1px solid var(--msp-border);
+  color: var(--msp-text);
+  border-radius: 999px;
+  padding: 0.16rem 0.5rem;
+  font-size: 0.78rem;
+}
+
+.emailChipRemove {
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  color: var(--msp-muted);
+  display: inline-flex;
+  padding: 0;
+}
+
+.emailChipInput {
+  border: none;
+  outline: none;
+  min-width: 180px;
+  flex: 1;
+  font-size: 0.85rem;
+  background: transparent;
+  color: var(--msp-text);
+  font-family: inherit;
+}
+
+.webhookSelectWrap {
+  position: relative;
+}
+
+.webhookSelectBtn {
+  width: 100%;
+  text-align: left;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  cursor: pointer;
+  min-height: 42px;
+}
+
+.webhookSelectBtn:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.webhookSelectLabel {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-width: 0;
+}
+
+.webhookSelectText {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.webhookDropdown {
+  position: absolute;
+  z-index: 50;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  border: 1px solid var(--msp-border);
+  border-radius: 12px;
+  background: var(--msp-surface);
+  box-shadow: 0 10px 25px rgba(2, 6, 23, 0.18);
+  max-height: 220px;
+  overflow-y: auto;
+}
+
+.webhookOption {
+  width: 100%;
+  border: none;
+  background: var(--msp-surface);
+  padding: 0.55rem 0.7rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  cursor: pointer;
+  text-align: left;
+  color: var(--msp-text);
+  font-family: inherit;
+  font-size: 0.875rem;
+}
+
+.webhookOption:hover,
+.webhookOptionSelected {
+  background: var(--msp-surface-3);
+}
+
+.webhookEmpty {
+  padding: 0.6rem 0.75rem;
+  color: var(--msp-muted);
+  font-size: 0.82rem;
+}
+
+.colorSwatches {
+  display: flex;
+  gap: 0.45rem;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.colorSwatch {
+  width: 24px;
+  height: 24px;
+  border-radius: 999px;
+  cursor: pointer;
+  border: 1px solid var(--msp-border);
+}
+
+.colorSwatchSelected {
+  border: 2px solid var(--msp-text);
+}
+
+.previewWrap {
+  margin-top: 0.7rem;
+  border: 1px solid var(--msp-border);
+  border-radius: 12px;
+  background: var(--msp-surface-2);
+  padding: 0.7rem;
+}
+
+.previewLabel {
+  font-size: 0.78rem;
+  color: var(--msp-muted);
+  margin-bottom: 0.45rem;
+}
+
+.previewCard {
+  border: 1px solid var(--msp-border);
+  border-radius: 8px;
+  background: var(--msp-surface);
+  padding: 0.7rem;
+}
+
+.previewTitle {
+  font-weight: 700;
+  margin-bottom: 0.45rem;
+  color: var(--msp-text);
+}
+
+.previewBody {
+  color: var(--msp-text);
+  font-size: 0.84rem;
+  line-height: 1.5;
+}
+
+.hintText {
+  margin-top: 0.55rem;
+  color: var(--msp-muted);
+  font-size: 0.8rem;
+}
+
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-bottom: 0.6rem;
+}
+
+.toolBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.3rem;
+  min-height: 34px;
+  padding: 0.28rem 0.55rem;
+  border: 1px solid var(--msp-border);
+  border-radius: 8px;
+  background: var(--msp-surface-2);
+  color: var(--msp-text);
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+  transition: border-color 0.15s, background 0.15s, color 0.15s;
+}
+
+.toolBtn:hover:not(:disabled) {
+  border-color: var(--msp-accent);
+  color: var(--msp-accent);
+  background: var(--msp-accent-soft);
+}
+
+.toolBtn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.editor {
+  min-height: 160px;
+  padding: 0.85rem 1rem;
+  border: 1px solid var(--msp-border);
+  border-radius: 12px;
+  background: var(--msp-surface);
+  color: var(--msp-text);
+  line-height: 1.45;
+  overflow-y: auto;
+  font-size: 0.875rem;
+}
+
+.editor:focus {
+  outline: none;
+  border-color: var(--msp-accent);
+  box-shadow: 0 0 0 3px var(--msp-accent-soft);
+}
+
+.colorInput {
+  width: 36px;
+  height: 32px;
+  border: none;
+  background: transparent;
+  padding: 0;
+  cursor: pointer;
+}
+
+.customColorRow {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.customColorLabel {
+  color: var(--msp-muted);
+  font-size: 0.8rem;
+}

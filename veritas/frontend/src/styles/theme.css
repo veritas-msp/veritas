@@ -1,0 +1,144 @@
+
+
+
+
+
+
+
+html.light {
+  --bg-primary: #ffffff;
+  --bg-secondary: #f9fafb;
+  --bg-tertiary: #f3f4f6;
+  --bg-sidebar: #ffffff;
+  
+  
+  --text-primary: #000000;
+  --text-secondary: #000000;
+  --text-muted: #6b7280;
+  --text-inverted: #ffffff;
+
+  --border-primary: #e5e7eb;
+  --border-secondary: #d1d5db;
+
+  --accent-primary: #13BA8E;
+  --accent-secondary: #10b981;
+  
+  --shadow-color: rgba(0, 0, 0, 0.1);
+  --accent-primary-alpha: rgba(19, 186, 142, 0.1);
+  --accent-primary-faded: rgba(19, 186, 142, 0.1);
+  --accent-primary-rgb: 19, 186, 142;
+  --calendar-picker-filter: none;
+
+  
+  --msp-page-bg: #d0d9e6;
+  --msp-surface: #ffffff;
+  --msp-surface-2: #f7f9fc;
+  --msp-surface-3: #f4f7fb;
+  --msp-surface-muted: #eef2f7;
+  --msp-border: #c5d0df;
+  --msp-border-light: #b8c5d6;
+  --msp-text: #0f1c2e;
+  --msp-muted: #5c6b82;
+  --msp-text-muted: #5c6b82;
+  --msp-muted-light: #8b9bb5;
+  --msp-accent: #2b5fab;
+  --msp-accent-soft: rgba(43, 95, 171, 0.1);
+}
+
+
+html.dark {
+  --bg-primary: #0f0f23;
+  --bg-secondary: #1a1a2e;
+  --bg-tertiary: #1e1e3f;
+  --bg-sidebar: #1a1a2e;
+  
+  --text-primary: #f9fafb;
+  --text-secondary: #d1d5db;
+  --text-muted: #9ca3af;
+  --text-inverted: #111827;
+
+  --border-primary: #2a2a4a;
+  --border-secondary: #3a3a5a;
+
+  --accent-primary: #13BA8E;
+  --accent-secondary: #10b981;
+
+  --shadow-color: rgba(0, 0, 0, 0.3);
+  --accent-primary-alpha: rgba(19, 186, 142, 0.2);
+  --accent-primary-faded: rgba(19, 186, 142, 0.15);
+  --accent-primary-rgb: 19, 186, 142;
+  --calendar-picker-filter: invert(1) brightness(0.8);
+
+  
+  --msp-page-bg: #060a10;
+  --msp-surface: #1a2540;
+  --msp-surface-2: #152035;
+  --msp-surface-3: #1e2d4a;
+  --msp-surface-muted: #1e2d4a;
+  --msp-border: #2f4260;
+  --msp-border-light: #243047;
+  --msp-text: #e8edf5;
+  --msp-muted: #8fa8c4;
+  --msp-text-muted: #8fa8c4;
+  --msp-muted-light: #6a88a8;
+  --msp-accent: #4a8fd4;
+  --msp-accent-soft: rgba(74, 143, 212, 0.15);
+}
+
+
+
+
+
+
+html.dark,
+body.dark {
+  background-color: #0f0f23 !important;
+}
+
+
+html.dark::-webkit-scrollbar,
+body.dark::-webkit-scrollbar {
+  width: 12px;
+}
+
+html.dark::-webkit-scrollbar-track,
+body.dark::-webkit-scrollbar-track {
+  background: #1a1a2e;
+}
+
+html.dark::-webkit-scrollbar-thumb,
+body.dark::-webkit-scrollbar-thumb {
+  background: #3a3a5a;
+  border-radius: 6px;
+}
+
+html.dark::-webkit-scrollbar-thumb:hover,
+body.dark::-webkit-scrollbar-thumb:hover {
+  background: #4a4a6a;
+}
+
+
+
+
+
+.quill-dark .ql-toolbar {
+  border-color: #3a3a5a !important;
+  background: #1e1e3f !important;
+}
+.quill-dark .ql-toolbar .ql-stroke {
+  stroke: #d1d5db !important;
+}
+.quill-dark .ql-toolbar .ql-fill {
+  fill: #d1d5db !important;
+}
+.quill-dark .ql-toolbar .ql-picker-label {
+  color: #d1d5db !important;
+}
+.quill-dark .ql-container {
+  border-color: #3a3a5a !important;
+  color: #f9fafb !important;
+  background: #1e1e3f;
+}
+.quill-dark .ql-editor.ql-blank::before {
+  color: rgba(255, 255, 255, 0.6);
+} 

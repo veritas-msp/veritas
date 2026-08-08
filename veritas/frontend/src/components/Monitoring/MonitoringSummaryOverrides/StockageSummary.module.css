@@ -1,0 +1,788 @@
+
+.container {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 2rem;
+  padding-bottom: 110px;
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+  transition: all 0.3s ease;
+}
+
+.storageGrid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1.5rem;
+  width: 100%;
+}
+
+.storageCard {
+  background-color: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 16px;
+  padding: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  transition: all 0.2s ease;
+  box-shadow: 0 10px 25px rgba(15, 23, 42, 0.08);
+}
+
+.storageCard:hover {
+  box-shadow: 0 20px 35px rgba(15, 23, 42, 0.12);
+  transform: translateY(-3px);
+}
+
+.dark .storageCard {
+  background-color: #1e1e3f;
+  border: 1px solid #3a3a5a;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+}
+
+.dark .storageCard:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+  border-color: #4a4a6a;
+}
+
+.cardHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
+}
+
+.dark .cardHeader {
+  border-bottom-color: #374151;
+}
+
+.headerLeft {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  flex: 1;
+  min-width: 0;
+}
+
+.headerRight {
+  display: flex;
+  flex-direction: row;
+  gap: 8px;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.statusDot {
+  flex-shrink: 0;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 8px;
+  margin-top: 0.25rem;
+  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.8);
+}
+
+
+.statusDot.excellent {
+  background-color: #10b981;
+  color: #10b981;
+}
+
+
+.statusDot.good {
+  background-color: #22c55e;
+  color: #22c55e;
+}
+
+
+.statusDot.poor {
+  background-color: #eab308;
+  color: #eab308;
+}
+
+
+.statusDot.warning {
+  background-color: #f59e0b;
+  color: #f59e0b;
+}
+
+
+.statusDot.critical {
+  background-color: #ef4444;
+  color: #ef4444;
+}
+
+
+.statusDot.unknown {
+  background-color: #9ca3af;
+  color: #9ca3af;
+}
+
+.dark .statusDot {
+  box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.3);
+}
+
+.storageInfo {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  min-width: 0;
+}
+
+.storageMetaLine {
+  font-size: 13px;
+  color: #6b7280;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+}
+
+.storageMetaLineSmall {
+  font-size: 12px;
+  color: #6b7280;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+}
+
+.metaSeparator {
+  margin: 0 0.25rem;
+  color: #9ca3af;
+}
+
+.storageRoleBadge {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background-color: #3b82f6;
+  color: #ffffff;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.storageTypeBadge {
+  font-size: 10px;
+  font-weight: 600;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background-color: #e5e7eb;
+  color: #374151;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.storageFootLine {
+  font-size: 12px;
+  color: #6b7280;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+}
+
+.storageIcon {
+  width: 32px;
+  height: 32px;
+  border-radius: 999px;
+  background-color: #e5e7eb;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.dark .storageIcon {
+  background-color: #374151;
+}
+
+.storageName {
+  font-size: 18px;
+  font-weight: 700;
+  color: #111827;
+  margin: 0;
+  line-height: 1.2;
+  letter-spacing: -0.025em;
+}
+
+.dark .storageName {
+  color: #f9fafb;
+}
+
+.storageDetails {
+  font-size: 13px;
+  color: #6b7280;
+  margin: 0;
+  line-height: 1.5;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  width: 100%;
+}
+
+.dark .storageDetails {
+  color: #9ca3af;
+}
+
+.physicalInfo {
+  font-size: 12px;
+  color: #9ca3af;
+  margin: 0;
+  margin-top: 0.5rem;
+  line-height: 1.4;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  width: 100%;
+  padding: 0.5rem;
+  background-color: #f9fafb;
+  border-radius: 6px;
+  border-left: 3px solid #d1d5db;
+}
+
+.dark .physicalInfo {
+  color: #6b7280;
+  background-color: #2a2a4a;
+  border-left-color: #4a4a6a;
+}
+
+.typeLabel {
+  font-size: 10px;
+  font-weight: 600;
+  padding: 3px 8px;
+  border-radius: 4px;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  white-space: nowrap;
+  max-width: 120px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+}
+
+.dark .typeLabel {
+  color: #e5e7eb;
+  background-color: #4b5563;
+}
+
+
+.roleLabel {
+  font-size: 10px;
+  font-weight: 600;
+  padding: 2px 6px;
+  border-radius: 3px;
+  text-align: center;
+  white-space: nowrap;
+  max-width: 150px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: white;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+
+
+.roleLabel.primary {
+  background-color: #3b82f6;
+}
+
+.roleLabel.backup {
+  background-color: #8b5cf6;
+}
+
+.roleLabel.dev {
+  background-color: #06b6d4;
+}
+
+.roleLabel.test {
+  background-color: #f59e0b;
+}
+
+.roleLabel.archive {
+  background-color: #6b7280;
+}
+
+.roleLabel.replication {
+  background-color: #10b981;
+}
+
+.roleLabel.cache {
+  background-color: #f97316;
+}
+
+.roleLabel.logs {
+  background-color: #84cc16;
+}
+
+.roleLabel.critical {
+  background-color: #ef4444;
+}
+
+.roleLabel.share {
+  background-color: #6366f1;
+}
+
+.roleLabel.virtualization {
+  background-color: #ec4899;
+}
+
+.roleLabel.database {
+  background-color: #0891b2;
+}
+
+.roleLabel.files {
+  background-color: #7c3aed;
+}
+
+.roleLabel.media {
+  background-color: #f43f5e;
+}
+
+.roleLabel.monitoring {
+  background-color: #059669;
+}
+
+.roleLabel.security {
+  background-color: #dc2626;
+}
+
+.roleLabel.compliance {
+  background-color: #1d4ed8;
+}
+
+.roleLabel.disaster {
+  background-color: #be185d;
+}
+
+.roleLabel.cloud {
+  background-color: #0ea5e9;
+}
+
+.roleLabel.hybrid {
+  background-color: #9333ea;
+}
+
+.roleLabel.default {
+  background-color: #6b7280;
+}
+
+.dark .roleLabel,
+.dark .typeLabel {
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+}
+
+
+.diskSection {
+}
+
+.diskInfo {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.75rem;
+  background-color: #f9fafb;
+  border-radius: 8px;
+  border: 1px solid #e5e7eb;
+}
+
+.dark .diskInfo {
+  background-color: #2a2a4a;
+  border-color: #4a4a6a;
+}
+
+.diskLabel {
+  font-size: 13px;
+  font-weight: 600;
+  color: #374151;
+}
+
+.dark .diskLabel {
+  color: #e5e7eb;
+}
+
+.diskVisual {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+}
+
+.diskCircle {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  border: 2px solid #d1d5db;
+  transition: all 0.2s ease;
+}
+
+.diskCircle.filled {
+  background-color: #10b981;
+  border-color: #10b981;
+}
+
+.dark .diskCircle.filled {
+  background-color: #60a5fa;
+  border-color: #60a5fa;
+}
+
+.diskCircle.empty {
+  background-color: transparent;
+}
+
+.diskCircle:hover {
+  transform: scale(1.1);
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
+}
+
+.dark .diskCircle:hover {
+  box-shadow: 0 0 0 2px rgba(96, 165, 250, 0.3);
+}
+
+.diskCircle.small {
+  width: 8px;
+  height: 8px;
+}
+
+
+.storageSpaceSection {
+  margin-top: 0.5rem;
+  width: 100%;
+}
+
+
+.storageProgress {
+  margin-top: 1rem;
+  width: 100%;
+}
+
+.progressInfo {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.5rem;
+  width: 100%;
+}
+
+.progressLabel {
+  font-size: 13px;
+  font-weight: 600;
+  color: #374151;
+}
+
+.dark .progressLabel {
+  color: #e5e7eb;
+}
+
+.progressPercentage {
+  font-size: 13px;
+  font-weight: 700;
+  color: #111827;
+}
+
+.dark .progressPercentage {
+  color: #f9fafb;
+}
+
+.progressBar {
+  width: 100%;
+  height: 8px;
+  background-color: #e5e7eb;
+  border-radius: 4px;
+  overflow: hidden;
+  margin-bottom: 0.5rem;
+  position: relative;
+  max-width: 100%;
+}
+
+.dark .progressBar {
+  background-color: #4a4a6a;
+}
+
+.progressFill {
+  height: 100%;
+  transition: width 0.3s ease;
+  max-width: 100%;
+  position: relative;
+  overflow: hidden;
+}
+
+.progressFill.green {
+  background-color: #10b981;
+}
+
+.progressFill.yellow {
+  background-color: #eab308;
+}
+
+.progressFill.orange {
+  background-color: #f59e0b;
+}
+
+.progressFill.red {
+  background-color: #ef4444;
+}
+
+.remainingInfo {
+  text-align: center;
+  width: 100%;
+}
+
+.remainingText {
+  font-size: 12px;
+  color: #6b7280;
+  font-weight: 500;
+}
+
+.dark .remainingText {
+  color: #9ca3af;
+}
+
+.metricsTable {
+  flex: 1;
+  margin-top: 0.5rem;
+}
+
+.serviceTable {
+  width: 100%;
+  border-collapse: collapse;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+  background-color: #f9fafb;
+  border: 1px solid #e5e7eb;
+}
+
+.dark .serviceTable {
+  background-color: #2a2a4a;
+  border-color: #4a4a6a;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.serviceTable th,
+.serviceTable td {
+  padding: 12px 16px;
+  text-align: center;
+  border: 1px solid #e5e7eb;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.serviceTable th:nth-child(1) {
+  width: 25%;
+  text-align: left;
+}
+
+.serviceTable th:nth-child(2),
+.serviceTable th:nth-child(3),
+.serviceTable th:nth-child(4) {
+  width: 25%;
+  min-width: 80px;
+}
+
+.dark .serviceTable th,
+.dark .serviceTable td {
+  border-color: #4a4a6a;
+}
+
+.serviceTable th {
+  background-color: #f3f4f6;
+  font-weight: 600;
+  font-size: 12px;
+  color: #374151;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.dark .serviceTable th {
+  background-color: #374151;
+  color: #e5e7eb;
+}
+
+.serviceName {
+  font-weight: 600;
+  color: #111827;
+  text-align: left;
+}
+
+.dark .serviceName {
+  color: #f9fafb;
+}
+
+
+.metricValue {
+  display: inline-block;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-weight: 600;
+  font-size: 12px;
+  min-width: 40px;
+  text-align: center;
+}
+
+.metricValueDefault {
+  background-color: #f3f4f6;
+  color: #6b7280;
+  border: 1px solid #d1d5db;
+}
+
+.dark .metricValueDefault {
+  background-color: #374151;
+  color: #9ca3af;
+  border-color: #4a4a6a;
+}
+
+.okValue {
+  background-color: #dcfce7;
+  color: #16a34a;
+  border: 1px solid #bbf7d0;
+}
+
+.dark .okValue {
+  background-color: #064e3b;
+  color: #34d399;
+  border-color: #10b981;
+}
+
+.warnValue {
+  background-color: #fef3c7;
+  color: #ca8a04;
+  border: 1px solid #fde68a;
+}
+
+.dark .warnValue {
+  background-color: #451a03;
+  color: #fbbf24;
+  border-color: #f59e0b;
+}
+
+.critValue {
+  background-color: #fee2e2;
+  color: #dc2626;
+  border: 1px solid #fecaca;
+}
+
+.dark .critValue {
+  background-color: #450a0a;
+  color: #fca5a5;
+  border-color: #f87171;
+}
+
+.commentSection {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+}
+
+.commentInput {
+  width: 100%;
+  padding: 10px 12px;
+  border: 2px solid #d1d5db;
+  border-radius: 8px;
+  font-size: 13px;
+  font-family: inherit;
+  resize: vertical;
+  min-height: 60px;
+  background-color: #f9fafb;
+  color: #6b7280;
+  transition: all 0.2s ease;
+  cursor: not-allowed;
+}
+
+.dark .commentInput {
+  background-color: #2a2a4a;
+  border-color: #4a4a6a;
+  color: #9ca3af;
+}
+
+.commentInput::placeholder {
+  color: #9ca3af;
+}
+
+.dark .commentInput::placeholder {
+  color: #6b7280;
+}
+
+.emptyState {
+  text-align: center;
+  padding: 3rem 1rem;
+  color: #6b7280;
+  font-size: 16px;
+  background: #f9fafb;
+  border-radius: 8px;
+  border: 2px dashed #d1d5db;
+  transition: all 0.3s ease;
+}
+
+.dark .emptyState {
+  background: #1e1e3f;
+  color: #9ca3af;
+  border-color: #4a4a6a;
+}
+
+.storageDetailsContainer {
+  width: 100%;
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid #f3f4f6;
+  margin-bottom: 0.75rem;
+}
+
+.dark .storageDetailsContainer {
+  border-bottom-color: #374151;
+}
+
+
+@media (max-width: 1200px) {
+  .storageGrid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1rem;
+  }
+}
+
+@media (max-width: 768px) {
+  .container {
+    padding: 1rem;
+  }
+  
+  .storageGrid {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+  
+  .storageCard {
+    padding: 1rem;
+  }
+  
+  .cardHeader {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.75rem;
+  }
+  
+  .headerLeft {
+    width: 100%;
+  }
+  
+  .headerRight {
+    align-self: flex-start;
+  }
+  
+  .storageName {
+    font-size: 15px;
+  }
+  
+  .storageDetails {
+    font-size: 12px;
+  }
+  
+  .serviceTable th,
+  .serviceTable td {
+    padding: 8px 10px;
+    font-size: 12px;
+  }
+  
+  .metricValue {
+    min-width: 35px;
+    padding: 3px 6px;
+    font-size: 11px;
+  }
+}

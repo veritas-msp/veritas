@@ -1,0 +1,53 @@
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  border: none;
+  cursor: pointer;
+  font-family: inherit;
+  font-weight: 600;
+  white-space: nowrap;
+  transition: background 0.15s, border-color 0.15s, color 0.15s, box-shadow 0.15s;
+}
+
+.btn_inline {
+  padding: 0.28rem 0.55rem;
+  border-radius: 8px;
+  border: 1px solid rgba(43, 95, 171, 0.28);
+  background: rgba(43, 95, 171, 0.08);
+  color: var(--msp-accent, #2b5fab);
+  font-size: 0.68rem;
+}
+
+.btn_inline:hover {
+  background: var(--msp-accent, #2b5fab);
+  border-color: var(--msp-accent, #2b5fab);
+  color: #fff;
+}
+
+.btn_hero {
+  padding: 0.45rem 0.8rem;
+  border-radius: 10px;
+  border: 1px solid var(--msp-accent, #2b5fab);
+  background: var(--msp-accent, #2b5fab);
+  color: #fff;
+  font-size: 0.78rem;
+  box-shadow: 0 2px 8px rgba(43, 95, 171, 0.22);
+}
+
+.btn_hero:hover {
+  background: var(--msp-accent-dark, #1a3d75);
+  border-color: var(--msp-accent-dark, #1a3d75);
+  box-shadow: 0 4px 12px rgba(43, 95, 171, 0.28);
+}
+
+.btnCompact {
+  padding: 0.28rem;
+  min-width: 1.65rem;
+}
+
+.btn svg {
+  font-size: 0.95rem;
+  flex-shrink: 0;
+}

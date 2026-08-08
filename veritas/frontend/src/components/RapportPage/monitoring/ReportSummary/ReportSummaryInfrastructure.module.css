@@ -1,0 +1,1364 @@
+.root {
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 0 3rem;
+}
+
+.overviewContainer {
+  padding: 1.5rem 1.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.8rem;
+}
+
+.globalIntro {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.globalIntroHeader {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.globalIntroIcon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #111827;
+}
+
+.globalIntroTitle {
+  margin: 0;
+  font-size: 1.35rem;
+  font-weight: 750;
+  letter-spacing: -0.01em;
+  font-family: "Montserrat", "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI",
+    Roboto, "Helvetica Neue", Arial, "Noto Sans", "Liberation Sans", sans-serif;
+  color: var(--text-primary, #111827);
+}
+
+.globalIntroText {
+  font-size: 0.9rem;
+  color: var(--text-muted, #4b5563);
+  margin: 0;
+}
+
+.globalIntroList {
+  margin: 0;
+  padding-left: 1.15rem;
+  font-size: 0.9rem;
+  color: var(--text-muted, #4b5563);
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.section {
+  padding: 1.5rem 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.sectionHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.sectionTitleSeparator {
+  margin-top: 0.35rem;
+  margin-bottom: 0.75rem;
+  border-top: 1px solid #e5e7eb;
+}
+
+.sectionTitleWrapper {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+}
+
+.sectionIcon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #10b981;
+  font-size: 1.6rem;
+  width: 42px;
+  height: 42px;
+  flex: 0 0 42px;
+}
+
+.sectionTitle {
+  margin: 0;
+  font-size: 1.15rem;
+  font-weight: 650;
+  color: var(--text-primary, #111827);
+}
+
+.sectionSubtitle {
+  font-size: 0.95rem;
+  color: var(--text-muted, #6b7280);
+}
+
+.sectionHelperMuted {
+  margin-top: 0.75rem;
+  font-size: 0.85rem;
+  color: var(--text-muted, #6b7280);
+}
+
+.subsectionTitle {
+  margin: 1.1rem 0 0.35rem;
+  font-size: 0.92rem;
+  font-weight: 650;
+  color: var(--text-primary, #111827);
+}
+
+
+.tableBlock {
+  margin-top: 1rem;
+}
+
+.tableBlockTitle {
+  margin: 0 0 0.5rem;
+  font-size: 0.92rem;
+  font-weight: 650;
+  color: var(--text-primary, #111827);
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.tableBlockCount {
+  font-weight: 500;
+  color: var(--text-muted, #6b7280);
+  font-size: 0.82rem;
+}
+
+.infraTableWrapper {
+  border-radius: 10px;
+  border: 1px solid var(--border-primary, #e5e7eb);
+  background: #ffffff;
+  overflow-x: auto;
+}
+
+.infraTable {
+  width: 100%;
+  min-width: 640px;
+  border-collapse: collapse;
+  font-size: 0.84rem;
+}
+
+.infraTable thead {
+  background: #f9fafb;
+}
+
+.infraTableHeaderCell {
+  padding: 0.5rem 0.75rem;
+  text-align: left;
+  font-weight: 600;
+  font-size: 0.78rem;
+  color: var(--text-muted, #6b7280);
+  border-bottom: 1px solid var(--border-primary, #e5e7eb);
+  white-space: nowrap;
+}
+
+.infraTableCell {
+  padding: 0.45rem 0.75rem;
+  border-bottom: 1px solid var(--border-primary, #f3f4f6);
+  vertical-align: middle;
+  color: var(--text-primary, #111827);
+}
+
+.infraTableRow:nth-child(even) {
+  background: #f9fafb;
+}
+
+.infraTableRow:hover,
+.infraTableRow:nth-child(even):hover {
+  background: #f3f4f6;
+}
+
+.infraTableRow:last-child .infraTableCell {
+  border-bottom: none;
+}
+
+.infraTableEmpty {
+  padding: 0.75rem;
+  font-size: 0.85rem;
+  color: var(--text-muted, #9ca3af);
+}
+
+.sectionHelperText {
+  margin-top: 0.15rem;
+  font-size: 0.8rem;
+  color: var(--text-muted, #6b7280);
+}
+
+.healthLegend {
+  padding: 0 1.75rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  font-size: 0.8rem;
+  color: var(--text-muted, #4b5563);
+}
+
+.healthLegendItem {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.legendDot {
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
+  box-shadow: 0 0 0 1px rgba(15, 23, 42, 0.06);
+}
+
+.globalStatsBlock {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.overviewStatsBlock {
+  margin-top: 3rem;
+}
+
+.overviewStatsBlock .globalStatsGrid {
+  gap: 0.75rem;
+}
+
+.overviewStatsBlock .globalStatsItem {
+  background: #f8fafc;
+  border: 1px solid #e5e7eb;
+  border-radius: 0.7rem;
+  padding: 0.75rem 0.85rem;
+  min-height: 78px;
+  justify-content: center;
+}
+
+.overviewStatsBlock .globalStatsLabel {
+  font-size: 0.78rem;
+}
+
+.overviewStatsBlock .globalStatsValue {
+  font-size: 1rem;
+}
+
+.serverKpisBlock {
+  padding-left: 0;
+  padding-right: 0;
+}
+
+.serverKpisBlock .globalStatsGrid {
+  gap: 0.75rem;
+}
+
+.serverKpisBlock .globalStatsItem {
+  background: #f8fafc;
+  border: 1px solid #e5e7eb;
+  border-radius: 0.7rem;
+  padding: 0.75rem 0.85rem;
+  min-height: 78px;
+  justify-content: center;
+}
+
+.serverKpisBlock .globalStatsLabel {
+  font-size: 0.78rem;
+}
+
+.serverKpisBlock .globalStatsValue {
+  font-size: 1rem;
+}
+
+.globalStatsGridStylized {
+  gap: 0.75rem;
+}
+
+.globalStatsGridStylized .globalStatsItem {
+  background: #f8fafc;
+  border: 1px solid #e5e7eb;
+  border-radius: 0.7rem;
+  padding: 0.75rem 0.85rem;
+  min-height: 78px;
+  justify-content: center;
+}
+
+.globalStatsGridStylized .globalStatsLabel {
+  font-size: 0.78rem;
+}
+
+.globalStatsGridStylized .globalStatsValue {
+  font-size: 1rem;
+}
+
+.globalStatsTitle {
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--text-primary, #111827);
+}
+
+.globalStatsGrid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.75rem 1.5rem;
+  align-items: stretch;
+}
+
+.globalStatsItem {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+}
+
+.globalStatsIcon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #4b5563;
+}
+@media (max-width: 1024px) {
+  .globalStatsGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 640px) {
+  .globalStatsGrid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.globalStatsLabel {
+  font-size: 0.8rem;
+  color: var(--text-muted, #6b7280);
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.globalStatsValue {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--text-primary, #111827);
+}
+
+.globalStatsHint {
+  font-size: 0.75rem;
+  color: var(--text-muted, #9ca3af);
+}
+
+.monitoringStatusIcon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.serverVlanBlock {
+  margin-top: 0.65rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+
+.serverVlanTitle {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--text-primary, #111827);
+}
+
+.serverVlanList {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+.serverVlanItem {
+  display: inline-flex;
+  gap: 0.45rem;
+  align-items: center;
+  background: #f8fafc;
+  border: 1px solid #e5e7eb;
+  border-radius: 999px;
+  padding: 0.28rem 0.5rem;
+}
+
+.serverVlanLabel {
+  font-size: 0.76rem;
+  color: #4b5563;
+  font-weight: 500;
+}
+
+.serverVlanCount {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #1d4ed8;
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  border-radius: 999px;
+  padding: 0.08rem 0.38rem;
+}
+
+.heatmapGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, 320px);
+  gap: 1rem;
+  justify-content: flex-start;
+}
+
+.heatmapSiteBlock {
+  border-radius: 0.75rem;
+  border: 1px dashed var(--border-primary, #e5e7eb);
+  padding: 0.75rem 0.85rem;
+  background: #f9fafb;
+}
+
+.heatmapSiteHeader {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-primary, #111827);
+  margin-bottom: 0.55rem;
+}
+
+.heatmapDotsRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.heatmapDotWrapper {
+  width: 14px;
+  height: 14px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.heatmapDot {
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
+  box-shadow: 0 0 0 1px rgba(15, 23, 42, 0.06);
+}
+
+.heatmapServerGrid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1.25rem;
+}
+
+.heatmapServerSiteGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  flex: 0 0 320px;
+}
+
+.heatmapServerSiteBlock {
+  border-radius: 0.6rem;
+  border: 1px solid var(--border-primary, #e5e7eb);
+  padding: 0.7rem 1.1rem;
+  background: #f9fafb;
+}
+
+.heatmapServerList {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.heatmapServerItem {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.9rem;
+  color: var(--text-primary, #111827);
+}
+
+.heatmapServerName {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.heatmapServerRole {
+  font-size: 0.82rem;
+  color: var(--text-muted, #6b7280);
+  white-space: nowrap;
+}
+
+.cardsGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 1rem;
+}
+
+.card {
+  border-radius: 0.9rem;
+  border: 1px solid var(--border-primary, #e5e7eb);
+  background: #ffffff;
+  padding: 1rem 1.1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  position: relative;
+}
+
+.cardHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.cardTitleBlock {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.cardTitleRow {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.cardOsIcon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #111827;
+}
+
+.cardTitle {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--text-primary, #111827);
+}
+
+.cardSite {
+  font-size: 0.8rem;
+  color: var(--text-muted, #6b7280);
+}
+
+.cardStatusPill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.25rem 0.6rem;
+  border-radius: 999px;
+  background: #f3f4f6;
+  font-size: 0.78rem;
+  font-weight: 500;
+  color: var(--text-primary, #111827);
+}
+
+.cardStatusDot {
+  width: 9px;
+  height: 9px;
+  border-radius: 999px;
+}
+
+.cardStatusText {
+  white-space: nowrap;
+}
+
+.cardBody {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.cardRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.cardLabel {
+  font-size: 0.8rem;
+  color: var(--text-muted, #6b7280);
+}
+
+.cardValue {
+  font-size: 0.85rem;
+  color: var(--text-primary, #111827);
+  text-align: right;
+}
+
+.topologyRoot {
+  display: flex;
+  margin-top: 1.25rem;
+}
+
+.topologySitesRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.topologySiteColumn {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  min-width: 260px;
+  flex: 0 0 auto;
+}
+
+.topologySiteHeader {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-primary, #111827);
+}
+
+.topologySiteIcon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #4b5563;
+}
+
+.topologyLinksRow {
+  display: flex;
+  align-items: center;
+  flex-wrap: nowrap;
+  gap: 0.75rem;
+  padding: 0.35rem 0;
+  position: relative;
+}
+
+.topologyLinkChip {
+  position: relative;
+  display: inline-flex;
+  flex-direction: row;
+  align-items: flex-start;
+  gap: 0.55rem;
+  padding: 0.7rem 1.1rem;
+  flex: 0 0 320px;
+  width: 320px;
+  max-width: 320px;
+  box-sizing: border-box;
+  border-radius: 0.6rem;
+  border: 1px solid #dbeafe;
+  background: #eff6ff;
+  font-size: 0.78rem;
+  color: #1d4ed8;
+  z-index: 1;
+}
+
+.topologyLinkTypeIcon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding-right: 0.15rem;
+  margin-right: 0.1rem;
+  border-right: none;
+}
+
+.topologyLinkPrimary::before {
+  border-style: solid;
+}
+
+.topologyLinkBackup::before {
+  border-style: dashed;
+}
+
+.topologyLinkName {
+  font-weight: 500;
+}
+
+.topologyLinkText {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  width: 100%;
+  flex: 1 1 auto;
+  min-width: 0;
+  line-height: 1.35;
+}
+
+.topologyLinkHeaderRow {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  width: 100%;
+  min-width: 0;
+}
+
+.topologyLinkIp {
+  font-size: 0.72rem;
+  color: #6b7280;
+  font-family: inherit;
+  font-weight: 400;
+}
+
+.topologyOperatorRow {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  justify-content: space-between;
+  width: 100%;
+}
+
+.topologyOperatorIcon {
+  color: #6b7280;
+}
+
+.topologyLinkOperator {
+  font-size: 0.72rem;
+  color: #6b7280;
+  font-weight: 400;
+}
+
+.topologyLinkMeta {
+  opacity: 1;
+  font-size: 0.72rem;
+  color: #6b7280;
+  font-weight: 400;
+  margin-left: auto;
+}
+
+.topologyLinkRoleText {
+  font-size: 0.72rem;
+  font-weight: 400;
+  color: #6b7280;
+}
+
+.topologyRolePill {
+  position: absolute;
+  right: 6px;
+  bottom: 6px;
+  width: 1.1rem;
+  height: 1.1rem;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.65rem;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+.topologyFirewallsRow {
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 0.6rem;
+  padding: 0.35rem 0;
+  position: relative;
+}
+
+.topologyFirewallChip {
+  position: relative;
+  display: inline-flex;
+  flex-direction: row;
+  align-items: flex-start;
+  gap: 0.55rem;
+  padding: 0.7rem 1.1rem;
+  flex: 0 0 320px;
+  width: 320px;
+  max-width: 320px;
+  box-sizing: border-box;
+  border-radius: 0.6rem;
+  border: 1px solid #e5e7eb;
+  background: #f9fafb;
+  font-size: 0.78rem;
+  color: var(--text-primary, #111827);
+  z-index: 1;
+}
+
+.topologyFirewallIcon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding-right: 0.15rem;
+  margin-right: 0.1rem;
+  border-right: none;
+  color: #111827;
+}
+
+.topologyFirewallHeaderMain {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  width: 100%;
+  min-width: 0;
+}
+
+.topologyServersRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  padding: 0.35rem 0;
+  position: relative;
+  max-width: calc(3 * 320px + 2 * 0.75rem);
+}
+
+.topologyServerChip {
+  position: relative;
+  display: inline-flex;
+  flex-direction: row;
+  align-items: flex-start;
+  gap: 0.55rem;
+  padding: 0.7rem 1.1rem;
+  flex: 0 0 320px;
+  width: 320px;
+  max-width: 320px;
+  box-sizing: border-box;
+  border-radius: 0.6rem;
+  border: 1px solid #e5e7eb;
+  background: #f9fafb;
+  font-size: 0.78rem;
+  color: var(--text-primary, #111827);
+  z-index: 1;
+}
+
+.topologyServerTypeIcon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding-right: 0.15rem;
+  margin-right: 0.1rem;
+  border-right: none;
+}
+
+.topologyServerText {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  width: 100%;
+  flex: 1 1 auto;
+  min-width: 0;
+  line-height: 1.35;
+}
+
+.topologyServerHeaderRow {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  width: 100%;
+  min-width: 0;
+}
+
+.topologyServerTitleMain {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.topologyServerName {
+  font-weight: 500;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.topologyServerIp {
+  font-size: 0.72rem;
+  color: #6b7280;
+  font-family: inherit;
+  font-weight: 400;
+}
+
+.topologyServerOs {
+  font-size: 0.72rem;
+  color: #6b7280;
+  font-weight: 400;
+}
+
+.topologyRoleTags {
+  display: inline-flex;
+  flex-wrap: nowrap;
+  gap: 0.22rem;
+  justify-content: flex-start;
+  min-width: auto;
+  max-width: none;
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+.topologyRoleTag {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.06rem 0.36rem;
+  border-radius: 999px;
+  background: #f3f4f6;
+  border: 1px solid #e5e7eb;
+  color: #4b5563;
+  font-size: 0.64rem;
+  font-weight: 500;
+  line-height: 1.2;
+  max-width: 72px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.topologyServerOsRow {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+.topologyServerInlineOs {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.topologyServerOsIcon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.topologyServerMeta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+  font-size: 0.72rem;
+  color: #6b7280;
+  font-weight: 400;
+  margin-top: 0.28rem;
+  padding-top: 0.28rem;
+  border-top: 1px solid #e5e7eb;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.topologyServerMeta .topologyFirewallUnsynced {
+  color: #6b7280;
+  font-weight: 400;
+}
+
+.topologyStorageRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  padding: 0.35rem 0;
+  position: relative;
+  max-width: calc(3 * 320px + 2 * 0.75rem);
+}
+
+.topologyStorageChip {
+  position: relative;
+  display: inline-flex;
+  flex-direction: row;
+  align-items: flex-start;
+  gap: 0.55rem;
+  padding: 0.7rem 1.1rem;
+  flex: 0 0 320px;
+  width: 320px;
+  max-width: 320px;
+  box-sizing: border-box;
+  border-radius: 0.6rem;
+  border: 1px solid #e5e7eb;
+  background: #f9fafb;
+  font-size: 0.78rem;
+  color: var(--text-primary, #111827);
+  z-index: 1;
+}
+
+.notificationIconContainer {
+  position: absolute;
+  top: -8px;
+  right: -8px;
+  display: inline-flex;
+  gap: 4px;
+  cursor: pointer;
+}
+
+.notificationDot {
+  min-width: 24px;
+  height: 24px;
+  border-radius: 999px;
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.9),
+    0 0 0 2px rgba(15, 23, 42, 0.06);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #ffffff;
+}
+
+.notificationDotComment {
+  background: #22c55e;
+}
+
+.notificationDotTicket {
+  background: #ef4444;
+}
+
+.notificationLegend {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.65rem;
+  font-size: 0.78rem;
+  color: #4b5563;
+}
+
+.notificationLegendText {
+  font-weight: 500;
+  color: #374151;
+}
+
+.notificationLegendItem {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.topologyStorageTypeIcon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding-right: 0.15rem;
+  margin-right: 0.1rem;
+  border-right: none;
+}
+
+.topologyStorageText {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  width: 100%;
+  flex: 1 1 auto;
+  min-width: 0;
+  line-height: 1.35;
+}
+
+.topologyStorageHeaderRow {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  width: 100%;
+  min-width: 0;
+}
+
+.topologyStorageTitleMain {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  min-width: 0;
+}
+
+.topologyStorageRoleTags {
+  display: inline-flex;
+  flex-wrap: nowrap;
+  gap: 0.22rem;
+  justify-content: flex-start;
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+.topologyStorageName {
+  font-weight: 500;
+}
+
+.topologyStorageInfoRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  font-size: 0.72rem;
+  color: #6b7280;
+}
+
+.topologyStorageInfo {
+  white-space: nowrap;
+  font-size: 0.72rem;
+  color: #6b7280;
+  font-weight: 400;
+}
+
+.topologyStorageMeta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+  font-size: 0.72rem;
+  color: #6b7280;
+  font-weight: 400;
+  margin-top: 0.28rem;
+  padding-top: 0.28rem;
+  border-top: 1px solid #e5e7eb;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.topologyStorageIp {
+  font-size: 0.72rem;
+  color: #6b7280;
+  font-family: inherit;
+  font-weight: 400;
+}
+
+.topologyStorageCapacityRow {
+  margin-top: 0.35rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.topologyStorageCapacityBar {
+  width: 100%;
+  height: 14px;
+  border-radius: 999px;
+  background: #e5e7eb;
+  overflow: hidden;
+}
+
+.topologyStorageCapacityFill {
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #22c55e, #16a34a);
+}
+
+.topologyStorageCapacityLabel {
+  font-size: 0.72rem;
+  color: #6b7280;
+  font-weight: 400;
+}
+
+.topologyStorageUniformText {
+  font-size: 0.72rem;
+  color: #6b7280;
+  font-weight: 400;
+}
+
+.topologyFirewallName {
+  font-weight: 500;
+}
+
+.topologyFirewallText {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  width: 100%;
+  flex: 1 1 auto;
+  line-height: 1.35;
+}
+
+.topologyLinkName,
+.topologyServerName,
+.topologyStorageName,
+.topologyFirewallName {
+  display: block;
+  flex: 1 1 auto;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: #111827;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.topologyLinkIp,
+.topologyServerIp,
+.topologyStorageIp,
+.topologyFirewallDetails,
+.topologyLinkMeta,
+.topologyLinkRoleText,
+.topologyServerOs,
+.topologyServerMeta,
+.topologyStorageInfoRow,
+.topologyStorageMeta,
+.topologyStorageCapacityLabel,
+.topologyFirewallMeta,
+.topologyFirewallUnsynced {
+  font-size: 0.72rem;
+}
+
+.topologyFirewallHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.topologyFirewallMeta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+  font-size: 0.72rem;
+  color: #6b7280;
+  font-weight: 400;
+  margin-top: 0.28rem;
+  padding-top: 0.28rem;
+  border-top: 1px solid #e5e7eb;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.topologyFirewallUnsynced {
+  font-size: 0.72rem;
+  font-weight: 400;
+  color: #6b7280;
+}
+
+.topologyFirewallDetails {
+  margin: 0;
+  font-size: 0.72rem;
+  color: #6b7280;
+  font-weight: 400;
+}
+
+.topologyFirewallIp {
+  font-size: 0.72rem;
+  color: #6b7280;
+  font-family: inherit;
+  font-weight: 400;
+}
+
+.topologyFirewallIdentity {
+  font-size: 0.72rem;
+  color: #6b7280;
+  font-weight: 400;
+}
+
+.topologyFirewallLicenses {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.topologyFirewallLicenseItem {
+  font-size: 0.72rem;
+  color: #6b7280;
+  font-weight: 400;
+}
+
+.topologyLinkName,
+.topologyFirewallName {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: #111827;
+}
+
+.topologyBadge {
+  margin-left: 0.35rem;
+  padding: 0.05rem 0.4rem;
+  border-radius: 999px;
+  font-size: 0.7rem;
+  font-weight: 600;
+}
+
+.topologyBadgePrimary {
+  background: #dbeafe;
+  color: #1d4ed8;
+}
+
+.topologyBadgeBackup {
+  background: #fef3c7;
+  color: #b45309;
+}
+
+.topologyBadgeHA {
+  background: #ecfdf5;
+  color: #047857;
+}
+
+.backupFlowRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  padding: 0.45rem 0;
+  max-width: none;
+}
+
+.backupFlowCard {
+  flex: 0 0 420px;
+  width: 420px;
+  max-width: 420px;
+  padding: 1rem 1.25rem;
+}
+
+.backupFlowMain {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 0.9rem;
+  width: 100%;
+}
+
+.backupFlowModules {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.backupFlowModuleIcon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.backupFlowModuleInactive {
+  opacity: 0.3;
+}
+
+.backupFlowArrow {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #6b7280;
+}
+
+.backupFlowNasBlock {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.15rem;
+  min-width: 90px;
+  text-align: center;
+}
+
+.backupFlowNasIcon {
+  display: inline-flex;
+  color: #374151;
+}
+
+.backupFlowNasName {
+  font-size: 0.82rem;
+  font-weight: 500;
+  color: #374151;
+  max-width: 140px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.backupFlowNasIp {
+  font-size: 0.75rem;
+  color: #6b7280;
+}
+
+@media (max-width: 768px) {
+  .section {
+    padding: 1.1rem 1.25rem;
+  }
+
+  .cardsGrid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+

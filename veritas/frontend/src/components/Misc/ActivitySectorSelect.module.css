@@ -1,0 +1,36 @@
+.wrap {
+  position: relative;
+  width: 100%;
+}
+
+.dropdown {
+  overflow-y: auto;
+  border: 1px solid var(--msp-border, #dde3ed);
+  border-radius: 10px;
+  background: var(--msp-surface, #fff);
+  box-shadow: 0 12px 32px rgba(15, 28, 46, 0.14);
+}
+
+.empty {
+  padding: 0.7rem 0.85rem;
+  font-size: 0.8125rem;
+  color: var(--msp-muted, #5c6b82);
+}
+
+.option {
+  display: block;
+  width: 100%;
+  padding: 0.55rem 0.85rem;
+  border: none;
+  background: transparent;
+  color: var(--msp-text, #0f1c2e);
+  font-size: 0.8125rem;
+  text-align: left;
+  cursor: pointer;
+}
+
+.option:hover,
+.optionSelected {
+  background: var(--msp-accent-soft, rgba(43, 95, 171, 0.1));
+  color: var(--msp-accent, #2b5fab);
+}

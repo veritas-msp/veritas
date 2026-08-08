@@ -1,0 +1,625 @@
+.ticketBookmarksTrack {
+  align-items: stretch;
+  overflow-y: visible;
+}
+
+:global([data-bookmarks-collapsed="false"]) .ticketBookmarksTrack {
+  min-height: 7.35rem;
+}
+
+.ticketBookmarksTrack > .ticketBookmark,
+.ticketBookmarksTrack > .ticketBookmarkSkeleton {
+  align-self: stretch;
+  height: auto;
+  min-height: 100%;
+}
+
+.slaLine {
+  font-size: 0.54rem;
+  font-weight: 700;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  flex-shrink: 0;
+}
+
+.ticketBookmark {
+  --ticket-bookmark-width-compact: 3.65rem;
+  --ticket-bookmark-width-expanded: 9.75rem;
+  --ticket-bookmark-height-expanded: 7.35rem;
+  --bookmark-type-accent: #94a3b8;
+  --ticket-bookmark-ease: cubic-bezier(0.22, 1, 0.36, 1);
+  --ticket-bookmark-expand-ms: 0.42s;
+  --ticket-bookmark-fade-ms: 0.18s;
+  --ticket-bookmark-fade-gap: 0.18s;
+  position: relative;
+  z-index: 1;
+  align-self: stretch;
+  flex: 0 0 auto;
+  width: var(--ticket-bookmark-width-compact);
+  height: auto;
+  min-height: 100%;
+  max-height: none;
+  overflow: hidden;
+  transform-origin: left bottom;
+  transition:
+    width var(--ticket-bookmark-expand-ms) var(--ticket-bookmark-ease),
+    transform 0.28s var(--ticket-bookmark-ease),
+    box-shadow 0.28s var(--ticket-bookmark-ease),
+    border-color 0.28s var(--ticket-bookmark-ease);
+}
+
+.ticketBookmark:not(:hover):not(:focus-visible) {
+  transition:
+    width var(--ticket-bookmark-expand-ms) var(--ticket-bookmark-ease) var(--ticket-bookmark-fade-ms),
+    transform 0.28s var(--ticket-bookmark-ease),
+    box-shadow 0.28s var(--ticket-bookmark-ease),
+    border-color 0.28s var(--ticket-bookmark-ease);
+}
+
+.ticketBookmark:hover,
+.ticketBookmark:focus-visible {
+  width: var(--ticket-bookmark-width-expanded);
+  z-index: 4;
+  transform: translateY(-2px);
+  border-color: color-mix(in srgb, var(--bookmark-accent, #64748b) 28%, var(--msp-border));
+  box-shadow: 0 8px 18px rgba(15, 28, 46, 0.1);
+  transition:
+    width var(--ticket-bookmark-expand-ms) var(--ticket-bookmark-ease) 0s,
+    transform 0.28s var(--ticket-bookmark-ease),
+    box-shadow 0.28s var(--ticket-bookmark-ease),
+    border-color 0.28s var(--ticket-bookmark-ease);
+}
+
+.ticketBookmarkSkeleton {
+  align-self: stretch;
+  flex: 0 0 auto;
+  width: var(--ticket-bookmark-width-compact, 3.65rem);
+  height: auto;
+  min-height: 100%;
+}
+
+.ticketBookmarkStack {
+  display: grid;
+  grid-template: 1fr / 1fr;
+  width: var(--ticket-bookmark-width-expanded);
+  height: 100%;
+}
+
+.ticketBookmarkCompact,
+.ticketBookmarkExpanded {
+  grid-area: 1 / 1;
+  min-width: 0;
+}
+
+.ticketBookmarkCompact {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 0.08rem;
+  width: var(--ticket-bookmark-width-compact);
+  height: 100%;
+  padding: 0 0.18rem 0.34rem;
+  box-sizing: border-box;
+  opacity: 1;
+  visibility: visible;
+  transition:
+    opacity var(--ticket-bookmark-fade-ms) var(--ticket-bookmark-ease) var(--ticket-bookmark-fade-gap),
+    visibility var(--ticket-bookmark-fade-ms) var(--ticket-bookmark-ease) var(--ticket-bookmark-fade-gap);
+}
+
+.ticketBookmarkCompactBody {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: space-evenly;
+  gap: 0.1rem;
+  width: 100%;
+  flex: 1 1 auto;
+  min-height: 0;
+  padding: 0.04rem 0 0.02rem;
+}
+
+.ticketBookmarkExpanded {
+  display: grid;
+  grid-template-rows: auto auto minmax(0, 1fr) auto;
+  align-content: stretch;
+  gap: 0.1rem;
+  width: var(--ticket-bookmark-width-expanded);
+  height: 100%;
+  padding: 0 0.48rem 0.58rem;
+  box-sizing: border-box;
+  overflow: hidden;
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transition:
+    opacity var(--ticket-bookmark-fade-ms) var(--ticket-bookmark-ease),
+    visibility var(--ticket-bookmark-fade-ms) var(--ticket-bookmark-ease);
+}
+
+.ticketBookmark:hover .ticketBookmarkExpanded,
+.ticketBookmark:focus-visible .ticketBookmarkExpanded {
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
+  transition:
+    opacity var(--ticket-bookmark-fade-ms) var(--ticket-bookmark-ease) var(--ticket-bookmark-fade-gap),
+    visibility var(--ticket-bookmark-fade-ms) var(--ticket-bookmark-ease) var(--ticket-bookmark-fade-gap);
+}
+
+.ticketBookmark:hover .ticketBookmarkCompact,
+.ticketBookmark:focus-visible .ticketBookmarkCompact {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transition-delay: 0s, 0s;
+}
+
+.ticketBookmarkCompactRibbon {
+  margin: 0 !important;
+  padding: 0.2rem 0.38rem 0.24rem !important;
+  align-self: center;
+}
+
+.ticketBookmarkCompactDay {
+  font-size: 0.86rem !important;
+  line-height: 1 !important;
+}
+
+.ticketBookmarkCompactStatus {
+  width: 100%;
+  font-size: 0.52rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  text-align: center;
+  line-height: 1.1;
+  color: var(--msp-muted-light, #8b9bb5);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ticketBookmarkCompactRatingSlot {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-height: 0.72rem;
+  max-height: 0.72rem;
+}
+
+.ticketBookmarkCompactTypeSlot {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-height: 0.8rem;
+}
+
+.ticketBookmarkCompactTypeIcon {
+  font-size: 0.92rem;
+  color: var(--bookmark-type-accent, #94a3b8);
+  flex-shrink: 0;
+  opacity: 0.92;
+}
+
+.ticketBookmarkCompactRating {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.72rem;
+  color: #f59e0b;
+  line-height: 1;
+}
+
+.ticketBookmarkCompactSlaSlot {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-height: 0.72rem;
+}
+
+.ticketBookmarkCompactSlaSlot:empty {
+  display: none;
+  min-height: 0;
+}
+
+.ticketBookmarkCompactSla {
+  width: 100%;
+  font-size: 0.52rem;
+  font-weight: 700;
+  text-align: center;
+  line-height: 1.1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ticketBookmarkTitle {
+  display: block;
+  margin: 0;
+  padding: 0;
+  font-size: 0.68rem;
+  font-weight: 700;
+  color: var(--msp-text);
+  line-height: 1.15;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ticketBookmarkExpanded .ticketBookmarkTitle {
+  width: 100%;
+  font-size: 0.76rem;
+  line-height: 1.25;
+  white-space: nowrap;
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  -webkit-line-clamp: unset;
+  -webkit-box-orient: unset;
+}
+
+.ticketBookmarkTitleWrap .ticketBookmarkTitle {
+  opacity: 1;
+}
+
+.ticketBookmarkTitleWrap {
+  flex: 0 0 auto;
+  min-width: 0;
+  min-height: 0;
+  max-height: 1.2rem;
+  overflow: hidden;
+  display: flex;
+  align-items: flex-start;
+  justify-content: flex-start;
+  align-self: stretch;
+  padding: 0.08rem 0.08rem 0.02rem;
+  box-sizing: border-box;
+}
+
+.ticketBookmarkFoot {
+  display: flex;
+  align-items: center;
+  gap: 0.28rem;
+  min-width: 0;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.ticketBookmarkExpanded .ticketBookmarkFoot {
+  align-self: end;
+  overflow: visible;
+  min-height: 1rem;
+  margin-top: 0.06rem;
+  padding: 0.12rem 0.08rem 0.06rem;
+  line-height: 1.25;
+  box-sizing: border-box;
+}
+
+.ticketBookmarkTop {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.32rem;
+  flex-shrink: 0;
+  min-height: 0;
+  align-self: start;
+}
+
+.ticketBookmarkExpanded .ticketBookmarkTop {
+  margin-left: -0.48rem;
+  margin-right: -0.48rem;
+  padding-left: 0.48rem;
+  padding-right: 0.48rem;
+}
+
+.ticketBookmarkTopMain {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.28rem;
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.ticketBookmarkRibbonExpanded {
+  margin: 0 !important;
+  padding: 0.2rem 0.38rem 0.24rem !important;
+  flex-shrink: 0;
+  align-self: flex-start;
+  border-radius: 0 0 7px 7px;
+}
+
+.ticketBookmarkExpanded .ticketBookmarkRibbonExpanded {
+  padding: 0.2rem 0.38rem 0.24rem !important;
+}
+
+.ticketBookmarkRibbonDayExpanded {
+  font-size: 0.78rem !important;
+  line-height: 1 !important;
+}
+
+.ticketBookmarkExpanded .ticketBookmarkRibbonDayExpanded {
+  font-size: 0.82rem !important;
+}
+
+.ticketBookmarkStatus {
+  font-size: 0.52rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--msp-muted-light, #8b9bb5);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  line-height: 1;
+}
+
+.ticketBookmarkExpanded .ticketBookmarkStatus {
+  font-size: 0.58rem;
+}
+
+.ticketBookmarkFootSep {
+  flex-shrink: 0;
+  font-size: 0.56rem;
+  font-weight: 700;
+  color: var(--msp-muted-light, #8b9bb5);
+  line-height: 1;
+}
+
+.ticketBookmarkExpanded .ticketBookmarkFootSep {
+  font-size: 0.62rem;
+  line-height: 1.25;
+}
+
+.ticketBookmarkCategory {
+  flex-shrink: 1;
+  min-width: 0;
+  font-size: 0.56rem;
+  font-weight: 600;
+  color: var(--msp-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  line-height: 1.1;
+}
+
+.ticketBookmarkExpanded .ticketBookmarkCategory {
+  font-size: 0.62rem;
+  line-height: 1.25;
+}
+
+.ticketBookmarkExpanded .slaLine {
+  font-size: 0.62rem;
+  line-height: 1.25;
+}
+
+.ticketBookmarkDetails {
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  gap: 0.14rem;
+  min-width: 0;
+  min-height: 0;
+  flex: 1 1 auto;
+  overflow: hidden;
+  padding: 0.06rem 0.08rem 0.04rem;
+  box-sizing: border-box;
+}
+
+.ticketBookmarkDetailRow {
+  display: flex;
+  align-items: center;
+  gap: 0.34rem;
+  min-width: 0;
+  flex-shrink: 0;
+  min-height: 0.82rem;
+}
+
+.ticketBookmarkDetailRowNotes {
+  align-items: flex-start;
+}
+
+.ticketBookmarkDetailIcon {
+  flex-shrink: 0;
+  width: 0.78rem;
+  margin-top: 0;
+  font-size: 0.72rem;
+  color: var(--msp-muted-light, #8b9bb5);
+  opacity: 0.95;
+  text-align: center;
+}
+
+.ticketBookmarkDetailRowNotes .ticketBookmarkDetailIcon {
+  align-self: flex-start;
+  margin-top: 0.06rem;
+}
+
+.ticketBookmarkDetailText {
+  min-width: 0;
+  flex: 1 1 auto;
+  font-size: 0.58rem;
+  font-weight: 600;
+  line-height: 1.2;
+  color: var(--msp-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ticketBookmarkDetailRowNotes .ticketBookmarkDetailText {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+  color: var(--msp-text);
+  font-weight: 500;
+}
+
+.ticketBookmarkType {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.22rem;
+  flex-shrink: 1;
+  min-width: 0;
+  font-size: 0.56rem;
+  font-weight: 700;
+  color: var(--bookmark-type-accent, #94a3b8);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  line-height: 1.1;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  opacity: 0.95;
+}
+
+.ticketBookmarkExpanded .ticketBookmarkType {
+  font-size: 0.58rem;
+  line-height: 1.25;
+}
+
+.ticketBookmarkTypeIcon {
+  flex-shrink: 0;
+  font-size: 0.78rem;
+  opacity: 0.95;
+}
+
+.ticketBookmarkExpanded .ticketBookmarkTypeIcon {
+  font-size: 0.82rem;
+}
+
+.ticketBookmarkExpanded > .ticketBookmarkTitle {
+  align-self: center;
+  min-height: 0;
+}
+
+.satisfactionLine {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.14rem;
+  flex-shrink: 0;
+  padding: 0.05rem 0.28rem;
+  border-radius: 999px;
+  background: rgba(245, 158, 11, 0.12);
+  color: #b45309;
+  font-size: 0.54rem;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.ticketBookmarkExpanded .satisfactionLine {
+  padding: 0.08rem 0.34rem;
+  font-size: 0.58rem;
+}
+
+.satisfactionStar {
+  font-size: 0.64rem;
+  color: #f59e0b;
+  flex-shrink: 0;
+}
+
+.ticketBookmarkExpanded .satisfactionStar {
+  font-size: 0.7rem;
+}
+
+.slaLine_ok {
+  color: #047857;
+}
+
+.slaLine_warning {
+  color: #b45309;
+}
+
+.slaLine_breach {
+  color: #b91c1c;
+}
+
+.ticketBookmark .slaLine_breach {
+  color: #c48787;
+}
+
+.slaLine_neutral {
+  color: var(--msp-muted-light, #8b9bb5);
+}
+
+.ticketBookmarkMajor:hover,
+.ticketBookmarkMajor:focus-visible {
+  border-color: color-mix(in srgb, #c53030 38%, var(--msp-border));
+  box-shadow: 0 8px 18px rgba(197, 48, 48, 0.14);
+}
+
+.ticketBookmarkMajor .ticketBookmarkCompactStatus,
+.ticketBookmarkMajor .ticketBookmarkStatus {
+  color: #f87171;
+}
+
+.ticketBookmarkMajor .ticketBookmarkCompactTypeIcon,
+.ticketBookmarkMajor .ticketBookmarkType {
+  color: #ef4444;
+}
+
+:global(html.dark) .ticketBookmarkMajor .ticketBookmarkCompactStatus,
+:global(html.dark) .ticketBookmarkMajor .ticketBookmarkStatus {
+  color: #fca5a5;
+}
+
+:global(html.dark) .ticketBookmark:hover,
+:global(html.dark) .ticketBookmark:focus-visible {
+  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.28);
+}
+
+:global(html.dark) .ticketBookmarkCompactTypeIcon,
+:global(html.dark) .ticketBookmarkType {
+  opacity: 0.88;
+}
+
+:global(html.dark) .ticketBookmarkCompactStatus,
+:global(html.dark) .ticketBookmarkStatus {
+  color: var(--msp-muted-light, #8fa8c4);
+}
+
+:global(html.dark) .ticketBookmarkCompactRating {
+  color: #fbbf24;
+}
+
+:global(html.dark) .satisfactionLine {
+  background: rgba(245, 158, 11, 0.16);
+  color: #fbbf24;
+}
+
+:global(html.dark) .satisfactionStar {
+  color: #fbbf24;
+}
+
+:global(html.dark) .slaLine_ok {
+  color: #6ee7b7;
+}
+
+:global(html.dark) .slaLine_warning {
+  color: #fbbf24;
+}
+
+:global(html.dark) .slaLine_breach {
+  color: #fca5a5;
+}
+
+:global(html.dark) .ticketBookmark .slaLine_breach {
+  color: #d4a3a3;
+}
+
+:global(html.dark) .slaLine_neutral {
+  color: var(--msp-muted-light, #8fa8c4);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ticketBookmark,
+  .ticketBookmarkCompact,
+  .ticketBookmarkExpanded {
+    transition: none;
+  }
+}

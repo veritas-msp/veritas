@@ -1,0 +1,250 @@
+.root {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.sectionTitle {
+  margin: 0;
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: var(--msp-text, #0f1c2e);
+}
+
+.header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.lead {
+  margin: 0;
+  font-size: 0.82rem;
+  line-height: 1.45;
+  color: var(--msp-muted, #5c6b82);
+}
+
+.addButton,
+.addButtonInline {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  border: 1px solid var(--msp-border, #dde3ed);
+  background: var(--msp-surface, #fff);
+  color: var(--msp-text, #0f1c2e);
+  border-radius: 8px;
+  padding: 0.45rem 0.7rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: border-color 0.15s ease, color 0.15s ease, background 0.15s ease;
+}
+
+.addButton:hover,
+.addButtonInline:hover {
+  border-color: rgba(43, 95, 171, 0.45);
+  color: var(--msp-accent, #2b5fab);
+}
+
+.empty {
+  border: 1px dashed var(--msp-border, #d1d5db);
+  border-radius: 12px;
+  padding: 1.1rem;
+  text-align: center;
+  color: var(--msp-muted, #5c6b82);
+  background: var(--msp-surface-2, #f8fafc);
+}
+
+.empty p {
+  margin: 0.35rem 0 0.75rem;
+  font-size: 0.84rem;
+}
+
+.emptyIcon {
+  color: var(--msp-muted-light, #8b9bb5);
+}
+
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+}
+
+.card {
+  border: 1px solid var(--msp-border-light, #eef2f7);
+  border-radius: 12px;
+  padding: 0.8rem;
+  background: var(--msp-surface, #fff);
+}
+
+.cardHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.65rem;
+}
+
+.cardIndex {
+  font-size: 0.76rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--msp-muted, #5c6b82);
+}
+
+.removeButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.75rem;
+  height: 1.75rem;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--msp-muted, #5c6b82);
+  cursor: pointer;
+}
+
+.removeButton:hover {
+  background: rgba(239, 68, 68, 0.1);
+  color: #dc2626;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.65rem;
+}
+
+.fieldWide {
+  grid-column: 1 / -1;
+}
+
+.emptyAssign {
+  border: 1px dashed var(--msp-border, #d1d5db);
+  border-radius: 10px;
+  padding: 0.85rem 1rem;
+  font-size: 0.82rem;
+  color: var(--msp-muted, #5c6b82);
+  background: var(--msp-surface-2, #f8fafc);
+}
+
+.emptyAssign p {
+  margin: 0;
+}
+
+.assignList {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+
+.assignItem {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  padding: 0.65rem 0.75rem;
+  border: 1px solid var(--msp-border-light, #eef2f7);
+  border-radius: 10px;
+  cursor: pointer;
+  background: var(--msp-surface, #fff);
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.assignItem:hover {
+  border-color: rgba(43, 95, 171, 0.35);
+}
+
+.assignItemActive {
+  border-color: rgba(43, 95, 171, 0.45);
+  background: color-mix(in srgb, var(--msp-accent, #2b5fab) 8%, var(--msp-surface, #fff));
+}
+
+.assignCheckbox {
+  width: 1rem;
+  height: 1rem;
+  flex-shrink: 0;
+  accent-color: var(--msp-accent, #2b5fab);
+}
+
+.assignContent {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  flex: 1;
+  min-width: 0;
+}
+
+.assignName {
+  font-size: 0.86rem;
+  font-weight: 600;
+  color: var(--msp-text, #0f1c2e);
+}
+
+.assignMeta {
+  font-size: 0.76rem;
+  color: var(--msp-muted, #5c6b82);
+}
+
+.assignWifiIcon {
+  color: var(--msp-accent, #2b5fab);
+  flex-shrink: 0;
+}
+
+.assignSummary {
+  margin: 0;
+  font-size: 0.78rem;
+  color: var(--msp-muted, #5c6b82);
+}
+
+:global(html.dark) .empty,
+:global(html.dark) .emptyAssign {
+  background: rgba(15, 23, 42, 0.35);
+  border-color: var(--msp-border, #2f4260);
+  color: var(--msp-muted, #94a3b8);
+}
+
+:global(html.dark) .card,
+:global(html.dark) .assignItem {
+  background: rgba(15, 23, 42, 0.28);
+  border-color: var(--msp-border, #2f4260);
+}
+
+:global(html.dark) .assignItemActive {
+  background: color-mix(in srgb, var(--msp-accent, #2b5fab) 14%, rgba(15, 23, 42, 0.5));
+  border-color: rgba(43, 95, 171, 0.5);
+}
+
+:global(html.dark) .addButton,
+:global(html.dark) .addButtonInline {
+  background: rgba(15, 23, 42, 0.35);
+  border-color: var(--msp-border, #2f4260);
+  color: var(--msp-text, #e8eef5);
+}
+
+:global(html.dark) .sectionTitle,
+:global(html.dark) .assignName {
+  color: var(--msp-text, #e8eef5);
+}
+
+:global(html.dark) .lead,
+:global(html.dark) .cardIndex,
+:global(html.dark) .assignMeta,
+:global(html.dark) .assignSummary,
+:global(html.dark) .emptyIcon {
+  color: var(--msp-muted, #94a3b8);
+}
+
+@media (max-width: 640px) {
+  .grid {
+    grid-template-columns: 1fr;
+  }
+}

@@ -1,0 +1,213 @@
+.root {
+  --wbg-accent: #3b82f6;
+  --wbg-accent-soft: rgba(59, 130, 246, 0.35);
+  --wbg-grid: rgba(96, 165, 250, 0.1);
+  --wbg-link: rgba(96, 165, 250, 0.45);
+  --wbg-node: #60a5fa;
+  --wbg-orb-a: rgba(43, 95, 171, 0.45);
+  --wbg-orb-b: rgba(59, 130, 246, 0.3);
+  --wbg-orb-c: rgba(14, 165, 233, 0.22);
+  --wbg-scan: rgba(96, 165, 250, 0.06);
+  --wbg-vignette: rgba(6, 10, 16, 0.35);
+
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.root[data-theme="light"] {
+  --wbg-accent: #2b5fab;
+  --wbg-accent-soft: rgba(43, 95, 171, 0.4);
+  --wbg-grid: rgba(43, 95, 171, 0.14);
+  --wbg-link: rgba(59, 130, 246, 0.5);
+  --wbg-node: #3b82f6;
+  --wbg-orb-a: rgba(43, 95, 171, 0.5);
+  --wbg-orb-b: rgba(59, 130, 246, 0.35);
+  --wbg-orb-c: rgba(56, 189, 248, 0.25);
+  --wbg-scan: rgba(59, 130, 246, 0.07);
+  --wbg-vignette: rgba(15, 28, 46, 0.25);
+}
+
+.baseGradient {
+  position: absolute;
+  inset: -20%;
+  background:
+    radial-gradient(ellipse 55% 45% at 15% 20%, var(--wbg-orb-a), transparent 55%),
+    radial-gradient(ellipse 50% 40% at 85% 75%, var(--wbg-orb-b), transparent 50%),
+    radial-gradient(ellipse 40% 35% at 70% 15%, var(--wbg-orb-c), transparent 45%);
+  animation: wbgGradientShift 18s ease-in-out infinite alternate;
+}
+
+.grid {
+  position: absolute;
+  inset: -50%;
+  background-image:
+    linear-gradient(var(--wbg-grid) 1px, transparent 1px),
+    linear-gradient(90deg, var(--wbg-grid) 1px, transparent 1px);
+  background-size: 56px 56px;
+  transform: perspective(600px) rotateX(58deg) scale(1.4);
+  transform-origin: center 30%;
+  opacity: 0.85;
+}
+
+.hexMesh {
+  position: absolute;
+  inset: 0;
+  opacity: 0.35;
+  background-image: radial-gradient(circle at center, var(--wbg-accent-soft) 1px, transparent 1px);
+  background-size: 28px 28px;
+  mask-image: radial-gradient(ellipse 80% 70% at 50% 45%, #000 20%, transparent 75%);
+  animation: wbgHexPulse 6s ease-in-out infinite alternate;
+}
+
+.network {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0.9;
+}
+
+.link {
+  fill: none;
+  stroke: var(--wbg-link);
+  stroke-width: 1.2;
+  stroke-linecap: round;
+  stroke-dasharray: 6 14;
+  animation: wbgLinkFlow 12s linear infinite;
+}
+
+.linkDelay1 {
+  animation-delay: -4s;
+  opacity: 0.75;
+}
+
+.linkDelay2 {
+  animation-delay: -8s;
+  opacity: 0.6;
+}
+
+.node {
+  fill: var(--wbg-node);
+  filter: drop-shadow(0 0 6px var(--wbg-accent-soft));
+  animation: wbgNodePulse 3.5s ease-in-out infinite;
+}
+
+.node:nth-child(5) { animation-delay: 0.4s; }
+.node:nth-child(6) { animation-delay: 0.9s; }
+.node:nth-child(7) { animation-delay: 1.3s; }
+.node:nth-child(8) { animation-delay: 0.2s; }
+.node:nth-child(9) { animation-delay: 1.1s; }
+.node:nth-child(10) { animation-delay: 0.7s; }
+
+.orbLayer {
+  position: absolute;
+  inset: 0;
+}
+
+.orb {
+  position: absolute;
+  width: 42vmin;
+  height: 42vmin;
+  border-radius: 50%;
+  background: radial-gradient(circle, var(--wbg-accent-soft) 0%, transparent 68%);
+  filter: blur(40px);
+  top: 8%;
+  left: -8%;
+  animation: wbgOrbFloatA 22s ease-in-out infinite;
+}
+
+.orbB {
+  width: 36vmin;
+  height: 36vmin;
+  top: auto;
+  bottom: 5%;
+  left: auto;
+  right: -6%;
+  animation: wbgOrbFloatB 26s ease-in-out infinite;
+}
+
+.orbC {
+  width: 28vmin;
+  height: 28vmin;
+  top: 42%;
+  left: 38%;
+  opacity: 0.7;
+  animation: wbgOrbFloatC 19s ease-in-out infinite;
+}
+
+.scanline {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 120px;
+  background: linear-gradient(
+    180deg,
+    transparent 0%,
+    var(--wbg-scan) 45%,
+    transparent 100%
+  );
+  animation: wbgScan 9s linear infinite;
+  opacity: 0.8;
+}
+
+.vignette {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse 90% 85% at 50% 50%, transparent 40%, var(--wbg-vignette) 100%);
+}
+
+@keyframes wbgGradientShift {
+  0% { transform: translate(0, 0) scale(1); }
+  100% { transform: translate(2%, 3%) scale(1.05); }
+}
+
+@keyframes wbgHexPulse {
+  0% { opacity: 0.25; }
+  100% { opacity: 0.45; }
+}
+
+@keyframes wbgLinkFlow {
+  0% { stroke-dashoffset: 0; }
+  100% { stroke-dashoffset: -120; }
+}
+
+@keyframes wbgNodePulse {
+  0%, 100% { opacity: 0.45; }
+  50% { opacity: 1; }
+}
+
+@keyframes wbgOrbFloatA {
+  0%, 100% { transform: translate(0, 0); }
+  50% { transform: translate(8vw, 6vh); }
+}
+
+@keyframes wbgOrbFloatB {
+  0%, 100% { transform: translate(0, 0); }
+  50% { transform: translate(-7vw, -5vh); }
+}
+
+@keyframes wbgOrbFloatC {
+  0%, 100% { transform: translate(-50%, -50%) scale(1); }
+  50% { transform: translate(-46%, -54%) scale(1.12); }
+}
+
+@keyframes wbgScan {
+  0% { top: -15%; }
+  100% { top: 110%; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .baseGradient,
+  .hexMesh,
+  .link,
+  .node,
+  .orb,
+  .orbB,
+  .orbC,
+  .scanline {
+    animation: none;
+  }
+}

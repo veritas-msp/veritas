@@ -1,0 +1,184 @@
+.root {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.cardsGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 14px;
+}
+
+.serviceCard {
+  border: 1px solid var(--portal-border, #e4e8ee);
+  border-radius: 12px;
+  background: var(--portal-surface, #fff);
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.serviceCardHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.serviceCardTitleWrap {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  min-width: 0;
+}
+
+.serviceIcon {
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.2rem;
+  flex-shrink: 0;
+  background: rgba(43, 95, 171, 0.1);
+  color: #2b5fab;
+}
+
+.icon_o365 {
+  background: rgba(220, 38, 38, 0.1);
+  color: #dc2626;
+}
+
+.icon_antivirus {
+  background: rgba(22, 163, 74, 0.1);
+  color: #15803d;
+}
+
+.icon_antispam {
+  background: rgba(124, 58, 237, 0.1);
+  color: #7c3aed;
+}
+
+.icon_save {
+  background: rgba(14, 116, 144, 0.1);
+  color: #0e7490;
+}
+
+.icon_ndd {
+  background: rgba(180, 83, 9, 0.1);
+  color: #b45309;
+}
+
+.serviceName {
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--portal-text, #1a2332);
+  line-height: 1.3;
+}
+
+.serviceProduct {
+  margin: 2px 0 0;
+  font-size: 0.8rem;
+  color: var(--portal-text-muted, #6b7a90);
+}
+
+.serviceCardMeta {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.serviceSummaryRow {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 10px;
+}
+
+.summaryItem {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.summaryLabel {
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--portal-text-muted, #6b7a90);
+}
+
+.summaryItem strong {
+  font-size: 0.84rem;
+  color: var(--portal-text, #1a2332);
+}
+
+.expBadge {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.expBadgeSub {
+  font-size: 0.68rem;
+  font-weight: 500;
+}
+
+.exp_muted {
+  color: var(--portal-text-muted, #6b7a90);
+}
+
+.exp_ok {
+  color: #15803d;
+}
+
+.exp_warn {
+  color: #b45309;
+}
+
+.exp_bad {
+  color: #b91c1c;
+}
+
+.detailList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.detailList li {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  font-size: 0.82rem;
+  color: var(--portal-text-secondary, #374a5e);
+}
+
+.detailList strong {
+  color: var(--portal-text, #1a2332);
+}
+
+@media (max-width: 768px) {
+  .cardsGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .serviceCardHeader {
+    flex-direction: column;
+  }
+
+  .serviceCardMeta {
+    align-items: flex-start;
+  }
+}

@@ -1,0 +1,252 @@
+.root {
+  --orb-line: rgba(43, 95, 171, 0.14);
+  --orb-dot: rgba(43, 95, 171, 0.35);
+  --orb-glow: rgba(43, 95, 171, 0.08);
+
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.glow {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: min(90%, 720px);
+  height: min(100%, 420px);
+  transform: translate(-50%, -50%);
+  background: radial-gradient(ellipse at center, var(--orb-glow) 0%, transparent 70%);
+}
+
+.rootPage {
+  --orb-line: rgba(43, 95, 171, 0.1);
+  --orb-dot: rgba(43, 95, 171, 0.22);
+  --orb-glow: rgba(43, 95, 171, 0.05);
+}
+
+.rootPage .glow {
+  width: min(140%, 1600px);
+  height: min(140%, 1100px);
+}
+
+.nodeDiscrete {
+  width: 28px;
+  height: 28px;
+  margin: -14px 0 0 -14px;
+  font-size: 0.78rem;
+  opacity: 0.32;
+  color: rgba(43, 95, 171, 0.55);
+  background: rgba(255, 255, 255, 0.28);
+  border: 1px solid rgba(43, 95, 171, 0.1);
+  box-shadow: none;
+}
+
+.ring {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: calc(var(--r) * 2);
+  height: calc(var(--r) * 2);
+  margin-top: calc(var(--r) * -1);
+  margin-left: calc(var(--r) * -1);
+  border: 1px solid var(--orb-line);
+  border-radius: 50%;
+}
+
+.dot {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 4px;
+  height: 4px;
+  margin: -2px 0 0 -2px;
+  border-radius: 50%;
+  background: var(--orb-dot);
+  transform: rotate(var(--angle)) translateX(var(--r));
+}
+
+.orbit {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 0;
+  height: 0;
+  transform: rotate(var(--angle));
+  animation-duration: var(--duration);
+  animation-timing-function: linear;
+  animation-iteration-count: infinite;
+}
+
+.spin {
+  animation-name: orbitalSpin;
+}
+
+.spinReverse {
+  animation-name: orbitalSpinReverse;
+}
+
+.orbitArm {
+  transform: translateX(var(--r));
+}
+
+.orbitCounter {
+  animation-duration: var(--duration);
+  animation-timing-function: linear;
+  animation-iteration-count: infinite;
+}
+
+.node {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 42px;
+  height: 42px;
+  margin: -21px 0 0 -21px;
+  border-radius: 50%;
+  font-size: 1.15rem;
+  color: #fff;
+  background: rgba(255, 255, 255, 0.92);
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.5),
+    0 4px 16px rgba(15, 28, 46, 0.12);
+}
+
+.node svg {
+  color: inherit;
+}
+
+.node_coral {
+  color: #e85d3a;
+  background: rgba(255, 255, 255, 0.95);
+  box-shadow:
+    0 0 0 1px rgba(232, 93, 58, 0.2),
+    0 0 24px rgba(232, 93, 58, 0.45),
+    0 4px 16px rgba(232, 93, 58, 0.2);
+}
+
+.node_gold {
+  color: #d4a017;
+  background: rgba(255, 255, 255, 0.95);
+  box-shadow:
+    0 0 0 1px rgba(212, 160, 23, 0.2),
+    0 0 24px rgba(212, 160, 23, 0.4),
+    0 4px 16px rgba(212, 160, 23, 0.18);
+}
+
+.node_blue {
+  color: #2b5fab;
+  background: rgba(255, 255, 255, 0.95);
+  box-shadow:
+    0 0 0 1px rgba(43, 95, 171, 0.2),
+    0 0 24px rgba(43, 95, 171, 0.45),
+    0 4px 16px rgba(43, 95, 171, 0.2);
+}
+
+.node_violet {
+  color: #7c5cbf;
+  background: rgba(255, 255, 255, 0.95);
+  box-shadow:
+    0 0 0 1px rgba(124, 92, 191, 0.2),
+    0 0 24px rgba(124, 92, 191, 0.42),
+    0 4px 16px rgba(124, 92, 191, 0.18);
+}
+
+@keyframes orbitalSpin {
+  to {
+    transform: rotate(calc(var(--angle) + 360deg));
+  }
+}
+
+@keyframes orbitalSpinReverse {
+  to {
+    transform: rotate(calc(var(--angle) - 360deg));
+  }
+}
+
+:global(html.dark) .root {
+  --orb-line: rgba(90, 143, 212, 0.16);
+  --orb-dot: rgba(126, 184, 240, 0.45);
+  --orb-glow: rgba(90, 143, 212, 0.1);
+}
+
+:global(html.dark) .rootPage {
+  --orb-line: rgba(90, 143, 212, 0.12);
+  --orb-dot: rgba(126, 184, 240, 0.28);
+  --orb-glow: rgba(90, 143, 212, 0.06);
+}
+
+:global(html.dark) .nodeDiscrete {
+  opacity: 0.28;
+  color: rgba(126, 184, 240, 0.5);
+  background: rgba(26, 37, 64, 0.25);
+  border-color: rgba(90, 143, 212, 0.12);
+}
+
+:global(html.dark) .node {
+  background: rgba(26, 37, 64, 0.92);
+  box-shadow:
+    0 0 0 1px rgba(90, 143, 212, 0.15),
+    0 4px 20px rgba(0, 0, 0, 0.35);
+}
+
+:global(html.dark) .node_coral {
+  box-shadow:
+    0 0 0 1px rgba(232, 93, 58, 0.25),
+    0 0 28px rgba(232, 93, 58, 0.5),
+    0 4px 20px rgba(0, 0, 0, 0.3);
+}
+
+:global(html.dark) .node_gold {
+  box-shadow:
+    0 0 0 1px rgba(212, 160, 23, 0.25),
+    0 0 28px rgba(212, 160, 23, 0.45),
+    0 4px 20px rgba(0, 0, 0, 0.3);
+}
+
+:global(html.dark) .node_blue {
+  box-shadow:
+    0 0 0 1px rgba(90, 143, 212, 0.25),
+    0 0 28px rgba(90, 143, 212, 0.5),
+    0 4px 20px rgba(0, 0, 0, 0.3);
+}
+
+:global(html.dark) .node_violet {
+  box-shadow:
+    0 0 0 1px rgba(124, 92, 191, 0.25),
+    0 0 28px rgba(124, 92, 191, 0.48),
+    0 4px 20px rgba(0, 0, 0, 0.3);
+}
+
+@media (max-width: 720px) {
+  .root {
+    opacity: 0.55;
+  }
+
+  .rootPage {
+    opacity: 0.45;
+  }
+
+  .node {
+    width: 34px;
+    height: 34px;
+    margin: -17px 0 0 -17px;
+    font-size: 0.95rem;
+  }
+
+  .nodeDiscrete {
+    width: 22px;
+    height: 22px;
+    margin: -11px 0 0 -11px;
+    font-size: 0.68rem;
+    opacity: 0.26;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .orbit,
+  .orbitCounter {
+    animation: none;
+  }
+}

@@ -1,0 +1,207 @@
+.form {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+}
+
+.shell {
+  width: min(780px, 100%);
+  max-height: min(94vh, 900px);
+}
+
+.content {
+  overflow-y: visible;
+}
+
+.catalogGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.85rem;
+  margin-bottom: 1rem;
+}
+
+.infoBanner {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.55rem;
+  padding: 0.72rem 0.85rem;
+  margin-bottom: 1rem;
+  border-radius: 10px;
+  border: 1px solid rgba(43, 95, 171, 0.18);
+  background: rgba(43, 95, 171, 0.06);
+  color: var(--msp-text, #0f1c2e);
+  font-size: 0.8rem;
+  line-height: 1.45;
+}
+
+.infoBanner svg {
+  flex-shrink: 0;
+  margin-top: 0.1rem;
+  font-size: 1rem;
+  color: var(--msp-accent, #2b5fab);
+}
+
+.pendingReplyBanner {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.55rem;
+  padding: 0.65rem 0.85rem;
+  margin: 0.85rem 0 0;
+  border-radius: 10px;
+  border: 1px solid rgba(16, 185, 129, 0.22);
+  background: rgba(16, 185, 129, 0.08);
+  color: var(--msp-text, #0f1c2e);
+  font-size: 0.8rem;
+  line-height: 1.45;
+}
+
+.pendingReplyBanner svg {
+  flex-shrink: 0;
+  margin-top: 0.08rem;
+  font-size: 1rem;
+  color: #059669;
+}
+
+.creditPanel {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  padding: 1rem 1.05rem;
+  border-radius: 12px;
+  border: 1px solid var(--msp-border, #dde3ed);
+  background: var(--msp-surface-2, #f8fafc);
+}
+
+.creditBalanceRow {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--msp-text, #0f1c2e);
+}
+
+.creditBalanceRow svg {
+  font-size: 1.15rem;
+  color: var(--msp-accent, #2b5fab);
+}
+
+.creditOption {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.55rem;
+  font-size: 0.84rem;
+  color: var(--msp-text, #0f1c2e);
+  cursor: pointer;
+}
+
+.creditOption input {
+  margin-top: 0.15rem;
+}
+
+.creditBulkRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.85rem;
+  padding: 0.8rem 0.9rem;
+  border-radius: 10px;
+  border: 1px solid var(--msp-border, #dde3ed);
+  background: var(--msp-surface, #fff);
+}
+
+.creditBulkText {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  min-width: 0;
+}
+
+.creditBulkLabel {
+  font-size: 0.84rem;
+  font-weight: 600;
+  color: var(--msp-text, #0f1c2e);
+}
+
+.creditBulkHint {
+  font-size: 0.75rem;
+  color: var(--msp-muted, #5c6b82);
+  line-height: 1.4;
+}
+
+.creditPackList {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+}
+
+.creditPackRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.85rem;
+  padding: 0.72rem 0.85rem;
+  border-radius: 10px;
+  border: 1px solid var(--msp-border-light, #eef2f7);
+  background: var(--msp-surface, #fff);
+}
+
+.creditPackMeta {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  min-width: 0;
+}
+
+.creditPackLabel {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--msp-text, #0f1c2e);
+}
+
+.creditPackRemaining {
+  font-size: 0.74rem;
+  color: var(--msp-muted, #5c6b82);
+}
+
+.creditAmountInput {
+  width: 4.5rem;
+  padding: 0.42rem 0.55rem;
+  border-radius: 8px;
+  border: 1px solid var(--msp-border, #dde3ed);
+  background: var(--msp-surface, #fff);
+  font-size: 0.84rem;
+  text-align: center;
+}
+
+.creditTotalRow {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--msp-accent, #2b5fab);
+}
+
+.navItemLabelRow {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  flex-wrap: wrap;
+}
+
+.navItemProBadge {
+  flex-shrink: 0;
+}
+
+.navItemProLocked {
+  cursor: pointer;
+}
+
+.navItemProLocked:hover {
+  background: var(--msp-accent-soft, rgba(43, 95, 171, 0.06));
+}
+
+@media (max-width: 720px) {
+  .catalogGrid {
+    grid-template-columns: 1fr;
+  }
+}

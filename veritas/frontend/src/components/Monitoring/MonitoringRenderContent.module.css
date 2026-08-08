@@ -1,0 +1,182 @@
+.resetBar {
+  display: flex;
+  justify-content: flex-end;
+  padding: 1rem 2rem;
+  margin-bottom: 1rem;
+}
+
+.classicButton {
+  background-color: #f3f4f6;
+  color: #111827;
+  border: 1px solid #d1d5db;
+  font-weight: 500;
+  font-size: 14px;
+  padding: 10px 16px;
+  border-radius: 8px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  transition: background-color 0.2s ease;
+}
+
+.classicButton:hover {
+  background-color: #e5e7eb;
+}
+
+.modalOverlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: var(--modal-overlay-z-index);
+  width: 100%;
+  height: 100%;
+  background-color: rgba(17, 24, 39, 0.6);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.modalContent {
+  background: white;
+  padding: 2rem;
+  padding-top: 1rem;
+  border-radius: 12px;
+  max-width: 400px;
+  width: 90%;
+  text-align: center;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
+}
+
+.modalContent h3 {
+  margin: 0 0 1rem 0;
+  color: #111827;
+  font-size: 1.25rem;
+  font-weight: 600;
+}
+
+.modalContent p {
+  margin: 0 0 1.5rem 0;
+  color: #6b7280;
+  line-height: 1.5;
+}
+
+.modalActions {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-top: 1.5rem;
+}
+
+.modalActions button {
+  flex: 1;
+  padding: 0.6rem;
+  border: none;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.modalActions button.cancel {
+  background-color: #e5e7eb;
+  color: #111827;
+  padding: 10px 18px;
+  font-size: 14px;
+  font-weight: 500;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.modalActions button.cancel:hover {
+  background-color: #d1d5db;
+}
+
+.modalActions button.confirm {
+  background-color: #5b3ee4;
+  color: white;
+  font-size: 14px;
+  font-weight: 500;
+  padding: 10px 16px;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.modalActions button.confirm:hover {
+  background-color: #472ac9;
+}
+
+
+:global(.dark) .modalContent {
+  background: #1e1e3f;
+  color: #e5e7eb;
+}
+
+:global(.dark) .modalContent h3 {
+  color: #e5e7eb;
+}
+
+:global(.dark) .modalContent p {
+  color: #9ca3af;
+}
+
+:global(.dark) .modalActions button.cancel {
+  background-color: #374151;
+  color: #e5e7eb;
+}
+
+:global(.dark) .modalActions button.cancel:hover {
+  background-color: #4b5563;
+}
+
+:global(.dark) .classicButton {
+  background-color: #374151;
+  color: #e5e7eb;
+  border-color: #4b5563;
+}
+
+:global(.dark) .classicButton:hover {
+  background-color: #4b5563;
+}
+
+
+.renderContainer {
+  width: 100%;
+  max-width: 1400px;
+  margin: 0 auto;
+  
+  padding: 120px 2rem 0 2rem; 
+}
+
+
+.moduleScrollContainer {
+  
+  height: calc(100vh - 168px);
+  overflow-y: auto;
+  overflow-x: hidden;
+  
+  scrollbar-width: none; 
+  -ms-overflow-style: none; 
+}
+
+.moduleScrollContainer::-webkit-scrollbar {
+  display: none; 
+  width: 0;
+  height: 0;
+}
+
+
+@media (max-width: 1024px) {
+  .renderContainer {
+    padding-top: 120px;
+    padding-left: 1rem;
+    padding-right: 1rem;
+  }
+  
+  .moduleScrollContainer {
+    height: calc(100vh - 168px);
+  }
+}
+

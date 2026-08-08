@@ -1,0 +1,581 @@
+.container {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 2rem;
+  padding-bottom: 110px;
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+  transition: all 0.3s ease;
+}
+
+.wifiGrid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1.5rem;
+  width: 100%;
+}
+
+@media (max-width: 1200px) {
+  .wifiGrid { grid-template-columns: repeat(2, 1fr); }
+}
+@media (max-width: 800px) {
+  .wifiGrid { grid-template-columns: 1fr; }
+}
+
+.wifiCard {
+  background-color: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  transition: all 0.2s ease;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+
+.wifiCard:hover {
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.wifiCard.withComment {
+  padding-bottom: 1rem;
+}
+
+.dark .wifiCard {
+  background-color: #1e1e3f;
+  border: 1px solid #3a3a5a;
+}
+
+.dark .wifiCard:hover {
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.cardHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
+}
+
+.headerLeft {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  flex: 1;
+  min-width: 0;
+}
+
+.wifiInfo {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  min-width: 0;
+}
+
+.wifiName {
+  font-size: 18px;
+  font-weight: 700;
+  color: #111827;
+  margin: 0;
+  line-height: 1.2;
+  letter-spacing: -0.025em;
+  display: flex;
+  align-items: center;
+}
+
+.dark .wifiName {
+  color: #f9fafb;
+}
+
+.wifiType {
+  display: flex;
+  flex-direction: row;
+  gap: 0.5rem;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.buttonGroup {
+  display: flex;
+  flex-direction: row;
+  gap: 0.35rem;
+  align-items: center;
+}
+
+.flexAuto {
+  flex: 0 0 auto;
+}
+
+
+.syncButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.5rem;
+  height: 2.5rem;
+  padding: 0;
+  border-radius: 0.375rem;
+  border: 1px solid var(--border-primary, #2a2a4a);
+  background-color: var(--bg-secondary, #1a1a2e);
+  color: #6b7280;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.syncButton:hover:not(:disabled) {
+  background-color: #15D1A0;
+  border-color: #15D1A0;
+  color: #0f172a;
+}
+
+.syncButton:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.syncButtonAttention {
+  border-color: #f59e0b !important;
+  color: #f59e0b !important;
+  animation: syncPulse 1s ease-in-out infinite;
+}
+
+.syncButtonAttention:disabled {
+  animation: none;
+}
+
+@keyframes syncPulse {
+  0% { box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.35); }
+  70% { box-shadow: 0 0 0 10px rgba(245, 158, 11, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(245, 158, 11, 0); }
+}
+
+.wifiMetaFlex {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.35rem;
+  margin-top: 0.35rem;
+  flex-wrap: wrap;
+}
+
+.flexOne {
+  flex: 1;
+}
+
+
+.loadingWrapper {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 1.5rem;
+  min-height: 100px;
+  width: 100%;
+}
+
+.loadingIcon {
+  color: #6b7280;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.loadingText {
+  font-size: 0.75rem;
+  color: #6b7280;
+  font-weight: 500;
+}
+
+.loadingRow {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  color: var(--text-secondary);
+  font-size: 0.65rem;
+}
+
+.loadingIconSmall {
+  animation: spin 1s linear infinite;
+  font-size: 0.7rem;
+}
+
+
+.scoreCardLeft {
+  flex: 0 0 55%;
+  min-width: 0;
+  max-width: 55%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  padding: 0.75rem;
+  background: rgba(107, 114, 128, 0.04);
+  border-radius: 8px;
+  border: 1px solid rgba(107, 114, 128, 0.08);
+  position: relative;
+  box-sizing: border-box;
+  height: 100px;
+}
+
+
+.statsGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  column-gap: 0.75rem;
+  align-items: center;
+  flex: 0 0 45%;
+  min-width: 0;
+  max-width: 45%;
+  background: rgba(107, 114, 128, 0.04);
+  padding: 0.75rem;
+  border-radius: 8px;
+  border: 1px solid rgba(107, 114, 128, 0.08);
+  height: 100px;
+  box-sizing: border-box;
+}
+
+.statCard {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.15rem;
+  padding: 0;
+  position: relative;
+}
+
+.statCardDisabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.statCardEnabled {
+  opacity: 1;
+  cursor: help;
+}
+
+.statCardDefault {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.statCardNotMapped {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.statValueNotMapped {
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--text-secondary);
+}
+
+.statLabelNotMapped {
+  font-size: 0.6rem;
+  color: var(--text-secondary);
+  font-style: italic;
+  text-align: center;
+}
+
+.statIcon {
+  color: #6b7280;
+  flex-shrink: 0;
+}
+
+.statValue {
+  font-size: 1.05rem;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.statValuePrimary {
+  color: var(--text-primary);
+}
+
+.statValueSecondary {
+  color: var(--text-secondary);
+}
+
+.statValueEventsWarning {
+  color: #f59e0b;
+}
+
+.statValueEventsNormal {
+  color: var(--text-primary);
+}
+
+.statValueAvailability {
+  font-size: 1rem;
+  font-weight: 700;
+}
+
+
+.editModalOverlay {
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  height: 100dvh;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: var(--modal-overlay-z-index);
+  animation: fadeIn 0.2s ease;
+}
+
+.editModalContent {
+  background: var(--bg-primary);
+  border-radius: 12px;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+  width: 96%;
+  max-width: 640px;
+  height: 420px;
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  animation: fadeInScale 0.2s ease;
+}
+
+.editModalContentLarge {
+  max-height: 90vh;
+  height: auto;
+  min-height: 600px;
+}
+
+.editModalHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.85rem 1.25rem;
+  background: linear-gradient(135deg, #f3f4f6, #e5e7eb);
+  border-bottom: 1px solid #d1d5db;
+}
+
+.editModalTitle {
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: #111827;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.editModalCloseButton {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  line-height: 1;
+  color: #4b5563;
+}
+
+.editModalBody {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: auto;
+}
+
+.editModalLoading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 200px;
+  width: 100%;
+  padding: 2rem;
+  flex: 1;
+}
+
+.editModalForm {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 1rem 1.25rem 0.75rem 1.25rem;
+  margin-bottom: 0.25rem;
+  overflow-y: auto;
+  flex: 1;
+  max-height: calc(90vh - 200px);
+}
+
+.editModalFormRow {
+  display: flex;
+  gap: 0.75rem;
+  width: 100%;
+}
+
+.editModalLabel {
+  font-size: 0.8rem;
+  flex: 1;
+}
+
+.editModalInput {
+  width: 100%;
+  margin-top: 0.25rem;
+  padding: 0.4rem 0.6rem;
+  border-radius: 6px;
+  border: 1px solid var(--border-secondary);
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  font-size: 0.85rem;
+}
+
+.editModalSelect {
+  width: 100%;
+  margin-top: 0.25rem;
+  padding: 0.4rem 0.6rem;
+  border-radius: 6px;
+  border: 1px solid var(--border-secondary);
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  font-size: 0.85rem;
+}
+
+.editModalFooter {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  padding: 0.75rem 1.25rem 1rem 1.25rem;
+  border-top: 1px solid #e5e7eb;
+  background: linear-gradient(180deg, #f9fafb, #f3f4f6);
+  margin-top: auto;
+}
+
+.editModalSaveButton {
+  background: #e5e7eb;
+  color: #4b5563;
+  border: none;
+  border-radius: 6px;
+  padding: 0.45rem 0.65rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+}
+
+.editModalSaveButton:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+
+.scoreTooltipContainer {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  cursor: help;
+}
+
+.scoreTooltipIcon {
+  margin-left: 0.35rem;
+  color: var(--text-secondary, #6b7280);
+  font-size: 0.9rem;
+  transition: color 0.2s ease;
+}
+
+.scoreTooltipIcon:hover {
+  color: var(--primary-color, #3b82f6);
+}
+
+.scoreLetterWrapper {
+  cursor: pointer;
+  outline: none;
+}
+
+.scoreLetterWrapperDisabled {
+  cursor: default;
+  outline: none;
+}
+
+.scoreLetterWrapperGrayscale {
+  filter: grayscale(100%);
+  opacity: 0.6;
+}
+
+.emptyState {
+  text-align: center;
+  padding: 3rem 1rem;
+  color: #6b7280;
+  font-size: 16px;
+  background: #f9fafb;
+  border-radius: 8px;
+  border: 2px dashed #d1d5db;
+  transition: all 0.3s ease;
+}
+
+.dark .emptyState {
+  background: #1e1e3f;
+  color: #9ca3af;
+  border-color: #4a4a6a;
+}
+
+
+@media (max-width: 1200px) {
+  .wifiGrid {
+    grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+    gap: 1rem;
+  }
+}
+
+@media (max-width: 768px) {
+  .container {
+    padding: 1rem;
+  }
+  
+  .wifiGrid {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+  
+  .wifiCard {
+    padding: 1rem;
+  }
+  
+  .cardHeader {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.75rem;
+  }
+  
+  .headerLeft {
+    width: 100%;
+  }
+  
+  .wifiType {
+    align-self: flex-start;
+  }
+  
+  .wifiName {
+    font-size: 15px;
+  }
+  
+  .statsGrid {
+    grid-template-columns: 1fr;
+  }
+  
+  .editModalOverlay {
+    padding: 1rem;
+  }
+  
+  .editModalFormRow {
+    grid-template-columns: 1fr;
+  }
+}

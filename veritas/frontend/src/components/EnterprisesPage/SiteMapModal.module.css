@@ -1,0 +1,130 @@
+.overlay {
+  position: fixed;
+  inset: 0;
+  z-index: var(--modal-stack-overlay-z-index, calc(var(--modal-overlay-z-index, 11000) + 100));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  background: rgba(10, 22, 40, 0.55);
+  backdrop-filter: blur(10px);
+}
+
+.shell {
+  width: min(920px, 100%);
+  height: min(78vh, 720px);
+  display: flex;
+  flex-direction: column;
+  border-radius: 16px;
+  overflow: hidden;
+  background: var(--msp-surface, #fff);
+  border: 1px solid var(--msp-border, #dde3ed);
+  box-shadow: 0 24px 64px rgba(10, 22, 40, 0.24);
+}
+
+.header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.8rem 1rem;
+  border-bottom: 1px solid var(--msp-border-light, #eef2f7);
+  background: var(--msp-surface-2, #f8fafc);
+  flex-shrink: 0;
+}
+
+.headerMain {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  min-width: 0;
+}
+
+.headerIconWrap {
+  width: 38px;
+  height: 38px;
+  border-radius: 11px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(43, 95, 171, 0.12);
+  color: var(--msp-accent, #2b5fab);
+  font-size: 1.2rem;
+  flex-shrink: 0;
+}
+
+.title {
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--msp-text, #0f1c2e);
+}
+
+.subtitle {
+  margin: 0.12rem 0 0;
+  font-size: 0.74rem;
+  color: var(--msp-muted, #5c6b82);
+  line-height: 1.35;
+}
+
+.closeBtn {
+  border: none;
+  background: transparent;
+  color: var(--msp-muted, #5c6b82);
+  font-size: 1rem;
+  cursor: pointer;
+  padding: 0.35rem;
+  border-radius: 8px;
+  flex-shrink: 0;
+}
+
+.closeBtn:hover {
+  background: rgba(15, 28, 46, 0.06);
+  color: var(--msp-text, #0f1c2e);
+}
+
+.body {
+  flex: 1;
+  min-height: 0;
+  background: #e8edf5;
+}
+
+.mapFrame {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border: 0;
+}
+
+.footer {
+  display: flex;
+  justify-content: flex-end;
+  padding: 0.55rem 1rem;
+  border-top: 1px solid var(--msp-border-light, #eef2f7);
+  background: var(--msp-surface, #fff);
+  flex-shrink: 0;
+}
+
+.externalLink {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.74rem;
+  font-weight: 600;
+  color: var(--msp-accent, #2b5fab);
+  text-decoration: none;
+}
+
+.externalLink:hover {
+  text-decoration: underline;
+}
+
+@media (max-width: 640px) {
+  .overlay {
+    padding: 0.5rem;
+  }
+
+  .shell {
+    height: min(88vh, 720px);
+  }
+}
