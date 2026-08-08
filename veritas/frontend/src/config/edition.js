@@ -3,6 +3,8 @@ export function getEnvEdition() {
   return envEdition === "pro" ? "pro" : "community";
 }
 export const COMMUNITY_SIDEBAR_KEYS = new Set(["Contrat", "Contact", "Ticket", "Hardware", "Mon", "Cybersecurite", "Service"]);
+/** Page keys that remain profile-gated in Community (not zeroed as Pro-only). */
+export const COMMUNITY_PRESERVED_ACCESS_KEYS = new Set(["Admin"]);
 export const COMMUNITY_ADMIN_KEYS = new Set(["general", "users", "permissions", "clients", "tickets", "mail-collect", "notifications", "rmm", "maintenance", "injection", "equipment-purge", "client-portal", "license", "integrations", "ai"]);
 export function isCommunityEdition(edition) {
   return String(edition || getEnvEdition()).toLowerCase() !== "pro";
@@ -58,7 +60,7 @@ export function filterAccessForEdition(access, edition) {
   if (!isCommunityEdition(edition)) return access;
   const next = {};
   for (const key of Object.keys(access || {})) {
-    if (COMMUNITY_SIDEBAR_KEYS.has(key)) {
+    if (COMMUNITY_SIDEBAR_KEYS.has(key) || COMMUNITY_PRESERVED_ACCESS_KEYS.has(key)) {
       next[key] = !!access[key];
     } else {
       next[key] = false;
@@ -66,6 +68,11 @@ export function filterAccessForEdition(access, edition) {
   }
   for (const key of COMMUNITY_SIDEBAR_KEYS) {
     if (next[key] === undefined && access[key] !== undefined) {
+      next[key] = !!access[key];
+    }
+  }
+  for (const key of COMMUNITY_PRESERVED_ACCESS_KEYS) {
+    if (access[key] !== undefined) {
       next[key] = !!access[key];
     }
   }
