@@ -17,11 +17,34 @@ function isValidLicenseKeyFormat(key) {
 }
 
 function getLeaseSecret() {
-  return (
-    process.env.VERITAS_LICENSE_LEASE_SECRET?.trim() ||
-    process.env.VERITAS_BILLING_LICENSE_SECRET?.trim() ||
-    ""
-  );
+  const candidates = [
+    process.env.VERITAS_LICENSE_LEASE_SECRET,
+    process.env.BILLING_LICENSE_LEASE_SECRET,
+    process.env.VERITAS_BILLING_LICENSE_SECRET,
+  ];
+  for (const raw of candidates) {
+    if (typeof raw !== "string") continue;
+    const trimmed = raw.trim().replace(/^["']|["']$/g, "");
+    if (trimmed) return trimmed;
+  }
+  return "";
+}
+
+export function getLeaseSecretDiagnostics() {
+  const keys = [
+    "VERITAS_LICENSE_LEASE_SECRET",
+    "BILLING_LICENSE_LEASE_SECRET",
+    "VERITAS_BILLING_LICENSE_SECRET",
+  ];
+  const present = {};
+  for (const key of keys) {
+    const raw = process.env[key];
+    present[key] = typeof raw === "string" && raw.trim().length > 0;
+  }
+  return {
+    configured: Boolean(getLeaseSecret()),
+    present,
+  };
 }
 
 function fromB64url(input) {

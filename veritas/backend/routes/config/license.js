@@ -62,6 +62,7 @@ router.post("/offline-activate", verifyJWT, requireRole("admin"), async (req, re
             : code === "LEASE_INVALID"
               ? "Offline lease is invalid, expired, or signature mismatch."
               : err.message || "Offline activation failed.",
+      diagnostics: err?.diagnostics || undefined,
     });
   }
 });

@@ -3,6 +3,7 @@ import { VERITAS_BILLING_API_URL, VERITAS_BILLING_LICENSE_SECRET } from "../cons
 import {
   clearStoredLicenseLease,
   extractLeaseTokenFromDocument,
+  getLeaseSecretDiagnostics,
   isLeaseVerifyConfigured,
   resolveOfflineLease,
   storeLicenseLease,
@@ -294,6 +295,7 @@ export function applyOfflineActivation(tokenOrDocument) {
   if (!isLeaseVerifyConfigured()) {
     const err = new Error("LEASE_SECRET_MISSING");
     err.code = "LEASE_SECRET_MISSING";
+    err.diagnostics = getLeaseSecretDiagnostics();
     throw err;
   }
   const offline = resolveOfflineLease({ token });
