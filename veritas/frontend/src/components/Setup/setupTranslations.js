@@ -79,9 +79,10 @@ const en = {
   database: {
     title: "Database connection",
     subtitle: "Enter the details from when you created your PostgreSQL database.",
+    subtitleDocker: "Docker already provides the database. Fields are pre-filled — just click Test and continue (default password is the POSTGRES_PASSWORD in your .env, often changeme).",
     host: {
       label: "Server",
-      hint: "Often localhost or an address provided by your host."
+      hint: "Often localhost or an address provided by your host. With Docker Compose use db."
     },
     port: {
       label: "Port",
@@ -264,9 +265,10 @@ const fr = {
   database: {
     title: "Connexion à la base",
     subtitle: "Renseignez les informations fournies lors de la création de votre base PostgreSQL.",
+    subtitleDocker: "Docker fournit déjà la base. Les champs sont préremplis — cliquez sur Tester et continuer (mot de passe = POSTGRES_PASSWORD dans votre .env, souvent changeme).",
     host: {
       label: "Serveur",
-      hint: "Souvent localhost ou une adresse fournie par votre hébergeur."
+      hint: "Souvent localhost ou une adresse fournie par votre hébergeur. Avec Docker Compose : db."
     },
     port: {
       label: "Port",
@@ -449,9 +451,10 @@ const de = {
   database: {
     title: "Datenbankverbindung",
     subtitle: "Daten eingeben, die Sie bei der Erstellung Ihrer PostgreSQL-Datenbank erhalten haben.",
+    subtitleDocker: "Docker stellt die Datenbank bereits bereit. Felder sind vorausgefüllt — auf Testen und weiter klicken (Passwort = POSTGRES_PASSWORD in .env, oft changeme).",
     host: {
       label: "Server",
-      hint: "Oft localhost oder die Adresse Ihres Hosters."
+      hint: "Oft localhost oder die Adresse Ihres Hosters. Bei Docker Compose: db."
     },
     port: {
       label: "Port",
@@ -634,9 +637,10 @@ const it = {
   database: {
     title: "Connessione al database",
     subtitle: "Inserite i dati ricevuti quando avete creato il database PostgreSQL.",
+    subtitleDocker: "Docker fornisce già il database. I campi sono precompilati — cliccate Testa e continua (password = POSTGRES_PASSWORD nel .env, spesso changeme).",
     host: {
       label: "Server",
-      hint: "Spesso localhost o l'indirizzo del vostro hoster."
+      hint: "Spesso localhost o l'indirizzo del vostro hoster. Con Docker Compose: db."
     },
     port: {
       label: "Porta",
@@ -819,9 +823,10 @@ const es = {
   database: {
     title: "Conexión a la base de datos",
     subtitle: "Introduzca los datos que recibió al crear su base PostgreSQL.",
+    subtitleDocker: "Docker ya proporciona la base. Los campos están rellenados — pulse Probar y continuar (contraseña = POSTGRES_PASSWORD en .env, a menudo changeme).",
     host: {
       label: "Servidor",
-      hint: "A menudo localhost o la dirección de su proveedor."
+      hint: "A menudo localhost o la dirección de su proveedor. Con Docker Compose: db."
     },
     port: {
       label: "Puerto",

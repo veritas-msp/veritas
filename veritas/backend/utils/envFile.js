@@ -4,12 +4,13 @@ import { fileURLToPath } from "url";
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const BACKEND_ENV_PATH = path.join(__dirname, "..", ".env");
 const FRONTEND_ENV_PATH = path.join(__dirname, "..", "..", "frontend", ".env");
+const BOOT_SECRETS_PATH = path.join(__dirname, "..", "uploads", ".boot-secrets");
 const FILE_HEADERS = {
   backend: "# Veritas Backend — configuration generated / updated by the setup wizard",
   frontend: "# Veritas Frontend — configuration generated / updated by the setup wizard"
 };
 function readEnvFileAt(filePath) {
-  if (!fs.existsSync(filePath)) return {};
+  if (!fs.existsSync(filePath) || !fs.statSync(filePath).isFile()) return {};
   const content = fs.readFileSync(filePath, "utf8");
   const result = {};
   for (const line of content.split(/\r?\n/)) {
@@ -38,20 +39,99 @@ function writeEnvFileAt(filePath, updates, headerKey = "backend") {
     const safe = String(value).includes(" ") ? `"${String(value)}"` : String(value);
     lines.push(`${key}=${safe}`);
   }
+  fs.mkdirSync(path.dirname(filePath), {
+    recursive: true
+  });
   fs.writeFileSync(filePath, `${lines.join("\n")}\n`, "utf8");
   return merged;
 }
-export function writeEnvFile(updates) {
-  const merged = writeEnvFileAt(BACKEND_ENV_PATH, updates, "backend");
+function applyProcessEnv(updates) {
   for (const [key, value] of Object.entries(updates)) {
     if (value !== undefined && value !== null) {
       process.env[key] = String(value);
     }
   }
-  return merged;
+}
+function canWriteEnvFile(filePath) {
+  try {
+    if (fs.existsSync(filePath) && fs.statSync(filePath).isDirectory()) {
+      return false;
+    }
+    const dir = path.dirname(filePath);
+    if (!fs.existsSync(dir)) {
+      return false;
+    }
+    fs.accessSync(dir, fs.constants.W_OK);
+    return true;
+  } catch {
+    return false;
+  }
+}
+/** Persist JWT/ENCRYPTION for Docker restarts (uploads volume). */
+export function persistBootSecrets(overrides = {}) {
+  const jwtSecret = overrides.JWT_SECRET || process.env.JWT_SECRET;
+  const encryptionKey = overrides.ENCRYPTION_KEY || process.env.ENCRYPTION_KEY;
+  if (!jwtSecret || !encryptionKey) return false;
+  try {
+    fs.mkdirSync(path.dirname(BOOT_SECRETS_PATH), {
+      recursive: true
+    });
+    const escape = value => String(value).replace(/'/g, `'\"'\"'`);
+    fs.writeFileSync(BOOT_SECRETS_PATH, `export JWT_SECRET='${escape(jwtSecret)}'\nexport ENCRYPTION_KEY='${escape(encryptionKey)}'\n`, {
+      encoding: "utf8",
+      mode: 0o600
+    });
+    return true;
+  } catch (err) {
+    console.warn("[env] Could not persist boot secrets:", err.message);
+    return false;
+  }
+}
+export function writeEnvFile(updates) {
+  applyProcessEnv(updates);
+  if (updates.JWT_SECRET || updates.ENCRYPTION_KEY) {
+    persistBootSecrets(updates);
+  }
+  if (!canWriteEnvFile(BACKEND_ENV_PATH)) {
+    console.warn("[env] Backend .env is not writable (Docker mount or missing). Using process.env only.");
+    return {
+      ...updates,
+      written: false
+    };
+  }
+  try {
+    const merged = writeEnvFileAt(BACKEND_ENV_PATH, updates, "backend");
+    return {
+      ...merged,
+      written: true
+    };
+  } catch (err) {
+    console.warn("[env] Could not write backend .env:", err.message);
+    return {
+      ...updates,
+      written: false
+    };
+  }
 }
 export function writeFrontendEnvFile(updates) {
-  return writeEnvFileAt(FRONTEND_ENV_PATH, updates, "frontend");
+  if (!canWriteEnvFile(FRONTEND_ENV_PATH)) {
+    console.warn("[env] Frontend .env not available in this runtime (expected in Docker). Skipping.");
+    return {
+      written: false
+    };
+  }
+  try {
+    const merged = writeEnvFileAt(FRONTEND_ENV_PATH, updates, "frontend");
+    return {
+      ...merged,
+      written: true
+    };
+  } catch (err) {
+    console.warn("[env] Could not write frontend .env:", err.message);
+    return {
+      written: false
+    };
+  }
 }
 export function getPrimaryFrontendBaseUrl() {
   const raw = process.env.FRONTEND_BASE_URL || "http://localhost:3000";

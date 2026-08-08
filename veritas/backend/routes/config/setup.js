@@ -13,7 +13,7 @@ import { setupRateLimit, setupMigrateRateLimit } from "../../middleware/rateLimi
 import { reconfigureBootstrapPool } from "../../database/db.js";
 import { pool } from "../../database/db.js";
 import { runPostSetupSchemaMigrations } from "../../services/runPostSetupSchemaMigrations.js";
-import { buildDatabaseUrl, saveDatabaseSettings } from "../../utils/databaseConfigStore.js";
+import { buildDatabaseUrl, parseDatabaseUrl, saveDatabaseSettings } from "../../utils/databaseConfigStore.js";
 import { validateStrongPassword } from "../../utils/passwordPolicy.js";
 import { generateMfaSecret, buildOtpAuthUrl, generateQrDataUrl, verifyTotp } from "../../utils/mfa.js";
 const router = express.Router();
@@ -37,7 +37,18 @@ function derivePortFromApiUrl(apiBaseUrl, fallback = 3001) {
 router.get("/status", async (_req, res) => {
   try {
     const status = await getSetupStatus();
-    res.json(status);
+    const payload = {
+      ...status
+    };
+    // Prefill DB form during setup only (e.g. Docker Compose DATABASE_URL).
+    if (status.needsSetup) {
+      const defaults = parseDatabaseUrl();
+      if (defaults) {
+        payload.databaseDefaults = defaults;
+        payload.databaseFromEnv = true;
+      }
+    }
+    res.json(payload);
   } catch (err) {
     res.status(500).json({
       error: "Unable to read installation status.",
@@ -75,7 +86,7 @@ router.post("/env", requireSetupIncomplete, [body("jwtSecret").optional().isStri
   const port = req.body.port || derivePortFromApiUrl(apiBaseUrl);
   const edition = req.body.edition || getEdition() || "community";
   try {
-    writeEnvFile({
+    const backendWrite = writeEnvFile({
       JWT_SECRET: jwtSecret,
       ENCRYPTION_KEY: encryptionKey,
       ALLOWED_ORIGINS: allowedOrigins,
@@ -84,16 +95,24 @@ router.post("/env", requireSetupIncomplete, [body("jwtSecret").optional().isStri
       NODE_ENV: process.env.NODE_ENV || "development",
       VERITAS_EDITION: edition
     });
-    writeFrontendEnvFile({
+    const frontendWrite = writeFrontendEnvFile({
       REACT_APP_API_BASE_URL: apiBaseUrl.replace(/\/+$/, "").replace(/\/api$/, ""),
       REACT_APP_VERITAS_EDITION: edition
     });
+    // In Docker, process.env + boot-secrets are enough even if .env files are not writable.
+    if (!process.env.JWT_SECRET || !process.env.ENCRYPTION_KEY) {
+      return res.status(500).json({
+        error: "Unable to write the environment file.",
+        code: "SETUP_ENV_WRITE_FAILED"
+      });
+    }
     const status = await getSetupStatus();
     res.json({
       success: true,
       message: "Environment variables saved.",
       steps: status.steps,
-      frontendEnvUpdated: true
+      frontendEnvUpdated: Boolean(frontendWrite?.written),
+      backendEnvWritten: Boolean(backendWrite?.written)
     });
   } catch (err) {
     console.error("POST /setup/env", err);

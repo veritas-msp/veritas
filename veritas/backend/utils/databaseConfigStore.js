@@ -35,6 +35,24 @@ export function buildDatabaseUrl({
   const pass = encodeURIComponent(db_password ?? "");
   return `postgres://${user}:${pass}@${db_host}:${db_port}/${db_name}`;
 }
+/** Parse DATABASE_URL for setup wizard prefill (Docker Compose injects it). */
+export function parseDatabaseUrl(databaseUrl = process.env.DATABASE_URL) {
+  if (!databaseUrl) return null;
+  try {
+    const url = new URL(String(databaseUrl));
+    const db_name = decodeURIComponent(url.pathname.replace(/^\//, ""));
+    if (!url.hostname || !db_name) return null;
+    return {
+      db_host: url.hostname,
+      db_port: url.port || "5432",
+      db_user: decodeURIComponent(url.username || ""),
+      db_password: decodeURIComponent(url.password || ""),
+      db_name
+    };
+  } catch {
+    return null;
+  }
+}
 export function normalizeDatabaseConfig(raw = {}) {
   return {
     db_host: String(raw.db_host || "").trim(),

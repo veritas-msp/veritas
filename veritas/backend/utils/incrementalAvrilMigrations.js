@@ -192,6 +192,9 @@ export async function buildIncrementalAvrilMigrationPlan(client = pool) {
   if ((await tableExists(client, "v_b_users_settings")) && !(await indexExists(client, "v_b_users_settings", "idx_v_b_users_settings_user_key"))) {
     plan.push("20260705_users_settings_unique.sql");
   }
+  if ((await tableExists(client, "v_b_users")) && !(await columnExists(client, "v_b_users", "password_pending"))) {
+    plan.push("20260710_users_password_pending.sql");
+  }
   if ((await tableExists(client, "v_b_events")) && !(await columnExists(client, "v_b_events", "ticket_id"))) {
     plan.push("20260708_events_ticket_reminder.sql");
   }

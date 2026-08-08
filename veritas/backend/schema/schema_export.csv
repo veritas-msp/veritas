@@ -941,6 +941,7 @@
 "public","v_b_users","11","mfa_enabled","boolean","","","","NO","false"
 "public","v_b_users","12","mfa_secret","text","","","","YES",""
 "public","v_b_users","13","contact_id","bigint","","64","0","YES",""
+"public","v_b_users","14","password_pending","boolean","","","","NO","false"
 "public","v_b_users_profiles","1","name","text","","","","NO",""
 "public","v_b_users_profiles","2","label","text","","","","NO",""
 "public","v_b_users_profiles","3","monitoring_enabled","boolean","","","","YES","true"

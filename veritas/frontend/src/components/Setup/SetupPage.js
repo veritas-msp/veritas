@@ -76,6 +76,8 @@ export default function SetupPage() {
     passwordConfirm: ""
   });
   const hasInitializedStep = useRef(false);
+  const hasPrefillDb = useRef(false);
+  const [databaseFromEnv, setDatabaseFromEnv] = useState(false);
   const stepMeta = useMemo(() => [{
     id: 1,
     label: t.layout.steps.env,
@@ -106,6 +108,14 @@ export default function SetupPage() {
       return;
     }
     setSteps(status.steps);
+    setDatabaseFromEnv(Boolean(status.databaseFromEnv));
+    if (!hasPrefillDb.current && status.databaseDefaults) {
+      hasPrefillDb.current = true;
+      setDbForm(prev => ({
+        ...prev,
+        ...status.databaseDefaults
+      }));
+    }
     if (!hasInitializedStep.current) {
       hasInitializedStep.current = true;
       setStep(firstIncompleteStep(status.steps));
@@ -346,7 +356,7 @@ export default function SetupPage() {
 
       {step === 2 && <form onSubmit={handleSaveDatabase} className={styles.form}>
           <h2 className={styles.title}>{t.database.title}</h2>
-          <p className={styles.subtitle}>{t.database.subtitle}</p>
+          <p className={styles.subtitle}>{databaseFromEnv ? t.database.subtitleDocker : t.database.subtitle}</p>
 
           <div className={styles.grid}>
             <SetupField id="db_host" label={t.database.host.label} hint={t.database.host.hint}>
