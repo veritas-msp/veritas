@@ -114,11 +114,28 @@ powershell -ExecutionPolicy Bypass -File .\scripts\prepare-docker-env.ps1
 
 Or copy `.env.docker.example` to `.env` and set `JWT_SECRET` / `ENCRYPTION_KEY` yourself (non-empty required).
 
-**3. Start the stack**
+**3. Start the stack** (pulls prebuilt images — works on small VPS)
 
 ```bash
-docker compose up -d --build
+# Linux / macOS
+chmod +x scripts/compose-up.sh && ./scripts/compose-up.sh
 ```
+
+```powershell
+# Windows PowerShell
+powershell -ExecutionPolicy Bypass -File .\scripts\compose-up.ps1
+```
+
+Or manually:
+
+```bash
+docker compose pull
+docker compose up -d
+```
+
+Images are published to GHCR on every `main` push (`ghcr.io/veritas-msp/veritas-backend` / `veritas-frontend`). No local React build is required to deploy.
+
+To force a local image build instead: `VERITAS_PULL_POLICY=never docker compose up -d --build`.
 
 **4. Finish setup**
 
@@ -131,14 +148,6 @@ docker compose up -d --build
 | API (direct) | http://localhost:3001 |
 
 Data is stored in Docker volumes `veritas-db` and `veritas-uploads`.
-
-**Small VPS:** the frontend image build needs about **2 GB free RAM** (or swap). Source maps are disabled in Docker. If you hit `JavaScript heap out of memory`, add swap (1–2 GB) or set in `.env`:
-
-```bash
-NODE_MAX_OLD_SPACE_SIZE=2048
-```
-
-Then rebuild: `docker compose build --no-cache veritas-frontend && docker compose up -d`. On 1 GB hosts, build the images on a larger machine (or CI) and deploy with `docker compose up -d` only.
 
 ### Option B: From source
 
