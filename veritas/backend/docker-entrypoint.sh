@@ -1,61 +1,59 @@
 #!/bin/sh
+# Start backend; never fail the container because of .env persistence.
 set -eu
 
-# Persist secrets in the mounted host .env when possible (Docker virgin install).
-ENV_FILE="${VERITAS_ENV_FILE:-/app/.env}"
+SECRETS_FILE="/app/uploads/.boot-secrets"
 
 rand_hex() {
   if command -v openssl >/dev/null 2>&1; then
     openssl rand -hex 32
-  else
+  elif [ -r /dev/urandom ]; then
     dd if=/dev/urandom bs=32 count=1 2>/dev/null | od -An -tx1 | tr -d ' \n'
-  fi
-}
-
-# Upsert KEY=value in ENV_FILE (create file if needed).
-upsert_env() {
-  key="$1"
-  val="$2"
-  if [ ! -f "$ENV_FILE" ]; then
-    printf '%s=%s\n' "$key" "$val" > "$ENV_FILE"
-    return
-  fi
-  if grep -q "^${key}=" "$ENV_FILE" 2>/dev/null; then
-    tmp="$(mktemp)"
-    awk -v k="$key" -v v="$val" 'BEGIN{FS=OFS="="} $1==k{$0=k"="v} {print}' "$ENV_FILE" > "$tmp"
-    cat "$tmp" > "$ENV_FILE"
-    rm -f "$tmp"
   else
-    printf '%s=%s\n' "$key" "$val" >> "$ENV_FILE"
+    # last resort (unique enough for first boot / setup)
+    echo "veritas$(date +%s)$$" | od -An -tx1 | tr -d ' \n'
   fi
 }
 
-ensure_secret() {
-  name="$1"
-  eval "current=\${$name:-}"
-  if [ -n "$current" ]; then
-    return
-  fi
-  # Prefer value already stored in mounted .env (previous boot / setup wizard)
-  if [ -f "$ENV_FILE" ]; then
-    stored="$(awk -F= -v k="$name" '$1==k{print substr($0, index($0,"=")+1); exit}' "$ENV_FILE" | tr -d '\r')"
-    if [ -n "$stored" ]; then
-      export "$name=$stored"
-      echo "Veritas backend: loaded $name from $ENV_FILE"
-      return
-    fi
-  fi
-  generated="$(rand_hex)"
-  export "$name=$generated"
-  if [ -w "$(dirname "$ENV_FILE")" ] || [ -w "$ENV_FILE" ] 2>/dev/null; then
-    upsert_env "$name" "$generated"
-    echo "Veritas backend: generated $name (saved to $ENV_FILE; setup wizard can change it)"
-  else
-    echo "Veritas backend: generated ephemeral $name (mount .env to persist across restarts)"
-  fi
+mkdir -p /app/uploads /app/uploads/tickets 2>/dev/null || true
+
+# If Docker created .env as a directory (classic mount mistake), ignore it.
+if [ -d /app/.env ]; then
+  echo "WARNING: /app/.env is a directory (invalid Docker mount). Ignoring it." >&2
+fi
+
+load_secret_file() {
+  [ -f "$SECRETS_FILE" ] || return 0
+  # shellcheck disable=SC1090
+  . "$SECRETS_FILE"
 }
 
-ensure_secret JWT_SECRET
-ensure_secret ENCRYPTION_KEY
+save_secrets() {
+  umask 077
+  cat > "$SECRETS_FILE" <<EOF
+export JWT_SECRET='${JWT_SECRET}'
+export ENCRYPTION_KEY='${ENCRYPTION_KEY}'
+EOF
+}
 
+load_secret_file
+
+if [ -z "${JWT_SECRET:-}" ]; then
+  JWT_SECRET="$(rand_hex)"
+  export JWT_SECRET
+  echo "Generated JWT_SECRET (first boot — you can change it in /setup)"
+fi
+export JWT_SECRET
+
+if [ -z "${ENCRYPTION_KEY:-}" ]; then
+  ENCRYPTION_KEY="$(rand_hex)"
+  export ENCRYPTION_KEY
+  echo "Generated ENCRYPTION_KEY (first boot — you can change it in /setup)"
+fi
+export ENCRYPTION_KEY
+
+# Persist across container recreates (uploads volume)
+save_secrets 2>/dev/null || echo "WARNING: could not persist secrets to $SECRETS_FILE" >&2
+
+echo "Starting Veritas backend..."
 exec node server.js
