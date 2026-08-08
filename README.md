@@ -76,24 +76,33 @@ Dedicated sign-in for end users: equipment, documents, and tickets from their co
 
 ---
 
-## Deploy (production)
-
-One command on Ubuntu Server (installs Docker if needed, pulls prebuilt images, starts Veritas):
+## Deploy with Docker
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/veritas-msp/veritas/main/scripts/install-ubuntu.sh | sudo bash
+git clone https://github.com/veritas-msp/veritas.git
+cd veritas
+cp .env.docker.example .env
+# set JWT_SECRET and ENCRYPTION_KEY (non-empty), or:
+#   chmod +x scripts/prepare-docker-env.sh && ./scripts/prepare-docker-env.sh
+docker compose up -d --build
 ```
 
-Then open **http://SERVER_IP:3000/setup** to finish installation.
+Then open **http://SERVER_IP:3000/setup**.
 
 | Service | URL |
 |---------|-----|
 | Web UI | http://SERVER_IP:3000 |
 | API | http://SERVER_IP:3001 |
 
-Files live in `/opt/veritas`. Data is stored in Docker volumes `veritas-db` and `veritas-uploads`.
+Data is stored in Docker volumes `veritas-db` and `veritas-uploads`.
 
-Do **not** run `docker compose up --build` on a small VPS (React build will run out of memory). Production uses images from `ghcr.io/veritas-msp/veritas-backend` and `veritas-frontend`.
+If the frontend build runs out of memory on a small VPS, add 2–4 GB of swap, then rebuild:
+
+```bash
+sudo fallocate -l 4G /swapfile && sudo chmod 600 /swapfile
+sudo mkswap /swapfile && sudo swapon /swapfile
+docker compose build --no-cache veritas-frontend && docker compose up -d
+```
 
 ## Development (from source)
 
@@ -124,9 +133,9 @@ Open http://localhost:3000/setup
 | Backend | 3001 |
 | PostgreSQL | 5432 |
 
-## Production tips
+## Production
 
-Put a reverse proxy (nginx, Traefik, Caddy, …) in front of port 3000 for TLS. Set `ALLOWED_ORIGINS` and `FRONTEND_BASE_URL` in `/opt/veritas/.env` to your public URL.
+Put a reverse proxy (nginx, Traefik, Caddy, …) in front of port 3000 for TLS. Set `ALLOWED_ORIGINS` and `FRONTEND_BASE_URL` in `.env` to your public URL.
 
 ## Editions
 
