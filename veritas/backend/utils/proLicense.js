@@ -1,5 +1,13 @@
 import fetch from "node-fetch";
 import { VERITAS_BILLING_API_URL, VERITAS_BILLING_LICENSE_SECRET } from "../constants/billing.js";
+import {
+  clearStoredLicenseLease,
+  extractLeaseTokenFromDocument,
+  isLeaseVerifyConfigured,
+  resolveOfflineLease,
+  storeLicenseLease,
+} from "./licenseLease.js";
+
 const LICENSE_KEY_RE = /^VRT-PRO-(?:[A-F0-9]{4}-){3}[A-F0-9]{4}$/;
 const DEFAULT_CACHE_MS = 5000;
 let cache = {
@@ -12,40 +20,54 @@ let cache = {
   lastError: null,
   billingConfigured: false,
   customerEmail: null,
-  licenseRevision: null
+  licenseRevision: null,
+  leaseExpiresAt: null,
+  offlineLease: false,
 };
 let refreshInFlight = null;
+
 export function normalizeLicenseKey(raw) {
   if (typeof raw !== "string") return "";
   return raw.trim().toUpperCase().replace(/\s+/g, "");
 }
+
 export function isValidLicenseKeyFormat(key) {
   return LICENSE_KEY_RE.test(normalizeLicenseKey(key));
 }
+
 export function getLicenseCacheMaxAgeMs() {
   const raw = Number.parseInt(process.env.LICENSE_CACHE_MS || "", 10);
   return Number.isFinite(raw) && raw >= 0 ? raw : DEFAULT_CACHE_MS;
 }
+
 export function isDevProBypass() {
-  return process.env.NODE_ENV !== "production" && String(process.env.VERITAS_EDITION || "").trim().toLowerCase() === "pro" && !normalizeLicenseKey(process.env.VERITAS_LICENSE_KEY || "");
+  return (
+    process.env.NODE_ENV !== "production" &&
+    String(process.env.VERITAS_EDITION || "").trim().toLowerCase() === "pro" &&
+    !normalizeLicenseKey(process.env.VERITAS_LICENSE_KEY || "")
+  );
 }
+
 export function isLicenseCacheValid() {
   if (isDevProBypass()) return true;
   return cache.valid === true;
 }
+
 export function getLicensedMspAgentLimit() {
   if (isDevProBypass()) return null;
   if (!isLicenseCacheValid()) return null;
   if (cache.agentCount == null) return null;
   return cache.agentCount;
 }
+
 function getBillingConfig() {
   return {
     billingUrl: VERITAS_BILLING_API_URL,
     secret: VERITAS_BILLING_LICENSE_SECRET,
-    configured: true
+    configured: true,
   };
 }
+
 function formatBillingFetchError(error, billingUrl) {
   const cause = error?.cause?.code || error?.code || "";
   if (cause === "ECONNREFUSED" || cause === "ENOTFOUND") {
@@ -56,6 +78,42 @@ function formatBillingFetchError(error, billingUrl) {
   }
   return error?.message || "Network error while contacting the license validation service.";
 }
+
+function emptyCacheFields() {
+  return {
+    agentCount: null,
+    billingInterval: null,
+    customerEmail: null,
+    licenseRevision: null,
+    leaseExpiresAt: null,
+    offlineLease: false,
+  };
+}
+
+function applyOfflineLeaseToCache(networkErrorMessage) {
+  const key = normalizeLicenseKey(process.env.VERITAS_LICENSE_KEY || "");
+  if (!key || !isLeaseVerifyConfigured()) {
+    return null;
+  }
+  const offline = resolveOfflineLease({ expectedKey: key });
+  if (!offline) return null;
+  cache = {
+    ...cache,
+    valid: true,
+    status: "offline_lease",
+    agentCount: offline.payload.agentCount ?? null,
+    billingInterval: offline.payload.billingInterval ?? null,
+    checkedAt: new Date().toISOString(),
+    checkedAtMs: Date.now(),
+    lastError: networkErrorMessage || null,
+    customerEmail: offline.payload.customerEmail ?? null,
+    licenseRevision: null,
+    leaseExpiresAt: offline.expiresAt,
+    offlineLease: true,
+  };
+  return cache;
+}
+
 export async function refreshProLicenseState() {
   cache.billingConfigured = getBillingConfig().configured;
   if (isDevProBypass()) {
@@ -63,13 +121,10 @@ export async function refreshProLicenseState() {
       ...cache,
       valid: true,
       status: "dev_bypass",
-      agentCount: null,
-      billingInterval: null,
+      ...emptyCacheFields(),
       checkedAt: new Date().toISOString(),
       checkedAtMs: Date.now(),
       lastError: null,
-      customerEmail: null,
-      licenseRevision: null
     };
     return cache;
   }
@@ -79,76 +134,85 @@ export async function refreshProLicenseState() {
       ...cache,
       valid: false,
       status: "missing",
-      agentCount: null,
-      billingInterval: null,
+      ...emptyCacheFields(),
       checkedAt: new Date().toISOString(),
       checkedAtMs: Date.now(),
       lastError: null,
-      customerEmail: null,
-      licenseRevision: null
     };
     return cache;
   }
-  const {
-    billingUrl,
-    secret
-  } = getBillingConfig();
+  const { billingUrl, secret } = getBillingConfig();
   try {
     const res = await fetch(`${billingUrl}/api/license/validate`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "X-Veritas-License-Secret": secret
+        "X-Veritas-License-Secret": secret,
       },
       body: JSON.stringify({
-        licenseKey: key
-      })
+        licenseKey: key,
+      }),
     });
     const data = await res.json().catch(() => ({}));
     if (!res.ok) {
+      const offline = applyOfflineLeaseToCache(
+        data.message || `Billing HTTP error ${res.status}`
+      );
+      if (offline) return offline;
       cache = {
         ...cache,
         valid: false,
         status: data.error || data.code || "error",
-        agentCount: null,
-        billingInterval: null,
+        ...emptyCacheFields(),
         checkedAt: new Date().toISOString(),
         checkedAtMs: Date.now(),
         lastError: data.message || `Billing HTTP error ${res.status}`,
-        customerEmail: null,
-        licenseRevision: data.licenseRevision || data.updatedAt || null
       };
       return cache;
     }
+
+    const valid = Boolean(data.valid);
+    if (valid && data.lease) {
+      storeLicenseLease(data.lease);
+    } else if (!valid) {
+      // Online authority: revoke/suspend clears offline grace
+      clearStoredLicenseLease();
+    }
+
+    const stored = valid ? resolveOfflineLease({ expectedKey: key }) : null;
+
     cache = {
       ...cache,
-      valid: Boolean(data.valid),
-      status: data.status || (data.valid ? "active" : "invalid"),
+      valid,
+      status: data.status || (valid ? "active" : "invalid"),
       agentCount: data.agentCount ?? null,
       billingInterval: data.billingInterval ?? null,
       checkedAt: new Date().toISOString(),
       checkedAtMs: Date.now(),
-      lastError: data.valid ? null : data.message || "Invalid license or inactive subscription.",
+      lastError: valid ? null : data.message || "Invalid license or inactive subscription.",
       customerEmail: data.customerEmail ?? null,
-      licenseRevision: data.licenseRevision || data.updatedAt || null
+      licenseRevision: data.licenseRevision || data.updatedAt || null,
+      leaseExpiresAt: stored?.expiresAt || data.expiresAt || null,
+      offlineLease: false,
     };
     return cache;
   } catch (error) {
+    const message = formatBillingFetchError(error, billingUrl);
+    const offline = applyOfflineLeaseToCache(message);
+    if (offline) return offline;
     cache = {
       ...cache,
       valid: false,
       status: "network_error",
-      agentCount: null,
-      billingInterval: null,
+      ...emptyCacheFields(),
       checkedAt: new Date().toISOString(),
       checkedAtMs: Date.now(),
-      lastError: formatBillingFetchError(error, billingUrl),
-      customerEmail: null,
-      licenseRevision: null
+      lastError: message,
     };
     return cache;
   }
 }
+
 export async function ensureFreshLicense() {
   if (isDevProBypass()) return cache;
   const maxAge = getLicenseCacheMaxAgeMs();
@@ -162,9 +226,11 @@ export async function ensureFreshLicense() {
   }
   return cache;
 }
+
 export function invalidateLicenseCache() {
   cache.checkedAtMs = 0;
 }
+
 export function getLicenseKeyHint() {
   const key = normalizeLicenseKey(process.env.VERITAS_LICENSE_KEY || "");
   if (!key) return null;
@@ -172,9 +238,8 @@ export function getLicenseKeyHint() {
   const tail = parts.slice(-2).join("-");
   return `••••-${tail}`;
 }
-function buildLicenseDetail({
-  includePrivate = false
-} = {}) {
+
+function buildLicenseDetail({ includePrivate = false } = {}) {
   const detail = {
     valid: cache.valid || isDevProBypass(),
     status: isDevProBypass() ? "dev_bypass" : cache.status,
@@ -183,30 +248,64 @@ function buildLicenseDetail({
     checkedAt: cache.checkedAt,
     lastError: cache.lastError,
     billingConfigured: cache.billingConfigured,
-    devBypass: isDevProBypass()
+    leaseExpiresAt: cache.leaseExpiresAt,
+    offlineLease: Boolean(cache.offlineLease),
+    devBypass: isDevProBypass(),
   };
   if (includePrivate) {
     detail.customerEmail = cache.customerEmail;
   }
   return detail;
 }
+
 export function getLicensePublicSummary() {
   return {
     edition: isLicenseCacheValid() ? "pro" : "community",
     hasLicenseKey: Boolean(normalizeLicenseKey(process.env.VERITAS_LICENSE_KEY || "")),
     keyHint: getLicenseKeyHint(),
     license: buildLicenseDetail({
-      includePrivate: false
-    })
+      includePrivate: false,
+    }),
   };
 }
+
 export function getLicenseAdminSummary() {
   return {
     edition: isLicenseCacheValid() ? "pro" : "community",
     hasLicenseKey: Boolean(normalizeLicenseKey(process.env.VERITAS_LICENSE_KEY || "")),
     keyHint: getLicenseKeyHint(),
     license: buildLicenseDetail({
-      includePrivate: true
-    })
+      includePrivate: true,
+    }),
   };
+}
+
+/**
+ * Apply an offline activation file/token (air-gapped first install).
+ * @param {string|object} tokenOrDocument
+ */
+export function applyOfflineActivation(tokenOrDocument) {
+  const token = extractLeaseTokenFromDocument(tokenOrDocument);
+  if (!token) {
+    const err = new Error("INVALID_ACTIVATION_FILE");
+    err.code = "INVALID_ACTIVATION_FILE";
+    throw err;
+  }
+  if (!isLeaseVerifyConfigured()) {
+    const err = new Error("LEASE_SECRET_MISSING");
+    err.code = "LEASE_SECRET_MISSING";
+    throw err;
+  }
+  const offline = resolveOfflineLease({ token });
+  if (!offline) {
+    const err = new Error("LEASE_INVALID");
+    err.code = "LEASE_INVALID";
+    throw err;
+  }
+  if (!storeLicenseLease(token)) {
+    const err = new Error("LEASE_STORE_FAILED");
+    err.code = "LEASE_STORE_FAILED";
+    throw err;
+  }
+  return offline;
 }

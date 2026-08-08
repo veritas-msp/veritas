@@ -3,6 +3,9 @@ export function resolveLicenseStatusMessage({
   status,
   copy
 }) {
+  if (status === "offline_lease" && isValid) {
+    return copy.offlineLeaseMessage || copy.validMessage;
+  }
   if (isValid) return copy.validMessage;
   if (status === "missing") return copy.missingMessage;
   if (status === "past_due") return copy.pastDueMessage;

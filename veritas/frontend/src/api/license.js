@@ -57,3 +57,24 @@ export async function refreshLicenseStatus() {
   }
   return res.json();
 }
+export async function activateOfflineLicense(document) {
+  const res = await fetch(`${BASE_URL}/offline-activate`, {
+    method: "POST",
+    credentials: "include",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({
+      document
+    })
+  });
+  if (!res.ok) {
+    if (res.status === 401) {
+      const error = new Error("SESSION_EXPIRED");
+      error.code = "SESSION_EXPIRED";
+      throw error;
+    }
+    await parseError(res, "OFFLINE_ACTIVATE_FAILED");
+  }
+  return res.json();
+}

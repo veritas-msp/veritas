@@ -1,7 +1,7 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Icon } from "@iconify/react";
 import { toast } from "react-toastify";
-import { activateLicense, getLicenseStatus, refreshLicenseStatus } from "../../api/license";
+import { activateLicense, activateOfflineLicense, getLicenseStatus, refreshLicenseStatus } from "../../api/license";
 import { getVeritasCommercialLinks } from "../../config/commercial";
 import { useAdminCommonCopy, useAdminPageCopy } from "../../hooks/useAdminCopy";
 import { useAppLocale } from "../../hooks/useAppGeneralSettings";
@@ -14,6 +14,7 @@ import { resolveLicenseApiError, resolveLicenseStatusMessage } from "./licensePa
 import s from "./AdminLicense.module.css";
 const COMMERCIAL_LINKS = getVeritasCommercialLinks();
 function statusBadgeVariant(status, valid) {
+  if (status === "offline_lease") return "warn";
   if (valid) return "success";
   if (status === "past_due" || status === "billing_unconfigured" || status === "network_error") return "warn";
   if (status === "missing") return "muted";
@@ -90,9 +91,11 @@ export default function AdminLicense() {
   }], [copy]);
   const [loading, setLoading] = useState(true);
   const [activating, setActivating] = useState(false);
+  const [offlineActivating, setOfflineActivating] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [licenseKey, setLicenseKey] = useState("");
   const [info, setInfo] = useState(null);
+  const offlineFileRef = useRef(null);
   const load = async () => {
     setLoading(true);
     try {
@@ -123,6 +126,12 @@ export default function AdminLicense() {
       parts.push(license.billingInterval === "annual" ? copy.billingAnnual : copy.billingMonthly);
     }
     if (license.customerEmail) parts.push(license.customerEmail);
+    const leaseAt = formatCheckedAt(license.leaseExpiresAt, appLocale);
+    if (leaseAt) {
+      parts.push(interpolate(copy.leaseExpiresAt || "Hors ligne jusqu'au {date}", {
+        date: leaseAt
+      }));
+    }
     const checkedAt = formatCheckedAt(license.checkedAt, appLocale);
     if (checkedAt) parts.push(interpolate(copy.checkedAt, {
       date: checkedAt
@@ -165,6 +174,29 @@ export default function AdminLicense() {
       setRefreshing(false);
     }
   };
+  const onOfflineFile = async e => {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    setOfflineActivating(true);
+    try {
+      const text = await file.text();
+      let document;
+      try {
+        document = JSON.parse(text);
+      } catch {
+        toast.error(copy.apiErrors?.INVALID_ACTIVATION_FILE || copy.activateError);
+        return;
+      }
+      await activateOfflineLicense(document);
+      toast.success(copy.offlineActivateSuccess || copy.activateSuccess || copy.activated);
+      window.setTimeout(() => window.location.reload(), 1200);
+    } catch (err) {
+      toast.error(resolveLicenseApiError(err, copy, "activateError"));
+    } finally {
+      setOfflineActivating(false);
+    }
+  };
   return <Page>
       <Card title={copy.title} action={<Btn variant="secondary" icon="mdi:refresh" onClick={onRefresh} disabled={refreshing || loading}>
             {refreshing ? copy.refreshing : copy.refresh}
@@ -173,7 +205,7 @@ export default function AdminLicense() {
             <div className={s.statusBar}>
               {isValid ? <ProFeatureBadge variant="inline" /> : <CommunityFeatureBadge variant="inline" />}
               <Badge variant={statusBadgeVariant(status, isValid)}>
-                {isValid ? copy.proActive : statusLabel}
+                {isValid && status !== "offline_lease" ? copy.proActive : statusLabel}
               </Badge>
               {info?.keyHint ? <Badge variant="muted">{interpolate(copy.keyHint, {
               hint: info.keyHint
@@ -194,10 +226,18 @@ export default function AdminLicense() {
 
             {!isValid && <form onSubmit={onActivate} className={s.activateForm}>
                 <Input value={licenseKey} onChange={e => setLicenseKey(e.target.value.toUpperCase())} placeholder={copy.keyPlaceholder} autoComplete="off" spellCheck={false} aria-label={copy.keyAria} />
-                <Btn type="submit" icon="mdi:key-variant" disabled={activating}>
+                <Btn type="submit" icon="mdi:key-variant" disabled={activating || offlineActivating}>
                   {activating ? copy.activating : copy.activatePro}
                 </Btn>
               </form>}
+
+            <div className={s.offlineImport}>
+              <p className={adminUi.adminMutedText}>{copy.offlineImportHint}</p>
+              <input ref={offlineFileRef} type="file" accept="application/json,.json" onChange={onOfflineFile} disabled={offlineActivating || activating} hidden />
+              <Btn type="button" variant="secondary" icon="mdi:file-download-outline" disabled={offlineActivating || activating} onClick={() => offlineFileRef.current?.click()}>
+                {offlineActivating ? copy.offlineImporting : copy.offlineImport}
+              </Btn>
+            </div>
           </div>}
       </Card>
 

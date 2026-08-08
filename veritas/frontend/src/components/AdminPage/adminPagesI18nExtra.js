@@ -53,6 +53,12 @@ const EXTRA = {
       billingAnnual: "Facturation annuelle",
       billingMonthly: "Facturation mensuelle",
       checkedAt: "Vérif. {date}",
+      leaseExpiresAt: "Hors ligne jusqu'au {date}",
+      offlineLeaseMessage: "Pro actif hors ligne via bail signé. Reconnectez-vous avant l'échéance pour renouveler.",
+      offlineImport: "Importer une activation hors ligne",
+      offlineImporting: "Import…",
+      offlineImportHint: "Instance isolée : importez le fichier JSON fourni par le billing admin.",
+      offlineActivateSuccess: "Activation hors ligne appliquée. Rechargez l'application.",
       status: {
         active: "Active",
         trialing: "Essai",
@@ -63,6 +69,7 @@ const EXTRA = {
         canceled: "Annulée",
         billing_unconfigured: "Billing non configuré",
         network_error: "Erreur réseau",
+        offline_lease: "Bail hors ligne",
         NOT_FOUND: "Clé inconnue",
         revoked: "Révoquée",
         suspended: "Suspendue",
@@ -85,7 +92,11 @@ const EXTRA = {
         ACTIVATE_FAILED: "Activation de la licence impossible",
         REFRESH_FAILED: "Erreur lors de la vérification de la licence",
         INVALID_LICENSE_FORMAT: "Format de clé invalide (attendu : VRT-PRO-XXXX-XXXX-XXXX-XXXX).",
-        LICENSE_INVALID: "Licence invalide ou abonnement inactif."
+        LICENSE_INVALID: "Licence invalide ou abonnement inactif.",
+        INVALID_ACTIVATION_FILE: "Fichier d'activation hors ligne invalide.",
+        LEASE_INVALID: "Bail hors ligne invalide, expiré ou signature incorrecte.",
+        LEASE_SECRET_MISSING: "Secret de bail hors ligne non configuré (VERITAS_LICENSE_LEASE_SECRET).",
+        OFFLINE_ACTIVATE_FAILED: "Activation hors ligne impossible."
       },
       activateSuccess: "Licence Pro activée. Rechargez l'application pour appliquer tous les modules frontend."
     },
@@ -260,6 +271,12 @@ const EXTRA = {
       billingAnnual: "Annual billing",
       billingMonthly: "Monthly billing",
       checkedAt: "Checked {date}",
+      leaseExpiresAt: "Offline until {date}",
+      offlineLeaseMessage: "Pro is active offline via a signed lease. Reconnect before expiry to renew.",
+      offlineImport: "Import offline activation",
+      offlineImporting: "Importing…",
+      offlineImportHint: "Air-gapped instance: import the JSON file issued by the billing admin.",
+      offlineActivateSuccess: "Offline activation applied. Reload the application.",
       status: {
         active: "Active",
         trialing: "Trial",
@@ -270,6 +287,7 @@ const EXTRA = {
         canceled: "Canceled",
         billing_unconfigured: "Billing not configured",
         network_error: "Network error",
+        offline_lease: "Offline lease",
         NOT_FOUND: "Unknown key",
         revoked: "Revoked",
         suspended: "Suspended",
@@ -292,7 +310,11 @@ const EXTRA = {
         ACTIVATE_FAILED: "License activation failed",
         REFRESH_FAILED: "License verification failed",
         INVALID_LICENSE_FORMAT: "Invalid key format (expected: VRT-PRO-XXXX-XXXX-XXXX-XXXX).",
-        LICENSE_INVALID: "Invalid license or inactive subscription."
+        LICENSE_INVALID: "Invalid license or inactive subscription.",
+        INVALID_ACTIVATION_FILE: "Invalid offline activation file.",
+        LEASE_INVALID: "Offline lease is invalid, expired, or signature mismatch.",
+        LEASE_SECRET_MISSING: "Offline lease secret is not configured (VERITAS_LICENSE_LEASE_SECRET).",
+        OFFLINE_ACTIVATE_FAILED: "Offline activation failed."
       },
       activateSuccess: "Pro license activated. Reload the application to apply all frontend modules."
     },
