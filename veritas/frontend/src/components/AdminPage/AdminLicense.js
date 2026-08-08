@@ -218,6 +218,10 @@ export default function AdminLicense() {
 
             {metaLine ? <p className={s.metaLine}>{metaLine}</p> : null}
 
+            {info && !info.leaseSecretConfigured ? <p className={`${s.statusMessage} ${s.statusMessageError}`}>
+                {copy.leaseSecretMissingHint || "Secret de bail hors ligne absent sur CE backend (VERITAS_LICENSE_LEASE_SECRET). Vérifie que le navigateur pointe vers la bonne instance."}
+              </p> : null}
+
             {license?.devBypass ? <p className={s.devHint}>
                 {interpolate(copy.devHint, {
             code: copy.devCode

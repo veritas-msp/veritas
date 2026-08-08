@@ -271,10 +271,13 @@ export function getLicensePublicSummary() {
 }
 
 export function getLicenseAdminSummary() {
+  const lease = getLeaseSecretDiagnostics();
   return {
     edition: isLicenseCacheValid() ? "pro" : "community",
     hasLicenseKey: Boolean(normalizeLicenseKey(process.env.VERITAS_LICENSE_KEY || "")),
     keyHint: getLicenseKeyHint(),
+    leaseSecretConfigured: lease.configured,
+    leaseSecretDiagnostics: lease,
     license: buildLicenseDetail({
       includePrivate: true,
     }),

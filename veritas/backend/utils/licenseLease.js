@@ -37,13 +37,18 @@ export function getLeaseSecretDiagnostics() {
     "VERITAS_BILLING_LICENSE_SECRET",
   ];
   const present = {};
+  const lengths = {};
   for (const key of keys) {
     const raw = process.env[key];
-    present[key] = typeof raw === "string" && raw.trim().length > 0;
+    const trimmed =
+      typeof raw === "string" ? raw.trim().replace(/^["']|["']$/g, "") : "";
+    present[key] = trimmed.length > 0;
+    lengths[key] = trimmed.length;
   }
   return {
     configured: Boolean(getLeaseSecret()),
     present,
+    lengths,
   };
 }
 

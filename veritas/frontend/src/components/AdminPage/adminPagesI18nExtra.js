@@ -59,6 +59,7 @@ const EXTRA = {
       offlineImporting: "Import…",
       offlineImportHint: "Instance isolée : importez le fichier JSON fourni par le billing admin.",
       offlineActivateSuccess: "Activation hors ligne appliquée. Rechargez l'application.",
+      leaseSecretMissingHint: "Secret de bail absent sur ce backend (VERITAS_LICENSE_LEASE_SECRET). Le navigateur n'atteint peut‑être pas la bonne instance.",
       status: {
         active: "Active",
         trialing: "Essai",
