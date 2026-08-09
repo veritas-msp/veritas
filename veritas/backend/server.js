@@ -74,6 +74,7 @@ import aiRouter from "./routes/ai/index.js";
 import { checkMaintenanceMode } from './middleware/maintenance.js';
 import { securityHeaders } from './middleware/securityHeaders.js';
 import { canRunAutoSchemaMigrations, isSetupMarkedComplete } from './utils/setupState.js';
+import { startMailCollectorPoller } from './services/mailCollectorPoller.js';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 function resolveFrontendBuildDir() {
   const fromEnv = (process.env.FRONTEND_BUILD_DIR || '').trim();
@@ -356,4 +357,9 @@ app.listen(PORT, '0.0.0.0', () => {
   urls.forEach(url => console.log(`   ${url}`));
   const licenseNote = editionInfo.license?.devBypass ? " (dev Pro bypass)" : editionInfo.license?.valid ? ` (license ${editionInfo.license.status || "active"})` : editionInfo.limits ? " (Community limits active)" : "";
   console.log(`   Veritas edition: ${editionInfo.edition}${licenseNote}`);
+  try {
+    startMailCollectorPoller();
+  } catch (err) {
+    console.error("[mail-collector-poller] Failed to start:", err?.message || err);
+  }
 });

@@ -9,54 +9,69 @@
 .groups {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 18px;
 }
 
 .group {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 12px;
 }
 
 .group + .group {
-  padding-top: 16px;
+  padding-top: 18px;
   border-top: 1px solid var(--msp-border-light);
 }
 
 .groupHeader {
   display: flex;
-  align-items: baseline;
-  gap: 8px;
-  flex-wrap: wrap;
+  flex-direction: column;
+  gap: 4px;
 }
 
 .groupTitle {
   margin: 0;
-  font-size: 0.72rem;
+  font-size: 0.8rem;
   font-weight: 700;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  color: var(--msp-muted-light);
-  white-space: nowrap;
+  letter-spacing: 0.02em;
+  color: var(--msp-text);
 }
 
 .groupDesc {
   margin: 0;
-  font-size: 0.74rem;
+  font-size: 0.8rem;
+  line-height: 1.45;
   color: var(--msp-muted);
-  min-width: 0;
+  max-width: 62ch;
 }
 
-.compactRow {
-  padding: 8px 12px;
-  height: 100%;
+.optionsStack {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.optionRow {
+  padding: 12px 14px;
+  align-items: flex-start;
+}
+
+.optionRow [class*="fieldRowHint"] {
+  max-width: 54ch;
+  line-height: 1.45;
+}
+
+.optionRow [class*="fieldRowBody"] {
+  align-items: flex-start;
 }
 
 .subOption {
-  margin-left: 8px;
-  padding-left: 10px;
-  border-left: 2px solid var(--msp-border);
-  max-width: 420px;
+  margin-left: 12px;
+  padding: 12px 14px;
+  border-left: 2px solid var(--msp-accent-soft, var(--msp-border));
+  border-radius: 0 10px 10px 0;
+  background: var(--msp-surface-2);
+  max-width: 560px;
 }
 
 .stepperWrap {
@@ -82,6 +97,7 @@
   line-height: 1.45;
   color: var(--msp-muted);
   flex: 1 1 220px;
+  max-width: 62ch;
 }
 
 .footerActions {
@@ -96,8 +112,8 @@
 @media (max-width: 720px) {
   .subOption {
     margin-left: 0;
-    padding-left: 0;
     border-left: none;
+    border-radius: 10px;
     max-width: none;
   }
 

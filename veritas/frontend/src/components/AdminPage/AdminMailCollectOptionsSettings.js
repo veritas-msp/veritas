@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { toast } from "react-toastify";
 import { fetchTicketAutomationConfig, getTicketAutomationConfig, saveTicketAutomationConfig } from "../../utils/ticketAutomationStorage";
 import { DEFAULT_MAIL_COLLECT_SETTINGS, normalizeMailCollectSettings } from "../../utils/mailCollectSettingsConstants";
-import { Card, Field, Btn, Switch, ChoiceGroup, FieldRow, NumberStepper, FormGrid } from "./AdminUi";
+import { Card, Field, Btn, Switch, ChoiceGroup, FieldRow, NumberStepper } from "./AdminUi";
 import adminUi from "./AdminUi.module.css";
 import styles from "./AdminMailCollectOptionsSettings.module.css";
 import { useAppLocale } from "../../hooks/useAppGeneralSettings";
@@ -61,31 +61,38 @@ export default function AdminMailCollectOptionsSettings() {
         <div className={styles.groups}>
           <section className={styles.group}>
             <header className={styles.groupHeader}>
-              <h3 className={styles.groupTitle}>{opt.groups.thread.title}</h3>
-              <p className={styles.groupDesc}>{opt.groups.thread.description}</p>
+              <h3 className={styles.groupTitle}>{opt.groups.replies.title}</h3>
+              <p className={styles.groupDesc}>{opt.groups.replies.description}</p>
             </header>
 
-            <FormGrid cols={2}>
-              <FieldRow icon="mdi:email-sync-outline" label={opt.threadReplies.label} hint={opt.threadReplies.hint} className={styles.compactRow}>
+            <div className={styles.optionsStack}>
+              <FieldRow icon="mdi:email-sync-outline" label={opt.threadReplies.label} hint={opt.threadReplies.hint} className={styles.optionRow}>
                 <Switch checked={form.threadRepliesEnabled} onChange={on => patch({
                 threadRepliesEnabled: on
               })} />
               </FieldRow>
 
-              <FieldRow icon="mdi:identifier" label={opt.deduplicate.label} hint={opt.deduplicate.hint} className={styles.compactRow}>
-                <Switch checked={form.deduplicateByMessageId} onChange={on => patch({
-                deduplicateByMessageId: on
-              })} />
-              </FieldRow>
-            </FormGrid>
+              {form.threadRepliesEnabled ? <div className={styles.subOption}>
+                  <Field label={opt.orphanReply.label} hint={orphanHint || opt.orphanReply.hintFallback}>
+                    <ChoiceGroup variant="segment" ariaLabel={opt.orphanReply.ariaLabel} value={form.orphanReplyBehavior} options={orphanSegmentOptions} onChange={value => patch({
+                  orphanReplyBehavior: value
+                })} />
+                  </Field>
+                </div> : null}
+            </div>
+          </section>
 
-            {form.threadRepliesEnabled ? <div className={styles.subOption}>
-                <Field label={opt.orphanReply.label} hint={orphanHint || opt.orphanReply.hintFallback}>
-                  <ChoiceGroup variant="segment" ariaLabel={opt.orphanReply.ariaLabel} value={form.orphanReplyBehavior} options={orphanSegmentOptions} onChange={value => patch({
-                orphanReplyBehavior: value
-              })} />
-                </Field>
-              </div> : null}
+          <section className={styles.group}>
+            <header className={styles.groupHeader}>
+              <h3 className={styles.groupTitle}>{opt.groups.duplicates.title}</h3>
+              <p className={styles.groupDesc}>{opt.groups.duplicates.description}</p>
+            </header>
+
+            <FieldRow icon="mdi:content-duplicate" label={opt.deduplicate.label} hint={opt.deduplicate.hint} className={styles.optionRow}>
+              <Switch checked={form.deduplicateByMessageId} onChange={on => patch({
+              deduplicateByMessageId: on
+            })} />
+            </FieldRow>
           </section>
 
           <section className={styles.group}>

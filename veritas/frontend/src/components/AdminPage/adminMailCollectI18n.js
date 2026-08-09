@@ -89,45 +89,49 @@ const ADMIN_MAIL_COLLECT_COPY = {
     "options": {
       "loading": "Chargement des paramètres…",
       "cardTitle": "Paramètres de collecte",
-      "cardDescription": "Comportement du traitement des emails entrants et rétention des journaux.",
+      "cardDescription": "Ces options s'appliquent à tous vos collecteurs. Les règles de collecte décident toujours quels emails sont acceptés.",
       "groups": {
-        "thread": {
-          "title": "Fil de discussion",
-          "description": "Rattachement des réponses via Message-ID / In-Reply-To"
+        "replies": {
+          "title": "Réponses aux tickets",
+          "description": "Quand un client répond à un email déjà lié à un ticket Veritas."
+        },
+        "duplicates": {
+          "title": "Éviter les doublons",
+          "description": "Empêche de traiter plusieurs fois le même message (nouvelle collecte, renvoi, etc.)."
         },
         "logs": {
-          "title": "Journal des collecteurs",
-          "description": "Volume de logs conservé par collecteur"
+          "title": "Journal d'activité",
+          "description": "Historique visible dans les logs de chaque collecteur."
         }
       },
       "threadReplies": {
-        "label": "Rattachement par fil",
-        "hint": "Détecte les réponses liées à un ticket existant."
+        "label": "Ajouter les réponses comme commentaires sur le ticket",
+        "hint": "Exemple : le client répond à la notification d'un ticket. Veritas retrouve ce ticket et ajoute la réponse en commentaire, au lieu de créer un nouveau ticket."
       },
       "deduplicate": {
-        "label": "Déduplication Message-ID",
-        "hint": "Ignore les mails déjà enregistrés dans Veritas."
+        "label": "Ignorer les emails déjà traités",
+        "hint": "Chaque email a un identifiant unique. Si Veritas l'a déjà enregistré, il est ignoré — utile pour éviter un second ticket si la boîte est rescannée ou si le message est renvoyé."
       },
       "orphanReply": {
-        "label": "Réponse sans ticket lié",
-        "hintFallback": "Si aucun ticket ne correspond au fil.",
-        "ariaLabel": "Réponse sans ticket lié"
+        "label": "Si la réponse ne correspond à aucun ticket",
+        "hintFallback": "Cas rare : l'email ressemble à une réponse, mais Veritas ne retrouve pas le ticket d'origine (supprimé, autre boîte, etc.).",
+        "ariaLabel": "Comportement si la réponse ne correspond à aucun ticket"
       },
       "maxLogEntries": {
-        "label": "Entrées max. par collecteur",
-        "hint": "Les entrées les plus anciennes sont supprimées au-delà de cette limite.",
-        "ariaLabel": "Nombre maximal d'entrées de log par collecteur"
+        "label": "Nombre d'événements conservés par collecteur",
+        "hint": "Au-delà de cette limite, les plus anciens événements sont effacés automatiquement.",
+        "ariaLabel": "Nombre maximal d'événements de journal par collecteur"
       },
-      "footerHint": "Mode opt-in : un email n'est traité que s'il correspond à une règle de collecte active. Sinon, il reste en boîte de réception."
+      "footerHint": "Rappel : un email n'est traité que s'il correspond à une règle de collecte active. Sans règle, rien n'est créé et le message reste en boîte."
     },
     "orphanReply": {
       "ignore": {
-        "label": "Ignorer",
-        "subtitle": "Laisser le mail en boîte de réception"
+        "label": "Ne rien faire",
+        "subtitle": "Laisser le mail dans la boîte de réception, sans créer de ticket"
       },
       "refuse": {
-        "label": "Refuser",
-        "subtitle": "Déplacer vers le dossier refusés du collecteur"
+        "label": "Classer en refusés",
+        "subtitle": "Déplacer le mail vers le dossier « refusés » configuré sur le collecteur"
       }
     },
     "toast": {
@@ -570,45 +574,49 @@ const ADMIN_MAIL_COLLECT_COPY = {
     "options": {
       "loading": "Loading settings…",
       "cardTitle": "Collection settings",
-      "cardDescription": "Incoming email processing behaviour and log retention.",
+      "cardDescription": "These options apply to all collectors. Collection rules still decide which emails are accepted.",
       "groups": {
-        "thread": {
-          "title": "Conversation thread",
-          "description": "Link replies via Message-ID / In-Reply-To"
+        "replies": {
+          "title": "Ticket replies",
+          "description": "When a client replies to an email already linked to a Veritas ticket."
+        },
+        "duplicates": {
+          "title": "Avoid duplicates",
+          "description": "Prevents processing the same message more than once (new scan, resend, etc.)."
         },
         "logs": {
-          "title": "Collector logs",
-          "description": "Log volume kept per collector"
+          "title": "Activity log",
+          "description": "History shown in each collector's logs."
         }
       },
       "threadReplies": {
-        "label": "Thread linking",
-        "hint": "Detect replies linked to an existing ticket."
+        "label": "Add replies as comments on the ticket",
+        "hint": "Example: the client replies to a ticket notification. Veritas finds that ticket and adds the reply as a comment, instead of creating a new ticket."
       },
       "deduplicate": {
-        "label": "Message-ID deduplication",
-        "hint": "Ignore emails already stored in Veritas."
+        "label": "Ignore emails already processed",
+        "hint": "Every email has a unique ID. If Veritas already recorded it, it is skipped — useful to avoid a second ticket when the mailbox is scanned again or the message is resent."
       },
       "orphanReply": {
-        "label": "Reply without linked ticket",
-        "hintFallback": "When no ticket matches the thread.",
-        "ariaLabel": "Reply without linked ticket"
+        "label": "If the reply matches no ticket",
+        "hintFallback": "Rare case: the email looks like a reply, but Veritas cannot find the original ticket (deleted, other mailbox, etc.).",
+        "ariaLabel": "Behavior when a reply matches no ticket"
       },
       "maxLogEntries": {
-        "label": "Max entries per collector",
-        "hint": "Oldest entries are removed beyond this limit.",
-        "ariaLabel": "Maximum log entries per collector"
+        "label": "Events kept per collector",
+        "hint": "Beyond this limit, the oldest events are deleted automatically.",
+        "ariaLabel": "Maximum log events per collector"
       },
-      "footerHint": "Opt-in mode: an email is processed only if it matches an active collection rule. Otherwise it stays in the inbox."
+      "footerHint": "Reminder: an email is processed only if it matches an active collection rule. Without a rule, nothing is created and the message stays in the inbox."
     },
     "orphanReply": {
       "ignore": {
-        "label": "Ignore",
-        "subtitle": "Leave the email in the inbox"
+        "label": "Do nothing",
+        "subtitle": "Leave the email in the inbox, without creating a ticket"
       },
       "refuse": {
-        "label": "Reject",
-        "subtitle": "Move to the collector's rejected folder"
+        "label": "Move to rejected",
+        "subtitle": "Move the email to the collector's configured rejected folder"
       }
     },
     "toast": {
@@ -1051,45 +1059,49 @@ const ADMIN_MAIL_COLLECT_COPY = {
     "options": {
       "loading": "Einstellungen werden geladen…",
       "cardTitle": "Sammlungseinstellungen",
-      "cardDescription": "Verarbeitung eingehender E-Mails und Aufbewahrung der Protokolle.",
+      "cardDescription": "Diese Optionen gelten für alle Collector. Die Sammelregeln entscheiden weiterhin, welche E-Mails akzeptiert werden.",
       "groups": {
-        "thread": {
-          "title": "Diskussionsverlauf",
-          "description": "Antworten über Message-ID / In-Reply-To verknüpfen"
+        "replies": {
+          "title": "Ticket-Antworten",
+          "description": "Wenn ein Kunde auf eine bereits mit einem Veritas-Ticket verknüpfte E-Mail antwortet."
+        },
+        "duplicates": {
+          "title": "Doppelte vermeiden",
+          "description": "Verhindert, dass dieselbe Nachricht mehrfach verarbeitet wird (neuer Scan, erneutes Senden usw.)."
         },
         "logs": {
-          "title": "Collector-Protokolle",
-          "description": "Protokollumfang pro Collector"
+          "title": "Aktivitätsprotokoll",
+          "description": "Verlauf in den Logs jedes Collectors."
         }
       },
       "threadReplies": {
-        "label": "Thread-Verknüpfung",
-        "hint": "Erkennt Antworten zu einem bestehenden Ticket."
+        "label": "Antworten als Kommentar zum Ticket hinzufügen",
+        "hint": "Beispiel: Der Kunde antwortet auf eine Ticket-Benachrichtigung. Veritas findet das Ticket und fügt die Antwort als Kommentar hinzu, statt ein neues Ticket zu erstellen."
       },
       "deduplicate": {
-        "label": "Message-ID-Deduplizierung",
-        "hint": "Ignoriert bereits in Veritas gespeicherte Mails."
+        "label": "Bereits verarbeitete E-Mails ignorieren",
+        "hint": "Jede E-Mail hat eine eindeutige ID. Wenn Veritas sie bereits gespeichert hat, wird sie übersprungen — verhindert ein zweites Ticket bei erneutem Scan oder erneuter Zustellung."
       },
       "orphanReply": {
-        "label": "Antwort ohne verknüpftes Ticket",
-        "hintFallback": "Wenn kein Ticket zum Thread passt.",
-        "ariaLabel": "Antwort ohne verknüpftes Ticket"
+        "label": "Wenn die Antwort zu keinem Ticket passt",
+        "hintFallback": "Seltener Fall: Die E-Mail wirkt wie eine Antwort, aber Veritas findet das Originalticket nicht (gelöscht, anderes Postfach usw.).",
+        "ariaLabel": "Verhalten, wenn eine Antwort zu keinem Ticket passt"
       },
       "maxLogEntries": {
-        "label": "Max. Einträge pro Collector",
-        "hint": "Älteste Einträge werden über diesem Limit entfernt.",
-        "ariaLabel": "Maximale Protokolleinträge pro Collector"
+        "label": "Ereignisse pro Collector behalten",
+        "hint": "Über diesem Limit werden die ältesten Ereignisse automatisch gelöscht.",
+        "ariaLabel": "Maximale Protokollereignisse pro Collector"
       },
-      "footerHint": "Opt-in-Modus: Eine E-Mail wird nur verarbeitet, wenn sie einer aktiven Sammelregel entspricht. Andernfalls bleibt sie im Posteingang."
+      "footerHint": "Hinweis: Eine E-Mail wird nur verarbeitet, wenn sie einer aktiven Sammelregel entspricht. Ohne Regel wird nichts erstellt und die Nachricht bleibt im Posteingang."
     },
     "orphanReply": {
       "ignore": {
-        "label": "Ignorieren",
-        "subtitle": "E-Mail im Posteingang belassen"
+        "label": "Nichts tun",
+        "subtitle": "E-Mail im Posteingang belassen, ohne Ticket zu erstellen"
       },
       "refuse": {
-        "label": "Ablehnen",
-        "subtitle": "In den Ablehnungsordner des Collectors verschieben"
+        "label": "Als abgelehnt ablegen",
+        "subtitle": "E-Mail in den konfigurierten Ablehnungsordner des Collectors verschieben"
       }
     },
     "toast": {
@@ -1532,45 +1544,49 @@ const ADMIN_MAIL_COLLECT_COPY = {
     "options": {
       "loading": "Caricamento impostazioni…",
       "cardTitle": "Impostazioni di raccolta",
-      "cardDescription": "Comportamento del trattamento email in entrata e conservazione dei log.",
+      "cardDescription": "Queste opzioni valgono per tutti i collector. Le regole di raccolta decidono comunque quali email accettare.",
       "groups": {
-        "thread": {
-          "title": "Thread di conversazione",
-          "description": "Collegamento risposte via Message-ID / In-Reply-To"
+        "replies": {
+          "title": "Risposte ai ticket",
+          "description": "Quando un cliente risponde a un'email già collegata a un ticket Veritas."
+        },
+        "duplicates": {
+          "title": "Evitare i duplicati",
+          "description": "Impedisce di trattare più volte lo stesso messaggio (nuova scansione, reinoltro, ecc.)."
         },
         "logs": {
-          "title": "Log dei collector",
-          "description": "Volume di log conservato per collector"
+          "title": "Registro attività",
+          "description": "Cronologia visibile nei log di ogni collector."
         }
       },
       "threadReplies": {
-        "label": "Collegamento per thread",
-        "hint": "Rileva risposte collegate a un ticket esistente."
+        "label": "Aggiungere le risposte come commenti sul ticket",
+        "hint": "Esempio: il cliente risponde alla notifica di un ticket. Veritas trova quel ticket e aggiunge la risposta come commento, invece di creare un nuovo ticket."
       },
       "deduplicate": {
-        "label": "Deduplicazione Message-ID",
-        "hint": "Ignora le mail già registrate in Veritas."
+        "label": "Ignorare le email già trattate",
+        "hint": "Ogni email ha un identificativo univoco. Se Veritas l'ha già registrata, viene ignorata — evita un secondo ticket se la casella viene scansita di nuovo o il messaggio viene reinviato."
       },
       "orphanReply": {
-        "label": "Risposta senza ticket collegato",
-        "hintFallback": "Se nessun ticket corrisponde al thread.",
-        "ariaLabel": "Risposta senza ticket collegato"
+        "label": "Se la risposta non corrisponde ad alcun ticket",
+        "hintFallback": "Caso raro: l'email sembra una risposta, ma Veritas non trova il ticket originale (eliminato, altra casella, ecc.).",
+        "ariaLabel": "Comportamento se la risposta non corrisponde ad alcun ticket"
       },
       "maxLogEntries": {
-        "label": "Voci max per collector",
-        "hint": "Le voci più vecchie vengono rimosse oltre questo limite.",
-        "ariaLabel": "Numero massimo di voci di log per collector"
+        "label": "Eventi conservati per collector",
+        "hint": "Oltre questo limite, gli eventi più vecchi vengono eliminati automaticamente.",
+        "ariaLabel": "Numero massimo di eventi di log per collector"
       },
-      "footerHint": "Modalità opt-in: un'email viene trattata solo se corrisponde a una regola di raccolta attiva. Altrimenti resta in posta in arrivo."
+      "footerHint": "Promemoria: un'email viene trattata solo se corrisponde a una regola di raccolta attiva. Senza regola non viene creato nulla e il messaggio resta in posta in arrivo."
     },
     "orphanReply": {
       "ignore": {
-        "label": "Ignora",
-        "subtitle": "Lascia la mail in posta in arrivo"
+        "label": "Non fare nulla",
+        "subtitle": "Lasciare la mail in posta in arrivo, senza creare un ticket"
       },
       "refuse": {
-        "label": "Rifiuta",
-        "subtitle": "Sposta nella cartella rifiutati del collector"
+        "label": "Spostare nei rifiutati",
+        "subtitle": "Spostare la mail nella cartella « rifiutati » configurata sul collector"
       }
     },
     "toast": {
@@ -2013,45 +2029,49 @@ const ADMIN_MAIL_COLLECT_COPY = {
     "options": {
       "loading": "Cargando ajustes…",
       "cardTitle": "Ajustes de recogida",
-      "cardDescription": "Comportamiento del tratamiento de correos entrantes y retención de registros.",
+      "cardDescription": "Estas opciones se aplican a todos los colectores. Las reglas de recogida siguen decidiendo qué correos se aceptan.",
       "groups": {
-        "thread": {
-          "title": "Hilo de conversación",
-          "description": "Vinculación de respuestas vía Message-ID / In-Reply-To"
+        "replies": {
+          "title": "Respuestas a tickets",
+          "description": "Cuando un cliente responde a un correo ya vinculado a un ticket de Veritas."
+        },
+        "duplicates": {
+          "title": "Evitar duplicados",
+          "description": "Impide procesar el mismo mensaje varias veces (nuevo escaneo, reenvío, etc.)."
         },
         "logs": {
-          "title": "Registro de colectores",
-          "description": "Volumen de logs conservado por colector"
+          "title": "Registro de actividad",
+          "description": "Historial visible en los logs de cada colector."
         }
       },
       "threadReplies": {
-        "label": "Vinculación por hilo",
-        "hint": "Detecta respuestas vinculadas a un ticket existente."
+        "label": "Añadir las respuestas como comentarios en el ticket",
+        "hint": "Ejemplo: el cliente responde a la notificación de un ticket. Veritas encuentra ese ticket y añade la respuesta como comentario, en lugar de crear uno nuevo."
       },
       "deduplicate": {
-        "label": "Deduplicación Message-ID",
-        "hint": "Ignora correos ya registrados en Veritas."
+        "label": "Ignorar correos ya procesados",
+        "hint": "Cada correo tiene un identificador único. Si Veritas ya lo registró, se ignora — útil para evitar un segundo ticket si se vuelve a escanear la bandeja o se reenvía el mensaje."
       },
       "orphanReply": {
-        "label": "Respuesta sin ticket vinculado",
-        "hintFallback": "Si ningún ticket corresponde al hilo.",
-        "ariaLabel": "Respuesta sin ticket vinculado"
+        "label": "Si la respuesta no corresponde a ningún ticket",
+        "hintFallback": "Caso raro: el correo parece una respuesta, pero Veritas no encuentra el ticket original (eliminado, otra bandeja, etc.).",
+        "ariaLabel": "Comportamiento si la respuesta no corresponde a ningún ticket"
       },
       "maxLogEntries": {
-        "label": "Entradas máx. por colector",
-        "hint": "Las entradas más antiguas se eliminan más allá de este límite.",
-        "ariaLabel": "Número máximo de entradas de log por colector"
+        "label": "Eventos conservados por colector",
+        "hint": "Más allá de este límite, los eventos más antiguos se eliminan automáticamente.",
+        "ariaLabel": "Número máximo de eventos de registro por colector"
       },
-      "footerHint": "Modo opt-in: un correo se procesa solo si coincide con una regla de recogida activa. Si no, permanece en la bandeja de entrada."
+      "footerHint": "Recordatorio: un correo solo se procesa si coincide con una regla de recogida activa. Sin regla no se crea nada y el mensaje permanece en la bandeja."
     },
     "orphanReply": {
       "ignore": {
-        "label": "Ignorar",
-        "subtitle": "Dejar el correo en la bandeja de entrada"
+        "label": "No hacer nada",
+        "subtitle": "Dejar el correo en la bandeja, sin crear un ticket"
       },
       "refuse": {
-        "label": "Rechazar",
-        "subtitle": "Mover a la carpeta de rechazados del colector"
+        "label": "Clasificar como rechazado",
+        "subtitle": "Mover el correo a la carpeta de rechazados configurada en el colector"
       }
     },
     "toast": {

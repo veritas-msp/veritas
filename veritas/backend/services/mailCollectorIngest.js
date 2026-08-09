@@ -440,6 +440,19 @@ export async function appendCollectorLogInConfig(collectorId, level, message) {
   });
   await saveMailCollectorsRaw(nextCollectors);
 }
+export async function touchCollectorLastCheckedAt(collectorId) {
+  if (!collectorId) return;
+  const existingCollectors = await loadMailCollectorsRaw();
+  const nextCollectors = existingCollectors.map((collector, idx) => {
+    const normalized = normalizeMailCollector(collector, idx);
+    if (String(normalized.id) !== String(collectorId)) return normalized;
+    return {
+      ...normalized,
+      lastCheckedAt: new Date().toISOString()
+    };
+  });
+  await saveMailCollectorsRaw(nextCollectors);
+}
 export async function incrementCollectorStats(collectorId, {
   inspected = 0,
   attached = 0,
@@ -562,7 +575,12 @@ export async function processMailCollector(collectorInput, {
   const mailCollectSettings = normalizeMailCollectSettings(await loadMailCollectSettingsRaw());
   const stats = await withImapClient(collector, async client => processMessagesInMailbox(client, collector, exclusionRules, mailCollectSettings));
   await incrementCollectorStats(collector.id, stats).catch(() => {});
-  await appendCollectorLogInConfig(collector.id, "info", `Check completed (${stats.inspected} email(s) inspected, ${stats.attached} attached, ${stats.ignored} ignored).`).catch(() => {});
+  const hasActivity = Number(stats.inspected) > 0 || Number(stats.attached) > 0 || Number(stats.ignored) > 0;
+  if (force || hasActivity) {
+    await appendCollectorLogInConfig(collector.id, "info", `Check completed (${stats.inspected} email(s) inspected, ${stats.attached} attached, ${stats.ignored} ignored).`).catch(() => {});
+  } else {
+    await touchCollectorLastCheckedAt(collector.id).catch(() => {});
+  }
   return {
     ...stats,
     skipped: false
