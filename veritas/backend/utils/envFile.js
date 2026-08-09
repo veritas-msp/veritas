@@ -67,17 +67,37 @@ function canWriteEnvFile(filePath) {
     return false;
   }
 }
-/** Persist JWT/ENCRYPTION for Docker restarts (uploads volume). */
+/** Persist JWT/ENCRYPTION/license key for Docker restarts (uploads volume). */
 export function persistBootSecrets(overrides = {}) {
   const jwtSecret = overrides.JWT_SECRET || process.env.JWT_SECRET;
   const encryptionKey = overrides.ENCRYPTION_KEY || process.env.ENCRYPTION_KEY;
   if (!jwtSecret || !encryptionKey) return false;
+  const licenseKey = String(
+    overrides.VERITAS_LICENSE_KEY !== undefined
+      ? overrides.VERITAS_LICENSE_KEY
+      : process.env.VERITAS_LICENSE_KEY || ""
+  ).trim();
+  const edition = String(
+    overrides.VERITAS_EDITION !== undefined
+      ? overrides.VERITAS_EDITION
+      : process.env.VERITAS_EDITION || ""
+  ).trim();
   try {
     fs.mkdirSync(path.dirname(BOOT_SECRETS_PATH), {
       recursive: true
     });
     const escape = value => String(value).replace(/'/g, `'\"'\"'`);
-    fs.writeFileSync(BOOT_SECRETS_PATH, `export JWT_SECRET='${escape(jwtSecret)}'\nexport ENCRYPTION_KEY='${escape(encryptionKey)}'\n`, {
+    const lines = [
+      `export JWT_SECRET='${escape(jwtSecret)}'`,
+      `export ENCRYPTION_KEY='${escape(encryptionKey)}'`
+    ];
+    if (licenseKey) {
+      lines.push(`export VERITAS_LICENSE_KEY='${escape(licenseKey)}'`);
+    }
+    if (edition) {
+      lines.push(`export VERITAS_EDITION='${escape(edition)}'`);
+    }
+    fs.writeFileSync(BOOT_SECRETS_PATH, `${lines.join("\n")}\n`, {
       encoding: "utf8",
       mode: 0o600
     });
@@ -89,7 +109,7 @@ export function persistBootSecrets(overrides = {}) {
 }
 export function writeEnvFile(updates) {
   applyProcessEnv(updates);
-  if (updates.JWT_SECRET || updates.ENCRYPTION_KEY) {
+  if (updates.JWT_SECRET || updates.ENCRYPTION_KEY || updates.VERITAS_LICENSE_KEY || updates.VERITAS_EDITION) {
     persistBootSecrets(updates);
   }
   if (!canWriteEnvFile(BACKEND_ENV_PATH)) {

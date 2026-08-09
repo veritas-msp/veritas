@@ -30,10 +30,16 @@ load_secret_file() {
 
 save_secrets() {
   umask 077
-  cat > "$SECRETS_FILE" <<EOF
-export JWT_SECRET='${JWT_SECRET}'
-export ENCRYPTION_KEY='${ENCRYPTION_KEY}'
-EOF
+  {
+    echo "export JWT_SECRET='${JWT_SECRET}'"
+    echo "export ENCRYPTION_KEY='${ENCRYPTION_KEY}'"
+    if [ -n "${VERITAS_LICENSE_KEY:-}" ]; then
+      echo "export VERITAS_LICENSE_KEY='${VERITAS_LICENSE_KEY}'"
+    fi
+    if [ -n "${VERITAS_EDITION:-}" ]; then
+      echo "export VERITAS_EDITION='${VERITAS_EDITION}'"
+    fi
+  } > "$SECRETS_FILE"
 }
 
 load_secret_file
@@ -51,6 +57,14 @@ if [ -z "${ENCRYPTION_KEY:-}" ]; then
   echo "Generated ENCRYPTION_KEY (first boot — you can change it in /setup)"
 fi
 export ENCRYPTION_KEY
+
+# Keep offline / Pro license key across container recreates (uploads volume)
+if [ -n "${VERITAS_LICENSE_KEY:-}" ]; then
+  export VERITAS_LICENSE_KEY
+fi
+if [ -n "${VERITAS_EDITION:-}" ]; then
+  export VERITAS_EDITION
+fi
 
 # Persist across container recreates (uploads volume)
 save_secrets 2>/dev/null || echo "WARNING: could not persist secrets to $SECRETS_FILE" >&2

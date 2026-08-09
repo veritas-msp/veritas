@@ -4,10 +4,12 @@ import {
   clearStoredLicenseLease,
   extractLeaseTokenFromDocument,
   getLeaseSecretDiagnostics,
+  hydrateLicenseKeyFromStoredLease,
   isLeaseVerifyConfigured,
   resolveOfflineLease,
   storeLicenseLease,
 } from "./licenseLease.js";
+import { persistBootSecrets } from "./envFile.js";
 
 const LICENSE_KEY_RE = /^VRT-PRO-(?:[A-F0-9]{4}-){3}[A-F0-9]{4}$/;
 const DEFAULT_CACHE_MS = 5000;
@@ -92,11 +94,23 @@ function emptyCacheFields() {
 }
 
 function applyOfflineLeaseToCache(networkErrorMessage) {
-  const key = normalizeLicenseKey(process.env.VERITAS_LICENSE_KEY || "");
-  if (!key || !isLeaseVerifyConfigured()) {
+  hydrateLicenseKeyFromStoredLease();
+  let key = normalizeLicenseKey(process.env.VERITAS_LICENSE_KEY || "");
+  if (!isLeaseVerifyConfigured()) {
     return null;
   }
-  const offline = resolveOfflineLease({ expectedKey: key });
+  let offline = key ? resolveOfflineLease({ expectedKey: key }) : null;
+  if (!offline) {
+    offline = resolveOfflineLease();
+    if (offline?.payload?.licenseKey) {
+      key = normalizeLicenseKey(offline.payload.licenseKey);
+      process.env.VERITAS_LICENSE_KEY = key;
+      persistBootSecrets({
+        VERITAS_LICENSE_KEY: key,
+        VERITAS_EDITION: "pro"
+      });
+    }
+  }
   if (!offline) return null;
   cache = {
     ...cache,
@@ -129,8 +143,18 @@ export async function refreshProLicenseState() {
     };
     return cache;
   }
+  const hydrated = hydrateLicenseKeyFromStoredLease();
+  if (hydrated?.hydrated && hydrated.key) {
+    persistBootSecrets({
+      VERITAS_LICENSE_KEY: hydrated.key,
+      VERITAS_EDITION: process.env.VERITAS_EDITION || "pro"
+    });
+  }
   const key = normalizeLicenseKey(process.env.VERITAS_LICENSE_KEY || "");
   if (!key) {
+    // Lease file may still unlock Pro when the key only lived in ephemeral container .env
+    const offlineOnly = applyOfflineLeaseToCache(null);
+    if (offlineOnly) return offlineOnly;
     cache = {
       ...cache,
       valid: false,
@@ -175,6 +199,10 @@ export async function refreshProLicenseState() {
     const valid = Boolean(data.valid);
     if (valid && data.lease) {
       storeLicenseLease(data.lease);
+      persistBootSecrets({
+        VERITAS_LICENSE_KEY: key,
+        VERITAS_EDITION: "pro"
+      });
     } else if (!valid) {
       // Online authority: revoke/suspend clears offline grace
       clearStoredLicenseLease();

@@ -141,6 +141,44 @@ export function readStoredLeaseToken() {
   }
 }
 
+/** Full lease file record (token + licenseKey + dates), or null. */
+export function readStoredLeaseRecord() {
+  try {
+    if (!fs.existsSync(LEASE_FILE_PATH)) return null;
+    const raw = JSON.parse(fs.readFileSync(LEASE_FILE_PATH, "utf8"));
+    if (!raw || typeof raw !== "object") return null;
+    return raw;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Restore VERITAS_LICENSE_KEY from the persisted lease file (Docker uploads volume).
+ * Needed because activation writes the key to an ephemeral container .env.
+ * @returns {{ key: string, hydrated: boolean } | null}
+ */
+export function hydrateLicenseKeyFromStoredLease() {
+  const existing = normalizeLicenseKey(process.env.VERITAS_LICENSE_KEY || "");
+  if (existing) return { key: existing, hydrated: false };
+
+  const record = readStoredLeaseRecord();
+  if (!record) return null;
+
+  let key = normalizeLicenseKey(record.licenseKey || "");
+  if (!key && typeof record.token === "string") {
+    const payload = verifyLicenseLease(record.token);
+    key = payload?.licenseKey ? normalizeLicenseKey(payload.licenseKey) : "";
+  }
+  if (!key || !isValidLicenseKeyFormat(key)) return null;
+
+  process.env.VERITAS_LICENSE_KEY = key;
+  if (!process.env.VERITAS_EDITION) {
+    process.env.VERITAS_EDITION = "pro";
+  }
+  return { key, hydrated: true };
+}
+
 export function storeLicenseLease(token) {
   if (!token || typeof token !== "string") return false;
   const payload = verifyLicenseLease(token);
