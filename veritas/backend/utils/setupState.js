@@ -31,7 +31,8 @@ async function hasAdminMfaEnabled() {
   }
 }
 async function isSetupFullyComplete() {
-  if (!isSetupMarkedComplete()) return false;
+  // Do not require the on-disk marker: Docker rebuilds drop .setup-complete
+  // (gitignored / not on a volume) while the DB install remains valid.
   const schema = await hasCoreSchema();
   const adminMfa = schema ? await hasAdminMfaEnabled() : false;
   return schema && adminMfa;
@@ -84,6 +85,12 @@ export async function getSetupStatus() {
     clearSetupCompleteMarker();
   }
   if (await isSetupFullyComplete()) {
+    // Rematerialize marker after container recreate so sync file checks stay truthful.
+    if (!isSetupMarkedComplete()) {
+      try {
+        markSetupComplete();
+      } catch {}
+    }
     return {
       needsSetup: false,
       steps: {

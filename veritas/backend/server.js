@@ -73,7 +73,7 @@ import mailinblackClientRouter from "./routes/clients/mailinblack-client.js";
 import aiRouter from "./routes/ai/index.js";
 import { checkMaintenanceMode } from './middleware/maintenance.js';
 import { securityHeaders } from './middleware/securityHeaders.js';
-import { canRunAutoSchemaMigrations, isSetupMarkedComplete } from './utils/setupState.js';
+import { canRunAutoSchemaMigrations, isSetupMarkedComplete, markSetupComplete } from './utils/setupState.js';
 import { startMailCollectorPoller } from './services/mailCollectorPoller.js';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 function resolveFrontendBuildDir() {
@@ -177,6 +177,15 @@ if (await canRunAutoSchemaMigrations()) {
     await runPostSetupSchemaMigrations();
   } catch (err) {
     console.error("[startup] Post-installation migrations failed:", err.message);
+  }
+  // Docker rebuilds drop .setup-complete; rematerialize when DB install is already valid.
+  if (!isSetupMarkedComplete()) {
+    try {
+      markSetupComplete();
+      console.log("[setup] Restored .setup-complete marker from database state.");
+    } catch (err) {
+      console.warn("[setup] Could not restore .setup-complete marker:", err?.message || err);
+    }
   }
 } else if (!isSetupMarkedComplete()) {
   console.log("[setup] Installation in progress — create the schema via the wizard: http://localhost:3000/setup");

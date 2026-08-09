@@ -3,6 +3,7 @@
 set -eu
 
 SECRETS_FILE="/app/uploads/.boot-secrets"
+LEASE_FILE="/app/uploads/.license-lease"
 
 rand_hex() {
   if command -v openssl >/dev/null 2>&1; then
@@ -28,6 +29,25 @@ load_secret_file() {
   . "$SECRETS_FILE"
 }
 
+# Prefer persisted Pro key from offline lease JSON when env/boot-secrets lack it.
+hydrate_license_from_lease() {
+  [ -f "$LEASE_FILE" ] || return 0
+  if [ -n "${VERITAS_LICENSE_KEY:-}" ]; then
+    return 0
+  fi
+  # Extract "licenseKey": "VRT-PRO-...." without requiring jq
+  key="$(sed -n 's/.*"licenseKey"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' "$LEASE_FILE" | head -n 1 | tr -d '\r')"
+  if [ -n "$key" ]; then
+    VERITAS_LICENSE_KEY="$key"
+    export VERITAS_LICENSE_KEY
+    if [ -z "${VERITAS_EDITION:-}" ]; then
+      VERITAS_EDITION="pro"
+      export VERITAS_EDITION
+    fi
+    echo "Restored VERITAS_LICENSE_KEY from offline lease file"
+  fi
+}
+
 save_secrets() {
   umask 077
   {
@@ -43,6 +63,7 @@ save_secrets() {
 }
 
 load_secret_file
+hydrate_license_from_lease
 
 if [ -z "${JWT_SECRET:-}" ]; then
   JWT_SECRET="$(rand_hex)"

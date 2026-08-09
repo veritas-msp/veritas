@@ -575,12 +575,13 @@ export async function processMailCollector(collectorInput, {
   const mailCollectSettings = normalizeMailCollectSettings(await loadMailCollectSettingsRaw());
   const stats = await withImapClient(collector, async client => processMessagesInMailbox(client, collector, exclusionRules, mailCollectSettings));
   await incrementCollectorStats(collector.id, stats).catch(() => {});
-  const hasActivity = Number(stats.inspected) > 0 || Number(stats.attached) > 0 || Number(stats.ignored) > 0;
-  if (force || hasActivity) {
-    await appendCollectorLogInConfig(collector.id, "info", `Check completed (${stats.inspected} email(s) inspected, ${stats.attached} attached, ${stats.ignored} ignored).`).catch(() => {});
-  } else {
-    await touchCollectorLastCheckedAt(collector.id).catch(() => {});
-  }
+  // Always log completed IMAP checks (including empty ones) so auto-poll is visible in the UI.
+  const prefix = force ? "Manual check" : "Automatic check";
+  await appendCollectorLogInConfig(
+    collector.id,
+    "info",
+    `${prefix} completed (${stats.inspected} email(s) inspected, ${stats.attached} attached, ${stats.ignored} ignored).`
+  ).catch(() => {});
   return {
     ...stats,
     skipped: false

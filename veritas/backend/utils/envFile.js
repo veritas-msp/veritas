@@ -72,15 +72,30 @@ export function persistBootSecrets(overrides = {}) {
   const jwtSecret = overrides.JWT_SECRET || process.env.JWT_SECRET;
   const encryptionKey = overrides.ENCRYPTION_KEY || process.env.ENCRYPTION_KEY;
   if (!jwtSecret || !encryptionKey) return false;
+
+  let previousLicense = "";
+  let previousEdition = "";
+  try {
+    if (fs.existsSync(BOOT_SECRETS_PATH) && fs.statSync(BOOT_SECRETS_PATH).isFile()) {
+      const prev = fs.readFileSync(BOOT_SECRETS_PATH, "utf8");
+      const lic = prev.match(/export VERITAS_LICENSE_KEY='((?:\\'|[^'])*)'/);
+      const edi = prev.match(/export VERITAS_EDITION='((?:\\'|[^'])*)'/);
+      if (lic) previousLicense = lic[1].replace(/\\'/g, "'");
+      if (edi) previousEdition = edi[1].replace(/\\'/g, "'");
+    }
+  } catch {
+    /* ignore */
+  }
+
   const licenseKey = String(
     overrides.VERITAS_LICENSE_KEY !== undefined
       ? overrides.VERITAS_LICENSE_KEY
-      : process.env.VERITAS_LICENSE_KEY || ""
+      : process.env.VERITAS_LICENSE_KEY || previousLicense || ""
   ).trim();
   const edition = String(
     overrides.VERITAS_EDITION !== undefined
       ? overrides.VERITAS_EDITION
-      : process.env.VERITAS_EDITION || ""
+      : process.env.VERITAS_EDITION || previousEdition || ""
   ).trim();
   try {
     fs.mkdirSync(path.dirname(BOOT_SECRETS_PATH), {

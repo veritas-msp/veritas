@@ -1,4 +1,4 @@
-import { isSetupMarkedComplete } from "../utils/setupState.js";
+import { canRunAutoSchemaMigrations } from "../utils/setupState.js";
 import {
   appendCollectorLogInConfig,
   normalizeMailCollector,
@@ -12,10 +12,19 @@ const FIRST_RUN_DELAY_MS = 20 * 1000;
 let timer = null;
 let firstRunTimer = null;
 let tickInFlight = false;
+let setupSkipLogged = false;
 
 export async function pollAllMailCollectors() {
   if (!String(process.env.DATABASE_URL || "").trim()) return;
-  if (!isSetupMarkedComplete()) return;
+  // Prefer DB readiness over the ephemeral .setup-complete file (lost on Docker rebuild).
+  if (!(await canRunAutoSchemaMigrations())) {
+    if (!setupSkipLogged) {
+      console.log("[mail-collector-poller] Waiting for setup to complete before polling.");
+      setupSkipLogged = true;
+    }
+    return;
+  }
+  setupSkipLogged = false;
 
   const rows = await loadMailCollectorsRaw();
   const collectors = (Array.isArray(rows) ? rows : []).map((row, idx) => normalizeMailCollector(row, idx));

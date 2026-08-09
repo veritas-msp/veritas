@@ -204,8 +204,17 @@ export async function refreshProLicenseState() {
         VERITAS_EDITION: "pro"
       });
     } else if (!valid) {
-      // Online authority: revoke/suspend clears offline grace
-      clearStoredLicenseLease();
+      // Only clear offline grace on explicit revoke/suspend — never on transient
+      // "invalid" responses (wrong billing secret, staging mismatch, etc.).
+      const code = String(data.error || data.code || data.status || "").toLowerCase();
+      if (/\b(revok|suspend|cancel|expired)\b/.test(code)) {
+        clearStoredLicenseLease();
+      } else {
+        const offline = applyOfflineLeaseToCache(
+          data.message || "Online validation rejected the key; using stored offline lease if available."
+        );
+        if (offline) return offline;
+      }
     }
 
     const stored = valid ? resolveOfflineLease({ expectedKey: key }) : null;
@@ -340,5 +349,11 @@ export function applyOfflineActivation(tokenOrDocument) {
     err.code = "LEASE_STORE_FAILED";
     throw err;
   }
+  process.env.VERITAS_LICENSE_KEY = offline.payload.licenseKey;
+  process.env.VERITAS_EDITION = "pro";
+  persistBootSecrets({
+    VERITAS_LICENSE_KEY: offline.payload.licenseKey,
+    VERITAS_EDITION: "pro"
+  });
   return offline;
 }

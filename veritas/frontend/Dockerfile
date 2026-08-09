@@ -11,6 +11,7 @@ ENV IMAGE_INLINE_SIZE_LIMIT=0
 ENV CI=false
 ENV BABEL_ENV=production
 ENV NODE_ENV=production
+ENV PUBLIC_URL=/
 ENV UV_THREADPOOL_SIZE=1
 
 COPY package.json package-lock.json ./
