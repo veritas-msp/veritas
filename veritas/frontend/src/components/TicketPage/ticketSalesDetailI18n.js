@@ -86,6 +86,8 @@ const COPY = {
     team: {
       title: "Équipe",
       addAssignee: "Ajouter un assigné",
+      assignMe: "M'assigner",
+      assignMeAlready: "Déjà assigné",
       addFollower: "Ajouter un suiveur",
       removeAssignee: "Retirer l'assigné",
       removeFollower: "Retirer le suiveur",
@@ -285,6 +287,8 @@ const COPY = {
     team: {
       title: "Team",
       addAssignee: "Add assignee",
+      assignMe: "Assign to me",
+      assignMeAlready: "Already assigned",
       addFollower: "Add follower",
       removeAssignee: "Remove assignee",
       removeFollower: "Remove follower",

@@ -4222,6 +4222,13 @@ export default function TicketDetailPage({
                         setShowAssigneeDropdown(false);
                       }
                     }} />
+                      <button type="button" className={fs.contactInputEndBtn} title={isCurrentUserAssigned ? (copy.leftPane?.assignMeAlready || copy.assignMeAlready) : (copy.leftPane?.assignMe || copy.assignMe)} aria-label={isCurrentUserAssigned ? (copy.leftPane?.assignMeAlready || copy.assignMeAlready) : (copy.leftPane?.assignMe || copy.assignMe)} disabled={isReadOnly || !currentUserId || isCurrentUserAssigned} onClick={e => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      if (currentUserId) addAssignee(String(currentUserId));
+                    }}>
+                        <Icon icon="mdi:account-plus" aria-hidden />
+                      </button>
                     </div>
                     {showAssigneeDropdown && <div className={fs.contactDropdown} role="listbox">
                         {filteredAssigneeOptions.length === 0 ? <div className={fs.contactEmpty}>{copy.noAgentFound}</div> : filteredAssigneeOptions.map((opt, idx) => <button key={opt.id} type="button" role="option" className={`${fs.contactOption} ${assigneeHighlight === idx ? fs.contactOptionActive : ""}`} onMouseEnter={() => setAssigneeHighlight(idx)} onClick={() => addAssignee(String(opt.id))}>

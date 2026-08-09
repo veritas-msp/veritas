@@ -20,6 +20,7 @@ import { fetchClientsList, fetchContactsList } from "../../api/clients";
 import { fetchUsers } from "../../api/users";
 import { useAppLocale } from "../../hooks/useAppGeneralSettings";
 import { usePermissions } from "../../contexts/PermissionsContext";
+import { useAuthContext } from "../../contexts/AuthContext";
 import { resolveSalesKind, buildSalesFormFieldEntries, buildSalesFormFieldLabelMap, computeSalesTaskStats } from "../../utils/salesTicketUtils";
 import { reconcileSalesTaskPlanningEvent, deleteSalesTaskPlanningEvents } from "../../utils/salesTaskPlanningEvent";
 import { interpolate } from "../../i18n/translate";
@@ -297,8 +298,10 @@ const SALES_TYPE_OPTIONS = [
 export default function TicketSalesDetailPage({ onNavigate, ticketData }) {
   const locale = useAppLocale();
   const { can } = usePermissions();
+  const { user } = useAuthContext();
   const copy = useMemo(() => getTicketSalesDetailCopy(locale), [locale]);
   const detailCopy = useMemo(() => getTicketDetailCopy(locale), [locale]);
+  const currentUserId = useMemo(() => user?.id || user?.uuid || user?.user_id || null, [user]);
   const canDeleteTicket = can("sales_detail.delete");
   const canReport = can("sales_detail.report");
   const canPublicReply = can("sales_detail.public_reply");
@@ -486,6 +489,11 @@ export default function TicketSalesDetailPage({ onNavigate, ticketData }) {
     [ticket, resolvePerson]
   );
   const assigneeIds = useMemo(() => new Set(assigneePeople.map(a => a.id)), [assigneePeople]);
+  const isCurrentUserAssigned = useMemo(() => {
+    if (!currentUserId) return false;
+    if (ticket?.assigned_user_id && String(ticket.assigned_user_id) === String(currentUserId)) return true;
+    return assigneeIds.has(String(currentUserId));
+  }, [currentUserId, ticket?.assigned_user_id, assigneeIds]);
   const watcherIds = useMemo(() => new Set(watcherPeople.map(w => w.id)), [watcherPeople]);
 
   const filteredRequesterOptions = useMemo(() => {
@@ -1291,6 +1299,20 @@ export default function TicketSalesDetailPage({ onNavigate, ticketData }) {
                           }
                         }}
                       />
+                      <button
+                        type="button"
+                        className={fs.contactInputEndBtn}
+                        title={isCurrentUserAssigned ? (copy.team.assignMeAlready || detailCopy.leftPane.assignMeAlready) : (copy.team.assignMe || detailCopy.leftPane.assignMe)}
+                        aria-label={isCurrentUserAssigned ? (copy.team.assignMeAlready || detailCopy.leftPane.assignMeAlready) : (copy.team.assignMe || detailCopy.leftPane.assignMe)}
+                        disabled={teamBusy || !currentUserId || isCurrentUserAssigned}
+                        onClick={e => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          if (currentUserId) void handleAddAssignee(String(currentUserId));
+                        }}
+                      >
+                        <Icon icon="mdi:account-plus" aria-hidden />
+                      </button>
                     </div>
                     {showAssigneeDropdown ? (
                       <div className={fs.contactDropdown} role="listbox">

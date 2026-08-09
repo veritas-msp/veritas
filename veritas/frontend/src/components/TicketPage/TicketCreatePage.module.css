@@ -534,6 +534,37 @@
   appearance: none;
 }
 
+.contactInputEndBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+  margin-right: -0.15rem;
+  padding: 0;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--msp-accent, #2b5fab);
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s, opacity 0.15s;
+}
+
+.contactInputEndBtn:hover:not(:disabled) {
+  background: var(--msp-accent-soft, rgba(43, 95, 171, 0.12));
+}
+
+.contactInputEndBtn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  color: var(--msp-muted, #5c6b82);
+}
+
+.contactInputEndBtn svg {
+  font-size: 1.05rem;
+}
+
 .fieldShellControl {
   flex: 1;
   width: 100%;
