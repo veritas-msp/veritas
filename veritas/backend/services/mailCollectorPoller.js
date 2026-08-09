@@ -6,13 +6,15 @@ import {
 } from "./mailCollectorIngest.js";
 import { loadMailCollectorsRaw } from "./ticketAutomationConfigStore.js";
 
-const TICK_MS = 60 * 1000;
-const FIRST_RUN_DELAY_MS = 20 * 1000;
+/** Poll cadence: wake often, each collector still respects its own interval. */
+const TICK_MS = 30 * 1000;
+const FIRST_RUN_DELAY_MS = 8 * 1000;
 
 let timer = null;
 let firstRunTimer = null;
 let tickInFlight = false;
 let setupSkipLogged = false;
+let tickCount = 0;
 
 export async function pollAllMailCollectors() {
   if (!String(process.env.DATABASE_URL || "").trim()) return;
@@ -28,13 +30,34 @@ export async function pollAllMailCollectors() {
 
   const rows = await loadMailCollectorsRaw();
   const collectors = (Array.isArray(rows) ? rows : []).map((row, idx) => normalizeMailCollector(row, idx));
+  const eligible = collectors.filter(c => c?.id && c.enabled && c.ingestEnabled);
 
-  for (const collector of collectors) {
-    if (!collector?.id || !collector.enabled || !collector.ingestEnabled) continue;
+  if (eligible.length === 0) {
+    if (tickCount % 10 === 1) {
+      console.log("[mail-collector-poller] No enabled collectors with auto-ingest.");
+    }
+    return;
+  }
+
+  for (const collector of eligible) {
+    const intervalMin = Math.max(1, Number(collector.checkIntervalMinutes || 5));
     try {
-      await processMailCollector(collector, {
+      const result = await processMailCollector(collector, {
         force: false
       });
+      if (result?.skipped && result.reason === "interval") {
+        continue;
+      }
+      if (result?.skipped) {
+        console.log(
+          `[mail-collector-poller] ${collector.name || collector.id}: skipped (${result.reason})`
+        );
+        continue;
+      }
+      console.log(
+        `[mail-collector-poller] ${collector.name || collector.id}: automatic check ` +
+          `(every ${intervalMin} min) inspected=${result?.inspected || 0} attached=${result?.attached || 0} ignored=${result?.ignored || 0}`
+      );
     } catch (err) {
       const message = err?.message || String(err);
       console.error(`[mail-collector-poller] ${collector.name || collector.id}:`, message);
@@ -46,6 +69,7 @@ export async function pollAllMailCollectors() {
 async function runTick() {
   if (tickInFlight) return;
   tickInFlight = true;
+  tickCount += 1;
   try {
     await pollAllMailCollectors();
   } catch (err) {
@@ -63,9 +87,10 @@ export function startMailCollectorPoller() {
   timer = setInterval(() => {
     runTick();
   }, TICK_MS);
-  if (typeof timer.unref === "function") timer.unref();
-  if (typeof firstRunTimer.unref === "function") firstRunTimer.unref();
-  console.log("[mail-collector-poller] Started (tick every 60s, respects each collector interval).");
+  // Keep timers referenced so background collection is not GC'd / delayed under load.
+  console.log(
+    `[mail-collector-poller] Started (wake every ${TICK_MS / 1000}s; each collector uses its own interval; writes collector logs).`
+  );
 }
 
 export function stopMailCollectorPoller() {

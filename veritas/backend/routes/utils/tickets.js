@@ -1088,17 +1088,28 @@ router.post("/collectors/force-fetch", verifyJWT, [body("collector").isObject()]
   const validationResponse = validationErrorOrNull(req, res);
   if (validationResponse) return;
   try {
-    const collector = normalizeTicketAutomationMailCollector(req.body?.collector || {}, 0);
+    const incoming = normalizeTicketAutomationMailCollector(req.body?.collector || {}, 0);
+    const storedRows = await loadMailCollectorsRaw().catch(() => []);
+    const stored = (Array.isArray(storedRows) ? storedRows : [])
+      .map((row, idx) => normalizeMailCollector(row, idx))
+      .find(row => String(row.id) === String(incoming.id));
+    const collector = stored
+      ? {
+          ...stored,
+          ...incoming,
+          // Prefer stored password when UI sends a masked/empty one
+          password: incoming.password || stored.password
+        }
+      : incoming;
     const stats = await processMailCollector(collector, {
       force: true
     });
-    if (stats.skipped && stats.reason === "disabled") {
+    if (stats.skipped && (stats.reason === "disabled" || stats.reason === "incomplete_config")) {
       return res.status(400).json({
         success: false,
         error: "Collector is disabled or incomplete."
       });
     }
-    await appendCollectorLogInConfig(collector.id, "success", `Manual force: ${stats.attached} mail(s) attached, ${stats.ignored} ignored, ${stats.inspected} inspected.`).catch(() => {});
     return res.json({
       success: true,
       stats

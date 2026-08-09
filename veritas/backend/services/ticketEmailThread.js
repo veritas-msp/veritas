@@ -1,4 +1,5 @@
 import { pool } from "../database/db.js";
+import { ensureTicketEmailThreadSchema } from "./ensureTicketEmailThreadSchema.js";
 export function normalizeMessageId(value = "") {
   const trimmed = String(value || "").trim();
   if (!trimmed) return "";
@@ -84,10 +85,30 @@ export async function recordTicketEmailMessage({
 } = {}) {
   const messageId = normalizeMessageId(mailContext?.messageId);
   if (!ticketId || !messageId) return false;
-  await pool.query(`INSERT INTO v_b_ticket_email_messages
+  const params = [ticketId, String(collectorId || "").trim() || null, messageId, String(mailContext?.inReplyTo || "").trim() || null, String(mailContext?.references || "").trim() || null, String(mailContext?.subject || "").trim().slice(0, 500) || null, String(mailContext?.fromAddress || "").trim().toLowerCase() || null, String(direction || "inbound").trim() || "inbound"];
+  const insertSql = `INSERT INTO v_b_ticket_email_messages
       (ticket_id, collector_id, message_id, in_reply_to, references_header, subject, from_address, direction, created_at)
      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW())
-     ON CONFLICT (message_id) DO NOTHING`, [ticketId, String(collectorId || "").trim() || null, messageId, String(mailContext?.inReplyTo || "").trim() || null, String(mailContext?.references || "").trim() || null, String(mailContext?.subject || "").trim().slice(0, 500) || null, String(mailContext?.fromAddress || "").trim().toLowerCase() || null, String(direction || "inbound").trim() || "inbound"]);
+     ON CONFLICT (message_id) DO NOTHING`;
+  try {
+    await pool.query(insertSql, params);
+  } catch (err) {
+    const msg = String(err?.message || "");
+    if (err?.code === "42P10" || /no unique or exclusion constraint matching the ON CONFLICT/i.test(msg)) {
+      await ensureTicketEmailThreadSchema();
+      try {
+        await pool.query(insertSql, params);
+      } catch (retryErr) {
+        // Last resort without ON CONFLICT after ensuring uniqueness failed.
+        if (await isInboundEmailAlreadyProcessed(messageId)) return true;
+        await pool.query(`INSERT INTO v_b_ticket_email_messages
+            (ticket_id, collector_id, message_id, in_reply_to, references_header, subject, from_address, direction, created_at)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW())`, params);
+      }
+      return true;
+    }
+    throw err;
+  }
   return true;
 }
 export async function resolveTicketFromEmailContext(mailContext = {}, {

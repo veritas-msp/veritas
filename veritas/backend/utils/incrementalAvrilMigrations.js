@@ -130,6 +130,8 @@ export async function buildIncrementalAvrilMigrationPlan(client = pool) {
   }
   if (!(await tableExists(client, "v_b_ticket_email_messages"))) {
     plan.push("20260723_ticket_email_thread.sql");
+  } else if (!(await indexExists(client, "v_b_ticket_email_messages", "uq_ticket_email_messages_message_id"))) {
+    plan.push("20260809_ticket_email_messages_unique.sql");
   }
   if (!(await tableExists(client, "v_b_ticket_mail_collect_settings_config"))) {
     plan.push("20260724_mail_collect_settings.sql");
