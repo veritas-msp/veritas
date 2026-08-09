@@ -6,7 +6,6 @@ import { Switch } from "./AdminUi";
 import { getLocalizedCollectorFormSections, getLocalizedCollectorProviders, interpolate } from "./adminMailCollectI18n";
 import layout from "../EnterprisesPage/EnterpriseFormModal.module.css";
 import styles from "./CollectorFormModal.module.css";
-const MANUAL_PROVIDER_KEY = "imap-pop3";
 export default function CollectorFormModal({
   open,
   copy,
@@ -30,17 +29,19 @@ export default function CollectorFormModal({
   const providerPresets = useMemo(() => getLocalizedCollectorProviders(copy), [copy]);
   const formSections = useMemo(() => getLocalizedCollectorFormSections(copy), [copy]);
   const selectedProvider = useMemo(() => providerPresets.find(item => item.key === providerKey) || null, [providerKey, providerPresets]);
-  const isManualProvider = providerKey === MANUAL_PROVIDER_KEY;
   useEffect(() => {
     if (!open) return;
     setActiveSection(initialSection || (isCreate ? "provider" : "connection"));
     setShowAdvanced(Boolean(draft?.port || draft?.validateCertMode === "validate-cert"));
   }, [open, initialSection, isCreate, draft?.port, draft?.validateCertMode]);
+  const hasLogin = Boolean(String(draft?.username || "").trim());
+  const hasServer = Boolean(String(draft?.server || "").trim());
+  const hasPassword = Boolean(String(draft?.password || "").trim()) || !isCreate;
   const sectionMeta = useMemo(() => ({
     provider: Boolean(providerKey),
-    connection: Boolean(isManualProvider && String(draft?.username || "").trim() && String(draft?.server || "").trim() && (String(draft?.password || "").trim() || !isCreate)),
+    connection: Boolean(providerKey && hasLogin && hasServer && hasPassword),
     ingestion: Boolean(draft?.inboxFolder)
-  }), [draft, isCreate, isManualProvider, providerKey]);
+  }), [draft?.inboxFolder, hasLogin, hasPassword, hasServer, providerKey]);
   if (!open || !draft) return null;
   const patchDraft = patch => setDraft(prev => ({
     ...prev,
@@ -56,7 +57,7 @@ export default function CollectorFormModal({
   };
   const canOpenSection = sectionId => {
     if (sectionId === "provider") return true;
-    if (!providerKey || !isManualProvider) return false;
+    if (!providerKey) return false;
     if (sectionId === "connection") return true;
     if (sectionId === "ingestion") {
       if (!isCreate) return true;
@@ -78,6 +79,7 @@ export default function CollectorFormModal({
     name: draft.name
   }) : cf.editTitleFallback;
   const modalSubtitle = isCreate ? cf.createSubtitle : cf.editSubtitle;
+  const identitySummary = [String(draft.username || "").trim() || cf.identityMissingLogin, String(draft.server || "").trim() || cf.identityMissingServer, String(draft.inboxFolder || "INBOX").trim() || "INBOX"].join(" · ");
   const renderProviderStep = () => <>
       <div className={layout.sectionHead}>
         <h3 className={layout.sectionTitle}>{cf.providerTitle}</h3>
@@ -109,6 +111,14 @@ export default function CollectorFormModal({
         </p>
       </div>
 
+      <div className={styles.identityBanner} role="status">
+        <Icon icon="mdi:mailbox-outline" aria-hidden />
+        <div>
+          <strong>{cf.identityTitle}</strong>
+          <p>{identitySummary}</p>
+        </div>
+      </div>
+
       <div className={layout.fieldGrid2}>
         <div className={layout.field}>
           <label className={`${layout.label} ${layout.labelRequired}`} htmlFor="collector-email">
@@ -117,14 +127,16 @@ export default function CollectorFormModal({
           <input id="collector-email" type="email" className={layout.input} value={draft.username || ""} onChange={e => patchDraft({
           username: e.target.value
         })} placeholder={cf.emailPlaceholder} autoComplete="off" />
+          <p className={styles.fieldHint}>{cf.emailHint}</p>
         </div>
         <div className={layout.field}>
-          <label className={`${layout.label} ${layout.labelRequired}`} htmlFor="collector-password">
+          <label className={`${layout.label} ${isCreate ? layout.labelRequired : ""}`} htmlFor="collector-password">
             {cf.passwordLabel}
           </label>
           <input id="collector-password" type="password" className={layout.input} value={draft.password || ""} onChange={e => patchDraft({
           password: e.target.value
-        })} placeholder={cf.passwordPlaceholder} autoComplete="new-password" />
+        })} placeholder={isCreate ? cf.passwordPlaceholder : cf.passwordKeepPlaceholder} autoComplete="new-password" />
+          <p className={styles.fieldHint}>{isCreate ? cf.passwordHint : cf.passwordKeepHint}</p>
         </div>
         <div className={`${layout.field} ${layout.fieldFull}`}>
           <label className={`${layout.label} ${layout.labelRequired}`} htmlFor="collector-server">
@@ -172,7 +184,7 @@ export default function CollectorFormModal({
         </div> : null}
 
       <div className={styles.connectionTestRow}>
-        <button type="button" className={styles.secondaryBtn} onClick={onTestConnection} disabled={saving || testing}>
+        <button type="button" className={styles.secondaryBtn} onClick={onTestConnection} disabled={saving || testing || !hasLogin || !hasServer || isCreate && !String(draft.password || "").trim()}>
           {testing ? <>
               <Icon icon="mdi:loading" className={layout.spinning} aria-hidden />
               {cf.testingConnection}
@@ -265,7 +277,10 @@ export default function CollectorFormModal({
             })} />
             </div>
             <div className={styles.toggleCard}>
-              <span className={styles.toggleCardLabel}>{cf.unreadOnlyLabel}</span>
+              <div>
+                <span className={styles.toggleCardLabel}>{cf.unreadOnlyLabel}</span>
+                <p className={styles.toggleCardHint}>{cf.unreadOnlyHint}</p>
+              </div>
               <Switch checked={draft.unreadOnly !== false} onChange={on => patchDraft({
               unreadOnly: on
             })} />
@@ -289,7 +304,7 @@ export default function CollectorFormModal({
       case "provider":
         return renderProviderStep();
       case "connection":
-        return isManualProvider ? renderConnectionStep() : renderProviderStep();
+        return renderConnectionStep();
       case "ingestion":
         return renderIngestionStep();
       default:
@@ -340,7 +355,7 @@ export default function CollectorFormModal({
             <button type="button" className={layout.ghostBtn} onClick={onClose} disabled={saving || testing}>
               {copy.common.cancel}
             </button>
-            <button type="button" className={layout.primaryBtn} onClick={onSave} disabled={saving || testing || !isManualProvider || isCreate && !sectionMeta.connection}>
+            <button type="button" className={layout.primaryBtn} onClick={onSave} disabled={saving || testing || !providerKey || isCreate && !sectionMeta.connection || !isCreate && !hasLogin}>
               {saving ? <>
                   <Icon icon="mdi:loading" className={layout.spinning} aria-hidden />
                   {copy.common.saving}

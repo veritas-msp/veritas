@@ -763,11 +763,26 @@ router.post("/collectors/test-connection", verifyJWT, [body("collector").isObjec
   const validationResponse = validationErrorOrNull(req, res);
   if (validationResponse) return;
   try {
-    const collector = normalizeTicketAutomationMailCollector(req.body?.collector || {}, 0);
-    await withImapClient(collector, async () => true);
+    const incoming = normalizeTicketAutomationMailCollector(req.body?.collector || {}, 0);
+    const storedRows = await loadMailCollectorsRaw().catch(() => []);
+    const stored = (Array.isArray(storedRows) ? storedRows : [])
+      .map((row, idx) => normalizeMailCollector(row, idx))
+      .find(row => String(row.id) === String(incoming.id));
+    const collector = {
+      ...stored,
+      ...incoming,
+      password: incoming.password || stored?.password || ""
+    };
+    const identity = await withImapClient(collector, async client => ({
+      user: String(collector.username || "").trim(),
+      host: String(collector.server || "").trim(),
+      folder: String(collector.inboxFolder || "INBOX").trim() || "INBOX",
+      authenticated: Boolean(client?.authenticated)
+    }));
     return res.json({
       success: true,
-      message: "IMAP connection successful."
+      message: `IMAP OK for ${identity.user} @ ${identity.host}`,
+      identity
     });
   } catch (err) {
     return res.status(400).json({
@@ -780,7 +795,16 @@ router.post("/collectors/folders", verifyJWT, [body("collector").isObject()], as
   const validationResponse = validationErrorOrNull(req, res);
   if (validationResponse) return;
   try {
-    const collector = normalizeTicketAutomationMailCollector(req.body?.collector || {}, 0);
+    const incoming = normalizeTicketAutomationMailCollector(req.body?.collector || {}, 0);
+    const storedRows = await loadMailCollectorsRaw().catch(() => []);
+    const stored = (Array.isArray(storedRows) ? storedRows : [])
+      .map((row, idx) => normalizeMailCollector(row, idx))
+      .find(row => String(row.id) === String(incoming.id));
+    const collector = {
+      ...stored,
+      ...incoming,
+      password: incoming.password || stored?.password || ""
+    };
     const folders = await withImapClient(collector, async client => {
       const list = await client.list();
       return (Array.isArray(list) ? list : []).map(item => String(item?.path || "").trim()).filter(Boolean).sort((a, b) => a.localeCompare(b, "fr"));
@@ -1123,12 +1147,13 @@ router.post("/collectors/force-fetch", verifyJWT, [body("collector").isObject()]
     const stored = (Array.isArray(storedRows) ? storedRows : [])
       .map((row, idx) => normalizeMailCollector(row, idx))
       .find(row => String(row.id) === String(incoming.id));
-    // Always prefer persisted IMAP identity (username/server/password/folder) from DB.
+    // Prefer persisted secrets, but never override a newly typed login/server/folder with stale values
+    // when the admin is force-fetching from an unsaved draft. Password falls back to stored.
     const collector = stored
       ? {
-          ...incoming,
           ...stored,
-          password: stored.password || incoming.password
+          ...incoming,
+          password: incoming.password || stored.password || ""
         }
       : incoming;
     const stats = await processMailCollector(collector, {

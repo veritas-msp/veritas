@@ -76,6 +76,52 @@
   color: var(--msp-muted, #5c6b82);
 }
 
+.identityBanner {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  margin: 0 0 1rem;
+  padding: 0.85rem 0.95rem;
+  border-radius: 12px;
+  border: 1px solid rgba(43, 95, 171, 0.2);
+  background: rgba(43, 95, 171, 0.06);
+  color: var(--msp-text, #0f1c2e);
+}
+
+.identityBanner svg {
+  flex-shrink: 0;
+  margin-top: 0.1rem;
+  font-size: 1.25rem;
+  color: var(--msp-accent, #2b5fab);
+}
+
+.identityBanner strong {
+  display: block;
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.identityBanner p {
+  margin: 0.2rem 0 0;
+  font-size: 0.82rem;
+  color: var(--msp-muted, #5c6b82);
+  word-break: break-word;
+}
+
+.fieldHint {
+  margin: 0.35rem 0 0;
+  font-size: 0.74rem;
+  line-height: 1.4;
+  color: var(--msp-muted, #5c6b82);
+}
+
+.toggleCardHint {
+  margin: 0.25rem 0 0;
+  font-size: 0.72rem;
+  line-height: 1.35;
+  color: var(--msp-muted, #5c6b82);
+}
+
 .connectionTestRow {
   margin-top: 1.25rem;
   padding-top: 1.25rem;

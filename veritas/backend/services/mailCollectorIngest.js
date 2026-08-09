@@ -638,6 +638,8 @@ async function processMessagesInMailbox(client, collector, exclusionRules, mailC
   };
   const lock = await client.getMailboxLock(inboxFolder);
   try {
+    const mailboxTotal = Number(client?.mailbox?.exists);
+    stats.mailboxTotal = Number.isFinite(mailboxTotal) ? mailboxTotal : null;
     const fetched = [];
     for await (const message of client.fetch(fetchQuery, {
       uid: true,
@@ -756,16 +758,24 @@ export async function processMailCollector(collectorInput, {
   const prefix = force ? "Manual check" : "Automatic check";
   const loginUser = String(collector.username || stats.loginUser || "").trim() || "?";
   const folder = String(collector.inboxFolder || stats.inboxFolder || "INBOX").trim() || "INBOX";
+  const host = String(collector.server || "").trim() || "?";
+  const unreadOnly = collector.unreadOnly !== false;
+  const mailboxTotal = Number.isFinite(Number(stats.mailboxTotal)) ? Number(stats.mailboxTotal) : null;
   const sample = Array.isArray(stats.sampleRecipients) && stats.sampleRecipients.length
     ? ` Sample To/Cc: ${stats.sampleRecipients.slice(0, 3).join(" ; ")}`
     : "";
+  const scope = unreadOnly ? "unread only" : "all messages";
+  const mailboxInfo = mailboxTotal == null ? "" : ` mailbox=${mailboxTotal}`;
   await appendCollectorLogInConfig(
     collector.id,
     "info",
-    `${prefix} as ${loginUser} / ${folder}: ${Number(stats.fetched) || 0} fetched, ${stats.inspected} matched, ${stats.attached} attached, ${stats.ignored} ignored.${sample}`
+    `${prefix} as ${loginUser} @ ${host} / ${folder} (${scope}${mailboxInfo}): ${Number(stats.fetched) || 0} fetched, ${stats.inspected} matched, ${stats.attached} attached, ${stats.ignored} ignored.${sample}`
   ).catch(() => {});
   return {
     ...stats,
-    skipped: false
+    skipped: false,
+    loginUser,
+    host,
+    inboxFolder: folder
   };
 }

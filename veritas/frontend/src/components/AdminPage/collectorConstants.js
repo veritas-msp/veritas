@@ -4,7 +4,7 @@ export const COLLECTOR_PROVIDER_PRESETS = [{
   icon: "mingcute:mail-fill",
   hint: "Manual configuration",
   connectionTitle: "Manual IMAP connection",
-  connectionDescription: "Enter the credentials for the mailbox to scan.",
+  connectionDescription: "Enter the mailbox login (email), password and IMAP server to scan.",
   defaults: {
     protocol: "imap",
     security: "ssl",
@@ -17,8 +17,9 @@ export const COLLECTOR_PROVIDER_PRESETS = [{
   key: "gmail",
   label: "Gmail",
   icon: "mdi:gmail",
-  hint: "Google account",
-  comingSoon: true,
+  hint: "Google account (IMAP + app password)",
+  connectionTitle: "Gmail IMAP",
+  connectionDescription: "Use the Gmail address as login and an app password (not your normal Google password).",
   defaults: {
     protocol: "imap",
     security: "ssl",
@@ -31,8 +32,9 @@ export const COLLECTOR_PROVIDER_PRESETS = [{
   key: "outlook-com",
   label: "Outlook.com",
   icon: "mdi:microsoft-outlook",
-  hint: "Microsoft mailbox",
-  comingSoon: true,
+  hint: "Microsoft personal mailbox",
+  connectionTitle: "Outlook.com IMAP",
+  connectionDescription: "Use the Outlook address as login and the mailbox password (or app password if required).",
   defaults: {
     protocol: "imap",
     security: "ssl",
@@ -45,8 +47,9 @@ export const COLLECTOR_PROVIDER_PRESETS = [{
   key: "o365",
   label: "Microsoft 365",
   icon: "mdi:microsoft-office",
-  hint: "Office 365 tenant",
-  comingSoon: true,
+  hint: "Office 365 tenant (IMAP)",
+  connectionTitle: "Microsoft 365 IMAP",
+  connectionDescription: "Use the full mailbox address as login. IMAP must be enabled on the tenant.",
   defaults: {
     protocol: "imap",
     security: "ssl",
@@ -60,7 +63,8 @@ export const COLLECTOR_PROVIDER_PRESETS = [{
   label: "OVH",
   icon: "simple-icons:ovh",
   hint: "OVH mail / MX Plan",
-  comingSoon: true,
+  connectionTitle: "OVH IMAP",
+  connectionDescription: "Use the full email address as IMAP login, then the mailbox password.",
   defaults: {
     protocol: "imap",
     security: "ssl",
@@ -73,10 +77,11 @@ export const COLLECTOR_PROVIDER_PRESETS = [{
   key: "exchange",
   label: "Exchange",
   icon: "simple-icons:microsoftexchange",
-  hint: "Exchange server",
-  comingSoon: true,
+  hint: "Via IMAP if enabled",
+  connectionTitle: "Exchange IMAP",
+  connectionDescription: "If your Exchange exposes IMAP, use the mailbox address as login. Otherwise ask your admin to enable IMAP.",
   defaults: {
-    protocol: "exchange",
+    protocol: "imap",
     security: "ssl",
     validateCertMode: "validate-cert",
     server: "outlook.office365.com",
@@ -88,7 +93,8 @@ export const COLLECTOR_PROVIDER_PRESETS = [{
   label: "Yahoo Mail",
   icon: "mdi:yahoo",
   hint: "Yahoo account",
-  comingSoon: true,
+  connectionTitle: "Yahoo IMAP",
+  connectionDescription: "Use the Yahoo address as login and an app password.",
   defaults: {
     protocol: "imap",
     security: "ssl",
@@ -102,7 +108,8 @@ export const COLLECTOR_PROVIDER_PRESETS = [{
   label: "iCloud Mail",
   icon: "mdi:apple-icloud",
   hint: "Apple account",
-  comingSoon: true,
+  connectionTitle: "iCloud IMAP",
+  connectionDescription: "Use the iCloud address as login and an app-specific password.",
   defaults: {
     protocol: "imap",
     security: "ssl",
@@ -116,7 +123,8 @@ export const COLLECTOR_PROVIDER_PRESETS = [{
   label: "Zoho Mail",
   icon: "simple-icons:zoho",
   hint: "Zoho account",
-  comingSoon: true,
+  connectionTitle: "Zoho IMAP",
+  connectionDescription: "Use the Zoho address as login and the mailbox password.",
   defaults: {
     protocol: "imap",
     security: "ssl",
@@ -130,7 +138,8 @@ export const COLLECTOR_PROVIDER_PRESETS = [{
   label: "Proton Mail",
   icon: "mdi:shield-lock-outline",
   hint: "Via Proton Bridge",
-  comingSoon: true,
+  connectionTitle: "Proton Bridge IMAP",
+  connectionDescription: "Requires Proton Bridge locally. Use Bridge IMAP host/port and Bridge credentials.",
   defaults: {
     protocol: "imap",
     security: "ssl",
@@ -162,7 +171,7 @@ export function findCollectorProviderPreset(collector = {}) {
   if (!server) return COLLECTOR_PROVIDER_PRESETS[0];
   const match = COLLECTOR_PROVIDER_PRESETS.find(item => !item.comingSoon && String(item.defaults?.server || "").toLowerCase() === server && String(item.defaults?.protocol || "imap").toLowerCase() === protocol);
   if (match) return match;
-  const fuzzy = COLLECTOR_PROVIDER_PRESETS.find(item => item.comingSoon && String(item.defaults?.server || "").toLowerCase() === server);
+  const fuzzy = COLLECTOR_PROVIDER_PRESETS.find(item => String(item.defaults?.server || "").toLowerCase() === server);
   return fuzzy || COLLECTOR_PROVIDER_PRESETS[0];
 }
 export function normalizeCollectorStats(stats) {

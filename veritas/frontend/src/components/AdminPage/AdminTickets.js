@@ -2289,7 +2289,9 @@ export default function AdminTickets({
     setEditingCollectorId(collector.id);
     setCollectorDraft({
       ...buildDefaultCollector(),
-      ...collector
+      ...collector,
+      // Never echo stored password into the form; blank = keep current on save.
+      password: ""
     });
     setCollectorProviderKey(findCollectorProviderPreset(collector).key);
     setShowCollectorModal(true);
@@ -2311,6 +2313,16 @@ export default function AdminTickets({
     const selected = COLLECTOR_PROVIDER_PRESETS.find(item => item.key === providerKey);
     if (!selected || selected.comingSoon) return;
     setCollectorProviderKey(providerKey);
+    const defaults = selected.defaults || {};
+    setCollectorDraft(prev => ({
+      ...prev,
+      protocol: defaults.protocol || prev.protocol || "imap",
+      security: defaults.security || prev.security || "ssl",
+      validateCertMode: defaults.validateCertMode || prev.validateCertMode || "no-validate-cert",
+      server: defaults.server !== undefined && defaults.server !== "" ? defaults.server : prev.server,
+      port: defaults.port !== undefined ? defaults.port : prev.port,
+      inboxFolder: defaults.inboxFolder || prev.inboxFolder || "INBOX"
+    }));
   };
   const appendCollectorDraftLog = (level, message) => {
     const entry = {
@@ -2342,15 +2354,21 @@ export default function AdminTickets({
           "Content-Type": "application/json"
         },
         body: JSON.stringify({
-          collector: collectorDraft
+          collector: {
+            ...collectorDraft,
+            // On edit with blank password, reuse the stored secret for the live test.
+            password: String(collectorDraft.password || "").trim() || mailCollectors.find(item => String(item.id) === String(editingCollectorId))?.password || ""
+          }
         })
       });
       const payload = await response.json().catch(() => ({}));
       if (!response.ok || payload?.success === false) {
         throw new Error(payload?.error || mc.toast.imapConnectionFailed);
       }
-      toast.success(payload?.message || mc.toast.imapTestSuccess);
-      appendCollectorDraftLog("success", mc.collectorForm.logConnectionSuccess);
+      const identity = payload?.identity;
+      const identityLabel = identity?.user && identity?.host ? `${identity.user} @ ${identity.host}` : "";
+      toast.success(identityLabel ? `${payload?.message || mc.toast.imapTestSuccess} (${identityLabel})` : payload?.message || mc.toast.imapTestSuccess);
+      appendCollectorDraftLog("success", identityLabel ? `${mc.collectorForm.logConnectionSuccess} ${identityLabel}` : mc.collectorForm.logConnectionSuccess);
     } catch (error) {
       toast.error(error?.message || mc.toast.imapTestError);
       appendCollectorDraftLog("error", interpolate(mc.collectorForm.logConnectionFailed, {
@@ -2405,7 +2423,10 @@ export default function AdminTickets({
           "Content-Type": "application/json"
         },
         body: JSON.stringify({
-          collector: collectorDraft
+          collector: {
+            ...collectorDraft,
+            password: String(collectorDraft.password || "").trim() || mailCollectors.find(item => String(item.id) === String(editingCollectorId))?.password || ""
+          }
         })
       });
       const payload = await response.json().catch(() => ({}));
@@ -2450,16 +2471,25 @@ export default function AdminTickets({
     const payload = {
       ...buildDefaultCollector(),
       ...collectorDraft,
+      id: collectorModalMode === "edit" && editingCollectorId ? editingCollectorId : collectorDraft.id,
       name,
       server,
       username,
       protocol: "imap",
-      security: "ssl",
+      security: String(collectorDraft.security || "ssl"),
       inboxFolder: String(collectorDraft.inboxFolder || "INBOX").trim() || "INBOX",
       acceptedFolder: String(collectorDraft.acceptedFolder || "").trim(),
       refusedFolder: String(collectorDraft.refusedFolder || "").trim()
     };
-    const nextCollectors = ensureUniqueCollectorIds(collectorModalMode === "create" ? [...mailCollectors, payload] : mailCollectors.map(item => item.id === editingCollectorId ? payload : item));
+    // Blank password on edit means "keep current secret".
+    if (collectorModalMode === "edit" && !String(payload.password || "").trim()) {
+      delete payload.password;
+    }
+    const nextCollectors = ensureUniqueCollectorIds(collectorModalMode === "create" ? [...mailCollectors, payload] : mailCollectors.map(item => item.id === editingCollectorId ? {
+      ...item,
+      ...payload,
+      password: payload.password || item.password || ""
+    } : item));
     setMailCollectors(nextCollectors);
     setSavingCollector(true);
     try {
