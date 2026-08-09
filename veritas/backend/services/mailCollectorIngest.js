@@ -182,19 +182,43 @@ async function attachEmailToTicket({
   await pool.query(`UPDATE v_b_tickets SET updated_at = NOW() WHERE id = $1`, [ticketId]);
   return ticketNumber;
 }
-async function archiveMatchedMail(collector, matchingRule, client, messageUid) {
-  if (collector.acceptedFolder && matchingRule.archiveOnMatch !== false) {
-    await client.messageMove(messageUid, collector.acceptedFolder).catch(() => {});
-  }
-}
-async function moveMailToRefused(collector, client, messageUid) {
-  if (collector.refusedFolder) {
-    await client.messageMove(messageUid, collector.refusedFolder).catch(() => {});
-  }
-}
 async function markMailSeen(client, messageUid) {
   if (!messageUid) return;
   await client.messageFlagsAdd(messageUid, ["\\Seen"]).catch(() => {});
+}
+async function moveMailToFolder(collector, client, messageUid, folder, {
+  label = "folder"
+} = {}) {
+  const target = String(folder || "").trim();
+  if (!messageUid) return false;
+  if (!target) {
+    await markMailSeen(client, messageUid);
+    return false;
+  }
+  try {
+    await client.messageMove(messageUid, target);
+    return true;
+  } catch (err) {
+    console.warn(`[mail-collector] Failed to move uid=${messageUid} to ${label} "${target}":`, err?.message || err);
+    await markMailSeen(client, messageUid);
+    return false;
+  }
+}
+/** Successfully handled mail (ticket/comment/rule ignore) → accepted folder. */
+async function moveMailToAccepted(collector, client, messageUid) {
+  return moveMailToFolder(collector, client, messageUid, collector?.acceptedFolder, {
+    label: "accepted"
+  });
+}
+/** Rejected / orphan / failed mail → refused folder. */
+async function moveMailToRefused(collector, client, messageUid) {
+  return moveMailToFolder(collector, client, messageUid, collector?.refusedFolder, {
+    label: "refused"
+  });
+}
+async function archiveMatchedMail(collector, _matchingRule, client, messageUid) {
+  // Always relocate processed mail out of the inbox when folders are configured.
+  return moveMailToAccepted(collector, client, messageUid);
 }
 async function rememberProcessedInboundMail({
   collector,
@@ -277,6 +301,12 @@ async function createInboundTicketAndRecord({
   if (!created?.id) {
     stats.ignored += 1;
     await moveMailToRefused(collector, client, message.uid);
+    await rememberProcessedInboundMail({
+      collector,
+      client,
+      message,
+      mailContext
+    });
     await appendCollectorLogInConfig(collector.id, "warning", `Failed to create ${successLogLabel} for "${subjectPreview}".`).catch(() => {});
     return null;
   }
@@ -327,13 +357,14 @@ async function handleThreadedTicketMail({
   }
   if (mailContext.isReply === "yes" && threadLookupEnabled) {
     stats.ignored += 1;
+    // Orphan replies are treated as refused (not linked to a Veritas ticket).
+    await moveMailToRefused(collector, client, message.uid);
     if (mailCollectSettings?.orphanReplyBehavior === "refuse") {
-      await moveMailToRefused(collector, client, message.uid);
       await appendCollectorLogInConfig(collector.id, "warning", `Reply rejected: no ticket linked to the thread ("${subjectPreview}").`).catch(() => {});
     } else {
-      await appendCollectorLogInConfig(collector.id, "info", `Reply ignored: no ticket linked to the thread ("${subjectPreview}").`).catch(() => {});
+      await appendCollectorLogInConfig(collector.id, "info", `Reply ignored: no ticket linked to the thread ("${subjectPreview}"). Moved to refused folder when configured.`).catch(() => {});
     }
-    // Remember Message-ID + mark Seen so the same orphan reply is not reprocessed every poll.
+    // Remember Message-ID so the same orphan reply is not reprocessed every poll.
     await rememberProcessedInboundMail({
       collector,
       client,
@@ -370,13 +401,25 @@ async function processMatchedMail({
   const threadLookupEnabled = mailCollectSettings?.threadRepliesEnabled !== false;
   if (action === "ignore_mail") {
     stats.ignored += 1;
-    await archiveMatchedMail(collector, matchingRule, client, message.uid);
+    await moveMailToAccepted(collector, client, message.uid);
+    await rememberProcessedInboundMail({
+      collector,
+      client,
+      message,
+      mailContext
+    });
     await appendCollectorLogInConfig(collector.id, "info", `Email ignored by rule "${actionLabel}" (subject "${subjectPreview}").`).catch(() => {});
     return;
   }
   if (action === "create_ticket_services" && !isPro()) {
     stats.ignored += 1;
     await moveMailToRefused(collector, client, message.uid);
+    await rememberProcessedInboundMail({
+      collector,
+      client,
+      message,
+      mailContext
+    });
     await appendCollectorLogInConfig(collector.id, "warning", `Services action is reserved for Veritas Pro — email ignored ("${subjectPreview}").`).catch(() => {});
     return;
   }
@@ -388,6 +431,12 @@ async function processMatchedMail({
     if (!ticketRow?.id) {
       stats.ignored += 1;
       await moveMailToRefused(collector, client, message.uid);
+      await rememberProcessedInboundMail({
+        collector,
+        client,
+        message,
+        mailContext
+      });
       await appendCollectorLogInConfig(collector.id, "warning", `Unable to attach: ticket not found for this thread ("${subjectPreview}").`).catch(() => {});
       return;
     }
