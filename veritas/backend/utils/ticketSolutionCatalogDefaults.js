@@ -1,6 +1,7 @@
 import { ALLOWED_LOCALES } from "./generalSettings.js";
 const CATALOG_ENTRIES = [{
   category: "intervention",
+  key: "remote",
   displayOrder: 10,
   labels: {
     fr: "À distance",
@@ -11,6 +12,7 @@ const CATALOG_ENTRIES = [{
   }
 }, {
   category: "intervention",
+  key: "onsite",
   displayOrder: 20,
   labels: {
     fr: "Sur site",
@@ -21,6 +23,7 @@ const CATALOG_ENTRIES = [{
   }
 }, {
   category: "intervention",
+  key: "workshop",
   displayOrder: 30,
   labels: {
     fr: "En atelier",
@@ -31,6 +34,7 @@ const CATALOG_ENTRIES = [{
   }
 }, {
   category: "intervention",
+  key: "sales",
   displayOrder: 40,
   labels: {
     fr: "Commerce",
@@ -41,6 +45,7 @@ const CATALOG_ENTRIES = [{
   }
 }, {
   category: "action",
+  interventionKey: "onsite",
   displayOrder: 10,
   labels: {
     fr: "Branchement",
@@ -51,6 +56,7 @@ const CATALOG_ENTRIES = [{
   }
 }, {
   category: "action",
+  interventionKey: "remote",
   displayOrder: 20,
   labels: {
     fr: "Configuration",
@@ -61,6 +67,7 @@ const CATALOG_ENTRIES = [{
   }
 }, {
   category: "action",
+  interventionKey: "remote",
   displayOrder: 30,
   labels: {
     fr: "Mise à jour",
@@ -71,6 +78,7 @@ const CATALOG_ENTRIES = [{
   }
 }, {
   category: "action",
+  interventionKey: "sales",
   displayOrder: 40,
   labels: {
     fr: "Demande de devis",
@@ -81,6 +89,7 @@ const CATALOG_ENTRIES = [{
   }
 }, {
   category: "action",
+  interventionKey: "onsite",
   displayOrder: 50,
   labels: {
     fr: "Remplacement de matériel",
@@ -91,6 +100,7 @@ const CATALOG_ENTRIES = [{
   }
 }, {
   category: "action",
+  interventionKey: "workshop",
   displayOrder: 60,
   labels: {
     fr: "Remplacement d'une pièce",
@@ -101,6 +111,7 @@ const CATALOG_ENTRIES = [{
   }
 }, {
   category: "action",
+  interventionKey: "workshop",
   displayOrder: 70,
   labels: {
     fr: "Réparation",
@@ -111,6 +122,7 @@ const CATALOG_ENTRIES = [{
   }
 }, {
   category: "action",
+  interventionKey: "remote",
   displayOrder: 80,
   labels: {
     fr: "Diagnostic",
@@ -121,6 +133,7 @@ const CATALOG_ENTRIES = [{
   }
 }, {
   category: "action",
+  interventionKey: "onsite",
   displayOrder: 90,
   labels: {
     fr: "Installation",
@@ -131,6 +144,7 @@ const CATALOG_ENTRIES = [{
   }
 }, {
   category: "action",
+  interventionKey: "onsite",
   displayOrder: 100,
   labels: {
     fr: "Désinstallation",
@@ -141,6 +155,7 @@ const CATALOG_ENTRIES = [{
   }
 }, {
   category: "action",
+  interventionKey: "remote",
   displayOrder: 110,
   labels: {
     fr: "Migration de données",
@@ -151,6 +166,7 @@ const CATALOG_ENTRIES = [{
   }
 }, {
   category: "action",
+  interventionKey: "remote",
   displayOrder: 120,
   labels: {
     fr: "Sauvegarde / restauration",
@@ -161,6 +177,7 @@ const CATALOG_ENTRIES = [{
   }
 }, {
   category: "action",
+  interventionKey: "onsite",
   displayOrder: 130,
   labels: {
     fr: "Nettoyage / maintenance",
@@ -171,6 +188,7 @@ const CATALOG_ENTRIES = [{
   }
 }, {
   category: "action",
+  interventionKey: "onsite",
   displayOrder: 140,
   labels: {
     fr: "Formation utilisateur",
@@ -181,6 +199,7 @@ const CATALOG_ENTRIES = [{
   }
 }, {
   category: "action",
+  interventionKey: "remote",
   displayOrder: 150,
   labels: {
     fr: "Paramétrage logiciel",
@@ -191,6 +210,7 @@ const CATALOG_ENTRIES = [{
   }
 }, {
   category: "action",
+  interventionKey: "remote",
   displayOrder: 160,
   labels: {
     fr: "Paramétrage réseau",
@@ -201,6 +221,7 @@ const CATALOG_ENTRIES = [{
   }
 }, {
   category: "action",
+  interventionKey: "remote",
   displayOrder: 170,
   labels: {
     fr: "Création de compte",
@@ -211,6 +232,7 @@ const CATALOG_ENTRIES = [{
   }
 }, {
   category: "action",
+  interventionKey: "remote",
   displayOrder: 180,
   labels: {
     fr: "Réinitialisation mot de passe",
@@ -221,6 +243,7 @@ const CATALOG_ENTRIES = [{
   }
 }, {
   category: "action",
+  interventionKey: "remote",
   displayOrder: 190,
   labels: {
     fr: "Restauration de service",
@@ -231,6 +254,7 @@ const CATALOG_ENTRIES = [{
   }
 }, {
   category: "action",
+  interventionKey: "remote",
   displayOrder: 200,
   labels: {
     fr: "Analyse de logs",
@@ -241,6 +265,7 @@ const CATALOG_ENTRIES = [{
   }
 }, {
   category: "action",
+  interventionKey: "remote",
   displayOrder: 210,
   labels: {
     fr: "Mise en conformité",
@@ -251,6 +276,7 @@ const CATALOG_ENTRIES = [{
   }
 }, {
   category: "action",
+  interventionKey: "remote",
   displayOrder: 220,
   labels: {
     fr: "Audit",
@@ -261,6 +287,7 @@ const CATALOG_ENTRIES = [{
   }
 }, {
   category: "action",
+  interventionKey: "remote",
   displayOrder: 230,
   labels: {
     fr: "Conseil / recommandation",
@@ -271,6 +298,7 @@ const CATALOG_ENTRIES = [{
   }
 }, {
   category: "action",
+  interventionKey: "onsite",
   displayOrder: 240,
   labels: {
     fr: "Livraison matériel",
@@ -281,6 +309,7 @@ const CATALOG_ENTRIES = [{
   }
 }, {
   category: "action",
+  interventionKey: "onsite",
   displayOrder: 250,
   labels: {
     fr: "Récupération matériel",
@@ -291,6 +320,7 @@ const CATALOG_ENTRIES = [{
   }
 }, {
   category: "action",
+  interventionKey: "remote",
   displayOrder: 260,
   labels: {
     fr: "Test et validation",
@@ -301,6 +331,7 @@ const CATALOG_ENTRIES = [{
   }
 }, {
   category: "action",
+  interventionKey: "remote",
   displayOrder: 270,
   labels: {
     fr: "Escalade fournisseur",
@@ -311,6 +342,7 @@ const CATALOG_ENTRIES = [{
   }
 }, {
   category: "action",
+  interventionKey: "onsite",
   displayOrder: 280,
   labels: {
     fr: "Intervention annulée (client absent)",
@@ -321,6 +353,7 @@ const CATALOG_ENTRIES = [{
   }
 }, {
   category: "action",
+  interventionKey: "onsite",
   displayOrder: 290,
   labels: {
     fr: "Accès refusé",
@@ -336,13 +369,21 @@ export function normalizeSolutionCatalogLocale(locale) {
 }
 export function getSolutionCatalogDefaults(locale = "fr") {
   const code = normalizeSolutionCatalogLocale(locale);
+  const interventionLabelsByKey = {};
+  for (const entry of CATALOG_ENTRIES) {
+    if (entry.category === "intervention" && entry.key) {
+      interventionLabelsByKey[entry.key] = entry.labels[code] || entry.labels.fr;
+    }
+  }
   return CATALOG_ENTRIES.map(({
     category,
     displayOrder,
-    labels
+    labels,
+    interventionKey
   }) => ({
     category,
     displayOrder,
-    label: labels[code] || labels.fr
+    label: labels[code] || labels.fr,
+    intervention: category === "action" ? interventionLabelsByKey[interventionKey] || interventionLabelsByKey.remote || null : null
   }));
 }

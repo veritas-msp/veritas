@@ -3,7 +3,7 @@ import { toast } from "react-toastify";
 import { useAdminPageCopy } from "../../hooks/useAdminCopy";
 import { useCommonCopy } from "../../hooks/useCommonCopy";
 import { deleteLoginBrandingAsset, fetchLoginBrandingAdmin, updateLoginBranding, uploadLoginBrandingAsset } from "../../api/loginBranding";
-import { DEFAULT_SIDE_COLORS, LOGIN_SIDES, flatToSideForm, resolveLoginAssetUrl, sideFormToFlat } from "../../utils/loginBrandingUtils";
+import { DEFAULT_SIDE_COLORS, LOGIN_BRANDING_MAX_UPLOAD_BYTES, LOGIN_SIDES, flatToSideForm, resolveBrandingText, resolveLoginAssetUrl, sideFormToFlat } from "../../utils/loginBrandingUtils";
 import { Page, Card, Field, Input, Textarea, Btn, Switch, FormGrid, SubTabs } from "./AdminUi";
 import adminUi from "./AdminUi.module.css";
 import s from "./AdminLoginBranding.module.css";
@@ -15,6 +15,8 @@ const EMPTY_SIDE = {
   features: "",
   brandName: "",
   logoPath: "",
+  logoTransparent: false,
+  logoBgColor: "",
   bgImagePath: "",
   bgColorStart: "",
   bgColorEnd: "",
@@ -48,13 +50,16 @@ function AssetUploadField({
   onDelete,
   uploading,
   chooseLabel,
-  removeLabel
+  removeLabel,
+  previewBackground
 }) {
   const inputRef = useRef(null);
   const previewUrl = resolveLoginAssetUrl(path);
   return <Field label={label} hint={hint}>
       <div className={s.assetBox}>
-        {previewUrl ? <div className={s.assetPreview}>
+        {previewUrl ? <div className={s.assetPreview} style={previewBackground ? {
+        background: previewBackground
+      } : undefined}>
             <img src={previewUrl} alt="" />
           </div> : <div className={s.assetPlaceholder}>-</div>}
         <div className={s.assetActions}>
@@ -65,7 +70,7 @@ function AssetUploadField({
               {removeLabel}
             </Btn> : null}
         </div>
-        <input ref={inputRef} type="file" accept="image/png,image/jpeg,image/webp,image/svg+xml" className={s.hiddenFile} onChange={e => {
+        <input ref={inputRef} type="file" accept="image/png,image/jpeg,image/webp,.png,.jpg,.jpeg,.webp" className={s.hiddenFile} onChange={e => {
         const file = e.target.files?.[0];
         e.target.value = "";
         if (file) onUpload(file);
@@ -84,26 +89,35 @@ function LoginPreview({
   const accent = form.accentColor || defaults.accentColor;
   const logoUrl = resolveLoginAssetUrl(form.logoPath);
   const bgImageUrl = resolveLoginAssetUrl(form.bgImagePath);
+  const logoBg = form.logoBgColor || defaults.logoBgColor;
   const features = String(form.features || "").split("\n").map(line => line.trim()).filter(Boolean).slice(0, 3);
   const panelStyle = {
     background: bgImageUrl ? `linear-gradient(160deg, ${bgStart}dd 0%, ${bgEnd}dd 100%), url("${bgImageUrl}") center/cover` : `linear-gradient(160deg, ${bgStart} 0%, ${bgEnd} 100%)`
   };
+  const headline1 = resolveBrandingText(form.headlineLine1, copy.previewHeadline1);
+  const headline2 = resolveBrandingText(form.headlineLine2, copy.previewHeadline2);
+  const sub = resolveBrandingText(form.sub, copy.previewSub);
+  const brandName = form.brandName === "" ? "Veritas" : String(form.brandName || "").trim() || "";
   return <div className={s.previewShell}>
       <p className={s.previewLabel}>{copy.previewLabel}</p>
       <div className={s.previewFrame}>
         <aside className={s.previewLeft} style={panelStyle}>
           <div className={s.previewBrand}>
-            {logoUrl ? <img src={logoUrl} alt="" className={s.previewLogo} /> : <div className={s.previewBrandIcon} style={{
+            {logoUrl ? <img src={logoUrl} alt="" className={s.previewLogo} style={form.logoTransparent ? {
+            background: logoBg
+          } : {
+            background: "transparent"
+          }} /> : <div className={s.previewBrandIcon} style={{
             background: accent
           }}>V</div>}
-            <span>{form.brandName || "Veritas"}</span>
+            <span>{brandName || "\u00A0"}</span>
           </div>
           <h3 className={s.previewHeadline}>
-            {form.headlineLine1 || copy.previewHeadline1}
-            <br />
-            {form.headlineLine2 || copy.previewHeadline2}
+            {headline1}
+            {headline1 || headline2 ? <br /> : null}
+            {headline2}
           </h3>
-          <p className={s.previewSub}>{form.sub || copy.previewSub}</p>
+          <p className={s.previewSub}>{sub}</p>
           <ul className={s.previewFeatures}>
             {features.map(item => <li key={item}>
                 <span style={{
@@ -208,6 +222,15 @@ export default function AdminLoginBranding({
     }
   };
   const handleUpload = async (kind, file) => {
+    if (file.size > LOGIN_BRANDING_MAX_UPLOAD_BYTES) {
+      toast.error(copy.uploadTooLarge);
+      return;
+    }
+    const allowed = /image\/(png|jpe?g|webp)/i.test(file.type) || /\.(png|jpe?g|webp)$/i.test(file.name || "");
+    if (file.type && !allowed && file.type !== "application/octet-stream") {
+      toast.error(copy.uploadBadFormat);
+      return;
+    }
     setUploading(kind);
     try {
       const {
@@ -257,22 +280,22 @@ export default function AdminLoginBranding({
         </div>
 
         <FormGrid cols={2}>
-          <Field label={copy.headline1Label}>
+          <Field label={copy.headline1Label} hint={copy.blankFieldHint}>
             <Input value={form.headlineLine1} onChange={e => setField("headlineLine1", e.target.value)} placeholder={copy.previewHeadline1} />
           </Field>
-          <Field label={copy.headline2Label}>
+          <Field label={copy.headline2Label} hint={copy.blankFieldHint}>
             <Input value={form.headlineLine2} onChange={e => setField("headlineLine2", e.target.value)} placeholder={copy.previewHeadline2} />
           </Field>
-          <Field label={copy.subLabel} spanFull>
+          <Field label={copy.subLabel} spanFull hint={copy.blankFieldHint}>
             <Textarea value={form.sub} onChange={e => setField("sub", e.target.value)} rows={2} placeholder={copy.previewSub} />
           </Field>
           <Field label={copy.featuresLabel} spanFull hint={copy.featuresHint}>
             <Textarea value={form.features} onChange={e => setField("features", e.target.value)} rows={4} placeholder={copy.featuresPlaceholder} />
           </Field>
-          <Field label={copy.brandNameLabel}>
+          <Field label={copy.brandNameLabel} hint={copy.blankFieldHint}>
             <Input value={form.brandName} onChange={e => setField("brandName", e.target.value)} placeholder="Veritas" />
           </Field>
-          <Field label={copy.footerLabel}>
+          <Field label={copy.footerLabel} hint={copy.blankFieldHint}>
             <Input value={form.footerText} onChange={e => setField("footerText", e.target.value)} placeholder={copy.footerPlaceholder} />
           </Field>
         </FormGrid>
@@ -285,8 +308,14 @@ export default function AdminLoginBranding({
             <ColorField label={copy.bgEndLabel} value={form.bgColorEnd} fallback={defaults.bgColorEnd} onChange={value => setField("bgColorEnd", value)} />
             <ColorField label={copy.accentLabel} value={form.accentColor} fallback={defaults.accentColor} onChange={value => setField("accentColor", value)} />
             <ColorField label={copy.rightBgLabel} value={form.rightBgColor} fallback={defaults.rightBgColor} onChange={value => setField("rightBgColor", value)} />
-            <AssetUploadField label={copy.logoLabel} hint={copy.logoHint} path={form.logoPath} uploading={uploading === "logo"} chooseLabel={copy.chooseFile} removeLabel={copy.removeFile} onUpload={file => handleUpload("logo", file)} onDelete={() => handleDeleteAsset("logo")} />
+            <AssetUploadField label={copy.logoLabel} hint={copy.logoHint} path={form.logoPath} uploading={uploading === "logo"} chooseLabel={copy.chooseFile} removeLabel={copy.removeFile} previewBackground={form.logoPath && form.logoTransparent ? form.logoBgColor || defaults.logoBgColor : undefined} onUpload={file => handleUpload("logo", file)} onDelete={() => handleDeleteAsset("logo")} />
             <AssetUploadField label={copy.bgImageLabel} hint={copy.bgImageHint} path={form.bgImagePath} uploading={uploading === "background"} chooseLabel={copy.chooseFile} removeLabel={copy.removeFile} onUpload={file => handleUpload("background", file)} onDelete={() => handleDeleteAsset("background")} />
+            {form.logoPath ? <>
+                <Field label={copy.logoTransparentLabel} spanFull hint={copy.logoTransparentHint}>
+                  <Switch checked={form.logoTransparent} onChange={checked => setField("logoTransparent", checked)} label={copy.logoTransparentSwitch} />
+                </Field>
+                {form.logoTransparent ? <ColorField label={copy.logoBgLabel} hint={copy.logoBgHint} value={form.logoBgColor} fallback={defaults.logoBgColor} onChange={value => setField("logoBgColor", value)} /> : null}
+              </> : null}
           </FormGrid>
         </Card>
 

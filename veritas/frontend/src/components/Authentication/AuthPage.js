@@ -296,8 +296,10 @@ export default function AuthPage() {
       <aside className={`${styles.left} ${!activeBranding.custom && !isForgotView && accountType === "client" ? styles.leftClient : ""} ${activeBranding.custom && !isForgotView ? styles.leftBranded : ""}`} style={brandingStyleVars || undefined}>
         <div className={styles.leftTop}>
           <div className={styles.brand}>
-            {activeBranding.logoUrl ? <img src={activeBranding.logoUrl} alt="" className={styles.brandLogo} /> : <div className={styles.brandIcon}>V</div>}
-            <span className={styles.brandName}>{activeBranding.brandName || "Veritas"}</span>
+            {activeBranding.logoUrl ? <img src={activeBranding.logoUrl} alt="" className={`${styles.brandLogo}${activeBranding.logoTransparent ? ` ${styles.brandLogoFramed}` : ""}`} style={activeBranding.logoTransparent ? {
+              background: activeBranding.logoBgColor
+            } : undefined} /> : <div className={styles.brandIcon}>V</div>}
+            <span className={styles.brandName}>{activeBranding.brandName ?? "Veritas"}</span>
             <AppVersion variant="dark" />
           </div>
           <h2 className={styles.leftHeadline}>{panelHeadline}</h2>
@@ -422,7 +424,7 @@ export default function AuthPage() {
           </div>
 
           <footer className={styles.footer}>
-            <p>{activeBranding.footerText || copy.footer}</p>
+            <p>{activeBranding.footerText ?? copy.footer}</p>
           </footer>
         </div>
       </main>

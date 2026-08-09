@@ -23,7 +23,8 @@
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
 }
 
-:global(html[data-profile-preview="1"]) .sidebar {
+:global(html[data-profile-preview="1"]) .sidebar,
+:global(html[data-agent-impersonation="1"]) .sidebar {
   top: var(--profile-preview-banner-height, 40px);
   height: calc(100vh - var(--profile-preview-banner-height, 40px));
 }
@@ -615,6 +616,28 @@
   font-size: 1.125rem;
   flex-shrink: 0;
   color: #6b7280;
+}
+
+.userMenuItemLabel {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  min-width: 0;
+}
+
+.userMenuBadge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.35rem;
+  height: 1.15rem;
+  padding: 0 0.35rem;
+  border-radius: 999px;
+  background: #f59e0b;
+  color: #111827;
+  font-size: 0.65rem;
+  font-weight: 700;
+  line-height: 1;
 }
 
 .userMenuItem:hover .userMenuItemIcon,

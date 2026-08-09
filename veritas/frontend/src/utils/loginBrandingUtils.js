@@ -1,20 +1,39 @@
 import API_BASE_URL from "../config";
 const BACKEND_BASE_URL = String(API_BASE_URL || "").replace(/\/api\/?$/, "");
 export const LOGIN_SIDES = ["agent", "client"];
+export const LOGIN_BRANDING_MAX_UPLOAD_BYTES = 8 * 1024 * 1024;
 export const DEFAULT_SIDE_COLORS = {
   agent: {
     bgColorStart: "#0f1c2e",
     bgColorEnd: "#1a3060",
     accentColor: "#2b5fab",
-    rightBgColor: "#f4f6fa"
+    rightBgColor: "#f4f6fa",
+    logoBgColor: "#ffffff"
   },
   client: {
     bgColorStart: "#0f2014",
     bgColorEnd: "#1a4030",
     accentColor: "#15ab5a",
-    rightBgColor: "#f4f6fa"
+    rightBgColor: "#f4f6fa",
+    logoBgColor: "#ffffff"
   }
 };
+/** Empty = use hints/defaults. Whitespace-only = intentional blank (kept as a single space). */
+export function serializeTextField(value) {
+  const raw = String(value ?? "");
+  if (raw.length > 0 && raw.trim() === "") return " ";
+  return raw.trim();
+}
+/** Resolve stored branding text: "" → fallback, whitespace-only → blank, other → trimmed value. */
+export function resolveBrandingText(value, fallback) {
+  if (value == null || value === "") return fallback;
+  return String(value).trim();
+}
+/** Optional text: unset ("") → null (use UI default), whitespace → "" (intentional blank). */
+export function resolveOptionalBrandingText(value) {
+  if (value == null || value === "") return null;
+  return String(value).trim();
+}
 export function resolveLoginAssetUrl(relativePath) {
   const raw = String(relativePath || "").trim();
   if (!raw) return null;
@@ -37,18 +56,20 @@ export function flatToSideForm(settings = {}, side) {
   }
   return {
     enabled: settings[`${prefix}enabled`] === "true",
-    headlineLine1: settings[`${prefix}headline_line1`] || "",
-    headlineLine2: settings[`${prefix}headline_line2`] || "",
-    sub: settings[`${prefix}sub`] || "",
+    headlineLine1: settings[`${prefix}headline_line1`] ?? "",
+    headlineLine2: settings[`${prefix}headline_line2`] ?? "",
+    sub: settings[`${prefix}sub`] ?? "",
     features: features.join("\n"),
-    brandName: settings[`${prefix}brand_name`] || "",
+    brandName: settings[`${prefix}brand_name`] ?? "",
     logoPath: settings[`${prefix}logo_path`] || "",
+    logoTransparent: settings[`${prefix}logo_transparent`] === "true",
+    logoBgColor: settings[`${prefix}logo_bg_color`] || "",
     bgImagePath: settings[`${prefix}bg_image_path`] || "",
     bgColorStart: settings[`${prefix}bg_color_start`] || "",
     bgColorEnd: settings[`${prefix}bg_color_end`] || "",
     accentColor: settings[`${prefix}accent_color`] || "",
     rightBgColor: settings[`${prefix}right_bg_color`] || "",
-    footerText: settings[`${prefix}footer_text`] || ""
+    footerText: settings[`${prefix}footer_text`] ?? ""
   };
 }
 export function sideFormToFlat(side, form = {}) {
@@ -56,18 +77,20 @@ export function sideFormToFlat(side, form = {}) {
   const features = String(form.features || "").split("\n").map(line => line.trim()).filter(Boolean).slice(0, 6);
   return {
     [`${prefix}enabled`]: form.enabled ? "true" : "false",
-    [`${prefix}headline_line1`]: String(form.headlineLine1 || "").trim(),
-    [`${prefix}headline_line2`]: String(form.headlineLine2 || "").trim(),
-    [`${prefix}sub`]: String(form.sub || "").trim(),
+    [`${prefix}headline_line1`]: serializeTextField(form.headlineLine1),
+    [`${prefix}headline_line2`]: serializeTextField(form.headlineLine2),
+    [`${prefix}sub`]: serializeTextField(form.sub),
     [`${prefix}features`]: JSON.stringify(features),
-    [`${prefix}brand_name`]: String(form.brandName || "").trim(),
+    [`${prefix}brand_name`]: serializeTextField(form.brandName),
     [`${prefix}logo_path`]: String(form.logoPath || "").trim(),
+    [`${prefix}logo_transparent`]: form.logoTransparent ? "true" : "false",
+    [`${prefix}logo_bg_color`]: String(form.logoBgColor || "").trim(),
     [`${prefix}bg_image_path`]: String(form.bgImagePath || "").trim(),
     [`${prefix}bg_color_start`]: String(form.bgColorStart || "").trim(),
     [`${prefix}bg_color_end`]: String(form.bgColorEnd || "").trim(),
     [`${prefix}accent_color`]: String(form.accentColor || "").trim(),
     [`${prefix}right_bg_color`]: String(form.rightBgColor || "").trim(),
-    [`${prefix}footer_text`]: String(form.footerText || "").trim()
+    [`${prefix}footer_text`]: serializeTextField(form.footerText)
   };
 }
 export function mergeBrandingWithAuthCopy(brandingSide, authPanel, side) {
@@ -79,6 +102,8 @@ export function mergeBrandingWithAuthCopy(brandingSide, authPanel, side) {
       features: authPanel.features,
       brandName: null,
       logoUrl: null,
+      logoTransparent: false,
+      logoBgColor: null,
       bgImageUrl: null,
       footerText: null,
       colors: DEFAULT_SIDE_COLORS[side],
@@ -87,14 +112,16 @@ export function mergeBrandingWithAuthCopy(brandingSide, authPanel, side) {
   }
   const defaults = DEFAULT_SIDE_COLORS[side];
   return {
-    headlineLine1: brandingSide.headlineLine1 || authPanel.headlineLine1,
-    headlineLine2: brandingSide.headlineLine2 || authPanel.headlineLine2,
-    sub: brandingSide.sub || authPanel.sub,
+    headlineLine1: resolveBrandingText(brandingSide.headlineLine1, authPanel.headlineLine1),
+    headlineLine2: resolveBrandingText(brandingSide.headlineLine2, authPanel.headlineLine2),
+    sub: resolveBrandingText(brandingSide.sub, authPanel.sub),
     features: brandingSide.features?.length ? brandingSide.features : authPanel.features,
-    brandName: brandingSide.brandName || null,
+    brandName: resolveOptionalBrandingText(brandingSide.brandName),
     logoUrl: resolveLoginAssetUrl(brandingSide.logoPath),
+    logoTransparent: Boolean(brandingSide.logoTransparent),
+    logoBgColor: brandingSide.logoBgColor || defaults.logoBgColor,
     bgImageUrl: resolveLoginAssetUrl(brandingSide.bgImagePath),
-    footerText: brandingSide.footerText || null,
+    footerText: resolveOptionalBrandingText(brandingSide.footerText),
     colors: {
       bgColorStart: brandingSide.bgColorStart || defaults.bgColorStart,
       bgColorEnd: brandingSide.bgColorEnd || defaults.bgColorEnd,

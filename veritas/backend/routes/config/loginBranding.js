@@ -16,24 +16,41 @@ export const LOGIN_BRANDING_UPLOAD_ROOT = path.join(__dirname, "..", "..", "uplo
 fs.mkdirSync(LOGIN_BRANDING_UPLOAD_ROOT, {
   recursive: true
 });
-const ALLOWED_IMAGE_TYPES = new Set(["image/png", "image/jpeg", "image/webp"]);
+const ALLOWED_IMAGE_TYPES = new Set(["image/png", "image/jpeg", "image/jpg", "image/webp"]);
+const ALLOWED_IMAGE_EXTS = new Set([".png", ".jpg", ".jpeg", ".webp"]);
+const MAX_UPLOAD_BYTES = 8 * 1024 * 1024;
+function resolveImageExt(file) {
+  const ext = path.extname(file.originalname || "").toLowerCase();
+  if (ALLOWED_IMAGE_EXTS.has(ext)) return ext === ".jpeg" ? ".jpg" : ext;
+  if (file.mimetype === "image/png") return ".png";
+  if (file.mimetype === "image/webp") return ".webp";
+  if (file.mimetype === "image/jpeg" || file.mimetype === "image/jpg") return ".jpg";
+  return ".png";
+}
+function isAllowedImage(file) {
+  const mime = String(file.mimetype || "").toLowerCase();
+  if (ALLOWED_IMAGE_TYPES.has(mime)) return true;
+  // Some browsers/OS send octet-stream or an empty MIME — fall back to extension.
+  if (!mime || mime === "application/octet-stream") {
+    return ALLOWED_IMAGE_EXTS.has(path.extname(file.originalname || "").toLowerCase());
+  }
+  return false;
+}
 const upload = multer({
   storage: multer.diskStorage({
     destination: (_req, _file, cb) => cb(null, LOGIN_BRANDING_UPLOAD_ROOT),
     filename: (req, file, cb) => {
       const side = LOGIN_SIDES.includes(req.params.side) ? req.params.side : "agent";
       const kind = req.params.kind === "background" ? "bg" : "logo";
-      const ext = path.extname(file.originalname || "").toLowerCase() || ".png";
-      const safeExt = [".png", ".jpg", ".jpeg", ".webp"].includes(ext) ? ext : ".png";
-      cb(null, `${side}-${kind}-${Date.now()}${safeExt}`);
+      cb(null, `${side}-${kind}-${Date.now()}${resolveImageExt(file)}`);
     }
   }),
   limits: {
-    fileSize: 2 * 1024 * 1024
+    fileSize: MAX_UPLOAD_BYTES
   },
   fileFilter: (_req, file, cb) => {
-    if (!ALLOWED_IMAGE_TYPES.has(file.mimetype)) {
-      return cb(new Error("Unsupported image format."));
+    if (!isAllowedImage(file)) {
+      return cb(new Error("Unsupported image format. Use PNG, JPG or WebP."));
     }
     return cb(null, true);
   }
@@ -129,7 +146,10 @@ router.patch("/", verifyJWT, requireRole("admin"), requirePro, async (req, res) 
 router.post("/:side/:kind", verifyJWT, requireRole("admin"), requirePro, (req, res) => {
   upload.single("file")(req, res, async err => {
     if (err) {
-      const message = err.message || "Error during upload.";
+      let message = err.message || "Error during upload.";
+      if (err.code === "LIMIT_FILE_SIZE") {
+        message = "File too large (max 8 MB).";
+      }
       return res.status(400).json({
         error: message
       });

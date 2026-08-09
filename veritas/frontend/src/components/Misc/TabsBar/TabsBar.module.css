@@ -14,7 +14,8 @@
   transition: left 0.4s ease-in-out, background-color 0.3s ease, border-color 0.3s ease;
 }
 
-:global(html[data-profile-preview="1"]) .tabsBar {
+:global(html[data-profile-preview="1"]) .tabsBar,
+:global(html[data-agent-impersonation="1"]) .tabsBar {
   top: var(--profile-preview-banner-height, 40px);
 }
 

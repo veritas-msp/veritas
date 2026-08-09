@@ -5,6 +5,7 @@ CREATE TABLE IF NOT EXISTS v_b_ticket_solution_catalog (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   category VARCHAR(32) NOT NULL CHECK (category IN ('intervention', 'action')),
   label VARCHAR(120) NOT NULL,
+  intervention VARCHAR(120) NULL,
   display_order INT NOT NULL DEFAULT 0,
   is_active BOOLEAN NOT NULL DEFAULT TRUE,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
@@ -13,6 +14,10 @@ CREATE TABLE IF NOT EXISTS v_b_ticket_solution_catalog (
 
 CREATE UNIQUE INDEX IF NOT EXISTS uq_v_b_ticket_solution_catalog_cat_label
   ON v_b_ticket_solution_catalog (category, lower(trim(label)));
+
+CREATE INDEX IF NOT EXISTS idx_v_b_ticket_solution_catalog_intervention
+  ON v_b_ticket_solution_catalog (category, lower(trim(intervention)))
+  WHERE category = 'action' AND intervention IS NOT NULL AND trim(intervention) <> '';
 
 ALTER TABLE v_b_ticket_resolution_validations
   ADD COLUMN IF NOT EXISTS intervention_type TEXT NULL,

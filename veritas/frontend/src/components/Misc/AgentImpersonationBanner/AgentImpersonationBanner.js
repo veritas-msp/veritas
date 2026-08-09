@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Icon } from "@iconify/react";
 import { toast } from "react-toastify";
 import { useAuthContext } from "../../../contexts/AuthContext";
@@ -14,12 +15,14 @@ const BANNER_HEIGHT_PX = 40;
  * Hidden for client-portal impersonation (handled in ClientPortalLayout).
  */
 export default function AgentImpersonationBanner() {
+  const navigate = useNavigate();
   const locale = useAppLocale();
   const copy = useMemo(() => getAdminUsersCopy(locale).impersonation, [locale]);
   const {
     user,
     userRole,
-    impersonating
+    impersonating,
+    refreshSession
   } = useAuthContext();
   const [stopping, setStopping] = useState(false);
 
@@ -54,7 +57,21 @@ export default function AgentImpersonationBanner() {
     setStopping(true);
     try {
       await stopUserImpersonation();
-      window.location.href = "/admin/users";
+      await refreshSession();
+      try {
+        sessionStorage.setItem("veritas_admin_nav", JSON.stringify({
+          tab: "users"
+        }));
+      } catch {}
+      // In-app navigation keeps the SPA shell (full reload to /admin/users can yield a blank page).
+      navigate("/admin/users", {
+        replace: true
+      });
+      window.dispatchEvent(new Event("refreshProfileAccess"));
+      if (typeof window.refreshProfile === "function") {
+        window.refreshProfile();
+      }
+      toast.success(copy.stopped);
     } catch (err) {
       toast.error(err?.message || copy.stopError);
       setStopping(false);

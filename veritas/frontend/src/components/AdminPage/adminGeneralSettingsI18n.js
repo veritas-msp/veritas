@@ -145,7 +145,7 @@ const ADMIN_GENERAL_SETTINGS_COPY = {
     onboarding: {
       title: "Guide Premiers pas",
       description: "Parcours de configuration initiale de votre instance MSP (identité, support, horaires, équipe, licence).",
-      body: "Relancez le guide à tout moment pour revoir les étapes ou mettre à jour la configuration de base. L'ouverture concerne votre compte administrateur uniquement.",
+      body: "Ce guide ne s'affiche qu'une seule fois après le déploiement de l'application. Relancez-le ici pour revoir les étapes ou mettre à jour la configuration de base. Il ne s'ouvre jamais pendant une impersonation.",
       relaunch: "Relancer le guide Premiers pas"
     }
   },
@@ -294,7 +294,7 @@ const ADMIN_GENERAL_SETTINGS_COPY = {
     onboarding: {
       title: "Getting started guide",
       description: "Initial setup journey for your MSP instance (identity, support, hours, team, license).",
-      body: "Relaunch the guide anytime to review steps or update basic configuration. This applies to your administrator account only.",
+      body: "This guide appears only once after the application is deployed. Relaunch it here to review steps or update basic configuration. It never opens during impersonation.",
       relaunch: "Relaunch getting started guide"
     }
   },
@@ -443,7 +443,7 @@ const ADMIN_GENERAL_SETTINGS_COPY = {
     onboarding: {
       title: "Erste-Schritte-Anleitung",
       description: "Ersteinrichtung Ihrer MSP-Instanz (Identität, Support, Zeiten, Team, Lizenz).",
-      body: "Starten Sie die Anleitung jederzeit neu, um Schritte zu überprüfen oder die Basiskonfiguration zu aktualisieren. Gilt nur für Ihr Administratorkonto.",
+      body: "Diese Anleitung erscheint nur einmal nach der Bereitstellung der Anwendung. Starten Sie sie hier neu, um Schritte zu prüfen oder die Basiskonfiguration zu aktualisieren. Während einer Impersonation wird sie nie geöffnet.",
       relaunch: "Erste-Schritte-Anleitung neu starten"
     }
   },
@@ -592,7 +592,7 @@ const ADMIN_GENERAL_SETTINGS_COPY = {
     onboarding: {
       title: "Guida Primi passi",
       description: "Percorso di configurazione iniziale della vostra istanza MSP (identità, supporto, orari, team, licenza).",
-      body: "Rilanciate la guida in qualsiasi momento per rivedere i passaggi o aggiornare la configurazione di base. Si applica solo al vostro account amministratore.",
+      body: "Questa guida viene mostrata una sola volta dopo il deployment dell'applicazione. Rilanciatela qui per rivedere i passaggi o aggiornare la configurazione di base. Non si apre mai durante un'impersonation.",
       relaunch: "Rilanciare la guida Primi passi"
     }
   },
@@ -741,7 +741,7 @@ const ADMIN_GENERAL_SETTINGS_COPY = {
     onboarding: {
       title: "Guía Primeros pasos",
       description: "Recorrido de configuración inicial de su instancia MSP (identidad, soporte, horarios, equipo, licencia).",
-      body: "Relance la guía en cualquier momento para revisar los pasos o actualizar la configuración básica. Solo afecta a su cuenta de administrador.",
+      body: "Esta guía solo se muestra una vez tras desplegar la aplicación. Reláncela aquí para revisar los pasos o actualizar la configuración básica. Nunca se abre durante una impersonación.",
       relaunch: "Relanzar guía Primeros pasos"
     }
   }

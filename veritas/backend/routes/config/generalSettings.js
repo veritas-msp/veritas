@@ -6,6 +6,25 @@ import { decryptSetting } from "../../utils/settingsHelper.js";
 import { DEFAULT_GENERAL_SETTINGS, GENERAL_SETTINGS_LABELS, GENERAL_SETTING_KEYS, GENERAL_SETTINGS_SECTION, normalizeGeneralSettings } from "../../utils/generalSettings.js";
 import { seedSolutionCatalogIfEmpty } from "../../services/ensureTicketSolutionCatalogSchema.js";
 const router = express.Router();
+function inferOnboardingCompletedFromLegacySettings(fromDb = {}) {
+  return Boolean(fromDb[GENERAL_SETTING_KEYS.organizationEmployeeRange] || fromDb[GENERAL_SETTING_KEYS.supportEmail] || fromDb[GENERAL_SETTING_KEYS.organizationAddress] || fromDb[GENERAL_SETTING_KEYS.organizationWebsite]);
+}
+async function upsertGeneralSetting(client, key, value) {
+  await client.query(`INSERT INTO v_b_settings (key, value, label, section)
+     VALUES ($1, $2, $3, $4)
+     ON CONFLICT (key) DO UPDATE SET
+       value = EXCLUDED.value,
+       label = EXCLUDED.label,
+       section = EXCLUDED.section`, [key, String(value ?? ""), GENERAL_SETTINGS_LABELS[key] || key, GENERAL_SETTINGS_SECTION]);
+}
+async function persistOnboardingCompletedFlag() {
+  const client = await pool.connect();
+  try {
+    await upsertGeneralSetting(client, GENERAL_SETTING_KEYS.onboardingCompleted, "true");
+  } finally {
+    client.release();
+  }
+}
 async function readGeneralSettingsFromDb() {
   if (!isDatabaseConfigured()) {
     return normalizeGeneralSettings(DEFAULT_GENERAL_SETTINGS);
@@ -22,24 +41,23 @@ async function readGeneralSettingsFromDb() {
     for (const row of result.rows) {
       fromDb[row.key] = decryptSetting(row) ?? "";
     }
-    return normalizeGeneralSettings({
+    const hasOnboardingKey = Object.prototype.hasOwnProperty.call(fromDb, GENERAL_SETTING_KEYS.onboardingCompleted);
+    const normalized = normalizeGeneralSettings({
       ...DEFAULT_GENERAL_SETTINGS,
       ...fromDb
     });
+    // Upgrade path: existing instances without the flag should not re-open premiers pas.
+    if (!hasOnboardingKey && inferOnboardingCompletedFromLegacySettings(fromDb)) {
+      normalized[GENERAL_SETTING_KEYS.onboardingCompleted] = "true";
+      persistOnboardingCompletedFlag().catch(() => {});
+    }
+    return normalized;
   } catch (err) {
     if (err?.code === "DATABASE_NOT_CONFIGURED" || err?.code === "42P01") {
       return normalizeGeneralSettings(DEFAULT_GENERAL_SETTINGS);
     }
     throw err;
   }
-}
-async function upsertGeneralSetting(client, key, value) {
-  await client.query(`INSERT INTO v_b_settings (key, value, label, section)
-     VALUES ($1, $2, $3, $4)
-     ON CONFLICT (key) DO UPDATE SET
-       value = EXCLUDED.value,
-       label = EXCLUDED.label,
-       section = EXCLUDED.section`, [key, String(value ?? ""), GENERAL_SETTINGS_LABELS[key] || key, GENERAL_SETTINGS_SECTION]);
 }
 router.get("/", async (_req, res) => {
   try {

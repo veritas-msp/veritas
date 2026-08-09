@@ -145,5 +145,8 @@ export function buildLinkedEquipmentComment(equipment, clientId) {
   const safeWarranty = String(equipment?.warranty || "").replace(/[\\\]]/g, "");
   const licensesText = Array.isArray(equipment?.licenses) ? equipment.licenses.join(", ") : String(equipment?.licenses || "");
   const safeLicenses = encodeURIComponent(String(licensesText || "").replace(/[\\\]]/g, ""));
-  return `[Linked equipment] [event:added] [equipment_id:${equipment.id}] [name:${safeName}] [type:${safeType}] ` + `[client_id:${safeClientId}] [warranty:${safeWarranty}] [licenses:${safeLicenses}]`;
+  const safeSerial = String(equipment?.serial || "").replace(/[\\\]]/g, "");
+  const safeBrand = String(equipment?.manufacturer || equipment?.brand || "").replace(/[\\\]]/g, "");
+  const safeModel = String(equipment?.model || "").replace(/[\\\]]/g, "");
+  return `[Linked equipment] [event:added] [equipment_id:${equipment.id}] [name:${safeName}] [type:${safeType}] ` + `[client_id:${safeClientId}] [warranty:${safeWarranty}] [licenses:${safeLicenses}] [serial:${safeSerial}] [brand:${safeBrand}] [model:${safeModel}]`;
 }

@@ -31,6 +31,7 @@ import RapportPage from "../components/RapportPage/RapportPage";
 import AdminPanel from "../components/AdminPage/AdminPanel";
 import ReportBugForm from "../components/Misc/ReportBugForm/ReportBugForm";
 import UserProfile from "../components/Misc/UserProfile/UserProfile";
+import UpdatesPage from "../components/UpdatesPage/UpdatesPage";
 import ComingSoonPage from "../components/Misc/ComingSoonPage/ComingSoonPage";
 import DashboardPage from "../components/DashboardPage/DashboardPage";
 import DocumentsHubPage from "../components/DocumentsHubPage/DocumentsHubPage";
@@ -57,12 +58,15 @@ import { toast } from "react-toastify";
 import { getAdminInjectionCopy } from "./AdminPage/adminInjectionI18n";
 import ProfilePreviewBanner from "./Misc/ProfilePreviewBanner/ProfilePreviewBanner";
 import AgentImpersonationBanner from "./Misc/AgentImpersonationBanner/AgentImpersonationBanner";
+import { isSuperAdminProtectedProfile } from "../utils/profileProtection";
+import { usePlatformUpdateAlert } from "../hooks/usePlatformUpdateAlert";
 export default function MainApp() {
   const {
     user,
     userRole,
     loading,
-    handleLogout
+    handleLogout,
+    impersonating
   } = useAuthContext();
   const {
     can,
@@ -87,6 +91,8 @@ export default function MainApp() {
   const rawAccess = useProfileAccess(effectiveProfile, refreshTrigger);
   const access = useMemo(() => filterAccessForEdition(rawAccess, isCommunity ? "community" : "pro"), [rawAccess, isCommunity]);
   const {
+    ready: onboardingReady,
+    completed: onboardingCompleted,
     showWizard: showOnboardingWizard,
     showResumeFab: showOnboardingResumeFab,
     step: onboardingStep,
@@ -94,7 +100,10 @@ export default function MainApp() {
     complete: completeOnboarding,
     pauseAtStep: pauseOnboarding,
     resume: resumeOnboarding
-  } = useOnboarding(user, userRole);
+  } = useOnboarding(user, userRole, {
+    impersonating
+  });
+  const sidebarGuideAutoStart = !impersonating && onboardingReady && onboardingCompleted;
   const {
     drafts,
     refreshDraftStatus
@@ -442,6 +451,9 @@ export default function MainApp() {
   }, [stopProfilePreview, pushAgentUrl]);
   const handleDocSelect = (type, data, options = {}) => {
     if (type === "Admin" && userRole !== "admin") {
+      return;
+    }
+    if (type === "Updates" && !isSuperAdminProtectedProfile(effectiveProfile)) {
       return;
     }
     if (type === "Mon") {
@@ -1070,6 +1082,8 @@ export default function MainApp() {
         return <ReportBugForm />;
       case "User":
         return <UserProfile user={user} />;
+      case "Updates":
+        return <UpdatesPage profile={effectiveProfile} />;
       case "TabLauncher":
         return <TabLauncherPage onNavigate={handleDocSelect} access={access} isCommunity={isCommunity} userRole={userRole} />;
       default:
@@ -1077,6 +1091,11 @@ export default function MainApp() {
     }
   };
   const showTabsBar = tabs.length > 0 || currentDocType === "TabLauncher";
+  const {
+    updateAvailable,
+    latestVersion
+  } = usePlatformUpdateAlert(effectiveProfile);
+
   const sidebarCurrent = useMemo(() => {
     if (currentDocType === "TicketSalesDetail") return "TicketSales";
     if (currentDocType !== "TicketDetail") return currentDocType;
@@ -1094,7 +1113,7 @@ export default function MainApp() {
       <ProfilePreviewBanner onReturnToPermissions={handleReturnToPermissions} />
       <AgentImpersonationBanner />
 
-      <Sidebar current={sidebarCurrent} onSelect={handleDocSelect} onNavigate={handleDocSelect} onLogout={handleLogoutGuarded} user={user} userRole={userRole} profile={effectiveProfile} drafts={drafts} access={access} onCollapseChange={setSidebarCollapsed} />
+      <Sidebar current={sidebarCurrent} onSelect={handleDocSelect} onNavigate={handleDocSelect} onLogout={handleLogoutGuarded} user={user} userRole={userRole} profile={effectiveProfile} drafts={drafts} access={access} onCollapseChange={setSidebarCollapsed} updateAvailable={updateAvailable} updateLatestVersion={latestVersion} sidebarGuideAutoStart={sidebarGuideAutoStart} />
 
       <TabsBar tabs={tabs} activeTabId={activeTabId} onTabClick={handleTabClick} onTabClose={handleTabClose} onTabReorder={handleTabReorder} onSortTabs={tabs.length > 1 ? handleTabSort : undefined} onNewTab={showTabsBar ? handleOpenTabLauncher : undefined} launcherActive={currentDocType === "TabLauncher"} sidebarCollapsed={sidebarCollapsed} />
 

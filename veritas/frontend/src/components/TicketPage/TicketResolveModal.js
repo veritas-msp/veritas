@@ -9,7 +9,7 @@ import SuggestionAutocomplete from "../shared/SuggestionAutocomplete/SuggestionA
 import ProFeatureBadge from "../Misc/ProFeature/ProFeatureBadge";
 import { fetchSolutionCatalog } from "../../api/tickets";
 import { interpolate } from "../../i18n/translate";
-import { getCanonicalSolutionCatalogLabel, localizeSolutionCatalogOptions } from "./solutionCatalogI18n";
+import { getCanonicalSolutionCatalogLabel, getLocalizedSolutionCatalogLabel, localizeSolutionCatalogOptions } from "./solutionCatalogI18n";
 import { buildSupportCreditDebitsPayload, getTotalResolveCreditDebit, getUsableSupportCreditPacks } from "./ticketClientSummaryUtils";
 const SECTION_ORDER = ["solution", "credits"];
 function clampCreditAmount(value, max = 999) {
@@ -45,7 +45,18 @@ export default function TicketResolveModal({
   const [activeSection, setActiveSection] = useState("solution");
   const [perPackAmount, setPerPackAmount] = useState(1);
   const localizedInterventionOptions = useMemo(() => localizeSolutionCatalogOptions(interventionOptions, locale), [interventionOptions, locale]);
-  const localizedActionOptions = useMemo(() => localizeSolutionCatalogOptions(actionOptions, locale), [actionOptions, locale]);
+  const filteredActionOptions = useMemo(() => {
+    const selected = String(interventionType || "").trim();
+    if (!selected) return [];
+    const selectedCanonical = getCanonicalSolutionCatalogLabel(selected);
+    const selectedLocalized = getLocalizedSolutionCatalogLabel(selected, locale);
+    return (actionOptions || []).filter(option => {
+      const link = String(option?.intervention || "").trim();
+      if (!link) return true;
+      return link === selected || getCanonicalSolutionCatalogLabel(link) === selectedCanonical || getLocalizedSolutionCatalogLabel(link, locale) === selected || getLocalizedSolutionCatalogLabel(link, locale) === selectedLocalized;
+    });
+  }, [actionOptions, interventionType, locale]);
+  const localizedActionOptions = useMemo(() => localizeSolutionCatalogOptions(filteredActionOptions, locale), [filteredActionOptions, locale]);
   const visibleSections = useMemo(() => {
     return SECTION_ORDER.map(id => ({
       id,
@@ -75,6 +86,19 @@ export default function TicketResolveModal({
     setActiveSection("solution");
     setPerPackAmount(1);
   }, [open]);
+  useEffect(() => {
+    if (!interventionType.trim()) {
+      if (actionType) setActionType("");
+      return;
+    }
+    if (!actionType.trim()) return;
+    const selectedCanonical = getCanonicalSolutionCatalogLabel(actionType.trim());
+    const stillValid = localizedActionOptions.some(option => {
+      const opt = String(option || "").trim();
+      return opt === actionType.trim() || getCanonicalSolutionCatalogLabel(opt) === selectedCanonical;
+    });
+    if (!stillValid) setActionType("");
+  }, [interventionType, localizedActionOptions, actionType]);
   useEffect(() => {
     if (!visibleSections.some(section => section.id === activeSection)) {
       setActiveSection(visibleSections[0]?.id || "solution");
@@ -238,8 +262,11 @@ export default function TicketResolveModal({
                   </div>
 
                   <div className={modalStyles.catalogGrid}>
-                    <SuggestionAutocomplete id="ticket-resolve-intervention" label={copy.interventionLabel} required placeholder={copy.interventionPlaceholder} value={interventionType} options={localizedInterventionOptions} disabled={saving || loadingCatalog} onChange={setInterventionType} emptyMessage={loadingCatalog ? copy.loading : copy.interventionEmpty} />
-                    <SuggestionAutocomplete id="ticket-resolve-action" label={copy.actionLabel} required placeholder={copy.actionPlaceholder} value={actionType} options={localizedActionOptions} disabled={saving || loadingCatalog} onChange={setActionType} emptyMessage={loadingCatalog ? copy.loading : copy.actionEmpty} />
+                    <SuggestionAutocomplete id="ticket-resolve-intervention" label={copy.interventionLabel} required placeholder={copy.interventionPlaceholder} value={interventionType} options={localizedInterventionOptions} disabled={saving || loadingCatalog} onChange={value => {
+                  setInterventionType(value);
+                  setActionType("");
+                }} emptyMessage={loadingCatalog ? copy.loading : copy.interventionEmpty} />
+                    <SuggestionAutocomplete id="ticket-resolve-action" label={copy.actionLabel} required placeholder={copy.actionPlaceholder} value={actionType} options={localizedActionOptions} disabled={saving || loadingCatalog || !interventionType.trim()} onChange={setActionType} emptyMessage={loadingCatalog ? copy.loading : !interventionType.trim() ? copy.interventionEmpty : copy.actionEmpty} />
                   </div>
 
                   <div className={layout.field}>

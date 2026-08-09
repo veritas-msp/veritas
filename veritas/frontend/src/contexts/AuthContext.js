@@ -90,6 +90,27 @@ export function AuthProvider({
       ...partial
     } : prev);
   }
+  async function refreshSession() {
+    const res = await fetch(`${API_BASE_URL}/auth/me`, {
+      credentials: "include"
+    });
+    if (!res.ok) {
+      throw new Error("Unable to refresh session");
+    }
+    const data = await res.json();
+    setUser({
+      id: data.id,
+      email: data.email,
+      username: data.username || null,
+      client_id: data.client_id ?? null,
+      avatar: data.avatar || null,
+      profile: data.profile || null
+    });
+    setUserRole(data.role);
+    setMfaEnabled(Boolean(data.mfa_enabled));
+    setImpersonating(Boolean(data.impersonating));
+    return data;
+  }
   async function logout() {
     await fetch(`${API_BASE_URL}/auth/logout`, {
       method: "POST",
@@ -112,6 +133,7 @@ export function AuthProvider({
     handleLogin: performLogin,
     handleLogout: logout,
     patchUser,
+    refreshSession,
     setMfaEnabledFlag: enabled => setMfaEnabled(Boolean(enabled)),
     email,
     setEmail,

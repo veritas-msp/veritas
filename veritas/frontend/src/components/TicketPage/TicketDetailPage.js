@@ -260,7 +260,10 @@ function parseLinkedEquipmentEvent(content) {
     type: payload.type || "",
     clientId: payload.client_id || "",
     warranty: payload.warranty || "",
-    licenses: payload.licenses ? decodeURIComponent(payload.licenses) : ""
+    licenses: payload.licenses ? decodeURIComponent(payload.licenses) : "",
+    serial: payload.serial || "",
+    brand: payload.brand || "",
+    model: payload.model || ""
   };
 }
 function buildLinkedEquipmentsFromComments(comments = []) {
@@ -276,7 +279,13 @@ function buildLinkedEquipmentsFromComments(comments = []) {
       equipment_id: event.equipmentId,
       name: event.name,
       type: event.type,
-      client_id: event.clientId
+      client_id: event.clientId,
+      warranty: event.warranty || "",
+      licenses: event.licenses || "",
+      serial: event.serial || "",
+      brand: event.brand || "",
+      model: event.model || "",
+      source: "veritas"
     });
   });
   return Array.from(map.values()).sort((a, b) => String(a.name || "").localeCompare(String(b.name || ""), "fr"));
@@ -288,7 +297,26 @@ function buildLinkedEquipmentsFromTicket(ticket) {
     return rows;
   }
   const source = String(info.source || "").trim() === "external" ? "external" : "veritas";
-  if (source !== "veritas") return rows;
+  if (source === "external") {
+    const externalKey = `external:${info.brand || ""}:${info.model || ""}:${info.serial || ""}`;
+    if (rows.some(row => String(row.equipment_id) === externalKey)) {
+      return rows;
+    }
+    const label = [info.brand, info.model].map(part => String(part || "").trim()).filter(Boolean).join(" ") || String(info.serial || "").trim() || "Hardware";
+    rows.push({
+      equipment_id: externalKey,
+      name: label,
+      type: "",
+      client_id: String(ticket?.client_id || "").trim(),
+      warranty: "",
+      licenses: "",
+      serial: String(info.serial || "").trim(),
+      brand: String(info.brand || "").trim(),
+      model: String(info.model || "").trim(),
+      source: "external"
+    });
+    return rows.sort((a, b) => String(a.name || "").localeCompare(String(b.name || ""), "fr"));
+  }
   const equipmentId = String(info.equipmentId || info.equipment_id || "").trim();
   if (!equipmentId) return rows;
   if (rows.some(row => String(row.equipment_id) === equipmentId)) {
@@ -298,9 +326,50 @@ function buildLinkedEquipmentsFromTicket(ticket) {
     equipment_id: equipmentId,
     name: String(info.name || "").trim() || `Hardware #${equipmentId}`,
     type: String(info.type || "").trim(),
-    client_id: String(info.clientId || info.client_id || "").trim()
+    client_id: String(info.clientId || info.client_id || "").trim(),
+    warranty: "",
+    licenses: "",
+    serial: "",
+    brand: "",
+    model: "",
+    source: "veritas"
   });
   return rows.sort((a, b) => String(a.name || "").localeCompare(String(b.name || ""), "fr"));
+}
+function buildMaterialTemplateFields(ticket, linkedEquipments = []) {
+  const rows = Array.isArray(linkedEquipments) && linkedEquipments.length > 0 ? linkedEquipments : buildLinkedEquipmentsFromTicket(ticket);
+  const info = ticket?.equipment_info || ticket?.equipmentInfo;
+  let primary = rows[0] || null;
+  if (info?.concerned && String(info.source || "").trim() !== "external") {
+    const infoId = String(info.equipmentId || info.equipment_id || "").trim();
+    const match = rows.find(row => String(row.equipment_id) === infoId);
+    if (match) primary = match;
+  }
+  const names = rows.map(row => String(row.name || "").trim()).filter(Boolean);
+  const types = rows.map(row => String(row.type || "").trim()).filter(Boolean);
+  const ids = rows.map(row => String(row.equipment_id || "").trim()).filter(Boolean);
+  const list = rows.map(row => {
+    const type = String(row.type || "").trim();
+    const name = String(row.name || "").trim();
+    if (type && name) return `${type} · ${name}`;
+    return name || type || String(row.equipment_id || "");
+  }).filter(Boolean);
+  return {
+    id: String(primary?.equipment_id || "").trim(),
+    name: String(primary?.name || "").trim(),
+    type: String(primary?.type || "").trim(),
+    warranty: String(primary?.warranty || "").trim(),
+    licenses: String(primary?.licenses || "").trim(),
+    serial: String(primary?.serial || info?.serial || "").trim(),
+    brand: String(primary?.brand || info?.brand || "").trim(),
+    model: String(primary?.model || info?.model || "").trim(),
+    clientId: String(primary?.client_id || info?.clientId || info?.client_id || "").trim(),
+    count: String(rows.length),
+    names: names.join(", "),
+    types: [...new Set(types)].join(", "),
+    ids: ids.join(", "),
+    list: list.join(", ")
+  };
 }
 function parseLinkedTicketEvent(content) {
   const text = String(content || "");
@@ -2158,7 +2227,10 @@ export default function TicketDetailPage({
     const safeWarranty = String(selected.warranty || "").replace(/[\\\]]/g, "");
     const licensesText = Array.isArray(selected.licenses) ? selected.licenses.join(", ") : String(selected.licenses || "");
     const safeLicenses = encodeURIComponent(String(licensesText || "").replace(/[\\\]]/g, ""));
-    const marker = `[Linked equipment] [event:added] [equipment_id:${selected.id}] [name:${safeName}] [type:${safeType}] ` + `[client_id:${safeClientId}] [warranty:${safeWarranty}] [licenses:${safeLicenses}]`;
+    const safeSerial = String(selected.serial || "").replace(/[\\\]]/g, "");
+    const safeBrand = String(selected.manufacturer || selected.brand || "").replace(/[\\\]]/g, "");
+    const safeModel = String(selected.model || "").replace(/[\\\]]/g, "");
+    const marker = `[Linked equipment] [event:added] [equipment_id:${selected.id}] [name:${safeName}] [type:${safeType}] ` + `[client_id:${safeClientId}] [warranty:${safeWarranty}] [licenses:${safeLicenses}] [serial:${safeSerial}] [brand:${safeBrand}] [model:${safeModel}]`;
     try {
       const createdComment = await addTicketComment(ticketId, marker, true);
       setTicket(prev => {
@@ -2177,7 +2249,11 @@ export default function TicketDetailPage({
           type: selected.type || "",
           client_id: ticket?.client_id || "",
           warranty: selected.warranty || "",
-          licenses: licensesText || ""
+          licenses: licensesText || "",
+          serial: selected.serial || "",
+          brand: selected.manufacturer || selected.brand || "",
+          model: selected.model || "",
+          source: "veritas"
         }].sort((a, b) => String(a.name || "").localeCompare(String(b.name || ""), "fr"));
       });
       setLinkedEquipmentDraft("");
@@ -2703,7 +2779,62 @@ export default function TicketDetailPage({
     const contactFirstName = String(requesterContact?.prenom || requesterFirstName || "");
     const contactLastName = String(requesterContact?.nom || "");
     const contactPhone = String(requesterContact?.telephone || requesterContact?.phone || "");
-    const replacements = [["{{ticketNumber}}", ticketNumber], ["{{ticket.numero}}", ticketNumber], ["{{ticket.ticket_number}}", ticketNumber], ["{{ticket.id}}", String(ticket?.id || ticketId || "")], ["{{title}}", ticketTitle], ["{{ticket.titre}}", ticketTitle], ["{{ticket.title}}", ticketTitle], ["{{status}}", ticketStatus], ["{{ticket.statut}}", ticketStatus], ["{{ticket.status}}", ticketStatus], ["{{requester}}", String(requesterDisplayName || "")], ["{{demandeur.nom_complet}}", String(requesterDisplayName || "")], ["{{prenom}}", String(requesterFirstName || "")], ["{{demandeur.prenom}}", String(requesterFirstName || "")], ["{{agent}}", agentName], ["{{agent.username}}", agentName], ["{{agent.email}}", agentEmail], ["{{agent.nom_complet}}", agentName], ["{{agent.id}}", String(user?.id || currentAgentUser?.id || "")], ["{{agent.role}}", String(user?.role || currentAgentUser?.role || "")], ["{{client}}", clientName], ["{{entreprise.nom}}", clientName], ["{{entreprise.id}}", String(breadcrumbClientId || ticket?.client_id || "")], ["{{contact.email}}", contactEmail], ["{{contact.prenom}}", contactFirstName], ["{{contact.nom}}", contactLastName], ["{{contact.telephone}}", contactPhone], ["{{contact.id}}", String(requesterContact?.id || ticket?.contact_id || "")]];
+    const material = buildMaterialTemplateFields(ticket, linkedEquipments);
+    const replacements = [
+      ["{{ticketNumber}}", ticketNumber],
+      ["{{ticket.numero}}", ticketNumber],
+      ["{{ticket.ticket_number}}", ticketNumber],
+      ["{{ticket.id}}", String(ticket?.id || ticketId || "")],
+      ["{{title}}", ticketTitle],
+      ["{{ticket.titre}}", ticketTitle],
+      ["{{ticket.title}}", ticketTitle],
+      ["{{status}}", ticketStatus],
+      ["{{ticket.statut}}", ticketStatus],
+      ["{{ticket.status}}", ticketStatus],
+      ["{{requester}}", String(requesterDisplayName || "")],
+      ["{{demandeur.nom_complet}}", String(requesterDisplayName || "")],
+      ["{{prenom}}", String(requesterFirstName || "")],
+      ["{{demandeur.prenom}}", String(requesterFirstName || "")],
+      ["{{agent}}", agentName],
+      ["{{agent.username}}", agentName],
+      ["{{agent.email}}", agentEmail],
+      ["{{agent.nom_complet}}", agentName],
+      ["{{agent.id}}", String(user?.id || currentAgentUser?.id || "")],
+      ["{{agent.role}}", String(user?.role || currentAgentUser?.role || "")],
+      ["{{client}}", clientName],
+      ["{{entreprise.nom}}", clientName],
+      ["{{entreprise.id}}", String(breadcrumbClientId || ticket?.client_id || "")],
+      ["{{contact.email}}", contactEmail],
+      ["{{contact.prenom}}", contactFirstName],
+      ["{{contact.nom}}", contactLastName],
+      ["{{contact.telephone}}", contactPhone],
+      ["{{contact.id}}", String(requesterContact?.id || ticket?.contact_id || "")],
+      ["{{material.id}}", material.id],
+      ["{{material.name}}", material.name],
+      ["{{material.type}}", material.type],
+      ["{{material.warranty}}", material.warranty],
+      ["{{material.licenses}}", material.licenses],
+      ["{{material.serial}}", material.serial],
+      ["{{material.brand}}", material.brand],
+      ["{{material.model}}", material.model],
+      ["{{material.clientId}}", material.clientId],
+      ["{{material.count}}", material.count],
+      ["{{material.names}}", material.names],
+      ["{{material.types}}", material.types],
+      ["{{material.ids}}", material.ids],
+      ["{{material.list}}", material.list],
+      ["{{equipement.id}}", material.id],
+      ["{{equipement.nom}}", material.name],
+      ["{{equipement.type}}", material.type],
+      ["{{equipement.garantie}}", material.warranty],
+      ["{{equipement.licences}}", material.licenses],
+      ["{{equipement.serie}}", material.serial],
+      ["{{equipement.marque}}", material.brand],
+      ["{{equipement.modele}}", material.model],
+      ["{{equipement.liste}}", material.list],
+      ["{{equipement.noms}}", material.names],
+      ["{{equipement.nombre}}", material.count]
+    ];
     return replacements.reduce((acc, [token, value]) => acc.replaceAll(token, value), raw);
   };
   const resolveUserLabel = userId => {

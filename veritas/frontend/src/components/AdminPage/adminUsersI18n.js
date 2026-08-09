@@ -59,6 +59,7 @@ const USERS_COPY = {
       stopError: "Impossible de quitter l'impersonation.",
       startError: "Impossible de démarrer l'impersonation.",
       started: "Impersonation démarrée",
+      stopped: "Retour à votre session administrateur",
       selfBlocked: "Vous ne pouvez pas vous impersonner vous-même."
     },
     profiles: {
@@ -223,6 +224,7 @@ const USERS_COPY = {
       stopError: "Unable to exit impersonation.",
       startError: "Unable to start impersonation.",
       started: "Impersonation started",
+      stopped: "Returned to your administrator session",
       selfBlocked: "You cannot impersonate yourself."
     },
     profiles: {
@@ -387,6 +389,7 @@ const USERS_COPY = {
       stopError: "Impersonation konnte nicht beendet werden.",
       startError: "Impersonation konnte nicht gestartet werden.",
       started: "Impersonation gestartet",
+      stopped: "Zurück zu Ihrer Administratorsitzung",
       selfBlocked: "Sie können sich nicht selbst impersonieren."
     },
     profiles: {
@@ -551,6 +554,7 @@ const USERS_COPY = {
       stopError: "Impossibile uscire dall'impersonazione.",
       startError: "Impossibile avviare l'impersonazione.",
       started: "Impersonazione avviata",
+      stopped: "Tornato alla sessione amministratore",
       selfBlocked: "Non puoi impersonare te stesso."
     },
     profiles: {
@@ -715,6 +719,7 @@ const USERS_COPY = {
       stopError: "No se pudo salir de la suplantación.",
       startError: "No se pudo iniciar la suplantación.",
       started: "Suplantación iniciada",
+      stopped: "Has vuelto a tu sesión de administrador",
       selfBlocked: "No puedes suplantar tu propia cuenta."
     },
     profiles: {

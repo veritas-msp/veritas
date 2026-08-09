@@ -37,6 +37,7 @@ import contractModuleOptionsRoutes from './routes/config/contractModuleOptions.j
 import planningEventTypesRoutes from './routes/config/planningEventTypes.js';
 import equipmentFamiliesRoutes from './routes/config/equipmentFamilies.js';
 import maintenanceRoutes from './routes/config/maintenance.js';
+import systemUpdatesRoutes from './routes/system/updates.js';
 import setupRoutes from './routes/config/setup.js';
 import editionRoutes from './routes/config/edition.js';
 import licenseRoutes from './routes/config/license.js';
@@ -218,6 +219,7 @@ app.use('/api/contract-module-options', requireProAuth, contractModuleOptionsRou
 app.use('/api/planning-event-types', requireProAuth, planningEventTypesRoutes);
 app.use('/api/equipment-families', equipmentFamiliesRoutes);
 app.use('/api/maintenance', maintenanceRoutes);
+app.use('/api/system/updates', systemUpdatesRoutes);
 app.use("/api/stats", statsRoutes);
 app.use("/api/tech-news", techNewsRoutes);
 app.use("/api/email", requireProAuth, emailRoutes);

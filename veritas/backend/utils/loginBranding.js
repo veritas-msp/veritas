@@ -1,6 +1,7 @@
 export const LOGIN_BRANDING_SECTION = "login";
 export const LOGIN_SIDES = ["agent", "client"];
-const SIDE_FIELDS = ["enabled", "headline_line1", "headline_line2", "sub", "features", "brand_name", "logo_path", "bg_image_path", "bg_color_start", "bg_color_end", "accent_color", "right_bg_color", "footer_text"];
+const SIDE_FIELDS = ["enabled", "headline_line1", "headline_line2", "sub", "features", "brand_name", "logo_path", "logo_transparent", "logo_bg_color", "bg_image_path", "bg_color_start", "bg_color_end", "accent_color", "right_bg_color", "footer_text"];
+const BOOL_FIELDS = new Set(["enabled", "logo_transparent"]);
 export const LOGIN_BRANDING_LABELS = {};
 for (const side of LOGIN_SIDES) {
   for (const field of SIDE_FIELDS) {
@@ -11,7 +12,7 @@ for (const side of LOGIN_SIDES) {
 export const DEFAULT_LOGIN_BRANDING = {};
 for (const side of LOGIN_SIDES) {
   for (const field of SIDE_FIELDS) {
-    DEFAULT_LOGIN_BRANDING[`app_login_${side}_${field}`] = field === "enabled" ? "false" : "";
+    DEFAULT_LOGIN_BRANDING[`app_login_${side}_${field}`] = BOOL_FIELDS.has(field) ? "false" : "";
   }
 }
 const HEX_COLOR = /^#([0-9a-fA-F]{6})$/;
@@ -22,8 +23,14 @@ function normalizeHexColor(value, fallback = "") {
   const trimmed = String(value || "").trim();
   return isValidHexColor(trimmed) ? trimmed.toLowerCase() : fallback;
 }
+/** Empty string = use defaults/hints. Whitespace-only = intentional blank (stored as a single space). */
 function normalizeText(value, maxLen) {
-  return String(value ?? "").trim().slice(0, maxLen);
+  const raw = String(value ?? "");
+  if (raw.length > 0 && raw.trim() === "") return " ";
+  return raw.trim().slice(0, maxLen);
+}
+function normalizeBool(value) {
+  return value === true || String(value).toLowerCase() === "true";
 }
 function normalizeFeatures(raw) {
   let items = [];
@@ -47,16 +54,16 @@ function normalizeAssetPath(value) {
 }
 function normalizeSideSettings(input = {}, side) {
   const prefix = `app_login_${side}_`;
-  const enabledRaw = input[`${prefix}enabled`];
-  const enabled = enabledRaw === true || String(enabledRaw).toLowerCase() === "true";
   return {
-    enabled,
+    enabled: normalizeBool(input[`${prefix}enabled`]),
     headlineLine1: normalizeText(input[`${prefix}headline_line1`], 120),
     headlineLine2: normalizeText(input[`${prefix}headline_line2`], 120),
     sub: normalizeText(input[`${prefix}sub`], 400),
     features: normalizeFeatures(input[`${prefix}features`]),
     brandName: normalizeText(input[`${prefix}brand_name`], 80),
     logoPath: normalizeAssetPath(input[`${prefix}logo_path`]),
+    logoTransparent: normalizeBool(input[`${prefix}logo_transparent`]),
+    logoBgColor: normalizeHexColor(input[`${prefix}logo_bg_color`]),
     bgImagePath: normalizeAssetPath(input[`${prefix}bg_image_path`]),
     bgColorStart: normalizeHexColor(input[`${prefix}bg_color_start`]),
     bgColorEnd: normalizeHexColor(input[`${prefix}bg_color_end`]),
@@ -79,6 +86,8 @@ export function normalizeLoginBrandingFlat(input = {}) {
     out[`${prefix}features`] = JSON.stringify(normalized.features);
     out[`${prefix}brand_name`] = normalized.brandName;
     out[`${prefix}logo_path`] = normalized.logoPath;
+    out[`${prefix}logo_transparent`] = normalized.logoTransparent ? "true" : "false";
+    out[`${prefix}logo_bg_color`] = normalized.logoBgColor;
     out[`${prefix}bg_image_path`] = normalized.bgImagePath;
     out[`${prefix}bg_color_start`] = normalized.bgColorStart;
     out[`${prefix}bg_color_end`] = normalized.bgColorEnd;

@@ -11,7 +11,8 @@ export const GENERAL_SETTING_KEYS = {
   organizationAddress: "app_organization_address",
   organizationWebsite: "app_organization_website",
   organizationEmployeeRange: "app_organization_employee_range",
-  knowledgeBaseUrl: "app_knowledge_base_url"
+  knowledgeBaseUrl: "app_knowledge_base_url",
+  onboardingCompleted: "app_onboarding_completed"
 };
 export const ALLOWED_LOCALES = ["fr", "en", "de", "it", "es"];
 export const ALLOWED_DATE_FORMATS = ["dd/mm/yyyy", "mm/dd/yyyy", "yyyy-mm-dd"];
@@ -30,7 +31,8 @@ export const DEFAULT_GENERAL_SETTINGS = {
   [GENERAL_SETTING_KEYS.organizationAddress]: "",
   [GENERAL_SETTING_KEYS.organizationWebsite]: "",
   [GENERAL_SETTING_KEYS.organizationEmployeeRange]: "",
-  [GENERAL_SETTING_KEYS.knowledgeBaseUrl]: ""
+  [GENERAL_SETTING_KEYS.knowledgeBaseUrl]: "",
+  [GENERAL_SETTING_KEYS.onboardingCompleted]: "false"
 };
 export const GENERAL_SETTINGS_LABELS = {
   [GENERAL_SETTING_KEYS.defaultLocale]: "Default language",
@@ -44,8 +46,16 @@ export const GENERAL_SETTINGS_LABELS = {
   [GENERAL_SETTING_KEYS.organizationAddress]: "Organization address",
   [GENERAL_SETTING_KEYS.organizationWebsite]: "Organization website",
   [GENERAL_SETTING_KEYS.organizationEmployeeRange]: "Organization headcount",
-  [GENERAL_SETTING_KEYS.knowledgeBaseUrl]: "URL Knowledge Base"
+  [GENERAL_SETTING_KEYS.knowledgeBaseUrl]: "URL Knowledge Base",
+  [GENERAL_SETTING_KEYS.onboardingCompleted]: "Initial onboarding completed"
 };
+function normalizeBoolFlag(value, fallback = false) {
+  if (value === true || value === false) return value ? "true" : "false";
+  const raw = String(value ?? "").trim().toLowerCase();
+  if (raw === "true" || raw === "1" || raw === "yes") return "true";
+  if (raw === "false" || raw === "0" || raw === "no" || raw === "") return "false";
+  return fallback ? "true" : "false";
+}
 export function normalizeGeneralSettings(input = {}) {
   const out = {
     ...DEFAULT_GENERAL_SETTINGS
@@ -90,5 +100,6 @@ export function normalizeGeneralSettings(input = {}) {
   } else if (ALLOWED_EMPLOYEE_RANGES.includes(String(employeeRange))) {
     out[GENERAL_SETTING_KEYS.organizationEmployeeRange] = String(employeeRange);
   }
+  out[GENERAL_SETTING_KEYS.onboardingCompleted] = normalizeBoolFlag(input[GENERAL_SETTING_KEYS.onboardingCompleted], false);
   return out;
 }

@@ -13,6 +13,7 @@ export default function SolutionCatalogEntryModal({
   draft,
   setDraft,
   saving = false,
+  interventionOptions = [],
   onClose,
   onSave
 }) {
@@ -20,16 +21,21 @@ export default function SolutionCatalogEntryModal({
   const m = ss.modals.solution;
   if (!open || !draft) return null;
   const isCreate = mode === "create";
-  const categoryLabel = draft.category === "action" ? m.categoryAction : m.categoryIntervention;
+  const isAction = draft.category === "action";
+  const categoryLabel = isAction ? m.categoryAction : m.categoryIntervention;
+  const interventionChoices = Array.isArray(interventionOptions) ? interventionOptions.filter(Boolean) : [];
+  const hasIntervention = Boolean(String(draft.intervention || "").trim());
+  const canSubmit = Boolean(String(draft.label || "").trim()) && (!isAction || hasIntervention);
   const patchDraft = patch => setDraft(prev => ({
     ...prev,
     ...patch
   }));
   const handleSubmit = event => {
     event.preventDefault();
+    if (!canSubmit) return;
     onSave?.();
   };
-  const modalTitle = isCreate ? draft.category === "action" ? m.createActionTitle : m.createInterventionTitle : interpolate(m.editTitle, {
+  const modalTitle = isCreate ? isAction ? m.createActionTitle : m.createInterventionTitle : interpolate(m.editTitle, {
     name: draft.label || categoryLabel.toLowerCase()
   });
   return createPortal(<div className={layout.overlay} onClick={onClose} role="presentation">
@@ -58,6 +64,21 @@ export default function SolutionCatalogEntryModal({
         <form className={styles.form} onSubmit={handleSubmit}>
           <div className={layout.content}>
             <div className={layout.fieldStack}>
+              {isAction && <div className={layout.field}>
+                  <label className={`${layout.label} ${layout.labelRequired}`} htmlFor="solution-catalog-intervention">
+                    {m.interventionLabel}
+                  </label>
+                  <select id="solution-catalog-intervention" className={layout.input} value={draft.intervention || ""} onChange={e => patchDraft({
+                intervention: e.target.value
+              })} disabled={saving || interventionChoices.length === 0} required>
+                    <option value="">{m.interventionPlaceholder}</option>
+                    {interventionChoices.map(name => <option key={name} value={name}>
+                        {name}
+                      </option>)}
+                  </select>
+                  {interventionChoices.length === 0 && <p className={shared.statusHint}>{m.noInterventions}</p>}
+                </div>}
+
               <div className={layout.field}>
                 <label className={`${layout.label} ${layout.labelRequired}`} htmlFor="solution-catalog-label">
                   {m.labelField}
@@ -89,12 +110,12 @@ export default function SolutionCatalogEntryModal({
           </div>
 
           <footer className={layout.footer}>
-            <span className={layout.footerHint}>{categoryLabel}</span>
+            <span className={layout.footerHint}>{isAction && draft.intervention ? `${categoryLabel} · ${draft.intervention}` : categoryLabel}</span>
             <div className={layout.footerActions}>
               <button type="button" className={layout.ghostBtn} onClick={onClose} disabled={saving}>
                 {m.cancel}
               </button>
-              <button type="submit" className={layout.primaryBtn} disabled={saving || !String(draft.label || "").trim()}>
+              <button type="submit" className={layout.primaryBtn} disabled={saving || !canSubmit}>
                 {saving ? m.saving : isCreate ? m.createBtn : m.saveBtn}
               </button>
             </div>

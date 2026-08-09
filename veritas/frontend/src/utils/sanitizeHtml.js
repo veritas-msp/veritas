@@ -7,7 +7,7 @@ const DEFAULT_CONFIG = {
 };
 export const TICKET_COMMENT_CONFIG = {
   ALLOWED_TAGS: [...BASE_ALLOWED_TAGS, "img"],
-  ALLOWED_ATTR: [...BASE_ALLOWED_ATTR, "src", "width", "height"]
+  ALLOWED_ATTR: [...BASE_ALLOWED_ATTR, "src", "width", "height", "style"]
 };
 function postProcessLinks(html) {
   if (typeof document === "undefined") return html;
@@ -31,6 +31,14 @@ export function sanitizeHtml(raw, config = DEFAULT_CONFIG) {
 }
 export function sanitizeTicketCommentHtml(raw) {
   return sanitizeHtml(raw, TICKET_COMMENT_CONFIG);
+}
+/** Render template/comment HTML for preview: keep rich markup, convert plain text newlines. */
+export function toRichPreviewHtml(raw) {
+  const content = String(raw ?? "");
+  if (!content.trim()) return "";
+  const looksLikeHtml = /<\/?[a-z][\s\S]*>/i.test(content);
+  const asHtml = looksLikeHtml ? content : content.replace(/\n/g, "<br>");
+  return sanitizeTicketCommentHtml(asHtml);
 }
 export const REMEDIATION_HTML_CONFIG = {
   ALLOWED_TAGS: ["b", "strong", "i", "em", "u", "br", "p", "a", "ul", "ol", "li", "span", "div"],

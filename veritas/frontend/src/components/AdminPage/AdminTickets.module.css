@@ -485,10 +485,87 @@
 .htmlPreviewBox {
   border: 1px solid var(--msp-border);
   border-radius: 10px;
-  padding: 0.85rem;
-  min-height: 120px;
+  padding: 0.95rem 1.05rem;
+  min-height: 140px;
+  max-height: min(60vh, 520px);
+  overflow: auto;
   background: var(--msp-surface);
   color: var(--msp-text);
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+
+.htmlPreviewBox :where(p, h1, h2, h3, h4, h5, h6) {
+  margin: 0 0 0.65em;
+}
+
+.htmlPreviewBox :where(p, h1, h2, h3, h4, h5, h6):last-child {
+  margin-bottom: 0;
+}
+
+.htmlPreviewBox :where(ul, ol) {
+  margin: 0 0 0.65em;
+  padding-left: 1.35rem;
+}
+
+.htmlPreviewBox li + li {
+  margin-top: 0.2em;
+}
+
+.htmlPreviewBox :where(strong, b) {
+  font-weight: 700;
+}
+
+.htmlPreviewBox :where(em, i) {
+  font-style: italic;
+}
+
+.htmlPreviewBox :where(u) {
+  text-decoration: underline;
+}
+
+.htmlPreviewBox :where(s) {
+  text-decoration: line-through;
+}
+
+.htmlPreviewBox a {
+  color: var(--msp-accent);
+  text-decoration: underline;
+}
+
+.htmlPreviewBox blockquote {
+  margin: 0 0 0.65em;
+  padding: 0.35rem 0.75rem;
+  border-left: 3px solid var(--msp-border);
+  color: var(--msp-muted);
+}
+
+.htmlPreviewBox :where(code, pre) {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.84em;
+}
+
+.htmlPreviewBox code {
+  padding: 0.1em 0.3em;
+  border-radius: 4px;
+  background: var(--msp-surface-2);
+}
+
+.htmlPreviewBox pre {
+  margin: 0 0 0.65em;
+  padding: 0.65rem 0.75rem;
+  border-radius: 8px;
+  background: var(--msp-surface-2);
+  overflow-x: auto;
+  white-space: pre-wrap;
+}
+
+.htmlPreviewBox img {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  margin: 0.5rem 0;
+  border-radius: 6px;
 }
 
 .previewWrap {

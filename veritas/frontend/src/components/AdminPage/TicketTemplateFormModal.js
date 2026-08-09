@@ -10,6 +10,11 @@ import { useAdminSupportSettingsCopy } from "../../hooks/useAdminCopy";
 import { getTemplateFormSections } from "./adminSupportSettingsI18n";
 import { useAppLocale } from "../../hooks/useAppGeneralSettings";
 import { interpolate } from "../../i18n/translate";
+
+function cleanTemplateHtml(html) {
+  return String(html || "").replace(/\soutline:\s*[^;"']+;?/gi, "");
+}
+
 export default function TicketTemplateFormModal({
   open,
   mode = "create",
@@ -21,6 +26,8 @@ export default function TicketTemplateFormModal({
   onOpenVariables,
   templateVariablesEnabled = true,
   templateEditorRef,
+  templateSourceEditorRef,
+  templateEditorModeRef,
   templateImageInputRef,
   selectedImageWidthPx,
   setSelectedImageWidthPx,
@@ -37,16 +44,59 @@ export default function TicketTemplateFormModal({
   const templateFormSections = useMemo(() => getTemplateFormSections(locale), [locale]);
   const isCreate = mode === "create";
   const [activeSection, setActiveSection] = useState("general");
+  const [editorMode, setEditorMode] = useState("visual");
   const [showVariablesProPromo, setShowVariablesProPromo] = useState(false);
+  const isSourceMode = editorMode === "source";
+
   useEffect(() => {
     if (!open) return;
     setActiveSection("general");
-  }, [open]);
+    setEditorMode("visual");
+    if (templateEditorModeRef) templateEditorModeRef.current = "visual";
+  }, [open, templateEditorModeRef]);
+
   useEffect(() => {
-    if (!open || activeSection !== "content" || !templateEditorRef?.current) return;
-    templateEditorRef.current.innerHTML = String(draft?.content || "");
-  }, [open, activeSection, templateEditorRef]);
+    if (templateEditorModeRef) templateEditorModeRef.current = editorMode;
+  }, [editorMode, templateEditorModeRef]);
+
+  useEffect(() => {
+    if (!open || activeSection !== "content" || editorMode !== "visual" || !templateEditorRef?.current) return;
+    templateEditorRef.current.innerHTML = cleanTemplateHtml(draft?.content);
+  }, [open, activeSection, editorMode, templateEditorRef]);
+
   if (!open || !draft) return null;
+
+  const syncVisualToDraft = () => {
+    if (!templateEditorRef?.current) return cleanTemplateHtml(draft?.content);
+    const htmlContent = cleanTemplateHtml(templateEditorRef.current.innerHTML);
+    setDraft(prev => ({
+      ...prev,
+      content: htmlContent
+    }));
+    return htmlContent;
+  };
+
+  const switchEditorMode = nextMode => {
+    if (nextMode === editorMode) return;
+    if (nextMode === "source") {
+      syncVisualToDraft();
+      setEditorMode("source");
+      return;
+    }
+    const sourceValue = templateSourceEditorRef?.current ? String(templateSourceEditorRef.current.value || "") : String(draft?.content || "");
+    const cleaned = cleanTemplateHtml(sourceValue);
+    setDraft(prev => ({
+      ...prev,
+      content: cleaned
+    }));
+    setEditorMode("visual");
+    requestAnimationFrame(() => {
+      if (templateEditorRef?.current) {
+        templateEditorRef.current.innerHTML = cleaned;
+      }
+    });
+  };
+
   const modalTitle = isCreate ? m.createTitle : interpolate(m.editTitle, {
     name: draft.name || m.editFallback
   });
@@ -80,36 +130,49 @@ export default function TicketTemplateFormModal({
 
             <div className={styles.editorShell}>
               <div className={styles.toolbar}>
-                <div className={styles.toolGroup} role="group" aria-label={m.toolbarFormatAria}>
-                  <button type="button" className={`${styles.toolBtn} ${styles.toolBtnIcon}`} onClick={() => onExecCommand?.("bold")} title={m.bold}>
+                <div className={styles.modeToggle} role="group" aria-label={m.toolbarViewAria}>
+                  <button type="button" className={`${styles.modeBtn} ${!isSourceMode ? styles.modeBtnActive : ""}`} onClick={() => switchEditorMode("visual")} title={m.visualViewTitle} aria-pressed={!isSourceMode}>
+                    <Icon icon="mdi:eye-outline" aria-hidden />
+                    {m.visualView}
+                  </button>
+                  <button type="button" className={`${styles.modeBtn} ${isSourceMode ? styles.modeBtnActive : ""}`} onClick={() => switchEditorMode("source")} title={m.sourceViewTitle} aria-pressed={isSourceMode}>
+                    <Icon icon="mdi:code-tags" aria-hidden />
+                    {m.sourceView}
+                  </button>
+                </div>
+
+                <span className={styles.toolSep} aria-hidden />
+
+                <div className={`${styles.toolGroup} ${isSourceMode ? styles.toolGroupDisabled : ""}`} role="group" aria-label={m.toolbarFormatAria}>
+                  <button type="button" className={`${styles.toolBtn} ${styles.toolBtnIcon}`} disabled={isSourceMode} onClick={() => onExecCommand?.("bold")} title={m.bold}>
                     <Icon icon="mdi:format-bold" aria-hidden />
                   </button>
-                  <button type="button" className={`${styles.toolBtn} ${styles.toolBtnIcon}`} onClick={() => onExecCommand?.("italic")} title={m.italic}>
+                  <button type="button" className={`${styles.toolBtn} ${styles.toolBtnIcon}`} disabled={isSourceMode} onClick={() => onExecCommand?.("italic")} title={m.italic}>
                     <Icon icon="mdi:format-italic" aria-hidden />
                   </button>
-                  <button type="button" className={`${styles.toolBtn} ${styles.toolBtnIcon}`} onClick={() => onExecCommand?.("underline")} title={m.underline}>
+                  <button type="button" className={`${styles.toolBtn} ${styles.toolBtnIcon}`} disabled={isSourceMode} onClick={() => onExecCommand?.("underline")} title={m.underline}>
                     <Icon icon="mdi:format-underline" aria-hidden />
                   </button>
                 </div>
 
                 <span className={styles.toolSep} aria-hidden />
 
-                <div className={styles.toolGroup} role="group" aria-label={m.toolbarListsAria}>
-                  <button type="button" className={`${styles.toolBtn} ${styles.toolBtnIcon}`} onClick={() => onExecCommand?.("insertUnorderedList")} title={m.bulletList}>
+                <div className={`${styles.toolGroup} ${isSourceMode ? styles.toolGroupDisabled : ""}`} role="group" aria-label={m.toolbarListsAria}>
+                  <button type="button" className={`${styles.toolBtn} ${styles.toolBtnIcon}`} disabled={isSourceMode} onClick={() => onExecCommand?.("insertUnorderedList")} title={m.bulletList}>
                     <Icon icon="mdi:format-list-bulleted" aria-hidden />
                   </button>
-                  <button type="button" className={`${styles.toolBtn} ${styles.toolBtnIcon}`} onClick={() => onExecCommand?.("insertOrderedList")} title={m.numberedList}>
+                  <button type="button" className={`${styles.toolBtn} ${styles.toolBtnIcon}`} disabled={isSourceMode} onClick={() => onExecCommand?.("insertOrderedList")} title={m.numberedList}>
                     <Icon icon="mdi:format-list-numbered" aria-hidden />
                   </button>
-                  <button type="button" className={`${styles.toolBtn} ${styles.toolBtnIcon}`} onClick={onInsertImage} title={m.insertImage}>
+                  <button type="button" className={`${styles.toolBtn} ${styles.toolBtnIcon}`} disabled={isSourceMode} onClick={onInsertImage} title={m.insertImage}>
                     <Icon icon="mdi:image-outline" aria-hidden />
                   </button>
                 </div>
 
                 <span className={styles.toolSep} aria-hidden />
 
-                <div className={styles.toolGroup} role="group" aria-label={m.toolbarSizeAria}>
-                  {[25, 50, 75, 100].map(pct => <button key={pct} type="button" className={`${styles.toolBtn} ${styles.sizeBtn}`} onClick={() => onResizeImage?.(pct)} title={interpolate(m.widthPct, {
+                <div className={`${styles.toolGroup} ${isSourceMode ? styles.toolGroupDisabled : ""}`} role="group" aria-label={m.toolbarSizeAria}>
+                  {[25, 50, 75, 100].map(pct => <button key={pct} type="button" className={`${styles.toolBtn} ${styles.sizeBtn}`} disabled={isSourceMode} onClick={() => onResizeImage?.(pct)} title={interpolate(m.widthPct, {
                   pct
                 })}>
                       {pct}%
@@ -118,19 +181,19 @@ export default function TicketTemplateFormModal({
 
                 <span className={styles.toolSep} aria-hidden />
 
-                <div className={styles.widthGroup} role="group" aria-label={m.toolbarWidthAria}>
+                <div className={`${styles.widthGroup} ${isSourceMode ? styles.toolGroupDisabled : ""}`} role="group" aria-label={m.toolbarWidthAria}>
                   <span className={styles.widthLabel}>{m.widthLabel}</span>
                   <div className={styles.numberStepper}>
-                    <input className={styles.numberInput} type="number" min="1" step="10" value={selectedImageWidthPx} onChange={e => setSelectedImageWidthPx?.(e.target.value)} placeholder="px" aria-label={m.widthPxAria} />
+                    <input className={styles.numberInput} type="number" min="1" step="10" value={selectedImageWidthPx} disabled={isSourceMode} onChange={e => setSelectedImageWidthPx?.(e.target.value)} placeholder="px" aria-label={m.widthPxAria} />
                     <div className={styles.numberStepperBtns}>
-                      <button type="button" className={styles.stepperBtn} onClick={() => {
+                      <button type="button" className={styles.stepperBtn} disabled={isSourceMode} onClick={() => {
                       const current = Number(selectedImageWidthPx);
                       const base = Number.isFinite(current) && current > 0 ? current : 320;
                       setSelectedImageWidthPx?.(String(base + 10));
                     }} title={m.increaseWidth} aria-label={m.increaseWidthAria}>
                         <Icon icon="mdi:chevron-up" aria-hidden />
                       </button>
-                      <button type="button" className={styles.stepperBtn} onClick={() => {
+                      <button type="button" className={styles.stepperBtn} disabled={isSourceMode} onClick={() => {
                       const current = Number(selectedImageWidthPx);
                       const base = Number.isFinite(current) && current > 0 ? current : 320;
                       setSelectedImageWidthPx?.(String(Math.max(1, base - 10)));
@@ -139,7 +202,7 @@ export default function TicketTemplateFormModal({
                       </button>
                     </div>
                   </div>
-                  <button type="button" className={styles.applyBtn} onClick={onApplyImageWidth}>
+                  <button type="button" className={styles.applyBtn} disabled={isSourceMode} onClick={onApplyImageWidth}>
                     {m.apply}
                   </button>
                 </div>
@@ -147,13 +210,16 @@ export default function TicketTemplateFormModal({
                 <input ref={templateImageInputRef} type="file" accept="image/*" onChange={onImageUpload} className={styles.hiddenInput} />
               </div>
 
-              <div ref={templateEditorRef} className={styles.editor} contentEditable suppressContentEditableWarning onInput={e => {
-              const htmlContent = String(e.currentTarget?.innerHTML || "").replace(/\soutline:\s*[^;"']+;?/gi, "");
+              {isSourceMode ? <textarea ref={templateSourceEditorRef} className={styles.sourceEditor} value={draft.content || ""} spellCheck={false} aria-label={m.sourceViewTitle} onChange={e => setDraft(prev => ({
+              ...prev,
+              content: e.target.value
+            }))} /> : <div ref={templateEditorRef} className={styles.editor} contentEditable suppressContentEditableWarning onInput={e => {
+              const htmlContent = cleanTemplateHtml(e.currentTarget?.innerHTML);
               setDraft(prev => ({
                 ...prev,
                 content: htmlContent
               }));
-            }} onClick={onEditorClick} />
+            }} onClick={onEditorClick} />}
             </div>
 
             <button type="button" className={`${styles.variablesBtn} ${!templateVariablesEnabled ? styles.variablesBtnLocked : ""}`} onClick={templateVariablesEnabled ? onOpenVariables : () => setShowVariablesProPromo(true)} title={templateVariablesEnabled ? m.variablesBtnTitle : m.variablesBtnLockedTitle}>
@@ -215,7 +281,10 @@ export default function TicketTemplateFormModal({
             <button type="button" className={layout.ghostBtn} onClick={onClose} disabled={saving}>
               {m.cancel}
             </button>
-            <button type="button" className={layout.primaryBtn} onClick={onSave} disabled={saving}>
+            <button type="button" className={layout.primaryBtn} onClick={() => {
+            if (editorMode === "visual") syncVisualToDraft();
+            onSave?.();
+          }} disabled={saving}>
               {saving ? <>
                   <Icon icon="mdi:loading" className={layout.spinning} aria-hidden />
                   {m.saving}

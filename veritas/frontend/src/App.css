@@ -47,7 +47,8 @@ body.dark {
   overflow-y: hidden;
 }
 
-html[data-profile-preview="1"] .contentWrapper {
+html[data-profile-preview="1"] .contentWrapper,
+html[data-agent-impersonation="1"] .contentWrapper {
   top: var(--profile-preview-banner-height, 40px);
   height: calc(100vh - var(--profile-preview-banner-height, 40px));
 }
@@ -62,7 +63,8 @@ html[data-profile-preview="1"] .contentWrapper {
   flex-direction: column;
 }
 
-html[data-profile-preview="1"] .contentWrapper.withTabs {
+html[data-profile-preview="1"] .contentWrapper.withTabs,
+html[data-agent-impersonation="1"] .contentWrapper.withTabs {
   top: calc(var(--profile-preview-banner-height, 40px) + var(--tabs-bar-height, 34px));
   height: calc(100vh - var(--profile-preview-banner-height, 40px) - var(--tabs-bar-height, 34px));
 }

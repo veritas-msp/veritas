@@ -7,6 +7,7 @@ import { getTimezoneOptions } from "../../i18n/timezoneOptions";
 import { getEmployeeRangeOptions } from "../../constants/organizationEmployeeRanges";
 import { useAppLocale } from "../../hooks/useAppGeneralSettings";
 import { useCommonCopy } from "../../hooks/useCommonCopy";
+import { useAuthContext } from "../../contexts/AuthContext";
 import { requestOnboardingRelaunch } from "../Onboarding/onboardingStorage";
 import { getAdminGeneralSettingsCopy } from "./adminGeneralSettingsI18n";
 import AdminGeneralSettingsEmail from "./AdminGeneralSettingsEmail";
@@ -31,6 +32,9 @@ const EMPTY = {
 export default function AdminGeneralSettings() {
   const locale = useAppLocale();
   const common = useCommonCopy();
+  const {
+    user
+  } = useAuthContext();
   const copy = useMemo(() => getAdminGeneralSettingsCopy(locale), [locale]);
   const dateFormatChoices = useMemo(() => getLocalizedDateFormatOptions(locale), [locale]);
   const themeChoices = useMemo(() => getLocalizedThemeChoices(locale), [locale]);
@@ -72,7 +76,7 @@ export default function AdminGeneralSettings() {
     }
   };
   const relaunchOnboarding = () => {
-    requestOnboardingRelaunch();
+    requestOnboardingRelaunch(user?.id);
   };
   if (loading) {
     return <Page>

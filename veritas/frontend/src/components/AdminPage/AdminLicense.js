@@ -192,7 +192,9 @@ export default function AdminLicense() {
       toast.success(copy.offlineActivateSuccess || copy.activateSuccess || copy.activated);
       window.setTimeout(() => window.location.reload(), 1200);
     } catch (err) {
-      toast.error(resolveLicenseApiError(err, copy, "activateError"));
+      const msg = err?.payload?.message || resolveLicenseApiError(err, copy, "activateError");
+      const diag = err?.payload?.diagnostics;
+      toast.error(diag ? `${msg} · ${JSON.stringify(diag.lengths || diag)}` : msg);
     } finally {
       setOfflineActivating(false);
     }

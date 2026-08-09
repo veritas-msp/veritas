@@ -169,6 +169,8 @@ export function buildAgentPath(docType, data = null, options = {}) {
       return "/support";
     case "User":
       return "/account";
+    case "Updates":
+      return "/updates";
     case "TabLauncher":
       return "/open";
     default:
@@ -421,6 +423,13 @@ export function parseAgentPath(pathname, search = "") {
     re: /^\/account$/,
     run: () => ({
       docType: "User",
+      data: null,
+      adminTab: null
+    })
+  }, {
+    re: /^\/updates$/,
+    run: () => ({
+      docType: "Updates",
       data: null,
       adminTab: null
     })

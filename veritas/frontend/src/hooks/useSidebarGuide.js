@@ -1,9 +1,22 @@
 import { useCallback, useEffect, useState } from "react";
 import { readSidebarGuideState, writeSidebarGuideState } from "../components/Misc/Sidebar/sidebarGuideStorage";
-export function useSidebarGuide(userId) {
+
+/**
+ * @param {string|null|undefined} userId
+ * @param {{ autoStartAllowed?: boolean }} [options]
+ *   autoStartAllowed — false while "premiers pas" is unfinished; true after it completes
+ *   (or when onboarding does not apply). Manual start via ? still works anytime.
+ */
+export function useSidebarGuide(userId, {
+  autoStartAllowed = true
+} = {}) {
   const [open, setOpen] = useState(false);
   useEffect(() => {
     if (!userId) {
+      setOpen(false);
+      return undefined;
+    }
+    if (!autoStartAllowed) {
       setOpen(false);
       return undefined;
     }
@@ -13,7 +26,7 @@ export function useSidebarGuide(userId) {
       return () => window.clearTimeout(timer);
     }
     return undefined;
-  }, [userId]);
+  }, [userId, autoStartAllowed]);
   const close = useCallback(() => {
     if (userId) {
       writeSidebarGuideState(userId, {

@@ -7,6 +7,7 @@ import { getSolutionCatalogDefaults, normalizeSolutionCatalogLocale } from "../u
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const root = path.join(__dirname, "..");
 const MIGRATION_FILE = "schema/patches/20260709_ticket_solution_catalog.sql";
+const INTERVENTION_LINK_MIGRATION_FILE = "schema/patches/20260809_ticket_solution_catalog_intervention_link.sql";
 let ensured = false;
 let schemaCache = null;
 async function tableExists(client, tableName) {
@@ -32,6 +33,15 @@ async function resolveSeedLocale(client) {
     return "fr";
   }
 }
+async function runSqlPatch(client, relativePath) {
+  const migrationPath = path.join(root, relativePath);
+  if (!fs.existsSync(migrationPath)) {
+    console.warn(`[ticket-solution-catalog] Migration not found: ${relativePath}`);
+    return false;
+  }
+  await client.query(fs.readFileSync(migrationPath, "utf8"));
+  return true;
+}
 export async function seedSolutionCatalogIfEmpty(client, locale) {
   const countResult = await client.query(`SELECT COUNT(*)::int AS count FROM v_b_ticket_solution_catalog`);
   if ((countResult.rows?.[0]?.count || 0) > 0) return false;
@@ -41,20 +51,31 @@ export async function seedSolutionCatalogIfEmpty(client, locale) {
 }
 async function seedDefaultCatalog(client, locale = "fr") {
   const entries = getSolutionCatalogDefaults(locale);
+  const hasInterventionCol = await columnExists(client, "v_b_ticket_solution_catalog", "intervention");
   for (const entry of entries) {
-    await client.query(`INSERT INTO v_b_ticket_solution_catalog (category, label, display_order, is_active, created_at, updated_at)
-       SELECT $1::varchar, $2::varchar, $3::int, TRUE, NOW(), NOW()
-       WHERE NOT EXISTS (
-         SELECT 1 FROM v_b_ticket_solution_catalog
-         WHERE category = $1::varchar AND lower(trim(label)) = lower(trim($2::varchar))
-       )`, [entry.category, entry.label, entry.displayOrder]);
+    if (hasInterventionCol) {
+      await client.query(`INSERT INTO v_b_ticket_solution_catalog (category, label, intervention, display_order, is_active, created_at, updated_at)
+         SELECT $1::varchar, $2::varchar, $3::varchar, $4::int, TRUE, NOW(), NOW()
+         WHERE NOT EXISTS (
+           SELECT 1 FROM v_b_ticket_solution_catalog
+           WHERE category = $1::varchar AND lower(trim(label)) = lower(trim($2::varchar))
+         )`, [entry.category, entry.label, entry.intervention || null, entry.displayOrder]);
+    } else {
+      await client.query(`INSERT INTO v_b_ticket_solution_catalog (category, label, display_order, is_active, created_at, updated_at)
+         SELECT $1::varchar, $2::varchar, $3::int, TRUE, NOW(), NOW()
+         WHERE NOT EXISTS (
+           SELECT 1 FROM v_b_ticket_solution_catalog
+           WHERE category = $1::varchar AND lower(trim(label)) = lower(trim($2::varchar))
+         )`, [entry.category, entry.label, entry.displayOrder]);
+    }
   }
 }
 export async function resolveTicketSolutionCatalogSchema() {
   if (schemaCache) return schemaCache;
-  const [hasCatalog, hasInterventionCol, hasActionCol] = await Promise.all([tableExists(pool, "v_b_ticket_solution_catalog"), columnExists(pool, "v_b_ticket_resolution_validations", "intervention_type"), columnExists(pool, "v_b_ticket_resolution_validations", "action_type")]);
+  const [hasCatalog, hasCatalogInterventionCol, hasInterventionCol, hasActionCol] = await Promise.all([tableExists(pool, "v_b_ticket_solution_catalog"), columnExists(pool, "v_b_ticket_solution_catalog", "intervention"), columnExists(pool, "v_b_ticket_resolution_validations", "intervention_type"), columnExists(pool, "v_b_ticket_resolution_validations", "action_type")]);
   schemaCache = {
     hasCatalog,
+    hasCatalogInterventionCol,
     hasInterventionCol,
     hasActionCol
   };
@@ -62,18 +83,18 @@ export async function resolveTicketSolutionCatalogSchema() {
 }
 export async function ensureTicketSolutionCatalogSchema() {
   if (ensured) return resolveTicketSolutionCatalogSchema();
-  const schema = await resolveTicketSolutionCatalogSchema();
-  if (schema.hasCatalog && schema.hasInterventionCol && schema.hasActionCol) {
+  let schema = await resolveTicketSolutionCatalogSchema();
+  const baseReady = schema.hasCatalog && schema.hasInterventionCol && schema.hasActionCol;
+  const linkReady = schema.hasCatalogInterventionCol;
+  if (baseReady && linkReady) {
     ensured = true;
-    if (schema.hasCatalog) {
-      const countResult = await pool.query(`SELECT COUNT(*)::int AS count FROM v_b_ticket_solution_catalog`);
-      if ((countResult.rows?.[0]?.count || 0) === 0) {
-        const client = await pool.connect();
-        try {
-          await seedSolutionCatalogIfEmpty(client);
-        } finally {
-          client.release();
-        }
+    const countResult = await pool.query(`SELECT COUNT(*)::int AS count FROM v_b_ticket_solution_catalog`);
+    if ((countResult.rows?.[0]?.count || 0) === 0) {
+      const client = await pool.connect();
+      try {
+        await seedSolutionCatalogIfEmpty(client);
+      } finally {
+        client.release();
       }
     }
     return schema;
@@ -83,16 +104,19 @@ export async function ensureTicketSolutionCatalogSchema() {
   }
   const client = await pool.connect();
   try {
-    const migrationPath = path.join(root, MIGRATION_FILE);
-    if (!fs.existsSync(migrationPath)) {
-      console.warn(`[ticket-solution-catalog] Migration not found: ${MIGRATION_FILE}`);
-      return schema;
+    if (!baseReady) {
+      await runSqlPatch(client, MIGRATION_FILE);
+      await seedSolutionCatalogIfEmpty(client);
     }
-    await client.query(fs.readFileSync(migrationPath, "utf8"));
-    await seedSolutionCatalogIfEmpty(client);
     schemaCache = null;
-    ensured = true;
-    return await resolveTicketSolutionCatalogSchema();
+    schema = await resolveTicketSolutionCatalogSchema();
+    if (schema.hasCatalog && !schema.hasCatalogInterventionCol) {
+      await runSqlPatch(client, INTERVENTION_LINK_MIGRATION_FILE);
+      schemaCache = null;
+      schema = await resolveTicketSolutionCatalogSchema();
+    }
+    ensured = Boolean(schema.hasCatalog && schema.hasInterventionCol && schema.hasActionCol && schema.hasCatalogInterventionCol);
+    return schema;
   } catch (err) {
     console.error("[ticket-solution-catalog] Migration failed:", err.message);
     return schema;

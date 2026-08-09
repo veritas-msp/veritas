@@ -41,6 +41,7 @@ const SIDEBAR_COPY = {
       menuAria: "Menu compte",
       myAccount: "Mon compte",
       admin: "Administration",
+      updates: "Mises à jour",
       support: "Support",
       logout: "Se déconnecter"
     }
@@ -86,6 +87,7 @@ const SIDEBAR_COPY = {
       menuAria: "Account menu",
       myAccount: "My account",
       admin: "Administration",
+      updates: "Updates",
       support: "Support",
       logout: "Sign out"
     }
@@ -131,6 +133,7 @@ const SIDEBAR_COPY = {
       menuAria: "Kontomenü",
       myAccount: "Mein Konto",
       admin: "Administration",
+      updates: "Updates",
       support: "Support",
       logout: "Abmelden"
     }
@@ -176,6 +179,7 @@ const SIDEBAR_COPY = {
       menuAria: "Menu account",
       myAccount: "Il mio account",
       admin: "Amministrazione",
+      updates: "Aggiornamenti",
       support: "Supporto",
       logout: "Disconnetti"
     }
@@ -221,6 +225,7 @@ const SIDEBAR_COPY = {
       menuAria: "Menú de cuenta",
       myAccount: "Mi cuenta",
       admin: "Administración",
+      updates: "Actualizaciones",
       support: "Soporte",
       logout: "Cerrar sesión"
     }

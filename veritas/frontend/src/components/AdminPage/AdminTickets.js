@@ -12,7 +12,7 @@ import CollectorDeleteModal from "./CollectorDeleteModal";
 import CollectorLogsModal from "./CollectorLogsModal";
 import CollectorFoldersModal from "./CollectorFoldersModal";
 import { COLLECTOR_PROVIDER_PRESETS, findCollectorProviderPreset, formatCollectorStatPercent, resolveCollectorEmailStats } from "./collectorConstants";
-import { sanitizeHtml } from "../../utils/sanitizeHtml";
+import { sanitizeHtml, toRichPreviewHtml } from "../../utils/sanitizeHtml";
 import IngestionRuleFormModal from "./IngestionRuleFormModal";
 import IngestionRuleTestModal from "./IngestionRuleTestModal";
 import IngestionRuleDeleteModal from "./IngestionRuleDeleteModal";
@@ -348,13 +348,43 @@ const MESSAGE_VARIABLE_GROUPS = [{
   label: "Equipment",
   variables: [{
     key: "{{material.name}}",
-    description: "Equipment name"
+    description: "Primary linked equipment name"
   }, {
     key: "{{material.id}}",
-    description: "Equipment ID"
+    description: "Primary linked equipment ID"
   }, {
     key: "{{material.type}}",
-    description: "Equipment type"
+    description: "Primary linked equipment type"
+  }, {
+    key: "{{material.serial}}",
+    description: "Serial number (linked / external)"
+  }, {
+    key: "{{material.brand}}",
+    description: "Brand (external equipment)"
+  }, {
+    key: "{{material.model}}",
+    description: "Model (external equipment)"
+  }, {
+    key: "{{material.warranty}}",
+    description: "Warranty end date"
+  }, {
+    key: "{{material.licenses}}",
+    description: "Licenses"
+  }, {
+    key: "{{material.list}}",
+    description: "All linked equipment (type · name)"
+  }, {
+    key: "{{material.names}}",
+    description: "All linked equipment names"
+  }, {
+    key: "{{material.count}}",
+    description: "Number of linked equipment"
+  }, {
+    key: "{{equipement.nom}}",
+    description: "Nom de l'équipement lié (alias FR)"
+  }, {
+    key: "{{equipement.liste}}",
+    description: "Liste des équipements liés (alias FR)"
   }]
 }, {
   label: "Technical fields",
@@ -583,6 +613,7 @@ export default function AdminTickets({
   const [solutionCatalogDraft, setSolutionCatalogDraft] = useState({
     category: "intervention",
     label: "",
+    intervention: "",
     displayOrder: 0,
     isActive: true
   });
@@ -627,8 +658,21 @@ export default function AdminTickets({
     const q = solutionActionSearch.trim().toLowerCase();
     const rows = solutionCatalogEntries.filter(entry => entry.category === "action");
     if (!q) return rows;
-    return rows.filter(entry => String(entry.label || "").toLowerCase().includes(q));
+    return rows.filter(entry => {
+      const haystack = `${entry.label || ""} ${entry.intervention || ""}`.toLowerCase();
+      return haystack.includes(q);
+    });
   }, [solutionCatalogEntries, solutionActionSearch]);
+  const solutionInterventionOptions = useMemo(() => solutionCatalogEntries.filter(entry => entry.category === "intervention").map(entry => String(entry.label || "").trim()).filter(Boolean), [solutionCatalogEntries]);
+  const actionCountByInterventionLabel = useMemo(() => {
+    const counts = new Map();
+    solutionCatalogEntries.filter(entry => entry.category === "action").forEach(entry => {
+      const interventionName = String(entry?.intervention || "").trim();
+      if (!interventionName) return;
+      counts.set(interventionName, (counts.get(interventionName) || 0) + 1);
+    });
+    return counts;
+  }, [solutionCatalogEntries]);
   const solutionInterventionsPagination = useTablePagination(filteredSolutionInterventions, {
     resetDeps: [solutionInterventionSearch],
     rangeFormatter: formatTableRange
@@ -678,6 +722,8 @@ export default function AdminTickets({
   const [showTemplatePreviewModal, setShowTemplatePreviewModal] = useState(false);
   const [templatePreviewTarget, setTemplatePreviewTarget] = useState(null);
   const templateEditorRef = useRef(null);
+  const templateSourceEditorRef = useRef(null);
+  const templateEditorModeRef = useRef("visual");
   const templateImageInputRef = useRef(null);
   const selectedTemplateImageRef = useRef(null);
   const [selectedImageWidthPx, setSelectedImageWidthPx] = useState("");
@@ -983,14 +1029,36 @@ export default function AdminTickets({
       setDeletingCategory(false);
     }
   };
+  const countActionsForIntervention = entry => actionCountByInterventionLabel.get(String(entry?.label || "").trim()) || 0;
+  const requestRemoveSolutionCatalogEntry = entry => {
+    if (entry?.category === "intervention") {
+      const linkedCount = countActionsForIntervention(entry);
+      if (linkedCount > 0) {
+        toast.warn(linkedCount === 1 ? interpolate(ss.solutions.interventionDeleteWarnOne, {
+          name: entry?.label || ss.solutions.thisIntervention
+        }) : interpolate(ss.solutions.interventionDeleteWarnMany, {
+          name: entry?.label || ss.solutions.thisIntervention,
+          count: linkedCount
+        }));
+        return;
+      }
+    }
+    setSolutionCatalogDeleteTarget(entry);
+  };
   const openCreateSolutionCatalogModal = category => {
     const rows = solutionCatalogEntries.filter(entry => entry.category === category);
     const maxOrder = rows.reduce((max, entry) => Math.max(max, Number(entry.displayOrder) || 0), 0);
+    const defaultIntervention = category === "action" ? solutionInterventionOptions[0] || "" : "";
+    if (category === "action" && !defaultIntervention) {
+      toast.warn(ss.modals.solution.noInterventions);
+      return;
+    }
     setSolutionCatalogModalMode("create");
     setEditingSolutionCatalogId(null);
     setSolutionCatalogDraft({
       category,
       label: "",
+      intervention: defaultIntervention,
       displayOrder: maxOrder + 10,
       isActive: true
     });
@@ -1002,6 +1070,7 @@ export default function AdminTickets({
     setSolutionCatalogDraft({
       category: entry?.category || "intervention",
       label: String(entry?.label || ""),
+      intervention: String(entry?.intervention || ""),
       displayOrder: Number(entry?.displayOrder) || 0,
       isActive: entry?.isActive !== false
     });
@@ -1013,14 +1082,20 @@ export default function AdminTickets({
     setSolutionCatalogDraft({
       category: "intervention",
       label: "",
+      intervention: "",
       displayOrder: 0,
       isActive: true
     });
   };
   const saveSolutionCatalogFromModal = async () => {
     const label = String(solutionCatalogDraft?.label || "").trim();
+    const intervention = String(solutionCatalogDraft?.intervention || "").trim();
     if (!label) {
       toast.error(ss.solutions.toast.labelRequired);
+      return;
+    }
+    if (solutionCatalogDraft?.category === "action" && !intervention) {
+      toast.error(ss.solutions.toast.interventionRequired);
       return;
     }
     setSavingSolutionCatalogEntry(true);
@@ -1029,16 +1104,21 @@ export default function AdminTickets({
         await createSolutionCatalogEntry({
           category: solutionCatalogDraft.category,
           label,
+          intervention: solutionCatalogDraft.category === "action" ? intervention : null,
           displayOrder: Number(solutionCatalogDraft.displayOrder) || 0,
           isActive: solutionCatalogDraft.isActive !== false
         });
         toast.success(ss.solutions.toast.added);
       } else {
-        await updateSolutionCatalogEntry(editingSolutionCatalogId, {
+        const payload = {
           label,
           displayOrder: Number(solutionCatalogDraft.displayOrder) || 0,
           isActive: solutionCatalogDraft.isActive !== false
-        });
+        };
+        if (solutionCatalogDraft.category === "action") {
+          payload.intervention = intervention;
+        }
+        await updateSolutionCatalogEntry(editingSolutionCatalogId, payload);
         toast.success(ss.solutions.toast.updated);
       }
       await loadSolutionCatalogAdmin();
@@ -1306,6 +1386,7 @@ export default function AdminTickets({
     }
   };
   const execTemplateCommand = command => {
+    if (templateEditorModeRef.current === "source") return;
     if (!templateEditorRef.current) return;
     templateEditorRef.current.focus();
     document.execCommand(command, false);
@@ -1315,6 +1396,30 @@ export default function AdminTickets({
     }));
   };
   const insertTemplateVariable = token => {
+    if (templateEditorModeRef.current === "source") {
+      const sourceEditor = templateSourceEditorRef.current;
+      if (!sourceEditor) {
+        setTemplateDraft(prev => ({
+          ...prev,
+          content: `${String(prev.content || "")}${token}`
+        }));
+        return;
+      }
+      const value = String(sourceEditor.value || "");
+      const start = Number.isFinite(sourceEditor.selectionStart) ? sourceEditor.selectionStart : value.length;
+      const end = Number.isFinite(sourceEditor.selectionEnd) ? sourceEditor.selectionEnd : start;
+      const next = `${value.slice(0, start)}${token}${value.slice(end)}`;
+      setTemplateDraft(prev => ({
+        ...prev,
+        content: next
+      }));
+      requestAnimationFrame(() => {
+        sourceEditor.focus();
+        const caret = start + String(token).length;
+        sourceEditor.setSelectionRange(caret, caret);
+      });
+      return;
+    }
     if (!templateEditorRef.current) return;
     templateEditorRef.current.focus();
     document.execCommand("insertText", false, token);
@@ -1427,6 +1532,7 @@ export default function AdminTickets({
     }));
   };
   const insertTemplateImage = () => {
+    if (templateEditorModeRef.current === "source") return;
     templateImageInputRef.current?.click();
   };
   const handleTemplateImageUpload = event => {
@@ -2947,7 +3053,10 @@ export default function AdminTickets({
                           <td colSpan={4} className={s.empty}>
                             {ss.solutions.emptyInterventions}
                           </td>
-                        </tr> : solutionInterventionsPagination.paginatedItems.map(entry => <tr key={String(entry.id)}>
+                        </tr> : solutionInterventionsPagination.paginatedItems.map(entry => {
+                      const linkedActionCount = countActionsForIntervention(entry);
+                      const interventionDeleteBlocked = linkedActionCount > 0;
+                      return <tr key={String(entry.id)}>
                             <td>{entry.label || ss.common.emptyDash}</td>
                             <td>{Number(entry.displayOrder) || 0}</td>
                             <td>
@@ -2958,12 +3067,15 @@ export default function AdminTickets({
                                 <button type="button" className={s.actionBtn} title={ss.common.actions.edit} onClick={() => openEditSolutionCatalogModal(entry)}>
                                   <Icon icon="mdi:pencil-outline" aria-hidden />
                                 </button>
-                                <button type="button" className={`${s.actionBtn} ${s.actionBtnDanger}`} title={ss.common.actions.delete} onClick={() => setSolutionCatalogDeleteTarget(entry)}>
+                                <button type="button" className={`${s.actionBtn} ${s.actionBtnDanger}`} title={interventionDeleteBlocked ? linkedActionCount === 1 ? ss.solutions.interventionDeleteBlockedOne : interpolate(ss.solutions.interventionDeleteBlockedMany, {
+                            count: linkedActionCount
+                          }) : ss.common.actions.delete} disabled={interventionDeleteBlocked} onClick={() => requestRemoveSolutionCatalogEntry(entry)}>
                                   <Icon icon="mdi:delete-outline" aria-hidden />
                                 </button>
                               </div>
                             </td>
-                          </tr>)}
+                          </tr>;
+                    })}
                     </tbody>
                   </table>
                 </div>
@@ -2992,6 +3104,7 @@ export default function AdminTickets({
                     <thead>
                       <tr>
                         <th>{ss.common.columns.label}</th>
+                        <th>{ss.common.columns.intervention}</th>
                         <th>{ss.common.columns.order}</th>
                         <th>{ss.common.columns.status}</th>
                         <th style={{
@@ -3001,11 +3114,12 @@ export default function AdminTickets({
                     </thead>
                     <tbody>
                       {filteredSolutionActions.length === 0 ? <tr>
-                          <td colSpan={4} className={s.empty}>
+                          <td colSpan={5} className={s.empty}>
                             {ss.solutions.emptyActions}
                           </td>
                         </tr> : solutionActionsPagination.paginatedItems.map(entry => <tr key={String(entry.id)}>
                             <td>{entry.label || ss.common.emptyDash}</td>
+                            <td>{entry.intervention || ss.common.emptyDash}</td>
                             <td>{Number(entry.displayOrder) || 0}</td>
                             <td>
                               <EntityStatus active={entry.isActive !== false} {...entityStatusLabels} />
@@ -3015,7 +3129,7 @@ export default function AdminTickets({
                                 <button type="button" className={s.actionBtn} title={ss.common.actions.edit} onClick={() => openEditSolutionCatalogModal(entry)}>
                                   <Icon icon="mdi:pencil-outline" aria-hidden />
                                 </button>
-                                <button type="button" className={`${s.actionBtn} ${s.actionBtnDanger}`} title={ss.common.actions.delete} onClick={() => setSolutionCatalogDeleteTarget(entry)}>
+                                <button type="button" className={`${s.actionBtn} ${s.actionBtnDanger}`} title={ss.common.actions.delete} onClick={() => requestRemoveSolutionCatalogEntry(entry)}>
                                   <Icon icon="mdi:delete-outline" aria-hidden />
                                 </button>
                               </div>
@@ -3848,7 +3962,7 @@ export default function AdminTickets({
 
       <ItilCategorySectionFormModal open={showCategorySectionModal} mode={categorySectionModalMode} draft={categorySectionDraft} setDraft={setCategorySectionDraft} saving={savingCategorySection} onClose={() => !savingCategorySection && closeCategorySectionModal()} onSave={saveCategorySectionFromModal} />
 
-      <SolutionCatalogEntryModal open={showSolutionCatalogModal} mode={solutionCatalogModalMode} draft={solutionCatalogDraft} setDraft={setSolutionCatalogDraft} saving={savingSolutionCatalogEntry} onClose={() => !savingSolutionCatalogEntry && closeSolutionCatalogModal()} onSave={saveSolutionCatalogFromModal} />
+      <SolutionCatalogEntryModal open={showSolutionCatalogModal} mode={solutionCatalogModalMode} draft={solutionCatalogDraft} setDraft={setSolutionCatalogDraft} saving={savingSolutionCatalogEntry} interventionOptions={solutionInterventionOptions} onClose={() => !savingSolutionCatalogEntry && closeSolutionCatalogModal()} onSave={saveSolutionCatalogFromModal} />
 
       <WebhookFormModal open={showWebhookModal} mode={webhookModalMode} draft={webhookDraft} setDraft={setWebhookDraft} saving={savingWebhook} testing={testingWebhookConnection} testMessage={webhookTestMessage} testStatus={webhookTestStatus} onClose={closeWebhookModal} onSave={saveWebhookFromModal} onTest={testWebhookDraft} />
 
@@ -3881,7 +3995,7 @@ export default function AdminTickets({
             </div>
             <div className={styles.modalBody}>
               <div className={styles.htmlPreviewBox} dangerouslySetInnerHTML={{
-            __html: sanitizeHtml(String(templatePreviewTarget?.content || ""))
+            __html: toRichPreviewHtml(templatePreviewTarget?.content) || `<em>${ss.templates.previewEmpty}</em>`
           }} />
             </div>
             <div className={styles.modalActions}>
@@ -3892,7 +4006,7 @@ export default function AdminTickets({
           </div>
         </div>}
 
-      <TicketTemplateFormModal open={showTemplateModal} mode={templateModalMode} draft={templateDraft} setDraft={setTemplateDraft} saving={savingTemplate} onClose={closeTemplateModal} onSave={saveTemplateFromModal} onOpenVariables={() => openMessageVariablesModal("template")} templateVariablesEnabled={!isCommunity} templateEditorRef={templateEditorRef} templateImageInputRef={templateImageInputRef} selectedImageWidthPx={selectedImageWidthPx} setSelectedImageWidthPx={setSelectedImageWidthPx} onExecCommand={execTemplateCommand} onInsertImage={insertTemplateImage} onImageUpload={handleTemplateImageUpload} onEditorClick={handleTemplateEditorClick} onResizeImage={resizeSelectedTemplateImage} onResizeImageCustom={resizeSelectedTemplateImageCustom} onApplyImageWidth={applySelectedTemplateImageWidth} />
+      <TicketTemplateFormModal open={showTemplateModal} mode={templateModalMode} draft={templateDraft} setDraft={setTemplateDraft} saving={savingTemplate} onClose={closeTemplateModal} onSave={saveTemplateFromModal} onOpenVariables={() => openMessageVariablesModal("template")} templateVariablesEnabled={!isCommunity} templateEditorRef={templateEditorRef} templateSourceEditorRef={templateSourceEditorRef} templateEditorModeRef={templateEditorModeRef} templateImageInputRef={templateImageInputRef} selectedImageWidthPx={selectedImageWidthPx} setSelectedImageWidthPx={setSelectedImageWidthPx} onExecCommand={execTemplateCommand} onInsertImage={insertTemplateImage} onImageUpload={handleTemplateImageUpload} onEditorClick={handleTemplateEditorClick} onResizeImage={resizeSelectedTemplateImage} onResizeImageCustom={resizeSelectedTemplateImageCustom} onApplyImageWidth={applySelectedTemplateImageWidth} />
 
       {showMessageVariablesModal && createPortal(<div className={`${styles.modalOverlay} ${styles.modalOverlayStacked}`} onClick={closeMessageVariablesModal}>
           <div className={styles.modalContent} onClick={event => event.stopPropagation()} style={{

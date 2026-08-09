@@ -80,6 +80,13 @@
   overflow: hidden;
 }
 
+.assetPreview {
+  background-image: linear-gradient(45deg, #e8edf3 25%, transparent 25%), linear-gradient(-45deg, #e8edf3 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #e8edf3 75%), linear-gradient(-45deg, transparent 75%, #e8edf3 75%);
+  background-size: 16px 16px;
+  background-position: 0 0, 0 8px, 8px -8px, -8px 0;
+  background-color: #fff;
+}
+
 .assetPreview img {
   max-width: 100%;
   max-height: 120px;
@@ -159,7 +166,9 @@
 
 .previewLogo {
   object-fit: contain;
-  background: rgba(255, 255, 255, 0.12);
+  background: transparent;
+  padding: 2px;
+  box-sizing: border-box;
 }
 
 .previewHeadline {

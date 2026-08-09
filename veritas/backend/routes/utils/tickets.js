@@ -2212,7 +2212,9 @@ router.get("/solution-catalog", verifyJWT, [query("category").optional().isIn(["
     });
   }
 });
-router.post("/solution-catalog", verifyJWT, [body("category").isIn(["intervention", "action"]), body("label").isString().notEmpty(), body("displayOrder").optional().isInt({
+router.post("/solution-catalog", verifyJWT, [body("category").isIn(["intervention", "action"]), body("label").isString().notEmpty(), body("intervention").optional({
+  nullable: true
+}).isString(), body("displayOrder").optional().isInt({
   min: 0
 }), body("isActive").optional().isBoolean()], async (req, res) => {
   const validationResponse = validationErrorOrNull(req, res);
@@ -2226,6 +2228,7 @@ router.post("/solution-catalog", verifyJWT, [body("category").isIn(["interventio
     const entry = await createSolutionCatalogEntry({
       category: req.body.category,
       label: req.body.label,
+      intervention: req.body.intervention,
       displayOrder: req.body.displayOrder,
       isActive: req.body.isActive
     });
@@ -2241,6 +2244,16 @@ router.post("/solution-catalog", verifyJWT, [body("category").isIn(["interventio
         error: "Label is required."
       });
     }
+    if (err?.message === "INTERVENTION_REQUIRED") {
+      return res.status(400).json({
+        error: "An intervention type is required for action types."
+      });
+    }
+    if (err?.message === "INTERVENTION_NOT_FOUND") {
+      return res.status(400).json({
+        error: "The selected intervention type does not exist."
+      });
+    }
     if (String(err?.code || "") === "23505") {
       return res.status(409).json({
         error: "This label already exists for this category."
@@ -2252,7 +2265,9 @@ router.post("/solution-catalog", verifyJWT, [body("category").isIn(["interventio
     });
   }
 });
-router.put("/solution-catalog/:entryId", verifyJWT, [param("entryId").isUUID(), body("label").optional().isString(), body("displayOrder").optional().isInt({
+router.put("/solution-catalog/:entryId", verifyJWT, [param("entryId").isUUID(), body("label").optional().isString(), body("intervention").optional({
+  nullable: true
+}).isString(), body("displayOrder").optional().isInt({
   min: 0
 }), body("isActive").optional().isBoolean()], async (req, res) => {
   const validationResponse = validationErrorOrNull(req, res);
@@ -2263,11 +2278,12 @@ router.put("/solution-catalog/:entryId", verifyJWT, [param("entryId").isUUID(), 
     });
   }
   try {
-    const entry = await updateSolutionCatalogEntry(req.params.entryId, {
-      label: req.body.label,
-      displayOrder: req.body.displayOrder,
-      isActive: req.body.isActive
-    });
+    const patch = {};
+    if (Object.prototype.hasOwnProperty.call(req.body, "label")) patch.label = req.body.label;
+    if (Object.prototype.hasOwnProperty.call(req.body, "intervention")) patch.intervention = req.body.intervention;
+    if (Object.prototype.hasOwnProperty.call(req.body, "displayOrder")) patch.displayOrder = req.body.displayOrder;
+    if (Object.prototype.hasOwnProperty.call(req.body, "isActive")) patch.isActive = req.body.isActive;
+    const entry = await updateSolutionCatalogEntry(req.params.entryId, patch);
     if (!entry) return res.status(404).json({
       error: "Catalog entry not found"
     });
@@ -2276,6 +2292,16 @@ router.put("/solution-catalog/:entryId", verifyJWT, [param("entryId").isUUID(), 
     if (err?.message === "LABEL_REQUIRED") {
       return res.status(400).json({
         error: "Label is required."
+      });
+    }
+    if (err?.message === "INTERVENTION_REQUIRED") {
+      return res.status(400).json({
+        error: "An intervention type is required for action types."
+      });
+    }
+    if (err?.message === "INTERVENTION_NOT_FOUND") {
+      return res.status(400).json({
+        error: "The selected intervention type does not exist."
       });
     }
     if (err?.message === "NO_CHANGES") {
@@ -2311,6 +2337,13 @@ router.delete("/solution-catalog/:entryId", verifyJWT, [param("entryId").isUUID(
       success: true
     });
   } catch (err) {
+    if (err?.message === "INTERVENTION_HAS_ACTIONS") {
+      const linkedCount = Number(err.linkedCount || 0);
+      return res.status(409).json({
+        error: linkedCount === 1 ? "Unable to delete this intervention type: 1 action type is still linked." : `Unable to delete this intervention type: ${linkedCount} action types are still linked.`,
+        linkedCount
+      });
+    }
     console.error("DELETE /tickets/solution-catalog/:entryId:", err);
     return res.status(500).json({
       error: "Error deleting catalog entry"
