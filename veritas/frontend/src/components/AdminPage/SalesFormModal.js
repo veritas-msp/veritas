@@ -28,12 +28,12 @@ import { ConfirmModal } from "./AdminUi";
 import { getAdminDeleteConfirmsCopy } from "./adminModalsI18n";
 const VISIBILITY_OPTIONS = [{
   value: "public",
-  label: "All agents",
-  hint: "Visible to everyone"
+  label: "Tous les agents",
+  hint: "Visible par tout le monde"
 }, {
   value: "assigned",
-  label: "Restricted",
-  hint: "Profiles, agents or teams"
+  label: "Restreint",
+  hint: "Profils, agents ou équipes"
 }];
 const BUILDER_MODES = [{
   id: "settings",
@@ -619,14 +619,14 @@ export default function SalesFormModal({
   if (!open) return null;
   const modalTitle = formId ? `Edit ${formDraft.label || "form"}` : "New form";
   const modalSubtitle = formId ? "Configure the request type, its visibility and fields." : "Create a professional service or installation request type.";
-  const renderGeneralSection = () => <>
-      <div className={`${layout.sectionHead} ${modalStyles.compactSectionHead}`}>
-        <h3 className={layout.sectionTitle}>Form name</h3>
-        <p className={layout.sectionDesc}>Name and type shown to agents when creating a request.</p>
-      </div>
+  const renderGeneralSection = () => <section className={modalStyles.settingsBlock}>
+      <header className={modalStyles.settingsBlockHead}>
+        <h3 className={modalStyles.settingsBlockTitle}>Nom du formulaire</h3>
+        <p className={modalStyles.settingsBlockDesc}>Nom et type affichés aux agents à la création d’une demande.</p>
+      </header>
       <div className={modalStyles.formBlocks}>
         <div className={layout.field}>
-          <label className={`${layout.label} ${layout.labelRequired}`}>Label</label>
+          <label className={`${layout.label} ${layout.labelRequired}`}>Libellé</label>
           <input className={layout.input} value={formDraft.label} onChange={e => {
           const nextLabel = e.target.value;
           setFormDraft(prev => {
@@ -638,8 +638,8 @@ export default function SalesFormModal({
               categorySlug: slugifyCategory(prev.kind, nextKey)
             };
           });
-        }} autoFocus={isCreate} placeholder="E.g. On-site installation" />
-          <FieldHint>Name shown when creating a request.</FieldHint>
+        }} autoFocus={isCreate} placeholder="Ex. Installation sur site" />
+          <FieldHint>Nom visible lors de la création d’une demande.</FieldHint>
         </div>
 
         <div className={modalStyles.typeOrderRow}>
@@ -650,12 +650,12 @@ export default function SalesFormModal({
             kind: e.target.value,
             categorySlug: slugifyCategory(e.target.value, prev.key)
           }))}>
-              <option value="prestation">Professional service</option>
+              <option value="prestation">Prestation</option>
               <option value="installation">Installation</option>
             </select>
           </div>
           <div className={`${layout.field} ${modalStyles.orderField}`}>
-            <label className={layout.label}>Order</label>
+            <label className={layout.label}>Ordre</label>
             <input type="number" className={layout.input} value={formDraft.displayOrder} onChange={e => setFormDraft(prev => ({
             ...prev,
             displayOrder: Number(e.target.value || 0)
@@ -664,7 +664,7 @@ export default function SalesFormModal({
         </div>
 
         <div className={modalStyles.iconSection}>
-          <span className={layout.label}>Icon</span>
+          <span className={layout.label}>Icône</span>
           <IconPicker variant="simple" value={formDraft.icon || "mdi:file-document-outline"} onChange={icon => setFormDraft(prev => ({
           ...prev,
           icon
@@ -673,26 +673,26 @@ export default function SalesFormModal({
 
         <div className={layout.field}>
           <label className={layout.label}>Description</label>
-          <textarea className={layout.input} rows={2} value={formDraft.description} onChange={e => setFormDraft(prev => ({
+          <textarea className={layout.input} rows={3} value={formDraft.description} onChange={e => setFormDraft(prev => ({
           ...prev,
           description: e.target.value
-        }))} />
+        }))} placeholder="Courte description affichée aux agents" />
         </div>
 
-        <label className={`${layout.label} ${modalStyles.inlineActive}`}>
+        <label className={modalStyles.inlineActive}>
           <input type="checkbox" checked={formDraft.enabled !== false} onChange={e => setFormDraft(prev => ({
           ...prev,
           enabled: e.target.checked
         }))} />
-          Active
+          Formulaire actif
         </label>
       </div>
-    </>;
-  const renderVisibilitySection = () => <>
-      <div className={`${layout.sectionHead} ${modalStyles.compactSectionHead}`}>
-        <h3 className={layout.sectionTitle}>Visibility</h3>
-        <p className={layout.sectionDesc}>Who can use this form when creating a request.</p>
-      </div>
+    </section>;
+  const renderVisibilitySection = () => <section className={modalStyles.settingsBlock}>
+      <header className={modalStyles.settingsBlockHead}>
+        <h3 className={modalStyles.settingsBlockTitle}>Visibilité</h3>
+        <p className={modalStyles.settingsBlockDesc}>Qui peut utiliser ce formulaire à la création d’une demande.</p>
+      </header>
       <div className={layout.field}>
         <div className={modalStyles.chipRow}>
           {VISIBILITY_OPTIONS.map(opt => <button key={opt.value} type="button" className={`${pageLayout.chip} ${formDraft.visibility === opt.value ? pageLayout.chipActive : ""}`} onClick={() => setFormDraft(prev => ({
@@ -708,24 +708,24 @@ export default function SalesFormModal({
         <FieldHint>{VISIBILITY_OPTIONS.find(opt => opt.value === formDraft.visibility)?.hint}</FieldHint>
       </div>
       {formDraft.visibility === "assigned" && <div className={layout.field}>
-          <label className={layout.label}>Who can use this form?</label>
-          <FieldHint>Type to filter, then select from the list.</FieldHint>
+          <label className={layout.label}>Qui peut utiliser ce formulaire ?</label>
+          <FieldHint>Tapez pour filtrer, puis sélectionnez dans la liste.</FieldHint>
           <div className={modalStyles.suggestGrid}>
-            <MultiSuggestPicker inputId="sales-form-visibility-users" label="Agents" placeholder="Search for an agent…" options={userOptions} selectedIds={formDraft.userIds} emptyHint="No agent" onChange={userIds => setFormDraft(prev => ({
+            <MultiSuggestPicker inputId="sales-form-visibility-users" label="Agents" placeholder="Rechercher un agent…" options={userOptions} selectedIds={formDraft.userIds} emptyHint="Aucun agent" onChange={userIds => setFormDraft(prev => ({
           ...prev,
           userIds
         }))} />
-            <MultiSuggestPicker inputId="sales-form-visibility-profiles" label="Profiles" placeholder="Search for a profile…" options={profileOptions} selectedIds={formDraft.profileNames} emptyHint="No profile" onChange={profileNames => setFormDraft(prev => ({
+            <MultiSuggestPicker inputId="sales-form-visibility-profiles" label="Profils" placeholder="Rechercher un profil…" options={profileOptions} selectedIds={formDraft.profileNames} emptyHint="Aucun profil" onChange={profileNames => setFormDraft(prev => ({
           ...prev,
           profileNames
         }))} />
-            <MultiSuggestPicker inputId="sales-form-visibility-teams" label="Teams" placeholder="Search for a team…" options={teamOptions} selectedIds={formDraft.teamIds} emptyHint="No team" onChange={teamIds => setFormDraft(prev => ({
+            <MultiSuggestPicker inputId="sales-form-visibility-teams" label="Équipes" placeholder="Rechercher une équipe…" options={teamOptions} selectedIds={formDraft.teamIds} emptyHint="Aucune équipe" onChange={teamIds => setFormDraft(prev => ({
           ...prev,
           teamIds
         }))} />
           </div>
         </div>}
-    </>;
+    </section>;
   const renderTargetsSection = () => <>
       <div className={layout.sectionHead}>
         <h3 className={layout.sectionTitle}>Ticket targets</h3>
@@ -744,9 +744,11 @@ export default function SalesFormModal({
     </>;
   const renderSettingsSection = () => <div className={`${builderStyles.builderContent} ${builderStyles.settingsContent}`}>
       <div className={builderStyles.settingsPanelWide}>
-        {renderGeneralSection()}
-        <div className={modalStyles.sectionDivider} aria-hidden />
-        {renderVisibilitySection()}
+        <div className={modalStyles.settingsStack}>
+          {renderGeneralSection()}
+          <hr className={modalStyles.sectionDivider} />
+          {renderVisibilitySection()}
+        </div>
       </div>
     </div>;
   const renderRulesSection = () => <div className={`${builderStyles.builderContent} ${builderStyles.settingsContent}`}>
