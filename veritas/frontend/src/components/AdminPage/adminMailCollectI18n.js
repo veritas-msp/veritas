@@ -2,7 +2,7 @@ import { createLocaleGetter, interpolate } from "../../i18n/translate";
 import { COLLECTOR_FORM_SECTIONS, COLLECTOR_PROVIDER_PRESETS } from "./collectorConstants";
 import { INGESTION_RULE_FORM_SECTIONS, RULE_ACTION_OPTIONS } from "./ingestionRuleConstants";
 import { MAIL_CRITERION_FIELD_OPTIONS, MAIL_CRITERION_OPERATOR_OPTIONS, normalizeExclusionFilterRoot, normalizeIngestionAction } from "../../utils/mailIngestionRules";
-import { ORPHAN_REPLY_BEHAVIOR_OPTIONS } from "../../utils/mailCollectSettingsConstants";
+import { ORPHAN_REPLY_BEHAVIOR_OPTIONS, UNMATCHED_BEHAVIOR_OPTIONS } from "../../utils/mailCollectSettingsConstants";
 const ADMIN_MAIL_COLLECT_COPY = {
   "fr": {
     "tabs": {
@@ -89,45 +89,88 @@ const ADMIN_MAIL_COLLECT_COPY = {
     "options": {
       "loading": "Chargement des paramètres…",
       "cardTitle": "Paramètres de collecte",
-      "cardDescription": "Ces options s'appliquent à tous vos collecteurs. Les règles de collecte décident toujours quels emails sont acceptés.",
+      "cardDescription": "Ces options s'appliquent à tous les collecteurs. Les règles décident quels emails sont acceptés ; ces paramètres définissent le comportement ensuite.",
       "groups": {
         "thread": {
-          "title": "Traitement des emails",
-          "description": "Réponses aux tickets et anti-doublons"
+          "title": "Réponses & doublons",
+          "description": "Comment traiter les réponses clients et les messages déjà vus"
+        },
+        "filing": {
+          "title": "Classement des mails",
+          "description": "Déplacement vers les dossiers Acceptés / Refusés du collecteur"
+        },
+        "unmatched": {
+          "title": "Sans règle correspondante",
+          "description": "Comportement si aucun critère de règle ne matche"
         },
         "logs": {
-          "title": "Journal d'activité",
-          "description": "Historique visible dans les logs de chaque collecteur"
+          "title": "Journal",
+          "description": "Rétention des logs affichés sur chaque collecteur"
         }
       },
       "threadReplies": {
-        "label": "Ajouter les réponses comme commentaires",
-        "hint": "Si un client répond à un mail de ticket, Veritas ajoute un commentaire au ticket existant au lieu d'en créer un nouveau."
+        "label": "Rattacher les réponses au ticket existant",
+        "hint": "Si un client répond à un mail de ticket, Veritas ajoute un commentaire au ticket au lieu d'en créer un nouveau."
       },
       "deduplicate": {
         "label": "Ignorer les emails déjà traités",
-        "hint": "Évite un second ticket si le même message est rescanné ou renvoyé."
+        "hint": "Chaque Message-ID n'est traité qu'une fois (rescans, renvois)."
       },
       "orphanReply": {
-        "label": "Si la réponse ne correspond à aucun ticket",
-        "hintFallback": "Cas rare : Veritas ne retrouve pas le ticket d'origine.",
+        "label": "Réponse sans ticket lié",
+        "hintFallback": "Quand le mail ressemble à une réponse mais qu'aucun ticket Veritas n'est trouvé.",
         "ariaLabel": "Comportement si la réponse ne correspond à aucun ticket"
+      },
+      "moveOnSuccess": {
+        "label": "Déplacer les mails acceptés",
+        "hint": "Après ticket créé, commentaire rattaché ou règle « ignorer » → dossier Mails acceptés."
+      },
+      "moveOnReject": {
+        "label": "Déplacer les mails refusés",
+        "hint": "Échecs, réponses orphelines refusées, etc. → dossier Mails refusés."
+      },
+      "markSeen": {
+        "label": "Marquer comme lu après traitement",
+        "hint": "Utile si les dossiers de classement ne sont pas configurés, ou en secours."
+      },
+      "unmatched": {
+        "label": "Email sans règle",
+        "hintFallback": "Par défaut le mail reste en boîte jusqu'à qu'une règle le prenne.",
+        "ariaLabel": "Comportement si aucune règle ne correspond"
       },
       "maxLogEntries": {
         "label": "Événements max. par collecteur",
-        "hint": "Au-delà, les plus anciens sont effacés automatiquement.",
+        "hint": "Au-delà, les plus anciens logs sont effacés.",
         "ariaLabel": "Nombre maximal d'événements de journal par collecteur"
       },
-      "footerHint": "Rappel : un email n'est traité que s'il correspond à une règle de collecte active. Sans règle, rien n'est créé et le message reste en boîte."
+      "footerHint": "Rappel : sans règle de collecte active, aucun ticket n'est créé. Configurez aussi les dossiers Acceptés / Refusés sur chaque collecteur."
     },
     "orphanReply": {
+      "refuse": {
+        "label": "Refuser",
+        "subtitle": "Classer dans Mails refusés"
+      },
       "ignore": {
-        "label": "Ne rien faire",
-        "subtitle": "Laisser le mail dans la boîte de réception"
+        "label": "Laisser",
+        "subtitle": "Rester dans la boîte de réception"
+      },
+      "create_ticket": {
+        "label": "Créer un ticket",
+        "subtitle": "Nouveau ticket même sans fil trouvé"
+      }
+    },
+    "unmatchedMail": {
+      "leave": {
+        "label": "Laisser",
+        "subtitle": "Rester en boîte pour le prochain passage"
+      },
+      "mark_seen": {
+        "label": "Marquer lu",
+        "subtitle": "Rester en boîte, marqué comme lu"
       },
       "refuse": {
-        "label": "Classer en refusés",
-        "subtitle": "Déplacer vers le dossier « refusés » du collecteur"
+        "label": "Refuser",
+        "subtitle": "Déplacer vers Mails refusés"
       }
     },
     "toast": {
@@ -200,7 +243,7 @@ const ADMIN_MAIL_COLLECT_COPY = {
       "refusedLabel": "Mails refusés",
       "refusedPlaceholder": "INBOX/Refusés",
       "behaviorTitle": "3. Comportement",
-      "autoIngestLabel": "Créer des tickets automatiquement",
+      "autoIngestLabel": "Collecte automatique active",
       "unreadOnlyLabel": "Uniquement les messages non lus",
       "intervalLabel": "Fréquence de vérification",
       "intervalHintOne": "Vérification toutes les {minutes} minute",
@@ -570,45 +613,88 @@ const ADMIN_MAIL_COLLECT_COPY = {
     "options": {
       "loading": "Loading settings…",
       "cardTitle": "Collection settings",
-      "cardDescription": "These options apply to all collectors. Collection rules still decide which emails are accepted.",
+      "cardDescription": "These options apply to all collectors. Rules decide which emails are accepted; these settings define what happens next.",
       "groups": {
         "thread": {
-          "title": "Email processing",
-          "description": "Ticket replies and duplicate prevention"
+          "title": "Replies & duplicates",
+          "description": "How to handle client replies and already-seen messages"
+        },
+        "filing": {
+          "title": "Mail filing",
+          "description": "Move to the collector Accepted / Rejected folders"
+        },
+        "unmatched": {
+          "title": "No matching rule",
+          "description": "Behavior when no rule criteria match"
         },
         "logs": {
           "title": "Activity log",
-          "description": "History shown in each collector's logs"
+          "description": "Log retention shown on each collector"
         }
       },
       "threadReplies": {
-        "label": "Add replies as ticket comments",
-        "hint": "If a client replies to a ticket email, Veritas adds a comment on the existing ticket instead of creating a new one."
+        "label": "Attach replies to the existing ticket",
+        "hint": "If a client replies to a ticket email, Veritas adds a comment instead of creating a new ticket."
       },
       "deduplicate": {
         "label": "Ignore emails already processed",
-        "hint": "Avoids a second ticket when the same message is rescanned or resent."
+        "hint": "Each Message-ID is processed only once (rescans, resends)."
       },
       "orphanReply": {
-        "label": "If the reply matches no ticket",
-        "hintFallback": "Rare case: Veritas cannot find the original ticket.",
+        "label": "Reply with no linked ticket",
+        "hintFallback": "When the message looks like a reply but no Veritas ticket is found.",
         "ariaLabel": "Behavior when a reply matches no ticket"
+      },
+      "moveOnSuccess": {
+        "label": "Move accepted emails",
+        "hint": "After ticket created, comment attached, or ignore rule → Accepted folder."
+      },
+      "moveOnReject": {
+        "label": "Move rejected emails",
+        "hint": "Failures, refused orphan replies, etc. → Rejected folder."
+      },
+      "markSeen": {
+        "label": "Mark as read after processing",
+        "hint": "Useful when filing folders are not set, or as a fallback."
+      },
+      "unmatched": {
+        "label": "Email with no rule",
+        "hintFallback": "By default the email stays in the inbox until a rule matches.",
+        "ariaLabel": "Behavior when no rule matches"
       },
       "maxLogEntries": {
         "label": "Max events per collector",
-        "hint": "Beyond this limit, the oldest events are deleted automatically.",
+        "hint": "Beyond this limit, the oldest logs are deleted.",
         "ariaLabel": "Maximum log events per collector"
       },
-      "footerHint": "Reminder: an email is processed only if it matches an active collection rule. Without a rule, nothing is created and the message stays in the inbox."
+      "footerHint": "Reminder: without an active collection rule, no ticket is created. Also configure Accepted / Rejected folders on each collector."
     },
     "orphanReply": {
+      "refuse": {
+        "label": "Refuse",
+        "subtitle": "Move to Rejected emails"
+      },
       "ignore": {
-        "label": "Do nothing",
-        "subtitle": "Leave the email in the inbox"
+        "label": "Leave",
+        "subtitle": "Keep in the inbox"
+      },
+      "create_ticket": {
+        "label": "Create ticket",
+        "subtitle": "New ticket even if no thread is found"
+      }
+    },
+    "unmatchedMail": {
+      "leave": {
+        "label": "Leave",
+        "subtitle": "Stay in inbox for the next poll"
+      },
+      "mark_seen": {
+        "label": "Mark read",
+        "subtitle": "Stay in inbox, marked as read"
       },
       "refuse": {
-        "label": "Move to rejected",
-        "subtitle": "Move to the collector's rejected folder"
+        "label": "Refuse",
+        "subtitle": "Move to Rejected emails"
       }
     },
     "toast": {
@@ -681,7 +767,7 @@ const ADMIN_MAIL_COLLECT_COPY = {
       "refusedLabel": "Rejected emails",
       "refusedPlaceholder": "INBOX/Rejected",
       "behaviorTitle": "3. Behaviour",
-      "autoIngestLabel": "Create tickets automatically",
+      "autoIngestLabel": "Automatic collection enabled",
       "unreadOnlyLabel": "Unread messages only",
       "intervalLabel": "Check frequency",
       "intervalHintOne": "Check every {minutes} minute",
@@ -2459,8 +2545,15 @@ export function getLocalizedMailCriterionOperators(copy) {
 export function getLocalizedOrphanReplyOptions(copy) {
   return ORPHAN_REPLY_BEHAVIOR_OPTIONS.map(option => ({
     ...option,
-    label: copy.orphanReply[option.value]?.label ?? option.label,
-    subtitle: copy.orphanReply[option.value]?.subtitle ?? option.subtitle
+    label: copy.orphanReply?.[option.value]?.label ?? option.label,
+    subtitle: copy.orphanReply?.[option.value]?.subtitle ?? option.subtitle
+  }));
+}
+export function getLocalizedUnmatchedMailOptions(copy) {
+  return UNMATCHED_BEHAVIOR_OPTIONS.map(option => ({
+    ...option,
+    label: copy.unmatchedMail?.[option.value]?.label ?? option.label,
+    subtitle: copy.unmatchedMail?.[option.value]?.subtitle ?? option.subtitle
   }));
 }
 export function describeLocalizedRuleCollector(rule, collectors, copy) {

@@ -6,12 +6,14 @@ import { Card, Field, Btn, Switch, ChoiceGroup, FieldRow, NumberStepper, FormGri
 import adminUi from "./AdminUi.module.css";
 import styles from "./AdminMailCollectOptionsSettings.module.css";
 import { useAppLocale } from "../../hooks/useAppGeneralSettings";
-import { getAdminMailCollectCopy, getLocalizedOrphanReplyOptions } from "./adminMailCollectI18n";
+import { getAdminMailCollectCopy, getLocalizedOrphanReplyOptions, getLocalizedUnmatchedMailOptions } from "./adminMailCollectI18n";
+
 export default function AdminMailCollectOptionsSettings() {
   const locale = useAppLocale();
   const copy = useMemo(() => getAdminMailCollectCopy(locale), [locale]);
   const opt = copy.options;
   const orphanOptions = useMemo(() => getLocalizedOrphanReplyOptions(copy), [copy]);
+  const unmatchedOptions = useMemo(() => getLocalizedUnmatchedMailOptions(copy), [copy]);
   const orphanSegmentOptions = useMemo(() => orphanOptions.map(({
     value,
     label
@@ -19,10 +21,19 @@ export default function AdminMailCollectOptionsSettings() {
     value,
     label
   })), [orphanOptions]);
+  const unmatchedSegmentOptions = useMemo(() => unmatchedOptions.map(({
+    value,
+    label
+  }) => ({
+    value,
+    label
+  })), [unmatchedOptions]);
   const [form, setForm] = useState(() => normalizeMailCollectSettings(DEFAULT_MAIL_COLLECT_SETTINGS));
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const orphanHint = useMemo(() => orphanOptions.find(item => item.value === form.orphanReplyBehavior)?.subtitle || opt.orphanReply.hintFallback, [form.orphanReplyBehavior, orphanOptions, opt.orphanReply.hintFallback]);
+  const unmatchedHint = useMemo(() => unmatchedOptions.find(item => item.value === form.unmatchedBehavior)?.subtitle || opt.unmatched.hintFallback, [form.unmatchedBehavior, unmatchedOptions, opt.unmatched.hintFallback]);
+
   useEffect(() => {
     const cached = getTicketAutomationConfig();
     if (cached?.mailCollectSettings) {
@@ -32,10 +43,12 @@ export default function AdminMailCollectOptionsSettings() {
       setForm(normalizeMailCollectSettings(config?.mailCollectSettings));
     }).catch(() => toast.error(copy.toast.loadError)).finally(() => setLoading(false));
   }, [copy.toast.loadError]);
+
   const patch = partial => setForm(prev => ({
     ...prev,
     ...partial
   }));
+
   const save = async () => {
     setSaving(true);
     try {
@@ -53,9 +66,11 @@ export default function AdminMailCollectOptionsSettings() {
       setSaving(false);
     }
   };
+
   if (loading) {
     return <p className={adminUi.adminMutedText}>{opt.loading}</p>;
   }
+
   return <div className={styles.layout}>
       <Card title={opt.cardTitle} description={opt.cardDescription}>
         <div className={styles.groups}>
@@ -86,6 +101,44 @@ export default function AdminMailCollectOptionsSettings() {
               })} />
                 </Field>
               </div> : null}
+          </section>
+
+          <section className={styles.group}>
+            <header className={styles.groupHeader}>
+              <h3 className={styles.groupTitle}>{opt.groups.filing.title}</h3>
+              <p className={styles.groupDesc}>{opt.groups.filing.description}</p>
+            </header>
+
+            <FormGrid cols={2}>
+              <FieldRow icon="mdi:folder-move-outline" label={opt.moveOnSuccess.label} hint={opt.moveOnSuccess.hint} className={styles.compactRow}>
+                <Switch checked={form.moveOnSuccess !== false} onChange={on => patch({
+                moveOnSuccess: on
+              })} />
+              </FieldRow>
+              <FieldRow icon="mdi:folder-cancel-outline" label={opt.moveOnReject.label} hint={opt.moveOnReject.hint} className={styles.compactRow}>
+                <Switch checked={form.moveOnReject !== false} onChange={on => patch({
+                moveOnReject: on
+              })} />
+              </FieldRow>
+              <FieldRow icon="mdi:email-check-outline" label={opt.markSeen.label} hint={opt.markSeen.hint} className={styles.compactRow}>
+                <Switch checked={form.markSeenAfterProcess !== false} onChange={on => patch({
+                markSeenAfterProcess: on
+              })} />
+              </FieldRow>
+            </FormGrid>
+          </section>
+
+          <section className={styles.group}>
+            <header className={styles.groupHeader}>
+              <h3 className={styles.groupTitle}>{opt.groups.unmatched.title}</h3>
+              <p className={styles.groupDesc}>{opt.groups.unmatched.description}</p>
+            </header>
+
+            <Field label={opt.unmatched.label} hint={unmatchedHint || opt.unmatched.hintFallback}>
+              <ChoiceGroup variant="segment" ariaLabel={opt.unmatched.ariaLabel} value={form.unmatchedBehavior} options={unmatchedSegmentOptions} onChange={value => patch({
+              unmatchedBehavior: value
+            })} />
+            </Field>
           </section>
 
           <section className={styles.group}>

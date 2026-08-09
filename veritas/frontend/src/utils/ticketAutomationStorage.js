@@ -278,6 +278,7 @@ const normalizeMailCollector = (row, idx) => ({
   comments: String(row?.comments || "").trim(),
   checkIntervalMinutes: Number.isFinite(Number(row?.checkIntervalMinutes)) ? Number(row.checkIntervalMinutes) : 5,
   ingestEnabled: row?.ingestEnabled !== false,
+  lastCheckedAt: String(row?.lastCheckedAt || "").trim(),
   stats: {
     collected: Math.max(0, Number(row?.stats?.collected) || 0),
     validated: Math.max(0, Number(row?.stats?.validated) || 0),

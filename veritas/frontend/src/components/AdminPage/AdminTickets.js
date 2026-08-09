@@ -487,6 +487,7 @@ const buildDefaultCollector = () => ({
   unreadOnly: true,
   checkIntervalMinutes: 5,
   ingestEnabled: true,
+  lastCheckedAt: "",
   logs: [],
   stats: {
     collected: 0,

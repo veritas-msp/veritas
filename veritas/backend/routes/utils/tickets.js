@@ -351,6 +351,32 @@ const normalizeTicketAutomationScheduledAlertRule = (row, idx) => ({
   enabled: row?.enabled !== false
 });
 const normalizeTicketAutomationMailCollector = normalizeMailCollector;
+function mergeMailCollectorsPreservingRuntime(incomingCollectors = [], currentCollectors = []) {
+  const currentById = new Map(
+    (Array.isArray(currentCollectors) ? currentCollectors : []).map((row, idx) => {
+      const normalized = normalizeMailCollector(row, idx);
+      return [String(normalized.id), normalized];
+    })
+  );
+  return (Array.isArray(incomingCollectors) ? incomingCollectors : []).map((row, idx) => {
+    const next = normalizeMailCollector(row, idx);
+    const prev = currentById.get(String(next.id));
+    if (!prev) return next;
+    return {
+      ...next,
+      // Never let an admin save wipe poller runtime state / history.
+      lastCheckedAt: next.lastCheckedAt || prev.lastCheckedAt || "",
+      logs: Array.isArray(next.logs) && next.logs.length > 0 ? next.logs : prev.logs || [],
+      stats: {
+        collected: Math.max(Number(next.stats?.collected) || 0, Number(prev.stats?.collected) || 0),
+        validated: Math.max(Number(next.stats?.validated) || 0, Number(prev.stats?.validated) || 0),
+        ignored: Math.max(Number(next.stats?.ignored) || 0, Number(prev.stats?.ignored) || 0)
+      },
+      // Keep stored password when UI omits/masks it.
+      password: next.password || prev.password || ""
+    };
+  });
+}
 const normalizeTicketAutomationConfig = payload => ({
   ...DEFAULT_TICKET_AUTOMATION_CONFIG,
   commentTemplates: Array.isArray(payload?.commentTemplates) ? payload.commentTemplates.map(normalizeTicketAutomationTemplate) : [],
@@ -701,6 +727,10 @@ router.put("/automation-config", verifyJWT, [body("commentTemplates").optional()
       };
     }
     const normalized = normalizeTicketAutomationConfig(payload);
+    normalized.mailCollectors = mergeMailCollectorsPreservingRuntime(
+      normalized.mailCollectors,
+      current.mailCollectors
+    );
     try {
       assertCommunityTicketAutomationLimits(normalized);
     } catch (limitErr) {
