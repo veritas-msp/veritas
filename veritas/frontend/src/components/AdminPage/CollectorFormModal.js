@@ -34,10 +34,23 @@ export default function CollectorFormModal({
   useEffect(() => {
     if (!open) return;
     setActiveSection(initialSection || (isCreate ? "provider" : "connection"));
-    setShowAdvanced(Boolean(draft?.port || draft?.validateCertMode === "validate-cert"));
-  }, [open, initialSection, isCreate, draft?.port, draft?.validateCertMode]);
+    setShowAdvanced(Boolean(draft?.port));
+  }, [open, initialSection, isCreate, draft?.port]);
   const hasLogin = Boolean(String(draft?.username || "").trim());
   const hasServer = Boolean(String(draft?.server || "").trim());
+  const connectionString = useMemo(() => {
+    const host = String(draft?.server || "").trim();
+    if (!host) return "";
+    const protocol = String(draft?.protocol || "imap").toLowerCase() || "imap";
+    const security = String(draft?.security || "tls").toLowerCase();
+    const certMode = String(draft?.validateCertMode || "no-validate-cert").toLowerCase();
+    const folder = String(draft?.inboxFolder || "INBOX").trim() || "INBOX";
+    const parts = [host, protocol];
+    parts.push(certMode === "validate-cert" ? "validate-cert" : "novalidate-cert");
+    if (security === "ssl") parts.push("ssl");
+    else if (security === "tls" || security === "starttls") parts.push("tls");
+    return `{${parts.join("/")}}${folder}`;
+  }, [draft?.server, draft?.protocol, draft?.security, draft?.validateCertMode, draft?.inboxFolder]);
   const hasPassword = Boolean(String(draft?.password || "").trim()) || !isCreate;
   const sectionMeta = useMemo(() => ({
     provider: Boolean(providerKey),
@@ -123,12 +136,12 @@ export default function CollectorFormModal({
 
       <div className={layout.fieldGrid2}>
         <div className={layout.field}>
-          <label className={`${layout.label} ${layout.labelRequired}`} htmlFor="collector-email">
+          <label className={`${layout.label} ${layout.labelRequired}`} htmlFor="collector-login">
             {cf.emailLabel}
           </label>
-          <input id="collector-email" type="email" className={layout.input} value={draft.username || ""} onChange={e => patchDraft({
+          <input id="collector-login" type="text" className={layout.input} value={draft.username || ""} onChange={e => patchDraft({
           username: e.target.value
-        })} placeholder={cf.emailPlaceholder} autoComplete="off" />
+        })} placeholder={cf.emailPlaceholder} autoComplete="username" spellCheck={false} />
           <p className={styles.fieldHint}>{cf.emailHint}</p>
         </div>
         <div className={layout.field}>
@@ -148,6 +161,30 @@ export default function CollectorFormModal({
           server: e.target.value
         })} placeholder={cf.serverPlaceholder} />
         </div>
+        <div className={layout.field}>
+          <label className={`${layout.label} ${layout.labelRequired}`} htmlFor="collector-security">
+            {cf.securityLabel}
+          </label>
+          <select id="collector-security" className={layout.input} value={draft.security || "tls"} onChange={e => patchDraft({
+          security: e.target.value
+        })}>
+            <option value="tls">{copy.securityOptions?.tls || "TLS"}</option>
+            <option value="ssl">{copy.securityOptions?.ssl || "SSL"}</option>
+            <option value="none">{copy.securityOptions?.none || "None"}</option>
+          </select>
+          <p className={styles.fieldHint}>{cf.securityHint}</p>
+        </div>
+        <div className={layout.field}>
+          <label className={layout.label} htmlFor="collector-cert">
+            {cf.certLabel}
+          </label>
+          <select id="collector-cert" className={layout.input} value={draft.validateCertMode || "no-validate-cert"} onChange={e => patchDraft({
+          validateCertMode: e.target.value
+        })}>
+            <option value="no-validate-cert">{copy.certOptions.noValidate}</option>
+            <option value="validate-cert">{copy.certOptions.validate}</option>
+          </select>
+        </div>
         <div className={`${layout.field} ${layout.fieldFull}`}>
           <label className={layout.label} htmlFor="collector-name">
             {cf.nameLabel}
@@ -156,6 +193,13 @@ export default function CollectorFormModal({
           name: e.target.value
         })} placeholder={cf.namePlaceholder} />
         </div>
+        {connectionString ? <div className={`${layout.field} ${layout.fieldFull}`}>
+            <label className={layout.label} htmlFor="collector-conn-string">
+              {cf.connectionStringLabel}
+            </label>
+            <input id="collector-conn-string" type="text" className={layout.input} value={connectionString} readOnly />
+            <p className={styles.fieldHint}>{cf.connectionStringHint}</p>
+          </div> : null}
       </div>
 
       <button type="button" className={styles.advancedToggle} onClick={() => setShowAdvanced(prev => !prev)} aria-expanded={showAdvanced}>
@@ -171,17 +215,6 @@ export default function CollectorFormModal({
             <input id="collector-port" type="text" className={layout.input} value={draft.port || ""} onChange={e => patchDraft({
           port: e.target.value
         })} placeholder={cf.portPlaceholder} />
-          </div>
-          <div className={layout.field}>
-            <label className={layout.label} htmlFor="collector-cert">
-              {cf.certLabel}
-            </label>
-            <select id="collector-cert" className={layout.input} value={draft.validateCertMode || "no-validate-cert"} onChange={e => patchDraft({
-          validateCertMode: e.target.value
-        })}>
-              <option value="no-validate-cert">{copy.certOptions.noValidate}</option>
-              <option value="validate-cert">{copy.certOptions.validate}</option>
-            </select>
           </div>
         </div> : null}
 

@@ -4,10 +4,10 @@ export const COLLECTOR_PROVIDER_PRESETS = [{
   icon: "mingcute:mail-fill",
   hint: "Manual configuration",
   connectionTitle: "Manual IMAP connection",
-  connectionDescription: "Enter the mailbox login (email), password and IMAP server to scan.",
+  connectionDescription: "Enter the IMAP login (often a short account name like helpdesk, not necessarily the displayed address), password and server.",
   defaults: {
     protocol: "imap",
-    security: "ssl",
+    security: "tls",
     validateCertMode: "no-validate-cert",
     server: "",
     port: "",

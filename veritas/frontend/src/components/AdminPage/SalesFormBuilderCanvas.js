@@ -27,10 +27,28 @@ function FieldPreview({
         </select>
       </div>;
   }
+  if (field.fieldType === "radio") {
+    return <div className={builderStyles.canvasFieldPreview}>
+        <label>{label}</label>
+        <div className={builderStyles.canvasFieldMeta}>Single choice</div>
+      </div>;
+  }
+  if (field.fieldType === "multiselect") {
+    return <div className={builderStyles.canvasFieldPreview}>
+        <label>{label}</label>
+        <div className={builderStyles.canvasFieldMeta}>Multiple choice</div>
+      </div>;
+  }
   if (field.fieldType === "checkbox") {
     return <div className={builderStyles.canvasFieldPreview}>
         <label>{label}</label>
         <div className={builderStyles.canvasFieldMeta}>Yes / No</div>
+      </div>;
+  }
+  if (field.fieldType === "rating") {
+    return <div className={builderStyles.canvasFieldPreview}>
+        <label>{label}</label>
+        <div className={builderStyles.canvasFieldMeta}>★★★★★</div>
       </div>;
   }
   if (field.fieldType === "user" || field.fieldType === "client" || field.fieldType === "contact") {
@@ -42,7 +60,13 @@ function FieldPreview({
         </select>
       </div>;
   }
-  const inputType = field.fieldType === "number" ? "number" : field.fieldType === "date" ? "date" : "text";
+  if (field.fieldType === "currency") {
+    return <div className={builderStyles.canvasFieldPreview}>
+        <label>{label}</label>
+        <input type="number" readOnly placeholder={field.placeholder || "0.00"} value="" />
+      </div>;
+  }
+  const inputType = field.fieldType === "number" ? "number" : field.fieldType === "date" ? "date" : field.fieldType === "time" ? "time" : field.fieldType === "datetime" ? "datetime-local" : field.fieldType === "email" ? "email" : field.fieldType === "phone" ? "tel" : field.fieldType === "url" ? "url" : "text";
   return <div className={builderStyles.canvasFieldPreview}>
       <label>{label}</label>
       <input type={inputType} readOnly placeholder={field.placeholder || ""} value="" />

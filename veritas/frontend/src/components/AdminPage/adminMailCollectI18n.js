@@ -191,10 +191,10 @@ const ADMIN_MAIL_COLLECT_COPY = {
       "forceFetchFailed": "Récupération forcée impossible.",
       "foldersError": "Erreur lors du chargement des dossiers.",
       "foldersFailed": "Impossible de récupérer les dossiers.",
-      "emailRequired": "L'adresse email est requise",
+      "emailRequired": "L'identifiant IMAP est requis",
       "serverRequired": "Le serveur IMAP est requis",
       "passwordRequired": "Le mot de passe est requis",
-      "passwordRequiredOnLoginChange": "Ré-entrez le mot de passe : l'adresse email (identifiant IMAP) a changé",
+      "passwordRequiredOnLoginChange": "Ré-entrez le mot de passe : l'identifiant IMAP a changé",
       "collectorSaveError": "Erreur lors de la sauvegarde du collecteur",
       "collectorAdded": "Collecteur ajouté",
       "collectorUpdated": "Collecteur mis à jour",
@@ -215,9 +215,9 @@ const ADMIN_MAIL_COLLECT_COPY = {
       "providerDesc": "Sélectionnez votre fournisseur.",
       "connectionDefaultTitle": "Connexion",
       "connectionDefaultDesc": "Renseignez les informations demandées ci-dessous.",
-      "emailLabel": "Identifiant IMAP (adresse email)",
-      "emailPlaceholder": "support@entreprise.fr",
-      "emailHint": "C'est le login de la boîte réellement scannée. Sans cette adresse, le collecteur ne peut pas se connecter.",
+      "emailLabel": "Identifiant IMAP",
+      "emailPlaceholder": "helpdesk",
+      "emailHint": "Login serveur IMAP — souvent un compte court (ex. helpdesk), pas forcément l'adresse affichée (ex. support@…). Comme le champ « Identifiant » de GLPI.",
       "passwordLabel": "Mot de passe",
       "passwordPlaceholder": "••••••••",
       "passwordHint": "Mot de passe de la boîte (ou mot de passe d'application).",
@@ -227,12 +227,16 @@ const ADMIN_MAIL_COLLECT_COPY = {
       "identityMissingLogin": "(identifiant manquant)",
       "identityMissingServer": "(serveur manquant)",
       "serverLabel": "Serveur IMAP",
-      "serverPlaceholder": "imap.entreprise.fr",
+      "serverPlaceholder": "172.10.33.2 ou imap.entreprise.fr",
+      "securityLabel": "Sécurité",
+      "securityHint": "TLS = STARTTLS (port 143, comme GLPI). SSL = TLS immédiat (port 993).",
+      "connectionStringLabel": "Chaîne de connexion",
+      "connectionStringHint": "Équivalent GLPI — générée automatiquement à partir des options ci-dessus.",
       "nameLabel": "Nom affiché (optionnel)",
       "namePlaceholder": "Nom du collecteur",
-      "advancedToggle": "Options avancées (port, certificat)",
-      "portLabel": "Port IMAP",
-      "portPlaceholder": "993 (SSL par défaut)",
+      "advancedToggle": "Options avancées (port)",
+      "portLabel": "Port IMAP (optionnel)",
+      "portPlaceholder": "143 (TLS) ou 993 (SSL)",
       "certLabel": "Certificat serveur",
       "testingConnection": "Test en cours…",
       "testConnection": "Tester la connexion",
@@ -255,7 +259,7 @@ const ADMIN_MAIL_COLLECT_COPY = {
       "behaviorTitle": "3. Comportement",
       "autoIngestLabel": "Collecte automatique active",
       "unreadOnlyLabel": "Uniquement les messages non lus",
-      "unreadOnlyHint": "Si activé, les mails déjà lus dans l'INBOX sont ignorés.",
+      "unreadOnlyHint": "Désactivé = tous les mails du dossier (comme GLPI). Activé = ignore les messages déjà lus.",
       "intervalLabel": "Fréquence de vérification",
       "intervalHintOne": "Vérification toutes les {minutes} minute",
       "intervalHintMany": "Vérification toutes les {minutes} minutes",
@@ -370,7 +374,7 @@ const ADMIN_MAIL_COLLECT_COPY = {
         "label": "IMAP / POP3",
         "hint": "Configuration manuelle",
         "connectionTitle": "Connexion IMAP manuelle",
-        "connectionDescription": "Renseignez les identifiants de la boîte mail à scanner."
+        "connectionDescription": "Identifiant IMAP (ex. helpdesk), mot de passe et serveur — comme un collecteur GLPI."
       },
       "gmail": {
         "label": "Gmail",
@@ -553,6 +557,11 @@ const ADMIN_MAIL_COLLECT_COPY = {
     "certOptions": {
       "noValidate": "Accepter les certificats auto-signés",
       "validate": "Vérifier le certificat"
+    },
+    "securityOptions": {
+      "tls": "TLS (STARTTLS)",
+      "ssl": "SSL",
+      "none": "Aucune"
     }
   },
   "en": {
@@ -742,10 +751,10 @@ const ADMIN_MAIL_COLLECT_COPY = {
       "forceFetchFailed": "Force fetch failed.",
       "foldersError": "Error loading folders.",
       "foldersFailed": "Unable to retrieve folders.",
-      "emailRequired": "Email address is required",
+      "emailRequired": "IMAP login is required",
       "serverRequired": "IMAP server is required",
       "passwordRequired": "Password is required",
-      "passwordRequiredOnLoginChange": "Re-enter the password: the IMAP login email has changed",
+      "passwordRequiredOnLoginChange": "Re-enter the password: the IMAP login has changed",
       "collectorSaveError": "Error saving collector",
       "collectorAdded": "Collector added",
       "collectorUpdated": "Collector updated",
@@ -766,9 +775,9 @@ const ADMIN_MAIL_COLLECT_COPY = {
       "providerDesc": "Select your provider.",
       "connectionDefaultTitle": "Connection",
       "connectionDefaultDesc": "Enter the information below.",
-      "emailLabel": "IMAP login (email address)",
-      "emailPlaceholder": "support@company.com",
-      "emailHint": "This is the mailbox login that will be scanned. Without it the collector cannot connect.",
+      "emailLabel": "IMAP login",
+      "emailPlaceholder": "helpdesk",
+      "emailHint": "IMAP server login — often a short account name (e.g. helpdesk), not necessarily the displayed address (e.g. support@…). Same as GLPI’s “Identifiant” field.",
       "passwordLabel": "Password",
       "passwordPlaceholder": "••••••••",
       "passwordHint": "Mailbox password (or app password).",
@@ -778,12 +787,16 @@ const ADMIN_MAIL_COLLECT_COPY = {
       "identityMissingLogin": "(login missing)",
       "identityMissingServer": "(server missing)",
       "serverLabel": "IMAP server",
-      "serverPlaceholder": "imap.company.com",
+      "serverPlaceholder": "172.10.33.2 or imap.company.com",
+      "securityLabel": "Security",
+      "securityHint": "TLS = STARTTLS (port 143, like GLPI). SSL = implicit TLS (port 993).",
+      "connectionStringLabel": "Connection string",
+      "connectionStringHint": "GLPI-equivalent — generated from the options above.",
       "nameLabel": "Display name (optional)",
       "namePlaceholder": "Collector name",
-      "advancedToggle": "Advanced options (port, certificate)",
-      "portLabel": "IMAP port",
-      "portPlaceholder": "993 (SSL by default)",
+      "advancedToggle": "Advanced options (port)",
+      "portLabel": "IMAP port (optional)",
+      "portPlaceholder": "143 (TLS) or 993 (SSL)",
       "certLabel": "Server certificate",
       "testingConnection": "Testing…",
       "testConnection": "Test connection",
@@ -806,7 +819,7 @@ const ADMIN_MAIL_COLLECT_COPY = {
       "behaviorTitle": "3. Behaviour",
       "autoIngestLabel": "Automatic collection enabled",
       "unreadOnlyLabel": "Unread messages only",
-      "unreadOnlyHint": "When enabled, already-read inbox messages are ignored.",
+      "unreadOnlyHint": "Off = all messages in the folder (like GLPI). On = skip already-read messages.",
       "intervalLabel": "Check frequency",
       "intervalHintOne": "Check every {minutes} minute",
       "intervalHintMany": "Check every {minutes} minutes",
@@ -921,7 +934,7 @@ const ADMIN_MAIL_COLLECT_COPY = {
         "label": "IMAP / POP3",
         "hint": "Manual setup",
         "connectionTitle": "Manual IMAP connection",
-        "connectionDescription": "Enter credentials for the mailbox to scan."
+        "connectionDescription": "IMAP login (e.g. helpdesk), password and server — same idea as a GLPI collector."
       },
       "gmail": {
         "label": "Gmail",
@@ -1104,6 +1117,11 @@ const ADMIN_MAIL_COLLECT_COPY = {
     "certOptions": {
       "noValidate": "Accept self-signed certificates",
       "validate": "Verify certificate"
+    },
+    "securityOptions": {
+      "tls": "TLS (STARTTLS)",
+      "ssl": "SSL",
+      "none": "None"
     }
   },
   "de": {
@@ -1585,6 +1603,11 @@ const ADMIN_MAIL_COLLECT_COPY = {
     "certOptions": {
       "noValidate": "Selbstsignierte Zertifikate akzeptieren",
       "validate": "Zertifikat prüfen"
+    },
+    "securityOptions": {
+      "tls": "TLS (STARTTLS)",
+      "ssl": "SSL",
+      "none": "Keine"
     }
   },
   "it": {
@@ -2066,6 +2089,11 @@ const ADMIN_MAIL_COLLECT_COPY = {
     "certOptions": {
       "noValidate": "Accetta certificati autofirmati",
       "validate": "Verifica certificato"
+    },
+    "securityOptions": {
+      "tls": "TLS (STARTTLS)",
+      "ssl": "SSL",
+      "none": "Nessuna"
     }
   },
   "es": {
@@ -2547,6 +2575,11 @@ const ADMIN_MAIL_COLLECT_COPY = {
     "certOptions": {
       "noValidate": "Aceptar certificados autofirmados",
       "validate": "Verificar certificado"
+    },
+    "securityOptions": {
+      "tls": "TLS (STARTTLS)",
+      "ssl": "SSL",
+      "none": "Ninguna"
     }
   }
 };

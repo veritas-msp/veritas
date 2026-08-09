@@ -2,6 +2,7 @@ import { useMemo } from "react";
 import { Icon } from "@iconify/react";
 import s from "./TicketCreatePage.module.css";
 import { fieldIsVisible, filterVisibleFields } from "../../utils/salesFormConditions";
+import { OPTION_BASED_FIELD_TYPES, SHELL_FIELD_TYPES } from "../../utils/salesFormFieldTypes";
 
 function getUserDisplayName(user) {
   return user?.ticket_helpdesk_display_name || user?.name || user?.nom || user?.username || user?.email || "";
@@ -14,6 +15,37 @@ function getClientDisplayName(client) {
 function getContactDisplayName(contact) {
   const fullName = [contact?.prenom, contact?.nom].filter(Boolean).join(" ").trim();
   return fullName || contact?.name || contact?.email || contact?.label || "";
+}
+
+function normalizeOptions(options = []) {
+  return (Array.isArray(options) ? options : []).map(opt => {
+    const value = typeof opt === "string" ? opt : opt?.value ?? opt?.label ?? "";
+    const label = typeof opt === "string" ? opt : opt?.label ?? opt?.value ?? "";
+    return {
+      value: String(value),
+      label: String(label || value)
+    };
+  }).filter(opt => opt.value);
+}
+
+function isEmptyFieldValue(field, raw) {
+  if (field.fieldType === "checkbox") return raw !== true;
+  if (field.fieldType === "multiselect") return !Array.isArray(raw) || raw.length === 0;
+  if (field.fieldType === "rating") return !Number(raw);
+  return !String(raw ?? "").trim();
+}
+
+function isValidEmail(value) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(value || "").trim());
+}
+
+function isValidUrl(value) {
+  try {
+    const parsed = new URL(String(value || "").trim());
+    return parsed.protocol === "http:" || parsed.protocol === "https:";
+  } catch {
+    return false;
+  }
 }
 
 function formatFieldValue(field, value, {
@@ -33,6 +65,18 @@ function formatFieldValue(field, value, {
   if (field.fieldType === "contact") {
     const contact = contacts.find(row => String(row.id) === String(value));
     return getContactDisplayName(contact) || value || "";
+  }
+  if (field.fieldType === "multiselect") {
+    const selected = Array.isArray(value) ? value : String(value || "").split(",").map(part => part.trim()).filter(Boolean);
+    return selected.join(", ");
+  }
+  if (field.fieldType === "currency") {
+    const amount = String(value ?? "").trim();
+    return amount ? `${amount} €` : "";
+  }
+  if (field.fieldType === "rating") {
+    const score = Number(value);
+    return Number.isFinite(score) && score > 0 ? `${score}/5` : "";
   }
   return value ?? "";
 }
@@ -61,15 +105,69 @@ export function buildDynamicFieldLines(fields = [], values = {}, usersOrLookups 
 
 export function validateDynamicFields(fields = [], values = {}) {
   const activeFields = filterVisibleFields(fields, values);
-  const missingRequired = activeFields.filter(field => field.required && !String(values[field.fieldKey] ?? "").trim());
+  const missingRequired = activeFields.filter(field => field.required && isEmptyFieldValue(field, values[field.fieldKey]));
   if (missingRequired.length > 0) return false;
-  const hasAnyValue = activeFields.some(field => {
+  for (const field of activeFields) {
     const raw = values[field.fieldKey];
-    if (field.fieldType === "checkbox") return raw === true;
-    return String(raw ?? "").trim().length > 0;
-  });
+    if (isEmptyFieldValue(field, raw)) continue;
+    if (field.fieldType === "email" && !isValidEmail(raw)) return false;
+    if (field.fieldType === "url" && !isValidUrl(raw)) return false;
+    if (field.fieldType === "rating") {
+      const score = Number(raw);
+      if (!Number.isFinite(score) || score < 1 || score > 5) return false;
+    }
+  }
+  const hasAnyValue = activeFields.some(field => !isEmptyFieldValue(field, values[field.fieldKey]));
   if (activeFields.length > 0 && !hasAnyValue) return false;
   return true;
+}
+
+function OptionChoiceList({
+  field,
+  value,
+  multiple = false,
+  onChange
+}) {
+  const options = normalizeOptions(field.options);
+  const selected = multiple ? Array.isArray(value) ? value.map(String) : [] : String(value || "");
+  const toggle = optionValue => {
+    if (!multiple) {
+      onChange(optionValue === selected ? "" : optionValue);
+      return;
+    }
+    const next = selected.includes(optionValue) ? selected.filter(item => item !== optionValue) : [...selected, optionValue];
+    onChange(next);
+  };
+  return <div className={s.segmentedGroup} role={multiple ? "group" : "radiogroup"} aria-label={field.label} style={{
+    flexWrap: "wrap"
+  }}>
+      {options.length === 0 ? <span className={s.detailsAvailabilityTitle} style={{
+      margin: 0
+    }}>No options configured</span> : options.map(opt => {
+      const active = multiple ? selected.includes(opt.value) : selected === opt.value;
+      return <button key={opt.value} type="button" role={multiple ? "checkbox" : "radio"} aria-checked={active} className={`${s.segmentedBtn} ${active ? s.segmentedBtnActive : ""}`} onClick={() => toggle(opt.value)}>
+            <Icon icon={multiple ? active ? "mdi:checkbox-marked" : "mdi:checkbox-blank-outline" : active ? "mdi:radiobox-marked" : "mdi:radiobox-blank"} aria-hidden />
+            {opt.label}
+          </button>;
+    })}
+    </div>;
+}
+
+function RatingInput({
+  field,
+  value,
+  onChange
+}) {
+  const score = Number(value) || 0;
+  return <div className={s.segmentedGroup} role="radiogroup" aria-label={field.label}>
+      {[1, 2, 3, 4, 5].map(star => {
+      const active = score >= star;
+      return <button key={star} type="button" role="radio" aria-checked={score === star} className={`${s.segmentedBtn} ${active ? s.segmentedBtnActive : ""}`} onClick={() => onChange(score === star ? "" : star)} title={`${star}/5`}>
+            <Icon icon={active ? "mdi:star" : "mdi:star-outline"} aria-hidden />
+            {star}
+          </button>;
+    })}
+    </div>;
 }
 
 export default function SalesFormFieldsRenderer({
@@ -99,22 +197,25 @@ export default function SalesFormFieldsRenderer({
     });
   };
   const renderField = field => {
-    const value = values[field.fieldKey] ?? (field.fieldType === "checkbox" ? false : "");
+    const emptyDefault = field.fieldType === "checkbox" ? false : field.fieldType === "multiselect" ? [] : "";
+    const value = values[field.fieldKey] ?? emptyDefault;
     if (field.fieldType === "textarea") {
       return <textarea className={`${s.fieldShellControl} ${s.textarea}`} rows={4} value={value} placeholder={field.placeholder || ""} onChange={e => patchValue(field.fieldKey, e.target.value)} />;
     }
     if (field.fieldType === "select") {
-      const options = Array.isArray(field.options) ? field.options : [];
+      const options = normalizeOptions(field.options);
       return <select className={s.select} value={value} onChange={e => patchValue(field.fieldKey, e.target.value)}>
           <option value="">Select…</option>
-          {options.map(opt => {
-          const optionValue = typeof opt === "string" ? opt : opt?.value ?? opt?.label ?? "";
-          const optionLabel = typeof opt === "string" ? opt : opt?.label ?? opt?.value ?? "";
-          return <option key={optionValue} value={optionValue}>
-                {optionLabel}
-              </option>;
-        })}
+          {options.map(opt => <option key={opt.value} value={opt.value}>
+              {opt.label}
+            </option>)}
         </select>;
+    }
+    if (field.fieldType === "radio") {
+      return <OptionChoiceList field={field} value={value} onChange={next => patchValue(field.fieldKey, next)} />;
+    }
+    if (field.fieldType === "multiselect") {
+      return <OptionChoiceList field={field} value={value} multiple onChange={next => patchValue(field.fieldKey, next)} />;
     }
     if (field.fieldType === "checkbox") {
       return <div className={s.segmentedGroup} role="radiogroup" aria-label={field.label}>
@@ -127,6 +228,9 @@ export default function SalesFormFieldsRenderer({
             Yes
           </button>
         </div>;
+    }
+    if (field.fieldType === "rating") {
+      return <RatingInput field={field} value={value} onChange={next => patchValue(field.fieldKey, next)} />;
     }
     if (field.fieldType === "user") {
       return <select className={s.select} value={value} onChange={e => patchValue(field.fieldKey, e.target.value)}>
@@ -152,7 +256,21 @@ export default function SalesFormFieldsRenderer({
             </option>)}
         </select>;
     }
-    const inputType = field.fieldType === "number" ? "number" : field.fieldType === "date" ? "date" : "text";
+    if (field.fieldType === "currency") {
+      return <div style={{
+        display: "flex",
+        alignItems: "center",
+        gap: "0.5rem",
+        width: "100%"
+      }}>
+          <input type="number" step="0.01" min="0" className={s.fieldShellControl} value={value} placeholder={field.placeholder || "0.00"} onChange={e => patchValue(field.fieldKey, e.target.value)} />
+          <span aria-hidden style={{
+          color: "var(--msp-muted)",
+          fontWeight: 600
+        }}>€</span>
+        </div>;
+    }
+    const inputType = field.fieldType === "number" ? "number" : field.fieldType === "date" ? "date" : field.fieldType === "time" ? "time" : field.fieldType === "datetime" ? "datetime-local" : field.fieldType === "email" ? "email" : field.fieldType === "phone" ? "tel" : field.fieldType === "url" ? "url" : "text";
     return <input type={inputType} className={s.fieldShellControl} value={value} placeholder={field.placeholder || ""} onChange={e => patchValue(field.fieldKey, e.target.value)} />;
   };
   const textareaFields = visibleFields.filter(field => field.fieldType === "textarea");
@@ -171,7 +289,7 @@ export default function SalesFormFieldsRenderer({
         </div>}
 
       {otherFields.map(field => {
-      const usesShell = field.fieldType === "text" || field.fieldType === "number" || field.fieldType === "date";
+      const usesShell = SHELL_FIELD_TYPES.has(field.fieldType);
       return <div key={field.id || field.fieldKey} className={s.fieldBlock}>
           <label className={s.fieldLabel}>
             {field.label}

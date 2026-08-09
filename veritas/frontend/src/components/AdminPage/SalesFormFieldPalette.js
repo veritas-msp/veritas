@@ -1,61 +1,9 @@
 import { useDraggable } from "@dnd-kit/core";
 import { Icon } from "@iconify/react";
 import builderStyles from "./SalesFormBuilder.module.css";
+import { PALETTE_FIELD_TYPES, PALETTE_GROUPS } from "../../utils/salesFormFieldTypes";
 
-export const PALETTE_FIELD_TYPES = [{
-  type: "text",
-  label: "Short text",
-  icon: "mdi:form-textbox",
-  group: "basic"
-}, {
-  type: "textarea",
-  label: "Long text",
-  icon: "mdi:text-long",
-  group: "basic"
-}, {
-  type: "select",
-  label: "Dropdown",
-  icon: "mdi:form-dropdown",
-  group: "basic"
-}, {
-  type: "checkbox",
-  label: "Yes / No",
-  icon: "mdi:toggle-switch-outline",
-  group: "basic"
-}, {
-  type: "number",
-  label: "Number",
-  icon: "mdi:numeric",
-  group: "basic"
-}, {
-  type: "date",
-  label: "Date",
-  icon: "mdi:calendar-outline",
-  group: "basic"
-}, {
-  type: "user",
-  label: "User",
-  icon: "mdi:account-outline",
-  group: "enterprise"
-}, {
-  type: "client",
-  label: "Company",
-  icon: "mdi:office-building-outline",
-  group: "enterprise"
-}, {
-  type: "contact",
-  label: "Contact",
-  icon: "mdi:card-account-details-outline",
-  group: "enterprise"
-}];
-
-const PALETTE_GROUPS = [{
-  id: "basic",
-  title: "Basic"
-}, {
-  id: "enterprise",
-  title: "Enterprise"
-}];
+export { PALETTE_FIELD_TYPES, FIELD_TYPE_OPTIONS, OPTION_BASED_FIELD_TYPES, SHELL_FIELD_TYPES } from "../../utils/salesFormFieldTypes";
 
 function PaletteItem({
   type,

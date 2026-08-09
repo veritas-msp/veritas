@@ -1,6 +1,7 @@
 import { Icon } from "@iconify/react";
 import layout from "../EnterprisesPage/EnterpriseFormModal.module.css";
 import modalStyles from "./SalesFormModal.module.css";
+import { OPTION_BASED_FIELD_TYPES } from "../../utils/salesFormFieldTypes";
 const OPERATOR_OPTIONS = [{
   value: "equals",
   label: "Equals"
@@ -22,8 +23,8 @@ function getOperatorsForField(field) {
   if (field.fieldType === "checkbox") {
     return OPERATOR_OPTIONS.filter(opt => opt.value === "checked" || opt.value === "not_checked");
   }
-  if (field.fieldType === "select") {
-    return OPERATOR_OPTIONS.filter(opt => opt.value === "equals" || opt.value === "not_equals");
+  if (OPTION_BASED_FIELD_TYPES.has(field.fieldType) || field.fieldType === "rating") {
+    return OPERATOR_OPTIONS.filter(opt => opt.value === "equals" || opt.value === "not_equals" || opt.value === "contains");
   }
   return OPERATOR_OPTIONS.filter(opt => opt.value !== "checked" && opt.value !== "not_checked");
 }
@@ -41,7 +42,18 @@ function ConditionValueInput({
   if (field.fieldType === "checkbox") {
     return <span className={modalStyles.conditionHint}>No value required</span>;
   }
-  if (field.fieldType === "select" && Array.isArray(field.options) && field.options.length > 0) {
+  if (field.fieldType === "rating") {
+    return <select className={layout.input} value={condition.value || ""} onChange={e => onChange({
+      ...condition,
+      value: e.target.value
+    })}>
+        <option value="">- Choose -</option>
+        {[1, 2, 3, 4, 5].map(star => <option key={star} value={String(star)}>
+            {star}/5
+          </option>)}
+      </select>;
+  }
+  if (OPTION_BASED_FIELD_TYPES.has(field.fieldType) && Array.isArray(field.options) && field.options.length > 0) {
     return <select className={layout.input} value={condition.value || ""} onChange={e => onChange({
       ...condition,
       value: e.target.value

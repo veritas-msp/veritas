@@ -3,34 +3,8 @@ import { Icon } from "@iconify/react";
 import layout from "../EnterprisesPage/EnterpriseFormModal.module.css";
 import builderStyles from "./SalesFormBuilder.module.css";
 import FormConditionsEditor from "./FormConditionsEditor";
-const FIELD_TYPE_OPTIONS = [{
-  value: "text",
-  label: "Short text"
-}, {
-  value: "textarea",
-  label: "Long text"
-}, {
-  value: "select",
-  label: "Dropdown"
-}, {
-  value: "checkbox",
-  label: "Yes / No"
-}, {
-  value: "number",
-  label: "Number"
-}, {
-  value: "date",
-  label: "Date"
-}, {
-  value: "user",
-  label: "User"
-}, {
-  value: "client",
-  label: "Company"
-}, {
-  value: "contact",
-  label: "Contact"
-}];
+import { FIELD_TYPE_OPTIONS, OPTION_BASED_FIELD_TYPES } from "../../utils/salesFormFieldTypes";
+
 export default function SalesFormFieldPropertiesPanel({
   fieldDraft,
   formFields = [],
@@ -61,6 +35,7 @@ export default function SalesFormFieldPropertiesPanel({
     ...fieldDraft,
     ...next
   });
+  const needsOptions = OPTION_BASED_FIELD_TYPES.has(fieldDraft.fieldType);
   return <aside className={builderStyles.propsPanel}>
       <div className={builderStyles.propsHead}>
         <h4 className={builderStyles.propsTitle}>{fieldDraft.label || "Field"}</h4>
@@ -110,7 +85,7 @@ export default function SalesFormFieldPropertiesPanel({
             placeholder: e.target.value
           })} />
             </div>
-            {fieldDraft.fieldType === "select" && <div className={layout.field}>
+            {needsOptions && <div className={layout.field}>
                 <label className={layout.label}>Options (one per line)</label>
                 <textarea className={layout.input} rows={4} value={fieldDraft.optionsText || ""} onChange={e => patch({
             optionsText: e.target.value

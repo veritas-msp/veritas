@@ -53,25 +53,33 @@ export function buildImapClientConfig(collector = {}) {
   const validateCertMode = String(collector?.validateCertMode || "no-validate-cert").toLowerCase();
   const parsedPort = Number(collector?.port);
   const hasCustomPort = Number.isFinite(parsedPort) && parsedPort > 0;
-  const secure = security === "ssl";
-  return {
+  const rejectUnauthorized = validateCertMode !== "no-validate-cert";
+  // GLPI: /ssl → TLS immédiat (993). /tls → STARTTLS (143). Sans chiffrement → 143.
+  const useImplicitTls = security === "ssl";
+  const useStartTls = security === "tls" || security === "starttls";
+  const config = {
     host: String(collector?.server || "").trim(),
-    port: hasCustomPort ? parsedPort : secure ? 993 : 143,
-    secure,
+    port: hasCustomPort ? parsedPort : useImplicitTls ? 993 : 143,
+    secure: useImplicitTls,
     auth: {
       user: String(collector?.username || "").trim(),
       pass: String(collector?.password || "")
     },
     tls: {
-      rejectUnauthorized: validateCertMode !== "no-validate-cert"
+      rejectUnauthorized
     },
     logger: false
   };
+  if (useStartTls) {
+    // Force STARTTLS like GLPI `{host/imap/novalidate-cert/tls}`
+    config.requireTLS = true;
+  }
+  return config;
 }
 export async function withImapClient(collector, callback) {
   const config = buildImapClientConfig(collector);
   if (!config.host) throw new Error("IMAP server is required");
-  if (!config.auth.user) throw new Error("Email address is required");
+  if (!config.auth.user) throw new Error("IMAP login is required");
   if (!config.auth.pass) throw new Error("Password is required");
   const client = new ImapFlow(config);
   try {
