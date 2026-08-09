@@ -477,10 +477,13 @@ export async function incrementCollectorStats(collectorId, {
 }
 async function processMessagesInMailbox(client, collector, exclusionRules, mailCollectSettings) {
   const inboxFolder = String(collector?.inboxFolder || "INBOX").trim() || "INBOX";
+  const loginUser = String(collector?.username || "").trim();
   const stats = {
     inspected: 0,
     attached: 0,
-    ignored: 0
+    ignored: 0,
+    fetched: 0,
+    sampleRecipients: []
   };
   const fetchQuery = collector.unreadOnly ? {
     seen: false
@@ -497,10 +500,15 @@ async function processMessagesInMailbox(client, collector, exclusionRules, mailC
     })) {
       fetched.push(message);
     }
+    stats.fetched = fetched.length;
     for (const message of fetched) {
       let mailContext = buildMailContextFromEnvelope(message);
       mailContext.body = extractBodyFromRfc822(message?.source);
       mailContext = enrichMailContextWithThreadHeaders(mailContext, message?.source, message?.envelope);
+      if (stats.sampleRecipients.length < 5) {
+        const recipients = [mailContext.toAddresses, mailContext.ccAddresses].filter(Boolean).join(" | ");
+        if (recipients) stats.sampleRecipients.push(recipients);
+      }
       if (mailCollectSettings.deduplicateByMessageId !== false && mailContext.messageId && (await isInboundEmailAlreadyProcessed(mailContext.messageId))) {
         continue;
       }
@@ -522,6 +530,8 @@ async function processMessagesInMailbox(client, collector, exclusionRules, mailC
   } finally {
     lock.release();
   }
+  stats.loginUser = loginUser;
+  stats.inboxFolder = inboxFolder;
   return stats;
 }
 export async function processMailCollector(collectorInput, {
@@ -577,10 +587,15 @@ export async function processMailCollector(collectorInput, {
   await incrementCollectorStats(collector.id, stats).catch(() => {});
   // Always log completed IMAP checks (including empty ones) so auto-poll is visible in the UI.
   const prefix = force ? "Manual check" : "Automatic check";
+  const loginUser = String(collector.username || stats.loginUser || "").trim() || "?";
+  const folder = String(collector.inboxFolder || stats.inboxFolder || "INBOX").trim() || "INBOX";
+  const sample = Array.isArray(stats.sampleRecipients) && stats.sampleRecipients.length
+    ? ` Sample To/Cc: ${stats.sampleRecipients.slice(0, 3).join(" ; ")}`
+    : "";
   await appendCollectorLogInConfig(
     collector.id,
     "info",
-    `${prefix} completed (${stats.inspected} email(s) inspected, ${stats.attached} attached, ${stats.ignored} ignored).`
+    `${prefix} as ${loginUser} / ${folder}: ${Number(stats.fetched) || 0} fetched, ${stats.inspected} matched, ${stats.attached} attached, ${stats.ignored} ignored.${sample}`
   ).catch(() => {});
   return {
     ...stats,

@@ -1093,12 +1093,12 @@ router.post("/collectors/force-fetch", verifyJWT, [body("collector").isObject()]
     const stored = (Array.isArray(storedRows) ? storedRows : [])
       .map((row, idx) => normalizeMailCollector(row, idx))
       .find(row => String(row.id) === String(incoming.id));
+    // Always prefer persisted IMAP identity (username/server/password/folder) from DB.
     const collector = stored
       ? {
-          ...stored,
           ...incoming,
-          // Prefer stored password when UI sends a masked/empty one
-          password: incoming.password || stored.password
+          ...stored,
+          password: stored.password || incoming.password
         }
       : incoming;
     const stats = await processMailCollector(collector, {

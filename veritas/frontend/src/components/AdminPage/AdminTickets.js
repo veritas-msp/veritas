@@ -3242,6 +3242,11 @@ export default function AdminTickets({
                 }}>
                       <td>
                         <span className={styles.collectorName}>{collector.name || "-"}</span>
+                        {collector.username ? <div className={styles.collectorServer} style={{
+                      marginTop: 2,
+                      fontSize: "0.78rem",
+                      opacity: 0.85
+                    }}>{collector.username}</div> : null}
                       </td>
                       <td>
                         <span className={styles.collectorServer}>{collector.server || "-"}</span>
