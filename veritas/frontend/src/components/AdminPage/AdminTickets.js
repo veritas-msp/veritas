@@ -2470,7 +2470,8 @@ export default function AdminTickets({
       setPeekUnseen(Number(payload.unseen) || 0);
       setPeekIdentity({
         user: payload.user || collector.username,
-        host: payload.host || collector.server
+        host: payload.host || collector.server,
+        openedPath: payload.openedPath || targetFolder
       });
       if (foldersResponse) {
         const foldersPayload = await foldersResponse.json().catch(() => ({}));
@@ -2478,7 +2479,7 @@ export default function AdminTickets({
           setCollectorAvailableFolders(foldersPayload.folders);
         }
       }
-      appendCollectorDraftLog("info", `Mailbox peek: ${payload.user || collector.username} @ ${payload.host || collector.server} / ${targetFolder} (${Number(payload.messages?.length) || 0} shown)`);
+      appendCollectorDraftLog("info", `Mailbox peek: ${payload.user || collector.username} @ ${payload.host || collector.server} / ${payload.openedPath || targetFolder} (${Number(payload.total) || 0} in folder, ${Number(payload.messages?.length) || 0} shown)`);
     } catch (error) {
       toast.error(error?.message || mc.collectorPeek?.loadError || "Unable to peek mailbox");
       setPeekMessages([]);
@@ -2489,9 +2490,11 @@ export default function AdminTickets({
     }
   };
   const openCollectorMailboxPeek = () => {
+    // Preview defaults to ALL recent messages so it matches what you see in webmail,
+    // not only the collector's unread-only ingest filter.
     loadCollectorPeek({
       folder: String(collectorDraft.inboxFolder || "INBOX").trim() || "INBOX",
-      unreadOnly: collectorDraft.unreadOnly !== false,
+      unreadOnly: false,
       openModal: true
     });
   };

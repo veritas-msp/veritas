@@ -56,7 +56,7 @@ export default function CollectorMailboxPeekModal({
               </h2>
               <p className={layout.subtitle}>
                 {identity?.user && identity?.host
-                  ? `${identity.user} @ ${identity.host}`
+                  ? `${identity.user} @ ${identity.host} · ${identity.openedPath || folder}`
                   : cp.subtitle || "Vérifiez le contenu réel du dossier IMAP."}
               </p>
             </div>
@@ -66,6 +66,10 @@ export default function CollectorMailboxPeekModal({
           </button>
         </header>
 
+        <div className={styles.notice}>
+          <Icon icon="mdi:information-outline" aria-hidden />
+          <p>{cp.notice || "Ces mails sont physiquement dans le dossier IMAP ouvert ci-dessous (pas un filtre webmail). Le destinataire (To) peut différer de l’adresse de connexion (alias, CC, boîte partagée)."}</p>
+        </div>
         <div className={styles.toolbar}>
           <div className={styles.toolbarField}>
             <label className={styles.toolbarLabel} htmlFor="collector-peek-folder">{cp.folderLabel || "Dossier"}</label>

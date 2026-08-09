@@ -101,11 +101,13 @@ export async function peekCollectorMailboxMessages(collectorInput = {}, {
   return withImapClient(collector, async client => {
     const lock = await client.getMailboxLock(targetFolder);
     try {
+      const openedPath = String(client?.mailbox?.path || targetFolder).trim() || targetFolder;
       const total = Number(client?.mailbox?.exists) || 0;
       const unseen = Number(client?.mailbox?.unseen);
       if (total <= 0) {
         return {
           folder: targetFolder,
+          openedPath,
           total: 0,
           unseen: Number.isFinite(unseen) ? unseen : 0,
           user: collector.username,
@@ -160,6 +162,7 @@ export async function peekCollectorMailboxMessages(collectorInput = {}, {
       }).slice(0, max);
       return {
         folder: targetFolder,
+        openedPath,
         total,
         unseen: Number.isFinite(unseen) ? unseen : mapped.filter(item => !item.seen).length,
         user: collector.username,
