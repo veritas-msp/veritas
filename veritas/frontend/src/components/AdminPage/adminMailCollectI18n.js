@@ -194,6 +194,7 @@ const ADMIN_MAIL_COLLECT_COPY = {
       "emailRequired": "L'adresse email est requise",
       "serverRequired": "Le serveur IMAP est requis",
       "passwordRequired": "Le mot de passe est requis",
+      "passwordRequiredOnLoginChange": "Ré-entrez le mot de passe : l'adresse email (identifiant IMAP) a changé",
       "collectorSaveError": "Erreur lors de la sauvegarde du collecteur",
       "collectorAdded": "Collecteur ajouté",
       "collectorUpdated": "Collecteur mis à jour",
