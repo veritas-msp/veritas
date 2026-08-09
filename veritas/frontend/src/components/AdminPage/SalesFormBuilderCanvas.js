@@ -33,6 +33,15 @@ function FieldPreview({
         <div className={builderStyles.canvasFieldMeta}>Yes / No</div>
       </div>;
   }
+  if (field.fieldType === "user" || field.fieldType === "client" || field.fieldType === "contact") {
+    const placeholder = field.fieldType === "user" ? "Select a user…" : field.fieldType === "client" ? "Select a company…" : "Select a contact…";
+    return <div className={builderStyles.canvasFieldPreview}>
+        <label>{label}</label>
+        <select disabled>
+          <option>{placeholder}</option>
+        </select>
+      </div>;
+  }
   const inputType = field.fieldType === "number" ? "number" : field.fieldType === "date" ? "date" : "text";
   return <div className={builderStyles.canvasFieldPreview}>
       <label>{label}</label>

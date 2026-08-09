@@ -16,14 +16,20 @@ const FIELD_TYPE_OPTIONS = [{
   value: "checkbox",
   label: "Yes / No"
 }, {
-  value: "user",
-  label: "User"
-}, {
   value: "number",
   label: "Number"
 }, {
   value: "date",
   label: "Date"
+}, {
+  value: "user",
+  label: "User"
+}, {
+  value: "client",
+  label: "Company"
+}, {
+  value: "contact",
+  label: "Contact"
 }];
 export default function SalesFormFieldPropertiesPanel({
   fieldDraft,

@@ -36,6 +36,10 @@ const VISIBILITY_OPTIONS = [{
   hint: "Profiles, agents or teams"
 }];
 const BUILDER_MODES = [{
+  id: "settings",
+  label: "Form identity",
+  icon: "mdi:form-select"
+}, {
   id: "builder",
   label: "Builder",
   icon: "mdi:cursor-move"
@@ -47,10 +51,6 @@ const BUILDER_MODES = [{
   id: "rules",
   label: "Ticket rules",
   icon: "mdi:gavel"
-}, {
-  id: "settings",
-  label: "Settings",
-  icon: "mdi:cog-outline"
 }];
 const EMPTY_TICKET_TARGETS = {
   version: 2,
@@ -240,7 +240,7 @@ export default function SalesFormModal({
   const common = useCommonCopy();
   const deleteCopy = useMemo(() => getAdminDeleteConfirmsCopy(locale), [locale]);
   const isCreate = mode === "create";
-  const [builderMode, setBuilderMode] = useState("builder");
+  const [builderMode, setBuilderMode] = useState("settings");
   const [formId, setFormId] = useState("");
   const [formDraft, setFormDraft] = useState(EMPTY_FORM);
   const [fields, setFields] = useState([]);
@@ -274,7 +274,7 @@ export default function SalesFormModal({
   }, []);
   useEffect(() => {
     if (!open) return;
-    setBuilderMode("builder");
+    setBuilderMode("settings");
     setFormId(initialForm?.id ? String(initialForm.id) : "");
     setFormDraft(formFromInitial(initialForm, kindDefault));
     setFields(Array.isArray(initialForm?.fields) ? initialForm.fields : []);
@@ -621,10 +621,27 @@ export default function SalesFormModal({
   const modalSubtitle = formId ? "Configure the request type, its visibility and fields." : "Create a professional service or installation request type.";
   const renderGeneralSection = () => <>
       <div className={`${layout.sectionHead} ${modalStyles.compactSectionHead}`}>
-        <h3 className={layout.sectionTitle}>General information</h3>
-        <p className={layout.sectionDesc}>Type, label and icon shown to agents.</p>
+        <h3 className={layout.sectionTitle}>Form name</h3>
+        <p className={layout.sectionDesc}>Name and type shown to agents when creating a request.</p>
       </div>
       <div className={modalStyles.formBlocks}>
+        <div className={layout.field}>
+          <label className={`${layout.label} ${layout.labelRequired}`}>Label</label>
+          <input className={layout.input} value={formDraft.label} onChange={e => {
+          const nextLabel = e.target.value;
+          setFormDraft(prev => {
+            const nextKey = isCreate || !prev.key ? slugifyKey(nextLabel) : prev.key;
+            return {
+              ...prev,
+              label: nextLabel,
+              key: nextKey,
+              categorySlug: slugifyCategory(prev.kind, nextKey)
+            };
+          });
+        }} autoFocus={isCreate} placeholder="E.g. On-site installation" />
+          <FieldHint>Name shown when creating a request.</FieldHint>
+        </div>
+
         <div className={modalStyles.typeOrderRow}>
           <div className={layout.field}>
             <label className={layout.label}>Type</label>
@@ -644,23 +661,6 @@ export default function SalesFormModal({
             displayOrder: Number(e.target.value || 0)
           }))} />
           </div>
-        </div>
-
-        <div className={layout.field}>
-          <label className={`${layout.label} ${layout.labelRequired}`}>Label</label>
-          <input className={layout.input} value={formDraft.label} onChange={e => {
-          const nextLabel = e.target.value;
-          setFormDraft(prev => {
-            const nextKey = isCreate || !prev.key ? slugifyKey(nextLabel) : prev.key;
-            return {
-              ...prev,
-              label: nextLabel,
-              key: nextKey,
-              categorySlug: slugifyCategory(prev.kind, nextKey)
-            };
-          });
-        }} autoFocus={isCreate} placeholder="E.g. On-site installation" />
-          <FieldHint>Name shown when creating a request.</FieldHint>
         </div>
 
         <div className={modalStyles.iconSection}>
@@ -769,7 +769,9 @@ export default function SalesFormModal({
             Reset
           </button>
         </div>
-        <SalesFormFieldsRenderer fields={previewFields} values={previewValues} users={users} contacts={previewContacts} clients={previewClients} onChange={setPreviewValues} />
+        <div className={builderStyles.previewFields}>
+          <SalesFormFieldsRenderer fields={previewFields} values={previewValues} users={users} contacts={previewContacts} clients={previewClients} onChange={setPreviewValues} />
+        </div>
       </div>
     </div>;
   const collisionDetection = event => {

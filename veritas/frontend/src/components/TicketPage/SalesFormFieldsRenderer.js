@@ -2,21 +2,63 @@ import { useMemo } from "react";
 import { Icon } from "@iconify/react";
 import s from "./TicketCreatePage.module.css";
 import { fieldIsVisible, filterVisibleFields } from "../../utils/salesFormConditions";
-function formatFieldValue(field, value, users = []) {
+
+function getUserDisplayName(user) {
+  return user?.ticket_helpdesk_display_name || user?.name || user?.nom || user?.username || user?.email || "";
+}
+
+function getClientDisplayName(client) {
+  return client?.name || client?.nom || client?.client_name || client?.label || "";
+}
+
+function getContactDisplayName(contact) {
+  const fullName = [contact?.prenom, contact?.nom].filter(Boolean).join(" ").trim();
+  return fullName || contact?.name || contact?.email || contact?.label || "";
+}
+
+function formatFieldValue(field, value, {
+  users = [],
+  clients = [],
+  contacts = []
+} = {}) {
   if (field.fieldType === "checkbox") return value ? "Yes" : "No";
   if (field.fieldType === "user") {
     const user = users.find(row => String(row.id) === String(value));
-    return user?.ticket_helpdesk_display_name || user?.name || user?.nom || user?.username || user?.email || value || "";
+    return getUserDisplayName(user) || value || "";
+  }
+  if (field.fieldType === "client") {
+    const client = clients.find(row => String(row.id) === String(value));
+    return getClientDisplayName(client) || value || "";
+  }
+  if (field.fieldType === "contact") {
+    const contact = contacts.find(row => String(row.id) === String(value));
+    return getContactDisplayName(contact) || value || "";
   }
   return value ?? "";
 }
-export function buildDynamicFieldLines(fields = [], values = {}, users = []) {
+
+export function buildDynamicFieldLines(fields = [], values = {}, usersOrLookups = [], clients = [], contacts = []) {
+  let users = [];
+  let clientsList = clients;
+  let contactsList = contacts;
+  if (usersOrLookups && typeof usersOrLookups === "object" && !Array.isArray(usersOrLookups)) {
+    users = Array.isArray(usersOrLookups.users) ? usersOrLookups.users : [];
+    clientsList = Array.isArray(usersOrLookups.clients) ? usersOrLookups.clients : clients;
+    contactsList = Array.isArray(usersOrLookups.contacts) ? usersOrLookups.contacts : contacts;
+  } else {
+    users = Array.isArray(usersOrLookups) ? usersOrLookups : [];
+  }
   return filterVisibleFields(fields, values).map(field => {
     const raw = values[field.fieldKey];
-    const display = formatFieldValue(field, raw, users);
+    const display = formatFieldValue(field, raw, {
+      users,
+      clients: clientsList,
+      contacts: contactsList
+    });
     return `${field.label}: ${String(display || "").trim() || "-"}`;
   });
 }
+
 export function validateDynamicFields(fields = [], values = {}) {
   const activeFields = filterVisibleFields(fields, values);
   const missingRequired = activeFields.filter(field => field.required && !String(values[field.fieldKey] ?? "").trim());
@@ -29,10 +71,13 @@ export function validateDynamicFields(fields = [], values = {}) {
   if (activeFields.length > 0 && !hasAnyValue) return false;
   return true;
 }
+
 export default function SalesFormFieldsRenderer({
   fields = [],
   values = {},
   users = [],
+  contacts = [],
+  clients = [],
   onChange,
   fieldErrors = false,
   errorPulseTick = 0,
@@ -87,9 +132,23 @@ export default function SalesFormFieldsRenderer({
       return <select className={s.select} value={value} onChange={e => patchValue(field.fieldKey, e.target.value)}>
           <option value="">Select a user…</option>
           {users.map(user => <option key={user.id} value={user.id}>
-              {formatFieldValue({
-            fieldType: "user"
-          }, user.id, users)}
+              {getUserDisplayName(user) || `#${user.id}`}
+            </option>)}
+        </select>;
+    }
+    if (field.fieldType === "client") {
+      return <select className={s.select} value={value} onChange={e => patchValue(field.fieldKey, e.target.value)}>
+          <option value="">Select a company…</option>
+          {clients.map(client => <option key={client.id} value={client.id}>
+              {getClientDisplayName(client) || `#${client.id}`}
+            </option>)}
+        </select>;
+    }
+    if (field.fieldType === "contact") {
+      return <select className={s.select} value={value} onChange={e => patchValue(field.fieldKey, e.target.value)}>
+          <option value="">Select a contact…</option>
+          {contacts.map(contact => <option key={contact.id} value={contact.id}>
+              {getContactDisplayName(contact) || `#${contact.id}`}
             </option>)}
         </select>;
     }
@@ -107,19 +166,22 @@ export default function SalesFormFieldsRenderer({
                 {field.label}
                 {field.required ? <span className={s.requiredMark}>*</span> : null}
               </label>
-              <div className={`${s.fieldShell} ${fieldErrors ? s.fieldShellError : ""}`}>{renderField(field)}</div>
+              <div className={`${s.fieldShell} ${s.fieldShellMultiline} ${fieldErrors ? s.fieldShellError : ""}`}>{renderField(field)}</div>
             </div>)}
         </div>}
 
-      {otherFields.map(field => <div key={field.id || field.fieldKey} className={s.fieldBlock}>
+      {otherFields.map(field => {
+      const usesShell = field.fieldType === "text" || field.fieldType === "number" || field.fieldType === "date";
+      return <div key={field.id || field.fieldKey} className={s.fieldBlock}>
           <label className={s.fieldLabel}>
             {field.label}
             {field.required ? <span className={s.requiredMark}>*</span> : null}
           </label>
-          <div data-pulse={fieldErrors ? errorPulseTick : undefined} className={`${field.fieldType === "textarea" ? s.fieldShell : ""} ${fieldErrors ? s.fieldShellError : ""} ${fieldErrors ? s.fieldErrorPulse : ""}`}>
+          <div data-pulse={fieldErrors ? errorPulseTick : undefined} className={`${usesShell ? s.fieldShell : ""} ${fieldErrors ? s.fieldShellError : ""} ${fieldErrors ? s.fieldErrorPulse : ""}`}>
             {renderField(field)}
           </div>
-        </div>)}
+        </div>;
+    })}
     </div>;
 }
 export { filterVisibleFields, fieldIsVisible };
