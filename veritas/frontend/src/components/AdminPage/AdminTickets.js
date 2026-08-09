@@ -11,6 +11,7 @@ import CollectorFormModal from "./CollectorFormModal";
 import CollectorDeleteModal from "./CollectorDeleteModal";
 import CollectorLogsModal from "./CollectorLogsModal";
 import CollectorFoldersModal from "./CollectorFoldersModal";
+import CollectorMailboxPeekModal from "./CollectorMailboxPeekModal";
 import { COLLECTOR_PROVIDER_PRESETS, findCollectorProviderPreset, formatCollectorStatPercent, resolveCollectorEmailStats } from "./collectorConstants";
 import { sanitizeHtml, toRichPreviewHtml } from "../../utils/sanitizeHtml";
 import IngestionRuleFormModal from "./IngestionRuleFormModal";
@@ -748,6 +749,14 @@ export default function AdminTickets({
   const [foldersModalTargetField, setFoldersModalTargetField] = useState("inboxFolder");
   const [collectorAvailableFolders, setCollectorAvailableFolders] = useState([]);
   const [loadingCollectorFolders, setLoadingCollectorFolders] = useState(false);
+  const [peekModalOpen, setPeekModalOpen] = useState(false);
+  const [peekingMailbox, setPeekingMailbox] = useState(false);
+  const [peekFolder, setPeekFolder] = useState("INBOX");
+  const [peekUnreadOnly, setPeekUnreadOnly] = useState(false);
+  const [peekMessages, setPeekMessages] = useState([]);
+  const [peekTotal, setPeekTotal] = useState(0);
+  const [peekUnseen, setPeekUnseen] = useState(0);
+  const [peekIdentity, setPeekIdentity] = useState(null);
   const [logsModalOpen, setLogsModalOpen] = useState(false);
   const [logsCollectorName, setLogsCollectorName] = useState("");
   const [logsModalRows, setLogsModalRows] = useState([]);
@@ -2410,6 +2419,82 @@ export default function AdminTickets({
       setForcingCollectorId("");
     }
   };
+  const resolveCollectorCredentials = (draft = collectorDraft) => ({
+    ...draft,
+    password: String(draft?.password || "").trim() || mailCollectors.find(item => String(item.id) === String(editingCollectorId || draft?.id))?.password || ""
+  });
+  const loadCollectorPeek = async ({
+    folder = peekFolder,
+    unreadOnly = peekUnreadOnly,
+    openModal = true
+  } = {}) => {
+    const collector = resolveCollectorCredentials();
+    if (!String(collector.username || "").trim() || !String(collector.server || "").trim() || !String(collector.password || "").trim()) {
+      toast.error(mc.toast.emailRequired);
+      return;
+    }
+    const targetFolder = String(folder || collector.inboxFolder || "INBOX").trim() || "INBOX";
+    setPeekFolder(targetFolder);
+    setPeekUnreadOnly(Boolean(unreadOnly));
+    if (openModal) setPeekModalOpen(true);
+    setPeekingMailbox(true);
+    try {
+      const [peekResponse, foldersResponse] = await Promise.all([fetch(`${API_BASE_URL}/tickets/collectors/peek-messages`, {
+        method: "POST",
+        credentials: "include",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          collector,
+          folder: targetFolder,
+          limit: 40,
+          unreadOnly: Boolean(unreadOnly)
+        })
+      }), collectorAvailableFolders.length ? Promise.resolve(null) : fetch(`${API_BASE_URL}/tickets/collectors/folders`, {
+        method: "POST",
+        credentials: "include",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          collector
+        })
+      }).catch(() => null)]);
+      const payload = await peekResponse.json().catch(() => ({}));
+      if (!peekResponse.ok || payload?.success === false) {
+        throw new Error(payload?.error || mc.collectorPeek?.loadError || "Unable to peek mailbox");
+      }
+      setPeekMessages(Array.isArray(payload.messages) ? payload.messages : []);
+      setPeekTotal(Number(payload.total) || 0);
+      setPeekUnseen(Number(payload.unseen) || 0);
+      setPeekIdentity({
+        user: payload.user || collector.username,
+        host: payload.host || collector.server
+      });
+      if (foldersResponse) {
+        const foldersPayload = await foldersResponse.json().catch(() => ({}));
+        if (foldersResponse.ok && Array.isArray(foldersPayload?.folders)) {
+          setCollectorAvailableFolders(foldersPayload.folders);
+        }
+      }
+      appendCollectorDraftLog("info", `Mailbox peek: ${payload.user || collector.username} @ ${payload.host || collector.server} / ${targetFolder} (${Number(payload.messages?.length) || 0} shown)`);
+    } catch (error) {
+      toast.error(error?.message || mc.collectorPeek?.loadError || "Unable to peek mailbox");
+      setPeekMessages([]);
+      setPeekTotal(0);
+      setPeekUnseen(0);
+    } finally {
+      setPeekingMailbox(false);
+    }
+  };
+  const openCollectorMailboxPeek = () => {
+    loadCollectorPeek({
+      folder: String(collectorDraft.inboxFolder || "INBOX").trim() || "INBOX",
+      unreadOnly: collectorDraft.unreadOnly !== false,
+      openModal: true
+    });
+  };
   const openFoldersModal = async targetField => {
     setFoldersModalTargetField(targetField);
     setFoldersModalOpen(true);
@@ -2423,10 +2508,7 @@ export default function AdminTickets({
           "Content-Type": "application/json"
         },
         body: JSON.stringify({
-          collector: {
-            ...collectorDraft,
-            password: String(collectorDraft.password || "").trim() || mailCollectors.find(item => String(item.id) === String(editingCollectorId))?.password || ""
-          }
+          collector: resolveCollectorCredentials()
         })
       });
       const payload = await response.json().catch(() => ({}));
@@ -4002,8 +4084,20 @@ export default function AdminTickets({
 
       <WebhookFormModal open={showWebhookModal} mode={webhookModalMode} draft={webhookDraft} setDraft={setWebhookDraft} saving={savingWebhook} testing={testingWebhookConnection} testMessage={webhookTestMessage} testStatus={webhookTestStatus} onClose={closeWebhookModal} onSave={saveWebhookFromModal} onTest={testWebhookDraft} />
 
-      <CollectorFormModal open={showCollectorModal} copy={mc} mode={collectorModalMode} draft={collectorDraft} setDraft={setCollectorDraft} providerKey={collectorProviderKey} onProviderChange={applyCollectorProviderPreset} saving={savingCollector} testing={testingCollectorConnection} onClose={closeCollectorModal} onSave={saveCollectorFromModal} onTestConnection={testCollectorConnection} onBrowseFolders={openFoldersModal} initialSection={collectorModalMode === "create" ? "provider" : "connection"} />
-
+      <CollectorFormModal open={showCollectorModal} copy={mc} mode={collectorModalMode} draft={collectorDraft} setDraft={setCollectorDraft} providerKey={collectorProviderKey} onProviderChange={applyCollectorProviderPreset} saving={savingCollector} testing={testingCollectorConnection} peeking={peekingMailbox} onClose={closeCollectorModal} onSave={saveCollectorFromModal} onTestConnection={testCollectorConnection} onPeekMailbox={openCollectorMailboxPeek} onBrowseFolders={openFoldersModal} initialSection={collectorModalMode === "create" ? "provider" : "connection"} />
+      <CollectorMailboxPeekModal open={peekModalOpen} copy={mc} loading={peekingMailbox} folder={peekFolder} folders={collectorAvailableFolders} unreadOnly={peekUnreadOnly} identity={peekIdentity} messages={peekMessages} total={peekTotal} unseen={peekUnseen} onClose={() => !peekingMailbox && setPeekModalOpen(false)} onReload={() => loadCollectorPeek({
+      folder: peekFolder,
+      unreadOnly: peekUnreadOnly,
+      openModal: true
+    })} onFolderChange={folder => loadCollectorPeek({
+      folder,
+      unreadOnly: peekUnreadOnly,
+      openModal: true
+    })} onUnreadOnlyChange={value => loadCollectorPeek({
+      folder: peekFolder,
+      unreadOnly: value,
+      openModal: true
+    })} />
       <CollectorFoldersModal open={foldersModalOpen} copy={mc} loading={loadingCollectorFolders} folders={collectorAvailableFolders} onClose={() => setFoldersModalOpen(false)} onSelect={applyFolderSelection} />
 
       <CollectorLogsModal open={logsModalOpen} copy={mc} locale={locale} collectorName={logsCollectorName} logs={logsModalRows} onClose={() => setLogsModalOpen(false)} />

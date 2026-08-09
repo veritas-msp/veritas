@@ -83,6 +83,94 @@ export async function withImapClient(collector, callback) {
     }
   }
 }
+function formatEnvelopeAddress(entry) {
+  if (!entry) return "";
+  const name = String(entry.name || "").trim();
+  const address = entry.mailbox && entry.host ? `${entry.mailbox}@${entry.host}` : "";
+  if (name && address) return `${name} <${address}>`;
+  return name || address || "";
+}
+export async function peekCollectorMailboxMessages(collectorInput = {}, {
+  folder = "",
+  limit = 30,
+  unreadOnly = false
+} = {}) {
+  const collector = normalizeMailCollector(collectorInput, 0);
+  const targetFolder = String(folder || collector.inboxFolder || "INBOX").trim() || "INBOX";
+  const max = Math.min(100, Math.max(1, Number(limit) || 30));
+  return withImapClient(collector, async client => {
+    const lock = await client.getMailboxLock(targetFolder);
+    try {
+      const total = Number(client?.mailbox?.exists) || 0;
+      const unseen = Number(client?.mailbox?.unseen);
+      if (total <= 0) {
+        return {
+          folder: targetFolder,
+          total: 0,
+          unseen: Number.isFinite(unseen) ? unseen : 0,
+          user: collector.username,
+          host: collector.server,
+          messages: []
+        };
+      }
+      const messages = [];
+      if (unreadOnly) {
+        for await (const message of client.fetch({
+          seen: false
+        }, {
+          uid: true,
+          envelope: true,
+          flags: true
+        })) {
+          messages.push(message);
+          if (messages.length >= max) break;
+        }
+      } else {
+        const startSeq = Math.max(1, total - max + 1);
+        for await (const message of client.fetch(`${startSeq}:*`, {
+          uid: true,
+          envelope: true,
+          flags: true
+        })) {
+          messages.push(message);
+        }
+      }
+      const mapped = messages.map(message => {
+        const rawFlags = message?.flags;
+        const flags = Array.isArray(rawFlags)
+          ? rawFlags
+          : rawFlags && typeof rawFlags[Symbol.iterator] === "function"
+            ? [...rawFlags]
+            : [];
+        const seen = flags.some(flag => String(flag).toLowerCase() === "\\seen");
+        const from = Array.isArray(message?.envelope?.from) ? message.envelope.from[0] : null;
+        const toList = Array.isArray(message?.envelope?.to) ? message.envelope.to : [];
+        return {
+          uid: message.uid,
+          subject: String(message?.envelope?.subject || "(sans objet)").trim() || "(sans objet)",
+          from: formatEnvelopeAddress(from),
+          to: toList.map(formatEnvelopeAddress).filter(Boolean).slice(0, 3).join(", "),
+          date: message?.envelope?.date ? new Date(message.envelope.date).toISOString() : "",
+          seen
+        };
+      }).sort((a, b) => {
+        const da = a.date ? new Date(a.date).getTime() : 0;
+        const db = b.date ? new Date(b.date).getTime() : 0;
+        return db - da;
+      }).slice(0, max);
+      return {
+        folder: targetFolder,
+        total,
+        unseen: Number.isFinite(unseen) ? unseen : mapped.filter(item => !item.seen).length,
+        user: collector.username,
+        host: collector.server,
+        messages: mapped
+      };
+    } finally {
+      lock.release();
+    }
+  });
+}
 function stripReplyPrefix(subject = "") {
   return String(subject || "").replace(/^((re|fw|fwd)\s*:\s*)+/i, "").trim();
 }

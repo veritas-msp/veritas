@@ -235,6 +235,8 @@ const ADMIN_MAIL_COLLECT_COPY = {
       "certLabel": "Certificat serveur",
       "testingConnection": "Test en cours…",
       "testConnection": "Tester la connexion",
+      "peekMailbox": "Voir les mails",
+      "peekingMailbox": "Chargement des mails…",
       "ingestionDescBefore": "Indiquez quel dossier scanner, où classer les mails traités, et à quelle fréquence vérifier la boîte. Les critères d'acceptation se configurent dans l'onglet ",
       "ingestionDescTab": "Règles de collecte",
       "ingestionDescAfter": ".",
@@ -288,6 +290,22 @@ const ADMIN_MAIL_COLLECT_COPY = {
       "subtitle": "Parcourez les dossiers disponibles sur le serveur mail connecté.",
       "loading": "Chargement des dossiers…",
       "empty": "Aucun dossier trouvé. Vérifiez la connexion et les identifiants du collecteur."
+    },
+    "collectorPeek": {
+      "eyebrow": "Aperçu boîte",
+      "title": "Mails du dossier",
+      "subtitle": "Vérifiez le contenu réel du dossier IMAP.",
+      "folderLabel": "Dossier",
+      "unreadOnlyLabel": "Non lus uniquement",
+      "reload": "Actualiser",
+      "folderMeta": "Dossier {folder}",
+      "countMeta": "{shown} affiché(s) · {total} dans le dossier · {unseen} non lu(s)",
+      "loading": "Chargement des mails…",
+      "empty": "Aucun message dans ce dossier avec ces filtres.",
+      "seen": "Lu",
+      "unseen": "Non lu",
+      "footerHint": "Lecture seule — aucun mail n’est modifié.",
+      "loadError": "Impossible de lire les mails de la boîte."
     },
     "ingestionRuleForm": {
       "eyebrow": "Règles de collecte",
@@ -767,6 +785,8 @@ const ADMIN_MAIL_COLLECT_COPY = {
       "certLabel": "Server certificate",
       "testingConnection": "Testing…",
       "testConnection": "Test connection",
+      "peekMailbox": "View emails",
+      "peekingMailbox": "Loading emails…",
       "ingestionDescBefore": "Specify which folder to scan, where to move processed emails, and how often to check the mailbox. Acceptance criteria are configured in the ",
       "ingestionDescTab": "Collection rules",
       "ingestionDescAfter": " tab.",
@@ -820,6 +840,22 @@ const ADMIN_MAIL_COLLECT_COPY = {
       "subtitle": "Browse folders available on the connected mail server.",
       "loading": "Loading folders…",
       "empty": "No folders found. Check the connection and collector credentials."
+    },
+    "collectorPeek": {
+      "eyebrow": "Mailbox preview",
+      "title": "Folder emails",
+      "subtitle": "Verify the real IMAP folder contents.",
+      "folderLabel": "Folder",
+      "unreadOnlyLabel": "Unread only",
+      "reload": "Refresh",
+      "folderMeta": "Folder {folder}",
+      "countMeta": "{shown} shown · {total} in folder · {unseen} unread",
+      "loading": "Loading emails…",
+      "empty": "No messages in this folder with these filters.",
+      "seen": "Read",
+      "unseen": "Unread",
+      "footerHint": "Read-only — no email is modified.",
+      "loadError": "Unable to read mailbox emails."
     },
     "ingestionRuleForm": {
       "eyebrow": "Collection rules",

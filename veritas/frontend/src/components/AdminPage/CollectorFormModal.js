@@ -16,9 +16,11 @@ export default function CollectorFormModal({
   onProviderChange,
   saving = false,
   testing = false,
+  peeking = false,
   onClose,
   onSave,
   onTestConnection,
+  onPeekMailbox,
   onBrowseFolders,
   initialSection
 }) {
@@ -193,6 +195,15 @@ export default function CollectorFormModal({
               {cf.testConnection}
             </>}
         </button>
+        <button type="button" className={styles.secondaryBtn} onClick={onPeekMailbox} disabled={saving || testing || peeking || !hasLogin || !hasServer || isCreate && !String(draft.password || "").trim()}>
+          {peeking ? <>
+              <Icon icon="mdi:loading" className={layout.spinning} aria-hidden />
+              {cf.peekingMailbox}
+            </> : <>
+              <Icon icon="mdi:email-search-outline" aria-hidden />
+              {cf.peekMailbox}
+            </>}
+        </button>
       </div>
     </>;
   const renderIngestionStep = () => {
@@ -223,12 +234,15 @@ export default function CollectorFormModal({
             <label className={layout.label} htmlFor="collector-inbox">
               {cf.inboxLabel}
             </label>
-            <div className={styles.folderRow}>
+            <div className={`${styles.folderRow} ${styles.folderRowPeek}`}>
               <input id="collector-inbox" type="text" className={layout.input} value={draft.inboxFolder || ""} onChange={e => patchDraft({
               inboxFolder: e.target.value
             })} placeholder={cf.inboxPlaceholder} />
               <button type="button" className={styles.browseBtn} title={copy.common.browseFolders} onClick={() => onBrowseFolders("inboxFolder")}>
                 <Icon icon="mdi:folder-search-outline" />
+              </button>
+              <button type="button" className={styles.browseBtn} title={cf.peekMailbox} onClick={onPeekMailbox} disabled={peeking}>
+                <Icon icon={peeking ? "mdi:loading" : "mdi:email-search-outline"} className={peeking ? layout.spinning : undefined} />
               </button>
             </div>
           </div>

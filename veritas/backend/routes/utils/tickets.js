@@ -39,7 +39,7 @@ import { requirePro } from "../../middleware/edition.js";
 import { appendCommunityTicketFilters, COMMUNITY_SALES_TICKET_SQL, isSalesTicketRow, rejectCommunitySalesTicketCreate, rejectCommunitySalesTicketUpdate, sendProSalesTicketError } from "../../utils/ticketEditionGuard.js";
 import { isCommunity } from "../../utils/edition.js";
 import { assertCommunityTicketAutomationLimits, sendCommunityLimitError } from "../../utils/communityLimits.js";
-import { appendCollectorLogInConfig, filterExclusionRulesForCollector, normalizeMailCollector, processMailCollector, withImapClient } from "../../services/mailCollectorIngest.js";
+import { appendCollectorLogInConfig, filterExclusionRulesForCollector, normalizeMailCollector, peekCollectorMailboxMessages, processMailCollector, withImapClient } from "../../services/mailCollectorIngest.js";
 import { normalizeMailCollectSettings } from "../../services/mailCollectSettings.js";
 import { getAllMatchingExclusionRules, normalizeExclusionRule } from "../../services/mailIngestionRules.js";
 import { searchTicketsPaged, TICKET_SEARCH_MAX_LIMIT, resolveTicketListSchema } from "../../services/ticketPagedListService.js";
@@ -817,6 +817,39 @@ router.post("/collectors/folders", verifyJWT, [body("collector").isObject()], as
     return res.status(400).json({
       success: false,
       error: err?.message || "Unable to retrieve IMAP folders."
+    });
+  }
+});
+router.post("/collectors/peek-messages", verifyJWT, [body("collector").isObject(), body("folder").optional().isString(), body("limit").optional().isInt({
+  min: 1,
+  max: 100
+}), body("unreadOnly").optional().isBoolean()], async (req, res) => {
+  const validationResponse = validationErrorOrNull(req, res);
+  if (validationResponse) return;
+  try {
+    const incoming = normalizeTicketAutomationMailCollector(req.body?.collector || {}, 0);
+    const storedRows = await loadMailCollectorsRaw().catch(() => []);
+    const stored = (Array.isArray(storedRows) ? storedRows : [])
+      .map((row, idx) => normalizeMailCollector(row, idx))
+      .find(row => String(row.id) === String(incoming.id));
+    const collector = {
+      ...stored,
+      ...incoming,
+      password: incoming.password || stored?.password || ""
+    };
+    const peek = await peekCollectorMailboxMessages(collector, {
+      folder: String(req.body?.folder || collector.inboxFolder || "INBOX"),
+      limit: Number(req.body?.limit || 30),
+      unreadOnly: req.body?.unreadOnly === true
+    });
+    return res.json({
+      success: true,
+      ...peek
+    });
+  } catch (err) {
+    return res.status(400).json({
+      success: false,
+      error: err?.message || "Unable to list mailbox messages."
     });
   }
 });

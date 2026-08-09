@@ -123,6 +123,9 @@
 }
 
 .connectionTestRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.65rem;
   margin-top: 1.25rem;
   padding-top: 1.25rem;
   border-top: 1px solid var(--msp-border, #eef2f7);
@@ -195,6 +198,10 @@
   grid-template-columns: minmax(0, 1fr) auto;
   gap: 0.45rem;
   align-items: center;
+}
+
+.folderRowPeek {
+  grid-template-columns: minmax(0, 1fr) auto auto;
 }
 
 .browseBtn {
