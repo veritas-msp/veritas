@@ -192,6 +192,26 @@ async function moveMailToRefused(collector, client, messageUid) {
     await client.messageMove(messageUid, collector.refusedFolder).catch(() => {});
   }
 }
+async function markMailSeen(client, messageUid) {
+  if (!messageUid) return;
+  await client.messageFlagsAdd(messageUid, ["\\Seen"]).catch(() => {});
+}
+async function rememberProcessedInboundMail({
+  collector,
+  client,
+  message,
+  mailContext
+}) {
+  await ensureTicketEmailThreadSchema().catch(() => {});
+  await recordTicketEmailMessage({
+    ticketId: null,
+    collectorId: collector?.id,
+    mailContext,
+    direction: "inbound",
+    allowMissingTicket: true
+  }).catch(() => {});
+  await markMailSeen(client, message?.uid);
+}
 async function attachInboundMailToTicket({
   ticketRow,
   collector,
@@ -313,6 +333,13 @@ async function handleThreadedTicketMail({
     } else {
       await appendCollectorLogInConfig(collector.id, "info", `Reply ignored: no ticket linked to the thread ("${subjectPreview}").`).catch(() => {});
     }
+    // Remember Message-ID + mark Seen so the same orphan reply is not reprocessed every poll.
+    await rememberProcessedInboundMail({
+      collector,
+      client,
+      message,
+      mailContext
+    });
     return;
   }
   await createInboundTicketAndRecord({

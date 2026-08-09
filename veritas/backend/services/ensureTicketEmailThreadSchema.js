@@ -8,6 +8,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const root = path.join(__dirname, "..");
 const CREATE_FILE = "schema/patches/20260723_ticket_email_thread.sql";
 const UNIQUE_FILE = "schema/patches/20260809_ticket_email_messages_unique.sql";
+const NULLABLE_TICKET_FILE = "schema/patches/20260809_ticket_email_messages_nullable_ticket.sql";
 
 let ensured = false;
 
@@ -42,6 +43,18 @@ async function hasMessageIdUnique(client) {
   return idx.rows.length > 0;
 }
 
+async function ticketIdAllowsNull(client) {
+  const result = await client.query(
+    `SELECT is_nullable
+     FROM information_schema.columns
+     WHERE table_schema = 'public'
+       AND table_name = 'v_b_ticket_email_messages'
+       AND column_name = 'ticket_id'
+     LIMIT 1`
+  );
+  return String(result.rows[0]?.is_nullable || "").toUpperCase() === "YES";
+}
+
 async function runSqlFile(client, relativePath) {
   const filePath = path.join(root, relativePath);
   if (!fs.existsSync(filePath)) {
@@ -63,9 +76,15 @@ export async function ensureTicketEmailThreadSchema() {
     if (await tableExists(client, "v_b_ticket_email_messages") && !(await hasMessageIdUnique(client))) {
       await runSqlFile(client, UNIQUE_FILE);
     }
-    ensured = await tableExists(client, "v_b_ticket_email_messages") && (await hasMessageIdUnique(client));
+    if (await tableExists(client, "v_b_ticket_email_messages") && !(await ticketIdAllowsNull(client))) {
+      await runSqlFile(client, NULLABLE_TICKET_FILE);
+    }
+    ensured =
+      (await tableExists(client, "v_b_ticket_email_messages")) &&
+      (await hasMessageIdUnique(client)) &&
+      (await ticketIdAllowsNull(client));
     if (!ensured) {
-      console.warn("[ticket-email-thread] Schema still incomplete after ensure (unique message_id missing).");
+      console.warn("[ticket-email-thread] Schema still incomplete after ensure.");
     }
   } catch (err) {
     console.error("[ticket-email-thread] Migration failed:", err?.message || err);

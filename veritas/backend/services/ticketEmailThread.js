@@ -81,11 +81,14 @@ export async function recordTicketEmailMessage({
   ticketId,
   collectorId = "",
   mailContext = {},
-  direction = "inbound"
+  direction = "inbound",
+  allowMissingTicket = false
 } = {}) {
   const messageId = normalizeMessageId(mailContext?.messageId);
-  if (!ticketId || !messageId) return false;
-  const params = [ticketId, String(collectorId || "").trim() || null, messageId, String(mailContext?.inReplyTo || "").trim() || null, String(mailContext?.references || "").trim() || null, String(mailContext?.subject || "").trim().slice(0, 500) || null, String(mailContext?.fromAddress || "").trim().toLowerCase() || null, String(direction || "inbound").trim() || "inbound"];
+  const hasTicket = Boolean(ticketId);
+  if (!messageId) return false;
+  if (!hasTicket && !allowMissingTicket) return false;
+  const params = [hasTicket ? ticketId : null, String(collectorId || "").trim() || null, messageId, String(mailContext?.inReplyTo || "").trim() || null, String(mailContext?.references || "").trim() || null, String(mailContext?.subject || "").trim().slice(0, 500) || null, String(mailContext?.fromAddress || "").trim().toLowerCase() || null, String(direction || "inbound").trim() || "inbound"];
   const insertSql = `INSERT INTO v_b_ticket_email_messages
       (ticket_id, collector_id, message_id, in_reply_to, references_header, subject, from_address, direction, created_at)
      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW())

@@ -133,6 +133,19 @@ export async function buildIncrementalAvrilMigrationPlan(client = pool) {
   } else if (!(await indexExists(client, "v_b_ticket_email_messages", "uq_ticket_email_messages_message_id"))) {
     plan.push("20260809_ticket_email_messages_unique.sql");
   }
+  if ((await tableExists(client, "v_b_ticket_email_messages"))) {
+    const {
+      rows: ticketNullable
+    } = await client.query(`SELECT is_nullable
+         FROM information_schema.columns
+        WHERE table_schema = 'public'
+          AND table_name = 'v_b_ticket_email_messages'
+          AND column_name = 'ticket_id'
+        LIMIT 1`);
+    if (String(ticketNullable[0]?.is_nullable || "").toUpperCase() !== "YES") {
+      plan.push("20260809_ticket_email_messages_nullable_ticket.sql");
+    }
+  }
   if (!(await tableExists(client, "v_b_ticket_mail_collect_settings_config"))) {
     plan.push("20260724_mail_collect_settings.sql");
   }
