@@ -2365,8 +2365,8 @@ export default function AdminTickets({
         body: JSON.stringify({
           collector: {
             ...collectorDraft,
-            // On edit with blank password, reuse the stored secret for the live test.
-            password: String(collectorDraft.password || "").trim() || mailCollectors.find(item => String(item.id) === String(editingCollectorId))?.password || ""
+            // On edit with blank password, reuse the stored secret only if login is unchanged.
+            password: resolveCollectorCredentials(collectorDraft).password
           }
         })
       });
@@ -2419,10 +2419,18 @@ export default function AdminTickets({
       setForcingCollectorId("");
     }
   };
-  const resolveCollectorCredentials = (draft = collectorDraft) => ({
-    ...draft,
-    password: String(draft?.password || "").trim() || mailCollectors.find(item => String(item.id) === String(editingCollectorId || draft?.id))?.password || ""
-  });
+  const resolveCollectorCredentials = (draft = collectorDraft) => {
+    const stored = mailCollectors.find(item => String(item.id) === String(editingCollectorId || draft?.id));
+    const username = String(draft?.username || "").trim();
+    const typedPassword = String(draft?.password || "").trim();
+    const storedUsername = String(stored?.username || "").trim();
+    const canReusePassword = !typedPassword && username && storedUsername && username.toLowerCase() === storedUsername.toLowerCase();
+    return {
+      ...draft,
+      username,
+      password: typedPassword || (canReusePassword ? String(stored?.password || "") : "")
+    };
+  };
   const loadCollectorPeek = async ({
     folder = peekFolder,
     unreadOnly = peekUnreadOnly,
@@ -2548,6 +2556,14 @@ export default function AdminTickets({
     }
     if (!String(collectorDraft.password || "").trim() && collectorModalMode === "create") {
       toast.error(mc.toast.passwordRequired);
+      return;
+    }
+    const previous = collectorModalMode === "edit"
+      ? mailCollectors.find(item => String(item.id) === String(editingCollectorId))
+      : null;
+    const usernameChanged = previous && String(previous.username || "").trim().toLowerCase() !== username.toLowerCase();
+    if (collectorModalMode === "edit" && usernameChanged && !String(collectorDraft.password || "").trim()) {
+      toast.error(mc.toast.passwordRequiredOnLoginChange || mc.toast.passwordRequired);
       return;
     }
     const payload = {

@@ -351,6 +351,36 @@ const normalizeTicketAutomationScheduledAlertRule = (row, idx) => ({
   enabled: row?.enabled !== false
 });
 const normalizeTicketAutomationMailCollector = normalizeMailCollector;
+function sameImapLogin(a = "", b = "") {
+  return String(a || "").trim().toLowerCase() === String(b || "").trim().toLowerCase();
+}
+/** Merge draft/request collector with DB row without pairing a new login to an old password. */
+function resolveCollectorImapCredentials(incomingInput = {}, storedInput = null, {
+  preferStoredIdentity = false
+} = {}) {
+  const incoming = normalizeMailCollector(incomingInput || {}, 0);
+  const stored = storedInput ? normalizeMailCollector(storedInput, 0) : null;
+  if (!stored) return incoming;
+  if (preferStoredIdentity) {
+    return {
+      ...incoming,
+      ...stored,
+      enabled: incoming.enabled !== false && stored.enabled !== false,
+      ingestEnabled: incoming.ingestEnabled !== false && stored.ingestEnabled !== false
+    };
+  }
+  const username = String(incoming.username || "").trim() || String(stored.username || "").trim();
+  const incomingPassword = String(incoming.password || "").trim();
+  const canReusePassword = Boolean(incomingPassword) || sameImapLogin(username, stored.username);
+  return {
+    ...stored,
+    ...incoming,
+    username,
+    server: String(incoming.server || "").trim() || stored.server,
+    inboxFolder: String(incoming.inboxFolder || "").trim() || stored.inboxFolder || "INBOX",
+    password: incomingPassword || (canReusePassword ? String(stored.password || "") : "")
+  };
+}
 function mergeMailCollectorsPreservingRuntime(incomingCollectors = [], currentCollectors = []) {
   const currentById = new Map(
     (Array.isArray(currentCollectors) ? currentCollectors : []).map((row, idx) => {
@@ -362,6 +392,8 @@ function mergeMailCollectorsPreservingRuntime(incomingCollectors = [], currentCo
     const next = normalizeMailCollector(row, idx);
     const prev = currentById.get(String(next.id));
     if (!prev) return next;
+    const nextPassword = String(next.password || "").trim();
+    const keepPassword = nextPassword || (sameImapLogin(next.username, prev.username) ? prev.password : "");
     return {
       ...next,
       // Never let an admin save wipe poller runtime state / history.
@@ -372,8 +404,8 @@ function mergeMailCollectorsPreservingRuntime(incomingCollectors = [], currentCo
         validated: Math.max(Number(next.stats?.validated) || 0, Number(prev.stats?.validated) || 0),
         ignored: Math.max(Number(next.stats?.ignored) || 0, Number(prev.stats?.ignored) || 0)
       },
-      // Keep stored password when UI omits/masks it.
-      password: next.password || prev.password || ""
+      // Keep stored password only when the IMAP login did not change.
+      password: keepPassword || ""
     };
   });
 }
@@ -768,11 +800,15 @@ router.post("/collectors/test-connection", verifyJWT, [body("collector").isObjec
     const stored = (Array.isArray(storedRows) ? storedRows : [])
       .map((row, idx) => normalizeMailCollector(row, idx))
       .find(row => String(row.id) === String(incoming.id));
-    const collector = {
-      ...stored,
-      ...incoming,
-      password: incoming.password || stored?.password || ""
-    };
+    const collector = resolveCollectorImapCredentials(incoming, stored, {
+      preferStoredIdentity: false
+    });
+    if (!collector.password) {
+      return res.status(400).json({
+        success: false,
+        error: "Password required for this IMAP login (re-enter it after changing the email address)."
+      });
+    }
     const identity = await withImapClient(collector, async client => ({
       user: String(collector.username || "").trim(),
       host: String(collector.server || "").trim(),
@@ -800,11 +836,15 @@ router.post("/collectors/folders", verifyJWT, [body("collector").isObject()], as
     const stored = (Array.isArray(storedRows) ? storedRows : [])
       .map((row, idx) => normalizeMailCollector(row, idx))
       .find(row => String(row.id) === String(incoming.id));
-    const collector = {
-      ...stored,
-      ...incoming,
-      password: incoming.password || stored?.password || ""
-    };
+    const collector = resolveCollectorImapCredentials(incoming, stored, {
+      preferStoredIdentity: false
+    });
+    if (!collector.password) {
+      return res.status(400).json({
+        success: false,
+        error: "Password required for this IMAP login (re-enter it after changing the email address)."
+      });
+    }
     const folders = await withImapClient(collector, async client => {
       const list = await client.list();
       return (Array.isArray(list) ? list : []).map(item => String(item?.path || "").trim()).filter(Boolean).sort((a, b) => a.localeCompare(b, "fr"));
@@ -832,11 +872,15 @@ router.post("/collectors/peek-messages", verifyJWT, [body("collector").isObject(
     const stored = (Array.isArray(storedRows) ? storedRows : [])
       .map((row, idx) => normalizeMailCollector(row, idx))
       .find(row => String(row.id) === String(incoming.id));
-    const collector = {
-      ...stored,
-      ...incoming,
-      password: incoming.password || stored?.password || ""
-    };
+    const collector = resolveCollectorImapCredentials(incoming, stored, {
+      preferStoredIdentity: false
+    });
+    if (!collector.password) {
+      return res.status(400).json({
+        success: false,
+        error: "Password required for this IMAP login (re-enter it after changing the email address)."
+      });
+    }
     const peek = await peekCollectorMailboxMessages(collector, {
       folder: String(req.body?.folder || collector.inboxFolder || "INBOX"),
       limit: Number(req.body?.limit || 30),
@@ -1180,15 +1224,16 @@ router.post("/collectors/force-fetch", verifyJWT, [body("collector").isObject()]
     const stored = (Array.isArray(storedRows) ? storedRows : [])
       .map((row, idx) => normalizeMailCollector(row, idx))
       .find(row => String(row.id) === String(incoming.id));
-    // Prefer persisted secrets, but never override a newly typed login/server/folder with stale values
-    // when the admin is force-fetching from an unsaved draft. Password falls back to stored.
-    const collector = stored
-      ? {
-          ...stored,
-          ...incoming,
-          password: incoming.password || stored.password || ""
-        }
-      : incoming;
+    // Force-fetch from the collectors table must scan the saved mailbox, not a stale UI draft.
+    const collector = resolveCollectorImapCredentials(incoming, stored, {
+      preferStoredIdentity: Boolean(stored)
+    });
+    if (!collector.password) {
+      return res.status(400).json({
+        success: false,
+        error: "Collector password is missing. Edit the collector and set the mailbox password."
+      });
+    }
     const stats = await processMailCollector(collector, {
       force: true
     });
