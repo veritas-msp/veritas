@@ -5,7 +5,7 @@ import { FaTimes } from "react-icons/fa";
 import { toast } from "react-toastify";
 import { DndContext, DragOverlay, KeyboardSensor, PointerSensor, closestCenter, pointerWithin, rectIntersection, useSensor, useSensors } from "@dnd-kit/core";
 import { sortableKeyboardCoordinates } from "@dnd-kit/sortable";
-import { createSalesForm, createSalesFormField, deleteSalesFormField, updateSalesForm, updateSalesFormField } from "../../api/tickets";
+import { createSalesForm, createSalesFormField, deleteSalesFormField, fetchSalesTicketCategories, updateSalesForm, updateSalesFormField } from "../../api/tickets";
 import { fetchClientsList, fetchContactsList } from "../../api/clients";
 import { fetchUsers } from "../../api/users";
 import { fetchTeams } from "../../api/teams";
@@ -266,6 +266,7 @@ export default function SalesFormModal({
   const [profiles, setProfiles] = useState([]);
   const [users, setUsers] = useState([]);
   const [teams, setTeams] = useState([]);
+  const [salesCategories, setSalesCategories] = useState([]);
   const [previewValues, setPreviewValues] = useState({});
   const [previewClients, setPreviewClients] = useState([]);
   const [previewContacts, setPreviewContacts] = useState([]);
@@ -306,19 +307,21 @@ export default function SalesFormModal({
     let cancelled = false;
     (async () => {
       try {
-        const [profileRows, userRows, teamRows] = await Promise.all([fetch(`${API_BASE_URL}/profiles`, {
+        const [profileRows, userRows, teamRows, categoryRows] = await Promise.all([fetch(`${API_BASE_URL}/profiles`, {
           credentials: "include"
-        }).then(r => r.ok ? r.json() : []).catch(() => []), fetchUsers().catch(() => []), fetchTeams().catch(() => [])]);
+        }).then(r => r.ok ? r.json() : []).catch(() => []), fetchUsers().catch(() => []), fetchTeams().catch(() => []), fetchSalesTicketCategories().catch(() => [])]);
         if (!cancelled) {
           setProfiles(Array.isArray(profileRows) ? profileRows : []);
           setUsers(Array.isArray(userRows) ? userRows : []);
           setTeams(Array.isArray(teamRows) ? teamRows : []);
+          setSalesCategories(Array.isArray(categoryRows) ? categoryRows : []);
         }
       } catch {
         if (!cancelled) {
           setProfiles([]);
           setUsers([]);
           setTeams([]);
+          setSalesCategories([]);
         }
       }
     })();
@@ -326,6 +329,11 @@ export default function SalesFormModal({
       cancelled = true;
     };
   }, [open]);
+  const categoryOptions = useMemo(() => (Array.isArray(salesCategories) ? salesCategories : []).filter(item => item?.enabled !== false && String(item?.name || "").trim()).slice().sort((a, b) => String(a.section || "").localeCompare(String(b.section || ""), undefined, {
+    sensitivity: "base"
+  }) || String(a.name || "").localeCompare(String(b.name || ""), undefined, {
+    sensitivity: "base"
+  })), [salesCategories]);
   const userOptions = useMemo(() => users.filter(user => user?.id).map(user => ({
     id: String(user.id),
     label: getUserLabel(user),
@@ -777,7 +785,7 @@ export default function SalesFormModal({
           (field values) are met. With no conditions, the ticket is always created.
         </p>
       </div>
-      <SalesFormTargetRulesEditor rules={formDraft.ticketTargets?.rules?.length ? formDraft.ticketTargets.rules : [createEmptyTargetRule(0)]} formFields={fields} userOptions={userOptions} teamOptions={teamOptions} onChange={rules => setFormDraft(prev => ({
+      <SalesFormTargetRulesEditor rules={formDraft.ticketTargets?.rules?.length ? formDraft.ticketTargets.rules : [createEmptyTargetRule(0)]} formFields={fields} formKind={formDraft.kind} categoryOptions={categoryOptions} userOptions={userOptions} teamOptions={teamOptions} onChange={rules => setFormDraft(prev => ({
       ...prev,
       ticketTargets: {
         version: 2,

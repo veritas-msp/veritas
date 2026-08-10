@@ -331,6 +331,90 @@
   background: rgba(220, 38, 38, 0.08);
 }
 
+.templateFieldHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 0.35rem;
+}
+
+.templateFieldHead .label,
+.templateFieldHead label {
+  margin-bottom: 0;
+}
+
+.variablesBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.35rem 0.7rem;
+  border: 1px dashed var(--msp-border, #dde3ed);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--msp-accent, #2b5fab);
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+  white-space: nowrap;
+}
+
+.variablesBtn:hover {
+  border-color: var(--msp-accent, #2b5fab);
+  background: var(--msp-accent-soft, rgba(43, 95, 171, 0.12));
+}
+
+.variablePanel {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+  margin: 0 0 0.55rem;
+  padding: 0.7rem 0.75rem;
+  border: 1px solid var(--msp-border-light, #eef2f7);
+  border-radius: 10px;
+  background: var(--msp-surface-2, #f8fafc);
+}
+
+.variableGroupTitle {
+  margin: 0;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: var(--msp-muted, #64748b);
+}
+
+.variableChips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+.variableChip {
+  display: inline-flex;
+  align-items: center;
+  max-width: 100%;
+  padding: 0.28rem 0.55rem;
+  border: 1px solid var(--msp-border, #dde3ed);
+  border-radius: 999px;
+  background: var(--msp-surface, #fff);
+  color: var(--msp-text, #0f1c2e);
+  font-size: 0.75rem;
+  font-weight: 550;
+  font-family: inherit;
+  cursor: pointer;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.variableChip:hover {
+  border-color: var(--msp-accent, #2b5fab);
+  background: var(--msp-accent-soft, rgba(43, 95, 171, 0.12));
+  color: var(--msp-accent, #2b5fab);
+}
+
 @media (max-width: 720px) {
   .typeOrderRow {
     grid-template-columns: 1fr;
@@ -342,5 +426,10 @@
 
   .targetRuleHead {
     flex-direction: column;
+  }
+
+  .templateFieldHead {
+    flex-direction: column;
+    align-items: flex-start;
   }
 }

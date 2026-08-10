@@ -190,26 +190,97 @@ export function extractTicketNumberFromSubject(subject = "") {
   return null;
 }
 export function extractEmailBodiesFromRfc822(sourceValue) {
-  const raw = Buffer.isBuffer(sourceValue) ? sourceValue.toString("utf8") : String(sourceValue || "");
-  const normalizedRaw = raw.replace(/\r/g, "");
-  const decodeQuotedPrintable = value => String(value || "").replace(/=\n/g, "").replace(/=([0-9A-Fa-f]{2})/g, (_m, hex) => String.fromCharCode(parseInt(hex, 16)));
-  const decodePartBody = (partHeaders, partBody) => {
-    const headers = String(partHeaders || "").toLowerCase();
-    const bodyValue = String(partBody || "");
-    if (/content-transfer-encoding:\s*base64/i.test(headers)) {
-      const cleaned = bodyValue.replace(/[^A-Za-z0-9+/=]/g, "");
+  // Keep a byte-preserving view of the RFC822 source so QP/base64 can be decoded with the part charset.
+  const rawBuffer = Buffer.isBuffer(sourceValue) ? sourceValue : Buffer.from(String(sourceValue || ""), "utf8");
+  const normalizedRaw = rawBuffer.toString("latin1").replace(/\r\n/g, "\n").replace(/\r/g, "\n");
+  const normalizeCharset = charset => {
+    const raw = String(charset || "utf-8").trim().toLowerCase().replace(/^["']|["']$/g, "");
+    const compact = raw.replace(/[_\s-]/g, "");
+    if (!compact || compact === "utf8" || compact === "unicode11utf8" || compact === "unicode") return "utf-8";
+    if (["iso88591", "latin1", "latin", "l1", "usascii", "ascii"].includes(compact)) return "iso-8859-1";
+    if (["windows1252", "cp1252", "winlatin1", "ansi"].includes(compact)) return "windows-1252";
+    return raw;
+  };
+  const decodeBytes = (buffer, charset) => {
+    const normalized = normalizeCharset(charset);
+    try {
+      return new TextDecoder(normalized, {
+        fatal: false
+      }).decode(buffer);
+    } catch (_error) {
       try {
-        return Buffer.from(cleaned, "base64").toString("utf8");
-      } catch (_error) {
-        return bodyValue;
+        return new TextDecoder("utf-8", {
+          fatal: false
+        }).decode(buffer);
+      } catch (_error2) {
+        return Buffer.from(buffer).toString("utf8");
       }
     }
-    if (/content-transfer-encoding:\s*quoted-printable/i.test(headers)) {
-      return decodeQuotedPrintable(bodyValue);
-    }
-    return bodyValue;
   };
-  const htmlToText = html => String(html || "").replace(/<style[\s\S]*?<\/style>/gi, " ").replace(/<script[\s\S]*?<\/script>/gi, " ").replace(/<br\s*\/?>/gi, "\n").replace(/<\/(p|div|li|tr|h1|h2|h3|h4|h5|h6|table|blockquote)>/gi, "\n").replace(/<(p|div|li|tr|h1|h2|h3|h4|h5|h6|blockquote)(?:\s[^>]*)?>/gi, "\n").replace(/<[^>]+>/g, " ").replace(/&nbsp;/gi, " ").replace(/&amp;/gi, "&").replace(/&lt;/gi, "<").replace(/&gt;/gi, ">").replace(/&quot;/gi, "\"").replace(/\n{3,}/g, "\n\n").replace(/[ \t]+\n/g, "\n").replace(/[ \t]{2,}/g, " ").trim();
+  const countReplacementChars = text => {
+    let count = 0;
+    for (const ch of String(text || "")) {
+      if (ch === "\uFFFD") count += 1;
+    }
+    return count;
+  };
+  const decodeWithCharsetFallback = (buffer, charset) => {
+    let text = decodeBytes(buffer, charset);
+    const primary = normalizeCharset(charset);
+    if (primary === "utf-8" && countReplacementChars(text) > 0) {
+      for (const fallback of ["windows-1252", "iso-8859-1"]) {
+        const candidate = decodeBytes(buffer, fallback);
+        if (countReplacementChars(candidate) < countReplacementChars(text)) text = candidate;
+      }
+    }
+    return text;
+  };
+  const extractCharset = headers => {
+    const match = String(headers || "").match(/charset\s*=\s*["']?([^"'\s;]+)/i);
+    return normalizeCharset(match?.[1] || "utf-8");
+  };
+  const decodeQuotedPrintableToBuffer = value => {
+    const softUnwrapped = String(value || "").replace(/=\n/g, "");
+    const bytes = [];
+    for (let i = 0; i < softUnwrapped.length; i += 1) {
+      const ch = softUnwrapped[i];
+      if (ch === "=" && i + 2 < softUnwrapped.length && /^[0-9A-Fa-f]{2}$/.test(softUnwrapped.slice(i + 1, i + 3))) {
+        bytes.push(parseInt(softUnwrapped.slice(i + 1, i + 3), 16));
+        i += 2;
+        continue;
+      }
+      bytes.push(softUnwrapped.charCodeAt(i) & 0xff);
+    }
+    return Buffer.from(bytes);
+  };
+  const decodePartBody = (partHeaders, partBody) => {
+    const headers = String(partHeaders || "");
+    const headersLower = headers.toLowerCase();
+    const charset = extractCharset(headers);
+    // partBody is latin1-preserving (1 char = 1 byte).
+    const bodyLatin1 = String(partBody || "");
+    if (/content-transfer-encoding:\s*base64/i.test(headersLower)) {
+      const cleaned = bodyLatin1.replace(/[^A-Za-z0-9+/=]/g, "");
+      try {
+        return decodeWithCharsetFallback(Buffer.from(cleaned, "base64"), charset);
+      } catch (_error) {
+        return bodyLatin1;
+      }
+    }
+    if (/content-transfer-encoding:\s*quoted-printable/i.test(headersLower)) {
+      return decodeWithCharsetFallback(decodeQuotedPrintableToBuffer(bodyLatin1), charset);
+    }
+    // 7bit / 8bit / binary / missing CTE — decode raw bytes with the declared charset.
+    return decodeWithCharsetFallback(Buffer.from(bodyLatin1, "latin1"), charset);
+  };
+  const decodeHtmlEntities = value => String(value || "").replace(/&nbsp;/gi, " ").replace(/&amp;/gi, "&").replace(/&lt;/gi, "<").replace(/&gt;/gi, ">").replace(/&quot;/gi, "\"").replace(/&apos;/gi, "'").replace(/&#39;/g, "'").replace(/&eacute;/gi, "é").replace(/&egrave;/gi, "è").replace(/&agrave;/gi, "à").replace(/&aacute;/gi, "á").replace(/&ecirc;/gi, "ê").replace(/&ocirc;/gi, "ô").replace(/&ucirc;/gi, "û").replace(/&ccedil;/gi, "ç").replace(/&iuml;/gi, "ï").replace(/&uuml;/gi, "ü").replace(/&ouml;/gi, "ö").replace(/&euro;/gi, "€").replace(/&#(\d+);/g, (_m, n) => {
+    const code = Number(n);
+    return Number.isFinite(code) ? String.fromCodePoint(code) : "";
+  }).replace(/&#x([0-9a-f]+);/gi, (_m, h) => {
+    const code = parseInt(h, 16);
+    return Number.isFinite(code) ? String.fromCodePoint(code) : "";
+  });
+  const htmlToText = html => decodeHtmlEntities(String(html || "").replace(/<style[\s\S]*?<\/style>/gi, " ").replace(/<script[\s\S]*?<\/script>/gi, " ").replace(/<br\s*\/?>/gi, "\n").replace(/<\/(p|div|li|tr|h1|h2|h3|h4|h5|h6|table|blockquote)>/gi, "\n").replace(/<(p|div|li|tr|h1|h2|h3|h4|h5|h6|blockquote)(?:\s[^>]*)?>/gi, "\n").replace(/<[^>]+>/g, " ")).replace(/\n{3,}/g, "\n\n").replace(/[ \t]+\n/g, "\n").replace(/[ \t]{2,}/g, " ").trim();
   const mimeParts = normalizedRaw.split(/\n--[^\n]+/g);
   const readMimePart = typeRegex => {
     for (const part of mimeParts) {
@@ -233,7 +304,7 @@ export function extractEmailBodiesFromRfc822(sourceValue) {
   const sections = normalizedRaw.split(/\n\n/);
   const fallbackBody = sections.length > 1 ? sections.slice(1).join("\n\n") : normalizedRaw;
   return {
-    text: fallbackBody.trim().slice(0, 10000),
+    text: decodeWithCharsetFallback(Buffer.from(fallbackBody, "latin1"), "utf-8").trim().slice(0, 10000),
     html: ""
   };
 }

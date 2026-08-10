@@ -194,6 +194,8 @@ function TargetRuleEditor({
   rule,
   index,
   formFields,
+  formKind = "prestation",
+  categoryOptions = [],
   userOptions,
   teamOptions,
   onChange,
@@ -204,6 +206,18 @@ function TargetRuleEditor({
     excludeFiles: true
   });
   const templateVariables = getSalesFormTemplateVariables(formFields);
+  const categoryGroups = (() => {
+    const groups = new Map();
+    (Array.isArray(categoryOptions) ? categoryOptions : []).forEach(item => {
+      const section = String(item?.section || "").trim() || "Uncategorized";
+      if (!groups.has(section)) groups.set(section, []);
+      groups.get(section).push(item);
+    });
+    return Array.from(groups.entries());
+  })();
+  const currentCategory = String(rule.targets?.categorySlug || "").trim();
+  const knownCategoryNames = new Set((Array.isArray(categoryOptions) ? categoryOptions : []).map(item => String(item?.name || "").trim()).filter(Boolean));
+  const orphanCategory = currentCategory && !knownCategoryNames.has(currentCategory) ? currentCategory : "";
   const updateRule = patch => onChange({
     ...rule,
     ...patch
@@ -344,9 +358,20 @@ function TargetRuleEditor({
           </div>
           <div className={layout.field}>
             <label className={layout.label}>Category (optional)</label>
-            <input className={layout.input} value={rule.targets?.categorySlug || ""} placeholder="Ticket category slug" onChange={e => updateTargets({
+            <select className={layout.input} value={rule.targets?.categorySlug || ""} onChange={e => updateTargets({
             categorySlug: e.target.value
-          })} />
+          })}>
+              <option value="">Agent's choice / form default</option>
+              {orphanCategory ? <option value={orphanCategory}>{orphanCategory} (custom)</option> : null}
+              {categoryGroups.map(([section, items]) => <optgroup key={section} label={section}>
+                  {items.map(item => <option key={item.id || item.name} value={item.name}>
+                      {item.name}
+                    </option>)}
+                </optgroup>)}
+            </select>
+            <FieldHint>
+              {categoryOptions.length ? `Sales categories for ${formKind === "installation" ? "installation" : "professional service"} tickets.` : "No sales categories yet — create some in Admin → Support → Categories (sales)."}
+            </FieldHint>
           </div>
         </div>
 
@@ -367,6 +392,8 @@ function TargetRuleEditor({
 export default function SalesFormTargetRulesEditor({
   rules = [],
   formFields = [],
+  formKind = "prestation",
+  categoryOptions = [],
   userOptions = [],
   teamOptions = [],
   onChange
@@ -383,7 +410,7 @@ export default function SalesFormTargetRulesEditor({
     onChange([...rules, createEmptyTargetRule(rules.length)]);
   };
   return <div className={modalStyles.targetRulesWrap}>
-      {rules.map((rule, index) => <TargetRuleEditor key={rule.id || `rule-${index}`} rule={rule} index={index} formFields={formFields} userOptions={userOptions} teamOptions={teamOptions} canRemove={rules.length > 1} onChange={nextRule => updateRule(index, nextRule)} onRemove={() => removeRule(index)} />)}
+      {rules.map((rule, index) => <TargetRuleEditor key={rule.id || `rule-${index}`} rule={rule} index={index} formFields={formFields} formKind={formKind} categoryOptions={categoryOptions} userOptions={userOptions} teamOptions={teamOptions} canRemove={rules.length > 1} onChange={nextRule => updateRule(index, nextRule)} onRemove={() => removeRule(index)} />)}
       <button type="button" className={modalStyles.addRuleBtn} onClick={addRule}>
         <Icon icon="mdi:plus-circle-outline" />
         Add ticket target
