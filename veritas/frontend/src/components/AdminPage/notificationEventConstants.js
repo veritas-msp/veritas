@@ -128,12 +128,14 @@ export const NOTIFICATION_CHANNEL_OPTIONS = [{
   label: "Webhook"
 }, {
   key: "browser",
-  label: "Browser (in-app)"
+  label: "Browser (in-app)",
+  comingSoon: true
 }, {
   key: "sms",
   label: "SMS",
   comingSoon: true
 }];
+export const RUNTIME_NOTIFICATION_CHANNELS = new Set(["mail", "webhook"]);
 export const WEBHOOK_CHANNEL_ICON_BY_KEY = {
   teams: "mdi:microsoft-teams",
   slack: "mdi:slack",
@@ -153,7 +155,7 @@ export const NOTIFICATION_EVENT_FORM_SECTIONS = [{
 }, {
   id: "channel",
   label: "Channel",
-  description: "Webhook or email",
+  description: "Email and/or webhook",
   icon: "mdi:send-outline"
 }, {
   id: "content",
@@ -168,6 +170,22 @@ export const getElementOption = (sourceKey, elementKey) => {
 };
 export const isSoonElementKey = elementKey => String(elementKey || "").toLowerCase().includes("_soon");
 export const parseEmailTags = value => String(value || "").split(",").map(item => String(item || "").trim()).filter(Boolean);
+/** Resolve channels[] with legacy `channel` string fallback. */
+export function normalizeNotificationEventChannels(eventOrChannels = {}) {
+  const source = eventOrChannels && typeof eventOrChannels === "object" && !Array.isArray(eventOrChannels) ? eventOrChannels : {
+    channels: eventOrChannels
+  };
+  const fromArray = Array.isArray(source.channels) ? source.channels.map(item => String(item || "").trim().toLowerCase()).filter(Boolean) : [];
+  if (fromArray.length) return Array.from(new Set(fromArray));
+  const legacy = String(source.channel || "").trim().toLowerCase();
+  if (legacy) return [legacy];
+  return ["webhook"];
+}
+export function describeNotificationEventChannels(eventOrChannels = {}) {
+  const channels = normalizeNotificationEventChannels(eventOrChannels);
+  if (!channels.length) return "-";
+  return channels.map(key => NOTIFICATION_CHANNEL_OPTIONS.find(item => item.key === key)?.label || key).join(", ");
+}
 export function buildDefaultNotificationEvent() {
   return {
     id: `notif-event-${Date.now()}-${Math.random().toString(16).slice(2, 8)}`,
@@ -176,6 +194,7 @@ export function buildDefaultNotificationEvent() {
     scopeType: "all",
     enterpriseId: "",
     daysBefore: 30,
+    channels: ["webhook"],
     channel: "webhook",
     webhookId: "",
     emailTo: "",

@@ -30,7 +30,7 @@ import SolutionCatalogEntryModal from "./SolutionCatalogEntryModal";
 import NotificationEventFormModal from "./NotificationEventFormModal";
 import WebhookFormModal from "./WebhookFormModal";
 import { buildDefaultWebhookDraft } from "./webhookConstants";
-import { NOTIFICATION_CHANNEL_OPTIONS, WEBHOOK_CHANNEL_ICON_BY_KEY, TEAMS_THEME_COLOR_PRESETS, buildDefaultNotificationEvent, getSourceOption, getElementOption, isSoonElementKey, parseEmailTags } from "./notificationEventConstants";
+import { WEBHOOK_CHANNEL_ICON_BY_KEY, TEAMS_THEME_COLOR_PRESETS, buildDefaultNotificationEvent, describeNotificationEventChannels, getSourceOption, getElementOption, isSoonElementKey, normalizeNotificationEventChannels, parseEmailTags } from "./notificationEventConstants";
 import { buildDefaultScheduledAlertRule, describeScheduledAlertRule } from "./scheduledAlertConstants";
 import AdminTicketViews from "./AdminTicketViews";
 import { fetchTeams } from "../../api/teams";
@@ -1872,6 +1872,7 @@ export default function AdminTickets({
   const openEditNotificationEvent = eventItem => {
     const source = getSourceOption(eventItem.source || "tickets");
     const element = getElementOption(source.key, eventItem.element || "");
+    const channels = normalizeNotificationEventChannels(eventItem);
     setNotificationEventModalMode("edit");
     setEditingNotificationEventId(eventItem.id);
     setNotificationEventDraft({
@@ -1881,7 +1882,8 @@ export default function AdminTickets({
       scopeType: eventItem.scopeType || "all",
       enterpriseId: eventItem.enterpriseId || "",
       daysBefore: Number.isFinite(Number(eventItem.daysBefore)) ? Number(eventItem.daysBefore) : 30,
-      channel: eventItem.channel || "webhook",
+      channels,
+      channel: channels[0] || "webhook",
       webhookId: eventItem.webhookId || "",
       emailTo: String(eventItem.emailTo || ""),
       emailCc: String(eventItem.emailCc || ""),
@@ -1902,9 +1904,9 @@ export default function AdminTickets({
   const saveNotificationEventFromModal = async () => {
     const source = getSourceOption(notificationEventDraft.source || "tickets");
     const element = getElementOption(source.key, notificationEventDraft.element || "");
-    const channel = String(notificationEventDraft.channel || "webhook").trim() || "webhook";
-    const requiresWebhook = ["webhook"].includes(channel);
-    const requiresEmailRecipients = channel === "mail";
+    const channels = normalizeNotificationEventChannels(notificationEventDraft);
+    const requiresWebhook = channels.includes("webhook");
+    const requiresEmailRecipients = channels.includes("mail");
     const isSoonEvent = isSoonElementKey(element.key);
     const parsedDaysBefore = Number(notificationEventDraft.daysBefore ?? 30);
     const customMessageFromEditor = notificationEventEditorRef.current ? String(notificationEventEditorRef.current.innerHTML || "") : String(notificationEventDraft.customMessage || "");
@@ -1915,7 +1917,8 @@ export default function AdminTickets({
       scopeType: notificationEventDraft.scopeType === "enterprise" ? "enterprise" : "all",
       enterpriseId: notificationEventDraft.scopeType === "enterprise" ? String(notificationEventDraft.enterpriseId || "").trim() : "",
       daysBefore: isSoonEvent ? Number.isFinite(parsedDaysBefore) && parsedDaysBefore > 0 ? parsedDaysBefore : 30 : null,
-      channel,
+      channels,
+      channel: channels[0] || "webhook",
       webhookId: requiresWebhook ? String(notificationEventDraft.webhookId || "").trim() : "",
       emailTo: requiresEmailRecipients ? String(notificationEventDraft.emailTo || "").trim() : "",
       emailCc: requiresEmailRecipients ? String(notificationEventDraft.emailCc || "").trim() : "",
@@ -1926,6 +1929,10 @@ export default function AdminTickets({
       enabled: notificationEventDraft.enabled !== false
     };
     const emailToList = parseEmailTags(payload.emailTo);
+    if (channels.length === 0) {
+      toast.error("Select at least one notification channel.");
+      return;
+    }
     if (requiresWebhook && !payload.webhookId) {
       toast.error("Select a webhook for this channel.");
       return;
@@ -3600,7 +3607,7 @@ export default function AdminTickets({
                           {eventItem.scopeType === "enterprise" ? availableClients.find(client => String(client?.id) === String(eventItem.enterpriseId))?.name || "Specific company" : "All companies"}
                         </td>
                         <td>
-                          {NOTIFICATION_CHANNEL_OPTIONS.find(item => item.key === eventItem.channel)?.label || eventItem.channel || "-"}
+                          {describeNotificationEventChannels(eventItem)}
                         </td>
                         <td>
                           {(notificationSettings?.webhooks || []).find(w => w.id === eventItem.webhookId)?.name || "-"}

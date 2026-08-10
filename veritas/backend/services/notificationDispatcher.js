@@ -11,24 +11,34 @@ function normalizeTeamsThemeColor(value) {
   const noHash = raw.startsWith("#") ? raw.slice(1) : raw;
   return /^[0-9a-fA-F]{6}$/.test(noHash) ? noHash.toUpperCase() : "13BA8E";
 }
+function normalizeEventChannels(rule = {}) {
+  const fromArray = Array.isArray(rule?.channels) ? rule.channels.map(item => String(item || "").trim().toLowerCase()).filter(Boolean) : [];
+  if (fromArray.length) return Array.from(new Set(fromArray));
+  const legacy = String(rule?.channel || "").trim().toLowerCase();
+  return legacy ? [legacy] : ["webhook"];
+}
 function normalizeEventRules(settings = {}) {
-  return (Array.isArray(settings.notificationEvents) ? settings.notificationEvents : []).map(rule => ({
-    id: String(rule?.id || ""),
-    source: String(rule?.source || "").trim().toLowerCase(),
-    element: String(rule?.element || "").trim().toLowerCase(),
-    scopeType: String(rule?.scopeType || "all").trim().toLowerCase() === "enterprise" ? "enterprise" : "all",
-    enterpriseId: String(rule?.enterpriseId || "").trim(),
-    channel: String(rule?.channel || "webhook").trim().toLowerCase(),
-    webhookId: String(rule?.webhookId || "").trim(),
-    emailTo: String(rule?.emailTo || "").trim(),
-    emailCc: String(rule?.emailCc || "").trim(),
-    useTemplate: rule?.useTemplate === true,
-    templateId: String(rule?.templateId || "").trim(),
-    customMessage: String(rule?.customMessage || ""),
-    teamsThemeColor: String(rule?.teamsThemeColor || "#13BA8E"),
-    enabled: rule?.enabled !== false,
-    daysBefore: Number.isFinite(Number(rule?.daysBefore)) ? Number(rule.daysBefore) : 30
-  })).filter(rule => rule.source && rule.element && rule.enabled);
+  return (Array.isArray(settings.notificationEvents) ? settings.notificationEvents : []).map(rule => {
+    const channels = normalizeEventChannels(rule);
+    return {
+      id: String(rule?.id || ""),
+      source: String(rule?.source || "").trim().toLowerCase(),
+      element: String(rule?.element || "").trim().toLowerCase(),
+      scopeType: String(rule?.scopeType || "all").trim().toLowerCase() === "enterprise" ? "enterprise" : "all",
+      enterpriseId: String(rule?.enterpriseId || "").trim(),
+      channels,
+      channel: channels[0] || "webhook",
+      webhookId: String(rule?.webhookId || "").trim(),
+      emailTo: String(rule?.emailTo || "").trim(),
+      emailCc: String(rule?.emailCc || "").trim(),
+      useTemplate: rule?.useTemplate === true,
+      templateId: String(rule?.templateId || "").trim(),
+      customMessage: String(rule?.customMessage || ""),
+      teamsThemeColor: String(rule?.teamsThemeColor || "#13BA8E"),
+      enabled: rule?.enabled !== false,
+      daysBefore: Number.isFinite(Number(rule?.daysBefore)) ? Number(rule.daysBefore) : 30
+    };
+  }).filter(rule => rule.source && rule.element && rule.enabled);
 }
 function getByPath(source, pathSegments = []) {
   return pathSegments.reduce((acc, key) => {
@@ -677,15 +687,15 @@ export async function dispatchNotificationEvent(event = {}) {
       },
       timestamp: occurredAtDate.toISOString()
     };
-    if (rule.channel !== "mail" && !WEBHOOK_CHANNELS.has(rule.channel)) {
+    if (!rule.channels.length) {
       logs.push({
         id: `notif-log-${Date.now()}-${Math.random().toString(16).slice(2, 8)}`,
         createdAt: new Date().toISOString(),
         source,
         element,
-        channel: rule.channel,
+        channel: "-",
         status: "skipped",
-        message: `Channel ${rule.channel} is not supported at runtime`,
+        message: "No notification channel configured",
         enterpriseId: enterpriseId || ""
       });
       continue;
@@ -696,12 +706,77 @@ export async function dispatchNotificationEvent(event = {}) {
       source,
       element
     }, context);
-    if (rule.channel === "mail") {
+    for (const channel of rule.channels) {
+      if (channel !== "mail" && !WEBHOOK_CHANNELS.has(channel)) {
+        logs.push({
+          id: `notif-log-${Date.now()}-${Math.random().toString(16).slice(2, 8)}`,
+          createdAt: new Date().toISOString(),
+          source,
+          element,
+          channel,
+          status: "skipped",
+          message: `Channel ${channel} is not supported at runtime`,
+          enterpriseId: enterpriseId || ""
+        });
+        continue;
+      }
+      if (channel === "mail") {
+        try {
+          await sendEmailMessage({
+            toRaw: rule.emailTo,
+            ccRaw: rule.emailCc,
+            message: resolvedMessage,
+            context
+          });
+          sentCount += 1;
+          logs.push({
+            id: `notif-log-${Date.now()}-${Math.random().toString(16).slice(2, 8)}`,
+            createdAt: new Date().toISOString(),
+            source,
+            element,
+            channel: "mail",
+            status: "success",
+            message: `Email sent to ${rule.emailTo || "-"}`,
+            enterpriseId: enterpriseId || ""
+          });
+        } catch (error) {
+          logs.push({
+            id: `notif-log-${Date.now()}-${Math.random().toString(16).slice(2, 8)}`,
+            createdAt: new Date().toISOString(),
+            source,
+            element,
+            channel: "mail",
+            status: "error",
+            message: error?.message || "Failed to send email",
+            enterpriseId: enterpriseId || ""
+          });
+        }
+        continue;
+      }
+      const webhook = webhooks.find(w => String(w?.id || "") === String(rule.webhookId || ""));
+      if (!webhook || webhook.enabled === false || !String(webhook.url || "").trim()) {
+        logs.push({
+          id: `notif-log-${Date.now()}-${Math.random().toString(16).slice(2, 8)}`,
+          createdAt: new Date().toISOString(),
+          source,
+          element,
+          channel,
+          status: "error",
+          message: "Webhook not found or disabled",
+          enterpriseId: enterpriseId || ""
+        });
+        continue;
+      }
+      const webhookChannel = String(webhook?.channel || "").trim().toLowerCase();
+      const effectiveChannel = WEBHOOK_CHANNELS.has(webhookChannel) ? webhookChannel : channel;
       try {
-        await sendEmailMessage({
-          toRaw: rule.emailTo,
-          ccRaw: rule.emailCc,
-          message: resolvedMessage,
+        await sendWebhookMessage({
+          channel: effectiveChannel,
+          url: String(webhook.url || "").trim(),
+          message: String(resolvedMessage || "").trim() || buildDefaultMessage({
+            source,
+            element
+          }, context),
           context
         });
         sentCount += 1;
@@ -710,9 +785,9 @@ export async function dispatchNotificationEvent(event = {}) {
           createdAt: new Date().toISOString(),
           source,
           element,
-          channel: "mail",
+          channel: effectiveChannel,
           status: "success",
-          message: `Email sent to ${rule.emailTo || "-"}`,
+          message: `Notification sent to ${webhook.name || "webhook"}`,
           enterpriseId: enterpriseId || ""
         });
       } catch (error) {
@@ -721,63 +796,12 @@ export async function dispatchNotificationEvent(event = {}) {
           createdAt: new Date().toISOString(),
           source,
           element,
-          channel: "mail",
+          channel: effectiveChannel,
           status: "error",
-          message: error?.message || "Failed to send email",
+          message: error?.message || "Failed to send webhook",
           enterpriseId: enterpriseId || ""
         });
       }
-      continue;
-    }
-    const webhook = webhooks.find(w => String(w?.id || "") === String(rule.webhookId || ""));
-    if (!webhook || webhook.enabled === false || !String(webhook.url || "").trim()) {
-      logs.push({
-        id: `notif-log-${Date.now()}-${Math.random().toString(16).slice(2, 8)}`,
-        createdAt: new Date().toISOString(),
-        source,
-        element,
-        channel: rule.channel,
-        status: "error",
-        message: "Webhook not found or disabled",
-        enterpriseId: enterpriseId || ""
-      });
-      continue;
-    }
-    const webhookChannel = String(webhook?.channel || "").trim().toLowerCase();
-    const effectiveChannel = WEBHOOK_CHANNELS.has(webhookChannel) ? webhookChannel : rule.channel;
-    const message = resolvedMessage;
-    try {
-      await sendWebhookMessage({
-        channel: effectiveChannel,
-        url: String(webhook.url || "").trim(),
-        message: String(message || "").trim() || buildDefaultMessage({
-          source,
-          element
-        }, context),
-        context
-      });
-      sentCount += 1;
-      logs.push({
-        id: `notif-log-${Date.now()}-${Math.random().toString(16).slice(2, 8)}`,
-        createdAt: new Date().toISOString(),
-        source,
-        element,
-        channel: effectiveChannel,
-        status: "success",
-        message: `Notification sent to ${webhook.name || "webhook"}`,
-        enterpriseId: enterpriseId || ""
-      });
-    } catch (error) {
-      logs.push({
-        id: `notif-log-${Date.now()}-${Math.random().toString(16).slice(2, 8)}`,
-        createdAt: new Date().toISOString(),
-        source,
-        element,
-        channel: effectiveChannel,
-        status: "error",
-        message: error?.message || "Failed to send webhook",
-        enterpriseId: enterpriseId || ""
-      });
     }
   }
   await appendNotificationLogs(logs).catch(() => {});

@@ -4,7 +4,7 @@ import { Icon } from "@iconify/react";
 import { FaTimes } from "react-icons/fa";
 import { toast } from "react-toastify";
 import { Switch } from "./AdminUi";
-import { NOTIFICATION_CHANNEL_OPTIONS, NOTIFICATION_EVENT_FORM_SECTIONS, NOTIFICATION_SOURCE_OPTIONS, TEAMS_THEME_COLOR_PRESETS, WEBHOOK_CHANNEL_ICON_BY_KEY, getSourceOption, isSoonElementKey, parseEmailTags } from "./notificationEventConstants";
+import { NOTIFICATION_CHANNEL_OPTIONS, NOTIFICATION_EVENT_FORM_SECTIONS, NOTIFICATION_SOURCE_OPTIONS, TEAMS_THEME_COLOR_PRESETS, WEBHOOK_CHANNEL_ICON_BY_KEY, describeNotificationEventChannels, getSourceOption, isSoonElementKey, normalizeNotificationEventChannels, parseEmailTags } from "./notificationEventConstants";
 import layout from "../EnterprisesPage/EnterpriseFormModal.module.css";
 import formStyles from "./IngestionRuleFormModal.module.css";
 import styles from "./NotificationEventFormModal.module.css";
@@ -87,10 +87,14 @@ export default function NotificationEventFormModal({
     return () => document.removeEventListener("mousedown", handleDocumentClick);
   }, [open]);
   const selectedWebhook = useMemo(() => webhooks.find(webhook => String(webhook?.id || "") === String(draft?.webhookId || "")), [webhooks, draft?.webhookId]);
-  const isTeamsWebhook = (draft?.channel || "webhook") === "webhook" && String(selectedWebhook?.channel || "").toLowerCase() === "teams";
+  const selectedChannels = useMemo(() => normalizeNotificationEventChannels(draft), [draft]);
+  const usesMail = selectedChannels.includes("mail");
+  const usesWebhook = selectedChannels.includes("webhook");
+  const isTeamsWebhook = usesWebhook && String(selectedWebhook?.channel || "").toLowerCase() === "teams";
   const sectionMeta = useMemo(() => {
-    const channel = draft?.channel || "webhook";
-    const channelOk = channel === "mail" ? parseEmailTags(draft?.emailTo).length > 0 : channel === "webhook" ? Boolean(String(draft?.webhookId || "").trim()) : false;
+    const mailOk = !usesMail || parseEmailTags(draft?.emailTo).length > 0;
+    const webhookOk = !usesWebhook || Boolean(String(draft?.webhookId || "").trim());
+    const channelOk = selectedChannels.length > 0 && mailOk && webhookOk;
     const contentOk = draft?.useTemplate ? Boolean(String(draft?.templateId || "").trim()) : Boolean(String(draft?.customMessage || "").trim());
     return {
       trigger: Boolean(draft?.source && draft?.element),
@@ -98,12 +102,24 @@ export default function NotificationEventFormModal({
       channel: channelOk,
       content: contentOk
     };
-  }, [draft]);
+  }, [draft, selectedChannels, usesMail, usesWebhook]);
   if (!open || !draft) return null;
   const patchDraft = patch => setDraft(prev => ({
     ...prev,
     ...patch
   }));
+  const toggleChannel = (channelKey, enabled) => {
+    setDraft(prev => {
+      const current = normalizeNotificationEventChannels(prev);
+      const next = enabled ? Array.from(new Set([...current, channelKey])) : current.filter(item => item !== channelKey);
+      return {
+        ...prev,
+        channels: next,
+        channel: next[0] || "",
+        webhookId: next.includes("webhook") ? prev.webhookId : ""
+      };
+    });
+  };
   const addEmailChip = (field, rawValue) => {
     const candidate = String(rawValue || "").trim().replace(/,$/, "");
     if (!candidate) return;
@@ -147,7 +163,7 @@ export default function NotificationEventFormModal({
   const modalTitle = isCreate ? "New notification event" : "Edit event";
   const modalSubtitle = isCreate ? "Trigger an automatic notification on a business event." : "Adjust the trigger, target and delivered content.";
   const renderWebhookSelect = () => {
-    const disabled = (draft.channel || "webhook") !== "webhook";
+    const disabled = !usesWebhook;
     const selectedIcon = WEBHOOK_CHANNEL_ICON_BY_KEY[String(selectedWebhook?.channel || "").toLowerCase()] || "mingcute:link-2-fill";
     return <div className={styles.webhookSelectWrap} ref={webhookSelectRef}>
         <button type="button" className={`${layout.input} ${styles.webhookSelectBtn}`} disabled={disabled} onClick={() => setWebhookSelectOpen(prev => !prev)}>
@@ -273,34 +289,44 @@ export default function NotificationEventFormModal({
             <div className={layout.sectionHead}>
               <h3 className={layout.sectionTitle}>Canal</h3>
               <p className={layout.sectionDesc}>
-                Select the delivery channel and its recipients.
+                Enable one or more delivery channels for this event.
               </p>
             </div>
-            <div className={layout.fieldGrid2}>
-              <div className={layout.field}>
-                <label className={layout.label} htmlFor="notif-channel">Notification channel</label>
-                <select id="notif-channel" className={layout.input} value={draft.channel || "webhook"} onChange={e => patchDraft({
-                channel: e.target.value,
-                webhookId: e.target.value === "webhook" ? draft.webhookId : ""
-              })}>
-                  {NOTIFICATION_CHANNEL_OPTIONS.map(channelItem => <option key={channelItem.key} value={channelItem.key} disabled={Boolean(channelItem.comingSoon)}>
-                      {channelItem.label}
-                      {channelItem.comingSoon ? " (coming soon)" : ""}
-                    </option>)}
-                </select>
-              </div>
-              <div className={layout.field}>
-                <label className={layout.label}>
-                  {(draft.channel || "webhook") === "mail" ? "Destinataires" : "Webhook"}
-                </label>
-                {(draft.channel || "webhook") === "mail" ? <EmailChipField emails={parseEmailTags(draft.emailTo)} inputValue={emailToInput} onInputChange={setEmailToInput} onAdd={value => addEmailChip("emailTo", value)} onRemove={email => removeEmailChip("emailTo", email)} placeholder="Add a recipient" /> : renderWebhookSelect()}
-              </div>
-            </div>
-            {(draft.channel || "webhook") === "mail" && <div className={`${layout.field} ${layout.fieldFull}`} style={{
+
+            {NOTIFICATION_CHANNEL_OPTIONS.map(channelItem => {
+          const checked = selectedChannels.includes(channelItem.key);
+          const comingSoon = Boolean(channelItem.comingSoon);
+          return <div key={channelItem.key} className={formStyles.statusRow}>
+                  <div>
+                    <div className={formStyles.statusLabel}>{channelItem.label}</div>
+                    <p className={formStyles.statusHint}>
+                      {comingSoon ? "Coming soon — not delivered at runtime yet." : channelItem.key === "mail" ? "Send to the configured email recipients." : "Deliver through the selected webhook (Teams, Slack, or generic)."}
+                    </p>
+                  </div>
+                  <Switch checked={checked} disabled={comingSoon} onChange={on => toggleChannel(channelItem.key, on)} label={checked ? "Enabled" : "Disabled"} />
+                </div>;
+        })}
+
+            {usesMail && <>
+                <div className={`${layout.field} ${layout.fieldFull}`} style={{
             marginTop: "0.75rem"
           }}>
-                <label className={layout.label}>Copie (CC)</label>
-                <EmailChipField emails={parseEmailTags(draft.emailCc)} inputValue={emailCcInput} onInputChange={setEmailCcInput} onAdd={value => addEmailChip("emailCc", value)} onRemove={email => removeEmailChip("emailCc", email)} placeholder="Add a CC recipient" />
+                  <label className={layout.label}>Recipients</label>
+                  <EmailChipField emails={parseEmailTags(draft.emailTo)} inputValue={emailToInput} onInputChange={setEmailToInput} onAdd={value => addEmailChip("emailTo", value)} onRemove={email => removeEmailChip("emailTo", email)} placeholder="Add a recipient" />
+                </div>
+                <div className={`${layout.field} ${layout.fieldFull}`} style={{
+            marginTop: "0.75rem"
+          }}>
+                  <label className={layout.label}>Copy (CC)</label>
+                  <EmailChipField emails={parseEmailTags(draft.emailCc)} inputValue={emailCcInput} onInputChange={setEmailCcInput} onAdd={value => addEmailChip("emailCc", value)} onRemove={email => removeEmailChip("emailCc", email)} placeholder="Add a CC recipient" />
+                </div>
+              </>}
+
+            {usesWebhook && <div className={`${layout.field} ${layout.fieldFull}`} style={{
+          marginTop: "0.75rem"
+        }}>
+                <label className={layout.label}>Webhook</label>
+                {renderWebhookSelect()}
               </div>}
           </>;
       case "content":
@@ -456,7 +482,7 @@ export default function NotificationEventFormModal({
 
         <footer className={layout.footer}>
           <span className={layout.footerHint}>
-            {getSourceOption(draft.source).label} · {draft.channel === "mail" ? "Email" : "Webhook"}
+            {getSourceOption(draft.source).label} · {describeNotificationEventChannels(draft)}
           </span>
           <div className={layout.footerActions}>
             <button type="button" className={layout.ghostBtn} onClick={onClose} disabled={saving}>

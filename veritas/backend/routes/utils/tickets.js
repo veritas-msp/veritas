@@ -293,23 +293,29 @@ const normalizeNotificationSettings = row => ({
     url: String(webhook?.url || "").trim(),
     enabled: webhook?.enabled !== false
   })) : [],
-  notificationEvents: (Array.isArray(row?.notificationEvents) ? row.notificationEvents : []).map((eventItem, idx) => ({
-    id: String(eventItem?.id || `notif-event-${Date.now()}-${idx}`),
-    source: String(eventItem?.source || "tickets").trim().toLowerCase() || "tickets",
-    element: String(eventItem?.element || "updated").trim().toLowerCase() || "updated",
-    scopeType: String(eventItem?.scopeType || "all").trim().toLowerCase() === "enterprise" ? "enterprise" : "all",
-    enterpriseId: String(eventItem?.enterpriseId || "").trim(),
-    daysBefore: Number.isFinite(Number(eventItem?.daysBefore)) ? Number(eventItem.daysBefore) : 30,
-    channel: String(eventItem?.channel || "webhook").trim().toLowerCase() || "webhook",
-    webhookId: String(eventItem?.webhookId || "").trim(),
-    emailTo: String(eventItem?.emailTo || "").trim(),
-    emailCc: String(eventItem?.emailCc || "").trim(),
-    useTemplate: eventItem?.useTemplate === true,
-    templateId: String(eventItem?.templateId || "").trim(),
-    customMessage: String(eventItem?.customMessage || ""),
-    teamsThemeColor: String(eventItem?.teamsThemeColor || "#13BA8E"),
-    enabled: eventItem?.enabled !== false
-  })),
+  notificationEvents: (Array.isArray(row?.notificationEvents) ? row.notificationEvents : []).map((eventItem, idx) => {
+    const channelsFromArray = Array.isArray(eventItem?.channels) ? eventItem.channels.map(item => String(item || "").trim().toLowerCase()).filter(Boolean) : [];
+    const legacyChannel = String(eventItem?.channel || "").trim().toLowerCase();
+    const channels = Array.from(new Set(channelsFromArray.length ? channelsFromArray : legacyChannel ? [legacyChannel] : ["webhook"]));
+    return {
+      id: String(eventItem?.id || `notif-event-${Date.now()}-${idx}`),
+      source: String(eventItem?.source || "tickets").trim().toLowerCase() || "tickets",
+      element: String(eventItem?.element || "updated").trim().toLowerCase() || "updated",
+      scopeType: String(eventItem?.scopeType || "all").trim().toLowerCase() === "enterprise" ? "enterprise" : "all",
+      enterpriseId: String(eventItem?.enterpriseId || "").trim(),
+      daysBefore: Number.isFinite(Number(eventItem?.daysBefore)) ? Number(eventItem.daysBefore) : 30,
+      channels,
+      channel: channels[0] || "webhook",
+      webhookId: String(eventItem?.webhookId || "").trim(),
+      emailTo: String(eventItem?.emailTo || "").trim(),
+      emailCc: String(eventItem?.emailCc || "").trim(),
+      useTemplate: eventItem?.useTemplate === true,
+      templateId: String(eventItem?.templateId || "").trim(),
+      customMessage: String(eventItem?.customMessage || ""),
+      teamsThemeColor: String(eventItem?.teamsThemeColor || "#13BA8E"),
+      enabled: eventItem?.enabled !== false
+    };
+  }),
   logs: Array.isArray(row?.logs) ? row.logs.map((log, idx) => ({
     id: String(log?.id || `notif-log-${Date.now()}-${idx}`),
     createdAt: String(log?.createdAt || new Date().toISOString()),
