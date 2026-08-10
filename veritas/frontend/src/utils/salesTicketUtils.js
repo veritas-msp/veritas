@@ -73,10 +73,24 @@ export function buildSalesFormFieldEntries(formData, extraLabelMap = {}) {
   };
   return Object.entries(source)
     .map(([key, value]) => {
-      const rendered = Array.isArray(value) ? value.filter(Boolean).join(", ") : value == null || value === "" ? null : String(value);
+      const rawValue = values?.[key];
+      let rendered = null;
+      let links = null;
+      if (Array.isArray(rawValue) && rawValue.some(item => item && typeof item === "object" && (item.filePath || item.file_path || item.fileName || item.name))) {
+        links = rawValue.map(item => ({
+          id: item.id,
+          label: item.fileName || item.name || item.file_name || "file",
+          href: item.filePath || item.file_path || null
+        })).filter(item => item.label);
+        rendered = links.map(item => item.label).join(", ");
+      } else if (Array.isArray(value)) {
+        rendered = value.filter(Boolean).map(item => typeof item === "object" ? item.fileName || item.name || "" : item).filter(Boolean).join(", ");
+      } else if (value != null && value !== "") {
+        rendered = String(value);
+      }
       const mapped = String(labelMap[key] || "").trim();
       const label = mapped || humanizeSalesFieldKey(key) || key;
-      return { key, label, value: rendered };
+      return { key, label, value: rendered, links };
     })
     .filter(row => row.value);
 }

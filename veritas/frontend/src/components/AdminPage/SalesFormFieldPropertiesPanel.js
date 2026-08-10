@@ -3,7 +3,7 @@ import { Icon } from "@iconify/react";
 import layout from "../EnterprisesPage/EnterpriseFormModal.module.css";
 import builderStyles from "./SalesFormBuilder.module.css";
 import FormConditionsEditor from "./FormConditionsEditor";
-import { FIELD_TYPE_OPTIONS, OPTION_BASED_FIELD_TYPES, isLayoutField } from "../../utils/salesFormFieldTypes";
+import { FIELD_TYPE_OPTIONS, FILE_FIELD_ALLOWED_EXTENSIONS, FILE_FIELD_SERVER_MAX_FILES, FILE_FIELD_SERVER_MAX_SIZE_MB, OPTION_BASED_FIELD_TYPES, getFileFieldConfig, isFileField, isLayoutField } from "../../utils/salesFormFieldTypes";
 
 export default function SalesFormFieldPropertiesPanel({
   fieldDraft,
@@ -36,8 +36,17 @@ export default function SalesFormFieldPropertiesPanel({
     ...next
   });
   const isSection = isLayoutField(fieldDraft);
-  const needsOptions = !isSection && OPTION_BASED_FIELD_TYPES.has(fieldDraft.fieldType);
-  const conditionFields = formFields.filter(field => !isLayoutField(field));
+  const isFile = isFileField(fieldDraft);
+  const needsOptions = !isSection && !isFile && OPTION_BASED_FIELD_TYPES.has(fieldDraft.fieldType);
+  const fileConfig = isFile ? getFileFieldConfig({
+    options: [{
+      __fileConfig: true,
+      maxSizeMb: fieldDraft.fileMaxSizeMb,
+      maxFiles: fieldDraft.fileMaxFiles,
+      extensions: fieldDraft.fileExtensionsText
+    }]
+  }) : null;
+  const conditionFields = formFields.filter(field => !isLayoutField(field) && !isFileField(field));
   return <aside className={builderStyles.propsPanel}>
       <div className={builderStyles.propsHead}>
         <h4 className={builderStyles.propsTitle}>{fieldDraft.label || (isSection ? "Section" : "Field")}</h4>
@@ -73,27 +82,67 @@ export default function SalesFormFieldPropertiesPanel({
             </div>
             <div className={layout.field}>
               <label className={layout.label}>Type</label>
-              <select className={layout.input} value={fieldDraft.fieldType || "text"} onChange={e => patch({
-            fieldType: e.target.value,
-            required: e.target.value === "section" ? false : fieldDraft.required
-          })}>
+              <select className={layout.input} value={fieldDraft.fieldType || "text"} onChange={e => {
+            const nextType = e.target.value;
+            const nextPatch = {
+              fieldType: nextType,
+              required: nextType === "section" ? false : fieldDraft.required
+            };
+            if (nextType === "file") {
+              const cfg = getFileFieldConfig(fieldDraft);
+              nextPatch.fileMaxSizeMb = cfg.maxSizeMb;
+              nextPatch.fileMaxFiles = cfg.maxFiles;
+              nextPatch.fileExtensionsText = cfg.extensions.join(", ");
+              nextPatch.optionsText = "";
+            }
+            patch(nextPatch);
+          }}>
                 {FIELD_TYPE_OPTIONS.map(opt => <option key={opt.value} value={opt.value}>
                     {opt.label}
                   </option>)}
               </select>
             </div>
-            <div className={layout.field}>
-              <label className={layout.label}>{isSection ? "Description (optional)" : "Placeholder"}</label>
-              <input className={layout.input} value={fieldDraft.placeholder || ""} onChange={e => patch({
+            {!isFile && <div className={layout.field}>
+                <label className={layout.label}>{isSection ? "Description (optional)" : "Placeholder"}</label>
+                <input className={layout.input} value={fieldDraft.placeholder || ""} onChange={e => patch({
             placeholder: e.target.value
           })} placeholder={isSection ? "Shown under the section title" : ""} />
-            </div>
+              </div>}
             {needsOptions && <div className={layout.field}>
                 <label className={layout.label}>Options (one per line)</label>
                 <textarea className={layout.input} rows={4} value={fieldDraft.optionsText || ""} onChange={e => patch({
             optionsText: e.target.value
           })} />
               </div>}
+            {isFile && <>
+                <div className={layout.field}>
+                  <label className={layout.label}>Max file size (MB)</label>
+                  <input className={layout.input} type="number" min={1} max={FILE_FIELD_SERVER_MAX_SIZE_MB} value={fieldDraft.fileMaxSizeMb ?? fileConfig.maxSizeMb} onChange={e => patch({
+              fileMaxSizeMb: Number(e.target.value || 1)
+            })} />
+                  <p className={builderStyles.canvasDesc} style={{
+              marginTop: "0.35rem"
+            }}>Server limit: {FILE_FIELD_SERVER_MAX_SIZE_MB} MB</p>
+                </div>
+                <div className={layout.field}>
+                  <label className={layout.label}>Max files</label>
+                  <input className={layout.input} type="number" min={1} max={FILE_FIELD_SERVER_MAX_FILES} value={fieldDraft.fileMaxFiles ?? fileConfig.maxFiles} onChange={e => patch({
+              fileMaxFiles: Number(e.target.value || 1)
+            })} />
+                  <p className={builderStyles.canvasDesc} style={{
+              marginTop: "0.35rem"
+            }}>Server limit: {FILE_FIELD_SERVER_MAX_FILES} files</p>
+                </div>
+                <div className={layout.field}>
+                  <label className={layout.label}>Allowed extensions</label>
+                  <textarea className={layout.input} rows={3} value={fieldDraft.fileExtensionsText ?? fileConfig.extensions.join(", ")} onChange={e => patch({
+              fileExtensionsText: e.target.value
+            })} placeholder=".pdf, .png, .docx" />
+                  <p className={builderStyles.canvasDesc} style={{
+              marginTop: "0.35rem"
+            }}>Allowed on server: {FILE_FIELD_ALLOWED_EXTENSIONS.join(", ")}</p>
+                </div>
+              </>}
             {!isSection && <label className={layout.label}>
                 <input type="checkbox" checked={fieldDraft.required === true} onChange={e => patch({
             required: e.target.checked

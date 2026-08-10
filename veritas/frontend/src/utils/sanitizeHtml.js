@@ -32,12 +32,18 @@ export function sanitizeHtml(raw, config = DEFAULT_CONFIG) {
 export function sanitizeTicketCommentHtml(raw) {
   return sanitizeHtml(raw, TICKET_COMMENT_CONFIG);
 }
+/** Detect real HTML markup without treating <user@domain.com> as HTML. */
+export function contentLooksLikeHtml(content) {
+  const raw = String(content || "");
+  if (!raw.trim()) return false;
+  const withoutEmails = raw.replace(/<[^>\s<>]+@[^>\s<>]+>/g, "");
+  return /<\/?(?:p|div|br|span|table|tr|td|th|ul|ol|li|a|b|i|em|strong|u|s|h[1-6]|blockquote|pre|code|img|html|body|head|style|font|center|hr)\b[^>]*>/i.test(withoutEmails);
+}
 /** Render template/comment HTML for preview: keep rich markup, convert plain text newlines. */
 export function toRichPreviewHtml(raw) {
   const content = String(raw ?? "");
   if (!content.trim()) return "";
-  const looksLikeHtml = /<\/?[a-z][\s\S]*>/i.test(content);
-  const asHtml = looksLikeHtml ? content : content.replace(/\n/g, "<br>");
+  const asHtml = contentLooksLikeHtml(content) ? content : content.replace(/\n/g, "<br>");
   return sanitizeTicketCommentHtml(asHtml);
 }
 export const REMEDIATION_HTML_CONFIG = {

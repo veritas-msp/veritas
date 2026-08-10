@@ -28,6 +28,8 @@ import { addTicketAssignee, addTicketComment, addTicketCommentWithAttachments, a
 import { fetchAiStatus, suggestTicketReplyAi } from "../../api/ai";
 import API_BASE_URL from "../../config";
 import { sanitizeTicketCommentHtml } from "../../utils/sanitizeHtml";
+import { contentLooksLikeHtml } from "../../utils/incomingEmailContent";
+import IncomingEmailMessage from "./IncomingEmailMessage";
 import { fetchUsers, fetchCurrentUser } from "../../api/users";
 import { fetchClients, fetchClientsList, fetchContactsList, fetchClientModules, fetchClientSupportCredits } from "../../api/clients";
 import { useAuthContext } from "../../contexts/AuthContext";
@@ -3997,7 +3999,10 @@ export default function TicketDetailPage({
   };
   const renderCommentContent = content => {
     const raw = String(content || "");
-    const looksLikeHtml = /<\/?[a-z][\s\S]*>/i.test(raw);
+    if (/^\s*\[Incoming email\]/i.test(raw)) {
+      return <IncomingEmailMessage content={raw} attachmentLinkClassName={styles.attachmentLink} />;
+    }
+    const looksLikeHtml = contentLooksLikeHtml(raw);
     if (looksLikeHtml) {
       const safeHtml = sanitizeTicketCommentHtml(raw);
       return <div dangerouslySetInnerHTML={{
@@ -4890,7 +4895,12 @@ export default function TicketDetailPage({
                         </div> : null}
                       {salesFormEntries.map(row => <div key={row.key} className={styles.salesFormFact}>
                           <dt>{row.label}</dt>
-                          <dd>{row.value}</dd>
+                          <dd>
+                            {Array.isArray(row.links) && row.links.length > 0 ? row.links.map((link, index) => <span key={link.id || `${row.key}-${index}`}>
+                                  {index > 0 ? ", " : null}
+                                  {link.href ? <a href={link.href} target="_blank" rel="noopener noreferrer" className={styles.contextLink}>{link.label}</a> : link.label}
+                                </span>) : row.value}
+                          </dd>
                         </div>)}
                     </dl>}
                 </RightPaneStaticSection>

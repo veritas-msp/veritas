@@ -3,7 +3,7 @@ import { Icon } from "@iconify/react";
 import builderStyles from "./SalesFormBuilder.module.css";
 import { PALETTE_FIELD_TYPES, PALETTE_GROUPS } from "../../utils/salesFormFieldTypes";
 
-export { PALETTE_FIELD_TYPES, FIELD_TYPE_OPTIONS, OPTION_BASED_FIELD_TYPES, SHELL_FIELD_TYPES, LAYOUT_FIELD_TYPES, isLayoutField, groupFieldsBySection, cloneSalesFormField, getDuplicableFieldBlock } from "../../utils/salesFormFieldTypes";
+export { PALETTE_FIELD_TYPES, FIELD_TYPE_OPTIONS, OPTION_BASED_FIELD_TYPES, SHELL_FIELD_TYPES, LAYOUT_FIELD_TYPES, isLayoutField, isFileField, groupFieldsBySection, cloneSalesFormField, getDuplicableFieldBlock, getFileFieldConfig } from "../../utils/salesFormFieldTypes";
 
 function PaletteItem({
   type,

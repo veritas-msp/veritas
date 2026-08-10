@@ -189,7 +189,7 @@ export function extractTicketNumberFromSubject(subject = "") {
   if (ticketMatch) return Number(ticketMatch[1]);
   return null;
 }
-export function extractBodyFromRfc822(sourceValue) {
+export function extractEmailBodiesFromRfc822(sourceValue) {
   const raw = Buffer.isBuffer(sourceValue) ? sourceValue.toString("utf8") : String(sourceValue || "");
   const normalizedRaw = raw.replace(/\r/g, "");
   const decodeQuotedPrintable = value => String(value || "").replace(/=\n/g, "").replace(/=([0-9A-Fa-f]{2})/g, (_m, hex) => String.fromCharCode(parseInt(hex, 16)));
@@ -209,7 +209,7 @@ export function extractBodyFromRfc822(sourceValue) {
     }
     return bodyValue;
   };
-  const htmlToText = html => String(html || "").replace(/<style[\s\S]*?<\/style>/gi, " ").replace(/<script[\s\S]*?<\/script>/gi, " ").replace(/<\/(p|div|li|br|tr|h1|h2|h3|h4|h5|h6)>/gi, "\n").replace(/<[^>]+>/g, " ").replace(/&nbsp;/gi, " ").replace(/&amp;/gi, "&").replace(/&lt;/gi, "<").replace(/&gt;/gi, ">").replace(/\n{3,}/g, "\n\n").replace(/[ \t]{2,}/g, " ").trim();
+  const htmlToText = html => String(html || "").replace(/<style[\s\S]*?<\/style>/gi, " ").replace(/<script[\s\S]*?<\/script>/gi, " ").replace(/<br\s*\/?>/gi, "\n").replace(/<\/(p|div|li|tr|h1|h2|h3|h4|h5|h6|table|blockquote)>/gi, "\n").replace(/<(p|div|li|tr|h1|h2|h3|h4|h5|h6|blockquote)(?:\s[^>]*)?>/gi, "\n").replace(/<[^>]+>/g, " ").replace(/&nbsp;/gi, " ").replace(/&amp;/gi, "&").replace(/&lt;/gi, "<").replace(/&gt;/gi, ">").replace(/&quot;/gi, "\"").replace(/\n{3,}/g, "\n\n").replace(/[ \t]+\n/g, "\n").replace(/[ \t]{2,}/g, " ").trim();
   const mimeParts = normalizedRaw.split(/\n--[^\n]+/g);
   const readMimePart = typeRegex => {
     for (const part of mimeParts) {
@@ -222,13 +222,39 @@ export function extractBodyFromRfc822(sourceValue) {
     }
     return "";
   };
-  const plainPart = readMimePart(/content-type:\s*text\/plain/i);
-  if (plainPart) return plainPart.trim().slice(0, 10000);
-  const htmlPart = readMimePart(/content-type:\s*text\/html/i);
-  if (htmlPart) return htmlToText(htmlPart).slice(0, 10000);
+  const plainPart = String(readMimePart(/content-type:\s*text\/plain/i) || "").trim();
+  const htmlPart = String(readMimePart(/content-type:\s*text\/html/i) || "").trim();
+  if (plainPart || htmlPart) {
+    return {
+      text: (plainPart || htmlToText(htmlPart)).slice(0, 10000),
+      html: htmlPart ? htmlPart.slice(0, 200000) : ""
+    };
+  }
   const sections = normalizedRaw.split(/\n\n/);
   const fallbackBody = sections.length > 1 ? sections.slice(1).join("\n\n") : normalizedRaw;
-  return fallbackBody.trim().slice(0, 10000);
+  return {
+    text: fallbackBody.trim().slice(0, 10000),
+    html: ""
+  };
+}
+export function extractBodyFromRfc822(sourceValue) {
+  return extractEmailBodiesFromRfc822(sourceValue).text;
+}
+export const INCOMING_EMAIL_HTML_MARKER = "<!--veritas-email-html-->";
+export function buildIncomingEmailTicketContent({
+  subject,
+  body,
+  htmlBody = "",
+  fromName,
+  fromAddress
+}) {
+  const senderLabel = [String(fromName || "").trim(), String(fromAddress || "").trim()].filter(Boolean).join(" ");
+  const safeSubject = String(subject || "").trim() || "(no subject)";
+  const plain = String(body || "").trim() || "(empty message)";
+  const header = `[Incoming email] ${senderLabel || "Unknown sender"}\nSubject: ${safeSubject}\n\n${plain}`;
+  const html = String(htmlBody || "").trim();
+  if (!html) return header;
+  return `${header}\n\n${INCOMING_EMAIL_HTML_MARKER}\n${html}`;
 }
 async function resolveRequesterUserIdByEmail(email) {
   const normalizedEmail = String(email || "").trim().toLowerCase();
@@ -242,14 +268,20 @@ async function resolveRequesterUserIdByEmail(email) {
 async function createTicketFromCollectorEmail({
   subject,
   body,
+  htmlBody = "",
   fromName,
   fromAddress,
   ticketKind = "support"
 }) {
   const safeSubject = String(subject || "").trim();
   const normalizedTitle = stripReplyPrefix(safeSubject) || safeSubject || "New ticket from email";
-  const senderLabel = [String(fromName || "").trim(), String(fromAddress || "").trim()].filter(Boolean).join(" ");
-  const ticketDescription = `[Incoming email] ${senderLabel || "Unknown sender"}\nSubject: ${safeSubject || "(no subject)"}\n\n${String(body || "").trim() || "(empty message)"}`;
+  const ticketDescription = buildIncomingEmailTicketContent({
+    subject: safeSubject,
+    body,
+    htmlBody,
+    fromName,
+    fromAddress
+  });
   const requesterUserId = await resolveRequesterUserIdByEmail(fromAddress);
   const isServices = ticketKind === "services";
   const type = isServices ? "prestation" : "incident";
@@ -267,11 +299,18 @@ async function attachEmailToTicket({
   ticketId,
   subject,
   body,
+  htmlBody = "",
   fromName,
   fromAddress,
   ticketNumber
 }) {
-  const content = `[Incoming email] ${fromName || fromAddress || "Unknown sender"}\nSubject: ${subject}\n\n${body || "(empty message)"}`;
+  const content = buildIncomingEmailTicketContent({
+    subject,
+    body,
+    htmlBody,
+    fromName,
+    fromAddress
+  });
   await pool.query(`INSERT INTO v_b_ticket_comments (ticket_id, author_user_id, content, is_internal, created_at)
      VALUES ($1, $2, $3, $4, NOW())`, [ticketId, null, content, false]);
   await pool.query(`UPDATE v_b_tickets SET updated_at = NOW() WHERE id = $1`, [ticketId]);
@@ -358,6 +397,7 @@ async function attachInboundMailToTicket({
   const subject = mailContext.subject;
   const {
     body,
+    htmlBody,
     fromName,
     fromAddress
   } = mailContext;
@@ -365,6 +405,7 @@ async function attachInboundMailToTicket({
     ticketId: ticketRow.id,
     subject,
     body,
+    htmlBody,
     fromName,
     fromAddress,
     ticketNumber: ticketRow.ticket_number
@@ -396,12 +437,14 @@ async function createInboundTicketAndRecord({
   const {
     subject,
     body,
+    htmlBody,
     fromName,
     fromAddress
   } = mailContext;
   const created = await createTicketFromCollectorEmail({
     subject,
     body,
+    htmlBody,
     fromName,
     fromAddress,
     ticketKind
@@ -746,7 +789,9 @@ async function processMessagesInMailbox(client, collector, exclusionRules, mailC
     stats.fetched = fetched.length;
     for (const message of fetched) {
       let mailContext = buildMailContextFromEnvelope(message);
-      mailContext.body = extractBodyFromRfc822(message?.source);
+      const bodies = extractEmailBodiesFromRfc822(message?.source);
+      mailContext.body = bodies.text;
+      mailContext.htmlBody = bodies.html;
       mailContext = enrichMailContextWithThreadHeaders(mailContext, message?.source, message?.envelope);
       if (stats.sampleRecipients.length < 5) {
         const recipients = [mailContext.toAddresses, mailContext.ccAddresses].filter(Boolean).join(" | ");

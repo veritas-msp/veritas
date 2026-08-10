@@ -81,8 +81,11 @@ export function evaluateMailCriterion(criterion = {}, context = {}) {
   const field = String(criterion?.field || "subject");
   const operator = String(criterion?.operator || "contains");
   const rawExpected = criterion?.value ?? "";
-  const expected = String(rawExpected).trim().toLowerCase();
-  const actual = String(context?.[field] ?? "").toLowerCase();
+  const expectedRaw = String(rawExpected).trim().toLowerCase();
+  const actualRaw = String(context?.[field] ?? "").trim().toLowerCase();
+  const normalize = value => String(value || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]+/g, " ").replace(/\breturned\b/g, "return").replace(/\s+/g, " ").trim();
+  const expected = normalize(expectedRaw);
+  const actual = normalize(actualRaw);
   if (operator === "is_empty") return actual.length === 0;
   if (operator === "is_not_empty") return actual.length > 0;
   if (operator === "equals") return actual === expected;
@@ -91,11 +94,11 @@ export function evaluateMailCriterion(criterion = {}, context = {}) {
   if (operator === "ends_with") return expected ? actual.endsWith(expected) : false;
   if (operator === "not_contains") return expected ? !actual.includes(expected) : false;
   if (operator === "in") {
-    const list = String(rawExpected).split(",").map(item => item.trim().toLowerCase()).filter(Boolean);
+    const list = String(rawExpected).split(",").map(item => normalize(item)).filter(Boolean);
     return list.length > 0 && list.some(item => actual.includes(item));
   }
   if (operator === "not_in") {
-    const list = String(rawExpected).split(",").map(item => item.trim().toLowerCase()).filter(Boolean);
+    const list = String(rawExpected).split(",").map(item => normalize(item)).filter(Boolean);
     return list.length === 0 || !list.some(item => actual.includes(item));
   }
   if (!expected) return false;

@@ -112,6 +112,70 @@
   flex-direction: column;
 }
 
+.salesFileUpload {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+}
+
+.salesFileUploadActions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.65rem;
+}
+
+.salesFileUploadHint {
+  font-size: 0.75rem;
+  color: var(--msp-muted, #64748b);
+}
+
+.salesFileUploadError {
+  margin: 0;
+  font-size: 0.78rem;
+  color: #b42318;
+}
+
+.salesFileUploadList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.salesFileUploadList li {
+  display: grid;
+  grid-template-columns: auto 1fr auto auto;
+  gap: 0.45rem;
+  align-items: center;
+  padding: 0.55rem 0.7rem;
+  border: 1px solid var(--msp-border-light, #e8eef5);
+  border-radius: 10px;
+  background: var(--msp-surface, #fff);
+  font-size: 0.84rem;
+}
+
+.salesFileUploadList em {
+  font-style: normal;
+  color: var(--msp-muted, #64748b);
+  font-size: 0.75rem;
+}
+
+.salesFileUploadList button {
+  border: none;
+  background: transparent;
+  color: var(--msp-muted, #64748b);
+  cursor: pointer;
+  padding: 0.15rem;
+  display: inline-flex;
+}
+
+.salesFileUploadList button:hover {
+  color: #b42318;
+}
+
 .fieldLabel {
   font-size: 0.8rem;
   font-weight: 600;

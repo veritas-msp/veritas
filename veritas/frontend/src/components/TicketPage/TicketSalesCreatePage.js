@@ -3,13 +3,14 @@ import { createPortal } from "react-dom";
 import { Icon } from "@iconify/react";
 import { FaTimes } from "react-icons/fa";
 import { toast } from "react-toastify";
-import { createTicket, fetchSalesForms } from "../../api/tickets";
+import { createTicket, fetchSalesForms, addTicketCommentWithAttachments, updateTicket } from "../../api/tickets";
 import { resolveMatchingRules, describeMatchingRulesSummary } from "../../utils/salesFormTargetRules";
 import { fetchClientsList, fetchContactsList } from "../../api/clients";
 import { fetchUsers } from "../../api/users";
 import { useAuthContext } from "../../contexts/AuthContext";
 import { useAppLocale } from "../../hooks/useAppGeneralSettings";
 import { getTicketSalesCreatePageCopy } from "./ticketSalesCreatePageI18n";
+import { isFileField } from "../../utils/salesFormFieldTypes";
 import layout from "../EnterprisesPage/EnterprisesPage.module.css";
 import account from "../Misc/AccountPage/AccountPage.module.css";
 import s from "./TicketCreatePage.module.css";
@@ -305,8 +306,18 @@ export default function TicketSalesCreatePage({
     const salesMetaLines = [`${copy.body.purchaseOrder}: ${purchaseOrder.trim() || "-"}`, `${copy.body.commercial}: ${commercialLabel || "-"}`, `${copy.body.projectManager}: ${projectManagerDisplay}`];
     const dynamicLines = buildDynamicFieldLines(selectedForm.fields || [], dynamicValues, fieldLookups);
     const bodyLines = [`${copy.body.type}: ${kindLabel}`, `${copy.body.form}: ${selectedForm.label}`, `${copy.body.requester}: ${requesterLabel || "-"}`, `${copy.body.company}: ${clientName}`, ...salesMetaLines, ...dynamicLines];
-    const visibleValues = Object.fromEntries(filterVisibleFields(selectedForm.fields || [], dynamicValues).map(field => [field.fieldKey, dynamicValues[field.fieldKey]]));
-    const displayValues = Object.fromEntries(filterVisibleFields(selectedForm.fields || [], dynamicValues).map(field => {
+    const visibleFields = filterVisibleFields(selectedForm.fields || [], dynamicValues);
+    const visibleValues = Object.fromEntries(visibleFields.map(field => {
+      const raw = dynamicValues[field.fieldKey];
+      if (isFileField(field)) {
+        return [field.fieldKey, Array.isArray(raw) ? raw.map(item => ({
+          name: item.name || item.fileName || "",
+          size: item.size || item.fileSize || 0
+        })) : []];
+      }
+      return [field.fieldKey, raw];
+    }));
+    const displayValues = Object.fromEntries(visibleFields.map(field => {
       const line = buildDynamicFieldLines([field], dynamicValues, fieldLookups)[0] || "";
       const display = line.includes(": ") ? line.split(": ").slice(1).join(": ") : "";
       return [field.fieldKey, display === "-" ? "" : display];
@@ -316,8 +327,48 @@ export default function TicketSalesCreatePage({
         .filter(field => field?.fieldKey)
         .map(field => [field.fieldKey, String(field.label || "").trim() || field.fieldKey])
     );
+    const fileFields = visibleFields.filter(field => isFileField(field));
+    const collectFilesForUpload = () => {
+      const files = [];
+      const mapping = [];
+      fileFields.forEach(field => {
+        const items = Array.isArray(dynamicValues[field.fieldKey]) ? dynamicValues[field.fieldKey] : [];
+        items.forEach(item => {
+          if (item?.file instanceof File) {
+            mapping.push({
+              fieldKey: field.fieldKey,
+              name: item.name || item.file.name
+            });
+            files.push(item.file);
+          }
+        });
+      });
+      return {
+        files,
+        mapping
+      };
+    };
     setSubmitting(true);
     try {
+      const salesFormDataBase = {
+        formId: selectedForm.id,
+        formKey: selectedForm.key,
+        formLabel: selectedForm.label,
+        kind: selectedForm.kind,
+        categorySlug: selectedForm.categorySlug,
+        purchaseOrder: purchaseOrder.trim() || null,
+        commercialUserId: commercialUserId || null,
+        commercialLabel: commercialLabel || null,
+        hasProjectManager,
+        projectManagerUserId: hasProjectManager ? projectManagerUserId || null : null,
+        projectManagerLabel: projectManagerDisplay || null,
+        clientName: clientName || null,
+        contactName: requesterLabel || null,
+        contactEmail: selectedRequesterAgent?.email || null,
+        values: visibleValues,
+        displayValues,
+        fieldLabels
+      };
       const created = await createTicket({
         title,
         description: bodyLines.join("\n"),
@@ -330,26 +381,54 @@ export default function TicketSalesCreatePage({
         assignedUserId: null,
         requesterUserId: requesterUserId || null,
         requesterContactId: null,
-        salesFormData: {
-          formId: selectedForm.id,
-          formKey: selectedForm.key,
-          formLabel: selectedForm.label,
-          kind: selectedForm.kind,
-          categorySlug: selectedForm.categorySlug,
-          purchaseOrder: purchaseOrder.trim() || null,
-          commercialUserId: commercialUserId || null,
-          commercialLabel: commercialLabel || null,
-          hasProjectManager,
-          projectManagerUserId: hasProjectManager ? projectManagerUserId || null : null,
-          projectManagerLabel: projectManagerDisplay || null,
-          clientName: clientName || null,
-          contactName: requesterLabel || null,
-          contactEmail: selectedRequesterAgent?.email || null,
-          values: visibleValues,
-          displayValues,
-          fieldLabels
-        }
+        salesFormData: salesFormDataBase
       });
+      const createdTickets = created?.multiple ? Array.isArray(created.tickets) ? created.tickets : [] : created?.id ? [created] : [];
+      const {
+        files,
+        mapping
+      } = collectFilesForUpload();
+      if (files.length > 0 && createdTickets.length > 0) {
+        for (const ticket of createdTickets) {
+          if (!ticket?.id) continue;
+          const uploaded = await addTicketCommentWithAttachments(ticket.id, {
+            content: "Sales form attachments",
+            isInternal: true,
+            files
+          });
+          const attachments = Array.isArray(uploaded?.attachments) ? uploaded.attachments : [];
+          const valuesWithFiles = {
+            ...visibleValues
+          };
+          const displayWithFiles = {
+            ...displayValues
+          };
+          fileFields.forEach(field => {
+            const fieldAttachments = [];
+            mapping.forEach((entry, index) => {
+              if (entry.fieldKey !== field.fieldKey) return;
+              const attachment = attachments[index];
+              if (!attachment) return;
+              fieldAttachments.push({
+                id: attachment.id,
+                fileName: attachment.file_name || entry.name,
+                filePath: attachment.file_path,
+                mimeType: attachment.mime_type,
+                fileSize: attachment.file_size
+              });
+            });
+            valuesWithFiles[field.fieldKey] = fieldAttachments;
+            displayWithFiles[field.fieldKey] = fieldAttachments.map(item => item.fileName).join(", ");
+          });
+          await updateTicket(ticket.id, {
+            salesFormData: {
+              ...salesFormDataBase,
+              values: valuesWithFiles,
+              displayValues: displayWithFiles
+            }
+          }).catch(() => {});
+        }
+      }
       const ticketCount = created?.multiple ? created.count : 1;
       toast.success(ticketCount > 1 ? copy.formatCreatedMultiple(ticketCount, selectedForm.label) : selectedForm.kind === "installation" ? copy.toasts.createdInstallation : copy.toasts.createdPrestation);
       setConfirmOpen(false);

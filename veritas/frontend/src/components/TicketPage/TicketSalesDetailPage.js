@@ -1778,7 +1778,14 @@ export default function TicketSalesDetailPage({ onNavigate, ticketData }) {
                             {formEntries.map(row => (
                               <div key={row.key}>
                                 <dt>{row.label}</dt>
-                                <dd>{row.value}</dd>
+                                <dd>
+                                  {Array.isArray(row.links) && row.links.length > 0 ? row.links.map((link, index) => (
+                                    <span key={link.id || `${row.key}-${index}`}>
+                                      {index > 0 ? ", " : null}
+                                      {link.href ? <a href={link.href} target="_blank" rel="noopener noreferrer">{link.label}</a> : link.label}
+                                    </span>
+                                  )) : row.value}
+                                </dd>
                               </div>
                             ))}
                           </dl>

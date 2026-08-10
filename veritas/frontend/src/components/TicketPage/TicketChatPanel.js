@@ -9,7 +9,9 @@ import { useAppLocale } from "../../hooks/useAppGeneralSettings";
 import { useVeritasEdition } from "../../hooks/useVeritasEdition";
 import { emitNotificationsUpdated } from "../../hooks/useNotifications";
 import { interpolate } from "../../i18n/translate";
-import { sanitizeTicketCommentHtml } from "../../utils/sanitizeHtml";
+import { toRichPreviewHtml } from "../../utils/sanitizeHtml";
+import IncomingEmailMessage from "./IncomingEmailMessage";
+import { isIncomingEmailContent } from "../../utils/incomingEmailContent";
 import { archiveTicketFilesToVault } from "../../utils/archiveTicketFilesToVault";
 import { getTicketAutomationConfig } from "../../utils/ticketAutomationStorage";
 import UserAvatar from "../shared/UserAvatar/UserAvatar";
@@ -698,11 +700,15 @@ export default function TicketChatPanel({
                       </button>
                     </div>
                   </div>
+                ) : isIncomingEmailContent(comment.content || comment.body || "") ? (
+                  <div className={styles.commentBody}>
+                    <IncomingEmailMessage content={comment.content || comment.body || ""} attachmentLinkClassName={styles.attachmentLink} />
+                  </div>
                 ) : (
                   <div
                     className={styles.commentBody}
                     dangerouslySetInnerHTML={{
-                      __html: sanitizeTicketCommentHtml(comment.content || comment.body || "")
+                      __html: toRichPreviewHtml(comment.content || comment.body || "")
                     }}
                   />
                 )}

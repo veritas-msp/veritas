@@ -21,7 +21,7 @@ import SalesFormFieldPalette, { PALETTE_FIELD_TYPES } from "./SalesFormFieldPale
 import SalesFormBuilderCanvas from "./SalesFormBuilderCanvas";
 import SalesFormFieldPropertiesPanel from "./SalesFormFieldPropertiesPanel";
 import SalesFormFieldsRenderer from "../TicketPage/SalesFormFieldsRenderer";
-import { cloneSalesFormField, getDuplicableFieldBlock } from "../../utils/salesFormFieldTypes";
+import { buildFileFieldOptionsFromDraft, cloneSalesFormField, getDuplicableFieldBlock, getFileFieldConfig, isFileField } from "../../utils/salesFormFieldTypes";
 import { useAppLocale } from "../../hooks/useAppGeneralSettings";
 import { useCommonCopy } from "../../hooks/useCommonCopy";
 import { interpolate } from "../../i18n/translate";
@@ -90,13 +90,17 @@ function fieldToDraft(field) {
   if (!field) return {
     ...EMPTY_FIELD
   };
+  const fileConfig = isFileField(field) ? getFileFieldConfig(field) : null;
   return {
     fieldKey: field.fieldKey || "",
     label: field.label || "",
     fieldType: field.fieldType || "text",
     required: field.required === true,
     placeholder: field.placeholder || "",
-    optionsText: Array.isArray(field.options) ? field.options.map(opt => typeof opt === "string" ? opt : opt.label || opt.value).join("\n") : "",
+    optionsText: isFileField(field) ? "" : Array.isArray(field.options) ? field.options.map(opt => typeof opt === "string" ? opt : opt.label || opt.value).join("\n") : "",
+    fileMaxSizeMb: fileConfig?.maxSizeMb,
+    fileMaxFiles: fileConfig?.maxFiles,
+    fileExtensionsText: fileConfig ? fileConfig.extensions.join(", ") : "",
     displayOrder: field.displayOrder || 0,
     enabled: field.enabled !== false,
     visibilityMatchMode: field.visibilityRules?.matchMode === "any" ? "any" : "all",
@@ -115,7 +119,7 @@ function createLocalField(fieldType, displayOrder = 0) {
     fieldType,
     required: false,
     placeholder: "",
-    options: [],
+    options: fieldType === "file" ? buildFileFieldOptionsFromDraft({}) : [],
     displayOrder,
     enabled: true,
     visibilityRules: {
@@ -125,6 +129,9 @@ function createLocalField(fieldType, displayOrder = 0) {
   };
 }
 function normalizeFieldOptions(field) {
+  if (isFileField(field) || field?.fieldType === "file") {
+    return buildFileFieldOptionsFromDraft(field);
+  }
   const fromText = String(field?.optionsText ?? "").split(/\r?\n/).map(line => line.trim()).filter(Boolean).map(line => ({
     label: line,
     value: line
@@ -141,6 +148,7 @@ function normalizeFieldOptions(field) {
         value
       } : null;
     }
+    if (opt?.__fileConfig) return null;
     const label = String(opt?.label || opt?.value || "").trim();
     const value = String(opt?.value || opt?.label || "").trim();
     if (!label && !value) return null;

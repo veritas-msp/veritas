@@ -9,6 +9,83 @@ export const LAYOUT_FIELD_TYPES = new Set(["section"]);
 /** Input-like types that use the ticket field shell chrome. */
 export const SHELL_FIELD_TYPES = new Set(["text", "number", "date", "email", "phone", "url", "time", "datetime", "currency"]);
 
+/** Align with ticket attachment upload limits on the backend. */
+export const FILE_FIELD_SERVER_MAX_SIZE_MB = 15;
+export const FILE_FIELD_SERVER_MAX_FILES = 10;
+export const FILE_FIELD_ALLOWED_EXTENSIONS = [".pdf", ".jpg", ".jpeg", ".png", ".doc", ".docx", ".csv", ".xls", ".xlsx", ".mp4", ".3gp", ".mp3", ".mpeg", ".ogg", ".aac", ".amr", ".m4a"];
+
+export const DEFAULT_FILE_FIELD_CONFIG = {
+  maxSizeMb: 10,
+  maxFiles: 5,
+  extensions: [".pdf", ".jpg", ".jpeg", ".png", ".doc", ".docx", ".xls", ".xlsx", ".csv"]
+};
+
+export function isFileField(fieldOrType) {
+  const type = typeof fieldOrType === "string" ? fieldOrType : fieldOrType?.fieldType;
+  return String(type || "") === "file";
+}
+
+export function normalizeFileExtensions(raw) {
+  const source = Array.isArray(raw) ? raw : String(raw || "").split(/[\s,;]+/);
+  const allowed = new Set(FILE_FIELD_ALLOWED_EXTENSIONS);
+  const out = [];
+  const seen = new Set();
+  source.forEach(item => {
+    let ext = String(item || "").trim().toLowerCase();
+    if (!ext) return;
+    if (!ext.startsWith(".")) ext = `.${ext}`;
+    if (!allowed.has(ext) || seen.has(ext)) return;
+    seen.add(ext);
+    out.push(ext);
+  });
+  return out.length ? out : [...DEFAULT_FILE_FIELD_CONFIG.extensions];
+}
+
+export function getFileFieldConfig(fieldOrOptions) {
+  const options = Array.isArray(fieldOrOptions) ? fieldOrOptions : Array.isArray(fieldOrOptions?.options) ? fieldOrOptions.options : [];
+  const raw = options.find(item => item && typeof item === "object" && (item.__fileConfig || item.maxSizeMb != null || item.maxFiles != null || item.extensions != null)) || null;
+  const maxSizeMb = Math.min(FILE_FIELD_SERVER_MAX_SIZE_MB, Math.max(1, Number(raw?.maxSizeMb) || DEFAULT_FILE_FIELD_CONFIG.maxSizeMb));
+  const maxFiles = Math.min(FILE_FIELD_SERVER_MAX_FILES, Math.max(1, Number(raw?.maxFiles) || DEFAULT_FILE_FIELD_CONFIG.maxFiles));
+  return {
+    __fileConfig: true,
+    maxSizeMb,
+    maxFiles,
+    extensions: normalizeFileExtensions(raw?.extensions || DEFAULT_FILE_FIELD_CONFIG.extensions)
+  };
+}
+
+export function buildFileFieldOptionsFromDraft(draft = {}) {
+  return [getFileFieldConfig({
+    options: [{
+      __fileConfig: true,
+      maxSizeMb: draft.fileMaxSizeMb,
+      maxFiles: draft.fileMaxFiles,
+      extensions: draft.fileExtensionsText
+    }]
+  })];
+}
+
+export function formatFileFieldAccept(config) {
+  return getFileFieldConfig({
+    options: [config]
+  }).extensions.join(",");
+}
+
+export function validateSalesFormFile(file, config, {
+  currentCount = 0
+} = {}) {
+  const cfg = getFileFieldConfig({
+    options: [config]
+  });
+  if (!file) return "No file selected";
+  if (currentCount >= cfg.maxFiles) return `Maximum ${cfg.maxFiles} file(s)`;
+  const ext = `.${String(file.name || "").split(".").pop() || ""}`.toLowerCase();
+  if (!cfg.extensions.includes(ext)) return `Extension not allowed (${cfg.extensions.join(", ")})`;
+  const maxBytes = cfg.maxSizeMb * 1024 * 1024;
+  if (Number(file.size || 0) > maxBytes) return `File too large (max ${cfg.maxSizeMb} MB)`;
+  return null;
+}
+
 export function isLayoutField(fieldOrType) {
   const type = typeof fieldOrType === "string" ? fieldOrType : fieldOrType?.fieldType;
   return LAYOUT_FIELD_TYPES.has(String(type || ""));
@@ -190,6 +267,12 @@ export const PALETTE_FIELD_TYPES = [
     type: "rating",
     label: "Rating",
     icon: "mdi:star-outline",
+    group: "basic"
+  },
+  {
+    type: "file",
+    label: "File upload",
+    icon: "mdi:paperclip",
     group: "basic"
   },
   // Variables (dynamic lookups)

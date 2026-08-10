@@ -1,8 +1,8 @@
-import { useMemo } from "react";
+import { useMemo, useRef, useState } from "react";
 import { Icon } from "@iconify/react";
 import s from "./TicketCreatePage.module.css";
 import { fieldIsVisible, filterVisibleFields } from "../../utils/salesFormConditions";
-import { SHELL_FIELD_TYPES, groupFieldsBySection, isLayoutField } from "../../utils/salesFormFieldTypes";
+import { SHELL_FIELD_TYPES, formatFileFieldAccept, getFileFieldConfig, groupFieldsBySection, isLayoutField, validateSalesFormFile } from "../../utils/salesFormFieldTypes";
 
 function getUserDisplayName(user) {
   return user?.ticket_helpdesk_display_name || user?.name || user?.nom || user?.username || user?.email || "";
@@ -30,7 +30,7 @@ function normalizeOptions(options = []) {
 
 function isEmptyFieldValue(field, raw) {
   if (field.fieldType === "checkbox") return raw !== true;
-  if (field.fieldType === "multiselect") return !Array.isArray(raw) || raw.length === 0;
+  if (field.fieldType === "multiselect" || field.fieldType === "file") return !Array.isArray(raw) || raw.length === 0;
   if (field.fieldType === "rating") return !Number(raw);
   return !String(raw ?? "").trim();
 }
@@ -78,6 +78,10 @@ function formatFieldValue(field, value, {
     const score = Number(value);
     return Number.isFinite(score) && score > 0 ? `${score}/5` : "";
   }
+  if (field.fieldType === "file") {
+    if (!Array.isArray(value) || value.length === 0) return "";
+    return value.map(item => item?.fileName || item?.name || item?.file_name || "file").filter(Boolean).join(", ");
+  }
   return value ?? "";
 }
 
@@ -115,6 +119,24 @@ export function validateDynamicFields(fields = [], values = {}) {
     if (field.fieldType === "rating") {
       const score = Number(raw);
       if (!Number.isFinite(score) || score < 1 || score > 5) return false;
+    }
+    if (field.fieldType === "file") {
+      const cfg = getFileFieldConfig(field);
+      if (!Array.isArray(raw) || raw.length > cfg.maxFiles) return false;
+      for (const item of raw) {
+        const fileLike = item?.file || item;
+        if (item?.file) {
+          const error = validateSalesFormFile(item.file, cfg, {
+            currentCount: 0
+          });
+          if (error) return false;
+        } else if (fileLike && typeof File !== "undefined" && fileLike instanceof File) {
+          const error = validateSalesFormFile(fileLike, cfg, {
+            currentCount: 0
+          });
+          if (error) return false;
+        }
+      }
     }
   }
   const hasAnyValue = activeFields.some(field => !isEmptyFieldValue(field, values[field.fieldKey]));
@@ -167,6 +189,75 @@ function RatingInput({
             {star}
           </button>;
     })}
+    </div>;
+}
+
+function formatBytes(size) {
+  const bytes = Number(size) || 0;
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+function FileUploadInput({
+  field,
+  value,
+  onChange
+}) {
+  const inputRef = useRef(null);
+  const [error, setError] = useState("");
+  const cfg = getFileFieldConfig(field);
+  const files = Array.isArray(value) ? value : [];
+  const accept = formatFileFieldAccept(cfg);
+  const addFiles = selected => {
+    const incoming = Array.from(selected || []);
+    if (!incoming.length) return;
+    const next = [...files];
+    for (const file of incoming) {
+      const validationError = validateSalesFormFile(file, cfg, {
+        currentCount: next.length
+      });
+      if (validationError) {
+        setError(validationError);
+        continue;
+      }
+      next.push({
+        localId: `file-${Date.now()}-${Math.random().toString(16).slice(2, 8)}`,
+        name: file.name,
+        size: file.size,
+        file
+      });
+    }
+    if (next.length !== files.length) setError("");
+    onChange(next);
+    if (inputRef.current) inputRef.current.value = "";
+  };
+  const removeFile = localId => {
+    onChange(files.filter(item => item.localId !== localId && item.id !== localId));
+    setError("");
+  };
+  return <div className={s.salesFileUpload}>
+      <div className={s.salesFileUploadActions}>
+        <button type="button" className={s.segmentedBtn} onClick={() => inputRef.current?.click()} disabled={files.length >= cfg.maxFiles}>
+          <Icon icon="mdi:paperclip" aria-hidden />
+          Add files
+        </button>
+        <input ref={inputRef} type="file" accept={accept} multiple={cfg.maxFiles > 1} hidden onChange={e => addFiles(e.target.files)} />
+        <span className={s.salesFileUploadHint}>
+          Max {cfg.maxFiles} · {cfg.maxSizeMb} MB · {cfg.extensions.join(", ")}
+        </span>
+      </div>
+      {error ? <p className={s.salesFileUploadError}>{error}</p> : null}
+      {files.length > 0 ? <ul className={s.salesFileUploadList}>
+          {files.map(item => <li key={item.localId || item.id || item.name}>
+              <Icon icon="mdi:file-outline" aria-hidden />
+              <span>{item.name || item.fileName}</span>
+              <em>{formatBytes(item.size || item.fileSize)}</em>
+              <button type="button" onClick={() => removeFile(item.localId || item.id)} aria-label="Remove file">
+                <Icon icon="mdi:close" aria-hidden />
+              </button>
+            </li>)}
+        </ul> : null}
     </div>;
 }
 
@@ -225,7 +316,7 @@ export default function SalesFormFieldsRenderer({
     });
   };
   const renderField = field => {
-    const emptyDefault = field.fieldType === "checkbox" ? false : field.fieldType === "multiselect" ? [] : "";
+    const emptyDefault = field.fieldType === "checkbox" ? false : field.fieldType === "multiselect" || field.fieldType === "file" ? [] : "";
     const value = values[field.fieldKey] ?? emptyDefault;
     if (field.fieldType === "textarea") {
       return <textarea className={`${s.fieldShellControl} ${s.textarea}`} rows={4} value={value} placeholder={field.placeholder || ""} onChange={e => patchValue(field.fieldKey, e.target.value)} />;
@@ -259,6 +350,9 @@ export default function SalesFormFieldsRenderer({
     }
     if (field.fieldType === "rating") {
       return <RatingInput field={field} value={value} onChange={next => patchValue(field.fieldKey, next)} />;
+    }
+    if (field.fieldType === "file") {
+      return <FileUploadInput field={field} value={value} onChange={next => patchValue(field.fieldKey, next)} />;
     }
     if (field.fieldType === "user") {
       return <select className={s.select} value={value} onChange={e => patchValue(field.fieldKey, e.target.value)}>
