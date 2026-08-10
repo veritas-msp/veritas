@@ -1,7 +1,8 @@
 import { Icon } from "@iconify/react";
 import layout from "../EnterprisesPage/EnterpriseFormModal.module.css";
 import modalStyles from "./SalesFormModal.module.css";
-import { OPTION_BASED_FIELD_TYPES } from "../../utils/salesFormFieldTypes";
+import { OPTION_BASED_FIELD_TYPES, buildConditionFieldOptions } from "../../utils/salesFormFieldTypes";
+import { deriveVisibilityMatchMode } from "../../utils/salesFormConditions";
 const OPERATOR_OPTIONS = [{
   value: "equals",
   label: "Equals"
@@ -73,33 +74,80 @@ function ConditionValueInput({
     value: e.target.value
   })} />;
 }
+function ConditionJoinToggle({
+  value,
+  onChange
+}) {
+  const join = value === "or" ? "or" : "and";
+  return <div className={modalStyles.conditionJoin} role="group" aria-label="Logic between conditions">
+      <button type="button" className={`${modalStyles.conditionJoinBtn} ${join === "and" ? modalStyles.conditionJoinBtnActive : ""}`} aria-pressed={join === "and"} onClick={() => onChange("and")}>
+        AND
+      </button>
+      <button type="button" className={`${modalStyles.conditionJoinBtn} ${join === "or" ? modalStyles.conditionJoinBtnActive : ""}`} aria-pressed={join === "or"} onClick={() => onChange("or")}>
+        OR
+      </button>
+    </div>;
+}
+function withoutJoin(condition = {}) {
+  const next = {
+    fieldKey: condition.fieldKey || "",
+    operator: condition.operator || "equals",
+    value: condition.value || ""
+  };
+  return next;
+}
+function withJoin(condition = {}, join = "and") {
+  return {
+    ...withoutJoin(condition),
+    join: join === "or" ? "or" : "and"
+  };
+}
+function reindexConditionJoins(list = []) {
+  return list.map((condition, index) => index === 0 ? withoutJoin(condition) : withJoin(condition, condition.join || "and"));
+}
+function ConditionFieldSelect({
+  value,
+  fieldOptions,
+  onChange
+}) {
+  return <select className={layout.input} value={value || ""} onChange={e => {
+    const nextField = fieldOptions.find(option => option.id === e.target.value)?.field;
+    onChange(e.target.value, nextField);
+  }}>
+      <option value="">- Field -</option>
+      {fieldOptions.map(option => <option key={option.id} value={option.id}>
+          {option.label}
+        </option>)}
+    </select>;
+}
 export default function FormConditionsEditor({
   title = "Conditions",
-  hint = "With no conditions, always applicable.",
+  hint = "With no conditions, always applicable. Use AND / OR between rows — OR starts a new group.",
   matchMode = "all",
   conditions = [],
   formFields = [],
   excludeFieldKey = "",
   onChange
 }) {
-  const fieldOptions = formFields.filter(field => field?.fieldKey && field.fieldKey !== excludeFieldKey && field.fieldType !== "section" && field.fieldType !== "file").map(field => ({
-    id: field.fieldKey,
-    label: field.label || field.fieldKey,
-    field
-  }));
-  const updateConditions = nextConditions => {
+  const fieldOptions = buildConditionFieldOptions(formFields, {
+    excludeFieldKey
+  });
+  const emit = nextConditions => {
+    const normalized = reindexConditionJoins(nextConditions);
     onChange?.({
-      matchMode,
-      conditions: nextConditions
+      matchMode: deriveVisibilityMatchMode(normalized) || matchMode,
+      conditions: normalized
     });
   };
   const addCondition = () => {
     const firstField = fieldOptions[0]?.field;
-    updateConditions([...conditions, {
+    const next = {
       fieldKey: firstField?.fieldKey || "",
       operator: firstField?.fieldType === "checkbox" ? "checked" : "equals",
       value: ""
-    }]);
+    };
+    if (conditions.length) next.join = "and";
+    emit([...conditions, next]);
   };
   return <div className={modalStyles.targetRuleSection}>
       <div className={modalStyles.targetRuleSectionHead}>
@@ -108,56 +156,47 @@ export default function FormConditionsEditor({
       </div>
 
       {fieldOptions.length === 0 ? <p className={modalStyles.emptyRuleHint}>No other fields available to build conditions.</p> : <>
-          <div className={layout.field}>
-            <label className={layout.label}>Logic between conditions</label>
-            <select className={layout.input} value={matchMode} onChange={e => onChange?.({
-          matchMode: e.target.value,
-          conditions
-        })}>
-              <option value="all">All (AND)</option>
-              <option value="any">At least one (OR)</option>
-            </select>
-          </div>
-
           {conditions.map((condition, conditionIndex) => {
         const field = fieldOptions.find(option => option.id === condition.fieldKey)?.field;
         const operators = getOperatorsForField(field);
-        return <div key={`condition-${conditionIndex}`} className={modalStyles.conditionRow}>
-                <select className={layout.input} value={condition.fieldKey || ""} onChange={e => {
-            const nextField = fieldOptions.find(option => option.id === e.target.value)?.field;
+        return <div key={`condition-${conditionIndex}`} className={modalStyles.conditionBlock}>
+                {conditionIndex > 0 ? <ConditionJoinToggle value={condition.join || "and"} onChange={join => {
             const nextConditions = [...conditions];
-            nextConditions[conditionIndex] = {
-              fieldKey: e.target.value,
-              operator: nextField?.fieldType === "checkbox" ? "checked" : "equals",
-              value: ""
-            };
-            updateConditions(nextConditions);
-          }}>
-                  <option value="">- Field -</option>
-                  {fieldOptions.map(option => <option key={option.id} value={option.id}>
-                      {option.label}
-                    </option>)}
-                </select>
-                <select className={layout.input} value={condition.operator || "equals"} onChange={e => {
-            const nextConditions = [...conditions];
-            nextConditions[conditionIndex] = {
-              ...condition,
-              operator: e.target.value
-            };
-            updateConditions(nextConditions);
-          }}>
-                  {operators.map(option => <option key={option.value} value={option.value}>
-                      {option.label}
-                    </option>)}
-                </select>
-                <ConditionValueInput condition={condition} field={field} onChange={next => {
-            const nextConditions = [...conditions];
-            nextConditions[conditionIndex] = next;
-            updateConditions(nextConditions);
-          }} />
-                <button type="button" className={modalStyles.iconBtnDanger} onClick={() => updateConditions(conditions.filter((_, idx) => idx !== conditionIndex))} title="Remove condition">
-                  <Icon icon="mdi:close" />
-                </button>
+            nextConditions[conditionIndex] = withJoin(condition, join);
+            emit(nextConditions);
+          }} /> : null}
+                <div className={modalStyles.conditionRow}>
+                  <ConditionFieldSelect value={condition.fieldKey} fieldOptions={fieldOptions} onChange={(fieldKey, nextField) => {
+              const nextConditions = [...conditions];
+              const base = {
+                fieldKey,
+                operator: nextField?.fieldType === "checkbox" ? "checked" : "equals",
+                value: ""
+              };
+              nextConditions[conditionIndex] = conditionIndex > 0 ? withJoin(base, condition.join || "and") : base;
+              emit(nextConditions);
+            }} />
+                  <select className={layout.input} value={condition.operator || "equals"} onChange={e => {
+              const nextConditions = [...conditions];
+              nextConditions[conditionIndex] = {
+                ...condition,
+                operator: e.target.value
+              };
+              emit(nextConditions);
+            }}>
+                    {operators.map(option => <option key={option.value} value={option.value}>
+                        {option.label}
+                      </option>)}
+                  </select>
+                  <ConditionValueInput condition={condition} field={field} onChange={next => {
+              const nextConditions = [...conditions];
+              nextConditions[conditionIndex] = conditionIndex > 0 ? withJoin(next, condition.join || "and") : withoutJoin(next);
+              emit(nextConditions);
+            }} />
+                  <button type="button" className={modalStyles.iconBtnDanger} onClick={() => emit(conditions.filter((_, idx) => idx !== conditionIndex))} title="Remove condition">
+                    <Icon icon="mdi:close" />
+                  </button>
+                </div>
               </div>;
       })}
 

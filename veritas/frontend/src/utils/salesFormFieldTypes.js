@@ -117,7 +117,7 @@ export function cloneSalesFormField(field, {
       ...opt
     }) : [],
     visibilityRules: {
-      matchMode: field?.visibilityRules?.matchMode === "any" ? "any" : "all",
+      matchMode: field?.visibilityRules?.matchMode === "any" ? "any" : field?.visibilityRules?.matchMode === "mixed" ? "mixed" : "all",
       conditions: Array.isArray(field?.visibilityRules?.conditions) ? field.visibilityRules.conditions.map(condition => ({
         ...condition
       })) : []
@@ -186,11 +186,28 @@ export function reorderSalesFormFields(fields = [], activeId, overId) {
 }
 
 /**
+ * Same visual order as the builder canvas / runtime form.
+ */
+export function compareSalesFormFields(a, b) {
+  const orderA = Number(a?.displayOrder || 0);
+  const orderB = Number(b?.displayOrder || 0);
+  if (orderA !== orderB) return orderA - orderB;
+  return String(a?.id || a?.fieldKey || "").localeCompare(String(b?.id || b?.fieldKey || ""), undefined, {
+    numeric: true,
+    sensitivity: "base"
+  });
+}
+
+export function sortSalesFormFields(fields = []) {
+  return [...(Array.isArray(fields) ? fields : [])].sort(compareSalesFormFields);
+}
+
+/**
  * Group fields by section markers. Fields after a `section` belong to it until the next section.
  * Order follows displayOrder.
  */
 export function groupFieldsBySection(fields = []) {
-  const sorted = [...(Array.isArray(fields) ? fields : [])].sort((a, b) => Number(a?.displayOrder || 0) - Number(b?.displayOrder || 0));
+  const sorted = sortSalesFormFields(fields);
   const groups = [];
   let current = {
     section: null,
@@ -210,6 +227,59 @@ export function groupFieldsBySection(fields = []) {
   }
   if (current.section || current.fields.length) groups.push(current);
   return groups;
+}
+
+/**
+ * Build condition field pickers in form order, grouped by section (for optgroups).
+ * Duplicate labels inside a group get ` · fieldKey` appended.
+ */
+export function buildConditionFieldOptionGroups(fields = [], {
+  excludeFieldKey = "",
+  excludeFiles = true
+} = {}) {
+  const groups = groupFieldsBySection(fields);
+  const result = [];
+  for (const group of groups) {
+    let selectable = (group.fields || []).filter(field => field?.fieldKey && String(field.fieldKey) !== String(excludeFieldKey || ""));
+    if (excludeFiles) selectable = selectable.filter(field => !isFileField(field));
+    if (!selectable.length) continue;
+    const labelCounts = {};
+    selectable.forEach(field => {
+      const label = String(field.label || field.fieldKey || "").trim() || field.fieldKey;
+      labelCounts[label] = (labelCounts[label] || 0) + 1;
+    });
+    const sectionLabel = group.section ? String(group.section.label || "").trim() || "Untitled section" : "No section";
+    result.push({
+      sectionKey: group.section ? String(group.section.id || group.section.fieldKey || sectionLabel) : "__none__",
+      sectionLabel,
+      options: selectable.map(field => {
+        const baseLabel = String(field.label || field.fieldKey || "").trim() || field.fieldKey;
+        return {
+          id: field.fieldKey,
+          label: labelCounts[baseLabel] > 1 ? `${baseLabel} · ${field.fieldKey}` : baseLabel,
+          field
+        };
+      })
+    });
+  }
+  return result;
+}
+
+/**
+ * Flat condition options in exact form order (section context in the label when useful).
+ */
+export function buildConditionFieldOptions(fields = [], options = {}) {
+  const groups = buildConditionFieldOptionGroups(fields, options);
+  const hasNamedSections = groups.some(group => group.sectionKey !== "__none__");
+  return groups.flatMap(group => group.options.map(option => ({
+    ...option,
+    sectionLabel: group.sectionLabel,
+    label: hasNamedSections ? `${group.sectionLabel} · ${option.label}` : option.label
+  })));
+}
+
+export function flattenConditionFieldOptions(groups = []) {
+  return (Array.isArray(groups) ? groups : []).flatMap(group => group.options || []);
 }
 
 export const PALETTE_FIELD_TYPES = [

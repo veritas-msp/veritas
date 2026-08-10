@@ -233,6 +233,48 @@
   align-items: center;
 }
 
+.conditionBlock {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.conditionJoin {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.2rem;
+  align-self: flex-start;
+  padding: 0.1rem;
+  border: 1px solid var(--msp-border, #dde3ed);
+  border-radius: 8px;
+  background: var(--msp-surface-2, #f8fafc);
+}
+
+.conditionJoinBtn {
+  min-width: 2.4rem;
+  padding: 0.2rem 0.55rem;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--msp-muted, #64748b);
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.conditionJoinBtn:hover {
+  background: var(--msp-surface, #fff);
+  border-color: var(--msp-border, #dde3ed);
+}
+
+.conditionJoinBtnActive {
+  background: var(--msp-accent-soft, rgba(43, 95, 171, 0.12));
+  border-color: var(--msp-accent, #2b5fab);
+  color: var(--msp-accent, #2b5fab);
+}
+
 .conditionHint {
   font-size: 0.78rem;
   color: var(--msp-muted);

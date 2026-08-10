@@ -46,7 +46,7 @@ export default function SalesFormFieldPropertiesPanel({
       extensions: fieldDraft.fileExtensionsText
     }]
   }) : null;
-  const conditionFields = formFields.filter(field => !isLayoutField(field) && !isFileField(field));
+  const conditionFields = formFields;
   return <aside className={builderStyles.propsPanel}>
       <div className={builderStyles.propsHead}>
         <h4 className={builderStyles.propsTitle}>{fieldDraft.label || (isSection ? "Section" : "Field")}</h4>
@@ -155,7 +155,7 @@ export default function SalesFormFieldPropertiesPanel({
           })} />{" "}
               Active
             </label>
-          </> : <FormConditionsEditor title={isSection ? "If… then show this section" : "If… then show this field"} hint={isSection ? "When the section is hidden, all fields under it are hidden too." : "Define when this field should appear based on other field values."} matchMode={fieldDraft.visibilityMatchMode || "all"} conditions={fieldDraft.visibilityConditions || []} formFields={conditionFields} excludeFieldKey={fieldDraft.fieldKey} onChange={({
+          </> : <FormConditionsEditor title={isSection ? "If… then show this section" : "If… then show this field"} hint={isSection ? "When the section is hidden, all fields under it are hidden too. Use AND/OR between conditions — OR starts a new group." : "Use AND/OR between conditions. Example: A AND B OR C AND D means (A and B) or (C and D)."} matchMode={fieldDraft.visibilityMatchMode || "all"} conditions={fieldDraft.visibilityConditions || []} formFields={conditionFields} excludeFieldKey={fieldDraft.fieldKey} onChange={({
         matchMode,
         conditions
       }) => patch({

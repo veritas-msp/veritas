@@ -4,7 +4,7 @@ import layout from "../EnterprisesPage/EnterpriseFormModal.module.css";
 import modalStyles from "./SalesFormModal.module.css";
 import MultiSuggestPicker from "./MultiSuggestPicker";
 import { getSalesFormTemplateVariables, insertTemplateToken } from "../../utils/salesFormTicketTemplates";
-import { OPTION_BASED_FIELD_TYPES } from "../../utils/salesFormFieldTypes";
+import { OPTION_BASED_FIELD_TYPES, buildConditionFieldOptions } from "../../utils/salesFormFieldTypes";
 const PRIORITY_OPTIONS = [{
   value: "",
   label: "Agent's choice"
@@ -200,10 +200,9 @@ function TargetRuleEditor({
   onRemove,
   canRemove
 }) {
-  const fieldOptions = formFields.filter(field => field?.fieldKey && field.fieldType !== "section").map(field => ({
-    id: field.fieldKey,
-    label: field.label || field.fieldKey
-  }));
+  const fieldOptions = buildConditionFieldOptions(formFields, {
+    excludeFiles: true
+  });
   const templateVariables = getSalesFormTemplateVariables(formFields);
   const updateRule = patch => onChange({
     ...rule,
@@ -216,12 +215,12 @@ function TargetRuleEditor({
     }
   });
   const addCondition = () => {
-    const firstField = formFields.find(field => field?.fieldKey);
+    const firstField = fieldOptions[0]?.field;
     updateRule({
       always: false,
       conditions: [...(rule.conditions || []), {
         fieldKey: firstField?.fieldKey || "",
-        operator: "equals",
+        operator: firstField?.fieldType === "checkbox" ? "checked" : "equals",
         value: ""
       }]
     });

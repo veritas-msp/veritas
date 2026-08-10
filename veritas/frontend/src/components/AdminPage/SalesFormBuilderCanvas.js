@@ -3,10 +3,10 @@ import { Icon } from "@iconify/react";
 import { useDroppable } from "@dnd-kit/core";
 import { SortableContext, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
+import { isLayoutField, sortSalesFormFields } from "../../utils/salesFormFieldTypes";
 import builderStyles from "./SalesFormBuilder.module.css";
 import { describeVisibilityRules } from "../../utils/salesFormConditions";
 import adminStyles from "./AdminTickets.module.css";
-import { isLayoutField } from "../../utils/salesFormFieldTypes";
 function FieldPreview({
   field
 }) {
@@ -162,7 +162,7 @@ export default function SalesFormBuilderCanvas({
   } = useDroppable({
     id: "form-canvas"
   });
-  const sortedFields = useMemo(() => [...fields].sort((a, b) => Number(a.displayOrder || 0) - Number(b.displayOrder || 0)), [fields]);
+  const sortedFields = useMemo(() => sortSalesFormFields(fields), [fields]);
   const fieldIds = sortedFields.map(field => field.id);
   return <section className={builderStyles.canvasWrap}>
       <div className={builderStyles.canvasHead}>

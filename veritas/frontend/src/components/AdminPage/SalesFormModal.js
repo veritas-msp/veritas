@@ -22,6 +22,7 @@ import SalesFormBuilderCanvas from "./SalesFormBuilderCanvas";
 import SalesFormFieldPropertiesPanel from "./SalesFormFieldPropertiesPanel";
 import SalesFormFieldsRenderer from "../TicketPage/SalesFormFieldsRenderer";
 import { buildFileFieldOptionsFromDraft, cloneSalesFormField, getDuplicableFieldBlock, getFileFieldConfig, isFileField, reorderSalesFormFields } from "../../utils/salesFormFieldTypes";
+import { normalizeVisibilityRules } from "../../utils/salesFormConditions";
 import { useAppLocale } from "../../hooks/useAppGeneralSettings";
 import { useCommonCopy } from "../../hooks/useCommonCopy";
 import { interpolate } from "../../i18n/translate";
@@ -103,10 +104,8 @@ function fieldToDraft(field) {
     fileExtensionsText: fileConfig ? fileConfig.extensions.join(", ") : "",
     displayOrder: field.displayOrder || 0,
     enabled: field.enabled !== false,
-    visibilityMatchMode: field.visibilityRules?.matchMode === "any" ? "any" : "all",
-    visibilityConditions: Array.isArray(field.visibilityRules?.conditions) ? field.visibilityRules.conditions.map(condition => ({
-      ...condition
-    })) : []
+    visibilityMatchMode: field.visibilityRules?.matchMode === "any" ? "any" : field.visibilityRules?.matchMode === "mixed" ? "mixed" : "all",
+    visibilityConditions: normalizeVisibilityRules(field.visibilityRules || {}).conditions
   };
 }
 function createLocalField(fieldType, displayOrder = 0) {
@@ -168,10 +167,10 @@ function buildFieldApiPayload(field) {
     options: normalizeFieldOptions(field),
     displayOrder: Number(field.displayOrder || 0),
     enabled: field.enabled !== false,
-    visibilityRules: {
-      matchMode: field.visibilityRules?.matchMode === "any" || field.visibilityMatchMode === "any" ? "any" : "all",
-      conditions: Array.isArray(field.visibilityRules?.conditions) ? field.visibilityRules.conditions.filter(condition => condition.fieldKey) : Array.isArray(field.visibilityConditions) ? field.visibilityConditions.filter(condition => condition.fieldKey) : []
-    }
+    visibilityRules: normalizeVisibilityRules({
+      matchMode: field.visibilityMatchMode || field.visibilityRules?.matchMode || "all",
+      conditions: Array.isArray(field.visibilityRules?.conditions) ? field.visibilityRules.conditions : Array.isArray(field.visibilityConditions) ? field.visibilityConditions : []
+    })
   };
 }
 function applyDraftToField(field, draft) {
@@ -182,10 +181,10 @@ function applyDraftToField(field, draft) {
     // Canvas / DnD owns order — never let the properties draft reset it to 0.
     displayOrder: field.displayOrder,
     optionsText: draft.optionsText,
-    visibilityRules: {
-      matchMode: draft.visibilityMatchMode === "any" ? "any" : "all",
+    visibilityRules: normalizeVisibilityRules({
+      matchMode: draft.visibilityMatchMode || "all",
       conditions: draft.visibilityConditions || []
-    }
+    })
   });
   return {
     ...field,
