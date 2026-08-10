@@ -87,6 +87,7 @@ function SortableCanvasField({
   field,
   selected,
   onSelect,
+  onDuplicate,
   onRemove
 }) {
   const {
@@ -107,6 +108,7 @@ function SortableCanvasField({
     transform: CSS.Transform.toString(transform),
     transition
   };
+  const duplicateTitle = field.fieldType === "section" ? "Duplicate section and its fields" : "Duplicate field";
   return <div ref={setNodeRef} style={style} className={`${builderStyles.canvasField} ${isLayoutField(field) ? builderStyles.canvasFieldSection : ""} ${selected ? builderStyles.canvasFieldSelected : ""} ${isDragging ? builderStyles.canvasFieldDragging : ""}`} onClick={() => onSelect(field)} onKeyDown={e => {
     if (e.key === "Enter" || e.key === " ") {
       e.preventDefault();
@@ -124,6 +126,12 @@ function SortableCanvasField({
         </div>
       </div>
       <div className={builderStyles.canvasFieldActions}>
+        <button type="button" className={adminStyles.actionButton} onClick={e => {
+        e.stopPropagation();
+        onDuplicate?.(field);
+      }} title={duplicateTitle} aria-label={duplicateTitle}>
+          <Icon icon="mdi:content-copy" />
+        </button>
         <button type="button" className={`${adminStyles.actionButton} ${adminStyles.danger}`} onClick={e => {
         e.stopPropagation();
         onRemove(field);
@@ -139,6 +147,7 @@ export default function SalesFormBuilderCanvas({
   fields = [],
   selectedFieldId = "",
   onSelectField,
+  onDuplicateField,
   onRemoveField
 }) {
   const {
@@ -165,7 +174,7 @@ export default function SalesFormBuilderCanvas({
               <p>Drop a field here to get started</p>
             </div> : <SortableContext items={fieldIds} strategy={verticalListSortingStrategy}>
               <div className={builderStyles.canvasFieldList}>
-                {sortedFields.map(field => <SortableCanvasField key={field.id} field={field} selected={String(selectedFieldId) === String(field.id)} onSelect={onSelectField} onRemove={onRemoveField} />)}
+                {sortedFields.map(field => <SortableCanvasField key={field.id} field={field} selected={String(selectedFieldId) === String(field.id)} onSelect={onSelectField} onDuplicate={onDuplicateField} onRemove={onRemoveField} />)}
               </div>
             </SortableContext>}
         </div>

@@ -21,6 +21,7 @@ import SalesFormFieldPalette, { PALETTE_FIELD_TYPES } from "./SalesFormFieldPale
 import SalesFormBuilderCanvas from "./SalesFormBuilderCanvas";
 import SalesFormFieldPropertiesPanel from "./SalesFormFieldPropertiesPanel";
 import SalesFormFieldsRenderer from "../TicketPage/SalesFormFieldsRenderer";
+import { cloneSalesFormField, getDuplicableFieldBlock } from "../../utils/salesFormFieldTypes";
 import { useAppLocale } from "../../hooks/useAppGeneralSettings";
 import { useCommonCopy } from "../../hooks/useCommonCopy";
 import { interpolate } from "../../i18n/translate";
@@ -458,6 +459,30 @@ export default function SalesFormModal({
     setFields(prev => [...prev, localField]);
     selectField(localField);
   };
+  const duplicateFieldOrSection = sourceField => {
+    if (!sourceField) return;
+    // Keep unsaved property edits on the source before cloning.
+    const workingFields = selectedFieldId && fieldDraft ? fields.map(field => String(field.id) === String(selectedFieldId) ? applyDraftToField(field, fieldDraft) : field) : fields;
+    const block = getDuplicableFieldBlock(workingFields, sourceField);
+    if (!block.length) return;
+    const sorted = [...workingFields].sort((a, b) => Number(a.displayOrder || 0) - Number(b.displayOrder || 0));
+    const startIdx = sorted.findIndex(field => String(field.id) === String(block[0].id));
+    if (startIdx < 0) return;
+    const insertAt = startIdx + block.length;
+    const clones = block.map((field, index) => cloneSalesFormField(field, {
+      displayOrder: 0,
+      // Only suffix the section title / standalone field label — keep child labels intact.
+      labelSuffix: index === 0 ? " (copy)" : ""
+    }));
+    const next = [...sorted.slice(0, insertAt), ...clones, ...sorted.slice(insertAt)].map((field, index) => ({
+      ...field,
+      displayOrder: (index + 1) * 10
+    }));
+    setFields(next);
+    selectField(clones[0]);
+    const isSection = sourceField.fieldType === "section";
+    toast.success(isSection ? `Section duplicated · ${clones.length} item(s)` : "Field duplicated");
+  };
   const handlePaletteQuickAdd = fieldType => {
     // Ignore the click that often fires right after a drag-and-drop.
     if (suppressPaletteClickRef.current) return;
@@ -786,7 +811,7 @@ export default function SalesFormModal({
   const renderBuilderSection = () => <DndContext sensors={sensors} collisionDetection={collisionDetection} onDragStart={handleDragStart} onDragEnd={handleDragEnd} onDragCancel={handleDragCancel}>
       <div className={builderStyles.builderMain}>
         <SalesFormFieldPalette onQuickAdd={handlePaletteQuickAdd} />
-        <SalesFormBuilderCanvas formLabel={formDraft.label} formDescription={formDraft.description} fields={fields} selectedFieldId={selectedFieldId} onSelectField={selectField} onRemoveField={requestRemoveField} />
+        <SalesFormBuilderCanvas formLabel={formDraft.label} formDescription={formDraft.description} fields={fields} selectedFieldId={selectedFieldId} onSelectField={selectField} onDuplicateField={duplicateFieldOrSection} onRemoveField={requestRemoveField} />
         <SalesFormFieldPropertiesPanel fieldDraft={fieldDraft} formFields={fields} saving={savingField} onChange={updateFieldDraft} onSave={handleSaveField} onDelete={fieldDraft ? () => requestRemoveField(fields.find(f => String(f.id) === String(selectedFieldId))) : null} onClose={resetFieldSelection} />
       </div>
       <DragOverlay>
