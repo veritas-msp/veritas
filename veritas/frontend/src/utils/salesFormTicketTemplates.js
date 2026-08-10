@@ -2,7 +2,7 @@
 
 export function getSalesFormTemplateVariables(formFields = []) {
   const fieldVars = (formFields || [])
-    .filter(field => field?.fieldKey)
+    .filter(field => field?.fieldKey && field.fieldType !== "section")
     .map(field => ({
       key: `{{field.${field.fieldKey}}}`,
       label: field.label || field.fieldKey,

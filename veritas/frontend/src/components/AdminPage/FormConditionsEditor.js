@@ -82,7 +82,7 @@ export default function FormConditionsEditor({
   excludeFieldKey = "",
   onChange
 }) {
-  const fieldOptions = formFields.filter(field => field?.fieldKey && field.fieldKey !== excludeFieldKey).map(field => ({
+  const fieldOptions = formFields.filter(field => field?.fieldKey && field.fieldKey !== excludeFieldKey && field.fieldType !== "section").map(field => ({
     id: field.fieldKey,
     label: field.label || field.fieldKey,
     field

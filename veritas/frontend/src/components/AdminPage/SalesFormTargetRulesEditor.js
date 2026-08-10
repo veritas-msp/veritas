@@ -200,7 +200,7 @@ function TargetRuleEditor({
   onRemove,
   canRemove
 }) {
-  const fieldOptions = formFields.filter(field => field?.fieldKey).map(field => ({
+  const fieldOptions = formFields.filter(field => field?.fieldKey && field.fieldType !== "section").map(field => ({
     id: field.fieldKey,
     label: field.label || field.fieldKey
   }));

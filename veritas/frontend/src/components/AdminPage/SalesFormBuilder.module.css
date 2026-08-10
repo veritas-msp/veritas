@@ -195,6 +195,42 @@
   pointer-events: none;
 }
 
+.canvasFieldSection {
+  background: linear-gradient(180deg, color-mix(in srgb, var(--msp-accent, #13ba8e) 8%, var(--msp-surface, #fff)) 0%, var(--msp-surface, #fff) 100%);
+  border-style: dashed;
+}
+
+.canvasSectionPreview {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.canvasSectionBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  width: fit-content;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--msp-accent, #13ba8e);
+}
+
+.canvasSectionTitle {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--msp-text, #0f172a);
+}
+
+.canvasSectionDesc {
+  margin: 0;
+  font-size: 0.78rem;
+  color: var(--msp-muted);
+  line-height: 1.35;
+}
+
 .canvasFieldMeta {
   font-size: 0.72rem;
   color: var(--msp-muted);

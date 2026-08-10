@@ -3,7 +3,7 @@ import { Icon } from "@iconify/react";
 import layout from "../EnterprisesPage/EnterpriseFormModal.module.css";
 import builderStyles from "./SalesFormBuilder.module.css";
 import FormConditionsEditor from "./FormConditionsEditor";
-import { FIELD_TYPE_OPTIONS, OPTION_BASED_FIELD_TYPES } from "../../utils/salesFormFieldTypes";
+import { FIELD_TYPE_OPTIONS, OPTION_BASED_FIELD_TYPES, isLayoutField } from "../../utils/salesFormFieldTypes";
 
 export default function SalesFormFieldPropertiesPanel({
   fieldDraft,
@@ -35,10 +35,12 @@ export default function SalesFormFieldPropertiesPanel({
     ...fieldDraft,
     ...next
   });
-  const needsOptions = OPTION_BASED_FIELD_TYPES.has(fieldDraft.fieldType);
+  const isSection = isLayoutField(fieldDraft);
+  const needsOptions = !isSection && OPTION_BASED_FIELD_TYPES.has(fieldDraft.fieldType);
+  const conditionFields = formFields.filter(field => !isLayoutField(field));
   return <aside className={builderStyles.propsPanel}>
       <div className={builderStyles.propsHead}>
-        <h4 className={builderStyles.propsTitle}>{fieldDraft.label || "Field"}</h4>
+        <h4 className={builderStyles.propsTitle}>{fieldDraft.label || (isSection ? "Section" : "Field")}</h4>
         {onClose && <button type="button" className={builderStyles.builderNavBtn} onClick={onClose} style={{
         marginTop: "0.35rem"
       }}>
@@ -58,7 +60,7 @@ export default function SalesFormFieldPropertiesPanel({
       <div className={builderStyles.propsBody}>
         {activeTab === "properties" ? <>
             <div className={layout.field}>
-              <label className={layout.label}>Label</label>
+              <label className={layout.label}>{isSection ? "Section title" : "Label"}</label>
               <input className={layout.input} value={fieldDraft.label || ""} onChange={e => patch({
             label: e.target.value
           })} />
@@ -72,7 +74,8 @@ export default function SalesFormFieldPropertiesPanel({
             <div className={layout.field}>
               <label className={layout.label}>Type</label>
               <select className={layout.input} value={fieldDraft.fieldType || "text"} onChange={e => patch({
-            fieldType: e.target.value
+            fieldType: e.target.value,
+            required: e.target.value === "section" ? false : fieldDraft.required
           })}>
                 {FIELD_TYPE_OPTIONS.map(opt => <option key={opt.value} value={opt.value}>
                     {opt.label}
@@ -80,10 +83,10 @@ export default function SalesFormFieldPropertiesPanel({
               </select>
             </div>
             <div className={layout.field}>
-              <label className={layout.label}>Placeholder</label>
+              <label className={layout.label}>{isSection ? "Description (optional)" : "Placeholder"}</label>
               <input className={layout.input} value={fieldDraft.placeholder || ""} onChange={e => patch({
             placeholder: e.target.value
-          })} />
+          })} placeholder={isSection ? "Shown under the section title" : ""} />
             </div>
             {needsOptions && <div className={layout.field}>
                 <label className={layout.label}>Options (one per line)</label>
@@ -91,19 +94,19 @@ export default function SalesFormFieldPropertiesPanel({
             optionsText: e.target.value
           })} />
               </div>}
-            <label className={layout.label}>
-              <input type="checkbox" checked={fieldDraft.required === true} onChange={e => patch({
+            {!isSection && <label className={layout.label}>
+                <input type="checkbox" checked={fieldDraft.required === true} onChange={e => patch({
             required: e.target.checked
           })} />{" "}
-              Required
-            </label>
+                Required
+              </label>}
             <label className={layout.label}>
               <input type="checkbox" checked={fieldDraft.enabled !== false} onChange={e => patch({
             enabled: e.target.checked
           })} />{" "}
               Active
             </label>
-          </> : <FormConditionsEditor title="If… then show this field" hint="Define when this field should appear based on other field values." matchMode={fieldDraft.visibilityMatchMode || "all"} conditions={fieldDraft.visibilityConditions || []} formFields={formFields} excludeFieldKey={fieldDraft.fieldKey} onChange={({
+          </> : <FormConditionsEditor title={isSection ? "If… then show this section" : "If… then show this field"} hint={isSection ? "When the section is hidden, all fields under it are hidden too." : "Define when this field should appear based on other field values."} matchMode={fieldDraft.visibilityMatchMode || "all"} conditions={fieldDraft.visibilityConditions || []} formFields={conditionFields} excludeFieldKey={fieldDraft.fieldKey} onChange={({
         matchMode,
         conditions
       }) => patch({

@@ -3,10 +3,56 @@
 /** Field types that store options (one per line in the properties panel). */
 export const OPTION_BASED_FIELD_TYPES = new Set(["select", "radio", "multiselect"]);
 
+/** Layout markers (no user input value). */
+export const LAYOUT_FIELD_TYPES = new Set(["section"]);
+
 /** Input-like types that use the ticket field shell chrome. */
 export const SHELL_FIELD_TYPES = new Set(["text", "number", "date", "email", "phone", "url", "time", "datetime", "currency"]);
 
+export function isLayoutField(fieldOrType) {
+  const type = typeof fieldOrType === "string" ? fieldOrType : fieldOrType?.fieldType;
+  return LAYOUT_FIELD_TYPES.has(String(type || ""));
+}
+
+export function isInputField(fieldOrType) {
+  return !isLayoutField(fieldOrType);
+}
+
+/**
+ * Group fields by section markers. Fields after a `section` belong to it until the next section.
+ * Order follows displayOrder.
+ */
+export function groupFieldsBySection(fields = []) {
+  const sorted = [...(Array.isArray(fields) ? fields : [])].sort((a, b) => Number(a?.displayOrder || 0) - Number(b?.displayOrder || 0));
+  const groups = [];
+  let current = {
+    section: null,
+    fields: []
+  };
+  for (const field of sorted) {
+    if (isLayoutField(field) && field.fieldType === "section") {
+      if (current.section || current.fields.length) groups.push(current);
+      current = {
+        section: field,
+        fields: []
+      };
+      continue;
+    }
+    if (isLayoutField(field)) continue;
+    current.fields.push(field);
+  }
+  if (current.section || current.fields.length) groups.push(current);
+  return groups;
+}
+
 export const PALETTE_FIELD_TYPES = [
+  // Layout
+  {
+    type: "section",
+    label: "Section",
+    icon: "mdi:view-agenda-outline",
+    group: "layout"
+  },
   // Basic
   {
     type: "text",
@@ -128,6 +174,9 @@ export const FIELD_TYPE_OPTIONS = PALETTE_FIELD_TYPES.map(({
 }));
 
 export const PALETTE_GROUPS = [{
+  id: "layout",
+  title: "Layout"
+}, {
   id: "basic",
   title: "Basic"
 }, {

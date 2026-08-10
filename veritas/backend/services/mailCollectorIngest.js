@@ -54,7 +54,7 @@ export function buildImapClientConfig(collector = {}) {
   const parsedPort = Number(collector?.port);
   const hasCustomPort = Number.isFinite(parsedPort) && parsedPort > 0;
   const rejectUnauthorized = validateCertMode !== "no-validate-cert";
-  // GLPI: /ssl → TLS immédiat (993). /tls → STARTTLS (143). Sans chiffrement → 143.
+  // /ssl → implicit TLS (993). /tls → STARTTLS (143). Plain → 143.
   const useImplicitTls = security === "ssl";
   const useStartTls = security === "tls" || security === "starttls";
   const config = {
@@ -71,7 +71,6 @@ export function buildImapClientConfig(collector = {}) {
     logger: false
   };
   if (useStartTls) {
-    // Force STARTTLS like GLPI `{host/imap/novalidate-cert/tls}`
     config.requireTLS = true;
   }
   return config;

@@ -2,7 +2,7 @@ import { useMemo } from "react";
 import { Icon } from "@iconify/react";
 import s from "./TicketCreatePage.module.css";
 import { fieldIsVisible, filterVisibleFields } from "../../utils/salesFormConditions";
-import { OPTION_BASED_FIELD_TYPES, SHELL_FIELD_TYPES } from "../../utils/salesFormFieldTypes";
+import { SHELL_FIELD_TYPES, groupFieldsBySection, isLayoutField } from "../../utils/salesFormFieldTypes";
 
 function getUserDisplayName(user) {
   return user?.ticket_helpdesk_display_name || user?.name || user?.nom || user?.username || user?.email || "";
@@ -170,6 +170,25 @@ function RatingInput({
     </div>;
 }
 
+function FieldBlock({
+  field,
+  children,
+  fieldErrors = false,
+  errorPulseTick = 0,
+  multiline = false
+}) {
+  const usesShell = SHELL_FIELD_TYPES.has(field.fieldType) || multiline;
+  return <div className={s.fieldBlock}>
+      <label className={s.fieldLabel}>
+        {field.label}
+        {field.required ? <span className={s.requiredMark}>*</span> : null}
+      </label>
+      <div data-pulse={fieldErrors ? errorPulseTick : undefined} className={`${usesShell ? s.fieldShell : ""} ${multiline ? s.fieldShellMultiline : ""} ${fieldErrors ? s.fieldShellError : ""} ${fieldErrors ? s.fieldErrorPulse : ""}`}>
+        {children}
+      </div>
+    </div>;
+}
+
 export default function SalesFormFieldsRenderer({
   fields = [],
   values = {},
@@ -181,9 +200,18 @@ export default function SalesFormFieldsRenderer({
   errorPulseTick = 0,
   className = ""
 }) {
-  const sortedFields = useMemo(() => [...fields].filter(field => field.enabled !== false).sort((a, b) => Number(a.displayOrder || 0) - Number(b.displayOrder || 0)), [fields]);
-  const visibleFields = useMemo(() => sortedFields.filter(field => fieldIsVisible(field, values)), [sortedFields, values]);
-  if (sortedFields.length === 0) {
+  const groups = useMemo(() => groupFieldsBySection(fields), [fields]);
+  const visibleGroups = useMemo(() => groups.map(group => {
+    if (group.section && !fieldIsVisible(group.section, values)) return null;
+    const visibleFields = group.fields.filter(field => !isLayoutField(field) && fieldIsVisible(field, values));
+    if (!group.section && visibleFields.length === 0) return null;
+    if (group.section && visibleFields.length === 0) return null;
+    return {
+      section: group.section,
+      fields: visibleFields
+    };
+  }).filter(Boolean), [groups, values]);
+  if (fields.length === 0) {
     return <p className={s.detailsAvailabilityTitle} style={{
       margin: 0
     }}>
@@ -273,32 +301,44 @@ export default function SalesFormFieldsRenderer({
     const inputType = field.fieldType === "number" ? "number" : field.fieldType === "date" ? "date" : field.fieldType === "time" ? "time" : field.fieldType === "datetime" ? "datetime-local" : field.fieldType === "email" ? "email" : field.fieldType === "phone" ? "tel" : field.fieldType === "url" ? "url" : "text";
     return <input type={inputType} className={s.fieldShellControl} value={value} placeholder={field.placeholder || ""} onChange={e => patchValue(field.fieldKey, e.target.value)} />;
   };
-  const textareaFields = visibleFields.filter(field => field.fieldType === "textarea");
-  const otherFields = visibleFields.filter(field => field.fieldType !== "textarea");
-  return <div className={className}>
-      {textareaFields.length > 0 && <div className={s.condensedRow} style={{
-      gridTemplateColumns: "repeat(2, minmax(0, 1fr))"
-    }}>
-          {textareaFields.map(field => <div key={field.id || field.fieldKey} className={s.fieldBlock}>
-              <label className={s.fieldLabel}>
-                {field.label}
-                {field.required ? <span className={s.requiredMark}>*</span> : null}
-              </label>
-              <div className={`${s.fieldShell} ${s.fieldShellMultiline} ${fieldErrors ? s.fieldShellError : ""}`}>{renderField(field)}</div>
-            </div>)}
-        </div>}
-
-      {otherFields.map(field => {
-      const usesShell = SHELL_FIELD_TYPES.has(field.fieldType);
-      return <div key={field.id || field.fieldKey} className={s.fieldBlock}>
-          <label className={s.fieldLabel}>
-            {field.label}
-            {field.required ? <span className={s.requiredMark}>*</span> : null}
-          </label>
-          <div data-pulse={fieldErrors ? errorPulseTick : undefined} className={`${usesShell ? s.fieldShell : ""} ${fieldErrors ? s.fieldShellError : ""} ${fieldErrors ? s.fieldErrorPulse : ""}`}>
+  const renderFieldList = list => {
+    const textareas = list.filter(field => field.fieldType === "textarea");
+    const others = list.filter(field => field.fieldType !== "textarea");
+    return <>
+        {textareas.length > 0 && <div className={s.condensedRow} style={{
+        gridTemplateColumns: "repeat(2, minmax(0, 1fr))"
+      }}>
+            {textareas.map(field => <FieldBlock key={field.id || field.fieldKey} field={field} fieldErrors={fieldErrors} errorPulseTick={errorPulseTick} multiline>
+                {renderField(field)}
+              </FieldBlock>)}
+          </div>}
+        {others.map(field => <FieldBlock key={field.id || field.fieldKey} field={field} fieldErrors={fieldErrors} errorPulseTick={errorPulseTick}>
             {renderField(field)}
-          </div>
-        </div>;
+          </FieldBlock>)}
+      </>;
+  };
+  if (visibleGroups.length === 0) {
+    return <p className={s.detailsAvailabilityTitle} style={{
+      margin: 0
+    }}>
+        No visible fields for the current answers.
+      </p>;
+  }
+  return <div className={className}>
+      {visibleGroups.map((group, index) => {
+      const key = group.section?.id || group.section?.fieldKey || `group-${index}`;
+      if (!group.section) {
+        return <div key={key} className={s.salesFormSectionUngrouped}>
+              {renderFieldList(group.fields)}
+            </div>;
+      }
+      return <section key={key} className={s.salesFormSection}>
+          <header className={s.salesFormSectionHead}>
+            <h4 className={s.salesFormSectionTitle}>{group.section.label || "Section"}</h4>
+            {group.section.placeholder ? <p className={s.salesFormSectionDesc}>{group.section.placeholder}</p> : null}
+          </header>
+          <div className={s.salesFormSectionBody}>{renderFieldList(group.fields)}</div>
+        </section>;
     })}
     </div>;
 }

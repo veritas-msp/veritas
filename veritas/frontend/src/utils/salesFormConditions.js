@@ -1,3 +1,5 @@
+import { groupFieldsBySection, isLayoutField } from "./salesFormFieldTypes";
+
 const CONDITION_OPERATORS = new Set(["equals", "not_equals", "contains", "checked", "not_checked"]);
 function normalizeFieldValue(value) {
   if (value === undefined || value === null) return "";
@@ -55,7 +57,15 @@ export function fieldIsVisible(field, fieldValues = {}) {
   return conditionsMatch(field.visibilityRules || {}, fieldValues);
 }
 export function filterVisibleFields(fields = [], fieldValues = {}) {
-  return fields.filter(field => fieldIsVisible(field, fieldValues));
+  const visible = [];
+  for (const group of groupFieldsBySection(fields)) {
+    if (group.section && !fieldIsVisible(group.section, fieldValues)) continue;
+    for (const field of group.fields) {
+      if (isLayoutField(field)) continue;
+      if (fieldIsVisible(field, fieldValues)) visible.push(field);
+    }
+  }
+  return visible;
 }
 export function describeVisibilityRules(rules = {}) {
   const normalized = normalizeVisibilityRules(rules);

@@ -6,6 +6,7 @@ import { CSS } from "@dnd-kit/utilities";
 import builderStyles from "./SalesFormBuilder.module.css";
 import { describeVisibilityRules } from "../../utils/salesFormConditions";
 import adminStyles from "./AdminTickets.module.css";
+import { isLayoutField } from "../../utils/salesFormFieldTypes";
 function FieldPreview({
   field
 }) {
@@ -13,6 +14,16 @@ function FieldPreview({
       {field.label || "No label"}
       {field.required ? " *" : null}
     </>;
+  if (field.fieldType === "section") {
+    return <div className={builderStyles.canvasSectionPreview}>
+        <div className={builderStyles.canvasSectionBadge}>
+          <Icon icon="mdi:view-agenda-outline" aria-hidden />
+          Section
+        </div>
+        <strong className={builderStyles.canvasSectionTitle}>{field.label || "Untitled section"}</strong>
+        {field.placeholder ? <p className={builderStyles.canvasSectionDesc}>{field.placeholder}</p> : <p className={builderStyles.canvasSectionDesc}>Fields below belong to this section until the next one.</p>}
+      </div>;
+  }
   if (field.fieldType === "textarea") {
     return <div className={builderStyles.canvasFieldPreview}>
         <label>{label}</label>
@@ -96,7 +107,7 @@ function SortableCanvasField({
     transform: CSS.Transform.toString(transform),
     transition
   };
-  return <div ref={setNodeRef} style={style} className={`${builderStyles.canvasField} ${selected ? builderStyles.canvasFieldSelected : ""} ${isDragging ? builderStyles.canvasFieldDragging : ""}`} onClick={() => onSelect(field)} onKeyDown={e => {
+  return <div ref={setNodeRef} style={style} className={`${builderStyles.canvasField} ${isLayoutField(field) ? builderStyles.canvasFieldSection : ""} ${selected ? builderStyles.canvasFieldSelected : ""} ${isDragging ? builderStyles.canvasFieldDragging : ""}`} onClick={() => onSelect(field)} onKeyDown={e => {
     if (e.key === "Enter" || e.key === " ") {
       e.preventDefault();
       onSelect(field);

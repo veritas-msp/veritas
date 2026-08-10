@@ -8,7 +8,7 @@ import { normalizeVisibilityRules } from "../../services/salesFormConditions.js"
 const router = express.Router();
 router.use(verifyJWT);
 const SALES_KINDS = new Set(["prestation", "installation"]);
-const FIELD_TYPES = new Set(["text", "textarea", "select", "radio", "multiselect", "checkbox", "user", "contact", "client", "number", "currency", "email", "phone", "url", "date", "time", "datetime", "rating"]);
+const FIELD_TYPES = new Set(["section", "text", "textarea", "select", "radio", "multiselect", "checkbox", "user", "contact", "client", "number", "currency", "email", "phone", "url", "date", "time", "datetime", "rating"]);
 const VISIBILITY_VALUES = new Set(["public", "assigned"]);
 function validationErrorOrNull(req, res) {
   const errors = validationResult(req);
