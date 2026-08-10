@@ -4,7 +4,7 @@ import { Icon } from "@iconify/react";
 import { FaTimes } from "react-icons/fa";
 import { toast } from "react-toastify";
 import { DndContext, DragOverlay, KeyboardSensor, PointerSensor, closestCenter, pointerWithin, rectIntersection, useSensor, useSensors } from "@dnd-kit/core";
-import { arrayMove, sortableKeyboardCoordinates } from "@dnd-kit/sortable";
+import { sortableKeyboardCoordinates } from "@dnd-kit/sortable";
 import { createSalesForm, createSalesFormField, deleteSalesFormField, updateSalesForm, updateSalesFormField } from "../../api/tickets";
 import { fetchClientsList, fetchContactsList } from "../../api/clients";
 import { fetchUsers } from "../../api/users";
@@ -21,7 +21,7 @@ import SalesFormFieldPalette, { PALETTE_FIELD_TYPES } from "./SalesFormFieldPale
 import SalesFormBuilderCanvas from "./SalesFormBuilderCanvas";
 import SalesFormFieldPropertiesPanel from "./SalesFormFieldPropertiesPanel";
 import SalesFormFieldsRenderer from "../TicketPage/SalesFormFieldsRenderer";
-import { buildFileFieldOptionsFromDraft, cloneSalesFormField, getDuplicableFieldBlock, getFileFieldConfig, isFileField } from "../../utils/salesFormFieldTypes";
+import { buildFileFieldOptionsFromDraft, cloneSalesFormField, getDuplicableFieldBlock, getFileFieldConfig, isFileField, reorderSalesFormFields } from "../../utils/salesFormFieldTypes";
 import { useAppLocale } from "../../hooks/useAppGeneralSettings";
 import { useCommonCopy } from "../../hooks/useCommonCopy";
 import { interpolate } from "../../i18n/translate";
@@ -179,6 +179,8 @@ function applyDraftToField(field, draft) {
   const payload = buildFieldApiPayload({
     ...field,
     ...draft,
+    // Canvas / DnD owns order — never let the properties draft reset it to 0.
+    displayOrder: field.displayOrder,
     optionsText: draft.optionsText,
     visibilityRules: {
       matchMode: draft.visibilityMatchMode === "any" ? "any" : "all",
@@ -487,7 +489,9 @@ export default function SalesFormModal({
       displayOrder: (index + 1) * 10
     }));
     setFields(next);
-    selectField(clones[0]);
+    // Select the reindexed clone so the draft keeps the correct displayOrder.
+    const selectedClone = next.find(field => String(field.id) === String(clones[0].id)) || clones[0];
+    selectField(selectedClone);
     const isSection = sourceField.fieldType === "section";
     toast.success(isSection ? `Section duplicated · ${clones.length} item(s)` : "Field duplicated");
   };
@@ -529,14 +533,19 @@ export default function SalesFormModal({
         return;
       }
       if (active.data.current?.source === "canvas" && active.id !== over.id) {
-        const oldIndex = fields.findIndex(field => field.id === active.id);
-        const newIndex = fields.findIndex(field => field.id === over.id);
-        if (oldIndex < 0 || newIndex < 0) return;
-        const reordered = arrayMove(fields, oldIndex, newIndex).map((field, index) => ({
-          ...field,
-          displayOrder: (index + 1) * 10
-        }));
+        const workingFields = selectedFieldId && fieldDraft ? fields.map(field => String(field.id) === String(selectedFieldId) ? applyDraftToField(field, fieldDraft) : field) : fields;
+        const reordered = reorderSalesFormFields(workingFields, active.id, over.id);
+        if (reordered === workingFields) return;
         setFields(reordered);
+        if (selectedFieldId) {
+          const selected = reordered.find(field => String(field.id) === String(selectedFieldId));
+          if (selected) {
+            setFieldDraft(prev => prev ? {
+              ...prev,
+              displayOrder: selected.displayOrder
+            } : prev);
+          }
+        }
         if (formId) {
           await Promise.all(reordered.filter(field => !String(field.id).startsWith("temp-")).map(field => updateSalesFormField(formId, field.id, {
             displayOrder: field.displayOrder
@@ -556,9 +565,11 @@ export default function SalesFormModal({
       return;
     }
     const resolvedFieldKey = String(fieldDraft.fieldKey || "").trim() || `${fieldDraft.fieldType || "text"}_${Date.now().toString(36).slice(-4)}`;
+    const currentField = fields.find(field => String(field.id) === String(selectedFieldId));
     const draftWithKey = {
       ...fieldDraft,
-      fieldKey: resolvedFieldKey
+      fieldKey: resolvedFieldKey,
+      displayOrder: currentField?.displayOrder ?? fieldDraft.displayOrder
     };
     const payload = buildFieldApiPayload({
       ...draftWithKey,

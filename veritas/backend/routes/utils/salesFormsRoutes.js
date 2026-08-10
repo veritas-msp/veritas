@@ -177,7 +177,7 @@ async function loadFormsWithFields({
      FROM v_b_sales_form_fields f
      WHERE f.form_id = ANY($1::text[])
        ${includeDisabled ? "" : "AND f.enabled = TRUE"}
-     ORDER BY f.display_order ASC, f.label ASC`, [formIds]);
+     ORDER BY f.display_order ASC, f.id ASC`, [formIds]);
   const fieldsByForm = new Map();
   (fieldsResult.rows || []).forEach(field => {
     const list = fieldsByForm.get(field.form_id) || [];
@@ -201,7 +201,7 @@ async function loadFormById(formId, {
      FROM v_b_sales_form_fields
      WHERE form_id = $1
        ${includeDisabledFields ? "" : "AND enabled = TRUE"}
-     ORDER BY display_order ASC, label ASC`, [formId]);
+     ORDER BY display_order ASC, id ASC`, [formId]);
   let assignments = null;
   if (includeAssignments) {
     const assignmentMap = await loadAssignmentsByFormIds([formId]);

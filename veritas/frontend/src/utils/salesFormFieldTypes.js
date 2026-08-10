@@ -144,6 +144,48 @@ export function getDuplicableFieldBlock(fields = [], sourceField) {
 }
 
 /**
+ * Move a field in a displayOrder-sorted list. Sections move with all their child fields.
+ */
+export function reorderSalesFormFields(fields = [], activeId, overId) {
+  const sorted = [...(Array.isArray(fields) ? fields : [])].sort((a, b) => Number(a?.displayOrder || 0) - Number(b?.displayOrder || 0));
+  const activeIdx = sorted.findIndex(field => String(field.id) === String(activeId));
+  const overIdx = sorted.findIndex(field => String(field.id) === String(overId));
+  if (activeIdx < 0 || overIdx < 0 || activeIdx === overIdx) return Array.isArray(fields) ? fields : [];
+  const active = sorted[activeIdx];
+  const withOrders = list => list.map((field, index) => ({
+    ...field,
+    displayOrder: (index + 1) * 10
+  }));
+
+  if (active?.fieldType === "section") {
+    // Build ordered blocks: each section + its fields (and any leading ungrouped fields).
+    const blocks = [];
+    let current = [];
+    for (const field of sorted) {
+      if (field.fieldType === "section") {
+        if (current.length) blocks.push(current);
+        current = [field];
+      } else {
+        current.push(field);
+      }
+    }
+    if (current.length) blocks.push(current);
+    const from = blocks.findIndex(block => block.some(field => String(field.id) === String(activeId)));
+    const to = blocks.findIndex(block => block.some(field => String(field.id) === String(overId)));
+    if (from < 0 || to < 0 || from === to) return Array.isArray(fields) ? fields : [];
+    const nextBlocks = [...blocks];
+    const [moved] = nextBlocks.splice(from, 1);
+    nextBlocks.splice(to, 0, moved);
+    return withOrders(nextBlocks.flat());
+  }
+
+  const reordered = [...sorted];
+  const [item] = reordered.splice(activeIdx, 1);
+  reordered.splice(overIdx, 0, item);
+  return withOrders(reordered);
+}
+
+/**
  * Group fields by section markers. Fields after a `section` belong to it until the next section.
  * Order follows displayOrder.
  */
