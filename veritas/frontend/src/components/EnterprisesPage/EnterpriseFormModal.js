@@ -20,6 +20,7 @@ import { buildSiteAddress, getSiteDisplayName, getSiteId, normalizeClientSites }
 import { createDefaultClientSla } from "../../utils/ticketSlaUtils";
 import ContactFormModal from "../ContactsPage/ContactFormModal";
 import ProFeaturePromoModal from "../Misc/ProFeature/ProFeaturePromoModal";
+import MultiSuggestPicker from "../AdminPage/MultiSuggestPicker";
 import { getPrimaryCommunicationValue, normalizeContactCommunications, primaryContactToFormInitial, buildContactApiPayload } from "../../utils/contactCommunications";
 import { emptyPrimaryContact, formatPrimaryContactLabel, getContactSearchText, mapContactToPrimary, buildAdditiveMembershipsForEnterprise } from "./enterpriseFormUtils";
 import styles from "./EnterpriseFormModal.module.css";
@@ -67,8 +68,6 @@ export default function EnterpriseFormModal({
   const [activeSection, setActiveSection] = useState("identity");
   const [usersLocal, setUsersLocal] = useState([]);
   const [loadingUsersLocal, setLoadingUsersLocal] = useState(false);
-  const [commercialSearch, setCommercialSearch] = useState("");
-  const [commercialDropdownOpen, setCommercialDropdownOpen] = useState(false);
   const [internalSitesModalOpen, setInternalSitesModalOpen] = useState(false);
   const [usersExtra, setUsersExtra] = useState([]);
   const [agentModalOpen, setAgentModalOpen] = useState(false);
@@ -83,7 +82,6 @@ export default function EnterpriseFormModal({
   const [contactSearch, setContactSearch] = useState("");
   const [contactDropdownOpen, setContactDropdownOpen] = useState(false);
   const [contactHighlight, setContactHighlight] = useState(0);
-  const commercialAutocompleteRef = useRef(null);
   const contactAutocompleteRef = useRef(null);
   const users = useMemo(() => {
     const base = usersProp ?? usersLocal;
@@ -165,18 +163,8 @@ export default function EnterpriseFormModal({
     };
   }, [open, isCreate, usersProp]);
   useEffect(() => {
-    if (!open || !form) return;
-    const commercialId = getCommercialId(form);
-    const user = users.find(u => u.id === commercialId);
-    setCommercialSearch(user ? getCommercialUserLabel(user) : "");
-    setCommercialDropdownOpen(false);
-  }, [open, form, users]);
-  useEffect(() => {
     if (!open) return;
     const handleClickOutside = e => {
-      if (commercialAutocompleteRef.current && !commercialAutocompleteRef.current.contains(e.target)) {
-        setCommercialDropdownOpen(false);
-      }
       if (contactAutocompleteRef.current && !contactAutocompleteRef.current.contains(e.target)) {
         setContactDropdownOpen(false);
       }
@@ -412,17 +400,9 @@ export default function EnterpriseFormModal({
   const openCreateAgentModal = useCallback(async () => {
     const profiles = await loadAgentProfiles();
     const defaultProfile = resolveAgentProfileName(profiles);
-    const search = commercialSearch.trim();
-    const draft = buildDefaultAgentDraft(defaultProfile);
-    if (search.includes("@")) {
-      draft.email = search;
-    } else if (search) {
-      draft.username = search;
-    }
-    setAgentDraft(draft);
+    setAgentDraft(buildDefaultAgentDraft(defaultProfile));
     setAgentModalOpen(true);
-    setCommercialDropdownOpen(false);
-  }, [commercialSearch, loadAgentProfiles]);
+  }, [loadAgentProfiles]);
   const closeCreateAgentModal = useCallback(() => {
     if (creatingAgent) return;
     setAgentModalOpen(false);
@@ -460,7 +440,6 @@ export default function EnterpriseFormModal({
         is_active: true
       };
       setUsersExtra(prev => [...prev.filter(user => user.id !== newUser.id), newUser]);
-      setCommercialSearch(getCommercialUserLabel(newUser));
       setCommercialId(newUser.id);
       onUserCreated?.(newUser);
       toast.success(copy.toasts.agentCreated);
@@ -472,14 +451,11 @@ export default function EnterpriseFormModal({
       setCreatingAgent(false);
     }
   }, [agentDraft, agentProfiles, loadAgentProfiles, onUserCreated, setCommercialId, copy]);
-  const filteredCommercialUsers = useMemo(() => {
-    const query = commercialSearch.trim().toLowerCase();
-    if (!query) return users.slice(0, 12);
-    return users.filter(user => {
-      const label = `${user.username || ""} ${user.email || ""}`.toLowerCase();
-      return label.includes(query);
-    }).slice(0, 12);
-  }, [commercialSearch, users]);
+  const commercialUserOptions = useMemo(() => users.map(user => ({
+    id: user.id,
+    label: getCommercialUserLabel(user) || String(user.id),
+    hint: user.username && user.email ? `${user.email}${user.profile ? ` · ${user.profile}` : ""}` : user.profile || user.email || ""
+  })), [users]);
   const activeModulesCount = useMemo(() => Object.values(form?.modules || {}).filter(Boolean).length, [form?.modules]);
   const sectionMeta = useMemo(() => {
     const contact = form?.primaryContact || {};
@@ -726,30 +702,16 @@ export default function EnterpriseFormModal({
               </div>
             </div>
             <div className={styles.field}>
-              <label className={styles.label} htmlFor="enterprise-form-commercial">
-                {f.commercial}
-              </label>
-              <div className={styles.autocomplete} ref={commercialAutocompleteRef}>
-                  <input id="enterprise-form-commercial" type="text" className={styles.input} placeholder={f.commercialSearchPlaceholder} value={commercialSearch} onChange={e => {
-                setCommercialSearch(e.target.value);
-                setCommercialDropdownOpen(true);
-                setCommercialId("");
-              }} onFocus={() => setCommercialDropdownOpen(true)} disabled={loadingUsers} autoComplete="off" />
-                  {commercialDropdownOpen && <div className={styles.dropdown}>
-                      {filteredCommercialUsers.length === 0 ? <div className={styles.dropdownEmpty}>{f.noAgentFound}</div> : filteredCommercialUsers.map(user => <button key={user.id} type="button" className={`${styles.dropdownOption} ${commercialId === user.id ? styles.dropdownOptionSelected : ""}`} onClick={() => {
-                  setCommercialSearch(getCommercialUserLabel(user));
-                  setCommercialId(user.id);
-                  setCommercialDropdownOpen(false);
-                }}>
-                            {getCommercialUserLabel(user)}
-                            {user.email ? ` · ${user.email}` : ""}
-                          </button>)}
-                      <button type="button" className={styles.dropdownCreate} onClick={openCreateAgentModal} disabled={loadingAgentProfiles || creatingAgent}>
-                        <Icon icon="mdi:account-plus-outline" aria-hidden />
-                        {f.createAgent}
-                      </button>
-                    </div>}
-                </div>
+              <div className={styles.commercialFieldHead}>
+                <label className={styles.label} htmlFor="enterprise-form-commercial">
+                  {f.commercial}
+                </label>
+                <button type="button" className={styles.createAgentBtn} onClick={openCreateAgentModal} disabled={loadingAgentProfiles || creatingAgent || loadingUsers}>
+                  <Icon icon="mdi:account-plus-outline" aria-hidden />
+                  {f.createAgent}
+                </button>
+              </div>
+              <MultiSuggestPicker singleSelect maxResults={8} inputId="enterprise-form-commercial" placeholder={loadingUsers ? f.loadingAgents : f.commercialSearchPlaceholder} options={commercialUserOptions} selectedIds={commercialId ? [commercialId] : []} emptyHint={f.noAgentSelected} emptyResultsHint={f.noAgentFound} onChange={ids => setCommercialId(ids[0] ? String(ids[0]) : "")} />
             </div>
           </>;
       case "modules":

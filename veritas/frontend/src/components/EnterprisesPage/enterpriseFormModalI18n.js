@@ -54,7 +54,9 @@ const COPY = {
       contractEnd: "Date d'expiration",
       commercial: "Référent commercial",
       commercialSearchPlaceholder: "Rechercher un agent…",
+      noAgentSelected: "Aucun agent sélectionné",
       noAgentFound: "Aucun agent trouvé",
+      loadingAgents: "Chargement des agents…",
       createAgent: "Créer un agent"
     },
     sections: {
@@ -181,7 +183,9 @@ const COPY = {
       contractEnd: "Expiration date",
       commercial: "Account manager",
       commercialSearchPlaceholder: "Search an agent…",
+      noAgentSelected: "No agent selected",
       noAgentFound: "No agent found",
+      loadingAgents: "Loading agents…",
       createAgent: "Create agent"
     },
     sections: {
@@ -308,7 +312,9 @@ const COPY = {
       contractEnd: "Ablaufdatum",
       commercial: "Vertriebsreferent",
       commercialSearchPlaceholder: "Agent suchen…",
+      noAgentSelected: "Kein Agent ausgewählt",
       noAgentFound: "Kein Agent gefunden",
+      loadingAgents: "Agenten werden geladen…",
       createAgent: "Agent anlegen"
     },
     sections: {
@@ -435,7 +441,9 @@ const COPY = {
       contractEnd: "Data scadenza",
       commercial: "Referente commerciale",
       commercialSearchPlaceholder: "Cerca un agente…",
+      noAgentSelected: "Nessun agente selezionato",
       noAgentFound: "Nessun agente trovato",
+      loadingAgents: "Caricamento agenti…",
       createAgent: "Crea agente"
     },
     sections: {
@@ -562,7 +570,9 @@ const COPY = {
       contractEnd: "Fecha de vencimiento",
       commercial: "Referente comercial",
       commercialSearchPlaceholder: "Buscar un agente…",
+      noAgentSelected: "Ningún agente seleccionado",
       noAgentFound: "Ningún agente encontrado",
+      loadingAgents: "Cargando agentes…",
       createAgent: "Crear agente"
     },
     sections: {
