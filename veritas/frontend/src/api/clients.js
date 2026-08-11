@@ -457,6 +457,27 @@ export async function updateClient(id, client) {
   const updatedClient = await res.json();
   return updatedClient;
 }
+export async function bulkUpdateClients({
+  clientIds = [],
+  updates = {}
+} = {}) {
+  const res = await fetch(`${BASE_URL}/bulk`, {
+    method: "POST",
+    credentials: "include",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({
+      clientIds,
+      updates
+    })
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    throw new Error(data.details || data.error || "Error updating companies");
+  }
+  return data;
+}
 export async function deleteClient(id, {
   force = false
 } = {}) {
@@ -1493,6 +1514,29 @@ export async function deleteContact(contactId) {
     throw new Error(errorMessage);
   }
   return await res.json();
+}
+export async function bulkUpdateContacts({
+  contactIds = [],
+  action = "update",
+  updates = {}
+} = {}) {
+  const res = await fetch(`${API_BASE_URL}/contacts/bulk`, {
+    method: "POST",
+    credentials: "include",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({
+      contactIds,
+      action,
+      updates
+    })
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    throw new Error(data.details || data.error || "Error updating contacts");
+  }
+  return data;
 }
 export async function addContactMembership(contactId, {
   client_id,

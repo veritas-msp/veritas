@@ -8,6 +8,8 @@ import { FaTimes, FaChevronLeft, FaChevronRight, FaPlus } from "react-icons/fa";
 import { Icon } from "@iconify/react";
 import SmartTooltip from "../SmartTooltip";
 import ContactModal from "./ContactModal";
+import ContactBulkEditModal from "./ContactBulkEditModal";
+import ContactBulkDeleteModal from "./ContactBulkDeleteModal";
 import TicketColumnsModal from "../TicketPage/TicketColumnsModal";
 import { useDefaultPageSize } from "../../hooks/useDefaultPageSize";
 import { useCommonCopy } from "../../hooks/useCommonCopy";
@@ -67,11 +69,17 @@ export default function ContactPage({
   const canCreateContact = can("contacts.create");
   const canExportContacts = can("contacts.export");
   const canPublicViews = can("contacts.public_views");
+  const canBulkEdit = can("contacts_detail.edit");
+  const canBulkDelete = can("contacts_detail.delete");
+  const canBulkSelect = canBulkEdit || canBulkDelete;
   const pageCopy = useMemo(() => getContactPageCopy(locale), [locale]);
   const pageCopyRef = useRef(pageCopy);
   pageCopyRef.current = pageCopy;
   const [statusFilters, setStatusFilters] = useState(new Set());
   const [portalFilter, setPortalFilter] = useState(false);
+  const [selectedIds, setSelectedIds] = useState(() => new Set());
+  const [bulkModalOpen, setBulkModalOpen] = useState(false);
+  const [bulkDeleteModalOpen, setBulkDeleteModalOpen] = useState(false);
   const [showContactModal, setShowContactModal] = useState(false);
   const [contactModalInitial, setContactModalInitial] = useState(null);
   const [columnsModalOpen, setColumnsModalOpen] = useState(false);
@@ -392,6 +400,76 @@ export default function ContactPage({
   useEffect(() => {
     if (currentPage > totalPages) setCurrentPage(totalPages);
   }, [currentPage, totalPages]);
+  useEffect(() => {
+    setSelectedIds(prev => {
+      if (!prev.size) return prev;
+      const valid = new Set(filteredAndSortedContacts.map(contact => String(contact.id)));
+      const next = [...prev].filter(id => valid.has(String(id)));
+      return next.length === prev.size ? prev : new Set(next);
+    });
+  }, [filteredAndSortedContacts]);
+  const pageIds = useMemo(() => paginatedContacts.map(contact => String(contact.id)), [paginatedContacts]);
+  const selectedCount = selectedIds.size;
+  const allOnPageSelected = pageIds.length > 0 && pageIds.every(id => selectedIds.has(id));
+  const clearSelection = () => setSelectedIds(new Set());
+  const toggleContactSelection = (contactId, checked) => {
+    const id = String(contactId);
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      if (checked) next.add(id);else next.delete(id);
+      return next;
+    });
+  };
+  const toggleSelectAllOnPage = () => {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      if (allOnPageSelected) {
+        pageIds.forEach(id => next.delete(id));
+      } else {
+        pageIds.forEach(id => next.add(id));
+      }
+      return next;
+    });
+  };
+  const refreshContactsSilent = () => {
+    const refreshController = new AbortController();
+    loadControllerRef.current?.abort();
+    loadControllerRef.current = refreshController;
+    loadData(refreshController.signal, {
+      silent: true
+    });
+  };
+  const handleBulkEditSuccess = result => {
+    const updated = Number(result?.updated) || 0;
+    const failed = Array.isArray(result?.failed) ? result.failed.length : 0;
+    if (updated > 0 && failed === 0) {
+      toast.success(pageCopy.formatBulkSuccess(updated));
+    } else if (updated > 0 && failed > 0) {
+      toast.warn(pageCopy.formatBulkPartial(updated, failed));
+    } else {
+      toast.error(pageCopy.toasts.bulkError);
+    }
+    clearSelection();
+    refreshContactsSilent();
+  };
+  const handleBulkDeleteSuccess = result => {
+    const deleted = Number(result?.deleted) || 0;
+    const failed = Array.isArray(result?.failed) ? result.failed.length : 0;
+    if (deleted > 0 && failed === 0) {
+      toast.success(pageCopy.formatBulkDeleteSuccess(deleted));
+    } else if (deleted > 0 && failed > 0) {
+      toast.warn(pageCopy.formatBulkPartial(deleted, failed));
+    } else {
+      toast.error(pageCopy.toasts.bulkError);
+    }
+    clearSelection();
+    refreshContactsSilent();
+  };
+  const openBulkEditModal = async () => {
+    const ok = await ensureClientsLoaded();
+    if (!ok) return;
+    setBulkModalOpen(true);
+  };
   const portfolioTotal = contacts.length;
   const toggleStatusFilter = statusKey => {
     setStatusFilters(prev => {
@@ -599,11 +677,33 @@ export default function ContactPage({
               {pageCopy.newContact}
             </button> : null}
           </div> : <div className={layout.listBody}>
+            {selectedCount > 0 && canBulkSelect ? <div className={layout.bulkBar}>
+                <div className={layout.bulkInfo}>
+                  <strong>{selectedCount}</strong>
+                  <span>{selectedCount > 1 ? pageCopy.bulk.selectedPlural : pageCopy.bulk.selected}</span>
+                </div>
+                <div className={layout.bulkActions}>
+                  {canBulkEdit ? <button type="button" className={layout.bulkBtn} onClick={openBulkEditModal}>
+                      <Icon icon="mdi:pencil-outline" />
+                      {pageCopy.bulk.edit}
+                    </button> : null}
+                  {canBulkDelete ? <button type="button" className={layout.bulkBtn} onClick={() => setBulkDeleteModalOpen(true)}>
+                      <Icon icon="mdi:delete-outline" />
+                      {pageCopy.bulk.delete}
+                    </button> : null}
+                  <button type="button" className={layout.bulkBtnGhost} onClick={clearSelection}>
+                    {pageCopy.bulk.clearSelection}
+                  </button>
+                </div>
+              </div> : null}
             <div className={layout.listArea}>
               <div className={layout.dataTableWrap}>
                 <table className={layout.dataTable}>
                   <thead>
                     <tr>
+                      {canBulkSelect ? <th className={layout.checkboxCell}>
+                          <input type="checkbox" className={layout.rowCheckbox} checked={allOnPageSelected} onChange={toggleSelectAllOnPage} onClick={e => e.stopPropagation()} aria-label={pageCopy.bulk.selectAll} />
+                        </th> : null}
                       {tableColumns.map(columnId => {
                         const sortKey = TICKET_TABLE_COLUMN_SORT_KEYS[columnId];
                         const labelKey = CONTACTS_COLUMN_LABEL_KEYS[columnId];
@@ -628,7 +728,10 @@ export default function ContactPage({
                       const tags = contact.tags || [];
                       const visibleTags = tags.slice(0, 2);
                       const hiddenTagCount = Math.max(0, tags.length - visibleTags.length);
-                      return <tr key={contact.id} className={layout.dataTableRow} onClick={() => openContact(contact)} onAuxClick={e => {
+                      const contactIdStr = String(contact.id);
+                      const isSelected = selectedIds.has(contactIdStr);
+                      const rowName = getContactDisplayName(contact);
+                      return <tr key={contact.id} className={`${layout.dataTableRow} ${isSelected ? layout.selectedRow : ""}`} onClick={() => openContact(contact)} onAuxClick={e => {
                         if (e.button === 1) {
                           e.preventDefault();
                           openContact(contact, true);
@@ -639,6 +742,9 @@ export default function ContactPage({
                           openContact(contact);
                         }
                       }} role="button" tabIndex={0}>
+                          {canBulkSelect ? <td className={layout.checkboxCell} onClick={e => e.stopPropagation()}>
+                              <input type="checkbox" className={layout.rowCheckbox} checked={isSelected} onChange={e => toggleContactSelection(contact.id, e.target.checked)} aria-label={pageCopy.formatBulkSelectRow(rowName)} />
+                            </td> : null}
                           {tableColumns.map(columnId => {
                             if (columnId === "contact") {
                               return <td key={columnId} className={layout.colCompany}>
@@ -777,6 +883,8 @@ export default function ContactPage({
       </div>
 
       {showContactModal && <ContactModal initialContact={contactModalInitial} onClose={handleContactModalClose} onSuccess={handleContactSaved} clients={clients} />}
+      <ContactBulkEditModal open={bulkModalOpen} onClose={() => setBulkModalOpen(false)} contactIds={[...selectedIds]} clients={clients} onSuccess={handleBulkEditSuccess} />
+      <ContactBulkDeleteModal open={bulkDeleteModalOpen} onClose={() => setBulkDeleteModalOpen(false)} contactIds={[...selectedIds]} onSuccess={handleBulkDeleteSuccess} />
       <TicketColumnsModal
         open={columnsModalOpen}
         onClose={() => setColumnsModalOpen(false)}

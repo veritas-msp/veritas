@@ -12,6 +12,7 @@ import { assertCommunityClientPortalLimit, assertCommunityContactsLimit, getActi
 import { buildImpersonationClientPayload, IMPERSONATOR_COOKIE, setImpersonatorCookie, setSessionCookie, signSessionToken } from '../../utils/authSession.js';
 import { requireRole } from '../../middleware/roles.js';
 import { validatePortalPassword, PORTAL_PASSWORD_MIN_LENGTH } from '../../utils/passwordPolicy.js';
+import { userHasAllPermissions } from '../../services/permissionService.js';
 import {
   addMembership,
   attachMembershipsToContacts,
@@ -528,6 +529,137 @@ router.get('/:id', async (req, res) => {
     });
   }
 });
+
+router.post('/bulk', async (req, res) => {
+  try {
+    const action = String(req.body?.action || "update").trim().toLowerCase();
+    const rawIds = Array.isArray(req.body?.contactIds) ? req.body.contactIds : [];
+    const contactIds = [...new Set(rawIds.map(id => Number.parseInt(id, 10)).filter(id => Number.isFinite(id) && id > 0))];
+    if (contactIds.length === 0) {
+      return res.status(400).json({
+        error: "No contacts selected"
+      });
+    }
+    if (contactIds.length > 200) {
+      return res.status(400).json({
+        error: "Too many contacts (max 200)"
+      });
+    }
+    if (action === "delete") {
+      if (!(await userHasAllPermissions(req.user, ["contacts_detail.delete"]))) {
+        return res.status(403).json({
+          error: "You do not have permission to perform this action.",
+          code: "PERMISSION_DENIED"
+        });
+      }
+      const deletedIds = [];
+      const failed = [];
+      for (const id of contactIds) {
+        try {
+          const existing = await pool.query(`SELECT client_id FROM v_b_contacts WHERE id = $1`, [id]);
+          if (!existing.rows[0]) {
+            failed.push({
+              id,
+              error: "Contact not found"
+            });
+            continue;
+          }
+          await deletePortalUserForContact(id).catch(() => {});
+          const result = await pool.query(`DELETE FROM v_b_contacts WHERE id = $1 RETURNING id`, [id]);
+          if (!result.rows[0]) {
+            failed.push({
+              id,
+              error: "Contact not found"
+            });
+            continue;
+          }
+          invalidateContactsListCache(existing.rows[0]?.client_id || null);
+          deletedIds.push(id);
+        } catch (err) {
+          failed.push({
+            id,
+            error: err.message || "Delete failed"
+          });
+        }
+      }
+      invalidateContactsListCache(null);
+      return res.json({
+        updated: 0,
+        updatedIds: [],
+        deleted: deletedIds.length,
+        deletedIds,
+        failed
+      });
+    }
+    if (!(await userHasAllPermissions(req.user, ["contacts_detail.edit"]))) {
+      return res.status(403).json({
+        error: "You do not have permission to perform this action.",
+        code: "PERMISSION_DENIED"
+      });
+    }
+    const updates = req.body?.updates && typeof req.body.updates === "object" && !Array.isArray(req.body.updates) ? req.body.updates : {};
+    const clientId = updates.clientId != null ? Number.parseInt(updates.clientId, 10) : NaN;
+    if (!Number.isFinite(clientId) || clientId <= 0) {
+      return res.status(400).json({
+        error: "No company selected"
+      });
+    }
+    const membershipMode = String(updates.membershipMode || "replace").trim().toLowerCase() === "add" ? "add" : "replace";
+    const clientExists = await pool.query(`SELECT id FROM v_b_clients WHERE id = $1 LIMIT 1`, [clientId]);
+    if (!clientExists.rows[0]) {
+      return res.status(400).json({
+        error: "Company not found"
+      });
+    }
+    const updatedIds = [];
+    const failed = [];
+    for (const id of contactIds) {
+      try {
+        const existing = await pool.query(`SELECT id FROM v_b_contacts WHERE id = $1 LIMIT 1`, [id]);
+        if (!existing.rows[0]) {
+          failed.push({
+            id,
+            error: "Contact not found"
+          });
+          continue;
+        }
+        if (membershipMode === "add") {
+          await addMembership(id, {
+            clientId,
+            isPrimary: false
+          });
+        } else {
+          await replaceMemberships(id, [{
+            client_id: clientId
+          }], {
+            preferredHomeClientId: clientId
+          });
+        }
+        updatedIds.push(id);
+      } catch (err) {
+        failed.push({
+          id,
+          error: err.message || "Update failed"
+        });
+      }
+    }
+    invalidateContactsListCache(null);
+    return res.json({
+      updated: updatedIds.length,
+      updatedIds,
+      deleted: 0,
+      deletedIds: [],
+      failed
+    });
+  } catch (err) {
+    console.error("Error bulk updating contacts:", err);
+    return res.status(500).json({
+      error: "Error updating contacts",
+      details: err.message
+    });
+  }
+});
+
 router.post('/', verifyJWT, requirePermission('contacts.create'), async (req, res) => {
   try {
     await assertCommunityContactsLimit(1);

@@ -8,6 +8,7 @@ import { Icon } from "@iconify/react";
 import SmartTooltip from "../SmartTooltip";
 import ClientModal from "../AdminPage/ClientSkeleton/ClientModal";
 import TicketColumnsModal from "../TicketPage/TicketColumnsModal";
+import EnterpriseBulkEditModal from "./EnterpriseBulkEditModal";
 import { useContractModuleOptions } from "../../hooks/useContractModuleOptions";
 import { useDefaultPageSize } from "../../hooks/useDefaultPageSize";
 import { useAppFormatters, useAppLocale } from "../../hooks/useAppGeneralSettings";
@@ -58,6 +59,7 @@ export default function EnterprisesPage({
   const canCreateEnterprise = can("clients.create");
   const canExportEnterprises = can("clients.export");
   const canPublicViews = can("clients.public_views");
+  const canBulkEdit = can("clients_detail.edit");
   const copy = useMemo(() => getEnterprisesPageCopy(locale), [locale]);
   const copyRef = useRef(copy);
   copyRef.current = copy;
@@ -72,6 +74,8 @@ export default function EnterprisesPage({
   const [sortBy, setSortBy] = useState("name");
   const [sortOrder, setSortOrder] = useState("asc");
   const [statusFilters, setStatusFilters] = useState(new Set());
+  const [selectedIds, setSelectedIds] = useState(() => new Set());
+  const [bulkModalOpen, setBulkModalOpen] = useState(false);
   const [showClientModal, setShowClientModal] = useState(false);
   const [clientModalInitial, setClientModalInitial] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
@@ -369,6 +373,52 @@ export default function EnterprisesPage({
   useEffect(() => {
     if (currentPage > totalPages) setCurrentPage(totalPages);
   }, [currentPage, totalPages]);
+  useEffect(() => {
+    setSelectedIds(prev => {
+      if (!prev.size) return prev;
+      const valid = new Set(filteredAndSortedClients.map(client => String(client.id)));
+      const next = [...prev].filter(id => valid.has(String(id)));
+      return next.length === prev.size ? prev : new Set(next);
+    });
+  }, [filteredAndSortedClients]);
+  const pageIds = useMemo(() => paginatedClients.map(client => String(client.id)), [paginatedClients]);
+  const selectedCount = selectedIds.size;
+  const allOnPageSelected = pageIds.length > 0 && pageIds.every(id => selectedIds.has(id));
+  const clearSelection = () => setSelectedIds(new Set());
+  const toggleClientSelection = (clientId, checked) => {
+    const id = String(clientId);
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      if (checked) next.add(id);else next.delete(id);
+      return next;
+    });
+  };
+  const toggleSelectAllOnPage = () => {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      if (allOnPageSelected) {
+        pageIds.forEach(id => next.delete(id));
+      } else {
+        pageIds.forEach(id => next.add(id));
+      }
+      return next;
+    });
+  };
+  const handleBulkSuccess = result => {
+    const updated = Number(result?.updated) || 0;
+    const failed = Array.isArray(result?.failed) ? result.failed.length : 0;
+    if (updated > 0 && failed === 0) {
+      toast.success(copy.formatBulkSuccess(updated));
+    } else if (updated > 0 && failed > 0) {
+      toast.warn(copy.formatBulkPartial(updated, failed));
+    } else {
+      toast.error(copy.toasts.bulkError);
+    }
+    clearSelection();
+    loadClients({
+      silent: true
+    });
+  };
   const portfolioTotal = clients.length;
   const toggleStatusFilter = statusKey => {
     setStatusFilters(prev => {
@@ -563,11 +613,29 @@ export default function EnterprisesPage({
               {copy.newEnterprise}
             </button> : null}
           </div> : <div className={styles.listBody}>
+            {selectedCount > 0 && canBulkEdit ? <div className={styles.bulkBar}>
+                <div className={styles.bulkInfo}>
+                  <strong>{selectedCount}</strong>
+                  <span>{selectedCount > 1 ? copy.bulk.selectedPlural : copy.bulk.selected}</span>
+                </div>
+                <div className={styles.bulkActions}>
+                  <button type="button" className={styles.bulkBtn} onClick={() => setBulkModalOpen(true)}>
+                    <Icon icon="mdi:pencil-outline" />
+                    {copy.bulk.edit}
+                  </button>
+                  <button type="button" className={styles.bulkBtnGhost} onClick={clearSelection}>
+                    {copy.bulk.clearSelection}
+                  </button>
+                </div>
+              </div> : null}
             <div className={styles.listArea}>
               <div className={styles.dataTableWrap}>
                 <table className={styles.dataTable}>
                   <thead>
                     <tr>
+                      {canBulkEdit ? <th className={styles.checkboxCell}>
+                          <input type="checkbox" className={styles.rowCheckbox} checked={allOnPageSelected} onChange={toggleSelectAllOnPage} onClick={e => e.stopPropagation()} aria-label={copy.bulk.selectAll} />
+                        </th> : null}
                       {tableColumns.map(columnId => {
                         const sortKey = TICKET_TABLE_COLUMN_SORT_KEYS[columnId];
                         const labelKey = ENTERPRISES_COLUMN_HEADERS[columnId];
@@ -589,7 +657,10 @@ export default function EnterprisesPage({
                       const tags = client.tags || [];
                       const visibleTags = tags.slice(0, 2);
                       const hiddenTagCount = Math.max(0, tags.length - visibleTags.length);
-                      return <tr key={client.id} className={styles.dataTableRow} onClick={() => openClient(client)} onAuxClick={e => {
+                      const clientIdStr = String(client.id);
+                      const isSelected = selectedIds.has(clientIdStr);
+                      const rowName = getClientNameWithoutCode(client) || client.name || clientIdStr;
+                      return <tr key={client.id} className={`${styles.dataTableRow} ${isSelected ? styles.selectedRow : ""}`} onClick={() => openClient(client)} onAuxClick={e => {
                         if (e.button === 1) {
                           e.preventDefault();
                           openClient(client, true);
@@ -600,6 +671,9 @@ export default function EnterprisesPage({
                           openClient(client);
                         }
                       }} role="button" tabIndex={0}>
+                          {canBulkEdit ? <td className={styles.checkboxCell} onClick={e => e.stopPropagation()}>
+                              <input type="checkbox" className={styles.rowCheckbox} checked={isSelected} onChange={e => toggleClientSelection(client.id, e.target.checked)} aria-label={copy.formatBulkSelectRow(rowName)} />
+                            </td> : null}
                           {tableColumns.map(columnId => {
                             if (columnId === "client_number") {
                               return <td key={columnId} className={styles.colClientNumber}>
@@ -713,6 +787,7 @@ export default function EnterprisesPage({
       setShowClientModal(false);
       setClientModalInitial(null);
     }} onSaved={() => window.dispatchEvent(new Event("refreshEnterprises"))} />, document.getElementById("modal-root") || document.body)}
+      <EnterpriseBulkEditModal open={bulkModalOpen} onClose={() => setBulkModalOpen(false)} clientIds={[...selectedIds]} onSuccess={handleBulkSuccess} />
       <TicketColumnsModal
         open={columnsModalOpen}
         onClose={() => setColumnsModalOpen(false)}

@@ -115,7 +115,40 @@ const ENTERPRISES_COPY = {
       save: "Enregistrer"
     },
     toasts: {
-      loadColumns: "Erreur lors du chargement des colonnes"
+      loadColumns: "Erreur lors du chargement des colonnes",
+      bulkSuccess: "{count} entreprise mise à jour",
+      bulkSuccessPlural: "{count} entreprises mises à jour",
+      bulkPartial: "{updated} mises à jour · {failed} échec(s)",
+      bulkError: "Erreur lors de la mise à jour en masse"
+    },
+    bulk: {
+      selected: "entreprise sélectionnée",
+      selectedPlural: "entreprises sélectionnées",
+      edit: "Modifier",
+      clearSelection: "Effacer la sélection",
+      selectAll: "Tout sélectionner sur la page",
+      selectRow: "Sélectionner {name}"
+    },
+    bulkModal: {
+      title: "Modifier les entreprises",
+      selectedOne: "1 entreprise sélectionnée",
+      selectedMany: "{count} entreprises sélectionnées",
+      editCommercial: "Référent commercial",
+      editDebut: "Date de début du contrat",
+      editExpiration: "Date de fin du contrat",
+      editModules: "Modules du contrat",
+      modulesHint: "Les modules ci-dessous remplaceront ceux des entreprises sélectionnées.",
+      commercialSearchPlaceholder: "Rechercher un agent…",
+      loadingAgents: "Chargement des agents…",
+      noAgentSelected: "Aucun agent sélectionné",
+      noAgentFound: "Aucun agent trouvé",
+      apply: "Appliquer",
+      saving: "Application…",
+      submitError: "Impossible d'appliquer les modifications",
+      validation: {
+        noField: "Activez au moins un champ à modifier.",
+        noCommercial: "Sélectionnez un référent commercial."
+      }
     }
   },
   en: {
@@ -209,7 +242,40 @@ const ENTERPRISES_COPY = {
       save: "Save"
     },
     toasts: {
-      loadColumns: "Error loading columns"
+      loadColumns: "Error loading columns",
+      bulkSuccess: "{count} company updated",
+      bulkSuccessPlural: "{count} companies updated",
+      bulkPartial: "{updated} updated · {failed} failed",
+      bulkError: "Error while bulk updating companies"
+    },
+    bulk: {
+      selected: "company selected",
+      selectedPlural: "companies selected",
+      edit: "Edit",
+      clearSelection: "Clear selection",
+      selectAll: "Select all on page",
+      selectRow: "Select {name}"
+    },
+    bulkModal: {
+      title: "Edit companies",
+      selectedOne: "1 company selected",
+      selectedMany: "{count} companies selected",
+      editCommercial: "Account manager",
+      editDebut: "Contract start date",
+      editExpiration: "Contract end date",
+      editModules: "Contract modules",
+      modulesHint: "The modules below will replace those of the selected companies.",
+      commercialSearchPlaceholder: "Search for an agent…",
+      loadingAgents: "Loading agents…",
+      noAgentSelected: "No agent selected",
+      noAgentFound: "No agent found",
+      apply: "Apply",
+      saving: "Applying…",
+      submitError: "Unable to apply changes",
+      validation: {
+        noField: "Enable at least one field to update.",
+        noCommercial: "Select an account manager."
+      }
     }
   },
   de: {
@@ -303,7 +369,40 @@ const ENTERPRISES_COPY = {
       save: "Speichern"
     },
     toasts: {
-      loadColumns: "Fehler beim Laden der Spalten"
+      loadColumns: "Fehler beim Laden der Spalten",
+      bulkSuccess: "{count} Unternehmen aktualisiert",
+      bulkSuccessPlural: "{count} Unternehmen aktualisiert",
+      bulkPartial: "{updated} aktualisiert · {failed} fehlgeschlagen",
+      bulkError: "Fehler bei der Massenaktualisierung"
+    },
+    bulk: {
+      selected: "Unternehmen ausgewählt",
+      selectedPlural: "Unternehmen ausgewählt",
+      edit: "Bearbeiten",
+      clearSelection: "Auswahl löschen",
+      selectAll: "Alle auf der Seite auswählen",
+      selectRow: "{name} auswählen"
+    },
+    bulkModal: {
+      title: "Unternehmen bearbeiten",
+      selectedOne: "1 Unternehmen ausgewählt",
+      selectedMany: "{count} Unternehmen ausgewählt",
+      editCommercial: "Vertriebsreferent",
+      editDebut: "Vertragsbeginn",
+      editExpiration: "Vertragsende",
+      editModules: "Vertragsmodule",
+      modulesHint: "Die untenstehenden Module ersetzen die Module der ausgewählten Unternehmen.",
+      commercialSearchPlaceholder: "Agent suchen…",
+      loadingAgents: "Agenten werden geladen…",
+      noAgentSelected: "Kein Agent ausgewählt",
+      noAgentFound: "Kein Agent gefunden",
+      apply: "Anwenden",
+      saving: "Wird angewendet…",
+      submitError: "Änderungen konnten nicht angewendet werden",
+      validation: {
+        noField: "Aktivieren Sie mindestens ein Feld.",
+        noCommercial: "Wählen Sie einen Vertriebsreferenten."
+      }
     }
   },
   it: {
@@ -397,7 +496,40 @@ const ENTERPRISES_COPY = {
       save: "Salva"
     },
     toasts: {
-      loadColumns: "Errore durante il caricamento delle colonne"
+      loadColumns: "Errore durante il caricamento delle colonne",
+      bulkSuccess: "{count} azienda aggiornata",
+      bulkSuccessPlural: "{count} aziende aggiornate",
+      bulkPartial: "{updated} aggiornate · {failed} non riuscite",
+      bulkError: "Errore durante l'aggiornamento in blocco"
+    },
+    bulk: {
+      selected: "azienda selezionata",
+      selectedPlural: "aziende selezionate",
+      edit: "Modifica",
+      clearSelection: "Cancella selezione",
+      selectAll: "Seleziona tutto nella pagina",
+      selectRow: "Seleziona {name}"
+    },
+    bulkModal: {
+      title: "Modifica aziende",
+      selectedOne: "1 azienda selezionata",
+      selectedMany: "{count} aziende selezionate",
+      editCommercial: "Referente commerciale",
+      editDebut: "Data inizio contratto",
+      editExpiration: "Data fine contratto",
+      editModules: "Moduli contratto",
+      modulesHint: "I moduli sotto sostituiranno quelli delle aziende selezionate.",
+      commercialSearchPlaceholder: "Cerca un agente…",
+      loadingAgents: "Caricamento agenti…",
+      noAgentSelected: "Nessun agente selezionato",
+      noAgentFound: "Nessun agente trovato",
+      apply: "Applica",
+      saving: "Applicazione…",
+      submitError: "Impossibile applicare le modifiche",
+      validation: {
+        noField: "Attiva almeno un campo da modificare.",
+        noCommercial: "Seleziona un referente commerciale."
+      }
     }
   },
   es: {
@@ -491,7 +623,40 @@ const ENTERPRISES_COPY = {
       save: "Guardar"
     },
     toasts: {
-      loadColumns: "Error al cargar las columnas"
+      loadColumns: "Error al cargar las columnas",
+      bulkSuccess: "{count} empresa actualizada",
+      bulkSuccessPlural: "{count} empresas actualizadas",
+      bulkPartial: "{updated} actualizadas · {failed} fallidas",
+      bulkError: "Error al actualizar empresas en masa"
+    },
+    bulk: {
+      selected: "empresa seleccionada",
+      selectedPlural: "empresas seleccionadas",
+      edit: "Editar",
+      clearSelection: "Borrar selección",
+      selectAll: "Seleccionar todo en la página",
+      selectRow: "Seleccionar {name}"
+    },
+    bulkModal: {
+      title: "Editar empresas",
+      selectedOne: "1 empresa seleccionada",
+      selectedMany: "{count} empresas seleccionadas",
+      editCommercial: "Referente comercial",
+      editDebut: "Fecha de inicio del contrato",
+      editExpiration: "Fecha de fin del contrato",
+      editModules: "Módulos del contrato",
+      modulesHint: "Los módulos siguientes reemplazarán los de las empresas seleccionadas.",
+      commercialSearchPlaceholder: "Buscar un agente…",
+      loadingAgents: "Cargando agentes…",
+      noAgentSelected: "Ningún agente seleccionado",
+      noAgentFound: "Ningún agente encontrado",
+      apply: "Aplicar",
+      saving: "Aplicando…",
+      submitError: "No se pudieron aplicar los cambios",
+      validation: {
+        noField: "Active al menos un campo para modificar.",
+        noCommercial: "Seleccione un referente comercial."
+      }
     }
   }
 };
@@ -530,6 +695,22 @@ export function getEnterprisesPageCopy(locale) {
     }),
     formatLoadErrorStatus: status => interpolate(t.loadErrorStatus, {
       status: String(status)
+    }),
+    formatBulkModalSelected: count => {
+      if (count === 1) return t.bulkModal.selectedOne;
+      return interpolate(t.bulkModal.selectedMany, {
+        count: String(count)
+      });
+    },
+    formatBulkSelectRow: name => interpolate(t.bulk.selectRow, {
+      name: String(name || "")
+    }),
+    formatBulkSuccess: count => interpolate(count > 1 ? t.toasts.bulkSuccessPlural : t.toasts.bulkSuccess, {
+      count: String(count)
+    }),
+    formatBulkPartial: (updated, failed) => interpolate(t.toasts.bulkPartial, {
+      updated: String(updated),
+      failed: String(failed)
     }),
     getContractStatus: (expirationDate, isSuspended = false) => {
       if (isSuspended) {

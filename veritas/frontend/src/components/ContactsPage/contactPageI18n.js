@@ -127,7 +127,55 @@ const CONTACTS_COPY = {
       save: "Enregistrer"
     },
     toasts: {
-      loadColumns: "Erreur lors du chargement des colonnes"
+      loadColumns: "Erreur lors du chargement des colonnes",
+      bulkSuccess: "{count} contact mis à jour",
+      bulkSuccessPlural: "{count} contacts mis à jour",
+      bulkDeleteSuccess: "{count} contact supprimé",
+      bulkDeleteSuccessPlural: "{count} contacts supprimés",
+      bulkPartial: "{updated} traités · {failed} échec(s)",
+      bulkError: "Erreur lors de la mise à jour en masse"
+    },
+    bulk: {
+      selected: "contact sélectionné",
+      selectedPlural: "contacts sélectionnés",
+      edit: "Modifier",
+      delete: "Supprimer",
+      clearSelection: "Effacer la sélection",
+      selectAll: "Tout sélectionner sur la page",
+      selectRow: "Sélectionner {name}"
+    },
+    bulkModal: {
+      title: "Modifier les contacts",
+      selectedOne: "1 contact sélectionné",
+      selectedMany: "{count} contacts sélectionnés",
+      editCompany: "Entreprise",
+      companyHint: "Par défaut, le contact est rattaché uniquement à cette entreprise (les autres liens sont remplacés).",
+      companySearchPlaceholder: "Rechercher une entreprise…",
+      noCompanySelected: "Aucune entreprise sélectionnée",
+      noCompanyFound: "Aucune entreprise trouvée",
+      modeReplace: "Remplacer les entreprises (déplacer)",
+      modeAdd: "Ajouter cette entreprise (conserver les autres)",
+      apply: "Appliquer",
+      saving: "Application…",
+      submitError: "Impossible d'appliquer les modifications",
+      validation: {
+        noField: "Activez au moins un champ à modifier.",
+        noCompany: "Sélectionnez une entreprise."
+      }
+    },
+    bulkDeleteModal: {
+      title: "Supprimer les contacts",
+      subtitleOne: "1 contact sera définitivement supprimé.",
+      subtitleMany: "{count} contacts seront définitivement supprimés.",
+      countOne: "1 contact",
+      countMany: "{count} contacts",
+      consequences: "Conséquences",
+      bullets: ["Les fiches contacts seront supprimées", "Les accès portail associés seront retirés", "Cette action est irréversible"],
+      cancel: "Annuler",
+      confirm: "Supprimer",
+      deleting: "Suppression…",
+      close: "Fermer",
+      submitError: "Impossible de supprimer les contacts"
     },
     clientPrefix: "Client #",
     unnamed: "Sans nom"
@@ -243,7 +291,55 @@ const CONTACTS_COPY = {
       save: "Save"
     },
     toasts: {
-      loadColumns: "Error loading columns"
+      loadColumns: "Error loading columns",
+      bulkSuccess: "{count} contact updated",
+      bulkSuccessPlural: "{count} contacts updated",
+      bulkDeleteSuccess: "{count} contact deleted",
+      bulkDeleteSuccessPlural: "{count} contacts deleted",
+      bulkPartial: "{updated} processed · {failed} failed",
+      bulkError: "Error while bulk updating contacts"
+    },
+    bulk: {
+      selected: "contact selected",
+      selectedPlural: "contacts selected",
+      edit: "Edit",
+      delete: "Delete",
+      clearSelection: "Clear selection",
+      selectAll: "Select all on page",
+      selectRow: "Select {name}"
+    },
+    bulkModal: {
+      title: "Edit contacts",
+      selectedOne: "1 contact selected",
+      selectedMany: "{count} contacts selected",
+      editCompany: "Company",
+      companyHint: "By default, the contact is linked only to this company (other memberships are replaced).",
+      companySearchPlaceholder: "Search for a company…",
+      noCompanySelected: "No company selected",
+      noCompanyFound: "No company found",
+      modeReplace: "Replace companies (move)",
+      modeAdd: "Add this company (keep others)",
+      apply: "Apply",
+      saving: "Applying…",
+      submitError: "Unable to apply changes",
+      validation: {
+        noField: "Enable at least one field to update.",
+        noCompany: "Select a company."
+      }
+    },
+    bulkDeleteModal: {
+      title: "Delete contacts",
+      subtitleOne: "1 contact will be permanently deleted.",
+      subtitleMany: "{count} contacts will be permanently deleted.",
+      countOne: "1 contact",
+      countMany: "{count} contacts",
+      consequences: "Consequences",
+      bullets: ["Contact records will be deleted", "Linked portal access will be removed", "This action cannot be undone"],
+      cancel: "Cancel",
+      confirm: "Delete",
+      deleting: "Deleting…",
+      close: "Close",
+      submitError: "Unable to delete contacts"
     },
     clientPrefix: "Client #",
     unnamed: "Unnamed"
@@ -359,7 +455,55 @@ const CONTACTS_COPY = {
       save: "Speichern"
     },
     toasts: {
-      loadColumns: "Fehler beim Laden der Spalten"
+      loadColumns: "Fehler beim Laden der Spalten",
+      bulkSuccess: "{count} Kontakt aktualisiert",
+      bulkSuccessPlural: "{count} Kontakte aktualisiert",
+      bulkDeleteSuccess: "{count} Kontakt gelöscht",
+      bulkDeleteSuccessPlural: "{count} Kontakte gelöscht",
+      bulkPartial: "{updated} verarbeitet · {failed} fehlgeschlagen",
+      bulkError: "Fehler bei der Massenaktualisierung"
+    },
+    bulk: {
+      selected: "Kontakt ausgewählt",
+      selectedPlural: "Kontakte ausgewählt",
+      edit: "Bearbeiten",
+      delete: "Löschen",
+      clearSelection: "Auswahl löschen",
+      selectAll: "Alle auf der Seite auswählen",
+      selectRow: "{name} auswählen"
+    },
+    bulkModal: {
+      title: "Kontakte bearbeiten",
+      selectedOne: "1 Kontakt ausgewählt",
+      selectedMany: "{count} Kontakte ausgewählt",
+      editCompany: "Unternehmen",
+      companyHint: "Standardmäßig wird der Kontakt nur diesem Unternehmen zugeordnet (andere Mitgliedschaften werden ersetzt).",
+      companySearchPlaceholder: "Unternehmen suchen…",
+      noCompanySelected: "Kein Unternehmen ausgewählt",
+      noCompanyFound: "Kein Unternehmen gefunden",
+      modeReplace: "Unternehmen ersetzen (verschieben)",
+      modeAdd: "Unternehmen hinzufügen (andere behalten)",
+      apply: "Anwenden",
+      saving: "Wird angewendet…",
+      submitError: "Änderungen konnten nicht angewendet werden",
+      validation: {
+        noField: "Aktivieren Sie mindestens ein Feld.",
+        noCompany: "Wählen Sie ein Unternehmen."
+      }
+    },
+    bulkDeleteModal: {
+      title: "Kontakte löschen",
+      subtitleOne: "1 Kontakt wird dauerhaft gelöscht.",
+      subtitleMany: "{count} Kontakte werden dauerhaft gelöscht.",
+      countOne: "1 Kontakt",
+      countMany: "{count} Kontakte",
+      consequences: "Folgen",
+      bullets: ["Kontaktakten werden gelöscht", "Zugehörige Portalzugänge werden entfernt", "Diese Aktion kann nicht rückgängig gemacht werden"],
+      cancel: "Abbrechen",
+      confirm: "Löschen",
+      deleting: "Wird gelöscht…",
+      close: "Schließen",
+      submitError: "Kontakte konnten nicht gelöscht werden"
     },
     clientPrefix: "Kunde #",
     unnamed: "Ohne Name"
@@ -475,7 +619,55 @@ const CONTACTS_COPY = {
       save: "Salva"
     },
     toasts: {
-      loadColumns: "Errore durante il caricamento delle colonne"
+      loadColumns: "Errore durante il caricamento delle colonne",
+      bulkSuccess: "{count} contatto aggiornato",
+      bulkSuccessPlural: "{count} contatti aggiornati",
+      bulkDeleteSuccess: "{count} contatto eliminato",
+      bulkDeleteSuccessPlural: "{count} contatti eliminati",
+      bulkPartial: "{updated} elaborati · {failed} non riusciti",
+      bulkError: "Errore durante l'aggiornamento in blocco"
+    },
+    bulk: {
+      selected: "contatto selezionato",
+      selectedPlural: "contatti selezionati",
+      edit: "Modifica",
+      delete: "Elimina",
+      clearSelection: "Cancella selezione",
+      selectAll: "Seleziona tutto nella pagina",
+      selectRow: "Seleziona {name}"
+    },
+    bulkModal: {
+      title: "Modifica contatti",
+      selectedOne: "1 contatto selezionato",
+      selectedMany: "{count} contatti selezionati",
+      editCompany: "Azienda",
+      companyHint: "Per impostazione predefinita il contatto è collegato solo a questa azienda (gli altri collegamenti vengono sostituiti).",
+      companySearchPlaceholder: "Cerca un'azienda…",
+      noCompanySelected: "Nessuna azienda selezionata",
+      noCompanyFound: "Nessuna azienda trovata",
+      modeReplace: "Sostituisci aziende (sposta)",
+      modeAdd: "Aggiungi questa azienda (mantieni le altre)",
+      apply: "Applica",
+      saving: "Applicazione…",
+      submitError: "Impossibile applicare le modifiche",
+      validation: {
+        noField: "Attiva almeno un campo da modificare.",
+        noCompany: "Seleziona un'azienda."
+      }
+    },
+    bulkDeleteModal: {
+      title: "Elimina contatti",
+      subtitleOne: "1 contatto verrà eliminato definitivamente.",
+      subtitleMany: "{count} contatti verranno eliminati definitivamente.",
+      countOne: "1 contatto",
+      countMany: "{count} contatti",
+      consequences: "Conseguenze",
+      bullets: ["Le schede contatto verranno eliminate", "Gli accessi portale collegati verranno rimossi", "Questa azione è irreversibile"],
+      cancel: "Annulla",
+      confirm: "Elimina",
+      deleting: "Eliminazione…",
+      close: "Chiudi",
+      submitError: "Impossibile eliminare i contatti"
     },
     clientPrefix: "Cliente #",
     unnamed: "Senza nome"
@@ -591,7 +783,55 @@ const CONTACTS_COPY = {
       save: "Guardar"
     },
     toasts: {
-      loadColumns: "Error al cargar las columnas"
+      loadColumns: "Error al cargar las columnas",
+      bulkSuccess: "{count} contacto actualizado",
+      bulkSuccessPlural: "{count} contactos actualizados",
+      bulkDeleteSuccess: "{count} contacto eliminado",
+      bulkDeleteSuccessPlural: "{count} contactos eliminados",
+      bulkPartial: "{updated} procesados · {failed} fallidos",
+      bulkError: "Error al actualizar contactos en masa"
+    },
+    bulk: {
+      selected: "contacto seleccionado",
+      selectedPlural: "contactos seleccionados",
+      edit: "Editar",
+      delete: "Eliminar",
+      clearSelection: "Borrar selección",
+      selectAll: "Seleccionar todo en la página",
+      selectRow: "Seleccionar {name}"
+    },
+    bulkModal: {
+      title: "Editar contactos",
+      selectedOne: "1 contacto seleccionado",
+      selectedMany: "{count} contactos seleccionados",
+      editCompany: "Empresa",
+      companyHint: "Por defecto, el contacto se vincula solo a esta empresa (las demás pertenencias se reemplazan).",
+      companySearchPlaceholder: "Buscar una empresa…",
+      noCompanySelected: "Ninguna empresa seleccionada",
+      noCompanyFound: "Ninguna empresa encontrada",
+      modeReplace: "Reemplazar empresas (mover)",
+      modeAdd: "Añadir esta empresa (conservar las demás)",
+      apply: "Aplicar",
+      saving: "Aplicando…",
+      submitError: "No se pudieron aplicar los cambios",
+      validation: {
+        noField: "Active al menos un campo para modificar.",
+        noCompany: "Seleccione una empresa."
+      }
+    },
+    bulkDeleteModal: {
+      title: "Eliminar contactos",
+      subtitleOne: "1 contacto se eliminará definitivamente.",
+      subtitleMany: "{count} contactos se eliminarán definitivamente.",
+      countOne: "1 contacto",
+      countMany: "{count} contactos",
+      consequences: "Consecuencias",
+      bullets: ["Las fichas de contacto se eliminarán", "Los accesos al portal asociados se retirarán", "Esta acción es irreversible"],
+      cancel: "Cancelar",
+      confirm: "Eliminar",
+      deleting: "Eliminando…",
+      close: "Cerrar",
+      submitError: "No se pudieron eliminar los contactos"
     },
     clientPrefix: "Cliente #",
     unnamed: "Sin nombre"
@@ -633,6 +873,37 @@ export function getContactPageCopy(locale) {
     getClientLabel: (clientId, clientName) => {
       if (clientName) return clientName;
       return clientId ? `${t.clientPrefix}${clientId}` : "";
+    },
+    formatBulkModalSelected: count => {
+      if (count === 1) return t.bulkModal.selectedOne;
+      return interpolate(t.bulkModal.selectedMany, {
+        count: String(count)
+      });
+    },
+    formatBulkSelectRow: name => interpolate(t.bulk.selectRow, {
+      name: String(name || "")
+    }),
+    formatBulkSuccess: count => interpolate(count > 1 ? t.toasts.bulkSuccessPlural : t.toasts.bulkSuccess, {
+      count: String(count)
+    }),
+    formatBulkDeleteSuccess: count => interpolate(count > 1 ? t.toasts.bulkDeleteSuccessPlural : t.toasts.bulkDeleteSuccess, {
+      count: String(count)
+    }),
+    formatBulkPartial: (updated, failed) => interpolate(t.toasts.bulkPartial, {
+      updated: String(updated),
+      failed: String(failed)
+    }),
+    formatBulkDeleteSubtitle: count => {
+      if (count === 1) return t.bulkDeleteModal.subtitleOne;
+      return interpolate(t.bulkDeleteModal.subtitleMany, {
+        count: String(count)
+      });
+    },
+    formatBulkDeleteCount: count => {
+      if (count === 1) return t.bulkDeleteModal.countOne;
+      return interpolate(t.bulkDeleteModal.countMany, {
+        count: String(count)
+      });
     }
   };
 }

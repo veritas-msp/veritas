@@ -2417,6 +2417,128 @@ router.post('/general', requirePermission('clients.create'), async (req, res) =>
     });
   }
 });
+
+function parseClientJsonObject(value) {
+  if (!value) return {};
+  if (typeof value === "object" && !Array.isArray(value)) return {
+    ...value
+  };
+  if (typeof value === "string") {
+    try {
+      const parsed = JSON.parse(value);
+      return parsed && typeof parsed === "object" && !Array.isArray(parsed) ? {
+        ...parsed
+      } : {};
+    } catch {
+      return {};
+    }
+  }
+  return {};
+}
+
+router.post("/bulk", requirePermission("clients_detail.edit"), async (req, res) => {
+  try {
+    const rawIds = Array.isArray(req.body?.clientIds) ? req.body.clientIds : [];
+    const clientIds = [...new Set(rawIds.map(id => String(id || "").trim()).filter(Boolean))];
+    const updates = req.body?.updates && typeof req.body.updates === "object" && !Array.isArray(req.body.updates) ? req.body.updates : {};
+    if (clientIds.length === 0) {
+      return res.status(400).json({
+        error: "No clients selected"
+      });
+    }
+    if (clientIds.length > 200) {
+      return res.status(400).json({
+        error: "Too many clients (max 200)"
+      });
+    }
+    const commercialId = updates.commercialId !== undefined && updates.commercialId !== null ? String(updates.commercialId).trim() : "";
+    const hasCommercial = Boolean(commercialId);
+    const hasDebut = Object.prototype.hasOwnProperty.call(updates, "contratDebut");
+    const hasExpiration = Object.prototype.hasOwnProperty.call(updates, "contratExpiration");
+    const hasOptions = updates.options !== undefined && typeof updates.options === "object" && !Array.isArray(updates.options);
+    if (!hasCommercial && !hasDebut && !hasExpiration && !hasOptions) {
+      return res.status(400).json({
+        error: "No updates provided"
+      });
+    }
+    const availableColumns = await getClientsAvailableColumns();
+    const hasCommercialCol = availableColumns.has("commercial_id");
+    const hasContratCol = availableColumns.has("contrat");
+    const hasOptionsCol = availableColumns.has("options");
+    const updatedIds = [];
+    const failed = [];
+    for (const id of clientIds) {
+      try {
+        const existing = await pool.query(`SELECT id, contrat, options, commercial_id
+           FROM v_b_clients
+           WHERE id = $1
+           LIMIT 1`, [id]);
+        if (!existing.rows[0]) {
+          failed.push({
+            id,
+            error: "Client not found"
+          });
+          continue;
+        }
+        const row = existing.rows[0];
+        const updateFields = [];
+        const updateValues = [];
+        let paramIndex = 1;
+        if (hasCommercial && hasCommercialCol) {
+          updateFields.push(`commercial_id = $${paramIndex++}`);
+          updateValues.push(commercialId);
+        }
+        if ((hasDebut || hasExpiration) && hasContratCol) {
+          const contrat = parseClientJsonObject(row.contrat);
+          if (hasDebut) {
+            const debut = updates.contratDebut == null ? "" : String(updates.contratDebut).trim();
+            contrat.debut = debut || null;
+          }
+          if (hasExpiration) {
+            const expiration = updates.contratExpiration == null ? "" : String(updates.contratExpiration).trim();
+            contrat.expiration = expiration || null;
+          }
+          updateFields.push(`contrat = $${paramIndex++}`);
+          updateValues.push(JSON.stringify(contrat));
+        }
+        if (hasOptions && hasOptionsCol) {
+          updateFields.push(`options = $${paramIndex++}`);
+          updateValues.push(JSON.stringify(updates.options || {}));
+        }
+        if (updateFields.length === 0) {
+          failed.push({
+            id,
+            error: "Nothing to update"
+          });
+          continue;
+        }
+        updateValues.push(id);
+        await pool.query(`UPDATE v_b_clients
+           SET ${updateFields.join(", ")}
+           WHERE id = $${paramIndex}`, updateValues);
+        updatedIds.push(id);
+      } catch (err) {
+        failed.push({
+          id,
+          error: err.message || "Update failed"
+        });
+      }
+    }
+    invalidateClientsListCache();
+    return res.json({
+      updated: updatedIds.length,
+      updatedIds,
+      failed
+    });
+  } catch (err) {
+    console.error("Error bulk updating clients:", err);
+    return res.status(500).json({
+      error: "Error updating companies",
+      details: err.message
+    });
+  }
+});
+
 router.put('/:id', verifyJWT, requireClientUpdatePermissions, async (req, res) => {
   try {
     const availableColumns = await getClientsAvailableColumns();

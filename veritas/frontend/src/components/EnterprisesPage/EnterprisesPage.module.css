@@ -631,6 +631,116 @@
   background: var(--msp-surface);
 }
 
+.checkboxCell {
+  width: 42px;
+  min-width: 42px;
+  text-align: center;
+  padding-left: 0.55rem !important;
+  padding-right: 0.35rem !important;
+}
+
+.rowCheckbox {
+  width: 15px;
+  height: 15px;
+  accent-color: #2b5fab;
+  cursor: pointer;
+}
+
+.dataTable th.checkboxCell {
+  cursor: default;
+}
+
+.selectedRow {
+  background: rgba(43, 95, 171, 0.08) !important;
+}
+
+.bulkBar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  margin-bottom: 0.75rem;
+  padding: 0.7rem 0.85rem;
+  border-radius: 12px;
+  border: 1px solid var(--msp-border, #dde3ed);
+  background: var(--msp-surface-2, #f8fafc);
+}
+
+.bulkInfo {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.84rem;
+  color: var(--msp-muted, #5c6b82);
+}
+
+.bulkInfo strong {
+  color: var(--msp-text, #0f1c2e);
+  font-size: 0.95rem;
+}
+
+.bulkActions {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  flex-wrap: wrap;
+}
+
+.bulkBtn,
+.bulkBtnGhost {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  border-radius: 9px;
+  padding: 0.45rem 0.7rem;
+  font-size: 0.8rem;
+  font-weight: 650;
+  cursor: pointer;
+  border: 1px solid transparent;
+}
+
+.bulkBtn {
+  background: rgba(43, 95, 171, 0.1);
+  border-color: rgba(43, 95, 171, 0.28);
+  color: var(--msp-accent, #2b5fab);
+}
+
+.bulkBtn:hover {
+  background: rgba(43, 95, 171, 0.16);
+}
+
+.bulkBtnGhost {
+  background: transparent;
+  border-color: var(--msp-border, #e2e8f0);
+  color: var(--msp-muted, #5c6b82);
+}
+
+.bulkBtnGhost:hover {
+  color: var(--msp-text, #0f1c2e);
+  background: var(--msp-surface, #fff);
+}
+
+:global(html.dark) .bulkBar {
+  background: #0f0f23;
+  border-color: #2a2a4a;
+}
+
+:global(html.dark) .selectedRow {
+  background: rgba(43, 95, 171, 0.18) !important;
+}
+
+:global(html.dark) .bulkBtn {
+  background: rgba(43, 95, 171, 0.2);
+  border-color: rgba(147, 197, 253, 0.35);
+  color: #93c5fd;
+}
+
+:global(html.dark) .bulkBtnGhost {
+  border-color: #2a2a4a;
+  color: #9ca3af;
+}
+
 .dataTable {
   width: 100%;
   border-collapse: collapse;
