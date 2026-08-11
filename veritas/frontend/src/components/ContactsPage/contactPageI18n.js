@@ -144,6 +144,11 @@ const CONTACTS_COPY = {
       selectAll: "Tout sélectionner sur la page",
       selectRow: "Sélectionner {name}"
     },
+    favorites: {
+      add: "Ajouter aux favoris",
+      remove: "Retirer des favoris",
+      columnAria: "Favoris"
+    },
     bulkModal: {
       title: "Modifier les contacts",
       selectedOne: "1 contact sélectionné",
@@ -307,6 +312,11 @@ const CONTACTS_COPY = {
       clearSelection: "Clear selection",
       selectAll: "Select all on page",
       selectRow: "Select {name}"
+    },
+    favorites: {
+      add: "Add to favorites",
+      remove: "Remove from favorites",
+      columnAria: "Favorites"
     },
     bulkModal: {
       title: "Edit contacts",
@@ -472,6 +482,11 @@ const CONTACTS_COPY = {
       selectAll: "Alle auf der Seite auswählen",
       selectRow: "{name} auswählen"
     },
+    favorites: {
+      add: "Zu Favoriten hinzufügen",
+      remove: "Aus Favoriten entfernen",
+      columnAria: "Favoriten"
+    },
     bulkModal: {
       title: "Kontakte bearbeiten",
       selectedOne: "1 Kontakt ausgewählt",
@@ -636,6 +651,11 @@ const CONTACTS_COPY = {
       selectAll: "Seleziona tutto nella pagina",
       selectRow: "Seleziona {name}"
     },
+    favorites: {
+      add: "Aggiungi ai preferiti",
+      remove: "Rimuovi dai preferiti",
+      columnAria: "Preferiti"
+    },
     bulkModal: {
       title: "Modifica contatti",
       selectedOne: "1 contatto selezionato",
@@ -799,6 +819,11 @@ const CONTACTS_COPY = {
       clearSelection: "Borrar selección",
       selectAll: "Seleccionar todo en la página",
       selectRow: "Seleccionar {name}"
+    },
+    favorites: {
+      add: "Añadir a favoritos",
+      remove: "Quitar de favoritos",
+      columnAria: "Favoritos"
     },
     bulkModal: {
       title: "Editar contactos",

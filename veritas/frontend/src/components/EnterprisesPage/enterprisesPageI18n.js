@@ -129,6 +129,11 @@ const ENTERPRISES_COPY = {
       selectAll: "Tout sélectionner sur la page",
       selectRow: "Sélectionner {name}"
     },
+    favorites: {
+      add: "Ajouter aux favoris",
+      remove: "Retirer des favoris",
+      columnAria: "Favoris"
+    },
     bulkModal: {
       title: "Modifier les entreprises",
       selectedOne: "1 entreprise sélectionnée",
@@ -255,6 +260,11 @@ const ENTERPRISES_COPY = {
       clearSelection: "Clear selection",
       selectAll: "Select all on page",
       selectRow: "Select {name}"
+    },
+    favorites: {
+      add: "Add to favorites",
+      remove: "Remove from favorites",
+      columnAria: "Favorites"
     },
     bulkModal: {
       title: "Edit companies",
@@ -383,6 +393,11 @@ const ENTERPRISES_COPY = {
       selectAll: "Alle auf der Seite auswählen",
       selectRow: "{name} auswählen"
     },
+    favorites: {
+      add: "Zu Favoriten hinzufügen",
+      remove: "Aus Favoriten entfernen",
+      columnAria: "Favoriten"
+    },
     bulkModal: {
       title: "Unternehmen bearbeiten",
       selectedOne: "1 Unternehmen ausgewählt",
@@ -510,6 +525,11 @@ const ENTERPRISES_COPY = {
       selectAll: "Seleziona tutto nella pagina",
       selectRow: "Seleziona {name}"
     },
+    favorites: {
+      add: "Aggiungi ai preferiti",
+      remove: "Rimuovi dai preferiti",
+      columnAria: "Preferiti"
+    },
     bulkModal: {
       title: "Modifica aziende",
       selectedOne: "1 azienda selezionata",
@@ -636,6 +656,11 @@ const ENTERPRISES_COPY = {
       clearSelection: "Borrar selección",
       selectAll: "Seleccionar todo en la página",
       selectRow: "Seleccionar {name}"
+    },
+    favorites: {
+      add: "Añadir a favoritos",
+      remove: "Quitar de favoritos",
+      columnAria: "Favoritos"
     },
     bulkModal: {
       title: "Editar empresas",

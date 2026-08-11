@@ -30,6 +30,7 @@ import API_BASE_URL from "../../config";
 import { sanitizeTicketCommentHtml } from "../../utils/sanitizeHtml";
 import { contentLooksLikeHtml } from "../../utils/incomingEmailContent";
 import IncomingEmailMessage from "./IncomingEmailMessage";
+import ContactFormModal from "../ContactsPage/ContactFormModal";
 import { fetchUsers, fetchCurrentUser } from "../../api/users";
 import { fetchClients, fetchClientsList, fetchContactsList, fetchClientModules, fetchClientSupportCredits } from "../../api/clients";
 import { useAuthContext } from "../../contexts/AuthContext";
@@ -1034,6 +1035,7 @@ export default function TicketDetailPage({
   const canResolve = can("tickets_detail.resolve");
   const canRandomMode = can("tickets.random_mode");
   const canHardPurge = isAdmin || can("tickets.manage");
+  const canCreateContact = can("contacts.create");
   const ticketId = ticketData?.ticketId || ticketData?.id || urlTicketId;
   const [ticket, setTicket] = useState(null);
   const isSalesTicketDetail = useMemo(() => {
@@ -1166,6 +1168,8 @@ export default function TicketDetailPage({
   const [consumeSupportCredit, setConsumeSupportCredit] = useState(true);
   const [refundSupportCredit, setRefundSupportCredit] = useState(false);
   const [showSideConversationModal, setShowSideConversationModal] = useState(false);
+  const [contactModalOpen, setContactModalOpen] = useState(false);
+  const [contactModalInitial, setContactModalInitial] = useState(null);
   const [sideConversation, setSideConversation] = useState({
     team: "commercial",
     subject: "",
@@ -2732,6 +2736,12 @@ export default function TicketDetailPage({
   }, [requesterContact, requesterUser, ticket]);
   const requesterPhone = useMemo(() => requesterContact?.telephone || requesterContact?.phone || requesterContact?.mobile || "-", [requesterContact]);
   const requesterEmail = useMemo(() => requesterContact?.email || requesterUser?.email || ticket?.requester_email || "-", [requesterContact, requesterUser, ticket]);
+  const orphanRequesterEmail = useMemo(() => {
+    if (requesterContact || editForm.requesterContactId || ticket?.requester_contact_id) return "";
+    const email = String(ticket?.requester_email || "").trim();
+    if (!email || email === "-") return "";
+    return email;
+  }, [requesterContact, editForm.requesterContactId, ticket?.requester_contact_id, ticket?.requester_email]);
   const requesterRole = useMemo(() => requesterContact?.role || requesterContact?.fonction || requesterContact?.poste || "-", [requesterContact]);
   const currentUserId = useMemo(() => user?.id || user?.uuid || user?.user_id || null, [user]);
   const isCurrentUserAssigned = useMemo(() => {
@@ -3092,6 +3102,29 @@ export default function TicketDetailPage({
   }, [clientEquipments, linkedEquipmentIds, linkedEquipmentSearch, locale]);
   const isTicketClosed = String(ticket?.status || "").toLowerCase() === "closed";
   const isReadOnly = isDeleted || isTicketClosed;
+  const showQuickAddRequesterContact = Boolean(canCreateContact && !isSalesTicketDetail && !isReadOnly && orphanRequesterEmail);
+  const openQuickAddRequesterContact = useCallback(() => {
+    if (!orphanRequesterEmail) return;
+    setShowRequesterDropdown(false);
+    setContactModalInitial({
+      email: orphanRequesterEmail,
+      client_id: ticket?.client_id || editForm.clientId || null
+    });
+    setContactModalOpen(true);
+  }, [orphanRequesterEmail, ticket?.client_id, editForm.clientId]);
+  const closeContactModal = useCallback(() => {
+    setContactModalOpen(false);
+    setContactModalInitial(null);
+  }, []);
+  const handleQuickAddRequesterContactSaved = useCallback(async savedContact => {
+    closeContactModal();
+    if (!savedContact?.id) return;
+    try {
+      const rows = await fetchContactsList();
+      if (Array.isArray(rows)) setContacts(rows);
+    } catch {}
+    await selectRequester(savedContact);
+  }, [closeContactModal, selectRequester]);
   const saveSalesProgress = useCallback(async nextValue => {
     if (!ticketId || isReadOnly) return;
     const clamped = Math.max(0, Math.min(100, Math.round(Number(nextValue) || 0)));
@@ -4090,7 +4123,12 @@ export default function TicketDetailPage({
             {requesterDisplayName}
           </button> : <span className={styles.ticketHeroMetaItem}>
             <Icon icon="mdi:account-outline" aria-hidden />
-            {requesterDisplayName}
+            <span className={styles.ticketHeroMetaText}>{requesterDisplayName}</span>
+            {showQuickAddRequesterContact ? <SmartTooltip content={copy.createContact}>
+                <button type="button" className={styles.ticketHeroAddContactBtn} onClick={openQuickAddRequesterContact} aria-label={copy.createContact}>
+                  <Icon icon="mdi:account-plus-outline" aria-hidden />
+                </button>
+              </SmartTooltip> : null}
           </span>}
         <span className={styles.ticketHeroMetaDot} aria-hidden>
           ·
@@ -4207,10 +4245,24 @@ export default function TicketDetailPage({
                       } else if (e.key === "Escape") {
                         setShowRequesterDropdown(false);
                       }
-                    }} />
+                      }} />
+                      {showQuickAddRequesterContact ? <SmartTooltip content={copy.createContact}>
+                          <button type="button" className={fs.contactInputEndBtn} title={copy.createContact} aria-label={copy.createContact} onClick={e => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        openQuickAddRequesterContact();
+                      }}>
+                            <Icon icon="mdi:account-plus-outline" aria-hidden />
+                          </button>
+                        </SmartTooltip> : null}
                     </div>
                     {showRequesterDropdown && <div className={fs.contactDropdown} role="listbox">
-                        {filteredRequesterContacts.length === 0 ? <div className={fs.contactEmpty}>{copy.noContactFound}</div> : filteredRequesterContacts.map((contact, idx) => <button key={contact.id} type="button" role="option" className={`${fs.contactOption} ${requesterHighlight === idx ? fs.contactOptionActive : ""}`} onMouseEnter={() => setRequesterHighlight(idx)} onClick={() => selectRequester(contact)}>
+                        {filteredRequesterContacts.length === 0 ? <div className={fs.contactEmpty}>
+                            <span>{copy.noContactFound}</span>
+                            {showQuickAddRequesterContact ? <button type="button" className={fs.contactEmptyAction} onClick={openQuickAddRequesterContact}>
+                                {copy.createContact}
+                              </button> : null}
+                          </div> : filteredRequesterContacts.map((contact, idx) => <button key={contact.id} type="button" role="option" className={`${fs.contactOption} ${requesterHighlight === idx ? fs.contactOptionActive : ""}`} onMouseEnter={() => setRequesterHighlight(idx)} onClick={() => selectRequester(contact)}>
                               <span className={fs.contactOptionName}>{getContactLabel(contact)}</span>
                             </button>)}
                       </div>}
@@ -4922,13 +4974,20 @@ export default function TicketDetailPage({
               </> : null}
 
             <RightPaneCollapsibleSection sectionId="ticket-detail-contact-body" title={copy.rightPane.contact} expanded={rightPaneCollapse.contact} onToggle={() => toggleRightPaneCollapse("contact")}>
-              <div className={styles.contextLine}>
-                <strong>{copy.rightPane.name}</strong>{" "}
-                {(editForm.requesterContactId || ticket?.requester_contact_id || requesterContact?.id) && requesterDisplayName !== "-" ? <button type="button" className={styles.contextLinkBtn} onClick={() => onNavigate?.("ContactDetail", {
-                  contactId: editForm.requesterContactId || ticket?.requester_contact_id || requesterContact?.id
-                })}>
-                    {requesterDisplayName}
-                  </button> : requesterDisplayName}
+              <div className={`${styles.contextLine} ${styles.contextLineWithAction}`.trim()}>
+                <div className={styles.contextLineMain}>
+                  <strong>{copy.rightPane.name}</strong>{" "}
+                  {(editForm.requesterContactId || ticket?.requester_contact_id || requesterContact?.id) && requesterDisplayName !== "-" ? <button type="button" className={styles.contextLinkBtn} onClick={() => onNavigate?.("ContactDetail", {
+                    contactId: editForm.requesterContactId || ticket?.requester_contact_id || requesterContact?.id
+                  })}>
+                      {requesterDisplayName}
+                    </button> : requesterDisplayName}
+                </div>
+                {showQuickAddRequesterContact ? <SmartTooltip content={copy.createContact}>
+                    <button type="button" className={styles.contextAddContactBtn} onClick={openQuickAddRequesterContact} aria-label={copy.createContact}>
+                      <Icon icon="mdi:account-plus-outline" aria-hidden />
+                    </button>
+                  </SmartTooltip> : null}
               </div>
               <div className={styles.contextLine}>
                 <strong>{copy.rightPane.phone}</strong>{" "}
@@ -5369,6 +5428,8 @@ export default function TicketDetailPage({
       <TicketReopenModal open={reopenModalOpen} ticket={ticket} copy={copy.reopenModal} saving={reopeningTicket} onClose={() => !reopeningTicket && setReopenModalOpen(false)} onConfirm={confirmReopenTicket} />
 
       <TicketConfirmModal open={Boolean(deleteConfirmConfig)} title={deleteConfirmConfig?.title} message={deleteConfirmConfig?.message} confirmLabel={deleteConfirmConfig?.confirmLabel} variant="danger" icon={deleteConfirmConfig?.icon} loading={deletingTicket} onClose={closeDeleteConfirm} onConfirm={confirmDeleteTicket} />
+
+      <ContactFormModal open={contactModalOpen} initialContact={contactModalInitial} clients={clients} defaultClientId={contactModalInitial?.client_id || ticket?.client_id || editForm.clientId || null} onClose={closeContactModal} onSuccess={handleQuickAddRequesterContactSaved} />
 
       <ProFeaturePromoModal open={Boolean(proPromoFeature)} featureKey={proPromoFeature} onClose={() => setProPromoFeature(null)} />
 

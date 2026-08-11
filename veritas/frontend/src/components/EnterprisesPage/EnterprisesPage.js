@@ -11,6 +11,7 @@ import TicketColumnsModal from "../TicketPage/TicketColumnsModal";
 import EnterpriseBulkEditModal from "./EnterpriseBulkEditModal";
 import { useContractModuleOptions } from "../../hooks/useContractModuleOptions";
 import { useDefaultPageSize } from "../../hooks/useDefaultPageSize";
+import { useEntityFavorites } from "../../hooks/useEntityFavorites";
 import { useAppFormatters, useAppLocale } from "../../hooks/useAppGeneralSettings";
 import { getEnterprisesPageCopy } from "./enterprisesPageI18n";
 import { localizeEquipmentCountColumns } from "../../i18n/equipmentFamilyLabels";
@@ -29,6 +30,7 @@ import mspStyles from "../CybersecuritePage/CybersecuritePage.module.css";
 import { usePermissions } from "../../contexts/PermissionsContext";
 
 const ENTERPRISES_PAGE_SCOPE = "enterprises";
+const ENTERPRISES_FAVORITES_SETTING = "enterprises_favorites";
 const ENTERPRISES_COLUMN_HEADERS = {
   client_number: "clientNumber",
   company: "company",
@@ -60,6 +62,10 @@ export default function EnterprisesPage({
   const canExportEnterprises = can("clients.export");
   const canPublicViews = can("clients.public_views");
   const canBulkEdit = can("clients_detail.edit");
+  const {
+    isFavorite,
+    toggleFavorite
+  } = useEntityFavorites(ENTERPRISES_FAVORITES_SETTING);
   const copy = useMemo(() => getEnterprisesPageCopy(locale), [locale]);
   const copyRef = useRef(copy);
   copyRef.current = copy;
@@ -297,6 +303,9 @@ export default function EnterprisesPage({
   const filteredAndSortedClients = useMemo(() => {
     const filtered = [...kpiFilteredClients];
     filtered.sort((a, b) => {
+      const aFav = isFavorite(a.id);
+      const bFav = isFavorite(b.id);
+      if (aFav !== bFav) return aFav ? -1 : 1;
       let aValue;
       let bValue;
       switch (sortBy) {
@@ -361,7 +370,7 @@ export default function EnterprisesPage({
       return 0;
     });
     return filtered;
-  }, [kpiFilteredClients, sortBy, sortOrder, copy]);
+  }, [kpiFilteredClients, sortBy, sortOrder, copy, isFavorite]);
   const totalPages = Math.max(1, Math.ceil(filteredAndSortedClients.length / pageSize));
   const paginatedClients = useMemo(() => {
     const start = (currentPage - 1) * pageSize;
@@ -376,11 +385,11 @@ export default function EnterprisesPage({
   useEffect(() => {
     setSelectedIds(prev => {
       if (!prev.size) return prev;
-      const valid = new Set(filteredAndSortedClients.map(client => String(client.id)));
+      const valid = new Set(clients.map(client => String(client.id)));
       const next = [...prev].filter(id => valid.has(String(id)));
       return next.length === prev.size ? prev : new Set(next);
     });
-  }, [filteredAndSortedClients]);
+  }, [clients]);
   const pageIds = useMemo(() => paginatedClients.map(client => String(client.id)), [paginatedClients]);
   const selectedCount = selectedIds.size;
   const allOnPageSelected = pageIds.length > 0 && pageIds.every(id => selectedIds.has(id));
@@ -647,6 +656,9 @@ export default function EnterprisesPage({
                             <ThSort label={label} col={sortKey} />
                           </th>;
                       })}
+                      <th className={styles.favoriteCell} aria-label={copy.favorites.columnAria}>
+                        <Icon icon="mdi:star-outline" aria-hidden />
+                      </th>
                     </tr>
                   </thead>
                   <tbody>
@@ -660,6 +672,7 @@ export default function EnterprisesPage({
                       const clientIdStr = String(client.id);
                       const isSelected = selectedIds.has(clientIdStr);
                       const rowName = getClientNameWithoutCode(client) || client.name || clientIdStr;
+                      const favorited = isFavorite(client.id);
                       return <tr key={client.id} className={`${styles.dataTableRow} ${isSelected ? styles.selectedRow : ""}`} onClick={() => openClient(client)} onAuxClick={e => {
                         if (e.button === 1) {
                           e.preventDefault();
@@ -744,6 +757,13 @@ export default function EnterprisesPage({
                             }
                             return <td key={columnId}>-</td>;
                           })}
+                          <td className={styles.favoriteCell} onClick={e => e.stopPropagation()}>
+                            <SmartTooltip content={favorited ? copy.favorites.remove : copy.favorites.add}>
+                              <button type="button" className={`${styles.favoriteBtn} ${favorited ? styles.favoriteBtnActive : ""}`} aria-label={favorited ? copy.favorites.remove : copy.favorites.add} aria-pressed={favorited} onClick={() => toggleFavorite(client.id)}>
+                                <Icon icon={favorited ? "mdi:star" : "mdi:star-outline"} aria-hidden />
+                              </button>
+                            </SmartTooltip>
+                          </td>
                         </tr>;
                     })}
                   </tbody>

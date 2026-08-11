@@ -12,6 +12,7 @@ import ContactBulkEditModal from "./ContactBulkEditModal";
 import ContactBulkDeleteModal from "./ContactBulkDeleteModal";
 import TicketColumnsModal from "../TicketPage/TicketColumnsModal";
 import { useDefaultPageSize } from "../../hooks/useDefaultPageSize";
+import { useEntityFavorites } from "../../hooks/useEntityFavorites";
 import { useCommonCopy } from "../../hooks/useCommonCopy";
 import { useAppLocale } from "../../hooks/useAppGeneralSettings";
 import { formatPageInfo } from "../../i18n/commonI18n";
@@ -30,6 +31,7 @@ import mspStyles from "../CybersecuritePage/CybersecuritePage.module.css";
 import { usePermissions } from "../../contexts/PermissionsContext";
 
 const CONTACTS_PAGE_SCOPE = "contacts";
+const CONTACTS_FAVORITES_SETTING = "contacts_favorites";
 const LEGACY_CONTACTS_CACHE_KEY = "contacts_list_cache_v3";
 function getContactDisplayName(contact) {
   const parts = [contact.nom, contact.prenom].filter(Boolean);
@@ -72,6 +74,10 @@ export default function ContactPage({
   const canBulkEdit = can("contacts_detail.edit");
   const canBulkDelete = can("contacts_detail.delete");
   const canBulkSelect = canBulkEdit || canBulkDelete;
+  const {
+    isFavorite,
+    toggleFavorite
+  } = useEntityFavorites(CONTACTS_FAVORITES_SETTING);
   const pageCopy = useMemo(() => getContactPageCopy(locale), [locale]);
   const pageCopyRef = useRef(pageCopy);
   pageCopyRef.current = pageCopy;
@@ -367,6 +373,9 @@ export default function ContactPage({
       filtered = filtered.filter(c => Boolean(c?.portal_user_id));
     }
     filtered.sort((a, b) => {
+      const aFav = isFavorite(a.id);
+      const bFav = isFavorite(b.id);
+      if (aFav !== bFav) return aFav ? -1 : 1;
       const dir = sortOrder === "asc" ? 1 : -1;
       let aVal;
       let bVal;
@@ -388,7 +397,7 @@ export default function ContactPage({
       return 0;
     });
     return filtered;
-  }, [contacts, searchQuery, statusFilters, portalFilter, sortBy, sortOrder]);
+  }, [contacts, searchQuery, statusFilters, portalFilter, sortBy, sortOrder, pageCopy, isFavorite]);
   const totalPages = Math.max(1, Math.ceil(filteredAndSortedContacts.length / pageSize));
   const paginatedContacts = useMemo(() => {
     const start = (currentPage - 1) * pageSize;
@@ -403,11 +412,11 @@ export default function ContactPage({
   useEffect(() => {
     setSelectedIds(prev => {
       if (!prev.size) return prev;
-      const valid = new Set(filteredAndSortedContacts.map(contact => String(contact.id)));
+      const valid = new Set(contacts.map(contact => String(contact.id)));
       const next = [...prev].filter(id => valid.has(String(id)));
       return next.length === prev.size ? prev : new Set(next);
     });
-  }, [filteredAndSortedContacts]);
+  }, [contacts]);
   const pageIds = useMemo(() => paginatedContacts.map(contact => String(contact.id)), [paginatedContacts]);
   const selectedCount = selectedIds.size;
   const allOnPageSelected = pageIds.length > 0 && pageIds.every(id => selectedIds.has(id));
@@ -718,6 +727,9 @@ export default function ContactPage({
                           </th>;
                       })}
                       <th>{pageCopy.table.actions}</th>
+                      <th className={layout.favoriteCell} aria-label={pageCopy.favorites.columnAria}>
+                        <Icon icon="mdi:star-outline" aria-hidden />
+                      </th>
                     </tr>
                   </thead>
                   <tbody>
@@ -731,6 +743,7 @@ export default function ContactPage({
                       const contactIdStr = String(contact.id);
                       const isSelected = selectedIds.has(contactIdStr);
                       const rowName = getContactDisplayName(contact);
+                      const favorited = isFavorite(contact.id);
                       return <tr key={contact.id} className={`${layout.dataTableRow} ${isSelected ? layout.selectedRow : ""}`} onClick={() => openContact(contact)} onAuxClick={e => {
                         if (e.button === 1) {
                           e.preventDefault();
@@ -842,6 +855,13 @@ export default function ContactPage({
                                 </button>
                               </SmartTooltip>
                             </div>
+                          </td>
+                          <td className={layout.favoriteCell} onClick={e => e.stopPropagation()}>
+                            <SmartTooltip content={favorited ? pageCopy.favorites.remove : pageCopy.favorites.add}>
+                              <button type="button" className={`${layout.favoriteBtn} ${favorited ? layout.favoriteBtnActive : ""}`} aria-label={favorited ? pageCopy.favorites.remove : pageCopy.favorites.add} aria-pressed={favorited} onClick={() => toggleFavorite(contact.id)}>
+                                <Icon icon={favorited ? "mdi:star" : "mdi:star-outline"} aria-hidden />
+                              </button>
+                            </SmartTooltip>
                           </td>
                         </tr>;
                     })}

@@ -294,15 +294,45 @@
   color: var(--msp-muted, #5c6b82);
   white-space: nowrap;
   min-width: 0;
+  max-width: 18rem;
+}
+
+.ticketHeroMetaText {
+  min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
-  max-width: 14rem;
 }
 
 .ticketHeroMetaItem svg {
   flex-shrink: 0;
   font-size: 0.88rem;
   color: var(--msp-muted-light, #8b9bb5);
+}
+
+.ticketHeroAddContactBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 1.35rem;
+  height: 1.35rem;
+  margin-left: 0.1rem;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--msp-accent, #2b5fab);
+  cursor: pointer;
+}
+
+.ticketHeroAddContactBtn:hover {
+  border-color: rgba(43, 95, 171, 0.28);
+  background: rgba(43, 95, 171, 0.1);
+}
+
+.ticketHeroAddContactBtn svg {
+  font-size: 0.95rem;
+  color: inherit;
 }
 
 .ticketHeroMeta {
@@ -3372,6 +3402,38 @@
   line-height: 1.45;
 }
 
+.contextLineWithAction {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.contextLineMain {
+  min-width: 0;
+  flex: 1;
+}
+
+.contextAddContactBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 1.7rem;
+  height: 1.7rem;
+  padding: 0;
+  border: 1px solid var(--msp-border, #e2e8f0);
+  border-radius: 7px;
+  background: var(--msp-surface-2, #f7f9fc);
+  color: var(--msp-accent, #2b5fab);
+  cursor: pointer;
+}
+
+.contextAddContactBtn:hover {
+  border-color: rgba(43, 95, 171, 0.35);
+  background: rgba(43, 95, 171, 0.1);
+}
+
 .contextLine strong {
   color: var(--msp-muted, #5c6b82);
   font-weight: 600;
@@ -3688,6 +3750,26 @@
 :global(html.dark) .commentItem p,
 :global(html.dark) .sideChatMessage p {
   color: var(--msp-text, #e8edf5);
+}
+
+:global(html.dark) .contextAddContactBtn {
+  background: var(--msp-surface-2, #1a2540);
+  border-color: var(--msp-border, #2a3a55);
+  color: #93c5fd;
+}
+
+:global(html.dark) .contextAddContactBtn:hover {
+  border-color: rgba(147, 197, 253, 0.4);
+  background: rgba(43, 95, 171, 0.22);
+}
+
+:global(html.dark) .ticketHeroAddContactBtn {
+  color: #93c5fd;
+}
+
+:global(html.dark) .ticketHeroAddContactBtn:hover {
+  border-color: rgba(147, 197, 253, 0.35);
+  background: rgba(43, 95, 171, 0.22);
 }
 
 :global(html.dark) .commentMeta,
