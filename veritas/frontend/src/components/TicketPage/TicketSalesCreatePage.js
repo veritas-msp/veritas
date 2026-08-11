@@ -802,7 +802,7 @@ export default function TicketSalesCreatePage({
                   {matchingTargetRules.length > 0 && <ul className={salesStyles.targetRuleList}>
                       {matchingTargetRules.map(rule => <li key={rule.id}>
                           <strong>{rule.label}</strong>
-                          {[rule.targets?.priority ? copy.formatRulePriority(rule.targets.priority) : null, rule.targets?.status ? copy.formatRuleStatus(rule.targets.status) : null, rule.targets?.assigneeUserIds?.length ? copy.formatRuleAssignees(rule.targets.assigneeUserIds.length) : null, rule.targets?.teamIds?.length ? copy.formatRuleTeams(rule.targets.teamIds.length) : null].filter(Boolean).join(" · ") || copy.defaultRuleProps}
+                          {[rule.targets?.priority ? copy.formatRulePriority(rule.targets.priority) : null, rule.targets?.status ? copy.formatRuleStatus(rule.targets.status) : null, rule.targets?.assigneeUserIds?.length || rule.targets?.assigneeFieldKeys?.length ? copy.formatRuleAssignees((rule.targets?.assigneeUserIds?.length || 0) + (rule.targets?.assigneeFieldKeys?.length || 0)) : null, rule.targets?.teamIds?.length ? copy.formatRuleTeams(rule.targets.teamIds.length) : null].filter(Boolean).join(" · ") || copy.defaultRuleProps}
                         </li>)}
                     </ul>}
                 </div>

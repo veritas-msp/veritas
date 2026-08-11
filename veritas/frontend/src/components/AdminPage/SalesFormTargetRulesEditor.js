@@ -70,6 +70,8 @@ export function createEmptyTargetRule(index = 0) {
       assigneeUserIds: [],
       watcherUserIds: [],
       teamIds: [],
+      assigneeFieldKeys: [],
+      watcherFieldKeys: [],
       titleSuffix: "",
       titleTemplate: "",
       descriptionTemplate: "",
@@ -107,6 +109,15 @@ function TemplateField({
   };
   const fieldVars = variables.filter(item => item.group === "fields");
   const contextVars = variables.filter(item => item.group === "context");
+  const fieldVarsBySection = (() => {
+    const groups = new Map();
+    fieldVars.forEach(item => {
+      const section = String(item.sectionLabel || "").trim() || "Form fields";
+      if (!groups.has(section)) groups.set(section, []);
+      groups.get(section).push(item);
+    });
+    return Array.from(groups.entries());
+  })();
   return <div className={`${layout.field} ${layout.fieldFull}`}>
       <div className={modalStyles.templateFieldHead}>
         <label className={layout.label}>{label}</label>
@@ -116,14 +127,18 @@ function TemplateField({
         </button>
       </div>
       {showVars && <div className={modalStyles.variablePanel}>
-          {fieldVars.length > 0 && <>
-              <p className={modalStyles.variableGroupTitle}>Form fields</p>
+          {fieldVarsBySection.map(([section, items]) => <div key={section}>
+              <p className={modalStyles.variableGroupTitle}>{section}</p>
               <div className={modalStyles.variableChips}>
-                {fieldVars.map(item => <button key={item.key} type="button" className={modalStyles.variableChip} title={item.key} onMouseDown={e => e.preventDefault()} onClick={() => insert(item.key)}>
-                    {item.label}
-                  </button>)}
+                {items.map(item => {
+                const sectionPrefix = item.sectionLabel ? `${item.sectionLabel} · ` : "";
+                const chipLabel = sectionPrefix && String(item.label || "").startsWith(sectionPrefix) ? String(item.label).slice(sectionPrefix.length) : item.label;
+                return <button key={item.key} type="button" className={modalStyles.variableChip} title={item.key} onMouseDown={e => e.preventDefault()} onClick={() => insert(item.key)}>
+                    {chipLabel}
+                  </button>;
+              })}
               </div>
-            </>}
+            </div>)}
           <p className={modalStyles.variableGroupTitle}>Context</p>
           <div className={modalStyles.variableChips}>
             {contextVars.map(item => <button key={item.key} type="button" className={modalStyles.variableChip} title={item.key} onMouseDown={e => e.preventDefault()} onClick={() => insert(item.key)}>
@@ -206,6 +221,14 @@ function TargetRuleEditor({
     excludeFiles: true
   });
   const templateVariables = getSalesFormTemplateVariables(formFields);
+  const assigneeSourceFields = buildConditionFieldOptions(formFields, {
+    excludeFiles: true
+  }).filter(option => option.field?.fieldType === "user" || option.field?.fieldType === "contact");
+  const assigneeFieldOptions = assigneeSourceFields.map(option => ({
+    id: option.id,
+    label: option.label,
+    hint: option.field?.fieldType === "contact" ? "Company contact" : "User"
+  }));
   const categoryGroups = (() => {
     const groups = new Map();
     (Array.isArray(categoryOptions) ? categoryOptions : []).forEach(item => {
@@ -386,6 +409,20 @@ function TargetRuleEditor({
           watcherUserIds
         })} />
         </div>
+
+        <div className={modalStyles.suggestGrid} style={{
+        marginTop: "0.85rem"
+      }}>
+          <MultiSuggestPicker inputId={`sales-form-rule-${rule.id}-assignee-fields`} label="Assignees from form answers" placeholder={assigneeFieldOptions.length ? "Pick a user or contact field…" : "Add a User or Contact field first"} options={assigneeFieldOptions} selectedIds={rule.targets?.assigneeFieldKeys || []} emptyHint="No form field selected" onChange={assigneeFieldKeys => updateTargets({
+          assigneeFieldKeys
+        })} />
+          <MultiSuggestPicker inputId={`sales-form-rule-${rule.id}-watcher-fields`} label="Watchers from form answers" placeholder={assigneeFieldOptions.length ? "Pick a user or contact field…" : "Add a User or Contact field first"} options={assigneeFieldOptions} selectedIds={rule.targets?.watcherFieldKeys || []} emptyHint="No form field selected" onChange={watcherFieldKeys => updateTargets({
+          watcherFieldKeys
+        })} />
+        </div>
+        <FieldHint>
+          User fields assign the selected agent. Contact fields assign a Veritas agent only when an agent account matches that contact’s email.
+        </FieldHint>
       </div>
     </article>;
 }
@@ -444,6 +481,8 @@ export function normalizeTicketTargetsDraft(raw) {
           assigneeUserIds: Array.isArray(rule.targets?.assigneeUserIds) ? rule.targets.assigneeUserIds.map(String) : [],
           watcherUserIds: Array.isArray(rule.targets?.watcherUserIds) ? rule.targets.watcherUserIds.map(String) : [],
           teamIds: Array.isArray(rule.targets?.teamIds) ? rule.targets.teamIds.map(String) : [],
+          assigneeFieldKeys: Array.isArray(rule.targets?.assigneeFieldKeys) ? rule.targets.assigneeFieldKeys.map(String) : [],
+          watcherFieldKeys: Array.isArray(rule.targets?.watcherFieldKeys) ? rule.targets.watcherFieldKeys.map(String) : [],
           titleSuffix: rule.targets?.titleSuffix || "",
           titleTemplate: rule.targets?.titleTemplate || "",
           descriptionTemplate: rule.targets?.descriptionTemplate || "",
@@ -463,6 +502,8 @@ export function normalizeTicketTargetsDraft(raw) {
         assigneeUserIds: Array.isArray(raw.assigneeUserIds) ? raw.assigneeUserIds.map(String) : [],
         watcherUserIds: Array.isArray(raw.watcherUserIds) ? raw.watcherUserIds.map(String) : [],
         teamIds: Array.isArray(raw.teamIds) ? raw.teamIds.map(String) : [],
+        assigneeFieldKeys: Array.isArray(raw.assigneeFieldKeys) ? raw.assigneeFieldKeys.map(String) : [],
+        watcherFieldKeys: Array.isArray(raw.watcherFieldKeys) ? raw.watcherFieldKeys.map(String) : [],
         titleSuffix: "",
         titleTemplate: "",
         descriptionTemplate: "",
@@ -492,6 +533,8 @@ export function serializeTicketTargetsDraft(draft) {
         assigneeUserIds: rule.targets?.assigneeUserIds || [],
         watcherUserIds: rule.targets?.watcherUserIds || [],
         teamIds: rule.targets?.teamIds || [],
+        assigneeFieldKeys: rule.targets?.assigneeFieldKeys || [],
+        watcherFieldKeys: rule.targets?.watcherFieldKeys || [],
         titleSuffix: String(rule.targets?.titleSuffix || "").trim() || null,
         titleTemplate: String(rule.targets?.titleTemplate || "").trim() || null,
         descriptionTemplate: String(rule.targets?.descriptionTemplate || "").trim() || null,

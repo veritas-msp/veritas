@@ -3,8 +3,12 @@ import { conditionsMatch, normalizeVisibilityRules } from "./salesFormConditions
 const PRIORITY_VALUES = new Set(["low", "normal", "high", "urgent"]);
 const STATUS_VALUES = new Set(["open", "new", "pending", "in_progress", "resolved", "closed"]);
 const CONDITION_OPERATORS = new Set(["equals", "not_equals", "contains", "checked", "not_checked"]);
+const ASSIGNABLE_FIELD_TYPES = new Set(["user", "contact"]);
 function uniqueIds(list = []) {
   return [...new Set(list.map(id => String(id || "").trim()).filter(Boolean))];
+}
+function uniqueKeys(list = []) {
+  return [...new Set(list.map(key => String(key || "").trim()).filter(Boolean))];
 }
 function isLegacyFlatTargets(raw) {
   if (!raw || typeof raw !== "object" || Array.isArray(raw)) return false;
@@ -21,6 +25,8 @@ export function normalizeTicketTargets(raw = {}) {
     assigneeUserIds: uniqueIds(source.assigneeUserIds),
     watcherUserIds: uniqueIds(source.watcherUserIds),
     teamIds: uniqueIds(source.teamIds),
+    assigneeFieldKeys: uniqueKeys(source.assigneeFieldKeys),
+    watcherFieldKeys: uniqueKeys(source.watcherFieldKeys),
     titleSuffix: String(source.titleSuffix || "").trim() || null,
     titleTemplate: String(source.titleTemplate || "").trim() || null,
     descriptionTemplate: String(source.descriptionTemplate || "").trim() || null,
@@ -99,7 +105,8 @@ export function describeTicketTargets(config = {}) {
     const parts = [rule.label];
     const targets = rule.targets;
     if (targets.priority) parts.push(`Priority ${targets.priority}`);
-    if (targets.assigneeUserIds.length) parts.push(`${targets.assigneeUserIds.length} assignee(s)`);
+    const assigneeCount = targets.assigneeUserIds.length + targets.assigneeFieldKeys.length;
+    if (assigneeCount) parts.push(`${assigneeCount} assignee source(s)`);
     return parts.join(" · ");
   }
   return `${enabledRules.length} conditional target(s)`;
@@ -142,7 +149,90 @@ export async function loadFormTicketTargets(formId) {
   const firstRule = config.rules.find(rule => rule.enabled) || config.rules[0];
   return firstRule?.targets || normalizeTicketTargets({});
 }
-export async function resolveAssigneeUserIds(targets = {}) {
+export async function loadFormFieldMetaByKey(formId) {
+  if (!formId) return {};
+  try {
+    const result = await pool.query(`SELECT field_key, field_type
+       FROM v_b_sales_form_fields
+       WHERE form_id = $1
+         AND enabled = TRUE`, [String(formId)]);
+    const map = {};
+    for (const row of result.rows || []) {
+      const fieldKey = String(row.field_key || "").trim();
+      if (!fieldKey) continue;
+      map[fieldKey] = {
+        fieldKey,
+        fieldType: String(row.field_type || "").trim().toLowerCase()
+      };
+    }
+    return map;
+  } catch (err) {
+    if (String(err?.code) === "42P01" || String(err?.code) === "42703") return {};
+    throw err;
+  }
+}
+function looksLikeUuid(value) {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(String(value || "").trim());
+}
+async function resolveContactToAgentUserId(contactId) {
+  const id = String(contactId || "").trim();
+  if (!id) return null;
+  try {
+    const result = await pool.query(`SELECT c.email,
+              c.portal_user_id,
+              u_email.id AS email_user_id,
+              u_email.role AS email_user_role,
+              u_portal.id AS portal_id,
+              u_portal.role AS portal_role
+         FROM v_b_contacts c
+         LEFT JOIN v_b_users u_email
+           ON lower(trim(u_email.email)) = lower(trim(c.email))
+          AND NULLIF(trim(c.email), '') IS NOT NULL
+         LEFT JOIN v_b_users u_portal
+           ON u_portal.id = c.portal_user_id
+        WHERE c.id::text = $1
+        LIMIT 1`, [id]);
+    const row = result.rows?.[0];
+    if (!row) return null;
+    const isAgentRole = role => {
+      const value = String(role || "").trim().toLowerCase();
+      return value && value !== "client" && value !== "portal";
+    };
+    if (row.email_user_id && isAgentRole(row.email_user_role)) return String(row.email_user_id);
+    if (row.portal_id && isAgentRole(row.portal_role)) return String(row.portal_id);
+    return null;
+  } catch (_error) {
+    return null;
+  }
+}
+async function resolveUserIdsFromFieldKeys(fieldKeys = [], context = {}) {
+  const values = context.values && typeof context.values === "object" ? context.values : {};
+  const fieldsByKey = context.fieldsByKey && typeof context.fieldsByKey === "object" ? context.fieldsByKey : {};
+  const resolved = new Set();
+  for (const fieldKey of fieldKeys) {
+    const meta = fieldsByKey[fieldKey];
+    const fieldType = String(meta?.fieldType || "").trim().toLowerCase();
+    if (fieldType && !ASSIGNABLE_FIELD_TYPES.has(fieldType)) continue;
+    const raw = values[fieldKey];
+    if (raw === undefined || raw === null || raw === "") continue;
+    const entries = Array.isArray(raw) ? raw : [raw];
+    for (const entry of entries) {
+      const value = String(entry || "").trim();
+      if (!value) continue;
+      const effectiveType = fieldType || (looksLikeUuid(value) ? "user" : "contact");
+      if (effectiveType === "user") {
+        if (looksLikeUuid(value)) resolved.add(value);
+        continue;
+      }
+      if (effectiveType === "contact") {
+        const userId = await resolveContactToAgentUserId(value);
+        if (userId) resolved.add(userId);
+      }
+    }
+  }
+  return [...resolved];
+}
+export async function resolveAssigneeUserIds(targets = {}, context = {}) {
   const normalized = normalizeTicketTargets(targets);
   const userIds = new Set(normalized.assigneeUserIds);
   if (normalized.teamIds.length > 0) {
@@ -153,6 +243,15 @@ export async function resolveAssigneeUserIds(targets = {}) {
       if (row.user_id) userIds.add(String(row.user_id));
     }
   }
+  const fromFields = await resolveUserIdsFromFieldKeys(normalized.assigneeFieldKeys, context);
+  for (const userId of fromFields) userIds.add(userId);
+  return [...userIds];
+}
+export async function resolveWatcherUserIds(targets = {}, context = {}) {
+  const normalized = normalizeTicketTargets(targets);
+  const userIds = new Set(normalized.watcherUserIds);
+  const fromFields = await resolveUserIdsFromFieldKeys(normalized.watcherFieldKeys, context);
+  for (const userId of fromFields) userIds.add(userId);
   return [...userIds];
 }
 async function hasTicketAssigneesTable() {
@@ -163,10 +262,10 @@ async function hasTicketWatchersTable() {
   const result = await pool.query(`SELECT to_regclass('public.v_b_ticket_watchers') IS NOT NULL AS ok`);
   return Boolean(result.rows[0]?.ok);
 }
-export async function applyFormTicketTargets(ticketId, targets = {}) {
+export async function applyFormTicketTargets(ticketId, targets = {}, context = {}) {
   const normalized = normalizeTicketTargets(targets);
-  const assigneeUserIds = await resolveAssigneeUserIds(normalized);
-  const watcherUserIds = normalized.watcherUserIds;
+  const assigneeUserIds = await resolveAssigneeUserIds(normalized, context);
+  const watcherUserIds = await resolveWatcherUserIds(normalized, context);
   const hasAssignees = await hasTicketAssigneesTable();
   if (hasAssignees && assigneeUserIds.length > 0) {
     await pool.query("DELETE FROM v_b_ticket_assignees WHERE ticket_id = $1", [ticketId]);

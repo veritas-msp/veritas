@@ -1,13 +1,17 @@
 /** Shared variable tokens for sales-form ticket title/description templates. */
 
+import { buildConditionFieldOptions } from "./salesFormFieldTypes.js";
+
 export function getSalesFormTemplateVariables(formFields = []) {
-  const fieldVars = (formFields || [])
-    .filter(field => field?.fieldKey && field.fieldType !== "section")
-    .map(field => ({
-      key: `{{field.${field.fieldKey}}}`,
-      label: field.label || field.fieldKey,
-      group: "fields"
-    }));
+  // Same order/labels as condition pickers: "Section · Field" + fieldKey on duplicates.
+  const fieldVars = buildConditionFieldOptions(formFields, {
+    excludeFiles: false
+  }).map(option => ({
+    key: `{{field.${option.id}}}`,
+    label: option.label,
+    group: "fields",
+    sectionLabel: option.sectionLabel || ""
+  }));
 
   const contextVars = [
     { key: "{{form.label}}", label: "Form label", group: "context" },
