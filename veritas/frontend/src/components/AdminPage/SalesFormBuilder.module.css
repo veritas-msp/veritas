@@ -448,10 +448,8 @@
 }
 
 .previewFields {
-  padding: 1.15rem 1.25rem 1.4rem;
-  display: flex;
-  flex-direction: column;
-  gap: 0.85rem;
+  padding: 1.25rem 1.35rem 1.55rem;
+  display: block;
 }
 
 .previewFields :global(select),

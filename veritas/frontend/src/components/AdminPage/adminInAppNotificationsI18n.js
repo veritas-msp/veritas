@@ -51,14 +51,22 @@ const ADMIN_IN_APP_NOTIFICATIONS_COPY = {
       },
       ticket_created: {
         notifyAssignees: {
-          label: "Notifier les assignés",
-          hint: "Dès la création du ticket"
+          label: "Assignés",
+          hint: "Agents assignés au ticket"
+        },
+        notifyWatchers: {
+          label: "Followers",
+          hint: "Agents qui suivent le ticket"
         }
       },
       ticket_updated: {
         notifyAssignees: {
-          label: "Notifier les assignés",
-          hint: "Sur toute modification"
+          label: "Assignés",
+          hint: "Agents assignés au ticket"
+        },
+        notifyWatchers: {
+          label: "Followers",
+          hint: "Agents qui suivent le ticket"
         }
       },
       ticket_resolved: {
@@ -151,14 +159,22 @@ const ADMIN_IN_APP_NOTIFICATIONS_COPY = {
       },
       ticket_created: {
         notifyAssignees: {
-          label: "Notify assignees",
-          hint: "As soon as the ticket is created"
+          label: "Assignees",
+          hint: "Agents assigned to the ticket"
+        },
+        notifyWatchers: {
+          label: "Followers",
+          hint: "Agents following the ticket"
         }
       },
       ticket_updated: {
         notifyAssignees: {
-          label: "Notify assignees",
-          hint: "On any update"
+          label: "Assignees",
+          hint: "Agents assigned to the ticket"
+        },
+        notifyWatchers: {
+          label: "Followers",
+          hint: "Agents following the ticket"
         }
       },
       ticket_resolved: {
@@ -251,14 +267,22 @@ const ADMIN_IN_APP_NOTIFICATIONS_COPY = {
       },
       ticket_created: {
         notifyAssignees: {
-          label: "Zuständige benachrichtigen",
-          hint: "Sobald das Ticket erstellt wird"
+          label: "Zuständige",
+          hint: "Dem Ticket zugewiesene Agenten"
+        },
+        notifyWatchers: {
+          label: "Follower",
+          hint: "Agenten, die dem Ticket folgen"
         }
       },
       ticket_updated: {
         notifyAssignees: {
-          label: "Zuständige benachrichtigen",
-          hint: "Bei jeder Änderung"
+          label: "Zuständige",
+          hint: "Dem Ticket zugewiesene Agenten"
+        },
+        notifyWatchers: {
+          label: "Follower",
+          hint: "Agenten, die dem Ticket folgen"
         }
       },
       ticket_resolved: {
@@ -351,14 +375,22 @@ const ADMIN_IN_APP_NOTIFICATIONS_COPY = {
       },
       ticket_created: {
         notifyAssignees: {
-          label: "Avvisa gli assegnatari",
-          hint: "Alla creazione del ticket"
+          label: "Assegnatari",
+          hint: "Agenti assegnati al ticket"
+        },
+        notifyWatchers: {
+          label: "Follower",
+          hint: "Agenti che seguono il ticket"
         }
       },
       ticket_updated: {
         notifyAssignees: {
-          label: "Avvisa gli assegnatari",
-          hint: "Su ogni modifica"
+          label: "Assegnatari",
+          hint: "Agenti assegnati al ticket"
+        },
+        notifyWatchers: {
+          label: "Follower",
+          hint: "Agenti che seguono il ticket"
         }
       },
       ticket_resolved: {
@@ -451,14 +483,22 @@ const ADMIN_IN_APP_NOTIFICATIONS_COPY = {
       },
       ticket_created: {
         notifyAssignees: {
-          label: "Notificar asignados",
-          hint: "Al crear el ticket"
+          label: "Asignados",
+          hint: "Agentes asignados al ticket"
+        },
+        notifyWatchers: {
+          label: "Seguidores",
+          hint: "Agentes que siguen el ticket"
         }
       },
       ticket_updated: {
         notifyAssignees: {
-          label: "Notificar asignados",
-          hint: "En cualquier actualización"
+          label: "Asignados",
+          hint: "Agentes asignados al ticket"
+        },
+        notifyWatchers: {
+          label: "Seguidores",
+          hint: "Agentes que siguen el ticket"
         }
       },
       ticket_resolved: {

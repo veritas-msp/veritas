@@ -17,11 +17,13 @@ export const DEFAULT_IN_APP_SETTINGS = {
     },
     ticket_created: {
       enabled: false,
-      notifyAssignees: true
+      notifyAssignees: true,
+      notifyWatchers: false
     },
     ticket_updated: {
       enabled: false,
-      notifyAssignees: true
+      notifyAssignees: true,
+      notifyWatchers: false
     },
     ticket_resolved: {
       enabled: true,
@@ -330,24 +332,25 @@ export async function notifyInAppTicketAssigned({
 }
 export async function notifyInAppTicketCreated({
   ticketId,
-  assignedUserId,
   createdByUserId
 }) {
   const settings = await loadInAppSettings();
   if (!settings.enabled || !settings.events.ticket_created.enabled) return;
-  if (!settings.events.ticket_created.notifyAssignees) return;
-  const userId = assignedUserId ? String(assignedUserId) : "";
-  if (!userId || userId === String(createdByUserId || "")) return;
-  const notifiableRecipients = await filterNotifiableUserIds([userId], "ticket_created");
-  if (notifiableRecipients.length === 0) return;
+  const eventSettings = settings.events.ticket_created;
   const ticket = await resolveTicketContext(ticketId);
   if (!ticket) return;
+  const recipientIds = await getTicketRecipientIds(ticketId, {
+    notifyAssignees: eventSettings.notifyAssignees !== false,
+    notifyWatchers: eventSettings.notifyWatchers === true
+  });
+  const filteredRecipients = await filterNotifiableUserIds(recipientIds.filter(id => id !== String(createdByUserId || "")), "ticket_created");
+  if (filteredRecipients.length === 0) return;
   const ticketLabel = buildTicketLabel(ticket);
-  await insertUserNotifications([{
-    userId: notifiableRecipients[0],
+  await insertUserNotifications(filteredRecipients.map(userId => ({
+    userId,
     type: "ticket_created",
     title: `New ticket ${ticketLabel}`,
-    body: "A ticket was assigned to you when it was created.",
+    body: "A new ticket was created.",
     ticketId,
     commentId: null,
     payload: {
@@ -356,7 +359,7 @@ export async function notifyInAppTicketCreated({
       ticketTitle: ticket.title || "",
       clientName: ticket.client_name || ""
     }
-  }]);
+  })));
 }
 export async function notifyInAppTicketStatusChanged({
   ticketId,

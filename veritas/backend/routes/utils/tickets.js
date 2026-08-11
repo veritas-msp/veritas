@@ -1526,7 +1526,7 @@ router.post("/", verifyJWT, requirePermission("tickets.create"), [body("title").
 }).isUUID(), body("assignedUserId").optional({
   nullable: true,
   checkFalsy: true
-}).isUUID(), body("isMajorIncident").optional().isBoolean(), body("contactSlots").optional().isArray(), body("equipmentInfo").optional().isObject(), body("salesFormData").optional().isObject()], async (req, res) => {
+}).isUUID(), body("isMajorIncident").optional().isBoolean(), body("contactSlots").optional().isArray(), body("equipmentInfo").optional().isObject(), body("salesFormData").optional().isObject(), body("assigneeUserIds").optional().isArray(), body("assigneeUserIds.*").optional().isUUID(), body("watcherUserIds").optional().isArray(), body("watcherUserIds.*").optional().isUUID()], async (req, res) => {
   const validationResponse = validationErrorOrNull(req, res);
   if (validationResponse) return;
   if (rejectCommunitySalesTicketCreate(req, res)) return;
@@ -1554,8 +1554,12 @@ router.post("/", verifyJWT, requirePermission("tickets.create"), [body("title").
       equipmentInfo = {
         concerned: false
       },
-      salesFormData = null
+      salesFormData = null,
+      assigneeUserIds = [],
+      watcherUserIds = []
     } = req.body;
+    const explicitAssigneeUserIds = Array.isArray(assigneeUserIds) ? assigneeUserIds.map(id => String(id || "").trim()).filter(Boolean) : [];
+    const explicitWatcherUserIds = Array.isArray(watcherUserIds) ? watcherUserIds.map(id => String(id || "").trim()).filter(Boolean) : [];
     const formId = salesFormData && typeof salesFormData === "object" && salesFormData.formId ? String(salesFormData.formId) : null;
     const formFieldValues = salesFormData && typeof salesFormData === "object" && salesFormData.values && typeof salesFormData.values === "object" ? salesFormData.values : {};
     const formFieldsByKey = formId ? await loadFormFieldMetaByKey(formId).catch(() => ({})) : {};
@@ -1689,6 +1693,27 @@ router.post("/", verifyJWT, requirePermission("tickets.create"), [body("title").
     for (const rule of ticketRules) {
       const created = await insertTicket(null, rule);
       createdTickets.push(created);
+      if (explicitAssigneeUserIds.length > 0) {
+        const hasAssignees = await hasTicketAssigneesTable();
+        if (hasAssignees) {
+          for (const userId of explicitAssigneeUserIds) {
+            await pool.query(`INSERT INTO v_b_ticket_assignees (ticket_id, user_id, created_at)
+               VALUES ($1, $2, NOW())
+               ON CONFLICT (ticket_id, user_id) DO NOTHING`, [created.id, userId]);
+          }
+        }
+        if (!created.assigned_user_id) {
+          await pool.query(`UPDATE v_b_tickets SET assigned_user_id = $1, updated_at = NOW() WHERE id = $2`, [explicitAssigneeUserIds[0], created.id]);
+          created.assigned_user_id = explicitAssigneeUserIds[0];
+        }
+      }
+      if (explicitWatcherUserIds.length > 0) {
+        for (const userId of explicitWatcherUserIds) {
+          await pool.query(`INSERT INTO v_b_ticket_watchers (ticket_id, user_id, created_at)
+             VALUES ($1, $2, NOW())
+             ON CONFLICT (ticket_id, user_id) DO NOTHING`, [created.id, userId]);
+        }
+      }
       await dispatchNotificationEvent({
         source: "tickets",
         element: "created",
@@ -1703,7 +1728,6 @@ router.post("/", verifyJWT, requirePermission("tickets.create"), [body("title").
       }).catch(() => {});
       await notifyInAppTicketCreated({
         ticketId: created.id,
-        assignedUserId: created.assigned_user_id,
         createdByUserId: req.user?.id || null
       }).catch(() => {});
     }

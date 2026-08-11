@@ -115,7 +115,7 @@ const USER_PROFILE_COPY = {
         },
         ticket_created: {
           label: "Création de ticket",
-          description: "Alerte à la création si un assigné est défini."
+          description: "Alerte à la création du ticket."
         },
         ticket_updated: {
           label: "Modification de ticket",
@@ -321,7 +321,7 @@ const USER_PROFILE_COPY = {
         },
         ticket_created: {
           label: "Ticket created",
-          description: "Alert on creation when an assignee is set."
+          description: "Alert when a ticket is created."
         },
         ticket_updated: {
           label: "Ticket updated",
@@ -527,7 +527,7 @@ const USER_PROFILE_COPY = {
         },
         ticket_created: {
           label: "Ticket erstellt",
-          description: "Alert bei Erstellung, wenn ein Zuständiger gesetzt ist."
+          description: "Alert bei Erstellung eines Tickets."
         },
         ticket_updated: {
           label: "Ticket aktualisiert",
@@ -733,7 +733,7 @@ const USER_PROFILE_COPY = {
         },
         ticket_created: {
           label: "Ticket creato",
-          description: "Alert alla creazione se è definito un assegnatario."
+          description: "Alert alla creazione del ticket."
         },
         ticket_updated: {
           label: "Ticket modificato",
@@ -939,7 +939,7 @@ const USER_PROFILE_COPY = {
         },
         ticket_created: {
           label: "Ticket creado",
-          description: "Alerta en la creación si hay un asignado definido."
+          description: "Alerta al crear un ticket."
         },
         ticket_updated: {
           label: "Ticket actualizado",

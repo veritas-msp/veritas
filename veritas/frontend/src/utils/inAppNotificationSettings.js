@@ -12,11 +12,13 @@ export const DEFAULT_IN_APP_SETTINGS = {
     },
     ticket_created: {
       enabled: false,
-      notifyAssignees: true
+      notifyAssignees: true,
+      notifyWatchers: false
     },
     ticket_updated: {
       enabled: false,
-      notifyAssignees: true
+      notifyAssignees: true,
+      notifyWatchers: false
     },
     ticket_resolved: {
       enabled: true,
@@ -63,12 +65,16 @@ export const IN_APP_EVENT_OPTIONS = [{
 }, {
   key: "ticket_created",
   label: "Ticket creation",
-  description: "Alert on creation if an assignee is set.",
+  description: "Alert when a ticket is created.",
   icon: "mdi:ticket-confirmation-outline",
   fields: [{
     key: "notifyAssignees",
-    label: "Notify assignees",
-    hint: "As soon as the ticket is created"
+    label: "Assignees",
+    hint: "Agents assigned to the ticket"
+  }, {
+    key: "notifyWatchers",
+    label: "Followers",
+    hint: "Agents following the ticket"
   }]
 }, {
   key: "ticket_updated",
@@ -77,8 +83,12 @@ export const IN_APP_EVENT_OPTIONS = [{
   icon: "mdi:pencil-outline",
   fields: [{
     key: "notifyAssignees",
-    label: "Notify assignees",
-    hint: "On any update"
+    label: "Assignees",
+    hint: "Agents assigned to the ticket"
+  }, {
+    key: "notifyWatchers",
+    label: "Followers",
+    hint: "Agents following the ticket"
   }]
 }, {
   key: "ticket_resolved",

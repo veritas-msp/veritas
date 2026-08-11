@@ -418,7 +418,7 @@ export default function SalesFormFieldsRenderer({
         No visible fields for the current answers.
       </p>;
   }
-  return <div className={className}>
+  return <div className={`${s.salesFormFields} ${className || ""}`.trim()}>
       {visibleGroups.map((group, index) => {
       const key = group.section?.id || group.section?.fieldKey || `group-${index}`;
       if (!group.section) {

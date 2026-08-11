@@ -61,12 +61,20 @@ const PLANNING_PAGE = {
       noTeamFound: "Aucune équipe trouvée.",
       noActiveTeams: "Aucune équipe active configurée dans l'administration.",
       teamMemberCount: "{count} agent{plural}",
-      addAgentsHint: "Ajoutez un ou plusieurs agents pour filtrer le planning.",
+      addAgentsHint: "Ajoutez une équipe ou des agents pour filtrer le planning.",
       agentsSelected: "{count} agents sélectionnés · planning combiné",
       showAgentPlanning: "Afficher le planning de {name}",
       hideAgentPlanning: "Masquer le planning de {name}",
+      showTeamPlanning: "Afficher le planning de l'équipe {name}",
+      hideTeamPlanning: "Masquer le planning de l'équipe {name}",
       removeFromList: "Retirer de la liste",
       removeAgentFromList: "Retirer {name} de la liste",
+      removeTeamFromList: "Retirer l'équipe {name} de la liste",
+      teamEmptyMembers: "Aucun agent dans cette équipe.",
+      searchClient: "Rechercher un client…",
+      noClientFound: "Aucun client trouvé.",
+      noClients: "Aucun client.",
+      searchClientHint: "Recherchez un client pour l'ajouter au filtre.",
       meSuffix: "(Moi)"
     },
     search: {
@@ -114,7 +122,8 @@ const PLANNING_PAGE = {
       moveError: "Impossible de déplacer l'événement",
       teamsLoadError: "Impossible de charger les équipes",
       teamNoMembers: "L'équipe « {name} » n'a aucun agent.",
-      teamMembersAdded: "{count} agent{plural} ajouté{plural} depuis « {team} »"
+      teamMembersAdded: "{count} agent{plural} ajouté{plural} depuis « {team} »",
+      teamAdded: "Équipe « {team} » ajoutée"
     },
     deleteEvent: {
       confirm: "Êtes-vous sûr de vouloir supprimer cet événement ?",
@@ -181,12 +190,20 @@ const PLANNING_PAGE = {
       noTeamFound: "No team found.",
       noActiveTeams: "No active team configured in administration.",
       teamMemberCount: "{count} assignee{plural}",
-      addAgentsHint: "Add one or more assignees to filter the schedule.",
+      addAgentsHint: "Add a team or assignees to filter the schedule.",
       agentsSelected: "{count} assignees selected · combined schedule",
       showAgentPlanning: "Show schedule for {name}",
       hideAgentPlanning: "Hide schedule for {name}",
+      showTeamPlanning: "Show schedule for team {name}",
+      hideTeamPlanning: "Hide schedule for team {name}",
       removeFromList: "Remove from list",
       removeAgentFromList: "Remove {name} from list",
+      removeTeamFromList: "Remove team {name} from list",
+      teamEmptyMembers: "No assignees in this team.",
+      searchClient: "Search for a client…",
+      noClientFound: "No client found.",
+      noClients: "No clients.",
+      searchClientHint: "Search for a client to add it to the filter.",
       meSuffix: "(Me)"
     },
     search: {
@@ -234,7 +251,8 @@ const PLANNING_PAGE = {
       moveError: "Unable to move event",
       teamsLoadError: "Unable to load teams",
       teamNoMembers: "Team « {name} » has no assignees.",
-      teamMembersAdded: "{count} assignee{plural} added from « {team} »"
+      teamMembersAdded: "{count} assignee{plural} added from « {team} »",
+      teamAdded: "Team « {team} » added"
     },
     deleteEvent: {
       confirm: "Are you sure you want to delete this event?",
@@ -301,12 +319,20 @@ const PLANNING_PAGE = {
       noTeamFound: "Kein Team gefunden.",
       noActiveTeams: "Kein aktives Team in der Administration konfiguriert.",
       teamMemberCount: "{count} Mitarbeiter{plural}",
-      addAgentsHint: "Fügen Sie einen oder mehrere Mitarbeiter hinzu, um die Planung zu filtern.",
+      addAgentsHint: "Fügen Sie ein Team oder Mitarbeiter hinzu, um die Planung zu filtern.",
       agentsSelected: "{count} Mitarbeiter ausgewählt · kombinierte Planung",
       showAgentPlanning: "Planung von {name} anzeigen",
       hideAgentPlanning: "Planung von {name} ausblenden",
+      showTeamPlanning: "Planung des Teams {name} anzeigen",
+      hideTeamPlanning: "Planung des Teams {name} ausblenden",
       removeFromList: "Aus Liste entfernen",
       removeAgentFromList: "{name} aus Liste entfernen",
+      removeTeamFromList: "Team {name} aus Liste entfernen",
+      teamEmptyMembers: "Keine Mitarbeiter in diesem Team.",
+      searchClient: "Kunde suchen…",
+      noClientFound: "Kein Kunde gefunden.",
+      noClients: "Keine Kunden.",
+      searchClientHint: "Suchen Sie einen Kunden, um ihn zum Filter hinzuzufügen.",
       meSuffix: "(Ich)"
     },
     search: {
@@ -354,7 +380,8 @@ const PLANNING_PAGE = {
       moveError: "Ereignis konnte nicht verschoben werden",
       teamsLoadError: "Teams konnten nicht geladen werden",
       teamNoMembers: "Team « {name} » hat keine Mitarbeiter.",
-      teamMembersAdded: "{count} Mitarbeiter{plural} aus « {team} » hinzugefügt"
+      teamMembersAdded: "{count} Mitarbeiter{plural} aus « {team} » hinzugefügt",
+      teamAdded: "Team « {team} » hinzugefügt"
     },
     deleteEvent: {
       confirm: "Möchten Sie dieses Ereignis wirklich löschen?",
@@ -421,12 +448,20 @@ const PLANNING_PAGE = {
       noTeamFound: "Nessun team trovato.",
       noActiveTeams: "Nessun team attivo configurato nell'amministrazione.",
       teamMemberCount: "{count} agente{plural}",
-      addAgentsHint: "Aggiungi uno o più agenti per filtrare la pianificazione.",
+      addAgentsHint: "Aggiungi un team o degli agenti per filtrare la pianificazione.",
       agentsSelected: "{count} agenti selezionati · pianificazione combinata",
       showAgentPlanning: "Mostra pianificazione di {name}",
       hideAgentPlanning: "Nascondi pianificazione di {name}",
+      showTeamPlanning: "Mostra pianificazione del team {name}",
+      hideTeamPlanning: "Nascondi pianificazione del team {name}",
       removeFromList: "Rimuovi dall'elenco",
       removeAgentFromList: "Rimuovi {name} dall'elenco",
+      removeTeamFromList: "Rimuovi il team {name} dall'elenco",
+      teamEmptyMembers: "Nessun agente in questo team.",
+      searchClient: "Cerca un cliente…",
+      noClientFound: "Nessun cliente trovato.",
+      noClients: "Nessun cliente.",
+      searchClientHint: "Cerca un cliente per aggiungerlo al filtro.",
       meSuffix: "(Io)"
     },
     search: {
@@ -474,7 +509,8 @@ const PLANNING_PAGE = {
       moveError: "Impossibile spostare l'evento",
       teamsLoadError: "Impossibile caricare i team",
       teamNoMembers: "Il team « {name} » non ha agenti.",
-      teamMembersAdded: "{count} agente{plural} aggiunto{plural} da « {team} »"
+      teamMembersAdded: "{count} agente{plural} aggiunto{plural} da « {team} »",
+      teamAdded: "Team « {team} » aggiunto"
     },
     deleteEvent: {
       confirm: "Eliminare questo evento?",
@@ -541,12 +577,20 @@ const PLANNING_PAGE = {
       noTeamFound: "Ningún equipo encontrado.",
       noActiveTeams: "Ningún equipo activo configurado en la administración.",
       teamMemberCount: "{count} agente{plural}",
-      addAgentsHint: "Añada uno o más agentes para filtrar la planificación.",
+      addAgentsHint: "Añada un equipo o agentes para filtrar la planificación.",
       agentsSelected: "{count} agentes seleccionados · planificación combinada",
       showAgentPlanning: "Mostrar planificación de {name}",
       hideAgentPlanning: "Ocultar planificación de {name}",
+      showTeamPlanning: "Mostrar planificación del equipo {name}",
+      hideTeamPlanning: "Ocultar planificación del equipo {name}",
       removeFromList: "Quitar de la lista",
       removeAgentFromList: "Quitar {name} de la lista",
+      removeTeamFromList: "Quitar el equipo {name} de la lista",
+      teamEmptyMembers: "Ningún agente en este equipo.",
+      searchClient: "Buscar un cliente…",
+      noClientFound: "Ningún cliente encontrado.",
+      noClients: "Ningún cliente.",
+      searchClientHint: "Busque un cliente para añadirlo al filtro.",
       meSuffix: "(Yo)"
     },
     search: {
@@ -594,7 +638,8 @@ const PLANNING_PAGE = {
       moveError: "No se pudo mover el evento",
       teamsLoadError: "No se pudieron cargar los equipos",
       teamNoMembers: "El equipo « {name} » no tiene agentes.",
-      teamMembersAdded: "{count} agente{plural} añadido{plural} desde « {team} »"
+      teamMembersAdded: "{count} agente{plural} añadido{plural} desde « {team} »",
+      teamAdded: "Equipo « {team} » añadido"
     },
     deleteEvent: {
       confirm: "¿Eliminar este evento?",
@@ -681,13 +726,25 @@ export function getPlanningPageCopy(locale, eventTypeLabels = {}, catalogTypes =
       team,
       plural: count > 1 ? pluralSuffix(count, locale) : ""
     }),
+    formatTeamAdded: team => interpolate(t.toasts.teamAdded, {
+      team
+    }),
     formatShowAgentPlanning: name => interpolate(t.filters.showAgentPlanning, {
       name
     }),
     formatHideAgentPlanning: name => interpolate(t.filters.hideAgentPlanning, {
       name
     }),
+    formatShowTeamPlanning: name => interpolate(t.filters.showTeamPlanning, {
+      name
+    }),
+    formatHideTeamPlanning: name => interpolate(t.filters.hideTeamPlanning, {
+      name
+    }),
     formatRemoveAgentFromList: name => interpolate(t.filters.removeAgentFromList, {
+      name
+    }),
+    formatRemoveTeamFromList: name => interpolate(t.filters.removeTeamFromList, {
       name
     }),
     formatTeamNoMembers: name => interpolate(t.toasts.teamNoMembers, {

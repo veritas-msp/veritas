@@ -64,8 +64,13 @@ function normalizePinnedAgentIds(value, fallbackUserId) {
   if (ids.length > 0) return ids;
   return fallbackUserId ? [String(fallbackUserId)] : [];
 }
+function normalizePinnedTeamIds(value) {
+  const raw = value && typeof value === "object" && !Array.isArray(value) && Array.isArray(value.teamIds) ? value.teamIds : [];
+  return raw.map(String).filter(Boolean);
+}
 function normalizePlanningPreferences(value, fallbackUserId) {
   const agentIds = normalizePinnedAgentIds(value, fallbackUserId);
+  const teamIds = normalizePinnedTeamIds(value);
   const raw = value && typeof value === "object" && !Array.isArray(value) ? value : {};
   const selectedRaw = Array.isArray(raw.selectedAgentIds) ? raw.selectedAgentIds : agentIds;
   const selectedAgentIds = selectedRaw.map(String).filter(Boolean);
@@ -74,6 +79,7 @@ function normalizePlanningPreferences(value, fallbackUserId) {
   const monthsShown = [1, 2, 3].includes(monthsNum) ? monthsNum : 3;
   return {
     agentIds,
+    teamIds,
     selectedAgentIds: selectedAgentIds.length > 0 ? selectedAgentIds : agentIds,
     view,
     monthsShown
@@ -390,6 +396,7 @@ export default function PlanningPage({
   const [selectedTypes, setSelectedTypes] = useState(new Set());
   const [selectedUsers, setSelectedUsers] = useState(new Set());
   const [pinnedAgentIds, setPinnedAgentIds] = useState([]);
+  const [pinnedTeamIds, setPinnedTeamIds] = useState([]);
   const [planningPreferencesLoaded, setPlanningPreferencesLoaded] = useState(false);
   const [agentFilterSearch, setAgentFilterSearch] = useState("");
   const [agentAddMode, setAgentAddMode] = useState(null);
@@ -397,6 +404,7 @@ export default function PlanningPage({
   const [loadingPlanningTeams, setLoadingPlanningTeams] = useState(false);
   const agentFilterAddRef = useRef(null);
   const [selectedClientsFilter, setSelectedClientsFilter] = useState(new Set());
+  const [clientFilterSearch, setClientFilterSearch] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
   useEffect(() => {
     if (!planningParams) return;
@@ -451,6 +459,7 @@ export default function PlanningPage({
   useEffect(() => {
     if (!user?.id) {
       setPinnedAgentIds([]);
+      setPinnedTeamIds([]);
       setSelectedUsers(new Set());
       setPlanningPreferencesLoaded(false);
       return;
@@ -465,6 +474,7 @@ export default function PlanningPage({
         if (cancelled) return;
         const prefs = normalizePlanningPreferences(value, user.id);
         setPinnedAgentIds(prefs.agentIds);
+        setPinnedTeamIds(prefs.teamIds);
         setSelectedUsers(new Set(prefs.selectedAgentIds));
         setView(prefs.view);
         setMonthsShown(prefs.monthsShown);
@@ -473,6 +483,7 @@ export default function PlanningPage({
         if (!cancelled) {
           const prefs = normalizePlanningPreferences(null, user.id);
           setPinnedAgentIds(prefs.agentIds);
+          setPinnedTeamIds(prefs.teamIds);
           setSelectedUsers(new Set(prefs.selectedAgentIds));
           setView(prefs.view);
           setMonthsShown(prefs.monthsShown);
@@ -490,6 +501,7 @@ export default function PlanningPage({
     const timer = setTimeout(() => {
       saveUserSetting(PLANNING_PREFERENCES_SETTING, {
         agentIds: pinnedAgentIds.map(String),
+        teamIds: pinnedTeamIds.map(String),
         selectedAgentIds: [...selectedUsers].map(String),
         view,
         monthsShown
@@ -498,7 +510,7 @@ export default function PlanningPage({
       });
     }, 450);
     return () => clearTimeout(timer);
-  }, [pinnedAgentIds, selectedUsers, view, monthsShown, user?.id, planningPreferencesLoaded]);
+  }, [pinnedAgentIds, pinnedTeamIds, selectedUsers, view, monthsShown, user?.id, planningPreferencesLoaded]);
   useEffect(() => {
     if (!users.length || !planningPreferencesLoaded) return;
     setPinnedAgentIds(prev => {
@@ -972,10 +984,17 @@ export default function PlanningPage({
     }
     return filtered;
   }, [allEvents, selectedTypes, selectedUsers, selectedClientsFilter, searchQuery]);
-  const weekAgents = useMemo(() => pinnedAgentIds.filter(id => selectedUsers.has(String(id))).map(id => users.find(user => String(user.id) === String(id))).filter(Boolean).map(user => ({
-    id: String(user.id),
-    name: user.name || user.nom || user.username || planningCopy.defaults.agent
-  })), [pinnedAgentIds, selectedUsers, users]);
+  const weekAgents = useMemo(() => {
+    const ids = new Set(pinnedAgentIds.map(String));
+    pinnedTeamIds.forEach(teamId => {
+      const team = planningTeams.find(row => String(row.id) === String(teamId));
+      (team?.memberUserIds || []).forEach(id => ids.add(String(id)));
+    });
+    return [...ids].filter(id => selectedUsers.has(String(id))).map(id => users.find(userRow => String(userRow.id) === String(id))).filter(Boolean).map(userRow => ({
+      id: String(userRow.id),
+      name: userRow.name || userRow.nom || userRow.username || planningCopy.defaults.agent
+    }));
+  }, [pinnedAgentIds, pinnedTeamIds, planningTeams, selectedUsers, users, planningCopy.defaults.agent]);
   const toggleType = type => {
     const newSelected = new Set(selectedTypes);
     if (newSelected.has(type)) {
@@ -1014,7 +1033,7 @@ export default function PlanningPage({
   const addPinnedAgent = userId => {
     addPinnedAgents([userId]);
   };
-  const loadPlanningTeams = async () => {
+  const loadPlanningTeams = useCallback(async () => {
     if (loadingPlanningTeams) return;
     setLoadingPlanningTeams(true);
     try {
@@ -1027,7 +1046,13 @@ export default function PlanningPage({
     } finally {
       setLoadingPlanningTeams(false);
     }
-  };
+  }, [loadingPlanningTeams, planningCopy.toasts.teamsLoadError]);
+  useEffect(() => {
+    if (!planningPreferencesLoaded) return;
+    if (pinnedTeamIds.length > 0 && planningTeams.length === 0 && !loadingPlanningTeams) {
+      loadPlanningTeams();
+    }
+  }, [planningPreferencesLoaded, pinnedTeamIds.length, planningTeams.length, loadingPlanningTeams, loadPlanningTeams]);
   const openAgentAddMode = mode => {
     setAgentAddMode(prev => prev === mode ? null : mode);
     setAgentFilterSearch("");
@@ -1035,14 +1060,68 @@ export default function PlanningPage({
       loadPlanningTeams();
     }
   };
+  const pinnedTeams = useMemo(() => {
+    const byId = new Map(planningTeams.map(team => [String(team.id), team]));
+    return pinnedTeamIds.map(id => byId.get(String(id))).filter(Boolean);
+  }, [pinnedTeamIds, planningTeams]);
+  const teamMemberIdSet = useMemo(() => {
+    const ids = new Set();
+    pinnedTeams.forEach(team => {
+      (team.memberUserIds || []).forEach(id => ids.add(String(id)));
+    });
+    return ids;
+  }, [pinnedTeams]);
   const addTeamToPinned = team => {
+    const teamId = String(team?.id || "");
     const memberIds = (team?.memberUserIds || []).map(String).filter(Boolean);
+    if (!teamId) return;
     if (!memberIds.length) {
       toast.info(planningCopy.formatTeamNoMembers(team?.name || planningCopy.defaults.team));
       return;
     }
-    addPinnedAgents(memberIds);
-    toast.success(planningCopy.formatTeamMembersAdded(memberIds.length, team.name));
+    setPinnedTeamIds(prev => prev.includes(teamId) ? prev : [...prev, teamId]);
+    setPinnedAgentIds(prev => prev.filter(id => !memberIds.includes(String(id))));
+    setSelectedUsers(prev => {
+      const next = new Set(prev);
+      memberIds.forEach(id => next.add(id));
+      return next;
+    });
+    setAgentAddMode(null);
+    setAgentFilterSearch("");
+    toast.success(planningCopy.formatTeamAdded(team.name || planningCopy.defaults.team));
+  };
+  const removePinnedTeam = teamId => {
+    const teamIdStr = String(teamId);
+    const team = planningTeams.find(row => String(row.id) === teamIdStr);
+    const memberIds = new Set((team?.memberUserIds || []).map(String));
+    const remainingTeamMemberIds = new Set();
+    pinnedTeams.forEach(row => {
+      if (String(row.id) === teamIdStr) return;
+      (row.memberUserIds || []).forEach(id => remainingTeamMemberIds.add(String(id)));
+    });
+    const soloIds = new Set(pinnedAgentIds.map(String));
+    setPinnedTeamIds(prev => prev.filter(id => id !== teamIdStr));
+    setSelectedUsers(prev => {
+      const next = new Set(prev);
+      memberIds.forEach(id => {
+        if (!remainingTeamMemberIds.has(id) && !soloIds.has(id)) next.delete(id);
+      });
+      return next;
+    });
+  };
+  const toggleTeamSelection = team => {
+    const memberIds = (team?.memberUserIds || []).map(String).filter(Boolean);
+    if (!memberIds.length) return;
+    const allSelected = memberIds.every(id => selectedUsers.has(id));
+    setSelectedUsers(prev => {
+      const next = new Set(prev);
+      if (allSelected) {
+        memberIds.forEach(id => next.delete(id));
+      } else {
+        memberIds.forEach(id => next.add(id));
+      }
+      return next;
+    });
   };
   const removePinnedAgent = userId => {
     const userIdStr = String(userId);
@@ -1053,31 +1132,49 @@ export default function PlanningPage({
       return next;
     });
   };
+  const allVisibleAgentIds = useMemo(() => {
+    const ids = new Set(pinnedAgentIds.map(String));
+    teamMemberIdSet.forEach(id => ids.add(id));
+    return [...ids];
+  }, [pinnedAgentIds, teamMemberIdSet]);
   const selectAllPinnedAgents = () => {
-    setSelectedUsers(new Set(pinnedAgentIds.map(String)));
+    setSelectedUsers(new Set(allVisibleAgentIds));
   };
-  const pinnedAgents = useMemo(() => {
+  const soloPinnedAgents = useMemo(() => {
     const byId = new Map(users.map(u => [String(u.id), u]));
-    return pinnedAgentIds.map(id => byId.get(String(id))).filter(Boolean);
-  }, [pinnedAgentIds, users]);
+    return pinnedAgentIds.map(id => byId.get(String(id))).filter(userItem => userItem && !teamMemberIdSet.has(String(userItem.id)));
+  }, [pinnedAgentIds, users, teamMemberIdSet]);
   const availableAgentsToAdd = useMemo(() => {
-    const pinned = new Set(pinnedAgentIds.map(String));
+    const pinnedSolo = new Set(pinnedAgentIds.map(String));
     const query = agentFilterSearch.trim().toLowerCase();
     return users.filter(u => {
-      if (pinned.has(String(u.id))) return false;
+      const id = String(u.id);
+      if (pinnedSolo.has(id) || teamMemberIdSet.has(id)) return false;
       if (!query) return true;
       const name = (u.name || u.nom || u.username || u.email || "").toLowerCase();
       return name.includes(query);
     });
-  }, [users, pinnedAgentIds, agentFilterSearch]);
+  }, [users, pinnedAgentIds, teamMemberIdSet, agentFilterSearch]);
   const availableTeamsToAdd = useMemo(() => {
+    const pinned = new Set(pinnedTeamIds.map(String));
     const query = agentFilterSearch.trim().toLowerCase();
     return planningTeams.filter(team => {
+      if (pinned.has(String(team.id))) return false;
       if (!query) return true;
       const haystack = `${team.name || ""} ${team.description || ""}`.toLowerCase();
       return haystack.includes(query);
     });
-  }, [planningTeams, agentFilterSearch]);
+  }, [planningTeams, pinnedTeamIds, agentFilterSearch]);
+  const filteredClientsForPane = useMemo(() => {
+    const query = clientFilterSearch.trim().toLowerCase();
+    if (!query) {
+      return clients.filter(client => selectedClientsFilter.has(String(client.id)));
+    }
+    return clients.filter(client => {
+      const name = (client.name || client.nom || "").toLowerCase();
+      return name.includes(query);
+    }).slice(0, 40);
+  }, [clients, clientFilterSearch, selectedClientsFilter]);
   const toggleClient = clientId => {
     const newSelected = new Set(selectedClientsFilter);
     const clientIdStr = String(clientId);
@@ -1859,13 +1956,16 @@ export default function PlanningPage({
         <span className={styles.filterItemLabel}>{label}</span>
       </span>
     </button>;
-  const renderAgentFilterRow = userItem => {
+  const renderAgentFilterRow = (userItem, {
+    nested = false,
+    removable = true
+  } = {}) => {
     const userIdStr = String(userItem.id);
     const count = userCounts[userIdStr] || 0;
     const userName = userItem.name || userItem.nom || userItem.username || planningCopy.defaults.user;
     const active = selectedUsers.has(userIdStr);
     const isMe = String(userItem.id) === String(user?.id);
-    return <div key={userItem.id} className={`${styles.agentFilterRow} ${active ? styles.agentFilterRowActive : ""}`}>
+    return <div key={userItem.id} className={`${styles.agentFilterRow} ${nested ? styles.agentFilterRowNested : ""} ${active ? styles.agentFilterRowActive : ""}`}>
         <button type="button" className={styles.agentFilterToggle} onClick={() => toggleUser(userItem.id)} aria-pressed={active} title={active ? planningCopy.formatHideAgentPlanning(userName) : planningCopy.formatShowAgentPlanning(userName)}>
           <span className={`${styles.agentFilterCheck} ${active ? styles.agentFilterCheckActive : ""}`} aria-hidden>
             {active ? <Icon icon="mdi:check" /> : null}
@@ -1880,9 +1980,45 @@ export default function PlanningPage({
             {isMe ? ` ${planningCopy.filters.meSuffix}` : ""}
           </span>
         </button>
-        <button type="button" className={styles.agentFilterRemove} onClick={() => removePinnedAgent(userItem.id)} aria-label={planningCopy.formatRemoveAgentFromList(userName)} title={planningCopy.filters.removeFromList}>
+        {removable ? <button type="button" className={styles.agentFilterRemove} onClick={() => removePinnedAgent(userItem.id)} aria-label={planningCopy.formatRemoveAgentFromList(userName)} title={planningCopy.filters.removeFromList}>
           <FaTimes />
-        </button>
+        </button> : null}
+      </div>;
+  };
+  const renderTeamFilterGroup = team => {
+    const memberIds = (team.memberUserIds || []).map(String).filter(Boolean);
+    const members = memberIds.map(id => users.find(u => String(u.id) === id)).filter(Boolean);
+    const selectedCount = memberIds.filter(id => selectedUsers.has(id)).length;
+    const allSelected = memberIds.length > 0 && selectedCount === memberIds.length;
+    const partialSelected = selectedCount > 0 && !allSelected;
+    const teamCount = memberIds.reduce((sum, id) => sum + (userCounts[id] || 0), 0);
+    const teamName = team.name || planningCopy.defaults.team;
+    return <div key={team.id} className={styles.teamFilterGroup}>
+        <div className={`${styles.agentFilterRow} ${styles.teamFilterRow} ${allSelected || partialSelected ? styles.agentFilterRowActive : ""}`}>
+          <button type="button" className={styles.agentFilterToggle} onClick={() => toggleTeamSelection(team)} aria-pressed={allSelected} title={allSelected ? planningCopy.formatHideTeamPlanning(teamName) : planningCopy.formatShowTeamPlanning(teamName)}>
+            <span className={`${styles.agentFilterCheck} ${allSelected ? styles.agentFilterCheckActive : ""} ${partialSelected ? styles.agentFilterCheckPartial : ""}`} aria-hidden>
+              {allSelected ? <Icon icon="mdi:check" /> : partialSelected ? <Icon icon="mdi:minus" /> : null}
+            </span>
+            <span className={styles.teamFilterIcon} style={team.color ? {
+            backgroundColor: `${team.color}22`,
+            color: team.color
+          } : undefined} aria-hidden>
+              <Icon icon={team.icon || "mdi:account-group-outline"} />
+            </span>
+            <span className={styles.filterItemCount}>{teamCount}</span>
+            <span className={styles.filterItemLabel}>{teamName}</span>
+            <span className={styles.teamFilterMeta}>{planningCopy.formatTeamMemberCount(members.length || memberIds.length)}</span>
+          </button>
+          <button type="button" className={styles.agentFilterRemove} onClick={() => removePinnedTeam(team.id)} aria-label={planningCopy.formatRemoveTeamFromList(teamName)} title={planningCopy.filters.removeFromList}>
+            <FaTimes />
+          </button>
+        </div>
+        <div className={styles.teamFilterMembers}>
+          {members.length === 0 ? <p className={styles.agentFilterHint}>{planningCopy.filters.teamEmptyMembers}</p> : members.map(member => renderAgentFilterRow(member, {
+          nested: true,
+          removable: false
+        }))}
+        </div>
       </div>;
   };
   return <div className={`${mspStyles.mspPage} ${layout.page} msp-page-grid`}>
@@ -1925,7 +2061,7 @@ export default function PlanningPage({
               <div className={styles.filtersPaneHeader}>
                 <span className={styles.filtersPaneTitle}>{planningCopy.filters.agents}</span>
                 <div className={styles.filtersPaneHeaderActions}>
-                  {pinnedAgentIds.length > 1 && selectedUsers.size < pinnedAgentIds.length && <button type="button" className={styles.filtersPaneAction} onClick={selectAllPinnedAgents}>
+                  {allVisibleAgentIds.length > 1 && selectedUsers.size < allVisibleAgentIds.length && <button type="button" className={styles.filtersPaneAction} onClick={selectAllPinnedAgents}>
                       {planningCopy.filters.all}
                     </button>}
                   {selectedUsers.size > 0 && <button type="button" className={styles.filtersPaneAction} onClick={() => setSelectedUsers(new Set())}>
@@ -1982,9 +2118,12 @@ export default function PlanningPage({
                   </div>}
               </div>
               <div className={styles.agentsFiltersList}>
-                {pinnedAgents.length === 0 ? <p className={styles.agentFilterHint}>
+                {pinnedTeams.length === 0 && soloPinnedAgents.length === 0 ? <p className={styles.agentFilterHint}>
                     {planningCopy.filters.addAgentsHint}
-                  </p> : pinnedAgents.map(userItem => renderAgentFilterRow(userItem))}
+                  </p> : <>
+                    {pinnedTeams.map(team => renderTeamFilterGroup(team))}
+                    {soloPinnedAgents.map(userItem => renderAgentFilterRow(userItem))}
+                  </>}
               </div>
               {selectedUsers.size > 1 && <p className={styles.agentFilterMeta}>
                   {planningCopy.formatAgentsSelected(selectedUsers.size)}
@@ -1998,8 +2137,17 @@ export default function PlanningPage({
                     {planningCopy.filters.clear}
                   </button>}
               </div>
+              <div className={styles.clientFilterSearchWrap}>
+                <Icon icon="mdi:magnify" className={styles.clientFilterSearchIcon} aria-hidden />
+                <input type="text" className={styles.clientFilterSearch} value={clientFilterSearch} onChange={e => setClientFilterSearch(e.target.value)} placeholder={planningCopy.filters.searchClient} autoComplete="off" aria-label={planningCopy.filters.searchClient} />
+                {clientFilterSearch ? <button type="button" className={styles.clientFilterSearchClear} onClick={() => setClientFilterSearch("")} aria-label={planningCopy.search.clear}>
+                    <FaTimes />
+                  </button> : null}
+              </div>
               <div className={styles.filtersList}>
-                {clients.map(client => {
+                {filteredClientsForPane.length === 0 ? <p className={styles.agentFilterHint}>
+                    {clientFilterSearch.trim() ? planningCopy.filters.noClientFound : clients.length === 0 ? planningCopy.filters.noClients : planningCopy.filters.searchClientHint}
+                  </p> : filteredClientsForPane.map(client => {
                       const clientIdStr = String(client.id);
                       const count = clientCounts[clientIdStr] || 0;
                       const clientName = client.name || client.nom || planningCopy.defaults.client;

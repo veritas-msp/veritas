@@ -1102,7 +1102,9 @@ export default function TicketCreatePage({
         requesterContactId,
         isMajorIncident: type === "incident" && isMajorIncident,
         contactSlots: serializeContactSlots(availabilitySlots),
-        equipmentInfo
+        equipmentInfo,
+        assigneeUserIds: preAssigneeUserIds,
+        watcherUserIds: preFollowerUserIds
       });
       for (const userId of preAssigneeUserIds) {
         try {

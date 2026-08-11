@@ -3,6 +3,15 @@ import { readApiErrorPayload, createApiError } from "../utils/apiErrors";
 const jsonHeaders = {
   "Content-Type": "application/json"
 };
+function withQuery(path, params = {}) {
+  const search = new URLSearchParams();
+  Object.entries(params).forEach(([key, value]) => {
+    if (value == null || value === "") return;
+    search.set(key, String(value));
+  });
+  const qs = search.toString();
+  return qs ? `${path}?${qs}` : path;
+}
 async function handleResponse(response) {
   const data = await readApiErrorPayload(response);
   if (!response.ok) {
@@ -72,10 +81,10 @@ export async function deleteRmmTokenSettings(tokenId) {
 export async function fetchRmmEnrollmentTokens(clientId, {
   status = "active"
 } = {}) {
-  const url = new URL(`${API_BASE_URL}/rmm/enrollment-tokens`);
-  if (clientId) url.searchParams.set("clientId", clientId);
-  if (status) url.searchParams.set("status", status);
-  const response = await fetch(url.toString(), {
+  const response = await fetch(withQuery(`${API_BASE_URL}/rmm/enrollment-tokens`, {
+    clientId,
+    status
+  }), {
     credentials: "include",
     headers: jsonHeaders
   });
@@ -115,9 +124,9 @@ export async function deleteRmmEnrollmentTokenPermanently(tokenId) {
   return handleResponse(response);
 }
 export async function fetchRmmAgents(clientId) {
-  const url = new URL(`${API_BASE_URL}/rmm/agents`);
-  if (clientId) url.searchParams.set("clientId", clientId);
-  const response = await fetch(url.toString(), {
+  const response = await fetch(withQuery(`${API_BASE_URL}/rmm/agents`, {
+    clientId
+  }), {
     credentials: "include",
     headers: jsonHeaders
   });
@@ -179,11 +188,11 @@ export async function fetchRmmMetricHistory(agentId, {
   dim,
   days = 90
 } = {}) {
-  const url = new URL(`${API_BASE_URL}/rmm/agents/${agentId}/metrics/history`);
-  url.searchParams.set("metric", metric);
-  if (dim != null && dim !== "") url.searchParams.set("dim", String(dim));
-  url.searchParams.set("days", String(days));
-  const response = await fetch(url.toString(), {
+  const response = await fetch(withQuery(`${API_BASE_URL}/rmm/agents/${agentId}/metrics/history`, {
+    metric,
+    dim: dim == null || dim === "" ? undefined : dim,
+    days
+  }), {
     credentials: "include",
     headers: jsonHeaders
   });
