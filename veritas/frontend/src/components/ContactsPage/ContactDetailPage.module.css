@@ -330,8 +330,7 @@
   color: var(--msp-muted-light, #8b9bb5);
 }
 
-.vaultClientSelect,
-.membershipSearch {
+.vaultClientSelect {
   width: 100%;
   border: 1px solid var(--msp-border, #e2e8f0);
   border-radius: 10px;
@@ -341,113 +340,11 @@
   font: inherit;
 }
 
-.membershipList {
-  display: flex;
-  flex-direction: column;
-  gap: 0.55rem;
+.companiesAdd {
+  margin-top: 0.75rem;
 }
 
-.membershipRow {
-  display: flex;
-  align-items: center;
-  gap: 0.4rem;
-}
-
-.membershipNameBtn {
-  flex: 1;
-  min-width: 0;
-  display: inline-flex;
-  align-items: center;
-  gap: 0.4rem;
-  border: 1px solid var(--msp-border, #e2e8f0);
-  border-radius: 10px;
-  background: var(--msp-surface-2, #f7f9fc);
-  color: inherit;
-  font: inherit;
-  text-align: left;
-  padding: 0.55rem 0.7rem;
-  cursor: pointer;
-}
-
-.membershipNameBtn span:first-of-type {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.membershipPrimary {
-  margin-left: auto;
-  font-size: 0.65rem;
-  font-weight: 700;
-  letter-spacing: 0.03em;
-  text-transform: uppercase;
-  color: var(--msp-accent, #2b5fab);
-}
-
-.membershipRemoveBtn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 1.85rem;
-  height: 1.85rem;
-  border: none;
-  border-radius: 8px;
-  background: transparent;
-  color: var(--msp-muted-light, #8b9bb5);
-  cursor: pointer;
-}
-
-.membershipRemoveBtn:hover:not(:disabled) {
-  color: #b91c1c;
-  background: rgba(185, 28, 28, 0.08);
-}
-
-.membershipAdd {
-  position: relative;
-  display: flex;
-  flex-direction: column;
-  gap: 0.35rem;
-  margin-top: 0.35rem;
-}
-
-.membershipDropdown {
-  position: absolute;
-  top: calc(100% + 0.25rem);
-  left: 0;
-  right: 0;
-  z-index: 5;
-  max-height: 220px;
-  overflow: auto;
-  border: 1px solid var(--msp-border, #e2e8f0);
-  border-radius: 10px;
-  background: var(--msp-surface, #fff);
-  box-shadow: 0 8px 24px rgba(15, 28, 46, 0.12);
-}
-
-.membershipDropdownEmpty,
-.membershipDropdownOption {
-  display: block;
-  width: 100%;
-  padding: 0.6rem 0.75rem;
-  text-align: left;
-  border: none;
-  background: transparent;
-  font: inherit;
-  color: inherit;
-}
-
-.membershipDropdownOption {
-  cursor: pointer;
-}
-
-.membershipDropdownOption:hover {
-  background: var(--msp-accent-soft, rgba(43, 95, 171, 0.1));
-}
-
-:global(html.dark) .vaultClientSelect,
-:global(html.dark) .membershipSearch,
-:global(html.dark) .membershipNameBtn,
-:global(html.dark) .membershipDropdown {
+:global(html.dark) .vaultClientSelect {
   background: var(--msp-surface-2, #152035);
   border-color: var(--msp-border, #2a3a55);
 }

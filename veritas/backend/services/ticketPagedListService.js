@@ -1,6 +1,7 @@
 import { appendCommunityTicketFilters, appendSalesTicketFilters, appendSupportTicketFilters } from "../utils/ticketEditionGuard.js";
 import { appendSearchWhere, appendStatusFilterWhere, appendTypeFilterWhere, buildOrderBySql, buildViewRulesWhere } from "./ticketViewSql.js";
 import { ensureTicketValidationRequestsSchema } from "./ensureTicketValidationRequestsSchema.js";
+import { TICKET_REQUESTER_EMAIL_SQL } from "./ticketEmailThread.js";
 const FIRST_TAKEOVER_AT_SQL = `(SELECT h.created_at
            FROM v_b_ticket_status_history h
            WHERE h.ticket_id = t.id
@@ -197,7 +198,7 @@ function buildTicketListSelectSql(schema) {
           ${hasMajorIncident ? "t.is_major_incident," : ""}
           c.name AS client_name,
           c.name AS client_nom,
-          req_u.email AS requester_email,
+          ${TICKET_REQUESTER_EMAIL_SQL} AS requester_email,
           ass_u.email AS assigned_email,
           COALESCE(
             (

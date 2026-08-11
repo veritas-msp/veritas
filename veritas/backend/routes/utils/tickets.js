@@ -44,6 +44,7 @@ import { normalizeMailCollectSettings } from "../../services/mailCollectSettings
 import { getAllMatchingExclusionRules, normalizeExclusionRule } from "../../services/mailIngestionRules.js";
 import { searchTicketsPaged, TICKET_SEARCH_MAX_LIMIT, resolveTicketListSchema } from "../../services/ticketPagedListService.js";
 import { logTicketActivity, logTicketFieldChanges, listTicketActivity } from "../../services/ticketActivityService.js";
+import { TICKET_REQUESTER_EMAIL_SQL } from "../../services/ticketEmailThread.js";
 const router = express.Router();
 router.use(verifyJWT);
 const TICKET_UPLOAD_DIR = path.resolve(process.cwd(), "uploads", "tickets");
@@ -466,7 +467,7 @@ async function getTicketById(ticketId) {
       c.name AS client_name,
       c.name AS client_nom,
       c.contrat AS client_contrat,
-      req_u.email AS requester_email,
+      ${TICKET_REQUESTER_EMAIL_SQL} AS requester_email,
       ass_u.email AS assigned_email,
       cre_u.email AS created_by_email,
       ${FIRST_TAKEOVER_AT_SQL},
@@ -1460,7 +1461,7 @@ router.get("/", verifyJWT, requirePermission("tickets.view"), [query("status").o
           ${hasMajorIncident ? "t.is_major_incident," : ""}
           c.name AS client_name,
           c.name AS client_nom,
-          req_u.email AS requester_email,
+          ${TICKET_REQUESTER_EMAIL_SQL} AS requester_email,
           ass_u.email AS assigned_email,
           COALESCE(
             (
@@ -2523,7 +2524,7 @@ router.get("/trash", verifyJWT, requirePermission("tickets.view"), [query("limit
           ${hasMajorIncident ? "t.is_major_incident," : ""}
           c.name AS client_name,
           c.name AS client_nom,
-          req_u.email AS requester_email,
+          ${TICKET_REQUESTER_EMAIL_SQL} AS requester_email,
           ass_u.email AS assigned_email,
           (SELECT COUNT(*) FROM v_b_ticket_comments cm WHERE cm.ticket_id = t.id) AS comments_count
          FROM v_b_tickets t

@@ -332,16 +332,74 @@ async function resolveRequesterUserIdByEmail(email) {
   if (!normalizedEmail) return null;
   const result = await pool.query(`SELECT id
      FROM v_b_users
-     WHERE LOWER(email) = $1
+     WHERE LOWER(TRIM(email)) = $1
      LIMIT 1`, [normalizedEmail]);
   return result.rows?.[0]?.id || null;
 }
+
+/**
+ * Match a CRM contact by sender email (legacy email column + communications JSON).
+ * Never falls back to "first contact alphabetically".
+ */
+async function resolveRequesterContactByEmail(email) {
+  const normalizedEmail = String(email || "").trim().toLowerCase();
+  if (!normalizedEmail) return null;
+  const result = await pool.query(
+    `SELECT c.id,
+            c.client_id,
+            c.nom,
+            c.prenom,
+            c.email,
+            (
+              SELECT COUNT(*)::int FROM v_b_contact_client_links l WHERE l.contact_id = c.id
+            ) AS membership_count
+       FROM v_b_contacts c
+      WHERE LOWER(TRIM(COALESCE(c.email, ''))) = $1
+         OR (
+           c.communications IS NOT NULL
+           AND jsonb_typeof(c.communications) = 'array'
+           AND EXISTS (
+             SELECT 1
+               FROM jsonb_array_elements(c.communications) AS entry
+              WHERE LOWER(TRIM(COALESCE(entry->>'type', ''))) = 'email'
+                AND LOWER(TRIM(COALESCE(entry->>'value', ''))) = $1
+           )
+         )
+      ORDER BY c.updated_at DESC NULLS LAST, c.created_at DESC NULLS LAST, c.id DESC
+      LIMIT 1`,
+    [normalizedEmail]
+  );
+  const row = result.rows?.[0] || null;
+  if (!row) return null;
+  if (Number(row.membership_count) > 1) {
+    return {
+      ...row,
+      client_id: null
+    };
+  }
+  if (!row.client_id && Number(row.membership_count) === 1) {
+    const link = await pool.query(
+      `SELECT client_id FROM v_b_contact_client_links WHERE contact_id = $1 LIMIT 1`,
+      [row.id]
+    );
+    row.client_id = link.rows[0]?.client_id || null;
+  }
+  return row;
+}
+
+function resolveInboundRequesterAddress(mailContext = {}, collector = null) {
+  const replyTo = String(mailContext?.replyToAddress || "").trim();
+  if (collector?.useReplyToAsRequester && replyTo) return replyTo;
+  return String(mailContext?.fromAddress || "").trim();
+}
+
 async function createTicketFromCollectorEmail({
   subject,
   body,
   htmlBody = "",
   fromName,
   fromAddress,
+  requesterAddress = null,
   ticketKind = "support"
 }) {
   const safeSubject = String(subject || "").trim();
@@ -353,17 +411,43 @@ async function createTicketFromCollectorEmail({
     fromName,
     fromAddress
   });
-  const requesterUserId = await resolveRequesterUserIdByEmail(fromAddress);
+  const requesterEmail = String(requesterAddress || fromAddress || "").trim();
+  const matchedContact = await resolveRequesterContactByEmail(requesterEmail);
+  const requesterContactId = matchedContact?.id || null;
+  const clientId = matchedContact?.client_id || null;
+  // Keep user match as secondary signal (agents / portal), never as a substitute for the wrong contact.
+  const requesterUserId = await resolveRequesterUserIdByEmail(requesterEmail);
   const isServices = ticketKind === "services";
   const type = isServices ? "prestation" : "incident";
   const category = isServices ? "prestation-intervention-distante" : null;
-  const result = category ? await pool.query(`INSERT INTO v_b_tickets
-          (title, description, status, priority, type, category, channel, requester_user_id, created_at, updated_at)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW(), NOW())
-         RETURNING id, ticket_number`, [normalizedTitle.slice(0, 255), ticketDescription, "open", "normal", type, category, "email", requesterUserId]) : await pool.query(`INSERT INTO v_b_tickets
-          (title, description, status, priority, type, channel, requester_user_id, created_at, updated_at)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, NOW(), NOW())
-         RETURNING id, ticket_number`, [normalizedTitle.slice(0, 255), ticketDescription, "open", "normal", type, "email", requesterUserId]);
+  const columns = ["title", "description", "status", "priority", "type"];
+  const values = [normalizedTitle.slice(0, 255), ticketDescription, "open", "normal", type];
+  if (category) {
+    columns.push("category");
+    values.push(category);
+  }
+  columns.push("channel");
+  values.push("email");
+  if (requesterContactId) {
+    columns.push("requester_contact_id");
+    values.push(requesterContactId);
+  }
+  if (requesterUserId) {
+    columns.push("requester_user_id");
+    values.push(requesterUserId);
+  }
+  if (clientId) {
+    columns.push("client_id");
+    values.push(clientId);
+  }
+  columns.push("created_at", "updated_at");
+  const placeholders = values.map((_, idx) => `$${idx + 1}`).concat(["NOW()", "NOW()"]).join(", ");
+  const result = await pool.query(
+    `INSERT INTO v_b_tickets (${columns.join(", ")})
+     VALUES (${placeholders})
+     RETURNING id, ticket_number`,
+    values
+  );
   return result.rows?.[0] || null;
 }
 async function attachEmailToTicket({
@@ -518,6 +602,7 @@ async function createInboundTicketAndRecord({
     htmlBody,
     fromName,
     fromAddress,
+    requesterAddress: resolveInboundRequesterAddress(mailContext, collector),
     ticketKind
   });
   if (!created?.id) {

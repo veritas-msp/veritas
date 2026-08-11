@@ -102,13 +102,22 @@ export default function ContactFormModal({
   const [enterpriseDropdownOpen, setEnterpriseDropdownOpen] = useState(false);
   const [portalEmailConfirm, setPortalEmailConfirm] = useState(null);
   const enterpriseAutocompleteRef = useRef(null);
+  // Reset only when the modal opens or the edited contact / locked client changes —
+  // not when parents pass a new `clients` / `initialContact` object reference each render.
+  const formSessionKey = `${initialContact?.id ?? "new"}|${lockedClientId ?? ""}|${defaultClientId ?? ""}`;
+  const lastFormSessionKeyRef = useRef(null);
   const hasChanges = useMemo(() => {
     const formChanged = !contactFormsEqual(form, initialSnapshot);
     const membershipsChanged = serializeMemberships(memberships) !== initialMembershipsSnapshot;
     return formChanged || membershipsChanged;
   }, [form, initialSnapshot, memberships, initialMembershipsSnapshot]);
   useEffect(() => {
-    if (!open) return;
+    if (!open) {
+      lastFormSessionKeyRef.current = null;
+      return;
+    }
+    if (lastFormSessionKeyRef.current === formSessionKey) return;
+    lastFormSessionKeyRef.current = formSessionKey;
     const nextForm = buildContactFormFromInitial(initialContact, lockedClientId ?? defaultClientId);
     const nextMemberships = buildMembershipsFromInitial(initialContact, lockedClientId, defaultClientId, clientList);
     setForm(nextForm);
@@ -119,7 +128,24 @@ export default function ContactFormModal({
     setEnterpriseDropdownOpen(false);
     setEnterpriseSearch("");
     setPortalEmailConfirm(null);
-  }, [open, initialContact, lockedClientId, defaultClientId, clientList]);
+  }, [open, formSessionKey, initialContact, lockedClientId, defaultClientId, clientList]);
+  useEffect(() => {
+    if (!open || clientList.length === 0) return;
+    setMemberships(prev => {
+      let changed = false;
+      const next = prev.map(m => {
+        if (m.name) return m;
+        const listed = clientList.find(c => String(c.id) === String(m.client_id));
+        if (!listed?.name) return m;
+        changed = true;
+        return {
+          ...m,
+          name: listed.name
+        };
+      });
+      return changed ? next : prev;
+    });
+  }, [open, clientList]);
   useEffect(() => {
     if (!open) return;
     const handleClickOutside = e => {

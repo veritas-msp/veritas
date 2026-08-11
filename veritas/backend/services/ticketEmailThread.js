@@ -1,5 +1,20 @@
 import { pool } from "../database/db.js";
 import { ensureTicketEmailThreadSchema } from "./ensureTicketEmailThreadSchema.js";
+
+/** Prefer linked user email, else first inbound collector From address. */
+export const TICKET_REQUESTER_EMAIL_SQL = `COALESCE(
+  req_u.email,
+  (
+    SELECT m.from_address
+    FROM v_b_ticket_email_messages m
+    WHERE m.ticket_id = t.id
+      AND LOWER(COALESCE(m.direction, 'inbound')) = 'inbound'
+      AND NULLIF(BTRIM(m.from_address), '') IS NOT NULL
+    ORDER BY m.created_at ASC NULLS LAST
+    LIMIT 1
+  )
+)`;
+
 export function normalizeMessageId(value = "") {
   const trimmed = String(value || "").trim();
   if (!trimmed) return "";

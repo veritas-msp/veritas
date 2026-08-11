@@ -8,6 +8,7 @@ import { fetchEvents } from "../../api/events";
 import { filterUpcomingEvents } from "../../utils/eventFilters";
 import styles from "../EnterprisesPage/EnterpriseDetailPage.module.css";
 import pageLayout from "../EnterprisesPage/EnterprisesPage.module.css";
+import formStyles from "../EnterprisesPage/EnterpriseFormModal.module.css";
 import contactStyles from "./ContactDetailPage.module.css";
 import SmartTooltip from "../SmartTooltip";
 import ClientTicketBookmarks from "./ClientTicketBookmarks";
@@ -747,7 +748,7 @@ export default function ContactDetailPage({
                             <span className={styles.headerClientCode}>{code}</span>
                             {label}
                           </> : label}
-                        {company.is_primary ? <span className={styles.contractBadge}>{copy.primaryBadge}</span> : null}
+                        {company.is_primary ? <span className={styles.sitePreviewPrimary}>{copy.primaryBadge}</span> : null}
                       </button> : <span key={company.name || "company"} className={styles.heroMetaItem}>
                         <Icon icon="mdi:domain" aria-hidden />
                         {label}
@@ -1120,41 +1121,61 @@ export default function ContactDetailPage({
 
               <section className={styles.sidebarSection} data-guide="contact-sidebar-companies">
                 <div className={styles.sidebarInfoHeader}>
-                  <span className={styles.sidebarInfoTitle}>{copy.companies || copy.share.lines.enterprise}</span>
+                  <span className={styles.sidebarInfoTitle}>
+                    {copy.companies || copy.share.lines.enterprise}
+                    {contactCompanies.length > 0 ? <span className={styles.sidebarSectionCount}>{contactCompanies.length}</span> : null}
+                  </span>
                 </div>
-                <div className={contactStyles.membershipList}>
-                  {contactCompanies.length === 0 ? <span className={styles.sidebarSummaryValueEmpty}>-</span> : contactCompanies.map(company => <div key={company.id} className={contactStyles.membershipRow}>
-                        <button type="button" className={contactStyles.membershipNameBtn} onClick={() => openEnterprise({
+                <div className={styles.sidebarBody}>
+                  {contactCompanies.length === 0 ? <span className={styles.sidebarSummaryValueEmpty}>-</span> : <ul className={styles.sidebarContactsList}>
+                      {contactCompanies.map(company => <SmartTooltip as="li" key={company.id} className={styles.sidebarContactItem} onClick={() => openEnterprise({
                   id: company.id,
                   name: company.name
-                })}>
-                          <Icon icon="mdi:domain" aria-hidden />
-                          <span>{company.name}</span>
-                          {company.is_primary ? <span className={contactStyles.membershipPrimary}>{copy.primaryBadge}</span> : null}
-                        </button>
-                        {canEditContact ? <button type="button" className={contactStyles.membershipRemoveBtn} onClick={() => handleRemoveCompanyMembership(company.id)} disabled={membershipBusy} aria-label={interpolate(copy.removeCompanyAria || "{name}", {
-                  name: company.name
-                })}>
-                            <FaTimes />
-                          </button> : null}
-                      </div>)}
-                  {canEditContact ? <div className={contactStyles.membershipAdd} ref={companyAutocompleteRef}>
-                      <label className={contactStyles.vaultClientLabel} htmlFor="contact-detail-add-company">
+                })} content={copy.viewEnterprise}>
+                          <div className={styles.sidebarContactAvatar} aria-hidden>
+                            <Icon icon="mdi:domain" />
+                          </div>
+                          <div className={styles.sidebarContactBody}>
+                            <div className={styles.sidebarContactTop}>
+                              <div className={styles.sidebarContactIdentity}>
+                                <span className={styles.sidebarContactName}>{company.name}</span>
+                                {company.is_primary ? <span className={styles.sitePreviewPrimary}>{copy.primaryBadge}</span> : null}
+                              </div>
+                              {canEditContact ? <div className={styles.sidebarContactActions}>
+                                  <button type="button" className={styles.sidebarCopyButton} disabled={membershipBusy} title={interpolate(copy.removeCompanyAria || "{name}", {
+                            name: company.name
+                          })} aria-label={interpolate(copy.removeCompanyAria || "{name}", {
+                            name: company.name
+                          })} onClick={e => {
+                            e.stopPropagation();
+                            handleRemoveCompanyMembership(company.id);
+                          }}>
+                                    <FaTimes />
+                                  </button>
+                                </div> : null}
+                            </div>
+                          </div>
+                        </SmartTooltip>)}
+                    </ul>}
+                  {canEditContact ? <div className={`${formStyles.field} ${contactStyles.companiesAdd}`} ref={companyAutocompleteRef}>
+                      <label className={formStyles.label} htmlFor="contact-detail-add-company">
                         {copy.addCompany}
                       </label>
-                      <input id="contact-detail-add-company" type="text" className={contactStyles.membershipSearch} placeholder={copy.selectCompany} value={companySearch} onChange={e => {
-                setCompanySearch(e.target.value);
-                setCompanyDropdownOpen(true);
-                ensureClientsLoaded();
-              }} onFocus={() => {
-                setCompanyDropdownOpen(true);
-                ensureClientsLoaded();
-              }} disabled={membershipBusy} autoComplete="off" />
-                      {companyDropdownOpen && <div className={contactStyles.membershipDropdown}>
-                          {availableCompaniesToAdd.length === 0 ? <div className={contactStyles.membershipDropdownEmpty}>-</div> : availableCompaniesToAdd.map(row => <button key={row.id} type="button" className={contactStyles.membershipDropdownOption} onClick={() => handleAddCompanyMembership(row)} disabled={membershipBusy}>
-                                {row.name}
-                              </button>)}
-                        </div>}
+                      <div className={formStyles.autocomplete}>
+                        <input id="contact-detail-add-company" type="text" className={formStyles.input} placeholder={copy.selectCompany} value={companySearch} onChange={e => {
+                  setCompanySearch(e.target.value);
+                  setCompanyDropdownOpen(true);
+                  ensureClientsLoaded();
+                }} onFocus={() => {
+                  setCompanyDropdownOpen(true);
+                  ensureClientsLoaded();
+                }} disabled={membershipBusy} autoComplete="off" />
+                        {companyDropdownOpen && <div className={formStyles.dropdown}>
+                            {availableCompaniesToAdd.length === 0 ? <div className={formStyles.dropdownEmpty}>-</div> : availableCompaniesToAdd.map(row => <button key={row.id} type="button" className={formStyles.dropdownOption} onClick={() => handleAddCompanyMembership(row)} disabled={membershipBusy}>
+                                  {row.name}
+                                </button>)}
+                          </div>}
+                      </div>
                     </div> : null}
                 </div>
               </section>

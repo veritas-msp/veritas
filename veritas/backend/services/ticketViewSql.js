@@ -275,9 +275,25 @@ function buildRequesterExpr(ctx) {
       SELECT TRIM(CONCAT(COALESCE(ct.prenom, ''), ' ', COALESCE(ct.nom, '')))
       FROM v_b_contacts ct
       WHERE ct.id = t.requester_contact_id
-    ), req_u.email, '')))`;
+    ), req_u.email, (
+      SELECT m.from_address
+      FROM v_b_ticket_email_messages m
+      WHERE m.ticket_id = t.id
+        AND LOWER(COALESCE(m.direction, 'inbound')) = 'inbound'
+        AND NULLIF(BTRIM(m.from_address), '') IS NOT NULL
+      ORDER BY m.created_at ASC NULLS LAST
+      LIMIT 1
+    ), '')))`;
   }
-  return "LOWER(COALESCE(req_u.email, ''))";
+  return `LOWER(COALESCE(req_u.email, (
+    SELECT m.from_address
+    FROM v_b_ticket_email_messages m
+    WHERE m.ticket_id = t.id
+      AND LOWER(COALESCE(m.direction, 'inbound')) = 'inbound'
+      AND NULLIF(BTRIM(m.from_address), '') IS NOT NULL
+    ORDER BY m.created_at ASC NULLS LAST
+    LIMIT 1
+  ), ''))`;
 }
 function buildFieldExpr(field, ctx) {
   const key = String(field || "").trim();

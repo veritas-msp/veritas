@@ -356,11 +356,11 @@ router.patch("/:id/password", verifyJWT, [param("id").isUUID(), body("newPasswor
     });
   }
 });
-router.post("/", verifyJWT, requireRole("admin"), [body("email").isEmail(), body("profile").optional().isString().isLength({
+router.post("/", verifyJWT, requireRole("admin"), [body("email").isEmail(), body("profile").optional(OPTIONAL_BODY).isString().isLength({
   min: 2
 }), body("password").isString().isLength({
   min: 6
-}), body("username").optional().isString().trim().isLength({
+}), body("username").optional(OPTIONAL_BODY).isString().trim().isLength({
   min: 2,
   max: 50
 }), body("is_active").optional().isBoolean()], async (req, res) => {
@@ -382,8 +382,9 @@ router.post("/", verifyJWT, requireRole("admin"), [body("email").isEmail(), body
     }
     const hash = await bcrypt.hash(password, 10);
     const profileName = profile && String(profile).trim() ? String(profile).trim() : DEFAULT_USER_PROFILE;
+    const usernameValue = username !== undefined && username !== null && String(username).trim() !== "" ? String(username).trim() : null;
     const result = await pool.query(`INSERT INTO v_b_users (id, email, username, profile, password_hash, is_active, role)
-         VALUES ($1, $2, $3, $4, $5, $6, 'utilisateur') RETURNING id`, [randomUUID(), email, username || null, profileName, hash, is_active === undefined ? true : is_active]);
+         VALUES ($1, $2, $3, $4, $5, $6, 'utilisateur') RETURNING id`, [randomUUID(), email, usernameValue, profileName, hash, is_active === undefined ? true : is_active]);
     res.status(201).json({
       id: result.rows[0].id
     });

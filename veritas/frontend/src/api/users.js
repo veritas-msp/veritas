@@ -68,21 +68,24 @@ export const createUser = async ({
   profile,
   is_active
 }) => {
+  const payload = {
+    email,
+    password,
+    profile: profile || DEFAULT_USER_PROFILE,
+    is_active
+  };
+  const trimmedUsername = String(username ?? "").trim();
+  if (trimmedUsername) payload.username = trimmedUsername;
   const res = await fetch(BASE_URL, {
     method: "POST",
     headers: jsonHeaders,
-    body: JSON.stringify({
-      email,
-      username,
-      password,
-      profile: profile || DEFAULT_USER_PROFILE,
-      is_active
-    }),
+    body: JSON.stringify(payload),
     credentials: "include"
   });
   if (!res.ok) {
     const data = await readApiErrorPayload(res);
-    throw createApiError(data.error || "Error creating user", {
+    const validationMsg = Array.isArray(data?.errors) ? data.errors.map(e => e.msg).filter(Boolean).join(" · ") : "";
+    throw createApiError(validationMsg || data.error || "Error creating user", {
       code: data.code,
       status: res.status
     });
