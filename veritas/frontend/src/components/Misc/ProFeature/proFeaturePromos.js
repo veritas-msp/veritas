@@ -128,13 +128,6 @@ export const PRO_FEATURE_PROMOS = {
     description: "Les règles de collecte déterminent comment chaque email entrant est traité : création de ticket, ignore ou réponse automatique.",
     bullets: ["Priorisez les règles dans l'ordre d'évaluation", "Filtrez par expéditeur, objet ou critères avancés", "Automatisez les réponses ou le rejet du bruit"]
   },
-  adminScheduledAlerts: {
-    title: "Rules CRON",
-    icon: "mdi:clock-outline",
-    subtitle: "Planifiez des alertes automatiques.",
-    description: "Les règles CRON déclenchent des notifications planifiées sur les contrats, licences, SLA ou événements métier.",
-    bullets: ["Programmez des contrôles récurrents", "Notifiez par mail ou Teams", "Anticipez les expirations et échéances"]
-  },
   adminRmmCollectors: {
     title: "Collecteurs d'inventaire RMM",
     icon: "mdi:database-cog-outline",

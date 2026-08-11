@@ -72,7 +72,6 @@ const getDefaults = () => ({
     logs: [],
     inAppSettings: normalizeInAppSettings()
   },
-  scheduledAlertRules: [],
   mailCollectors: [],
   mailCollectSettings: normalizeMailCollectSettings()
 });
@@ -233,29 +232,6 @@ const normalizeNotificationSettings = row => ({
   },
   inAppSettings: normalizeInAppSettings(row?.inAppSettings)
 });
-const normalizeScheduledAlertRule = (row, idx) => ({
-  id: row?.id || `cron-alert-${Date.now()}-${idx}`,
-  name: String(row?.name || "").trim() || `Rule ${idx + 1}`,
-  cron: String(row?.cron || "0 8 * * *").trim() || "0 8 * * *",
-  triggerType: String(row?.triggerType || "contract_expiration").trim() || "contract_expiration",
-  thresholdDays: Number.isFinite(Number(row?.thresholdDays)) ? Number(row.thresholdDays) : 30,
-  frequencyType: String(row?.frequencyType || "monthly_last_friday").trim() || "monthly_last_friday",
-  weekInterval: Number.isFinite(Number(row?.weekInterval)) ? Math.max(1, Number(row.weekInterval)) : 2,
-  anchorDate: String(row?.anchorDate || "").trim(),
-  runHour: Number.isFinite(Number(row?.runHour)) ? Math.min(23, Math.max(0, Number(row.runHour))) : 8,
-  channels: Array.isArray(row?.channels) ? row.channels.map(channel => String(channel || "").trim()).filter(Boolean) : ["mail"],
-  recipients: String(row?.recipients || "").trim(),
-  emailCc: String(row?.emailCc || "").trim(),
-  distributionMode: String(row?.distributionMode || "to_only").trim() || "to_only",
-  webhookId: String(row?.webhookId || "").trim(),
-  useTemplate: row?.useTemplate === true,
-  templateId: String(row?.templateId || "").trim(),
-  customMessage: String(row?.customMessage || ""),
-  teamsThemeColor: String(row?.teamsThemeColor || "#13BA8E"),
-  sendWhenEmpty: row?.sendWhenEmpty === true,
-  lastRunAt: String(row?.lastRunAt || "").trim(),
-  enabled: row?.enabled !== false
-});
 const normalizeMailCollector = (row, idx) => ({
   id: row?.id || `collector-${Date.now()}-${idx}`,
   name: String(row?.name || "").trim(),
@@ -313,7 +289,6 @@ export async function fetchTicketAutomationConfig() {
       autoReplyRules: Array.isArray(payload?.autoReplyRules) ? payload.autoReplyRules.map(normalizeAutoReplyRule) : [],
       autoReplyTemplate: String(payload?.autoReplyTemplate || getDefaults().autoReplyTemplate),
       notificationSettings: normalizeNotificationSettings(payload?.notificationSettings || payload?.autoReplyRules?.notificationSettings),
-      scheduledAlertRules: Array.isArray(payload?.scheduledAlertRules) ? payload.scheduledAlertRules.map(normalizeScheduledAlertRule) : [],
       mailCollectors: Array.isArray(payload?.mailCollectors) ? payload.mailCollectors.map(normalizeMailCollector) : [],
       mailCollectSettings: normalizeMailCollectSettings(payload?.mailCollectSettings)
     };
@@ -332,7 +307,6 @@ export async function saveTicketAutomationConfig(nextConfig) {
     autoReplyRules: Array.isArray(nextConfig?.autoReplyRules) ? nextConfig.autoReplyRules.map(normalizeAutoReplyRule) : [],
     autoReplyTemplate: String(nextConfig?.autoReplyTemplate || ""),
     notificationSettings: normalizeNotificationSettings(nextConfig?.notificationSettings),
-    scheduledAlertRules: Array.isArray(nextConfig?.scheduledAlertRules) ? nextConfig.scheduledAlertRules.map(normalizeScheduledAlertRule) : [],
     mailCollectors: Array.isArray(nextConfig?.mailCollectors) ? nextConfig.mailCollectors.map(normalizeMailCollector) : [],
     mailCollectSettings: normalizeMailCollectSettings(nextConfig?.mailCollectSettings)
   };
@@ -357,7 +331,6 @@ export async function saveTicketAutomationConfig(nextConfig) {
     autoReplyRules: Array.isArray(payload?.autoReplyRules) ? payload.autoReplyRules.map(normalizeAutoReplyRule) : sanitized.autoReplyRules,
     autoReplyTemplate: String(payload?.autoReplyTemplate || sanitized.autoReplyTemplate),
     notificationSettings: normalizeNotificationSettings(payload?.notificationSettings || sanitized.notificationSettings),
-    scheduledAlertRules: Array.isArray(payload?.scheduledAlertRules) ? payload.scheduledAlertRules.map(normalizeScheduledAlertRule) : sanitized.scheduledAlertRules,
     mailCollectors: Array.isArray(payload?.mailCollectors) ? payload.mailCollectors.map(normalizeMailCollector) : sanitized.mailCollectors,
     mailCollectSettings: normalizeMailCollectSettings(payload?.mailCollectSettings || sanitized.mailCollectSettings)
   };

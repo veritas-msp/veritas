@@ -17,7 +17,6 @@ import { sanitizeHtml, toRichPreviewHtml } from "../../utils/sanitizeHtml";
 import IngestionRuleFormModal from "./IngestionRuleFormModal";
 import IngestionRuleTestModal from "./IngestionRuleTestModal";
 import IngestionRuleDeleteModal from "./IngestionRuleDeleteModal";
-import ScheduledAlertRuleFormModal from "./ScheduledAlertRuleFormModal";
 import TicketTemplateFormModal from "./TicketTemplateFormModal";
 import MacroFormModal from "./MacroFormModal";
 import MacroActionTypePicker from "./MacroActionTypePicker";
@@ -31,7 +30,6 @@ import NotificationEventFormModal from "./NotificationEventFormModal";
 import WebhookFormModal from "./WebhookFormModal";
 import { buildDefaultWebhookDraft } from "./webhookConstants";
 import { WEBHOOK_CHANNEL_ICON_BY_KEY, TEAMS_THEME_COLOR_PRESETS, buildDefaultNotificationEvent, describeNotificationEventChannels, getSourceOption, getElementOption, isSoonElementKey, normalizeNotificationEventChannels, parseEmailTags } from "./notificationEventConstants";
-import { buildDefaultScheduledAlertRule, describeScheduledAlertRule } from "./scheduledAlertConstants";
 import AdminTicketViews from "./AdminTicketViews";
 import { fetchTeams } from "../../api/teams";
 import { buildDefaultExclusionRule, normalizeIngestionAction } from "./ingestionRuleConstants";
@@ -56,7 +54,7 @@ import { useAdminSupportSettingsCopy } from "../../hooks/useAdminCopy";
 import { useCommonCopy } from "../../hooks/useCommonCopy";
 import { interpolate } from "../../i18n/translate";
 import { describeLocalizedExclusionRuleFilters, describeLocalizedRuleCollector, getAdminMailCollectCopy, getRuleActionLabel } from "./adminMailCollectI18n";
-const TICKET_ADMIN_VIEWS_EXCLUDED = new Set(["notifications", "webhooks", "support-credits", "collectors", "email-ingestion", "scheduled-alerts", "sales-forms"]);
+const TICKET_ADMIN_VIEWS_EXCLUDED = new Set(["notifications", "webhooks", "support-credits", "collectors", "email-ingestion", "sales-forms"]);
 const TICKET_VIEW_META = {
   collectors: {
     title: "Mailboxes to collect",
@@ -65,10 +63,6 @@ const TICKET_VIEW_META = {
   "email-ingestion": {
     title: "Incoming email routing",
     description: "Rules evaluated in order to create a ticket, ignore a message or reply automatically."
-  },
-  "scheduled-alerts": {
-    title: "Scheduled alerts",
-    description: "CRON schedules for contracts, licenses and SLA · notifications via mail or Teams."
   },
   "sales-forms": {
     title: "Professional services & installation forms",
@@ -690,18 +684,11 @@ export default function AdminTickets({
   const [autoReplyTemplate, setAutoReplyTemplate] = useState(() => getTicketAutomationConfig().autoReplyTemplate || "");
   const [notificationSettings, setNotificationSettings] = useState(() => getTicketAutomationConfig().notificationSettings || buildDefaultNotificationSettings());
   const [availableClients, setAvailableClients] = useState([]);
-  const [scheduledAlertRules, setScheduledAlertRules] = useState(() => getTicketAutomationConfig().scheduledAlertRules || []);
   const [availableAgents, setAvailableAgents] = useState([]);
   const [ticketViewProfiles, setTicketViewProfiles] = useState([]);
   const [ticketViewUsers, setTicketViewUsers] = useState([]);
   const [ticketViewTeams, setTicketViewTeams] = useState([]);
   const [isTeamsIntegrationActive, setIsTeamsIntegrationActive] = useState(false);
-  const [showScheduledAlertModal, setShowScheduledAlertModal] = useState(false);
-  const [scheduledAlertModalMode, setScheduledAlertModalMode] = useState("create");
-  const [editingScheduledAlertId, setEditingScheduledAlertId] = useState(null);
-  const [scheduledAlertDraft, setScheduledAlertDraft] = useState(buildDefaultScheduledAlertRule());
-  const [savingScheduledAlert, setSavingScheduledAlert] = useState(false);
-  const [scheduledAlertDeleteTarget, setScheduledAlertDeleteTarget] = useState(null);
   const [templateDeleteTarget, setTemplateDeleteTarget] = useState(null);
   const [macroDeleteTarget, setMacroDeleteTarget] = useState(null);
   const [deletingTemplate, setDeletingTemplate] = useState(false);
@@ -848,7 +835,6 @@ export default function AdminTickets({
       setAutoReplyRules(Array.isArray(config?.autoReplyRules) ? config.autoReplyRules : []);
       setAutoReplyTemplate(String(config?.autoReplyTemplate || ""));
       setNotificationSettings(config?.notificationSettings || buildDefaultNotificationSettings());
-      setScheduledAlertRules(Array.isArray(config?.scheduledAlertRules) ? config.scheduledAlertRules : []);
     }).catch(error => {
       toast.error(error?.message || ss.templates.toast.loadError);
     });
@@ -936,7 +922,7 @@ export default function AdminTickets({
       isMounted = false;
     };
   }, []);
-  const persist = async (nextTemplates, nextMacros, nextInboxes, nextExclusions, nextAutoReplyRules, nextAutoReplyTemplate, successMessage, nextScheduledAlertRules, nextMailCollectors, nextNotificationSettings) => {
+  const persist = async (nextTemplates, nextMacros, nextInboxes, nextExclusions, nextAutoReplyRules, nextAutoReplyTemplate, successMessage, nextMailCollectors, nextNotificationSettings) => {
     const saved = await saveTicketAutomationConfig({
       commentTemplates: nextTemplates,
       macros: nextMacros,
@@ -945,7 +931,6 @@ export default function AdminTickets({
       autoReplyRules: Array.isArray(nextAutoReplyRules) ? nextAutoReplyRules : autoReplyRules,
       autoReplyTemplate: String(typeof nextAutoReplyTemplate === "string" ? nextAutoReplyTemplate : autoReplyTemplate),
       notificationSettings: typeof nextNotificationSettings === "object" && nextNotificationSettings ? nextNotificationSettings : notificationSettings,
-      scheduledAlertRules: Array.isArray(nextScheduledAlertRules) ? nextScheduledAlertRules : scheduledAlertRules,
       mailCollectors: Array.isArray(nextMailCollectors) ? nextMailCollectors : mailCollectors,
       mailCollectSettings: normalizeMailCollectSettings(getTicketAutomationConfig()?.mailCollectSettings)
     });
@@ -1962,7 +1947,7 @@ export default function AdminTickets({
         notificationEvents: nextEvents
       };
       setNotificationSettings(nextSettings);
-      await persist(commentTemplates, macros, emailInboxes, exclusionRules, autoReplyRules, autoReplyTemplate, notificationEventModalMode === "create" ? "Notification added" : "Notification updated", scheduledAlertRules, mailCollectors, nextSettings);
+      await persist(commentTemplates, macros, emailInboxes, exclusionRules, autoReplyRules, autoReplyTemplate, notificationEventModalMode === "create" ? "Notification added" : "Notification updated", mailCollectors, nextSettings);
       closeNotificationEventModal();
     } catch (error) {
       toast.error(error?.message || "Error saving notifications");
@@ -1999,7 +1984,7 @@ export default function AdminTickets({
     const previousSettings = notificationSettings;
     setNotificationSettings(nextSettings);
     try {
-      await persist(commentTemplates, macros, emailInboxes, exclusionRules, autoReplyRules, autoReplyTemplate, "Notification deleted", scheduledAlertRules, mailCollectors, nextSettings);
+      await persist(commentTemplates, macros, emailInboxes, exclusionRules, autoReplyRules, autoReplyTemplate, "Notification deleted", mailCollectors, nextSettings);
     } catch (error) {
       setNotificationSettings(previousSettings);
       toast.error(error?.message || "Error saving notifications");
@@ -2061,7 +2046,7 @@ export default function AdminTickets({
     const previousSettings = notificationSettings;
     setNotificationSettings(nextSettings);
     try {
-      await persist(commentTemplates, macros, emailInboxes, exclusionRules, autoReplyRules, autoReplyTemplate, "Webhook deleted", scheduledAlertRules, mailCollectors, nextSettings);
+      await persist(commentTemplates, macros, emailInboxes, exclusionRules, autoReplyRules, autoReplyTemplate, "Webhook deleted", mailCollectors, nextSettings);
     } catch (error) {
       setNotificationSettings(previousSettings);
       toast.error(error?.message || "Error saving notifications");
@@ -2260,7 +2245,7 @@ export default function AdminTickets({
     setSavingWebhook(true);
     try {
       setNotificationSettings(nextSettings);
-      await persist(commentTemplates, macros, emailInboxes, exclusionRules, autoReplyRules, autoReplyTemplate, webhookModalMode === "create" ? "Webhook added" : "Webhook updated", scheduledAlertRules, mailCollectors, nextSettings);
+      await persist(commentTemplates, macros, emailInboxes, exclusionRules, autoReplyRules, autoReplyTemplate, webhookModalMode === "create" ? "Webhook added" : "Webhook updated", mailCollectors, nextSettings);
       closeWebhookModal();
     } catch (error) {
       toast.error(error?.message || "Error saving notifications");
@@ -2598,7 +2583,7 @@ export default function AdminTickets({
     setMailCollectors(nextCollectors);
     setSavingCollector(true);
     try {
-      await persist(commentTemplates, macros, emailInboxes, exclusionRules, autoReplyRules, autoReplyTemplate, collectorModalMode === "create" ? mc.toast.collectorAdded : mc.toast.collectorUpdated, scheduledAlertRules, nextCollectors);
+      await persist(commentTemplates, macros, emailInboxes, exclusionRules, autoReplyRules, autoReplyTemplate, collectorModalMode === "create" ? mc.toast.collectorAdded : mc.toast.collectorUpdated, nextCollectors);
       setSavingCollector(false);
       closeCollectorModal({
         force: true
@@ -2630,86 +2615,9 @@ export default function AdminTickets({
     const nextCollectors = mailCollectors.filter(item => item.id !== collectorId);
     setMailCollectors(nextCollectors);
     try {
-      await persist(commentTemplates, macros, emailInboxes, exclusionRules, autoReplyRules, autoReplyTemplate, mc.toast.collectorDeleted, scheduledAlertRules, nextCollectors);
+      await persist(commentTemplates, macros, emailInboxes, exclusionRules, autoReplyRules, autoReplyTemplate, mc.toast.collectorDeleted, nextCollectors);
     } catch (error) {
       toast.error(error?.message || mc.toast.collectorDeleteError);
-    }
-  };
-  const openCreateScheduledAlertModal = () => {
-    setScheduledAlertModalMode("create");
-    setEditingScheduledAlertId(null);
-    setScheduledAlertDraft(buildDefaultScheduledAlertRule());
-    setShowScheduledAlertModal(true);
-  };
-  const openEditScheduledAlertModal = rule => {
-    setScheduledAlertModalMode("edit");
-    setEditingScheduledAlertId(rule.id);
-    setScheduledAlertDraft({
-      ...buildDefaultScheduledAlertRule(),
-      ...rule,
-      channels: Array.isArray(rule.channels) ? [...rule.channels] : ["mail"]
-    });
-    setShowScheduledAlertModal(true);
-  };
-  const closeScheduledAlertModal = ({
-    force = false
-  } = {}) => {
-    if (!force && savingScheduledAlert) return;
-    setShowScheduledAlertModal(false);
-    setEditingScheduledAlertId(null);
-    setScheduledAlertDraft(buildDefaultScheduledAlertRule());
-  };
-  const saveScheduledAlertFromModal = async () => {
-    const payload = {
-      ...buildDefaultScheduledAlertRule(),
-      ...scheduledAlertDraft,
-      name: String(scheduledAlertDraft.name || "").trim(),
-      cron: String(scheduledAlertDraft.cron || "").trim() || "0 8 * * *",
-      recipients: String(scheduledAlertDraft.recipients || "").trim(),
-      channels: Array.isArray(scheduledAlertDraft.channels) ? scheduledAlertDraft.channels : [],
-      thresholdDays: Number(scheduledAlertDraft.thresholdDays ?? 30)
-    };
-    if (!payload.name) {
-      toast.error("Rule name is required.");
-      return;
-    }
-    if (payload.channels.length === 0) {
-      toast.error("Select at least one notification channel.");
-      return;
-    }
-    if (payload.channels.includes("mail") && !payload.recipients) {
-      toast.error("Enter at least one email recipient.");
-      return;
-    }
-    const nextRules = scheduledAlertModalMode === "create" ? [...scheduledAlertRules, payload] : scheduledAlertRules.map(item => item.id === editingScheduledAlertId ? payload : item);
-    setScheduledAlertRules(nextRules);
-    setSavingScheduledAlert(true);
-    try {
-      await persist(commentTemplates, macros, emailInboxes, exclusionRules, autoReplyRules, autoReplyTemplate, scheduledAlertModalMode === "create" ? "CRON rule added" : "CRON rule updated", nextRules);
-      closeScheduledAlertModal({
-        force: true
-      });
-    } catch (error) {
-      toast.error(error?.message || "Error saving CRON rule");
-    } finally {
-      setSavingScheduledAlert(false);
-    }
-  };
-  const requestRemoveScheduledAlertRule = rule => {
-    setScheduledAlertDeleteTarget(rule);
-  };
-  const confirmRemoveScheduledAlertRule = async () => {
-    if (!scheduledAlertDeleteTarget?.id) return;
-    const nextRules = scheduledAlertRules.filter(item => item.id !== scheduledAlertDeleteTarget.id);
-    setScheduledAlertRules(nextRules);
-    setSavingScheduledAlert(true);
-    try {
-      await persist(commentTemplates, macros, emailInboxes, exclusionRules, autoReplyRules, autoReplyTemplate, "CRON rule deleted", nextRules);
-      setScheduledAlertDeleteTarget(null);
-    } catch (error) {
-      toast.error(error?.message || "Error deleting");
-    } finally {
-      setSavingScheduledAlert(false);
     }
   };
   const resolveAgentLabel = agentId => availableAgents.find(agent => String(agent.id) === String(agentId))?.label || String(agentId);
@@ -3811,70 +3719,6 @@ export default function AdminTickets({
             </div>
           </Card>}
 
-        {activeView === "scheduled-alerts" && <Card title={TICKET_VIEW_META["scheduled-alerts"].title} description={TICKET_VIEW_META["scheduled-alerts"].description} fill action={<Btn icon="mdi:plus" onClick={openCreateScheduledAlertModal}>
-                Add CRON rule
-              </Btn>}>
-            <div className={styles.userTableWrapper}>
-              <table className={`${styles.userTable} ${styles.clientTable}`}>
-                <thead>
-                  <tr>
-                    <th>NAME</th>
-                    <th>CRON</th>
-                    <th>TRIGGER</th>
-                    <th style={{
-                  textAlign: "center"
-                }}>ACTIVE</th>
-                    <th style={{
-                  textAlign: "right"
-                }}>ACTIONS</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {scheduledAlertRules.length === 0 && <tr>
-                      <td colSpan={5} style={{
-                  textAlign: "center",
-                  padding: "1.25rem",
-                  color: "var(--msp-muted)"
-                }}>
-                        No CRON rules configured
-                      </td>
-                    </tr>}
-                  {scheduledAlertRules.map(rule => <tr key={rule.id} className={styles.userRow} onClick={() => openEditScheduledAlertModal(rule)} style={{
-                cursor: "pointer"
-              }} title="Click to edit rule">
-                      <td>{rule.name || "Unnamed rule"}</td>
-                      <td>{rule.cron || "-"}</td>
-                      <td>{describeScheduledAlertRule(rule)}</td>
-                      <td style={{
-                  textAlign: "center"
-                }}>{rule.enabled ? "Yes" : "No"}</td>
-                      <td style={{
-                  textAlign: "right"
-                }}>
-                        <div className={styles.actionsCell} style={{
-                    justifyContent: "flex-end",
-                    width: "100%"
-                  }}>
-                          <button type="button" className={styles.actionButton} title="Edit rule" onClick={e => {
-                      e.stopPropagation();
-                      openEditScheduledAlertModal(rule);
-                    }}>
-                            <Icon icon="mdi:pencil-outline" />
-                          </button>
-                          <button type="button" className={`${styles.actionButton} ${styles.danger}`} title="Delete rule" onClick={e => {
-                      e.stopPropagation();
-                      requestRemoveScheduledAlertRule(rule);
-                    }}>
-                            <Icon icon="mdi:delete-outline" />
-                          </button>
-                        </div>
-                      </td>
-                    </tr>)}
-                </tbody>
-              </table>
-            </div>
-          </Card>}
-
       </div>
 
       <IngestionRuleFormModal open={showExclusionRuleModal} copy={mc} mode={exclusionRuleModalMode} draft={exclusionRuleDraft} setDraft={setExclusionRuleDraft} mailCollectors={mailCollectors} saving={savingExclusionRule} onClose={closeExclusionRuleModal} onSave={saveExclusionRuleFromModal} />
@@ -3882,12 +3726,6 @@ export default function AdminTickets({
       <IngestionRuleTestModal open={showRulesTestModal} copy={mc} sample={rulesTestDraft} onSampleChange={setRulesTestDraft} mailCollectors={mailCollectors} result={rulesTestResult} testing={testingRules} onClose={() => !testingRules && setShowRulesTestModal(false)} onRunTest={runExclusionRulesTest} />
 
       <IngestionRuleDeleteModal open={Boolean(exclusionRuleDeleteTarget)} ruleName={exclusionRuleDeleteTarget?.name || mc.common.ruleFallback} saving={deletingExclusionRule} onClose={closeExclusionRuleDeleteModal} onConfirm={confirmRemoveExclusionRule} />
-
-      <ScheduledAlertRuleFormModal open={showScheduledAlertModal} mode={scheduledAlertModalMode} draft={scheduledAlertDraft} setDraft={setScheduledAlertDraft} saving={savingScheduledAlert} isTeamsIntegrationActive={isTeamsIntegrationActive} onClose={closeScheduledAlertModal} onSave={saveScheduledAlertFromModal} />
-
-      <ConfirmModal open={Boolean(scheduledAlertDeleteTarget)} title={deleteCopy.scheduledAlertTitle} icon="mdi:clock-remove-outline" message={interpolate(deleteCopy.scheduledAlertMessage, {
-      name: scheduledAlertDeleteTarget?.name || deleteCopy.untitled
-    })} confirmLabel={common.delete} confirmVariant="dangerSolid" confirmLoading={savingScheduledAlert} onClose={() => !savingScheduledAlert && setScheduledAlertDeleteTarget(null)} onConfirm={confirmRemoveScheduledAlertRule} />
 
       <ConfirmModal open={Boolean(templateDeleteTarget)} title={deleteCopy.templateTitle} icon="mdi:delete-alert-outline" message={interpolate(deleteCopy.templateMessage, {
       name: templateDeleteTarget?.name || deleteCopy.untitled

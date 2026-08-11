@@ -206,7 +206,6 @@ INSERT INTO v_b_ticket_email_inboxes_config (id, data) VALUES (1, '[]'::jsonb) O
 INSERT INTO v_b_ticket_exclusion_rules_config (id, data) VALUES (1, '[]'::jsonb) ON CONFLICT (id) DO NOTHING;
 INSERT INTO v_b_ticket_auto_reply_rules_config (id, data) VALUES (1, '[]'::jsonb) ON CONFLICT (id) DO NOTHING;
 INSERT INTO v_b_ticket_auto_reply_template_config (id, data) VALUES (1, '""'::jsonb) ON CONFLICT (id) DO NOTHING;
-INSERT INTO v_b_ticket_scheduled_alert_rules_config (id, data) VALUES (1, '[]'::jsonb) ON CONFLICT (id) DO NOTHING;
 INSERT INTO v_b_ticket_chat_ui_settings_config (id, data) VALUES (1, '{}'::jsonb) ON CONFLICT (id) DO NOTHING;
 INSERT INTO v_b_ticket_mail_collectors_config (id, data) VALUES (1, '[]'::jsonb) ON CONFLICT (id) DO NOTHING;
 INSERT INTO v_b_notification_events_config (id, data) VALUES (1, '{}'::jsonb) ON CONFLICT (id) DO NOTHING;

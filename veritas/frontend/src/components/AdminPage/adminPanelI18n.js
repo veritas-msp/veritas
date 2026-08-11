@@ -78,9 +78,6 @@ export const ADMIN_NAV_STRUCTURE = [{
   }, {
     key: "maintenance",
     icon: "mdi:bullhorn-outline"
-  }, {
-    key: "scheduled-alerts",
-    icon: "mdi:clock-outline"
   }]
 }, {
   id: "platform",
@@ -197,10 +194,6 @@ const ADMIN_PANEL_COPY = {
       "equipment-purge": {
         label: "Purge équipements",
         description: "Suppression en masse multi-entreprises"
-      },
-      "scheduled-alerts": {
-        label: "Règles CRON",
-        description: "Alertes planifiées automatiques"
       },
       rmm: {
         label: "RMM · Agents",
@@ -320,10 +313,6 @@ const ADMIN_PANEL_COPY = {
       "equipment-purge": {
         label: "Equipment purge",
         description: "Bulk delete across companies"
-      },
-      "scheduled-alerts": {
-        label: "CRON rules",
-        description: "Scheduled automatic alerts"
       },
       rmm: {
         label: "RMM · Agents",
@@ -448,10 +437,6 @@ const ADMIN_PANEL_COPY = {
         label: "Gerätebereinigung",
         description: "Massenlöschung über mehrere Unternehmen"
       },
-      "scheduled-alerts": {
-        label: "CRON-Regeln",
-        description: "Geplante automatische Alerts"
-      },
       rmm: {
         label: "RMM · Agenten",
         description: "Überwachte Endpunkte und Enrollment"
@@ -575,10 +560,6 @@ const ADMIN_PANEL_COPY = {
         label: "Pulizia apparecchiature",
         description: "Eliminazione di massa multi-azienda"
       },
-      "scheduled-alerts": {
-        label: "Regole CRON",
-        description: "Alert pianificati automatici"
-      },
       rmm: {
         label: "RMM · Agenti",
         description: "Postazioni supervisionate e enrollment"
@@ -701,10 +682,6 @@ const ADMIN_PANEL_COPY = {
       "equipment-purge": {
         label: "Purga de equipos",
         description: "Eliminación masiva multi-empresa"
-      },
-      "scheduled-alerts": {
-        label: "Reglas CRON",
-        description: "Alertas programadas automáticas"
       },
       rmm: {
         label: "RMM · Agentes",

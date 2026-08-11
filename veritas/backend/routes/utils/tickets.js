@@ -29,7 +29,7 @@ import {
 } from "../../utils/ticketTableColumns.js";
 import salesFormsRoutes from "./salesFormsRoutes.js";
 import salesTicketCategoriesRoutes from "./salesTicketCategoriesRoutes.js";
-import { applyFormTicketTargets, buildTicketDescription, buildTicketTitle, loadFormTicketTargetsConfig, mergeCreateOptionsFromTargets, normalizeTicketTargets, resolveAssigneeUserIds, resolveMatchingRules } from "../../services/salesFormTicketTargets.js";
+import { applyFormTicketTargets, buildTicketDescription, buildTicketTitle, loadFormFieldMetaByKey, loadFormTicketTargetsConfig, mergeCreateOptionsFromTargets, normalizeTicketTargets, resolveAssigneeUserIds, resolveMatchingRules } from "../../services/salesFormTicketTargets.js";
 import { resolveClientIdFromRequesterContact, shouldSyncTicketPlanningEvents, syncTicketPlanningEventClient } from "./ticketPlanningSync.js";
 import { buildSlaInfoForTicket, enrichTicketWithSla, ensureTicketSlaInfoStored, loadClientContrat, maybeRecordTakeoverSla, persistTicketSlaInfoIfMissing, resolveTicketSlaInfo } from "../../utils/ticketSla.js";
 import { loadSlaSettings } from "../../utils/slaSettingsStore.js";
@@ -116,7 +116,6 @@ const DEFAULT_TICKET_AUTOMATION_CONFIG = {
     notificationEvents: [],
     logs: []
   },
-  scheduledAlertRules: [],
   mailCollectors: [],
   mailCollectSettings: normalizeMailCollectSettings()
 };
@@ -333,29 +332,6 @@ const normalizeNotificationSettings = row => ({
   },
   inAppSettings: normalizeInAppSettings(row?.inAppSettings)
 });
-const normalizeTicketAutomationScheduledAlertRule = (row, idx) => ({
-  id: row?.id || `cron-alert-${Date.now()}-${idx}`,
-  name: String(row?.name || "").trim() || `Ru${idx + 1}`,
-  cron: String(row?.cron || "0 8 * * *").trim() || "0 8 * * *",
-  triggerType: String(row?.triggerType || "contract_expiration").trim() || "contract_expiration",
-  thresholdDays: Number.isFinite(Number(row?.thresholdDays)) ? Number(row.thresholdDays) : 30,
-  frequencyType: String(row?.frequencyType || "monthly_last_friday").trim() || "monthly_last_friday",
-  weekInterval: Number.isFinite(Number(row?.weekInterval)) ? Math.max(1, Number(row.weekInterval)) : 2,
-  anchorDate: String(row?.anchorDate || "").trim(),
-  runHour: Number.isFinite(Number(row?.runHour)) ? Math.min(23, Math.max(0, Number(row.runHour))) : 8,
-  channels: Array.isArray(row?.channels) ? row.channels.map(channel => String(channel || "").trim()).filter(Boolean) : ["mail"],
-  recipients: String(row?.recipients || "").trim(),
-  emailCc: String(row?.emailCc || "").trim(),
-  distributionMode: String(row?.distributionMode || "to_only").trim() || "to_only",
-  webhookId: String(row?.webhookId || "").trim(),
-  useTemplate: row?.useTemplate === true,
-  templateId: String(row?.templateId || "").trim(),
-  customMessage: String(row?.customMessage || ""),
-  teamsThemeColor: String(row?.teamsThemeColor || "#13BA8E"),
-  sendWhenEmpty: row?.sendWhenEmpty === true,
-  lastRunAt: String(row?.lastRunAt || "").trim(),
-  enabled: row?.enabled !== false
-});
 const normalizeTicketAutomationMailCollector = normalizeMailCollector;
 function sameImapLogin(a = "", b = "") {
   return String(a || "").trim().toLowerCase() === String(b || "").trim().toLowerCase();
@@ -424,7 +400,6 @@ const normalizeTicketAutomationConfig = payload => ({
   autoReplyRules: Array.isArray(payload?.autoReplyRules) ? payload.autoReplyRules.map(normalizeTicketAutomationAutoReplyRule) : Array.isArray(payload?.autoReplyRules?.legacyRules) ? payload.autoReplyRules.legacyRules.map(normalizeTicketAutomationAutoReplyRule) : [],
   autoReplyTemplate: String(payload?.autoReplyTemplate || ""),
   notificationSettings: normalizeNotificationSettings(payload?.notificationSettings || payload?.autoReplyRules?.notificationSettings),
-  scheduledAlertRules: Array.isArray(payload?.scheduledAlertRules) ? payload.scheduledAlertRules.map(normalizeTicketAutomationScheduledAlertRule) : [],
   mailCollectors: Array.isArray(payload?.mailCollectors) ? payload.mailCollectors.map(normalizeTicketAutomationMailCollector) : [],
   mailCollectSettings: normalizeMailCollectSettings(payload?.mailCollectSettings)
 });
@@ -721,7 +696,6 @@ router.get("/automation-config", verifyJWT, async (_req, res) => {
       exclusionRules: row.exclusionRules,
       autoReplyRules: row.autoReplyRules,
       autoReplyTemplate: row.autoReplyTemplate,
-      scheduledAlertRules: row.scheduledAlertRules,
       mailCollectors: row.mailCollectors,
       mailCollectSettings: row.mailCollectSettings,
       notificationSettings: row.notificationSettings
@@ -734,7 +708,7 @@ router.get("/automation-config", verifyJWT, async (_req, res) => {
     });
   }
 });
-router.put("/automation-config", verifyJWT, [body("commentTemplates").optional().isArray(), body("macros").optional().isArray(), body("emailInboxes").optional().isArray(), body("exclusionRules").optional().isArray(), body("autoReplyRules").optional().custom(value => Array.isArray(value) || value && typeof value === "object"), body("autoReplyTemplate").optional().isString(), body("notificationSettings").optional().isObject(), body("scheduledAlertRules").optional().isArray(), body("mailCollectors").optional().isArray(), body("mailCollectSettings").optional().isObject()], async (req, res) => {
+router.put("/automation-config", verifyJWT, [body("commentTemplates").optional().isArray(), body("macros").optional().isArray(), body("emailInboxes").optional().isArray(), body("exclusionRules").optional().isArray(), body("autoReplyRules").optional().custom(value => Array.isArray(value) || value && typeof value === "object"), body("autoReplyTemplate").optional().isString(), body("notificationSettings").optional().isObject(), body("mailCollectors").optional().isArray(), body("mailCollectSettings").optional().isObject()], async (req, res) => {
   const validationResponse = validationErrorOrNull(req, res);
   if (validationResponse) return;
   try {
@@ -758,7 +732,6 @@ router.put("/automation-config", verifyJWT, [body("commentTemplates").optional()
         exclusionRules: incoming.exclusionRules,
         autoReplyRules: current.autoReplyRules,
         autoReplyTemplate: current.autoReplyTemplate,
-        scheduledAlertRules: current.scheduledAlertRules,
         mailCollectors: current.mailCollectors,
         mailCollectSettings: current.mailCollectSettings,
         notificationSettings: current.notificationSettings
@@ -784,7 +757,6 @@ router.put("/automation-config", verifyJWT, [body("commentTemplates").optional()
       exclusionRules: normalized.exclusionRules,
       autoReplyRules: normalized.autoReplyRules,
       autoReplyTemplate: normalized.autoReplyTemplate,
-      scheduledAlertRules: normalized.scheduledAlertRules,
       mailCollectors: normalized.mailCollectors,
       mailCollectSettings: normalized.mailCollectSettings,
       notificationSettings: normalizeNotificationSettings(normalized.notificationSettings)
@@ -1581,6 +1553,11 @@ router.post("/", verifyJWT, requirePermission("tickets.create"), [body("title").
     } = req.body;
     const formId = salesFormData && typeof salesFormData === "object" && salesFormData.formId ? String(salesFormData.formId) : null;
     const formFieldValues = salesFormData && typeof salesFormData === "object" && salesFormData.values && typeof salesFormData.values === "object" ? salesFormData.values : {};
+    const formFieldsByKey = formId ? await loadFormFieldMetaByKey(formId).catch(() => ({})) : {};
+    const formTargetContext = {
+      values: formFieldValues,
+      fieldsByKey: formFieldsByKey
+    };
     const formTargetsConfig = formId ? await loadFormTicketTargetsConfig(formId) : {
       version: 2,
       rules: []
@@ -1630,7 +1607,7 @@ router.post("/", verifyJWT, requirePermission("tickets.create"), [body("title").
       };
       let resolvedAssignedUserId = assignedUserId || null;
       if (!resolvedAssignedUserId && formId) {
-        const targetAssigneeIds = await resolveAssigneeUserIds(ruleTargets);
+        const targetAssigneeIds = await resolveAssigneeUserIds(ruleTargets, formTargetContext);
         if (targetAssigneeIds.length > 0) resolvedAssignedUserId = targetAssigneeIds[0];
       }
       const templateContext = {
@@ -1697,7 +1674,7 @@ router.post("/", verifyJWT, requirePermission("tickets.create"), [body("title").
       await executor.query(`INSERT INTO v_b_ticket_status_history (ticket_id, old_status, new_status, changed_by, note, created_at)
            VALUES ($1, NULL, $2, $3, $4, NOW())`, [createdTicket.id, normalizedStatus, createdBy, historyNote]);
       if (formId) {
-        await applyFormTicketTargets(createdTicket.id, ruleTargets);
+        await applyFormTicketTargets(createdTicket.id, ruleTargets, formTargetContext);
         const refreshed = await executor.query(`SELECT * FROM v_b_tickets WHERE id = $1`, [createdTicket.id]);
         return refreshed.rows[0] || createdTicket;
       }

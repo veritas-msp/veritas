@@ -441,32 +441,6 @@ export const PRO_FEATURE_PROMOS_I18N = {
       bullets: ["Priorice las reglas en el orden de evaluación", "Filtre por remitente, asunto o criterios avanzados", "Automatice respuestas o rechace el ruido"]
     }
   },
-  adminScheduledAlerts: {
-    en: {
-      title: "CRON rules",
-      subtitle: "Schedule automatic alerts.",
-      description: "CRON rules trigger scheduled notifications on contracts, licenses, SLAs or business events.",
-      bullets: ["Schedule recurring checks", "Notify by email or Teams", "Anticipate expirations and deadlines"]
-    },
-    de: {
-      title: "CRON-Regeln",
-      subtitle: "Planen Sie automatische Alerts.",
-      description: "CRON-Regeln lösen geplante Benachrichtigungen zu Verträgen, Lizenzen, SLAs oder Geschäftsereignissen aus.",
-      bullets: ["Programmieren Sie wiederkehrende Prüfungen", "Benachrichtigen Sie per E-Mail oder Teams", "Antizipieren Sie Abläufe und Fristen"]
-    },
-    it: {
-      title: "Regole CRON",
-      subtitle: "Pianifica alert automatici.",
-      description: "Le regole CRON attivano notifiche pianificate su contratti, licenze, SLA o eventi operativi.",
-      bullets: ["Programma controlli ricorrenti", "Notifica via mail o Teams", "Anticipa scadenze ed eventi"]
-    },
-    es: {
-      title: "Reglas CRON",
-      subtitle: "Programe alertas automáticas.",
-      description: "Las reglas CRON activan notificaciones programadas sobre contratos, licencias, SLA o eventos operativos.",
-      bullets: ["Programe controles recurrentes", "Notifique por correo o Teams", "Anticipe expiraciones y plazos"]
-    }
-  },
   adminRmmCollectors: {
     en: {
       title: "RMM inventory collectors",

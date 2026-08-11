@@ -7,7 +7,6 @@ const TABLES = {
   exclusionRules: "v_b_ticket_exclusion_rules_config",
   autoReplyRules: "v_b_ticket_auto_reply_rules_config",
   autoReplyTemplate: "v_b_ticket_auto_reply_template_config",
-  scheduledAlertRules: "v_b_ticket_scheduled_alert_rules_config",
   chatUiSettings: "v_b_ticket_chat_ui_settings_config",
   mailCollectors: "v_b_ticket_mail_collectors_config",
   mailCollectSettings: "v_b_ticket_mail_collect_settings_config",
@@ -24,7 +23,6 @@ const LEGACY_COLUMN_BY_TABLE = {
   [TABLES.exclusionRules]: "exclusion_rules",
   [TABLES.autoReplyRules]: "auto_reply_rules",
   [TABLES.autoReplyTemplate]: "auto_reply_template",
-  [TABLES.scheduledAlertRules]: "scheduled_alert_rules",
   [TABLES.chatUiSettings]: "chat_ui_settings",
   [TABLES.mailCollectors]: "mail_collectors"
 };
@@ -198,7 +196,7 @@ async function writeNotificationLogsRows(logs = []) {
   }
 }
 export async function loadTicketAutomationRawConfig() {
-  const [commentTemplates, macros, emailInboxes, exclusionRules, autoReplyRules, autoReplyTemplateValue, scheduledAlertRules, mailCollectors, mailCollectSettings, notificationEvents, notificationWebhooks, notificationTemplates, notificationLogs] = await Promise.all([readJsonTable(TABLES.commentTemplates, []), readJsonTable(TABLES.macros, []), readJsonTable(TABLES.emailInboxes, []), readJsonTable(TABLES.exclusionRules, []), readJsonTable(TABLES.autoReplyRules, []), readJsonTable(TABLES.autoReplyTemplate, ""), readJsonTable(TABLES.scheduledAlertRules, []), readJsonTable(TABLES.mailCollectors, []), readJsonTable(TABLES.mailCollectSettings, {}), readJsonTable(TABLES.notificationEvents, {}), readJsonTable(TABLES.notificationWebhooks, []), readJsonTable(TABLES.notificationTemplates, []), readNotificationLogsRows([])]);
+  const [commentTemplates, macros, emailInboxes, exclusionRules, autoReplyRules, autoReplyTemplateValue, mailCollectors, mailCollectSettings, notificationEvents, notificationWebhooks, notificationTemplates, notificationLogs] = await Promise.all([readJsonTable(TABLES.commentTemplates, []), readJsonTable(TABLES.macros, []), readJsonTable(TABLES.emailInboxes, []), readJsonTable(TABLES.exclusionRules, []), readJsonTable(TABLES.autoReplyRules, []), readJsonTable(TABLES.autoReplyTemplate, ""), readJsonTable(TABLES.mailCollectors, []), readJsonTable(TABLES.mailCollectSettings, {}), readJsonTable(TABLES.notificationEvents, {}), readJsonTable(TABLES.notificationWebhooks, []), readJsonTable(TABLES.notificationTemplates, []), readNotificationLogsRows([])]);
   const eventConfig = notificationEvents && typeof notificationEvents === "object" && !Array.isArray(notificationEvents) ? notificationEvents : {};
   return {
     commentTemplates,
@@ -207,7 +205,6 @@ export async function loadTicketAutomationRawConfig() {
     exclusionRules,
     autoReplyRules,
     autoReplyTemplate: String(autoReplyTemplateValue || ""),
-    scheduledAlertRules,
     mailCollectors,
     mailCollectSettings,
     notificationSettings: {
@@ -226,7 +223,7 @@ export async function saveTicketAutomationRawConfig(config = {}) {
     logs = [],
     ...eventConfig
   } = settings;
-  await Promise.all([writeJsonTable(TABLES.commentTemplates, Array.isArray(config?.commentTemplates) ? config.commentTemplates : []), writeJsonTable(TABLES.macros, Array.isArray(config?.macros) ? config.macros : []), writeJsonTable(TABLES.emailInboxes, Array.isArray(config?.emailInboxes) ? config.emailInboxes : []), writeJsonTable(TABLES.exclusionRules, Array.isArray(config?.exclusionRules) ? config.exclusionRules : []), writeJsonTable(TABLES.autoReplyRules, Array.isArray(config?.autoReplyRules) ? config.autoReplyRules : []), writeJsonTable(TABLES.autoReplyTemplate, String(config?.autoReplyTemplate || "")), writeJsonTable(TABLES.scheduledAlertRules, Array.isArray(config?.scheduledAlertRules) ? config.scheduledAlertRules : []), writeJsonTable(TABLES.mailCollectors, Array.isArray(config?.mailCollectors) ? config.mailCollectors : []), writeJsonTable(TABLES.mailCollectSettings, config?.mailCollectSettings && typeof config.mailCollectSettings === "object" && !Array.isArray(config.mailCollectSettings) ? config.mailCollectSettings : {})]);
+  await Promise.all([writeJsonTable(TABLES.commentTemplates, Array.isArray(config?.commentTemplates) ? config.commentTemplates : []), writeJsonTable(TABLES.macros, Array.isArray(config?.macros) ? config.macros : []), writeJsonTable(TABLES.emailInboxes, Array.isArray(config?.emailInboxes) ? config.emailInboxes : []), writeJsonTable(TABLES.exclusionRules, Array.isArray(config?.exclusionRules) ? config.exclusionRules : []), writeJsonTable(TABLES.autoReplyRules, Array.isArray(config?.autoReplyRules) ? config.autoReplyRules : []), writeJsonTable(TABLES.autoReplyTemplate, String(config?.autoReplyTemplate || "")), writeJsonTable(TABLES.mailCollectors, Array.isArray(config?.mailCollectors) ? config.mailCollectors : []), writeJsonTable(TABLES.mailCollectSettings, config?.mailCollectSettings && typeof config.mailCollectSettings === "object" && !Array.isArray(config.mailCollectSettings) ? config.mailCollectSettings : {})]);
   await writeJsonTable(TABLES.notificationEvents, eventConfig && typeof eventConfig === "object" ? eventConfig : {});
   await writeJsonTable(TABLES.notificationWebhooks, Array.isArray(webhooks) ? webhooks : []);
   await writeJsonTable(TABLES.notificationTemplates, Array.isArray(templates) ? templates : []);

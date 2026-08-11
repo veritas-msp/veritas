@@ -27,7 +27,6 @@ import AdminLicense from "./AdminLicense";
 import AdminTeams from "./AdminTeams";
 import AdminSlaSettings from "./AdminSlaSettings";
 import AdminSupportCreditsPage from "./AdminSupportCreditsPage";
-import AdminScheduledAlertsSettings from "./AdminScheduledAlertsSettings";
 import AdminServiceSettingsPage from "./AdminServiceSettingsPage";
 import AdminNotificationsHub from "./AdminNotificationsHub";
 import AdminMailCollectPage from "./AdminMailCollectPage";
@@ -59,7 +58,6 @@ const TAB_COMPONENTS = {
   notifications: AdminNotificationsHub,
   integrations: AdminInterconnections,
   ai: AdminAi,
-  "scheduled-alerts": AdminScheduledAlertsSettings,
   rmm: AdminRmm,
   injection: AdminInjection,
   "equipment-purge": AdminEquipmentPurge,
@@ -76,8 +74,7 @@ const ADMIN_PANEL_PRO_PROMO = {
   "support-credits": "credits",
   sla: "sla",
   "service-settings": "prestations",
-  integrations: "adminIntegrations",
-  "scheduled-alerts": "adminScheduledAlerts"
+  integrations: "adminIntegrations"
 };
 function normalizeAdminNavSearch(value) {
   return String(value || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
@@ -102,9 +99,6 @@ function resolveLegacyNavigation(parsed) {
   if (parsed?.tab === "sales-ticket-views") return {
     tab: "service-settings",
     serviceView: "sales-ticket-views"
-  };
-  if (fromTickets("scheduled-alerts")) return {
-    tab: "scheduled-alerts"
   };
   if (fromTickets("notifications")) {
     return {
