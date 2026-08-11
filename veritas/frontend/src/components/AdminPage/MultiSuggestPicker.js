@@ -11,8 +11,10 @@ export default function MultiSuggestPicker({
   selectedIds = [],
   onChange,
   emptyHint = "No selection",
+  emptyResultsHint = "No results",
   inputId,
-  singleSelect = false
+  singleSelect = false,
+  maxResults = 50
 }) {
   const rootRef = useRef(null);
   const anchorRef = useRef(null);
@@ -83,13 +85,14 @@ export default function MultiSuggestPicker({
   }, [options, selectedIds]);
   const filteredOptions = useMemo(() => {
     const query = search.trim().toLowerCase();
+    const limit = Math.max(1, Number(maxResults) || 50);
     const available = options.filter(option => !selectedSet.has(String(option.id)));
-    if (!query) return available.slice(0, 50);
+    if (!query) return available.slice(0, limit);
     return available.filter(option => {
       const haystack = `${option.label} ${option.hint || ""} ${option.id}`.toLowerCase();
       return haystack.includes(query);
-    }).slice(0, 50);
-  }, [options, search, selectedSet]);
+    }).slice(0, limit);
+  }, [options, search, selectedSet, maxResults]);
   useEffect(() => {
     setHighlight(0);
   }, [search, open]);
@@ -113,7 +116,7 @@ export default function MultiSuggestPicker({
     pointerEvents: "none",
     zIndex: getModalDropdownZIndex()
   }} role="listbox" aria-labelledby={inputLabelId}>
-      {filteredOptions.length === 0 ? <div className={s.contactEmpty}>No results</div> : filteredOptions.map((option, index) => <button key={String(option.id)} type="button" role="option" aria-selected={false} className={`${s.contactOption} ${highlight === index ? s.contactOptionActive : ""}`} onMouseEnter={() => setHighlight(index)} onClick={() => addOption(option.id)}>
+      {filteredOptions.length === 0 ? <div className={s.contactEmpty}>{emptyResultsHint}</div> : filteredOptions.map((option, index) => <button key={String(option.id)} type="button" role="option" aria-selected={false} className={`${s.contactOption} ${highlight === index ? s.contactOptionActive : ""}`} onMouseEnter={() => setHighlight(index)} onClick={() => addOption(option.id)}>
             <span className={s.contactOptionName}>{option.label}</span>
             {option.hint ? <span className={s.contactOptionMeta}>{option.hint}</span> : null}
           </button>)}

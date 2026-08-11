@@ -5,8 +5,9 @@ import { fetchUsers } from "../../api/users";
 import { fetchTeams, fetchTeam, createTeam, updateTeam, deleteTeam, addTeamMember, updateTeamMember, removeTeamMember } from "../../api/teams";
 import { useAdminCommonCopy, useAdminPageCopy } from "../../hooks/useAdminCopy";
 import { interpolate } from "../../i18n/translate";
-import { Modal, ConfirmModal, ModalFooter, ModalForm, ModalFormSection, IconField, Select, Btn, Card, Page } from "./AdminUi";
+import { Modal, ConfirmModal, ModalFooter, ModalForm, ModalFormSection, Btn, Card, Page } from "./AdminUi";
 import TeamFormModal from "./TeamFormModal";
+import MultiSuggestPicker from "./MultiSuggestPicker";
 import { buildDefaultTeamDraft } from "./adminOrgFormConstants";
 import ui from "./AdminUi.module.css";
 import s from "./AdminUsers.module.css";
@@ -89,6 +90,11 @@ export default function AdminTeams() {
     const memberIds = new Set(selectedTeam.members.map(m => String(m.userId)));
     return agents.filter(a => !memberIds.has(String(a.id)));
   }, [agents, selectedTeam]);
+  const availableAgentOptions = useMemo(() => availableAgents.map(agent => ({
+    id: agent.id,
+    label: agent.username || agent.email || String(agent.id),
+    hint: agent.username && agent.email ? `${agent.email}${agent.profile ? ` · ${agent.profile}` : ""}` : agent.profile || ""
+  })), [availableAgents]);
   const openCreateTeam = () => {
     setTeamModalMode("create");
     setTeamForm(buildDefaultTeamDraft());
@@ -341,14 +347,7 @@ export default function AdminTeams() {
     }} onConfirm={handleAddMember} confirmLabel={adminCopy.add} confirmDisabled={busy || !addMemberUserId} />}>
         <ModalForm>
           <ModalFormSection title={adminCopy.agent} icon="mdi:account-outline">
-            <IconField icon="mdi:account-search-outline" label={copy.selectAgentLabel}>
-              <Select value={addMemberUserId} onChange={e => setAddMemberUserId(e.target.value)}>
-                <option value="">{adminCopy.chooseAgent}</option>
-                {availableAgents.map(agent => <option key={agent.id} value={agent.id}>
-                    {agent.email} ({agent.profile || adminCopy.noProfile})
-                  </option>)}
-              </Select>
-            </IconField>
+            <MultiSuggestPicker singleSelect maxResults={8} inputId="team-add-member-agent" label={copy.selectAgentLabel} placeholder={copy.searchAgentPlaceholder} options={availableAgentOptions} selectedIds={addMemberUserId ? [addMemberUserId] : []} emptyHint={copy.noAgentSelected} emptyResultsHint={copy.noAgentFound} onChange={ids => setAddMemberUserId(ids[0] ? String(ids[0]) : "")} />
             <label className={s.leaderCheckLabel}>
               <input type="checkbox" checked={addMemberLeader} onChange={e => setAddMemberLeader(e.target.checked)} />
               {copy.setTeamLeader}
