@@ -621,6 +621,10 @@ export default function EnterpriseFormModal({
                     }
                   }} />
                   {contactDropdownOpen && <div className={styles.dropdown} role="listbox">
+                      <button type="button" className={`${styles.dropdownCreate} ${styles.dropdownCreateTop}`} onClick={openPrimaryContactCreateModal}>
+                        <Icon icon="mdi:account-plus-outline" aria-hidden />
+                        {f.createContact}
+                      </button>
                       {filteredContacts.length === 0 ? <div className={styles.dropdownEmpty}>
                           {loadingContactsCatalog ? f.loadingContacts : f.noContactFound}
                         </div> : filteredContacts.map((row, index) => {
@@ -632,10 +636,6 @@ export default function EnterpriseFormModal({
                               {row.email ? <span className={styles.contactOptionMeta}> · {row.email}</span> : null}
                             </button>;
                     })}
-                      <button type="button" className={styles.dropdownCreate} onClick={openPrimaryContactCreateModal}>
-                        <Icon icon="mdi:account-plus-outline" aria-hidden />
-                        {f.createContact}
-                      </button>
                     </div>}
                 </div>
               </div>

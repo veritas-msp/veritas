@@ -727,6 +727,14 @@
   cursor: pointer;
 }
 
+.dropdownCreateTop {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  border-top: none;
+  border-bottom: 1px solid var(--msp-border-light, #eef2f7);
+}
+
 .dropdownCreate:hover {
   background: var(--msp-accent-soft, rgba(43, 95, 171, 0.1));
 }
