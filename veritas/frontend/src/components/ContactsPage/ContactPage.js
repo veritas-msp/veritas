@@ -37,6 +37,12 @@ function formatClientDisplay(value) {
   if (value === null || value === undefined || value === "") return "";
   return String(value).replace(/\s*-\s*/g, " ");
 }
+function getContactCompaniesLabel(contact, getClientLabel) {
+  const linked = Array.isArray(contact?.clients) ? contact.clients : [];
+  const names = linked.map(row => row?.name || row?.client_name || (row?.id != null || row?.client_id != null ? getClientLabel?.(row.id ?? row.client_id) : "")).filter(Boolean);
+  if (names.length > 0) return names.join(", ");
+  return getClientLabel?.(contact?.client_id, contact?.client_name) || contact?.client_name || "";
+}
 export default function ContactPage({
   onNavigate,
   pageParams,
@@ -312,7 +318,10 @@ export default function ContactPage({
       } : c);
     });
   };
-  const matchesSearch = (contact, query) => [contact.nom, contact.prenom, contact.email, contact.telephone, contact.poste, contact.client_name].filter(Boolean).some(field => String(field).toLowerCase().includes(query));
+  const matchesSearch = (contact, query) => {
+    const companyNames = (Array.isArray(contact?.clients) ? contact.clients : []).map(row => row?.name || row?.client_name).filter(Boolean);
+    return [contact.nom, contact.prenom, contact.email, contact.telephone, contact.poste, contact.client_name, ...companyNames].filter(Boolean).some(field => String(field).toLowerCase().includes(query));
+  };
   const filteredForStats = useMemo(() => {
     let filtered = [...contacts];
     if (searchQuery.trim()) {
@@ -354,8 +363,8 @@ export default function ContactPage({
       let aVal;
       let bVal;
       if (sortBy === "client") {
-        aVal = getClientNameForSort(a.client_name);
-        bVal = getClientNameForSort(b.client_name);
+        aVal = getClientNameForSort(getContactCompaniesLabel(a, pageCopy.getClientLabel));
+        bVal = getClientNameForSort(getContactCompaniesLabel(b, pageCopy.getClientLabel));
       } else if (sortBy === "sexe") {
         aVal = normalizeContactSexe(a.sexe) || "";
         bVal = normalizeContactSexe(b.sexe) || "";
@@ -425,7 +434,7 @@ export default function ContactPage({
     });
     const rows = [headers];
     filteredAndSortedContacts.forEach(contact => {
-      const rawClientLabel = pageCopy.getClientLabel(contact.client_id, contact.client_name);
+      const rawClientLabel = getContactCompaniesLabel(contact, pageCopy.getClientLabel);
       const contactSexe = normalizeContactSexe(contact.sexe);
       const status = pageCopy.getContactStatus(contact.statut);
       const portalStatus = getPortalStatusFromContact(contact);
@@ -613,7 +622,7 @@ export default function ContactPage({
                   </thead>
                   <tbody>
                     {paginatedContacts.map(contact => {
-                      const rawClientLabel = pageCopy.getClientLabel(contact.client_id, contact.client_name);
+                      const rawClientLabel = getContactCompaniesLabel(contact, pageCopy.getClientLabel);
                       const clientDisplay = formatClientDisplay(rawClientLabel) || "-";
                       const contactSexe = normalizeContactSexe(contact.sexe);
                       const tags = contact.tags || [];

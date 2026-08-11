@@ -3001,21 +3001,36 @@ export default function TicketDetailPage({
       requesterUserId: null,
       requesterContactId: nextValue || null
     };
-    if (contact?.client_id) {
-      patch.clientId = contact.client_id;
+    const linkedClients = Array.isArray(contact?.clients) ? contact.clients.map(row => row.id ?? row.client_id).filter(id => id != null) : contact?.client_id ? [contact.client_id] : [];
+    const currentTicketClientId = ticket?.client_id || editForm.clientId || null;
+    const matchingCurrent = currentTicketClientId && linkedClients.some(id => String(id) === String(currentTicketClientId));
+    let nextClientId = null;
+    if (linkedClients.length === 1) {
+      nextClientId = linkedClients[0];
+    } else if (linkedClients.length > 1) {
+      if (matchingCurrent) {
+        nextClientId = currentTicketClientId;
+      } else {
+        toast.info(copy.toasts.requesterCompanyAmbiguous || copy.toasts.companyRequired || "Entreprise ambiguë — entreprise du ticket conservée");
+      }
+    } else if (contact?.client_id) {
+      nextClientId = contact.client_id;
+    }
+    if (nextClientId) {
+      patch.clientId = nextClientId;
     }
     await updateTicketLive(patch, {
       successMessage: copy.toasts.requesterUpdated
     });
-    if (contact?.client_id && ticketReminder?.id) {
+    if (nextClientId && ticketReminder?.id) {
       try {
         await updateEvent(ticketReminder.id, {
-          clientId: contact.client_id
+          clientId: nextClientId
         });
         setTicketReminder(prev => prev ? {
           ...prev,
-          client_id: contact.client_id,
-          clientId: contact.client_id
+          client_id: nextClientId,
+          clientId: nextClientId
         } : prev);
       } catch {}
     }

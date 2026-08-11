@@ -12,6 +12,17 @@ import { assertCommunityClientPortalLimit, assertCommunityContactsLimit, getActi
 import { buildImpersonationClientPayload, IMPERSONATOR_COOKIE, setImpersonatorCookie, setSessionCookie, signSessionToken } from '../../utils/authSession.js';
 import { requireRole } from '../../middleware/roles.js';
 import { validatePortalPassword, PORTAL_PASSWORD_MIN_LENGTH } from '../../utils/passwordPolicy.js';
+import {
+  addMembership,
+  attachMembershipsToContacts,
+  listMembershipsForContact,
+  normalizeMembershipsInput,
+  removeMembership,
+  replaceMemberships,
+  setPrimaryForClient,
+  sqlContactLinkedToClient,
+  syncHomeClientId
+} from '../../services/contactClientLinks.js';
 const PORTAL_PASSWORD_ERROR = `Password too weak: at least ${PORTAL_PASSWORD_MIN_LENGTH} characters, with at least one letter and one digit.`;
 const router = express.Router();
 router.use(verifyJWT);
@@ -110,7 +121,10 @@ async function loadContactById(contactId) {
      LEFT JOIN v_b_clients cli ON cli.id = cts.client_id
      ${PORTAL_USER_JOIN}
      WHERE cts.id = $1`, [contactId]);
-  return hydrateContactRow(rows[0] || null);
+  const hydrated = hydrateContactRow(rows[0] || null);
+  if (!hydrated) return null;
+  const [enriched] = await attachMembershipsToContacts([hydrated]);
+  return enriched;
 }
 function hydrateContactRow(row) {
   if (!row) return null;
@@ -122,6 +136,13 @@ function hydrateContactRow(row) {
     email: synced.email,
     telephone: synced.telephone
   };
+}
+async function enrichContactRows(rows) {
+  const hydrated = (Array.isArray(rows) ? rows : []).map(hydrateContactRow).filter(Boolean);
+  return attachMembershipsToContacts(hydrated);
+}
+function payloadHasMemberships(payload = {}) {
+  return Array.isArray(payload.memberships) || Array.isArray(payload.client_ids);
 }
 function resolveContactCommunications(payload, current = null) {
   const commList = payload.communications;
@@ -145,9 +166,10 @@ router.get('/list', requirePermission('contacts.view'), async (req, res) => {
   } = req.query;
   const numericClientId = client_id ? Number(client_id) : null;
   const params = [];
-  const whereClause = numericClientId ? 'WHERE cts.client_id = $1' : '';
+  let whereClause = '';
   if (numericClientId) {
     params.push(numericClientId);
+    whereClause = `WHERE ${sqlContactLinkedToClient('cts', 1)}`;
   }
   try {
     const result = await pool.query(`SELECT ${CONTACT_LIST_SELECT}
@@ -155,7 +177,7 @@ router.get('/list', requirePermission('contacts.view'), async (req, res) => {
        ${whereClause}
        ORDER BY cts.nom NULLS LAST, cts.prenom NULLS LAST, cts.id`, params);
     const tagsByContactId = await fetchTagsByContactIdMap();
-    const enrichedRows = attachContactTags(result.rows, tagsByContactId);
+    const enrichedRows = attachContactTags(await enrichContactRows(result.rows), tagsByContactId);
     res.set('Cache-Control', 'no-store');
     return res.json(enrichedRows);
   } catch (err) {
@@ -170,9 +192,10 @@ router.get('/', requirePermission('contacts.view'), async (req, res) => {
     client_id
   } = req.query;
   const params = [];
-  const whereClause = client_id ? 'WHERE cts.client_id = $1' : '';
+  let whereClause = '';
   if (client_id) {
     params.push(client_id);
+    whereClause = `WHERE ${sqlContactLinkedToClient('cts', 1)}`;
   }
   try {
     const result = await pool.query(`SELECT ${CONTACT_LIST_SELECT}
@@ -180,7 +203,7 @@ router.get('/', requirePermission('contacts.view'), async (req, res) => {
        ${whereClause}
        ORDER BY cts.nom NULLS LAST, cts.prenom NULLS LAST, cts.id`, params);
     const tagsByContactId = await fetchTagsByContactIdMap();
-    res.json(attachContactTags(result.rows, tagsByContactId));
+    res.json(attachContactTags(await enrichContactRows(result.rows), tagsByContactId));
   } catch (err) {
     res.status(500).json({
       error: 'Error retrieving contacts',
@@ -517,7 +540,10 @@ router.post('/', verifyJWT, requirePermission('contacts.create'), async (req, re
       poste,
       statut,
       client_id,
-      communications
+      communications,
+      memberships,
+      client_ids,
+      is_primary
     } = req.body;
     if (!nom) {
       return res.status(400).json({
@@ -538,22 +564,36 @@ router.post('/', verifyJWT, requirePermission('contacts.create'), async (req, re
       email,
       telephone
     });
+    const initialMemberships = normalizeMembershipsInput({
+      memberships,
+      client_ids,
+      client_id,
+      poste,
+      is_primary
+    }, client_id);
+    const homeClientId = initialMemberships[0]?.client_id || client_id || null;
     const result = await pool.query(`
       INSERT INTO v_b_contacts (nom, prenom, sexe, email, telephone, poste, statut, client_id, communications, created_at, updated_at)
       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9::jsonb, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
       RETURNING id, nom, prenom, sexe, email, telephone, poste, statut, client_id, communications, created_at, updated_at
-    `, [nom, prenom || null, normalizedSexe, syncedComms.email, syncedComms.telephone, poste || null, statut || 'actif', client_id || null, JSON.stringify(syncedComms.communications)]);
-    const newContact = hydrateContactRow(result.rows[0]);
-    invalidateContactsListCache(newContact.client_id || null);
+    `, [nom, prenom || null, normalizedSexe, syncedComms.email, syncedComms.telephone, poste || null, statut || 'actif', homeClientId || null, JSON.stringify(syncedComms.communications)]);
+    const created = hydrateContactRow(result.rows[0]);
+    if (initialMemberships.length > 0) {
+      await replaceMemberships(created.id, initialMemberships, {
+        preferredHomeClientId: homeClientId
+      });
+    }
+    const newContact = await loadContactById(created.id);
+    invalidateContactsListCache(newContact?.client_id || null);
     await dispatchNotificationEvent({
       source: "contact",
       element: "created",
-      enterpriseId: String(newContact.client_id || ""),
+      enterpriseId: String(newContact?.client_id || ""),
       user: req.user,
       context: {
         contact: newContact,
         entreprise: {
-          id: String(newContact.client_id || "")
+          id: String(newContact?.client_id || "")
         }
       }
     }).catch(() => {});
@@ -612,7 +652,7 @@ router.put('/:id', verifyJWT, requirePermission('contacts_detail.edit'), async (
     const resolvedSexe = hasOwn('sexe') ? normalizeContactSexe(sexe) : current.sexe || null;
     const resolvedPoste = hasOwn('poste') ? poste || null : current.poste || null;
     const resolvedStatut = hasOwn('statut') ? statut || current.statut || 'actif' : current.statut || 'actif';
-    const resolvedClientId = hasOwn('client_id') ? client_id || null : current.client_id || null;
+    let resolvedClientId = hasOwn('client_id') ? client_id || null : current.client_id || null;
     if (Array.isArray(communications)) {
       const commError = validateContactCommunications(communications);
       if (commError) {
@@ -634,7 +674,25 @@ router.put('/:id', verifyJWT, requirePermission('contacts_detail.edit'), async (
         error: "Contact not found"
       });
     }
-    const updatedContact = hydrateContactRow(result.rows[0]);
+    if (payloadHasMemberships(payload)) {
+      const nextMemberships = normalizeMembershipsInput(payload, resolvedClientId);
+      const replaced = await replaceMemberships(contactId, nextMemberships, {
+        preferredHomeClientId: resolvedClientId
+      });
+      resolvedClientId = replaced.homeClientId;
+    } else if (hasOwn('client_id') && resolvedClientId) {
+      // Dual-write: ensure link without removing other memberships
+      await addMembership(contactId, {
+        clientId: resolvedClientId,
+        poste: resolvedPoste,
+        isPrimary: String(resolvedPoste || "").toLowerCase().includes("principal")
+      });
+      resolvedClientId = await syncHomeClientId(contactId, resolvedClientId);
+    } else if (hasOwn('client_id') && !resolvedClientId) {
+      // Clearing home only — do not wipe all memberships unless explicit empty memberships[]
+      await syncHomeClientId(contactId, null);
+    }
+    const updatedContact = await loadContactById(contactId);
     const oldClientId = current?.client_id || null;
     const newClientId = updatedContact?.client_id || null;
     invalidateContactsListCache(oldClientId);
@@ -644,7 +702,10 @@ router.put('/:id', verifyJWT, requirePermission('contacts_detail.edit'), async (
     const {
       modifiedFields,
       changes
-    } = buildContactChanges(current, updatedContact);
+    } = buildContactChanges(current, {
+      ...updatedContact,
+      client_id: newClientId
+    });
     const rawUserId = req.user?.id || req.user?.user_id || null;
     const userId = rawUserId && uuidRegexUser.test(String(rawUserId)) ? String(rawUserId) : null;
     if (modifiedFields.length > 0) {
@@ -677,13 +738,73 @@ router.put('/:id', verifyJWT, requirePermission('contacts_detail.edit'), async (
     } catch (syncErr) {
       console.warn("Sync portail contact:", syncErr.message);
     }
-    const enriched = await loadContactById(contactId);
-    res.json(enriched || updatedContact);
+    res.json(updatedContact);
   } catch (err) {
     res.status(500).json({
       error: "Internal error (SQL)",
       details: err.message
     });
+  }
+});
+router.post('/:id/memberships', verifyJWT, requirePermission('contacts_detail.edit'), async (req, res) => {
+  try {
+    const contactId = parseContactId(req.params.id);
+    if (!contactId) return res.status(400).json({ error: "Invalid contact id" });
+    const clientId = Number(req.body?.client_id);
+    if (!Number.isInteger(clientId) || clientId <= 0) {
+      return res.status(400).json({ error: "client_id is required" });
+    }
+    const existing = await pool.query(`SELECT id FROM v_b_contacts WHERE id = $1`, [contactId]);
+    if (!existing.rows[0]) return res.status(404).json({ error: "Contact not found" });
+    await addMembership(contactId, {
+      clientId,
+      poste: req.body?.poste ?? null,
+      isPrimary: req.body?.is_primary === true
+    });
+    const contact = await loadContactById(contactId);
+    return res.json(contact);
+  } catch (err) {
+    return res.status(500).json({ error: err.message || "Error adding membership" });
+  }
+});
+router.delete('/:id/memberships/:clientId', verifyJWT, requirePermission('contacts_detail.edit'), async (req, res) => {
+  try {
+    const contactId = parseContactId(req.params.id);
+    const clientId = Number(req.params.clientId);
+    if (!contactId || !Number.isInteger(clientId) || clientId <= 0) {
+      return res.status(400).json({ error: "Invalid ids" });
+    }
+    await removeMembership(contactId, clientId);
+    const contact = await loadContactById(contactId);
+    if (!contact) return res.status(404).json({ error: "Contact not found" });
+    return res.json(contact);
+  } catch (err) {
+    return res.status(500).json({ error: err.message || "Error removing membership" });
+  }
+});
+router.put('/:id/memberships/:clientId/primary', verifyJWT, requirePermission('contacts_detail.edit'), async (req, res) => {
+  try {
+    const contactId = parseContactId(req.params.id);
+    const clientId = Number(req.params.clientId);
+    if (!contactId || !Number.isInteger(clientId) || clientId <= 0) {
+      return res.status(400).json({ error: "Invalid ids" });
+    }
+    await setPrimaryForClient(clientId, contactId);
+    const contact = await loadContactById(contactId);
+    return res.json(contact);
+  } catch (err) {
+    const status = err.code === "CONTACT_CLIENT_MISMATCH" ? 400 : 500;
+    return res.status(status).json({ error: err.message || "Error setting primary" });
+  }
+});
+router.get('/:id/memberships', verifyJWT, requirePermission('contacts.view'), async (req, res) => {
+  try {
+    const contactId = parseContactId(req.params.id);
+    if (!contactId) return res.status(400).json({ error: "Invalid contact id" });
+    const memberships = await listMembershipsForContact(contactId);
+    return res.json(memberships);
+  } catch (err) {
+    return res.status(500).json({ error: err.message || "Error listing memberships" });
   }
 });
 router.delete('/:id/logs', verifyJWT, async (req, res) => {

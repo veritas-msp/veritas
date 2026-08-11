@@ -13,6 +13,11 @@ const SHARED_FORM_KEYS = {
   firstNamePlaceholder: "",
   lastNamePlaceholder: "",
   enterpriseLabel: "",
+  companiesLabel: "",
+  addCompany: "",
+  primaryForCompany: "",
+  selectCompany: "",
+  removeCompanyAria: "",
   enterpriseLockedHint: "",
   enterprisePendingName: "",
   enterpriseHint: "",
@@ -67,8 +72,8 @@ const CONTACT_FORM_COPY = {
         description: "E-mails, téléphones et moyens de communication"
       },
       enterprise: {
-        label: "Entreprise",
-        description: "Entreprise rattachée et fonction"
+        label: "Entreprises",
+        description: "Entreprises rattachées et fonction"
       },
       status: {
         label: "Statut",
@@ -110,9 +115,14 @@ const CONTACT_FORM_COPY = {
     firstNamePlaceholder: "Jean",
     lastNamePlaceholder: "Dupont",
     enterpriseLabel: "Entreprise",
+    companiesLabel: "Entreprises",
+    addCompany: "Ajouter une entreprise",
+    primaryForCompany: "Principal pour cette entreprise",
+    selectCompany: "Sélectionner une entreprise",
+    removeCompanyAria: "Retirer {name}",
     enterpriseLockedHint: "Ce contact sera rattaché à la fiche client en cours.",
     enterprisePendingName: "Entreprise en cours de création",
-    enterpriseHint: "Associez le contact à une entreprise cliente pour faciliter la navigation et le partage de fiches.",
+    enterpriseHint: "Associez le contact à une ou plusieurs entreprises clientes pour faciliter la navigation et le partage de fiches.",
     currentClient: "Client actuel",
     statusInactiveHint: "Les contacts inactifs restent consultables mais sont exclus des compteurs dans Veritas.",
     civilityOptions: {
@@ -164,8 +174,8 @@ const CONTACT_FORM_COPY = {
         description: "Emails, phones and communication channels"
       },
       enterprise: {
-        label: "Company",
-        description: "Linked company and job title"
+        label: "Companies",
+        description: "Linked companies and job title"
       },
       status: {
         label: "Status",
@@ -207,9 +217,14 @@ const CONTACT_FORM_COPY = {
     firstNamePlaceholder: "John",
     lastNamePlaceholder: "Smith",
     enterpriseLabel: "Company",
+    companiesLabel: "Companies",
+    addCompany: "Add company",
+    primaryForCompany: "Primary for this company",
+    selectCompany: "Select company",
+    removeCompanyAria: "Remove {name}",
     enterpriseLockedHint: "This contact will be linked to the current client record.",
     enterprisePendingName: "Company being created",
-    enterpriseHint: "Link the contact to a client company to simplify navigation and record sharing.",
+    enterpriseHint: "Link the contact to one or more client companies to simplify navigation and record sharing.",
     currentClient: "Current client",
     statusInactiveHint: "Inactive contacts remain viewable but are excluded from Veritas counters.",
     civilityOptions: {

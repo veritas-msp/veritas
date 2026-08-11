@@ -87,6 +87,27 @@ function getContactLabel(contact, copy) {
   if (contact?.email && fullName) return `${fullName} · ${contact.email}`;
   return base;
 }
+function getContactClientOptions(contact, clients = []) {
+  const linked = Array.isArray(contact?.clients) ? contact.clients : [];
+  if (linked.length > 0) {
+    return linked.map(row => {
+      const id = row.id ?? row.client_id;
+      const listed = clients.find(c => String(c.id) === String(id));
+      return {
+        id,
+        name: row.name || row.client_name || listed?.name || listed?.nom || (id != null ? `Client #${id}` : "")
+      };
+    }).filter(row => row.id != null);
+  }
+  if (contact?.client_id) {
+    const listed = clients.find(c => String(c.id) === String(contact.client_id));
+    return [{
+      id: contact.client_id,
+      name: contact.client_name || contact.entreprise || listed?.name || listed?.nom || `Client #${contact.client_id}`
+    }];
+  }
+  return [];
+}
 function normalizeTicketStatus(status) {
   const normalized = String(status || "").trim().toLowerCase();
   return normalized === "open" ? "new" : normalized;
@@ -428,6 +449,7 @@ export default function TicketCreatePage({
   const [clientTickets, setClientTickets] = useState([]);
   const [loadingClientTickets, setLoadingClientTickets] = useState(false);
   const [requesterContactId, setRequesterContactId] = useState(initialData?.contactId || "");
+  const [ticketClientId, setTicketClientId] = useState(initialData?.clientId || "");
   const [contactSearch, setContactSearch] = useState("");
   const [showContactDropdown, setShowContactDropdown] = useState(false);
   const [contactHighlight, setContactHighlight] = useState(0);
@@ -532,27 +554,55 @@ export default function TicketCreatePage({
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
   const selectedContact = useMemo(() => contacts.find(c => String(c.id) === String(requesterContactId)) || null, [contacts, requesterContactId]);
+  const contactClientOptions = useMemo(() => getContactClientOptions(selectedContact, clients), [selectedContact, clients]);
+  const requiresCompanySelect = contactClientOptions.length > 1;
+  useEffect(() => {
+    if (!selectedContact) {
+      if (!initialData?.clientId) setTicketClientId("");
+      return;
+    }
+    if (contactClientOptions.length === 1) {
+      setTicketClientId(String(contactClientOptions[0].id));
+      return;
+    }
+    if (contactClientOptions.length > 1) {
+      setTicketClientId(prev => {
+        if (prev && contactClientOptions.some(opt => String(opt.id) === String(prev))) return prev;
+        if (initialData?.clientId && contactClientOptions.some(opt => String(opt.id) === String(initialData.clientId))) {
+          return String(initialData.clientId);
+        }
+        return "";
+      });
+      return;
+    }
+    setTicketClientId(selectedContact.client_id ? String(selectedContact.client_id) : "");
+  }, [selectedContact, contactClientOptions, initialData?.clientId]);
+  const resolvedTicketClientId = ticketClientId || (contactClientOptions.length === 1 ? contactClientOptions[0].id : null) || selectedContact?.client_id || initialData?.clientId || null;
   const clientLabel = useMemo(() => {
     if (!selectedContact) return "";
+    const selectedOption = contactClientOptions.find(opt => String(opt.id) === String(resolvedTicketClientId));
+    if (selectedOption?.name) return selectedOption.name;
+    if (contactClientOptions.length === 1) return contactClientOptions[0].name;
+    if (contactClientOptions.length > 1) return contactClientOptions.map(opt => opt.name).filter(Boolean).join(", ");
     const direct = selectedContact.client_name || selectedContact.entreprise;
     if (direct) return direct;
     const client = clients.find(c => String(c.id) === String(selectedContact.client_id));
     return client?.name || client?.nom || "";
-  }, [selectedContact, clients]);
-  const selectedClient = useMemo(() => clients.find(c => String(c.id) === String(selectedContact?.client_id)) || null, [clients, selectedContact?.client_id]);
+  }, [selectedContact, clients, contactClientOptions, resolvedTicketClientId]);
+  const selectedClient = useMemo(() => clients.find(c => String(c.id) === String(resolvedTicketClientId)) || null, [clients, resolvedTicketClientId]);
   const clientContractSummary = useMemo(() => buildClientContractSummary(selectedClient), [selectedClient]);
   const activeContractOptionLabels = useMemo(() => {
     if (!clientContractSummary) return [];
     return contractModuleDefs.filter(mod => mod.enabled !== false && clientContractSummary.activeOptionKeys.includes(mod.moduleKey)).map(mod => copy.getContractModuleLabel(mod.moduleKey, mod.label));
   }, [clientContractSummary, contractModuleDefs, copy]);
   const clientSlaRows = useMemo(() => {
-    const client = clients.find(c => String(c.id) === String(selectedContact?.client_id));
+    const client = clients.find(c => String(c.id) === String(resolvedTicketClientId));
     const sla = parseClientSla(client?.contrat);
     if (!sla.enabled) return [];
     return formatClientSlaRows(client?.contrat);
-  }, [clients, selectedContact?.client_id]);
+  }, [clients, resolvedTicketClientId]);
   useEffect(() => {
-    const clientId = selectedContact?.client_id;
+    const clientId = resolvedTicketClientId;
     if (!clientId) {
       setSupportCreditBalance(null);
       setSupportCreditPacks([]);
@@ -579,9 +629,9 @@ export default function TicketCreatePage({
     return () => {
       cancelled = true;
     };
-  }, [selectedContact?.client_id]);
+  }, [resolvedTicketClientId]);
   useEffect(() => {
-    const clientId = selectedContact?.client_id;
+    const clientId = resolvedTicketClientId;
     if (!clientId) {
       setClientEquipments([]);
       setEquipmentId("");
@@ -604,7 +654,7 @@ export default function TicketCreatePage({
     return () => {
       cancelled = true;
     };
-  }, [selectedContact?.client_id]);
+  }, [resolvedTicketClientId]);
   useEffect(() => {
     const contactId = selectedContact?.id;
     setLinkedTicketId("");
@@ -721,11 +771,21 @@ export default function TicketCreatePage({
     setRequesterContactId(String(contact.id));
     setContactSearch(getContactLabel(contact, copy));
     setShowContactDropdown(false);
+    const options = getContactClientOptions(contact, clients);
+    if (options.length === 1) {
+      setTicketClientId(String(options[0].id));
+    } else if (options.length > 1) {
+      const preferred = initialData?.clientId && options.some(opt => String(opt.id) === String(initialData.clientId)) ? String(initialData.clientId) : "";
+      setTicketClientId(preferred);
+    } else {
+      setTicketClientId(contact?.client_id ? String(contact.client_id) : "");
+    }
     setFieldErrors(prev => ({
       ...prev,
-      requester: undefined
+      requester: undefined,
+      company: undefined
     }));
-  }, [copy]);
+  }, [copy, clients, initialData?.clientId]);
   const selectCategory = useCallback(item => {
     const name = String(item?.name || "").trim();
     if (!name) return;
@@ -826,10 +886,11 @@ export default function TicketCreatePage({
     if (contact) selectContact(contact);
   }, [reloadContacts, enrichContactRow, selectContact]);
   const contactCreateDefaultClientId = useMemo(() => {
+    if (resolvedTicketClientId) return resolvedTicketClientId;
     if (selectedContact?.client_id) return selectedContact.client_id;
     if (initialData?.clientId) return initialData.clientId;
     return null;
-  }, [selectedContact?.client_id, initialData?.clientId]);
+  }, [resolvedTicketClientId, selectedContact?.client_id, initialData?.clientId]);
   const openContactCreateModal = useCallback(() => {
     setShowContactDropdown(false);
     setContactModalInitial(null);
@@ -942,6 +1003,7 @@ export default function TicketCreatePage({
   const validate = () => {
     const errors = {};
     if (!requesterContactId) errors.requester = true;
+    if (requiresCompanySelect && !ticketClientId) errors.company = true;
     if (!category.trim()) errors.category = true;
     if (title.trim().length < 3) errors.title = true;
     if (description.trim().length < 10) errors.description = true;
@@ -1021,7 +1083,7 @@ export default function TicketCreatePage({
         equipmentId,
         name: selectedEquipment?.name,
         type: selectedEquipment?.type,
-        clientId: selectedContact?.client_id,
+        clientId: resolvedTicketClientId,
         brand: equipmentBrand,
         model: equipmentModel,
         serial: equipmentSerial
@@ -1034,7 +1096,7 @@ export default function TicketCreatePage({
         type,
         category: category.trim(),
         channel,
-        clientId: selectedContact?.client_id || null,
+        clientId: resolvedTicketClientId || null,
         assignedUserId: preAssigneeUserIds[0] || null,
         requesterUserId: null,
         requesterContactId,
@@ -1054,7 +1116,7 @@ export default function TicketCreatePage({
       }
       if (equipmentConcerned && equipmentSource === "veritas" && selectedEquipment) {
         try {
-          await addTicketComment(created.id, buildLinkedEquipmentComment(selectedEquipment, selectedContact?.client_id), true);
+          await addTicketComment(created.id, buildLinkedEquipmentComment(selectedEquipment, resolvedTicketClientId), true);
         } catch {}
       }
       if (linkedTicketEnabled && selectedLinkedTicket) {
@@ -1296,11 +1358,13 @@ export default function TicketCreatePage({
                     <input type="text" className={s.contactInput} value={contactSearch} placeholder={copy.searchContact} aria-label={copy.searchContactAria} aria-expanded={showContactDropdown} aria-haspopup="listbox" disabled={loadingData} onChange={e => {
                         setContactSearch(e.target.value);
                         setRequesterContactId("");
+                        setTicketClientId("");
                         setShowContactDropdown(true);
                         setContactHighlight(0);
                         setFieldErrors(prev => ({
                           ...prev,
-                          requester: undefined
+                          requester: undefined,
+                          company: undefined
                         }));
                       }} onFocus={() => {
                         if (requesterContactId) return;
@@ -1327,7 +1391,8 @@ export default function TicketCreatePage({
                             {copy.createContact}
                           </button>
                         </div> : filteredContacts.map((c, idx) => {
-                        const company = c.client_name || c.entreprise || clients.find(cl => String(cl.id) === String(c.client_id))?.name || clients.find(cl => String(cl.id) === String(c.client_id))?.nom || "";
+                        const companyOptions = getContactClientOptions(c, clients);
+                        const company = companyOptions.map(opt => opt.name).filter(Boolean).join(", ") || c.client_name || c.entreprise || clients.find(cl => String(cl.id) === String(c.client_id))?.name || clients.find(cl => String(cl.id) === String(c.client_id))?.nom || "";
                         return <button key={c.id} type="button" className={`${s.contactOption} ${idx === contactHighlight ? s.contactOptionActive : ""}`} onMouseEnter={() => setContactHighlight(idx)} onClick={() => selectContact(c)}>
                               <span className={s.contactOptionName}>{getContactLabel(c, copy)}</span>
                               {company && <span className={s.contactOptionMeta}>{company}</span>}
@@ -1340,6 +1405,27 @@ export default function TicketCreatePage({
                     {copy.newContact}
                   </button>
                 </div>
+
+                  {selectedContact && requiresCompanySelect ? <div className={s.fieldBlock} style={{
+                  marginTop: "0.85rem"
+                }}>
+                      <label className={s.fieldLabel} htmlFor="ticket-create-company">
+                        {copy.selectCompany || copy.enterprise}<span className={s.requiredMark}>*</span>
+                      </label>
+                      <select id="ticket-create-company" className={`${s.input} ${fieldErrors.company ? s.inputError : ""}`.trim()} value={ticketClientId || ""} onChange={e => {
+                  setTicketClientId(e.target.value);
+                  setFieldErrors(prev => ({
+                    ...prev,
+                    company: undefined
+                  }));
+                }} data-pulse={fieldErrors.company ? errorPulseTick : undefined} required>
+                        <option value="">{copy.selectCompany || copy.enterprise}</option>
+                        {contactClientOptions.map(opt => <option key={opt.id} value={opt.id}>
+                            {opt.name}
+                          </option>)}
+                      </select>
+                      {fieldErrors.company ? <p className={s.equipmentHint}>{copy.companyRequired}</p> : null}
+                    </div> : null}
 
                   {selectedContact && <div className={s.contactSummaryCard}>
                       <div className={s.contactSummaryMain}>
@@ -1834,7 +1920,7 @@ export default function TicketCreatePage({
                           <label className={s.equipmentFieldLabel}>
                             {copy.equipment}<span className={s.requiredMark}>*</span>
                           </label>
-                          {!selectedContact?.client_id ? <p className={s.equipmentHint}>{copy.selectRequesterFirst}</p> : loadingEquipments ? <p className={s.equipmentHint}>{copy.loadingFleet}</p> : clientEquipments.length === 0 ? <p className={s.equipmentHint}>{copy.noFleetEquipment}</p> : <div className={s.linkTicketPicker} ref={equipmentDropdownRef}>
+                          {!resolvedTicketClientId ? <p className={s.equipmentHint}>{copy.selectRequesterFirst}</p> : loadingEquipments ? <p className={s.equipmentHint}>{copy.loadingFleet}</p> : clientEquipments.length === 0 ? <p className={s.equipmentHint}>{copy.noFleetEquipment}</p> : <div className={s.linkTicketPicker} ref={equipmentDropdownRef}>
                               <div data-pulse={fieldErrors.equipmentId ? errorPulseTick : undefined} className={`${s.contactInputWrap} ${showEquipmentDropdown ? s.contactInputWrapOpen : ""} ${fieldErrors.equipmentId ? s.contactInputWrapError : ""} ${fieldErrors.equipmentId ? s.fieldErrorPulse : ""}`}>
                                 <Icon icon="mdi:magnify" className={s.contactInputIcon} aria-hidden />
                                 <input type="text" className={s.contactInput} value={equipmentSearch} autoComplete="off" placeholder={copy.searchEquipment} aria-label={copy.equipment} aria-expanded={showEquipmentDropdown} aria-haspopup="listbox" disabled={loadingData} onChange={e => handleEquipmentSearchChange(e.target.value)} onFocus={() => {

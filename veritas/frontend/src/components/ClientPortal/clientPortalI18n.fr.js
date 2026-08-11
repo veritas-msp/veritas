@@ -81,7 +81,10 @@ export default {
     stopImpersonation: "Quitter l'impersonation",
     loadError: "Erreur lors du chargement du portail.",
     stopImpersonationSuccess: "Retour à votre session agent.",
-    stopImpersonationError: "Impossible de quitter l'impersonation."
+    stopImpersonationError: "Impossible de quitter l'impersonation.",
+    switchCompanyLabel: "Entreprise",
+    switchCompanySuccess: "Entreprise active mise à jour.",
+    switchCompanyError: "Impossible de changer d'entreprise."
   },
   dashboard: {
     pageTitle: "Vue d'ensemble",

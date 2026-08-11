@@ -2,6 +2,7 @@ import { pool } from "../database/db.js";
 import { encrypt, decrypt } from "../utils/encryption.js";
 import { resolveFileUploadedBy } from "../utils/fileUploadedBy.js";
 import { ensureClientVaultSecretsSchema, hasClientVaultSecretsTable } from "./ensureClientVaultSecretsSchema.js";
+import { assertMembership } from "./contactClientLinks.js";
 const MAX_TITLE_LENGTH = 200;
 const MAX_DESCRIPTION_LENGTH = 2000;
 const MAX_SECRET_LENGTH = 4000;
@@ -94,16 +95,10 @@ async function assertContactForClient(contactId, clientId) {
   if (!normalizedClientId) throw new Error("Company is required.");
   const {
     rows
-  } = await pool.query(`SELECT id, client_id
-     FROM v_b_contacts
-     WHERE id = $1
-     LIMIT 1`, [normalizedContactId]);
-  const contact = rows[0];
-  if (!contact) throw new Error("Contact not found.");
-  if (Number(contact.client_id) !== normalizedClientId) {
-    throw new Error("This contact does not belong to the specified company.");
-  }
-  return contact;
+  } = await pool.query(`SELECT id FROM v_b_contacts WHERE id = $1 LIMIT 1`, [normalizedContactId]);
+  if (!rows[0]) throw new Error("Contact not found.");
+  await assertMembership(normalizedContactId, normalizedClientId);
+  return rows[0];
 }
 export async function listAgentVaultSecrets(contactId) {
   if (!(await hasClientVaultSecretsTable())) return [];

@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useMemo, useCallback } from "react"
 import { useParams } from "react-router-dom";
 import { Icon } from "@iconify/react";
 import { toast } from "react-toastify";
-import { fetchClientsList, addContactTag, removeContactTag, deleteContact } from "../../api/clients";
+import { fetchClientsList, addContactTag, removeContactTag, deleteContact, addContactMembership, removeContactMembership } from "../../api/clients";
 import { fetchTickets } from "../../api/tickets";
 import { fetchEvents } from "../../api/events";
 import { filterUpcomingEvents } from "../../utils/eventFilters";
@@ -181,7 +181,12 @@ export default function ContactDetailPage({
   const [loadingTags, setLoadingTags] = useState(false);
   const [tagModalOpen, setTagModalOpen] = useState(false);
   const [shareAccessCreateOpen, setShareAccessCreateOpen] = useState(false);
+  const [vaultClientId, setVaultClientId] = useState(null);
+  const [companySearch, setCompanySearch] = useState("");
+  const [companyDropdownOpen, setCompanyDropdownOpen] = useState(false);
+  const [membershipBusy, setMembershipBusy] = useState(false);
   const [addingTag, setAddingTag] = useState(false);
+  const companyAutocompleteRef = useRef(null);
   const [supportTickets, setSupportTickets] = useState([]);
   const [prestationTickets, setPrestationTickets] = useState([]);
   const [clientTickets, setClientTickets] = useState([]);
@@ -189,19 +194,63 @@ export default function ContactDetailPage({
   const [loadingActivity, setLoadingActivity] = useState(false);
   const activityControllerRef = useRef(null);
   const displayCommunications = useMemo(() => sortCommunicationsByType(normalizeContactCommunications(contact || {})), [contact]);
+  const contactCompanies = useMemo(() => {
+    const linked = Array.isArray(contact?.clients) ? contact.clients : [];
+    if (linked.length > 0) {
+      return linked.map(row => ({
+        id: row.id ?? row.client_id,
+        name: row.name || row.client_name || `Client #${row.id ?? row.client_id}`,
+        poste: row.poste || "",
+        is_primary: Boolean(row.is_primary)
+      })).filter(row => row.id != null);
+    }
+    if (contact?.client_id || client?.id) {
+      return [{
+        id: contact?.client_id || client?.id,
+        name: contact?.client_name || client?.name || `Client #${contact?.client_id || client?.id}`,
+        poste: contact?.poste || "",
+        is_primary: true
+      }];
+    }
+    return [];
+  }, [contact, client]);
   const openSupportCount = useMemo(() => supportTickets.filter(isOpenTicket).length, [supportTickets]);
   const clientSupportTickets = useMemo(() => clientTickets.filter(ticket => !isPrestationTicket(ticket)), [clientTickets]);
   const openClientTickets = useMemo(() => clientSupportTickets.filter(isOpenTicket).sort(sortTicketsByRecent), [clientSupportTickets]);
   const closedClientTickets = useMemo(() => clientSupportTickets.filter(ticket => !isOpenTicket(ticket)).sort(sortTicketsByRecent).slice(0, 12), [clientSupportTickets]);
-  const canCreateTicket = Boolean(contact?.id && (client?.id || contact?.client_id || formData.client_id));
+  const canCreateTicket = Boolean(contact?.id && (client?.id || contact?.client_id || formData.client_id || contactCompanies.length > 0));
   const contactGuideSteps = useMemo(() => {
     const steps = getContactDetailGuideSteps(locale);
-    if (contact?.id && contact?.client_id) return steps;
+    if (contact?.id && (contact?.client_id || contactCompanies.length > 0)) return steps;
     return steps.filter(step => step.target !== '[data-guide="contact-shared-access"]');
-  }, [locale, contact?.id, contact?.client_id]);
+  }, [locale, contact?.id, contact?.client_id, contactCompanies.length]);
+  useEffect(() => {
+    const preferred = contact?.client_id || contactCompanies[0]?.id || null;
+    setVaultClientId(prev => {
+      if (prev && contactCompanies.some(c => String(c.id) === String(prev))) return prev;
+      return preferred;
+    });
+  }, [contact?.client_id, contactCompanies]);
+  useEffect(() => {
+    const handleClickOutside = e => {
+      if (companyAutocompleteRef.current && !companyAutocompleteRef.current.contains(e.target)) {
+        setCompanyDropdownOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+  const availableCompaniesToAdd = useMemo(() => {
+    const linkedIds = new Set(contactCompanies.map(c => String(c.id)));
+    const query = companySearch.trim().toLowerCase();
+    return allClients.filter(c => !linkedIds.has(String(c.id))).filter(c => {
+      if (!query) return true;
+      return String(c.name || "").toLowerCase().includes(query);
+    }).slice(0, 12);
+  }, [allClients, contactCompanies, companySearch]);
   const buildContactSharePayload = () => {
     const fullName = formatContactName(contact, copy.defaultName);
-    const entreprise = (client?.name || contact?.client_name || "").toString().trim();
+    const entreprise = contactCompanies.map(c => c.name).filter(Boolean).join(", ") || (client?.name || contact?.client_name || "").toString().trim();
     const telephone = (contact?.telephone || "").toString().trim();
     const email = (contact?.email || "").toString().trim();
     const poste = (contact?.poste || "").toString().trim();
@@ -546,21 +595,73 @@ export default function ContactDetailPage({
         statut: updated.statut || "actif",
         client_id: updated.client_id ?? null
       });
-      if (updated.client_name || updated.client_id) {
+      if (updated.client_name || updated.client_id || Array.isArray(updated.clients) && updated.clients.length > 0) {
+        const primary = Array.isArray(updated.clients) ? updated.clients.find(c => c.is_primary) || updated.clients[0] : null;
         setClient({
-          id: updated.client_id ?? null,
-          name: updated.client_name || (updated.client_id ? `Client #${updated.client_id}` : "")
+          id: updated.client_id ?? primary?.id ?? primary?.client_id ?? null,
+          name: updated.client_name || primary?.name || (updated.client_id ? `Client #${updated.client_id}` : "")
         });
       }
     }
     window.dispatchEvent(new Event("refreshContacts"));
   };
-  const openEnterprise = () => {
-    if (!onNavigate || !client?.id) return;
+  const openEnterprise = (targetClient = null) => {
+    const target = targetClient || client;
+    if (!onNavigate || !target?.id) return;
     onNavigate("ContratDetail", {
-      clientId: client.id,
-      name: client.name
+      clientId: target.id,
+      name: target.name
     });
+  };
+  const applyMembershipResult = updatedContact => {
+    if (!updatedContact?.id) return;
+    setContact(prev => ({
+      ...(prev || {}),
+      ...updatedContact,
+      tags: Array.isArray(updatedContact.tags) ? updatedContact.tags : prev?.tags || []
+    }));
+    if (updatedContact.client_id || Array.isArray(updatedContact.clients)) {
+      const primary = Array.isArray(updatedContact.clients) ? updatedContact.clients.find(c => c.is_primary) || updatedContact.clients[0] : null;
+      setClient({
+        id: updatedContact.client_id ?? primary?.id ?? primary?.client_id ?? null,
+        name: updatedContact.client_name || primary?.name || (updatedContact.client_id ? `Client #${updatedContact.client_id}` : "")
+      });
+      setFormData(prev => ({
+        ...prev,
+        client_id: updatedContact.client_id ?? prev.client_id
+      }));
+    }
+    window.dispatchEvent(new Event("refreshContacts"));
+  };
+  const handleAddCompanyMembership = async clientRow => {
+    if (!contact?.id || !clientRow?.id || membershipBusy) return;
+    setMembershipBusy(true);
+    try {
+      const updated = await addContactMembership(contact.id, {
+        client_id: clientRow.id
+      });
+      applyMembershipResult(updated);
+      setCompanySearch("");
+      setCompanyDropdownOpen(false);
+      toast.success(copy.toast.membershipAdded);
+    } catch (error) {
+      toast.error(error.message || copy.toast.membershipError);
+    } finally {
+      setMembershipBusy(false);
+    }
+  };
+  const handleRemoveCompanyMembership = async clientId => {
+    if (!contact?.id || !clientId || membershipBusy) return;
+    setMembershipBusy(true);
+    try {
+      const updated = await removeContactMembership(contact.id, clientId);
+      applyMembershipResult(updated);
+      toast.success(copy.toast.membershipRemoved);
+    } catch (error) {
+      toast.error(error.message || copy.toast.membershipError);
+    } finally {
+      setMembershipBusy(false);
+    }
   };
   const openDeleteContactModal = () => {
     setContactActionsMenuOpen(false);
@@ -610,8 +711,6 @@ export default function ContactDetailPage({
     nom: formData.nom
   }, copy.defaultName);
   const hasCoords = displayCommunications.length > 0;
-  const clientCode = getClientNumber(client);
-  const clientLabel = getClientNameWithoutCode(client) || client?.name || "";
   return <div className={`${styles.contratDetailPage} ${styles.enterpriseDetailPage} ${contactStyles.contactDetailPage} msp-page-grid`}>
       <header className={styles.pageHero} data-guide="contact-hero">
         <div className={styles.heroRow}>
@@ -635,19 +734,25 @@ export default function ContactDetailPage({
                     <Icon icon={getContactSexeIcon(formData.sexe)} aria-hidden />
                     {getContactSexeLabelLocalized(formData.sexe, locale)}
                   </span>}
-                {clientLabel && (client?.id ? <button type="button" className={`${styles.heroMetaItem} ${styles.heroMetaLink}`} onClick={openEnterprise} title={copy.viewEnterprise}>
-                      <Icon icon="mdi:domain" aria-hidden />
-                      {clientCode ? <>
-                          <span className={styles.headerClientCode}>{clientCode}</span>
-                          {clientLabel}
-                        </> : clientLabel}
-                    </button> : <span className={styles.heroMetaItem}>
-                      <Icon icon="mdi:domain" aria-hidden />
-                      {clientCode ? <>
-                          <span className={styles.headerClientCode}>{clientCode}</span>
-                          {clientLabel}
-                        </> : clientLabel}
-                    </span>)}
+                {contactCompanies.map(company => {
+                const listed = allClients.find(c => String(c.id) === String(company.id));
+                const code = getClientNumber(listed || company);
+                const label = getClientNameWithoutCode(listed || company) || company.name || "";
+                return company.id ? <button key={company.id} type="button" className={`${styles.heroMetaItem} ${styles.heroMetaLink}`} onClick={() => openEnterprise({
+                  id: company.id,
+                  name: company.name
+                })} title={copy.viewEnterprise}>
+                        <Icon icon="mdi:domain" aria-hidden />
+                        {code ? <>
+                            <span className={styles.headerClientCode}>{code}</span>
+                            {label}
+                          </> : label}
+                        {company.is_primary ? <span className={styles.contractBadge}>{copy.primaryBadge}</span> : null}
+                      </button> : <span key={company.name || "company"} className={styles.heroMetaItem}>
+                        <Icon icon="mdi:domain" aria-hidden />
+                        {label}
+                      </span>;
+              })}
                 {!loadingActivity && <span className={styles.heroMetaItem}>
                     <Icon icon="mdi:ticket-outline" aria-hidden />
                     {openSupportCount === 1 ? interpolate(copy.openTickets, {
@@ -706,15 +811,18 @@ export default function ContactDetailPage({
                   <Icon icon="mdi:share-variant" aria-hidden />
                   <span>{copy.shareCard}</span>
                 </button>
-                {client?.id && <>
+                {contactCompanies.length > 0 && <>
                     <div className={styles.heroMenuDivider} role="separator" />
-                    <button type="button" className={styles.heroMenuItem} role="menuitem" onClick={() => {
+                    {contactCompanies.map(company => <button key={company.id} type="button" className={styles.heroMenuItem} role="menuitem" onClick={() => {
                 setContactActionsMenuOpen(false);
-                openEnterprise();
+                openEnterprise({
+                  id: company.id,
+                  name: company.name
+                });
               }}>
-                      <Icon icon="mdi:domain" aria-hidden />
-                      <span>{copy.viewEnterprise}</span>
-                    </button>
+                        <Icon icon="mdi:domain" aria-hidden />
+                        <span>{company.name || copy.viewEnterprise}</span>
+                      </button>)}
                   </>}
                 {canDeleteContact ? <>
                 <div className={styles.heroMenuDivider} role="separator" />
@@ -951,7 +1059,7 @@ export default function ContactDetailPage({
               </div>
             </section>
 
-            {contact?.id && contact?.client_id ? <ProFeatureLock locked={isCommunity} featureLabel={copy.sharedAccessTitle} featureKey="sharedAccess">
+            {contact?.id && (vaultClientId || contact?.client_id || contactCompanies.length > 0) ? <ProFeatureLock locked={isCommunity} featureLabel={copy.sharedAccessTitle} featureKey="sharedAccess">
                 <section className={styles.panel} data-guide="contact-shared-access">
                   <div className={styles.panelHeader}>
                     <h2 className={styles.panelTitle}>{copy.sharedAccessTitle}</h2>
@@ -962,7 +1070,15 @@ export default function ContactDetailPage({
                     </SmartTooltip> : null}
                   </div>
                   <div className={styles.panelBody}>
-                    <VaultSecretsPanel contactId={contact.id} clientId={contact.client_id} contactName={formatContactName(contact, copy.defaultName)} createModalOpen={shareAccessCreateOpen} onCreateModalChange={setShareAccessCreateOpen} />
+                    {contactCompanies.length > 1 ? <label className={contactStyles.vaultClientField}>
+                        <span className={contactStyles.vaultClientLabel}>{copy.vaultClientLabel || copy.selectCompany}</span>
+                        <select className={contactStyles.vaultClientSelect} value={vaultClientId || ""} onChange={e => setVaultClientId(e.target.value || null)}>
+                          {contactCompanies.map(company => <option key={company.id} value={company.id}>
+                              {company.name}
+                            </option>)}
+                        </select>
+                      </label> : null}
+                    <VaultSecretsPanel contactId={contact.id} clientId={vaultClientId || contact.client_id || contactCompanies[0]?.id} contactName={formatContactName(contact, copy.defaultName)} createModalOpen={shareAccessCreateOpen} onCreateModalChange={setShareAccessCreateOpen} />
                   </div>
                 </section>
               </ProFeatureLock> : null}
@@ -999,6 +1115,47 @@ export default function ContactDetailPage({
                     <span className={styles.sidebarSummaryLabel}>{copy.fields.role}</span>
                     {formData.poste ? <span className={styles.sidebarSummaryValue}>{formData.poste}</span> : <span className={styles.sidebarSummaryValueEmpty}>-</span>}
                   </div>
+                </div>
+              </section>
+
+              <section className={styles.sidebarSection} data-guide="contact-sidebar-companies">
+                <div className={styles.sidebarInfoHeader}>
+                  <span className={styles.sidebarInfoTitle}>{copy.companies || copy.share.lines.enterprise}</span>
+                </div>
+                <div className={contactStyles.membershipList}>
+                  {contactCompanies.length === 0 ? <span className={styles.sidebarSummaryValueEmpty}>-</span> : contactCompanies.map(company => <div key={company.id} className={contactStyles.membershipRow}>
+                        <button type="button" className={contactStyles.membershipNameBtn} onClick={() => openEnterprise({
+                  id: company.id,
+                  name: company.name
+                })}>
+                          <Icon icon="mdi:domain" aria-hidden />
+                          <span>{company.name}</span>
+                          {company.is_primary ? <span className={contactStyles.membershipPrimary}>{copy.primaryBadge}</span> : null}
+                        </button>
+                        {canEditContact ? <button type="button" className={contactStyles.membershipRemoveBtn} onClick={() => handleRemoveCompanyMembership(company.id)} disabled={membershipBusy} aria-label={interpolate(copy.removeCompanyAria || "{name}", {
+                  name: company.name
+                })}>
+                            <FaTimes />
+                          </button> : null}
+                      </div>)}
+                  {canEditContact ? <div className={contactStyles.membershipAdd} ref={companyAutocompleteRef}>
+                      <label className={contactStyles.vaultClientLabel} htmlFor="contact-detail-add-company">
+                        {copy.addCompany}
+                      </label>
+                      <input id="contact-detail-add-company" type="text" className={contactStyles.membershipSearch} placeholder={copy.selectCompany} value={companySearch} onChange={e => {
+                setCompanySearch(e.target.value);
+                setCompanyDropdownOpen(true);
+                ensureClientsLoaded();
+              }} onFocus={() => {
+                setCompanyDropdownOpen(true);
+                ensureClientsLoaded();
+              }} disabled={membershipBusy} autoComplete="off" />
+                      {companyDropdownOpen && <div className={contactStyles.membershipDropdown}>
+                          {availableCompaniesToAdd.length === 0 ? <div className={contactStyles.membershipDropdownEmpty}>-</div> : availableCompaniesToAdd.map(row => <button key={row.id} type="button" className={contactStyles.membershipDropdownOption} onClick={() => handleAddCompanyMembership(row)} disabled={membershipBusy}>
+                                {row.name}
+                              </button>)}
+                        </div>}
+                    </div> : null}
                 </div>
               </section>
 

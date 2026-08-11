@@ -1,5 +1,6 @@
 import { pool } from "../../database/db.js";
 import verifyJWT from "../../middleware/auth.js";
+import { listMembershipsForContact } from "../../services/contactClientLinks.js";
 const TAG_COLORS = ["#2b5fab", "#16a34a", "#d97706", "#7c3aed", "#dc2626", "#0891b2"];
 function parseContactId(raw) {
   const id = Number(raw);
@@ -125,6 +126,8 @@ export function registerContactMetaRoutes(router, {
          VALUES ($1, $2, NOW())
          ON CONFLICT (contact_id, tag_id) DO NOTHING`, [contactId, tagResult.rows[0].id]);
       invalidateContactsListCache?.(existing.rows[0].client_id);
+      const memberships = await listMembershipsForContact(contactId).catch(() => []);
+      for (const m of memberships) invalidateContactsListCache?.(m.client_id);
       invalidateContactsListCache?.(null);
       res.status(201).json(tagResult.rows[0]);
     } catch (err) {
@@ -153,6 +156,8 @@ export function registerContactMetaRoutes(router, {
       }
       await pool.query("DELETE FROM v_b_contact_tag_links WHERE contact_id = $1 AND tag_id = $2", [contactId, req.params.tagId]);
       invalidateContactsListCache?.(existing.rows[0].client_id);
+      const memberships = await listMembershipsForContact(contactId).catch(() => []);
+      for (const m of memberships) invalidateContactsListCache?.(m.client_id);
       invalidateContactsListCache?.(null);
       res.json({
         success: true

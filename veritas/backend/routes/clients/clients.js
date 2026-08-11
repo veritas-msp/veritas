@@ -5,7 +5,7 @@ import { buildEquipmentLogQuery } from '../../utils/equipmentLogs.js';
 import { checkSslCertificate, isSslCheckStale, resolveSslCheckIntervalHours } from '../../utils/sslCertificateChecker.js';
 import verifyJWT from '../../middleware/auth.js';
 import { dispatchNotificationEvent } from "../../services/notificationDispatcher.js";
-import { assertCommunityClientsLimit, assertCommunitySitesLimit, sendCommunityLimitError } from '../../utils/communityLimits.js';
+import { assertCommunityClientsLimit, assertCommunitySitesLimit, assertCommunityContactsLimit, sendCommunityLimitError } from '../../utils/communityLimits.js';
 import { registerClientMetaRoutes } from './clientMeta.js';
 import { attachDeletionSummary, fetchDeletionSummaryByClientId, forceDeleteClientWithLinkedItems, getClientDeletionStatus } from '../../utils/clientDeletionGuard.js';
 import { createClientCustomEquipment, deleteClientCustomEquipment, listClientCustomEquipment, listEquipmentFamilies, updateClientCustomEquipment } from '../../utils/equipmentFamilies.js';
@@ -15,6 +15,7 @@ import { requirePermission, requireAnyPermission } from '../../middleware/permis
 import { attachEquipmentCounts, fetchEquipmentCountsByClientId } from '../../utils/equipmentCountsByClient.js';
 import { fetchEquipmentPurgeList } from '../../utils/equipmentPurgeList.js';
 import { userHasAllPermissions } from '../../services/permissionService.js';
+import { addMembership, fetchPrimaryContactNamesByClientId, sqlContactLinkedToClient, attachMembershipsToContacts } from '../../services/contactClientLinks.js';
 const router = express.Router();
 router.use(requireProForClientInfra);
 router.use(verifyJWT);
@@ -83,54 +84,8 @@ const attachClientTags = (clients, tagsByClientId = {}) => clients.map(client =>
   ...client,
   tags: tagsByClientId[String(client.id)] || []
 }));
-function pickPrimaryContactFromRows(contacts) {
-  if (!Array.isArray(contacts) || contacts.length === 0) return null;
-  const principal = contacts.find(contact => String(contact.poste || "").toLowerCase().includes("principal"));
-  if (principal) return principal;
-  const active = contacts.find(contact => {
-    const status = String(contact.statut || "").toLowerCase();
-    return status.includes("actif") && !status.includes("inactif");
-  });
-  return active || contacts[0];
-}
-function formatPrimaryContactName(contact) {
-  if (!contact) return null;
-  const prenom = String(contact.prenom || "").trim();
-  const nom = String(contact.nom || "").trim();
-  if (prenom && nom) return `${prenom} ${nom}`;
-  return nom || prenom || null;
-}
 async function fetchPrimaryContactsByClientId() {
-  const byClientId = {};
-  try {
-    const result = await pool.query(`
-      SELECT client_id::text AS client_id,
-             nom,
-             prenom,
-             poste,
-             statut
-      FROM v_b_contacts
-      ORDER BY client_id ASC, nom ASC, prenom ASC
-    `);
-    const grouped = {};
-    for (const row of result.rows) {
-      const clientId = String(row.client_id);
-      if (!grouped[clientId]) grouped[clientId] = [];
-      grouped[clientId].push(row);
-    }
-    for (const [clientId, contacts] of Object.entries(grouped)) {
-      const primary = pickPrimaryContactFromRows(contacts);
-      const name = formatPrimaryContactName(primary);
-      if (name) byClientId[clientId] = name;
-    }
-  } catch (err) {
-    if (err.code === "42P01") {
-      console.warn("[client-contacts] table missing, contacts skipped");
-      return byClientId;
-    }
-    throw err;
-  }
-  return byClientId;
+  return fetchPrimaryContactNamesByClientId();
 }
 const attachPrimaryContacts = (clients, primaryContactsByClientId = {}) => clients.map(client => ({
   ...client,
@@ -3794,12 +3749,12 @@ router.get('/contacts', async (req, res) => {
     `;
     let params = [];
     if (clientId) {
-      query += ` WHERE c.client_id = $1`;
       params.push(parseInt(clientId));
+      query += ` WHERE ${sqlContactLinkedToClient('c', 1)}`;
     }
     query += ` ORDER BY c.nom ASC, c.prenom ASC`;
     const result = await pool.query(query, params);
-    res.json(result.rows);
+    res.json(await attachMembershipsToContacts(result.rows));
   } catch (err) {
     res.status(500).json({
       error: "Internal error (SQL)",
@@ -3830,6 +3785,13 @@ router.post('/contacts', verifyJWT, requirePermission('contacts.create'), async 
       RETURNING id, nom, prenom, email, telephone, poste, statut, client_id, created_at, updated_at
     `, [nom, prenom || null, email || null, telephone || null, poste || null, statut || 'actif', client_id || null]);
     const newContact = result.rows[0];
+    if (newContact?.id && newContact.client_id) {
+      await addMembership(newContact.id, {
+        clientId: newContact.client_id,
+        poste: newContact.poste || null,
+        isPrimary: String(newContact.poste || "").toLowerCase().includes("principal")
+      }).catch(err => console.warn("[legacy POST /contacts] membership:", err.message));
+    }
     res.status(201).json(newContact);
   } catch (err) {
     if (err?.code?.startsWith("COMMUNITY_")) {
@@ -3871,7 +3833,15 @@ router.put('/contacts/:id', verifyJWT, requirePermission('contacts_detail.edit')
         error: "Contact not found"
       });
     }
-    res.json(result.rows[0]);
+    const updated = result.rows[0];
+    if (updated?.id && updated.client_id) {
+      await addMembership(updated.id, {
+        clientId: updated.client_id,
+        poste: updated.poste || null,
+        isPrimary: String(updated.poste || "").toLowerCase().includes("principal")
+      }).catch(err => console.warn("[legacy PUT /contacts] membership:", err.message));
+    }
+    res.json(updated);
   } catch (err) {
     res.status(500).json({
       error: "Internal error (SQL)",

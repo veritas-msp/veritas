@@ -176,13 +176,16 @@ export function buildContactApiPayload(fields) {
     poste,
     statut,
     client_id,
-    communications
+    communications,
+    memberships,
+    client_ids,
+    is_primary
   } = fields;
   const synced = Array.isArray(communications) && communications.length > 0 ? syncLegacyContactFields(enforcePrimaryCommunications(communications)) : syncLegacyContactFields({
     email,
     telephone
   });
-  return {
+  const payload = {
     nom,
     prenom: prenom || null,
     sexe: sexe || null,
@@ -193,6 +196,10 @@ export function buildContactApiPayload(fields) {
     statut: statut || "actif",
     client_id: client_id ?? null
   };
+  if (Array.isArray(memberships)) payload.memberships = memberships;
+  if (Array.isArray(client_ids)) payload.client_ids = client_ids;
+  if (is_primary != null) payload.is_primary = Boolean(is_primary);
+  return payload;
 }
 export function primaryContactFromDraft(draft) {
   const synced = Array.isArray(draft?.communications) && draft.communications.length > 0 ? syncLegacyContactFields(enforcePrimaryCommunications(draft.communications)) : syncLegacyContactFields({

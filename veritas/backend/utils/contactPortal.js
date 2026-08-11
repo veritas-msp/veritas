@@ -2,6 +2,7 @@ import bcrypt from "bcrypt";
 import { randomUUID } from "crypto";
 import { pool } from "../database/db.js";
 import { sendPortalInviteEmail } from "./portalInvite.js";
+import { listMembershipsForContact, pickHomeClientId, contactBelongsToClient } from "../services/contactClientLinks.js";
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 export function buildPortalUsername(contact) {
   const parts = [contact.prenom, contact.nom].filter(Boolean).map(s => String(s).trim());
@@ -35,7 +36,15 @@ export async function createPortalUserForContact(contact, password, {
   passwordPending = false
 } = {}) {
   if (!contact?.id) throw new Error("Invalid contact");
-  if (!contact.client_id) throw new Error("The contact must be linked to a company.");
+  const memberships = Array.isArray(contact.clients) && contact.clients.length
+    ? contact.clients
+    : await listMembershipsForContact(contact.id);
+  const homeClientId = await pickHomeClientId(contact.id, contact.client_id);
+  if (!homeClientId && memberships.length === 0 && !contact.client_id) {
+    throw new Error("The contact must be linked to a company.");
+  }
+  const resolvedClientId = homeClientId || Number(contact.client_id) || memberships[0]?.client_id;
+  if (!resolvedClientId) throw new Error("The contact must be linked to a company.");
   const email = String(contact.email || "").trim();
   if (!EMAIL_RE.test(email)) throw new Error("A valid email address is required to activate the portal.");
   const existing = await getPortalUserByContactId(contact.id);
@@ -49,7 +58,7 @@ export async function createPortalUserForContact(contact, password, {
     rows
   } = await pool.query(`INSERT INTO v_b_users (id, email, username, password_hash, role, client_id, contact_id, is_active, profile, password_pending)
      VALUES ($1, $2, $3, $4, 'client', $5, $6, $7, NULL, $8)
-     RETURNING id, email, username, role, client_id, contact_id, is_active, last_login_at, created_at, password_pending`, [randomUUID(), email, username, hash, contact.client_id, contact.id, contactActive, Boolean(passwordPending)]);
+     RETURNING id, email, username, role, client_id, contact_id, is_active, last_login_at, created_at, password_pending`, [randomUUID(), email, username, hash, resolvedClientId, contact.id, contactActive, Boolean(passwordPending)]);
   return rows[0];
 }
 export async function createPortalUserInviteForContact(contact) {
@@ -107,16 +116,43 @@ export async function syncPortalUserFromContact(contact) {
   const username = buildPortalUsername(contact);
   const contactInactive = String(contact.statut || "").toLowerCase().includes("inact");
   const isActive = contactInactive ? false : portal.is_active;
+  // Keep active portal company if still a membership; otherwise rehome
+  let nextClientId = portal.client_id;
+  const stillMember = portal.client_id ? await contactBelongsToClient(contact.id, portal.client_id) : false;
+  if (!stillMember) {
+    nextClientId = await pickHomeClientId(contact.id, contact.client_id);
+  }
   const {
     rows
   } = await pool.query(`UPDATE v_b_users
      SET email = COALESCE(NULLIF($1, ''), email),
          username = $2,
-         client_id = $3,
+         client_id = COALESCE($3, client_id),
          is_active = $4
      WHERE id = $5
-     RETURNING id, email, username, role, client_id, contact_id, is_active, last_login_at, created_at`, [email, username, contact.client_id, isActive, portal.id]);
+     RETURNING id, email, username, role, client_id, contact_id, is_active, last_login_at, created_at`, [email, username, nextClientId, isActive, portal.id]);
   return rows[0] || null;
+}
+
+export async function switchPortalCompany(userId, contactId, clientId) {
+  const targetClientId = Number(clientId);
+  if (!Number.isInteger(targetClientId) || targetClientId <= 0) {
+    throw new Error("Invalid company.");
+  }
+  const ok = await contactBelongsToClient(contactId, targetClientId);
+  if (!ok) throw new Error("This company is not linked to your contact.");
+  const {
+    rows
+  } = await pool.query(`UPDATE v_b_users
+     SET client_id = $1
+     WHERE id = $2 AND role = 'client' AND contact_id = $3
+     RETURNING id, email, username, role, client_id, contact_id, is_active, last_login_at, created_at`, [targetClientId, userId, contactId]);
+  if (!rows[0]) throw new Error("Portal account not found.");
+  return rows[0];
+}
+
+export async function listPortalCompaniesForContact(contactId) {
+  return listMembershipsForContact(contactId);
 }
 export async function setPortalActive(contactId, active) {
   const {

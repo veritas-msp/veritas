@@ -6,6 +6,7 @@ export const REFERENCE_SCHEMA_CSV = path.join(__dirname, "..", "schema", "schema
 const COMPOSITE_PRIMARY_KEYS = {
   v_b_client_support_credits: ["client_id"],
   v_b_client_tag_links: ["client_id", "tag_id"],
+  v_b_contact_client_links: ["contact_id", "client_id"],
   v_b_contact_tag_links: ["contact_id", "tag_id"],
   v_b_equipment_tag_links: ["equipment_id", "tag_id"],
   v_b_rmm_client_settings: ["client_id"],

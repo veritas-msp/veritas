@@ -1,4 +1,5 @@
 import { pool } from "../database/db.js";
+import { resolveClientIdForTicket as resolveTicketClientId } from "./resolveContactClient.js";
 let packsTableExistsCache = null;
 const SALES_TYPES = new Set(["prestation", "installation"]);
 export function isSalesTicket(type, category) {
@@ -29,11 +30,10 @@ export async function resolveClientIdForTicket({
   clientId,
   requesterContactId
 }) {
-  if (clientId) return Number(clientId);
-  if (!requesterContactId) return null;
-  const result = await pool.query("SELECT client_id FROM v_b_contacts WHERE id = $1 LIMIT 1", [requesterContactId]);
-  const resolved = result.rows[0]?.client_id;
-  return resolved === null || resolved === undefined ? null : Number(resolved);
+  return resolveTicketClientId({
+    clientId,
+    requesterContactId
+  });
 }
 async function hasPacksTable() {
   if (packsTableExistsCache !== null) return packsTableExistsCache;

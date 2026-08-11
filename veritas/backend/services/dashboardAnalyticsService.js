@@ -151,7 +151,10 @@ function buildEventScopeClause(params, filters = {}, alias = "e") {
   }
   if (filters.contactId) {
     params.push(filters.contactId);
-    clause += ` AND ${alias}.client_id = (SELECT c.client_id FROM v_b_contacts c WHERE c.id = $${params.length})`;
+    clause += ` AND (
+      ${alias}.client_id IN (SELECT l.client_id FROM v_b_contact_client_links l WHERE l.contact_id = $${params.length})
+      OR ${alias}.client_id = (SELECT c.client_id FROM v_b_contacts c WHERE c.id = $${params.length})
+    )`;
   }
   return clause;
 }
@@ -284,7 +287,7 @@ async function fetchSupportStats({
          COUNT(t.id)::int AS count
        FROM v_b_tickets t
        LEFT JOIN v_b_contacts ct ON ct.id = t.requester_contact_id
-       LEFT JOIN v_b_clients cl ON cl.id = ct.client_id
+       LEFT JOIN v_b_clients cl ON cl.id = COALESCE(t.client_id, ct.client_id)
        WHERE t.requester_contact_id IS NOT NULL${periodClause}${scopeClause}
        GROUP BY ct.id, ct.prenom, ct.nom, ct.email, cl.name, cl.contrat
        ORDER BY count DESC`, params), pool.query(`SELECT EXTRACT(ISODOW FROM t.created_at)::int AS period, COUNT(*)::int AS count
@@ -481,7 +484,10 @@ async function fetchCrmStats({
   const hasPeriod = Boolean(sinceIso || untilIso);
   const contactScope = filters.clientId != null ? (() => {
     contactParams.push(filters.clientId);
-    return ` AND c.client_id = $${contactParams.length}`;
+    return ` AND (
+      EXISTS (SELECT 1 FROM v_b_contact_client_links l WHERE l.contact_id = c.id AND l.client_id = $${contactParams.length})
+      OR c.client_id = $${contactParams.length}
+    )`;
   })() : filters.contactId != null ? (() => {
     contactParams.push(filters.contactId);
     return ` AND c.id = $${contactParams.length}`;

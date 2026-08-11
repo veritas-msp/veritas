@@ -41,7 +41,9 @@ export function emptyPrimaryContact() {
     email: "",
     telephone: "",
     poste: "",
-    communications: []
+    communications: [],
+    clients: [],
+    client_id: null
   };
 }
 export function mapContactToPrimary(contact) {
@@ -55,7 +57,9 @@ export function mapContactToPrimary(contact) {
     email: getPrimaryCommunicationValue(communications, "email") || contact.email || "",
     telephone: getPrimaryCommunicationValue(communications, "telephone") || contact.telephone || "",
     poste: contact.poste || "",
-    communications
+    communications,
+    clients: Array.isArray(contact.clients) ? contact.clients : [],
+    client_id: contact.client_id ?? null
   };
 }
 export function pickPrimaryContact(contacts) {
@@ -93,4 +97,33 @@ export function formatPrimaryContactLabel(contact) {
   const email = getPrimaryCommunicationValue(communications, "email") || contact?.email || "";
   const telephone = getPrimaryCommunicationValue(communications, "telephone") || contact?.telephone || "";
   return [name || contact?.nom, email, telephone].filter(Boolean).join(" · ");
+}
+export function isPrimaryContactPoste(poste) {
+  return String(poste || "").toUpperCase().includes("PRINCIPAL");
+}
+/** Build memberships payload that ADDS enterpriseId without dropping other links. */
+export function buildAdditiveMembershipsForEnterprise(contact, enterpriseId, {
+  poste = null,
+  isPrimary = false
+} = {}) {
+  const enterpriseKey = enterpriseId != null ? String(enterpriseId) : "";
+  const existing = Array.isArray(contact?.clients) ? contact.clients : [];
+  const memberships = existing.map(row => {
+    const clientId = row?.id ?? row?.client_id;
+    if (clientId == null) return null;
+    const isTarget = String(clientId) === enterpriseKey;
+    return {
+      client_id: clientId,
+      poste: isTarget ? poste ?? row.poste ?? null : row.poste ?? null,
+      is_primary: isTarget ? Boolean(isPrimary) : Boolean(row.is_primary)
+    };
+  }).filter(Boolean);
+  if (enterpriseKey && !memberships.some(m => String(m.client_id) === enterpriseKey)) {
+    memberships.push({
+      client_id: enterpriseId,
+      poste: poste ?? null,
+      is_primary: Boolean(isPrimary)
+    });
+  }
+  return memberships;
 }

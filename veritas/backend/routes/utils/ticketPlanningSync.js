@@ -1,13 +1,12 @@
-import { pool } from "../../database/db.js";
+import { resolveClientIdForContact } from "../../services/contactClientLinks.js";
 import { resolveEventsSchema } from "../../services/ensureEventsSchema.js";
-export async function resolveClientIdFromRequesterContact(contactId) {
+import { pool } from "../../database/db.js";
+
+export async function resolveClientIdFromRequesterContact(contactId, preferredClientId = null) {
   if (!contactId) return null;
-  const {
-    rows
-  } = await pool.query("SELECT client_id FROM v_b_contacts WHERE id = $1 LIMIT 1", [contactId]);
-  const clientId = rows[0]?.client_id;
-  return clientId != null ? Number(clientId) : null;
+  return resolveClientIdForContact(contactId, preferredClientId);
 }
+
 export async function syncTicketPlanningEventClient(ticketId, clientId) {
   if (!ticketId) return 0;
   const schema = await resolveEventsSchema();
@@ -19,6 +18,7 @@ export async function syncTicketPlanningEventClient(ticketId, clientId) {
      WHERE ticket_id = $2`, [clientId ?? null, ticketId]);
   return rowCount;
 }
+
 export function shouldSyncTicketPlanningEvents(body, oldTicket, updatedTicket) {
   if (!updatedTicket?.id) return false;
   if (Object.prototype.hasOwnProperty.call(body, "requesterContactId")) return true;

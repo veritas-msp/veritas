@@ -42,8 +42,7 @@ export const CLIENT_DELETION_BLOCKER_DEFS = [{
   label: "Contacts",
   query: `
       SELECT client_id::text AS client_id, COUNT(*)::int AS cnt
-      FROM v_b_contacts
-      WHERE client_id IS NOT NULL
+      FROM v_b_contact_client_links
       GROUP BY client_id
     `
 }, {
@@ -379,29 +378,91 @@ export async function forceDeleteClientWithLinkedItems(clientId) {
     purged.campaign_steps = await runPurgeSql(db, `DELETE FROM v_b_clients_c_campaign_steps
        WHERE campaign_id IN (SELECT id FROM v_b_clients_c_campaign WHERE client_id::text = $1)`, [idText], "campaign_steps");
 
-    // Portal accounts before contacts (FK contact_id / client_id)
-    purged.portal_users = await runPurgeSql(db, `DELETE FROM v_b_users WHERE client_id::text = $1`, [idText], "portal_users");
+    // Portal: rehome users linked via contacts of this company; delete only if no remaining membership
+    purged.portal_users_rehomed = await runPurgeSql(db, `
+      UPDATE v_b_users u
+      SET client_id = sub.next_client_id
+      FROM (
+        SELECT u2.id AS user_id, (
+          SELECT l.client_id
+          FROM v_b_contact_client_links l
+          WHERE l.contact_id = u2.contact_id AND l.client_id::text <> $1
+          ORDER BY l.is_primary DESC, l.client_id ASC
+          LIMIT 1
+        ) AS next_client_id
+        FROM v_b_users u2
+        WHERE u2.role = 'client'
+          AND (
+            u2.client_id::text = $1
+            OR u2.contact_id IN (
+              SELECT contact_id FROM v_b_contact_client_links WHERE client_id::text = $1
+              UNION
+              SELECT id FROM v_b_contacts WHERE client_id::text = $1
+            )
+          )
+      ) sub
+      WHERE u.id = sub.user_id AND sub.next_client_id IS NOT NULL
+    `, [idText], "portal_users_rehomed");
+    purged.portal_users = await runPurgeSql(db, `
+      DELETE FROM v_b_users u
+      WHERE u.role = 'client'
+        AND u.client_id::text = $1
+        AND NOT EXISTS (
+          SELECT 1 FROM v_b_contact_client_links l
+          WHERE l.contact_id = u.contact_id AND l.client_id::text <> $1
+        )
+    `, [idText], "portal_users");
+
     purged.contact_tag_links = await runPurgeSql(db, `DELETE FROM v_b_contact_tag_links
-       WHERE contact_id IN (SELECT id FROM v_b_contacts WHERE client_id::text = $1)`, [idText], "contact_tag_links");
+       WHERE contact_id IN (
+         SELECT contact_id FROM v_b_contact_client_links WHERE client_id::text = $1
+         UNION
+         SELECT id FROM v_b_contacts WHERE client_id::text = $1
+       )
+       AND contact_id NOT IN (
+         SELECT contact_id FROM v_b_contact_client_links WHERE client_id::text <> $1
+       )`, [idText], "contact_tag_links");
 
     // Monitoring / planning linked to the company (tickets themselves are preserved)
     purged.monitoring_events = await runPurgeSql(db, `DELETE FROM v_b_monitoring_events WHERE client_id::text = $1`, [idText], "monitoring_events");
     purged.monitoring_incident_groups = await runPurgeSql(db, `DELETE FROM v_b_monitoring_incident_groups WHERE client_id::text = $1`, [idText], "monitoring_incident_groups");
     purged.events = await runPurgeSql(db, `DELETE FROM v_b_events WHERE client_id::text = $1`, [idText], "events");
 
-    // Keep tickets: blank requester (demandeur), then detach company
+    // Blank requester only when contact is exclusive to this company (or ticket on this company)
     purged.tickets_requester_blanked = await runPurgeSql(db, `UPDATE v_b_tickets
        SET requester_contact_id = NULL
-       WHERE requester_contact_id IN (
-         SELECT id FROM v_b_contacts WHERE client_id::text = $1
-       )
-       OR client_id::text = $1`, [idText], "tickets_requester_blanked");
+       WHERE client_id::text = $1
+          OR (
+            requester_contact_id IN (
+              SELECT contact_id FROM v_b_contact_client_links WHERE client_id::text = $1
+              UNION
+              SELECT id FROM v_b_contacts WHERE client_id::text = $1
+            )
+            AND requester_contact_id NOT IN (
+              SELECT contact_id FROM v_b_contact_client_links WHERE client_id::text <> $1
+            )
+          )`, [idText], "tickets_requester_blanked");
     purged.tickets_detached = await runPurgeSql(db, `UPDATE v_b_tickets
        SET client_id = NULL
        WHERE client_id::text = $1`, [idText], "tickets_detached");
 
-    // Contacts can now be removed safely (tickets no longer reference them as requester)
-    purged.contacts = await runPurgeSql(db, `DELETE FROM v_b_contacts WHERE client_id::text = $1`, [idText], "contacts");
+    // Unlink memberships; delete orphan contacts only
+    purged.contact_links = await runPurgeSql(db, `DELETE FROM v_b_contact_client_links WHERE client_id::text = $1`, [idText], "contact_links");
+    purged.contacts_home_cleared = await runPurgeSql(db, `UPDATE v_b_contacts c
+       SET client_id = (
+         SELECT l.client_id FROM v_b_contact_client_links l
+         WHERE l.contact_id = c.id
+         ORDER BY l.is_primary DESC, l.client_id ASC
+         LIMIT 1
+       )
+       WHERE c.client_id::text = $1`, [idText], "contacts_home_cleared");
+    purged.contacts = await runPurgeSql(db, `DELETE FROM v_b_contacts c
+       WHERE NOT EXISTS (
+         SELECT 1 FROM v_b_contact_client_links l WHERE l.contact_id = c.id
+       )
+       AND (
+         c.client_id IS NULL OR c.client_id::text = $1
+       )`, [idText], "contacts");
 
     // RMM metrics cascade with agents, but clear agents early when possible
     purged.rmm_agents = await runPurgeSql(db, `DELETE FROM v_b_rmm_agents WHERE client_id::text = $1`, [idText], "rmm_agents");

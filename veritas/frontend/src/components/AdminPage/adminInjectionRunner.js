@@ -845,6 +845,13 @@ export async function runInjection({
               poste: cell(row, "contact_job", "contact_poste", "poste", "job_title", "role") || undefined,
               statut: normalizeContactStatus(cell(row, "contact_statut", "contact_status", "statut", "status")),
               client_id: client?.id || null,
+              ...(client?.id ? {
+                memberships: [{
+                  client_id: client.id,
+                  poste: cell(row, "contact_job", "contact_poste", "poste", "job_title", "role") || null,
+                  is_primary: String(cell(row, "contact_job", "contact_poste", "poste", "job_title", "role") || "").toLowerCase().includes("principal")
+                }]
+              } : {}),
               ...(communications !== undefined ? { communications } : {})
             },
             label: `${nom}${client?.name ? ` · ${client.name}` : ""}`

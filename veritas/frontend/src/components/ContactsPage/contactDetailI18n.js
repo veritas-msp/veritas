@@ -21,6 +21,12 @@ const DETAIL_COPY = {
     copyCard: "Copier la fiche",
     shareCard: "Partager la fiche",
     viewEnterprise: "Voir l'entreprise",
+    companies: "Entreprises",
+    addCompany: "Ajouter une entreprise",
+    selectCompany: "Sélectionner une entreprise",
+    removeCompanyAria: "Retirer {name}",
+    vaultClientLabel: "Entreprise du coffre",
+    primaryBadge: "Principal",
     deleting: "Suppression…",
     deleteContact: "Supprimer le contact",
     coordinates: "Coordonnées",
@@ -120,7 +126,10 @@ const DETAIL_COPY = {
       cardCopyError: "Impossible de copier la fiche contact",
       deleted: "Contact supprimé.",
       deleteError: "Impossible de supprimer le contact.",
-      createTicketNeedEnterprise: "Rattachez le contact à une entreprise pour créer un ticket."
+      createTicketNeedEnterprise: "Rattachez le contact à une entreprise pour créer un ticket.",
+      membershipAdded: "Entreprise ajoutée",
+      membershipRemoved: "Entreprise retirée",
+      membershipError: "Impossible de mettre à jour les entreprises du contact"
     },
     share: {
       unavailable: "Partage non disponible sur ce navigateur",
@@ -313,6 +322,12 @@ const DETAIL_COPY = {
     copyCard: "Copy record",
     shareCard: "Share record",
     viewEnterprise: "View company",
+    companies: "Companies",
+    addCompany: "Add company",
+    selectCompany: "Select company",
+    removeCompanyAria: "Remove {name}",
+    vaultClientLabel: "Vault company",
+    primaryBadge: "Primary",
     deleting: "Deleting…",
     deleteContact: "Delete contact",
     coordinates: "Contact details",
@@ -412,7 +427,10 @@ const DETAIL_COPY = {
       cardCopyError: "Unable to copy contact record",
       deleted: "Contact deleted.",
       deleteError: "Unable to delete contact.",
-      createTicketNeedEnterprise: "Link the contact to a company to create a ticket."
+      createTicketNeedEnterprise: "Link the contact to a company to create a ticket.",
+      membershipAdded: "Company added",
+      membershipRemoved: "Company removed",
+      membershipError: "Unable to update contact companies"
     },
     share: {
       unavailable: "Sharing not available in this browser",

@@ -1391,7 +1391,11 @@ router.get("/", verifyJWT, requirePermission("tickets.view"), [query("status").o
       values.push(priority);
     }
     if (forLinking && requesterContactId && hasRequesterContact) {
-      where.push(`(t.requester_contact_id = $${i} OR t.client_id IN (SELECT c2.client_id FROM v_b_contacts c2 WHERE c2.id = $${i} AND c2.client_id IS NOT NULL))`);
+      where.push(`(t.requester_contact_id = $${i} OR t.client_id IN (
+        SELECT l.client_id FROM v_b_contact_client_links l WHERE l.contact_id = $${i}
+        UNION
+        SELECT c2.client_id FROM v_b_contacts c2 WHERE c2.id = $${i} AND c2.client_id IS NOT NULL
+      ))`);
       values.push(Number(requesterContactId));
       i += 1;
     } else {
@@ -3073,7 +3077,7 @@ router.put("/:id", verifyJWT, requirePermission("tickets.edit"), [param("id").is
       }
     }
     if (hasRequesterContact && Object.prototype.hasOwnProperty.call(req.body, "requesterContactId") && req.body.requesterContactId && !Object.prototype.hasOwnProperty.call(req.body, "clientId")) {
-      const contactClientId = await resolveClientIdFromRequesterContact(req.body.requesterContactId);
+      const contactClientId = await resolveClientIdFromRequesterContact(req.body.requesterContactId, oldTicket?.client_id);
       if (contactClientId != null) {
         const clientIdx = updates.findIndex(u => u.startsWith("client_id ="));
         if (clientIdx >= 0) {

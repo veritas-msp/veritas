@@ -1494,6 +1494,51 @@ export async function deleteContact(contactId) {
   }
   return await res.json();
 }
+export async function addContactMembership(contactId, {
+  client_id,
+  poste,
+  is_primary
+} = {}) {
+  const res = await fetch(`${API_BASE_URL}/contacts/${contactId}/memberships`, {
+    method: "POST",
+    credentials: "include",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({
+      client_id,
+      poste,
+      is_primary
+    })
+  });
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({}));
+    throw new Error(errorData.details || errorData.error || "Error adding company membership");
+  }
+  return await res.json();
+}
+export async function removeContactMembership(contactId, clientId) {
+  const res = await fetch(`${API_BASE_URL}/contacts/${contactId}/memberships/${clientId}`, {
+    method: "DELETE",
+    credentials: "include"
+  });
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({}));
+    throw new Error(errorData.details || errorData.error || "Error removing company membership");
+  }
+  return await res.json();
+}
+export async function setContactPrimaryForClient(contactId, clientId) {
+  const res = await fetch(`${API_BASE_URL}/contacts/${contactId}/memberships/${clientId}/primary`, {
+    method: "PUT",
+    credentials: "include"
+  });
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({}));
+    throw new Error(errorData.details || errorData.error || "Error setting primary company contact");
+  }
+  return await res.json();
+}
 async function parseClientMetaError(res, fallback) {
   const errorData = await res.json().catch(() => ({}));
   throw new Error(errorData.error || errorData.details || fallback);

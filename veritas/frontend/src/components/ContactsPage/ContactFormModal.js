@@ -5,7 +5,7 @@ import { FaTimes } from "react-icons/fa";
 import { addContact, updateContact } from "../../api/clients";
 import { showError, showSuccess } from "../../utils/toast";
 import { buildContactFormFromInitial, cloneContactFormSnapshot, contactFormsEqual } from "./contactFormConfig";
-import { getContactFormSections, getContactFormModalCopy, getContactCivilityCards, validateContactCommunicationsLocalized } from "./contactFormModalI18n";
+import { getContactFormSections, getContactFormModalCopy, getContactCivilityCards, validateContactCommunicationsLocalized, interpolate } from "./contactFormModalI18n";
 import { useAppLocale } from "../../hooks/useAppGeneralSettings";
 import { useCommonCopy } from "../../hooks/useCommonCopy";
 import styles from "../EnterprisesPage/EnterpriseFormModal.module.css";
@@ -20,6 +20,54 @@ function resolvePrimaryEmail(source) {
 function getClientLabel(client, copy) {
   if (!client) return "";
   return client.name || copy.getClientLabel(client.id);
+}
+function membershipClientId(row) {
+  return row?.client_id ?? row?.id ?? null;
+}
+function buildMembershipsFromInitial(initialContact, fixedClientId, defaultClientId, clientList) {
+  const fromClients = Array.isArray(initialContact?.clients) ? initialContact.clients : [];
+  let memberships = fromClients.map(row => {
+    const clientId = membershipClientId(row);
+    if (!clientId) return null;
+    const listed = clientList.find(c => String(c.id) === String(clientId));
+    return {
+      client_id: clientId,
+      name: row.name || listed?.name || "",
+      poste: row.poste || "",
+      is_primary: Boolean(row.is_primary)
+    };
+  }).filter(Boolean);
+  if (memberships.length === 0) {
+    const fallbackId = initialContact?.client_id ?? fixedClientId ?? defaultClientId ?? null;
+    if (fallbackId) {
+      const listed = clientList.find(c => String(c.id) === String(fallbackId));
+      memberships = [{
+        client_id: fallbackId,
+        name: listed?.name || initialContact?.client_name || "",
+        poste: initialContact?.poste || "",
+        is_primary: Boolean(fixedClientId && String(fallbackId) === String(fixedClientId))
+      }];
+    }
+  }
+  if (fixedClientId && !memberships.some(m => String(m.client_id) === String(fixedClientId))) {
+    const listed = clientList.find(c => String(c.id) === String(fixedClientId));
+    memberships = [...memberships, {
+      client_id: fixedClientId,
+      name: listed?.name || "",
+      poste: "",
+      is_primary: true
+    }];
+  }
+  if (fixedClientId) {
+    memberships = memberships.map(m => String(m.client_id) === String(fixedClientId) ? {
+      ...m,
+      is_primary: true
+    } : m);
+  }
+  return memberships;
+}
+function serializeMemberships(list) {
+  return (Array.isArray(list) ? list : []).map(m => `${m.client_id}:${m.is_primary ? 1 : 0}:${m.poste || ""}`).sort().join("|");
 }
 export default function ContactFormModal({
   open = true,
@@ -41,40 +89,37 @@ export default function ContactFormModal({
   const formSections = useMemo(() => getContactFormSections(locale), [locale]);
   const civilityCards = useMemo(() => getContactCivilityCards(locale), [locale]);
   const isEditing = Boolean(initialContact?.id);
+  const lockedClientId = fixedClientId ?? null;
+  const isEnterpriseLocked = Boolean(lockedClientId || lockedEnterpriseLabel || hideEnterpriseSection);
+  const clientList = useMemo(() => Array.isArray(clients) ? clients : [], [clients]);
   const [form, setForm] = useState(() => buildContactFormFromInitial(initialContact, fixedClientId ?? defaultClientId));
   const [initialSnapshot, setInitialSnapshot] = useState(() => cloneContactFormSnapshot(buildContactFormFromInitial(initialContact, fixedClientId ?? defaultClientId)));
+  const [memberships, setMemberships] = useState(() => buildMembershipsFromInitial(initialContact, lockedClientId, defaultClientId, Array.isArray(clients) ? clients : []));
+  const [initialMembershipsSnapshot, setInitialMembershipsSnapshot] = useState(() => serializeMemberships(buildMembershipsFromInitial(initialContact, lockedClientId, defaultClientId, Array.isArray(clients) ? clients : [])));
   const [activeSection, setActiveSection] = useState("identity");
   const [saving, setSaving] = useState(false);
   const [enterpriseSearch, setEnterpriseSearch] = useState("");
   const [enterpriseDropdownOpen, setEnterpriseDropdownOpen] = useState(false);
   const [portalEmailConfirm, setPortalEmailConfirm] = useState(null);
   const enterpriseAutocompleteRef = useRef(null);
-  const lockedClientId = fixedClientId ?? null;
-  const isEnterpriseLocked = Boolean(lockedClientId || lockedEnterpriseLabel || hideEnterpriseSection);
-  const clientList = useMemo(() => Array.isArray(clients) ? clients : [], [clients]);
-  const selectedClient = useMemo(() => {
-    const id = lockedClientId ?? form.client_id;
-    if (!id) return null;
-    return clientList.find(c => String(c.id) === String(id)) || null;
-  }, [clientList, form.client_id, lockedClientId]);
-  const hasChanges = useMemo(() => !contactFormsEqual(form, initialSnapshot), [form, initialSnapshot]);
+  const hasChanges = useMemo(() => {
+    const formChanged = !contactFormsEqual(form, initialSnapshot);
+    const membershipsChanged = serializeMemberships(memberships) !== initialMembershipsSnapshot;
+    return formChanged || membershipsChanged;
+  }, [form, initialSnapshot, memberships, initialMembershipsSnapshot]);
   useEffect(() => {
     if (!open) return;
     const nextForm = buildContactFormFromInitial(initialContact, lockedClientId ?? defaultClientId);
+    const nextMemberships = buildMembershipsFromInitial(initialContact, lockedClientId, defaultClientId, clientList);
     setForm(nextForm);
     setInitialSnapshot(cloneContactFormSnapshot(nextForm));
+    setMemberships(nextMemberships);
+    setInitialMembershipsSnapshot(serializeMemberships(nextMemberships));
     setActiveSection("identity");
     setEnterpriseDropdownOpen(false);
+    setEnterpriseSearch("");
     setPortalEmailConfirm(null);
-  }, [open, initialContact, lockedClientId, defaultClientId]);
-  useEffect(() => {
-    if (!open) return;
-    if (selectedClient) {
-      setEnterpriseSearch(getClientLabel(selectedClient, copy));
-    } else if (!isEditing) {
-      setEnterpriseSearch("");
-    }
-  }, [open, selectedClient, isEditing]);
+  }, [open, initialContact, lockedClientId, defaultClientId, clientList]);
   useEffect(() => {
     if (!open) return;
     const handleClickOutside = e => {
@@ -100,13 +145,18 @@ export default function ContactFormModal({
       ...patch
     }));
   }, []);
+  const selectedClientIds = useMemo(() => new Set(memberships.map(m => String(m.client_id))), [memberships]);
   const filteredClients = useMemo(() => {
     const query = enterpriseSearch.trim().toLowerCase();
-    if (!query) return clientList.slice(0, 12);
-    return clientList.filter(c => getClientLabel(c, copy).toLowerCase().includes(query)).slice(0, 12);
-  }, [clientList, enterpriseSearch, copy]);
-  const resolvedClientId = lockedClientId ?? form.client_id ?? null;
-  const hasEnterprise = Boolean(resolvedClientId || isEnterpriseLocked);
+    const available = clientList.filter(c => !selectedClientIds.has(String(c.id)));
+    if (!query) return available.slice(0, 12);
+    return available.filter(c => getClientLabel(c, copy).toLowerCase().includes(query)).slice(0, 12);
+  }, [clientList, enterpriseSearch, copy, selectedClientIds]);
+  const lockedClient = useMemo(() => {
+    if (!lockedClientId) return null;
+    return clientList.find(c => String(c.id) === String(lockedClientId)) || null;
+  }, [clientList, lockedClientId]);
+  const hasEnterprise = Boolean(memberships.length > 0 || lockedClientId || isEnterpriseLocked && lockedEnterpriseLabel);
   const hasEmptyCommunicationDrafts = hasIncompleteCommunications(form.communications);
   const sectionMeta = useMemo(() => ({
     identity: Boolean(form.nom?.trim()),
@@ -120,6 +170,33 @@ export default function ContactFormModal({
     if (sectionId === "coordinates" && hasEmptyCommunicationDrafts) return true;
     return false;
   };
+  const addMembership = useCallback(client => {
+    if (!client?.id) return;
+    setMemberships(prev => {
+      if (prev.some(m => String(m.client_id) === String(client.id))) return prev;
+      return [...prev, {
+        client_id: client.id,
+        name: getClientLabel(client, copy),
+        poste: "",
+        is_primary: false
+      }];
+    });
+    setEnterpriseSearch("");
+    setEnterpriseDropdownOpen(false);
+    patchForm({
+      client_id: form.client_id || client.id
+    });
+  }, [copy, form.client_id, patchForm]);
+  const removeMembership = useCallback(clientId => {
+    if (lockedClientId && String(clientId) === String(lockedClientId)) return;
+    setMemberships(prev => prev.filter(m => String(m.client_id) !== String(clientId)));
+  }, [lockedClientId]);
+  const toggleMembershipPrimary = useCallback(clientId => {
+    setMemberships(prev => prev.map(m => String(m.client_id) === String(clientId) ? {
+      ...m,
+      is_primary: !m.is_primary
+    } : m));
+  }, []);
   const validateForm = () => {
     if (!form.nom?.trim()) {
       showError(copy.validation.nameRequired);
@@ -172,6 +249,25 @@ export default function ContactFormModal({
     if (!validateForm()) return;
     const preparedCommunications = enforcePrimaryCommunications((form.communications || []).filter(entry => String(entry.value ?? "").trim()));
     const synced = syncLegacyContactFields(preparedCommunications);
+    let nextMemberships = memberships.map(m => ({
+      client_id: m.client_id,
+      poste: m.poste || form.poste?.trim() || null,
+      is_primary: Boolean(m.is_primary)
+    }));
+    if (lockedClientId && !nextMemberships.some(m => String(m.client_id) === String(lockedClientId))) {
+      nextMemberships = [...nextMemberships, {
+        client_id: lockedClientId,
+        poste: form.poste?.trim() || null,
+        is_primary: true
+      }];
+    }
+    if (lockedClientId) {
+      nextMemberships = nextMemberships.map(m => String(m.client_id) === String(lockedClientId) ? {
+        ...m,
+        is_primary: true
+      } : m);
+    }
+    const resolvedHome = lockedClientId ?? nextMemberships[0]?.client_id ?? null;
     const payload = {
       nom: form.nom.trim(),
       prenom: form.prenom?.trim() || null,
@@ -181,7 +277,8 @@ export default function ContactFormModal({
       communications: synced.communications,
       poste: form.poste?.trim() || null,
       statut: form.statut || "actif",
-      client_id: resolvedClientId
+      client_id: resolvedHome,
+      memberships: nextMemberships
     };
     const previousPrimaryEmail = resolvePrimaryEmail(initialSnapshot);
     const nextPrimaryEmail = String(synced.email || "").trim();
@@ -202,7 +299,6 @@ export default function ContactFormModal({
     await performSave(portalEmailConfirm.payload, true);
   };
   if (!open) return null;
-  const displayName = [form.prenom, form.nom].filter(Boolean).join(" ").trim();
   const modalTitle = draftMode ? copy.draftPrimaryTitle : copy.modalTitle(isEditing);
   const modalSubtitle = draftMode ? copy.draftPrimarySubtitle : copy.modalSubtitle(isEditing);
   const formValid = Boolean(form.nom?.trim()) && (draftMode || hasEnterprise) && !hasEmptyCommunicationDrafts;
@@ -270,38 +366,72 @@ export default function ContactFormModal({
             </div>
             {isEnterpriseLocked ? <p className={styles.hint}>{copy.enterpriseLockedHint}</p> : <p className={styles.hint}>{copy.enterpriseHint}</p>}
             <div className={styles.fieldStack}>
-              <div className={styles.field}>
-                {isEnterpriseLocked ? <>
-                    <label className={styles.label}>{copy.enterpriseLabel}</label>
-                    <input type="text" className={styles.input} value={lockedClientId ? getClientLabel(selectedClient, copy) || copy.currentClient : lockedEnterpriseLabel || copy.enterprisePendingName} readOnly disabled />
-                  </> : <>
-                    <label className={`${styles.label} ${styles.labelRequired}`} htmlFor="contact-form-enterprise">
-                      {copy.enterpriseLabel}
+              {isEnterpriseLocked ? <div className={styles.field}>
+                  <label className={styles.label}>{copy.companiesLabel || copy.enterpriseLabel}</label>
+                  <input type="text" className={styles.input} value={lockedClientId ? getClientLabel(lockedClient, copy) || copy.currentClient : lockedEnterpriseLabel || copy.enterprisePendingName} readOnly disabled />
+                </div> : <>
+                  {memberships.length > 0 && <div className={styles.field}>
+                      <label className={styles.label}>{copy.companiesLabel || copy.enterpriseLabel}</label>
+                      <div className={styles.fieldStack}>
+                        {memberships.map(membership => {
+                    const label = membership.name || copy.getClientLabel(membership.client_id);
+                    return <div key={membership.client_id} className={styles.field} style={{
+                      border: "1px solid var(--msp-border, #e2e8f0)",
+                      borderRadius: "10px",
+                      padding: "0.75rem 0.9rem",
+                      background: "var(--msp-surface-2, #f7f9fc)"
+                    }}>
+                              <div style={{
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "space-between",
+                        gap: "0.75rem"
+                      }}>
+                                <span style={{
+                          fontWeight: 600
+                        }}>{label}</span>
+                                <button type="button" className={styles.ghostBtn} onClick={() => removeMembership(membership.client_id)} aria-label={interpolate(copy.removeCompanyAria || "{name}", {
+                          name: label
+                        })} style={{
+                          padding: "0.35rem 0.55rem",
+                          minHeight: 0
+                        }}>
+                                  <FaTimes aria-hidden />
+                                </button>
+                              </div>
+                              <label style={{
+                        display: "inline-flex",
+                        alignItems: "center",
+                        gap: "0.45rem",
+                        marginTop: "0.55rem",
+                        fontSize: "0.85rem"
+                      }}>
+                                <input type="checkbox" checked={Boolean(membership.is_primary)} onChange={() => toggleMembershipPrimary(membership.client_id)} />
+                                {copy.primaryForCompany}
+                              </label>
+                            </div>;
+                  })}
+                      </div>
+                    </div>}
+                  <div className={styles.field}>
+                    <label className={`${styles.label} ${memberships.length === 0 ? styles.labelRequired : ""}`} htmlFor="contact-form-enterprise">
+                      {copy.addCompany || copy.selectCompany || copy.enterpriseLabel}
                     </label>
                     <div className={styles.autocomplete} ref={enterpriseAutocompleteRef}>
                       <input id="contact-form-enterprise" type="text" className={styles.input} placeholder={copy.searchEnterprise} value={enterpriseSearch} onChange={e => {
                     setEnterpriseSearch(e.target.value);
-                    patchForm({
-                      client_id: null
-                    });
                     setEnterpriseDropdownOpen(true);
                   }} onFocus={() => setEnterpriseDropdownOpen(true)} autoComplete="off" />
                       {enterpriseDropdownOpen && <div className={styles.dropdown}>
                           {filteredClients.length === 0 ? <div className={styles.dropdownEmpty}>
                               {copy.noEnterprise}
-                            </div> : filteredClients.map(client => <button key={client.id} type="button" className={`${styles.dropdownOption} ${String(form.client_id) === String(client.id) ? styles.dropdownOptionSelected : ""}`} onClick={() => {
-                      patchForm({
-                        client_id: client.id
-                      });
-                      setEnterpriseSearch(getClientLabel(client, copy));
-                      setEnterpriseDropdownOpen(false);
-                    }}>
-                                {getClientLabel(client)}
+                            </div> : filteredClients.map(client => <button key={client.id} type="button" className={styles.dropdownOption} onClick={() => addMembership(client)}>
+                                {getClientLabel(client, copy)}
                               </button>)}
                         </div>}
                     </div>
-                  </>}
-              </div>
+                  </div>
+                </>}
               <div className={styles.field}>
                 <label className={styles.label} htmlFor="contact-form-poste">
                   {copy.posteLabel}
@@ -326,10 +456,10 @@ export default function ContactFormModal({
                 <Icon icon="mdi:account-check-outline" className={styles.moduleTileIcon} aria-hidden />
                 <span className={styles.moduleTileLabel}>{copy.statutActive}</span>
               </button>
-              <button type="button" className={`${styles.moduleTile} ${form.status === "inactif" ? styles.moduleTileActive : ""}`} onClick={() => patchForm({
+              <button type="button" className={`${styles.moduleTile} ${form.statut === "inactif" || form.statut === "inactive" ? styles.moduleTileActive : ""}`} onClick={() => patchForm({
               statut: "inactive"
-            })} aria-pressed={form.statut === "inactive"}>
-                {form.statut === "inactive" && <Icon icon="mdi:check-circle" className={styles.moduleCheck} aria-hidden />}
+            })} aria-pressed={form.statut === "inactive" || form.statut === "inactif"}>
+                {(form.statut === "inactive" || form.statut === "inactif") && <Icon icon="mdi:check-circle" className={styles.moduleCheck} aria-hidden />}
                 <Icon icon="mdi:account-off-outline" className={styles.moduleTileIcon} aria-hidden />
                 <span className={styles.moduleTileLabel}>{copy.statutInactive}</span>
               </button>

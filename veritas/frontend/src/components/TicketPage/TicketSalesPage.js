@@ -503,9 +503,12 @@ export default function TicketSalesPage({
     return fullName || c.email || fallback || "-";
   };
   const resolveClientId = ticket => {
+    if (ticket?.client_id) return ticket.client_id;
     const requesterContact = findContactById(resolveRequesterContactId(ticket));
+    const memberships = Array.isArray(requesterContact?.clients) ? requesterContact.clients : [];
+    if (memberships.length === 1) return memberships[0].client_id || memberships[0].id || "";
     if (requesterContact?.client_id) return requesterContact.client_id;
-    return ticket?.client_id || "";
+    return "";
   };
   const resolveClientLabel = ticket => {
     if (ticket?.client_name || ticket?.client_nom) {

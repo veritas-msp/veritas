@@ -81,7 +81,10 @@ export default {
     stopImpersonation: "Exit impersonation",
     loadError: "Error loading the portal.",
     stopImpersonationSuccess: "Returned to your agent session.",
-    stopImpersonationError: "Unable to exit impersonation."
+    stopImpersonationError: "Unable to exit impersonation.",
+    switchCompanyLabel: "Company",
+    switchCompanySuccess: "Active company updated.",
+    switchCompanyError: "Unable to switch company."
   },
   dashboard: {
     pageTitle: "Overview",

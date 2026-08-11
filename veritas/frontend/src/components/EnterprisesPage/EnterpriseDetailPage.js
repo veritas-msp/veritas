@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo, useRef, useCallback } from "react"
 import { useParams, useNavigate } from "react-router-dom";
 import { Icon } from "@iconify/react";
 import { toast } from 'react-toastify';
-import { updateClient, saveClientModules, getClientLogs, getClientCheckMKStats, fetchClientAntivirus, fetchClientAntispam, fetchClientDomains, fetchClientSslCertificates, fetchClientLicences, fetchClientCustomEquipmentMap, fetchClientModules, fetchContacts, fetchClientTags, addClientTag, removeClientTag, fetchClientNotes, createClientNote, updateClientNote, deleteClientNote, addContact, updateContact, deleteClient, fetchClientSupportCredits, fetchClientDeletionCheck } from "../../api/clients";
+import { updateClient, saveClientModules, getClientLogs, getClientCheckMKStats, fetchClientAntivirus, fetchClientAntispam, fetchClientDomains, fetchClientSslCertificates, fetchClientLicences, fetchClientCustomEquipmentMap, fetchClientModules, fetchContacts, fetchClientTags, addClientTag, removeClientTag, fetchClientNotes, createClientNote, updateClientNote, deleteClientNote, addContact, updateContact, addContactMembership, setContactPrimaryForClient, deleteClient, fetchClientSupportCredits, fetchClientDeletionCheck } from "../../api/clients";
 import { listClientMailinblackTenants } from "../../api/clientMailinblack";
 import { getGlobalOvhStatus } from "../../api/clientOvh";
 import { parseCustomFamilyType } from "../../api/equipmentFamilies";
@@ -36,7 +36,7 @@ import ContactFormModal from "../ContactsPage/ContactFormModal";
 import { exportReversibilityFolder } from "./exportReversibilityDossier";
 import EnterpriseVaultPanel from "./EnterpriseVaultPanel";
 import { getEnterpriseVaultCopy } from "./enterpriseVaultI18n";
-import { splitClientAddress, buildClientAddress, emptyPrimaryContact, mapContactToPrimary, pickPrimaryContact, normalizePrimaryContact } from "./enterpriseFormUtils";
+import { splitClientAddress, buildClientAddress, emptyPrimaryContact, mapContactToPrimary, pickPrimaryContact, normalizePrimaryContact, buildAdditiveMembershipsForEnterprise, isPrimaryContactPoste } from "./enterpriseFormUtils";
 import { buildSiteAddress, formatSitesForLog, getSiteDisplayName, getSiteId, getSiteLocationValue, normalizeClientSites, serializeSitesForCompare } from "../../utils/clientSites";
 import SiteMapPreview from "./SiteMapPreview";
 import { normalizeLegalIdentifier, LEGAL_IDENTIFIER_LABEL } from "../../utils/siret";
@@ -1983,6 +1983,8 @@ export default function ClientDetailPage({
       });
       const primaryContact = formData.primaryContact || emptyPrimaryContact();
       if (primaryContact.nom?.trim()) {
+        const posteValue = primaryContact.poste?.trim().toUpperCase() || "CONTACT PRINCIPAL";
+        const makePrimary = isPrimaryContactPoste(posteValue);
         const contactPayload = buildContactApiPayload({
           nom: primaryContact.nom.trim(),
           prenom: primaryContact.prenom?.trim() || null,
@@ -1990,14 +1992,44 @@ export default function ClientDetailPage({
           email: primaryContact.email?.trim() || null,
           telephone: primaryContact.telephone?.trim() || null,
           communications: primaryContact.communications,
-          poste: primaryContact.poste?.trim().toUpperCase() || "CONTACT PRINCIPAL",
+          poste: posteValue,
           statut: "actif",
           client_id: client.id
         });
         if (primaryContact.id) {
-          await updateContact(primaryContact.id, contactPayload);
+          const existingClients = Array.isArray(primaryContact.clients) ? primaryContact.clients : [];
+          if (existingClients.length > 0) {
+            const memberships = buildAdditiveMembershipsForEnterprise({
+              clients: existingClients
+            }, client.id, {
+              poste: posteValue,
+              isPrimary: makePrimary
+            });
+            await updateContact(primaryContact.id, {
+              ...contactPayload,
+              memberships
+            });
+          } else {
+            // Dual-write: client_id alone adds a membership without wiping others.
+            await updateContact(primaryContact.id, contactPayload);
+            await addContactMembership(primaryContact.id, {
+              client_id: client.id,
+              poste: posteValue,
+              is_primary: makePrimary
+            });
+          }
+          if (makePrimary) {
+            await setContactPrimaryForClient(primaryContact.id, client.id);
+          }
         } else {
-          await addContact(contactPayload);
+          await addContact({
+            ...contactPayload,
+            memberships: [{
+              client_id: client.id,
+              poste: posteValue,
+              is_primary: makePrimary
+            }]
+          });
         }
         await loadContacts(client.id);
       }

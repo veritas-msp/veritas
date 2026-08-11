@@ -124,3 +124,22 @@ export async function fetchPortalDashboard() {
   });
   return handleJsonResponse(response, "Error loading dashboard.");
 }
+export async function fetchPortalCompanies() {
+  const response = await fetch(`${API_BASE_URL}/client-portal/companies`, {
+    credentials: "include"
+  });
+  return handleJsonResponse(response, "Error loading companies.");
+}
+export async function switchPortalCompany(clientId) {
+  const response = await fetch(`${API_BASE_URL}/client-portal/switch-company`, {
+    method: "POST",
+    credentials: "include",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({
+      clientId
+    })
+  });
+  return handleJsonResponse(response, "Error switching company.");
+}

@@ -6,7 +6,7 @@ import { toast } from "react-toastify";
 import ActivitySectorSelect from "../Misc/ActivitySectorSelect";
 import SiretInput from "../Misc/SiretInput";
 import { fetchActiveUsers, createUser } from "../../api/users";
-import { fetchContactsList, addContact, updateContact } from "../../api/clients";
+import { fetchContactsList, addContact, updateContact, addContactMembership, setContactPrimaryForClient } from "../../api/clients";
 import API_BASE_URL from "../../config";
 import AgentFormModal from "../AdminPage/AgentFormModal";
 import SmartTooltip from "../SmartTooltip";
@@ -21,7 +21,7 @@ import { createDefaultClientSla } from "../../utils/ticketSlaUtils";
 import ContactFormModal from "../ContactsPage/ContactFormModal";
 import ProFeaturePromoModal from "../Misc/ProFeature/ProFeaturePromoModal";
 import { getPrimaryCommunicationValue, normalizeContactCommunications, primaryContactToFormInitial, buildContactApiPayload } from "../../utils/contactCommunications";
-import { emptyPrimaryContact, formatPrimaryContactLabel, getContactSearchText, mapContactToPrimary } from "./enterpriseFormUtils";
+import { emptyPrimaryContact, formatPrimaryContactLabel, getContactSearchText, mapContactToPrimary, buildAdditiveMembershipsForEnterprise } from "./enterpriseFormUtils";
 import styles from "./EnterpriseFormModal.module.css";
 function getCommercialUserLabel(user) {
   if (!user) return "";
@@ -263,6 +263,8 @@ export default function EnterpriseFormModal({
   }, [setForm, updateFormData, form]);
   const handlePrimaryContactDraftSave = useCallback(async draft => {
     const contactId = form?.primaryContact?.id ?? null;
+    const enterpriseId = !isCreate && form?.id ? form.id : null;
+    const posteValue = draft.poste?.trim() || null;
     const contactPayload = buildContactApiPayload({
       nom: draft.nom.trim(),
       prenom: draft.prenom?.trim() || null,
@@ -270,11 +272,45 @@ export default function EnterpriseFormModal({
       email: draft.email?.trim() || null,
       telephone: draft.telephone?.trim() || null,
       communications: draft.communications,
-      poste: draft.poste?.trim() || null,
+      poste: posteValue,
       statut: draft.statut || "actif",
-      client_id: form?.primaryContact?.client_id ?? null
+      client_id: enterpriseId || form?.primaryContact?.client_id || null
     });
-    const saved = contactId ? await updateContact(contactId, contactPayload) : await addContact(contactPayload);
+    let saved;
+    if (contactId && enterpriseId) {
+      const existingClients = Array.isArray(form?.primaryContact?.clients) ? form.primaryContact.clients : Array.isArray(draft?.clients) ? draft.clients : [];
+      if (existingClients.length > 0) {
+        const memberships = buildAdditiveMembershipsForEnterprise({
+          clients: existingClients
+        }, enterpriseId, {
+          poste: posteValue || "CONTACT PRINCIPAL",
+          isPrimary: true
+        });
+        saved = await updateContact(contactId, {
+          ...contactPayload,
+          memberships
+        });
+      } else {
+        saved = await updateContact(contactId, contactPayload);
+        saved = await addContactMembership(contactId, {
+          client_id: enterpriseId,
+          poste: posteValue || "CONTACT PRINCIPAL",
+          is_primary: true
+        }) || saved;
+      }
+      await setContactPrimaryForClient(contactId, enterpriseId);
+    } else if (contactId) {
+      saved = await updateContact(contactId, contactPayload);
+    } else {
+      saved = await addContact(enterpriseId ? {
+        ...contactPayload,
+        memberships: [{
+          client_id: enterpriseId,
+          poste: posteValue || "CONTACT PRINCIPAL",
+          is_primary: true
+        }]
+      } : contactPayload);
+    }
     const primary = mapContactToPrimary(saved);
     if (setForm) {
       setForm(prev => ({
@@ -295,7 +331,7 @@ export default function EnterpriseFormModal({
     setPrimaryContactModalOpen(false);
     setContactDropdownOpen(false);
     window.dispatchEvent(new Event("refreshContacts"));
-  }, [setForm, updateFormData, form]);
+  }, [setForm, updateFormData, form, isCreate]);
   const setPrimaryContact = useCallback(primary => {
     if (setForm) {
       setForm(prev => ({
@@ -313,12 +349,28 @@ export default function EnterpriseFormModal({
     setPrimaryContactModalOpen(true);
     setContactDropdownOpen(false);
   }, []);
-  const selectExistingContact = useCallback(row => {
-    const primary = mapContactToPrimary(row);
+  const selectExistingContact = useCallback(async row => {
+    const enterpriseId = !isCreate && form?.id ? form.id : null;
+    let linked = row;
+    if (enterpriseId && row?.id) {
+      try {
+        linked = await addContactMembership(row.id, {
+          client_id: enterpriseId,
+          poste: row.poste || "CONTACT PRINCIPAL",
+          is_primary: true
+        });
+        await setContactPrimaryForClient(row.id, enterpriseId);
+      } catch (error) {
+        toast.error(error.message || "Impossible de rattacher le contact");
+        return;
+      }
+    }
+    const primary = mapContactToPrimary(linked);
     setPrimaryContact(primary);
     setContactSearch(formatPrimaryContactLabel(primary));
     setContactDropdownOpen(false);
-  }, [setPrimaryContact]);
+    if (enterpriseId) window.dispatchEvent(new Event("refreshContacts"));
+  }, [setPrimaryContact, isCreate, form?.id]);
   const filteredContacts = useMemo(() => {
     const query = contactSearch.trim().toLowerCase();
     if (!query) return contactsCatalog.slice(0, 50);

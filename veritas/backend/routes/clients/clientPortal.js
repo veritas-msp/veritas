@@ -13,7 +13,9 @@ import { COMMUNITY_SALES_TICKET_SQL_PLAIN } from "../../utils/ticketEditionGuard
 import { transformClientModulesToFrontend } from "../../utils/transformClientModules.js";
 import { expandCloudServiceRows } from "../../utils/portalCloudServices.js";
 import { normalizeContactCommunications, syncLegacyContactFields, validateContactCommunications } from "../../utils/contactCommunications.js";
-import { syncPortalUserFromContact } from "../../utils/contactPortal.js";
+import { syncPortalUserFromContact, switchPortalCompany, listPortalCompaniesForContact } from "../../utils/contactPortal.js";
+import { buildSessionPayload, isImpersonationPayload, buildImpersonationClientPayload, setSessionCookie, signSessionToken } from "../../utils/authSession.js";
+import { contactBelongsToClient } from "../../services/contactClientLinks.js";
 const router = express.Router();
 router.use(verifyJWT, requireRole("client"));
 const INFRA_TABLES = [{
@@ -216,14 +218,28 @@ function validationErrorOrNull(req, res) {
   });
 }
 async function getPortalContext(req, res) {
-  const clientId = getClientId(req, res);
-  if (!clientId) return null;
   const userRow = await getPortalUserContext(req.user.id);
   if (!userRow) {
     res.status(403).json({
       error: "Portal account not found."
     });
     return null;
+  }
+  const clientId = userRow.client_id || req.user.client_id;
+  if (!clientId) {
+    res.status(403).json({
+      error: "No company associated with this account."
+    });
+    return null;
+  }
+  if (userRow.contact_id) {
+    const ok = await contactBelongsToClient(userRow.contact_id, clientId).catch(() => false);
+    if (!ok) {
+      res.status(403).json({
+        error: "Active company is not linked to this contact."
+      });
+      return null;
+    }
   }
   return {
     clientId,
@@ -892,12 +908,14 @@ router.post("/vault-secrets/:id/request-revocation", [param("id").isUUID()], asy
   }
 });
 async function loadPortalContactForUser(contactId, clientId) {
+  const ok = await contactBelongsToClient(contactId, clientId).catch(() => false);
+  if (!ok) return null;
   const {
     rows
   } = await pool.query(`SELECT id, nom, prenom, email, telephone,
             COALESCE(communications, '[]'::jsonb) AS communications
      FROM v_b_contacts
-     WHERE id = $1 AND client_id = $2`, [contactId, clientId]);
+     WHERE id = $1`, [contactId]);
   return hydratePortalContactRow(rows[0] || null);
 }
 function hydratePortalContactRow(row) {
@@ -963,8 +981,8 @@ router.patch("/contact", [body("communications").isArray()], async (req, res) =>
     const synced = syncLegacyContactFields(req.body.communications);
     const result = await pool.query(`UPDATE v_b_contacts
          SET email = $1, telephone = $2, communications = $3::jsonb, updated_at = CURRENT_TIMESTAMP
-         WHERE id = $4 AND client_id = $5
-         RETURNING id, nom, prenom, email, telephone, communications`, [synced.email, synced.telephone, JSON.stringify(synced.communications), ctx.contactId, ctx.clientId]);
+         WHERE id = $4
+         RETURNING id, nom, prenom, email, telephone, communications`, [synced.email, synced.telephone, JSON.stringify(synced.communications), ctx.contactId]);
     if (result.rows.length === 0) {
       return res.status(404).json({
         error: "Contact not found."
@@ -990,6 +1008,50 @@ router.patch("/contact", [body("communications").isArray()], async (req, res) =>
     res.status(500).json({
       error: "Error updating contact"
     });
+  }
+});
+router.get("/companies", async (req, res) => {
+  const ctx = await getPortalContext(req, res);
+  if (!ctx) return;
+  try {
+    if (!ctx.contactId) return res.json({ companies: [], activeClientId: ctx.clientId });
+    const companies = await listPortalCompaniesForContact(ctx.contactId);
+    return res.json({
+      companies,
+      activeClientId: ctx.clientId
+    });
+  } catch (err) {
+    console.error("GET /client-portal/companies:", err);
+    return res.status(500).json({ error: "Unable to list companies." });
+  }
+});
+router.post("/switch-company", [body("clientId").notEmpty()], async (req, res) => {
+  const validationResponse = validationErrorOrNull(req, res);
+  if (validationResponse) return;
+  const ctx = await getPortalContext(req, res);
+  if (!ctx) return;
+  if (!ctx.contactId) {
+    return res.status(400).json({ error: "No contact linked to this account." });
+  }
+  try {
+    const updated = await switchPortalCompany(ctx.userId, ctx.contactId, req.body.clientId);
+    const tokenPayload = isImpersonationPayload(req.user)
+      ? {
+          ...buildImpersonationClientPayload(updated, {
+            id: req.user.impersonated_by,
+            email: req.user.impersonated_by_email
+          })
+        }
+      : buildSessionPayload(updated);
+    const token = signSessionToken(tokenPayload);
+    setSessionCookie(req, res, token);
+    return res.json({
+      client_id: updated.client_id,
+      companies: await listPortalCompaniesForContact(ctx.contactId)
+    });
+  } catch (err) {
+    console.error("POST /client-portal/switch-company:", err);
+    return res.status(400).json({ error: err.message || "Unable to switch company." });
   }
 });
 export default router;

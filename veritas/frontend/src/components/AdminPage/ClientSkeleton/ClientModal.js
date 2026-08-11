@@ -254,7 +254,12 @@ export default function ClientModal({
                 communications: contact.communications,
                 poste: contact.poste?.trim().toUpperCase() || "CONTACT PRINCIPAL",
                 statut: "actif",
-                client_id: newClient.id
+                client_id: newClient.id,
+                memberships: [{
+                  client_id: newClient.id,
+                  poste: contact.poste?.trim().toUpperCase() || "CONTACT PRINCIPAL",
+                  is_primary: true
+                }]
               });
               if (contact.id) {
                 await updateContact(contact.id, contactPayload);

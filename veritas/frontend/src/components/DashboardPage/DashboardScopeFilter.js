@@ -12,7 +12,12 @@ function getClientLabel(client) {
 }
 function getContactLabel(contact) {
   const fullName = [contact?.prenom, contact?.nom].filter(Boolean).join(" ").trim();
-  const company = contact?.client_name || contact?.entreprise || "";
+  const companies = Array.isArray(contact?.clients)
+    ? contact.clients.map(c => c.name).filter(Boolean)
+    : [];
+  const company = companies.length > 0
+    ? companies.join(", ")
+    : contact?.client_name || contact?.entreprise || "";
   if (fullName && company) return `${fullName} · ${company}`;
   return fullName || contact?.email || `#${contact?.id}` || "-";
 }

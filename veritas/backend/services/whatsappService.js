@@ -125,13 +125,32 @@ async function resolveContactByPhone(waPhone) {
   const normalized = normalizeWaPhone(waPhone);
   if (!normalized) return null;
   const suffix = normalized.length > 9 ? normalized.slice(-9) : normalized;
-  const result = await pool.query(`SELECT id, client_id, nom, prenom, telephone
-     FROM v_b_contacts
-     WHERE telephone IS NOT NULL
-       AND regexp_replace(telephone, '\\D', '', 'g') LIKE '%' || $1
-     ORDER BY updated_at DESC NULLS LAST, created_at DESC
+  const result = await pool.query(`SELECT c.id, c.client_id, c.nom, c.prenom, c.telephone,
+            (
+              SELECT COUNT(*)::int FROM v_b_contact_client_links l WHERE l.contact_id = c.id
+            ) AS membership_count
+     FROM v_b_contacts c
+     WHERE c.telephone IS NOT NULL
+       AND regexp_replace(c.telephone, '\\D', '', 'g') LIKE '%' || $1
+     ORDER BY c.updated_at DESC NULLS LAST, c.created_at DESC
      LIMIT 1`, [suffix]);
-  return result.rows[0] || null;
+  const row = result.rows[0] || null;
+  if (!row) return null;
+  // Ambiguous multi-company: keep contact, leave client_id null for ticket create
+  if (Number(row.membership_count) > 1) {
+    return {
+      ...row,
+      client_id: null
+    };
+  }
+  if (!row.client_id && Number(row.membership_count) === 1) {
+    const link = await pool.query(
+      `SELECT client_id FROM v_b_contact_client_links WHERE contact_id = $1 LIMIT 1`,
+      [row.id]
+    );
+    row.client_id = link.rows[0]?.client_id || null;
+  }
+  return row;
 }
 async function findOpenTicketForPhone(waPhone) {
   const result = await pool.query(`SELECT w.ticket_id, t.ticket_number, t.status
