@@ -49,6 +49,12 @@ WHERE l.contact_id = p.contact_id
   AND l.client_id = p.client_id
   AND l.is_primary IS DISTINCT FROM TRUE;
 
-GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE v_b_contact_client_links TO veritas_user;
-
 COMMIT;
+
+-- Optional app role (may not exist on all environments)
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'veritas_user') THEN
+    EXECUTE 'GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE v_b_contact_client_links TO veritas_user';
+  END IF;
+END $$;

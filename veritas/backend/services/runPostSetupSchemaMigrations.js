@@ -16,6 +16,7 @@ import { ensureMonitoringAutomationSchema } from "./ensureMonitoringAutomationSc
 import { ensureSupervisionAlertsSchema } from "./ensureSupervisionAlertsSchema.js";
 import { ensurePermissionsSchema } from "./ensurePermissionsSchema.js";
 import { ensureSalesTicketCategoriesSchema } from "./ensureSalesTicketCategoriesSchema.js";
+import { ensureContactClientLinksSchema } from "./ensureContactClientLinksSchema.js";
 import { runIncrementalAvrilMigrations } from "../utils/incrementalAvrilMigrations.js";
 export async function runPostSetupSchemaMigrations() {
   await ensureProfilesSchema();
@@ -36,6 +37,7 @@ export async function runPostSetupSchemaMigrations() {
   await ensureMonitoringAutomationSchema();
   await ensureSupervisionAlertsSchema();
   await ensureSalesTicketCategoriesSchema();
+  await ensureContactClientLinksSchema();
   try {
     await runIncrementalAvrilMigrations();
   } catch (err) {
@@ -45,4 +47,5 @@ export async function runPostSetupSchemaMigrations() {
   await ensureProfilesSchema();
   await ensurePermissionsSchema();
   await ensureSalesTicketCategoriesSchema();
+  await ensureContactClientLinksSchema();
 }

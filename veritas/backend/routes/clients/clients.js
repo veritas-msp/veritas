@@ -15,7 +15,7 @@ import { requirePermission, requireAnyPermission } from '../../middleware/permis
 import { attachEquipmentCounts, fetchEquipmentCountsByClientId } from '../../utils/equipmentCountsByClient.js';
 import { fetchEquipmentPurgeList } from '../../utils/equipmentPurgeList.js';
 import { userHasAllPermissions } from '../../services/permissionService.js';
-import { addMembership, fetchPrimaryContactNamesByClientId, sqlContactLinkedToClient, attachMembershipsToContacts } from '../../services/contactClientLinks.js';
+import { addMembership, fetchPrimaryContactNamesByClientId, sqlContactLinkedToClientAsync, attachMembershipsToContacts } from '../../services/contactClientLinks.js';
 const router = express.Router();
 router.use(requireProForClientInfra);
 router.use(verifyJWT);
@@ -3750,7 +3750,7 @@ router.get('/contacts', async (req, res) => {
     let params = [];
     if (clientId) {
       params.push(parseInt(clientId));
-      query += ` WHERE ${sqlContactLinkedToClient('c', 1)}`;
+      query += ` WHERE ${await sqlContactLinkedToClientAsync('c', 1)}`;
     }
     query += ` ORDER BY c.nom ASC, c.prenom ASC`;
     const result = await pool.query(query, params);

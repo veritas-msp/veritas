@@ -9,6 +9,28 @@ function toInt(value) {
   return Number.isInteger(n) && n > 0 ? n : null;
 }
 
+function isMissingRelationError(err) {
+  return err?.code === "42P01";
+}
+
+let linksTableExistsCache = null;
+
+export async function hasContactClientLinksTable({ client } = {}) {
+  if (linksTableExistsCache === true) return true;
+  if (linksTableExistsCache === false) return false;
+  try {
+    const { rows } = await db(client).query(`SELECT to_regclass('public.v_b_contact_client_links') AS reg`);
+    linksTableExistsCache = Boolean(rows[0]?.reg);
+  } catch {
+    linksTableExistsCache = false;
+  }
+  return linksTableExistsCache;
+}
+
+export function invalidateContactClientLinksCache() {
+  linksTableExistsCache = null;
+}
+
 function normalizeMembershipRow(row) {
   if (!row) return null;
   return {
@@ -18,6 +40,25 @@ function normalizeMembershipRow(row) {
     poste: row.poste != null ? String(row.poste) : null,
     is_primary: row.is_primary === true
   };
+}
+
+function formatPrimaryName(contact) {
+  if (!contact) return null;
+  const prenom = String(contact.prenom || "").trim();
+  const nom = String(contact.nom || "").trim();
+  if (prenom && nom) return `${prenom} ${nom}`;
+  return nom || prenom || null;
+}
+
+function pickPrimaryFromRows(contacts) {
+  if (!Array.isArray(contacts) || contacts.length === 0) return null;
+  return contacts.find(c => c.is_primary)
+    || contacts.find(c => String(c.poste || "").toLowerCase().includes("principal"))
+    || contacts.find(c => {
+      const status = String(c.statut || "").toLowerCase();
+      return status.includes("actif") && !status.includes("inactif");
+    })
+    || contacts[0];
 }
 
 /**
@@ -63,38 +104,112 @@ export function normalizeMembershipsInput(payload = {}, fallbackClientId = null)
   }];
 }
 
-export async function listMembershipsForContact(contactId, { client } = {}) {
+async function listLegacyMembershipsForContact(contactId, { client } = {}) {
   const id = toInt(contactId);
   if (!id) return [];
   const { rows } = await db(client).query(
-    `SELECT l.contact_id, l.client_id, l.poste, l.is_primary, cli.name AS client_name
-     FROM v_b_contact_client_links l
-     LEFT JOIN v_b_clients cli ON cli.id = l.client_id
-     WHERE l.contact_id = $1
-     ORDER BY cli.name NULLS LAST, l.client_id`,
+    `SELECT c.id AS contact_id, c.client_id, c.poste,
+            CASE WHEN lower(coalesce(c.poste, '')) LIKE '%principal%' THEN TRUE ELSE FALSE END AS is_primary,
+            cli.name AS client_name
+     FROM v_b_contacts c
+     LEFT JOIN v_b_clients cli ON cli.id = c.client_id
+     WHERE c.id = $1 AND c.client_id IS NOT NULL`,
     [id]
   );
   return rows.map(normalizeMembershipRow).filter(Boolean);
+}
+
+export async function listMembershipsForContact(contactId, { client } = {}) {
+  const id = toInt(contactId);
+  if (!id) return [];
+  if (!(await hasContactClientLinksTable({ client }))) {
+    return listLegacyMembershipsForContact(id, { client });
+  }
+  try {
+    const { rows } = await db(client).query(
+      `SELECT l.contact_id, l.client_id, l.poste, l.is_primary, cli.name AS client_name
+       FROM v_b_contact_client_links l
+       LEFT JOIN v_b_clients cli ON cli.id = l.client_id
+       WHERE l.contact_id = $1
+       ORDER BY cli.name NULLS LAST, l.client_id`,
+      [id]
+    );
+    if (rows.length > 0) return rows.map(normalizeMembershipRow).filter(Boolean);
+    // Dual-read: link table empty but legacy client_id still set
+    return listLegacyMembershipsForContact(id, { client });
+  } catch (err) {
+    if (isMissingRelationError(err)) {
+      linksTableExistsCache = false;
+      return listLegacyMembershipsForContact(id, { client });
+    }
+    throw err;
+  }
 }
 
 export async function listMembershipsByContactIds(contactIds = [], { client } = {}) {
   const ids = [...new Set((Array.isArray(contactIds) ? contactIds : []).map(toInt).filter(Boolean))];
   const map = new Map();
   if (ids.length === 0) return map;
-  const { rows } = await db(client).query(
-    `SELECT l.contact_id, l.client_id, l.poste, l.is_primary, cli.name AS client_name
-     FROM v_b_contact_client_links l
-     LEFT JOIN v_b_clients cli ON cli.id = l.client_id
-     WHERE l.contact_id = ANY($1::int[])
-     ORDER BY l.contact_id, cli.name NULLS LAST, l.client_id`,
-    [ids]
-  );
-  for (const row of rows) {
-    const contactId = Number(row.contact_id);
-    if (!map.has(contactId)) map.set(contactId, []);
-    map.get(contactId).push(normalizeMembershipRow(row));
+
+  if (!(await hasContactClientLinksTable({ client }))) {
+    const { rows } = await db(client).query(
+      `SELECT c.id AS contact_id, c.client_id, c.poste,
+              CASE WHEN lower(coalesce(c.poste, '')) LIKE '%principal%' THEN TRUE ELSE FALSE END AS is_primary,
+              cli.name AS client_name
+       FROM v_b_contacts c
+       LEFT JOIN v_b_clients cli ON cli.id = c.client_id
+       WHERE c.id = ANY($1::int[]) AND c.client_id IS NOT NULL
+       ORDER BY c.id, cli.name NULLS LAST`,
+      [ids]
+    );
+    for (const row of rows) {
+      const contactId = Number(row.contact_id);
+      if (!map.has(contactId)) map.set(contactId, []);
+      map.get(contactId).push(normalizeMembershipRow(row));
+    }
+    return map;
   }
-  return map;
+
+  try {
+    const { rows } = await db(client).query(
+      `SELECT l.contact_id, l.client_id, l.poste, l.is_primary, cli.name AS client_name
+       FROM v_b_contact_client_links l
+       LEFT JOIN v_b_clients cli ON cli.id = l.client_id
+       WHERE l.contact_id = ANY($1::int[])
+       ORDER BY l.contact_id, cli.name NULLS LAST, l.client_id`,
+      [ids]
+    );
+    for (const row of rows) {
+      const contactId = Number(row.contact_id);
+      if (!map.has(contactId)) map.set(contactId, []);
+      map.get(contactId).push(normalizeMembershipRow(row));
+    }
+    // Fill gaps from legacy client_id when no link rows
+    const missing = ids.filter(id => !map.has(id));
+    if (missing.length > 0) {
+      const legacy = await db(client).query(
+        `SELECT c.id AS contact_id, c.client_id, c.poste,
+                CASE WHEN lower(coalesce(c.poste, '')) LIKE '%principal%' THEN TRUE ELSE FALSE END AS is_primary,
+                cli.name AS client_name
+         FROM v_b_contacts c
+         LEFT JOIN v_b_clients cli ON cli.id = c.client_id
+         WHERE c.id = ANY($1::int[]) AND c.client_id IS NOT NULL`,
+        [missing]
+      );
+      for (const row of legacy.rows) {
+        const contactId = Number(row.contact_id);
+        if (!map.has(contactId)) map.set(contactId, []);
+        map.get(contactId).push(normalizeMembershipRow(row));
+      }
+    }
+    return map;
+  } catch (err) {
+    if (isMissingRelationError(err)) {
+      linksTableExistsCache = false;
+      return listMembershipsByContactIds(contactIds, { client });
+    }
+    throw err;
+  }
 }
 
 export async function attachMembershipsToContacts(contacts = [], { client } = {}) {
@@ -119,11 +234,18 @@ export async function contactBelongsToClient(contactId, clientId, { client } = {
   const cId = toInt(contactId);
   const clId = toInt(clientId);
   if (!cId || !clId) return false;
-  const { rows } = await db(client).query(
-    `SELECT 1 FROM v_b_contact_client_links WHERE contact_id = $1 AND client_id = $2 LIMIT 1`,
-    [cId, clId]
-  );
-  if (rows[0]) return true;
+  if (await hasContactClientLinksTable({ client })) {
+    try {
+      const { rows } = await db(client).query(
+        `SELECT 1 FROM v_b_contact_client_links WHERE contact_id = $1 AND client_id = $2 LIMIT 1`,
+        [cId, clId]
+      );
+      if (rows[0]) return true;
+    } catch (err) {
+      if (!isMissingRelationError(err)) throw err;
+      linksTableExistsCache = false;
+    }
+  }
   const legacy = await db(client).query(
     `SELECT 1 FROM v_b_contacts WHERE id = $1 AND client_id = $2 LIMIT 1`,
     [cId, clId]
@@ -160,6 +282,7 @@ export async function syncHomeClientId(contactId, preferredClientId = null, { cl
 }
 
 async function clearPrimaryForClient(clientId, { client, exceptContactId = null } = {}) {
+  if (!(await hasContactClientLinksTable({ client }))) return;
   const clId = toInt(clientId);
   if (!clId) return;
   if (exceptContactId) {
@@ -182,6 +305,14 @@ export async function addMembership(contactId, { clientId, poste = null, isPrima
     const err = new Error("contact_id and client_id are required.");
     err.code = "INVALID_MEMBERSHIP";
     throw err;
+  }
+  if (!(await hasContactClientLinksTable({ client }))) {
+    // Pre-migration: keep legacy single client_id write
+    await db(client).query(
+      `UPDATE v_b_contacts SET client_id = $1, poste = COALESCE($2, poste), updated_at = CURRENT_TIMESTAMP WHERE id = $3`,
+      [clId, poste, cId]
+    );
+    return listMembershipsForContact(cId, { client });
   }
   if (isPrimary) await clearPrimaryForClient(clId, { client, exceptContactId: cId });
   await db(client).query(
@@ -207,6 +338,13 @@ export async function removeMembership(contactId, clientId, { client } = {}) {
   const cId = toInt(contactId);
   const clId = toInt(clientId);
   if (!cId || !clId) return [];
+  if (!(await hasContactClientLinksTable({ client }))) {
+    await db(client).query(
+      `UPDATE v_b_contacts SET client_id = NULL, updated_at = CURRENT_TIMESTAMP WHERE id = $1 AND client_id = $2`,
+      [cId, clId]
+    );
+    return listMembershipsForContact(cId, { client });
+  }
   await db(client).query(
     `DELETE FROM v_b_contact_client_links WHERE contact_id = $1 AND client_id = $2`,
     [cId, clId]
@@ -224,6 +362,13 @@ export async function setPrimaryForClient(clientId, contactId, { client } = {}) 
     throw err;
   }
   await assertMembership(cId, clId, { client });
+  if (!(await hasContactClientLinksTable({ client }))) {
+    await db(client).query(
+      `UPDATE v_b_contacts SET poste = COALESCE(NULLIF(poste, ''), 'CONTACT PRINCIPAL'), updated_at = CURRENT_TIMESTAMP WHERE id = $1`,
+      [cId]
+    );
+    return listMembershipsForContact(cId, { client });
+  }
   await clearPrimaryForClient(clId, { client });
   await db(client).query(
     `UPDATE v_b_contact_client_links SET is_primary = TRUE WHERE contact_id = $1 AND client_id = $2`,
@@ -251,6 +396,17 @@ export async function replaceMemberships(contactId, memberships = [], { preferre
   const byClient = new Map();
   for (const row of normalized) byClient.set(row.client_id, row);
   const unique = [...byClient.values()];
+
+  if (!(await hasContactClientLinksTable({ client }))) {
+    const home = preferredHomeClientId || unique[0]?.client_id || null;
+    const poste = unique.find(u => u.client_id === home)?.poste || unique[0]?.poste || null;
+    await db(client).query(
+      `UPDATE v_b_contacts SET client_id = $1, poste = COALESCE($2, poste), updated_at = CURRENT_TIMESTAMP WHERE id = $3`,
+      [home, poste, cId]
+    );
+    const result = await listMembershipsForContact(cId, { client });
+    return { memberships: result, homeClientId: home };
+  }
 
   const existing = await listMembershipsForContact(cId, { client });
   const nextIds = new Set(unique.map(m => m.client_id));
@@ -282,12 +438,6 @@ export async function replaceMemberships(contactId, memberships = [], { preferre
   return { memberships: result, homeClientId: home };
 }
 
-/**
- * Resolve a single client for a contact.
- * - preferredClientId if member
- * - else exactly one membership
- * - else null (ambiguous or none)
- */
 export async function resolveClientIdForContact(contactId, preferredClientId = null, { client } = {}) {
   const preferred = toInt(preferredClientId);
   if (preferred) {
@@ -305,15 +455,44 @@ export async function resolveClientIdForContact(contactId, preferredClientId = n
   return null;
 }
 
-export async function fetchPrimaryContactNamesByClientId({ client } = {}) {
+async function fetchPrimaryContactNamesLegacy({ client } = {}) {
   const byClientId = {};
+  const { rows } = await db(client).query(
+    `SELECT client_id::text AS client_id, nom, prenom, poste, statut
+     FROM v_b_contacts
+     WHERE client_id IS NOT NULL
+     ORDER BY client_id ASC, nom ASC, prenom ASC`
+  );
+  const grouped = {};
+  for (const row of rows) {
+    const clientId = String(row.client_id);
+    if (!grouped[clientId]) grouped[clientId] = [];
+    grouped[clientId].push(row);
+  }
+  for (const [clientId, contacts] of Object.entries(grouped)) {
+    const primary = pickPrimaryFromRows(contacts);
+    const name = formatPrimaryName(primary);
+    if (name) byClientId[clientId] = name;
+  }
+  return byClientId;
+}
+
+export async function fetchPrimaryContactNamesByClientId({ client } = {}) {
+  if (!(await hasContactClientLinksTable({ client }))) {
+    return fetchPrimaryContactNamesLegacy({ client });
+  }
   try {
+    const byClientId = {};
     const { rows } = await db(client).query(
       `SELECT l.client_id::text AS client_id, c.nom, c.prenom, l.poste, c.statut, l.is_primary
        FROM v_b_contact_client_links l
        JOIN v_b_contacts c ON c.id = l.contact_id
        ORDER BY l.client_id ASC, l.is_primary DESC, c.nom ASC, c.prenom ASC`
     );
+    if (rows.length === 0) {
+      // Table exists but empty (migration not backfilled yet) → legacy
+      return fetchPrimaryContactNamesLegacy({ client });
+    }
     const grouped = {};
     for (const row of rows) {
       const clientId = String(row.client_id);
@@ -321,27 +500,25 @@ export async function fetchPrimaryContactNamesByClientId({ client } = {}) {
       grouped[clientId].push(row);
     }
     for (const [clientId, contacts] of Object.entries(grouped)) {
-      const primary = contacts.find(c => c.is_primary)
-        || contacts.find(c => String(c.poste || "").toLowerCase().includes("principal"))
-        || contacts.find(c => {
-          const status = String(c.statut || "").toLowerCase();
-          return status.includes("actif") && !status.includes("inactif");
-        })
-        || contacts[0];
-      if (!primary) continue;
-      const prenom = String(primary.prenom || "").trim();
-      const nom = String(primary.nom || "").trim();
-      const name = prenom && nom ? `${prenom} ${nom}` : nom || prenom || null;
+      const primary = pickPrimaryFromRows(contacts);
+      const name = formatPrimaryName(primary);
       if (name) byClientId[clientId] = name;
     }
+    return byClientId;
   } catch (err) {
-    if (err.code === "42P01") return byClientId;
+    if (isMissingRelationError(err)) {
+      linksTableExistsCache = false;
+      return fetchPrimaryContactNamesLegacy({ client });
+    }
     throw err;
   }
-  return byClientId;
 }
 
-export function sqlContactLinkedToClient(alias = "cts", paramIndex = 1) {
+/** Prefer link table; fall back to legacy client_id column when table missing. */
+export function sqlContactLinkedToClient(alias = "cts", paramIndex = 1, { useLinks = true } = {}) {
+  if (!useLinks) {
+    return `${alias}.client_id = $${paramIndex}`;
+  }
   return `(
     EXISTS (
       SELECT 1 FROM v_b_contact_client_links l
@@ -349,4 +526,9 @@ export function sqlContactLinkedToClient(alias = "cts", paramIndex = 1) {
     )
     OR ${alias}.client_id = $${paramIndex}
   )`;
+}
+
+export async function sqlContactLinkedToClientAsync(alias = "cts", paramIndex = 1, { client } = {}) {
+  const useLinks = await hasContactClientLinksTable({ client });
+  return sqlContactLinkedToClient(alias, paramIndex, { useLinks });
 }

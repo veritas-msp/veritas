@@ -20,7 +20,7 @@ import {
   removeMembership,
   replaceMemberships,
   setPrimaryForClient,
-  sqlContactLinkedToClient,
+  sqlContactLinkedToClientAsync,
   syncHomeClientId
 } from '../../services/contactClientLinks.js';
 const PORTAL_PASSWORD_ERROR = `Password too weak: at least ${PORTAL_PASSWORD_MIN_LENGTH} characters, with at least one letter and one digit.`;
@@ -169,7 +169,7 @@ router.get('/list', requirePermission('contacts.view'), async (req, res) => {
   let whereClause = '';
   if (numericClientId) {
     params.push(numericClientId);
-    whereClause = `WHERE ${sqlContactLinkedToClient('cts', 1)}`;
+    whereClause = `WHERE ${await sqlContactLinkedToClientAsync('cts', 1)}`;
   }
   try {
     const result = await pool.query(`SELECT ${CONTACT_LIST_SELECT}
@@ -195,7 +195,7 @@ router.get('/', requirePermission('contacts.view'), async (req, res) => {
   let whereClause = '';
   if (client_id) {
     params.push(client_id);
-    whereClause = `WHERE ${sqlContactLinkedToClient('cts', 1)}`;
+    whereClause = `WHERE ${await sqlContactLinkedToClientAsync('cts', 1)}`;
   }
   try {
     const result = await pool.query(`SELECT ${CONTACT_LIST_SELECT}
