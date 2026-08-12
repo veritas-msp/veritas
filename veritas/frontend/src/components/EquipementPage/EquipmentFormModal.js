@@ -28,7 +28,7 @@ export default function EquipmentFormModal({
   onDeleted,
   mode = "edit",
   backgroundSave = false,
-  peerFirewalls = []
+  peerFirewalls = [],
   peerServers = []
 }) {
   const locale = useAppLocale();
