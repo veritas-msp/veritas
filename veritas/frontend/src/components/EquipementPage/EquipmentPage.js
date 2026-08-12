@@ -51,6 +51,11 @@ import { filterBySite } from "../../utils/siteFilterUtils";
 import EquipmentHaCell from "./EquipmentHaCell";
 import { compareFirewallHaPairs, getFirewallHaSortValue, getFirewallHaState } from "./equipmentHaUtils";
 import { getExpirationStatus, getExpirationStatusColor, getMaintenanceLicenseExpiration } from "./constants/firewallLicenceUtils";
+const toDisplayEquipmentType = type => {
+  if (type === "NAS" || type === "Stockage") return "Storage";
+  if (type === "Serveurs" || type === "Server") return "Servers";
+  return type;
+};
 const EQUIPMENT_CACHE_KEY = "equipment_page_cache_v2";
 const EQUIPMENT_CACHE_TTL_MS = 5 * 60 * 1000;
 const SAUVEGARDE_COLUMN_KEYS = ["name", "server", "version", "jobsCount", "mappedJobsCount"];
@@ -86,11 +91,13 @@ function mapBackupRows(instances = [], searchQuery = "") {
 const EDITABLE_EQUIPMENT_TYPES = new Set(["Internet", "Firewalls", "Servers", "Ordinateurs", "NAS", "Switch", "BorneWifi", "Alimentation", "Routeur", "TOIP"]);
 const NETWORK_EDGE_TYPES = new Set(["Switch", "BorneWifi", "Alimentation", "Routeur", "TOIP"]);
 const getEditModuleKey = (equipment, displayType) => {
-  if (displayType === "Storage" || equipment?.type === "NAS") return "Storage";
-  return equipment?.type || displayType;
+  if (displayType === "Storage" || equipment?.type === "NAS" || equipment?.type === "Stockage") return "Storage";
+  const type = toDisplayEquipmentType(equipment?.type || displayType);
+  return type || displayType;
 };
 const isEquipmentEditable = (equipment, displayType) => {
-  return EDITABLE_EQUIPMENT_TYPES.has(equipment?.type) || displayType === "Storage";
+  const type = toDisplayEquipmentType(equipment?.type || displayType);
+  return EDITABLE_EQUIPMENT_TYPES.has(type) || EDITABLE_EQUIPMENT_TYPES.has(equipment?.type) || displayType === "Storage";
 };
 const getRmmAgentId = equipment => equipment?.rmmAgentId || equipment?.rawData?.agentId || equipment?.rawData?.agent_id || null;
 const isRmmEnrolledOrdinateur = (equipment, displayType) => (equipment?.type === "Ordinateurs" || displayType === "Ordinateurs") && (equipment?.agentManaged || equipment?.rawData?.source === "rmm" || equipment?.rawData?.data?.source === "rmm") && Boolean(getRmmAgentId(equipment));
@@ -1158,7 +1165,7 @@ const EquipmentPage = forwardRef(function EquipmentPage({
   const typeCounts = useMemo(() => {
     const counts = {};
     filteredForStats.forEach(eq => {
-      const displayType = eq.type === 'NAS' ? 'Storage' : eq.type;
+      const displayType = toDisplayEquipmentType(eq.type);
       counts[displayType] = (counts[displayType] || 0) + 1;
     });
     return counts;
@@ -1256,13 +1263,13 @@ const EquipmentPage = forwardRef(function EquipmentPage({
   const equipmentStatusCounts = useMemo(() => buildMonitorStatusCounts(filteredForStats, resolveMonitorStatus, {
     alertRules: supervisionAlertRules
   }), [filteredForStats, resolveMonitorStatus, supervisionAlertRules]);
-  const equipmentRmmAgents = useMemo(() => filteredForStats.filter(eq => isRmmEnrolledOrdinateur(eq, eq.type === "NAS" ? "Storage" : eq.type)).map(eq => buildRmmAgentRowFromEquipment(eq, {
+  const equipmentRmmAgents = useMemo(() => filteredForStats.filter(eq => isRmmEnrolledOrdinateur(eq, toDisplayEquipmentType(eq.type))).map(eq => buildRmmAgentRowFromEquipment(eq, {
     online: resolveRmmAgentOnline(eq) ?? resolveMonitorStatus(eq) !== "offline"
   })), [filteredForStats, resolveMonitorStatus]);
   const baseTypeCounts = useMemo(() => {
     const counts = {};
     baseEquipment.forEach(eq => {
-      const displayType = eq.type === 'NAS' ? 'Storage' : eq.type;
+      const displayType = toDisplayEquipmentType(eq.type);
       counts[displayType] = (counts[displayType] || 0) + 1;
     });
     return counts;
@@ -1289,7 +1296,7 @@ const EquipmentPage = forwardRef(function EquipmentPage({
     }
     if (selectedTypes.size > 0) {
       filtered = filtered.filter(eq => {
-        const displayType = eq.type === 'NAS' ? 'Storage' : eq.type;
+        const displayType = toDisplayEquipmentType(eq.type);
         return selectedTypes.has(displayType);
       });
     }
@@ -1318,7 +1325,7 @@ const EquipmentPage = forwardRef(function EquipmentPage({
   const equipmentByType = useMemo(() => {
     const grouped = {};
     filteredEquipment.forEach(eq => {
-      const displayType = canonicalEquipmentTypeKey(eq.type === "NAS" ? "Storage" : eq.type);
+      const displayType = canonicalEquipmentTypeKey(toDisplayEquipmentType(eq.type));
       if (!grouped[displayType]) {
         grouped[displayType] = [];
       }
@@ -1339,7 +1346,7 @@ const EquipmentPage = forwardRef(function EquipmentPage({
     }
     const grouped = {};
     list.forEach(eq => {
-      const displayType = canonicalEquipmentTypeKey(eq.type === "NAS" ? "Storage" : eq.type);
+      const displayType = canonicalEquipmentTypeKey(toDisplayEquipmentType(eq.type));
       if (!grouped[displayType]) grouped[displayType] = [];
       grouped[displayType].push(eq);
     });
@@ -2504,7 +2511,7 @@ const EquipmentPage = forwardRef(function EquipmentPage({
     const sections = [];
     typesList.forEach(type => {
       const equipmentList = equipmentWithoutTypeFilter.filter(eq => {
-        const displayType = eq.type === 'NAS' ? 'Storage' : eq.type;
+        const displayType = toDisplayEquipmentType(eq.type);
         return displayType === type;
       });
       if (equipmentList.length === 0) return;
@@ -2554,7 +2561,7 @@ const EquipmentPage = forwardRef(function EquipmentPage({
       setSelectedTypes(new Set([customKey]));
       return;
     }
-    const displayType = type === "NAS" ? "Storage" : type;
+    const displayType = toDisplayEquipmentType(type);
     setSelectedTypes(new Set([displayType]));
   }, []);
   const getComputersForStats = useCallback(() => baseEquipment.filter(eq => eq.type === "Ordinateurs"), [baseEquipment]);
@@ -2590,7 +2597,7 @@ const EquipmentPage = forwardRef(function EquipmentPage({
         setSelectedEquipment(null);
         return;
       }
-      const moduleKey = getEditModuleKey(selectedEquipment, selectedEquipment?.type === "NAS" ? "Storage" : selectedEquipment?.type);
+      const moduleKey = getEditModuleKey(selectedEquipment, toDisplayEquipmentType(selectedEquipment?.type));
       applyEquipmentUpdateInList(selectedEquipment, updatedEquipment, moduleKey);
       setSelectedEquipment(current => {
         if (!current) return current;

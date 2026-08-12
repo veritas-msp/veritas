@@ -313,7 +313,8 @@ export function mapClientHardwareEquipment(client) {
         dbId,
         clientId: client.id,
         clientName: client.name || client.nom || "Client inconnu",
-        type,
+        // UI tabs use "Servers" / "Storage"; API families use "Serveurs" / "NAS".
+        type: type === "Serveurs" ? "Servers" : type === "Stockage" ? "Storage" : type,
         name: equipmentName,
         model: equipment.modele || equipment.model || equipment.modelName || "",
         mac: equipmentMac,
