@@ -403,11 +403,12 @@ export function applyToipTypeChange(prev, nextType) {
 }
 const SERVER_FORM_PROFILES = {
   physique: {
-    sectionIds: new Set(["identity", "network", "hardware", "system", "remote", "notes"]),
+    sectionIds: new Set(["identity", "network", "hardware", "system", "ha", "remote", "notes"]),
     showHardware: true,
     showSerial: true,
     showWarranty: true,
     showHypervisor: false,
+    showHa: true,
     hardwareLabel: "Hardware",
     hardwareDescription: "Brand, model, serial number and warranty",
     modelPlaceholder: "ProLiant DL360 Gen11",
@@ -425,6 +426,7 @@ const SERVER_FORM_PROFILES = {
     showSerial: false,
     showWarranty: false,
     showHypervisor: true,
+    showHa: false,
     systemLabel: "Ressources VM",
     systemDescription: "Hyperviseur, vCPU, RAM et OS",
     cpuLabel: "vCPU",
@@ -459,6 +461,15 @@ export function applyServerTypeChange(prev, nextType) {
       ...next,
       hypervisor: "",
       hostServerName: ""
+    };
+  }
+  if (!profile.showHa) {
+    next = {
+      ...next,
+      modeHA: false,
+      roleHA: "",
+      serverHAName: "",
+      serverHA: null
     };
   }
   return next;
@@ -533,6 +544,142 @@ export function resolveHostServerPeer(equipment, peers = []) {
     const name = getServerDisplayName(server);
     return name && name.toLowerCase() === lower;
   }) || null;
+}
+function readServerHaPartnerName(server) {
+  return String(server?.serverHAName || server?.data?.serverHAName || server?.rawData?.serverHAName || server?.rawData?.data?.serverHAName || "").trim();
+}
+function isSameServerEquipment(a, b) {
+  if (!a || !b) return false;
+  const idA = a.id ?? a.rawData?.id;
+  const idB = b.id ?? b.rawData?.id;
+  if (idA != null && idB != null && String(idA) === String(idB)) return true;
+  const nameA = getServerDisplayName(a);
+  const nameB = getServerDisplayName(b);
+  return Boolean(nameA && nameB && nameA.toLowerCase() === nameB.toLowerCase());
+}
+function findServerByName(catalog, partnerName, {
+  exclude
+} = {}) {
+  const trimmed = String(partnerName || "").trim();
+  if (!trimmed) return null;
+  const lower = trimmed.toLowerCase();
+  return catalog.find(server => {
+    if (exclude && isSameServerEquipment(server, exclude)) return false;
+    const name = getServerDisplayName(server);
+    return name === trimmed || name.toLowerCase() === lower;
+  }) || null;
+}
+export function resolveServerHaPeer(equipment, peers = []) {
+  const catalog = mergeServerPeerSources(peers);
+  const partnerName = readServerHaPartnerName(equipment);
+  if (partnerName) {
+    const forward = findServerByName(catalog, partnerName, {
+      exclude: equipment
+    });
+    if (forward) return forward;
+  }
+  const selfName = getServerDisplayName(equipment);
+  if (!selfName) return null;
+  return catalog.find(server => {
+    if (isSameServerEquipment(server, equipment)) return false;
+    const peerPartner = readServerHaPartnerName(server);
+    return peerPartner && peerPartner.toLowerCase() === selfName.toLowerCase();
+  }) || null;
+}
+export function getServerHaPartnerOptions(client, currentEquipment, {
+  currentPartnerName = "",
+  peerServers = []
+} = {}) {
+  const currentId = currentEquipment?.id != null ? String(currentEquipment.id) : null;
+  const currentRawId = currentEquipment?.rawData?.id != null ? String(currentEquipment.rawData.id) : null;
+  const currentName = getServerDisplayName(currentEquipment);
+  const keepPartnerName = String(currentPartnerName || "").trim();
+  const servers = mergeServerPeerSources(Array.isArray(client?.equipements?.Servers) ? client.equipements.Servers : [], Array.isArray(client?.equipements?.Serveurs) ? client.equipements.Serveurs : [], peerServers);
+  const options = new Map();
+  servers.forEach(server => {
+    const id = server?.id != null ? String(server.id) : null;
+    const rawId = server?.rawData?.id != null ? String(server.rawData.id) : null;
+    if (id && currentId && id === currentId) return;
+    if (rawId && currentId && rawId === currentId) return;
+    if (rawId && currentRawId && rawId === currentRawId) return;
+    if (id && currentRawId && id === currentRawId) return;
+    if (readServerTypeValue(server) !== "physique") return;
+    const name = getServerDisplayName(server);
+    if (!name || currentName && name.toLowerCase() === currentName.toLowerCase()) return;
+    const peerPartner = readServerHaPartnerName(server);
+    if (peerPartner) {
+      const peerPartnerLower = peerPartner.toLowerCase();
+      const isLinkedToCurrent = currentName && peerPartnerLower === currentName.toLowerCase();
+      const isKeptSelection = keepPartnerName && peerPartnerLower === keepPartnerName.toLowerCase();
+      if (!isLinkedToCurrent && !isKeptSelection) return;
+    }
+    options.set(name, name);
+  });
+  return Array.from(options.values()).sort((a, b) => a.localeCompare(b, "fr"));
+}
+
+/**
+ * Persist reciprocal HA link on the peer physical server (and clear a previous peer if needed).
+ */
+export async function syncServerHaPeerLink({
+  clientId,
+  currentEquipment,
+  submitData,
+  peerServers = [],
+  updateEquipmentFn
+} = {}) {
+  if (!clientId || typeof updateEquipmentFn !== "function") return;
+  const catalog = mergeServerPeerSources(peerServers);
+  const selfName = String(submitData?.name || getServerDisplayName(currentEquipment) || "").trim();
+  const previousPartnerName = readServerHaPartnerName(currentEquipment);
+  const haEnabled = Boolean(submitData?.modeHA);
+  const nextPartnerName = haEnabled ? String(submitData?.serverHAName || "").trim() : "";
+  const nextRole = String(submitData?.roleHA || "").trim();
+  const peerRole = nextRole === "Secondary" ? "Primary" : "Secondary";
+  const patchPeerHa = async (peer, haPatch) => {
+    if (!peer) return;
+    const peerDbId = peer.rawData?.id ?? peer.id ?? peer.dbId ?? null;
+    const peerForUpdate = {
+      clientId,
+      type: "Servers",
+      id: peerDbId,
+      dbId: peerDbId,
+      name: getServerDisplayName(peer),
+      rawData: peer.rawData?.data != null && peer.rawData?.id != null ? peer.rawData : peer.rawData || peer
+    };
+    const equipmentId = peerForUpdate.dbId || peerForUpdate.id;
+    if (!equipmentId) return;
+    await updateEquipmentFn(String(equipmentId), {
+      name: getServerDisplayName(peer),
+      modeHA: haPatch.modeHA,
+      roleHA: haPatch.roleHA,
+      serverHAName: haPatch.serverHAName,
+      serverHA: null
+    }, peerForUpdate);
+  };
+  if (previousPartnerName && previousPartnerName.toLowerCase() !== nextPartnerName.toLowerCase()) {
+    const oldPeer = findServerByName(catalog, previousPartnerName, {
+      exclude: currentEquipment
+    });
+    const oldPeerPointsHere = oldPeer && readServerHaPartnerName(oldPeer).toLowerCase() === selfName.toLowerCase();
+    if (oldPeer && (oldPeerPointsHere || !nextPartnerName)) {
+      await patchPeerHa(oldPeer, {
+        modeHA: false,
+        roleHA: "",
+        serverHAName: ""
+      });
+    }
+  }
+  if (!haEnabled || !nextPartnerName || !selfName) return;
+  const peer = findServerByName(catalog, nextPartnerName, {
+    exclude: currentEquipment
+  });
+  if (!peer) return;
+  await patchPeerHa(peer, {
+    modeHA: true,
+    roleHA: peerRole,
+    serverHAName: selfName
+  });
 }
 export const STORAGE_TYPE_OPTIONS = [{
   value: "nas",
@@ -611,13 +758,14 @@ const STORAGE_FORM_PROFILES = {
     showRole: true,
     showQuickConnect: true,
     showCapacite: true,
+    showHa: false,
     hardwareLabel: "Hardware",
     hardwareDescription: "Brand, model, serial number and warranty",
     modelPlaceholder: "DS923+",
     namePlaceholder: "NAS-Backup"
   },
   san: {
-    sectionIds: new Set(["identity", "network", "hardware", "storage", "notes"]),
+    sectionIds: new Set(["identity", "network", "hardware", "storage", "ha", "notes"]),
     showHardware: true,
     showSerial: true,
     showWarranty: true,
@@ -627,6 +775,7 @@ const STORAGE_FORM_PROFILES = {
     showRole: true,
     showQuickConnect: false,
     showCapacite: true,
+    showHa: true,
     hardwareLabel: "Hardware",
     hardwareDescription: "Brand, model, serial number and warranty",
     modelPlaceholder: "PowerStore 500T",
@@ -643,6 +792,7 @@ const STORAGE_FORM_PROFILES = {
     showRole: true,
     showQuickConnect: false,
     showCapacite: true,
+    showHa: false,
     hardwareLabel: "Plateforme",
     hardwareDescription: "Hyperviseur, appliance virtuelle ou service",
     modelPlaceholder: "TrueNAS Scale VM",
@@ -659,6 +809,7 @@ const STORAGE_FORM_PROFILES = {
     showRole: true,
     showQuickConnect: false,
     showCapacite: true,
+    showHa: false,
     hardwareLabel: "Fournisseur cloud",
     hardwareDescription: "Service et ressource cloud",
     modelPlaceholder: "Azure Files Premium",
@@ -675,6 +826,7 @@ const STORAGE_FORM_PROFILES = {
     showRole: true,
     showQuickConnect: false,
     showCapacite: true,
+    showHa: false,
     hardwareLabel: "Hardware",
     hardwareDescription: "Brand, model, serial number and warranty",
     modelPlaceholder: "Scalar i3",
@@ -692,6 +844,7 @@ const STORAGE_FORM_PROFILES = {
     showQuickConnect: false,
     showCapacite: true,
     showNumeroDisque: true,
+    showHa: false,
     hardwareLabel: "Hardware",
     hardwareDescription: "Brand et model du device",
     modelPlaceholder: "Expansion Desktop 8 To",
@@ -731,7 +884,170 @@ export function applyStorageTypeChange(prev, nextType) {
       numeroDisque: ""
     };
   }
+  if (!profile.showHa) {
+    next = {
+      ...next,
+      modeHA: false,
+      roleHA: "",
+      storageHAName: "",
+      storageHA: null
+    };
+  }
   return next;
+}
+export function getStorageDisplayName(storage) {
+  return (storage?.nom || storage?.name || storage?.data?.nom || storage?.data?.name || storage?.rawData?.nom || storage?.rawData?.name || "").trim();
+}
+function readStorageTypeValue(storage) {
+  return normalizeStorageType(storage?.storageType || storage?.type || storage?.data?.type || storage?.rawData?.type || storage?.rawData?.data?.type || "");
+}
+function mergeStoragePeerSources(...sources) {
+  const merged = new Map();
+  sources.flat().forEach(storage => {
+    if (!storage || typeof storage !== "object") return;
+    const name = getStorageDisplayName(storage);
+    const id = storage.id != null ? String(storage.id) : storage.rawData?.id != null ? String(storage.rawData.id) : name || null;
+    const key = id || name;
+    if (!key) return;
+    merged.set(key, storage);
+  });
+  return Array.from(merged.values());
+}
+function readStorageHaPartnerName(storage) {
+  return String(storage?.storageHAName || storage?.data?.storageHAName || storage?.rawData?.storageHAName || storage?.rawData?.data?.storageHAName || "").trim();
+}
+function isSameStorageEquipment(a, b) {
+  if (!a || !b) return false;
+  const idA = a.id ?? a.rawData?.id;
+  const idB = b.id ?? b.rawData?.id;
+  if (idA != null && idB != null && String(idA) === String(idB)) return true;
+  const nameA = getStorageDisplayName(a);
+  const nameB = getStorageDisplayName(b);
+  return Boolean(nameA && nameB && nameA.toLowerCase() === nameB.toLowerCase());
+}
+function findStorageByName(catalog, partnerName, {
+  exclude
+} = {}) {
+  const trimmed = String(partnerName || "").trim();
+  if (!trimmed) return null;
+  const lower = trimmed.toLowerCase();
+  return catalog.find(storage => {
+    if (exclude && isSameStorageEquipment(storage, exclude)) return false;
+    const name = getStorageDisplayName(storage);
+    return name === trimmed || name.toLowerCase() === lower;
+  }) || null;
+}
+export function resolveStorageHaPeer(equipment, peers = []) {
+  const catalog = mergeStoragePeerSources(peers);
+  const partnerName = readStorageHaPartnerName(equipment);
+  if (partnerName) {
+    const forward = findStorageByName(catalog, partnerName, {
+      exclude: equipment
+    });
+    if (forward) return forward;
+  }
+  const selfName = getStorageDisplayName(equipment);
+  if (!selfName) return null;
+  return catalog.find(storage => {
+    if (isSameStorageEquipment(storage, equipment)) return false;
+    const peerPartner = readStorageHaPartnerName(storage);
+    return peerPartner && peerPartner.toLowerCase() === selfName.toLowerCase();
+  }) || null;
+}
+export function getStorageHaPartnerOptions(client, currentEquipment, {
+  currentPartnerName = "",
+  peerStorage = []
+} = {}) {
+  const currentId = currentEquipment?.id != null ? String(currentEquipment.id) : null;
+  const currentRawId = currentEquipment?.rawData?.id != null ? String(currentEquipment.rawData.id) : null;
+  const currentName = getStorageDisplayName(currentEquipment);
+  const keepPartnerName = String(currentPartnerName || "").trim();
+  const storages = mergeStoragePeerSources(Array.isArray(client?.equipements?.NAS) ? client.equipements.NAS : [], Array.isArray(client?.equipements?.Storage) ? client.equipements.Storage : [], Array.isArray(client?.equipements?.Stockage) ? client.equipements.Stockage : [], peerStorage);
+  const options = new Map();
+  storages.forEach(storage => {
+    const id = storage?.id != null ? String(storage.id) : null;
+    const rawId = storage?.rawData?.id != null ? String(storage.rawData.id) : null;
+    if (id && currentId && id === currentId) return;
+    if (rawId && currentId && rawId === currentId) return;
+    if (rawId && currentRawId && rawId === currentRawId) return;
+    if (id && currentRawId && id === currentRawId) return;
+    if (readStorageTypeValue(storage) !== "san") return;
+    const name = getStorageDisplayName(storage);
+    if (!name || currentName && name.toLowerCase() === currentName.toLowerCase()) return;
+    const peerPartner = readStorageHaPartnerName(storage);
+    if (peerPartner) {
+      const peerPartnerLower = peerPartner.toLowerCase();
+      const isLinkedToCurrent = currentName && peerPartnerLower === currentName.toLowerCase();
+      const isKeptSelection = keepPartnerName && peerPartnerLower === keepPartnerName.toLowerCase();
+      if (!isLinkedToCurrent && !isKeptSelection) return;
+    }
+    options.set(name, name);
+  });
+  return Array.from(options.values()).sort((a, b) => a.localeCompare(b, "fr"));
+}
+
+/**
+ * Persist reciprocal HA link on the peer SAN storage (and clear a previous peer if needed).
+ */
+export async function syncStorageHaPeerLink({
+  clientId,
+  currentEquipment,
+  submitData,
+  peerStorage = [],
+  updateEquipmentFn
+} = {}) {
+  if (!clientId || typeof updateEquipmentFn !== "function") return;
+  const catalog = mergeStoragePeerSources(peerStorage);
+  const selfName = String(submitData?.name || getStorageDisplayName(currentEquipment) || "").trim();
+  const previousPartnerName = readStorageHaPartnerName(currentEquipment);
+  const haEnabled = Boolean(submitData?.modeHA);
+  const nextPartnerName = haEnabled ? String(submitData?.storageHAName || "").trim() : "";
+  const nextRole = String(submitData?.roleHA || "").trim();
+  const peerRole = nextRole === "Secondary" ? "Primary" : "Secondary";
+  const patchPeerHa = async (peer, haPatch) => {
+    if (!peer) return;
+    const peerDbId = peer.rawData?.id ?? peer.id ?? peer.dbId ?? null;
+    const peerForUpdate = {
+      clientId,
+      type: "NAS",
+      id: peerDbId,
+      dbId: peerDbId,
+      name: getStorageDisplayName(peer),
+      rawData: peer.rawData?.data != null && peer.rawData?.id != null ? peer.rawData : peer.rawData || peer
+    };
+    const equipmentId = peerForUpdate.dbId || peerForUpdate.id;
+    if (!equipmentId) return;
+    await updateEquipmentFn(String(equipmentId), {
+      name: getStorageDisplayName(peer),
+      modeHA: haPatch.modeHA,
+      roleHA: haPatch.roleHA,
+      storageHAName: haPatch.storageHAName,
+      storageHA: null
+    }, peerForUpdate);
+  };
+  if (previousPartnerName && previousPartnerName.toLowerCase() !== nextPartnerName.toLowerCase()) {
+    const oldPeer = findStorageByName(catalog, previousPartnerName, {
+      exclude: currentEquipment
+    });
+    const oldPeerPointsHere = oldPeer && readStorageHaPartnerName(oldPeer).toLowerCase() === selfName.toLowerCase();
+    if (oldPeer && (oldPeerPointsHere || !nextPartnerName)) {
+      await patchPeerHa(oldPeer, {
+        modeHA: false,
+        roleHA: "",
+        storageHAName: ""
+      });
+    }
+  }
+  if (!haEnabled || !nextPartnerName || !selfName) return;
+  const peer = findStorageByName(catalog, nextPartnerName, {
+    exclude: currentEquipment
+  });
+  if (!peer) return;
+  await patchPeerHa(peer, {
+    modeHA: true,
+    roleHA: peerRole,
+    storageHAName: selfName
+  });
 }
 const SECTION_IDENTITY = {
   id: "identity",
@@ -804,7 +1120,7 @@ const SECTION_HA = {
   id: "ha",
   label: "High availability",
   icon: "mdi:shield-sync-outline",
-  description: "Firewall cluster and HA peer"
+  description: "Cluster and HA peer"
 };
 const SECTION_LICENCES = {
   id: "licences",
@@ -878,7 +1194,7 @@ export const EQUIPMENT_FORM_SECTIONS_BY_MODULE = {
   }, {
     ...SECTION_SYSTEM,
     description: "OS, resources and roles"
-  }, SECTION_REMOTE, SECTION_NOTES],
+  }, SECTION_HA, SECTION_REMOTE, SECTION_NOTES],
   Storage: [{
     ...SECTION_IDENTITY,
     description: "Name, site and storage type"
@@ -891,7 +1207,7 @@ export const EQUIPMENT_FORM_SECTIONS_BY_MODULE = {
   }, {
     ...SECTION_STORAGE,
     description: "Role, RAID, capacity and disks"
-  }, SECTION_NOTES],
+  }, SECTION_HA, SECTION_NOTES],
   Switch: [{
     ...SECTION_IDENTITY,
     description: "Name and site"
@@ -1426,6 +1742,9 @@ export function buildInitialFormData(equipment, moduleKey, {
       model: d("modele", d("model", "")),
       serial: d("numeroSerie", d("sn", d("serial", ""))),
       expirationGarantie: toDateInputValue(d("expirationGarantie", d("garantie", ""))),
+      modeHA: readEquipmentBool(equipment, "modeHA") || !!d("modeHA", false),
+      roleHA: readEquipmentText(equipment, "roleHA", d("roleHA", "")),
+      serverHAName: readEquipmentText(equipment, "serverHAName", d("serverHAName", "")),
       commentaire: d("commentaire", ""),
       role: normalizeServerRoles(raw.role ?? equipment?.role)
     };
@@ -1551,6 +1870,9 @@ export function buildInitialFormData(equipment, moduleKey, {
       type: legacyType || storageTypeToLegacyType(storageType),
       role: typeof raw.role === "string" ? raw.role : Array.isArray(raw.role) ? raw.role[0] : "",
       expirationGarantie: toDateInputValue(d("expirationGarantie", d("garantie", ""))),
+      modeHA: readEquipmentBool(equipment, "modeHA") || !!d("modeHA", false),
+      roleHA: readEquipmentText(equipment, "roleHA", d("roleHA", "")),
+      storageHAName: readEquipmentText(equipment, "storageHAName", d("storageHAName", "")),
       commentaire: d("commentaire", "")
     };
   }
@@ -1653,6 +1975,7 @@ export function buildEquipmentSectionMeta(form, moduleKey, {
     } else {
       meta.hardware = false;
     }
+    if (!profile.showHa) meta.ha = false;
     meta.system = Boolean(form?.systeme?.trim() || form?.processeur?.trim() || form?.memoire?.trim() || form?.stockage?.trim() || profile.showHypervisor && (form?.hypervisor?.trim() || form?.hostServerName?.trim()) || Array.isArray(form?.role) && form.role.length > 0);
     meta.remote = Boolean(form?.remoteAccessSolution?.trim() && form?.remoteAccessId?.trim());
     meta.network = Boolean(form?.ip?.trim() || form?.vlan?.trim());
@@ -1702,6 +2025,7 @@ export function buildEquipmentSectionMeta(form, moduleKey, {
     } else {
       meta.network = false;
     }
+    if (!profile.showHa) meta.ha = false;
     meta.storage = Boolean(profile.showRole && form?.role?.trim() || profile.showRaid && form?.raid?.trim() || profile.showCapacite && form?.capacite?.trim() || profile.showDisques && (form?.nbDisquesActuels?.trim() || form?.nbDisquesMax?.trim()) || profile.showQuickConnect && form?.quickConnect?.trim() || profile.showNumeroDisque && form?.numeroDisque?.trim());
     meta.maintenance = false;
     meta.notes = Boolean(form?.commentaire?.trim());

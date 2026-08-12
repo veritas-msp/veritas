@@ -4,7 +4,7 @@ import SiteMapPreview from "../EnterprisesPage/SiteMapPreview";
 import { buildSiteAddress, findClientSiteByLocation, getSiteDisplayName } from "../../utils/clientSites";
 import { buildEquipmentDetailSections } from "./equipmentDetailConfig";
 import { buildBorneWifiSsidFormState } from "./wifiApSsidUtils";
-import { getFirewallDisplayName, resolveFirewallHaPeer, getServerDisplayName, resolveHostServerPeer, getStorageFormProfile } from "./equipmentFormConfig";
+import { getFirewallDisplayName, resolveFirewallHaPeer, getServerDisplayName, resolveHostServerPeer, resolveServerHaPeer, getStorageDisplayName, resolveStorageHaPeer, getStorageFormProfile } from "./equipmentFormConfig";
 import { shouldShowStorageDiskBays } from "./storageDiskUtils";
 import StorageDiskBayDisplay from "./StorageDiskBayDisplay";
 import { getEquipmentFormOptionsCopy } from "./equipmentFormOptionsI18n";
@@ -63,9 +63,9 @@ function SpecField({
   const showRemoteAction = shouldShowRemoteAccessFieldAction(field.key, remoteAccessAction);
   const renderValue = () => {
     if (equipmentLink) {
-      if (field.key === "firewallHAName") {
+      if (field.key === "firewallHAName" || field.key === "serverHAName" || field.key === "storageHAName") {
         return <button type="button" className={styles.haPeerLink} onClick={equipmentLink.onClick} title={equipmentLink.title}>
-            <Icon icon="mdi:shield-sync" width={14} aria-hidden />
+            <Icon icon={field.key === "serverHAName" || field.key === "storageHAName" ? "mdi:server" : "mdi:shield-sync"} width={14} aria-hidden />
             <span className={styles.haPeerLinkLabel}>{field.value}</span>
             <Icon icon="mdi:arrow-right" width={14} className={styles.haPeerLinkArrow} aria-hidden />
           </button>;
@@ -127,6 +127,7 @@ export default function EquipmentDetailSpecsPanel({
   clientSsids = [],
   peerFirewalls = [],
   peerServers = [],
+  peerStorage = [],
   onOpenEquipment,
   remoteAccessAction = null,
   compact = false,
@@ -161,9 +162,12 @@ export default function EquipmentDetailSpecsPanel({
     };
   }, [equipment, formData, clientSsids]);
   const haPeer = useMemo(() => {
-    if (equipment?.type !== "Firewalls" || !formData?.modeHA) return null;
-    return resolveFirewallHaPeer(equipment, peerFirewalls);
-  }, [equipment, formData?.modeHA, peerFirewalls]);
+    if (!formData?.modeHA) return null;
+    if (equipment?.type === "Firewalls") return resolveFirewallHaPeer(equipment, peerFirewalls);
+    if (equipment?.type === "Servers" || equipment?.type === "Serveurs") return resolveServerHaPeer(equipment, peerServers);
+    if (equipment?.type === "NAS" || equipment?.type === "Storage" || equipment?.type === "Stockage") return resolveStorageHaPeer(equipment, peerStorage);
+    return null;
+  }, [equipment, formData?.modeHA, peerFirewalls, peerServers, peerStorage]);
   const hostServerPeer = useMemo(() => {
     if (equipment?.type !== "Servers" && equipment?.type !== "Serveurs") return null;
     if (!formData?.hostServerName) return null;
@@ -215,6 +219,70 @@ export default function EquipmentDetailSpecsPanel({
         });
       }
     }
+    if (haPeer && (equipment?.type === "Servers" || equipment?.type === "Serveurs")) {
+      const peerName = getServerDisplayName(haPeer);
+      if (peerName) {
+        nextSections = nextSections.map(section => {
+          if (section.id !== "ha") return section;
+          const peerFieldIndex = section.fields.findIndex(field => field.key === "serverHAName");
+          if (peerFieldIndex >= 0) {
+            return {
+              ...section,
+              fields: section.fields.map((field, index) => index === peerFieldIndex ? {
+                ...field,
+                value: peerName
+              } : field)
+            };
+          }
+          const roleIndex = section.fields.findIndex(field => field.key === "roleHA");
+          const peerField = {
+            key: "serverHAName",
+            label: copy.fields.serverHAName || copy.fields.firewallHAName,
+            value: peerName,
+            mono: false,
+            source: "manual"
+          };
+          const fields = [...section.fields];
+          if (roleIndex >= 0) fields.splice(roleIndex + 1, 0, peerField);else fields.push(peerField);
+          return {
+            ...section,
+            fields
+          };
+        });
+      }
+    }
+    if (haPeer && (equipment?.type === "NAS" || equipment?.type === "Storage" || equipment?.type === "Stockage")) {
+      const peerName = getStorageDisplayName(haPeer);
+      if (peerName) {
+        nextSections = nextSections.map(section => {
+          if (section.id !== "ha") return section;
+          const peerFieldIndex = section.fields.findIndex(field => field.key === "storageHAName");
+          if (peerFieldIndex >= 0) {
+            return {
+              ...section,
+              fields: section.fields.map((field, index) => index === peerFieldIndex ? {
+                ...field,
+                value: peerName
+              } : field)
+            };
+          }
+          const roleIndex = section.fields.findIndex(field => field.key === "roleHA");
+          const peerField = {
+            key: "storageHAName",
+            label: copy.fields.storageHAName || copy.fields.firewallHAName,
+            value: peerName,
+            mono: false,
+            source: "manual"
+          };
+          const fields = [...section.fields];
+          if (roleIndex >= 0) fields.splice(roleIndex + 1, 0, peerField);else fields.push(peerField);
+          return {
+            ...section,
+            fields
+          };
+        });
+      }
+    }
     if (hostServerPeer && (equipment?.type === "Servers" || equipment?.type === "Serveurs")) {
       const hostName = getServerDisplayName(hostServerPeer);
       if (hostName) {
@@ -248,7 +316,7 @@ export default function EquipmentDetailSpecsPanel({
       }
     }
     return nextSections;
-  }, [baseSections, haPeer, hostServerPeer, equipment?.type, copy.fields.firewallHAName, copy.fields.hostServerName]);
+  }, [baseSections, haPeer, hostServerPeer, equipment?.type, copy.fields.firewallHAName, copy.fields.serverHAName, copy.fields.storageHAName, copy.fields.hostServerName]);
   const sectionsGridClass = resolveSectionsGridClass(sections.length);
   const rmmManagedComputer = equipment?.type === "Ordinateurs" && isRmmManagedEquipment(equipment);
   const rmmInlineFields = useMemo(() => {
@@ -260,7 +328,7 @@ export default function EquipmentDetailSpecsPanel({
   const showSiteVignette = Boolean(locationName && locationName !== "Sans site");
   const resolveEquipmentLink = field => {
     if (!onOpenEquipment) return null;
-    if (field.key === "firewallHAName" && haPeer) {
+    if ((field.key === "firewallHAName" || field.key === "serverHAName" || field.key === "storageHAName") && haPeer) {
       return {
         onClick: () => onOpenEquipment(haPeer),
         title: copy.specs.openHaPeer

@@ -131,6 +131,8 @@ const FIELD_FORMATTERS = {
   modeHA: f => formatBool(f.modeHA),
   roleHA: f => f.roleHA,
   firewallHAName: f => f.firewallHAName,
+  serverHAName: f => f.serverHAName,
+  storageHAName: f => f.storageHAName,
   stormshieldWanUrl: f => f.stormshieldWanUrl,
   licenceMaintenance: f => formatDateFr(getMaintenanceLicenseExpiration(f.licences)),
   autresLicenses: f => formatOtherLicenses(f.licences),
@@ -203,6 +205,8 @@ const FIELD_LABELS = {
   modeHA: "Mode haute dispo.",
   roleHA: "Role HA",
   firewallHAName: "Pair HA",
+  serverHAName: "Pair HA",
+  storageHAName: "Pair HA",
   stormshieldWanUrl: "URL Stormshield WAN",
   licenceMaintenance: "Maintenance license",
   autresLicenses: "Autres licences",
@@ -232,7 +236,7 @@ const SECTION_FIELDS = {
   system: ["editionWindows", "windowsFeatureVersion", "windowsBuild", "windowsLicenseStatus", "systeme", "domaine", "processeur", "memoire", "stockage", "hypervisor", "hostServerName", "role", "quickConnect"],
   remote: ["remoteAccessSolution"],
   storage: ["raid", "capacite", "nbDisquesActuels", "nbDisquesMax", "luns", "numeroDisque", "role"],
-  ha: ["modeHA", "roleHA", "firewallHAName"],
+  ha: ["modeHA", "roleHA", "firewallHAName", "serverHAName", "storageHAName"],
   licences: ["licenceMaintenance", "autresLicenses"],
   management: ["manageable", "adminUrl"],
   wifi: ["alimentationPoE", "assignedSsids"],
@@ -345,8 +349,17 @@ function shouldShowField(fieldKey, formData, equipment) {
   if (fieldKey === "stormshieldWanUrl" && moduleKey === "Firewalls") {
     return Boolean(formData.stormshieldWanUrl);
   }
-  if (fieldKey === "roleHA" || fieldKey === "firewallHAName") {
+  if (fieldKey === "roleHA") {
     return Boolean(formData.modeHA);
+  }
+  if (fieldKey === "firewallHAName") {
+    return moduleKey === "Firewalls" && Boolean(formData.modeHA);
+  }
+  if (fieldKey === "serverHAName") {
+    return moduleKey === "Servers" && Boolean(formData.modeHA);
+  }
+  if (fieldKey === "storageHAName") {
+    return moduleKey === "Storage" && Boolean(formData.modeHA);
   }
   if (fieldKey === "capaciteVA" || fieldKey === "capaciteW" || fieldKey === "dateBatterie") {
     return formData.alimentationType !== "PDU";

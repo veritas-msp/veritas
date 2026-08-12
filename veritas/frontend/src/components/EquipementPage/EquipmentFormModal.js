@@ -9,7 +9,7 @@ import { SWITCH_CATALOG, WIFI_AP_CATALOG, getAlimentationCatalogByType, getToipC
 import { isSynologyBrand } from "./synologyEquipmentUtils";
 import { normalizeInternetFormData } from "../RapportPage/monitoring/internetIpUtils";
 import { syncInternetLegacyDebit } from "./internetConnectionUtils";
-import { buildAvailableSites, buildEquipmentForUpdate, buildEquipmentId, buildEquipmentSectionMeta, buildInitialFormData, cloneEquipmentFormSnapshot, equipmentFormsEqual, getApiType, getFirewallPartnerOptions, getHostServerOptions, isEquipmentRequiredSectionIncomplete, isToipVoipSectionVisible, normalizeServerType, storageTypeToLegacyType, syncFirewallHaPeerLink } from "./equipmentFormConfig";
+import { buildAvailableSites, buildEquipmentForUpdate, buildEquipmentId, buildEquipmentSectionMeta, buildInitialFormData, cloneEquipmentFormSnapshot, equipmentFormsEqual, getApiType, getFirewallPartnerOptions, getHostServerOptions, getServerHaPartnerOptions, getStorageHaPartnerOptions, isEquipmentRequiredSectionIncomplete, isToipVoipSectionVisible, normalizeServerType, storageTypeToLegacyType, syncFirewallHaPeerLink, syncServerHaPeerLink, syncStorageHaPeerLink } from "./equipmentFormConfig";
 import { useAppLocale } from "../../hooks/useAppGeneralSettings";
 import { getEquipmentFormSectionsI18n, getEquipmentModalsCopy, getEquipmentModuleLabel, validateEquipmentFormI18n, EQUIPMENT_MODULE_ICONS, interpolate } from "./equipmentModalsI18n";
 import EquipmentFormSectionContent from "./EquipmentFormSectionContent";
@@ -29,7 +29,8 @@ export default function EquipmentFormModal({
   mode = "edit",
   backgroundSave = false,
   peerFirewalls = [],
-  peerServers = []
+  peerServers = [],
+  peerStorage = []
 }) {
   const locale = useAppLocale();
   const copy = useMemo(() => getEquipmentModalsCopy(locale), [locale]);
@@ -57,6 +58,14 @@ export default function EquipmentFormModal({
     currentPartnerName: formData.firewallHAName,
     peerFirewalls
   }), [client, equipment, formData.firewallHAName, peerFirewalls]);
+  const serverHaPartnerOptions = useMemo(() => getServerHaPartnerOptions(client, equipment, {
+    currentPartnerName: formData.serverHAName,
+    peerServers
+  }), [client, equipment, formData.serverHAName, peerServers]);
+  const storageHaPartnerOptions = useMemo(() => getStorageHaPartnerOptions(client, equipment, {
+    currentPartnerName: formData.storageHAName,
+    peerStorage
+  }), [client, equipment, formData.storageHAName, peerStorage]);
   const hostServerOptions = useMemo(() => getHostServerOptions(client, equipment, {
     currentHostName: formData.hostServerName,
     peerServers
@@ -209,17 +218,43 @@ export default function EquipmentFormModal({
         updateEquipmentFn: updateEquipment
       });
     };
+    const syncServerHaIfNeeded = async () => {
+      if (moduleKey !== "Servers") return;
+      const clientServers = [...(Array.isArray(client?.equipements?.Servers) ? client.equipements.Servers : []), ...(Array.isArray(client?.equipements?.Serveurs) ? client.equipements.Serveurs : [])];
+      await syncServerHaPeerLink({
+        clientId: client.id,
+        currentEquipment: equipment,
+        submitData,
+        peerServers: [...clientServers, ...(Array.isArray(peerServers) ? peerServers : [])],
+        updateEquipmentFn: updateEquipment
+      });
+    };
+    const syncStorageHaIfNeeded = async () => {
+      if (moduleKey !== "Storage") return;
+      const clientStorage = [...(Array.isArray(client?.equipements?.NAS) ? client.equipements.NAS : []), ...(Array.isArray(client?.equipements?.Storage) ? client.equipements.Storage : []), ...(Array.isArray(client?.equipements?.Stockage) ? client.equipements.Stockage : [])];
+      await syncStorageHaPeerLink({
+        clientId: client.id,
+        currentEquipment: equipment,
+        submitData,
+        peerStorage: [...clientStorage, ...(Array.isArray(peerStorage) ? peerStorage : [])],
+        updateEquipmentFn: updateEquipment
+      });
+    };
     const persistToApi = async () => {
       await persistClientWifiCatalog();
       if (isAddMode) {
         const created = await createEquipment(client.id, moduleKey, submitData);
         await syncFirewallHaIfNeeded();
+        await syncServerHaIfNeeded();
+        await syncStorageHaIfNeeded();
         return created;
       }
       const equipmentId = buildEquipmentId(client.id, moduleKey, equipment);
       const equipmentForUpdate = buildEquipmentForUpdate(client.id, moduleKey, equipment);
       await updateEquipment(equipmentId, submitData, equipmentForUpdate);
       await syncFirewallHaIfNeeded();
+      await syncServerHaIfNeeded();
+      await syncStorageHaIfNeeded();
       return null;
     };
     if (backgroundSave) {
@@ -364,7 +399,7 @@ export default function EquipmentFormModal({
             }}>
                 {error}
               </div>}
-            <EquipmentFormSectionContent activeSection={activeSection} moduleKey={moduleKey} apiType={apiType} formData={formData} setFormData={setFormData} update={update} updateBrandModel={updateBrandModel} availableSites={availableSites} firewallPartnerOptions={firewallPartnerOptions} hostServerOptions={hostServerOptions} isPhysicalServer={isPhysicalServer} serverType={serverType} isSynologyStorageForm={isSynologyStorageForm} brandModelCatalog={brandModelCatalog} storageBrandCatalog={storageBrandCatalog} isAddMode={isAddMode} isRequiredSectionIncomplete={isRequiredSectionIncomplete} formCopy={copy} />
+            <EquipmentFormSectionContent activeSection={activeSection} moduleKey={moduleKey} apiType={apiType} formData={formData} setFormData={setFormData} update={update} updateBrandModel={updateBrandModel} availableSites={availableSites} firewallPartnerOptions={firewallPartnerOptions} serverHaPartnerOptions={serverHaPartnerOptions} storageHaPartnerOptions={storageHaPartnerOptions} hostServerOptions={hostServerOptions} isPhysicalServer={isPhysicalServer} serverType={serverType} isSynologyStorageForm={isSynologyStorageForm} brandModelCatalog={brandModelCatalog} storageBrandCatalog={storageBrandCatalog} isAddMode={isAddMode} isRequiredSectionIncomplete={isRequiredSectionIncomplete} formCopy={copy} />
           </div>
         </div>
 

@@ -34,6 +34,8 @@ export default function EquipmentFormSectionContent({
   updateBrandModel,
   availableSites,
   firewallPartnerOptions,
+  serverHaPartnerOptions = [],
+  storageHaPartnerOptions = [],
   hostServerOptions = [],
   isPhysicalServer,
   serverType,
@@ -619,7 +621,15 @@ export default function EquipmentFormSectionContent({
           {sectionHead}
           <WifiApSsidEditor clientSsids={formData.clientSsids} assignedSsidIds={formData.assignedSsidIds} onClientSsidsChange={nextCatalog => update("clientSsids", nextCatalog)} onAssignedSsidIdsChange={nextAssigned => update("assignedSsidIds", nextAssigned)} idPrefix="equipment-form-wifi-ssid" />
         </>;
-    case "ha":
+    case "ha": {
+      const isServerHa = apiType === "Servers";
+      const isStorageHa = moduleKey === "Storage" || apiType === "NAS";
+      const partnerOptions = isServerHa ? serverHaPartnerOptions : isStorageHa ? storageHaPartnerOptions : firewallPartnerOptions;
+      const partnerValue = isServerHa ? formData.serverHAName ?? "" : isStorageHa ? formData.storageHAName ?? "" : formData.firewallHAName ?? "";
+      const partnerKey = isServerHa ? "serverHAName" : isStorageHa ? "storageHAName" : "firewallHAName";
+      const emptyLabel = isServerHa ? f.haNoServerAvailable || f.haNoFirewallAvailable : isStorageHa ? f.haNoSanAvailable || f.haNoFirewallAvailable : f.haNoFirewallAvailable;
+      const selectLabel = isServerHa ? f.haSelectServer || f.haSelectFirewall : isStorageHa ? f.haSelectSan || f.haSelectFirewall : f.haSelectFirewall;
+      const emptyHint = isServerHa ? f.haNoServerPartnerHint || f.haNoPartnerHint : isStorageHa ? f.haNoSanPartnerHint || f.haNoPartnerHint : f.haNoPartnerHint;
       return <>
           {sectionHead}
           <label className={styles.slaToggle} htmlFor="modeHA">
@@ -633,7 +643,11 @@ export default function EquipmentFormSectionContent({
                 ...(checked ? {} : {
                   roleHA: "",
                   firewallHAName: "",
-                  firewallHA: null
+                  firewallHA: null,
+                  serverHAName: "",
+                  serverHA: null,
+                  storageHAName: "",
+                  storageHA: null
                 })
               }));
             }} role="switch" aria-checked={!!formData.modeHA} />
@@ -657,23 +671,24 @@ export default function EquipmentFormSectionContent({
                 <label className={styles.label} htmlFor="equipment-form-ha-partner">
                   {f.haPartnerName}
                 </label>
-                <select id="equipment-form-ha-partner" className={styles.input} value={formData.firewallHAName ?? ""} onChange={e => update("firewallHAName", e.target.value)} disabled={firewallPartnerOptions.length === 0}>
+                <select id="equipment-form-ha-partner" className={styles.input} value={partnerValue} onChange={e => update(partnerKey, e.target.value)} disabled={partnerOptions.length === 0}>
                   <option value="">
-                    {firewallPartnerOptions.length === 0 ? f.haNoFirewallAvailable : f.haSelectFirewall}
+                    {partnerOptions.length === 0 ? emptyLabel : selectLabel}
                   </option>
-                  {firewallPartnerOptions.map(name => <option key={name} value={name}>
+                  {partnerOptions.map(name => <option key={name} value={name}>
                       {name}
                     </option>)}
                 </select>
-                {firewallPartnerOptions.length === 0 && <p className={styles.hint} style={{
+                {partnerOptions.length === 0 && <p className={styles.hint} style={{
               marginTop: "0.35rem",
               marginBottom: 0
             }}>
-                    {f.haNoPartnerHint}
+                    {emptyHint}
                   </p>}
               </div>
             </div>}
         </>;
+    }
     case "licences":
       return <>
           {sectionHead}

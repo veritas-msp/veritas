@@ -251,6 +251,9 @@ const patchEquipmentFromFormData = (equipment, formData, moduleKey) => {
     if (formData.model !== undefined) setRawField(raw, "modele", formData.model, ["model"]);
     if (formData.serial !== undefined) setRawField(raw, "numeroSerie", formData.serial, ["serial"]);
     if (formData.expirationGarantie !== undefined) raw.expirationGarantie = formData.expirationGarantie;
+    if (formData.modeHA !== undefined) raw.modeHA = !!formData.modeHA;
+    if (formData.roleHA !== undefined) raw.roleHA = formData.roleHA;
+    if (formData.serverHAName !== undefined) raw.serverHAName = formData.serverHAName;
     patched.vlan = formData.vlan ?? equipment.vlan;
     patched.processeur = formData.processeur ?? equipment.processeur;
     patched.memoire = formData.memoire ?? equipment.memoire;
@@ -267,6 +270,9 @@ const patchEquipmentFromFormData = (equipment, formData, moduleKey) => {
     patched.model = formData.model ?? equipment.model;
     patched.serial = formData.serial ?? equipment.serial;
     patched.expirationGarantie = formData.expirationGarantie ?? equipment.expirationGarantie;
+    patched.modeHA = formData.modeHA !== undefined ? !!formData.modeHA : equipment.modeHA;
+    patched.roleHA = formData.roleHA ?? equipment.roleHA;
+    patched.serverHAName = formData.serverHAName ?? equipment.serverHAName;
   }
   if (type === "NAS") {
     if (formData.storageType !== undefined || formData.type !== undefined) {
@@ -287,6 +293,9 @@ const patchEquipmentFromFormData = (equipment, formData, moduleKey) => {
     if (formData.model !== undefined) setRawField(raw, "modele", formData.model, ["model"]);
     if (formData.serial !== undefined) setRawField(raw, "numeroSerie", formData.serial, ["serial"]);
     if (formData.expirationGarantie !== undefined) raw.expirationGarantie = formData.expirationGarantie;
+    if (formData.modeHA !== undefined) raw.modeHA = !!formData.modeHA;
+    if (formData.roleHA !== undefined) raw.roleHA = formData.roleHA;
+    if (formData.storageHAName !== undefined) raw.storageHAName = formData.storageHAName;
     patched.quickConnect = formData.quickConnect ?? equipment.quickConnect;
     patched.raid = formData.raid ?? equipment.raid;
     patched.capacite = formData.capacite ?? equipment.capacite;
@@ -301,6 +310,9 @@ const patchEquipmentFromFormData = (equipment, formData, moduleKey) => {
     patched.model = formData.model ?? equipment.model;
     patched.serial = formData.serial ?? equipment.serial;
     patched.expirationGarantie = formData.expirationGarantie ?? equipment.expirationGarantie;
+    patched.modeHA = formData.modeHA !== undefined ? !!formData.modeHA : equipment.modeHA;
+    patched.roleHA = formData.roleHA ?? equipment.roleHA;
+    patched.storageHAName = formData.storageHAName ?? equipment.storageHAName;
   }
   if (NETWORK_EDGE_TYPES.has(type) && type !== "Routeur") {
     if (formData.firmware !== undefined) setRawField(raw, "firmware", formData.firmware, ["version"]);
@@ -627,7 +639,7 @@ const ORDINATEUR_COLUMN_LABELS = {
   domaine: 'Domaine',
   agentStatus: 'Agent'
 };
-const SERVER_COLUMN_KEYS = ['name', 'monitoring', 'client', 'location', 'ip', 'vlan', 'systeme', 'processeur', 'memoire', 'stockage', 'expirationGarantie', 'role', 'mapping'];
+const SERVER_COLUMN_KEYS = ['name', 'monitoring', 'client', 'location', 'ip', 'vlan', 'ha', 'systeme', 'processeur', 'memoire', 'stockage', 'expirationGarantie', 'role', 'mapping'];
 const SERVER_COLUMN_LABELS = {
   vlan: 'VLAN',
   systeme: 'OS',
@@ -636,7 +648,7 @@ const SERVER_COLUMN_LABELS = {
   stockage: 'Storage',
   role: 'Roles'
 };
-const STORAGE_COLUMN_KEYS = ['name', 'monitoring', 'client', 'location', 'ip', 'raid', 'capacite', 'nbDisquesActuels', 'nbDisquesMax', 'expirationGarantie', 'mapping'];
+const STORAGE_COLUMN_KEYS = ['name', 'monitoring', 'client', 'location', 'ip', 'ha', 'raid', 'capacite', 'nbDisquesActuels', 'nbDisquesMax', 'expirationGarantie', 'mapping'];
 const STORAGE_COLUMN_LABELS = {
   capacite: 'Capacity',
   nbDisquesActuels: 'Current disks',
@@ -662,9 +674,9 @@ const MONITORING_COLUMN_LABEL = "Monitoring";
 const EMBEDDED_TYPE_COLUMNS = {
   Internet: ["name", "ip", "location", "fournisseur", "debit", "mapping"],
   Firewalls: ["name", "ip", "location", "ha", "model", "serial", "monitoring", "mapping"],
-  Servers: ["name", "ip", "location", "systeme", "monitoring", "mapping"],
+  Servers: ["name", "ip", "location", "ha", "systeme", "monitoring", "mapping"],
   Ordinateurs: ["name", "ip", "systeme", "domaine", "agentStatus", "mapping"],
-  Storage: ["name", "ip", "capacite", "monitoring", "mapping"],
+  Storage: ["name", "ip", "location", "ha", "capacite", "monitoring", "mapping"],
   Switch: ["name", "ip", "model", "monitoring", "mapping"],
   BorneWifi: ["name", "ip", "model", "monitoring", "mapping"],
   Alimentation: ["name", "ip", "model", "monitoring", "mapping"],
@@ -1584,7 +1596,7 @@ const EquipmentPage = forwardRef(function EquipmentPage({
   const getSortedEquipmentList = (type, list) => {
     const sortState = tableSort[type];
     if (!sortState?.key) {
-      if (type === "Firewalls") {
+      if (type === "Firewalls" || type === "Servers" || type === "Storage") {
         return [...list].sort(compareFirewallHaPairs);
       }
       return list;
@@ -1875,6 +1887,12 @@ const EquipmentPage = forwardRef(function EquipmentPage({
     const clientId = editEquipmentModal.client?.id || embeddedClient?.id || fixedClientId || null;
     if (!clientId) return [];
     return allEquipment.filter(eq => (eq.type === "Servers" || eq.type === "Serveurs") && String(eq.clientId) === String(clientId));
+  }, [allEquipment, editEquipmentModal.open, editEquipmentModal.client?.id, embeddedClient?.id, fixedClientId]);
+  const editModalPeerStorage = useMemo(() => {
+    if (!editEquipmentModal.open) return [];
+    const clientId = editEquipmentModal.client?.id || embeddedClient?.id || fixedClientId || null;
+    if (!clientId) return [];
+    return allEquipment.filter(eq => (eq.type === "NAS" || eq.type === "Storage" || eq.type === "Stockage") && String(eq.clientId) === String(clientId));
   }, [allEquipment, editEquipmentModal.open, editEquipmentModal.client?.id, embeddedClient?.id, fixedClientId]);
   useEffect(() => {
     if (addFlowOpen && editEquipmentModal.open) {
@@ -3394,7 +3412,7 @@ const EquipmentPage = forwardRef(function EquipmentPage({
       setUnifiApiModalEquipment(null);
     }} />}
 
-      {editEquipmentModal.client && <EquipmentFormModal open={editEquipmentModal.open} onClose={closeEditEquipmentModal} client={editEquipmentModal.client} equipment={editEquipmentModal.equipment} moduleKey={editEquipmentModal.moduleKey} mode={editEquipmentModal.mode} peerFirewalls={editModalPeerFirewalls} peerServers={editModalPeerServers} onSaved={handleEquipmentSaved} onDeleted={handleEquipmentDeleted} />}
+      {editEquipmentModal.client && <EquipmentFormModal open={editEquipmentModal.open} onClose={closeEditEquipmentModal} client={editEquipmentModal.client} equipment={editEquipmentModal.equipment} moduleKey={editEquipmentModal.moduleKey} mode={editEquipmentModal.mode} peerFirewalls={editModalPeerFirewalls} peerServers={editModalPeerServers} peerStorage={editModalPeerStorage} onSaved={handleEquipmentSaved} onDeleted={handleEquipmentDeleted} />}
 
       <ConfirmModal open={!!rmmRevokeTarget} title={modalsCopy.confirm?.rmmRevoke?.title} message={rmmRevokeTarget ? interpolate(modalsCopy.confirm?.rmmRevoke?.message, {
       name: rmmRevokeTarget.name || rmmRevokeTarget.rawData?.nom || modalsCopy.confirm?.rmmRevoke?.untitledAgent
