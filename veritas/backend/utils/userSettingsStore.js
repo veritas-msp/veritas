@@ -1,7 +1,8 @@
 import { pool } from "../database/db.js";
 export async function upsertUserSetting(userId, settingKey, value) {
   if (!userId || !settingKey) return;
-  const jsonValue = typeof value === "string" ? value : JSON.stringify(value);
+  // Always JSON.stringify: raw strings like "fr" are invalid for ::jsonb and 500.
+  const jsonValue = JSON.stringify(value ?? null);
   const updated = await pool.query(`UPDATE v_b_users_settings
      SET setting_value = $3::jsonb, updated_at = NOW()
      WHERE user_id = $1 AND setting_key = $2
