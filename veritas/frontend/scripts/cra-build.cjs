@@ -1,6 +1,7 @@
 /**
  * Production CRA build with lower peak memory than a stock react-scripts build.
- * No Node heap cap — V8 may use all RAM and swap available to the container.
+ * Heap size must be set on the `node` CLI / NODE_OPTIONS before this file loads
+ * (see Dockerfile). Setting max-old-space-size here has no effect on the current process.
  */
 "use strict";
 
