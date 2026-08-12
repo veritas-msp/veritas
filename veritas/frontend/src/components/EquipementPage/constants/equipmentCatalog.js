@@ -416,6 +416,7 @@ export const STORAGE_CATALOG_NAS = {
   Netgear: ["ReadyNAS 424", "ReadyNAS 626X"]
 };
 export const STORAGE_CATALOG_SAN = {
+  SYNOLOGY: ["UC3400", "UC3200", "FS6400", "FS3410", "FS2500", "SA3600", "SA3400", "SA3200D"],
   FUJITSU: ["ETERNUS DX100 S5", "ETERNUS DX200 S5", "ETERNUS AF250 S3", "ETERNUS DX60 S5", "ETERNUS AB7000"],
   Dell: ["PowerStore 500T", "PowerStore 1200T", "Unity XT 380", "PowerVault ME5024"],
   HPE: ["Alletra 6030", "Primera 630", "MSA 2060", "StoreOnce 5260"],
