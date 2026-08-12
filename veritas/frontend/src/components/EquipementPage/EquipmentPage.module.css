@@ -1657,8 +1657,10 @@
 }
 
 .embeddedColHa {
-  min-width: 11rem;
-  max-width: 16rem;
+  width: 3.25rem;
+  min-width: 3.25rem;
+  max-width: 3.5rem;
+  text-align: center;
 }
 
 .equipmentTableEmbedded th.embeddedColBrand,
@@ -1887,126 +1889,26 @@
   fill: currentColor;
 }
 
-.haCell {
+.haBadge {
   --ha-pair-color: #64748b;
   display: inline-flex;
   align-items: center;
-  gap: 0.45rem;
-  max-width: 100%;
-  min-height: 1.75rem;
-  padding: 0.15rem 0.15rem 0.15rem 0;
-  position: relative;
-}
-
-.haPairRail {
-  width: 3px;
-  align-self: stretch;
-  min-height: 1.5rem;
+  justify-content: center;
+  width: 1.35rem;
+  height: 1.35rem;
   border-radius: 999px;
   background: var(--ha-pair-color);
-  flex-shrink: 0;
-}
-
-.haRoleChip {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.3rem;
-  padding: 0.18rem 0.45rem 0.18rem 0.22rem;
-  border-radius: 999px;
-  font-size: 0.7rem;
-  font-weight: 700;
-  letter-spacing: 0.01em;
-  line-height: 1;
-  white-space: nowrap;
-  border: 1px solid transparent;
-}
-
-.haRoleLetter {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 1.05rem;
-  height: 1.05rem;
-  border-radius: 999px;
-  font-size: 0.62rem;
-  font-weight: 800;
   color: #fff;
-}
-
-.haRolePrimary {
-  background: rgba(13, 148, 136, 0.12);
-  color: #0f766e;
-  border-color: rgba(13, 148, 136, 0.28);
-}
-
-.haRolePrimary .haRoleLetter {
-  background: #0d9488;
-}
-
-.haRoleSecondary {
-  background: rgba(37, 99, 235, 0.1);
-  color: #1d4ed8;
-  border-color: rgba(37, 99, 235, 0.25);
-}
-
-.haRoleSecondary .haRoleLetter {
-  background: #2563eb;
-}
-
-.haPeer {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.2rem;
-  min-width: 0;
-  color: var(--text-muted, #64748b);
-  font-size: 0.72rem;
-  font-weight: 500;
-}
-
-.haPeerIcon {
-  width: 0.85rem;
-  height: 0.85rem;
-  flex-shrink: 0;
-  color: var(--ha-pair-color);
-  opacity: 0.9;
-}
-
-.haPeerName {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  max-width: 9.5rem;
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  line-height: 1;
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--ha-pair-color) 28%, transparent);
 }
 
 .haEmpty {
   color: var(--text-muted, #94a3b8);
   font-size: 0.85rem;
-}
-
-:global(html.dark) .haRolePrimary {
-  background: rgba(45, 212, 191, 0.14);
-  color: #5eead4;
-  border-color: rgba(45, 212, 191, 0.28);
-}
-
-:global(html.dark) .haRolePrimary .haRoleLetter {
-  background: #14b8a6;
-  color: #042f2e;
-}
-
-:global(html.dark) .haRoleSecondary {
-  background: rgba(96, 165, 250, 0.14);
-  color: #93c5fd;
-  border-color: rgba(96, 165, 250, 0.28);
-}
-
-:global(html.dark) .haRoleSecondary .haRoleLetter {
-  background: #3b82f6;
-  color: #eff6ff;
-}
-
-:global(html.dark) .haPeer {
-  color: #94a3b8;
 }
 
 .equipmentEmptyCell {
