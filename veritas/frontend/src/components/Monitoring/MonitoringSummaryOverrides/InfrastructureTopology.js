@@ -177,49 +177,83 @@ const InfrastructureTopology = ({
       const firewallPositions = [];
       const processedFirewalls = new Set();
       const haPairs = [];
+      const getFwName = fw => String(fw?.nom || fw?.name || "").trim();
+      const isHaEnabled = fw => fw?.modeHA === true || fw?.modeHA === 1 || fw?.modeHA === "1" || String(fw?.modeHA).toLowerCase() === "true" || Boolean(String(fw?.firewallHAName || "").trim());
       siteFirewalls.forEach((firewall, fwIdx) => {
         if (processedFirewalls.has(fwIdx)) return;
-        if (firewall.modeHA && (firewall.firewallHA !== null && firewall.firewallHA !== undefined || firewall.firewallHAName)) {
-          let partnerIndex = -1;
-          if (typeof firewall.firewallHA === 'number') {
-            partnerIndex = firewall.firewallHA;
-            if (partnerIndex < 0 || partnerIndex >= siteFirewalls.length || !siteFirewalls[partnerIndex].modeHA) {
-              partnerIndex = -1;
-            }
-          }
-          if (partnerIndex === -1 && firewall.firewallHAName) {
-            partnerIndex = siteFirewalls.findIndex(fw => fw.nom === firewall.firewallHAName && fw.modeHA);
-          }
-          if (partnerIndex !== -1 && partnerIndex !== fwIdx && !processedFirewalls.has(partnerIndex)) {
-            const isFirstPrincipal = fwIdx < partnerIndex || firewall.roleHA === "Primary";
-            haPairs.push({
-              principal: isFirstPrincipal ? firewall : siteFirewalls[partnerIndex],
-              principalIdx: isFirstPrincipal ? fwIdx : partnerIndex,
-              secondary: isFirstPrincipal ? siteFirewalls[partnerIndex] : firewall,
-              secondaryIdx: isFirstPrincipal ? partnerIndex : fwIdx
-            });
-            processedFirewalls.add(fwIdx);
-            processedFirewalls.add(partnerIndex);
+        if (!isHaEnabled(firewall)) return;
+        let partnerIndex = -1;
+        if (typeof firewall.firewallHA === 'number') {
+          partnerIndex = firewall.firewallHA;
+          if (partnerIndex < 0 || partnerIndex >= siteFirewalls.length) {
+            partnerIndex = -1;
           }
         }
+        if (partnerIndex === -1 && firewall.firewallHAName) {
+          const partnerName = String(firewall.firewallHAName).trim().toLowerCase();
+          partnerIndex = siteFirewalls.findIndex((fw, idx) => {
+            if (idx === fwIdx) return false;
+            return getFwName(fw).toLowerCase() === partnerName;
+          });
+        }
+        if (partnerIndex === -1) {
+          const selfName = getFwName(firewall).toLowerCase();
+          if (selfName) {
+            partnerIndex = siteFirewalls.findIndex((fw, idx) => {
+              if (idx === fwIdx || processedFirewalls.has(idx)) return false;
+              const peerPartner = String(fw?.firewallHAName || "").trim().toLowerCase();
+              return peerPartner && peerPartner === selfName;
+            });
+          }
+        }
+        if (partnerIndex !== -1 && partnerIndex !== fwIdx && !processedFirewalls.has(partnerIndex)) {
+          const partner = siteFirewalls[partnerIndex];
+          const isFirstPrincipal = firewall.roleHA === "Primary" || partner.roleHA === "Secondary" || firewall.roleHA !== "Secondary" && fwIdx < partnerIndex;
+          haPairs.push({
+            principal: isFirstPrincipal ? firewall : partner,
+            principalIdx: isFirstPrincipal ? fwIdx : partnerIndex,
+            secondary: isFirstPrincipal ? partner : firewall,
+            secondaryIdx: isFirstPrincipal ? partnerIndex : fwIdx
+          });
+          processedFirewalls.add(fwIdx);
+          processedFirewalls.add(partnerIndex);
+        }
       });
-      const sortedFirewalls = [...siteFirewalls].sort((a, b) => {
-        const aIsPrimary = a.roleHA === "Primary" || a.modeHA && !b.modeHA;
-        const bIsPrimary = b.roleHA === "Primary" || b.modeHA && !a.modeHA;
-        if (aIsPrimary && !bIsPrimary) return -1;
-        if (!aIsPrimary && bIsPrimary) return 1;
-        return (a.nom || "").localeCompare(b.nom || "");
+      const singleFirewallIdxs = siteFirewalls.map((_, idx) => idx).filter(idx => !processedFirewalls.has(idx)).sort((aIdx, bIdx) => {
+        const a = siteFirewalls[aIdx];
+        const b = siteFirewalls[bIdx];
+        return getFwName(a).localeCompare(getFwName(b), "fr");
       });
-      const allFirewalls = sortedFirewalls;
-      const firewallCount = allFirewalls.length;
-      if (firewallCount > 0) {
+      const displayCount = haPairs.length + singleFirewallIdxs.length;
+      if (displayCount > 0) {
         const firstPrincipalConn = connectionPositions.find(cp => cp.isPrincipal);
-        const firewallStartX = firstPrincipalConn ? firstPrincipalConn.x : columnCenterX - (firewallCount - 1) * elementSpacing / 2;
-        allFirewalls.forEach((firewall, idx) => {
+        const firewallStartX = firstPrincipalConn ? firstPrincipalConn.x : columnCenterX - (Math.max(displayCount - 1, 0)) * elementSpacing / 2;
+        haPairs.forEach((pair, pairIdx) => {
+          const x = firewallStartX + pairIdx * elementSpacing;
           firewallPositions.push({
-            firewall: firewall,
-            fwIdx: idx,
-            x: firewallStartX + idx * elementSpacing,
+            firewall: pair.principal,
+            fwIdx: pair.principalIdx,
+            x,
+            y: firewallRowY,
+            isHA: true,
+            isPrincipal: true,
+            secondaryPartnerIdx: pair.secondaryIdx
+          });
+          firewallPositions.push({
+            firewall: pair.secondary,
+            fwIdx: pair.secondaryIdx,
+            x: x + 55,
+            y: firewallRowY + 95,
+            isHA: true,
+            isPrincipal: false,
+            principalPartnerIdx: pair.principalIdx
+          });
+        });
+        singleFirewallIdxs.forEach((fwIdx, idx) => {
+          firewallPositions.push({
+            firewall: siteFirewalls[fwIdx],
+            fwIdx,
+            x: firewallStartX + (haPairs.length + idx) * elementSpacing,
             y: firewallRowY,
             isHA: false,
             isPrincipal: true
@@ -242,12 +276,16 @@ const InfrastructureTopology = ({
   const totalHeight = useMemo(() => {
     const hasConnections = connections.length > 0;
     const hasFirewalls = firewalls.length > 0;
+    const hasHaPair = firewalls.some(fw => {
+      const modeOn = fw?.modeHA === true || fw?.modeHA === 1 || fw?.modeHA === "1" || String(fw?.modeHA).toLowerCase() === "true";
+      return modeOn || Boolean(String(fw?.firewallHAName || "").trim());
+    });
     let height = 0;
     if (hasConnections) {
       height = 130;
     }
     if (hasFirewalls) {
-      height += 120;
+      height += hasHaPair ? 220 : 120;
     }
     return height || 200;
   }, [connections, firewalls]);
@@ -423,7 +461,8 @@ const InfrastructureTopology = ({
                                 {layout.firewalls.filter(fwPos => fwPos && fwPos.firewall).map(fwPos => {
               const firewall = fwPos.firewall;
               if (!firewall) return null;
-              const firewallData = firewallsData?.[firewall.nom] || {};
+              const firewallNameKey = firewall.nom || firewall.name || "";
+              const firewallData = firewallsData?.[firewallNameKey] || firewallsData?.[firewall.nom] || firewallsData?.[firewall.name] || {};
               const eventsCount = firewallData ? firewallData.eventsCount ?? null : null;
               const availabilityValue = firewallData?.availability?.up ?? firewallData?.availability ?? null;
               const moduleStats = firewallData?.moduleStats || {
@@ -443,7 +482,7 @@ const InfrastructureTopology = ({
               const resolvedScore = manualScore !== undefined && manualScore !== null ? manualScore : calculatedHealthScore;
               const letter = resolvedScore !== undefined && resolvedScore !== null ? scoreToLetter(resolvedScore) : null;
               const fillColor = letter ? letterToBackground(letter) : theme === 'dark' ? '#1e1e3f' : '#ffffff';
-              const firewallName = firewall.nom || "Firewall";
+              const firewallName = firewall.nom || firewall.name || "Firewall";
               const firewallIP = firewall.ip || "";
               return <g key={`firewall-${layout.siteName}-${fwPos.fwIdx}`}>
                                             <rect x={fwPos.x - iconHalf} y={fwPos.y - iconHalf} width={iconSize} height={iconSize} rx="8" fill={fillColor} stroke={theme === 'dark' ? '#4b5563' : '#9ca3af'} strokeWidth="2" />

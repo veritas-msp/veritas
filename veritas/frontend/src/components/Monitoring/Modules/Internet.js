@@ -39,6 +39,7 @@ const Internet = ({
           } = row.data || {};
           return {
             id: row.id,
+            item_key: row.item_key,
             ...dataWithoutId,
             nom: row.data?.nom || row.name || row.item_key || "",
             __fromDb: true
@@ -77,7 +78,7 @@ const Internet = ({
       ...dataForDb
     } = connectionData;
     const body = {
-      item_key: connectionData.nom || connectionData.fournisseur || `internet-${connectionId}`,
+      item_key: connectionId ? connectionData.item_key || connectionData.nom || `internet-${connectionId}` : typeof crypto !== "undefined" && crypto.randomUUID ? crypto.randomUUID() : `internet-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
       name: connectionData.nom || connectionData.fournisseur || `Login Internet`,
       data: dataForDb,
       is_active: true

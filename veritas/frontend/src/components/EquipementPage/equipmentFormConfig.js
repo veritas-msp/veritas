@@ -75,10 +75,10 @@ export const INTERNET_TYPE_OPTIONS = ["Fibre", "ADSL", "SDSL", "VDSL", "4G", "5G
 export const INTERNET_CATEGORIE_OPTIONS = ["Primary", "Backup"];
 export const OS_OPTION_GROUPS = [{
   label: "Windows Server",
-  options: ["Windows Server 2012 R2 Standard", "Windows Server 2016 Standard", "Windows Server 2019 Standard", "Windows Server 2022 Standard", "Windows Server 2025 Standard"]
+  options: ["Windows Server 2012 R2 Standard", "Windows Server 2012 R2 Datacenter", "Windows Server 2016 Standard", "Windows Server 2016 Datacenter", "Windows Server 2019 Standard", "Windows Server 2019 Datacenter", "Windows Server 2022 Standard", "Windows Server 2022 Datacenter", "Windows Server 2025 Standard", "Windows Server 2025 Datacenter"]
 }, {
   label: "Windows client",
-  options: ["Windows 10 Pro", "Windows 11 Pro"]
+  options: ["Windows 10 Pro", "Windows 10 Enterprise", "Windows 11 Pro", "Windows 11 Enterprise"]
 }, {
   label: "Linux · Ubuntu",
   options: ["Ubuntu Server 20.04 LTS", "Ubuntu Server 22.04 LTS", "Ubuntu Server 24.04 LTS"]
@@ -457,10 +457,82 @@ export function applyServerTypeChange(prev, nextType) {
   if (!profile.showHypervisor) {
     next = {
       ...next,
-      hypervisor: ""
+      hypervisor: "",
+      hostServerName: ""
     };
   }
   return next;
+}
+function readServerRoles(server) {
+  const layers = [server, server?.data, server?.rawData, server?.rawData?.data].filter(layer => layer && typeof layer === "object");
+  for (const layer of layers) {
+    if (Array.isArray(layer.role)) return layer.role;
+    if (layer.role) return [layer.role];
+  }
+  return [];
+}
+function readServerTypeValue(server) {
+  return normalizeServerType(server?.typeServer || server?.type || server?.data?.type || server?.rawData?.type || server?.rawData?.data?.type || "");
+}
+export function getServerDisplayName(server) {
+  return (server?.nom || server?.name || server?.data?.nom || server?.data?.name || server?.rawData?.nom || server?.rawData?.name || "").trim();
+}
+function normalizeRoleToken(role) {
+  return String(role || "").trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+}
+export function isPhysicalHostServer(server) {
+  if (!server || readServerTypeValue(server) !== "physique") return false;
+  return readServerRoles(server).some(role => {
+    const token = normalizeRoleToken(role);
+    return token === "hote" || token === "host";
+  });
+}
+function mergeServerPeerSources(...sources) {
+  const merged = new Map();
+  sources.flat().forEach(server => {
+    if (!server || typeof server !== "object") return;
+    const name = getServerDisplayName(server);
+    const id = server.id != null ? String(server.id) : server.rawData?.id != null ? String(server.rawData.id) : name || null;
+    const key = id || name;
+    if (!key) return;
+    merged.set(key, server);
+  });
+  return Array.from(merged.values());
+}
+export function getHostServerOptions(client, currentEquipment, {
+  currentHostName = "",
+  peerServers = []
+} = {}) {
+  const currentId = currentEquipment?.id != null ? String(currentEquipment.id) : null;
+  const currentRawId = currentEquipment?.rawData?.id != null ? String(currentEquipment.rawData.id) : null;
+  const currentName = getServerDisplayName(currentEquipment);
+  const keepHostName = String(currentHostName || "").trim();
+  const servers = mergeServerPeerSources(Array.isArray(client?.equipements?.Servers) ? client.equipements.Servers : [], Array.isArray(client?.equipements?.Serveurs) ? client.equipements.Serveurs : [], peerServers);
+  const options = new Map();
+  servers.forEach(server => {
+    const id = server?.id != null ? String(server.id) : null;
+    const rawId = server?.rawData?.id != null ? String(server.rawData.id) : null;
+    if (id && currentId && id === currentId) return;
+    if (rawId && currentId && rawId === currentId) return;
+    if (rawId && currentRawId && rawId === currentRawId) return;
+    if (id && currentRawId && id === currentRawId) return;
+    const name = getServerDisplayName(server);
+    if (!name || currentName && name.toLowerCase() === currentName.toLowerCase()) return;
+    const isKept = keepHostName && name.toLowerCase() === keepHostName.toLowerCase();
+    if (!isPhysicalHostServer(server) && !isKept) return;
+    options.set(name, name);
+  });
+  return Array.from(options.values()).sort((a, b) => a.localeCompare(b, "fr"));
+}
+export function resolveHostServerPeer(equipment, peers = []) {
+  const catalog = mergeServerPeerSources(peers);
+  const hostName = String(equipment?.hostServerName || equipment?.data?.hostServerName || equipment?.rawData?.hostServerName || equipment?.rawData?.data?.hostServerName || "").trim();
+  if (!hostName) return null;
+  const lower = hostName.toLowerCase();
+  return catalog.find(server => {
+    const name = getServerDisplayName(server);
+    return name && name.toLowerCase() === lower;
+  }) || null;
 }
 export const STORAGE_TYPE_OPTIONS = [{
   value: "nas",
@@ -1189,11 +1261,86 @@ export function getFirewallPartnerOptions(client, currentEquipment, {
     if (rawId && currentRawId && rawId === currentRawId) return;
     if (id && currentRawId && id === currentRawId) return;
     const name = getFirewallDisplayName(fw);
-    if (!name || currentName && name === currentName) return;
-    if (isFirewallEngagedInHa(fw) && name !== keepPartnerName) return;
+    if (!name || currentName && name.toLowerCase() === currentName.toLowerCase()) return;
+    // Exclude only peers already linked to someone else (not the current firewall).
+    const peerPartner = readFirewallHaPartnerName(fw);
+    if (peerPartner) {
+      const peerPartnerLower = peerPartner.toLowerCase();
+      const isLinkedToCurrent = currentName && peerPartnerLower === currentName.toLowerCase();
+      const isKeptSelection = keepPartnerName && peerPartnerLower === keepPartnerName.toLowerCase();
+      if (!isLinkedToCurrent && !isKeptSelection) return;
+    }
     options.set(name, name);
   });
   return Array.from(options.values()).sort((a, b) => a.localeCompare(b, "fr"));
+}
+
+/**
+ * Persist reciprocal HA link on the peer firewall (and clear a previous peer if needed).
+ */
+export async function syncFirewallHaPeerLink({
+  clientId,
+  currentEquipment,
+  submitData,
+  peerFirewalls = [],
+  updateEquipmentFn
+} = {}) {
+  if (!clientId || typeof updateEquipmentFn !== "function") return;
+  const catalog = mergeFirewallPeerSources(peerFirewalls);
+  const selfName = String(submitData?.name || getFirewallDisplayName(currentEquipment) || "").trim();
+  const previousPartnerName = readFirewallHaPartnerName(currentEquipment);
+  const haEnabled = Boolean(submitData?.modeHA);
+  const nextPartnerName = haEnabled ? String(submitData?.firewallHAName || "").trim() : "";
+  const nextRole = String(submitData?.roleHA || "").trim();
+  const peerRole = nextRole === "Secondary" ? "Primary" : "Secondary";
+
+  const patchPeerHa = async (peer, haPatch) => {
+    if (!peer) return;
+    const peerDbId = peer.rawData?.id ?? peer.id ?? peer.dbId ?? null;
+    const peerForUpdate = {
+      clientId,
+      type: "Firewalls",
+      id: peerDbId,
+      dbId: peerDbId,
+      name: getFirewallDisplayName(peer),
+      rawData: peer.rawData?.data != null && peer.rawData?.id != null ? peer.rawData : peer.rawData || peer
+    };
+    const equipmentId = peerForUpdate.dbId || peerForUpdate.id;
+    if (!equipmentId) return;
+    await updateEquipmentFn(String(equipmentId), {
+      name: getFirewallDisplayName(peer),
+      modeHA: haPatch.modeHA,
+      roleHA: haPatch.roleHA,
+      firewallHAName: haPatch.firewallHAName,
+      firewallHA: null
+    }, peerForUpdate);
+  };
+
+  if (previousPartnerName && previousPartnerName.toLowerCase() !== nextPartnerName.toLowerCase()) {
+    const oldPeer = findFirewallByName(catalog, previousPartnerName, {
+      exclude: currentEquipment
+    });
+    const oldPeerPointsHere = oldPeer && readFirewallHaPartnerName(oldPeer).toLowerCase() === selfName.toLowerCase();
+    if (oldPeer && (oldPeerPointsHere || !nextPartnerName)) {
+      await patchPeerHa(oldPeer, {
+        modeHA: false,
+        roleHA: "",
+        firewallHAName: ""
+      });
+    }
+  }
+
+  if (!haEnabled || !nextPartnerName || !selfName) return;
+
+  const peer = findFirewallByName(catalog, nextPartnerName, {
+    exclude: currentEquipment
+  });
+  if (!peer) return;
+  await patchPeerHa(peer, {
+    modeHA: true,
+    roleHA: peerRole,
+    firewallHAName: selfName
+  });
 }
 export function buildInitialFormData(equipment, moduleKey, {
   client
@@ -1271,6 +1418,7 @@ export function buildInitialFormData(equipment, moduleKey, {
       stockage: d("stockage", ""),
       systeme: d("systeme", d("os", "")),
       hypervisor: d("hypervisor", d("hyperviseur", "")),
+      hostServerName: d("hostServerName", d("serveurHote", "")),
       remoteAccessSolution: remoteAccess.solution,
       remoteAccessId: remoteAccess.id,
       typeServer: serverType || (equipment ? "" : "virtuel"),
@@ -1505,7 +1653,7 @@ export function buildEquipmentSectionMeta(form, moduleKey, {
     } else {
       meta.hardware = false;
     }
-    meta.system = Boolean(form?.systeme?.trim() || form?.processeur?.trim() || form?.memoire?.trim() || form?.stockage?.trim() || profile.showHypervisor && form?.hypervisor?.trim() || Array.isArray(form?.role) && form.role.length > 0);
+    meta.system = Boolean(form?.systeme?.trim() || form?.processeur?.trim() || form?.memoire?.trim() || form?.stockage?.trim() || profile.showHypervisor && (form?.hypervisor?.trim() || form?.hostServerName?.trim()) || Array.isArray(form?.role) && form.role.length > 0);
     meta.remote = Boolean(form?.remoteAccessSolution?.trim() && form?.remoteAccessId?.trim());
     meta.network = Boolean(form?.ip?.trim() || form?.vlan?.trim());
     meta.notes = Boolean(form?.commentaire?.trim());

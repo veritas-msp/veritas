@@ -1,6 +1,6 @@
 import API_BASE_URL from "../config";
 import { fetchClientModules } from "./clients";
-import { getEquipmentDbId, isDbEquipmentId } from "../utils/equipmentIdentity";
+import { getEquipmentDbId, isDbEquipmentId, findEquipmentInApiList } from "../utils/equipmentIdentity";
 import { resolveAlimentationDeploymentType, resolveToipDeploymentType } from "../components/EquipementPage/equipmentFormConfig";
 import { resolveAssignedSsidIds, serializeAssignedSsidsForPersistence } from "../components/EquipementPage/wifiApSsidUtils";
 export const getClientEquipment = async clientId => {
@@ -296,6 +296,7 @@ export function mapClientHardwareEquipment(client) {
       const unifiApiRejectUnauthorized = equipment.unifiApiRejectUnauthorized ?? equipment.data?.unifiApiRejectUnauthorized;
       const unifiApiConfiguredAt = equipment.unifiApiConfiguredAt || equipment.data?.unifiApiConfiguredAt || null;
       const stormshieldWanUrl = equipment.stormshieldWanUrl || equipment.data?.stormshieldWanUrl || "";
+      const hostServerName = equipment.hostServerName || equipment.data?.hostServerName || equipment.serveurHote || equipment.data?.serveurHote || "";
       const osData = equipment.os || equipment.data?.os || null;
       const domainData = equipment.domain || equipment.data?.domain || null;
       const ordinateurSysteme = equipment.systeme || equipment.data?.systeme || osData?.name || equipment.osName || "";
@@ -335,6 +336,7 @@ export function mapClientHardwareEquipment(client) {
         anydeskId: type === "Serveurs" ? anydeskId : undefined,
         remoteAccessSolution: type === "Serveurs" ? remoteAccessSolution : undefined,
         remoteAccessId: type === "Serveurs" ? remoteAccessId : undefined,
+        hostServerName: type === "Serveurs" ? hostServerName : undefined,
         quickConnect: type === "NAS" ? quickConnect : undefined,
         typeServer,
         nbDisquesActuels,
@@ -503,8 +505,10 @@ export const deleteEquipment = async equipment => {
   }
   const typeToFamily = {
     'Serveurs': 'servers',
+    'Servers': 'servers',
     'NAS': 'nas',
     'Stockage': 'nas',
+    'Storage': 'nas',
     'Firewalls': 'firewall',
     'Switch': 'switch',
     'BorneWifi': 'wifi',
@@ -514,15 +518,16 @@ export const deleteEquipment = async equipment => {
     'Internet': 'internet',
     'Ordinateurs': 'ordinateurs'
   };
-  let family = equipment.family || typeToFamily[type];
+  let family = equipment.family || typeToFamily[type] || typeToFamily[normalizeEquipmentApiType(type)];
   if (!family) {
     type = equipment.rawData?.type || type;
-    family = typeToFamily[type];
+    family = typeToFamily[type] || typeToFamily[normalizeEquipmentApiType(type)];
   }
   if (!family) {
     throw new Error(`Unsupported equipment type for deletion: ${type}`);
   }
 
+  type = normalizeEquipmentApiType(type);
   const urlFamily = type === 'Serveurs' ? 'servers' : family;
   const knownDbId = equipment.dbId || (isDbEquipmentId(equipment.id) && !String(equipment.id).includes(":") ? String(equipment.id) : null) || equipment.rawData?.id;
   if (knownDbId && isDbEquipmentId(knownDbId)) {
@@ -560,37 +565,9 @@ export const deleteEquipment = async equipment => {
     throw new Error(`Error searching for equipment to delete: ${findEquipmentResponse.status}`);
   }
   const allEquipment = await findEquipmentResponse.json();
-  const foundEquipment = allEquipment.find(eq => {
-    if (equipment.rawData?.id && eq.id === equipment.rawData.id) {
-      return true;
-    }
-    const eqName = eq.name || eq.data?.nom || eq.data?.name || eq.item_key;
-    if (type === 'Internet') {
-      if (eqName === equipmentName || eqName === (equipment.name || equipment.rawData?.nom)) {
-        return true;
-      }
-      const originalName = equipment.rawData?.nom || equipment.name || '';
-      if (originalName && eqName === originalName) {
-        return true;
-      }
-      const eqFournisseur = eq.data?.fournisseur || '';
-      const eqType = eq.data?.type || '';
-      const equipmentFournisseur = equipment.rawData?.fournisseur || equipment.fournisseur || '';
-      const equipmentType = equipment.rawData?.type || equipment.internetType || '';
-      if (equipmentFournisseur && equipmentType) {
-        if (eqFournisseur && eqType && eqFournisseur.toUpperCase() === equipmentFournisseur.toUpperCase() && eqType.toUpperCase() === equipmentType.toUpperCase()) {
-          return true;
-        }
-      }
-      if (equipmentFournisseur && eqFournisseur && eqFournisseur.toUpperCase() === equipmentFournisseur.toUpperCase()) {
-        return true;
-      }
-      return false;
-    }
-    if (eqName === equipmentName || eqName === (equipment.name || equipment.rawData?.nom)) {
-      return true;
-    }
-    return false;
+  const foundEquipment = findEquipmentInApiList(allEquipment, equipment, {
+    type,
+    equipmentName
   });
   if (!foundEquipment) {
     throw new Error(`Equipment to delete not found: ${equipmentName}`);
@@ -608,8 +585,10 @@ export const deleteEquipment = async equipment => {
 };
 const TYPE_TO_FAMILY = {
   Serveurs: 'servers',
+  Servers: 'servers',
   NAS: 'nas',
   Stockage: 'nas',
+  Storage: 'nas',
   Firewalls: 'firewall',
   Switch: 'switch',
   BorneWifi: 'wifi',
@@ -623,7 +602,9 @@ const MODULE_KEY_TO_TYPE = {
   Internet: 'Internet',
   Firewalls: 'Firewalls',
   Firewall: 'Firewalls',
+  Servers: 'Serveurs',
   Serveurs: 'Serveurs',
+  Storage: 'NAS',
   Stockage: 'NAS',
   Switch: 'Switch',
   BorneWifi: 'BorneWifi',
@@ -632,6 +613,13 @@ const MODULE_KEY_TO_TYPE = {
   TOIP: 'TOIP',
   Ordinateurs: 'Ordinateurs'
 };
+function normalizeEquipmentApiType(type) {
+  if (!type) return type;
+  if (type === 'Servers' || type === 'Server') return 'Serveurs';
+  if (type === 'Storage' || type === 'Stockage') return 'NAS';
+  if (type === 'Firewall') return 'Firewalls';
+  return type;
+}
 function resolveFormSiteValue(formData, existingData = {}) {
   if (formData && formData.location !== undefined) {
     return String(formData.location || "").trim();
@@ -713,15 +701,16 @@ function buildEquipmentDataPayload(type, formData, existingData = {}, equipment 
     licences: type === 'Firewalls' ? formData.licences || existingData.licences || [] : undefined,
     firewallType: type === 'Firewalls' ? formData.firewallType || existingData.firewallType || existingData.type || 'materiel' : existingData.firewallType,
     modeHA: type === 'Firewalls' ? formData.modeHA !== undefined ? formData.modeHA : existingData.modeHA : undefined,
-    roleHA: type === 'Firewalls' ? formData.roleHA || existingData.roleHA || '' : undefined,
-    firewallHA: type === 'Firewalls' ? formData.firewallHA !== undefined && formData.firewallHA !== null ? formData.firewallHA : existingData.firewallHA : undefined,
-    firewallHAName: type === 'Firewalls' ? formData.firewallHAName || existingData.firewallHAName || '' : undefined,
+    roleHA: type === 'Firewalls' ? formData.roleHA !== undefined ? formData.roleHA : existingData.roleHA || '' : undefined,
+    firewallHA: type === 'Firewalls' ? formData.firewallHA !== undefined ? formData.firewallHA : existingData.firewallHA : undefined,
+    firewallHAName: type === 'Firewalls' ? formData.firewallHAName !== undefined ? formData.firewallHAName : existingData.firewallHAName || '' : undefined,
     stormshieldWanUrl: type === 'Firewalls' ? formData.stormshieldWanUrl !== undefined ? String(formData.stormshieldWanUrl || '').trim() : existingData.stormshieldWanUrl || '' : undefined,
     commentaire: type === 'Firewalls' || type === 'Routeur' || type === 'Serveurs' || type === 'NAS' || type === 'Switch' || type === 'BorneWifi' || type === 'Alimentation' || type === 'TOIP' || type === 'Ordinateurs' ? formData.commentaire !== undefined ? String(formData.commentaire || '') : existingData.commentaire || '' : existingData.commentaire,
     domaine: type === 'Ordinateurs' ? formData.domaine !== undefined ? String(formData.domaine || '') : existingData.domaine || '' : existingData.domaine,
     netbios: type === 'Ordinateurs' ? formData.netbios !== undefined ? String(formData.netbios || '') : existingData.netbios || '' : existingData.netbios,
     source: type === 'Ordinateurs' ? existingData.source === 'rmm' ? 'rmm' : formData.source || existingData.source || 'manual' : existingData.source,
-    hypervisor: type === 'Serveurs' ? formData.hypervisor !== undefined ? String(formData.hypervisor || '') : existingData.hypervisor || existingData.hyperviseur || '' : existingData.hypervisor,
+    hypervisor: type === 'Serveurs' || type === 'Servers' ? formData.hypervisor !== undefined ? String(formData.hypervisor || '') : existingData.hypervisor || existingData.hyperviseur || '' : existingData.hypervisor,
+    hostServerName: type === 'Serveurs' || type === 'Servers' ? formData.hostServerName !== undefined ? String(formData.hostServerName || '') : existingData.hostServerName || existingData.serveurHote || '' : existingData.hostServerName,
     adminUrl: type === 'Routeur' || type === 'Switch' || type === 'Alimentation' || type === 'TOIP' ? formData.adminUrl !== undefined ? String(formData.adminUrl || '').trim() : existingData.adminUrl || existingData.urlAdministration || '' : existingData.adminUrl,
     manageable: type === 'Switch' || type === 'Alimentation' || type === 'TOIP' ? formData.manageable !== undefined ? !!formData.manageable : !!existingData.manageable : existingData.manageable,
     poeSupport: type === 'Switch' ? formData.poeSupport !== undefined ? !!formData.poeSupport : !!existingData.poeSupport : existingData.poeSupport,
@@ -776,13 +765,14 @@ function buildEquipmentDataPayload(type, formData, existingData = {}, equipment 
   return updatedData;
 }
 export const createEquipment = async (clientId, moduleKey, formData) => {
-  const type = MODULE_KEY_TO_TYPE[moduleKey] || moduleKey;
+  const type = normalizeEquipmentApiType(MODULE_KEY_TO_TYPE[moduleKey] || moduleKey);
   const family = TYPE_TO_FAMILY[type];
   if (!family) throw new Error(`Unsupported equipment type: ${type}`);
   const name = (formData.name || '').trim();
   if (!name) throw new Error('Name is required');
   const data = buildEquipmentDataPayload(type, formData, {});
   const urlFamily = type === 'Serveurs' ? 'servers' : family;
+  const itemKey = typeof crypto !== "undefined" && crypto.randomUUID ? crypto.randomUUID() : `${name}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
   const response = await fetch(`${API_BASE_URL}/clients/modules/${clientId}/${urlFamily}`, {
     method: 'POST',
     credentials: 'include',
@@ -790,7 +780,7 @@ export const createEquipment = async (clientId, moduleKey, formData) => {
       'Content-Type': 'application/json'
     },
     body: JSON.stringify({
-      item_key: name,
+      item_key: itemKey,
       name,
       data,
       is_active: true
@@ -838,8 +828,10 @@ export const updateEquipment = async (equipmentId, formData, equipment = null) =
     }
     const typeToFamily = {
       'Serveurs': 'servers',
+      'Servers': 'servers',
       'NAS': 'nas',
       'Stockage': 'nas',
+      'Storage': 'nas',
       'Firewalls': 'firewall',
       'Switch': 'switch',
       'BorneWifi': 'wifi',
@@ -849,17 +841,18 @@ export const updateEquipment = async (equipmentId, formData, equipment = null) =
       'Internet': 'internet',
       'Ordinateurs': 'ordinateurs'
     };
-    let family = typeToFamily[type];
+    let family = typeToFamily[type] || typeToFamily[normalizeEquipmentApiType(type)];
     if (!family) {
       if (equipment) {
         type = equipment.type || equipment.rawData?.type;
         equipmentName = equipmentName || equipment.name || equipment.rawData?.nom || equipment.rawData?.name || '';
-        family = typeToFamily[type];
+        family = typeToFamily[type] || typeToFamily[normalizeEquipmentApiType(type)];
       }
     }
     if (!family) {
       throw new Error(`Unsupported equipment type: ${type}`);
     }
+    type = normalizeEquipmentApiType(type);
     const resolveRealEquipmentId = () => {
       const dbId = getEquipmentDbId(equipment);
       if (dbId) return dbId;
@@ -880,10 +873,12 @@ export const updateEquipment = async (equipmentId, formData, equipment = null) =
       }
       return null;
     };
-    const putEquipmentUpdate = async (realEquipmentId, existingData) => {
+    const putEquipmentUpdate = async (realEquipmentId, existingData, existingRow = null) => {
       const updatedData = buildEquipmentDataPayload(type, formData, existingData, equipment);
       const urlFamily = type === 'Serveurs' ? 'servers' : family;
       const url = `${API_BASE_URL}/clients/modules/${clientId}/${urlFamily}/${realEquipmentId}`;
+      const nextName = formData.name || equipmentName || existingData.nom || existingData.name;
+      const stableItemKey = existingRow?.item_key || equipment?.rawData?.item_key || equipment?.item_key || null;
       const response = await fetch(url, {
         method: 'PUT',
         credentials: 'include',
@@ -891,8 +886,8 @@ export const updateEquipment = async (equipmentId, formData, equipment = null) =
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-          item_key: formData.name || equipmentName || existingData.nom || existingData.name,
-          name: formData.name || equipmentName || existingData.nom || existingData.name,
+          item_key: stableItemKey || nextName,
+          name: nextName,
           data: updatedData,
           is_active: true
         })
@@ -907,7 +902,7 @@ export const updateEquipment = async (equipmentId, formData, equipment = null) =
     if (directEquipmentId && clientId) {
       const existingData = equipment?.rawData?.data || equipment?.rawData || equipment?.data || equipment || {};
       try {
-        return await putEquipmentUpdate(directEquipmentId, existingData);
+        return await putEquipmentUpdate(directEquipmentId, existingData, equipment?.rawData || null);
       } catch (err) {
         const message = err?.message || "";
         const isNotFound = message.includes("404") || message.includes("Introuvable") || message.includes("Not found");
@@ -922,55 +917,16 @@ export const updateEquipment = async (equipmentId, formData, equipment = null) =
       throw new Error(`Error searching for equipment: ${findEquipmentResponse.status}`);
     }
     const allEquipment = await findEquipmentResponse.json();
-    const foundEquipment = allEquipment.find(eq => {
-      if (equipmentId && eq.id === equipmentId) {
-        return true;
-      }
-      if (equipment?.rawData?.id && eq.id === equipment.rawData.id) {
-        return true;
-      }
-      const eqName = eq.name || eq.data?.nom || eq.data?.name || eq.item_key;
-      const eqFournisseur = eq.data?.fournisseur || '';
-      const eqType = eq.data?.type || '';
-      if (type === 'Internet') {
-        if (eqName === equipmentName || eqName === (equipment?.name || equipment?.rawData?.nom)) {
-          return true;
-        }
-        const originalName = equipment?.rawData?.nom || equipment?.name || '';
-        if (originalName && eqName === originalName) {
-          return true;
-        }
-        if (equipmentName.includes(' ')) {
-          const nameParts = equipmentName.split(' ');
-          const typePart = nameParts[0];
-          const fournisseurPart = nameParts.slice(1).join(' ');
-          if (eqType && eqFournisseur) {
-            if (eqType.toUpperCase() === typePart && eqFournisseur.toUpperCase() === fournisseurPart) {
-              return true;
-            }
-          }
-        }
-        const equipmentFournisseur = equipment?.rawData?.fournisseur || equipment?.fournisseur || formData?.fournisseur || '';
-        const equipmentType = equipment?.rawData?.type || equipment?.internetType || formData?.internetType || '';
-        if (equipmentFournisseur && equipmentType) {
-          if (eqFournisseur && eqType && eqFournisseur.toUpperCase() === equipmentFournisseur.toUpperCase() && eqType.toUpperCase() === equipmentType.toUpperCase()) {
-            return true;
-          }
-        }
-        if (equipmentFournisseur && eqFournisseur && eqFournisseur.toUpperCase() === equipmentFournisseur.toUpperCase()) {
-          return true;
-        }
-      } else {
-        return eqName === equipmentName || eqName === (equipment?.name || equipment?.rawData?.nom);
-      }
-      return false;
+    const foundEquipment = findEquipmentInApiList(allEquipment, equipment, {
+      type,
+      equipmentName
     });
     if (!foundEquipment) {
       throw new Error(`Equipment not found: ${equipmentName}`);
     }
     const realEquipmentId = foundEquipment.id;
     const existingData = foundEquipment.data || equipment?.rawData || {};
-    return putEquipmentUpdate(realEquipmentId, existingData);
+    return putEquipmentUpdate(realEquipmentId, existingData, foundEquipment);
   } catch (error) {
     console.error('Error updating equipment:', error);
     throw error;
@@ -1092,8 +1048,10 @@ export const purgeEquipmentLogs = async (equipmentId, options = {}) => {
 };
 const EQUIPMENT_TYPE_TO_LOG_FAMILY = {
   Serveurs: "servers",
+  Servers: "servers",
   NAS: "nas",
   Stockage: "nas",
+  Storage: "nas",
   Firewalls: "firewall",
   Switch: "switch",
   BorneWifi: "wifi",
@@ -1104,7 +1062,7 @@ const EQUIPMENT_TYPE_TO_LOG_FAMILY = {
   Ordinateurs: "ordinateurs"
 };
 function resolveEquipmentLogFamily(type) {
-  return EQUIPMENT_TYPE_TO_LOG_FAMILY[type] || "servers";
+  return EQUIPMENT_TYPE_TO_LOG_FAMILY[type] || EQUIPMENT_TYPE_TO_LOG_FAMILY[normalizeEquipmentApiType(type)] || "servers";
 }
 export const logEquipmentActivity = async ({
   clientId,
@@ -1414,7 +1372,9 @@ export const getCheckMKHostDetails = async (hostName, site = null, options = {})
 };
 const EQUIPMENT_TYPE_TO_FAMILY = {
   'Serveurs': 'servers',
+  'Servers': 'servers',
   'Stockage': 'stockage',
+  'Storage': 'stockage',
   'NAS': 'stockage',
   'Firewalls': 'firewall',
   'Switch': 'switch',
@@ -1426,7 +1386,8 @@ const EQUIPMENT_TYPE_TO_FAMILY = {
   'Internet': 'internet'
 };
 export const updateEquipmentCheckMKMapping = async (clientId, equipmentType, equipmentName, mapping) => {
-  const family = EQUIPMENT_TYPE_TO_FAMILY[equipmentType] || EQUIPMENT_TYPE_TO_FAMILY[equipmentType === 'NAS' ? 'Stockage' : equipmentType];
+  const normalizedType = normalizeEquipmentApiType(equipmentType);
+  const family = EQUIPMENT_TYPE_TO_FAMILY[equipmentType] || EQUIPMENT_TYPE_TO_FAMILY[normalizedType] || EQUIPMENT_TYPE_TO_FAMILY[equipmentType === 'NAS' ? 'Stockage' : equipmentType];
   if (!family) {
     throw new Error(`Unsupported equipment type for mapping: ${equipmentType}`);
   }

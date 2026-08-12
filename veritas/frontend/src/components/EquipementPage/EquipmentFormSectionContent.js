@@ -34,6 +34,7 @@ export default function EquipmentFormSectionContent({
   updateBrandModel,
   availableSites,
   firewallPartnerOptions,
+  hostServerOptions = [],
   isPhysicalServer,
   serverType,
   isSynologyStorageForm,
@@ -694,6 +695,28 @@ export default function EquipmentFormSectionContent({
                       {option.label}
                     </option>)}
                 </select>
+              </div>}
+            {apiType === "Servers" && serverProfile?.showHypervisor && <div className={styles.field}>
+                <label className={styles.label} htmlFor="equipment-form-host-server">
+                  {f.hostServer}
+                </label>
+                <select id="equipment-form-host-server" className={styles.input} value={formData.hostServerName ?? ""} onChange={e => update("hostServerName", e.target.value)} disabled={hostServerOptions.length === 0 && !(formData.hostServerName || "").trim()}>
+                  <option value="">
+                    {hostServerOptions.length === 0 ? f.hostServerNoneAvailable : f.hostServerSelect}
+                  </option>
+                  {formData.hostServerName && !hostServerOptions.includes(formData.hostServerName) ? <option value={formData.hostServerName}>
+                      {formData.hostServerName} {f.currentValueSuffix}
+                    </option> : null}
+                  {hostServerOptions.map(name => <option key={name} value={name}>
+                      {name}
+                    </option>)}
+                </select>
+                {hostServerOptions.length === 0 ? <p className={styles.hint} style={{
+              marginTop: "0.35rem",
+              marginBottom: 0
+            }}>
+                    {f.hostServerHint}
+                  </p> : null}
               </div>}
             <div className={styles.field}>
               <label className={styles.label}>{f.osSystem}</label>

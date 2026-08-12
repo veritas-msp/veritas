@@ -1,4 +1,5 @@
 import express from 'express';
+import { randomUUID } from 'crypto';
 import { pool } from '../../database/db.js';
 import { transformClientModulesToFrontend } from '../../utils/transformClientModules.js';
 import { buildEquipmentLogQuery } from '../../utils/equipmentLogs.js';
@@ -3141,43 +3142,25 @@ modulesRouter.post('/:clientId/:family', requireModulePermission("create"), asyn
       error: "clientId required"
     });
     const finalName = name || item_key || null;
-    const finalItemKey = item_key || name || null;
+    // Prefer a stable unique key so duplicate display names never collide/overwrite.
+    const requestedKey = item_key != null ? String(item_key).trim() : "";
+    const finalItemKey = requestedKey && requestedKey !== String(finalName || "").trim() ? requestedKey : finalName ? `${String(finalName).trim()}-${randomUUID()}` : randomUUID();
     let result;
     try {
-      if (finalName) {
-        result = await pool.query(`INSERT INTO ${table} (client_id, item_key, name, data, is_active)
-           VALUES ($1, $2, $3, $4, $5)
-           ON CONFLICT (client_id, name) DO UPDATE SET
-             item_key = EXCLUDED.item_key,
-             data = EXCLUDED.data,
-             is_active = EXCLUDED.is_active,
-             updated_at = NOW()
-           RETURNING *`, [clientId, finalItemKey, finalName, data || null, is_active !== false]);
-      } else if (finalItemKey) {
-        result = await pool.query(`INSERT INTO ${table} (client_id, item_key, name, data, is_active)
-           VALUES ($1, $2, $3, $4, $5)
-           ON CONFLICT (client_id, item_key) DO UPDATE SET
-             name = EXCLUDED.name,
-             data = EXCLUDED.data,
-             is_active = EXCLUDED.is_active,
-             updated_at = NOW()
-           RETURNING *`, [clientId, finalItemKey, finalName, data || null, is_active !== false]);
-      } else {
-        result = await pool.query(`INSERT INTO ${table} (client_id, item_key, name, data, is_active)
-           VALUES ($1, $2, $3, $4, $5)
-           RETURNING *`, [clientId, finalItemKey, finalName, data || null, is_active !== false]);
+      result = await pool.query(`INSERT INTO ${table} (client_id, item_key, name, data, is_active)
+         VALUES ($1, $2, $3, $4, $5)
+         RETURNING *`, [clientId, finalItemKey, finalName, data || null, is_active !== false]);
+    } catch (insertErr) {
+      if (insertErr?.code === "23505") {
+        return res.status(409).json({
+          error: "An item with this unique key or name already exists for this client."
+        });
       }
-    } catch (conflictErr) {
-      if (conflictErr.code === '42P10' || conflictErr.code === '42704' || conflictErr.message.includes('constraint')) {
-        result = await pool.query(`INSERT INTO ${table} (client_id, item_key, name, data, is_active)
-           VALUES ($1, $2, $3, $4, $5)
-           RETURNING *`, [clientId, finalItemKey, finalName, data || null, is_active !== false]);
-      } else {
-        throw conflictErr;
-      }
+      throw insertErr;
     }
     res.status(201).json(result.rows[0]);
   } catch (err) {
+    console.error("[POST modules]", err.message);
     res.status(500).json({
       error: "Server error"
     });
@@ -3377,14 +3360,24 @@ modulesRouter.put('/:clientId/:family/:id', requireModulePermission("edit"), asy
       ...oldData,
       ...newData
     } : data || null;
-    const result = await pool.query(`UPDATE ${table}
-       SET item_key = $1,
-           name = $2,
-           data = $3,
-           is_active = $4,
+    let result;
+    try {
+      // Keep item_key stable: display name can be duplicated without colliding keys.
+      result = await pool.query(`UPDATE ${table}
+       SET name = $1,
+           data = $2,
+           is_active = $3,
            updated_at = NOW()
-       WHERE id = $5 AND client_id = $6
-       RETURNING *`, [item_key || name || null, name || item_key || null, dataToSave, is_active !== false, id, clientId]);
+       WHERE id = $4 AND client_id = $5
+       RETURNING *`, [name || item_key || oldItem.name || oldItem.item_key || null, dataToSave, is_active !== false, id, clientId]);
+    } catch (updateErr) {
+      if (updateErr?.code === "23505") {
+        return res.status(409).json({
+          error: "An item with this unique key or name already exists for this client."
+        });
+      }
+      throw updateErr;
+    }
     if (result.rows.length === 0) return res.status(404).json({
       error: "Not found"
     });

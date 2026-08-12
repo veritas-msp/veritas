@@ -62,7 +62,7 @@ export const FIREWALL_BRAND_META = {
   }
 };
 export const FIREWALL_CATALOG_MATERIEL = {
-  Stormshield: ["SN160W", "SN210W", "SN310", "SN510", "SN710", "SN920", "SN2100", "SN3100", "SN4100", "SN6100", "SN7100", "SN9100"],
+  Stormshield: ["SN160", "SN160W", "SN210W", "SN310", "SN320", "SN510", "SN710", "SN920", "SN2100", "SN3100", "SN4100", "SN6100", "SN7100", "SN9100"],
   Fortinet: ["FortiGate 30G", "FortiGate 40F", "FortiGate 60F", "FortiGate 70G", "FortiGate 80F", "FortiGate 100F", "FortiGate 200F", "FortiGate 400F", "FortiGate 600F", "FortiGate 900G", "FortiGate 1000F", "FortiGate 2000F"],
   PaloAltoNetworks: ["PA-410", "PA-440", "PA-450", "PA-460", "PA-820", "PA-850", "PA-3220", "PA-3250", "PA-3410", "PA-3420", "PA-3430", "PA-3440", "PA-5450"],
   CheckPoint: ["1530", "1550", "1570", "1590", "1600", "1800", "6200", "6900", "7300", "7800", "Quantum Spark 1600", "Quantum Spark 1800"],

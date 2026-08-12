@@ -9,7 +9,7 @@ import { SWITCH_CATALOG, WIFI_AP_CATALOG, getAlimentationCatalogByType, getToipC
 import { isSynologyBrand } from "./synologyEquipmentUtils";
 import { normalizeInternetFormData } from "../RapportPage/monitoring/internetIpUtils";
 import { syncInternetLegacyDebit } from "./internetConnectionUtils";
-import { buildAvailableSites, buildEquipmentForUpdate, buildEquipmentId, buildEquipmentSectionMeta, buildInitialFormData, cloneEquipmentFormSnapshot, equipmentFormsEqual, getApiType, getFirewallPartnerOptions, isEquipmentRequiredSectionIncomplete, isToipVoipSectionVisible, normalizeServerType, storageTypeToLegacyType } from "./equipmentFormConfig";
+import { buildAvailableSites, buildEquipmentForUpdate, buildEquipmentId, buildEquipmentSectionMeta, buildInitialFormData, cloneEquipmentFormSnapshot, equipmentFormsEqual, getApiType, getFirewallPartnerOptions, getHostServerOptions, isEquipmentRequiredSectionIncomplete, isToipVoipSectionVisible, normalizeServerType, storageTypeToLegacyType, syncFirewallHaPeerLink } from "./equipmentFormConfig";
 import { useAppLocale } from "../../hooks/useAppGeneralSettings";
 import { getEquipmentFormSectionsI18n, getEquipmentModalsCopy, getEquipmentModuleLabel, validateEquipmentFormI18n, EQUIPMENT_MODULE_ICONS, interpolate } from "./equipmentModalsI18n";
 import EquipmentFormSectionContent from "./EquipmentFormSectionContent";
@@ -29,6 +29,7 @@ export default function EquipmentFormModal({
   mode = "edit",
   backgroundSave = false,
   peerFirewalls = []
+  peerServers = []
 }) {
   const locale = useAppLocale();
   const copy = useMemo(() => getEquipmentModalsCopy(locale), [locale]);
@@ -56,6 +57,10 @@ export default function EquipmentFormModal({
     currentPartnerName: formData.firewallHAName,
     peerFirewalls
   }), [client, equipment, formData.firewallHAName, peerFirewalls]);
+  const hostServerOptions = useMemo(() => getHostServerOptions(client, equipment, {
+    currentHostName: formData.hostServerName,
+    peerServers
+  }), [client, equipment, formData.hostServerName, peerServers]);
   const sections = useMemo(() => {
     const list = getEquipmentFormSectionsI18n(moduleKey, locale, {
       firewallType: formData.firewallType,
@@ -193,14 +198,28 @@ export default function EquipmentFormModal({
     setSaving(true);
     setError(null);
     const submitData = buildSubmitData();
+    const syncFirewallHaIfNeeded = async () => {
+      if (moduleKey !== "Firewalls") return;
+      const clientFirewalls = Array.isArray(client?.equipements?.Firewalls) ? client.equipements.Firewalls : [];
+      await syncFirewallHaPeerLink({
+        clientId: client.id,
+        currentEquipment: equipment,
+        submitData,
+        peerFirewalls: [...clientFirewalls, ...(Array.isArray(peerFirewalls) ? peerFirewalls : [])],
+        updateEquipmentFn: updateEquipment
+      });
+    };
     const persistToApi = async () => {
       await persistClientWifiCatalog();
       if (isAddMode) {
-        return createEquipment(client.id, moduleKey, submitData);
+        const created = await createEquipment(client.id, moduleKey, submitData);
+        await syncFirewallHaIfNeeded();
+        return created;
       }
       const equipmentId = buildEquipmentId(client.id, moduleKey, equipment);
       const equipmentForUpdate = buildEquipmentForUpdate(client.id, moduleKey, equipment);
       await updateEquipment(equipmentId, submitData, equipmentForUpdate);
+      await syncFirewallHaIfNeeded();
       return null;
     };
     if (backgroundSave) {
@@ -345,7 +364,7 @@ export default function EquipmentFormModal({
             }}>
                 {error}
               </div>}
-            <EquipmentFormSectionContent activeSection={activeSection} moduleKey={moduleKey} apiType={apiType} formData={formData} setFormData={setFormData} update={update} updateBrandModel={updateBrandModel} availableSites={availableSites} firewallPartnerOptions={firewallPartnerOptions} isPhysicalServer={isPhysicalServer} serverType={serverType} isSynologyStorageForm={isSynologyStorageForm} brandModelCatalog={brandModelCatalog} storageBrandCatalog={storageBrandCatalog} isAddMode={isAddMode} isRequiredSectionIncomplete={isRequiredSectionIncomplete} formCopy={copy} />
+            <EquipmentFormSectionContent activeSection={activeSection} moduleKey={moduleKey} apiType={apiType} formData={formData} setFormData={setFormData} update={update} updateBrandModel={updateBrandModel} availableSites={availableSites} firewallPartnerOptions={firewallPartnerOptions} hostServerOptions={hostServerOptions} isPhysicalServer={isPhysicalServer} serverType={serverType} isSynologyStorageForm={isSynologyStorageForm} brandModelCatalog={brandModelCatalog} storageBrandCatalog={storageBrandCatalog} isAddMode={isAddMode} isRequiredSectionIncomplete={isRequiredSectionIncomplete} formCopy={copy} />
           </div>
         </div>
 

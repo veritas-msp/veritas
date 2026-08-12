@@ -12,6 +12,7 @@ const EMPTY = "-";
 function resolveModuleKey(equipment) {
   if (!equipment) return "Servers";
   if (equipment.type === "NAS" || equipment.type === "SAN") return "Storage";
+  if (equipment.type === "Serveurs") return "Servers";
   return equipment.type || "Servers";
 }
 function isTruthy(value) {
@@ -112,6 +113,7 @@ const FIELD_FORMATTERS = {
   memoire: f => f.memoire,
   stockage: f => f.stockage,
   hypervisor: f => f.hypervisor,
+  hostServerName: f => f.hostServerName,
   role: f => formatList(f.role),
   remoteAccessSolution: f => {
     if (!f.remoteAccessSolution) return null;
@@ -188,6 +190,7 @@ const FIELD_LABELS = {
   memoire: "Memory",
   stockage: "Storage",
   hypervisor: "Hyperviseur",
+  hostServerName: "Serveur hôte",
   role: "Roles",
   remoteAccessSolution: "Prise en main",
   quickConnect: "QuickConnect",
@@ -226,7 +229,7 @@ const SECTION_FIELDS = {
   internetNotes: ["commentaire"],
   hardware: ["manufacturer", "model", "serial", "expirationGarantie", "firmware", "adresseMac", "poeSupport", "empilage"],
   network: ["ip", "vlan", "mac", "stormshieldWanUrl"],
-  system: ["editionWindows", "windowsFeatureVersion", "windowsBuild", "windowsLicenseStatus", "systeme", "domaine", "processeur", "memoire", "stockage", "hypervisor", "role", "quickConnect"],
+  system: ["editionWindows", "windowsFeatureVersion", "windowsBuild", "windowsLicenseStatus", "systeme", "domaine", "processeur", "memoire", "stockage", "hypervisor", "hostServerName", "role", "quickConnect"],
   remote: ["remoteAccessSolution"],
   storage: ["raid", "capacite", "nbDisquesActuels", "nbDisquesMax", "luns", "numeroDisque", "role"],
   ha: ["modeHA", "roleHA", "firewallHAName"],
@@ -327,8 +330,11 @@ function shouldShowField(fieldKey, formData, equipment) {
   if (fieldKey === "hypervisor" && moduleKey === "Servers") {
     return getServerFormProfile(formData.typeServer).showHypervisor;
   }
+  if (fieldKey === "hostServerName" && moduleKey === "Servers") {
+    return getServerFormProfile(formData.typeServer).showHypervisor && Boolean(formData.hostServerName);
+  }
   if (["processeur", "memoire", "stockage"].includes(fieldKey) && moduleKey === "Servers") {
-    return getServerFormProfile(formData.typeServer).showHardware;
+    return true;
   }
   if (["manufacturer", "model", "serial", "expirationGarantie"].includes(fieldKey) && moduleKey === "Servers") {
     return getServerFormProfile(formData.typeServer).showHardware;

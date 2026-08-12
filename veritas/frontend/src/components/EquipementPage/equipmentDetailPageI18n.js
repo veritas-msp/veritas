@@ -53,7 +53,8 @@ const FR = {
     sourceManual: "Saisie",
     sourceRmm: "Agent RMM",
     sourceCheckmk: "CheckMK",
-    openHaPeer: "Ouvrir la fiche du pair HA"
+    openHaPeer: "Ouvrir la fiche du pair HA",
+    openHostServer: "Ouvrir la fiche du serveur hôte"
   },
   events: {
     title: "Événements liés",
@@ -512,6 +513,7 @@ const FR = {
     memoire: "Mémoire",
     stockage: "Stockage",
     hypervisor: "Hyperviseur",
+    hostServerName: "Serveur hôte",
     role: "Rôles",
     remoteAccessSolution: "Prise en main",
     quickConnect: "QuickConnect",
@@ -692,7 +694,8 @@ const EN = {
     sourceManual: "Manual",
     sourceRmm: "RMM agent",
     sourceCheckmk: "CheckMK",
-    openHaPeer: "Open HA peer record"
+    openHaPeer: "Open HA peer record",
+    openHostServer: "Open host server record"
   },
   events: {
     title: "Related events",
@@ -1151,6 +1154,7 @@ const EN = {
     memoire: "Memory",
     stockage: "Storage",
     hypervisor: "Hypervisor",
+    hostServerName: "Host server",
     role: "Roles",
     remoteAccessSolution: "Remote access",
     quickConnect: "QuickConnect",

@@ -226,6 +226,7 @@ const patchEquipmentFromFormData = (equipment, formData, moduleKey) => {
     if (formData.stockage !== undefined) raw.stockage = formData.stockage;
     if (formData.systeme !== undefined) raw.systeme = formData.systeme;
     if (formData.hypervisor !== undefined) raw.hypervisor = formData.hypervisor;
+    if (formData.hostServerName !== undefined) raw.hostServerName = formData.hostServerName;
     if (formData.remoteAccessSolution !== undefined) raw.remoteAccessSolution = formData.remoteAccessSolution;
     if (formData.remoteAccessId !== undefined) raw.remoteAccessId = formData.remoteAccessId;
     if (formData.remoteAccessSolution === "anydesk" || !formData.remoteAccessSolution) {
@@ -247,6 +248,7 @@ const patchEquipmentFromFormData = (equipment, formData, moduleKey) => {
     patched.stockage = formData.stockage ?? equipment.stockage;
     patched.systeme = formData.systeme ?? equipment.systeme;
     patched.hypervisor = formData.hypervisor ?? equipment.hypervisor;
+    patched.hostServerName = formData.hostServerName ?? equipment.hostServerName;
     patched.remoteAccessSolution = formData.remoteAccessSolution ?? equipment.remoteAccessSolution;
     patched.remoteAccessId = formData.remoteAccessId ?? equipment.remoteAccessId;
     patched.anydeskId = formData.remoteAccessSolution === "anydesk" || !formData.remoteAccessSolution ? formData.remoteAccessId ?? equipment.anydeskId ?? equipment.remoteAccessId : "";
@@ -645,7 +647,7 @@ const BORNE_WIFI_COLUMN_LABELS = {
 };
 const MONITORING_COLUMN_LABEL = "Monitoring";
 const EMBEDDED_TYPE_COLUMNS = {
-  Internet: ["name", "ip", "fournisseur", "debit", "mapping"],
+  Internet: ["name", "ip", "location", "fournisseur", "debit", "mapping"],
   Firewalls: ["name", "ip", "location", "model", "serial", "monitoring", "mapping"],
   Servers: ["name", "ip", "location", "systeme", "monitoring", "mapping"],
   Ordinateurs: ["name", "ip", "systeme", "domaine", "agentStatus", "mapping"],
@@ -1845,6 +1847,12 @@ const EquipmentPage = forwardRef(function EquipmentPage({
     const clientId = editEquipmentModal.client?.id || embeddedClient?.id || fixedClientId || null;
     if (!clientId) return [];
     return allEquipment.filter(eq => eq.type === "Firewalls" && String(eq.clientId) === String(clientId));
+  }, [allEquipment, editEquipmentModal.open, editEquipmentModal.client?.id, embeddedClient?.id, fixedClientId]);
+  const editModalPeerServers = useMemo(() => {
+    if (!editEquipmentModal.open) return [];
+    const clientId = editEquipmentModal.client?.id || embeddedClient?.id || fixedClientId || null;
+    if (!clientId) return [];
+    return allEquipment.filter(eq => (eq.type === "Servers" || eq.type === "Serveurs") && String(eq.clientId) === String(clientId));
   }, [allEquipment, editEquipmentModal.open, editEquipmentModal.client?.id, embeddedClient?.id, fixedClientId]);
   useEffect(() => {
     if (addFlowOpen && editEquipmentModal.open) {
@@ -3350,7 +3358,7 @@ const EquipmentPage = forwardRef(function EquipmentPage({
       setUnifiApiModalEquipment(null);
     }} />}
 
-      {editEquipmentModal.client && <EquipmentFormModal open={editEquipmentModal.open} onClose={closeEditEquipmentModal} client={editEquipmentModal.client} equipment={editEquipmentModal.equipment} moduleKey={editEquipmentModal.moduleKey} mode={editEquipmentModal.mode} peerFirewalls={editModalPeerFirewalls} onSaved={handleEquipmentSaved} onDeleted={handleEquipmentDeleted} />}
+      {editEquipmentModal.client && <EquipmentFormModal open={editEquipmentModal.open} onClose={closeEditEquipmentModal} client={editEquipmentModal.client} equipment={editEquipmentModal.equipment} moduleKey={editEquipmentModal.moduleKey} mode={editEquipmentModal.mode} peerFirewalls={editModalPeerFirewalls} peerServers={editModalPeerServers} onSaved={handleEquipmentSaved} onDeleted={handleEquipmentDeleted} />}
 
       <ConfirmModal open={!!rmmRevokeTarget} title={modalsCopy.confirm?.rmmRevoke?.title} message={rmmRevokeTarget ? interpolate(modalsCopy.confirm?.rmmRevoke?.message, {
       name: rmmRevokeTarget.name || rmmRevokeTarget.rawData?.nom || modalsCopy.confirm?.rmmRevoke?.untitledAgent

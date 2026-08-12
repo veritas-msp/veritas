@@ -4,7 +4,7 @@ import SiteMapPreview from "../EnterprisesPage/SiteMapPreview";
 import { buildSiteAddress, findClientSiteByLocation, getSiteDisplayName } from "../../utils/clientSites";
 import { buildEquipmentDetailSections } from "./equipmentDetailConfig";
 import { buildBorneWifiSsidFormState } from "./wifiApSsidUtils";
-import { getFirewallDisplayName, resolveFirewallHaPeer, getStorageFormProfile } from "./equipmentFormConfig";
+import { getFirewallDisplayName, resolveFirewallHaPeer, getServerDisplayName, resolveHostServerPeer, getStorageFormProfile } from "./equipmentFormConfig";
 import { shouldShowStorageDiskBays } from "./storageDiskUtils";
 import StorageDiskBayDisplay from "./StorageDiskBayDisplay";
 import { getEquipmentFormOptionsCopy } from "./equipmentFormOptionsI18n";
@@ -70,6 +70,13 @@ function SpecField({
             <Icon icon="mdi:arrow-right" width={14} className={styles.haPeerLinkArrow} aria-hidden />
           </button>;
       }
+      if (field.key === "hostServerName") {
+        return <button type="button" className={styles.haPeerLink} onClick={equipmentLink.onClick} title={equipmentLink.title}>
+            <Icon icon="mdi:server" width={14} aria-hidden />
+            <span className={styles.haPeerLinkLabel}>{field.value}</span>
+            <Icon icon="mdi:arrow-right" width={14} className={styles.haPeerLinkArrow} aria-hidden />
+          </button>;
+      }
       return <button type="button" className={`${styles.fieldValue} ${styles.fieldLink} ${field.mono ? styles.fieldValueMono : ""}`} onClick={equipmentLink.onClick} title={equipmentLink.title}>
           {field.value}
         </button>;
@@ -119,6 +126,7 @@ export default function EquipmentDetailSpecsPanel({
   clientSites = [],
   clientSsids = [],
   peerFirewalls = [],
+  peerServers = [],
   onOpenEquipment,
   remoteAccessAction = null,
   compact = false,
@@ -156,6 +164,14 @@ export default function EquipmentDetailSpecsPanel({
     if (equipment?.type !== "Firewalls" || !formData?.modeHA) return null;
     return resolveFirewallHaPeer(equipment, peerFirewalls);
   }, [equipment, formData?.modeHA, peerFirewalls]);
+  const hostServerPeer = useMemo(() => {
+    if (equipment?.type !== "Servers" && equipment?.type !== "Serveurs") return null;
+    if (!formData?.hostServerName) return null;
+    return resolveHostServerPeer({
+      ...equipment,
+      hostServerName: formData.hostServerName
+    }, peerServers);
+  }, [equipment, formData?.hostServerName, peerServers]);
   const showStorageDiskBays = useMemo(() => {
     if (equipment?.type !== "NAS" && equipment?.type !== "Storage") return false;
     const profile = getStorageFormProfile(displayFormData?.storageType || displayFormData?.type);
@@ -166,37 +182,73 @@ export default function EquipmentDetailSpecsPanel({
   const rawSections = buildEquipmentDetailSections(equipment, displayFormData, locale);
   const baseSections = equipment?.type === "Internet" ? mergeInternetDisplaySections(rawSections) : rawSections;
   const sections = useMemo(() => {
-    if (!haPeer || equipment?.type !== "Firewalls") return baseSections;
-    const peerName = getFirewallDisplayName(haPeer);
-    if (!peerName) return baseSections;
-    return baseSections.map(section => {
-      if (section.id !== "ha") return section;
-      const peerFieldIndex = section.fields.findIndex(field => field.key === "firewallHAName");
-      if (peerFieldIndex >= 0) {
-        return {
-          ...section,
-          fields: section.fields.map((field, index) => index === peerFieldIndex ? {
-            ...field,
-            value: peerName
-          } : field)
-        };
+    let nextSections = baseSections;
+    if (haPeer && equipment?.type === "Firewalls") {
+      const peerName = getFirewallDisplayName(haPeer);
+      if (peerName) {
+        nextSections = nextSections.map(section => {
+          if (section.id !== "ha") return section;
+          const peerFieldIndex = section.fields.findIndex(field => field.key === "firewallHAName");
+          if (peerFieldIndex >= 0) {
+            return {
+              ...section,
+              fields: section.fields.map((field, index) => index === peerFieldIndex ? {
+                ...field,
+                value: peerName
+              } : field)
+            };
+          }
+          const roleIndex = section.fields.findIndex(field => field.key === "roleHA");
+          const peerField = {
+            key: "firewallHAName",
+            label: copy.fields.firewallHAName,
+            value: peerName,
+            mono: false,
+            source: "manual"
+          };
+          const fields = [...section.fields];
+          if (roleIndex >= 0) fields.splice(roleIndex + 1, 0, peerField);else fields.push(peerField);
+          return {
+            ...section,
+            fields
+          };
+        });
       }
-      const roleIndex = section.fields.findIndex(field => field.key === "roleHA");
-      const peerField = {
-        key: "firewallHAName",
-        label: copy.fields.firewallHAName,
-        value: peerName,
-        mono: false,
-        source: "manual"
-      };
-      const fields = [...section.fields];
-      if (roleIndex >= 0) fields.splice(roleIndex + 1, 0, peerField);else fields.push(peerField);
-      return {
-        ...section,
-        fields
-      };
-    });
-  }, [baseSections, haPeer, equipment?.type, copy.fields.firewallHAName]);
+    }
+    if (hostServerPeer && (equipment?.type === "Servers" || equipment?.type === "Serveurs")) {
+      const hostName = getServerDisplayName(hostServerPeer);
+      if (hostName) {
+        nextSections = nextSections.map(section => {
+          if (section.id !== "system") return section;
+          const hostFieldIndex = section.fields.findIndex(field => field.key === "hostServerName");
+          if (hostFieldIndex >= 0) {
+            return {
+              ...section,
+              fields: section.fields.map((field, index) => index === hostFieldIndex ? {
+                ...field,
+                value: hostName
+              } : field)
+            };
+          }
+          const hypervisorIndex = section.fields.findIndex(field => field.key === "hypervisor");
+          const hostField = {
+            key: "hostServerName",
+            label: copy.fields.hostServerName,
+            value: hostName,
+            mono: false,
+            source: "manual"
+          };
+          const fields = [...section.fields];
+          if (hypervisorIndex >= 0) fields.splice(hypervisorIndex + 1, 0, hostField);else fields.push(hostField);
+          return {
+            ...section,
+            fields
+          };
+        });
+      }
+    }
+    return nextSections;
+  }, [baseSections, haPeer, hostServerPeer, equipment?.type, copy.fields.firewallHAName, copy.fields.hostServerName]);
   const sectionsGridClass = resolveSectionsGridClass(sections.length);
   const rmmManagedComputer = equipment?.type === "Ordinateurs" && isRmmManagedEquipment(equipment);
   const rmmInlineFields = useMemo(() => {
@@ -206,6 +258,22 @@ export default function EquipmentDetailSpecsPanel({
   const locationName = String(formData?.location || equipment?.location || "").trim();
   const resolvedSite = useMemo(() => locationName ? findClientSiteByLocation(clientSites, locationName) : null, [clientSites, locationName]);
   const showSiteVignette = Boolean(locationName && locationName !== "Sans site");
+  const resolveEquipmentLink = field => {
+    if (!onOpenEquipment) return null;
+    if (field.key === "firewallHAName" && haPeer) {
+      return {
+        onClick: () => onOpenEquipment(haPeer),
+        title: copy.specs.openHaPeer
+      };
+    }
+    if (field.key === "hostServerName" && hostServerPeer) {
+      return {
+        onClick: () => onOpenEquipment(hostServerPeer),
+        title: copy.specs.openHostServer
+      };
+    }
+    return null;
+  };
   if (!sections.length) {
     return <section className={`${styles.panel} ${compact ? styles.panelCompact : ""}`}>
         <header className={styles.panelHeader}>
@@ -230,10 +298,7 @@ export default function EquipmentDetailSpecsPanel({
           name: locationName
         }} locationLabel={locationName} /> : null}
           {meaningfulFields.length > 0 ? <div className={styles.rmmVeritasFields}>
-              {meaningfulFields.map(field => <SpecField key={field.key} field={field} remoteAccessAction={remoteAccessAction} equipmentLink={field.key === "firewallHAName" && haPeer && onOpenEquipment ? {
-            onClick: () => onOpenEquipment(haPeer),
-            title: copy.specs.openHaPeer
-          } : null} layout="inline" copy={copy} />)}
+              {meaningfulFields.map(field => <SpecField key={field.key} field={field} remoteAccessAction={remoteAccessAction} equipmentLink={resolveEquipmentLink(field)} layout="inline" copy={copy} />)}
             </div> : null}
         </div>
       </section>;
@@ -281,10 +346,7 @@ export default function EquipmentDetailSpecsPanel({
               {hasDebitGauges ? <InternetDebitCounters download={formData?.debitDownload} upload={formData?.debitUpload} combined={formData?.debit} /> : null}
 
               {visibleFields.length > 0 ? <div className={`${styles.fieldGrid} ${compact ? styles.fieldGridCompact : ""}`}>
-                  {visibleFields.map(field => <SpecField key={field.key} field={field} remoteAccessAction={remoteAccessAction} equipmentLink={field.key === "firewallHAName" && haPeer && onOpenEquipment ? {
-              onClick: () => onOpenEquipment(haPeer),
-              title: copy.specs.openHaPeer
-            } : null} copy={copy} />)}
+                  {visibleFields.map(field => <SpecField key={field.key} field={field} remoteAccessAction={remoteAccessAction} equipmentLink={resolveEquipmentLink(field)} copy={copy} />)}
                 </div> : null}
 
               {section.id === "storage" && showStorageDiskBays ? <div className={styles.storageDiskDisplay}>

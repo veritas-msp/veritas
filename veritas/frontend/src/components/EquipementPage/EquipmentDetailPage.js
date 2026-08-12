@@ -105,6 +105,7 @@ export default function EquipmentDetailPage({
   const [clientSites, setClientSites] = useState([]);
   const [clientSsids, setClientSsids] = useState([]);
   const [peerFirewalls, setPeerFirewalls] = useState([]);
+  const [peerServers, setPeerServers] = useState([]);
   const [heroMenuOpen, setHeroMenuOpen] = useState(false);
   const [rmmSyncRequesting, setRmmSyncRequesting] = useState(false);
   const [rmmUpdateRequesting, setRmmUpdateRequesting] = useState(false);
@@ -461,16 +462,22 @@ export default function EquipmentDetailPage({
     };
   }, [equipment?.clientId]);
   useEffect(() => {
-    if (equipment?.type !== "Firewalls" || !equipment?.clientId) {
+    if ((equipment?.type !== "Firewalls" && equipment?.type !== "Servers" && equipment?.type !== "Serveurs") || !equipment?.clientId) {
       setPeerFirewalls([]);
+      setPeerServers([]);
       return undefined;
     }
     let mounted = true;
     getClientHardwareEquipment(equipment.clientId).then(list => {
       if (!mounted) return;
-      setPeerFirewalls((Array.isArray(list) ? list : []).filter(eq => eq.type === "Firewalls"));
+      const rows = Array.isArray(list) ? list : [];
+      setPeerFirewalls(rows.filter(eq => eq.type === "Firewalls"));
+      setPeerServers(rows.filter(eq => eq.type === "Servers" || eq.type === "Serveurs"));
     }).catch(() => {
-      if (mounted) setPeerFirewalls([]);
+      if (mounted) {
+        setPeerFirewalls([]);
+        setPeerServers([]);
+      }
     });
     return () => {
       mounted = false;
@@ -662,6 +669,7 @@ export default function EquipmentDetailPage({
         ssids: Array.isArray(client.ssids) ? [...client.ssids] : client.ssids
       });
       setPeerFirewalls((Array.isArray(allEquipment) ? allEquipment : []).filter(eq => eq.type === "Firewalls" && String(eq.clientId) === String(equipment.clientId)));
+      setPeerServers((Array.isArray(allEquipment) ? allEquipment : []).filter(eq => (eq.type === "Servers" || eq.type === "Serveurs") && String(eq.clientId) === String(equipment.clientId)));
       setEditModalOpen(true);
     } catch (error) {
       console.error("Open edit modal:", error);
@@ -709,7 +717,7 @@ export default function EquipmentDetailPage({
   }, [equipment?.location]);
   const detectInfoChanges = (currentData, initialData) => {
     if (!initialData) return false;
-    const infoFields = ["name", "location", "typeServer", "ip", "vlan", "systeme", "remoteAccessSolution", "remoteAccessId", "manufacturer", "model", "serial", "expirationGarantie", "processeur", "memoire", "stockage", "role", "raid", "capacite", "nbDisquesActuels", "nbDisquesMax", "disques", "luns", "fournisseur", "internetType", "debit", "categorie", "ipNonFixe", "firmware", "licences", "modeHA", "roleHA", "firewallHA", "firewallHAName", "adresseMac", "quickConnect"];
+    const infoFields = ["name", "location", "typeServer", "ip", "vlan", "systeme", "remoteAccessSolution", "remoteAccessId", "manufacturer", "model", "serial", "expirationGarantie", "processeur", "memoire", "stockage", "role", "raid", "capacite", "nbDisquesActuels", "nbDisquesMax", "disques", "luns", "fournisseur", "internetType", "debit", "categorie", "ipNonFixe", "firmware", "licences", "modeHA", "roleHA", "firewallHA", "firewallHAName", "hostServerName", "hypervisor", "adresseMac", "quickConnect"];
     for (const field of infoFields) {
       const cur = currentData[field];
       const init = initialData[field];
@@ -1336,7 +1344,7 @@ export default function EquipmentDetailPage({
         <div className={styles.mainContent}>
           {rightPanelTab === 'dashboard' && <div className={styles.dashboardSplit}>
               <div className={styles.dashboardMain}>
-                <EquipmentDetailSpecsPanel equipment={equipment} formData={formData} clientSites={clientSites} clientSsids={clientSsids} peerFirewalls={peerFirewalls} onOpenEquipment={openLinkedEquipment} remoteAccessAction={remoteAccessAction} />
+                <EquipmentDetailSpecsPanel equipment={equipment} formData={formData} clientSites={clientSites} clientSsids={clientSsids} peerFirewalls={peerFirewalls} peerServers={peerServers} onOpenEquipment={openLinkedEquipment} remoteAccessAction={remoteAccessAction} />
 
                 {equipment.type === 'Ordinateurs' && <RmmMonitoringPanel equipment={equipmentWithRmmLive} syncPending={rmmSyncPending} syncRequestedAt={rmmSyncRequestedAt} heartbeatIntervalMinutes={rmmHeartbeatMinutes} variant="general" agentStatusInHero={showRmmHeroStatus} />}
 
@@ -2071,7 +2079,7 @@ export default function EquipmentDetailPage({
       setPurgeLogsConfirmOpen(false);
     }} onConfirm={handlePurgeLogs} title={modalsCopy.confirm?.purgeLogs?.title} message={purgeLogsMessage} icon="mdi:delete-sweep" confirmLabel={modalsCopy.confirm?.purgeLogs?.confirm} confirmVariant="dangerSolid" confirmLoading={purgingLogs} />
 
-      {modalClient && equipmentModuleKey ? <EquipmentFormModal open={editModalOpen} onClose={() => setEditModalOpen(false)} client={modalClient} equipment={equipment} moduleKey={equipmentModuleKey} mode="edit" peerFirewalls={peerFirewalls} onSaved={handleEquipmentModalSaved} onDeleted={handleEquipmentModalDeleted} /> : null}
+      {modalClient && equipmentModuleKey ? <EquipmentFormModal open={editModalOpen} onClose={() => setEditModalOpen(false)} client={modalClient} equipment={equipment} moduleKey={equipmentModuleKey} mode="edit" peerFirewalls={peerFirewalls} peerServers={peerServers} onSaved={handleEquipmentModalSaved} onDeleted={handleEquipmentModalDeleted} /> : null}
 
       <EquipmentAlertSuspensionModal open={alertModalOpen} onClose={() => setAlertModalOpen(false)} equipment={equipment} onNavigate={onNavigate} alert={alertSettings} />
 

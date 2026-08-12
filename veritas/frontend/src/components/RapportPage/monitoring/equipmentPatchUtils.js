@@ -87,7 +87,9 @@ function buildDataPatch(formData, moduleKey) {
     licences: formData.licences,
     modeHA: formData.modeHA,
     roleHA: formData.roleHA,
-    firewallHAName: formData.firewallHAName
+    firewallHAName: formData.firewallHAName,
+    hostServerName: formData.hostServerName,
+    hypervisor: formData.hypervisor
   };
   Object.keys(patch).forEach(key => {
     if (patch[key] === undefined) delete patch[key];
@@ -136,7 +138,9 @@ export function patchEquipmentItem(item, formData, moduleKey) {
     licences: formData.licences ?? item.licences,
     modeHA: formData.modeHA ?? item.modeHA,
     roleHA: formData.roleHA ?? item.roleHA,
-    firewallHAName: formData.firewallHAName ?? item.firewallHAName
+    firewallHAName: formData.firewallHAName ?? item.firewallHAName,
+    hostServerName: formData.hostServerName ?? item.hostServerName,
+    hypervisor: formData.hypervisor ?? item.hypervisor
   };
   const patched = {
     ...item,
