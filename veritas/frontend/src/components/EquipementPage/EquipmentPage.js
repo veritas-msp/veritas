@@ -48,6 +48,8 @@ import { HARDWARE_TYPE_ORDER } from "../EnterprisesPage/infraHoneycombLayout";
 import { getInfraMapCopy } from "../EnterprisesPage/infraMapI18n";
 import { parseCustomFamilyType } from "../../api/equipmentFamilies";
 import { filterBySite } from "../../utils/siteFilterUtils";
+import EquipmentHaCell from "./EquipmentHaCell";
+import { compareFirewallHaPairs, getFirewallHaSortValue, getFirewallHaState } from "./equipmentHaUtils";
 import { getExpirationStatus, getExpirationStatusColor, getMaintenanceLicenseExpiration } from "./constants/firewallLicenceUtils";
 const EQUIPMENT_CACHE_KEY = "equipment_page_cache_v2";
 const EQUIPMENT_CACHE_TTL_MS = 5 * 60 * 1000;
@@ -552,6 +554,10 @@ function buildEquipmentBaseColumns(locale, pageCopy, type) {
       label: label("role"),
       key: "role"
     },
+    ha: {
+      label: label("ha"),
+      key: "ha"
+    },
     raid: {
       label: label("raid"),
       key: "raid"
@@ -598,7 +604,7 @@ const TYPE_ICON_MAP = {
   TOIP: 'mdi:phone-voip',
   'Security camera': 'mdi:cctv'
 };
-const FIREWALL_COLUMN_KEYS = ['name', 'monitoring', 'client', 'location', 'ip', 'vlan', 'manufacturer', 'model', 'serial', 'firmware', 'expirationGarantie', 'maintenanceLicense', 'mapping'];
+const FIREWALL_COLUMN_KEYS = ['name', 'monitoring', 'client', 'location', 'ip', 'vlan', 'ha', 'manufacturer', 'model', 'serial', 'firmware', 'expirationGarantie', 'maintenanceLicense', 'mapping'];
 const FIREWALL_COLUMN_LABELS = {
   manufacturer: 'Brand',
   model: 'Model',
@@ -648,7 +654,7 @@ const BORNE_WIFI_COLUMN_LABELS = {
 const MONITORING_COLUMN_LABEL = "Monitoring";
 const EMBEDDED_TYPE_COLUMNS = {
   Internet: ["name", "ip", "location", "fournisseur", "debit", "mapping"],
-  Firewalls: ["name", "ip", "location", "model", "serial", "monitoring", "mapping"],
+  Firewalls: ["name", "ip", "location", "ha", "model", "serial", "monitoring", "mapping"],
   Servers: ["name", "ip", "location", "systeme", "monitoring", "mapping"],
   Ordinateurs: ["name", "ip", "systeme", "domaine", "agentStatus", "mapping"],
   Storage: ["name", "ip", "capacite", "monitoring", "mapping"],
@@ -662,6 +668,7 @@ const EMBEDDED_TYPE_COLUMNS = {
 function getEmbeddedCellClassName(colKey, styles) {
   if (colKey === "brandIcon") return styles.embeddedColBrand;
   if (colKey === "checkmkMapping") return styles.embeddedColActions;
+  if (colKey === "ha") return styles.embeddedColHa;
   return undefined;
 }
 const EMBEDDED_DEFAULT_TYPE = "Internet";
@@ -1530,6 +1537,9 @@ const EquipmentPage = forwardRef(function EquipmentPage({
     if (colKey === "raid") {
       return getStorageRaid(equipment).toLowerCase();
     }
+    if (colKey === "ha") {
+      return getFirewallHaSortValue(equipment);
+    }
     if (colKey === "capacite") {
       const c = equipment.capacite;
       if (!c || c === "") return 0;
@@ -1566,7 +1576,12 @@ const EquipmentPage = forwardRef(function EquipmentPage({
   };
   const getSortedEquipmentList = (type, list) => {
     const sortState = tableSort[type];
-    if (!sortState?.key) return list;
+    if (!sortState?.key) {
+      if (type === "Firewalls") {
+        return [...list].sort(compareFirewallHaPairs);
+      }
+      return list;
+    }
     const key = sortState.key;
     const dir = sortState.direction === "asc" ? 1 : -1;
     return [...list].sort((a, b) => {
@@ -2407,6 +2422,9 @@ const EquipmentPage = forwardRef(function EquipmentPage({
         value = getNbDisquesMax(equipment);
       } else if (col.key === 'raid') {
         value = getStorageRaid(equipment);
+      } else if (col.key === 'ha') {
+        const ha = getFirewallHaState(equipment);
+        value = ha.active ? `${ha.role}${ha.partnerName ? ` → ${ha.partnerName}` : ""}` : "";
       } else if (col.key === 'capacite') {
         value = formatCapacite(equipment.capacite);
       } else if (col.key === 'firmware') {
@@ -2845,6 +2863,10 @@ const EquipmentPage = forwardRef(function EquipmentPage({
                                         {renderMonitoringStatus(equipment)}
                                       </div>
                                     </td>;
+                            } else if (col.key === 'ha') {
+                              return <td key={col.key} className={embedded ? styles.embeddedColHa : undefined}>
+                                      <EquipmentHaCell equipment={equipment} copy={pageCopy.ha || {}} />
+                                    </td>;
                             } else if (col.key === 'name') {
                               if (embedded) {
                                 return <td key={col.key}>
@@ -3135,6 +3157,13 @@ const EquipmentPage = forwardRef(function EquipmentPage({
                               displayValue = formatClientDisplay(value);
                             } else if (col.key === 'systeme') {
                               displayValue = formatValue(equipment.systeme || equipment.rawData?.systeme || value);
+                            } else if (col.key === 'ha') {
+                              return <div key={col.key} className={styles.cardField}>
+                                        <span className={styles.cardLabel}>{col.label}:</span>
+                                        <span className={styles.cardValue}>
+                                          <EquipmentHaCell equipment={equipment} copy={pageCopy.ha || {}} />
+                                        </span>
+                                      </div>;
                             } else {
                               displayValue = formatValue(value);
                             }

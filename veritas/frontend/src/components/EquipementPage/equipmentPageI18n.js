@@ -97,12 +97,18 @@ const PAGE_COPY = {
       server: "Serveur",
       jobsCount: "Jobs",
       mappedJobsCount: "Jobs mappés",
-      logiciel: "Logiciel"
+      logiciel: "Logiciel",
+      ha: "HA"
+    },
+    ha: {
+      primary: "Primaire",
+      secondary: "Secondaire"
     },
     typeOverrides: {
       Firewalls: {
         manufacturer: "Marque",
-        serial: "SN"
+        serial: "SN",
+        ha: "HA"
       },
       Internet: {
         internetType: "Type de connexion"
@@ -284,12 +290,18 @@ const PAGE_COPY = {
       server: "Server",
       jobsCount: "Jobs",
       mappedJobsCount: "Mapped jobs",
-      logiciel: "Software"
+      logiciel: "Software",
+      ha: "HA"
+    },
+    ha: {
+      primary: "Primary",
+      secondary: "Secondary"
     },
     typeOverrides: {
       Firewalls: {
         manufacturer: "Brand",
-        serial: "SN"
+        serial: "SN",
+        ha: "HA"
       },
       Internet: {
         internetType: "Connection type"
@@ -471,12 +483,18 @@ const PAGE_COPY = {
       server: "Server",
       jobsCount: "Jobs",
       mappedJobsCount: "Zugeordnete Jobs",
-      logiciel: "Software"
+      logiciel: "Software",
+      ha: "HA"
+    },
+    ha: {
+      primary: "Primary",
+      secondary: "Secondary"
     },
     typeOverrides: {
       Firewalls: {
         manufacturer: "Marke",
-        serial: "SN"
+        serial: "SN",
+        ha: "HA"
       },
       Internet: {
         internetType: "Verbindungstyp"
@@ -645,12 +663,18 @@ const PAGE_COPY = {
       server: "Server",
       jobsCount: "Job",
       mappedJobsCount: "Job mappati",
-      logiciel: "Software"
+      logiciel: "Software",
+      ha: "HA"
+    },
+    ha: {
+      primary: "Primario",
+      secondary: "Secondario"
     },
     typeOverrides: {
       Firewalls: {
         manufacturer: "Marca",
-        serial: "SN"
+        serial: "SN",
+        ha: "HA"
       },
       Internet: {
         internetType: "Tipo connessione"
@@ -819,12 +843,18 @@ const PAGE_COPY = {
       server: "Servidor",
       jobsCount: "Jobs",
       mappedJobsCount: "Jobs mapeados",
-      logiciel: "Software"
+      logiciel: "Software",
+      ha: "HA"
+    },
+    ha: {
+      primary: "Primario",
+      secondary: "Secundario"
     },
     typeOverrides: {
       Firewalls: {
         manufacturer: "Marca",
-        serial: "SN"
+        serial: "SN",
+        ha: "HA"
       },
       Internet: {
         internetType: "Tipo de conexión"
