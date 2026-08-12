@@ -675,13 +675,13 @@ const EMBEDDED_TYPE_COLUMNS = {
   Internet: ["name", "ip", "location", "fournisseur", "debit", "mapping"],
   Firewalls: ["name", "ip", "location", "ha", "model", "serial", "monitoring", "mapping"],
   Servers: ["name", "ip", "location", "ha", "systeme", "monitoring", "mapping"],
-  Ordinateurs: ["name", "ip", "systeme", "domaine", "agentStatus", "mapping"],
+  Ordinateurs: ["name", "ip", "location", "systeme", "domaine", "agentStatus", "mapping"],
   Storage: ["name", "ip", "location", "ha", "capacite", "monitoring", "mapping"],
-  Switch: ["name", "ip", "model", "monitoring", "mapping"],
-  BorneWifi: ["name", "ip", "model", "monitoring", "mapping"],
-  Alimentation: ["name", "ip", "model", "monitoring", "mapping"],
-  Routeur: ["name", "ip", "model", "monitoring", "mapping"],
-  TOIP: ["name", "ip", "model", "monitoring", "mapping"],
+  Switch: ["name", "ip", "location", "model", "monitoring", "mapping"],
+  BorneWifi: ["name", "ip", "location", "model", "monitoring", "mapping"],
+  Alimentation: ["name", "ip", "location", "model", "monitoring", "mapping"],
+  Routeur: ["name", "ip", "location", "model", "monitoring", "mapping"],
+  TOIP: ["name", "ip", "location", "model", "monitoring", "mapping"],
   Backup: ["name", "server", "version", "jobsCount", "mappedJobsCount"]
 };
 function getEmbeddedCellClassName(colKey, styles) {
@@ -1400,6 +1400,11 @@ const EquipmentPage = forwardRef(function EquipmentPage({
       if (type !== "Backup" && !visibleCols.includes("mapping")) {
         visibleCols = [...visibleCols, "mapping"];
       }
+    }
+    if (type !== "Backup" && !visibleCols.includes("location")) {
+      const ipIndex = visibleCols.indexOf("ip");
+      const insertAt = ipIndex >= 0 ? ipIndex + 1 : Math.min(1, visibleCols.length);
+      visibleCols = [...visibleCols.slice(0, insertAt), "location", ...visibleCols.slice(insertAt)];
     }
     const columns = visibleCols.map(colKey => {
       const col = baseColumns[colKey];

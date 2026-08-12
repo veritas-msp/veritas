@@ -49,6 +49,35 @@ export default function WifiApSsidEditor({
   const selectedNames = assignedSsidIds.map(id => getWifiSsidById(catalog, id)?.nom).filter(Boolean);
   return <div className={styles.root}>
       <div className={styles.section}>
+        <h4 className={styles.sectionTitle}>{copy.broadcastTitle}</h4>
+        <p className={styles.lead}>{copy.broadcastLead}</p>
+
+        {broadcastable.length === 0 ? <div className={styles.emptyAssign}>
+            <p>{copy.emptyAssign}</p>
+          </div> : <div className={styles.assignList}>
+            {broadcastable.map(entry => {
+          const checked = assignedSet.has(entry.id);
+          return <label key={entry.id} className={`${styles.assignItem} ${checked ? styles.assignItemActive : ""}`}>
+                  <input type="checkbox" className={styles.assignCheckbox} checked={checked} onChange={() => toggleAssigned(entry.id)} />
+                  <span className={styles.assignContent}>
+                    <span className={styles.assignName}>{entry.nom}</span>
+                    <span className={styles.assignMeta}>
+                      {[entry.vlan ? interpolate(copy.vlanMeta, {
+                  vlan: entry.vlan
+                }) : null, getWifiBandLabel(locale, entry.bande), entry.type === "public" ? copy.typePublic : copy.typePrivate].filter(Boolean).join(" · ")}
+                    </span>
+                  </span>
+                  {checked && <Icon icon="mdi:wifi" className={styles.assignWifiIcon} aria-hidden />}
+                </label>;
+        })}
+          </div>}
+
+        {assignedSsidIds.length > 0 && <p className={styles.assignSummary}>
+            {formatSelectedSummary(locale, assignedSsidIds.length, selectedNames)}
+          </p>}
+      </div>
+
+      <div className={styles.section}>
         <div className={styles.header}>
           <div>
             <h4 className={styles.sectionTitle}>{copy.catalogTitle}</h4>
@@ -149,35 +178,6 @@ export default function WifiApSsidEditor({
                 </div>;
         })}
           </div>}
-      </div>
-
-      <div className={styles.section}>
-        <h4 className={styles.sectionTitle}>{copy.broadcastTitle}</h4>
-        <p className={styles.lead}>{copy.broadcastLead}</p>
-
-        {broadcastable.length === 0 ? <div className={styles.emptyAssign}>
-            <p>{copy.emptyAssign}</p>
-          </div> : <div className={styles.assignList}>
-            {broadcastable.map(entry => {
-          const checked = assignedSet.has(entry.id);
-          return <label key={entry.id} className={`${styles.assignItem} ${checked ? styles.assignItemActive : ""}`}>
-                  <input type="checkbox" className={styles.assignCheckbox} checked={checked} onChange={() => toggleAssigned(entry.id)} />
-                  <span className={styles.assignContent}>
-                    <span className={styles.assignName}>{entry.nom}</span>
-                    <span className={styles.assignMeta}>
-                      {[entry.vlan ? interpolate(copy.vlanMeta, {
-                  vlan: entry.vlan
-                }) : null, getWifiBandLabel(locale, entry.bande), entry.type === "public" ? copy.typePublic : copy.typePrivate].filter(Boolean).join(" · ")}
-                    </span>
-                  </span>
-                  {checked && <Icon icon="mdi:wifi" className={styles.assignWifiIcon} aria-hidden />}
-                </label>;
-        })}
-          </div>}
-
-        {assignedSsidIds.length > 0 && <p className={styles.assignSummary}>
-            {formatSelectedSummary(locale, assignedSsidIds.length, selectedNames)}
-          </p>}
       </div>
     </div>;
 }
