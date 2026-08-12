@@ -10,6 +10,7 @@ const PLANNING_PAGE = {
     newEvent: "Nouvel événement",
     defaults: {
       event: "Événement",
+      busy: "Occupé",
       user: "Utilisateur",
       client: "Client",
       agent: "Agent",
@@ -139,6 +140,7 @@ const PLANNING_PAGE = {
     newEvent: "New event",
     defaults: {
       event: "Event",
+      busy: "Busy",
       user: "User",
       client: "Client",
       agent: "Assignee",
@@ -268,6 +270,7 @@ const PLANNING_PAGE = {
     newEvent: "Neues Ereignis",
     defaults: {
       event: "Ereignis",
+      busy: "Beschäftigt",
       user: "Benutzer",
       client: "Kunde",
       agent: "Mitarbeiter",
@@ -397,6 +400,7 @@ const PLANNING_PAGE = {
     newEvent: "Nuovo evento",
     defaults: {
       event: "Evento",
+      busy: "Occupato",
       user: "Utente",
       client: "Cliente",
       agent: "Agente",
@@ -526,6 +530,7 @@ const PLANNING_PAGE = {
     newEvent: "Nuevo evento",
     defaults: {
       event: "Evento",
+      busy: "Ocupado",
       user: "Usuario",
       client: "Cliente",
       agent: "Agente",

@@ -9,6 +9,28 @@ const USER_PROFILE_COPY = {
     accountDisabled: "Votre compte est désactivé. Contactez un administrateur pour rétablir l'accès.",
     eyebrow: "Compte utilisateur",
     pageTitle: "Mon compte",
+    nav: {
+      account: {
+        label: "Gestion du compte",
+        desc: "Identité, sécurité et langue"
+      },
+      support: {
+        label: "Support",
+        desc: "Pseudo helpdesk tickets"
+      },
+      accessibility: {
+        label: "Accessibilité",
+        desc: "Affichage du chat"
+      },
+      notifications: {
+        label: "Notifications",
+        desc: "Alertes in-app"
+      },
+      planning: {
+        label: "Planning",
+        desc: "Visibilité du calendrier"
+      }
+    },
     kpi: {
       role: "Rôle",
       mfa: "Authentification MFA",
@@ -28,7 +50,9 @@ const USER_PROFILE_COPY = {
       pendingDesc: "La configuration MFA a été démarrée mais n'est pas terminée. Scannez le QR code et validez un code pour finaliser.",
       offDesc: "Ajoutez une couche de sécurité avec Microsoft Authenticator, Google Authenticator ou une application compatible TOTP.",
       continueSetup: "Continuer la configuration",
-      enable: "Activer le MFA"
+      enable: "Activer le MFA",
+      disable: "Désactiver",
+      change: "Changer"
     },
     sections: {
       identity: {
@@ -42,6 +66,10 @@ const USER_PROFILE_COPY = {
       security: {
         title: "Sécurité",
         description: "Authentification à deux facteurs (MFA)"
+      },
+      locale: {
+        title: "Langue",
+        description: "Langue personnelle de l'interface (prioritaire sur le défaut organisation)"
       },
       helpdesk: {
         title: "Helpdesk · pseudo tickets",
@@ -57,6 +85,10 @@ const USER_PROFILE_COPY = {
         activeCount: "{count}/{total} types d'alertes actifs pour vous.",
         allDisabled: "Vous avez désactivé toutes les alertes in-app."
       },
+      planning: {
+        title: "Visibilité du planning",
+        description: "Contrôlez ce que les autres agents voient de vos événements"
+      },
       mspProfile: {
         title: "Profil MSP",
         description: "Droits et modules attribués par votre administrateur (lecture seule)"
@@ -65,6 +97,19 @@ const USER_PROFILE_COPY = {
         title: "Activité du compte",
         description: "Informations de connexion"
       }
+    },
+    locale: {
+      label: "Langue de l'interface",
+      hint: "Ce choix est enregistré sur votre compte et s'applique sur tous vos appareils.",
+      saving: "Enregistrement…"
+    },
+    planning: {
+      label: "Visibilité de vos événements",
+      public: "Public",
+      private: "Privé",
+      publicHint: "Les autres agents voient le titre, le client et la description de vos événements.",
+      privateHint: "Les autres agents voient uniquement que vous êtes occupé (date et durée).",
+      saving: "Enregistrement…"
     },
     identity: {
       username: "Pseudo",
@@ -177,10 +222,20 @@ const USER_PROFILE_COPY = {
       },
       mfa: {
         title: "Configurer l'authentification à deux facteurs",
+        changeTitle: "Changer l'authentification à deux facteurs",
         desc: "Scannez ce QR code avec votre application d'authentification, puis saisissez le code à 6 chiffres.",
         qrAlt: "QR code MFA",
         manualKey: "Clé manuelle :",
         enable: "Activer le MFA"
+      },
+      mfaDisable: {
+        title: "Désactiver le MFA",
+        changeTitle: "Changer le MFA",
+        desc: "Saisissez un code de votre application d'authentification pour désactiver le MFA.",
+        changeDesc: "Saisissez un code actuel pour confirmer, puis configurez une nouvelle application.",
+        codeLabel: "Code à 6 chiffres",
+        confirm: "Désactiver",
+        changeConfirm: "Continuer"
       },
       save: "Enregistrer"
     },
@@ -202,8 +257,15 @@ const USER_PROFILE_COPY = {
       chatUiError: "Erreur lors de l'enregistrement des préférences",
       notifSaved: "Préférences de notifications enregistrées",
       notifError: "Erreur lors de l'enregistrement des notifications",
+      localeSaved: "Langue enregistrée",
+      localeError: "Erreur lors de l'enregistrement de la langue",
+      planningSaved: "Visibilité du planning enregistrée",
+      planningError: "Erreur lors de l'enregistrement de la visibilité",
       mfaSetupError: "Erreur configuration MFA",
       mfaEnabled: "Authentification à deux facteurs activée",
+      mfaDisabled: "Authentification à deux facteurs désactivée",
+      mfaChanged: "Authentification à deux facteurs mise à jour",
+      mfaDisableError: "Impossible de désactiver le MFA",
       mfaInvalidCode: "Code invalide"
     },
     defaultAgent: "Agent"
@@ -215,6 +277,28 @@ const USER_PROFILE_COPY = {
     accountDisabled: "Your account is disabled. Contact an administrator to restore access.",
     eyebrow: "User account",
     pageTitle: "My account",
+    nav: {
+      account: {
+        label: "Account management",
+        desc: "Identity, security and language"
+      },
+      support: {
+        label: "Support",
+        desc: "Helpdesk ticket nickname"
+      },
+      accessibility: {
+        label: "Accessibility",
+        desc: "Chat display"
+      },
+      notifications: {
+        label: "Notifications",
+        desc: "In-app alerts"
+      },
+      planning: {
+        label: "Planning",
+        desc: "Calendar visibility"
+      }
+    },
     kpi: {
       role: "Role",
       mfa: "MFA authentication",
@@ -234,7 +318,9 @@ const USER_PROFILE_COPY = {
       pendingDesc: "MFA setup was started but not completed. Scan the QR code and validate a code to finish.",
       offDesc: "Add a security layer with Microsoft Authenticator, Google Authenticator or a TOTP-compatible app.",
       continueSetup: "Continue setup",
-      enable: "Enable MFA"
+      enable: "Enable MFA",
+      disable: "Disable",
+      change: "Change"
     },
     sections: {
       identity: {
@@ -248,6 +334,10 @@ const USER_PROFILE_COPY = {
       security: {
         title: "Security",
         description: "Two-factor authentication (MFA)"
+      },
+      locale: {
+        title: "Language",
+        description: "Personal interface language (overrides the organisation default)"
       },
       helpdesk: {
         title: "Helpdesk · ticket nickname",
@@ -263,6 +353,10 @@ const USER_PROFILE_COPY = {
         activeCount: "{count}/{total} alert types active for you.",
         allDisabled: "You have disabled all in-app alerts."
       },
+      planning: {
+        title: "Planning visibility",
+        description: "Control what other agents see of your events"
+      },
       mspProfile: {
         title: "MSP profile",
         description: "Rights and modules assigned by your administrator (read-only)"
@@ -271,6 +365,19 @@ const USER_PROFILE_COPY = {
         title: "Account activity",
         description: "Login information"
       }
+    },
+    locale: {
+      label: "Interface language",
+      hint: "This choice is saved on your account and applies across your devices.",
+      saving: "Saving…"
+    },
+    planning: {
+      label: "Visibility of your events",
+      public: "Public",
+      private: "Private",
+      publicHint: "Other agents can see the title, client and description of your events.",
+      privateHint: "Other agents only see that you are busy (date and duration).",
+      saving: "Saving…"
     },
     identity: {
       username: "Nickname",
@@ -383,10 +490,20 @@ const USER_PROFILE_COPY = {
       },
       mfa: {
         title: "Set up two-factor authentication",
+        changeTitle: "Change two-factor authentication",
         desc: "Scan this QR code with your authentication app, then enter the 6-digit code.",
         qrAlt: "MFA QR code",
         manualKey: "Manual key:",
         enable: "Enable MFA"
+      },
+      mfaDisable: {
+        title: "Disable MFA",
+        changeTitle: "Change MFA",
+        desc: "Enter a code from your authentication app to disable MFA.",
+        changeDesc: "Enter a current code to confirm, then set up a new authenticator app.",
+        codeLabel: "6-digit code",
+        confirm: "Disable",
+        changeConfirm: "Continue"
       },
       save: "Save"
     },
@@ -408,8 +525,15 @@ const USER_PROFILE_COPY = {
       chatUiError: "Error saving preferences",
       notifSaved: "Notification preferences saved",
       notifError: "Error saving notifications",
+      localeSaved: "Language saved",
+      localeError: "Error saving language",
+      planningSaved: "Planning visibility saved",
+      planningError: "Error saving visibility",
       mfaSetupError: "MFA setup error",
       mfaEnabled: "Two-factor authentication enabled",
+      mfaDisabled: "Two-factor authentication disabled",
+      mfaChanged: "Two-factor authentication updated",
+      mfaDisableError: "Unable to disable MFA",
       mfaInvalidCode: "Invalid code"
     },
     defaultAgent: "Agent"
@@ -421,6 +545,28 @@ const USER_PROFILE_COPY = {
     accountDisabled: "Ihr Konto ist deaktiviert. Wenden Sie sich an einen Administrator, um den Zugang wiederherzustellen.",
     eyebrow: "Benutzerkonto",
     pageTitle: "Mein Konto",
+    nav: {
+      account: {
+        label: "Kontoverwaltung",
+        desc: "Identität, Sicherheit und Sprache"
+      },
+      support: {
+        label: "Support",
+        desc: "Helpdesk-Ticket-Pseudonym"
+      },
+      accessibility: {
+        label: "Barrierefreiheit",
+        desc: "Chat-Anzeige"
+      },
+      notifications: {
+        label: "Benachrichtigungen",
+        desc: "In-App-Alerts"
+      },
+      planning: {
+        label: "Planung",
+        desc: "Kalendersichtbarkeit"
+      }
+    },
     kpi: {
       role: "Rolle",
       mfa: "MFA-Authentifizierung",
@@ -440,7 +586,9 @@ const USER_PROFILE_COPY = {
       pendingDesc: "Die MFA-Einrichtung wurde gestartet, aber nicht abgeschlossen. Scannen Sie den QR-Code und bestätigen Sie einen Code.",
       offDesc: "Fügen Sie eine Sicherheitsebene mit Microsoft Authenticator, Google Authenticator oder einer TOTP-kompatiblen App hinzu.",
       continueSetup: "Einrichtung fortsetzen",
-      enable: "MFA aktivieren"
+      enable: "MFA aktivieren",
+      disable: "Deaktivieren",
+      change: "Ändern"
     },
     sections: {
       identity: {
@@ -454,6 +602,10 @@ const USER_PROFILE_COPY = {
       security: {
         title: "Sicherheit",
         description: "Zwei-Faktor-Authentifizierung (MFA)"
+      },
+      locale: {
+        title: "Sprache",
+        description: "Persönliche Oberflächensprache (hat Vorrang vor dem Organisationsstandard)"
       },
       helpdesk: {
         title: "Helpdesk · Ticket-Pseudonym",
@@ -469,6 +621,10 @@ const USER_PROFILE_COPY = {
         activeCount: "{count}/{total} aktive Alert-Typen für Sie.",
         allDisabled: "Sie haben alle In-App-Alerts deaktiviert."
       },
+      planning: {
+        title: "Planungssichtbarkeit",
+        description: "Steuern Sie, was andere Agenten von Ihren Terminen sehen"
+      },
       mspProfile: {
         title: "MSP-Profil",
         description: "Vom Administrator zugewiesene Rechte und Module (nur Lesen)"
@@ -477,6 +633,19 @@ const USER_PROFILE_COPY = {
         title: "Kontoaktivität",
         description: "Anmeldeinformationen"
       }
+    },
+    locale: {
+      label: "Oberflächensprache",
+      hint: "Diese Wahl wird in Ihrem Konto gespeichert und gilt auf allen Geräten.",
+      saving: "Speichern…"
+    },
+    planning: {
+      label: "Sichtbarkeit Ihrer Termine",
+      public: "Öffentlich",
+      private: "Privat",
+      publicHint: "Andere Agenten sehen Titel, Kunde und Beschreibung Ihrer Termine.",
+      privateHint: "Andere Agenten sehen nur, dass Sie beschäftigt sind (Datum und Dauer).",
+      saving: "Speichern…"
     },
     identity: {
       username: "Pseudonym",
@@ -589,10 +758,20 @@ const USER_PROFILE_COPY = {
       },
       mfa: {
         title: "Zwei-Faktor-Authentifizierung einrichten",
+        changeTitle: "Zwei-Faktor-Authentifizierung ändern",
         desc: "Scannen Sie diesen QR-Code mit Ihrer Authentifizierungs-App und geben Sie den 6-stelligen Code ein.",
         qrAlt: "MFA-QR-Code",
         manualKey: "Manueller Schlüssel:",
         enable: "MFA aktivieren"
+      },
+      mfaDisable: {
+        title: "MFA deaktivieren",
+        changeTitle: "MFA ändern",
+        desc: "Geben Sie einen Code aus Ihrer Authentifizierungs-App ein, um MFA zu deaktivieren.",
+        changeDesc: "Geben Sie einen aktuellen Code zur Bestätigung ein und richten Sie dann eine neue App ein.",
+        codeLabel: "6-stelliger Code",
+        confirm: "Deaktivieren",
+        changeConfirm: "Weiter"
       },
       save: "Speichern"
     },
@@ -614,8 +793,15 @@ const USER_PROFILE_COPY = {
       chatUiError: "Fehler beim Speichern der Einstellungen",
       notifSaved: "Benachrichtigungseinstellungen gespeichert",
       notifError: "Fehler beim Speichern der Benachrichtigungen",
+      localeSaved: "Sprache gespeichert",
+      localeError: "Fehler beim Speichern der Sprache",
+      planningSaved: "Planungssichtbarkeit gespeichert",
+      planningError: "Fehler beim Speichern der Sichtbarkeit",
       mfaSetupError: "Fehler bei der MFA-Einrichtung",
       mfaEnabled: "Zwei-Faktor-Authentifizierung aktiviert",
+      mfaDisabled: "Zwei-Faktor-Authentifizierung deaktiviert",
+      mfaChanged: "Zwei-Faktor-Authentifizierung aktualisiert",
+      mfaDisableError: "MFA konnte nicht deaktiviert werden",
       mfaInvalidCode: "Ungültiger Code"
     },
     defaultAgent: "Agent"
@@ -627,6 +813,28 @@ const USER_PROFILE_COPY = {
     accountDisabled: "Il tuo account è disattivato. Contatta un amministratore per ripristinare l'accesso.",
     eyebrow: "Account utente",
     pageTitle: "Il mio account",
+    nav: {
+      account: {
+        label: "Gestione account",
+        desc: "Identità, sicurezza e lingua"
+      },
+      support: {
+        label: "Supporto",
+        desc: "Nickname helpdesk ticket"
+      },
+      accessibility: {
+        label: "Accessibilità",
+        desc: "Visualizzazione chat"
+      },
+      notifications: {
+        label: "Notifiche",
+        desc: "Alert in-app"
+      },
+      planning: {
+        label: "Planning",
+        desc: "Visibilità calendario"
+      }
+    },
     kpi: {
       role: "Ruolo",
       mfa: "Autenticazione MFA",
@@ -646,7 +854,9 @@ const USER_PROFILE_COPY = {
       pendingDesc: "La configurazione MFA è stata avviata ma non completata. Scansiona il QR code e convalida un codice.",
       offDesc: "Aggiungi un livello di sicurezza con Microsoft Authenticator, Google Authenticator o un'app compatibile TOTP.",
       continueSetup: "Continua la configurazione",
-      enable: "Attiva MFA"
+      enable: "Attiva MFA",
+      disable: "Disattiva",
+      change: "Cambia"
     },
     sections: {
       identity: {
@@ -660,6 +870,10 @@ const USER_PROFILE_COPY = {
       security: {
         title: "Sicurezza",
         description: "Autenticazione a due fattori (MFA)"
+      },
+      locale: {
+        title: "Lingua",
+        description: "Lingua personale dell'interfaccia (prioritaria sul default organizzazione)"
       },
       helpdesk: {
         title: "Helpdesk · nickname ticket",
@@ -675,6 +889,10 @@ const USER_PROFILE_COPY = {
         activeCount: "{count}/{total} tipi di alert attivi per te.",
         allDisabled: "Hai disattivato tutti gli alert in-app."
       },
+      planning: {
+        title: "Visibilità planning",
+        description: "Controlla cosa gli altri agenti vedono dei tuoi eventi"
+      },
       mspProfile: {
         title: "Profilo MSP",
         description: "Diritti e moduli assegnati dal tuo amministratore (sola lettura)"
@@ -683,6 +901,19 @@ const USER_PROFILE_COPY = {
         title: "Attività account",
         description: "Informazioni di accesso"
       }
+    },
+    locale: {
+      label: "Lingua dell'interfaccia",
+      hint: "Questa scelta è salvata sul tuo account e si applica su tutti i dispositivi.",
+      saving: "Salvataggio…"
+    },
+    planning: {
+      label: "Visibilità dei tuoi eventi",
+      public: "Pubblico",
+      private: "Privato",
+      publicHint: "Gli altri agenti vedono titolo, cliente e descrizione dei tuoi eventi.",
+      privateHint: "Gli altri agenti vedono solo che sei occupato (data e durata).",
+      saving: "Salvataggio…"
     },
     identity: {
       username: "Nickname",
@@ -795,10 +1026,20 @@ const USER_PROFILE_COPY = {
       },
       mfa: {
         title: "Configura autenticazione a due fattori",
+        changeTitle: "Cambia autenticazione a due fattori",
         desc: "Scansiona questo QR code con la tua app di autenticazione, poi inserisci il codice a 6 cifre.",
         qrAlt: "QR code MFA",
         manualKey: "Chiave manuale:",
         enable: "Attiva MFA"
+      },
+      mfaDisable: {
+        title: "Disattiva MFA",
+        changeTitle: "Cambia MFA",
+        desc: "Inserisci un codice della tua app di autenticazione per disattivare l'MFA.",
+        changeDesc: "Inserisci un codice attuale per confermare, poi configura una nuova app.",
+        codeLabel: "Codice a 6 cifre",
+        confirm: "Disattiva",
+        changeConfirm: "Continua"
       },
       save: "Salva"
     },
@@ -820,8 +1061,15 @@ const USER_PROFILE_COPY = {
       chatUiError: "Errore durante il salvataggio delle preferenze",
       notifSaved: "Preferenze notifiche salvate",
       notifError: "Errore durante il salvataggio delle notifiche",
+      localeSaved: "Lingua salvata",
+      localeError: "Errore durante il salvataggio della lingua",
+      planningSaved: "Visibilità planning salvata",
+      planningError: "Errore durante il salvataggio della visibilità",
       mfaSetupError: "Errore configurazione MFA",
       mfaEnabled: "Autenticazione a due fattori attivata",
+      mfaDisabled: "Autenticazione a due fattori disattivata",
+      mfaChanged: "Autenticazione a due fattori aggiornata",
+      mfaDisableError: "Impossibile disattivare l'MFA",
       mfaInvalidCode: "Codice non valido"
     },
     defaultAgent: "Agente"
@@ -833,6 +1081,28 @@ const USER_PROFILE_COPY = {
     accountDisabled: "Su cuenta está desactivada. Contacte a un administrador para restablecer el acceso.",
     eyebrow: "Cuenta de usuario",
     pageTitle: "Mi cuenta",
+    nav: {
+      account: {
+        label: "Gestión de la cuenta",
+        desc: "Identidad, seguridad e idioma"
+      },
+      support: {
+        label: "Soporte",
+        desc: "Apodo helpdesk de tickets"
+      },
+      accessibility: {
+        label: "Accesibilidad",
+        desc: "Visualización del chat"
+      },
+      notifications: {
+        label: "Notificaciones",
+        desc: "Alertas in-app"
+      },
+      planning: {
+        label: "Planificación",
+        desc: "Visibilidad del calendario"
+      }
+    },
     kpi: {
       role: "Rol",
       mfa: "Autenticación MFA",
@@ -852,7 +1122,9 @@ const USER_PROFILE_COPY = {
       pendingDesc: "La configuración MFA se inició pero no se completó. Escanee el código QR y valide un código.",
       offDesc: "Añada una capa de seguridad con Microsoft Authenticator, Google Authenticator o una app compatible TOTP.",
       continueSetup: "Continuar configuración",
-      enable: "Activar MFA"
+      enable: "Activar MFA",
+      disable: "Desactivar",
+      change: "Cambiar"
     },
     sections: {
       identity: {
@@ -866,6 +1138,10 @@ const USER_PROFILE_COPY = {
       security: {
         title: "Seguridad",
         description: "Autenticación de dos factores (MFA)"
+      },
+      locale: {
+        title: "Idioma",
+        description: "Idioma personal de la interfaz (prioridad sobre el valor por defecto de la organización)"
       },
       helpdesk: {
         title: "Helpdesk · apodo de tickets",
@@ -881,6 +1157,10 @@ const USER_PROFILE_COPY = {
         activeCount: "{count}/{total} tipos de alerta activos para usted.",
         allDisabled: "Ha desactivado todas las alertas in-app."
       },
+      planning: {
+        title: "Visibilidad de la planificación",
+        description: "Controle lo que otros agentes ven de sus eventos"
+      },
       mspProfile: {
         title: "Perfil MSP",
         description: "Derechos y módulos asignados por su administrador (solo lectura)"
@@ -889,6 +1169,19 @@ const USER_PROFILE_COPY = {
         title: "Actividad de la cuenta",
         description: "Información de inicio de sesión"
       }
+    },
+    locale: {
+      label: "Idioma de la interfaz",
+      hint: "Esta elección se guarda en su cuenta y se aplica en todos sus dispositivos.",
+      saving: "Guardando…"
+    },
+    planning: {
+      label: "Visibilidad de sus eventos",
+      public: "Público",
+      private: "Privado",
+      publicHint: "Los demás agentes ven el título, el cliente y la descripción de sus eventos.",
+      privateHint: "Los demás agentes solo ven que está ocupado (fecha y duración).",
+      saving: "Guardando…"
     },
     identity: {
       username: "Apodo",
@@ -1001,10 +1294,20 @@ const USER_PROFILE_COPY = {
       },
       mfa: {
         title: "Configurar autenticación de dos factores",
+        changeTitle: "Cambiar autenticación de dos factores",
         desc: "Escanee este código QR con su app de autenticación y escriba el código de 6 dígitos.",
         qrAlt: "Código QR MFA",
         manualKey: "Clave manual:",
         enable: "Activar MFA"
+      },
+      mfaDisable: {
+        title: "Desactivar MFA",
+        changeTitle: "Cambiar MFA",
+        desc: "Introduzca un código de su app de autenticación para desactivar el MFA.",
+        changeDesc: "Introduzca un código actual para confirmar y configure luego una nueva app.",
+        codeLabel: "Código de 6 dígitos",
+        confirm: "Desactivar",
+        changeConfirm: "Continuar"
       },
       save: "Guardar"
     },
@@ -1026,8 +1329,15 @@ const USER_PROFILE_COPY = {
       chatUiError: "Error al guardar las preferencias",
       notifSaved: "Preferencias de notificaciones guardadas",
       notifError: "Error al guardar las notificaciones",
+      localeSaved: "Idioma guardado",
+      localeError: "Error al guardar el idioma",
+      planningSaved: "Visibilidad de planificación guardada",
+      planningError: "Error al guardar la visibilidad",
       mfaSetupError: "Error de configuración MFA",
       mfaEnabled: "Autenticación de dos factores activada",
+      mfaDisabled: "Autenticación de dos factores desactivada",
+      mfaChanged: "Autenticación de dos factores actualizada",
+      mfaDisableError: "No se pudo desactivar el MFA",
       mfaInvalidCode: "Código no válido"
     },
     defaultAgent: "Agente"

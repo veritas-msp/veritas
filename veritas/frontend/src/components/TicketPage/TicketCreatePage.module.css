@@ -829,6 +829,13 @@
   padding: 0;
 }
 
+.contactEmptyActions {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.35rem;
+}
+
 .contactEmptyAction:hover {
   text-decoration: underline;
 }

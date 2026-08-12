@@ -154,3 +154,96 @@ export async function resolveTicketFromEmailContext(mailContext = {}, {
      LIMIT 1`, [referenceIds]);
   return byThread.rows?.[0] || null;
 }
+
+function normalizeEmailAddress(value) {
+  const raw = String(value || "").trim().toLowerCase();
+  if (!raw) return "";
+  const angle = raw.match(/<([^>]+)>/);
+  const candidate = String(angle ? angle[1] : raw).trim().toLowerCase();
+  return candidate.includes("@") ? candidate : "";
+}
+
+/** Collect unique emails from a contact (legacy column + communications). */
+export function collectContactEmails(contact) {
+  const emails = new Set();
+  const push = value => {
+    const email = normalizeEmailAddress(value);
+    if (email) emails.add(email);
+  };
+  push(contact?.email);
+  const communications = Array.isArray(contact?.communications) ? contact.communications : [];
+  for (const entry of communications) {
+    if (String(entry?.type || "").trim().toLowerCase() !== "email") continue;
+    push(entry?.value);
+  }
+  return [...emails];
+}
+
+async function hasTicketRequesterContactColumn() {
+  const result = await pool.query(`SELECT 1
+     FROM information_schema.columns
+     WHERE table_schema = 'public'
+       AND table_name = 'v_b_tickets'
+       AND column_name = 'requester_contact_id'
+     LIMIT 1`);
+  return result.rows.length > 0;
+}
+
+/**
+ * Link orphan mail tickets (no requester_contact_id) whose first inbound From
+ * matches one of the contact emails. Idempotent.
+ */
+export async function attachOrphanTicketsToContactByEmails(contactId, emails) {
+  const id = Number(contactId);
+  if (!Number.isInteger(id) || id <= 0) {
+    return {
+      updated: 0,
+      ticketIds: []
+    };
+  }
+  const normalizedEmails = [...new Set((Array.isArray(emails) ? emails : []).map(normalizeEmailAddress).filter(Boolean))];
+  if (normalizedEmails.length === 0) {
+    return {
+      updated: 0,
+      ticketIds: []
+    };
+  }
+  if (!(await hasTicketRequesterContactColumn())) {
+    return {
+      updated: 0,
+      ticketIds: []
+    };
+  }
+  try {
+    await ensureTicketEmailThreadSchema();
+  } catch {}
+  const result = await pool.query(`UPDATE v_b_tickets t
+      SET requester_contact_id = $1,
+          updated_at = NOW()
+    WHERE t.requester_contact_id IS NULL
+      AND COALESCE(t.is_deleted, FALSE) = FALSE
+      AND LOWER(BTRIM(COALESCE((
+            SELECT m.from_address
+              FROM v_b_ticket_email_messages m
+             WHERE m.ticket_id = t.id
+               AND LOWER(COALESCE(m.direction, 'inbound')) = 'inbound'
+               AND NULLIF(BTRIM(m.from_address), '') IS NOT NULL
+             ORDER BY m.created_at ASC NULLS LAST
+             LIMIT 1
+          ), ''))) = ANY($2::text[])
+    RETURNING t.id`, [id, normalizedEmails]);
+  return {
+    updated: result.rowCount || 0,
+    ticketIds: result.rows.map(row => row.id)
+  };
+}
+
+export async function attachOrphanTicketsToContact(contact) {
+  if (!contact?.id) {
+    return {
+      updated: 0,
+      ticketIds: []
+    };
+  }
+  return attachOrphanTicketsToContactByEmails(contact.id, collectContactEmails(contact));
+}

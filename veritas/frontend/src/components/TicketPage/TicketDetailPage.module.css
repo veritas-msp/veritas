@@ -3434,6 +3434,113 @@
   background: rgba(43, 95, 171, 0.1);
 }
 
+.orphanChoiceOverlay {
+  position: fixed;
+  inset: 0;
+  z-index: 12000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.25rem;
+  background: rgba(10, 22, 40, 0.45);
+  backdrop-filter: blur(8px);
+}
+
+.orphanChoiceShell {
+  width: min(420px, 100%);
+  padding: 1.15rem 1.2rem 1rem;
+  border-radius: 16px;
+  background: var(--msp-surface, #fff);
+  border: 1px solid var(--msp-border, #dde3ed);
+  box-shadow: 0 20px 48px rgba(10, 22, 40, 0.22);
+}
+
+.orphanChoiceTitle {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--msp-text, #0f1c2e);
+}
+
+.orphanChoiceSubtitle {
+  margin: 0.35rem 0 0.95rem;
+  font-size: 0.82rem;
+  color: var(--msp-muted, #5c6b82);
+  word-break: break-word;
+}
+
+.orphanChoiceActions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.orphanChoiceBtn {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  width: 100%;
+  padding: 0.75rem 0.85rem;
+  border: 1px solid var(--msp-border, #dde3ed);
+  border-radius: 12px;
+  background: var(--msp-surface-2, #f8fafc);
+  color: var(--msp-text, #0f1c2e);
+  font-size: 0.88rem;
+  font-weight: 650;
+  font-family: inherit;
+  cursor: pointer;
+  text-align: left;
+}
+
+.orphanChoiceBtn:hover {
+  border-color: rgba(43, 95, 171, 0.35);
+  background: rgba(43, 95, 171, 0.08);
+  color: var(--msp-accent, #2b5fab);
+}
+
+.orphanChoiceCancel {
+  margin-top: 0.75rem;
+  width: 100%;
+  border: none;
+  background: transparent;
+  color: var(--msp-muted, #5c6b82);
+  font-size: 0.82rem;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  padding: 0.45rem;
+}
+
+.orphanChoiceCancel:hover {
+  color: var(--msp-text, #0f1c2e);
+}
+
+:global(html.dark) .orphanChoiceShell {
+  background: #121a2c;
+  border-color: #2a3a55;
+}
+
+:global(html.dark) .orphanChoiceTitle {
+  color: #e8edf5;
+}
+
+:global(html.dark) .orphanChoiceSubtitle,
+:global(html.dark) .orphanChoiceCancel {
+  color: #8fa8c4;
+}
+
+:global(html.dark) .orphanChoiceBtn {
+  background: #152035;
+  border-color: #2a3a55;
+  color: #e8edf5;
+}
+
+:global(html.dark) .orphanChoiceBtn:hover {
+  background: rgba(90, 143, 212,.16);
+  border-color: rgba(90, 143, 212, 0.4);
+  color: #93c5fd;
+}
+
 .contextLine strong {
   color: var(--msp-muted, #5c6b82);
   font-weight: 600;

@@ -627,35 +627,37 @@ export default function PlanningPage({
           serviceName = linkedLabels.length > 2 ? `+${linkedLabels.length - 2} autre(s)` : null;
         }
       }
+      const privacyRedacted = Boolean(event.privacy_redacted);
       return {
         id: event.id,
-        title: event.title,
+        title: privacyRedacted ? "Busy" : event.title,
         start: parsePlanningDateTime(event.start),
         end: parsePlanningDateTime(event.end),
         resource: event.type || "other",
-        description: parsedDescription.text || "",
-        clientId: resolvedClientId,
-        equipmentId: event.equipment_id,
+        description: privacyRedacted ? "" : parsedDescription.text || "",
+        clientId: privacyRedacted ? null : resolvedClientId,
+        equipmentId: privacyRedacted ? null : event.equipment_id,
         assignedUserId: event.assigned_user_id,
         assignedUserIds: assignedUserIdsMeta.length > 0 ? assignedUserIdsMeta : event.assigned_user_id ? [String(event.assigned_user_id)] : [],
-        clientName: client?.name || client?.nom || null,
+        clientName: privacyRedacted ? null : client?.name || client?.nom || null,
         assignedUserName: assignedUserNames.length > 0 ? assignedUserNames.join(", ") : assignedUser?.name || assignedUser?.nom || assignedUser?.username || null,
         creatorUserName: creatorUser?.name || creatorUser?.nom || creatorUser?.username || null,
-        ticketId: event.ticket_id || eventMeta.ticketId || null,
-        ticketNumber: event.ticket_number || eventMeta.ticketNumber || null,
-        ticketType: event.ticket_type || eventMeta.ticketType || null,
-        isTicketReminder: Boolean(event.ticket_id || eventMeta.ticketReminder),
-        isSalesPmTask: Boolean(eventMeta.salesPmTask),
-        salesKind: eventMeta.kind || null,
-        pmTaskId: eventMeta.pmTaskId || null,
-        createdAt: event.created_at || null,
-        updatedAt: event.updated_at || null,
-        equipmentName: equipmentName,
-        serviceName: serviceName,
-        linkedItems: linkedItemsMeta,
-        todos: Array.isArray(eventMeta.todos) ? eventMeta.todos : [],
-        notes: Array.isArray(eventMeta.notes) ? eventMeta.notes : [],
+        ticketId: privacyRedacted ? null : event.ticket_id || eventMeta.ticketId || null,
+        ticketNumber: privacyRedacted ? null : event.ticket_number || eventMeta.ticketNumber || null,
+        ticketType: privacyRedacted ? null : event.ticket_type || eventMeta.ticketType || null,
+        isTicketReminder: privacyRedacted ? false : Boolean(event.ticket_id || eventMeta.ticketReminder),
+        isSalesPmTask: privacyRedacted ? false : Boolean(eventMeta.salesPmTask),
+        salesKind: privacyRedacted ? null : eventMeta.kind || null,
+        pmTaskId: privacyRedacted ? null : eventMeta.pmTaskId || null,
+        createdAt: privacyRedacted ? null : event.created_at || null,
+        updatedAt: privacyRedacted ? null : event.updated_at || null,
+        equipmentName: privacyRedacted ? null : equipmentName,
+        serviceName: privacyRedacted ? null : serviceName,
+        linkedItems: privacyRedacted ? [] : linkedItemsMeta,
+        todos: privacyRedacted ? [] : Array.isArray(eventMeta.todos) ? eventMeta.todos : [],
+        notes: privacyRedacted ? [] : Array.isArray(eventMeta.notes) ? eventMeta.notes : [],
         schedule: eventMeta.schedule && typeof eventMeta.schedule === "object" ? eventMeta.schedule : null,
+        privacy_redacted: privacyRedacted,
         _rawData: event
       };
     });
@@ -1790,6 +1792,7 @@ export default function PlanningPage({
     }
   };
   const handleSelectEvent = event => {
+    if (event?.privacy_redacted || event?._rawData?.privacy_redacted) return;
     if (event._isCampaign && event._campaignData && onNavigate) {
       onNavigate("CampaignDetail", {
         campaign: event._campaignData
@@ -1906,8 +1909,8 @@ export default function PlanningPage({
   const renderEventPreviewCard = event => ({
     close
   }) => {
-    const canEditThisEvent = Boolean(event?._isCampaign) || canEditEvent;
-    return <PlanningEventHoverCard event={event} users={users} onNavigate={onNavigate} onClose={close} onAssignAgent={handleAssignAgentFromTooltip} copy={hoverCardCopy} onEdit={canEditThisEvent ? () => {
+    const canEditThisEvent = !event?.privacy_redacted && (Boolean(event?._isCampaign) || canEditEvent);
+    return <PlanningEventHoverCard event={event} users={users} onNavigate={onNavigate} onClose={close} onAssignAgent={event?.privacy_redacted ? undefined : handleAssignAgentFromTooltip} copy={hoverCardCopy} onEdit={canEditThisEvent ? () => {
       close();
       handleSelectEvent(event);
     } : undefined} />;
@@ -1920,10 +1923,14 @@ export default function PlanningPage({
       onMonthEventResize
     } = props;
     const event = props.event || {};
+    const displayTitle = event.privacy_redacted ? planningCopy.defaults.busy || "Busy" : event.title || planningCopy.defaults.event;
     if (nativeMonthDrag) {
-      return <PlanningMonthEventBar event={event} continuesPrior={continuesPrior} continuesAfter={continuesAfter} renderPreview={renderEventPreviewCard} onMonthEventResize={onMonthEventResize} eventFallbackTitle={planningCopy.defaults.event} />;
+      return <PlanningMonthEventBar event={{
+        ...event,
+        title: displayTitle
+      }} continuesPrior={continuesPrior} continuesAfter={continuesAfter} renderPreview={renderEventPreviewCard} onMonthEventResize={event.privacy_redacted ? undefined : onMonthEventResize} eventFallbackTitle={planningCopy.defaults.event} />;
     }
-    const title = event.title || planningCopy.defaults.event;
+    const title = displayTitle;
     const timeStr = event.start ? moment(event.start).format("HH:mm") : "";
     const typeIcon = getPlanningEventTypeIcon(event);
     return <SmartTooltip trigger="click-contextmenu" interactive clickSuppressOnDrag content={renderEventPreviewCard(event)} tooltipClassName={styles.eventHoverPortal} data-tooltip-position="planning-popover" as="span" className={styles.eventBarWrapper}>
@@ -1935,7 +1942,7 @@ export default function PlanningPage({
       </SmartTooltip>;
   };
   const renderWeekEvent = event => {
-    const title = event.title || planningCopy.defaults.event;
+    const title = event.privacy_redacted ? planningCopy.defaults.busy || "Busy" : event.title || planningCopy.defaults.event;
     const timeStr = event.start ? moment(event.start).format("HH:mm") : "";
     const typeIcon = getPlanningEventTypeIcon(event);
     return <SmartTooltip trigger="click-contextmenu" interactive clickSuppressOnDrag content={renderEventPreviewCard(event)} tooltipClassName={styles.eventHoverPortal} data-tooltip-position="planning-popover" as="span" className={styles.weekEventTooltipWrap}>

@@ -23,6 +23,21 @@ export async function verifyMfa(code) {
   if (!res.ok) throw new Error(data.error || "Invalid code");
   return data;
 }
+export async function disableMfa(code) {
+  const res = await fetch(`${API_BASE_URL}/auth/mfa/disable`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    credentials: "include",
+    body: JSON.stringify({
+      code
+    })
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || "Unable to disable MFA");
+  return data;
+}
 export async function validateMfaLogin(mfaToken, code) {
   const res = await fetch(`${API_BASE_URL}/auth/mfa/login`, {
     method: "POST",

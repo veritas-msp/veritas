@@ -71,6 +71,7 @@ function serializeEventDescription(text, meta) {
 }
 export function isPlanningEventDraggable(event) {
   if (!event) return false;
+  if (event.privacy_redacted || event._rawData?.privacy_redacted) return false;
   if (event._isCampaign) return false;
   const id = event.id ?? event._rawData?.id;
   if (!id || String(id).startsWith("campaign-")) return false;

@@ -24,6 +24,7 @@ import {
   sqlContactLinkedToClientAsync,
   syncHomeClientId
 } from '../../services/contactClientLinks.js';
+import { attachOrphanTicketsToContact } from '../../services/ticketEmailThread.js';
 const PORTAL_PASSWORD_ERROR = `Password too weak: at least ${PORTAL_PASSWORD_MIN_LENGTH} characters, with at least one letter and one digit.`;
 const router = express.Router();
 router.use(verifyJWT);
@@ -717,6 +718,9 @@ router.post('/', verifyJWT, requirePermission('contacts.create'), async (req, re
     }
     const newContact = await loadContactById(created.id);
     invalidateContactsListCache(newContact?.client_id || null);
+    await attachOrphanTicketsToContact(newContact).catch(err => {
+      console.warn("attachOrphanTicketsToContact (create):", err?.message || err);
+    });
     await dispatchNotificationEvent({
       source: "contact",
       element: "created",
@@ -870,6 +874,9 @@ router.put('/:id', verifyJWT, requirePermission('contacts_detail.edit'), async (
     } catch (syncErr) {
       console.warn("Sync portail contact:", syncErr.message);
     }
+    await attachOrphanTicketsToContact(updatedContact).catch(err => {
+      console.warn("attachOrphanTicketsToContact (update):", err?.message || err);
+    });
     res.json(updatedContact);
   } catch (err) {
     res.status(500).json({

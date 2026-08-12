@@ -3,8 +3,16 @@ import { useLogin } from "../hooks/useLogin";
 import { useSessionRenewal } from "../hooks/useSessionRenewal";
 import API_BASE_URL from "../config";
 import MfaEnrollmentModal from "../components/Authentication/MfaEnrollmentModal";
+import { setUserLocaleOverride } from "./AppGeneralSettingsContext";
 const AuthContext = createContext(null);
 export const useAuthContext = () => useContext(AuthContext);
+function applyLocaleFromProfile(data) {
+  if (data?.app_locale) {
+    try {
+      setUserLocaleOverride(data.app_locale);
+    } catch {}
+  }
+}
 export function AuthProvider({
   children
 }) {
@@ -47,6 +55,11 @@ export function AuthProvider({
         setUserRole(data.role);
         setMfaEnabled(Boolean(data.mfa_enabled));
         setImpersonating(Boolean(data.impersonating));
+        fetch(`${API_BASE_URL}/users/me`, {
+          credentials: "include"
+        }).then(res => res.ok ? res.json() : null).then(profile => {
+          applyLocaleFromProfile(profile);
+        }).catch(() => {});
       }
     }).catch(() => {}).finally(() => setLoadingSession(false));
   }, []);
@@ -82,6 +95,11 @@ export function AuthProvider({
     if (!mfa_enabled) {
       setMfaPromptAfterLogin(true);
     }
+    fetch(`${API_BASE_URL}/users/me`, {
+      credentials: "include"
+    }).then(res => res.ok ? res.json() : null).then(profile => {
+      applyLocaleFromProfile(profile);
+    }).catch(() => {});
   }
   function patchUser(partial) {
     if (!partial || typeof partial !== "object") return;

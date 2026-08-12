@@ -30,6 +30,51 @@ function formatEventRowForApi(row) {
     end: end ? end.replace(" ", "T") : row.end
   };
 }
+async function loadPlanningVisibilityByUserIds(userIds) {
+  const map = new Map();
+  if (!userIds?.length) return map;
+  const {
+    rows
+  } = await pool.query(`SELECT user_id::text AS user_id, setting_value
+     FROM v_b_users_settings
+     WHERE setting_key = 'planning_visibility'
+       AND user_id = ANY($1::uuid[])`, [userIds]);
+  for (const row of rows) {
+    const raw = row.setting_value == null ? "" : String(row.setting_value).trim().toLowerCase();
+    map.set(String(row.user_id), raw === "private" ? "private" : "public");
+  }
+  return map;
+}
+function anonymizeEventForViewer(event, viewerId, visibilityByOwner) {
+  const ownerId = event.user_id || event.assigned_user_id;
+  if (!ownerId || String(ownerId) === String(viewerId)) return event;
+  const vis = visibilityByOwner.get(String(ownerId)) || "public";
+  if (vis !== "private") return event;
+  return {
+    ...event,
+    title: "Busy",
+    description: null,
+    client_id: null,
+    equipment_id: null,
+    ticket_id: null,
+    ticket_number: null,
+    ticket_type: null,
+    ticket_client_id: null,
+    ticket_requester_contact_id: null,
+    ticket_requester_name: null,
+    privacy_redacted: true
+  };
+}
+async function redactEventsForViewer(events, viewerId) {
+  const ids = [...new Set(events.map(e => e.user_id || e.assigned_user_id).filter(Boolean).map(String))];
+  const map = await loadPlanningVisibilityByUserIds(ids);
+  return events.map(e => anonymizeEventForViewer(formatEventRowForApi(e), viewerId, map));
+}
+async function redactEventForViewer(event, viewerId) {
+  if (!event) return event;
+  const [redacted] = await redactEventsForViewer([event], viewerId);
+  return redacted;
+}
 function buildEventsListSql(schema, {
   whereSql,
   orderSql,
@@ -127,7 +172,7 @@ router.get('/', verifyJWT, requirePermission('planning.view'), async (req, res) 
       orderSql,
       limitSql
     }), values);
-    res.json(result.rows);
+    res.json(await redactEventsForViewer(result.rows, req.user.id));
   } catch (err) {
     console.error('Error fetching events:', err);
     res.status(500).json({
@@ -366,7 +411,7 @@ router.put('/:id', verifyJWT, requirePermission('planning.edit'), [body('title')
         SET ${updates.join(', ')}
         WHERE id = $${paramIndex}
         RETURNING *`, values);
-    res.json(formatEventRowForApi(result.rows[0]));
+    res.json(await redactEventForViewer(result.rows[0], req.user.id));
   } catch (err) {
     console.error('Error updating event:', err);
     res.status(500).json({

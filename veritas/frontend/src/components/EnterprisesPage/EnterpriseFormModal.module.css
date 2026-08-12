@@ -653,6 +653,24 @@
   z-index: 10;
 }
 
+.dropdownPortal {
+  position: fixed;
+  max-height: 220px;
+  overflow-y: auto;
+  border: 1px solid var(--msp-border, #dde3ed);
+  border-radius: 10px;
+  background: var(--msp-surface, #fff);
+  box-shadow: 0 12px 32px rgba(15, 28, 46, 0.18);
+  z-index: var(--modal-dropdown-z-index, 11250);
+  pointer-events: auto;
+}
+
+:global(html.dark) .dropdownPortal {
+  background: var(--msp-surface, #1a2740);
+  border-color: #5a8fd4;
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.35);
+}
+
 .dropdownEmpty {
   padding: 0.7rem 0.85rem;
   font-size: 0.8125rem;

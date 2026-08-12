@@ -24,6 +24,7 @@ function AgendaEventCard({
   item,
   renderEventPreview,
   defaultEventTitle,
+  busyTitle,
   planningTypes
 }) {
   const {
@@ -36,6 +37,7 @@ function AgendaEventCard({
   } = getPlanningEventColors(event);
   const typeLabel = getLocalizedEventTypeLabel(event, planningTypes);
   const typeIcon = getPlanningEventTypeIcon(event);
+  const displayTitle = event.privacy_redacted ? busyTitle || defaultEventTitle : event.title || defaultEventTitle;
   const card = <button type="button" className={styles.eventCard}>
       <span className={styles.eventAccent} style={{
       backgroundColor
@@ -46,20 +48,20 @@ function AgendaEventCard({
       <div className={styles.mainCol}>
         <div className={styles.titleRow}>
           <Icon icon={typeIcon} className={styles.typeIcon} aria-hidden />
-          <p className={styles.eventTitle}>{event.title || defaultEventTitle}</p>
+          <p className={styles.eventTitle}>{displayTitle}</p>
         </div>
         <div className={styles.metaRow}>
           <span className={styles.typeChip} style={{
           "--chip-bg": `${backgroundColor}22`,
           "--chip-fg": backgroundColor
         }}>
-            {typeLabel}
+            {event.privacy_redacted ? displayTitle : typeLabel}
           </span>
-          {event.clientName ? <span className={styles.metaChip} title={event.clientName}>
+          {!event.privacy_redacted && event.clientName ? <span className={styles.metaChip} title={event.clientName}>
               <Icon icon="mdi:domain" className={styles.metaChipIcon} aria-hidden />
               {event.clientName}
             </span> : null}
-          {event.assignedUserName ? <span className={styles.metaChip} title={event.assignedUserName}>
+          {!event.privacy_redacted && event.assignedUserName ? <span className={styles.metaChip} title={event.assignedUserName}>
               <Icon icon="mdi:account" className={styles.metaChipIcon} aria-hidden />
               {event.assignedUserName}
             </span> : null}
@@ -126,7 +128,7 @@ export default function PlanningAgendaView({
                   </span> : null}
               </div>
               <div className={styles.eventList}>
-                {group.events.map(item => <AgendaEventCard key={`${group.dateKey}-${item.event.id}-${moment(item.event.start).format("HHmm")}`} item={item} renderEventPreview={renderEventPreview} defaultEventTitle={copy?.defaults?.event || "Event"} planningTypes={copy?.planningTypes || []} />)}
+                {group.events.map(item => <AgendaEventCard key={`${group.dateKey}-${item.event.id}-${moment(item.event.start).format("HHmm")}`} item={item} renderEventPreview={renderEventPreview} defaultEventTitle={copy?.defaults?.event || "Event"} busyTitle={copy?.defaults?.busy || "Busy"} planningTypes={copy?.planningTypes || []} />)}
               </div>
             </section>)}
       </div>

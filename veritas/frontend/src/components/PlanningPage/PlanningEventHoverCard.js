@@ -476,6 +476,25 @@ export default function PlanningEventHoverCard({
     access
   });
   if (!event) return null;
+  if (event.privacy_redacted) {
+    const allDayRedacted = inferAllDay(event);
+    return <div className={styles.card}>
+        <div className={styles.header}>
+          <span className={`${styles.typeBadge} ${styles.type_other || ""}`}>
+            <Icon icon="mdi:calendar-lock-outline" aria-hidden />
+            {copy.defaults.busy || "Busy"}
+          </span>
+          <h4 className={styles.title}>{copy.defaults.busy || "Busy"}</h4>
+        </div>
+        <div className={styles.body}>
+          <DetailRow icon="mdi:clock-outline" label={copy.labels?.dates || copy.labels?.date || "Date"}>
+            {formatDateRange(event)}
+            {allDayRedacted ? <div className={styles.subValue}>{copy.schedule?.allDay}</div> : null}
+          </DetailRow>
+        </div>
+        <CardFooter isCampaign={false} onEdit={undefined} onClose={onClose} copy={copy} />
+      </div>;
+  }
   const isCampaign = Boolean(event._isCampaign);
   const resolvedSalesLink = resolveSalesTaskTicketLink(event);
   const isTicketReminder = Boolean(event.isTicketReminder || (event.ticketId && !event.isSalesPmTask && !resolvedSalesLink?.isSalesPmTask));

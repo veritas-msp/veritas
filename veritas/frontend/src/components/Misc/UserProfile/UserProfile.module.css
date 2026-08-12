@@ -103,6 +103,7 @@
   display: flex;
   flex-wrap: wrap;
   gap: 0.5rem;
+  margin-top: 0.75rem;
 }
 
 .helpdeskForm {
@@ -370,3 +371,127 @@
   color: var(--msp-muted, #5c6b82);
   line-height: 1.45;
 }
+
+.accountShell {
+  display: grid;
+  grid-template-columns: minmax(200px, 240px) minmax(0, 1fr);
+  gap: 0;
+  min-height: 0;
+  flex: 1;
+  border: 1px solid var(--msp-border, #e2e8f0);
+  border-radius: var(--msp-radius, 16px);
+  background: var(--msp-surface, #fff);
+  box-shadow: var(--msp-shadow, 0 1px 2px rgba(15, 28, 46, 0.04));
+  overflow: hidden;
+}
+
+.nav {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  padding: 0.85rem 0.65rem;
+  border-right: 1px solid var(--msp-border, #eef2f7);
+  background: var(--msp-surface-2, #f8fafc);
+  overflow-y: auto;
+}
+
+.navItem {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.55rem;
+  width: 100%;
+  padding: 0.6rem 0.65rem;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s, box-shadow 0.15s;
+}
+
+.navItem:hover {
+  background: var(--msp-accent-soft, rgba(43, 95, 171, 0.06));
+}
+
+.navItemActive {
+  background: var(--msp-surface, #fff);
+  border-color: rgba(43, 95, 171, 0.22);
+  box-shadow: 0 2px 8px rgba(15, 28, 46, 0.06);
+}
+
+.navItemIcon {
+  font-size: 1.05rem;
+  color: var(--msp-muted-light, #8b9bb5);
+  margin-top: 0.1rem;
+  flex-shrink: 0;
+}
+
+.navItemActive .navItemIcon {
+  color: var(--msp-accent, #2b5fab);
+}
+
+.navText {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  min-width: 0;
+  flex: 1;
+}
+
+.navLabel {
+  display: block;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--msp-text, #0f1c2e);
+  line-height: 1.3;
+}
+
+.navDesc {
+  display: block;
+  font-size: 0.68rem;
+  color: var(--msp-muted-light, #8b9bb5);
+  line-height: 1.35;
+}
+
+.content {
+  min-width: 0;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 1rem;
+  scrollbar-width: thin;
+}
+
+.localeBlock {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+}
+
+.inlineStatus {
+  font-size: 0.76rem;
+  color: var(--msp-muted, #5c6b82);
+}
+
+@media (max-width: 900px) {
+  .accountShell {
+    grid-template-columns: 1fr;
+  }
+
+  .nav {
+    border-right: none;
+    border-bottom: 1px solid var(--msp-border, #eef2f7);
+    flex-direction: row;
+    flex-wrap: wrap;
+    overflow-x: auto;
+  }
+
+  .navItem {
+    flex: 1 1 auto;
+    min-width: 140px;
+  }
+
+  .navDesc {
+    display: none;
+  }
+}
+

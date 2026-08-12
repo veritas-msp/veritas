@@ -31,6 +31,7 @@ import { sanitizeTicketCommentHtml } from "../../utils/sanitizeHtml";
 import { contentLooksLikeHtml } from "../../utils/incomingEmailContent";
 import IncomingEmailMessage from "./IncomingEmailMessage";
 import ContactFormModal from "../ContactsPage/ContactFormModal";
+import TicketLinkRequesterEmailModal from "./TicketLinkRequesterEmailModal";
 import { fetchUsers, fetchCurrentUser } from "../../api/users";
 import { fetchClients, fetchClientsList, fetchContactsList, fetchClientModules, fetchClientSupportCredits } from "../../api/clients";
 import { useAuthContext } from "../../contexts/AuthContext";
@@ -1036,6 +1037,7 @@ export default function TicketDetailPage({
   const canRandomMode = can("tickets.random_mode");
   const canHardPurge = isAdmin || can("tickets.manage");
   const canCreateContact = can("contacts.create");
+  const canLinkRequesterEmail = can("contacts_detail.edit") || canCreateContact;
   const ticketId = ticketData?.ticketId || ticketData?.id || urlTicketId;
   const [ticket, setTicket] = useState(null);
   const isSalesTicketDetail = useMemo(() => {
@@ -1170,6 +1172,8 @@ export default function TicketDetailPage({
   const [showSideConversationModal, setShowSideConversationModal] = useState(false);
   const [contactModalOpen, setContactModalOpen] = useState(false);
   const [contactModalInitial, setContactModalInitial] = useState(null);
+  const [linkRequesterEmailModalOpen, setLinkRequesterEmailModalOpen] = useState(false);
+  const [orphanRequesterChoiceOpen, setOrphanRequesterChoiceOpen] = useState(false);
   const [sideConversation, setSideConversation] = useState({
     team: "commercial",
     subject: "",
@@ -3102,16 +3106,38 @@ export default function TicketDetailPage({
   }, [clientEquipments, linkedEquipmentIds, linkedEquipmentSearch, locale]);
   const isTicketClosed = String(ticket?.status || "").toLowerCase() === "closed";
   const isReadOnly = isDeleted || isTicketClosed;
-  const showQuickAddRequesterContact = Boolean(canCreateContact && !isSalesTicketDetail && !isReadOnly && orphanRequesterEmail);
+  const showOrphanRequesterActions = Boolean(!isSalesTicketDetail && !isReadOnly && orphanRequesterEmail && (canCreateContact || canLinkRequesterEmail));
   const openQuickAddRequesterContact = useCallback(() => {
-    if (!orphanRequesterEmail) return;
+    if (!orphanRequesterEmail || !canCreateContact) return;
+    setOrphanRequesterChoiceOpen(false);
     setShowRequesterDropdown(false);
+    setLinkRequesterEmailModalOpen(false);
     setContactModalInitial({
       email: orphanRequesterEmail,
       client_id: ticket?.client_id || editForm.clientId || null
     });
     setContactModalOpen(true);
-  }, [orphanRequesterEmail, ticket?.client_id, editForm.clientId]);
+  }, [orphanRequesterEmail, canCreateContact, ticket?.client_id, editForm.clientId]);
+  const openLinkRequesterEmailModal = useCallback(() => {
+    if (!orphanRequesterEmail || !canLinkRequesterEmail) return;
+    setOrphanRequesterChoiceOpen(false);
+    setShowRequesterDropdown(false);
+    setContactModalOpen(false);
+    setLinkRequesterEmailModalOpen(true);
+  }, [orphanRequesterEmail, canLinkRequesterEmail]);
+  const openOrphanRequesterActions = useCallback(() => {
+    if (!showOrphanRequesterActions) return;
+    setShowRequesterDropdown(false);
+    if (canCreateContact && canLinkRequesterEmail) {
+      setOrphanRequesterChoiceOpen(true);
+      return;
+    }
+    if (canCreateContact) {
+      openQuickAddRequesterContact();
+      return;
+    }
+    openLinkRequesterEmailModal();
+  }, [showOrphanRequesterActions, canCreateContact, canLinkRequesterEmail, openQuickAddRequesterContact, openLinkRequesterEmailModal]);
   const closeContactModal = useCallback(() => {
     setContactModalOpen(false);
     setContactModalInitial(null);
@@ -3125,6 +3151,38 @@ export default function TicketDetailPage({
     } catch {}
     await selectRequester(savedContact);
   }, [closeContactModal, selectRequester]);
+  const handleRequesterEmailLinked = useCallback(async linkedContact => {
+    setLinkRequesterEmailModalOpen(false);
+    if (!linkedContact?.id) return;
+    try {
+      const rows = await fetchContactsList();
+      if (Array.isArray(rows)) setContacts(rows);
+    } catch {}
+    await selectRequester(linkedContact);
+  }, [selectRequester]);
+  const renderOrphanRequesterActions = (variant = "icon") => {
+    if (!showOrphanRequesterActions) return null;
+    if (variant === "empty") {
+      return <div className={fs.contactEmptyActions}>
+          {canCreateContact ? <button type="button" className={fs.contactEmptyAction} onClick={openQuickAddRequesterContact}>
+              {copy.createContact}
+            </button> : null}
+          {canLinkRequesterEmail ? <button type="button" className={fs.contactEmptyAction} onClick={openLinkRequesterEmailModal}>
+              {copy.linkContact}
+            </button> : null}
+        </div>;
+    }
+    const triggerClass = variant === "context" ? styles.contextAddContactBtn : variant === "input" ? fs.contactInputEndBtn : styles.ticketHeroAddContactBtn;
+    return <SmartTooltip content={copy.orphanRequesterMenuAria || copy.createContact}>
+        <button type="button" className={triggerClass} title={copy.orphanRequesterMenuAria || copy.createContact} aria-label={copy.orphanRequesterMenuAria || copy.createContact} onClick={e => {
+        e.preventDefault();
+        e.stopPropagation();
+        openOrphanRequesterActions();
+      }}>
+          <Icon icon="mdi:account-plus-outline" aria-hidden />
+        </button>
+      </SmartTooltip>;
+  };
   const saveSalesProgress = useCallback(async nextValue => {
     if (!ticketId || isReadOnly) return;
     const clamped = Math.max(0, Math.min(100, Math.round(Number(nextValue) || 0)));
@@ -4124,11 +4182,7 @@ export default function TicketDetailPage({
           </button> : <span className={styles.ticketHeroMetaItem}>
             <Icon icon="mdi:account-outline" aria-hidden />
             <span className={styles.ticketHeroMetaText}>{requesterDisplayName}</span>
-            {showQuickAddRequesterContact ? <SmartTooltip content={copy.createContact}>
-                <button type="button" className={styles.ticketHeroAddContactBtn} onClick={openQuickAddRequesterContact} aria-label={copy.createContact}>
-                  <Icon icon="mdi:account-plus-outline" aria-hidden />
-                </button>
-              </SmartTooltip> : null}
+            {renderOrphanRequesterActions("icon")}
           </span>}
         <span className={styles.ticketHeroMetaDot} aria-hidden>
           ·
@@ -4246,22 +4300,12 @@ export default function TicketDetailPage({
                         setShowRequesterDropdown(false);
                       }
                       }} />
-                      {showQuickAddRequesterContact ? <SmartTooltip content={copy.createContact}>
-                          <button type="button" className={fs.contactInputEndBtn} title={copy.createContact} aria-label={copy.createContact} onClick={e => {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        openQuickAddRequesterContact();
-                      }}>
-                            <Icon icon="mdi:account-plus-outline" aria-hidden />
-                          </button>
-                        </SmartTooltip> : null}
+                      {renderOrphanRequesterActions("input")}
                     </div>
                     {showRequesterDropdown && <div className={fs.contactDropdown} role="listbox">
                         {filteredRequesterContacts.length === 0 ? <div className={fs.contactEmpty}>
                             <span>{copy.noContactFound}</span>
-                            {showQuickAddRequesterContact ? <button type="button" className={fs.contactEmptyAction} onClick={openQuickAddRequesterContact}>
-                                {copy.createContact}
-                              </button> : null}
+                            {renderOrphanRequesterActions("empty")}
                           </div> : filteredRequesterContacts.map((contact, idx) => <button key={contact.id} type="button" role="option" className={`${fs.contactOption} ${requesterHighlight === idx ? fs.contactOptionActive : ""}`} onMouseEnter={() => setRequesterHighlight(idx)} onClick={() => selectRequester(contact)}>
                               <span className={fs.contactOptionName}>{getContactLabel(contact)}</span>
                             </button>)}
@@ -4983,11 +5027,7 @@ export default function TicketDetailPage({
                       {requesterDisplayName}
                     </button> : requesterDisplayName}
                 </div>
-                {showQuickAddRequesterContact ? <SmartTooltip content={copy.createContact}>
-                    <button type="button" className={styles.contextAddContactBtn} onClick={openQuickAddRequesterContact} aria-label={copy.createContact}>
-                      <Icon icon="mdi:account-plus-outline" aria-hidden />
-                    </button>
-                  </SmartTooltip> : null}
+                {renderOrphanRequesterActions("context")}
               </div>
               <div className={styles.contextLine}>
                 <strong>{copy.rightPane.phone}</strong>{" "}
@@ -5430,6 +5470,26 @@ export default function TicketDetailPage({
       <TicketConfirmModal open={Boolean(deleteConfirmConfig)} title={deleteConfirmConfig?.title} message={deleteConfirmConfig?.message} confirmLabel={deleteConfirmConfig?.confirmLabel} variant="danger" icon={deleteConfirmConfig?.icon} loading={deletingTicket} onClose={closeDeleteConfirm} onConfirm={confirmDeleteTicket} />
 
       <ContactFormModal open={contactModalOpen} initialContact={contactModalInitial} clients={clients} defaultClientId={contactModalInitial?.client_id || ticket?.client_id || editForm.clientId || null} onClose={closeContactModal} onSuccess={handleQuickAddRequesterContactSaved} />
+      <TicketLinkRequesterEmailModal open={linkRequesterEmailModalOpen} email={orphanRequesterEmail} contacts={contacts} copy={copy} onClose={() => setLinkRequesterEmailModalOpen(false)} onLinked={handleRequesterEmailLinked} />
+      {orphanRequesterChoiceOpen ? createPortal(<div className={styles.orphanChoiceOverlay} onClick={() => setOrphanRequesterChoiceOpen(false)} role="presentation">
+            <div className={styles.orphanChoiceShell} onClick={e => e.stopPropagation()} role="dialog" aria-modal="true" aria-labelledby="orphan-requester-choice-title">
+              <h2 className={styles.orphanChoiceTitle} id="orphan-requester-choice-title">{copy.orphanRequesterMenuAria}</h2>
+              <p className={styles.orphanChoiceSubtitle}>{orphanRequesterEmail}</p>
+              <div className={styles.orphanChoiceActions}>
+                {canCreateContact ? <button type="button" className={styles.orphanChoiceBtn} onClick={openQuickAddRequesterContact}>
+                    <Icon icon="mdi:account-plus-outline" aria-hidden />
+                    <span>{copy.createContact}</span>
+                  </button> : null}
+                {canLinkRequesterEmail ? <button type="button" className={styles.orphanChoiceBtn} onClick={openLinkRequesterEmailModal}>
+                    <Icon icon="mdi:link-variant" aria-hidden />
+                    <span>{copy.linkContact}</span>
+                  </button> : null}
+              </div>
+              <button type="button" className={styles.orphanChoiceCancel} onClick={() => setOrphanRequesterChoiceOpen(false)}>
+                {copy.cancel || "Cancel"}
+              </button>
+            </div>
+          </div>, document.body) : null}
 
       <ProFeaturePromoModal open={Boolean(proPromoFeature)} featureKey={proPromoFeature} onClose={() => setProPromoFeature(null)} />
 

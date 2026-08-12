@@ -138,6 +138,40 @@ router.post("/verify", verifyJWT, async (req, res) => {
     });
   }
 });
+router.post("/disable", verifyJWT, async (req, res) => {
+  const {
+    code
+  } = req.body;
+  if (!code) return res.status(400).json({
+    error: "Code required."
+  });
+  try {
+    const user = await getUserMfa(req.user.id);
+    if (!user) return res.status(404).json({
+      error: "User not found."
+    });
+    if (!user.mfa_enabled || !user.mfa_secret) {
+      return res.status(400).json({
+        error: "MFA is not enabled."
+      });
+    }
+    if (!verifyTotp(code, user.mfa_secret)) {
+      return res.status(400).json({
+        error: "Invalid code"
+      });
+    }
+    await pool.query("UPDATE v_b_users SET mfa_enabled = false, mfa_secret = NULL WHERE id = $1", [user.id]);
+    res.json({
+      success: true,
+      mfa_enabled: false
+    });
+  } catch (err) {
+    console.error("MFA disable error:", err);
+    res.status(500).json({
+      error: "Error disabling MFA"
+    });
+  }
+});
 router.get("/status", verifyJWT, async (req, res) => {
   try {
     const user = await getUserMfa(req.user.id);

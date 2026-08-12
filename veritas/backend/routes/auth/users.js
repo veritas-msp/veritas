@@ -19,6 +19,9 @@ const OPTIONAL_BODY = {
 const ALLOWED_USER_ROLES = ["admin", "superviseur", "utilisateur"];
 const TICKET_HELPDESK_DISPLAY_NAME_KEY = "ticket_helpdesk_display_name";
 const TICKET_CHAT_UI_SETTINGS_KEY = "ticket_chat_ui_settings";
+const APP_LOCALE_KEY = "app_locale";
+const PLANNING_VISIBILITY_KEY = "planning_visibility";
+const ALLOWED_APP_LOCALES = new Set(["en", "es", "fr", "de", "it"]);
 const AGENTS_LIST_WHERE = `WHERE COALESCE(role, '') <> 'client'`;
 const HELPDESK_DISPLAY_JOIN = `
   LEFT JOIN v_b_users_settings hs
@@ -26,6 +29,12 @@ const HELPDESK_DISPLAY_JOIN = `
 const CHAT_UI_SETTINGS_JOIN = `
   LEFT JOIN v_b_users_settings cs
     ON cs.user_id = u.id AND cs.setting_key = '${TICKET_CHAT_UI_SETTINGS_KEY}'`;
+const APP_LOCALE_JOIN = `
+  LEFT JOIN v_b_users_settings ls
+    ON ls.user_id = u.id AND ls.setting_key = '${APP_LOCALE_KEY}'`;
+const PLANNING_VISIBILITY_JOIN = `
+  LEFT JOIN v_b_users_settings pv
+    ON pv.user_id = u.id AND pv.setting_key = '${PLANNING_VISIBILITY_KEY}'`;
 const AVATAR_JOIN = `
   LEFT JOIN v_b_users_settings av
     ON av.user_id = u.id AND av.setting_key = '${USER_AVATAR_SETTING_KEY}'`;
@@ -99,14 +108,30 @@ function attachHelpdeskDisplayName(row) {
     ticket_helpdesk_display_name: parseJsonSettingString(row.ticket_helpdesk_display_name)
   };
 }
+function parseAppLocale(value) {
+  const locale = parseJsonSettingString(value);
+  if (!locale) return null;
+  const normalized = locale.toLowerCase();
+  return ALLOWED_APP_LOCALES.has(normalized) ? normalized : null;
+}
+function parsePlanningVisibility(value) {
+  const visibility = parseJsonSettingString(value);
+  if (!visibility) return "public";
+  const normalized = visibility.toLowerCase();
+  return normalized === "private" ? "private" : "public";
+}
 function attachUserProfileSettings(row) {
   if (!row) return row;
   const ticket_chat_ui_settings = parseTicketChatUiSettings(row.ticket_chat_ui_settings_raw);
   const base = attachHelpdeskDisplayName(row);
   delete base.ticket_chat_ui_settings_raw;
+  delete base.app_locale_raw;
+  delete base.planning_visibility_raw;
   return attachUserAvatar({
     ...base,
-    ticket_chat_ui_settings
+    ticket_chat_ui_settings,
+    app_locale: parseAppLocale(row.app_locale_raw),
+    planning_visibility: parsePlanningVisibility(row.planning_visibility_raw)
   });
 }
 router.get("/me", verifyJWT, async (req, res) => {
@@ -129,11 +154,15 @@ router.get("/me", verifyJWT, async (req, res) => {
               p.dashboard_enabled,
               hs.setting_value AS ticket_helpdesk_display_name,
               cs.setting_value AS ticket_chat_ui_settings_raw,
+              ls.setting_value AS app_locale_raw,
+              pv.setting_value AS planning_visibility_raw,
               av.setting_value AS avatar_setting_raw
        FROM v_b_users u
        LEFT JOIN v_b_users_profiles p ON p.name = u.profile
        ${HELPDESK_DISPLAY_JOIN}
        ${CHAT_UI_SETTINGS_JOIN}
+       ${APP_LOCALE_JOIN}
+       ${PLANNING_VISIBILITY_JOIN}
        ${AVATAR_JOIN}
        WHERE u.id = $1`, [req.user.id]);
     if (result.rows.length === 0) {

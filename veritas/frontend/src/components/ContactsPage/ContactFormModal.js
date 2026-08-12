@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useMemo, useCallback } from "react";
+import { useState, useEffect, useLayoutEffect, useRef, useMemo, useCallback } from "react";
 import { createPortal } from "react-dom";
 import { Icon } from "@iconify/react";
 import { FaTimes } from "react-icons/fa";
@@ -9,10 +9,13 @@ import { getContactFormSections, getContactFormModalCopy, getContactCivilityCard
 import { useAppLocale } from "../../hooks/useAppGeneralSettings";
 import { useCommonCopy } from "../../hooks/useCommonCopy";
 import styles from "../EnterprisesPage/EnterpriseFormModal.module.css";
+import { getModalDropdownZIndex } from "../../utils/dropdownPortal";
 import { enforcePrimaryCommunications, syncLegacyContactFields, hasIncompleteCommunications, normalizeContactCommunications, getPrimaryCommunicationValue } from "../../utils/contactCommunications";
 import { getPortalStatusFromContact } from "../../api/contactPortal";
 import ContactCommunicationsEditor from "./ContactCommunicationsEditor";
 import ContactPortalEmailChangeModal from "./ContactPortalEmailChangeModal";
+
+const ENTERPRISE_DROPDOWN_MAX_HEIGHT = 220;
 function resolvePrimaryEmail(source) {
   const list = normalizeContactCommunications(source || {});
   return getPrimaryCommunicationValue(list, "email") || String(source?.email || "").trim();
@@ -100,8 +103,10 @@ export default function ContactFormModal({
   const [saving, setSaving] = useState(false);
   const [enterpriseSearch, setEnterpriseSearch] = useState("");
   const [enterpriseDropdownOpen, setEnterpriseDropdownOpen] = useState(false);
+  const [enterpriseDropdownStyle, setEnterpriseDropdownStyle] = useState(null);
   const [portalEmailConfirm, setPortalEmailConfirm] = useState(null);
   const enterpriseAutocompleteRef = useRef(null);
+  const enterpriseDropdownRef = useRef(null);
   // Reset only when the modal opens or the edited contact / locked client changes —
   // not when parents pass a new `clients` / `initialContact` object reference each render.
   const formSessionKey = `${initialContact?.id ?? "new"}|${lockedClientId ?? ""}|${defaultClientId ?? ""}`;
@@ -147,15 +152,58 @@ export default function ContactFormModal({
     });
   }, [open, clientList]);
   useEffect(() => {
-    if (!open) return;
+    if (!open || !enterpriseDropdownOpen) return undefined;
     const handleClickOutside = e => {
-      if (enterpriseAutocompleteRef.current && !enterpriseAutocompleteRef.current.contains(e.target)) {
-        setEnterpriseDropdownOpen(false);
+      const target = e.target;
+      if (enterpriseAutocompleteRef.current?.contains(target) || enterpriseDropdownRef.current?.contains(target)) {
+        return;
       }
+      setEnterpriseDropdownOpen(false);
     };
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, [open]);
+  }, [open, enterpriseDropdownOpen]);
+  const updateEnterpriseDropdownPosition = useCallback(() => {
+    const anchor = enterpriseAutocompleteRef.current;
+    if (!anchor) return;
+    const rect = anchor.getBoundingClientRect();
+    const spaceBelow = window.innerHeight - rect.bottom - 8;
+    const spaceAbove = rect.top - 8;
+    const openUp = spaceBelow < 160 && spaceAbove > spaceBelow;
+    const maxHeight = Math.max(120, Math.min(ENTERPRISE_DROPDOWN_MAX_HEIGHT, openUp ? spaceAbove : spaceBelow));
+    setEnterpriseDropdownStyle({
+      position: "fixed",
+      left: rect.left,
+      width: rect.width,
+      zIndex: getModalDropdownZIndex(),
+      maxHeight,
+      pointerEvents: "auto",
+      ...(openUp ? {
+        top: rect.top - 4,
+        transform: "translateY(-100%)"
+      } : {
+        top: rect.bottom + 4
+      })
+    });
+  }, []);
+  useLayoutEffect(() => {
+    if (!enterpriseDropdownOpen) {
+      setEnterpriseDropdownStyle(null);
+      return undefined;
+    }
+    updateEnterpriseDropdownPosition();
+    return undefined;
+  }, [enterpriseDropdownOpen, updateEnterpriseDropdownPosition]);
+  useEffect(() => {
+    if (!enterpriseDropdownOpen) return undefined;
+    const onReposition = () => updateEnterpriseDropdownPosition();
+    window.addEventListener("resize", onReposition);
+    window.addEventListener("scroll", onReposition, true);
+    return () => {
+      window.removeEventListener("resize", onReposition);
+      window.removeEventListener("scroll", onReposition, true);
+    };
+  }, [enterpriseDropdownOpen, updateEnterpriseDropdownPosition]);
   const visibleSections = useMemo(() => {
     const sections = isEditing ? formSections : formSections.filter(section => section.id !== "status");
     return sections;
@@ -448,14 +496,22 @@ export default function ContactFormModal({
                     setEnterpriseSearch(e.target.value);
                     setEnterpriseDropdownOpen(true);
                   }} onFocus={() => setEnterpriseDropdownOpen(true)} autoComplete="off" />
-                      {enterpriseDropdownOpen && <div className={styles.dropdown}>
+                    </div>
+                    {enterpriseDropdownOpen ? createPortal(<div ref={enterpriseDropdownRef} className={styles.dropdownPortal} style={enterpriseDropdownStyle || {
+                  position: "fixed",
+                  top: 0,
+                  left: 0,
+                  width: 280,
+                  visibility: "hidden",
+                  pointerEvents: "none",
+                  zIndex: getModalDropdownZIndex()
+                }} role="listbox">
                           {filteredClients.length === 0 ? <div className={styles.dropdownEmpty}>
                               {copy.noEnterprise}
-                            </div> : filteredClients.map(client => <button key={client.id} type="button" className={styles.dropdownOption} onClick={() => addMembership(client)}>
+                            </div> : filteredClients.map(client => <button key={client.id} type="button" className={styles.dropdownOption} onMouseDown={e => e.preventDefault()} onClick={() => addMembership(client)}>
                                 {getClientLabel(client, copy)}
                               </button>)}
-                        </div>}
-                    </div>
+                        </div>, document.body) : null}
                   </div>
                 </>}
               <div className={styles.field}>
