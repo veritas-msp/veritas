@@ -1484,7 +1484,10 @@ export const equipmentTypeToFamily = type => {
   const map = {
     Ordinateurs: 'ordinateurs',
     Serveurs: 'servers',
+    Servers: 'servers',
     NAS: 'stockage',
+    Storage: 'stockage',
+    Stockage: 'stockage',
     Firewalls: 'firewall',
     Switch: 'switch',
     BorneWifi: 'wifi',
