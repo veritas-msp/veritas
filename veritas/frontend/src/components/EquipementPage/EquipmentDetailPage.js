@@ -107,6 +107,7 @@ export default function EquipmentDetailPage({
   const [peerFirewalls, setPeerFirewalls] = useState([]);
   const [peerServers, setPeerServers] = useState([]);
   const [peerStorage, setPeerStorage] = useState([]);
+  const [peerBorneWifi, setPeerBorneWifi] = useState([]);
   const [heroMenuOpen, setHeroMenuOpen] = useState(false);
   const [rmmSyncRequesting, setRmmSyncRequesting] = useState(false);
   const [rmmUpdateRequesting, setRmmUpdateRequesting] = useState(false);
@@ -463,11 +464,12 @@ export default function EquipmentDetailPage({
     };
   }, [equipment?.clientId]);
   useEffect(() => {
-    const needsPeers = equipment?.type === "Firewalls" || equipment?.type === "Servers" || equipment?.type === "Serveurs" || equipment?.type === "NAS" || equipment?.type === "Storage" || equipment?.type === "Stockage";
+    const needsPeers = equipment?.type === "Firewalls" || equipment?.type === "Servers" || equipment?.type === "Serveurs" || equipment?.type === "NAS" || equipment?.type === "Storage" || equipment?.type === "Stockage" || equipment?.type === "BorneWifi";
     if (!needsPeers || !equipment?.clientId) {
       setPeerFirewalls([]);
       setPeerServers([]);
       setPeerStorage([]);
+      setPeerBorneWifi([]);
       return undefined;
     }
     let mounted = true;
@@ -477,11 +479,13 @@ export default function EquipmentDetailPage({
       setPeerFirewalls(rows.filter(eq => eq.type === "Firewalls"));
       setPeerServers(rows.filter(eq => eq.type === "Servers" || eq.type === "Serveurs"));
       setPeerStorage(rows.filter(eq => eq.type === "NAS" || eq.type === "Storage" || eq.type === "Stockage"));
+      setPeerBorneWifi(rows.filter(eq => eq.type === "BorneWifi"));
     }).catch(() => {
       if (mounted) {
         setPeerFirewalls([]);
         setPeerServers([]);
         setPeerStorage([]);
+        setPeerBorneWifi([]);
       }
     });
     return () => {
@@ -676,6 +680,7 @@ export default function EquipmentDetailPage({
       setPeerFirewalls((Array.isArray(allEquipment) ? allEquipment : []).filter(eq => eq.type === "Firewalls" && String(eq.clientId) === String(equipment.clientId)));
       setPeerServers((Array.isArray(allEquipment) ? allEquipment : []).filter(eq => (eq.type === "Servers" || eq.type === "Serveurs") && String(eq.clientId) === String(equipment.clientId)));
       setPeerStorage((Array.isArray(allEquipment) ? allEquipment : []).filter(eq => (eq.type === "NAS" || eq.type === "Storage" || eq.type === "Stockage") && String(eq.clientId) === String(equipment.clientId)));
+      setPeerBorneWifi((Array.isArray(allEquipment) ? allEquipment : []).filter(eq => eq.type === "BorneWifi" && String(eq.clientId) === String(equipment.clientId)));
       setEditModalOpen(true);
     } catch (error) {
       console.error("Open edit modal:", error);
@@ -2085,7 +2090,7 @@ export default function EquipmentDetailPage({
       setPurgeLogsConfirmOpen(false);
     }} onConfirm={handlePurgeLogs} title={modalsCopy.confirm?.purgeLogs?.title} message={purgeLogsMessage} icon="mdi:delete-sweep" confirmLabel={modalsCopy.confirm?.purgeLogs?.confirm} confirmVariant="dangerSolid" confirmLoading={purgingLogs} />
 
-      {modalClient && equipmentModuleKey ? <EquipmentFormModal open={editModalOpen} onClose={() => setEditModalOpen(false)} client={modalClient} equipment={equipment} moduleKey={equipmentModuleKey} mode="edit" peerFirewalls={peerFirewalls} peerServers={peerServers} peerStorage={peerStorage} onSaved={handleEquipmentModalSaved} onDeleted={handleEquipmentModalDeleted} /> : null}
+      {modalClient && equipmentModuleKey ? <EquipmentFormModal open={editModalOpen} onClose={() => setEditModalOpen(false)} client={modalClient} equipment={equipment} moduleKey={equipmentModuleKey} mode="edit" peerFirewalls={peerFirewalls} peerServers={peerServers} peerStorage={peerStorage} peerBorneWifi={peerBorneWifi} onSaved={handleEquipmentModalSaved} onDeleted={handleEquipmentModalDeleted} /> : null}
 
       <EquipmentAlertSuspensionModal open={alertModalOpen} onClose={() => setAlertModalOpen(false)} equipment={equipment} onNavigate={onNavigate} alert={alertSettings} />
 

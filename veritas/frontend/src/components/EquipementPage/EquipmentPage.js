@@ -1899,6 +1899,12 @@ const EquipmentPage = forwardRef(function EquipmentPage({
     if (!clientId) return [];
     return allEquipment.filter(eq => (eq.type === "NAS" || eq.type === "Storage" || eq.type === "Stockage") && String(eq.clientId) === String(clientId));
   }, [allEquipment, editEquipmentModal.open, editEquipmentModal.client?.id, embeddedClient?.id, fixedClientId]);
+  const editModalPeerBorneWifi = useMemo(() => {
+    if (!editEquipmentModal.open) return [];
+    const clientId = editEquipmentModal.client?.id || embeddedClient?.id || fixedClientId || null;
+    if (!clientId) return [];
+    return allEquipment.filter(eq => eq.type === "BorneWifi" && String(eq.clientId) === String(clientId));
+  }, [allEquipment, editEquipmentModal.open, editEquipmentModal.client?.id, embeddedClient?.id, fixedClientId]);
   useEffect(() => {
     if (addFlowOpen && editEquipmentModal.open) {
       setAddFlowOpen(false);
@@ -3417,7 +3423,7 @@ const EquipmentPage = forwardRef(function EquipmentPage({
       setUnifiApiModalEquipment(null);
     }} />}
 
-      {editEquipmentModal.client && <EquipmentFormModal open={editEquipmentModal.open} onClose={closeEditEquipmentModal} client={editEquipmentModal.client} equipment={editEquipmentModal.equipment} moduleKey={editEquipmentModal.moduleKey} mode={editEquipmentModal.mode} peerFirewalls={editModalPeerFirewalls} peerServers={editModalPeerServers} peerStorage={editModalPeerStorage} onSaved={handleEquipmentSaved} onDeleted={handleEquipmentDeleted} />}
+      {editEquipmentModal.client && <EquipmentFormModal open={editEquipmentModal.open} onClose={closeEditEquipmentModal} client={editEquipmentModal.client} equipment={editEquipmentModal.equipment} moduleKey={editEquipmentModal.moduleKey} mode={editEquipmentModal.mode} peerFirewalls={editModalPeerFirewalls} peerServers={editModalPeerServers} peerStorage={editModalPeerStorage} peerBorneWifi={editModalPeerBorneWifi} onSaved={handleEquipmentSaved} onDeleted={handleEquipmentDeleted} />}
 
       <ConfirmModal open={!!rmmRevokeTarget} title={modalsCopy.confirm?.rmmRevoke?.title} message={rmmRevokeTarget ? interpolate(modalsCopy.confirm?.rmmRevoke?.message, {
       name: rmmRevokeTarget.name || rmmRevokeTarget.rawData?.nom || modalsCopy.confirm?.rmmRevoke?.untitledAgent

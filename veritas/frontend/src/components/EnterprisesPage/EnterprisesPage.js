@@ -14,7 +14,7 @@ import { useDefaultPageSize } from "../../hooks/useDefaultPageSize";
 import { useEntityFavorites } from "../../hooks/useEntityFavorites";
 import { useAppFormatters, useAppLocale } from "../../hooks/useAppGeneralSettings";
 import { getEnterprisesPageCopy } from "./enterprisesPageI18n";
-import { localizeEquipmentCountColumns } from "../../i18n/equipmentFamilyLabels";
+import { getEquipmentCountValue, localizeEquipmentCountColumns } from "../../i18n/equipmentFamilyLabels";
 import { getLocalizedModuleLabel } from "../../i18n/contractModuleLabels";
 import { buildEmptyModulesMap, getAllActiveModuleKeys } from "../../constants/contractModules";
 import { formatClientTabLabel, getClientNumber, getClientNameWithoutCode } from "../../utils/clientDisplay";
@@ -140,7 +140,7 @@ export default function EnterprisesPage({
     return localizeEquipmentCountColumns(columns, locale);
   }, [defaultEquipmentFamilies, customFamilies, locale]);
   const defaultModules = useMemo(() => buildEmptyModulesMap(contractModules), [contractModules]);
-  const getEquipmentCount = (client, key) => Number(client?.equipmentCounts?.[key]) || 0;
+  const getEquipmentCount = (client, key) => getEquipmentCountValue(client?.equipmentCounts, key);
   useEffect(() => {
     isMountedRef.current = true;
     loadClients();

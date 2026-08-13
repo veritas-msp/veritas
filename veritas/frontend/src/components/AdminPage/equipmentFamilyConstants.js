@@ -1,5 +1,5 @@
-import { EQUIPMENT_MODULE_ICONS, EQUIPMENT_MODULE_LABELS } from "../EquipementPage/equipmentFormConfig";
-import { HONEYCOMB_TABLE_TYPE_ORDER } from "../EnterprisesPage/infraHoneycombLayout";
+import { EQUIPMENT_MODULE_LABELS } from "../EquipementPage/equipmentFormConfig";
+import { HARDWARE_TYPE_ORDER } from "../EnterprisesPage/infraHoneycombLayout";
 import { INFRA_TYPE_ICONS } from "../EnterprisesPage/infraMapUtils";
 export const EQUIPMENT_FAMILY_FORM_SECTIONS = [{
   id: "identity",
@@ -40,38 +40,13 @@ export const EQUIPMENT_DISPLAY_MODES = [{
   value: "brick",
   label: "Side brick"
 }];
-const SYSTEM_BRICK_FAMILIES = [{
-  familyKey: "Ordinateurs",
-  label: "Computers",
-  icon: "mdi:laptop",
-  sortOrder: 5
-}];
-function buildSystemHexFamily(familyKey, sortOrder) {
+function buildSystemFamily(familyKey, sortOrder) {
   return {
     id: `system-${familyKey.toLowerCase()}`,
     familyKey,
     label: EQUIPMENT_MODULE_LABELS[familyKey] || familyKey,
-    icon: EQUIPMENT_MODULE_ICONS[familyKey] || INFRA_TYPE_ICONS[familyKey] || "mdi:devices",
-    displayMode: "hexagon",
-    isSystem: true,
-    enabled: true,
-    sortOrder,
-    fields: [],
-    itemCount: null
-  };
-}
-function buildSystemBrickFamily({
-  familyKey,
-  label,
-  icon,
-  sortOrder
-}) {
-  return {
-    id: `system-${familyKey.toLowerCase()}`,
-    familyKey,
-    label,
-    icon,
-    displayMode: "brick",
+    icon: INFRA_TYPE_ICONS[familyKey] || "mdi:devices",
+    displayMode: familyKey === "Ordinateurs" ? "brick" : "hexagon",
     isSystem: true,
     enabled: true,
     sortOrder,
@@ -80,9 +55,8 @@ function buildSystemBrickFamily({
   };
 }
 export function getDefaultEquipmentFamilies() {
-  const bricks = SYSTEM_BRICK_FAMILIES.map(entry => buildSystemBrickFamily(entry));
-  const hex = HONEYCOMB_TABLE_TYPE_ORDER.map((familyKey, index) => buildSystemHexFamily(familyKey, 20 + index * 10));
-  return [...bricks, ...hex];
+  // Same order as EnterpriseDetailPage peripherals (EquipmentPage / HARDWARE_TYPE_ORDER).
+  return HARDWARE_TYPE_ORDER.map((familyKey, index) => buildSystemFamily(familyKey, (index + 1) * 10));
 }
 export function buildActiveEquipmentCountColumns(defaultFamilies = [], customFamilies = []) {
   const custom = (Array.isArray(customFamilies) ? customFamilies : []).filter(family => family.enabled !== false);
@@ -92,7 +66,7 @@ export function buildActiveEquipmentCountColumns(defaultFamilies = [], customFam
   }))];
   return merged.filter(family => family.enabled !== false).sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0) || String(a.label || a.familyKey || "").localeCompare(String(b.label || b.familyKey || ""), "fr")).map(family => ({
     key: family.familyKey,
-    icon: family.icon || "mdi:devices",
+    icon: INFRA_TYPE_ICONS[family.familyKey] || family.icon || "mdi:devices",
     label: family.label || family.familyKey
   }));
 }

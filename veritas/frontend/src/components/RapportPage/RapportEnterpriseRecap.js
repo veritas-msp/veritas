@@ -1,20 +1,12 @@
 import { useMemo } from "react";
 import { Icon } from "@iconify/react";
 import { MODULE_LABELS } from "./monitoring/MonitoringSteps";
+import { getEquipmentCountValue } from "../../i18n/equipmentFamilyLabels";
+import { HARDWARE_TYPE_ORDER } from "../EnterprisesPage/infraHoneycombLayout";
+import { INFRA_TYPE_ICONS } from "../EnterprisesPage/infraMapUtils";
 import styles from "./RapportEnterpriseRecap.module.css";
 const CONTRACT_OPTION_KEYS = ["Support", "Curatif", "Preventif", "Monitoring", "Hebergement", "MagicInfo", "Videosurveillance"];
-const EQUIPMENT_KEYS = ["Ordinateurs", "Internet", "Firewalls", "Servers", "Storage", "Switch", "BorneWifi", "TOIP", "Backup"];
-const EQUIPMENT_ICONS = {
-  Ordinateurs: "mdi:monitor",
-  Internet: "mdi:web",
-  Firewalls: "mdi:shield-lock-outline",
-  Servers: "mdi:server",
-  Storage: "mdi:database",
-  Switch: "mdi:lan",
-  BorneWifi: "mdi:wifi",
-  TOIP: "mdi:phone-voip",
-  Backup: "mdi:backup-restore"
-};
+const EQUIPMENT_KEYS = [...HARDWARE_TYPE_ORDER, "Backup"];
 function parseClientOptions(client) {
   const defaults = Object.fromEntries(CONTRACT_OPTION_KEYS.map(key => [key, false]));
   if (!client) return defaults;
@@ -100,8 +92,8 @@ export default function ReportEnterpriseRecap({
     return EQUIPMENT_KEYS.map(key => ({
       key,
       label: MODULE_LABELS[key] || key,
-      count: Number(counts[key]) || 0,
-      icon: EQUIPMENT_ICONS[key] || "mdi:devices"
+      count: getEquipmentCountValue(counts, key),
+      icon: INFRA_TYPE_ICONS[key] || "mdi:devices"
     })).filter(item => item.count > 0);
   }, [client]);
   const sitesCount = Array.isArray(client?.sites) ? client.sites.length : 0;

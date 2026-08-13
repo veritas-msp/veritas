@@ -123,18 +123,30 @@ export function isInternalSsidToken(value) {
   const raw = String(value || "").trim();
   return /^ssid-\d+/i.test(raw) || /^legacy-/i.test(raw);
 }
-export function buildBorneWifiSsidFormState(equipment, client) {
+export function buildBorneWifiSsidFormState(equipment, client, {
+  peerBorneWifi = []
+} = {}) {
   const clientCatalog = client?.ssids || client?.ssid || [];
   let clientSsids = normalizeWifiSsidCatalog(clientCatalog);
-  const raw = equipment?.rawData?.data || equipment?.rawData || equipment || {};
-  const rawAssigned = raw.ssids ?? equipment?.ssids ?? [];
-  normalizeWifiSsidCatalog(rawAssigned).forEach(entry => {
-    if (!entry.nom || isInternalSsidToken(entry.nom)) return;
+  const mergeCatalogEntry = entry => {
+    if (!entry?.nom || isInternalSsidToken(entry.nom)) return;
     const exists = clientSsids.some(ssid => ssid.id === entry.id || ssid.nom.toLowerCase() === entry.nom.toLowerCase());
     if (!exists) {
       clientSsids = [...clientSsids, entry];
     }
+  };
+  const peerSources = [...(Array.isArray(client?.equipements?.BorneWifi) ? client.equipements.BorneWifi : []), ...(Array.isArray(peerBorneWifi) ? peerBorneWifi : [])];
+  peerSources.forEach(borne => {
+    if (!borne || typeof borne !== "object") return;
+    if (equipment && (borne === equipment || borne.id != null && equipment.id != null && String(borne.id) === String(equipment.id) || borne.rawData?.id != null && equipment.rawData?.id != null && String(borne.rawData.id) === String(equipment.rawData.id))) {
+      return;
+    }
+    const rawPeerSsids = borne.ssids ?? borne.data?.ssids ?? borne.rawData?.ssids ?? borne.rawData?.data?.ssids ?? [];
+    normalizeWifiSsidCatalog(rawPeerSsids).forEach(mergeCatalogEntry);
   });
+  const raw = equipment?.rawData?.data || equipment?.rawData || equipment || {};
+  const rawAssigned = raw.ssids ?? equipment?.ssids ?? [];
+  normalizeWifiSsidCatalog(rawAssigned).forEach(mergeCatalogEntry);
   const assignedSsidIds = resolveAssignedSsidIds(rawAssigned, clientSsids);
   return {
     clientSsids,

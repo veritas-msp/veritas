@@ -30,7 +30,8 @@ export default function EquipmentFormModal({
   backgroundSave = false,
   peerFirewalls = [],
   peerServers = [],
-  peerStorage = []
+  peerStorage = [],
+  peerBorneWifi = []
 }) {
   const locale = useAppLocale();
   const copy = useMemo(() => getEquipmentModalsCopy(locale), [locale]);
@@ -112,13 +113,14 @@ export default function EquipmentFormModal({
     if (formSessionRef.current === sessionKey) return;
     formSessionRef.current = sessionKey;
     const nextForm = buildInitialFormData(equipment, moduleKey, {
-      client
+      client,
+      peerBorneWifi
     });
     setFormData(nextForm);
     setInitialSnapshot(cloneEquipmentFormSnapshot(nextForm));
     setActiveSection("identity");
     setError(null);
-  }, [open, isAddMode, mode, moduleKey, client?.id, equipment?.id, equipment?.name, equipment, client]);
+  }, [open, isAddMode, mode, moduleKey, client?.id, equipment?.id, equipment?.name, equipment, client, peerBorneWifi]);
   const buildSubmitData = useCallback(() => {
     if (moduleKey === "Internet") {
       return syncInternetLegacyDebit(normalizeInternetFormData(formData));

@@ -1659,7 +1659,8 @@ export async function syncFirewallHaPeerLink({
   });
 }
 export function buildInitialFormData(equipment, moduleKey, {
-  client
+  client,
+  peerBorneWifi = []
 } = {}) {
   const raw = equipment?.data || equipment?.rawData || equipment;
   if (!raw && !equipment) return {};
@@ -1791,7 +1792,9 @@ export function buildInitialFormData(equipment, moduleKey, {
     const {
       clientSsids,
       assignedSsidIds
-    } = buildBorneWifiSsidFormState(equipment, client);
+    } = buildBorneWifiSsidFormState(equipment, client, {
+      peerBorneWifi
+    });
     const rawSsids = d("ssids", []);
     return {
       ...base,

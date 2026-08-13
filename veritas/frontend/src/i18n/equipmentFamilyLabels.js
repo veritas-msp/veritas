@@ -1,5 +1,20 @@
 import { pickLocaleMessages } from "./translate";
 export const SYSTEM_EQUIPMENT_FAMILY_KEYS = new Set(["Ordinateurs", "Internet", "Switch", "Firewalls", "Routeur", "Serveurs", "BorneWifi", "Stockage", "Sauvegarde", "Alimentation", "TOIP", "Videosurveillance"]);
+const EQUIPMENT_TYPE_ALIASES = {
+  Servers: "Serveurs",
+  Server: "Serveurs",
+  Serveur: "Serveurs",
+  Storage: "Stockage",
+  NAS: "Stockage",
+  Stockage: "Stockage",
+  Backup: "Sauvegarde",
+  Sauvegarde: "Sauvegarde",
+  Firewall: "Firewalls",
+  Wifi: "BorneWifi",
+  WiFi: "BorneWifi",
+  "Security camera": "Videosurveillance",
+  Videosurveillance: "Videosurveillance"
+};
 const FAMILY_LABELS = {
   fr: {
     Ordinateurs: "Ordinateurs",
@@ -79,12 +94,29 @@ function resolveFamilyKey(familyOrKey) {
 export function canonicalEquipmentTypeKey(type) {
   const raw = resolveFamilyKey(type);
   if (!raw) return raw;
-  if (raw === "NAS") return "Stockage";
+  if (EQUIPMENT_TYPE_ALIASES[raw]) return EQUIPMENT_TYPE_ALIASES[raw];
   if (SYSTEM_EQUIPMENT_FAMILY_KEYS.has(raw)) return raw;
   for (const key of SYSTEM_EQUIPMENT_FAMILY_KEYS) {
     if (key.toLowerCase() === raw.toLowerCase()) return key;
   }
+  const aliasHit = Object.entries(EQUIPMENT_TYPE_ALIASES).find(([alias]) => alias.toLowerCase() === raw.toLowerCase());
+  if (aliasHit) return aliasHit[1];
   return raw;
+}
+/** Resolve a UI family key (EN or FR) against backend `equipmentCounts` keys. */
+export function getEquipmentCountValue(equipmentCounts, typeKey) {
+  const counts = equipmentCounts && typeof equipmentCounts === "object" ? equipmentCounts : {};
+  const canonical = canonicalEquipmentTypeKey(typeKey);
+  const candidates = [canonical, typeKey];
+  if (canonical === "Serveurs") candidates.push("Servers", "Server");
+  if (canonical === "Stockage") candidates.push("Storage", "NAS");
+  if (canonical === "Sauvegarde") candidates.push("Backup");
+  for (const key of candidates) {
+    if (key && Object.prototype.hasOwnProperty.call(counts, key)) {
+      return Number(counts[key]) || 0;
+    }
+  }
+  return 0;
 }
 export function getEquipmentFamilyLabel(familyKey, locale, fallback) {
   const key = canonicalEquipmentTypeKey(resolveFamilyKey(familyKey));
