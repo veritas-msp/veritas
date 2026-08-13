@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useMemo, useState, useRef } from "react"
 import { Icon } from "@iconify/react";
 import SmartTooltip from "../SmartTooltip";
 import { getClientHardwareEquipment, getEquipmentMonitoringSummaries } from "../../api/equipment";
-import { buildInfraMapModel, aggregateCategoryNode, getInfraTypeIcon } from "./infraMapUtils";
+import { buildInfraMapModel, aggregateCategoryNode, getInfraTypeIcon, toInfraDisplayStatus } from "./infraMapUtils";
 import { useCheckMKIntegrationEnabled } from "../../hooks/useCheckMKIntegrationEnabled";
 import { useAppLocale } from "../../hooks/useAppGeneralSettings";
 import { getInfraMapCopy } from "./infraMapI18n";
@@ -18,14 +18,14 @@ function InfraHexNode({
   const meta = copy.getStatusMeta(node.status);
   const icon = getInfraTypeIcon(node.type, node.icon);
   const isCustomFamily = String(node.type || "").startsWith("Custom:");
-  const isCritical = node.status === "critical";
-  const isWarning = node.status === "warning";
-  const isOk = node.status === "ok";
-  const isUnmonitored = node.status === "unmonitored" || node.status === "no_data";
+  const displayStatus = toInfraDisplayStatus(node.status);
+  const isAttention = displayStatus === "attention";
+  const isClear = displayStatus === "clear";
+  const isDisabled = displayStatus === "disabled";
   const statusTooltip = copy.getStatusLabel(node.status);
   const tooltipLines = [node.displayName || node.name, statusTooltip, node.subtitle, node.count > 0 ? copy.formatEquipmentCount(node.count) : null].filter(Boolean);
   return <SmartTooltip content={tooltipLines.join(" · ")} as="span">
-      <button type="button" className={[styles.hexNode, isCustomFamily ? styles.hexNodeCustom : "", isCritical ? styles.hexNodeCritical : "", isWarning ? styles.hexNodeWarning : "", isOk ? styles.hexNodeOk : "", isUnmonitored ? styles.hexNodeUnmonitored : ""].filter(Boolean).join(" ")} style={{
+      <button type="button" className={[styles.hexNode, isCustomFamily ? styles.hexNodeCustom : "", isAttention ? styles.hexNodeAttention : "", isClear ? styles.hexNodeClear : "", isDisabled ? styles.hexNodeDisabled : ""].filter(Boolean).join(" ")} style={{
       "--hex-accent": meta.color,
       "--hex-soft": meta.soft
     }} onClick={() => onClick?.(node)} aria-label={`${node.displayName || node.name}${statusTooltip ? `, ${statusTooltip}` : ""}${node.count > 0 ? `, ${copy.formatEquipmentCount(node.count)}` : ""}`}>
@@ -157,10 +157,10 @@ function InfraPlaceholderHex({
   label,
   copy
 }) {
-  const meta = copy.getStatusMeta("unmonitored");
+  const meta = copy.getStatusMeta("disabled");
   const resolvedIcon = getInfraTypeIcon(type, icon);
   const resolvedLabel = copy.getHoneycombTypeLabel(type, label);
-  return <div className={`${styles.hexNode} ${styles.hexNodePlaceholder} ${featured ? styles.hexNodeFeatured : ""}`} style={{
+  return <div className={`${styles.hexNode} ${styles.hexNodePlaceholder} ${styles.hexNodeDisabled} ${featured ? styles.hexNodeFeatured : ""}`} style={{
     "--hex-accent": meta.color,
     "--hex-soft": meta.soft
   }} aria-hidden>
@@ -201,24 +201,6 @@ function InfraEmptyMap({
       type: slot.type,
       node: <InfraPlaceholderHex type={slot.type} featured={slot.featured} copy={copy} />
     }))} antivirusItems={antivirusItems} antispamItems={antispamItems} domainItems={domainItems} domainIntegrationReady={domainIntegrationReady} sslItems={sslItems} licenceItems={licenceItems} tenantInfo={tenantInfo} googleWorkspaceInfo={googleWorkspaceInfo} campaignItems={campaignItems} onBrickClick={onBrickClick} isCommunity={isCommunity} copy={copy} />
-      <div className={styles.mapLegendBar}>
-        <InfraMapLegend copy={copy} />
-      </div>
-    </div>;
-}
-function InfraMapLegend({
-  copy
-}) {
-  return <div className={styles.legend} aria-label={copy.legendAria}>
-      {copy.legendStatusKeys.map(key => {
-      const meta = copy.getStatusMeta(key);
-      return <span key={key} className={styles.legendItem}>
-            <span className={styles.legendSwatch} style={{
-          background: meta.color
-        }} />
-            {meta.label}
-          </span>;
-    })}
     </div>;
 }
 function InfraMapSkeleton({
@@ -257,13 +239,6 @@ function InfraMapSkeleton({
             </div>
           </div>
         </div>
-        </div>
-      </div>
-      <div className={styles.mapLegendBar}>
-        <div className={styles.skeletonLegend}>
-          {Array.from({
-          length: 4
-        }).map((_, i) => <div key={i} className={styles.skeletonPill} />)}
         </div>
       </div>
     </div>;
@@ -434,12 +409,10 @@ export default function InfrastructureMap({
     }, {});
     const categories = EMPTY_HONEYCOMB_LAYOUT.map(slot => localizeCategoryNode(slot.type, nodesByType[slot.type] || []));
     return categories.reduce((acc, category) => {
-      if (category.status === "critical") acc.critical += 1;
-      if (category.status === "warning") acc.warning += 1;
+      if (toInfraDisplayStatus(category.status) === "attention") acc.attention += 1;
       return acc;
     }, {
-      critical: 0,
-      warning: 0
+      attention: 0
     });
   }, [honeycombNodes, localizeCategoryNode]);
   const hasCustomFamilies = (customFamilyMap || []).length > 0;
@@ -476,20 +449,14 @@ export default function InfrastructureMap({
     return <InfraEmptyMap backupInstances={filteredBackupInstances} antivirusItems={antivirusItems} antispamItems={antispamItems} domainItems={domainItems} domainIntegrationReady={domainIntegrationReady} sslItems={sslItems} licenceItems={licenceItems} tenantInfo={tenantInfo} googleWorkspaceInfo={googleWorkspaceInfo} campaignItems={campaignItems} onBrickClick={onBrickClick} isCommunity={isCommunity} copy={copy} />;
   }
   return <div className={styles.map}>
-      {(categorySummary.critical > 0 || categorySummary.warning > 0) && <div className={styles.mapHeader}>
+      {categorySummary.attention > 0 && <div className={styles.mapHeader}>
           <div className={styles.mapSummary}>
-            {categorySummary.critical > 0 && <span className={`${styles.mapBadge} ${styles.mapBadgeCritical}`}>
-                {copy.formatCriticalCategories(categorySummary.critical)}
-              </span>}
-            {categorySummary.warning > 0 && <span className={`${styles.mapBadge} ${styles.mapBadgeWarning}`}>
-                {copy.formatWarningCategories(categorySummary.warning)}
-              </span>}
+            <span className={`${styles.mapBadge} ${styles.mapBadgeAttention}`}>
+                {copy.formatAttentionCategories(categorySummary.attention)}
+              </span>
           </div>
         </div>}
 
       <InfraMapCanvas {...mapCanvasProps} />
-      <div className={styles.mapLegendBar}>
-        <InfraMapLegend copy={copy} />
-      </div>
     </div>;
 }

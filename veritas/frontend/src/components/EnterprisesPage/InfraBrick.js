@@ -4,7 +4,7 @@ import SmartTooltip from "../SmartTooltip";
 import ProFeatureBadge from "../Misc/ProFeature/ProFeatureBadge";
 import { notifyProFeature } from "../Misc/ProFeature/proFeatureUtils";
 import { INFRA_BRICK_PRO_FEATURE_KEYS } from "./infraHoneycombLayout";
-import { getInfraTypeIcon } from "./infraMapUtils";
+import { getInfraTypeIcon, toInfraDisplayStatus } from "./infraMapUtils";
 import styles from "./InfrastructureMap.module.css";
 export default function InfraBrick({
   brick,
@@ -17,13 +17,16 @@ export default function InfraBrick({
   const meta = copy.getStatusMeta(brick.status);
   const icon = getInfraTypeIcon(brick.type, brick.icon);
   const displayName = brick.label;
+  const displayStatus = toInfraDisplayStatus(brick.status);
   const isAlwaysClickable = Boolean(brick.alwaysClickable);
   const isEmptyTemplate = placeholder && brick.count === 0 && !isAlwaysClickable;
   const isComingSoon = Boolean(brick.comingSoon);
   const isProLocked = Boolean(isCommunity && brick.proOnly);
   const interactive = Boolean(onClick) && (isComingSoon || isProLocked || brick.alwaysClickable || !isEmptyTemplate && brick.count > 0);
-  const isIssue = !isComingSoon && (brick.status === "critical" || brick.status === "warning");
-  const statusTooltip = copy.getStatusLabel(brick.status);
+  const isAttention = !isComingSoon && displayStatus === "attention";
+  const isClear = !isEmptyTemplate && !isComingSoon && displayStatus === "clear";
+  const isDisabled = !isEmptyTemplate && !isComingSoon && displayStatus === "disabled";
+  const statusTooltip = isEmptyTemplate || brick.count === 0 && isAlwaysClickable ? null : copy.getStatusLabel(brick.status);
   const tooltipLines = [brick.label, isComingSoon ? copy.brick.comingSoonTooltip : null, isProLocked ? copy.brick.proTooltip : null, !isComingSoon ? brick.subtitle || statusTooltip : null, !isComingSoon && brick.countLabel ? brick.countLabel : !isComingSoon && brick.count > 0 ? copy.formatElementCount(brick.count) : null, !isComingSoon && isAlwaysClickable && brick.count === 0 ? copy.brick.clickToConfigure : null].filter(Boolean);
   const handleClick = () => {
     const featureKey = INFRA_BRICK_PRO_FEATURE_KEYS[brick.type];
@@ -42,7 +45,7 @@ export default function InfraBrick({
           {brick.countLabel || brick.count}
         </span>}
     </>;
-  const brickClassName = [styles.brickNode, isEmptyTemplate && styles.brickNodePlaceholder, isComingSoon && styles.brickNodeComingSoon, isProLocked && styles.brickNodeProLocked, brick.status === "ok" && !isEmptyTemplate && !isComingSoon ? styles.brickNodeOk : "", brick.status === "unmonitored" && !isEmptyTemplate && !isComingSoon ? styles.brickNodeUnmonitored : "", isIssue && !isEmptyTemplate ? styles.brickNodeIssue : "", active && styles.brickNodeActive].filter(Boolean).join(" ");
+  const brickClassName = [styles.brickNode, isEmptyTemplate && styles.brickNodePlaceholder, isComingSoon && styles.brickNodeComingSoon, isProLocked && styles.brickNodeProLocked, isClear ? styles.brickNodeClear : "", isDisabled ? styles.brickNodeDisabled : "", isAttention && !isEmptyTemplate ? styles.brickNodeAttention : "", active && styles.brickNodeActive].filter(Boolean).join(" ");
   if (interactive) {
     return <SmartTooltip content={tooltipLines.join(" · ")} as="span">
         <button type="button" className={brickClassName} style={{

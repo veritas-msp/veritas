@@ -22,15 +22,17 @@ let cachedRegional = {
   ...DEFAULT_REGIONAL
 };
 export function setAppRegionalSettings(settings = {}) {
-  const locale = resolveActiveLocale(settings.app_default_locale || DEFAULT_REGIONAL.locale);
+  const locale = resolveActiveLocale(settings.app_default_locale || cachedRegional.locale || DEFAULT_REGIONAL.locale);
   cachedRegional = {
-    dateFormat: resolveEffectiveDateFormat(settings.app_date_format, locale),
-    timezone: settings.app_timezone || DEFAULT_REGIONAL.timezone,
+    dateFormat: resolveEffectiveDateFormat(settings.app_date_format || cachedRegional.dateFormat, locale),
+    timezone: settings.app_timezone || cachedRegional.timezone || DEFAULT_REGIONAL.timezone,
     locale
   };
 }
+const ALLOWED_DATE_FORMATS = ["dd/mm/yyyy", "mm/dd/yyyy", "yyyy-mm-dd"];
 export function resolveEffectiveDateFormat(adminFormat, locale) {
-  return LOCALE_DATE_FORMAT[locale] || adminFormat || DEFAULT_REGIONAL.dateFormat;
+  if (ALLOWED_DATE_FORMATS.includes(adminFormat)) return adminFormat;
+  return LOCALE_DATE_FORMAT[locale] || DEFAULT_REGIONAL.dateFormat;
 }
 export function getAppRegionalSettings() {
   return cachedRegional;

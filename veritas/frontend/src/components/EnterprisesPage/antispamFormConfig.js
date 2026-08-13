@@ -19,7 +19,7 @@ export function catalogIntegrationToAntispamProvider(integration) {
     solutionName: integration.name,
     icon: integration.icon || "mdi:email-secure-outline",
     iconColor: integration.iconColor,
-    image: integration.image,
+    image: integration.image || (integration.id === "mailinblack" ? "mailinblack.png" : null),
     description: integration.description,
     status: integration.status === "comingSoon" ? "comingSoon" : "available",
     proOnly: Boolean(integration.proOnly),
@@ -46,10 +46,11 @@ export function inferProviderIdFromSolution(solution) {
   if (!solution) return null;
   if (solution.providerId && solution.providerId !== "manual") return solution.providerId;
   if (solution.mailinblackTenantId) return "mailinblack";
-  if (solution.customerId || (solution.solution || solution.logiciel || "").toLowerCase().includes("mailinblack")) {
+  const rawName = `${solution.solution || solution.logiciel || solution.nom || solution.name || ""}`.toLowerCase();
+  if (solution.customerId || rawName.includes("mailinblack") || rawName.includes("mail in black")) {
     return "mailinblack";
   }
-  const name = (solution.solution || solution.logiciel || solution.nom || solution.name || "").toLowerCase();
+  const name = rawName;
   const match = getEmailSecurityIntegrations().find(integration => name.includes(integration.id) || name.includes(integration.name.toLowerCase()));
   return match?.id || null;
 }

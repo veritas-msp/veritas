@@ -39,10 +39,12 @@ export default function AntispamSolutionPickerModal({
     const isManual = !solution?.customerId && !solution?.mailinblackTenantId;
     const provider = getAntispamProvider(providerId);
     const visual = getProviderPresentation(provider, "mdi:email-secure-outline");
+    const metaParts = providerId === "mailinblack" && label === providerName ? [mode] : [providerName, mode];
     return {
       ...visual,
+      image: providerId === "mailinblack" ? "mailinblack.png" : visual.image,
       label,
-      meta: `${providerName} · ${mode}`,
+      meta: metaParts.filter(Boolean).join(" · "),
       trailingIcon: isManual ? "mdi:cog-outline" : "mdi:chart-box-outline"
     };
   }} deleteConfirmTitle={configCopy.confirm.deleteConfiguration.title} getDeleteConfirmMessage={label => interpolate(configCopy.confirm.deleteConfiguration.message, {

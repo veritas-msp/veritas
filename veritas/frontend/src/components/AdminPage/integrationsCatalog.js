@@ -107,10 +107,11 @@ export const INTEGRATIONS_CATALOG = [{
   description: "Infrastructure observability and APM."
 }, {
   id: "bitdefender",
-  name: "Bitdefender GravityZone",
+  name: "BITDEFENDER",
   category: "endpoint-security",
   status: AVAILABLE,
   icon: "simple-icons:bitdefender",
+  image: "bitdefender.png",
   iconColor: "#ed1c24",
   description: "GravityZone company and endpoint inventory.",
   enabledKey: "INTEGRATION_BITDEFENDER_ENABLED",
@@ -242,10 +243,11 @@ export const INTEGRATIONS_CATALOG = [{
   proOnly: true
 }, {
   id: "mailinblack",
-  name: "Mailinblack Protect",
+  name: "MAIL IN BLACK",
   category: "email-security",
   status: AVAILABLE,
   icon: "mdi:email-lock-outline",
+  image: "mailinblack.png",
   iconColor: "#1e3a5f",
   description: "Antispam, anti-phishing and anti-malware email protection · Protect module partner API.",
   enabledKey: "INTEGRATION_MAILINBLACK_ENABLED",

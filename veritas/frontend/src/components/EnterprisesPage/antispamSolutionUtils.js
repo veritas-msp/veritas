@@ -6,9 +6,17 @@ function resolveAntispamProviderId(item) {
   if (!normalized) return "manual";
   return normalized.providerId || inferProviderIdFromSolution(normalized) || (normalized.mailinblackTenantId || normalized.customerId ? "mailinblack" : null) || (normalized.mappingMode === "dedicated" || normalized.mappingMode === "reseller" ? "mailinblack" : null) || "manual";
 }
+const MAILINBLACK_BRAND_NAME = "MAIL IN BLACK";
+const GENERIC_MAILINBLACK_LABELS = new Set(["mailinblack", "mail in black", "mailinblack protect", "mail in black protect", "mailinblack customer", "client mailinblack", "mailinblack kunde", "cliente mailinblack"]);
+function normalizeLabelKey(value) {
+  return String(value || "").toLowerCase().replace(/[-_]/g, " ").replace(/\s+/g, " ").trim();
+}
+function isGenericMailinblackLabel(value) {
+  return GENERIC_MAILINBLACK_LABELS.has(normalizeLabelKey(value));
+}
 function resolveAntispamProductName(providerId, provider) {
   if (providerId === "mailinblack") {
-    return provider?.solutionName || provider?.label || "Mailinblack Protect";
+    return MAILINBLACK_BRAND_NAME;
   }
   if (providerId === "manual") {
     return provider?.label || "Other solution";
@@ -18,14 +26,14 @@ function resolveAntispamProductName(providerId, provider) {
 function resolveAntispamTenantLabel(item, productName) {
   const normalized = normalizeAntispamItem(item) || item;
   if (!normalized) return null;
-  const productLower = (productName || "").trim().toLowerCase();
+  const productKey = normalizeLabelKey(productName);
   const candidates = [normalized.customerName, normalized.syncData?.customer?.name, normalized.label, normalized.nom, normalized.name, normalized.logiciel, normalized.solution];
   for (const value of candidates) {
     const text = (value || "").trim();
     if (!text) continue;
-    const lower = text.toLowerCase();
-    if (productLower && lower === productLower) continue;
-    if (lower === "mailinblack protect" || lower === "mailinblack") continue;
+    const key = normalizeLabelKey(text);
+    if (productKey && key === productKey) continue;
+    if (isGenericMailinblackLabel(text)) continue;
     return text;
   }
   return null;
@@ -75,14 +83,19 @@ export function normalizeAntispamItem(item) {
 export function formatAntispamSolutionLabel(solution) {
   const normalized = normalizeAntispamItem(solution);
   if (!normalized) return "Antispam solution";
-  return normalized.customerName || normalized.logiciel || normalized.solution || normalized.nom || normalized.name || "Antispam solution";
+  const providerId = resolveAntispamProviderId(normalized);
+  if (providerId === "mailinblack") {
+    return resolveAntispamProductName(providerId, getAntispamProvider(providerId));
+  }
+  return resolveAntispamTenantLabel(normalized) || normalized.logiciel || normalized.solution || normalized.nom || normalized.name || "Antispam solution";
 }
 export function formatAntispamSolutionSummary(solution) {
   const normalized = normalizeAntispamItem(solution);
   const providerId = resolveAntispamProviderId(normalized);
   const provider = getAntispamProvider(providerId);
   const providerName = resolveAntispamProductName(providerId, provider);
-  const label = resolveAntispamTenantLabel(normalized, providerName) || formatAntispamSolutionLabel(normalized);
+  const tenantLabel = resolveAntispamTenantLabel(normalized, providerName);
+  const label = providerId === "mailinblack" ? providerName : tenantLabel || formatAntispamSolutionLabel(normalized);
   const mode = getAntispamSolutionModeLabel(normalized);
   const users = normalized?.utilisateursProteges ?? normalized?.utilisateurs;
   const domains = normalized?.domainesSurveilles ?? normalized?.domaines;

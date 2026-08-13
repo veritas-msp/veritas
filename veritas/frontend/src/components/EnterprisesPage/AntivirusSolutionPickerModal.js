@@ -35,15 +35,18 @@ export default function AntivirusSolutionPickerModal({
       label,
       mode,
       providerName,
-      providerId
+      providerId,
+      tenantLabel
     } = formatAntivirusSolutionSummary(solution);
     const isManual = providerId === "manual" || !solution?.companyId;
     const provider = getAntivirusProvider(providerId);
     const visual = getProviderPresentation(provider, "mdi:shield-bug-outline");
+    const metaParts = providerId === "bitdefender" ? [tenantLabel, mode] : [providerName, mode];
     return {
       ...visual,
+      image: providerId === "bitdefender" ? "bitdefender.png" : visual.image,
       label,
-      meta: `${providerName} · ${mode}`,
+      meta: metaParts.filter(Boolean).join(" · "),
       trailingIcon: isManual ? "mdi:cog-outline" : "mdi:chart-box-outline"
     };
   }} deleteConfirmTitle={configCopy.confirm.deleteConfiguration.title} getDeleteConfirmMessage={label => interpolate(configCopy.confirm.deleteConfiguration.message, {

@@ -61,6 +61,15 @@ export const INFRA_ZONES = [{
   types: ["Servers", "Storage", "Ordinateurs"]
 }];
 const TYPE_ORDER = HARDWARE_TYPE_ORDER;
+export function toInfraDisplayStatus(status) {
+  if (status === "critical" || status === "warning" || status === "attention" || status === "offline") {
+    return "attention";
+  }
+  if (status === "ok" || status === "neutral" || status === "clear") {
+    return "clear";
+  }
+  return "disabled";
+}
 function normalizeAggregateStatus(status) {
   if (status === "neutral") return "unmonitored";
   if (status === "no_data") return "unmonitored";
@@ -108,20 +117,9 @@ export function buildStatusBreakdown(nodes = []) {
   return counts;
 }
 export function formatStatusBreakdown(counts = {}) {
-  const parts = [];
-  if (counts.critical > 0) {
-    parts.push(`${counts.critical} critical`);
-  }
-  if (counts.warning > 0) {
-    parts.push(`${counts.warning} warning${counts.warning > 1 ? "s" : ""}`);
-  }
-  if (counts.ok > 0) {
-    parts.push(`${counts.ok} OK`);
-  }
-  if (counts.unmonitored > 0) {
-    parts.push(`${counts.unmonitored} unmonitored`);
-  }
-  return parts.join(" · ");
+  const attention = (Number(counts.critical) || 0) + (Number(counts.warning) || 0) + (Number(counts.attention) || 0);
+  if (attention <= 0) return "";
+  return `${attention} attention`;
 }
 export function aggregateStatusFromNodes(nodes = []) {
   const list = Array.isArray(nodes) ? nodes.filter(Boolean) : [];
@@ -252,38 +250,27 @@ export function buildInfraMapModel({
   };
 }
 export const INFRA_STATUS_META = {
-  critical: {
-    label: "Critical",
-    color: "#dc2626",
-    soft: "rgba(239, 68, 68, 0.48)"
+  attention: {
+    label: "Needs attention",
+    color: "#c2410c",
+    soft: "rgba(234, 88, 12, 0.38)"
   },
-  warning: {
-    label: "Warning",
-    color: "#d97706",
-    soft: "rgba(245, 158, 11, 0.46)"
+  clear: {
+    label: "Nothing to report",
+    color: "#0f766e",
+    soft: "rgba(13, 148, 136, 0.26)"
   },
-  ok: {
-    label: "OK",
-    color: "#15803d",
-    soft: "rgba(34, 197, 94, 0.44)"
-  },
-  neutral: {
-    label: "Active",
-    color: "#1d4f9e",
-    soft: "rgba(43, 95, 171, 0.28)"
-  },
-  unmonitored: {
-    label: "Unmonitored",
-    color: "#64748b",
-    soft: "rgba(100, 116, 139, 0.38)"
-  },
-  no_data: {
-    label: "No data",
-    color: "#64748b",
-    soft: "rgba(100, 116, 139, 0.38)"
+  disabled: {
+    label: "Disabled",
+    color: "#94a3b8",
+    soft: "rgba(148, 163, 184, 0.3)"
   }
 };
+export function getInfraStatusMeta(status) {
+  return INFRA_STATUS_META[toInfraDisplayStatus(status)] || INFRA_STATUS_META.disabled;
+}
 export function getInfraStatusTooltipLabel(status) {
-  if (status === "unmonitored" || status === "no_data") return null;
-  return INFRA_STATUS_META[status]?.label || null;
+  const display = toInfraDisplayStatus(status);
+  if (display === "clear") return null;
+  return INFRA_STATUS_META[display]?.label || null;
 }

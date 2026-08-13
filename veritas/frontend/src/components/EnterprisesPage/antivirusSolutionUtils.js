@@ -2,6 +2,25 @@ import { fetchClientModules, saveClientModules } from "../../api/clients";
 import { syncBitdefenderCompany, fetchGravityZoneDashboard, fetchBitdefenderStatistics, fetchBitdefenderEnrichedEndpoints } from "../../api/clientBitdefender";
 import { getAntivirusProvider, inferProviderIdFromSolution } from "./antivirusFormConfig";
 const DEFAULT_SOLUTION_NAME = "GravityZone BitDefender";
+const BITDEFENDER_BRAND_NAME = "BITDEFENDER";
+const GENERIC_BITDEFENDER_LABELS = new Set(["bitdefender", "bitdefender gravityzone", "gravityzone bitdefender", "gravityzone"]);
+function normalizeLabelKey(value) {
+  return String(value || "").toLowerCase().replace(/[-_]/g, " ").replace(/\s+/g, " ").trim();
+}
+function isGenericBitdefenderLabel(value) {
+  return GENERIC_BITDEFENDER_LABELS.has(normalizeLabelKey(value));
+}
+function resolveAntivirusTenantLabel(item) {
+  const normalized = normalizeAntivirusItem(item) || item;
+  if (!normalized) return null;
+  const candidates = [normalized.companyName, normalized.syncData?.company?.name, normalized.nom, normalized.name, normalized.solution];
+  for (const value of candidates) {
+    const text = (value || "").trim();
+    if (!text || isGenericBitdefenderLabel(text)) continue;
+    return text;
+  }
+  return null;
+}
 export function getAntivirusSolutionModeLabel(solution) {
   const mode = solution?.mappingMode || "reseller";
   if (mode === "dedicated") return "Dedicated tenant";
@@ -13,19 +32,23 @@ export function getAntivirusSolutionModeLabel(solution) {
 export function formatAntivirusSolutionLabel(solution) {
   const normalized = normalizeAntivirusItem(solution);
   if (!normalized) return "Antivirus solution";
-  return normalized.companyName || normalized.solution || normalized.nom || normalized.name || "Antivirus solution";
+  const providerId = normalized.providerId || (normalized.companyId ? "bitdefender" : "manual");
+  if (providerId === "bitdefender") return BITDEFENDER_BRAND_NAME;
+  return resolveAntivirusTenantLabel(normalized) || normalized.solution || normalized.nom || normalized.name || "Antivirus solution";
 }
 export function formatAntivirusSolutionSummary(solution) {
   const normalized = normalizeAntivirusItem(solution);
-  const label = formatAntivirusSolutionLabel(normalized || solution);
-  const mode = getAntivirusSolutionModeLabel(normalized || solution);
   const providerId = normalized?.providerId || (normalized?.companyId ? "bitdefender" : "manual");
-  const providerName = providerId === "bitdefender" ? "Bitdefender GravityZone" : providerId === "manual" ? "Other solution" : providerId;
+  const providerName = providerId === "bitdefender" ? BITDEFENDER_BRAND_NAME : providerId === "manual" ? "Other solution" : providerId;
+  const tenantLabel = resolveAntivirusTenantLabel(normalized || solution);
+  const label = providerId === "bitdefender" ? providerName : tenantLabel || formatAntivirusSolutionLabel(normalized || solution);
+  const mode = getAntivirusSolutionModeLabel(normalized || solution);
   return {
     label,
     mode,
     providerName,
-    providerId
+    providerId,
+    tenantLabel
   };
 }
 export function resolveAntivirusProductName(solution) {

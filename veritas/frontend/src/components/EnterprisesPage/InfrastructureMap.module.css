@@ -38,16 +38,10 @@
   font-weight: 600;
 }
 
-.mapBadgeCritical {
-  background: rgba(239, 68, 68, 0.12);
-  color: #dc2626;
-  border: 1px solid rgba(239, 68, 68, 0.35);
-}
-
-.mapBadgeWarning {
-  background: rgba(245, 158, 11, 0.12);
-  color: #b45309;
-  border: 1px solid rgba(245, 158, 11, 0.35);
+.mapBadgeAttention {
+  background: rgba(234, 88, 12, 0.12);
+  color: #c2410c;
+  border: 1px solid rgba(234, 88, 12, 0.35);
 }
 
 .legend {
@@ -194,10 +188,10 @@
   min-height: 4.9rem;
   padding: 0.5rem 0.3rem 0.42rem;
   border-radius: 0.55rem;
-  background: var(--brick-soft);
-  border: none;
+  background: var(--msp-surface, #fff);
+  border: 1px solid var(--msp-border, #e2e8f0);
   box-shadow: none;
-  transition: transform 0.15s ease, background 0.15s ease;
+  transition: transform 0.15s ease, border-color 0.15s ease;
 }
 
 .brickNode:not(.brickNodePlaceholder):hover .brickInner {
@@ -253,7 +247,7 @@
 
 .brickIcon {
   font-size: 1.25rem;
-  color: var(--brick-accent);
+  color: var(--msp-muted, #5c6b82);
   flex-shrink: 0;
 }
 
@@ -280,20 +274,19 @@
   opacity: 0.55;
 }
 
-.brickNodeOk .brickIcon {
-  color: var(--brick-accent);
+.brickNodeDisabled {
+  opacity: 0.55;
 }
 
-.brickNodeUnmonitored .brickInner {
-  opacity: 0.92;
+.brickNodeDisabled .brickInner {
+  border-style: dashed;
 }
 
-.brickNodeIssue .brickInner {
-  box-shadow: inset 0 0 0 2px var(--brick-accent);
+.brickNodeAttention .brickInner {
+  border-color: var(--brick-accent, #c2410c);
 }
 
 .brickNodeActive .brickInner {
-  background: var(--brick-soft);
   transform: scale(1.03);
 }
 
@@ -378,11 +371,20 @@
 }
 
 .hexShape {
+  --hex-ring: var(--msp-border, #e2e8f0);
   display: block;
   width: var(--hex-w, 6.25rem);
   height: var(--hex-h, 7.2rem);
   position: relative;
   transition: transform 0.15s ease;
+}
+
+.hexShape::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
+  background: var(--hex-ring);
 }
 
 .hexInner {
@@ -395,25 +397,18 @@
   gap: 0.2rem;
   padding: 0.55rem 0.35rem 0.45rem;
   clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
-  background: color-mix(in srgb, var(--hex-soft) 88%, var(--hex-accent) 12%);
+  transform: scale(0.94);
+  transform-origin: center;
+  background: var(--msp-surface, #fff);
   border: none;
-  box-shadow:
-    0 2px 6px rgba(15, 28, 46, 0.1),
-    inset 0 1px 0 rgba(255, 255, 255, 0.45);
+  box-shadow: none;
   outline: none;
   box-sizing: border-box;
-  transition: background 0.15s ease, transform 0.15s ease, box-shadow 0.15s ease;
+  transition: transform 0.15s ease;
 }
 
 .hexNode:hover .hexShape {
   transform: translateY(-3px) scale(1.05);
-}
-
-.hexNode:hover .hexInner {
-  background: color-mix(in srgb, var(--hex-soft) 78%, var(--hex-accent) 22%);
-  box-shadow:
-    0 4px 10px rgba(15, 28, 46, 0.14),
-    inset 0 1px 0 rgba(255, 255, 255, 0.5);
 }
 
 .hexNode:focus-visible {
@@ -427,7 +422,7 @@
 
 .hexIcon {
   font-size: calc(1.25rem * var(--hex-layout-scale, 1));
-  color: var(--hex-accent);
+  color: var(--msp-muted, #5c6b82);
   flex-shrink: 0;
 }
 
@@ -448,42 +443,24 @@
 
 .hexInner .infraItemCount {
   font-size: calc(0.6875rem * var(--hex-layout-scale, 1));
-  color: color-mix(in srgb, var(--hex-accent, #475569) 72%, var(--msp-text, #0f1c2e));
 }
 
+.hexInner .infraItemCount,
 .brickInner .infraItemCount {
-  color: color-mix(in srgb, var(--brick-accent, #475569) 72%, var(--msp-text, #0f1c2e));
+  color: var(--msp-muted, #5c6b82);
 }
 
-.hexNodeOk .hexIcon {
-  color: var(--hex-accent);
+.hexNodeAttention .hexShape {
+  --hex-ring: var(--hex-accent, #c2410c);
 }
 
-.hexNodeWarning .hexIcon {
-  color: var(--hex-accent);
-}
-
-.hexNodeCritical .hexIcon {
-  color: var(--hex-accent);
-}
-
-.hexNodeUnmonitored .hexIcon {
-  color: var(--hex-accent);
+.hexNodeDisabled,
+.hexNodePlaceholder {
+  opacity: 0.5;
 }
 
 .hexNodePlaceholder {
   pointer-events: none;
-  opacity: 0.82;
-}
-
-.hexNodePlaceholder .hexInner {
-  background: color-mix(in srgb, var(--hex-soft) 92%, var(--hex-accent) 8%);
-  border: none;
-  box-shadow: 0 1px 4px rgba(15, 28, 46, 0.08);
-}
-
-.hexNodePlaceholder .hexShape {
-  filter: none;
 }
 
 .emptyState,
@@ -646,29 +623,35 @@
   color: var(--msp-text, #e8edf5);
 }
 
-:global(html.dark) .hexInner .infraItemCount {
-  color: color-mix(in srgb, var(--hex-accent, #94a3b8) 65%, var(--msp-text, #e8edf5));
-}
-
+:global(html.dark) .hexInner .infraItemCount,
 :global(html.dark) .brickInner .infraItemCount {
-  color: color-mix(in srgb, var(--brick-accent, #94a3b8) 65%, var(--msp-text, #e8edf5));
+  color: var(--msp-muted, #8fa8c4);
 }
 
-:global(html.dark) .hexInner {
-  background: color-mix(in srgb, var(--hex-soft) 82%, var(--hex-accent) 18%);
-  border: none;
-  box-shadow:
-    0 2px 8px rgba(0, 0, 0, 0.28),
-    inset 0 1px 0 rgba(255, 255, 255, 0.06);
+:global(html.dark) .hexShape {
+  --hex-ring: var(--msp-border, #2a3a55);
 }
 
-:global(html.dark) .hexNode:hover .hexInner {
-  background: color-mix(in srgb, var(--hex-soft) 72%, var(--hex-accent) 28%);
+:global(html.dark) .hexInner,
+:global(html.dark) .brickInner {
+  background: var(--msp-surface, #1a2540);
 }
 
-:global(html.dark) .hexNodePlaceholder .hexInner {
-  background: color-mix(in srgb, var(--hex-soft) 88%, var(--hex-accent) 12%);
-  border: none;
+:global(html.dark) .brickInner {
+  border-color: var(--msp-border, #2a3a55);
+}
+
+:global(html.dark) .hexIcon,
+:global(html.dark) .brickIcon {
+  color: var(--msp-muted, #8fa8c4);
+}
+
+:global(html.dark) .hexNodeAttention .hexShape {
+  --hex-ring: var(--hex-accent, #ea580c);
+}
+
+:global(html.dark) .brickNodeAttention .brickInner {
+  border-color: var(--brick-accent, #ea580c);
 }
 
 :global(html.dark) .emptyState {

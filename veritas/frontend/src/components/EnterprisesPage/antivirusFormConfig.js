@@ -19,7 +19,7 @@ export function catalogIntegrationToAntivirusProvider(integration) {
     solutionName: integration.name,
     icon: integration.icon || "mdi:shield-bug-outline",
     iconColor: integration.iconColor,
-    image: integration.image,
+    image: integration.image || (integration.id === "bitdefender" ? "bitdefender.png" : null),
     description: integration.description,
     status: integration.status === "comingSoon" ? "comingSoon" : "available",
     proOnly: Boolean(integration.proOnly),

@@ -1698,19 +1698,6 @@ export default function ClientDetailPage({
       setLoadingTotalEquipment(false);
     }
   };
-  const formatDate = dateString => {
-    if (!dateString) return "-";
-    try {
-      const date = new Date(dateString);
-      return date.toLocaleDateString("en-GB", {
-        year: "numeric",
-        month: "long",
-        day: "numeric"
-      });
-    } catch (e) {
-      return dateString;
-    }
-  };
   const formatNoteDate = dateString => {
     if (!dateString) return "";
     try {
@@ -3278,13 +3265,13 @@ export default function ClientDetailPage({
                   <div className={styles.sidebarSummaryItem}>
                     <span className={styles.sidebarSummaryLabel}>{copy.startDateLabel}</span>
                     <span className={styles.sidebarSummaryValue}>
-                      {formatDate(formData.contrat?.debut) || "-"}
+                      {formatTableDate(formData.contrat?.debut)}
                     </span>
                   </div>
                   <div className={styles.sidebarSummaryItem}>
                     <span className={styles.sidebarSummaryLabel}>{copy.endDateLabel}</span>
                     <span className={styles.sidebarSummaryValue}>
-                      {formatDate(formData.contrat?.expiration) || "-"}
+                      {formatTableDate(formData.contrat?.expiration)}
                     </span>
                   </div>
                 </div>

@@ -1,40 +1,30 @@
 import { interpolate, pickLocaleMessages } from "../../i18n/translate";
+import { getInfraStatusMeta, toInfraDisplayStatus } from "./infraMapUtils";
 const HONEYCOMB_TYPE_KEYS = ["Internet", "Firewalls", "Serveurs", "Stockage", "Switch", "BorneWifi", "Routeur", "Alimentation", "TOIP", "Ordinateurs"];
 const BRICK_GROUP_KEYS = ["cybersecurity", "services", "licensing", "campaign"];
 const BRICK_TYPE_KEYS = ["Antivirus", "Antispam", "Sauvegarde", "TenantMicrosoft", "GoogleWorkspace", "NDD", "CertificatsSSL", "LicensesAbonnements", "Campagne"];
-const STATUS_KEYS = ["critical", "warning", "ok", "neutral", "unmonitored", "no_data"];
+const STATUS_KEYS = ["disabled", "clear", "attention"];
 const INFRA_MAP_COPY = {
   fr: {
     loadingAria: "Chargement de la cartographie",
-    legendAria: "Légende des statuts",
     loadError: "Impossible de charger la cartographie",
     emptyTitle: "Aucun élément d'infrastructure à cartographier pour ce client",
     emptyHint: "Les hexagones illustrent la structure attendue. Ajoutez des périphériques ou une sauvegarde pour alimenter la cartographie.",
-    criticalCategoriesOne: "1 rubrique critique",
-    criticalCategoriesMany: "{count} rubriques critiques",
-    warningCategoriesOne: "1 rubrique en warning",
-    warningCategoriesMany: "{count} rubriques en warning",
+    attentionCategoriesOne: "1 rubrique à surveiller",
+    attentionCategoriesMany: "{count} rubriques à surveiller",
     equipmentOne: "{count} équipement",
     equipmentMany: "{count} équipements",
     elementOne: "{count} élément",
     elementMany: "{count} éléments",
     customEquipmentGroup: "Équipements",
     status: {
-      critical: "Critique",
-      warning: "Warning",
-      ok: "OK",
-      neutral: "Actif",
-      unmonitored: "Non monitoré",
-      no_data: "Sans données"
+      disabled: "Désactivé",
+      clear: "Rien à signaler",
+      attention: "À surveiller"
     },
     statusBreakdown: {
-      criticalOne: "{count} critique",
-      criticalMany: "{count} critiques",
-      warningOne: "{count} warning",
-      warningMany: "{count} warnings",
-      ok: "{count} OK",
-      unmonitoredOne: "{count} non monitoré",
-      unmonitoredMany: "{count} non monitorés"
+      attentionOne: "{count} à surveiller",
+      attentionMany: "{count} à surveiller"
     },
     honeycombTypes: {
       Internet: "Internet",
@@ -84,35 +74,24 @@ const INFRA_MAP_COPY = {
   },
   en: {
     loadingAria: "Loading infrastructure map",
-    legendAria: "Status legend",
     loadError: "Unable to load infrastructure map",
     emptyTitle: "No infrastructure items to map for this client",
     emptyHint: "The hexagons show the expected structure. Add devices or a backup to populate the map.",
-    criticalCategoriesOne: "1 critical category",
-    criticalCategoriesMany: "{count} critical categories",
-    warningCategoriesOne: "1 category in warning",
-    warningCategoriesMany: "{count} categories in warning",
+    attentionCategoriesOne: "1 category needs attention",
+    attentionCategoriesMany: "{count} categories need attention",
     equipmentOne: "{count} device",
     equipmentMany: "{count} devices",
     elementOne: "{count} item",
     elementMany: "{count} items",
     customEquipmentGroup: "Equipment",
     status: {
-      critical: "Critical",
-      warning: "Warning",
-      ok: "OK",
-      neutral: "Active",
-      unmonitored: "Not monitored",
-      no_data: "No data"
+      disabled: "Disabled",
+      clear: "Nothing to report",
+      attention: "Needs attention"
     },
     statusBreakdown: {
-      criticalOne: "{count} critical",
-      criticalMany: "{count} critical",
-      warningOne: "{count} warning",
-      warningMany: "{count} warnings",
-      ok: "{count} OK",
-      unmonitoredOne: "{count} not monitored",
-      unmonitoredMany: "{count} not monitored"
+      attentionOne: "{count} needs attention",
+      attentionMany: "{count} need attention"
     },
     honeycombTypes: {
       Internet: "Internet",
@@ -161,35 +140,24 @@ const INFRA_MAP_COPY = {
   },
   de: {
     loadingAria: "Infrastrukturkarte wird geladen",
-    legendAria: "Status-Legende",
     loadError: "Infrastrukturkarte konnte nicht geladen werden",
     emptyTitle: "Keine Infrastrukturelemente für diesen Kunden zu kartieren",
     emptyHint: "Die Hexagone zeigen die erwartete Struktur. Fügen Sie Geräte oder ein Backup hinzu, um die Karte zu füllen.",
-    criticalCategoriesOne: "1 kritische Rubrik",
-    criticalCategoriesMany: "{count} kritische Rubriken",
-    warningCategoriesOne: "1 Rubrik mit Warning",
-    warningCategoriesMany: "{count} Rubriken mit Warning",
+    attentionCategoriesOne: "1 Rubrik zu prüfen",
+    attentionCategoriesMany: "{count} Rubriken zu prüfen",
     equipmentOne: "{count} Gerät",
     equipmentMany: "{count} Geräte",
     elementOne: "{count} Element",
     elementMany: "{count} Elemente",
     customEquipmentGroup: "Geräte",
     status: {
-      critical: "Kritisch",
-      warning: "Warning",
-      ok: "OK",
-      neutral: "Aktiv",
-      unmonitored: "Nicht überwacht",
-      no_data: "Keine Daten"
+      disabled: "Deaktiviert",
+      clear: "Nichts zu melden",
+      attention: "Zu prüfen"
     },
     statusBreakdown: {
-      criticalOne: "{count} kritisch",
-      criticalMany: "{count} kritisch",
-      warningOne: "{count} warning",
-      warningMany: "{count} warnings",
-      ok: "{count} OK",
-      unmonitoredOne: "{count} nicht überwacht",
-      unmonitoredMany: "{count} nicht überwacht"
+      attentionOne: "{count} zu prüfen",
+      attentionMany: "{count} zu prüfen"
     },
     honeycombTypes: {
       Internet: "Internet",
@@ -238,35 +206,24 @@ const INFRA_MAP_COPY = {
   },
   it: {
     loadingAria: "Caricamento mappa infrastruttura",
-    legendAria: "Legenda stati",
     loadError: "Impossibile caricare la mappa infrastruttura",
     emptyTitle: "Nessun elemento infrastruttura da mappare per questo cliente",
     emptyHint: "Gli esagoni illustrano la struttura prevista. Aggiungete dispositivi o un backup per alimentare la mappa.",
-    criticalCategoriesOne: "1 voce critica",
-    criticalCategoriesMany: "{count} voci critiche",
-    warningCategoriesOne: "1 voce in warning",
-    warningCategoriesMany: "{count} voci in warning",
+    attentionCategoriesOne: "1 voce da verificare",
+    attentionCategoriesMany: "{count} voci da verificare",
     equipmentOne: "{count} dispositivo",
     equipmentMany: "{count} dispositivi",
     elementOne: "{count} elemento",
     elementMany: "{count} elementi",
     customEquipmentGroup: "Apparecchiature",
     status: {
-      critical: "Critico",
-      warning: "Warning",
-      ok: "OK",
-      neutral: "Attivo",
-      unmonitored: "Non monitorato",
-      no_data: "Nessun dato"
+      disabled: "Disattivato",
+      clear: "Niente da segnalare",
+      attention: "Da verificare"
     },
     statusBreakdown: {
-      criticalOne: "{count} critico",
-      criticalMany: "{count} critici",
-      warningOne: "{count} warning",
-      warningMany: "{count} warning",
-      ok: "{count} OK",
-      unmonitoredOne: "{count} non monitorato",
-      unmonitoredMany: "{count} non monitorati"
+      attentionOne: "{count} da verificare",
+      attentionMany: "{count} da verificare"
     },
     honeycombTypes: {
       Internet: "Internet",
@@ -315,35 +272,24 @@ const INFRA_MAP_COPY = {
   },
   es: {
     loadingAria: "Cargando mapa de infraestructura",
-    legendAria: "Leyenda de estados",
     loadError: "No se pudo cargar el mapa de infraestructura",
     emptyTitle: "No hay elementos de infraestructura para mapear en este cliente",
     emptyHint: "Los hexágonos muestran la estructura esperada. Añada dispositivos o una copia de seguridad para completar el mapa.",
-    criticalCategoriesOne: "1 categoría crítica",
-    criticalCategoriesMany: "{count} categorías críticas",
-    warningCategoriesOne: "1 categoría en warning",
-    warningCategoriesMany: "{count} categorías en warning",
+    attentionCategoriesOne: "1 categoría a vigilar",
+    attentionCategoriesMany: "{count} categorías a vigilar",
     equipmentOne: "{count} dispositivo",
     equipmentMany: "{count} dispositivos",
     elementOne: "{count} elemento",
     elementMany: "{count} elementos",
     customEquipmentGroup: "Equipos",
     status: {
-      critical: "Crítico",
-      warning: "Warning",
-      ok: "OK",
-      neutral: "Activo",
-      unmonitored: "No monitorizado",
-      no_data: "Sin datos"
+      disabled: "Desactivado",
+      clear: "Nada que señalar",
+      attention: "A vigilar"
     },
     statusBreakdown: {
-      criticalOne: "{count} crítico",
-      criticalMany: "{count} críticos",
-      warningOne: "{count} warning",
-      warningMany: "{count} warnings",
-      ok: "{count} OK",
-      unmonitoredOne: "{count} no monitorizado",
-      unmonitoredMany: "{count} no monitorizados"
+      attentionOne: "{count} a vigilar",
+      attentionMany: "{count} a vigilar"
     },
     honeycombTypes: {
       Internet: "Internet",
@@ -419,72 +365,30 @@ export function getInfraMapCopy(locale) {
       return type;
     },
     getStatusLabel: status => {
-      if (status === "unmonitored" || status === "no_data") return null;
-      return t.status[status] || null;
+      const display = toInfraDisplayStatus(status);
+      if (display === "clear") return null;
+      return t.status[display] || null;
     },
     getStatusMeta: status => {
-      const key = status === "no_data" ? "no_data" : status;
-      const label = t.status[key] || t.status.unmonitored;
-      const colors = {
-        critical: {
-          color: "#dc2626",
-          soft: "rgba(239, 68, 68, 0.48)"
-        },
-        warning: {
-          color: "#d97706",
-          soft: "rgba(245, 158, 11, 0.46)"
-        },
-        ok: {
-          color: "#2b5fab",
-          soft: "rgba(43, 95, 171, 0.44)"
-        },
-        neutral: {
-          color: "#1d4f9e",
-          soft: "rgba(43, 95, 171, 0.28)"
-        },
-        unmonitored: {
-          color: "#64748b",
-          soft: "rgba(100, 116, 139, 0.38)"
-        },
-        no_data: {
-          color: "#64748b",
-          soft: "rgba(100, 116, 139, 0.38)"
-        }
-      };
-      const palette = colors[key] || colors.unmonitored;
+      const display = toInfraDisplayStatus(status);
+      const palette = getInfraStatusMeta(display);
       return {
-        label,
-        ...palette
+        ...palette,
+        label: t.status[display] || palette.label
       };
     },
     formatEquipmentCount: count => formatCountLabel(count, "equipmentOne", "equipmentMany", t),
     formatElementCount: count => formatCountLabel(count, "elementOne", "elementMany", t),
-    formatCriticalCategories: count => formatCountLabel(count, "criticalCategoriesOne", "criticalCategoriesMany", t),
-    formatWarningCategories: count => formatCountLabel(count, "warningCategoriesOne", "warningCategoriesMany", t),
+    formatAttentionCategories: count => formatCountLabel(count, "attentionCategoriesOne", "attentionCategoriesMany", t),
     formatStatusBreakdown: (counts = {}) => {
-      const sb = t.statusBreakdown;
-      const parts = [];
-      if (counts.critical > 0) {
-        parts.push(formatCountLabel(counts.critical, "criticalOne", "criticalMany", sb));
-      }
-      if (counts.warning > 0) {
-        parts.push(formatCountLabel(counts.warning, "warningOne", "warningMany", sb));
-      }
-      if (counts.ok > 0) {
-        parts.push(interpolate(sb.ok, {
-          count: String(counts.ok)
-        }));
-      }
-      if (counts.unmonitored > 0) {
-        parts.push(formatCountLabel(counts.unmonitored, "unmonitoredOne", "unmonitoredMany", sb));
-      }
-      return parts.join(" · ");
+      const attention = (Number(counts.critical) || 0) + (Number(counts.warning) || 0) + (Number(counts.attention) || 0);
+      if (attention <= 0) return "";
+      return formatCountLabel(attention, "attentionOne", "attentionMany", t.statusBreakdown);
     },
     formatComingSoonToast: label => interpolate(t.brick.comingSoonToast, {
       label
     }),
     getProFeatureLabel: (type, fallback) => t.brick.proFeatureLabels[type] || fallback || t.brick.proFeatureFallback,
-    legendStatusKeys: ["critical", "warning", "ok", "unmonitored"],
     honeycombTypeKeys: HONEYCOMB_TYPE_KEYS,
     brickGroupKeys: BRICK_GROUP_KEYS,
     brickTypeKeys: BRICK_TYPE_KEYS,
