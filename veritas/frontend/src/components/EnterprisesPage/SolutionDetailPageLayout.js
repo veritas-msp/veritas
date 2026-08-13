@@ -3,10 +3,15 @@ import { FaArrowLeft } from "react-icons/fa";
 import styles from "./SolutionDetailPageLayout.module.css";
 export default function SolutionDetailPageLayout({
   accent = "default",
+  className,
   eyebrow,
   title,
   titleIcon,
+  titleLeading,
   subtitle,
+  headerMeta,
+  headerActionsExtra,
+  headerBelow,
   backLabel = "Back",
   onBack,
   loading = false,
@@ -23,7 +28,7 @@ export default function SolutionDetailPageLayout({
   children
 }) {
   const accentKey = ["gravityzone", "mailinblack", "default"].includes(accent) ? accent : "default";
-  return <div className={styles.page}>
+  return <div className={[styles.page, className].filter(Boolean).join(" ")}>
       <div className={`${styles.accentBar} ${styles[`accentBar_${accentKey}`]}`} aria-hidden />
 
       <header className={styles.header}>
@@ -32,22 +37,25 @@ export default function SolutionDetailPageLayout({
               <FaArrowLeft aria-hidden />
               <span>{backLabel}</span>
             </button> : null}
-          {titleIcon ? <div className={`${styles.headerIconWrap} ${styles[`headerIconWrap_${accentKey}`]}`} aria-hidden>
+          {titleLeading || (titleIcon ? <div className={`${styles.headerIconWrap} ${styles[`headerIconWrap_${accentKey}`]}`} aria-hidden>
               <Icon icon={titleIcon} />
-            </div> : null}
+            </div> : null)}
           <div className={styles.headerCopy}>
             {eyebrow ? <p className={styles.eyebrow}>{eyebrow}</p> : null}
             <h1 className={styles.title}>{title}</h1>
             {subtitle ? <p className={styles.subtitle}>{subtitle}</p> : null}
+            {headerMeta ? <div className={styles.headerMeta}>{headerMeta}</div> : null}
           </div>
         </div>
         <div className={styles.headerActions}>
+          {headerActionsExtra}
           {onRefresh ? <button type="button" className={styles.actionBtn} onClick={onRefresh} disabled={loading}>
               <Icon icon={loading ? "mdi:loading" : "mdi:refresh"} className={loading ? styles.spin : ""} aria-hidden />
               {refreshLabel}
             </button> : null}
         </div>
       </header>
+      {headerBelow ? <div className={styles.headerBelow}>{headerBelow}</div> : null}
 
       <div className={styles.mainLayout}>
         <aside className={styles.sidebar}>
