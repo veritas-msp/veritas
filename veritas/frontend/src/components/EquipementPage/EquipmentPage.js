@@ -40,7 +40,6 @@ import { buildRmmAgentRowFromEquipment, resolveRmmAgentOnline } from "./rmmMonit
 import { fetchClientEquipmentAlerts, resolveEquipmentFamilyForAlerts } from "../../api/equipmentMonitoringAlerts";
 import { ConfirmModal } from "../AdminPage/AdminUi";
 import { useAppLocale } from "../../hooks/useAppGeneralSettings";
-import { canonicalEquipmentTypeKey } from "../../i18n/equipmentFamilyLabels";
 import { getEquipmentMspPanelCopy } from "./equipmentMspPanelI18n";
 import { getEquipmentPageCopy, getEquipmentColumnLabel, getEquipmentEmptyMessage, formatEquipmentDeviceCount, getEquipmentRemoteAccessLabel, formatEquipmentRemoteAccessTooltip } from "./equipmentPageI18n";
 import { getEquipmentModalsCopy, interpolate } from "./equipmentModalsI18n";
@@ -1337,7 +1336,7 @@ const EquipmentPage = forwardRef(function EquipmentPage({
   const equipmentByType = useMemo(() => {
     const grouped = {};
     filteredEquipment.forEach(eq => {
-      const displayType = canonicalEquipmentTypeKey(toDisplayEquipmentType(eq.type));
+      const displayType = toDisplayEquipmentType(eq.type);
       if (!grouped[displayType]) {
         grouped[displayType] = [];
       }
@@ -1358,7 +1357,7 @@ const EquipmentPage = forwardRef(function EquipmentPage({
     }
     const grouped = {};
     list.forEach(eq => {
-      const displayType = canonicalEquipmentTypeKey(toDisplayEquipmentType(eq.type));
+      const displayType = toDisplayEquipmentType(eq.type);
       if (!grouped[displayType]) grouped[displayType] = [];
       grouped[displayType].push(eq);
     });
