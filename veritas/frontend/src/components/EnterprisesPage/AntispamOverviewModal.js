@@ -128,6 +128,9 @@ const SECTION_COLUMNS = {
     key: "status",
     label: "Status"
   }, {
+    key: "mx",
+    label: "MX"
+  }, {
     key: "expiration",
     label: "Expiration",
     render: r => formatDate(r.expiration)
@@ -148,6 +151,44 @@ const SECTION_COLUMNS = {
   }, {
     key: "status",
     label: "Status"
+  }, {
+    key: "lastLogin",
+    label: "Last login",
+    render: r => formatDate(r.lastLogin)
+  }],
+  emails: [{
+    key: "email",
+    label: "E-mail"
+  }, {
+    key: "domain",
+    label: "Domain"
+  }, {
+    key: "type",
+    label: "Type"
+  }, {
+    key: "primary",
+    label: "Primary",
+    render: r => r.primary === true ? "Yes" : r.primary === false ? "No" : "-"
+  }, {
+    key: "status",
+    label: "Status"
+  }],
+  servers: [{
+    key: "name",
+    label: "Server"
+  }, {
+    key: "ip",
+    label: "IP",
+    mono: true
+  }, {
+    key: "type",
+    label: "Type"
+  }, {
+    key: "domain",
+    label: "Domain"
+  }, {
+    key: "status",
+    label: "Status"
   }],
   senders: [{
     key: "email",
@@ -162,6 +203,10 @@ const SECTION_COLUMNS = {
     key: "authorized",
     label: "Allowed",
     render: r => r.authorized === true ? "Yes" : r.authorized === false ? "No" : "-"
+  }, {
+    key: "lastSeen",
+    label: "Last seen",
+    render: r => formatDate(r.lastSeen)
   }],
   spools: [{
     key: "subject",
@@ -176,6 +221,9 @@ const SECTION_COLUMNS = {
     key: "status",
     label: "Status"
   }, {
+    key: "category",
+    label: "Category"
+  }, {
     key: "threat",
     label: "Threat"
   }, {
@@ -185,16 +233,23 @@ const SECTION_COLUMNS = {
   }],
   detectSpools: [{
     key: "subject",
-    label: "Sujet"
+    label: "Subject"
   }, {
     key: "sender",
-    label: "De"
+    label: "From"
   }, {
     key: "status",
     label: "Status"
   }, {
+    key: "category",
+    label: "Category"
+  }, {
     key: "threat",
     label: "Detection"
+  }, {
+    key: "receivedAt",
+    label: "Received",
+    render: r => formatDate(r.receivedAt)
   }]
 };
 const API_STATUS_LABELS = {
@@ -280,13 +335,21 @@ export function AntispamOverviewPanel({
       exploited: true,
       status: sections.customer?.status
     }, {
-      name: "Domaines (admin)",
+      name: "Domains (admin)",
       exploited: true,
       status: sections.domains?.status
     }, {
       name: "Users (admin)",
       exploited: true,
       status: sections.users?.status
+    }, {
+      name: "E-mails (admin)",
+      exploited: true,
+      status: sections.emails?.status
+    }, {
+      name: "Servers (admin)",
+      exploited: true,
+      status: sections.servers?.status
     }, {
       name: "Senders (protect)",
       exploited: true,
@@ -296,27 +359,39 @@ export function AntispamOverviewPanel({
       exploited: true,
       status: sections.spools?.status
     }, {
-      name: "Spool detection",
-      exploited: false,
+      name: "Advanced spools",
+      exploited: true,
       status: sections.detectSpools?.status
     }];
     const usersTotal = sections.users?.total ?? antispamItem?.utilisateursProteges ?? 0;
     const domainsTotal = sections.domains?.total ?? antispamItem?.domainesSurveilles ?? 0;
+    const emailsTotal = sections.emails?.total ?? 0;
+    const serversTotal = sections.servers?.total ?? 0;
     const sendersTotal = sections.senders?.total ?? 0;
     const spoolsTotal = sections.spools?.total ?? 0;
+    const detectTotal = sections.detectSpools?.total ?? 0;
     if (asPage) {
       const volumeDistribution = buildDistributionItems([{
         name: "Users",
         count: usersTotal
       }, {
-        name: "Domaines",
+        name: "Domains",
         count: domainsTotal
+      }, {
+        name: "E-mails",
+        count: emailsTotal
+      }, {
+        name: "Servers",
+        count: serversTotal
       }, {
         name: "Senders",
         count: sendersTotal
       }, {
         name: "Spools",
         count: spoolsTotal
+      }, {
+        name: "Advanced spools",
+        count: detectTotal
       }]);
       const apiStatusCounts = {};
       apiRows.forEach(row => {
@@ -328,17 +403,26 @@ export function AntispamOverviewPanel({
         count
       })));
       const moduleBars = buildDistributionItems([{
-        name: "Domaines",
+        name: "Domains",
         count: domainsTotal
       }, {
         name: "Users",
         count: usersTotal
+      }, {
+        name: "E-mails",
+        count: emailsTotal
+      }, {
+        name: "Servers",
+        count: serversTotal
       }, {
         name: "Senders",
         count: sendersTotal
       }, {
         name: "Spools",
         count: spoolsTotal
+      }, {
+        name: "Advanced spools",
+        count: detectTotal
       }]);
       const okApis = apiRows.filter(row => row.status === "ok").length;
       const syncLabel = lastPersistedAt ? `Last backup: ${formatDate(lastPersistedAt)}` : "Not saved locally";
@@ -352,9 +436,11 @@ export function AntispamOverviewPanel({
 
           <section className={dashStyles.kpiGrid}>
             <KpiCard icon="mdi:account-group-outline" label="Users" value={usersTotal || "-"} sub="Protected accounts" />
-            <KpiCard icon="mdi:web" label="Domaines" value={domainsTotal || "-"} sub="Monitored domains" />
-            <KpiCard icon="mdi:email-arrow-right-outline" label="Senders" value={sendersTotal || "-"} sub="Liste Protect" />
-            <KpiCard icon="mdi:email-multiple-outline" label="Spools" value={spoolsTotal || "-"} sub="Messages en file" />
+            <KpiCard icon="mdi:web" label="Domains" value={domainsTotal || "-"} sub="Monitored domains" />
+            <KpiCard icon="mdi:email-outline" label="E-mails" value={emailsTotal || "-"} sub="Admin addresses" />
+            <KpiCard icon="mdi:email-arrow-right-outline" label="Senders" value={sendersTotal || "-"} sub="Protect list" />
+            <KpiCard icon="mdi:email-multiple-outline" label="Spools" value={spoolsTotal || "-"} sub="Queued messages" />
+            <KpiCard icon="mdi:radar" label="Advanced spools" value={detectTotal || "-"} sub="U-Mail Advanced" />
             <KpiCard icon="mdi:api" label="Operational APIs" value={`${okApis}/${apiRows.length}`} sub={`${apiRows.filter(row => row.exploited).length} integrated in Veritas`} tone={okApis === apiRows.length ? "good" : okApis >= apiRows.length - 1 ? "warn" : "bad"} />
             <KpiCard icon="mdi:cloud-sync-outline" label="Synchronization" value={lastPersistedAt ? "Saved" : "Lecture seule"} sub={syncLabel} tone={lastPersistedAt ? "good" : "neutral"} />
           </section>
@@ -421,10 +507,14 @@ export function AntispamOverviewPanel({
             </span>
           </div>
           <div className={styles.kpiCard}>
-            <span className={styles.kpiLabel}>Domaines</span>
+            <span className={styles.kpiLabel}>Domains</span>
             <span className={styles.kpiValue}>
               {sections.domains?.total ?? antispamItem?.domainesSurveilles ?? "-"}
             </span>
+          </div>
+          <div className={styles.kpiCard}>
+            <span className={styles.kpiLabel}>E-mails</span>
+            <span className={styles.kpiValue}>{sections.emails?.total ?? "-"}</span>
           </div>
           <div className={styles.kpiCard}>
             <span className={styles.kpiLabel}>Senders</span>
@@ -485,6 +575,12 @@ export function AntispamOverviewPanel({
       case "users":
         content = renderListSection(sectionViews.users);
         break;
+      case "emails":
+        content = renderListSection(sectionViews.emails);
+        break;
+      case "servers":
+        content = renderListSection(sectionViews.servers);
+        break;
       case "senders":
         content = renderListSection(sectionViews.senders);
         break;
@@ -492,9 +588,7 @@ export function AntispamOverviewPanel({
         content = renderListSection(sectionViews.spools);
         break;
       case "detectSpools":
-        content = renderListSection(sectionViews.detectSpools, {
-          preview: true
-        });
+        content = renderListSection(sectionViews.detectSpools);
         break;
       default:
         content = renderOverview();

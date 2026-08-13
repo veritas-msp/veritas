@@ -2,11 +2,11 @@ export const ANTISPAM_OVERVIEW_GROUPS = [{
   id: "core",
   label: "Overview"
 }, {
-  id: "exploited",
-  label: "Module Protect"
+  id: "admin",
+  label: "Administration"
 }, {
-  id: "preview",
-  label: "Additional APIs"
+  id: "protect",
+  label: "Module Protect"
 }];
 export const ANTISPAM_OVERVIEW_SECTIONS = [{
   id: "overview",
@@ -16,37 +16,51 @@ export const ANTISPAM_OVERVIEW_SECTIONS = [{
   icon: "mdi:view-dashboard-outline"
 }, {
   id: "domains",
-  group: "exploited",
+  group: "admin",
   label: "Domains",
-  description: "Admin / domains",
+  description: "GET /admin/domains",
   icon: "mdi:web",
   sectionKey: "domains"
 }, {
   id: "users",
-  group: "exploited",
+  group: "admin",
   label: "Users",
-  description: "Protected accounts",
+  description: "GET /admin/users",
   icon: "mdi:account-group-outline",
   sectionKey: "users"
 }, {
+  id: "emails",
+  group: "admin",
+  label: "E-mails",
+  description: "GET /admin/emails",
+  icon: "mdi:email-outline",
+  sectionKey: "emails"
+}, {
+  id: "servers",
+  group: "admin",
+  label: "Servers",
+  description: "GET /admin/servers",
+  icon: "mdi:server-network",
+  sectionKey: "servers"
+}, {
   id: "senders",
-  group: "exploited",
+  group: "protect",
   label: "Senders",
-  description: "Protect / senders",
+  description: "GET /protect/senders",
   icon: "mdi:email-arrow-right-outline",
   sectionKey: "senders"
 }, {
   id: "spools",
-  group: "exploited",
+  group: "protect",
   label: "Spools",
-  description: "Queued messages",
+  description: "GET /protect/spools",
   icon: "mdi:email-multiple-outline",
   sectionKey: "spools"
 }, {
   id: "detectSpools",
-  group: "preview",
-  label: "Spool detection",
-  description: "AdvancedSpool",
+  group: "protect",
+  label: "Advanced spools",
+  description: "GET /protect/detect/spools",
   icon: "mdi:radar",
   sectionKey: "detectSpools"
 }];

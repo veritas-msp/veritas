@@ -434,18 +434,30 @@ export function normalizeMailinblackCustomer(item, session = null) {
     raw: item
   };
 }
+function pickFirst(...values) {
+  for (const value of values) {
+    if (value != null && value !== '') return value;
+  }
+  return null;
+}
+function joinName(item) {
+  const full = pickFirst(item.name, item.displayName, item.fullName);
+  if (full) return String(full);
+  const parts = [item.firstName || item.firstname || item.prenom, item.lastName || item.lastname || item.nom].filter(Boolean);
+  return parts.length ? parts.join(' ') : null;
+}
 function normalizeSender(item) {
   if (!item || typeof item !== 'object') return null;
-  const id = item.id ?? item.senderId ?? item.email ?? item.address ?? item.mail ?? item.name;
+  const email = pickFirst(item.email, item.address, item.sender, item.mail, item.name);
+  const id = item.id ?? item.senderId ?? email;
   if (!id) return null;
-  const email = item.email || item.address || item.sender || item.mail || item.name || '—';
   return {
     id: String(id),
-    email,
-    domain: item.domain || item.senderDomain || null,
-    status: item.status || item.state || item.verdict || null,
-    authorized: item.authorized ?? item.isAuthorized ?? item.trusted ?? null,
-    lastSeen: item.lastSeen || item.lastActivity || item.updatedAt || item.lastUseDate || null
+    email: email || '—',
+    domain: pickFirst(item.domain, item.senderDomain, item.fqdn),
+    status: pickFirst(item.status, item.state, item.verdict, item.type),
+    authorized: item.authorized ?? item.isAuthorized ?? item.trusted ?? (String(item.status || item.type || '').toLowerCase().includes('auth') ? true : null),
+    lastSeen: pickFirst(item.lastSeen, item.lastActivity, item.updatedAt, item.lastUseDate, item.lastConnectionDate)
   };
 }
 function normalizeSpool(item) {
@@ -454,12 +466,15 @@ function normalizeSpool(item) {
   if (!id) return null;
   return {
     id: String(id),
-    subject: item.subject || item.title || item.object || '—',
-    sender: item.sender || item.from || item.senderEmail || item.senderAddress || null,
-    recipient: item.recipient || item.to || item.recipientEmail || null,
-    status: item.status || item.state || item.verdict || null,
-    receivedAt: item.receivedAt || item.date || item.createdAt || item.receptionDate || null,
-    threat: item.threat || item.category || item.reason || item.detection || null
+    subject: pickFirst(item.subject, item.title, item.object) || '—',
+    sender: pickFirst(item.sender, item.from, item.senderEmail, item.senderAddress, item.fromAddress),
+    recipient: pickFirst(item.recipient, item.to, item.recipientEmail, item.toAddress),
+    status: pickFirst(item.status, item.state, item.verdict),
+    category: pickFirst(item.category, item.folder, item.queue, item.type),
+    threat: pickFirst(item.threat, item.reason, item.detection, item.scoreLabel),
+    score: item.score ?? item.spamScore ?? item.note ?? null,
+    size: item.size ?? item.sizeBytes ?? item.messageSize ?? null,
+    receivedAt: pickFirst(item.receivedAt, item.date, item.createdAt, item.receptionDate, item.timestamp)
   };
 }
 function normalizeDomain(item) {
@@ -472,27 +487,69 @@ function normalizeDomain(item) {
     };
   }
   if (!item || typeof item !== 'object') return null;
-  const name = item.name || item.domain || item.fqdn || item.domainName || item.label;
+  const name = pickFirst(item.name, item.domain, item.fqdn, item.domainName, item.label);
   if (!name) return null;
   return {
     id: String(item.id ?? name),
     name: String(name),
-    status: item.status || item.state || item.installationStatus || null,
-    expiration: item.expirationDate || item.expiration || item.expiryDate || item.renewalDate || null,
+    status: pickFirst(item.status, item.state, item.installationStatus),
+    mx: pickFirst(item.mx, item.mxRecord, item.mailServer),
+    expiration: pickFirst(item.expirationDate, item.expiration, item.expiryDate, item.renewalDate),
     autoRenew: item.autoRenew ?? item.autorenew ?? item.autoRenewal ?? null,
     dnsManaged: item.dnsManaged ?? item.managed ?? item.hasDnsZone ?? null
   };
 }
 function normalizeUser(item) {
   if (!item || typeof item !== 'object') return null;
-  const id = item.id ?? item.userId ?? item.email ?? item.mail ?? item.login;
+  const email = pickFirst(item.email, item.mail, item.login, item.username);
+  const id = item.id ?? item.userId ?? email;
   if (!id) return null;
   return {
     id: String(id),
-    email: item.email || item.mail || item.login || item.username || '—',
-    name: item.name || item.displayName || item.fullName || item.firstName || null,
-    status: item.status || item.state || item.accountStatus || null,
-    role: item.role || item.profile || item.type || null
+    email: email || '—',
+    name: joinName(item),
+    firstName: pickFirst(item.firstName, item.firstname, item.prenom),
+    lastName: pickFirst(item.lastName, item.lastname, item.nom),
+    status: pickFirst(item.status, item.state, item.accountStatus),
+    role: pickFirst(item.role, item.profile, item.type, item.profileName),
+    lastLogin: pickFirst(item.lastLogin, item.lastConnectionDate, item.lastConnection, item.updatedAt)
+  };
+}
+function normalizeEmail(item) {
+  if (typeof item === 'string' || typeof item === 'number') {
+    const email = String(item).trim();
+    if (!email) return null;
+    return {
+      id: email,
+      email
+    };
+  }
+  if (!item || typeof item !== 'object') return null;
+  const email = pickFirst(item.email, item.mail, item.address, item.name);
+  const id = item.id ?? item.emailId ?? email;
+  if (!id || !email) return null;
+  return {
+    id: String(id),
+    email: String(email),
+    type: pickFirst(item.type, item.kind, item.usage),
+    domain: pickFirst(item.domain, item.fqdn),
+    userId: item.userId ?? item.ownerId ?? null,
+    primary: item.primary ?? item.isPrimary ?? item.main ?? null,
+    status: pickFirst(item.status, item.state)
+  };
+}
+function normalizeServer(item) {
+  if (!item || typeof item !== 'object') return null;
+  const name = pickFirst(item.name, item.hostname, item.host, item.fqdn, item.label);
+  const id = item.id ?? item.serverId ?? name ?? item.ip ?? item.address;
+  if (!id) return null;
+  return {
+    id: String(id),
+    name: name || String(id),
+    ip: pickFirst(item.ip, item.address, item.ipv4),
+    type: pickFirst(item.type, item.role, item.kind),
+    domain: pickFirst(item.domain, item.fqdn),
+    status: pickFirst(item.status, item.state)
   };
 }
 function buildSectionFromResult(result, normalizer, columnsMeta = {}) {
@@ -635,15 +692,19 @@ export async function mailinblackGetCustomer(apiUrl, credentials, customerId) {
 export async function mailinblackBuildDashboard(apiUrl, credentials, customerId = null) {
   const session = await mailinblackAuthenticate(credentials);
   const effectiveCustomerId = customerId || session.clientId || credentials?.authClientId || null;
-  const [senders, spools, detectSpools, domains, users, customerRes] = await Promise.all([mailinblackFetchListSection(apiUrl, session, credentials, 'protect', 'senders', normalizeSender, {
+  const [senders, spools, detectSpools, domains, users, emails, servers, customerRes] = await Promise.all([mailinblackFetchListSection(apiUrl, session, credentials, 'protect', 'senders', normalizeSender, {
     exploited: true
   }), mailinblackFetchListSection(apiUrl, session, credentials, 'protect', 'spools', normalizeSpool, {
     exploited: true
   }), mailinblackFetchListSection(apiUrl, session, credentials, 'protect', 'detect/spools', normalizeSpool, {
-    exploited: false
+    exploited: true
   }), mailinblackFetchListSection(apiUrl, session, credentials, 'admin', 'domains', normalizeDomain, {
     exploited: true
   }), mailinblackFetchListSection(apiUrl, session, credentials, 'admin', 'users', normalizeUser, {
+    exploited: true
+  }), mailinblackFetchListSection(apiUrl, session, credentials, 'admin', 'emails', normalizeEmail, {
+    exploited: true
+  }), mailinblackFetchListSection(apiUrl, session, credentials, 'admin', 'servers', normalizeServer, {
     exploited: true
   }), effectiveCustomerId ? safeMailinblackCall(() => mailinblackGetCustomer(apiUrl, credentials, effectiveCustomerId)) : Promise.resolve({
     ok: false,
@@ -681,7 +742,9 @@ export async function mailinblackBuildDashboard(apiUrl, credentials, customerId 
       spools,
       detectSpools,
       domains,
-      users
+      users,
+      emails,
+      servers
     }
   };
 }
