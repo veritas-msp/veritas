@@ -48,8 +48,8 @@ export default function MailinblackApiGuide({
             <p className={styles.guideStepTitle}>Paste credentials into Veritas</p>
             <p className={styles.guideStepDesc}>
               API URL:{" "}
-              <code className={styles.guideCode}>{DEFAULT_API_URL}</code>
-              {" "}(Veritas routes via the partner <code className={styles.guideCode}>/api</code> gateway). Enter{" "}
+              <code className={styles.guideCode}>{dedicated ? "https://app.mailinblack.com/mibc-fr-XX" : DEFAULT_API_URL}</code>
+              {dedicated ? " (racine du tenant client, sans /admin/integration)." : " (Veritas route via la gateway partenaire /api)."} Enter{" "}
               <strong>Client ID</strong> and <strong>Auth key</strong>, then test and save.
             </p>
           </div>

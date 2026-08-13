@@ -557,7 +557,7 @@ const MAILINBLACK = {
       }
     },
     connectionDesc: "Renseignez le Client ID et l'Auth key fournis à la création de la clé API Mailinblack.",
-    apiUrlHint: "Utilisez https://partner.mailinblack.com (l'API JSON est sous /api — Veritas l'ajoute automatiquement).",
+    apiUrlHint: "Clé créée dans un tenant client : https://app.mailinblack.com/mibc-fr-XX. Clé partenaire : https://partner.mailinblack.com.",
     clientId: "Client ID",
     clientIdPlaceholder: "Client ID affiché à la création de la clé",
     apiKey: "Auth key",
@@ -585,11 +585,11 @@ const MAILINBLACK = {
       desc: "Parcourez le menu : Espace manager → Intégration → Clés API → Générer une clé API. Choisissez le mode lecture seule et activez Management et Protect. Conservez le Client ID et l'Auth key affichés."
     }, {
       title: "Collez les identifiants dans Veritas",
-      desc: "URL API : https://partner.mailinblack.com. Renseignez le Client ID et l'Auth key, puis cliquez sur Tester ou Enregistrer."
+      desc: "URL API : https://app.mailinblack.com/mibc-fr-XX pour une clé de tenant client, ou https://partner.mailinblack.com pour une clé partenaire. Renseignez le Client ID et l'Auth key."
     }],
     infoTitle: "Module Protect",
     infoDesc: "Veritas utilise l'API partenaire Mailinblack Protect pour tester la connexion, lister vos clients et synchroniser les statistiques antispam.",
-    infoApis: ["auth/api-keys/execute · échange Client ID + Auth key → token", "protect/check · validation des credentials API", "protect/customers · liste des clients partenaires à associer", "Tenant global · credentials Administration > Intégrations", "Tenant dédié · credentials propres à un client Veritas"]
+    infoApis: ["auth/api-keys · échange authKey + clientId → token (x-auth-token)", "protect/check · validation des credentials API", "protect/customers · liste des clients partenaires à associer", "Tenant global · credentials Administration > Intégrations", "Tenant dédié · credentials propres à un client Veritas"]
   },
   en: {
     title: "Mailinblack Protect",
@@ -604,7 +604,7 @@ const MAILINBLACK = {
       }
     },
     connectionDesc: "Enter the Client ID and Auth key shown when creating the Mailinblack API key.",
-    apiUrlHint: "Use https://partner.mailinblack.com (JSON API is under /api — Veritas adds it automatically).",
+    apiUrlHint: "Client-tenant key: https://app.mailinblack.com/mibc-fr-XX. Partner key: https://partner.mailinblack.com.",
     clientId: "Client ID",
     clientIdPlaceholder: "Client ID shown when the key is created",
     apiKey: "Auth key",

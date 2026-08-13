@@ -6,18 +6,18 @@ const PARTNER_API_GATEWAY = 'https://partner.mailinblack.com/api';
 const LEGACY_MAILINBLACK_API_URL = 'https://api.mailinblack.com';
 function normalizeApiUrl(apiUrl) {
   let raw = (apiUrl || DEFAULT_MAILINBLACK_API_URL).trim().replace(/\/+$/, '');
+  const instanceMatch = raw.match(/^(https?:\/\/[^/]+\/mibc-[a-z0-9-]+)/i);
+  if (instanceMatch) return instanceMatch[1];
   raw = raw.replace(/\/auth\/api(\/v[\d.]+)?(\/.*)?$/i, '');
   raw = raw.replace(/\/protect\/api(\/v[\d.]+)?(\/.*)?$/i, '');
   raw = raw.replace(/\/admin\/api(\/v[\d.]+)?(\/.*)?$/i, '');
+  raw = raw.replace(/\/(admin|protect|auth)(\/.*)?$/i, '');
   raw = raw.replace(/\/v1$/i, '');
-  raw = raw.replace(/\/(admin|protect|auth)\/api$/i, '');
-  raw = raw.replace(/\/(admin|protect|auth)$/i, '');
   return raw.replace(/\/+$/, '');
 }
 /**
- * Mailinblack cloud portals serve the SPA at `/…` and the JSON API at `/api/…`.
- * POSTing to `/auth/api/…` without the `/api` gateway returns nginx 405.
- * Dedicated instances (`…/mibc-xx`) expose the API at the instance root.
+ * Partner portal JSON API lives under `/api`.
+ * Dedicated tenants (`/mibc-xx`) expose the API at the instance root — do not fall back to partner.
  */
 function resolveGatewayBaseUrls(apiUrl) {
   const raw = (apiUrl || DEFAULT_MAILINBLACK_API_URL).trim();
@@ -29,17 +29,17 @@ function resolveGatewayBaseUrls(apiUrl) {
   const portalRoot = root.replace(/\/api$/i, '');
   const isInstance = /\/mibc-[a-z0-9-]+$/i.test(portalRoot);
   const isPartner = /partner\.mailinblack\.com/i.test(portalRoot);
-  const isApp = /app\.mailinblack\.com/i.test(portalRoot);
   if (isInstance) {
     add(portalRoot);
-    add(`${portalRoot}/api`);
-  } else {
-    add(`${portalRoot}/api`);
-    add(portalRoot);
-    if (isApp || !isPartner) {
-      add(PARTNER_API_GATEWAY);
-    }
+    return bases;
   }
+  if (isPartner) {
+    add(PARTNER_API_GATEWAY);
+    add(portalRoot);
+    return bases;
+  }
+  add(`${portalRoot}/api`);
+  add(portalRoot);
   add(PARTNER_API_GATEWAY);
   if (raw.includes('api.mailinblack.com')) {
     add(LEGACY_MAILINBLACK_API_URL);
@@ -148,13 +148,13 @@ async function postMailinblackAuth(authBase, path, body) {
 }
 function buildAuthFailureMessage(lastStatus, lastBody, lastUrl = '') {
   if (lastStatus === 401) {
-    return "Identifiants rejetés. Vérifiez le Client ID et l'Auth key générés dans Espace manager → Intégration → Clés API (accès lecture seule, produits Management et Protect activés).";
+    return "Identifiants rejetés (401). Une clé créée dans le tenant client (app.mailinblack.com/mibc-fr-XX) " + "ne fonctionne pas sur partner.mailinblack.com. Utilisez l'URL d'instance, le Client ID et l'Auth key de ce tenant.";
   }
   if (lastStatus === 405) {
-    return "HTTP 405 — Mailinblack a refusé la méthode (portail web au lieu de l'API). " + "Utilisez https://partner.mailinblack.com (revendeur) ou la racine d'instance dédiée, " + "sans coller /auth/api/... ni /api/... dans l'URL. Renseignez le Client ID et l'Auth key.";
+    return "HTTP 405 — Mailinblack a refusé la méthode (portail web au lieu de l'API). " + "Pour un tenant client, utilisez https://app.mailinblack.com/mibc-fr-XX (sans /admin/integration). " + "Pour une clé partenaire, utilisez https://partner.mailinblack.com.";
   }
   if (looksLikeHtmlPayload(lastBody)) {
-    return "L'URL API renvoie le portail web au lieu de l'API JSON. Utilisez https://partner.mailinblack.com (pas api.mailinblack.com).";
+    return "L'URL API renvoie le portail web au lieu de l'API JSON. Collez la racine d'instance (https://app.mailinblack.com/mibc-fr-XX) ou https://partner.mailinblack.com.";
   }
   if (lastStatus) {
     const base = extractErrorMessage(lastBody, lastStatus);
@@ -216,75 +216,53 @@ export async function mailinblackAuthenticate(credentials = {}) {
       userId: null
     };
   }
-  const executeBodies = [];
-  if (clientIdForAuth) {
-    executeBodies.push({
-      clientId: clientIdForAuth,
-      authKey: key
-    }, {
-      clientId: clientIdForAuth,
-      apiKey: key
-    }, {
-      client_id: clientIdForAuth,
-      auth_key: key
-    }, {
-      client_id: clientIdForAuth,
-      api_key: key
-    }, {
-      clientId: clientIdForAuth,
-      key
-    }, {
-      authKey: key,
-      clientId: clientIdForAuth
-    }, {
-      apiKey: key,
-      clientId: clientIdForAuth
-    }, {
-      key,
-      clientId: clientIdForAuth
-    });
-  } else {
-    // Client ID is required by Mailinblack for Auth-key exchange.
+  if (!clientIdForAuth) {
     const err = new Error("Client ID Mailinblack requis — copiez-le avec l'Auth key à la création de la clé API.");
     err.status = 400;
     throw err;
   }
+  const executeBodies = [{
+    authKey: key,
+    clientId: clientIdForAuth
+  }, {
+    apiKey: key,
+    clientId: clientIdForAuth
+  }];
+  const authPaths = ['api-keys', 'api-keys/execute'];
   let lastStatus = null;
   let lastBody = null;
   let lastUrl = null;
   for (const authBase of authBases) {
-    for (const executeBody of executeBodies) {
-      try {
-        const {
-          response,
-          parsed,
-          url,
-          contentType
-        } = await postMailinblackAuth(authBase, 'api-keys/execute', executeBody);
-        if (looksLikeHtmlPayload(parsed, contentType)) {
-          // SPA/nginx catch-all — keep searching real API gateways.
-          if (lastStatus == null || lastStatus === 405) {
-            lastStatus = response.status;
-            lastBody = parsed;
-            lastUrl = url;
+    for (const authPath of authPaths) {
+      for (const executeBody of executeBodies) {
+        try {
+          const {
+            response,
+            parsed,
+            url,
+            contentType
+          } = await postMailinblackAuth(authBase, authPath, executeBody);
+          if (looksLikeHtmlPayload(parsed, contentType)) {
+            if (lastStatus == null || lastStatus === 405) {
+              lastStatus = response.status;
+              lastBody = parsed;
+              lastUrl = url;
+            }
+            continue;
           }
-          continue;
-        }
-        const token = extractAuthToken(parsed);
-        if (response.ok && token) {
-          return {
-            token,
-            clientId: parsed.clientId || clientIdForAuth || null,
-            userId: parsed.userId || null
-          };
-        }
-        // Prefer actionable auth errors (401/403) over SPA 405 noise.
-        if (lastStatus == null || lastStatus === 405 || response.status === 401 || response.status === 403) {
+          const token = extractAuthToken(parsed);
+          if (response.ok && token) {
+            return {
+              token,
+              clientId: parsed.clientId || clientIdForAuth || null,
+              userId: parsed.userId || null
+            };
+          }
           lastStatus = response.status;
           lastBody = parsed;
           lastUrl = url;
-        }
-      } catch {}
+        } catch {}
+      }
     }
   }
   const err = new Error(buildAuthFailureMessage(lastStatus, lastBody, lastUrl));
@@ -321,7 +299,7 @@ export async function mailinblackV2Request(apiUrl, session, module, path, {
       const parsed = await parseResponseBody(response);
       const contentType = response.headers?.get?.('content-type') || '';
       if (looksLikeHtmlPayload(parsed, contentType)) {
-        const err = new Error("L'URL API renvoie le portail web au lieu de l'API JSON. Utilisez https://partner.mailinblack.com.");
+        const err = new Error("L'URL API renvoie le portail web au lieu de l'API JSON. Utilisez https://app.mailinblack.com/mibc-fr-XX ou https://partner.mailinblack.com.");
         err.status = response.status || 404;
         err.body = parsed;
         err.requestUrl = url;

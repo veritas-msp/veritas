@@ -24,11 +24,14 @@ import MailinblackApiGuide from "./integrationGuides/MailinblackApiGuide";
 import integrationStyles from "../AdminPage/BitdefenderIntegrationModal.module.css";
 import SolutionProviderIcon from "./SolutionProviderIcon";
 const SOLUTION_NAME = "Mailinblack Protect";
-const DEFAULT_MAILINBLACK_DEDICATED_API_URL = "https://partner.mailinblack.com";
+const DEFAULT_MAILINBLACK_DEDICATED_API_URL = "https://app.mailinblack.com/mibc-fr-08";
 const STORED_AUTH_KEY_MASK = "••••••••••••••••";
 function normalizeMailinblackApiUrl(url) {
   if (!url?.trim()) return DEFAULT_MAILINBLACK_DEDICATED_API_URL;
-  return url.trim().replace(/\/+$/, "").replace(/\/(admin|protect|auth)\/api$/i, "").replace(/\/(admin|protect|auth)$/i, "");
+  const raw = url.trim().replace(/\/+$/, "");
+  const instanceMatch = raw.match(/^(https?:\/\/[^/]+\/mibc-[a-z0-9-]+)/i);
+  if (instanceMatch) return instanceMatch[1];
+  return raw.replace(/\/(admin|protect|auth)(\/.*)?$/i, "");
 }
 function createEmptyDedicatedForm() {
   return {
