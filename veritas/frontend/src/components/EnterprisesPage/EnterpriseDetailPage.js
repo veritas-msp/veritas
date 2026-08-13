@@ -46,7 +46,6 @@ import EquipmentPage from "../EquipementPage/EquipmentPage";
 import InfrastructureMap from "./InfrastructureMap";
 import EnterpriseRmmEnrollmentHero from "../Rmm/EnterpriseRmmEnrollmentHero";
 import EnterpriseDetailSkeleton from "./EnterpriseDetailSkeleton";
-import SolutionDetailPageLayout from "./SolutionDetailPageLayout";
 import UpcomingEventBookmarks from "./UpcomingEventBookmarks";
 import styles from "./EnterpriseDetailPage.module.css";
 import { useContractModuleOptions } from "../../hooks/useContractModuleOptions";
@@ -122,6 +121,19 @@ function getContactInitials(contact) {
   const nom = (contact?.nom || "").trim();
   if (prenom && nom) return `${prenom[0]}${nom[0]}`.toUpperCase();
   return (nom || prenom || "-").slice(0, 2).toUpperCase();
+}
+function SidebarExpandToggle({
+  expanded,
+  onClick,
+  panelStyles,
+  copy
+}) {
+  return <div className={panelStyles.sidebarShowMoreWrap}>
+      <button type="button" className={panelStyles.sidebarShowMoreBtn} onClick={onClick} aria-expanded={expanded} aria-label={expanded ? copy.sidebar.collapseSection : copy.sidebar.expandSection}>
+        <Icon icon={expanded ? "mdi:chevron-up" : "mdi:chevron-down"} className={panelStyles.sidebarShowMoreIcon} aria-hidden />
+        <span>{expanded ? copy.sidebar.showLess : copy.sidebar.showMore}</span>
+      </button>
+    </div>;
 }
 function extractAntivirusFromModules(modulesData) {
   const equipements = modulesData?.equipements;
@@ -315,10 +327,17 @@ export default function ClientDetailPage({
   const vaultPanelRef = useRef(null);
   const [contacts, setContacts] = useState([]);
   const [loadingContacts, setLoadingContacts] = useState(false);
+  const [slaExpanded, setSlaExpanded] = useState(false);
+  const [creditsExpanded, setCreditsExpanded] = useState(false);
   const [slaNow, setSlaNow] = useState(() => Date.now());
+  const [contactsExpanded, setContactsExpanded] = useState(false);
+  const [sitesExpanded, setSitesExpanded] = useState(false);
+  const [contactsSectionExpanded, setContactsSectionExpanded] = useState(false);
+  const [sitesSectionExpanded, setSitesSectionExpanded] = useState(false);
+  const [notesSectionExpanded, setNotesSectionExpanded] = useState(false);
   const [proPromoFeature, setProPromoFeature] = useState(null);
   const [supportCreditModalOpen, setSupportCreditModalOpen] = useState(false);
-  const [detailSection, setDetailSection] = useState("cartography");
+  const [infoExpanded, setInfoExpanded] = useState(false);
   const [contactModalOpen, setContactModalOpen] = useState(false);
   const [editingContact, setEditingContact] = useState(null);
   const [pageGuideOpen, setPageGuideOpen] = useState(false);
@@ -718,8 +737,14 @@ export default function ClientDetailPage({
   }, [urlClientId, clientData?.clientId, clientData?.client?.id]);
   useEffect(() => {
     setActiveSiteFilter(null);
-    setDetailSection("cartography");
-  }, [client?.id]);
+    setSlaExpanded(false);
+    setContactsExpanded(false);
+    setSitesExpanded(false);
+    setContactsSectionExpanded(false);
+    setSitesSectionExpanded(false);
+    setNotesSectionExpanded(false);
+    setInfoExpanded(isCommunity);
+  }, [client?.id, isCommunity]);
   useEffect(() => {
     const timer = window.setInterval(() => setSlaNow(Date.now()), 60000);
     return () => window.clearInterval(timer);
@@ -2599,17 +2624,15 @@ export default function ClientDetailPage({
   const visibleSupportPacks = useMemo(() => supportCreditPacks.filter(pack => ["active", "upcoming"].includes(pack.status)), [supportCreditPacks]);
   const activeContacts = useMemo(() => contacts.filter(c => String(c.statut || "").toLowerCase().includes("actif") && !String(c.statut || "").toLowerCase().includes("inactive")), [contacts]);
   const activeContactCount = activeContacts.length;
-  const visibleContacts = activeContacts;
+  const visibleContacts = contactsExpanded ? activeContacts : activeContacts.slice(0, 1);
+  const hasMoreContacts = activeContacts.length > 1;
   const clientSites = useMemo(() => normalizeClientSites(formData.sites), [formData.sites]);
   const enterpriseGuideSteps = useMemo(() => {
     const steps = getEnterpriseDetailGuideSteps({
-      expandInfo: () => {
-        setDetailSection("info");
-      },
-      expandContacts: () => setDetailSection("contacts"),
-      expandNotes: () => setDetailSection("notes"),
+      expandInfo: () => setInfoExpanded(true),
+      expandContacts: () => setContactsSectionExpanded(true),
+      expandNotes: () => setNotesSectionExpanded(true),
       focusEquipmentStats: () => {
-        setDetailSection("equipment");
         equipmentPageRef.current?.focusType?.("Ordinateurs");
         setActiveEquipmentTableType("Ordinateurs");
         equipmentSectionRef.current?.scrollIntoView({
@@ -2622,26 +2645,8 @@ export default function ClientDetailPage({
     if (hasOrdinateurs) return steps;
     return steps.filter(step => step.target !== '[data-guide="enterprise-equipment-stats"]');
   }, [equipmentTotals, locale]);
-  const navEntries = useMemo(() => {
-    const n = copy.nav || {};
-    const section = (id, label, description, icon) => ({
-      type: "item",
-      key: id,
-      section: {
-        id,
-        label,
-        description,
-        icon
-      }
-    });
-    const group = (key, label) => ({
-      type: "group",
-      key,
-      label
-    });
-    return [group("overview", n.overview), section("cartography", copy.infraMapTitle, n.cartographyHint, "mdi:hexagon-multiple-outline"), section("equipment", copy.peripheralsTitle, n.equipmentHint, "mdi:desktop-classic"), section("activity", copy.activityTitle, n.activityHint, "mdi:ticket-outline"), group("client", n.client), section("info", copy.sidebarInfo, n.infoHint, "mdi:card-account-details-outline"), section("contacts", copy.contactsTitle, n.contactsHint, "mdi:account-group-outline"), section("sites", copy.sitesTitle, n.sitesHint, "mdi:map-marker-outline"), group("contract", n.contract), section("credits", copy.creditsTitle, n.creditsHint, "mdi:ticket-confirmation-outline"), section("sla", copy.slaTitle, n.slaHint, "mdi:timer-sand"), group("documents", n.documents), section("vault", vaultCopy.panel.sectionTitle, n.vaultHint, "mdi:safe"), section("notes", copy.notesTitle, n.notesHint, "mdi:note-text-outline")];
-  }, [copy, vaultCopy]);
-  const visibleSites = clientSites;
+  const visibleSites = sitesExpanded ? clientSites : clientSites.slice(0, 3);
+  const hasMoreSites = clientSites.length > 3;
   const handlePhotoUpload = () => {
     setPhotoModalOpen(true);
   };
@@ -2731,40 +2736,64 @@ export default function ClientDetailPage({
   const clientNameWithoutCode = getClientNameWithoutCode(client) || "-";
   const commercialUser = users.find(u => u.id === formData.commercialId);
   const commercialLabel = commercialUser?.username || commercialUser?.email || null;
-  return <div className={`${styles.contratDetailPage} ${styles.enterpriseDetailPage}`}>
-      <SolutionDetailPageLayout accent="default" className={styles.enterpriseDetailLayout} eyebrow={clientCode || copy.nav?.eyebrow} title={clientNameWithoutCode} titleLeading={<div className={styles.heroAvatar} aria-hidden>
-            {getClientInitials(client)}
-          </div>} subtitle={[commercialLabel, interpolate(heroEquipmentTotalCount > 1 ? copy.equipmentCountPlural : copy.equipmentCount, {
-      count: heroEquipmentTotalCount
-    }), activeContactCount > 0 ? interpolate(activeContactCount > 1 ? copy.contactCountPlural : copy.contactCount, {
-      count: activeContactCount
-    }) : null].filter(Boolean).join(" · ")} headerMeta={<div className={styles.heroMeta} aria-label={copy.heroMetaAria} data-guide="enterprise-hero">
-            <span className={`${styles.contractBadge} ${styles[`contractBadge_${contractStatus.status}`] || styles.contractBadge_unknown}`}>
-              {contractStatus.label}
-            </span>
-            <EnterpriseRmmEnrollmentHero clientId={client?.id} isAdmin={userRole === "admin"} compact itemClassName={`${styles.heroMetaItem} ${styles.heroMetaItemRmm}`} tokenWrapClassName={styles.heroRmmToken} />
-            {loadingTags ? <span className={styles.heroTagsLoading}>{copy.loadingTags}</span> : <>
-                {clientTags.map(tag => <span key={tag.id} className={styles.heroTagChip} style={{
-          backgroundColor: `${tag.color || "#2b5fab"}18`,
-          borderColor: `${tag.color || "#2b5fab"}55`,
-          color: tag.color || "#2b5fab"
-        }}>
-                    {tag.label}
-                    {canManageTags ? <button type="button" className={styles.heroTagRemove} onClick={() => handleRemoveClientTag(tag.id)} aria-label={interpolate(copy.removeTagAria, {
-            label: tag.label
-          })}>
-                      <FaTimes />
-                    </button> : null}
-                  </span>)}
-                {canManageTags ? <div className={styles.heroTagAddWrap}>
-                    <SmartTooltip content={copy.addTag}>
-                      <button type="button" className={styles.heroTagAddTrigger} onClick={() => setTagModalOpen(true)} aria-label={copy.addTag}>
-                        <FaPlus />
-                      </button>
-                    </SmartTooltip>
-                  </div> : null}
-              </>}
-          </div>} headerActionsExtra={<div className={styles.heroActions} ref={clientActionsMenuRef} data-guide="enterprise-hero-actions">
+  return <div className={`${styles.contratDetailPage} ${styles.enterpriseDetailPage} msp-page-grid`}>
+      <header className={`${styles.pageHero} ${isCommunity ? styles.pageHeroProTeaser : ""}`} ref={headerRef} data-guide="enterprise-hero">
+        <div className={styles.heroRow}>
+          <div className={styles.heroMain}>
+            <div className={styles.heroAvatar}>
+              {getClientInitials(client)}
+            </div>
+            <div className={styles.heroText}>
+              <h1 className={styles.heroTitle}>
+                {clientCode && <span className={styles.headerClientCode}>{clientCode}</span>}
+                <span>{clientNameWithoutCode}</span>
+              </h1>
+              <div className={styles.heroMeta} aria-label={copy.heroMetaAria}>
+                <span className={`${styles.contractBadge} ${styles[`contractBadge_${contractStatus.status}`] || styles.contractBadge_unknown}`}>
+                  {contractStatus.label}
+                </span>
+                {commercialLabel && <span className={styles.heroMetaItem}>
+                    <Icon icon="mdi:account-tie-outline" aria-hidden />
+                    {commercialLabel}
+                  </span>}
+                <span className={styles.heroMetaItem}>
+                  <Icon icon="mdi:server-outline" aria-hidden />
+                  {interpolate(heroEquipmentTotalCount > 1 ? copy.equipmentCountPlural : copy.equipmentCount, {
+                  count: heroEquipmentTotalCount
+                })}
+                </span>
+                {activeContactCount > 0 && <span className={styles.heroMetaItem}>
+                    <Icon icon="mdi:account-group-outline" aria-hidden />
+                    {interpolate(activeContactCount > 1 ? copy.contactCountPlural : copy.contactCount, {
+                  count: activeContactCount
+                })}
+                  </span>}
+                <EnterpriseRmmEnrollmentHero clientId={client?.id} isAdmin={userRole === "admin"} compact itemClassName={`${styles.heroMetaItem} ${styles.heroMetaItemRmm}`} tokenWrapClassName={styles.heroRmmToken} />
+                {loadingTags ? <span className={styles.heroTagsLoading}>{copy.loadingTags}</span> : <>
+                    {clientTags.map(tag => <span key={tag.id} className={styles.heroTagChip} style={{
+                  backgroundColor: `${tag.color || "#2b5fab"}18`,
+                  borderColor: `${tag.color || "#2b5fab"}55`,
+                  color: tag.color || "#2b5fab"
+                }}>
+                        {tag.label}
+                        {canManageTags ? <button type="button" className={styles.heroTagRemove} onClick={() => handleRemoveClientTag(tag.id)} aria-label={interpolate(copy.removeTagAria, {
+                    label: tag.label
+                  })}>
+                          <FaTimes />
+                        </button> : null}
+                      </span>)}
+                    {canManageTags ? <div className={styles.heroTagAddWrap}>
+                      <SmartTooltip content={copy.addTag}>
+                        <button type="button" className={styles.heroTagAddTrigger} onClick={() => setTagModalOpen(true)} aria-label={copy.addTag}>
+                          <FaPlus />
+                        </button>
+                      </SmartTooltip>
+                    </div> : null}
+                  </>}
+              </div>
+            </div>
+          </div>
+          <div className={styles.heroActions} ref={clientActionsMenuRef} data-guide="enterprise-hero-actions">
             {canEditClient || canReversibility ? <>
                 <SmartTooltip content={copy.actionsMenuTooltip}>
                   <button type="button" className={styles.heroMenuBtn} onClick={() => setClientActionsMenuOpen(open => !open)} aria-expanded={clientActionsMenuOpen} aria-haspopup="menu" aria-label={copy.actionsMenu} disabled={deletingClient}>
@@ -2773,20 +2802,20 @@ export default function ClientDetailPage({
                 </SmartTooltip>
                 {clientActionsMenuOpen && <div className={styles.heroClientMenu} role="menu">
                     {canEditClient ? <button type="button" className={styles.heroMenuItem} role="menuitem" onClick={() => {
-            setClientActionsMenuOpen(false);
-            openEnterpriseEditModal();
-          }}>
+                setClientActionsMenuOpen(false);
+                openEnterpriseEditModal();
+              }}>
                         <Icon icon="mdi:pencil-outline" aria-hidden />
                         <span>{copy.editEnterprise}</span>
                       </button> : null}
                     {canReversibility ? <button type="button" className={styles.heroMenuItem} role="menuitem" onClick={() => {
-            setClientActionsMenuOpen(false);
-            if (isCommunity) {
-              notifyProFeature(copy.proFeatures.reversibility);
-              return;
-            }
-            handleExportReversibility();
-          }} disabled={!isCommunity && generatingReversibility}>
+                setClientActionsMenuOpen(false);
+                if (isCommunity) {
+                  notifyProFeature(copy.proFeatures.reversibility);
+                  return;
+                }
+                handleExportReversibility();
+              }} disabled={!isCommunity && generatingReversibility}>
                         {generatingReversibility && !isCommunity ? <Icon icon="mdi:loading" className={styles.spinning} aria-hidden /> : <Icon icon="mdi:folder-download-outline" aria-hidden />}
                         <span className={styles.heroMenuItemLabel}>
                           {generatingReversibility && !isCommunity ? copy.generatingDossier || copy.generatingFolder : copy.reversibilityDossier || copy.reversibilityFolder}
@@ -2795,23 +2824,32 @@ export default function ClientDetailPage({
                       </button> : null}
                   </div>}
               </> : null}
-          </div>} headerBelow={<UpcomingEventBookmarks upcomingEvents={upcomingEvents} recentEvents={recentEvents} loading={loadingClientActivity} typeLabels={eventTypeLabels} labels={copy.eventBookmarks} menuLabels={copy.eventActionMenu} locale={locale} users={users} proFeatureLabel={copy.proFeatures.planning} proFeatureKey="planning" proLocked={isCommunity} inPageHero defaultCollapsed onEditEvent={canScheduleEvent ? event => {
-      setEditingEvent(event);
-      setEventModalOpen(true);
-    } : undefined} onGoToPlanning={event => {
-      const start = event?.event_start ?? event?.start ?? event?.["start"];
-      onNavigate?.("Planning", {
-        focusEventId: event?.id,
-        focusDate: start,
-        clientId: event?.client_id ?? client?.id ?? null
-      });
-    }} onAddEvent={canScheduleEvent ? () => {
-      setEditingEvent(null);
-      setEventModalOpen(true);
-    } : undefined} onOpenPlanning={() => {
-      onNavigate?.("Planning");
-    }} />} backLabel={copy.backToEnterprises} onBack={handleBack} navEntries={navEntries} activeSection={detailSection} onSectionChange={setDetailSection} navAriaLabel={copy.nav?.aria}>
-          <div hidden={detailSection !== "cartography"}>
+          </div>
+        </div>
+        <div className={styles.pageHeroBookmarks}>
+        <UpcomingEventBookmarks upcomingEvents={upcomingEvents} recentEvents={recentEvents} loading={loadingClientActivity} typeLabels={eventTypeLabels} labels={copy.eventBookmarks} menuLabels={copy.eventActionMenu} locale={locale} users={users} proFeatureLabel={copy.proFeatures.planning} proFeatureKey="planning" proLocked={isCommunity} inPageHero defaultCollapsed onEditEvent={canScheduleEvent ? event => {
+          setEditingEvent(event);
+          setEventModalOpen(true);
+        } : undefined} onGoToPlanning={event => {
+          const start = event?.event_start ?? event?.start ?? event?.["start"];
+          onNavigate?.("Planning", {
+            focusEventId: event?.id,
+            focusDate: start,
+            clientId: event?.client_id ?? client?.id ?? null
+          });
+        }} onAddEvent={canScheduleEvent ? () => {
+          setEditingEvent(null);
+          setEventModalOpen(true);
+        } : undefined} onOpenPlanning={() => {
+          onNavigate?.("Planning");
+        }} />
+        </div>
+      </header>
+
+      <div className={styles.pageBody}>
+        <div className={styles.pageGrid}>
+          <main className={styles.mainColumn}>
+            <div className={styles.mainCommunityPanels}>
             <section className={styles.panel} data-guide="enterprise-infra-map">
               <div className={styles.panelHeader}>
                 <div className={styles.panelHeaderMain}>
@@ -2902,9 +2940,7 @@ export default function ClientDetailPage({
                 } : undefined} />
               </div>
             </section>
-          </div>
 
-          <div hidden={detailSection !== "equipment"}>
             <section className={styles.panel} ref={equipmentSectionRef} data-guide="enterprise-equipment">
               <div className={styles.panelHeader}>
                 <div className={styles.panelHeaderMain}>
@@ -2980,9 +3016,8 @@ export default function ClientDetailPage({
                 </div>
               </div>
             </section>
-          </div>
+            </div>
 
-          <div hidden={detailSection !== "activity"}>
             <section className={styles.panel} data-guide="enterprise-activity">
               <div className={styles.panelHeader}>
                 <h2 className={styles.panelTitle}>{copy.activityTitle}</h2>
@@ -3181,9 +3216,7 @@ export default function ClientDetailPage({
                     </div>}
               </div>
             </section>
-          </div>
 
-          <div hidden={detailSection !== "vault"}>
             <ProFeatureLock locked={isCommunity} featureLabel={copy.proFeatures.vault} featureKey="vault">
               <section className={styles.panel} data-guide="enterprise-vault">
                 <div className={styles.panelHeader}>
@@ -3203,15 +3236,16 @@ export default function ClientDetailPage({
                 </div>
               </section>
             </ProFeatureLock>
-          </div>
+          </main>
 
-          {detailSection === "info" ?
-            <section className={`${styles.sidebarSection} ${styles.panel}`} data-guide="enterprise-sidebar-info">
+          <aside className={styles.asidePanel}>
+            <div className={styles.rightSidebarContent}>
+            <section className={styles.sidebarSection} data-guide="enterprise-sidebar-info">
               <div className={styles.sidebarInfoHeader}>
                 <span className={styles.sidebarInfoTitle}>{copy.sidebarInfo}</span>
               </div>
-              <div className={styles.sidebarBody}>
               <div className={styles.sidebarSummaryList}>
+                {infoExpanded && <>
                     <div className={styles.sidebarSummaryItem}>
                       <span className={styles.sidebarSummaryLabel}>{LEGAL_IDENTIFIER_LABEL}</span>
                       {formData.siret ? <span className={styles.sidebarSummaryValue}>
@@ -3226,7 +3260,7 @@ export default function ClientDetailPage({
                       <span className={styles.sidebarSummaryLabel}>{copy.addressLabel}</span>
                       {clientDisplayAddress ? <span className={styles.sidebarSummaryValue}>{clientDisplayAddress}</span> : <span className={styles.sidebarSummaryValueEmpty}>-</span>}
                     </div>
-                  </div>
+                  </>}
                 <div className={styles.sidebarFieldsRow}>
                   <div className={styles.sidebarSummaryItem}>
                     <span className={styles.sidebarSummaryLabel}>{copy.startDateLabel}</span>
@@ -3255,16 +3289,24 @@ export default function ClientDetailPage({
                   </div>
                 </div>
               </div>
-            </section> : null}
+              <SidebarExpandToggle expanded={infoExpanded} onClick={() => setInfoExpanded(prev => !prev)} panelStyles={styles} copy={copy} />
+            </section>
 
-          {detailSection === "credits" ? <section className={`${styles.sidebarSection} ${styles.sidebarCreditsSection} ${styles.panel}`}>
-                <div className={styles.sidebarInfoHeader}>
+            {(isCommunity || supportCreditBalance !== null) && <section className={`${styles.sidebarSection} ${styles.sidebarCreditsSection}`}>
+                <button type="button" className={`${styles.sidebarCollapseHeader} ${isCommunity ? styles.sidebarCollapseHeaderLocked : ""}`} onClick={() => {
+                if (isCommunity) {
+                  notifyProFeature(copy.proFeatures.creditPacks, "credits");
+                  return;
+                }
+                setCreditsExpanded(prev => !prev);
+              }} aria-expanded={isCommunity ? false : creditsExpanded} aria-controls="enterprise-sidebar-credits">
                   <span className={styles.sidebarInfoTitle}>
                     {copy.creditsTitle}
                     {isCommunity ? <ProFeatureBadge variant="inline" className={styles.proBadgeInline} /> : null}
                   </span>
-                </div>
-                <div className={styles.sidebarBody} id="enterprise-sidebar-credits">
+                  <Icon icon={!isCommunity && creditsExpanded ? "mdi:chevron-up" : "mdi:chevron-down"} className={styles.sidebarCollapseChevron} aria-hidden />
+                </button>
+                {!isCommunity && creditsExpanded && <div className={styles.sidebarBody} id="enterprise-sidebar-credits">
                     {canAddCredits && visibleSupportPacks.length > 0 && <div className={styles.sidebarBodyActions}>
                         <SmartTooltip content={copy.addCreditPack}>
                           <button type="button" className={styles.editInfoButton} onClick={() => setSupportCreditModalOpen(true)} aria-label={copy.addCreditPack}>
@@ -3313,17 +3355,24 @@ export default function ClientDetailPage({
                           </button>
                         </div> : <span className={styles.sidebarSummaryValue}>{copy.noActiveCreditPack}</span>}
                     </ProFeatureLock>
-                  </div>
-              </section> : null}
+                  </div>}
+              </section>}
 
-          {detailSection === "sla" ? <section className={`${styles.sidebarSection} ${styles.sidebarSlaSection} ${styles.panel}`}>
-                <div className={styles.sidebarInfoHeader}>
+            <section className={`${styles.sidebarSection} ${styles.sidebarSlaSection}`}>
+              <button type="button" className={`${styles.sidebarCollapseHeader} ${isCommunity ? styles.sidebarCollapseHeaderLocked : ""}`} onClick={() => {
+                if (isCommunity) {
+                  notifyProFeature(copy.proFeatures.sla, "sla");
+                  return;
+                }
+                setSlaExpanded(prev => !prev);
+              }} aria-expanded={isCommunity ? false : slaExpanded} aria-controls="enterprise-sidebar-sla">
                 <span className={styles.sidebarInfoTitle}>
                   {copy.slaTitle}
                   {isCommunity ? <ProFeatureBadge variant="inline" className={styles.proBadgeInline} /> : null}
                 </span>
-                </div>
-                <div className={styles.sidebarBody} id="enterprise-sidebar-sla">
+                <Icon icon={!isCommunity && slaExpanded ? "mdi:chevron-up" : "mdi:chevron-down"} className={styles.sidebarCollapseChevron} aria-hidden />
+              </button>
+              {!isCommunity && slaExpanded && <div className={styles.sidebarBody} id="enterprise-sidebar-sla">
                   <ProFeatureLock locked={isCommunity} featureLabel={copy.proFeatures.sla} featureKey="sla" badgePosition="none" softLocked={isCommunity}>
                     {parseClientSla(client?.contrat).enabled ? <table className={styles.sidebarSlaTable}>
                         <thead>
@@ -3342,17 +3391,18 @@ export default function ClientDetailPage({
                         </tbody>
                       </table> : <span className={styles.sidebarSummaryValue}>{copy.noActiveSla}</span>}
                   </ProFeatureLock>
-                </div>
-            </section> : null}
+                </div>}
+            </section>
 
-          {detailSection === "contacts" ? <section className={`${styles.sidebarSection} ${styles.panel}`} data-guide="enterprise-sidebar-contacts">
-              <div className={styles.sidebarInfoHeader}>
+            <section className={styles.sidebarSection} data-guide="enterprise-sidebar-contacts">
+              <button type="button" className={styles.sidebarCollapseHeader} onClick={() => setContactsSectionExpanded(prev => !prev)} aria-expanded={contactsSectionExpanded} aria-controls="enterprise-sidebar-contacts">
                 <span className={styles.sidebarInfoTitle}>
                   {copy.contactsTitle}
                   {!loadingContacts && contacts.length > 0 ? <span className={styles.sidebarSectionCount}>{activeContactCount}</span> : null}
                 </span>
-              </div>
-              <div className={styles.sidebarBody} id="enterprise-sidebar-contacts">
+                <Icon icon={contactsSectionExpanded ? "mdi:chevron-up" : "mdi:chevron-down"} className={styles.sidebarCollapseChevron} aria-hidden />
+              </button>
+              {contactsSectionExpanded && <div className={styles.sidebarBody} id="enterprise-sidebar-contacts">
                 <div className={styles.sidebarBodyActions}>
                   {canAddContact ? <SmartTooltip content={copy.addContact}>
                     <button type="button" className={styles.editInfoButton} onClick={handleAddContact} aria-label={copy.addContact}>
@@ -3421,18 +3471,20 @@ export default function ClientDetailPage({
                       </div>
                     </SmartTooltip>)}
                 </ul>
+                {hasMoreContacts && <SidebarExpandToggle expanded={contactsExpanded} onClick={() => setContactsExpanded(prev => !prev)} panelStyles={styles} copy={copy} />}
                 </>}
-              </div>
-            </section> : null}
+              </div>}
+            </section>
 
-          {detailSection === "sites" ? <section className={`${styles.sidebarSection} ${styles.panel}`}>
-              <div className={styles.sidebarInfoHeader}>
+            <section className={styles.sidebarSection}>
+              <button type="button" className={styles.sidebarCollapseHeader} onClick={() => setSitesSectionExpanded(prev => !prev)} aria-expanded={sitesSectionExpanded} aria-controls="enterprise-sidebar-sites">
                 <span className={styles.sidebarInfoTitle}>
                   {copy.sitesTitle}
                   {(formData.sites || []).length > 0 ? <span className={styles.sidebarSectionCount}>{clientSites.length}</span> : null}
                 </span>
-              </div>
-              <div className={styles.sidebarBody} id="enterprise-sidebar-sites">
+                <Icon icon={sitesSectionExpanded ? "mdi:chevron-up" : "mdi:chevron-down"} className={styles.sidebarCollapseChevron} aria-hidden />
+              </button>
+              {sitesSectionExpanded && <div className={styles.sidebarBody} id="enterprise-sidebar-sites">
                 <div className={styles.sidebarBodyActions}>
                   {canManageSites ? <SmartTooltip content={copy.manageSites}>
                     <button type="button" className={styles.editInfoButton} onClick={() => setSitesModalOpen(true)} aria-label={copy.manageSites}>
@@ -3465,18 +3517,20 @@ export default function ClientDetailPage({
                           </button>;
                     })}
                   </div>
+                  {hasMoreSites && <SidebarExpandToggle expanded={sitesExpanded} onClick={() => setSitesExpanded(prev => !prev)} panelStyles={styles} copy={copy} />}
                   </>}
-              </div>
-            </section> : null}
+              </div>}
+            </section>
 
-          {detailSection === "notes" ? <section className={`${styles.sidebarSection} ${styles.panel}`} data-guide="enterprise-sidebar-notes">
-              <div className={styles.sidebarInfoHeader}>
+            <section className={styles.sidebarSection} data-guide="enterprise-sidebar-notes">
+              <button type="button" className={styles.sidebarCollapseHeader} onClick={() => setNotesSectionExpanded(prev => !prev)} aria-expanded={notesSectionExpanded} aria-controls="enterprise-sidebar-notes">
                 <span className={styles.sidebarInfoTitle}>
                   {copy.notesTitle}
                   {!loadingNotes && notes.length > 0 ? <span className={styles.sidebarSectionCount}>{notes.length}</span> : null}
                 </span>
-              </div>
-              <div className={styles.sidebarBody} id="enterprise-sidebar-notes">
+                <Icon icon={notesSectionExpanded ? "mdi:chevron-up" : "mdi:chevron-down"} className={styles.sidebarCollapseChevron} aria-hidden />
+              </button>
+              {notesSectionExpanded && <div className={styles.sidebarBody} id="enterprise-sidebar-notes">
                 {!loadingNotes && notes.length > 0 && canManageNotes ? <div className={styles.sidebarBodyActions}>
                     <SmartTooltip content={copy.addNote}>
                       <button type="button" className={styles.editInfoButton} onClick={openCreateNoteModal} aria-label={copy.addNote}>
@@ -3518,9 +3572,12 @@ export default function ClientDetailPage({
                       <p className={styles.clientNoteContent}>{note.content}</p>
                     </li>)}
                 </ul>}
-              </div>
-            </section> : null}
-      </SolutionDetailPageLayout>
+              </div>}
+            </section>
+          </div>
+        </aside>
+        </div>
+      </div>
 
       <EnterpriseEditModal open={enterpriseEditModalOpen} mode="edit" formData={formData} users={users} loadingUsers={loadingUsers} saving={saving} hasChanges={hasChanges} onClose={closeEnterpriseEditModal} onSave={handleSave} updateFormData={updateFormData} updateContratField={updateContratField} handleModuleToggle={handleModuleToggle} onOpenSitesModal={() => setSitesModalOpen(true)} onUserCreated={newUser => setUsers(prev => [...prev.filter(user => user.id !== newUser.id), newUser])} enabledModules={enabledModules} isCommunity={isCommunity} onDeleteEnterprise={canDeleteClient ? requestDeleteEnterpriseFromEdit : null} deleteBlockedTooltip={deleteBlockedTooltip} deleteDisabled={saving || deletingClient || loadingDeletionCheck || !deletionCheckClient} deleteLoading={deletingClient} deletionBlocked={enterpriseDeletionBlocked} loadingDeletionCheck={loadingDeletionCheck} />
 
@@ -3534,6 +3591,7 @@ export default function ClientDetailPage({
       client_id: client.id
     } : null} clients={client ? [client] : []} lockClient onClose={() => setSupportCreditModalOpen(false)} onSaved={reloadSupportCredits} />
 
+      {}
       {photoModalOpen && <div className={styles.modalOverlay} onClick={() => setPhotoModalOpen(false)}>
           <div className={`${styles.modalContent} ${styles.logDetailsModal}`} onClick={e => e.stopPropagation()}>
             <div className={styles.modalHeader}>

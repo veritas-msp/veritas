@@ -97,21 +97,6 @@
   color: var(--msp-muted, #5c6b82);
 }
 
-.headerMeta {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 0.4rem 0.65rem;
-  margin-top: 0.55rem;
-}
-
-.headerBelow {
-  flex-shrink: 0;
-  border-bottom: 1px solid var(--msp-border-light, #e2e8f0);
-  background: var(--msp-surface, #fff);
-  padding: 0 1.5rem;
-}
-
 .backButton {
   display: inline-flex;
   align-items: center;
@@ -137,8 +122,6 @@
   align-items: center;
   gap: 0.5rem;
   flex-shrink: 0;
-  position: relative;
-  overflow: visible;
 }
 
 .actionBtn {
@@ -314,8 +297,7 @@
 :global(html.dark) .sidebar,
 :global(html.dark) .footer,
 :global(html.dark) .backButton,
-:global(html.dark) .actionBtn,
-:global(html.dark) .headerBelow {
+:global(html.dark) .actionBtn {
   background: #1a2540;
   border-color: #2f4260;
   color: #e8edf5;

@@ -58,24 +58,6 @@ const DETAIL_COPY = {
       expandSection: "Développer la section",
       collapseSection: "Réduire la section"
     },
-    nav: {
-      aria: "Sections de l'entreprise",
-      eyebrow: "Entreprise",
-      overview: "Vue d'ensemble",
-      client: "Fiche client",
-      contract: "Contrat",
-      documents: "Documents",
-      cartographyHint: "Infrastructure",
-      equipmentHint: "Parc matériel",
-      activityHint: "Tickets et campagnes",
-      infoHint: "Identité et contrat",
-      contactsHint: "Interlocuteurs",
-      sitesHint: "Localisations",
-      creditsHint: "Carnets de tickets",
-      slaHint: "Délais de support",
-      vaultHint: "Fichiers partagés",
-      notesHint: "Mémo interne"
-    },
     sidebarInfo: "Informations",
     sectorLabel: "Secteur d'activité",
     addressLabel: "Adresse",
@@ -154,7 +136,7 @@ const DETAIL_COPY = {
         },
         sidebarInfo: {
           title: "Informations contractuelles",
-          content: "Retrouvez l'identité légale, les dates de contrat et les modules activés pour ce client : identifiant, secteur et adresse."
+          content: "Le panneau de droite regroupe l'identité légale, les dates de contrat et les modules activés pour ce client. Dépliez la section pour voir le SIRET, le secteur et l'adresse."
         },
         sidebarContacts: {
           title: "Contacts de l'entreprise",
@@ -445,24 +427,6 @@ const DETAIL_COPY = {
       expandSection: "Expand section",
       collapseSection: "Collapse section"
     },
-    nav: {
-      aria: "Company sections",
-      eyebrow: "Company",
-      overview: "Overview",
-      client: "Client record",
-      contract: "Contract",
-      documents: "Documents",
-      cartographyHint: "Infrastructure",
-      equipmentHint: "Hardware fleet",
-      activityHint: "Tickets and campaigns",
-      infoHint: "Identity and contract",
-      contactsHint: "People",
-      sitesHint: "Locations",
-      creditsHint: "Credit packs",
-      slaHint: "Support SLAs",
-      vaultHint: "Shared files",
-      notesHint: "Internal memo"
-    },
     sidebarInfo: "Information",
     sectorLabel: "Industry sector",
     addressLabel: "Address",
@@ -541,7 +505,7 @@ const DETAIL_COPY = {
         },
         sidebarInfo: {
           title: "Contract information",
-          content: "Legal identity, contract dates and enabled modules for this client: ID, sector and address."
+          content: "The right panel groups legal identity, contract dates and enabled modules. Expand the section to see legal ID, sector and address."
         },
         sidebarContacts: {
           title: "Company contacts",
@@ -830,24 +794,6 @@ const DETAIL_COPY = {
       expandSection: "Abschnitt erweitern",
       collapseSection: "Abschnitt reduzieren"
     },
-    nav: {
-      aria: "Unternehmensbereiche",
-      eyebrow: "Unternehmen",
-      overview: "Überblick",
-      client: "Kundenakte",
-      contract: "Vertrag",
-      documents: "Dokumente",
-      cartographyHint: "Infrastruktur",
-      equipmentHint: "Gerätepark",
-      activityHint: "Tickets und Kampagnen",
-      infoHint: "Identität und Vertrag",
-      contactsHint: "Ansprechpartner",
-      sitesHint: "Standorte",
-      creditsHint: "Guthaben",
-      slaHint: "Support-SLA",
-      vaultHint: "Geteilte Dateien",
-      notesHint: "Internes Memo"
-    },
     sidebarInfo: "Informationen",
     sectorLabel: "Branche",
     addressLabel: "Adresse",
@@ -926,7 +872,7 @@ const DETAIL_COPY = {
         },
         sidebarInfo: {
           title: "Vertragsinformationen",
-          content: "Rechtsidentität, Vertragsdaten und aktivierte Module: ID, Sektor und Adresse."
+          content: "Rechtes Panel: Rechtsidentität, Vertragsdaten und aktivierte Module. Aufklappen für ID, Sektor und Adresse."
         },
         sidebarContacts: {
           title: "Unternehmenskontakte",
@@ -1215,24 +1161,6 @@ const DETAIL_COPY = {
       expandSection: "Espandi sezione",
       collapseSection: "Comprimi sezione"
     },
-    nav: {
-      aria: "Sezioni azienda",
-      eyebrow: "Azienda",
-      overview: "Panoramica",
-      client: "Scheda cliente",
-      contract: "Contratto",
-      documents: "Documenti",
-      cartographyHint: "Infrastruttura",
-      equipmentHint: "Parco dispositivi",
-      activityHint: "Ticket e campagne",
-      infoHint: "Identità e contratto",
-      contactsHint: "Referenti",
-      sitesHint: "Sedi",
-      creditsHint: "Crediti",
-      slaHint: "SLA di supporto",
-      vaultHint: "File condivisi",
-      notesHint: "Memo interno"
-    },
     sidebarInfo: "Informazioni",
     sectorLabel: "Settore di attività",
     addressLabel: "Indirizzo",
@@ -1311,7 +1239,7 @@ const DETAIL_COPY = {
         },
         sidebarInfo: {
           title: "Informazioni contrattuali",
-          content: "Identità legale, date contratto e moduli attivi: ID legale, settore e indirizzo."
+          content: "Pannello destro: identità legale, date contratto e moduli attivi. Espandi per ID legale, settore e indirizzo."
         },
         sidebarContacts: {
           title: "Contatti azienda",
@@ -1600,24 +1528,6 @@ const DETAIL_COPY = {
       expandSection: "Expandir sección",
       collapseSection: "Contraer sección"
     },
-    nav: {
-      aria: "Secciones de la empresa",
-      eyebrow: "Empresa",
-      overview: "Vista general",
-      client: "Ficha de cliente",
-      contract: "Contrato",
-      documents: "Documentos",
-      cartographyHint: "Infraestructura",
-      equipmentHint: "Parque de equipos",
-      activityHint: "Tickets y campañas",
-      infoHint: "Identidad y contrato",
-      contactsHint: "Contactos",
-      sitesHint: "Ubicaciones",
-      creditsHint: "Créditos",
-      slaHint: "SLA de soporte",
-      vaultHint: "Archivos compartidos",
-      notesHint: "Nota interna"
-    },
     sidebarInfo: "Información",
     sectorLabel: "Sector de actividad",
     addressLabel: "Dirección",
@@ -1696,7 +1606,7 @@ const DETAIL_COPY = {
         },
         sidebarInfo: {
           title: "Información contractual",
-          content: "Identidad legal, fechas de contrato y módulos activos: ID, sector y dirección."
+          content: "Panel derecho: identidad legal, fechas de contrato y módulos activos. Despliegue para ID, sector y dirección."
         },
         sidebarContacts: {
           title: "Contactos de la empresa",
