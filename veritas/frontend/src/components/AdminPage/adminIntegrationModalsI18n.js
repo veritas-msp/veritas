@@ -557,7 +557,7 @@ const MAILINBLACK = {
       }
     },
     connectionDesc: "Renseignez le Client ID et l'Auth key fournis à la création de la clé API Mailinblack.",
-    apiUrlHint: "Utilisez https://app.mailinblack.com (api.mailinblack.com n'est plus joignable).",
+    apiUrlHint: "Utilisez https://partner.mailinblack.com (l'API JSON est sous /api — Veritas l'ajoute automatiquement).",
     clientId: "Client ID",
     clientIdPlaceholder: "Client ID affiché à la création de la clé",
     apiKey: "Auth key",
@@ -585,7 +585,7 @@ const MAILINBLACK = {
       desc: "Parcourez le menu : Espace manager → Intégration → Clés API → Générer une clé API. Choisissez le mode lecture seule et activez Management et Protect. Conservez le Client ID et l'Auth key affichés."
     }, {
       title: "Collez les identifiants dans Veritas",
-      desc: "URL API : https://app.mailinblack.com. Renseignez le Client ID et l'Auth key, puis cliquez sur Tester ou Enregistrer."
+      desc: "URL API : https://partner.mailinblack.com. Renseignez le Client ID et l'Auth key, puis cliquez sur Tester ou Enregistrer."
     }],
     infoTitle: "Module Protect",
     infoDesc: "Veritas utilise l'API partenaire Mailinblack Protect pour tester la connexion, lister vos clients et synchroniser les statistiques antispam.",
@@ -604,7 +604,7 @@ const MAILINBLACK = {
       }
     },
     connectionDesc: "Enter the Client ID and Auth key shown when creating the Mailinblack API key.",
-    apiUrlHint: "Use https://app.mailinblack.com (api.mailinblack.com is no longer reachable).",
+    apiUrlHint: "Use https://partner.mailinblack.com (JSON API is under /api — Veritas adds it automatically).",
     clientId: "Client ID",
     clientIdPlaceholder: "Client ID shown when the key is created",
     apiKey: "Auth key",
@@ -632,7 +632,7 @@ const MAILINBLACK = {
       desc: "Navigate: Manager space → Integration → API keys → Generate API key. Choose read-only mode and enable Management and Protect. Keep both the Client ID and Auth key."
     }, {
       title: "Paste the credentials in Veritas",
-      desc: "API URL: https://app.mailinblack.com. Enter the Client ID and Auth key, then click Test or Save."
+      desc: "API URL: https://partner.mailinblack.com. Enter the Client ID and Auth key, then click Test or Save."
     }],
     infoTitle: "Protect module",
     infoDesc: "Veritas uses the Mailinblack Protect partner API to test the connection, list your customers and sync antispam statistics.",
@@ -651,7 +651,7 @@ const MAILINBLACK = {
       }
     },
     connectionDesc: "Geben Sie die Client-ID und den Auth-Key ein, die bei der Erstellung des API-Schlüssels angezeigt werden.",
-    apiUrlHint: "Verwenden Sie https://app.mailinblack.com (api.mailinblack.com ist nicht mehr erreichbar).",
+    apiUrlHint: "Verwenden Sie https://partner.mailinblack.com (JSON-API unter /api — Veritas ergänzt dies automatisch).",
     clientId: "Client-ID",
     clientIdPlaceholder: "Client-ID bei der Schlüsselerstellung",
     apiKey: "Auth-Key",
@@ -698,7 +698,7 @@ const MAILINBLACK = {
       }
     },
     connectionDesc: "Inserite Client ID e Auth key mostrati alla creazione della chiave API Mailinblack.",
-    apiUrlHint: "Usate https://app.mailinblack.com (api.mailinblack.com non è più raggiungibile).",
+    apiUrlHint: "Usate https://partner.mailinblack.com (API JSON sotto /api — Veritas lo aggiunge automaticamente).",
     clientId: "Client ID",
     clientIdPlaceholder: "Client ID mostrato alla creazione della chiave",
     apiKey: "Auth key",
@@ -745,7 +745,7 @@ const MAILINBLACK = {
       }
     },
     connectionDesc: "Introduzca el Client ID y la Auth key mostrados al crear la clave API Mailinblack.",
-    apiUrlHint: "Use https://app.mailinblack.com (api.mailinblack.com ya no es accesible).",
+    apiUrlHint: "Use https://partner.mailinblack.com (la API JSON está bajo /api — Veritas la añade automáticamente).",
     clientId: "Client ID",
     clientIdPlaceholder: "Client ID mostrado al crear la clave",
     apiKey: "Auth key",

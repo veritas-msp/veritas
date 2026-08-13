@@ -8,7 +8,7 @@ import { useAppLocale } from "../../hooks/useAppGeneralSettings";
 import { getMailinblackIntegrationModalCopy } from "./adminIntegrationModalsI18n";
 import formStyles from "../EnterprisesPage/EnterpriseFormModal.module.css";
 import styles from "./BitdefenderIntegrationModal.module.css";
-const DEFAULT_API_URL = "https://app.mailinblack.com";
+const DEFAULT_API_URL = "https://partner.mailinblack.com";
 const PARTNER_PORTAL_URL = "https://partner.mailinblack.com";
 const SECTION_ICONS = {
   connection: "mdi:key-variant",

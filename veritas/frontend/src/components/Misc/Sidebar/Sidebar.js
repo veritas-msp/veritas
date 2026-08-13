@@ -43,10 +43,9 @@ function getUserInitials(user) {
 }
 function AnimatedSectionDivider({
   show,
-  isCollapsed,
-  isMobile
+  isCollapsed
 }) {
-  const className = isCollapsed && !isMobile ? styles.sectionDividerCollapsed : styles.separator;
+  const className = isCollapsed ? styles.sectionDividerCollapsed : styles.separator;
   return <AnimatePresence initial={false}>
       {show && <motion.hr key={className} className={className} initial={{
       opacity: 0,
@@ -113,7 +112,8 @@ export default function Sidebar({
   const isDarkTheme = theme === "dark";
   const themeTooltip = isDarkTheme ? copy.theme.lightMode : copy.theme.darkMode;
   const themeMenuIcon = isDarkTheme ? "mdi:weather-sunny" : "mdi:weather-night";
-  const isCollapsed = !isMobile;
+  // Same collapsed icon rail on desktop and in the mobile drawer.
+  const isCollapsed = true;
   useEffect(() => {
     if (onCollapseChange) {
       onCollapseChange(isCollapsed);
@@ -143,10 +143,10 @@ export default function Sidebar({
       document.removeEventListener("keydown", onKeyDown);
     };
   }, [userMenuOpen]);
-  const showIconTooltip = isCollapsed && !isMobile;
+  const showIconTooltip = isCollapsed;
   const userInitials = getUserInitials(user);
   const profileLabel = normalizeProfileLabel(profile);
-  const openUserMenuToRight = isCollapsed && !isMobile;
+  const openUserMenuToRight = isCollapsed;
   const showCrmSection = !!(access["Contrat"] || access["Contact"]);
   const showExploitationSection = !!(access["Ticket"] || access["TicketSales"] || access["Planning"]);
   const showManagedSection = !!(access["Hardware"] || access["Cybersecurite"] || access["Service"]);
@@ -221,7 +221,7 @@ export default function Sidebar({
         </button>}
 
       {}
-      {(showMenu || !isMobile) && <motion.nav className={`${styles.sidebar} ${isMobile ? styles.mobileSidebar : ''} ${isCollapsed && !isMobile ? styles.sidebarCollapsed : ''}`} data-sidebar-guide="sidebar-root" initial={{
+      {(showMenu || !isMobile) && <motion.nav className={`${styles.sidebar} ${isMobile ? styles.mobileSidebar : ""} ${styles.sidebarCollapsed}`} data-sidebar-guide="sidebar-root" initial={{
       x: isMobile ? '-100%' : 0,
       opacity: 1
     }} animate={{
@@ -248,8 +248,6 @@ export default function Sidebar({
 
             </div>
 
-            {isMobile && <button className={styles.closeButton} onClick={() => setShowMenu(false)}>✖</button>}
-
             <hr className={styles.separator} />
 
             {}
@@ -269,7 +267,7 @@ export default function Sidebar({
           }} style={{
             overflow: "hidden"
           }}>
-                  {(!isCollapsed || isMobile) && <div className={styles.sectionTitle}>{copy.sections.crm}</div>}
+                  {!isCollapsed && <div className={styles.sectionTitle}>{copy.sections.crm}</div>}
                   <ul className={styles.navList}>
                     <LayoutGroup id="sidebar-crm">
                     <AnimatePresence initial={false} mode="popLayout">
@@ -286,7 +284,7 @@ export default function Sidebar({
                   </ul>
                 </motion.div>}
             </AnimatePresence>
-            <AnimatedSectionDivider show={showCrmSection} isCollapsed={isCollapsed} isMobile={isMobile} />
+            <AnimatedSectionDivider show={showCrmSection} isCollapsed={isCollapsed} />
 
             <AnimatePresence initial={false}>
               {showExploitationSection && <motion.div key="nav-section-exploitation" data-sidebar-guide="exploitation" initial={{
@@ -304,7 +302,7 @@ export default function Sidebar({
           }} style={{
             overflow: "hidden"
           }}>
-                  {(!isCollapsed || isMobile) && <div className={styles.sectionTitle}>{copy.sections.exploitation}</div>}
+                  {!isCollapsed && <div className={styles.sectionTitle}>{copy.sections.exploitation}</div>}
                   <ul className={styles.navList}>
                     <LayoutGroup id="sidebar-exploitation">
                     <AnimatePresence initial={false} mode="popLayout">
@@ -325,7 +323,7 @@ export default function Sidebar({
                   </ul>
                 </motion.div>}
             </AnimatePresence>
-            <AnimatedSectionDivider show={showExploitationSection} isCollapsed={isCollapsed} isMobile={isMobile} />
+            <AnimatedSectionDivider show={showExploitationSection} isCollapsed={isCollapsed} />
 
             {}
             <AnimatePresence initial={false}>
@@ -344,7 +342,7 @@ export default function Sidebar({
           }} style={{
             overflow: "hidden"
           }}>
-                  {(!isCollapsed || isMobile) && <div className={styles.sectionTitle}>{copy.sections.managed}</div>}
+                  {!isCollapsed && <div className={styles.sectionTitle}>{copy.sections.managed}</div>}
                   <ul className={styles.navList}>
                     <LayoutGroup id="sidebar-managed">
                     <AnimatePresence initial={false} mode="popLayout">
@@ -365,7 +363,7 @@ export default function Sidebar({
                   </ul>
                 </motion.div>}
             </AnimatePresence>
-            <AnimatedSectionDivider show={showManagedSection} isCollapsed={isCollapsed} isMobile={isMobile} />
+            <AnimatedSectionDivider show={showManagedSection} isCollapsed={isCollapsed} />
 
             {}
             <AnimatePresence initial={false}>
@@ -384,7 +382,7 @@ export default function Sidebar({
           }} style={{
             overflow: "hidden"
           }}>
-                  {(!isCollapsed || isMobile) && <div className={styles.sectionTitle}>{copy.sections.pilotage}</div>}
+                  {!isCollapsed && <div className={styles.sectionTitle}>{copy.sections.pilotage}</div>}
                   <ul className={styles.navList}>
                     <LayoutGroup id="sidebar-pilotage-access">
                     <AnimatePresence initial={false} mode="popLayout">
@@ -417,10 +415,10 @@ export default function Sidebar({
                   </ul>
                 </motion.div>}
             </AnimatePresence>
-            <AnimatedSectionDivider show={showPilotageSection} isCollapsed={isCollapsed} isMobile={isMobile} />
+            <AnimatedSectionDivider show={showPilotageSection} isCollapsed={isCollapsed} />
 
             {isCommunity ? <div className={styles.upgradeSection}>
-              {(!isCollapsed || isMobile) && <div className={styles.sectionTitle}>{copy.sections.modules}</div>}
+              {!isCollapsed && <div className={styles.sectionTitle}>{copy.sections.modules}</div>}
               <div className={styles.upgradeAddBtnWrap}>
                 {showIconTooltip ? <SidebarTooltip as="button" type="button" content={copy.modules.addModule} className={styles.upgradeAddBtn} onClick={openModulesPromo} aria-label={copy.modules.addModuleAria}>
                     <Icon icon="mdi:plus" className={styles.upgradeIcon} aria-hidden />
@@ -432,7 +430,7 @@ export default function Sidebar({
             </div> : null}
 
             <div className={styles.utilitiesSection} data-sidebar-guide="utilities">
-              {(!isCollapsed || isMobile) && <div className={styles.sectionTitle}>{copy.sections.appearance}</div>}
+              {!isCollapsed && <div className={styles.sectionTitle}>{copy.sections.appearance}</div>}
               <div className={styles.utilitiesBtnRow}>
                 {showIconTooltip ? <SidebarTooltip as="button" type="button" content={helpAria} className={`${styles.squareBtn} ${sidebarGuideOpen ? styles.squareBtnActive : ""}`} onClick={startHelp} aria-label={helpAria}>
                     <span className={styles.helpBtnLabel} aria-hidden>
@@ -456,7 +454,7 @@ export default function Sidebar({
 
             {}
             <div className={styles.userSection} ref={userMenuRef} data-sidebar-guide="account">
-              <div className={`${styles.userMenuTriggerRow} ${isCollapsed && !isMobile ? styles.userMenuTriggerRowCollapsed : ""}`}>
+<div className={`${styles.userMenuTriggerRow} ${isCollapsed ? styles.userMenuTriggerRowCollapsed : ""}`}>
                 {showIconTooltip ? <SidebarTooltip as="span" content={copy.account.menu} className={styles.userAvatarTooltipHost}>
                     <button type="button" className={`${styles.userAvatarButton} ${userMenuOpen ? styles.userAvatarButtonOpen : ""} ${["MyDocs", "ReportBug", "Admin", "User", "Updates"].includes(current) ? styles.userAvatarButtonActive : ""}`} onClick={() => setUserMenuOpen(o => !o)} aria-expanded={userMenuOpen} aria-haspopup="menu" aria-label={copy.account.menuAria}>
                       {user ? <UserAvatar user={user} name={user.username || user.email} size={32} variant="agent" /> : userInitials}

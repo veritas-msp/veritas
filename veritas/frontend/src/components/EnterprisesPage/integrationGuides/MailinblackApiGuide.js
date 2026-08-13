@@ -1,7 +1,7 @@
 import { Icon } from "@iconify/react";
 import formStyles from "../EnterpriseFormModal.module.css";
 import styles from "../../AdminPage/BitdefenderIntegrationModal.module.css";
-const DEFAULT_API_URL = "https://app.mailinblack.com";
+const DEFAULT_API_URL = "https://partner.mailinblack.com";
 const PARTNER_PORTAL_URL = "https://partner.mailinblack.com";
 export default function MailinblackApiGuide({
   dedicated = false
@@ -49,8 +49,8 @@ export default function MailinblackApiGuide({
             <p className={styles.guideStepDesc}>
               API URL:{" "}
               <code className={styles.guideCode}>{DEFAULT_API_URL}</code>
-              {" "}(not api.mailinblack.com). Enter <strong>Client ID</strong> and{" "}
-              <strong>Auth key</strong>, then test and save.
+              {" "}(Veritas routes via the partner <code className={styles.guideCode}>/api</code> gateway). Enter{" "}
+              <strong>Client ID</strong> and <strong>Auth key</strong>, then test and save.
             </p>
           </div>
         </li>

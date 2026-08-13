@@ -349,12 +349,6 @@
   padding: 4px 2px 10px;
 }
 
-.mobileSidebar .utilitiesBtnRow {
-  flex-direction: row;
-  justify-content: flex-start;
-  flex-wrap: wrap;
-}
-
 .squareBtn {
   display: inline-flex;
   align-items: center;
@@ -663,7 +657,8 @@
 
 
 .mobileSidebar {
-  width: 300px;
+  width: 64px;
+  padding: 20px 8px;
   box-shadow: 4px 0 24px rgba(0, 0, 0, 0.35);
 }
 
@@ -808,16 +803,14 @@
     width: 0;
     overflow: hidden;
     padding: 0;
-  }
-  
-  .sidebar {
-    padding-top: 50px;
+    border: none;
+    box-shadow: none;
   }
 
-  .sidebarCollapsed {
-    width: 0;
-    overflow: hidden;
-    padding: 0;
+  .mobileSidebar,
+  .mobileSidebar.sidebarCollapsed {
+    width: 64px;
+    padding: 20px 8px;
   }
 
   .burgerButton {
@@ -826,51 +819,10 @@
 }
 
 @media (max-width: 768px) {
-  .sidebar {
-    width: 280px;
-    padding: 20px 12px;
-  }
-
-  .mobileSidebar {
-    width: 280px;
-  }
-  
-  .logoWrapper {
-    padding: 10px 0 0 0;
-  }
-
-  .logoIconSvg {
-    font-size: 1.5rem;
-  }
-  
-  .logoText {
-    font-size: 1.25rem;
-  }
-
-  .sidebarCollapsed .logoIconSvg {
-    font-size: 1.5rem;
-  }
-  
-  .navItem {
-    padding: 10px 14px;
-    font-size: 13px;
-  }
-
-  .itemIcon {
-    font-size: 16px;
-    min-width: 16px;
-  }
-
-  .sectionTitle {
-    font-size: 12px;
-    margin: 12px 0 6px 0;
-  }
-
-  .collapseButton {
-    width: 24px;
-    height: 24px;
-    font-size: 14px;
-    margin-top: 6px;
+  .mobileSidebar,
+  .mobileSidebar.sidebarCollapsed {
+    width: 64px;
+    padding: 20px 8px;
   }
 
   .burgerButton {
@@ -880,66 +832,13 @@
     top: 16px;
     left: 16px;
   }
-
-  .closeButton {
-    width: 28px;
-    height: 28px;
-    font-size: 14px;
-    top: 16px;
-    right: 16px;
-  }
 }
 
 @media (max-width: 480px) {
-  .sidebar {
-    width: 260px;
-    padding: 20px 10px;
-  }
-
-  .mobileSidebar {
-    width: 260px;
-  }
-
-  .logoWrapper {
-    padding: 8px 0 0 0;
-  }
-
-  .logoIconSvg {
-    font-size: 1.25rem;
-  }
-  
-  .logoText {
-    font-size: 1.1rem;
-  }
-
-  .sidebarCollapsed .logoIconSvg {
-    font-size: 1.25rem;
-  }
-  
-  .navItem {
-    padding: 10px 12px;
-    font-size: 12px;
-  }
-
-  .itemIcon {
-    font-size: 14px;
-    min-width: 14px;
-  }
-  
-  .sectionTitle {
-    font-size: 11px;
-    margin: 10px 0 5px 0;
-  }
-
-  .navList {
-    margin: 0 0 8px 0;
-  }
-
-  .collapseButton {
-    width: 22px;
-    height: 22px;
-    font-size: 12px;
-    margin-top: 4px;
+  .mobileSidebar,
+  .mobileSidebar.sidebarCollapsed {
+    width: 64px;
+    padding: 20px 8px;
   }
 
   .burgerButton {
@@ -949,21 +848,5 @@
     top: 12px;
     left: 12px;
     padding: 10px;
-  }
-
-  .closeButton {
-    width: 26px;
-    height: 26px;
-    font-size: 12px;
-    top: 12px;
-    right: 12px;
-  }
-
-  .separator {
-    margin: 8px 0;
-  }
-
-  .userSection {
-    padding-top: 8px;
   }
 }
