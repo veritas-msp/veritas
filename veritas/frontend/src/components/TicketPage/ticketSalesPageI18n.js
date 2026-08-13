@@ -188,6 +188,7 @@ const TICKET_SALES_PAGE = {
       purge: "Supprimer"
     },
     tooltip: {
+      incomingEmail: "E-mail entrant",
       comment: "{count} commentaire",
       commentPlural: "{count} commentaires"
     },
@@ -389,6 +390,7 @@ const TICKET_SALES_PAGE = {
       purge: "Delete"
     },
     tooltip: {
+      incomingEmail: "Incoming email",
       comment: "{count} comment",
       commentPlural: "{count} comments"
     },
@@ -590,6 +592,7 @@ const TICKET_SALES_PAGE = {
       purge: "Löschen"
     },
     tooltip: {
+      incomingEmail: "Eingehende E-Mail",
       comment: "{count} Kommentar",
       commentPlural: "{count} Kommentare"
     },
@@ -791,6 +794,7 @@ const TICKET_SALES_PAGE = {
       purge: "Elimina"
     },
     tooltip: {
+      incomingEmail: "Email in arrivo",
       comment: "{count} commento",
       commentPlural: "{count} commenti"
     },
@@ -992,6 +996,7 @@ const TICKET_SALES_PAGE = {
       purge: "Eliminar"
     },
     tooltip: {
+      incomingEmail: "Correo entrante",
       comment: "{count} comentario",
       commentPlural: "{count} comentarios"
     },

@@ -340,10 +340,6 @@
   font: inherit;
 }
 
-.companiesAdd {
-  margin-top: 0.75rem;
-}
-
 :global(html.dark) .vaultClientSelect {
   background: var(--msp-surface-2, #152035);
   border-color: var(--msp-border, #2a3a55);

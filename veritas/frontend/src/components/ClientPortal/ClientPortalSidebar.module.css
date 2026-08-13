@@ -86,26 +86,26 @@
   width: 40px;
   height: 40px;
   padding: 0;
-  border: 1px solid rgba(255, 255, 255, 0.12);
+  border: 1px solid var(--sb-btn-border, var(--msp-border, #c5d0df));
   border-radius: 10px;
-  background: rgba(255, 255, 255, 0.04);
-  color: #8fa8c4;
+  background: var(--sb-btn-bg, var(--msp-surface-2, #f7f9fc));
+  color: var(--sb-muted, var(--msp-muted, #5c6b82));
   cursor: pointer;
   transition: background 0.15s, border-color 0.15s, color 0.15s, box-shadow 0.15s;
   flex-shrink: 0;
 }
 
 .settingsSquareBtn:hover {
-  background: rgba(43, 95, 171, 0.15);
-  color: #e8edf5;
-  border-color: rgba(43, 95, 171, 0.45);
+  background: var(--sb-hover-bg, var(--msp-accent-soft, rgba(43, 95, 171, 0.1)));
+  color: var(--sb-item-hover, var(--msp-text, #0f1c2e));
+  border-color: var(--msp-accent, #2b5fab);
 }
 
 .settingsSquareBtnActive {
-  background: rgba(43, 95, 171, 0.35);
-  border-color: rgba(43, 95, 171, 0.65);
-  color: #ffffff;
-  box-shadow: 0 2px 8px rgba(43, 95, 171, 0.25);
+  background: var(--sb-active-btn-bg, rgba(43, 95, 171, 0.12));
+  border-color: var(--sb-active-btn-border, var(--msp-accent, #2b5fab));
+  color: var(--sb-active-btn-color, var(--msp-accent, #2b5fab));
+  box-shadow: var(--sb-active-btn-shadow, 0 2px 8px rgba(43, 95, 171, 0.16));
 }
 
 .settingsSquareBtnIcon {

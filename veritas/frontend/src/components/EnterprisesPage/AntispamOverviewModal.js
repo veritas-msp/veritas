@@ -593,11 +593,6 @@ export function AntispamOverviewPanel({
       default:
         content = renderOverview();
     }
-    if (asPage && activeSection !== "overview") {
-      return <StatsDashboardBody>
-          <StatsPanel>{content}</StatsPanel>
-        </StatsDashboardBody>;
-    }
     return content;
   };
   const navEntries = useMemo(() => {
@@ -626,7 +621,7 @@ export function AntispamOverviewPanel({
   if (asPage) {
     return <SolutionDetailPageLayout accent="mailinblack" eyebrow="Cybersecurity · Mailinblack Protect" title={`Antispam · ${customerName}`} titleIcon="mdi:email-secure-outline" subtitle={`${client?.name || "-"} · ${mappingLabel}`} backLabel={backLabel} onBack={onBack} loading={loading} loadingMessage="Loading des data Mailinblack…" onRefresh={() => loadDashboard()} footerHint={`${mappingLabel}${customerId ? ` · ID ${customerId}` : ""}`} onRefreshSave={() => loadDashboard({
       persist: true
-    })} refreshSaveLabel="Refresh and save" navEntries={navEntries} activeSection={activeSection} onSectionChange={setActiveSection} navAriaLabel="Sections overview antispam">
+    })} refreshSaveLabel="Refresh and save" navEntries={navEntries} activeSection={activeSection} onSectionChange={setActiveSection} navAriaLabel="Sections">
         {renderSectionContent()}
       </SolutionDetailPageLayout>;
   }

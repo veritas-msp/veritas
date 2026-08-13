@@ -1,6 +1,15 @@
 import { Icon } from "@iconify/react";
 import { FaArrowLeft } from "react-icons/fa";
+import MspPageHero from "../Misc/MspPageHero/MspPageHero";
+import mspStyles from "../CybersecuritePage/CybersecuritePage.module.css";
+import layout from "./EnterprisesPage.module.css";
 import styles from "./SolutionDetailPageLayout.module.css";
+
+const BRAND_MARK = {
+  gravityzone: styles.brandMarkGravityZone,
+  mailinblack: styles.brandMarkMailinblack
+};
+
 export default function SolutionDetailPageLayout({
   accent = "default",
   eyebrow,
@@ -22,64 +31,97 @@ export default function SolutionDetailPageLayout({
   navAriaLabel = "Sections",
   children
 }) {
-  const accentKey = ["gravityzone", "mailinblack", "default"].includes(accent) ? accent : "default";
-  return <div className={styles.page}>
-      <div className={`${styles.accentBar} ${styles[`accentBar_${accentKey}`]}`} aria-hidden />
+  const accentKey = ["gravityzone", "mailinblack"].includes(accent) ? accent : "default";
+  return (
+    <div className={`${mspStyles.mspPage} ${layout.page} msp-page-grid`}>
+      <div className={mspStyles.mspLayout}>
+        <div className={mspStyles.mspMain}>
+          <MspPageHero
+            eyebrow={eyebrow}
+            title={title}
+            subtitle={subtitle}
+            icon={titleIcon}
+            brandMarkClassName={BRAND_MARK[accentKey] || ""}
+            actions={
+              <>
+                {onBack ? (
+                  <button type="button" className={styles.backBtn} onClick={onBack}>
+                    <FaArrowLeft aria-hidden />
+                    <span>{backLabel}</span>
+                  </button>
+                ) : null}
+                {onRefresh ? (
+                  <button
+                    type="button"
+                    className={layout.iconBtn}
+                    onClick={onRefresh}
+                    disabled={loading}
+                    aria-label={refreshLabel}
+                    title={refreshLabel}
+                  >
+                    <Icon icon={loading ? "mdi:loading" : "mdi:refresh"} className={loading ? styles.spin : ""} aria-hidden />
+                  </button>
+                ) : null}
+                {onRefreshSave ? (
+                  <button type="button" className={layout.primaryBtn} onClick={onRefreshSave} disabled={loading}>
+                    <Icon icon="mdi:cloud-sync-outline" aria-hidden />
+                    {refreshSaveLabel}
+                  </button>
+                ) : null}
+              </>
+            }
+          />
 
-      <header className={styles.header}>
-        <div className={styles.headerLeft}>
-          {onBack ? <button type="button" className={styles.backButton} onClick={onBack}>
-              <FaArrowLeft aria-hidden />
-              <span>{backLabel}</span>
-            </button> : null}
-          {titleIcon ? <div className={`${styles.headerIconWrap} ${styles[`headerIconWrap_${accentKey}`]}`} aria-hidden>
-              <Icon icon={titleIcon} />
-            </div> : null}
-          <div className={styles.headerCopy}>
-            {eyebrow ? <p className={styles.eyebrow}>{eyebrow}</p> : null}
-            <h1 className={styles.title}>{title}</h1>
-            {subtitle ? <p className={styles.subtitle}>{subtitle}</p> : null}
-          </div>
+          <main className={`${mspStyles.mspContent} ${mspStyles.mspContentList}`}>
+            <div className={`${layout.shell} ${layout.shellWide} ${layout.shellFull}`}>
+              <div className={styles.viewsLayout}>
+                <aside className={styles.viewsPane} aria-label={navAriaLabel}>
+                  <div className={styles.viewsPaneHeader}>
+                    <span className={styles.viewsTitle}>{navAriaLabel}</span>
+                  </div>
+                  <nav className={styles.viewsList}>
+                    {navEntries.map((entry) =>
+                      entry.type === "group" ? (
+                        <div key={entry.key} className={styles.viewsGroupLabel}>
+                          {entry.label}
+                        </div>
+                      ) : (
+                        <button
+                          key={entry.key}
+                          type="button"
+                          className={`${styles.viewItem} ${activeSection === entry.section.id ? styles.viewItemActive : ""}`}
+                          onClick={() => onSectionChange?.(entry.section.id)}
+                          aria-current={activeSection === entry.section.id ? "true" : undefined}
+                          title={entry.section.description || entry.section.label}
+                        >
+                          <Icon icon={entry.section.icon} className={styles.viewItemIcon} aria-hidden />
+                          <span className={styles.viewItemMain}>
+                            <span className={styles.viewItemLabel}>{entry.section.label}</span>
+                          </span>
+                        </button>
+                      )
+                    )}
+                  </nav>
+                  {footerHint ? <p className={styles.viewsFooterHint}>{footerHint}</p> : null}
+                </aside>
+
+                <div className={styles.mainColumn}>
+                  {loading ? (
+                    <div className={layout.stateBox}>
+                      <Icon icon="mdi:loading" className={layout.spinning} />
+                      <span>{loadingMessage}</span>
+                    </div>
+                  ) : (
+                    <div className={styles.tablePanel}>
+                      <div className={styles.tableScroll}>{children}</div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          </main>
         </div>
-        <div className={styles.headerActions}>
-          {onRefresh ? <button type="button" className={styles.actionBtn} onClick={onRefresh} disabled={loading}>
-              <Icon icon={loading ? "mdi:loading" : "mdi:refresh"} className={loading ? styles.spin : ""} aria-hidden />
-              {refreshLabel}
-            </button> : null}
-        </div>
-      </header>
-
-      <div className={styles.mainLayout}>
-        <aside className={styles.sidebar}>
-          <nav aria-label={navAriaLabel}>
-            {navEntries.map(entry => entry.type === "group" ? <div key={entry.key} className={styles.navGroupLabel}>
-                  {entry.label}
-                </div> : <button key={entry.key} type="button" className={`${styles.navItem} ${activeSection === entry.section.id ? styles.navItemActive : ""}`} onClick={() => onSectionChange?.(entry.section.id)} aria-current={activeSection === entry.section.id ? "step" : undefined}>
-                  <Icon icon={entry.section.icon} className={styles.navItemIcon} aria-hidden />
-                  <span className={styles.navItemText}>
-                    <span className={styles.navItemLabel}>{entry.section.label}</span>
-                    <span className={styles.navItemHint}>{entry.section.description}</span>
-                  </span>
-                </button>)}
-          </nav>
-        </aside>
-
-        <main className={styles.content}>
-          {loading ? <div className={styles.loadingState}>
-              <Icon icon="mdi:loading" className={styles.spin} aria-hidden />
-              <span>{loadingMessage}</span>
-            </div> : children}
-        </main>
       </div>
-
-      {footerHint || onRefreshSave ? <footer className={styles.footer}>
-          {footerHint ? <span className={styles.footerHint}>{footerHint}</span> : <span />}
-          <div className={styles.footerActions}>
-            {onRefreshSave ? <button type="button" className={`${styles.actionBtn} ${styles.actionBtnPrimary}`} onClick={onRefreshSave} disabled={loading}>
-                <Icon icon="mdi:cloud-sync-outline" aria-hidden />
-                {refreshSaveLabel}
-              </button> : null}
-          </div>
-        </footer> : null}
-    </div>;
+    </div>
+  );
 }

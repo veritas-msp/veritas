@@ -288,13 +288,59 @@
 
 .subjectTooltip {
   text-align: left;
-  max-width: 300px;
+  max-width: 340px;
 }
 
 .subjectTooltipTitle {
   font-weight: 700;
   font-size: 0.82rem;
   line-height: 1.35;
+  color: var(--msp-text, #0f1c2e);
+}
+
+.subjectTooltipEmail {
+  display: flex;
+  flex-direction: column;
+  gap: 0.08rem;
+  margin-top: 0.4rem;
+}
+
+.subjectTooltipEmailBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.28rem;
+  margin-bottom: 0.12rem;
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--msp-accent, #2b5fab);
+}
+
+.subjectTooltipEmailBadge svg {
+  font-size: 0.85rem;
+}
+
+.subjectTooltipEmailFrom {
+  font-size: 0.75rem;
+  font-weight: 600;
+  line-height: 1.35;
+  color: var(--msp-text, #0f1c2e);
+}
+
+.subjectTooltipEmailAddr {
+  font-size: 0.7rem;
+  line-height: 1.35;
+  color: var(--msp-muted, #5c6b82);
+  word-break: break-all;
+}
+
+.subjectTooltipEmailSubject {
+  margin: 0.18rem 0 0;
+  font-size: 0.75rem;
+  font-weight: 500;
+  font-style: italic;
+  line-height: 1.4;
   color: var(--msp-text, #0f1c2e);
 }
 
@@ -305,6 +351,10 @@
   line-height: 1.45;
   white-space: pre-wrap;
   color: var(--msp-muted, #5c6b82);
+}
+
+.subjectTooltipEmail .subjectTooltipDesc {
+  margin-top: 0.28rem;
 }
 
 .subjectTooltipMeta {
@@ -1045,8 +1095,18 @@
   color: var(--msp-text, #e8edf5);
 }
 
-:global(html.dark) .subjectTooltipTitle {
+:global(html.dark) .subjectTooltipTitle,
+:global(html.dark) .subjectTooltipEmailFrom,
+:global(html.dark) .subjectTooltipEmailSubject {
   color: #f1f5f9;
+}
+
+:global(html.dark) .subjectTooltipEmailBadge {
+  color: #8bb4ea;
+}
+
+:global(html.dark) .subjectTooltipEmailAddr {
+  color: #94a8c4;
 }
 
 :global(html.dark) .subjectTooltipDesc {

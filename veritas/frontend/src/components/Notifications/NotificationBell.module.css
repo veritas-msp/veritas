@@ -23,7 +23,7 @@
 }
 
 .trigger:hover,
-.triggerOpen {
+.trigger.triggerOpen {
   background: rgba(255, 255, 255, 0.1);
   border-color: rgba(255, 255, 255, 0.16);
   color: #fff;
@@ -51,7 +51,7 @@
   font-weight: 700;
   line-height: 18px;
   text-align: center;
-  box-shadow: 0 0 0 2px #162641;
+  box-shadow: 0 0 0 2px var(--sb-badge-ring, #ffffff);
 }
 
 .dropdown {

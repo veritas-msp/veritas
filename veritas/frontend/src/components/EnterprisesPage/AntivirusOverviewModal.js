@@ -798,11 +798,6 @@ export function AntivirusOverviewPanel({
       default:
         content = renderOverview();
     }
-    if (asPage && activeSection !== "overview") {
-      return <StatsDashboardBody>
-          <StatsPanel>{content}</StatsPanel>
-        </StatsDashboardBody>;
-    }
     return content;
   };
   const navEntries = useMemo(() => {
@@ -831,7 +826,7 @@ export function AntivirusOverviewPanel({
   if (asPage) {
     return <SolutionDetailPageLayout accent="gravityzone" eyebrow="Cybersecurity · GravityZone" title={`Antivirus · ${companyName}`} titleIcon="simple-icons:bitdefender" subtitle={client?.name} backLabel={backLabel} onBack={onBack} loading={loading} loadingMessage="Loading GravityZone data…" onRefresh={() => loadDashboard()} footerHint={mappingLabel} onRefreshSave={() => loadDashboard({
       persist: true
-    })} refreshSaveLabel="Refresh and save" navEntries={navEntries} activeSection={activeSection} onSectionChange={setActiveSection} navAriaLabel="GravityZone sections">
+    })} refreshSaveLabel="Refresh and save" navEntries={navEntries} activeSection={activeSection} onSectionChange={setActiveSection} navAriaLabel="Sections">
         {renderSectionContent()}
       </SolutionDetailPageLayout>;
   }

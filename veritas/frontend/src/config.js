@@ -15,4 +15,13 @@ const getApiBaseUrl = () => {
   return cleanedUrl + "/api";
 };
 const API_BASE_URL = getApiBaseUrl();
+export function withApiQuery(path, params = {}) {
+  const search = new URLSearchParams();
+  Object.entries(params).forEach(([key, value]) => {
+    if (value == null || value === "") return;
+    search.set(key, String(value));
+  });
+  const qs = search.toString();
+  return qs ? `${path}?${qs}` : path;
+}
 export default API_BASE_URL;

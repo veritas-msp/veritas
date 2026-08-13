@@ -243,6 +243,7 @@ const TICKETS_COPY = {
     },
     tooltip: {
       majorIncident: "Incident majeur",
+      incomingEmail: "E-mail entrant",
       comment: "{count} commentaire",
       commentPlural: "{count} commentaires"
     },
@@ -512,6 +513,7 @@ const TICKETS_COPY = {
     },
     tooltip: {
       majorIncident: "Major incident",
+      incomingEmail: "Incoming email",
       comment: "{count} comment",
       commentPlural: "{count} comments"
     },
@@ -781,6 +783,7 @@ const TICKETS_COPY = {
     },
     tooltip: {
       majorIncident: "Schwerer Vorfall",
+      incomingEmail: "Eingehende E-Mail",
       comment: "{count} Kommentar",
       commentPlural: "{count} Kommentare"
     },
@@ -1050,6 +1053,7 @@ const TICKETS_COPY = {
     },
     tooltip: {
       majorIncident: "Incidente grave",
+      incomingEmail: "Email in arrivo",
       comment: "{count} commento",
       commentPlural: "{count} commenti"
     },
@@ -1319,6 +1323,7 @@ const TICKETS_COPY = {
     },
     tooltip: {
       majorIncident: "Incidente grave",
+      incomingEmail: "Correo entrante",
       comment: "{count} comentario",
       commentPlural: "{count} comentarios"
     },

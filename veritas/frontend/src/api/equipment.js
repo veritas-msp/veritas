@@ -1,4 +1,4 @@
-import API_BASE_URL from "../config";
+import API_BASE_URL, { withApiQuery } from "../config";
 import { fetchClientModules } from "./clients";
 import { getEquipmentDbId, isDbEquipmentId, findEquipmentInApiList } from "../utils/equipmentIdentity";
 import { resolveAlimentationDeploymentType, resolveToipDeploymentType } from "../components/EquipementPage/equipmentFormConfig";
@@ -964,19 +964,14 @@ export const getEquipmentLogs = async (equipmentId, page = 1, limit = 10, option
       equipmentName = parts.length > 3 ? parts.slice(2, -1).join('-') : parts.slice(2).join('-');
     }
     const family = EQUIPMENT_TYPE_TO_LOG_FAMILY[type] || "servers";
-    const logsUrl = new URL(`${API_BASE_URL}/clients/modules/${clientId}/${family}/${encodeURIComponent(equipmentName)}/logs`);
-    logsUrl.searchParams.set("page", String(page));
-    logsUrl.searchParams.set("limit", String(limit));
-    if (options.dbId) {
-      logsUrl.searchParams.set("equipment_id", String(options.dbId));
-    }
-    if (options.search && String(options.search).trim()) {
-      logsUrl.searchParams.set("search", String(options.search).trim());
-    }
-    if (options.category && String(options.category).trim() && options.category !== "all") {
-      logsUrl.searchParams.set("category", String(options.category).trim());
-    }
-    const response = await fetch(logsUrl.toString(), {
+    const logsUrl = withApiQuery(`${API_BASE_URL}/clients/modules/${clientId}/${family}/${encodeURIComponent(equipmentName)}/logs`, {
+      page,
+      limit,
+      equipment_id: options.dbId || undefined,
+      search: options.search && String(options.search).trim() ? String(options.search).trim() : undefined,
+      category: options.category && String(options.category).trim() && options.category !== "all" ? String(options.category).trim() : undefined
+    });
+    const response = await fetch(logsUrl, {
       method: 'GET',
       credentials: 'include',
       signal: options.signal,
@@ -1034,17 +1029,12 @@ export const purgeEquipmentLogs = async (equipmentId, options = {}) => {
     equipmentName = parts.length > 3 ? parts.slice(2, -1).join("-") : parts.slice(2).join("-");
   }
   const family = EQUIPMENT_TYPE_TO_LOG_FAMILY[type] || "servers";
-  const logsUrl = new URL(`${API_BASE_URL}/clients/modules/${clientId}/${family}/${encodeURIComponent(equipmentName)}/logs`);
-  if (options.dbId) {
-    logsUrl.searchParams.set("equipment_id", String(options.dbId));
-  }
-  if (options.search && String(options.search).trim()) {
-    logsUrl.searchParams.set("search", String(options.search).trim());
-  }
-  if (options.category && String(options.category).trim() && options.category !== "all") {
-    logsUrl.searchParams.set("category", String(options.category).trim());
-  }
-  const response = await fetch(logsUrl.toString(), {
+  const logsUrl = withApiQuery(`${API_BASE_URL}/clients/modules/${clientId}/${family}/${encodeURIComponent(equipmentName)}/logs`, {
+    equipment_id: options.dbId || undefined,
+    search: options.search && String(options.search).trim() ? String(options.search).trim() : undefined,
+    category: options.category && String(options.category).trim() && options.category !== "all" ? String(options.category).trim() : undefined
+  });
+  const response = await fetch(logsUrl, {
     method: "DELETE",
     credentials: "include",
     headers: {
@@ -1203,11 +1193,12 @@ export const getCheckMKEvents = async hostName => {
 };
 export const getCheckMKServices = async (hostName, startTime = null, endTime = null, site = null, options = {}) => {
   try {
-    const url = new URL(`${API_BASE_URL}/checkmk/services/${encodeURIComponent(hostName)}`);
-    if (startTime) url.searchParams.append('start_time', startTime);
-    if (endTime) url.searchParams.append('end_time', endTime);
-    if (site) url.searchParams.append('site', site);
-    const response = await fetch(url.toString(), {
+    const url = withApiQuery(`${API_BASE_URL}/checkmk/services/${encodeURIComponent(hostName)}`, {
+      start_time: startTime || undefined,
+      end_time: endTime || undefined,
+      site: site || undefined
+    });
+    const response = await fetch(url, {
       method: 'GET',
       credentials: 'include',
       signal: options.signal,
@@ -1264,16 +1255,13 @@ export const getCheckMKUptime = async hostName => {
 };
 export const getCheckMKEventsPeriod = async (hostName, startTime, endTime, site = null, criticalOnly = false, options = {}) => {
   try {
-    const url = new URL(`${API_BASE_URL}/checkmk/events-period/${encodeURIComponent(hostName)}`);
-    url.searchParams.append('start_time', startTime);
-    url.searchParams.append('end_time', endTime);
-    if (site) {
-      url.searchParams.append('site', site);
-    }
-    if (criticalOnly) {
-      url.searchParams.append('critical_only', 'true');
-    }
-    const response = await fetch(url.toString(), {
+    const url = withApiQuery(`${API_BASE_URL}/checkmk/events-period/${encodeURIComponent(hostName)}`, {
+      start_time: startTime,
+      end_time: endTime,
+      site: site || undefined,
+      critical_only: criticalOnly ? "true" : undefined
+    });
+    const response = await fetch(url, {
       method: 'GET',
       credentials: 'include',
       signal: options.signal,
@@ -1296,11 +1284,12 @@ export const getCheckMKEventsPeriod = async (hostName, startTime, endTime, site 
 };
 export const getCheckMKHostEvents = async (hostName, startTime = null, endTime = null, site = null, options = {}) => {
   try {
-    const url = new URL(`${API_BASE_URL}/checkmk/host-events/${encodeURIComponent(hostName)}`);
-    if (startTime) url.searchParams.append('start_time', startTime);
-    if (endTime) url.searchParams.append('end_time', endTime);
-    if (site) url.searchParams.append('site', site);
-    const response = await fetch(url.toString(), {
+    const url = withApiQuery(`${API_BASE_URL}/checkmk/host-events/${encodeURIComponent(hostName)}`, {
+      start_time: startTime || undefined,
+      end_time: endTime || undefined,
+      site: site || undefined
+    });
+    const response = await fetch(url, {
       method: 'GET',
       credentials: 'include',
       signal: options.signal,
@@ -1323,17 +1312,12 @@ export const getCheckMKHostEvents = async (hostName, startTime = null, endTime =
 };
 export const getCheckMKAvailability = async (hostName, site = null, startTime = null, endTime = null, options = {}) => {
   try {
-    const url = new URL(`${API_BASE_URL}/checkmk/availability-table/${encodeURIComponent(hostName)}`);
-    if (site) {
-      url.searchParams.append('site', site);
-    }
-    if (startTime) {
-      url.searchParams.append('start_time', startTime);
-    }
-    if (endTime) {
-      url.searchParams.append('end_time', endTime);
-    }
-    const response = await fetch(url.toString(), {
+    const url = withApiQuery(`${API_BASE_URL}/checkmk/availability-table/${encodeURIComponent(hostName)}`, {
+      site: site || undefined,
+      start_time: startTime || undefined,
+      end_time: endTime || undefined
+    });
+    const response = await fetch(url, {
       method: 'GET',
       credentials: 'include',
       signal: options.signal,
@@ -1356,11 +1340,10 @@ export const getCheckMKAvailability = async (hostName, site = null, startTime = 
 };
 export const getCheckMKHostDetails = async (hostName, site = null, options = {}) => {
   try {
-    const url = new URL(`${API_BASE_URL}/checkmk/host/${encodeURIComponent(hostName)}`);
-    if (site) {
-      url.searchParams.append('site', site);
-    }
-    const response = await fetch(url.toString(), {
+    const url = withApiQuery(`${API_BASE_URL}/checkmk/host/${encodeURIComponent(hostName)}`, {
+      site: site || undefined
+    });
+    const response = await fetch(url, {
       method: 'GET',
       credentials: 'include',
       signal: options.signal,
@@ -1505,9 +1488,10 @@ export const equipmentTypeToFamily = type => {
   return map[type] || null;
 };
 export const getEquipmentCheckMKMonitoring = async (equipmentId, availabilityPeriod = '1m', options = {}) => {
-  const url = new URL(`${API_BASE_URL}/checkmk/equipment-monitoring/${encodeURIComponent(equipmentId)}`);
-  url.searchParams.set('availability_period', availabilityPeriod);
-  const response = await fetch(url.toString(), {
+  const url = withApiQuery(`${API_BASE_URL}/checkmk/equipment-monitoring/${encodeURIComponent(equipmentId)}`, {
+    availability_period: availabilityPeriod
+  });
+  const response = await fetch(url, {
     method: 'GET',
     credentials: 'include',
     signal: options.signal,

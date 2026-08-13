@@ -1,4 +1,4 @@
-import API_BASE_URL from "../config";
+import API_BASE_URL, { withApiQuery } from "../config";
 async function handleResponse(response) {
   const data = await response.json().catch(() => ({}));
   if (!response.ok) {
@@ -28,9 +28,9 @@ export function resolveEquipmentFamilyForAlerts(type) {
   return map[raw] || raw.toLowerCase();
 }
 export async function fetchEquipmentAlertSettings(clientId, equipmentId, family) {
-  const url = new URL(`${API_BASE_URL}/equipment-monitoring-alerts/${clientId}/${encodeURIComponent(equipmentId)}`);
-  url.searchParams.set("family", family);
-  const response = await fetch(url.toString(), {
+  const response = await fetch(withApiQuery(`${API_BASE_URL}/equipment-monitoring-alerts/${clientId}/${encodeURIComponent(equipmentId)}`, {
+    family
+  }), {
     credentials: "include",
     headers: {
       "Content-Type": "application/json"

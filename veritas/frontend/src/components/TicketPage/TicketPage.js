@@ -22,6 +22,7 @@ import { interpolate } from "../../i18n/translate";
 import { getBuiltinTicketViews, DEFAULT_TICKET_VIEW_ID, canUserEditTicketView } from "../../utils/ticketViewConstants";
 import TicketViewModal from "./TicketViewModal";
 import TicketColumnsModal from "./TicketColumnsModal";
+import { buildTicketSubjectTooltip } from "./ticketSubjectTooltip";
 import {
   DEFAULT_TICKET_TABLE_COLUMNS,
   TICKET_TABLE_COLUMN_SORT_KEYS,
@@ -128,21 +129,6 @@ function SortableViewsSection({
         {children}
       </SortableContext>
     </DndContext>;
-}
-function excerptText(text, maxLength = 240) {
-  const clean = String(text || "").trim().replace(/\s+/g, " ");
-  if (!clean) return "";
-  if (clean.length <= maxLength) return clean;
-  return `${clean.slice(0, maxLength)}…`;
-}
-function buildTicketSubjectTooltip(ticket, labels, copy) {
-  const description = excerptText(ticket.description);
-  const meta = [labels.typeLabel, labels.statusLabel, labels.priorityLabel, labels.isMajor ? copy.tooltip.majorIncident : null, labels.category, labels.clientLabel, labels.requesterLabel, labels.commentsCount != null ? copy.formatCommentCount(labels.commentsCount) : null].filter(Boolean);
-  return <div className={styles.subjectTooltip}>
-      <div className={styles.subjectTooltipTitle}>{ticket.title}</div>
-      {description ? <p className={styles.subjectTooltipDesc}>{description}</p> : null}
-      {meta.length > 0 ? <p className={styles.subjectTooltipMeta}>{meta.join(" · ")}</p> : null}
-    </div>;
 }
 function normalizeStatus(status) {
   return status === "open" ? "new" : status;

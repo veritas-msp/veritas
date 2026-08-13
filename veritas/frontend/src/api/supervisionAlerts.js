@@ -1,4 +1,4 @@
-import API_BASE_URL from "../config";
+import API_BASE_URL, { withApiQuery } from "../config";
 
 async function handleResponse(response) {
   const data = await response.json().catch(() => ({}));
@@ -28,19 +28,15 @@ export async function fetchSupervisionAlertsActive() {
 export async function fetchSupervisionAlertStates(queueItemIds = []) {
   const ids = [...new Set((Array.isArray(queueItemIds) ? queueItemIds : []).map(id => String(id || "").trim()).filter(Boolean))];
   if (!ids.length) return [];
-  const url = new URL(`${API_BASE_URL}/supervision/alerts/states`);
-  url.searchParams.set("ids", ids.join(","));
-  const response = await authFetch(url.toString());
+  const response = await authFetch(withApiQuery(`${API_BASE_URL}/supervision/alerts/states`, {
+    ids: ids.join(",")
+  }));
   const data = await handleResponse(response);
   return data?.alerts || [];
 }
 
 export async function fetchSupervisionAlertsHistory(params = {}) {
-  const url = new URL(`${API_BASE_URL}/supervision/alerts/history`);
-  Object.entries(params).forEach(([key, value]) => {
-    if (value != null && value !== "") url.searchParams.set(key, String(value));
-  });
-  const response = await authFetch(url.toString());
+  const response = await authFetch(withApiQuery(`${API_BASE_URL}/supervision/alerts/history`, params));
   const data = await handleResponse(response);
   return data?.alerts || [];
 }
@@ -48,11 +44,7 @@ export async function fetchSupervisionAlertsHistory(params = {}) {
 export async function fetchEquipmentRecentAlerts(equipmentId, params = {}) {
   const id = String(equipmentId || "").trim();
   if (!id) return [];
-  const url = new URL(`${API_BASE_URL}/supervision/alerts/equipment/${encodeURIComponent(id)}`);
-  Object.entries(params).forEach(([key, value]) => {
-    if (value != null && value !== "") url.searchParams.set(key, String(value));
-  });
-  const response = await authFetch(url.toString());
+  const response = await authFetch(withApiQuery(`${API_BASE_URL}/supervision/alerts/equipment/${encodeURIComponent(id)}`, params));
   const data = await handleResponse(response);
   return data?.alerts || [];
 }

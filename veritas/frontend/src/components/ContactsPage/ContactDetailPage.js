@@ -8,7 +8,6 @@ import { fetchEvents } from "../../api/events";
 import { filterUpcomingEvents } from "../../utils/eventFilters";
 import styles from "../EnterprisesPage/EnterpriseDetailPage.module.css";
 import pageLayout from "../EnterprisesPage/EnterprisesPage.module.css";
-import formStyles from "../EnterprisesPage/EnterpriseFormModal.module.css";
 import contactStyles from "./ContactDetailPage.module.css";
 import SmartTooltip from "../SmartTooltip";
 import ClientTicketBookmarks from "./ClientTicketBookmarks";
@@ -19,6 +18,7 @@ import API_BASE_URL from "../../config";
 import ContactPortalSection from "./ContactPortalSection";
 import VaultSecretsPanel from "../EnterprisesPage/VaultSecretsPanel";
 import ContactFormModal from "./ContactFormModal";
+import ContactCompanyModal from "./ContactCompanyModal";
 import ContactDeleteModal from "./ContactDeleteModal";
 import ClientTagModal from "../EnterprisesPage/ClientTagModal";
 import { formatTableDate } from "../../utils/tableDateFormat";
@@ -183,11 +183,10 @@ export default function ContactDetailPage({
   const [tagModalOpen, setTagModalOpen] = useState(false);
   const [shareAccessCreateOpen, setShareAccessCreateOpen] = useState(false);
   const [vaultClientId, setVaultClientId] = useState(null);
-  const [companySearch, setCompanySearch] = useState("");
-  const [companyDropdownOpen, setCompanyDropdownOpen] = useState(false);
+  const [companyModalOpen, setCompanyModalOpen] = useState(false);
   const [membershipBusy, setMembershipBusy] = useState(false);
+  const [clientsLoading, setClientsLoading] = useState(false);
   const [addingTag, setAddingTag] = useState(false);
-  const companyAutocompleteRef = useRef(null);
   const [supportTickets, setSupportTickets] = useState([]);
   const [prestationTickets, setPrestationTickets] = useState([]);
   const [clientTickets, setClientTickets] = useState([]);
@@ -232,23 +231,10 @@ export default function ContactDetailPage({
       return preferred;
     });
   }, [contact?.client_id, contactCompanies]);
-  useEffect(() => {
-    const handleClickOutside = e => {
-      if (companyAutocompleteRef.current && !companyAutocompleteRef.current.contains(e.target)) {
-        setCompanyDropdownOpen(false);
-      }
-    };
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
   const availableCompaniesToAdd = useMemo(() => {
     const linkedIds = new Set(contactCompanies.map(c => String(c.id)));
-    const query = companySearch.trim().toLowerCase();
-    return allClients.filter(c => !linkedIds.has(String(c.id))).filter(c => {
-      if (!query) return true;
-      return String(c.name || "").toLowerCase().includes(query);
-    }).slice(0, 12);
-  }, [allClients, contactCompanies, companySearch]);
+    return allClients.filter(c => !linkedIds.has(String(c.id)));
+  }, [allClients, contactCompanies]);
   const buildContactSharePayload = () => {
     const fullName = formatContactName(contact, copy.defaultName);
     const entreprise = contactCompanies.map(c => c.name).filter(Boolean).join(", ") || (client?.name || contact?.client_name || "").toString().trim();
@@ -424,6 +410,7 @@ export default function ContactDetailPage({
     clientsListControllerRef.current?.abort();
     const controller = new AbortController();
     clientsListControllerRef.current = controller;
+    setClientsLoading(true);
     try {
       const clientsData = await fetchClientsList({
         signal: controller.signal
@@ -436,7 +423,19 @@ export default function ContactDetailPage({
       console.error("Error fetching clients:", err);
       toast.error(copy.toast.clientsLoadError);
       return false;
+    } finally {
+      if (isMountedRef.current && clientsListControllerRef.current === controller) {
+        setClientsLoading(false);
+      }
     }
+  };
+  const openCompanyModal = () => {
+    setCompanyModalOpen(true);
+    ensureClientsLoaded();
+  };
+  const closeCompanyModal = () => {
+    if (membershipBusy) return;
+    setCompanyModalOpen(false);
   };
   const loadContactData = async signal => {
     const requestId = ++loadRequestIdRef.current;
@@ -642,8 +641,7 @@ export default function ContactDetailPage({
         client_id: clientRow.id
       });
       applyMembershipResult(updated);
-      setCompanySearch("");
-      setCompanyDropdownOpen(false);
+      setCompanyModalOpen(false);
       toast.success(copy.toast.membershipAdded);
     } catch (error) {
       toast.error(error.message || copy.toast.membershipError);
@@ -1125,6 +1123,11 @@ export default function ContactDetailPage({
                     {copy.companies || copy.share.lines.enterprise}
                     {contactCompanies.length > 0 ? <span className={styles.sidebarSectionCount}>{contactCompanies.length}</span> : null}
                   </span>
+                  {canEditContact ? <SmartTooltip content={copy.addCompany}>
+                      <button type="button" className={styles.editInfoButton} onClick={openCompanyModal} disabled={membershipBusy} aria-label={copy.addCompany}>
+                        <FaPlus />
+                      </button>
+                    </SmartTooltip> : null}
                 </div>
                 <div className={styles.sidebarBody}>
                   {contactCompanies.length === 0 ? <span className={styles.sidebarSummaryValueEmpty}>-</span> : <ul className={styles.sidebarContactsList}>
@@ -1157,26 +1160,6 @@ export default function ContactDetailPage({
                           </div>
                         </SmartTooltip>)}
                     </ul>}
-                  {canEditContact ? <div className={`${formStyles.field} ${contactStyles.companiesAdd}`} ref={companyAutocompleteRef}>
-                      <label className={formStyles.label} htmlFor="contact-detail-add-company">
-                        {copy.addCompany}
-                      </label>
-                      <div className={formStyles.autocomplete}>
-                        <input id="contact-detail-add-company" type="text" className={formStyles.input} placeholder={copy.selectCompany} value={companySearch} onChange={e => {
-                  setCompanySearch(e.target.value);
-                  setCompanyDropdownOpen(true);
-                  ensureClientsLoaded();
-                }} onFocus={() => {
-                  setCompanyDropdownOpen(true);
-                  ensureClientsLoaded();
-                }} disabled={membershipBusy} autoComplete="off" />
-                        {companyDropdownOpen && <div className={formStyles.dropdown}>
-                            {availableCompaniesToAdd.length === 0 ? <div className={formStyles.dropdownEmpty}>-</div> : availableCompaniesToAdd.map(row => <button key={row.id} type="button" className={formStyles.dropdownOption} onClick={() => handleAddCompanyMembership(row)} disabled={membershipBusy}>
-                                  {row.name}
-                                </button>)}
-                          </div>}
-                      </div>
-                    </div> : null}
                 </div>
               </section>
 
@@ -1205,6 +1188,8 @@ export default function ContactDetailPage({
       </div>
 
       <ContactFormModal open={contactModalOpen} initialContact={contact} clients={allClients} onClose={handleContactModalClose} onSuccess={handleContactModalSuccess} />
+
+      <ContactCompanyModal open={companyModalOpen} contactName={displayName} companies={availableCompaniesToAdd} loading={clientsLoading} saving={membershipBusy} onClose={closeCompanyModal} onSelect={handleAddCompanyMembership} />
 
       <ContactDeleteModal open={deleteContactModalOpen} contactName={displayName} saving={deletingContact} onClose={closeDeleteContactModal} onConfirm={confirmDeleteContact} />
 

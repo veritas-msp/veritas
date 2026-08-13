@@ -4,13 +4,40 @@
 
 
 .sidebar {
+  --sb-bg: var(--msp-surface, #ffffff);
+  --sb-border: var(--msp-border, #c5d0df);
+  --sb-text: var(--msp-text, #0f1c2e);
+  --sb-muted: var(--msp-muted, #5c6b82);
+  --sb-muted-light: var(--msp-muted-light, #8b9bb5);
+  --sb-item: var(--msp-muted, #5c6b82);
+  --sb-item-hover: var(--msp-text, #0f1c2e);
+  --sb-hover-bg: var(--msp-accent-soft, rgba(43, 95, 171, 0.1));
+  --sb-active-bg: var(--msp-accent, #2b5fab);
+  --sb-active-text: #ffffff;
+  --sb-separator: var(--msp-border-light, #e2e8f0);
+  --sb-btn-bg: var(--msp-surface-2, #f7f9fc);
+  --sb-btn-border: var(--msp-border, #c5d0df);
+  --sb-glow-1: rgba(43, 95, 171, 0.08);
+  --sb-glow-2: rgba(21, 140, 200, 0.05);
+  --sb-shadow: 1px 0 16px rgba(15, 28, 46, 0.06);
+  --sb-upgrade-bg: linear-gradient(135deg, rgba(43, 95, 171, 0.08) 0%, rgba(21, 140, 200, 0.06) 100%);
+  --sb-upgrade-border: rgba(43, 95, 171, 0.35);
+  --sb-upgrade-color: var(--msp-accent, #2b5fab);
+  --sb-upgrade-hover-bg: linear-gradient(135deg, rgba(43, 95, 171, 0.14) 0%, rgba(21, 140, 200, 0.1) 100%);
+  --sb-upgrade-hover-border: rgba(43, 95, 171, 0.55);
+  --sb-active-btn-bg: rgba(43, 95, 171, 0.12);
+  --sb-active-btn-border: var(--msp-accent, #2b5fab);
+  --sb-active-btn-color: var(--msp-accent, #2b5fab);
+  --sb-active-btn-shadow: 0 2px 8px rgba(43, 95, 171, 0.16);
+  --sb-badge-ring: var(--msp-surface, #ffffff);
+
   display: flex;
   flex-direction: column;
   width: 240px;
   height: 100vh;
-  background: linear-gradient(160deg, #0f1c2e 0%, #162641 60%, #1a3060 100%);
-  border-right: 1px solid rgba(255, 255, 255, 0.06);
-  box-shadow: 4px 0 24px rgba(0, 0, 0, 0.18);
+  background: var(--sb-bg);
+  border-right: 1px solid var(--sb-border);
+  box-shadow: var(--sb-shadow);
   padding: 20px 12px 20px 10px;
   box-sizing: border-box;
   position: fixed;
@@ -19,7 +46,7 @@
   z-index: 1000;
   overflow-y: auto;
   overflow-x: hidden;
-  transition: width 0.3s ease;
+  transition: width 0.3s ease, background 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
 }
 
@@ -34,8 +61,8 @@
   position: absolute;
   inset: 0;
   background-image:
-    radial-gradient(ellipse 400px 300px at 110% 10%, rgba(43, 95, 171, 0.2) 0%, transparent 70%),
-    radial-gradient(ellipse 300px 400px at -10% 90%, rgba(21, 140, 200, 0.1) 0%, transparent 70%);
+    radial-gradient(ellipse 400px 300px at 110% 10%, var(--sb-glow-1) 0%, transparent 70%),
+    radial-gradient(ellipse 300px 400px at -10% 90%, var(--sb-glow-2) 0%, transparent 70%);
   pointer-events: none;
   z-index: 0;
 }
@@ -118,7 +145,7 @@
   letter-spacing: 0.04em;
   line-height: 1.2;
   text-transform: uppercase;
-  color: #e8edf5;
+  color: var(--sb-text);
   text-align: center;
   font-family: inherit;
   margin: 0;
@@ -127,7 +154,7 @@
 
 .separator {
   border: none;
-  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  border-top: 1px solid var(--sb-separator);
   margin: 4px 0;
 }
 
@@ -153,7 +180,7 @@
 .sectionTitle {
   font-size: 0.68rem;
   font-weight: 700;
-  color: #6a88a8;
+  color: var(--sb-muted-light);
   text-transform: uppercase;
   letter-spacing: 0.06em;
   margin: 16px 0 8px 0;
@@ -164,7 +191,7 @@
 
 .sectionChevron {
   font-size: 16px;
-  color: #6a88a8;
+  color: var(--sb-muted-light);
   margin-right: 4px;
   transition: transform 0.2s ease, color 0.2s ease;
 }
@@ -208,7 +235,7 @@
   cursor: pointer;
   font-size: 0.84rem;
   font-weight: 500;
-  color: #a8bdd4;
+  color: var(--sb-item);
   transition: background 0.15s, color 0.15s;
   display: flex;
   align-items: center;
@@ -264,13 +291,13 @@
 }
 
 .navItem:hover {
-  background: rgba(43, 95, 171, 0.18);
-  color: #e8edf5;
+  background: var(--sb-hover-bg);
+  color: var(--sb-item-hover);
 }
 
 .navItem.active {
-  background: #2b5fab;
-  color: #ffffff;
+  background: var(--sb-active-bg);
+  color: var(--sb-active-text);
   box-shadow: 0 4px 12px rgba(43, 95, 171, 0.35);
 }
 
@@ -315,10 +342,10 @@
   width: 40px;
   height: 40px;
   padding: 0;
-  border: 1px dashed rgba(125, 211, 252, 0.45);
+  border: 1px dashed var(--sb-upgrade-border);
   border-radius: 8px;
-  background: linear-gradient(135deg, rgba(43, 95, 171, 0.22) 0%, rgba(21, 140, 200, 0.12) 100%);
-  color: #dbeafe;
+  background: var(--sb-upgrade-bg);
+  color: var(--sb-upgrade-color);
   font: inherit;
   cursor: pointer;
   transition: background 0.15s, border-color 0.15s, transform 0.15s;
@@ -326,8 +353,8 @@
 }
 
 .upgradeAddBtn:hover {
-  background: linear-gradient(135deg, rgba(43, 95, 171, 0.34) 0%, rgba(21, 140, 200, 0.2) 100%);
-  border-color: rgba(125, 211, 252, 0.75);
+  background: var(--sb-upgrade-hover-bg);
+  border-color: var(--sb-upgrade-hover-border);
 }
 
 .upgradeIcon {
@@ -356,10 +383,10 @@
   width: 40px;
   height: 40px;
   padding: 0;
-  border: 1px solid rgba(255, 255, 255, 0.12);
+  border: 1px solid var(--sb-btn-border);
   border-radius: 10px;
-  background: rgba(255, 255, 255, 0.04);
-  color: #8fa8c4;
+  background: var(--sb-btn-bg);
+  color: var(--sb-muted);
   cursor: pointer;
   transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease, box-shadow 0.15s ease;
   flex-shrink: 0;
@@ -367,16 +394,16 @@
 
 .squareBtn:hover,
 .squareBtnActive {
-  background: rgba(43, 95, 171, 0.15);
-  color: #e8edf5;
-  border-color: rgba(43, 95, 171, 0.45);
+  background: var(--sb-hover-bg);
+  color: var(--sb-item-hover);
+  border-color: var(--msp-accent, #2b5fab);
 }
 
 .squareBtnActive {
-  background: rgba(43, 95, 171, 0.35);
-  border-color: rgba(43, 95, 171, 0.65);
-  color: #ffffff;
-  box-shadow: 0 2px 8px rgba(43, 95, 171, 0.25);
+  background: var(--sb-active-btn-bg);
+  border-color: var(--sb-active-btn-border);
+  color: var(--sb-active-btn-color);
+  box-shadow: var(--sb-active-btn-shadow);
 }
 
 .squareBtnIcon {
@@ -420,15 +447,15 @@
   margin-bottom: 4px;
   border: none;
   border-radius: 8px;
-  background: rgba(255, 255, 255, 0.04);
-  color: #a8bdd4;
+  background: var(--sb-btn-bg);
+  color: var(--sb-item);
   cursor: pointer;
   transition: background 0.15s, color 0.15s;
 }
 
 .themeToggleCollapsed:hover {
-  background: rgba(43, 95, 171, 0.22);
-  color: #e8edf5;
+  background: var(--sb-hover-bg);
+  color: var(--sb-item-hover);
 }
 
 .themeToggleRow {
@@ -444,10 +471,10 @@
   justify-content: center;
   gap: 6px;
   padding: 8px 10px;
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border: 1px solid var(--sb-btn-border);
   border-radius: 8px;
-  background: rgba(255, 255, 255, 0.04);
-  color: #8fa8c4;
+  background: var(--sb-btn-bg);
+  color: var(--sb-muted);
   font-size: 0.78rem;
   font-weight: 600;
   cursor: pointer;
@@ -455,15 +482,15 @@
 }
 
 .themeOption:hover {
-  background: rgba(43, 95, 171, 0.15);
-  color: #e8edf5;
+  background: var(--sb-hover-bg);
+  color: var(--sb-item-hover);
 }
 
 .themeOptionActive {
-  background: rgba(43, 95, 171, 0.35);
-  border-color: rgba(43, 95, 171, 0.65);
-  color: #ffffff;
-  box-shadow: 0 2px 8px rgba(43, 95, 171, 0.25);
+  background: var(--sb-active-btn-bg);
+  border-color: var(--sb-active-btn-border);
+  color: var(--sb-active-btn-color);
+  box-shadow: var(--sb-active-btn-shadow);
 }
 
 .themeOptionIcon {
@@ -545,12 +572,12 @@
 .userMenuLabelTitle {
   font-size: 0.875rem;
   font-weight: 600;
-  color: #e8edf5;
+  color: var(--sb-text);
 }
 
 .userMenuLabelSubtitle {
   font-size: 0.75rem;
-  color: #6a88a8;
+  color: var(--sb-muted);
   max-width: 100%;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -659,7 +686,7 @@
 .mobileSidebar {
   width: 64px;
   padding: 20px 8px;
-  box-shadow: 4px 0 24px rgba(0, 0, 0, 0.35);
+  box-shadow: var(--sb-shadow);
 }
 
 .overlay {
@@ -688,14 +715,14 @@
   top: 20px;
   left: 20px;
   z-index: 1001;
-  background: #162641;
-  color: #e8edf5;
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: var(--msp-surface, #ffffff);
+  color: var(--msp-text, #0f1c2e);
+  border: 1px solid var(--msp-border, #c5d0df);
   padding: 12px;
   border-radius: 10px;
   font-size: 18px;
   cursor: pointer;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 4px 16px rgba(15, 28, 46, 0.12);
   width: 48px;
   height: 48px;
   display: flex;
@@ -705,7 +732,7 @@
 }
 
 .burgerButton:hover {
-  background: #2b5fab;
+  background: var(--msp-accent, #2b5fab);
   color: #fff;
 }
 
@@ -713,12 +740,12 @@
   position: absolute;
   top: 20px;
   right: 20px;
-  background: rgba(255, 255, 255, 0.08);
-  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: var(--sb-btn-bg);
+  border: 1px solid var(--sb-btn-border);
   border-radius: 8px;
   font-size: 16px;
   cursor: pointer;
-  color: #a8bdd4;
+  color: var(--sb-muted);
   line-height: 1;
   width: 32px;
   height: 32px;
@@ -747,7 +774,7 @@
 
 .sectionDividerCollapsed {
   border: none;
-  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  border-top: 1px solid var(--sb-separator);
   margin: 4px auto;
   width: 32px;
   flex-shrink: 0;
@@ -849,4 +876,81 @@
     left: 12px;
     padding: 10px;
   }
+}
+
+:global(html.dark) .sidebar {
+  --sb-bg: linear-gradient(160deg, #0f1c2e 0%, #162641 60%, #1a3060 100%);
+  --sb-border: rgba(255, 255, 255, 0.06);
+  --sb-text: #e8edf5;
+  --sb-muted: #8fa8c4;
+  --sb-muted-light: #6a88a8;
+  --sb-item: #a8bdd4;
+  --sb-item-hover: #e8edf5;
+  --sb-hover-bg: rgba(43, 95, 171, 0.18);
+  --sb-active-bg: #2b5fab;
+  --sb-active-text: #ffffff;
+  --sb-separator: rgba(255, 255, 255, 0.08);
+  --sb-btn-bg: rgba(255, 255, 255, 0.04);
+  --sb-btn-border: rgba(255, 255, 255, 0.12);
+  --sb-glow-1: rgba(43, 95, 171, 0.2);
+  --sb-glow-2: rgba(21, 140, 200, 0.1);
+  --sb-shadow: 4px 0 24px rgba(0, 0, 0, 0.18);
+  --sb-upgrade-bg: linear-gradient(135deg, rgba(43, 95, 171, 0.22) 0%, rgba(21, 140, 200, 0.12) 100%);
+  --sb-upgrade-border: rgba(125, 211, 252, 0.45);
+  --sb-upgrade-color: #dbeafe;
+  --sb-upgrade-hover-bg: linear-gradient(135deg, rgba(43, 95, 171, 0.34) 0%, rgba(21, 140, 200, 0.2) 100%);
+  --sb-upgrade-hover-border: rgba(125, 211, 252, 0.75);
+  --sb-active-btn-bg: rgba(43, 95, 171, 0.35);
+  --sb-active-btn-border: rgba(43, 95, 171, 0.65);
+  --sb-active-btn-color: #ffffff;
+  --sb-active-btn-shadow: 0 2px 8px rgba(43, 95, 171, 0.25);
+  --sb-badge-ring: #162641;
+}
+
+:global(html.dark) .burgerButton {
+  background: #162641;
+  color: #e8edf5;
+  border-color: rgba(255, 255, 255, 0.1);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+}
+
+:global(html.dark) .userMenuDropdown {
+  background: var(--msp-surface, #1a2540);
+  border-color: var(--msp-border, #2f4260);
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.35);
+}
+
+:global(html.dark) .userMenuDropdownTitle {
+  color: var(--msp-muted-light, #6a88a8);
+}
+
+:global(html.dark) .userMenuItem {
+  color: var(--msp-text, #e8edf5);
+}
+
+:global(html.dark) .userMenuItem:hover {
+  background: rgba(74, 143, 212, 0.12);
+  color: var(--msp-text, #e8edf5);
+}
+
+:global(html.dark) .userMenuItemActive {
+  background: rgba(43, 95, 171, 0.22);
+  color: #7eb0e8;
+}
+
+:global(html.dark) .userMenuItemIcon {
+  color: var(--msp-muted, #8fa8c4);
+}
+
+:global(html.dark) .userMenuDivider {
+  background: var(--msp-border, #2f4260);
+}
+
+:global(html.dark) .userMenuItemDanger {
+  color: #fca5a5;
+}
+
+:global(html.dark) .userMenuItemDanger:hover {
+  background: rgba(185, 28, 28, 0.18);
+  color: #fecaca;
 }

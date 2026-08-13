@@ -1298,10 +1298,16 @@ const EquipmentPage = forwardRef(function EquipmentPage({
     setSelectedTypes(prev => {
       if (prev.size === 0) return new Set([firstAvailable]);
       const currentType = [...prev][0];
-      if (prev.size === 1 && embeddedTypeOrder.includes(currentType)) return prev;
+      if (prev.size !== 1 || !embeddedTypeOrder.includes(currentType)) {
+        return new Set([firstAvailable]);
+      }
+      if ((embeddedTypeCounts[currentType] || 0) > 0) return prev;
+      if (!searchQuery.trim()) return prev;
+      if ((embeddedTypeCounts[firstAvailable] || 0) === 0) return prev;
+      if (currentType === firstAvailable) return prev;
       return new Set([firstAvailable]);
     });
-  }, [embedded, loading, embeddedTypeOrder, embeddedTypeCounts]);
+  }, [embedded, loading, embeddedTypeOrder, embeddedTypeCounts, searchQuery]);
   const filteredEquipment = useMemo(() => {
     let filtered = [...baseEquipment];
     if (searchQuery.trim()) {
