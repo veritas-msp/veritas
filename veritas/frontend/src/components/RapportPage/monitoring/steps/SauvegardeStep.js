@@ -8,6 +8,7 @@ import equipmentStyles from "../../../EquipementPage/EquipmentPage.module.css";
 import API_BASE_URL from "../../../../config";
 import styles from "../RapportMonitoringBuilder.module.css";
 import { MonitoringStepShell, MonitoringStepSection, MonitoringStepSyncButton, MonitoringStepTableWrap } from "../MonitoringStepLayout";
+import { formatServeurLieLabel } from "../../../EnterprisesPage/backupJobUtils";
 function formatDate(raw) {
   if (!raw) return "-";
   try {
@@ -333,7 +334,7 @@ export default function BackupStep({
               const lastBackupSync = job.last_backup_date ?? job.lastBackupDate;
               const typeBackup = job.typeBackup || job.type;
               const typeLabel = typeBackup ? typeBackup.charAt(0).toUpperCase() + typeBackup.slice(1) : "-";
-              const destination = job._instanceLogiciel === "HYCU Backup" ? "DataCenter PSI" : job.destination || job.serveurLie || job.source || "-";
+              const destination = job._instanceLogiciel === "HYCU Backup" ? "DataCenter PSI" : job.destination || formatServeurLieLabel(job.serveurLie || job.source, "") || "-";
               const isHycuJob = job._instanceLogiciel === "HYCU Backup";
               const lastBackupMs = lastBackupStart ? new Date(lastBackupStart).getTime() : null;
               const now = Date.now();
@@ -356,7 +357,7 @@ export default function BackupStep({
                       <td>{jobName}</td>
                       <td>{typeLabel}</td>
                       <td>{job._instanceLabel}</td>
-                      <td>{job.serveurLie || job.source || "-"}</td>
+                      <td>{formatServeurLieLabel(job.serveurLie || job.source, "-")}</td>
                       <td>{destination}</td>
                       <td>{job.regularite || "-"}</td>
                       <td>{job.horaire || "-"}</td>

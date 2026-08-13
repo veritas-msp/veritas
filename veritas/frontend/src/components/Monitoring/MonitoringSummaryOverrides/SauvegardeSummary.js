@@ -7,6 +7,7 @@ import { mdiNas, mdiServerNetworkOutline, mdiHarddisk, mdiVhs } from "@mdi/js";
 import { Icon as IconifyIcon } from "@iconify/react";
 import { scoreToColor } from "../../../utils/gradeUtils";
 import { getIconPath } from "../../../utils/assetHelper";
+import { formatServeurLieLabel, jobHasServeurLie, normalizeServeurLieList } from "../../EnterprisesPage/backupJobUtils";
 const BackupSummary = ({
   data,
   config
@@ -722,7 +723,7 @@ const BackupSummary = ({
                                     <div className={styles.jobsListCell} style={{
                           color: theme === 'dark' ? '#9ca3af' : '#6b7280'
                         }}>
-                                      {job.serveurLie || 'N/A'}
+                                      {formatServeurLieLabel(job.serveurLie, 'N/A')}
                                     </div>
                                     <div className={styles.jobsListCell} style={{
                           color: theme === 'dark' ? '#9ca3af' : '#6b7280'
@@ -734,7 +735,7 @@ const BackupSummary = ({
                                     <div className={styles.jobsListCell} style={{
                           color: theme === 'dark' ? '#9ca3af' : '#6b7280'
                         }}>
-                                      {job.serveurLie || 'N/A'}
+                                      {formatServeurLieLabel(job.serveurLie, 'N/A')}
                                     </div>
                                     <div className={styles.jobsListCell} style={{
                           color: theme === 'dark' ? '#9ca3af' : '#6b7280'
@@ -835,20 +836,20 @@ const BackupSummary = ({
                               </div>
 
                               {}
-                              {instance.logiciel === "Veeam" && job.serveurLie && (job.stockageLie || job.destination) && <div className={styles.flowInfo} style={{
+                              {instance.logiciel === "Veeam" && jobHasServeurLie(job.serveurLie) && (job.stockageLie || job.destination) && <div className={styles.flowInfo} style={{
                         marginTop: '0.75rem',
                         marginBottom: '0.75rem'
                       }}>
                                   <div className={styles.flowInline}>
                                     <div className={styles.flowSource}>
                                       <span className={styles.flowIcon}>
-                                        {getServerIcon(job.serveurLie) || <FaServer style={{
+                                        {getServerIcon(normalizeServeurLieList(job.serveurLie)[0]) || <FaServer style={{
                                 fontSize: '1.25rem',
                                 color: theme === 'dark' ? '#9ca3af' : '#6b7280',
                                 verticalAlign: 'middle'
                               }} />}
                                       </span>
-                                      <span className={styles.flowText}>{job.serveurLie}</span>
+                                      <span className={styles.flowText}>{formatServeurLieLabel(job.serveurLie)}</span>
                                     </div>
                                     <div className={styles.flowTransfer}>
                                       <span className={styles.flowArrow}></span>
@@ -886,7 +887,7 @@ const BackupSummary = ({
                                 </div>}
 
                               {}
-                              {instance.logiciel === "HYCU Backup" && job.serveurLie && <div className={styles.flowInfo} style={{
+                              {instance.logiciel === "HYCU Backup" && jobHasServeurLie(job.serveurLie) && <div className={styles.flowInfo} style={{
                         marginTop: '0.75rem',
                         marginBottom: '0.75rem',
                         maxWidth: '550px',
@@ -896,13 +897,13 @@ const BackupSummary = ({
                                   <div className={styles.flowInline}>
                                     <div className={styles.flowSource}>
                                       <span className={styles.flowIcon}>
-                                        {getServerIcon(job.serveurLie) || <FaServer style={{
+                                        {getServerIcon(normalizeServeurLieList(job.serveurLie)[0]) || <FaServer style={{
                                 fontSize: '1.25rem',
                                 color: theme === 'dark' ? '#9ca3af' : '#6b7280',
                                 verticalAlign: 'middle'
                               }} />}
                                       </span>
-                                      <span className={styles.flowText}>{job.serveurLie}</span>
+                                      <span className={styles.flowText}>{formatServeurLieLabel(job.serveurLie)}</span>
                                     </div>
                                     <div className={styles.flowTransfer}>
                                       <span className={`${styles.flowArrow} ${styles.flowArrowPurple}`}></span>
@@ -1208,20 +1209,20 @@ const BackupSummary = ({
                                 </p>}
 
                               {}
-                              {instance.logiciel === "Veeam" && job.serveurLie && (job.stockageLie || job.destination) && <div className={styles.flowInfo} style={{
+                              {instance.logiciel === "Veeam" && jobHasServeurLie(job.serveurLie) && (job.stockageLie || job.destination) && <div className={styles.flowInfo} style={{
                       marginTop: '0.75rem',
                       marginBottom: '0.75rem'
                     }}>
                                   <div className={styles.flowInline}>
                                     <div className={styles.flowSource}>
                                       <span className={styles.flowIcon}>
-                                        {getServerIcon(job.serveurLie) || <FaServer style={{
+                                        {getServerIcon(normalizeServeurLieList(job.serveurLie)[0]) || <FaServer style={{
                               fontSize: '1.25rem',
                               color: theme === 'dark' ? '#9ca3af' : '#6b7280',
                               verticalAlign: 'middle'
                             }} />}
                                       </span>
-                                      <span className={styles.flowText}>{job.serveurLie}</span>
+                                      <span className={styles.flowText}>{formatServeurLieLabel(job.serveurLie)}</span>
                                     </div>
                                     <div className={styles.flowTransfer}>
                                       <span className={styles.flowArrow}></span>
@@ -1259,7 +1260,7 @@ const BackupSummary = ({
                                 </div>}
 
                               {}
-                              {instance.logiciel === "HYCU Backup" && job.serveurLie && <div className={styles.flowInfo} style={{
+                              {instance.logiciel === "HYCU Backup" && jobHasServeurLie(job.serveurLie) && <div className={styles.flowInfo} style={{
                       marginTop: '0.75rem',
                       marginBottom: '0.75rem',
                       maxWidth: '550px',
@@ -1269,13 +1270,13 @@ const BackupSummary = ({
                                   <div className={styles.flowInline}>
                                     <div className={styles.flowSource}>
                                       <span className={styles.flowIcon}>
-                                        {getServerIcon(job.serveurLie) || <FaServer style={{
+                                        {getServerIcon(normalizeServeurLieList(job.serveurLie)[0]) || <FaServer style={{
                               fontSize: '1.25rem',
                               color: theme === 'dark' ? '#9ca3af' : '#6b7280',
                               verticalAlign: 'middle'
                             }} />}
                                       </span>
-                                      <span className={styles.flowText}>{job.serveurLie}</span>
+                                      <span className={styles.flowText}>{formatServeurLieLabel(job.serveurLie)}</span>
                                     </div>
                                     <div className={styles.flowTransfer}>
                                       <span className={`${styles.flowArrow} ${styles.flowArrowPurple}`}></span>
@@ -1383,12 +1384,12 @@ const BackupSummary = ({
                       }}>
                                       Destination: {job.destination}
                                     </div>}
-                                  {job.serveurLie && <div style={{
+                                  {jobHasServeurLie(job.serveurLie) && <div style={{
                         fontSize: '0.75rem',
                         color: theme === 'dark' ? '#9ca3af' : '#6b7280',
                         marginBottom: '0.5rem'
                       }}>
-                                      Serveur: {job.serveurLie}
+                                      Serveur: {formatServeurLieLabel(job.serveurLie)}
                                     </div>}
                                 </div>}
 

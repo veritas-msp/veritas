@@ -1,4 +1,5 @@
 import { getBackupJobStatus, compareBackupJobsByStatus } from "../CybersecuritePage/backupJobStatusUtils";
+import { formatServeurLieLabel } from "../EnterprisesPage/backupJobUtils";
 const BACKUP_PROVIDER_META = {
   "HYCU Backup": {
     id: "hycu",
@@ -50,7 +51,7 @@ export function buildBackupFleetRow(job) {
     clientName: job?.clientName || "-",
     jobName: job?.nom || "-",
     jobType: job?.typeBackup || "",
-    server: job?.serveurLie || "",
+    server: formatServeurLieLabel(job?.serveurLie, ""),
     destination: job?.destination || "",
     instanceLogiciel: job?.instanceLogiciel || "",
     providerId: provider.id,

@@ -5,6 +5,7 @@ import cyberStyles from "./ReportSummaryCybersecurity.module.css";
 import { REPORT_CYBER_MODULES, sumEquipmentCountsForModules } from "./reportCategoryCounts";
 import { ReportCategoryKpisBlock, ReportTableBlock } from "./ReportSummaryBlocks";
 import { buildAntivirusEndpointRowsForClient, buildAntivirusPolicyRowsForClient, getAntivirusSolutionName } from "./reportCyberTableUtils";
+import { formatServeurLieLabel } from "../../../EnterprisesPage/backupJobUtils";
 function scrollToReportComments() {
   if (typeof document === "undefined") return;
   const target = document.querySelector("[data-export-comments='true']");
@@ -522,8 +523,8 @@ export default function ReportSummaryCybersecurity({
         instanceName,
         name: job.nom || job.jobName || "",
         type: job.type || job.typeBackup || "",
-        serveurLie: job.serveurLie || job.source || "",
-        destination: inst.logiciel === "HYCU Backup" ? "DataCenter PSI" : job.destination || job.serveurLie || job.source || "",
+        serveurLie: formatServeurLieLabel(job.serveurLie || job.source, ""),
+        destination: inst.logiciel === "HYCU Backup" ? "DataCenter PSI" : job.destination || formatServeurLieLabel(job.serveurLie || job.source, "") || "",
         regularite: job.regularite || "",
         horaire: job.horaire || "",
         retention: job.retention || "",

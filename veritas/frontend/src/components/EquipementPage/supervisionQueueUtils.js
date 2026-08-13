@@ -1,6 +1,7 @@
 import { buildMonitoringTodoActions } from "./equipmentMspUtils";
 import { getEquipmentListKey } from "../../utils/equipmentIdentity";
 import { getBackupJobStatus } from "../CybersecuritePage/backupJobStatusUtils";
+import { formatServeurLieLabel } from "../EnterprisesPage/backupJobUtils";
 
 const SEVERITY_RANK = {
   critical: 0,
@@ -89,7 +90,7 @@ export function buildBackupQueueItems(jobs = [], options = {}) {
       severity,
       tone: status === "critical" ? "bad" : "warn",
       title,
-      subtitle: [clientName, job.instanceLogiciel || job.typeBackup, job.serveurLie].filter(Boolean).join(" · "),
+      subtitle: [clientName, job.instanceLogiciel || job.typeBackup, formatServeurLieLabel(job.serveurLie, "")].filter(Boolean).join(" · "),
       label,
       clientId: job.clientId ?? null,
       clientName,

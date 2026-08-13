@@ -6,6 +6,7 @@ import { getBackupJobStatus, getBackupJobStatusLabel, getBackupJobStatusTitle, i
 import EquipmentMappingModal from "./EquipmentMappingModal";
 import { buildBackupFleetRow } from "./backupMspUtils";
 import { getJobDetailCopy } from "./jobDetailPageI18n";
+import { formatServeurLieLabel, normalizeServeurLieList } from "../EnterprisesPage/backupJobUtils";
 import styles from "./JobDetailPage.module.css";
 function formatDuration(value) {
   if (value == null || value === "") return null;
@@ -37,7 +38,7 @@ function normalizeIncomingJob(data) {
       horaire: data.horaire || "",
       retention: data.retention || "",
       destination: data.destination || "",
-      serveurLie: data.serveurLie || data.server || "",
+      serveurLie: normalizeServeurLieList(data.serveurLie || data.server),
       stockageLie: data.stockageLie || "",
       replicationVers: data.replicationVers || "",
       isMapped: Boolean(data.isMapped),
@@ -85,7 +86,7 @@ function findJobInCyberData(clients, {
             horaire: job.horaire || "",
             retention: job.retention || "",
             destination: job.destination || "",
-            serveurLie: job.serveurLie || "",
+            serveurLie: normalizeServeurLieList(job.serveurLie),
             stockageLie: job.stockageLie || "",
             replicationVers: job.replicationVers || "",
             isMapped: !!checkmkMapping,
@@ -266,7 +267,7 @@ export default function JobDetailPage({
                 </span>} />
             <StatCard icon="mdi:backup-restore" label={copy.fields.solution} value={fleetRow?.providerName} />
             <StatCard icon="mdi:file-tree-outline" label={copy.fields.jobType} value={job.typeBackup} />
-            <StatCard icon="mdi:server" label={copy.fields.server} value={job.serveurLie} />
+            <StatCard icon="mdi:server" label={copy.fields.server} value={formatServeurLieLabel(job.serveurLie, "-")} />
             <StatCard icon="mdi:clock-outline" label={copy.fields.lastBackup} value={lastBackup ? formatDateTime(lastBackup) : "-"} />
             <StatCard icon="mdi:timer-outline" label={copy.fields.lastDuration} value={duration} />
             <StatCard icon="mdi:harddisk" label={copy.fields.destination} value={job.destination} />

@@ -13,6 +13,7 @@ import { getIconPath } from "../../utils/assetHelper";
 import layout from "./EnterpriseFormModal.module.css";
 import styles from "./BackupConfigModal.module.css";
 import { getBackupModalCopy, supportsJobs, ACTIVE_BACKUP_MODULE_KEYS } from "./backupConfigModalI18n";
+import { coerceStoredOption, formatServeurLieLabel, normalizeServeurLieList } from "./backupJobUtils";
 const EMPTY_JOB = {
   nom: "",
   regularite: "",
@@ -20,7 +21,7 @@ const EMPTY_JOB = {
   type: "",
   retention: "",
   destination: "",
-  serveurLie: "",
+  serveurLie: [],
   stockageLie: "",
   replicationVers: ""
 };
@@ -61,21 +62,12 @@ function normalizeInstances(raw) {
       regularite: coerceStoredOption(job.regularite),
       retention: coerceStoredOption(job.retention),
       horaire: coerceStoredOption(job.horaire),
-      serveurLie: coerceStoredOption(job.serveurLie),
+      serveurLie: normalizeServeurLieList(job.serveurLie),
       stockageLie: coerceStoredOption(job.stockageLie),
       destination: coerceStoredOption(job.destination),
       replicationVers: coerceStoredOption(job.replicationVers)
     })) : []
   }));
-}
-function coerceStoredOption(raw) {
-  if (raw == null) return "";
-  if (typeof raw === "object") {
-    if (typeof raw.value === "string" || typeof raw.value === "number") return String(raw.value);
-    if (typeof raw.label === "string") return raw.label;
-    return "";
-  }
-  return String(raw);
 }
 function buildEmptyInstance(type) {
   const id = generateUUID();
@@ -99,10 +91,17 @@ function buildEmptyInstance(type) {
   };
 }
 function getServerOptions(equipements) {
-  const servers = equipements?.Serveurs;
-  if (!Array.isArray(servers)) return [];
-  return servers.map(s => s?.nom).filter(Boolean).map(nom => {
-    const server = servers.find(s => s.nom === nom);
+  // Prefer Serveurs; fall back to Servers. Do not concat both — mirrored keys
+  // would otherwise list the same hostname twice in the target picker.
+  const servers = Array.isArray(equipements?.Serveurs) && equipements.Serveurs.length > 0 ? equipements.Serveurs : Array.isArray(equipements?.Servers) ? equipements.Servers : [];
+  if (!servers.length) return [];
+  const seen = new Set();
+  return servers.map(s => s?.nom || s?.name).filter(Boolean).filter(nom => {
+    if (seen.has(nom)) return false;
+    seen.add(nom);
+    return true;
+  }).map(nom => {
+    const server = servers.find(s => (s.nom || s.name) === nom);
     const role = Array.isArray(server?.role) ? server.role.join(", ") : server?.role;
     const suffix = [role, server?.ip].filter(Boolean).join(" · ");
     return {
@@ -229,6 +228,7 @@ function JobCard({
   const retentionLabel = copy.resolveOptionLabel(copy.retentionOptions, job.retention);
   const scheduleParts = [regularityLabel, job.horaire].filter(Boolean);
   const scheduleLabel = scheduleParts.length > 0 ? scheduleParts.join(" · ") : "—";
+  const targetsLabel = formatServeurLieLabel(job.serveurLie, copy.form.jobTargetNone);
   return <article className={styles.card}>
       <div className={styles.cardMain}>
         <div className={styles.cardHead}>
@@ -244,6 +244,10 @@ function JobCard({
           <div>
             <span className={styles.metaLabel}>{copy.meta.type}</span>
             <span className={styles.metaValue}>{typeLabel}</span>
+          </div>
+          <div>
+            <span className={styles.metaLabel}>{copy.form.jobTarget}</span>
+            <span className={styles.metaValue}>{targetsLabel}</span>
           </div>
           <div>
             <span className={styles.metaLabel}>{copy.meta.schedule}</span>
@@ -387,6 +391,7 @@ export default function BackupConfigModal({
     setJobDraft({
       ...EMPTY_JOB,
       ...job,
+      serveurLie: normalizeServeurLieList(job.serveurLie),
       stockageLie: selectedInstance?.logiciel === "HYCU Backup" ? "Datacenter PSI" : job.stockageLie || ""
     });
     setActiveSection("edit-job");
@@ -441,6 +446,7 @@ export default function BackupConfigModal({
               ...jobDraft,
               id: editingJobId,
               nom,
+              serveurLie: normalizeServeurLieList(jobDraft.serveurLie),
               stockageLie: inst.logiciel === "HYCU Backup" ? "Datacenter PSI" : jobDraft.stockageLie
             } : j)
           };
@@ -451,6 +457,7 @@ export default function BackupConfigModal({
             id: generateUUID(),
             ...jobDraft,
             nom,
+            serveurLie: normalizeServeurLieList(jobDraft.serveurLie),
             stockageLie: inst.logiciel === "HYCU Backup" ? "Datacenter PSI" : jobDraft.stockageLie
           }]
         };
@@ -798,17 +805,32 @@ export default function BackupConfigModal({
             nom: e.target.value
           }))} placeholder={copy.form.jobNamePlaceholder} />
           </div>
-          <div className={layout.field}>
-            <label className={layout.label} htmlFor="job-target">
+          <div className={`${layout.field} ${layout.fieldFull}`}>
+            <label className={layout.label}>
               {copy.form.jobTarget}
             </label>
-            <select id="job-target" className={layout.input} value={jobDraft.serveurLie || ""} onChange={e => setJobDraft(prev => ({
-            ...prev,
-            serveurLie: e.target.value
-          }))}>
-              <option value="">{copy.form.jobTargetNone}</option>
-              {renderSelectOptions(serverOptions)}
-            </select>
+            {serverOptions.length === 0 ? <p className={layout.sectionDesc}>{copy.form.jobTargetEmpty}</p> : <>
+                <p className={layout.sectionDesc}>
+                  {copy.formatSelectedTargets(normalizeServeurLieList(jobDraft.serveurLie).length)}
+                </p>
+                <div className={styles.modulesGrid}>
+                  {serverOptions.map(option => {
+              const value = String(option.value);
+              const selected = normalizeServeurLieList(jobDraft.serveurLie).includes(value);
+              return <label key={value} className={`${styles.moduleChip} ${selected ? styles.moduleChipActive : ""}`}>
+                        <input type="checkbox" checked={selected} onChange={() => setJobDraft(prev => {
+                  const current = normalizeServeurLieList(prev.serveurLie);
+                  const next = selected ? current.filter(entry => entry !== value) : [...current, value];
+                  return {
+                    ...prev,
+                    serveurLie: next
+                  };
+                })} />
+                        {option.label}
+                      </label>;
+            })}
+                </div>
+              </>}
           </div>
           <div className={layout.field}>
             <label className={layout.label} htmlFor="job-dest">

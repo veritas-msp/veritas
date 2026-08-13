@@ -258,17 +258,16 @@ export function mapClientHardwareEquipment(client) {
       }
       const realEquipmentId = equipment.id;
       const dbId = isDbEquipmentId(realEquipmentId) ? String(realEquipmentId) : null;
-      let stableId = dbId || `${client.id}-${type}-${equipmentName}`;
-      if (!realEquipmentId && equipmentMac) {
-        stableId += `-${equipmentMac}`;
-      } else if (!realEquipmentId && equipmentSerial) {
-        stableId += `-${equipmentSerial}`;
-      } else if (!realEquipmentId && equipmentIp) {
-        stableId += `-${equipmentIp}`;
-      } else if (!realEquipmentId) {
-        stableId += `-${index}`;
+      // Prefer DB id. Otherwise keep index in the key so two rows with the same
+      // name + IP/MAC (true duplicates the user may need to delete) stay visible.
+      let stableId;
+      if (dbId) {
+        stableId = dbId;
+      } else {
+        const identity = equipmentMac || equipmentSerial || equipmentIp || "row";
+        stableId = `${client.id}-${type}-${equipmentName}-${identity}-${index}`;
       }
-      const dedupeKey = `${client.id}-${type}-${equipmentName}-${equipmentMac || equipmentSerial || equipmentIp || index}`;
+      const dedupeKey = dbId ? `db:${dbId}` : stableId;
       if (equipmentMap.has(dedupeKey)) return;
       let checkmkMapping = null;
       if (equipment.checkmk_host_name && String(equipment.checkmk_host_name).trim()) {

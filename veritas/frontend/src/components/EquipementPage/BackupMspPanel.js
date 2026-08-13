@@ -18,6 +18,7 @@ import { getBackupMspPanelCopy } from "./backupMspPanelI18n";
 import { interpolate } from "../../i18n/translate";
 import { getLocaleTag } from "../../i18n/locales";
 import MspEmptyState from "../Misc/MspEmptyState/MspEmptyState";
+import { formatServeurLieLabel, normalizeServeurLieList } from "../EnterprisesPage/backupJobUtils";
 const BACKUPS_CACHE_KEY = "cyber_backups_cache_v1";
 const BACKUPS_CACHE_TTL_MS = 3 * 60 * 1000;
 const CYBER_PAGE_DATA_CACHE_KEY = "cyber_page_data_cache_v1";
@@ -227,7 +228,7 @@ export default function BackupMspPanel({
               horaire: job.horaire || "",
               retention: job.retention || "",
               destination: job.destination || "",
-              serveurLie: job.serveurLie || "",
+              serveurLie: normalizeServeurLieList(job.serveurLie),
               stockageLie: job.stockageLie || "",
               replicationVers: job.replicationVers || "",
               isDefault: job.isDefault || false,
@@ -468,7 +469,7 @@ export default function BackupMspPanel({
     let filtered = backupData.filter(item => item.type === "job");
     if (searchQuery.trim()) {
       const query = searchQuery.toLowerCase();
-      filtered = filtered.filter(item => item.clientName.toLowerCase().includes(query) || item.nom && item.nom.toLowerCase().includes(query) || item.typeBackup && item.typeBackup.toLowerCase().includes(query) || item.instanceLogiciel && item.instanceLogiciel.toLowerCase().includes(query) || item.serveurLie && item.serveurLie.toLowerCase().includes(query) || item.destination && item.destination.toLowerCase().includes(query));
+      filtered = filtered.filter(item => item.clientName.toLowerCase().includes(query) || item.nom && item.nom.toLowerCase().includes(query) || item.typeBackup && item.typeBackup.toLowerCase().includes(query) || item.instanceLogiciel && item.instanceLogiciel.toLowerCase().includes(query) || formatServeurLieLabel(item.serveurLie, "").toLowerCase().includes(query) || item.destination && item.destination.toLowerCase().includes(query));
     }
     if (selectedClients.size > 0) {
       filtered = filtered.filter(item => selectedClients.has(item.clientName));
@@ -500,7 +501,7 @@ export default function BackupMspPanel({
   const displayedJobs = useMemo(() => {
     if (!jobsSearchQuery.trim()) return jobsAfterStatusFilter;
     const query = jobsSearchQuery.toLowerCase();
-    return jobsAfterStatusFilter.filter(item => item.clientName.toLowerCase().includes(query) || item.nom && item.nom.toLowerCase().includes(query) || item.typeBackup && item.typeBackup.toLowerCase().includes(query) || item.instanceLogiciel && item.instanceLogiciel.toLowerCase().includes(query) || item.serveurLie && item.serveurLie.toLowerCase().includes(query) || item.destination && item.destination.toLowerCase().includes(query) || item.regularite && item.regularite.toLowerCase().includes(query) || item.horaire && String(item.horaire).toLowerCase().includes(query) || item.retention && item.retention.toLowerCase().includes(query));
+    return jobsAfterStatusFilter.filter(item => item.clientName.toLowerCase().includes(query) || item.nom && item.nom.toLowerCase().includes(query) || item.typeBackup && item.typeBackup.toLowerCase().includes(query) || item.instanceLogiciel && item.instanceLogiciel.toLowerCase().includes(query) || formatServeurLieLabel(item.serveurLie, "").toLowerCase().includes(query) || item.destination && item.destination.toLowerCase().includes(query) || item.regularite && item.regularite.toLowerCase().includes(query) || item.horaire && String(item.horaire).toLowerCase().includes(query) || item.retention && item.retention.toLowerCase().includes(query));
   }, [jobsAfterStatusFilter, jobsSearchQuery]);
   const sortedDisplayedJobs = useMemo(() => {
     const sorted = [...displayedJobs];
@@ -789,7 +790,7 @@ export default function BackupMspPanel({
                           <td>
                             {item.typeBackup ? item.typeBackup.charAt(0).toUpperCase() + item.typeBackup.slice(1) : "-"}
                           </td>
-                          <td>{item.serveurLie || "-"}</td>
+                          <td>{formatServeurLieLabel(item.serveurLie, "-")}</td>
                           <td className={styles.boldCell}>
                             {item.instanceLogiciel === "HYCU Backup" ? "DataCenter PSI" : item.destination || "-"}
                           </td>

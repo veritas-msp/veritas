@@ -4,6 +4,7 @@ import { Icon } from "@iconify/react";
 import { FaTimes } from "react-icons/fa";
 import { toast } from "react-toastify";
 import { fetchClientModules, saveClientModules } from "../../api/clients";
+import { normalizeServeurLieList } from "../EnterprisesPage/backupJobUtils";
 import styles from "./InstanceSauvegardeModal.module.css";
 const generateUUID = () => {
   return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => {
@@ -78,7 +79,7 @@ export default function AddJobModal({
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState({
     nom: "",
-    serveurLie: "",
+    serveurLie: [],
     stockageLie: "",
     type: "",
     regularite: "",
@@ -124,7 +125,7 @@ export default function AddJobModal({
       setInstanceId("");
       setForm({
         nom: "",
-        serveurLie: "",
+        serveurLie: [],
         stockageLie: "",
         type: "",
         regularite: "",
@@ -145,7 +146,7 @@ export default function AddJobModal({
     if (!open || !isEdit || !initialJob) return;
     setForm({
       nom: initialJob.nom || initialJob.jobName || "",
-      serveurLie: initialJob.serveurLie || initialJob.source || "",
+      serveurLie: normalizeServeurLieList(initialJob.serveurLie || initialJob.source),
       stockageLie: initialJob.destination || initialJob.stockageLie || "",
       type: initialJob.type || initialJob.typeBackup || "",
       regularite: initialJob.regularite || "",
@@ -181,7 +182,7 @@ export default function AddJobModal({
         const updatedJob = {
           ...initialJob,
           nom: form.nom.trim(),
-          serveurLie: form.serveurLie || "",
+          serveurLie: normalizeServeurLieList(form.serveurLie),
           stockageLie: isHycu ? "" : form.stockageLie || "",
           destination: isHycu ? "Datacenter PSI" : form.stockageLie || "",
           type: form.type || "",
@@ -210,7 +211,7 @@ export default function AddJobModal({
         const newJob = {
           id: generateUUID(),
           nom: form.nom.trim(),
-          serveurLie: form.serveurLie || "",
+          serveurLie: normalizeServeurLieList(form.serveurLie),
           stockageLie: isHycu ? "" : form.stockageLie || "",
           destination: isHycu ? "Datacenter PSI" : form.stockageLie || "",
           type: form.type || "",
@@ -295,13 +296,36 @@ export default function AddJobModal({
                 {!isHycu && <>
                     <div className={styles.formGrid}>
                       <div className={styles.formField}>
-                        <label className={styles.fieldLabel}>Target (server)</label>
-                        <select className={styles.fieldInput} value={form.serveurLie} onChange={e => updateForm("serveurLie", e.target.value)}>
-                          <option value="">No target</option>
-                          {(equipements?.Serveurs || []).map((s, i) => <option key={i} value={s.nom}>
-                              {s.nom} - {Array.isArray(s.role) ? s.role.join(", ") : s.role} ({s.ip})
-                            </option>)}
-                        </select>
+                        <label className={styles.fieldLabel}>Targets (servers)</label>
+                        <div style={{
+                    display: "flex",
+                    flexDirection: "column",
+                    gap: "0.35rem",
+                    maxHeight: "10rem",
+                    overflowY: "auto",
+                    padding: "0.5rem",
+                    border: "1px solid var(--border-color, #e5e7eb)",
+                    borderRadius: "8px"
+                  }}>
+                          {(equipements?.Serveurs || equipements?.Servers || []).length === 0 ? <span className={styles.loadingText}>No servers available</span> : (equipements?.Serveurs || equipements?.Servers || []).map((s, i) => {
+                      const value = s.nom || s.name;
+                      if (!value) return null;
+                      const selected = normalizeServeurLieList(form.serveurLie).includes(value);
+                      const role = Array.isArray(s.role) ? s.role.join(", ") : s.role;
+                      return <label key={`${value}-${i}`} style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "0.5rem",
+                        cursor: "pointer"
+                      }}>
+                                  <input type="checkbox" checked={selected} onChange={() => {
+                          const current = normalizeServeurLieList(form.serveurLie);
+                          updateForm("serveurLie", selected ? current.filter(entry => entry !== value) : [...current, value]);
+                        }} />
+                                  <span>{value}{role || s.ip ? ` — ${[role, s.ip].filter(Boolean).join(" · ")}` : ""}</span>
+                                </label>;
+                    })}
+                        </div>
                       </div>
                       <div className={styles.formField}>
                         <label className={styles.fieldLabel}>Destination</label>

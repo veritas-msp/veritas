@@ -157,6 +157,10 @@ const BACKUP_MODAL_COPY = {
       jobNamePlaceholder: "Ex. Backup quotidien VMs",
       jobTarget: "Cible",
       jobTargetNone: "Aucune cible",
+      jobTargetEmpty: "Aucun serveur disponible dans l'équipement client. Ajoutez des serveurs pour les sélectionner comme cibles.",
+      selectedTargetsNone: "Aucune cible sélectionnée",
+      selectedTargetsOne: "{count} cible sélectionnée",
+      selectedTargetsMany: "{count} cibles sélectionnées",
       jobDestination: "Destination",
       jobDestinationNone: "Aucune destination",
       jobType: "Type de sauvegarde",
@@ -348,6 +352,10 @@ const BACKUP_MODAL_COPY = {
       jobNamePlaceholder: "E.g. Daily VM backup",
       jobTarget: "Target",
       jobTargetNone: "No target",
+      jobTargetEmpty: "No servers available in client equipment. Add servers to select them as targets.",
+      selectedTargetsNone: "No targets selected",
+      selectedTargetsOne: "{count} target selected",
+      selectedTargetsMany: "{count} targets selected",
       jobDestination: "Destination",
       jobDestinationNone: "No destination",
       jobType: "Backup type",
@@ -539,6 +547,10 @@ const BACKUP_MODAL_COPY = {
       jobNamePlaceholder: "z. B. Tägliches VM-Backup",
       jobTarget: "Ziel",
       jobTargetNone: "Kein Ziel",
+      jobTargetEmpty: "Keine Server in der Client-Ausstattung verfügbar. Fügen Sie Server hinzu, um sie als Ziele auszuwählen.",
+      selectedTargetsNone: "Keine Ziele ausgewählt",
+      selectedTargetsOne: "{count} Ziel ausgewählt",
+      selectedTargetsMany: "{count} Ziele ausgewählt",
       jobDestination: "Zielspeicher",
       jobDestinationNone: "Kein Zielspeicher",
       jobType: "Backup-Typ",
@@ -730,6 +742,10 @@ const BACKUP_MODAL_COPY = {
       jobNamePlaceholder: "Es. Backup giornaliero VM",
       jobTarget: "Destinazione",
       jobTargetNone: "Nessuna destinazione",
+      jobTargetEmpty: "Nessun server disponibile nell'attrezzatura del cliente. Aggiungi server per selezionarli come destinazioni.",
+      selectedTargetsNone: "Nessuna destinazione selezionata",
+      selectedTargetsOne: "{count} destinazione selezionata",
+      selectedTargetsMany: "{count} destinazioni selezionate",
       jobDestination: "Archiviazione",
       jobDestinationNone: "Nessuna archiviazione",
       jobType: "Tipo di backup",
@@ -921,6 +937,10 @@ const BACKUP_MODAL_COPY = {
       jobNamePlaceholder: "Ej. Copia diaria de VMs",
       jobTarget: "Objetivo",
       jobTargetNone: "Ningún objetivo",
+      jobTargetEmpty: "No hay servidores disponibles en el equipamiento del cliente. Añade servidores para seleccionarlos como objetivos.",
+      selectedTargetsNone: "Ningún objetivo seleccionado",
+      selectedTargetsOne: "{count} objetivo seleccionado",
+      selectedTargetsMany: "{count} objetivos seleccionados",
       jobDestination: "Destino",
       jobDestinationNone: "Ningún destino",
       jobType: "Tipo de copia",
@@ -1037,6 +1057,13 @@ export function getBackupModalCopy(locale) {
     },
     formatJobCount: count => {
       const template = count > 1 ? t.jobs.countMany : t.jobs.countOne;
+      return interpolate(template, {
+        count: String(count)
+      });
+    },
+    formatSelectedTargets: count => {
+      if (!count) return t.form.selectedTargetsNone;
+      const template = count > 1 ? t.form.selectedTargetsMany : t.form.selectedTargetsOne;
       return interpolate(template, {
         count: String(count)
       });
