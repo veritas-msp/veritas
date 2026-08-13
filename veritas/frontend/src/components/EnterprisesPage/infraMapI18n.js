@@ -58,6 +58,7 @@ const INFRA_MAP_COPY = {
       Antivirus: "Antivirus",
       Antispam: "Antispam",
       Sauvegarde: "Sauvegarde",
+      Backup: "Sauvegarde",
       TenantMicrosoft: "Tenant Microsoft",
       GoogleWorkspace: "Google Workspace",
       NDD: "Nom de domaine",
@@ -410,6 +411,8 @@ export function getInfraMapCopy(locale) {
     getBrickTypeLabel: type => {
       if (!type) return "";
       if (t.brickTypes[type]) return t.brickTypes[type];
+      if (type === "Backup") return t.brickTypes.Sauvegarde || t.brickTypes.Backup || type;
+      if (type === "Sauvegarde") return t.brickTypes.Backup || t.brickTypes.Sauvegarde || type;
       if (type === "LicencesAbonnements" || type === "LicensesAbonnements") {
         return t.brickTypes.LicensesAbonnements || type;
       }

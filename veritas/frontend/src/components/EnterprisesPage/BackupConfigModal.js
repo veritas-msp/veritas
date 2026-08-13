@@ -342,6 +342,14 @@ export default function BackupConfigModal({
   useEffect(() => {
     loadData();
   }, [loadData]);
+  useEffect(() => {
+    if (!instances.length) {
+      if (selectedInstanceId != null) setSelectedInstanceId(null);
+      return;
+    }
+    const stillSelected = instances.some(instance => instance.id === selectedInstanceId);
+    if (!stillSelected) setSelectedInstanceId(instances[0].id);
+  }, [instances, selectedInstanceId]);
   const resetInstanceForm = () => {
     setEditingInstanceId(null);
     setInstanceDraft(null);
@@ -498,7 +506,6 @@ export default function BackupConfigModal({
       let next;
       if (deleteTarget.kind === "instance") {
         next = instances.filter(i => i.id !== deleteTarget.item.id);
-        if (selectedInstanceId === deleteTarget.item.id) setSelectedInstanceId(null);
         if (editingInstanceId === deleteTarget.item.id) resetInstanceForm();
       } else {
         next = instances.map(inst => {

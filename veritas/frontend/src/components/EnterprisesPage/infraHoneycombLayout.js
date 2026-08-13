@@ -256,7 +256,7 @@ const BRICK_TYPE_META = {
   },
   Backup: {
     id: "sauvegarde",
-    label: "Backup"
+    label: "Sauvegarde"
   },
   TenantMicrosoft: {
     id: "tenant",
@@ -439,8 +439,12 @@ function buildGoogleWorkspaceBrick(workspaceInfo = {}, label = "Google Workspace
     meta: workspaceInfo
   };
 }
-function buildBackupBrick(instances = [], label = "Backup") {
+function buildBackupBrick(instances = [], label = "Sauvegarde") {
   const list = Array.isArray(instances) ? instances : [];
+  const jobsCount = list.reduce((sum, instance) => {
+    if (Number.isFinite(Number(instance?.jobsCount))) return sum + Number(instance.jobsCount);
+    return sum + (Array.isArray(instance?.jobs) ? instance.jobs.length : 0);
+  }, 0);
   let status = "unmonitored";
   if (list.length > 0) {
     const hasUnmapped = list.some(instance => instance.jobsCount > 0 && instance.mappedJobsCount === 0);
@@ -454,6 +458,8 @@ function buildBackupBrick(instances = [], label = "Backup") {
     name: label,
     status,
     count: list.length,
+    jobsCount,
+    countLabel: list.length > 0 ? `${list.length} | ${jobsCount}` : null,
     items: list
   };
 }
@@ -503,7 +509,7 @@ function buildAllInfraBricks({
       items: []
     }));
   }
-  return [buildSecurityBrick("Antivirus", getBrickTypeLabel("Antivirus", "Antivirus"), antivirusItems), buildSecurityBrick("Antispam", getBrickTypeLabel("Antispam", "Antispam"), antispamItems), buildBackupBrick(backupInstances, getBrickTypeLabel("Backup", "Backup")), buildTenantBrick(tenantInfo, getBrickTypeLabel("TenantMicrosoft", "Tenant Microsoft")), buildGoogleWorkspaceBrick(googleWorkspaceInfo, getBrickTypeLabel("GoogleWorkspace", "Google Workspace")), buildDomainBrick(domainItems, {
+  return [buildSecurityBrick("Antivirus", getBrickTypeLabel("Antivirus", "Antivirus"), antivirusItems), buildSecurityBrick("Antispam", getBrickTypeLabel("Antispam", "Antispam"), antispamItems), buildBackupBrick(backupInstances, getBrickTypeLabel("Backup", "Sauvegarde")), buildTenantBrick(tenantInfo, getBrickTypeLabel("TenantMicrosoft", "Tenant Microsoft")), buildGoogleWorkspaceBrick(googleWorkspaceInfo, getBrickTypeLabel("GoogleWorkspace", "Google Workspace")), buildDomainBrick(domainItems, {
     integrationReady: domainIntegrationReady,
     label: getBrickTypeLabel("NDD", "Domain name")
   }), buildSslBrick(sslItems, getBrickTypeLabel("CertificatsSSL", "Certificats SSL")), buildLicensesBrick(licenceItems, getBrickTypeLabel("LicensesAbonnements", "Licenses & abonnements")), buildCampaignBrick(campaignItems, getBrickTypeLabel("Campagne", "Campagne"))].map(applyBrickAccessFlags);

@@ -24,7 +24,7 @@ export default function InfraBrick({
   const interactive = Boolean(onClick) && (isComingSoon || isProLocked || brick.alwaysClickable || !isEmptyTemplate && brick.count > 0);
   const isIssue = !isComingSoon && (brick.status === "critical" || brick.status === "warning");
   const statusTooltip = copy.getStatusLabel(brick.status);
-  const tooltipLines = [brick.label, isComingSoon ? copy.brick.comingSoonTooltip : null, isProLocked ? copy.brick.proTooltip : null, !isComingSoon ? brick.subtitle || statusTooltip : null, !isComingSoon && brick.count > 0 ? copy.formatElementCount(brick.count) : null, !isComingSoon && isAlwaysClickable && brick.count === 0 ? copy.brick.clickToConfigure : null].filter(Boolean);
+  const tooltipLines = [brick.label, isComingSoon ? copy.brick.comingSoonTooltip : null, isProLocked ? copy.brick.proTooltip : null, !isComingSoon ? brick.subtitle || statusTooltip : null, !isComingSoon && brick.countLabel ? brick.countLabel : !isComingSoon && brick.count > 0 ? copy.formatElementCount(brick.count) : null, !isComingSoon && isAlwaysClickable && brick.count === 0 ? copy.brick.clickToConfigure : null].filter(Boolean);
   const handleClick = () => {
     const featureKey = INFRA_BRICK_PRO_FEATURE_KEYS[brick.type];
     if (isComingSoon || isProLocked) {
@@ -38,8 +38,8 @@ export default function InfraBrick({
       <span className={styles.brickName}>{displayName}</span>
       {isComingSoon ? <span className={styles.brickComingSoonBadge}>{copy.brick.comingSoon}</span> : null}
       {isProLocked ? <ProFeatureBadge variant="inline" className={styles.brickProBadge} /> : null}
-      {!isEmptyTemplate && !isComingSoon && brick.count > 0 && <span className={styles.infraItemCount} aria-hidden>
-          {brick.count}
+      {!isEmptyTemplate && !isComingSoon && (brick.countLabel || brick.count > 0) && <span className={styles.infraItemCount} aria-hidden>
+          {brick.countLabel || brick.count}
         </span>}
     </>;
   const brickClassName = [styles.brickNode, isEmptyTemplate && styles.brickNodePlaceholder, isComingSoon && styles.brickNodeComingSoon, isProLocked && styles.brickNodeProLocked, brick.status === "ok" && !isEmptyTemplate && !isComingSoon ? styles.brickNodeOk : "", brick.status === "unmonitored" && !isEmptyTemplate && !isComingSoon ? styles.brickNodeUnmonitored : "", isIssue && !isEmptyTemplate ? styles.brickNodeIssue : "", active && styles.brickNodeActive].filter(Boolean).join(" ");
@@ -48,7 +48,7 @@ export default function InfraBrick({
         <button type="button" className={brickClassName} style={{
         "--brick-accent": meta.color,
         "--brick-soft": meta.soft
-      }} onClick={handleClick} aria-label={`${displayName}${isComingSoon ? copy.brick.comingSoonAria : isProLocked ? copy.brick.proAria : statusTooltip ? `, ${statusTooltip}` : ""}${brick.count > 0 && !isComingSoon ? `, ${copy.formatElementCount(brick.count)}` : ""}`} aria-pressed={active || undefined}>
+      }} onClick={handleClick} aria-label={`${displayName}${isComingSoon ? copy.brick.comingSoonAria : isProLocked ? copy.brick.proAria : statusTooltip ? `, ${statusTooltip}` : ""}${brick.countLabel ? `, ${brick.countLabel}` : brick.count > 0 && !isComingSoon ? `, ${copy.formatElementCount(brick.count)}` : ""}`} aria-pressed={active || undefined}>
           <span className={styles.brickInner}>{content}</span>
         </button>
       </SmartTooltip>;
