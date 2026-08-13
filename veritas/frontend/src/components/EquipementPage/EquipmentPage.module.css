@@ -1935,9 +1935,11 @@
 }
 
 .paginationEmbedded {
-  padding: 0.55rem 0.15rem 0;
+  padding: 0.65rem 0.2rem 0.1rem;
   border-top: 1px solid var(--eq-border-light, rgba(15, 28, 46, 0.08));
-  margin-top: 0.35rem;
+  margin-top: 0.45rem;
+  background: color-mix(in srgb, var(--msp-surface, #fff) 92%, var(--msp-text, #0f1c2e) 8%);
+  border-radius: 0 0 10px 10px;
 }
 
 .paginationLeft,

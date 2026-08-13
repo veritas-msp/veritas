@@ -2,7 +2,7 @@ import express from 'express';
 import { randomUUID } from 'crypto';
 import { pool } from '../../database/db.js';
 import { transformClientModulesToFrontend } from '../../utils/transformClientModules.js';
-import { buildEquipmentLogQuery } from '../../utils/equipmentLogs.js';
+import { buildEquipmentLogQuery, logEquipmentCreated, logEquipmentDeleted, logEquipmentUpdated } from '../../utils/equipmentLogs.js';
 import { checkSslCertificate, isSslCheckStale, resolveSslCheckIntervalHours } from '../../utils/sslCertificateChecker.js';
 import verifyJWT from '../../middleware/auth.js';
 import { dispatchNotificationEvent } from "../../services/notificationDispatcher.js";
@@ -3158,7 +3158,27 @@ modulesRouter.post('/:clientId/:family', requireModulePermission("create"), asyn
       }
       throw insertErr;
     }
-    res.status(201).json(result.rows[0]);
+    const created = result.rows[0];
+    try {
+      const {
+        userId,
+        userName
+      } = await resolveRequestUserName(req);
+      await logEquipmentCreated(pool, {
+        clientId,
+        family,
+        equipmentName: created.name || finalName || "",
+        equipmentId: created.id,
+        userId,
+        userName,
+        data: created.data || data || {},
+        name: created.name || finalName,
+        isActive: created.is_active !== false
+      });
+    } catch (logError) {
+      console.warn("[POST modules] equipment log:", logError?.message || logError);
+    }
+    res.status(201).json(created);
   } catch (err) {
     console.error("[POST modules]", err.message);
     res.status(500).json({
@@ -3333,7 +3353,7 @@ modulesRouter.put('/:clientId/:family/:id', requireModulePermission("edit"), asy
     if (!table) return res.status(400).json({
       error: "Famille inconnue"
     });
-    const oldResult = await pool.query(`SELECT name, item_key, data FROM ${table}
+    const oldResult = await pool.query(`SELECT name, item_key, data, is_active FROM ${table}
        WHERE id = $1 AND client_id = $2`, [id, clientId]);
     if (oldResult.rows.length === 0) return res.status(404).json({
       error: "Not found"
@@ -3384,168 +3404,27 @@ modulesRouter.put('/:clientId/:family/:id', requireModulePermission("edit"), asy
     const updatedItem = result.rows[0];
     const equipmentName = name || item_key || oldItem.name || oldItem.item_key || updatedItem.name || updatedItem.item_key || '';
     try {
-      const userId = req.user?.id || req.user?.user_id || null;
-      let userName = 'Unknown user';
-      if (userId) {
-        try {
-          const userIdStr = String(userId);
-          const userResult = await pool.query(`SELECT email, username 
-             FROM v_b_users 
-             WHERE id::text = $1`, [userIdStr]);
-          if (userResult.rows.length > 0) {
-            const user = userResult.rows[0];
-            userName = user.email || user.username || 'Unknown user';
-          }
-        } catch (userError) {
-          userName = req.user?.name || req.user?.username || req.user?.email || 'Unknown user';
-        }
-      } else {
-        userName = req.user?.name || req.user?.username || req.user?.email || 'Unknown user';
-      }
-      const fieldNames = {
-        'nom': 'Nom',
-        'name': 'Nom',
-        'marque': 'Marque',
-        'fabricant': 'Fabricant',
-        'modele': 'Model',
-        'model': 'Model',
-        'numeroSerie': 'Serial number',
-        'numero_serie': 'Serial number',
-        'ip': 'Adresse IP',
-        'adresseMac': 'Adresse MAC',
-        'mac': 'Adresse MAC',
-        'site': 'Site',
-        'location': 'Site',
-        'emplacement': 'Site',
-        'processeur': 'Processeur',
-        'cpu': 'Processeur',
-        'vcpu': 'VCPU',
-        'memoire': 'Memory',
-        'ram': 'Memory',
-        'stockage': 'Stockage',
-        'systeme': 'Operating system',
-        'os': 'Operating system',
-        'vlan': 'VLAN',
-        'role': 'Role',
-        'expirationGarantie': 'Expiration garantie',
-        'garantie': 'Expiration garantie',
-        'nbDisquesActuels': 'Nombre de disques actuels',
-        'nbDisquesMax': 'Nombre de disques max',
-        'capacite': 'Capacity',
-        'raid': 'Configuration RAID',
-        'luns': 'LUNs',
-        'cassettesRDX': 'Cassettes RDX',
-        'numeroDisque': 'Disk number',
-        'version': 'Version',
-        'firmware': 'Version',
-        'type': 'Type',
-        'typeServer': 'Server type'
-      };
-      const getFieldLabel = field => {
-        return fieldNames[field] || field.charAt(0).toUpperCase() + field.slice(1);
-      };
-      const modifications = [];
-      if (oldItem.name !== (name || item_key)) {
-        modifications.push({
-          field: 'nom',
-          fieldLabel: 'Nom',
-          oldValue: oldItem.name || '',
-          newValue: name || item_key || ''
-        });
-      }
-      if (oldItem.item_key !== (item_key || name) && oldItem.item_key !== oldItem.name) {
-        modifications.push({
-          field: 'item_key',
-          fieldLabel: 'Key',
-          oldValue: oldItem.item_key || '',
-          newValue: item_key || name || ''
-        });
-      }
-      for (const key of Object.keys(newData)) {
-        let oldValue = oldData[key];
-        if (oldValue === undefined || oldValue === null || oldValue === '') {
-          if (key === 'marque') {
-            oldValue = oldData.fabricant || oldData.manufacturer;
-          } else if (key === 'modele') {
-            oldValue = oldData.model;
-          } else if (key === 'numeroSerie') {
-            oldValue = oldData.serial || oldData.serialNumber;
-          } else if (key === 'adresseMac') {
-            oldValue = oldData.mac || oldData.macAddress;
-          } else if (key === 'site') {
-            oldValue = oldData.location || oldData.emplacement;
-          } else if (key === 'processeur') {
-            oldValue = oldData.cpu || oldData.vcpu;
-          } else if (key === 'memoire') {
-            oldValue = oldData.ram || oldData.memory;
-          } else if (key === 'stockage') {
-            oldValue = oldData.storage;
-          } else if (key === 'systeme') {
-            oldValue = oldData.os;
-          } else if (key === 'expirationGarantie') {
-            oldValue = oldData.garantie;
-          } else if (key === 'version') {
-            oldValue = oldData.firmware;
-          }
-        }
-        const newValue = newData[key];
-        const normalizeValue = val => {
-          if (val === null || val === undefined) return null;
-          if (val === '') return null;
-          if (typeof val === 'string') {
-            const trimmed = val.trim();
-            return trimmed === '' ? null : trimmed;
-          }
-          if (Array.isArray(val)) {
-            if (val.length === 0) return null;
-            return val;
-          }
-          if (typeof val === 'object' && val !== null) {
-            const keys = Object.keys(val);
-            if (keys.length === 0) return null;
-            return val;
-          }
-          return val;
-        };
-        const normalizedOld = normalizeValue(oldValue);
-        const normalizedNew = normalizeValue(newValue);
-        let hasChanged = false;
-        if (normalizedOld === null && normalizedNew === null) {
-          hasChanged = false;
-        } else if (normalizedOld === null || normalizedNew === null) {
-          hasChanged = true;
-        } else {
-          if (Array.isArray(normalizedOld) && Array.isArray(normalizedNew)) {
-            hasChanged = JSON.stringify(normalizedOld) !== JSON.stringify(normalizedNew);
-          } else if (typeof normalizedOld === 'object' && typeof normalizedNew === 'object') {
-            hasChanged = JSON.stringify(normalizedOld) !== JSON.stringify(normalizedNew);
-          } else {
-            hasChanged = normalizedOld !== normalizedNew;
-          }
-        }
-        if (hasChanged) {
-          modifications.push({
-            field: key,
-            fieldLabel: getFieldLabel(key),
-            oldValue: oldValue,
-            newValue: newValue
-          });
-        }
-      }
-      for (const mod of modifications) {
-        const action = `Field update: ${mod.fieldLabel}`;
-        const oldVal = typeof mod.oldValue === 'object' ? JSON.stringify(mod.oldValue) : mod.oldValue || '';
-        const newVal = typeof mod.newValue === 'object' ? JSON.stringify(mod.newValue) : mod.newValue || '';
-        await pool.query(`INSERT INTO v_b_clients_m_logs 
-           (client_id, equipment_family, equipment_name, equipment_id, user_id, user_name, action, details)
-           VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`, [clientId, family, equipmentName, id, userId, userName, action, JSON.stringify({
-          field: mod.field,
-          fieldLabel: mod.fieldLabel,
-          oldValue: mod.oldValue,
-          newValue: mod.newValue
-        })]);
-      }
-    } catch (logError) {}
+      const {
+        userId,
+        userName
+      } = await resolveRequestUserName(req);
+      await logEquipmentUpdated(pool, {
+        clientId,
+        family,
+        equipmentName,
+        equipmentId: id,
+        userId,
+        userName,
+        oldName: oldItem.name || oldItem.item_key || null,
+        newName: name || item_key || oldItem.name || oldItem.item_key || null,
+        oldIsActive: oldItem.is_active,
+        newIsActive: is_active !== false,
+        oldData,
+        newData: dataToSave || {}
+      });
+    } catch (logError) {
+      console.warn("[PUT modules] equipment log:", logError?.message || logError);
+    }
     res.json(updatedItem);
   } catch (err) {
     res.status(500).json({
@@ -3587,6 +3466,14 @@ modulesRouter.patch('/:clientId/:family/checkmk-mapping', requireModulePermissio
     const hasCheckmkColumns = availableColumns.has('checkmk_host_name') && availableColumns.has('checkmk_site') && availableColumns.has('checkmk_service_name');
     const whereClause = equipmentIdVal ? `client_id::text = $4::text AND id::text = $5::text` : `client_id::text = $4::text AND (name = $5 OR item_key = $5 OR (data IS NOT NULL AND data::jsonb->>'nom' = $5))`;
     const whereParams = equipmentIdVal ? [clientId, equipmentIdVal] : [clientId, nameVal];
+    const previousResult = await pool.query(
+      `SELECT id, name, item_key, data,
+              ${hasCheckmkColumns ? "checkmk_host_name, checkmk_site, checkmk_service_name" : "NULL::varchar AS checkmk_host_name, NULL::varchar AS checkmk_site, NULL::varchar AS checkmk_service_name"}
+         FROM ${table}
+        WHERE ${equipmentIdVal ? "client_id::text = $1::text AND id::text = $2::text" : "client_id::text = $1::text AND (name = $2 OR item_key = $2 OR (data IS NOT NULL AND data::jsonb->>'nom' = $2))"}
+        LIMIT 1`,
+      whereParams
+    );
     let result;
     if (hasCheckmkColumns) {
       result = await pool.query(`UPDATE ${table}
@@ -3600,7 +3487,7 @@ modulesRouter.patch('/:clientId/:family/checkmk-mapping', requireModulePermissio
              ),
              updated_at = NOW()
          WHERE ${whereClause}
-         RETURNING id, checkmk_host_name, checkmk_site, checkmk_service_name`, [hostName, siteVal, serviceVal, ...whereParams]);
+         RETURNING id, name, item_key, checkmk_host_name, checkmk_site, checkmk_service_name`, [hostName, siteVal, serviceVal, ...whereParams]);
     } else {
       result = await pool.query(`UPDATE ${table}
          SET data = COALESCE(data::jsonb, '{}'::jsonb) || jsonb_build_object(
@@ -3610,7 +3497,7 @@ modulesRouter.patch('/:clientId/:family/checkmk-mapping', requireModulePermissio
              ),
              updated_at = NOW()
          WHERE ${whereClause}
-         RETURNING id,
+         RETURNING id, name, item_key,
                    data::jsonb->>'checkmk_host_name' AS checkmk_host_name,
                    data::jsonb->>'checkmk_site' AS checkmk_site,
                    data::jsonb->>'checkmk_service_name' AS checkmk_service_name`, [hostName, siteVal, serviceVal, ...whereParams]);
@@ -3628,6 +3515,42 @@ modulesRouter.patch('/:clientId/:family/checkmk-mapping', requireModulePermissio
       });
     }
     const mapping = result.rows[0];
+    try {
+      const prev = previousResult.rows[0] || {};
+      const prevData = typeof prev.data === "string" ? (() => {
+        try {
+          return JSON.parse(prev.data);
+        } catch {
+          return {};
+        }
+      })() : prev.data || {};
+      const {
+        userId,
+        userName
+      } = await resolveRequestUserName(req);
+      await logEquipmentUpdated(pool, {
+        clientId,
+        family,
+        equipmentName: mapping.name || mapping.item_key || nameVal || "",
+        equipmentId: mapping.id,
+        userId,
+        userName,
+        oldName: prev.name || prev.item_key || nameVal || null,
+        newName: mapping.name || mapping.item_key || nameVal || null,
+        oldData: {
+          checkmk_host_name: prev.checkmk_host_name || prevData.checkmk_host_name || null,
+          checkmk_site: prev.checkmk_site || prevData.checkmk_site || null,
+          checkmk_service_name: prev.checkmk_service_name || prevData.checkmk_service_name || null
+        },
+        newData: {
+          checkmk_host_name: mapping.checkmk_host_name || null,
+          checkmk_site: mapping.checkmk_site || null,
+          checkmk_service_name: mapping.checkmk_service_name || null
+        }
+      });
+    } catch (logError) {
+      console.warn("[PATCH checkmk-mapping] equipment log:", logError?.message || logError);
+    }
     res.json({
       checkmk_host_name: mapping.checkmk_host_name,
       checkmk_site: mapping.checkmk_site,
@@ -3652,7 +3575,7 @@ modulesRouter.delete('/:clientId/:family/:id', requireModulePermission("delete")
     if (!table) return res.status(400).json({
       error: "Famille inconnue"
     });
-    const itemResult = await pool.query(`SELECT name, item_key, data FROM ${table}
+    const itemResult = await pool.query(`SELECT name, item_key, data, is_active FROM ${table}
        WHERE id = $1 AND client_id = $2`, [id, clientId]);
     if (itemResult.rows.length === 0) return res.status(404).json({
       error: "Not found"
@@ -3662,6 +3585,23 @@ modulesRouter.delete('/:clientId/:family/:id', requireModulePermission("delete")
     if (item.name) possibleNames.push(item.name);
     if (item.item_key) possibleNames.push(item.item_key);
     if (item.data?.nom) possibleNames.push(item.data.nom);
+    try {
+      const {
+        userId,
+        userName
+      } = await resolveRequestUserName(req);
+      await logEquipmentDeleted(pool, {
+        clientId,
+        family,
+        equipmentName: item.name || item.item_key || item.data?.nom || "",
+        equipmentId: id,
+        userId,
+        userName,
+        data: item.data || {}
+      });
+    } catch (logError) {
+      console.warn("[DELETE modules] equipment log:", logError?.message || logError);
+    }
     const result = await pool.query(`DELETE FROM ${table}
        WHERE id = $1 AND client_id = $2
        RETURNING *`, [id, clientId]);

@@ -107,6 +107,31 @@ function buildDomainTableCells(domain) {
   };
 }
 
+function getDomainTableSortValue(domain, columnKey) {
+  const normalized = normalizeDomainItem(domain) || domain || {};
+  const expiration = normalized.expiration || normalized.expirationDate || normalized.expirityDate || null;
+  switch (columnKey) {
+    case "domain":
+      return (normalized.nom || normalized.name || normalized.domain || "").toLowerCase();
+    case "registrar":
+      return (normalized.registrar || "").toLowerCase();
+    case "expiry":
+      {
+        if (!expiration) return null;
+        const date = new Date(expiration);
+        return Number.isNaN(date.getTime()) ? null : date;
+      }
+    case "renewal":
+      return getDomainRenewal(normalized).text.toLowerCase();
+    case "dnsZone":
+      return Boolean(normalized.hasDnsZone || normalized.dnsZone) ? 1 : 0;
+    case "status":
+      return getDomainStatus(expiration).text.toLowerCase();
+    default:
+      return undefined;
+  }
+}
+
 function isIntegrationLinkedDomain(domain) {
   const normalized = normalizeDomainItem(domain);
   return normalized?.providerId === "ovh";
@@ -142,7 +167,7 @@ export default function DomainSolutionPickerModal({
       setSyncing(false);
     }
   }, [canRefreshFromIntegration, client?.id, onDomainsSynced, syncing]);
-  return <ManagedSolutionPickerModal open={open} client={client} items={domains} onClose={onClose} dialogId="domain-picker-title" eyebrow="Licenses & abonnements" viewTitle="Domain Names" manageTitle="Domain Names" headerIcon="stash:domain" headerIconClassName={dnsStyles.headerIconDns} layout="table" tableColumns={DOMAIN_TABLE_COLUMNS} getTableCells={buildDomainTableCells} formatCountLabel={formatLinkedDomainsLabel} getViewIntro={count => count === 1 ? "One domain name is monitored for this client. Open it to view the dashboard, or add more." : `${count} domain names are monitored. Select one to view.`} getManageIntro={() => "Reorder, edit or remove the domain names saved for this client."} getItemKey={buildDomainKey} getItemPresentation={domain => {
+  return <ManagedSolutionPickerModal open={open} client={client} items={domains} onClose={onClose} dialogId="domain-picker-title" eyebrow="Licenses & abonnements" viewTitle="Domain Names" manageTitle="Domain Names" headerIcon="stash:domain" headerIconClassName={dnsStyles.headerIconDns} layout="table" tableColumns={DOMAIN_TABLE_COLUMNS} getTableCells={buildDomainTableCells} getTableSortValue={getDomainTableSortValue} formatCountLabel={formatLinkedDomainsLabel} getViewIntro={count => count === 1 ? "One domain name is monitored for this client. Open it to view the dashboard, or add more." : `${count} domain names are monitored. Select one to view.`} getManageIntro={() => "Reorder, edit or remove the domain names saved for this client."} getItemKey={buildDomainKey} getItemPresentation={domain => {
     const {
       label,
       meta,

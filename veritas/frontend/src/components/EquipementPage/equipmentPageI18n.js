@@ -17,7 +17,8 @@ const PAGE_COPY = {
       perPage: "Par page",
       prevPage: "Page précédente",
       nextPage: "Page suivante",
-      pageInfo: "Page {current} / {total}"
+      pageInfo: "Page {current} / {total}",
+      rangeInfo: "{start}–{end} sur {total}"
     },
     mspHeader: {
       deviceCountOne: "{count} périphérique",
@@ -214,7 +215,8 @@ const PAGE_COPY = {
       perPage: "Per page",
       prevPage: "Previous page",
       nextPage: "Next page",
-      pageInfo: "Page {current} / {total}"
+      pageInfo: "Page {current} / {total}",
+      rangeInfo: "{start}–{end} of {total}"
     },
     mspHeader: {
       deviceCountOne: "{count} device",
@@ -411,7 +413,8 @@ const PAGE_COPY = {
       perPage: "Pro Seite",
       prevPage: "Vorherige Seite",
       nextPage: "Nächste Seite",
-      pageInfo: "Seite {current} / {total}"
+      pageInfo: "Seite {current} / {total}",
+      rangeInfo: "{start}–{end} von {total}"
     },
     mspHeader: {
       deviceCountOne: "{count} Gerät",
@@ -595,7 +598,8 @@ const PAGE_COPY = {
       perPage: "Per pagina",
       prevPage: "Pagina precedente",
       nextPage: "Pagina successiva",
-      pageInfo: "Pagina {current} / {total}"
+      pageInfo: "Pagina {current} / {total}",
+      rangeInfo: "{start}–{end} di {total}"
     },
     mspHeader: {
       deviceCountOne: "{count} dispositivo",
@@ -779,7 +783,8 @@ const PAGE_COPY = {
       perPage: "Por página",
       prevPage: "Página anterior",
       nextPage: "Página siguiente",
-      pageInfo: "Página {current} / {total}"
+      pageInfo: "Página {current} / {total}",
+      rangeInfo: "{start}–{end} de {total}"
     },
     mspHeader: {
       deviceCountOne: "{count} dispositivo",

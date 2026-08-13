@@ -89,6 +89,7 @@ export default function ManagedSolutionPickerModal({
   layout = "list",
   tableColumns = [],
   getTableCells,
+  getTableSortValue,
   formatCountLabel,
   getViewIntro,
   getManageIntro,
@@ -122,6 +123,10 @@ export default function ManagedSolutionPickerModal({
   const [draggedIndex, setDraggedIndex] = useState(null);
   const [dragOverIndex, setDragOverIndex] = useState(null);
   const [pendingDelete, setPendingDelete] = useState(null);
+  const [tableSort, setTableSort] = useState({
+    key: null,
+    direction: "asc"
+  });
   useEffect(() => {
     setOrderedItems(items);
   }, [items, open]);
@@ -131,8 +136,20 @@ export default function ManagedSolutionPickerModal({
       setDraggedIndex(null);
       setDragOverIndex(null);
       setPendingDelete(null);
+      setTableSort({
+        key: null,
+        direction: "asc"
+      });
     }
   }, [open]);
+  useEffect(() => {
+    if (isManaging) {
+      setTableSort({
+        key: null,
+        direction: "asc"
+      });
+    }
+  }, [isManaging]);
   const busy = Boolean(deletingKey) || reordering || refreshIntegrationBusy;
   const canManage = Boolean(onEditItem || onDeleteItem || onReorderItems);
   const showRefreshIntegration = Boolean(onRefreshIntegration) && canRefreshIntegration;
@@ -204,6 +221,68 @@ export default function ManagedSolutionPickerModal({
     setDraggedIndex(null);
     setDragOverIndex(null);
   };
+  const handleTableSort = columnKey => {
+    if (!columnKey || columnKey === "__actions") return;
+    setTableSort(prev => {
+      if (prev.key === columnKey) {
+        return {
+          key: columnKey,
+          direction: prev.direction === "asc" ? "desc" : "asc"
+        };
+      }
+      return {
+        key: columnKey,
+        direction: "asc"
+      };
+    });
+  };
+  const resolveSortValue = useCallback((item, columnKey, index) => {
+    if (typeof getTableSortValue === "function") {
+      const custom = getTableSortValue(item, columnKey, index);
+      if (custom !== undefined) return custom;
+    }
+    const cells = typeof getTableCells === "function" ? getTableCells(item, index) || {} : {};
+    const raw = cells[columnKey];
+    if (raw == null) return "";
+    if (typeof raw === "string" || typeof raw === "number" || typeof raw === "boolean") return raw;
+    if (React.isValidElement(raw)) {
+      const child = raw.props?.children;
+      if (typeof child === "string" || typeof child === "number") return child;
+      return String(child ?? "");
+    }
+    return String(raw);
+  }, [getTableCells, getTableSortValue]);
+  const displayItems = useMemo(() => {
+    if (!tableSort.key) {
+      return orderedItems.map((item, index) => ({
+        item,
+        index
+      }));
+    }
+    const direction = tableSort.direction === "desc" ? -1 : 1;
+    return orderedItems.map((item, index) => ({
+      item,
+      index
+    })).sort((a, b) => {
+      const left = resolveSortValue(a.item, tableSort.key, a.index);
+      const right = resolveSortValue(b.item, tableSort.key, b.index);
+      if (left == null && right == null) return 0;
+      if (left == null) return 1;
+      if (right == null) return -1;
+      if (typeof left === "number" && typeof right === "number") {
+        return (left - right) * direction;
+      }
+      const leftDate = left instanceof Date ? left : null;
+      const rightDate = right instanceof Date ? right : null;
+      if (leftDate && rightDate) {
+        return (leftDate.getTime() - rightDate.getTime()) * direction;
+      }
+      return String(left).localeCompare(String(right), undefined, {
+        numeric: true,
+        sensitivity: "base"
+      }) * direction;
+    });
+  }, [orderedItems, resolveSortValue, tableSort.direction, tableSort.key]);
   if (!open || !client?.id) return null;
   const intro = isManaging ? getManageIntro?.(orderedItems.length) || "Reorder, edit, or delete saved items." : getViewIntro?.(orderedItems.length) || "Select an item to open it, or add a new one.";
   const isTableLayout = layout === "table" && Array.isArray(tableColumns) && tableColumns.length > 0;
@@ -212,6 +291,7 @@ export default function ManagedSolutionPickerModal({
     label: "Actions",
     className: pickerStyles.tableActionsCol
   }] : tableColumns : [];
+  const sortEnabled = isTableLayout && !isManaging;
   return <>
       {createPortal(<div className={formStyles.overlay} onClick={busy ? undefined : onClose} role="presentation">
       <div className={`${formStyles.shell} ${pickerStyles.shell} ${isTableLayout ? pickerStyles.shellWide : ""} ${shellClassName}`.trim()} onClick={event => event.stopPropagation()} role="dialog" aria-modal="true" aria-labelledby={dialogId}>
@@ -241,13 +321,25 @@ export default function ManagedSolutionPickerModal({
                 <thead>
                   <tr>
                     {isManaging && onReorderItems ? <th className={pickerStyles.tableDragCol} aria-label="Reorder" /> : null}
-                    {visibleColumns.map(column => <th key={column.key} className={column.className || undefined} scope="col">
-                        {column.label}
-                      </th>)}
+                    {visibleColumns.map(column => {
+                const sortable = sortEnabled && column.key !== "__actions" && column.sortable !== false;
+                const isSorted = tableSort.key === column.key;
+                return <th key={column.key} className={[column.className || undefined, sortable ? pickerStyles.sortableTh : undefined].filter(Boolean).join(" ") || undefined} scope="col" onClick={sortable ? () => handleTableSort(column.key) : undefined} aria-sort={isSorted ? tableSort.direction === "asc" ? "ascending" : "descending" : sortable ? "none" : undefined} title={sortable ? `Sort by ${column.label}` : undefined}>
+                          <span className={pickerStyles.thContent}>
+                            {column.label}
+                            {sortable ? <span className={pickerStyles.sortIndicator} aria-hidden>
+                                {isSorted ? tableSort.direction === "asc" ? " ↑" : " ↓" : " ↕"}
+                              </span> : null}
+                          </span>
+                        </th>;
+              })}
                   </tr>
                 </thead>
                 <tbody>
-                  {orderedItems.map((item, index) => {
+                  {displayItems.map(({
+              item,
+              index
+            }) => {
               const itemKey = getItemKey(item, index);
               const cells = typeof getTableCells === "function" ? getTableCells(item, index) || {} : {};
               const {

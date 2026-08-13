@@ -289,6 +289,27 @@
   white-space: nowrap;
 }
 
+.sortableTh {
+  cursor: pointer;
+  user-select: none;
+}
+
+.sortableTh:hover {
+  color: var(--msp-accent, #2b5fab);
+}
+
+.thContent {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.15rem;
+}
+
+.sortIndicator {
+  font-size: 0.7rem;
+  opacity: 0.7;
+  font-weight: 600;
+}
+
 .pickerTable tbody td {
   padding: 0.75rem 0.9rem;
   border-bottom: 1px solid var(--msp-border-light, #eef2f7);

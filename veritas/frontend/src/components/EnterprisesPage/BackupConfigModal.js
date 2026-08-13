@@ -14,6 +14,7 @@ import layout from "./EnterpriseFormModal.module.css";
 import styles from "./BackupConfigModal.module.css";
 import { getBackupModalCopy, supportsJobs, ACTIVE_BACKUP_MODULE_KEYS } from "./backupConfigModalI18n";
 import { coerceStoredOption, formatServeurLieLabel, normalizeServeurLieList } from "./backupJobUtils";
+import MultiSuggestPicker from "../AdminPage/MultiSuggestPicker";
 const EMPTY_JOB = {
   nom: "",
   regularite: "",
@@ -103,10 +104,11 @@ function getServerOptions(equipements) {
   }).map(nom => {
     const server = servers.find(s => (s.nom || s.name) === nom);
     const role = Array.isArray(server?.role) ? server.role.join(", ") : server?.role;
-    const suffix = [role, server?.ip].filter(Boolean).join(" · ");
+    const hint = [role, server?.ip].filter(Boolean).join(" · ");
     return {
       value: nom,
-      label: suffix ? `${nom} — ${suffix}` : nom
+      label: nom,
+      hint: hint || undefined
     };
   });
 }
@@ -813,31 +815,17 @@ export default function BackupConfigModal({
           }))} placeholder={copy.form.jobNamePlaceholder} />
           </div>
           <div className={`${layout.field} ${layout.fieldFull}`}>
-            <label className={layout.label}>
+            <label className={layout.label} htmlFor="job-target-search">
               {copy.form.jobTarget}
             </label>
-            {serverOptions.length === 0 ? <p className={layout.sectionDesc}>{copy.form.jobTargetEmpty}</p> : <>
-                <p className={layout.sectionDesc}>
-                  {copy.formatSelectedTargets(normalizeServeurLieList(jobDraft.serveurLie).length)}
-                </p>
-                <div className={styles.modulesGrid}>
-                  {serverOptions.map(option => {
-              const value = String(option.value);
-              const selected = normalizeServeurLieList(jobDraft.serveurLie).includes(value);
-              return <label key={value} className={`${styles.moduleChip} ${selected ? styles.moduleChipActive : ""}`}>
-                        <input type="checkbox" checked={selected} onChange={() => setJobDraft(prev => {
-                  const current = normalizeServeurLieList(prev.serveurLie);
-                  const next = selected ? current.filter(entry => entry !== value) : [...current, value];
-                  return {
-                    ...prev,
-                    serveurLie: next
-                  };
-                })} />
-                        {option.label}
-                      </label>;
-            })}
-                </div>
-              </>}
+            {serverOptions.length === 0 ? <p className={layout.sectionDesc}>{copy.form.jobTargetEmpty}</p> : <MultiSuggestPicker inputId="job-target-search" placeholder={copy.form.jobTargetSearch} emptyHint={copy.form.selectedTargetsNone} emptyResultsHint={copy.form.jobTargetEmptyResults} options={serverOptions.map(option => ({
+            id: option.value,
+            label: option.label,
+            hint: option.hint
+          }))} selectedIds={normalizeServeurLieList(jobDraft.serveurLie)} onChange={next => setJobDraft(prev => ({
+            ...prev,
+            serveurLie: normalizeServeurLieList(next)
+          }))} />}
           </div>
           <div className={layout.field}>
             <label className={layout.label} htmlFor="job-dest">

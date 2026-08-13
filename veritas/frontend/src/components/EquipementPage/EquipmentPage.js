@@ -762,7 +762,10 @@ const EquipmentPage = forwardRef(function EquipmentPage({
   const [sidebarCollapsed, setSidebarCollapsed] = useState(true);
   const [viewMode, setViewMode] = useState({});
   const [tableSort, setTableSort] = useState({});
-  const [pageSize, setPageSize] = useDefaultPageSize();
+  const [globalPageSize, setGlobalPageSize] = useDefaultPageSize();
+  const [embeddedPageSize, setEmbeddedPageSize] = useState(10);
+  const pageSize = embedded ? embeddedPageSize : globalPageSize;
+  const setPageSize = embedded ? setEmbeddedPageSize : setGlobalPageSize;
   const [tablePageByType, setTablePageByType] = useState({});
   const scrollContainerRef = useRef(null);
   const [fleetRemediation, setFleetRemediation] = useState(null);
@@ -2646,17 +2649,27 @@ const EquipmentPage = forwardRef(function EquipmentPage({
   }, [getTablePage, pageSize]);
   const renderEquipmentPagination = useCallback((pageKey, total) => {
     if (!total) return null;
-    const totalPages = Math.max(1, Math.ceil(total / Math.max(1, pageSize)));
+    const safePageSize = Math.max(1, Number(pageSize) || 10);
+    const totalPages = Math.max(1, Math.ceil(total / safePageSize));
     const page = Math.min(getTablePage(pageKey), totalPages);
+    const rangeStart = (page - 1) * safePageSize + 1;
+    const rangeEnd = Math.min(page * safePageSize, total);
     return <div className={`${styles.pagination} ${embedded ? styles.paginationEmbedded : ""}`}>
         <div className={styles.paginationLeft}>
           <span className={styles.paginationLabel}>{embeddedCopy.perPage}</span>
-          <select className={styles.paginationSelect} value={pageSize} onChange={e => setPageSize(Number(e.target.value))} aria-label={embeddedCopy.perPage}>
+          <select className={styles.paginationSelect} value={safePageSize} onChange={e => setPageSize(Number(e.target.value))} aria-label={embeddedCopy.perPage}>
             <option value={10}>10</option>
             <option value={25}>25</option>
             <option value={50}>50</option>
             <option value={100}>100</option>
           </select>
+          <span className={styles.paginationInfo}>
+            {interpolate(embeddedCopy.rangeInfo || "{start}–{end} / {total}", {
+              start: String(rangeStart),
+              end: String(rangeEnd),
+              total: String(total)
+            })}
+          </span>
         </div>
         <div className={styles.paginationRight}>
           <SmartTooltip content={embeddedCopy.prevPage}>

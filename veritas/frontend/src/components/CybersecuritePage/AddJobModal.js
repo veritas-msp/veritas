@@ -5,6 +5,7 @@ import { FaTimes } from "react-icons/fa";
 import { toast } from "react-toastify";
 import { fetchClientModules, saveClientModules } from "../../api/clients";
 import { normalizeServeurLieList } from "../EnterprisesPage/backupJobUtils";
+import MultiSuggestPicker from "../AdminPage/MultiSuggestPicker";
 import styles from "./InstanceSauvegardeModal.module.css";
 const generateUUID = () => {
   return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => {
@@ -92,6 +93,24 @@ export default function AddJobModal({
   } : null);
   const isHycu = selectedInstance?.logiciel === "HYCU Backup";
   const stockageOptions = getStorageOptions(equipements || {});
+  const serverTargetOptions = (() => {
+    const servers = equipements?.Serveurs || equipements?.Servers || [];
+    const seen = new Set();
+    return servers.map(s => s?.nom || s?.name).filter(Boolean).filter(nom => {
+      if (seen.has(nom)) return false;
+      seen.add(nom);
+      return true;
+    }).map(nom => {
+      const server = servers.find(s => (s.nom || s.name) === nom);
+      const role = Array.isArray(server?.role) ? server.role.join(", ") : server?.role;
+      const hint = [role, server?.ip].filter(Boolean).join(" · ");
+      return {
+        id: nom,
+        label: nom,
+        hint: hint || undefined
+      };
+    });
+  })();
   const loadClientData = useCallback(async (cid, preserveInstanceId) => {
     if (!cid) {
       setEquipements(null);
@@ -297,35 +316,7 @@ export default function AddJobModal({
                     <div className={styles.formGrid}>
                       <div className={styles.formField}>
                         <label className={styles.fieldLabel}>Targets (servers)</label>
-                        <div style={{
-                    display: "flex",
-                    flexDirection: "column",
-                    gap: "0.35rem",
-                    maxHeight: "10rem",
-                    overflowY: "auto",
-                    padding: "0.5rem",
-                    border: "1px solid var(--border-color, #e5e7eb)",
-                    borderRadius: "8px"
-                  }}>
-                          {(equipements?.Serveurs || equipements?.Servers || []).length === 0 ? <span className={styles.loadingText}>No servers available</span> : (equipements?.Serveurs || equipements?.Servers || []).map((s, i) => {
-                      const value = s.nom || s.name;
-                      if (!value) return null;
-                      const selected = normalizeServeurLieList(form.serveurLie).includes(value);
-                      const role = Array.isArray(s.role) ? s.role.join(", ") : s.role;
-                      return <label key={`${value}-${i}`} style={{
-                        display: "flex",
-                        alignItems: "center",
-                        gap: "0.5rem",
-                        cursor: "pointer"
-                      }}>
-                                  <input type="checkbox" checked={selected} onChange={() => {
-                          const current = normalizeServeurLieList(form.serveurLie);
-                          updateForm("serveurLie", selected ? current.filter(entry => entry !== value) : [...current, value]);
-                        }} />
-                                  <span>{value}{role || s.ip ? ` — ${[role, s.ip].filter(Boolean).join(" · ")}` : ""}</span>
-                                </label>;
-                    })}
-                        </div>
+                        {serverTargetOptions.length === 0 ? <span className={styles.loadingText}>No servers available</span> : <MultiSuggestPicker placeholder="Search for a server…" emptyHint="No targets selected" emptyResultsHint="No servers found" options={serverTargetOptions} selectedIds={normalizeServeurLieList(form.serveurLie)} onChange={next => updateForm("serveurLie", normalizeServeurLieList(next))} />}
                       </div>
                       <div className={styles.formField}>
                         <label className={styles.fieldLabel}>Destination</label>

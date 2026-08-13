@@ -33,6 +33,27 @@ export function getLogActionDetails(log) {
   const action = log.action || "unknown";
   const actionLower = action.toLowerCase();
   const details = parseLogDetails(log);
+  if (details?.kind === "equipment_created" || actionLower.includes("equipment created") || actionLower.includes("équipement créé")) {
+    return {
+      icon: "mdi:plus-circle",
+      color: "#2b5fab",
+      label: "Création"
+    };
+  }
+  if (details?.kind === "equipment_deleted" || actionLower.includes("equipment deleted") || actionLower.includes("équipement supprimé")) {
+    return {
+      icon: "mdi:delete-circle",
+      color: "#5c6b82",
+      label: "Suppression"
+    };
+  }
+  if (details?.kind === "field_update" || details?.kind === "field_set" || actionLower.startsWith("field update:") || actionLower.startsWith("field set:") || actionLower.startsWith("modification du champ") || actionLower.startsWith("field modified")) {
+    return {
+      icon: "mdi:pencil-circle",
+      color: "#2b5fab",
+      label: details?.fieldLabel ? `Modification · ${details.fieldLabel}` : action
+    };
+  }
   if (actionLower.includes("connexion distante") || details?.kind === "remote_access" || details?.kind === "quick_connect") {
     const success = details?.success !== false;
     return {
@@ -130,6 +151,32 @@ export function buildLogDetailRows(parsed, rawDetails) {
   const {
     kind
   } = parsed;
+  if (kind === "field_update" || kind === "field_set") {
+    const formatValue = value => {
+      if (value == null || value === "") return "—";
+      if (typeof value === "boolean") return value ? "Oui" : "Non";
+      if (typeof value === "object") return JSON.stringify(value, null, 2);
+      return String(value);
+    };
+    return [detailRow("Champ", parsed.fieldLabel || parsed.field), detailRow("Ancienne valeur", formatValue(parsed.oldValue), {
+      fullWidth: true
+    }), detailRow("Nouvelle valeur", formatValue(parsed.newValue), {
+      fullWidth: true
+    })].filter(Boolean);
+  }
+  if (kind === "equipment_created") {
+    const fields = parsed.fields && typeof parsed.fields === "object" ? Object.entries(parsed.fields) : [];
+    if (!fields.length) return [detailRow("Événement", "Équipement créé")].filter(Boolean);
+    return fields.map(([key, value]) => {
+      const displayValue = typeof value === "object" ? JSON.stringify(value, null, 2) : String(value);
+      return detailRow(humanizeKey(key), displayValue, {
+        fullWidth: typeof value === "object"
+      });
+    }).filter(Boolean);
+  }
+  if (kind === "equipment_deleted") {
+    return [detailRow("Événement", "Équipement supprimé")].filter(Boolean);
+  }
   if (kind === "remote_access" || kind === "quick_connect") {
     return [detailRow("Solution", parsed.solutionLabel), detailRow("Identifiant", parsed.targetId), detailRow("URL", parsed.url, {
       fullWidth: true
