@@ -3702,6 +3702,15 @@ export default function ClientDetailPage({
       const reordered = await reorderMonitoredDomains(client.id, orderedDomains);
       await refreshDomainsState();
       setDomainPickerDomains(reordered);
+    }} onDomainsSynced={async updatedDomains => {
+      await refreshDomainsState();
+      if (Array.isArray(updatedDomains)) {
+        setDomainPickerDomains(updatedDomains);
+        return;
+      }
+      if (!client?.id) return;
+      const modulesData = await fetchClientModules(client.id);
+      setDomainPickerDomains(listConfiguredDomains(client, [], modulesData));
     }} />}
 
       {domainOverviewOpen && client?.id && domainOverviewItem && <DomainOverviewModal open={domainOverviewOpen} client={client} domainItem={domainOverviewItem} onClose={() => {

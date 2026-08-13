@@ -81,7 +81,7 @@ async function callOvhApi(endpoint, method = 'GET', body = null, settingsOverrid
       };
     }
     if (errorData.message && (errorData.message.includes('not been granted') || errorData.message.includes('Invalid credential'))) {
-      throw new Error(`Permissions insuffisantes pour ${method} ${endpoint}. ` + `The Consumer Key must have GET permissions. ` + `Options : ` + `1) GET /domain/* (recommended): https://eu.api.ovh.com/createToken/index.cgi?GET=/domain/* ` + `2) GET /* (all GET rights): https://eu.api.ovh.com/createToken/index.cgi?GET=/*`);
+      throw new Error(`Permissions insuffisantes pour ${method} ${endpoint}. ` + `The Consumer Key must have GET permissions. ` + `Options : ` + `1) GET /domain/* (recommended): https://auth.eu.ovhcloud.com/api/createToken?GET=/domain/* ` + `2) GET /* (all GET rights): https://auth.eu.ovhcloud.com/api/createToken?GET=/*`);
     }
     throw new Error(errorData.message || errorData.error || `HTTP ${response.status}: ${response.statusText}`);
   }

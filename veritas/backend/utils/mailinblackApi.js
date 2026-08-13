@@ -1,5 +1,7 @@
 import fetch from 'node-fetch';
-export const DEFAULT_MAILINBLACK_API_URL = 'https://api.mailinblack.com';
+export const DEFAULT_MAILINBLACK_API_URL = 'https://app.mailinblack.com';
+/** Legacy hostname still referenced in older docs — kept as optional fallback only. */
+const LEGACY_MAILINBLACK_API_URL = 'https://api.mailinblack.com';
 function normalizeApiUrl(apiUrl) {
   let raw = (apiUrl || DEFAULT_MAILINBLACK_API_URL).trim().replace(/\/+$/, '');
   raw = raw.replace(/\/auth\/api(\/v[\d.]+)?(\/.*)?$/i, '');
@@ -19,7 +21,7 @@ function resolveApiBaseUrls(apiUrl) {
   };
   add(instanceRoot);
   add(DEFAULT_MAILINBLACK_API_URL);
-  if (raw.includes('app.mailinblack.com')) {
+  if (raw.includes('app.mailinblack.com') || raw.includes('partner.mailinblack.com')) {
     add('https://app.mailinblack.com');
   }
   return bases;
@@ -88,12 +90,16 @@ function resolveAuthBaseUrls(apiUrl) {
   const add = value => {
     if (value && !bases.includes(value)) bases.push(value);
   };
-  add(DEFAULT_MAILINBLACK_API_URL);
   const raw = (apiUrl || DEFAULT_MAILINBLACK_API_URL).trim().replace(/\/+$/, '');
   const instanceRoot = normalizeApiUrl(raw);
   add(instanceRoot);
-  if (raw.includes('app.mailinblack.com')) {
+  add(DEFAULT_MAILINBLACK_API_URL);
+  if (raw.includes('app.mailinblack.com') || raw.includes('partner.mailinblack.com')) {
     add('https://app.mailinblack.com');
+  }
+  // Keep legacy hostname last — it currently does not resolve in public DNS.
+  if (raw.includes('api.mailinblack.com')) {
+    add(LEGACY_MAILINBLACK_API_URL);
   }
   return bases;
 }
@@ -103,6 +109,13 @@ function looksLikeSessionToken(value) {
   if (key.startsWith('eyJ')) return true;
   if (/^[a-f0-9]{32,}$/i.test(key) && !key.includes('.')) return false;
   return key.includes('.') || key.length >= 64;
+}
+function looksLikeHtmlPayload(parsed, contentType = '') {
+  if (String(contentType || '').toLowerCase().includes('text/html')) return true;
+  const raw = typeof parsed === 'string' ? parsed : parsed?.raw;
+  if (typeof raw !== 'string') return false;
+  const trimmed = raw.trimStart().slice(0, 32).toLowerCase();
+  return trimmed.startsWith('<!doctype html') || trimmed.startsWith('<html');
 }
 async function postMailinblackAuth(authBase, path, body) {
   const url = `${authBase.replace(/\/+$/, '')}/auth/api/v2.0/${path}`;
@@ -115,24 +128,29 @@ async function postMailinblackAuth(authBase, path, body) {
     body: JSON.stringify(body)
   });
   const parsed = await parseResponseBody(response);
+  const contentType = response.headers?.get?.('content-type') || '';
   return {
     response,
     parsed,
-    url
+    url,
+    contentType
   };
 }
 function buildAuthFailureMessage(lastStatus, lastBody, lastUrl = '') {
   if (lastStatus === 401) {
-    return "API key rejected. Verify that it was generated in Manager Space → " + "Integration → API Keys (read-only access, with Management and Protect products enabled).";
+    return "Identifiants rejetés. Vérifiez le Client ID et l'Auth key générés dans Espace manager → Intégration → Clés API (accès lecture seule, produits Management et Protect activés).";
   }
   if (lastStatus === 405) {
-    return "HTTP 405 — method rejected by Mailinblack. Use only the instance root " + "(for example https://app.mailinblack.com/mibc-fr-XX or https://api.mailinblack.com), without pasting " + "the /auth/api/... path into the URL. Enter the API key in “API Key”; the client ID is optional " + "and populated automatically after signing in.";
+    return "HTTP 405 — méthode refusée par Mailinblack. Utilisez uniquement la racine d'instance " + "(par exemple https://app.mailinblack.com), sans coller le chemin /auth/api/... dans l'URL. Renseignez le Client ID et l'Auth key fournis à la création de la clé.";
+  }
+  if (looksLikeHtmlPayload(lastBody)) {
+    return "L'URL API renvoie le portail web au lieu de l'API. Utilisez https://app.mailinblack.com (pas api.mailinblack.com).";
   }
   if (lastStatus) {
     const base = extractErrorMessage(lastBody, lastStatus);
     return lastUrl ? `${base} (${lastUrl})` : base;
   }
-  return 'Unable to connect to Mailinblack — check the API URL and API key.';
+  return "Impossible de se connecter à Mailinblack — vérifiez l'URL API, le Client ID et l'Auth key.";
 }
 export async function mailinblackAuthenticate(credentials = {}) {
   const {
@@ -146,18 +164,20 @@ export async function mailinblackAuthenticate(credentials = {}) {
   } = credentials;
   const key = (authKey || apiKey || '').trim();
   const authBases = resolveAuthBaseUrls(apiUrl);
-  const clientIdForAuth = authClientId || presetClientId || null;
+  const clientIdForAuth = String(authClientId || presetClientId || '').trim() || null;
   if (login?.trim() && password) {
     let lastStatus = null;
     let lastBody = null;
     for (const authBase of authBases) {
       const {
         response,
-        parsed
+        parsed,
+        contentType
       } = await postMailinblackAuth(authBase, 'login', {
         login: login.trim(),
         password
       });
+      if (looksLikeHtmlPayload(parsed, contentType)) continue;
       if (response.ok && parsed?.token) {
         return {
           token: parsed.token,
@@ -174,7 +194,7 @@ export async function mailinblackAuthenticate(credentials = {}) {
     throw err;
   }
   if (!key) {
-    throw new Error('Mailinblack API key is required — generate one in Manager Space → Integration → API Keys.');
+    throw new Error("Auth key Mailinblack requise — générez-la dans Espace manager → Intégration → Clés API.");
   }
   if (looksLikeSessionToken(key)) {
     return {
@@ -183,27 +203,37 @@ export async function mailinblackAuthenticate(credentials = {}) {
       userId: null
     };
   }
-  const executeBodies = [{
+  const executeBodies = [];
+  if (clientIdForAuth) {
+    executeBodies.push({
+      clientId: clientIdForAuth,
+      authKey: key
+    }, {
+      clientId: clientIdForAuth,
+      apiKey: key
+    }, {
+      clientId: clientIdForAuth,
+      key
+    }, {
+      authKey: key,
+      clientId: clientIdForAuth
+    }, {
+      apiKey: key,
+      clientId: clientIdForAuth
+    }, {
+      key,
+      clientId: clientIdForAuth
+    });
+  }
+  executeBodies.push({
+    authKey: key
+  }, {
     apiKey: key
   }, {
     key
   }, {
     api_key: key
-  }, {
-    authKey: key
-  }, ...(clientIdForAuth ? [{
-    apiKey: key,
-    clientId: clientIdForAuth
-  }, {
-    key,
-    clientId: clientIdForAuth
-  }, {
-    authKey: key,
-    clientId: clientIdForAuth
-  }, {
-    clientId: clientIdForAuth,
-    apiKey: key
-  }] : [])];
+  });
   let lastStatus = null;
   let lastBody = null;
   let lastUrl = null;
@@ -213,8 +243,15 @@ export async function mailinblackAuthenticate(credentials = {}) {
         const {
           response,
           parsed,
-          url
+          url,
+          contentType
         } = await postMailinblackAuth(authBase, 'api-keys/execute', executeBody);
+        if (looksLikeHtmlPayload(parsed, contentType)) {
+          lastStatus = response.status;
+          lastBody = parsed;
+          lastUrl = url;
+          continue;
+        }
         if (response.ok && parsed?.token) {
           return {
             token: parsed.token,
@@ -260,6 +297,15 @@ export async function mailinblackV2Request(apiUrl, session, module, path, {
         body: method === 'GET' || method === 'HEAD' ? undefined : JSON.stringify(body || {})
       });
       const parsed = await parseResponseBody(response);
+      const contentType = response.headers?.get?.('content-type') || '';
+      if (looksLikeHtmlPayload(parsed, contentType)) {
+        const err = new Error("L'URL API renvoie le portail web au lieu de l'API JSON. Utilisez https://app.mailinblack.com.");
+        err.status = response.status || 404;
+        err.body = parsed;
+        err.requestUrl = url;
+        lastError = err;
+        continue;
+      }
       if (!response.ok) {
         const message = extractErrorMessage(parsed, response.status);
         const err = new Error(message);

@@ -149,14 +149,14 @@ export default function AdminInterconnections({
       const updates = [...(selected.fields || []).map(({
         key
       }) => [key, settings[key] ?? ""]), [selected.enabledKey, selectedEnabled ? "true" : "false"]];
-      if (selected.id === "mailinblack" && extras.authClientId) {
-        updates.push(["MAILINBLACK_CLIENT_ID", extras.authClientId]);
+      if (selected.id === "mailinblack") {
+        updates.push(["MAILINBLACK_CLIENT_ID", extras.authClientId ?? settings.MAILINBLACK_CLIENT_ID ?? ""]);
       }
       await Promise.all(updates.map(([key, value]) => updateSetting(key, value)));
-      if (selected.id === "mailinblack" && extras.authClientId) {
+      if (selected.id === "mailinblack") {
         setSettings(prev => ({
           ...prev,
-          MAILINBLACK_CLIENT_ID: extras.authClientId
+          MAILINBLACK_CLIENT_ID: extras.authClientId ?? prev.MAILINBLACK_CLIENT_ID ?? ""
         }));
       }
       window.dispatchEvent(new CustomEvent("integrationsSettingsUpdated"));

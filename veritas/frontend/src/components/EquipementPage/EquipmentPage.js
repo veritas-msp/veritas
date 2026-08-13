@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo, useRef, useImperativeHandle, forwa
 import { getAllHardwareEquipment, getClientHardwareEquipment, getEquipmentMonitoringSummaries, syncEquipmentCheckMKMonitoring, equipmentTypeToFamily, fetchEquipmentTagsBatch } from "../../api/equipment";
 import CheckMKMonitoringStatusBadge, { isCheckMKMappableType } from "./CheckMKMonitoringStatusBadge";
 import styles from "./EquipmentPage.module.css";
-import { FaTimes, FaServer, FaNetworkWired, FaWifi, FaShieldAlt, FaHdd, FaGlobe, FaCube, FaFileExport, FaColumns, FaChevronUp, FaTh, FaList, FaCamera, FaPlus, FaSync, FaDesktop } from "react-icons/fa";
+import { FaTimes, FaServer, FaNetworkWired, FaWifi, FaShieldAlt, FaHdd, FaGlobe, FaCube, FaFileExport, FaColumns, FaChevronUp, FaChevronLeft, FaChevronRight, FaTh, FaList, FaCamera, FaPlus, FaSync, FaDesktop } from "react-icons/fa";
 import { Icon } from "@iconify/react";
 import { toast } from "react-toastify";
 import SmartTooltip from "../SmartTooltip";
@@ -40,6 +40,7 @@ import { buildRmmAgentRowFromEquipment, resolveRmmAgentOnline } from "./rmmMonit
 import { fetchClientEquipmentAlerts, resolveEquipmentFamilyForAlerts } from "../../api/equipmentMonitoringAlerts";
 import { ConfirmModal } from "../AdminPage/AdminUi";
 import { useAppLocale } from "../../hooks/useAppGeneralSettings";
+import { useDefaultPageSize } from "../../hooks/useDefaultPageSize";
 import { getEquipmentMspPanelCopy } from "./equipmentMspPanelI18n";
 import { getEquipmentPageCopy, getEquipmentColumnLabel, getEquipmentEmptyMessage, formatEquipmentDeviceCount, getEquipmentRemoteAccessLabel, formatEquipmentRemoteAccessTooltip } from "./equipmentPageI18n";
 import { getEquipmentModalsCopy, interpolate } from "./equipmentModalsI18n";
@@ -761,6 +762,8 @@ const EquipmentPage = forwardRef(function EquipmentPage({
   const [sidebarCollapsed, setSidebarCollapsed] = useState(true);
   const [viewMode, setViewMode] = useState({});
   const [tableSort, setTableSort] = useState({});
+  const [pageSize, setPageSize] = useDefaultPageSize();
+  const [tablePageByType, setTablePageByType] = useState({});
   const scrollContainerRef = useRef(null);
   const [fleetRemediation, setFleetRemediation] = useState(null);
   const handleFleetRemediate = useCallback(api => {
@@ -2616,6 +2619,65 @@ const EquipmentPage = forwardRef(function EquipmentPage({
       onTotalCountChange(embeddedHardwareTotalCount);
     }
   }, [embedded, embeddedHardwareTotalCount, onTotalCountChange]);
+  useEffect(() => {
+    setTablePageByType({});
+  }, [searchQuery, pageSize, mkStatusFilter, selectedClients, selectedTypes, tableSort]);
+  const getTablePage = useCallback(pageKey => {
+    const page = Number(tablePageByType[pageKey]) || 1;
+    return page < 1 ? 1 : page;
+  }, [tablePageByType]);
+  const setTablePage = useCallback((pageKey, page) => {
+    setTablePageByType(prev => ({
+      ...prev,
+      [pageKey]: Math.max(1, Number(page) || 1)
+    }));
+  }, []);
+  const getPagedSlice = useCallback((list, pageKey) => {
+    const total = Array.isArray(list) ? list.length : 0;
+    const totalPages = Math.max(1, Math.ceil(total / Math.max(1, pageSize)));
+    const page = Math.min(getTablePage(pageKey), totalPages);
+    const start = (page - 1) * pageSize;
+    return {
+      pagedList: total === 0 ? [] : list.slice(start, start + pageSize),
+      page,
+      totalPages,
+      total
+    };
+  }, [getTablePage, pageSize]);
+  const renderEquipmentPagination = useCallback((pageKey, total) => {
+    if (!total) return null;
+    const totalPages = Math.max(1, Math.ceil(total / Math.max(1, pageSize)));
+    const page = Math.min(getTablePage(pageKey), totalPages);
+    return <div className={`${styles.pagination} ${embedded ? styles.paginationEmbedded : ""}`}>
+        <div className={styles.paginationLeft}>
+          <span className={styles.paginationLabel}>{embeddedCopy.perPage}</span>
+          <select className={styles.paginationSelect} value={pageSize} onChange={e => setPageSize(Number(e.target.value))} aria-label={embeddedCopy.perPage}>
+            <option value={10}>10</option>
+            <option value={25}>25</option>
+            <option value={50}>50</option>
+            <option value={100}>100</option>
+          </select>
+        </div>
+        <div className={styles.paginationRight}>
+          <SmartTooltip content={embeddedCopy.prevPage}>
+            <button type="button" className={styles.pageBtn} onClick={() => setTablePage(pageKey, page - 1)} disabled={page <= 1} aria-label={embeddedCopy.prevPage}>
+              <FaChevronLeft />
+            </button>
+          </SmartTooltip>
+          <span className={styles.paginationInfo}>
+            {interpolate(embeddedCopy.pageInfo, {
+              current: String(page),
+              total: String(totalPages)
+            })}
+          </span>
+          <SmartTooltip content={embeddedCopy.nextPage}>
+            <button type="button" className={styles.pageBtn} onClick={() => setTablePage(pageKey, page + 1)} disabled={page >= totalPages} aria-label={embeddedCopy.nextPage}>
+              <FaChevronRight />
+            </button>
+          </SmartTooltip>
+        </div>
+      </div>;
+  }, [embedded, embeddedCopy, getTablePage, pageSize, setPageSize, setTablePage]);
   if (selectedEquipment && !onNavigate) {
     return <EquipmentDetailPage equipment={selectedEquipment} onNavigate={onNavigate} onNavigateToEquipment={eq => setSelectedEquipment(eq)} onBack={() => {
       setSelectedEquipment(null);
@@ -2790,6 +2852,11 @@ const EquipmentPage = forwardRef(function EquipmentPage({
               const TypeIcon = getTypeIcon(type);
               const columns = getColumnsForType(type);
               const sortedList = getSortedEquipmentList(type, equipmentList);
+              const {
+                pagedList,
+                total
+              } = getPagedSlice(sortedList, type);
+              const visibleList = embedded ? pagedList : sortedList;
               const isBackupSection = type === "Backup";
               return <div key={type} className={`${styles.equipmentTableSection} ${embedded ? styles.equipmentTableSectionEmbedded : ""}`}>
                   {!embedded && <div className={styles.tableSectionHeader}>
@@ -2852,7 +2919,7 @@ const EquipmentPage = forwardRef(function EquipmentPage({
                             <td colSpan={columns.length} className={styles.equipmentEmptyCell}>
                               {resolveEmptyMessage(type, embedded)}
                             </td>
-                          </tr> : sortedList.map(equipment => {
+                          </tr> : visibleList.map(equipment => {
                         return <tr key={equipment.id} className={`${styles.equipmentRow} ${embedded ? styles.equipmentRowEmbedded : ""}`} onClick={isBackupSection ? undefined : () => handleEquipmentOpen(equipment)} onMouseDown={isBackupSection ? undefined : e => {
                           if (e.button === 1) handleEquipmentMiddleClick(e, equipment);
                         }}>
@@ -3112,7 +3179,7 @@ const EquipmentPage = forwardRef(function EquipmentPage({
                       {sortedList.length === 0 ? <div className={styles.equipmentEmptyCell}>
                           {resolveEmptyMessage(type, embedded)}
                         </div> : <div className={styles.equipmentGrid}>
-                        {sortedList.map(equipment => {
+                        {visibleList.map(equipment => {
                       let DisplayIcon = TypeIcon;
                       let iconElement = null;
                       if (equipment.type === 'Servers' || equipment.type === 'NAS') {
@@ -3256,12 +3323,17 @@ const EquipmentPage = forwardRef(function EquipmentPage({
                     })}
                       </div>}
                     </div>}
+                  {embedded ? renderEquipmentPagination(type, total) : null}
                 </div>;
             })}
             {embedded && activeCustomFamily && (() => {
               const family = activeCustomFamily;
               const sectionKey = `Custom:${family.familyKey}`;
               const items = getCustomFamilyItems(family);
+              const {
+                pagedList,
+                total
+              } = getPagedSlice(items, sectionKey);
               const fields = family.fields || [];
               return <div key={sectionKey} className={`${styles.equipmentTableSection} ${styles.equipmentTableSectionEmbedded}`}>
                   <div className={`${styles.tableWrapper} ${styles.tableWrapperEmbedded}`}>
@@ -3278,7 +3350,7 @@ const EquipmentPage = forwardRef(function EquipmentPage({
                             <td colSpan={fields.length + (onCustomFamilyManage ? 2 : 1)} className={styles.equipmentEmptyCell}>
                               No {family.label.toLowerCase()} for this client.
                             </td>
-                          </tr> : items.map(item => <tr key={item.id} className={styles.equipmentRowEmbedded}>
+                          </tr> : pagedList.map(item => <tr key={item.id} className={styles.equipmentRowEmbedded}>
                               <td>{item.name || "-"}</td>
                               {fields.map(field => <td key={field.fieldKey}>
                                   {formatCustomFamilyFieldValue(field, item.fields?.[field.fieldKey] ?? item.data?.[field.fieldKey], pageCopy)}
@@ -3292,6 +3364,7 @@ const EquipmentPage = forwardRef(function EquipmentPage({
                       </tbody>
                     </table>
                   </div>
+                  {renderEquipmentPagination(sectionKey, total)}
                 </div>;
             })()}
             {Object.keys(equipmentByType).length === 0 && filteredBackupRows.length === 0 && hexCustomFamilies.length === 0 && !(embedded && embeddedActiveType) && <div className={styles.noData}>

@@ -153,7 +153,8 @@ export const INTEGRATIONS_CATALOG_I18N = {
       },
       "mailinblack": {
         "MAILINBLACK_API_URL": "URL API Mailinblack",
-        "MAILINBLACK_API_KEY": "Clé API Mailinblack"
+        "MAILINBLACK_CLIENT_ID": "Client ID Mailinblack",
+        "MAILINBLACK_API_KEY": "Auth key Mailinblack"
       },
       "whatsapp": {
         "WHATSAPP_PHONE_NUMBER_ID": "Phone Number ID (Meta)",
@@ -324,7 +325,8 @@ export const INTEGRATIONS_CATALOG_I18N = {
       },
       "mailinblack": {
         "MAILINBLACK_API_URL": "Mailinblack API URL",
-        "MAILINBLACK_API_KEY": "Mailinblack API key"
+        "MAILINBLACK_CLIENT_ID": "Mailinblack Client ID",
+        "MAILINBLACK_API_KEY": "Mailinblack Auth key"
       },
       "whatsapp": {
         "WHATSAPP_PHONE_NUMBER_ID": "Phone Number ID (Meta)",
@@ -495,7 +497,8 @@ export const INTEGRATIONS_CATALOG_I18N = {
       },
       "mailinblack": {
         "MAILINBLACK_API_URL": "Mailinblack API URL",
-        "MAILINBLACK_API_KEY": "Mailinblack API key"
+        "MAILINBLACK_CLIENT_ID": "Mailinblack Client ID",
+        "MAILINBLACK_API_KEY": "Mailinblack Auth key"
       },
       "whatsapp": {
         "WHATSAPP_PHONE_NUMBER_ID": "Phone Number ID (Meta)",
@@ -666,7 +669,8 @@ export const INTEGRATIONS_CATALOG_I18N = {
       },
       "mailinblack": {
         "MAILINBLACK_API_URL": "Mailinblack API URL",
-        "MAILINBLACK_API_KEY": "Mailinblack API key"
+        "MAILINBLACK_CLIENT_ID": "Mailinblack Client ID",
+        "MAILINBLACK_API_KEY": "Mailinblack Auth key"
       },
       "whatsapp": {
         "WHATSAPP_PHONE_NUMBER_ID": "Phone Number ID (Meta)",
@@ -837,7 +841,8 @@ export const INTEGRATIONS_CATALOG_I18N = {
       },
       "mailinblack": {
         "MAILINBLACK_API_URL": "Mailinblack API URL",
-        "MAILINBLACK_API_KEY": "Mailinblack API key"
+        "MAILINBLACK_CLIENT_ID": "Mailinblack Client ID",
+        "MAILINBLACK_API_KEY": "Mailinblack Auth key"
       },
       "whatsapp": {
         "WHATSAPP_PHONE_NUMBER_ID": "Phone Number ID (Meta)",

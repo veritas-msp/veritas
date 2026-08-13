@@ -898,8 +898,28 @@ export function applyStorageTypeChange(prev, nextType) {
 export function getStorageDisplayName(storage) {
   return (storage?.nom || storage?.name || storage?.data?.nom || storage?.data?.name || storage?.rawData?.nom || storage?.rawData?.name || "").trim();
 }
+/** Family keys used on list rows (not the NAS/SAN/… subtype stored in rawData.type). */
+function isStorageFamilyTypeLabel(value) {
+  const lower = String(value || "").trim().toLowerCase();
+  return lower === "nas" || lower === "storage" || lower === "stockage";
+}
 function readStorageTypeValue(storage) {
-  return normalizeStorageType(storage?.storageType || storage?.type || storage?.data?.type || storage?.rawData?.type || storage?.rawData?.data?.type || "");
+  const candidates = [storage?.storageType, storage?.data?.storageType, storage?.data?.type, storage?.rawData?.storageType, storage?.rawData?.data?.storageType, storage?.rawData?.data?.type, storage?.rawData?.type, storage?.type];
+  let familyFallback = "";
+  for (const candidate of candidates) {
+    if (candidate == null || String(candidate).trim() === "") continue;
+    // List rows use type "NAS"/"Storage"; the real subtype (SAN, etc.) lives in rawData.
+    if (isStorageFamilyTypeLabel(candidate)) {
+      if (!familyFallback) {
+        const normalizedFamily = normalizeStorageType(candidate);
+        familyFallback = normalizedFamily === "storage" || normalizedFamily === "stockage" ? "nas" : normalizedFamily || "nas";
+      }
+      continue;
+    }
+    const normalized = normalizeStorageType(candidate);
+    if (normalized) return normalized;
+  }
+  return familyFallback;
 }
 function mergeStoragePeerSources(...sources) {
   const merged = new Map();

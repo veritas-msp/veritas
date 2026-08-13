@@ -6,8 +6,8 @@ import formStyles from "../EnterpriseFormModal.module.css";
 import styles from "../../AdminPage/BitdefenderIntegrationModal.module.css";
 import ovhStyles from "../../AdminPage/OvhIntegrationModal.module.css";
 export const OVH_CREATE_APP_URL = "https://eu.api.ovh.com/createApp/";
-export const OVH_TOKEN_URL_DOMAIN = "https://eu.api.ovh.com/createToken/index.cgi?GET=/domain/*";
-export const OVH_TOKEN_URL_ALL = "https://eu.api.ovh.com/createToken/index.cgi?GET=/*";
+export const OVH_TOKEN_URL_DOMAIN = "https://auth.eu.ovhcloud.com/api/createToken?GET=/domain/*";
+export const OVH_TOKEN_URL_ALL = "https://auth.eu.ovhcloud.com/api/createToken?GET=/*";
 export default function OvhApiGuide({
   variant = "client",
   locale: localeProp

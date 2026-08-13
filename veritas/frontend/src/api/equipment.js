@@ -287,6 +287,7 @@ export function mapClientHardwareEquipment(client) {
       const vlan = equipment.vlan || equipment.data?.vlan || "";
       const expirationGarantie = equipment.expirationGarantie || equipment.data?.expirationGarantie || equipment.garantie || null;
       const typeServer = equipment.type || equipment.data?.type || "";
+      const storageType = type === "NAS" || type === "Stockage" || type === "Storage" ? equipment.type || equipment.data?.type || "" : "";
       const anydeskId = equipment.anydeskId || equipment.data?.anydeskId || "";
       const remoteAccessSolution = equipment.remoteAccessSolution || equipment.data?.remoteAccessSolution || "";
       const remoteAccessId = equipment.remoteAccessId || equipment.data?.remoteAccessId || anydeskId || "";
@@ -340,6 +341,7 @@ export function mapClientHardwareEquipment(client) {
         hostServerName: type === "Serveurs" ? hostServerName : undefined,
         quickConnect: type === "NAS" ? quickConnect : undefined,
         typeServer,
+        storageType: type === "NAS" || type === "Stockage" || type === "Storage" ? storageType : undefined,
         nbDisquesActuels,
         nbDisquesMax,
         disques: equipment.disques || equipment.data?.disques || [],

@@ -254,8 +254,12 @@ export const INTEGRATIONS_CATALOG = [{
     label: "Mailinblack API URL",
     type: "url"
   }, {
+    key: "MAILINBLACK_CLIENT_ID",
+    label: "Mailinblack Client ID",
+    type: "text"
+  }, {
     key: "MAILINBLACK_API_KEY",
-    label: "Mailinblack API key",
+    label: "Mailinblack Auth key",
     type: "password"
   }]
 }, {

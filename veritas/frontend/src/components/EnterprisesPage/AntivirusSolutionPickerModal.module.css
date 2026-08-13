@@ -2,6 +2,13 @@
   max-width: 34rem;
 }
 
+.shellWide {
+  width: min(1120px, 96vw);
+  max-width: none;
+  max-height: min(84vh, 760px);
+  border-radius: 12px;
+}
+
 .header {
   padding-bottom: 1rem;
 }
@@ -239,4 +246,147 @@
 .dragHandle:disabled {
   opacity: 0.45;
   cursor: not-allowed;
+}
+
+.bodyTable {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  padding-bottom: 1rem;
+}
+
+.tableScroll {
+  flex: 1;
+  min-height: 12rem;
+  overflow: auto;
+  border: 1px solid var(--msp-border, #dde3ed);
+  border-radius: 10px;
+  background: var(--msp-surface, #fff);
+}
+
+.pickerTable {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  font-size: 0.8125rem;
+}
+
+.pickerTable thead th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  padding: 0.7rem 0.9rem;
+  text-align: left;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: var(--msp-muted, #5c6b82);
+  background: var(--msp-surface-2, #f7f9fc);
+  border-bottom: 1px solid var(--msp-border, #dde3ed);
+  white-space: nowrap;
+}
+
+.pickerTable tbody td {
+  padding: 0.75rem 0.9rem;
+  border-bottom: 1px solid var(--msp-border-light, #eef2f7);
+  color: var(--msp-text, #0f1c2e);
+  vertical-align: middle;
+}
+
+.pickerTable tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.tableRowClickable {
+  cursor: pointer;
+  transition: background 0.12s ease;
+}
+
+.tableRowClickable:hover td {
+  background: rgba(43, 95, 171, 0.04);
+}
+
+.tableRowDragOver td {
+  background: rgba(43, 95, 171, 0.06);
+}
+
+.tableRowDragging {
+  opacity: 0.55;
+}
+
+.tableDomainName {
+  font-weight: 650;
+  color: var(--msp-accent, #2b5fab);
+  white-space: nowrap;
+}
+
+.tableDragCol {
+  width: 2.25rem;
+  padding-left: 0.35rem !important;
+  padding-right: 0.15rem !important;
+}
+
+.tableActionsCol {
+  width: 1%;
+  white-space: nowrap;
+  text-align: right;
+}
+
+.tableRowActions {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.15rem;
+}
+
+.tableDragHandle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.75rem;
+  height: 1.75rem;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--msp-muted, #5c6b82);
+  cursor: grab;
+  font-size: 1.05rem;
+}
+
+.tableDragHandle:active {
+  cursor: grabbing;
+}
+
+.tableDragHandle:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.statusBadge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.2rem 0.55rem;
+  border-radius: 999px;
+  font-size: 0.68rem;
+  font-weight: 650;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+}
+
+.statusActive {
+  background: rgba(21, 128, 61, 0.1);
+  color: #166534;
+}
+
+.statusExpired {
+  background: rgba(185, 28, 28, 0.1);
+  color: #991b1b;
+}
+
+.statusUnknown {
+  background: rgba(161, 98, 7, 0.12);
+  color: #92400e;
 }

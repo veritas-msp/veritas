@@ -5,10 +5,10 @@ import { FaTimes } from "react-icons/fa";
 import { testGlobalMailinblackIntegration } from "../../api/mailinblackIntegration";
 import { showError } from "../../utils/toast";
 import { useAppLocale } from "../../hooks/useAppGeneralSettings";
-import { getMailinblackIntegrationModalCopy, interpolate } from "./adminIntegrationModalsI18n";
+import { getMailinblackIntegrationModalCopy } from "./adminIntegrationModalsI18n";
 import formStyles from "../EnterprisesPage/EnterpriseFormModal.module.css";
 import styles from "./BitdefenderIntegrationModal.module.css";
-const DEFAULT_API_URL = "https://api.mailinblack.com";
+const DEFAULT_API_URL = "https://app.mailinblack.com";
 const PARTNER_PORTAL_URL = "https://partner.mailinblack.com";
 const SECTION_ICONS = {
   connection: "mdi:key-variant",
@@ -137,16 +137,20 @@ export default function MailinblackIntegrationModal({
   const resolveCredentials = async () => {
     const url = (apiUrl || "").trim() || DEFAULT_API_URL;
     const key = (apiKey || "").trim();
+    const clientId = (authClientId || "").trim();
+    if (!clientId) {
+      throw new Error(copy.fillClientId);
+    }
     if (!key) {
       throw new Error(copy.fillApiKey);
     }
     const data = await testGlobalMailinblackIntegration({
       apiUrl: url,
       apiKey: key,
-      authClientId: (authClientId || "").trim() || undefined
+      authClientId: clientId
     });
-    const resolvedClientId = data?.tenant?.authClientId || data?.tenant?.check?.session?.clientId || null;
-    if (resolvedClientId) {
+    const resolvedClientId = data?.tenant?.authClientId || data?.tenant?.check?.session?.clientId || clientId || null;
+    if (resolvedClientId && resolvedClientId !== clientId) {
       onAuthClientIdChange?.(resolvedClientId);
     }
     return data;
@@ -217,6 +221,14 @@ export default function MailinblackIntegrationModal({
             {copy.apiUrl}
           </label>
           <input id="mib-api-url" type="url" className={formStyles.input} value={apiUrl || ""} placeholder={DEFAULT_API_URL} onChange={e => onApiUrlChange(e.target.value)} disabled={saving || testing} autoComplete="off" />
+          <p className={formStyles.sectionDesc}>{copy.apiUrlHint}</p>
+        </div>
+
+        <div className={formStyles.field}>
+          <label className={formStyles.label} htmlFor="mib-client-id">
+            {copy.clientId}
+          </label>
+          <input id="mib-client-id" type="text" className={formStyles.input} value={authClientId || ""} onChange={e => onAuthClientIdChange?.(e.target.value)} placeholder={copy.clientIdPlaceholder} disabled={saving || testing} autoComplete="off" />
         </div>
 
         <div className={formStyles.field}>
@@ -230,15 +242,6 @@ export default function MailinblackIntegrationModal({
             {copy.howToGetKey}
           </button>
         </div>
-
-        {authClientId ? <div className={formStyles.field}>
-            <label className={formStyles.label}>{copy.detectedAccount}</label>
-            <p className={formStyles.sectionDesc}>
-              {interpolate(copy.detectedAccountDesc, {
-            clientId: authClientId
-          })}
-            </p>
-          </div> : null}
       </div>
     </>;
   const renderGuide = () => <>

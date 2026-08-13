@@ -13,7 +13,11 @@ const PAGE_COPY = {
       mkClearFilterTitle: "Effacer le filtre monitoring",
       mkSyncTitle: "Synchroniser tous les périphériques mappés",
       mkAlertsLabel: "Alertes",
-      mkSyncLabel: "Sync"
+      mkSyncLabel: "Sync",
+      perPage: "Par page",
+      prevPage: "Page précédente",
+      nextPage: "Page suivante",
+      pageInfo: "Page {current} / {total}"
     },
     mspHeader: {
       deviceCountOne: "{count} périphérique",
@@ -206,7 +210,11 @@ const PAGE_COPY = {
       mkClearFilterTitle: "Clear monitoring filter",
       mkSyncTitle: "Sync all mapped devices",
       mkAlertsLabel: "Alerts",
-      mkSyncLabel: "Sync"
+      mkSyncLabel: "Sync",
+      perPage: "Per page",
+      prevPage: "Previous page",
+      nextPage: "Next page",
+      pageInfo: "Page {current} / {total}"
     },
     mspHeader: {
       deviceCountOne: "{count} device",
@@ -399,7 +407,11 @@ const PAGE_COPY = {
       mkClearFilterTitle: "Monitoring-Filter löschen",
       mkSyncTitle: "Alle zugeordneten Geräte synchronisieren",
       mkAlertsLabel: "Alarme",
-      mkSyncLabel: "Sync"
+      mkSyncLabel: "Sync",
+      perPage: "Pro Seite",
+      prevPage: "Vorherige Seite",
+      nextPage: "Nächste Seite",
+      pageInfo: "Seite {current} / {total}"
     },
     mspHeader: {
       deviceCountOne: "{count} Gerät",
@@ -579,7 +591,11 @@ const PAGE_COPY = {
       mkClearFilterTitle: "Cancella filtro monitoraggio",
       mkSyncTitle: "Sincronizza tutte le periferiche mappate",
       mkAlertsLabel: "Alert",
-      mkSyncLabel: "Sync"
+      mkSyncLabel: "Sync",
+      perPage: "Per pagina",
+      prevPage: "Pagina precedente",
+      nextPage: "Pagina successiva",
+      pageInfo: "Pagina {current} / {total}"
     },
     mspHeader: {
       deviceCountOne: "{count} dispositivo",
@@ -759,7 +775,11 @@ const PAGE_COPY = {
       mkClearFilterTitle: "Borrar filtro de monitorización",
       mkSyncTitle: "Sincronizar todos los periféricos mapeados",
       mkAlertsLabel: "Alertas",
-      mkSyncLabel: "Sync"
+      mkSyncLabel: "Sync",
+      perPage: "Por página",
+      prevPage: "Página anterior",
+      nextPage: "Página siguiente",
+      pageInfo: "Página {current} / {total}"
     },
     mspHeader: {
       deviceCountOne: "{count} dispositivo",

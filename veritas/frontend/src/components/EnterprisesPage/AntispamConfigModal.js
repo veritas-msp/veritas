@@ -24,7 +24,7 @@ import MailinblackApiGuide from "./integrationGuides/MailinblackApiGuide";
 import integrationStyles from "../AdminPage/BitdefenderIntegrationModal.module.css";
 import SolutionProviderIcon from "./SolutionProviderIcon";
 const SOLUTION_NAME = "Mailinblack Protect";
-const DEFAULT_MAILINBLACK_DEDICATED_API_URL = "https://api.mailinblack.com";
+const DEFAULT_MAILINBLACK_DEDICATED_API_URL = "https://app.mailinblack.com";
 const STORED_AUTH_KEY_MASK = "••••••••••••••••";
 function normalizeMailinblackApiUrl(url) {
   if (!url?.trim()) return DEFAULT_MAILINBLACK_DEDICATED_API_URL;
@@ -282,6 +282,9 @@ export default function AntispamConfigModal({
     setTestingConnection(true);
     setConnectionStatus(null);
     try {
+      if (!dedicatedForm.authClientId?.trim() && !shouldUseStoredTenantAuthKey(dedicatedForm.apiKey, hasStoredAuthKey, selectedDedicatedTenantId)) {
+        throw new Error(copy.toasts.clientIdRequired || "Client ID required.");
+      }
       if (shouldUseStoredTenantAuthKey(dedicatedForm.apiKey, hasStoredAuthKey, selectedDedicatedTenantId)) {
         await testClientMailinblackTenant(client.id, selectedDedicatedTenantId);
       } else {
@@ -313,6 +316,10 @@ export default function AntispamConfigModal({
       showError(copy.toasts.apiUrlRequired);
       return;
     }
+    if (!dedicatedForm.authClientId?.trim()) {
+      showError(copy.toasts.clientIdRequired || "Client ID required.");
+      return;
+    }
     if (!selectedDedicatedTenantId && !resolvedAuthKey) {
       showError(copy.toasts.apiKeyRequired);
       return;
@@ -323,7 +330,8 @@ export default function AntispamConfigModal({
       let tenantId = selectedDedicatedTenantId;
       let tenant;
       const tenantPayload = {
-        apiUrl
+        apiUrl,
+        authClientId: dedicatedForm.authClientId?.trim() || null
       };
       if (resolvedAuthKey) {
         tenantPayload.authKey = resolvedAuthKey;
@@ -681,6 +689,15 @@ export default function AntispamConfigModal({
         })} placeholder={DEFAULT_MAILINBLACK_DEDICATED_API_URL} autoComplete="off" data-lpignore="true" data-1p-ignore />
         </div>
         <div className={formStyles.field}>
+          <label className={formStyles.label} htmlFor="tenant-client-id">
+            {copy.dedicated.clientIdLabel}
+          </label>
+          <input id="tenant-client-id" name="mailinblack-tenant-client-id" type="text" className={formStyles.input} value={dedicatedForm.authClientId} onChange={e => setDedicatedForm({
+          ...dedicatedForm,
+          authClientId: e.target.value
+        })} placeholder={copy.dedicated.clientIdPlaceholder} autoComplete="off" data-lpignore="true" data-1p-ignore />
+        </div>
+        <div className={formStyles.field}>
           <label className={formStyles.label} htmlFor="tenant-api-key">
             {copy.dedicated.apiKeyLabel}
           </label>
@@ -701,13 +718,6 @@ export default function AntispamConfigModal({
         }} placeholder={selectedDedicatedTenantId || hasStoredAuthKey ? copy.dedicated.apiKeyPlaceholderStored : copy.dedicated.apiKeyPlaceholderNew} autoComplete="new-password" data-lpignore="true" data-1p-ignore />
           <p className={formStyles.sectionDesc}>{copy.dedicated.apiKeyHint}</p>
         </div>
-        {dedicatedForm.authClientId ? <div className={formStyles.field}>
-            <label className={formStyles.label}>{copy.dedicated.detectedAccountLabel}</label>
-            <p className={formStyles.sectionDesc}>
-              {copy.dedicated.clientIdLabel}{" "}
-              <code className={integrationStyles.guideCode}>{dedicatedForm.authClientId}</code>
-            </p>
-          </div> : null}
         <button type="button" className={integrationStyles.guideLinkBtn} onClick={() => setActiveSection("guide")}>
           <Icon icon="mdi:help-circle-outline" aria-hidden />
           {copy.dedicated.apiKeyGuideLink}

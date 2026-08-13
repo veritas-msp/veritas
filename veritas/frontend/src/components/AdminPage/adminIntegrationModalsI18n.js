@@ -550,41 +550,46 @@ const MAILINBLACK = {
     configNavAria: "Sections Mailinblack",
     sections: {
       connection: {
-        description: "URL et clé API partenaire"
+        description: "URL, Client ID et Auth key"
       },
       info: {
         description: "Module Protect"
       }
     },
-    connectionDesc: "Collez la clé API générée depuis le portail Mailinblack. Veritas gère l'authentification et la liaison avec vos clients Veritas.",
-    apiKeyPlaceholder: "Clé générée dans Espace manager → Intégration → Clés API",
-    tokenHint: "Veritas échange automatiquement cette clé contre un token de session. Aucune manipulation manuelle requise.",
-    howToGetKey: "Comment obtenir la clé API ?",
+    connectionDesc: "Renseignez le Client ID et l'Auth key fournis à la création de la clé API Mailinblack.",
+    apiUrlHint: "Utilisez https://app.mailinblack.com (api.mailinblack.com n'est plus joignable).",
+    clientId: "Client ID",
+    clientIdPlaceholder: "Client ID affiché à la création de la clé",
+    apiKey: "Auth key",
+    apiKeyPlaceholder: "Auth key générée dans Espace manager → Intégration → Clés API",
+    tokenHint: "Veritas échange Client ID + Auth key contre un token de session. Aucune manipulation manuelle requise.",
+    howToGetKey: "Comment obtenir Client ID et Auth key ?",
     detectedAccount: "Compte détecté",
     detectedAccountDesc: "Client ID {clientId} · renseigné automatiquement après connexion.",
-    fillApiKey: "Renseignez la clé API Mailinblack.",
-    validateKeyError: "Impossible de valider la clé API Mailinblack.",
-    footerHint: "Clé API uniquement · connexion automatique",
+    fillClientId: "Renseignez le Client ID Mailinblack.",
+    fillApiKey: "Renseignez l'Auth key Mailinblack.",
+    validateKeyError: "Impossible de valider les identifiants Mailinblack.",
+    footerHint: "Client ID + Auth key · connexion automatique",
     testSubtitleSuccess: "Connexion Mailinblack Protect établie",
     testSubtitleFail: "Échec de la connexion",
     testApiSuccess: "Le module Protect (check) a répondu correctement.",
     testFooterSuccess: "Test module protect/check réussi",
     protectCustomers: "Clients Protect",
     guideTitle: "Obtenir vos identifiants API",
-    guideDesc: "Les clés API Mailinblack sont disponibles depuis votre portail partenaire (QG).",
+    guideDesc: "Les clés API Mailinblack (Client ID + Auth key) sont disponibles depuis votre portail partenaire.",
     guideSteps: [{
       title: "Connectez-vous au portail partenaire",
       desc: "Ouvrez partner.mailinblack.com avec votre compte revendeur MSP."
     }, {
       title: "Générez une clé API",
-      desc: "Parcourez le menu : Espace manager → Intégration → Clés API → Générer une clé API. Choisissez le mode lecture seule et activez Management et Protect, puis copiez la clé."
+      desc: "Parcourez le menu : Espace manager → Intégration → Clés API → Générer une clé API. Choisissez le mode lecture seule et activez Management et Protect. Conservez le Client ID et l'Auth key affichés."
     }, {
-      title: "Collez la clé dans Veritas",
-      desc: "Renseignez l'URL API, collez la clé API générée, puis cliquez sur Tester ou Enregistrer. Veritas gère l'authentification automatiquement."
+      title: "Collez les identifiants dans Veritas",
+      desc: "URL API : https://app.mailinblack.com. Renseignez le Client ID et l'Auth key, puis cliquez sur Tester ou Enregistrer."
     }],
     infoTitle: "Module Protect",
     infoDesc: "Veritas utilise l'API partenaire Mailinblack Protect pour tester la connexion, lister vos clients et synchroniser les statistiques antispam.",
-    infoApis: ["protect/check · validation des credentials API", "protect/customers · liste des clients partenaires à associer", "Tenant global · credentials Administration > Intégrations", "Tenant dédié · credentials propres à un client Veritas"]
+    infoApis: ["auth/api-keys/execute · échange Client ID + Auth key → token", "protect/check · validation des credentials API", "protect/customers · liste des clients partenaires à associer", "Tenant global · credentials Administration > Intégrations", "Tenant dédié · credentials propres à un client Veritas"]
   },
   en: {
     title: "Mailinblack Protect",
@@ -592,41 +597,46 @@ const MAILINBLACK = {
     configNavAria: "Mailinblack sections",
     sections: {
       connection: {
-        description: "URL and partner API key"
+        description: "URL, Client ID and Auth key"
       },
       info: {
         description: "Protect module"
       }
     },
-    connectionDesc: "Paste the API key generated from the Mailinblack portal. Veritas handles authentication and linking with your Veritas clients.",
-    apiKeyPlaceholder: "Key generated in Manager space → Integration → API keys",
-    tokenHint: "Veritas automatically exchanges this key for a session token. No manual steps required.",
-    howToGetKey: "How to get the API key?",
+    connectionDesc: "Enter the Client ID and Auth key shown when creating the Mailinblack API key.",
+    apiUrlHint: "Use https://app.mailinblack.com (api.mailinblack.com is no longer reachable).",
+    clientId: "Client ID",
+    clientIdPlaceholder: "Client ID shown when the key is created",
+    apiKey: "Auth key",
+    apiKeyPlaceholder: "Auth key generated in Manager space → Integration → API keys",
+    tokenHint: "Veritas exchanges Client ID + Auth key for a session token. No manual steps required.",
+    howToGetKey: "How to get Client ID and Auth key?",
     detectedAccount: "Detected account",
     detectedAccountDesc: "Client ID {clientId} · filled automatically after connection.",
-    fillApiKey: "Enter the Mailinblack API key.",
-    validateKeyError: "Unable to validate the Mailinblack API key.",
-    footerHint: "API key only · automatic connection",
+    fillClientId: "Enter the Mailinblack Client ID.",
+    fillApiKey: "Enter the Mailinblack Auth key.",
+    validateKeyError: "Unable to validate the Mailinblack credentials.",
+    footerHint: "Client ID + Auth key · automatic connection",
     testSubtitleSuccess: "Mailinblack Protect connection established",
     testSubtitleFail: "Connection failed",
     testApiSuccess: "The Protect (check) module responded correctly.",
     testFooterSuccess: "Protect/check module test successful",
     protectCustomers: "Protect customers",
     guideTitle: "Get your API credentials",
-    guideDesc: "Mailinblack API keys are available from your partner portal (HQ).",
+    guideDesc: "Mailinblack API credentials (Client ID + Auth key) are available from your partner portal.",
     guideSteps: [{
       title: "Sign in to the partner portal",
       desc: "Open partner.mailinblack.com with your MSP reseller account."
     }, {
       title: "Generate an API key",
-      desc: "Navigate: Manager space → Integration → API keys → Generate API key. Choose read-only mode and enable Management and Protect, then copy the key."
+      desc: "Navigate: Manager space → Integration → API keys → Generate API key. Choose read-only mode and enable Management and Protect. Keep both the Client ID and Auth key."
     }, {
-      title: "Paste the key in Veritas",
-      desc: "Enter the API URL, paste the generated API key, then click Test or Save. Veritas handles authentication automatically."
+      title: "Paste the credentials in Veritas",
+      desc: "API URL: https://app.mailinblack.com. Enter the Client ID and Auth key, then click Test or Save."
     }],
     infoTitle: "Protect module",
     infoDesc: "Veritas uses the Mailinblack Protect partner API to test the connection, list your customers and sync antispam statistics.",
-    infoApis: ["protect/check · API credential validation", "protect/customers · partner customer list to link", "Global tenant · Administration > Integrations credentials", "Dedicated tenant · credentials specific to a Veritas client"]
+    infoApis: ["auth/api-keys/execute · exchange Client ID + Auth key → token", "protect/check · API credential validation", "protect/customers · partner customer list to link", "Global tenant · Administration > Integrations credentials", "Dedicated tenant · credentials specific to a Veritas client"]
   },
   de: {
     title: "Mailinblack Protect",
@@ -634,21 +644,26 @@ const MAILINBLACK = {
     configNavAria: "Mailinblack-Abschnitte",
     sections: {
       connection: {
-        description: "URL und Partner-API-Schlüssel"
+        description: "URL, Client-ID und Auth-Key"
       },
       info: {
         description: "Protect-Modul"
       }
     },
-    connectionDesc: "Fügen Sie den API-Schlüssel aus dem Mailinblack-Portal ein. Veritas übernimmt Authentifizierung und Verknüpfung mit Ihren Veritas-Kunden.",
-    apiKeyPlaceholder: "Schlüssel aus Manager-Bereich → Integration → API-Schlüssel",
-    tokenHint: "Veritas tauscht diesen Schlüssel automatisch gegen ein Session-Token. Keine manuellen Schritte erforderlich.",
-    howToGetKey: "Wie erhält man den API-Schlüssel?",
+    connectionDesc: "Geben Sie die Client-ID und den Auth-Key ein, die bei der Erstellung des API-Schlüssels angezeigt werden.",
+    apiUrlHint: "Verwenden Sie https://app.mailinblack.com (api.mailinblack.com ist nicht mehr erreichbar).",
+    clientId: "Client-ID",
+    clientIdPlaceholder: "Client-ID bei der Schlüsselerstellung",
+    apiKey: "Auth-Key",
+    apiKeyPlaceholder: "Auth-Key aus Manager-Bereich → Integration → API-Schlüssel",
+    tokenHint: "Veritas tauscht Client-ID + Auth-Key gegen ein Session-Token.",
+    howToGetKey: "Wie erhält man Client-ID und Auth-Key?",
     detectedAccount: "Erkanntes Konto",
     detectedAccountDesc: "Client-ID {clientId} · nach Verbindung automatisch ausgefüllt.",
-    fillApiKey: "Geben Sie den Mailinblack-API-Schlüssel ein.",
-    validateKeyError: "Mailinblack-API-Schlüssel konnte nicht validiert werden.",
-    footerHint: "Nur API-Schlüssel · automatische Verbindung",
+    fillClientId: "Geben Sie die Mailinblack-Client-ID ein.",
+    fillApiKey: "Geben Sie den Mailinblack-Auth-Key ein.",
+    validateKeyError: "Mailinblack-Zugangsdaten konnten nicht validiert werden.",
+    footerHint: "Client-ID + Auth-Key · automatische Verbindung",
     testSubtitleSuccess: "Mailinblack Protect-Verbindung hergestellt",
     testSubtitleFail: "Verbindung fehlgeschlagen",
     testApiSuccess: "Das Protect-(check)-Modul hat korrekt geantwortet.",
@@ -676,21 +691,26 @@ const MAILINBLACK = {
     configNavAria: "Sezioni Mailinblack",
     sections: {
       connection: {
-        description: "URL e chiave API partner"
+        description: "URL, Client ID e Auth key"
       },
       info: {
         description: "Modulo Protect"
       }
     },
-    connectionDesc: "Incollate la chiave API generata dal portale Mailinblack. Veritas gestisce autenticazione e collegamento con i clienti Veritas.",
-    apiKeyPlaceholder: "Chiave generata in Spazio manager → Integrazione → Chiavi API",
-    tokenHint: "Veritas scambia automaticamente questa chiave con un token di sessione. Nessuna manipolazione manuale richiesta.",
-    howToGetKey: "Come ottenere la chiave API?",
+    connectionDesc: "Inserite Client ID e Auth key mostrati alla creazione della chiave API Mailinblack.",
+    apiUrlHint: "Usate https://app.mailinblack.com (api.mailinblack.com non è più raggiungibile).",
+    clientId: "Client ID",
+    clientIdPlaceholder: "Client ID mostrato alla creazione della chiave",
+    apiKey: "Auth key",
+    apiKeyPlaceholder: "Auth key generata in Spazio manager → Integrazione → Chiavi API",
+    tokenHint: "Veritas scambia Client ID + Auth key con un token di sessione.",
+    howToGetKey: "Come ottenere Client ID e Auth key?",
     detectedAccount: "Account rilevato",
     detectedAccountDesc: "Client ID {clientId} · compilato automaticamente dopo la connessione.",
-    fillApiKey: "Inserite la chiave API Mailinblack.",
-    validateKeyError: "Impossibile convalidare la chiave API Mailinblack.",
-    footerHint: "Solo chiave API · connessione automatica",
+    fillClientId: "Inserite il Client ID Mailinblack.",
+    fillApiKey: "Inserite l'Auth key Mailinblack.",
+    validateKeyError: "Impossibile convalidare le credenziali Mailinblack.",
+    footerHint: "Client ID + Auth key · connessione automatica",
     testSubtitleSuccess: "Connessione Mailinblack Protect stabilita",
     testSubtitleFail: "Connessione fallita",
     testApiSuccess: "Il modulo Protect (check) ha risposto correttamente.",
@@ -718,21 +738,26 @@ const MAILINBLACK = {
     configNavAria: "Secciones Mailinblack",
     sections: {
       connection: {
-        description: "URL y clave API partner"
+        description: "URL, Client ID y Auth key"
       },
       info: {
         description: "Módulo Protect"
       }
     },
-    connectionDesc: "Pegue la clave API generada desde el portal Mailinblack. Veritas gestiona la autenticación y el enlace con sus clientes Veritas.",
-    apiKeyPlaceholder: "Clave generada en Espacio manager → Integración → Claves API",
-    tokenHint: "Veritas intercambia automáticamente esta clave por un token de sesión. No se requiere manipulación manual.",
-    howToGetKey: "¿Cómo obtener la clave API?",
+    connectionDesc: "Introduzca el Client ID y la Auth key mostrados al crear la clave API Mailinblack.",
+    apiUrlHint: "Use https://app.mailinblack.com (api.mailinblack.com ya no es accesible).",
+    clientId: "Client ID",
+    clientIdPlaceholder: "Client ID mostrado al crear la clave",
+    apiKey: "Auth key",
+    apiKeyPlaceholder: "Auth key generada en Espacio manager → Integración → Claves API",
+    tokenHint: "Veritas intercambia Client ID + Auth key por un token de sesión.",
+    howToGetKey: "¿Cómo obtener Client ID y Auth key?",
     detectedAccount: "Cuenta detectada",
     detectedAccountDesc: "Client ID {clientId} · completado automáticamente tras la conexión.",
-    fillApiKey: "Introduzca la clave API Mailinblack.",
-    validateKeyError: "No se pudo validar la clave API Mailinblack.",
-    footerHint: "Solo clave API · conexión automática",
+    fillClientId: "Introduzca el Client ID Mailinblack.",
+    fillApiKey: "Introduzca la Auth key Mailinblack.",
+    validateKeyError: "No se pudieron validar las credenciales Mailinblack.",
+    footerHint: "Client ID + Auth key · conexión automática",
     testSubtitleSuccess: "Conexión Mailinblack Protect establecida",
     testSubtitleFail: "Conexión fallida",
     testApiSuccess: "El módulo Protect (check) respondió correctamente.",

@@ -1,7 +1,7 @@
 import { interpolate, pickLocaleMessages } from "../../i18n/translate";
 const HONEYCOMB_TYPE_KEYS = ["Internet", "Firewalls", "Serveurs", "Stockage", "Switch", "BorneWifi", "Routeur", "Alimentation", "TOIP", "Ordinateurs"];
 const BRICK_GROUP_KEYS = ["cybersecurity", "services", "licensing", "campaign"];
-const BRICK_TYPE_KEYS = ["Antivirus", "Antispam", "Sauvegarde", "TenantMicrosoft", "GoogleWorkspace", "NDD", "CertificatsSSL", "LicencesAbonnements", "Campagne"];
+const BRICK_TYPE_KEYS = ["Antivirus", "Antispam", "Sauvegarde", "TenantMicrosoft", "GoogleWorkspace", "NDD", "CertificatsSSL", "LicensesAbonnements", "Campagne"];
 const STATUS_KEYS = ["critical", "warning", "ok", "neutral", "unmonitored", "no_data"];
 const INFRA_MAP_COPY = {
   fr: {
@@ -62,7 +62,7 @@ const INFRA_MAP_COPY = {
       GoogleWorkspace: "Google Workspace",
       NDD: "Nom de domaine",
       CertificatsSSL: "Certificats SSL",
-      LicencesAbonnements: "Licences & abonnements",
+      LicensesAbonnements: "Licences & abonnements",
       Campagne: "Campagne"
     },
     brick: {
@@ -216,7 +216,7 @@ const INFRA_MAP_COPY = {
       GoogleWorkspace: "Google Workspace",
       NDD: "Domainname",
       CertificatsSSL: "SSL-Zertifikate",
-      LicencesAbonnements: "Lizenzen & Abonnements",
+      LicensesAbonnements: "Lizenzen & Abonnements",
       Campagne: "Kampagne"
     },
     brick: {
@@ -293,7 +293,7 @@ const INFRA_MAP_COPY = {
       GoogleWorkspace: "Google Workspace",
       NDD: "Nome di dominio",
       CertificatsSSL: "Certificati SSL",
-      LicencesAbonnements: "Licenze e abbonamenti",
+      LicensesAbonnements: "Licenze e abbonamenti",
       Campagne: "Campagna"
     },
     brick: {
@@ -370,7 +370,7 @@ const INFRA_MAP_COPY = {
       GoogleWorkspace: "Google Workspace",
       NDD: "Nombre de dominio",
       CertificatsSSL: "Certificados SSL",
-      LicencesAbonnements: "Licencias y suscripciones",
+      LicensesAbonnements: "Licencias y suscripciones",
       Campagne: "Campaña"
     },
     brick: {
@@ -407,7 +407,14 @@ export function getInfraMapCopy(locale) {
       return t.honeycombTypes[type] || type || "";
     },
     getBrickGroupLabel: groupId => t.brickGroups[groupId] || groupId,
-    getBrickTypeLabel: type => t.brickTypes[type] || type || "",
+    getBrickTypeLabel: type => {
+      if (!type) return "";
+      if (t.brickTypes[type]) return t.brickTypes[type];
+      if (type === "LicencesAbonnements" || type === "LicensesAbonnements") {
+        return t.brickTypes.LicensesAbonnements || type;
+      }
+      return type;
+    },
     getStatusLabel: status => {
       if (status === "unmonitored" || status === "no_data") return null;
       return t.status[status] || null;
