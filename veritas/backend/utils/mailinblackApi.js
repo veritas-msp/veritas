@@ -111,12 +111,14 @@ function normalizePaginated(payload) {
 function resolveAuthBaseUrls(apiUrl) {
   return resolveGatewayBaseUrls(apiUrl);
 }
-function looksLikeSessionToken(value) {
+function looksLikeJwtSessionToken(value) {
   const key = (value || '').trim();
-  if (!key || key.length < 32) return false;
-  if (key.startsWith('eyJ')) return true;
-  if (/^[a-f0-9]{32,}$/i.test(key) && !key.includes('.')) return false;
-  return key.includes('.') || key.length >= 64;
+  if (!key.startsWith('eyJ')) return false;
+  return key.split('.').length >= 3;
+}
+function extractAuthToken(parsed) {
+  if (!parsed || typeof parsed !== 'object') return null;
+  return parsed.token || parsed.accessToken || parsed.authToken || parsed.sessionToken || parsed.jwt || null;
 }
 function looksLikeHtmlPayload(parsed, contentType = '') {
   if (String(contentType || '').toLowerCase().includes('text/html')) return true;
@@ -186,9 +188,10 @@ export async function mailinblackAuthenticate(credentials = {}) {
         password
       });
       if (looksLikeHtmlPayload(parsed, contentType)) continue;
-      if (response.ok && parsed?.token) {
+      const token = extractAuthToken(parsed);
+      if (response.ok && token) {
         return {
-          token: parsed.token,
+          token,
           clientId: parsed.clientId || clientIdForAuth || null,
           userId: parsed.userId || null
         };
@@ -204,7 +207,9 @@ export async function mailinblackAuthenticate(credentials = {}) {
   if (!key) {
     throw new Error("Auth key Mailinblack requise — générez-la dans Espace manager → Intégration → Clés API.");
   }
-  if (looksLikeSessionToken(key)) {
+  // Only a real JWT may skip the Auth-key exchange. Opaque Auth keys (often ≥64 chars)
+  // must go through api-keys/execute — treating them as session tokens causes 401s.
+  if (looksLikeJwtSessionToken(key) && !clientIdForAuth) {
     return {
       token: key,
       clientId: clientIdForAuth,
@@ -220,6 +225,12 @@ export async function mailinblackAuthenticate(credentials = {}) {
       clientId: clientIdForAuth,
       apiKey: key
     }, {
+      client_id: clientIdForAuth,
+      auth_key: key
+    }, {
+      client_id: clientIdForAuth,
+      api_key: key
+    }, {
       clientId: clientIdForAuth,
       key
     }, {
@@ -232,16 +243,12 @@ export async function mailinblackAuthenticate(credentials = {}) {
       key,
       clientId: clientIdForAuth
     });
+  } else {
+    // Client ID is required by Mailinblack for Auth-key exchange.
+    const err = new Error("Client ID Mailinblack requis — copiez-le avec l'Auth key à la création de la clé API.");
+    err.status = 400;
+    throw err;
   }
-  executeBodies.push({
-    authKey: key
-  }, {
-    apiKey: key
-  }, {
-    key
-  }, {
-    api_key: key
-  });
   let lastStatus = null;
   let lastBody = null;
   let lastUrl = null;
@@ -263,9 +270,10 @@ export async function mailinblackAuthenticate(credentials = {}) {
           }
           continue;
         }
-        if (response.ok && parsed?.token) {
+        const token = extractAuthToken(parsed);
+        if (response.ok && token) {
           return {
-            token: parsed.token,
+            token,
             clientId: parsed.clientId || clientIdForAuth || null,
             userId: parsed.userId || null
           };

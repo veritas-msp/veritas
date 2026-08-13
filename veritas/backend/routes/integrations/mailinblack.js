@@ -75,14 +75,15 @@ router.post('/test', async (req, res) => {
     });
   } catch (err) {
     let errorMessage = 'Mailinblack API connection error';
-    if (err.status === 401 || /unauthorized|invalid.*key|token/i.test(err.message)) {
-      errorMessage = 'Invalid or expired API key';
-    } else if (err.status === 403 || /forbidden/i.test(err.message)) {
-      errorMessage = 'Access denied — check API key permissions';
-    } else if (err.message) {
+    if (err.message && !/^HTTP\s+\d+$/i.test(err.message)) {
+      // Prefer the detailed auth/gateway message from mailinblackApi.
       errorMessage = err.message;
+    } else if (err.status === 401 || /unauthorized|invalid.*key|token/i.test(err.message || '')) {
+      errorMessage = "Identifiants rejetés. Vérifiez le Client ID et l'Auth key (Espace manager → Intégration → Clés API).";
+    } else if (err.status === 403 || /forbidden/i.test(err.message || '')) {
+      errorMessage = 'Access denied — check API key permissions';
     }
-    res.status(500).json({
+    res.status(err.status === 401 || err.status === 403 ? err.status : 502).json({
       success: false,
       error: errorMessage,
       details: err.body || null
