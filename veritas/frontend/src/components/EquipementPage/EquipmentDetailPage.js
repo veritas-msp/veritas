@@ -1150,7 +1150,7 @@ export default function EquipmentDetailPage({
   const isNasOrSanStorage = equipment?.type === 'NAS' && (storageTypeValue.includes('nas') || storageTypeValue.includes('san'));
   const isSynologyNasStorage = isNasOrSanStorage && isSynologyBrand(formData.manufacturer);
   const typeDisplayLabel = useMemo(() => getEquipmentDetailTypeLabel(equipment, locale), [equipment, locale]);
-  const raidOptions = ["RAID 0", "RAID 1", "RAID 5", "RAID 6", "RAID 10", "RAID 50", "RAID 60", "SHR (Synology)", "SHR-2 (Synology)", "Qtier (QNAP)", "RAID-TP (QNAP)", "RAID-Z (ZFS)", "RAID-Z2 (ZFS)", "RAID-Z3 (ZFS)", "Autre"];
+  const raidOptions = ["RAID 0", "RAID 1", "RAID 5", "RAID 6", "RAID 10", "RAID 50", "RAID 60", "SHR (Synology)", "SHR-2 (Synology)", "RAID F1", "Qtier (QNAP)", "RAID-TP (QNAP)", "RAID-Z (ZFS)", "RAID-Z2 (ZFS)", "RAID-Z3 (ZFS)", "Autre"];
   const lunRoleOptions = [{
     value: "stockage",
     label: "Storage"
