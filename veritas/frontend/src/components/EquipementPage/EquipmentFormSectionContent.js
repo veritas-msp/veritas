@@ -22,6 +22,7 @@ import ServerRemoteAccessFields from "./ServerRemoteAccessFields";
 import StorageDiskBayPicker from "./StorageDiskBayPicker";
 import CapacityInput from "./CapacityInput";
 import ServerSpecFields from "./ServerSpecFields";
+import VlanChipsInput from "./VlanChipsInput";
 import styles from "../EnterprisesPage/EnterpriseFormModal.module.css";
 const NETWORK_EDGE_API_TYPES = new Set(["Switch", "BorneWifi", "Alimentation", "TOIP"]);
 export default function EquipmentFormSectionContent({
@@ -255,11 +256,11 @@ export default function EquipmentFormSectionContent({
                 </label>
                 <input id="equipment-form-ip" type="text" className={styles.input} value={formData.ip ?? ""} onChange={e => update("ip", e.target.value)} placeholder={f.ipPlaceholder} />
               </div>}
-            {(apiType === "Firewalls" || apiType === "Routeur" || NETWORK_EDGE_API_TYPES.has(apiType) || apiType === "Servers" || apiType === "Ordinateurs" || apiType === "NAS" && storageProfile?.showNetwork) && <div className={styles.field}>
+            {(apiType === "Firewalls" || apiType === "Routeur" || NETWORK_EDGE_API_TYPES.has(apiType) || apiType === "Servers" || apiType === "Ordinateurs" || apiType === "NAS" && storageProfile?.showNetwork) && <div className={`${styles.field} ${styles.fieldFull}`}>
                 <label className={styles.label} htmlFor="equipment-form-vlan">
                   {f.vlan}
                 </label>
-                <input id="equipment-form-vlan" type="text" className={styles.input} value={formData.vlan ?? ""} onChange={e => update("vlan", e.target.value)} placeholder={f.vlanPlaceholder} />
+                <VlanChipsInput id="equipment-form-vlan" value={formData.vlan ?? ""} onChange={next => update("vlan", next)} placeholder={f.vlanPlaceholder} hint={f.vlanHint} removeAria={f.vlanRemoveAria} />
               </div>}
             {apiType === "Firewalls" && <div className={`${styles.field} ${styles.fieldFull}`}>
                 <label className={styles.label} htmlFor="equipment-form-admin-url">

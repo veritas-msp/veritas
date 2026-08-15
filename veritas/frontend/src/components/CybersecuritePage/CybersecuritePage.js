@@ -1,30 +1,29 @@
-import { useState, useEffect, useMemo, useRef, useCallback } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import React from "react";
 import { Icon } from "@iconify/react";
 import { toast } from 'react-toastify';
 import { getAllCampaigns, createClientCampaign, updateClientCampaign, deleteCampaign } from "../../api/campaigns";
 import { fetchCyberPageData, fetchClientsList } from "../../api/clients";
 import { fetchUsers } from "../../api/users";
-import API_BASE_URL from "../../config";
 import { useAppLocale } from "../../hooks/useAppGeneralSettings";
 import { getCommonCopy } from "../../i18n/commonI18n";
 import styles from "./CybersecuritePage.module.css";
 import layout from "../EnterprisesPage/EnterprisesPage.module.css";
-import supervisionStyles from "../EquipementPage/SupervisionCenterPage.module.css";
 import SupportOrbitalBackground from "../Misc/ReportBugForm/SupportOrbitalBackground";
 import AntivirusMspDashboard from "./AntivirusMspDashboard";
 import AntispamMspDashboard from "./AntispamMspDashboard";
 import CampaignsMspDashboard from "./CampaignsMspDashboard";
 import CampaignFormModal from "./CampaignFormModal";
+import MspPageHero from "../Misc/MspPageHero/MspPageHero";
+import SmartTooltip from "../SmartTooltip";
 import { useVeritasEdition } from "../../hooks/useVeritasEdition";
-import ProFeatureBadge from "../Misc/ProFeature/ProFeatureBadge";
 import ProFeaturePromoModal from "../Misc/ProFeature/ProFeaturePromoModal";
-import SecurityOverviewPanel, { computeSecurityOverviewStats } from "./SecurityOverviewPanel";
+import ProFeatureBadge from "../Misc/ProFeature/ProFeatureBadge";
 import { buildAntivirusFleetFromClients } from "./antivirusMspUtils";
-import { buildAntispamFleetFromClients, buildAntispamDetailNavigationPayload } from "../EnterprisesPage/antispamSolutionUtils";
-import { buildAntivirusDetailNavigationPayload } from "../EnterprisesPage/antivirusSolutionUtils";
+import { buildAntispamFleetFromClients, buildAntispamDetailNavigationPayload, syncAndPersistAntispamSolution } from "../EnterprisesPage/antispamSolutionUtils";
+import { buildAntivirusDetailNavigationPayload, syncAndPersistAntivirusSolution } from "../EnterprisesPage/antivirusSolutionUtils";
 import { getCybersecuritePageCopy } from "./cybersecuritePageI18n";
-const COMMUNITY_DEFAULT_TAB = "overview";
+const MODULE_TABS = ["antivirus", "antispam", "campaigns"];
 export default function CybersecuritePage({
   onNavigate,
   cybersecuriteParams
@@ -41,7 +40,7 @@ export default function CybersecuritePage({
   const CYBER_PAGE_DATA_CACHE_TTL_MS = 5 * 60 * 1000;
   const CYBER_CAMPAIGNS_CACHE_KEY = "cyber_campaigns_cache_v1";
   const CYBER_CAMPAIGNS_CACHE_TTL_MS = 3 * 60 * 1000;
-  const [activeTab, setActiveTab] = useState("overview");
+  const [activeTab, setActiveTab] = useState("antivirus");
   const [campaigns, setCampaigns] = useState([]);
   const [allCampaigns, setAllCampaigns] = useState([]);
   const [users, setUsers] = useState([]);
@@ -55,7 +54,7 @@ export default function CybersecuritePage({
   const skipInitialTabFetchRef = useRef(true);
   const [loadingCampaigns, setLoadingCampaigns] = useState(false);
   const [loadingCyberData, setLoadingCyberData] = useState(false);
-  const [syncingBitdefender, setSyncingBitdefender] = useState(false);
+  const [syncingFleet, setSyncingFleet] = useState(false);
   const [syncProgress, setSyncProgress] = useState(0);
   const [syncStatus, setSyncStatus] = useState('');
   const [searchQuery, setSearchQuery] = useState("");
@@ -66,33 +65,35 @@ export default function CybersecuritePage({
   const [antivirusSortOrder, setAntivirusSortOrder] = useState('asc');
   const [antivirusCurrentPage, setAntivirusCurrentPage] = useState(1);
   const [antivirusPageSize, setAntivirusPageSize] = useState(10);
-  useEffect(() => {
-    if (!cybersecuriteParams?.activeTab) return;
-    if (cybersecuriteParams.activeTab === "campaigns" && isCommunity) {
+  const selectTab = tabKey => {
+    if (tabKey === "campaigns" && isCommunity) {
       setCampaignProPromoOpen(true);
-      setActiveTab(COMMUNITY_DEFAULT_TAB);
       return;
     }
-    setActiveTab(cybersecuriteParams.activeTab);
+    if (!MODULE_TABS.includes(tabKey)) return;
+    setActiveTab(tabKey);
+  };
+  useEffect(() => {
+    if (!cybersecuriteParams?.activeTab) return;
+    const requested = cybersecuriteParams.activeTab;
+    if (requested === "campaigns" && isCommunity) {
+      setCampaignProPromoOpen(true);
+      setActiveTab("antivirus");
+      return;
+    }
+    if (requested === "overview" || !MODULE_TABS.includes(requested)) {
+      setActiveTab("antivirus");
+      return;
+    }
+    setActiveTab(requested);
   }, [cybersecuriteParams, isCommunity]);
   useEffect(() => {
     if (!isCommunity) return;
     if (activeTab === "campaigns") {
       setCampaignProPromoOpen(true);
-      setActiveTab(COMMUNITY_DEFAULT_TAB);
+      setActiveTab("antivirus");
     }
   }, [isCommunity, activeTab]);
-  const goToTab = useCallback(tabKey => {
-    const tab = pageCopy.tabs.find(item => item.key === tabKey);
-    if (tab?.proOnly && isCommunity) {
-      setCampaignProPromoOpen(true);
-      return;
-    }
-    setActiveTab(tabKey);
-  }, [pageCopy.tabs, isCommunity]);
-  const handleTabSelect = tab => {
-    goToTab(tab.key);
-  };
   const [showModal, setShowModal] = useState(false);
   const [editingCampaign, setEditingCampaign] = useState(null);
   const [confirmDeleteId, setConfirmDeleteId] = useState(null);
@@ -129,6 +130,9 @@ export default function CybersecuritePage({
       await loadClients({
         withModules: true
       });
+      if (!isCommunity) {
+        await Promise.all([loadCampaigns(), loadAllCampaignsForStats()]);
+      }
     })();
     return () => {
       abortInFlightTabFetches();
@@ -145,11 +149,10 @@ export default function CybersecuritePage({
         await Promise.all([loadCampaigns(), loadAllCampaignsForStats()]);
         return;
       }
-      if (["antivirus", "antispam", "overview"].includes(activeTab)) {
+      if (!activeTab || ["antivirus", "antispam"].includes(activeTab)) {
         await loadClients({
           withModules: true
         });
-        return;
       }
     })();
     return () => {
@@ -317,133 +320,51 @@ export default function CybersecuritePage({
     clientsLoadPromiseRef.current = null;
     return data;
   };
-  const getAuthHeaders = () => ({});
-  const saveBitdefenderSync = async ({
-    clientId,
-    solutionName,
-    companyId,
-    companyName,
-    syncData
-  }) => {
-    try {
-      const license = syncData?.license || null;
-      const total = license?.totalLicenses ?? license?.raw?.totalSlots ?? license?.raw?.total ?? null;
-      const used = license?.usedLicenses ?? license?.raw?.usedSlots ?? license?.raw?.used ?? null;
-      const expirationDate = license?.expirationDate ?? license?.raw?.expiryDate ?? license?.raw?.expirationDate ?? null;
-      const expiration = expirationDate ? new Date(expirationDate).toISOString().split('T')[0] : '';
-      const endpointsList = syncData?.endpoints?.list || syncData?.endpoints || [];
-      const response = await fetch(`${API_BASE_URL}/bitdefender/antivirus/${clientId}`, {
-        method: 'PUT',
-        headers: {
-          ...getAuthHeaders(),
-          'Content-Type': 'application/json'
-        },
-        credentials: 'include',
-        body: JSON.stringify({
-          item_key: `solution-${solutionName}-${companyId}`,
-          name: `${solutionName} #1`,
-          data: {
-            solution: solutionName,
-            companyId: companyId,
-            companyName: companyName,
-            licencesTotales: total !== null && total !== undefined ? String(total) : '',
-            licencesUtilisees: used !== null && used !== undefined ? String(used) : '',
-            expiration: expiration,
-            endpoints: Array.isArray(endpointsList) ? endpointsList : [],
-            syncData: {
-              company: syncData?.company || null,
-              license: syncData?.license || null,
-              endpoints: syncData?.endpoints || null,
-              lastSync: new Date().toISOString()
-            }
-          }
-        })
-      });
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error || `HTTP error: ${response.status}`);
-      }
-      const result = await response.json();
-      return result?.success === true;
-    } catch (error) {
-      console.error('❌ Error sauvegarde Bitdefender:', error);
-      return false;
+  const antivirusData = useMemo(() => buildAntivirusFleetFromClients(clients), [clients]);
+  const antispamData = useMemo(() => buildAntispamFleetFromClients(clients), [clients]);
+  const antivirusSyncTargets = useMemo(() => antivirusData.filter(row => row.providerId === "bitdefender" && row.companyId && row.raw), [antivirusData]);
+  const antispamSyncTargets = useMemo(() => antispamData.filter(row => row.providerId === "mailinblack" && row.customerId && row.raw), [antispamData]);
+  const syncAllFleet = async () => {
+    if (syncingFleet) return;
+    const kind = activeTab === "antispam" ? "antispam" : "antivirus";
+    const targets = kind === "antispam" ? antispamSyncTargets : antivirusSyncTargets;
+    if (activeTab !== "antivirus" && activeTab !== "antispam") return;
+    if (targets.length === 0) {
+      toast.info(kind === "antispam" ? pageCopy.sync.noneAntispam : pageCopy.sync.noneAntivirus);
+      return;
     }
-  };
-  const syncAllBitdefenderLicenses = async () => {
-    if (syncingBitdefender) return;
-    setSyncingBitdefender(true);
+    setSyncingFleet(true);
     setSyncProgress(0);
     setSyncStatus(pageCopy.sync.preparing);
     let successCount = 0;
     let errorCount = 0;
     try {
-      const targets = [];
-      clients.forEach(client => {
-        const antivirus = client.equipements?.Antivirus;
-        if (antivirus && antivirus.solutions && Array.isArray(antivirus.solutions)) {
-          antivirus.solutions.forEach(solution => {
-            if (solution.solution === "GravityZone BitDefender" && solution.companyId) {
-              targets.push({
-                client,
-                solution
-              });
-            }
-          });
-        }
-      });
-      if (targets.length === 0) {
-        toast.info(pageCopy.sync.none);
-        return;
-      }
       let processed = 0;
-      for (const target of targets) {
-        const {
-          client,
-          solution
-        } = target;
+      for (const row of targets) {
         try {
-          setSyncStatus(pageCopy.formatSyncProgress(processed + 1, targets.length, client.name));
-          console.log(`Synchronization Bitdefender pour ${client.name} (Company ID: ${solution.companyId})`);
-          const response = await fetch(`${API_BASE_URL}/bitdefender/sync/${solution.companyId}`, {
-            method: 'POST',
-            headers: {
-              ...getAuthHeaders(),
-              'Content-Type': 'application/json'
-            },
-            credentials: 'include'
-          });
-          if (!response.ok) {
-            const errorData = await response.json().catch(() => ({}));
-            throw new Error(errorData.error || `HTTP error: ${response.status}`);
-          }
-          const result = await response.json();
-          if (!result?.success || !result?.data) {
-            throw new Error(result?.error || 'Error during sync');
-          }
-          const syncData = result.data;
-          const solutionName = solution.solution || 'GravityZone BitDefender';
-          const companyName = solution.companyName || syncData.company?.name || client.name;
-          const saved = await saveBitdefenderSync({
-            clientId: client.id,
-            solutionName,
-            companyId: solution.companyId,
-            companyName,
-            syncData
-          });
-          if (saved) {
-            successCount++;
-            console.log(`✅ Synchronization + sauvegarde réussie pour ${client.name}`);
+          setSyncStatus(pageCopy.formatSyncProgress(processed + 1, targets.length, row.clientName));
+          if (kind === "antispam") {
+            const mappingMode = row.raw.mappingMode === "dedicated" || row.raw.mailinblackTenantId ? "dedicated" : "reseller";
+            await syncAndPersistAntispamSolution(row.clientId, {
+              ...row.raw,
+              mappingMode,
+              mailinblackTenantId: mappingMode === "dedicated" ? row.raw.mailinblackTenantId : null
+            });
           } else {
-            throw new Error('Error saving');
+            const mappingMode = row.raw.mappingMode === "dedicated" || row.raw.bitdefenderTenantId ? "dedicated" : "reseller";
+            await syncAndPersistAntivirusSolution(row.clientId, {
+              ...row.raw,
+              mappingMode,
+              bitdefenderTenantId: mappingMode === "dedicated" ? row.raw.bitdefenderTenantId : null
+            });
           }
+          successCount += 1;
         } catch (error) {
-          console.error(`❌ Error synchronisation pour ${client.name}:`, error);
-          errorCount++;
+          console.error(`Error syncing ${kind} for ${row.clientName}:`, error);
+          errorCount += 1;
         } finally {
           processed += 1;
-          const percent = Math.round(processed / targets.length * 100);
-          setSyncProgress(percent);
+          setSyncProgress(Math.round(processed / targets.length * 100));
         }
       }
       await loadClients({
@@ -457,20 +378,18 @@ export default function CybersecuritePage({
         toast.error(pageCopy.formatSyncFailed(errorCount));
       }
     } catch (error) {
-      console.error('Error générale lors de la synchronisation:', error);
-      toast.error(pageCopy.sync.error);
+      console.error("Error during fleet sync:", error);
+      toast.error(kind === "antispam" ? pageCopy.sync.errorAntispam : pageCopy.sync.errorAntivirus);
     } finally {
-      setSyncingBitdefender(false);
+      setSyncingFleet(false);
       setSyncProgress(100);
       setSyncStatus(pageCopy.sync.done);
       setTimeout(() => {
         setSyncProgress(0);
-        setSyncStatus('');
+        setSyncStatus("");
       }, 1200);
     }
   };
-  const antivirusData = useMemo(() => buildAntivirusFleetFromClients(clients), [clients]);
-  const antispamData = useMemo(() => buildAntispamFleetFromClients(clients), [clients]);
   const filteredAntivirusData = useMemo(() => {
     let filtered = [...antivirusData];
     if (searchQuery.trim()) {
@@ -710,13 +629,6 @@ export default function CybersecuritePage({
     if (!payload) return;
     onNavigate("AntispamDetail", payload, options);
   };
-  const securityOverviewStats = useMemo(() => computeSecurityOverviewStats(antivirusData, antispamData, campaigns, isCommunity), [antivirusData, antispamData, campaigns, isCommunity]);
-  const tabBadges = useMemo(() => ({
-    overview: securityOverviewStats.total,
-    antivirus: antivirusData.length,
-    antispam: antispamData.length,
-    campaigns: isCommunity ? 0 : campaigns.length
-  }), [securityOverviewStats, antivirusData, antispamData, campaigns, isCommunity]);
   const handleOpenAntivirusClient = row => {
     if (!onNavigate || !row?.clientId) return;
     onNavigate("ContratDetail", {
@@ -724,68 +636,65 @@ export default function CybersecuritePage({
       name: row.clientName
     });
   };
+  const openAddCampaign = () => {
+    if (isCommunity) {
+      setCampaignProPromoOpen(true);
+      return;
+    }
+    setEditingCampaign(null);
+    setFormData({
+      client_id: cybersecuriteParams?.clientId || "",
+      name: "",
+      type: "microsoft_security",
+      provider: "microsoft",
+      tenant_id: "",
+      azure_credential_id: "",
+      status: "en_preparation",
+      start_date: getTodayDate(),
+      end_date: getOneMonthLater(),
+      global_progress: 0,
+      description: ""
+    });
+    setShowModal(true);
+  };
+  const avIssues = antivirusData.filter(row => row.status === "inactif" || row.status === "expire_bientot").length;
+  const asIssues = antispamData.filter(row => row.status === "inactif" || row.status === "expire_bientot").length;
+  const campaignIssues = isCommunity ? 0 : campaigns.filter(campaign => campaign.status === "suspendue").length;
+  const heroSubtitle = syncingFleet && syncStatus ? syncStatus : loadingCyberData && clients.length === 0 ? pageCopy.heroRefreshing : activeTab === "antivirus" ? avIssues > 0 ? pageCopy.formatHeroIssues("antivirus", avIssues) : pageCopy.msp?.antivirus?.heroDescOk : activeTab === "antispam" ? asIssues > 0 ? pageCopy.formatHeroIssues("antispam", asIssues) : pageCopy.msp?.antispam?.heroDescOk : activeTab === "campaigns" ? campaignIssues > 0 ? pageCopy.formatCampaignHeroIssues(campaignIssues) : pageCopy.campaigns?.heroDescOk : pageCopy.subtitle;
+  const heroActionsCopy = pageCopy.heroActions || {};
+  const showFleetSync = activeTab === "antivirus" || activeTab === "antispam";
+  const syncTooltip = syncingFleet && syncStatus ? syncStatus : activeTab === "antispam" ? heroActionsCopy.syncAntispam : heroActionsCopy.syncAntivirus;
+  const moduleTabs = (pageCopy.tabs || []).filter(tab => MODULE_TABS.includes(tab.key));
   return <div className={`${styles.mspPage} ${styles.mspPageOrbital}`}>
       <SupportOrbitalBackground variant="page" />
       <div className={styles.mspLayout}>
       <div className={styles.mspMain}>
-        <header className={styles.mspHero}>
-          <div className={styles.mspHeroMain}>
-            <div className={styles.mspBrandMark}>
-              <Icon icon="mdi:shield-lock" className={styles.mspBrandMarkIcon} />
-            </div>
-            <div className={styles.mspHeroCopy}>
-              <span className={styles.mspEyebrow}>{pageCopy.eyebrow}</span>
-              <h1 className={styles.mspTitle}>{pageCopy.pageTitle}</h1>
-              <p className={styles.mspSubtitle}>{pageCopy.subtitle}</p>
-            </div>
-          </div>
-          <div className={styles.mspTabBar} role="tablist" aria-label={pageCopy.tabSectionsAria}>
-            {pageCopy.tabs.map(tab => {
-              const badge = tabBadges[tab.key] || 0;
-              const showBadge = tab.key === "overview" ? badge > 0 : tab.key === "antivirus" || tab.key === "antispam" || tab.key === "campaigns";
-              return <button key={tab.key} type="button" className={[styles.mspTab, activeTab === tab.key ? styles.mspTabActive : "", tab.proOnly && isCommunity ? styles.mspTabProLocked : ""].filter(Boolean).join(" ")} onClick={() => handleTabSelect(tab)} title={tab.proOnly && isCommunity ? `${tab.label}${pageCopy.proTabSuffix}` : tab.label} aria-disabled={tab.proOnly && isCommunity ? true : undefined}>
-                <Icon icon={tab.icon} className={styles.mspTabIcon} />
-                <span className={styles.mspTabLabelRow}>
-                  <span>{tab.label}</span>
-                  {showBadge ? <span className={`${supervisionStyles.tabCount} ${badge === 0 ? supervisionStyles.tabCountMuted : ""}`}>
-                      {badge}
-                    </span> : null}
-                  {tab.proOnly && isCommunity ? <ProFeatureBadge variant="inline" className={styles.mspTabProBadge} /> : null}
-                </span>
-              </button>;
+        <MspPageHero eyebrow={pageCopy.eyebrow} title={pageCopy.pageTitle} subtitle={heroSubtitle} icon="mdi:shield-lock" actions={<>
+              <nav className={styles.mspTabBar} role="tablist" aria-label={pageCopy.tabSectionsAria}>
+                {moduleTabs.map(tab => {
+              const locked = tab.proOnly && isCommunity;
+              return <button key={tab.key} type="button" role="tab" aria-selected={activeTab === tab.key} className={`${styles.mspTab} ${activeTab === tab.key ? styles.mspTabActive : ""} ${locked ? styles.mspTabProLocked : ""}`} onClick={() => selectTab(tab.key)} title={locked ? `${tab.label}${pageCopy.proTabSuffix || ""}` : tab.label}>
+                      <Icon icon={tab.icon} className={styles.mspTabIcon} aria-hidden />
+                      <span className={styles.mspTabLabelRow}>
+                        <span>{tab.label}</span>
+                        {locked ? <ProFeatureBadge variant="inline" className={styles.mspTabProBadge} /> : null}
+                      </span>
+                    </button>;
             })}
-          </div>
-        </header>
+              </nav>
+              {showFleetSync ? <SmartTooltip content={syncTooltip}>
+                <button type="button" className={layout.iconBtn} onClick={syncAllFleet} disabled={syncingFleet} aria-label={activeTab === "antispam" ? heroActionsCopy.syncAntispamAria : heroActionsCopy.syncAntivirusAria}>
+                  <Icon icon="mdi:cloud-sync-outline" className={syncingFleet ? styles.spinning : undefined} aria-hidden />
+                </button>
+              </SmartTooltip> : null}
+            </>} />
 
         <main className={styles.mspContent}>
           <div className={`${layout.shell} ${layout.shellWide} ${layout.shellFull}`}>
           <div className={styles.tabContent}>
-            {activeTab === "overview" && <SecurityOverviewPanel copy={pageCopy} antivirusData={antivirusData} antispamData={antispamData} campaigns={campaigns} loading={loadingCyberData} isCommunity={isCommunity} onGoTab={goToTab} onOpenAntivirus={handleViewAntivirusSolution} onOpenAntispam={handleViewAntispamSolution} onOpenClient={handleOpenAntivirusClient} />}
-
-            {activeTab === "antivirus" && <AntivirusMspDashboard copy={pageCopy} clients={clients} loading={loadingCyberData} onOpenSolution={handleViewAntivirusSolution} onOpenClient={handleOpenAntivirusClient} />}
-
-            {activeTab === "antispam" && <AntispamMspDashboard copy={pageCopy} clients={clients} loading={loadingCyberData} onOpenSolution={handleViewAntispamSolution} onOpenClient={handleOpenAntivirusClient} />}
-
-            {activeTab === "campaigns" && <CampaignsMspDashboard copy={pageCopy} campaigns={campaigns} loading={loadingCampaigns} onViewCampaign={handleViewCampaign} onOpenClient={handleOpenCampaignClient} onAddCampaign={() => {
-                setEditingCampaign(null);
-                const prefClientId = cybersecuriteParams?.clientId || "";
-                setFormData({
-                  client_id: prefClientId,
-                  name: "",
-                  type: "microsoft_security",
-                  provider: "microsoft",
-                  tenant_id: "",
-                  azure_credential_id: "",
-                  status: "en_preparation",
-                  start_date: getTodayDate(),
-                  end_date: getOneMonthLater(),
-                  global_progress: 0,
-                  description: ""
-                });
-                setShowModal(true);
-              }} />}
-
-
+                {activeTab === "antivirus" ? <AntivirusMspDashboard copy={pageCopy} clients={clients} loading={loadingCyberData} onOpenSolution={handleViewAntivirusSolution} onOpenClient={handleOpenAntivirusClient} /> : null}
+                {activeTab === "antispam" ? <AntispamMspDashboard copy={pageCopy} clients={clients} loading={loadingCyberData} onOpenSolution={handleViewAntispamSolution} onOpenClient={handleOpenAntivirusClient} /> : null}
+                {activeTab === "campaigns" ? <CampaignsMspDashboard copy={pageCopy} campaigns={campaigns} loading={loadingCampaigns} onViewCampaign={handleViewCampaign} onOpenClient={handleOpenCampaignClient} onAddCampaign={openAddCampaign} /> : null}
           </div>
           </div>
         </main>

@@ -149,7 +149,7 @@ export default function Sidebar({
   const openUserMenuToRight = isCollapsed;
   const showCrmSection = !!(access["Contrat"] || access["Contact"]);
   const showExploitationSection = !!(access["Ticket"] || access["TicketSales"] || access["Planning"]);
-  const showManagedSection = !!(access["Hardware"] || access["Cybersecurite"] || access["Service"]);
+  const showManagedSection = !!(access["Hardware"] || access["EquipmentInventory"] || access["Cybersecurite"] || access["Service"]);
   const showPilotageSection = !!(access["Dashboard"] || DOCUMENTS_CONFIG.some(doc => access[doc.key] && doc.key !== "Mon" && !(doc.key === "DocumentsHub" && isCommunity)) || !!access["Mon"] && !isCommunity);
   const sidebarGuide = useMemo(() => buildSidebarGuideSteps({
     locale,
@@ -350,6 +350,10 @@ export default function Sidebar({
                     onSelect("Hardware");
                     if (isMobile) setShowMenu(false);
                   }} icon={<Icon icon="mdi:radar" className={`${styles.itemIcon} ${styles.itemIconInfra}`} />} label={!isCollapsed ? copy.nav.supervision : null} />}
+                      {!!access["EquipmentInventory"] && <SidebarAccessNavItem key="EquipmentInventory" itemKey="EquipmentInventory" showTooltip={showIconTooltip} tooltip={copy.nav.inventory} className={`${styles.navItem} ${current === "EquipmentInventory" ? styles.active : ""}`} onClick={() => {
+                    onSelect("EquipmentInventory");
+                    if (isMobile) setShowMenu(false);
+                  }} icon={<Icon icon="mdi:devices" className={`${styles.itemIcon} ${styles.itemIconInventory}`} />} label={!isCollapsed ? copy.nav.inventory : null} />}
                       {!!access["Cybersecurite"] && <SidebarAccessNavItem key="Cybersecurite" itemKey="Cybersecurite" showTooltip={showIconTooltip} tooltip={copy.nav.cyber} className={`${styles.navItem} ${current === "Cybersecurite" || current === "CampaignDetail" || current === "AntivirusDetail" || current === "AntispamDetail" ? styles.active : ""}`} onClick={() => {
                     onSelect("Cybersecurite");
                     if (isMobile) setShowMenu(false);

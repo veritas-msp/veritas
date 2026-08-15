@@ -15,6 +15,7 @@ import { requireProForClientInfra } from '../../middleware/clientInfraRoutes.js'
 import { requirePermission, requireAnyPermission } from '../../middleware/permissions.js';
 import { attachEquipmentCounts, fetchEquipmentCountsByClientId } from '../../utils/equipmentCountsByClient.js';
 import { fetchEquipmentPurgeList } from '../../utils/equipmentPurgeList.js';
+import { fetchEquipmentInventoryList } from '../../utils/equipmentInventoryList.js';
 import { userHasAllPermissions } from '../../services/permissionService.js';
 import { addMembership, fetchPrimaryContactNamesByClientId, sqlContactLinkedToClientAsync, attachMembershipsToContacts } from '../../services/contactClientLinks.js';
 const router = express.Router();
@@ -731,6 +732,19 @@ router.get('/equipment-purge', requireAnyPermission('clients.view', 'infrastruct
     console.error('GET /equipment-purge:', err);
     res.status(500).json({
       error: 'Error loading equipment purge list',
+      details: err.message,
+      code: err.code
+    });
+  }
+});
+router.get('/equipment-inventory', requireAnyPermission('equipment_inventory.view', 'infrastructure.view'), async (req, res) => {
+  try {
+    const items = await fetchEquipmentInventoryList();
+    res.json(items);
+  } catch (err) {
+    console.error('GET /equipment-inventory:', err);
+    res.status(500).json({
+      error: 'Error loading equipment inventory',
       details: err.message,
       code: err.code
     });

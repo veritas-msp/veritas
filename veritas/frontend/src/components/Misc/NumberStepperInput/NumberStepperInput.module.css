@@ -62,20 +62,20 @@
   cursor: not-allowed;
 }
 
-:global(.dark) .numberStepperActions {
-  border-color: var(--msp-border, #334155);
+:global(html.dark) .numberStepperActions {
+  border-color: var(--msp-border, #2f4260);
 }
 
-:global(.dark) .numberStepperBtn {
-  background: var(--msp-surface-2, #0f172a);
-  color: var(--msp-muted-light, #94a3b8);
+:global(html.dark) .numberStepperBtn {
+  background: var(--msp-surface-2, #152035);
+  color: var(--msp-muted-light, #8fa8c4);
 }
 
-:global(.dark) .numberStepperBtn + .numberStepperBtn {
-  border-color: var(--msp-border, #334155);
+:global(html.dark) .numberStepperBtn + .numberStepperBtn {
+  border-color: var(--msp-border, #2f4260);
 }
 
-:global(.dark) .numberStepperBtn:hover:not(:disabled) {
-  background: rgba(43, 95, 171, 0.22);
+:global(html.dark) .numberStepperBtn:hover:not(:disabled) {
+  background: var(--msp-accent-soft, rgba(43, 95, 171, 0.22));
   color: var(--msp-accent, #4a7fd4);
 }

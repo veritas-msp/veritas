@@ -208,7 +208,8 @@ export default function AdminPanel({
   isCommunity = false,
   routeTab = null,
   onRouteTabChange,
-  onInjectionRunningChange
+  onInjectionRunningChange,
+  onOpenPage
 }) {
   const {
     userRole
@@ -456,7 +457,7 @@ export default function AdminPanel({
         <div className={layout.content}>
           {ActiveComponent ? <ActiveComponent isCommunity={isCommunity} {...activeTab === "injection" ? {
           onRunningChange: handleInjectionRunningChange
-        } : null} onNavigate={tab => {
+        } : null} onOpenPage={onOpenPage} onNavigate={tab => {
           if (injectionRunning && tab !== "injection") {
             toast.warn(injectionCopy.navBlocked);
             return;

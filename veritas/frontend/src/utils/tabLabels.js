@@ -147,5 +147,6 @@ export function generateTabTitle(type, data = {}, locale = "fr") {
   if (type === "Ticket") return d.support;
   if (type === "Dashboard") return d.dashboardKpi;
   if (type === "DocumentsHub") return d.documentsList;
+  if (type === "EquipmentInventory") return d.inventoryList;
   return type;
 }

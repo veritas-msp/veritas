@@ -35,6 +35,7 @@ import UpdatesPage from "../components/UpdatesPage/UpdatesPage";
 import ComingSoonPage from "../components/Misc/ComingSoonPage/ComingSoonPage";
 import DashboardPage from "../components/DashboardPage/DashboardPage";
 import DocumentsHubPage from "../components/DocumentsHubPage/DocumentsHubPage";
+import EquipmentInventoryPage from "../components/EquipmentInventoryPage/EquipmentInventoryPage";
 import TabLauncherPage from "../components/TabLauncher/TabLauncherPage";
 import { createListTabData, isListTabDocType } from "../navigation/tabTypes";
 import MonitoringRenderContent from "../components/Monitoring/MonitoringRenderContent";
@@ -1039,6 +1040,8 @@ export default function MainApp() {
         return <RapportPage onNavigate={handleDocSelect} hasTabsBar={tabs.length > 0} onMonitoringReportGuardChange={handleMonitoringReportGuardChange} />;
       case "DocumentsHub":
         return <DocumentsHubPage />;
+      case "EquipmentInventory":
+        return <EquipmentInventoryPage onNavigate={handleDocSelect} />;
       case "MonitoringDetail":
         {
           const activeMonitoringTab = tabs.find(tab => tab.id === activeTabId && tab.type === "MonitoringDetail");
@@ -1071,7 +1074,7 @@ export default function MainApp() {
           </EphemeralMonitoringProvider>;
         }
       case "Admin":
-        return <AdminPanel isCommunity={isCommunity} routeTab={adminTab} onInjectionRunningChange={handleInjectionRunningChange} onRouteTabChange={tab => {
+        return <AdminPanel isCommunity={isCommunity} routeTab={adminTab} onInjectionRunningChange={handleInjectionRunningChange} onOpenPage={handleDocSelect} onRouteTabChange={tab => {
           setAdminTab(tab);
           pushAgentUrl("Admin", null, {
             adminTab: tab,

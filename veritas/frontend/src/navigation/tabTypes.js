@@ -1,4 +1,4 @@
-export const LIST_TAB_DOC_TYPES = ["Contrat", "Contact", "Ticket", "Hardware", "DocumentsHub"];
+export const LIST_TAB_DOC_TYPES = ["Contrat", "Contact", "Ticket", "Hardware", "EquipmentInventory", "DocumentsHub"];
 export function isListTabDocType(docType) {
   return LIST_TAB_DOC_TYPES.includes(docType);
 }

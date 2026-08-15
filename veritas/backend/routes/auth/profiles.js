@@ -170,13 +170,13 @@ router.post("/", requireRole("admin"), async (req, res) => {
            monitoring_enabled, infrastructure_enabled, cybersecurite_enabled,
            planning_enabled, service_enabled, contrat_enabled, contact_enabled,
            configurateur_enabled, tickets_enabled, sales_enabled, dashboard_enabled,
-           documents_enabled, administration_enabled, display_order)
+           documents_enabled, equipment_inventory_enabled, administration_enabled, display_order)
          SELECT
            $1, $2, $3,
            monitoring_enabled, infrastructure_enabled, cybersecurite_enabled,
            planning_enabled, service_enabled, TRUE, TRUE,
            configurateur_enabled, tickets_enabled, sales_enabled, dashboard_enabled,
-           documents_enabled, administration_enabled,
+           documents_enabled, equipment_inventory_enabled, administration_enabled,
            COALESCE($4, display_order)
          FROM v_b_users_profiles
          WHERE name = $3`, [String(name).trim(), String(label).trim(), parentName, Number(display_order) || 999]);
@@ -187,12 +187,12 @@ router.post("/", requireRole("admin"), async (req, res) => {
           monitoring_enabled, infrastructure_enabled, cybersecurite_enabled,
           planning_enabled, service_enabled, contrat_enabled, contact_enabled,
           configurateur_enabled, tickets_enabled, sales_enabled, dashboard_enabled,
-          documents_enabled, administration_enabled, display_order)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, TRUE, TRUE, $8, $9, $10, $11, $12, $13, $14)`, [String(name).trim(), String(label).trim(),
+          documents_enabled, equipment_inventory_enabled, administration_enabled, display_order)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, TRUE, TRUE, $8, $9, $10, $11, $12, $13, $14, $15)`, [String(name).trim(), String(label).trim(),
       // monitoring, infrastructure, cyber, planning, service
       Boolean(body.monitoring_enabled), Boolean(body.infrastructure_enabled), Boolean(body.cybersecurite_enabled), Boolean(body.planning_enabled), Boolean(body.service_enabled),
-      // configurateur, tickets, sales, dashboard, documents, administration
-      Boolean(body.configurateur_enabled), Boolean(body.tickets_enabled), Boolean(body.sales_enabled), Boolean(body.dashboard_enabled), Boolean(body.documents_enabled), Boolean(body.administration_enabled), Number.isFinite(Number(display_order)) ? Number(display_order) : 999]);
+      // configurateur, tickets, sales, dashboard, documents, inventory, administration
+      Boolean(body.configurateur_enabled), Boolean(body.tickets_enabled), Boolean(body.sales_enabled), Boolean(body.dashboard_enabled), Boolean(body.documents_enabled), Boolean(body.equipment_inventory_enabled), Boolean(body.administration_enabled), Number.isFinite(Number(display_order)) ? Number(display_order) : 999]);
       void flagValues;
     }
     res.status(201).json({

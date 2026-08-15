@@ -289,7 +289,7 @@
 .contractBadge_expiring { background: rgba(217, 119, 6, 0.12); color: #b45309; }
 .contractBadge_expired { background: rgba(220, 38, 38, 0.1); color: #dc2626; }
 .contractBadge_suspended { background: rgba(245, 158, 11, 0.12); color: #d97706; }
-.contractBadge_unknown { background: #f1f5f9; color: #94a3b8; }
+.contractBadge_unknown { background: var(--msp-surface-2); color: var(--msp-muted-light); }
 
 .heroMetaItem {
   display: inline-flex;
@@ -686,7 +686,7 @@
   overflow-x: hidden;
   overflow-y: auto;
   scrollbar-width: thin;
-  scrollbar-color: #c5d0df transparent;
+  scrollbar-color: var(--msp-border) transparent;
 }
 
 .asidePanel::-webkit-scrollbar {
@@ -694,7 +694,7 @@
 }
 
 .asidePanel::-webkit-scrollbar-thumb {
-  background: #c5d0df;
+  background: var(--msp-border);
   border-radius: 4px;
 }
 
@@ -1495,8 +1495,8 @@
 }
 
 .ticketStatusBadge {
-  background: #eef2f7;
-  color: #475569;
+  background: var(--msp-surface-2);
+  color: var(--msp-muted);
 }
 
 .eventTypeBadge {
@@ -2433,6 +2433,13 @@ button.sidebarOptionIcon:hover {
   min-width: 0;
 }
 
+.sidebarContactNameRow {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
 .sidebarContactName {
   display: block;
   font-size: 0.8125rem;
@@ -3078,11 +3085,11 @@ button.sidebarOptionIcon:hover {
 }
 
 :global(html.dark) .asidePanel {
-  scrollbar-color: #2f4260 transparent;
+  scrollbar-color: var(--msp-border) transparent;
 }
 
 :global(html.dark) .asidePanel::-webkit-scrollbar-thumb {
-  background: #2f4260;
+  background: var(--msp-border);
 }
 
 :global(html.dark) .panelHeader,
@@ -3145,6 +3152,17 @@ button.sidebarOptionIcon:hover {
   background: var(--msp-accent-soft);
 }
 
+.equipmentSection [class*="embeddedSearchInput"]:not([type="checkbox"]):not([type="radio"]),
+.equipmentSection [class*="embeddedSearchInput"]:not([type="checkbox"]):not([type="radio"]):hover,
+.equipmentSection [class*="embeddedSearchInput"]:not([type="checkbox"]):not([type="radio"]):focus,
+.equipmentSection [class*="embeddedSearchInput"]:not([type="checkbox"]):not([type="radio"]):focus-visible {
+  background: transparent !important;
+  background-color: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  outline: none !important;
+}
+
 :global(html.dark) .equipmentSection [class*="embeddedSearchBox"] {
   background: var(--msp-surface-2);
   border-color: var(--msp-border);
@@ -3159,11 +3177,16 @@ button.sidebarOptionIcon:hover {
   box-shadow: 0 0 0 2px rgba(74, 143, 212, 0.15);
 }
 
-:global(html.dark) .equipmentSection [class*="embeddedSearchInput"] {
-  background: inherit !important;
-  background-color: inherit !important;
-  color: var(--msp-text) !important;
+:global(html.dark) .equipmentSection [class*="embeddedSearchInput"]:not([type="checkbox"]):not([type="radio"]),
+:global(html.dark) .equipmentSection [class*="embeddedSearchInput"]:not([type="checkbox"]):not([type="radio"]):hover,
+:global(html.dark) .equipmentSection [class*="embeddedSearchInput"]:not([type="checkbox"]):not([type="radio"]):focus,
+:global(html.dark) .equipmentSection [class*="embeddedSearchInput"]:not([type="checkbox"]):not([type="radio"]):focus-visible {
+  background: transparent !important;
+  background-color: transparent !important;
+  border: none !important;
   box-shadow: none !important;
+  outline: none !important;
+  color: var(--msp-text) !important;
   -webkit-appearance: none;
   appearance: none;
 }

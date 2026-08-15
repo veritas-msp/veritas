@@ -298,6 +298,13 @@ export const PERMISSION_CATALOG = [{
   matrix: false,
   actions: ["view", "edit"]
 }, {
+  group: "equipment_inventory",
+  label: "Device inventory",
+  section: "supervision",
+  moduleFlag: "equipment_inventory_enabled",
+  matrix: false,
+  actions: ["view"]
+}, {
   group: "supervision",
   label: "Supervision center",
   section: "supervision",
@@ -530,6 +537,7 @@ export const VIEW_PERMISSION_TO_MODULE_FLAG = {
   "sales.view": "sales_enabled",
   "infrastructure.view": "infrastructure_enabled",
   "supervision.view": "infrastructure_enabled",
+  "equipment_inventory.view": "equipment_inventory_enabled",
   "monitoring.view": "monitoring_enabled",
   "cybersecurite.view": "cybersecurite_enabled",
   "documents.view": "documents_enabled",
@@ -547,6 +555,7 @@ export const ACCESS_KEY_TO_VIEW_PERMISSIONS = {
   Contrat: ["contracts.view"],
   Contact: ["contacts.view"],
   Hardware: ["infrastructure.view", "supervision.view"],
+  EquipmentInventory: ["equipment_inventory.view"],
   Cybersecurite: ["cybersecurite.view"],
   Mon: ["monitoring.view"],
   DocumentsHub: ["documents.view"],
@@ -562,6 +571,7 @@ export const MODULE_FLAG_TO_GROUPS = {
   tickets_enabled: ["tickets", "tickets_detail"],
   sales_enabled: ["sales", "sales_detail"],
   infrastructure_enabled: ["infrastructure", "supervision"],
+  equipment_inventory_enabled: ["equipment_inventory"],
   monitoring_enabled: ["monitoring"],
   cybersecurite_enabled: ["cybersecurite"],
   documents_enabled: ["documents", "vault"],

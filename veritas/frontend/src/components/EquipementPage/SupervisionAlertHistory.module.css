@@ -84,38 +84,167 @@
   font-size: 0.85rem;
 }
 
-.list {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 0.4rem;
-}
-
-.card {
+.tableWrap {
+  min-width: 0;
+  overflow: auto;
   border: 1px solid var(--msp-border, #2f4260);
   border-radius: 12px;
   background: var(--msp-surface, #1a2540);
-  overflow: hidden;
 }
 
-.cardMain {
+.table {
   width: 100%;
-  display: flex;
-  align-items: center;
-  gap: 0.55rem;
-  padding: 0.7rem 0.75rem;
-  border: none;
-  background: transparent;
-  color: inherit;
-  font: inherit;
-  text-align: left;
-  cursor: pointer;
+  min-width: 820px;
+  border-collapse: collapse;
+  font-size: 0.8125rem;
 }
 
-.cardMain:hover {
+.table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  text-align: left;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--msp-muted, #8fa8c4);
+  padding: 0.45rem 0.6rem;
+  border-bottom: 1px solid var(--msp-border, #2f4260);
+  background: var(--msp-surface-2, #152035);
+  white-space: nowrap;
+}
+
+.table tbody td {
+  padding: 0.45rem 0.6rem;
+  border-bottom: 1px solid var(--msp-border-light, #2a3a55);
+  vertical-align: middle;
+  color: var(--msp-text, #e8edf5);
+}
+
+.dataRow {
+  cursor: pointer;
+  transition: background 0.12s;
+}
+
+.dataRow:hover,
+.dataRowOpen {
   background: rgba(90, 143, 212, 0.06);
+}
+
+.alertCell {
+  display: flex;
+  flex-direction: column;
+  gap: 0.12rem;
+  min-width: 14rem;
+  max-width: 28rem;
+}
+
+.domainCell {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.whenCell {
+  font-variant-numeric: tabular-nums;
+  color: var(--msp-muted, #8fa8c4);
+  white-space: nowrap;
+}
+
+.actionsCol {
+  position: sticky;
+  right: 0;
+  z-index: 2;
+  width: 1%;
+  white-space: nowrap;
+  text-align: right;
+  background: var(--msp-surface, #1a2540);
+  box-shadow: -8px 0 10px -8px rgba(0, 0, 0, 0.25);
+}
+
+th.actionsCol {
+  z-index: 3;
+  background: var(--msp-surface-2, #152035);
+}
+
+.dataRow:hover .actionsCol,
+.dataRowOpen .actionsCol {
+  background: #18253f;
+}
+
+.rowActions {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.1rem;
+}
+
+.actionBtn {
+  width: 1.7rem;
+  height: 1.7rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--msp-muted, #8fa8c4);
+  cursor: pointer;
+  font-size: 1rem;
+}
+
+.actionBtn:hover:not(:disabled) {
+  border-color: var(--msp-border, #2f4260);
+  background: var(--msp-surface-2, #152035);
+  color: var(--msp-text, #e8edf5);
+}
+
+.actionBtn:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.statusBadge {
+  display: inline-flex;
+  align-items: center;
+  font-size: 0.62rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  padding: 0.12rem 0.35rem;
+  border-radius: 999px;
+  border: 1px solid transparent;
+  white-space: nowrap;
+}
+
+.statusOpen {
+  color: #93c5fd;
+  background: rgba(59, 130, 246, 0.12);
+  border-color: rgba(59, 130, 246, 0.28);
+}
+
+.statusAcked {
+  color: #fcd34d;
+  background: rgba(245, 158, 11, 0.12);
+  border-color: rgba(245, 158, 11, 0.3);
+}
+
+.statusLinked {
+  color: #6ee7b7;
+  background: rgba(16, 185, 129, 0.12);
+  border-color: rgba(16, 185, 129, 0.3);
+}
+
+.statusClosed {
+  color: var(--msp-muted, #8fa8c4);
+  background: rgba(148, 163, 184, 0.12);
+  border-color: rgba(148, 163, 184, 0.28);
+}
+
+.detailRow td {
+  padding: 0 !important;
+  background: rgba(90, 143, 212, 0.04);
 }
 
 .domainIcon {
@@ -293,9 +422,32 @@
 }
 
 :global(html:not(.dark)) .searchBox,
-:global(html:not(.dark)) .card {
+:global(html:not(.dark)) .tableWrap {
   background: var(--msp-surface, #fff);
   border-color: var(--msp-border, #c5d0df);
+}
+
+:global(html:not(.dark)) .table thead th,
+:global(html:not(.dark)) th.actionsCol {
+  background: var(--msp-surface-2, #f7f9fc);
+  border-color: var(--msp-border, #c5d0df);
+  color: var(--msp-muted, #5c6b82);
+}
+
+:global(html:not(.dark)) .table tbody td,
+:global(html:not(.dark)) .actionsCol {
+  color: var(--msp-text, #0f1c2e);
+  border-color: var(--msp-border-light, #eef2f7);
+  background: var(--msp-surface, #fff);
+}
+
+:global(html:not(.dark)) .dataRow:hover .actionsCol,
+:global(html:not(.dark)) .dataRowOpen .actionsCol {
+  background: var(--msp-surface-2, #f7f9fc);
+}
+
+:global(html:not(.dark)) .detailRow td {
+  background: rgba(43, 95, 171, 0.04);
 }
 
 :global(html:not(.dark)) .chip {

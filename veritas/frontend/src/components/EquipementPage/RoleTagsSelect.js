@@ -121,6 +121,8 @@ export default function RoleTagsSelect({
     if (disabled) return;
     const next = selectedValues.includes(optionValue) ? selectedValues.filter(item => item !== optionValue) : [...selectedValues, optionValue];
     onChange(next);
+    setSearchTerm("");
+    setIsOpen(true);
   };
   const removeTag = tag => {
     if (disabled) return;

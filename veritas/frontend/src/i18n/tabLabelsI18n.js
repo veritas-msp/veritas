@@ -19,7 +19,8 @@ const TAB_LABELS_COPY = {
       Ticket: "Liste tickets",
       Hardware: "Supervision",
       Mon: "Monitoring",
-      DocumentsHub: "Documents"
+      DocumentsHub: "Documents",
+      EquipmentInventory: "Inventaire périphériques"
     },
     equipmentTypes: {
       serveurs: "Serveurs",
@@ -62,7 +63,8 @@ const TAB_LABELS_COPY = {
       contactsList: "Contacts",
       supervisionCenter: "Supervision",
       monitoringList: "Monitoring",
-      documentsList: "Documents"
+      documentsList: "Documents",
+      inventoryList: "Inventaire périphériques"
     }
   },
   en: {
@@ -84,7 +86,8 @@ const TAB_LABELS_COPY = {
       Ticket: "Ticket list",
       Hardware: "Supervision",
       Mon: "Monitoring",
-      DocumentsHub: "Documents"
+      DocumentsHub: "Documents",
+      EquipmentInventory: "Device inventory"
     },
     equipmentTypes: {
       serveurs: "Servers",
@@ -127,7 +130,8 @@ const TAB_LABELS_COPY = {
       contactsList: "Contacts",
       supervisionCenter: "Supervision",
       monitoringList: "Monitoring",
-      documentsList: "Documents"
+      documentsList: "Documents",
+      inventoryList: "Device inventory"
     }
   },
   de: {
@@ -149,7 +153,8 @@ const TAB_LABELS_COPY = {
       Ticket: "Ticketliste",
       Hardware: "Supervision",
       Mon: "Monitoring",
-      DocumentsHub: "Documents"
+      DocumentsHub: "Documents",
+      EquipmentInventory: "Geräteinventar"
     },
     equipmentTypes: {
       serveurs: "Server",
@@ -191,7 +196,8 @@ const TAB_LABELS_COPY = {
       contactsList: "Kontakte",
       supervisionCenter: "Supervision",
       monitoringList: "Monitoring",
-      documentsList: "Dokumente"
+      documentsList: "Dokumente",
+      inventoryList: "Geräteinventar"
     }
   },
   it: {
@@ -213,7 +219,8 @@ const TAB_LABELS_COPY = {
       Ticket: "Elenco ticket",
       Hardware: "Supervisione",
       Mon: "Monitoring",
-      DocumentsHub: "Documenti"
+      DocumentsHub: "Documenti",
+      EquipmentInventory: "Inventario periferiche"
     },
     equipmentTypes: {
       serveurs: "Server",
@@ -255,7 +262,8 @@ const TAB_LABELS_COPY = {
       contactsList: "Contatti",
       supervisionCenter: "Supervisione",
       monitoringList: "Monitoring",
-      documentsList: "Documenti"
+      documentsList: "Documenti",
+      inventoryList: "Inventario periferiche"
     }
   },
   es: {
@@ -277,7 +285,8 @@ const TAB_LABELS_COPY = {
       Ticket: "Lista tickets",
       Hardware: "Supervisión",
       Mon: "Monitorización",
-      DocumentsHub: "Documentos"
+      DocumentsHub: "Documentos",
+      EquipmentInventory: "Inventario de periféricos"
     },
     equipmentTypes: {
       serveurs: "Servidores",
@@ -319,7 +328,8 @@ const TAB_LABELS_COPY = {
       contactsList: "Contactos",
       supervisionCenter: "Supervisión",
       monitoringList: "Monitorización",
-      documentsList: "Documentos"
+      documentsList: "Documentos",
+      inventoryList: "Inventario de periféricos"
     }
   }
 };

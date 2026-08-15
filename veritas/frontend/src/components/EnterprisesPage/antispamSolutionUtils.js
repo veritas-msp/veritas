@@ -138,9 +138,54 @@ export function computeAntispamExpirationStatus(expiration) {
   const expirationDate = new Date(expiration);
   if (Number.isNaN(expirationDate.getTime())) return "unknown";
   const daysUntil = Math.ceil((expirationDate - new Date()) / (1000 * 60 * 60 * 24));
-  if (daysUntil <= 0) return "inactive";
+  if (daysUntil <= 0) return "inactif";
   if (daysUntil <= 30) return "expire_bientot";
   return "actif";
+}
+const SUBSCRIPTION_TYPE_LABELS = {
+  1: "Essai",
+  2: "Annuel",
+  3: "Mensuel",
+  4: "Perpetual"
+};
+function normalizePaymentLabel(value) {
+  if (value == null || value === "" || typeof value === "object") return null;
+  const str = String(value).trim();
+  if (!str) return null;
+  const lower = str.toLowerCase();
+  if (["reseller", "dedicated", "manual", "not defined", "undefined", "-"].includes(lower)) return null;
+  if (lower.includes("essai") || lower.includes("trial") || lower.includes("demo")) return "Essai";
+  if (lower.includes("annuel") || lower.includes("annual") || lower.includes("yearly") || lower.includes("year")) return "Annuel";
+  if (lower.includes("mensuel") || lower.includes("monthly") || lower.includes("month")) return "Mensuel";
+  if (lower.includes("perpetual") || lower.includes("perpetuel") || lower.includes("lifetime")) return "Perpetual";
+  return str;
+}
+function toLicenseNumber(value) {
+  if (value == null || value === "") return null;
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+export function resolveAntispamPaymentPlan(solution) {
+  const customer = solution?.syncData?.customer;
+  const raw = customer?.raw && typeof customer.raw === "object" ? customer.raw : {};
+  const subscriptionType = solution?.subscriptionType ?? customer?.subscriptionType ?? raw.subscriptionType ?? raw.offerType;
+  if (SUBSCRIPTION_TYPE_LABELS[subscriptionType]) return SUBSCRIPTION_TYPE_LABELS[subscriptionType];
+  const candidates = [solution?.paymentPlan, solution?.plan, customer?.paymentPlan, customer?.plan, raw.paymentPlan, raw.plan, raw.offer, raw.offerName, raw.subscription, raw.periodicity, raw.billingPeriod, raw.billingFrequency, raw.recurrence];
+  for (const candidate of candidates) {
+    const label = normalizePaymentLabel(candidate);
+    if (label) return label;
+  }
+  return "-";
+}
+function resolveAntispamLicenses(normalized) {
+  const usedLicenses = toLicenseNumber(normalized?.utilisateursProteges ?? normalized?.licencesUtilisees ?? normalized?.usedLicenses);
+  const totalLicenses = toLicenseNumber(normalized?.licencesTotales ?? normalized?.totalLicenses ?? normalized?.nombre_licences);
+  const usagePercent = totalLicenses > 0 && usedLicenses != null ? Math.round(usedLicenses / totalLicenses * 100) : null;
+  return {
+    usedLicenses,
+    totalLicenses,
+    usagePercent
+  };
 }
 export function buildAntispamFleetRow(client, solution, index = 0) {
   const normalized = normalizeAntispamItem(solution);
@@ -149,6 +194,7 @@ export function buildAntispamFleetRow(client, solution, index = 0) {
   const productName = resolveAntispamProductName(providerId, provider);
   const providerImage = resolveAntispamProviderImage(providerId, provider);
   const tenantLabel = resolveAntispamTenantLabel(normalized, productName);
+  const licenses = resolveAntispamLicenses(normalized);
   return {
     id: normalized.id || `${client?.id}-as-${index}`,
     clientId: client?.id,
@@ -158,10 +204,14 @@ export function buildAntispamFleetRow(client, solution, index = 0) {
     solutionSubtitle: tenantLabel,
     mappingMode: getAntispamSolutionModeLabel(normalized),
     status: computeAntispamExpirationStatus(normalized.expiration),
+    paymentPlan: resolveAntispamPaymentPlan(normalized),
     expiration: normalized.expiration || null,
     expirationDate: normalized.expiration || null,
     utilisateursProteges: normalized.utilisateursProteges ?? null,
     domainesSurveilles: normalized.domainesSurveilles ?? null,
+    usedLicenses: licenses.usedLicenses,
+    totalLicenses: licenses.totalLicenses,
+    usagePercent: licenses.usagePercent,
     providerId,
     providerName: productName,
     providerIcon: provider?.icon || "mdi:email-secure-outline",

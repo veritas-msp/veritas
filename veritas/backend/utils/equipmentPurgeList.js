@@ -82,7 +82,32 @@ function buildLeanSelect(table) {
         NULLIF(TRIM(e.data->>'fabricant'), ''),
         NULLIF(TRIM(e.data->>'manufacturer'), ''),
         ''
-      ) AS manufacturer
+      ) AS manufacturer,
+      COALESCE(
+        NULLIF(TRIM(e.data->>'type'), ''),
+        NULLIF(TRIM(e.data->>'typeServer'), ''),
+        ''
+      ) AS device_type,
+      COALESCE(NULLIF(TRIM(e.data->>'fournisseur'), ''), '') AS fournisseur,
+      COALESCE(NULLIF(TRIM(e.data->>'quickConnect'), ''), '') AS quick_connect,
+      COALESCE(
+        NULLIF(TRIM(e.data->>'adminUrl'), ''),
+        NULLIF(TRIM(e.data->>'urlAdministration'), ''),
+        NULLIF(TRIM(e.data->>'stormshieldWanUrl'), ''),
+        ''
+      ) AS admin_url,
+      COALESCE(NULLIF(TRIM(e.data->>'stormshieldWanUrl'), ''), '') AS stormshield_wan_url,
+      COALESCE(NULLIF(TRIM(e.data->>'remoteAccessSolution'), ''), '') AS remote_access_solution,
+      COALESCE(
+        NULLIF(TRIM(e.data->>'remoteAccessId'), ''),
+        NULLIF(TRIM(e.data->>'anydeskId'), ''),
+        ''
+      ) AS remote_access_id,
+      COALESCE(NULLIF(TRIM(e.data->>'anydeskId'), ''), '') AS anydesk_id,
+      CASE
+        WHEN lower(COALESCE(e.data->>'manageable', '')) IN ('true', 't', '1', 'yes') THEN true
+        ELSE false
+      END AS manageable
     FROM ${table} e
     INNER JOIN v_b_clients c ON c.id = e.client_id
     WHERE e.client_id IS NOT NULL
@@ -108,6 +133,32 @@ function mapLeanRow(row, familyMeta) {
     model: row.model || "",
     mac: row.mac || "",
     manufacturer: row.manufacturer || "",
+    deviceType: row.device_type || "",
+    typeServer: row.device_type || "",
+    fournisseur: row.fournisseur || "",
+    quickConnect: row.quick_connect || "",
+    adminUrl: row.admin_url || "",
+    stormshieldWanUrl: row.stormshield_wan_url || "",
+    remoteAccessSolution: row.remote_access_solution || "",
+    remoteAccessId: row.remote_access_id || "",
+    anydeskId: row.anydesk_id || "",
+    manageable: row.manageable === true,
+    rawData: {
+      type: row.device_type || "",
+      typeServer: row.device_type || "",
+      fournisseur: row.fournisseur || "",
+      marque: row.manufacturer || "",
+      fabricant: row.manufacturer || "",
+      manufacturer: row.manufacturer || "",
+      quickConnect: row.quick_connect || "",
+      adminUrl: row.admin_url || "",
+      urlAdministration: row.admin_url || "",
+      stormshieldWanUrl: row.stormshield_wan_url || "",
+      remoteAccessSolution: row.remote_access_solution || "",
+      remoteAccessId: row.remote_access_id || "",
+      anydeskId: row.anydesk_id || "",
+      manageable: row.manageable === true
+    },
     is_active: row.is_active !== false
   };
 }

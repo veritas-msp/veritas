@@ -1,16 +1,15 @@
 import { interpolate, pickLocaleMessages } from "../../i18n/translate";
-const TAB_IDS = ["operations", "fleet", "history", "settings"];
+const TAB_IDS = ["operations", "history", "settings"];
 const LICENSE_MODULE_KEYS = ["antivirus", "antispam", "domain", "ssl", "licences", "o365", "backup", "firewall", "toip"];
 const SUPERVISION_COPY = {
   fr: {
     eyebrow: "Services managés",
     pageTitle: "Centre de supervision",
-    subtitle: "Centre de notifications · alertes périphériques, sauvegardes, contrats et RMM.",
+    subtitle: "Alertes actives et historique · périphériques, sauvegardes, contrats et RMM.",
     loading: "Balayage en cours…",
     tabSectionsAria: "Sections supervision",
     tabs: {
-      operations: "Opérations",
-      fleet: "Parc",
+      operations: "Alertes",
       history: "Historique",
       settings: "Règles"
     },
@@ -24,7 +23,7 @@ const SUPERVISION_COPY = {
         },
         tabs: {
           title: "Vues principales",
-          content: "Opérations = file d'alertes. Parc = listing des périphériques. Historique = alertes prises en charge ou closes. Règles (admin) = critères de surveillance."
+          content: "Alertes = table des alertes actives. Historique = alertes prises en charge ou closes, avec timeline. Règles (admin) = critères de surveillance."
         },
         kpis: {
           title: "Filtres",
@@ -35,12 +34,8 @@ const SUPERVISION_COPY = {
           content: "Recherchez une alerte ou un client. Les filtres ci-dessous affinent la même file."
         },
         queue: {
-          title: "File d'alertes",
-          content: "Chaque carte suit le même format : titre, domaine, statut. Prenez en charge, créez un ticket Support ou Presta, planifiez, résolvez ou ignorez."
-        },
-        fleet: {
-          title: "Parc",
-          content: "Le listing des périphériques clients, pour remédier hors file d'alertes (ticket, planning)."
+          title: "Table d'alertes",
+          content: "Chaque ligne affiche l'alerte, l'entreprise, le domaine et le statut. Survolez les icônes d'actions pour voir ce qu'elles font : prise en charge, ticket, planning, résolution."
         },
         history: {
           title: "Historique",
@@ -104,6 +99,15 @@ const SUPERVISION_COPY = {
         dismiss: "Ignorer l'alerte et l'envoyer dans l'historique",
         open: "Ouvrir la fiche ou le détail lié"
       },
+      columns: {
+        alert: "Alerte",
+        company: "Entreprise",
+        domain: "Domaine",
+        severity: "Sévérité",
+        status: "Statut",
+        when: "Date",
+        actions: "Actions"
+      },
       toasts: {
         acked: "Alerte prise en charge",
         resolved: "Alerte résolue — déplacée dans l'historique",
@@ -151,6 +155,19 @@ const SUPERVISION_COPY = {
         dismissed: "Ignorée",
         reopen: "Réouverte",
         note: "Note"
+      },
+      columns: {
+        alert: "Alerte",
+        company: "Entreprise",
+        domain: "Domaine",
+        status: "Statut",
+        when: "Date",
+        actions: "Actions"
+      },
+      actionHints: {
+        reopen: "Réouvrir cette alerte et la renvoyer dans la table active",
+        expand: "Afficher la timeline de l'alerte",
+        collapse: "Replier la timeline"
       }
     },
     fleet: {
@@ -340,8 +357,7 @@ const SUPERVISION_COPY = {
     loading: "Scanning…",
     tabSectionsAria: "Monitoring sections",
     tabs: {
-      operations: "Operations",
-      fleet: "Fleet",
+      operations: "Alerts",
       history: "History",
       settings: "Rules"
     },
@@ -355,7 +371,7 @@ const SUPERVISION_COPY = {
         },
         tabs: {
           title: "Main views",
-          content: "Operations = alert queue. Fleet = device listing. History = acknowledged or closed alerts. Rules (admin) = monitoring criteria."
+          content: "Alerts = active alert table. History = acknowledged or closed alerts with timeline. Rules (admin) = monitoring criteria."
         },
         kpis: {
           title: "Filters",
@@ -435,6 +451,15 @@ const SUPERVISION_COPY = {
         dismiss: "Dismiss the alert and move it to history",
         open: "Open the related record or details"
       },
+      columns: {
+        alert: "Alert",
+        company: "Company",
+        domain: "Domain",
+        severity: "Severity",
+        status: "Status",
+        when: "Date",
+        actions: "Actions"
+      },
       toasts: {
         acked: "Alert acknowledged",
         resolved: "Alert resolved — moved to history",
@@ -482,6 +507,19 @@ const SUPERVISION_COPY = {
         dismissed: "Dismissed",
         reopen: "Reopened",
         note: "Note"
+      },
+      columns: {
+        alert: "Alert",
+        company: "Company",
+        domain: "Domain",
+        status: "Status",
+        when: "Date",
+        actions: "Actions"
+      },
+      actionHints: {
+        reopen: "Reopen this alert and send it back to the active table",
+        expand: "Show the alert timeline",
+        collapse: "Collapse the timeline"
       }
     },
     fleet: {
@@ -671,8 +709,7 @@ const SUPERVISION_COPY = {
     loading: "Abtastung läuft…",
     tabSectionsAria: "Überwachungsbereiche",
     tabs: {
-      operations: "Betrieb",
-      fleet: "Park",
+      operations: "Alarme",
       history: "Verlauf",
       settings: "Regeln"
     },
@@ -686,7 +723,7 @@ const SUPERVISION_COPY = {
         },
         tabs: {
           title: "Hauptansichten",
-          content: "Betrieb = Alarmwarteschlange. Park = Geräteliste. Verlauf = bestätigte oder geschlossene Alarme. Regeln (Admin) = Überwachungskriterien."
+          content: "Alarme = aktive Alarmtabelle. Verlauf = bestätigte oder geschlossene Alarme mit Timeline. Regeln (Admin) = Überwachungskriterien."
         },
         kpis: {
           title: "Kennzahlen",
@@ -766,6 +803,15 @@ const SUPERVISION_COPY = {
         dismiss: "Alarm ignorieren und in den Verlauf verschieben",
         open: "Zugehörigen Datensatz oder Details öffnen"
       },
+      columns: {
+        alert: "Alarm",
+        company: "Unternehmen",
+        domain: "Bereich",
+        severity: "Schweregrad",
+        status: "Status",
+        when: "Datum",
+        actions: "Aktionen"
+      },
       toasts: {
         acked: "Alarm bestätigt",
         resolved: "Alarm gelöst — in den Verlauf verschoben",
@@ -813,6 +859,19 @@ const SUPERVISION_COPY = {
         dismissed: "Ignoriert",
         reopen: "Erneut geöffnet",
         note: "Notiz"
+      },
+      columns: {
+        alert: "Alarm",
+        company: "Unternehmen",
+        domain: "Bereich",
+        status: "Status",
+        when: "Datum",
+        actions: "Aktionen"
+      },
+      actionHints: {
+        reopen: "Diesen Alarm wieder öffnen und in die aktive Tabelle zurücksetzen",
+        expand: "Timeline des Alarms anzeigen",
+        collapse: "Timeline einklappen"
       }
     },
     fleet: {
@@ -1002,8 +1061,7 @@ const SUPERVISION_COPY = {
     loading: "Scansione in corso…",
     tabSectionsAria: "Sezioni supervisione",
     tabs: {
-      operations: "Operazioni",
-      fleet: "Parco",
+      operations: "Allarmi",
       history: "Cronologia",
       settings: "Regole"
     },
@@ -1017,7 +1075,7 @@ const SUPERVISION_COPY = {
         },
         tabs: {
           title: "Viste principali",
-          content: "Operazioni = coda allarmi. Parco = elenco dispositivi. Cronologia = allarmi presi in carico o chiusi. Regole (admin) = criteri di monitoraggio."
+          content: "Allarmi = tabella allarmi attivi. Cronologia = allarmi presi in carico o chiusi, con timeline. Regole (admin) = criteri di monitoraggio."
         },
         kpis: {
           title: "Indicatori",
@@ -1097,6 +1155,15 @@ const SUPERVISION_COPY = {
         dismiss: "Ignora l'allarme e spostalo in cronologia",
         open: "Apri la scheda o il dettaglio collegato"
       },
+      columns: {
+        alert: "Allarme",
+        company: "Azienda",
+        domain: "Dominio",
+        severity: "Severità",
+        status: "Stato",
+        when: "Data",
+        actions: "Azioni"
+      },
       toasts: {
         acked: "Allarme preso in carico",
         resolved: "Allarme risolto — spostato in cronologia",
@@ -1144,10 +1211,22 @@ const SUPERVISION_COPY = {
         dismissed: "Ignorato",
         reopen: "Riaperto",
         note: "Nota"
+      },
+      columns: {
+        alert: "Allarme",
+        company: "Azienda",
+        domain: "Dominio",
+        status: "Stato",
+        when: "Data",
+        actions: "Azioni"
+      },
+      actionHints: {
+        reopen: "Riapri questo allarme e riportalo nella tabella attiva",
+        expand: "Mostra la timeline dell'allarme",
+        collapse: "Chiudi la timeline"
       }
     },
     fleet: {
-      remediationSupport: "Ticket Support",
       remediationPresta: "Ticket Presta",
       remediationPlan: "Pianifica"
     },
@@ -1333,8 +1412,7 @@ const SUPERVISION_COPY = {
     loading: "Escaneo en curso…",
     tabSectionsAria: "Secciones de supervisión",
     tabs: {
-      operations: "Operaciones",
-      fleet: "Parque",
+      operations: "Alertas",
       history: "Historial",
       settings: "Reglas"
     },
@@ -1348,7 +1426,7 @@ const SUPERVISION_COPY = {
         },
         tabs: {
           title: "Vistas principales",
-          content: "Operaciones = cola de alertas. Parque = listado de dispositivos. Historial = alertas acusadas o cerradas. Reglas (admin) = criterios de monitorización."
+          content: "Alertas = tabla de alertas activas. Historial = alertas acusadas o cerradas, con cronología. Reglas (admin) = criterios de monitorización."
         },
         kpis: {
           title: "Indicadores",
@@ -1428,6 +1506,15 @@ const SUPERVISION_COPY = {
         dismiss: "Ignorar la alerta y enviarla al historial",
         open: "Abrir la ficha o el detalle vinculado"
       },
+      columns: {
+        alert: "Alerta",
+        company: "Empresa",
+        domain: "Dominio",
+        severity: "Severidad",
+        status: "Estado",
+        when: "Fecha",
+        actions: "Acciones"
+      },
       toasts: {
         acked: "Alerta acusada",
         resolved: "Alerta resuelta — movida al historial",
@@ -1475,6 +1562,19 @@ const SUPERVISION_COPY = {
         dismissed: "Ignorada",
         reopen: "Reabierta",
         note: "Nota"
+      },
+      columns: {
+        alert: "Alerta",
+        company: "Empresa",
+        domain: "Dominio",
+        status: "Estado",
+        when: "Fecha",
+        actions: "Acciones"
+      },
+      actionHints: {
+        reopen: "Reabrir esta alerta y devolverla a la tabla activa",
+        expand: "Mostrar la cronología de la alerta",
+        collapse: "Ocultar la cronología"
       }
     },
     fleet: {
@@ -1660,7 +1760,6 @@ const SUPERVISION_COPY = {
 };
 const TAB_ICONS = {
   operations: "mdi:lightning-bolt",
-  fleet: "mdi:devices",
   history: "mdi:history",
   settings: "mdi:bell-cog-outline"
 };

@@ -23,13 +23,10 @@ import { isSynologyStorage, hasQuickConnectConfigured as hasSynologyQuickConnect
 import EquipmentFormModal from "./EquipmentFormModal";
 import { formatInternetDebitDisplay } from "./internetConnectionUtils";
 import EmbeddedEquipmentActionsMenu from "./EmbeddedEquipmentActionsMenu";
-import EquipmentMspPanel from "./EquipmentMspPanel";
 import SupervisionCenterPage from "./SupervisionCenterPage";
-import { getSupervisionCenterCopy } from "./supervisionCenterPageI18n";
 import { serializeAssignedSsidsForPersistence, serializeWifiSsidCatalogForPersistence } from "./wifiApSsidUtils";
-import mspStyles from "./EquipmentMspPanel.module.css";
 import { getEquipmentClientId, getEquipmentDbId } from "../../utils/equipmentIdentity";
-import { resolveEquipmentMonitorStatus, buildMonitorStatusCounts } from "./equipmentMspUtils";
+import { resolveEquipmentMonitorStatus } from "./equipmentMspUtils";
 import { useCheckMKIntegrationEnabled } from "../../hooks/useCheckMKIntegrationEnabled";
 import { useSupervisionAlertRules } from "../../hooks/useSupervisionAlertRules";
 import { useAuthContext } from "../../contexts/AuthContext";
@@ -41,13 +38,13 @@ import { fetchClientEquipmentAlerts, resolveEquipmentFamilyForAlerts } from "../
 import { ConfirmModal } from "../AdminPage/AdminUi";
 import { useAppLocale } from "../../hooks/useAppGeneralSettings";
 import { useDefaultPageSize } from "../../hooks/useDefaultPageSize";
-import { getEquipmentMspPanelCopy } from "./equipmentMspPanelI18n";
-import { getEquipmentPageCopy, getEquipmentColumnLabel, getEquipmentEmptyMessage, formatEquipmentDeviceCount, getEquipmentRemoteAccessLabel, formatEquipmentRemoteAccessTooltip } from "./equipmentPageI18n";
+import { getEquipmentPageCopy, getEquipmentColumnLabel, getEquipmentEmptyMessage, getEquipmentRemoteAccessLabel, formatEquipmentRemoteAccessTooltip } from "./equipmentPageI18n";
 import { getEquipmentModalsCopy, interpolate } from "./equipmentModalsI18n";
 import { HARDWARE_TYPE_ORDER } from "../EnterprisesPage/infraHoneycombLayout";
 import { getInfraMapCopy } from "../EnterprisesPage/infraMapI18n";
 import { parseCustomFamilyType } from "../../api/equipmentFamilies";
 import { filterBySite } from "../../utils/siteFilterUtils";
+import { getEquipmentFormOptionsCopy, getRoleOptionLabel } from "./equipmentFormOptionsI18n";
 import EquipmentHaCell from "./EquipmentHaCell";
 import { compareFirewallHaPairs, getFirewallHaSortValue, getFirewallHaState } from "./equipmentHaUtils";
 import { getExpirationStatus, getExpirationStatusColor, getMaintenanceLicenseExpiration } from "./constants/firewallLicenceUtils";
@@ -629,7 +626,7 @@ const FIREWALL_COLUMN_LABELS = {
   model: 'Model',
   serial: 'SN'
 };
-const INTERNET_COLUMN_KEYS = ['name', 'client', 'location', 'ip', 'internetType', 'fournisseur', 'debit', 'categorie', 'mapping'];
+const INTERNET_COLUMN_KEYS = ['name', 'client', 'location', 'ip', 'internetType', 'fournisseur', 'debit', 'ha', 'mapping'];
 const INTERNET_COLUMN_LABELS = {
   internetType: 'Connection type'
 };
@@ -639,7 +636,7 @@ const ORDINATEUR_COLUMN_LABELS = {
   domaine: 'Domaine',
   agentStatus: 'Agent'
 };
-const SERVER_COLUMN_KEYS = ['name', 'monitoring', 'client', 'location', 'ip', 'vlan', 'ha', 'systeme', 'processeur', 'memoire', 'stockage', 'expirationGarantie', 'role', 'mapping'];
+const SERVER_COLUMN_KEYS = ['name', 'monitoring', 'client', 'location', 'role', 'ip', 'vlan', 'ha', 'systeme', 'processeur', 'memoire', 'stockage', 'expirationGarantie', 'mapping'];
 const SERVER_COLUMN_LABELS = {
   vlan: 'VLAN',
   systeme: 'OS',
@@ -672,9 +669,9 @@ const BORNE_WIFI_COLUMN_LABELS = {
 };
 const MONITORING_COLUMN_LABEL = "Monitoring";
 const EMBEDDED_TYPE_COLUMNS = {
-  Internet: ["name", "ip", "location", "fournisseur", "debit", "mapping"],
+  Internet: ["name", "ip", "location", "ha", "fournisseur", "debit", "mapping"],
   Firewalls: ["name", "ip", "location", "ha", "model", "serial", "monitoring", "mapping"],
-  Servers: ["name", "ip", "location", "ha", "systeme", "monitoring", "mapping"],
+  Servers: ["name", "role", "ip", "location", "ha", "systeme", "monitoring", "mapping"],
   Ordinateurs: ["name", "ip", "location", "systeme", "domaine", "agentStatus", "mapping"],
   Storage: ["name", "ip", "location", "ha", "capacite", "monitoring", "mapping"],
   Switch: ["name", "ip", "location", "model", "monitoring", "mapping"],
@@ -733,7 +730,6 @@ const EquipmentPage = forwardRef(function EquipmentPage({
   const infraMapCopy = useMemo(() => getInfraMapCopy(locale), [locale]);
   const embeddedCopy = pageCopy.embedded;
   const modalsCopy = useMemo(() => getEquipmentModalsCopy(locale), [locale]);
-  const mspPanelCopy = useMemo(() => getEquipmentMspPanelCopy(locale), [locale]);
   const resolveEmptyMessage = useCallback((type, isEmbedded = false) => getEquipmentEmptyMessage(locale, type, isEmbedded), [locale]);
   const [allEquipment, setAllEquipment] = useState([]);
   const [equipmentTagsMap, setEquipmentTagsMap] = useState({});
@@ -768,10 +764,6 @@ const EquipmentPage = forwardRef(function EquipmentPage({
   const setPageSize = embedded ? setEmbeddedPageSize : setGlobalPageSize;
   const [tablePageByType, setTablePageByType] = useState({});
   const scrollContainerRef = useRef(null);
-  const [fleetRemediation, setFleetRemediation] = useState(null);
-  const handleFleetRemediate = useCallback(api => {
-    setFleetRemediation(api);
-  }, []);
   const [showBackToTop, setShowBackToTop] = useState(false);
   const [addFlowOpen, setAddFlowOpen] = useState(false);
   const [mappingModalEquipment, setMappingModalEquipment] = useState(null);
@@ -1240,18 +1232,6 @@ const EquipmentPage = forwardRef(function EquipmentPage({
     if (type === "Backup") return "mdi:backup-restore";
     return TYPE_ICON_MAP[type] || "mdi:devices";
   }, [hexCustomFamilies]);
-  const supervisionPanelCopy = useMemo(() => ({
-    ...mspPanelCopy,
-    getTypeLabel: type => {
-      if (String(type).startsWith("Custom:")) return getEmbeddedTypeLabel(type);
-      return mspPanelCopy.getTypeLabel(type);
-    },
-    formatTypeTitle: (type, count) => {
-      const label = String(type).startsWith("Custom:") ? getEmbeddedTypeLabel(type) : mspPanelCopy.getTypeLabel(type);
-      return `${label} (${count})`;
-    }
-  }), [mspPanelCopy, getEmbeddedTypeLabel]);
-  const supervisionCenterCopy = useMemo(() => getSupervisionCenterCopy(locale), [locale]);
   const panelActiveType = useMemo(() => {
     if (embedded) return embeddedActiveType;
     return resolveMonitoringActiveType(selectedTypes, supervisionDeviceTypeOrder, supervisionTypeCounts);
@@ -1277,9 +1257,6 @@ const EquipmentPage = forwardRef(function EquipmentPage({
     isMappable: isCheckMKMappableType(equipment?.type),
     isMapped: isMkMappedEquipment(equipment)
   }), [checkmkIntegrationEnabled, monitoringSummaries]);
-  const equipmentStatusCounts = useMemo(() => buildMonitorStatusCounts(filteredForStats, resolveMonitorStatus, {
-    alertRules: supervisionAlertRules
-  }), [filteredForStats, resolveMonitorStatus, supervisionAlertRules]);
   const equipmentRmmAgents = useMemo(() => filteredForStats.filter(eq => isRmmEnrolledOrdinateur(eq, toDisplayEquipmentType(eq.type))).map(eq => buildRmmAgentRowFromEquipment(eq, {
     online: resolveRmmAgentOnline(eq) ?? resolveMonitorStatus(eq) !== "offline"
   })), [filteredForStats, resolveMonitorStatus]);
@@ -1356,30 +1333,6 @@ const EquipmentPage = forwardRef(function EquipmentPage({
     });
     return grouped;
   }, [filteredEquipment]);
-  const fleetEquipmentByType = useMemo(() => {
-    let list = equipmentWithoutTypeFilter;
-    if (mkStatusFilter) {
-      list = list.filter(eq => {
-        if (!isMkMappedEquipment(eq)) return false;
-        const status = getEquipmentMkSummary(eq)?.status;
-        if (mkStatusFilter === "critical") return status === "critical";
-        if (mkStatusFilter === "warning") return status === "warning";
-        return status === "critical" || status === "warning";
-      });
-    }
-    const grouped = {};
-    list.forEach(eq => {
-      const displayType = toDisplayEquipmentType(eq.type);
-      if (!grouped[displayType]) grouped[displayType] = [];
-      grouped[displayType].push(eq);
-    });
-    hexCustomFamilies.forEach(family => {
-      const key = `Custom:${family.familyKey}`;
-      const items = getCustomFamilyItems(family);
-      if (items.length) grouped[key] = items;
-    });
-    return grouped;
-  }, [equipmentWithoutTypeFilter, mkStatusFilter, monitoringSummaries, hexCustomFamilies, getCustomFamilyItems]);
   const embeddedEquipmentCount = useMemo(() => {
     if (!embedded) return filteredEquipment.length;
     if (activeCustomFamily) return getCustomFamilyItems(activeCustomFamily).length;
@@ -1749,9 +1702,10 @@ const EquipmentPage = forwardRef(function EquipmentPage({
     return getMaintenanceLicenseExpiration(licences);
   };
   const formatRoles = role => {
-    if (!role) return '';
-    if (Array.isArray(role)) return role.filter(Boolean).join(', ');
-    return String(role);
+    if (!role) return "";
+    const optionsCopy = getEquipmentFormOptionsCopy(locale);
+    const list = Array.isArray(role) ? role : [role];
+    return list.map(item => getRoleOptionLabel(locale, item, optionsCopy)).filter(Boolean).join(", ");
   };
   const formatDate = date => {
     if (!date) return '-';
@@ -2165,48 +2119,6 @@ const EquipmentPage = forwardRef(function EquipmentPage({
         <Icon icon={EQUIPMENT_REMOTE_ACTION_ICON} width={16} height={16} />
       </button>;
   };
-  const renderMspCardActions = useCallback((equipment, displayType) => {
-    const mapping = equipment.checkmkMapping;
-    const isMapped = mapping?.checkmk_host_name && mapping?.is_active !== false;
-    const remediate = fleetRemediation;
-    return <>
-          {checkmkIntegrationEnabled && isCheckMKMappableType(equipment?.type) ? <button type="button" className={`${mspStyles.cardActionBtn} ${isMapped ? mspStyles.cardActionBtnActive : ""}`} title={isMapped ? actions.checkmkEdit : actions.checkmkMap} onClick={e => {
-        e.stopPropagation();
-        openCheckMKMapping(equipment);
-      }}>
-              <Icon icon="simple-icons:checkmk" width={14} />
-            </button> : null}
-          {renderQuickConnectButton(equipment, displayType)}
-          {renderUnifiApiButton(equipment)}
-          {renderRemoteAccessButton(equipment)}
-          {canShowRemoteAccessButton(equipment) ? <button type="button" className={`${mspStyles.cardActionBtn} ${hasServerRemoteAccessConfigured(equipment) ? mspStyles.cardActionBtnActive : ""}`} title={formatServerRemoteTitle(equipment)} aria-label={actions.serverRemote} onClick={e => {
-        e.stopPropagation();
-        openServerRemoteAccess(equipment);
-      }}>
-              <Icon icon={getServerRemoteAccessActionIcon()} width={14} />
-            </button> : null}
-          {remediate ? <>
-              <button type="button" className={mspStyles.cardActionBtn} title={supervisionCenterCopy?.fleet?.remediationSupport || "Support"} aria-label={supervisionCenterCopy?.fleet?.remediationSupport || "Support"} onClick={e => {
-          e.stopPropagation();
-          remediate.onTicketSupport?.(equipment);
-        }}>
-                <Icon icon="mdi:message-processing-outline" width={14} />
-              </button>
-              <button type="button" className={mspStyles.cardActionBtn} title={supervisionCenterCopy?.fleet?.remediationPresta || "Presta"} aria-label={supervisionCenterCopy?.fleet?.remediationPresta || "Presta"} onClick={e => {
-          e.stopPropagation();
-          remediate.onTicketPresta?.(equipment);
-        }}>
-                <Icon icon="mdi:briefcase-outline" width={14} />
-              </button>
-              <button type="button" className={mspStyles.cardActionBtn} title={supervisionCenterCopy?.fleet?.remediationPlan || "Plan"} aria-label={supervisionCenterCopy?.fleet?.remediationPlan || "Plan"} onClick={e => {
-          e.stopPropagation();
-          remediate.onPlanEvent?.(equipment);
-        }}>
-                <Icon icon="mdi:calendar-plus" width={14} />
-              </button>
-            </> : null}
-        </>;
-  }, [checkmkIntegrationEnabled, monitoringSummaries, actions, locale, formatServerRemoteTitle, supervisionCenterCopy, fleetRemediation]);
   const openCheckMKMapping = equipment => {
     if (!checkmkIntegrationEnabled) return;
     setMappingModalEquipment(equipment);
@@ -2573,27 +2485,6 @@ const EquipmentPage = forwardRef(function EquipmentPage({
     downloadCsv(sections.join('\n\n'), filename);
     toast.success('CSV export complete');
   };
-  const mspHeaderActions = <>
-      <span className={mspStyles.headerMeta}>
-        {formatEquipmentDeviceCount(locale, filteredEquipment.length)}
-      </span>
-      <div className={mspStyles.exportMenuWrap} ref={exportMenuRef}>
-        <button type="button" className={mspStyles.headerBtn} onClick={() => setExportMenuOpen(open => !open)} aria-expanded={exportMenuOpen} title={pageCopy.mspHeader.exportCsvTitle}>
-          <FaFileExport />
-        </button>
-        {exportMenuOpen ? <div className={mspStyles.exportMenu} role="menu">
-            <button type="button" className={mspStyles.exportMenuItem} onClick={handleExportCurrentTable}>
-              {pageCopy.mspHeader.exportCurrentView}
-            </button>
-            <button type="button" className={mspStyles.exportMenuItem} onClick={handleExportAllTables}>
-              {pageCopy.mspHeader.exportAllTypes}
-            </button>
-          </div> : null}
-      </div>
-      <button type="button" className={`${mspStyles.headerBtn} ${mspStyles.headerBtnPrimary}`} onClick={openAddEquipmentModal} title={pageCopy.mspHeader.addEquipmentTitle}>
-        <FaPlus />
-      </button>
-    </>;
   const focusType = useCallback(type => {
     if (!type) return;
     const customKey = String(type).startsWith("Custom:") ? type : parseCustomFamilyType(type) ? `Custom:${parseCustomFamilyType(type)}` : null;
@@ -2735,7 +2626,6 @@ const EquipmentPage = forwardRef(function EquipmentPage({
           </div>)}
       </div>
     </div>;
-  const devicesPanel = <EquipmentMspPanel sectionMode panelCopy={supervisionPanelCopy} loading={loading} error={error} showClientName typeOrder={supervisionDeviceTypeOrder} typeIconMap={supervisionTypeIconMap} equipmentByType={fleetEquipmentByType} typeCounts={supervisionTypeCounts} activeType={panelActiveType} statsItems={filteredForStats} checkmkIntegrationEnabled={checkmkIntegrationEnabled} mkAlertStats={mkAlertStats} mkStatusFilter={mkStatusFilter} onMkStatusFilter={toggleMkStatusFilter} onClearMkFilter={() => setMkStatusFilter(null)} onBulkMkSync={handleBulkMkSync} mkBulkSyncing={mkBulkSyncing} mkBulkSyncProgress={mkBulkSyncProgress} onTypeSelect={handleTypeCardClick} onEquipmentOpen={handleEquipmentOpen} onEquipmentMiddleClick={handleEquipmentMiddleClick} resolveMonitorStatus={resolveMonitorStatus} getMkSummary={getEquipmentMkSummary} isMkMapped={isMkMappedEquipment} renderCardActions={renderMspCardActions} renderMonitoringBadge={(equipment, summary) => <CheckMKMonitoringStatusBadge summary={summary} isMapped compact />} getEmptyMessage={resolveEmptyMessage} getEquipmentTags={getEquipmentTags} statusFilter={supervisionStatusFilter} onStatusFilterChange={setMonitoringStatusFilter} />;
   return <>
     {embedded ? <div className={styles.hardwarePageEmbedded}>
       <div className={styles.mainContent}>
@@ -3155,8 +3045,12 @@ const EquipmentPage = forwardRef(function EquipmentPage({
                             } else if (equipment.type === "Internet" && col.key === "debit") {
                               const debitLabel = formatInternetDebitDisplay(equipment.rawData || equipment) || formatValue(value);
                               return <td key={col.key}>{debitLabel}</td>;
-                            } else if (equipment.type === 'Internet' && (col.key === 'internetType' || col.key === 'categorie')) {
-                              return <td key={col.key} className={col.key === 'internetType' ? styles.internetCellBold : undefined}>{formatValue(value)}</td>;
+                            } else if (equipment.type === 'Internet' && col.key === 'categorie') {
+                              return <td key={col.key} className={embedded ? styles.embeddedColHa : undefined}>
+                                      <EquipmentHaCell equipment={equipment} copy={pageCopy.ha || {}} />
+                                    </td>;
+                            } else if (equipment.type === 'Internet' && col.key === 'internetType') {
+                              return <td key={col.key} className={styles.internetCellBold}>{formatValue(value)}</td>;
                             } else if (col.key === 'vlan') {
                               return <td key={col.key}>{formatValue(equipment.vlan || equipment.rawData?.vlan || value)}</td>;
                             } else if (col.key === 'firmware') {
@@ -3278,7 +3172,7 @@ const EquipmentPage = forwardRef(function EquipmentPage({
                               displayValue = formatClientDisplay(value);
                             } else if (col.key === 'systeme') {
                               displayValue = formatValue(equipment.systeme || equipment.rawData?.systeme || value);
-                            } else if (col.key === 'ha') {
+                            } else if (col.key === 'ha' || equipment.type === 'Internet' && col.key === 'categorie') {
                               return <div key={col.key} className={styles.cardField}>
                                         <span className={styles.cardLabel}>{col.label}:</span>
                                         <span className={styles.cardValue}>
@@ -3392,9 +3286,7 @@ const EquipmentPage = forwardRef(function EquipmentPage({
           </div>}
         </>
       </div>
-    </div> : <SupervisionCenterPage loading={loading} error={error} statsItems={filteredForStats} resolveMonitorStatus={resolveMonitorStatus} statusCounts={equipmentStatusCounts} onEquipmentOpen={handleEquipmentOpen} devicesContent={devicesPanel} equipmentRmmAgents={equipmentRmmAgents} availableClients={availableClients} selectedClients={selectedClients} onToggleClient={toggleClient} onClearFilters={clearFilters} activeFiltersCount={activeFiltersCount} searchQuery={searchQuery} onSearchChange={setSearchQuery} headerActions={mspHeaderActions} onNavigate={onNavigate} onRmmRevokeAgent={openRmmRevokeModal} onRmmDataRefresh={() => loadEquipment(undefined, {
-      fresh: true
-    })} deviceStatusFilter={supervisionStatusFilter} onDeviceStatusFilterChange={setMonitoringStatusFilter} checkmkIntegrationEnabled={checkmkIntegrationEnabled} isMkMapped={isMkMappedEquipment} onFleetRemediate={handleFleetRemediate} />}
+    </div> : <SupervisionCenterPage loading={loading} error={error} statsItems={filteredForStats} resolveMonitorStatus={resolveMonitorStatus} onEquipmentOpen={handleEquipmentOpen} equipmentRmmAgents={equipmentRmmAgents} onNavigate={onNavigate} checkmkIntegrationEnabled={checkmkIntegrationEnabled} isMkMapped={isMkMappedEquipment} />}
 
       {}
       {columnsComingSoonModal && <div className={styles.modalOverlay} onClick={() => setColumnsComingSoonModal(false)}>

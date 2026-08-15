@@ -958,6 +958,7 @@
 "public","v_b_users_profiles","13","dashboard_enabled","boolean","","","","NO","false"
 "public","v_b_users_profiles","14","parent_profile","text","","","","YES",""
 "public","v_b_users_profiles","15","documents_enabled","boolean","","","","NO","false"
+"public","v_b_users_profiles","16","equipment_inventory_enabled","boolean","","","","NO","false"
 "public","v_b_users_settings","1","id","uuid","","","","NO","gen_random_uuid()"
 "public","v_b_users_settings","2","user_id","uuid","","","","NO",""
 "public","v_b_users_settings","3","setting_key","character varying","200","","","NO",""

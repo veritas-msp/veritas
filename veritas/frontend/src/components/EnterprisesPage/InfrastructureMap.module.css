@@ -107,7 +107,11 @@
   width: 100%;
   max-width: 100%;
   display: flex;
-  justify-content: center;
+  flex-direction: row;
+  flex-wrap: wrap;
+  justify-content: space-evenly;
+  align-items: center;
+  gap: 0.75rem 1.5rem;
   flex-shrink: 0;
   overflow-x: auto;
   overflow-y: hidden;
@@ -118,9 +122,10 @@
 .mapModulesBar {
   display: flex;
   justify-content: center;
+  align-self: stretch;
   width: 100%;
-  max-width: 68rem;
-  padding: 0.9rem 0.75rem 0.15rem;
+  max-width: none;
+  padding: 0.9rem 0 0.15rem;
   border-top: 1px solid var(--msp-border-light, rgba(15, 28, 46, 0.08));
 }
 
@@ -131,6 +136,7 @@
   align-items: flex-start;
   gap: 1.25rem 2rem;
   width: 100%;
+  padding: 0 0.25rem;
 }
 
 .mapModuleGroup {
@@ -173,7 +179,8 @@
   flex-shrink: 0;
 }
 
-.brickNode:not(.brickNodePlaceholder) {
+.brickNode:not(.brickNodePlaceholder):not(.brickNodeDisabled),
+button.brickNode {
   cursor: pointer;
 }
 
@@ -251,6 +258,20 @@
   flex-shrink: 0;
 }
 
+.brickNodeClear .brickInner {
+  border-color: color-mix(in srgb, var(--msp-text, #0f1c2e) 28%, var(--msp-border, #e2e8f0));
+  border-style: solid;
+}
+
+.brickNodeClear .brickIcon,
+.brickNodeClear .brickName,
+.brickNodeClear .infraItemCount,
+.brickNodeAttention .brickIcon,
+.brickNodeAttention .brickName,
+.brickNodeAttention .infraItemCount {
+  color: var(--msp-text, #0f1c2e);
+}
+
 .hexName,
 .brickName {
   font-size: 0.625rem;
@@ -315,7 +336,7 @@
 .hexClusterViewport {
   position: relative;
   flex-shrink: 0;
-  margin: 0 auto;
+  margin: 0;
 }
 
 
@@ -454,9 +475,34 @@
   --hex-ring: var(--hex-accent, #c2410c);
 }
 
+.hexNodeClear .hexShape {
+  --hex-ring: color-mix(in srgb, var(--msp-text, #0f1c2e) 32%, var(--msp-border, #e2e8f0));
+}
+
+.hexNodeClear .hexIcon,
+.hexNodeClear .hexName,
+.hexNodeClear .infraItemCount,
+.hexNodeAttention .hexIcon,
+.hexNodeAttention .hexName,
+.hexNodeAttention .infraItemCount {
+  color: var(--msp-text, #0f1c2e);
+}
+
 .hexNodeDisabled,
 .hexNodePlaceholder {
   opacity: 0.5;
+}
+
+.hexNodePlaceholder .hexIcon,
+.hexNodePlaceholder .hexName,
+.hexNodeDisabled .hexIcon,
+.hexNodeDisabled .hexName,
+.brickNodePlaceholder .brickIcon,
+.brickNodePlaceholder .brickName,
+.brickNodeDisabled .brickIcon,
+.brickNodeDisabled .brickName,
+.brickNodeDisabled .infraItemCount {
+  color: var(--msp-muted-light, #8b9bb5);
 }
 
 .hexNodePlaceholder {
@@ -626,6 +672,41 @@
 :global(html.dark) .hexInner .infraItemCount,
 :global(html.dark) .brickInner .infraItemCount {
   color: var(--msp-muted, #8fa8c4);
+}
+
+:global(html.dark) .hexNodeClear .hexShape {
+  --hex-ring: color-mix(in srgb, var(--msp-text, #e8edf5) 42%, var(--msp-border, #2a3a55));
+}
+
+:global(html.dark) .hexNodeClear .hexIcon,
+:global(html.dark) .hexNodeClear .hexName,
+:global(html.dark) .hexNodeClear .infraItemCount,
+:global(html.dark) .hexNodeAttention .hexIcon,
+:global(html.dark) .hexNodeAttention .hexName,
+:global(html.dark) .hexNodeAttention .infraItemCount,
+:global(html.dark) .brickNodeClear .brickIcon,
+:global(html.dark) .brickNodeClear .brickName,
+:global(html.dark) .brickNodeClear .infraItemCount,
+:global(html.dark) .brickNodeAttention .brickIcon,
+:global(html.dark) .brickNodeAttention .brickName,
+:global(html.dark) .brickNodeAttention .infraItemCount {
+  color: var(--msp-text, #e8edf5);
+}
+
+:global(html.dark) .brickNodeClear .brickInner {
+  border-color: color-mix(in srgb, var(--msp-text, #e8edf5) 38%, var(--msp-border, #2a3a55));
+}
+
+:global(html.dark) .hexNodePlaceholder .hexIcon,
+:global(html.dark) .hexNodePlaceholder .hexName,
+:global(html.dark) .hexNodeDisabled .hexIcon,
+:global(html.dark) .hexNodeDisabled .hexName,
+:global(html.dark) .brickNodePlaceholder .brickIcon,
+:global(html.dark) .brickNodePlaceholder .brickName,
+:global(html.dark) .brickNodeDisabled .brickIcon,
+:global(html.dark) .brickNodeDisabled .brickName,
+:global(html.dark) .brickNodeDisabled .infraItemCount {
+  color: var(--msp-muted-light, #6a88a8);
 }
 
 :global(html.dark) .hexShape {

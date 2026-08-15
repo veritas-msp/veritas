@@ -31,6 +31,26 @@ export async function fetchOvhDomains({
   }
   return res.json();
 }
+export async function syncOvhDomains() {
+  const res = await fetch(`${OVH_URL}/domains/sync-all`, {
+    method: "POST",
+    credentials: "include",
+    headers: {
+      "Content-Type": "application/json"
+    }
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok || data.success === false) {
+    throw new Error(data.error || data.details || "Unable to synchronize OVH domains");
+  }
+  return {
+    id: "ovh",
+    syncedCount: data.syncedCount || 0,
+    errorCount: data.errorCount || 0,
+    totalDomains: data.totalDomains || 0,
+    message: data.message || null
+  };
+}
 export async function fetchOvhDomainDetails(domainName) {
   const res = await fetch(`${OVH_URL}/domain/${encodeURIComponent(domainName)}`, {
     credentials: "include"

@@ -61,16 +61,11 @@ export function getHoneycombSlots(count) {
 function getHoneycombSlotKey(slot) {
   return `${slot.q ?? 0},${slot.r ?? 0}`;
 }
-function getOccupiedHoneycombSlots(extraSlots = []) {
-  const occupied = new Set(EMPTY_HONEYCOMB_LAYOUT.map(getHoneycombSlotKey));
-  extraSlots.forEach(slot => occupied.add(getHoneycombSlotKey(slot)));
-  return occupied;
-}
-function allocateOuterHoneycombSlots(count, reservedSlots = []) {
+function allocateHoneycombSlots(count, reservedSlots = []) {
   if (count <= 0) return [];
-  const occupied = getOccupiedHoneycombSlots(reservedSlots);
+  const occupied = new Set((reservedSlots || []).map(getHoneycombSlotKey));
   const allocated = [];
-  let ring = 2;
+  let ring = 0;
   while (allocated.length < count) {
     hexRingPositions(ring).forEach(pos => {
       if (allocated.length >= count) return;
@@ -101,7 +96,7 @@ export function buildCustomFamilyHoneycombSlots(families = []) {
     }
     auto.push(family);
   });
-  const outerSlots = allocateOuterHoneycombSlots(auto.length, manual.map(entry => entry.slot));
+  const outerSlots = allocateHoneycombSlots(auto.length, manual.map(entry => entry.slot));
   const autoItems = auto.map((family, index) => ({
     family,
     slot: {
@@ -181,52 +176,91 @@ export function buildCustomFamilyBricks(families = []) {
     customFamily: family
   }));
 }
-export const HARDWARE_TYPE_ORDER = ["Internet", "Firewalls", "Routeur", "Servers", "Ordinateurs", "Storage", "Switch", "BorneWifi", "Alimentation", "TOIP"];
+export const HARDWARE_TYPE_ORDER = ["Internet", "Firewalls", "Routeur", "Servers", "Storage", "Ordinateurs", "Switch", "BorneWifi", "TOIP", "Alimentation"];
 export const HONEYCOMB_TABLE_TYPE_ORDER = HARDWARE_TYPE_ORDER.filter(type => type !== "Ordinateurs");
-export const EMPTY_HONEYCOMB_LAYOUT = [{
-  type: "Internet",
-  q: 0,
-  r: 0
+export const HONEYCOMB_THEME_GROUPS = [{
+  id: "edge",
+  types: ["Internet", "Firewalls", "Routeur"],
+  slots: [{
+    type: "Firewalls",
+    q: 0,
+    r: -1
+  }, {
+    type: "Internet",
+    q: 0,
+    r: 0
+  }, {
+    type: "Routeur",
+    q: 1,
+    r: -1
+  }]
 }, {
-  type: "Switch",
-  q: -1,
-  r: 0,
-  featured: true
+  id: "compute",
+  types: ["Servers", "Storage", "Ordinateurs", "Alimentation"],
+  slots: [{
+    type: "Servers",
+    q: 0,
+    r: -1
+  }, {
+    type: "Storage",
+    q: 0,
+    r: 0
+  }, {
+    type: "Ordinateurs",
+    q: 1,
+    r: -1
+  }, {
+    type: "Alimentation",
+    q: 0,
+    r: 1
+  }]
 }, {
-  type: "Firewalls",
-  q: 0,
-  r: -1
-}, {
-  type: "Routeur",
-  q: 1,
-  r: -1
-}, {
-  type: "Servers",
-  q: 2,
-  r: -1
-}, {
-  type: "BorneWifi",
-  q: 1,
-  r: 0
-}, {
-  type: "Storage",
-  q: 0,
-  r: 1
-}, {
-  type: "Ordinateurs",
-  q: -1,
-  r: 1
-}, {
-  type: "Alimentation",
-  q: -2,
-  r: 0
-}, {
-  type: "TOIP",
-  q: 2,
-  r: 0
+  id: "lan",
+  types: ["Switch", "BorneWifi", "TOIP"],
+  slots: [{
+    type: "Switch",
+    q: 0,
+    r: -1
+  }, {
+    type: "BorneWifi",
+    q: 0,
+    r: 0
+  }, {
+    type: "TOIP",
+    q: 1,
+    r: -1
+  }]
 }];
-export function isHoneycombFeatured(type) {
-  return type === "Switch";
+export const EMPTY_HONEYCOMB_LAYOUT = HONEYCOMB_THEME_GROUPS.flatMap(group => group.slots);
+export function isHoneycombFeatured() {
+  return false;
+}
+const THEME_CLUSTER_METRICS_OPTIONS = {
+  maxWidthRem: 28,
+  minWidthRem: 11,
+  minHeightRem: 15,
+  paddingRem: 0.45
+};
+export function buildHoneycombThemeClusters(items = []) {
+  const list = Array.isArray(items) ? items : [];
+  const byType = Object.fromEntries(list.map(item => [item.type, item]));
+  const clusters = HONEYCOMB_THEME_GROUPS.map(group => {
+    const clusterItems = group.slots.map(slot => byType[slot.type]).filter(Boolean);
+    return {
+      id: group.id,
+      items: clusterItems,
+      clusterMetrics: computeHoneycombClusterMetrics(collectHoneycombSlotsFromItems(clusterItems), THEME_CLUSTER_METRICS_OPTIONS)
+    };
+  }).filter(cluster => cluster.items.length > 0);
+  const customItems = list.filter(item => String(item.type || "").startsWith("Custom:"));
+  if (customItems.length) {
+    clusters.push({
+      id: "custom",
+      items: customItems,
+      clusterMetrics: computeHoneycombClusterMetrics(collectHoneycombSlotsFromItems(customItems), THEME_CLUSTER_METRICS_OPTIONS)
+    });
+  }
+  return clusters;
 }
 export const INFRA_BRICK_GROUPS = [{
   id: "cybersecurity",

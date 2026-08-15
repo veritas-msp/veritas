@@ -13,6 +13,7 @@ const USERS_COPY = {
       ticketSales: "Prestations et installations",
       planning: "Planning",
       infrastructure: "Centre de supervision",
+      inventory: "Inventaire périphériques",
       cybersecurite: "Cybersécurité",
       services: "Cloud IT et services",
       dashboard: "Tableau de bord KPI",
@@ -178,6 +179,7 @@ const USERS_COPY = {
       ticketSales: "Services and installations",
       planning: "Planning",
       infrastructure: "Monitoring Center",
+      inventory: "Device inventory",
       cybersecurite: "Cybersecurity",
       services: "Cloud IT & Services",
       dashboard: "KPI Dashboard",
@@ -343,6 +345,7 @@ const USERS_COPY = {
       ticketSales: "Dienstleistungen & Installationen",
       planning: "Planung",
       infrastructure: "Überwachungszentrum",
+      inventory: "Geräteinventar",
       cybersecurite: "Cybersicherheit",
       services: "Cloud IT & Services",
       dashboard: "KPI-Dashboard",
@@ -508,6 +511,7 @@ const USERS_COPY = {
       ticketSales: "Servizi e installazioni",
       planning: "Pianificazione",
       infrastructure: "Centro di supervisione",
+      inventory: "Inventario periferiche",
       cybersecurite: "Cybersicurezza",
       services: "Cloud IT e servizi",
       dashboard: "Dashboard KPI",
@@ -673,6 +677,7 @@ const USERS_COPY = {
       ticketSales: "Servicios e instalaciones",
       planning: "Planificación",
       infrastructure: "Centro de supervisión",
+      inventory: "Inventario de periféricos",
       cybersecurite: "Ciberseguridad",
       services: "Cloud IT y servicios",
       dashboard: "Panel KPI",
@@ -846,6 +851,9 @@ const ACCESS_COLUMN_KEYS = [{
 }, {
   key: "infrastructure",
   accessKey: "infrastructure_enabled"
+}, {
+  key: "inventory",
+  accessKey: "equipment_inventory_enabled"
 }, {
   key: "cybersecurite",
   accessKey: "cybersecurite_enabled"

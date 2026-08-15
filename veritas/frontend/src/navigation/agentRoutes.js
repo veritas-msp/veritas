@@ -1,6 +1,7 @@
 import { isProOnlyDocType } from "../config/edition";
 export const DOC_TYPE_ACCESS_KEY = {
   Hardware: "Hardware",
+  EquipmentInventory: "EquipmentInventory",
   Equipment: "Hardware",
   EquipmentDetail: "Hardware",
   JobDetail: "Hardware",
@@ -153,6 +154,8 @@ export function buildAgentPath(docType, data = null, options = {}) {
       return "/reports";
     case "DocumentsHub":
       return "/documents";
+    case "EquipmentInventory":
+      return "/inventory";
     case "Mon":
       return "/reports";
     case "MonitoringDetail":
@@ -409,6 +412,13 @@ export function parseAgentPath(pathname, search = "") {
     re: /^\/documents$/,
     run: () => ({
       docType: "DocumentsHub",
+      data: null,
+      adminTab: null
+    })
+  }, {
+    re: /^\/inventory$/,
+    run: () => ({
+      docType: "EquipmentInventory",
       data: null,
       adminTab: null
     })

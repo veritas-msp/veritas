@@ -1,12 +1,14 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { Icon } from "@iconify/react";
-import { FaChevronLeft, FaChevronRight, FaPlus } from "react-icons/fa";
+import { FaChevronLeft, FaChevronRight } from "react-icons/fa";
 import { useAppFormatters } from "../../hooks/useAppGeneralSettings";
 import MspEmptyState from "../Misc/MspEmptyState/MspEmptyState";
+import SmartTooltip from "../SmartTooltip";
+import layout from "../EnterprisesPage/EnterprisesPage.module.css";
 import styles from "./AntivirusMspDashboard.module.css";
 const HERO_KPI_KEYS = [{
   key: "all",
-  icon: "mdi:shield-lock",
+  icon: "mdi:bullhorn-outline",
   tone: "neutral"
 }, {
   key: "active",
@@ -21,31 +23,6 @@ const HERO_KPI_KEYS = [{
   icon: "mdi:alert-circle-outline",
   tone: "warn"
 }];
-function getHealthTone(score) {
-  if (score == null) return "neutral";
-  if (score >= 80) return "good";
-  if (score >= 50) return "warn";
-  return "bad";
-}
-function HealthGauge({
-  score,
-  label
-}) {
-  const value = score ?? 0;
-  const tone = getHealthTone(score);
-  return <div className={`${styles.healthGauge} ${styles[`healthGauge_${tone}`]}`}>
-      <svg className={styles.healthRing} viewBox="0 0 120 120" aria-hidden>
-        <circle className={styles.healthRingTrack} cx="60" cy="60" r="52" />
-        <circle className={styles.healthRingFill} cx="60" cy="60" r="52" style={{
-        strokeDasharray: `${value / 100 * 327} 327`
-      }} />
-      </svg>
-      <div className={styles.healthCore}>
-        <span className={styles.healthValue}>{score ?? "-"}</span>
-        <span className={styles.healthLabel}>{label}</span>
-      </div>
-    </div>;
-}
 function KpiCard({
   icon,
   label,
@@ -64,27 +41,6 @@ function KpiCard({
       </span>
     </button>;
 }
-function StatusChip({
-  status,
-  getCampaignStatusMeta
-}) {
-  const meta = getCampaignStatusMeta(status);
-  return <span className={`${styles.chip} ${styles[`chip_${meta.tone}`]}`}>{meta.label}</span>;
-}
-function ProgressCell({
-  value
-}) {
-  const pct = Math.max(0, Math.min(100, Number(value) || 0));
-  const fillClass = pct >= 100 ? styles.progressFill_good : pct >= 75 ? styles.progressFill_warn : "";
-  return <div className={styles.progressCell}>
-      <div className={styles.progressTrack}>
-        <div className={`${styles.progressFill} ${fillClass}`} style={{
-        width: `${pct}%`
-      }} />
-      </div>
-      <span className={styles.progressValue}>{pct}%</span>
-    </div>;
-}
 function SortableHeader({
   column,
   label,
@@ -93,11 +49,14 @@ function SortableHeader({
   onSort
 }) {
   const isActive = sortBy === column;
-  return <th className={styles.sortableTh} onClick={() => onSort(column)} aria-sort={isActive ? sortDirection === "asc" ? "ascending" : "descending" : "none"}>
-      {label}
-      {isActive ? sortDirection === "asc" ? " ▲" : " ▼" : ""}
+  return <th aria-sort={isActive ? sortDirection === "asc" ? "ascending" : "descending" : "none"}>
+      <button type="button" className={styles.thBtn} onClick={() => onSort(column)}>
+        {label}
+        {isActive ? sortDirection === "asc" ? " ▲" : " ▼" : ""}
+      </button>
     </th>;
 }
+
 function getClientNameForSort(value) {
   return (value || "").toString().trim().replace(/^\d+\s*[-\s]*\s*/, "").toLowerCase();
 }
@@ -113,12 +72,10 @@ function buildCampaignStats(campaigns = []) {
     if (statusCounts[campaign.status] != null) statusCounts[campaign.status] += 1;
   });
   const issues = statusCounts.suspendue;
-  const healthScore = list.length > 0 ? Math.round((list.length - issues) / list.length * 100) : 100;
   return {
     total: list.length,
     statusCounts,
-    issues,
-    healthScore
+    issues
   };
 }
 function formatClientDisplay(value) {
@@ -130,7 +87,6 @@ export default function CampaignsMspDashboard({
   campaigns = [],
   loading = false,
   onViewCampaign,
-  onOpenClient,
   onAddCampaign
 }) {
   const {
@@ -188,7 +144,6 @@ export default function CampaignsMspDashboard({
     const start = (currentPage - 1) * pageSize;
     return sortedRows.slice(start, start + pageSize);
   }, [sortedRows, currentPage, pageSize]);
-  const priorityRows = useMemo(() => campaigns.filter(campaign => campaign.status === "suspendue").slice(0, 8), [campaigns]);
   useEffect(() => {
     setCurrentPage(1);
   }, [search, statusFilter, sortBy, sortDirection, pageSize]);
@@ -212,77 +167,31 @@ export default function CampaignsMspDashboard({
     return stats.statusCounts[key] ?? 0;
   };
   const getHeroKpiLabel = key => {
-    if (key === "all") return campaignsCopy?.statusFilters?.all || msp?.kpi?.solutions;
-    if (key === "suspendue") return msp?.kpi?.todo;
+    if (key === "all") return campaignsCopy?.eyebrow || msp?.kpi?.solutions;
     return campaignsCopy?.statusFilters?.[key];
   };
   if (!campaignsCopy || !msp) return null;
   return <div className={styles.dashboard}>
-      <section className={styles.hero}>
-        <div className={styles.heroLeft}>
-          <HealthGauge score={stats.healthScore} label={campaignsCopy.healthLabel} />
-          <div className={styles.heroCopy}>
-            <span className={styles.eyebrow}>{campaignsCopy.eyebrow}</span>
-            <h2 className={styles.heroTitle}>{msp.heroTitle}</h2>
-            <p className={styles.heroDesc}>
-              {stats.issues > 0 ? copy.formatCampaignHeroIssues(stats.issues) : campaignsCopy.heroDescOk}
-            </p>
-          </div>
-        </div>
-        <div className={styles.kpiRow}>
-          {HERO_KPI_KEYS.map(item => {
+      <div className={styles.kpiStrip}>
+        {HERO_KPI_KEYS.map(item => {
           const isActive = item.key === "all" ? statusFilter === "all" : statusFilter === item.key;
           const tone = item.key === "suspendue" && stats.issues > 0 ? "warn" : item.tone;
           return <KpiCard key={item.key} icon={item.icon} label={getHeroKpiLabel(item.key)} value={getHeroKpiValue(item.key)} tone={tone} active={isActive} onClick={() => setStatusFilter(item.key === statusFilter && item.key !== "all" ? "all" : item.key)} />;
         })}
-        </div>
-      </section>
-
-      {priorityRows.length > 0 ? <section className={styles.priorityPanel}>
-          <header className={styles.priorityHeader}>
-            <h3 className={styles.priorityTitle}>{msp.priorityTitle}</h3>
-            <span className={styles.toolbarMeta}>
-              <strong>{copy.formatAlertCount(priorityRows.length)}</strong>
-            </span>
-          </header>
-          <div className={styles.priorityList}>
-            {priorityRows.map(campaign => <button key={campaign.id} type="button" className={styles.priorityItem} onClick={() => onViewCampaign?.(campaign)}>
-                <span className={styles.priorityDot} style={{
-            background: "#dc2626"
-          }} />
-                <span className={styles.priorityBody}>
-                  <span className={styles.priorityName}>{campaign.name}</span>
-                  <span className={styles.priorityMeta}>
-                    {formatClientDisplay(campaign.client_name)}
-                    {campaign.end_date ? ` · ${msp.expPrefix} ${formatDisplayDate(campaign.end_date)}` : ""}
-                  </span>
-                </span>
-                <span className={styles.priorityVerb}>{campaignsCopy.openCampaign}</span>
-              </button>)}
-          </div>
-        </section> : null}
+      </div>
 
       <div className={styles.toolbar}>
         <label className={styles.searchBox}>
           <Icon icon="mdi:magnify" width={18} aria-hidden />
           <input type="search" placeholder={campaignsCopy.searchPlaceholder} value={search} onChange={e => setSearch(e.target.value)} />
         </label>
-
-        <div className={styles.filterGroup} role="tablist" aria-label={msp.statusFilterAria}>
-          {(copy.campaignStatusFilters || []).map(filter => <button key={filter.id} type="button" className={`${styles.filterChip} ${statusFilter === filter.id ? styles.filterChipActive : ""}`} onClick={() => setStatusFilter(filter.id)}>
-              {filter.label}
-            </button>)}
-        </div>
-
-        <span className={styles.toolbarMeta}>
-          <strong>{copy.formatCampaignCount(filteredRows.length)}</strong>
-        </span>
-
-        <div className={styles.toolbarActions}>
-          <button type="button" className={styles.iconBtn} onClick={onAddCampaign} title={campaignsCopy.addTitle}>
-            <FaPlus />
-          </button>
-        </div>
+        {onAddCampaign ? <div className={styles.toolbarActions}>
+            <SmartTooltip content={copy.heroActions?.addCampaign || campaignsCopy.emptyCta}>
+              <button type="button" className={`${layout.primaryBtn} ${layout.primaryBtnIconOnly}`} onClick={onAddCampaign} aria-label={copy.heroActions?.addCampaign || campaignsCopy.emptyCta}>
+                <Icon icon="mdi:plus" aria-hidden />
+              </button>
+            </SmartTooltip>
+          </div> : null}
       </div>
 
       {loading ? <div className={styles.loadingState}>
@@ -293,7 +202,6 @@ export default function CampaignsMspDashboard({
             <table className={styles.table}>
               <thead>
                 <tr>
-                  <th aria-label={msp.statusAria} />
                   <SortableHeader column="client_name" label={campaignsCopy.table.enterprise} sortBy={sortBy} sortDirection={sortDirection} onSort={handleSort} />
                   <SortableHeader column="name" label={campaignsCopy.table.name} sortBy={sortBy} sortDirection={sortDirection} onSort={handleSort} />
                   <SortableHeader column="type" label={campaignsCopy.table.type} sortBy={sortBy} sortDirection={sortDirection} onSort={handleSort} />
@@ -307,49 +215,27 @@ export default function CampaignsMspDashboard({
               <tbody>
                 {paginatedRows.map(campaign => {
               const statusMeta = copy.getCampaignStatusMeta(campaign.status);
-              const dotColor = statusMeta.tone === "bad" ? "#dc2626" : statusMeta.tone === "warn" ? "#d97706" : "#2b5fab";
-              return <tr key={campaign.id} className={styles.tableRow} onClick={() => onViewCampaign?.(campaign)} onMouseDown={e => {
+              const openRow = () => onViewCampaign?.(campaign);
+              return <tr key={campaign.id} className={styles.tableRow} onClick={openRow} onMouseDown={e => {
                 if (e.button === 1) {
                   e.preventDefault();
                   onViewCampaign?.(campaign, {
                     background: true
                   });
                 }
-              }}>
-                      <td>
-                        <span className={styles.statusDot} style={{
-                    background: dotColor
-                  }} aria-hidden />
-                      </td>
-                      <td>
-                        {campaign.client_id && onOpenClient ? <button type="button" className={styles.clientLink} onClick={e => {
-                    e.stopPropagation();
-                    onOpenClient({
-                      clientId: campaign.client_id,
-                      name: campaign.client_name
-                    });
-                  }} title={campaignsCopy.viewClient}>
-                            {formatClientDisplay(campaign.client_name || `Client ${campaign.client_id}`)}
-                          </button> : <span className={styles.cellName}>
-                            {formatClientDisplay(campaign.client_name || `Client ${campaign.client_id}`)}
-                          </span>}
-                      </td>
-                      <td>
-                        <span className={styles.cellName} title={campaign.name}>
-                          {campaign.name}
-                        </span>
-                      </td>
-                      <td className={styles.cellMuted}>
-                        {copy.getCampaignTypeLabel(campaign.type) || campaign.type}
-                      </td>
-                      <td>
-                        <StatusChip status={campaign.status} getCampaignStatusMeta={copy.getCampaignStatusMeta} />
-                      </td>
+              }} onKeyDown={e => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  openRow();
+                }
+              }} role="button" tabIndex={0}>
+                      <td className={styles.cellName}>{formatClientDisplay(campaign.client_name || `Client ${campaign.client_id}`)}</td>
+                      <td>{campaign.name || "-"}</td>
+                      <td className={styles.cellMuted}>{copy.getCampaignTypeLabel(campaign.type) || campaign.type || "-"}</td>
+                      <td>{statusMeta.label}</td>
                       <td className={styles.cellMuted}>{formatDisplayDate(campaign.start_date)}</td>
                       <td className={styles.cellMuted}>{formatDisplayDate(campaign.end_date)}</td>
-                      <td>
-                        <ProgressCell value={campaign.global_progress} />
-                      </td>
+                      <td className={styles.cellMuted}>{Math.max(0, Math.min(100, Number(campaign.global_progress) || 0))}%</td>
                       <td className={styles.cellMuted}>{formatDisplayDate(campaign.created_at)}</td>
                     </tr>;
             })}

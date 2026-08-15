@@ -1,7 +1,17 @@
 const HA_PAIR_PALETTE = ["#0d9488", "#2563eb", "#7c3aed", "#db2777", "#ea580c", "#0891b2", "#4f46e5", "#059669"];
-function readHaLayer(equipment) {
+function readNestedLayer(equipment) {
   const raw = equipment?.rawData?.data && typeof equipment.rawData.data === "object" ? equipment.rawData.data : null;
   const flat = equipment?.rawData && typeof equipment.rawData === "object" ? equipment.rawData : null;
+  return {
+    raw,
+    flat
+  };
+}
+function readHaLayer(equipment) {
+  const {
+    raw,
+    flat
+  } = readNestedLayer(equipment);
   return {
     modeHA: equipment?.modeHA ?? raw?.modeHA ?? flat?.modeHA,
     roleHA: equipment?.roleHA ?? raw?.roleHA ?? flat?.roleHA ?? "",
@@ -9,6 +19,22 @@ function readHaLayer(equipment) {
     serverHAName: equipment?.serverHAName ?? raw?.serverHAName ?? flat?.serverHAName ?? "",
     storageHAName: equipment?.storageHAName ?? raw?.storageHAName ?? flat?.storageHAName ?? ""
   };
+}
+function getEquipmentType(equipment) {
+  return String(equipment?.type || equipment?.rawData?.type || "").trim();
+}
+function readInternetCategory(equipment) {
+  const {
+    raw,
+    flat
+  } = readNestedLayer(equipment);
+  return equipment?.categorie ?? raw?.categorie ?? flat?.categorie ?? "";
+}
+function getInternetSiteKey(equipment) {
+  return String(equipment?.location || equipment?.site || equipment?.rawData?.location || equipment?.rawData?.site || equipment?.rawData?.data?.location || equipment?.rawData?.data?.site || "").trim().toLowerCase();
+}
+function isInternetEquipment(equipment) {
+  return getEquipmentType(equipment) === "Internet";
 }
 function isTruthyHa(value) {
   return value === true || value === 1 || value === "1" || String(value).toLowerCase() === "true";
@@ -27,6 +53,16 @@ export function getEquipmentHaPartnerName(equipment) {
   return String(layer.storageHAName || layer.serverHAName || layer.firewallHAName || "").trim();
 }
 export function getEquipmentHaState(equipment) {
+  if (isInternetEquipment(equipment)) {
+    const role = normalizeRole(readInternetCategory(equipment)) || "Primary";
+    return {
+      active: true,
+      role,
+      isPrimary: role !== "Secondary",
+      isSecondary: role === "Secondary",
+      partnerName: ""
+    };
+  }
   const layer = readHaLayer(equipment);
   const partnerName = getEquipmentHaPartnerName(equipment);
   const modeOn = isTruthyHa(layer.modeHA);
@@ -45,6 +81,11 @@ export function getFirewallHaState(equipment) {
   return getEquipmentHaState(equipment);
 }
 export function getEquipmentHaPairKey(equipment) {
+  if (isInternetEquipment(equipment)) {
+    const clientId = equipment?.clientId ?? equipment?.client_id ?? equipment?.rawData?.client_id ?? "";
+    const site = getInternetSiteKey(equipment);
+    return `internet::${clientId}::${site || "default"}`;
+  }
   const state = getEquipmentHaState(equipment);
   if (!state.active) return "";
   const selfName = getEquipmentDisplayName(equipment);

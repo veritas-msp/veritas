@@ -1,5 +1,5 @@
 import { createLocaleGetter } from "../../i18n/translate";
-import { SERVER_ROLE_GROUPS } from "./constants/serverRoleOptions";
+import { SERVER_ROLE_GROUPS, canonicalizeServerRole } from "./constants/serverRoleOptions";
 import { STORAGE_RAID_OPTIONS, STORAGE_ROLE_OPTIONS } from "./constants/storageRoleOptions";
 import { OS_OPTION_GROUPS, SERVER_HYPERVISOR_OPTIONS } from "./equipmentFormConfig";
 const SERVER_ROLE_GROUP_LABELS_FR = {
@@ -690,6 +690,7 @@ const OPTIONS_COPY = {
 export const getEquipmentFormOptionsCopy = createLocaleGetter(OPTIONS_COPY);
 export function getRoleOptionLabel(locale, value, optionsCopy) {
   const copy = optionsCopy || getEquipmentFormOptionsCopy(locale);
-  const match = copy.serverRoleOptions.find(entry => entry.value === value);
-  return match?.label ?? value;
+  const canonical = canonicalizeServerRole(value);
+  const match = copy.serverRoleOptions.find(entry => entry.value === canonical || entry.value === value);
+  return match?.label ?? canonical ?? value;
 }

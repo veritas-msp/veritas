@@ -33,7 +33,7 @@ function resolvePaymentPlan(solution) {
   if (subscriptionType === 2) return "Annuel";
   if (subscriptionType === 3) return "Mensuel";
   if (subscriptionType === 4) return "Perpetual";
-  return solution?.paymentPlan || "Not defined";
+  return solution?.paymentPlan || "-";
 }
 function resolveEndpointsCount(solution) {
   if (Array.isArray(solution?.endpoints) && solution.endpoints.length > 0) {
@@ -164,7 +164,7 @@ export function filterAntivirusFleetRows(rows, {
   let filtered = Array.isArray(rows) ? [...rows] : [];
   const query = search.trim().toLowerCase();
   if (query) {
-    filtered = filtered.filter(row => row.clientName?.toLowerCase().includes(query) || row.solutionLabel?.toLowerCase().includes(query) || row.productName?.toLowerCase().includes(query) || row.providerName?.toLowerCase().includes(query) || row.companyName?.toLowerCase().includes(query));
+    filtered = filtered.filter(row => row.clientName?.toLowerCase().includes(query) || row.solutionLabel?.toLowerCase().includes(query) || row.productName?.toLowerCase().includes(query) || row.providerName?.toLowerCase().includes(query) || row.companyName?.toLowerCase().includes(query) || row.paymentPlan?.toLowerCase().includes(query));
   }
   if (statusFilter && statusFilter !== "all") {
     filtered = filtered.filter(row => row.status === statusFilter);

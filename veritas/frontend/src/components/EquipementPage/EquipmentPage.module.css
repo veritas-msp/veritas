@@ -152,8 +152,8 @@
   flex: 1;
   min-width: 0;
   border: none;
-  background: inherit;
-  background-color: inherit;
+  background: transparent;
+  background-color: transparent;
   color: var(--eq-text, var(--msp-text, #0f1c2e));
   font-size: 0.78rem;
   font-family: inherit;
@@ -163,6 +163,17 @@
   appearance: none;
   -webkit-appearance: none;
   color-scheme: normal;
+}
+
+.hardwarePageEmbedded .embeddedSearchInput:not([type="checkbox"]):not([type="radio"]),
+.hardwarePageEmbedded .embeddedSearchInput:not([type="checkbox"]):not([type="radio"]):hover,
+.hardwarePageEmbedded .embeddedSearchInput:not([type="checkbox"]):not([type="radio"]):focus,
+.hardwarePageEmbedded .embeddedSearchInput:not([type="checkbox"]):not([type="radio"]):focus-visible {
+  background: transparent !important;
+  background-color: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  outline: none !important;
 }
 
 .embeddedSearchInput::placeholder {
@@ -1936,9 +1947,9 @@
 
 .paginationEmbedded {
   padding: 0.65rem 0.2rem 0.1rem;
-  border-top: 1px solid var(--eq-border-light, rgba(15, 28, 46, 0.08));
+  border-top: 1px solid var(--eq-border-light, var(--msp-border-light, #eef2f7));
   margin-top: 0.45rem;
-  background: color-mix(in srgb, var(--msp-surface, #fff) 92%, var(--msp-text, #0f1c2e) 8%);
+  background: transparent;
   border-radius: 0 0 10px 10px;
 }
 
@@ -1960,10 +1971,10 @@
 .paginationSelect {
   height: 32px;
   padding: 0 1.35rem 0 0.55rem;
-  border: 1px solid var(--eq-border, #e2e8f0);
+  border: 1px solid var(--eq-border, var(--msp-border, #e2e8f0));
   border-radius: var(--eq-radius, 8px);
-  background: var(--eq-surface-2, #f7f9fc);
-  color: var(--eq-text, #0f1c2e);
+  background: var(--eq-surface, var(--msp-surface, #ffffff));
+  color: var(--eq-text, var(--msp-text, #0f1c2e));
   font-size: 0.75rem;
   font-family: inherit;
   cursor: pointer;
@@ -1980,10 +1991,10 @@
   justify-content: center;
   width: 32px;
   height: 32px;
-  border: 1px solid var(--eq-border, #e2e8f0);
+  border: 1px solid var(--eq-border, var(--msp-border, #e2e8f0));
   border-radius: var(--eq-radius, 8px);
-  background: var(--eq-surface, #ffffff);
-  color: var(--eq-text, #0f1c2e);
+  background: var(--eq-surface, var(--msp-surface, #ffffff));
+  color: var(--eq-text, var(--msp-text, #0f1c2e));
   cursor: pointer;
   transition: border-color 0.15s, color 0.15s;
 }
@@ -2529,11 +2540,16 @@
   box-shadow: 0 0 0 2px rgba(74, 143, 212, 0.15);
 }
 
-:global(html.dark) .hardwarePageEmbedded .embeddedSearchInput {
-  background: inherit !important;
-  background-color: inherit !important;
-  color: var(--eq-text, var(--msp-text, #e8edf5)) !important;
+:global(html.dark) .hardwarePageEmbedded .embeddedSearchInput:not([type="checkbox"]):not([type="radio"]),
+:global(html.dark) .hardwarePageEmbedded .embeddedSearchInput:not([type="checkbox"]):not([type="radio"]):hover,
+:global(html.dark) .hardwarePageEmbedded .embeddedSearchInput:not([type="checkbox"]):not([type="radio"]):focus,
+:global(html.dark) .hardwarePageEmbedded .embeddedSearchInput:not([type="checkbox"]):not([type="radio"]):focus-visible {
+  background: transparent !important;
+  background-color: transparent !important;
+  border: none !important;
   box-shadow: none !important;
+  outline: none !important;
+  color: var(--eq-text, var(--msp-text, #e8edf5)) !important;
   -webkit-appearance: none;
   appearance: none;
 }

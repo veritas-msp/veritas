@@ -14,8 +14,8 @@ export const SERVER_ROLE_GROUPS = [{
   label: "Applications",
   options: ["Application", "Web (IIS / Apache)", "ERP / Métier", "API", "Middleware / ESB"]
 }, {
-  label: "Bases de data",
-  options: ["SQL Server", "Base de data", "PostgreSQL", "MySQL / MariaDB", "MongoDB", "Redis / Cache"]
+  label: "Bases de données",
+  options: ["SQL Server", "Base de données", "PostgreSQL", "MySQL / MariaDB", "MongoDB", "Redis / Cache"]
 }, {
   label: "Backup & reprise",
   options: ["Backup", "Réplication", "Archivage", "PRA / Site de secours"]
@@ -33,11 +33,20 @@ export const SERVER_ROLE_GROUPS = [{
   options: ["Test", "Autres"]
 }];
 export const SERVER_ROLE_OPTIONS = SERVER_ROLE_GROUPS.flatMap(group => group.options);
+export const SERVER_ROLE_VALUE_ALIASES = {
+  "Base de data": "Base de données",
+  "Bases de data": "Bases de données"
+};
+export function canonicalizeServerRole(role) {
+  const raw = String(role || "").trim();
+  return SERVER_ROLE_VALUE_ALIASES[raw] || raw;
+}
 const SERVER_ROLE_LOOKUP = new Set(SERVER_ROLE_OPTIONS.map(role => role.trim().toLowerCase()));
 export function isKnownServerRole(role) {
-  return SERVER_ROLE_LOOKUP.has(String(role || "").trim().toLowerCase());
+  const canonical = canonicalizeServerRole(role);
+  return SERVER_ROLE_LOOKUP.has(canonical.toLowerCase()) || SERVER_ROLE_LOOKUP.has(String(role || "").trim().toLowerCase());
 }
 export const normalizeServerRoles = roles => {
   const list = Array.isArray(roles) ? roles : roles ? [roles] : [];
-  return list.map(role => role == null ? "" : String(role).trim()).filter(Boolean);
+  return list.map(role => canonicalizeServerRole(role)).filter(Boolean);
 };

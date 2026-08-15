@@ -500,6 +500,23 @@ export const getEquipmentPurgeList = async (options = {}) => {
   const rows = await response.json();
   return Array.isArray(rows) ? rows : [];
 };
+
+/** Lean inventory of all client devices, including custom families. */
+export const getEquipmentInventoryList = async (options = {}) => {
+  const response = await fetch(`${API_BASE_URL}/clients/equipment-inventory`, {
+    method: "GET",
+    credentials: "include",
+    signal: options.signal,
+    headers: {
+      "Content-Type": "application/json"
+    }
+  });
+  if (!response.ok) {
+    throw new Error(`Error ${response.status}: ${response.statusText}`);
+  }
+  const rows = await response.json();
+  return Array.isArray(rows) ? rows : [];
+};
 export const deleteEquipment = async equipment => {
   if (!equipment) {
     throw new Error("No equipment provided for deletion");

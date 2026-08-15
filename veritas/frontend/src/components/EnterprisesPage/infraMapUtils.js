@@ -46,19 +46,15 @@ export function getInfraTypeIcon(type, fallbackIcon = null) {
 export const INFRA_ZONES = [{
   id: "edge",
   label: "Network & access",
-  types: ["Internet", "Firewalls", "Routeur", "Switch", "BorneWifi"]
-}, {
-  id: "telecom",
-  label: "Telecom",
-  types: ["TOIP"]
-}, {
-  id: "power",
-  label: "Power",
-  types: ["Alimentation"]
+  types: ["Internet", "Firewalls", "Routeur"]
 }, {
   id: "compute",
   label: "Compute & data",
-  types: ["Servers", "Storage", "Ordinateurs"]
+  types: ["Servers", "Storage", "Ordinateurs", "Alimentation"]
+}, {
+  id: "lan",
+  label: "LAN & telecom",
+  types: ["Switch", "BorneWifi", "TOIP"]
 }];
 const TYPE_ORDER = HARDWARE_TYPE_ORDER;
 export function toInfraDisplayStatus(status) {

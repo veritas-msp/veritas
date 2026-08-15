@@ -1,10 +1,9 @@
 import { interpolate, pickLocaleMessages } from "../../i18n/translate";
-const TAB_KEYS = ["overview", "antivirus", "antispam", "campaigns"];
+const TAB_KEYS = ["antivirus", "antispam", "campaigns"];
 const TAB_ICONS = {
-  overview: "mdi:lightning-bolt",
   antivirus: "mdi:shield-search",
   antispam: "mdi:email-secure",
-  campaigns: "mdi:shield-lock"
+  campaigns: "mdi:bullhorn-outline"
 };
 const STATUS_FILTER_IDS = ["all", "actif", "expire_bientot", "inactif"];
 const STATUS_META_KEYS = ["actif", "expire_bientot", "inactif", "inconnu"];
@@ -27,7 +26,7 @@ const CYBERSECURITE_PAGE_COPY = {
   fr: {
     eyebrow: "Services managés",
     pageTitle: "Cybersécurité",
-    subtitle: "Posture sécurité · antivirus, antispam et campagnes de sensibilisation.",
+    subtitle: "Choisissez un module pour voir les solutions de vos clients.",
     tabSectionsAria: "Onglets cybersécurité",
     proTabSuffix: " · Veritas Pro",
     proFeatureKey: "cyberCampaigns",
@@ -37,6 +36,28 @@ const CYBERSECURITE_PAGE_COPY = {
       antispam: "Antispam",
       campaigns: "Campagnes"
     },
+    hub: {
+      hint: "Cliquez un module pour ouvrir la liste.",
+      back: "Modules",
+      backAria: "Retour aux modules",
+      empty: "Aucune",
+      issues: "{count} à traiter",
+      issuesPlural: "{count} à traiter",
+      campaigns: "{count} campagne",
+      campaignsPlural: "{count} campagnes"
+    },
+    heroActions: {
+      refresh: "Actualiser",
+      refreshAria: "Actualiser les données du parc",
+      syncAntivirus: "Synchroniser les tenants antivirus",
+      syncAntivirusAria: "Synchroniser tous les tenants antivirus (intégration globale et dédiés)",
+      syncAntispam: "Synchroniser les tenants antispam",
+      syncAntispamAria: "Synchroniser tous les tenants antispam (intégration globale et dédiés)",
+      addCampaign: "Nouvelle campagne"
+    },
+    heroPortfolio: "{av} antivirus · {as} antispam · {campaigns} campagnes",
+    heroPortfolioIssues: "{av} antivirus · {as} antispam · {campaigns} campagnes · {issues} à traiter",
+    heroRefreshing: "Actualisation du parc…",
     overview: {
       priorityTitle: "À traiter en priorité",
       portfolioAlerts: "{count} alerte sur le portefeuille",
@@ -129,11 +150,12 @@ const CYBERSECURITE_PAGE_COPY = {
       table: {
         enterprise: "Entreprise",
         solution: "Solution",
-        plan: "Plan",
+        plan: "Paiement",
         mode: "Mode",
         status: "Statut",
         expiration: "Expiration",
         coverage: "Couverture",
+        licenses: "Licences",
         lastSync: "Dernière sync"
       },
       kpi: {
@@ -193,11 +215,11 @@ const CYBERSECURITE_PAGE_COPY = {
       totalTitle: "Cliquez pour afficher toutes les campagnes",
       filterTitle: "Cliquez pour filtrer : {label}",
       sectionTitle: "Campagnes de cybersécurité",
-      addTitle: "Ajouter une campagne MFA",
+      addTitle: "Ajouter une campagne",
       loading: "Chargement des campagnes…",
       emptyTitle: "Aucune campagne",
-      emptyText: "Créez votre première campagne MFA Microsoft",
-      emptyCta: "Créer une campagne MFA",
+      emptyText: "Créez votre première campagne",
+      emptyCta: "Créer une campagne",
       viewClient: "Voir la fiche client",
       rowsPerPage: "Lignes par page",
       prevPage: "Page précédente",
@@ -231,7 +253,7 @@ const CYBERSECURITE_PAGE_COPY = {
       },
       modal: {
         editTitle: "Modifier la campagne",
-        createTitle: "Nouvelle campagne MFA",
+        createTitle: "Nouvelle campagne",
         eyebrow: "Campagnes MFA",
         createSubtitle: "Campagne d'adoption MFA basée sur les données du tenant Microsoft.",
         editSubtitle: "Modifiez les informations de la campagne MFA.",
@@ -308,19 +330,21 @@ const CYBERSECURITE_PAGE_COPY = {
     },
     sync: {
       preparing: "Préparation…",
-      none: "Aucune licence Bitdefender à synchroniser",
+      noneAntivirus: "Aucun tenant antivirus à synchroniser",
+      noneAntispam: "Aucun tenant antispam à synchroniser",
       progress: "Synchronisation {current}/{total} · {name}",
       done: "Terminé",
-      success: "Synchronisation terminée: {success} licence(s) mise(s) à jour{errors}",
+      success: "Synchronisation terminée : {success} tenant(s) mis à jour{errors}",
       successErrors: ", {count} erreur(s)",
-      failed: "Synchronisation échouée: {count} erreur(s)",
-      error: "Erreur lors de la synchronisation des licences Bitdefender"
+      failed: "Synchronisation échouée : {count} erreur(s)",
+      errorAntivirus: "Erreur lors de la synchronisation des tenants antivirus",
+      errorAntispam: "Erreur lors de la synchronisation des tenants antispam"
     }
   },
   en: {
     eyebrow: "Managed services",
     pageTitle: "Cybersecurity",
-    subtitle: "Security posture · antivirus, antispam, and awareness campaigns.",
+    subtitle: "Choose a module to see your clients' solutions.",
     tabSectionsAria: "Cybersecurity sections",
     proTabSuffix: " · Veritas Pro",
     proFeatureKey: "cyberCampaigns",
@@ -330,6 +354,28 @@ const CYBERSECURITE_PAGE_COPY = {
       antispam: "Antispam",
       campaigns: "Campaigns"
     },
+    hub: {
+      hint: "Click a module to open the list.",
+      back: "Modules",
+      backAria: "Back to modules",
+      empty: "None",
+      issues: "{count} to handle",
+      issuesPlural: "{count} to handle",
+      campaigns: "{count} campaign",
+      campaignsPlural: "{count} campaigns"
+    },
+    heroActions: {
+      refresh: "Refresh",
+      refreshAria: "Refresh cybersecurity fleet data",
+      syncAntivirus: "Sync antivirus tenants",
+      syncAntivirusAria: "Sync all antivirus tenants (global integration and dedicated)",
+      syncAntispam: "Sync antispam tenants",
+      syncAntispamAria: "Sync all antispam tenants (global integration and dedicated)",
+      addCampaign: "New campaign"
+    },
+    heroPortfolio: "{av} antivirus · {as} antispam · {campaigns} campaigns",
+    heroPortfolioIssues: "{av} antivirus · {as} antispam · {campaigns} campaigns · {issues} to handle",
+    heroRefreshing: "Refreshing fleet…",
     overview: {
       priorityTitle: "Priority items",
       portfolioAlerts: "{count} alert on the portfolio",
@@ -422,11 +468,12 @@ const CYBERSECURITE_PAGE_COPY = {
       table: {
         enterprise: "Company",
         solution: "Solution",
-        plan: "Plan",
+        plan: "Payment",
         mode: "Mode",
         status: "Status",
         expiration: "Expiration",
         coverage: "Coverage",
+        licenses: "Licenses",
         lastSync: "Last sync"
       },
       kpi: {
@@ -486,11 +533,11 @@ const CYBERSECURITE_PAGE_COPY = {
       totalTitle: "Click to show all campaigns",
       filterTitle: "Click to filter: {label}",
       sectionTitle: "Cybersecurity campaigns",
-      addTitle: "Add an MFA campaign",
+      addTitle: "Add a campaign",
       loading: "Loading campaigns…",
       emptyTitle: "No campaigns",
-      emptyText: "Create your first Microsoft MFA campaign",
-      emptyCta: "Create MFA campaign",
+      emptyText: "Create your first campaign",
+      emptyCta: "Create a campaign",
       viewClient: "View company record",
       rowsPerPage: "Rows per page",
       prevPage: "Previous page",
@@ -524,7 +571,7 @@ const CYBERSECURITE_PAGE_COPY = {
       },
       modal: {
         editTitle: "Edit campaign",
-        createTitle: "New MFA campaign",
+        createTitle: "New campaign",
         eyebrow: "MFA campaigns",
         createSubtitle: "MFA adoption campaign based on Microsoft tenant data.",
         editSubtitle: "Update the MFA campaign information.",
@@ -601,19 +648,21 @@ const CYBERSECURITE_PAGE_COPY = {
     },
     sync: {
       preparing: "Preparing…",
-      none: "No Bitdefender license to sync",
+      noneAntivirus: "No antivirus tenant to sync",
+      noneAntispam: "No antispam tenant to sync",
       progress: "Syncing {current}/{total} · {name}",
       done: "Done",
-      success: "Sync complete: {success} license(s) updated{errors}",
+      success: "Sync complete: {success} tenant(s) updated{errors}",
       successErrors: ", {count} error(s)",
       failed: "Sync failed: {count} error(s)",
-      error: "Error syncing Bitdefender licenses"
+      errorAntivirus: "Error syncing antivirus tenants",
+      errorAntispam: "Error syncing antispam tenants"
     }
   },
   de: {
     eyebrow: "Managed Services",
     pageTitle: "Cybersicherheit",
-    subtitle: "Sicherheitslage · Antivirus, Antispam und Sensibilisierungskampagnen.",
+    subtitle: "Wählen Sie ein Modul, um die Lösungen Ihrer Kunden zu sehen.",
     tabSectionsAria: "Cybersicherheitsbereiche",
     proTabSuffix: " · Veritas Pro",
     proFeatureKey: "cyberCampaigns",
@@ -623,6 +672,28 @@ const CYBERSECURITE_PAGE_COPY = {
       antispam: "Antispam",
       campaigns: "Kampagnen"
     },
+    hub: {
+      hint: "Klicken Sie ein Modul, um die Liste zu öffnen.",
+      back: "Module",
+      backAria: "Zurück zu den Modulen",
+      empty: "Keine",
+      issues: "{count} zu prüfen",
+      issuesPlural: "{count} zu prüfen",
+      campaigns: "{count} Kampagne",
+      campaignsPlural: "{count} Kampagnen"
+    },
+    heroActions: {
+      refresh: "Aktualisieren",
+      refreshAria: "Bestandsdaten aktualisieren",
+      syncAntivirus: "Antivirus-Tenants synchronisieren",
+      syncAntivirusAria: "Alle Antivirus-Tenants synchronisieren (globale Integration und dedizierte)",
+      syncAntispam: "Antispam-Tenants synchronisieren",
+      syncAntispamAria: "Alle Antispam-Tenants synchronisieren (globale Integration und dedizierte)",
+      addCampaign: "Neue Kampagne"
+    },
+    heroPortfolio: "{av} Antivirus · {as} Antispam · {campaigns} Kampagnen",
+    heroPortfolioIssues: "{av} Antivirus · {as} Antispam · {campaigns} Kampagnen · {issues} zu prüfen",
+    heroRefreshing: "Bestand wird aktualisiert…",
     overview: {
       priorityTitle: "Priorität",
       portfolioAlerts: "{count} Alarm im Portfolio",
@@ -715,11 +786,12 @@ const CYBERSECURITE_PAGE_COPY = {
       table: {
         enterprise: "Unternehmen",
         solution: "Lösung",
-        plan: "Plan",
+        plan: "Zahlung",
         mode: "Modus",
         status: "Status",
         expiration: "Ablauf",
         coverage: "Abdeckung",
+        licenses: "Lizenzen",
         lastSync: "Letzte Sync"
       },
       kpi: {
@@ -779,11 +851,11 @@ const CYBERSECURITE_PAGE_COPY = {
       totalTitle: "Klicken, um alle Kampagnen anzuzeigen",
       filterTitle: "Klicken zum Filtern: {label}",
       sectionTitle: "Cybersicherheitskampagnen",
-      addTitle: "MFA-Kampagne hinzufügen",
+      addTitle: "Kampagne hinzufügen",
       loading: "Kampagnen werden geladen…",
       emptyTitle: "Keine Kampagnen",
-      emptyText: "Erstellen Sie Ihre erste Microsoft-MFA-Kampagne",
-      emptyCta: "MFA-Kampagne erstellen",
+      emptyText: "Erstellen Sie Ihre erste Kampagne",
+      emptyCta: "Kampagne erstellen",
       viewClient: "Unternehmensakte anzeigen",
       rowsPerPage: "Zeilen pro Seite",
       prevPage: "Vorherige Seite",
@@ -817,7 +889,7 @@ const CYBERSECURITE_PAGE_COPY = {
       },
       modal: {
         editTitle: "Kampagne bearbeiten",
-        createTitle: "Neue MFA-Kampagne",
+        createTitle: "Neue Kampagne",
         eyebrow: "MFA-Kampagnen",
         createSubtitle: "MFA-Adoptionkampagne auf Basis der Microsoft-Tenant-Daten.",
         editSubtitle: "MFA-Kampagneninformationen bearbeiten.",
@@ -894,19 +966,21 @@ const CYBERSECURITE_PAGE_COPY = {
     },
     sync: {
       preparing: "Vorbereitung…",
-      none: "Keine Bitdefender-Lizenz zu synchronisieren",
+      noneAntivirus: "Kein Antivirus-Tenant zu synchronisieren",
+      noneAntispam: "Kein Antispam-Tenant zu synchronisieren",
       progress: "Synchronisation {current}/{total} · {name}",
       done: "Fertig",
-      success: "Synchronisation abgeschlossen: {success} Lizenz(en) aktualisiert{errors}",
+      success: "Synchronisation abgeschlossen: {success} Tenant(s) aktualisiert{errors}",
       successErrors: ", {count} Fehler",
       failed: "Synchronisation fehlgeschlagen: {count} Fehler",
-      error: "Fehler bei der Synchronisation der Bitdefender-Lizenzen"
+      errorAntivirus: "Fehler bei der Synchronisation der Antivirus-Tenants",
+      errorAntispam: "Fehler bei der Synchronisation der Antispam-Tenants"
     }
   },
   it: {
     eyebrow: "Servizi gestiti",
     pageTitle: "Cybersicurezza",
-    subtitle: "Postura di sicurezza · antivirus, antispam e campagne di sensibilizzazione.",
+    subtitle: "Scegliete un modulo per vedere le soluzioni dei clienti.",
     tabSectionsAria: "Sezioni cybersicurezza",
     proTabSuffix: " · Veritas Pro",
     proFeatureKey: "cyberCampaigns",
@@ -916,6 +990,28 @@ const CYBERSECURITE_PAGE_COPY = {
       antispam: "Antispam",
       campaigns: "Campagne"
     },
+    hub: {
+      hint: "Cliccate un modulo per aprire l'elenco.",
+      back: "Moduli",
+      backAria: "Torna ai moduli",
+      empty: "Nessuna",
+      issues: "{count} da trattare",
+      issuesPlural: "{count} da trattare",
+      campaigns: "{count} campagna",
+      campaignsPlural: "{count} campagne"
+    },
+    heroActions: {
+      refresh: "Aggiorna",
+      refreshAria: "Aggiorna i dati del parco",
+      syncAntivirus: "Sincronizza i tenant antivirus",
+      syncAntivirusAria: "Sincronizza tutti i tenant antivirus (integrazione globale e dedicati)",
+      syncAntispam: "Sincronizza i tenant antispam",
+      syncAntispamAria: "Sincronizza tutti i tenant antispam (integrazione globale e dedicati)",
+      addCampaign: "Nuova campagna"
+    },
+    heroPortfolio: "{av} antivirus · {as} antispam · {campaigns} campagne",
+    heroPortfolioIssues: "{av} antivirus · {as} antispam · {campaigns} campagne · {issues} da trattare",
+    heroRefreshing: "Aggiornamento del parco…",
     overview: {
       priorityTitle: "Priorità",
       portfolioAlerts: "{count} avviso sul portafoglio",
@@ -1008,11 +1104,12 @@ const CYBERSECURITE_PAGE_COPY = {
       table: {
         enterprise: "Azienda",
         solution: "Soluzione",
-        plan: "Piano",
+        plan: "Pagamento",
         mode: "Modalità",
         status: "Stato",
         expiration: "Scadenza",
         coverage: "Copertura",
+        licenses: "Licenze",
         lastSync: "Ultima sync"
       },
       kpi: {
@@ -1072,11 +1169,11 @@ const CYBERSECURITE_PAGE_COPY = {
       totalTitle: "Clicca per mostrare tutte le campagne",
       filterTitle: "Clicca per filtrare: {label}",
       sectionTitle: "Campagne di cybersicurezza",
-      addTitle: "Aggiungi campagna MFA",
+      addTitle: "Aggiungi campagna",
       loading: "Caricamento campagne…",
       emptyTitle: "Nessuna campagna",
-      emptyText: "Create la vostra prima campagna MFA Microsoft",
-      emptyCta: "Crea campagna MFA",
+      emptyText: "Create la vostra prima campagna",
+      emptyCta: "Crea campagna",
       viewClient: "Vedi scheda cliente",
       rowsPerPage: "Righe per pagina",
       prevPage: "Pagina precedente",
@@ -1110,7 +1207,7 @@ const CYBERSECURITE_PAGE_COPY = {
       },
       modal: {
         editTitle: "Modifica campagna",
-        createTitle: "Nuova campagna MFA",
+        createTitle: "Nuova campagna",
         eyebrow: "Campagne MFA",
         createSubtitle: "Campagna di adozione MFA basata sui dati del tenant Microsoft.",
         editSubtitle: "Modifica le informazioni della campagna MFA.",
@@ -1187,19 +1284,21 @@ const CYBERSECURITE_PAGE_COPY = {
     },
     sync: {
       preparing: "Preparazione…",
-      none: "Nessuna licenza Bitdefender da sincronizzare",
+      noneAntivirus: "Nessun tenant antivirus da sincronizzare",
+      noneAntispam: "Nessun tenant antispam da sincronizzare",
       progress: "Sincronizzazione {current}/{total} · {name}",
       done: "Completato",
-      success: "Sincronizzazione completata: {success} licenza/e aggiornata/e{errors}",
+      success: "Sincronizzazione completata: {success} tenant aggiornato/i{errors}",
       successErrors: ", {count} errore/i",
       failed: "Sincronizzazione fallita: {count} errore/i",
-      error: "Errore durante la sincronizzazione delle licenze Bitdefender"
+      errorAntivirus: "Errore durante la sincronizzazione dei tenant antivirus",
+      errorAntispam: "Errore durante la sincronizzazione dei tenant antispam"
     }
   },
   es: {
     eyebrow: "Servicios gestionados",
     pageTitle: "Ciberseguridad",
-    subtitle: "Postura de seguridad · antivirus, antispam y campañas de concienciación.",
+    subtitle: "Elija un módulo para ver las soluciones de sus clientes.",
     tabSectionsAria: "Secciones de ciberseguridad",
     proTabSuffix: " · Veritas Pro",
     proFeatureKey: "cyberCampaigns",
@@ -1209,6 +1308,28 @@ const CYBERSECURITE_PAGE_COPY = {
       antispam: "Antispam",
       campaigns: "Campañas"
     },
+    hub: {
+      hint: "Haga clic en un módulo para abrir la lista.",
+      back: "Módulos",
+      backAria: "Volver a los módulos",
+      empty: "Ninguna",
+      issues: "{count} por tratar",
+      issuesPlural: "{count} por tratar",
+      campaigns: "{count} campaña",
+      campaignsPlural: "{count} campañas"
+    },
+    heroActions: {
+      refresh: "Actualizar",
+      refreshAria: "Actualizar los datos del parque",
+      syncAntivirus: "Sincronizar tenants antivirus",
+      syncAntivirusAria: "Sincronizar todos los tenants antivirus (integración global y dedicados)",
+      syncAntispam: "Sincronizar tenants antispam",
+      syncAntispamAria: "Sincronizar todos los tenants antispam (integración global y dedicados)",
+      addCampaign: "Nueva campaña"
+    },
+    heroPortfolio: "{av} antivirus · {as} antispam · {campaigns} campañas",
+    heroPortfolioIssues: "{av} antivirus · {as} antispam · {campaigns} campañas · {issues} por tratar",
+    heroRefreshing: "Actualizando el parque…",
     overview: {
       priorityTitle: "Prioridad",
       portfolioAlerts: "{count} alerta en la cartera",
@@ -1301,11 +1422,12 @@ const CYBERSECURITE_PAGE_COPY = {
       table: {
         enterprise: "Empresa",
         solution: "Solución",
-        plan: "Plan",
+        plan: "Pago",
         mode: "Modo",
         status: "Estado",
         expiration: "Caducidad",
         coverage: "Cobertura",
+        licenses: "Licencias",
         lastSync: "Última sync"
       },
       kpi: {
@@ -1365,11 +1487,11 @@ const CYBERSECURITE_PAGE_COPY = {
       totalTitle: "Clic para mostrar todas las campañas",
       filterTitle: "Clic para filtrar: {label}",
       sectionTitle: "Campañas de ciberseguridad",
-      addTitle: "Añadir campaña MFA",
+      addTitle: "Añadir campaña",
       loading: "Cargando campañas…",
       emptyTitle: "Ninguna campaña",
-      emptyText: "Cree su primera campaña MFA Microsoft",
-      emptyCta: "Crear campaña MFA",
+      emptyText: "Cree su primera campaña",
+      emptyCta: "Crear campaña",
       viewClient: "Ver ficha cliente",
       rowsPerPage: "Filas por página",
       prevPage: "Página anterior",
@@ -1403,7 +1525,7 @@ const CYBERSECURITE_PAGE_COPY = {
       },
       modal: {
         editTitle: "Modificar campaña",
-        createTitle: "Nueva campaña MFA",
+        createTitle: "Nueva campaña",
         eyebrow: "Campañas MFA",
         createSubtitle: "Campaña de adopción MFA basada en los datos del tenant Microsoft.",
         editSubtitle: "Modifique la información de la campaña MFA.",
@@ -1480,13 +1602,15 @@ const CYBERSECURITE_PAGE_COPY = {
     },
     sync: {
       preparing: "Preparación…",
-      none: "Ninguna licencia Bitdefender que sincronizar",
+      noneAntivirus: "Ningún tenant antivirus que sincronizar",
+      noneAntispam: "Ningún tenant antispam que sincronizar",
       progress: "Sincronización {current}/{total} · {name}",
       done: "Terminado",
-      success: "Sincronización completada: {success} licencia(s) actualizada(s){errors}",
+      success: "Sincronización completada: {success} tenant(s) actualizado(s){errors}",
       successErrors: ", {count} error(es)",
       failed: "Sincronización fallida: {count} error(es)",
-      error: "Error al sincronizar las licencias Bitdefender"
+      errorAntivirus: "Error al sincronizar los tenants antivirus",
+      errorAntispam: "Error al sincronizar los tenants antispam"
     }
   }
 };
@@ -1579,6 +1703,23 @@ export function getCybersecuritePageCopy(locale) {
         count: String(count)
       });
     },
+    formatHubIssues: count => interpolate(count === 1 ? t.hub.issues : t.hub.issuesPlural, {
+      count: String(count)
+    }),
+    formatHubCampaigns: count => interpolate(count === 1 ? t.hub.campaigns : t.hub.campaignsPlural, {
+      count: String(count)
+    }),
+    formatHeroPortfolio: ({
+      av,
+      as,
+      campaigns,
+      issues
+    }) => interpolate(issues > 0 ? t.heroPortfolioIssues : t.heroPortfolio, {
+      av: String(av),
+      as: String(as),
+      campaigns: String(campaigns),
+      issues: String(issues)
+    }),
     formatAvFleetDescription: stats => buildFleetDescription(stats, "av", locale),
     formatAsFleetDescription: stats => buildFleetDescription(stats, "as", locale),
     getCampaignTypeLabel: type => t.campaigns.types[type] || type,

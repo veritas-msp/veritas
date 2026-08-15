@@ -2,7 +2,7 @@ const envEdition = String(process.env.REACT_APP_VERITAS_EDITION || "").trim().to
 export function getEnvEdition() {
   return envEdition === "pro" ? "pro" : "community";
 }
-export const COMMUNITY_SIDEBAR_KEYS = new Set(["Contrat", "Contact", "Ticket", "Hardware", "Mon", "Cybersecurite", "Service"]);
+export const COMMUNITY_SIDEBAR_KEYS = new Set(["Contrat", "Contact", "Ticket", "Hardware", "EquipmentInventory", "Mon", "Cybersecurite", "Service"]);
 /** Page keys that remain profile-gated in Community (not zeroed as Pro-only). */
 export const COMMUNITY_PRESERVED_ACCESS_KEYS = new Set(["Admin"]);
 export const COMMUNITY_ADMIN_KEYS = new Set(["general", "users", "permissions", "clients", "tickets", "mail-collect", "notifications", "rmm", "maintenance", "injection", "equipment-purge", "client-portal", "license", "integrations", "ai"]);

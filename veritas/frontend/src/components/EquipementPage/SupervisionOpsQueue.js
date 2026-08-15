@@ -34,16 +34,16 @@ function actionHint(copy, key) {
 }
 
 function formatWhen(value, localeTag) {
-  if (!value) return null;
+  if (!value) return "—";
   try {
     const date = typeof value === "number" ? new Date(value) : new Date(value);
-    if (Number.isNaN(date.getTime())) return null;
+    if (Number.isNaN(date.getTime())) return "—";
     return date.toLocaleString(localeTag || undefined, {
       dateStyle: "short",
       timeStyle: "short"
     });
   } catch {
-    return null;
+    return "—";
   }
 }
 
@@ -66,7 +66,10 @@ function QueueActionButton({
 }) {
   const tip = hint || label;
   return <SmartTooltip as="span" content={tip}>
-      <button type="button" className={`${styles.actionBtn} ${primary ? styles.actionBtnPrimary : ""}`} aria-label={label || tip} disabled={disabled} onClick={onClick}>
+      <button type="button" className={`${styles.actionBtn} ${primary ? styles.actionBtnPrimary : ""}`} title={tip} aria-label={tip} disabled={disabled} onClick={e => {
+      e.stopPropagation();
+      onClick?.(e);
+    }}>
         <Icon icon={icon} aria-hidden />
       </button>
     </SmartTooltip>;
@@ -109,6 +112,7 @@ export default function SupervisionOpsQueue({
   localeTag,
   copy
 }) {
+  const columns = copy.columns || {};
   const domainChips = [{
     id: "all",
     label: copy.domains.all,
@@ -181,67 +185,82 @@ export default function SupervisionOpsQueue({
 
       {items.length === 0 ? <div className={styles.emptyWrap} data-guide="supervision-queue">
           <MspEmptyState icon="mdi:bell-check-outline" title={copy.emptyTitle} text={copy.emptyText} />
-        </div> : <ul className={styles.list} data-guide="supervision-queue">
-          {items.map(item => {
-          const wf = item.workflowStatus || "open";
-          const busy = busyId === item.id;
-          const domainLabel = copy.domains?.[item.domain] || item.domain;
-          const severityLabel = item.severity === "critical" ? copy.kpi.critical : item.severity === "warning" ? copy.kpi.warning : copy.severityInfo || "Info";
-          const when = formatWhen(item.notifiedAt || item.alertState?.createdAt || item.sortTime, localeTag);
-          const handler = item.handledByName || item.alertState?.ackedByName || null;
-          const remediation = remediationLabel(item, copy);
-          const metaBits = [item.label, item.clientName, item.subtitle].filter(Boolean).filter((v, i, arr) => arr.indexOf(v) === i);
-          const collabBits = [];
-          if (handler) {
-            collabBits.push(interpolate(copy.collab?.handledBy || "{name}", {
-              name: handler
-            }));
-          }
-          if (remediation) collabBits.push(remediation);
-          return <li key={item.id} className={`${styles.row} ${wf !== "open" ? styles.rowHandled : ""}`}>
-                <button type="button" className={styles.rowMain} onClick={() => onOpenItem?.(item)}>
-                  <span className={`${styles.sevDot} ${toneClass(item.tone, item.severity)}`} aria-hidden />
-                  <SmartTooltip as="span" content={domainLabel}>
-                    <span className={`${styles.domainIcon} ${styles[`domain_${item.domain}`] || ""}`} aria-label={domainLabel}>
-                      <Icon icon={DOMAIN_ICONS[item.domain] || "mdi:bell-outline"} />
-                    </span>
-                  </SmartTooltip>
-                  <span className={styles.rowBody}>
-                    <span className={styles.rowTitle}>{item.title}</span>
-                    <span className={styles.rowMeta}>{metaBits.join(" · ")}</span>
-                    {collabBits.length ? <span className={styles.rowCollab}>
-                        <Icon icon="mdi:account-outline" aria-hidden />
-                        {collabBits.join(" · ")}
-                      </span> : null}
-                  </span>
-                  <span className={styles.rowSide}>
-                    <span className={styles.rowBadges}>
-                      <span className={`${styles.wfBadge} ${workflowBadgeClass(wf)}`}>
-                        {copy.workflow?.[wf] || wf}
+        </div> : <div className={styles.tableWrap} data-guide="supervision-queue">
+          <table className={styles.table}>
+            <thead>
+              <tr>
+                <th className={styles.sevCol} aria-hidden />
+                <th>{columns.alert || "Alerte"}</th>
+                <th>{columns.company || "Entreprise"}</th>
+                <th>{columns.domain || "Domaine"}</th>
+                <th>{columns.severity || "Sévérité"}</th>
+                <th>{columns.status || "Statut"}</th>
+                <th>{columns.when || "Date"}</th>
+                <th className={styles.actionsCol}>{columns.actions || "Actions"}</th>
+              </tr>
+            </thead>
+            <tbody>
+              {items.map(item => {
+              const wf = item.workflowStatus || "open";
+              const busy = busyId === item.id;
+              const domainLabel = copy.domains?.[item.domain] || item.domain;
+              const severityLabel = item.severity === "critical" ? copy.kpi.critical : item.severity === "warning" ? copy.kpi.warning : copy.severityInfo || "Info";
+              const when = formatWhen(item.notifiedAt || item.alertState?.createdAt || item.sortTime, localeTag);
+              const handler = item.handledByName || item.alertState?.ackedByName || null;
+              const remediation = remediationLabel(item, copy);
+              const metaBits = [item.label, item.subtitle].filter(Boolean).filter((v, i, arr) => arr.indexOf(v) === i);
+              const collabBits = [];
+              if (handler) {
+                collabBits.push(interpolate(copy.collab?.handledBy || "{name}", {
+                  name: handler
+                }));
+              }
+              if (remediation) collabBits.push(remediation);
+              return <tr key={item.id} className={`${styles.dataRow} ${wf !== "open" ? styles.rowHandled : ""}`} onClick={() => onOpenItem?.(item)}>
+                    <td className={styles.sevCol}>
+                      <span className={`${styles.sevDot} ${toneClass(item.tone, item.severity)}`} aria-hidden />
+                    </td>
+                    <td className={styles.alertCell}>
+                      <span className={styles.rowTitle}>{item.title}</span>
+                      {metaBits.length ? <span className={styles.rowMeta}>{metaBits.join(" · ")}</span> : null}
+                      {collabBits.length ? <span className={styles.rowCollab}>
+                          <Icon icon="mdi:account-outline" aria-hidden />
+                          {collabBits.join(" · ")}
+                        </span> : null}
+                    </td>
+                    <td>{item.clientName || "—"}</td>
+                    <td>
+                      <span className={styles.domainCell}>
+                        <span className={`${styles.domainIcon} ${styles[`domain_${item.domain}`] || ""}`} aria-hidden>
+                          <Icon icon={DOMAIN_ICONS[item.domain] || "mdi:bell-outline"} />
+                        </span>
+                        {domainLabel}
                       </span>
-                      <span className={styles.chipBadge}>{domainLabel}</span>
+                    </td>
+                    <td>
                       <span className={`${styles.chipBadge} ${severityBadgeClass(item.severity)}`}>{severityLabel}</span>
-                    </span>
-                    {when ? <time className={styles.rowWhen} dateTime={item.notifiedAt || undefined}>{when}</time> : null}
-                  </span>
-                </button>
-                <div className={styles.rowActions} role="group" aria-label={copy.actionsAria || "Actions"}>
-                  <div className={styles.actionGroup}>
-                    {wf === "open" ? <QueueActionButton hint={actionHint(copy, "ack")} label={copy.actions.ack} icon="mdi:eye-check-outline" disabled={busy} onClick={() => onAck?.(item)} /> : null}
-                  </div>
-                  <div className={styles.actionGroup}>
-                    <QueueActionButton hint={actionHint(copy, "support")} label={copy.actions.support} icon="mdi:message-processing-outline" disabled={busy} onClick={() => onTicketSupport?.(item)} />
-                    <QueueActionButton hint={actionHint(copy, "presta")} label={copy.actions.presta} icon="mdi:briefcase-outline" disabled={busy} onClick={() => onTicketPresta?.(item)} />
-                    <QueueActionButton hint={actionHint(copy, "plan")} label={copy.actions.plan} icon="mdi:calendar-plus" disabled={busy} onClick={() => onPlanEvent?.(item)} />
-                  </div>
-                  <div className={styles.actionGroup}>
-                    <QueueActionButton hint={actionHint(copy, "resolve")} label={copy.actions.resolve} icon="mdi:check-circle-outline" disabled={busy} onClick={() => onResolve?.(item)} />
-                    <QueueActionButton hint={actionHint(copy, "dismiss")} label={copy.actions.dismiss} icon="mdi:close-circle-outline" disabled={busy} onClick={() => onDismiss?.(item)} />
-                    <QueueActionButton hint={actionHint(copy, "open")} label={copy.actions.open} icon="mdi:open-in-new" primary onClick={() => onOpenItem?.(item)} />
-                  </div>
-                </div>
-              </li>;
-        })}
-        </ul>}
+                    </td>
+                    <td>
+                      <span className={`${styles.wfBadge} ${workflowBadgeClass(wf)}`}>{copy.workflow?.[wf] || wf}</span>
+                    </td>
+                    <td className={styles.whenCell}>
+                      <time dateTime={item.notifiedAt || undefined}>{when}</time>
+                    </td>
+                    <td className={styles.actionsCol} onClick={e => e.stopPropagation()}>
+                      <div className={styles.rowActions} role="group" aria-label={copy.actionsAria || "Actions"}>
+                        {wf === "open" ? <QueueActionButton hint={actionHint(copy, "ack")} label={copy.actions.ack} icon="mdi:eye-check-outline" disabled={busy} onClick={() => onAck?.(item)} /> : null}
+                        <QueueActionButton hint={actionHint(copy, "support")} label={copy.actions.support} icon="mdi:message-processing-outline" disabled={busy} onClick={() => onTicketSupport?.(item)} />
+                        <QueueActionButton hint={actionHint(copy, "presta")} label={copy.actions.presta} icon="mdi:briefcase-outline" disabled={busy} onClick={() => onTicketPresta?.(item)} />
+                        <QueueActionButton hint={actionHint(copy, "plan")} label={copy.actions.plan} icon="mdi:calendar-plus" disabled={busy} onClick={() => onPlanEvent?.(item)} />
+                        <QueueActionButton hint={actionHint(copy, "resolve")} label={copy.actions.resolve} icon="mdi:check-circle-outline" disabled={busy} onClick={() => onResolve?.(item)} />
+                        <QueueActionButton hint={actionHint(copy, "dismiss")} label={copy.actions.dismiss} icon="mdi:close-circle-outline" disabled={busy} onClick={() => onDismiss?.(item)} />
+                        <QueueActionButton hint={actionHint(copy, "open")} label={copy.actions.open} icon="mdi:open-in-new" primary onClick={() => onOpenItem?.(item)} />
+                      </div>
+                    </td>
+                  </tr>;
+            })}
+            </tbody>
+          </table>
+        </div>}
     </div>;
 }

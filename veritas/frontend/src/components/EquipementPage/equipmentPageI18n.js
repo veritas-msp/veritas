@@ -116,7 +116,8 @@ const PAGE_COPY = {
         ha: "HA"
       },
       Internet: {
-        internetType: "Type de connexion"
+        internetType: "Type de connexion",
+        ha: "HA"
       },
       Serveurs: {
         vlan: "VLAN",
@@ -314,7 +315,8 @@ const PAGE_COPY = {
         ha: "HA"
       },
       Internet: {
-        internetType: "Connection type"
+        internetType: "Connection type",
+        ha: "HA"
       },
       Servers: {
         vlan: "VLAN",
@@ -512,7 +514,8 @@ const PAGE_COPY = {
         ha: "HA"
       },
       Internet: {
-        internetType: "Verbindungstyp"
+        internetType: "Verbindungstyp",
+        ha: "HA"
       },
       Serveurs: {
         vlan: "VLAN",
@@ -697,7 +700,8 @@ const PAGE_COPY = {
         ha: "HA"
       },
       Internet: {
-        internetType: "Tipo connessione"
+        internetType: "Tipo connessione",
+        ha: "HA"
       },
       Serveurs: {
         vlan: "VLAN",
@@ -882,7 +886,8 @@ const PAGE_COPY = {
         ha: "HA"
       },
       Internet: {
-        internetType: "Tipo de conexión"
+        internetType: "Tipo de conexión",
+        ha: "HA"
       },
       Serveurs: {
         vlan: "VLAN",

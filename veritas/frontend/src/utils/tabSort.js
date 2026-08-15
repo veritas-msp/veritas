@@ -24,6 +24,10 @@ export const TAB_FOLDER_GROUPS = [{
   types: ["Hardware", "Equipment", "EquipmentDetail", "JobDetail", "ComputerFleetStats"],
   icon: "mdi:monitor-dashboard"
 }, {
+  key: "inventory",
+  types: ["EquipmentInventory"],
+  icon: "mdi:devices"
+}, {
   key: "cyber",
   types: ["CampaignDetail", "AntivirusDetail", "AntispamDetail", "Cybersecurite"],
   icon: "mdi:shield-lock"

@@ -19,6 +19,7 @@ const SIDEBAR_COPY = {
       planning: "Planning",
       dashboard: "Tableau de bord KPI",
       supervision: "Centre de supervision",
+      inventory: "Inventaire périphériques",
       cyber: "Cybersécurité",
       cloud: "Cloud IT et services",
       reports: "Rapports",
@@ -65,6 +66,7 @@ const SIDEBAR_COPY = {
       planning: "Scheduling",
       dashboard: "KPI Dashboard",
       supervision: "Monitoring center",
+      inventory: "Device inventory",
       cyber: "Cybersecurity",
       cloud: "Cloud IT & Services",
       reports: "Reports",
@@ -111,6 +113,7 @@ const SIDEBAR_COPY = {
       planning: "Planung",
       dashboard: "KPI-Dashboard",
       supervision: "Supervisionszentrum",
+      inventory: "Geräteinventar",
       cyber: "Cybersicherheit",
       cloud: "Cloud IT & Services",
       reports: "Berichte",
@@ -157,6 +160,7 @@ const SIDEBAR_COPY = {
       planning: "Pianificazione",
       dashboard: "Dashboard KPI",
       supervision: "Centro di supervisione",
+      inventory: "Inventario periferiche",
       cyber: "Cybersicurezza",
       cloud: "Cloud IT e servizi",
       reports: "Report",
@@ -203,6 +207,7 @@ const SIDEBAR_COPY = {
       planning: "Planificación",
       dashboard: "Panel KPI",
       supervision: "Centro de supervisión",
+      inventory: "Inventario de periféricos",
       cyber: "Ciberseguridad",
       cloud: "Cloud IT y servicios",
       reports: "Informes",
@@ -236,5 +241,6 @@ export function localizeDocumentLabel(key, fallbackLabel, locale) {
   const nav = getSidebarCopy(locale).nav;
   if (key === "Mon") return nav.monitoring;
   if (key === "DocumentsHub") return nav.documents;
+  if (key === "EquipmentInventory") return nav.inventory;
   return fallbackLabel;
 }

@@ -124,9 +124,19 @@
   gap: 0.5rem;
 }
 
+.kpiStrip {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.5rem;
+}
+
 @media (min-width: 720px) {
   .kpiRow {
     grid-template-columns: repeat(auto-fit, minmax(112px, 1fr));
+  }
+
+  .kpiStrip {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
   }
 }
 
@@ -269,6 +279,7 @@
   align-items: center;
   gap: 0.35rem;
   flex-shrink: 0;
+  margin-left: auto;
 }
 
 .iconBtn {
@@ -302,49 +313,73 @@
 }
 
 .panel {
-  border-radius: 12px;
-  border: 1px solid var(--msp-border, #c5d0df);
-  background: var(--msp-surface, #fff);
-  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
 }
 
 .tableWrap {
-  overflow-x: auto;
+  overflow: auto;
+  border: 1px solid var(--msp-border, #dde3ed);
+  border-radius: var(--msp-radius, 10px);
+  background: var(--msp-surface, #fff);
 }
 
 .table {
   width: 100%;
   border-collapse: collapse;
-  font-size: 0.8rem;
+  font-size: 0.78rem;
 }
 
 .table thead th {
-  padding: 0.35rem 0.6rem;
+  position: sticky;
+  top: 0;
+  z-index: 1;
   text-align: left;
-  font-size: 0.62rem;
+  font-size: 0.68rem;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.04em;
-  color: var(--msp-muted-light, #8b9bb5);
-  background: var(--msp-surface-2, #f7f9fc);
+  color: var(--msp-muted, #5c6b82);
+  padding: 0.55rem 0.65rem;
   border-bottom: 1px solid var(--msp-border-light, #e2e8f0);
+  background: var(--msp-surface-2, #f8fafc);
   white-space: nowrap;
+}
+
+.thBtn {
+  border: none;
+  background: none;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+  padding: 0;
+  text-transform: inherit;
+  letter-spacing: inherit;
+}
+
+.thBtn:hover {
+  color: var(--msp-text, #0f1c2e);
 }
 
 .sortableTh {
   cursor: pointer;
   user-select: none;
-  transition: color 0.12s, background 0.12s;
 }
 
 .sortableTh:hover {
-  color: var(--msp-accent, #2b5fab);
-  background: rgba(43, 95, 171, 0.06);
+  color: var(--msp-text, #0f1c2e);
 }
 
-.sortableTh[aria-sort="ascending"],
-.sortableTh[aria-sort="descending"] {
-  color: var(--msp-accent, #2b5fab);
+.table tbody td {
+  padding: 0.55rem 0.65rem;
+  border-bottom: 1px solid var(--msp-border-light, #e2e8f0);
+  vertical-align: middle;
+  color: var(--msp-text, #0f1c2e);
+}
+
+.table tbody tr:last-child td {
+  border-bottom: none;
 }
 
 .tableRow {
@@ -352,14 +387,10 @@
   transition: background 0.12s;
 }
 
-.tableRow:hover {
-  background: var(--msp-accent-soft, rgba(43, 95, 171, 0.06));
-}
-
-.tableRow td {
-  padding: 0.32rem 0.6rem;
-  border-bottom: 1px solid var(--msp-border-light, #e2e8f0);
-  vertical-align: middle;
+.tableRow:hover,
+.tableRow:focus-visible {
+  background: var(--msp-surface-2, #f8fafc);
+  outline: none;
 }
 
 .segmentRow td {
@@ -424,16 +455,33 @@
 .cellName {
   font-weight: 600;
   color: var(--msp-text, #0f1c2e);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  max-width: 180px;
 }
 
 .cellSub {
   display: block;
   font-size: 0.62rem;
   color: var(--msp-muted-light, #8b9bb5);
+}
+
+.cellMuted {
+  color: var(--msp-muted, #5c6b82);
+  white-space: nowrap;
+}
+
+.cellExpiry {
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+  font-size: 0.75rem;
+  color: var(--msp-text, #0f1c2e);
+}
+
+.cellExpiry_warn {
+  color: #c2410c;
+}
+
+.cellExpiry_bad {
+  color: #b91c1c;
 }
 
 .solutionCell {
@@ -461,18 +509,6 @@
   min-width: 0;
   display: flex;
   flex-direction: column;
-}
-
-.solutionText .cellName {
-  max-width: 160px;
-}
-
-.cellMuted {
-  color: var(--msp-muted, #5c6b82);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  max-width: 140px;
 }
 
 .chip {
@@ -694,10 +730,8 @@
   flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
-  gap: 0.65rem;
-  padding: 0.55rem 0.75rem;
-  border-top: 1px solid var(--msp-border-light, #e2e8f0);
-  background: var(--msp-surface-2, #f7f9fc);
+  gap: 1rem;
+  padding: 0.65rem 0.25rem 0;
 }
 
 .paginationLeft,
@@ -805,8 +839,10 @@
 }
 
 :global(html.dark) .tableRow:hover,
-:global(body.dark) .tableRow:hover {
-  background: rgba(90, 143, 212, 0.08);
+:global(html.dark) .tableRow:focus-visible,
+:global(body.dark) .tableRow:hover,
+:global(body.dark) .tableRow:focus-visible {
+  background: var(--msp-surface-2, #152035);
 }
 
 :global(html.dark) .priorityItem:hover,

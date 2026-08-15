@@ -80,7 +80,7 @@ export function filterAntispamFleetRows(rows, {
   let filtered = Array.isArray(rows) ? [...rows] : [];
   const query = search.trim().toLowerCase();
   if (query) {
-    filtered = filtered.filter(row => row.clientName?.toLowerCase().includes(query) || row.solutionLabel?.toLowerCase().includes(query) || row.solutionSubtitle?.toLowerCase().includes(query) || row.productName?.toLowerCase().includes(query) || row.providerName?.toLowerCase().includes(query));
+    filtered = filtered.filter(row => row.clientName?.toLowerCase().includes(query) || row.solutionLabel?.toLowerCase().includes(query) || row.solutionSubtitle?.toLowerCase().includes(query) || row.productName?.toLowerCase().includes(query) || row.providerName?.toLowerCase().includes(query) || row.paymentPlan?.toLowerCase().includes(query));
   }
   if (statusFilter && statusFilter !== "all") {
     filtered = filtered.filter(row => row.status === statusFilter);
@@ -127,8 +127,8 @@ export function sortAntispamFleetRows(rows, sortBy, sortDirection = "asc") {
         return compareStrings(a.clientName, b.clientName);
       case "solutionLabel":
         return compareStrings(a.solutionLabel || a.providerName, b.solutionLabel || b.providerName);
-      case "mappingMode":
-        return compareStrings(a.mappingMode, b.mappingMode);
+      case "paymentPlan":
+        return compareStrings(a.paymentPlan, b.paymentPlan);
       case "status":
         {
           const leftRank = ANTISPAM_STATUS_SORT_ORDER[a.status] ?? 99;
@@ -137,12 +137,8 @@ export function sortAntispamFleetRows(rows, sortBy, sortDirection = "asc") {
         }
       case "expirationDate":
         return compareDates(a.expirationDate || a.expiration, b.expirationDate || b.expiration);
-      case "coverage":
-        {
-          const usersCmp = compareNumbers(a.utilisateursProteges, b.utilisateursProteges);
-          if (usersCmp !== 0) return usersCmp;
-          return compareNumbers(a.domainesSurveilles, b.domainesSurveilles);
-        }
+      case "usagePercent":
+        return compareNumbers(a.usagePercent ?? a.usedLicenses ?? a.utilisateursProteges, b.usagePercent ?? b.usedLicenses ?? b.utilisateursProteges);
       case "lastSync":
         return compareDates(a.lastSync, b.lastSync);
       default:

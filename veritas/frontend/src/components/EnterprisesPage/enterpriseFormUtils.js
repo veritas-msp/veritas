@@ -62,15 +62,35 @@ export function mapContactToPrimary(contact) {
     client_id: contact.client_id ?? null
   };
 }
-export function pickPrimaryContact(contacts) {
+export function isContactPrimaryForClient(contact, clientId) {
+  const memberships = Array.isArray(contact?.clients) ? contact.clients : [];
+  if (clientId != null && memberships.length > 0) {
+    const match = memberships.find(row => String(row.client_id ?? row.id) === String(clientId));
+    if (match) return Boolean(match.is_primary);
+  }
+  if (contact?.is_primary === true) return true;
+  return String(contact?.poste || "").toLowerCase().includes("principal");
+}
+export function pickPrimaryContact(contacts, clientId) {
   if (!Array.isArray(contacts) || contacts.length === 0) return null;
-  const principal = contacts.find(contact => String(contact.poste || "").toLowerCase().includes("principal"));
+  const principal = contacts.find(contact => isContactPrimaryForClient(contact, clientId));
   if (principal) return principal;
   const active = contacts.find(contact => {
     const status = String(contact.statut || "").toLowerCase();
     return status.includes("actif") && !status.includes("inactif");
   });
   return active || contacts[0];
+}
+export function sortContactsPrimaryFirst(contacts, clientId) {
+  return [...(Array.isArray(contacts) ? contacts : [])].sort((a, b) => {
+    const primaryDelta = Number(isContactPrimaryForClient(b, clientId)) - Number(isContactPrimaryForClient(a, clientId));
+    if (primaryDelta !== 0) return primaryDelta;
+    const nameA = `${a?.nom || ""} ${a?.prenom || ""}`.trim();
+    const nameB = `${b?.nom || ""} ${b?.prenom || ""}`.trim();
+    return nameA.localeCompare(nameB, undefined, {
+      sensitivity: "base"
+    });
+  });
 }
 export function normalizePrimaryContact(contact) {
   const communications = normalizeContactCommunications(contact);

@@ -281,12 +281,18 @@
   color: #7c3aed;
 }
 
+.itemIconInventory {
+  color: #0d9488;
+}
+
 .navItem:hover .itemIconInfra,
 .navItem:hover .itemIconCyber,
 .navItem:hover .itemIconService,
+.navItem:hover .itemIconInventory,
 .navItem.active .itemIconInfra,
 .navItem.active .itemIconCyber,
-.navItem.active .itemIconService {
+.navItem.active .itemIconService,
+.navItem.active .itemIconInventory {
   color: currentColor;
 }
 

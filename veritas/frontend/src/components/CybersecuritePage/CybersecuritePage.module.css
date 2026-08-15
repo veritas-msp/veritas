@@ -118,6 +118,18 @@
   flex-wrap: wrap;
 }
 
+.mspHeroActions .mspTabBar {
+  flex-shrink: 0;
+}
+
+.mspHeroActions button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  transform: none;
+  filter: none;
+  box-shadow: none;
+}
+
 .mspEyebrow {
   display: block;
   margin: 0 0 0.25rem;
@@ -221,6 +233,78 @@
 .mspContent .tabContent {
   width: 100%;
   min-width: 0;
+}
+
+.cyberStage {
+  display: grid;
+  width: 100%;
+  min-width: 0;
+}
+
+.cyberLayer {
+  grid-area: 1 / 1;
+  width: 100%;
+  min-width: 0;
+  z-index: 0;
+  transition: opacity 0.42s cubic-bezier(0.22, 1, 0.36, 1), transform 0.42s cubic-bezier(0.22, 1, 0.36, 1), visibility 0s linear 0s;
+}
+
+.cyberLayer:not(.cyberLayerHidden) {
+  z-index: 1;
+}
+
+.cyberLayerHidden {
+  opacity: 0;
+  pointer-events: none;
+  visibility: hidden;
+  transition: opacity 0.42s cubic-bezier(0.22, 1, 0.36, 1), transform 0.42s cubic-bezier(0.22, 1, 0.36, 1), visibility 0s linear 0.42s;
+}
+
+.cyberLayerHub.cyberLayerHidden {
+  transform: scale(0.96);
+}
+
+.cyberLayerTable {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+  transform: translateY(0);
+}
+
+.cyberLayerTable.cyberLayerHidden {
+  transform: translateY(18px);
+}
+
+.hubBack {
+  display: inline-flex;
+  align-items: center;
+  align-self: flex-start;
+  gap: 0.15rem;
+  margin: 0;
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--msp-muted, #5c6b82);
+  font-size: 0.78rem;
+  font-weight: 650;
+  cursor: pointer;
+}
+
+.hubBack:hover {
+  color: var(--msp-accent, #2b5fab);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cyberLayer {
+    transition: opacity 0.12s linear;
+    transform: none !important;
+  }
+}
+
+:global(html.dark) .hubBack {
+  background: none;
+  border: none;
+  color: var(--msp-muted, #8fa8c4);
 }
 
 .mspContent .tablesContainer {

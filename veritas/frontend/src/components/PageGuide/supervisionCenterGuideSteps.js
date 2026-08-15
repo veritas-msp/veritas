@@ -20,10 +20,6 @@ const STEP_CONFIG = [{
   target: '[data-guide="supervision-queue"]',
   handler: "showOperations"
 }, {
-  key: "fleet",
-  target: '[data-guide="supervision-fleet"]',
-  handler: "showFleet"
-}, {
   key: "history",
   target: '[data-guide="supervision-history"]',
   handler: "showHistory"
@@ -32,12 +28,10 @@ const STEP_CONFIG = [{
 export function getSupervisionCenterGuideSteps(handlers = {}, locale = "fr") {
   const {
     showOperations = () => {},
-    showFleet = () => {},
     showHistory = () => {}
   } = handlers;
   const handlerMap = {
     showOperations,
-    showFleet,
     showHistory
   };
   const steps = getSupervisionCenterCopy(locale).guide?.steps || {};

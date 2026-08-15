@@ -1268,7 +1268,7 @@
   width: 32px;
   padding: 0;
   border: none;
-  background: var(--msp-surface);
+  background: transparent;
   color: var(--msp-muted);
   font-size: 0.85rem;
   line-height: 1;
@@ -1302,6 +1302,9 @@
   font-weight: 500;
   font-family: inherit;
   padding: 0;
+  box-shadow: none;
+  -webkit-appearance: none;
+  appearance: none;
 }
 
 .numberStepperInput:focus {
@@ -1589,4 +1592,26 @@
 
 :global(html.dark) .tableUsageWarn {
   color: #fbbf24;
+}
+
+:global(html.dark) .numberStepper {
+  background: var(--msp-surface);
+}
+
+:global(html.dark) .numberStepper:focus-within {
+  background: var(--msp-surface);
+}
+
+:global(html.dark) .numberStepperInput,
+:global(html.dark) .numberStepperInput:hover,
+:global(html.dark) .numberStepperInput:focus,
+:global(html.dark) .numberStepper:focus-within .numberStepperInput {
+  background: transparent !important;
+  background-color: transparent !important;
+  border-color: transparent !important;
+  box-shadow: none !important;
+}
+
+:global(html.dark) .numberStepperBtn {
+  background: transparent;
 }

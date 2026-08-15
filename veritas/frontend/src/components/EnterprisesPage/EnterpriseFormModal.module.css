@@ -446,6 +446,95 @@
   line-height: 1.4;
 }
 
+.primaryContactToggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  margin-top: 0.55rem;
+  font-size: 0.85rem;
+  color: var(--msp-text, #0f1c2e);
+  cursor: pointer;
+}
+
+.vlanField {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.vlanChips {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem;
+  min-height: 2.5rem;
+  padding: 0.4rem 0.55rem;
+  border: 1px solid var(--msp-border, #dde3ed);
+  border-radius: 10px;
+  background: var(--msp-surface, #fff);
+  cursor: text;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.vlanChips:focus-within {
+  border-color: var(--msp-accent, #2b5fab);
+  box-shadow: 0 0 0 3px var(--msp-accent-soft, rgba(43, 95, 171, 0.12));
+}
+
+.vlanChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.28rem;
+  padding: 0.18rem 0.45rem 0.18rem 0.55rem;
+  border-radius: 999px;
+  background: var(--msp-accent-soft, rgba(43, 95, 171, 0.1));
+  color: var(--msp-accent, #2b5fab);
+  font-size: 0.75rem;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.vlanChipRemove {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1rem;
+  height: 1rem;
+  padding: 0;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+}
+
+.vlanChipRemove:hover {
+  background: rgba(43, 95, 171, 0.16);
+}
+
+.vlanChipInput {
+  flex: 1 1 6rem;
+  min-width: 6rem;
+  border: 0;
+  outline: none;
+  background: transparent;
+  color: var(--msp-text, #0f1c2e);
+  font: inherit;
+  font-size: 0.875rem;
+  padding: 0.2rem 0.15rem;
+}
+
+.vlanChipInput::placeholder {
+  color: var(--msp-muted-light, #94a3b8);
+}
+
+.vlanHint {
+  margin: 0;
+  font-size: 0.72rem;
+  color: var(--msp-muted, #5c6b82);
+  line-height: 1.35;
+}
+
 .fieldStack {
   display: flex;
   flex-direction: column;

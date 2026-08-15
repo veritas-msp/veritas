@@ -36,7 +36,7 @@ import ContactFormModal from "../ContactsPage/ContactFormModal";
 import { exportReversibilityFolder } from "./exportReversibilityDossier";
 import EnterpriseVaultPanel from "./EnterpriseVaultPanel";
 import { getEnterpriseVaultCopy } from "./enterpriseVaultI18n";
-import { splitClientAddress, buildClientAddress, emptyPrimaryContact, mapContactToPrimary, pickPrimaryContact, normalizePrimaryContact, buildAdditiveMembershipsForEnterprise, isPrimaryContactPoste } from "./enterpriseFormUtils";
+import { splitClientAddress, buildClientAddress, emptyPrimaryContact, mapContactToPrimary, pickPrimaryContact, normalizePrimaryContact, buildAdditiveMembershipsForEnterprise, isPrimaryContactPoste, isContactPrimaryForClient, sortContactsPrimaryFirst } from "./enterpriseFormUtils";
 import { buildSiteAddress, formatSitesForLog, getSiteDisplayName, getSiteId, getSiteLocationValue, normalizeClientSites, serializeSitesForCompare } from "../../utils/clientSites";
 import { normalizeServeurLieList } from "./backupJobUtils";
 import SiteMapPreview from "./SiteMapPreview";
@@ -632,7 +632,7 @@ export default function ClientDetailPage({
       };
     }
     const addressParts = splitClientAddress(sourceClient.address || "");
-    const primary = pickPrimaryContact(sourceContacts);
+    const primary = pickPrimaryContact(sourceContacts, sourceClient?.id);
     return {
       clientNumber: getClientNumber(sourceClient) || "",
       name: sourceClient.name || "",
@@ -1328,7 +1328,7 @@ export default function ClientDetailPage({
       if (requestSignal?.aborted || !isMountedRef.current) return;
       setContacts(Array.isArray(contactsData) ? contactsData : []);
       if (isMountedRef.current && String(targetClientId) === String(client?.id)) {
-        const primary = pickPrimaryContact(contactsData);
+        const primary = pickPrimaryContact(contactsData, targetClientId);
         setFormData(prev => ({
           ...prev,
           primaryContact: primary ? mapContactToPrimary(primary) : prev.primaryContact || emptyPrimaryContact()
@@ -2622,7 +2622,10 @@ export default function ClientDetailPage({
     return note.user_id === currentUser.id;
   };
   const visibleSupportPacks = useMemo(() => supportCreditPacks.filter(pack => ["active", "upcoming"].includes(pack.status)), [supportCreditPacks]);
-  const activeContacts = useMemo(() => contacts.filter(c => String(c.statut || "").toLowerCase().includes("actif") && !String(c.statut || "").toLowerCase().includes("inactive")), [contacts]);
+  const activeContacts = useMemo(() => {
+    const list = contacts.filter(c => String(c.statut || "").toLowerCase().includes("actif") && !String(c.statut || "").toLowerCase().includes("inactive"));
+    return sortContactsPrimaryFirst(list, client?.id);
+  }, [contacts, client?.id]);
   const activeContactCount = activeContacts.length;
   const visibleContacts = contactsExpanded ? activeContacts : activeContacts.slice(0, 1);
   const hasMoreContacts = activeContacts.length > 1;
@@ -3428,8 +3431,11 @@ export default function ClientDetailPage({
                       <div className={styles.sidebarContactBody}>
                         <div className={styles.sidebarContactTop}>
                           <div className={styles.sidebarContactIdentity}>
-                            <span className={styles.sidebarContactName}>
-                              {contact.nom} {contact.prenom}
+                            <span className={styles.sidebarContactNameRow}>
+                              <span className={styles.sidebarContactName}>
+                                {contact.nom} {contact.prenom}
+                              </span>
+                              {isContactPrimaryForClient(contact, client?.id) ? <span className={styles.sitePreviewPrimary}>{copy.contactPrimary}</span> : null}
                             </span>
                             {contact.poste && <span className={styles.sidebarContactRole}>
                                 {contact.poste}

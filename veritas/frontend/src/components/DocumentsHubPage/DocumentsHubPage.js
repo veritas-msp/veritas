@@ -1,8 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Icon } from "@iconify/react";
 import { toast } from "react-toastify";
-import { fetchClientFiles, uploadClientFile, deleteClientFile, getPreviewUrl, getDownloadUrl } from "../../api/clientFiles";
-import { fetchClientsList } from "../../api/clients";
+import { fetchClientFiles, deleteClientFile, getPreviewUrl, getDownloadUrl } from "../../api/clientFiles";
 import cyberStyles from "../CybersecuritePage/CybersecuritePage.module.css";
 import VaultDocumentPreviewModal from "../shared/VaultDocumentPreviewModal/VaultDocumentPreviewModal";
 import ConfirmModal from "../Misc/ConfirmModal/ConfirmModal";
@@ -76,13 +75,11 @@ export default function DocumentsHubPage() {
   const locale = useAppLocale();
   const copy = useMemo(() => getDocumentsHubCopy(locale), [locale]);
   const [files, setFiles] = useState([]);
-  const [clients, setClients] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [companyFilter, setCompanyFilter] = useState("all");
   const [categoryFilter, setCategoryFilter] = useState("all");
   const [previewFile, setPreviewFile] = useState(null);
-  const [showUploadModal, setShowUploadModal] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [deleting, setDeleting] = useState(false);
   const [sortBy, setSortBy] = useState(SORT_COLUMNS.created_at);
@@ -90,9 +87,8 @@ export default function DocumentsHubPage() {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const [allFiles, clientList] = await Promise.all([fetchClientFiles(), fetchClientsList().catch(() => [])]);
+      const allFiles = await fetchClientFiles();
       setFiles(Array.isArray(allFiles) ? allFiles : []);
-      setClients(Array.isArray(clientList) ? clientList : []);
     } catch {
       setFiles([]);
     } finally {
@@ -197,12 +193,6 @@ export default function DocumentsHubPage() {
                 <p className={cyberStyles.mspSubtitle}>{copy.subtitle}</p>
               </div>
             </div>
-            <div className={cyberStyles.mspHeroActions}>
-              <button type="button" className={styles.primaryBtn} onClick={() => setShowUploadModal(true)}>
-                <Icon icon="mdi:upload-outline" aria-hidden />
-                {copy.upload}
-              </button>
-            </div>
           </header>
 
           <div className={`${cyberStyles.mspContent} ${styles.content}`}>
@@ -244,10 +234,6 @@ export default function DocumentsHubPage() {
                   </div>
                   <h2 className={styles.emptyTitle}>{copy.emptyTitle}</h2>
                   <p className={styles.emptyHint}>{files.length === 0 ? copy.emptyHint : copy.emptyFiltered}</p>
-                  {files.length === 0 ? <button type="button" className={styles.primaryBtn} onClick={() => setShowUploadModal(true)}>
-                      <Icon icon="mdi:upload-outline" aria-hidden />
-                      {copy.uploadFirst}
-                    </button> : null}
                 </div> : <div className={styles.tableWrap}>
                   <table className={styles.table}>
                     <thead>
@@ -313,12 +299,6 @@ export default function DocumentsHubPage() {
         </div>
       </div>
 
-      {showUploadModal ? <UploadModal copy={copy} clients={clients} onClose={() => setShowUploadModal(false)} onUploaded={newFile => {
-      setFiles(prev => [newFile, ...prev]);
-      setShowUploadModal(false);
-      toast.success(copy.uploaded);
-    }} /> : null}
-
       {previewFile ? <VaultDocumentPreviewModal file={previewFile} onClose={() => setPreviewFile(null)} previewUrl={getPreviewUrl(previewFile.id)} downloadUrl={getDownloadUrl(previewFile.id)} footerLeading={<span>{previewFile.client_name || "-"}</span>} categoryBadgeClassName={`${styles.badge} ${categoryTone(previewFile.category)}`} /> : null}
 
       <ConfirmModal open={Boolean(deleteTarget)} title={copy.deleteDocumentTitle} message={deleteTarget ? interpolate(copy.deleteDocument, {
@@ -340,103 +320,6 @@ function KpiCard({
       <div className={styles.kpiBody}>
         <span className={styles.kpiValue}>{value}</span>
         <span className={styles.kpiLabel}>{label}</span>
-      </div>
-    </div>;
-}
-function UploadModal({
-  copy,
-  clients,
-  onClose,
-  onUploaded
-}) {
-  const [clientId, setClientId] = useState("");
-  const [category, setCategory] = useState("Autre");
-  const [description, setDescription] = useState("");
-  const [file, setFile] = useState(null);
-  const [uploading, setUploading] = useState(false);
-  const selectedClient = clients.find(c => String(c.id) === String(clientId));
-  const sortedClients = useMemo(() => [...clients].sort((a, b) => String(a.name).localeCompare(String(b.name))), [clients]);
-  const handleDrop = e => {
-    e.preventDefault();
-    const dropped = e.dataTransfer?.files?.[0];
-    if (dropped) setFile(dropped);
-  };
-  const handleSubmit = async e => {
-    e.preventDefault();
-    if (!clientId) return toast.error(copy.errCompany);
-    if (!file) return toast.error(copy.errFile);
-    try {
-      setUploading(true);
-      const result = await uploadClientFile({
-        clientId,
-        clientName: selectedClient?.name || "",
-        category,
-        description,
-        file
-      });
-      onUploaded(result);
-    } catch (err) {
-      toast.error(err.message || copy.errUpload);
-    } finally {
-      setUploading(false);
-    }
-  };
-  return <div className={styles.modalOverlay} onClick={onClose} role="presentation">
-      <div className={styles.modal} onClick={e => e.stopPropagation()} role="dialog" aria-modal="true" aria-labelledby="documents-upload-title">
-        <div className={styles.modalHeader}>
-          <h2 id="documents-upload-title" className={styles.modalTitle}>
-            {copy.modalTitle}
-          </h2>
-          <button type="button" className={styles.modalClose} onClick={onClose} aria-label={copy.cancel}>
-            <Icon icon="mdi:close" />
-          </button>
-        </div>
-        <form className={styles.modalBody} onSubmit={handleSubmit}>
-          <label className={styles.formLabel}>{copy.labelCompany} *</label>
-          <select className={styles.formInput} value={clientId} onChange={e => setClientId(e.target.value)} required>
-            <option value="">{copy.selectCompany}</option>
-            {sortedClients.map(c => <option key={c.id} value={c.id}>
-                {c.name}
-              </option>)}
-          </select>
-
-          <label className={styles.formLabel}>{copy.labelCategory}</label>
-          <select className={styles.formInput} value={category} onChange={e => setCategory(e.target.value)}>
-            {CATEGORY_KEYS.map(cat => <option key={cat} value={cat}>
-                {copy.categories?.[cat] || cat}
-              </option>)}
-          </select>
-
-          <label className={styles.formLabel}>{copy.labelDescription}</label>
-          <input className={styles.formInput} type="text" placeholder={copy.descriptionPlaceholder} value={description} onChange={e => setDescription(e.target.value)} />
-
-          <label className={styles.formLabel}>{copy.labelFile} *</label>
-          <div className={`${styles.dropZone} ${file ? styles.dropZoneActive : ""}`} onDragOver={e => e.preventDefault()} onDrop={handleDrop} onClick={() => document.getElementById("documents-hub-file-input")?.click()} onKeyDown={e => {
-          if (e.key === "Enter" || e.key === " ") {
-            e.preventDefault();
-            document.getElementById("documents-hub-file-input")?.click();
-          }
-        }} role="button" tabIndex={0}>
-            <input id="documents-hub-file-input" type="file" hidden onChange={e => setFile(e.target.files?.[0] || null)} accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.txt,.csv" />
-            {file ? <span className={styles.dropZoneFile}>
-                <Icon icon="mdi:file-check-outline" />
-                {file.name} ({formatSize(file.size)})
-              </span> : <span className={styles.dropZoneHint}>
-                <Icon icon="mdi:cloud-upload-outline" />
-                {copy.dropHint}
-                <small>{copy.dropFormats}</small>
-              </span>}
-          </div>
-
-          <div className={styles.modalActions}>
-            <button type="button" className={styles.secondaryBtn} onClick={onClose}>
-              {copy.cancel}
-            </button>
-            <button type="submit" className={styles.primaryBtn} disabled={uploading}>
-              {uploading ? copy.submitting : copy.submit}
-            </button>
-          </div>
-        </form>
       </div>
     </div>;
 }

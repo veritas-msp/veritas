@@ -181,6 +181,9 @@ export async function buildIncrementalAvrilMigrationPlan(client = pool) {
   if ((await tableExists(client, "v_b_users_profiles")) && !(await columnExists(client, "v_b_users_profiles", "documents_enabled"))) {
     plan.push("20260730_profiles_documents_enabled.sql");
   }
+  if ((await tableExists(client, "v_b_users_profiles")) && !(await columnExists(client, "v_b_users_profiles", "equipment_inventory_enabled"))) {
+    plan.push("20260814_profiles_equipment_inventory_enabled.sql");
+  }
   if (await tableExists(client, "v_b_users_profiles")) {
     const {
       rows

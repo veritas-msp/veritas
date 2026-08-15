@@ -13,6 +13,7 @@ export const PROFILE_PERMISSION_FLAGS = [
   "sales_enabled",
   "dashboard_enabled",
   "documents_enabled",
+  "equipment_inventory_enabled",
   "administration_enabled"
 ];
 

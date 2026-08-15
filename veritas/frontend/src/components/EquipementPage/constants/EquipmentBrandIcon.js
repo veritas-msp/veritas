@@ -15,6 +15,7 @@ const TYPE_FALLBACK_ICONS = {
   Internet: "mdi:web",
   Firewalls: "mdi:shield-outline",
   Servers: "mdi:server",
+  Serveurs: "mdi:server",
   Ordinateurs: "mdi:laptop",
   Storage: "mdi:harddisk",
   NAS: "mdi:nas",
@@ -23,7 +24,9 @@ const TYPE_FALLBACK_ICONS = {
   Alimentation: "mdi:power-plug",
   Routeur: "mdi:router-wireless",
   Backup: "mdi:backup-restore",
-  TOIP: "mdi:phone-voip"
+  TOIP: "mdi:phone-voip",
+  Videosurveillance: "mdi:cctv",
+  "Security camera": "mdi:cctv"
 };
 const BACKUP_SOFTWARE_ICONS = {
   Veeam: "veeam.png",
@@ -96,7 +99,7 @@ export default function EquipmentBrandIcon({
   if (type === "Routeur") {
     return <RouterBrandIcon brand={resolveBrandId(equipment, getEquipmentRouterBrandId)} className={className} />;
   }
-  if (type === "Servers") {
+  if (type === "Servers" || type === "Serveurs") {
     const serverType = normalizeServerType(equipment?.typeServer || equipment?.rawData?.type || equipment?.type || "");
     if (serverType === "virtuel") {
       return <Icon icon="mdi:cloud-outline" className={className} width={size} height={size} aria-hidden />;

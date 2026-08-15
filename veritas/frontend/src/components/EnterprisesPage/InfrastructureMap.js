@@ -8,24 +8,24 @@ import { useAppLocale } from "../../hooks/useAppGeneralSettings";
 import { getInfraMapCopy } from "./infraMapI18n";
 import { filterBySite, filterCustomFamilyMap, matchesSiteFilter } from "../../utils/siteFilterUtils";
 import InfraBrick from "./InfraBrick";
-import { buildInfraBrickGroups, buildCustomFamilyBricks, buildCustomFamilyHoneycombSlots, collectHoneycombSlotsFromItems, computeHoneycombClusterMetrics, EMPTY_HONEYCOMB_LAYOUT, INFRA_BRICK_GROUPS, honeycombOffsetRem, isHoneycombFeatured } from "./infraHoneycombLayout";
+import { buildInfraBrickGroups, buildCustomFamilyBricks, buildCustomFamilyHoneycombSlots, buildHoneycombThemeClusters, EMPTY_HONEYCOMB_LAYOUT, HONEYCOMB_THEME_GROUPS, INFRA_BRICK_GROUPS, honeycombOffsetRem, isHoneycombFeatured } from "./infraHoneycombLayout";
 import styles from "./InfrastructureMap.module.css";
 function InfraHexNode({
   node,
   onClick,
   copy
 }) {
-  const meta = copy.getStatusMeta(node.status);
+  const hasData = Number(node.count) > 0;
+  const meta = copy.getStatusMeta(hasData ? node.status : "unmonitored");
   const icon = getInfraTypeIcon(node.type, node.icon);
   const isCustomFamily = String(node.type || "").startsWith("Custom:");
-  const displayStatus = toInfraDisplayStatus(node.status);
-  const isAttention = displayStatus === "attention";
-  const isClear = displayStatus === "clear";
-  const isDisabled = displayStatus === "disabled";
-  const statusTooltip = copy.getStatusLabel(node.status);
-  const tooltipLines = [node.displayName || node.name, statusTooltip, node.subtitle, node.count > 0 ? copy.formatEquipmentCount(node.count) : null].filter(Boolean);
+  const displayStatus = hasData ? toInfraDisplayStatus(node.status) : "disabled";
+  const isAttention = hasData && displayStatus === "attention";
+  const isClear = hasData && !isAttention;
+  const statusTooltip = isClear ? null : copy.getStatusLabel(node.status);
+  const tooltipLines = [node.displayName || node.name, statusTooltip, node.subtitle, hasData ? copy.formatEquipmentCount(node.count) : null].filter(Boolean);
   return <SmartTooltip content={tooltipLines.join(" · ")} as="span">
-      <button type="button" className={[styles.hexNode, isCustomFamily ? styles.hexNodeCustom : "", isAttention ? styles.hexNodeAttention : "", isClear ? styles.hexNodeClear : "", isDisabled ? styles.hexNodeDisabled : ""].filter(Boolean).join(" ")} style={{
+      <button type="button" className={[styles.hexNode, isCustomFamily ? styles.hexNodeCustom : "", isAttention ? styles.hexNodeAttention : "", isClear ? styles.hexNodeClear : ""].filter(Boolean).join(" ")} style={{
       "--hex-accent": meta.color,
       "--hex-soft": meta.soft
     }} onClick={() => onClick?.(node)} aria-label={`${node.displayName || node.name}${statusTooltip ? `, ${statusTooltip}` : ""}${node.count > 0 ? `, ${copy.formatEquipmentCount(node.count)}` : ""}`}>
@@ -95,7 +95,6 @@ function InfraBrickColumn({
 }
 function InfraMapCanvas({
   items,
-  clusterMetrics,
   honeycombEmpty = false,
   backupInstances = [],
   antivirusItems = [],
@@ -132,11 +131,12 @@ function InfraMapCanvas({
     label: copy.customEquipmentGroup,
     bricks: customFamilyBricks
   }] : brickGroups;
+  const hexClusters = buildHoneycombThemeClusters(items);
   return <div className={`${styles.mapCard} ${honeycombEmpty ? styles.mapCardEmpty : ""}`}>
       <div className={styles.mapCanvas}>
         <div className={styles.mapLayout}>
           <div className={styles.mapHoneycomb}>
-            <HoneycombCluster items={items} clusterMetrics={clusterMetrics} />
+            {hexClusters.map(cluster => <HoneycombCluster key={cluster.id} items={cluster.items} clusterMetrics={cluster.clusterMetrics} />)}
           </div>
           <div className={styles.mapModulesBar}>
             <div className={styles.mapModulesRow}>
@@ -199,6 +199,7 @@ function InfraEmptyMap({
       <InfraMapCanvas honeycombEmpty backupInstances={backupInstances} items={EMPTY_HONEYCOMB_LAYOUT.map(slot => ({
       key: slot.type,
       type: slot.type,
+      slot,
       node: <InfraPlaceholderHex type={slot.type} featured={slot.featured} copy={copy} />
     }))} antivirusItems={antivirusItems} antispamItems={antispamItems} domainItems={domainItems} domainIntegrationReady={domainIntegrationReady} sslItems={sslItems} licenceItems={licenceItems} tenantInfo={tenantInfo} googleWorkspaceInfo={googleWorkspaceInfo} campaignItems={campaignItems} onBrickClick={onBrickClick} isCommunity={isCommunity} copy={copy} />
     </div>;
@@ -211,20 +212,33 @@ function InfraMapSkeleton({
         <div className={styles.mapCanvas}>
         <div className={styles.mapLayout}>
           <div className={styles.mapHoneycomb}>
-            <div className={styles.hexCluster}>
-            {EMPTY_HONEYCOMB_LAYOUT.map(slot => {
-                const {
-                  x,
-                  y
-                } = honeycombOffsetRem(slot.q, slot.r);
-                return <div key={slot.type} className={`${styles.hexSlot} ${slot.featured ? styles.hexSlotFeatured : ""}`} style={{
-                  "--hex-x": `${x}rem`,
-                  "--hex-y": `${y}rem`
+            {buildHoneycombThemeClusters(HONEYCOMB_THEME_GROUPS.flatMap(group => group.slots.map(slot => ({
+              key: slot.type,
+              type: slot.type,
+              slot
+            })))).map(cluster => <div key={cluster.id} className={styles.hexClusterViewport} style={{
+              width: `${cluster.clusterMetrics.widthRem}rem`,
+              height: `${cluster.clusterMetrics.heightRem}rem`
+            }}>
+                <div className={styles.hexCluster} style={{
+                  "--hex-layout-scale": cluster.clusterMetrics.layoutScale,
+                  width: `${cluster.clusterMetrics.rawWidthRem}rem`,
+                  height: `${cluster.clusterMetrics.rawHeightRem}rem`
                 }}>
-                  <div className={styles.skeletonHex} />
-                </div>;
-              })}
-            </div>
+                  {cluster.items.map(item => {
+                    const {
+                      x,
+                      y
+                    } = honeycombOffsetRem(item.slot.q, item.slot.r, cluster.clusterMetrics.layoutScale);
+                    return <div key={item.key} className={styles.hexSlot} style={{
+                      "--hex-x": `${x}rem`,
+                      "--hex-y": `${y}rem`
+                    }}>
+                      <div className={styles.skeletonHex} />
+                    </div>;
+                  })}
+                </div>
+              </div>)}
           </div>
           <div className={styles.mapModulesBar}>
             <div className={styles.mapModulesRow}>
@@ -396,10 +410,6 @@ export default function InfrastructureMap({
     });
     return [...baseItems, ...customItems];
   }, [honeycombNodes, customFamilyMap, filteredCustomFamilyMap, onNodeClick, copy, localizeCategoryNode]);
-  const clusterMetrics = useMemo(() => {
-    const slots = collectHoneycombSlotsFromItems(honeycombItems);
-    return computeHoneycombClusterMetrics(slots);
-  }, [honeycombItems]);
   const customFamilyBricks = useMemo(() => buildCustomFamilyBricks(filteredCustomFamilyMap), [filteredCustomFamilyMap]);
   const categorySummary = useMemo(() => {
     const nodesByType = honeycombNodes.reduce((acc, node) => {
@@ -421,7 +431,6 @@ export default function InfrastructureMap({
     honeycombEmpty: model.nodes.length === 0 && !hasCustomFamilies,
     backupInstances: filteredBackupInstances,
     items: honeycombItems,
-    clusterMetrics,
     antivirusItems: filteredAntivirusItems,
     antispamItems: filteredAntispamItems,
     domainItems: filteredDomainItems,
