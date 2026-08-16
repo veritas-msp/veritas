@@ -9,6 +9,7 @@ import { useCommonCopy } from "../../hooks/useCommonCopy";
 import { getEnterpriseConfigModalsCopy } from "./enterpriseConfigModalsI18n";
 import { interpolate } from "../../i18n/translate";
 import { fetchClientModules, saveClientModules } from "../../api/clients";
+import { getClientHardwareEquipment } from "../../api/equipment";
 import { getIconPath } from "../../utils/assetHelper";
 import layout from "./EnterpriseFormModal.module.css";
 import styles from "./BackupConfigModal.module.css";
@@ -91,6 +92,52 @@ function buildEmptyInstance(type) {
       ...EMPTY_ACTIVE_MODULES
     } : undefined,
     activeBackupStorage: type === "Active Backup for Microsoft 365" ? "" : undefined
+  };
+}
+const SERVER_TYPES = new Set(["Servers", "Serveurs", "Server", "Serveur"]);
+const STORAGE_TYPES = new Set(["NAS", "Storage", "Stockage", "SAN"]);
+function mergeNamedEquipment(primary, fallback) {
+  const seen = new Set();
+  const out = [];
+  [...(Array.isArray(primary) ? primary : []), ...(Array.isArray(fallback) ? fallback : [])].forEach(item => {
+    const key = String(item?.nom || item?.name || "").trim().toLowerCase();
+    if (!key || seen.has(key)) return;
+    seen.add(key);
+    out.push(item);
+  });
+  return out;
+}
+function hardwareToLegacyServer(eq) {
+  return {
+    nom: eq?.name || eq?.nom || "",
+    name: eq?.name || eq?.nom || "",
+    role: eq?.role,
+    ip: eq?.ip
+  };
+}
+function hardwareToLegacyStorage(eq) {
+  const raw = eq?.rawData && typeof eq.rawData === "object" ? eq.rawData : {};
+  const storageType = eq?.storageType || eq?.typeServer || raw.type || (eq?.type === "SAN" ? "SAN" : "NAS");
+  return {
+    nom: eq?.name || eq?.nom || raw.nom || "",
+    type: storageType,
+    fabricant: eq?.manufacturer || raw.fabricant,
+    modele: eq?.model || raw.modele,
+    ip: eq?.ip || raw.ip,
+    luns: raw.luns || eq?.luns || [],
+    numeroDisque: raw.numeroDisque
+  };
+}
+function mergeBackupEquipements(legacy, hardwareList) {
+  const hardware = Array.isArray(hardwareList) ? hardwareList : [];
+  const hwServers = hardware.filter(eq => SERVER_TYPES.has(eq?.type)).map(hardwareToLegacyServer);
+  const hwStorage = hardware.filter(eq => STORAGE_TYPES.has(eq?.type)).map(hardwareToLegacyStorage);
+  const legacyServers = Array.isArray(legacy?.Serveurs) && legacy.Serveurs.length > 0 ? legacy.Serveurs : Array.isArray(legacy?.Servers) ? legacy.Servers : [];
+  return {
+    ...legacy,
+    Serveurs: mergeNamedEquipment(hwServers, legacyServers),
+    NAS: mergeNamedEquipment(hwStorage.filter(item => item.type !== "SAN"), [...(legacy?.NAS || []), ...(legacy?.Storage || [])]),
+    SAN: mergeNamedEquipment(hwStorage.filter(item => item.type === "SAN"), legacy?.SAN || [])
   };
 }
 function getServerOptions(equipements) {
@@ -301,6 +348,7 @@ export default function BackupConfigModal({
   const [jobDraft, setJobDraft] = useState(EMPTY_JOB);
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [deletingId, setDeletingId] = useState(null);
+  const [hardwareList, setHardwareList] = useState([]);
   const selectedInstance = useMemo(() => instances.find(i => i.id === selectedInstanceId) || null, [instances, selectedInstanceId]);
   const totalJobs = useMemo(() => instances.reduce((sum, i) => sum + (Array.isArray(i.jobs) ? i.jobs.length : 0), 0), [instances]);
   const showJobsNav = Boolean(selectedInstance && supportsJobs(selectedInstance.logiciel));
@@ -310,9 +358,10 @@ export default function BackupConfigModal({
     selectedInstance,
     showJobs: showJobsNav
   }), [copy, editingInstanceId, editingJobId, selectedInstance, showJobsNav]);
-  const serverOptions = useMemo(() => getServerOptions(client?.equipements), [client?.equipements]);
-  const stockageOptions = useMemo(() => getStorageOptions(client?.equipements, copy), [client?.equipements, copy]);
-  const nasOptions = useMemo(() => getNasNameOptions(client?.equipements), [client?.equipements]);
+  const backupEquipements = useMemo(() => mergeBackupEquipements(client?.equipements, hardwareList), [client?.equipements, hardwareList]);
+  const serverOptions = useMemo(() => getServerOptions(backupEquipements), [backupEquipements]);
+  const stockageOptions = useMemo(() => getStorageOptions(backupEquipements, copy), [backupEquipements, copy]);
+  const nasOptions = useMemo(() => getNasNameOptions(backupEquipements), [backupEquipements]);
   const persistInstances = useCallback(async nextInstances => {
     if (!client?.id) return;
     const modulesData = await fetchClientModules(client.id);
@@ -339,7 +388,8 @@ export default function BackupConfigModal({
     setLoading(true);
     setError(null);
     try {
-      const modulesData = await fetchClientModules(client.id);
+      const [modulesData, hardware] = await Promise.all([fetchClientModules(client.id), getClientHardwareEquipment(client.id).catch(() => [])]);
+      setHardwareList(Array.isArray(hardware) ? hardware : []);
       const raw = modulesData?.equipements?.Sauvegarde?.instances;
       setInstances(normalizeInstances(raw));
     } catch (err) {
