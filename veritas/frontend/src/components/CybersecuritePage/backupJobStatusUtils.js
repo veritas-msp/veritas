@@ -1,3 +1,4 @@
+import { isBackupJobActive } from "../EnterprisesPage/backupJobUtils";
 export const BACKUP_JOB_H24_MS = 24 * 60 * 60 * 1000;
 export const BACKUP_JOB_H48_MS = 48 * 60 * 60 * 1000;
 const STATUS_ORDER = {
@@ -5,7 +6,8 @@ const STATUS_ORDER = {
   warning: 1,
   ok: 2,
   unmapped: 3,
-  hycu: 4
+  hycu: 4,
+  inactive: 5
 };
 export function isBackupJobMapped(job) {
   if (!job) return false;
@@ -17,6 +19,7 @@ export function isBackupJobMapped(job) {
 }
 export function getBackupJobStatus(job) {
   if (!job || job.type !== 'job') return 'ok';
+  if (!isBackupJobActive(job)) return 'inactive';
   if (job.instanceLogiciel === 'HYCU Backup') return 'hycu';
   if (!isBackupJobMapped(job)) return 'unmapped';
   const lastBackupStart = job.last_backup_start ?? job.rawData?.last_backup_start;
@@ -39,6 +42,8 @@ export function getBackupJobStatusLabel(status) {
       return 'HYCU';
     case 'unmapped':
       return 'Unmapped';
+    case 'inactive':
+      return 'Inactif';
     default:
       return '-';
   }
@@ -55,6 +60,8 @@ export function getBackupJobStatusTitle(status) {
       return 'HYCU job · cannot sync with CheckMK';
     case 'unmapped':
       return 'Job not mapped to CheckMK · no alerts until mapping is configured';
+    case 'inactive':
+      return 'Inactive job · excluded from backup alerts';
     default:
       return '';
   }
@@ -75,6 +82,11 @@ export function getBackupJobRowStyle(status) {
       return {
         backgroundColor: '#dcfce7'
       };
+    case 'inactive':
+      return {
+        backgroundColor: '#f3f4f6',
+        opacity: 0.78
+      };
     default:
       return {
         backgroundColor: '#f9fafb'
@@ -94,6 +106,7 @@ export function computeBackupJobStats(jobs) {
     ok: 0,
     unmapped: 0,
     hycu: 0,
+    inactive: 0,
     issues: 0,
     monitored: 0
   };
@@ -101,7 +114,7 @@ export function computeBackupJobStats(jobs) {
     if (job?.type !== 'job') return;
     stats.total += 1;
     const status = getBackupJobStatus(job);
-    if (status === 'critical') stats.critical += 1;else if (status === 'warning') stats.warning += 1;else if (status === 'ok') stats.ok += 1;else if (status === 'unmapped') stats.unmapped += 1;else if (status === 'hycu') stats.hycu += 1;
+    if (status === 'critical') stats.critical += 1;else if (status === 'warning') stats.warning += 1;else if (status === 'ok') stats.ok += 1;else if (status === 'unmapped') stats.unmapped += 1;else if (status === 'hycu') stats.hycu += 1;else if (status === 'inactive') stats.inactive += 1;
     if (status === 'critical' || status === 'warning' || status === 'ok') stats.monitored += 1;
   });
   stats.issues = stats.critical + stats.warning;

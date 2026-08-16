@@ -381,6 +381,7 @@ const StepSauvegarde = ({
         serveurLie: "",
         stockageLie: "",
         replicationVers: "",
+        actif: true,
         isDefault: true
       }] : [],
       activeBackupModules: type === "Active Backup for Microsoft 365" ? {
@@ -415,7 +416,8 @@ const StepSauvegarde = ({
       destination: "",
       serveurLie: "",
       stockageLie: "",
-      replicationVers: ""
+      replicationVers: "",
+      actif: true
     });
     updateField("instances", updatedInstances);
   };
@@ -869,6 +871,13 @@ const StepSauvegarde = ({
                                       <input id={`job-nom-${i}-${j}`} value={job.nom} onChange={e => updateJob(i, j, "nom", e.target.value)} required />
                                     </div>
                                     <div className={styles.formField}>
+                                      <label htmlFor={`job-actif-${i}-${j}`}>Active job</label>
+                                      <select id={`job-actif-${i}-${j}`} value={job.actif === false ? "inactive" : "active"} onChange={e => updateJob(i, j, "actif", e.target.value !== "inactive")}>
+                                        <option value="active">Active</option>
+                                        <option value="inactive">Inactive</option>
+                                      </select>
+                                    </div>
+                                    <div className={styles.formField}>
                                       <label htmlFor={`job-serveur-${i}-${j}`}>Target</label>
                                       <select id={`job-serveur-${i}-${j}`} value={job.serveurLie || ""} onChange={e => updateJob(i, j, "serveurLie", e.target.value)}>
                                         <option value="">No target</option>
@@ -936,6 +945,13 @@ const StepSauvegarde = ({
                                     <div className={styles.formField}>
                                       <label htmlFor={`job-nom-${i}-${j}`}>Job name *</label>
                                       <input id={`job-nom-${i}-${j}`} value={job.nom} onChange={e => updateJob(i, j, "nom", e.target.value)} required />
+                                    </div>
+                                    <div className={styles.formField}>
+                                      <label htmlFor={`job-actif-hycu-${i}-${j}`}>Active job</label>
+                                      <select id={`job-actif-hycu-${i}-${j}`} value={job.actif === false ? "inactive" : "active"} onChange={e => updateJob(i, j, "actif", e.target.value !== "inactive")}>
+                                        <option value="active">Active</option>
+                                        <option value="inactive">Inactive</option>
+                                      </select>
                                     </div>
                                     <div className={styles.formField}>
                                       <label htmlFor={`job-serveur-${i}-${j}`}>Target</label>

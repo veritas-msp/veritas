@@ -34,4 +34,16 @@ export function jobHasServeurLie(raw) {
   return normalizeServeurLieList(raw).length > 0;
 }
 
+/** Existing jobs without the field stay active. */
+export function isBackupJobActive(job) {
+  if (!job || typeof job !== "object") return true;
+  const sources = [job, job.rawData].filter(src => src && typeof src === "object");
+  for (const src of sources) {
+    if (src.actif === false || src.active === false || src.enabled === false) return false;
+    const statut = String(src.statut ?? "").trim().toLowerCase();
+    if (statut === "inactif" || statut === "inactive" || statut === "disabled") return false;
+  }
+  return true;
+}
+
 export { coerceStoredOption };

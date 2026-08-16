@@ -14,6 +14,7 @@ const BACKUP_MSP_PANEL_COPY = {
       critical: "En erreur ({count})",
       warning: "Retard ({count})",
       ok: "OK ({count})",
+      inactive: "Inactifs ({count})",
       showAll: "Tout afficher",
       syncTooltip: "Synchroniser durée et date de dernière sauvegarde depuis CheckMK",
       syncLoading: "Sync…",
@@ -24,7 +25,8 @@ const BACKUP_MSP_PANEL_COPY = {
       alertsTitle: "Jobs en erreur ou en retard",
       criticalTitle: "Dernière sauvegarde > 48 h ou inconnue",
       warningTitle: "Dernière sauvegarde > 24 h",
-      okTitle: "Dernière sauvegarde < 24 h"
+      okTitle: "Dernière sauvegarde < 24 h",
+      inactiveTitle: "Jobs inactifs, exclus des alertes"
     },
     empty: {
       noJobsTitle: "Aucun job",
@@ -101,6 +103,7 @@ const BACKUP_MSP_PANEL_COPY = {
       critical: "Failed ({count})",
       warning: "Delayed ({count})",
       ok: "OK ({count})",
+      inactive: "Inactive ({count})",
       showAll: "Show all",
       syncTooltip: "Sync duration and last backup date from CheckMK",
       syncLoading: "Sync…",
@@ -111,7 +114,8 @@ const BACKUP_MSP_PANEL_COPY = {
       alertsTitle: "Jobs in error or delayed",
       criticalTitle: "Last backup > 48 h or unknown",
       warningTitle: "Last backup > 24 h",
-      okTitle: "Last backup < 24 h"
+      okTitle: "Last backup < 24 h",
+      inactiveTitle: "Inactive jobs, excluded from alerts"
     },
     empty: {
       noJobsTitle: "No jobs",
@@ -188,6 +192,7 @@ const BACKUP_MSP_PANEL_COPY = {
       critical: "Fehler ({count})",
       warning: "Verzögert ({count})",
       ok: "OK ({count})",
+      inactive: "Inaktiv ({count})",
       showAll: "Alle anzeigen",
       syncTooltip: "Dauer und letztes Backup-Datum von CheckMK synchronisieren",
       syncLoading: "Sync…",
@@ -198,7 +203,8 @@ const BACKUP_MSP_PANEL_COPY = {
       alertsTitle: "Jobs mit Fehler oder Verzögerung",
       criticalTitle: "Letztes Backup > 48 h oder unbekannt",
       warningTitle: "Letztes Backup > 24 h",
-      okTitle: "Letztes Backup < 24 h"
+      okTitle: "Letztes Backup < 24 h",
+      inactiveTitle: "Inaktive Jobs, von Alarmen ausgeschlossen"
     },
     empty: {
       noJobsTitle: "Keine Jobs",
@@ -275,6 +281,7 @@ const BACKUP_MSP_PANEL_COPY = {
       critical: "Errore ({count})",
       warning: "Ritardo ({count})",
       ok: "OK ({count})",
+      inactive: "Inattivi ({count})",
       showAll: "Mostra tutto",
       syncTooltip: "Sincronizza durata e data ultimo backup da CheckMK",
       syncLoading: "Sync…",
@@ -285,7 +292,8 @@ const BACKUP_MSP_PANEL_COPY = {
       alertsTitle: "Job in errore o in ritardo",
       criticalTitle: "Ultimo backup > 48 h o sconosciuto",
       warningTitle: "Ultimo backup > 24 h",
-      okTitle: "Ultimo backup < 24 h"
+      okTitle: "Ultimo backup < 24 h",
+      inactiveTitle: "Job inattivi, esclusi dagli avvisi"
     },
     empty: {
       noJobsTitle: "Nessun job",
@@ -362,6 +370,7 @@ const BACKUP_MSP_PANEL_COPY = {
       critical: "Error ({count})",
       warning: "Retraso ({count})",
       ok: "OK ({count})",
+      inactive: "Inactivos ({count})",
       showAll: "Mostrar todo",
       syncTooltip: "Sincronizar duración y fecha del último backup desde CheckMK",
       syncLoading: "Sync…",
@@ -372,7 +381,8 @@ const BACKUP_MSP_PANEL_COPY = {
       alertsTitle: "Jobs con error o retraso",
       criticalTitle: "Último backup > 48 h o desconocido",
       warningTitle: "Último backup > 24 h",
-      okTitle: "Último backup < 24 h"
+      okTitle: "Último backup < 24 h",
+      inactiveTitle: "Jobs inactivos, excluidos de las alertas"
     },
     empty: {
       noJobsTitle: "Ningún job",
@@ -450,6 +460,9 @@ export function getBackupMspPanelCopy(locale) {
       count: String(count)
     }),
     formatOkCount: count => interpolate(t.alertBar.ok, {
+      count: String(count)
+    }),
+    formatInactiveCount: count => interpolate(t.alertBar.inactive, {
       count: String(count)
     }),
     formatJobsToTreat: count => interpolate(count === 1 ? t.alertBar.jobsToTreat : t.alertBar.jobsToTreatPlural, {

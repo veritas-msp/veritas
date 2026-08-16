@@ -3,7 +3,8 @@ import { getEquipmentHaPairColor, getEquipmentHaState } from "./equipmentHaUtils
 import styles from "./EquipmentPage.module.css";
 export default function EquipmentHaCell({
   equipment,
-  copy = {}
+  copy = {},
+  pairColors
 }) {
   const state = getEquipmentHaState(equipment);
   if (!state.active) {
@@ -11,7 +12,7 @@ export default function EquipmentHaCell({
         —
       </span>;
   }
-  const pairColor = getEquipmentHaPairColor(equipment) || "#64748b";
+  const pairColor = getEquipmentHaPairColor(equipment, pairColors) || "#64748b";
   const letter = state.isSecondary ? "B" : "A";
   const roleLabel = state.isSecondary ? copy.secondary || "Secondary" : copy.primary || "Primary";
   const title = state.partnerName ? `${roleLabel} · ${state.partnerName}` : roleLabel;

@@ -1,4 +1,9 @@
-const HA_PAIR_PALETTE = ["#0d9488", "#2563eb", "#7c3aed", "#db2777", "#ea580c", "#0891b2", "#4f46e5", "#059669"];
+const HA_PAIR_PALETTE = ["#0d9488", "#2563eb", "#7c3aed", "#db2777", "#ea580c", "#0891b2", "#4f46e5", "#059669", "#be123c", "#0f766e", "#9333ea", "#c2410c"];
+function haPairColorAt(index) {
+  if (index < HA_PAIR_PALETTE.length) return HA_PAIR_PALETTE[index];
+  const hue = Math.round(index * 137.508) % 360;
+  return `hsl(${hue} 62% 40%)`;
+}
 function readNestedLayer(equipment) {
   const raw = equipment?.rawData?.data && typeof equipment.rawData.data === "object" ? equipment.rawData.data : null;
   const flat = equipment?.rawData && typeof equipment.rawData === "object" ? equipment.rawData : null;
@@ -90,20 +95,38 @@ export function getEquipmentHaPairKey(equipment) {
   if (!state.active) return "";
   const selfName = getEquipmentDisplayName(equipment);
   const names = [selfName, state.partnerName].filter(Boolean).map(n => n.toLowerCase()).sort();
-  return names.join("::");
+  const type = getEquipmentType(equipment).toLowerCase() || "ha";
+  return `${type}::${names.join("::")}`;
 }
 export function getFirewallHaPairKey(equipment) {
   return getEquipmentHaPairKey(equipment);
 }
-export function getEquipmentHaPairColor(equipment) {
+export function buildHaPairColorMap(equipments) {
+  const keys = [];
+  const seen = new Set();
+  (Array.isArray(equipments) ? equipments : []).forEach(equipment => {
+    const key = getEquipmentHaPairKey(equipment);
+    if (!key || seen.has(key)) return;
+    seen.add(key);
+    keys.push(key);
+  });
+  keys.sort((a, b) => a.localeCompare(b, "fr"));
+  const map = {};
+  keys.forEach((key, index) => {
+    map[key] = haPairColorAt(index);
+  });
+  return map;
+}
+export function getEquipmentHaPairColor(equipment, colorMap) {
   const key = getEquipmentHaPairKey(equipment);
   if (!key) return null;
+  if (colorMap && colorMap[key]) return colorMap[key];
   let hash = 0;
   for (let i = 0; i < key.length; i += 1) {
     hash = (hash << 5) - hash + key.charCodeAt(i);
     hash |= 0;
   }
-  return HA_PAIR_PALETTE[Math.abs(hash) % HA_PAIR_PALETTE.length];
+  return haPairColorAt(Math.abs(hash) % HA_PAIR_PALETTE.length);
 }
 export function getFirewallHaPairColor(equipment) {
   return getEquipmentHaPairColor(equipment);

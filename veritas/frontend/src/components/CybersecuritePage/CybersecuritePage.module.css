@@ -871,6 +871,18 @@
   color: #166534;
 }
 
+.backupAlertPillInactive {
+  border-color: #d1d5db;
+  color: #4b5563;
+}
+
+.backupAlertPillInactive.backupAlertPillActive,
+.backupAlertPillInactive:hover:not(:disabled) {
+  border-color: #9ca3af;
+  background-color: #f3f4f6;
+  color: #374151;
+}
+
 .backupAlertPillClear {
   display: inline-flex;
   align-items: center;
@@ -996,7 +1008,8 @@
 }
 
 .jobStatusBadgeHycu,
-.jobStatusBadgeUnmapped {
+.jobStatusBadgeUnmapped,
+.jobStatusBadgeInactive {
   background: #f3f4f6;
   color: #6b7280;
   border: 1px solid #d1d5db;

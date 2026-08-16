@@ -8,7 +8,7 @@ import SmartTooltip from "../SmartTooltip";
 import EquipmentFormModal from "./EquipmentFormModal";
 import { fetchClientGeneral } from "../../api/clients";
 import { normalizeClientSites } from "../../utils/clientSites";
-import { updateEquipment, getCheckMKAvailability, getAllHardwareEquipment, getClientHardwareEquipment, getEquipmentLogs, purgeEquipmentLogs, equipmentTypeToFamily, getEquipmentCheckMKMonitoring, syncEquipmentCheckMKMonitoring, fetchEquipmentTags, addEquipmentTag, removeEquipmentTag } from "../../api/equipment";
+import { updateEquipment, getCheckMKAvailability, getClientHardwareEquipment, getEquipmentLogs, purgeEquipmentLogs, equipmentTypeToFamily, getEquipmentCheckMKMonitoring, syncEquipmentCheckMKMonitoring, fetchEquipmentTags, addEquipmentTag, removeEquipmentTag } from "../../api/equipment";
 import { requestRmmAgentSync, cancelRmmAgentSync, requestRmmAgentUpdate, cancelRmmAgentUpdate, requestRmmAgentHeartbeat, fetchRmmAgents } from "../../api/rmm";
 import ClientTagModal from "../EnterprisesPage/ClientTagModal";
 import EquipmentMappingModal from "./EquipmentMappingModal";
@@ -99,6 +99,7 @@ export default function EquipmentDetailPage({
   const [equipmentTagModalOpen, setEquipmentTagModalOpen] = useState(false);
   const [addingEquipmentTag, setAddingEquipmentTag] = useState(false);
   const [editModalOpen, setEditModalOpen] = useState(false);
+  const [editModalOpening, setEditModalOpening] = useState(false);
   const [alertModalOpen, setAlertModalOpen] = useState(false);
   const [proPromoFeature, setProPromoFeature] = useState(null);
   const [modalClient, setModalClient] = useState(null);
@@ -162,9 +163,11 @@ export default function EquipmentDetailPage({
   const lastRmmRefreshSnapshotRef = useRef(null);
   const getEquipmentDbIdLocal = () => resolveEquipmentDbId(equipment);
   const getEditModuleKey = eq => {
-    const displayType = eq?.type === "NAS" ? "Storage" : eq?.type;
-    if (displayType === "Storage" || eq?.type === "NAS") return "Storage";
-    return eq?.type || displayType;
+    const raw = eq?.type || eq?.rawData?.type || eq?.familyKey || "";
+    if (raw === "NAS" || raw === "Storage" || raw === "Stockage") return "Storage";
+    if (raw === "Servers" || raw === "Serveurs" || raw === "Server" || raw === "Serveur") return "Servers";
+    if (raw === "Firewalls" || raw === "Firewall") return "Firewalls";
+    return raw || null;
   };
   const equipmentDisplayType = equipment?.type === "NAS" ? "Storage" : equipment?.type;
   const equipmentModuleKey = equipment ? getEditModuleKey(equipment) : null;
@@ -664,27 +667,40 @@ export default function EquipmentDetailPage({
     document.addEventListener("mousedown", handlePointerDown);
     return () => document.removeEventListener("mousedown", handlePointerDown);
   }, [heroMenuOpen]);
-  const openEditEquipmentModal = async () => {
+  const openEditEquipmentModal = async event => {
+    event?.stopPropagation?.();
+    event?.preventDefault?.();
     setHeroMenuOpen(false);
-    if (!equipment?.clientId) {
+    const clientId = getEquipmentClientId(equipment);
+    if (!clientId) {
       toast.error(copy.toasts.clientNotFound);
       return;
     }
+    if (editModalOpening) return;
+    setEditModalOpening(true);
     try {
-      const [client, allEquipment] = await Promise.all([fetchClientGeneral(equipment.clientId), getAllHardwareEquipment()]);
+      const client = await fetchClientGeneral(clientId);
       setModalClient({
         ...client,
         sites: Array.isArray(client.sites) ? [...client.sites] : client.sites,
         ssids: Array.isArray(client.ssids) ? [...client.ssids] : client.ssids
       });
-      setPeerFirewalls((Array.isArray(allEquipment) ? allEquipment : []).filter(eq => eq.type === "Firewalls" && String(eq.clientId) === String(equipment.clientId)));
-      setPeerServers((Array.isArray(allEquipment) ? allEquipment : []).filter(eq => (eq.type === "Servers" || eq.type === "Serveurs") && String(eq.clientId) === String(equipment.clientId)));
-      setPeerStorage((Array.isArray(allEquipment) ? allEquipment : []).filter(eq => (eq.type === "NAS" || eq.type === "Storage" || eq.type === "Stockage") && String(eq.clientId) === String(equipment.clientId)));
-      setPeerBorneWifi((Array.isArray(allEquipment) ? allEquipment : []).filter(eq => eq.type === "BorneWifi" && String(eq.clientId) === String(equipment.clientId)));
       setEditModalOpen(true);
+      getClientHardwareEquipment(clientId).then(allEquipment => {
+        const list = Array.isArray(allEquipment) ? allEquipment : [];
+        const sameClient = eq => String(eq.clientId) === String(clientId);
+        setPeerFirewalls(list.filter(eq => eq.type === "Firewalls" && sameClient(eq)));
+        setPeerServers(list.filter(eq => (eq.type === "Servers" || eq.type === "Serveurs") && sameClient(eq)));
+        setPeerStorage(list.filter(eq => (eq.type === "NAS" || eq.type === "Storage" || eq.type === "Stockage") && sameClient(eq)));
+        setPeerBorneWifi(list.filter(eq => eq.type === "BorneWifi" && sameClient(eq)));
+      }).catch(error => {
+        console.warn("Load equipment peers:", error);
+      });
     } catch (error) {
       console.error("Open edit modal:", error);
       toast.error(copy.toasts.editOpenError);
+    } finally {
+      setEditModalOpening(false);
     }
   };
   const handleEquipmentModalSaved = async submitData => {
@@ -698,7 +714,7 @@ export default function EquipmentDetailPage({
       onUpdate?.(nextEquipment);
     }
     try {
-      const list = await getClientHardwareEquipment(equipment.clientId);
+      const list = await getClientHardwareEquipment(getEquipmentClientId(equipment) || equipment.clientId);
       const refreshed = findEquipmentInList(list, nextEquipment || equipment);
       if (refreshed) {
         setFormData(buildDetailFormData(refreshed, {
@@ -1259,13 +1275,18 @@ export default function EquipmentDetailPage({
                   <Icon icon={alertSettings.suspended || !alertSettings.alertsEnabled ? "mdi:bell-off-outline" : "mdi:bell-ring-outline"} aria-hidden />
                 </button>
               </SmartTooltip> : null}
+            <SmartTooltip content={copy.hero.edit}>
+              <button type="button" className={enterpriseDetailStyles.heroMenuBtn} onClick={openEditEquipmentModal} disabled={editModalOpening} aria-label={copy.hero.edit}>
+                <Icon icon={editModalOpening ? "mdi:loading" : "mdi:pencil-outline"} className={editModalOpening ? styles.spinning : undefined} aria-hidden />
+              </button>
+            </SmartTooltip>
             <SmartTooltip content={copy.hero.actionsTooltip}>
               <button type="button" className={enterpriseDetailStyles.heroMenuBtn} onClick={() => setHeroMenuOpen(open => !open)} aria-expanded={heroMenuOpen} aria-haspopup="menu" aria-label={copy.hero.actionsAria}>
                 <Icon icon="mdi:dots-horizontal" aria-hidden />
               </button>
             </SmartTooltip>
             {heroMenuOpen ? <div className={enterpriseDetailStyles.heroClientMenu} role="menu">
-                <button type="button" className={enterpriseDetailStyles.heroMenuItem} role="menuitem" onClick={openEditEquipmentModal}>
+                <button type="button" className={enterpriseDetailStyles.heroMenuItem} role="menuitem" onClick={openEditEquipmentModal} disabled={editModalOpening}>
                   <Icon icon="mdi:pencil-outline" aria-hidden />
                   <span>{copy.hero.edit}</span>
                 </button>
@@ -2090,7 +2111,7 @@ export default function EquipmentDetailPage({
       setPurgeLogsConfirmOpen(false);
     }} onConfirm={handlePurgeLogs} title={modalsCopy.confirm?.purgeLogs?.title} message={purgeLogsMessage} icon="mdi:delete-sweep" confirmLabel={modalsCopy.confirm?.purgeLogs?.confirm} confirmVariant="dangerSolid" confirmLoading={purgingLogs} />
 
-      {modalClient && equipmentModuleKey ? <EquipmentFormModal open={editModalOpen} onClose={() => setEditModalOpen(false)} client={modalClient} equipment={equipment} moduleKey={equipmentModuleKey} mode="edit" peerFirewalls={peerFirewalls} peerServers={peerServers} peerStorage={peerStorage} peerBorneWifi={peerBorneWifi} onSaved={handleEquipmentModalSaved} onDeleted={handleEquipmentModalDeleted} /> : null}
+      {editModalOpen && modalClient ? <EquipmentFormModal open={editModalOpen} onClose={() => setEditModalOpen(false)} client={modalClient} equipment={equipment} moduleKey={equipmentModuleKey || equipment?.type || "Servers"} mode="edit" peerFirewalls={peerFirewalls} peerServers={peerServers} peerStorage={peerStorage} peerBorneWifi={peerBorneWifi} onSaved={handleEquipmentModalSaved} onDeleted={handleEquipmentModalDeleted} /> : null}
 
       <EquipmentAlertSuspensionModal open={alertModalOpen} onClose={() => setAlertModalOpen(false)} equipment={equipment} onNavigate={onNavigate} alert={alertSettings} />
 

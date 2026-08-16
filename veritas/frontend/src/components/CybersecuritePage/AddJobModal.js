@@ -4,7 +4,7 @@ import { Icon } from "@iconify/react";
 import { FaTimes } from "react-icons/fa";
 import { toast } from "react-toastify";
 import { fetchClientModules, saveClientModules } from "../../api/clients";
-import { normalizeServeurLieList } from "../EnterprisesPage/backupJobUtils";
+import { isBackupJobActive, normalizeServeurLieList } from "../EnterprisesPage/backupJobUtils";
 import MultiSuggestPicker from "../AdminPage/MultiSuggestPicker";
 import styles from "./InstanceSauvegardeModal.module.css";
 const generateUUID = () => {
@@ -85,7 +85,8 @@ export default function AddJobModal({
     type: "",
     regularite: "",
     horaire: "",
-    retention: ""
+    retention: "",
+    actif: true
   });
   const selectedInstance = instances.find(i => (i.id || i.instanceId) === instanceId) || (isEdit && initialInstance ? {
     ...initialInstance,
@@ -149,7 +150,8 @@ export default function AddJobModal({
         type: "",
         regularite: "",
         horaire: "",
-        retention: ""
+        retention: "",
+        actif: true
       });
     }
     setInstances([]);
@@ -170,7 +172,8 @@ export default function AddJobModal({
       type: initialJob.type || initialJob.typeBackup || "",
       regularite: initialJob.regularite || "",
       horaire: initialJob.horaire || (initialJob.horaire === 0 ? "00:00" : "") || "",
-      retention: initialJob.retention || ""
+      retention: initialJob.retention || "",
+      actif: isBackupJobActive(initialJob)
     });
   }, [open, isEdit, initialJob]);
   const updateForm = (field, value) => {
@@ -207,7 +210,8 @@ export default function AddJobModal({
           type: form.type || "",
           regularite: form.regularite || "",
           horaire: form.horaire || "",
-          retention: form.retention || ""
+          retention: form.retention || "",
+          actif: form.actif !== false
         };
         const updatedInstances = currentInstances.map(inSt => {
           if ((inSt.id || inSt.instanceId) !== instanceId) return inSt;
@@ -237,7 +241,8 @@ export default function AddJobModal({
           regularite: form.regularite || "",
           horaire: form.horaire || "",
           retention: form.retention || "",
-          replicationVers: ""
+          replicationVers: "",
+          actif: form.actif !== false
         };
         const updatedInstances = currentInstances.map(inSt => {
           if ((inSt.id || inSt.instanceId) !== instanceId) return inSt;
@@ -311,6 +316,13 @@ export default function AddJobModal({
                 <div className={styles.formField}>
                   <label className={styles.fieldLabel}>Job name <span className={styles.required}>*</span></label>
                   <input type="text" className={styles.fieldInput} value={form.nom} onChange={e => updateForm("nom", e.target.value)} placeholder="Job name" />
+                </div>
+                <div className={styles.formField}>
+                  <label className={styles.checkboxLabel}>
+                    <input type="checkbox" className={styles.checkbox} checked={form.actif !== false} onChange={e => updateForm("actif", e.target.checked)} />
+                    Active job
+                  </label>
+                  <p className={styles.loadingText}>An inactive job stays visible but is no longer tracked in backup alerts.</p>
                 </div>
                 {!isHycu && <>
                     <div className={styles.formGrid}>

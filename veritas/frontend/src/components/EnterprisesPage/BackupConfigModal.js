@@ -13,7 +13,7 @@ import { getIconPath } from "../../utils/assetHelper";
 import layout from "./EnterpriseFormModal.module.css";
 import styles from "./BackupConfigModal.module.css";
 import { getBackupModalCopy, supportsJobs, ACTIVE_BACKUP_MODULE_KEYS } from "./backupConfigModalI18n";
-import { coerceStoredOption, formatServeurLieLabel, normalizeServeurLieList } from "./backupJobUtils";
+import { coerceStoredOption, formatServeurLieLabel, isBackupJobActive, normalizeServeurLieList } from "./backupJobUtils";
 import MultiSuggestPicker from "../AdminPage/MultiSuggestPicker";
 const EMPTY_JOB = {
   nom: "",
@@ -24,7 +24,8 @@ const EMPTY_JOB = {
   destination: "",
   serveurLie: [],
   stockageLie: "",
-  replicationVers: ""
+  replicationVers: "",
+  actif: true
 };
 const EMPTY_ACTIVE_MODULES = {
   oneDrive: false,
@@ -66,7 +67,8 @@ function normalizeInstances(raw) {
       serveurLie: normalizeServeurLieList(job.serveurLie),
       stockageLie: coerceStoredOption(job.stockageLie),
       destination: coerceStoredOption(job.destination),
-      replicationVers: coerceStoredOption(job.replicationVers)
+      replicationVers: coerceStoredOption(job.replicationVers),
+      actif: isBackupJobActive(job)
     })) : []
   }));
 }
@@ -231,7 +233,8 @@ function JobCard({
   const scheduleParts = [regularityLabel, job.horaire].filter(Boolean);
   const scheduleLabel = scheduleParts.length > 0 ? scheduleParts.join(" · ") : "—";
   const targetsLabel = formatServeurLieLabel(job.serveurLie, copy.form.jobTargetNone);
-  return <article className={styles.card}>
+  const jobActive = isBackupJobActive(job);
+  return <article className={`${styles.card} ${jobActive ? "" : styles.cardInactive}`}>
       <div className={styles.cardMain}>
         <div className={styles.cardHead}>
           <div className={styles.cardTitleWrap}>
@@ -240,7 +243,12 @@ function JobCard({
               {typeof job.nom === "string" || typeof job.nom === "number" ? job.nom : "—"}
             </strong>
           </div>
-          {isDefault ? <span className={styles.cardBadge}>{copy.jobs.defaultJob}</span> : null}
+          <div className={styles.cardBadges}>
+            {isDefault ? <span className={styles.cardBadge}>{copy.jobs.defaultJob}</span> : null}
+            <span className={`${styles.cardBadge} ${jobActive ? styles.cardBadgeActive : styles.cardBadgeInactive}`}>
+              {jobActive ? copy.form.jobActive : copy.form.jobInactive}
+            </span>
+          </div>
         </div>
         <div className={styles.cardMeta}>
           <div>
@@ -402,7 +410,8 @@ export default function BackupConfigModal({
       ...EMPTY_JOB,
       ...job,
       serveurLie: normalizeServeurLieList(job.serveurLie),
-      stockageLie: selectedInstance?.logiciel === "HYCU Backup" ? "Datacenter PSI" : job.stockageLie || ""
+      stockageLie: selectedInstance?.logiciel === "HYCU Backup" ? "Datacenter PSI" : job.stockageLie || "",
+      actif: isBackupJobActive(job)
     });
     setActiveSection("edit-job");
   };
@@ -457,7 +466,8 @@ export default function BackupConfigModal({
               id: editingJobId,
               nom,
               serveurLie: normalizeServeurLieList(jobDraft.serveurLie),
-              stockageLie: inst.logiciel === "HYCU Backup" ? "Datacenter PSI" : jobDraft.stockageLie
+              stockageLie: inst.logiciel === "HYCU Backup" ? "Datacenter PSI" : jobDraft.stockageLie,
+              actif: jobDraft.actif !== false
             } : j)
           };
         }
@@ -468,7 +478,8 @@ export default function BackupConfigModal({
             ...jobDraft,
             nom,
             serveurLie: normalizeServeurLieList(jobDraft.serveurLie),
-            stockageLie: inst.logiciel === "HYCU Backup" ? "Datacenter PSI" : jobDraft.stockageLie
+            stockageLie: inst.logiciel === "HYCU Backup" ? "Datacenter PSI" : jobDraft.stockageLie,
+            actif: jobDraft.actif !== false
           }]
         };
       });
@@ -813,6 +824,21 @@ export default function BackupConfigModal({
             ...prev,
             nom: e.target.value
           }))} placeholder={copy.form.jobNamePlaceholder} />
+          </div>
+          <div className={`${layout.field} ${layout.fieldFull}`}>
+            <label className={layout.slaToggle}>
+              <span className={layout.slaToggleLabel}>{copy.form.jobActiveToggle}</span>
+              <span className={layout.switchWrap}>
+                <input type="checkbox" className={layout.switchInput} checked={jobDraft.actif !== false} onChange={e => setJobDraft(prev => ({
+              ...prev,
+              actif: e.target.checked
+            }))} role="switch" aria-checked={jobDraft.actif !== false} />
+                <span className={layout.switchTrack} aria-hidden="true">
+                  <span className={layout.switchThumb} />
+                </span>
+              </span>
+            </label>
+            <p className={layout.hint}>{copy.form.jobActiveHint}</p>
           </div>
           <div className={`${layout.field} ${layout.fieldFull}`}>
             <label className={layout.label} htmlFor="job-target-search">

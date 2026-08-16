@@ -10,6 +10,9 @@ const JOB_DETAIL_COPY = {
     },
     fields: {
       status: "Statut",
+      activity: "Activité",
+      active: "Actif",
+      inactive: "Inactif",
       solution: "Solution",
       jobType: "Type",
       server: "Serveur",
@@ -50,6 +53,9 @@ const JOB_DETAIL_COPY = {
     },
     fields: {
       status: "Status",
+      activity: "Activity",
+      active: "Active",
+      inactive: "Inactive",
       solution: "Solution",
       jobType: "Type",
       server: "Server",

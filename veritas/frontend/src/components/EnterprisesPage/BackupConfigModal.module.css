@@ -157,6 +157,15 @@
   white-space: nowrap;
 }
 
+.cardBadges {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.3rem;
+  flex-shrink: 0;
+}
+
 .cardBadge {
   display: inline-flex;
   align-items: center;
@@ -168,6 +177,20 @@
   background: rgba(43, 95, 171, 0.1);
   color: #2b5fab;
   flex-shrink: 0;
+}
+
+.cardBadgeActive {
+  background: rgba(21, 209, 160, 0.12);
+  color: #0d8a6a;
+}
+
+.cardBadgeInactive {
+  background: rgba(107, 114, 128, 0.14);
+  color: #4b5563;
+}
+
+.cardInactive {
+  opacity: 0.78;
 }
 
 .cardMeta {
@@ -415,6 +438,16 @@
 :global(html.dark) .cardBadge {
   background: rgba(43, 95, 171, 0.28);
   color: #93c5fd;
+}
+
+:global(html.dark) .cardBadgeActive {
+  background: rgba(21, 209, 160, 0.2);
+  color: #5eead4;
+}
+
+:global(html.dark) .cardBadgeInactive {
+  background: rgba(148, 163, 184, 0.18);
+  color: #cbd5e1;
 }
 
 :global(html.dark) .kpiIcon_blue {

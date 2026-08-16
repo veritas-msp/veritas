@@ -6,7 +6,7 @@ import { getBackupJobStatus, getBackupJobStatusLabel, getBackupJobStatusTitle, i
 import EquipmentMappingModal from "./EquipmentMappingModal";
 import { buildBackupFleetRow } from "./backupMspUtils";
 import { getJobDetailCopy } from "./jobDetailPageI18n";
-import { formatServeurLieLabel, normalizeServeurLieList } from "../EnterprisesPage/backupJobUtils";
+import { formatServeurLieLabel, isBackupJobActive, normalizeServeurLieList } from "../EnterprisesPage/backupJobUtils";
 import styles from "./JobDetailPage.module.css";
 function formatDuration(value) {
   if (value == null || value === "") return null;
@@ -41,6 +41,7 @@ function normalizeIncomingJob(data) {
       serveurLie: normalizeServeurLieList(data.serveurLie || data.server),
       stockageLie: data.stockageLie || "",
       replicationVers: data.replicationVers || "",
+      actif: isBackupJobActive(data),
       isMapped: Boolean(data.isMapped),
       checkmkMapping: data.checkmkMapping || null,
       last_backup_date: data.last_backup_date ?? data.rawData?.last_backup_date ?? null,
@@ -89,6 +90,7 @@ function findJobInCyberData(clients, {
             serveurLie: normalizeServeurLieList(job.serveurLie),
             stockageLie: job.stockageLie || "",
             replicationVers: job.replicationVers || "",
+            actif: isBackupJobActive(job),
             isMapped: !!checkmkMapping,
             checkmkMapping,
             last_backup_date: job.last_backup_date ?? null,
@@ -181,6 +183,7 @@ export default function JobDetailPage({
   }, [job]);
   const fleetRow = useMemo(() => job ? buildBackupFleetRow(job) : null, [job]);
   const status = job ? getBackupJobStatus(job) : null;
+  const jobActive = job ? isBackupJobActive(job) : true;
   const mapped = job ? isBackupJobMapped(job) : false;
   const canMap = status !== "hycu";
   const handleBack = () => {
@@ -264,6 +267,9 @@ export default function JobDetailPage({
           <div className={styles.statsCards}>
             <StatCard icon="mdi:circle-slice-8" label={copy.fields.status} value={<span className={`${styles.statusBadge} ${styles[`status_${status}`] || ""}`} title={getBackupJobStatusTitle(status)}>
                   {getBackupJobStatusLabel(status)}
+                </span>} />
+            <StatCard icon={jobActive ? "mdi:toggle-switch" : "mdi:toggle-switch-off"} label={copy.fields.activity} value={<span className={`${styles.statusBadge} ${jobActive ? styles.status_ok : styles.status_inactive}`}>
+                  {jobActive ? copy.fields.active : copy.fields.inactive}
                 </span>} />
             <StatCard icon="mdi:backup-restore" label={copy.fields.solution} value={fleetRow?.providerName} />
             <StatCard icon="mdi:file-tree-outline" label={copy.fields.jobType} value={job.typeBackup} />

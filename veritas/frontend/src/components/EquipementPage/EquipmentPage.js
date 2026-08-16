@@ -46,7 +46,7 @@ import { parseCustomFamilyType } from "../../api/equipmentFamilies";
 import { filterBySite } from "../../utils/siteFilterUtils";
 import { getEquipmentFormOptionsCopy, getRoleOptionLabel } from "./equipmentFormOptionsI18n";
 import EquipmentHaCell from "./EquipmentHaCell";
-import { compareFirewallHaPairs, getFirewallHaSortValue, getFirewallHaState } from "./equipmentHaUtils";
+import { buildHaPairColorMap, compareFirewallHaPairs, getFirewallHaSortValue, getFirewallHaState } from "./equipmentHaUtils";
 import { getExpirationStatus, getExpirationStatusColor, getMaintenanceLicenseExpiration } from "./constants/firewallLicenceUtils";
 const toDisplayEquipmentType = type => {
   if (type === "NAS" || type === "Stockage") return "Storage";
@@ -2766,6 +2766,7 @@ const EquipmentPage = forwardRef(function EquipmentPage({
                 total
               } = getPagedSlice(sortedList, type);
               const visibleList = embedded ? pagedList : sortedList;
+              const haPairColors = buildHaPairColorMap(sortedList);
               const isBackupSection = type === "Backup";
               return <div key={type} className={`${styles.equipmentTableSection} ${embedded ? styles.equipmentTableSectionEmbedded : ""}`}>
                   {!embedded && <div className={styles.tableSectionHeader}>
@@ -2876,7 +2877,7 @@ const EquipmentPage = forwardRef(function EquipmentPage({
                                     </td>;
                             } else if (col.key === 'ha') {
                               return <td key={col.key} className={embedded ? styles.embeddedColHa : undefined}>
-                                      <EquipmentHaCell equipment={equipment} copy={pageCopy.ha || {}} />
+                                      <EquipmentHaCell equipment={equipment} copy={pageCopy.ha || {}} pairColors={haPairColors} />
                                     </td>;
                             } else if (col.key === 'name') {
                               if (embedded) {
@@ -3047,7 +3048,7 @@ const EquipmentPage = forwardRef(function EquipmentPage({
                               return <td key={col.key}>{debitLabel}</td>;
                             } else if (equipment.type === 'Internet' && col.key === 'categorie') {
                               return <td key={col.key} className={embedded ? styles.embeddedColHa : undefined}>
-                                      <EquipmentHaCell equipment={equipment} copy={pageCopy.ha || {}} />
+                                      <EquipmentHaCell equipment={equipment} copy={pageCopy.ha || {}} pairColors={haPairColors} />
                                     </td>;
                             } else if (equipment.type === 'Internet' && col.key === 'internetType') {
                               return <td key={col.key} className={styles.internetCellBold}>{formatValue(value)}</td>;
@@ -3176,7 +3177,7 @@ const EquipmentPage = forwardRef(function EquipmentPage({
                               return <div key={col.key} className={styles.cardField}>
                                         <span className={styles.cardLabel}>{col.label}:</span>
                                         <span className={styles.cardValue}>
-                                          <EquipmentHaCell equipment={equipment} copy={pageCopy.ha || {}} />
+                                          <EquipmentHaCell equipment={equipment} copy={pageCopy.ha || {}} pairColors={haPairColors} />
                                         </span>
                                       </div>;
                             } else {

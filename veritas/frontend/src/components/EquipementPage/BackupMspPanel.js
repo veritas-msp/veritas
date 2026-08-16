@@ -18,7 +18,7 @@ import { getBackupMspPanelCopy } from "./backupMspPanelI18n";
 import { interpolate } from "../../i18n/translate";
 import { getLocaleTag } from "../../i18n/locales";
 import MspEmptyState from "../Misc/MspEmptyState/MspEmptyState";
-import { formatServeurLieLabel, normalizeServeurLieList } from "../EnterprisesPage/backupJobUtils";
+import { formatServeurLieLabel, isBackupJobActive, normalizeServeurLieList } from "../EnterprisesPage/backupJobUtils";
 const BACKUPS_CACHE_KEY = "cyber_backups_cache_v1";
 const BACKUPS_CACHE_TTL_MS = 3 * 60 * 1000;
 const CYBER_PAGE_DATA_CACHE_KEY = "cyber_page_data_cache_v1";
@@ -232,6 +232,7 @@ export default function BackupMspPanel({
               stockageLie: job.stockageLie || "",
               replicationVers: job.replicationVers || "",
               isDefault: job.isDefault || false,
+              actif: isBackupJobActive(job),
               isMapped: !!checkmkMapping,
               checkmkMapping,
               last_backup_date: job.last_backup_date ?? null,
@@ -495,6 +496,7 @@ export default function BackupMspPanel({
       if (backupJobStatusFilter === "critical") return status === "critical";
       if (backupJobStatusFilter === "warning") return status === "warning";
       if (backupJobStatusFilter === "ok") return status === "ok";
+      if (backupJobStatusFilter === "inactive") return status === "inactive";
       return true;
     });
   }, [filteredJobs, backupJobStatusFilter]);
@@ -657,6 +659,10 @@ export default function BackupMspPanel({
                   <Icon icon="mdi:check-circle" />
                   {copy.formatOkCount(backupJobStats.ok)}
                 </button>
+                <button type="button" className={`${styles.backupAlertPill} ${styles.backupAlertPillInactive} ${backupJobStatusFilter === "inactive" ? styles.backupAlertPillActive : ""}`} onClick={() => toggleBackupJobStatusFilter("inactive")} disabled={backupJobStats.inactive === 0} title={copy.alertBar.inactiveTitle}>
+                  <Icon icon="mdi:pause-circle-outline" />
+                  {copy.formatInactiveCount(backupJobStats.inactive)}
+                </button>
                 {backupJobStatusFilter && <button type="button" className={styles.backupAlertPillClear} onClick={() => setBackupJobStatusFilter(null)}>
                     <FaTimes /> {copy.alertBar.showAll}
                   </button>}
@@ -763,7 +769,7 @@ export default function BackupMspPanel({
               const jobStatus = getBackupJobStatus(item);
               const statusLabel = getBackupJobStatusLabel(jobStatus);
               const statusTitle = getBackupJobStatusTitle(jobStatus);
-              const badgeClass = jobStatus === "critical" ? styles.jobStatusBadgeCritical : jobStatus === "warning" ? styles.jobStatusBadgeWarning : jobStatus === "ok" ? styles.jobStatusBadgeOk : jobStatus === "unmapped" ? styles.jobStatusBadgeUnmapped : styles.jobStatusBadgeHycu;
+              const badgeClass = jobStatus === "critical" ? styles.jobStatusBadgeCritical : jobStatus === "warning" ? styles.jobStatusBadgeWarning : jobStatus === "ok" ? styles.jobStatusBadgeOk : jobStatus === "inactive" ? styles.jobStatusBadgeInactive : jobStatus === "unmapped" ? styles.jobStatusBadgeUnmapped : styles.jobStatusBadgeHycu;
               return <tr key={`${item.id}-${index}`} className={styles.equipmentRow} style={{
                 cursor: "default",
                 ...getBackupJobRowStyle(jobStatus)
