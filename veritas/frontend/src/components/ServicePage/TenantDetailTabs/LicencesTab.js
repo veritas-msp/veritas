@@ -233,27 +233,11 @@ export default function LicensesTab({
           return daysUntilExpiry > 0 && daysUntilExpiry <= 90;
         });
         if (expiringLicenses.length === 0) return null;
-        return <div style={{
-          marginTop: '1rem',
-          padding: '1rem',
-          borderRadius: '8px',
-          background: theme === 'dark' ? '#450a0a' : '#fef2f2',
-          border: '1px solid #ef4444'
-        }}>
-                <h3 style={{
-            margin: '0 0 0.5rem 0',
-            fontSize: '0.9rem',
-            fontWeight: 600,
-            color: '#ef4444'
-          }}>
+        return <div className={styles.expiringLicensesBox}>
+                <h3>
                   Licenses expiring soon
                 </h3>
-                <ul style={{
-            margin: 0,
-            paddingLeft: '1.5rem',
-            color: theme === 'dark' ? '#fca5a5' : '#dc2626',
-            fontSize: '0.85rem'
-          }}>
+                <ul>
                   {expiringLicenses.map((lic, idx) => <li key={idx}>
                       {getLicenseDisplayName(lic.nom || lic.displayName)} - Expires on{' '}
                       {new Date(lic.expirationDate).toLocaleDateString('en-GB')}

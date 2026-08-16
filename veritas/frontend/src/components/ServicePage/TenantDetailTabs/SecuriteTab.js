@@ -334,13 +334,13 @@ export default function SecuriteTab({
         minWidth: '280px',
         padding: '1.25rem',
         borderRadius: '12px',
-        background: '#f9fafb',
-        border: '1px solid #e5e7eb'
+        background: 'var(--tenant-panel)',
+        border: '1px solid var(--tenant-line)'
       }}>
             <div style={{
           fontSize: '0.85rem',
           fontWeight: '600',
-          color: '#111827',
+          color: 'var(--tenant-ink)',
           marginBottom: '1rem'
         }}>
               Overall security score
@@ -354,14 +354,14 @@ export default function SecuriteTab({
               <div style={{
             fontSize: '2.5rem',
             fontWeight: '700',
-            color: '#111827',
+            color: 'var(--tenant-ink)',
             lineHeight: '1'
           }}>
                 {identityScoreCurrent !== null ? Math.round(identityScoreCurrent) : '-'}
               </div>
               <div style={{
             fontSize: '1rem',
-            color: '#6b7280',
+            color: 'var(--tenant-muted)',
             fontWeight: '500',
             marginBottom: '0.25rem'
           }}>
@@ -372,7 +372,7 @@ export default function SecuriteTab({
                 <div style={{
             fontSize: '0.9rem',
             fontWeight: '600',
-            color: '#374151',
+            color: 'var(--tenant-muted)',
             marginTop: '0.5rem'
           }}>
                   {Math.round(identityScorePercentage)}% des points obtenus
@@ -381,7 +381,7 @@ export default function SecuriteTab({
             marginTop: '0.75rem',
             width: '100%',
             height: '6px',
-            background: '#e5e7eb',
+            background: 'var(--tenant-line)',
             borderRadius: '999px'
           }}>
                   <div style={{
@@ -393,7 +393,7 @@ export default function SecuriteTab({
                 </div>
               </> : <div style={{
           fontSize: '0.8rem',
-          color: '#6b7280',
+          color: 'var(--tenant-muted)',
           marginTop: '0.5rem'
         }}>
                 Score en attente de synchronisation.
@@ -406,13 +406,13 @@ export default function SecuriteTab({
         minWidth: '280px',
         padding: '1.25rem',
         borderRadius: '12px',
-        background: '#f9fafb',
-        border: '1px solid #e5e7eb'
+        background: 'var(--tenant-panel)',
+        border: '1px solid var(--tenant-line)'
       }}>
           <div style={{
           fontSize: '0.85rem',
           fontWeight: '600',
-          color: '#111827',
+          color: 'var(--tenant-ink)',
           marginBottom: '1rem'
         }}>
             Total users
@@ -420,7 +420,7 @@ export default function SecuriteTab({
           <div style={{
           fontSize: '1.5rem',
           fontWeight: '700',
-          color: '#111827',
+          color: 'var(--tenant-ink)',
           marginBottom: '1rem'
         }}>
             {kpiStats.totalUsers.toLocaleString()}
@@ -433,7 +433,7 @@ export default function SecuriteTab({
             <div>
               <div style={{
               fontSize: '0.75rem',
-              color: '#6b7280',
+              color: 'var(--tenant-muted)',
               marginBottom: '0.5rem'
             }}>With MFA</div>
               <div style={{
@@ -445,7 +445,7 @@ export default function SecuriteTab({
             <div>
               <div style={{
               fontSize: '0.75rem',
-              color: '#6b7280',
+              color: 'var(--tenant-muted)',
               marginBottom: '0.5rem'
             }}>Without MFA</div>
               <div style={{
@@ -457,13 +457,13 @@ export default function SecuriteTab({
             <div>
               <div style={{
               fontSize: '0.75rem',
-              color: '#6b7280',
+              color: 'var(--tenant-muted)',
               marginBottom: '0.5rem'
             }}>Adoption rate</div>
               <div style={{
               fontSize: '1.5rem',
               fontWeight: '700',
-              color: '#111827'
+              color: 'var(--tenant-ink)'
             }}>
                 {(() => {
                 const avec = kpiStats.usersWithMFA;
@@ -475,10 +475,10 @@ export default function SecuriteTab({
           </div>
           <div style={{
           fontSize: '0.75rem',
-          color: '#6b7280',
+          color: 'var(--tenant-muted)',
           marginTop: '1rem',
           paddingTop: '0.75rem',
-          borderTop: '1px solid #e5e7eb'
+          borderTop: '1px solid var(--tenant-line)'
         }}>
             <div style={{
             marginBottom: '0.35rem'
@@ -498,7 +498,7 @@ export default function SecuriteTab({
               alignItems: 'center',
               gap: '0.35rem',
               fontSize: '0.75rem',
-              color: '#111827'
+              color: 'var(--tenant-ink)'
             }}>
                     <Icon icon={getMfaMethodIconName(key)} style={{
                 fontSize: '1rem',
@@ -506,7 +506,7 @@ export default function SecuriteTab({
               }} />
                     {label}
                     <span style={{
-                color: '#6b7280',
+                color: 'var(--tenant-muted)',
                 fontWeight: 600
               }}>({count})</span>
                   </span>)}
@@ -522,13 +522,13 @@ export default function SecuriteTab({
         minWidth: '280px',
         padding: '1.25rem',
         borderRadius: '12px',
-        background: '#f9fafb',
-        border: '1px solid #e5e7eb'
+        background: 'var(--tenant-panel)',
+        border: '1px solid var(--tenant-line)'
       }}>
           <div style={{
           fontSize: '0.85rem',
           fontWeight: '600',
-          color: '#111827',
+          color: 'var(--tenant-ink)',
           marginBottom: '1rem'
         }}>
             Total admin users
@@ -536,7 +536,7 @@ export default function SecuriteTab({
           <div style={{
           fontSize: '1.5rem',
           fontWeight: '700',
-          color: '#111827',
+          color: 'var(--tenant-ink)',
           marginBottom: '1rem'
         }}>
             {kpiStats.adminsTotal.toLocaleString()}
@@ -549,7 +549,7 @@ export default function SecuriteTab({
             <div>
               <div style={{
               fontSize: '0.75rem',
-              color: '#6b7280',
+              color: 'var(--tenant-muted)',
               marginBottom: '0.5rem'
             }}>With MFA</div>
               <div style={{
@@ -561,7 +561,7 @@ export default function SecuriteTab({
             <div>
               <div style={{
               fontSize: '0.75rem',
-              color: '#6b7280',
+              color: 'var(--tenant-muted)',
               marginBottom: '0.5rem'
             }}>Without MFA</div>
               <div style={{
@@ -573,13 +573,13 @@ export default function SecuriteTab({
             <div>
               <div style={{
               fontSize: '0.75rem',
-              color: '#6b7280',
+              color: 'var(--tenant-muted)',
               marginBottom: '0.5rem'
             }}>Adoption rate</div>
               <div style={{
               fontSize: '1.5rem',
               fontWeight: '700',
-              color: '#111827'
+              color: 'var(--tenant-ink)'
             }}>
                 {(() => {
                 const avec = kpiStats.adminsWithMFA;
@@ -591,10 +591,10 @@ export default function SecuriteTab({
           </div>
           <div style={{
           fontSize: '0.75rem',
-          color: '#6b7280',
+          color: 'var(--tenant-muted)',
           marginTop: '1rem',
           paddingTop: '0.75rem',
-          borderTop: '1px solid #e5e7eb'
+          borderTop: '1px solid var(--tenant-line)'
         }}>
             <div style={{
             marginBottom: '0.35rem'
@@ -614,7 +614,7 @@ export default function SecuriteTab({
               alignItems: 'center',
               gap: '0.35rem',
               fontSize: '0.75rem',
-              color: '#111827'
+              color: 'var(--tenant-ink)'
             }}>
                     <Icon icon={getMfaMethodIconName(key)} style={{
                 fontSize: '1rem',
@@ -622,7 +622,7 @@ export default function SecuriteTab({
               }} />
                     {label}
                     <span style={{
-                color: '#6b7280',
+                color: 'var(--tenant-muted)',
                 fontWeight: 600
               }}>({count})</span>
                   </span>)}
@@ -638,13 +638,13 @@ export default function SecuriteTab({
         minWidth: '280px',
         padding: '1.25rem',
         borderRadius: '12px',
-        background: '#f9fafb',
-        border: '1px solid #e5e7eb'
+        background: 'var(--tenant-panel)',
+        border: '1px solid var(--tenant-line)'
       }}>
           <div style={{
           fontSize: '0.85rem',
           fontWeight: '600',
-          color: '#111827',
+          color: 'var(--tenant-ink)',
           marginBottom: '1rem'
         }}>
             Total non-admin users
@@ -652,7 +652,7 @@ export default function SecuriteTab({
           <div style={{
           fontSize: '1.5rem',
           fontWeight: '700',
-          color: '#111827',
+          color: 'var(--tenant-ink)',
           marginBottom: '1rem'
         }}>
             {(kpiStats.nonAdminWithMFA + kpiStats.nonAdminWithoutMFA).toLocaleString()}
@@ -665,7 +665,7 @@ export default function SecuriteTab({
             <div>
               <div style={{
               fontSize: '0.75rem',
-              color: '#6b7280',
+              color: 'var(--tenant-muted)',
               marginBottom: '0.5rem'
             }}>With MFA</div>
               <div style={{
@@ -677,7 +677,7 @@ export default function SecuriteTab({
             <div>
               <div style={{
               fontSize: '0.75rem',
-              color: '#6b7280',
+              color: 'var(--tenant-muted)',
               marginBottom: '0.5rem'
             }}>Without MFA</div>
               <div style={{
@@ -689,13 +689,13 @@ export default function SecuriteTab({
             <div>
               <div style={{
               fontSize: '0.75rem',
-              color: '#6b7280',
+              color: 'var(--tenant-muted)',
               marginBottom: '0.5rem'
             }}>Adoption rate</div>
               <div style={{
               fontSize: '1.5rem',
               fontWeight: '700',
-              color: '#111827'
+              color: 'var(--tenant-ink)'
             }}>
                 {(() => {
                 const avec = kpiStats.nonAdminWithMFA;
@@ -707,10 +707,10 @@ export default function SecuriteTab({
           </div>
           <div style={{
           fontSize: '0.75rem',
-          color: '#6b7280',
+          color: 'var(--tenant-muted)',
           marginTop: '1rem',
           paddingTop: '0.75rem',
-          borderTop: '1px solid #e5e7eb'
+          borderTop: '1px solid var(--tenant-line)'
         }}>
             <div style={{
             marginBottom: '0.35rem'
@@ -730,7 +730,7 @@ export default function SecuriteTab({
               alignItems: 'center',
               gap: '0.35rem',
               fontSize: '0.75rem',
-              color: '#111827'
+              color: 'var(--tenant-ink)'
             }}>
                     <Icon icon={getMfaMethodIconName(key)} style={{
                 fontSize: '1rem',
@@ -738,7 +738,7 @@ export default function SecuriteTab({
               }} />
                     {label}
                     <span style={{
-                color: '#6b7280',
+                color: 'var(--tenant-muted)',
                 fontWeight: 600
               }}>({count})</span>
                   </span>)}
@@ -760,13 +760,13 @@ export default function SecuriteTab({
         </h3>
         {!clientId && <p style={{
         fontSize: '0.875rem',
-        color: '#6b7280'
+        color: 'var(--tenant-muted)'
       }}>
             Client not identified · unable to load Graph recommendations.
           </p>}
         {clientId && recsLoading && <p style={{
         fontSize: '0.875rem',
-        color: '#6b7280'
+        color: 'var(--tenant-muted)'
       }}>Loading Microsoft recommendations…</p>}
         {clientId && recsError && !recsLoading && <p style={{
         fontSize: '0.875rem',
@@ -878,7 +878,7 @@ export default function SecuriteTab({
           </div>}
         {clientId && !recsLoading && !recsError && sortedSecureRecommendations.length === 0 && <p style={{
         fontSize: '0.875rem',
-        color: '#6b7280'
+        color: 'var(--tenant-muted)'
       }}>
             No recommendations returned by Microsoft for this tenant.
           </p>}
@@ -966,8 +966,8 @@ export default function SecuriteTab({
               return <div key={methodType} style={{
                 padding: '1rem',
                 borderRadius: '12px',
-                background: '#f9fafb',
-                border: '1px solid #e5e7eb',
+                background: 'var(--tenant-panel)',
+                border: '1px solid var(--tenant-line)',
                 display: 'flex',
                 flexDirection: 'column',
                 alignItems: 'center',
@@ -976,7 +976,7 @@ export default function SecuriteTab({
                         <div style={{
                   fontSize: '0.85rem',
                   fontWeight: '600',
-                  color: '#111827',
+                  color: 'var(--tenant-ink)',
                   display: 'flex',
                   alignItems: 'center',
                   gap: '0.5rem'
@@ -990,7 +990,7 @@ export default function SecuriteTab({
                         <div style={{
                   fontSize: '2rem',
                   fontWeight: '700',
-                  color: '#111827',
+                  color: 'var(--tenant-ink)',
                   display: 'flex',
                   alignItems: 'baseline',
                   gap: '0.35rem'
@@ -1017,8 +1017,8 @@ export default function SecuriteTab({
       marginBottom: '1.5rem',
       padding: '1.25rem',
       borderRadius: '12px',
-      background: '#f9fafb',
-      border: '1px solid #e5e7eb',
+      background: 'var(--tenant-panel)',
+      border: '1px solid var(--tenant-line)',
       display: 'flex',
       flexDirection: 'column',
       gap: '1rem'
@@ -1037,7 +1037,7 @@ export default function SecuriteTab({
               <div style={{
             fontSize: '0.85rem',
             fontWeight: '600',
-            color: '#111827',
+            color: 'var(--tenant-ink)',
             marginBottom: '0.75rem'
           }}>
                 Microsoft 365 Defender security score
@@ -1057,14 +1057,14 @@ export default function SecuriteTab({
                 </div>
                 <div style={{
               fontSize: '0.9rem',
-              color: '#6b7280'
+              color: 'var(--tenant-muted)'
             }}>
                   / {securityData.defenderSecureScore.maxScore || 0}
                 </div>
               </div>
               {securityData.defenderSecureScore.percentage !== null && <div style={{
             fontSize: '0.85rem',
-            color: '#374151',
+            color: 'var(--tenant-muted)',
             marginTop: '0.25rem',
             fontWeight: '600'
           }}>
@@ -1074,7 +1074,7 @@ export default function SecuriteTab({
             marginTop: '0.75rem',
             width: '100%',
             height: '6px',
-            background: '#e5e7eb',
+            background: 'var(--tenant-line)',
             borderRadius: '999px'
           }}>
                 <div style={{
@@ -1096,7 +1096,7 @@ export default function SecuriteTab({
         }}>
                 {securityData.defenderSecureScore.averageComparativeScores.map((comparison, idx) => <div key={idx} style={{
             fontSize: '0.8rem',
-            color: '#374151'
+            color: 'var(--tenant-muted)'
           }}>
                     <div style={{
               fontWeight: '600',
@@ -1113,7 +1113,7 @@ export default function SecuriteTab({
                     </div>
                     <div style={{
               fontSize: '0.7rem',
-              color: '#6b7280',
+              color: 'var(--tenant-muted)',
               marginTop: '0.25rem'
             }}>
                       Average
@@ -1130,7 +1130,7 @@ export default function SecuriteTab({
           fontSize: '0.8rem',
           fontWeight: '600',
           marginBottom: '0.5rem',
-          color: '#374151'
+          color: 'var(--tenant-muted)'
         }}>
                 Score history (last 30 days)
               </div>
@@ -1142,7 +1142,7 @@ export default function SecuriteTab({
           padding: '0.5rem',
           background: '#ffffff',
           borderRadius: '8px',
-          border: '1px solid #e5e7eb'
+          border: '1px solid var(--tenant-line)'
         }}>
                 {securityData.secureScoreHistory.map((entry, idx) => {
             const maxPercentage = Math.max(...securityData.secureScoreHistory.map(e => e.percentage || 0));

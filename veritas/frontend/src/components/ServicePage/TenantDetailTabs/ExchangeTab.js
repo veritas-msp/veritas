@@ -16,11 +16,7 @@ export default function ExchangeTab({
       }}>Exchange Online / Outlook</h4>
         <div className={styles.noDataMessage}>
           <p>No Exchange data available.</p>
-          <p style={{
-          fontSize: '0.875rem',
-          color: theme === 'dark' ? '#9ca3af' : '#6b7280',
-          marginTop: '0.5rem'
-        }}>
+          <p className={styles.mutedHint}>
             Exchange data is not present in the snapshot. Please run a <strong>full sync</strong> using the sync button to load and save this data.
           </p>
         </div>
@@ -37,11 +33,7 @@ export default function ExchangeTab({
           <p style={{
           color: '#ef4444'
         }}>❌ Error loading Exchange data</p>
-          <p style={{
-          fontSize: '0.875rem',
-          color: theme === 'dark' ? '#9ca3af' : '#6b7280',
-          marginTop: '0.5rem'
-        }}>
+          <p className={styles.mutedHint}>
             {exchangeData.error || 'Unknown error'}
           </p>
         </div>
@@ -383,11 +375,9 @@ export default function ExchangeTab({
               By week
             </button>
           </div>
-        </> : <div style={{
+        </> : <div className={styles.mutedHint} style={{
           textAlign: 'center',
           padding: '2rem',
-          color: theme === 'dark' ? '#9ca3af' : '#6b7280',
-          fontSize: '0.875rem',
           marginTop: '1.5rem'
         }}>
           N/A - Data not synced

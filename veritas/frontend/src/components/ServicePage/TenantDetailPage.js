@@ -1,11 +1,12 @@
 import React, { useState, useEffect, useMemo, useRef } from "react";
 import { Icon } from "@iconify/react";
-import { FaArrowLeft, FaSync, FaSort, FaSortUp, FaSortDown } from "react-icons/fa";
-import { toast } from 'react-toastify';
+import { FaSync } from "react-icons/fa";
+import { toast } from "react-toastify";
 import API_BASE_URL from "../../config";
 import styles from "./TenantDetailPage.module.css";
+import enterpriseDetailStyles from "../EnterprisesPage/EnterpriseDetailPage.module.css";
 import SmartTooltip from "../SmartTooltip";
-import DashboardTab from "./TenantDetailTabs/DashboardTab";
+import TenantReportOverview from "./TenantReportOverview";
 import LicensesTab from "./TenantDetailTabs/LicencesTab";
 import UsersTab from "./TenantDetailTabs/UtilisateursTab";
 import ExchangeTab from "./TenantDetailTabs/ExchangeTab";
@@ -18,24 +19,36 @@ import { fetchClientModules, updateClient } from "../../api/clients";
 import { useAppLocale } from "../../hooks/useAppGeneralSettings";
 import { getEnterpriseConfigModalsCopy } from "../EnterprisesPage/enterpriseConfigModalsI18n";
 import { interpolate } from "../../i18n/translate";
+import { getLicenseDisplayName } from "./TenantDetailTabs/utils";
+import { getTenantDetailCopy } from "./tenantDetailPageI18n";
+import { buildTenantReport, getConnectionOrganization, isConnectionOk } from "./tenantReportUtils";
+
+const TABS = [
+  { key: "rapport", icon: "mdi:clipboard-text-outline" },
+  { key: "utilisateurs", icon: "mdi:account-multiple" },
+  { key: "licences", icon: "mdi:license" },
+  { key: "exchange", icon: "simple-icons:microsoftexchange" },
+  { key: "sharepoint", icon: "mdi:microsoft-sharepoint" },
+  { key: "onedrive", icon: "entypo-social:onedrive" },
+  { key: "teams", icon: "simple-icons:microsoftteams" },
+  { key: "securite", icon: "mdi:shield-check" }
+];
+
 export default function TenantDetailPage({
   onNavigate,
   tenantData
 }) {
   const locale = useAppLocale();
+  const copy = useMemo(() => getTenantDetailCopy(locale), [locale]);
   const configCopy = useMemo(() => getEnterpriseConfigModalsCopy(locale), [locale]);
-  const [detailData, setDetailData] = useState(() => {
-    return tenantData ? {
-      ...tenantData
-    } : null;
-  });
-  const [loading, setLoading] = useState(false);
+  const [detailData, setDetailData] = useState(() => tenantData ? { ...tenantData } : null);
+  const [loading] = useState(false);
   const [syncing, setSyncing] = useState(false);
   const [syncProgress, setSyncProgress] = useState(0);
-  const [syncStatus, setSyncStatus] = useState('');
+  const [syncStatus, setSyncStatus] = useState("");
   const [statistics, setStatistics] = useState(null);
   const [lastSync, setLastSync] = useState(null);
-  const [viewMode, setViewMode] = useState('dashboard');
+  const [viewMode, setViewMode] = useState("rapport");
   const [exchangeData, setExchangeData] = useState(null);
   const [teamsData, setTeamsData] = useState(null);
   const [onedriveData, setOnedriveData] = useState(null);
@@ -43,18 +56,16 @@ export default function TenantDetailPage({
   const [securityData, setSecurityData] = useState(null);
   const [connectionStatus, setConnectionStatus] = useState(null);
   const [mfaDetails, setMfaDetails] = useState([]);
+  const [selectedPeriod] = useState("D30");
+  const [deletingTenant, setDeletingTenant] = useState(false);
+  const [heroMenuOpen, setHeroMenuOpen] = useState(false);
   const currentClientIdRef = useRef(null);
   const abortControllerRef = useRef(null);
-  const [sortColumn, setSortColumn] = useState(null);
-  const [sortDirection, setSortDirection] = useState('asc');
-  const [emailActivityViewMode, setEmailActivityViewMode] = useState('day');
-  const [selectedPeriod, setSelectedPeriod] = useState('D30');
-  const [deletingTenant, setDeletingTenant] = useState(false);
+  const heroActionsMenuRef = useRef(null);
+
   useEffect(() => {
     if (tenantData?.clientId !== detailData?.clientId) {
-      const newDetailData = tenantData ? {
-        ...tenantData
-      } : null;
+      const newDetailData = tenantData ? { ...tenantData } : null;
       setDetailData(newDetailData);
       setStatistics(null);
       setExchangeData(null);
@@ -65,11 +76,7 @@ export default function TenantDetailPage({
       setConnectionStatus(null);
       setMfaDetails([]);
       setLastSync(null);
-      setViewMode('dashboard');
-      setSortColumn(null);
-      setSortDirection('asc');
-      setEmailActivityViewMode('day');
-      setSelectedPeriod('D30');
+      setViewMode("rapport");
       currentClientIdRef.current = newDetailData?.clientId || null;
       if (abortControllerRef.current) {
         abortControllerRef.current.abort();
@@ -77,124 +84,11 @@ export default function TenantDetailPage({
       abortControllerRef.current = new AbortController();
     }
   }, [tenantData?.clientId, detailData?.clientId]);
-  const handleSort = columnKey => {
-    if (sortColumn === columnKey) {
-      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
-    } else {
-      setSortColumn(columnKey);
-      setSortDirection('asc');
-    }
-  };
-  const getSortedUsers = usersList => {
-    if (!sortColumn) return usersList;
-    const sorted = [...usersList].sort((a, b) => {
-      let aValue, bValue;
-      switch (sortColumn) {
-        case 'nom':
-          aValue = (a.name || a.displayName || '').toLowerCase();
-          bValue = (b.name || b.displayName || '').toLowerCase();
-          break;
-        case 'email':
-          aValue = (a.email || a.userPrincipalName || '').toLowerCase();
-          bValue = (b.email || b.userPrincipalName || '').toLowerCase();
-          break;
-        case 'dateCreation':
-          aValue = a.createdDate ? new Date(a.createdDate).getTime() : 0;
-          bValue = b.createdDate ? new Date(b.createdDate).getTime() : 0;
-          break;
-        case 'derniereLogin':
-          aValue = a.lastLoginDate ? new Date(a.lastLoginDate).getTime() : 0;
-          bValue = b.lastLoginDate ? new Date(b.lastLoginDate).getTime() : 0;
-          break;
-        case 'statut':
-          const getStatusValue = user => {
-            if (user.accountEnabled === false) return 0;
-            const lastLogin = user.lastLoginDate ? new Date(user.lastLoginDate) : null;
-            const period90Days = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000);
-            const isInactive = !lastLogin || lastLogin < period90Days;
-            const period30Days = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
-            const isActive30 = lastLogin && lastLogin >= period30Days;
-            if (isActive30) return 3;
-            if (isInactive) return 1;
-            return 2;
-          };
-          aValue = getStatusValue(a);
-          bValue = getStatusValue(b);
-          break;
-        case 'licence':
-          aValue = (a.licenses || 'None').toLowerCase();
-          bValue = (b.licenses || 'None').toLowerCase();
-          break;
-        default:
-          return 0;
-      }
-      if (aValue < bValue) return sortDirection === 'asc' ? -1 : 1;
-      if (aValue > bValue) return sortDirection === 'asc' ? 1 : -1;
-      return 0;
-    });
-    return sorted;
-  };
-  const getSortIcon = columnKey => {
-    if (sortColumn !== columnKey) {
-      return <FaSort style={{
-        fontSize: '0.75rem',
-        opacity: 0.4,
-        marginLeft: '0.25rem'
-      }} />;
-    }
-    return sortDirection === 'asc' ? <FaSortUp style={{
-      fontSize: '0.75rem',
-      marginLeft: '0.25rem',
-      color: '#3b82f6'
-    }} /> : <FaSortDown style={{
-      fontSize: '0.75rem',
-      marginLeft: '0.25rem',
-      color: '#3b82f6'
-    }} />;
-  };
-  const exportUsersToCSV = () => {
-    if (!users || users.length === 0) {
-      toast.error('No users to export');
-      return;
-    }
-    const usersToExport = getSortedUsers(users);
-    const headers = ['Name', 'Email', 'Created on', 'Last sign-in', 'Status', 'Licenses'];
-    const rows = usersToExport.map(user => {
-      const lastLogin = user.lastLoginDate ? new Date(user.lastLoginDate) : null;
-      const createdDate = user.createdDate ? new Date(user.createdDate) : null;
-      const period90Days = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000);
-      const isInactive = !lastLogin || lastLogin < period90Days;
-      const period30Days = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
-      const isActive30 = lastLogin && lastLogin >= period30Days;
-      const statusLabel = user.accountEnabled === false ? 'Blocked' : isActive30 ? 'Active' : isInactive ? 'Inactive (>90d)' : 'Inactive';
-      return [user.name || user.displayName || '', user.email || user.userPrincipalName || '', createdDate ? createdDate.toLocaleDateString('en-GB') : '', lastLogin ? lastLogin.toLocaleDateString('en-GB') : 'Never', statusLabel, user.licenses || 'None'];
-    });
-    const csvContent = [headers.join(';'), ...rows.map(row => row.map(cell => {
-      const cellStr = String(cell || '');
-      if (cellStr.includes(';') || cellStr.includes('"') || cellStr.includes('\n')) {
-        return `"${cellStr.replace(/"/g, '""')}"`;
-      }
-      return cellStr;
-    }).join(';'))].join('\n');
-    const BOM = '\uFEFF';
-    const blob = new Blob([BOM + csvContent], {
-      type: 'text/csv;charset=utf-8;'
-    });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    const dateStr = new Date().toISOString().split('T')[0];
-    const clientName = detailData?.clientName || 'client';
-    link.download = `utilisateurs_${clientName}_${dateStr}.csv`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
-    toast.success(`CSV export successful: ${usersToExport.length} user(s) exported`);
-  };
+
   useEffect(() => {
     currentClientIdRef.current = detailData?.clientId || null;
   }, [detailData?.clientId]);
+
   useEffect(() => {
     const targetClientId = detailData?.clientId;
     if (targetClientId && targetClientId === tenantData?.clientId) {
@@ -203,18 +97,20 @@ export default function TenantDetailPage({
       }
     }
   }, [detailData?.clientId, tenantData?.clientId]);
+
   useEffect(() => {
     if (window.updateTabTitle && detailData?.clientName) {
       window.updateTabTitle("TenantDetail", {
         clientId: detailData.clientId,
         tenantId: detailData.tenantId
-      }, `${detailData.clientName} - Tenant Microsoft`);
+      }, interpolate(copy.tabTitle, { client: detailData.clientName }));
     }
-  }, [detailData]);
+  }, [detailData, copy.tabTitle]);
+
   useEffect(() => {
-    if (!detailData?.clientId) return;
+    if (!detailData?.clientId) return undefined;
     let cancelled = false;
-    getClientMfaDetails(detailData.clientId).then(result => {
+    getClientMfaDetails(detailData.clientId).then((result) => {
       if (!cancelled && result?.userMfaDetails) {
         setMfaDetails(result.userMfaDetails);
       }
@@ -225,6 +121,18 @@ export default function TenantDetailPage({
       cancelled = true;
     };
   }, [detailData?.clientId]);
+
+  useEffect(() => {
+    if (!heroMenuOpen) return undefined;
+    const onPointerDown = (event) => {
+      if (heroActionsMenuRef.current && !heroActionsMenuRef.current.contains(event.target)) {
+        setHeroMenuOpen(false);
+      }
+    };
+    document.addEventListener("pointerdown", onPointerDown);
+    return () => document.removeEventListener("pointerdown", onPointerDown);
+  }, [heroMenuOpen]);
+
   const loadStoredTenantData = async () => {
     if (!detailData?.clientId) return;
     const abortController = new AbortController();
@@ -232,7 +140,7 @@ export default function TenantDetailPage({
     const targetClientId = detailData.clientId;
     try {
       const response = await fetch(`${API_BASE_URL}/clients/${targetClientId}/o365`, {
-        credentials: 'include',
+        credentials: "include",
         signal: abortController.signal
       });
       if (response.ok) {
@@ -245,7 +153,7 @@ export default function TenantDetailPage({
           if (!targetTenantId) {
             try {
               const credResponse = await fetch(`${API_BASE_URL}/client-office365/${targetClientId}`, {
-                credentials: 'include',
+                credentials: "include",
                 signal: abortController.signal
               });
               if (currentClientIdRef.current !== targetClientId) {
@@ -255,7 +163,7 @@ export default function TenantDetailPage({
                 const credResult = await credResponse.json();
                 targetTenantId = credResult?.credentials?.tenantId || null;
                 if (targetTenantId && currentClientIdRef.current === targetClientId) {
-                  setDetailData(prev => {
+                  setDetailData((prev) => {
                     if (prev?.clientId !== targetClientId) {
                       return prev;
                     }
@@ -267,14 +175,14 @@ export default function TenantDetailPage({
                 }
               }
             } catch (credErr) {
-              if (credErr.name === 'AbortError') {
+              if (credErr.name === "AbortError") {
                 return;
               }
             }
           }
           let tenantRecord = null;
           if (targetTenantId) {
-            tenantRecord = result.data.find(t => t.data?.tenantId === targetTenantId || t.item_key === targetTenantId);
+            tenantRecord = result.data.find((item) => item.data?.tenantId === targetTenantId || item.item_key === targetTenantId);
           }
           if (!tenantRecord && result.data.length > 0) {
             tenantRecord = result.data[0];
@@ -330,7 +238,7 @@ export default function TenantDetailPage({
               }
               setConnectionStatus(tenantRecord.data.connectionStatus || null);
               if (!detailData.tenantId && tenantRecord.data.tenantId && currentClientIdRef.current === targetClientId) {
-                setDetailData(prev => {
+                setDetailData((prev) => {
                   if (prev?.clientId !== targetClientId) {
                     return prev;
                   }
@@ -346,7 +254,7 @@ export default function TenantDetailPage({
         }
       }
     } catch (error) {
-      if (error.name === 'AbortError') {
+      if (error.name === "AbortError") {
         return;
       }
     } finally {
@@ -355,53 +263,26 @@ export default function TenantDetailPage({
       }
     }
   };
+
   const licences = statistics?.licences || statistics?.licenses || [];
   const users = statistics?.users || [];
   const adoptionScore = statistics?.adoptionScore || null;
-  const licenseNameMapping = {
-    'ENTERPRISEPACK': 'Microsoft 365 E3',
-    'ENTERPRISEPREMIUM': 'Microsoft 365 E5',
-    'STANDARDWOFFPACK_FACULTY': 'Office 365 Education (Faculty)',
-    'STANDARDWOFFPACK_STUDENT': 'Office 365 Education (Students)',
-    'O365_BUSINESS': 'Microsoft 365 Business Basic',
-    'O365_BUSINESS_ESSENTIALS': 'Microsoft 365 Business Essentials',
-    'O365_BUSINESS_PREMIUM': 'Microsoft 365 Business Premium',
-    'EXCHANGESTANDARD': 'Exchange Online Plan 1',
-    'EXCHANGEENTERPRISE': 'Exchange Online Plan 2',
-    'SHAREPOINTSTANDARD': 'SharePoint Online Plan 1',
-    'SHAREPOINTENTERPRISE': 'SharePoint Online Plan 2',
-    'TEAMS1': 'Microsoft Teams (Essential)',
-    'FLOW_FREE': 'Power Automate (Free)'
-  };
-  const getLicenseDisplayName = licenseId => {
-    if (!licenseId) return 'Unknown license';
-    const normalizedId = licenseId.toUpperCase().trim();
-    if (licenseNameMapping[normalizedId]) {
-      return licenseNameMapping[normalizedId];
-    }
-    for (const [key, value] of Object.entries(licenseNameMapping)) {
-      if (normalizedId.includes(key) || key.includes(normalizedId)) {
-        return value;
-      }
-    }
-    const formatted = licenseId.replace(/_/g, ' ').replace(/-/g, ' ').split(' ').map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()).join(' ');
-    return formatted;
-  };
+
   const dashboardMetrics = useMemo(() => {
     if (!users || users.length === 0) return null;
     const now = new Date();
     const period30Days = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
     const period90Days = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000);
-    const activeUsers30 = users.filter(u => {
-      const lastLogin = u.lastLoginDate ? new Date(u.lastLoginDate) : null;
+    const activeUsers30 = users.filter((user) => {
+      const lastLogin = user.lastLoginDate ? new Date(user.lastLoginDate) : null;
       return lastLogin && lastLogin >= period30Days;
     }).length;
-    const activeUsers90 = users.filter(u => {
-      const lastLogin = u.lastLoginDate ? new Date(u.lastLoginDate) : null;
+    const activeUsers90 = users.filter((user) => {
+      const lastLogin = user.lastLoginDate ? new Date(user.lastLoginDate) : null;
       return lastLogin && lastLogin >= period90Days;
     }).length;
     const adoptionRate = users.length > 0 ? Math.round(activeUsers30 / users.length * 100) : 0;
-    const validLicenses = licences.filter(lic => {
+    const validLicenses = licences.filter((lic) => {
       const total = lic.total || 0;
       return total < 10000 && total > 0;
     });
@@ -416,9 +297,22 @@ export default function TenantDetailPage({
       usedLicenses
     };
   }, [users, licences]);
+
+  const report = useMemo(() => buildTenantReport({
+    users,
+    licences,
+    securityData,
+    mfaDetails,
+    exchangeData,
+    sharepointData,
+    onedriveData,
+    teamsData,
+    adoptionScore
+  }), [users, licences, securityData, mfaDetails, exchangeData, sharepointData, onedriveData, teamsData, adoptionScore]);
+
   const handleSync = async () => {
     if (!detailData?.clientId) {
-      toast.error('No client ID available for sync');
+      toast.error(copy.sync.noClient);
       return;
     }
     const targetClientId = detailData.clientId;
@@ -429,52 +323,50 @@ export default function TenantDetailPage({
     abortControllerRef.current = abortController;
     setSyncing(true);
     setSyncProgress(0);
-    setSyncStatus('Preparing...');
+    setSyncStatus(copy.sync.preparing);
     const progressInterval = setInterval(() => {
-      setSyncProgress(prev => {
+      setSyncProgress((prev) => {
         if (prev >= 90) return prev;
         return prev + 10;
       });
     }, 500);
     try {
       if (currentClientIdRef.current !== targetClientId) {
-        throw new Error('The client changed during sync');
+        throw new Error(copy.sync.error);
       }
-      if (typeof window !== 'undefined' && typeof window.__office365SyncTrigger === 'function') {
+      if (typeof window !== "undefined" && typeof window.__office365SyncTrigger === "function") {
         try {
           window.__office365SyncTrigger();
-        } catch (e) {
-          console.error('Error syncing via the O365 module:', e);
+        } catch (error) {
+          console.error("Error syncing via the O365 module:", error);
         }
       }
-      setSyncStatus('Syncing...');
+      setSyncStatus(copy.sync.running);
       setSyncProgress(50);
       const headers = {
-        'Content-Type': 'application/json'
+        "Content-Type": "application/json"
       };
       const endDate = new Date();
       let startDate = new Date();
       switch (selectedPeriod) {
-        case 'D7':
+        case "D7":
           startDate = new Date(endDate.getTime() - 7 * 24 * 60 * 60 * 1000);
           break;
-        case 'D30':
-          startDate = new Date(endDate.getTime() - 30 * 24 * 60 * 60 * 1000);
-          break;
-        case 'D90':
+        case "D90":
           startDate = new Date(endDate.getTime() - 90 * 24 * 60 * 60 * 1000);
           break;
+        case "D30":
         default:
           startDate = new Date(endDate.getTime() - 30 * 24 * 60 * 60 * 1000);
       }
       const syncResponse = await fetch(`${API_BASE_URL}/office365/sync-all?clientId=${targetClientId}&period=${selectedPeriod}&startDate=${startDate.toISOString()}&endDate=${endDate.toISOString()}`, {
-        method: 'GET',
+        method: "GET",
         headers,
-        credentials: 'include',
+        credentials: "include",
         signal: abortController.signal
       });
       if (currentClientIdRef.current !== targetClientId) {
-        throw new Error('The client changed during sync');
+        throw new Error(copy.sync.error);
       }
       const syncResult = await syncResponse.json().catch(() => ({}));
       if (!syncResponse.ok || !syncResult.success) {
@@ -487,47 +379,47 @@ export default function TenantDetailPage({
       try {
         const credResponse = await fetch(`${API_BASE_URL}/client-office365/${targetClientId}`, {
           headers,
-          credentials: 'include',
+          credentials: "include",
           signal: abortController.signal
         });
         if (currentClientIdRef.current !== targetClientId) {
-          throw new Error('The client changed during credential verification');
+          throw new Error(copy.sync.error);
         }
         if (credResponse.ok) {
           const credResult = await credResponse.json();
           expectedTenantId = credResult?.credentials?.tenantId || null;
         }
       } catch (credErr) {
-        if (credErr.name === 'AbortError') {
+        if (credErr.name === "AbortError") {
           return;
         }
       }
       if (expectedTenantId && syncResult.data?.tenantId && syncResult.data.tenantId !== expectedTenantId) {
         throw new Error(`Synced data does not match client ${targetClientId}. Expected TenantId: ${expectedTenantId}, received: ${syncResult.data.tenantId}`);
       }
-      setSyncStatus('Finalisation...');
+      setSyncStatus(copy.sync.done);
       setSyncProgress(100);
       if (syncResult.lastUpdate && currentClientIdRef.current === targetClientId) {
         setLastSync(syncResult.lastUpdate);
       }
       await loadStoredTenantData();
       if (currentClientIdRef.current === targetClientId) {
-        toast.success('Microsoft tenant data synced successfully');
+        toast.success(copy.sync.success);
       }
     } catch (error) {
-      if (error.name === 'AbortError') {
+      if (error.name === "AbortError") {
         return;
       }
-      console.error('Error during sync:', error);
+      console.error("Error during sync:", error);
       if (currentClientIdRef.current === targetClientId) {
-        toast.error(error.message || 'Error during sync');
+        toast.error(error.message || copy.sync.error);
       }
     } finally {
       clearInterval(progressInterval);
       if (abortControllerRef.current === abortController) {
         setTimeout(() => {
           setSyncProgress(0);
-          setSyncStatus('');
+          setSyncStatus("");
         }, 800);
         abortControllerRef.current = null;
       }
@@ -536,6 +428,7 @@ export default function TenantDetailPage({
       }
     }
   };
+
   const handleDeleteTenant = async () => {
     if (!detailData?.clientId || !onNavigate) return;
     const clientName = detailData.clientName || detailData.name || configCopy.confirm.deleteMicrosoftTenantFromList.fallbackClient;
@@ -545,12 +438,11 @@ export default function TenantDetailPage({
     if (!window.confirm(confirmMessage)) {
       return;
     }
+    setHeroMenuOpen(false);
     setDeletingTenant(true);
     try {
       await deleteClientOffice365Credentials(detailData.clientId);
-      const {
-        modules_monitoring
-      } = await fetchClientModules(detailData.clientId);
+      const { modules_monitoring } = await fetchClientModules(detailData.clientId);
       await updateClient(detailData.clientId, {
         modules_monitoring: {
           ...modules_monitoring,
@@ -558,335 +450,157 @@ export default function TenantDetailPage({
         },
         office365_data: null
       });
-      toast.success('Tenant removed from client');
-      onNavigate('Service', {
-        activeTab: 'microsoft',
+      toast.success(copy.delete.success);
+      onNavigate("Service", {
+        activeTab: "microsoft",
         refresh: Date.now()
       }, {
         closeCurrent: true
       });
     } catch (error) {
-      console.error('Error deleting tenant:', error);
-      toast.error(error.message || 'Error deleting the tenant');
+      console.error("Error deleting tenant:", error);
+      toast.error(error.message || copy.delete.error);
     } finally {
       setDeletingTenant(false);
     }
   };
+
+  const openEnterprise = () => {
+    const clientId = detailData?.clientId || tenantData?.clientId;
+    if (!clientId || !onNavigate) return;
+    onNavigate("ContratDetail", {
+      clientId,
+      name: detailData?.clientName || tenantData?.clientName
+    });
+  };
+
+  const dateLocale = locale === "en" ? "en-GB" : "fr-FR";
+  const tenantId = detailData?.tenantId || statistics?.tenantId;
+  const lastSyncLabel = lastSync
+    ? `${new Date(lastSync).toLocaleDateString(dateLocale)} ${new Date(lastSync).toLocaleTimeString(dateLocale, { hour: "2-digit", minute: "2-digit" })}`
+    : copy.hero.neverSynced;
+  const connectionOk = isConnectionOk(connectionStatus);
+  const organizationName = getConnectionOrganization(connectionStatus);
+  const connectionLabel = connectionOk == null
+    ? copy.hero.connectionUnknown
+    : connectionOk
+      ? (organizationName || copy.hero.connectionOk)
+      : copy.hero.connectionError;
+
   if (!detailData) {
-    return <div className={styles.detailPage}>
+    return <div className={`${enterpriseDetailStyles.contratDetailPage} ${enterpriseDetailStyles.enterpriseDetailPage} ${styles.detailPage}`}>
         <div className={styles.emptyState}>
           <Icon icon="mdi:alert-circle" className={styles.emptyIcon} />
-          <h2>No tenant data</h2>
-          <p>Please select a Microsoft tenant from the services page</p>
-          <button className={styles.backButton} onClick={() => onNavigate('Service', {
-          activeTab: 'microsoft'
-        })}>
-            <FaArrowLeft />
+          <h2>{copy.empty.title}</h2>
+          <p>{copy.empty.text}</p>
+          <button type="button" className={enterpriseDetailStyles.backBtn} onClick={() => onNavigate("Service", { activeTab: "microsoft" })}>
+            <Icon icon="mdi:arrow-left" />
+            {copy.empty.back}
           </button>
-          {tenantData?.clientId && <SmartTooltip as="span" content="Go to company details">
-              <button className={`${styles.headerActionButton} ${styles.headerActionButtonInactive}`} onClick={() => onNavigate('ContratDetail', {
-            clientId: tenantData?.clientId,
-            name: tenantData?.clientName
-          })}>
-                <Icon icon="mdi:building" className={styles.headerActionIcon} />
-              </button>
-            </SmartTooltip>}
         </div>
       </div>;
   }
-  const calculateStats = () => {
-    const totalUsers = users.length;
-    const activeUsers = users.filter(u => u.accountEnabled !== false).length;
-    const inactiveUsers = users.filter(u => u.accountEnabled === false).length;
-    const totalLicenses = licences.reduce((sum, lic) => sum + (lic.total || 0), 0);
-    const usedLicenses = licences.reduce((sum, lic) => sum + (lic.utilisees || 0), 0);
-    const domainSet = new Set();
-    users.forEach(u => {
-      const raw = (u.userPrincipalName || u.email || '').toString().trim();
-      const at = raw.indexOf('@');
-      if (at !== -1) {
-        const domain = raw.slice(at + 1).toLowerCase();
-        if (domain) {
-          domainSet.add(domain);
-        }
-      }
-    });
-    const domainCount = domainSet.size;
-    return {
-      totalUsers,
-      activeUsers,
-      inactiveUsers,
-      totalLicenses,
-      usedLicenses,
-      domainCount
-    };
-  };
-  const stats = calculateStats();
-  const formatLicenseRow = lic => {
-    const total = lic.total || 0;
-    const used = lic.utilisees || lic.used || 0;
-    const available = Math.max(0, total - used);
-    const usageRate = total > 0 ? Math.round(used / total * 100) : 0;
-    let status = 'normal';
-    let statusText = 'Normal';
-    let statusColor = '#10b981';
-    if (available >= 3) {
-      status = 'warning';
-      statusText = 'Warning';
-      statusColor = '#f59e0b';
-    } else if (usageRate >= 90) {
-      status = 'optimal';
-      statusText = 'Optimal';
-      statusColor = '#10b981';
-    } else if (usageRate < 50 && total > 0) {
-      status = 'critical';
-      statusText = 'Gaspillage';
-      statusColor = '#ef4444';
-    }
-    return {
-      total,
-      used,
-      available,
-      usageRate,
-      status,
-      statusText,
-      statusColor
-    };
-  };
-  const TABS = [{
-    key: 'dashboard',
-    icon: 'mdi:view-dashboard',
-    label: 'Dashboard'
-  }, {
-    key: 'licences',
-    icon: 'mdi:license',
-    label: 'Licenses'
-  }, {
-    key: 'utilisateurs',
-    icon: 'mdi:account-multiple',
-    label: 'Users'
-  }, {
-    key: 'exchange',
-    icon: 'simple-icons:microsoftexchange',
-    label: 'Exchange'
-  }, {
-    key: 'teams',
-    icon: 'simple-icons:microsoftteams',
-    label: 'Teams'
-  }, {
-    key: 'onedrive',
-    icon: 'entypo-social:onedrive',
-    label: 'OneDrive'
-  }, {
-    key: 'sharepoint',
-    icon: 'mdi:microsoft-sharepoint',
-    label: 'SharePoint'
-  }, {
-    key: 'securite',
-    icon: 'mdi:shield-check',
-    label: 'Security'
-  }];
-  return <div className={styles.detailPage}>
-      {}
-      <div className={styles.header}>
-        <div className={styles.headerLeft}>
-          <button className={styles.backButton} onClick={() => onNavigate('Service', {
-          activeTab: 'microsoft'
-        })}>
-            <FaArrowLeft />
+
+  return <div className={`${enterpriseDetailStyles.contratDetailPage} ${enterpriseDetailStyles.enterpriseDetailPage} ${styles.detailPage}`}>
+      <header className={enterpriseDetailStyles.pageHero}>
+        <div className={`${enterpriseDetailStyles.heroRow} ${styles.heroRow}`}>
+          <button type="button" className={enterpriseDetailStyles.backBtn} onClick={openEnterprise}>
+            <Icon icon="mdi:arrow-left" />
+            {copy.hero.backEnterprise}
           </button>
-          {onNavigate && detailData.clientId && <SmartTooltip as="span" content="Go to company details">
-              <button className={`${styles.headerActionButton} ${styles.headerActionButtonInactive}`} onClick={() => onNavigate('ContratDetail', {
-            clientId: detailData.clientId,
-            name: detailData.clientName
-          })}>
-                <Icon icon="mdi:building" className={styles.headerActionIcon} />
-              </button>
-            </SmartTooltip>}
-          <div className={styles.headerTitle}>
-            <Icon icon="mdi:microsoft-azure" className={styles.headerLogo} style={{
-            fontSize: '1.75rem',
-            color: '#0078d4'
-          }} />
-            <div className={styles.headerTitleBlock}>
-              <h1>
-                {detailData.clientName || detailData.nom || detailData.name || 'Tenant Microsoft'}
+          <div className={enterpriseDetailStyles.heroMain}>
+            <div className={`${enterpriseDetailStyles.heroAvatar} ${styles.heroMsAvatar}`} aria-hidden>
+              <Icon icon="mdi:microsoft" />
+            </div>
+            <div className={enterpriseDetailStyles.heroText}>
+              <p className={enterpriseDetailStyles.heroEyebrow}>{copy.hero.eyebrow}</p>
+              <h1 className={enterpriseDetailStyles.heroTitle}>
+                {detailData.clientName || detailData.nom || detailData.name || copy.hero.eyebrow}
               </h1>
-              {(detailData.tenantId || statistics?.tenantId) && <div className={styles.headerMeta}>
-                  <span className={styles.headerMetaItem}>
-                    Id tenant: {detailData.tenantId || statistics?.tenantId || '-'}
-                  </span>
-                </div>}
+              <div className={enterpriseDetailStyles.heroMeta} aria-label={copy.hero.metaAria}>
+                {tenantId ? <span className={`${enterpriseDetailStyles.heroMetaItem} ${styles.heroTenantId}`} title={tenantId}>
+                    {copy.hero.tenantId}: {tenantId}
+                  </span> : null}
+                <span className={enterpriseDetailStyles.heroMetaItem}>
+                  {copy.hero.lastSync}: {lastSyncLabel}
+                </span>
+                <span className={`${enterpriseDetailStyles.heroMetaItem} ${connectionOk === false ? styles.heroStatusError : connectionOk ? styles.heroStatusOk : ""}`}>
+                  {connectionLabel}
+                </span>
+              </div>
             </div>
           </div>
+          <div className={enterpriseDetailStyles.heroActions} ref={heroActionsMenuRef}>
+            {syncing ? <div className={styles.syncProgress}>
+                <div className={styles.syncProgressBar}>
+                  <div className={styles.syncProgressFill} style={{ width: `${syncProgress}%` }} />
+                </div>
+                <span className={styles.syncProgressText}>{syncStatus}</span>
+              </div> : null}
+            <SmartTooltip content={syncing ? copy.hero.syncing : copy.hero.sync}>
+              <button type="button" className={enterpriseDetailStyles.heroMenuBtn} onClick={handleSync} disabled={syncing || loading} aria-label={copy.hero.sync}>
+                <FaSync className={syncing ? styles.spinning : ""} />
+              </button>
+            </SmartTooltip>
+            <SmartTooltip content={copy.hero.actions}>
+              <button type="button" className={enterpriseDetailStyles.heroMenuBtn} onClick={() => setHeroMenuOpen((open) => !open)} aria-expanded={heroMenuOpen} aria-haspopup="menu" aria-label={copy.hero.actions}>
+                <Icon icon="mdi:dots-horizontal" />
+              </button>
+            </SmartTooltip>
+            {heroMenuOpen ? <div className={enterpriseDetailStyles.heroClientMenu} role="menu">
+                <button type="button" className={`${enterpriseDetailStyles.heroMenuItem} ${enterpriseDetailStyles.heroMenuItemDanger}`} role="menuitem" onClick={handleDeleteTenant} disabled={deletingTenant || loading}>
+                  <Icon icon={deletingTenant ? "mdi:loading" : "mdi:delete-outline"} className={deletingTenant ? styles.spinning : undefined} />
+                  <span>{copy.hero.delete}</span>
+                </button>
+              </div> : null}
+          </div>
         </div>
-        <div className={styles.headerTabsContainer}>
-          {TABS.map(tab => <button key={tab.key} type="button" className={`${styles.headerTabButton} ${viewMode === tab.key ? styles.headerTabButtonActive : ''}`} onClick={() => setViewMode(tab.key)}>
-              <Icon icon={tab.icon} style={{
-            fontSize: '1rem'
-          }} />
-              {tab.label}
+      </header>
+
+      <div className={styles.shell}>
+        <nav className={styles.tabBar} aria-label={copy.tabs.aria}>
+          {TABS.map((tab) => <button key={tab.key} type="button" className={`${styles.tabBtn} ${viewMode === tab.key ? styles.tabBtnActive : ""}`} onClick={() => setViewMode(tab.key)}>
+              <Icon icon={tab.icon} />
+              {copy.tabs[tab.key]}
             </button>)}
+        </nav>
+
+        <div className={styles.mainContent} key={viewMode}>
+          {syncing ? <div className={styles.syncSkeleton}>
+              <div className={styles.skeletonStatsCards}>
+                {[1, 2, 3].map((item) => <div key={item} className={styles.skeletonStatCard}>
+                    <div className={`${styles.skeletonShimmer} ${styles.skeletonStatCardIcon}`} />
+                    <div className={styles.skeletonStatCardContent}>
+                      <div className={`${styles.skeletonShimmer} ${styles.skeletonStatCardValue}`} />
+                      <div className={`${styles.skeletonShimmer} ${styles.skeletonStatCardLabel}`} />
+                    </div>
+                  </div>)}
+              </div>
+              <div className={`${styles.skeletonShimmer} ${styles.skeletonTableTitle}`} />
+              <div className={styles.skeletonTable}>
+                <div className={styles.skeletonTableHeader}>
+                  {[1, 2, 3, 4, 5].map((item) => <div key={item} className={`${styles.skeletonShimmer} ${styles.skeletonTableHeaderCell}`} />)}
+                </div>
+                {[1, 2, 3, 4, 5, 6, 7, 8].map((row) => <div key={row} className={styles.skeletonTableRow}>
+                    {[1, 2, 3, 4, 5].map((item) => <div key={item} className={`${styles.skeletonShimmer} ${styles.skeletonTableCell}`} />)}
+                  </div>)}
+              </div>
+            </div> : null}
+
+          {loading && !syncing ? <div className={styles.loadingState}>
+              <Icon icon="mdi:loading" className={styles.loadingSpinner} />
+              <p>{copy.loading}</p>
+            </div> : null}
+
+          {!syncing && !loading && viewMode === "rapport" ? <TenantReportOverview report={report} copy={copy} onOpenTab={setViewMode} /> : null}
+          {!syncing && !loading && viewMode === "licences" ? <LicensesTab licences={licences} dashboardMetrics={dashboardMetrics} theme="light" getLicenseDisplayName={getLicenseDisplayName} /> : null}
+          {!syncing && !loading && viewMode === "utilisateurs" ? <UsersTab users={users} dashboardMetrics={dashboardMetrics} detailData={detailData} mfaDetails={mfaDetails} theme="light" /> : null}
+          {!syncing && !loading && viewMode === "exchange" ? <ExchangeTab exchangeData={exchangeData} theme="light" /> : null}
+          {!syncing && !loading && viewMode === "teams" ? <TeamsTab teamsData={teamsData} theme="light" /> : null}
+          {!syncing && !loading && viewMode === "onedrive" ? <OneDriveTab onedriveData={onedriveData} theme="light" /> : null}
+          {!syncing && !loading && viewMode === "sharepoint" ? <SharePointTab sharepointData={sharepointData} theme="light" /> : null}
+          {!syncing && !loading && viewMode === "securite" ? <SecuriteTab securityData={securityData} users={users} mfaDetails={mfaDetails} clientId={detailData?.clientId} theme="light" /> : null}
         </div>
-        <div className={styles.headerRight}>
-          <div className={styles.headerActions}>
-            <div className={styles.syncInfo}>
-              {lastSync && <span className={styles.lastSyncText}>
-                  Updated: {new Date(lastSync).toLocaleDateString('en-GB')} at {new Date(lastSync).toLocaleTimeString('en-GB', {
-                hour: '2-digit',
-                minute: '2-digit'
-              })}
-                </span>}
-              {syncing && <div className={styles.syncProgress}>
-                  <div className={styles.syncProgressBar}>
-                    <div className={styles.syncProgressFill} style={{
-                  width: `${syncProgress}%`
-                }}></div>
-                  </div>
-                  <span className={styles.syncProgressText}>{syncStatus}</span>
-                </div>}
-            </div>
-            <SmartTooltip as="span" content="Sync data">
-              <button type="button" className={styles.syncButton} onClick={handleSync} disabled={syncing || loading}>
-                <FaSync className={syncing ? styles.spinning : ''} />
-              </button>
-            </SmartTooltip>
-            <SmartTooltip as="span" content="Remove tenant from client">
-              <button type="button" className={styles.deleteTenantButton} onClick={handleDeleteTenant} disabled={deletingTenant || loading}>
-                <Icon icon={deletingTenant ? 'mdi:loading' : 'mdi:delete-outline'} className={deletingTenant ? styles.spinning : ''} />
-              </button>
-            </SmartTooltip>
-          </div>
-        </div>
-      </div>
-
-      {}
-      <div className={styles.content} key={viewMode}>
-        {syncing && <div className={styles.syncSkeleton}>
-            <div className={styles.skeletonStatsCards}>
-              {[1, 2, 3].map(i => <div key={i} className={styles.skeletonStatCard}>
-                  <div className={`${styles.skeletonShimmer} ${styles.skeletonStatCardIcon}`} />
-                  <div className={styles.skeletonStatCardContent}>
-                    <div className={`${styles.skeletonShimmer} ${styles.skeletonStatCardValue}`} />
-                    <div className={`${styles.skeletonShimmer} ${styles.skeletonStatCardLabel}`} />
-                  </div>
-                </div>)}
-            </div>
-            <div className={`${styles.skeletonShimmer} ${styles.skeletonTableTitle}`} />
-            <div className={styles.skeletonTable}>
-              <div className={styles.skeletonTableHeader}>
-                {[1, 2, 3, 4, 5].map(j => <div key={j} className={`${styles.skeletonShimmer} ${styles.skeletonTableHeaderCell}`} />)}
-              </div>
-              {[1, 2, 3, 4, 5, 6, 7, 8].map(row => <div key={row} className={styles.skeletonTableRow}>
-                  {[1, 2, 3, 4, 5].map(j => <div key={j} className={`${styles.skeletonShimmer} ${styles.skeletonTableCell}`} />)}
-                </div>)}
-            </div>
-          </div>}
-
-        {!syncing && viewMode === 'dashboard' && <section className={styles.kpiSection}>
-            <h2 className={styles.sectionTitle}>Indicateurs</h2>
-            <div className={styles.statsCards}>
-              <div className={styles.statCard}>
-                <div className={styles.statCardIcon} style={{
-              color: '#15D1A0'
-            }}>
-                  <Icon icon="mdi:account-multiple" />
-                </div>
-                <div className={styles.statCardContent}>
-                  <div className={styles.statCardValue}>{stats.totalUsers}</div>
-                  <div className={styles.statCardLabel}>Users</div>
-                </div>
-              </div>
-              <div className={styles.statCard}>
-                <div className={styles.statCardIcon} style={{
-              color: '#10b981'
-            }}>
-                  <Icon icon="mdi:check-circle" />
-                </div>
-                <div className={styles.statCardContent}>
-                  <div className={styles.statCardValue} style={{
-                color: '#10b981'
-              }}>{stats.activeUsers}</div>
-                  <div className={styles.statCardLabel}>Active</div>
-                </div>
-              </div>
-              <div className={styles.statCard}>
-                <div className={styles.statCardIcon} style={{
-              color: '#ef4444'
-            }}>
-                  <Icon icon="mdi:account-off" />
-                </div>
-                <div className={styles.statCardContent}>
-                  <div className={styles.statCardValue} style={{
-                color: '#ef4444'
-              }}>{stats.inactiveUsers}</div>
-                  <div className={styles.statCardLabel}>Inactive</div>
-                </div>
-              </div>
-            </div>
-            <div className={styles.statsCards} style={{
-          marginTop: '1rem'
-        }}>
-              <div className={styles.statCard}>
-                <div className={styles.statCardIcon} style={{
-              color: 'var(--text-muted)'
-            }}>
-                  <Icon icon="mdi:license" />
-                </div>
-                <div className={styles.statCardContent}>
-                  <div className={styles.statCardValue}>{stats.totalLicenses}</div>
-                  <div className={styles.statCardLabel}>Total licenses</div>
-                </div>
-              </div>
-              <div className={styles.statCard}>
-                <div className={styles.statCardIcon} style={{
-              color: '#f59e0b'
-            }}>
-                  <Icon icon="mdi:license-check" />
-                </div>
-                <div className={styles.statCardContent}>
-                  <div className={styles.statCardValue} style={{
-                color: '#f59e0b'
-              }}>{stats.usedLicenses}</div>
-                  <div className={styles.statCardLabel}>Licenses used</div>
-                </div>
-              </div>
-              <div className={styles.statCard}>
-                <div className={styles.statCardIcon} style={{
-              color: '#3b82f6'
-            }}>
-                  <Icon icon="mdi:domain" />
-                </div>
-                <div className={styles.statCardContent}>
-                  <div className={styles.statCardValue} style={{
-                color: '#3b82f6'
-              }}>{stats.domainCount}</div>
-                  <div className={styles.statCardLabel}>Domains (users)</div>
-                </div>
-              </div>
-            </div>
-          </section>}
-        {loading ? <div className={styles.loadingState}>
-            <Icon icon="mdi:loading" className={styles.loadingSpinner} />
-            <p>Loading tenant details...</p>
-          </div> : <>
-            {}
-            {viewMode === 'dashboard' && !syncing && <DashboardTab detailData={detailData} dashboardMetrics={dashboardMetrics} adoptionScore={adoptionScore} tenantId={statistics?.tenantId || detailData?.tenantId} securityData={securityData} users={users} styles={styles} theme="dark" />}
-
-            {viewMode === 'licences' && !syncing && <LicensesTab licences={licences} dashboardMetrics={dashboardMetrics} styles={styles} theme="dark" getLicenseDisplayName={getLicenseDisplayName} />}
-
-            {viewMode === 'utilisateurs' && !syncing && <UsersTab users={users} dashboardMetrics={dashboardMetrics} detailData={detailData} mfaDetails={mfaDetails} theme="dark" />}
-
-            {viewMode === 'exchange' && !syncing && <ExchangeTab exchangeData={exchangeData} theme="dark" />}
-
-            {viewMode === 'teams' && !syncing && <TeamsTab teamsData={teamsData} theme="dark" />}
-
-            {viewMode === 'onedrive' && !syncing && <OneDriveTab onedriveData={onedriveData} theme="dark" />}
-
-            {viewMode === 'sharepoint' && !syncing && <SharePointTab sharepointData={sharepointData} theme="dark" />}
-
-            {viewMode === 'securite' && !syncing && <SecuriteTab securityData={securityData} users={users} mfaDetails={mfaDetails} clientId={detailData?.clientId} theme="dark" />}
-          </>}
       </div>
     </div>;
 }

@@ -1,14 +1,309 @@
 
-
 .detailPage {
+  --bg-primary: var(--msp-bg);
+  --bg-secondary: var(--msp-surface);
+  --bg-tertiary: var(--msp-surface-2);
+  --text-primary: var(--msp-text);
+  --text-secondary: var(--msp-text);
+  --text-muted: var(--msp-muted);
+  --border-primary: var(--msp-border);
+  --border-secondary: var(--msp-border-light);
+  --accent-primary: var(--msp-accent);
+  --tenant-ink: var(--msp-text);
+  --tenant-muted: var(--msp-muted);
+  --tenant-line: var(--msp-border);
+  --tenant-panel: var(--msp-surface);
+  --tenant-track: var(--msp-surface-3);
+
   height: 100%;
   min-height: 0;
   overflow-y: auto;
   overflow-x: hidden;
   position: relative;
-  background-color: var(--bg-primary, #0f0f23);
-  color: var(--text-primary, #f9fafb);
+  z-index: 1;
+  background-color: var(--msp-bg);
+  color: var(--msp-text);
   box-sizing: border-box;
+}
+
+.heroRow {
+  max-width: none;
+  width: 100%;
+  margin: 0;
+}
+
+.heroMsAvatar {
+  color: #0078d4;
+  background: linear-gradient(145deg, #edf4fb 0%, #dceaf8 100%);
+  border-color: #0078d4;
+  font-size: 1.55rem;
+}
+
+.heroStatusOk {
+  color: #15803d;
+}
+
+.heroStatusError {
+  color: #dc2626;
+}
+
+.heroTenantId {
+  max-width: min(28rem, 100%);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.shell {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  width: 100%;
+  margin: 0;
+  padding: 1rem 1.25rem 2rem;
+  gap: 0.75rem;
+  box-sizing: border-box;
+}
+
+.tabBar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+  padding: 0.28rem;
+  border-radius: var(--msp-radius);
+  background: var(--msp-surface);
+  border: 1px solid var(--msp-border);
+  box-shadow: var(--msp-shadow);
+}
+
+.tabBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.42rem 0.75rem;
+  border-radius: var(--msp-radius-sm);
+  border: none;
+  background: transparent;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--msp-muted);
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+
+.tabBtn:hover {
+  background: var(--msp-surface-2);
+  color: var(--msp-text);
+}
+
+.tabBtnActive {
+  background: var(--msp-accent);
+  color: #fff;
+}
+
+.mainContent {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  min-width: 0;
+  width: 100%;
+}
+
+.report {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.reportIntro {
+  background: var(--msp-surface);
+  border: 1px solid var(--msp-border);
+  border-radius: var(--msp-radius);
+  box-shadow: var(--msp-shadow);
+  padding: 1.1rem 1.2rem 1.2rem;
+}
+
+.reportIntroHead {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.reportTitle {
+  margin: 0;
+  font-size: 1.15rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--msp-text);
+}
+
+.reportSubtitle {
+  margin: 0.25rem 0 0;
+  font-size: 0.82rem;
+  color: var(--msp-muted);
+}
+
+.reportKpis {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 0.65rem;
+}
+
+.reportKpi {
+  padding: 0.75rem 0.85rem;
+  border-radius: var(--msp-radius-sm);
+  background: var(--msp-surface-2);
+  border: 1px solid var(--msp-border);
+}
+
+.reportKpiLabel {
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--msp-muted);
+  margin-bottom: 0.35rem;
+}
+
+.reportKpiValue {
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: var(--msp-text);
+  line-height: 1.2;
+}
+
+.reportGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 0.75rem;
+}
+
+.reportCard {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+  text-align: left;
+  padding: 1rem 1.05rem;
+  border-radius: var(--msp-radius);
+  background: var(--msp-surface);
+  border: 1px solid var(--msp-border);
+  box-shadow: var(--msp-shadow);
+  color: inherit;
+  font: inherit;
+}
+
+.reportCardClickable {
+  cursor: pointer;
+  transition: border-color 0.15s, transform 0.15s;
+}
+
+.reportCardClickable:hover {
+  border-color: var(--msp-accent);
+  transform: translateY(-1px);
+}
+
+.reportCardHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.reportCardTitleWrap {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  min-width: 0;
+}
+
+.reportCardIcon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 9px;
+  background: var(--msp-accent-soft);
+  color: var(--msp-accent);
+  font-size: 1.05rem;
+  flex-shrink: 0;
+}
+
+.reportCardTitle {
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--msp-text);
+}
+
+.reportMetrics {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.55rem 0.75rem;
+}
+
+.reportMetricLabel {
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: var(--msp-muted);
+}
+
+.reportMetricValue {
+  margin-top: 0.15rem;
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--msp-text);
+}
+
+.reportFindings {
+  margin: 0;
+  padding-left: 1.05rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  font-size: 0.8rem;
+  color: var(--msp-muted);
+  line-height: 1.35;
+}
+
+.reportBadge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.18rem 0.5rem;
+  border-radius: 999px;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.reportBadge_ok {
+  background: #ecfdf3;
+  color: #15803d;
+}
+
+.reportBadge_warning {
+  background: #fff7ed;
+  color: #c2410c;
+}
+
+.reportBadge_critical {
+  background: #fef2f2;
+  color: #dc2626;
+}
+
+.reportBadge_unsynced {
+  background: var(--msp-surface-2);
+  color: var(--msp-muted);
+  border: 1px solid var(--msp-border);
 }
 
 .content {
@@ -70,8 +365,8 @@
 }
 
 .backButton:hover {
-  background-color: #13BA8E;
-  border-color: #13BA8E;
+  background-color: var(--msp-accent);
+  border-color: var(--msp-accent);
   color: #ffffff;
 }
 
@@ -101,8 +396,8 @@
 }
 
 .headerActionButtonInactive:hover {
-  background-color: #15D1A0;
-  border-color: #15D1A0;
+  background-color: var(--msp-accent);
+  border-color: var(--msp-accent);
   color: #0f172a;
 }
 
@@ -184,7 +479,7 @@
 }
 
 .headerTabButtonActive {
-  color: #15D1A0;
+  color: var(--msp-accent);
   background-color: rgba(21, 209, 160, 0.1);
   border: 1px solid rgba(21, 209, 160, 0.3);
 }
@@ -227,7 +522,7 @@
 
 .syncProgressFill {
   height: 100%;
-  background: #15D1A0;
+  background: var(--msp-accent);
   transition: width 0.3s ease;
 }
 
@@ -252,8 +547,8 @@
 }
 
 .syncButton:hover:not(:disabled) {
-  background-color: #15D1A0;
-  border-color: #15D1A0;
+  background-color: var(--msp-accent);
+  border-color: var(--msp-accent);
   color: #0f172a;
 }
 
@@ -311,7 +606,7 @@
 }
 
 .periodSelect:focus {
-  border-color: #15D1A0;
+  border-color: var(--msp-accent);
 }
 
 
@@ -323,9 +618,9 @@
   margin: 0 0 0.75rem 0;
   font-size: 0.95rem;
   font-weight: 600;
-  color: var(--text-primary, #f9fafb);
+  color: var(--msp-text);
   padding-bottom: 0.75rem;
-  border-bottom: 3px solid #0078d4; 
+  border-bottom: 2px solid var(--msp-accent);
 }
 
 .statsCards {
@@ -357,9 +652,10 @@
   align-items: center;
   gap: 0.75rem;
   padding: 0.75rem 1rem;
-  background-color: var(--bg-secondary, #1a1a2e);
-  border: 1px solid var(--border-primary, #2a2a4a);
-  border-radius: 0.5rem;
+  background-color: var(--msp-surface);
+  border: 1px solid var(--msp-border);
+  border-radius: var(--msp-radius-sm);
+  box-shadow: var(--msp-shadow);
   transition: all 0.2s;
   cursor: default;
   text-align: left;
@@ -381,8 +677,8 @@
 }
 
 .statCardActive {
-  border-color: #15D1A0;
-  box-shadow: 0 0 0 1px #15D1A0;
+  border-color: var(--msp-accent);
+  box-shadow: 0 0 0 1px var(--msp-accent);
 }
 
 .statCardIcon {
@@ -515,9 +811,10 @@
 .licensesTableContainer {
   overflow-x: auto;
   margin-top: 1rem;
-  border-radius: 0.5rem;
-  border: 1px solid var(--border-primary, #2a2a4a);
-  background-color: var(--bg-secondary, #1a1a2e);
+  border-radius: var(--msp-radius-sm);
+  border: 1px solid var(--msp-border);
+  background-color: var(--msp-surface);
+  box-shadow: var(--msp-shadow);
 }
 
 .licensesTable {
@@ -598,7 +895,7 @@
 .progressBarFill {
   height: 100%;
   border-radius: 4px;
-  background: #15d1a0;
+  background: var(--msp-accent);
   transition: width 0.3s ease;
   position: absolute;
   top: 0;
@@ -629,10 +926,11 @@
 .noDataMessage {
   padding: 2rem;
   text-align: center;
-  color: var(--text-muted, #9ca3af);
-  background-color: var(--bg-secondary, #1a1a2e);
-  border-radius: 0.5rem;
-  border: 1px solid var(--border-primary, #2a2a4a);
+  color: var(--msp-muted);
+  background-color: var(--msp-surface);
+  border-radius: var(--msp-radius-sm);
+  border: 1px solid var(--msp-border);
+  box-shadow: var(--msp-shadow);
 }
 
 .noDataMessage p {
@@ -668,8 +966,8 @@
 }
 
 .paginationButton:hover:not(:disabled) {
-  background-color: #15D1A0;
-  border-color: #15D1A0;
+  background-color: var(--msp-accent);
+  border-color: var(--msp-accent);
   color: white;
 }
 
@@ -706,6 +1004,34 @@
 }
 
 
+.mutedHint {
+  font-size: 0.875rem;
+  color: var(--msp-muted);
+  margin-top: 0.5rem;
+}
+
+.expiringLicensesBox {
+  margin-top: 1rem;
+  padding: 1rem;
+  border-radius: var(--msp-radius-sm);
+  background: #fef2f2;
+  border: 1px solid #ef4444;
+}
+
+.expiringLicensesBox h3 {
+  margin: 0 0 0.5rem 0;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #dc2626;
+}
+
+.expiringLicensesBox ul {
+  margin: 0;
+  padding-left: 1.5rem;
+  color: #dc2626;
+  font-size: 0.85rem;
+}
+
 .loadingState,
 .emptyState {
   display: flex;
@@ -714,16 +1040,17 @@
   justify-content: center;
   padding: 3rem 2rem;
   text-align: center;
-  color: var(--text-muted, #9ca3af);
-  background-color: var(--bg-secondary, #1a1a2e);
-  border-radius: 0.5rem;
-  border: 1px solid var(--border-primary, #2a2a4a);
+  color: var(--msp-muted);
+  background-color: var(--msp-surface);
+  border-radius: var(--msp-radius);
+  border: 1px solid var(--msp-border);
+  box-shadow: var(--msp-shadow);
 }
 
 .loadingSpinner,
 .emptyIcon {
   font-size: 2.5rem;
-  color: #15D1A0;
+  color: var(--msp-accent);
   margin-bottom: 1rem;
 }
 
@@ -765,8 +1092,8 @@
 }
 
 .companyButton:hover {
-  background-color: #15D1A0;
-  border-color: #15D1A0;
+  background-color: var(--msp-accent);
+  border-color: var(--msp-accent);
   color: #0f172a;
 }
 
@@ -837,7 +1164,7 @@
 
 .serviceAccountsSearchInput:focus {
   outline: none;
-  border-color: var(--accent-primary, #13BA8E);
+  border-color: var(--accent-primary, var(--msp-accent));
 }
 
 .serviceAccountsSearchClearButton {
@@ -878,7 +1205,7 @@
 }
 
 .serviceAccountsSwitchBtn:focus-visible .serviceAccountsSwitchTrack {
-  box-shadow: 0 0 0 2px var(--bg-primary), 0 0 0 4px #15D1A0;
+  box-shadow: 0 0 0 2px var(--bg-primary), 0 0 0 4px var(--msp-accent);
 }
 
 .serviceAccountsSwitchLabel {
@@ -903,8 +1230,8 @@
 }
 
 .serviceAccountsSwitchBtnOn .serviceAccountsSwitchTrack {
-  background-color: #15D1A0;
-  border-color: #15D1A0;
+  background-color: var(--msp-accent);
+  border-color: var(--msp-accent);
 }
 
 .serviceAccountsSwitchThumb {
@@ -966,7 +1293,7 @@
 }
 
 .metricItem:hover {
-  border-color: #15D1A0;
+  border-color: var(--msp-accent);
 }
 
 .metricLabel {
@@ -1181,4 +1508,47 @@
   .skeletonTableRow {
     grid-template-columns: 1fr 1fr 1fr;
   }
+
+  .reportKpis,
+  .reportGrid {
+    grid-template-columns: 1fr;
+  }
+}
+
+:global(html.dark) .heroMsAvatar {
+  background: linear-gradient(145deg, #16324f 0%, #0f243b 100%);
+  color: #7eb6ea;
+  border-color: #4a8fd4;
+}
+
+:global(html.dark) .heroStatusOk {
+  color: #86efac;
+}
+
+:global(html.dark) .heroStatusError {
+  color: #fca5a5;
+}
+
+:global(html.dark) .reportBadge_ok {
+  background: rgba(22, 163, 74, 0.2);
+  color: #86efac;
+}
+
+:global(html.dark) .reportBadge_warning {
+  background: rgba(194, 65, 12, 0.22);
+  color: #fdba74;
+}
+
+:global(html.dark) .reportBadge_critical {
+  background: rgba(220, 38, 38, 0.22);
+  color: #fca5a5;
+}
+
+:global(html.dark) .expiringLicensesBox {
+  background: rgba(127, 29, 29, 0.35);
+}
+
+:global(html.dark) .expiringLicensesBox h3,
+:global(html.dark) .expiringLicensesBox ul {
+  color: #fca5a5;
 }

@@ -9,11 +9,7 @@ export default function OneDriveTab({
         <h2 className={styles.sectionTitle}>OneDrive</h2>
         <div className={styles.noDataMessage}>
           <p>No OneDrive data available.</p>
-          <p style={{
-          fontSize: '0.875rem',
-          color: theme === 'dark' ? '#9ca3af' : '#6b7280',
-          marginTop: '0.5rem'
-        }}>
+          <p className={styles.mutedHint}>
             OneDrive data is not present in the snapshot. Please run a <strong>full sync</strong> using the sync button to load and save this data.
           </p>
         </div>
