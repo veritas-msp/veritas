@@ -7,7 +7,7 @@ import { loadSlaSettings } from '../../utils/slaSettingsStore.js';
 import { fetchMonitorableEquipmentStats } from '../../utils/monitorableEquipmentStats.js';
 import { getEditionPayload, isCommunity } from '../../utils/edition.js';
 import { fetchAnalyticsDashboard } from '../../services/dashboardAnalyticsService.js';
-import { buildKpiReportBundle, sendKpiReportEmail, listKpiReportSchedules, createKpiReportSchedule, updateKpiReportSchedule, deleteKpiReportSchedule } from '../../services/kpiReportSchedules.js';
+import { buildKpiReportBundle, sendKpiReportEmail, listKpiReportSchedules, createKpiReportSchedule, updateKpiReportSchedule, deleteKpiReportSchedule, testKpiReportSchedule } from '../../services/kpiReportSchedules.js';
 import { isSalesTicket } from '../../services/supportCredits.js';
 const router = express.Router();
 router.use(verifyJWT);
@@ -1198,6 +1198,32 @@ router.patch("/analytics-dashboard/schedules/:id", async (req, res) => {
     console.error("analytics-dashboard/schedules PATCH", err);
     res.status(500).json({
       error: "Error updating KPI schedule"
+    });
+  }
+});
+router.post("/analytics-dashboard/schedules/:id/test", async (req, res) => {
+  if (isCommunity()) {
+    return res.status(403).json({
+      error: "KPI dashboard reserved for Veritas Pro",
+      code: "PRO_FEATURE_REQUIRED"
+    });
+  }
+  try {
+    res.json(await testKpiReportSchedule(req.params.id));
+  } catch (err) {
+    if (err?.code === "NOT_FOUND") return res.status(404).json({
+      error: err.message,
+      code: err.code
+    });
+    if (err?.code === "INVALID_RECIPIENTS") {
+      return res.status(400).json({
+        error: err.message,
+        code: err.code
+      });
+    }
+    console.error("analytics-dashboard/schedules TEST", err);
+    res.status(500).json({
+      error: err.message || "Error testing KPI schedule"
     });
   }
 });

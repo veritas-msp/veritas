@@ -540,21 +540,17 @@ export default function DashboardPage() {
   return <div className={`${mspStyles.mspPage} ${styles.dashboardPage} msp-page-insight`}>
       <div className={mspStyles.mspLayout}>
         <div className={mspStyles.mspMain}>
-          <MspPageHero eyebrow={copy.eyebrow} title={copy.title} subtitle={heroSubtitle} icon="mdi:chart-box-outline">
-            <div className={styles.heroToolbar}>
-              <DashboardScopeFilter copy={copy.scopeFilter} value={scopeFilter} onChange={setScopeFilter} disabled={loading || refreshing} />
-              <div className={styles.heroToolbarActions}>
+          <MspPageHero eyebrow={copy.eyebrow} title={copy.title} subtitle={heroSubtitle} icon="mdi:chart-box-outline" actions={<>
                 <button type="button" className={styles.periodOpenBtn} onClick={() => setPeriodModalOpen(true)} aria-label={copy.periodButtonAria}>
                   <Icon icon="mdi:calendar-range" aria-hidden />
                   <span className={styles.periodOpenLabel}>{periodLabel}</span>
-                  <Icon icon="mdi:chevron-down" className={styles.periodOpenChevron} aria-hidden />
                 </button>
                 <div className={styles.exportMenuWrap} ref={exportMenuRef}>
-                  <button type="button" className={styles.periodOpenBtn} onClick={() => setExportMenuOpen(open => !open)} aria-haspopup="menu" aria-expanded={exportMenuOpen} aria-label={copy.exportMenuAria}>
-                    <Icon icon="mdi:export-variant" aria-hidden />
-                    <span className={styles.periodOpenLabel}>{copy.export}</span>
-                    <Icon icon="mdi:chevron-down" className={styles.periodOpenChevron} aria-hidden />
-                  </button>
+                  <SmartTooltip content={copy.export}>
+                    <button type="button" className={layout.iconBtn} onClick={() => setExportMenuOpen(open => !open)} aria-haspopup="menu" aria-expanded={exportMenuOpen} aria-label={copy.exportMenuAria}>
+                      <Icon icon="mdi:export-variant" aria-hidden />
+                    </button>
+                  </SmartTooltip>
                   {exportMenuOpen ? <div className={styles.exportMenu} role="menu">
                       <button type="button" role="menuitem" onClick={() => {
                     setExportMenuOpen(false);
@@ -570,15 +566,13 @@ export default function DashboardPage() {
                         <Icon icon="mdi:email-fast-outline" aria-hidden />
                         {copy.exportEmail}
                       </button>
-                      <button type="button" role="menuitem" onClick={() => {
-                    setExportMenuOpen(false);
-                    setScheduleOpen(true);
-                  }}>
-                        <Icon icon="mdi:calendar-clock-outline" aria-hidden />
-                        {copy.exportSchedule}
-                      </button>
                     </div> : null}
                 </div>
+                <SmartTooltip content={copy.headerSchedule}>
+                  <button type="button" className={layout.iconBtn} onClick={() => setScheduleOpen(true)} aria-label={copy.headerScheduleAria}>
+                    <Icon icon="mdi:calendar-clock-outline" aria-hidden />
+                  </button>
+                </SmartTooltip>
                 <SmartTooltip content={copy.refresh}>
                   <button type="button" className={layout.iconBtn} onClick={() => loadDashboard(periodFilter, scopeFilter, {
                   silent: true
@@ -586,23 +580,22 @@ export default function DashboardPage() {
                     <Icon icon="mdi:refresh" className={refreshing ? styles.spinner : undefined} aria-hidden />
                   </button>
                 </SmartTooltip>
-              </div>
-            </div>
-            <div className={styles.heroTabRow}>
-              <div className={mspStyles.mspTabBar} role="tablist" aria-label={copy.tabsAria}>
-                {DASHBOARD_TABS.map(({
-                key,
-                icon
-              }) => <button key={key} type="button" role="tab" aria-selected={activeTab === key} className={`${mspStyles.mspTab} ${activeTab === key ? mspStyles.mspTabActive : ""}`} onClick={() => setActiveTab(key)}>
-                    <Icon icon={icon} className={mspStyles.mspTabIcon} aria-hidden />
-                    {copy.tabs[key]}
-                  </button>)}
-              </div>
-            </div>
-          </MspPageHero>
+              </>} />
 
           <main className={mspStyles.mspContent}>
             <div className={`${layout.shell} ${layout.shellWide} ${layout.shellFull}`}>
+              <div className={styles.contentToolbar}>
+                <div className={`${mspStyles.mspTabBar} ${styles.toolbarTabs}`} role="tablist" aria-label={copy.tabsAria}>
+                  {DASHBOARD_TABS.map(({
+                key,
+                icon
+              }) => <button key={key} type="button" role="tab" aria-selected={activeTab === key} className={`${mspStyles.mspTab} ${activeTab === key ? mspStyles.mspTabActive : ""}`} onClick={() => setActiveTab(key)}>
+                      <Icon icon={icon} className={mspStyles.mspTabIcon} aria-hidden />
+                      {copy.tabs[key]}
+                    </button>)}
+                </div>
+                <DashboardScopeFilter compact copy={copy.scopeFilter} value={scopeFilter} onChange={setScopeFilter} disabled={loading || refreshing} />
+              </div>
               <div className={styles.tabContent} role="tabpanel">
                 {loading && <div className={styles.loadingState}>
                     <Icon icon="mdi:loading" className={styles.spinner} aria-hidden />

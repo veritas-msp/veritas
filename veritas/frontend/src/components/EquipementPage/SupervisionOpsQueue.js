@@ -272,6 +272,16 @@ export default function SupervisionOpsQueue({
           <MspEmptyState icon="mdi:bell-check-outline" title={copy.emptyTitle} text={copy.emptyText} />
         </div> : <div className={styles.tableWrap} data-guide="supervision-queue">
           <table className={styles.table}>
+            <colgroup>
+              <col className={styles.colSev} />
+              <col className={styles.colAlert} />
+              <col className={styles.colCompany} />
+              <col className={styles.colDomain} />
+              <col className={styles.colSeverity} />
+              <col className={styles.colStatus} />
+              <col className={styles.colWhen} />
+              <col className={styles.colActions} />
+            </colgroup>
             <thead>
               <tr>
                 <th className={styles.sevCol} aria-hidden />
@@ -306,15 +316,17 @@ export default function SupervisionOpsQueue({
                       <span className={`${styles.sevDot} ${toneClass(item.tone, item.severity)}`} aria-hidden />
                     </td>
                     <td className={styles.alertCell}>
-                      <span className={styles.rowTitle}>{item.title}</span>
-                      {metaBits.length ? <span className={styles.rowMeta}>{metaBits.join(" · ")}</span> : null}
-                      {collabBits.length ? <span className={styles.rowCollab}>
-                          <Icon icon="mdi:account-outline" aria-hidden />
-                          {collabBits.join(" · ")}
-                        </span> : null}
+                      <div className={styles.alertBody}>
+                        <span className={styles.rowTitle}>{item.title}</span>
+                        {metaBits.length ? <span className={styles.rowMeta}>{metaBits.join(" · ")}</span> : null}
+                        {collabBits.length ? <span className={styles.rowCollab}>
+                            <Icon icon="mdi:account-outline" aria-hidden />
+                            {collabBits.join(" · ")}
+                          </span> : null}
+                      </div>
                     </td>
-                    <td>{item.clientName || "—"}</td>
-                    <td>
+                    <td className={styles.companyCell}>{item.clientName || "—"}</td>
+                    <td className={styles.domainCol}>
                       <span className={styles.domainCell}>
                         <span className={`${styles.domainIcon} ${styles[`domain_${item.domain}`] || ""}`} aria-hidden>
                           <Icon icon={DOMAIN_ICONS[item.domain] || "mdi:bell-outline"} />

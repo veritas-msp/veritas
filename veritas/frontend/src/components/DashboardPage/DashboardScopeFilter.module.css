@@ -7,6 +7,12 @@
   min-width: 0;
 }
 
+.barCompact {
+  align-items: center;
+  flex: 0 1 auto;
+  justify-content: flex-end;
+}
+
 .field {
   display: flex;
   flex-direction: column;

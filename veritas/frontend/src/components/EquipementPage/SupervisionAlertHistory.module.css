@@ -94,9 +94,35 @@
 
 .table {
   width: 100%;
-  min-width: 820px;
-  border-collapse: collapse;
+  min-width: 860px;
+  table-layout: fixed;
+  border-collapse: separate;
+  border-spacing: 0;
   font-size: 0.8125rem;
+}
+
+.colAlert {
+  width: auto;
+}
+
+.colCompany {
+  width: 18%;
+}
+
+.colDomain {
+  width: 16%;
+}
+
+.colStatus {
+  width: 8rem;
+}
+
+.colWhen {
+  width: 8.5rem;
+}
+
+.colActions {
+  width: 5.4rem;
 }
 
 .table thead th {
@@ -147,6 +173,7 @@
   border-bottom: 1px solid var(--msp-border-light, #2a3a55);
   vertical-align: middle;
   color: var(--msp-text, #e8edf5);
+  overflow: hidden;
 }
 
 .dataRow {
@@ -160,17 +187,30 @@
 }
 
 .alertCell {
+  min-width: 0;
+}
+
+.alertBody {
   display: flex;
   flex-direction: column;
   gap: 0.12rem;
-  min-width: 14rem;
-  max-width: 28rem;
+  min-width: 0;
+}
+
+.companyCell,
+.domainCol {
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .domainCell {
   display: inline-flex;
   align-items: center;
   gap: 0.4rem;
+  max-width: 100%;
+  min-width: 0;
 }
 
 .whenCell {
@@ -183,7 +223,7 @@
   position: sticky;
   right: 0;
   z-index: 2;
-  width: 1%;
+  width: 5.4rem;
   white-space: nowrap;
   text-align: right;
   background: var(--msp-surface, #1a2540);
@@ -201,7 +241,7 @@ th.actionsCol {
 }
 
 .rowActions {
-  display: inline-flex;
+  display: flex;
   align-items: center;
   justify-content: flex-end;
   gap: 0.1rem;
@@ -298,11 +338,17 @@ th.actionsCol {
   font-size: 0.86rem;
   font-weight: 650;
   color: var(--msp-text, #e8edf5);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .meta {
   font-size: 0.72rem;
   color: var(--msp-muted, #8fa8c4);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .chevron {

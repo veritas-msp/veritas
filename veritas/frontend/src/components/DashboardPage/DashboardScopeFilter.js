@@ -25,7 +25,8 @@ export default function DashboardScopeFilter({
   copy,
   value,
   onChange,
-  disabled = false
+  disabled = false,
+  compact = false
 }) {
   const [agents, setAgents] = useState([]);
   const [clients, setClients] = useState([]);
@@ -131,9 +132,9 @@ export default function DashboardScopeFilter({
       ...DEFAULT_SCOPE_FILTER
     });
   };
-  return <div className={styles.bar} aria-label={copy.barAria}>
+  return <div className={`${styles.bar} ${compact ? styles.barCompact : ""}`.trim()} aria-label={copy.barAria}>
       <label className={styles.field}>
-        <span className={styles.fieldLabel}>{copy.typeLabel}</span>
+        {compact ? null : <span className={styles.fieldLabel}>{copy.typeLabel}</span>}
         <select className={styles.select} value={scopeType} onChange={handleTypeChange} disabled={disabled || loading} aria-label={copy.typeAria}>
           <option value="all">{copy.all}</option>
           <option value="agent">{copy.agent}</option>
@@ -143,7 +144,7 @@ export default function DashboardScopeFilter({
       </label>
 
       {scopeType !== "all" ? <label className={`${styles.field} ${styles.fieldEntity}`}>
-          <span className={styles.fieldLabel}>{copy.entityLabel}</span>
+          {compact ? null : <span className={styles.fieldLabel}>{copy.entityLabel}</span>}
           <select className={styles.select} value={selectedEntityId} onChange={handleEntityChange} disabled={disabled || loading || entityOptions.length === 0} aria-label={copy.entityAria}>
             <option value="">{copy.chooseEntity}</option>
             {entityOptions.map(option => <option key={option.value} value={option.value}>

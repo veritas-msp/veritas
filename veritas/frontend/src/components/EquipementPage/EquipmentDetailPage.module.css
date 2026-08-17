@@ -103,6 +103,10 @@
   min-width: 0;
 }
 
+.dashboardSplitSolo {
+  grid-template-columns: minmax(0, 1fr);
+}
+
 .dashboardMain {
   display: flex;
   flex-direction: column;

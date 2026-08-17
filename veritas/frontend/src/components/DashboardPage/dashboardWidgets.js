@@ -38,7 +38,11 @@ export function KpiRow({
   items
 }) {
   if (!items?.length) return null;
-  return <div className={styles.kpiRow}>
+  const count = items.length;
+  const cols = count <= 2 ? 2 : count === 3 ? 3 : count === 4 ? 4 : count === 5 ? 5 : count === 6 ? 6 : 4;
+  return <div className={styles.kpiRow} style={{
+    "--kpi-cols": String(cols)
+  }}>
       {items.map(item => <div key={item.key} className={styles.kpiCard}>
           {item.icon ? <span className={styles.kpiIconWrap}>
               <Icon icon={item.icon} className={styles.kpiIcon} aria-hidden />

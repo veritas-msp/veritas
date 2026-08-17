@@ -1,6 +1,5 @@
 import { pool } from "../database/db.js";
 import { ensureSupervisionAlertsSchema } from "../services/ensureSupervisionAlertsSchema.js";
-import { listMonitoringEvents } from "../services/monitoringEventQueue.js";
 
 const ACTIVE_STATUSES = new Set(["open", "acked", "linked"]);
 const CLOSE_REASONS = new Set(["resolved", "dismissed"]);
@@ -245,7 +244,11 @@ export async function listSupervisionAlertHistory({
   }
   if (equipmentId) {
     params.push(String(equipmentId));
-    where.push(`a.equipment_id = $${params.length}`);
+    where.push(`(
+      LOWER(TRIM(a.equipment_id)) = LOWER(TRIM($${params.length}))
+      OR LOWER(TRIM(a.equipment_id)) LIKE '%:' || LOWER(TRIM($${params.length}))
+      OR LOWER(TRIM(COALESCE(a.ref_key, ''))) = LOWER(TRIM($${params.length}))
+    )`);
   }
   if (clientId != null && clientId !== "") {
     params.push(Number(clientId));
@@ -289,37 +292,70 @@ function inferCriterionSeverity(criterionKey) {
   return "info";
 }
 
+function isUuid(value) {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(value || "").trim());
+}
+
+async function queryOrEmpty(sql, params) {
+  try {
+    return await pool.query(sql, params);
+  } catch (err) {
+    if (err?.code === "42P01") return { rows: [] };
+    throw err;
+  }
+}
+
 /**
- * Unified recent alerts for an equipment detail glance (ops history + monitoring events).
+ * Unified recent alerts for an equipment detail history (same sources as inventory 30-day count).
  */
 export async function listRecentEquipmentAlerts({
   equipmentId,
-  clientId = null,
-  limit = 10
+  limit = 50,
+  days = 30
 } = {}) {
   const id = String(equipmentId || "").trim();
   if (!id) return [];
 
-  const lim = Math.min(Math.max(Number(limit) || 10, 1), 50);
-  const fetchLim = Math.min(lim * 3, 100);
+  const token = id.toLowerCase();
+  const lim = Math.min(Math.max(Number(limit) || 50, 1), 200);
+  const sinceDays = Math.min(Math.max(Number(days) || 30, 1), 365);
+  await ensureSupervisionAlertsSchema();
 
-  const [supervision, monitoring] = await Promise.all([
-    listSupervisionAlertHistory({
-      equipmentId: id,
-      clientId,
-      status: "all",
-      limit: fetchLim
-    }),
-    listMonitoringEvents({
-      equipmentId: id,
-      clientId: clientId != null && clientId !== "" ? Number(clientId) : null,
-      limit: fetchLim
-    })
-  ]);
+  const supervision = await queryOrEmpty(
+    `SELECT ${ALERT_SELECT_WITH_ACTORS}
+     FROM v_b_supervision_alerts a
+     ${ALERT_ACTOR_JOINS}
+     WHERE a.created_at >= NOW() - ($2::int * INTERVAL '1 day')
+       AND NULLIF(TRIM(a.equipment_id), '') IS NOT NULL
+       AND (
+         LOWER(TRIM(a.equipment_id)) = $1
+         OR LOWER(TRIM(a.equipment_id)) LIKE '%:' || $1
+         OR LOWER(TRIM(COALESCE(a.ref_key, ''))) = $1
+       )
+     ORDER BY a.created_at DESC
+     LIMIT $3`,
+    [token, sinceDays, lim]
+  );
+
+  let monitoringRows = [];
+  if (isUuid(token)) {
+    const monitoring = await queryOrEmpty(
+      `SELECT *
+       FROM v_b_monitoring_events
+       WHERE created_at >= NOW() - ($2::int * INTERVAL '1 day')
+         AND equipment_id IS NOT NULL
+         AND LOWER(equipment_id::text) = $1
+       ORDER BY created_at DESC
+       LIMIT $3`,
+      [token, sinceDays, lim]
+    );
+    monitoringRows = monitoring.rows || [];
+  }
 
   const items = [];
 
-  for (const alert of supervision) {
+  for (const row of supervision.rows || []) {
+    const alert = mapAlert(row);
     items.push({
       id: `sup-${alert.id}`,
       source: "supervision",
@@ -332,12 +368,12 @@ export async function listRecentEquipmentAlerts({
       eventType: null,
       severity: alert.severity || "warning",
       status: alert.status || "open",
-      at: alert.closedAt || alert.updatedAt || alert.createdAt || null,
+      at: alert.createdAt || alert.updatedAt || alert.closedAt || null,
       ticketId: alert.linkedTicketId || null
     });
   }
 
-  for (const event of monitoring) {
+  for (const event of monitoringRows) {
     const criterionKey = event.criterion_key || null;
     const eventType = event.event_type || null;
     const resolved = String(eventType || "").includes("resolved");

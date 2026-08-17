@@ -16,6 +16,8 @@ const DASHBOARD_COPY = {
     exportEmail: "Envoyer par e-mail",
     exportSchedule: "Programmer un envoi",
     exportMenuAria: "Actions d'export du rapport",
+    headerSchedule: "Programmations",
+    headerScheduleAria: "Gérer les programmations d'envoi",
     scopeFilter: {
       barAria: "Filtre de périmètre KPI",
       typeLabel: "Périmètre",
@@ -201,8 +203,8 @@ const DASHBOARD_COPY = {
     },
     scheduleModal: {
       eyebrow: "Rapports automatiques",
-      title: "Programmer un rapport KPI",
-      subtitle: "Envoi PDF récurrent selon la fréquence et la période d'analyse choisies.",
+      title: "Programmations d'envoi",
+      subtitle: "Créez, modifiez, testez ou supprimez les envois PDF récurrents du tableau de bord KPI.",
       closeAria: "Fermer",
       createTitle: "Nouvelle programmation",
       editTitle: "Modifier la programmation",
@@ -225,6 +227,14 @@ const DASHBOARD_COPY = {
       cancelEdit: "Annuler",
       edit: "Modifier",
       delete: "Supprimer",
+      test: "Tester l'envoi",
+      tested: "E-mail de test envoyé.",
+      testError: "Impossible d'envoyer le test.",
+      lastSent: "Dernier envoi",
+      active: "Active",
+      inactive: "Inactive",
+      deleteTitle: "Supprimer la programmation",
+      deleteMessage: "Supprimer « {name} » ? L'envoi automatique sera arrêté.",
       loading: "Chargement…",
       empty: "Aucune programmation.",
       nextRun: "Prochain envoi",
@@ -268,6 +278,8 @@ const DASHBOARD_COPY = {
     exportEmail: "Send by email",
     exportSchedule: "Schedule sending",
     exportMenuAria: "Report export actions",
+    headerSchedule: "Schedules",
+    headerScheduleAria: "Manage send schedules",
     scopeFilter: {
       barAria: "KPI scope filter",
       typeLabel: "Scope",
@@ -453,8 +465,8 @@ const DASHBOARD_COPY = {
     },
     scheduleModal: {
       eyebrow: "Automated reports",
-      title: "Schedule a KPI report",
-      subtitle: "Recurring PDF delivery based on the chosen frequency and analysis period.",
+      title: "Send schedules",
+      subtitle: "Create, edit, test or delete recurring KPI dashboard PDF deliveries.",
       closeAria: "Close",
       createTitle: "New schedule",
       editTitle: "Edit schedule",
@@ -477,6 +489,14 @@ const DASHBOARD_COPY = {
       cancelEdit: "Cancel",
       edit: "Edit",
       delete: "Delete",
+      test: "Send test",
+      tested: "Test email sent.",
+      testError: "Unable to send the test.",
+      lastSent: "Last sent",
+      active: "Active",
+      inactive: "Inactive",
+      deleteTitle: "Delete schedule",
+      deleteMessage: "Delete “{name}”? Automatic sending will stop.",
       loading: "Loading…",
       empty: "No schedules yet.",
       nextRun: "Next send",
@@ -598,6 +618,8 @@ DASHBOARD_COPY.de = cloneLocale(DASHBOARD_COPY.en, {
   exportPdf: "PDF herunterladen",
   exportEmail: "Per E-Mail senden",
   exportSchedule: "Versand planen",
+  headerSchedule: "Zeitpläne",
+  headerScheduleAria: "Versandzeitpläne verwalten",
   tabs: {
     support: "Support",
     devices: "Geräte",
@@ -618,6 +640,16 @@ DASHBOARD_COPY.de = cloneLocale(DASHBOARD_COPY.en, {
   },
   empty: "Keine Daten für diesen Zeitraum.",
   scheduleModal: {
+    title: "Versandzeitpläne",
+    subtitle: "Erstellen, bearbeiten, testen oder löschen Sie wiederkehrende KPI-PDF-Versände.",
+    test: "Test senden",
+    tested: "Test-E-Mail gesendet.",
+    testError: "Test konnte nicht gesendet werden.",
+    lastSent: "Letzter Versand",
+    active: "Aktiv",
+    inactive: "Inaktiv",
+    deleteTitle: "Zeitplan löschen",
+    deleteMessage: "„{name}“ löschen? Der automatische Versand wird beendet.",
     frequencies: {
       daily: "Täglich",
       weekly: "Wöchentlich",
@@ -649,6 +681,8 @@ DASHBOARD_COPY.it = cloneLocale(DASHBOARD_COPY.en, {
   exportPdf: "Scarica PDF",
   exportEmail: "Invia via e-mail",
   exportSchedule: "Programma invio",
+  headerSchedule: "Programmazioni",
+  headerScheduleAria: "Gestire le programmazioni di invio",
   tabs: {
     support: "Supporto",
     devices: "Dispositivi",
@@ -667,7 +701,19 @@ DASHBOARD_COPY.it = cloneLocale(DASHBOARD_COPY.en, {
     ytd: "Anno in corso",
     all: "Tutto"
   },
-  empty: "Nessun dato per questo periodo."
+  empty: "Nessun dato per questo periodo.",
+  scheduleModal: {
+    title: "Programmazioni di invio",
+    subtitle: "Crea, modifica, testa o elimina gli invii PDF ricorrenti del cruscotto KPI.",
+    test: "Invia test",
+    tested: "E-mail di test inviata.",
+    testError: "Impossibile inviare il test.",
+    lastSent: "Ultimo invio",
+    active: "Attiva",
+    inactive: "Inattiva",
+    deleteTitle: "Elimina programmazione",
+    deleteMessage: "Eliminare « {name} »? L'invio automatico verrà interrotto."
+  }
 });
 DASHBOARD_COPY.es = cloneLocale(DASHBOARD_COPY.en, {
   eyebrow: "Gestión",
@@ -684,6 +730,8 @@ DASHBOARD_COPY.es = cloneLocale(DASHBOARD_COPY.en, {
   exportPdf: "Descargar PDF",
   exportEmail: "Enviar por correo",
   exportSchedule: "Programar envío",
+  headerSchedule: "Programaciones",
+  headerScheduleAria: "Gestionar las programaciones de envío",
   tabs: {
     support: "Soporte",
     devices: "Dispositivos",
@@ -702,7 +750,19 @@ DASHBOARD_COPY.es = cloneLocale(DASHBOARD_COPY.en, {
     ytd: "Año en curso",
     all: "Todo"
   },
-  empty: "Sin datos para este periodo."
+  empty: "Sin datos para este periodo.",
+  scheduleModal: {
+    title: "Programaciones de envío",
+    subtitle: "Cree, edite, pruebe o elimine los envíos PDF periódicos del cuadro de mando KPI.",
+    test: "Enviar prueba",
+    tested: "Correo de prueba enviado.",
+    testError: "No se pudo enviar la prueba.",
+    lastSent: "Último envío",
+    active: "Activa",
+    inactive: "Inactiva",
+    deleteTitle: "Eliminar programación",
+    deleteMessage: "¿Eliminar « {name} »? El envío automático se detendrá."
+  }
 });
 export const getDashboardPageCopy = createLocaleGetter(DASHBOARD_COPY);
 export const DASHBOARD_PERIOD_OPTIONS = ["7d", "30d", "90d", "365d", "ytd", "all"];

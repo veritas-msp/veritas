@@ -269,6 +269,14 @@ export default function SupervisionAlertHistory({
 
       {loading ? <div className={styles.loading}>{copy.loading}</div> : alerts.length === 0 ? <MspEmptyState icon="mdi:history" title={copy.emptyTitle} text={copy.emptyText} /> : <div className={styles.tableWrap}>
           <table className={styles.table}>
+            <colgroup>
+              <col className={styles.colAlert} />
+              <col className={styles.colCompany} />
+              <col className={styles.colDomain} />
+              <col className={styles.colStatus} />
+              <col className={styles.colWhen} />
+              <col className={styles.colActions} />
+            </colgroup>
             <thead>
               <tr>
                 <SortableHeader column="alert" label={columns.alert || "Alerte"} sortKey={sortKey} sortDir={sortDir} onSort={handleSort} sortAria={sortAriaFor(columns.alert || "Alerte")} />
@@ -291,11 +299,13 @@ export default function SupervisionAlertHistory({
               return <Fragment key={alert.id}>
                     <tr className={`${styles.dataRow} ${open ? styles.dataRowOpen : ""}`} onClick={() => setExpandedId(open ? null : alert.id)}>
                       <td className={styles.alertCell}>
-                        <span className={styles.title}>{display.reason}</span>
-                        {display.subject ? <span className={styles.meta}>{display.subject}</span> : null}
+                        <div className={styles.alertBody}>
+                          <span className={styles.title}>{display.reason}</span>
+                          {display.subject ? <span className={styles.meta}>{display.subject}</span> : null}
+                        </div>
                       </td>
-                      <td>{alert.clientName || "—"}</td>
-                      <td>
+                      <td className={styles.companyCell}>{alert.clientName || "—"}</td>
+                      <td className={styles.domainCol}>
                         <span className={styles.domainCell}>
                           <span className={styles.domainIcon} aria-hidden>
                             <Icon icon={DOMAIN_ICONS[alert.domain] || "mdi:alert"} />

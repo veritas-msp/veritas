@@ -4,11 +4,10 @@ import { toast } from "react-toastify";
 import { useAppFormatters } from "../../hooks/useAppGeneralSettings";
 import MspEmptyState from "../Misc/MspEmptyState/MspEmptyState";
 import ConfirmModal from "../Misc/ConfirmModal/ConfirmModal";
-import { bulkPatchAntivirusSolutions, bulkRemoveAntivirusSolutions, syncAndPersistAntivirusSolution } from "../EnterprisesPage/antivirusSolutionUtils";
+import { bulkRemoveAntivirusSolutions, syncAndPersistAntivirusSolution } from "../EnterprisesPage/antivirusSolutionUtils";
 import styles from "./AntivirusMspDashboard.module.css";
 import { buildAntivirusFleetFromClients, buildAntivirusFleetStats, filterAntivirusFleetRows, sortAntivirusFleetRows } from "./antivirusMspUtils";
 import CyberBulkBar from "./CyberBulkBar";
-import CyberBulkEditModal from "./CyberBulkEditModal";
 import { fleetRowKey, useCyberBulkSelection } from "./useCyberBulkSelection";
 
 function KpiCard({
@@ -130,7 +129,6 @@ export default function AntivirusMspDashboard({
   const [statusFilter, setStatusFilter] = useState("all");
   const [sortBy, setSortBy] = useState("clientName");
   const [sortDirection, setSortDirection] = useState("asc");
-  const [editOpen, setEditOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const abortRef = useRef(null);
@@ -175,15 +173,6 @@ export default function AntivirusMspDashboard({
   const reload = useCallback(async () => {
     await onSolutionsChanged?.();
   }, [onSolutionsChanged]);
-  const handleBulkEdit = async fields => {
-    const result = await bulkPatchAntivirusSolutions(selectedItems, fields);
-    const failed = result.failed?.length || 0;
-    if (result.updated > 0 && failed === 0) toast.success(copy.formatBulkEditSuccess(result.updated));
-    else if (result.updated > 0) toast.warn(copy.formatBulkEditPartial(result.updated, failed));
-    else toast.error(copy.bulk.toasts.editError);
-    clearSelection();
-    await reload();
-  };
   const handleBulkDelete = async () => {
     setBusy(true);
     try {
@@ -268,7 +257,7 @@ export default function AntivirusMspDashboard({
           <Icon icon="mdi:loading" className={styles.spin} width={28} />
           <span>{av.loading}</span>
         </div> : filteredRows.length === 0 ? <MspEmptyState icon="mdi:shield-off-outline" title={fleetRows.length === 0 ? av.emptyTitle : av.noResultsTitle} text={fleetRows.length === 0 ? av.emptyText : av.noResultsText} /> : <section className={styles.panel}>
-          <CyberBulkBar copy={copy} selectedCount={selectedCount} allSelected={allSelected} filteredCount={sortedRows.length} busy={busy} onSelectAll={selectAll} onEdit={() => setEditOpen(true)} onRefresh={handleBulkRefresh} onDelete={() => setDeleteOpen(true)} onClear={clearSelection} />
+          <CyberBulkBar copy={copy} selectedCount={selectedCount} allSelected={allSelected} filteredCount={sortedRows.length} busy={busy} onSelectAll={selectAll} onRefresh={handleBulkRefresh} onDelete={() => setDeleteOpen(true)} onClear={clearSelection} />
           <div className={styles.tableWrap}>
             <table className={styles.table}>
               <thead>
@@ -296,7 +285,6 @@ export default function AntivirusMspDashboard({
             </table>
           </div>
         </section>}
-      <CyberBulkEditModal open={editOpen} kind="antivirus" items={selectedItems} copy={copy} onClose={() => setEditOpen(false)} onSubmit={handleBulkEdit} />
       <ConfirmModal open={deleteOpen} variant="danger" title={copy.bulk.deleteTitle} message={copy.formatBulkDeleteMessage(selectedCount)} confirmLabel={copy.bulk.deleteConfirm} loading={busy} onClose={() => setDeleteOpen(false)} onConfirm={handleBulkDelete} />
     </div>;
 }

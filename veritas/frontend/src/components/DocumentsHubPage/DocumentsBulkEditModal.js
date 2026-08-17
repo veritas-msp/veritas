@@ -9,8 +9,6 @@ function buildInitialForm() {
   return {
     enableCategory: false,
     category: CATEGORY_KEYS[0],
-    enableDescription: false,
-    description: "",
     enableVisibility: false,
     visibleToClient: false
   };
@@ -34,11 +32,10 @@ export default function DocumentsBulkEditModal({
     setError("");
     setSaving(false);
   }, [open, items]);
-  const hasField = useMemo(() => form.enableCategory || form.enableDescription || form.enableVisibility, [form]);
+  const hasField = useMemo(() => form.enableCategory || form.enableVisibility, [form]);
   const buildFields = () => {
     const fields = {};
     if (form.enableCategory) fields.category = form.category;
-    if (form.enableDescription) fields.description = form.description.trim();
     if (form.enableVisibility) fields.visibleToClient = Boolean(form.visibleToClient);
     return fields;
   };
@@ -89,23 +86,6 @@ export default function DocumentsBulkEditModal({
               }))} aria-label={bulkCopy.editCategory}>
                   {CATEGORY_KEYS.map(key => <option key={key} value={key}>{categoryLabel(key)}</option>)}
                 </select>
-              </div> : null}
-          </section>
-          <section className={styles.section}>
-            <div className={styles.sectionHead}>
-              <label>
-                <input type="checkbox" checked={form.enableDescription} onChange={e => setForm(prev => ({
-                ...prev,
-                enableDescription: e.target.checked
-              }))} />
-                {bulkCopy.editDescription}
-              </label>
-            </div>
-            {form.enableDescription ? <div className={styles.sectionBody}>
-                <textarea className={styles.input} rows={4} maxLength={2000} value={form.description} onChange={e => setForm(prev => ({
-                ...prev,
-                description: e.target.value
-              }))} placeholder={bulkCopy.descriptionPlaceholder} />
               </div> : null}
           </section>
           <section className={styles.section}>

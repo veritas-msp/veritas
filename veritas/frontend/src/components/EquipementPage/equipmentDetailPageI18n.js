@@ -559,13 +559,14 @@ const FR = {
     daysAgo: "il y a {count} j"
   },
   alertsGlance: {
-    title: "Dernières alertes",
-    subtitle: "Coup d'œil sur les 10 plus récentes",
-    empty: "Aucune alerte récente pour cet équipement.",
+    title: "Historique des alertes",
+    subtitle: "Alertes remontées sur les 30 derniers jours",
+    empty: "Aucune alerte sur les 30 derniers jours pour cet équipement.",
     loading: "Chargement…",
     error: "Impossible de charger les alertes.",
     colWhen: "Date",
-    colType: "Type",
+    colType: "Alerte",
+    colSeverity: "Sévérité",
     colStatus: "Statut",
     domains: {
       devices: "Périphérique",
@@ -1202,13 +1203,14 @@ const EN = {
     daysAgo: "{count} d ago"
   },
   alertsGlance: {
-    title: "Recent alerts",
-    subtitle: "Quick look at the latest 10",
-    empty: "No recent alerts for this equipment.",
+    title: "Alert history",
+    subtitle: "Alerts raised in the last 30 days",
+    empty: "No alerts in the last 30 days for this equipment.",
     loading: "Loading…",
     error: "Unable to load alerts.",
     colWhen: "Date",
-    colType: "Type",
+    colType: "Alert",
+    colSeverity: "Severity",
     colStatus: "Status",
     domains: {
       devices: "Device",

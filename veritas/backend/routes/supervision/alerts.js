@@ -97,8 +97,8 @@ router.get(
     try {
       const alerts = await listRecentEquipmentAlerts({
         equipmentId: req.params.equipmentId,
-        clientId: req.query.clientId || req.query.client_id || null,
-        limit: req.query.limit || 10
+        limit: req.query.limit || 50,
+        days: req.query.days || 30
       });
       res.json({ alerts });
     } catch (err) {

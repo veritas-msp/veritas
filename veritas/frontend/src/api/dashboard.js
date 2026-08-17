@@ -134,3 +134,18 @@ export async function deleteKpiReportSchedule(id) {
   }
   return res.json();
 }
+export async function testKpiReportSchedule(id) {
+  const res = await fetch(`${API_BASE_URL}/stats/analytics-dashboard/schedules/${id}/test`, {
+    method: "POST",
+    credentials: "include",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: "{}"
+  });
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw new Error(body.error || "Error testing schedule");
+  }
+  return res.json();
+}

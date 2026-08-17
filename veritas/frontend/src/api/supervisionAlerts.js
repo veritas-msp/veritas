@@ -1,4 +1,5 @@
 import API_BASE_URL, { withApiQuery } from "../config";
+import { getEquipmentDbId } from "../utils/equipmentIdentity";
 
 async function handleResponse(response) {
   const data = await response.json().catch(() => ({}));
@@ -72,7 +73,7 @@ function itemPayload(item, extra = {}) {
     domain: item.domain,
     severity: item.severity,
     clientId: item.clientId,
-    equipmentId: item.equipment?.id || item.agent?.equipment?.id || item.equipmentId || null,
+    equipmentId: getEquipmentDbId(item.equipment) || getEquipmentDbId(item.agent?.equipment) || item.equipmentId || null,
     refKey: item.job?.id || item.contract?.id || item.agent?.id || item.equipment?.id || item.refKey || null,
     title: item.title,
     subtitle: item.subtitle,

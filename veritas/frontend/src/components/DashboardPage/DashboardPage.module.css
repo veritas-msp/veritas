@@ -47,15 +47,16 @@
 .periodOpenBtn {
   display: inline-flex;
   align-items: center;
-  gap: 0.45rem;
-  max-width: min(320px, 72vw);
+  gap: 0.4rem;
+  height: 40px;
+  max-width: min(220px, 46vw);
   border: 1px solid var(--msp-border);
-  background: var(--msp-surface-2);
+  background: var(--msp-surface);
   color: var(--msp-text);
   font-size: 0.78rem;
   font-weight: 600;
-  padding: 0.42rem 0.7rem;
-  border-radius: 9px;
+  padding: 0 0.75rem;
+  border-radius: var(--msp-radius-sm, 10px);
   cursor: pointer;
   transition: background 0.15s, border-color 0.15s, color 0.15s;
   font-family: inherit;
@@ -74,38 +75,17 @@
   min-width: 0;
 }
 
-.periodOpenChevron {
-  font-size: 1rem;
-  opacity: 0.75;
-  flex-shrink: 0;
-}
-
-.heroToolbar {
-  flex: 1 1 100%;
-  display: flex;
-  align-items: flex-end;
-  justify-content: space-between;
-  gap: 0.75rem 1rem;
-  width: 100%;
-  min-width: 0;
-  margin-top: 0.35rem;
-}
-
-.heroToolbarActions {
+.contentToolbar {
   display: flex;
   align-items: center;
-  justify-content: flex-end;
-  gap: 0.5rem;
-  flex-shrink: 0;
+  justify-content: space-between;
+  gap: 0.5rem 0.75rem;
+  flex-wrap: wrap;
+  min-width: 0;
 }
 
-.heroTabRow {
-  flex: 1 1 100%;
-  width: 100%;
-  min-width: 0;
-  margin-top: 0.55rem;
-  padding-top: 0.55rem;
-  border-top: 1px solid var(--dash-border);
+.toolbarTabs {
+  flex-shrink: 0;
 }
 
 .scopeHint {
@@ -130,6 +110,7 @@
 }
 
 .tabContent {
+  width: 100%;
   min-height: 320px;
   padding-bottom: 0.5rem;
 }
@@ -138,6 +119,7 @@
   display: flex;
   flex-direction: column;
   gap: 0.85rem;
+  width: 100%;
 }
 
 .loadingState,
@@ -183,18 +165,20 @@
 
 .kpiRow {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(148px, 1fr));
-  gap: 0.6rem;
+  grid-template-columns: repeat(var(--kpi-cols, 4), minmax(0, 1fr));
+  gap: 0.75rem;
+  width: 100%;
 }
 
 .kpiCard {
   display: flex;
-  gap: 0.55rem;
-  align-items: flex-start;
-  padding: 0.72rem 0.82rem;
+  gap: 0.7rem;
+  align-items: center;
+  min-height: 5.25rem;
+  padding: 0.9rem 1rem;
   background: var(--dash-surface-2);
   border: 1px solid var(--dash-border);
-  border-radius: 11px;
+  border-radius: 12px;
   box-shadow: var(--dash-shadow-sm);
   min-width: 0;
 }
@@ -203,35 +187,36 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 1.85rem;
-  height: 1.85rem;
-  border-radius: 8px;
+  width: 2.35rem;
+  height: 2.35rem;
+  border-radius: 10px;
   background: var(--dash-accent-soft);
   flex-shrink: 0;
 }
 
 .kpiIcon {
-  font-size: 1rem;
+  font-size: 1.15rem;
   color: var(--dash-accent);
 }
 
 .kpiBody {
   min-width: 0;
+  flex: 1;
 }
 
 .kpiValue {
   display: block;
-  font-size: 1.15rem;
+  font-size: 1.35rem;
   font-weight: 800;
   line-height: 1.15;
   color: var(--dash-text);
 }
 
 .kpiLabel {
-  font-size: 0.7rem;
+  font-size: 0.74rem;
   color: var(--dash-muted);
-  line-height: 1.25;
-  margin-top: 0.1rem;
+  line-height: 1.3;
+  margin-top: 0.15rem;
 }
 
 
@@ -239,18 +224,23 @@
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 0.75rem;
-  align-items: start;
+  align-items: stretch;
+  width: 100%;
 }
 
 .grid3 {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 0.75rem;
-  align-items: start;
+  align-items: stretch;
+  width: 100%;
 }
 
 .panel {
-  height: fit-content;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 13.5rem;
   background: var(--dash-surface-2);
   border: 1px solid var(--dash-border);
   border-radius: 12px;
@@ -289,12 +279,17 @@
 .miniStats {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 0.5rem;
+  gap: 0.55rem;
+  flex: 1;
 }
 
 .miniStat {
-  padding: 0.62rem 0.72rem;
-  border-radius: 9px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  min-height: 4.5rem;
+  padding: 0.7rem 0.8rem;
+  border-radius: 10px;
   background: var(--dash-surface);
   border: 1px solid var(--dash-border);
 }
@@ -317,6 +312,7 @@
 .tableWrap {
   overflow-x: auto;
   margin: 0 -0.1rem;
+  flex: 1;
 }
 
 .dataTable {
@@ -374,7 +370,8 @@
   display: flex;
   align-items: flex-end;
   gap: 0.35rem;
-  min-height: 108px;
+  flex: 1;
+  min-height: 140px;
   padding-top: 0.35rem;
 }
 
@@ -440,7 +437,8 @@
   display: flex;
   align-items: center;
   gap: 0.85rem;
-  min-height: 118px;
+  flex: 1;
+  min-height: 148px;
 }
 
 .pieChart {
@@ -530,7 +528,10 @@
 .distributionList {
   display: flex;
   flex-direction: column;
+  justify-content: center;
   gap: 0.55rem;
+  flex: 1;
+  min-height: 148px;
 }
 
 .distributionRow {
@@ -573,6 +574,12 @@
   min-width: 2px;
 }
 
+@media (max-width: 1100px) {
+  .kpiRow {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
 @media (max-width: 960px) {
   .grid3 {
     grid-template-columns: 1fr;
@@ -589,14 +596,8 @@
 }
 
 @media (max-width: 900px) {
-  .heroToolbar {
-    flex-wrap: wrap;
+  .contentToolbar {
     align-items: stretch;
-  }
-
-  .heroToolbarActions {
-    width: 100%;
-    justify-content: flex-end;
   }
 }
 
@@ -607,6 +608,11 @@
 
   .kpiRow {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .kpiCard {
+    min-height: 4.75rem;
+    padding: 0.75rem 0.8rem;
   }
 
   .exportMenu {
@@ -709,12 +715,26 @@
 }
 
 .scheduleShell {
-  max-width: min(720px, 100%) !important;
+  max-width: min(760px, 100%) !important;
   height: auto !important;
 }
 
 .scheduleBody {
-  max-height: min(70vh, 640px);
+  max-height: min(70vh, 680px);
+  padding-bottom: 1.2rem;
+}
+
+.scheduleSectionHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.scheduleCreateBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.28rem;
 }
 
 .scheduleGrid {
@@ -745,6 +765,38 @@
   background: var(--dash-surface);
 }
 
+.scheduleCardOff {
+  opacity: 0.78;
+}
+
+.scheduleCardMain {
+  min-width: 0;
+  flex: 1;
+}
+
+.scheduleCardTitleRow {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  flex-wrap: wrap;
+}
+
+.scheduleBadge {
+  font-size: 0.66rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  padding: 0.12rem 0.4rem;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--dash-chart-2) 16%, transparent);
+  color: var(--dash-chart-2);
+}
+
+.scheduleBadgeOff {
+  background: color-mix(in srgb, var(--dash-muted) 18%, transparent);
+  color: var(--dash-muted);
+}
+
 .scheduleCard p {
   margin: 0.2rem 0 0;
   font-size: 0.78rem;
@@ -759,6 +811,7 @@
   display: flex;
   gap: 0.25rem;
   flex-shrink: 0;
+  align-items: flex-start;
 }
 
 .iconAction {
@@ -774,12 +827,27 @@
   cursor: pointer;
 }
 
-.iconAction:hover {
+.iconAction:hover:not(:disabled) {
   background: var(--dash-accent-soft);
   color: var(--dash-accent);
 }
 
-.iconActionDanger:hover {
+.iconAction:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.iconActionDanger:hover:not(:disabled) {
   background: var(--dash-danger-soft);
   color: var(--dash-danger);
+}
+
+@media (max-width: 560px) {
+  .scheduleGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .scheduleCard {
+    flex-direction: column;
+  }
 }

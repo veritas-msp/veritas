@@ -1374,9 +1374,11 @@ export default function EquipmentDetailPage({
         {rmmManaged && rmmSyncPending ? <RmmSyncPendingNotice equipment={equipment} syncRequestedAt={rmmSyncRequestedAt} heartbeatIntervalMinutes={rmmHeartbeatMinutes} onCancel={handleRmmCancelSync} cancelling={rmmSyncRequesting} /> : null}
 
         <div className={styles.mainContent}>
-          {rightPanelTab === 'dashboard' && <div className={styles.dashboardSplit}>
+          {rightPanelTab === 'dashboard' && <div className={`${styles.dashboardSplit} ${showRmmHeroStatus && rmmDeviceHealth ? "" : styles.dashboardSplitSolo}`.trim()}>
               <div className={styles.dashboardMain}>
                 <EquipmentDetailSpecsPanel equipment={equipment} formData={formData} clientSites={clientSites} clientSsids={clientSsids} peerFirewalls={peerFirewalls} peerServers={peerServers} peerStorage={peerStorage} onOpenEquipment={openLinkedEquipment} remoteAccessAction={remoteAccessAction} />
+
+                <EquipmentAlertsGlance equipment={equipment} days={30} limit={50} />
 
                 {equipment.type === 'Ordinateurs' && <RmmMonitoringPanel equipment={equipmentWithRmmLive} syncPending={rmmSyncPending} syncRequestedAt={rmmSyncRequestedAt} heartbeatIntervalMinutes={rmmHeartbeatMinutes} variant="general" agentStatusInHero={showRmmHeroStatus} />}
 
@@ -1385,12 +1387,11 @@ export default function EquipmentDetailPage({
             loadCheckMKAvailabilityOnly(period);
           }} onOpenService={openCheckMKService} onOpenEvent={openCheckMKEvent} onOpenMapping={() => setCheckmkMappingModal(true)} />}
               </div>
-              <div className={styles.dashboardAside}>
-                {showRmmHeroStatus && rmmDeviceHealth ? <ScoreAside health={rmmDeviceHealth} copy={{
+              {showRmmHeroStatus && rmmDeviceHealth ? <div className={styles.dashboardAside}>
+                <ScoreAside health={rmmDeviceHealth} copy={{
               scoreTitle: copy.rmm.overview?.scoreTitle || copy.rmm.cyber?.scoreTitle
-            }} /> : null}
-                <EquipmentAlertsGlance equipment={equipment} limit={10} />
-              </div>
+            }} />
+              </div> : null}
             </div>}
 
           {(rightPanelTab === 'activity' || rightPanelTab === 'events' || rightPanelTab === 'stats' || rightPanelTab === 'metrics') && <div className={styles.activityStack}>

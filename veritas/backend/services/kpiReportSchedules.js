@@ -257,6 +257,22 @@ export async function deleteKpiReportSchedule(id) {
   };
 }
 
+export async function testKpiReportSchedule(id) {
+  await ensureKpiReportSchedulesSchema();
+  const current = await pool.query(`SELECT * FROM v_b_kpi_report_schedules WHERE id = $1`, [id]);
+  if (!current.rows[0]) {
+    const err = new Error("Schedule not found.");
+    err.code = "NOT_FOUND";
+    throw err;
+  }
+  const schedule = mapScheduleRow(current.rows[0]);
+  return sendKpiReportEmail({
+    recipients: schedule.recipients,
+    period: schedule.periodPreset,
+    categories: schedule.categories
+  });
+}
+
 export async function runDueKpiReportSchedules() {
   await ensureKpiReportSchedulesSchema();
   const due = await pool.query(`SELECT * FROM v_b_kpi_report_schedules
