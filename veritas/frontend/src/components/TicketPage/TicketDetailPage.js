@@ -1062,15 +1062,20 @@ export default function TicketDetailPage({
       return undefined;
     }
     let cancelled = false;
-    fetchSalesForm(formId)
+    const controller = new AbortController();
+    fetchSalesForm(formId, {
+      signal: controller.signal
+    })
       .then(form => {
         if (!cancelled) setSalesFormFieldLabelMap(buildSalesFormFieldLabelMap(form));
       })
-      .catch(() => {
-        if (!cancelled) setSalesFormFieldLabelMap({});
+      .catch(error => {
+        if (error?.name === "AbortError" || cancelled) return;
+        setSalesFormFieldLabelMap({});
       });
     return () => {
       cancelled = true;
+      controller.abort();
     };
   }, [isSalesTicketDetail, salesFormData?.formId]);
   const [users, setUsers] = useState([]);
@@ -1185,6 +1190,7 @@ export default function TicketDetailPage({
   const [activeSideConversationId, setActiveSideConversationId] = useState(null);
   const [sideReplyDraft, setSideReplyDraft] = useState("");
   const commentEditorRef = useRef(null);
+  const detailAbortRef = useRef(null);
   const resolveAfterReplyRef = useRef(false);
   const pendingResolveReplyRef = useRef(null);
   const commentEditEditorRef = useRef(null);
@@ -1285,17 +1291,20 @@ export default function TicketDetailPage({
       })
     };
   };
-  const loadTicketReminder = useCallback(async id => {
+  const loadTicketReminder = useCallback(async (id, signal) => {
     if (!id || isCommunity) {
       setTicketReminder(null);
       return;
     }
     try {
       const rows = await fetchEvents({
-        ticketId: id
+        ticketId: id,
+        signal
       });
+      if (signal?.aborted) return;
       setTicketReminder(Array.isArray(rows) && rows.length > 0 ? rows[0] : null);
-    } catch {
+    } catch (error) {
+      if (error?.name === "AbortError") return;
       setTicketReminder(null);
     }
   }, [isCommunity]);
@@ -1307,12 +1316,28 @@ export default function TicketDetailPage({
     silent = false
   } = {}) => {
     if (!ticketId) return;
+    detailAbortRef.current?.abort();
+    const controller = new AbortController();
+    detailAbortRef.current = controller;
     if (!silent) setLoading(true);
     try {
-      const [ticketRes, usersRes, clientsRes, contactsRes, categoriesRes] = await Promise.all([fetchTicket(ticketId), fetchUsers().catch(() => []), fetchClientsList().catch(() => []), fetchContactsList().catch(() => []), fetchTicketCategories().catch(() => [])]);
+      const [ticketRes, usersRes, clientsRes, contactsRes, categoriesRes] = await Promise.all([fetchTicket(ticketId, {
+        signal: controller.signal
+      }), fetchUsers({
+        signal: controller.signal
+      }).catch(error => error?.name === "AbortError" ? Promise.reject(error) : []), fetchClientsList({
+        signal: controller.signal
+      }).catch(error => error?.name === "AbortError" ? Promise.reject(error) : []), fetchContactsList(null, {
+        signal: controller.signal
+      }).catch(error => error?.name === "AbortError" ? Promise.reject(error) : []), fetchTicketCategories({
+        signal: controller.signal
+      }).catch(error => error?.name === "AbortError" ? Promise.reject(error) : [])]);
       const ticketsRes = await fetchTickets({
         limit: 200
-      }).catch(() => []);
+      }, {
+        signal: controller.signal
+      }).catch(error => error?.name === "AbortError" ? Promise.reject(error) : []);
+      if (controller.signal.aborted) return;
       setTicket(hydrateTicketCommentsWithAttachments(ticketRes));
       setSalesProgress(Math.max(0, Math.min(100, Math.round(Number(ticketRes?.progress_percent ?? ticketRes?.progressPercent ?? 0) || 0))));
       setTicketNativeChannel(ticketRes.channel || "web");
@@ -1321,7 +1346,8 @@ export default function TicketDetailPage({
       setContacts(Array.isArray(contactsRes) ? contactsRes : []);
       setTicketCategories(Array.isArray(categoriesRes) ? categoriesRes : []);
       setAllTickets(Array.isArray(ticketsRes) ? ticketsRes : []);
-      await loadTicketReminder(ticketId);
+      await loadTicketReminder(ticketId, controller.signal);
+      if (controller.signal.aborted) return;
       setEditForm({
         title: ticketRes.title || "",
         description: ticketRes.description || "",
@@ -1341,10 +1367,11 @@ export default function TicketDetailPage({
       });
       setTitleDraft(ticketRes.title || "");
     } catch (error) {
+      if (error?.name === "AbortError" || controller.signal.aborted) return;
       toast.error(error.message || copy.toasts.loadTicketError);
       setTicket(null);
     } finally {
-      if (!silent) setLoading(false);
+      if (!silent && !controller.signal.aborted) setLoading(false);
     }
   };
   useEffect(() => {
@@ -1355,6 +1382,7 @@ export default function TicketDetailPage({
     setLinkedEquipmentsExpanded(false);
     setHistoryExpanded(false);
     loadDetail();
+    return () => detailAbortRef.current?.abort();
   }, [ticketId]);
   useEffect(() => {
     if (tagAddOpen) {

@@ -19,6 +19,7 @@ import { listConfiguredDomainIntegrations } from "./servicePageDomainSync";
 import { buildMicrosoftTenantFleetStats } from "./microsoftTenantMspUtils";
 import { buildDomainFleetFromList, buildDomainFleetStats } from "./domainMspUtils";
 import { buildSslFleetFromList, buildSslFleetStats } from "./sslMspUtils";
+import ConfirmModal from "../Misc/ConfirmModal/ConfirmModal";
 const MODULE_TABS = ["microsoft", "domain", "ssl"];
 const SERVICE_CLIENTS_CACHE_KEY = "service_clients_list_cache_v2";
 const SERVICE_CLIENTS_CACHE_TTL_MS = 5 * 60 * 1000;
@@ -97,6 +98,7 @@ export default function ServicePage({
   const [clients, setClients] = useState([]);
   const [loading, setLoading] = useState(false);
   const [syncing, setSyncing] = useState(false);
+  const [microsoftSyncConfirmOpen, setMicrosoftSyncConfirmOpen] = useState(false);
   const [syncProgress, setSyncProgress] = useState(0);
   const [syncStatus, setSyncStatus] = useState('');
   const [allDomains, setAllDomains] = useState([]);
@@ -573,8 +575,21 @@ export default function ServicePage({
     setActiveTab(tabKey);
   };
   const syncingAny = syncing || syncingDomains || checkingSsl;
+  const requestSyncMicrosoft = () => {
+    if (syncing) return;
+    const targets = microsoftData.filter(row => row.clientId);
+    if (targets.length === 0) {
+      toast.info(pageCopy.toasts.syncNoneMicrosoft);
+      return;
+    }
+    setMicrosoftSyncConfirmOpen(true);
+  };
+  const confirmSyncMicrosoft = () => {
+    setMicrosoftSyncConfirmOpen(false);
+    handleSyncMicrosoft();
+  };
   const handleHeaderSync = () => {
-    if (activeTab === "microsoft") handleSyncMicrosoft();
+    if (activeTab === "microsoft") requestSyncMicrosoft();
     else if (activeTab === "domain") handleSyncDomains();
     else if (activeTab === "ssl") handleCheckAllSsl();
   };
@@ -618,5 +633,14 @@ export default function ServicePage({
         </main>
       </div>
       </div>
+      <ConfirmModal
+        open={microsoftSyncConfirmOpen}
+        title={pageCopy.microsoft.syncConfirmTitle}
+        message={pageCopy.microsoft.syncConfirmMessage}
+        confirmLabel={pageCopy.microsoft.syncConfirmAction}
+        icon="mdi:clock-alert-outline"
+        onClose={() => setMicrosoftSyncConfirmOpen(false)}
+        onConfirm={confirmSyncMicrosoft}
+      />
     </div>;
 }

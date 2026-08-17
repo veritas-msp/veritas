@@ -18,13 +18,14 @@ async function handleJsonResponse(response, fallbackMessage) {
   }
   return payload;
 }
-export async function fetchTickets(filters = {}) {
+export async function fetchTickets(filters = {}, options = {}) {
   const response = await fetch(`${API_BASE_URL}/tickets${buildQuery(filters)}`, {
     method: "GET",
     credentials: "include",
     headers: {
       "Content-Type": "application/json"
-    }
+    },
+    signal: options.signal
   });
   return handleJsonResponse(response, "Error fetching tickets");
 }
@@ -38,13 +39,14 @@ export async function fetchRandomTicket(filters = {}) {
   });
   return handleJsonResponse(response, "No ticket to process");
 }
-export async function fetchTicket(ticketId) {
+export async function fetchTicket(ticketId, options = {}) {
   const response = await fetch(`${API_BASE_URL}/tickets/${ticketId}`, {
     method: "GET",
     credentials: "include",
     headers: {
       "Content-Type": "application/json"
-    }
+    },
+    signal: options.signal
   });
   return handleJsonResponse(response, "Error fetching ticket");
 }
@@ -454,13 +456,14 @@ export async function removeLinkedTicket(ticketId, linkId) {
   });
   return handleJsonResponse(response, "Error removing linked ticket");
 }
-export async function fetchTicketCategories() {
+export async function fetchTicketCategories(options = {}) {
   const response = await fetch(`${API_BASE_URL}/tickets/categories`, {
     method: "GET",
     credentials: "include",
     headers: {
       "Content-Type": "application/json"
-    }
+    },
+    signal: options.signal
   });
   return handleJsonResponse(response, "Error fetching ITIL categories");
 }
@@ -622,7 +625,7 @@ export async function deleteTicketCategorySection(sectionId) {
   });
   return handleJsonResponse(response, "Error deleting ITIL section");
 }
-export async function fetchTicketViews(pageScope = "ticket") {
+export async function fetchTicketViews(pageScope = "ticket", options = {}) {
   const response = await fetch(`${API_BASE_URL}/tickets/views${buildQuery({
     pageScope
   })}`, {
@@ -630,7 +633,8 @@ export async function fetchTicketViews(pageScope = "ticket") {
     credentials: "include",
     headers: {
       "Content-Type": "application/json"
-    }
+    },
+    signal: options.signal
   });
   return handleJsonResponse(response, "Error fetching ticket views");
 }
@@ -858,27 +862,29 @@ export async function deleteSalesFormField(formId, fieldId) {
   });
   return handleJsonResponse(response, "Error deleting field");
 }
-export async function fetchTicketSatisfactions(filters = {}) {
+export async function fetchTicketSatisfactions(filters = {}, options = {}) {
   const response = await fetch(`${API_BASE_URL}/tickets/satisfactions${buildQuery(filters)}`, {
     method: "GET",
     credentials: "include",
     headers: {
       "Content-Type": "application/json"
-    }
+    },
+    signal: options.signal
   });
   return handleJsonResponse(response, "Error fetching customer feedback");
 }
-export async function fetchTicketSatisfactionCounts() {
+export async function fetchTicketSatisfactionCounts(options = {}) {
   const response = await fetch(`${API_BASE_URL}/tickets/satisfactions/counts`, {
     method: "GET",
     credentials: "include",
     headers: {
       "Content-Type": "application/json"
-    }
+    },
+    signal: options.signal
   });
   return handleJsonResponse(response, "Error counting customer feedback");
 }
-export async function fetchTicketTableColumns(pageScope = "ticket") {
+export async function fetchTicketTableColumns(pageScope = "ticket", options = {}) {
   const params = new URLSearchParams();
   if (pageScope && pageScope !== "ticket") params.set("pageScope", pageScope);
   const qs = params.toString();
@@ -887,7 +893,8 @@ export async function fetchTicketTableColumns(pageScope = "ticket") {
     credentials: "include",
     headers: {
       "Content-Type": "application/json"
-    }
+    },
+    signal: options.signal
   });
   return handleJsonResponse(response, "Error loading table columns");
 }

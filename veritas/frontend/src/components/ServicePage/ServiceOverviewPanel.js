@@ -4,12 +4,13 @@ import dashStyles from "../CybersecuritePage/AntivirusMspDashboard.module.css";
 import panelStyles from "../EquipementPage/SupervisionCenterPage.module.css";
 import MspOverviewHexPanel, { getHealthHexTone } from "../Misc/MspOverviewHexPanel/MspOverviewHexPanel";
 import MspPriorityPanel from "../Misc/MspPriorityPanel/MspPriorityPanel";
-import { buildMicrosoftTenantFleetStats } from "./microsoftTenantMspUtils";
+import { buildMicrosoftTenantFleetStats, formatMicrosoftGlobalScore, microsoftScoreTone } from "./microsoftTenantMspUtils";
 import { buildDomainFleetFromList, buildDomainFleetStats } from "./domainMspUtils";
 import { buildSslFleetFromList, buildSslFleetStats, buildSslStatusLabels, isSslFleetIssue } from "./sslMspUtils";
 import { getSslCertStatus, getSslHostLabel } from "../EnterprisesPage/sslCertificateUtils";
 function formatNumber(value) {
-  if (value === "-") return "-";
+  if (value === "-" || value === "—") return value;
+  if (typeof value === "string" && Number.isNaN(Number(value))) return value;
   if (value == null || Number.isNaN(Number(value))) return "0";
   return String(Math.round(Number(value)));
 }
@@ -337,20 +338,15 @@ export default function ServiceOverviewPanel({
 
       <SolutionStatsBand eyebrow={copy.microsoft.eyebrow} title={copy.microsoft.title} description={copy.formatMicrosoftFleetDescription(msStats)} icon="mdi:microsoft-azure" viewFleetLabel={copy.viewFleet} onOpen={() => onGoTab?.("microsoft")}>
         <KpiCard icon="mdi:microsoft-azure" label={kpi.tenants} value={msStats.total} tone="blue" onClick={() => onGoTab?.("microsoft")} />
-        <KpiCard icon="mdi:office-building-outline" label={kpi.clients} value={msStats.clients} tone="neutral" onClick={() => onGoTab?.("microsoft")} />
-        <KpiCard icon="mdi:shield-check" label={kpi.active} value={msStats.active} tone="good" disabled={msStats.active === 0} onClick={() => onGoTab?.("microsoft")} />
-        <KpiCard icon="mdi:shield-off" label={kpi.inactive} value={msStats.inactive} tone="bad" disabled={msStats.inactive === 0} onClick={() => onGoTab?.("microsoft")} />
-        <KpiCard icon="mdi:alert-circle-outline" label={kpi.toReview} value={msStats.issues} tone={msStats.issues > 0 ? "red" : "good"} disabled={msStats.issues === 0} onClick={() => onGoTab?.("microsoft")} />
-        <KpiCard icon="mdi:heart-pulse" label={kpi.health} value={msStats.healthScore ?? "-"} tone={msStats.healthScore == null ? "neutral" : msStats.healthScore >= 80 ? "good" : msStats.healthScore >= 50 ? "warn" : "bad"} onClick={() => onGoTab?.("microsoft")} />
+        <KpiCard icon="mdi:shield-star-outline" label={kpi.globalScore} value={formatMicrosoftGlobalScore(msStats.globalScore)} tone={microsoftScoreTone(msStats.globalScore)} onClick={() => onGoTab?.("microsoft")} />
+        <KpiCard icon="mdi:license" label={kpi.licenses} value={msStats.licenseTotal} tone="neutral" onClick={() => onGoTab?.("microsoft")} />
+        <KpiCard icon="mdi:account-group-outline" label={kpi.users} value={msStats.userTotal} tone="neutral" onClick={() => onGoTab?.("microsoft")} />
       </SolutionStatsBand>
 
       <SolutionStatsBand eyebrow={copy.domain.eyebrow} title={copy.domain.title} description={copy.formatDomainFleetDescription(domainStats)} icon="mdi:web" viewFleetLabel={copy.viewFleet} onOpen={() => onGoTab?.("domain")}>
         <KpiCard icon="mdi:web" label={kpi.domainTotal} value={domainStats.total} tone="blue" onClick={() => onGoTab?.("domain")} />
-        <KpiCard icon="mdi:office-building-outline" label={kpi.clients} value={domainStats.clients} tone="neutral" onClick={() => onGoTab?.("domain")} />
-        <KpiCard icon="mdi:store-outline" label={kpi.providers} value={domainStats.providers} tone="neutral" disabled={domainStats.providers === 0} onClick={() => onGoTab?.("domain")} />
-        <KpiCard icon="mdi:check-circle-outline" label={kpi.active} value={domainStats.statusCounts?.actif ?? 0} tone="good" disabled={(domainStats.statusCounts?.actif ?? 0) === 0} onClick={() => onGoTab?.("domain")} />
-        <KpiCard icon="mdi:alert-circle-outline" label={kpi.toReview} value={domainStats.issues} tone={domainStats.issues > 0 ? "amber" : "good"} disabled={domainStats.issues === 0} onClick={() => onGoTab?.("domain")} />
-        <KpiCard icon="mdi:heart-pulse" label={kpi.health} value={domainStats.healthScore ?? "-"} tone={domainStats.healthScore == null ? "neutral" : domainStats.healthScore >= 80 ? "good" : domainStats.healthScore >= 50 ? "warn" : "bad"} onClick={() => onGoTab?.("domain")} />
+        <KpiCard icon="mdi:clock-alert-outline" label={copy.getDomainStatusLabel?.("expire_bientot")} value={domainStats.statusCounts?.expire_bientot ?? 0} tone="warn" disabled={(domainStats.statusCounts?.expire_bientot ?? 0) === 0} onClick={() => onGoTab?.("domain")} />
+        <KpiCard icon="mdi:web-off" label={copy.getDomainStatusLabel?.("expiré")} value={domainStats.statusCounts?.expiré ?? 0} tone="bad" disabled={(domainStats.statusCounts?.expiré ?? 0) === 0} onClick={() => onGoTab?.("domain")} />
       </SolutionStatsBand>
 
       <SolutionStatsBand eyebrow={copy.ssl.eyebrow} title={copy.ssl.title} description={copy.formatSslFleetDescription(sslStats)} icon="mdi:certificate-outline" viewFleetLabel={copy.viewFleet} onOpen={() => onGoTab?.("ssl")}>

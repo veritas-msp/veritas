@@ -41,10 +41,11 @@ export default function TicketSatisfactionsPanel({
   const [sortDirection, setSortDirection] = useState("desc");
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(25);
-  const searchRef = useRef(0);
+  const searchAbortRef = useRef(null);
   const loadItems = useCallback(async () => {
-    const requestId = searchRef.current + 1;
-    searchRef.current = requestId;
+    searchAbortRef.current?.abort();
+    const controller = new AbortController();
+    searchAbortRef.current = controller;
     setLoading(true);
     try {
       const result = await fetchTicketSatisfactions({
@@ -55,17 +56,19 @@ export default function TicketSatisfactionsPanel({
         sortDirection,
         limit: pageSize,
         offset: (currentPage - 1) * pageSize
+      }, {
+        signal: controller.signal
       });
-      if (requestId !== searchRef.current) return;
+      if (controller.signal.aborted) return;
       setItems(Array.isArray(result?.items) ? result.items : []);
       setTotalCount(Number(result?.total) || 0);
     } catch (error) {
-      if (requestId !== searchRef.current) return;
+      if (error?.name === "AbortError" || controller.signal.aborted) return;
       toast.error(error.message || "Unable to load customer feedback.");
       setItems([]);
       setTotalCount(0);
     } finally {
-      if (requestId === searchRef.current) setLoading(false);
+      if (!controller.signal.aborted) setLoading(false);
     }
   }, [scope, search, sentiment, sortBy, sortDirection, pageSize, currentPage]);
   useEffect(() => {
@@ -73,6 +76,7 @@ export default function TicketSatisfactionsPanel({
   }, [scope, search, sentiment, sortBy, sortDirection, pageSize]);
   useEffect(() => {
     loadItems();
+    return () => searchAbortRef.current?.abort();
   }, [loadItems]);
   const totalPages = useMemo(() => Math.max(1, Math.ceil(totalCount / pageSize)), [totalCount, pageSize]);
   useEffect(() => {

@@ -225,7 +225,7 @@ export default function TicketPage({
   const [publicTableColumns, setPublicTableColumns] = useState(() => [...DEFAULT_TICKET_TABLE_COLUMNS]);
   const [privateTableColumns, setPrivateTableColumns] = useState(null);
   const [visibleTableColumns, setVisibleTableColumns] = useState(() => [...DEFAULT_TICKET_TABLE_COLUMNS]);
-  const ticketsSearchRef = useRef(0);
+  const ticketsSearchAbortRef = useRef(null);
   const hasLoadedTicketsOnceRef = useRef(false);
   const isSatisfactionView = isTicketSatisfactionViewId(activeViewId);
   const satisfactionScope = resolveTicketSatisfactionScope(activeViewId);
@@ -244,11 +244,13 @@ export default function TicketPage({
     return () => window.clearInterval(timer);
   }, []);
   useEffect(() => {
-    let cancelled = false;
+    const controller = new AbortController();
     (async () => {
       try {
-        const data = await fetchTicketTableColumns();
-        if (cancelled) return;
+        const data = await fetchTicketTableColumns("ticket", {
+          signal: controller.signal
+        });
+        if (controller.signal.aborted) return;
         setPublicTableColumns(Array.isArray(data?.public) ? data.public : [...DEFAULT_TICKET_TABLE_COLUMNS]);
         setPrivateTableColumns(Array.isArray(data?.private) && data.private.length ? data.private : null);
         setVisibleTableColumns(
@@ -256,12 +258,13 @@ export default function TicketPage({
             ? data.effective
             : [...DEFAULT_TICKET_TABLE_COLUMNS]
         );
-      } catch {
-        if (!cancelled) toast.error(pageCopy.toasts?.loadColumns || "Error loading columns");
+      } catch (error) {
+        if (error?.name === "AbortError") return;
+        toast.error(pageCopy.toasts?.loadColumns || "Error loading columns");
       }
     })();
     return () => {
-      cancelled = true;
+      controller.abort();
     };
   }, [pageCopy.toasts?.loadColumns]);
   useEffect(() => {
@@ -317,27 +320,35 @@ export default function TicketPage({
     else if (nextViewMode === "active") setViewMode("active");
     onPageParamsConsumed?.();
   }, [pageParams, onPageParamsConsumed, canTrash]);
-  const loadViews = async () => {
+  const loadViews = async (signal) => {
     setViewsLoading(true);
     try {
-      const rows = await fetchTicketViews("ticket");
+      const rows = await fetchTicketViews("ticket", {
+        signal
+      });
+      if (signal?.aborted) return;
       setTicketViews(Array.isArray(rows) ? rows : []);
-      await loadViewCounts();
+      await loadViewCounts(signal);
     } catch (error) {
+      if (error?.name === "AbortError") return;
       toast.error(error.message || pageCopy.toasts.loadViews);
       setTicketViews([]);
     } finally {
-      setViewsLoading(false);
+      if (!signal?.aborted) setViewsLoading(false);
     }
   };
-  const loadSatisfactionCounts = useCallback(async () => {
+  const loadSatisfactionCounts = useCallback(async (signal) => {
     try {
-      const counts = await fetchTicketSatisfactionCounts();
+      const counts = await fetchTicketSatisfactionCounts({
+        signal
+      });
+      if (signal?.aborted) return;
       setSatisfactionCounts({
         mine: Number(counts?.mine) || 0,
         all: Number(counts?.all) || 0
       });
-    } catch {
+    } catch (error) {
+      if (error?.name === "AbortError") return;
       setSatisfactionCounts({
         mine: 0,
         all: 0
@@ -345,8 +356,10 @@ export default function TicketPage({
     }
   }, []);
   useEffect(() => {
-    loadViews();
-    loadSatisfactionCounts();
+    const controller = new AbortController();
+    loadViews(controller.signal);
+    loadSatisfactionCounts(controller.signal);
+    return () => controller.abort();
   }, []);
   useEffect(() => {
     const trimmed = search.trim();
@@ -360,13 +373,16 @@ export default function TicketPage({
     return () => window.clearTimeout(timer);
   }, [search]);
   const isSearchPending = search.trim() !== debouncedSearch;
-  const loadViewCounts = useCallback(async () => {
+  const loadViewCounts = useCallback(async (signal) => {
     try {
       const result = await fetchTicketViewCounts({
-        scope: "views"
+        scope: "views",
+        signal
       });
+      if (signal?.aborted) return;
       setViewCounts(result?.views && typeof result.views === "object" ? result.views : {});
     } catch (error) {
+      if (error?.name === "AbortError") return;
       console.error(error);
       setViewCounts({});
     }
@@ -374,19 +390,28 @@ export default function TicketPage({
   const refreshCountsAfterMutation = useCallback(async () => {
     await loadViewCounts();
   }, [loadViewCounts]);
-  const loadReferenceData = useCallback(async () => {
+  const loadReferenceData = useCallback(async (signal) => {
     try {
-      const [userRows, contactRows, clientRows] = await Promise.all([fetchUsers().catch(() => []), fetchContactsList().catch(() => []), fetchClientsList().catch(() => [])]);
+      const [userRows, contactRows, clientRows] = await Promise.all([fetchUsers({
+        signal
+      }).catch(error => error?.name === "AbortError" ? Promise.reject(error) : []), fetchContactsList(null, {
+        signal
+      }).catch(error => error?.name === "AbortError" ? Promise.reject(error) : []), fetchClientsList({
+        signal
+      }).catch(error => error?.name === "AbortError" ? Promise.reject(error) : [])]);
+      if (signal?.aborted) return;
       setUsers(Array.isArray(userRows) ? userRows : []);
       setContacts(Array.isArray(contactRows) ? contactRows : []);
       setClients(Array.isArray(clientRows) ? clientRows : []);
     } catch (error) {
+      if (error?.name === "AbortError") return;
       toast.error(error.message || pageCopy.toasts.loadData);
     }
   }, []);
   const loadTicketsPage = useCallback(async () => {
-    const requestId = ticketsSearchRef.current + 1;
-    ticketsSearchRef.current = requestId;
+    ticketsSearchAbortRef.current?.abort();
+    const controller = new AbortController();
+    ticketsSearchAbortRef.current = controller;
     const showFullLoader = !hasLoadedTicketsOnceRef.current;
     if (showFullLoader) setLoading(true);else setRefreshing(true);
     try {
@@ -402,18 +427,18 @@ export default function TicketPage({
         sortDirection,
         limit: pageSize,
         offset: (currentPage - 1) * pageSize
-      });
-      if (requestId !== ticketsSearchRef.current) return;
+      }, controller.signal);
+      if (controller.signal.aborted) return;
       setTickets(Array.isArray(result?.items) ? result.items : []);
       setTotalCount(Number(result?.total || 0));
       hasLoadedTicketsOnceRef.current = true;
     } catch (error) {
-      if (requestId !== ticketsSearchRef.current) return;
+      if (error?.name === "AbortError" || controller.signal.aborted) return;
       toast.error(error.message || pageCopy.toasts.loadTickets);
       setTickets([]);
       setTotalCount(0);
     } finally {
-      if (requestId === ticketsSearchRef.current) {
+      if (!controller.signal.aborted) {
         setLoading(false);
         setRefreshing(false);
       }
@@ -421,7 +446,9 @@ export default function TicketPage({
   }, [activeView, viewMode, ticketType, debouncedSearch, sortBy, sortDirection, pageSize, currentPage]);
   const hasActiveSubFilters = Boolean(String(debouncedSearch || "").trim() || String(ticketType || "").trim());
   useEffect(() => {
-    loadReferenceData();
+    const controller = new AbortController();
+    loadReferenceData(controller.signal);
+    return () => controller.abort();
   }, [loadReferenceData]);
   useEffect(() => {
     if (viewMode === "trash" || hasActiveSubFilters || loading) return;
@@ -437,8 +464,9 @@ export default function TicketPage({
     });
   }, [totalCount, activeViewId, viewMode, hasActiveSubFilters, loading]);
   useEffect(() => {
-    if (isSatisfactionView) return;
+    if (isSatisfactionView) return undefined;
     loadTicketsPage();
+    return () => ticketsSearchAbortRef.current?.abort();
   }, [loadTicketsPage, isSatisfactionView]);
   const prevActiveViewIdRef = useRef(null);
   useEffect(() => {

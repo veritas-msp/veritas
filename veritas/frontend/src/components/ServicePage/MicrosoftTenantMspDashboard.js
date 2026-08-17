@@ -3,7 +3,7 @@ import { Icon } from "@iconify/react";
 import { useAppFormatters } from "../../hooks/useAppGeneralSettings";
 import MspEmptyState from "../Misc/MspEmptyState/MspEmptyState";
 import styles from "../CybersecuritePage/AntivirusMspDashboard.module.css";
-import { buildMicrosoftTenantFleetStats, isMicrosoftTenantIssue } from "./microsoftTenantMspUtils";
+import { buildMicrosoftTenantFleetStats, formatMicrosoftGlobalScore, isMicrosoftTenantIssue, microsoftScoreTone } from "./microsoftTenantMspUtils";
 
 function KpiCard({
   icon,
@@ -13,7 +13,9 @@ function KpiCard({
   active,
   onClick
 }) {
-  return <button type="button" className={`${styles.kpiCard} ${active ? styles.kpiCardActive : ""}`} onClick={onClick}>
+  return <button type="button" className={`${styles.kpiCard} ${active ? styles.kpiCardActive : ""}`} onClick={onClick} style={onClick ? undefined : {
+    cursor: "default"
+  }}>
       <span className={`${styles.kpiIcon} ${styles[`kpiIcon_${tone}`]}`}>
         <Icon icon={icon} />
       </span>
@@ -158,9 +160,6 @@ export default function MicrosoftTenantMspDashboard({
     setSortBy(column);
     setSortDirection("asc");
   };
-  const toggleStatus = next => {
-    setStatusFilter(statusFilter === next ? "all" : next);
-  };
   const formatDisplayDateTime = value => {
     if (!value) return "-";
     return formatDateTime(value) || "-";
@@ -169,13 +168,13 @@ export default function MicrosoftTenantMspDashboard({
   const statusLabels = copy.status || {};
   return <div className={styles.dashboard}>
       <div className={styles.kpiStrip}>
-        <KpiCard icon="mdi:microsoft-azure" label={copy.kpi.tenants} value={stats.total} tone="neutral" active={statusFilter === "all"} onClick={() => {
+        <KpiCard icon="mdi:microsoft-azure" label={copy.kpi.tenants} value={stats.total} tone="neutral" onClick={() => {
         setStatusFilter("all");
         setSearch("");
       }} />
-        <KpiCard icon="mdi:shield-check" label={copy.kpi.active} value={stats.active} tone="good" active={statusFilter === "actif"} onClick={() => toggleStatus("actif")} />
-        <KpiCard icon="mdi:shield-off-outline" label={copy.kpi.inactive} value={stats.inactive} tone="bad" active={statusFilter === "inactif"} onClick={() => toggleStatus("inactif")} />
-        <KpiCard icon="mdi:alert-circle-outline" label={copy.kpi.toReview} value={stats.issues} tone={stats.issues > 0 ? "warn" : "good"} active={statusFilter === "issues"} onClick={() => toggleStatus("issues")} />
+        <KpiCard icon="mdi:shield-star-outline" label={copy.kpi.globalScore} value={formatMicrosoftGlobalScore(stats.globalScore)} tone={microsoftScoreTone(stats.globalScore)} />
+        <KpiCard icon="mdi:license" label={copy.kpi.licenses} value={stats.licenseTotal} tone="neutral" />
+        <KpiCard icon="mdi:account-group-outline" label={copy.kpi.users} value={stats.userTotal} tone="neutral" />
       </div>
 
       <div className={styles.toolbar}>

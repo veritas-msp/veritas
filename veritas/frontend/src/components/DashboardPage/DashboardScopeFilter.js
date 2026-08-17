@@ -37,7 +37,9 @@ export default function DashboardScopeFilter({
   useEffect(() => {
     const controller = new AbortController();
     setLoading(true);
-    Promise.all([fetchActiveUsers().catch(() => []), fetchClientsList({
+    Promise.all([fetchActiveUsers({
+      signal: controller.signal
+    }).catch(() => []), fetchClientsList({
       signal: controller.signal
     }).catch(() => []), fetchContactsList(null, {
       signal: controller.signal

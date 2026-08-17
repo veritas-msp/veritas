@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Icon } from "@iconify/react";
 import { toast } from "react-toastify";
 import { fetchClientFiles, deleteClientFile, getPreviewUrl, getDownloadUrl, bulkUpdateClientFiles, bulkDeleteClientFiles } from "../../api/clientFiles";
@@ -96,19 +96,28 @@ export default function DocumentsHubPage() {
   const [busy, setBusy] = useState(false);
   const [sortBy, setSortBy] = useState(SORT_COLUMNS.created_at);
   const [sortDirection, setSortDirection] = useState("desc");
+  const loadAbortRef = useRef(null);
   const load = useCallback(async () => {
+    loadAbortRef.current?.abort();
+    const controller = new AbortController();
+    loadAbortRef.current = controller;
     setLoading(true);
     try {
-      const allFiles = await fetchClientFiles();
+      const allFiles = await fetchClientFiles({
+        signal: controller.signal
+      });
+      if (controller.signal.aborted) return;
       setFiles(Array.isArray(allFiles) ? allFiles : []);
-    } catch {
+    } catch (err) {
+      if (err?.name === "AbortError") return;
       setFiles([]);
     } finally {
-      setLoading(false);
+      if (!controller.signal.aborted) setLoading(false);
     }
   }, []);
   useEffect(() => {
     load();
+    return () => loadAbortRef.current?.abort();
   }, [load]);
   const companies = useMemo(() => [...new Set(files.map(f => f.client_name || "-"))].sort((a, b) => a.localeCompare(b)), [files]);
   const filtered = useMemo(() => {

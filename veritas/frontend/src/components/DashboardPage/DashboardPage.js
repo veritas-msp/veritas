@@ -136,6 +136,7 @@ export default function DashboardPage() {
   const [proRequired, setProRequired] = useState(false);
   const [distributionModal, setDistributionModal] = useState(null);
   const exportMenuRef = useRef(null);
+  const loadAbortRef = useRef(null);
   const periodFilterKey = useMemo(() => JSON.stringify(periodFilter), [periodFilter]);
   const scopeReady = isScopeFilterReady(scopeFilter);
   const scopeFilterKey = useMemo(() => scopeReady ? getScopeFilterKey(scopeFilter) : null, [scopeFilter, scopeReady]);
@@ -143,6 +144,9 @@ export default function DashboardPage() {
   const loadDashboard = useCallback(async (period, scope, {
     silent = false
   } = {}) => {
+    loadAbortRef.current?.abort();
+    const controller = new AbortController();
+    loadAbortRef.current = controller;
     if (!silent) {
       setLoading(true);
       setData(null);
@@ -152,9 +156,13 @@ export default function DashboardPage() {
     setError(null);
     setProRequired(false);
     try {
-      const payload = await fetchAnalyticsDashboard(period, scope);
+      const payload = await fetchAnalyticsDashboard(period, scope, {
+        signal: controller.signal
+      });
+      if (controller.signal.aborted) return;
       setData(payload);
     } catch (err) {
+      if (err?.name === "AbortError") return;
       if (err?.code === "PRO_FEATURE_REQUIRED") {
         setProRequired(true);
         setData(null);
@@ -163,13 +171,16 @@ export default function DashboardPage() {
         setData(null);
       }
     } finally {
-      setLoading(false);
-      setRefreshing(false);
+      if (!controller.signal.aborted) {
+        setLoading(false);
+        setRefreshing(false);
+      }
     }
   }, [copy.errorLoad]);
   useEffect(() => {
-    if (!scopeReady || scopeFilterKey == null) return;
+    if (!scopeReady || scopeFilterKey == null) return undefined;
     loadDashboard(periodFilter, scopeFilter);
+    return () => loadAbortRef.current?.abort();
   }, [periodFilterKey, scopeFilterKey, scopeReady, loadDashboard, periodFilter, scopeFilter]);
   useEffect(() => {
     if (!exportMenuOpen) return undefined;

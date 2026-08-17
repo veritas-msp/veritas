@@ -55,7 +55,10 @@ const SERVICE_PAGE = {
         health: "Santé (%)",
         clients: "Entreprises",
         providers: "Registrars",
-        domainTotal: "Domaines"
+        domainTotal: "Domaines",
+        globalScore: "Score global",
+        licenses: "Licences",
+        users: "Utilisateurs"
       },
       viewFleet: "Voir le parc",
       microsoft: {
@@ -117,9 +120,9 @@ const SERVICE_PAGE = {
       heroDescOk: "Identité, licences et sécurité Entra de vos clients.",
       kpi: {
         tenants: "Tenants",
-        active: "Actifs",
-        inactive: "Inactifs",
-        toReview: "À traiter"
+        globalScore: "Score global",
+        licenses: "Licences",
+        users: "Utilisateurs"
       },
       statusFilters: {
         all: "Tous",
@@ -132,6 +135,9 @@ const SERVICE_PAGE = {
       tenantCountPlural: "{count} tenants",
       addTenant: "Ajouter un tenant Microsoft",
       syncTenants: "Synchroniser tous les tenants Microsoft",
+      syncConfirmTitle: "Synchronisation Microsoft",
+      syncConfirmMessage: "La synchronisation de tous les tenants peut prendre plusieurs minutes. Restez sur cette page et attendez la fin de l'opération.",
+      syncConfirmAction: "Lancer la synchronisation",
       priorityTitle: "À traiter en priorité",
       alertCount: "{count} alerte",
       alertCountPlural: "{count} alertes",
@@ -343,7 +349,10 @@ const SERVICE_PAGE = {
         health: "Health (%)",
         clients: "Companies",
         providers: "Registrars",
-        domainTotal: "Domains"
+        domainTotal: "Domains",
+        globalScore: "Overall score",
+        licenses: "Licenses",
+        users: "Users"
       },
       viewFleet: "View fleet",
       microsoft: {
@@ -405,9 +414,9 @@ const SERVICE_PAGE = {
       heroDescOk: "Entra identity, licensing, and security for your clients.",
       kpi: {
         tenants: "Tenants",
-        active: "Active",
-        inactive: "Inactive",
-        toReview: "To review"
+        globalScore: "Overall score",
+        licenses: "Licenses",
+        users: "Users"
       },
       statusFilters: {
         all: "All",
@@ -420,6 +429,9 @@ const SERVICE_PAGE = {
       tenantCountPlural: "{count} tenants",
       addTenant: "Add a Microsoft tenant",
       syncTenants: "Sync all Microsoft tenants",
+      syncConfirmTitle: "Microsoft sync",
+      syncConfirmMessage: "Syncing all tenants can take several minutes. Stay on this page and wait until the operation finishes.",
+      syncConfirmAction: "Start sync",
       priorityTitle: "Priority actions",
       alertCount: "{count} alert",
       alertCountPlural: "{count} alerts",
@@ -631,7 +643,10 @@ const SERVICE_PAGE = {
         health: "Gesundheit (%)",
         clients: "Unternehmen",
         providers: "Registrare",
-        domainTotal: "Domains"
+        domainTotal: "Domains",
+        globalScore: "Gesamtscore",
+        licenses: "Lizenzen",
+        users: "Benutzer"
       },
       viewFleet: "Bestand anzeigen",
       microsoft: {
@@ -693,9 +708,9 @@ const SERVICE_PAGE = {
       heroDescOk: "Entra-Identität, Lizenzen und Sicherheit Ihrer Kunden.",
       kpi: {
         tenants: "Mandanten",
-        active: "Aktiv",
-        inactive: "Inaktiv",
-        toReview: "Zu prüfen"
+        globalScore: "Gesamtscore",
+        licenses: "Lizenzen",
+        users: "Benutzer"
       },
       statusFilters: {
         all: "Alle",
@@ -708,6 +723,9 @@ const SERVICE_PAGE = {
       tenantCountPlural: "{count} Mandanten",
       addTenant: "Microsoft-Mandant hinzufügen",
       syncTenants: "Alle Microsoft-Mandanten synchronisieren",
+      syncConfirmTitle: "Microsoft-Synchronisation",
+      syncConfirmMessage: "Die Synchronisation aller Mandanten kann mehrere Minuten dauern. Bleiben Sie auf dieser Seite und warten Sie, bis der Vorgang abgeschlossen ist.",
+      syncConfirmAction: "Synchronisation starten",
       priorityTitle: "Vorrangig bearbeiten",
       alertCount: "{count} Warnung",
       alertCountPlural: "{count} Warnungen",
@@ -919,7 +937,10 @@ const SERVICE_PAGE = {
         health: "Salute (%)",
         clients: "Aziende",
         providers: "Registrar",
-        domainTotal: "Domini"
+        domainTotal: "Domini",
+        globalScore: "Punteggio globale",
+        licenses: "Licenze",
+        users: "Utenti"
       },
       viewFleet: "Vedi parco",
       microsoft: {
@@ -981,9 +1002,9 @@ const SERVICE_PAGE = {
       heroDescOk: "Identità, licenze e sicurezza Entra dei clienti.",
       kpi: {
         tenants: "Tenant",
-        active: "Attivi",
-        inactive: "Inattivi",
-        toReview: "Da trattare"
+        globalScore: "Punteggio globale",
+        licenses: "Licenze",
+        users: "Utenti"
       },
       statusFilters: {
         all: "Tutti",
@@ -996,6 +1017,9 @@ const SERVICE_PAGE = {
       tenantCountPlural: "{count} tenant",
       addTenant: "Aggiungi tenant Microsoft",
       syncTenants: "Sincronizza tutti i tenant Microsoft",
+      syncConfirmTitle: "Sincronizzazione Microsoft",
+      syncConfirmMessage: "La sincronizzazione di tutti i tenant può richiedere diversi minuti. Restate su questa pagina e attendete la fine dell'operazione.",
+      syncConfirmAction: "Avvia sincronizzazione",
       priorityTitle: "Da trattare in priorità",
       alertCount: "{count} avviso",
       alertCountPlural: "{count} avvisi",
@@ -1207,7 +1231,10 @@ const SERVICE_PAGE = {
         health: "Salud (%)",
         clients: "Empresas",
         providers: "Registradores",
-        domainTotal: "Dominios"
+        domainTotal: "Dominios",
+        globalScore: "Puntuación global",
+        licenses: "Licencias",
+        users: "Usuarios"
       },
       viewFleet: "Ver parque",
       microsoft: {
@@ -1269,9 +1296,9 @@ const SERVICE_PAGE = {
       heroDescOk: "Identidad, licencias y seguridad Entra de sus clientes.",
       kpi: {
         tenants: "Tenants",
-        active: "Activos",
-        inactive: "Inactivos",
-        toReview: "Por tratar"
+        globalScore: "Puntuación global",
+        licenses: "Licencias",
+        users: "Usuarios"
       },
       statusFilters: {
         all: "Todos",
@@ -1284,6 +1311,9 @@ const SERVICE_PAGE = {
       tenantCountPlural: "{count} tenants",
       addTenant: "Añadir tenant Microsoft",
       syncTenants: "Sincronizar todos los tenants Microsoft",
+      syncConfirmTitle: "Sincronización Microsoft",
+      syncConfirmMessage: "La sincronización de todos los tenants puede tardar varios minutos. Permanezca en esta página y espere a que termine la operación.",
+      syncConfirmAction: "Iniciar sincronización",
       priorityTitle: "Por tratar con prioridad",
       alertCount: "{count} alerta",
       alertCountPlural: "{count} alertas",

@@ -129,7 +129,6 @@ export default function DomainMspDashboard({
         setStatusFilter("all");
         setSearch("");
       }} />
-        <KpiCard icon="mdi:check-circle-outline" label={statusLabels.actif || copy.kpi.active} value={stats.statusCounts.actif} tone="good" active={statusFilter === "actif"} onClick={() => toggleStatus("actif")} />
         <KpiCard icon="mdi:clock-alert-outline" label={statusLabels.expire_bientot} value={stats.statusCounts.expire_bientot} tone="warn" active={statusFilter === "expire_bientot"} onClick={() => toggleStatus("expire_bientot")} />
         <KpiCard icon="mdi:web-off" label={statusLabels.expiré} value={stats.statusCounts.expiré} tone="bad" active={statusFilter === "expiré"} onClick={() => toggleStatus("expiré")} />
       </div>

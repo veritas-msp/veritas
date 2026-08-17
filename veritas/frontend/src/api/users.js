@@ -13,10 +13,11 @@ export const fetchUsers = async (options = {}) => {
   if (!res.ok) throw new Error("Error loading users");
   return await res.json();
 };
-export const fetchActiveUsers = async () => {
+export const fetchActiveUsers = async (options = {}) => {
   const res = await fetch(`${BASE_URL}/active`, {
     headers: jsonHeaders,
-    credentials: "include"
+    credentials: "include",
+    signal: options.signal
   });
   if (!res.ok) throw new Error("Error loading active users");
   return await res.json();

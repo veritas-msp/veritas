@@ -2,13 +2,15 @@ import API_BASE_URL from "../config";
 const BASE = `${API_BASE_URL}/client-files`;
 export async function fetchClientFiles({
   clientId,
-  category
+  category,
+  signal
 } = {}) {
   const params = new URLSearchParams();
   if (clientId) params.set("clientId", clientId);
   if (category && category !== "all") params.set("category", category);
   const res = await fetch(`${BASE}?${params}`, {
-    credentials: "include"
+    credentials: "include",
+    signal
   });
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
