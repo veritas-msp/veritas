@@ -75,7 +75,7 @@ const COPY = {
       }
     },
     toastLoadError: "Impossible de charger l’inventaire.",
-    alertsMonthHint: "Alertes remontées sur les 30 derniers jours"
+    alertsMonthHint: "Alertes remontées sur les 30 derniers jours",
     toasts: {
       bulkSuccess: "{count} périphérique mis à jour",
       bulkSuccessPlural: "{count} périphériques mis à jour",
@@ -157,7 +157,7 @@ const COPY = {
       }
     },
     toastLoadError: "Unable to load the inventory.",
-    alertsMonthHint: "Alerts raised in the last 30 days"
+    alertsMonthHint: "Alerts raised in the last 30 days",
     toasts: {
       bulkSuccess: "{count} device updated",
       bulkSuccessPlural: "{count} devices updated",
@@ -239,7 +239,7 @@ const COPY = {
       }
     },
     toastLoadError: "Inventar konnte nicht geladen werden.",
-    alertsMonthHint: "Alarme der letzten 30 Tage"
+    alertsMonthHint: "Alarme der letzten 30 Tage",
     toasts: {
       bulkSuccess: "{count} Gerät aktualisiert",
       bulkSuccessPlural: "{count} Geräte aktualisiert",
@@ -321,7 +321,7 @@ const COPY = {
       }
     },
     toastLoadError: "Impossibile caricare l’inventario.",
-    alertsMonthHint: "Avvisi degli ultimi 30 giorni"
+    alertsMonthHint: "Avvisi degli ultimi 30 giorni",
     toasts: {
       bulkSuccess: "{count} periferica aggiornata",
       bulkSuccessPlural: "{count} periferiche aggiornate",
@@ -403,7 +403,7 @@ const COPY = {
       }
     },
     toastLoadError: "No se pudo cargar el inventario.",
-    alertsMonthHint: "Alertas de los últimos 30 días"
+    alertsMonthHint: "Alertas de los últimos 30 días",
     toasts: {
       bulkSuccess: "{count} periférico actualizado",
       bulkSuccessPlural: "{count} periféricos actualizados",
