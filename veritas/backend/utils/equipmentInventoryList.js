@@ -1,5 +1,6 @@
 import { pool } from "../database/db.js";
-import { fetchEquipmentPurgeList } from "./equipmentPurgeList.js";
+import { fetchEquipmentPurgeList, PURGE_HARDWARE_FAMILIES } from "./equipmentPurgeList.js";
+import { applyEquipmentAlertSettings, isAlertSuspensionActive, resolveAlertStatusFromSettings, resolveEquipmentFamilyKey } from "./equipmentMonitoringAlerts.js";
 
 const VIDEO_SURVEILLANCE_TABLES = [
   "v_b_clients_m_videosurveillance",
@@ -200,6 +201,328 @@ function sortInventory(items) {
   return items;
 }
 
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const STANDARD_TABLES = Object.fromEntries(PURGE_HARDWARE_FAMILIES.map(row => [row.family, row.table]));
+STANDARD_TABLES.stockage = "v_b_clients_m_stockage";
+
+function isUuid(value) {
+  return UUID_RE.test(String(value || "").trim());
+}
+
+function alertFamilyForItem(item) {
+  return resolveEquipmentFamilyKey(item?.type) || String(item?.family || "").trim() || null;
+}
+
+function settingsLookupKeys(item) {
+  const clientId = String(item?.clientId ?? "");
+  const dbId = String(item?.dbId || "").trim().toLowerCase();
+  const keys = [];
+  const families = [alertFamilyForItem(item), item?.family].map(v => String(v || "").trim().toLowerCase()).filter(Boolean);
+  for (const family of [...new Set(families)]) {
+    keys.push(`${clientId}|${dbId}|${family}`);
+  }
+  return keys;
+}
+
+async function queryOrEmpty(sql, params) {
+  try {
+    return await pool.query(sql, params);
+  } catch (err) {
+    if (err?.code === "42P01") return { rows: [] };
+    throw err;
+  }
+}
+
+async function loadAlertSettingsByKey(ids) {
+  const uuids = [...new Set((Array.isArray(ids) ? ids : []).filter(isUuid))];
+  if (!uuids.length) return new Map();
+  const result = await queryOrEmpty(
+    `SELECT client_id, equipment_id, equipment_family, alerts_enabled, suspension_type, suspended_until
+     FROM v_b_equipment_monitoring_alerts
+     WHERE equipment_id = ANY($1::uuid[])`,
+    [uuids]
+  );
+  const map = new Map();
+  for (const row of result.rows) {
+    const settings = {
+      alertsEnabled: Boolean(row.alerts_enabled),
+      suspensionType: row.suspension_type,
+      suspendedUntil: row.suspended_until
+    };
+    const key = `${row.client_id}|${String(row.equipment_id).toLowerCase()}|${String(row.equipment_family || "").toLowerCase()}`;
+    map.set(key, settings);
+  }
+  return map;
+}
+
+async function loadAlertCountsLastMonth(ids) {
+  const tokens = [...new Set((Array.isArray(ids) ? ids : []).map(id => String(id || "").trim().toLowerCase()).filter(Boolean))];
+  if (!tokens.length) return new Map();
+  const map = new Map();
+  const addRows = rows => {
+    for (const row of rows || []) {
+      const key = String(row.equipment_id || "").toLowerCase();
+      if (!key) continue;
+      map.set(key, (map.get(key) || 0) + (Number(row.n) || 0));
+    }
+  };
+  const supervision = await queryOrEmpty(
+    `SELECT TRIM(equipment_id) AS equipment_id, COUNT(*)::int AS n
+     FROM v_b_supervision_alerts
+     WHERE created_at >= NOW() - INTERVAL '30 days'
+       AND NULLIF(TRIM(equipment_id), '') IS NOT NULL
+       AND LOWER(TRIM(equipment_id)) = ANY($1::text[])
+     GROUP BY TRIM(equipment_id)`,
+    [tokens]
+  );
+  addRows(supervision.rows);
+  const monitoring = await queryOrEmpty(
+    `SELECT equipment_id::text AS equipment_id, COUNT(*)::int AS n
+     FROM v_b_monitoring_events
+     WHERE created_at >= NOW() - INTERVAL '30 days'
+       AND equipment_id IS NOT NULL
+       AND LOWER(equipment_id::text) = ANY($1::text[])
+     GROUP BY equipment_id`,
+    [tokens]
+  );
+  addRows(monitoring.rows);
+  return map;
+}
+
+function attachAlertFields(item, settingsMap, countMap) {
+  let settings = null;
+  for (const key of settingsLookupKeys(item)) {
+    if (settingsMap.has(key)) {
+      settings = settingsMap.get(key);
+      break;
+    }
+  }
+  const alertStatus = resolveAlertStatusFromSettings(settings);
+  const dbId = String(item?.dbId || "").trim().toLowerCase();
+  return {
+    ...item,
+    alertStatus,
+    alertsEnabled: Boolean(settings?.alertsEnabled),
+    alertSuspended: isAlertSuspensionActive(settings),
+    alertsLastMonth: dbId ? countMap.get(dbId) || 0 : 0
+  };
+}
+
+async function enrichInventoryWithAlerts(items) {
+  const list = Array.isArray(items) ? items : [];
+  const ids = list.map(item => item.dbId).filter(Boolean);
+  const [settingsMap, countMap] = await Promise.all([
+    loadAlertSettingsByKey(ids),
+    loadAlertCountsLastMonth(ids)
+  ]);
+  return list.map(item => attachAlertFields(item, settingsMap, countMap));
+}
+
+function resolveStandardTable(item) {
+  const family = String(item?.family || "").toLowerCase();
+  if (STANDARD_TABLES[family]) return STANDARD_TABLES[family];
+  const typeFamily = resolveEquipmentFamilyKey(item?.type);
+  if (typeFamily === "stockage") return STANDARD_TABLES.nas;
+  if (typeFamily && STANDARD_TABLES[typeFamily]) return STANDARD_TABLES[typeFamily];
+  return null;
+}
+
+async function patchStandardEquipment(item, { isActive, location }) {
+  const table = resolveStandardTable(item);
+  if (!table || !isUuid(item.dbId) || item.clientId == null) return false;
+  const sets = ["updated_at = NOW()"];
+  const values = [];
+  if (typeof isActive === "boolean") {
+    values.push(isActive);
+    sets.push(`is_active = $${values.length}`);
+  }
+  if (location !== undefined) {
+    values.push(String(location || ""));
+    sets.push(`data = jsonb_set(jsonb_set(jsonb_set(COALESCE(data, '{}'::jsonb), '{site}', to_jsonb($${values.length}::text), true), '{location}', to_jsonb($${values.length}::text), true), '{emplacement}', to_jsonb($${values.length}::text), true)`);
+  }
+  if (values.length === 0) return true;
+  values.push(item.dbId, item.clientId);
+  const result = await pool.query(
+    `UPDATE ${table} SET ${sets.join(", ")} WHERE id = $${values.length - 1}::uuid AND client_id = $${values.length} RETURNING id`,
+    values
+  );
+  return result.rows.length > 0;
+}
+
+async function patchCustomEquipment(item, { isActive, location }) {
+  const familyKey = String(item?.familyKey || "").trim();
+  if (!familyKey || !isUuid(item.dbId) || item.clientId == null) return false;
+  const existing = await pool.query(
+    `SELECT data, is_active FROM v_b_clients_m_custom_equipment
+     WHERE id = $1::uuid AND client_id = $2 AND family_key = $3 LIMIT 1`,
+    [item.dbId, item.clientId, familyKey]
+  );
+  if (!existing.rows.length) return false;
+  const current = existing.rows[0];
+  let data = current.data;
+  if (typeof data === "string") {
+    try {
+      data = JSON.parse(data);
+    } catch {
+      data = {};
+    }
+  }
+  data = data && typeof data === "object" ? { ...data } : {};
+  if (location !== undefined) {
+    const loc = String(location || "");
+    data.site = loc;
+    data.location = loc;
+    data.emplacement = loc;
+  }
+  const nextActive = typeof isActive === "boolean" ? isActive : current.is_active !== false;
+  const result = await pool.query(
+    `UPDATE v_b_clients_m_custom_equipment
+     SET data = $4::jsonb, is_active = $5, updated_at = NOW()
+     WHERE id = $1::uuid AND client_id = $2 AND family_key = $3
+     RETURNING id`,
+    [item.dbId, item.clientId, familyKey, JSON.stringify(data), nextActive]
+  );
+  return result.rows.length > 0;
+}
+
+async function patchVideoEquipment(item, { isActive, location }) {
+  if (!isUuid(item.dbId) || item.clientId == null) return false;
+  for (const table of VIDEO_SURVEILLANCE_TABLES) {
+    try {
+      const sets = ["updated_at = NOW()"];
+      const values = [];
+      if (typeof isActive === "boolean") {
+        values.push(isActive);
+        sets.push(`is_active = $${values.length}`);
+      }
+      if (location !== undefined) {
+        values.push(String(location || ""));
+        sets.push(`data = jsonb_set(jsonb_set(jsonb_set(COALESCE(data, '{}'::jsonb), '{site}', to_jsonb($${values.length}::text), true), '{location}', to_jsonb($${values.length}::text), true), '{emplacement}', to_jsonb($${values.length}::text), true)`);
+      }
+      if (values.length === 0) return true;
+      values.push(item.dbId, item.clientId);
+      const result = await pool.query(
+        `UPDATE ${table} SET ${sets.join(", ")} WHERE id = $${values.length - 1}::uuid AND client_id = $${values.length} RETURNING id`,
+        values
+      );
+      if (result.rows.length) return true;
+    } catch (err) {
+      if (err?.code === "42P01") continue;
+      throw err;
+    }
+  }
+  return false;
+}
+
+async function patchEquipmentFields(item, fields) {
+  if (item?.isCustom || String(item?.type || "").startsWith("Custom:")) {
+    return patchCustomEquipment(item, fields);
+  }
+  if (item?.type === "Videosurveillance" || item?.family === "videosurveillance") {
+    return patchVideoEquipment(item, fields);
+  }
+  return patchStandardEquipment(item, fields);
+}
+
+function normalizeBulkItem(raw) {
+  const dbId = String(raw?.dbId || raw?.id || "").trim();
+  const clientId = raw?.clientId != null && raw.clientId !== "" ? Number(raw.clientId) : null;
+  if (!isUuid(dbId) || !clientId) return null;
+  return {
+    id: String(raw?.id || dbId),
+    dbId,
+    clientId,
+    type: raw?.type || null,
+    family: raw?.family || null,
+    familyKey: raw?.familyKey || null,
+    isCustom: Boolean(raw?.isCustom || String(raw?.type || "").startsWith("Custom:")),
+    name: raw?.name || null
+  };
+}
+
+function alertsPayloadFromMode(alerts) {
+  if (!alerts || typeof alerts !== "object") return null;
+  const mode = String(alerts.mode || "").trim().toLowerCase();
+  if (mode === "active") {
+    return { suspensionType: "none", alertsEnabled: true };
+  }
+  if (mode === "disabled") {
+    return { suspensionType: "none", alertsEnabled: false };
+  }
+  if (mode === "temporary" || mode === "permanent") {
+    return {
+      suspensionType: mode,
+      alertsEnabled: true,
+      durationMinutes: alerts.durationMinutes,
+      reason: alerts.reason || null
+    };
+  }
+  return null;
+}
+
+export async function bulkUpdateEquipmentInventory({
+  items = [],
+  updates = {},
+  actorUserId = null
+} = {}) {
+  const normalized = [];
+  const seen = new Set();
+  for (const raw of Array.isArray(items) ? items : []) {
+    const item = normalizeBulkItem(raw);
+    if (!item || seen.has(item.dbId)) continue;
+    seen.add(item.dbId);
+    normalized.push(item);
+    if (normalized.length >= 300) break;
+  }
+  const wantsActive = Object.prototype.hasOwnProperty.call(updates || {}, "isActive");
+  const wantsLocation = Object.prototype.hasOwnProperty.call(updates || {}, "location");
+  const alertPatch = alertsPayloadFromMode(updates?.alerts);
+  if (!normalized.length) {
+    return { updated: 0, failed: [] };
+  }
+  if (!wantsActive && !wantsLocation && !alertPatch) {
+    const err = new Error("No field selected");
+    err.status = 400;
+    throw err;
+  }
+  const fieldPatch = {
+    isActive: wantsActive ? Boolean(updates.isActive) : undefined,
+    location: wantsLocation ? String(updates.location ?? "") : undefined
+  };
+  let updated = 0;
+  const failed = [];
+  for (const item of normalized) {
+    try {
+      if (wantsActive || wantsLocation) {
+        const ok = await patchEquipmentFields(item, fieldPatch);
+        if (!ok) {
+          failed.push({ id: item.id, error: "Equipment not found" });
+          continue;
+        }
+      }
+      if (alertPatch) {
+        const family = alertFamilyForItem(item);
+        if (!family) {
+          failed.push({ id: item.id, error: "Unknown equipment family" });
+          continue;
+        }
+        await applyEquipmentAlertSettings({
+          clientId: item.clientId,
+          equipmentId: item.dbId,
+          equipmentFamily: family,
+          equipmentName: item.name,
+          ...alertPatch,
+          suspendedBy: actorUserId
+        });
+      }
+      updated += 1;
+    } catch (err) {
+      failed.push({ id: item.id, error: err.message || "Update failed", code: err.code || null });
+    }
+  }
+  return { updated, failed };
+}
+
 /**
  * Full device inventory across all clients: standard hardware, custom families, cameras.
  */
@@ -219,5 +542,5 @@ export async function fetchEquipmentInventoryList() {
     ...custom,
     ...video
   ];
-  return sortInventory(items);
+  return enrichInventoryWithAlerts(sortInventory(items));
 }

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { Icon } from "@iconify/react";
 import { FaTimes } from "react-icons/fa";
@@ -11,10 +11,10 @@ import styles from "./AntivirusOverviewModal.module.css";
 import SolutionDetailPageLayout from "./SolutionDetailPageLayout";
 import { KpiCard, StatsPieChart, StatsDistributionBars, StatsDashboardBody, StatsPanel, buildDistributionItems, statsDashboardStyles as dashStyles } from "./StatsDashboardWidgets";
 function formatDate(value) {
-  if (!value) return "-";
+  if (value == null || value === "" || value === 0 || value === "0") return "-";
   try {
     const d = new Date(value);
-    if (Number.isNaN(d.getTime())) return String(value);
+    if (Number.isNaN(d.getTime()) || d.getUTCFullYear() < 1990) return "-";
     return d.toLocaleString("en-GB");
   } catch {
     return String(value);
@@ -70,6 +70,11 @@ function SectionError({
   if (!error) return null;
   return <div className={styles.errorBox}>{error}</div>;
 }
+function formatCellValue(value) {
+  if (value == null || value === "" || value === 0 || value === "0") return "-";
+  if (typeof value === "object") return "-";
+  return String(value);
+}
 function DataTable({
   columns,
   rows,
@@ -88,7 +93,7 @@ function DataTable({
         <tbody>
           {rows.map((row, index) => <tr key={row.id || `${index}`}>
               {columns.map(col => <td key={col.key} className={col.mono ? styles.mono : undefined}>
-                  {col.render ? col.render(row) : row[col.key] ?? "-"}
+                  {col.render ? col.render(row) : formatCellValue(row[col.key])}
                 </td>)}
             </tr>)}
         </tbody>
@@ -137,7 +142,7 @@ const SECTION_COLUMNS = {
   }, {
     key: "autoRenew",
     label: "Auto-renew",
-    render: r => r.autoRenew === true ? "Yes" : r.autoRenew === false ? "No" : "-"
+    render: r => r.autoRenew === true || r.autoRenew === "Yes" ? "Yes" : r.autoRenew === false || r.autoRenew === "No" ? "No" : "-"
   }],
   users: [{
     key: "email",
@@ -271,10 +276,14 @@ export function AntispamOverviewPanel({
   backLabel = "Back"
 }) {
   const [activeSection, setActiveSection] = useState("overview");
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(() => !antispamItem?.syncData?.dashboard);
+  const [refreshing, setRefreshing] = useState(false);
   const [dashboard, setDashboard] = useState(null);
   const [lastPersistedAt, setLastPersistedAt] = useState(null);
   const [loadError, setLoadError] = useState(null);
+  const abortRef = useRef(null);
+  const requestIdRef = useRef(0);
+  const dashboardRef = useRef(null);
   const credentialContext = useMemo(() => ({
     clientId: client?.id,
     mailinblackTenantId: antispamItem?.mailinblackTenantId,
@@ -285,35 +294,62 @@ export function AntispamOverviewPanel({
     persist = false
   } = {}) => {
     if (!customerId) return;
-    setLoading(true);
+    abortRef.current?.abort();
+    const controller = new AbortController();
+    abortRef.current = controller;
+    const requestId = ++requestIdRef.current;
+    const hasContent = Boolean(dashboardRef.current || antispamItem?.syncData?.dashboard);
+    if (hasContent) setRefreshing(true);else setLoading(true);
     setLoadError(null);
     try {
+      const signal = controller.signal;
       if (persist && client?.id) {
-        const persisted = await syncAndPersistAntispamSolution(client.id, antispamItem);
+        const persisted = await syncAndPersistAntispamSolution(client.id, antispamItem, {
+          signal
+        });
+        if (signal.aborted || requestId !== requestIdRef.current) return;
         await onSynced?.();
+        if (signal.aborted || requestId !== requestIdRef.current) return;
         showSuccess("Antispam data refreshed and saved.");
-        if (persisted.dashboard) setDashboard(persisted.dashboard);
+        if (persisted.dashboard) {
+          dashboardRef.current = persisted.dashboard;
+          setDashboard(persisted.dashboard);
+        }
         setLastPersistedAt(persisted.updatedPayload?.syncData?.lastSync || new Date().toISOString());
         return;
       }
-      const dashboardData = await fetchMailinblackDashboard(customerId, credentialContext);
+      const dashboardData = await fetchMailinblackDashboard(customerId, {
+        ...credentialContext,
+        signal
+      });
+      if (signal.aborted || requestId !== requestIdRef.current) return;
+      dashboardRef.current = dashboardData;
       setDashboard(dashboardData);
       setLastPersistedAt(antispamItem?.syncData?.lastSync || null);
     } catch (err) {
+      if (err?.name === "AbortError" || controller.signal.aborted || requestId !== requestIdRef.current) return;
       setLoadError(err.message);
       showError(err.message);
     } finally {
+      if (requestId !== requestIdRef.current) return;
       setLoading(false);
+      setRefreshing(false);
     }
   }, [customerId, credentialContext, client?.id, antispamItem, onSynced]);
   useEffect(() => {
     if (active && customerId) {
       setActiveSection("overview");
       const cached = antispamItem?.syncData?.dashboard;
-      if (cached) setDashboard(cached);
+      if (cached) {
+        dashboardRef.current = cached;
+        setDashboard(cached);
+      }
       if (antispamItem?.syncData?.lastSync) setLastPersistedAt(antispamItem.syncData.lastSync);
       loadDashboard();
     }
+    return () => {
+      abortRef.current?.abort();
+    };
   }, [active, customerId, loadDashboard, antispamItem?.syncData]);
   const sections = dashboard?.sections || {};
   const customerName = sections.customer?.data?.name || antispamItem?.customerName || antispamItem?.nom || antispamItem?.name || "Mailinblack Protect";
@@ -445,7 +481,7 @@ export function AntispamOverviewPanel({
             <KpiCard icon="mdi:cloud-sync-outline" label="Synchronization" value={lastPersistedAt ? "Saved" : "Lecture seule"} sub={syncLabel} tone={lastPersistedAt ? "good" : "neutral"} />
           </section>
 
-          <section className={dashStyles.chartGrid}>
+          <section className={dashStyles.chartGrid3}>
             <StatsPanel title="Fleet distribution" icon="mdi:chart-donut">
               <StatsPieChart items={volumeDistribution.items} total={volumeDistribution.total} emptyLabel="No volume reported by the API" />
             </StatsPanel>
@@ -474,7 +510,7 @@ export function AntispamOverviewPanel({
               </StatsPanel> : null}
           </section>
 
-          <section className={dashStyles.chartBarGrid}>
+          <section className={dashStyles.columns}>
             <StatsPanel title="Volumes par module" icon="mdi:chart-bar">
               <StatsDistributionBars items={moduleBars.items} emptyLabel="No volume available" />
             </StatsPanel>
@@ -619,7 +655,7 @@ export function AntispamOverviewPanel({
   if (!active || !customerId) return null;
   const mappingLabel = antispamItem?.mappingMode === "dedicated" ? "Dedicated tenant" : "Tenant global";
   if (asPage) {
-    return <SolutionDetailPageLayout accent="mailinblack" eyebrow="Cybersecurity · Mailinblack Protect" title={`Antispam · ${customerName}`} titleIcon="mdi:email-secure-outline" subtitle={`${client?.name || "-"} · ${mappingLabel}`} backLabel={backLabel} onBack={onBack} loading={loading} loadingMessage="Loading des data Mailinblack…" onRefresh={() => loadDashboard()} footerHint={`${mappingLabel}${customerId ? ` · ID ${customerId}` : ""}`} onRefreshSave={() => loadDashboard({
+    return <SolutionDetailPageLayout accent="mailinblack" eyebrow="Cybersecurity · Mailinblack Protect" title={`Antispam · ${customerName}`} titleIcon="mdi:email-secure-outline" subtitle={`${client?.name || "-"} · ${mappingLabel}`} backLabel={backLabel} onBack={onBack} loading={loading} refreshing={refreshing} loadingMessage="Loading des data Mailinblack…" onRefresh={() => loadDashboard()} footerHint={`${mappingLabel}${customerId ? ` · ID ${customerId}` : ""}`} onRefreshSave={() => loadDashboard({
       persist: true
     })} refreshSaveLabel="Refresh and save" navEntries={navEntries} activeSection={activeSection} onSectionChange={setActiveSection} navAriaLabel="Sections">
         {renderSectionContent()}
@@ -670,14 +706,14 @@ export function AntispamOverviewPanel({
         <div className={formStyles.footerActions}>
           <button type="button" className={formStyles.primaryBtn} onClick={() => loadDashboard({
           persist: true
-        })} disabled={loading}>
+        })} disabled={loading || refreshing}>
             <Icon icon="mdi:cloud-sync-outline" aria-hidden />
             Refresh and save
           </button>
         </div>
       </footer>
     </div>;
-  return createPortal(<div className={formStyles.overlay} onClick={loading ? undefined : onClose} role="presentation">
+  return createPortal(<div className={formStyles.overlay} onClick={onClose} role="presentation">
       {shell}
     </div>, document.getElementById("modal-root") || document.body);
 }

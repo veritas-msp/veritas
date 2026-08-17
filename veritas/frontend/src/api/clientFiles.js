@@ -54,11 +54,13 @@ export async function deleteClientFile(id) {
 }
 export async function updateClientFile(id, {
   description,
-  visibleToClient
+  visibleToClient,
+  category
 } = {}) {
   const body = {};
   if (description !== undefined) body.description = description;
   if (visibleToClient !== undefined) body.visibleToClient = visibleToClient;
+  if (category !== undefined) body.category = category;
   if (!Object.keys(body).length) {
     throw new Error("No data to update.");
   }
@@ -80,6 +82,40 @@ export async function updateClientFileDescription(id, description) {
   return updateClientFile(id, {
     description
   });
+}
+export async function bulkUpdateClientFiles(files, fields) {
+  const rows = [];
+  const failed = [];
+  for (const file of Array.isArray(files) ? files : []) {
+    try {
+      const updated = await updateClientFile(file.id, fields);
+      rows.push(updated);
+    } catch {
+      failed.push(file.id);
+    }
+  }
+  return {
+    updated: rows.length,
+    failed,
+    rows
+  };
+}
+export async function bulkDeleteClientFiles(files) {
+  const deletedIds = [];
+  const failed = [];
+  for (const file of Array.isArray(files) ? files : []) {
+    try {
+      await deleteClientFile(file.id);
+      deletedIds.push(file.id);
+    } catch {
+      failed.push(file.id);
+    }
+  }
+  return {
+    deleted: deletedIds.length,
+    failed,
+    deletedIds
+  };
 }
 export function getPreviewUrl(id) {
   return `${BASE}/${id}/preview`;

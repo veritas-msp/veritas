@@ -19,6 +19,7 @@ export default function SolutionDetailPageLayout({
   backLabel = "Back",
   onBack,
   loading = false,
+  refreshing = false,
   loadingMessage = "Loading…",
   onRefresh,
   onRefreshSave,
@@ -32,6 +33,7 @@ export default function SolutionDetailPageLayout({
   children
 }) {
   const accentKey = ["gravityzone", "mailinblack"].includes(accent) ? accent : "default";
+  const busy = loading || refreshing;
   return (
     <div className={`${mspStyles.mspPage} ${layout.page} msp-page-grid`}>
       <div className={mspStyles.mspLayout}>
@@ -55,15 +57,15 @@ export default function SolutionDetailPageLayout({
                     type="button"
                     className={layout.iconBtn}
                     onClick={onRefresh}
-                    disabled={loading}
+                    disabled={busy}
                     aria-label={refreshLabel}
                     title={refreshLabel}
                   >
-                    <Icon icon={loading ? "mdi:loading" : "mdi:refresh"} className={loading ? styles.spin : ""} aria-hidden />
+                    <Icon icon={busy ? "mdi:loading" : "mdi:refresh"} className={busy ? styles.spin : ""} aria-hidden />
                   </button>
                 ) : null}
                 {onRefreshSave ? (
-                  <button type="button" className={layout.primaryBtn} onClick={onRefreshSave} disabled={loading}>
+                  <button type="button" className={layout.primaryBtn} onClick={onRefreshSave} disabled={busy}>
                     <Icon icon="mdi:cloud-sync-outline" aria-hidden />
                     {refreshSaveLabel}
                   </button>
@@ -113,6 +115,12 @@ export default function SolutionDetailPageLayout({
                     </div>
                   ) : (
                     <div className={styles.tablePanel}>
+                      {refreshing ? (
+                        <div className={styles.refreshOverlay} aria-live="polite">
+                          <Icon icon="mdi:loading" className={styles.spin} aria-hidden />
+                          <span>{loadingMessage}</span>
+                        </div>
+                      ) : null}
                       <div className={styles.tableScroll}>{children}</div>
                     </div>
                   )}

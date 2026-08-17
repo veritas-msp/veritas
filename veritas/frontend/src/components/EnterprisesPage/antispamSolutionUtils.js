@@ -55,6 +55,79 @@ export function getAntispamSolutionModeLabel(solution) {
   if (normalized?.customerId) return "Tenant global";
   return "-";
 }
+function toLicenseNumber(value) {
+  if (value == null || value === "") return null;
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+function toValidExpirationDate(value) {
+  if (value == null || value === "" || value === 0 || value === "0" || typeof value === "boolean") return null;
+  if (value instanceof Date) {
+    if (Number.isNaN(value.getTime()) || value.getUTCFullYear() < 1990) return null;
+    return value;
+  }
+  if (typeof value === "number" || typeof value === "string" && /^-?\d+(\.\d+)?$/.test(String(value).trim())) {
+    const num = Number(value);
+    if (!Number.isFinite(num) || num === 0) return null;
+    const date = new Date(num < 1e12 ? num * 1000 : num);
+    if (Number.isNaN(date.getTime()) || date.getUTCFullYear() < 1990) return null;
+    return date;
+  }
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime()) || date.getUTCFullYear() < 1990) return null;
+  return date;
+}
+function pickSoonestExpirationValue(values) {
+  const dates = [];
+  for (const value of values) {
+    const date = toValidExpirationDate(value);
+    if (date) dates.push(date);
+  }
+  if (!dates.length) return null;
+  dates.sort((a, b) => a.getTime() - b.getTime());
+  return dates[0].toISOString();
+}
+function collectAntispamLicenseItems(item) {
+  const customer = item?.syncData?.customer || {};
+  const raw = customer.raw && typeof customer.raw === "object" ? customer.raw : {};
+  const lists = [raw.licenses, raw.licences, raw.licenseList, raw.licenceList, customer.licenses];
+  const items = [];
+  for (const list of lists) {
+    if (Array.isArray(list)) items.push(...list);
+  }
+  return items;
+}
+function collectAntispamExpirationCandidates(item) {
+  const customer = item?.syncData?.customer || {};
+  const raw = customer.raw && typeof customer.raw === "object" ? customer.raw : {};
+  const domains = item?.syncData?.dashboard?.sections?.domains?.items;
+  const domainExpirations = Array.isArray(domains) ? domains.flatMap(domain => [domain?.expiration, domain?.expirationDate, domain?.license?.expirationDate, domain?.license?.expiration, domain?.licence?.expirationDate, domain?.subscription?.expirationDate]) : [];
+  const licenseExpirations = collectAntispamLicenseItems(item).flatMap(license => [license?.expirationDate, license?.expiration, license?.expiryDate, license?.renewalDate, license?.endDate, license?.validUntil]);
+  return [item?.expiration, item?.expirationDate, item?.expirityDate, customer.expiration, customer.expirationDate, raw.expirationDate, raw.expiration, raw.expiryDate, raw.renewalDate, raw.licenseExpiration, raw.licenceExpiration, raw.endDate, raw.validUntil, ...licenseExpirations, ...domainExpirations];
+}
+function resolveAntispamExpirationValue(item) {
+  return pickSoonestExpirationValue(collectAntispamExpirationCandidates(item));
+}
+function resolveAntispamDomainCount(item) {
+  const dashboard = item?.syncData?.dashboard;
+  const customer = item?.syncData?.customer;
+  const domainItems = dashboard?.sections?.domains?.items;
+  return toLicenseNumber(item?.domainesSurveilles ?? item?.domaines ?? item?.domainsCount ?? dashboard?.sections?.domains?.total ?? (Array.isArray(domainItems) ? domainItems.length : null) ?? customer?.domainsCount);
+}
+function resolveAntispamLicenseTotal(item) {
+  const customer = item?.syncData?.customer || {};
+  const raw = customer.raw && typeof customer.raw === "object" ? customer.raw : {};
+  const fromApi = toLicenseNumber(customer.licenseCount ?? (Array.isArray(raw.licenses) ? raw.licenses.length : raw.licenses) ?? raw.licenseCount ?? raw.nbLicences ?? raw.nbLicense ?? raw.totalLicenses ?? raw.licenceCount ?? raw.numberOfLicenses ?? raw.maxUsers ?? raw.maxMailboxes);
+  const persisted = toLicenseNumber(item?.licencesTotales ?? item?.totalLicenses ?? item?.nombre_licences);
+  if (fromApi != null && fromApi > 0) return fromApi;
+  if (persisted != null && persisted > 0) return persisted;
+  const licenseItems = collectAntispamLicenseItems(item);
+  if (licenseItems.length) return licenseItems.length;
+  const mappedUsersCount = toLicenseNumber(customer.usersCount);
+  const usersListCount = toLicenseNumber(item?.utilisateursProteges ?? item?.syncData?.dashboard?.sections?.users?.total);
+  if (mappedUsersCount != null && mappedUsersCount > 0 && mappedUsersCount !== usersListCount) return mappedUsersCount;
+  return fromApi ?? persisted;
+}
 export function normalizeAntispamItem(item) {
   if (!item) return null;
   const name = item.logiciel || item.solution || item.nom || item.name || item.customerName || "";
@@ -75,9 +148,10 @@ export function normalizeAntispamItem(item) {
     mappingMode,
     isManual: item.isManual ?? isManualEntry,
     mailinblackTenantId: item.mailinblackTenantId || null,
-    expiration: item.expiration ?? item.expirityDate ?? "",
+    expiration: resolveAntispamExpirationValue(item) || "",
     utilisateursProteges: item.utilisateursProteges ?? item.utilisateurs ?? item.nombre_utilisateurs ?? null,
-    domainesSurveilles: item.domainesSurveilles ?? item.domaines ?? item.licences ?? item.nombre_licences ?? null
+    domainesSurveilles: resolveAntispamDomainCount(item),
+    licencesTotales: resolveAntispamLicenseTotal(item)
   };
 }
 export function formatAntispamSolutionLabel(solution) {
@@ -118,15 +192,12 @@ export function isAntispamConfigured(item) {
   const normalized = normalizeAntispamItem(item);
   if (!normalized) return false;
   if (normalized.customerId) return true;
-  if (normalized.providerId === "mailinblack" && normalized.mappingMode === "dedicated" && normalized.mailinblackTenantId) {
-    return true;
-  }
-  const label = (normalized.logiciel || normalized.solution || normalized.nom || "").trim();
-  const hasCoverageMeta = String(normalized.utilisateursProteges ?? "").trim() || String(normalized.domainesSurveilles ?? "").trim() || String(normalized.expiration ?? "").trim();
-  if (normalized.mappingMode === "manual" || normalized.isManual || normalized.providerId === "manual") {
-    return Boolean(label && label !== "N/A" || hasCoverageMeta);
-  }
-  return Boolean(label && label !== "N/A" && (normalized.utilisateursProteges != null || normalized.domainesSurveilles != null || Boolean(normalized.expiration)));
+  if (normalized.mailinblackTenantId) return true;
+  const label = (normalized.logiciel || normalized.solution || normalized.nom || normalized.name || "").trim();
+  const users = String(normalized.utilisateursProteges ?? "").trim();
+  const hasCoverageMeta = users && users.toLowerCase() !== "n/a" || String(normalized.domainesSurveilles ?? "").trim() || String(normalized.expiration ?? "").trim();
+  if (label && label !== "N/A") return true;
+  return Boolean(hasCoverageMeta);
 }
 export function isManualAntispamSolution(item) {
   const normalized = normalizeAntispamItem(item);
@@ -134,9 +205,8 @@ export function isManualAntispamSolution(item) {
   return isAntispamConfigured(normalized);
 }
 export function computeAntispamExpirationStatus(expiration) {
-  if (!expiration) return "unknown";
-  const expirationDate = new Date(expiration);
-  if (Number.isNaN(expirationDate.getTime())) return "unknown";
+  const expirationDate = toValidExpirationDate(expiration);
+  if (!expirationDate) return "unknown";
   const daysUntil = Math.ceil((expirationDate - new Date()) / (1000 * 60 * 60 * 24));
   if (daysUntil <= 0) return "inactif";
   if (daysUntil <= 30) return "expire_bientot";
@@ -160,11 +230,6 @@ function normalizePaymentLabel(value) {
   if (lower.includes("perpetual") || lower.includes("perpetuel") || lower.includes("lifetime")) return "Perpetual";
   return str;
 }
-function toLicenseNumber(value) {
-  if (value == null || value === "") return null;
-  const parsed = Number(value);
-  return Number.isFinite(parsed) ? parsed : null;
-}
 export function resolveAntispamPaymentPlan(solution) {
   const customer = solution?.syncData?.customer;
   const raw = customer?.raw && typeof customer.raw === "object" ? customer.raw : {};
@@ -178,8 +243,8 @@ export function resolveAntispamPaymentPlan(solution) {
   return "-";
 }
 function resolveAntispamLicenses(normalized) {
-  const usedLicenses = toLicenseNumber(normalized?.utilisateursProteges ?? normalized?.licencesUtilisees ?? normalized?.usedLicenses);
-  const totalLicenses = toLicenseNumber(normalized?.licencesTotales ?? normalized?.totalLicenses ?? normalized?.nombre_licences);
+  const usedLicenses = toLicenseNumber(normalized?.licencesUtilisees ?? normalized?.usedLicenses);
+  const totalLicenses = toLicenseNumber(normalized?.licencesTotales ?? resolveAntispamLicenseTotal(normalized));
   const usagePercent = totalLicenses > 0 && usedLicenses != null ? Math.round(usedLicenses / totalLicenses * 100) : null;
   return {
     usedLicenses,
@@ -227,7 +292,7 @@ export function buildAntispamFleetRow(client, solution, index = 0) {
 export function buildAntispamFleetFromClients(clients = []) {
   const rows = [];
   (Array.isArray(clients) ? clients : []).forEach(client => {
-    const solutions = listConfiguredAntispamSolutions(client);
+    const solutions = listConfiguredAntispamSolutions(client, [], null, client.mailinblackTenants || []);
     solutions.forEach((solution, index) => {
       rows.push(buildAntispamFleetRow(client, solution, index));
     });
@@ -252,9 +317,20 @@ export function listOverviewAntispamSolutions(solutions = []) {
   return (solutions || []).map(solution => normalizeAntispamItem(solution)).filter(solution => isAntispamConfigured(solution));
 }
 export function extractAntispamSolutionsFromModules(modulesData) {
-  const list = modulesData?.equipements?.Antispam?.solutions;
-  if (!Array.isArray(list)) return [];
-  return list.map(solution => normalizeAntispamItem(solution)).filter(Boolean);
+  const antispam = modulesData?.equipements?.Antispam;
+  if (!antispam) return [];
+  if (Array.isArray(antispam)) {
+    return antispam.map(solution => normalizeAntispamItem(solution)).filter(Boolean);
+  }
+  const list = Array.isArray(antispam.solutions) ? antispam.solutions : [];
+  if (list.length) {
+    return list.map(solution => normalizeAntispamItem(solution)).filter(Boolean);
+  }
+  if (antispam.logiciel || antispam.solution || antispam.nom || antispam.name || antispam.customerId || antispam.mailinblackTenantId) {
+    const normalized = normalizeAntispamItem(antispam);
+    return normalized ? [normalized] : [];
+  }
+  return [];
 }
 function buildConfiguredDedupeKey(item) {
   if (item.customerId) {
@@ -398,7 +474,9 @@ export async function reorderAntispamSolutions(clientId, orderedItems = []) {
   });
   return reordered.map(entry => normalizeAntispamItem(entry)).filter(Boolean);
 }
-export async function syncAndPersistAntispamSolution(clientId, solution) {
+export async function syncAndPersistAntispamSolution(clientId, solution, {
+  signal
+} = {}) {
   const normalized = normalizeAntispamItem(solution);
   if (!clientId || !normalized?.customerId) {
     throw new Error("Client Mailinblack introuvable.");
@@ -407,7 +485,8 @@ export async function syncAndPersistAntispamSolution(clientId, solution) {
   const credentialContext = {
     clientId,
     mailinblackTenantId: normalized.mailinblackTenantId,
-    mappingMode
+    mappingMode,
+    signal
   };
   const syncResult = await syncMailinblackCustomer(normalized.customerId, credentialContext);
   if (!syncResult.success) {
@@ -421,7 +500,9 @@ export async function syncAndPersistAntispamSolution(clientId, solution) {
     customerId: normalized.customerId,
     customerName: syncResult.data?.customerName || syncResult.customer?.name || normalized.customerName || ""
   };
-  const modulesData = await fetchClientModules(clientId);
+  const modulesData = await fetchClientModules(clientId, {
+    signal
+  });
   const existingEquipements = modulesData?.equipements || {};
   const antispamEquipement = existingEquipements.Antispam || {};
   const existingSolutions = Array.isArray(antispamEquipement.solutions) ? antispamEquipement.solutions : [];
@@ -472,12 +553,142 @@ export function formatAntispamSyncPayload(customer, mappingMode, mailinblackTena
     domain: customer?.domain || "",
     utilisateursProteges: customer?.usersCount != null ? Number(customer.usersCount) : 0,
     domainesSurveilles: customer?.domainsCount != null ? Number(customer.domainsCount) : 0,
-    expiration: customer?.expiration || "",
+    licencesTotales: customer?.licenseCount ?? customer?.raw?.licenses ?? customer?.raw?.licenseCount ?? null,
+    expiration: toValidExpirationDate(customer?.expiration)?.toISOString() || "",
     syncData: {
       customer,
       status: customer?.status || null,
       lastSync: new Date().toISOString()
     }
+  };
+}
+function groupFleetItemsByClient(items = []) {
+  const groups = new Map();
+  items.forEach(item => {
+    if (item?.clientId == null) return;
+    if (!groups.has(item.clientId)) groups.set(item.clientId, []);
+    groups.get(item.clientId).push(item);
+  });
+  return groups;
+}
+function antispamItemMatches(entry, item) {
+  const left = normalizeAntispamItem(entry) || entry;
+  const right = normalizeAntispamItem(item?.raw || item) || item?.raw || item;
+  if (!left || !right) return false;
+  return solutionMatches(left, right);
+}
+function applyAntispamBulkFields(entry, fields = {}) {
+  const next = {
+    ...entry
+  };
+  if (Object.prototype.hasOwnProperty.call(fields, "expiration")) {
+    next.expiration = fields.expiration || "";
+  }
+  if (Object.prototype.hasOwnProperty.call(fields, "licencesTotales")) {
+    next.licencesTotales = fields.licencesTotales;
+    next.totalLicenses = fields.licencesTotales;
+  }
+  if (Object.prototype.hasOwnProperty.call(fields, "utilisateursProteges")) {
+    next.utilisateursProteges = fields.utilisateursProteges;
+  }
+  if (Object.prototype.hasOwnProperty.call(fields, "domainesSurveilles")) {
+    next.domainesSurveilles = fields.domainesSurveilles;
+  }
+  return next;
+}
+export async function bulkPatchAntispamSolutions(items = [], fields = {}) {
+  const groups = groupFleetItemsByClient(items);
+  let updated = 0;
+  const failed = [];
+  for (const [clientId, group] of groups) {
+    try {
+      const modulesData = await fetchClientModules(clientId);
+      const existingEquipements = modulesData?.equipements || {};
+      const antispamEquipement = existingEquipements.Antispam || {};
+      const existingSolutions = Array.isArray(antispamEquipement.solutions) ? antispamEquipement.solutions : [];
+      let matched = 0;
+      const nextSolutions = existingSolutions.map(entry => {
+        if (!group.some(item => antispamItemMatches(entry, item))) return entry;
+        matched += 1;
+        return applyAntispamBulkFields(entry, fields);
+      });
+      const unmatched = group.filter(item => !existingSolutions.some(entry => antispamItemMatches(entry, item)));
+      failed.push(...unmatched);
+      if (matched === 0) continue;
+      await saveClientModules(clientId, {
+        modules: modulesData?.modules || {
+          Monitoring: true
+        },
+        modules_monitoring: {
+          ...(modulesData?.modules_monitoring || {}),
+          Antispam: nextSolutions.length > 0
+        },
+        equipements: {
+          ...existingEquipements,
+          Antispam: {
+            ...antispamEquipement,
+            solutions: nextSolutions
+          }
+        }
+      });
+      updated += matched;
+    } catch {
+      failed.push(...group);
+    }
+  }
+  return {
+    updated,
+    failed
+  };
+}
+export async function bulkRemoveAntispamSolutions(items = []) {
+  const groups = groupFleetItemsByClient(items);
+  let deleted = 0;
+  const failed = [];
+  for (const [clientId, group] of groups) {
+    try {
+      const tenantIds = [...new Set(group.map(item => (item.raw || item)?.mailinblackTenantId).filter(Boolean))];
+      for (const tenantId of tenantIds) {
+        try {
+          await deleteClientMailinblackTenant(clientId, tenantId);
+        } catch (error) {
+          const message = error?.message || "";
+          if (!message.toLowerCase().includes("introuvable")) throw error;
+        }
+      }
+      const modulesData = await fetchClientModules(clientId);
+      const existingEquipements = modulesData?.equipements || {};
+      const antispamEquipement = existingEquipements.Antispam || {};
+      const existingSolutions = Array.isArray(antispamEquipement.solutions) ? antispamEquipement.solutions : [];
+      const remaining = existingSolutions.filter(entry => !group.some(item => antispamItemMatches(entry, item)));
+      const removed = existingSolutions.length - remaining.length;
+      const unmatched = group.filter(item => !existingSolutions.some(entry => antispamItemMatches(entry, item)));
+      failed.push(...unmatched);
+      if (removed === 0 && tenantIds.length === 0) continue;
+      await saveClientModules(clientId, {
+        modules: modulesData?.modules || {
+          Monitoring: true
+        },
+        modules_monitoring: {
+          ...(modulesData?.modules_monitoring || {}),
+          Antispam: remaining.length > 0
+        },
+        equipements: {
+          ...existingEquipements,
+          Antispam: {
+            ...antispamEquipement,
+            solutions: remaining
+          }
+        }
+      });
+      deleted += Math.max(removed, group.length - unmatched.length);
+    } catch {
+      failed.push(...group);
+    }
+  }
+  return {
+    deleted,
+    failed
   };
 }
 export function buildAntispamDetailNavigationPayload(client, solution) {

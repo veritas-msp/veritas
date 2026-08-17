@@ -1,13 +1,17 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Icon } from "@iconify/react";
 import { toast } from "react-toastify";
-import { fetchClientFiles, deleteClientFile, getPreviewUrl, getDownloadUrl } from "../../api/clientFiles";
+import { fetchClientFiles, deleteClientFile, getPreviewUrl, getDownloadUrl, bulkUpdateClientFiles, bulkDeleteClientFiles } from "../../api/clientFiles";
 import cyberStyles from "../CybersecuritePage/CybersecuritePage.module.css";
+import CyberBulkBar from "../CybersecuritePage/CyberBulkBar";
+import { useCyberBulkSelection } from "../CybersecuritePage/useCyberBulkSelection";
 import VaultDocumentPreviewModal from "../shared/VaultDocumentPreviewModal/VaultDocumentPreviewModal";
 import ConfirmModal from "../Misc/ConfirmModal/ConfirmModal";
 import { useAppLocale } from "../../hooks/useAppGeneralSettings";
+import { usePermissions } from "../../contexts/PermissionsContext";
 import { CATEGORY_KEYS, getDocumentsHubCopy } from "./documentsHubI18n";
 import { interpolate } from "../../i18n/translate";
+import DocumentsBulkEditModal from "./DocumentsBulkEditModal";
 import styles from "./DocumentsHubPage.module.css";
 const IMAGE_MIMES = new Set(["image/jpeg", "image/png", "image/gif", "image/webp"]);
 function formatSize(bytes, locale) {
@@ -74,6 +78,10 @@ function SortableHeader({
 export default function DocumentsHubPage() {
   const locale = useAppLocale();
   const copy = useMemo(() => getDocumentsHubCopy(locale), [locale]);
+  const { can } = usePermissions();
+  const canEdit = can("documents.edit") || can("clients_detail.vault");
+  const canDelete = can("documents.delete") || can("clients_detail.vault");
+  const canBulkSelect = canEdit || canDelete;
   const [files, setFiles] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
@@ -82,6 +90,10 @@ export default function DocumentsHubPage() {
   const [previewFile, setPreviewFile] = useState(null);
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [deleting, setDeleting] = useState(false);
+  const [editOpen, setEditOpen] = useState(false);
+  const [rowEditFile, setRowEditFile] = useState(null);
+  const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
+  const [busy, setBusy] = useState(false);
   const [sortBy, setSortBy] = useState(SORT_COLUMNS.created_at);
   const [sortDirection, setSortDirection] = useState("desc");
   const load = useCallback(async () => {
@@ -144,6 +156,17 @@ export default function DocumentsHubPage() {
     });
     return rows;
   }, [filtered, sortBy, sortDirection, locale, copy.categories]);
+  const {
+    selectedIds,
+    selectedItems,
+    selectedCount,
+    allSelected,
+    clearSelection,
+    toggleItem,
+    toggleAll,
+    selectAll
+  } = useCyberBulkSelection(sorted);
+  const editItems = rowEditFile ? [rowEditFile] : selectedItems;
   const handleSort = column => {
     if (sortBy === column) {
       setSortDirection(prev => prev === "asc" ? "desc" : "asc");
@@ -177,6 +200,50 @@ export default function DocumentsHubPage() {
       toast.error(err.message || copy.deleteError);
     } finally {
       setDeleting(false);
+    }
+  };
+  const closeEditModal = () => {
+    setEditOpen(false);
+    setRowEditFile(null);
+  };
+  const handleRowEdit = file => {
+    setRowEditFile(file);
+    setEditOpen(true);
+  };
+  const handleBulkEdit = async fields => {
+    const result = await bulkUpdateClientFiles(editItems, fields);
+    const failed = result.failed?.length || 0;
+    if (result.updated > 0 && failed === 0) toast.success(copy.formatBulkEditSuccess(result.updated));
+    else if (result.updated > 0) toast.warn(copy.formatBulkEditPartial(result.updated, failed));
+    else toast.error(copy.bulk.toasts.editError);
+    if (result.rows?.length) {
+      const byId = new Map(result.rows.map(row => [row.id, row]));
+      setFiles(prev => prev.map(file => byId.has(file.id) ? {
+        ...file,
+        ...byId.get(file.id)
+      } : file));
+    }
+    clearSelection();
+    setRowEditFile(null);
+  };
+  const handleBulkDelete = async () => {
+    setBusy(true);
+    try {
+      const result = await bulkDeleteClientFiles(selectedItems);
+      const failed = result.failed?.length || 0;
+      if (result.deleted > 0 && failed === 0) toast.success(copy.formatBulkDeleteSuccess(result.deleted));
+      else if (result.deleted > 0) toast.warn(copy.formatBulkDeletePartial(result.deleted, failed));
+      else toast.error(copy.bulk.toasts.deleteError);
+      if (result.deletedIds?.length) {
+        const removed = new Set(result.deletedIds);
+        setFiles(prev => prev.filter(file => !removed.has(file.id)));
+      }
+      clearSelection();
+      setBulkDeleteOpen(false);
+    } catch (error) {
+      toast.error(error.message || copy.bulk.toasts.deleteError);
+    } finally {
+      setBusy(false);
     }
   };
   return <div className={`${cyberStyles.mspPage} msp-page-insight`}>
@@ -234,10 +301,20 @@ export default function DocumentsHubPage() {
                   </div>
                   <h2 className={styles.emptyTitle}>{copy.emptyTitle}</h2>
                   <p className={styles.emptyHint}>{files.length === 0 ? copy.emptyHint : copy.emptyFiltered}</p>
-                </div> : <div className={styles.tableWrap}>
+                </div> : <>
+                  {canBulkSelect && selectedCount > 0 ? <div className={styles.bulkBarWrap}>
+                      <CyberBulkBar copy={copy} selectedCount={selectedCount} allSelected={allSelected} filteredCount={sorted.length} busy={busy} onSelectAll={selectAll} onEdit={canEdit ? () => {
+                setRowEditFile(null);
+                setEditOpen(true);
+              } : undefined} onDelete={canDelete ? () => setBulkDeleteOpen(true) : undefined} onClear={clearSelection} />
+                    </div> : null}
+                  <div className={styles.tableWrap}>
                   <table className={styles.table}>
                     <thead>
                       <tr>
+                        {canBulkSelect ? <th className={styles.checkboxCell}>
+                            <input type="checkbox" className={styles.rowCheckbox} checked={allSelected} onChange={toggleAll} disabled={busy} aria-label={copy.bulk.selectAll} />
+                          </th> : null}
                         <SortableHeader column={SORT_COLUMNS.file_name} label={copy.colFile} sortBy={sortBy} sortDirection={sortDirection} onSort={handleSort} />
                         <SortableHeader column={SORT_COLUMNS.client_name} label={copy.colCompany} sortBy={sortBy} sortDirection={sortDirection} onSort={handleSort} />
                         <SortableHeader column={SORT_COLUMNS.category} label={copy.colCategory} sortBy={sortBy} sortDirection={sortDirection} onSort={handleSort} />
@@ -248,7 +325,12 @@ export default function DocumentsHubPage() {
                       </tr>
                     </thead>
                     <tbody>
-                      {sorted.map(file => <tr key={file.id}>
+                      {sorted.map(file => {
+                    const isSelected = selectedIds.has(file.id);
+                    return <tr key={file.id} className={isSelected ? styles.selectedRow : undefined}>
+                          {canBulkSelect ? <td className={styles.checkboxCell} onClick={e => e.stopPropagation()}>
+                              <input type="checkbox" className={styles.rowCheckbox} checked={isSelected} disabled={busy} onChange={e => toggleItem(file.id, e.target.checked)} onClick={e => e.stopPropagation()} aria-label={copy.formatBulkSelectRow(file.file_name)} />
+                            </td> : null}
                           <td>
                             <button type="button" className={styles.fileCell} onClick={() => setPreviewFile(file)}>
                               <span className={styles.fileIconWrap}>
@@ -285,15 +367,20 @@ export default function DocumentsHubPage() {
                               <a href={getDownloadUrl(file.id)} download={file.file_name} className={styles.iconAction} title={copy.download}>
                                 <Icon icon="mdi:download-outline" />
                               </a>
-                              <button type="button" className={`${styles.iconAction} ${styles.iconActionDanger}`} title={copy.delete} onClick={() => handleDelete(file)}>
-                                <Icon icon="mdi:delete-outline" />
-                              </button>
+                              {canEdit ? <button type="button" className={styles.iconAction} title={copy.edit} onClick={() => handleRowEdit(file)}>
+                                  <Icon icon="mdi:pencil-outline" />
+                                </button> : null}
+                              {canDelete ? <button type="button" className={`${styles.iconAction} ${styles.iconActionDanger}`} title={copy.delete} onClick={() => handleDelete(file)}>
+                                  <Icon icon="mdi:delete-outline" />
+                                </button> : null}
                             </div>
                           </td>
-                        </tr>)}
+                        </tr>;
+                  })}
                     </tbody>
                   </table>
-                </div>}
+                </div>
+                </>}
             </div>
           </div>
         </div>
@@ -301,10 +388,16 @@ export default function DocumentsHubPage() {
 
       {previewFile ? <VaultDocumentPreviewModal file={previewFile} onClose={() => setPreviewFile(null)} previewUrl={getPreviewUrl(previewFile.id)} downloadUrl={getDownloadUrl(previewFile.id)} footerLeading={<span>{previewFile.client_name || "-"}</span>} categoryBadgeClassName={`${styles.badge} ${categoryTone(previewFile.category)}`} /> : null}
 
+      <DocumentsBulkEditModal open={editOpen} items={editItems} copy={copy} onClose={closeEditModal} onSubmit={handleBulkEdit} />
+
       <ConfirmModal open={Boolean(deleteTarget)} title={copy.deleteDocumentTitle} message={deleteTarget ? interpolate(copy.deleteDocument, {
       name: deleteTarget.file_name
     }) : ""} icon="mdi:delete-alert-outline" variant="danger" confirmLabel={copy.delete} loading={deleting} onConfirm={handleConfirmDelete} onClose={() => {
       if (!deleting) setDeleteTarget(null);
+    }} />
+
+      <ConfirmModal open={bulkDeleteOpen} title={copy.bulk.deleteTitle} message={copy.formatBulkDeleteMessage(selectedCount)} icon="mdi:delete-alert-outline" variant="danger" confirmLabel={copy.bulk.deleteConfirm} loading={busy} onConfirm={handleBulkDelete} onClose={() => {
+      if (!busy) setBulkDeleteOpen(false);
     }} />
     </div>;
 }

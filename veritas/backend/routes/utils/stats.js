@@ -7,6 +7,7 @@ import { loadSlaSettings } from '../../utils/slaSettingsStore.js';
 import { fetchMonitorableEquipmentStats } from '../../utils/monitorableEquipmentStats.js';
 import { getEditionPayload, isCommunity } from '../../utils/edition.js';
 import { fetchAnalyticsDashboard } from '../../services/dashboardAnalyticsService.js';
+import { buildKpiReportBundle, sendKpiReportEmail, listKpiReportSchedules, createKpiReportSchedule, updateKpiReportSchedule, deleteKpiReportSchedule } from '../../services/kpiReportSchedules.js';
 import { isSalesTicket } from '../../services/supportCredits.js';
 const router = express.Router();
 router.use(verifyJWT);
@@ -1061,6 +1062,162 @@ router.get("/analytics-dashboard", verifyJWT, async (req, res) => {
     console.error("analytics-dashboard", err);
     res.status(500).json({
       error: "Error loading KPI dashboard"
+    });
+  }
+});
+function analyticsQueryFromReq(req) {
+  const period = String(req.query.period || req.body?.period || "").trim() || null;
+  const startAt = String(req.query.startAt || req.query.from || req.body?.startAt || "").trim() || null;
+  const endAt = String(req.query.endAt || req.query.to || req.body?.endAt || "").trim() || null;
+  return {
+    period: startAt || endAt ? null : period || "365d",
+    startAt,
+    endAt,
+    agentId: String(req.query.agentId || req.body?.agentId || "").trim() || null,
+    clientId: String(req.query.clientId || req.body?.clientId || "").trim() || null,
+    contactId: String(req.query.contactId || req.body?.contactId || "").trim() || null,
+    categories: req.body?.categories || req.query.categories,
+    locale: String(req.body?.locale || req.query.locale || "fr").slice(0, 2)
+  };
+}
+router.get("/analytics-dashboard/pdf", async (req, res) => {
+  if (isCommunity()) {
+    return res.status(403).json({
+      error: "KPI dashboard reserved for Veritas Pro",
+      code: "PRO_FEATURE_REQUIRED"
+    });
+  }
+  try {
+    const query = analyticsQueryFromReq(req);
+    const bundle = await buildKpiReportBundle(query);
+    res.setHeader("Content-Type", "application/pdf");
+    res.setHeader("Content-Disposition", `attachment; filename="${bundle.filename}"`);
+    res.send(bundle.pdf);
+  } catch (err) {
+    if (err?.code === "INVALID_DATE_RANGE") {
+      return res.status(400).json({
+        error: err.message,
+        code: err.code
+      });
+    }
+    console.error("analytics-dashboard/pdf", err);
+    res.status(500).json({
+      error: "Error generating KPI PDF"
+    });
+  }
+});
+router.post("/analytics-dashboard/email", async (req, res) => {
+  if (isCommunity()) {
+    return res.status(403).json({
+      error: "KPI dashboard reserved for Veritas Pro",
+      code: "PRO_FEATURE_REQUIRED"
+    });
+  }
+  try {
+    const query = analyticsQueryFromReq(req);
+    const result = await sendKpiReportEmail({
+      ...query,
+      recipients: req.body?.recipients
+    });
+    res.json({
+      success: true,
+      ...result
+    });
+  } catch (err) {
+    if (err?.code === "INVALID_RECIPIENTS" || err?.code === "INVALID_DATE_RANGE") {
+      return res.status(400).json({
+        error: err.message,
+        code: err.code
+      });
+    }
+    console.error("analytics-dashboard/email", err);
+    res.status(500).json({
+      error: err.message || "Error sending KPI report"
+    });
+  }
+});
+router.get("/analytics-dashboard/schedules", async (req, res) => {
+  if (isCommunity()) {
+    return res.status(403).json({
+      error: "KPI dashboard reserved for Veritas Pro",
+      code: "PRO_FEATURE_REQUIRED"
+    });
+  }
+  try {
+    res.json(await listKpiReportSchedules());
+  } catch (err) {
+    console.error("analytics-dashboard/schedules GET", err);
+    res.status(500).json({
+      error: "Error loading KPI schedules"
+    });
+  }
+});
+router.post("/analytics-dashboard/schedules", async (req, res) => {
+  if (isCommunity()) {
+    return res.status(403).json({
+      error: "KPI dashboard reserved for Veritas Pro",
+      code: "PRO_FEATURE_REQUIRED"
+    });
+  }
+  try {
+    const schedule = await createKpiReportSchedule(req.body || {}, req.user?.id);
+    res.status(201).json(schedule);
+  } catch (err) {
+    if (err?.code === "INVALID_RECIPIENTS" || err?.code === "INVALID_SCHEDULE") {
+      return res.status(400).json({
+        error: err.message,
+        code: err.code
+      });
+    }
+    console.error("analytics-dashboard/schedules POST", err);
+    res.status(500).json({
+      error: "Error creating KPI schedule"
+    });
+  }
+});
+router.patch("/analytics-dashboard/schedules/:id", async (req, res) => {
+  if (isCommunity()) {
+    return res.status(403).json({
+      error: "KPI dashboard reserved for Veritas Pro",
+      code: "PRO_FEATURE_REQUIRED"
+    });
+  }
+  try {
+    res.json(await updateKpiReportSchedule(req.params.id, req.body || {}));
+  } catch (err) {
+    if (err?.code === "NOT_FOUND") return res.status(404).json({
+      error: err.message,
+      code: err.code
+    });
+    if (err?.code === "INVALID_RECIPIENTS" || err?.code === "INVALID_SCHEDULE") {
+      return res.status(400).json({
+        error: err.message,
+        code: err.code
+      });
+    }
+    console.error("analytics-dashboard/schedules PATCH", err);
+    res.status(500).json({
+      error: "Error updating KPI schedule"
+    });
+  }
+});
+router.delete("/analytics-dashboard/schedules/:id", async (req, res) => {
+  if (isCommunity()) {
+    return res.status(403).json({
+      error: "KPI dashboard reserved for Veritas Pro",
+      code: "PRO_FEATURE_REQUIRED"
+    });
+  }
+  try {
+    res.json(await deleteKpiReportSchedule(req.params.id));
+  } catch (err) {
+    if (err?.code === "NOT_FOUND") return res.status(404).json({
+      error: err.message,
+      code: err.code
+    });
+    console.error("analytics-dashboard/schedules DELETE", err);
+    res.status(500).json({
+      error: "Error deleting KPI schedule"
     });
   }
 });

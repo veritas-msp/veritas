@@ -378,6 +378,29 @@
   color: var(--msp-text, #0f1c2e);
 }
 
+.checkboxCell {
+  width: 42px;
+  min-width: 42px;
+  text-align: center;
+  padding-left: 0.55rem !important;
+  padding-right: 0.35rem !important;
+}
+
+.rowCheckbox {
+  width: 15px;
+  height: 15px;
+  accent-color: #2b5fab;
+  cursor: pointer;
+}
+
+.selectedRow {
+  background: rgba(43, 95, 171, 0.08);
+}
+
+.table thead th.checkboxCell {
+  cursor: default;
+}
+
 .table tbody tr:last-child td {
   border-bottom: none;
 }
@@ -391,6 +414,12 @@
 .tableRow:focus-visible {
   background: var(--msp-surface-2, #f8fafc);
   outline: none;
+}
+
+.selectedRow,
+.tableRow.selectedRow:hover,
+.tableRow.selectedRow:focus-visible {
+  background: rgba(43, 95, 171, 0.08);
 }
 
 .segmentRow td {
@@ -843,6 +872,15 @@
 :global(body.dark) .tableRow:hover,
 :global(body.dark) .tableRow:focus-visible {
   background: var(--msp-surface-2, #152035);
+}
+
+:global(html.dark) .selectedRow,
+:global(html.dark) .tableRow.selectedRow:hover,
+:global(html.dark) .tableRow.selectedRow:focus-visible,
+:global(body.dark) .selectedRow,
+:global(body.dark) .tableRow.selectedRow:hover,
+:global(body.dark) .tableRow.selectedRow:focus-visible {
+  background: rgba(43, 95, 171, 0.18);
 }
 
 :global(html.dark) .priorityItem:hover,

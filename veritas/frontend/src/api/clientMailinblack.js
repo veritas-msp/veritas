@@ -122,7 +122,8 @@ export function buildMailinblackQueryParams(credentialContext = {}) {
 }
 export async function fetchMailinblackCustomers(credentialContext = {}) {
   const res = await fetch(`${MAILINBLACK_URL}/customers${buildMailinblackQueryParams(credentialContext)}`, {
-    credentials: "include"
+    credentials: "include",
+    signal: credentialContext.signal
   });
   if (!res.ok) {
     const errorData = await res.json().catch(() => ({
@@ -139,6 +140,7 @@ export async function syncMailinblackCustomer(customerId, credentialContext = {}
       "Content-Type": "application/json"
     },
     credentials: "include",
+    signal: credentialContext.signal,
     body: JSON.stringify({})
   });
   if (!res.ok) {
@@ -151,7 +153,8 @@ export async function syncMailinblackCustomer(customerId, credentialContext = {}
 }
 export async function fetchMailinblackDashboard(customerId, credentialContext = {}) {
   const res = await fetch(`${MAILINBLACK_URL}/dashboard/${encodeURIComponent(customerId)}${buildMailinblackQueryParams(credentialContext)}`, {
-    credentials: "include"
+    credentials: "include",
+    signal: credentialContext.signal
   });
   if (!res.ok) {
     const errorData = await res.json().catch(() => ({

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { Icon } from "@iconify/react";
 import { FaTimes } from "react-icons/fa";
@@ -182,12 +182,16 @@ export function AntivirusOverviewPanel({
 }) {
   const [activeSection, setActiveSection] = useState("overview");
   const [patchTab, setPatchTab] = useState("missing");
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(() => !antivirusItem?.syncData?.dashboard);
+  const [refreshing, setRefreshing] = useState(false);
   const [dashboard, setDashboard] = useState(null);
   const [statistics, setStatistics] = useState(null);
   const [enrichedSummary, setEnrichedSummary] = useState(null);
   const [lastPersistedAt, setLastPersistedAt] = useState(null);
   const [loadError, setLoadError] = useState(null);
+  const abortRef = useRef(null);
+  const requestIdRef = useRef(0);
+  const dashboardRef = useRef(null);
   const credentialContext = useMemo(() => ({
     clientId: client?.id,
     bitdefenderTenantId: antivirusItem?.bitdefenderTenantId,
@@ -198,29 +202,60 @@ export function AntivirusOverviewPanel({
     persist = false
   } = {}) => {
     if (!companyId) return;
-    setLoading(true);
+    abortRef.current?.abort();
+    const controller = new AbortController();
+    abortRef.current = controller;
+    const requestId = ++requestIdRef.current;
+    const hasContent = Boolean(dashboardRef.current || antivirusItem?.syncData?.dashboard);
+    if (hasContent) setRefreshing(true);else setLoading(true);
     setLoadError(null);
     try {
+      const signal = controller.signal;
       if (persist && client?.id) {
-        const persisted = await syncAndPersistAntivirusSolution(client.id, antivirusItem);
+        const persisted = await syncAndPersistAntivirusSolution(client.id, antivirusItem, {
+          signal
+        });
+        if (signal.aborted || requestId !== requestIdRef.current) return;
         await onSynced?.();
+        if (signal.aborted || requestId !== requestIdRef.current) return;
         showSuccess("Antivirus data refreshed and saved.");
-        if (persisted.dashboard) setDashboard(persisted.dashboard);
+        if (persisted.dashboard) {
+          dashboardRef.current = persisted.dashboard;
+          setDashboard(persisted.dashboard);
+        }
         setStatistics(persisted.statistics || null);
         setEnrichedSummary(persisted.enrichedSummary || null);
         setLastPersistedAt(persisted.updatedPayload?.syncData?.lastSync || new Date().toISOString());
         return;
       }
-      const [dashboardData, statisticsRes, enrichedRes] = await Promise.all([fetchGravityZoneDashboard(companyId, credentialContext), fetchBitdefenderStatistics(companyId, credentialContext).catch(() => null), fetchBitdefenderEnrichedEndpoints(companyId, credentialContext).catch(() => null)]);
+      const ignoreUnlessAbort = err => {
+        if (err?.name === "AbortError") throw err;
+        return null;
+      };
+      const [dashboardData, statisticsRes, enrichedRes] = await Promise.all([fetchGravityZoneDashboard(companyId, {
+        ...credentialContext,
+        signal
+      }), fetchBitdefenderStatistics(companyId, {
+        ...credentialContext,
+        signal
+      }).catch(ignoreUnlessAbort), fetchBitdefenderEnrichedEndpoints(companyId, {
+        ...credentialContext,
+        signal
+      }).catch(ignoreUnlessAbort)]);
+      if (signal.aborted || requestId !== requestIdRef.current) return;
+      dashboardRef.current = dashboardData;
       setDashboard(dashboardData);
       setStatistics(statisticsRes?.statistics || antivirusItem?.syncData?.statistics || null);
       setEnrichedSummary(enrichedRes?.summary || antivirusItem?.syncData?.enrichedSummary || null);
       setLastPersistedAt(antivirusItem?.syncData?.lastSync || null);
     } catch (err) {
+      if (err?.name === "AbortError" || controller.signal.aborted || requestId !== requestIdRef.current) return;
       setLoadError(err.message);
       showError(err.message);
     } finally {
+      if (requestId !== requestIdRef.current) return;
       setLoading(false);
+      setRefreshing(false);
     }
   }, [companyId, credentialContext, client?.id, antivirusItem, onSynced]);
   useEffect(() => {
@@ -228,12 +263,18 @@ export function AntivirusOverviewPanel({
       setActiveSection("overview");
       setPatchTab("missing");
       const cached = antivirusItem?.syncData;
-      if (cached?.dashboard) setDashboard(cached.dashboard);
+      if (cached?.dashboard) {
+        dashboardRef.current = cached.dashboard;
+        setDashboard(cached.dashboard);
+      }
       if (cached?.statistics) setStatistics(cached.statistics);
       if (cached?.enrichedSummary) setEnrichedSummary(cached.enrichedSummary);
       if (cached?.lastSync) setLastPersistedAt(cached.lastSync);
       loadDashboard();
     }
+    return () => {
+      abortRef.current?.abort();
+    };
   }, [active, companyId, loadDashboard, antivirusItem?.syncData]);
   const sections = dashboard?.sections || {};
   const companyName = sections.company?.data?.name || antivirusItem?.companyName || antivirusItem?.nom || antivirusItem?.name || "GravityZone";
@@ -824,7 +865,7 @@ export function AntivirusOverviewPanel({
   if (!active || !antivirusItem?.companyId) return null;
   const mappingLabel = antivirusItem.mappingMode === "dedicated" ? "Dedicated tenant" : "Global tenant";
   if (asPage) {
-    return <SolutionDetailPageLayout accent="gravityzone" eyebrow="Cybersecurity · GravityZone" title={`Antivirus · ${companyName}`} titleIcon="simple-icons:bitdefender" subtitle={client?.name} backLabel={backLabel} onBack={onBack} loading={loading} loadingMessage="Loading GravityZone data…" onRefresh={() => loadDashboard()} footerHint={mappingLabel} onRefreshSave={() => loadDashboard({
+    return <SolutionDetailPageLayout accent="gravityzone" eyebrow="Cybersecurity · GravityZone" title={`Antivirus · ${companyName}`} titleIcon="simple-icons:bitdefender" subtitle={client?.name} backLabel={backLabel} onBack={onBack} loading={loading} refreshing={refreshing} loadingMessage="Loading GravityZone data…" onRefresh={() => loadDashboard()} footerHint={mappingLabel} onRefreshSave={() => loadDashboard({
       persist: true
     })} refreshSaveLabel="Refresh and save" navEntries={navEntries} activeSection={activeSection} onSectionChange={setActiveSection} navAriaLabel="Sections">
         {renderSectionContent()}
@@ -845,7 +886,7 @@ export function AntivirusOverviewPanel({
             <p className={formStyles.subtitle}>{client?.name}</p>
           </div>
         </div>
-        {!asPage ? <button type="button" className={formStyles.closeBtn} onClick={onClose} disabled={loading} aria-label="Close">
+        {!asPage ? <button type="button" className={formStyles.closeBtn} onClick={onClose} aria-label="Close">
             <FaTimes />
           </button> : null}
       </header>
@@ -871,14 +912,14 @@ export function AntivirusOverviewPanel({
         <div className={formStyles.footerActions}>
           <button type="button" className={formStyles.primaryBtn} onClick={() => loadDashboard({
           persist: true
-        })} disabled={loading}>
-            <Icon icon={loading ? "mdi:loading" : "mdi:refresh"} className={loading ? formStyles.spinning : ""} aria-hidden />
-            {loading ? "Refreshing…" : "Refresh"}
+        })} disabled={loading || refreshing}>
+            <Icon icon={loading || refreshing ? "mdi:loading" : "mdi:refresh"} className={loading || refreshing ? formStyles.spinning : ""} aria-hidden />
+            {loading || refreshing ? "Refreshing…" : "Refresh"}
           </button>
         </div>
       </footer>
     </div>;
-  return createPortal(<div className={formStyles.overlay} onClick={loading ? undefined : onClose} role="presentation">
+  return createPortal(<div className={formStyles.overlay} onClick={onClose} role="presentation">
       {shell}
     </div>, document.getElementById("modal-root") || document.body);
 }

@@ -80,3 +80,56 @@ tr:hover .actionsCol,
 tr:focus-visible .actionsCol {
   background: var(--msp-surface-2);
 }
+
+.alertBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.28rem;
+  padding: 0.14rem 0.48rem;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 650;
+  white-space: nowrap;
+}
+
+.alertBadge :global(svg) {
+  width: 13px;
+  height: 13px;
+}
+
+.alertActive {
+  background: rgba(34, 197, 94, 0.14);
+  color: #16a34a;
+}
+
+.alertDisabled {
+  background: rgba(100, 116, 139, 0.12);
+  color: #64748b;
+}
+
+.alertSuspended {
+  background: rgba(245, 158, 11, 0.16);
+  color: #d97706;
+}
+
+.countCol {
+  text-align: center;
+  width: 4.5rem;
+}
+
+.countPill {
+  display: inline-flex;
+  min-width: 1.55rem;
+  justify-content: center;
+  padding: 0.1rem 0.4rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  background: rgba(100, 116, 139, 0.1);
+  color: var(--msp-muted, #5c6b82);
+}
+
+.countPillHot {
+  background: rgba(220, 38, 38, 0.12);
+  color: #b42318;
+}

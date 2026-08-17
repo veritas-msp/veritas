@@ -124,7 +124,8 @@ export function buildBitdefenderQueryParams({
 export async function fetchBitdefenderCompanies({
   clientId,
   bitdefenderTenantId,
-  mappingMode
+  mappingMode,
+  signal
 } = {}) {
   const qs = buildBitdefenderQueryParams({
     clientId,
@@ -132,7 +133,8 @@ export async function fetchBitdefenderCompanies({
     mappingMode
   });
   const res = await fetch(`${BITDEFENDER_URL}/companies${qs}`, {
-    credentials: "include"
+    credentials: "include",
+    signal
   });
   if (!res.ok) {
     const errorData = await res.json().catch(() => ({
@@ -145,7 +147,8 @@ export async function fetchBitdefenderCompanies({
 export async function syncBitdefenderCompany(companyId, {
   clientId,
   bitdefenderTenantId,
-  mappingMode
+  mappingMode,
+  signal
 } = {}) {
   const qs = buildBitdefenderQueryParams({
     clientId,
@@ -155,6 +158,7 @@ export async function syncBitdefenderCompany(companyId, {
   const res = await fetch(`${BITDEFENDER_URL}/sync/${companyId}${qs}`, {
     method: "POST",
     credentials: "include",
+    signal,
     headers: {
       "Content-Type": "application/json"
     }
@@ -170,7 +174,8 @@ export async function syncBitdefenderCompany(companyId, {
 export async function fetchGravityZoneDashboard(companyId, {
   clientId,
   bitdefenderTenantId,
-  mappingMode
+  mappingMode,
+  signal
 } = {}) {
   const qs = buildBitdefenderQueryParams({
     clientId,
@@ -178,7 +183,8 @@ export async function fetchGravityZoneDashboard(companyId, {
     mappingMode
   });
   const res = await fetch(`${BITDEFENDER_URL}/gravityzone/${companyId}/dashboard${qs}`, {
-    credentials: "include"
+    credentials: "include",
+    signal
   });
   if (!res.ok) {
     const errorData = await res.json().catch(() => ({
@@ -191,7 +197,8 @@ export async function fetchGravityZoneDashboard(companyId, {
 export async function fetchBitdefenderStatistics(companyId, {
   clientId,
   bitdefenderTenantId,
-  mappingMode
+  mappingMode,
+  signal
 } = {}) {
   const qs = buildBitdefenderQueryParams({
     clientId,
@@ -199,7 +206,8 @@ export async function fetchBitdefenderStatistics(companyId, {
     mappingMode
   });
   const res = await fetch(`${BITDEFENDER_URL}/statistics/${companyId}${qs}`, {
-    credentials: "include"
+    credentials: "include",
+    signal
   });
   if (!res.ok) {
     const errorData = await res.json().catch(() => ({
@@ -212,7 +220,8 @@ export async function fetchBitdefenderStatistics(companyId, {
 export async function fetchBitdefenderEnrichedEndpoints(companyId, {
   clientId,
   bitdefenderTenantId,
-  mappingMode
+  mappingMode,
+  signal
 } = {}) {
   const qs = buildBitdefenderQueryParams({
     clientId,
@@ -220,7 +229,8 @@ export async function fetchBitdefenderEnrichedEndpoints(companyId, {
     mappingMode
   });
   const res = await fetch(`${BITDEFENDER_URL}/endpoints/${companyId}/enriched${qs}`, {
-    credentials: "include"
+    credentials: "include",
+    signal
   });
   if (!res.ok) {
     const errorData = await res.json().catch(() => ({

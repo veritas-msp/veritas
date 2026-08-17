@@ -1,4 +1,4 @@
-export const DASHBOARD_PERIOD_PRESETS = ["30d", "90d", "365d", "ytd", "all"];
+export const DASHBOARD_PERIOD_PRESETS = ["7d", "30d", "90d", "365d", "ytd", "all"];
 export const DEFAULT_PERIOD_FILTER = {
   mode: "preset",
   preset: "365d",

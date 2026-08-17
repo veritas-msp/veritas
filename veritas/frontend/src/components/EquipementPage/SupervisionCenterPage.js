@@ -19,6 +19,7 @@ import PlanningEventModalBridge from "../PlanningPage/PlanningEventModalBridge";
 import {
   ackSupervisionAlert,
   dismissSupervisionAlert,
+  ensureSupervisionAlertsSeen,
   fetchSupervisionAlertStates,
   fetchSupervisionAlertsHistory,
   linkSupervisionAlert,
@@ -30,7 +31,7 @@ import { fetchHomeDashboard } from "../../api/stats";
 import { fetchRmmAgents } from "../../api/rmm";
 import { getEquipmentListKey } from "../../utils/equipmentIdentity";
 import { Icon } from "@iconify/react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import cyberStyles from "../CybersecuritePage/CybersecuritePage.module.css";
 import layout from "../EnterprisesPage/EnterprisesPage.module.css";
 import dashStyles from "../CybersecuritePage/AntivirusMspDashboard.module.css";
@@ -121,12 +122,14 @@ export default function MonitoringCenterPage({
       contractStatus: pageCopy.contractStatus,
       contractType: pageCopy.contractType?.msp,
       backup: {
-        critical: "Critical",
-        warning: "Warning"
+        critical: pageCopy.ops?.backupReasons?.critical || "Critical",
+        warning: pageCopy.ops?.backupReasons?.warning || "Warning"
       }
     }
   }), [statsItems, resolveMonitorStatus, alertRules, checkmkIntegrationEnabled, isMkMapped, backupIssueJobs, contractAlerts, licenseAlerts, offlineAgents, pageCopy]);
   const unifiedQueueIdsKey = useMemo(() => unifiedQueue.map(item => item.id).join("|"), [unifiedQueue]);
+  const unifiedQueueRef = useRef(unifiedQueue);
+  unifiedQueueRef.current = unifiedQueue;
   const enrichedQueue = useMemo(() => mergeQueueWithAlertState(unifiedQueue, alertStates), [unifiedQueue, alertStates]);
   const filteredQueue = useMemo(() => filterSupervisionQueue(enrichedQueue, {
     severity: opsSeverityFilter,
@@ -186,12 +189,24 @@ export default function MonitoringCenterPage({
   }, [loadDashboard, loadRmm]);
   const refreshAlertStates = useCallback(async () => {
     try {
-      const ids = unifiedQueueIdsKey ? unifiedQueueIdsKey.split("|").filter(Boolean) : [];
+      const items = unifiedQueueRef.current || [];
+      const ids = items.map(item => item.id).filter(Boolean);
       if (!ids.length) {
         setAlertStates([]);
         return;
       }
       const alerts = await fetchSupervisionAlertStates(ids);
+      const known = new Set((Array.isArray(alerts) ? alerts : []).map(alert => alert.queueItemId));
+      const missing = items.filter(item => item.id && !known.has(item.id));
+      if (missing.length) {
+        try {
+          const synced = await ensureSupervisionAlertsSeen(missing);
+          setAlertStates(Array.isArray(synced) && synced.length ? synced : alerts || []);
+          return;
+        } catch (syncErr) {
+          console.error("Error recording supervision alert raise time:", syncErr);
+        }
+      }
       setAlertStates(Array.isArray(alerts) ? alerts : []);
     } catch (err) {
       console.error("Error loading supervision alerts:", err);

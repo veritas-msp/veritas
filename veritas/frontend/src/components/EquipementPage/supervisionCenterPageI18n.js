@@ -70,6 +70,11 @@ const SUPERVISION_COPY = {
         closed: "Closes"
       },
       searchPlaceholder: "Rechercher une alerte, un client…",
+      sortBy: "Trier par {label}",
+      backupReasons: {
+        critical: "Dernière sauvegarde il y a plus de 48 h, ou inconnue",
+        warning: "Dernière sauvegarde il y a plus de 24 h"
+      },
       emptyTitle: "Rien à traiter",
       emptyText: "Aucune alerte active sur les périphériques, sauvegardes, contrats ou agents RMM.",
       actionsAria: "Actions sur l'alerte",
@@ -122,6 +127,7 @@ const SUPERVISION_COPY = {
     },
     history: {
       searchPlaceholder: "Rechercher dans l'historique…",
+      sortBy: "Trier par {label}",
       loading: "Chargement de l'historique…",
       loadingEvents: "Chargement de la timeline…",
       emptyTitle: "Aucun historique",
@@ -422,6 +428,11 @@ const SUPERVISION_COPY = {
         closed: "Closed"
       },
       searchPlaceholder: "Search an alert, a client…",
+      sortBy: "Sort by {label}",
+      backupReasons: {
+        critical: "Last backup more than 48 h ago, or unknown",
+        warning: "Last backup more than 24 h ago"
+      },
       emptyTitle: "Nothing to handle",
       emptyText: "No active alerts on devices, backups, contracts or RMM agents.",
       actionsAria: "Alert actions",
@@ -474,6 +485,7 @@ const SUPERVISION_COPY = {
     },
     history: {
       searchPlaceholder: "Search history…",
+      sortBy: "Sort by {label}",
       loading: "Loading history…",
       loadingEvents: "Loading timeline…",
       emptyTitle: "No history yet",
@@ -774,6 +786,11 @@ const SUPERVISION_COPY = {
         closed: "Geschlossen"
       },
       searchPlaceholder: "Alarm oder Kunde suchen…",
+      sortBy: "Nach {label} sortieren",
+      backupReasons: {
+        critical: "Letztes Backup vor mehr als 48 h, oder unbekannt",
+        warning: "Letztes Backup vor mehr als 24 h"
+      },
       emptyTitle: "Nichts zu erledigen",
       emptyText: "Keine aktiven Alarme für Geräte, Backups, Verträge oder RMM-Agenten.",
       actionsAria: "Alarmaktionen",
@@ -826,6 +843,7 @@ const SUPERVISION_COPY = {
     },
     history: {
       searchPlaceholder: "Verlauf durchsuchen…",
+      sortBy: "Nach {label} sortieren",
       loading: "Verlauf wird geladen…",
       loadingEvents: "Timeline wird geladen…",
       emptyTitle: "Kein Verlauf",
@@ -1126,6 +1144,11 @@ const SUPERVISION_COPY = {
         closed: "Chiuse"
       },
       searchPlaceholder: "Cerca un allarme, un cliente…",
+      sortBy: "Ordina per {label}",
+      backupReasons: {
+        critical: "Ultimo backup da più di 48 h, o sconosciuto",
+        warning: "Ultimo backup da più di 24 h"
+      },
       emptyTitle: "Niente da trattare",
       emptyText: "Nessun allarme attivo su dispositivi, backup, contratti o agenti RMM.",
       actionsAria: "Azioni sull'allarme",
@@ -1178,6 +1201,7 @@ const SUPERVISION_COPY = {
     },
     history: {
       searchPlaceholder: "Cerca nella cronologia…",
+      sortBy: "Ordina per {label}",
       loading: "Caricamento cronologia…",
       loadingEvents: "Caricamento timeline…",
       emptyTitle: "Nessuna cronologia",
@@ -1477,6 +1501,11 @@ const SUPERVISION_COPY = {
         closed: "Cerradas"
       },
       searchPlaceholder: "Buscar una alerta, un cliente…",
+      sortBy: "Ordenar por {label}",
+      backupReasons: {
+        critical: "Última copia hace más de 48 h, o desconocida",
+        warning: "Última copia hace más de 24 h"
+      },
       emptyTitle: "Nada que tratar",
       emptyText: "No hay alertas activas en dispositivos, backups, contratos o agentes RMM.",
       actionsAria: "Acciones sobre la alerta",
@@ -1529,6 +1558,7 @@ const SUPERVISION_COPY = {
     },
     history: {
       searchPlaceholder: "Buscar en el historial…",
+      sortBy: "Ordenar por {label}",
       loading: "Cargando historial…",
       loadingEvents: "Cargando timeline…",
       emptyTitle: "Sin historial",

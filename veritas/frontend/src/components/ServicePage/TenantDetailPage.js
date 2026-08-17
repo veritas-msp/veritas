@@ -123,6 +123,12 @@ export default function TenantDetailPage({
   }, [detailData?.clientId]);
 
   useEffect(() => {
+    return () => {
+      abortControllerRef.current?.abort();
+    };
+  }, []);
+
+  useEffect(() => {
     if (!heroMenuOpen) return undefined;
     const onPointerDown = (event) => {
       if (heroActionsMenuRef.current && !heroActionsMenuRef.current.contains(event.target)) {
@@ -330,6 +336,7 @@ export default function TenantDetailPage({
         return prev + 10;
       });
     }, 500);
+    let aborted = false;
     try {
       if (currentClientIdRef.current !== targetClientId) {
         throw new Error(copy.sync.error);
@@ -408,6 +415,7 @@ export default function TenantDetailPage({
       }
     } catch (error) {
       if (error.name === "AbortError") {
+        aborted = true;
         return;
       }
       console.error("Error during sync:", error);
@@ -417,13 +425,13 @@ export default function TenantDetailPage({
     } finally {
       clearInterval(progressInterval);
       if (abortControllerRef.current === abortController) {
+        abortControllerRef.current = null;
+      }
+      if (!aborted && currentClientIdRef.current === targetClientId) {
         setTimeout(() => {
           setSyncProgress(0);
           setSyncStatus("");
         }, 800);
-        abortControllerRef.current = null;
-      }
-      if (currentClientIdRef.current === targetClientId) {
         setSyncing(false);
       }
     }

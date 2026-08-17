@@ -1,7 +1,17 @@
 import { buildMonitoringTodoActions } from "./equipmentMspUtils";
 import { getEquipmentListKey } from "../../utils/equipmentIdentity";
-import { getBackupJobStatus } from "../CybersecuritePage/backupJobStatusUtils";
+import { getBackupJobStatus, getBackupJobStatusTitle } from "../CybersecuritePage/backupJobStatusUtils";
 import { formatServeurLieLabel } from "../EnterprisesPage/backupJobUtils";
+
+function joinMeta(parts, clientName = "") {
+  const client = String(clientName || "").trim().toLowerCase();
+  return (Array.isArray(parts) ? parts : []).map(part => String(part || "").trim()).filter(Boolean).filter(part => !client || part.toLowerCase() !== client).join(" · ");
+}
+
+function alertReason(reason, fallback = "") {
+  const value = String(reason || "").trim();
+  return value || fallback || "—";
+}
 
 const SEVERITY_RANK = {
   critical: 0,
@@ -51,24 +61,24 @@ export function buildDeviceQueueItems(statsItems, resolveMonitorStatus, options 
       priority
     } = action;
     const severity = severityFromTone(issue?.tone, status);
-    const issueLabel = issue?.label || status || "";
-    const title = equipment?.name || options.fallbackName || "—";
+    const reason = alertReason([issue?.label, issue?.detail].filter(Boolean).join(" — "), status);
     const clientName = equipment?.clientName || "";
+    const assetName = equipment?.name || options.fallbackName || "—";
     return {
       id: `device-${getEquipmentListKey(equipment)}`,
       domain: "devices",
       severity,
       tone: issue?.tone || status || "warn",
-      title,
-      subtitle: [clientName, equipment?.type, equipment?.ip].filter(Boolean).join(" · "),
-      label: issueLabel,
+      title: reason,
+      subtitle: joinMeta([assetName, equipment?.type, equipment?.ip], clientName),
+      label: reason,
       clientId: equipment?.clientId ?? null,
       clientName,
       equipment,
       job: null,
       contract: null,
       agent: null,
-      ticketSubject: [title, issueLabel].filter(Boolean).join(" — "),
+      ticketSubject: [assetName, reason].filter(Boolean).join(" — "),
       priority: priority ?? SEVERITY_RANK[severity] ?? 9,
       sortTime: null
     };
@@ -81,24 +91,24 @@ export function buildBackupQueueItems(jobs = [], options = {}) {
     const status = getBackupJobStatus(job);
     if (status !== "critical" && status !== "warning") return null;
     const severity = status === "critical" ? "critical" : "warning";
-    const title = job.nom || job.name || options.fallbackName || "—";
+    const jobName = job.nom || job.name || options.fallbackName || "—";
     const clientName = job.clientName || "";
-    const label = status === "critical" ? options.labels?.critical || "Critical" : options.labels?.warning || "Warning";
+    const reason = alertReason(options.labels?.[status] || getBackupJobStatusTitle(status), status);
     return {
-      id: `backup-${job.id || `${job.clientId}-${title}`}`,
+      id: `backup-${job.id || `${job.clientId}-${jobName}`}`,
       domain: "backups",
       severity,
       tone: status === "critical" ? "bad" : "warn",
-      title,
-      subtitle: [clientName, job.instanceLogiciel || job.typeBackup, formatServeurLieLabel(job.serveurLie, "")].filter(Boolean).join(" · "),
-      label,
+      title: reason,
+      subtitle: joinMeta([jobName, job.instanceLogiciel || job.typeBackup, formatServeurLieLabel(job.serveurLie, "")], clientName),
+      label: reason,
       clientId: job.clientId ?? null,
       clientName,
       equipment: null,
       job,
       contract: null,
       agent: null,
-      ticketSubject: `${title} — ${label}`,
+      ticketSubject: `${jobName} — ${reason}`,
       priority: SEVERITY_RANK[severity],
       sortTime: job.last_backup_start ? new Date(job.last_backup_start).getTime() : null
     };
@@ -109,17 +119,18 @@ export function buildContractQueueItems(contractAlerts = [], licenseAlerts = [],
   const items = [];
   for (const alert of Array.isArray(contractAlerts) ? contractAlerts : []) {
     const severity = alert.status === "expired" ? "critical" : "warning";
-    const label = options.statusLabels?.[alert.status] || alert.status || "";
+    const reason = alertReason(options.statusLabels?.[alert.status] || alert.status);
+    const clientName = alert.name || "";
     items.push({
       id: `contract-${alert.id}`,
       domain: "contracts",
       severity,
       tone: severity === "critical" ? "bad" : "warn",
-      title: alert.name || options.fallbackName || "—",
-      subtitle: options.contractTypeLabel || "MSP",
-      label,
+      title: reason,
+      subtitle: joinMeta([options.contractTypeLabel || "MSP"], clientName),
+      label: reason,
       clientId: alert.id ?? null,
-      clientName: alert.name || "",
+      clientName,
       equipment: null,
       job: null,
       contract: {
@@ -127,25 +138,25 @@ export function buildContractQueueItems(contractAlerts = [], licenseAlerts = [],
         typeKey: "contract"
       },
       agent: null,
-      ticketSubject: `${alert.name || ""} — ${label}`.trim(),
+      ticketSubject: `${clientName} — ${reason}`.trim(),
       priority: SEVERITY_RANK[severity],
       sortTime: alert.expiration ? new Date(alert.expiration).getTime() : null
     });
   }
   for (const alert of Array.isArray(licenseAlerts) ? licenseAlerts : []) {
     const severity = alert.status === "expired" ? "critical" : "warning";
-    const label = options.statusLabels?.[alert.status] || alert.status || "";
-    const title = alert.clientName || alert.label || options.fallbackName || "—";
+    const reason = alertReason(options.statusLabels?.[alert.status] || alert.status);
+    const clientName = alert.clientName || "";
     items.push({
       id: `license-${alert.id}`,
       domain: "contracts",
       severity,
       tone: severity === "critical" ? "bad" : "warn",
-      title,
-      subtitle: alert.label || alert.moduleLabel || alert.module || "",
-      label,
+      title: reason,
+      subtitle: joinMeta([alert.label, alert.moduleLabel, alert.module], clientName),
+      label: reason,
       clientId: alert.clientId ?? null,
-      clientName: alert.clientName || "",
+      clientName,
       equipment: null,
       job: null,
       contract: {
@@ -153,7 +164,7 @@ export function buildContractQueueItems(contractAlerts = [], licenseAlerts = [],
         typeKey: alert.module || "license"
       },
       agent: null,
-      ticketSubject: `${title} — ${label}`.trim(),
+      ticketSubject: `${clientName} — ${reason}`.trim(),
       priority: SEVERITY_RANK[severity],
       sortTime: alert.expiration ? new Date(alert.expiration).getTime() : null
     });
@@ -163,24 +174,24 @@ export function buildContractQueueItems(contractAlerts = [], licenseAlerts = [],
 
 export function buildRmmQueueItems(offlineAgents = [], options = {}) {
   return (Array.isArray(offlineAgents) ? offlineAgents : []).map(agent => {
-    const title = agent.hostname || agent.equipment?.name || options.fallbackName || "—";
+    const hostName = agent.hostname || agent.equipment?.name || options.fallbackName || "—";
     const clientName = agent.client_name || agent.equipment?.clientName || "";
-    const label = options.offlineLabel || "Offline";
+    const reason = alertReason(options.offlineLabel, "Offline");
     return {
-      id: `rmm-${agent.id || agent.machine_id || title}`,
+      id: `rmm-${agent.id || agent.machine_id || hostName}`,
       domain: "rmm",
       severity: "critical",
       tone: "bad",
-      title,
-      subtitle: [clientName, agent.os, agent.ip].filter(Boolean).join(" · "),
-      label,
+      title: reason,
+      subtitle: joinMeta([hostName, agent.os, agent.ip], clientName),
+      label: reason,
       clientId: agent.client_id || agent.equipment?.clientId || null,
       clientName,
       equipment: agent.equipment || null,
       job: null,
       contract: null,
       agent,
-      ticketSubject: `${title} — ${label}`,
+      ticketSubject: `${hostName} — ${reason}`,
       priority: SEVERITY_RANK.critical,
       sortTime: agent.last_seen_at ? new Date(agent.last_seen_at).getTime() : null
     };
@@ -269,7 +280,7 @@ export function mergeQueueWithAlertState(items = [], alerts = []) {
         ...item,
         workflowStatus: "open",
         alertState: null,
-        notifiedAt: item.sortTime ? new Date(item.sortTime).toISOString() : null,
+        notifiedAt: null,
         handledByName: null,
         linkedTicketKind: null,
         linkedTicketId: null,
@@ -280,7 +291,7 @@ export function mergeQueueWithAlertState(items = [], alerts = []) {
       ...item,
       workflowStatus: state.status || "open",
       alertState: state,
-      notifiedAt: state.createdAt || state.updatedAt || (item.sortTime ? new Date(item.sortTime).toISOString() : null),
+      notifiedAt: state.createdAt || null,
       handledByName: state.ackedByName || null,
       linkedTicketKind: state.linkedTicketKind || null,
       linkedTicketId: state.linkedTicketId || null,

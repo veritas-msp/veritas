@@ -234,8 +234,12 @@ function normalizeExpirationDate(rawDate) {
   if (Number.isNaN(expDate.getTime())) return "";
   return expDate.toISOString().split("T")[0];
 }
+function ignoreUnlessAbort(error) {
+  if (error?.name === "AbortError") throw error;
+  return null;
+}
 export async function fetchFullAntivirusSyncExtra(companyId, credentialContext) {
-  const [dashboard, statisticsRes, enrichedRes] = await Promise.all([fetchGravityZoneDashboard(companyId, credentialContext).catch(() => null), fetchBitdefenderStatistics(companyId, credentialContext).catch(() => null), fetchBitdefenderEnrichedEndpoints(companyId, credentialContext).catch(() => null)]);
+  const [dashboard, statisticsRes, enrichedRes] = await Promise.all([fetchGravityZoneDashboard(companyId, credentialContext).catch(ignoreUnlessAbort), fetchBitdefenderStatistics(companyId, credentialContext).catch(ignoreUnlessAbort), fetchBitdefenderEnrichedEndpoints(companyId, credentialContext).catch(ignoreUnlessAbort)]);
   return {
     dashboard,
     statistics: statisticsRes?.statistics || null,
@@ -301,7 +305,9 @@ export function formatAntivirusSyncPayload(syncData, companyId, companyName, map
     }
   };
 }
-export async function syncAndPersistAntivirusSolution(clientId, solution) {
+export async function syncAndPersistAntivirusSolution(clientId, solution, {
+  signal
+} = {}) {
   const normalized = normalizeAntivirusItem(solution);
   if (!clientId || !normalized?.companyId) {
     throw new Error("Solution GravityZone introuvable.");
@@ -310,7 +316,8 @@ export async function syncAndPersistAntivirusSolution(clientId, solution) {
   const credentialContext = {
     clientId,
     bitdefenderTenantId: normalized.bitdefenderTenantId,
-    mappingMode
+    mappingMode,
+    signal
   };
   const companyId = normalized.companyId;
   const [syncResult, syncExtra] = await Promise.all([syncBitdefenderCompany(companyId, credentialContext), fetchFullAntivirusSyncExtra(companyId, credentialContext)]);
@@ -320,7 +327,9 @@ export async function syncAndPersistAntivirusSolution(clientId, solution) {
   const providerId = normalized.providerId || "bitdefender";
   const companyName = syncResult.data?.company?.name || syncExtra.dashboard?.sections?.company?.data?.name || normalized.companyName || normalized.solution || "";
   const updatedPayload = formatAntivirusSyncPayload(syncResult.data, companyId, companyName, mappingMode, normalized.bitdefenderTenantId, providerId, syncExtra);
-  const modulesData = await fetchClientModules(clientId);
+  const modulesData = await fetchClientModules(clientId, {
+    signal
+  });
   const existingEquipements = modulesData?.equipements || {};
   const antivirusEquipement = existingEquipements.Antivirus || {};
   const existingSolutions = Array.isArray(antivirusEquipement.solutions) ? antivirusEquipement.solutions : [];
@@ -356,6 +365,120 @@ export async function syncAndPersistAntivirusSolution(clientId, solution) {
     enrichedSummary: syncExtra.enrichedSummary,
     enrichedEndpoints: syncExtra.enrichedEndpoints,
     updatedPayload
+  };
+}
+function groupFleetItemsByClient(items = []) {
+  const groups = new Map();
+  items.forEach(item => {
+    if (item?.clientId == null) return;
+    if (!groups.has(item.clientId)) groups.set(item.clientId, []);
+    groups.get(item.clientId).push(item);
+  });
+  return groups;
+}
+function antivirusItemMatches(entry, item) {
+  const left = normalizeAntivirusItem(entry) || entry;
+  const right = normalizeAntivirusItem(item?.raw || item) || item?.raw || item;
+  if (!left || !right) return false;
+  return solutionMatches(left, right);
+}
+function applyAntivirusBulkFields(entry, fields = {}) {
+  const next = {
+    ...entry
+  };
+  if (Object.prototype.hasOwnProperty.call(fields, "expiration")) {
+    next.expiration = fields.expiration || "";
+  }
+  if (Object.prototype.hasOwnProperty.call(fields, "licencesTotales")) {
+    next.licencesTotales = fields.licencesTotales;
+    next.totalLicenses = fields.licencesTotales;
+  }
+  return next;
+}
+export async function bulkPatchAntivirusSolutions(items = [], fields = {}) {
+  const groups = groupFleetItemsByClient(items);
+  let updated = 0;
+  const failed = [];
+  for (const [clientId, group] of groups) {
+    try {
+      const modulesData = await fetchClientModules(clientId);
+      const existingEquipements = modulesData?.equipements || {};
+      const antivirusEquipement = existingEquipements.Antivirus || {};
+      const existingSolutions = Array.isArray(antivirusEquipement.solutions) ? antivirusEquipement.solutions : [];
+      let matched = 0;
+      const nextSolutions = existingSolutions.map(entry => {
+        if (!group.some(item => antivirusItemMatches(entry, item))) return entry;
+        matched += 1;
+        return applyAntivirusBulkFields(entry, fields);
+      });
+      const unmatched = group.filter(item => !existingSolutions.some(entry => antivirusItemMatches(entry, item)));
+      failed.push(...unmatched);
+      if (matched === 0) continue;
+      await saveClientModules(clientId, {
+        modules: modulesData?.modules || {
+          Monitoring: true
+        },
+        modules_monitoring: {
+          ...(modulesData?.modules_monitoring || {}),
+          Antivirus: nextSolutions.length > 0
+        },
+        equipements: {
+          ...existingEquipements,
+          Antivirus: {
+            ...antivirusEquipement,
+            solutions: nextSolutions
+          }
+        }
+      });
+      updated += matched;
+    } catch {
+      failed.push(...group);
+    }
+  }
+  return {
+    updated,
+    failed
+  };
+}
+export async function bulkRemoveAntivirusSolutions(items = []) {
+  const groups = groupFleetItemsByClient(items);
+  let deleted = 0;
+  const failed = [];
+  for (const [clientId, group] of groups) {
+    try {
+      const modulesData = await fetchClientModules(clientId);
+      const existingEquipements = modulesData?.equipements || {};
+      const antivirusEquipement = existingEquipements.Antivirus || {};
+      const existingSolutions = Array.isArray(antivirusEquipement.solutions) ? antivirusEquipement.solutions : [];
+      const remaining = existingSolutions.filter(entry => !group.some(item => antivirusItemMatches(entry, item)));
+      const removed = existingSolutions.length - remaining.length;
+      const unmatched = group.filter(item => !existingSolutions.some(entry => antivirusItemMatches(entry, item)));
+      failed.push(...unmatched);
+      if (removed === 0) continue;
+      await saveClientModules(clientId, {
+        modules: modulesData?.modules || {
+          Monitoring: true
+        },
+        modules_monitoring: {
+          ...(modulesData?.modules_monitoring || {}),
+          Antivirus: remaining.length > 0
+        },
+        equipements: {
+          ...existingEquipements,
+          Antivirus: {
+            ...antivirusEquipement,
+            solutions: remaining
+          }
+        }
+      });
+      deleted += removed;
+    } catch {
+      failed.push(...group);
+    }
+  }
+  return {
+    deleted,
+    failed
   };
 }
 export function buildAntivirusDetailNavigationPayload(client, solution) {

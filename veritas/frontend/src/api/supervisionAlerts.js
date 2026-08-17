@@ -35,6 +35,17 @@ export async function fetchSupervisionAlertStates(queueItemIds = []) {
   return data?.alerts || [];
 }
 
+export async function ensureSupervisionAlertsSeen(items = []) {
+  const payload = (Array.isArray(items) ? items : []).map(item => itemPayload(item)).filter(item => item.queueItemId && item.domain);
+  if (!payload.length) return [];
+  const response = await authFetch(`${API_BASE_URL}/supervision/alerts/seen`, {
+    method: "POST",
+    body: JSON.stringify({ items: payload })
+  });
+  const data = await handleResponse(response);
+  return data?.alerts || [];
+}
+
 export async function fetchSupervisionAlertsHistory(params = {}) {
   const response = await authFetch(withApiQuery(`${API_BASE_URL}/supervision/alerts/history`, params));
   const data = await handleResponse(response);

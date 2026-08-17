@@ -193,7 +193,7 @@ export function transformClientModulesToFrontend(rawData, options = {}) {
           return true;
         }
         if (item.item_key === monitoringKey || item.item_key === equipementKey || item.name === monitoringKey || item.name === equipementKey) {
-          if (item.data.logiciel || item.data.solutions && Array.isArray(item.data.solutions)) {
+          if (item.data.logiciel || item.data.solution || item.data.nom || item.data.customerId != null || item.data.mailinblackTenantId != null || item.data.solutions && Array.isArray(item.data.solutions) || item.data.utilisateursProteges != null || item.data.domainesSurveilles != null || item.data.expiration) {
             return true;
           }
           return false;

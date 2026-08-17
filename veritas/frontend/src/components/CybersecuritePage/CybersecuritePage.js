@@ -36,7 +36,7 @@ export default function CybersecuritePage({
   const commonCopy = useMemo(() => getCommonCopy(locale), [locale]);
   const campaignsCopy = pageCopy.campaigns;
   const [campaignProPromoOpen, setCampaignProPromoOpen] = useState(false);
-  const CYBER_PAGE_DATA_CACHE_KEY = "cyber_page_data_cache_v1";
+  const CYBER_PAGE_DATA_CACHE_KEY = "cyber_page_data_cache_v2";
   const CYBER_PAGE_DATA_CACHE_TTL_MS = 5 * 60 * 1000;
   const CYBER_CAMPAIGNS_CACHE_KEY = "cyber_campaigns_cache_v1";
   const CYBER_CAMPAIGNS_CACHE_TTL_MS = 3 * 60 * 1000;
@@ -51,6 +51,9 @@ export default function CybersecuritePage({
   const clientsControllerRef = useRef(null);
   const campaignsRequestRef = useRef(null);
   const campaignsControllerRef = useRef(null);
+  const fleetSyncControllerRef = useRef(null);
+  const fleetSyncCancelledRef = useRef(false);
+  const mountedRef = useRef(true);
   const skipInitialTabFetchRef = useRef(true);
   const [loadingCampaigns, setLoadingCampaigns] = useState(false);
   const [loadingCyberData, setLoadingCyberData] = useState(false);
@@ -102,6 +105,10 @@ export default function CybersecuritePage({
     clientsControllerRef.current?.abort();
     campaignsControllerRef.current?.abort();
   };
+  const abortFleetSync = () => {
+    fleetSyncCancelledRef.current = true;
+    fleetSyncControllerRef.current?.abort();
+  };
   const getTodayDate = () => {
     const today = new Date();
     return today.toISOString().split('T')[0];
@@ -125,6 +132,7 @@ export default function CybersecuritePage({
     description: ''
   });
   useEffect(() => {
+    mountedRef.current = true;
     (async () => {
       loadUsers();
       await loadClients({
@@ -135,7 +143,9 @@ export default function CybersecuritePage({
       }
     })();
     return () => {
+      mountedRef.current = false;
       abortInFlightTabFetches();
+      abortFleetSync();
     };
   }, []);
   useEffect(() => {
@@ -312,7 +322,7 @@ export default function CybersecuritePage({
         return null;
       } finally {
         loadingClientsRef.current = false;
-        if (withModules) setLoadingCyberData(false);
+        if (withModules && mountedRef.current) setLoadingCyberData(false);
       }
     })();
     clientsLoadPromiseRef.current = request;
@@ -333,6 +343,9 @@ export default function CybersecuritePage({
       toast.info(kind === "antispam" ? pageCopy.sync.noneAntispam : pageCopy.sync.noneAntivirus);
       return;
     }
+    fleetSyncCancelledRef.current = false;
+    const controller = new AbortController();
+    fleetSyncControllerRef.current = controller;
     setSyncingFleet(true);
     setSyncProgress(0);
     setSyncStatus(pageCopy.sync.preparing);
@@ -341,14 +354,19 @@ export default function CybersecuritePage({
     try {
       let processed = 0;
       for (const row of targets) {
+        if (fleetSyncCancelledRef.current || controller.signal.aborted) break;
         try {
-          setSyncStatus(pageCopy.formatSyncProgress(processed + 1, targets.length, row.clientName));
+          if (mountedRef.current) {
+            setSyncStatus(pageCopy.formatSyncProgress(processed + 1, targets.length, row.clientName));
+          }
           if (kind === "antispam") {
             const mappingMode = row.raw.mappingMode === "dedicated" || row.raw.mailinblackTenantId ? "dedicated" : "reseller";
             await syncAndPersistAntispamSolution(row.clientId, {
               ...row.raw,
               mappingMode,
               mailinblackTenantId: mappingMode === "dedicated" ? row.raw.mailinblackTenantId : null
+            }, {
+              signal: controller.signal
             });
           } else {
             const mappingMode = row.raw.mappingMode === "dedicated" || row.raw.bitdefenderTenantId ? "dedicated" : "reseller";
@@ -356,38 +374,54 @@ export default function CybersecuritePage({
               ...row.raw,
               mappingMode,
               bitdefenderTenantId: mappingMode === "dedicated" ? row.raw.bitdefenderTenantId : null
+            }, {
+              signal: controller.signal
             });
           }
           successCount += 1;
         } catch (error) {
+          if (error?.name === "AbortError") break;
           console.error(`Error syncing ${kind} for ${row.clientName}:`, error);
           errorCount += 1;
         } finally {
           processed += 1;
-          setSyncProgress(Math.round(processed / targets.length * 100));
+          if (mountedRef.current) {
+            setSyncProgress(Math.round(processed / targets.length * 100));
+          }
         }
       }
+      if (fleetSyncCancelledRef.current || controller.signal.aborted) return;
       await loadClients({
         withModules: true,
         force: true,
         skipCache: true
       });
+      if (!mountedRef.current) return;
       if (successCount > 0) {
         toast.success(pageCopy.formatSyncSuccess(successCount, errorCount));
       } else if (errorCount > 0) {
         toast.error(pageCopy.formatSyncFailed(errorCount));
       }
     } catch (error) {
+      if (error?.name === "AbortError") return;
       console.error("Error during fleet sync:", error);
-      toast.error(kind === "antispam" ? pageCopy.sync.errorAntispam : pageCopy.sync.errorAntivirus);
+      if (mountedRef.current) {
+        toast.error(kind === "antispam" ? pageCopy.sync.errorAntispam : pageCopy.sync.errorAntivirus);
+      }
     } finally {
-      setSyncingFleet(false);
-      setSyncProgress(100);
-      setSyncStatus(pageCopy.sync.done);
-      setTimeout(() => {
-        setSyncProgress(0);
-        setSyncStatus("");
-      }, 1200);
+      if (fleetSyncControllerRef.current === controller) {
+        fleetSyncControllerRef.current = null;
+      }
+      if (mountedRef.current) {
+        setSyncingFleet(false);
+        setSyncProgress(100);
+        setSyncStatus(pageCopy.sync.done);
+        setTimeout(() => {
+          if (!mountedRef.current) return;
+          setSyncProgress(0);
+          setSyncStatus("");
+        }, 1200);
+      }
     }
   };
   const filteredAntivirusData = useMemo(() => {
@@ -692,9 +726,22 @@ export default function CybersecuritePage({
         <main className={styles.mspContent}>
           <div className={`${layout.shell} ${layout.shellWide} ${layout.shellFull}`}>
           <div className={styles.tabContent}>
-                {activeTab === "antivirus" ? <AntivirusMspDashboard copy={pageCopy} clients={clients} loading={loadingCyberData} onOpenSolution={handleViewAntivirusSolution} onOpenClient={handleOpenAntivirusClient} /> : null}
-                {activeTab === "antispam" ? <AntispamMspDashboard copy={pageCopy} clients={clients} loading={loadingCyberData} onOpenSolution={handleViewAntispamSolution} onOpenClient={handleOpenAntivirusClient} /> : null}
-                {activeTab === "campaigns" ? <CampaignsMspDashboard copy={pageCopy} campaigns={campaigns} loading={loadingCampaigns} onViewCampaign={handleViewCampaign} onOpenClient={handleOpenCampaignClient} onAddCampaign={openAddCampaign} /> : null}
+                {activeTab === "antivirus" ? <AntivirusMspDashboard copy={pageCopy} clients={clients} loading={loadingCyberData} onOpenSolution={handleViewAntivirusSolution} onOpenClient={handleOpenAntivirusClient} onSolutionsChanged={() => loadClients({
+                  withModules: true,
+                  force: true,
+                  skipCache: true
+                })} /> : null}
+                {activeTab === "antispam" ? <AntispamMspDashboard copy={pageCopy} clients={clients} loading={loadingCyberData} onOpenSolution={handleViewAntispamSolution} onOpenClient={handleOpenAntivirusClient} onSolutionsChanged={() => loadClients({
+                  withModules: true,
+                  force: true,
+                  skipCache: true
+                })} /> : null}
+                {activeTab === "campaigns" ? <CampaignsMspDashboard copy={pageCopy} campaigns={campaigns} loading={loadingCampaigns} onViewCampaign={handleViewCampaign} onOpenClient={handleOpenCampaignClient} onAddCampaign={openAddCampaign} onCampaignsChanged={async () => {
+                  invalidateCampaignsCache();
+                  await Promise.all([loadCampaigns({
+                    skipCache: true
+                  }), loadAllCampaignsForStats()]);
+                }} /> : null}
           </div>
           </div>
         </main>

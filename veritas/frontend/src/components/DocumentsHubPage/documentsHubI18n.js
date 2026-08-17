@@ -1,4 +1,4 @@
-import { createLocaleGetter } from "../../i18n/translate";
+import { interpolate, pickLocaleMessages } from "../../i18n/translate";
 const DOCUMENTS_HUB = {
   fr: {
     eyebrow: "Pilotage",
@@ -25,6 +25,7 @@ const DOCUMENTS_HUB = {
     preview: "Prévisualiser",
     download: "Télécharger",
     delete: "Supprimer",
+    edit: "Modifier",
     deleteDocumentTitle: "Supprimer le document ?",
     deleteDocument: "Supprimer « {name} » ? Cette action est irréversible.",
     deleted: "Fichier supprimé.",
@@ -49,6 +50,45 @@ const DOCUMENTS_HUB = {
     errCompany: "Sélectionner une entreprise.",
     errFile: "Sélectionner un fichier.",
     errUpload: "Erreur lors de l'upload.",
+    bulk: {
+      selected: "sélectionné",
+      selectedPlural: "sélectionnés",
+      selectAll: "Tout sélectionner",
+      selectAllFiltered: "Tout sélectionner ({count})",
+      selectRow: "Sélectionner {name}",
+      clearSelection: "Effacer",
+      edit: "Modifier",
+      delete: "Supprimer",
+      deleteTitle: "Supprimer la sélection",
+      deleteMessage: "Supprimer {count} document ? Cette action est irréversible.",
+      deleteMessagePlural: "Supprimer {count} documents ? Cette action est irréversible.",
+      deleteConfirm: "Supprimer",
+      modal: {
+        title: "Modifier les documents",
+        selectedOne: "1 document sélectionné",
+        selectedMany: "{count} documents sélectionnés",
+        editCategory: "Type de document",
+        editDescription: "Description",
+        editVisibility: "Visibilité portail",
+        visibilityPortal: "Visible sur le portail client",
+        visibilityInternal: "Réservé aux agents",
+        descriptionPlaceholder: "Description commune",
+        noField: "Cochez au moins un champ à modifier.",
+        apply: "Appliquer",
+        saving: "Enregistrement…",
+        submitError: "Impossible d'appliquer les modifications"
+      },
+      toasts: {
+        editSuccess: "{count} document mis à jour",
+        editSuccessPlural: "{count} documents mis à jour",
+        editPartial: "{updated} mis à jour, {failed} en échec",
+        editError: "Aucune modification appliquée",
+        deleteSuccess: "{count} document supprimé",
+        deleteSuccessPlural: "{count} documents supprimés",
+        deletePartial: "{deleted} supprimés, {failed} en échec",
+        deleteError: "Aucune suppression effectuée"
+      }
+    },
     categories: {
       "Facture matériel": "Facture matériel",
       "Image client": "Image client",
@@ -85,6 +125,7 @@ const DOCUMENTS_HUB = {
     preview: "Preview",
     download: "Download",
     delete: "Delete",
+    edit: "Edit",
     deleteDocumentTitle: "Delete document?",
     deleteDocument: "Delete « {name} »? This action cannot be undone.",
     deleted: "File deleted.",
@@ -109,6 +150,45 @@ const DOCUMENTS_HUB = {
     errCompany: "Select a company.",
     errFile: "Select a file.",
     errUpload: "Upload failed.",
+    bulk: {
+      selected: "selected",
+      selectedPlural: "selected",
+      selectAll: "Select all",
+      selectAllFiltered: "Select all ({count})",
+      selectRow: "Select {name}",
+      clearSelection: "Clear",
+      edit: "Edit",
+      delete: "Delete",
+      deleteTitle: "Delete selection",
+      deleteMessage: "Delete {count} document? This cannot be undone.",
+      deleteMessagePlural: "Delete {count} documents? This cannot be undone.",
+      deleteConfirm: "Delete",
+      modal: {
+        title: "Edit documents",
+        selectedOne: "1 document selected",
+        selectedMany: "{count} documents selected",
+        editCategory: "Document type",
+        editDescription: "Description",
+        editVisibility: "Portal visibility",
+        visibilityPortal: "Visible on the client portal",
+        visibilityInternal: "Agents only",
+        descriptionPlaceholder: "Shared description",
+        noField: "Check at least one field to update.",
+        apply: "Apply",
+        saving: "Saving…",
+        submitError: "Unable to apply changes"
+      },
+      toasts: {
+        editSuccess: "{count} document updated",
+        editSuccessPlural: "{count} documents updated",
+        editPartial: "{updated} updated, {failed} failed",
+        editError: "No changes applied",
+        deleteSuccess: "{count} document deleted",
+        deleteSuccessPlural: "{count} documents deleted",
+        deletePartial: "{deleted} deleted, {failed} failed",
+        deleteError: "Nothing was deleted"
+      }
+    },
     categories: {
       "Facture matériel": "Hardware invoice",
       "Image client": "Client image",
@@ -145,6 +225,7 @@ const DOCUMENTS_HUB = {
     preview: "Vorschau",
     download: "Herunterladen",
     delete: "Löschen",
+    edit: "Bearbeiten",
     deleteDocumentTitle: "Dokument löschen?",
     deleteDocument: "« {name} » löschen? Diese Aktion kann nicht rückgängig gemacht werden.",
     deleted: "Datei gelöscht.",
@@ -169,6 +250,45 @@ const DOCUMENTS_HUB = {
     errCompany: "Unternehmen auswählen.",
     errFile: "Datei auswählen.",
     errUpload: "Upload fehlgeschlagen.",
+    bulk: {
+      selected: "ausgewählt",
+      selectedPlural: "ausgewählt",
+      selectAll: "Alle auswählen",
+      selectAllFiltered: "Alle auswählen ({count})",
+      selectRow: "{name} auswählen",
+      clearSelection: "Auswahl aufheben",
+      edit: "Bearbeiten",
+      delete: "Löschen",
+      deleteTitle: "Auswahl löschen",
+      deleteMessage: "{count} Dokument löschen? Diese Aktion kann nicht rückgängig gemacht werden.",
+      deleteMessagePlural: "{count} Dokumente löschen? Diese Aktion kann nicht rückgängig gemacht werden.",
+      deleteConfirm: "Löschen",
+      modal: {
+        title: "Dokumente bearbeiten",
+        selectedOne: "1 Dokument ausgewählt",
+        selectedMany: "{count} Dokumente ausgewählt",
+        editCategory: "Dokumenttyp",
+        editDescription: "Beschreibung",
+        editVisibility: "Portal-Sichtbarkeit",
+        visibilityPortal: "Im Kundenportal sichtbar",
+        visibilityInternal: "Nur Agenten",
+        descriptionPlaceholder: "Gemeinsame Beschreibung",
+        noField: "Aktivieren Sie mindestens ein Feld.",
+        apply: "Übernehmen",
+        saving: "Speichern…",
+        submitError: "Änderungen konnten nicht übernommen werden"
+      },
+      toasts: {
+        editSuccess: "{count} Dokument aktualisiert",
+        editSuccessPlural: "{count} Dokumente aktualisiert",
+        editPartial: "{updated} aktualisiert, {failed} fehlgeschlagen",
+        editError: "Keine Änderungen übernommen",
+        deleteSuccess: "{count} Dokument gelöscht",
+        deleteSuccessPlural: "{count} Dokumente gelöscht",
+        deletePartial: "{deleted} gelöscht, {failed} fehlgeschlagen",
+        deleteError: "Nichts wurde gelöscht"
+      }
+    },
     categories: {
       "Facture matériel": "Hardware-Rechnung",
       "Image client": "Kundenbild",
@@ -205,6 +325,7 @@ const DOCUMENTS_HUB = {
     preview: "Anteprima",
     download: "Scarica",
     delete: "Elimina",
+    edit: "Modifica",
     deleteDocumentTitle: "Eliminare il documento?",
     deleteDocument: "Eliminare « {name} »? Questa azione è irreversibile.",
     deleted: "File eliminato.",
@@ -229,6 +350,45 @@ const DOCUMENTS_HUB = {
     errCompany: "Seleziona un'azienda.",
     errFile: "Seleziona un file.",
     errUpload: "Caricamento non riuscito.",
+    bulk: {
+      selected: "selezionato",
+      selectedPlural: "selezionati",
+      selectAll: "Seleziona tutto",
+      selectAllFiltered: "Seleziona tutto ({count})",
+      selectRow: "Seleziona {name}",
+      clearSelection: "Deseleziona",
+      edit: "Modifica",
+      delete: "Elimina",
+      deleteTitle: "Elimina selezione",
+      deleteMessage: "Eliminare {count} documento? L'azione è irreversibile.",
+      deleteMessagePlural: "Eliminare {count} documenti? L'azione è irreversibile.",
+      deleteConfirm: "Elimina",
+      modal: {
+        title: "Modifica documenti",
+        selectedOne: "1 documento selezionato",
+        selectedMany: "{count} documenti selezionati",
+        editCategory: "Tipo di documento",
+        editDescription: "Descrizione",
+        editVisibility: "Visibilità portale",
+        visibilityPortal: "Visibile sul portale cliente",
+        visibilityInternal: "Solo agenti",
+        descriptionPlaceholder: "Descrizione comune",
+        noField: "Selezionate almeno un campo da modificare.",
+        apply: "Applica",
+        saving: "Salvataggio…",
+        submitError: "Impossibile applicare le modifiche"
+      },
+      toasts: {
+        editSuccess: "{count} documento aggiornato",
+        editSuccessPlural: "{count} documenti aggiornati",
+        editPartial: "{updated} aggiornati, {failed} in errore",
+        editError: "Nessuna modifica applicata",
+        deleteSuccess: "{count} documento eliminato",
+        deleteSuccessPlural: "{count} documenti eliminati",
+        deletePartial: "{deleted} eliminati, {failed} in errore",
+        deleteError: "Nessuna eliminazione effettuata"
+      }
+    },
     categories: {
       "Facture matériel": "Fattura hardware",
       "Image client": "Immagine cliente",
@@ -265,6 +425,7 @@ const DOCUMENTS_HUB = {
     preview: "Vista previa",
     download: "Descargar",
     delete: "Eliminar",
+    edit: "Modificar",
     deleteDocumentTitle: "¿Eliminar documento?",
     deleteDocument: "¿Eliminar « {name} »? Esta acción no se puede deshacer.",
     deleted: "Archivo eliminado.",
@@ -289,6 +450,45 @@ const DOCUMENTS_HUB = {
     errCompany: "Seleccione una empresa.",
     errFile: "Seleccione un archivo.",
     errUpload: "Error al subir.",
+    bulk: {
+      selected: "seleccionado",
+      selectedPlural: "seleccionados",
+      selectAll: "Seleccionar todo",
+      selectAllFiltered: "Seleccionar todo ({count})",
+      selectRow: "Seleccionar {name}",
+      clearSelection: "Borrar",
+      edit: "Modificar",
+      delete: "Eliminar",
+      deleteTitle: "Eliminar selección",
+      deleteMessage: "¿Eliminar {count} documento? Esta acción es irreversible.",
+      deleteMessagePlural: "¿Eliminar {count} documentos? Esta acción es irreversible.",
+      deleteConfirm: "Eliminar",
+      modal: {
+        title: "Modificar documentos",
+        selectedOne: "1 documento seleccionado",
+        selectedMany: "{count} documentos seleccionados",
+        editCategory: "Tipo de documento",
+        editDescription: "Descripción",
+        editVisibility: "Visibilidad del portal",
+        visibilityPortal: "Visible en el portal del cliente",
+        visibilityInternal: "Solo agentes",
+        descriptionPlaceholder: "Descripción común",
+        noField: "Marque al menos un campo para modificar.",
+        apply: "Aplicar",
+        saving: "Guardando…",
+        submitError: "No se pudieron aplicar los cambios"
+      },
+      toasts: {
+        editSuccess: "{count} documento actualizado",
+        editSuccessPlural: "{count} documentos actualizados",
+        editPartial: "{updated} actualizados, {failed} con error",
+        editError: "No se aplicaron cambios",
+        deleteSuccess: "{count} documento eliminado",
+        deleteSuccessPlural: "{count} documentos eliminados",
+        deletePartial: "{deleted} eliminados, {failed} con error",
+        deleteError: "No se eliminó nada"
+      }
+    },
     categories: {
       "Facture matériel": "Factura hardware",
       "Image client": "Imagen cliente",
@@ -302,4 +502,35 @@ const DOCUMENTS_HUB = {
   }
 };
 export const CATEGORY_KEYS = ["Facture matériel", "Image client", "Baie de brassage", "Plan de réseau", "Procédure", "Contrat", "Rapport", "Autre"];
-export const getDocumentsHubCopy = createLocaleGetter(DOCUMENTS_HUB);
+export function getDocumentsHubCopy(locale) {
+  const t = pickLocaleMessages(DOCUMENTS_HUB, locale);
+  return {
+    ...t,
+    formatBulkSelectAllFiltered: count => interpolate(t.bulk.selectAllFiltered, {
+      count: String(count)
+    }),
+    formatBulkSelectRow: name => interpolate(t.bulk.selectRow, {
+      name: name || ""
+    }),
+    formatBulkModalSelected: count => interpolate(count === 1 ? t.bulk.modal.selectedOne : t.bulk.modal.selectedMany, {
+      count: String(count)
+    }),
+    formatBulkDeleteMessage: count => interpolate(count === 1 ? t.bulk.deleteMessage : t.bulk.deleteMessagePlural, {
+      count: String(count)
+    }),
+    formatBulkEditSuccess: count => interpolate(count > 1 ? t.bulk.toasts.editSuccessPlural : t.bulk.toasts.editSuccess, {
+      count: String(count)
+    }),
+    formatBulkEditPartial: (updated, failed) => interpolate(t.bulk.toasts.editPartial, {
+      updated: String(updated),
+      failed: String(failed)
+    }),
+    formatBulkDeleteSuccess: count => interpolate(count > 1 ? t.bulk.toasts.deleteSuccessPlural : t.bulk.toasts.deleteSuccess, {
+      count: String(count)
+    }),
+    formatBulkDeletePartial: (deleted, failed) => interpolate(t.bulk.toasts.deletePartial, {
+      deleted: String(deleted),
+      failed: String(failed)
+    })
+  };
+}

@@ -1,5 +1,6 @@
 import { pool } from "../database/db.js";
 import { fetchMonitorableEquipmentStats } from "../utils/monitorableEquipmentStats.js";
+import { listContractModuleOptions } from "../utils/contractModuleOptions.js";
 import { hasSatisfactionTable } from "./ticketSatisfactionService.js";
 const CLOSED_STATUSES = "('resolved', 'closed')";
 const FIRST_TAKEOVER_SUBQUERY = `(SELECT h.created_at
@@ -44,6 +45,8 @@ const EVENT_TYPE_LABELS = {
 function parsePeriodStart(period) {
   const now = new Date();
   switch (String(period || "365d").toLowerCase()) {
+    case "7d":
+      return new Date(now.getTime() - 7 * 86400000);
     case "30d":
       return new Date(now.getTime() - 30 * 86400000);
     case "90d":
@@ -223,7 +226,7 @@ async function fetchSupportStats({
   const ticketWhere = `WHERE 1=1${periodClause}${scopeClause}`;
   const openNowParams = [];
   const openNowScope = buildTicketScopeClause(openNowParams, filters, "t");
-  const [overviewResult, statusResult, priorityResult, typeResult, categoryResult, responseResult, resolutionResult, agentsResult, clientsResult, contactsResult, weekdayResult, yearlyResult, openNowResult, channelResult] = await Promise.all([pool.query(`SELECT
+  const [overviewResult, statusResult, priorityResult, typeResult, categoryResult, responseResult, resolutionResult, agentsResult, clientsResult, contactsResult, weekdayResult, yearlyResult, monthlyResult, openNowResult, channelResult] = await Promise.all([pool.query(`SELECT
          COUNT(*)::int AS created,
          COUNT(*) FILTER (WHERE t.status IN ${CLOSED_STATUSES})::int AS closed,
          COUNT(*) FILTER (WHERE t.status NOT IN ${CLOSED_STATUSES})::int AS open_snapshot
@@ -295,6 +298,10 @@ async function fetchSupportStats({
        ${ticketWhere}
        GROUP BY 1
        ORDER BY 1 ASC`, params), pool.query(`SELECT EXTRACT(YEAR FROM t.created_at)::int AS period, COUNT(*)::int AS count
+       FROM v_b_tickets t
+       ${ticketWhere}
+       GROUP BY 1
+       ORDER BY 1 ASC`, params), pool.query(`SELECT date_trunc('month', t.created_at)::date AS period, COUNT(*)::int AS count
        FROM v_b_tickets t
        ${ticketWhere}
        GROUP BY 1
@@ -372,6 +379,7 @@ async function fetchSupportStats({
     }),
     weekdayTrend: buildWeekdayTrend(weekdayResult.rows),
     yearlyTrend: buildYearlyTrend(yearlyResult.rows),
+    monthlyTrend: buildTrend(monthlyResult.rows),
     topAgents: (agentsResult.rows || []).map(row => ({
       userId: row.user_id,
       label: formatUserLabel(row.email, row.label),
@@ -509,6 +517,8 @@ async function fetchCrmStats({
   }), filters.clientId != null ? pool.query(`SELECT id, name, contrat FROM v_b_clients WHERE id = $1`, [filters.clientId]) : pool.query(`SELECT id, name, contrat FROM v_b_clients`)]);
   let contractsExpiring = 0;
   let contractsExpired = 0;
+  let contractsSuspended = 0;
+  let contractsActive = 0;
   const now = Date.now();
   const windowMs = 30 * 86400000;
   const sinceMs = sinceIso ? new Date(sinceIso).getTime() : null;
@@ -522,14 +532,29 @@ async function fetchCrmStats({
         contrat = {};
       }
     }
-    if (!contrat || contrat.suspendu) continue;
-    const exp = contrat.expiration ? new Date(contrat.expiration).getTime() : NaN;
-    if (!Number.isFinite(exp)) continue;
-    if (hasPeriod) {
-      if (exp >= sinceMs && exp <= untilMs) contractsExpiring += 1;
+    if (!contrat) continue;
+    if (contrat.suspendu) {
+      contractsSuspended += 1;
       continue;
     }
-    if (exp < now) contractsExpired += 1;else if (exp - now <= windowMs) contractsExpiring += 1;
+    const exp = contrat.expiration ? new Date(contrat.expiration).getTime() : NaN;
+    if (!Number.isFinite(exp)) {
+      contractsActive += 1;
+      continue;
+    }
+    if (hasPeriod) {
+      if (exp >= sinceMs && exp <= untilMs) {
+        if (exp < now) contractsExpired += 1;
+        else contractsExpiring += 1;
+      }
+      if (exp >= now) contractsActive += 1;
+      continue;
+    }
+    if (exp < now) contractsExpired += 1;
+    else {
+      contractsActive += 1;
+      if (exp - now <= windowMs) contractsExpiring += 1;
+    }
   }
   const contactRow = contactsResult.rows[0] || {};
   const clientsInPeriod = clientsInPeriodResult.rows[0]?.count;
@@ -539,7 +564,104 @@ async function fetchCrmStats({
     contactsTotal: Number(contactRow.total) || 0,
     contactsNew: Number(contactRow.new_in_period) || 0,
     contractsExpiring,
-    contractsExpired
+    contractsExpired,
+    contractsSuspended,
+    contractsActive
+  };
+}
+const SOLUTION_TABLES = [{
+  key: "antivirus",
+  table: "v_b_clients_m_antivirus"
+}, {
+  key: "antispam",
+  table: "v_b_clients_m_antispam"
+}, {
+  key: "backup",
+  table: "v_b_clients_m_save"
+}, {
+  key: "o365",
+  table: "v_b_clients_m_o365"
+}, {
+  key: "domain",
+  table: "v_b_clients_m_ndd"
+}, {
+  key: "ssl",
+  table: "v_b_clients_m_ssl"
+}, {
+  key: "campaigns",
+  table: "v_b_clients_c_campaign",
+  anyRow: true
+}];
+async function countTableOrZero(sql, params = []) {
+  try {
+    const result = await pool.query(sql, params);
+    return Number(result.rows[0]?.count) || 0;
+  } catch (err) {
+    if (err.code === "42P01" || err.code === "42703") return 0;
+    throw err;
+  }
+}
+async function fetchSolutionCoverage(clientId = null) {
+  const rows = [];
+  for (const item of SOLUTION_TABLES) {
+    const where = item.anyRow ? clientId != null ? "WHERE client_id = $1" : "" : clientId != null ? "WHERE data IS NOT NULL AND client_id = $1" : "WHERE data IS NOT NULL";
+    const params = clientId != null ? [clientId] : [];
+    const count = await countTableOrZero(`SELECT COUNT(*)::int AS count FROM ${item.table} ${where}`, params);
+    rows.push({
+      key: item.key,
+      count
+    });
+  }
+  return rows;
+}
+async function fetchEnterpriseStats({
+  sinceIso,
+  untilIso,
+  filters = {}
+}) {
+  const crm = await fetchCrmStats({
+    sinceIso,
+    untilIso,
+    filters
+  });
+  let modules = [];
+  try {
+    const options = await listContractModuleOptions({
+      includeDisabled: false,
+      includeUsage: filters.clientId == null
+    });
+    if (filters.clientId != null) {
+      const clientRow = await pool.query(`SELECT options FROM v_b_clients WHERE id = $1`, [filters.clientId]);
+      let clientOptions = clientRow.rows[0]?.options || {};
+      if (typeof clientOptions === "string") {
+        try {
+          clientOptions = JSON.parse(clientOptions);
+        } catch {
+          clientOptions = {};
+        }
+      }
+      modules = options.map(mod => ({
+        key: mod.moduleKey,
+        label: mod.label,
+        icon: mod.icon,
+        count: clientOptions?.[mod.moduleKey] ? 1 : 0
+      }));
+    } else {
+      modules = options.map(mod => ({
+        key: mod.moduleKey,
+        label: mod.label,
+        icon: mod.icon,
+        count: Number(mod.clientUsageCount) || 0
+      }));
+    }
+  } catch (err) {
+    console.warn("[analytics] contract modules", err.message);
+  }
+  const solutions = await fetchSolutionCoverage(filters.clientId);
+  return {
+    ...crm,
+    modules,
+    solutions
   };
 }
 async function fetchReportsStats({
@@ -591,24 +713,58 @@ async function fetchReportsStats({
     monthlyTrend: buildTrend(trendResult.rows)
   };
 }
-async function fetchInfrastructureStats() {
-  const [equipmentStats, agentsResult, rmmResult] = await Promise.all([fetchMonitorableEquipmentStats(), pool.query(`SELECT COUNT(*)::int AS count FROM v_b_users WHERE is_active = true AND COALESCE(role, '') <> 'client'`), tableExists("public.v_b_rmm_agents").then(ok => ok ? pool.query(`SELECT COUNT(*)::int AS count FROM v_b_rmm_agents WHERE COALESCE(status, 'active') = 'active'`) : {
+async function fetchDevicesStats(filters = {}) {
+  const equipmentStats = await fetchMonitorableEquipmentStats();
+  const clientParams = filters.clientId != null ? [filters.clientId] : [];
+  const clientWhere = filters.clientId != null ? " AND client_id = $1" : "";
+  const [agentsResult, rmmResult, computersResult] = await Promise.all([countTableOrZero(`SELECT COUNT(*)::int AS count FROM v_b_users WHERE is_active = true AND COALESCE(role, '') <> 'client'`), tableExists("public.v_b_rmm_agents").then(ok => ok ? pool.query(`SELECT
+           COUNT(*) FILTER (WHERE COALESCE(status, 'active') = 'active')::int AS active,
+           COUNT(*) FILTER (WHERE COALESCE(status, 'active') = 'active' AND last_seen_at >= NOW() - INTERVAL '15 minutes')::int AS online
+         FROM v_b_rmm_agents
+         WHERE 1=1${clientWhere}`, clientParams).catch(() => ({
     rows: [{
-      count: 0
+      active: 0,
+      online: 0
+    }]
+  })) : {
+    rows: [{
+      active: 0,
+      online: 0
+    }]
+  }), tableExists("public.v_b_clients_m_ordinateurs").then(ok => ok ? pool.query(`SELECT
+           COUNT(*)::int AS total,
+           COUNT(*) FILTER (WHERE COALESCE(is_active, TRUE) = TRUE)::int AS active
+         FROM v_b_clients_m_ordinateurs
+         WHERE client_id IS NOT NULL${clientWhere}`, clientParams).catch(() => ({
+    rows: [{
+      total: 0,
+      active: 0
+    }]
+  })) : {
+    rows: [{
+      total: 0,
+      active: 0
     }]
   })]);
+  const rmmRow = rmmResult.rows?.[0] || {};
+  const computersRow = computersResult.rows?.[0] || {};
   return {
+    equipTotal: equipmentStats.equipMonitoredTotal || 0,
     equipMonitoredTotal: equipmentStats.equipMonitoredTotal || 0,
     equipUnderSurveillanceCount: equipmentStats.equipUnderSurveillanceCount || 0,
     equipSurveillancePercent: roundPct(equipmentStats.equipSurveillancePercent),
     families: (equipmentStats.families || []).map(row => ({
       key: row.key || row.family,
       label: row.label || row.key,
+      icon: row.icon || null,
       count: Number(row.count) || 0,
-      monitored: Number(row.monitored) || 0
+      monitored: Number(row.monitoredCount || row.monitored) || 0
     })),
-    activeAgents: Number(agentsResult.rows[0]?.count) || 0,
-    rmmAgents: Number(rmmResult.rows[0]?.count) || 0
+    activeAgents: Number(agentsResult) || 0,
+    rmmAgents: Number(rmmRow.active) || 0,
+    rmmOnline: Number(rmmRow.online) || 0,
+    computersTotal: Number(computersRow.total) || 0,
+    computersActive: Number(computersRow.active) || 0
   };
 }
 export async function fetchAnalyticsDashboard(options = "365d") {
@@ -637,7 +793,7 @@ export async function fetchAnalyticsDashboard(options = "365d") {
     clientId,
     contactId
   });
-  const [support, planning, crm, reports, infrastructure, satisfactionAvailable] = await Promise.all([fetchSupportStats({
+  const [support, planning, enterprise, reports, devices, satisfactionAvailable] = await Promise.all([fetchSupportStats({
     sinceIso,
     untilIso,
     filters
@@ -645,7 +801,7 @@ export async function fetchAnalyticsDashboard(options = "365d") {
     sinceIso,
     untilIso,
     filters
-  }), fetchCrmStats({
+  }), fetchEnterpriseStats({
     sinceIso,
     untilIso,
     filters
@@ -653,7 +809,7 @@ export async function fetchAnalyticsDashboard(options = "365d") {
     sinceIso,
     untilIso,
     filters
-  }), fetchInfrastructureStats(), hasSatisfactionTable()]);
+  }), fetchDevicesStats(filters), hasSatisfactionTable()]);
   return {
     period: range.period,
     since: sinceIso,
@@ -678,15 +834,17 @@ export async function fetchAnalyticsDashboard(options = "365d") {
       eventsTotal: planning.overview.total,
       maintenanceInPeriod: planning.overview.maintenanceInPeriod,
       maintenanceYtd: planning.overview.maintenanceYtd,
-      clientsTotal: crm.clientsTotal,
+      clientsTotal: enterprise.clientsPortfolio || enterprise.clientsTotal,
       reportsInPeriod: reports.inPeriod,
-      equipMonitoredTotal: infrastructure.equipMonitoredTotal,
+      equipMonitoredTotal: devices.equipMonitoredTotal,
       satisfactionAvg: support.satisfaction?.avgRating ?? null
     },
     support,
     planning,
-    crm,
+    enterprise,
+    crm: enterprise,
     reports,
-    infrastructure
+    devices,
+    infrastructure: devices
   };
 }

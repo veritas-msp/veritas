@@ -21,6 +21,8 @@
   display: flex;
   flex-direction: column;
   gap: 0.7rem;
+  width: 100%;
+  min-width: 0;
 }
 
 .kpiGrid {
@@ -99,6 +101,12 @@
   gap: 0.65rem;
 }
 
+.chartGrid3 {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.65rem;
+}
+
 .chartBarGrid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -174,25 +182,30 @@
   min-height: 118px;
 }
 
-.chartGrid .pieChart {
+.chartGrid .pieChart,
+.chartGrid3 .pieChart {
   width: 100px;
   height: 100px;
 }
 
-.chartGrid .pieCenter {
+.chartGrid .pieCenter,
+.chartGrid3 .pieCenter {
   width: 60px;
   height: 60px;
 }
 
-.chartGrid .pieCenterValue {
+.chartGrid .pieCenterValue,
+.chartGrid3 .pieCenterValue {
   font-size: 1rem;
 }
 
-.chartGrid .legendName {
+.chartGrid .legendName,
+.chartGrid3 .legendName {
   font-size: 0.72rem;
 }
 
-.chartGrid .legendMeta {
+.chartGrid .legendMeta,
+.chartGrid3 .legendMeta {
   font-size: 0.66rem;
 }
 
@@ -474,6 +487,11 @@
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
+  .chartGrid3,
+  .columns {
+    grid-template-columns: 1fr 1fr;
+  }
+
   .chartBarGrid {
     grid-template-columns: 1fr;
   }
@@ -485,6 +503,7 @@
   }
 
   .chartBarGrid,
+  .chartGrid3,
   .columns {
     grid-template-columns: 1fr;
   }

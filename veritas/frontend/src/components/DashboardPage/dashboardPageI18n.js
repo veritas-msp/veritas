@@ -3,7 +3,7 @@ const DASHBOARD_COPY = {
   fr: {
     eyebrow: "Pilotage",
     title: "Tableau de bord KPI",
-    subtitle: "Statistiques consolidées de votre activité Veritas · support, planning, CRM, rapports et infrastructure.",
+    subtitle: "Indicateurs classés par métier : support, parc périphérique et entreprises.",
     loading: "Chargement des indicateurs…",
     errorLoad: "Impossible de charger le tableau de bord.",
     proRequired: "Le tableau de bord KPI est réservé à Veritas Pro.",
@@ -11,6 +11,11 @@ const DASHBOARD_COPY = {
     periodButtonAria: "Choisir la période d'analyse",
     periodCustomRange: "Du {start} au {end}",
     refresh: "Actualiser",
+    export: "Exporter",
+    exportPdf: "Télécharger le PDF",
+    exportEmail: "Envoyer par e-mail",
+    exportSchedule: "Programmer un envoi",
+    exportMenuAria: "Actions d'export du rapport",
     scopeFilter: {
       barAria: "Filtre de périmètre KPI",
       typeLabel: "Périmètre",
@@ -28,7 +33,7 @@ const DASHBOARD_COPY = {
       activeClient: "Entreprise : {name}",
       activeContact: "Contact : {name}",
       filteredBadge: "Périmètre filtré",
-      infrastructureHint: "L'infrastructure reste affichée au niveau global."
+      infrastructureHint: "Le parc périphérique reste affiché au niveau global."
     },
     generatedAt: "Données au {date}",
     generatedAtRange: "Période du {start} au {end} · généré le {date}",
@@ -56,40 +61,22 @@ const DASHBOARD_COPY = {
     },
     tabsAria: "Catégories de statistiques",
     tabs: {
-      overview: "Vue d'ensemble",
-      support: "Support & ticketing",
-      planning: "Planning & interventions",
-      crm: "CRM & contrats",
-      reports: "Rapports",
-      infrastructure: "Infrastructure"
+      support: "Support",
+      devices: "Périphériques",
+      enterprise: "Entreprise"
+    },
+    intros: {
+      support: "Volume, délais et qualité du ticketing, plus les interventions planning.",
+      devices: "Parc matériel, supervision et agents RMM.",
+      enterprise: "Portefeuille clients, contrats, modules et solutions déployées."
     },
     periods: {
+      "7d": "7 jours",
       "30d": "30 jours",
       "90d": "90 jours",
       "365d": "12 mois",
       ytd: "Année en cours",
       all: "Tout"
-    },
-    sections: {
-      summary: "Vue d'ensemble",
-      support: "Support & ticketing",
-      planning: "Planning & interventions",
-      crm: "CRM & contrats",
-      reports: "Rapports",
-      infrastructure: "Infrastructure"
-    },
-    summary: {
-      ticketsCreated: "Tickets créés",
-      ticketsOpen: "Tickets ouverts",
-      avgFirstResponse: "Réponse moyenne",
-      avgResolution: "Résolution moyenne",
-      eventsTotal: "Événements planning",
-      maintenancePeriod: "Maintenances (période)",
-      maintenanceYtd: "Maintenances (année)",
-      clientsTotal: "Entreprises (période)",
-      reportsInPeriod: "Rapports générés",
-      equipMonitored: "Équipements suivis",
-      satisfactionAvg: "Satisfaction moyenne"
     },
     units: {
       hours: "{value} h",
@@ -98,22 +85,22 @@ const DASHBOARD_COPY = {
       none: "-"
     },
     support: {
-      closureRate: "Taux de clôture",
-      created: "Créés",
+      created: "Tickets créés",
       closed: "Clôturés",
       openNow: "Ouverts actuellement",
+      closureRate: "Taux de clôture",
       firstResponse: "Première prise en charge",
       resolution: "Délai de résolution",
       withResponse: "{count} tickets avec réponse",
       resolvedCount: "{count} tickets résolus",
-      byStatus: "Répartition par statut",
+      byStatus: "Par statut",
       byPriority: "Priorités",
       byType: "Types de ticket",
       byCategory: "Catégories",
       byChannel: "Canaux",
-      topCategories: "Top 5 catégories",
-      topCompanies: "Top 5 entreprises",
-      topContacts: "Top 5 contacts",
+      topCategories: "Top catégories",
+      topCompanies: "Top entreprises",
+      topContacts: "Top contacts",
       allCategories: "Toutes les catégories",
       allCompanies: "Toutes les entreprises",
       allContacts: "Tous les contacts",
@@ -121,14 +108,15 @@ const DASHBOARD_COPY = {
       othersCount: "+{count} autres",
       distributionModalClose: "Fermer",
       distributionModalSubtitle: "{total} tickets · {count} entrées",
-      weekdayTrend: "Volumétrie par jour de la semaine",
-      yearlyTrend: "Volumétrie par année",
+      weekdayTrend: "Volume par jour de semaine",
+      monthlyTrend: "Volume mensuel",
+      yearlyTrend: "Volume annuel",
       topAgents: "Classement agents",
-      topClients: "Top entreprises (volume tickets)",
       satisfaction: "Satisfaction client",
       csat: "CSAT (notes ≥ 4)",
       detractors: "Insatisfaits (≤ 2)",
       satisfactionByAgent: "Satisfaction par agent",
+      planningTitle: "Planning & interventions",
       agentColumns: {
         agent: "Agent",
         assigned: "Assignés",
@@ -140,49 +128,134 @@ const DASHBOARD_COPY = {
       }
     },
     planning: {
-      total: "Événements sur la période",
+      total: "Événements",
       maintenancePeriod: "Maintenances (période)",
       maintenanceYtd: "Maintenances (année)",
       upcoming: "À venir",
-      byType: "Répartition par type",
+      byType: "Types d'événement",
       byAgent: "Interventions par agent",
       monthlyTrend: "Activité mensuelle",
       unavailable: "Module planning non disponible."
     },
-    crm: {
-      clients: "Entreprises actives (période)",
-      contacts: "Contacts",
-      contactsNew: "Nouveaux contacts",
-      contractsExpiring: "Contrats à échéance (30 j)",
-      contractsExpired: "Contrats expirés"
-    },
-    reports: {
-      total: "Rapports (historique)",
-      inPeriod: "Rapports (période)",
-      byType: "Par type",
-      monthlyTrend: "Production mensuelle",
-      unavailable: "Aucun rapport enregistré."
-    },
-    infrastructure: {
-      monitored: "Équipements monitorés",
+    devices: {
+      fleet: "Parc total",
+      supervised: "Supervisés",
       surveillance: "Taux de supervision",
-      rmmAgents: "Agents RMM actifs",
-      mspAgents: "Agents MSP actifs",
-      families: "Parc par famille",
+      rmmAgents: "Agents RMM",
+      rmmOnline: "RMM en ligne",
+      computers: "Ordinateurs",
+      computersActive: "Ordinateurs actifs",
+      mspAgents: "Agents MSP",
+      families: "Répartition du parc",
+      familyTable: "Détail par famille",
       familyColumns: {
         family: "Famille",
         total: "Total",
         monitored: "Supervisés"
       }
     },
-    empty: "Aucune donnée sur cette période.",
-    trendWeek: "Sem. {date}",
-    trendMonth: "{date}"
+    enterprise: {
+      clients: "Entreprises",
+      contacts: "Contacts",
+      contactsNew: "Nouveaux contacts",
+      contractsActive: "Contrats actifs",
+      contractsExpiring: "Échéance 30 jours",
+      contractsExpired: "Contrats expirés",
+      contractsSuspended: "Contrats suspendus",
+      modules: "Couverture modules",
+      solutions: "Solutions déployées",
+      reportsTitle: "Rapports générés",
+      reportsTotal: "Historique",
+      reportsPeriod: "Sur la période",
+      reportsByType: "Par type",
+      reportsMonthly: "Production mensuelle",
+      solutionLabels: {
+        antivirus: "Antivirus",
+        antispam: "Antispam",
+        backup: "Sauvegarde",
+        o365: "Microsoft 365",
+        domain: "Noms de domaine",
+        ssl: "Certificats SSL",
+        campaigns: "Campagnes"
+      }
+    },
+    exportModal: {
+      eyebrow: "Rapport KPI",
+      titlePdf: "Exporter en PDF",
+      titleEmail: "Envoyer par e-mail",
+      subtitlePdf: "Génère un PDF de la période et du périmètre actuellement affichés.",
+      subtitleEmail: "Envoie le rapport PDF aux destinataires indiqués.",
+      recipients: "Destinataires",
+      recipientsPlaceholder: "email@entreprise.fr, autre@entreprise.fr",
+      categories: "Catégories à inclure",
+      cancel: "Annuler",
+      download: "Télécharger",
+      send: "Envoyer",
+      working: "Traitement…",
+      closeAria: "Fermer",
+      errRecipients: "Indiquez au moins un e-mail.",
+      errCategories: "Choisissez au moins une catégorie.",
+      submitError: "Impossible de traiter le rapport.",
+      pdfReady: "PDF téléchargé.",
+      emailSent: "Rapport envoyé."
+    },
+    scheduleModal: {
+      eyebrow: "Rapports automatiques",
+      title: "Programmer un rapport KPI",
+      subtitle: "Envoi PDF récurrent selon la fréquence et la période d'analyse choisies.",
+      closeAria: "Fermer",
+      createTitle: "Nouvelle programmation",
+      editTitle: "Modifier la programmation",
+      listTitle: "Programmations",
+      name: "Nom",
+      recipients: "Destinataires",
+      recipientsPlaceholder: "email@entreprise.fr, autre@entreprise.fr",
+      period: "Période analysée",
+      frequency: "Fréquence d'envoi",
+      freqDaily: "Quotidien",
+      freqWeekly: "Hebdomadaire",
+      freqMonthly: "Mensuel",
+      hour: "Heure (0-23)",
+      weekday: "Jour de la semaine",
+      monthday: "Jour du mois",
+      enabled: "Programmation active",
+      create: "Créer",
+      save: "Enregistrer",
+      saving: "Enregistrement…",
+      cancelEdit: "Annuler",
+      edit: "Modifier",
+      delete: "Supprimer",
+      loading: "Chargement…",
+      empty: "Aucune programmation.",
+      nextRun: "Prochain envoi",
+      validation: "Nom, destinataires et catégorie sont requis.",
+      created: "Programmation créée.",
+      updated: "Programmation mise à jour.",
+      deleted: "Programmation supprimée.",
+      loadError: "Impossible de charger les programmations.",
+      saveError: "Impossible d'enregistrer.",
+      deleteError: "Impossible de supprimer.",
+      frequencies: {
+        daily: "Quotidien",
+        weekly: "Hebdomadaire",
+        monthly: "Mensuel"
+      },
+      weekdays: {
+        1: "Lundi",
+        2: "Mardi",
+        3: "Mercredi",
+        4: "Jeudi",
+        5: "Vendredi",
+        6: "Samedi",
+        7: "Dimanche"
+      }
+    },
+    empty: "Aucune donnée sur cette période."
   },
   en: {
     eyebrow: "Operations",
-    title: "KPI Dashboard",
-    subtitle: "Consolidated Veritas analytics · support, scheduling, CRM, reports and infrastructure.",
+    title: "KPI dashboard",
+    subtitle: "Metrics grouped by area: support, device fleet and companies.",
     loading: "Loading metrics…",
     errorLoad: "Unable to load the dashboard.",
     proRequired: "The KPI dashboard is available with Veritas Pro.",
@@ -190,6 +263,11 @@ const DASHBOARD_COPY = {
     periodButtonAria: "Choose analysis period",
     periodCustomRange: "From {start} to {end}",
     refresh: "Refresh",
+    export: "Export",
+    exportPdf: "Download PDF",
+    exportEmail: "Send by email",
+    exportSchedule: "Schedule sending",
+    exportMenuAria: "Report export actions",
     scopeFilter: {
       barAria: "KPI scope filter",
       typeLabel: "Scope",
@@ -207,7 +285,7 @@ const DASHBOARD_COPY = {
       activeClient: "Company: {name}",
       activeContact: "Contact: {name}",
       filteredBadge: "Filtered scope",
-      infrastructureHint: "Infrastructure metrics remain global."
+      infrastructureHint: "Device fleet metrics remain global."
     },
     generatedAt: "Data as of {date}",
     generatedAtRange: "Period from {start} to {end} · generated on {date}",
@@ -235,40 +313,22 @@ const DASHBOARD_COPY = {
     },
     tabsAria: "Statistics categories",
     tabs: {
-      overview: "Overview",
-      support: "Support & ticketing",
-      planning: "Scheduling & interventions",
-      crm: "CRM & contracts",
-      reports: "Reports",
-      infrastructure: "Infrastructure"
+      support: "Support",
+      devices: "Devices",
+      enterprise: "Company"
+    },
+    intros: {
+      support: "Ticket volume, response times and quality, plus scheduled interventions.",
+      devices: "Hardware fleet, monitoring coverage and RMM agents.",
+      enterprise: "Client portfolio, contracts, modules and deployed solutions."
     },
     periods: {
+      "7d": "7 days",
       "30d": "30 days",
       "90d": "90 days",
       "365d": "12 months",
       ytd: "Year to date",
       all: "All time"
-    },
-    sections: {
-      summary: "Overview",
-      support: "Support & ticketing",
-      planning: "Scheduling & interventions",
-      crm: "CRM & contracts",
-      reports: "Reports",
-      infrastructure: "Infrastructure"
-    },
-    summary: {
-      ticketsCreated: "Tickets created",
-      ticketsOpen: "Open tickets",
-      avgFirstResponse: "Avg. first response",
-      avgResolution: "Avg. resolution",
-      eventsTotal: "Planning events",
-      maintenancePeriod: "Maintenance (period)",
-      maintenanceYtd: "Maintenance (YTD)",
-      clientsTotal: "Companies (period)",
-      reportsInPeriod: "Reports generated",
-      equipMonitored: "Monitored assets",
-      satisfactionAvg: "Avg. satisfaction"
     },
     units: {
       hours: "{value} h",
@@ -277,10 +337,10 @@ const DASHBOARD_COPY = {
       none: "-"
     },
     support: {
-      closureRate: "Closure rate",
-      created: "Created",
+      created: "Tickets created",
       closed: "Closed",
       openNow: "Currently open",
+      closureRate: "Closure rate",
       firstResponse: "First response",
       resolution: "Resolution time",
       withResponse: "{count} tickets with response",
@@ -290,9 +350,9 @@ const DASHBOARD_COPY = {
       byType: "Ticket types",
       byCategory: "Categories",
       byChannel: "Channels",
-      topCategories: "Top 5 categories",
-      topCompanies: "Top 5 companies",
-      topContacts: "Top 5 contacts",
+      topCategories: "Top categories",
+      topCompanies: "Top companies",
+      topContacts: "Top contacts",
       allCategories: "All categories",
       allCompanies: "All companies",
       allContacts: "All contacts",
@@ -301,13 +361,14 @@ const DASHBOARD_COPY = {
       distributionModalClose: "Close",
       distributionModalSubtitle: "{total} tickets · {count} entries",
       weekdayTrend: "Volume by weekday",
-      yearlyTrend: "Volume by year",
+      monthlyTrend: "Monthly volume",
+      yearlyTrend: "Yearly volume",
       topAgents: "Agent ranking",
-      topClients: "Top companies (ticket volume)",
       satisfaction: "Customer satisfaction",
       csat: "CSAT (rating ≥ 4)",
       detractors: "Detractors (≤ 2)",
       satisfactionByAgent: "Satisfaction by agent",
+      planningTitle: "Scheduling & interventions",
       agentColumns: {
         agent: "Agent",
         assigned: "Assigned",
@@ -319,45 +380,329 @@ const DASHBOARD_COPY = {
       }
     },
     planning: {
-      total: "Events in period",
+      total: "Events",
       maintenancePeriod: "Maintenance (period)",
       maintenanceYtd: "Maintenance (YTD)",
       upcoming: "Upcoming",
-      byType: "By type",
+      byType: "Event types",
       byAgent: "Interventions by agent",
       monthlyTrend: "Monthly activity",
       unavailable: "Scheduling module unavailable."
     },
-    crm: {
-      clients: "Active companies (period)",
-      contacts: "Contacts",
-      contactsNew: "New contacts",
-      contractsExpiring: "Contracts expiring (30d)",
-      contractsExpired: "Expired contracts"
-    },
-    reports: {
-      total: "Reports (all time)",
-      inPeriod: "Reports (period)",
-      byType: "By type",
-      monthlyTrend: "Monthly output",
-      unavailable: "No reports recorded."
-    },
-    infrastructure: {
-      monitored: "Monitored equipment",
+    devices: {
+      fleet: "Total fleet",
+      supervised: "Monitored",
       surveillance: "Monitoring rate",
-      rmmAgents: "Active RMM agents",
-      mspAgents: "Active MSP agents",
-      families: "Fleet by family",
+      rmmAgents: "RMM agents",
+      rmmOnline: "RMM online",
+      computers: "Computers",
+      computersActive: "Active computers",
+      mspAgents: "MSP agents",
+      families: "Fleet breakdown",
+      familyTable: "Detail by family",
       familyColumns: {
         family: "Family",
         total: "Total",
         monitored: "Monitored"
       }
     },
-    empty: "No data for this period.",
-    trendWeek: "Wk {date}",
-    trendMonth: "{date}"
+    enterprise: {
+      clients: "Companies",
+      contacts: "Contacts",
+      contactsNew: "New contacts",
+      contractsActive: "Active contracts",
+      contractsExpiring: "Expiring in 30 days",
+      contractsExpired: "Expired contracts",
+      contractsSuspended: "Suspended contracts",
+      modules: "Module coverage",
+      solutions: "Deployed solutions",
+      reportsTitle: "Generated reports",
+      reportsTotal: "All time",
+      reportsPeriod: "In period",
+      reportsByType: "By type",
+      reportsMonthly: "Monthly output",
+      solutionLabels: {
+        antivirus: "Antivirus",
+        antispam: "Antispam",
+        backup: "Backup",
+        o365: "Microsoft 365",
+        domain: "Domains",
+        ssl: "SSL certificates",
+        campaigns: "Campaigns"
+      }
+    },
+    exportModal: {
+      eyebrow: "KPI report",
+      titlePdf: "Export PDF",
+      titleEmail: "Send by email",
+      subtitlePdf: "Generate a PDF for the currently displayed period and scope.",
+      subtitleEmail: "Send the PDF report to the listed recipients.",
+      recipients: "Recipients",
+      recipientsPlaceholder: "email@company.com, other@company.com",
+      categories: "Categories to include",
+      cancel: "Cancel",
+      download: "Download",
+      send: "Send",
+      working: "Working…",
+      closeAria: "Close",
+      errRecipients: "Enter at least one email.",
+      errCategories: "Choose at least one category.",
+      submitError: "Unable to process the report.",
+      pdfReady: "PDF downloaded.",
+      emailSent: "Report sent."
+    },
+    scheduleModal: {
+      eyebrow: "Automated reports",
+      title: "Schedule a KPI report",
+      subtitle: "Recurring PDF delivery based on the chosen frequency and analysis period.",
+      closeAria: "Close",
+      createTitle: "New schedule",
+      editTitle: "Edit schedule",
+      listTitle: "Schedules",
+      name: "Name",
+      recipients: "Recipients",
+      recipientsPlaceholder: "email@company.com, other@company.com",
+      period: "Analysis period",
+      frequency: "Send frequency",
+      freqDaily: "Daily",
+      freqWeekly: "Weekly",
+      freqMonthly: "Monthly",
+      hour: "Hour (0-23)",
+      weekday: "Weekday",
+      monthday: "Day of month",
+      enabled: "Schedule enabled",
+      create: "Create",
+      save: "Save",
+      saving: "Saving…",
+      cancelEdit: "Cancel",
+      edit: "Edit",
+      delete: "Delete",
+      loading: "Loading…",
+      empty: "No schedules yet.",
+      nextRun: "Next send",
+      validation: "Name, recipients and category are required.",
+      created: "Schedule created.",
+      updated: "Schedule updated.",
+      deleted: "Schedule deleted.",
+      loadError: "Unable to load schedules.",
+      saveError: "Unable to save.",
+      deleteError: "Unable to delete.",
+      frequencies: {
+        daily: "Daily",
+        weekly: "Weekly",
+        monthly: "Monthly"
+      },
+      weekdays: {
+        1: "Monday",
+        2: "Tuesday",
+        3: "Wednesday",
+        4: "Thursday",
+        5: "Friday",
+        6: "Saturday",
+        7: "Sunday"
+      }
+    },
+    empty: "No data for this period."
   }
 };
+function cloneLocale(source, overlay) {
+  return {
+    ...source,
+    ...overlay,
+    scopeFilter: {
+      ...source.scopeFilter,
+      ...overlay.scopeFilter
+    },
+    periodModal: {
+      ...source.periodModal,
+      ...overlay.periodModal,
+      errors: {
+        ...source.periodModal.errors,
+        ...overlay.periodModal?.errors
+      }
+    },
+    tabs: {
+      ...source.tabs,
+      ...overlay.tabs
+    },
+    intros: {
+      ...source.intros,
+      ...overlay.intros
+    },
+    periods: {
+      ...source.periods,
+      ...overlay.periods
+    },
+    units: {
+      ...source.units,
+      ...overlay.units
+    },
+    support: {
+      ...source.support,
+      ...overlay.support,
+      agentColumns: {
+        ...source.support.agentColumns,
+        ...overlay.support?.agentColumns
+      }
+    },
+    planning: {
+      ...source.planning,
+      ...overlay.planning
+    },
+    devices: {
+      ...source.devices,
+      ...overlay.devices,
+      familyColumns: {
+        ...source.devices.familyColumns,
+        ...overlay.devices?.familyColumns
+      }
+    },
+    enterprise: {
+      ...source.enterprise,
+      ...overlay.enterprise,
+      solutionLabels: {
+        ...source.enterprise.solutionLabels,
+        ...overlay.enterprise?.solutionLabels
+      }
+    },
+    exportModal: {
+      ...source.exportModal,
+      ...overlay.exportModal
+    },
+    scheduleModal: {
+      ...source.scheduleModal,
+      ...overlay.scheduleModal,
+      frequencies: {
+        ...source.scheduleModal.frequencies,
+        ...overlay.scheduleModal?.frequencies
+      },
+      weekdays: {
+        ...source.scheduleModal.weekdays,
+        ...overlay.scheduleModal?.weekdays
+      }
+    }
+  };
+}
+DASHBOARD_COPY.de = cloneLocale(DASHBOARD_COPY.en, {
+  eyebrow: "Steuerung",
+  title: "KPI-Dashboard",
+  subtitle: "Kennzahlen nach Bereich: Support, Gerätepark und Unternehmen.",
+  loading: "Kennzahlen werden geladen…",
+  errorLoad: "Dashboard konnte nicht geladen werden.",
+  proRequired: "Das KPI-Dashboard ist in Veritas Pro verfügbar.",
+  periodLabel: "Zeitraum",
+  periodButtonAria: "Analysezeitraum wählen",
+  periodCustomRange: "Von {start} bis {end}",
+  refresh: "Aktualisieren",
+  export: "Exportieren",
+  exportPdf: "PDF herunterladen",
+  exportEmail: "Per E-Mail senden",
+  exportSchedule: "Versand planen",
+  tabs: {
+    support: "Support",
+    devices: "Geräte",
+    enterprise: "Unternehmen"
+  },
+  intros: {
+    support: "Ticketvolumen, Laufzeiten und Qualität sowie geplante Einsätze.",
+    devices: "Hardwarebestand, Überwachung und RMM-Agenten.",
+    enterprise: "Kundenportfolio, Verträge, Module und bereitgestellte Lösungen."
+  },
+  periods: {
+    "7d": "7 Tage",
+    "30d": "30 Tage",
+    "90d": "90 Tage",
+    "365d": "12 Monate",
+    ytd: "Laufendes Jahr",
+    all: "Gesamt"
+  },
+  empty: "Keine Daten für diesen Zeitraum.",
+  scheduleModal: {
+    frequencies: {
+      daily: "Täglich",
+      weekly: "Wöchentlich",
+      monthly: "Monatlich"
+    },
+    weekdays: {
+      1: "Montag",
+      2: "Dienstag",
+      3: "Mittwoch",
+      4: "Donnerstag",
+      5: "Freitag",
+      6: "Samstag",
+      7: "Sonntag"
+    }
+  }
+});
+DASHBOARD_COPY.it = cloneLocale(DASHBOARD_COPY.en, {
+  eyebrow: "Pilotaggio",
+  title: "Cruscotto KPI",
+  subtitle: "Indicatori per area: supporto, parco dispositivi e aziende.",
+  loading: "Caricamento indicatori…",
+  errorLoad: "Impossibile caricare il cruscotto.",
+  proRequired: "Il cruscotto KPI è disponibile con Veritas Pro.",
+  periodLabel: "Periodo",
+  periodButtonAria: "Scegliere il periodo di analisi",
+  periodCustomRange: "Dal {start} al {end}",
+  refresh: "Aggiorna",
+  export: "Esporta",
+  exportPdf: "Scarica PDF",
+  exportEmail: "Invia via e-mail",
+  exportSchedule: "Programma invio",
+  tabs: {
+    support: "Supporto",
+    devices: "Dispositivi",
+    enterprise: "Azienda"
+  },
+  intros: {
+    support: "Volume ticket, tempi e qualità, più gli interventi pianificati.",
+    devices: "Parco hardware, supervisione e agenti RMM.",
+    enterprise: "Portafoglio clienti, contratti, moduli e soluzioni distribuite."
+  },
+  periods: {
+    "7d": "7 giorni",
+    "30d": "30 giorni",
+    "90d": "90 giorni",
+    "365d": "12 mesi",
+    ytd: "Anno in corso",
+    all: "Tutto"
+  },
+  empty: "Nessun dato per questo periodo."
+});
+DASHBOARD_COPY.es = cloneLocale(DASHBOARD_COPY.en, {
+  eyebrow: "Gestión",
+  title: "Cuadro de mando KPI",
+  subtitle: "Indicadores por área: soporte, parque de dispositivos y empresas.",
+  loading: "Cargando indicadores…",
+  errorLoad: "No se pudo cargar el cuadro de mando.",
+  proRequired: "El cuadro de mando KPI está disponible con Veritas Pro.",
+  periodLabel: "Periodo",
+  periodButtonAria: "Elegir el periodo de análisis",
+  periodCustomRange: "Del {start} al {end}",
+  refresh: "Actualizar",
+  export: "Exportar",
+  exportPdf: "Descargar PDF",
+  exportEmail: "Enviar por correo",
+  exportSchedule: "Programar envío",
+  tabs: {
+    support: "Soporte",
+    devices: "Dispositivos",
+    enterprise: "Empresa"
+  },
+  intros: {
+    support: "Volumen, plazos y calidad de tickets, más las intervenciones planificadas.",
+    devices: "Parque de hardware, supervisión y agentes RMM.",
+    enterprise: "Cartera de clientes, contratos, módulos y soluciones desplegadas."
+  },
+  periods: {
+    "7d": "7 días",
+    "30d": "30 días",
+    "90d": "90 días",
+    "365d": "12 meses",
+    ytd: "Año en curso",
+    all: "Todo"
+  },
+  empty: "Sin datos para este periodo."
+});
 export const getDashboardPageCopy = createLocaleGetter(DASHBOARD_COPY);
-export const DASHBOARD_PERIOD_OPTIONS = ["30d", "90d", "365d", "ytd", "all"];
+export const DASHBOARD_PERIOD_OPTIONS = ["7d", "30d", "90d", "365d", "ytd", "all"];

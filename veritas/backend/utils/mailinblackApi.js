@@ -347,11 +347,17 @@ async function safeMailinblackCall(fn) {
       error: null
     };
   } catch (err) {
+    let error = err.message;
+    if (err.status === 403) {
+      error = 'Forbidden — this API key cannot access this resource. Enable the required Management/Protect permission on the key.';
+    } else if (err.status === 400) {
+      error = 'Bad Request — this endpoint rejected the query (unsupported resource or missing parameter).';
+    }
     return {
       ok: false,
       data: null,
       permissionDenied: Boolean(err.permissionDenied || err.status === 401 || err.status === 403),
-      error: err.message
+      error
     };
   }
 }
@@ -419,6 +425,33 @@ export async function mailinblackProtectCheck(apiUrl, credentials) {
     session
   };
 }
+function toValidExpirationDate(value) {
+  if (value == null || value === '' || value === 0 || value === '0' || typeof value === 'boolean') return null;
+  if (value instanceof Date) {
+    if (Number.isNaN(value.getTime()) || value.getUTCFullYear() < 1990) return null;
+    return value;
+  }
+  if (typeof value === 'number' || typeof value === 'string' && /^-?\d+(\.\d+)?$/.test(String(value).trim())) {
+    const num = Number(value);
+    if (!Number.isFinite(num) || num === 0) return null;
+    const date = new Date(num < 1e12 ? num * 1000 : num);
+    if (Number.isNaN(date.getTime()) || date.getUTCFullYear() < 1990) return null;
+    return date;
+  }
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime()) || date.getUTCFullYear() < 1990) return null;
+  return date;
+}
+function pickSoonestExpirationIso(values) {
+  const dates = [];
+  for (const value of values) {
+    const date = toValidExpirationDate(value);
+    if (date) dates.push(date);
+  }
+  if (!dates.length) return null;
+  dates.sort((a, b) => a.getTime() - b.getTime());
+  return dates[0].toISOString();
+}
 export function normalizeMailinblackCustomer(item, session = null) {
   if (!item || typeof item !== 'object') return null;
   const id = item.id ?? item.customerId ?? item.clientId ?? item.uuid ?? item.reference ?? session?.clientId;
@@ -427,17 +460,88 @@ export function normalizeMailinblackCustomer(item, session = null) {
     id: String(id),
     name: item.name || item.companyName || item.company || item.label || item.customerName || 'Mailinblack customer',
     domain: item.domain || item.primaryDomain || item.mainDomain || null,
-    usersCount: item.usersCount ?? item.users ?? item.licenses ?? item.licenseCount ?? item.nbUsers ?? null,
+    usersCount: item.usersCount ?? item.users ?? item.nbUsers ?? null,
+    licenseCount: item.licenseCount ?? item.licenses ?? item.nbLicences ?? item.nbLicense ?? item.totalLicenses ?? item.licenceCount ?? null,
     domainsCount: item.domainsCount ?? item.domains ?? item.domainCount ?? (item.domain ? 1 : null),
     status: item.status || item.installationStatus || item.state || null,
-    expiration: item.expirationDate || item.expiration || item.renewalDate || null,
+    expiration: pickSoonestExpirationIso([item.expirationDate, item.expiration, item.renewalDate, item.expiryDate, item.licenseExpiration]),
     raw: item
   };
 }
+function collectRawLicenseItems(raw) {
+  if (!raw || typeof raw !== 'object') return [];
+  const lists = [raw.licenses, raw.licences, raw.licenseList, raw.licenceList];
+  const items = [];
+  for (const list of lists) {
+    if (Array.isArray(list)) items.push(...list);
+  }
+  return items;
+}
+function scalarFrom(value, depth = 0) {
+  if (depth > 3 || value == null || value === '') return null;
+  if (typeof value === 'boolean') return value;
+  if (typeof value === 'number') return value === 0 ? null : value;
+  if (value instanceof Date) return value;
+  if (Array.isArray(value)) {
+    for (const entry of value) {
+      const inner = scalarFrom(entry, depth + 1);
+      if (inner != null) return inner;
+    }
+    return null;
+  }
+  if (typeof value === 'object') {
+    const nestedKeys = ['email', 'address', 'value', 'name', 'label', 'fqdn', 'domain', 'mainEmail', 'mail', 'date', 'expirationDate', 'expiration', 'status'];
+    for (const key of nestedKeys) {
+      if (value[key] != null) {
+        const inner = scalarFrom(value[key], depth + 1);
+        if (inner != null) return inner;
+      }
+    }
+    return null;
+  }
+  const str = String(value).trim();
+  if (!str || str === '0') return null;
+  return str;
+}
 function pickFirst(...values) {
   for (const value of values) {
-    if (value != null && value !== '') return value;
+    if (typeof value === 'boolean') return value;
+    const resolved = scalarFrom(value);
+    if (resolved != null && resolved !== '') return resolved;
   }
+  return null;
+}
+function extractDomainFromEmail(email) {
+  const value = String(email || '');
+  const at = value.lastIndexOf('@');
+  if (at < 0 || at === value.length - 1) return null;
+  return value.slice(at + 1);
+}
+function formatFlag(value) {
+  if (value === true || value === 1 || value === '1' || value === 'true') return 'Yes';
+  if (value === false || value === 0 || value === '0' || value === 'false') return 'No';
+  return null;
+}
+function formatMx(item) {
+  const mxOk = item.mxOk ?? item.mxValid ?? item.mxChecked ?? item.hasValidMx;
+  if (mxOk === true) return 'OK';
+  if (mxOk === false) return 'Invalid';
+  const records = item.mxRecords || item.mxList;
+  if (Array.isArray(records) && records.length) return records.map(entry => scalarFrom(entry) || entry).filter(Boolean).join(', ');
+  return pickFirst(item.mx, item.mxRecord, item.mailServer, item.mxHost, item.mxValue);
+}
+function formatUserStatus(item) {
+  if (item.protected === true || item.isProtected === true || item.licenseProtect === true || item.hasLicense === true) return 'Protected';
+  if (item.protected === false || item.isProtected === false || item.licenseProtect === false) return 'Unprotected';
+  if (item.enabled === true || item.active === true || item.isEnabled === true) return 'Active';
+  if (item.enabled === false || item.active === false || item.isEnabled === false) return 'Disabled';
+  return pickFirst(item.status, item.state, item.accountStatus, item.protectionStatus);
+}
+function formatSenderStatus(item) {
+  const raw = pickFirst(item.status, item.state, item.verdict, item.typeLabel, item.listType);
+  if (raw) return raw;
+  if (item.authorized === true || item.isAuthorized === true || item.trusted === true) return 'Authorized';
+  if (item.banned === true || item.blocked === true || item.authorized === false) return 'Banned';
   return null;
 }
 function joinName(item) {
@@ -448,33 +552,34 @@ function joinName(item) {
 }
 function normalizeSender(item) {
   if (!item || typeof item !== 'object') return null;
-  const email = pickFirst(item.email, item.address, item.sender, item.mail, item.name);
+  const email = pickFirst(item.email, item.address, item.sender, item.mail, item.value, item.name, item.senderEmail);
   const id = item.id ?? item.senderId ?? email;
   if (!id) return null;
+  const domain = pickFirst(item.domain, item.senderDomain, item.fqdn, extractDomainFromEmail(email));
   return {
     id: String(id),
     email: email || '—',
-    domain: pickFirst(item.domain, item.senderDomain, item.fqdn),
-    status: pickFirst(item.status, item.state, item.verdict, item.type),
+    domain: domain || null,
+    status: formatSenderStatus(item),
     authorized: item.authorized ?? item.isAuthorized ?? item.trusted ?? (String(item.status || item.type || '').toLowerCase().includes('auth') ? true : null),
-    lastSeen: pickFirst(item.lastSeen, item.lastActivity, item.updatedAt, item.lastUseDate, item.lastConnectionDate)
+    lastSeen: pickFirst(item.lastSeen, item.lastActivity, item.updatedAt, item.lastUseDate, item.lastConnectionDate, item.lastUsed, item.date)
   };
 }
 function normalizeSpool(item) {
   if (!item || typeof item !== 'object') return null;
-  const id = item.id ?? item.spoolId ?? item.messageId ?? item.uuid;
+  const id = item.id ?? item.spoolId ?? item.messageId ?? item.uuid ?? item.mailId;
   if (!id) return null;
   return {
     id: String(id),
     subject: pickFirst(item.subject, item.title, item.object) || '—',
-    sender: pickFirst(item.sender, item.from, item.senderEmail, item.senderAddress, item.fromAddress),
-    recipient: pickFirst(item.recipient, item.to, item.recipientEmail, item.toAddress),
-    status: pickFirst(item.status, item.state, item.verdict),
-    category: pickFirst(item.category, item.folder, item.queue, item.type),
-    threat: pickFirst(item.threat, item.reason, item.detection, item.scoreLabel),
+    sender: pickFirst(item.sender, item.from, item.mailFrom, item.senderEmail, item.senderAddress, item.fromAddress, item.fromMail, item.source),
+    recipient: pickFirst(item.recipient, item.to, item.mailTo, item.rcptTo, item.recipientEmail, item.toAddress, item.toMail, item.destination),
+    status: pickFirst(item.status, item.state, item.verdict, item.spoolStatus, item.queueStatus),
+    category: pickFirst(item.category, item.folder, item.queue, item.type, item.spoolType),
+    threat: pickFirst(item.threat, item.reason, item.detection, item.scoreLabel, item.analysis, item.verdictReason, item.filterReason),
     score: item.score ?? item.spamScore ?? item.note ?? null,
     size: item.size ?? item.sizeBytes ?? item.messageSize ?? null,
-    receivedAt: pickFirst(item.receivedAt, item.date, item.createdAt, item.receptionDate, item.timestamp)
+    receivedAt: pickFirst(item.receivedAt, item.date, item.createdAt, item.receptionDate, item.timestamp, item.receivedDate, item.insertDate, item.createdDate)
   };
 }
 function normalizeDomain(item) {
@@ -489,19 +594,21 @@ function normalizeDomain(item) {
   if (!item || typeof item !== 'object') return null;
   const name = pickFirst(item.name, item.domain, item.fqdn, item.domainName, item.label);
   if (!name) return null;
+  const autoRenewRaw = item.autoRenew ?? item.autorenew ?? item.autoRenewal ?? item.renewal;
   return {
     id: String(item.id ?? name),
     name: String(name),
-    status: pickFirst(item.status, item.state, item.installationStatus),
-    mx: pickFirst(item.mx, item.mxRecord, item.mailServer),
-    expiration: pickFirst(item.expirationDate, item.expiration, item.expiryDate, item.renewalDate),
-    autoRenew: item.autoRenew ?? item.autorenew ?? item.autoRenewal ?? null,
+    status: pickFirst(item.status, item.state, item.installationStatus, item.domainStatus, item.validationStatus, item.mxOk === true ? 'OK' : null, item.validated === true ? 'Validated' : null),
+    mx: formatMx(item),
+    expiration: pickFirst(item.expirationDate, item.expiration, item.expiryDate, item.renewalDate, item.licenseExpiration, item.licenceExpiration, item.endDate, item.validUntil, item.license?.expirationDate, item.license?.expiration, item.licence?.expirationDate, item.subscription?.expirationDate, item.offer?.expirationDate, item.contractEndDate),
+    autoRenew: formatFlag(autoRenewRaw),
     dnsManaged: item.dnsManaged ?? item.managed ?? item.hasDnsZone ?? null
   };
 }
 function normalizeUser(item) {
   if (!item || typeof item !== 'object') return null;
-  const email = pickFirst(item.email, item.mail, item.login, item.username);
+  const emailsList = Array.isArray(item.emails) ? item.emails : Array.isArray(item.emailAddresses) ? item.emailAddresses : [];
+  const email = pickFirst(item.mainEmail, item.email, item.mail, item.login, item.username, item.primaryEmail, item.mailAddress, emailsList[0]);
   const id = item.id ?? item.userId ?? email;
   if (!id) return null;
   return {
@@ -510,9 +617,9 @@ function normalizeUser(item) {
     name: joinName(item),
     firstName: pickFirst(item.firstName, item.firstname, item.prenom),
     lastName: pickFirst(item.lastName, item.lastname, item.nom),
-    status: pickFirst(item.status, item.state, item.accountStatus),
-    role: pickFirst(item.role, item.profile, item.type, item.profileName),
-    lastLogin: pickFirst(item.lastLogin, item.lastConnectionDate, item.lastConnection, item.updatedAt)
+    status: formatUserStatus(item),
+    role: pickFirst(item.role, item.profile, item.profileName, item.type, item.profileType, item.userType),
+    lastLogin: pickFirst(item.lastLogin, item.lastConnectionDate, item.lastConnection, item.lastAccessDate, item.updatedAt)
   };
 }
 function normalizeEmail(item) {
@@ -521,35 +628,36 @@ function normalizeEmail(item) {
     if (!email) return null;
     return {
       id: email,
-      email
+      email,
+      domain: extractDomainFromEmail(email)
     };
   }
   if (!item || typeof item !== 'object') return null;
-  const email = pickFirst(item.email, item.mail, item.address, item.name);
+  const email = pickFirst(item.email, item.mail, item.address, item.name, item.mainEmail, item.value);
   const id = item.id ?? item.emailId ?? email;
   if (!id || !email) return null;
   return {
     id: String(id),
     email: String(email),
-    type: pickFirst(item.type, item.kind, item.usage),
-    domain: pickFirst(item.domain, item.fqdn),
-    userId: item.userId ?? item.ownerId ?? null,
-    primary: item.primary ?? item.isPrimary ?? item.main ?? null,
-    status: pickFirst(item.status, item.state)
+    type: pickFirst(item.type, item.kind, item.usage, item.emailType),
+    domain: pickFirst(item.domain, item.fqdn, extractDomainFromEmail(email)),
+    userId: item.userId ?? item.ownerId ?? item.user?.id ?? null,
+    primary: item.primary ?? item.isPrimary ?? item.main ?? item.isMain ?? null,
+    status: pickFirst(item.status, item.state, formatUserStatus(item))
   };
 }
 function normalizeServer(item) {
   if (!item || typeof item !== 'object') return null;
-  const name = pickFirst(item.name, item.hostname, item.host, item.fqdn, item.label);
+  const name = pickFirst(item.name, item.hostname, item.host, item.fqdn, item.label, item.serverName);
   const id = item.id ?? item.serverId ?? name ?? item.ip ?? item.address;
   if (!id) return null;
   return {
     id: String(id),
     name: name || String(id),
-    ip: pickFirst(item.ip, item.address, item.ipv4),
-    type: pickFirst(item.type, item.role, item.kind),
-    domain: pickFirst(item.domain, item.fqdn),
-    status: pickFirst(item.status, item.state)
+    ip: pickFirst(item.ip, item.address, item.ipv4, item.ipAddress),
+    type: pickFirst(item.type, item.role, item.kind, item.serverType),
+    domain: pickFirst(item.domain, item.fqdn, item.hostname),
+    status: pickFirst(item.status, item.state, item.enabled === true ? 'Active' : null, item.active === true ? 'Active' : null)
   };
 }
 function buildSectionFromResult(result, normalizer, columnsMeta = {}) {
@@ -569,62 +677,85 @@ function buildSectionFromResult(result, normalizer, columnsMeta = {}) {
 }
 const MAILINBLACK_LIST_QUERY_VARIANTS = [{
   page: 0,
+  size: 50
+}, {
+  page: 0,
+  size: 20
+}, {
+  page: 0,
   size: 200
 }, {
   pageNumber: 0,
-  pageSize: 200
+  pageSize: 50
 }, {
   offset: 0,
-  limit: 200
+  limit: 50
 }, {}];
 async function mailinblackFetchListSection(apiUrl, session, credentials, module, path, normalizer, {
-  exploited = true
+  exploited = true,
+  alternatePaths = [],
+  modules = null
 } = {}) {
+  const paths = [path, ...alternatePaths];
+  const modulesToTry = modules || [module];
   let lastResult = {
     ok: false,
     permissionDenied: false,
     error: 'No data returned'
   };
-  for (const baseQuery of MAILINBLACK_LIST_QUERY_VARIANTS) {
-    const query = {
-      ...baseQuery
-    };
-    const result = await safeMailinblackCall(() => mailinblackV2Request(apiUrl, session, module, path, {
-      method: 'GET',
-      query
-    }));
-    lastResult = result;
-    if (!result.ok) continue;
-    let items = parseList(result.data).map(item => normalizeListItem(item, normalizer)).filter(Boolean);
-    const expectedTotal = normalizePaginated(result.data).total;
-    const pageSize = baseQuery.size || baseQuery.pageSize || baseQuery.limit || 200;
-    if (items.length > 0 && expectedTotal > items.length && baseQuery.page != null) {
-      for (let page = 1; page < 10; page += 1) {
-        const nextQuery = {
-          ...baseQuery,
-          page,
-          pageNumber: page
-        };
-        const nextResult = await safeMailinblackCall(() => mailinblackV2Request(apiUrl, session, module, path, {
+  let emptyOkResult = null;
+  for (const currentModule of modulesToTry) {
+    for (const currentPath of paths) {
+      for (const baseQuery of MAILINBLACK_LIST_QUERY_VARIANTS) {
+        const result = await safeMailinblackCall(() => mailinblackV2Request(apiUrl, session, currentModule, currentPath, {
           method: 'GET',
-          query: nextQuery
+          query: {
+            ...baseQuery
+          }
         }));
-        if (!nextResult.ok) break;
-        const nextItems = parseList(nextResult.data).map(item => normalizeListItem(item, normalizer)).filter(Boolean);
-        if (!nextItems.length) break;
-        items = [...items, ...nextItems];
-        if (nextItems.length < pageSize) break;
+        lastResult = result;
+        if (!result.ok) {
+          if (result.permissionDenied) break;
+          continue;
+        }
+        let items = parseList(result.data).map(item => normalizeListItem(item, normalizer)).filter(Boolean);
+        const expectedTotal = normalizePaginated(result.data).total;
+        const pageSize = baseQuery.size || baseQuery.pageSize || baseQuery.limit || 50;
+        if (items.length > 0 && expectedTotal > items.length && baseQuery.page != null) {
+          for (let page = 1; page < 10; page += 1) {
+            const nextQuery = {
+              ...baseQuery,
+              page,
+              pageNumber: page
+            };
+            const nextResult = await safeMailinblackCall(() => mailinblackV2Request(apiUrl, session, currentModule, currentPath, {
+              method: 'GET',
+              query: nextQuery
+            }));
+            if (!nextResult.ok) break;
+            const nextItems = parseList(nextResult.data).map(item => normalizeListItem(item, normalizer)).filter(Boolean);
+            if (!nextItems.length) break;
+            items = [...items, ...nextItems];
+            if (nextItems.length < pageSize) break;
+          }
+        }
+        if (items.length > 0) {
+          return buildSectionFromResult({
+            ok: true,
+            data: result.data
+          }, normalizer, {
+            exploited,
+            preItems: items
+          });
+        }
+        emptyOkResult = result;
       }
     }
-    if (items.length > 0) {
-      return buildSectionFromResult({
-        ok: true,
-        data: result.data
-      }, normalizer, {
-        exploited,
-        preItems: items
-      });
-    }
+  }
+  if (emptyOkResult) {
+    return buildSectionFromResult(emptyOkResult, normalizer, {
+      exploited
+    });
   }
   return buildSectionFromResult(lastResult, normalizer, {
     exploited
@@ -686,13 +817,14 @@ export async function mailinblackGetCustomer(apiUrl, credentials, customerId) {
     domain: domains[0]?.name || null,
     usersCount: users.length,
     domainsCount: domains.length,
+    expiration: pickSoonestExpirationIso(domains.map(domain => domain.expiration)),
     status: 'active'
   }, session);
 }
 export async function mailinblackBuildDashboard(apiUrl, credentials, customerId = null) {
   const session = await mailinblackAuthenticate(credentials);
   const effectiveCustomerId = customerId || session.clientId || credentials?.authClientId || null;
-  const [senders, spools, detectSpools, domains, users, emails, servers, customerRes] = await Promise.all([mailinblackFetchListSection(apiUrl, session, credentials, 'protect', 'senders', normalizeSender, {
+  const [senders, spools, detectSpools, domains, users, emailsRaw, servers, customerRes] = await Promise.all([mailinblackFetchListSection(apiUrl, session, credentials, 'protect', 'senders', normalizeSender, {
     exploited: true
   }), mailinblackFetchListSection(apiUrl, session, credentials, 'protect', 'spools', normalizeSpool, {
     exploited: true
@@ -703,15 +835,39 @@ export async function mailinblackBuildDashboard(apiUrl, credentials, customerId 
   }), mailinblackFetchListSection(apiUrl, session, credentials, 'admin', 'users', normalizeUser, {
     exploited: true
   }), mailinblackFetchListSection(apiUrl, session, credentials, 'admin', 'emails', normalizeEmail, {
-    exploited: true
+    exploited: true,
+    alternatePaths: ['email-addresses', 'emailAddresses', 'aliases', 'mailboxes'],
+    modules: ['admin', 'protect']
   }), mailinblackFetchListSection(apiUrl, session, credentials, 'admin', 'servers', normalizeServer, {
-    exploited: true
+    exploited: true,
+    alternatePaths: ['smtp-servers', 'smtpServers', 'mail-servers', 'relays'],
+    modules: ['admin', 'protect']
   }), effectiveCustomerId ? safeMailinblackCall(() => mailinblackGetCustomer(apiUrl, credentials, effectiveCustomerId)) : Promise.resolve({
     ok: false,
     data: null,
     permissionDenied: false,
     error: null
   })]);
+  let emails = emailsRaw;
+  if ((!emails.items || emails.items.length === 0) && users.items?.length) {
+    const derived = users.items.map(user => normalizeEmail({
+      id: user.id,
+      email: user.email,
+      domain: extractDomainFromEmail(user.email),
+      type: 'primary',
+      primary: true,
+      status: user.status
+    })).filter(item => item?.email && item.email !== '—');
+    if (derived.length) {
+      emails = {
+        status: 'ok',
+        error: null,
+        items: derived,
+        total: derived.length,
+        exploited: true
+      };
+    }
+  }
   const customer = customerRes.ok && customerRes.data ? {
     status: 'ok',
     data: customerRes.data,
@@ -725,6 +881,7 @@ export async function mailinblackBuildDashboard(apiUrl, credentials, customerId 
       domain: domains.items?.[0]?.name || null,
       usersCount: users.total || users.items?.length || 0,
       domainsCount: domains.total || domains.items?.length || 0,
+      expiration: pickSoonestExpirationIso((domains.items || []).map(item => item?.expiration)),
       status: 'active'
     }, session) : null,
     error: customerRes.error
@@ -753,6 +910,12 @@ export function formatMailinblackSyncPayload(customer, mappingMode, mailinblackT
   const dashboard = extra.dashboard || null;
   const domainsSection = dashboard?.sections?.domains;
   const usersSection = dashboard?.sections?.users;
+  const raw = customer.raw && typeof customer.raw === 'object' ? customer.raw : {};
+  const licenseItems = collectRawLicenseItems(raw);
+  const domainExpirations = Array.isArray(domainsSection?.items) ? domainsSection.items.flatMap(item => [item?.expiration, item?.expirationDate, item?.license?.expirationDate, item?.license?.expiration]) : [];
+  const licenseExpirations = licenseItems.flatMap(item => [item?.expirationDate, item?.expiration, item?.expiryDate, item?.renewalDate, item?.endDate, item?.validUntil]);
+  const expiration = pickSoonestExpirationIso([customer.expiration, raw.expirationDate, raw.expiration, raw.expiryDate, raw.renewalDate, raw.licenseExpiration, raw.licenceExpiration, raw.endDate, raw.validUntil, ...licenseExpirations, ...domainExpirations]) || '';
+  const licencesTotales = pickFirst(customer.licenseCount, Array.isArray(raw.licenses) ? raw.licenses.length : raw.licenses, raw.licenseCount, raw.nbLicences, raw.nbLicense, raw.totalLicenses, raw.licenceCount, raw.numberOfLicenses, licenseItems.length || null, raw.maxUsers, raw.maxMailboxes);
   return {
     solution: 'Mailinblack Protect',
     providerId: 'mailinblack',
@@ -766,7 +929,8 @@ export function formatMailinblackSyncPayload(customer, mappingMode, mailinblackT
     domain: customer.domain || '',
     utilisateursProteges: usersSection?.total ?? customer.usersCount ?? (usersSection?.items?.length != null ? usersSection.items.length : 0),
     domainesSurveilles: domainsSection?.total ?? customer.domainsCount ?? (domainsSection?.items?.length != null ? domainsSection.items.length : 0),
-    expiration: customer.expiration || '',
+    licencesTotales: licencesTotales != null && licencesTotales !== '' ? licencesTotales : null,
+    expiration,
     syncData: {
       customer,
       dashboard,

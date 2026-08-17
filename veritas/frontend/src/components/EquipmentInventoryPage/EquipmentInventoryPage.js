@@ -13,6 +13,8 @@ import cyberStyles from "../CybersecuritePage/CybersecuritePage.module.css";
 import layout from "../EnterprisesPage/EnterprisesPage.module.css";
 import { getEquipmentInventoryPageCopy } from "./equipmentInventoryPageI18n";
 import InventoryEquipmentActions from "./InventoryEquipmentActions";
+import InventoryBulkEditModal from "./InventoryBulkEditModal";
+import { usePermissions } from "../../contexts/PermissionsContext";
 import styles from "./EquipmentInventoryPage.module.css";
 
 function InventoryDeviceIcon({
@@ -44,6 +46,32 @@ function typeLabel(item, locale) {
   return getLocalizedEquipmentTypeLabel(item?.familyLabel || item?.type, locale, item?.familyLabel || item?.type || "—");
 }
 
+function alertStatusMeta(item, copy) {
+  const status = item?.alertStatus || (item?.alertSuspended ? "suspended" : item?.alertsEnabled ? "active" : "disabled");
+  if (status === "active") {
+    return {
+      status,
+      label: copy.alertStatus?.active || "Active",
+      icon: "mdi:bell-ring-outline",
+      className: styles.alertActive
+    };
+  }
+  if (status === "suspended") {
+    return {
+      status,
+      label: copy.alertStatus?.suspended || "Suspended",
+      icon: "mdi:bell-sleep-outline",
+      className: styles.alertSuspended
+    };
+  }
+  return {
+    status: "disabled",
+    label: copy.alertStatus?.disabled || "Disabled",
+    icon: "mdi:bell-off-outline",
+    className: styles.alertDisabled
+  };
+}
+
 function toEquipmentDetailPayload(item) {
   const uiType = item?.type === "Serveurs" ? "Servers" : item?.type === "Stockage" ? "Storage" : item?.type === "Videosurveillance" ? "Security camera" : item?.type;
   const dbId = item?.dbId || null;
@@ -63,6 +91,8 @@ export default function EquipmentInventoryPage({
 }) {
   const locale = useAppLocale();
   const copy = useMemo(() => getEquipmentInventoryPageCopy(locale), [locale]);
+  const { can } = usePermissions();
+  const canBulkEdit = can("clients_detail.devices") || can("infrastructure.edit") || can("supervision.manage");
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
@@ -70,6 +100,8 @@ export default function EquipmentInventoryPage({
   const [typeFilter, setTypeFilter] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [openMenuKey, setOpenMenuKey] = useState(null);
+  const [selectedIds, setSelectedIds] = useState(() => new Set());
+  const [bulkModalOpen, setBulkModalOpen] = useState(false);
   const loadAbortRef = useRef(null);
 
   const load = useCallback(async () => {
@@ -175,6 +207,49 @@ export default function EquipmentInventoryPage({
     setOpenMenuKey(null);
   }, [search, clientFilter, typeFilter, statusFilter, page]);
 
+  useEffect(() => {
+    setSelectedIds(prev => {
+      if (!prev.size) return prev;
+      const valid = new Set(items.map(item => item.id));
+      const next = [...prev].filter(id => valid.has(id));
+      return next.length === prev.size ? prev : new Set(next);
+    });
+  }, [items]);
+
+  const pageIds = useMemo(() => paginatedItems.map(item => item.id), [paginatedItems]);
+  const selectedCount = selectedIds.size;
+  const allOnPageSelected = pageIds.length > 0 && pageIds.every(id => selectedIds.has(id));
+  const allFilteredSelected = filtered.length > 0 && filtered.every(item => selectedIds.has(item.id));
+  const selectedItems = useMemo(() => items.filter(item => selectedIds.has(item.id)), [items, selectedIds]);
+  const clearSelection = () => setSelectedIds(new Set());
+  const toggleItemSelection = (itemId, checked) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      if (checked) next.add(itemId);else next.delete(itemId);
+      return next;
+    });
+  };
+  const toggleSelectAllOnPage = () => {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      if (allOnPageSelected) pageIds.forEach(id => next.delete(id));
+      else pageIds.forEach(id => next.add(id));
+      return next;
+    });
+  };
+  const selectAllFiltered = () => {
+    setSelectedIds(new Set(filtered.map(item => item.id)));
+  };
+  const handleBulkSuccess = result => {
+    const updated = Number(result?.updated) || 0;
+    const failed = Array.isArray(result?.failed) ? result.failed.length : 0;
+    if (updated > 0 && failed === 0) toast.success(copy.formatBulkSuccess(updated));
+    else if (updated > 0 && failed > 0) toast.warn(copy.formatBulkPartial(updated, failed));
+    else toast.error(copy.toasts?.bulkError || copy.toastLoadError);
+    clearSelection();
+    load();
+  };
+
   const toggleType = next => {
     setTypeFilter(typeFilter === next ? "" : next);
   };
@@ -262,11 +337,32 @@ export default function EquipmentInventoryPage({
                   <p className={layout.emptyStateTitle}>{copy.emptyTitle}</p>
                   <p className={layout.emptyStateHint}>{hasFilters ? copy.emptyFiltered : copy.emptyHint}</p>
                 </div> : <div className={layout.listBody}>
+                  {selectedCount > 0 && canBulkEdit ? <div className={layout.bulkBar}>
+                      <div className={layout.bulkInfo}>
+                        <strong>{selectedCount}</strong>
+                        <span>{selectedCount > 1 ? copy.bulk.selectedPlural : copy.bulk.selected}</span>
+                      </div>
+                      <div className={layout.bulkActions}>
+                        {!allFilteredSelected ? <button type="button" className={layout.bulkBtnGhost} onClick={selectAllFiltered}>
+                            {copy.formatSelectAllFiltered(filtered.length)}
+                          </button> : null}
+                        <button type="button" className={layout.bulkBtn} onClick={() => setBulkModalOpen(true)}>
+                          <Icon icon="mdi:pencil-outline" />
+                          {copy.bulk.edit}
+                        </button>
+                        <button type="button" className={layout.bulkBtnGhost} onClick={clearSelection}>
+                          {copy.bulk.clearSelection}
+                        </button>
+                      </div>
+                    </div> : null}
                   <div className={layout.listArea}>
                     <div className={layout.dataTableWrap}>
                       <table className={`${layout.dataTable} ${styles.ticketLikeTable}`}>
                         <thead>
                           <tr>
+                            {canBulkEdit ? <th className={layout.checkboxCell}>
+                                <input type="checkbox" className={layout.rowCheckbox} checked={allOnPageSelected} onChange={toggleSelectAllOnPage} onClick={e => e.stopPropagation()} aria-label={copy.bulk.selectAll} />
+                              </th> : null}
                             <th className={styles.brandCol} aria-hidden />
                             <th>{copy.columns.company}</th>
                             <th>{copy.columns.name}</th>
@@ -275,16 +371,25 @@ export default function EquipmentInventoryPage({
                             <th>{copy.columns.serial}</th>
                             <th>{copy.columns.site}</th>
                             <th>{copy.columns.status}</th>
+                            <th>{copy.columns.alerts}</th>
+                            <th title={copy.alertsMonthHint}>{copy.columns.alertsMonth}</th>
                             <th className={styles.actionsCol}>{copy.columns.actions}</th>
                           </tr>
                         </thead>
                         <tbody>
-                          {paginatedItems.map(item => <tr key={item.id} className={layout.dataTableRow} onClick={() => openItem(item)} onKeyDown={e => {
+                          {paginatedItems.map(item => {
+                      const isSelected = selectedIds.has(item.id);
+                      const alertMeta = alertStatusMeta(item, copy);
+                      const monthCount = Number(item.alertsLastMonth) || 0;
+                      return <tr key={item.id} className={`${layout.dataTableRow} ${isSelected ? layout.selectedRow : ""}`} onClick={() => openItem(item)} onKeyDown={e => {
                       if (e.key === "Enter" || e.key === " ") {
                         e.preventDefault();
                         openItem(item);
                       }
                     }} role="button" tabIndex={0}>
+                              {canBulkEdit ? <td className={layout.checkboxCell} onClick={e => e.stopPropagation()}>
+                                  <input type="checkbox" className={layout.rowCheckbox} checked={isSelected} onChange={e => toggleItemSelection(item.id, e.target.checked)} aria-label={copy.formatBulkSelectRow(item.name)} />
+                                </td> : null}
                               <td className={styles.brandCol}>
                                 <InventoryDeviceIcon item={item} className={styles.brandIcon} />
                               </td>
@@ -295,10 +400,20 @@ export default function EquipmentInventoryPage({
                               <td>{item.serial || "—"}</td>
                               <td>{item.location || "—"}</td>
                               <td>{item.is_active === false ? copy.status.inactive : copy.status.active}</td>
+                              <td>
+                                <span className={`${styles.alertBadge} ${alertMeta.className}`}>
+                                  <Icon icon={alertMeta.icon} aria-hidden />
+                                  {alertMeta.label}
+                                </span>
+                              </td>
+                              <td className={styles.countCol} title={copy.alertsMonthHint}>
+                                <span className={`${styles.countPill} ${monthCount > 0 ? styles.countPillHot : ""}`}>{monthCount}</span>
+                              </td>
                               <td className={styles.actionsCol} onClick={e => e.stopPropagation()}>
                                 <InventoryEquipmentActions equipment={item} locale={locale} menuKey={item.id} openMenuKey={openMenuKey} onOpenChange={setOpenMenuKey} onOpen={openItem} />
                               </td>
-                            </tr>)}
+                            </tr>;
+                    })}
                         </tbody>
                       </table>
                     </div>
@@ -332,5 +447,6 @@ export default function EquipmentInventoryPage({
           </main>
         </div>
       </div>
+      <InventoryBulkEditModal open={bulkModalOpen} onClose={() => setBulkModalOpen(false)} items={selectedItems} onSuccess={handleBulkSuccess} />
     </div>;
 }

@@ -17,6 +17,7 @@ if (!fs.existsSync(UPLOADS_DIR)) {
   });
 }
 const ALLOWED_MIME = new Set(["image/jpeg", "image/png", "image/gif", "image/webp", "application/pdf", "application/msword", "application/vnd.openxmlformats-officedocument.wordprocessingml.document", "application/vnd.ms-excel", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", "text/plain", "text/csv", "application/zip"]);
+const ALLOWED_CATEGORIES = new Set(["Facture matériel", "Image client", "Baie de brassage", "Plan de réseau", "Procédure", "Contrat", "Rapport", "Autre"]);
 const storage = multer.diskStorage({
   destination: (_req, _file, cb) => cb(null, UPLOADS_DIR),
   filename: (_req, file, cb) => {
@@ -177,13 +178,24 @@ router.patch("/:id", verifyJWT, requireAnyPermission("documents.edit", "clients_
     }
     const hasDescription = req.body?.description !== undefined;
     const hasVisibility = req.body?.visibleToClient !== undefined || req.body?.visible_to_client !== undefined;
-    if (!hasDescription && !hasVisibility) {
+    const hasCategory = req.body?.category !== undefined;
+    if (!hasDescription && !hasVisibility && !hasCategory) {
       return res.status(400).json({
         error: "No data to update."
       });
     }
     const sets = [];
     const values = [];
+    if (hasCategory) {
+      const category = String(req.body.category || "").trim();
+      if (!ALLOWED_CATEGORIES.has(category)) {
+        return res.status(400).json({
+          error: "Invalid document category."
+        });
+      }
+      values.push(category);
+      sets.push(`category = $${values.length}`);
+    }
     if (hasDescription) {
       const description = String(req.body.description || "").trim();
       if (description.length > 2000) {

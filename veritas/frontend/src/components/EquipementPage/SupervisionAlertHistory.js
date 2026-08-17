@@ -1,7 +1,8 @@
-import { Fragment, useEffect, useState } from "react";
+import { Fragment, useEffect, useMemo, useState } from "react";
 import { Icon } from "@iconify/react";
 import MspEmptyState from "../Misc/MspEmptyState/MspEmptyState";
 import SmartTooltip from "../SmartTooltip";
+import { interpolate } from "../../i18n/translate";
 import { fetchSupervisionAlertEvents, reopenSupervisionAlert } from "../../api/supervisionAlerts";
 import styles from "./SupervisionAlertHistory.module.css";
 
@@ -44,13 +45,55 @@ function HistoryActionButton({
   disabled = false
 }) {
   return <SmartTooltip as="span" content={hint}>
-      <button type="button" className={styles.actionBtn} title={hint} aria-label={hint} disabled={disabled} onClick={e => {
+      <button type="button" className={styles.actionBtn} aria-label={hint} disabled={disabled} onClick={e => {
       e.stopPropagation();
       onClick?.(e);
     }}>
         <Icon icon={icon} aria-hidden />
       </button>
     </SmartTooltip>;
+}
+
+function historyAlertDisplay(alert) {
+  const client = String(alert?.clientName || "").trim().toLowerCase();
+  const title = String(alert?.title || "").trim();
+  const label = String(alert?.label || "").trim();
+  const titleIsClient = Boolean(client && title.toLowerCase() === client);
+  const reason = label || (!titleIsClient ? title : "") || title || alert?.queueItemId || "—";
+  const parts = [];
+  if (title && title !== reason && !titleIsClient) parts.push(title);
+  String(alert?.subtitle || "").split(" · ").forEach(bit => {
+    const trimmed = bit.trim();
+    if (!trimmed || trimmed === reason) return;
+    if (client && trimmed.toLowerCase() === client) return;
+    parts.push(trimmed);
+  });
+  return {
+    reason,
+    subject: [...new Set(parts)].join(" · ")
+  };
+}
+
+function alertWhen(alert) {
+  return alert?.createdAt || null;
+}
+
+function SortableHeader({
+  column,
+  label,
+  sortKey,
+  sortDir,
+  onSort,
+  sortAria
+}) {
+  const active = sortKey === column;
+  const ariaSort = active ? sortDir === "asc" ? "ascending" : "descending" : "none";
+  return <th aria-sort={ariaSort}>
+      <button type="button" className={styles.sortBtn} onClick={() => onSort?.(column)} aria-label={sortAria || label}>
+        <span>{label}</span>
+        <Icon icon={active ? sortDir === "asc" ? "mdi:arrow-up" : "mdi:arrow-down" : "mdi:unfold-more-horizontal"} aria-hidden />
+      </button>
+    </th>;
 }
 
 export default function SupervisionAlertHistory({
@@ -72,6 +115,62 @@ export default function SupervisionAlertHistory({
   const [busyId, setBusyId] = useState(null);
   const columns = copy.columns || {};
   const hints = copy.actionHints || {};
+  const [sortKey, setSortKey] = useState(null);
+  const [sortDir, setSortDir] = useState("asc");
+  const handleSort = column => {
+    if (sortKey === column) {
+      setSortDir(prev => prev === "asc" ? "desc" : "asc");
+      return;
+    }
+    setSortKey(column);
+    setSortDir(column === "when" ? "desc" : "asc");
+  };
+  const sortedAlerts = useMemo(() => {
+    if (!sortKey) return alerts;
+    const factor = sortDir === "asc" ? 1 : -1;
+    const text = value => String(value || "").toLowerCase();
+    const statusRank = {
+      open: 0,
+      acked: 1,
+      linked: 2,
+      closed: 3
+    };
+    return [...alerts].sort((a, b) => {
+      let cmp = 0;
+      switch (sortKey) {
+        case "alert":
+          cmp = text(historyAlertDisplay(a).reason).localeCompare(text(historyAlertDisplay(b).reason), undefined, {
+            sensitivity: "base"
+          });
+          break;
+        case "company":
+          cmp = text(a.clientName).localeCompare(text(b.clientName), undefined, {
+            sensitivity: "base"
+          });
+          break;
+        case "domain":
+          cmp = text(a.domain).localeCompare(text(b.domain), undefined, {
+            sensitivity: "base"
+          });
+          break;
+        case "status":
+          cmp = (statusRank[a.status] ?? 9) - (statusRank[b.status] ?? 9);
+          break;
+        case "when": {
+          const ta = new Date(alertWhen(a) || 0).getTime();
+          const tb = new Date(alertWhen(b) || 0).getTime();
+          cmp = (Number.isNaN(ta) ? 0 : ta) - (Number.isNaN(tb) ? 0 : tb);
+          break;
+        }
+        default:
+          cmp = 0;
+      }
+      return cmp * factor;
+    });
+  }, [alerts, sortKey, sortDir]);
+  const sortAriaFor = label => interpolate(copy.sortBy || "Trier par {label}", {
+    label
+  });
 
   useEffect(() => {
     if (!expandedId || eventsByAlert[expandedId]) return undefined;
@@ -172,26 +271,28 @@ export default function SupervisionAlertHistory({
           <table className={styles.table}>
             <thead>
               <tr>
-                <th>{columns.alert || "Alerte"}</th>
-                <th>{columns.company || "Entreprise"}</th>
-                <th>{columns.domain || "Domaine"}</th>
-                <th>{columns.status || "Statut"}</th>
-                <th>{columns.when || "Date"}</th>
+                <SortableHeader column="alert" label={columns.alert || "Alerte"} sortKey={sortKey} sortDir={sortDir} onSort={handleSort} sortAria={sortAriaFor(columns.alert || "Alerte")} />
+                <SortableHeader column="company" label={columns.company || "Entreprise"} sortKey={sortKey} sortDir={sortDir} onSort={handleSort} sortAria={sortAriaFor(columns.company || "Entreprise")} />
+                <SortableHeader column="domain" label={columns.domain || "Domaine"} sortKey={sortKey} sortDir={sortDir} onSort={handleSort} sortAria={sortAriaFor(columns.domain || "Domaine")} />
+                <SortableHeader column="status" label={columns.status || "Statut"} sortKey={sortKey} sortDir={sortDir} onSort={handleSort} sortAria={sortAriaFor(columns.status || "Statut")} />
+                <SortableHeader column="when" label={columns.when || "Date"} sortKey={sortKey} sortDir={sortDir} onSort={handleSort} sortAria={sortAriaFor(columns.when || "Date")} />
                 <th className={styles.actionsCol}>{columns.actions || "Actions"}</th>
               </tr>
             </thead>
             <tbody>
-              {alerts.map(alert => {
+              {sortedAlerts.map(alert => {
               const open = expandedId === alert.id;
               const events = eventsByAlert[alert.id] || [];
               const domainLabel = copy.domains?.[alert.domain] || alert.domain;
               const expandHint = open ? hints.collapse || copy.collapse || "Replier la timeline" : hints.expand || copy.expand || "Voir la timeline";
               const reopenHint = hints.reopen || copy.reopen;
+              const display = historyAlertDisplay(alert);
+              const when = alertWhen(alert);
               return <Fragment key={alert.id}>
                     <tr className={`${styles.dataRow} ${open ? styles.dataRowOpen : ""}`} onClick={() => setExpandedId(open ? null : alert.id)}>
                       <td className={styles.alertCell}>
-                        <span className={styles.title}>{alert.title || alert.queueItemId}</span>
-                        {alert.label || alert.subtitle ? <span className={styles.meta}>{[alert.label, alert.subtitle].filter(Boolean).join(" · ")}</span> : null}
+                        <span className={styles.title}>{display.reason}</span>
+                        {display.subject ? <span className={styles.meta}>{display.subject}</span> : null}
                       </td>
                       <td>{alert.clientName || "—"}</td>
                       <td>
@@ -208,7 +309,7 @@ export default function SupervisionAlertHistory({
                         </span>
                       </td>
                       <td className={styles.whenCell}>
-                        <time dateTime={alert.closedAt || alert.updatedAt || undefined}>{formatWhen(alert.closedAt || alert.updatedAt, localeTag)}</time>
+                        <time dateTime={when || undefined}>{formatWhen(when, localeTag)}</time>
                       </td>
                       <td className={styles.actionsCol} onClick={e => e.stopPropagation()}>
                         <div className={styles.rowActions} role="group">

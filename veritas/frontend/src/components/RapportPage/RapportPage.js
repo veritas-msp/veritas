@@ -94,6 +94,7 @@ export default function ReportPage({
   const [reportEndDate, setReportEndDate] = useState("");
   const builderSectionRef = useRef(null);
   const summaryContentRef = useRef(null);
+  const startingReportRef = useRef(false);
   const [equipmentComments, setEquipmentComments] = useState({});
   const [activeCommentsTarget, setActiveCommentsTarget] = useState(null);
   const [generalComments, setGeneralComments] = useState([]);
@@ -193,18 +194,23 @@ export default function ReportPage({
   };
   const handleStartDraftReport = async reportTypeId => {
     const resolvedTypeId = reportTypeId ?? selectedReportTypeId;
-    if (!selectedClient || !resolvedTypeId) return;
+    if (!selectedClient || !resolvedTypeId || startingReportRef.current) return;
     const type = reportTypes.find(entry => entry.id === resolvedTypeId);
     if (!type) return;
+    startingReportRef.current = true;
     setSelectedReportTypeId(resolvedTypeId);
-    const clientForDraft = type.id === REPORT_TYPE_IDS.INTERVENTION ? await enrichBuilderClientWithSites(selectedClient) : selectedClient;
-    setDraftReport({
-      type,
-      client: clientForDraft,
-      documentId: null,
-      initialData: null,
-      documentName: ""
-    });
+    try {
+      const clientForDraft = type.id === REPORT_TYPE_IDS.INTERVENTION ? await enrichBuilderClientWithSites(selectedClient) : selectedClient;
+      setDraftReport({
+        type,
+        client: clientForDraft,
+        documentId: null,
+        initialData: null,
+        documentName: ""
+      });
+    } finally {
+      startingReportRef.current = false;
+    }
   };
   const handleBackFromDraftReport = () => {
     setDraftReport(null);
@@ -1175,7 +1181,7 @@ export default function ReportPage({
                 <div className={`${cyberStyles.tabContent} ${styles.wizardTabContent}`}>
                   {error ? <div className={styles.alertError}>{error}</div> : null}
 
-                  <ReportCreateWizard copy={pageCopy} reportTypes={reportTypes} clients={clients} loading={loading} step={createWizardStep} onStepChange={setCreateWizardStep} selectedClientId={selectedClientId} onSelectClient={handleWizardSelectClient} selectedReportTypeId={selectedReportTypeId} onSelectReportType={setSelectedReportTypeId} onStartReport={handleStartDraftReport} />
+                  <ReportCreateWizard copy={pageCopy} reportTypes={reportTypes} clients={clients} loading={loading} step={createWizardStep} onStepChange={setCreateWizardStep} selectedClientId={selectedClientId} onSelectClient={handleWizardSelectClient} onStartReport={handleStartDraftReport} />
                 </div>
               </main>
             </div>

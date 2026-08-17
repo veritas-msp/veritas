@@ -721,6 +721,31 @@
   background: var(--msp-surface, #fff);
 }
 
+.bulkBtnDanger {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  border-radius: 9px;
+  padding: 0.45rem 0.7rem;
+  font-size: 0.8rem;
+  font-weight: 650;
+  cursor: pointer;
+  background: rgba(220, 38, 38, 0.08);
+  border: 1px solid rgba(220, 38, 38, 0.28);
+  color: #dc2626;
+}
+
+.bulkBtnDanger:hover {
+  background: rgba(220, 38, 38, 0.14);
+}
+
+.bulkBtn:disabled,
+.bulkBtnGhost:disabled,
+.bulkBtnDanger:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
 .favoriteCell {
   width: 1%;
   white-space: nowrap;
@@ -784,7 +809,13 @@
 
 :global(html.dark) .bulkBtnGhost {
   border-color: #2a2a4a;
-  color: #9ca3af;
+  color: #94a3b8;
+}
+
+:global(html.dark) .bulkBtnDanger {
+  background: rgba(248, 113, 113, 0.12);
+  border-color: rgba(248, 113, 113, 0.35);
+  color: #fca5a5;
 }
 
 .dataTable {

@@ -3,6 +3,7 @@ import verifyJWT from "../../middleware/auth.js";
 import { requireAnyPermission } from "../../middleware/permissions.js";
 import {
   addSupervisionAlertStreamClient,
+  ensureSupervisionAlertsSeen,
   getSupervisionAlertEvents,
   listActiveSupervisionAlerts,
   listRecentEquipmentAlerts,
@@ -55,6 +56,17 @@ router.get("/states", verifyJWT, requireAnyPermission("supervision.view", "super
     res.json({ alerts });
   } catch (err) {
     console.error("[supervision-alerts] GET /states:", err.message);
+    res.status(500).json({ error: "Server error" });
+  }
+});
+
+router.post("/seen", verifyJWT, requireAnyPermission("supervision.view", "supervision.manage"), async (req, res) => {
+  try {
+    const items = Array.isArray(req.body?.items) ? req.body.items : [];
+    const alerts = await ensureSupervisionAlertsSeen(items);
+    res.json({ alerts });
+  } catch (err) {
+    console.error("[supervision-alerts] POST /seen:", err.message);
     res.status(500).json({ error: "Server error" });
   }
 });

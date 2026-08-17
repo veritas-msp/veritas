@@ -1,4 +1,5 @@
 import { pool } from "../database/db.js";
+import { isEquipmentMonitoredInDb } from "./equipmentInventoryScan.js";
 const ALERTABLE_STATUSES = new Set(["critical", "warning", "offline"]);
 export function resolveEquipmentFamilyKey(type) {
   if (!type) return null;
@@ -138,6 +139,91 @@ export async function clearEquipmentAlertSuspension(clientId, equipmentId, equip
      RETURNING *`, [clientId, equipmentId, equipmentFamily]);
   return mapAlertRow(result.rows[0]);
 }
+function parseDurationMinutes(value) {
+  const n = Number.parseInt(String(value), 10);
+  return Number.isFinite(n) && n > 0 ? n : null;
+}
+
+export function resolveAlertStatusFromSettings(settings) {
+  if (isAlertSuspensionActive(settings)) return "suspended";
+  if (settings?.alertsEnabled) return "active";
+  return "disabled";
+}
+
+/**
+ * Apply the same alert modes as the equipment detail page:
+ * active / disabled / temporary / permanent.
+ */
+export async function applyEquipmentAlertSettings({
+  clientId,
+  equipmentId,
+  equipmentFamily,
+  equipmentName,
+  suspensionType,
+  alertsEnabled,
+  durationMinutes,
+  suspendedUntil = null,
+  reason = null,
+  suspendedBy = null
+}) {
+  const family = resolveEquipmentFamilyKey(equipmentFamily) || String(equipmentFamily || "").trim();
+  if (!clientId || !equipmentId || !family) {
+    const err = new Error("clientId, equipmentId et family required");
+    err.status = 400;
+    throw err;
+  }
+  const wantsEnable = alertsEnabled === true || suspensionType === "temporary" || suspensionType === "permanent";
+  if (wantsEnable) {
+    const monitored = await isEquipmentMonitoredInDb(clientId, equipmentId, family);
+    if (!monitored) {
+      const err = new Error("This equipment is not monitored (RMM agent or CheckMK mapping required to configure alerts).");
+      err.status = 400;
+      err.code = "NOT_MONITORED";
+      throw err;
+    }
+  }
+  let untilIso = suspendedUntil || null;
+  if (suspensionType === "temporary" && !untilIso) {
+    const minutes = parseDurationMinutes(durationMinutes) || 1440;
+    untilIso = new Date(Date.now() + minutes * 60 * 1000).toISOString();
+  }
+  if (suspensionType === "none" || suspensionType === null || suspensionType === "") {
+    await clearEquipmentAlertSuspension(clientId, equipmentId, family);
+    const settings = await setEquipmentAlertsEnabled({
+      clientId,
+      equipmentId,
+      equipmentFamily: family,
+      equipmentName,
+      alertsEnabled: alertsEnabled === true
+    });
+    return {
+      settings,
+      suspended: false,
+      alertsEnabled: Boolean(settings?.alertsEnabled)
+    };
+  }
+  if (suspensionType !== "temporary" && suspensionType !== "permanent") {
+    const err = new Error("Invalid suspensionType (temporary|permanent|none)");
+    err.status = 400;
+    throw err;
+  }
+  const settings = await upsertEquipmentAlertSuspension({
+    clientId,
+    equipmentId,
+    equipmentFamily: family,
+    equipmentName,
+    suspensionType,
+    suspendedUntil: suspensionType === "temporary" ? untilIso : null,
+    suspendedBy,
+    suspensionReason: reason || null
+  });
+  return {
+    settings,
+    suspended: isAlertSuspensionActive(settings),
+    alertsEnabled: Boolean(settings?.alertsEnabled)
+  };
+}
+
 export async function touchEquipmentAlertState({
   clientId,
   equipmentId,

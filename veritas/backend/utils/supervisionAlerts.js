@@ -48,6 +48,13 @@ function mapAlert(row) {
   };
 }
 
+function clip(value, max) {
+  if (value == null) return null;
+  const text = String(value);
+  if (!text) return null;
+  return text.length > max ? text.slice(0, max) : text;
+}
+
 function mapEvent(row) {
   if (!row) return null;
   return {
@@ -110,6 +117,87 @@ export async function listActiveSupervisionAlerts() {
     [["open", "acked", "linked"]]
   );
   return result.rows.map(mapAlert);
+}
+
+/**
+ * Persist live queue items the first time they appear in the centre.
+ * created_at stays the raise time; existing rows (incl. closed) are left untouched.
+ */
+export async function ensureSupervisionAlertsSeen(items = []) {
+  await ensureSupervisionAlertsSchema();
+  const normalized = [];
+  const seenIds = new Set();
+  for (const raw of Array.isArray(items) ? items : []) {
+    const queueItemId = String(raw?.queueItemId || raw?.queue_item_id || raw?.id || "").trim();
+    const domain = String(raw?.domain || "").trim();
+    if (!queueItemId || !domain || seenIds.has(queueItemId)) continue;
+    seenIds.add(queueItemId);
+    normalized.push({
+      queueItemId,
+      domain,
+      severity: raw?.severity || null,
+      clientId: raw?.clientId ?? raw?.client_id ?? null,
+      equipmentId: raw?.equipmentId ?? raw?.equipment_id ?? null,
+      refKey: raw?.refKey ?? raw?.ref_key ?? null,
+      title: clip(raw?.title, 255),
+      subtitle: raw?.subtitle || null,
+      label: clip(raw?.label, 255),
+      meta: raw?.meta && typeof raw.meta === "object" ? raw.meta : {}
+    });
+    if (normalized.length >= 500) break;
+  }
+  if (!normalized.length) return [];
+
+  const ids = normalized.map(item => item.queueItemId);
+  const existing = await listSupervisionAlertsByQueueItemIds(ids);
+  const existingIds = new Set(existing.map(alert => alert.queueItemId));
+  const missing = normalized.filter(item => !existingIds.has(item.queueItemId));
+  if (!missing.length) return existing;
+
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
+    for (const item of missing) {
+      const insert = await client.query(
+        `INSERT INTO v_b_supervision_alerts
+          (queue_item_id, domain, severity, client_id, equipment_id, ref_key, title, subtitle, label, status, meta, last_seen_at)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,'open',$10::jsonb, NOW())
+         ON CONFLICT (queue_item_id) DO NOTHING
+         RETURNING *`,
+        [
+          item.queueItemId,
+          item.domain,
+          item.severity,
+          item.clientId || null,
+          item.equipmentId ? String(item.equipmentId) : null,
+          item.refKey || null,
+          item.title,
+          item.subtitle,
+          item.label,
+          JSON.stringify(item.meta || {})
+        ]
+      );
+      const row = insert.rows[0];
+      if (!row) continue;
+      await insertEvent(client, {
+        alertId: row.id,
+        action: "opened",
+        actorUserId: null,
+        oldStatus: null,
+        newStatus: "open",
+        note: null,
+        meta: { source: "seen" }
+      });
+    }
+    await client.query("COMMIT");
+  } catch (err) {
+    await client.query("ROLLBACK");
+    throw err;
+  } finally {
+    client.release();
+  }
+
+  return listSupervisionAlertsByQueueItemIds(ids);
 }
 
 /** All persisted states (incl. closed) for the given queue item ids — used to hide dismissed/resolved alerts. */

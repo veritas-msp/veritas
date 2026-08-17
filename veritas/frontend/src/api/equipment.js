@@ -517,6 +517,23 @@ export const getEquipmentInventoryList = async (options = {}) => {
   const rows = await response.json();
   return Array.isArray(rows) ? rows : [];
 };
+
+export const bulkUpdateEquipmentInventory = async ({ items = [], updates = {} } = {}) => {
+  const response = await fetch(`${API_BASE_URL}/clients/equipment-inventory/bulk`, {
+    method: "POST",
+    credentials: "include",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({ items, updates })
+  });
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(data.error || `Error ${response.status}`);
+  }
+  return data;
+};
+
 export const deleteEquipment = async equipment => {
   if (!equipment) {
     throw new Error("No equipment provided for deletion");

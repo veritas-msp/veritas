@@ -1,9 +1,15 @@
-import React, { useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Icon } from "@iconify/react";
+import { toast } from "react-toastify";
 import { useAppFormatters } from "../../hooks/useAppGeneralSettings";
 import MspEmptyState from "../Misc/MspEmptyState/MspEmptyState";
+import ConfirmModal from "../Misc/ConfirmModal/ConfirmModal";
+import { bulkPatchAntispamSolutions, bulkRemoveAntispamSolutions, syncAndPersistAntispamSolution } from "../EnterprisesPage/antispamSolutionUtils";
 import styles from "./AntivirusMspDashboard.module.css";
 import { buildAntispamFleetFromClients, buildAntispamFleetStats, filterAntispamFleetRows, sortAntispamFleetRows } from "./antispamMspUtils";
+import CyberBulkBar from "./CyberBulkBar";
+import CyberBulkEditModal from "./CyberBulkEditModal";
+import { fleetRowKey, useCyberBulkSelection } from "./useCyberBulkSelection";
 
 function KpiCard({
   icon,
@@ -46,13 +52,40 @@ function expiryClass(status) {
   return "";
 }
 
-function formatLicenses(used, total) {
-  if (used == null && total == null) return "-";
-  return `${used != null ? used : "-"}${total != null ? ` / ${total}` : ""}`;
+function formatLicenseCount(value) {
+  if (value == null || value === "") return "-";
+  return String(value);
+}
+
+function formatDomainCount(value) {
+  if (value == null || value === "") return "-";
+  return String(value);
+}
+
+function SolutionCell({
+  label,
+  subtitle,
+  image,
+  icon
+}) {
+  return <div className={styles.solutionCell}>
+      {image ? <img src={image} alt="" className={styles.solutionLogo} /> : icon ? <Icon icon={icon} className={styles.solutionLogoIcon} aria-hidden /> : null}
+      <div className={styles.solutionText}>
+        <span className={styles.cellName} title={label}>{label}</span>
+        {subtitle ? <span className={styles.cellSub} title={subtitle}>{subtitle}</span> : null}
+      </div>
+    </div>;
+}
+
+function isRefreshable(row) {
+  return row?.providerId === "mailinblack" && row?.customerId && row?.raw;
 }
 
 function FleetTableRow({
   row,
+  selected,
+  selectLabel,
+  onToggleSelect,
   onOpen,
   onMiddleClick,
   getStatusMeta,
@@ -61,7 +94,8 @@ function FleetTableRow({
 }) {
   const statusMeta = getStatusMeta(row.status);
   const openRow = () => onOpen?.(row);
-  return <tr className={styles.tableRow} onClick={openRow} onMouseDown={e => {
+  const rowKey = fleetRowKey(row);
+  return <tr className={`${styles.tableRow} ${selected ? styles.selectedRow : ""}`} onClick={openRow} onMouseDown={e => {
     if (e.button === 1) onMiddleClick?.(e, row);
   }} onKeyDown={e => {
     if (e.key === "Enter" || e.key === " ") {
@@ -69,12 +103,17 @@ function FleetTableRow({
       openRow();
     }
   }} role="button" tabIndex={0}>
+      <td className={styles.checkboxCell} onClick={e => e.stopPropagation()} onMouseDown={e => e.stopPropagation()}>
+        <input type="checkbox" className={styles.rowCheckbox} checked={selected} onChange={e => onToggleSelect(rowKey, e.target.checked)} onClick={e => e.stopPropagation()} aria-label={selectLabel} />
+      </td>
       <td className={styles.cellName}>{row.clientName}</td>
-      <td>{row.solutionLabel || row.providerName || "-"}</td>
+      <td>
+        <SolutionCell label={row.solutionLabel || row.providerName || "-"} subtitle={row.solutionSubtitle || null} image={row.providerImage} icon={row.providerIcon || "mdi:email-secure-outline"} />
+      </td>
       <td>{statusMeta.label}</td>
-      <td className={styles.cellMuted}>{row.paymentPlan || "-"}</td>
+      <td className={styles.cellMuted}>{formatLicenseCount(row.totalLicenses)}</td>
+      <td className={styles.cellMuted}>{formatDomainCount(row.domainesSurveilles)}</td>
       <td className={`${styles.cellExpiry} ${expiryClass(row.status)}`.trim()}>{formatDate(row.expirationDate || row.expiration)}</td>
-      <td className={styles.cellMuted}>{formatLicenses(row.usedLicenses, row.totalLicenses)}</td>
       <td className={styles.cellMuted}>{formatDateTime(row.lastSync)}</td>
     </tr>;
 }
@@ -83,7 +122,8 @@ export default function AntispamMspDashboard({
   copy,
   clients = [],
   loading = false,
-  onOpenSolution
+  onOpenSolution,
+  onSolutionsChanged
 }) {
   const {
     formatDate,
@@ -95,6 +135,10 @@ export default function AntispamMspDashboard({
   const [statusFilter, setStatusFilter] = useState("all");
   const [sortBy, setSortBy] = useState("clientName");
   const [sortDirection, setSortDirection] = useState("asc");
+  const [editOpen, setEditOpen] = useState(false);
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const abortRef = useRef(null);
   const fleetRows = useMemo(() => buildAntispamFleetFromClients(clients), [clients]);
   const stats = useMemo(() => buildAntispamFleetStats(fleetRows), [fleetRows]);
   const filteredRows = useMemo(() => filterAntispamFleetRows(fleetRows, {
@@ -103,6 +147,17 @@ export default function AntispamMspDashboard({
     providerFilter: "all"
   }), [fleetRows, search, statusFilter]);
   const sortedRows = useMemo(() => sortAntispamFleetRows(filteredRows, sortBy, sortDirection), [filteredRows, sortBy, sortDirection]);
+  const {
+    selectedIds,
+    selectedItems,
+    selectedCount,
+    allSelected,
+    clearSelection,
+    toggleItem,
+    toggleAll,
+    selectAll
+  } = useCyberBulkSelection(sortedRows, fleetRowKey);
+  useEffect(() => () => abortRef.current?.abort(), []);
   const handleSort = column => {
     if (sortBy === column) {
       setSortDirection(prev => prev === "asc" ? "desc" : "asc");
@@ -115,12 +170,84 @@ export default function AntispamMspDashboard({
     setStatusFilter(statusFilter === next ? "all" : next);
   };
   const formatDisplayDate = value => {
-    if (!value) return "-";
+    if (value == null || value === "" || value === 0 || value === "0") return "-";
     return formatDate(value) || "-";
   };
   const formatDisplayDateTime = value => {
     if (!value) return "-";
     return formatDateTime(value) || "-";
+  };
+  const reload = useCallback(async () => {
+    await onSolutionsChanged?.();
+  }, [onSolutionsChanged]);
+  const handleBulkEdit = async fields => {
+    const result = await bulkPatchAntispamSolutions(selectedItems, fields);
+    const failed = result.failed?.length || 0;
+    if (result.updated > 0 && failed === 0) toast.success(copy.formatBulkEditSuccess(result.updated));
+    else if (result.updated > 0) toast.warn(copy.formatBulkEditPartial(result.updated, failed));
+    else toast.error(copy.bulk.toasts.editError);
+    clearSelection();
+    await reload();
+  };
+  const handleBulkDelete = async () => {
+    setBusy(true);
+    try {
+      const result = await bulkRemoveAntispamSolutions(selectedItems);
+      const failed = result.failed?.length || 0;
+      if (result.deleted > 0 && failed === 0) toast.success(copy.formatBulkDeleteSuccess(result.deleted));
+      else if (result.deleted > 0) toast.warn(copy.formatBulkDeletePartial(result.deleted, failed));
+      else toast.error(copy.bulk.toasts.deleteError);
+      clearSelection();
+      setDeleteOpen(false);
+      await reload();
+    } catch (error) {
+      toast.error(error.message || copy.bulk.toasts.deleteError);
+    } finally {
+      setBusy(false);
+    }
+  };
+  const handleBulkRefresh = async () => {
+    const targets = selectedItems.filter(isRefreshable);
+    if (targets.length === 0) {
+      toast.info(copy.bulk.toasts.refreshNone);
+      return;
+    }
+    abortRef.current?.abort();
+    const controller = new AbortController();
+    abortRef.current = controller;
+    setBusy(true);
+    let success = 0;
+    let failed = 0;
+    try {
+      for (const row of targets) {
+        if (controller.signal.aborted) break;
+        try {
+          const mappingMode = row.raw.mappingMode === "dedicated" || row.raw.mailinblackTenantId ? "dedicated" : "reseller";
+          await syncAndPersistAntispamSolution(row.clientId, {
+            ...row.raw,
+            mappingMode,
+            mailinblackTenantId: mappingMode === "dedicated" ? row.raw.mailinblackTenantId : null
+          }, {
+            signal: controller.signal
+          });
+          success += 1;
+        } catch (error) {
+          if (error?.name === "AbortError") break;
+          failed += 1;
+        }
+      }
+      if (controller.signal.aborted) return;
+      const skipped = selectedItems.length - targets.length;
+      if (success > 0 && failed === 0) toast.success(copy.formatBulkRefreshSuccess(success));
+      else if (success > 0) toast.warn(copy.formatBulkRefreshPartial(success, failed));
+      else toast.error(copy.bulk.toasts.refreshError);
+      if (skipped > 0) toast.info(copy.formatBulkRefreshSkipped(skipped));
+      clearSelection();
+      await reload();
+    } finally {
+      if (abortRef.current === controller) abortRef.current = null;
+      setBusy(false);
+    }
   };
   if (!msp || !as) return null;
   const statusLabels = Object.fromEntries((copy.statusFilters || []).map(filter => [filter.id, filter.label]));
@@ -146,21 +273,25 @@ export default function AntispamMspDashboard({
           <Icon icon="mdi:loading" className={styles.spin} width={28} />
           <span>{as.loading}</span>
         </div> : filteredRows.length === 0 ? <MspEmptyState icon="mdi:email-off-outline" title={fleetRows.length === 0 ? as.emptyTitle : as.noResultsTitle} text={fleetRows.length === 0 ? as.emptyText : as.noResultsText} /> : <section className={styles.panel}>
+          <CyberBulkBar copy={copy} selectedCount={selectedCount} allSelected={allSelected} filteredCount={sortedRows.length} busy={busy} onSelectAll={selectAll} onEdit={() => setEditOpen(true)} onRefresh={handleBulkRefresh} onDelete={() => setDeleteOpen(true)} onClear={clearSelection} />
           <div className={styles.tableWrap}>
             <table className={styles.table}>
               <thead>
                 <tr>
+                  <th className={styles.checkboxCell}>
+                    <input type="checkbox" className={styles.rowCheckbox} checked={allSelected} onChange={toggleAll} aria-label={copy.bulk.selectAll} />
+                  </th>
                   <SortableHeader column="clientName" label={msp.table.enterprise} sortBy={sortBy} sortDirection={sortDirection} onSort={handleSort} />
                   <SortableHeader column="solutionLabel" label={msp.table.solution} sortBy={sortBy} sortDirection={sortDirection} onSort={handleSort} />
                   <SortableHeader column="status" label={msp.table.status} sortBy={sortBy} sortDirection={sortDirection} onSort={handleSort} />
-                  <SortableHeader column="paymentPlan" label={msp.table.plan} sortBy={sortBy} sortDirection={sortDirection} onSort={handleSort} />
+                  <SortableHeader column="totalLicenses" label={msp.table.licenses || msp.table.coverage} sortBy={sortBy} sortDirection={sortDirection} onSort={handleSort} />
+                  <SortableHeader column="domainesSurveilles" label={msp.table.domains || msp.table.coverage} sortBy={sortBy} sortDirection={sortDirection} onSort={handleSort} />
                   <SortableHeader column="expirationDate" label={msp.table.expiration} sortBy={sortBy} sortDirection={sortDirection} onSort={handleSort} />
-                  <SortableHeader column="usagePercent" label={msp.table.licenses || msp.table.coverage} sortBy={sortBy} sortDirection={sortDirection} onSort={handleSort} />
                   <SortableHeader column="lastSync" label={msp.table.lastSync} sortBy={sortBy} sortDirection={sortDirection} onSort={handleSort} />
                 </tr>
               </thead>
               <tbody>
-                {sortedRows.map(row => <FleetTableRow key={row.id} row={row} onOpen={onOpenSolution} getStatusMeta={copy.getStatusMeta} formatDate={formatDisplayDate} formatDateTime={formatDisplayDateTime} onMiddleClick={(e, item) => {
+                {sortedRows.map(row => <FleetTableRow key={fleetRowKey(row)} row={row} selected={selectedIds.has(fleetRowKey(row))} selectLabel={copy.formatBulkSelectRow(row.clientName)} onToggleSelect={toggleItem} onOpen={onOpenSolution} getStatusMeta={copy.getStatusMeta} formatDate={formatDisplayDate} formatDateTime={formatDisplayDateTime} onMiddleClick={(e, item) => {
               e.preventDefault();
               onOpenSolution?.(item, {
                 background: true
@@ -170,5 +301,7 @@ export default function AntispamMspDashboard({
             </table>
           </div>
         </section>}
+      <CyberBulkEditModal open={editOpen} kind="antispam" items={selectedItems} copy={copy} onClose={() => setEditOpen(false)} onSubmit={handleBulkEdit} />
+      <ConfirmModal open={deleteOpen} variant="danger" title={copy.bulk.deleteTitle} message={copy.formatBulkDeleteMessage(selectedCount)} confirmLabel={copy.bulk.deleteConfirm} loading={busy} onClose={() => setDeleteOpen(false)} onConfirm={handleBulkDelete} />
     </div>;
 }

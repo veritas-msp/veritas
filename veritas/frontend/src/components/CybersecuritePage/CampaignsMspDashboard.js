@@ -1,11 +1,18 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Icon } from "@iconify/react";
 import { FaChevronLeft, FaChevronRight } from "react-icons/fa";
+import { toast } from "react-toastify";
 import { useAppFormatters } from "../../hooks/useAppGeneralSettings";
+import { deleteCampaign, updateClientCampaign } from "../../api/campaigns";
+import API_BASE_URL from "../../config";
 import MspEmptyState from "../Misc/MspEmptyState/MspEmptyState";
+import ConfirmModal from "../Misc/ConfirmModal/ConfirmModal";
 import SmartTooltip from "../SmartTooltip";
 import layout from "../EnterprisesPage/EnterprisesPage.module.css";
 import styles from "./AntivirusMspDashboard.module.css";
+import CyberBulkBar from "./CyberBulkBar";
+import CyberBulkEditModal from "./CyberBulkEditModal";
+import { useCyberBulkSelection } from "./useCyberBulkSelection";
 const HERO_KPI_KEYS = [{
   key: "all",
   icon: "mdi:bullhorn-outline",
@@ -87,7 +94,8 @@ export default function CampaignsMspDashboard({
   campaigns = [],
   loading = false,
   onViewCampaign,
-  onAddCampaign
+  onAddCampaign,
+  onCampaignsChanged
 }) {
   const {
     formatDate
@@ -100,6 +108,10 @@ export default function CampaignsMspDashboard({
   const [sortDirection, setSortDirection] = useState("asc");
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
+  const [editOpen, setEditOpen] = useState(false);
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const abortRef = useRef(null);
   const stats = useMemo(() => buildCampaignStats(campaigns), [campaigns]);
   const filteredRows = useMemo(() => {
     let rows = [...campaigns];
@@ -144,6 +156,22 @@ export default function CampaignsMspDashboard({
     const start = (currentPage - 1) * pageSize;
     return sortedRows.slice(start, start + pageSize);
   }, [sortedRows, currentPage, pageSize]);
+  const {
+    selectedIds,
+    selectedItems,
+    selectedCount,
+    allSelected,
+    clearSelection,
+    toggleItem,
+    toggleMany,
+    selectAll
+  } = useCyberBulkSelection(sortedRows);
+  const pageIds = useMemo(() => paginatedRows.map(campaign => campaign.id), [paginatedRows]);
+  const allOnPageSelected = pageIds.length > 0 && pageIds.every(id => selectedIds.has(id));
+  const toggleSelectAllOnPage = () => {
+    toggleMany(pageIds, !allOnPageSelected);
+  };
+  useEffect(() => () => abortRef.current?.abort(), []);
   useEffect(() => {
     setCurrentPage(1);
   }, [search, statusFilter, sortBy, sortDirection, pageSize]);
@@ -169,6 +197,96 @@ export default function CampaignsMspDashboard({
   const getHeroKpiLabel = key => {
     if (key === "all") return campaignsCopy?.eyebrow || msp?.kpi?.solutions;
     return campaignsCopy?.statusFilters?.[key];
+  };
+  const reload = useCallback(async () => {
+    await onCampaignsChanged?.();
+  }, [onCampaignsChanged]);
+  const handleBulkEdit = async fields => {
+    let updated = 0;
+    let failed = 0;
+    for (const campaign of selectedItems) {
+      try {
+        await updateClientCampaign(campaign.client_id, campaign.id, {
+          ...campaign,
+          ...fields
+        });
+        updated += 1;
+      } catch {
+        failed += 1;
+      }
+    }
+    if (updated > 0 && failed === 0) toast.success(copy.formatBulkEditSuccess(updated));
+    else if (updated > 0) toast.warn(copy.formatBulkEditPartial(updated, failed));
+    else toast.error(copy.bulk.toasts.editError);
+    clearSelection();
+    await reload();
+  };
+  const handleBulkDelete = async () => {
+    setBusy(true);
+    try {
+      let deleted = 0;
+      let failed = 0;
+      for (const campaign of selectedItems) {
+        try {
+          await deleteCampaign(campaign.id);
+          deleted += 1;
+        } catch {
+          failed += 1;
+        }
+      }
+      if (deleted > 0 && failed === 0) toast.success(copy.formatBulkDeleteSuccess(deleted));
+      else if (deleted > 0) toast.warn(copy.formatBulkDeletePartial(deleted, failed));
+      else toast.error(copy.bulk.toasts.deleteError);
+      clearSelection();
+      setDeleteOpen(false);
+      await reload();
+    } finally {
+      setBusy(false);
+    }
+  };
+  const handleBulkRefresh = async () => {
+    const msCampaigns = selectedItems.filter(campaign => campaign.type === "microsoft_security" && campaign.client_id);
+    const clientIds = [...new Set(msCampaigns.map(campaign => campaign.client_id))];
+    if (clientIds.length === 0) {
+      toast.info(copy.bulk.toasts.refreshNone);
+      return;
+    }
+    abortRef.current?.abort();
+    const controller = new AbortController();
+    abortRef.current = controller;
+    setBusy(true);
+    let success = 0;
+    let failed = 0;
+    try {
+      for (const clientId of clientIds) {
+        if (controller.signal.aborted) break;
+        try {
+          const endDate = new Date();
+          const startDate = new Date(endDate.getTime() - 30 * 24 * 60 * 60 * 1000);
+          const response = await fetch(`${API_BASE_URL}/office365/sync-all?clientId=${clientId}&period=D30&startDate=${startDate.toISOString()}&endDate=${endDate.toISOString()}`, {
+            method: "GET",
+            credentials: "include",
+            signal: controller.signal
+          });
+          if (!response.ok) throw new Error(`HTTP ${response.status}`);
+          success += msCampaigns.filter(campaign => campaign.client_id === clientId).length;
+        } catch (error) {
+          if (error?.name === "AbortError") break;
+          failed += msCampaigns.filter(campaign => campaign.client_id === clientId).length;
+        }
+      }
+      if (controller.signal.aborted) return;
+      const skipped = selectedItems.length - msCampaigns.length;
+      if (success > 0 && failed === 0) toast.success(copy.formatBulkRefreshSuccess(success));
+      else if (success > 0) toast.warn(copy.formatBulkRefreshPartial(success, failed));
+      else toast.error(copy.bulk.toasts.refreshError);
+      if (skipped > 0) toast.info(copy.formatBulkRefreshSkipped(skipped));
+      clearSelection();
+      await reload();
+    } finally {
+      if (abortRef.current === controller) abortRef.current = null;
+      setBusy(false);
+    }
   };
   if (!campaignsCopy || !msp) return null;
   return <div className={styles.dashboard}>
@@ -198,10 +316,14 @@ export default function CampaignsMspDashboard({
           <Icon icon="mdi:loading" className={styles.spin} width={28} />
           <span>{campaignsCopy.loading}</span>
         </div> : filteredRows.length === 0 ? <MspEmptyState icon="mdi:shield-lock-off" title={campaigns.length === 0 ? campaignsCopy.emptyTitle : msp.antivirus.noResultsTitle} text={campaigns.length === 0 ? campaignsCopy.emptyText : msp.antivirus.noResultsText} actionLabel={campaigns.length === 0 ? campaignsCopy.emptyCta : null} onAction={campaigns.length === 0 ? onAddCampaign : null} /> : <section className={styles.panel}>
+          <CyberBulkBar copy={copy} selectedCount={selectedCount} allSelected={allSelected} filteredCount={sortedRows.length} busy={busy} onSelectAll={selectAll} onEdit={() => setEditOpen(true)} onRefresh={handleBulkRefresh} onDelete={() => setDeleteOpen(true)} onClear={clearSelection} />
           <div className={styles.tableWrap}>
             <table className={styles.table}>
               <thead>
                 <tr>
+                  <th className={styles.checkboxCell}>
+                    <input type="checkbox" className={styles.rowCheckbox} checked={allOnPageSelected} onChange={toggleSelectAllOnPage} aria-label={copy.bulk.selectAll} />
+                  </th>
                   <SortableHeader column="client_name" label={campaignsCopy.table.enterprise} sortBy={sortBy} sortDirection={sortDirection} onSort={handleSort} />
                   <SortableHeader column="name" label={campaignsCopy.table.name} sortBy={sortBy} sortDirection={sortDirection} onSort={handleSort} />
                   <SortableHeader column="type" label={campaignsCopy.table.type} sortBy={sortBy} sortDirection={sortDirection} onSort={handleSort} />
@@ -216,7 +338,8 @@ export default function CampaignsMspDashboard({
                 {paginatedRows.map(campaign => {
               const statusMeta = copy.getCampaignStatusMeta(campaign.status);
               const openRow = () => onViewCampaign?.(campaign);
-              return <tr key={campaign.id} className={styles.tableRow} onClick={openRow} onMouseDown={e => {
+              const isSelected = selectedIds.has(campaign.id);
+              return <tr key={campaign.id} className={`${styles.tableRow} ${isSelected ? styles.selectedRow : ""}`} onClick={openRow} onMouseDown={e => {
                 if (e.button === 1) {
                   e.preventDefault();
                   onViewCampaign?.(campaign, {
@@ -229,6 +352,9 @@ export default function CampaignsMspDashboard({
                   openRow();
                 }
               }} role="button" tabIndex={0}>
+                      <td className={styles.checkboxCell} onClick={e => e.stopPropagation()} onMouseDown={e => e.stopPropagation()}>
+                        <input type="checkbox" className={styles.rowCheckbox} checked={isSelected} onChange={e => toggleItem(campaign.id, e.target.checked)} onClick={e => e.stopPropagation()} aria-label={copy.formatBulkSelectRow(campaign.name || campaign.client_name)} />
+                      </td>
                       <td className={styles.cellName}>{formatClientDisplay(campaign.client_name || `Client ${campaign.client_id}`)}</td>
                       <td>{campaign.name || "-"}</td>
                       <td className={styles.cellMuted}>{copy.getCampaignTypeLabel(campaign.type) || campaign.type || "-"}</td>
@@ -265,5 +391,7 @@ export default function CampaignsMspDashboard({
               </div>
             </div> : null}
         </section>}
+      <CyberBulkEditModal open={editOpen} kind="campaigns" items={selectedItems} copy={copy} campaignStatuses={copy.campaignStatuses || []} onClose={() => setEditOpen(false)} onSubmit={handleBulkEdit} />
+      <ConfirmModal open={deleteOpen} variant="danger" title={copy.bulk.deleteTitle} message={copy.formatBulkDeleteMessage(selectedCount)} confirmLabel={copy.bulk.deleteConfirm} loading={busy} onClose={() => setDeleteOpen(false)} onConfirm={handleBulkDelete} />
     </div>;
 }

@@ -103,7 +103,7 @@ export default function DomainOverviewModal({
   if (!open || !client?.id || !domain) return null;
   const nameServers = Array.isArray(normalized.nameServers) ? normalized.nameServers : [];
   return <>
-      {createPortal(<div className={formStyles.overlay} onClick={syncing || deleting ? undefined : onClose} role="presentation">
+      {createPortal(<div className={formStyles.overlay} onClick={deleting ? undefined : onClose} role="presentation">
       <div className={`${formStyles.shell} ${styles.shell}`} onClick={e => e.stopPropagation()} role="dialog" aria-modal="true" aria-labelledby="domain-overview-title">
         <div className={formStyles.accentBar} aria-hidden />
         <header className={formStyles.header}>
@@ -119,7 +119,7 @@ export default function DomainOverviewModal({
               <p className={formStyles.subtitle}>{client.name}</p>
             </div>
           </div>
-          <button type="button" className={formStyles.closeBtn} onClick={onClose} disabled={syncing} aria-label="Close">
+          <button type="button" className={formStyles.closeBtn} onClick={onClose} aria-label="Close">
             <FaTimes />
           </button>
         </header>

@@ -156,6 +156,7 @@ const CYBERSECURITE_PAGE_COPY = {
         expiration: "Expiration",
         coverage: "Couverture",
         licenses: "Licences",
+        domains: "Domaines",
         lastSync: "Dernière sync"
       },
       kpi: {
@@ -328,6 +329,60 @@ const CYBERSECURITE_PAGE_COPY = {
         deleteError: "Erreur lors de la suppression de la campagne"
       }
     },
+    bulk: {
+      selected: "sélectionné",
+      selectedPlural: "sélectionnés",
+      selectAll: "Tout sélectionner",
+      selectAllFiltered: "Tout sélectionner ({count})",
+      selectRow: "Sélectionner {name}",
+      clearSelection: "Effacer",
+      edit: "Modifier",
+      delete: "Supprimer",
+      refresh: "Rafraîchir",
+      refreshing: "Rafraîchissement…",
+      deleteTitle: "Supprimer la sélection",
+      deleteMessage: "Supprimer {count} élément ? Cette action est irréversible.",
+      deleteMessagePlural: "Supprimer {count} éléments ? Cette action est irréversible.",
+      deleteConfirm: "Supprimer",
+      modal: {
+        titleAntivirus: "Modifier les solutions antivirus",
+        titleAntispam: "Modifier les solutions antispam",
+        titleCampaigns: "Modifier les campagnes",
+        selectedOne: "1 élément sélectionné",
+        selectedMany: "{count} éléments sélectionnés",
+        editExpiration: "Expiration",
+        editLicenses: "Licences",
+        editUsers: "Utilisateurs protégés",
+        editDomains: "Domaines surveillés",
+        editStatus: "Statut",
+        editStartDate: "Date de début",
+        editEndDate: "Date de fin",
+        licensesPlaceholder: "Nombre de licences",
+        usersPlaceholder: "Nombre d'utilisateurs",
+        domainsPlaceholder: "Nombre de domaines",
+        noField: "Cochez au moins un champ à modifier.",
+        apply: "Appliquer",
+        saving: "Enregistrement…",
+        submitError: "Impossible d'appliquer les modifications",
+        apiHint: "Les valeurs d'une solution synchronisée via API peuvent être écrasées au prochain rafraîchissement."
+      },
+      toasts: {
+        editSuccess: "{count} élément mis à jour",
+        editSuccessPlural: "{count} éléments mis à jour",
+        editPartial: "{updated} mis à jour, {failed} en échec",
+        editError: "Aucune modification appliquée",
+        deleteSuccess: "{count} élément supprimé",
+        deleteSuccessPlural: "{count} éléments supprimés",
+        deletePartial: "{deleted} supprimés, {failed} en échec",
+        deleteError: "Aucune suppression effectuée",
+        refreshSuccess: "{count} élément rafraîchi",
+        refreshSuccessPlural: "{count} éléments rafraîchis",
+        refreshPartial: "{updated} rafraîchis, {failed} en échec",
+        refreshSkipped: "{count} sans synchronisation API ignoré(s)",
+        refreshNone: "Aucun élément sélectionné ne peut être rafraîchi",
+        refreshError: "Échec du rafraîchissement"
+      }
+    },
     sync: {
       preparing: "Préparation…",
       noneAntivirus: "Aucun tenant antivirus à synchroniser",
@@ -474,6 +529,7 @@ const CYBERSECURITE_PAGE_COPY = {
         expiration: "Expiration",
         coverage: "Coverage",
         licenses: "Licenses",
+        domains: "Domains",
         lastSync: "Last sync"
       },
       kpi: {
@@ -646,6 +702,60 @@ const CYBERSECURITE_PAGE_COPY = {
         deleteError: "Error deleting campaign"
       }
     },
+    bulk: {
+      selected: "selected",
+      selectedPlural: "selected",
+      selectAll: "Select all",
+      selectAllFiltered: "Select all ({count})",
+      selectRow: "Select {name}",
+      clearSelection: "Clear",
+      edit: "Edit",
+      delete: "Delete",
+      refresh: "Refresh",
+      refreshing: "Refreshing…",
+      deleteTitle: "Delete selection",
+      deleteMessage: "Delete {count} item? This cannot be undone.",
+      deleteMessagePlural: "Delete {count} items? This cannot be undone.",
+      deleteConfirm: "Delete",
+      modal: {
+        titleAntivirus: "Edit antivirus solutions",
+        titleAntispam: "Edit antispam solutions",
+        titleCampaigns: "Edit campaigns",
+        selectedOne: "1 item selected",
+        selectedMany: "{count} items selected",
+        editExpiration: "Expiration",
+        editLicenses: "Licenses",
+        editUsers: "Protected users",
+        editDomains: "Monitored domains",
+        editStatus: "Status",
+        editStartDate: "Start date",
+        editEndDate: "End date",
+        licensesPlaceholder: "License count",
+        usersPlaceholder: "User count",
+        domainsPlaceholder: "Domain count",
+        noField: "Check at least one field to update.",
+        apply: "Apply",
+        saving: "Saving…",
+        submitError: "Unable to apply changes",
+        apiHint: "Values on API-synced solutions may be overwritten on the next refresh."
+      },
+      toasts: {
+        editSuccess: "{count} item updated",
+        editSuccessPlural: "{count} items updated",
+        editPartial: "{updated} updated, {failed} failed",
+        editError: "No changes applied",
+        deleteSuccess: "{count} item deleted",
+        deleteSuccessPlural: "{count} items deleted",
+        deletePartial: "{deleted} deleted, {failed} failed",
+        deleteError: "Nothing was deleted",
+        refreshSuccess: "{count} item refreshed",
+        refreshSuccessPlural: "{count} items refreshed",
+        refreshPartial: "{updated} refreshed, {failed} failed",
+        refreshSkipped: "{count} without API sync skipped",
+        refreshNone: "None of the selected items can be refreshed",
+        refreshError: "Refresh failed"
+      }
+    },
     sync: {
       preparing: "Preparing…",
       noneAntivirus: "No antivirus tenant to sync",
@@ -792,6 +902,7 @@ const CYBERSECURITE_PAGE_COPY = {
         expiration: "Ablauf",
         coverage: "Abdeckung",
         licenses: "Lizenzen",
+        domains: "Domains",
         lastSync: "Letzte Sync"
       },
       kpi: {
@@ -964,6 +1075,60 @@ const CYBERSECURITE_PAGE_COPY = {
         deleteError: "Fehler beim Löschen der Kampagne"
       }
     },
+    bulk: {
+      selected: "ausgewählt",
+      selectedPlural: "ausgewählt",
+      selectAll: "Alle auswählen",
+      selectAllFiltered: "Alle auswählen ({count})",
+      selectRow: "{name} auswählen",
+      clearSelection: "Auswahl aufheben",
+      edit: "Bearbeiten",
+      delete: "Löschen",
+      refresh: "Aktualisieren",
+      refreshing: "Aktualisierung…",
+      deleteTitle: "Auswahl löschen",
+      deleteMessage: "{count} Element löschen? Diese Aktion kann nicht rückgängig gemacht werden.",
+      deleteMessagePlural: "{count} Elemente löschen? Diese Aktion kann nicht rückgängig gemacht werden.",
+      deleteConfirm: "Löschen",
+      modal: {
+        titleAntivirus: "Antivirus-Lösungen bearbeiten",
+        titleAntispam: "Antispam-Lösungen bearbeiten",
+        titleCampaigns: "Kampagnen bearbeiten",
+        selectedOne: "1 Element ausgewählt",
+        selectedMany: "{count} Elemente ausgewählt",
+        editExpiration: "Ablaufdatum",
+        editLicenses: "Lizenzen",
+        editUsers: "Geschützte Benutzer",
+        editDomains: "Überwachte Domains",
+        editStatus: "Status",
+        editStartDate: "Startdatum",
+        editEndDate: "Enddatum",
+        licensesPlaceholder: "Lizenzanzahl",
+        usersPlaceholder: "Benutzeranzahl",
+        domainsPlaceholder: "Domainanzahl",
+        noField: "Aktivieren Sie mindestens ein Feld.",
+        apply: "Übernehmen",
+        saving: "Speichern…",
+        submitError: "Änderungen konnten nicht übernommen werden",
+        apiHint: "Werte von API-synchronisierten Lösungen können beim nächsten Refresh überschrieben werden."
+      },
+      toasts: {
+        editSuccess: "{count} Element aktualisiert",
+        editSuccessPlural: "{count} Elemente aktualisiert",
+        editPartial: "{updated} aktualisiert, {failed} fehlgeschlagen",
+        editError: "Keine Änderungen übernommen",
+        deleteSuccess: "{count} Element gelöscht",
+        deleteSuccessPlural: "{count} Elemente gelöscht",
+        deletePartial: "{deleted} gelöscht, {failed} fehlgeschlagen",
+        deleteError: "Nichts wurde gelöscht",
+        refreshSuccess: "{count} Element aktualisiert",
+        refreshSuccessPlural: "{count} Elemente aktualisiert",
+        refreshPartial: "{updated} aktualisiert, {failed} fehlgeschlagen",
+        refreshSkipped: "{count} ohne API-Sync übersprungen",
+        refreshNone: "Keine der ausgewählten Elemente kann aktualisiert werden",
+        refreshError: "Aktualisierung fehlgeschlagen"
+      }
+    },
     sync: {
       preparing: "Vorbereitung…",
       noneAntivirus: "Kein Antivirus-Tenant zu synchronisieren",
@@ -1110,6 +1275,7 @@ const CYBERSECURITE_PAGE_COPY = {
         expiration: "Scadenza",
         coverage: "Copertura",
         licenses: "Licenze",
+        domains: "Domini",
         lastSync: "Ultima sync"
       },
       kpi: {
@@ -1282,6 +1448,60 @@ const CYBERSECURITE_PAGE_COPY = {
         deleteError: "Errore durante l'eliminazione della campagna"
       }
     },
+    bulk: {
+      selected: "selezionato",
+      selectedPlural: "selezionati",
+      selectAll: "Seleziona tutto",
+      selectAllFiltered: "Seleziona tutto ({count})",
+      selectRow: "Seleziona {name}",
+      clearSelection: "Deseleziona",
+      edit: "Modifica",
+      delete: "Elimina",
+      refresh: "Aggiorna",
+      refreshing: "Aggiornamento…",
+      deleteTitle: "Elimina selezione",
+      deleteMessage: "Eliminare {count} elemento? L'azione è irreversibile.",
+      deleteMessagePlural: "Eliminare {count} elementi? L'azione è irreversibile.",
+      deleteConfirm: "Elimina",
+      modal: {
+        titleAntivirus: "Modifica soluzioni antivirus",
+        titleAntispam: "Modifica soluzioni antispam",
+        titleCampaigns: "Modifica campagne",
+        selectedOne: "1 elemento selezionato",
+        selectedMany: "{count} elementi selezionati",
+        editExpiration: "Scadenza",
+        editLicenses: "Licenze",
+        editUsers: "Utenti protetti",
+        editDomains: "Domini monitorati",
+        editStatus: "Stato",
+        editStartDate: "Data di inizio",
+        editEndDate: "Data di fine",
+        licensesPlaceholder: "Numero di licenze",
+        usersPlaceholder: "Numero di utenti",
+        domainsPlaceholder: "Numero di domini",
+        noField: "Selezionate almeno un campo da modificare.",
+        apply: "Applica",
+        saving: "Salvataggio…",
+        submitError: "Impossibile applicare le modifiche",
+        apiHint: "I valori delle soluzioni sincronizzate via API possono essere sovrascritti al prossimo aggiornamento."
+      },
+      toasts: {
+        editSuccess: "{count} elemento aggiornato",
+        editSuccessPlural: "{count} elementi aggiornati",
+        editPartial: "{updated} aggiornati, {failed} in errore",
+        editError: "Nessuna modifica applicata",
+        deleteSuccess: "{count} elemento eliminato",
+        deleteSuccessPlural: "{count} elementi eliminati",
+        deletePartial: "{deleted} eliminati, {failed} in errore",
+        deleteError: "Nessuna eliminazione effettuata",
+        refreshSuccess: "{count} elemento aggiornato",
+        refreshSuccessPlural: "{count} elementi aggiornati",
+        refreshPartial: "{updated} aggiornati, {failed} in errore",
+        refreshSkipped: "{count} senza sync API ignorati",
+        refreshNone: "Nessun elemento selezionato può essere aggiornato",
+        refreshError: "Aggiornamento non riuscito"
+      }
+    },
     sync: {
       preparing: "Preparazione…",
       noneAntivirus: "Nessun tenant antivirus da sincronizzare",
@@ -1428,6 +1648,7 @@ const CYBERSECURITE_PAGE_COPY = {
         expiration: "Caducidad",
         coverage: "Cobertura",
         licenses: "Licencias",
+        domains: "Dominios",
         lastSync: "Última sync"
       },
       kpi: {
@@ -1600,6 +1821,60 @@ const CYBERSECURITE_PAGE_COPY = {
         deleteError: "Error al eliminar la campaña"
       }
     },
+    bulk: {
+      selected: "seleccionado",
+      selectedPlural: "seleccionados",
+      selectAll: "Seleccionar todo",
+      selectAllFiltered: "Seleccionar todo ({count})",
+      selectRow: "Seleccionar {name}",
+      clearSelection: "Borrar",
+      edit: "Modificar",
+      delete: "Eliminar",
+      refresh: "Actualizar",
+      refreshing: "Actualizando…",
+      deleteTitle: "Eliminar selección",
+      deleteMessage: "¿Eliminar {count} elemento? Esta acción es irreversible.",
+      deleteMessagePlural: "¿Eliminar {count} elementos? Esta acción es irreversible.",
+      deleteConfirm: "Eliminar",
+      modal: {
+        titleAntivirus: "Modificar soluciones antivirus",
+        titleAntispam: "Modificar soluciones antispam",
+        titleCampaigns: "Modificar campañas",
+        selectedOne: "1 elemento seleccionado",
+        selectedMany: "{count} elementos seleccionados",
+        editExpiration: "Expiración",
+        editLicenses: "Licencias",
+        editUsers: "Usuarios protegidos",
+        editDomains: "Dominios vigilados",
+        editStatus: "Estado",
+        editStartDate: "Fecha de inicio",
+        editEndDate: "Fecha de fin",
+        licensesPlaceholder: "Número de licencias",
+        usersPlaceholder: "Número de usuarios",
+        domainsPlaceholder: "Número de dominios",
+        noField: "Marque al menos un campo para modificar.",
+        apply: "Aplicar",
+        saving: "Guardando…",
+        submitError: "No se pudieron aplicar los cambios",
+        apiHint: "Los valores de una solución sincronizada por API pueden sobrescribirse en la próxima actualización."
+      },
+      toasts: {
+        editSuccess: "{count} elemento actualizado",
+        editSuccessPlural: "{count} elementos actualizados",
+        editPartial: "{updated} actualizados, {failed} con error",
+        editError: "No se aplicaron cambios",
+        deleteSuccess: "{count} elemento eliminado",
+        deleteSuccessPlural: "{count} elementos eliminados",
+        deletePartial: "{deleted} eliminados, {failed} con error",
+        deleteError: "No se eliminó nada",
+        refreshSuccess: "{count} elemento actualizado",
+        refreshSuccessPlural: "{count} elementos actualizados",
+        refreshPartial: "{updated} actualizados, {failed} con error",
+        refreshSkipped: "{count} sin sync API omitidos",
+        refreshNone: "Ningún elemento seleccionado se puede actualizar",
+        refreshError: "Error al actualizar"
+      }
+    },
     sync: {
       preparing: "Preparación…",
       noneAntivirus: "Ningún tenant antivirus que sincronizar",
@@ -1748,6 +2023,42 @@ export function getCybersecuritePageCopy(locale) {
     formatCampaignPageInfo: (page, total) => interpolate(t.campaigns.pageInfo, {
       page: String(page),
       total: String(total)
+    }),
+    formatBulkSelectAllFiltered: count => interpolate(t.bulk.selectAllFiltered, {
+      count: String(count)
+    }),
+    formatBulkSelectRow: name => interpolate(t.bulk.selectRow, {
+      name: name || ""
+    }),
+    formatBulkModalSelected: count => interpolate(count === 1 ? t.bulk.modal.selectedOne : t.bulk.modal.selectedMany, {
+      count: String(count)
+    }),
+    formatBulkDeleteMessage: count => interpolate(count === 1 ? t.bulk.deleteMessage : t.bulk.deleteMessagePlural, {
+      count: String(count)
+    }),
+    formatBulkEditSuccess: count => interpolate(count > 1 ? t.bulk.toasts.editSuccessPlural : t.bulk.toasts.editSuccess, {
+      count: String(count)
+    }),
+    formatBulkEditPartial: (updated, failed) => interpolate(t.bulk.toasts.editPartial, {
+      updated: String(updated),
+      failed: String(failed)
+    }),
+    formatBulkDeleteSuccess: count => interpolate(count > 1 ? t.bulk.toasts.deleteSuccessPlural : t.bulk.toasts.deleteSuccess, {
+      count: String(count)
+    }),
+    formatBulkDeletePartial: (deleted, failed) => interpolate(t.bulk.toasts.deletePartial, {
+      deleted: String(deleted),
+      failed: String(failed)
+    }),
+    formatBulkRefreshSuccess: count => interpolate(count > 1 ? t.bulk.toasts.refreshSuccessPlural : t.bulk.toasts.refreshSuccess, {
+      count: String(count)
+    }),
+    formatBulkRefreshPartial: (updated, failed) => interpolate(t.bulk.toasts.refreshPartial, {
+      updated: String(updated),
+      failed: String(failed)
+    }),
+    formatBulkRefreshSkipped: count => interpolate(t.bulk.toasts.refreshSkipped, {
+      count: String(count)
     })
   };
 }

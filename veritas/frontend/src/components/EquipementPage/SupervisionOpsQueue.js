@@ -1,4 +1,5 @@
 import { Icon } from "@iconify/react";
+import { useMemo, useState } from "react";
 import MspEmptyState from "../Misc/MspEmptyState/MspEmptyState";
 import SmartTooltip from "../SmartTooltip";
 import { interpolate } from "../../i18n/translate";
@@ -66,13 +67,31 @@ function QueueActionButton({
 }) {
   const tip = hint || label;
   return <SmartTooltip as="span" content={tip}>
-      <button type="button" className={`${styles.actionBtn} ${primary ? styles.actionBtnPrimary : ""}`} title={tip} aria-label={tip} disabled={disabled} onClick={e => {
+      <button type="button" className={`${styles.actionBtn} ${primary ? styles.actionBtnPrimary : ""}`} aria-label={tip} disabled={disabled} onClick={e => {
       e.stopPropagation();
       onClick?.(e);
     }}>
         <Icon icon={icon} aria-hidden />
       </button>
     </SmartTooltip>;
+}
+
+function SortableHeader({
+  column,
+  label,
+  sortKey,
+  sortDir,
+  onSort,
+  sortAria
+}) {
+  const active = sortKey === column;
+  const ariaSort = active ? sortDir === "asc" ? "ascending" : "descending" : "none";
+  return <th aria-sort={ariaSort}>
+      <button type="button" className={styles.sortBtn} onClick={() => onSort?.(column)} aria-label={sortAria || label}>
+        <span>{label}</span>
+        <Icon icon={active ? sortDir === "asc" ? "mdi:arrow-up" : "mdi:arrow-down" : "mdi:unfold-more-horizontal"} aria-hidden />
+      </button>
+    </th>;
 }
 
 function FilterChip({
@@ -113,6 +132,72 @@ export default function SupervisionOpsQueue({
   copy
 }) {
   const columns = copy.columns || {};
+  const [sortKey, setSortKey] = useState(null);
+  const [sortDir, setSortDir] = useState("asc");
+  const handleSort = column => {
+    if (sortKey === column) {
+      setSortDir(prev => prev === "asc" ? "desc" : "asc");
+      return;
+    }
+    setSortKey(column);
+    setSortDir(column === "when" ? "desc" : "asc");
+  };
+  const sortedItems = useMemo(() => {
+    if (!sortKey) return items;
+    const factor = sortDir === "asc" ? 1 : -1;
+    const severityRank = {
+      critical: 0,
+      warning: 1,
+      info: 2
+    };
+    const statusRank = {
+      open: 0,
+      acked: 1,
+      linked: 2
+    };
+    const text = value => String(value || "").toLowerCase();
+    const whenMs = item => {
+      const raw = item.notifiedAt || item.alertState?.createdAt;
+      if (raw == null || raw === "") return 0;
+      const ms = typeof raw === "number" ? raw : new Date(raw).getTime();
+      return Number.isNaN(ms) ? 0 : ms;
+    };
+    return [...items].sort((a, b) => {
+      let cmp = 0;
+      switch (sortKey) {
+        case "alert":
+          cmp = text(a.title || a.label).localeCompare(text(b.title || b.label), undefined, {
+            sensitivity: "base"
+          });
+          break;
+        case "company":
+          cmp = text(a.clientName).localeCompare(text(b.clientName), undefined, {
+            sensitivity: "base"
+          });
+          break;
+        case "domain":
+          cmp = text(a.domain).localeCompare(text(b.domain), undefined, {
+            sensitivity: "base"
+          });
+          break;
+        case "severity":
+          cmp = (severityRank[a.severity] ?? 9) - (severityRank[b.severity] ?? 9);
+          break;
+        case "status":
+          cmp = (statusRank[a.workflowStatus || "open"] ?? 9) - (statusRank[b.workflowStatus || "open"] ?? 9);
+          break;
+        case "when":
+          cmp = whenMs(a) - whenMs(b);
+          break;
+        default:
+          cmp = 0;
+      }
+      return cmp * factor;
+    });
+  }, [items, sortKey, sortDir]);
+  const sortAriaFor = label => interpolate(copy.sortBy || "Trier par {label}", {
+    label
+  });
   const domainChips = [{
     id: "all",
     label: copy.domains.all,
@@ -190,25 +275,25 @@ export default function SupervisionOpsQueue({
             <thead>
               <tr>
                 <th className={styles.sevCol} aria-hidden />
-                <th>{columns.alert || "Alerte"}</th>
-                <th>{columns.company || "Entreprise"}</th>
-                <th>{columns.domain || "Domaine"}</th>
-                <th>{columns.severity || "Sévérité"}</th>
-                <th>{columns.status || "Statut"}</th>
-                <th>{columns.when || "Date"}</th>
+                <SortableHeader column="alert" label={columns.alert || "Alerte"} sortKey={sortKey} sortDir={sortDir} onSort={handleSort} sortAria={sortAriaFor(columns.alert || "Alerte")} />
+                <SortableHeader column="company" label={columns.company || "Entreprise"} sortKey={sortKey} sortDir={sortDir} onSort={handleSort} sortAria={sortAriaFor(columns.company || "Entreprise")} />
+                <SortableHeader column="domain" label={columns.domain || "Domaine"} sortKey={sortKey} sortDir={sortDir} onSort={handleSort} sortAria={sortAriaFor(columns.domain || "Domaine")} />
+                <SortableHeader column="severity" label={columns.severity || "Sévérité"} sortKey={sortKey} sortDir={sortDir} onSort={handleSort} sortAria={sortAriaFor(columns.severity || "Sévérité")} />
+                <SortableHeader column="status" label={columns.status || "Statut"} sortKey={sortKey} sortDir={sortDir} onSort={handleSort} sortAria={sortAriaFor(columns.status || "Statut")} />
+                <SortableHeader column="when" label={columns.when || "Date"} sortKey={sortKey} sortDir={sortDir} onSort={handleSort} sortAria={sortAriaFor(columns.when || "Date")} />
                 <th className={styles.actionsCol}>{columns.actions || "Actions"}</th>
               </tr>
             </thead>
             <tbody>
-              {items.map(item => {
+              {sortedItems.map(item => {
               const wf = item.workflowStatus || "open";
               const busy = busyId === item.id;
               const domainLabel = copy.domains?.[item.domain] || item.domain;
               const severityLabel = item.severity === "critical" ? copy.kpi.critical : item.severity === "warning" ? copy.kpi.warning : copy.severityInfo || "Info";
-              const when = formatWhen(item.notifiedAt || item.alertState?.createdAt || item.sortTime, localeTag);
+              const when = formatWhen(item.notifiedAt || item.alertState?.createdAt, localeTag);
               const handler = item.handledByName || item.alertState?.ackedByName || null;
               const remediation = remediationLabel(item, copy);
-              const metaBits = [item.label, item.subtitle].filter(Boolean).filter((v, i, arr) => arr.indexOf(v) === i);
+              const metaBits = [item.subtitle].filter(Boolean);
               const collabBits = [];
               if (handler) {
                 collabBits.push(interpolate(copy.collab?.handledBy || "{name}", {
@@ -244,7 +329,7 @@ export default function SupervisionOpsQueue({
                       <span className={`${styles.wfBadge} ${workflowBadgeClass(wf)}`}>{copy.workflow?.[wf] || wf}</span>
                     </td>
                     <td className={styles.whenCell}>
-                      <time dateTime={item.notifiedAt || undefined}>{when}</time>
+                      <time dateTime={item.notifiedAt || item.alertState?.createdAt || undefined}>{when}</time>
                     </td>
                     <td className={styles.actionsCol} onClick={e => e.stopPropagation()}>
                       <div className={styles.rowActions} role="group" aria-label={copy.actionsAria || "Actions"}>

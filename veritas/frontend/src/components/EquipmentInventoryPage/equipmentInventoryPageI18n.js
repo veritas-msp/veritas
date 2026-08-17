@@ -36,13 +36,52 @@ const COPY = {
       serial: "N° série",
       site: "Site",
       status: "Statut",
+      alerts: "Alertes",
+      alertsMonth: "30 jours",
       actions: "Actions"
     },
     status: {
       active: "Actif",
       inactive: "Inactif"
     },
-    toastLoadError: "Impossible de charger l’inventaire."
+    alertStatus: {
+      active: "Actives",
+      disabled: "Désactivées",
+      suspended: "Suspendues"
+    },
+    bulk: {
+      selected: "périphérique sélectionné",
+      selectedPlural: "périphériques sélectionnés",
+      edit: "Modifier",
+      clearSelection: "Effacer la sélection",
+      selectAll: "Tout sélectionner sur la page",
+      selectAllFiltered: "Tout sélectionner ({count})",
+      selectRow: "Sélectionner {name}"
+    },
+    bulkModal: {
+      title: "Modifier les périphériques",
+      selectedOne: "1 périphérique sélectionné",
+      selectedMany: "{count} périphériques sélectionnés",
+      editStatus: "Statut du périphérique",
+      editLocation: "Site",
+      locationPlaceholder: "Site / emplacement",
+      editAlerts: "Alertes supervision",
+      alertsHint: "Applique le même mode d’alertes qu’en fiche périphérique (actives, désactivées ou suspendues).",
+      apply: "Appliquer",
+      saving: "Application…",
+      submitError: "Impossible d’appliquer les modifications",
+      validation: {
+        noField: "Activez au moins un champ à modifier."
+      }
+    },
+    toastLoadError: "Impossible de charger l’inventaire.",
+    alertsMonthHint: "Alertes remontées sur les 30 derniers jours"
+    toasts: {
+      bulkSuccess: "{count} périphérique mis à jour",
+      bulkSuccessPlural: "{count} périphériques mis à jour",
+      bulkPartial: "{updated} mis à jour, {failed} en échec",
+      bulkError: "Aucune modification appliquée"
+    }
   },
   en: {
     eyebrow: "Managed services",
@@ -79,13 +118,52 @@ const COPY = {
       serial: "Serial",
       site: "Site",
       status: "Status",
+      alerts: "Alerts",
+      alertsMonth: "30 days",
       actions: "Actions"
     },
     status: {
       active: "Active",
       inactive: "Inactive"
     },
-    toastLoadError: "Unable to load the inventory."
+    alertStatus: {
+      active: "Active",
+      disabled: "Disabled",
+      suspended: "Suspended"
+    },
+    bulk: {
+      selected: "device selected",
+      selectedPlural: "devices selected",
+      edit: "Edit",
+      clearSelection: "Clear selection",
+      selectAll: "Select all on this page",
+      selectAllFiltered: "Select all ({count})",
+      selectRow: "Select {name}"
+    },
+    bulkModal: {
+      title: "Edit devices",
+      selectedOne: "1 device selected",
+      selectedMany: "{count} devices selected",
+      editStatus: "Device status",
+      editLocation: "Site",
+      locationPlaceholder: "Site / location",
+      editAlerts: "Monitoring alerts",
+      alertsHint: "Applies the same alert mode as the device sheet (active, disabled or suspended).",
+      apply: "Apply",
+      saving: "Applying…",
+      submitError: "Unable to apply the changes",
+      validation: {
+        noField: "Enable at least one field to update."
+      }
+    },
+    toastLoadError: "Unable to load the inventory.",
+    alertsMonthHint: "Alerts raised in the last 30 days"
+    toasts: {
+      bulkSuccess: "{count} device updated",
+      bulkSuccessPlural: "{count} devices updated",
+      bulkPartial: "{updated} updated, {failed} failed",
+      bulkError: "No changes applied"
+    }
   },
   de: {
     eyebrow: "Managed Services",
@@ -122,13 +200,52 @@ const COPY = {
       serial: "Seriennr.",
       site: "Standort",
       status: "Status",
+      alerts: "Alarme",
+      alertsMonth: "30 Tage",
       actions: "Aktionen"
     },
     status: {
       active: "Aktiv",
       inactive: "Inaktiv"
     },
-    toastLoadError: "Inventar konnte nicht geladen werden."
+    alertStatus: {
+      active: "Aktiv",
+      disabled: "Deaktiviert",
+      suspended: "Ausgesetzt"
+    },
+    bulk: {
+      selected: "Gerät ausgewählt",
+      selectedPlural: "Geräte ausgewählt",
+      edit: "Bearbeiten",
+      clearSelection: "Auswahl aufheben",
+      selectAll: "Alle auf der Seite auswählen",
+      selectAllFiltered: "Alle auswählen ({count})",
+      selectRow: "{name} auswählen"
+    },
+    bulkModal: {
+      title: "Geräte bearbeiten",
+      selectedOne: "1 Gerät ausgewählt",
+      selectedMany: "{count} Geräte ausgewählt",
+      editStatus: "Gerätestatus",
+      editLocation: "Standort",
+      locationPlaceholder: "Standort / Platzierung",
+      editAlerts: "Überwachungsalarme",
+      alertsHint: "Wendet denselben Alarmmodus wie in der Gerätekarte an (aktiv, deaktiviert oder ausgesetzt).",
+      apply: "Übernehmen",
+      saving: "Wird übernommen…",
+      submitError: "Änderungen konnten nicht übernommen werden",
+      validation: {
+        noField: "Aktivieren Sie mindestens ein Feld."
+      }
+    },
+    toastLoadError: "Inventar konnte nicht geladen werden.",
+    alertsMonthHint: "Alarme der letzten 30 Tage"
+    toasts: {
+      bulkSuccess: "{count} Gerät aktualisiert",
+      bulkSuccessPlural: "{count} Geräte aktualisiert",
+      bulkPartial: "{updated} aktualisiert, {failed} fehlgeschlagen",
+      bulkError: "Keine Änderungen übernommen"
+    }
   },
   it: {
     eyebrow: "Servizi gestiti",
@@ -165,13 +282,52 @@ const COPY = {
       serial: "N. serie",
       site: "Sede",
       status: "Stato",
+      alerts: "Avvisi",
+      alertsMonth: "30 giorni",
       actions: "Azioni"
     },
     status: {
       active: "Attivo",
       inactive: "Inattivo"
     },
-    toastLoadError: "Impossibile caricare l’inventario."
+    alertStatus: {
+      active: "Attivi",
+      disabled: "Disattivati",
+      suspended: "Sospesi"
+    },
+    bulk: {
+      selected: "periferica selezionata",
+      selectedPlural: "periferiche selezionate",
+      edit: "Modifica",
+      clearSelection: "Cancella selezione",
+      selectAll: "Seleziona tutto nella pagina",
+      selectAllFiltered: "Seleziona tutto ({count})",
+      selectRow: "Seleziona {name}"
+    },
+    bulkModal: {
+      title: "Modifica periferiche",
+      selectedOne: "1 periferica selezionata",
+      selectedMany: "{count} periferiche selezionate",
+      editStatus: "Stato periferica",
+      editLocation: "Sede",
+      locationPlaceholder: "Sede / ubicazione",
+      editAlerts: "Avvisi di supervisione",
+      alertsHint: "Applica la stessa modalità avvisi della scheda periferica (attivi, disattivati o sospesi).",
+      apply: "Applica",
+      saving: "Applicazione…",
+      submitError: "Impossibile applicare le modifiche",
+      validation: {
+        noField: "Attiva almeno un campo da modificare."
+      }
+    },
+    toastLoadError: "Impossibile caricare l’inventario.",
+    alertsMonthHint: "Avvisi degli ultimi 30 giorni"
+    toasts: {
+      bulkSuccess: "{count} periferica aggiornata",
+      bulkSuccessPlural: "{count} periferiche aggiornate",
+      bulkPartial: "{updated} aggiornate, {failed} in errore",
+      bulkError: "Nessuna modifica applicata"
+    }
   },
   es: {
     eyebrow: "Servicios gestionados",
@@ -208,13 +364,52 @@ const COPY = {
       serial: "N.º serie",
       site: "Sitio",
       status: "Estado",
+      alerts: "Alertas",
+      alertsMonth: "30 días",
       actions: "Acciones"
     },
     status: {
       active: "Activo",
       inactive: "Inactivo"
     },
-    toastLoadError: "No se pudo cargar el inventario."
+    alertStatus: {
+      active: "Activas",
+      disabled: "Desactivadas",
+      suspended: "Suspendidas"
+    },
+    bulk: {
+      selected: "periférico seleccionado",
+      selectedPlural: "periféricos seleccionados",
+      edit: "Editar",
+      clearSelection: "Borrar selección",
+      selectAll: "Seleccionar todo en la página",
+      selectAllFiltered: "Seleccionar todo ({count})",
+      selectRow: "Seleccionar {name}"
+    },
+    bulkModal: {
+      title: "Editar periféricos",
+      selectedOne: "1 periférico seleccionado",
+      selectedMany: "{count} periféricos seleccionados",
+      editStatus: "Estado del periférico",
+      editLocation: "Sitio",
+      locationPlaceholder: "Sitio / ubicación",
+      editAlerts: "Alertas de supervisión",
+      alertsHint: "Aplica el mismo modo de alertas que en la ficha (activas, desactivadas o suspendidas).",
+      apply: "Aplicar",
+      saving: "Aplicando…",
+      submitError: "No se pudieron aplicar los cambios",
+      validation: {
+        noField: "Active al menos un campo para modificar."
+      }
+    },
+    toastLoadError: "No se pudo cargar el inventario.",
+    alertsMonthHint: "Alertas de los últimos 30 días"
+    toasts: {
+      bulkSuccess: "{count} periférico actualizado",
+      bulkSuccessPlural: "{count} periféricos actualizados",
+      bulkPartial: "{updated} actualizados, {failed} con error",
+      bulkError: "No se aplicaron cambios"
+    }
   }
 };
 
@@ -249,6 +444,22 @@ export function getEquipmentInventoryPageCopy(locale) {
     formatPageInfo: (current, total) => interpolate(t.pageInfo, {
       current: String(current),
       total: String(total)
+    }),
+    formatBulkModalSelected: count => interpolate(count === 1 ? t.bulkModal.selectedOne : t.bulkModal.selectedMany, {
+      count: String(count)
+    }),
+    formatBulkSelectRow: name => interpolate(t.bulk.selectRow, {
+      name: name || "—"
+    }),
+    formatSelectAllFiltered: count => interpolate(t.bulk.selectAllFiltered, {
+      count: String(count)
+    }),
+    formatBulkSuccess: count => interpolate(count > 1 ? t.toasts.bulkSuccessPlural : t.toasts.bulkSuccess, {
+      count: String(count)
+    }),
+    formatBulkPartial: (updated, failed) => interpolate(t.toasts.bulkPartial, {
+      updated: String(updated),
+      failed: String(failed)
     })
   };
 }

@@ -89,6 +89,10 @@
   background: var(--msp-surface-2, #f7f9fc);
 }
 
+.bulkBarWrap {
+  padding: 0.75rem 1rem 0;
+}
+
 @media (max-width: 960px) {
   .toolbar {
     grid-template-columns: 1fr;
@@ -299,8 +303,35 @@
   background: rgba(43, 95, 171, 0.03);
 }
 
+.checkboxCell {
+  width: 42px;
+  min-width: 42px;
+  text-align: center;
+  padding-left: 0.55rem !important;
+  padding-right: 0.35rem !important;
+}
+
+.rowCheckbox {
+  width: 15px;
+  height: 15px;
+  accent-color: #2b5fab;
+  cursor: pointer;
+}
+
+.table thead th.checkboxCell {
+  cursor: default;
+}
+
+.selectedRow {
+  background: rgba(43, 95, 171, 0.08);
+}
+
+.table tbody tr.selectedRow:hover {
+  background: rgba(43, 95, 171, 0.08);
+}
+
 .actionsCol {
-  width: 120px;
+  width: 160px;
   text-align: right;
 }
 
@@ -622,6 +653,11 @@ th.actionsCol {
 
 :global(html.dark) .table tbody tr:hover {
   background: rgba(43, 95, 171, 0.08);
+}
+
+:global(html.dark) .selectedRow,
+:global(html.dark) .table tbody tr.selectedRow:hover {
+  background: rgba(43, 95, 171, 0.18);
 }
 
 :global(html.dark) .badgeDefault {

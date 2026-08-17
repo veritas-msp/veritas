@@ -137,8 +137,12 @@ export function sortAntispamFleetRows(rows, sortBy, sortDirection = "asc") {
         }
       case "expirationDate":
         return compareDates(a.expirationDate || a.expiration, b.expirationDate || b.expiration);
+      case "totalLicenses":
+        return compareNumbers(a.totalLicenses, b.totalLicenses);
+      case "domainesSurveilles":
+        return compareNumbers(a.domainesSurveilles, b.domainesSurveilles);
       case "usagePercent":
-        return compareNumbers(a.usagePercent ?? a.usedLicenses ?? a.utilisateursProteges, b.usagePercent ?? b.usedLicenses ?? b.utilisateursProteges);
+        return compareNumbers(a.totalLicenses ?? a.usagePercent ?? a.usedLicenses, b.totalLicenses ?? b.usagePercent ?? b.usedLicenses);
       case "lastSync":
         return compareDates(a.lastSync, b.lastSync);
       default:

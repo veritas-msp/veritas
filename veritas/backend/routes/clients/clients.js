@@ -15,7 +15,7 @@ import { requireProForClientInfra } from '../../middleware/clientInfraRoutes.js'
 import { requirePermission, requireAnyPermission } from '../../middleware/permissions.js';
 import { attachEquipmentCounts, fetchEquipmentCountsByClientId } from '../../utils/equipmentCountsByClient.js';
 import { fetchEquipmentPurgeList } from '../../utils/equipmentPurgeList.js';
-import { fetchEquipmentInventoryList } from '../../utils/equipmentInventoryList.js';
+import { fetchEquipmentInventoryList, bulkUpdateEquipmentInventory } from '../../utils/equipmentInventoryList.js';
 import { userHasAllPermissions } from '../../services/permissionService.js';
 import { addMembership, fetchPrimaryContactNamesByClientId, sqlContactLinkedToClientAsync, attachMembershipsToContacts } from '../../services/contactClientLinks.js';
 const router = express.Router();
@@ -592,7 +592,7 @@ router.get("/cyber-page-data", verifyJWT, async (req, res) => {
       ORDER BY c.name ASC
     `);
     const clientIds = clientsResult.rows.map(r => r.id).filter(id => id != null);
-    const [avRows, asRows, svRows, campaignsResult] = await Promise.all([queryCyberFamilyRows(pool, CYBER_MODULE_TABLES.antivirus, clientIds), queryCyberFamilyRows(pool, CYBER_MODULE_TABLES.antispam, clientIds), queryCyberFamilyRows(pool, CYBER_MODULE_TABLES.save, clientIds), pool.query(`
+    const [avRows, asRows, svRows, campaignsResult, mailinblackResult] = await Promise.all([queryCyberFamilyRows(pool, CYBER_MODULE_TABLES.antivirus, clientIds), queryCyberFamilyRows(pool, CYBER_MODULE_TABLES.antispam, clientIds), queryCyberFamilyRows(pool, CYBER_MODULE_TABLES.save, clientIds), pool.query(`
       SELECT
         c.id, c.client_id, c.name, c.type, c.status, c.start_date, c.end_date,
         c.global_progress, c.description, c.objectif_adoption, c.created_at, c.updated_at, c.created_by,
@@ -602,6 +602,16 @@ router.get("/cyber-page-data", verifyJWT, async (req, res) => {
       LEFT JOIN v_b_clients cl ON c.client_id::text = cl.id::text
       ORDER BY c.created_at DESC
     `).catch(e => {
+      if (e.code === "42P01") return {
+        rows: []
+      };
+      throw e;
+    }), pool.query(`
+      SELECT id, client_id, label, solution, api_url, auth_client_id, created_at, updated_at
+      FROM v_b_clients_mailinblack
+      WHERE client_id = ANY($1::int[])
+      ORDER BY created_at ASC
+    `, [clientIds]).catch(e => {
       if (e.code === "42P01") return {
         rows: []
       };
@@ -631,6 +641,19 @@ router.get("/cyber-page-data", verifyJWT, async (req, res) => {
     pushRows(avRows, "antivirus", CYBER_MODULE_TABLES.antivirus);
     pushRows(asRows, "antispam", CYBER_MODULE_TABLES.antispam);
     pushRows(svRows, "save", CYBER_MODULE_TABLES.save);
+    const tenantsByClient = new Map();
+    for (const row of mailinblackResult.rows || []) {
+      const cid = Number(row.client_id);
+      if (!tenantsByClient.has(cid)) tenantsByClient.set(cid, []);
+      tenantsByClient.get(cid).push({
+        id: row.id,
+        clientId: row.client_id,
+        label: row.label,
+        solution: row.solution,
+        apiUrl: row.api_url,
+        authClientId: row.auth_client_id || null
+      });
+    }
     const azureByClient = new Map();
     if (clientIds.length) {
       try {
@@ -708,7 +731,8 @@ router.get("/cyber-page-data", verifyJWT, async (req, res) => {
         sites: [],
         commercial: client.username || client.user_email || null,
         equipements: transformed.equipements || {},
-        modules_monitoring: {}
+        modules_monitoring: {},
+        mailinblackTenants: tenantsByClient.get(cid) || []
       };
     });
     res.json({
@@ -747,6 +771,23 @@ router.get('/equipment-inventory', requireAnyPermission('equipment_inventory.vie
       error: 'Error loading equipment inventory',
       details: err.message,
       code: err.code
+    });
+  }
+});
+router.post('/equipment-inventory/bulk', requireAnyPermission('clients_detail.devices', 'infrastructure.edit', 'supervision.manage'), async (req, res) => {
+  try {
+    const result = await bulkUpdateEquipmentInventory({
+      items: req.body?.items,
+      updates: req.body?.updates || {},
+      actorUserId: req.user?.id || null
+    });
+    res.json(result);
+  } catch (err) {
+    console.error('POST /equipment-inventory/bulk:', err);
+    const status = err.status || (/No field/i.test(err.message) ? 400 : 500);
+    res.status(status).json({
+      error: err.message || 'Error bulk updating equipment',
+      code: err.code || undefined
     });
   }
 });

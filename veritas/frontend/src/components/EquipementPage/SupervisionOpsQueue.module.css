@@ -169,6 +169,33 @@
   white-space: nowrap;
 }
 
+.sortBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.15rem;
+  margin: 0;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-weight: inherit;
+  letter-spacing: inherit;
+  text-transform: inherit;
+  cursor: pointer;
+}
+
+.sortBtn :global(svg) {
+  font-size: 0.9rem;
+  opacity: 0.55;
+}
+
+.sortBtn:hover,
+.sortBtn:hover :global(svg) {
+  color: var(--msp-text, #e8edf5);
+  opacity: 1;
+}
+
 .table tbody td {
   padding: 0.45rem 0.6rem;
   border-bottom: 1px solid var(--msp-border-light, #2a3a55);

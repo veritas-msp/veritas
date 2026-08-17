@@ -75,6 +75,7 @@ import { checkMaintenanceMode } from './middleware/maintenance.js';
 import { securityHeaders } from './middleware/securityHeaders.js';
 import { canRunAutoSchemaMigrations, isSetupMarkedComplete, markSetupComplete } from './utils/setupState.js';
 import { startMailCollectorPoller } from './services/mailCollectorPoller.js';
+import { startKpiReportPoller } from './services/kpiReportPoller.js';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 function resolveFrontendBuildDir() {
   const fromEnv = (process.env.FRONTEND_BUILD_DIR || '').trim();
@@ -370,5 +371,10 @@ app.listen(PORT, '0.0.0.0', () => {
     startMailCollectorPoller();
   } catch (err) {
     console.error("[mail-collector-poller] Failed to start:", err?.message || err);
+  }
+  try {
+    startKpiReportPoller();
+  } catch (err) {
+    console.error("[kpi-report-poller] Failed to start:", err?.message || err);
   }
 });

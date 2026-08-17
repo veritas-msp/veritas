@@ -35,27 +35,34 @@ function resolvePaymentPlan(solution) {
   if (subscriptionType === 4) return "Perpetual";
   return solution?.paymentPlan || "-";
 }
+function toLicenseNumber(value) {
+  if (value == null || value === "") return null;
+  const n = Number(value);
+  return Number.isFinite(n) ? n : null;
+}
 function resolveEndpointsCount(solution) {
-  if (Array.isArray(solution?.endpoints) && solution.endpoints.length > 0) {
-    return solution.endpoints.length;
-  }
-  const used = solution?.licencesUtilisees ?? solution?.usedLicenses;
-  if (used != null && used !== "") return Number(used) || 0;
-  return null;
+  if (Array.isArray(solution?.endpoints)) return solution.endpoints.length;
+  return 0;
+}
+function resolveUsedLicenses(solution) {
+  return toLicenseNumber(solution?.licencesUtilisees ?? solution?.usedLicenses ?? solution?.syncData?.license?.usedLicenses ?? solution?.syncData?.license?.used);
 }
 function resolveTotalLicenses(solution) {
-  const total = solution?.licencesTotales ?? solution?.totalLicenses ?? solution?.licences;
-  if (total == null || total === "") return null;
-  return Number(total) || 0;
+  return toLicenseNumber(solution?.licencesTotales ?? solution?.totalLicenses ?? solution?.licences ?? solution?.syncData?.license?.totalLicenses ?? solution?.syncData?.license?.total);
 }
 export function buildAntivirusFleetRow(client, solution, index = 0) {
   const summary = formatAntivirusSolutionSummary(solution);
   const providerId = summary.providerId || inferProviderIdFromSolution(solution) || "manual";
   const provider = getAntivirusProvider(providerId);
-  const providerImage = providerId === "bitdefender" ? "/assets/icons/bitdefender.png" : provider?.image || null;
+  const providerImage = providerId === "bitdefender"
+    ? "/assets/icons/bitdefender.png"
+    : provider?.image
+      ? provider.image.startsWith("/") ? provider.image : `/assets/icons/${provider.image}`
+      : null;
   const status = computeAntivirusExpirationStatus(solution?.expiration);
   const totalLicenses = resolveTotalLicenses(solution);
-  const usedLicenses = resolveEndpointsCount(solution);
+  const usedLicenses = resolveUsedLicenses(solution);
+  const endpointCount = resolveEndpointsCount(solution);
   const usagePercent = totalLicenses > 0 && usedLicenses != null ? Math.round(usedLicenses / totalLicenses * 100) : null;
   const productName = solution?.solution || solution?.nom || solution?.name || summary.label;
   return {
@@ -75,6 +82,7 @@ export function buildAntivirusFleetRow(client, solution, index = 0) {
     expirationDate: solution?.expiration || null,
     totalLicenses,
     usedLicenses,
+    endpointCount,
     usagePercent,
     companyId: solution?.companyId || solution?.company_id || null,
     companyName: solution?.companyName || null,
@@ -113,7 +121,8 @@ export function buildAntivirusFleetStats(rows = []) {
     if (row.clientId != null) clientIds.add(row.clientId);
     if (row.providerId) providers.add(row.providerId);
     if (statusCounts[row.status] != null) statusCounts[row.status] += 1;
-    if (row.usedLicenses != null) endpoints += row.usedLicenses;
+    if (row.endpointCount != null) endpoints += Number(row.endpointCount) || 0;
+    else if (Array.isArray(row.endpoints)) endpoints += row.endpoints.length;
     if (row.totalLicenses != null) licenses += row.totalLicenses;
     if (row.usagePercent != null) {
       usageSamples += 1;
@@ -221,8 +230,10 @@ export function sortAntivirusFleetRows(rows, sortBy, sortDirection = "asc") {
         }
       case "expirationDate":
         return compareDates(a.expirationDate, b.expirationDate);
+      case "totalLicenses":
+        return compareNumbers(a.totalLicenses, b.totalLicenses);
       case "usagePercent":
-        return compareNumbers(a.usagePercent ?? a.usedLicenses, b.usagePercent ?? b.usedLicenses);
+        return compareNumbers(a.totalLicenses ?? a.usedLicenses, b.totalLicenses ?? b.usedLicenses);
       case "lastSync":
         return compareDates(a.lastSync, b.lastSync);
       default:

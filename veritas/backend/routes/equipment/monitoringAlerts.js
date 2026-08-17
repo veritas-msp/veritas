@@ -1,8 +1,8 @@
 import express from "express";
 import verifyJWT from "../../middleware/auth.js";
 import { pool } from "../../database/db.js";
-import { areMonitoringAlertsEnabled, clearEquipmentAlertSuspension, getEquipmentAlertSettings, isAlertSuspensionActive, resolveEquipmentFamilyKey, setEquipmentAlertsEnabled, upsertEquipmentAlertSuspension } from "../../utils/equipmentMonitoringAlerts.js";
-import { enableMonitoringAlertsForClient, isEquipmentMonitoredInDb } from "../../utils/equipmentInventoryScan.js";
+import { areMonitoringAlertsEnabled, applyEquipmentAlertSettings, isAlertSuspensionActive, resolveEquipmentFamilyKey, getEquipmentAlertSettings } from "../../utils/equipmentMonitoringAlerts.js";
+import { enableMonitoringAlertsForClient } from "../../utils/equipmentInventoryScan.js";
 import { clearClientMonitoringAlertSuspension, getClientMonitoringAlertPolicy, setClientMonitoringAlertSuspension } from "../../utils/clientMonitoringAlerts.js";
 import { requireAnyPermission } from "../../middleware/permissions.js";
 const router = express.Router();
@@ -184,60 +184,25 @@ router.put("/:clientId/:equipmentId", verifyJWT, async (req, res) => {
         error: "clientId, equipmentId et family required"
       });
     }
-    const wantsEnable = alertsEnabled === true || suspensionType === "temporary" || suspensionType === "permanent";
-    if (wantsEnable) {
-      const monitored = await isEquipmentMonitoredInDb(clientId, equipmentId, equipmentFamily);
-      if (!monitored) {
-        return res.status(400).json({
-          error: "This equipment is not monitored (RMM agent or CheckMK mapping required to configure alerts).",
-          code: "NOT_MONITORED"
-        });
-      }
-    }
-    let untilIso = suspendedUntil || null;
-    if (suspensionType === "temporary" && !untilIso) {
-      const minutes = parseDurationMinutes(durationMinutes) || 60;
-      untilIso = new Date(Date.now() + minutes * 60 * 1000).toISOString();
-    }
-    if (suspensionType === "none" || suspensionType === null || suspensionType === "") {
-      await clearEquipmentAlertSuspension(clientId, equipmentId, equipmentFamily);
-      const settings = await setEquipmentAlertsEnabled({
-        clientId,
-        equipmentId,
-        equipmentFamily,
-        equipmentName,
-        alertsEnabled: alertsEnabled === true
-      });
-      return res.json({
-        settings,
-        suspended: false,
-        alertsEnabled: Boolean(settings?.alertsEnabled)
-      });
-    }
-    if (suspensionType !== "temporary" && suspensionType !== "permanent") {
-      return res.status(400).json({
-        error: "Invalid suspensionType (temporary|permanent|none)"
-      });
-    }
-    const settings = await upsertEquipmentAlertSuspension({
+    const result = await applyEquipmentAlertSettings({
       clientId,
       equipmentId,
       equipmentFamily,
       equipmentName,
       suspensionType,
-      suspendedUntil: suspensionType === "temporary" ? untilIso : null,
-      suspendedBy: req.user?.id || null,
-      suspensionReason: reason || null
+      alertsEnabled,
+      durationMinutes,
+      suspendedUntil,
+      reason,
+      suspendedBy: req.user?.id || null
     });
-    res.json({
-      settings,
-      suspended: isAlertSuspensionActive(settings),
-      alertsEnabled: Boolean(settings?.alertsEnabled)
-    });
+    res.json(result);
   } catch (err) {
     console.error("[equipment-monitoring-alerts] PUT:", err.message);
-    res.status(500).json({
-      error: "Server error"
+    const status = err.status || (/required|Invalid |not monitored/i.test(err.message) ? 400 : 500);
+    res.status(status).json({
+      error: err.message || "Server error",
+      code: err.code || undefined
     });
   }
 });
