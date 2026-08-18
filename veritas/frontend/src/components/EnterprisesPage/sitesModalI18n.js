@@ -51,12 +51,42 @@ const SITES_MODAL_COPY = {
     countWithMaxOne: "{count} / {max} lieu",
     countWithMaxMany: "{count} / {max} lieux",
     saveBlockedTitle: "Terminez ou annulez la modification du lieu en cours avant d'enregistrer",
+    csvImport: {
+      title: "Importer des lieux",
+      subtitle: "Téléchargez un modèle, importez un CSV, puis validez la liste.",
+      downloadTemplate: "Télécharger l'exemple CSV",
+      templateHint: "Colonnes : nom (obligatoire), adresse, code_postal, ville, pays, principal, notes. Séparateur ; ou ,.",
+      dropTitle: "Déposez votre fichier CSV",
+      dropHint: "ou cliquez pour le sélectionner",
+      pickFile: "Choisir un CSV",
+      emptyFile: "Le CSV ne contient aucune ligne.",
+      parseError: "Impossible de lire ce CSV.",
+      missingNameColumn: "Colonne « nom » introuvable. Utilisez le modèle fourni.",
+      noneSelected: "Sélectionnez au moins un lieu à créer.",
+      confirm: "Créer {count} lieu(x)",
+      summaryReady: "{count} à créer",
+      summaryDuplicate: "{count} doublon(s)",
+      summaryInvalid: "{count} invalide(s)",
+      summaryLimit: "{count} hors limite",
+      columns: {
+        name: "Nom",
+        address: "Adresse",
+        status: "Statut"
+      },
+      status: {
+        ready: "À créer",
+        duplicate: "Déjà existant",
+        invalid: "Nom manquant",
+        limit: "Limite atteinte"
+      }
+    },
     toasts: {
       nameRequired: "Renseignez le nom du lieu.",
       positionUpdated: "Position mise à jour sur la carte.",
       geocodeFailed: "Impossible de localiser cette adresse.",
       finishEditFirst: "Enregistrez ou annulez la modification en cours.",
-      saveFailed: "Impossible d'enregistrer les lieux."
+      saveFailed: "Impossible d'enregistrer les lieux.",
+      imported: "{count} lieu(x) ajouté(s)."
     }
   },
   en: {
@@ -110,12 +140,42 @@ const SITES_MODAL_COPY = {
     countWithMaxOne: "{count} / {max} location",
     countWithMaxMany: "{count} / {max} locations",
     saveBlockedTitle: "Finish or cancel the current location edit before saving",
+    csvImport: {
+      title: "Import locations",
+      subtitle: "Download a template, import a CSV, then confirm the list.",
+      downloadTemplate: "Download CSV sample",
+      templateHint: "Columns: name (required), address, postal_code, city, country, primary, notes. Separator ; or ,.",
+      dropTitle: "Drop your CSV file",
+      dropHint: "or click to choose one",
+      pickFile: "Choose a CSV",
+      emptyFile: "The CSV has no data rows.",
+      parseError: "Unable to read this CSV.",
+      missingNameColumn: "Column “name” not found. Use the provided template.",
+      noneSelected: "Select at least one location to create.",
+      confirm: "Create {count} location(s)",
+      summaryReady: "{count} to create",
+      summaryDuplicate: "{count} duplicate(s)",
+      summaryInvalid: "{count} invalid",
+      summaryLimit: "{count} over limit",
+      columns: {
+        name: "Name",
+        address: "Address",
+        status: "Status"
+      },
+      status: {
+        ready: "Ready",
+        duplicate: "Already exists",
+        invalid: "Name missing",
+        limit: "Limit reached"
+      }
+    },
     toasts: {
       nameRequired: "Enter the location name.",
       positionUpdated: "Map position updated.",
       geocodeFailed: "Unable to locate this address.",
       finishEditFirst: "Save or cancel the current edit first.",
-      saveFailed: "Unable to save locations."
+      saveFailed: "Unable to save locations.",
+      imported: "{count} location(s) added."
     }
   },
   de: {
@@ -169,12 +229,42 @@ const SITES_MODAL_COPY = {
     countWithMaxOne: "{count} / {max} Standort",
     countWithMaxMany: "{count} / {max} Standorte",
     saveBlockedTitle: "Schließen Sie die laufende Standortbearbeitung ab oder brechen Sie sie ab, bevor Sie speichern",
+    csvImport: {
+      title: "Standorte importieren",
+      subtitle: "Vorlage herunterladen, CSV importieren, dann die Liste bestätigen.",
+      downloadTemplate: "CSV-Beispiel herunterladen",
+      templateHint: "Spalten: name (pflicht), address, postal_code, city, country, primary, notes. Trennzeichen ; oder ,.",
+      dropTitle: "CSV-Datei hier ablegen",
+      dropHint: "oder klicken zum Auswählen",
+      pickFile: "CSV wählen",
+      emptyFile: "Die CSV enthält keine Datenzeilen.",
+      parseError: "Diese CSV konnte nicht gelesen werden.",
+      missingNameColumn: "Spalte „name“ nicht gefunden. Nutzen Sie die Vorlage.",
+      noneSelected: "Wählen Sie mindestens einen Standort zum Erstellen.",
+      confirm: "{count} Standort(e) erstellen",
+      summaryReady: "{count} zu erstellen",
+      summaryDuplicate: "{count} Duplikat(e)",
+      summaryInvalid: "{count} ungültig",
+      summaryLimit: "{count} über Limit",
+      columns: {
+        name: "Name",
+        address: "Adresse",
+        status: "Status"
+      },
+      status: {
+        ready: "Bereit",
+        duplicate: "Bereits vorhanden",
+        invalid: "Name fehlt",
+        limit: "Limit erreicht"
+      }
+    },
     toasts: {
       nameRequired: "Geben Sie den Standortnamen ein.",
       positionUpdated: "Kartenposition aktualisiert.",
       geocodeFailed: "Diese Adresse konnte nicht lokalisiert werden.",
       finishEditFirst: "Speichern oder brechen Sie die laufende Bearbeitung ab.",
-      saveFailed: "Standorte konnten nicht gespeichert werden."
+      saveFailed: "Standorte konnten nicht gespeichert werden.",
+      imported: "{count} Standort(e) hinzugefügt."
     }
   },
   it: {
@@ -228,12 +318,42 @@ const SITES_MODAL_COPY = {
     countWithMaxOne: "{count} / {max} sede",
     countWithMaxMany: "{count} / {max} sedi",
     saveBlockedTitle: "Termina o annulla la modifica della sede in corso prima di salvare",
+    csvImport: {
+      title: "Importa sedi",
+      subtitle: "Scarica un modello, importa un CSV, poi conferma l'elenco.",
+      downloadTemplate: "Scarica esempio CSV",
+      templateHint: "Colonne: nome (obbligatorio), indirizzo, codice_postale, città, paese, principale, note. Separatore ; o ,.",
+      dropTitle: "Trascina il file CSV",
+      dropHint: "oppure clicca per selezionarlo",
+      pickFile: "Scegli un CSV",
+      emptyFile: "Il CSV non contiene righe di dati.",
+      parseError: "Impossibile leggere questo CSV.",
+      missingNameColumn: "Colonna « nome » non trovata. Usa il modello fornito.",
+      noneSelected: "Seleziona almeno una sede da creare.",
+      confirm: "Crea {count} sede/i",
+      summaryReady: "{count} da creare",
+      summaryDuplicate: "{count} duplicato/i",
+      summaryInvalid: "{count} non valido/i",
+      summaryLimit: "{count} oltre il limite",
+      columns: {
+        name: "Nome",
+        address: "Indirizzo",
+        status: "Stato"
+      },
+      status: {
+        ready: "Da creare",
+        duplicate: "Già esistente",
+        invalid: "Nome mancante",
+        limit: "Limite raggiunto"
+      }
+    },
     toasts: {
       nameRequired: "Inserisci il nome della sede.",
       positionUpdated: "Posizione sulla mappa aggiornata.",
       geocodeFailed: "Impossibile localizzare questo indirizzo.",
       finishEditFirst: "Salva o annulla la modifica in corso.",
-      saveFailed: "Impossibile salvare le sedi."
+      saveFailed: "Impossibile salvare le sedi.",
+      imported: "{count} sede/i aggiunta/e."
     }
   },
   es: {
@@ -287,12 +407,42 @@ const SITES_MODAL_COPY = {
     countWithMaxOne: "{count} / {max} ubicación",
     countWithMaxMany: "{count} / {max} ubicaciones",
     saveBlockedTitle: "Termine o cancele la edición de la ubicación en curso antes de guardar",
+    csvImport: {
+      title: "Importar ubicaciones",
+      subtitle: "Descargue un modelo, importe un CSV y confirme la lista.",
+      downloadTemplate: "Descargar ejemplo CSV",
+      templateHint: "Columnas: nombre (obligatorio), dirección, código_postal, ciudad, país, principal, notas. Separador ; o ,.",
+      dropTitle: "Suelte su archivo CSV",
+      dropHint: "o haga clic para seleccionarlo",
+      pickFile: "Elegir un CSV",
+      emptyFile: "El CSV no contiene filas de datos.",
+      parseError: "No se pudo leer este CSV.",
+      missingNameColumn: "No se encontró la columna « nombre ». Use la plantilla.",
+      noneSelected: "Seleccione al menos una ubicación para crear.",
+      confirm: "Crear {count} ubicación(es)",
+      summaryReady: "{count} por crear",
+      summaryDuplicate: "{count} duplicado(s)",
+      summaryInvalid: "{count} no válido(s)",
+      summaryLimit: "{count} fuera de límite",
+      columns: {
+        name: "Nombre",
+        address: "Dirección",
+        status: "Estado"
+      },
+      status: {
+        ready: "Por crear",
+        duplicate: "Ya existe",
+        invalid: "Nombre faltante",
+        limit: "Límite alcanzado"
+      }
+    },
     toasts: {
       nameRequired: "Indique el nombre de la ubicación.",
       positionUpdated: "Posición actualizada en el mapa.",
       geocodeFailed: "No se pudo localizar esta dirección.",
       finishEditFirst: "Guarde o cancele la edición en curso.",
-      saveFailed: "No se pudieron guardar las ubicaciones."
+      saveFailed: "No se pudieron guardar las ubicaciones.",
+      imported: "{count} ubicación(es) añadida(s)."
     }
   }
 };

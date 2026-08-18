@@ -10,6 +10,7 @@ import { DndContext, DragOverlay, KeyboardSensor, PointerSensor, closestCenter, 
 import { SortableContext, arrayMove, sortableKeyboardCoordinates, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import SiteMapPreview from "./SiteMapPreview";
+import SitesCsvImportModal from "./SitesCsvImportModal";
 import { useVeritasEdition } from "../../hooks/useVeritasEdition";
 import { getCommunitySitesLimit } from "../../config/edition";
 import { buildSiteAddress, buildSiteGeocodeQuery, createEmptySite, geocodeSiteAddress, getSiteDisplayName, getSiteId, normalizeClientSites, enforceSinglePrimarySite, sortClientSites, assignClientSitesOrder } from "../../utils/clientSites";
@@ -188,6 +189,7 @@ export default function SitesModal({
   const [saving, setSaving] = useState(false);
   const [sitesSnapshot, setSitesSnapshot] = useState(null);
   const [activeDragId, setActiveDragId] = useState(null);
+  const [csvImportOpen, setCsvImportOpen] = useState(false);
   const sensors = useSensors(useSensor(PointerSensor, {
     activationConstraint: {
       distance: 6
@@ -366,7 +368,12 @@ export default function SitesModal({
       setSaving(false);
     }
   };
-  return createPortal(<div className={styles.overlay} onClick={onClose}>
+  const handleCsvImportConfirm = importedSites => {
+    setCurrentSites(assignClientSitesOrder([...currentSites, ...importedSites]));
+    setCsvImportOpen(false);
+  };
+  return createPortal(<>
+    <div className={styles.overlay} onClick={onClose}>
       <div className={styles.shell} onClick={e => e.stopPropagation()} role="dialog" aria-modal="true" aria-labelledby="sites-modal-title">
         <div className={styles.accentBar} />
         <header className={styles.header}>
@@ -395,10 +402,16 @@ export default function SitesModal({
                 <span className={styles.listTitle}>
                   {copy.formatSiteCount(orderedSites.length, maxSites)}
                 </span>
-                <button type="button" className={styles.addBtn} onClick={startCreate} disabled={!canAddSite} title={atSiteLimit ? copy.formatLimitTooltip(maxSites) : undefined}>
-                  <Icon icon="mdi:plus" aria-hidden />
-                  {copy.add}
-                </button>
+                <div className={styles.listHeadActions}>
+                  <button type="button" className={styles.addBtn} onClick={() => setCsvImportOpen(true)} title={copy.csvImport.title} aria-label={copy.csvImport.title}>
+                    <Icon icon="mdi:file-delimited-outline" aria-hidden />
+                    CSV
+                  </button>
+                  <button type="button" className={styles.addBtn} onClick={startCreate} disabled={!canAddSite} title={atSiteLimit ? copy.formatLimitTooltip(maxSites) : undefined}>
+                    <Icon icon="mdi:plus" aria-hidden />
+                    {copy.add}
+                  </button>
+                </div>
               </div>
 
               {atSiteLimit ? <div className={styles.sitesLimitHint} role="note">
@@ -462,5 +475,7 @@ export default function SitesModal({
           </button>
         </footer>
       </div>
-    </div>, document.body);
+    </div>
+    {csvImportOpen ? <SitesCsvImportModal existingSites={currentSites} maxSites={maxSites} defaultCountry={copy.defaultSiteCountry} onConfirm={handleCsvImportConfirm} onClose={() => setCsvImportOpen(false)} /> : null}
+  </>, document.body);
 }

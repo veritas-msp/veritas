@@ -2058,8 +2058,8 @@ const EquipmentPage = forwardRef(function EquipmentPage({
     }
   };
   const canShowRemoteAccessButton = equipment => {
-    const type = (equipment?.type || "").toString().toLowerCase();
-    return type === "serveurs" || type === "serveur";
+    const type = String(equipment?.type || "").toLowerCase();
+    return type === "serveurs" || type === "serveur" || type === "servers" || type === "server";
   };
   const canShowQuickConnectButton = (equipment, displayType) => {
     const isStorage = displayType === "Storage" || equipment?.type === "NAS" || equipment?.type === "Storage";
@@ -2189,23 +2189,18 @@ const EquipmentPage = forwardRef(function EquipmentPage({
         onClick: () => openRemoteAccess(equipment)
       });
     }
-    if (canShowRemoteAccessButton(equipment)) {
-      const configured = hasServerRemoteAccessConfigured(equipment);
+    if (canShowRemoteAccessButton(equipment) && hasServerRemoteAccessConfigured(equipment)) {
       const {
         id
       } = readServerRemoteAccess(equipment);
-      const serverLabel = actions.serverRemote;
       items.push({
         id: "server-remote",
         icon: EQUIPMENT_REMOTE_ACTION_ICON,
-        label: configured ? interpolate(actions.serverRemoteWithId, {
-          label: serverLabel,
+        label: interpolate(actions.serverRemoteWithId, {
+          label: actions.serverRemote,
           id
-        }) : interpolate(actions.serverRemoteMenuNotConfigured, {
-          label: serverLabel
         }),
-        disabled: !configured,
-        active: configured,
+        active: true,
         onClick: () => openServerRemoteAccess(equipment)
       });
     }
@@ -2241,9 +2236,8 @@ const EquipmentPage = forwardRef(function EquipmentPage({
     return items;
   };
   const renderEmbeddedAnydeskQuickButton = equipment => {
-    if (!canShowRemoteAccessButton(equipment)) return null;
-    const configured = hasServerRemoteAccessConfigured(equipment);
-    return <button type="button" className={`${styles.embeddedQuickActionButton} ${configured ? styles.embeddedQuickActionButtonRemoteActive : ""}`} title={formatServerRemoteTitle(equipment)} aria-label={actions.serverRemote} disabled={!configured} onClick={e => {
+    if (!canShowRemoteAccessButton(equipment) || !hasServerRemoteAccessConfigured(equipment)) return null;
+    return <button type="button" className={`${styles.embeddedQuickActionButton} ${styles.embeddedQuickActionButtonRemoteActive}`} title={formatServerRemoteTitle(equipment)} aria-label={actions.serverRemote} onClick={e => {
       e.stopPropagation();
       openServerRemoteAccess(equipment);
     }}>
@@ -2987,7 +2981,7 @@ const EquipmentPage = forwardRef(function EquipmentPage({
                                     }}>
                                             <Icon icon="mdi:share-variant" width={16} height={16} />
                                           </button>
-                                          {canShowRemoteAccessButton(equipment) ? <button type="button" className={`${styles.mappingActionButton} ${hasServerRemoteAccessConfigured(equipment) ? styles.mappingActionButtonRemoteActive : ""}`} title={hasServerRemoteAccessConfigured(equipment) ? formatServerRemoteTitle(equipment) : actions.serverRemote} aria-label={actions.serverRemote} onClick={e => {
+                                          {canShowRemoteAccessButton(equipment) && hasServerRemoteAccessConfigured(equipment) ? <button type="button" className={`${styles.mappingActionButton} ${styles.mappingActionButtonRemoteActive}`} title={formatServerRemoteTitle(equipment)} aria-label={actions.serverRemote} onClick={e => {
                                       e.stopPropagation();
                                       openServerRemoteAccess(equipment);
                                     }}>
@@ -3223,7 +3217,7 @@ const EquipmentPage = forwardRef(function EquipmentPage({
                               }}>
                                       <Icon icon="mdi:share-variant" width={16} height={16} />
                                     </button>
-                                    {canShowRemoteAccessButton(equipment) ? <button type="button" className={`${styles.mappingActionButton} ${hasServerRemoteAccessConfigured(equipment) ? styles.mappingActionButtonRemoteActive : ""}`} title={hasServerRemoteAccessConfigured(equipment) ? formatServerRemoteTitle(equipment) : actions.serverRemote} aria-label={actions.serverRemote} onClick={e => {
+                                    {canShowRemoteAccessButton(equipment) && hasServerRemoteAccessConfigured(equipment) ? <button type="button" className={`${styles.mappingActionButton} ${styles.mappingActionButtonRemoteActive}`} title={formatServerRemoteTitle(equipment)} aria-label={actions.serverRemote} onClick={e => {
                                 e.stopPropagation();
                                 openServerRemoteAccess(equipment);
                               }}>

@@ -86,6 +86,9 @@ export const OS_OPTION_GROUPS = [{
   label: "Linux · Debian",
   options: ["Debian 11 (Bullseye)", "Debian 12 (Bookworm)"]
 }, {
+  label: "Hypervisors",
+  options: ["Proxmox VE 7", "Proxmox VE 8", "Proxmox VE 9", "VMware ESXi 6.7", "VMware ESXi 7.0", "VMware ESXi 8.0", "VMware vCenter Server 7.0", "VMware vCenter Server 8.0", "Microsoft Hyper-V Server 2019", "Microsoft Hyper-V Server 2022", "Microsoft Hyper-V Server 2025", "Citrix XenServer / Hypervisor", "XCP-ng", "Nutanix AHV", "KVM"]
+}, {
   label: "Other",
   options: ["Autre"]
 }];

@@ -18,6 +18,7 @@ import API_BASE_URL from "../../config";
 import SmartTooltip from "../SmartTooltip";
 import PlanningEventModalBridge from "../PlanningPage/PlanningEventModalBridge";
 import SitesModal from "./SitesModal";
+import SitesCsvImportModal from "./SitesCsvImportModal";
 import DomainsModal from "./DomainsModal";
 import DomainsConfigModal from "./DomainsConfigModal";
 import DomainSolutionPickerModal from "./DomainSolutionPickerModal";
@@ -316,6 +317,7 @@ export default function ClientDetailPage({
   const [eventModalOpen, setEventModalOpen] = useState(false);
   const [editingEvent, setEditingEvent] = useState(null);
   const [sitesModalOpen, setSitesModalOpen] = useState(false);
+  const [sitesCsvImportOpen, setSitesCsvImportOpen] = useState(false);
   const [equipmentSearchQuery, setEquipmentSearchQuery] = useState("");
   const [equipmentResultCount, setEquipmentResultCount] = useState(0);
   const [hardwareEquipmentTotalCount, setHardwareEquipmentTotalCount] = useState(0);
@@ -2685,6 +2687,10 @@ export default function ClientDetailPage({
       throw error;
     }
   };
+  const handleSitesCsvImport = async importedSites => {
+    await handleSitesSave([...(formData.sites || []), ...importedSites]);
+    setSitesCsvImportOpen(false);
+  };
   const handleOpenLogDetails = log => {
     setSelectedLog(log);
     setLogDetailsModalOpen(true);
@@ -3492,11 +3498,18 @@ export default function ClientDetailPage({
               </button>
               {sitesSectionExpanded && <div className={styles.sidebarBody} id="enterprise-sidebar-sites">
                 <div className={styles.sidebarBodyActions}>
-                  {canManageSites ? <SmartTooltip content={copy.manageSites}>
+                  {canManageSites ? <>
+                    <SmartTooltip content={copy.importSites}>
+                      <button type="button" className={styles.editInfoButton} onClick={() => setSitesCsvImportOpen(true)} aria-label={copy.importSites}>
+                        <Icon icon="mdi:file-delimited-outline" />
+                      </button>
+                    </SmartTooltip>
+                    <SmartTooltip content={copy.manageSites}>
                     <button type="button" className={styles.editInfoButton} onClick={() => setSitesModalOpen(true)} aria-label={copy.manageSites}>
                       <FaPencilAlt />
                     </button>
-                  </SmartTooltip> : null}
+                  </SmartTooltip>
+                  </> : null}
                 </div>
                 {(formData.sites || []).length === 0 ? <div className={styles.emptyState}>
                     <Icon icon="mdi:map-marker-outline" className={styles.emptyIcon} />
@@ -3650,6 +3663,7 @@ export default function ClientDetailPage({
 
       {}
       {sitesModalOpen && <SitesModal sites={formData.sites || []} onSave={handleSitesSave} onClose={() => setSitesModalOpen(false)} />}
+      {sitesCsvImportOpen ? <SitesCsvImportModal existingSites={formData.sites || []} onConfirm={handleSitesCsvImport} onClose={() => setSitesCsvImportOpen(false)} /> : null}
 
       {}
       <DomainsModal isOpen={domainsModalOpen} onClose={() => setDomainsModalOpen(false)} domains={domainsData} onConfigure={() => {

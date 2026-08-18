@@ -1,0 +1,163 @@
+.stackedOverlay {
+  z-index: var(--modal-stack-overlay-z-index, calc(var(--modal-overlay-z-index, 12000) + 80));
+}
+
+.shell {
+  width: min(760px, 100%);
+  max-height: min(90vh, 780px);
+}
+
+.body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+  min-height: 0;
+  overflow: auto;
+  padding: 0.95rem 1.1rem 1.1rem;
+}
+
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.65rem 1rem;
+}
+
+.hint {
+  margin: 0;
+  font-size: 0.75rem;
+  color: var(--msp-muted, #5c6b82);
+}
+
+.dropzone {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 1.2rem 1rem;
+  border: 1.5px dashed var(--msp-border, #c5d0de);
+  border-radius: 12px;
+  background: var(--msp-surface-2, #f5f7fb);
+  text-align: center;
+}
+
+.dropzoneActive {
+  border-color: var(--msp-accent, #2b5fab);
+  background: color-mix(in srgb, var(--msp-accent, #2b5fab) 8%, var(--msp-surface-2, #f5f7fb));
+}
+
+.dropzoneIcon {
+  font-size: 1.7rem;
+  color: var(--msp-accent, #2b5fab);
+}
+
+.dropzoneTitle {
+  margin: 0;
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: var(--msp-text, #152033);
+}
+
+.dropzoneHint {
+  margin: 0 0 0.35rem;
+  font-size: 0.75rem;
+  color: var(--msp-muted, #5c6b82);
+}
+
+.summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem 0.85rem;
+  font-size: 0.74rem;
+  color: var(--msp-muted, #5c6b82);
+}
+
+.tableWrap {
+  min-height: 0;
+  overflow: auto;
+  border: 1px solid var(--msp-border, #dde3ed);
+  border-radius: 10px;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.78rem;
+}
+
+.table th,
+.table td {
+  padding: 0.45rem 0.6rem;
+  text-align: left;
+  border-bottom: 1px solid var(--msp-border-light, #eef2f7);
+  vertical-align: top;
+}
+
+.table th {
+  position: sticky;
+  top: 0;
+  background: var(--msp-surface-2, #f8fafc);
+  font-size: 0.68rem;
+  font-weight: 700;
+  color: var(--msp-muted, #5c6b82);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.table tr:last-child td {
+  border-bottom: 0;
+}
+
+.checkCol {
+  width: 2rem;
+}
+
+.rowSelected td {
+  background: color-mix(in srgb, var(--msp-accent, #2b5fab) 6%, transparent);
+}
+
+.addressCell {
+  color: var(--msp-muted, #5c6b82);
+}
+
+.primaryBadge {
+  display: inline-flex;
+  margin-left: 0.4rem;
+  padding: 0.05rem 0.4rem;
+  border-radius: 999px;
+  background: var(--msp-accent-soft, #e8eef8);
+  color: var(--msp-accent, #2b5fab);
+  font-size: 0.62rem;
+  font-weight: 700;
+  vertical-align: middle;
+}
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.12rem 0.45rem;
+  border-radius: 999px;
+  font-size: 0.66rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.badge_ready {
+  background: #e8f7ee;
+  color: #157347;
+}
+
+.badge_duplicate {
+  background: #fff4e5;
+  color: #b45309;
+}
+
+.badge_invalid {
+  background: #fdecec;
+  color: #b42318;
+}
+
+.badge_limit {
+  background: #eef2f7;
+  color: #5c6b82;
+}

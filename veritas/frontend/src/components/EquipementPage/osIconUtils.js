@@ -23,7 +23,10 @@ export function getOsIconName(osLabel, {
   if (osRaw.includes("freebsd")) return "logos:freebsd-icon";
   if (osRaw.includes("proxmox")) return "logos:proxmox";
   if (osRaw.includes("hyper-v")) return "mdi:microsoft-windows";
-  if (osRaw.includes("esxi") || osRaw.includes("vmware")) return "logos:vmware";
+  if (osRaw.includes("esxi") || osRaw.includes("vcenter") || osRaw.includes("vsphere") || osRaw.includes("vmware")) return "logos:vmware";
+  if (osRaw.includes("nutanix") || osRaw.includes("ahv")) return "simple-icons:nutanix";
+  if (osRaw.includes("xcp-ng") || osRaw.includes("xenserver") || osRaw.includes("xen")) return "mdi:server-network";
+  if (osRaw.includes("kvm")) return "mdi:virtual-reality";
   if (osRaw.includes("linux")) return "logos:linux-tux";
   return withFallback ? "mdi:desktop-classic" : null;
 }

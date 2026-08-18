@@ -171,6 +171,7 @@ const OS_GROUP_LABELS_FR = {
   "Windows client": "Windows client",
   "Linux · Ubuntu": "Linux · Ubuntu",
   "Linux · Debian": "Linux · Debian",
+  Hypervisors: "Hyperviseurs",
   Autre: "Autre"
 };
 const OS_GROUP_LABELS_EN = {
@@ -178,6 +179,7 @@ const OS_GROUP_LABELS_EN = {
   "Windows client": "Windows client",
   "Linux · Ubuntu": "Linux · Ubuntu",
   "Linux · Debian": "Linux · Debian",
+  Hypervisors: "Hypervisors",
   Autre: "Other"
 };
 const HYPERVISOR_LABELS_FR = {
@@ -445,6 +447,7 @@ const DE = {
   }),
   osOptionGroups: buildOsOptionGroups({
     ...OS_GROUP_LABELS_EN,
+    Hypervisors: "Hypervisoren",
     Autre: "Sonstige"
   }),
   hypervisorOptions: mapSelectOptions(SERVER_HYPERVISOR_OPTIONS, {
@@ -538,6 +541,7 @@ const IT = {
   }),
   osOptionGroups: buildOsOptionGroups({
     ...OS_GROUP_LABELS_EN,
+    Hypervisors: "Hypervisor",
     Autre: "Altro"
   }),
   hypervisorOptions: mapSelectOptions(SERVER_HYPERVISOR_OPTIONS, {
@@ -631,6 +635,7 @@ const ES = {
   }),
   osOptionGroups: buildOsOptionGroups({
     ...OS_GROUP_LABELS_EN,
+    Hypervisors: "Hipervisores",
     Autre: "Otro"
   }),
   hypervisorOptions: mapSelectOptions(SERVER_HYPERVISOR_OPTIONS, {

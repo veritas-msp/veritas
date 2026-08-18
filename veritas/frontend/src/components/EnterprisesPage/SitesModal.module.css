@@ -132,6 +132,12 @@
   border-bottom: 1px solid var(--msp-border-light, #eef2f7);
 }
 
+.listHeadActions {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
 .listTitle {
   font-size: 0.78rem;
   font-weight: 700;
