@@ -743,11 +743,12 @@ export default function ClientDetailPage({
     setActiveSiteFilter(null);
     setSlaExpanded(false);
     setContactsExpanded(false);
-    setSitesExpanded(false);
     setContactsSectionExpanded(false);
     setSitesSectionExpanded(false);
     setNotesSectionExpanded(false);
     setInfoExpanded(isCommunity);
+    setSitesSearch("");
+    setSitesPage(1);
   }, [client?.id, isCommunity]);
   useEffect(() => {
     const timer = window.setInterval(() => setSlaNow(Date.now()), 60000);
@@ -2650,10 +2651,6 @@ export default function ClientDetailPage({
   useEffect(() => {
     setSitesPage(page => Math.min(page, sitesTotalPages));
   }, [sitesTotalPages]);
-  useEffect(() => {
-    setSitesSearch("");
-    setSitesPage(1);
-  }, [client?.id]);
   const enterpriseGuideSteps = useMemo(() => {
     const steps = getEnterpriseDetailGuideSteps({
       expandInfo: () => setInfoExpanded(true),
