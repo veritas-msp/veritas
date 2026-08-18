@@ -1,8 +1,9 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { Icon } from "@iconify/react";
 import { FaTimes } from "react-icons/fa";
 import { toast } from "react-toastify";
+import { interpolate } from "../../i18n/translate";
 import { useAppLocale } from "../../hooks/useAppGeneralSettings";
 import { useCommonCopy } from "../../hooks/useCommonCopy";
 import { getSitesModalCopy } from "./sitesModalI18n";
@@ -13,8 +14,29 @@ import SiteMapPreview from "./SiteMapPreview";
 import SitesCsvImportModal from "./SitesCsvImportModal";
 import { useVeritasEdition } from "../../hooks/useVeritasEdition";
 import { getCommunitySitesLimit } from "../../config/edition";
-import { buildSiteAddress, buildSiteGeocodeQuery, createEmptySite, geocodeSiteAddress, getSiteDisplayName, getSiteId, normalizeClientSites, enforceSinglePrimarySite, sortClientSites, assignClientSitesOrder } from "../../utils/clientSites";
+import { buildSiteAddress, buildSiteGeocodeQuery, canGeocodeSite, createEmptySite, geocodeSiteAddress, getSiteDisplayName, getSiteId, normalizeClientSites, enforceSinglePrimarySite, sortClientSites, assignClientSitesOrder, siteHasCoordinates, siteMatchesQuery } from "../../utils/clientSites";
 import styles from "./SitesModal.module.css";
+const LIST_PAGE_SIZE = 12;
+function SitesPager({
+  page,
+  totalPages,
+  rangeLabel,
+  prevLabel,
+  nextLabel,
+  onPageChange,
+  disabled = false
+}) {
+  if (totalPages <= 1) return null;
+  return <div className={styles.pager}>
+      <button type="button" className={styles.pagerBtn} onClick={() => onPageChange(page - 1)} disabled={disabled || page <= 1} aria-label={prevLabel} title={prevLabel}>
+        <Icon icon="mdi:chevron-left" aria-hidden />
+      </button>
+      <span className={styles.pagerInfo}>{rangeLabel}</span>
+      <button type="button" className={styles.pagerBtn} onClick={() => onPageChange(page + 1)} disabled={disabled || page >= totalPages} aria-label={nextLabel} title={nextLabel}>
+        <Icon icon="mdi:chevron-right" aria-hidden />
+      </button>
+    </div>;
+}
 function SiteEditor({
   site,
   onChange,
@@ -113,6 +135,7 @@ function SiteListCard({
   copy
 }) {
   const address = buildSiteAddress(site);
+  const located = siteHasCoordinates(site);
   return <>
       {dragHandleProps ? <button type="button" className={`${styles.dragHandle} ${dragHandleDisabled ? styles.dragHandleDisabled : ""}`} aria-label={copy.formatReorderAria(getSiteDisplayName(site))} title={dragHandleDisabled ? copy.drag.finishEditing : copy.drag.dragToReorder} disabled={dragHandleDisabled} {...dragHandleProps}>
           <Icon icon="mdi:drag-vertical" aria-hidden />
@@ -133,9 +156,7 @@ function SiteListCard({
           </div>
           {address ? <p className={styles.siteCardAddress}>{address}</p> : null}
         </div>
-        <div className={styles.siteCardMap} onClick={event => event.stopPropagation()}>
-          <SiteMapPreview latitude={site.latitude} longitude={site.longitude} label={getSiteDisplayName(site)} address={address} compact />
-        </div>
+        <Icon icon={located ? "mdi:map-marker" : "mdi:map-marker-off-outline"} className={`${styles.siteCardPin} ${located ? "" : styles.siteCardPinMuted}`} aria-hidden />
       </div>
     </>;
 }
@@ -190,6 +211,10 @@ export default function SitesModal({
   const [sitesSnapshot, setSitesSnapshot] = useState(null);
   const [activeDragId, setActiveDragId] = useState(null);
   const [csvImportOpen, setCsvImportOpen] = useState(false);
+  const [refreshingPositions, setRefreshingPositions] = useState(false);
+  const [listSearch, setListSearch] = useState("");
+  const [listPage, setListPage] = useState(1);
+  const geocodeAbortRef = useRef(false);
   const sensors = useSensors(useSensor(PointerSensor, {
     activationConstraint: {
       distance: 6
@@ -213,11 +238,90 @@ export default function SitesModal({
     setSelectedId(null);
     setDraft(null);
     setSitesSnapshot(null);
+    setListSearch("");
+    setListPage(1);
   }, [sites]);
+  useEffect(() => {
+    geocodeAbortRef.current = false;
+    return () => {
+      geocodeAbortRef.current = true;
+    };
+  }, []);
   const orderedSites = useMemo(() => sortClientSites(committedSites), [committedSites]);
-  const sortableSiteIds = useMemo(() => orderedSites.map(site => site.id), [orderedSites]);
-  const activeDragSite = useMemo(() => orderedSites.find(site => site.id === activeDragId) || null, [orderedSites, activeDragId]);
-  const canReorder = !draft;
+  const filteredSites = useMemo(() => {
+    const query = listSearch.trim();
+    if (!query) return orderedSites;
+    return orderedSites.filter(site => siteMatchesQuery(site, query));
+  }, [orderedSites, listSearch]);
+  const listTotalPages = Math.max(1, Math.ceil(filteredSites.length / LIST_PAGE_SIZE));
+  const safeListPage = Math.min(listPage, listTotalPages);
+  const pagedSites = useMemo(() => {
+    const start = (safeListPage - 1) * LIST_PAGE_SIZE;
+    return filteredSites.slice(start, start + LIST_PAGE_SIZE);
+  }, [filteredSites, safeListPage]);
+  const listRangeStart = filteredSites.length === 0 ? 0 : (safeListPage - 1) * LIST_PAGE_SIZE + 1;
+  const listRangeEnd = Math.min(safeListPage * LIST_PAGE_SIZE, filteredSites.length);
+  const sortableSiteIds = useMemo(() => pagedSites.map(site => site.id), [pagedSites]);
+  const activeDragSite = useMemo(() => pagedSites.find(site => site.id === activeDragId) || null, [pagedSites, activeDragId]);
+  const canReorder = !draft && !refreshingPositions && !listSearch.trim() && listTotalPages <= 1;
+  useEffect(() => {
+    setListPage(page => Math.min(page, listTotalPages));
+  }, [listTotalPages]);
+  const wait = ms => new Promise(resolve => setTimeout(resolve, ms));
+  const refreshSitePositions = async (sourceSites, {
+    onlyMissing = false,
+    onlyIds = null
+  } = {}) => {
+    const idSet = onlyIds instanceof Set ? onlyIds : Array.isArray(onlyIds) ? new Set(onlyIds) : null;
+    const targets = (Array.isArray(sourceSites) ? sourceSites : []).filter(site => {
+      if (idSet && !idSet.has(site.id)) return false;
+      return canGeocodeSite(site, {
+        onlyMissing
+      });
+    });
+    if (!targets.length) {
+      if (!onlyMissing) toast.info(copy.toasts.positionsRefreshNone);
+      return;
+    }
+    setRefreshingPositions(true);
+    let ok = 0;
+    let failed = 0;
+    try {
+      for (let index = 0; index < targets.length; index += 1) {
+        if (geocodeAbortRef.current) break;
+        const site = targets[index];
+        try {
+          const coords = await geocodeSiteAddress(site);
+          ok += 1;
+          setCurrentSites(prev => assignClientSitesOrder(prev.map(item => item.id === site.id ? {
+            ...item,
+            ...coords
+          } : item)));
+        } catch {
+          failed += 1;
+        }
+        if (index < targets.length - 1) await wait(1100);
+      }
+      if (geocodeAbortRef.current) return;
+      if (ok > 0 && failed === 0) toast.success(interpolate(copy.toasts.positionsRefreshed, {
+        count: String(ok)
+      }));
+      else if (ok > 0) toast.warn(interpolate(copy.toasts.positionsRefreshPartial, {
+        ok: String(ok),
+        failed: String(failed)
+      }));
+      else toast.error(copy.toasts.positionsRefreshFailed);
+    } finally {
+      setRefreshingPositions(false);
+    }
+  };
+  const handleRefreshAllPositions = () => {
+    if (draft) {
+      toast.warn(copy.toasts.finishEditFirst);
+      return;
+    }
+    refreshSitePositions(currentSites);
+  };
   const handleDragStart = event => {
     setActiveDragId(event.active.id);
   };
@@ -369,11 +473,18 @@ export default function SitesModal({
     }
   };
   const handleCsvImportConfirm = importedSites => {
-    setCurrentSites(assignClientSitesOrder([...currentSites, ...importedSites]));
+    const merged = assignClientSitesOrder([...currentSites, ...importedSites]);
+    setCurrentSites(merged);
     setCsvImportOpen(false);
+    setListSearch("");
+    setListPage(Math.max(1, Math.ceil(merged.length / LIST_PAGE_SIZE)));
+    refreshSitePositions(merged, {
+      onlyMissing: true,
+      onlyIds: importedSites.map(site => site.id)
+    });
   };
   return createPortal(<>
-    <div className={styles.overlay} onClick={onClose}>
+    <div className={styles.overlay} onClick={saving || refreshingPositions ? undefined : onClose}>
       <div className={styles.shell} onClick={e => e.stopPropagation()} role="dialog" aria-modal="true" aria-labelledby="sites-modal-title">
         <div className={styles.accentBar} />
         <header className={styles.header}>
@@ -390,7 +501,7 @@ export default function SitesModal({
               </p>
             </div>
           </div>
-          <button type="button" className={styles.closeBtn} onClick={onClose} aria-label={common.close}>
+          <button type="button" className={styles.closeBtn} onClick={onClose} aria-label={common.close} disabled={saving || refreshingPositions}>
             <FaTimes />
           </button>
         </header>
@@ -403,16 +514,34 @@ export default function SitesModal({
                   {copy.formatSiteCount(orderedSites.length, maxSites)}
                 </span>
                 <div className={styles.listHeadActions}>
-                  <button type="button" className={styles.addBtn} onClick={() => setCsvImportOpen(true)} title={copy.csvImport.title} aria-label={copy.csvImport.title}>
+                  <button type="button" className={styles.addBtn} onClick={() => setCsvImportOpen(true)} title={copy.csvImport.title} aria-label={copy.csvImport.title} disabled={refreshingPositions || Boolean(draft)}>
                     <Icon icon="mdi:file-delimited-outline" aria-hidden />
                     CSV
                   </button>
-                  <button type="button" className={styles.addBtn} onClick={startCreate} disabled={!canAddSite} title={atSiteLimit ? copy.formatLimitTooltip(maxSites) : undefined}>
+                  <button type="button" className={styles.addBtn} onClick={handleRefreshAllPositions} title={copy.refreshAllTitle} aria-label={copy.refreshAllTitle} disabled={refreshingPositions || Boolean(draft) || orderedSites.length === 0}>
+                    <Icon icon={refreshingPositions ? "mdi:loading" : "mdi:crosshairs-gps"} className={refreshingPositions ? styles.spinning : undefined} aria-hidden />
+                    {refreshingPositions ? copy.refreshingAll : copy.refreshAll}
+                  </button>
+                  <button type="button" className={styles.addBtn} onClick={startCreate} disabled={!canAddSite || refreshingPositions} title={atSiteLimit ? copy.formatLimitTooltip(maxSites) : undefined}>
                     <Icon icon="mdi:plus" aria-hidden />
                     {copy.add}
                   </button>
                 </div>
               </div>
+
+              {orderedSites.length > 0 ? <div className={styles.searchWrap}>
+                  <Icon icon="mdi:magnify" className={styles.searchIcon} aria-hidden />
+                  <input type="search" className={styles.searchInput} value={listSearch} onChange={event => {
+                setListSearch(event.target.value);
+                setListPage(1);
+              }} placeholder={copy.searchPlaceholder} aria-label={copy.searchAria} />
+                  {listSearch ? <button type="button" className={styles.searchClear} onClick={() => {
+                setListSearch("");
+                setListPage(1);
+              }} aria-label={common.close}>
+                      <Icon icon="mdi:close" aria-hidden />
+                    </button> : null}
+                </div> : null}
 
               {atSiteLimit ? <div className={styles.sitesLimitHint} role="note">
                   <span className={styles.sitesLimitProBadge}>Pro</span>
@@ -424,23 +553,31 @@ export default function SitesModal({
               {orderedSites.length === 0 ? <div className={styles.emptyState}>
                   <Icon icon="mdi:map-marker-off-outline" className={styles.emptyIcon} aria-hidden />
                   <p>{copy.emptyState}</p>
-                </div> : <DndContext sensors={sensors} collisionDetection={closestCenter} onDragStart={handleDragStart} onDragEnd={handleDragEnd} onDragCancel={handleDragCancel}>
-                  <SortableContext items={sortableSiteIds} strategy={verticalListSortingStrategy}>
-                    <ul className={styles.siteList}>
-                      {orderedSites.map(site => <SortableSiteRow key={getSiteId(site)} site={site} isActive={selectedId === site.id} canReorder={canReorder} onEdit={startEdit} copy={copy} />)}
-                    </ul>
-                  </SortableContext>
-                  <DragOverlay dropAnimation={{
-                duration: 180,
-                easing: "ease-out"
-              }}>
-                    {activeDragSite ? <div className={styles.siteDragOverlay}>
-                        <div className={styles.siteListItem}>
-                          <SiteListCard site={activeDragSite} isActive={false} copy={copy} />
-                        </div>
-                      </div> : null}
-                  </DragOverlay>
-                </DndContext>}
+                </div> : filteredSites.length === 0 ? <div className={styles.emptyState}>
+                  <Icon icon="mdi:magnify" className={styles.emptyIcon} aria-hidden />
+                  <p>{copy.noSearchResults}</p>
+                </div> : <>
+                  <div className={styles.listScroll}>
+                    <DndContext sensors={sensors} collisionDetection={closestCenter} onDragStart={handleDragStart} onDragEnd={handleDragEnd} onDragCancel={handleDragCancel}>
+                      <SortableContext items={sortableSiteIds} strategy={verticalListSortingStrategy}>
+                        <ul className={styles.siteList}>
+                          {pagedSites.map(site => <SortableSiteRow key={getSiteId(site)} site={site} isActive={selectedId === site.id} canReorder={canReorder} onEdit={refreshingPositions ? undefined : startEdit} copy={copy} />)}
+                        </ul>
+                      </SortableContext>
+                      <DragOverlay dropAnimation={{
+                    duration: 180,
+                    easing: "ease-out"
+                  }}>
+                        {activeDragSite ? <div className={styles.siteDragOverlay}>
+                            <div className={styles.siteListItem}>
+                              <SiteListCard site={activeDragSite} isActive={false} copy={copy} />
+                            </div>
+                          </div> : null}
+                      </DragOverlay>
+                    </DndContext>
+                  </div>
+                  <SitesPager page={safeListPage} totalPages={listTotalPages} rangeLabel={copy.formatRange(listRangeStart, listRangeEnd, filteredSites.length)} prevLabel={common.prevPage} nextLabel={common.nextPage} onPageChange={setListPage} disabled={refreshingPositions} />
+                </>}
             </div>
 
             {draft ? <div className={styles.editorPanel}>
@@ -467,10 +604,10 @@ export default function SitesModal({
         </div>
 
         <footer className={styles.footer}>
-          <button type="button" className={styles.cancelBtn} onClick={onClose} disabled={saving}>
+          <button type="button" className={styles.cancelBtn} onClick={onClose} disabled={saving || refreshingPositions}>
             {common.cancel}
           </button>
-          <button type="button" className={styles.saveBtn} onClick={handleSave} disabled={saving || Boolean(draft)} title={draft ? copy.saveBlockedTitle : undefined}>
+          <button type="button" className={styles.saveBtn} onClick={handleSave} disabled={saving || refreshingPositions || Boolean(draft)} title={draft ? copy.saveBlockedTitle : undefined}>
             {saving ? common.saving : common.save}
           </button>
         </footer>

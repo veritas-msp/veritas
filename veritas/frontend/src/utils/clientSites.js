@@ -140,6 +140,12 @@ export function buildSiteAddress(site) {
   }
   return local;
 }
+export function siteMatchesQuery(site, query) {
+  const needle = String(query || "").trim().toLowerCase();
+  if (!needle) return true;
+  const haystack = [getSiteDisplayName(site), site?.addressStreet, site?.addressPostalCode, site?.addressCity, site?.addressCountry, site?.notes, buildSiteAddress(site)].map(part => String(part || "").toLowerCase());
+  return haystack.some(part => part.includes(needle));
+}
 export function buildSiteGeocodeQuery(site) {
   const normalized = typeof site === "object" ? site : normalizeClientSite(site);
   if (!normalized) return "";
@@ -197,6 +203,16 @@ export async function geocodeSiteAddress(site) {
     latitude: Number(hit.lat),
     longitude: Number(hit.lon)
   };
+}
+export function siteHasCoordinates(site) {
+  return Number.isFinite(Number(site?.latitude)) && Number.isFinite(Number(site?.longitude));
+}
+export function canGeocodeSite(site, {
+  onlyMissing = false
+} = {}) {
+  if (!buildSiteGeocodeQuery(site)) return false;
+  if (onlyMissing && siteHasCoordinates(site)) return false;
+  return true;
 }
 export function buildStaticMapUrl(latitude, longitude, {
   width = 280,

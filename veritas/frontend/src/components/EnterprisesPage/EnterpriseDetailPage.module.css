@@ -1772,6 +1772,117 @@
   width: 100%;
 }
 
+.sitesToolbar {
+  position: relative;
+  display: flex;
+  align-items: center;
+  margin: 0 0 0.55rem;
+}
+
+.sitesSearchIcon {
+  position: absolute;
+  left: 0.5rem;
+  font-size: 0.9rem;
+  color: var(--msp-muted-light, #94a3b8);
+  pointer-events: none;
+}
+
+.sitesSearchInput {
+  width: 100%;
+  height: 32px;
+  padding: 0.3rem 1.75rem 0.3rem 1.75rem;
+  border: 1px solid var(--msp-border-light, #eef2f7);
+  border-radius: 8px;
+  background: var(--msp-surface, #fff);
+  color: var(--msp-text, #0f1c2e);
+  font-size: 0.74rem;
+}
+
+.sitesSearchInput:focus,
+.sitesSearchInput:focus-visible {
+  outline: none;
+  border-color: var(--msp-accent, #2b5fab);
+  box-shadow: 0 0 0 3px rgba(43, 95, 171, 0.12);
+}
+
+.sitesSearchClear {
+  position: absolute;
+  right: 0.25rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--msp-muted, #5c6b82);
+  cursor: pointer;
+}
+
+.sitesSearchClear:hover {
+  background: var(--msp-accent-soft, rgba(43, 95, 171, 0.08));
+  color: var(--msp-text, #0f1c2e);
+}
+
+.sitesEmptySearch {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.3rem;
+  padding: 0.85rem 0.5rem;
+  text-align: center;
+  color: var(--msp-muted, #5c6b82);
+  font-size: 0.74rem;
+}
+
+.sitesEmptySearch p {
+  margin: 0;
+}
+
+.sitesPager {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  margin-top: 0.55rem;
+}
+
+.sitesPagerBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 1px solid var(--msp-border-light, #eef2f7);
+  border-radius: 7px;
+  background: var(--msp-surface, #fff);
+  color: var(--msp-text, #0f1c2e);
+  cursor: pointer;
+}
+
+.sitesPagerBtn:hover:not(:disabled) {
+  border-color: var(--msp-accent, #2b5fab);
+  color: var(--msp-accent, #2b5fab);
+}
+
+.sitesPagerBtn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.sitesPagerInfo {
+  min-width: 6.5rem;
+  text-align: center;
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: var(--msp-muted, #5c6b82);
+  font-variant-numeric: tabular-nums;
+}
+
 .sitesFilterBar {
   display: flex;
   flex-wrap: wrap;

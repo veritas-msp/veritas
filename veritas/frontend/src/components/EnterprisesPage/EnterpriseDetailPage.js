@@ -18,7 +18,6 @@ import API_BASE_URL from "../../config";
 import SmartTooltip from "../SmartTooltip";
 import PlanningEventModalBridge from "../PlanningPage/PlanningEventModalBridge";
 import SitesModal from "./SitesModal";
-import SitesCsvImportModal from "./SitesCsvImportModal";
 import DomainsModal from "./DomainsModal";
 import DomainsConfigModal from "./DomainsConfigModal";
 import DomainSolutionPickerModal from "./DomainSolutionPickerModal";
@@ -38,7 +37,7 @@ import { exportReversibilityFolder } from "./exportReversibilityDossier";
 import EnterpriseVaultPanel from "./EnterpriseVaultPanel";
 import { getEnterpriseVaultCopy } from "./enterpriseVaultI18n";
 import { splitClientAddress, buildClientAddress, emptyPrimaryContact, mapContactToPrimary, pickPrimaryContact, normalizePrimaryContact, buildAdditiveMembershipsForEnterprise, isPrimaryContactPoste, isContactPrimaryForClient, sortContactsPrimaryFirst } from "./enterpriseFormUtils";
-import { buildSiteAddress, formatSitesForLog, getSiteDisplayName, getSiteId, getSiteLocationValue, normalizeClientSites, serializeSitesForCompare } from "../../utils/clientSites";
+import { buildSiteAddress, formatSitesForLog, getSiteDisplayName, getSiteId, getSiteLocationValue, normalizeClientSites, serializeSitesForCompare, siteMatchesQuery } from "../../utils/clientSites";
 import { normalizeServeurLieList } from "./backupJobUtils";
 import SiteMapPreview from "./SiteMapPreview";
 import { normalizeLegalIdentifier, LEGAL_IDENTIFIER_LABEL } from "../../utils/siret";
@@ -57,6 +56,7 @@ import { formatRelativeFrench } from "../EquipementPage/checkmkMonitoringUtils";
 import { useAuthContext } from "../../contexts/AuthContext";
 import { usePermissions } from "../../contexts/PermissionsContext";
 import { useAppLocale } from "../../hooks/useAppGeneralSettings";
+import { useCommonCopy } from "../../hooks/useCommonCopy";
 import { useVeritasEdition } from "../../hooks/useVeritasEdition";
 import { getEnterpriseDetailCopy, getContractStatusDetail, getContractTypeLabel, getPrestationCategoryLabel, getTicketStatusLabel, getEventTypeLabels, getCampaignTypeLabel, getCampaignStatusLabel, interpolate } from "./enterpriseDetailI18n";
 import ProFeatureBadge from "../Misc/ProFeature/ProFeatureBadge";
@@ -136,6 +136,7 @@ function SidebarExpandToggle({
       </button>
     </div>;
 }
+const SITES_PAGE_SIZE = 5;
 function extractAntivirusFromModules(modulesData) {
   const equipements = modulesData?.equipements;
   const antivirus = equipements?.Antivirus;
@@ -254,6 +255,7 @@ export default function ClientDetailPage({
   } = useParams();
   const navigate = useNavigate();
   const locale = useAppLocale();
+  const common = useCommonCopy();
   const copy = useMemo(() => getEnterpriseDetailCopy(locale), [locale]);
   const vaultCopy = useMemo(() => getEnterpriseVaultCopy(locale), [locale]);
   const campaignsCopy = useMemo(() => getCybersecuritePageCopy(locale).campaigns, [locale]);
@@ -317,7 +319,6 @@ export default function ClientDetailPage({
   const [eventModalOpen, setEventModalOpen] = useState(false);
   const [editingEvent, setEditingEvent] = useState(null);
   const [sitesModalOpen, setSitesModalOpen] = useState(false);
-  const [sitesCsvImportOpen, setSitesCsvImportOpen] = useState(false);
   const [equipmentSearchQuery, setEquipmentSearchQuery] = useState("");
   const [equipmentResultCount, setEquipmentResultCount] = useState(0);
   const [hardwareEquipmentTotalCount, setHardwareEquipmentTotalCount] = useState(0);
@@ -333,7 +334,8 @@ export default function ClientDetailPage({
   const [creditsExpanded, setCreditsExpanded] = useState(false);
   const [slaNow, setSlaNow] = useState(() => Date.now());
   const [contactsExpanded, setContactsExpanded] = useState(false);
-  const [sitesExpanded, setSitesExpanded] = useState(false);
+  const [sitesSearch, setSitesSearch] = useState("");
+  const [sitesPage, setSitesPage] = useState(1);
   const [contactsSectionExpanded, setContactsSectionExpanded] = useState(false);
   const [sitesSectionExpanded, setSitesSectionExpanded] = useState(false);
   const [notesSectionExpanded, setNotesSectionExpanded] = useState(false);
@@ -2632,6 +2634,26 @@ export default function ClientDetailPage({
   const visibleContacts = contactsExpanded ? activeContacts : activeContacts.slice(0, 1);
   const hasMoreContacts = activeContacts.length > 1;
   const clientSites = useMemo(() => normalizeClientSites(formData.sites), [formData.sites]);
+  const filteredSites = useMemo(() => {
+    const query = sitesSearch.trim();
+    if (!query) return clientSites;
+    return clientSites.filter(site => siteMatchesQuery(site, query));
+  }, [clientSites, sitesSearch]);
+  const sitesTotalPages = Math.max(1, Math.ceil(filteredSites.length / SITES_PAGE_SIZE));
+  const safeSitesPage = Math.min(sitesPage, sitesTotalPages);
+  const pagedSites = useMemo(() => {
+    const start = (safeSitesPage - 1) * SITES_PAGE_SIZE;
+    return filteredSites.slice(start, start + SITES_PAGE_SIZE);
+  }, [filteredSites, safeSitesPage]);
+  const sitesRangeStart = filteredSites.length === 0 ? 0 : (safeSitesPage - 1) * SITES_PAGE_SIZE + 1;
+  const sitesRangeEnd = Math.min(safeSitesPage * SITES_PAGE_SIZE, filteredSites.length);
+  useEffect(() => {
+    setSitesPage(page => Math.min(page, sitesTotalPages));
+  }, [sitesTotalPages]);
+  useEffect(() => {
+    setSitesSearch("");
+    setSitesPage(1);
+  }, [client?.id]);
   const enterpriseGuideSteps = useMemo(() => {
     const steps = getEnterpriseDetailGuideSteps({
       expandInfo: () => setInfoExpanded(true),
@@ -2650,8 +2672,6 @@ export default function ClientDetailPage({
     if (hasOrdinateurs) return steps;
     return steps.filter(step => step.target !== '[data-guide="enterprise-equipment-stats"]');
   }, [equipmentTotals, locale]);
-  const visibleSites = sitesExpanded ? clientSites : clientSites.slice(0, 3);
-  const hasMoreSites = clientSites.length > 3;
   const handlePhotoUpload = () => {
     setPhotoModalOpen(true);
   };
@@ -2686,10 +2706,6 @@ export default function ClientDetailPage({
       }));
       throw error;
     }
-  };
-  const handleSitesCsvImport = async importedSites => {
-    await handleSitesSave([...(formData.sites || []), ...importedSites]);
-    setSitesCsvImportOpen(false);
   };
   const handleOpenLogDetails = log => {
     setSelectedLog(log);
@@ -3498,45 +3514,68 @@ export default function ClientDetailPage({
               </button>
               {sitesSectionExpanded && <div className={styles.sidebarBody} id="enterprise-sidebar-sites">
                 <div className={styles.sidebarBodyActions}>
-                  {canManageSites ? <>
-                    <SmartTooltip content={copy.importSites}>
-                      <button type="button" className={styles.editInfoButton} onClick={() => setSitesCsvImportOpen(true)} aria-label={copy.importSites}>
-                        <Icon icon="mdi:file-delimited-outline" />
-                      </button>
-                    </SmartTooltip>
-                    <SmartTooltip content={copy.manageSites}>
+                  {canManageSites ? <SmartTooltip content={copy.manageSites}>
                     <button type="button" className={styles.editInfoButton} onClick={() => setSitesModalOpen(true)} aria-label={copy.manageSites}>
                       <FaPencilAlt />
                     </button>
-                  </SmartTooltip>
-                  </> : null}
+                  </SmartTooltip> : null}
                 </div>
                 {(formData.sites || []).length === 0 ? <div className={styles.emptyState}>
                     <Icon icon="mdi:map-marker-outline" className={styles.emptyIcon} />
                     <h5>{copy.noSites}</h5>
                   </div> : <>
-                  <div className={styles.sitesDisplayCards}>
-                    {visibleSites.map(site => {
-                      const address = buildSiteAddress(site);
-                      const siteValue = getSiteLocationValue(site);
-                      const isActive = activeSiteFilter === siteValue;
-                      return <button type="button" key={getSiteId(site)} className={`${styles.sitePreviewCard} ${styles.siteFilterButton} ${isActive ? styles.siteFilterButtonActive : ""}`} onClick={() => setActiveSiteFilter(isActive ? null : siteValue)} title={interpolate(copy.filterSiteTitle, {
-                        name: getSiteDisplayName(site)
-                      })}>
-                            <div className={styles.sitePreviewMain}>
-                              <strong className={styles.sitePreviewName}>
-                                {getSiteDisplayName(site)}
-                                {site.isPrimary ? <span className={styles.sitePreviewPrimary}>{copy.sitePrimary}</span> : null}
-                              </strong>
-                              {address ? <span className={styles.sitePreviewAddress}>{address}</span> : null}
-                            </div>
-                            <div className={styles.sitePreviewMap} onClick={event => event.stopPropagation()}>
-                              <SiteMapPreview latitude={site.latitude} longitude={site.longitude} label={getSiteDisplayName(site)} address={address} compact />
-                            </div>
-                          </button>;
-                    })}
+                  <div className={styles.sitesToolbar}>
+                    <Icon icon="mdi:magnify" className={styles.sitesSearchIcon} aria-hidden />
+                    <input type="search" className={styles.sitesSearchInput} value={sitesSearch} onChange={event => {
+                    setSitesSearch(event.target.value);
+                    setSitesPage(1);
+                  }} placeholder={copy.searchSites} aria-label={copy.searchSitesAria} />
+                    {sitesSearch ? <button type="button" className={styles.sitesSearchClear} onClick={() => {
+                    setSitesSearch("");
+                    setSitesPage(1);
+                  }} aria-label={common.close}>
+                        <Icon icon="mdi:close" aria-hidden />
+                      </button> : null}
                   </div>
-                  {hasMoreSites && <SidebarExpandToggle expanded={sitesExpanded} onClick={() => setSitesExpanded(prev => !prev)} panelStyles={styles} copy={copy} />}
+                  {filteredSites.length === 0 ? <div className={styles.sitesEmptySearch}>
+                      <Icon icon="mdi:magnify" aria-hidden />
+                      <p>{copy.noSiteResults}</p>
+                    </div> : <>
+                      <div className={styles.sitesDisplayCards}>
+                        {pagedSites.map(site => {
+                    const address = buildSiteAddress(site);
+                    const siteValue = getSiteLocationValue(site);
+                    const isActive = activeSiteFilter === siteValue;
+                    return <button type="button" key={getSiteId(site)} className={`${styles.sitePreviewCard} ${styles.siteFilterButton} ${isActive ? styles.siteFilterButtonActive : ""}`} onClick={() => setActiveSiteFilter(isActive ? null : siteValue)} title={interpolate(copy.filterSiteTitle, {
+                      name: getSiteDisplayName(site)
+                    })}>
+                              <div className={styles.sitePreviewMain}>
+                                <strong className={styles.sitePreviewName}>
+                                  {getSiteDisplayName(site)}
+                                  {site.isPrimary ? <span className={styles.sitePreviewPrimary}>{copy.sitePrimary}</span> : null}
+                                </strong>
+                                {address ? <span className={styles.sitePreviewAddress}>{address}</span> : null}
+                              </div>
+                              <div className={styles.sitePreviewMap} onClick={event => event.stopPropagation()}>
+                                <SiteMapPreview latitude={site.latitude} longitude={site.longitude} label={getSiteDisplayName(site)} address={address} compact />
+                              </div>
+                            </button>;
+                  })}
+                      </div>
+                      {sitesTotalPages > 1 ? <div className={styles.sitesPager}>
+                          <button type="button" className={styles.sitesPagerBtn} onClick={() => setSitesPage(safeSitesPage - 1)} disabled={safeSitesPage <= 1} aria-label={common.prevPage} title={common.prevPage}>
+                            <Icon icon="mdi:chevron-left" aria-hidden />
+                          </button>
+                          <span className={styles.sitesPagerInfo}>{interpolate(copy.sitesRange, {
+                      start: String(sitesRangeStart),
+                      end: String(sitesRangeEnd),
+                      total: String(filteredSites.length)
+                    })}</span>
+                          <button type="button" className={styles.sitesPagerBtn} onClick={() => setSitesPage(safeSitesPage + 1)} disabled={safeSitesPage >= sitesTotalPages} aria-label={common.nextPage} title={common.nextPage}>
+                            <Icon icon="mdi:chevron-right" aria-hidden />
+                          </button>
+                        </div> : null}
+                    </>}
                   </>}
               </div>}
             </section>
@@ -3663,7 +3702,6 @@ export default function ClientDetailPage({
 
       {}
       {sitesModalOpen && <SitesModal sites={formData.sites || []} onSave={handleSitesSave} onClose={() => setSitesModalOpen(false)} />}
-      {sitesCsvImportOpen ? <SitesCsvImportModal existingSites={formData.sites || []} onConfirm={handleSitesCsvImport} onClose={() => setSitesCsvImportOpen(false)} /> : null}
 
       {}
       <DomainsModal isOpen={domainsModalOpen} onClose={() => setDomainsModalOpen(false)} domains={domainsData} onConfigure={() => {

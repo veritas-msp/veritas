@@ -4,6 +4,13 @@ const SITES_MODAL_COPY = {
     title: "Lieux & implantations",
     subtitle: "Adresses et position sur la carte.",
     add: "Ajouter",
+    refreshAll: "Actualiser",
+    refreshAllTitle: "Actualiser toutes les positions sur la carte",
+    refreshingAll: "Actualisation…",
+    searchPlaceholder: "Rechercher un lieu…",
+    searchAria: "Rechercher un lieu",
+    noSearchResults: "Aucun lieu ne correspond à la recherche.",
+    range: "{start}–{end} sur {total}",
     emptyState: "Aucun lieu enregistré",
     placeholder: "Sélectionnez un lieu ou créez-en un nouveau pour modifier l'adresse et afficher la carte.",
     newSite: "Nouveau lieu",
@@ -86,13 +93,24 @@ const SITES_MODAL_COPY = {
       geocodeFailed: "Impossible de localiser cette adresse.",
       finishEditFirst: "Enregistrez ou annulez la modification en cours.",
       saveFailed: "Impossible d'enregistrer les lieux.",
-      imported: "{count} lieu(x) ajouté(s)."
+      imported: "{count} lieu(x) ajouté(s).",
+      positionsRefreshNone: "Aucune adresse à localiser.",
+      positionsRefreshed: "{count} position(s) mise(s) à jour.",
+      positionsRefreshPartial: "{ok} position(s) mise(s) à jour, {failed} échec(s).",
+      positionsRefreshFailed: "Impossible de localiser les adresses."
     }
   },
   en: {
     title: "Sites & locations",
     subtitle: "Addresses and map position.",
     add: "Add",
+    refreshAll: "Refresh",
+    refreshAllTitle: "Refresh all map positions",
+    refreshingAll: "Refreshing…",
+    searchPlaceholder: "Search a location…",
+    searchAria: "Search a location",
+    noSearchResults: "No location matches this search.",
+    range: "{start}–{end} of {total}",
     emptyState: "No location saved",
     placeholder: "Select a location or create a new one to edit the address and view the map.",
     newSite: "New location",
@@ -175,13 +193,24 @@ const SITES_MODAL_COPY = {
       geocodeFailed: "Unable to locate this address.",
       finishEditFirst: "Save or cancel the current edit first.",
       saveFailed: "Unable to save locations.",
-      imported: "{count} location(s) added."
+      imported: "{count} location(s) added.",
+      positionsRefreshNone: "No address to locate.",
+      positionsRefreshed: "{count} position(s) updated.",
+      positionsRefreshPartial: "{ok} position(s) updated, {failed} failed.",
+      positionsRefreshFailed: "Unable to locate the addresses."
     }
   },
   de: {
     title: "Standorte & Niederlassungen",
     subtitle: "Adressen und Position auf der Karte.",
     add: "Hinzufügen",
+    refreshAll: "Aktualisieren",
+    refreshAllTitle: "Alle Kartenpositionen aktualisieren",
+    refreshingAll: "Aktualisierung…",
+    searchPlaceholder: "Standort suchen…",
+    searchAria: "Standort suchen",
+    noSearchResults: "Kein Standort entspricht der Suche.",
+    range: "{start}–{end} von {total}",
     emptyState: "Kein Standort gespeichert",
     placeholder: "Wählen Sie einen Standort oder erstellen Sie einen neuen, um die Adresse zu bearbeiten und die Karte anzuzeigen.",
     newSite: "Neuer Standort",
@@ -264,13 +293,24 @@ const SITES_MODAL_COPY = {
       geocodeFailed: "Diese Adresse konnte nicht lokalisiert werden.",
       finishEditFirst: "Speichern oder brechen Sie die laufende Bearbeitung ab.",
       saveFailed: "Standorte konnten nicht gespeichert werden.",
-      imported: "{count} Standort(e) hinzugefügt."
+      imported: "{count} Standort(e) hinzugefügt.",
+      positionsRefreshNone: "Keine Adresse zum Lokalisieren.",
+      positionsRefreshed: "{count} Position(en) aktualisiert.",
+      positionsRefreshPartial: "{ok} Position(en) aktualisiert, {failed} Fehler.",
+      positionsRefreshFailed: "Adressen konnten nicht lokalisiert werden."
     }
   },
   it: {
     title: "Sedi e implantazioni",
     subtitle: "Indirizzi e posizione sulla mappa.",
     add: "Aggiungi",
+    refreshAll: "Aggiorna",
+    refreshAllTitle: "Aggiorna tutte le posizioni sulla mappa",
+    refreshingAll: "Aggiornamento…",
+    searchPlaceholder: "Cerca una sede…",
+    searchAria: "Cerca una sede",
+    noSearchResults: "Nessuna sede corrisponde alla ricerca.",
+    range: "{start}–{end} di {total}",
     emptyState: "Nessuna sede registrata",
     placeholder: "Seleziona una sede o creane una nuova per modificare l'indirizzo e visualizzare la mappa.",
     newSite: "Nuova sede",
@@ -353,13 +393,24 @@ const SITES_MODAL_COPY = {
       geocodeFailed: "Impossibile localizzare questo indirizzo.",
       finishEditFirst: "Salva o annulla la modifica in corso.",
       saveFailed: "Impossibile salvare le sedi.",
-      imported: "{count} sede/i aggiunta/e."
+      imported: "{count} sede/i aggiunta/e.",
+      positionsRefreshNone: "Nessun indirizzo da localizzare.",
+      positionsRefreshed: "{count} posizione/i aggiornata/e.",
+      positionsRefreshPartial: "{ok} posizione/i aggiornata/e, {failed} errore/i.",
+      positionsRefreshFailed: "Impossibile localizzare gli indirizzi."
     }
   },
   es: {
     title: "Ubicaciones e implantaciones",
     subtitle: "Direcciones y posición en el mapa.",
     add: "Añadir",
+    refreshAll: "Actualizar",
+    refreshAllTitle: "Actualizar todas las posiciones en el mapa",
+    refreshingAll: "Actualizando…",
+    searchPlaceholder: "Buscar una ubicación…",
+    searchAria: "Buscar una ubicación",
+    noSearchResults: "Ninguna ubicación coincide con la búsqueda.",
+    range: "{start}–{end} de {total}",
     emptyState: "Ninguna ubicación registrada",
     placeholder: "Seleccione una ubicación o cree una nueva para editar la dirección y ver el mapa.",
     newSite: "Nueva ubicación",
@@ -442,7 +493,11 @@ const SITES_MODAL_COPY = {
       geocodeFailed: "No se pudo localizar esta dirección.",
       finishEditFirst: "Guarde o cancele la edición en curso.",
       saveFailed: "No se pudieron guardar las ubicaciones.",
-      imported: "{count} ubicación(es) añadida(s)."
+      imported: "{count} ubicación(es) añadida(s).",
+      positionsRefreshNone: "Ninguna dirección que localizar.",
+      positionsRefreshed: "{count} posición(es) actualizada(s).",
+      positionsRefreshPartial: "{ok} posición(es) actualizada(s), {failed} error(es).",
+      positionsRefreshFailed: "No se pudieron localizar las direcciones."
     }
   }
 };
@@ -467,6 +522,11 @@ export function getSitesModalCopy(locale) {
     ...t,
     defaultSiteCountry: t.editor.defaultCountry || t.editor.countryPlaceholder,
     formatSiteCount: (count, max) => formatSiteCount(t, count, max),
+    formatRange: (start, end, total) => interpolate(t.range, {
+      start: String(start),
+      end: String(end),
+      total: String(total)
+    }),
     formatReorderAria: name => interpolate(t.drag.reorderAria, {
       name
     }),
