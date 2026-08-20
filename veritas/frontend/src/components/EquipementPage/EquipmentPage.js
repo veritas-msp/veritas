@@ -17,7 +17,8 @@ import { getEquipmentFirewallBrandId } from "./constants/firewallBrandIconMap";
 import RouterBrandIcon, { getEquipmentRouterBrandId } from "./constants/routerBrandIconMap";
 import ServerBrandIcon, { getEquipmentServerBrandId } from "./constants/serverBrandIconMap";
 import EquipmentBrandIcon from "./constants/EquipmentBrandIcon";
-import { normalizeServerType, storageTypeToLegacyType } from "./equipmentFormConfig";
+import { canonicalizeComputerType, normalizeServerType, storageTypeToLegacyType, getComputerTypeLabel } from "./equipmentFormConfig";
+import { getFormFields } from "./equipmentFormFieldsI18n";
 import { getServerRemoteAccessActionIcon, getServerRemoteAccessSolutionDef, hasServerRemoteAccessConfigured, openServerRemoteAccess, readServerRemoteAccess } from "./constants/serverRemoteAccessUtils";
 import { isSynologyStorage, hasQuickConnectConfigured as hasSynologyQuickConnectConfigured, getQuickConnectValue as getSynologyQuickConnectValue, openQuickConnectUrl } from "./synologyEquipmentUtils";
 import EquipmentFormModal from "./EquipmentFormModal";
@@ -48,6 +49,11 @@ import { getEquipmentFormOptionsCopy, getRoleOptionLabel } from "./equipmentForm
 import EquipmentHaCell from "./EquipmentHaCell";
 import { buildHaPairColorMap, compareFirewallHaPairs, getFirewallHaSortValue, getFirewallHaState } from "./equipmentHaUtils";
 import { getExpirationStatus, getExpirationStatusColor, getMaintenanceLicenseExpiration } from "./constants/firewallLicenceUtils";
+function formatComputerTypeDisplay(value, locale) {
+  const key = canonicalizeComputerType(value);
+  if (!key) return "";
+  return getFormFields(locale).typeOptions?.computer?.[key]?.label || getComputerTypeLabel(value) || "";
+}
 const toDisplayEquipmentType = type => {
   if (type === "NAS" || type === "Stockage") return "Storage";
   if (type === "Serveurs" || type === "Server") return "Servers";
@@ -270,6 +276,36 @@ const patchEquipmentFromFormData = (equipment, formData, moduleKey) => {
     patched.modeHA = formData.modeHA !== undefined ? !!formData.modeHA : equipment.modeHA;
     patched.roleHA = formData.roleHA ?? equipment.roleHA;
     patched.serverHAName = formData.serverHAName ?? equipment.serverHAName;
+  }
+  if (type === "Ordinateurs") {
+    if (formData.computerType !== undefined) {
+      raw.type = formData.computerType;
+      patched.computerType = formData.computerType;
+    }
+    if (formData.vlan !== undefined) raw.vlan = formData.vlan;
+    if (formData.manufacturer !== undefined) {
+      setRawField(raw, "fabricant", formData.manufacturer, ["marque", "manufacturer"]);
+    }
+    if (formData.model !== undefined) setRawField(raw, "modele", formData.model, ["model"]);
+    if (formData.serial !== undefined) setRawField(raw, "numeroSerie", formData.serial, ["serial"]);
+    if (formData.systeme !== undefined) raw.systeme = formData.systeme;
+    if (formData.domaine !== undefined) raw.domaine = formData.domaine;
+    if (formData.netbios !== undefined) raw.netbios = formData.netbios;
+    if (formData.mac !== undefined) setRawField(raw, "mac", formData.mac, ["adresseMac"]);
+    if (formData.processeur !== undefined) raw.processeur = formData.processeur;
+    if (formData.memoire !== undefined) raw.memoire = formData.memoire;
+    if (formData.commentaire !== undefined) raw.commentaire = formData.commentaire;
+    patched.vlan = formData.vlan ?? equipment.vlan;
+    patched.manufacturer = formData.manufacturer ?? equipment.manufacturer;
+    patched.model = formData.model ?? equipment.model;
+    patched.serial = formData.serial ?? equipment.serial;
+    patched.systeme = formData.systeme ?? equipment.systeme;
+    patched.domaine = formData.domaine ?? equipment.domaine;
+    patched.netbios = formData.netbios ?? equipment.netbios;
+    patched.mac = formData.mac ?? equipment.mac;
+    patched.processeur = formData.processeur ?? equipment.processeur;
+    patched.memoire = formData.memoire ?? equipment.memoire;
+    patched.commentaire = formData.commentaire ?? equipment.commentaire;
   }
   if (type === "NAS") {
     if (formData.storageType !== undefined || formData.type !== undefined) {
@@ -566,6 +602,10 @@ function buildEquipmentBaseColumns(locale, pageCopy, type) {
       label: label("agentStatus"),
       key: "agentStatus"
     },
+    computerType: {
+      label: label("computerType"),
+      key: "computerType"
+    },
     role: {
       label: label("role"),
       key: "role"
@@ -630,8 +670,9 @@ const INTERNET_COLUMN_KEYS = ['name', 'client', 'location', 'ip', 'internetType'
 const INTERNET_COLUMN_LABELS = {
   internetType: 'Connection type'
 };
-const ORDINATEUR_COLUMN_KEYS = ['name', 'client', 'location', 'ip', 'systeme', 'domaine', 'agentStatus', 'mac'];
+const ORDINATEUR_COLUMN_KEYS = ['name', 'client', 'computerType', 'location', 'ip', 'systeme', 'domaine', 'agentStatus', 'mac'];
 const ORDINATEUR_COLUMN_LABELS = {
+  computerType: 'Type',
   systeme: 'OS',
   domaine: 'Domaine',
   agentStatus: 'Agent'
@@ -672,7 +713,7 @@ const EMBEDDED_TYPE_COLUMNS = {
   Internet: ["name", "ip", "location", "ha", "fournisseur", "debit", "mapping"],
   Firewalls: ["name", "ip", "location", "ha", "model", "serial", "monitoring", "mapping"],
   Servers: ["name", "role", "ip", "location", "ha", "systeme", "monitoring", "mapping"],
-  Ordinateurs: ["name", "ip", "location", "systeme", "domaine", "agentStatus", "mapping"],
+  Ordinateurs: ["name", "computerType", "ip", "location", "systeme", "domaine", "agentStatus", "mapping"],
   Storage: ["name", "ip", "location", "ha", "capacite", "monitoring", "mapping"],
   Switch: ["name", "ip", "location", "model", "monitoring", "mapping"],
   BorneWifi: ["name", "ip", "location", "model", "monitoring", "mapping"],
@@ -1559,6 +1600,9 @@ const EquipmentPage = forwardRef(function EquipmentPage({
       const os = equipment.systeme || equipment.rawData?.systeme || raw;
       return os != null ? String(os).toLowerCase() : "";
     }
+    if (colKey === "computerType") {
+      return formatComputerTypeDisplay(equipment.computerType || equipment.rawData?.type || raw, locale).toLowerCase();
+    }
     if (typeof raw === "number" && !Number.isNaN(raw)) return raw;
     return raw != null ? String(raw).toLowerCase() : "";
   };
@@ -2392,6 +2436,8 @@ const EquipmentPage = forwardRef(function EquipmentPage({
         value = getEquipmentMac(equipment) || value;
       } else if (col.key === 'systeme') {
         value = equipment.systeme || equipment.rawData?.systeme || value;
+      } else if (col.key === 'computerType') {
+        value = formatComputerTypeDisplay(equipment.computerType || equipment.rawData?.type || value, locale);
       } else if (col.key === 'role') {
         value = formatRoles(equipment.role || value);
       } else {
@@ -2998,6 +3044,9 @@ const EquipmentPage = forwardRef(function EquipmentPage({
                               return <td key={col.key}>
                                       <RmmAgentStatusBadge equipment={equipment} compact />
                                     </td>;
+                            } else if (col.key === 'computerType') {
+                              const computerTypeLabel = formatComputerTypeDisplay(equipment.computerType || equipment.rawData?.type || value, locale);
+                              return <td key={col.key}>{computerTypeLabel || '-'}</td>;
                             } else if (col.key === 'systeme') {
                               const osLabel = formatValue(equipment.systeme || equipment.rawData?.systeme || value);
                               const osIconName = getOsIconName(osLabel, {
@@ -3167,6 +3216,8 @@ const EquipmentPage = forwardRef(function EquipmentPage({
                               displayValue = formatClientDisplay(value);
                             } else if (col.key === 'systeme') {
                               displayValue = formatValue(equipment.systeme || equipment.rawData?.systeme || value);
+                            } else if (col.key === 'computerType') {
+                              displayValue = formatComputerTypeDisplay(equipment.computerType || equipment.rawData?.type || value, locale) || "-";
                             } else if (col.key === 'ha' || equipment.type === 'Internet' && col.key === 'categorie') {
                               return <div key={col.key} className={styles.cardField}>
                                         <span className={styles.cardLabel}>{col.label}:</span>

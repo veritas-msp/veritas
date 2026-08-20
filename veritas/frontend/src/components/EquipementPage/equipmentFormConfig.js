@@ -119,6 +119,116 @@ export function getServerTypeLabel(value) {
   const key = normalizeServerType(value);
   return SERVER_TYPE_OPTIONS.find(option => option.value === key)?.label || value || "";
 }
+export const COMPUTER_TYPE_OPTIONS = [{
+  value: "laptop",
+  label: "Laptop",
+  icon: "mdi:laptop",
+  description: "Notebook, ultrabook or 2-in-1"
+}, {
+  value: "desktop",
+  label: "Desktop",
+  icon: "mdi:desktop-classic",
+  description: "Tower or desktop workstation"
+}, {
+  value: "all-in-one",
+  label: "All-in-one",
+  icon: "mdi:monitor",
+  description: "iMac, Surface Studio or AIO"
+}, {
+  value: "mini-pc",
+  label: "Mini-PC",
+  icon: "mdi:desktop-tower",
+  description: "NUC, Tiny, SFF or stick PC"
+}, {
+  value: "tablet",
+  label: "Tablet",
+  icon: "mdi:tablet",
+  description: "Tablet or detachable"
+}, {
+  value: "other",
+  label: "Other",
+  icon: "mdi:dots-horizontal",
+  description: "Other form factor"
+}];
+const COMPUTER_TYPE_VALUES = new Set(COMPUTER_TYPE_OPTIONS.map(option => option.value));
+const SMBIOS_CHASSIS_TO_COMPUTER_TYPE = {
+  3: "desktop",
+  4: "desktop",
+  5: "desktop",
+  6: "desktop",
+  7: "desktop",
+  8: "laptop",
+  9: "laptop",
+  10: "laptop",
+  11: "tablet",
+  13: "all-in-one",
+  14: "laptop",
+  15: "desktop",
+  16: "desktop",
+  24: "mini-pc",
+  30: "tablet",
+  31: "laptop",
+  32: "laptop",
+  35: "mini-pc",
+  36: "mini-pc"
+};
+function mapSmbiosChassisType(code) {
+  const numeric = Number(code);
+  if (Number.isFinite(numeric) && SMBIOS_CHASSIS_TO_COMPUTER_TYPE[numeric]) {
+    return SMBIOS_CHASSIS_TO_COMPUTER_TYPE[numeric];
+  }
+  return normalizeComputerType(code);
+}
+export function normalizeComputerType(value) {
+  const raw = String(value || "").trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+  if (!raw) return "";
+  const compact = raw.replace(/[\s_]+/g, "-").replace(/-+/g, "-");
+  if (COMPUTER_TYPE_VALUES.has(compact)) return compact;
+  if (["laptop", "portable", "notebook", "ultrabook", "chromebook", "pc-portable", "2-in-1", "2in1", "convertible"].some(hint => compact.includes(hint))) {
+    return "laptop";
+  }
+  if (["all-in-one", "allinone", "aio", "tout-en-un", "toutenun", "imac"].some(hint => compact.includes(hint))) {
+    return "all-in-one";
+  }
+  if (["mini-pc", "minipc", "nuc", "sff", "micro", "tiny", "stick"].some(hint => compact.includes(hint))) {
+    return "mini-pc";
+  }
+  if (["tablet", "tablette", "surface"].some(hint => compact.includes(hint))) return "tablet";
+  if (["desktop", "fixe", "tower", "tour", "workstation", "pc-fixe", "desk"].some(hint => compact.includes(hint))) {
+    return "desktop";
+  }
+  if (["other", "autre", "unknown", "inconnu"].includes(compact)) return "other";
+  return compact;
+}
+export function getComputerTypeLabel(value) {
+  const key = canonicalizeComputerType(value) || normalizeComputerType(value);
+  return COMPUTER_TYPE_OPTIONS.find(option => option.value === key)?.label || value || "";
+}
+export function getComputerTypeIcon(value) {
+  const key = canonicalizeComputerType(value);
+  return COMPUTER_TYPE_OPTIONS.find(option => option.value === key)?.icon || "mdi:laptop";
+}
+export function canonicalizeComputerType(value) {
+  const key = normalizeComputerType(value);
+  return COMPUTER_TYPE_VALUES.has(key) ? key : "";
+}
+export function applyComputerTypeChange(prev, nextType) {
+  return {
+    ...prev,
+    computerType: canonicalizeComputerType(nextType)
+  };
+}
+export function inferComputerTypeFromInventory(inventory = {}) {
+  const hardware = inventory.hardware || {};
+  const chassis = inventory.chassis || {};
+  const types = hardware.chassisTypes || chassis.chassisTypes || hardware.chassisType || chassis.type;
+  const codes = Array.isArray(types) ? types : types != null && types !== "" ? [types] : [];
+  for (const code of codes) {
+    const mapped = mapSmbiosChassisType(code);
+    if (COMPUTER_TYPE_VALUES.has(mapped)) return mapped;
+  }
+  return canonicalizeComputerType(hardware.formFactor || chassis.model || "");
+}
 export const FIREWALL_TYPE_OPTIONS = [{
   value: "materiel",
   label: "Hardware",
@@ -1301,7 +1411,7 @@ export const EQUIPMENT_FORM_SECTIONS_BY_MODULE = {
   }, SECTION_NOTES],
   Ordinateurs: [{
     ...SECTION_IDENTITY,
-    description: "Nom Veritas et lieu du poste"
+    description: "Nom Veritas, type et lieu du poste"
   }, {
     ...SECTION_HARDWARE,
     description: "Brand, model and serial number (recommended to link the RMM agent)"
@@ -1905,6 +2015,7 @@ export function buildInitialFormData(equipment, moduleKey, {
   if (moduleKey === "Ordinateurs") {
     return {
       ...base,
+      computerType: canonicalizeComputerType(d("type", d("computerType", ""))) || inferComputerTypeFromInventory(raw) || inferComputerTypeFromInventory(equipment) || "",
       netbios: d("netbios", d("hostname", "")),
       vlan: d("vlan", ""),
       manufacturer: d("fabricant", d("marque", d("manufacturer", ""))),
@@ -1991,6 +2102,12 @@ export function buildEquipmentSectionMeta(form, moduleKey, {
     meta.identity = Boolean(form?.name?.trim() && form?.routeurType?.trim());
     meta.hardware = Boolean(form?.manufacturer?.trim() || profile.showModel && form?.model?.trim() || profile.showSerial && form?.serial?.trim() || profile.showFirmware && form?.firmware?.trim() || profile.showWarranty && form?.expirationGarantie?.trim());
     meta.network = Boolean(form?.ip?.trim() || form?.vlan?.trim() || form?.adminUrl?.trim());
+    meta.notes = Boolean(form?.commentaire?.trim());
+  }
+  if (moduleKey === "Ordinateurs") {
+    meta.identity = Boolean(form?.name?.trim() && form?.computerType?.trim());
+    meta.system = Boolean(form?.systeme?.trim() || form?.domaine?.trim() || form?.processeur?.trim() || form?.memoire?.trim());
+    meta.network = Boolean(form?.ip?.trim() || form?.vlan?.trim() || form?.mac?.trim());
     meta.notes = Boolean(form?.commentaire?.trim());
   }
   if (moduleKey === "Servers") {
@@ -2080,6 +2197,9 @@ export function isEquipmentRequiredSectionIncomplete(form, moduleKey, sectionId,
     if (moduleKey === "Servers") {
       return !form?.name?.trim() || !form?.typeServer?.trim();
     }
+    if (moduleKey === "Ordinateurs") {
+      return !form?.name?.trim() || !form?.computerType?.trim();
+    }
     if (moduleKey === "Storage") {
       return !form?.name?.trim() || !form?.storageType?.trim();
     }
@@ -2135,6 +2255,10 @@ export function validateEquipmentForm(form, moduleKey, {
   if (moduleKey === "Servers" && isAddMode && !form?.typeServer?.trim()) {
     setActiveSection("identity");
     return "Server type is required";
+  }
+  if (moduleKey === "Ordinateurs" && isAddMode && !form?.computerType?.trim()) {
+    setActiveSection("identity");
+    return "Computer type is required";
   }
   if (moduleKey === "Servers" && isAddMode && getServerFormProfile(form?.typeServer).showHardware && !form?.manufacturer?.trim()) {
     setActiveSection("hardware");

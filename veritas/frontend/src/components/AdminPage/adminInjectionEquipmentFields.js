@@ -224,6 +224,7 @@ export const EQUIPMENT_INJECTION_FAMILIES = [
     icon: "mdi:desktop-classic",
     label: L("Ordinateurs", "Workstations", "Workstations", "Computer", "Equipos"),
     fields: [
+      { key: "type", label: L("Type", "Type"), values: L("laptop | desktop | all-in-one | mini-pc | tablet | other — aliases: portable, fixe, notebook, aio, nuc, tablette. Colonnes: data_type, data_computer_type ou type", "laptop | desktop | all-in-one | mini-pc | tablet | other — aliases: portable, desktop, notebook, aio, nuc, tablet. Columns: data_type, data_computer_type or type") },
       ...SHARED_HARDWARE,
       { key: "netbios", label: L("Hostname / NetBIOS", "Hostname / NetBIOS"), values: L("PC-COMPTA-01", "PC-COMPTA-01") },
       { key: "systeme", label: L("OS", "OS"), values: L("Windows 11 Pro… (sinon colonne os)", "Windows 11 Pro… (or os column)") },

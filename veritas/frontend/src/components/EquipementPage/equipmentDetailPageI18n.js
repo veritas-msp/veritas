@@ -2,7 +2,7 @@ import { createLocaleGetter, interpolate } from "../../i18n/translate";
 import { getEquipmentModuleLabel } from "./equipmentModalsI18n";
 import { getFormFields } from "./equipmentFormFieldsI18n";
 import { localizeFormSection } from "./equipmentModalsI18n";
-import { normalizeServerType, normalizeStorageType } from "./equipmentFormConfig";
+import { canonicalizeComputerType, normalizeServerType, normalizeStorageType } from "./equipmentFormConfig";
 const FR = {
   loading: "Chargement…",
   loadingTags: "Chargement des étiquettes…",
@@ -495,6 +495,7 @@ const FR = {
     toipType: "Type VoIP",
     alimentationType: "Type",
     typeServer: "Type serveur",
+    computerType: "Type d'ordinateur",
     storageType: "Type de stockage",
     manufacturer: "Marque",
     model: "Modèle",
@@ -1139,6 +1140,7 @@ const EN = {
     toipType: "VoIP type",
     alimentationType: "Type",
     typeServer: "Server type",
+    computerType: "Computer type",
     storageType: "Storage type",
     manufacturer: "Brand",
     model: "Model",
@@ -1462,6 +1464,7 @@ const DE = {
     nameVeritas: "Veritas-Name",
     location: "Standort",
     manufacturer: "Marke",
+    computerType: "Computertyp",
     commentaire: "Notizen"
   },
   formatValues: {
@@ -1786,6 +1789,7 @@ const IT = {
     nameVeritas: "Nome Veritas",
     location: "Sede",
     manufacturer: "Marca",
+    computerType: "Tipo di computer",
     commentaire: "Note"
   },
   formatValues: {
@@ -2109,6 +2113,7 @@ const ES = {
     nameVeritas: "Nombre Veritas",
     location: "Sitio",
     manufacturer: "Marca",
+    computerType: "Tipo de ordenador",
     commentaire: "Notas"
   },
   formatValues: {
@@ -2362,6 +2367,13 @@ export function getEquipmentDetailTypeLabel(equipment, locale) {
     if (normalized === "virtuel") return types.serverVirtual;
     if (normalized === "physique") return types.serverPhysical;
     return String(serverType).toLowerCase().includes("virtuel") ? types.serverVirtual : types.serverPhysical;
+  }
+  if (equipment.type === "Ordinateurs") {
+    const computerType = canonicalizeComputerType(equipment.computerType || equipment.rawData?.type || "");
+    const computerLabel = getFormFields(locale).typeOptions?.computer?.[computerType]?.label;
+    const base = localizeModuleTypeLabel(equipment.type, locale);
+    if (computerLabel) return `${base}${types.internetSeparator}${computerLabel}`;
+    return base;
   }
   const moduleKey = resolveDetailModuleKey(equipment);
   if (equipment.type === "Internet" && equipment?.rawData?.type) {

@@ -1,7 +1,7 @@
 import API_BASE_URL, { withApiQuery } from "../config";
 import { fetchClientModules } from "./clients";
 import { getEquipmentDbId, isDbEquipmentId, findEquipmentInApiList } from "../utils/equipmentIdentity";
-import { resolveAlimentationDeploymentType, resolveToipDeploymentType } from "../components/EquipementPage/equipmentFormConfig";
+import { inferComputerTypeFromInventory, canonicalizeComputerType, resolveAlimentationDeploymentType, resolveToipDeploymentType } from "../components/EquipementPage/equipmentFormConfig";
 import { resolveAssignedSsidIds, serializeAssignedSsidsForPersistence } from "../components/EquipementPage/wifiApSsidUtils";
 export const getClientEquipment = async clientId => {
   try {
@@ -354,6 +354,7 @@ export function mapClientHardwareEquipment(client) {
         serverHAName: type === "Serveurs" ? equipment.serverHAName || equipment.data?.serverHAName || "" : undefined,
         storageHAName: type === "NAS" ? equipment.storageHAName || equipment.data?.storageHAName || "" : undefined,
         domaine: type === "Ordinateurs" ? ordinateurDomaine : undefined,
+        computerType: type === "Ordinateurs" ? canonicalizeComputerType(equipment.type || equipment.data?.type || "") || inferComputerTypeFromInventory(equipment.data || equipment) || inferComputerTypeFromInventory(equipment) : undefined,
         netbios: type === "Ordinateurs" ? equipment.netbios || equipment.hostname || equipment.data?.netbios || equipment.data?.hostname || "" : undefined,
         agentOnline: type === "Ordinateurs" || type === "Serveurs" ? agentOnline : undefined,
         agentManaged: type === "Ordinateurs" || type === "Serveurs" ? equipment.source === "rmm" || equipment.data?.source === "rmm" || Boolean(equipment.agentId || equipment.agent_id) : undefined,
@@ -718,7 +719,7 @@ function buildEquipmentDataPayload(type, formData, existingData = {}, equipment 
     stockage: formData.stockage || existingData.stockage || existingData.storage,
     systeme: formData.systeme || existingData.systeme || existingData.os,
     vlan: formData.vlan || existingData.vlan,
-    type: type === 'NAS' ? formData.type || existingData.type || 'NAS' : type === 'Routeur' ? formData.routeurType || existingData.routeurType || existingData.type || 'Routeur' : type === 'Alimentation' ? resolveAlimentationDeploymentType(formData.alimentationType, existingData.alimentationType, existingData.type) || 'Onduleur' : type === 'TOIP' ? resolveToipDeploymentType(formData.toipType, existingData.toipType, existingData.type) || 'IP-PBX' : type === 'Firewalls' ? formData.firewallType || existingData.firewallType || existingData.type || 'materiel' : formData.typeServer || existingData.type,
+    type: type === 'NAS' ? formData.type || existingData.type || 'NAS' : type === 'Routeur' ? formData.routeurType || existingData.routeurType || existingData.type || 'Routeur' : type === 'Alimentation' ? resolveAlimentationDeploymentType(formData.alimentationType, existingData.alimentationType, existingData.type) || 'Onduleur' : type === 'TOIP' ? resolveToipDeploymentType(formData.toipType, existingData.toipType, existingData.type) || 'IP-PBX' : type === 'Firewalls' ? formData.firewallType || existingData.firewallType || existingData.type || 'materiel' : type === 'Ordinateurs' ? canonicalizeComputerType(formData.computerType || existingData.type) || '' : formData.typeServer || existingData.type,
     role: type === 'NAS' ? formData.role || existingData.role || '' : Array.isArray(formData.role) ? formData.role : formData.role ? [formData.role] : existingData.role || [],
     expirationGarantie: formData.expirationGarantie || existingData.expirationGarantie || existingData.garantie,
     nbDisquesActuels: formData.nbDisquesActuels !== undefined ? formData.nbDisquesActuels : existingData.nbDisquesActuels || '',

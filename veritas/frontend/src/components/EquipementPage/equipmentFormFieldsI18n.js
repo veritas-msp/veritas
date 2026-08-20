@@ -13,6 +13,7 @@ const FR = {
     deploymentType: "Type de déploiement",
     serverType: "Type de serveur",
     storageType: "Type de stockage",
+    computerType: "Type d'ordinateur",
     equipmentType: "Type d'équipement",
     ipAddress: "Adresse IP",
     ipPlaceholder: "192.168.10.1",
@@ -243,6 +244,32 @@ const FR = {
       virtuel: {
         label: "Virtuel",
         description: "Machine virtuelle on-prem ou cloud"
+      }
+    },
+    computer: {
+      laptop: {
+        label: "Portable",
+        description: "Notebook, ultrabook ou 2-en-1"
+      },
+      desktop: {
+        label: "Fixe",
+        description: "Tour ou poste de travail de bureau"
+      },
+      "all-in-one": {
+        label: "Tout-en-un",
+        description: "iMac, Surface Studio ou AIO"
+      },
+      "mini-pc": {
+        label: "Mini-PC",
+        description: "NUC, Tiny, SFF ou stick PC"
+      },
+      tablet: {
+        label: "Tablette",
+        description: "Tablette ou hybride détachable"
+      },
+      other: {
+        label: "Autre",
+        description: "Autre facteur de forme"
       }
     },
     storage: {
@@ -507,6 +534,7 @@ const EN = {
     deploymentType: "Deployment type",
     serverType: "Server type",
     storageType: "Storage type",
+    computerType: "Computer type",
     equipmentType: "Equipment type",
     ipAddress: "IP address",
     ipPlaceholder: "192.168.10.1",
@@ -737,6 +765,32 @@ const EN = {
       virtuel: {
         label: "Virtual",
         description: "On-prem or cloud virtual machine"
+      }
+    },
+    computer: {
+      laptop: {
+        label: "Laptop",
+        description: "Notebook, ultrabook or 2-in-1"
+      },
+      desktop: {
+        label: "Desktop",
+        description: "Tower or desktop workstation"
+      },
+      "all-in-one": {
+        label: "All-in-one",
+        description: "iMac, Surface Studio or AIO"
+      },
+      "mini-pc": {
+        label: "Mini-PC",
+        description: "NUC, Tiny, SFF or stick PC"
+      },
+      tablet: {
+        label: "Tablet",
+        description: "Tablet or detachable"
+      },
+      other: {
+        label: "Other",
+        description: "Other form factor"
       }
     },
     storage: {
@@ -1015,7 +1069,8 @@ const DE = {
     osSystem: "OS / System",
     raid: "RAID",
     quickConnect: "QuickConnect",
-    cpuLabelDefault: "Prozessor / vCPU"
+    cpuLabelDefault: "Prozessor / vCPU",
+    computerType: "Computertyp"
   },
   internetCategories: {
     Principale: "Primär",
@@ -1070,7 +1125,8 @@ const IT = {
     osSystem: "OS / sistema",
     raid: "RAID",
     quickConnect: "QuickConnect",
-    cpuLabelDefault: "Processore / vCPU"
+    cpuLabelDefault: "Processore / vCPU",
+    computerType: "Tipo di computer"
   },
   internetCategories: {
     Principale: "Principale",
@@ -1125,7 +1181,8 @@ const ES = {
     osSystem: "SO / sistema",
     raid: "RAID",
     quickConnect: "QuickConnect",
-    cpuLabelDefault: "Procesador / vCPU"
+    cpuLabelDefault: "Procesador / vCPU",
+    computerType: "Tipo de ordenador"
   },
   internetCategories: {
     Principale: "Principal",

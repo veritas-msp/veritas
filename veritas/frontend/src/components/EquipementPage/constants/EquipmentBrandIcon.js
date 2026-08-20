@@ -1,7 +1,7 @@
 import React from "react";
 import { Icon } from "@iconify/react";
 import { getIconPath } from "../../../utils/assetHelper";
-import { normalizeServerType } from "../equipmentFormConfig";
+import { canonicalizeComputerType, getComputerTypeIcon, normalizeServerType } from "../equipmentFormConfig";
 import FirewallBrandIcon from "./FirewallBrandIcon";
 import { getEquipmentFirewallBrandId, resolveFirewallBrandId } from "./firewallBrandIconMap";
 import RouterBrandIcon, { getEquipmentRouterBrandId } from "./routerBrandIconMap";
@@ -111,7 +111,8 @@ export default function EquipmentBrandIcon({
     if (brandId) {
       return <ServerBrandIcon brand={brandId} className={className} />;
     }
-    return renderTypeFallback("Ordinateurs", className, size);
+    const computerType = canonicalizeComputerType(equipment?.computerType || equipment?.rawData?.type || "");
+    return <Icon icon={getComputerTypeIcon(computerType)} className={className} width={size} height={size} aria-hidden />;
   }
   if (type === "Storage" || type === "NAS") {
     const brandId = resolveStorageBrandId(manufacturer);

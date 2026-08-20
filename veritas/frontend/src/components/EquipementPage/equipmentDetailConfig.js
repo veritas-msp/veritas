@@ -1,5 +1,5 @@
 import { formatDateFr, getMaintenanceLicenseExpiration } from "./constants/firewallLicenceUtils";
-import { buildInitialFormData, getEquipmentFormSections, getFirewallTypeLabel, normalizeFirewallType, getServerFormProfile, getServerTypeLabel, getStorageFormProfile, isToipVoipSectionVisible, normalizeServerType } from "./equipmentFormConfig";
+import { buildInitialFormData, getEquipmentFormSections, getFirewallTypeLabel, normalizeFirewallType, getServerFormProfile, getServerTypeLabel, getComputerTypeLabel, getStorageFormProfile, inferComputerTypeFromInventory, isToipVoipSectionVisible, normalizeServerType, canonicalizeComputerType } from "./equipmentFormConfig";
 import { getFormFields } from "./equipmentFormFieldsI18n";
 import { getServerRemoteAccessSolutionDef } from "./constants/serverRemoteAccessUtils";
 import { formatInternetDebitDisplay } from "./internetConnectionUtils";
@@ -95,6 +95,7 @@ const FIELD_FORMATTERS = {
   toipType: f => f.toipType,
   alimentationType: f => f.alimentationType,
   typeServer: f => getServerTypeLabel(f.typeServer) || null,
+  computerType: f => getComputerTypeLabel(f.computerType) || null,
   storageType: f => f.type || f.storageType,
   manufacturer: f => f.manufacturer,
   model: f => f.model,
@@ -174,6 +175,7 @@ const FIELD_LABELS = {
   toipType: "Type VoIP",
   alimentationType: "Type",
   typeServer: "Type serveur",
+  computerType: "Type d'ordinateur",
   storageType: "Type de stockage",
   manufacturer: "Brand",
   model: "Model",
@@ -225,7 +227,7 @@ const FIELD_LABELS = {
   assignedSsids: "SSID"
 };
 const SECTION_FIELDS = {
-  identity: ["name", "location", "firewallType", "routeurType", "toipType", "alimentationType", "typeServer", "storageType"],
+  identity: ["name", "location", "firewallType", "routeurType", "toipType", "alimentationType", "typeServer", "computerType", "storageType"],
   internetType: ["internetType"],
   internetLink: ["fournisseur", "debit", "debitDownload", "debitUpload", "categorie"],
   internetNetwork: ["ip", "gateway", "boxModele"],
@@ -266,7 +268,7 @@ const ORDINATEUR_SECTIONS = [{
   icon: "mdi:note-text-outline"
 }];
 const ORDINATEUR_SECTION_FIELDS = {
-  identity: ["name", "netbios", "location"],
+  identity: ["name", "netbios", "computerType", "location"],
   hardware: ["manufacturer", "model", "serial"],
   network: ["ip", "vlan", "mac"],
   system: ["editionWindows", "windowsFeatureVersion", "windowsBuild", "windowsLicenseStatus", "systeme", "domaine", "processeur", "memoire"],
@@ -286,7 +288,7 @@ const ORDINATEUR_RMM_MANAGED_SECTIONS = [{
   icon: "mdi:note-text-outline"
 }];
 const ORDINATEUR_RMM_MANAGED_SECTION_FIELDS = {
-  identity: ["clientName", "name", "location"],
+  identity: ["clientName", "name", "computerType", "location"],
   network: ["vlan"],
   notes: ["commentaire"]
 };
@@ -314,7 +316,8 @@ function mergeRmmIntoFormData(equipment, formData) {
     serial: formData.serial || chassis.serial || "",
     processeur: formData.processeur || inventory.hardware?.cpu || inventory.processeur || "",
     memoire: formData.memoire || ram || inventory.memoire || "",
-    netbios: formData.netbios || getRmmNetbiosName(equipment) || ""
+    netbios: formData.netbios || getRmmNetbiosName(equipment) || "",
+    computerType: canonicalizeComputerType(formData.computerType) || inferComputerTypeFromInventory(inventory) || ""
   };
 }
 function shouldShowField(fieldKey, formData, equipment) {
@@ -434,6 +437,15 @@ function formatFirewallType(value, locale) {
   }
   return getFirewallTypeLabel(value) || value;
 }
+function formatComputerType(value, locale) {
+  const key = canonicalizeComputerType(value);
+  if (!key) return value || null;
+  if (locale) {
+    const localized = getFormFields(locale).typeOptions?.computer?.[key]?.label;
+    if (localized) return localized;
+  }
+  return getComputerTypeLabel(value) || value;
+}
 function formatField(fieldKey, formData, equipment, locale) {
   const formatter = FIELD_FORMATTERS[fieldKey];
   let raw = formatter ? formatter(formData, equipment) : formData[fieldKey];
@@ -445,6 +457,9 @@ function formatField(fieldKey, formData, equipment, locale) {
   }
   if (fieldKey === "firewallType" && raw) {
     raw = formatFirewallType(formData.firewallType || raw, locale);
+  }
+  if (fieldKey === "computerType" && raw) {
+    raw = formatComputerType(formData.computerType || raw, locale);
   }
   if (locale && fieldKey === "ip" && equipment?.type === "Internet" && formData.ipNonFixe) {
     raw = getEquipmentDetailCopy(locale).formatValues.ipNonFixe;
@@ -566,7 +581,7 @@ export function buildEquipmentDetailSections(equipment, formData, locale) {
       };
     });
   }
-  return sections.filter(section => section.fields.length > 0);
+  return sections.filter(section => section.fields.length > 0 || equipment?.type === "Ordinateurs" && section.id === "identity");
 }
 export function getEquipmentTypeLabel(equipment) {
   const moduleKey = resolveModuleKey(equipment);

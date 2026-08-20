@@ -2,7 +2,8 @@ import React from "react";
 import { Icon } from "@iconify/react";
 import RoleTagsSelect from "./RoleTagsSelect";
 import { SERVER_CATALOG } from "./constants/equipmentCatalog";
-import { SERVER_TYPE_OPTIONS, STORAGE_TYPE_OPTIONS, FIREWALL_TYPE_OPTIONS, ROUTEUR_TYPE_OPTIONS, ALIMENTATION_TYPE_OPTIONS, TOIP_TYPE_OPTIONS, getFirewallFormProfile, getRouterFormProfile, getServerFormProfile, getStorageFormProfile, applyFirewallTypeChange, applyRouteurTypeChange, applyServerTypeChange, applyStorageTypeChange, applyAlimentationTypeChange, getAlimentationFormProfile, applyToipTypeChange, getToipFormProfile, isToipVoipSectionVisible, normalizeServerType, normalizeStorageType, normalizeFirewallType, normalizeRouteurType, resolveToipDeploymentType, EQUIPMENT_SERIAL_PLACEHOLDER } from "./equipmentFormConfig";
+import { SERVER_TYPE_OPTIONS, STORAGE_TYPE_OPTIONS, FIREWALL_TYPE_OPTIONS, ROUTEUR_TYPE_OPTIONS, ALIMENTATION_TYPE_OPTIONS, TOIP_TYPE_OPTIONS, getFirewallFormProfile, getRouterFormProfile, getServerFormProfile, getStorageFormProfile, applyFirewallTypeChange, applyRouteurTypeChange, applyServerTypeChange, applyStorageTypeChange, applyAlimentationTypeChange, getAlimentationFormProfile, applyToipTypeChange, applyComputerTypeChange, getToipFormProfile, isToipVoipSectionVisible, normalizeServerType, normalizeStorageType, normalizeFirewallType, normalizeRouteurType, resolveToipDeploymentType, EQUIPMENT_SERIAL_PLACEHOLDER } from "./equipmentFormConfig";
+import ComputerTypePicker from "./ComputerTypePicker";
 import { getEquipmentFormSectionsI18n, localizeTypeOptions, getLocalizedEquipmentNamePlaceholder } from "./equipmentModalsI18n";
 import { useAppLocale } from "../../hooks/useAppGeneralSettings";
 import InternetConnectionFields from "./InternetConnectionFields";
@@ -121,6 +122,7 @@ export default function EquipmentFormSectionContent({
               storageType: formData.storageType
             })} />
             </div>
+            {apiType === "Ordinateurs" ? <ComputerTypePicker value={formData.computerType} onChange={value => setFormData(prev => applyComputerTypeChange(prev, value))} locale={locale} label={f.computerType} required={isAddMode} /> : null}
             {apiType === "Ordinateurs" && (isAddMode || formData.netbios) ? <div className={`${styles.field} ${styles.fieldFull}`}>
                 <label className={styles.label} htmlFor="equipment-form-netbios">
                   {f.netbios}

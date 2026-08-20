@@ -618,6 +618,7 @@ const FAMILY_MAPPING = {
   'toip': 'toip',
   'voip': 'toip',
   'ordinateurs': 'ordinateurs',
+  'ordinateur': 'ordinateurs',
   'computers': 'ordinateurs',
   'workstations': 'ordinateurs',
   'sauvegarde': 'save',

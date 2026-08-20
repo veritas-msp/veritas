@@ -42,6 +42,11 @@
   background: var(--msp-surface-2, #f7f9fc);
 }
 
+.computerTypePicker {
+  flex: 1 1 100%;
+  min-width: 0;
+}
+
 .inlineField {
   display: flex;
   flex-direction: column;

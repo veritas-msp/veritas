@@ -93,6 +93,7 @@ const PAGE_COPY = {
       expirationGarantie: "Date de garantie",
       maintenanceLicence: "Date de licence maintenance",
       systeme: "OS",
+      computerType: "Type",
       domaine: "Domaine",
       agentStatus: "Agent RMM",
       role: "Rôles",
@@ -135,6 +136,7 @@ const PAGE_COPY = {
       },
       Ordinateurs: {
         systeme: "OS",
+        computerType: "Type",
         domaine: "Domaine",
         agentStatus: "Agent"
       },
@@ -292,6 +294,7 @@ const PAGE_COPY = {
       expirationGarantie: "Warranty date",
       maintenanceLicense: "Maintenance licence date",
       systeme: "OS",
+      computerType: "Type",
       domaine: "Domain",
       agentStatus: "RMM agent",
       role: "Roles",
@@ -334,6 +337,7 @@ const PAGE_COPY = {
       },
       Ordinateurs: {
         systeme: "OS",
+        computerType: "Type",
         domaine: "Domain",
         agentStatus: "Agent"
       },
@@ -491,6 +495,7 @@ const PAGE_COPY = {
       expirationGarantie: "Garantiedatum",
       maintenanceLicence: "Wartungslizenz",
       systeme: "OS",
+      computerType: "Typ",
       domaine: "Domäne",
       agentStatus: "RMM-Agent",
       role: "Rollen",
@@ -524,6 +529,7 @@ const PAGE_COPY = {
       },
       Ordinateurs: {
         systeme: "OS",
+        computerType: "Typ",
         domaine: "Domäne",
         agentStatus: "Agent"
       },
@@ -677,6 +683,7 @@ const PAGE_COPY = {
       expirationGarantie: "Data garanzia",
       maintenanceLicence: "Licenza manutenzione",
       systeme: "OS",
+      computerType: "Tipo",
       domaine: "Dominio",
       agentStatus: "Agente RMM",
       role: "Ruoli",
@@ -710,6 +717,7 @@ const PAGE_COPY = {
       },
       Ordinateurs: {
         systeme: "OS",
+        computerType: "Tipo",
         domaine: "Dominio",
         agentStatus: "Agente"
       },
@@ -863,6 +871,7 @@ const PAGE_COPY = {
       expirationGarantie: "Fecha de garantía",
       maintenanceLicence: "Licencia mantenimiento",
       systeme: "SO",
+      computerType: "Tipo",
       domaine: "Dominio",
       agentStatus: "Agente RMM",
       role: "Roles",
@@ -896,6 +905,7 @@ const PAGE_COPY = {
       },
       Ordinateurs: {
         systeme: "SO",
+        computerType: "Tipo",
         domaine: "Dominio",
         agentStatus: "Agente"
       },

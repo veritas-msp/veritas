@@ -1,4 +1,5 @@
 import { getRmmInventoryFromEquipment, isRmmManagedEquipment, getRmmAgentStatusKey, getWindowsUpdateStatus, getWorstDiskUsage } from "../components/EquipementPage/rmmMonitoringUtils";
+import { canonicalizeComputerType } from "../components/EquipementPage/equipmentFormConfig";
 import { fetchClientModules } from "../api/clients";
 import { mapClientHardwareEquipment } from "../api/equipment";
 import { filterBySite } from "./siteFilterUtils";
@@ -43,6 +44,9 @@ function normalizeBrand(raw) {
   return value.length > 28 ? `${value.slice(0, 25)}…` : value;
 }
 export function inferPowerProfile(equipment, inventory) {
+  const explicit = canonicalizeComputerType(equipment?.computerType || equipment?.rawData?.type || inventory?.type);
+  if (explicit === "laptop" || explicit === "tablet") return "laptop";
+  if (explicit === "desktop" || explicit === "all-in-one" || explicit === "mini-pc") return "desktop";
   const hw = inventory?.hardware || {};
   const chassis = String(hw.chassisType || hw.formFactor || "").toLowerCase();
   if (["laptop", "notebook", "portable"].some(hint => chassis.includes(hint))) return "laptop";
@@ -198,7 +202,8 @@ export function buildComputerFleetStats(computers, options = {}) {
     increment(brandCounts, inferBrand(equipment, inventory));
     increment(modelCounts, inferModelLabel(equipment, inventory));
     const managed = isRmmManagedEquipment(equipment);
-    const profile = managed ? inferPowerProfile(equipment, inventory) : "unknown";
+    const hasComputerType = Boolean(canonicalizeComputerType(equipment?.computerType || equipment?.rawData?.type));
+    const profile = managed || hasComputerType ? inferPowerProfile(equipment, inventory) : "unknown";
     powerByProfile[profile] = (powerByProfile[profile] || 0) + 1;
     increment(formFactorCounts, profile === "laptop" ? "Laptop" : profile === "desktop" ? "Desktop" : "Unidentified");
     const ramGb = Number(inventory?.hardware?.ramGB ?? inventory?.hardware?.ramGb);

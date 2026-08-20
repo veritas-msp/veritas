@@ -32,7 +32,7 @@ import { fetchEquipmentActivity } from "../../api/equipmentActivity";
 import { resolveEquipmentActivityRange, toDateInputValue } from "./equipmentActivityUtils";
 import { buildDetailFormData } from "./equipmentDetailConfig";
 import { getEquipmentDetailTypeLabel, getEquipmentDetailCopy, formatEquipmentDetailRelative } from "./equipmentDetailPageI18n";
-import { patchEquipmentLocation } from "./equipmentFormConfig";
+import { canonicalizeComputerType, patchEquipmentLocation } from "./equipmentFormConfig";
 import { ConfirmModal } from "../AdminPage/AdminUi";
 import { useAppLocale } from "../../hooks/useAppGeneralSettings";
 import { getEquipmentModalsCopy, interpolate } from "./equipmentModalsI18n";
@@ -73,6 +73,7 @@ export default function EquipmentDetailPage({
   const [isEditingInfo, setIsEditingInfo] = useState(false);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [computerTypeSaving, setComputerTypeSaving] = useState(false);
   const [notes, setNotes] = useState([]);
   const [newNote, setNewNote] = useState("");
   const [photos, setPhotos] = useState([]);
@@ -163,11 +164,12 @@ export default function EquipmentDetailPage({
   const lastRmmRefreshSnapshotRef = useRef(null);
   const getEquipmentDbIdLocal = () => resolveEquipmentDbId(equipment);
   const getEditModuleKey = eq => {
-    const raw = eq?.type || eq?.rawData?.type || eq?.familyKey || "";
-    if (raw === "NAS" || raw === "Storage" || raw === "Stockage") return "Storage";
-    if (raw === "Servers" || raw === "Serveurs" || raw === "Server" || raw === "Serveur") return "Servers";
-    if (raw === "Firewalls" || raw === "Firewall") return "Firewalls";
-    return raw || null;
+    const family = eq?.type || eq?.familyKey || "";
+    if (family === "NAS" || family === "Storage" || family === "Stockage") return "Storage";
+    if (family === "Servers" || family === "Serveurs" || family === "Server" || family === "Serveur") return "Servers";
+    if (family === "Firewalls" || family === "Firewall") return "Firewalls";
+    if (family === "Ordinateurs" || family === "Workstations") return "Ordinateurs";
+    return family || null;
   };
   const equipmentDisplayType = equipment?.type === "NAS" ? "Storage" : equipment?.type;
   const equipmentModuleKey = equipment ? getEditModuleKey(equipment) : null;
@@ -705,8 +707,21 @@ export default function EquipmentDetailPage({
   };
   const handleEquipmentModalSaved = async submitData => {
     let nextEquipment = equipment;
-    if (submitData?.location !== undefined && equipment) {
-      nextEquipment = patchEquipmentLocation(equipment, submitData.location);
+    if (submitData && equipment) {
+      if (submitData.location !== undefined) {
+        nextEquipment = patchEquipmentLocation(nextEquipment, submitData.location);
+      }
+      if (submitData.computerType !== undefined) {
+        const computerType = canonicalizeComputerType(submitData.computerType);
+        nextEquipment = {
+          ...nextEquipment,
+          computerType,
+          rawData: {
+            ...(nextEquipment.rawData || {}),
+            type: computerType
+          }
+        };
+      }
       setFormData(buildDetailFormData(nextEquipment, {
         clientSites,
         clientSsids
@@ -727,6 +742,38 @@ export default function EquipmentDetailPage({
       console.warn("Refresh hardware record:", error);
     }
   };
+  const handleComputerTypeChange = async nextType => {
+    const computerType = canonicalizeComputerType(nextType);
+    if (!equipment || !computerType || computerType === canonicalizeComputerType(formData.computerType)) return;
+    const previousForm = formData;
+    const previousEquipment = equipment;
+    const nextForm = {
+      ...formData,
+      computerType
+    };
+    const nextEquipment = {
+      ...equipment,
+      computerType,
+      rawData: {
+        ...(equipment.rawData || {}),
+        type: computerType
+      }
+    };
+    setFormData(nextForm);
+    onUpdate?.(nextEquipment);
+    setComputerTypeSaving(true);
+    try {
+      await updateEquipment(equipment.id, nextForm, equipment);
+      toast.success(copy.toasts.saveSuccess);
+    } catch (error) {
+      console.error("Error saving computer type:", error);
+      setFormData(previousForm);
+      onUpdate?.(previousEquipment);
+      toast.error(copy.toasts.saveError);
+    } finally {
+      setComputerTypeSaving(false);
+    }
+  };
   const handleEquipmentModalDeleted = () => {
     onUpdate?.(null);
     onBack?.();
@@ -744,7 +791,7 @@ export default function EquipmentDetailPage({
   }, [equipment?.location]);
   const detectInfoChanges = (currentData, initialData) => {
     if (!initialData) return false;
-    const infoFields = ["name", "location", "typeServer", "ip", "vlan", "systeme", "remoteAccessSolution", "remoteAccessId", "manufacturer", "model", "serial", "expirationGarantie", "processeur", "memoire", "stockage", "role", "raid", "capacite", "nbDisquesActuels", "nbDisquesMax", "disques", "luns", "fournisseur", "internetType", "debit", "categorie", "ipNonFixe", "firmware", "licences", "modeHA", "roleHA", "firewallHA", "firewallHAName", "serverHA", "serverHAName", "storageHA", "storageHAName", "hostServerName", "hypervisor", "adresseMac", "quickConnect"];
+    const infoFields = ["name", "location", "typeServer", "computerType", "ip", "vlan", "systeme", "remoteAccessSolution", "remoteAccessId", "manufacturer", "model", "serial", "expirationGarantie", "processeur", "memoire", "stockage", "role", "raid", "capacite", "nbDisquesActuels", "nbDisquesMax", "disques", "luns", "fournisseur", "internetType", "debit", "categorie", "ipNonFixe", "firmware", "licences", "modeHA", "roleHA", "firewallHA", "firewallHAName", "serverHA", "serverHAName", "storageHA", "storageHAName", "hostServerName", "hypervisor", "adresseMac", "quickConnect"];
     for (const field of infoFields) {
       const cur = currentData[field];
       const init = initialData[field];
@@ -1376,7 +1423,7 @@ export default function EquipmentDetailPage({
         <div className={styles.mainContent}>
           {rightPanelTab === 'dashboard' && <div className={`${styles.dashboardSplit} ${showRmmHeroStatus && rmmDeviceHealth ? "" : styles.dashboardSplitSolo}`.trim()}>
               <div className={styles.dashboardMain}>
-                <EquipmentDetailSpecsPanel equipment={equipment} formData={formData} clientSites={clientSites} clientSsids={clientSsids} peerFirewalls={peerFirewalls} peerServers={peerServers} peerStorage={peerStorage} onOpenEquipment={openLinkedEquipment} remoteAccessAction={remoteAccessAction} />
+                <EquipmentDetailSpecsPanel equipment={equipment} formData={formData} clientSites={clientSites} clientSsids={clientSsids} peerFirewalls={peerFirewalls} peerServers={peerServers} peerStorage={peerStorage} onOpenEquipment={openLinkedEquipment} onComputerTypeChange={handleComputerTypeChange} computerTypeSaving={computerTypeSaving} remoteAccessAction={remoteAccessAction} />
 
                 <EquipmentAlertsGlance equipment={equipment} days={30} limit={50} />
 

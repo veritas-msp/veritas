@@ -12,6 +12,7 @@ import {
 import { deleteClientFile, uploadClientFile } from "../../api/clientFiles";
 import { createTicket, permanentlyDeleteTicket } from "../../api/tickets";
 import { interpolate } from "../../i18n/translate";
+import { canonicalizeComputerType } from "../EquipementPage/equipmentFormConfig";
 
 const DEFAULT_INJECTION_ERRORS = {
   missingName: "Missing name",
@@ -178,7 +179,8 @@ export const CSV_TEMPLATES = {
     ["Acme SAS", "power", "UPS-RACK-01", "ups-rack-01", "10.0.0.30", "", "", "true", "HQ", "APC", "Smart-UPS 3000", "SN-UPS-001", "UPS", "", "", "", "10", "", "", "", "", "", ""].join(","),
     ["Acme SAS", "router", "RTR-EDGE-01", "rtr-edge-01", "10.0.0.254", "", "", "true", "HQ", "Cisco", "ISR 4331", "SN-RTR-001", "Router", "", "", "", "10", "17.6", "aa:bb:cc:dd:ee:fe", "", "", "", ""].join(","),
     ["Acme SAS", "toip", "PBX-01", "pbx-01", "10.0.0.40", "", "", "true", "HQ", "3CX", "Enterprise", "SN-PBX-001", "IP-PBX", "", "", "", "10", "", "", "", "", "", ""].join(","),
-    ["Acme SAS", "workstations", "PC-ACCOUNTING-01", "pc-accounting-01", "10.0.1.45", "Windows 11 Pro", "", "true", "Accounting", "Lenovo", "ThinkPad T14", "SN-PC-001", "", "Windows 11 Pro", "i7", "16 GB", "40", "", "aa:bb:cc:dd:ee:45", "", "", "", ""].join(",")
+    ["Acme SAS", "workstations", "PC-ACCOUNTING-01", "pc-accounting-01", "10.0.1.45", "Windows 11 Pro", "", "true", "Accounting", "Lenovo", "ThinkPad T14", "SN-PC-001", "laptop", "Windows 11 Pro", "i7", "16 GB", "40", "", "aa:bb:cc:dd:ee:45", "", "", "", ""].join(","),
+    ["Acme SAS", "ordinateurs", "PC-ACCUEIL-01", "pc-accueil-01", "10.0.1.46", "Windows 11 Pro", "", "true", "Accueil", "HP", "EliteDesk 800", "SN-PC-002", "portable", "Windows 11 Pro", "i5", "8 GB", "40", "", "aa:bb:cc:dd:ee:46", "", "", "", ""].join(",")
   ].join("\n") + "\n",
   tickets: "client_name,title,description,priority,status,type,category,channel,is_major_incident,assigned_user_id,requester_contact_id\nAcme SAS,Backup failed,Veeam job failed,high,new,incident,Infrastructure,web,false,,\n"
 };
@@ -293,6 +295,12 @@ const EQUIPMENT_DATA_FIELD_ALIASES = {
   netbios: "netbios",
   site: "site",
   type: "type",
+  computer_type: "type",
+  computertype: "type",
+  type_ordinateur: "type",
+  typeordinateur: "type",
+  pc_type: "type",
+  pctype: "type",
   vlan: "vlan",
   firmware: "firmware",
   gateway: "gateway",
@@ -375,10 +383,12 @@ const FAMILY_ALIASES = {
   "voip toip": "toip",
   voiptoip: "toip",
   ordinateurs: "ordinateurs",
+  ordinateur: "ordinateurs",
   computers: "ordinateurs",
   computer: "ordinateurs",
   workstations: "ordinateurs",
-  workstation: "ordinateurs"
+  workstation: "ordinateurs",
+  pcs: "ordinateurs"
 };
 
 function normKey(value) {
@@ -925,6 +935,14 @@ export async function runInjection({
           );
           const value = coerceValue(rawValue);
           if (value !== undefined) data[field] = value;
+        }
+        if (family === "ordinateurs") {
+          const rawType =
+            data.type ||
+            data.computerType ||
+            cell(row, "computer_type", "computerType", "type_ordinateur", "pc_type", "type");
+          const canonical = canonicalizeComputerType(rawType);
+          if (canonical) data.type = canonical;
         }
         return {
           prepared: {
