@@ -25,7 +25,13 @@ export function repairRmmTextEncoding(value) {
     tryDecode("utf-8");
     tryDecode("windows-1252");
   }
-  return best;
+  return repairKnownWindowsOsWords(best);
+}
+function repairKnownWindowsOsWords(text) {
+  if (typeof text !== "string" || !text) return text;
+  return text
+    .replace(/[\uFFFD?](?=[Dd]ucation)/g, "É")
+    .replace(/[\uFFFD?](?=[Dd]ition)/g, "É");
 }
 export function repairRmmInventoryTextFields(value) {
   if (value == null) return value;

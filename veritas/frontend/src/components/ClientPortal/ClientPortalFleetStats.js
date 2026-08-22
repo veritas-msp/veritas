@@ -24,6 +24,9 @@ function localizePowerProfile(profile, label, chartLabels) {
   const keyMap = {
     desktop: "powerDesktop",
     laptop: "laptop",
+    "all-in-one": "allInOne",
+    "mini-pc": "miniPc",
+    tablet: "tablet",
     unknown: "powerGeneric"
   };
   return chartLabels[keyMap[profile]] || label;

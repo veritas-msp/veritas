@@ -1,5 +1,6 @@
-import { getRmmInventoryFromEquipment, isRmmManagedEquipment, getRmmAgentStatusKey, getWindowsUpdateStatus, getWorstDiskUsage } from "../components/EquipementPage/rmmMonitoringUtils";
-import { canonicalizeComputerType } from "../components/EquipementPage/equipmentFormConfig";
+import { getRmmInventoryFromEquipment, getRmmChassisInfo, isRmmManagedEquipment, getRmmAgentStatusKey, getWindowsUpdateStatus, getWorstDiskUsage, sanitizeRmmInventoryText } from "../components/EquipementPage/rmmMonitoringUtils";
+import { canonicalizeComputerType, getComputerTypeLabel, inferComputerTypeFromInventory } from "../components/EquipementPage/equipmentFormConfig";
+import { repairRmmTextEncoding } from "./rmmTextEncoding";
 import { fetchClientModules } from "../api/clients";
 import { mapClientHardwareEquipment } from "../api/equipment";
 import { filterBySite } from "./siteFilterUtils";
@@ -14,9 +15,21 @@ export const POWER_PROFILES = {
     watts: 40,
     label: "Laptop"
   },
+  "all-in-one": {
+    watts: 80,
+    label: "All-in-one"
+  },
+  "mini-pc": {
+    watts: 35,
+    label: "Mini-PC"
+  },
+  tablet: {
+    watts: 15,
+    label: "Tablet"
+  },
   unknown: {
     watts: 55,
-    label: "Poste type"
+    label: "Typical workstation"
   }
 };
 export const DEFAULT_FLEET_STATS_OPTIONS = {
@@ -26,12 +39,73 @@ export const DEFAULT_FLEET_STATS_OPTIONS = {
   staleInventoryDays: 7,
   diskAlertThresholdPct: 85
 };
+function flattenTextCandidate(value) {
+  if (value == null || value === "") return "";
+  if (typeof value === "object") {
+    if (Array.isArray(value)) return flattenTextCandidate(value[0]);
+    return flattenTextCandidate(value.name || value.Name || value.cpu || value.processor || value.model || value.manufacturer || value.marque || "");
+  }
+  return value;
+}
+function firstText(...candidates) {
+  for (const value of candidates) {
+    const cleaned = sanitizeRmmInventoryText(flattenTextCandidate(value));
+    if (cleaned) return cleaned;
+  }
+  return "";
+}
+function equipmentDataBags(equipment, inventory) {
+  const raw = equipment?.rawData && typeof equipment.rawData === "object" ? equipment.rawData : {};
+  const nested = raw.data && typeof raw.data === "object" && !Array.isArray(raw.data)
+    ? raw.data
+    : equipment?.data && typeof equipment.data === "object" && !Array.isArray(equipment.data)
+      ? equipment.data
+      : {};
+  return [equipment, raw, nested, inventory].filter(bag => bag && typeof bag === "object");
+}
+function pickEquipmentText(equipment, inventory, keys) {
+  const bags = equipmentDataBags(equipment, inventory);
+  const values = [];
+  for (const key of keys) {
+    for (const bag of bags) {
+      if (bag[key] != null && bag[key] !== "") values.push(bag[key]);
+    }
+  }
+  return firstText(...values);
+}
+function shortenLabel(value, max = 42) {
+  const label = String(value || "").trim();
+  if (!label) return "";
+  return label.length > max ? `${label.slice(0, max - 3)}…` : label;
+}
+function parseSizeToGb(value) {
+  if (value == null || value === "") return null;
+  if (typeof value === "number" && Number.isFinite(value) && value > 0) return value;
+  const raw = String(value).trim().replace(",", ".");
+  const match = raw.match(/([\d.]+)\s*(to|tb|go|gb|mo|mb|ko|kb)?/i);
+  if (!match) return null;
+  const amount = Number(match[1]);
+  if (!Number.isFinite(amount) || amount <= 0) return null;
+  const unit = String(match[2] || "gb").toLowerCase();
+  if (unit === "to" || unit === "tb") return amount * 1024;
+  if (unit === "mo" || unit === "mb") return amount / 1024;
+  if (unit === "ko" || unit === "kb") return amount / (1024 * 1024);
+  return amount;
+}
+function resolveComputerType(equipment, inventory) {
+  const bags = equipmentDataBags(equipment, inventory);
+  for (const bag of bags) {
+    const type = canonicalizeComputerType(bag.computerType || bag.type);
+    if (type) return type;
+  }
+  return inferComputerTypeFromInventory(inventory) || inferComputerTypeFromInventory(equipment?.rawData) || "";
+}
 function normalizeBrand(raw) {
   const value = String(raw || "").trim();
   if (!value) return "";
   const lower = value.toLowerCase();
   if (lower.includes("dell")) return "Dell";
-  if (lower.includes("hewlett") || lower.includes("hp ") || lower === "hp") return "HP";
+  if (lower.includes("hewlett") || /\bhp\b/.test(lower) || lower.includes("hp inc")) return "HP";
   if (lower.includes("lenovo")) return "Lenovo";
   if (lower.includes("microsoft") || lower.includes("surface")) return "Microsoft";
   if (lower.includes("asus")) return "ASUS";
@@ -41,12 +115,22 @@ function normalizeBrand(raw) {
   if (lower.includes("fujitsu")) return "Fujitsu";
   if (lower.includes("msi")) return "MSI";
   if (lower.includes("samsung")) return "Samsung";
-  return value.length > 28 ? `${value.slice(0, 25)}…` : value;
+  return shortenLabel(value, 28);
+}
+function resolveCpuText(equipment, inventory) {
+  const hw = inventory?.hardware || {};
+  return firstText(
+    pickEquipmentText(equipment, inventory, ["processeur", "cpu", "processor", "vcpu"]),
+    hw.cpu,
+    hw.processor
+  );
 }
 export function inferPowerProfile(equipment, inventory) {
-  const explicit = canonicalizeComputerType(equipment?.computerType || equipment?.rawData?.type || inventory?.type);
-  if (explicit === "laptop" || explicit === "tablet") return "laptop";
-  if (explicit === "desktop" || explicit === "all-in-one" || explicit === "mini-pc") return "desktop";
+  const explicit = resolveComputerType(equipment, inventory);
+  if (explicit === "laptop" || explicit === "tablet") return explicit === "tablet" ? "tablet" : "laptop";
+  if (explicit === "all-in-one") return "all-in-one";
+  if (explicit === "mini-pc") return "mini-pc";
+  if (explicit === "desktop") return "desktop";
   const hw = inventory?.hardware || {};
   const chassis = String(hw.chassisType || hw.formFactor || "").toLowerCase();
   if (["laptop", "notebook", "portable"].some(hint => chassis.includes(hint))) return "laptop";
@@ -56,15 +140,21 @@ export function inferPowerProfile(equipment, inventory) {
   if (laptopHints.some(hint => osName.includes(hint) || hostname.includes(hint))) {
     return "laptop";
   }
-  return "desktop";
+  return explicit ? "unknown" : "desktop";
 }
 export function inferBrand(equipment, inventory) {
   const hw = inventory?.hardware || {};
-  const explicit = hw.manufacturer || hw.vendor || inventory.manufacturer || inventory.vendor;
+  const chassis = getRmmChassisInfo(inventory);
+  const explicit = firstText(
+    pickEquipmentText(equipment, inventory, ["manufacturer", "marque", "fabricant", "vendor"]),
+    chassis.manufacturer,
+    hw.manufacturer,
+    hw.vendor
+  );
   if (explicit) return normalizeBrand(explicit) || "Not specified";
-  const hostname = String(equipment?.name || inventory?.hostname || "").toLowerCase();
+  const hostname = String(equipment?.name || inventory?.hostname || equipment?.netbios || "").toLowerCase();
   const osName = String(equipment?.systeme || inventory?.os?.name || "").toLowerCase();
-  const cpu = String(hw.cpu || "").toLowerCase();
+  const cpu = resolveCpuText(equipment, inventory).toLowerCase();
   const hostnameBrands = [["dell", "Dell"], ["latitude", "Dell"], ["optiplex", "Dell"], ["hp-", "HP"], ["elitebook", "HP"], ["probook", "HP"], ["lenovo", "Lenovo"], ["thinkpad", "Lenovo"], ["surface", "Microsoft"], ["asus", "ASUS"], ["zenbook", "ASUS"], ["acer", "Acer"], ["macbook", "Apple"]];
   for (const [hint, brand] of hostnameBrands) {
     if (hostname.includes(hint) || osName.includes(hint)) return brand;
@@ -75,33 +165,45 @@ export function inferBrand(equipment, inventory) {
 }
 export function inferModelLabel(equipment, inventory) {
   const hw = inventory?.hardware || {};
-  const explicit = hw.model || inventory.model || hw.productName;
-  if (explicit) {
-    const label = String(explicit).trim();
-    return label.length > 42 ? `${label.slice(0, 39)}…` : label;
-  }
-  const cpu = String(hw.cpu || "").trim();
-  if (cpu) {
-    const intel = cpu.match(/Intel[^@]*?(i[3579]-?\d+\w*)/i);
-    if (intel) return `Intel Core ${intel[1].toUpperCase()}`;
-    const ryzen = cpu.match(/(Ryzen\s+\d+\s*\w*)/i);
-    if (ryzen) return ryzen[1];
-    const cleaned = cpu.replace(/\(R\)|\(TM\)/gi, "").replace(/\s+/g, " ").split("@")[0].trim();
-    return cleaned.length > 42 ? `${cleaned.slice(0, 39)}…` : cleaned;
-  }
-  const profile = inferPowerProfile(equipment, inventory);
-  if (profile === "laptop") return "Laptop (unknown model)";
-  if (profile === "desktop") return "Desktop (unknown model)";
+  const chassis = getRmmChassisInfo(inventory);
+  const explicit = firstText(
+    pickEquipmentText(equipment, inventory, ["model", "modele", "modelName", "productName"]),
+    chassis.model,
+    hw.model,
+    hw.productName
+  );
+  if (explicit) return shortenLabel(explicit) || "Not specified";
   return "Not specified";
 }
-function inferCpuFamily(inventory) {
-  const cpu = String(inventory?.hardware?.cpu || "").toLowerCase();
+function inferCpuFamily(equipment, inventory) {
+  const cpu = resolveCpuText(equipment, inventory).toLowerCase();
   if (!cpu) return "Not specified";
-  if (cpu.includes("apple") || cpu.includes("m1") || cpu.includes("m2") || cpu.includes("m3")) return "Apple Silicon";
+  if (cpu.includes("apple") || cpu.includes("m1") || cpu.includes("m2") || cpu.includes("m3") || cpu.includes("m4")) return "Apple Silicon";
   if (cpu.includes("amd") || cpu.includes("ryzen")) return "AMD";
-  if (cpu.includes("intel")) return "Intel";
-  if (cpu.includes("qualcomm")) return "Qualcomm";
-  return "Other";
+  if (cpu.includes("intel") || /\bi[3579]\b/.test(cpu) || cpu.includes("core i") || cpu.includes("xeon") || cpu.includes("celeron") || cpu.includes("pentium")) return "Intel";
+  if (cpu.includes("qualcomm") || cpu.includes("snapdragon")) return "Qualcomm";
+  return shortenLabel(resolveCpuText(equipment, inventory), 28) || "Other";
+}
+function inferFormFactorLabel(equipment, inventory) {
+  const type = resolveComputerType(equipment, inventory);
+  if (type) return getComputerTypeLabel(type) || type;
+  return "Not specified";
+}
+function resolveRamGb(equipment, inventory) {
+  const hw = inventory?.hardware || {};
+  const fromInventory = Number(hw.ramGB ?? hw.ramGb);
+  if (Number.isFinite(fromInventory) && fromInventory > 0) return fromInventory;
+  return parseSizeToGb(pickEquipmentText(equipment, inventory, ["memoire", "ram", "memory"]) || hw.ram || hw.memory);
+}
+function resolveDiskGb(equipment, inventory) {
+  const disks = Array.isArray(inventory?.hardware?.disks) ? inventory.hardware.disks : [];
+  let machineDiskGb = 0;
+  for (const disk of disks) {
+    const size = Number(disk?.sizeGB ?? disk?.sizeGb);
+    if (Number.isFinite(size) && size > 0) machineDiskGb += size;
+  }
+  if (machineDiskGb > 0) return machineDiskGb;
+  return parseSizeToGb(pickEquipmentText(equipment, inventory, ["stockage", "storage"]) || inventory?.hardware?.storage);
 }
 function ramBucket(ramGb) {
   const value = Number(ramGb);
@@ -114,7 +216,7 @@ function ramBucket(ramGb) {
 export function normalizeOsFamily(systeme) {
   const raw = String(systeme || "").trim();
   const s = raw.toLowerCase();
-  if (!s) return "Inconnu";
+  if (!s) return "Not specified";
   if (s.includes("windows 11")) return "Windows 11";
   if (s.includes("windows 10")) return "Windows 10";
   if (s.includes("windows server")) return "Windows Server";
@@ -169,6 +271,9 @@ export function buildComputerFleetStats(computers, options = {}) {
   const powerByProfile = {
     desktop: 0,
     laptop: 0,
+    "all-in-one": 0,
+    "mini-pc": 0,
+    tablet: 0,
     unknown: 0
   };
   let rmmManaged = 0;
@@ -195,32 +300,27 @@ export function buildComputerFleetStats(computers, options = {}) {
   let diskKnownCount = 0;
   for (const equipment of list) {
     const inventory = getRmmInventoryFromEquipment(equipment);
-    const osFamily = normalizeOsFamily(equipment?.systeme || inventory?.os?.name);
+    const osFamily = normalizeOsFamily(repairRmmTextEncoding(equipment?.systeme || inventory?.os?.name || inventory?.systeme || ""));
     increment(osCounts, osFamily);
     if (osFamily === "Windows 10") windows10Count += 1;
     if (osFamily === "Windows 11") windows11Count += 1;
     increment(brandCounts, inferBrand(equipment, inventory));
     increment(modelCounts, inferModelLabel(equipment, inventory));
     const managed = isRmmManagedEquipment(equipment);
-    const hasComputerType = Boolean(canonicalizeComputerType(equipment?.computerType || equipment?.rawData?.type));
+    const hasComputerType = Boolean(resolveComputerType(equipment, inventory));
     const profile = managed || hasComputerType ? inferPowerProfile(equipment, inventory) : "unknown";
     powerByProfile[profile] = (powerByProfile[profile] || 0) + 1;
-    increment(formFactorCounts, profile === "laptop" ? "Laptop" : profile === "desktop" ? "Desktop" : "Unidentified");
-    const ramGb = Number(inventory?.hardware?.ramGB ?? inventory?.hardware?.ramGb);
+    increment(formFactorCounts, inferFormFactorLabel(equipment, inventory));
+    const ramGb = resolveRamGb(equipment, inventory);
     if (Number.isFinite(ramGb) && ramGb > 0) {
       ramTotalGb += ramGb;
       ramKnownCount += 1;
     }
     increment(ramCounts, ramBucket(ramGb));
-    increment(cpuCounts, inferCpuFamily(inventory));
+    increment(cpuCounts, inferCpuFamily(equipment, inventory));
     const agentVersion = String(inventory.agentVersion || inventory.agent_version || equipment?.rawData?.agent_version || "").trim();
     if (agentVersion) increment(agentVersionCounts, `v${agentVersion.replace(/^v/i, "")}`);else increment(agentVersionCounts, "Inconnu");
-    const disks = Array.isArray(inventory?.hardware?.disks) ? inventory.hardware.disks : [];
-    let machineDiskGb = 0;
-    for (const disk of disks) {
-      const size = Number(disk?.sizeGB ?? disk?.sizeGb);
-      if (Number.isFinite(size) && size > 0) machineDiskGb += size;
-    }
+    const machineDiskGb = resolveDiskGb(equipment, inventory) || 0;
     if (machineDiskGb > 0) {
       diskTotalGb += machineDiskGb;
       diskKnownCount += 1;

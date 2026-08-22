@@ -8,6 +8,7 @@ import { getGlobalOvhStatus } from "../../api/clientOvh";
 import { parseCustomFamilyType } from "../../api/equipmentFamilies";
 import { getClientEquipmentTotal, mapClientHardwareEquipment } from "../../api/equipment";
 import { filterCustomFamilyMap, filterBySite } from "../../utils/siteFilterUtils";
+import { repairRmmTextEncoding } from "../../utils/rmmTextEncoding";
 import { fetchUsers } from "../../api/users";
 import { getClientCampaigns, createClientCampaign } from "../../api/campaigns";
 import { fetchTickets } from "../../api/tickets";
@@ -4208,7 +4209,7 @@ export default function ClientDetailPage({
                           <tbody>
                             {antivirusDetailData.endpoints.slice(0, 20).map((endpoint, idx) => <tr key={idx}>
                                 <td>{endpoint.computerName || endpoint.name || 'N/A'}</td>
-                                <td>{endpoint.osName || endpoint.os || 'N/A'}</td>
+                                <td>{repairRmmTextEncoding(endpoint.osName || endpoint.os || "") || "N/A"}</td>
                                 <td>
                                   <span className={`${styles.statusBadge} ${endpoint.endpointState === 1 ? styles.statusActive : styles.statusExpired}`}>
                                     {endpoint.endpointState === 1 ? copy.modals.online : copy.modals.offline}

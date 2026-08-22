@@ -33,7 +33,7 @@ import { useSupervisionAlertRules } from "../../hooks/useSupervisionAlertRules";
 import { useAuthContext } from "../../contexts/AuthContext";
 import { updateRmmAgentStatus } from "../../api/rmm";
 import RmmAgentStatusBadge from "./RmmAgentStatusBadge";
-import { getOsIconName } from "./osIconUtils";
+import { getOsIconName, repairOsLabel } from "./osIconUtils";
 import { buildRmmAgentRowFromEquipment, resolveRmmAgentOnline } from "./rmmMonitoringUtils";
 import { fetchClientEquipmentAlerts, resolveEquipmentFamilyForAlerts } from "../../api/equipmentMonitoringAlerts";
 import { ConfirmModal } from "../AdminPage/AdminUi";
@@ -1765,6 +1765,10 @@ const EquipmentPage = forwardRef(function EquipmentPage({
     if (value === null || value === undefined || value === '') return '-';
     return String(value);
   };
+  const formatOsValue = value => {
+    const label = repairOsLabel(formatValue(value));
+    return label || "-";
+  };
   const formatIpDisplay = (equipment, value) => {
     if (equipment?.type === "Internet" && equipment?.ipNonFixe) {
       return "Non-fixed IP";
@@ -2435,7 +2439,7 @@ const EquipmentPage = forwardRef(function EquipmentPage({
       } else if (col.key === 'mac') {
         value = getEquipmentMac(equipment) || value;
       } else if (col.key === 'systeme') {
-        value = equipment.systeme || equipment.rawData?.systeme || value;
+        value = repairOsLabel(equipment.systeme || equipment.rawData?.systeme || value);
       } else if (col.key === 'computerType') {
         value = formatComputerTypeDisplay(equipment.computerType || equipment.rawData?.type || value, locale);
       } else if (col.key === 'role') {
@@ -3048,7 +3052,7 @@ const EquipmentPage = forwardRef(function EquipmentPage({
                               const computerTypeLabel = formatComputerTypeDisplay(equipment.computerType || equipment.rawData?.type || value, locale);
                               return <td key={col.key}>{computerTypeLabel || '-'}</td>;
                             } else if (col.key === 'systeme') {
-                              const osLabel = formatValue(equipment.systeme || equipment.rawData?.systeme || value);
+                              const osLabel = formatOsValue(equipment.systeme || equipment.rawData?.systeme || value);
                               const osIconName = getOsIconName(osLabel, {
                                 withFallback: true
                               });
@@ -3215,7 +3219,7 @@ const EquipmentPage = forwardRef(function EquipmentPage({
                             } else if (col.key === 'clientName') {
                               displayValue = formatClientDisplay(value);
                             } else if (col.key === 'systeme') {
-                              displayValue = formatValue(equipment.systeme || equipment.rawData?.systeme || value);
+                              displayValue = formatOsValue(equipment.systeme || equipment.rawData?.systeme || value);
                             } else if (col.key === 'computerType') {
                               displayValue = formatComputerTypeDisplay(equipment.computerType || equipment.rawData?.type || value, locale) || "-";
                             } else if (col.key === 'ha' || equipment.type === 'Internet' && col.key === 'categorie') {

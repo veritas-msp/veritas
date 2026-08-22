@@ -2,6 +2,7 @@ import API_BASE_URL, { withApiQuery } from "../config";
 import { fetchClientModules } from "./clients";
 import { getEquipmentDbId, isDbEquipmentId, findEquipmentInApiList } from "../utils/equipmentIdentity";
 import { inferComputerTypeFromInventory, canonicalizeComputerType, resolveAlimentationDeploymentType, resolveToipDeploymentType } from "../components/EquipementPage/equipmentFormConfig";
+import { repairRmmTextEncoding } from "../utils/rmmTextEncoding";
 import { resolveAssignedSsidIds, serializeAssignedSsidsForPersistence } from "../components/EquipementPage/wifiApSsidUtils";
 export const getClientEquipment = async clientId => {
   try {
@@ -299,7 +300,7 @@ export function mapClientHardwareEquipment(client) {
       const hostServerName = equipment.hostServerName || equipment.data?.hostServerName || equipment.serveurHote || equipment.data?.serveurHote || "";
       const osData = equipment.os || equipment.data?.os || null;
       const domainData = equipment.domain || equipment.data?.domain || null;
-      const ordinateurSysteme = equipment.systeme || equipment.data?.systeme || osData?.name || equipment.osName || "";
+      const ordinateurSysteme = repairRmmTextEncoding(equipment.systeme || equipment.data?.systeme || osData?.name || equipment.osName || "") || "";
       const ordinateurDomaine = equipment.domaine || equipment.data?.domaine || (domainData?.joined ? domainData.name : domainData?.workgroup || domainData?.name) || "";
       const agentOnlineRaw = equipment.agentOnline ?? equipment.data?.agentOnline ?? (equipment.source === "rmm" ? null : undefined);
       // Leave online resolution to UI helpers (heartbeat-aware). Keep explicit flags only.
@@ -316,12 +317,12 @@ export function mapClientHardwareEquipment(client) {
         // UI tabs use "Servers" / "Storage"; API families use "Serveurs" / "NAS".
         type: type === "Serveurs" ? "Servers" : type === "Stockage" ? "Storage" : type,
         name: equipmentName,
-        model: equipment.modele || equipment.model || equipment.modelName || "",
+        model: equipment.modele || equipment.model || equipment.modelName || equipment.data?.modele || equipment.data?.model || "",
         mac: equipmentMac,
         ip: equipmentIp,
         version: equipment.firmware || equipment.version || equipment.softwareVersion || "",
         serial: equipmentSerial,
-        manufacturer: equipment.fabricant || equipment.manufacturer || equipment.marque || "",
+        manufacturer: equipment.fabricant || equipment.manufacturer || equipment.marque || equipment.data?.fabricant || equipment.data?.marque || equipment.data?.manufacturer || "",
         location: equipment.site || equipment.location || equipment.emplacement || "",
         status: equipment.status || "unknown",
         is_active: isActive,

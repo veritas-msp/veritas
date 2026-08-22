@@ -1,3 +1,10 @@
+import { repairRmmTextEncoding } from "../../utils/rmmTextEncoding";
+
+export function repairOsLabel(value) {
+  if (value == null || value === "") return value;
+  return repairRmmTextEncoding(String(value));
+}
+
 export function getOsIconName(osLabel, {
   withFallback = false
 } = {}) {

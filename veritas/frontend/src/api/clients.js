@@ -717,6 +717,10 @@ export async function fetchClientModules(clientId, options = {}) {
     'o365': {
       monitoring: 'Office365',
       equipement: 'Office365'
+    },
+    'ordinateurs': {
+      monitoring: 'Ordinateurs',
+      equipement: 'Ordinateurs'
     }
   };
   for (const [family, labels] of Object.entries(familyMapping)) {

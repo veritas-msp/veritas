@@ -16,7 +16,7 @@ export default function ComputerFleetStatsView({
           <KpiCard icon="mdi:shield-check-outline" label="RMM coverage" value={`${stats.rmmCoveragePct}%`} sub={`${stats.agentStatus.online} online · ${stats.agentStatus.offline} offline`} tone={stats.rmmCoveragePct >= 90 ? "good" : stats.rmmCoveragePct >= 70 ? "warn" : "bad"} />
           <KpiCard icon="mdi:heart-pulse" label="Fleet health" value={stats.fleetHealth.score != null ? `${stats.fleetHealth.score}%` : "-"} sub={stats.fleetHealth.label} tone={stats.fleetHealth.score == null ? "neutral" : stats.fleetHealth.score >= 80 ? "good" : stats.fleetHealth.score >= 60 ? "warn" : "bad"} />
           <KpiCard icon="mdi:microsoft-windows" label="Windows 11" value={stats.lifecycle.windows11} sub={stats.lifecycle.windows10 > 0 ? `${stats.lifecycle.windows10} still on Windows 10` : "OS migration up to date"} tone={stats.lifecycle.windows10 > 0 ? "warn" : "good"} />
-          <KpiCard icon="mdi:memory" label="Average RAM" value={stats.hardwareSummary.avgRamGb != null ? `${stats.hardwareSummary.avgRamGb} GB` : "-"} sub={stats.hardwareSummary.knownRamCount > 0 ? `${stats.hardwareSummary.totalRamGb} GB total` : "RMM data required"} />
+          <KpiCard icon="mdi:memory" label="Average RAM" value={stats.hardwareSummary.avgRamGb != null ? `${stats.hardwareSummary.avgRamGb} GB` : "-"} sub={stats.hardwareSummary.knownRamCount > 0 ? `${stats.hardwareSummary.totalRamGb} GB total` : "No RAM filled"} />
           <KpiCard icon="mdi:flash-outline" label={`${powerPeriodLabel} usage`} value={`${powerKwh} kWh`} sub={`≈ ${powerCost.toLocaleString("en-GB", {
         style: "currency",
         currency: "EUR"
@@ -35,9 +35,9 @@ export default function ComputerFleetStatsView({
           <article className={styles.panel}>
             <h3 className={styles.panelTitle}>
               <Icon icon="mdi:laptop" />
-              Models & CPU profiles
+              Models
             </h3>
-            <StatsPieChart items={stats.modelDistribution} total={stats.total} centerLabel={stats.total} emptyLabel="RMM inventory required for models" />
+            <StatsPieChart items={stats.modelDistribution} total={stats.total} centerLabel={stats.total} emptyLabel="No model filled" />
           </article>
 
           <article className={styles.panel}>

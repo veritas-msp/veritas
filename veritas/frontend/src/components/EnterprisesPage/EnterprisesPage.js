@@ -577,19 +577,6 @@ export default function EnterprisesPage({
           <main className={`${mspStyles.mspContent} ${mspStyles.mspContentList}`}>
             <div className={`${styles.shell} ${styles.shellWide} ${styles.shellFull}`}>
         <div className={styles.toolbar}>
-          {!loading && !error ? <div className={styles.statusChips} role="group">
-              {copy.statusFilterItems.map(item => {
-                const count = statusCounts[item.key] || 0;
-                const active = statusFilters.has(item.key);
-                return <button key={item.key} type="button" className={`${styles.statusChip} ${active ? styles.statusChipActive : ""} ${count === 0 ? styles.statusChipDisabled : ""}`} onClick={() => toggleStatusFilter(item.key)} disabled={count === 0}>
-                    <span className={`${styles.statusChipIcon} ${styles[`kpiIcon_${item.kpiTone}`]}`}>
-                      <Icon icon={item.icon} />
-                    </span>
-                    <span className={styles.statusChipLabel}>{item.label}</span>
-                    <span className={styles.statusChipCount}>{count}</span>
-                  </button>;
-              })}
-            </div> : null}
           <div className={styles.searchWrap}>
             <Icon icon="mdi:magnify" className={styles.searchIcon} aria-hidden />
             <input type="text" inputMode="search" enterKeyHint="search" placeholder={copy.searchPlaceholder} value={searchQuery} onChange={e => setSearchQuery(e.target.value)} className={styles.searchInput} aria-label={copy.searchAria} />
@@ -599,6 +586,19 @@ export default function EnterprisesPage({
                 </button>
               </SmartTooltip>}
           </div>
+          <div className={styles.statusChips} role="group">
+              {copy.statusFilterItems.map(item => {
+                const count = statusCounts[item.key] || 0;
+                const active = statusFilters.has(item.key);
+                return <button key={item.key} type="button" className={`${styles.statusChip} ${active ? styles.statusChipActive : ""} ${count === 0 ? styles.statusChipDisabled : ""}`} onClick={() => toggleStatusFilter(item.key)} disabled={loading || error || count === 0}>
+                    <span className={`${styles.statusChipIcon} ${styles[`kpiIcon_${item.kpiTone}`]}`}>
+                      <Icon icon={item.icon} />
+                    </span>
+                    <span className={styles.statusChipLabel}>{item.label}</span>
+                    <span className={styles.statusChipCount}>{count}</span>
+                  </button>;
+              })}
+            </div>
           <span className={styles.toolbarMeta}>
             {filteredAndSortedClients.length}
           </span>

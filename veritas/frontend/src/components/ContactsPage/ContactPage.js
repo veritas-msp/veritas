@@ -633,11 +633,20 @@ export default function ContactPage({
           <main className={`${mspStyles.mspContent} ${mspStyles.mspContentList}`}>
             <div className={`${layout.shell} ${layout.shellWide} ${layout.shellFull}`}>
         <div className={layout.toolbar}>
-          {!loading && !error ? <div className={layout.statusChips} role="group">
+          <div className={layout.searchWrap}>
+            <Icon icon="mdi:magnify" className={layout.searchIcon} aria-hidden />
+            <input type="text" inputMode="search" enterKeyHint="search" placeholder={pageCopy.searchPlaceholder} value={searchQuery} onChange={e => setSearchQuery(e.target.value)} className={layout.searchInput} aria-label={pageCopy.searchAria} />
+            {searchQuery && <SmartTooltip content={pageCopy.clearSearch}>
+                <button type="button" onClick={() => setSearchQuery("")} className={layout.clearButton} aria-label={pageCopy.clearSearch}>
+                  <FaTimes />
+                </button>
+              </SmartTooltip>}
+          </div>
+          <div className={layout.statusChips} role="group">
               {pageCopy.statusFilters.map(item => {
                 const count = statusCounts[item.key] || 0;
                 const active = statusFilters.has(item.key);
-                return <button key={item.key} type="button" className={`${layout.statusChip} ${active ? layout.statusChipActive : ""} ${count === 0 ? layout.statusChipDisabled : ""}`} onClick={() => toggleStatusFilter(item.key)} disabled={count === 0}>
+                return <button key={item.key} type="button" className={`${layout.statusChip} ${active ? layout.statusChipActive : ""} ${count === 0 ? layout.statusChipDisabled : ""}`} onClick={() => toggleStatusFilter(item.key)} disabled={loading || error || count === 0}>
                     <span className={`${layout.statusChipIcon} ${layout[`kpiIcon_${item.kpiTone}`]}`}>
                       <Icon icon={item.icon} />
                     </span>
@@ -649,7 +658,7 @@ export default function ContactPage({
                 type="button"
                 className={`${layout.statusChip} ${portalFilter ? layout.statusChipActive : ""} ${portalCount === 0 ? layout.statusChipDisabled : ""}`}
                 onClick={() => setPortalFilter(prev => !prev)}
-                disabled={portalCount === 0}
+                disabled={loading || error || portalCount === 0}
                 title={pageCopy.portal.label}
               >
                 <span className={`${layout.statusChipIcon} ${layout.kpiIcon_violet}`}>
@@ -658,16 +667,7 @@ export default function ContactPage({
                 <span className={layout.statusChipLabel}>{pageCopy.portalFilter}</span>
                 <span className={layout.statusChipCount}>{portalCount}</span>
               </button>
-            </div> : null}
-          <div className={layout.searchWrap}>
-            <Icon icon="mdi:magnify" className={layout.searchIcon} aria-hidden />
-            <input type="text" inputMode="search" enterKeyHint="search" placeholder={pageCopy.searchPlaceholder} value={searchQuery} onChange={e => setSearchQuery(e.target.value)} className={layout.searchInput} aria-label={pageCopy.searchAria} />
-            {searchQuery && <SmartTooltip content={pageCopy.clearSearch}>
-                <button type="button" onClick={() => setSearchQuery("")} className={layout.clearButton} aria-label={pageCopy.clearSearch}>
-                  <FaTimes />
-                </button>
-              </SmartTooltip>}
-          </div>
+            </div>
           <span className={layout.toolbarMeta}>{filteredAndSortedContacts.length}</span>
         </div>
 
