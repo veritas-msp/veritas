@@ -1,7 +1,7 @@
 import { createLocaleGetter, interpolate } from "../../i18n/translate";
 const PAGE_COPY = {
   fr: {
-    searchPlaceholder: "Rechercher un équipement…",
+    searchPlaceholder: "Rechercher un équipement, IP, SN…",
     embedded: {
       typeBarAria: "Types de périphériques",
       typeTooltip: "{label} ({count})",
@@ -123,22 +123,42 @@ const PAGE_COPY = {
       Serveurs: {
         vlan: "VLAN",
         processeur: "Proc.",
-        role: "Rôles"
+        role: "Rôles",
+        serial: "SN"
+      },
+      Servers: {
+        serial: "SN"
       },
       Stockage: {
-        raid: "RAID"
+        raid: "RAID",
+        serial: "SN"
+      },
+      Storage: {
+        serial: "SN"
       },
       Switch: {
-        manufacturer: "Marque"
+        manufacturer: "Marque",
+        serial: "SN"
       },
       BorneWifi: {
-        manufacturer: "Marque"
+        manufacturer: "Marque",
+        serial: "SN"
+      },
+      Alimentation: {
+        serial: "SN"
+      },
+      Routeur: {
+        serial: "SN"
+      },
+      TOIP: {
+        serial: "SN"
       },
       Ordinateurs: {
         systeme: "OS",
         computerType: "Type",
         domaine: "Domaine",
-        agentStatus: "Agent"
+        agentStatus: "Agent",
+        serial: "SN"
       },
       Sauvegarde: {
         name: "Logiciel",
@@ -202,7 +222,7 @@ const PAGE_COPY = {
     }
   },
   en: {
-    searchPlaceholder: "Search for equipment…",
+    searchPlaceholder: "Search equipment, IP, SN…",
     embedded: {
       typeBarAria: "Peripheral types",
       typeTooltip: "{label} ({count})",
@@ -324,22 +344,36 @@ const PAGE_COPY = {
       Servers: {
         vlan: "VLAN",
         processeur: "CPU",
-        role: "Roles"
+        role: "Roles",
+        serial: "SN"
       },
       Storage: {
-        raid: "RAID"
+        raid: "RAID",
+        serial: "SN"
       },
       Switch: {
-        manufacturer: "Brand"
+        manufacturer: "Brand",
+        serial: "SN"
       },
       BorneWifi: {
-        manufacturer: "Brand"
+        manufacturer: "Brand",
+        serial: "SN"
+      },
+      Alimentation: {
+        serial: "SN"
+      },
+      Routeur: {
+        serial: "SN"
+      },
+      TOIP: {
+        serial: "SN"
       },
       Ordinateurs: {
         systeme: "OS",
         computerType: "Type",
         domaine: "Domain",
-        agentStatus: "Agent"
+        agentStatus: "Agent",
+        serial: "SN"
       },
       Backup: {
         name: "Software",
@@ -403,7 +437,7 @@ const PAGE_COPY = {
     }
   },
   de: {
-    searchPlaceholder: "Gerät suchen…",
+    searchPlaceholder: "Gerät, IP, SN suchen…",
     embedded: {
       typeBarAria: "Gerätetypen",
       typeTooltip: "{label} ({count})",
@@ -525,13 +559,36 @@ const PAGE_COPY = {
       Serveurs: {
         vlan: "VLAN",
         processeur: "CPU",
-        role: "Rollen"
+        role: "Rollen",
+        serial: "SN"
+      },
+      Servers: {
+        serial: "SN"
+      },
+      Storage: {
+        serial: "SN"
+      },
+      Switch: {
+        serial: "SN"
+      },
+      BorneWifi: {
+        serial: "SN"
+      },
+      Alimentation: {
+        serial: "SN"
+      },
+      Routeur: {
+        serial: "SN"
+      },
+      TOIP: {
+        serial: "SN"
       },
       Ordinateurs: {
         systeme: "OS",
         computerType: "Typ",
         domaine: "Domäne",
-        agentStatus: "Agent"
+        agentStatus: "Agent",
+        serial: "SN"
       },
       Sauvegarde: {
         name: "Software",
@@ -591,7 +648,7 @@ const PAGE_COPY = {
     }
   },
   it: {
-    searchPlaceholder: "Cerca un dispositivo…",
+    searchPlaceholder: "Cerca dispositivo, IP, SN…",
     embedded: {
       typeBarAria: "Tipi di periferica",
       typeTooltip: "{label} ({count})",
@@ -713,13 +770,36 @@ const PAGE_COPY = {
       Serveurs: {
         vlan: "VLAN",
         processeur: "CPU",
-        role: "Ruoli"
+        role: "Ruoli",
+        serial: "SN"
+      },
+      Servers: {
+        serial: "SN"
+      },
+      Storage: {
+        serial: "SN"
+      },
+      Switch: {
+        serial: "SN"
+      },
+      BorneWifi: {
+        serial: "SN"
+      },
+      Alimentation: {
+        serial: "SN"
+      },
+      Routeur: {
+        serial: "SN"
+      },
+      TOIP: {
+        serial: "SN"
       },
       Ordinateurs: {
         systeme: "OS",
         computerType: "Tipo",
         domaine: "Dominio",
-        agentStatus: "Agente"
+        agentStatus: "Agente",
+        serial: "SN"
       },
       Sauvegarde: {
         name: "Software",
@@ -779,7 +859,7 @@ const PAGE_COPY = {
     }
   },
   es: {
-    searchPlaceholder: "Buscar un equipo…",
+    searchPlaceholder: "Buscar equipo, IP, SN…",
     embedded: {
       typeBarAria: "Tipos de periférico",
       typeTooltip: "{label} ({count})",
@@ -901,13 +981,36 @@ const PAGE_COPY = {
       Serveurs: {
         vlan: "VLAN",
         processeur: "CPU",
-        role: "Roles"
+        role: "Roles",
+        serial: "SN"
+      },
+      Servers: {
+        serial: "SN"
+      },
+      Storage: {
+        serial: "SN"
+      },
+      Switch: {
+        serial: "SN"
+      },
+      BorneWifi: {
+        serial: "SN"
+      },
+      Alimentation: {
+        serial: "SN"
+      },
+      Routeur: {
+        serial: "SN"
+      },
+      TOIP: {
+        serial: "SN"
       },
       Ordinateurs: {
         systeme: "SO",
         computerType: "Tipo",
         domaine: "Dominio",
-        agentStatus: "Agente"
+        agentStatus: "Agente",
+        serial: "SN"
       },
       Sauvegarde: {
         name: "Software",

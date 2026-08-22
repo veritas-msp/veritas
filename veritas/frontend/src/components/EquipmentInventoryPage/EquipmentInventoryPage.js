@@ -27,6 +27,9 @@ function InventoryDeviceIcon({
   return <EquipmentBrandIcon equipment={item} equipmentType={item?.type} className={className} />;
 }
 
+function compactSerial(value) {
+  return String(value || "").toLowerCase().replace(/[\s\-_.]/g, "");
+}
 function searchBlob(item) {
   return [
     item?.name,
@@ -39,6 +42,14 @@ function searchBlob(item) {
     item?.location,
     item?.model
   ].filter(Boolean).join(" ").toLowerCase();
+}
+function matchesInventorySearch(item, query) {
+  const q = String(query || "").trim().toLowerCase();
+  if (!q) return true;
+  if (searchBlob(item).includes(q)) return true;
+  const serial = compactSerial(item?.serial);
+  const qSerial = compactSerial(q);
+  return Boolean(qSerial && serial.includes(qSerial));
 }
 
 function typeLabel(item, locale) {
@@ -186,7 +197,7 @@ export default function EquipmentInventoryPage({
       if (typeFilter && item.type !== typeFilter) return false;
       if (statusFilter === "active" && item.is_active === false) return false;
       if (statusFilter === "inactive" && item.is_active !== false) return false;
-      if (q && !searchBlob(item).includes(q)) return false;
+      if (q && !matchesInventorySearch(item, q)) return false;
       return true;
     });
   }, [items, search, clientFilter, typeFilter, statusFilter]);

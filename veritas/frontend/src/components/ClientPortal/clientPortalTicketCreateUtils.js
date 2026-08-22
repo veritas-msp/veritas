@@ -117,5 +117,7 @@ export function getEquipmentLinkLabel(equipment, copy) {
   return `${typeLabel} · ${equipment.name}${serial}`;
 }
 export function getEquipmentLinkSearchText(equipment) {
-  return [equipment?.type, equipment?.name, equipment?.serial, equipment?.id].filter(Boolean).join(" ").toLowerCase();
+  const serial = String(equipment?.serial || "").trim();
+  const compact = serial.toLowerCase().replace(/[\s\-_.]/g, "");
+  return [equipment?.type, equipment?.name, serial, compact, equipment?.id].filter(Boolean).join(" ").toLowerCase();
 }

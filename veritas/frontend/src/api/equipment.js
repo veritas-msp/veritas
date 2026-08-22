@@ -238,7 +238,7 @@ export function mapClientHardwareEquipment(client) {
       if (type === "Ordinateurs" && equipment.is_active === false) return;
       const equipmentMac = equipment.adresseMac || equipment.mac || equipment.macAddress || "";
       const equipmentIp = equipment.ip || equipment.ipAddress || "";
-      const equipmentSerial = equipment.numeroSerie || equipment.serial || equipment.serialNumber || "";
+      const equipmentSerial = equipment.numeroSerie || equipment.serial || equipment.serialNumber || equipment.data?.numeroSerie || equipment.data?.serial || "";
       let equipmentName = equipment.nom || equipment.name || "";
       if (type === "Internet") {
         if (!equipmentName || equipmentName.toLowerCase() === "unnamed" || equipmentName.trim() === "") {

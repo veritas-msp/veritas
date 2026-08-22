@@ -34,7 +34,7 @@ import { useAuthContext } from "../../contexts/AuthContext";
 import { updateRmmAgentStatus } from "../../api/rmm";
 import RmmAgentStatusBadge from "./RmmAgentStatusBadge";
 import { getOsIconName, repairOsLabel } from "./osIconUtils";
-import { buildRmmAgentRowFromEquipment, resolveRmmAgentOnline } from "./rmmMonitoringUtils";
+import { buildRmmAgentRowFromEquipment, getRmmChassisInfo, getRmmInventoryFromEquipment, resolveRmmAgentOnline } from "./rmmMonitoringUtils";
 import { fetchClientEquipmentAlerts, resolveEquipmentFamilyForAlerts } from "../../api/equipmentMonitoringAlerts";
 import { ConfirmModal } from "../AdminPage/AdminUi";
 import { useAppLocale } from "../../hooks/useAppGeneralSettings";
@@ -78,6 +78,39 @@ function filterItemsBySearch(items, searchQuery, getSearchableText) {
   const query = searchQuery.trim().toLowerCase();
   if (!query) return items;
   return items.filter(item => getSearchableText(item).toLowerCase().includes(query));
+}
+function getEquipmentSerial(equipment) {
+  const candidates = [
+    equipment?.serial,
+    equipment?.numeroSerie,
+    equipment?.serialNumber,
+    equipment?.sn,
+    equipment?.rawData?.numeroSerie,
+    equipment?.rawData?.serial,
+    equipment?.rawData?.serialNumber,
+    equipment?.rawData?.sn,
+    equipment?.rawData?.data?.numeroSerie,
+    equipment?.rawData?.data?.serial,
+    equipment?.rawData?.data?.sn
+  ];
+  for (const value of candidates) {
+    const text = String(value || "").trim();
+    if (text) return text;
+  }
+  return getRmmChassisInfo(getRmmInventoryFromEquipment(equipment)).serial || "";
+}
+function compactSerial(value) {
+  return String(value || "").toLowerCase().replace(/[\s\-_.]/g, "");
+}
+function matchesHardwareSearch(equipment, searchQuery) {
+  const query = String(searchQuery || "").trim().toLowerCase();
+  if (!query) return true;
+  const serial = getEquipmentSerial(equipment);
+  const texts = [equipment?.name, equipment?.model, equipment?.mac, equipment?.ip, equipment?.clientName, equipment?.systeme, equipment?.netbios, serial];
+  if (texts.some(value => String(value || "").toLowerCase().includes(query))) return true;
+  const querySerial = compactSerial(query);
+  const serialCompact = compactSerial(serial);
+  return Boolean(querySerial && serialCompact.includes(querySerial));
 }
 function mapBackupRows(instances = [], searchQuery = "") {
   const rows = (Array.isArray(instances) ? instances : []).map(instance => ({
@@ -670,14 +703,15 @@ const INTERNET_COLUMN_KEYS = ['name', 'client', 'location', 'ip', 'internetType'
 const INTERNET_COLUMN_LABELS = {
   internetType: 'Connection type'
 };
-const ORDINATEUR_COLUMN_KEYS = ['name', 'client', 'computerType', 'location', 'ip', 'systeme', 'domaine', 'agentStatus', 'mac'];
+const ORDINATEUR_COLUMN_KEYS = ['name', 'client', 'computerType', 'location', 'ip', 'systeme', 'domaine', 'agentStatus', 'mac', 'serial'];
 const ORDINATEUR_COLUMN_LABELS = {
   computerType: 'Type',
   systeme: 'OS',
   domaine: 'Domaine',
-  agentStatus: 'Agent'
+  agentStatus: 'Agent',
+  serial: 'SN'
 };
-const SERVER_COLUMN_KEYS = ['name', 'monitoring', 'client', 'location', 'role', 'ip', 'vlan', 'ha', 'systeme', 'processeur', 'memoire', 'stockage', 'expirationGarantie', 'mapping'];
+const SERVER_COLUMN_KEYS = ['name', 'monitoring', 'client', 'location', 'role', 'ip', 'vlan', 'ha', 'systeme', 'serial', 'processeur', 'memoire', 'stockage', 'expirationGarantie', 'mapping'];
 const SERVER_COLUMN_LABELS = {
   vlan: 'VLAN',
   systeme: 'OS',
@@ -686,7 +720,7 @@ const SERVER_COLUMN_LABELS = {
   stockage: 'Storage',
   role: 'Roles'
 };
-const STORAGE_COLUMN_KEYS = ['name', 'monitoring', 'client', 'location', 'ip', 'ha', 'raid', 'capacite', 'nbDisquesActuels', 'nbDisquesMax', 'expirationGarantie', 'mapping'];
+const STORAGE_COLUMN_KEYS = ['name', 'monitoring', 'client', 'location', 'ip', 'ha', 'serial', 'raid', 'capacite', 'nbDisquesActuels', 'nbDisquesMax', 'expirationGarantie', 'mapping'];
 const STORAGE_COLUMN_LABELS = {
   capacite: 'Capacity',
   nbDisquesActuels: 'Current disks',
@@ -712,14 +746,14 @@ const MONITORING_COLUMN_LABEL = "Monitoring";
 const EMBEDDED_TYPE_COLUMNS = {
   Internet: ["name", "ip", "location", "ha", "fournisseur", "debit", "mapping"],
   Firewalls: ["name", "ip", "location", "ha", "model", "serial", "monitoring", "mapping"],
-  Servers: ["name", "role", "ip", "location", "ha", "systeme", "monitoring", "mapping"],
-  Ordinateurs: ["name", "computerType", "ip", "location", "systeme", "domaine", "agentStatus", "mapping"],
-  Storage: ["name", "ip", "location", "ha", "capacite", "monitoring", "mapping"],
-  Switch: ["name", "ip", "location", "model", "monitoring", "mapping"],
-  BorneWifi: ["name", "ip", "location", "model", "monitoring", "mapping"],
-  Alimentation: ["name", "ip", "location", "model", "monitoring", "mapping"],
-  Routeur: ["name", "ip", "location", "model", "monitoring", "mapping"],
-  TOIP: ["name", "ip", "location", "model", "monitoring", "mapping"],
+  Servers: ["name", "role", "ip", "location", "ha", "systeme", "serial", "monitoring", "mapping"],
+  Ordinateurs: ["name", "computerType", "ip", "location", "systeme", "domaine", "agentStatus", "serial", "mapping"],
+  Storage: ["name", "ip", "location", "ha", "serial", "capacite", "monitoring", "mapping"],
+  Switch: ["name", "ip", "location", "model", "serial", "monitoring", "mapping"],
+  BorneWifi: ["name", "ip", "location", "model", "serial", "monitoring", "mapping"],
+  Alimentation: ["name", "ip", "location", "model", "serial", "monitoring", "mapping"],
+  Routeur: ["name", "ip", "location", "model", "serial", "monitoring", "mapping"],
+  TOIP: ["name", "ip", "location", "model", "serial", "monitoring", "mapping"],
   Backup: ["name", "server", "version", "jobsCount", "mappedJobsCount"]
 };
 function getEmbeddedCellClassName(colKey, styles) {
@@ -1117,9 +1151,15 @@ const EquipmentPage = forwardRef(function EquipmentPage({
   }, [hexCustomFamilies]);
   const getCustomFamilyItems = useCallback(family => {
     const items = Array.isArray(family?.items) ? family.items : [];
-    return filterItemsBySearch(items, searchQuery, item => {
+    const query = String(searchQuery || "").trim().toLowerCase();
+    if (!query) return items;
+    return items.filter(item => {
       const fieldValues = (family.fields || []).map(field => item.fields?.[field.fieldKey] ?? item.data?.[field.fieldKey] ?? "");
-      return [item.name, ...fieldValues].filter(Boolean).join(" ");
+      const serial = item.serial || item.numeroSerie || item.fields?.numeroSerie || item.fields?.serial || item.data?.numeroSerie || item.data?.serial || "";
+      const blob = [item.name, serial, ...fieldValues].filter(Boolean).join(" ").toLowerCase();
+      if (blob.includes(query)) return true;
+      const querySerial = compactSerial(query);
+      return Boolean(querySerial && compactSerial(serial).includes(querySerial));
     });
   }, [searchQuery]);
   const baseEquipment = useMemo(() => {
@@ -1188,7 +1228,7 @@ const EquipmentPage = forwardRef(function EquipmentPage({
     let filtered = [...baseEquipment];
     if (searchQuery.trim()) {
       const query = searchQuery.toLowerCase();
-      filtered = filtered.filter(eq => [eq.name, eq.model, eq.mac, eq.ip, eq.clientName].map(v => String(v || "").toLowerCase()).some(text => text.includes(query)));
+      filtered = filtered.filter(eq => matchesHardwareSearch(eq, query));
     }
     if (selectedClients.size > 0) {
       filtered = filtered.filter(eq => selectedClients.has(eq.clientName));
@@ -1330,7 +1370,7 @@ const EquipmentPage = forwardRef(function EquipmentPage({
     let filtered = [...baseEquipment];
     if (searchQuery.trim()) {
       const query = searchQuery.toLowerCase();
-      filtered = filtered.filter(eq => [eq.name, eq.model, eq.mac, eq.ip, eq.clientName].map(v => String(v || "").toLowerCase()).some(text => text.includes(query)));
+      filtered = filtered.filter(eq => matchesHardwareSearch(eq, query));
     }
     if (selectedClients.size > 0) {
       filtered = filtered.filter(eq => selectedClients.has(eq.clientName));
@@ -1356,7 +1396,7 @@ const EquipmentPage = forwardRef(function EquipmentPage({
     let filtered = [...baseEquipment];
     if (searchQuery.trim()) {
       const query = searchQuery.toLowerCase();
-      filtered = filtered.filter(eq => [eq.name, eq.model, eq.mac, eq.ip, eq.clientName].map(v => String(v || "").toLowerCase()).some(text => text.includes(query)));
+      filtered = filtered.filter(eq => matchesHardwareSearch(eq, query));
     }
     if (selectedClients.size > 0) {
       filtered = filtered.filter(eq => selectedClients.has(eq.clientName));
@@ -1602,6 +1642,9 @@ const EquipmentPage = forwardRef(function EquipmentPage({
     }
     if (colKey === "computerType") {
       return formatComputerTypeDisplay(equipment.computerType || equipment.rawData?.type || raw, locale).toLowerCase();
+    }
+    if (colKey === "serial") {
+      return getEquipmentSerial(equipment).toLowerCase();
     }
     if (typeof raw === "number" && !Number.isNaN(raw)) return raw;
     return raw != null ? String(raw).toLowerCase() : "";
@@ -2438,6 +2481,8 @@ const EquipmentPage = forwardRef(function EquipmentPage({
         value = equipment.vlan || equipment.rawData?.vlan || value;
       } else if (col.key === 'mac') {
         value = getEquipmentMac(equipment) || value;
+      } else if (col.key === 'serial') {
+        value = getEquipmentSerial(equipment) || value;
       } else if (col.key === 'systeme') {
         value = repairOsLabel(equipment.systeme || equipment.rawData?.systeme || value);
       } else if (col.key === 'computerType') {
@@ -3075,7 +3120,8 @@ const EquipmentPage = forwardRef(function EquipmentPage({
                             } else if (col.key === 'ip') {
                               return <td key={col.key} className={styles.monospace}>{formatIpDisplay(equipment, value)}</td>;
                             } else if (col.key === 'mac' || col.key === 'serial') {
-                              return <td key={col.key} className={styles.monospace}>{formatValue(value)}</td>;
+                              const display = col.key === 'serial' ? getEquipmentSerial(equipment) || value : value;
+                              return <td key={col.key} className={styles.monospace}>{formatValue(display)}</td>;
                             } else if (col.key === 'clientName') {
                               return <td key={col.key}>
                                       {equipment.clientId ? <button type="button" className={styles.enterpriseLinkText} onClick={e => {
@@ -3213,7 +3259,7 @@ const EquipmentPage = forwardRef(function EquipmentPage({
                             } else if (col.key === 'ip') {
                               displayValue = formatIpDisplay(equipment, value);
                             } else if (col.key === 'serial') {
-                              displayValue = formatValue(value);
+                              displayValue = formatValue(getEquipmentSerial(equipment) || value);
                             } else if (col.key === 'mac') {
                               displayValue = formatValue(getEquipmentMac(equipment) || value);
                             } else if (col.key === 'clientName') {
