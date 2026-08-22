@@ -2105,7 +2105,7 @@ export function buildEquipmentSectionMeta(form, moduleKey, {
     meta.notes = Boolean(form?.commentaire?.trim());
   }
   if (moduleKey === "Ordinateurs") {
-    meta.identity = Boolean(form?.name?.trim() && form?.computerType?.trim());
+    meta.identity = Boolean(form?.name?.trim());
     meta.system = Boolean(form?.systeme?.trim() || form?.domaine?.trim() || form?.processeur?.trim() || form?.memoire?.trim());
     meta.network = Boolean(form?.ip?.trim() || form?.vlan?.trim() || form?.mac?.trim());
     meta.notes = Boolean(form?.commentaire?.trim());
@@ -2198,7 +2198,7 @@ export function isEquipmentRequiredSectionIncomplete(form, moduleKey, sectionId,
       return !form?.name?.trim() || !form?.typeServer?.trim();
     }
     if (moduleKey === "Ordinateurs") {
-      return !form?.name?.trim() || !form?.computerType?.trim();
+      return !form?.name?.trim();
     }
     if (moduleKey === "Storage") {
       return !form?.name?.trim() || !form?.storageType?.trim();
@@ -2255,10 +2255,6 @@ export function validateEquipmentForm(form, moduleKey, {
   if (moduleKey === "Servers" && isAddMode && !form?.typeServer?.trim()) {
     setActiveSection("identity");
     return "Server type is required";
-  }
-  if (moduleKey === "Ordinateurs" && isAddMode && !form?.computerType?.trim()) {
-    setActiveSection("identity");
-    return "Computer type is required";
   }
   if (moduleKey === "Servers" && isAddMode && getServerFormProfile(form?.typeServer).showHardware && !form?.manufacturer?.trim()) {
     setActiveSection("hardware");

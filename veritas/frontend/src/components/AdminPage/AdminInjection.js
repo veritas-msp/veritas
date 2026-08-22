@@ -359,15 +359,11 @@ export default function AdminInjection({
                   </table>
                 </div>
               </div>
-            </details> : <p className={styles.columnsHint}>
-              <strong>{copy.columnsTitle}</strong>
-              <span>{copy.columns[activeView]}</span>
-            </p>}
+            </details> : null}
 
           {activeView === "equipment" ? <div className={styles.equipmentGuide}>
               <div className={styles.equipmentGuideHeader}>
                 <strong>{copy.equipmentGuideTitle}</strong>
-                <p>{copy.equipmentGuideIntro}</p>
               </div>
 
               <div className={styles.equipmentFamilyPicker} role="listbox" aria-label={copy.equipmentGuidePickFamily}>
@@ -410,7 +406,6 @@ export default function AdminInjection({
                         {selectedFamily.fields.map(field => <tr key={field.key}>
                             <td>
                               <code>{field.csvColumn}</code>
-                              {field.required ? <span className={styles.equipmentRequired}> · {copy.equipmentGuideRequired}</span> : null}
                             </td>
                             <td>{field.label}</td>
                             <td>{field.values}</td>
@@ -418,9 +413,6 @@ export default function AdminInjection({
                       </tbody>
                     </table>
                   </div>
-                  {selectedFamily.jsonHint ? <p className={styles.equipmentJsonHint}>
-                      <strong>{copy.equipmentGuideJson} :</strong> {selectedFamily.jsonHint}
-                    </p> : null}
                 </div> : null}
             </div> : null}
 

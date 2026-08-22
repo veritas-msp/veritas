@@ -199,7 +199,6 @@ const COPY = {
       tickets: "title (required), client_name or client_id (company), description, priority, status, type, category, channel, is_major_incident, assigned_user_id, requester_contact_id."
     },
     equipmentGuideTitle: "Champs métier par famille",
-    equipmentGuideIntro: "Choisissez un type ci-dessous pour voir les colonnes data_* à utiliser. Chaque data_<clé> remplit data.<clé> (ex. data_brand → marque). Réservez data_json aux tableaux / objets (rôles, licences…). Injection limitée au hardware (pas de sauvegarde, antivirus, O365, NDD, SSL).",
     equipmentGuidePickFamily: "Choisir un type d’équipement",
     equipmentGuideCsvCol: "Colonne CSV",
     equipmentGuideMeaning: "Signification",
@@ -278,7 +277,6 @@ const COPY = {
       tickets: "title (required), client_name or client_id (company), description, priority, status, type, category, channel, is_major_incident, assigned_user_id, requester_contact_id."
     },
     equipmentGuideTitle: "Business fields by family",
-    equipmentGuideIntro: "Pick a type below to see the data_* columns to use. Each English data_* column maps to the stored data key (e.g. data_brand → marque). Reserve data_json for arrays/objects (roles, licences…). Hardware only (no backup, antivirus, O365, domains, SSL).",
     equipmentGuidePickFamily: "Choose an equipment type",
     equipmentGuideCsvCol: "CSV column",
     equipmentGuideMeaning: "Meaning",
@@ -357,7 +355,6 @@ const COPY = {
       tickets: "title (required), client_name or client_id (company), description, priority, status, type, category, channel, is_major_incident, assigned_user_id, requester_contact_id."
     },
     equipmentGuideTitle: "Fachfelder nach Familie",
-    equipmentGuideIntro: "Wählen Sie unten einen Typ, um die data_*-Spalten zu sehen. Jede data_<schlüssel> füllt data.<schlüssel> (z. B. data_brand → marque). data_json für Arrays/Objekte. Nur Hardware (kein Backup, Antivirus, O365, Domains, SSL).",
     equipmentGuidePickFamily: "Gerätetyp wählen",
     equipmentGuideCsvCol: "CSV-Spalte",
     equipmentGuideMeaning: "Bedeutung",
@@ -436,7 +433,6 @@ const COPY = {
       tickets: "title (required), client_name or client_id (company), description, priority, status, type, category, channel, is_major_incident, assigned_user_id, requester_contact_id."
     },
     equipmentGuideTitle: "Campi business per famiglia",
-    equipmentGuideIntro: "Scegli un tipo qui sotto per vedere le colonne data_*. Ogni data_<chiave> valorizza data.<chiave> (es. data_brand → marque). Usa data_json per array/oggetti. Solo hardware (niente backup, antivirus, O365, domini, SSL).",
     equipmentGuidePickFamily: "Scegli un tipo di dispositivo",
     equipmentGuideCsvCol: "Colonna CSV",
     equipmentGuideMeaning: "Significato",
@@ -515,7 +511,6 @@ const COPY = {
       tickets: "title (required), client_name or client_id (company), description, priority, status, type, category, channel, is_major_incident, assigned_user_id, requester_contact_id."
     },
     equipmentGuideTitle: "Campos de negocio por familia",
-    equipmentGuideIntro: "Elija un tipo abajo para ver las columnas data_*. Cada data_<clave> rellena data.<clave> (p. ej. data_brand → marque). Reserve data_json para arrays/objetos. Solo hardware (sin backup, antivirus, O365, dominios, SSL).",
     equipmentGuidePickFamily: "Elegir un tipo de equipo",
     equipmentGuideCsvCol: "Columna CSV",
     equipmentGuideMeaning: "Significado",

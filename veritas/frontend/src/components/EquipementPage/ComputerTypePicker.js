@@ -20,13 +20,13 @@ export default function ComputerTypePicker({
         </span> : null}
       <div className={styles.modulesGrid} style={compact ? {
       marginTop: 0
-    } : undefined}>
+      } : undefined}>
         {localizeTypeOptions(COMPUTER_TYPE_OPTIONS, locale, "computer").map(({
         value: optionValue,
         label: optionLabel,
         icon,
         description
-      }) => <button key={optionValue} type="button" className={`${styles.moduleTile} ${selected === optionValue ? styles.moduleTileActive : ""}`} onClick={() => onChange(optionValue)} disabled={disabled} aria-pressed={selected === optionValue} title={description} style={compact ? {
+      }) => <button key={optionValue} type="button" className={`${styles.moduleTile} ${selected === optionValue ? styles.moduleTileActive : ""}`} onClick={() => onChange(selected === optionValue ? "" : optionValue)} disabled={disabled} aria-pressed={selected === optionValue} title={description} style={compact ? {
         minHeight: 72,
         padding: "0.5rem 0.4rem"
       } : undefined}>

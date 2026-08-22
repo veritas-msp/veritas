@@ -106,7 +106,6 @@ const EQUIPMENT_MODALS = {
       serverTypeRequired: "Le type de serveur est obligatoire",
       storageTypeRequired: "Le type de stockage est obligatoire",
       toipTypeRequired: "Le type d'équipement est obligatoire",
-      computerTypeRequired: "Le type d'ordinateur est obligatoire",
       internetTypeRequired: "Le type de connexion est obligatoire",
       providerRequired: "Le fournisseur est obligatoire",
       ipRequired: "Renseignez une adresse IP ou indiquez « IP non fixe »"
@@ -314,7 +313,6 @@ const EQUIPMENT_MODALS = {
       serverTypeRequired: "Server type is required",
       storageTypeRequired: "Storage type is required",
       toipTypeRequired: "Equipment type is required",
-      computerTypeRequired: "Computer type is required",
       internetTypeRequired: "Connection type is required",
       providerRequired: "Provider is required",
       ipRequired: "Enter an IP address or check « non-fixed IP »"
@@ -522,7 +520,6 @@ const EQUIPMENT_MODALS = {
       serverTypeRequired: "Servertyp erforderlich",
       storageTypeRequired: "Speichertyp erforderlich",
       toipTypeRequired: "Gerätetyp erforderlich",
-      computerTypeRequired: "Computertyp erforderlich",
       internetTypeRequired: "Verbindungstyp erforderlich",
       providerRequired: "Anbieter erforderlich",
       ipRequired: "IP-Adresse eingeben oder « dynamische IP » wählen"
@@ -730,7 +727,6 @@ const EQUIPMENT_MODALS = {
       serverTypeRequired: "Tipo server obbligatorio",
       storageTypeRequired: "Tipo storage obbligatorio",
       toipTypeRequired: "Tipo dispositivo obbligatorio",
-      computerTypeRequired: "Tipo di computer obbligatorio",
       internetTypeRequired: "Tipo connessione obbligatorio",
       providerRequired: "Fornitore obbligatorio",
       ipRequired: "Inserisci IP o seleziona « IP non fisso »"
@@ -938,7 +934,6 @@ const EQUIPMENT_MODALS = {
       serverTypeRequired: "Tipo de servidor obligatorio",
       storageTypeRequired: "Tipo de almacenamiento obligatorio",
       toipTypeRequired: "Tipo de equipo obligatorio",
-      computerTypeRequired: "El tipo de ordenador es obligatorio",
       internetTypeRequired: "Tipo de conexión obligatorio",
       providerRequired: "Proveedor obligatorio",
       ipRequired: "Introduzca IP o marque « IP no fija »"
@@ -1173,10 +1168,6 @@ export function validateEquipmentFormI18n(form, moduleKey, locale, {
   if (moduleKey === "Serveurs" && isAddMode && !form?.typeServer?.trim()) {
     setActiveSection("identity");
     return v.serverTypeRequired;
-  }
-  if (moduleKey === "Ordinateurs" && isAddMode && !form?.computerType?.trim()) {
-    setActiveSection("identity");
-    return v.computerTypeRequired;
   }
   if (moduleKey === "Serveurs" && isAddMode && getServerFormProfile(form?.typeServer).showHardware && !form?.manufacturer?.trim()) {
     setActiveSection("hardware");

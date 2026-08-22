@@ -122,7 +122,7 @@ export default function EquipmentFormSectionContent({
               storageType: formData.storageType
             })} />
             </div>
-            {apiType === "Ordinateurs" ? <ComputerTypePicker value={formData.computerType} onChange={value => setFormData(prev => applyComputerTypeChange(prev, value))} locale={locale} label={f.computerType} required={isAddMode} /> : null}
+            {apiType === "Ordinateurs" ? <ComputerTypePicker value={formData.computerType} onChange={value => setFormData(prev => applyComputerTypeChange(prev, value))} locale={locale} label={f.computerType} /> : null}
             {apiType === "Ordinateurs" && (isAddMode || formData.netbios) ? <div className={`${styles.field} ${styles.fieldFull}`}>
                 <label className={styles.label} htmlFor="equipment-form-netbios">
                   {f.netbios}

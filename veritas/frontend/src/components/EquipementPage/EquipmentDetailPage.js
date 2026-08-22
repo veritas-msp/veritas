@@ -744,7 +744,7 @@ export default function EquipmentDetailPage({
   };
   const handleComputerTypeChange = async nextType => {
     const computerType = canonicalizeComputerType(nextType);
-    if (!equipment || !computerType || computerType === canonicalizeComputerType(formData.computerType)) return;
+    if (!equipment || computerType === canonicalizeComputerType(formData.computerType)) return;
     const previousForm = formData;
     const previousEquipment = equipment;
     const nextForm = {
