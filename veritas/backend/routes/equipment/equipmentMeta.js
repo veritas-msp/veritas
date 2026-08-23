@@ -24,6 +24,30 @@ function pickTagColor(label) {
 function isMissingTableError(err) {
   return err?.code === "42P01";
 }
+const NOTE_VISIBILITY = new Set(["public", "private"]);
+function normalizeNoteVisibility(value) {
+  const normalized = String(value || "private").trim().toLowerCase();
+  return NOTE_VISIBILITY.has(normalized) ? normalized : "private";
+}
+function canEditEquipmentNote(req, note) {
+  if (req.user?.role === "admin") return true;
+  if (!note?.user_id || !req.user?.id) return false;
+  return note.user_id === req.user.id;
+}
+function mapEquipmentNoteRow(row) {
+  return {
+    id: row.id,
+    equipment_id: row.equipment_id,
+    client_id: row.client_id,
+    user_id: row.user_id,
+    content: row.content,
+    visibility: row.visibility,
+    created_at: row.created_at,
+    updated_at: row.updated_at,
+    username: row.username || null,
+    email: row.email || null
+  };
+}
 router.use(verifyJWT);
 function parseClientIds(raw) {
   const parts = String(raw || "").split(",").map(value => value.trim()).filter(Boolean);
@@ -172,6 +196,157 @@ router.delete("/:equipmentId/tags/:tagId", requirePermission("infrastructure.edi
     console.error("[DELETE /equipment/:equipmentId/tags/:tagId]", err);
     res.status(500).json({
       error: "Error deleting tag"
+    });
+  }
+});
+router.get("/:equipmentId/notes", requirePermission("infrastructure.view"), async (req, res) => {
+  try {
+    const equipmentId = parseEquipmentId(req.params.equipmentId);
+    if (!equipmentId) return res.status(400).json({
+      error: "Invalid device ID"
+    });
+    const clientId = await resolveClientId(req.query.clientId);
+    if (!clientId) return res.status(400).json({
+      error: "clientId required"
+    });
+    const result = await pool.query(`SELECT n.id, n.equipment_id, n.client_id, n.user_id, n.content, n.visibility,
+                n.created_at, n.updated_at, u.username, u.email
+         FROM v_b_equipment_notes n
+         LEFT JOIN v_b_users u ON u.id = n.user_id
+         WHERE n.equipment_id = $1 AND n.client_id = $2
+         ORDER BY n.created_at DESC`, [equipmentId, clientId]);
+    res.json(result.rows.map(mapEquipmentNoteRow));
+  } catch (err) {
+    if (isMissingTableError(err)) return res.json([]);
+    console.error("[GET /equipment/:equipmentId/notes]", err);
+    res.status(500).json({
+      error: "Error loading device notes"
+    });
+  }
+});
+router.post("/:equipmentId/notes", requirePermission("infrastructure.edit"), async (req, res) => {
+  try {
+    const equipmentId = parseEquipmentId(req.params.equipmentId);
+    if (!equipmentId) return res.status(400).json({
+      error: "Invalid device ID"
+    });
+    const clientId = await resolveClientId(req.body?.clientId);
+    if (!clientId) return res.status(400).json({
+      error: "clientId required"
+    });
+    const content = String(req.body?.content || "").trim();
+    if (!content) return res.status(400).json({
+      error: "Note content is required"
+    });
+    const visibility = normalizeNoteVisibility(req.body?.visibility);
+    const result = await pool.query(`INSERT INTO v_b_equipment_notes
+         (equipment_id, client_id, user_id, content, visibility, created_at, updated_at)
+         VALUES ($1, $2, $3, $4, $5, NOW(), NOW())
+         RETURNING *`, [equipmentId, clientId, req.user?.id || null, content, visibility]);
+    const note = result.rows[0];
+    const userResult = await pool.query("SELECT username, email FROM v_b_users WHERE id = $1", [req.user?.id]);
+    const author = userResult.rows[0] || {};
+    res.status(201).json(mapEquipmentNoteRow({
+      ...note,
+      username: author.username || null,
+      email: author.email || null
+    }));
+  } catch (err) {
+    if (isMissingTableError(err)) {
+      return res.status(503).json({
+        error: "Device notes are not installed yet (migration required)"
+      });
+    }
+    console.error("[POST /equipment/:equipmentId/notes]", err);
+    res.status(500).json({
+      error: "Error adding note"
+    });
+  }
+});
+router.put("/:equipmentId/notes/:noteId", requirePermission("infrastructure.edit"), async (req, res) => {
+  try {
+    const equipmentId = parseEquipmentId(req.params.equipmentId);
+    if (!equipmentId) return res.status(400).json({
+      error: "Invalid device ID"
+    });
+    const clientId = await resolveClientId(req.body?.clientId ?? req.query.clientId);
+    if (!clientId) return res.status(400).json({
+      error: "clientId required"
+    });
+    const existing = await pool.query("SELECT * FROM v_b_equipment_notes WHERE id = $1 AND equipment_id = $2 AND client_id = $3", [req.params.noteId, equipmentId, clientId]);
+    if (existing.rows.length === 0) {
+      return res.status(404).json({
+        error: "Note not found"
+      });
+    }
+    if (!canEditEquipmentNote(req, existing.rows[0])) {
+      return res.status(403).json({
+        error: "You cannot edit this note"
+      });
+    }
+    const content = String(req.body?.content || "").trim();
+    if (!content) return res.status(400).json({
+      error: "Note content is required"
+    });
+    const visibility = normalizeNoteVisibility(req.body?.visibility ?? existing.rows[0].visibility);
+    const result = await pool.query(`UPDATE v_b_equipment_notes
+         SET content = $1, visibility = $2, updated_at = NOW()
+         WHERE id = $3
+         RETURNING *`, [content, visibility, req.params.noteId]);
+    const note = result.rows[0];
+    const userResult = await pool.query("SELECT username, email FROM v_b_users WHERE id = $1", [note.user_id]);
+    const author = userResult.rows[0] || {};
+    res.json(mapEquipmentNoteRow({
+      ...note,
+      username: author.username || null,
+      email: author.email || null
+    }));
+  } catch (err) {
+    if (isMissingTableError(err)) {
+      return res.status(503).json({
+        error: "Device notes are not installed yet (migration required)"
+      });
+    }
+    console.error("[PUT /equipment/:equipmentId/notes/:noteId]", err);
+    res.status(500).json({
+      error: "Error updating note"
+    });
+  }
+});
+router.delete("/:equipmentId/notes/:noteId", requirePermission("infrastructure.edit"), async (req, res) => {
+  try {
+    const equipmentId = parseEquipmentId(req.params.equipmentId);
+    if (!equipmentId) return res.status(400).json({
+      error: "Invalid device ID"
+    });
+    const clientId = await resolveClientId(req.query.clientId ?? req.body?.clientId);
+    if (!clientId) return res.status(400).json({
+      error: "clientId required"
+    });
+    const existing = await pool.query("SELECT * FROM v_b_equipment_notes WHERE id = $1 AND equipment_id = $2 AND client_id = $3", [req.params.noteId, equipmentId, clientId]);
+    if (existing.rows.length === 0) {
+      return res.status(404).json({
+        error: "Note not found"
+      });
+    }
+    if (!canEditEquipmentNote(req, existing.rows[0])) {
+      return res.status(403).json({
+        error: "You cannot delete this note"
+      });
+    }
+    await pool.query("DELETE FROM v_b_equipment_notes WHERE id = $1", [req.params.noteId]);
+    res.json({
+      success: true
+    });
+  } catch (err) {
+    if (isMissingTableError(err)) {
+      return res.status(503).json({
+        error: "Device notes are not installed yet (migration required)"
+      });
+    }
+    console.error("[DELETE /equipment/:equipmentId/notes/:noteId]", err);
+    res.status(500).json({
+      error: "Error deleting note"
     });
   }
 });

@@ -9,7 +9,7 @@
 
 .header {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   justify-content: space-between;
   gap: 1rem;
   padding: 1rem 1.5rem;
@@ -22,33 +22,13 @@
 
 .headerLeft {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   gap: 1rem;
   min-width: 0;
 }
 
 .headerCopy {
   min-width: 0;
-}
-
-.backButton {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.45rem;
-  padding: 0.45rem 0.75rem;
-  border: 1px solid var(--msp-border-light, #dde5ef);
-  border-radius: 8px;
-  background: var(--msp-surface, #fff);
-  color: var(--msp-muted, #5c6b82);
-  font-size: 0.8125rem;
-  font-weight: 600;
-  cursor: pointer;
-  flex-shrink: 0;
-}
-
-.backButton:hover {
-  border-color: var(--msp-accent, #2b5fab);
-  color: var(--msp-accent, #2b5fab);
 }
 
 .title {
@@ -79,28 +59,50 @@
   flex-shrink: 0;
 }
 
-.actionBtn {
+.iconBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  border: 1px solid var(--msp-border);
+  border-radius: var(--msp-radius-sm);
+  background: var(--msp-surface);
+  color: var(--msp-muted);
+  cursor: pointer;
+  font-size: 1.1rem;
+  transition: border-color 0.15s, color 0.15s, box-shadow 0.15s;
+}
+
+.iconBtn:hover:not(:disabled) {
+  border-color: var(--msp-accent);
+  color: var(--msp-accent);
+  box-shadow: var(--msp-shadow);
+}
+
+.iconBtn:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+
+.textBtn {
   display: inline-flex;
   align-items: center;
   gap: 0.4rem;
   padding: 0.45rem 0.85rem;
-  border: 1px solid var(--msp-border-light, #dde5ef);
-  border-radius: 8px;
-  background: var(--msp-surface, #fff);
-  color: var(--msp-text, #0f1c2e);
+  border: 1px solid var(--msp-border);
+  border-radius: var(--msp-radius-sm);
+  background: var(--msp-surface);
+  color: var(--msp-text);
   font-size: 0.8125rem;
   font-weight: 600;
   cursor: pointer;
 }
 
-.actionBtn:hover:not(:disabled) {
-  border-color: var(--msp-accent, #2b5fab);
-  color: var(--msp-accent, #2b5fab);
-}
-
-.actionBtn:disabled {
-  opacity: 0.55;
-  cursor: default;
+.textBtn:hover {
+  border-color: var(--msp-accent);
+  color: var(--msp-accent);
 }
 
 .content {
@@ -145,8 +147,8 @@
 }
 
 :global(html.dark) .header,
-:global(html.dark) .backButton,
-:global(html.dark) .actionBtn {
+:global(html.dark) .iconBtn,
+:global(html.dark) .textBtn {
   background: #1a2540;
   border-color: #2f4260;
   color: #e8edf5;
@@ -162,7 +164,7 @@
     align-items: stretch;
   }
 
-  .headerLeft {
-    flex-direction: column;
+  .headerActions {
+    align-self: flex-end;
   }
 }

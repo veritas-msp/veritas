@@ -92,6 +92,20 @@ const TABLE_MAP = {
   antispam: "v_b_clients_m_antispam",
   ndd: "v_b_clients_m_ndd"
 };
+const EQUIPMENT_MODULE_TABLES = [...new Set([...Object.values(TABLE_MAP), "v_b_clients_m_ordinateurs", "v_b_clients_m_custom_equipment"])];
+async function equipmentBelongsToClient(clientId, equipmentId) {
+  for (const table of EQUIPMENT_MODULE_TABLES) {
+    if (!table) continue;
+    try {
+      const result = await pool.query(`SELECT 1 FROM ${table} WHERE client_id = $1 AND id = $2::uuid LIMIT 1`, [clientId, equipmentId]);
+      if (result.rows.length > 0) return true;
+    } catch (err) {
+      if (err.code === "42P01") continue;
+      throw err;
+    }
+  }
+  return false;
+}
 function parseJsonField(value, fallback = {}) {
   if (!value) return fallback;
   if (typeof value === "object") return value;
@@ -338,6 +352,37 @@ async function fetchEquipmentItems(clientId, type, {
     throw err;
   }
 }
+router.get("/equipment/:equipmentId/notes", [param("equipmentId").isUUID()], async (req, res) => {
+  const clientId = getClientId(req, res);
+  if (!clientId) return;
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(400).json({
+      error: "Invalid device ID."
+    });
+  }
+  try {
+    const equipmentId = req.params.equipmentId;
+    const belongs = await equipmentBelongsToClient(clientId, equipmentId);
+    if (!belongs) {
+      return res.status(404).json({
+        error: "Device not found."
+      });
+    }
+    const result = await pool.query(`SELECT n.id, n.content, n.visibility, n.created_at, n.updated_at, u.username
+         FROM v_b_equipment_notes n
+         LEFT JOIN v_b_users u ON u.id = n.user_id
+         WHERE n.equipment_id = $1 AND n.client_id = $2 AND n.visibility = 'public'
+         ORDER BY n.created_at DESC`, [equipmentId, clientId]);
+    res.json(result.rows);
+  } catch (err) {
+    if (err.code === "42P01") return res.json([]);
+    console.error("[GET /client-portal/equipment/:equipmentId/notes]", err);
+    res.status(500).json({
+      error: "Error loading device notes."
+    });
+  }
+});
 router.get("/dashboard", async (req, res) => {
   const clientId = getClientId(req, res);
   if (!clientId) return;

@@ -1129,46 +1129,78 @@ export const logEquipmentActivity = async ({
   }
   return response.json();
 };
-export const getEquipmentNotes = async equipmentId => {
-  try {
-    const response = await fetch(`${API_BASE_URL}/equipment/${equipmentId}/notes`, {
-      method: 'GET',
-      credentials: 'include',
-      headers: {
-        'Content-Type': 'application/json'
-      }
-    });
-    if (!response.ok) {
-      throw new Error(`Error ${response.status}: ${response.statusText}`);
-    }
-    const data = await response.json();
-    return data;
-  } catch (error) {
-    console.error('Error fetching notes:', error);
-    throw error;
+export const getEquipmentNotes = async (equipmentId, options = {}) => {
+  const clientId = options.clientId;
+  const params = new URLSearchParams();
+  if (clientId != null && clientId !== "") params.set("clientId", String(clientId));
+  const query = params.toString();
+  const response = await fetch(`${API_BASE_URL}/equipment/${equipmentId}/notes${query ? `?${query}` : ""}`, {
+    method: "GET",
+    credentials: "include",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    signal: options.signal
+  });
+  if (!response.ok) {
+    throw new Error(`Error ${response.status}: ${response.statusText}`);
   }
+  return response.json();
 };
-export const addEquipmentNote = async (equipmentId, content) => {
-  try {
-    const response = await fetch(`${API_BASE_URL}/equipment/${equipmentId}/notes`, {
-      method: 'POST',
-      credentials: 'include',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        content
-      })
-    });
-    if (!response.ok) {
-      throw new Error(`Error ${response.status}: ${response.statusText}`);
-    }
-    const data = await response.json();
-    return data;
-  } catch (error) {
-    console.error('Error adding note:', error);
-    throw error;
+export const addEquipmentNote = async (equipmentId, payload = {}) => {
+  const content = typeof payload === "string" ? payload : payload.content;
+  const visibility = typeof payload === "object" && payload ? payload.visibility : undefined;
+  const clientId = typeof payload === "object" && payload ? payload.clientId : undefined;
+  const response = await fetch(`${API_BASE_URL}/equipment/${equipmentId}/notes`, {
+    method: "POST",
+    credentials: "include",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({
+      content,
+      visibility,
+      clientId
+    })
+  });
+  if (!response.ok) {
+    const err = await response.json().catch(() => ({}));
+    throw new Error(err.error || `Error ${response.status}: ${response.statusText}`);
   }
+  return response.json();
+};
+export const updateEquipmentNote = async (equipmentId, noteId, payload = {}) => {
+  const response = await fetch(`${API_BASE_URL}/equipment/${equipmentId}/notes/${noteId}`, {
+    method: "PUT",
+    credentials: "include",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify(payload)
+  });
+  if (!response.ok) {
+    const err = await response.json().catch(() => ({}));
+    throw new Error(err.error || `Error ${response.status}: ${response.statusText}`);
+  }
+  return response.json();
+};
+export const deleteEquipmentNote = async (equipmentId, noteId, options = {}) => {
+  const params = new URLSearchParams();
+  if (options.clientId != null && options.clientId !== "") params.set("clientId", String(options.clientId));
+  const query = params.toString();
+  const response = await fetch(`${API_BASE_URL}/equipment/${equipmentId}/notes/${noteId}${query ? `?${query}` : ""}`, {
+    method: "DELETE",
+    credentials: "include",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    signal: options.signal
+  });
+  if (!response.ok) {
+    const err = await response.json().catch(() => ({}));
+    throw new Error(err.error || `Error ${response.status}: ${response.statusText}`);
+  }
+  return response.json();
 };
 export const getEquipmentPhotos = async equipmentId => {
   try {

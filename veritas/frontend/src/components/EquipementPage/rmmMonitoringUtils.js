@@ -424,12 +424,13 @@ export function formatRmmEditionId(editionId) {
 export function getRmmOsEditionInfo(inventory = {}, equipment = null) {
   const os = inventory.os || {};
   const license = inventory.license || {};
-  const licenseName = cleanWindowsLicenseName(license.edition || license.name);
-  const editionFromCaption = parseEditionFromOsCaption(os.name || inventory.systeme);
-  const edition = licenseName || editionFromCaption || formatRmmEditionId(os.editionId) || null;
+  const licenseName = repairRmmTextEncoding(cleanWindowsLicenseName(license.edition || license.name) || "") || null;
+  const captionSource = repairRmmTextEncoding(os.name || inventory.systeme || equipment?.systeme || "") || "";
+  const editionFromCaption = parseEditionFromOsCaption(captionSource);
+  const edition = repairRmmTextEncoding(licenseName || editionFromCaption || formatRmmEditionId(os.editionId) || "") || null;
   const displayVersion = os.displayVersion || null;
   const build = os.patchLabel || (os.build != null ? String(os.build) : null);
-  const osCaption = os.name || inventory.systeme || equipment?.systeme || null;
+  const osCaption = captionSource || null;
   const licenseLabel = license.activated === true ? "Enabled" : license.activated === false ? "Not enabled" : null;
   const shortParts = [edition, displayVersion].filter(Boolean);
   const shortLabel = shortParts.length ? shortParts.join(" · ") : osCaption;

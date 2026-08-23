@@ -1,0 +1,61 @@
+.visibilityFieldset {
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.visibilityLegend {
+  display: block;
+  margin-bottom: 0.45rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--msp-muted, #5c6b82);
+}
+
+.visibilityOptions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.55rem;
+  margin-bottom: 0.85rem;
+}
+
+.visibilityOption {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  padding: 0.65rem 0.75rem;
+  border: 1px solid var(--msp-border, #c5d0df);
+  border-radius: 10px;
+  background: var(--msp-surface-2, #f7f9fc);
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+}
+
+.visibilityOption input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.visibilityOptionActive {
+  border-color: var(--msp-accent, #2b5fab);
+  background: rgba(43, 95, 171, 0.08);
+}
+
+.visibilityOptionTitle {
+  font-size: 0.8125rem;
+  font-weight: 700;
+  color: var(--msp-text, #0f1c2e);
+}
+
+.visibilityOptionHint {
+  font-size: 0.72rem;
+  line-height: 1.35;
+  color: var(--msp-muted, #5c6b82);
+}
+
+@media (max-width: 560px) {
+  .visibilityOptions {
+    grid-template-columns: 1fr;
+  }
+}

@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import { Icon } from "@iconify/react";
 import { toast } from 'react-toastify';
-import { FaServer, FaNetworkWired, FaWifi, FaShieldAlt, FaHdd, FaGlobe, FaCamera, FaStickyNote, FaTimes, FaCube } from "react-icons/fa";
+import { FaServer, FaNetworkWired, FaWifi, FaShieldAlt, FaHdd, FaGlobe, FaCamera, FaTimes, FaCube } from "react-icons/fa";
 import styles from "./EquipmentDetailPage.module.css";
 import enterpriseDetailStyles from "../EnterprisesPage/EnterpriseDetailPage.module.css";
 import SmartTooltip from "../SmartTooltip";
@@ -26,6 +26,7 @@ import specsStyles from "./EquipmentDetailSpecsPanel.module.css";
 import EquipmentRemoteAccessLaunchButton from "./EquipmentRemoteAccessLaunchButton";
 import { resolveEquipmentRemoteAccessAction } from "./equipmentDetailRemoteAccess";
 import EquipmentDocumentsPanel from "./EquipmentDocumentsPanel";
+import EquipmentNotesPanel from "./EquipmentNotesPanel";
 import EquipmentEventsPanel from "./EquipmentEventsPanel";
 import EquipmentStatsPanel from "./EquipmentStatsPanel";
 import { fetchEquipmentActivity } from "../../api/equipmentActivity";
@@ -73,12 +74,8 @@ export default function EquipmentDetailPage({
   const [isEditingInfo, setIsEditingInfo] = useState(false);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [computerTypeSaving, setComputerTypeSaving] = useState(false);
-  const [notes, setNotes] = useState([]);
-  const [newNote, setNewNote] = useState("");
   const [photos, setPhotos] = useState([]);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
-  const [loadingNotes, setLoadingNotes] = useState(false);
   const [loadingPhotos, setLoadingPhotos] = useState(true);
   const [checkmkMappingModal, setCheckmkMappingModal] = useState(false);
   const [checkmkDebugModal, setCheckmkDebugModal] = useState(false);
@@ -93,7 +90,6 @@ export default function EquipmentDetailPage({
   const [eventModalOpen, setEventModalOpen] = useState(false);
   const [editingEvent, setEditingEvent] = useState(null);
   const [photoModalOpen, setPhotoModalOpen] = useState(false);
-  const [noteModalOpen, setNoteModalOpen] = useState(false);
   const [selectedLogDetail, setSelectedLogDetail] = useState(null);
   const [equipmentTags, setEquipmentTags] = useState([]);
   const [loadingEquipmentTags, setLoadingEquipmentTags] = useState(false);
@@ -742,38 +738,6 @@ export default function EquipmentDetailPage({
       console.warn("Refresh hardware record:", error);
     }
   };
-  const handleComputerTypeChange = async nextType => {
-    const computerType = canonicalizeComputerType(nextType);
-    if (!equipment || computerType === canonicalizeComputerType(formData.computerType)) return;
-    const previousForm = formData;
-    const previousEquipment = equipment;
-    const nextForm = {
-      ...formData,
-      computerType
-    };
-    const nextEquipment = {
-      ...equipment,
-      computerType,
-      rawData: {
-        ...(equipment.rawData || {}),
-        type: computerType
-      }
-    };
-    setFormData(nextForm);
-    onUpdate?.(nextEquipment);
-    setComputerTypeSaving(true);
-    try {
-      await updateEquipment(equipment.id, nextForm, equipment);
-      toast.success(copy.toasts.saveSuccess);
-    } catch (error) {
-      console.error("Error saving computer type:", error);
-      setFormData(previousForm);
-      onUpdate?.(previousEquipment);
-      toast.error(copy.toasts.saveError);
-    } finally {
-      setComputerTypeSaving(false);
-    }
-  };
   const handleEquipmentModalDeleted = () => {
     onUpdate?.(null);
     onBack?.();
@@ -832,11 +796,6 @@ export default function EquipmentDetailPage({
     }
     setIsEditingInfo(false);
     setHasInfoChanges(false);
-  };
-  const loadNotes = async () => {
-    if (!equipment?.id) return;
-    setLoadingNotes(false);
-    setNotes([]);
   };
   const loadLogs = async (page = 1) => {
     if (!equipment?.id) return;
@@ -988,9 +947,6 @@ export default function EquipmentDetailPage({
     if (!equipment?.id) return;
     setLoadingPhotos(false);
     setPhotos([]);
-  };
-  const handleAddNote = async () => {
-    setNoteModalOpen(true);
   };
   const handlePhotoUpload = async e => {
     e.preventDefault();
@@ -1412,6 +1368,10 @@ export default function EquipmentDetailPage({
             <Icon icon="mdi:file-document-outline" />
             {copy.tabs.documents}
           </button>
+          <button type="button" className={`${styles.tabBtn} ${rightPanelTab === 'notes' ? styles.tabBtnActive : ''}`} onClick={() => setRightPanelTab('notes')}>
+            <Icon icon="mdi:note-text-outline" />
+            {copy.tabs.notes}
+          </button>
           <button type="button" className={`${styles.tabBtn} ${rightPanelTab === 'logs' ? styles.tabBtnActive : ''}`} onClick={() => setRightPanelTab('logs')}>
             <Icon icon="mdi:history" />
             {copy.tabs.logs}
@@ -1423,7 +1383,7 @@ export default function EquipmentDetailPage({
         <div className={styles.mainContent}>
           {rightPanelTab === 'dashboard' && <div className={`${styles.dashboardSplit} ${showRmmHeroStatus && rmmDeviceHealth ? "" : styles.dashboardSplitSolo}`.trim()}>
               <div className={styles.dashboardMain}>
-                <EquipmentDetailSpecsPanel equipment={equipment} formData={formData} clientSites={clientSites} clientSsids={clientSsids} peerFirewalls={peerFirewalls} peerServers={peerServers} peerStorage={peerStorage} onOpenEquipment={openLinkedEquipment} onComputerTypeChange={handleComputerTypeChange} computerTypeSaving={computerTypeSaving} remoteAccessAction={remoteAccessAction} />
+                <EquipmentDetailSpecsPanel equipment={equipment} formData={formData} clientSites={clientSites} clientSsids={clientSsids} peerFirewalls={peerFirewalls} peerServers={peerServers} peerStorage={peerStorage} onOpenEquipment={openLinkedEquipment} remoteAccessAction={remoteAccessAction} />
 
                 <EquipmentAlertsGlance equipment={equipment} days={30} limit={50} />
 
@@ -1478,6 +1438,21 @@ export default function EquipmentDetailPage({
               </header>
               <div className={enterpriseDetailStyles.panelBody}>
                 <EquipmentDocumentsPanel equipment={equipment} embedded />
+              </div>
+            </section>}
+
+          {rightPanelTab === "notes" && <section className={enterpriseDetailStyles.panel}>
+              <header className={specsStyles.panelHeader}>
+                <div>
+                  <h2 className={specsStyles.panelTitle}>
+                    <Icon icon="mdi:note-text-outline" className={specsStyles.panelTitleIcon} aria-hidden />
+                    {copy.tabs.notes}
+                  </h2>
+                  <p className={specsStyles.panelSubtitle}>{copy.notes.subtitle}</p>
+                </div>
+              </header>
+              <div className={enterpriseDetailStyles.panelBody}>
+                <EquipmentNotesPanel equipment={equipment} embedded />
               </div>
             </section>}
 
@@ -1628,44 +1603,6 @@ export default function EquipmentDetailPage({
             </div>
             <div className={styles.modalFooter}>
               <button className={styles.modalOkButton} onClick={() => setPhotoModalOpen(false)}>
-                Compris
-              </button>
-            </div>
-          </div>
-        </div>}
-
-      {}
-      {noteModalOpen && <div className={styles.modalOverlay} onClick={() => setNoteModalOpen(false)}>
-          <div className={styles.modalContent} onClick={e => e.stopPropagation()}>
-            <div className={styles.modalHeader}>
-              <h2 className={styles.modalTitle}>
-                <FaStickyNote className={styles.modalIcon} />
-                Ajout de note
-              </h2>
-              <button className={styles.modalCloseButton} onClick={() => setNoteModalOpen(false)} title="Close">
-                <FaTimes />
-              </button>
-            </div>
-            <div className={styles.modalBody}>
-              <div className={styles.comingSoonMessage}>
-                <Icon icon="mdi:clock-outline" width={48} height={48} className={styles.comingSoonIcon} />
-                <h3>Feature coming soon</h3>
-                <p>
-                  Soon, you will be able to add notes to your equipment to:
-                </p>
-                <ul className={styles.comingSoonList}>
-                  <li>Save observations and remarks</li>
-                  <li>Document completed interventions</li>
-                  <li>Create a history of completed actions</li>
-                  <li>Et bien plus encore...</li>
-                </ul>
-                <p className={styles.comingSoonNote}>
-                  This feature will keep a written record of all important information about your equipment.
-                </p>
-              </div>
-            </div>
-            <div className={styles.modalFooter}>
-              <button className={styles.modalOkButton} onClick={() => setNoteModalOpen(false)}>
                 Compris
               </button>
             </div>

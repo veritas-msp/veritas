@@ -1,5 +1,9 @@
 import API_BASE_URL from "../config";
-export const TECH_NEWS_REACTION_EMOJIS = ["👍", "👀", "🔥", "😱", "💡", "🎯", "⚠️", "❤️"];
+export const TECH_NEWS_REACTION_EMOJIS = [
+  "👍", "👀", "🔥", "😱", "💡", "🎯", "⚠️", "❤️",
+  "👏", "🤔", "🛡️", "🚨", "🐛", "💻", "✅", "❌", "🤯", "💪", "😂", "🙏"
+];
+export const TECH_NEWS_QUICK_REACTION_EMOJIS = ["👍", "👀", "🔥", "🛡️", "🚨", "🐛"];
 export async function fetchTechNews(options = {}) {
   const res = await fetch(`${API_BASE_URL}/tech-news`, {
     credentials: "include",

@@ -4,6 +4,7 @@ import { getFormFields } from "./equipmentFormFieldsI18n";
 import { getServerRemoteAccessSolutionDef } from "./constants/serverRemoteAccessUtils";
 import { formatInternetDebitDisplay } from "./internetConnectionUtils";
 import { formatRmmRam, getRmmChassisInfo, getRmmInventoryFromEquipment, getRmmNetbiosName, getRmmOsEditionInfo, isRmmManagedEquipment } from "./rmmMonitoringUtils";
+import { repairOsLabel } from "./osIconUtils";
 import { isSynologyBrand } from "./synologyEquipmentUtils";
 import { getEquipmentDetailFieldLabel, getEquipmentDetailCopy, localizeEquipmentDetailSection } from "./equipmentDetailPageI18n";
 import { formatAssignedSsidsDisplay, buildBorneWifiSsidFormState, normalizeWifiSsidCatalog } from "./wifiApSsidUtils";
@@ -104,8 +105,8 @@ const FIELD_FORMATTERS = {
   firmware: f => f.firmware || f.version,
   adresseMac: f => f.adresseMac || f.mac,
   mac: f => f.mac || f.adresseMac,
-  systeme: f => f.systeme,
-  editionWindows: f => f.editionWindows,
+  systeme: f => repairOsLabel(f.systeme) || f.systeme,
+  editionWindows: f => repairOsLabel(f.editionWindows) || f.editionWindows,
   windowsFeatureVersion: f => f.windowsFeatureVersion,
   windowsBuild: f => f.windowsBuild,
   windowsLicenseStatus: f => f.windowsLicenseStatus,
@@ -303,11 +304,11 @@ function mergeRmmIntoFormData(equipment, formData) {
   const editionInfo = getRmmOsEditionInfo(inventory, equipment);
   return {
     ...formData,
-    editionWindows: formData.editionWindows || editionInfo.edition || "",
+    editionWindows: repairOsLabel(formData.editionWindows || editionInfo.edition || "") || "",
     windowsFeatureVersion: formData.windowsFeatureVersion || editionInfo.displayVersion || "",
     windowsBuild: formData.windowsBuild || editionInfo.build || "",
     windowsLicenseStatus: formData.windowsLicenseStatus || editionInfo.licenseLabel || (editionInfo.licenseName ? editionInfo.licenseName : ""),
-    systeme: formData.systeme || editionInfo.osCaption || inventory.systeme || inventory.os?.name || "",
+    systeme: repairOsLabel(formData.systeme || editionInfo.osCaption || inventory.systeme || inventory.os?.name || "") || "",
     domaine: formData.domaine || inventory.domaine || inventory.domain?.name || "",
     mac: formData.mac || inventory.mac || inventory.network?.mac || "",
     ip: formData.ip || inventory.ip || inventory.network?.ip || "",
@@ -460,6 +461,9 @@ function formatField(fieldKey, formData, equipment, locale) {
   }
   if (fieldKey === "computerType" && raw) {
     raw = formatComputerType(formData.computerType || raw, locale);
+  }
+  if ((fieldKey === "systeme" || fieldKey === "editionWindows") && raw) {
+    raw = repairOsLabel(raw) || raw;
   }
   if (locale && fieldKey === "ip" && equipment?.type === "Internet" && formData.ipNonFixe) {
     raw = getEquipmentDetailCopy(locale).formatValues.ipNonFixe;

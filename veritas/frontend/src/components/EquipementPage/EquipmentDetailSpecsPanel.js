@@ -14,7 +14,6 @@ import EquipmentRemoteAccessLaunchButton from "./EquipmentRemoteAccessLaunchButt
 import { shouldShowRemoteAccessFieldAction } from "./equipmentDetailRemoteAccess";
 import { useAppLocale } from "../../hooks/useAppGeneralSettings";
 import { getEquipmentDetailCopy } from "./equipmentDetailPageI18n";
-import ComputerTypePicker from "./ComputerTypePicker";
 import styles from "./EquipmentDetailSpecsPanel.module.css";
 const DEBIT_FIELD_KEYS = new Set(["debit", "debitDownload", "debitUpload"]);
 function mergeInternetDisplaySections(sections) {
@@ -130,8 +129,6 @@ export default function EquipmentDetailSpecsPanel({
   peerServers = [],
   peerStorage = [],
   onOpenEquipment,
-  onComputerTypeChange,
-  computerTypeSaving = false,
   remoteAccessAction = null,
   compact = false,
   title
@@ -326,10 +323,6 @@ export default function EquipmentDetailSpecsPanel({
     if (!rmmManagedComputer) return [];
     return sections.flatMap(section => section.fields);
   }, [rmmManagedComputer, sections]);
-  const showComputerTypePicker = equipment?.type === "Ordinateurs" && typeof onComputerTypeChange === "function";
-  const computerTypePicker = showComputerTypePicker ? <div className={styles.computerTypePicker}>
-      <ComputerTypePicker value={formData?.computerType || equipment?.computerType || ""} onChange={onComputerTypeChange} locale={locale} label={copy.fields.computerType} disabled={computerTypeSaving} compact />
-    </div> : null;
   const locationName = String(formData?.location || equipment?.location || "").trim();
   const resolvedSite = useMemo(() => locationName ? findClientSiteByLocation(clientSites, locationName) : null, [clientSites, locationName]);
   const showSiteVignette = Boolean(locationName && locationName !== "Sans site");
@@ -350,19 +343,6 @@ export default function EquipmentDetailSpecsPanel({
     return null;
   };
   if (!sections.length) {
-    if (computerTypePicker) {
-      return <section className={`${styles.panel} ${compact ? styles.panelCompact : ""}`}>
-          {!compact ? <header className={styles.panelHeader}>
-              <h2 className={styles.panelTitle}>
-                <Icon icon="mdi:clipboard-text-outline" className={styles.panelTitleIcon} aria-hidden />
-                {panelTitle}
-              </h2>
-            </header> : null}
-          <div className={styles.sections}>
-            {computerTypePicker}
-          </div>
-        </section>;
-    }
     return <section className={`${styles.panel} ${compact ? styles.panelCompact : ""}`}>
         <header className={styles.panelHeader}>
           <h2 className={styles.panelTitle}>
@@ -375,9 +355,9 @@ export default function EquipmentDetailSpecsPanel({
   }
   if (rmmManagedComputer && !compact) {
     const showLocationMap = showSiteVignette;
-    const inlineFields = rmmInlineFields.filter(field => (field.key !== "location" || !showLocationMap) && field.key !== "computerType");
+    const inlineFields = rmmInlineFields.filter(field => field.key !== "location" || !showLocationMap);
     const meaningfulFields = inlineFields.filter(field => field.key !== "clientName" && field.key !== "name");
-    if (!showLocationMap && meaningfulFields.length === 0 && !computerTypePicker) {
+    if (!showLocationMap && meaningfulFields.length === 0) {
       return null;
     }
     return <section className={`${styles.panel} ${styles.panelRmmSlim}`}>
@@ -386,7 +366,6 @@ export default function EquipmentDetailSpecsPanel({
           name: locationName
         }} locationLabel={locationName} /> : null}
           <div className={styles.rmmVeritasFields}>
-              {computerTypePicker}
               {meaningfulFields.map(field => <SpecField key={field.key} field={field} remoteAccessAction={remoteAccessAction} equipmentLink={resolveEquipmentLink(field)} layout="inline" copy={copy} />)}
             </div>
         </div>
@@ -415,9 +394,6 @@ export default function EquipmentDetailSpecsPanel({
           if (showLocationMap) {
             fields = fields.filter(field => field.key !== "location");
           }
-          if (showComputerTypePicker) {
-            fields = fields.filter(field => field.key !== "computerType");
-          }
           return fields;
         })();
         const isRemoteSection = section.id === "remote" && remoteAccessAction?.kind === "server";
@@ -434,8 +410,6 @@ export default function EquipmentDetailSpecsPanel({
               {showLocationMap ? <SiteLocationVignette site={resolvedSite || {
             name: locationName
           }} locationLabel={locationName} /> : null}
-
-              {section.id === "identity" && computerTypePicker ? computerTypePicker : null}
 
               {hasDebitGauges ? <InternetDebitCounters download={formData?.debitDownload} upload={formData?.debitUpload} combined={formData?.debit} /> : null}
 

@@ -1,5 +1,9 @@
 import { pool } from "../database/db.js";
-export const ALLOWED_REACTION_EMOJIS = ["👍", "👀", "🔥", "😱", "💡", "🎯", "⚠️", "❤️"];
+export const ALLOWED_REACTION_EMOJIS = [
+  "👍", "👀", "🔥", "😱", "💡", "🎯", "⚠️", "❤️",
+  "👏", "🤔", "🛡️", "🚨", "🐛", "💻", "✅", "❌", "🤯", "💪", "😂", "🙏"
+];
+export const QUICK_REACTION_EMOJIS = ["👍", "👀", "🔥", "🛡️", "🚨", "🐛"];
 const streamClients = new Set();
 let tableReady = false;
 export async function ensureTechNewsReactionsTable() {

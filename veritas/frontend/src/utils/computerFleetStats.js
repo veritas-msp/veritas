@@ -454,6 +454,82 @@ export function buildComputerFleetStats(computers, options = {}) {
     }
   };
 }
+function csvCell(value) {
+  const stringValue = value == null ? "" : String(value);
+  if (/[",;\n]/.test(stringValue)) return `"${stringValue.replace(/"/g, '""')}"`;
+  return stringValue;
+}
+function slugFilename(value) {
+  return String(value || "fleet").normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-zA-Z0-9]+/g, "-").replace(/^-+|-+$/g, "").toLowerCase() || "fleet";
+}
+export function downloadComputerFleetStatsCsv({
+  computers = [],
+  clientName = "",
+  siteFilter = "",
+  equipmentLabel = "computers"
+} = {}) {
+  const stats = buildComputerFleetStats(computers);
+  const rows = [["Section", "Metric", "Value", "Share %"]];
+  const push = (section, metric, value, pct) => {
+    rows.push([section, metric, value, pct == null ? "" : pct]);
+  };
+  push("Context", "Company", clientName);
+  push("Context", "Equipment", equipmentLabel);
+  if (siteFilter) push("Context", "Site", siteFilter);
+  push("Context", "Workstations", stats.total);
+  push("KPI", "Total fleet", stats.total);
+  push("KPI", "RMM managed", stats.rmmManaged);
+  push("KPI", "Manual", stats.manual);
+  push("KPI", "RMM coverage %", stats.rmmCoveragePct);
+  push("KPI", "Fleet health %", stats.fleetHealth.score ?? "");
+  push("KPI", "Fleet health", stats.fleetHealth.label);
+  push("KPI", "Windows 11", stats.lifecycle.windows11);
+  push("KPI", "Windows 10", stats.lifecycle.windows10);
+  push("KPI", "Average RAM GB", stats.hardwareSummary.avgRamGb ?? "");
+  push("KPI", "Total RAM GB", stats.hardwareSummary.totalRamGb);
+  push("KPI", "Average storage GB", stats.hardwareSummary.avgDiskGb ?? "");
+  push("KPI", "Monthly kWh", stats.power.monthlyKwh);
+  push("KPI", "Annual kWh", stats.power.annualKwh);
+  push("KPI", "Monthly cost EUR", stats.power.monthlyCostEur);
+  push("KPI", "Annual cost EUR", stats.power.annualCostEur);
+  push("Monitoring", "Agents online", stats.agentStatus.online);
+  push("Monitoring", "Agents offline", stats.agentStatus.offline);
+  push("Monitoring", `Stale inventory (> ${stats.inventoryFreshness.staleThresholdDays} d)`, stats.inventoryFreshness.stale);
+  push("Monitoring", "Pending Windows updates", stats.windowsUpdates.pending);
+  push("Monitoring", "Pending patches", stats.windowsUpdates.pendingTotal);
+  push("Monitoring", "Up-to-date workstations", stats.windowsUpdates.upToDate);
+  push("Monitoring", "Disks > 85%", stats.diskAlerts);
+  push("Monitoring", "Joined to AD domain", stats.domain.joined);
+  push("Monitoring", "Workgroup", stats.domain.workgroup);
+  push("Monitoring", "Inactive Windows licenses", stats.licenseInactive);
+  push("Monitoring", "Without RMM agent", stats.manual);
+  const distributions = [["Brands", stats.brandDistribution], ["Models", stats.modelDistribution], ["Operating systems", stats.osDistribution], ["Form factor", stats.formFactorDistribution], ["Memory (RAM)", stats.ramDistribution], ["Processors", stats.cpuDistribution], ["Storage", stats.diskDistribution], ["RMM agent versions", stats.agentVersionDistribution]];
+  for (const [section, items] of distributions) {
+    for (const item of items || []) {
+      push(section, item.name, item.count, item.pct);
+    }
+  }
+  for (const row of stats.power.breakdown || []) {
+    push("Power", row.label, `${row.count} · ${row.monthlyKwh} kWh/month`);
+  }
+  for (const equipment of computers) {
+    const inventory = getRmmInventoryFromEquipment(equipment);
+    push("Workstations", equipment?.name || "Unnamed", [getComputerTypeLabel(resolveComputerType(equipment, inventory)) || inferFormFactorLabel(equipment, inventory), repairRmmTextEncoding(equipment?.systeme || inventory?.os?.name || "") || "", inferBrand(equipment, inventory), inferModelLabel(equipment, inventory), resolveRamGb(equipment, inventory) ? `${resolveRamGb(equipment, inventory)} GB` : "", isRmmManagedEquipment(equipment) ? getRmmAgentStatusKey(equipment) || "rmm" : "manual"].filter(Boolean).join(" · "));
+  }
+  const csvContent = rows.map(row => row.map(csvCell).join(";")).join("\n");
+  const blob = new Blob([`\uFEFF${csvContent}`], {
+    type: "text/csv;charset=utf-8;"
+  });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  const date = new Date().toISOString().slice(0, 10);
+  link.href = url;
+  link.setAttribute("download", `fleet-stats-${slugFilename(clientName)}-${date}.csv`);
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
+}
 export async function loadClientEquipmentForFleetStats(clientId, equipmentType = "Ordinateurs", siteFilter = null) {
   if (!clientId) return [];
   const [modulesData, clientRes] = await Promise.all([fetchClientModules(clientId), fetch(`${API_BASE_URL}/clients/general/${clientId}`, {

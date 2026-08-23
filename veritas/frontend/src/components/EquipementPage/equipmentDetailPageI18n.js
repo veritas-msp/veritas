@@ -19,6 +19,7 @@ const FR = {
     stats: "Statistiques",
     activity: "Activité",
     documents: "Documents",
+    notes: "Notes",
     logs: "Logs"
   },
   hero: {
@@ -166,6 +167,45 @@ const FR = {
       uploadError: "Erreur lors de l'upload",
       deleted: "Document supprimé",
       deleteError: "Erreur lors de la suppression"
+    }
+  },
+  notes: {
+    subtitle: "Notes internes ou visibles sur le portail client pour ce matériel.",
+    hint: "Les notes publiques sont visibles par le client sur le portail. Les notes privées restent réservées aux agents.",
+    saveFirst: "Enregistrez ce matériel avant d'y ajouter des notes.",
+    loading: "Chargement…",
+    addNote: "Ajouter une note",
+    authorFallback: "Utilisateur",
+    visibilityPublic: "Publique",
+    visibilityPrivate: "Privée",
+    editNote: "Modifier",
+    editNoteAria: "Modifier la note",
+    deleteNote: "Supprimer",
+    deleteNoteAria: "Supprimer la note",
+    edited: " · modifiée {date}",
+    noteModal: {
+      eyebrow: "Notes matériel",
+      createTitle: "Ajouter une note",
+      editTitle: "Modifier la note",
+      subtitle: "Matériel : {name}",
+      subtitleFallback: "Note liée à ce matériel",
+      label: "Contenu",
+      placeholder: "Observation, consigne, historique d'intervention…",
+      visibilityLabel: "Visibilité",
+      privateTitle: "Privée",
+      privateHint: "Visible uniquement par les agents Veritas",
+      publicTitle: "Publique",
+      publicHint: "Visible sur le portail client",
+      addBtn: "Ajouter",
+      saveBtn: "Enregistrer"
+    },
+    toasts: {
+      loadError: "Impossible de charger les notes",
+      added: "Note ajoutée",
+      updated: "Note mise à jour",
+      deleted: "Note supprimée",
+      saveError: "Erreur lors de l'enregistrement de la note",
+      deleteError: "Erreur lors de la suppression de la note"
     }
   },
   alertSettings: {
@@ -664,6 +704,7 @@ const EN = {
     stats: "Statistics",
     activity: "Activity",
     documents: "Documents",
+    notes: "Notes",
     logs: "Logs"
   },
   hero: {
@@ -811,6 +852,45 @@ const EN = {
       uploadError: "Upload failed",
       deleted: "Document deleted",
       deleteError: "Unable to delete document"
+    }
+  },
+  notes: {
+    subtitle: "Internal notes or notes visible on the client portal for this device.",
+    hint: "Public notes are visible to the client on the portal. Private notes are for agents only.",
+    saveFirst: "Save this device before adding notes.",
+    loading: "Loading…",
+    addNote: "Add note",
+    authorFallback: "User",
+    visibilityPublic: "Public",
+    visibilityPrivate: "Private",
+    editNote: "Edit",
+    editNoteAria: "Edit note",
+    deleteNote: "Delete",
+    deleteNoteAria: "Delete note",
+    edited: " · edited {date}",
+    noteModal: {
+      eyebrow: "Device notes",
+      createTitle: "Add note",
+      editTitle: "Edit note",
+      subtitle: "Device: {name}",
+      subtitleFallback: "Note linked to this device",
+      label: "Content",
+      placeholder: "Observation, instruction, intervention history…",
+      visibilityLabel: "Visibility",
+      privateTitle: "Private",
+      privateHint: "Visible to Veritas agents only",
+      publicTitle: "Public",
+      publicHint: "Visible on the client portal",
+      addBtn: "Add",
+      saveBtn: "Save"
+    },
+    toasts: {
+      loadError: "Unable to load notes",
+      added: "Note added",
+      updated: "Note updated",
+      deleted: "Note deleted",
+      saveError: "Unable to save note",
+      deleteError: "Unable to delete note"
     }
   },
   alertSettings: {
@@ -1317,7 +1397,49 @@ const DE = {
     stats: "Statistiken",
     activity: "Aktivität",
     documents: "Dokumente",
+    notes: "Notizen",
     logs: "Logs"
+  },
+  notes: {
+    ...EN.notes,
+    subtitle: "Interne Notizen oder für den Kundenportal sichtbare Notizen zu diesem Gerät.",
+    hint: "Öffentliche Notizen sind im Portal sichtbar. Private Notizen sind nur für Agenten.",
+    saveFirst: "Gerät zuerst speichern, bevor Notizen hinzugefügt werden.",
+    loading: "Laden…",
+    addNote: "Notiz hinzufügen",
+    authorFallback: "Benutzer",
+    visibilityPublic: "Öffentlich",
+    visibilityPrivate: "Privat",
+    editNote: "Bearbeiten",
+    editNoteAria: "Notiz bearbeiten",
+    deleteNote: "Löschen",
+    deleteNoteAria: "Notiz löschen",
+    edited: " · bearbeitet {date}",
+    noteModal: {
+      ...EN.notes.noteModal,
+      eyebrow: "Gerätenotizen",
+      createTitle: "Notiz hinzufügen",
+      editTitle: "Notiz bearbeiten",
+      subtitle: "Gerät: {name}",
+      subtitleFallback: "Notiz zu diesem Gerät",
+      label: "Inhalt",
+      placeholder: "Beobachtung, Anweisung, Interventionsverlauf…",
+      visibilityLabel: "Sichtbarkeit",
+      privateTitle: "Privat",
+      privateHint: "Nur für Veritas-Agenten sichtbar",
+      publicTitle: "Öffentlich",
+      publicHint: "Im Kundenportal sichtbar",
+      addBtn: "Hinzufügen",
+      saveBtn: "Speichern"
+    },
+    toasts: {
+      loadError: "Notizen konnten nicht geladen werden",
+      added: "Notiz hinzugefügt",
+      updated: "Notiz aktualisiert",
+      deleted: "Notiz gelöscht",
+      saveError: "Notiz konnte nicht gespeichert werden",
+      deleteError: "Notiz konnte nicht gelöscht werden"
+    }
   },
   specs: {
     ...EN.specs,
@@ -1642,7 +1764,49 @@ const IT = {
     stats: "Statistiche",
     activity: "Attività",
     documents: "Documenti",
+    notes: "Note",
     logs: "Log"
+  },
+  notes: {
+    ...EN.notes,
+    subtitle: "Note interne o visibili sul portale cliente per questo dispositivo.",
+    hint: "Le note pubbliche sono visibili al cliente sul portale. Le note private sono riservate agli agenti.",
+    saveFirst: "Salva il dispositivo prima di aggiungere note.",
+    loading: "Caricamento…",
+    addNote: "Aggiungi nota",
+    authorFallback: "Utente",
+    visibilityPublic: "Pubblica",
+    visibilityPrivate: "Privata",
+    editNote: "Modifica",
+    editNoteAria: "Modifica nota",
+    deleteNote: "Elimina",
+    deleteNoteAria: "Elimina nota",
+    edited: " · modificata {date}",
+    noteModal: {
+      ...EN.notes.noteModal,
+      eyebrow: "Note dispositivo",
+      createTitle: "Aggiungi nota",
+      editTitle: "Modifica nota",
+      subtitle: "Dispositivo: {name}",
+      subtitleFallback: "Nota collegata a questo dispositivo",
+      label: "Contenuto",
+      placeholder: "Osservazione, istruzione, storico interventi…",
+      visibilityLabel: "Visibilità",
+      privateTitle: "Privata",
+      privateHint: "Visibile solo agli agenti Veritas",
+      publicTitle: "Pubblica",
+      publicHint: "Visibile sul portale cliente",
+      addBtn: "Aggiungi",
+      saveBtn: "Salva"
+    },
+    toasts: {
+      loadError: "Impossibile caricare le note",
+      added: "Nota aggiunta",
+      updated: "Nota aggiornata",
+      deleted: "Nota eliminata",
+      saveError: "Impossibile salvare la nota",
+      deleteError: "Impossibile eliminare la nota"
+    }
   },
   specs: {
     ...EN.specs,
@@ -1966,7 +2130,49 @@ const ES = {
     stats: "Estadísticas",
     activity: "Actividad",
     documents: "Documentos",
+    notes: "Notas",
     logs: "Logs"
+  },
+  notes: {
+    ...EN.notes,
+    subtitle: "Notas internas o visibles en el portal del cliente para este equipo.",
+    hint: "Las notas públicas son visibles para el cliente en el portal. Las privadas solo para agentes.",
+    saveFirst: "Guarde el equipo antes de añadir notas.",
+    loading: "Cargando…",
+    addNote: "Añadir nota",
+    authorFallback: "Usuario",
+    visibilityPublic: "Pública",
+    visibilityPrivate: "Privada",
+    editNote: "Editar",
+    editNoteAria: "Editar nota",
+    deleteNote: "Eliminar",
+    deleteNoteAria: "Eliminar nota",
+    edited: " · editada {date}",
+    noteModal: {
+      ...EN.notes.noteModal,
+      eyebrow: "Notas del equipo",
+      createTitle: "Añadir nota",
+      editTitle: "Editar nota",
+      subtitle: "Equipo: {name}",
+      subtitleFallback: "Nota vinculada a este equipo",
+      label: "Contenido",
+      placeholder: "Observación, instrucción, historial de intervención…",
+      visibilityLabel: "Visibilidad",
+      privateTitle: "Privada",
+      privateHint: "Visible solo para agentes Veritas",
+      publicTitle: "Pública",
+      publicHint: "Visible en el portal del cliente",
+      addBtn: "Añadir",
+      saveBtn: "Guardar"
+    },
+    toasts: {
+      loadError: "No se pudieron cargar las notas",
+      added: "Nota añadida",
+      updated: "Nota actualizada",
+      deleted: "Nota eliminada",
+      saveError: "No se pudo guardar la nota",
+      deleteError: "No se pudo eliminar la nota"
+    }
   },
   specs: {
     ...EN.specs,

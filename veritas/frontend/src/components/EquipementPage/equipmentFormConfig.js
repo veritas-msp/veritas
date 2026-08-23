@@ -7,6 +7,7 @@ import { getSiteLocationValue, normalizeClientSites } from "../../utils/clientSi
 import { getEquipmentDbId } from "../../utils/equipmentIdentity";
 import { readInternetConnectionFields, buildInternetSectionNavMeta } from "./internetConnectionUtils";
 import { buildBorneWifiSsidFormState } from "./wifiApSsidUtils";
+import { repairRmmTextEncoding } from "../../utils/rmmTextEncoding";
 export const ALIMENTATION_TYPE_OPTIONS = [{
   value: "Onduleur",
   label: "UPS (on-site)",
@@ -1866,7 +1867,7 @@ export function buildInitialFormData(equipment, moduleKey, {
       processeur: d("processeur", d("vcpu", d("vCpu", ""))),
       memoire: d("memoire", d("ram", "")),
       stockage: d("stockage", ""),
-      systeme: d("systeme", d("os", "")),
+      systeme: repairRmmTextEncoding(d("systeme", d("os", ""))) || "",
       hypervisor: d("hypervisor", d("hyperviseur", "")),
       hostServerName: d("hostServerName", d("serveurHote", "")),
       remoteAccessSolution: remoteAccess.solution,
@@ -2021,7 +2022,7 @@ export function buildInitialFormData(equipment, moduleKey, {
       manufacturer: d("fabricant", d("marque", d("manufacturer", ""))),
       model: d("modele", d("model", "")),
       serial: d("numeroSerie", d("sn", d("serial", ""))),
-      systeme: d("systeme", d("os", "")),
+      systeme: repairRmmTextEncoding(d("systeme", d("os", ""))) || "",
       domaine: d("domaine", ""),
       mac: d("mac", d("adresseMac", "")),
       processeur: d("processeur", ""),

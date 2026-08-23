@@ -280,11 +280,53 @@
 }
 
 .reactionsBarCompact {
-  flex-direction: row;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 0.35rem;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.4rem;
   min-height: 1.5rem;
+}
+
+.reactionActions {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  flex-wrap: wrap;
+}
+
+.quickReactions {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.2rem;
+  flex-wrap: wrap;
+}
+
+.quickReactionBtn {
+  width: 1.65rem;
+  height: 1.65rem;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  background: transparent;
+  font-size: 0.95rem;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0;
+  transition: background 0.12s, transform 0.12s, border-color 0.12s;
+}
+
+.quickReactionBtn:hover:not(:disabled) {
+  background: var(--msp-accent-soft);
+  transform: scale(1.08);
+}
+
+.quickReactionBtnActive {
+  background: var(--msp-accent-soft);
+  border-color: var(--msp-accent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--msp-accent) 35%, transparent);
+}
+
+.quickReactionBtn:disabled {
+  opacity: 0.5;
+  cursor: wait;
 }
 
 .reactionAddWrap {
@@ -318,15 +360,15 @@
 }
 
 .reactionAddBtnIconOnly {
-  width: 1.5rem;
-  height: 1.5rem;
+  width: 1.65rem;
+  height: 1.65rem;
   padding: 0;
   justify-content: center;
   border-radius: 999px;
   border: 1px solid var(--msp-border-light);
 }
 
-.reactionAddBtnActive {
+.reactionAddBtnOpen {
   background: var(--msp-accent-soft);
   color: var(--msp-accent);
   border-color: var(--msp-accent);
@@ -350,16 +392,27 @@
   right: 0;
   bottom: calc(100% + 6px);
   z-index: 30;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.2rem;
-  width: 11.5rem;
-  max-width: 11.5rem;
-  padding: 0.35rem;
+  padding: 0.55rem 0.6rem 0.6rem;
   background: var(--msp-surface);
   border: 1px solid var(--msp-border);
-  border-radius: 10px;
+  border-radius: 12px;
   box-shadow: 0 8px 22px rgba(16, 35, 60, 0.14);
+}
+
+.reactionPickerTitle {
+  margin: 0 0 0.4rem;
+  padding: 0 0.1rem;
+  font-size: 0.62rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--msp-muted);
+}
+
+.reactionPickerGrid {
+  display: grid;
+  grid-template-columns: repeat(6, 1.75rem);
+  gap: 0.25rem;
 }
 
 .reactionPickerPopoverPortal {
@@ -410,14 +463,12 @@
 .reactionChip {
   display: inline-flex;
   align-items: center;
-  gap: 0.25rem;
   background: var(--msp-surface-3);
   border: 1px solid var(--msp-border-light);
-  padding: 0.12rem 0.45rem 0.12rem 0.35rem;
-  cursor: pointer;
   font-size: 0.72rem;
   color: var(--msp-muted);
   border-radius: 999px;
+  overflow: hidden;
   transition: border-color 0.15s, background 0.15s;
 }
 
@@ -432,15 +483,42 @@
   color: var(--msp-text);
 }
 
-.reactionChipEmoji {
+.reactionChipEmojiBtn,
+.reactionChipCountBtn {
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  padding: 0;
+  font: inherit;
+  color: inherit;
+}
+
+.reactionChipEmojiBtn {
+  padding: 0.12rem 0.25rem 0.12rem 0.35rem;
   font-size: 0.85rem;
   line-height: 1;
 }
 
-.reactionChipCount {
+.reactionChipEmojiBtn:hover:not(:disabled) {
+  filter: brightness(1.05);
+}
+
+.reactionChipCountBtn {
+  padding: 0.12rem 0.45rem 0.12rem 0.15rem;
   font-weight: 700;
   font-variant-numeric: tabular-nums;
   color: var(--msp-text);
+  border-left: 1px solid var(--msp-border-light);
+}
+
+.reactionChipCountBtn:hover {
+  color: var(--msp-accent);
+}
+
+.reactionChipEmojiBtn:disabled,
+.reactionChipCountBtn:disabled {
+  cursor: wait;
+  opacity: 0.6;
 }
 
 .reactionPopover {
