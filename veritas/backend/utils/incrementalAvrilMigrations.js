@@ -163,6 +163,9 @@ export async function buildIncrementalAvrilMigrationPlan(client = pool) {
   if (!(await tableExists(client, "v_b_equipment_tag_links"))) {
     plan.push("20260726_equipment_tag_links.sql", "20260726_equipment_tag_links_grants.sql");
   }
+  if (!(await tableExists(client, "v_b_equipment_notes"))) {
+    plan.push("20260823_equipment_notes.sql", "20260823_equipment_notes_grants.sql");
+  }
   if (!(await tableExists(client, "v_b_rmm_metric_daily"))) {
     plan.push("20260727_rmm_metric_daily.sql", "20260727_rmm_metric_daily_grants.sql");
   }
@@ -250,7 +253,7 @@ export async function buildIncrementalAvrilMigrationPlan(client = pool) {
   }
   return [...new Set(plan)];
 }
-export const INCREMENTAL_TABLE_CHECKS = ["v_b_client_tags", "v_b_client_tag_links", "v_b_contact_tag_links", "v_b_rmm_enrollment_tokens", "v_b_rmm_agents", "v_b_clients_m_ordinateurs", "v_b_clients_m_alimentation", "v_b_clients_m_routeur", "v_b_clients_m_toip", "v_b_client_support_credits", "v_b_client_support_credit_ledger", "v_b_client_support_credit_packs", "v_b_clients_m_licences", "v_b_sales_form_definitions", "v_b_sales_form_fields", "v_b_sales_ticket_categories", "v_b_sales_ticket_category_sections", "v_b_equipment_family_definitions", "v_b_equipment_monitoring_alerts", "v_b_supervision_alert_rules_config", "v_b_equipment_files", "v_b_equipment_tag_links", "v_b_rmm_client_settings", "v_b_rmm_token_settings", "v_b_rmm_metric_daily", "v_b_teams", "v_b_ticket_views", "v_b_user_notifications", "v_b_ticket_validation_requests", "v_b_kpi_report_schedules"];
+export const INCREMENTAL_TABLE_CHECKS = ["v_b_client_tags", "v_b_client_tag_links", "v_b_contact_tag_links", "v_b_rmm_enrollment_tokens", "v_b_rmm_agents", "v_b_clients_m_ordinateurs", "v_b_clients_m_alimentation", "v_b_clients_m_routeur", "v_b_clients_m_toip", "v_b_client_support_credits", "v_b_client_support_credit_ledger", "v_b_client_support_credit_packs", "v_b_clients_m_licences", "v_b_sales_form_definitions", "v_b_sales_form_fields", "v_b_sales_ticket_categories", "v_b_sales_ticket_category_sections", "v_b_equipment_family_definitions", "v_b_equipment_monitoring_alerts", "v_b_supervision_alert_rules_config", "v_b_equipment_files", "v_b_equipment_tag_links", "v_b_equipment_notes", "v_b_rmm_client_settings", "v_b_rmm_token_settings", "v_b_rmm_metric_daily", "v_b_teams", "v_b_ticket_views", "v_b_user_notifications", "v_b_ticket_validation_requests", "v_b_kpi_report_schedules"];
 export async function verifyIncrementalTables(client = pool) {
   const missing = [];
   for (const table of INCREMENTAL_TABLE_CHECKS) {
