@@ -10,17 +10,154 @@ export default function ComputerFleetStatsView({
   const powerKwh = powerPeriod === "annual" ? stats.power.annualKwh : stats.power.monthlyKwh;
   const powerCost = powerPeriod === "annual" ? stats.power.annualCostEur : stats.power.monthlyCostEur;
   const powerPeriodLabel = powerPeriod === "annual" ? "annual" : "monthly";
+  const w11 = stats.win11Readiness;
+  const win11Tone = w11.blocked > 0 ? "bad" : w11.ready > 0 || w11.unknown > 0 ? "warn" : "good";
+  const win11Sub = w11.ready > 0
+    ? `${w11.ready} still on Windows 10 (probable ready)`
+    : w11.blocked > 0
+      ? `${w11.blocked} Windows 10 to renew`
+      : "OS migration up to date";
+  const bitlockerLabel = stats.securityPosture.bitlockerOnPct != null
+    ? `${stats.securityPosture.bitlockerOnPct}% encrypted`
+    : "No BitLocker data";
+  const defenderLabel = stats.securityPosture.defenderOnPct != null
+    ? `${stats.securityPosture.defenderOff} without realtime`
+    : "No Defender data";
+
   return <StatsDashboardBody>
         <section className={styles.kpiGrid}>
           <KpiCard icon="mdi:monitor-dashboard" label="Total fleet" value={stats.total} sub={`${stats.rmmManaged} under RMM · ${stats.manual} manual`} />
           <KpiCard icon="mdi:shield-check-outline" label="RMM coverage" value={`${stats.rmmCoveragePct}%`} sub={`${stats.agentStatus.online} online · ${stats.agentStatus.offline} offline`} tone={stats.rmmCoveragePct >= 90 ? "good" : stats.rmmCoveragePct >= 70 ? "warn" : "bad"} />
           <KpiCard icon="mdi:heart-pulse" label="Fleet health" value={stats.fleetHealth.score != null ? `${stats.fleetHealth.score}%` : "-"} sub={stats.fleetHealth.label} tone={stats.fleetHealth.score == null ? "neutral" : stats.fleetHealth.score >= 80 ? "good" : stats.fleetHealth.score >= 60 ? "warn" : "bad"} />
-          <KpiCard icon="mdi:microsoft-windows" label="Windows 11" value={stats.lifecycle.windows11} sub={stats.lifecycle.windows10 > 0 ? `${stats.lifecycle.windows10} still on Windows 10` : "OS migration up to date"} tone={stats.lifecycle.windows10 > 0 ? "warn" : "good"} />
+          <KpiCard
+            icon="mdi:microsoft-windows"
+            label="Win11 ready (est.)"
+            value={`${w11.readyCount} / ${stats.total}`}
+            sub={win11Sub}
+            tone={win11Tone}
+          />
           <KpiCard icon="mdi:memory" label="Average RAM" value={stats.hardwareSummary.avgRamGb != null ? `${stats.hardwareSummary.avgRamGb} GB` : "-"} sub={stats.hardwareSummary.knownRamCount > 0 ? `${stats.hardwareSummary.totalRamGb} GB total` : "No RAM filled"} />
           <KpiCard icon="mdi:flash-outline" label={`${powerPeriodLabel} usage`} value={`${powerKwh} kWh`} sub={`≈ ${powerCost.toLocaleString("en-GB", {
         style: "currency",
         currency: "EUR"
       })}`} />
+        </section>
+
+        <section className={styles.insightGrid}>
+          <article className={styles.panel}>
+            <h3 className={styles.panelTitle}>
+              <Icon icon="mdi:microsoft-windows" />
+              Windows 11 readiness
+            </h3>
+            <p className={styles.panelDesc}>
+              Probable compatibility from CPU + RAM (≥ 4 GB) + disk (≥ 64 GB). TPM 2.0 / Secure Boot not collected — not Microsoft-certified.
+            </p>
+            <div className={styles.statusGrid}>
+              <div className={`${styles.statusCard} ${styles.statusGood}`}>
+                <span className={styles.statusCount}>{w11.on_w11}</span>
+                <span className={styles.statusLabel}>Already on Windows 11</span>
+              </div>
+              <div className={`${styles.statusCard} ${styles.statusInfo}`}>
+                <span className={styles.statusCount}>{w11.ready}</span>
+                <span className={styles.statusLabel}>Windows 10 ready (est.)</span>
+              </div>
+              <div className={`${styles.statusCard} ${styles.statusBad}`}>
+                <span className={styles.statusCount}>{w11.blocked}</span>
+                <span className={styles.statusLabel}>Windows 10 blocked</span>
+              </div>
+              <div className={`${styles.statusCard} ${styles.statusMuted}`}>
+                <span className={styles.statusCount}>{w11.unknown}</span>
+                <span className={styles.statusLabel}>Unknown / insufficient data</span>
+              </div>
+            </div>
+            {w11.tightRam > 0 ? (
+              <p className={styles.insightNote}>
+                {w11.tightRam} workstation{w11.tightRam > 1 ? "s" : ""} with tight RAM (4–8 GB) — upgrade recommended for comfort.
+              </p>
+            ) : null}
+          </article>
+
+          <article className={styles.panel}>
+            <h3 className={styles.panelTitle}>
+              <Icon icon="mdi:shield-half-full" />
+              Warranty & age
+            </h3>
+            <ul className={styles.metricList}>
+              <li>
+                <span>Warranty expired</span>
+                <strong className={stats.warranty.expired > 0 ? styles.metricBad : ""}>{stats.warranty.expired}</strong>
+              </li>
+              <li>
+                <span>Expiring &lt; 90 days</span>
+                <strong className={stats.warranty.soon > 0 ? styles.metricWarn : ""}>{stats.warranty.soon}</strong>
+              </li>
+              <li>
+                <span>Warranty OK</span>
+                <strong className={styles.metricGood}>{stats.warranty.ok}</strong>
+              </li>
+              <li>
+                <span>Warranty unknown</span>
+                <strong>{stats.warranty.unknown}</strong>
+              </li>
+              <li>
+                <span>OS install ≥ 5 years</span>
+                <strong className={stats.warranty.aging > 0 ? styles.metricWarn : ""}>{stats.warranty.aging}</strong>
+              </li>
+            </ul>
+          </article>
+
+          <article className={styles.panel}>
+            <h3 className={styles.panelTitle}>
+              <Icon icon="mdi:shield-lock-outline" />
+              Security posture
+            </h3>
+            <p className={styles.securityHero}>
+              <strong>{bitlockerLabel}</strong>
+              <span>·</span>
+              <strong className={stats.securityPosture.defenderOff > 0 ? styles.metricBad : ""}>{defenderLabel}</strong>
+            </p>
+            <ul className={styles.metricList}>
+              <li>
+                <span>BitLocker on</span>
+                <strong className={styles.metricGood}>{stats.securityPosture.bitlockerOn}</strong>
+              </li>
+              <li>
+                <span>BitLocker partial</span>
+                <strong className={stats.securityPosture.bitlockerPartial > 0 ? styles.metricWarn : ""}>{stats.securityPosture.bitlockerPartial}</strong>
+              </li>
+              <li>
+                <span>BitLocker off</span>
+                <strong className={stats.securityPosture.bitlockerOff > 0 ? styles.metricBad : ""}>{stats.securityPosture.bitlockerOff}</strong>
+              </li>
+              <li>
+                <span>Defender realtime on</span>
+                <strong className={styles.metricGood}>{stats.securityPosture.defenderOn}</strong>
+              </li>
+              <li>
+                <span>Defender realtime off</span>
+                <strong className={stats.securityPosture.defenderOff > 0 ? styles.metricBad : ""}>{stats.securityPosture.defenderOff}</strong>
+              </li>
+            </ul>
+            <h4 className={styles.subPanelTitle}>Undersizing (quote levers)</h4>
+            <ul className={styles.metricList}>
+              <li>
+                <span>RAM &lt; 8 GB</span>
+                <strong className={stats.undersizing.ramUnder8 > 0 ? styles.metricWarn : ""}>{stats.undersizing.ramUnder8}</strong>
+              </li>
+              <li>
+                <span>Disk 70–85%</span>
+                <strong className={stats.undersizing.diskWarn > 0 ? styles.metricWarn : ""}>{stats.undersizing.diskWarn}</strong>
+              </li>
+              <li>
+                <span>Disk ≥ 85%</span>
+                <strong className={stats.undersizing.diskCritical > 0 ? styles.metricBad : ""}>{stats.undersizing.diskCritical}</strong>
+              </li>
+              <li>
+                <span>HDD only · SSD only</span>
+                <strong>{stats.undersizing.hddOnly} · {stats.undersizing.ssdOnly}</strong>
+              </li>
+            </ul>
+          </article>
         </section>
 
         <section className={styles.chartGrid}>

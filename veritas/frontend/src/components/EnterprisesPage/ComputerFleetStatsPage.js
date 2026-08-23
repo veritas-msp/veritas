@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { Icon } from "@iconify/react";
 import { toast } from "react-toastify";
-import { downloadComputerFleetStatsCsv, loadClientEquipmentForFleetStats } from "../../utils/computerFleetStats";
+import { loadClientEquipmentForFleetStats } from "../../utils/computerFleetStats";
 import SmartTooltip from "../SmartTooltip";
 import ComputerFleetStatsView from "./ComputerFleetStatsView";
 import pageStyles from "./ComputerFleetStatsPage.module.css";
@@ -63,15 +63,6 @@ export default function ComputerFleetStatsPage({
     await loadComputers();
     toast.success("Statistics refreshed.");
   };
-  const handleExport = () => {
-    if (!computers.length) return;
-    downloadComputerFleetStatsCsv({
-      computers,
-      clientName,
-      siteFilter,
-      equipmentLabel: EQUIPMENT_TYPE_LABELS[equipmentType] || equipmentType
-    });
-  };
   const equipmentLabel = EQUIPMENT_TYPE_LABELS[equipmentType] || equipmentType;
   return <div className={pageStyles.page}>
       <header className={pageStyles.header}>
@@ -89,11 +80,6 @@ export default function ComputerFleetStatsPage({
           </div>
         </div>
         <div className={pageStyles.headerActions}>
-          <SmartTooltip as="span" content="Export this view">
-            <button type="button" className={pageStyles.iconBtn} onClick={handleExport} disabled={loading || computers.length === 0} aria-label="Export this view">
-              <Icon icon="mdi:download-outline" aria-hidden />
-            </button>
-          </SmartTooltip>
           <SmartTooltip as="span" content="Refresh">
             <button type="button" className={pageStyles.iconBtn} onClick={handleRefresh} disabled={loading} aria-label="Refresh">
               <Icon icon={loading ? "mdi:loading" : "mdi:refresh"} className={loading ? pageStyles.spin : undefined} aria-hidden />
