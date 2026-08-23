@@ -1,11 +1,15 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "react-toastify";
 import { Icon } from "@iconify/react";
-import { Page, Card, SubTabs, Btn, Pagination } from "./AdminUi";
+import { Page, Card, Btn, Pagination } from "./AdminUi";
 import { useAppLocale } from "../../hooks/useAppGeneralSettings";
 import { fetchClientsList } from "../../api/clients";
+import { fetchEquipmentFamilies } from "../../api/equipmentFamilies";
 import { getAdminInjectionCopy } from "./adminInjectionI18n";
-import { getEquipmentInjectionFamilies } from "./adminInjectionEquipmentFields";
+import {
+  buildEquipmentFamilyCsvTemplate,
+  mergeEquipmentInjectionFamilies
+} from "./adminInjectionEquipmentFields";
 import { getInjectionFieldRows, hasInjectionFieldCatalog, FIELDS_GUIDE_UI } from "./adminInjectionFieldCatalog";
 import { useContractModuleOptions } from "../../hooks/useContractModuleOptions";
 import {
@@ -14,10 +18,26 @@ import {
   filesFromFileList,
   guessClientIdFromPath
 } from "./adminInjectionDocuments";
-import { downloadCsvTemplate, INJECTION_ENTITIES, parseInjectionCsv, runDocumentsInjection, runInjection, createInjectionControl } from "./adminInjectionRunner";
+import {
+  buildEquipmentFamilyRegistry,
+  downloadCsvTemplate,
+  INJECTION_ENTITIES,
+  parseInjectionCsv,
+  runDocumentsInjection,
+  runInjection,
+  createInjectionControl
+} from "./adminInjectionRunner";
 import AdminInjectionDocumentsModal from "./AdminInjectionDocumentsModal";
 import { useTablePagination } from "./useTablePagination";
 import styles from "./AdminInjection.module.css";
+
+const ENTITY_ICONS = {
+  companies: "mdi:domain",
+  contacts: "mdi:account-multiple-outline",
+  documents: "mdi:file-document-multiple-outline",
+  equipment: "mdi:server-network",
+  tickets: "mdi:ticket-outline"
+};
 
 export default function AdminInjection({
   isCommunity = false,
@@ -25,10 +45,19 @@ export default function AdminInjection({
 }) {
   const locale = useAppLocale();
   const copy = useMemo(() => getAdminInjectionCopy(locale), [locale]);
-  const equipmentFamilies = useMemo(() => getEquipmentInjectionFamilies(locale), [locale]);
   const { enabledModules } = useContractModuleOptions();
-  const [activeView, setActiveView] = useState("companies");
+  const [activeView, setActiveView] = useState(null);
+  const [customFamilies, setCustomFamilies] = useState([]);
+  const [familiesLoading, setFamiliesLoading] = useState(false);
   const [selectedFamilyId, setSelectedFamilyId] = useState("servers");
+  const equipmentFamilies = useMemo(
+    () => mergeEquipmentInjectionFamilies(locale, customFamilies),
+    [locale, customFamilies]
+  );
+  const equipmentRegistry = useMemo(
+    () => buildEquipmentFamilyRegistry(customFamilies),
+    [customFamilies]
+  );
   const selectedFamily = useMemo(
     () => equipmentFamilies.find(f => f.id === selectedFamilyId) || equipmentFamilies[0] || null,
     [equipmentFamilies, selectedFamilyId]
@@ -38,6 +67,7 @@ export default function AdminInjection({
     [enabledModules]
   );
   const fieldGuideRows = useMemo(() => {
+    if (!activeView) return [];
     return getInjectionFieldRows(activeView).map(row => {
       if (row.id !== "options") return row;
       return {
@@ -46,7 +76,7 @@ export default function AdminInjection({
       };
     });
   }, [activeView, contractOptionKeysNote]);
-  const showFieldGuide = hasInjectionFieldCatalog(activeView);
+  const showFieldGuide = activeView ? hasInjectionFieldCatalog(activeView) : false;
   const [rows, setRows] = useState([]);
   const [csvName, setCsvName] = useState("");
   const [running, setRunning] = useState(false);
@@ -75,13 +105,36 @@ export default function AdminInjection({
     }
   }, [activeView]);
 
-  const hubViews = useMemo(() => INJECTION_ENTITIES.map(key => ({
-    key,
-    label: copy.tabs[key],
-    proOnly: isCommunity && key === "documents"
-  })), [copy.tabs, isCommunity]);
+  useEffect(() => {
+    if (!selectedFamily && equipmentFamilies[0]) {
+      setSelectedFamilyId(equipmentFamilies[0].id);
+    } else if (selectedFamilyId && !equipmentFamilies.some(f => f.id === selectedFamilyId) && equipmentFamilies[0]) {
+      setSelectedFamilyId(equipmentFamilies[0].id);
+    }
+  }, [equipmentFamilies, selectedFamily, selectedFamilyId]);
+
+  const loadCustomFamilies = useCallback(async () => {
+    setFamiliesLoading(true);
+    try {
+      const data = await fetchEquipmentFamilies({ admin: true });
+      setCustomFamilies(Array.isArray(data) ? data.filter(f => f.enabled !== false) : []);
+    } catch {
+      setCustomFamilies([]);
+      toast.error(copy.equipmentFamiliesError);
+    } finally {
+      setFamiliesLoading(false);
+    }
+  }, [copy.equipmentFamiliesError]);
 
   useEffect(() => {
+    if (activeView !== "equipment") return undefined;
+    loadCustomFamilies();
+    const onUpdated = () => loadCustomFamilies();
+    window.addEventListener("equipmentFamiliesUpdated", onUpdated);
+    return () => window.removeEventListener("equipmentFamiliesUpdated", onUpdated);
+  }, [activeView, loadCustomFamilies]);
+
+  const resetWorkspaceState = useCallback(() => {
     setRows([]);
     setCsvName("");
     setProgress(null);
@@ -95,7 +148,11 @@ export default function AdminInjection({
     if (csvInputRef.current) csvInputRef.current.value = "";
     if (filesInputRef.current) filesInputRef.current.value = "";
     if (folderInputRef.current) folderInputRef.current.value = "";
-  }, [activeView]);
+  }, []);
+
+  useEffect(() => {
+    resetWorkspaceState();
+  }, [activeView, resetWorkspaceState]);
 
   useEffect(() => {
     if (activeView !== "documents" || isCommunity) return undefined;
@@ -111,6 +168,26 @@ export default function AdminInjection({
       cancelled = true;
     };
   }, [activeView, isCommunity]);
+
+  const openEntity = key => {
+    if (running) {
+      toast.warn(copy.navBlocked);
+      return;
+    }
+    if (isCommunity && key === "documents") {
+      toast.info(copy.documentsProOnly);
+      return;
+    }
+    setActiveView(key);
+  };
+
+  const backToHub = () => {
+    if (running) {
+      toast.warn(copy.navBlocked);
+      return;
+    }
+    setActiveView(null);
+  };
 
   const previewPagination = useTablePagination(rows, {
     initialPageSize: 10,
@@ -216,7 +293,8 @@ export default function AdminInjection({
         rows,
         onProgress: setProgress,
         messages: copy.errors,
-        control
+        control,
+        equipmentFamilyRegistry: activeView === "equipment" ? equipmentRegistry : null
       });
       setReport(result);
       if (result.cancelled) {
@@ -301,27 +379,79 @@ export default function AdminInjection({
     setPaused(false);
   };
 
-  const isDocuments = activeView === "documents";
+  const handleDownloadTemplate = () => {
+    if (activeView === "equipment" && selectedFamily) {
+      const content = buildEquipmentFamilyCsvTemplate(selectedFamily);
+      downloadCsvTemplate("equipment", {
+        content,
+        suffix: selectedFamily.familyKey || selectedFamily.id
+      });
+      return;
+    }
+    downloadCsvTemplate(activeView);
+  };
 
-  return <Page>
-      <Card title={copy.title} description={copy.subtitle}>
-        <SubTabs items={hubViews} active={activeView} onChange={key => {
-        if (running) {
-          toast.warn(copy.navBlocked);
-          return;
-        }
-        if (isCommunity && key === "documents") {
-          toast.info(copy.documentsProOnly);
-          return;
-        }
-        setActiveView(key);
-      }} />
+  const isDocuments = activeView === "documents";
+  const workspaceTitle = activeView ? copy.tabs[activeView] : copy.title;
+
+  if (!activeView) {
+    return (
+      <Page>
+        <Card title={copy.title} description={copy.subtitle}>
+          <div className={styles.hub}>
+            <div className={styles.hubIntro}>
+              <h3 className={styles.hubTitle}>{copy.hubTitle}</h3>
+              <p className={styles.hubSubtitle}>{copy.hubSubtitle}</p>
+            </div>
+            <div className={styles.hubGrid}>
+              {INJECTION_ENTITIES.map(key => {
+                const locked = isCommunity && key === "documents";
+                return (
+                  <button
+                    key={key}
+                    type="button"
+                    className={`${styles.hubTile} ${locked ? styles.hubTileLocked : ""}`}
+                    onClick={() => openEntity(key)}
+                    disabled={running}
+                  >
+                    <span className={styles.hubTileIconWrap}>
+                      <Icon icon={ENTITY_ICONS[key]} className={styles.hubTileIcon} aria-hidden />
+                    </span>
+                    <span className={styles.hubTileBody}>
+                      <span className={styles.hubTileTitleRow}>
+                        <span className={styles.hubTileTitle}>{copy.tabs[key]}</span>
+                        {locked ? <span className={styles.hubProBadge}>{copy.proBadge}</span> : null}
+                      </span>
+                      <span className={styles.hubTileDesc}>{copy.tileDesc?.[key] || ""}</span>
+                    </span>
+                    <Icon icon="mdi:chevron-right" className={styles.hubTileChevron} aria-hidden />
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        </Card>
+      </Page>
+    );
+  }
+
+  return (
+    <Page>
+      <Card title={workspaceTitle} description={copy.subtitle}>
+        <div className={styles.workspaceHeader}>
+          <Btn variant="secondary" icon="mdi:arrow-left" onClick={backToHub} disabled={running}>
+            {copy.backToHub}
+          </Btn>
+        </div>
 
         <div className={styles.panel}>
-          {isDocuments ? <p className={styles.columnsHint}>
+          {isDocuments ? (
+            <p className={styles.columnsHint}>
               <strong>{copy.docsHintTitle}</strong>
               <span>{copy.docsHint}</span>
-            </p> : showFieldGuide ? <details className={styles.fieldsGuide}>
+            </p>
+          ) : showFieldGuide ? (
+            <details className={styles.fieldsGuide}>
               <summary className={styles.fieldsGuideSummary} title={FIELDS_GUIDE_UI.toggle}>
                 <Icon icon="mdi:table" className={styles.fieldsGuideSummaryIcon} aria-hidden />
                 <span className={styles.fieldsGuideSummaryLabel}>{FIELDS_GUIDE_UI.title}</span>
@@ -338,59 +468,77 @@ export default function AdminInjection({
                       </tr>
                     </thead>
                     <tbody>
-                      {fieldGuideRows.map(row => <tr key={row.id}>
+                      {fieldGuideRows.map(row => (
+                        <tr key={row.id}>
                           <td>
                             <div className={styles.fieldsGuideField}>
                               {row.label}
-                              {row.required ? <span className={styles.fieldsGuideRequired}> · {FIELDS_GUIDE_UI.required}</span> : null}
+                              {row.required ? (
+                                <span className={styles.fieldsGuideRequired}> · {FIELDS_GUIDE_UI.required}</span>
+                              ) : null}
                             </div>
                             {row.note ? <p className={styles.fieldsGuideNote}>{row.note}</p> : null}
                           </td>
                           <td>
                             <div className={styles.fieldsGuideCsvCodes}>
-                              {row.columns.map(col => <code key={col}>{col}</code>)}
+                              {row.columns.map(col => (
+                                <code key={col}>{col}</code>
+                              ))}
                             </div>
                           </td>
                           <td>
                             <span className={styles.fieldsGuideType}>{row.type}</span>
                           </td>
-                        </tr>)}
+                        </tr>
+                      ))}
                     </tbody>
                   </table>
                 </div>
               </div>
-            </details> : null}
+            </details>
+          ) : null}
 
-          {activeView === "equipment" ? <div className={styles.equipmentGuide}>
+          {activeView === "equipment" ? (
+            <div className={styles.equipmentGuide}>
               <div className={styles.equipmentGuideHeader}>
                 <strong>{copy.equipmentGuideTitle}</strong>
+                {familiesLoading ? <p>{copy.equipmentFamiliesLoading}</p> : null}
               </div>
 
               <div className={styles.equipmentFamilyPicker} role="listbox" aria-label={copy.equipmentGuidePickFamily}>
                 {equipmentFamilies.map(family => {
                   const active = selectedFamily?.id === family.id;
-                  return <button
-                    key={family.id}
-                    type="button"
-                    role="option"
-                    aria-selected={active}
-                    className={`${styles.equipmentFamilyChip} ${active ? styles.equipmentFamilyChipActive : ""}`}
-                    onClick={() => setSelectedFamilyId(family.id)}
-                  >
-                    <Icon icon={family.icon} aria-hidden />
-                    <span>{family.label}</span>
-                  </button>;
+                  return (
+                    <button
+                      key={family.id}
+                      type="button"
+                      role="option"
+                      aria-selected={active}
+                      className={`${styles.equipmentFamilyChip} ${active ? styles.equipmentFamilyChipActive : ""} ${family.isCustom ? styles.equipmentFamilyChipCustom : ""}`}
+                      onClick={() => setSelectedFamilyId(family.id)}
+                    >
+                      <Icon icon={family.icon} aria-hidden />
+                      <span>{family.label}</span>
+                      <span className={styles.equipmentFamilyBadge}>
+                        {family.isCustom ? copy.customBadge : copy.systemBadge}
+                      </span>
+                    </button>
+                  );
                 })}
               </div>
 
-              {selectedFamily ? <div className={styles.equipmentFamilyPanel}>
+              {selectedFamily ? (
+                <div className={styles.equipmentFamilyPanel}>
                   <div className={styles.equipmentFamilyPanelHead}>
                     <div className={styles.equipmentFamilyPanelTitle}>
                       <Icon icon={selectedFamily.icon} aria-hidden />
                       <span>{selectedFamily.label}</span>
+                      <span className={styles.equipmentFamilyBadge}>
+                        {selectedFamily.isCustom ? copy.customBadge : copy.systemBadge}
+                      </span>
                     </div>
                     <span className={styles.equipmentFamilyKey}>
-                      {copy.equipmentGuideFamilyKey} <code>{selectedFamily.id}</code>
+                      {copy.equipmentGuideFamilyKey} <code>{selectedFamily.familyKey || selectedFamily.id}</code>
                     </span>
                   </div>
                   <div className={styles.equipmentFieldsTableWrap}>
@@ -403,20 +551,28 @@ export default function AdminInjection({
                         </tr>
                       </thead>
                       <tbody>
-                        {selectedFamily.fields.map(field => <tr key={field.key}>
+                        {selectedFamily.fields.map(field => (
+                          <tr key={field.key}>
                             <td>
                               <code>{field.csvColumn}</code>
+                              {field.required ? (
+                                <span className={styles.equipmentRequired}> · {copy.equipmentGuideRequired}</span>
+                              ) : null}
                             </td>
                             <td>{field.label}</td>
                             <td>{field.values}</td>
-                          </tr>)}
+                          </tr>
+                        ))}
                       </tbody>
                     </table>
                   </div>
-                </div> : null}
-            </div> : null}
+                </div>
+              ) : null}
+            </div>
+          ) : null}
 
-          {isDocuments ? <>
+          {isDocuments ? (
+            <>
               <div
                 className={`${styles.dropzone} ${dragOver ? styles.dropzoneActive : ""} ${isCommunity ? styles.dropzoneDisabled : ""}`}
                 onDragEnter={e => {
@@ -437,10 +593,20 @@ export default function AdminInjection({
                 <p className={styles.dropzoneTitle}>{copy.docsDropTitle}</p>
                 <p className={styles.dropzoneHint}>{copy.docsDropHint}</p>
                 <div className={styles.dropzoneActions}>
-                  <Btn variant="secondary" icon="mdi:file-plus-outline" disabled={running || isCommunity} onClick={() => filesInputRef.current?.click()}>
+                  <Btn
+                    variant="secondary"
+                    icon="mdi:file-plus-outline"
+                    disabled={running || isCommunity}
+                    onClick={() => filesInputRef.current?.click()}
+                  >
                     {copy.docsPickFiles}
                   </Btn>
-                  <Btn variant="secondary" icon="mdi:folder-open-outline" disabled={running || isCommunity} onClick={() => folderInputRef.current?.click()}>
+                  <Btn
+                    variant="secondary"
+                    icon="mdi:folder-open-outline"
+                    disabled={running || isCommunity}
+                    onClick={() => folderInputRef.current?.click()}
+                  >
                     {copy.docsPickFolder}
                   </Btn>
                   {docDrafts.length > 0 ? (
@@ -450,102 +616,170 @@ export default function AdminInjection({
                   ) : null}
                 </div>
                 <input ref={filesInputRef} type="file" multiple hidden onChange={handleDocsFileInput} />
-                <input ref={folderInputRef} type="file" multiple webkitdirectory hidden onChange={handleDocsFileInput} />
-              </div>
-            </> : <div className={styles.actions}>
-            <Btn variant="secondary" icon="mdi:download" onClick={() => downloadCsvTemplate(activeView)}>
-              {copy.downloadTemplate}
-            </Btn>
-            <Btn variant="secondary" icon="mdi:file-delimited-outline" onClick={() => csvInputRef.current?.click()} disabled={running}>
-              {csvName || copy.pickCsv}
-            </Btn>
-            <input ref={csvInputRef} type="file" accept=".csv,text/csv" hidden onChange={onCsvChange} />
-            <Btn icon="mdi:database-import" onClick={handleInject} disabled={running || !rows.length}>
-              {running ? paused ? copy.paused : copy.injecting : copy.inject}
-            </Btn>
-            {running ? <>
-                {paused ? <Btn variant="secondary" icon="mdi:play" onClick={handleResumeInjection}>
-                    {copy.resume}
-                  </Btn> : <Btn variant="secondary" icon="mdi:pause" onClick={handlePauseInjection}>
-                    {copy.pause}
-                  </Btn>}
-                <Btn variant="danger" icon="mdi:stop" onClick={handleCancelInjection}>
-                  {copy.cancel}
-                </Btn>
-              </> : null}
-          </div>}
-
-          {progress && !docsModalOpen ? (() => {
-            const total = Math.max(1, progress.total || (isDocuments ? docDrafts.length : rows.length) || 1);
-            const current = Math.min(Math.max(0, progress.current || 0), total);
-            const percent = Math.min(100, Math.round(current / total * 100));
-            return <div className={styles.progressBlock}>
-                <div className={styles.progressMeta}>
-                  <p className={styles.progress}>
-                    {paused ? `${copy.paused} · ` : null}
-                    {copy.progressLabel(current, total)}
-                    {" · "}
-                    {copy.resultOkLabel(progress.ok || 0)}
-                    {" · "}
-                    {copy.resultFailedLabel(progress.failed || 0)}
-                  </p>
-                  <span className={styles.progressPercent}>{percent}%</span>
-                </div>
-                <div className={`${styles.progressTrack} ${paused ? styles.progressTrackPaused : ""}`} role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={percent} aria-label={copy.progressLabel(current, total)}>
-                  <div className={`${styles.progressFill} ${paused ? styles.progressFillPaused : ""}`} style={{
-                    width: `${percent}%`
-                  }} />
-                </div>
-              </div>;
-          })() : null}
-
-          {!isDocuments ? <section className={styles.preview}>
-            <h3 className={styles.previewTitle}>{copy.previewTitleLabel(rows.length)}</h3>
-            {rows.length === 0 ? <p className={styles.empty}>{copy.previewEmpty}</p> : <>
-                <div className={styles.tableWrap}>
-                  <table className={styles.table}>
-                    <thead>
-                      <tr>
-                        {previewHeaders.map(header => <th key={header}>{header}</th>)}
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {previewRows.map((row, idx) => <tr key={`${previewPagination.page}-${idx}`}>
-                          {previewHeaders.map(header => <td key={header}>{String(row[header] ?? "")}</td>)}
-                        </tr>)}
-                    </tbody>
-                  </table>
-                </div>
-                <Pagination
-                  page={previewPagination.page}
-                  totalPages={previewPagination.totalPages}
-                  onPageChange={previewPagination.setPage}
-                  pageSize={previewPagination.pageSize}
-                  onPageSizeChange={previewPagination.setPageSize}
-                  rangeLabel={previewPagination.rangeLabel}
+                <input
+                  ref={folderInputRef}
+                  type="file"
+                  multiple
+                  webkitdirectory=""
+                  hidden
+                  onChange={handleDocsFileInput}
                 />
-              </>}
-          </section> : docDrafts.length > 0 && !docsModalOpen ? <section className={styles.preview}>
+              </div>
+            </>
+          ) : (
+            <div className={styles.actions}>
+              <Btn variant="secondary" icon="mdi:download" onClick={handleDownloadTemplate}>
+                {activeView === "equipment" && selectedFamily ? copy.downloadFamilyTemplate : copy.downloadTemplate}
+              </Btn>
+              {activeView === "equipment" ? (
+                <Btn variant="secondary" icon="mdi:file-download-outline" onClick={() => downloadCsvTemplate("equipment")}>
+                  {copy.downloadTemplate}
+                </Btn>
+              ) : null}
+              <Btn
+                variant="secondary"
+                icon="mdi:file-delimited-outline"
+                onClick={() => csvInputRef.current?.click()}
+                disabled={running}
+              >
+                {csvName || copy.pickCsv}
+              </Btn>
+              <input ref={csvInputRef} type="file" accept=".csv,text/csv" hidden onChange={onCsvChange} />
+              <Btn icon="mdi:database-import" onClick={handleInject} disabled={running || !rows.length}>
+                {running ? (paused ? copy.paused : copy.injecting) : copy.inject}
+              </Btn>
+              {running ? (
+                <>
+                  {paused ? (
+                    <Btn variant="secondary" icon="mdi:play" onClick={handleResumeInjection}>
+                      {copy.resume}
+                    </Btn>
+                  ) : (
+                    <Btn variant="secondary" icon="mdi:pause" onClick={handlePauseInjection}>
+                      {copy.pause}
+                    </Btn>
+                  )}
+                  <Btn variant="danger" icon="mdi:stop" onClick={handleCancelInjection}>
+                    {copy.cancel}
+                  </Btn>
+                </>
+              ) : null}
+            </div>
+          )}
+
+          {progress && !docsModalOpen
+            ? (() => {
+                const total = Math.max(1, progress.total || (isDocuments ? docDrafts.length : rows.length) || 1);
+                const current = Math.min(Math.max(0, progress.current || 0), total);
+                const percent = Math.min(100, Math.round((current / total) * 100));
+                return (
+                  <div className={styles.progressBlock}>
+                    <div className={styles.progressMeta}>
+                      <p className={styles.progress}>
+                        {paused ? `${copy.paused} · ` : null}
+                        {copy.progressLabel(current, total)}
+                        {" · "}
+                        {copy.resultOkLabel(progress.ok || 0)}
+                        {" · "}
+                        {copy.resultFailedLabel(progress.failed || 0)}
+                      </p>
+                      <span className={styles.progressPercent}>{percent}%</span>
+                    </div>
+                    <div
+                      className={`${styles.progressTrack} ${paused ? styles.progressTrackPaused : ""}`}
+                      role="progressbar"
+                      aria-valuemin={0}
+                      aria-valuemax={100}
+                      aria-valuenow={percent}
+                      aria-label={copy.progressLabel(current, total)}
+                    >
+                      <div
+                        className={`${styles.progressFill} ${paused ? styles.progressFillPaused : ""}`}
+                        style={{ width: `${percent}%` }}
+                      />
+                    </div>
+                  </div>
+                );
+              })()
+            : null}
+
+          {!isDocuments ? (
+            <section className={styles.preview}>
+              <h3 className={styles.previewTitle}>{copy.previewTitleLabel(rows.length)}</h3>
+              {rows.length === 0 ? (
+                <p className={styles.empty}>{copy.previewEmpty}</p>
+              ) : (
+                <>
+                  <div className={styles.tableWrap}>
+                    <table className={styles.table}>
+                      <thead>
+                        <tr>
+                          {previewHeaders.map(header => (
+                            <th key={header}>{header}</th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {previewRows.map((row, idx) => (
+                          <tr key={`${previewPagination.page}-${idx}`}>
+                            {previewHeaders.map(header => (
+                              <td key={header}>{String(row[header] ?? "")}</td>
+                            ))}
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                  <Pagination
+                    page={previewPagination.page}
+                    totalPages={previewPagination.totalPages}
+                    onPageChange={previewPagination.setPage}
+                    pageSize={previewPagination.pageSize}
+                    onPageSizeChange={previewPagination.setPageSize}
+                    rangeLabel={previewPagination.rangeLabel}
+                  />
+                </>
+              )}
+            </section>
+          ) : docDrafts.length > 0 && !docsModalOpen ? (
+            <section className={styles.preview}>
               <h3 className={styles.previewTitle}>{copy.docsManageLabel(docDrafts.length)}</h3>
               <p className={styles.empty}>{copy.docsReadyHint}</p>
-            </section> : null}
+            </section>
+          ) : null}
 
-          {report ? <section className={styles.report}>
+          {report ? (
+            <section className={styles.report}>
               <h3 className={styles.previewTitle}>{copy.resultTitle}</h3>
               <div className={styles.reportSummary}>
-                {report.cancelled ? <span className={styles.err}>{copy.injectCancelled}</span> : report.aborted ? <span className={styles.err}>{copy.injectAborted}</span> : null}
+                {report.cancelled ? (
+                  <span className={styles.err}>{copy.injectCancelled}</span>
+                ) : report.aborted ? (
+                  <span className={styles.err}>{copy.injectAborted}</span>
+                ) : null}
                 <span className={styles.ok}>{copy.resultOkLabel(report.ok)}</span>
                 <span className={styles.err}>{copy.resultFailedLabel(report.failed)}</span>
                 {report.skipped > 0 ? <span>{copy.resultSkippedLabel(report.skipped)}</span> : null}
               </div>
               <ul className={styles.reportList}>
-                {report.lines.slice(0, 80).map((item, idx) => <li key={`${item.line}-${idx}`} className={styles[`line_${item.status}`]}>
-                    <Icon icon={item.status === "ok" ? "mdi:check-circle-outline" : item.status === "skip" ? "mdi:minus-circle-outline" : "mdi:alert-circle-outline"} />
+                {report.lines.slice(0, 80).map((item, idx) => (
+                  <li key={`${item.line}-${idx}`} className={styles[`line_${item.status}`]}>
+                    <Icon
+                      icon={
+                        item.status === "ok"
+                          ? "mdi:check-circle-outline"
+                          : item.status === "skip"
+                            ? "mdi:minus-circle-outline"
+                            : "mdi:alert-circle-outline"
+                      }
+                    />
                     <span>{copy.lineLabel(item.line)}</span>
                     <span>{item.message}</span>
-                  </li>)}
+                  </li>
+                ))}
               </ul>
-            </section> : null}
+            </section>
+          ) : null}
         </div>
       </Card>
 
@@ -567,5 +801,6 @@ export default function AdminInjection({
         onAddFiles={() => filesInputRef.current?.click()}
         onAddFolder={() => folderInputRef.current?.click()}
       />
-    </Page>;
+    </Page>
+  );
 }

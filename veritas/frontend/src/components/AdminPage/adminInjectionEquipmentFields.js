@@ -273,6 +273,14 @@ function mapInjectionField(field, locale) {
   };
 }
 
+const FIELD_TYPE_VALUES = {
+  text: L("Texte libre", "Free text"),
+  textarea: L("Texte long", "Long text"),
+  date: L("Date, ex. 2026-12-31", "Date, e.g. 2026-12-31"),
+  number: L("Nombre", "Number"),
+  boolean: L("true | false", "true | false")
+};
+
 export function getEquipmentInjectionFamilies(locale) {
   const jsonLabel = L("Données JSON", "JSON payload");
   const jsonFallback = L("JSON optionnel pour tableaux / objets", "Optional JSON for arrays / objects");
@@ -287,6 +295,8 @@ export function getEquipmentInjectionFamilies(locale) {
       id: family.id,
       icon: family.icon || "mdi:devices",
       label: pickLocale(family.label, locale),
+      isCustom: false,
+      familyKey: family.id,
       fields: [
         ...equipmentBaseFields(family.id).map(field => mapInjectionField(field, locale)),
         ...family.fields.map(field => mapInjectionField(field, locale)),
@@ -294,4 +304,70 @@ export function getEquipmentInjectionFamilies(locale) {
       ]
     };
   });
+}
+
+/** Build injection guide entry from an admin custom equipment family definition. */
+export function buildCustomEquipmentInjectionFamily(family, locale) {
+  const familyKey = String(family?.familyKey || "").trim();
+  if (!familyKey) return null;
+  const fieldDefs = Array.isArray(family.fields) ? family.fields : [];
+  const customFields = fieldDefs.map(field => {
+    const key = String(field.fieldKey || "").trim();
+    const type = String(field.fieldType || "text").toLowerCase();
+    return mapInjectionField({
+      key,
+      csvColumn: `data_${key}`,
+      required: Boolean(field.required),
+      label: field.label || key,
+      values: FIELD_TYPE_VALUES[type] || FIELD_TYPE_VALUES.text
+    }, locale);
+  });
+  const familyValues = L(
+    `${familyKey} (ou libellé « ${family.label || familyKey} »)`,
+    `${familyKey} (or label “${family.label || familyKey}”)`
+  );
+  return {
+    id: `custom:${familyKey}`,
+    icon: family.icon || "mdi:devices",
+    label: family.label || familyKey,
+    isCustom: true,
+    familyKey,
+    fields: [
+      ...equipmentBaseFields(familyKey).map(field => {
+        if (field.key === "_family") {
+          return mapInjectionField({ ...field, values: familyValues }, locale);
+        }
+        return mapInjectionField(field, locale);
+      }),
+      ...customFields
+    ]
+  };
+}
+
+export function mergeEquipmentInjectionFamilies(locale, customFamilies = []) {
+  const system = getEquipmentInjectionFamilies(locale);
+  const custom = (Array.isArray(customFamilies) ? customFamilies : [])
+    .filter(family => family && family.enabled !== false && !family.isSystem)
+    .map(family => buildCustomEquipmentInjectionFamily(family, locale))
+    .filter(Boolean)
+    .sort((a, b) => String(a.label).localeCompare(String(b.label), locale || "fr"));
+  return [...system, ...custom];
+}
+
+/** CSV header + sample row for a selected injection family guide entry. */
+export function buildEquipmentFamilyCsvTemplate(familyGuide) {
+  if (!familyGuide?.fields?.length) return "";
+  const headers = familyGuide.fields
+    .map(field => field.csvColumn)
+    .filter((col, index, all) => col && all.indexOf(col) === index);
+  const sample = headers.map(col => {
+    if (col === "client_name") return "Acme SAS";
+    if (col === "family") return familyGuide.familyKey || familyGuide.id;
+    if (col === "name") return "EQ-001";
+    if (col === "item_key") return "eq-001";
+    if (col === "is_active") return "true";
+    if (col === "ip") return "10.0.0.100";
+    return "";
+  });
+  return `${headers.join(",")}\n${sample.join(",")}\n`;
 }

@@ -1,9 +1,11 @@
 import Papa from "papaparse";
 import {
   addClient,
+  addClientCustomEquipment,
   addContact,
   createClientModuleItem,
   deleteClient,
+  deleteClientCustomEquipment,
   deleteClientModuleItem,
   deleteContact,
   fetchClientsList,
@@ -19,7 +21,8 @@ const DEFAULT_INJECTION_ERRORS = {
   missingNom: "Missing last name (nom)",
   missingTitle: "Missing title",
   missingFamilyOrName: "Missing family or name",
-  unknownFamily: "Unknown family: {family}. Use a valid key (servers, internet, switch, firewall, wifi, stockage, alimentation, routeur, toip, ordinateurs).",
+  unknownFamily: "Unknown family: {family}. Valid keys: {keys}.",
+  missingRequiredField: "Missing required field “{field}” for family {family}",
   missingFilename: "Missing filename",
   clientNotFound: "Company not found: {value}",
   fileNotSelected: "File not selected: {filename}",
@@ -695,15 +698,16 @@ export function parseInjectionCsv(file) {
   });
 }
 
-export function downloadCsvTemplate(entity) {
-  const content = CSV_TEMPLATES[entity] || "";
+export function downloadCsvTemplate(entity, options = {}) {
+  const content = options.content != null ? String(options.content) : CSV_TEMPLATES[entity] || "";
+  const suffix = options.suffix ? `-${options.suffix}` : "";
   const blob = new Blob([content], {
     type: "text/csv;charset=utf-8"
   });
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
-  a.download = `veritas-injection-${entity}.csv`;
+  a.download = `veritas-injection-${entity}${suffix}.csv`;
   a.click();
   URL.revokeObjectURL(url);
 }
@@ -740,14 +744,77 @@ function resolveClient(row, index) {
   return index.byName.get(name.toLowerCase()) || null;
 }
 
-function resolveFamily(raw) {
-  const key = String(raw || "").trim().toLowerCase().replace(/\s+/g, "");
-  if (!key) return "";
-  return FAMILY_ALIASES[key] || key;
+function normalizeFamilyLookupKey(raw) {
+  return String(raw || "")
+    .trim()
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[\s_-]+/g, "");
 }
 
-function isKnownEquipmentFamily(family) {
-  return CANONICAL_EQUIPMENT_FAMILIES.has(String(family || "").trim().toLowerCase());
+/**
+ * Build a registry of injectable system + custom equipment families.
+ * @param {Array<{ familyKey: string, label?: string, enabled?: boolean, fields?: Array }>} customFamilies
+ */
+export function buildEquipmentFamilyRegistry(customFamilies = []) {
+  const byKey = new Map();
+  const aliases = new Map();
+
+  for (const [alias, canonical] of Object.entries(FAMILY_ALIASES)) {
+    aliases.set(normalizeFamilyLookupKey(alias), canonical);
+  }
+  for (const key of CANONICAL_EQUIPMENT_FAMILIES) {
+    byKey.set(key, {
+      familyKey: key,
+      isCustom: false,
+      requiredFields: []
+    });
+    aliases.set(normalizeFamilyLookupKey(key), key);
+  }
+
+  for (const family of Array.isArray(customFamilies) ? customFamilies : []) {
+    if (!family || family.enabled === false || family.isSystem) continue;
+    const familyKey = String(family.familyKey || "").trim();
+    if (!familyKey) continue;
+    if (CANONICAL_EQUIPMENT_FAMILIES.has(familyKey.toLowerCase())) continue;
+    const requiredFields = (Array.isArray(family.fields) ? family.fields : [])
+      .filter(field => field?.required && field.fieldKey)
+      .map(field => ({
+        key: String(field.fieldKey).trim(),
+        label: field.label || field.fieldKey,
+        fieldType: field.fieldType || "text"
+      }));
+    byKey.set(familyKey, {
+      familyKey,
+      isCustom: true,
+      label: family.label || familyKey,
+      requiredFields,
+      fields: Array.isArray(family.fields) ? family.fields : []
+    });
+    aliases.set(normalizeFamilyLookupKey(familyKey), familyKey);
+    if (family.label) {
+      aliases.set(normalizeFamilyLookupKey(family.label), familyKey);
+    }
+  }
+
+  return {
+    byKey,
+    aliases,
+    listKeys() {
+      return [...byKey.keys()];
+    },
+    resolve(raw) {
+      const compact = normalizeFamilyLookupKey(raw);
+      if (!compact) return null;
+      const aliased = aliases.get(compact);
+      if (aliased && byKey.has(aliased)) return byKey.get(aliased);
+      for (const [key, entry] of byKey.entries()) {
+        if (normalizeFamilyLookupKey(key) === compact) return entry;
+      }
+      return null;
+    }
+  };
 }
 
 export async function runInjection({
@@ -756,7 +823,8 @@ export async function runInjection({
   filesByName = new Map(),
   onProgress,
   messages,
-  control
+  control,
+  equipmentFamilyRegistry = null
 }) {
   const report = createEmptyReport();
   const push = makePusher(report, onProgress, rows.length);
@@ -886,6 +954,8 @@ export async function runInjection({
   }
 
   if (entity === "equipment") {
+    const registry = equipmentFamilyRegistry || buildEquipmentFamilyRegistry([]);
+    const knownKeys = registry.listKeys().join(", ");
     return runAtomicBatch({
       rows,
       onProgress,
@@ -893,7 +963,7 @@ export async function runInjection({
       push,
       messages: msg,
       control,
-      validateRow: (row, line) => {
+      validateRow: row => {
         const client = resolveClient(row, clientIndex);
         if (!client?.id) {
           return {
@@ -902,19 +972,22 @@ export async function runInjection({
             })
           };
         }
-        const family = resolveFamily(cell(row, "family", "famille", "type"));
+        const rawFamily = cell(row, "family", "famille", "type");
         const name = cell(row, "name", "nom", "hostname");
-        if (!family || !name) return { error: injectionError(msg, "missingFamilyOrName") };
-        if (!isKnownEquipmentFamily(family)) {
+        if (!rawFamily || !name) return { error: injectionError(msg, "missingFamilyOrName") };
+        const familyEntry = registry.resolve(rawFamily);
+        if (!familyEntry) {
           return {
             error: injectionError(msg, "unknownFamily", {
-              family: cell(row, "family", "famille", "type") || family
+              family: rawFamily,
+              keys: knownKeys
             })
           };
         }
+        const family = familyEntry.familyKey;
         const dataJson = parseJsonCell(cell(row, "data_json", "data"));
-        const data = dataJson && typeof dataJson === "object" ? { ...dataJson } : { nom: name };
-        if (!data.nom) data.nom = name;
+        const data = dataJson && typeof dataJson === "object" ? { ...dataJson } : {};
+        if (!familyEntry.isCustom && !data.nom) data.nom = name;
         const ip = cell(row, "ip", "adresse_ip");
         const os = cell(row, "os", "system", "systeme");
         const notes = cell(row, "notes", "note", "description", "commentaire");
@@ -927,16 +1000,24 @@ export async function runInjection({
           data.notes = notes;
           if (!data.commentaire) data.commentaire = notes;
         }
+        const customFieldKeys = new Set(
+          (familyEntry.fields || []).map(field => String(field.fieldKey || "").trim()).filter(Boolean)
+        );
         for (const [rawKey, rawValue] of Object.entries(row || {})) {
           const key = normKey(rawKey);
           if (!key.startsWith("data_") || key === "data_json") continue;
-          const field = canonicalizeEquipmentDataField(
-            String(rawKey).slice(String(rawKey).toLowerCase().indexOf("data_") + 5)
-          );
+          const rawField = String(rawKey).slice(String(rawKey).toLowerCase().indexOf("data_") + 5);
+          let field;
+          if (familyEntry.isCustom) {
+            const match = [...customFieldKeys].find(k => normKey(k) === normKey(rawField));
+            field = match || rawField;
+          } else {
+            field = canonicalizeEquipmentDataField(rawField);
+          }
           const value = coerceValue(rawValue);
           if (value !== undefined) data[field] = value;
         }
-        if (family === "ordinateurs") {
+        if (!familyEntry.isCustom && family === "ordinateurs") {
           const rawType =
             data.type ||
             data.computerType ||
@@ -944,10 +1025,37 @@ export async function runInjection({
           const canonical = canonicalizeComputerType(rawType);
           if (canonical) data.type = canonical;
         }
+        for (const required of familyEntry.requiredFields || []) {
+          const value = data[required.key];
+          if (required.fieldType === "boolean") continue;
+          if (value == null || String(value).trim() === "") {
+            return {
+              error: injectionError(msg, "missingRequiredField", {
+                field: required.label || required.key,
+                family
+              })
+            };
+          }
+        }
+        if (familyEntry.isCustom) {
+          return {
+            prepared: {
+              clientId: client.id,
+              family,
+              isCustom: true,
+              item: {
+                name,
+                fields: data
+              },
+              label: `${family}/${name} → ${client.name}`
+            }
+          };
+        }
         return {
           prepared: {
             clientId: client.id,
             family,
+            isCustom: false,
             item: {
               name,
               item_key: cell(row, "item_key", "itemKey", "key") || undefined,
@@ -959,18 +1067,32 @@ export async function runInjection({
         };
       },
       executePrepared: async prepared => {
+        if (prepared.isCustom) {
+          const created = await addClientCustomEquipment(prepared.clientId, prepared.family, prepared.item);
+          return {
+            id: created?.id,
+            clientId: prepared.clientId,
+            family: prepared.family,
+            isCustom: true,
+            label: prepared.label
+          };
+        }
         const created = await createClientModuleItem(prepared.clientId, prepared.family, prepared.item);
         return {
           id: created?.id,
           clientId: prepared.clientId,
           family: prepared.family,
+          isCustom: false,
           label: prepared.label
         };
       },
       rollbackCreated: async created => {
-        if (created?.id && created?.clientId && created?.family) {
-          await deleteClientModuleItem(created.clientId, created.family, created.id);
+        if (!created?.id || !created?.clientId || !created?.family) return;
+        if (created.isCustom) {
+          await deleteClientCustomEquipment(created.clientId, created.family, created.id);
+          return;
         }
+        await deleteClientModuleItem(created.clientId, created.family, created.id);
       }
     });
   }

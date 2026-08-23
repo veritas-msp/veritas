@@ -11,6 +11,140 @@
   transition: border-color 0.15s ease, background 0.15s ease, box-shadow 0.15s ease;
 }
 
+.hub {
+  display: flex;
+  flex-direction: column;
+  gap: 1.1rem;
+  margin-top: 0.35rem;
+}
+
+.hubIntro {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.hubTitle {
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--msp-text, #152033);
+}
+
+.hubSubtitle {
+  margin: 0;
+  font-size: 0.86rem;
+  line-height: 1.45;
+  color: var(--msp-muted, #5b6b7c);
+}
+
+.hubGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 0.75rem;
+}
+
+.hubTile {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 1rem 0.95rem;
+  border: 1px solid var(--msp-border, #d7dee8);
+  border-radius: 12px;
+  background: var(--msp-surface, #fff);
+  text-align: left;
+  cursor: pointer;
+  font: inherit;
+  color: inherit;
+  transition: border-color 0.15s ease, background 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
+}
+
+.hubTile:hover:not(:disabled) {
+  border-color: color-mix(in srgb, var(--msp-accent, #2563eb) 45%, var(--msp-border, #d7dee8));
+  background: color-mix(in srgb, var(--msp-accent, #2563eb) 6%, var(--msp-surface, #fff));
+  box-shadow: 0 6px 18px rgba(16, 35, 60, 0.06);
+  transform: translateY(-1px);
+}
+
+.hubTile:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.hubTileLocked {
+  opacity: 0.78;
+}
+
+.hubTileIconWrap {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--msp-accent, #2563eb) 12%, transparent);
+  color: var(--msp-accent, #2563eb);
+  flex-shrink: 0;
+}
+
+.hubTileIcon {
+  font-size: 1.35rem;
+}
+
+.hubTileBody {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  min-width: 0;
+}
+
+.hubTileTitleRow {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+}
+
+.hubTileTitle {
+  font-size: 0.92rem;
+  font-weight: 700;
+  color: var(--msp-text, #152033);
+}
+
+.hubTileDesc {
+  font-size: 0.78rem;
+  line-height: 1.4;
+  color: var(--msp-muted, #5b6b7c);
+}
+
+.hubTileChevron {
+  font-size: 1.25rem;
+  color: var(--msp-muted-light, #6b7c8f);
+  flex-shrink: 0;
+}
+
+.hubProBadge,
+.equipmentFamilyBadge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.08rem 0.4rem;
+  border-radius: 999px;
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  background: color-mix(in srgb, var(--msp-accent, #2563eb) 14%, transparent);
+  color: var(--msp-accent, #2563eb);
+}
+
+.workspaceHeader {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  margin-bottom: 0.35rem;
+}
+
 .dropzoneActive {
   border-color: var(--msp-accent, #2563eb);
   background: color-mix(in srgb, var(--msp-accent, #2563eb) 10%, var(--msp-surface-2, #f5f7fb));
@@ -272,9 +406,30 @@
   color: var(--msp-accent, #2563eb);
 }
 
+.equipmentFamilyChipCustom {
+  border-style: dashed;
+}
+
 .equipmentFamilyChip svg {
   font-size: 1rem;
   flex-shrink: 0;
+}
+
+.equipmentFamilyBadge {
+  margin-left: 0.1rem;
+  background: color-mix(in srgb, var(--msp-muted, #5b6b7c) 14%, transparent);
+  color: var(--msp-muted, #5b6b7c);
+}
+
+.equipmentFamilyChipActive .equipmentFamilyBadge,
+.equipmentFamilyPanelTitle .equipmentFamilyBadge {
+  background: color-mix(in srgb, var(--msp-accent, #2563eb) 16%, transparent);
+  color: var(--msp-accent, #2563eb);
+}
+
+.equipmentFamilyChipCustom .equipmentFamilyBadge {
+  background: color-mix(in srgb, #0d9488 16%, transparent);
+  color: #0f766e;
 }
 
 .equipmentFamilyPanel {
