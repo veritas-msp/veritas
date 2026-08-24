@@ -11,11 +11,17 @@ import styles from "./EnterpriseFormModal.module.css";
 import { useAppLocale } from "../../hooks/useAppGeneralSettings";
 import { getEnterpriseConfigModalsCopy } from "./enterpriseConfigModalsI18n";
 import { interpolate } from "../../i18n/translate";
+import { getSharedEquipmentFieldDefs, getSharedEquipmentFieldLabel, mergeCustomEquipmentFamilyFields } from "../EquipementPage/sharedEquipmentFields";
 const SECTIONS = [{
   id: "identity",
   label: "Identity",
   description: "Equipment name",
   icon: "mdi:tag-outline"
+}, {
+  id: "common",
+  label: "Facturation et installation",
+  description: "Champs communs",
+  icon: "mdi:file-document-outline"
 }, {
   id: "details",
   label: "Details",
@@ -66,11 +72,14 @@ export default function CustomEquipmentModal({
   const locale = useAppLocale();
   const configCopy = useMemo(() => getEnterpriseConfigModalsCopy(locale), [locale]);
   const [activeSection, setActiveSection] = useState("identity");
-  const [form, setForm] = useState(() => buildEmptyForm(family?.fields || []));
-  const [initialSnapshot, setInitialSnapshot] = useState(() => buildEmptyForm(family?.fields || []));
+  const [form, setForm] = useState(() => buildEmptyForm(mergeCustomEquipmentFamilyFields(family?.fields || [])));
+  const [initialSnapshot, setInitialSnapshot] = useState(() => buildEmptyForm(mergeCustomEquipmentFamilyFields(family?.fields || [])));
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
-  const fields = useMemo(() => family?.fields || [], [family?.fields]);
+  const fields = useMemo(() => mergeCustomEquipmentFamilyFields(family?.fields || []), [family?.fields]);
+  const sharedFieldKeys = useMemo(() => new Set(getSharedEquipmentFieldDefs().map(field => field.key)), []);
+  const commonFields = useMemo(() => fields.filter(field => sharedFieldKeys.has(field.fieldKey)), [fields, sharedFieldKeys]);
+  const detailFields = useMemo(() => fields.filter(field => !sharedFieldKeys.has(field.fieldKey)), [fields, sharedFieldKeys]);
   const isAddMode = !item?.id;
   const siteOptions = useMemo(() => normalizeClientSites(client?.sites || []).map(site => site.name).filter(Boolean), [client?.sites]);
   useEffect(() => {
@@ -100,7 +109,13 @@ export default function CustomEquipmentModal({
   });
   const sectionMeta = useMemo(() => {
     const identityDone = Boolean(String(form.name || "").trim());
-    const detailsDone = fields.every(field => {
+    const commonDone = commonFields.every(field => {
+      if (!field.required) return true;
+      const value = form[field.fieldKey];
+      if (field.fieldType === "boolean") return true;
+      return value != null && String(value).trim() !== "";
+    });
+    const detailsDone = detailFields.every(field => {
       if (!field.required) return true;
       const value = form[field.fieldKey];
       if (field.fieldType === "boolean") return true;
@@ -108,9 +123,10 @@ export default function CustomEquipmentModal({
     });
     return {
       identity: identityDone,
+      common: commonDone,
       details: detailsDone
     };
-  }, [form, fields]);
+  }, [form, commonFields, detailFields]);
   const handleSubmit = async () => {
     if (!clientId || !family?.familyKey) return;
     const name = String(form.name || "").trim();
@@ -125,7 +141,7 @@ export default function CustomEquipmentModal({
       if (field.fieldType === "boolean") continue;
       if (value == null || String(value).trim() === "") {
         toast.warning(`The “${field.label}” field is required`);
-        setActiveSection("details");
+        setActiveSection(sharedFieldKeys.has(field.fieldKey) ? "common" : "details");
         return;
       }
     }
@@ -287,6 +303,21 @@ export default function CustomEquipmentModal({
                 </div>
               </> : null}
 
+            {activeSection === "common" ? <>
+                <div className={styles.sectionHead}>
+                  <h3 className={styles.sectionTitle}>Facturation et installation</h3>
+                  <p className={styles.sectionDesc}>
+                    Champs partages par tous les equipements.
+                  </p>
+                </div>
+                {commonFields.length === 0 ? <p className={styles.hint}>No shared fields.</p> : <div className={styles.fieldGrid2}>
+                    {commonFields.map(field => renderFieldInput({
+                  ...field,
+                  label: field.label || getSharedEquipmentFieldLabel(field.fieldKey, locale)
+                }))}
+                  </div>}
+              </> : null}
+
             {activeSection === "details" ? <>
                 <div className={styles.sectionHead}>
                   <h3 className={styles.sectionTitle}>Details</h3>
@@ -294,8 +325,8 @@ export default function CustomEquipmentModal({
                     Fields specific to the {familyLabel.toLowerCase()} family.
                   </p>
                 </div>
-                {fields.length === 0 ? <p className={styles.hint}>No fields configured for this family.</p> : <div className={styles.fieldGrid2}>
-                    {fields.map(field => renderFieldInput(field))}
+                {detailFields.length === 0 ? <p className={styles.hint}>No specific fields configured for this family.</p> : <div className={styles.fieldGrid2}>
+                    {detailFields.map(field => renderFieldInput(field))}
                   </div>}
               </> : null}
           </div>

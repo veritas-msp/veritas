@@ -2567,6 +2567,9 @@ function localizeModuleTypeLabel(apiType, locale) {
 export function getEquipmentDetailTypeLabel(equipment, locale) {
   if (!equipment) return "";
   const types = getEquipmentDetailCopy(locale).types;
+  if (equipment.type && String(equipment.type).startsWith("Custom:")) {
+    return equipment?.customFamily?.label || String(equipment.type).slice("Custom:".length);
+  }
   if (equipment.type === "Serveurs") {
     const serverType = equipment.typeServer || equipment?.rawData?.type || "";
     const normalized = normalizeServerType(serverType);

@@ -4,6 +4,7 @@ import { getEquipmentDbId, isDbEquipmentId, findEquipmentInApiList } from "../ut
 import { inferComputerTypeFromInventory, canonicalizeComputerType, resolveAlimentationDeploymentType, resolveToipDeploymentType } from "../components/EquipementPage/equipmentFormConfig";
 import { repairRmmTextEncoding } from "../utils/rmmTextEncoding";
 import { resolveAssignedSsidIds, serializeAssignedSsidsForPersistence } from "../components/EquipementPage/wifiApSsidUtils";
+import { applySharedEquipmentFields, buildSharedEquipmentFormData } from "../components/EquipementPage/sharedEquipmentFields";
 export const getClientEquipment = async clientId => {
   try {
     const response = await fetch(`${API_BASE_URL}/maintenance/equipment/${clientId}`, {
@@ -328,6 +329,10 @@ export function mapClientHardwareEquipment(client) {
         is_active: isActive,
         uptime: equipment.uptime || "",
         installDate: equipment.dateInstallation || equipment.installDate || null,
+        purchaseDate: equipment.purchaseDate || equipment.data?.purchaseDate || null,
+        invoiceNumber: equipment.invoiceNumber || equipment.data?.invoiceNumber || "",
+        supportReference: equipment.supportReference || equipment.data?.supportReference || "",
+        supportContract: equipment.supportContract || equipment.data?.supportContract || "",
         processeur,
         memoire,
         stockage,
@@ -683,6 +688,10 @@ function buildEquipmentDataPayload(type, formData, existingData = {}, equipment 
     ...dataForDb
   } = existingData;
   const siteValue = resolveFormSiteValue(formData, existingData);
+  const sharedFields = buildSharedEquipmentFormData({
+    ...existingData,
+    ...formData
+  });
   const updatedData = type === 'Internet' ? (() => {
     const ipNonDesktop = formData.ipNonDesktop !== undefined ? !!formData.ipNonDesktop : !!existingData.ipNonDesktop;
     const ip = ipNonDesktop ? "Non-static IP" : formData.ip !== undefined ? formData.ip : existingData.ip;
@@ -705,7 +714,7 @@ function buildEquipmentDataPayload(type, formData, existingData = {}, equipment 
       commentaire: formData.commentaire || existingData.commentaire
     };
     applySiteFieldsToPayload(payload, siteValue);
-    return payload;
+    return applySharedEquipmentFields(payload, sharedFields);
   })() : {
     ...dataForDb,
     nom: formData.name || existingData.nom || existingData.name,
@@ -798,6 +807,7 @@ function buildEquipmentDataPayload(type, formData, existingData = {}, equipment 
   if (type !== 'Internet') {
     applySiteFieldsToPayload(updatedData, siteValue);
   }
+  applySharedEquipmentFields(updatedData, sharedFields);
   const fieldsToPreserve = ['site', 'location', 'emplacement', 'checkmk_host_name', 'checkmk_site', 'ipNonDesktop', 'unifiApiHost', 'unifiApiKey', 'unifiApiRejectUnauthorized', 'unifiApiConfiguredAt', 'stormshieldWanUrl'];
   if (type === 'Serveurs') fieldsToPreserve.push('role');
   Object.keys(updatedData).forEach(key => {

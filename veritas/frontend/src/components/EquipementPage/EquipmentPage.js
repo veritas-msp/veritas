@@ -535,6 +535,10 @@ function buildEquipmentBaseColumns(locale, pageCopy, type) {
       label: label("location"),
       key: "location"
     },
+    activeStatus: {
+      label: "Actif",
+      key: "activeStatus"
+    },
     processeur: {
       label: label("processeur"),
       key: "processeur"
@@ -634,6 +638,18 @@ function buildEquipmentBaseColumns(locale, pageCopy, type) {
     agentStatus: {
       label: label("agentStatus"),
       key: "agentStatus"
+    },
+    ssidCount: {
+      label: "SSID",
+      key: "ssidCount"
+    },
+    disksUsage: {
+      label: "Disques",
+      key: "disksUsage"
+    },
+    powerRating: {
+      label: "Puissance VA / W",
+      key: "powerRating"
     },
     computerType: {
       label: label("computerType"),
@@ -744,16 +760,16 @@ const BORNE_WIFI_COLUMN_LABELS = {
 };
 const MONITORING_COLUMN_LABEL = "Monitoring";
 const EMBEDDED_TYPE_COLUMNS = {
-  Internet: ["name", "ip", "location", "ha", "fournisseur", "debit", "mapping"],
-  Firewalls: ["name", "ip", "location", "ha", "model", "serial", "monitoring", "mapping"],
-  Servers: ["name", "role", "ip", "location", "ha", "systeme", "serial", "monitoring", "mapping"],
-  Ordinateurs: ["name", "computerType", "ip", "location", "systeme", "domaine", "agentStatus", "serial", "mapping"],
-  Storage: ["name", "ip", "location", "ha", "serial", "capacite", "monitoring", "mapping"],
-  Switch: ["name", "ip", "location", "model", "serial", "monitoring", "mapping"],
-  BorneWifi: ["name", "ip", "location", "model", "serial", "monitoring", "mapping"],
-  Alimentation: ["name", "ip", "location", "model", "serial", "monitoring", "mapping"],
-  Routeur: ["name", "ip", "location", "model", "serial", "monitoring", "mapping"],
-  TOIP: ["name", "ip", "location", "model", "serial", "monitoring", "mapping"],
+  Internet: ["name", "activeStatus", "location", "fournisseur", "ip", "debit", "ha", "mapping"],
+  Firewalls: ["name", "activeStatus", "location", "model", "serial", "ip", "ha", "monitoring", "mapping"],
+  Routeur: ["name", "activeStatus", "location", "model", "serial", "ip", "monitoring", "mapping"],
+  Servers: ["name", "activeStatus", "location", "model", "serial", "ip", "systeme", "ha", "monitoring", "mapping"],
+  Storage: ["name", "activeStatus", "location", "model", "serial", "ip", "disksUsage", "capacite", "raid", "ha", "monitoring", "mapping"],
+  Ordinateurs: ["name", "activeStatus", "location", "model", "serial", "systeme", "memoire", "processeur", "agentStatus", "mapping"],
+  Switch: ["name", "activeStatus", "location", "model", "serial", "mac", "ha", "monitoring", "mapping"],
+  BorneWifi: ["name", "activeStatus", "location", "model", "serial", "mac", "ssidCount", "monitoring", "mapping"],
+  TOIP: ["name", "activeStatus", "location", "model", "version", "ip", "mapping"],
+  Alimentation: ["name", "activeStatus", "location", "model", "serial", "powerRating", "ip", "monitoring", "mapping"],
   Backup: ["name", "server", "version", "jobsCount", "mappedJobsCount"]
 };
 function getEmbeddedCellClassName(colKey, styles) {
@@ -882,6 +898,39 @@ const EquipmentPage = forwardRef(function EquipmentPage({
     if (!isMkMappedEquipment(equipment)) return null;
     const summary = getEquipmentMkSummary(equipment);
     return <CheckMKMonitoringStatusBadge summary={summary} isMapped compact={compact} />;
+  };
+  const renderStateIcon = (active, {
+    onLabel = "Actif",
+    offLabel = "Inactif"
+  } = {}) => <SmartTooltip content={active ? onLabel : offLabel}>
+      <Icon icon="mdi:circle" width={12} height={12} style={{
+      color: active ? "#22c55e" : "#94a3b8"
+    }} aria-label={active ? onLabel : offLabel} />
+    </SmartTooltip>;
+  const renderActiveStatusIcon = equipment => renderStateIcon(equipment?.is_active !== false);
+  const renderSupervisionDot = equipment => {
+    if (!isCheckMKMappableType(equipment?.type)) return renderStateIcon(false, {
+      onLabel: "Supervision active",
+      offLabel: "Supervision non applicable"
+    });
+    if (!isMkMappedEquipment(equipment)) return renderStateIcon(false, {
+      onLabel: "Supervision active",
+      offLabel: "Supervision inactive"
+    });
+    const summary = getEquipmentMkSummary(equipment);
+    const status = String(summary?.status || "").toLowerCase();
+    const isHealthy = status === "ok" || status === "up" || status === "online";
+    return renderStateIcon(isHealthy, {
+      onLabel: "Supervision active",
+      offLabel: "Supervision degradee"
+    });
+  };
+  const renderAgentDot = equipment => {
+    const online = resolveRmmAgentOnline(equipment);
+    return renderStateIcon(Boolean(online), {
+      onLabel: "Agent en ligne",
+      offLabel: "Agent hors ligne"
+    });
   };
   useEffect(() => {
     isMountedRef.current = true;
@@ -1162,6 +1211,18 @@ const EquipmentPage = forwardRef(function EquipmentPage({
       return Boolean(querySerial && compactSerial(serial).includes(querySerial));
     });
   }, [searchQuery]);
+  const buildCustomEquipmentDetailItem = useCallback((family, item) => ({
+    ...item,
+    type: `Custom:${family.familyKey}`,
+    familyKey: family.familyKey,
+    customFamily: family,
+    customFields: family.fields || [],
+    clientId: item.clientId || embeddedClient?.id || fixedClientId || null,
+    clientName: item.clientName || embeddedClient?.name || "",
+    location: item.location || item.fields?.site || item.data?.site || "",
+    rawData: item.rawData || item.data || item.fields || {},
+    data: item.data || item.fields || {}
+  }), [embeddedClient, fixedClientId]);
   const baseEquipment = useMemo(() => {
     let equipment = allEquipment;
     if (embedded && fixedClientId) {
@@ -2938,6 +2999,17 @@ const EquipmentPage = forwardRef(function EquipmentPage({
                               return <td key={col.key} className={isStorage ? styles.internetCellBold : undefined}>
                                       {formatNbDisques(equipment)}
                                     </td>;
+                            } else if (col.key === "activeStatus") {
+                              return <td key={col.key}>{renderActiveStatusIcon(equipment)}</td>;
+                            } else if (col.key === "ssidCount") {
+                              const ssids = Array.isArray(equipment.ssids) ? equipment.ssids : Array.isArray(equipment.rawData?.ssids) ? equipment.rawData.ssids : [];
+                              return <td key={col.key}>{ssids.length}</td>;
+                            } else if (col.key === "disksUsage") {
+                              return <td key={col.key}>{formatNbDisques(equipment)}</td>;
+                            } else if (col.key === "powerRating") {
+                              const va = equipment.capaciteVA || equipment.rawData?.capaciteVA || "-";
+                              const w = equipment.capaciteW || equipment.rawData?.capaciteW || "-";
+                              return <td key={col.key}>{`${va} / ${w}`}</td>;
                             } else if (col.key === 'raid') {
                               const isStorage = equipment.type === 'NAS' || equipment.type === 'Storage';
                               return <td key={col.key} className={isStorage ? styles.internetCellBold : undefined}>
@@ -2961,7 +3033,7 @@ const EquipmentPage = forwardRef(function EquipmentPage({
                             } else if (col.key === 'monitoring') {
                               return <td key={col.key} onClick={e => e.stopPropagation()}>
                                       <div className={styles.monitoringStatusCell}>
-                                        {renderMonitoringStatus(equipment)}
+                                        {embedded ? renderSupervisionDot(equipment) : renderMonitoringStatus(equipment)}
                                       </div>
                                     </td>;
                             } else if (col.key === 'ha') {
@@ -3091,7 +3163,7 @@ const EquipmentPage = forwardRef(function EquipmentPage({
                               return <td key={col.key}>{domainLabel && domainLabel !== '-' ? domainLabel : '-'}</td>;
                             } else if (col.key === 'agentStatus') {
                               return <td key={col.key}>
-                                      <RmmAgentStatusBadge equipment={equipment} compact />
+                                      {embedded ? renderAgentDot(equipment) : <RmmAgentStatusBadge equipment={equipment} compact />}
                                     </td>;
                             } else if (col.key === 'computerType') {
                               const computerTypeLabel = formatComputerTypeDisplay(equipment.computerType || equipment.rawData?.type || value, locale);
@@ -3359,13 +3431,18 @@ const EquipmentPage = forwardRef(function EquipmentPage({
                             <td colSpan={fields.length + (onCustomFamilyManage ? 2 : 1)} className={styles.equipmentEmptyCell}>
                               No {family.label.toLowerCase()} for this client.
                             </td>
-                          </tr> : pagedList.map(item => <tr key={item.id} className={styles.equipmentRowEmbedded}>
+                          </tr> : pagedList.map(item => <tr key={item.id} className={styles.equipmentRowEmbedded} onClick={() => handleEquipmentOpen(buildCustomEquipmentDetailItem(family, item))} style={{
+                      cursor: "pointer"
+                    }}>
                               <td>{item.name || "-"}</td>
                               {fields.map(field => <td key={field.fieldKey}>
                                   {formatCustomFamilyFieldValue(field, item.fields?.[field.fieldKey] ?? item.data?.[field.fieldKey], pageCopy)}
                                 </td>)}
                               {onCustomFamilyManage ? <td>
-                                  <button type="button" className={styles.embeddedTableManageBtn} onClick={() => onCustomFamilyManage(family, item)}>
+                                  <button type="button" className={styles.embeddedTableManageBtn} onClick={event => {
+                            event.stopPropagation();
+                            onCustomFamilyManage(family, item);
+                          }}>
                                     Manage
                                   </button>
                                 </td> : null}

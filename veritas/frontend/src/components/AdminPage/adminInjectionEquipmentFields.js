@@ -23,6 +23,9 @@ export const EQUIPMENT_CSV_KEY_BY_DATA_KEY = {
   debit: "bandwidth",
   debitDownload: "download_bandwidth",
   debitUpload: "upload_bandwidth",
+  purchaseDate: "purchase_date",
+  invoiceNumber: "invoice_number",
+  installDate: "install_date",
   commentaire: "comment",
   expirationGarantie: "warranty_end",
   capacite: "capacity",
@@ -51,6 +54,8 @@ export const EQUIPMENT_CSV_KEY_BY_DATA_KEY = {
   remoteAccessSolution: "remote_access",
   remoteAccessId: "remote_access_id",
   quickConnect: "quick_connect",
+  supportReference: "support_reference",
+  supportContract: "support_contract",
   netbios: "hostname"
 };
 
@@ -62,11 +67,16 @@ export function equipmentCsvColumnForDataKey(dataKey) {
 
 const SHARED_HARDWARE = [
   { key: "site", label: L("Site / emplacement", "Site / location"), values: L("Texte libre, ex. HQ, Accueil, Salle serveur", "Free text, e.g. HQ, Lobby, Server room") },
+  { key: "purchaseDate", label: L("Date d'achat", "Purchase date"), values: L("Date, ex. 2026-01-15", "Date, e.g. 2026-01-15") },
+  { key: "invoiceNumber", label: L("Numero de facture", "Invoice number"), values: L("Texte, ex. FAC-2026-001", "Text, e.g. INV-2026-001") },
+  { key: "installDate", label: L("Date d'installation", "Installation date"), values: L("Date, ex. 2026-02-01", "Date, e.g. 2026-02-01") },
   { key: "marque", label: L("Marque", "Brand"), values: L("Texte libre, ex. Dell, Cisco, Fortinet, Lenovo", "Free text, e.g. Dell, Cisco, Fortinet, Lenovo") },
   { key: "modele", label: L("Modèle", "Model"), values: L("Texte libre, ex. PowerEdge R650, ThinkPad T14", "Free text, e.g. PowerEdge R650, ThinkPad T14") },
   { key: "numeroSerie", label: L("N° de série", "Serial number"), values: L("Texte libre, ex. SN-SRV-001", "Free text, e.g. SN-SRV-001") },
   { key: "vlan", label: L("VLAN", "VLAN"), values: L("Numéro, ex. 10", "Number, e.g. 10") },
   { key: "expirationGarantie", label: L("Fin de garantie", "Warranty end"), values: L("Date, ex. 2027-12-31", "Date, e.g. 2027-12-31") },
+  { key: "supportReference", label: L("Reference support", "Support reference"), values: L("Texte, ex. TKT-42 ou REF-SUPPORT", "Text, e.g. TKT-42 or SUPPORT-REF") },
+  { key: "supportContract", label: L("Contrat support", "Support contract"), values: L("Texte, ex. Gold 24/7", "Text, e.g. Gold 24/7") },
   { key: "commentaire", label: L("Commentaire", "Comment"), values: L("Texte libre, ex. Contrôleur de domaine", "Free text, e.g. Domain controller") }
 ];
 
@@ -310,7 +320,19 @@ export function getEquipmentInjectionFamilies(locale) {
 export function buildCustomEquipmentInjectionFamily(family, locale) {
   const familyKey = String(family?.familyKey || "").trim();
   if (!familyKey) return null;
-  const fieldDefs = Array.isArray(family.fields) ? family.fields : [];
+  const mergedDefs = [...SHARED_HARDWARE.map(field => ({
+    fieldKey: field.key,
+    fieldType: ["purchaseDate", "installDate", "expirationGarantie"].includes(field.key) ? "date" : field.key === "commentaire" ? "textarea" : "text",
+    label: pickLocale(field.label, locale),
+    required: false
+  })), ...(Array.isArray(family.fields) ? family.fields : [])];
+  const seenFieldKeys = new Set();
+  const fieldDefs = mergedDefs.filter(field => {
+    const key = String(field?.fieldKey || "").trim();
+    if (!key || seenFieldKeys.has(key)) return false;
+    seenFieldKeys.add(key);
+    return true;
+  });
   const customFields = fieldDefs.map(field => {
     const key = String(field.fieldKey || "").trim();
     const type = String(field.fieldType || "text").toLowerCase();

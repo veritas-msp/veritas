@@ -24,6 +24,7 @@ import StorageDiskBayPicker from "./StorageDiskBayPicker";
 import CapacityInput from "./CapacityInput";
 import ServerSpecFields from "./ServerSpecFields";
 import VlanChipsInput from "./VlanChipsInput";
+import { getSharedEquipmentFieldLabel } from "./sharedEquipmentFields";
 import styles from "../EnterprisesPage/EnterpriseFormModal.module.css";
 const NETWORK_EDGE_API_TYPES = new Set(["Switch", "BorneWifi", "Alimentation", "TOIP"]);
 export default function EquipmentFormSectionContent({
@@ -247,6 +248,48 @@ export default function EquipmentFormSectionContent({
                   </button>)}
               </div>
             </div>}
+        </>;
+    case "common":
+      return <>
+          {sectionHead}
+          <div className={styles.fieldGrid2}>
+            <div className={styles.field}>
+              <label className={styles.label} htmlFor="equipment-form-purchase-date">
+                {getSharedEquipmentFieldLabel("purchaseDate", locale)}
+              </label>
+              <input id="equipment-form-purchase-date" type="date" className={styles.input} value={formData.purchaseDate ?? ""} onChange={e => update("purchaseDate", e.target.value)} />
+            </div>
+            <div className={styles.field}>
+              <label className={styles.label} htmlFor="equipment-form-invoice-number">
+                {getSharedEquipmentFieldLabel("invoiceNumber", locale)}
+              </label>
+              <input id="equipment-form-invoice-number" type="text" className={styles.input} value={formData.invoiceNumber ?? ""} onChange={e => update("invoiceNumber", e.target.value)} placeholder="FAC-2026-001" />
+            </div>
+            <div className={styles.field}>
+              <label className={styles.label} htmlFor="equipment-form-install-date">
+                {getSharedEquipmentFieldLabel("installDate", locale)}
+              </label>
+              <input id="equipment-form-install-date" type="date" className={styles.input} value={formData.installDate ?? ""} onChange={e => update("installDate", e.target.value)} />
+            </div>
+            <div className={styles.field}>
+              <label className={styles.label} htmlFor="equipment-form-warranty-end">
+                {getSharedEquipmentFieldLabel("expirationGarantie", locale)}
+              </label>
+              <input id="equipment-form-warranty-end" type="date" className={styles.input} value={formData.expirationGarantie ?? ""} onChange={e => update("expirationGarantie", e.target.value)} />
+            </div>
+            <div className={styles.field}>
+              <label className={styles.label} htmlFor="equipment-form-support-reference">
+                {getSharedEquipmentFieldLabel("supportReference", locale)}
+              </label>
+              <input id="equipment-form-support-reference" type="text" className={styles.input} value={formData.supportReference ?? ""} onChange={e => update("supportReference", e.target.value)} placeholder="SUP-001" />
+            </div>
+            <div className={styles.field}>
+              <label className={styles.label} htmlFor="equipment-form-support-contract">
+                {getSharedEquipmentFieldLabel("supportContract", locale)}
+              </label>
+              <input id="equipment-form-support-contract" type="text" className={styles.input} value={formData.supportContract ?? ""} onChange={e => update("supportContract", e.target.value)} placeholder="Gold 24/7" />
+            </div>
+          </div>
         </>;
     case "network":
       return <>

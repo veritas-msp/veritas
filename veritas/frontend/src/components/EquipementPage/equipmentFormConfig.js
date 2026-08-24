@@ -8,6 +8,7 @@ import { getEquipmentDbId } from "../../utils/equipmentIdentity";
 import { readInternetConnectionFields, buildInternetSectionNavMeta } from "./internetConnectionUtils";
 import { buildBorneWifiSsidFormState } from "./wifiApSsidUtils";
 import { repairRmmTextEncoding } from "../../utils/rmmTextEncoding";
+import { buildSharedEquipmentFormData } from "./sharedEquipmentFields";
 export const ALIMENTATION_TYPE_OPTIONS = [{
   value: "Onduleur",
   label: "UPS (on-site)",
@@ -1195,6 +1196,12 @@ const SECTION_NETWORK = {
   icon: "mdi:lan",
   description: "IP address and VLAN"
 };
+const SECTION_COMMON = {
+  id: "common",
+  label: "Facturation et installation",
+  icon: "mdi:file-document-outline",
+  description: "Purchase, invoice, installation and support"
+};
 const SECTION_CONNECTION = {
   id: "connection",
   label: "Connection",
@@ -1305,10 +1312,13 @@ const SECTION_VOIP = {
   description: "Extensions, domaine SIP et version logicielle"
 };
 export const EQUIPMENT_FORM_SECTIONS_BY_MODULE = {
-  Internet: [SECTION_IDENTITY, SECTION_INTERNET_TYPE, SECTION_INTERNET_LINK, SECTION_INTERNET_NETWORK, SECTION_INTERNET_CONTRACT, SECTION_INTERNET_NOTES],
+  Internet: [SECTION_IDENTITY, SECTION_COMMON, SECTION_INTERNET_TYPE, SECTION_INTERNET_LINK, SECTION_INTERNET_NETWORK, SECTION_INTERNET_CONTRACT, SECTION_INTERNET_NOTES],
   Firewalls: [{
     ...SECTION_IDENTITY,
     description: "Name, site and deployment type"
+  }, {
+    ...SECTION_COMMON,
+    description: "Purchase, invoice, installation and support"
   }, {
     ...SECTION_HARDWARE,
     description: "Brand, model, serial and warranty"
@@ -1319,6 +1329,9 @@ export const EQUIPMENT_FORM_SECTIONS_BY_MODULE = {
   Servers: [{
     ...SECTION_IDENTITY,
     description: "Name, site and type (Physical / Virtual)"
+  }, {
+    ...SECTION_COMMON,
+    description: "Purchase, invoice, installation and support"
   }, {
     ...SECTION_HARDWARE,
     description: "Brand, model, serial number and warranty"
@@ -1333,6 +1346,9 @@ export const EQUIPMENT_FORM_SECTIONS_BY_MODULE = {
     ...SECTION_IDENTITY,
     description: "Name, site and storage type"
   }, {
+    ...SECTION_COMMON,
+    description: "Purchase, invoice, installation and support"
+  }, {
     ...SECTION_HARDWARE,
     description: "Brand, model et serial number"
   }, {
@@ -1345,6 +1361,9 @@ export const EQUIPMENT_FORM_SECTIONS_BY_MODULE = {
   Switch: [{
     ...SECTION_IDENTITY,
     description: "Name and site"
+  }, {
+    ...SECTION_COMMON,
+    description: "Purchase, invoice, installation and support"
   }, {
     ...SECTION_HARDWARE,
     description: "Brand, model, firmware and specifications"
@@ -1359,6 +1378,9 @@ export const EQUIPMENT_FORM_SECTIONS_BY_MODULE = {
     ...SECTION_IDENTITY,
     description: "Name and site"
   }, {
+    ...SECTION_COMMON,
+    description: "Purchase, invoice, installation and support"
+  }, {
     ...SECTION_HARDWARE,
     description: "Brand, model, serial number and firmware"
   }, {
@@ -1371,6 +1393,9 @@ export const EQUIPMENT_FORM_SECTIONS_BY_MODULE = {
   Alimentation: [{
     ...SECTION_IDENTITY,
     description: "Name, site and deployment type (UPS / PDU)"
+  }, {
+    ...SECTION_COMMON,
+    description: "Purchase, invoice, installation and support"
   }, {
     ...SECTION_HARDWARE,
     description: "Brand, model, serial number, firmware et warranty"
@@ -1388,6 +1413,9 @@ export const EQUIPMENT_FORM_SECTIONS_BY_MODULE = {
     ...SECTION_IDENTITY,
     description: "Name, site and type (Router / SD-WAN)"
   }, {
+    ...SECTION_COMMON,
+    description: "Purchase, invoice, installation and support"
+  }, {
     ...SECTION_HARDWARE,
     description: "Brand, model and specifications"
   }, {
@@ -1397,6 +1425,9 @@ export const EQUIPMENT_FORM_SECTIONS_BY_MODULE = {
   TOIP: [{
     ...SECTION_IDENTITY,
     description: "Name, site and VoIP deployment type"
+  }, {
+    ...SECTION_COMMON,
+    description: "Purchase, invoice, installation and support"
   }, {
     ...SECTION_HARDWARE,
     description: "Brand, model, serial number and firmware"
@@ -1413,6 +1444,9 @@ export const EQUIPMENT_FORM_SECTIONS_BY_MODULE = {
   Ordinateurs: [{
     ...SECTION_IDENTITY,
     description: "Nom Veritas, type et lieu du poste"
+  }, {
+    ...SECTION_COMMON,
+    description: "Purchase, invoice, installation and support"
   }, {
     ...SECTION_HARDWARE,
     description: "Brand, model and serial number (recommended to link the RMM agent)"
@@ -1802,7 +1836,8 @@ export function buildInitialFormData(equipment, moduleKey, {
   const base = {
     name: d("nom", d("name", "")),
     location: extractEquipmentSite(equipment),
-    ip: d("ip", "")
+    ip: d("ip", ""),
+    ...buildSharedEquipmentFormData(raw)
   };
   if (moduleKey === "Internet") {
     const ipFromData = d("ip", "");
@@ -1844,7 +1879,6 @@ export function buildInitialFormData(equipment, moduleKey, {
       manufacturer: d("fabricant", d("marque", d("manufacturer", ""))),
       model: d("modele", d("model", "")),
       serial: d("numeroSerie", d("sn", d("serial", ""))),
-      expirationGarantie: toDateInputValue(d("expirationGarantie", d("garantie", ""))),
       firmware: d("firmware", d("version", "")),
       vlan: d("vlan", ""),
       licences,
@@ -1876,7 +1910,6 @@ export function buildInitialFormData(equipment, moduleKey, {
       manufacturer: d("marque", d("fabricant", d("manufacturer", ""))),
       model: d("modele", d("model", "")),
       serial: d("numeroSerie", d("sn", d("serial", ""))),
-      expirationGarantie: toDateInputValue(d("expirationGarantie", d("garantie", ""))),
       modeHA: readEquipmentBool(equipment, "modeHA") || !!d("modeHA", false),
       roleHA: readEquipmentText(equipment, "roleHA", d("roleHA", "")),
       serverHAName: readEquipmentText(equipment, "serverHAName", d("serverHAName", "")),
@@ -1901,7 +1934,6 @@ export function buildInitialFormData(equipment, moduleKey, {
       firmware: d("firmware", d("version", "")),
       adresseMac: d("adresseMac", d("mac", "")),
       vlan: d("vlan", ""),
-      expirationGarantie: toDateInputValue(d("expirationGarantie", d("garantie", ""))),
       adminUrl: d("adminUrl", d("urlAdministration", "")),
       commentaire: d("commentaire", "")
     };
@@ -1981,7 +2013,6 @@ export function buildInitialFormData(equipment, moduleKey, {
       capaciteW: d("capaciteW", d("puissanceW", "")),
       nbPrises: d("nbPrises", d("nombrePrises", "")),
       dateBatterie: toDateInputValue(d("dateBatterie", "")),
-      expirationGarantie: toDateInputValue(d("expirationGarantie", d("garantie", ""))),
       manageable: Boolean(d("manageable", false)),
       adminUrl: d("adminUrl", d("urlAdministration", "")),
       commentaire: d("commentaire", "")
@@ -2006,7 +2037,6 @@ export function buildInitialFormData(equipment, moduleKey, {
       storageType,
       type: legacyType || storageTypeToLegacyType(storageType),
       role: typeof raw.role === "string" ? raw.role : Array.isArray(raw.role) ? raw.role[0] : "",
-      expirationGarantie: toDateInputValue(d("expirationGarantie", d("garantie", ""))),
       modeHA: readEquipmentBool(equipment, "modeHA") || !!d("modeHA", false),
       roleHA: readEquipmentText(equipment, "roleHA", d("roleHA", "")),
       storageHAName: readEquipmentText(equipment, "storageHAName", d("storageHAName", "")),
@@ -2081,6 +2111,7 @@ export function buildEquipmentSectionMeta(form, moduleKey, {
   }
   const meta = {
     identity: Boolean(form?.name?.trim()),
+    common: Boolean(form?.purchaseDate?.trim() || form?.invoiceNumber?.trim() || form?.installDate?.trim() || form?.expirationGarantie?.trim() || form?.supportReference?.trim() || form?.supportContract?.trim()),
     network: Boolean(form?.ip?.trim() || form?.vlan?.trim()),
     connection: false,
     hardware: Boolean(form?.manufacturer?.trim() || form?.model?.trim() || form?.serial?.trim()),

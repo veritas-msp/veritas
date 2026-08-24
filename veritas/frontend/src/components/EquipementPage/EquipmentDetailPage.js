@@ -50,6 +50,7 @@ import { findEquipmentInList, getEquipmentClientId, getEquipmentDbId as resolveE
 import { getRmmAgentId, getRmmAgentVersion, buildRmmAgentRowFromEquipment, getRmmSyncRequestedAt, isRmmManagedEquipment, patchEquipmentRmmSyncRequest, resolveRmmSyncRequestState, rmmSyncTimestampsMatch, formatRmmExpectedCollectionLabel, resolveRmmHeartbeatIntervalMinutes, agentSupportsImmediateFullSync, getRmmAgentStatusKey } from "./rmmMonitoringUtils";
 import { computeRmmDeviceHealth } from "./rmmDeviceHealthUtils";
 import { ScoreAside } from "./RmmDeviceScore";
+import { parseCustomFamilyType } from "../../api/equipmentFamilies";
 const CheckMKMappingModal = EquipmentMappingModal;
 export default function EquipmentDetailPage({
   equipment,
@@ -161,6 +162,7 @@ export default function EquipmentDetailPage({
   const getEquipmentDbIdLocal = () => resolveEquipmentDbId(equipment);
   const getEditModuleKey = eq => {
     const family = eq?.type || eq?.familyKey || "";
+    if (parseCustomFamilyType(family)) return null;
     if (family === "NAS" || family === "Storage" || family === "Stockage") return "Storage";
     if (family === "Servers" || family === "Serveurs" || family === "Server" || family === "Serveur") return "Servers";
     if (family === "Firewalls" || family === "Firewall") return "Firewalls";
@@ -670,6 +672,10 @@ export default function EquipmentDetailPage({
     event?.preventDefault?.();
     setHeroMenuOpen(false);
     const clientId = getEquipmentClientId(equipment);
+    if (parseCustomFamilyType(equipment?.type)) {
+      toast.info("Edition custom disponible depuis la fiche entreprise.");
+      return;
+    }
     if (!clientId) {
       toast.error(copy.toasts.clientNotFound);
       return;
