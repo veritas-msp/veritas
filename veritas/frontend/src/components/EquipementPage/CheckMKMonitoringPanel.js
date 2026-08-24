@@ -150,25 +150,12 @@ export default function CheckMKMonitoringPanel({
   if (!checkmkMapping?.checkmk_host_name) {
     return <section className={panelClass}>
         <div className={styles.emptyMsg}>
-          <Icon icon="simple-icons:checkmk" style={{
-          fontSize: '2.5rem',
-          color: 'var(--msp-accent)',
-          marginBottom: '0.75rem'
-        }} />
-          <h5 style={{
-          margin: '0 0 0.5rem',
-          color: 'var(--msp-text)'
-        }}>Equipment not mapped</h5>
-          <p style={{
-          margin: '0 0 1rem',
-          fontSize: '0.85rem'
-        }}>
+          <Icon icon="simple-icons:checkmk" className={styles.emptyIcon} aria-hidden />
+          <h5 className={styles.emptyTitle}>Equipment not mapped</h5>
+          <p className={styles.emptyText}>
             Map this equipment to CheckMK to display monitoring.
           </p>
-          <button type="button" className={styles.periodPillActive} style={{
-          border: 'none',
-          cursor: 'pointer'
-        }} onClick={onOpenMapping}>
+          <button type="button" className={styles.mapCta} onClick={onOpenMapping}>
             Map to CheckMK
           </button>
         </div>
@@ -244,9 +231,7 @@ export default function CheckMKMonitoringPanel({
       <div className={styles.kpiGrid}>
         <div className={styles.kpiCard}>
           <span className={styles.kpiLabel}>Service health</span>
-          <span className={styles.kpiValue} style={{
-          color: kpis.healthScore >= 90 ? '#13BA8E' : kpis.healthScore >= 70 ? '#f59e0b' : '#ef4444'
-        }}>
+          <span className={`${styles.kpiValue} ${kpis.healthScore >= 90 ? styles.kpiValueGood : kpis.healthScore >= 70 ? styles.kpiValueWarn : styles.kpiValueBad}`}>
             {kpis.healthScore != null ? `${kpis.healthScore}%` : '-'}
           </span>
           <span className={styles.kpiSub}>
@@ -263,18 +248,14 @@ export default function CheckMKMonitoringPanel({
         </div>
         <div className={styles.kpiCard}>
           <span className={styles.kpiLabel}>Critical</span>
-          <span className={styles.kpiValue} style={{
-          color: kpis.critCount > 0 ? '#ef4444' : '#13BA8E'
-        }}>
+          <span className={`${styles.kpiValue} ${kpis.critCount > 0 ? styles.kpiValueBad : styles.kpiValueGood}`}>
             {kpis.critCount}
           </span>
           <span className={styles.kpiSub}>{kpis.warnCount} warnings during this period</span>
         </div>
         <div className={styles.kpiCard}>
           <span className={styles.kpiLabel}>1-month availability</span>
-          <span className={styles.kpiValue} style={{
-          color: '#15D1A0'
-        }}>
+          <span className={`${styles.kpiValue} ${styles.kpiValueAccent}`}>
             {kpis.avail1m != null ? `${Math.round(kpis.avail1m)}%` : '-'}
           </span>
           <span className={styles.kpiSub}>

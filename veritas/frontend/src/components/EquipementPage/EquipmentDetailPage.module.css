@@ -160,42 +160,19 @@
   width: 100%;
 }
 
-.supervisionToolbar {
+.supervisionPanelBody {
   display: flex;
-  flex-wrap: wrap;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 0.75rem 1rem;
-  padding: 0.85rem 1rem;
-  border-radius: var(--msp-radius);
-  background: var(--msp-surface);
-  border: 1px solid var(--msp-border);
-  box-shadow: var(--msp-shadow);
-}
-
-.supervisionToolbarCopy {
+  flex-direction: column;
+  gap: 0.85rem;
   min-width: 0;
-  flex: 1;
-}
-
-.supervisionTitle {
-  margin: 0;
-  font-size: 0.95rem;
-  font-weight: 700;
-  color: var(--msp-text);
-}
-
-.supervisionSubtitle {
-  margin: 0.2rem 0 0;
-  font-size: 0.78rem;
-  color: var(--msp-muted);
-  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
 }
 
 .supervisionToolbarActions {
   display: inline-flex;
   flex-wrap: wrap;
+  align-items: center;
   gap: 0.4rem;
+  margin-left: auto;
 }
 
 .supervisionActionBtn {
@@ -203,19 +180,20 @@
   align-items: center;
   gap: 0.35rem;
   padding: 0.4rem 0.7rem;
-  border-radius: var(--msp-radius-sm);
+  border-radius: var(--msp-radius-sm, 10px);
   border: 1px solid var(--msp-border);
-  background: var(--msp-surface-2);
+  background: var(--msp-surface);
   color: var(--msp-text);
   font-size: 0.75rem;
   font-weight: 600;
   cursor: pointer;
-  transition: background 0.15s, border-color 0.15s;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
 }
 
 .supervisionActionBtn:hover:not(:disabled) {
-  background: var(--msp-surface);
+  background: var(--msp-accent-soft);
   border-color: var(--msp-accent);
+  color: var(--msp-accent);
 }
 
 .supervisionActionBtn:disabled {

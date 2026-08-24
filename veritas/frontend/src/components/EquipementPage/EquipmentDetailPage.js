@@ -1425,11 +1425,14 @@ export default function EquipmentDetailPage({
               </div> : null}
             </div>}
 
-          {rightPanelTab === "supervision" && showSupervisionTab ? <div className={styles.activityStack}>
-              <div className={styles.supervisionToolbar}>
-                <div className={styles.supervisionToolbarCopy}>
-                  <h2 className={styles.supervisionTitle}>{copy.tabs.supervision}</h2>
-                  <p className={styles.supervisionSubtitle}>
+          {rightPanelTab === "supervision" && showSupervisionTab ? <section className={enterpriseDetailStyles.panel}>
+              <header className={specsStyles.panelHeader}>
+                <div>
+                  <h2 className={specsStyles.panelTitle}>
+                    <Icon icon="mdi:radar" className={specsStyles.panelTitleIcon} aria-hidden />
+                    {copy.tabs.supervision}
+                  </h2>
+                  <p className={specsStyles.panelSubtitle}>
                     {checkmkMapping?.checkmk_host_name || "CheckMK"}
                     {checkmkLastSyncedAt ? ` · ${formatEquipmentDetailRelative(checkmkLastSyncedAt, locale) || checkmkLastSyncedAt}` : ""}
                   </p>
@@ -1446,12 +1449,14 @@ export default function EquipmentDetailPage({
                     {copy.hero?.mappingCheckmk || "Mapping"}
                   </button>
                 </div>
+              </header>
+              <div className={`${enterpriseDetailStyles.panelBody} ${styles.supervisionPanelBody}`}>
+                <CheckMKMonitoringPanel equipment={equipment} checkmkMapping={checkmkMapping} checkmkData={checkmkData} checkmkHostDetails={checkmkHostDetails} loadingCheckMK={loadingCheckMK} loadingAvailability={loadingAvailability} checkmkAvailabilityPeriod={checkmkAvailabilityPeriod} layout="tab" onAvailabilityPeriodChange={period => {
+              setCheckmkAvailabilityPeriod(period);
+              loadCheckMKAvailabilityOnly(period);
+            }} onOpenService={openCheckMKService} onOpenEvent={openCheckMKEvent} onOpenMapping={() => setCheckmkMappingModal(true)} />
               </div>
-              <CheckMKMonitoringPanel equipment={equipment} checkmkMapping={checkmkMapping} checkmkData={checkmkData} checkmkHostDetails={checkmkHostDetails} loadingCheckMK={loadingCheckMK} loadingAvailability={loadingAvailability} checkmkAvailabilityPeriod={checkmkAvailabilityPeriod} layout="tab" onAvailabilityPeriodChange={period => {
-            setCheckmkAvailabilityPeriod(period);
-            loadCheckMKAvailabilityOnly(period);
-          }} onOpenService={openCheckMKService} onOpenEvent={openCheckMKEvent} onOpenMapping={() => setCheckmkMappingModal(true)} />
-            </div> : null}
+            </section> : null}
 
           {(rightPanelTab === 'activity' || rightPanelTab === 'events' || rightPanelTab === 'stats' || rightPanelTab === 'metrics') && <div className={styles.activityStack}>
               {showRmmMetricsTab ? <div className={styles.activitySwitch} role="tablist" aria-label={copy.activityPane?.aria || copy.tabs.activity}>
