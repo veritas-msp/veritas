@@ -2,6 +2,14 @@
   display: flex;
   flex-direction: column;
   gap: 0.85rem;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.dashboard > :last-child {
+  flex: 1;
+  min-height: 0;
 }
 
 .hero {
@@ -128,6 +136,7 @@
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 0.5rem;
+  flex-shrink: 0;
 }
 
 @media (min-width: 720px) {
@@ -206,6 +215,7 @@
   flex-wrap: wrap;
   align-items: center;
   gap: 0.5rem;
+  flex-shrink: 0;
   padding: 0.5rem 0.65rem;
   border-radius: 14px;
   border: 1px solid var(--msp-border, #c5d0df);
@@ -315,10 +325,18 @@
 .panel {
   display: flex;
   flex-direction: column;
+  flex: 1;
   min-height: 0;
+  overflow: hidden;
+}
+
+.panel > *:not(.tableWrap) {
+  flex-shrink: 0;
 }
 
 .tableWrap {
+  flex: 1;
+  min-height: 0;
   overflow: auto;
   border: 1px solid var(--msp-border, #dde3ed);
   border-radius: var(--msp-radius, 10px);
@@ -595,10 +613,12 @@
 
 .emptyState {
   display: flex;
+  flex: 1;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   gap: 0.4rem;
+  min-height: 0;
   padding: 2rem 1.25rem;
   border-radius: 14px;
   border: 1px dashed var(--msp-border, #c5d0df);
@@ -628,9 +648,12 @@
 
 .loadingState {
   display: flex;
+  flex: 1;
   flex-direction: column;
   align-items: center;
+  justify-content: center;
   gap: 0.65rem;
+  min-height: 0;
   padding: 3rem 1.5rem;
   color: var(--msp-muted, #5c6b82);
 }
@@ -759,6 +782,7 @@
   flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
+  flex-shrink: 0;
   gap: 1rem;
   padding: 0.65rem 0.25rem 0;
 }

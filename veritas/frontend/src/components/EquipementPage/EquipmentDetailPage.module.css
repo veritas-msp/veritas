@@ -160,6 +160,69 @@
   width: 100%;
 }
 
+.supervisionToolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem 1rem;
+  padding: 0.85rem 1rem;
+  border-radius: var(--msp-radius);
+  background: var(--msp-surface);
+  border: 1px solid var(--msp-border);
+  box-shadow: var(--msp-shadow);
+}
+
+.supervisionToolbarCopy {
+  min-width: 0;
+  flex: 1;
+}
+
+.supervisionTitle {
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--msp-text);
+}
+
+.supervisionSubtitle {
+  margin: 0.2rem 0 0;
+  font-size: 0.78rem;
+  color: var(--msp-muted);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+
+.supervisionToolbarActions {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.supervisionActionBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.4rem 0.7rem;
+  border-radius: var(--msp-radius-sm);
+  border: 1px solid var(--msp-border);
+  background: var(--msp-surface-2);
+  color: var(--msp-text);
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.supervisionActionBtn:hover:not(:disabled) {
+  background: var(--msp-surface);
+  border-color: var(--msp-accent);
+}
+
+.supervisionActionBtn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
 .activitySwitch {
   display: inline-flex;
   align-self: flex-start;

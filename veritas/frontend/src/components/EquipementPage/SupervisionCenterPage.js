@@ -448,15 +448,7 @@ export default function MonitoringCenterPage({
     return <div className={`${cyberStyles.mspPage} ${cyberStyles.mspPageOrbital}`}>
         <SupportOrbitalBackground variant="page" />
         <div className={styles.loadingScreen} role="status" aria-live="polite" aria-busy="true">
-          <div className={styles.loadingRadar} aria-hidden>
-            <span className={styles.loadingRing} />
-            <span className={`${styles.loadingRing} ${styles.loadingRingMid}`} />
-            <span className={`${styles.loadingRing} ${styles.loadingRingOuter}`} />
-            <span className={styles.loadingSweep} />
-            <span className={styles.loadingCore}>
-              <Icon icon="mdi:radar" />
-            </span>
-          </div>
+          <Icon icon="mdi:loading" className={styles.loadingSpinner} aria-hidden />
           <p className={styles.loadingLabel}>{pageCopy.loading}</p>
         </div>
       </div>;

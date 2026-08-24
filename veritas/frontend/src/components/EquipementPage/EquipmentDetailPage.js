@@ -209,6 +209,7 @@ export default function EquipmentDetailPage({
   const showRmmMetricsTab = equipment?.type === "Ordinateurs" && rmmManaged;
   const showRmmPeripheralsTab = showRmmMetricsTab;
   const showRmmOperationsTab = showRmmMetricsTab;
+  const showSupervisionTab = Boolean(checkmkIntegrationEnabled && checkmkMapping?.checkmk_host_name && isCheckMKMappableType(equipment?.type) && equipment?.type !== "Internet");
   const rmmMetricsAgent = useMemo(() => showRmmMetricsTab ? buildRmmAgentRowFromEquipment(equipment) : null, [equipment, showRmmMetricsTab]);
   useEffect(() => {
     if (!equipment?.id) return;
@@ -650,7 +651,12 @@ export default function EquipmentDetailPage({
     }
   }, [rightPanelTab, showRmmOperationsTab]);
   useEffect(() => {
-    if (rightPanelTab === 'dashboard' || rightPanelTab === 'activity' || rightPanelTab === 'events' || rightPanelTab === 'stats') return;
+    if (rightPanelTab === "supervision" && !showSupervisionTab) {
+      setRightPanelTab("dashboard");
+    }
+  }, [rightPanelTab, showSupervisionTab]);
+  useEffect(() => {
+    if (rightPanelTab === "dashboard" || rightPanelTab === "activity" || rightPanelTab === "events" || rightPanelTab === "stats" || rightPanelTab === "supervision") return;
     checkmkControllerRef.current?.abort();
     availabilityControllerRef.current?.abort();
   }, [rightPanelTab]);
@@ -1028,6 +1034,11 @@ export default function EquipmentDetailPage({
       if (!controller.signal.aborted) setLoadingCheckMK(false);
     }
   };
+  useEffect(() => {
+    if (rightPanelTab !== "supervision" || !showSupervisionTab) return;
+    if (checkmkData || loadingCheckMK) return;
+    loadCheckMKData();
+  }, [rightPanelTab, showSupervisionTab, checkmkData, loadingCheckMK]);
   const loadCheckMKAvailabilityOnly = async periodKey => {
     const mapping = checkmkMapping || equipment?.checkmkMapping;
     if (!mapping?.checkmk_host_name || !checkmkData) return;
@@ -1111,30 +1122,38 @@ export default function EquipmentDetailPage({
     }
   };
   const handleMappingSaved = mapping => {
-    if (mapping) {
-      setCheckmkMapping(mapping);
+    if (mapping?.checkmk_host_name) {
+      const nextMapping = {
+        is_active: true,
+        ...mapping,
+        checkmk_host_name: mapping.checkmk_host_name,
+        checkmk_site: mapping.checkmk_site ?? null,
+        checkmk_service_name: mapping.checkmk_service_name ?? null
+      };
+      setCheckmkMapping(nextMapping);
       if (onUpdate) {
         onUpdate({
           ...equipment,
-          checkmkMapping: mapping
+          checkmkMapping: nextMapping
         });
       }
-      if (mapping.checkmk_host_name) {
-        setTimeout(() => {
-          loadCheckMKData({
-            force: true
-          });
-        }, 500);
-      }
+      setTimeout(() => {
+        loadCheckMKData({
+          force: true
+        });
+      }, 500);
     } else {
       setCheckmkMapping(null);
       setCheckmkData(null);
       if (onUpdate) {
         const {
-          checkmkMapping,
+          checkmkMapping: _removed,
           ...equipmentWithoutMapping
         } = equipment;
-        onUpdate(equipmentWithoutMapping);
+        onUpdate({
+          ...equipmentWithoutMapping,
+          checkmkMapping: null
+        });
       }
     }
   };
@@ -1366,6 +1385,10 @@ export default function EquipmentDetailPage({
               <Icon icon="mdi:package-variant-closed" />
               {copy.tabs.inventory || copy.tabs.peripherals}
             </button> : null}
+          {showSupervisionTab ? <button type="button" className={`${styles.tabBtn} ${rightPanelTab === 'supervision' ? styles.tabBtnActive : ''}`} onClick={() => setRightPanelTab('supervision')}>
+              <Icon icon="mdi:radar" />
+              {copy.tabs.supervision}
+            </button> : null}
           <button type="button" className={`${styles.tabBtn} ${rightPanelTab === 'activity' || rightPanelTab === 'events' || rightPanelTab === 'stats' || rightPanelTab === 'metrics' ? styles.tabBtnActive : ''}`} onClick={() => openActivityTab()}>
             <Icon icon="mdi:chart-timeline-variant" />
             {copy.tabs.activity}
@@ -1394,11 +1417,6 @@ export default function EquipmentDetailPage({
                 <EquipmentAlertsGlance equipment={equipment} days={30} limit={50} />
 
                 {equipment.type === 'Ordinateurs' && <RmmMonitoringPanel equipment={equipmentWithRmmLive} syncPending={rmmSyncPending} syncRequestedAt={rmmSyncRequestedAt} heartbeatIntervalMinutes={rmmHeartbeatMinutes} variant="general" agentStatusInHero={showRmmHeroStatus} />}
-
-                {checkmkIntegrationEnabled && isCheckMKMappableType(equipment.type) && equipment.type !== 'Internet' && <CheckMKMonitoringPanel equipment={equipment} checkmkMapping={checkmkMapping} checkmkData={checkmkData} checkmkHostDetails={checkmkHostDetails} loadingCheckMK={loadingCheckMK} loadingAvailability={loadingAvailability} checkmkAvailabilityPeriod={checkmkAvailabilityPeriod} onAvailabilityPeriodChange={period => {
-            setCheckmkAvailabilityPeriod(period);
-            loadCheckMKAvailabilityOnly(period);
-          }} onOpenService={openCheckMKService} onOpenEvent={openCheckMKEvent} onOpenMapping={() => setCheckmkMappingModal(true)} />}
               </div>
               {showRmmHeroStatus && rmmDeviceHealth ? <div className={styles.dashboardAside}>
                 <ScoreAside health={rmmDeviceHealth} copy={{
@@ -1406,6 +1424,34 @@ export default function EquipmentDetailPage({
             }} />
               </div> : null}
             </div>}
+
+          {rightPanelTab === "supervision" && showSupervisionTab ? <div className={styles.activityStack}>
+              <div className={styles.supervisionToolbar}>
+                <div className={styles.supervisionToolbarCopy}>
+                  <h2 className={styles.supervisionTitle}>{copy.tabs.supervision}</h2>
+                  <p className={styles.supervisionSubtitle}>
+                    {checkmkMapping?.checkmk_host_name || "CheckMK"}
+                    {checkmkLastSyncedAt ? ` · ${formatEquipmentDetailRelative(checkmkLastSyncedAt, locale) || checkmkLastSyncedAt}` : ""}
+                  </p>
+                </div>
+                <div className={styles.supervisionToolbarActions}>
+                  <button type="button" className={styles.supervisionActionBtn} disabled={loadingCheckMK} onClick={() => loadCheckMKData({
+              force: true
+            })}>
+                    <Icon icon="mdi:refresh" aria-hidden />
+                    {copy.hero?.refreshCheckmk || "Refresh"}
+                  </button>
+                  <button type="button" className={styles.supervisionActionBtn} onClick={() => setCheckmkMappingModal(true)}>
+                    <Icon icon="simple-icons:checkmk" aria-hidden />
+                    {copy.hero?.mappingCheckmk || "Mapping"}
+                  </button>
+                </div>
+              </div>
+              <CheckMKMonitoringPanel equipment={equipment} checkmkMapping={checkmkMapping} checkmkData={checkmkData} checkmkHostDetails={checkmkHostDetails} loadingCheckMK={loadingCheckMK} loadingAvailability={loadingAvailability} checkmkAvailabilityPeriod={checkmkAvailabilityPeriod} layout="tab" onAvailabilityPeriodChange={period => {
+            setCheckmkAvailabilityPeriod(period);
+            loadCheckMKAvailabilityOnly(period);
+          }} onOpenService={openCheckMKService} onOpenEvent={openCheckMKEvent} onOpenMapping={() => setCheckmkMappingModal(true)} />
+            </div> : null}
 
           {(rightPanelTab === 'activity' || rightPanelTab === 'events' || rightPanelTab === 'stats' || rightPanelTab === 'metrics') && <div className={styles.activityStack}>
               {showRmmMetricsTab ? <div className={styles.activitySwitch} role="tablist" aria-label={copy.activityPane?.aria || copy.tabs.activity}>

@@ -8,6 +8,11 @@
   padding-bottom: 1rem;
 }
 
+.panelTab {
+  width: 100%;
+  min-width: 0;
+}
+
 
 .header {
   display: flex;

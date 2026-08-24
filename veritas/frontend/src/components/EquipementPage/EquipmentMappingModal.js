@@ -78,9 +78,12 @@ function scoreSuggestion(host, equipmentName, clientName, clientId) {
 
 function formatHostMeta(host) {
   const parts = [];
-  if (host?.alias && host.alias !== host.id) parts.push(host.alias);
-  if (host?.ip) parts.push(host.ip);
-  return parts.join(" · ");
+  const id = String(hostId(host) || "").trim();
+  const alias = String(host?.alias || host?.title || "").trim();
+  if (alias && alias.toLowerCase() !== id.toLowerCase()) parts.push(alias);
+  const ip = String(host?.ip || "").trim();
+  if (ip) parts.push(ip);
+  return parts.filter(Boolean).join(" · ");
 }
 
 export default function EquipmentMappingModal({

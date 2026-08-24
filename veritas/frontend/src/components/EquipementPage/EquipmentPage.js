@@ -949,7 +949,9 @@ const EquipmentPage = forwardRef(function EquipmentPage({
       // ignore
     }
     const controller = createTrackedAbortController();
-    loadEquipment(controller.signal);
+    loadEquipment(controller.signal, {
+      fresh: true
+    });
     return () => {
       isMountedRef.current = false;
       controller.abort();
@@ -3579,18 +3581,72 @@ const EquipmentPage = forwardRef(function EquipmentPage({
       onCustomFamilyManage?.(family);
     }} />
 
-      {mappingModalEquipment && <EquipmentMappingModal isOpen={!!mappingModalEquipment} onClose={() => setMappingModalEquipment(null)} equipment={mappingModalEquipment} onMappingSaved={mapping => {
-      if (mappingModalEquipment) {
-        setAllEquipment(prev => prev.map(eq => eq.id === mappingModalEquipment.id && eq.clientId === mappingModalEquipment.clientId ? {
-          ...eq,
-          checkmkMapping: mapping
-        } : eq));
-        setSelectedEquipment(sel => sel && sel.id === mappingModalEquipment.id && sel.clientId === mappingModalEquipment.clientId ? {
-          ...sel,
-          checkmkMapping: mapping
-        } : sel);
+      {mappingModalEquipment && <EquipmentMappingModal isOpen={!!mappingModalEquipment} onClose={() => setMappingModalEquipment(null)} equipment={mappingModalEquipment} onMappingSaved={async mapping => {
+      const target = mappingModalEquipment;
+      if (!target) {
+        setMappingModalEquipment(null);
+        return;
       }
+      const nextMapping = mapping?.checkmk_host_name ? {
+        is_active: true,
+        ...mapping,
+        checkmk_host_name: mapping.checkmk_host_name,
+        checkmk_site: mapping.checkmk_site ?? null,
+        checkmk_service_name: mapping.checkmk_service_name ?? null
+      } : null;
+      setAllEquipment(prev => {
+        const next = prev.map(eq => isSameEquipmentItem(eq, target) ? {
+          ...eq,
+          checkmkMapping: nextMapping
+        } : eq);
+        persistEquipmentCache(next);
+        return next;
+      });
+      setSelectedEquipment(sel => sel && isSameEquipmentItem(sel, target) ? {
+        ...sel,
+        checkmkMapping: nextMapping
+      } : sel);
       setMappingModalEquipment(null);
+      const dbId = getEquipmentDbId(target);
+      if (nextMapping?.checkmk_host_name) {
+        if (dbId) {
+          setMonitoringSummaries(prev => ({
+            ...prev,
+            [dbId]: prev?.[dbId] || {
+              status: "ok"
+            }
+          }));
+        }
+        const payload = buildMkSyncPayload({
+          ...target,
+          checkmkMapping: nextMapping
+        });
+        if (payload) {
+          try {
+            await syncEquipmentCheckMKMonitoring(payload);
+          } catch (err) {
+            if (err?.name !== "AbortError") {
+              console.warn("CheckMK sync after mapping:", err);
+            }
+          }
+        }
+        try {
+          await refreshMonitoringSummaries();
+        } catch (err) {
+          if (err?.name !== "AbortError") {
+            console.warn("CheckMK summaries after mapping:", err);
+          }
+        }
+      } else if (dbId) {
+        setMonitoringSummaries(prev => {
+          if (!prev?.[dbId]) return prev;
+          const next = {
+            ...prev
+          };
+          delete next[dbId];
+          return next;
+        });
+      }
     }} />}
 
       {unifiApiModalEquipment && <UnifiApiConfigModal isOpen={!!unifiApiModalEquipment} onClose={() => setUnifiApiModalEquipment(null)} equipment={unifiApiModalEquipment} onSaved={config => {

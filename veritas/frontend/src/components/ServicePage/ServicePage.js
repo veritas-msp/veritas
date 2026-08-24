@@ -617,7 +617,7 @@ export default function ServicePage({
               </SmartTooltip>
             </>} />
 
-        <main className={cyberStyles.mspContent}>
+        <main className={`${cyberStyles.mspContent} ${cyberStyles.mspContentList}`}>
           <div className={`${layout.shell} ${layout.shellWide} ${layout.shellFull}`}>
           <div className={cyberStyles.tabContent}>
           {activeTab === "microsoft" && <MicrosoftTenantMspDashboard tenants={microsoftData} loading={loading} copy={pageCopy.microsoft} onOpenTenant={handleOpenTenant} />}

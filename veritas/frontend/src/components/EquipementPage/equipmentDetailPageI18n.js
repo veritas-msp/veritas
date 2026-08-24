@@ -18,6 +18,7 @@ const FR = {
     events: "Événements",
     stats: "Statistiques",
     activity: "Activité",
+    supervision: "Supervision",
     documents: "Documents",
     notes: "Notes",
     logs: "Logs"
@@ -706,6 +707,7 @@ const EN = {
     events: "Events",
     stats: "Statistics",
     activity: "Activity",
+    supervision: "Supervision",
     documents: "Documents",
     notes: "Notes",
     logs: "Logs"
@@ -1402,6 +1404,7 @@ const DE = {
     events: "Ereignisse",
     stats: "Statistiken",
     activity: "Aktivität",
+    supervision: "Überwachung",
     documents: "Dokumente",
     notes: "Notizen",
     logs: "Logs"
@@ -1769,6 +1772,7 @@ const IT = {
     events: "Eventi",
     stats: "Statistiche",
     activity: "Attività",
+    supervision: "Supervisione",
     documents: "Documenti",
     notes: "Note",
     logs: "Log"
@@ -2135,6 +2139,7 @@ const ES = {
     events: "Eventos",
     stats: "Estadísticas",
     activity: "Actividad",
+    supervision: "Supervisión",
     documents: "Documentos",
     notes: "Notas",
     logs: "Logs"

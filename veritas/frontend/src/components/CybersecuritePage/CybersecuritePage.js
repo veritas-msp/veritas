@@ -729,7 +729,7 @@ export default function CybersecuritePage({
               </SmartTooltip> : null}
             </>} />
 
-        <main className={styles.mspContent}>
+        <main className={`${styles.mspContent} ${styles.mspContentList}`}>
           <div className={`${layout.shell} ${layout.shellWide} ${layout.shellFull}`}>
           <div className={styles.tabContent}>
                 {activeTab === "antivirus" ? <AntivirusMspDashboard copy={pageCopy} clients={clients} loading={loadingCyberData} onOpenSolution={handleViewAntivirusSolution} onOpenClient={handleOpenAntivirusClient} onSolutionsChanged={() => loadClients({

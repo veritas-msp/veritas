@@ -245,21 +245,30 @@
 }
 
 .rowMain {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.2rem;
   min-width: 0;
   flex: 1;
 }
 
 .rowTitle {
+  display: block;
   font-size: 0.84rem;
   font-weight: 650;
   color: var(--msp-text, #0f1c2e);
   word-break: break-word;
+  line-height: 1.35;
 }
 
 .rowMeta {
-  margin-top: 0.12rem;
+  display: block;
+  margin-top: 0;
   font-size: 0.72rem;
   color: var(--msp-muted, #5c6b82);
+  line-height: 1.35;
+  word-break: break-word;
 }
 
 .rowCheck {

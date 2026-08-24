@@ -27,6 +27,7 @@ export default function CheckMKMonitoringPanel({
   loadingCheckMK,
   loadingAvailability,
   checkmkAvailabilityPeriod,
+  layout = "default",
   onAvailabilityPeriodChange,
   onOpenService,
   onOpenEvent,
@@ -47,6 +48,7 @@ export default function CheckMKMonitoringPanel({
     col: 'timestamp',
     dir: 'desc'
   });
+  const panelClass = layout === "tab" ? `${styles.panel} ${styles.panelTab}` : styles.panel;
   const services = checkmkData?.services?.services || [];
   const allEvents = checkmkData?.events?.events || [];
   const availabilityByPeriod = checkmkData?.availabilityByPeriod || {};
@@ -146,16 +148,16 @@ export default function CheckMKMonitoringPanel({
     2: eventsInRange.filter(e => getEventStateNum(e) === 2).length
   };
   if (!checkmkMapping?.checkmk_host_name) {
-    return <section className={styles.panel}>
+    return <section className={panelClass}>
         <div className={styles.emptyMsg}>
           <Icon icon="simple-icons:checkmk" style={{
           fontSize: '2.5rem',
-          color: '#15D1A0',
+          color: 'var(--msp-accent)',
           marginBottom: '0.75rem'
         }} />
           <h5 style={{
           margin: '0 0 0.5rem',
-          color: 'var(--text-primary)'
+          color: 'var(--msp-text)'
         }}>Equipment not mapped</h5>
           <p style={{
           margin: '0 0 1rem',
@@ -173,7 +175,7 @@ export default function CheckMKMonitoringPanel({
       </section>;
   }
   if (loadingCheckMK && !checkmkData) {
-    return <section className={styles.panel}>
+    return <section className={panelClass}>
         <div className={`${styles.skeleton} ${styles.skeletonHeader}`} />
         <div className={styles.kpiGrid}>
           {[1, 2, 3, 4, 5, 6].map(i => <div key={i} className={`${styles.skeleton} ${styles.skeletonKpi}`} />)}
@@ -185,13 +187,13 @@ export default function CheckMKMonitoringPanel({
       </section>;
   }
   if (!checkmkData) {
-    return <section className={styles.panel}>
+    return <section className={panelClass}>
         <div className={styles.emptyMsg}>No CheckMK data available.</div>
       </section>;
   }
   const hostState = checkmkHostDetails?.state;
   const hostStateColor = HOST_STATE_COLORS[hostState] || '#6b7280';
-  return <section className={styles.panel}>
+  return <section className={panelClass}>
       {}
       <div className={styles.header}>
         <div className={styles.titleBlock}>
