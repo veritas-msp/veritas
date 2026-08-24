@@ -28,6 +28,7 @@ import {
 import MspPageHero from "../Misc/MspPageHero/MspPageHero";
 import mspStyles from "../CybersecuritePage/CybersecuritePage.module.css";
 import { usePermissions } from "../../contexts/PermissionsContext";
+import { createTrackedAbortController } from "../../utils/pageLoadAbort";
 
 const ENTERPRISES_PAGE_SCOPE = "enterprises";
 const ENTERPRISES_FAVORITES_SETTING = "enterprises_favorites";
@@ -180,7 +181,7 @@ export default function EnterprisesPage({
       setError(null);
     }
     listControllerRef.current?.abort();
-    const listController = new AbortController();
+    const listController = createTrackedAbortController();
     listControllerRef.current = listController;
     try {
       const res = await fetch(`${API_BASE_URL}/clients/list?_=${Date.now()}`, {

@@ -22,6 +22,7 @@ import { useRegisterPageGuide } from "../../hooks/useRegisterPageGuide";
 import { getCyberModalsCopy } from "./cyberModalsI18n";
 import { getCybersecuritePageCopy } from "./cybersecuritePageI18n";
 import { getCampaignDetailCopy, formatCampaignDetail, formatMicrosoftSyncError } from "./campaignDetailI18n";
+import { createTrackedAbortController } from "../../utils/pageLoadAbort";
 const CAMPAIGN_TYPES = [{
   value: 'microsoft_security',
   label: 'Microsoft Security'
@@ -201,7 +202,7 @@ export default function CampaignDetailPage({
       }
       if (!Array.isArray(allCampaigns)) {
         campaignControllerRef.current?.abort();
-        const controller = new AbortController();
+        const controller = createTrackedAbortController();
         campaignControllerRef.current = controller;
         allCampaigns = await getAllCampaigns({
           client_id: campaign.client_id
@@ -255,7 +256,7 @@ export default function CampaignDetailPage({
         }
       } catch {}
       clientsControllerRef.current?.abort();
-      const controller = new AbortController();
+      const controller = createTrackedAbortController();
       clientsControllerRef.current = controller;
       const clientsData = await fetchClientsList({
         signal: controller.signal
@@ -305,7 +306,7 @@ export default function CampaignDetailPage({
           }
         }
         statsControllerRef.current?.abort();
-        const controller = new AbortController();
+        const controller = createTrackedAbortController();
         statsControllerRef.current = controller;
         const statsData = await getCampaignStats(campaignToUse.client_id, campaignToUse.id, {
           signal: controller.signal
@@ -333,7 +334,7 @@ export default function CampaignDetailPage({
         }
       }
       o365ControllerRef.current?.abort();
-      const controller = new AbortController();
+      const controller = createTrackedAbortController();
       o365ControllerRef.current = controller;
       const response = await fetch(`${API_BASE_URL}/clients/${clientId}/o365`, {
         credentials: 'include',
@@ -363,7 +364,7 @@ export default function CampaignDetailPage({
     if (syncAbortControllerRef.current) {
       syncAbortControllerRef.current.abort();
     }
-    const abortController = new AbortController();
+    const abortController = createTrackedAbortController();
     syncAbortControllerRef.current = abortController;
     try {
       setSyncLoading(true);

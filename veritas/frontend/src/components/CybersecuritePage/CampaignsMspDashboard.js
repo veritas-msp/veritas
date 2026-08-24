@@ -13,6 +13,7 @@ import styles from "./AntivirusMspDashboard.module.css";
 import CyberBulkBar from "./CyberBulkBar";
 import CyberBulkEditModal from "./CyberBulkEditModal";
 import { useCyberBulkSelection } from "./useCyberBulkSelection";
+import { createTrackedAbortController } from "../../utils/pageLoadAbort";
 const HERO_KPI_KEYS = [{
   key: "all",
   icon: "mdi:bullhorn-outline",
@@ -252,7 +253,7 @@ export default function CampaignsMspDashboard({
       return;
     }
     abortRef.current?.abort();
-    const controller = new AbortController();
+    const controller = createTrackedAbortController();
     abortRef.current = controller;
     setBusy(true);
     let success = 0;

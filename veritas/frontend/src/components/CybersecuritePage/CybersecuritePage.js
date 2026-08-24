@@ -23,6 +23,7 @@ import { buildAntivirusFleetFromClients } from "./antivirusMspUtils";
 import { buildAntispamFleetFromClients, buildAntispamDetailNavigationPayload, syncAndPersistAntispamSolution } from "../EnterprisesPage/antispamSolutionUtils";
 import { buildAntivirusDetailNavigationPayload, syncAndPersistAntivirusSolution } from "../EnterprisesPage/antivirusSolutionUtils";
 import { getCybersecuritePageCopy } from "./cybersecuritePageI18n";
+import { createTrackedAbortController } from "../../utils/pageLoadAbort";
 const MODULE_TABS = ["antivirus", "antispam", "campaigns"];
 export default function CybersecuritePage({
   onNavigate,
@@ -205,7 +206,7 @@ export default function CybersecuritePage({
       return await campaignsRequestRef.current;
     }
     campaignsControllerRef.current?.abort();
-    const controller = new AbortController();
+    const controller = createTrackedAbortController();
     campaignsControllerRef.current = controller;
     const request = getAllCampaigns({}, {
       signal: controller.signal
@@ -264,7 +265,7 @@ export default function CybersecuritePage({
         loadingClientsRef.current = true;
         if (withModules) setLoadingCyberData(true);
         clientsControllerRef.current?.abort();
-        const controller = new AbortController();
+        const controller = createTrackedAbortController();
         clientsControllerRef.current = controller;
         if (withModules) {
           if (!skipCache) {
@@ -344,7 +345,7 @@ export default function CybersecuritePage({
       return;
     }
     fleetSyncCancelledRef.current = false;
-    const controller = new AbortController();
+    const controller = createTrackedAbortController();
     fleetSyncControllerRef.current = controller;
     setSyncingFleet(true);
     setSyncProgress(0);

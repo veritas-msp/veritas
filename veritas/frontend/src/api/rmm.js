@@ -123,12 +123,15 @@ export async function deleteRmmEnrollmentTokenPermanently(tokenId) {
   });
   return handleResponse(response);
 }
-export async function fetchRmmAgents(clientId) {
+export async function fetchRmmAgents(clientId, {
+  signal
+} = {}) {
   const response = await fetch(withQuery(`${API_BASE_URL}/rmm/agents`, {
     clientId
   }), {
     credentials: "include",
-    headers: jsonHeaders
+    headers: jsonHeaders,
+    signal
   });
   return handleResponse(response);
 }

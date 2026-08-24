@@ -29,6 +29,7 @@ import { formatSalesBulkLabel, getTicketSalesPageCopy, interpolate } from "./tic
 import { getTicketPageCopy } from "./ticketPageI18n";
 import MspPageHero from "../Misc/MspPageHero/MspPageHero";
 import mspStyles from "../CybersecuritePage/CybersecuritePage.module.css";
+import { createTrackedAbortController } from "../../utils/pageLoadAbort";
 
 const VIEW_SECTION_KEYS = ["public", "assigned", "private"];
 const VIEWS_PANE_COLLAPSED_KEY = "veritas_ticket_sales_views_collapsed";
@@ -281,7 +282,7 @@ export default function TicketSalesPage({
   );
   const tableColSpan = tableColumns.length + 1 + (viewMode === "trash" ? 1 : 0);
   useEffect(() => {
-    const controller = new AbortController();
+    const controller = createTrackedAbortController();
     (async () => {
       try {
         const data = await fetchTicketTableColumns(SALES_PAGE_SCOPE, {
@@ -381,7 +382,7 @@ export default function TicketSalesPage({
     }
   };
   useEffect(() => {
-    const controller = new AbortController();
+    const controller = createTrackedAbortController();
     loadViews(controller.signal);
     return () => controller.abort();
   }, []);
@@ -437,7 +438,7 @@ export default function TicketSalesPage({
   }, [activeView, viewMode, ticketType, categoryFilter, debouncedSearch, sortBy, sortDirection]);
   const loadTicketsPage = useCallback(async () => {
     ticketsSearchAbortRef.current?.abort();
-    const controller = new AbortController();
+    const controller = createTrackedAbortController();
     ticketsSearchAbortRef.current = controller;
     const showFullLoader = !hasLoadedTicketsOnceRef.current;
     if (showFullLoader) setLoading(true);else setRefreshing(true);
@@ -464,7 +465,7 @@ export default function TicketSalesPage({
   }, [buildSearchPayload, pageSize, currentPage, pageCopy.toasts.loadError]);
   const hasActiveSubFilters = Boolean(String(debouncedSearch || "").trim() || String(ticketType || "").trim() || String(categoryFilter || "").trim());
   useEffect(() => {
-    const controller = new AbortController();
+    const controller = createTrackedAbortController();
     loadReferenceData(controller.signal);
     return () => controller.abort();
   }, [loadReferenceData]);

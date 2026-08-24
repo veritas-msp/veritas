@@ -16,6 +16,7 @@ import InventoryEquipmentActions from "./InventoryEquipmentActions";
 import InventoryBulkEditModal from "./InventoryBulkEditModal";
 import { usePermissions } from "../../contexts/PermissionsContext";
 import styles from "./EquipmentInventoryPage.module.css";
+import { createTrackedAbortController } from "../../utils/pageLoadAbort";
 
 function InventoryDeviceIcon({
   item,
@@ -117,7 +118,7 @@ export default function EquipmentInventoryPage({
 
   const load = useCallback(async () => {
     loadAbortRef.current?.abort();
-    const ac = new AbortController();
+    const ac = createTrackedAbortController();
     loadAbortRef.current = ac;
     setLoading(true);
     try {

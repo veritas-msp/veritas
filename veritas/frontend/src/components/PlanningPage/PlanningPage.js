@@ -44,6 +44,7 @@ import { toast } from "react-toastify";
 import API_BASE_URL from "../../config";
 import MspPageHero from "../Misc/MspPageHero/MspPageHero";
 import mspStyles from "../CybersecuritePage/CybersecuritePage.module.css";
+import { createTrackedAbortController } from "../../utils/pageLoadAbort";
 const PLANNING_CLIENTS_CACHE_KEY = "planning_clients_list_cache_v1";
 const PLANNING_CLIENTS_CACHE_TTL_MS = 5 * 60 * 1000;
 const PLANNING_CLIENT_MODULES_CACHE_KEY = "planning_client_modules_cache_v1";
@@ -664,7 +665,7 @@ export default function PlanningPage({
   };
   useEffect(() => {
     planningLoadAbortRef.current?.abort();
-    const controller = new AbortController();
+    const controller = createTrackedAbortController();
     planningLoadAbortRef.current = controller;
     const {
       signal
@@ -707,7 +708,7 @@ export default function PlanningPage({
     if (eq && typeof eq === "object" && Object.keys(eq).length > 0) return;
     if (planningEquipmentFetchedRef.current.has(idStr)) return;
     let cancelled = false;
-    const ac = new AbortController();
+    const ac = createTrackedAbortController();
     (async () => {
       try {
         const mod = await loadClientModulesCached(client.id, {

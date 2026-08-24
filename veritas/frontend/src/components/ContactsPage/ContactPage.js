@@ -29,6 +29,7 @@ import {
 import MspPageHero from "../Misc/MspPageHero/MspPageHero";
 import mspStyles from "../CybersecuritePage/CybersecuritePage.module.css";
 import { usePermissions } from "../../contexts/PermissionsContext";
+import { createTrackedAbortController } from "../../utils/pageLoadAbort";
 
 const CONTACTS_PAGE_SCOPE = "contacts";
 const CONTACTS_FAVORITES_SETTING = "contacts_favorites";
@@ -181,12 +182,12 @@ export default function ContactPage({
     try {
       sessionStorage.removeItem(LEGACY_CONTACTS_CACHE_KEY);
     } catch {}
-    const controller = new AbortController();
+    const controller = createTrackedAbortController();
     loadControllerRef.current?.abort();
     loadControllerRef.current = controller;
     loadData(controller.signal);
     const handleRefreshContacts = () => {
-      const refreshController = new AbortController();
+      const refreshController = createTrackedAbortController();
       loadControllerRef.current?.abort();
       loadControllerRef.current = refreshController;
       loadData(refreshController.signal);
@@ -194,7 +195,7 @@ export default function ContactPage({
     window.addEventListener("refreshContacts", handleRefreshContacts);
     const pollInterval = setInterval(() => {
       if (document.visibilityState !== "visible") return;
-      const pollController = new AbortController();
+      const pollController = createTrackedAbortController();
       loadControllerRef.current?.abort();
       loadControllerRef.current = pollController;
       loadData(pollController.signal, {
@@ -203,7 +204,7 @@ export default function ContactPage({
     }, 30000);
     return () => {
       isMountedRef.current = false;
-      controller.abort();
+      loadControllerRef.current?.abort();
       clientsControllerRef.current?.abort();
       clearInterval(pollInterval);
       window.removeEventListener("refreshContacts", handleRefreshContacts);
@@ -245,7 +246,7 @@ export default function ContactPage({
       }
     } catch {}
     clientsControllerRef.current?.abort();
-    const controller = new AbortController();
+    const controller = createTrackedAbortController();
     clientsControllerRef.current = controller;
     try {
       const clientsData = await fetchClientsList({
@@ -441,7 +442,7 @@ export default function ContactPage({
     });
   };
   const refreshContactsSilent = () => {
-    const refreshController = new AbortController();
+    const refreshController = createTrackedAbortController();
     loadControllerRef.current?.abort();
     loadControllerRef.current = refreshController;
     loadData(refreshController.signal, {

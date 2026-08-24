@@ -38,6 +38,7 @@ import DocumentsHubPage from "../components/DocumentsHubPage/DocumentsHubPage";
 import EquipmentInventoryPage from "../components/EquipmentInventoryPage/EquipmentInventoryPage";
 import TabLauncherPage from "../components/TabLauncher/TabLauncherPage";
 import { createListTabData, isListTabDocType } from "../navigation/tabTypes";
+import { abortInFlightPageLoads } from "../utils/pageLoadAbort";
 import MonitoringRenderContent from "../components/Monitoring/MonitoringRenderContent";
 import { EphemeralMonitoringProvider } from "../contexts/MonitoringContext";
 import { useAuthContext } from "../contexts/AuthContext";
@@ -356,6 +357,9 @@ export default function MainApp() {
   const applyRouteState = useCallback((pathname, search) => {
     const parsed = parseAgentPath(pathname, search);
     if (!parsed) {
+      if (currentDocType !== "Home") {
+        abortInFlightPageLoads();
+      }
       setCurrentDocType("Home");
       setAdminTab(null);
       if (`${pathname}${search}` !== "/") {
@@ -377,6 +381,11 @@ export default function MainApp() {
       return;
     }
     const routeState = routeToMainAppState(parsed);
+    const tabTypes = ["ContratDetail", "ContactDetail", "Equipment", "EquipmentDetail", "JobDetail", "ComputerFleetStats", "MonitoringDetail", "CampaignDetail", "AntivirusDetail", "AntispamDetail", "TenantDetail", "TicketDetail", "TicketSalesDetail"];
+    const nextTabId = tabTypes.includes(routeState.docType) && parsed.data ? generateTabId(routeState.docType, parsed.data) : null;
+    if (routeState.docType !== currentDocType || nextTabId && nextTabId !== activeTabId) {
+      abortInFlightPageLoads();
+    }
     setCurrentDocType(routeState.docType);
     setAdminTab(routeState.adminTab);
     setContratDetailData(routeState.contratDetailData);
@@ -397,9 +406,8 @@ export default function MainApp() {
     setCybersecuriteParams(routeState.cybersecuriteParams);
     setServiceParams(routeState.serviceParams);
     setPlanningParams(routeState.planningParams);
-    const tabTypes = ["ContratDetail", "ContactDetail", "Equipment", "EquipmentDetail", "JobDetail", "ComputerFleetStats", "MonitoringDetail", "CampaignDetail", "AntivirusDetail", "AntispamDetail", "TenantDetail", "TicketDetail", "TicketSalesDetail"];
     if (tabTypes.includes(routeState.docType) && parsed.data) {
-      const tabId = generateTabId(routeState.docType, parsed.data);
+      const tabId = nextTabId || generateTabId(routeState.docType, parsed.data);
       setTabs(prevTabs => {
         const existing = prevTabs.find(t => t.id === tabId);
         if (existing) {
@@ -426,7 +434,7 @@ export default function MainApp() {
     } else if (!tabTypes.includes(routeState.docType)) {
       setActiveTabId(null);
     }
-  }, [userRole, access, rawAccess, isCommunity, navigate, generateTabId, hydrateDetailStateFromTab, appLocale]);
+  }, [userRole, access, rawAccess, isCommunity, navigate, generateTabId, hydrateDetailStateFromTab, appLocale, currentDocType, activeTabId]);
   const pushAgentUrl = useCallback((type, data, options = {}) => {
     if (options.background) return;
     const path = buildAgentPath(type, data, {
@@ -443,6 +451,7 @@ export default function MainApp() {
   const handleReturnToPermissions = useCallback(() => {
     // Exit preview first so Collaborateur access no longer blocks Admin.
     stopProfilePreview();
+    abortInFlightPageLoads();
     setCurrentDocType("Admin");
     setAdminTab("permissions");
     pushAgentUrl("Admin", null, {
@@ -480,6 +489,9 @@ export default function MainApp() {
       }
     }
     if (!options.background) {
+      if (type !== currentDocType) {
+        abortInFlightPageLoads();
+      }
       setCurrentDocType(type);
     }
     if (options.openAsTab && isListTabDocType(type)) {
@@ -738,6 +750,9 @@ export default function MainApp() {
       return;
     }
     setActiveTabId(resolvedTab.id);
+    if (resolvedTab.id !== activeTabId || resolvedTab.type !== currentDocType) {
+      abortInFlightPageLoads();
+    }
     setCurrentDocType(resolvedTab.type);
     if (resolvedTab.type === "Contrat") {
       setContratPageParams(resolvedTab.data || null);
@@ -767,6 +782,7 @@ export default function MainApp() {
         return;
       }
     }
+    abortInFlightPageLoads();
     setCurrentDocType("TabLauncher");
     setActiveTabId(null);
     pushAgentUrl("TabLauncher", null);
@@ -794,9 +810,10 @@ export default function MainApp() {
             console.error('Error lors de la sauvegarde de l\'onglet actif:', error);
           }
           handleDocSelect(lastTab.type, lastTab.data);
-        } else {
+          } else {
           setActiveTabId(null);
           if (currentDocType !== "TabLauncher") {
+            abortInFlightPageLoads();
             setCurrentDocType("Home");
             pushAgentUrl("Home", null);
           }

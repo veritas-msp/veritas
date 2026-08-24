@@ -49,6 +49,7 @@ import { getEquipmentFormOptionsCopy, getRoleOptionLabel } from "./equipmentForm
 import EquipmentHaCell from "./EquipmentHaCell";
 import { buildHaPairColorMap, compareFirewallHaPairs, getFirewallHaSortValue, getFirewallHaState } from "./equipmentHaUtils";
 import { getExpirationStatus, getExpirationStatusColor, getMaintenanceLicenseExpiration } from "./constants/firewallLicenceUtils";
+import { createTrackedAbortController } from "../../utils/pageLoadAbort";
 function formatComputerTypeDisplay(value, locale) {
   const key = canonicalizeComputerType(value);
   if (!key) return "";
@@ -934,7 +935,7 @@ const EquipmentPage = forwardRef(function EquipmentPage({
   };
   useEffect(() => {
     isMountedRef.current = true;
-    const controller = new AbortController();
+    const controller = createTrackedAbortController();
     loadEquipment(controller.signal);
     return () => {
       isMountedRef.current = false;
@@ -981,14 +982,17 @@ const EquipmentPage = forwardRef(function EquipmentPage({
       setClientAlertMap({});
       return;
     }
-    let mounted = true;
-    fetchClientEquipmentAlerts(clientId).then(data => {
-      if (mounted) setClientAlertMap(data?.alerts || {});
-    }).catch(() => {
-      if (mounted) setClientAlertMap({});
+    const controller = createTrackedAbortController();
+    fetchClientEquipmentAlerts(clientId, {
+      signal: controller.signal
+    }).then(data => {
+      if (!controller.signal.aborted) setClientAlertMap(data?.alerts || {});
+    }).catch(err => {
+      if (err?.name === "AbortError") return;
+      if (!controller.signal.aborted) setClientAlertMap({});
     });
     return () => {
-      mounted = false;
+      controller.abort();
     };
   }, [embedded, embeddedClient?.id, fixedClientId]);
   const renderAlertSuspendedBadge = equipment => {
@@ -998,7 +1002,7 @@ const EquipmentPage = forwardRef(function EquipmentPage({
       </SmartTooltip>;
   };
   useEffect(() => {
-    const controller = new AbortController();
+    const controller = createTrackedAbortController();
     if (!loading) {
       refreshMonitoringSummaries(controller.signal);
     }
@@ -1031,7 +1035,7 @@ const EquipmentPage = forwardRef(function EquipmentPage({
       return;
     }
     mkBulkSyncAbortRef.current?.abort();
-    const controller = new AbortController();
+    const controller = createTrackedAbortController();
     mkBulkSyncAbortRef.current = controller;
     setMkBulkSyncing(true);
     setMkBulkSyncProgress({
@@ -1239,7 +1243,7 @@ const EquipmentPage = forwardRef(function EquipmentPage({
       setEquipmentTagsMap({});
       return undefined;
     }
-    const controller = new AbortController();
+    const controller = createTrackedAbortController();
     fetchEquipmentTagsBatch(clientIds, {
       signal: controller.signal
     }).then(rows => {

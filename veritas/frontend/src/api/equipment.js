@@ -486,6 +486,7 @@ export const getAllHardwareEquipment = async (options = {}) => {
     }));
     return perClient.flat();
   } catch (error) {
+    if (error?.name === "AbortError") throw error;
     console.error("Error fetching all equipment:", error);
     throw error;
   }

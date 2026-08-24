@@ -38,6 +38,7 @@ import TicketSatisfactionsPanel from "./TicketSatisfactionsPanel";
 import { getTicketPageCopy } from "./ticketPageI18n";
 import MspPageHero from "../Misc/MspPageHero/MspPageHero";
 import mspStyles from "../CybersecuritePage/CybersecuritePage.module.css";
+import { createTrackedAbortController } from "../../utils/pageLoadAbort";
 const VIEW_SECTION_KEYS = ["public", "assigned", "private"];
 const VIEWS_PANE_COLLAPSED_KEY = "veritas_ticket_views_collapsed";
 function readViewsPaneCollapsed() {
@@ -244,7 +245,7 @@ export default function TicketPage({
     return () => window.clearInterval(timer);
   }, []);
   useEffect(() => {
-    const controller = new AbortController();
+    const controller = createTrackedAbortController();
     (async () => {
       try {
         const data = await fetchTicketTableColumns("ticket", {
@@ -356,7 +357,7 @@ export default function TicketPage({
     }
   }, []);
   useEffect(() => {
-    const controller = new AbortController();
+    const controller = createTrackedAbortController();
     loadViews(controller.signal);
     loadSatisfactionCounts(controller.signal);
     return () => controller.abort();
@@ -410,7 +411,7 @@ export default function TicketPage({
   }, []);
   const loadTicketsPage = useCallback(async () => {
     ticketsSearchAbortRef.current?.abort();
-    const controller = new AbortController();
+    const controller = createTrackedAbortController();
     ticketsSearchAbortRef.current = controller;
     const showFullLoader = !hasLoadedTicketsOnceRef.current;
     if (showFullLoader) setLoading(true);else setRefreshing(true);
@@ -446,7 +447,7 @@ export default function TicketPage({
   }, [activeView, viewMode, ticketType, debouncedSearch, sortBy, sortDirection, pageSize, currentPage]);
   const hasActiveSubFilters = Boolean(String(debouncedSearch || "").trim() || String(ticketType || "").trim());
   useEffect(() => {
-    const controller = new AbortController();
+    const controller = createTrackedAbortController();
     loadReferenceData(controller.signal);
     return () => controller.abort();
   }, [loadReferenceData]);

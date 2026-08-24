@@ -84,6 +84,7 @@ import { getEnterpriseDetailGuideSteps } from "../PageGuide/enterpriseDetailGuid
 import { useRegisterPageGuide } from "../../hooks/useRegisterPageGuide";
 import { FaArrowLeft, FaCamera, FaPencilAlt, FaTimes, FaPlus, FaFileExport, FaEthernet } from "react-icons/fa";
 import { IoServerSharp } from "react-icons/io5";
+import { createTrackedAbortController } from "../../utils/pageLoadAbort";
 const DEMO_PRESTATION_TICKETS = [{
   id: "demo-prestation-1",
   ticket_number: "1284",
@@ -729,7 +730,7 @@ export default function ClientDetailPage({
   };
   useEffect(() => {
     isMountedRef.current = true;
-    const controller = new AbortController();
+    const controller = createTrackedAbortController();
     loadControllerRef.current?.abort();
     loadControllerRef.current = controller;
     loadClientData(controller.signal);
@@ -1322,7 +1323,7 @@ export default function ClientDetailPage({
     let requestSignal = signal;
     if (!requestSignal) {
       contactsControllerRef.current?.abort();
-      const controller = new AbortController();
+      const controller = createTrackedAbortController();
       contactsControllerRef.current = controller;
       requestSignal = controller.signal;
     }
@@ -1356,7 +1357,7 @@ export default function ClientDetailPage({
     let requestSignal = signal;
     if (!requestSignal) {
       logsControllerRef.current?.abort();
-      const controller = new AbortController();
+      const controller = createTrackedAbortController();
       logsControllerRef.current = controller;
       requestSignal = controller.signal;
     }

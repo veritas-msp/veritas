@@ -20,6 +20,7 @@ import { buildMicrosoftTenantFleetStats } from "./microsoftTenantMspUtils";
 import { buildDomainFleetFromList, buildDomainFleetStats } from "./domainMspUtils";
 import { buildSslFleetFromList, buildSslFleetStats } from "./sslMspUtils";
 import ConfirmModal from "../Misc/ConfirmModal/ConfirmModal";
+import { createTrackedAbortController } from "../../utils/pageLoadAbort";
 const MODULE_TABS = ["microsoft", "domain", "ssl"];
 const SERVICE_CLIENTS_CACHE_KEY = "service_clients_list_cache_v2";
 const SERVICE_CLIENTS_CACHE_TTL_MS = 5 * 60 * 1000;
@@ -141,7 +142,7 @@ export default function ServicePage({
   const loadO365DataForClients = async clientsList => {
     const sourceClients = Array.isArray(clientsList) ? clientsList : clients;
     o365AbortRef.current?.abort();
-    const controller = new AbortController();
+    const controller = createTrackedAbortController();
     o365AbortRef.current = controller;
     const {
       signal
@@ -283,7 +284,7 @@ export default function ServicePage({
     }
     try {
       clientsControllerRef.current?.abort();
-      const controller = new AbortController();
+      const controller = createTrackedAbortController();
       clientsControllerRef.current = controller;
       setLoading(true);
       const clientsData = await fetchClientsList({
@@ -325,7 +326,7 @@ export default function ServicePage({
       } catch {}
     }
     domainsAbortRef.current?.abort();
-    const controller = new AbortController();
+    const controller = createTrackedAbortController();
     domainsAbortRef.current = controller;
     try {
       setLoadingDomains(true);
@@ -371,7 +372,7 @@ export default function ServicePage({
       } catch {}
     }
     sslAbortRef.current?.abort();
-    const controller = new AbortController();
+    const controller = createTrackedAbortController();
     sslAbortRef.current = controller;
     try {
       setLoadingSsl(true);

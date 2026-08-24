@@ -9,6 +9,7 @@ import styles from "./AntivirusMspDashboard.module.css";
 import { buildAntispamFleetFromClients, buildAntispamFleetStats, filterAntispamFleetRows, sortAntispamFleetRows } from "./antispamMspUtils";
 import CyberBulkBar from "./CyberBulkBar";
 import { fleetRowKey, useCyberBulkSelection } from "./useCyberBulkSelection";
+import { createTrackedAbortController } from "../../utils/pageLoadAbort";
 
 function KpiCard({
   icon,
@@ -202,7 +203,7 @@ export default function AntispamMspDashboard({
       return;
     }
     abortRef.current?.abort();
-    const controller = new AbortController();
+    const controller = createTrackedAbortController();
     abortRef.current = controller;
     setBusy(true);
     let success = 0;

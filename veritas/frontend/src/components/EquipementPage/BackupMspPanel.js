@@ -19,6 +19,7 @@ import { interpolate } from "../../i18n/translate";
 import { getLocaleTag } from "../../i18n/locales";
 import MspEmptyState from "../Misc/MspEmptyState/MspEmptyState";
 import { formatServeurLieLabel, isBackupJobActive, normalizeServeurLieList } from "../EnterprisesPage/backupJobUtils";
+import { createTrackedAbortController } from "../../utils/pageLoadAbort";
 const BACKUPS_CACHE_KEY = "cyber_backups_cache_v1";
 const BACKUPS_CACHE_TTL_MS = 3 * 60 * 1000;
 const CYBER_PAGE_DATA_CACHE_KEY = "cyber_page_data_cache_v1";
@@ -111,7 +112,7 @@ export default function BackupMspPanel({
       try {
         setLoadingClients(true);
         clientsControllerRef.current?.abort();
-        const controller = new AbortController();
+        const controller = createTrackedAbortController();
         clientsControllerRef.current = controller;
         if (!skipCache) {
           try {
@@ -185,7 +186,7 @@ export default function BackupMspPanel({
       }
       setLoadingBackups(true);
       backupsControllerRef.current?.abort();
-      const backupsController = new AbortController();
+      const backupsController = createTrackedAbortController();
       backupsControllerRef.current = backupsController;
       const allBackups = [];
       let resolvedLastSyncDate = jobsLastSyncDate || null;

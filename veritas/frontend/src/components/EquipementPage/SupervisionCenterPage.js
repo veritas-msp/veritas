@@ -30,6 +30,7 @@ import { toast } from "react-toastify";
 import { fetchHomeDashboard } from "../../api/stats";
 import { fetchRmmAgents } from "../../api/rmm";
 import { getEquipmentListKey } from "../../utils/equipmentIdentity";
+import { createTrackedAbortController } from "../../utils/pageLoadAbort";
 import { Icon } from "@iconify/react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import cyberStyles from "../CybersecuritePage/CybersecuritePage.module.css";
@@ -145,23 +146,27 @@ export default function MonitoringCenterPage({
     setBackupIssueJobs(Array.isArray(jobs) ? jobs : []);
   }, []);
   const loadDashboard = useCallback(async signal => {
+    if (signal?.aborted) return;
     setDashboardLoading(true);
     try {
       const data = await fetchHomeDashboard({
         signal
       });
+      if (signal?.aborted) return;
       setDashboard(data);
     } catch (err) {
       if (err?.name !== "AbortError") {
         console.error("Error chargement supervision dashboard:", err);
       }
     } finally {
-      setDashboardLoading(false);
+      if (!signal?.aborted) setDashboardLoading(false);
     }
   }, []);
   const loadRmm = useCallback(async signal => {
     try {
-      const data = await fetchRmmAgents();
+      const data = await fetchRmmAgents(undefined, {
+        signal
+      });
       if (signal?.aborted) return;
       const rows = Array.isArray(data?.agents) ? data.agents : Array.isArray(data) ? data : [];
       setRmmAgents(rows);
@@ -174,11 +179,12 @@ export default function MonitoringCenterPage({
     }
   }, []);
   useEffect(() => {
-    const controller = new AbortController();
+    const controller = createTrackedAbortController();
     loadDashboard(controller.signal);
     loadRmm(controller.signal);
     const interval = setInterval(() => {
       if (document.visibilityState !== "visible") return;
+      if (controller.signal.aborted) return;
       loadDashboard(controller.signal);
       loadRmm(controller.signal);
     }, 60000);
@@ -187,60 +193,78 @@ export default function MonitoringCenterPage({
       clearInterval(interval);
     };
   }, [loadDashboard, loadRmm]);
-  const refreshAlertStates = useCallback(async () => {
+  const refreshAlertStates = useCallback(async signal => {
     try {
       const items = unifiedQueueRef.current || [];
       const ids = items.map(item => item.id).filter(Boolean);
       if (!ids.length) {
-        setAlertStates([]);
+        if (!signal?.aborted) setAlertStates([]);
         return;
       }
-      const alerts = await fetchSupervisionAlertStates(ids);
+      const alerts = await fetchSupervisionAlertStates(ids, {
+        signal
+      });
+      if (signal?.aborted) return;
       const known = new Set((Array.isArray(alerts) ? alerts : []).map(alert => alert.queueItemId));
       const missing = items.filter(item => item.id && !known.has(item.id));
       if (missing.length) {
         try {
-          const synced = await ensureSupervisionAlertsSeen(missing);
+          const synced = await ensureSupervisionAlertsSeen(missing, {
+            signal
+          });
+          if (signal?.aborted) return;
           setAlertStates(Array.isArray(synced) && synced.length ? synced : alerts || []);
           return;
         } catch (syncErr) {
+          if (syncErr?.name === "AbortError") return;
           console.error("Error recording supervision alert raise time:", syncErr);
         }
       }
-      setAlertStates(Array.isArray(alerts) ? alerts : []);
+      if (!signal?.aborted) setAlertStates(Array.isArray(alerts) ? alerts : []);
     } catch (err) {
-      console.error("Error loading supervision alerts:", err);
+      if (err?.name !== "AbortError") {
+        console.error("Error loading supervision alerts:", err);
+      }
     }
   }, [unifiedQueueIdsKey]);
-  const refreshHistory = useCallback(async () => {
-    setHistoryLoading(true);
+  const refreshHistory = useCallback(async signal => {
+    if (!signal?.aborted) setHistoryLoading(true);
     try {
       const alerts = await fetchSupervisionAlertsHistory({
         domain: historyDomain === "all" ? undefined : historyDomain,
         status: historyStatus === "all" ? undefined : historyStatus,
         q: historySearch || undefined,
-        limit: 150
+        limit: 150,
+        signal
       });
+      if (signal?.aborted) return;
       setHistoryAlerts(Array.isArray(alerts) ? alerts : []);
     } catch (err) {
+      if (err?.name === "AbortError") return;
       console.error("Error loading supervision alert history:", err);
-      setHistoryAlerts([]);
+      if (!signal?.aborted) setHistoryAlerts([]);
     } finally {
-      setHistoryLoading(false);
+      if (!signal?.aborted) setHistoryLoading(false);
     }
   }, [historyDomain, historyStatus, historySearch]);
   useEffect(() => {
-    refreshAlertStates();
+    const controller = createTrackedAbortController();
+    refreshAlertStates(controller.signal);
     const interval = setInterval(() => {
       if (document.visibilityState !== "visible") return;
-      refreshAlertStates();
+      if (controller.signal.aborted) return;
+      refreshAlertStates(controller.signal);
     }, 60000);
-    return () => clearInterval(interval);
+    return () => {
+      controller.abort();
+      clearInterval(interval);
+    };
   }, [refreshAlertStates]);
   useEffect(() => {
     if (activeTab !== "history") return undefined;
-    refreshHistory();
-    return undefined;
+    const controller = createTrackedAbortController();
+    refreshHistory(controller.signal);
+    return () => controller.abort();
   }, [activeTab, refreshHistory]);
   const applyAlertResult = useCallback(result => {
     const alert = result?.alert;

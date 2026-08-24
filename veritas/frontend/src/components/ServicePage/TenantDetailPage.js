@@ -22,6 +22,7 @@ import { interpolate } from "../../i18n/translate";
 import { getLicenseDisplayName } from "./TenantDetailTabs/utils";
 import { getTenantDetailCopy } from "./tenantDetailPageI18n";
 import { buildTenantReport, getConnectionOrganization, isConnectionOk } from "./tenantReportUtils";
+import { createTrackedAbortController } from "../../utils/pageLoadAbort";
 
 const TABS = [
   { key: "rapport", icon: "mdi:clipboard-text-outline" },
@@ -81,7 +82,7 @@ export default function TenantDetailPage({
       if (abortControllerRef.current) {
         abortControllerRef.current.abort();
       }
-      abortControllerRef.current = new AbortController();
+      abortControllerRef.current = createTrackedAbortController();
     }
   }, [tenantData?.clientId, detailData?.clientId]);
 
@@ -141,7 +142,7 @@ export default function TenantDetailPage({
 
   const loadStoredTenantData = async () => {
     if (!detailData?.clientId) return;
-    const abortController = new AbortController();
+    const abortController = createTrackedAbortController();
     abortControllerRef.current = abortController;
     const targetClientId = detailData.clientId;
     try {
@@ -325,7 +326,7 @@ export default function TenantDetailPage({
     if (abortControllerRef.current) {
       abortControllerRef.current.abort();
     }
-    const abortController = new AbortController();
+    const abortController = createTrackedAbortController();
     abortControllerRef.current = abortController;
     setSyncing(true);
     setSyncProgress(0);

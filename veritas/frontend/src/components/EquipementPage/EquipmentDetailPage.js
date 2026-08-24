@@ -51,6 +51,7 @@ import { getRmmAgentId, getRmmAgentVersion, buildRmmAgentRowFromEquipment, getRm
 import { computeRmmDeviceHealth } from "./rmmDeviceHealthUtils";
 import { ScoreAside } from "./RmmDeviceScore";
 import { parseCustomFamilyType } from "../../api/equipmentFamilies";
+import { createTrackedAbortController } from "../../utils/pageLoadAbort";
 const CheckMKMappingModal = EquipmentMappingModal;
 export default function EquipmentDetailPage({
   equipment,
@@ -806,7 +807,7 @@ export default function EquipmentDetailPage({
   const loadLogs = async (page = 1) => {
     if (!equipment?.id) return;
     logsControllerRef.current?.abort();
-    const controller = new AbortController();
+    const controller = createTrackedAbortController();
     logsControllerRef.current = controller;
     setLoadingLogs(true);
     try {
@@ -871,7 +872,7 @@ export default function EquipmentDetailPage({
       return;
     }
     activityControllerRef.current?.abort();
-    const controller = new AbortController();
+    const controller = createTrackedAbortController();
     activityControllerRef.current = controller;
     const {
       start,
@@ -981,7 +982,7 @@ export default function EquipmentDetailPage({
     const family = equipmentTypeToFamily(equipment?.type);
     if (!equipmentId || !clientId || !family) return;
     checkmkControllerRef.current?.abort();
-    const controller = new AbortController();
+    const controller = createTrackedAbortController();
     checkmkControllerRef.current = controller;
     setLoadingCheckMK(true);
     try {
@@ -1029,7 +1030,7 @@ export default function EquipmentDetailPage({
     const mapping = checkmkMapping || equipment?.checkmkMapping;
     if (!mapping?.checkmk_host_name || !checkmkData) return;
     availabilityControllerRef.current?.abort();
-    const controller = new AbortController();
+    const controller = createTrackedAbortController();
     availabilityControllerRef.current = controller;
     setLoadingAvailability(true);
     try {

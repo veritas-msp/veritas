@@ -13,6 +13,7 @@ import { CATEGORY_KEYS, getDocumentsHubCopy } from "./documentsHubI18n";
 import { interpolate } from "../../i18n/translate";
 import DocumentsBulkEditModal from "./DocumentsBulkEditModal";
 import styles from "./DocumentsHubPage.module.css";
+import { createTrackedAbortController } from "../../utils/pageLoadAbort";
 const IMAGE_MIMES = new Set(["image/jpeg", "image/png", "image/gif", "image/webp"]);
 function formatSize(bytes, locale) {
   const value = Number(bytes);
@@ -99,7 +100,7 @@ export default function DocumentsHubPage() {
   const loadAbortRef = useRef(null);
   const load = useCallback(async () => {
     loadAbortRef.current?.abort();
-    const controller = new AbortController();
+    const controller = createTrackedAbortController();
     loadAbortRef.current = controller;
     setLoading(true);
     try {

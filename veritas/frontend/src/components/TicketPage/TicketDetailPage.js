@@ -61,6 +61,7 @@ import { interpolate } from "../../i18n/translate";
 import { buildClientContractSummary, buildDefaultResolveCreditAmounts, buildSupportCreditDebitsPayload, computeSupportCreditTotals } from "./ticketClientSummaryUtils";
 import { computeSatisfactionAverage, resolveDisplayRatings } from "../../utils/ticketSatisfactionCriteria";
 import { getTicketSatisfactionCriteria } from "../../i18n/ticketSatisfactionCriteriaI18n";
+import { createTrackedAbortController } from "../../utils/pageLoadAbort";
 const CONTRACT_FACT_STATUS_CLASS = {
   active: fs.contractFact_active,
   expiring: fs.contractFact_expiring,
@@ -1062,7 +1063,7 @@ export default function TicketDetailPage({
       return undefined;
     }
     let cancelled = false;
-    const controller = new AbortController();
+    const controller = createTrackedAbortController();
     fetchSalesForm(formId, {
       signal: controller.signal
     })
@@ -1317,7 +1318,7 @@ export default function TicketDetailPage({
   } = {}) => {
     if (!ticketId) return;
     detailAbortRef.current?.abort();
-    const controller = new AbortController();
+    const controller = createTrackedAbortController();
     detailAbortRef.current = controller;
     if (!silent) setLoading(true);
     try {

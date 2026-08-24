@@ -36,6 +36,7 @@ import { normalizeContactCommunications, sortCommunicationsByType } from "../../
 import PageGuideTour from "../PageGuide/PageGuideTour";
 import { getContactDetailGuideSteps } from "../PageGuide/contactDetailGuideSteps";
 import { useRegisterPageGuide } from "../../hooks/useRegisterPageGuide";
+import { createTrackedAbortController } from "../../utils/pageLoadAbort";
 const normalizePhone = value => {
   let normalized = (value || "").toString().trim();
   if (normalized.startsWith("'")) {
@@ -319,7 +320,7 @@ export default function ContactDetailPage({
     isMountedRef.current = true;
     const contactIdToUse = contactData?.contactId || contactData?.id || urlContactId;
     if (contactIdToUse) {
-      const controller = new AbortController();
+      const controller = createTrackedAbortController();
       loadControllerRef.current?.abort();
       loadControllerRef.current = controller;
       loadContactData(controller.signal);
@@ -339,7 +340,7 @@ export default function ContactDetailPage({
     const handleVisibilityChange = () => {
       const contactIdToUse = contactData?.contactId || contactData?.id || urlContactId;
       if (document.visibilityState === "visible" && contactIdToUse) {
-        const controller = new AbortController();
+        const controller = createTrackedAbortController();
         loadControllerRef.current?.abort();
         loadControllerRef.current = controller;
         loadContactData(controller.signal);
@@ -408,7 +409,7 @@ export default function ContactDetailPage({
   const ensureClientsLoaded = async () => {
     if (allClients.length > 0) return true;
     clientsListControllerRef.current?.abort();
-    const controller = new AbortController();
+    const controller = createTrackedAbortController();
     clientsListControllerRef.current = controller;
     setClientsLoading(true);
     try {
@@ -485,7 +486,7 @@ export default function ContactDetailPage({
       } : null;
       setClient(associatedClient);
       activityControllerRef.current?.abort();
-      const activityController = new AbortController();
+      const activityController = createTrackedAbortController();
       activityControllerRef.current = activityController;
       loadContactActivity(fetchedContact.id, fetchedContact.client_id, activityController.signal);
     } catch (err) {
@@ -1050,7 +1051,7 @@ export default function ContactDetailPage({
               </div>
               <div className={styles.panelBody}>
                 <ContactPortalSection contact={contact} canManage={canManagePortal} onUpdated={() => {
-                const controller = new AbortController();
+                const controller = createTrackedAbortController();
                 loadControllerRef.current?.abort();
                 loadControllerRef.current = controller;
                 loadContactData(controller.signal);

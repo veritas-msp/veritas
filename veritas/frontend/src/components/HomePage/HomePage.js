@@ -15,6 +15,7 @@ import { getHomeEventTypeMeta } from "./homeEventTypes";
 import MspPageHero from "../Misc/MspPageHero/MspPageHero";
 import PlanningEventModalBridge from "../PlanningPage/PlanningEventModalBridge";
 import styles from "./HomePage.module.css";
+import { createTrackedAbortController } from "../../utils/pageLoadAbort";
 
 const HOME_LIST_LIMIT = 5;
 
@@ -123,7 +124,7 @@ export default function HomePage({
       soft = false
     } = options;
     if (abortRef.current) abortRef.current.abort();
-    const controller = new AbortController();
+    const controller = createTrackedAbortController();
     abortRef.current = controller;
     if (soft) {
       setRefreshing(true);

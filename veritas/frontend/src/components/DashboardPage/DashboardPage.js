@@ -21,6 +21,7 @@ import { DEFAULT_PERIOD_FILTER, getPeriodFilterLabel } from "./dashboardPeriodUt
 import { DEFAULT_SCOPE_FILTER, getScopeFilterKey, isScopeFilterActive, isScopeFilterReady } from "./dashboardScopeUtils";
 import { CategoryIntro, DistributionPanel, formatHours, formatNumber, formatPercent, formatRating, KpiRow, MiniStat, Panel, PiePanel, SectionTitle, TrendBars, buildDistributionItems } from "./dashboardWidgets";
 import styles from "./DashboardPage.module.css";
+import { createTrackedAbortController } from "../../utils/pageLoadAbort";
 
 const DASHBOARD_TABS = [{
   key: "support",
@@ -145,7 +146,7 @@ export default function DashboardPage() {
     silent = false
   } = {}) => {
     loadAbortRef.current?.abort();
-    const controller = new AbortController();
+    const controller = createTrackedAbortController();
     loadAbortRef.current = controller;
     if (!silent) {
       setLoading(true);

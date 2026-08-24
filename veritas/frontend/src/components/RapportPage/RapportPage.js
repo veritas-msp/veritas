@@ -24,6 +24,7 @@ import ReportSaveVisibilitySwitch from "../shared/ReportSaveVisibilitySwitch";
 import { safeJsonClone } from "../../utils/safeJson";
 import { useAppLocale } from "../../hooks/useAppGeneralSettings";
 import { getRapportPageCopy, getReportTypes } from "./rapportPageI18n";
+import { createTrackedAbortController } from "../../utils/pageLoadAbort";
 const RAPPORT_CLIENTS_CACHE_KEY = "rapport_clients_list_cache_v1";
 const RAPPORT_CLIENTS_CACHE_TTL_MS = 5 * 60 * 1000;
 function normalizeClientListRow(client) {
@@ -130,7 +131,7 @@ export default function ReportPage({
     }
   }, []);
   useEffect(() => {
-    const ac = new AbortController();
+    const ac = createTrackedAbortController();
     const loadClients = async () => {
       setLoading(true);
       setError(null);

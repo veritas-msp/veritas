@@ -38,12 +38,15 @@ export async function fetchEquipmentAlertSettings(clientId, equipmentId, family)
   });
   return handleResponse(response);
 }
-export async function fetchClientEquipmentAlerts(clientId) {
+export async function fetchClientEquipmentAlerts(clientId, {
+  signal
+} = {}) {
   const response = await fetch(`${API_BASE_URL}/equipment-monitoring-alerts/by-client/${clientId}`, {
     credentials: "include",
     headers: {
       "Content-Type": "application/json"
-    }
+    },
+    signal
   });
   return handleResponse(response);
 }

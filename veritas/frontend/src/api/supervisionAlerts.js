@@ -1,5 +1,6 @@
 import API_BASE_URL, { withApiQuery } from "../config";
 import { getEquipmentDbId } from "../utils/equipmentIdentity";
+import { createTrackedAbortController } from "../utils/pageLoadAbort";
 
 async function handleResponse(response) {
   const data = await response.json().catch(() => ({}));
@@ -20,35 +21,52 @@ function authFetch(url, options = {}) {
   });
 }
 
-export async function fetchSupervisionAlertsActive() {
-  const response = await authFetch(`${API_BASE_URL}/supervision/alerts/active`);
+export async function fetchSupervisionAlertsActive({
+  signal
+} = {}) {
+  const response = await authFetch(`${API_BASE_URL}/supervision/alerts/active`, {
+    signal
+  });
   const data = await handleResponse(response);
   return data?.alerts || [];
 }
 
-export async function fetchSupervisionAlertStates(queueItemIds = []) {
+export async function fetchSupervisionAlertStates(queueItemIds = [], {
+  signal
+} = {}) {
   const ids = [...new Set((Array.isArray(queueItemIds) ? queueItemIds : []).map(id => String(id || "").trim()).filter(Boolean))];
   if (!ids.length) return [];
   const response = await authFetch(withApiQuery(`${API_BASE_URL}/supervision/alerts/states`, {
     ids: ids.join(",")
-  }));
+  }), {
+    signal
+  });
   const data = await handleResponse(response);
   return data?.alerts || [];
 }
 
-export async function ensureSupervisionAlertsSeen(items = []) {
+export async function ensureSupervisionAlertsSeen(items = [], {
+  signal
+} = {}) {
   const payload = (Array.isArray(items) ? items : []).map(item => itemPayload(item)).filter(item => item.queueItemId && item.domain);
   if (!payload.length) return [];
   const response = await authFetch(`${API_BASE_URL}/supervision/alerts/seen`, {
     method: "POST",
-    body: JSON.stringify({ items: payload })
+    body: JSON.stringify({ items: payload }),
+    signal
   });
   const data = await handleResponse(response);
   return data?.alerts || [];
 }
 
 export async function fetchSupervisionAlertsHistory(params = {}) {
-  const response = await authFetch(withApiQuery(`${API_BASE_URL}/supervision/alerts/history`, params));
+  const {
+    signal,
+    ...query
+  } = params || {};
+  const response = await authFetch(withApiQuery(`${API_BASE_URL}/supervision/alerts/history`, query), {
+    signal
+  });
   const data = await handleResponse(response);
   return data?.alerts || [];
 }
@@ -142,7 +160,7 @@ export function subscribeSupervisionAlertStream({
   const run = async () => {
     let delayMs = 1000;
     while (!cancelled) {
-      controller = new AbortController();
+      controller = createTrackedAbortController();
       try {
         const res = await fetch(`${API_BASE_URL}/supervision/alerts/stream`, {
           credentials: "include",
