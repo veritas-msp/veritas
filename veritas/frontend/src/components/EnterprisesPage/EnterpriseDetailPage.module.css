@@ -3,19 +3,19 @@
 .contratDetailPage {
   --msp-accent: #2b5fab;
   --msp-accent-dark: #1a3d75;
-  --msp-accent-soft: rgba(43, 95, 171, 0.1);
-  --msp-bg: var(--msp-page-bg, #d0d9e6);
+  --msp-accent-soft: rgba(43, 95, 171, 0.12);
+  --msp-bg: var(--msp-page-bg, #b7c3d4);
   --msp-surface: #ffffff;
-  --msp-surface-2: #f7f9fc;
-  --msp-surface-3: #f4f7fb;
-  --msp-border: #c5d0df;
-  --msp-border-light: #b8c5d6;
-  --msp-text: #0f1c2e;
-  --msp-muted: #5c6b82;
-  --msp-muted-light: #8b9bb5;
+  --msp-surface-2: #eef3f8;
+  --msp-surface-3: #e6edf5;
+  --msp-border: #9aabc0;
+  --msp-border-light: #b0bfd0;
+  --msp-text: #0a1422;
+  --msp-muted: #4a5a70;
+  --msp-muted-light: #6e8098;
   --msp-radius: 16px;
   --msp-radius-sm: 10px;
-  --msp-shadow: 0 1px 2px rgba(15, 28, 46, 0.06), 0 10px 28px rgba(15, 28, 46, 0.1);
+  --msp-shadow: 0 1px 2px rgba(15, 28, 46, 0.08), 0 10px 28px rgba(15, 28, 46, 0.14);
 
   min-height: 100%;
   height: 100%;
@@ -3134,19 +3134,19 @@ button.sidebarOptionIcon:hover {
 
 
 :global(html.dark) .contratDetailPage {
-  --msp-accent: #4a8fd4;
+  --msp-accent: #5a9de0;
   --msp-accent-dark: #2b5fab;
-  --msp-accent-soft: rgba(74, 143, 212, 0.15);
-  --msp-bg: var(--msp-page-bg, #060a10);
-  --msp-surface: #1a2540;
-  --msp-surface-2: #152035;
-  --msp-surface-3: #1e2d4a;
-  --msp-border: #2f4260;
-  --msp-border-light: #243047;
-  --msp-text: #e8edf5;
-  --msp-muted: #8fa8c4;
-  --msp-muted-light: #6a88a8;
-  --msp-shadow: 0 1px 2px rgba(0, 0, 0, 0.28), 0 10px 28px rgba(0, 0, 0, 0.32);
+  --msp-accent-soft: rgba(90, 157, 224, 0.18);
+  --msp-bg: var(--msp-page-bg, #02050a);
+  --msp-surface: #1f2d4a;
+  --msp-surface-2: #162338;
+  --msp-surface-3: #283858;
+  --msp-border: #3d5478;
+  --msp-border-light: #2c3d5a;
+  --msp-text: #f0f4fa;
+  --msp-muted: #9bb0c9;
+  --msp-muted-light: #7a93b0;
+  --msp-shadow: 0 1px 2px rgba(0, 0, 0, 0.35), 0 10px 28px rgba(0, 0, 0, 0.45);
 }
 
 

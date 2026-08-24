@@ -1572,18 +1572,18 @@
 
 
 :global(html.dark) .panel {
-  background: #1a2540;
-  border-color: #2f4260;
+  background: var(--msp-surface, #1f2d4a);
+  border-color: var(--msp-border, #3d5478);
 }
 
 :global(html.dark) .panelHighlight {
-  border-color: rgba(90, 143, 212, 0.35);
+  border-color: rgba(90, 157, 224, 0.4);
 }
 
 :global(html.dark) .actionItem:hover,
 :global(html.dark) .familyRow:hover,
 :global(html.dark) .contractRow:hover {
-  background: #1e2d4a;
+  background: var(--msp-surface-3, #283858);
 }
 
 :global(html.dark) .filterChip:hover {
@@ -1591,8 +1591,8 @@
 }
 
 :global(html.dark) .filterChipActive {
-  background: rgba(90, 143, 212, 0.18);
-  border-color: rgba(90, 143, 212, 0.35);
+  background: rgba(90, 157, 224, 0.2);
+  border-color: rgba(90, 157, 224, 0.4);
   color: #a8d4ff;
 }
 
@@ -1613,9 +1613,9 @@
 }
 
 :global(html.dark) .rmmSortableTh:hover {
-  background: #1e2d4a;
+  background: var(--msp-surface-3, #283858);
 }
 
 :global(html.dark) .skeleton {
-  background: #152035;
+  background: var(--msp-surface-2, #162338);
 }

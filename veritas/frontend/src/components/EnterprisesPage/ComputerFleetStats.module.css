@@ -556,17 +556,17 @@
 }
 
 :global(html.dark) .root {
-  --msp-accent: #4a8fd4;
+  --msp-accent: #5a9de0;
   --msp-accent-dark: #2b5fab;
-  --msp-accent-soft: rgba(74, 143, 212, 0.15);
-  --msp-surface: #1a2540;
-  --msp-surface-2: #152035;
-  --msp-surface-3: #1e2d4a;
-  --msp-border: #2f4260;
-  --msp-border-light: #243047;
-  --msp-text: #e8edf5;
-  --msp-muted: #8fa8c4;
-  --msp-shadow: 0 1px 2px rgba(0, 0, 0, 0.28), 0 16px 40px rgba(0, 0, 0, 0.35);
+  --msp-accent-soft: rgba(90, 157, 224, 0.18);
+  --msp-surface: #1f2d4a;
+  --msp-surface-2: #162338;
+  --msp-surface-3: #283858;
+  --msp-border: #3d5478;
+  --msp-border-light: #2c3d5a;
+  --msp-text: #f0f4fa;
+  --msp-muted: #9bb0c9;
+  --msp-shadow: 0 1px 2px rgba(0, 0, 0, 0.35), 0 16px 40px rgba(0, 0, 0, 0.45);
   --fleet-metric-good: #4ade80;
   --fleet-metric-warn: #fbbf24;
   --fleet-metric-bad: #f87171;

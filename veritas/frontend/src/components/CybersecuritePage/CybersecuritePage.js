@@ -9,7 +9,6 @@ import { useAppLocale } from "../../hooks/useAppGeneralSettings";
 import { getCommonCopy } from "../../i18n/commonI18n";
 import styles from "./CybersecuritePage.module.css";
 import layout from "../EnterprisesPage/EnterprisesPage.module.css";
-import SupportOrbitalBackground from "../Misc/ReportBugForm/SupportOrbitalBackground";
 import AntivirusMspDashboard from "./AntivirusMspDashboard";
 import AntispamMspDashboard from "./AntispamMspDashboard";
 import CampaignsMspDashboard from "./CampaignsMspDashboard";
@@ -705,8 +704,7 @@ export default function CybersecuritePage({
   const showFleetSync = activeTab === "antivirus" || activeTab === "antispam";
   const syncTooltip = syncingFleet && syncStatus ? syncStatus : activeTab === "antispam" ? heroActionsCopy.syncAntispam : heroActionsCopy.syncAntivirus;
   const moduleTabs = (pageCopy.tabs || []).filter(tab => MODULE_TABS.includes(tab.key));
-  return <div className={`${styles.mspPage} ${styles.mspPageOrbital}`}>
-      <SupportOrbitalBackground variant="page" />
+  return <div className={`${styles.mspPage} ${layout.page} msp-page-grid`}>
       <div className={styles.mspLayout}>
       <div className={styles.mspMain}>
         <MspPageHero eyebrow={pageCopy.eyebrow} title={pageCopy.pageTitle} subtitle={heroSubtitle} icon="mdi:shield-lock" actions={<>

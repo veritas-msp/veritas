@@ -3,21 +3,21 @@
 .mspPage {
   --msp-accent: #2b5fab;
   --msp-accent-dark: #1a3d75;
-  --msp-accent-soft: rgba(43, 95, 171, 0.1);
-  --msp-bg: var(--msp-page-bg, #d0d9e6);
+  --msp-accent-soft: rgba(43, 95, 171, 0.12);
+  --msp-bg: var(--msp-page-bg, #b7c3d4);
   --msp-surface: #ffffff;
-  --msp-surface-2: #f7f9fc;
-  --msp-surface-3: #f4f7fb;
-  --msp-border: #c5d0df;
-  --msp-border-light: #e2e8f0;
-  --msp-text: #0f1c2e;
-  --msp-muted: #5c6b82;
-  --msp-muted-light: #8b9bb5;
-  --msp-text-muted: #5c6b82;
+  --msp-surface-2: #eef3f8;
+  --msp-surface-3: #e6edf5;
+  --msp-border: #9aabc0;
+  --msp-border-light: #b0bfd0;
+  --msp-text: #0a1422;
+  --msp-muted: #4a5a70;
+  --msp-muted-light: #6e8098;
+  --msp-text-muted: #4a5a70;
   --msp-radius: 16px;
   --msp-radius-sm: 10px;
-  --msp-shadow-soft: 0 2px 12px rgba(11, 33, 56, 0.05);
-  --msp-kpi-active-bg: #f5f8fd;
+  --msp-shadow-soft: 0 2px 12px rgba(11, 33, 56, 0.1);
+  --msp-kpi-active-bg: #eef3f8;
 
   display: flex;
   flex-direction: column;
@@ -355,20 +355,20 @@
 :global(html.dark) .mspPage,
 :global(body.dark) .mspPage,
 .mspPage:global(.dark) {
-  --msp-accent: #4a8fd4;
-  --msp-bg: var(--msp-page-bg, #060a10);
-  --msp-surface: #1a2540;
-  --msp-surface-2: #152035;
-  --msp-surface-3: #1e2d4a;
-  --msp-border: #2f4260;
-  --msp-border-light: #2a3a55;
-  --msp-text: #e8edf5;
-  --msp-muted: #8fa8c4;
-  --msp-muted-light: #6a88a8;
-  --msp-text-muted: #8fa8c4;
-  --msp-accent-soft: rgba(90, 143, 212, 0.15);
-  --msp-kpi-active-bg: #223456;
-  --msp-shadow-soft: 0 2px 12px rgba(0, 0, 0, 0.22);
+  --msp-accent: #5a9de0;
+  --msp-bg: var(--msp-page-bg, #02050a);
+  --msp-surface: #1f2d4a;
+  --msp-surface-2: #162338;
+  --msp-surface-3: #283858;
+  --msp-border: #3d5478;
+  --msp-border-light: #2c3d5a;
+  --msp-text: #f0f4fa;
+  --msp-muted: #9bb0c9;
+  --msp-muted-light: #7a93b0;
+  --msp-text-muted: #9bb0c9;
+  --msp-accent-soft: rgba(90, 157, 224, 0.18);
+  --msp-kpi-active-bg: #2a3d5c;
+  --msp-shadow-soft: 0 2px 14px rgba(0, 0, 0, 0.35);
 }
 
 :global(html.dark) .mspContent .statCard:hover,

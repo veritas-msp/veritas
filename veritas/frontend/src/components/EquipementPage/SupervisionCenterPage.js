@@ -38,7 +38,6 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import cyberStyles from "../CybersecuritePage/CybersecuritePage.module.css";
 import layout from "../EnterprisesPage/EnterprisesPage.module.css";
 import dashStyles from "../CybersecuritePage/AntivirusMspDashboard.module.css";
-import SupportOrbitalBackground from "../Misc/ReportBugForm/SupportOrbitalBackground";
 import styles from "./SupervisionCenterPage.module.css";
 
 export default function MonitoringCenterPage({
@@ -445,16 +444,14 @@ export default function MonitoringCenterPage({
   };
   const showBootLoader = !dashboard && !statsItems.length && loading && dashboardLoading;
   if (showBootLoader) {
-    return <div className={`${cyberStyles.mspPage} ${cyberStyles.mspPageOrbital}`}>
-        <SupportOrbitalBackground variant="page" />
+    return <div className={`${cyberStyles.mspPage} ${layout.page} msp-page-grid`}>
         <div className={styles.loadingScreen} role="status" aria-live="polite" aria-busy="true">
           <Icon icon="mdi:loading" className={styles.loadingSpinner} aria-hidden />
           <p className={styles.loadingLabel}>{pageCopy.loading}</p>
         </div>
       </div>;
   }
-  return <div className={`${cyberStyles.mspPage} ${cyberStyles.mspPageOrbital}`}>
-      <SupportOrbitalBackground variant="page" />
+  return <div className={`${cyberStyles.mspPage} ${layout.page} msp-page-grid`}>
       <div className={cyberStyles.mspLayout}>
         <div className={cyberStyles.mspMain}>
           <header className={cyberStyles.mspHero} data-guide="supervision-hero">

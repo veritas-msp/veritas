@@ -3,19 +3,19 @@
 .page {
   --msp-accent: #2b5fab;
   --msp-accent-dark: #1a3d75;
-  --msp-accent-soft: rgba(43, 95, 171, 0.1);
-  --msp-bg: var(--msp-page-bg, #d0d9e6);
+  --msp-accent-soft: rgba(43, 95, 171, 0.12);
+  --msp-bg: var(--msp-page-bg, #b7c3d4);
   --msp-surface: #ffffff;
-  --msp-surface-2: #f7f9fc;
-  --msp-border: #c5d0df;
-  --msp-text: #0f1c2e;
-  --msp-muted: #5c6b82;
-  --msp-muted-light: #8b9bb5;
+  --msp-surface-2: #eef3f8;
+  --msp-border: #9aabc0;
+  --msp-text: #0a1422;
+  --msp-muted: #4a5a70;
+  --msp-muted-light: #6e8098;
   --msp-radius: 16px;
   --msp-radius-sm: 10px;
-  --msp-shadow: 0 1px 2px rgba(15, 28, 46, 0.05);
-  --msp-shadow-panel: 0 6px 18px -12px rgba(15, 28, 46, 0.12);
-  --msp-kpi-active-bg: linear-gradient(180deg, #fff 0%, #f5f8fd 100%);
+  --msp-shadow: 0 1px 2px rgba(15, 28, 46, 0.08);
+  --msp-shadow-panel: 0 8px 22px -12px rgba(15, 28, 46, 0.2);
+  --msp-kpi-active-bg: linear-gradient(180deg, #fff 0%, #f0f5fb 100%);
 
   display: flex;
   flex-direction: column;
@@ -1502,18 +1502,19 @@
 
 
 :global(html.dark) .page {
-  --msp-bg: var(--msp-page-bg, #060a10);
-  --msp-surface: #1a2540;
-  --msp-surface-2: #152035;
-  --msp-surface-3: #1e2d4a;
-  --msp-border: #2f4260;
-  --msp-text: #e8edf5;
-  --msp-muted: #8fa8c4;
-  --msp-muted-light: #6a88a8;
-  --msp-accent-soft: rgba(90, 143, 212, 0.15);
-  --msp-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
-  --msp-shadow-panel: 0 6px 18px -12px rgba(0, 0, 0, 0.35);
-  --msp-kpi-active-bg: linear-gradient(180deg, #223456 0%, #1a2540 100%);
+  --msp-bg: var(--msp-page-bg, #02050a);
+  --msp-surface: #1f2d4a;
+  --msp-surface-2: #162338;
+  --msp-surface-3: #283858;
+  --msp-border: #3d5478;
+  --msp-text: #f0f4fa;
+  --msp-muted: #9bb0c9;
+  --msp-muted-light: #7a93b0;
+  --msp-accent: #5a9de0;
+  --msp-accent-soft: rgba(90, 157, 224, 0.18);
+  --msp-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+  --msp-shadow-panel: 0 8px 24px -12px rgba(0, 0, 0, 0.5);
+  --msp-kpi-active-bg: linear-gradient(180deg, #2a3d5c 0%, #1f2d4a 100%);
 }
 
 

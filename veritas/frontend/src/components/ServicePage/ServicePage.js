@@ -7,7 +7,6 @@ import API_BASE_URL from "../../config";
 import { useAppLocale } from "../../hooks/useAppGeneralSettings";
 import cyberStyles from "../CybersecuritePage/CybersecuritePage.module.css";
 import layout from "../EnterprisesPage/EnterprisesPage.module.css";
-import SupportOrbitalBackground from "../Misc/ReportBugForm/SupportOrbitalBackground";
 import MspPageHero from "../Misc/MspPageHero/MspPageHero";
 import SmartTooltip from "../SmartTooltip";
 import DomainMspDashboard from "./DomainMspDashboard";
@@ -597,8 +596,7 @@ export default function ServicePage({
   const syncTooltip = syncingAny && syncStatus ? syncStatus : activeTab === "domain" ? pageCopy.domain.syncDomains : activeTab === "ssl" ? pageCopy.ssl.checkAll : pageCopy.microsoft.syncTenants;
   const heroSubtitle = syncingAny && syncStatus ? syncStatus : activeTab === "microsoft" ? pageCopy.microsoft.formatHeroDesc(microsoftStats.issues) : activeTab === "domain" ? pageCopy.domain.formatHeroDesc(domainStats.issues) : activeTab === "ssl" ? pageCopy.ssl.formatHeroDesc(sslStats.issues) : pageCopy.subtitle;
   const moduleTabs = (pageCopy.tabs || []).filter(tab => MODULE_TABS.includes(tab.key));
-  return <div className={`${cyberStyles.mspPage} ${cyberStyles.mspPageOrbital}`}>
-      <SupportOrbitalBackground variant="page" />
+  return <div className={`${cyberStyles.mspPage} ${layout.page} msp-page-grid`}>
       <div className={cyberStyles.mspLayout}>
       <div className={cyberStyles.mspMain}>
         <MspPageHero eyebrow={pageCopy.eyebrow} title={pageCopy.pageTitle} subtitle={heroSubtitle} icon="mdi:cloud-outline" actions={<>
