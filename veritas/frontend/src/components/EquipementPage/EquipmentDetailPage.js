@@ -1254,7 +1254,10 @@ export default function EquipmentDetailPage({
   const equipmentHeroTitle = equipment?.type === "Internet" ? formData.fournisseur && formData.internetType ? `${formData.fournisseur.toUpperCase()} ${formData.internetType.toUpperCase()}` : equipment.name : equipment?.name;
   const rmmStatusKey = showRmmHeroStatus ? getRmmAgentStatusKey(equipmentWithRmmLive) : null;
   const rmmStatusLabel = rmmStatusKey === "online" ? copy.agent.online : rmmStatusKey === "offline" ? copy.agent.offline : rmmStatusKey === "manual" ? copy.agent.manual : rmmStatusKey ? copy.agent.unknown : null;
-  const hasHeroOverflowMenu = Boolean(rmmManaged && rmmAgentId) || Boolean(checkmkIntegrationEnabled && equipment?.type !== "Internet") || Boolean(remoteAccessAction) || Boolean(isSynologyNasStorage && formData.quickConnect);
+  const showQuickConnectHero = Boolean(isSynologyNasStorage && formData.quickConnect);
+  const showCheckmkHeroMenu = Boolean(checkmkIntegrationEnabled && equipment?.type !== "Internet");
+  const showRmmHeroMenu = Boolean(rmmManaged && rmmAgentId);
+  const hasHeroOverflowMenu = showRmmHeroMenu || showCheckmkHeroMenu;
   if (!equipment) {
     return <div className={styles.detailPage}>
         <div className={styles.error}>{copy.notFound}</div>
@@ -1295,6 +1298,14 @@ export default function EquipmentDetailPage({
             {remoteAccessAction ? <SmartTooltip content={remoteAccessAction.tooltip}>
                 <EquipmentRemoteAccessLaunchButton variant="hero" label={remoteAccessAction.label} icon={remoteAccessAction.icon} title={remoteAccessAction.tooltip} onClick={remoteAccessAction.launch} />
               </SmartTooltip> : null}
+            {showQuickConnectHero ? <SmartTooltip content={copy.hero.openQuickConnect}>
+                <button type="button" className={`${enterpriseDetailStyles.heroMenuBtn} ${styles.heroQuickConnectBtn}`} onClick={() => {
+              const url = buildQuickConnectUrl(formData.quickConnect);
+              if (url) window.open(url, "_blank", "noopener,noreferrer");
+            }} aria-label={copy.hero.openQuickConnect}>
+                  <Icon icon="mdi:link-variant" aria-hidden />
+                </button>
+              </SmartTooltip> : null}
             <SmartTooltip content={isCommunity ? `${copy.hero.createEvent} (Pro)` : copy.hero.createEvent}>
               <button type="button" className={`${enterpriseDetailStyles.heroMenuBtn} ${styles.heroCreateEventBtn}`} onClick={openCreateEventModal} aria-label={copy.hero.createEvent}>
                 <Icon icon="mdi:calendar-plus-outline" aria-hidden />
@@ -1318,22 +1329,22 @@ export default function EquipmentDetailPage({
               </button>
             </SmartTooltip> : null}
             {hasHeroOverflowMenu && heroMenuOpen ? <div className={enterpriseDetailStyles.heroClientMenu} role="menu">
-                {rmmManaged && rmmAgentId ? rmmSyncPending ? <button type="button" className={enterpriseDetailStyles.heroMenuItem} role="menuitem" disabled={rmmSyncRequesting} onClick={handleRmmCancelSync}>
+                {showRmmHeroMenu ? rmmSyncPending ? <button type="button" className={enterpriseDetailStyles.heroMenuItem} role="menuitem" disabled={rmmSyncRequesting} onClick={handleRmmCancelSync}>
                       <Icon icon="mdi:sync-off" aria-hidden />
                       <span>{copy.hero.cancelFullSync}</span>
                     </button> : <button type="button" className={enterpriseDetailStyles.heroMenuItem} role="menuitem" disabled={rmmSyncRequesting} onClick={handleRmmFullSync}>
                       <Icon icon="mdi:sync" aria-hidden />
                       <span>{copy.hero.fullSync}</span>
                     </button> : null}
-                {rmmManaged && rmmAgentId ? rmmUpdateRequestedAt ? <button type="button" className={enterpriseDetailStyles.heroMenuItem} role="menuitem" disabled={rmmUpdateRequesting} onClick={handleRmmCancelAgentUpdate}>
+                {showRmmHeroMenu ? rmmUpdateRequestedAt ? <button type="button" className={enterpriseDetailStyles.heroMenuItem} role="menuitem" disabled={rmmUpdateRequesting} onClick={handleRmmCancelAgentUpdate}>
                       <Icon icon="mdi:cloud-download-off-outline" aria-hidden />
                       <span>{copy.hero.cancelAgentUpdate}</span>
                     </button> : <button type="button" className={enterpriseDetailStyles.heroMenuItem} role="menuitem" disabled={rmmUpdateRequesting} onClick={handleRmmAgentUpdate}>
                       <Icon icon="mdi:cloud-download-outline" aria-hidden />
                       <span>{copy.hero.updateAgent}</span>
                     </button> : null}
-                {checkmkIntegrationEnabled && equipment.type !== "Internet" ? <>
-                    <div className={enterpriseDetailStyles.heroMenuDivider} role="separator" />
+                {showCheckmkHeroMenu ? <>
+                    {showRmmHeroMenu ? <div className={enterpriseDetailStyles.heroMenuDivider} role="separator" /> : null}
                     <button type="button" className={enterpriseDetailStyles.heroMenuItem} role="menuitem" disabled={!checkmkMapping?.checkmk_host_name || loadingCheckMK} onClick={() => {
                 setHeroMenuOpen(false);
                 loadCheckMKData({
@@ -1351,21 +1362,6 @@ export default function EquipmentDetailPage({
                       <span>{checkmkMapping?.checkmk_host_name ? copy.hero.mappingCheckmk : copy.hero.mapCheckmk}</span>
                     </button>
                   </> : null}
-                {remoteAccessAction ? <button type="button" className={enterpriseDetailStyles.heroMenuItem} role="menuitem" onClick={() => {
-              setHeroMenuOpen(false);
-              remoteAccessAction.launch();
-            }}>
-                    <Icon icon={remoteAccessAction.icon} aria-hidden />
-                    <span>{remoteAccessAction.label}</span>
-                  </button> : null}
-                {isSynologyNasStorage && formData.quickConnect ? <button type="button" className={enterpriseDetailStyles.heroMenuItem} role="menuitem" onClick={() => {
-              setHeroMenuOpen(false);
-              const url = buildQuickConnectUrl(formData.quickConnect);
-              if (url) window.open(url, "_blank", "noopener,noreferrer");
-            }}>
-                    <Icon icon="mdi:link-variant" aria-hidden />
-                    <span>{copy.hero.openQuickConnect}</span>
-                  </button> : null}
               </div> : null}
           </div>
         </div>

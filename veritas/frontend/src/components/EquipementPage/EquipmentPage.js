@@ -2351,20 +2351,6 @@ const EquipmentPage = forwardRef(function EquipmentPage({
         onClick: () => openQuickConnectUrl(equipment)
       });
     }
-    if (supportsRemoteAccess(equipment) && hasEquipmentRemoteAccessConfigured(equipment)) {
-      const accessUrl = getRemoteAccessUrl(equipment);
-      const accessLabel = getEquipmentRemoteAccessLabel(locale, true);
-      items.push({
-        id: "remote-access",
-        icon: EQUIPMENT_REMOTE_ACTION_ICON,
-        label: interpolate(actions.remoteAccessWithUrl, {
-          label: accessLabel,
-          url: accessUrl
-        }),
-        active: true,
-        onClick: () => openRemoteAccess(equipment)
-      });
-    }
     if (canShowRemoteAccessButton(equipment) && hasServerRemoteAccessConfigured(equipment)) {
       const {
         id
@@ -2378,6 +2364,19 @@ const EquipmentPage = forwardRef(function EquipmentPage({
         }),
         active: true,
         onClick: () => openServerRemoteAccess(equipment)
+      });
+    } else if (supportsRemoteAccess(equipment) && hasEquipmentRemoteAccessConfigured(equipment)) {
+      const accessUrl = getRemoteAccessUrl(equipment);
+      const accessLabel = getEquipmentRemoteAccessLabel(locale, true);
+      items.push({
+        id: "remote-access",
+        icon: EQUIPMENT_REMOTE_ACTION_ICON,
+        label: interpolate(actions.remoteAccessWithUrl, {
+          label: accessLabel,
+          url: accessUrl
+        }),
+        active: true,
+        onClick: () => openRemoteAccess(equipment)
       });
     }
     items.push({

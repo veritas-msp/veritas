@@ -396,8 +396,8 @@ export default function EquipmentDetailSpecsPanel({
           }
           return fields;
         })();
-        const isRemoteSection = section.id === "remote" && remoteAccessAction?.kind === "server";
-        const showSectionRemoteAction = isRemoteSection && !visibleFields.some(field => shouldShowRemoteAccessFieldAction(field.key, remoteAccessAction));
+        const isRemoteSection = section.id === "remote" && remoteAccessAction;
+        const showSectionRemoteAction = Boolean(isRemoteSection) && !visibleFields.some(field => shouldShowRemoteAccessFieldAction(field.key, remoteAccessAction));
         return <article key={section.id} className={styles.sectionCard}>
               <header className={styles.sectionHeader}>
                 <Icon icon={section.icon || "mdi:information-outline"} className={styles.sectionIcon} aria-hidden />

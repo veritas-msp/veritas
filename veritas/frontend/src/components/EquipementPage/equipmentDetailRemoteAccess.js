@@ -1,8 +1,19 @@
 import { getRemoteAccessMenuIcon, getRemoteAccessUrl, hasRemoteAccessConfigured, openRemoteAccess, supportsRemoteAccess } from "./equipmentRemoteAccessUtils";
 import { getServerRemoteAccessIcon, getServerRemoteAccessSolutionDef, hasServerRemoteAccessConfigured, openServerRemoteAccess, readServerRemoteAccess } from "./constants/serverRemoteAccessUtils";
 import { formatEquipmentRemoteAccessTooltip, formatEquipmentServerRemoteTooltip, getEquipmentRemoteAccessLabel, getEquipmentServerRemoteLabel } from "./equipmentPageI18n";
-const REMOTE_FIELD_KEYS = new Set(["remoteAccessSolution"]);
-const URL_FIELD_KEYS = new Set(["adminUrl", "stormshieldWanUrl"]);
+
+const REMOTE_FIELD_KEYS = ["remoteAccessSolution"];
+const URL_FIELD_KEYS = ["adminUrl", "stormshieldWanUrl"];
+
+function firstConfiguredFieldKey(keys, source = {}) {
+  if (!Array.isArray(keys) || keys.length === 0) return null;
+  const configured = keys.find(key => {
+    const value = source?.[key];
+    return value != null && String(value).trim() !== "";
+  });
+  return configured || keys[0];
+}
+
 export function resolveEquipmentRemoteAccessAction(equipment, formData = {}, locale = "fr") {
   const merged = {
     ...equipment,
@@ -22,7 +33,8 @@ export function resolveEquipmentRemoteAccessAction(equipment, formData = {}, loc
         id
       }),
       icon: getServerRemoteAccessIcon(merged),
-      fieldKeys: REMOTE_FIELD_KEYS,
+      fieldKeys: new Set(REMOTE_FIELD_KEYS),
+      primaryFieldKey: firstConfiguredFieldKey(REMOTE_FIELD_KEYS, merged),
       launch: () => openServerRemoteAccess(merged)
     };
   }
@@ -37,13 +49,15 @@ export function resolveEquipmentRemoteAccessAction(equipment, formData = {}, loc
         equipmentType: merged?.type
       }),
       icon: getRemoteAccessMenuIcon(merged),
-      fieldKeys: URL_FIELD_KEYS,
+      fieldKeys: new Set(URL_FIELD_KEYS),
+      primaryFieldKey: firstConfiguredFieldKey(URL_FIELD_KEYS, merged),
       launch: () => openRemoteAccess(merged)
     };
   }
   return null;
 }
+
 export function shouldShowRemoteAccessFieldAction(fieldKey, remoteAccessAction) {
-  if (!remoteAccessAction?.fieldKeys) return false;
-  return remoteAccessAction.fieldKeys.has(fieldKey);
+  if (!remoteAccessAction?.primaryFieldKey) return false;
+  return remoteAccessAction.primaryFieldKey === fieldKey;
 }
