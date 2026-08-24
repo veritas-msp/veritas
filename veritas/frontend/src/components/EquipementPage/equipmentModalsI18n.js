@@ -163,6 +163,10 @@ const EQUIPMENT_MODALS = {
         label: "Notes",
         description: "Accès, procédures et informations utiles"
       },
+      common: {
+        label: "Facturation et installation",
+        description: "Achat, facture, installation et garantie"
+      },
       internetType: {
         label: "Type",
         description: "Technologie d'accès"
@@ -369,6 +373,10 @@ const EQUIPMENT_MODALS = {
       notes: {
         label: "Notes",
         description: "Free comments"
+      },
+      common: {
+        label: "Billing and installation",
+        description: "Purchase, invoice, installation and warranty"
       },
       internetType: {
         label: "Type",
@@ -577,6 +585,10 @@ const EQUIPMENT_MODALS = {
         label: "Notizen",
         description: "Kommentare"
       },
+      common: {
+        label: "Abrechnung und Installation",
+        description: "Kauf, Rechnung, Installation und Garantie"
+      },
       internetType: {
         label: "Typ",
         description: "Technologie"
@@ -784,6 +796,10 @@ const EQUIPMENT_MODALS = {
         label: "Note",
         description: "Commenti"
       },
+      common: {
+        label: "Fatturazione e installazione",
+        description: "Acquisto, fattura, installazione e garanzia"
+      },
       internetType: {
         label: "Tipo",
         description: "Tecnologia"
@@ -990,6 +1006,10 @@ const EQUIPMENT_MODALS = {
       notes: {
         label: "Notas",
         description: "Comentarios"
+      },
+      common: {
+        label: "Facturación e instalación",
+        description: "Compra, factura, instalación y garantía"
       },
       internetType: {
         label: "Tipo",

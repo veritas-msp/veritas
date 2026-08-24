@@ -388,7 +388,7 @@ export default function EquipmentDetailSpecsPanel({
         {sections.map(section => {
         const isInternetLink = section.id === "internetLink";
         const hasDebitGauges = isInternetLink && (formData?.debitDownload || formData?.debitUpload || formData?.debit);
-        const showLocationMap = section.id === "identity" && showSiteVignette;
+        const showLocationMap = (section.id === "identity" || section.id === "billingInstallation") && showSiteVignette;
         const visibleFields = (() => {
           let fields = hasDebitGauges ? section.fields.filter(field => !DEBIT_FIELD_KEYS.has(field.key)) : section.fields;
           if (showLocationMap) {

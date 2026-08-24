@@ -75,8 +75,6 @@ const SHARED_HARDWARE = [
   { key: "numeroSerie", label: L("N° de série", "Serial number"), values: L("Texte libre, ex. SN-SRV-001", "Free text, e.g. SN-SRV-001") },
   { key: "vlan", label: L("VLAN", "VLAN"), values: L("Numéro, ex. 10", "Number, e.g. 10") },
   { key: "expirationGarantie", label: L("Fin de garantie", "Warranty end"), values: L("Date, ex. 2027-12-31", "Date, e.g. 2027-12-31") },
-  { key: "supportReference", label: L("Reference support", "Support reference"), values: L("Texte, ex. TKT-42 ou REF-SUPPORT", "Text, e.g. TKT-42 or SUPPORT-REF") },
-  { key: "supportContract", label: L("Contrat support", "Support contract"), values: L("Texte, ex. Gold 24/7", "Text, e.g. Gold 24/7") },
   { key: "commentaire", label: L("Commentaire", "Comment"), values: L("Texte libre, ex. Contrôleur de domaine", "Free text, e.g. Domain controller") }
 ];
 

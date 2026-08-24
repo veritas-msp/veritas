@@ -229,7 +229,11 @@ const SERVICE_PAGE = {
         expiration: "Expiration",
         lastSync: "Dernière sync"
       },
-      expPrefix: "exp."
+      expPrefix: "exp.",
+      rowsPerPage: "Lignes par page",
+      prevPage: "Page précédente",
+      nextPage: "Page suivante",
+      pageOf: "Page {current} / {total}"
     },
     ssl: {
       healthLabel: "Santé SSL",
@@ -285,7 +289,11 @@ const SERVICE_PAGE = {
         expiration: "Expiration",
         lastChecked: "Dernière vérification"
       },
-      expPrefix: "exp."
+      expPrefix: "exp.",
+      rowsPerPage: "Lignes par page",
+      prevPage: "Page précédente",
+      nextPage: "Page suivante",
+      pageOf: "Page {current} / {total}"
     },
     toasts: {
       syncMicrosoftStarted: "Synchronisation Microsoft en cours…",
@@ -523,7 +531,11 @@ const SERVICE_PAGE = {
         expiration: "Expiration",
         lastSync: "Last sync"
       },
-      expPrefix: "exp."
+      expPrefix: "exp.",
+      rowsPerPage: "Rows per page",
+      prevPage: "Previous page",
+      nextPage: "Next page",
+      pageOf: "Page {current} / {total}"
     },
     ssl: {
       healthLabel: "SSL health",
@@ -579,7 +591,11 @@ const SERVICE_PAGE = {
         expiration: "Expiration",
         lastChecked: "Last check"
       },
-      expPrefix: "exp."
+      expPrefix: "exp.",
+      rowsPerPage: "Rows per page",
+      prevPage: "Previous page",
+      nextPage: "Next page",
+      pageOf: "Page {current} / {total}"
     },
     toasts: {
       syncMicrosoftStarted: "Microsoft sync in progress…",
@@ -817,7 +833,11 @@ const SERVICE_PAGE = {
         expiration: "Ablauf",
         lastSync: "Letzte Sync"
       },
-      expPrefix: "Abl."
+      expPrefix: "Abl.",
+      rowsPerPage: "Zeilen pro Seite",
+      prevPage: "Vorherige Seite",
+      nextPage: "Nächste Seite",
+      pageOf: "Seite {current} / {total}"
     },
     ssl: {
       healthLabel: "SSL-Gesundheit",
@@ -873,7 +893,11 @@ const SERVICE_PAGE = {
         expiration: "Ablauf",
         lastChecked: "Letzte Prüfung"
       },
-      expPrefix: "Abl."
+      expPrefix: "Abl.",
+      rowsPerPage: "Zeilen pro Seite",
+      prevPage: "Vorherige Seite",
+      nextPage: "Nächste Seite",
+      pageOf: "Seite {current} / {total}"
     },
     toasts: {
       syncMicrosoftStarted: "Microsoft-Synchronisation läuft…",
@@ -1111,7 +1135,11 @@ const SERVICE_PAGE = {
         expiration: "Scadenza",
         lastSync: "Ultima sync"
       },
-      expPrefix: "scad."
+      expPrefix: "scad.",
+      rowsPerPage: "Righe per pagina",
+      prevPage: "Pagina precedente",
+      nextPage: "Pagina successiva",
+      pageOf: "Pagina {current} / {total}"
     },
     ssl: {
       healthLabel: "Salute SSL",
@@ -1167,7 +1195,11 @@ const SERVICE_PAGE = {
         expiration: "Scadenza",
         lastChecked: "Ultima verifica"
       },
-      expPrefix: "scad."
+      expPrefix: "scad.",
+      rowsPerPage: "Righe per pagina",
+      prevPage: "Pagina precedente",
+      nextPage: "Pagina successiva",
+      pageOf: "Pagina {current} / {total}"
     },
     toasts: {
       syncMicrosoftStarted: "Sincronizzazione Microsoft in corso…",
@@ -1405,7 +1437,11 @@ const SERVICE_PAGE = {
         expiration: "Caducidad",
         lastSync: "Última sync"
       },
-      expPrefix: "cad."
+      expPrefix: "cad.",
+      rowsPerPage: "Filas por página",
+      prevPage: "Página anterior",
+      nextPage: "Página siguiente",
+      pageOf: "Página {current} / {total}"
     },
     ssl: {
       healthLabel: "Salud SSL",
@@ -1461,7 +1497,11 @@ const SERVICE_PAGE = {
         expiration: "Caducidad",
         lastChecked: "Última verificación"
       },
-      expPrefix: "cad."
+      expPrefix: "cad.",
+      rowsPerPage: "Filas por página",
+      prevPage: "Página anterior",
+      nextPage: "Página siguiente",
+      pageOf: "Página {current} / {total}"
     },
     toasts: {
       syncMicrosoftStarted: "Sincronización Microsoft en curso…",
@@ -1585,6 +1625,10 @@ export function getServicePageCopy(locale) {
       formatAlertCount: count => interpolate(pluralPick(count, t.domain.alertCount, t.domain.alertCountPlural), {
         count
       }),
+      formatPageOf: (current, total) => interpolate(t.domain.pageOf, {
+        current,
+        total
+      }),
       getStatusMeta: status => ({
         label: t.domain.statusMeta[status] || t.domain.statusMeta.inconnu,
         tone: status === "expiré" ? "bad" : status === "expire_bientot" ? "warn" : status === "actif" ? "good" : "neutral"
@@ -1625,6 +1669,10 @@ export function getServicePageCopy(locale) {
       }) : t.ssl.heroDescOk,
       formatAlertCount: count => interpolate(pluralPick(count, t.ssl.alertCount, t.ssl.alertCountPlural), {
         count
+      }),
+      formatPageOf: (current, total) => interpolate(t.ssl.pageOf, {
+        current,
+        total
       }),
       getStatusMeta: statusKey => ({
         label: t.ssl.statusMeta[statusKey] || t.ssl.statusMeta.unknown,

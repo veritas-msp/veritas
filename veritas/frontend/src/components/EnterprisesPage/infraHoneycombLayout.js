@@ -318,7 +318,7 @@ const BRICK_TYPE_META = {
   }
 };
 const COMING_SOON_BRICK_TYPES = new Set(["GoogleWorkspace"]);
-const PRO_ONLY_BRICK_TYPES = new Set(["TenantMicrosoft"]);
+const PRO_ONLY_BRICK_TYPES = new Set(["TenantMicrosoft", "Campagne"]);
 export const INFRA_BRICK_PRO_FEATURE_KEYS = {
   TenantMicrosoft: "Tenant Microsoft",
   GoogleWorkspace: "Google Workspace",

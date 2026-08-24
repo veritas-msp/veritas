@@ -19,7 +19,7 @@ import mspStyles from "../CybersecuritePage/CybersecuritePage.module.css";
 import SmartTooltip from "../SmartTooltip";
 import { DEFAULT_PERIOD_FILTER, getPeriodFilterLabel } from "./dashboardPeriodUtils";
 import { DEFAULT_SCOPE_FILTER, getScopeFilterKey, isScopeFilterActive, isScopeFilterReady } from "./dashboardScopeUtils";
-import { CategoryIntro, DistributionPanel, formatHours, formatNumber, formatPercent, formatRating, KpiRow, MiniStat, Panel, PiePanel, SectionTitle, TrendBars, buildDistributionItems } from "./dashboardWidgets";
+import { DistributionPanel, formatHours, formatNumber, formatPercent, formatRating, KpiRow, MiniStat, Panel, PiePanel, SectionTitle, TrendBars, buildDistributionItems } from "./dashboardWidgets";
 import styles from "./DashboardPage.module.css";
 import { createTrackedAbortController } from "../../utils/pageLoadAbort";
 
@@ -312,35 +312,40 @@ export default function DashboardPage() {
     if (!data) return null;
     if (activeTab === "support") {
       return <>
-          <CategoryIntro title={copy.tabs.support} text={copy.intros.support} />
           <KpiRow items={[{
           key: "created",
           icon: "mdi:plus-circle-outline",
+          tone: "blue",
           value: formatNumber(data.support?.overview?.created),
           label: copy.support.created
         }, {
           key: "closed",
           icon: "mdi:check-circle-outline",
+          tone: "green",
           value: formatNumber(data.support?.overview?.closed),
           label: copy.support.closed
         }, {
           key: "open",
           icon: "mdi:ticket-outline",
+          tone: "amber",
           value: formatNumber(data.support?.overview?.openNow),
           label: copy.support.openNow
         }, {
           key: "closure",
           icon: "mdi:percent-outline",
+          tone: "teal",
           value: formatPercent(copy, data.support?.overview?.closureRate),
           label: copy.support.closureRate
         }, {
           key: "response",
           icon: "mdi:timer-outline",
+          tone: "purple",
           value: formatHours(copy, data.support?.timing?.avgFirstResponseHours),
           label: copy.support.firstResponse
         }, {
           key: "resolution",
           icon: "mdi:clock-check-outline",
+          tone: "orange",
           value: formatHours(copy, data.support?.timing?.avgResolutionHours),
           label: copy.support.resolution
         }]} />
@@ -414,21 +419,24 @@ export default function DashboardPage() {
                 <SatisfactionAgentTable rows={data.support.satisfaction.byAgent} copy={copy} />
               </Panel>
             </div> : null}
-          {data.modules?.planning ? <>
+          {data.modules?.planning ? <div className={styles.sectionBlock}>
               <SectionTitle icon="mdi:calendar-clock-outline" title={copy.support.planningTitle} />
               <KpiRow items={[{
             key: "total",
             icon: "mdi:calendar-multiselect",
+            tone: "blue",
             value: formatNumber(data.planning?.overview?.total),
             label: copy.planning.total
           }, {
             key: "maint",
             icon: "mdi:cog-outline",
+            tone: "amber",
             value: formatNumber(data.planning?.overview?.maintenanceInPeriod),
             label: copy.planning.maintenancePeriod
           }, {
             key: "upcoming",
             icon: "mdi:calendar-arrow-right",
+            tone: "teal",
             value: formatNumber(data.planning?.overview?.upcoming),
             label: copy.planning.upcoming
           }]} />
@@ -436,12 +444,11 @@ export default function DashboardPage() {
                 <PiePanel title={copy.planning.byType} icon="mdi:calendar-multiselect" items={distributions.planningType} emptyLabel={copy.empty} />
                 <DistributionPanel title={copy.planning.byAgent} icon="mdi:account-hard-hat" items={distributions.planningAgent} emptyLabel={copy.empty} />
               </div>
-            </> : null}
+            </div> : null}
         </>;
     }
     if (activeTab === "devices") {
       return <>
-          <CategoryIntro title={copy.tabs.devices} text={copy.intros.devices} />
           {scopeActive ? <p className={styles.scopeHint}>
               <Icon icon="mdi:information-outline" aria-hidden />
               {copy.scopeFilter.infrastructureHint}
@@ -449,31 +456,37 @@ export default function DashboardPage() {
           <KpiRow items={[{
           key: "fleet",
           icon: "mdi:devices",
+          tone: "blue",
           value: formatNumber(devices.equipTotal ?? devices.equipMonitoredTotal),
           label: copy.devices.fleet
         }, {
           key: "supervised",
           icon: "mdi:radar",
+          tone: "teal",
           value: formatNumber(devices.equipUnderSurveillanceCount),
           label: copy.devices.supervised
         }, {
           key: "rate",
           icon: "mdi:percent-outline",
+          tone: "green",
           value: formatPercent(copy, devices.equipSurveillancePercent),
           label: copy.devices.surveillance
         }, {
           key: "rmm",
           icon: "mdi:remote-desktop",
+          tone: "purple",
           value: `${formatNumber(devices.rmmOnline)} / ${formatNumber(devices.rmmAgents)}`,
           label: copy.devices.rmmOnline
         }, {
           key: "computers",
           icon: "mdi:laptop",
+          tone: "amber",
           value: formatNumber(devices.computersTotal),
           label: copy.devices.computers
         }, {
           key: "computersActive",
           icon: "mdi:laptop-check",
+          tone: "green",
           value: formatNumber(devices.computersActive),
           label: copy.devices.computersActive
         }]} />
@@ -486,40 +499,46 @@ export default function DashboardPage() {
         </>;
     }
     return <>
-        <CategoryIntro title={copy.tabs.enterprise} text={copy.intros.enterprise} />
         <KpiRow items={[{
         key: "clients",
         icon: "mdi:domain",
+        tone: "blue",
         value: formatNumber(enterprise.clientsPortfolio ?? enterprise.clientsTotal),
         label: copy.enterprise.clients
       }, {
         key: "contacts",
         icon: "mdi:account-group-outline",
+        tone: "teal",
         value: formatNumber(enterprise.contactsTotal),
         label: copy.enterprise.contacts
       }, {
         key: "new",
         icon: "mdi:account-plus-outline",
+        tone: "green",
         value: formatNumber(enterprise.contactsNew),
         label: copy.enterprise.contactsNew
       }, {
         key: "active",
         icon: "mdi:file-sign",
+        tone: "purple",
         value: formatNumber(enterprise.contractsActive),
         label: copy.enterprise.contractsActive
       }, {
         key: "expiring",
         icon: "mdi:calendar-alert",
+        tone: "amber",
         value: formatNumber(enterprise.contractsExpiring),
         label: copy.enterprise.contractsExpiring
       }, {
         key: "expired",
         icon: "mdi:calendar-remove",
+        tone: "rose",
         value: formatNumber(enterprise.contractsExpired),
         label: copy.enterprise.contractsExpired
       }, {
         key: "suspended",
         icon: "mdi:pause-circle-outline",
+        tone: "orange",
         value: formatNumber(enterprise.contractsSuspended),
         label: copy.enterprise.contractsSuspended
       }]} />
@@ -527,16 +546,18 @@ export default function DashboardPage() {
           <DistributionPanel title={copy.enterprise.modules} icon="mdi:puzzle-outline" items={distributions.modules} emptyLabel={copy.empty} />
           <DistributionPanel title={copy.enterprise.solutions} icon="mdi:shield-check-outline" items={distributions.solutions} emptyLabel={copy.empty} />
         </div>
-        {data.modules?.reports ? <>
+        {data.modules?.reports ? <div className={styles.sectionBlock}>
             <SectionTitle icon="mdi:file-chart-outline" title={copy.enterprise.reportsTitle} />
             <KpiRow items={[{
           key: "total",
           icon: "mdi:file-document-multiple-outline",
+          tone: "blue",
           value: formatNumber(data.reports?.total),
           label: copy.enterprise.reportsTotal
         }, {
           key: "period",
           icon: "mdi:file-chart-outline",
+          tone: "teal",
           value: formatNumber(data.reports?.inPeriod),
           label: copy.enterprise.reportsPeriod
         }]} />
@@ -546,7 +567,7 @@ export default function DashboardPage() {
                 <TrendBars items={data.reports?.monthlyTrend} formatLabel={formatMonthLabel} emptyLabel={copy.empty} />
               </Panel>
             </div>
-          </> : null}
+          </div> : null}
       </>;
   };
   return <div className={`${mspStyles.mspPage} ${styles.dashboardPage} msp-page-insight`}>

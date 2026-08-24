@@ -20,8 +20,25 @@ const TENANT_DETAIL_COPY = {
       teams: "Teams",
       securite: "Sécurité"
     },
+    groups: {
+      overview: "Aperçu",
+      identity: "Identité",
+      workloads: "Applications"
+    },
+    tabHints: {
+      rapport: "Synthèse et KPIs",
+      utilisateurs: "Comptes et connexions",
+      licences: "SKU et quotas",
+      securite: "Secure Score et MFA",
+      exchange: "Messagerie",
+      sharepoint: "Sites et stockage",
+      onedrive: "Stockage utilisateur",
+      teams: "Équipes et canaux"
+    },
     hero: {
-      eyebrow: "Tenant Microsoft",
+      eyebrow: "Services · Microsoft 365",
+      pageTitle: "Microsoft 365 · {name}",
+      pageTitleFallback: "Microsoft 365",
       metaAria: "Informations du tenant",
       tenantId: "ID tenant",
       lastSync: "Dernière sync",
@@ -141,8 +158,25 @@ const TENANT_DETAIL_COPY = {
       teams: "Teams",
       securite: "Security"
     },
+    groups: {
+      overview: "Overview",
+      identity: "Identity",
+      workloads: "Workloads"
+    },
+    tabHints: {
+      rapport: "Summary and KPIs",
+      utilisateurs: "Accounts and sign-ins",
+      licences: "SKUs and quotas",
+      securite: "Secure Score and MFA",
+      exchange: "Mail",
+      sharepoint: "Sites and storage",
+      onedrive: "User storage",
+      teams: "Teams and channels"
+    },
     hero: {
-      eyebrow: "Microsoft tenant",
+      eyebrow: "Services · Microsoft 365",
+      pageTitle: "Microsoft 365 · {name}",
+      pageTitleFallback: "Microsoft 365",
       metaAria: "Tenant information",
       tenantId: "Tenant ID",
       lastSync: "Last sync",

@@ -9,8 +9,7 @@ import styles from "./AntispamDetailPage.module.css";
 function ManualAntispamSummary({
   item,
   client,
-  onBack,
-  backLabel
+  onOpenClient
 }) {
   const {
     formatDate
@@ -23,15 +22,14 @@ function ManualAntispamSummary({
   return <div className={styles.detailPage}>
       <header className={styles.header}>
         <div className={styles.headerLeft}>
-          <button type="button" className={styles.backButton} onClick={onBack} aria-label={backLabel}>
-            <Icon icon="mdi:arrow-left" />
-          </button>
           <div className={styles.headerTitle}>
             {provider?.image ? <img src={provider.image.startsWith("/") ? provider.image : `/assets/icons/${provider.image}`} alt="" className={styles.headerLogo} /> : <Icon icon={provider?.icon || "mdi:email-plus-outline"} className={styles.headerLogo} aria-hidden />}
             <div className={styles.headerTitleBlock}>
               <h1>{summary.providerName || provider?.label || "Autre solution"}</h1>
               <div className={styles.headerMeta}>
-                {client?.name ? <span className={styles.headerMetaItem}>{client.name}</span> : null}
+                {client?.name ? client?.id && onOpenClient ? <button type="button" className={`${styles.headerMetaItem} ${styles.headerMetaLink}`} onClick={onOpenClient}>
+                    {client.name}
+                  </button> : <span className={styles.headerMetaItem}>{client.name}</span> : null}
                 <span className={styles.headerMetaItem}>{getAntispamSolutionModeLabel(item)}</span>
               </div>
             </div>
@@ -118,20 +116,19 @@ export default function AntispamDetailPage({
       customerId: item?.customerId
     });
   }, [antispamData, client.id, client.name, item?.productName, item?.customerId]);
+  const openEnterprise = () => {
+    if (!onNavigate || !client.id) return;
+    onNavigate("ContratDetail", {
+      clientId: client.id,
+      name: client.name
+    });
+  };
   const handleBack = () => {
     if (!onNavigate) return;
-    if (client.id) {
-      onNavigate("ContratDetail", {
-        clientId: client.id,
-        name: client.name
-      });
-      return;
-    }
     onNavigate("Cybersecurite");
   };
-  const backLabel = client.id ? "Company record" : "Cybersecurity";
   if (!hasOverview && isManual) {
-    return <ManualAntispamSummary item={item} client={client} onBack={handleBack} backLabel={backLabel} />;
+    return <ManualAntispamSummary item={item} client={client} onOpenClient={openEnterprise} />;
   }
   if (!hasOverview) {
     return <div className={styles.detailPage}>
@@ -144,5 +141,5 @@ export default function AntispamDetailPage({
         </div>
       </div>;
   }
-  return <AntispamOverviewPanel active asPage client={client} antispamItem={item} onBack={handleBack} backLabel={backLabel} />;
+  return <AntispamOverviewPanel active asPage client={client} antispamItem={item} onNavigate={onNavigate} />;
 }

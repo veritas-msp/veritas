@@ -34,15 +34,19 @@ export function extractPerformanceValue(performanceData, pluginOutput) {
     raw: performanceData || pluginOutput
   };
 }
+export function normalizeCheckMKApiUrl(apiUrl) {
+  let url = String(apiUrl || '').trim();
+  while (url.endsWith('/')) {
+    url = url.slice(0, -1);
+  }
+  return url;
+}
+
 export async function getCheckMKSettings() {
   try {
     const settings = await getSettingsMap(['CHECKMK_API_URL', 'CHECKMK_USERNAME', 'CHECKMK_PASSWORD', 'CHECKMK_SITE']);
-    let apiUrl = (settings.CHECKMK_API_URL || '').trim();
-    while (apiUrl && apiUrl.endsWith('/')) {
-      apiUrl = apiUrl.slice(0, -1);
-    }
     return {
-      apiUrl: apiUrl,
+      apiUrl: normalizeCheckMKApiUrl(settings.CHECKMK_API_URL),
       username: settings.CHECKMK_USERNAME || '',
       password: settings.CHECKMK_PASSWORD || '',
       site: settings.CHECKMK_SITE || ''
@@ -50,6 +54,30 @@ export async function getCheckMKSettings() {
   } catch (error) {
     return null;
   }
+}
+
+export async function getCheckMKCredentialsFromRequest(req) {
+  const bodyUrl = (req.body?.CHECKMK_API_URL || req.body?.apiUrl || '').trim();
+  const bodyUsername = (req.body?.CHECKMK_USERNAME || req.body?.username || '').trim();
+  const bodyPassword = (req.body?.CHECKMK_PASSWORD || req.body?.password || '').trim();
+  const bodySite = (req.body?.CHECKMK_SITE || req.body?.site || '').trim();
+  if (bodyUrl && bodyUsername && bodyPassword) {
+    return {
+      apiUrl: normalizeCheckMKApiUrl(bodyUrl),
+      username: bodyUsername,
+      password: bodyPassword,
+      site: bodySite,
+      source: 'inline'
+    };
+  }
+  const settings = await getCheckMKSettings();
+  if (!settings?.apiUrl || !settings?.username || !settings?.password) {
+    throw new Error('Checkmk configuration incomplete. Please provide URL, username and password.');
+  }
+  return {
+    ...settings,
+    source: 'settings'
+  };
 }
 export async function authenticateCheckMK(apiUrl, username, password) {
   try {

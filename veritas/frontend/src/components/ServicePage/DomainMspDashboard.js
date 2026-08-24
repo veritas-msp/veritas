@@ -1,5 +1,6 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { Icon } from "@iconify/react";
+import { FaChevronLeft, FaChevronRight } from "react-icons/fa";
 import { useAppFormatters } from "../../hooks/useAppGeneralSettings";
 import MspEmptyState from "../Misc/MspEmptyState/MspEmptyState";
 import styles from "../CybersecuritePage/AntivirusMspDashboard.module.css";
@@ -87,6 +88,8 @@ export default function DomainMspDashboard({
   const [statusFilter, setStatusFilter] = useState("all");
   const [sortBy, setSortBy] = useState("clientName");
   const [sortDirection, setSortDirection] = useState("asc");
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
   const fleetRows = useMemo(() => buildDomainFleetFromList(domains), [domains]);
   const stats = useMemo(() => buildDomainFleetStats(fleetRows), [fleetRows]);
   const filteredRows = useMemo(() => filterDomainFleetRows(fleetRows, {
@@ -95,6 +98,17 @@ export default function DomainMspDashboard({
     providerFilter: "all"
   }), [fleetRows, search, statusFilter]);
   const sortedRows = useMemo(() => sortDomainFleetRows(filteredRows, sortBy, sortDirection), [filteredRows, sortBy, sortDirection]);
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [search, statusFilter, sortBy, sortDirection, pageSize]);
+  const totalPages = Math.max(1, Math.ceil(sortedRows.length / pageSize));
+  useEffect(() => {
+    setCurrentPage(page => Math.min(page, totalPages));
+  }, [totalPages]);
+  const paginatedRows = useMemo(() => {
+    const start = (currentPage - 1) * pageSize;
+    return sortedRows.slice(start, start + pageSize);
+  }, [sortedRows, currentPage, pageSize]);
   const handleSort = column => {
     if (sortBy === column) {
       setSortDirection(prev => prev === "asc" ? "desc" : "asc");
@@ -157,13 +171,35 @@ export default function DomainMspDashboard({
                 </tr>
               </thead>
               <tbody>
-                {sortedRows.map(row => <FleetTableRow key={row.id} row={row} onOpen={handleOpenDomain} getStatusMeta={copy.getStatusMeta} formatDate={formatDisplayDate} formatDateTime={formatDisplayDateTime} onMiddleClick={(e, item) => {
+                {paginatedRows.map(row => <FleetTableRow key={row.id} row={row} onOpen={handleOpenDomain} getStatusMeta={copy.getStatusMeta} formatDate={formatDisplayDate} formatDateTime={formatDisplayDateTime} onMiddleClick={(e, item) => {
               e.preventDefault();
               handleOpenDomain(item);
             }} />)}
               </tbody>
             </table>
           </div>
+          {sortedRows.length > 0 ? <div className={styles.paginationBar}>
+              <div className={styles.paginationLeft}>
+                <span className={styles.paginationLabel}>{copy.rowsPerPage}</span>
+                <select className={styles.paginationSelect} value={pageSize} onChange={e => setPageSize(Number(e.target.value))}>
+                  <option value={10}>10</option>
+                  <option value={25}>25</option>
+                  <option value={50}>50</option>
+                  <option value={100}>100</option>
+                </select>
+              </div>
+              <div className={styles.paginationRight}>
+                <button type="button" className={styles.paginationButton} onClick={() => setCurrentPage(page => Math.max(1, page - 1))} disabled={currentPage <= 1} aria-label={copy.prevPage}>
+                  <FaChevronLeft />
+                </button>
+                <span className={styles.paginationInfo}>
+                  {copy.formatPageOf(currentPage, totalPages)}
+                </span>
+                <button type="button" className={styles.paginationButton} onClick={() => setCurrentPage(page => Math.min(totalPages, page + 1))} disabled={currentPage >= totalPages} aria-label={copy.nextPage}>
+                  <FaChevronRight />
+                </button>
+              </div>
+            </div> : null}
         </section>}
     </div>;
 }

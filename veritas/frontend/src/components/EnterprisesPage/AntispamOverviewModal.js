@@ -272,8 +272,7 @@ export function AntispamOverviewPanel({
   onClose,
   onSynced,
   asPage = false,
-  onBack,
-  backLabel = "Back"
+  onNavigate
 }) {
   const [activeSection, setActiveSection] = useState("overview");
   const [loading, setLoading] = useState(() => !antispamItem?.syncData?.dashboard);
@@ -654,10 +653,24 @@ export function AntispamOverviewPanel({
   }, []);
   if (!active || !customerId) return null;
   const mappingLabel = antispamItem?.mappingMode === "dedicated" ? "Dedicated tenant" : "Tenant global";
+  const openEnterprise = () => {
+    if (!client?.id || !onNavigate) return;
+    onNavigate("ContratDetail", {
+      clientId: client.id,
+      name: client.name
+    });
+  };
   if (asPage) {
-    return <SolutionDetailPageLayout accent="mailinblack" eyebrow="Cybersecurity · Mailinblack Protect" title={`Antispam · ${customerName}`} titleIcon="mdi:email-secure-outline" subtitle={`${client?.name || "-"} · ${mappingLabel}`} backLabel={backLabel} onBack={onBack} loading={loading} refreshing={refreshing} loadingMessage="Loading des data Mailinblack…" onRefresh={() => loadDashboard()} footerHint={`${mappingLabel}${customerId ? ` · ID ${customerId}` : ""}`} onRefreshSave={() => loadDashboard({
+    const clientName = client?.name || "-";
+    const subtitle = <>
+        {client?.id && onNavigate ? <button type="button" className={styles.subtitleLink} onClick={openEnterprise}>
+            {clientName}
+          </button> : clientName}
+        {` · ${mappingLabel}`}
+      </>;
+    return <SolutionDetailPageLayout accent="mailinblack" eyebrow="Cybersecurity · Mailinblack Protect" title={`Antispam · ${customerName}`} titleIcon="mdi:email-secure-outline" subtitle={subtitle} loading={loading} refreshing={refreshing} loadingMessage="Loading des data Mailinblack…" onRefresh={() => loadDashboard({
       persist: true
-    })} refreshSaveLabel="Refresh and save" navEntries={navEntries} activeSection={activeSection} onSectionChange={setActiveSection} navAriaLabel="Sections">
+    })} refreshLabel="Refresh and save" footerHint={`${mappingLabel}${customerId ? ` · ID ${customerId}` : ""}`} navEntries={navEntries} activeSection={activeSection} onSectionChange={setActiveSection} navAriaLabel="Sections">
         {renderSectionContent()}
       </SolutionDetailPageLayout>;
   }

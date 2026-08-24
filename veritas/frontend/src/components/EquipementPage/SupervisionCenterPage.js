@@ -29,8 +29,10 @@ import {
 import { toast } from "react-toastify";
 import { fetchHomeDashboard } from "../../api/stats";
 import { fetchRmmAgents } from "../../api/rmm";
+import { getEquipmentFleetIssues } from "../../api/equipment";
 import { getEquipmentListKey } from "../../utils/equipmentIdentity";
 import { createTrackedAbortController } from "../../utils/pageLoadAbort";
+import { useCheckMKIntegrationEnabled } from "../../hooks/useCheckMKIntegrationEnabled";
 import { Icon } from "@iconify/react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import cyberStyles from "../CybersecuritePage/CybersecuritePage.module.css";
@@ -40,19 +42,22 @@ import SupportOrbitalBackground from "../Misc/ReportBugForm/SupportOrbitalBackgr
 import styles from "./SupervisionCenterPage.module.css";
 
 export default function MonitoringCenterPage({
-  loading = false,
-  error = null,
+  loading: parentLoading = false,
+  error: parentError = null,
   statsItems = [],
   resolveMonitorStatus,
   onEquipmentOpen,
   equipmentRmmAgents = [],
   onNavigate,
-  checkmkIntegrationEnabled = false,
+  checkmkIntegrationEnabled: checkmkProp,
   isMkMapped = () => false
 }) {
   const [activeTab, setActiveTab] = useState("operations");
   const [dashboard, setDashboard] = useState(null);
   const [dashboardLoading, setDashboardLoading] = useState(true);
+  const [deviceIssues, setDeviceIssues] = useState([]);
+  const [deviceIssuesLoading, setDeviceIssuesLoading] = useState(true);
+  const [deviceIssuesError, setDeviceIssuesError] = useState(null);
   const [rmmAgents, setRmmAgents] = useState([]);
   const [rmmFromApi, setRmmFromApi] = useState(false);
   const [backupIssueJobs, setBackupIssueJobs] = useState([]);
@@ -94,6 +99,13 @@ export default function MonitoringCenterPage({
     catalog: alertRulesCatalog,
     applyRules
   } = useSupervisionAlertRules();
+  const {
+    enabled: checkmkFromHook
+  } = useCheckMKIntegrationEnabled();
+  const checkmkIntegrationEnabled = checkmkProp ?? checkmkFromHook;
+  const useServerDeviceIssues = typeof resolveMonitorStatus !== "function";
+  const loading = useServerDeviceIssues ? deviceIssuesLoading || dashboardLoading : parentLoading || dashboardLoading;
+  const error = useServerDeviceIssues ? deviceIssuesError || parentError : parentError;
   const effectiveRmmAgents = useMemo(() => {
     const apiRows = Array.isArray(rmmAgents) ? rmmAgents : [];
     const fromEquipment = Array.isArray(equipmentRmmAgents) ? equipmentRmmAgents : [];
@@ -108,8 +120,9 @@ export default function MonitoringCenterPage({
   const contractAlerts = dashboard?.contractAlerts || [];
   const licenseAlerts = dashboard?.licenseAlerts || [];
   const unifiedQueue = useMemo(() => buildUnifiedSupervisionQueue({
-    statsItems,
-    resolveMonitorStatus,
+    statsItems: useServerDeviceIssues ? [] : statsItems,
+    resolveMonitorStatus: useServerDeviceIssues ? undefined : resolveMonitorStatus,
+    deviceIssueItems: useServerDeviceIssues ? deviceIssues : null,
     alertRules,
     checkmkEnabled: checkmkIntegrationEnabled,
     isMkMapped,
@@ -127,7 +140,7 @@ export default function MonitoringCenterPage({
         warning: pageCopy.ops?.backupReasons?.warning || "Warning"
       }
     }
-  }), [statsItems, resolveMonitorStatus, alertRules, checkmkIntegrationEnabled, isMkMapped, backupIssueJobs, contractAlerts, licenseAlerts, offlineAgents, pageCopy]);
+  }), [useServerDeviceIssues, statsItems, resolveMonitorStatus, deviceIssues, alertRules, checkmkIntegrationEnabled, isMkMapped, backupIssueJobs, contractAlerts, licenseAlerts, offlineAgents, pageCopy]);
   const unifiedQueueIdsKey = useMemo(() => unifiedQueue.map(item => item.id).join("|"), [unifiedQueue]);
   const unifiedQueueRef = useRef(unifiedQueue);
   unifiedQueueRef.current = unifiedQueue;
@@ -178,21 +191,47 @@ export default function MonitoringCenterPage({
       }
     }
   }, []);
+  const loadDeviceIssues = useCallback(async signal => {
+    if (!useServerDeviceIssues) {
+      setDeviceIssuesLoading(false);
+      setDeviceIssues([]);
+      setDeviceIssuesError(null);
+      return;
+    }
+    setDeviceIssuesLoading(true);
+    setDeviceIssuesError(null);
+    try {
+      const payload = await getEquipmentFleetIssues({
+        signal
+      });
+      if (signal?.aborted) return;
+      setDeviceIssues(Array.isArray(payload?.items) ? payload.items : []);
+    } catch (err) {
+      if (err?.name === "AbortError") return;
+      console.error("Error loading supervision device issues:", err);
+      setDeviceIssues([]);
+      setDeviceIssuesError(err?.message || "Error loading device issues");
+    } finally {
+      if (!signal?.aborted) setDeviceIssuesLoading(false);
+    }
+  }, [useServerDeviceIssues]);
   useEffect(() => {
     const controller = createTrackedAbortController();
     loadDashboard(controller.signal);
     loadRmm(controller.signal);
+    loadDeviceIssues(controller.signal);
     const interval = setInterval(() => {
       if (document.visibilityState !== "visible") return;
       if (controller.signal.aborted) return;
       loadDashboard(controller.signal);
       loadRmm(controller.signal);
+      loadDeviceIssues(controller.signal);
     }, 60000);
     return () => {
       controller.abort();
       clearInterval(interval);
     };
-  }, [loadDashboard, loadRmm]);
+  }, [loadDashboard, loadRmm, loadDeviceIssues]);
   const refreshAlertStates = useCallback(async signal => {
     try {
       const items = unifiedQueueRef.current || [];

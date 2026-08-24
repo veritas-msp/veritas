@@ -1,66 +1,88 @@
-import { useState, useEffect, useMemo } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
-import { motion } from "framer-motion";
-import { FaTimes, FaSync, FaCheck, FaSearch, FaLightbulb, FaServer, FaShieldAlt, FaNetworkWired, FaWifi, FaHdd } from "react-icons/fa";
-import { toast } from "react-toastify";
+import { Icon } from "@iconify/react";
+import { FaTimes } from "react-icons/fa";
 import { getCheckMKHostsWithDetails, getCheckMKServices, updateEquipmentCheckMKMapping } from "../../api/equipment";
-import adminStyles from "../AdminPage/AdminPanel.module.css";
-import ModalDiscardConfirm from "../Misc/ModalDiscardConfirm";
+import { showError, showSuccess } from "../../utils/toast";
+import { useAppLocale } from "../../hooks/useAppGeneralSettings";
 import { useModalCloseGuard } from "../../hooks/useModalCloseGuard";
+import ModalDiscardConfirm from "../Misc/ModalDiscardConfirm";
+import formStyles from "../EnterprisesPage/EnterpriseFormModal.module.css";
+import checkmkStyles from "../AdminPage/CheckmkIntegrationModal.module.css";
+import { getEquipmentMappingModalCopy, interpolate } from "./equipmentMappingModalI18n";
 import styles from "./EquipmentMappingModal.module.css";
-const modalRoot = document.getElementById("modal-root");
-const ACCENT = '#15d1a0';
-const EQUIPMENT_TYPE_TO_FAMILY = {
-  'Servers': 'servers',
-  'Storage': 'stockage',
-  'NAS': 'stockage',
-  'Firewalls': 'firewall',
-  'Switch': 'switch',
-  'BorneWifi': 'wifi',
-  'Alimentation': 'alimentation',
-  'Routeur': 'routeur',
-  'TOIP': 'toip',
-  'Backup': 'save',
-  'Internet': 'internet'
+
+const CATEGORY_ORDER = ["Serveurs", "Firewalls", "Routeur", "Switch", "BorneWifi", "Alimentation", "TOIP", "Stockage", "Others"];
+const CATEGORY_ALIASES = {
+  Servers: "Serveurs",
+  Storage: "Stockage",
+  Autres: "Others",
+  Other: "Others",
+  NAS: "Stockage"
 };
-const CATEGORY_ORDER = ['Servers', 'Firewalls', 'Routeur', 'Switch', 'BorneWifi', 'Alimentation', 'TOIP', 'Storage', 'Autres'];
 const CATEGORY_ICONS = {
-  Servers: FaServer,
-  Firewalls: FaShieldAlt,
-  Switch: FaNetworkWired,
-  BorneWifi: FaWifi,
-  Routeur: FaNetworkWired,
-  Alimentation: FaNetworkWired,
-  TOIP: FaNetworkWired,
-  Storage: FaHdd,
-  Autres: FaNetworkWired
+  Serveurs: "mdi:server",
+  Firewalls: "mdi:shield-outline",
+  Routeur: "mdi:router-network",
+  Switch: "mdi:lan",
+  BorneWifi: "mdi:wifi",
+  Alimentation: "mdi:battery-charging-outline",
+  TOIP: "mdi:phone-in-talk",
+  Stockage: "mdi:nas",
+  Others: "mdi:server-network"
 };
+const SECTION_ICONS = {
+  host: "mdi:server-network",
+  service: "mdi:playlist-check",
+  help: "mdi:information-outline"
+};
+
+function normalizeCategory(category) {
+  const mapped = CATEGORY_ALIASES[category] || category;
+  return CATEGORY_ORDER.includes(mapped) ? mapped : "Others";
+}
+
+function hostId(host) {
+  if (!host) return "";
+  return typeof host === "string" ? host : host.id || "";
+}
+
 function scoreSuggestion(host, equipmentName, clientName, clientId) {
-  const h = (host.id || host).toLowerCase();
-  const eq = (equipmentName || '').toLowerCase();
-  const cl = (clientName || '').toLowerCase().replace(/\s+/g, '-');
-  const cid = String(clientId || '');
+  const h = hostId(host).toLowerCase();
+  const alias = String(host?.alias || host?.title || "").toLowerCase();
+  const haystack = `${h} ${alias}`;
+  const eq = (equipmentName || "").toLowerCase();
+  const cl = (clientName || "").toLowerCase().replace(/\s+/g, "-");
+  const cid = String(clientId || "");
   let score = 0;
   if (cid) {
-    if (h.includes(cid)) score += 40;
+    if (haystack.includes(cid)) score += 40;
     if (h.startsWith(`${cid}-`) || h.startsWith(`client-${cid}`) || h.endsWith(`-${cid}`)) score += 35;
   }
   if (cl) {
     const clientWords = cl.split(/[-_\s]/).filter(w => w.length > 2);
     clientWords.forEach(w => {
-      if (h.includes(w)) score += 15;
+      if (haystack.includes(w)) score += 15;
     });
-    if (h.includes(cl.replace(/-/g, ''))) score += 25;
+    if (haystack.includes(cl.replace(/-/g, ""))) score += 25;
   }
   if (eq) {
     const eqWords = eq.split(/\s+/).filter(w => w.length > 2);
     eqWords.forEach(w => {
-      if (h.includes(w)) score += 12;
+      if (haystack.includes(w)) score += 12;
     });
-    if (h.includes(eq.replace(/\s+/g, '-'))) score += 30;
+    if (haystack.includes(eq.replace(/\s+/g, "-"))) score += 30;
   }
   return score;
 }
+
+function formatHostMeta(host) {
+  const parts = [];
+  if (host?.alias && host.alias !== host.id) parts.push(host.alias);
+  if (host?.ip) parts.push(host.ip);
+  return parts.join(" · ");
+}
+
 export default function EquipmentMappingModal({
   isOpen,
   onClose,
@@ -68,6 +90,9 @@ export default function EquipmentMappingModal({
   onMappingSaved,
   requireService = false
 }) {
+  const locale = useAppLocale();
+  const copy = useMemo(() => getEquipmentMappingModalCopy(locale), [locale]);
+  const [activeSection, setActiveSection] = useState("host");
   const [hosts, setHosts] = useState([]);
   const [loading, setLoading] = useState(false);
   const [selectedHost, setSelectedHost] = useState("");
@@ -78,18 +103,22 @@ export default function EquipmentMappingModal({
   const [saving, setSaving] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [categoryFilter, setCategoryFilter] = useState(null);
-  const equipmentName = equipment?.name || equipment?.nom || '';
-  const clientName = equipment?.clientName || '';
+
+  const equipmentName = equipment?.name || equipment?.nom || "";
+  const clientName = equipment?.clientName || "";
   const clientId = equipment?.clientId;
-  const equipmentType = equipment?.type || '';
+  const equipmentType = equipment?.type || "";
   const currentMapping = equipment?.checkmkMapping;
   const initialHost = currentMapping?.checkmk_host_name || "";
   const initialService = currentMapping?.checkmk_service_name || "";
+  const typeLabel = copy.typeLabels?.[equipmentType] || equipmentType;
+
   const hasUnsavedChanges = useMemo(() => {
     if (selectedHost !== initialHost) return true;
     if (requireService && selectedService !== initialService) return true;
     return false;
   }, [selectedHost, initialHost, selectedService, initialService, requireService]);
+
   const {
     requestClose,
     discardConfirmOpen,
@@ -101,6 +130,20 @@ export default function EquipmentMappingModal({
     hasUnsavedChanges,
     blocked: saving
   });
+
+  const loadHosts = useCallback(async () => {
+    setLoading(true);
+    try {
+      const data = await getCheckMKHostsWithDetails();
+      setHosts(Array.isArray(data) ? data : []);
+    } catch {
+      showError(copy.loadHostsError);
+      setHosts([]);
+    } finally {
+      setLoading(false);
+    }
+  }, [copy.loadHostsError]);
+
   useEffect(() => {
     if (!isOpen) return;
     setSelectedHost(currentMapping?.checkmk_host_name || "");
@@ -109,473 +152,448 @@ export default function EquipmentMappingModal({
     setServices([]);
     setSearchTerm("");
     setCategoryFilter(null);
-    loadHosts();
-  }, [isOpen, equipment?.clientId, equipment?.name]);
+    setActiveSection("host");
+  }, [isOpen, equipment?.clientId, equipment?.name, equipment?.id]);
+
   useEffect(() => {
-    if (!isOpen || !requireService || !selectedHost) return;
-    loadServices(selectedHost, currentMapping?.checkmk_service_name || "");
-  }, [isOpen, requireService, selectedHost]);
-  const loadHosts = async () => {
-    setLoading(true);
-    try {
-      const data = await getCheckMKHostsWithDetails();
-      setHosts(data);
-    } catch (err) {
-      toast.error('Unable to load CheckMK hosts');
-      setHosts([]);
-    } finally {
-      setLoading(false);
+    if (!isOpen) return;
+    loadHosts();
+  }, [isOpen, loadHosts]);
+
+  useEffect(() => {
+    if (!isOpen || !requireService || !selectedHost) {
+      if (!selectedHost) setServices([]);
+      return;
     }
-  };
-  const loadServices = async (hostName, serviceToSelect = "") => {
-    if (!hostName || !requireService) return;
-    setLoadingServices(true);
-    try {
-      const data = await getCheckMKServices(hostName);
-      const rawServices = data?.services || [];
-      const serviceNames = rawServices.map(service => {
-        if (typeof service === "string") return service;
-        return service.id || service.title || service.name || "";
-      }).filter(Boolean);
-      setServices(serviceNames);
-      if (serviceToSelect && serviceToSelect.trim()) {
-        const found = serviceNames.find(s => s.toLowerCase() === serviceToSelect.trim().toLowerCase());
-        setSelectedService(found || serviceToSelect.trim());
-      } else {
+    let cancelled = false;
+    const serviceToSelect = selectedHost === initialHost ? initialService : "";
+    const load = async () => {
+      setLoadingServices(true);
+      try {
+        const data = await getCheckMKServices(selectedHost);
+        if (cancelled) return;
+        const rawServices = data?.services || [];
+        const serviceNames = rawServices.map(service => {
+          if (typeof service === "string") return service;
+          return service.id || service.title || service.name || "";
+        }).filter(Boolean);
+        setServices(serviceNames);
+        if (serviceToSelect.trim()) {
+          const found = serviceNames.find(s => s.toLowerCase() === serviceToSelect.trim().toLowerCase());
+          setSelectedService(found || serviceToSelect.trim());
+        } else {
+          setSelectedService("");
+        }
+      } catch {
+        if (cancelled) return;
+        showError(copy.loadServicesError);
+        setServices([]);
         setSelectedService("");
+      } finally {
+        if (!cancelled) setLoadingServices(false);
       }
-    } catch (err) {
-      console.error("Error chargement services CheckMK:", err);
-      toast.error("Unable to load CheckMK services");
-      setServices([]);
-      setSelectedService("");
-    } finally {
-      setLoadingServices(false);
-    }
-  };
+    };
+    load();
+    return () => {
+      cancelled = true;
+    };
+  }, [isOpen, requireService, selectedHost, initialHost, initialService, copy.loadServicesError]);
+
   const suggestions = useMemo(() => {
     if (!equipmentName && !clientName && !clientId) return [];
     return [...hosts].map(h => ({
       host: h,
       score: scoreSuggestion(h, equipmentName, clientName, clientId)
-    })).filter(s => s.score > 0).sort((a, b) => b.score - a.score).slice(0, 8).map(s => s.host);
+    })).filter(s => s.score > 0).sort((a, b) => b.score - a.score).slice(0, 6).map(s => s.host);
   }, [hosts, equipmentName, clientName, clientId]);
+
+  const categoryCounts = useMemo(() => {
+    const counts = {};
+    CATEGORY_ORDER.forEach(cat => {
+      counts[cat] = 0;
+    });
+    hosts.forEach(h => {
+      const cat = normalizeCategory(h.category);
+      counts[cat] = (counts[cat] || 0) + 1;
+    });
+    return counts;
+  }, [hosts]);
+
   const hostsByCategory = useMemo(() => {
+    const query = searchTerm.trim().toLowerCase();
     const filtered = hosts.filter(h => {
-      const matchSearch = !searchTerm || (h.id + ' ' + (h.alias || '')).toLowerCase().includes(searchTerm.toLowerCase());
-      const matchCat = !categoryFilter || h.category === categoryFilter;
+      const haystack = `${h.id || ""} ${h.alias || ""} ${h.title || ""} ${h.ip || ""}`.toLowerCase();
+      const matchSearch = !query || haystack.includes(query);
+      const matchCat = !categoryFilter || normalizeCategory(h.category) === categoryFilter;
       return matchSearch && matchCat;
     });
     const byCat = {};
-    CATEGORY_ORDER.forEach(cat => byCat[cat] = filtered.filter(h => h.category === cat));
+    CATEGORY_ORDER.forEach(cat => {
+      byCat[cat] = [];
+    });
+    filtered.forEach(h => {
+      byCat[normalizeCategory(h.category)].push(h);
+    });
     return byCat;
   }, [hosts, searchTerm, categoryFilter]);
+
+  const visibleCategories = useMemo(
+    () => CATEGORY_ORDER.filter(cat => (hostsByCategory[cat] || []).length > 0),
+    [hostsByCategory]
+  );
+
+  const filteredServices = useMemo(() => {
+    const q = serviceSearchTerm.trim().toLowerCase();
+    if (!q) return services;
+    return services.filter(s => s.toLowerCase().includes(q));
+  }, [services, serviceSearchTerm]);
+
+  const selectHost = host => {
+    const id = hostId(host);
+    if (!id) return;
+    setSelectedHost(id);
+    if (requireService && id !== selectedHost) {
+      setSelectedService("");
+      setServiceSearchTerm("");
+      setActiveSection("service");
+    }
+  };
+
   const handleSave = async () => {
     if (!selectedHost.trim()) {
-      toast.error('Please select un host CheckMK');
+      showError(copy.saveErrorMissingHost);
+      setActiveSection("host");
       return;
     }
     if (!clientId || !equipmentName) {
-      toast.error('Missing equipment data (client, name)');
+      showError(copy.saveErrorMissingEquipment);
       return;
     }
     if (requireService && !selectedService.trim()) {
-      toast.error('Please select a CheckMK service');
-      return;
-    }
-    const family = EQUIPMENT_TYPE_TO_FAMILY[equipmentType] || EQUIPMENT_TYPE_TO_FAMILY[equipmentType === 'NAS' ? 'Storage' : equipmentType];
-    if (!family) {
-      toast.error(`Unsupported type: ${equipmentType}`);
+      showError(copy.saveErrorMissingService);
+      setActiveSection("service");
       return;
     }
     setSaving(true);
     try {
       const mapping = await updateEquipmentCheckMKMapping(clientId, equipmentType, equipmentName, {
         checkmk_host_name: selectedHost.trim(),
-        checkmk_site: null,
+        checkmk_site: currentMapping?.checkmk_site || null,
         checkmk_service_name: requireService ? selectedService.trim() : null
       });
-      toast.success('Mapping CheckMK saved');
+      showSuccess(copy.saveSuccess);
       onMappingSaved?.(mapping);
       onClose();
     } catch (err) {
-      toast.error(err.message || "Error saving");
+      showError(err.message || copy.saveErrorMissingEquipment);
     } finally {
       setSaving(false);
     }
   };
+
   const handleClearMapping = async () => {
     if (!clientId || !equipmentName) return;
     setSaving(true);
     try {
-      const family = EQUIPMENT_TYPE_TO_FAMILY[equipmentType] || EQUIPMENT_TYPE_TO_FAMILY[equipmentType === 'NAS' ? 'Storage' : equipmentType];
-      if (!family) return;
       await updateEquipmentCheckMKMapping(clientId, equipmentType, equipmentName, {
         checkmk_host_name: null,
         checkmk_site: null,
         checkmk_service_name: null
       });
-      toast.success('Mapping deleted');
+      showSuccess(copy.deleteSuccess);
       onMappingSaved?.(null);
       onClose();
     } catch (err) {
-      toast.error(err.message || 'Error deleting');
+      showError(err.message || copy.saveErrorMissingEquipment);
     } finally {
       setSaving(false);
     }
   };
-  const filteredServices = useMemo(() => {
-    const q = serviceSearchTerm.trim().toLowerCase();
-    if (!q) return services;
-    return services.filter(s => s.toLowerCase().includes(q));
-  }, [services, serviceSearchTerm]);
-  if (!isOpen || !modalRoot) return null;
-  return createPortal(<>
-    <div className={styles.overlay} onClick={requestClose}>
-      <motion.div initial={{
-        opacity: 0,
-        scale: 0.98
-      }} animate={{
-        opacity: 1,
-        scale: 1
-      }} transition={{
-        duration: 0.2
-      }} className={styles.panel} onClick={e => e.stopPropagation()}>
-        {}
-        <div className={`${adminStyles.modalHeader} ${styles.panelHeader}`}>
-          <div>
-            <h3 style={{
-              margin: 0,
-              fontSize: '1.25rem',
-              fontWeight: 600,
-              color: '#1a1a1a'
-            }}>
-              Mapping CheckMK
-            </h3>
-            <p style={{
-              margin: '0.25rem 0 0',
-              fontSize: '0.875rem',
-              color: '#6b7280'
-            }}>
-              <strong>{equipmentName}</strong> ({equipmentType}) · Client: {clientName}
-              {clientId && <span style={{
-                marginLeft: 8,
-                opacity: 0.8
-              }}>#{clientId}</span>}
-            </p>
-          </div>
-          <button onClick={requestClose} className={adminStyles.closeButton} title="Close">
-            <FaTimes />
-          </button>
+
+  const sections = useMemo(() => {
+    const items = [{
+      id: "host",
+      label: copy.sections.host.label,
+      description: copy.sections.host.description,
+      icon: SECTION_ICONS.host
+    }];
+    if (requireService) {
+      items.push({
+        id: "service",
+        label: copy.sections.service.label,
+        description: copy.sections.service.description,
+        icon: SECTION_ICONS.service
+      });
+    }
+    items.push({
+      id: "help",
+      label: copy.sections.help.label,
+      description: copy.sections.help.description,
+      icon: SECTION_ICONS.help
+    });
+    return items;
+  }, [copy, requireService]);
+
+  const subtitle = useMemo(() => {
+    if (equipmentName && typeLabel && clientName) {
+      return interpolate(copy.subtitleWithClient, {
+        name: equipmentName,
+        type: typeLabel,
+        client: clientName
+      });
+    }
+    if (equipmentName && typeLabel) {
+      return interpolate(copy.subtitleWithMeta, {
+        name: equipmentName,
+        type: typeLabel
+      });
+    }
+    return interpolate(copy.subtitle, {
+      name: equipmentName || "—"
+    });
+  }, [copy, equipmentName, typeLabel, clientName]);
+
+  const mappingStatus = useMemo(() => {
+    if (selectedHost && requireService && selectedService) {
+      return interpolate(copy.mappedToService, {
+        host: selectedHost,
+        service: selectedService
+      });
+    }
+    if (selectedHost) {
+      return interpolate(copy.mappedTo, {
+        host: selectedHost
+      });
+    }
+    return copy.notMapped;
+  }, [copy, selectedHost, selectedService, requireService]);
+
+  const footerHint = !selectedHost.trim()
+    ? copy.footerPickHost
+    : requireService && !selectedService.trim()
+      ? copy.footerPickService
+      : hasUnsavedChanges
+        ? copy.footerReady
+        : copy.footerMapped;
+
+  const canSave = Boolean(selectedHost.trim() && (!requireService || selectedService.trim()) && !saving);
+  const helpSteps = requireService ? [copy.helpSteps[0], copy.helpServiceStep, ...copy.helpSteps.slice(1)] : copy.helpSteps;
+
+  const renderHostSection = () => <>
+      <div className={`${styles.statusCard} ${selectedHost ? styles.statusCardMapped : ""}`}>
+        <div className={styles.statusIcon} aria-hidden>
+          <Icon icon={selectedHost ? "simple-icons:checkmk" : "mdi:link-variant-off"} />
         </div>
+        <div className={styles.statusBody}>
+          <p className={styles.statusLabel}>{selectedHost ? copy.selectedHost : copy.notMapped}</p>
+          <p className={styles.statusValue}>{mappingStatus}</p>
+          {requireService && selectedService ? <p className={styles.statusMeta}>{selectedService}</p> : null}
+        </div>
+      </div>
 
-        {}
-        <div className={styles.body}>
+      {suggestions.length > 0 ? <div className={styles.suggestions}>
+          <p className={styles.suggestionsLabel}>
+            <Icon icon="mdi:lightbulb-on-outline" aria-hidden />
+            {copy.suggestions}
+          </p>
+          <div className={styles.suggestionList}>
+            {suggestions.map(host => {
+            const id = hostId(host);
+            const active = selectedHost === id;
+            return <button key={id} type="button" className={`${styles.suggestionChip} ${active ? styles.suggestionChipActive : ""}`} onClick={() => selectHost(host)}>
+                  {id}
+                  {host.ip ? <span className={styles.suggestionMeta}>{host.ip}</span> : null}
+                </button>;
+          })}
+          </div>
+        </div> : null}
 
-          {}
-          {suggestions.length > 0 && <div style={{
-            padding: '16px 16px 12px',
-            background: 'linear-gradient(135deg, rgba(21, 209, 160, 0.08) 0%, rgba(21, 209, 160, 0.03) 100%)',
-            borderRadius: 10,
-            border: '1px solid rgba(21, 209, 160, 0.25)'
-          }}>
-              <div style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: 8,
-              marginBottom: 10,
-              fontSize: '0.8125rem',
-              fontWeight: 600,
-              color: '#0d9488'
-            }}>
-                <FaLightbulb size={14} />
-                Suggestions (client name, client no., equipment)
+      <div className={formStyles.sectionHead}>
+        <h3 className={formStyles.sectionTitle}>{copy.hostsHeading}</h3>
+      </div>
+
+      <div className={styles.toolbar}>
+        <div className={styles.searchWrap}>
+          <Icon icon="mdi:magnify" className={styles.searchIcon} aria-hidden />
+          <input type="search" className={`${formStyles.input} ${styles.searchInput}`} value={searchTerm} onChange={e => setSearchTerm(e.target.value)} placeholder={copy.searchHost} disabled={saving} autoComplete="off" />
+        </div>
+        <button type="button" className={`${formStyles.ghostBtn} ${styles.refreshBtn}`} onClick={loadHosts} disabled={saving || loading} aria-label={copy.refreshAria} title={copy.refresh}>
+          <Icon icon={loading ? "mdi:loading" : "mdi:refresh"} className={loading ? formStyles.spinning : ""} aria-hidden />
+        </button>
+      </div>
+
+      <div className={styles.chips} role="tablist" aria-label={copy.allCategories}>
+        <button type="button" className={`${styles.chip} ${categoryFilter == null ? styles.chipActive : ""}`} onClick={() => setCategoryFilter(null)}>
+          {copy.allCategories}
+          <span className={styles.chipCount}>{hosts.length}</span>
+        </button>
+        {CATEGORY_ORDER.filter(cat => categoryCounts[cat] > 0).map(cat => <button key={cat} type="button" className={`${styles.chip} ${categoryFilter === cat ? styles.chipActive : ""}`} onClick={() => setCategoryFilter(categoryFilter === cat ? null : cat)}>
+            <Icon icon={CATEGORY_ICONS[cat]} aria-hidden />
+            {copy.categories[cat] || cat}
+            <span className={styles.chipCount}>{categoryCounts[cat]}</span>
+          </button>)}
+      </div>
+
+      <div className={styles.list}>
+        {loading ? <div className={styles.empty}>
+            <Icon icon="mdi:loading" className={`${styles.emptyIcon} ${formStyles.spinning}`} aria-hidden />
+            <p className={styles.emptyText}>{copy.loadingHosts}</p>
+          </div> : visibleCategories.length === 0 ? <div className={styles.empty}>
+            <Icon icon="mdi:server-off" className={styles.emptyIcon} aria-hidden />
+            <p className={styles.emptyTitle}>{searchTerm.trim() ? interpolate(copy.noHostsSearch, {
+          query: searchTerm.trim()
+        }) : copy.noHosts}</p>
+          </div> : visibleCategories.map(cat => <div key={cat}>
+              <div className={styles.groupHeader}>
+                <Icon icon={CATEGORY_ICONS[cat]} aria-hidden />
+                {copy.categories[cat] || cat}
+                <span>· {hostsByCategory[cat].length}</span>
               </div>
-              <div style={{
-              display: 'flex',
-              flexWrap: 'wrap',
-              gap: 8
-            }}>
-                {suggestions.map((h, idx) => {
-                const hostId = typeof h === 'string' ? h : h.id;
-                const isSelected = selectedHost === hostId;
-                return <button key={idx} type="button" onClick={() => setSelectedHost(hostId)} style={{
-                  padding: '6px 12px',
-                  fontSize: '0.8rem',
-                  border: isSelected ? `2px solid ${ACCENT}` : '1px solid #d1d5db',
-                  borderRadius: 8,
-                  background: isSelected ? ACCENT : '#fff',
-                  color: isSelected ? '#fff' : '#374151',
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 6
-                }}>
-                      {hostId}
-                      {h.ip && <span style={{
-                    fontSize: '0.7rem',
-                    opacity: 0.85
-                  }}>({h.ip})</span>}
-                    </button>;
-              })}
-              </div>
-            </div>}
-
-          {}
-          <div style={{
-            display: 'flex',
-            gap: 12,
-            flexWrap: 'wrap'
-          }}>
-            <div style={{
-              flex: 1,
-              minWidth: 200,
-              position: 'relative'
-            }}>
-              <FaSearch style={{
-                position: 'absolute',
-                left: 12,
-                top: '50%',
-                transform: 'translateY(-50%)',
-                color: '#9ca3af',
-                fontSize: 12
-              }} />
-              <input type="text" placeholder="Search un host..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} style={{
-                width: '100%',
-                padding: '10px 12px 10px 36px',
-                border: '1px solid #e5e7eb',
-                borderRadius: 8,
-                fontSize: '0.875rem',
-                backgroundColor: '#ffffff',
-                color: '#111827'
-              }} />
-            </div>
-            <div style={{
-              display: 'flex',
-              gap: 6,
-              flexWrap: 'wrap'
-            }}>
-              {CATEGORY_ORDER.map(cat => {
-                const IconComp = CATEGORY_ICONS[cat];
-                const count = hostsByCategory[cat]?.length || 0;
-                const active = categoryFilter === cat;
-                return <button key={cat} type="button" onClick={() => setCategoryFilter(active ? null : cat)} style={{
-                  padding: '8px 14px',
-                  fontSize: '0.8rem',
-                  border: active ? `2px solid ${ACCENT}` : '1px solid #e5e7eb',
-                  borderRadius: 8,
-                  background: active ? 'rgba(21, 209, 160, 0.12)' : '#fff',
-                  color: active ? '#0d9488' : '#4b5563',
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 6
-                }}>
-                    {IconComp && <IconComp size={14} />}
-                    {cat}
-                    {count > 0 && <span style={{
-                    fontSize: '0.7rem',
-                    opacity: 0.7
-                  }}>({count})</span>}
+              {hostsByCategory[cat].map(host => {
+          const id = hostId(host);
+          const selected = selectedHost === id;
+          const meta = formatHostMeta(host);
+          return <button key={id} type="button" className={`${styles.row} ${selected ? styles.rowSelected : ""}`} onClick={() => selectHost(host)}>
+                    <span className={styles.rowMain}>
+                      <span className={styles.rowTitle}>{id}</span>
+                      {meta ? <span className={styles.rowMeta}>{meta}</span> : null}
+                    </span>
+                    {selected ? <Icon icon="mdi:check-circle" className={styles.rowCheck} aria-hidden /> : null}
                   </button>;
-              })}
-            </div>
-          </div>
+        })}
+            </div>)}
+      </div>
+    </>;
 
-          <div className={`${styles.contentGrid} ${requireService && selectedHost ? styles.contentGridDouble : styles.contentGridSingle}`}>
-            {}
-            <div className={styles.hostsList}>
-              {loading ? <div style={{
-                padding: '3rem',
-                textAlign: 'center',
-                color: '#6b7280'
-              }}>
-                  <FaSync style={{
-                  animation: 'spin 1s linear infinite',
-                  marginBottom: 8
-                }} />
-                  <p>Loading hosts...</p>
-                </div> : CATEGORY_ORDER.map(cat => {
-                const list = hostsByCategory[cat] || [];
-                if (list.length === 0) return null;
-                const IconComp = CATEGORY_ICONS[cat];
-                return <div key={cat} style={{
-                  borderBottom: '1px solid #e5e7eb'
-                }}>
-                      <div style={{
-                    padding: '8px 14px',
-                    background: '#f3f4f6',
-                    fontSize: '0.75rem',
-                    fontWeight: 600,
-                    color: '#6b7280',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 8
-                  }}>
-                        {IconComp && <IconComp size={14} />}
-                        {cat} · {list.length} host{list.length > 1 ? 's' : ''}
-                      </div>
-                      {list.map((h, idx) => {
-                    const isSelected = selectedHost === h.id;
-                    return <div key={`${h.id}-${idx}`} onClick={() => {
-                      setSelectedHost(h.id);
-                      if (!requireService) return;
-                      if (selectedHost !== h.id) {
-                        setSelectedService("");
-                        setServiceSearchTerm("");
-                      }
-                    }} style={{
-                      padding: '12px 14px',
-                      cursor: 'pointer',
-                      borderBottom: idx < list.length - 1 ? '1px solid #f3f4f6' : 'none',
-                      background: isSelected ? ACCENT : 'transparent',
-                      color: isSelected ? '#fff' : '#1f2937',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'space-between',
-                      gap: 12
-                    }} onMouseEnter={e => {
-                      if (!isSelected) e.currentTarget.style.background = '#f9fafb';
-                    }} onMouseLeave={e => {
-                      if (!isSelected) e.currentTarget.style.background = 'transparent';
-                    }}>
-                            <div style={{
-                        flex: 1,
-                        minWidth: 0
-                      }}>
-                              <div style={{
-                          fontWeight: isSelected ? 600 : 500,
-                          fontSize: '0.875rem'
-                        }}>{h.id}</div>
-                              {(h.alias || h.ip) && <div style={{
-                          fontSize: '0.75rem',
-                          opacity: isSelected ? 0.9 : 0.65,
-                          marginTop: 2
-                        }}>
-                                  {h.alias && <span>{h.alias}</span>}
-                                  {h.alias && h.ip && ' · '}
-                                  {h.ip && <span style={{
-                            fontFamily: 'monospace'
-                          }}>{h.ip}</span>}
-                                </div>}
-                            </div>
-                            {isSelected && <FaCheck size={14} />}
-                          </div>;
-                  })}
-                    </div>;
-              })}
-              {!loading && Object.values(hostsByCategory).every(arr => !arr?.length) && <div style={{
-                padding: '3rem',
-                textAlign: 'center',
-                color: '#6b7280'
-              }}>
-                  {searchTerm ? 'No host found' : 'No host available'}
-                </div>}
-            </div>
-
-            {requireService && selectedHost && <div className={styles.servicesPanel}>
-                <div style={{
-                padding: '10px 12px',
-                borderBottom: '1px solid #e5e7eb',
-                background: '#f3f4f6',
-                fontSize: '0.8rem',
-                fontWeight: 600
-              }}>
-                  Services CheckMK · {selectedHost}
-                </div>
-                <div style={{
-                padding: 10
-              }}>
-                  <div style={{
-                  position: 'relative',
-                  marginBottom: 8
-                }}>
-                    <FaSearch style={{
-                    position: 'absolute',
-                    left: 8,
-                    top: '50%',
-                    transform: 'translateY(-50%)',
-                    color: '#9ca3af',
-                    fontSize: 12
-                  }} />
-                    <input type="text" placeholder="Search for a service..." value={serviceSearchTerm} onChange={e => setServiceSearchTerm(e.target.value)} style={{
-                    width: '100%',
-                    padding: '8px 10px 8px 28px',
-                    border: '1px solid #e5e7eb',
-                    borderRadius: 8,
-                    fontSize: '0.82rem',
-                    backgroundColor: '#ffffff',
-                    color: '#111827'
-                  }} />
-                  </div>
-                  <div style={{
-                  maxHeight: 300,
-                  overflowY: 'auto',
-                  border: '1px solid #e5e7eb',
-                  borderRadius: 8,
-                  background: '#fff'
-                }}>
-                    {loadingServices ? <div style={{
-                    padding: '1rem',
-                    textAlign: 'center',
-                    color: '#6b7280'
-                  }}>
-                        <FaSync style={{
-                      animation: 'spin 1s linear infinite'
-                    }} /> Loading...
-                      </div> : filteredServices.length === 0 ? <div style={{
-                    padding: '1rem',
-                    textAlign: 'center',
-                    color: '#6b7280'
-                  }}>
-                        {serviceSearchTerm ? "No service found" : "No service available"}
-                      </div> : filteredServices.map(service => {
-                    const isSelected = selectedService === service;
-                    return <div key={service} onClick={() => setSelectedService(service)} style={{
-                      padding: '8px 10px',
-                      borderBottom: '1px solid #f3f4f6',
-                      cursor: 'pointer',
-                      background: isSelected ? ACCENT : 'transparent',
-                      color: isSelected ? '#fff' : '#1f2937',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'space-between',
-                      fontSize: '0.82rem'
-                    }}>
-                            <span>{service}</span>
-                            {isSelected && <FaCheck size={12} />}
-                          </div>;
-                  })}
-                  </div>
-                </div>
-              </div>}
-          </div>
-
-        </div>
-
-        {}
-        <div className={`${adminStyles.modalActions} ${styles.footer}`}>
-          {currentMapping?.checkmk_host_name && <button onClick={handleClearMapping} disabled={saving} style={{
-            padding: '10px 16px',
-            border: '1px solid #ef4444',
-            background: 'transparent',
-            color: '#ef4444',
-            borderRadius: 8,
-            cursor: saving ? 'not-allowed' : 'pointer',
-            fontSize: '0.8125rem'
-          }}>
-              Delete mapping
-            </button>}
-          <button onClick={handleSave} disabled={saving || !selectedHost.trim() || requireService && !selectedService.trim()} className={adminStyles.primaryButton} style={{
-            padding: '10px 24px'
-          }}>
-            {saving ? <FaSync style={{
-              animation: 'spin 1s linear infinite'
-            }} /> : <FaCheck />}
+  const renderServiceSection = () => {
+    if (!selectedHost) {
+      return <div className={styles.empty}>
+          <Icon icon="mdi:server-network-outline" className={styles.emptyIcon} aria-hidden />
+          <p className={styles.emptyTitle}>{copy.pickHostFirstTitle}</p>
+          <p className={styles.emptyText}>{copy.pickHostFirst}</p>
+          <button type="button" className={formStyles.primaryBtn} onClick={() => setActiveSection("host")}>
+            {copy.goToHost}
           </button>
+        </div>;
+    }
+    return <>
+        <div className={`${styles.statusCard} ${selectedService ? styles.statusCardMapped : ""}`}>
+          <div className={styles.statusIcon} aria-hidden>
+            <Icon icon={selectedService ? "mdi:playlist-check" : "mdi:playlist-remove"} />
+          </div>
+          <div className={styles.statusBody}>
+            <p className={styles.statusLabel}>{copy.selectedService}</p>
+            <p className={styles.statusValue}>{selectedService || copy.footerPickService}</p>
+            <p className={styles.statusMeta}>{selectedHost}</p>
+          </div>
         </div>
-      </motion.div>
-    </div>
-    <ModalDiscardConfirm open={discardConfirmOpen} onConfirm={confirmDiscard} onClose={cancelDiscard} />
-    </>, modalRoot);
+
+        <div className={formStyles.sectionHead}>
+          <h3 className={formStyles.sectionTitle}>{interpolate(copy.servicesHeading, {
+            host: selectedHost
+          })}</h3>
+        </div>
+
+        <div className={styles.toolbar}>
+          <div className={styles.searchWrap}>
+            <Icon icon="mdi:magnify" className={styles.searchIcon} aria-hidden />
+            <input type="search" className={`${formStyles.input} ${styles.searchInput}`} value={serviceSearchTerm} onChange={e => setServiceSearchTerm(e.target.value)} placeholder={copy.searchService} disabled={saving || loadingServices} autoComplete="off" />
+          </div>
+        </div>
+
+        <div className={styles.list}>
+          {loadingServices ? <div className={styles.empty}>
+              <Icon icon="mdi:loading" className={`${styles.emptyIcon} ${formStyles.spinning}`} aria-hidden />
+              <p className={styles.emptyText}>{copy.loadingServices}</p>
+            </div> : filteredServices.length === 0 ? <div className={styles.empty}>
+              <Icon icon="mdi:playlist-remove" className={styles.emptyIcon} aria-hidden />
+              <p className={styles.emptyTitle}>{serviceSearchTerm.trim() ? interpolate(copy.noServicesSearch, {
+            query: serviceSearchTerm.trim()
+          }) : copy.noServices}</p>
+            </div> : filteredServices.map(service => {
+          const selected = selectedService === service;
+          return <button key={service} type="button" className={`${styles.row} ${selected ? styles.rowSelected : ""}`} onClick={() => setSelectedService(service)}>
+                  <span className={styles.rowMain}>
+                    <span className={styles.rowTitle}>{service}</span>
+                  </span>
+                  {selected ? <Icon icon="mdi:check-circle" className={styles.rowCheck} aria-hidden /> : null}
+                </button>;
+        })}
+        </div>
+      </>;
+  };
+
+  const renderHelpSection = () => <>
+      <div className={formStyles.sectionHead}>
+        <h3 className={formStyles.sectionTitle}>{copy.helpTitle}</h3>
+        <p className={formStyles.sectionDesc}>{copy.helpDesc}</p>
+      </div>
+      <ol className={styles.helpList}>
+        {helpSteps.map((step, index) => <li key={step.title} className={styles.helpStep}>
+            <span className={styles.helpNum} aria-hidden>{index + 1}</span>
+            <div>
+              <p className={styles.helpStepTitle}>{step.title}</p>
+              <p className={styles.helpStepDesc}>{step.desc}</p>
+            </div>
+          </li>)}
+      </ol>
+    </>;
+
+  if (!isOpen) return null;
+
+  return createPortal(<>
+      <div className={formStyles.overlay} onClick={saving ? undefined : requestClose} role="presentation">
+        <div className={`${formStyles.shell} ${styles.shell}`} onClick={e => e.stopPropagation()} role="dialog" aria-modal="true" aria-labelledby="checkmk-mapping-modal-title">
+          <div className={checkmkStyles.accentBarCheckmk} aria-hidden />
+          <header className={formStyles.header}>
+            <div className={formStyles.headerMain}>
+              <div className={`${formStyles.headerIconWrap} ${checkmkStyles.headerIconCheckmk}`} aria-hidden>
+                <Icon icon="simple-icons:checkmk" />
+              </div>
+              <div className={formStyles.headerText}>
+                <p className={formStyles.eyebrow}>{copy.eyebrow}</p>
+                <h2 className={formStyles.title} id="checkmk-mapping-modal-title">{copy.title}</h2>
+                <p className={formStyles.subtitle}>{subtitle}</p>
+              </div>
+            </div>
+            <button type="button" className={formStyles.closeBtn} onClick={requestClose} disabled={saving} aria-label={copy.closeAria}>
+              <FaTimes />
+            </button>
+          </header>
+
+          <div className={formStyles.body}>
+            <nav className={formStyles.nav} aria-label={copy.navAria}>
+              {sections.map(section => <button key={section.id} type="button" className={`${formStyles.navItem} ${activeSection === section.id ? formStyles.navItemActive : ""}`} onClick={() => setActiveSection(section.id)} aria-current={activeSection === section.id ? "step" : undefined}>
+                  <Icon icon={section.icon} className={formStyles.navItemIcon} aria-hidden />
+                  <span className={formStyles.navItemText}>
+                    <span className={formStyles.navItemLabel}>{section.label}</span>
+                    <span className={formStyles.navItemHint}>{section.description}</span>
+                  </span>
+                </button>)}
+            </nav>
+            <div className={formStyles.content}>
+              {activeSection === "service" && requireService ? renderServiceSection() : activeSection === "help" ? renderHelpSection() : renderHostSection()}
+            </div>
+          </div>
+
+          <footer className={formStyles.footer}>
+            {currentMapping?.checkmk_host_name ? <button type="button" className={formStyles.dangerBtn} onClick={handleClearMapping} disabled={saving}>
+                <Icon icon="mdi:link-variant-off" aria-hidden />
+                {copy.deleteMapping}
+              </button> : <span className={formStyles.footerHint}>{footerHint}</span>}
+            <div className={formStyles.footerActions}>
+              {currentMapping?.checkmk_host_name ? <span className={formStyles.footerHint}>{footerHint}</span> : null}
+              <button type="button" className={formStyles.ghostBtn} onClick={requestClose} disabled={saving}>
+                {copy.cancel}
+              </button>
+              <button type="button" className={formStyles.primaryBtn} onClick={handleSave} disabled={!canSave}>
+                <Icon icon={saving ? "mdi:loading" : "mdi:content-save-outline"} className={saving ? formStyles.spinning : ""} aria-hidden />
+                {saving ? copy.saving : copy.save}
+              </button>
+            </div>
+          </footer>
+        </div>
+      </div>
+      <ModalDiscardConfirm open={discardConfirmOpen} onConfirm={confirmDiscard} onClose={cancelDiscard} />
+    </>, document.getElementById("modal-root") || document.body);
 }

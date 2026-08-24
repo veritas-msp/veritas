@@ -141,7 +141,9 @@ export function isMonitoringCriterionEnabled(familyKey, criterionKey, rules) {
   const criterion = String(criterionKey || "");
   const familyRules = rules?.[family];
   if (familyRules && familyRules[criterion] !== undefined) {
-    return Boolean(familyRules[criterion]);
+    const raw = familyRules[criterion];
+    if (raw && typeof raw === "object") return Boolean(raw.enabled);
+    return Boolean(raw);
   }
   const meta = criteriaByKey.get(criterion);
   if (!meta) return true;

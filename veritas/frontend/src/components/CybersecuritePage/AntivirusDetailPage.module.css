@@ -154,6 +154,20 @@
   white-space: nowrap;
 }
 
+.headerMetaLink {
+  border: none;
+  background: transparent;
+  padding: 0;
+  font: inherit;
+  color: var(--msp-accent, #2b5fab);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.headerMetaLink:hover {
+  text-decoration: underline;
+}
+
 
 .headerSearchBarContainer {
   flex: 0 0 auto;

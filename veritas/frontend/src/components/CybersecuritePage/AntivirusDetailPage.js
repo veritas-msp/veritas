@@ -9,8 +9,7 @@ import styles from "./AntivirusDetailPage.module.css";
 function ManualAntivirusSummary({
   item,
   client,
-  onBack,
-  backLabel
+  onOpenClient
 }) {
   const {
     formatDate
@@ -25,15 +24,14 @@ function ManualAntivirusSummary({
   return <div className={styles.detailPage}>
       <header className={styles.header}>
         <div className={styles.headerLeft}>
-          <button type="button" className={styles.backButton} onClick={onBack} aria-label={backLabel}>
-            <Icon icon="mdi:arrow-left" />
-          </button>
           <div className={styles.headerTitle}>
             {provider?.image ? <img src={provider.image} alt="" className={styles.headerLogo} /> : <Icon icon={provider?.icon || "mdi:shield-plus-outline"} className={styles.headerLogo} aria-hidden />}
             <div className={styles.headerTitleBlock}>
               <h1>{summary.providerName || provider?.label || "Autre solution"}</h1>
               <div className={styles.headerMeta}>
-                {client?.name ? <span className={styles.headerMetaItem}>{client.name}</span> : null}
+                {client?.name ? client?.id && onOpenClient ? <button type="button" className={`${styles.headerMetaItem} ${styles.headerMetaLink}`} onClick={onOpenClient}>
+                    {client.name}
+                  </button> : <span className={styles.headerMetaItem}>{client.name}</span> : null}
                 <span className={styles.headerMetaItem}>{getAntivirusSolutionModeLabel(item)}</span>
               </div>
             </div>
@@ -116,20 +114,19 @@ export default function AntivirusDetailPage({
       companyId: item?.companyId
     });
   }, [antivirusData, client.id, client.name, item?.productName, item?.companyId]);
+  const openEnterprise = () => {
+    if (!onNavigate || !client.id) return;
+    onNavigate("ContratDetail", {
+      clientId: client.id,
+      name: client.name
+    });
+  };
   const handleBack = () => {
     if (!onNavigate) return;
-    if (client.id) {
-      onNavigate("ContratDetail", {
-        clientId: client.id,
-        name: client.name
-      });
-      return;
-    }
     onNavigate("Cybersecurite");
   };
-  const backLabel = client.id ? "Company record" : "Cybersecurity";
   if (!hasOverview && isManual) {
-    return <ManualAntivirusSummary item={item} client={client} onBack={handleBack} backLabel={backLabel} />;
+    return <ManualAntivirusSummary item={item} client={client} onOpenClient={openEnterprise} />;
   }
   if (!hasOverview) {
     return <div className={styles.detailPage}>
@@ -142,5 +139,5 @@ export default function AntivirusDetailPage({
         </div>
       </div>;
   }
-  return <AntivirusOverviewPanel active asPage client={client} antivirusItem={item} onBack={handleBack} backLabel={backLabel} />;
+  return <AntivirusOverviewPanel active asPage client={client} antivirusItem={item} onNavigate={onNavigate} />;
 }

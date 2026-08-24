@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Icon } from "@iconify/react";
+import { FaChevronLeft, FaChevronRight } from "react-icons/fa";
 import { toast } from "react-toastify";
 import { useAppFormatters } from "../../hooks/useAppGeneralSettings";
 import MspEmptyState from "../Misc/MspEmptyState/MspEmptyState";
@@ -135,6 +136,8 @@ export default function AntispamMspDashboard({
   const [statusFilter, setStatusFilter] = useState("all");
   const [sortBy, setSortBy] = useState("clientName");
   const [sortDirection, setSortDirection] = useState("asc");
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const abortRef = useRef(null);
@@ -146,6 +149,11 @@ export default function AntispamMspDashboard({
     providerFilter: "all"
   }), [fleetRows, search, statusFilter]);
   const sortedRows = useMemo(() => sortAntispamFleetRows(filteredRows, sortBy, sortDirection), [filteredRows, sortBy, sortDirection]);
+  const totalPages = Math.max(1, Math.ceil(sortedRows.length / pageSize));
+  const paginatedRows = useMemo(() => {
+    const start = (currentPage - 1) * pageSize;
+    return sortedRows.slice(start, start + pageSize);
+  }, [sortedRows, currentPage, pageSize]);
   const {
     selectedIds,
     selectedItems,
@@ -153,10 +161,21 @@ export default function AntispamMspDashboard({
     allSelected,
     clearSelection,
     toggleItem,
-    toggleAll,
+    toggleMany,
     selectAll
   } = useCyberBulkSelection(sortedRows, fleetRowKey);
+  const pageIds = useMemo(() => paginatedRows.map(fleetRowKey), [paginatedRows]);
+  const allOnPageSelected = pageIds.length > 0 && pageIds.every(id => selectedIds.has(id));
+  const toggleSelectAllOnPage = () => {
+    toggleMany(pageIds, !allOnPageSelected);
+  };
   useEffect(() => () => abortRef.current?.abort(), []);
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [search, statusFilter, sortBy, sortDirection, pageSize]);
+  useEffect(() => {
+    setCurrentPage(page => Math.min(page, totalPages));
+  }, [totalPages]);
   const handleSort = column => {
     if (sortBy === column) {
       setSortDirection(prev => prev === "asc" ? "desc" : "asc");
@@ -269,7 +288,7 @@ export default function AntispamMspDashboard({
               <thead>
                 <tr>
                   <th className={styles.checkboxCell}>
-                    <input type="checkbox" className={styles.rowCheckbox} checked={allSelected} onChange={toggleAll} aria-label={copy.bulk.selectAll} />
+                    <input type="checkbox" className={styles.rowCheckbox} checked={allOnPageSelected} onChange={toggleSelectAllOnPage} aria-label={copy.bulk.selectAll} />
                   </th>
                   <SortableHeader column="clientName" label={msp.table.enterprise} sortBy={sortBy} sortDirection={sortDirection} onSort={handleSort} />
                   <SortableHeader column="solutionLabel" label={msp.table.solution} sortBy={sortBy} sortDirection={sortDirection} onSort={handleSort} />
@@ -281,7 +300,7 @@ export default function AntispamMspDashboard({
                 </tr>
               </thead>
               <tbody>
-                {sortedRows.map(row => <FleetTableRow key={fleetRowKey(row)} row={row} selected={selectedIds.has(fleetRowKey(row))} selectLabel={copy.formatBulkSelectRow(row.clientName)} onToggleSelect={toggleItem} onOpen={onOpenSolution} getStatusMeta={copy.getStatusMeta} formatDate={formatDisplayDate} formatDateTime={formatDisplayDateTime} onMiddleClick={(e, item) => {
+                {paginatedRows.map(row => <FleetTableRow key={fleetRowKey(row)} row={row} selected={selectedIds.has(fleetRowKey(row))} selectLabel={copy.formatBulkSelectRow(row.clientName)} onToggleSelect={toggleItem} onOpen={onOpenSolution} getStatusMeta={copy.getStatusMeta} formatDate={formatDisplayDate} formatDateTime={formatDisplayDateTime} onMiddleClick={(e, item) => {
               e.preventDefault();
               onOpenSolution?.(item, {
                 background: true
@@ -290,6 +309,28 @@ export default function AntispamMspDashboard({
               </tbody>
             </table>
           </div>
+          {sortedRows.length > 0 ? <div className={styles.paginationBar}>
+              <div className={styles.paginationLeft}>
+                <span className={styles.paginationLabel}>{msp.rowsPerPage}</span>
+                <select className={styles.paginationSelect} value={pageSize} onChange={e => setPageSize(Number(e.target.value))}>
+                  <option value={10}>10</option>
+                  <option value={25}>25</option>
+                  <option value={50}>50</option>
+                  <option value={100}>100</option>
+                </select>
+              </div>
+              <div className={styles.paginationRight}>
+                <button type="button" className={styles.paginationButton} onClick={() => setCurrentPage(page => Math.max(1, page - 1))} disabled={currentPage <= 1} aria-label={msp.prevPage}>
+                  <FaChevronLeft />
+                </button>
+                <span className={styles.paginationInfo}>
+                  {copy.formatMspPageInfo(currentPage, totalPages)}
+                </span>
+                <button type="button" className={styles.paginationButton} onClick={() => setCurrentPage(page => Math.min(totalPages, page + 1))} disabled={currentPage >= totalPages} aria-label={msp.nextPage}>
+                  <FaChevronRight />
+                </button>
+              </div>
+            </div> : null}
         </section>}
       <ConfirmModal open={deleteOpen} variant="danger" title={copy.bulk.deleteTitle} message={copy.formatBulkDeleteMessage(selectedCount)} confirmLabel={copy.bulk.deleteConfirm} loading={busy} onClose={() => setDeleteOpen(false)} onConfirm={handleBulkDelete} />
     </div>;

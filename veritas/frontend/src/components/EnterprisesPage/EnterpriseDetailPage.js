@@ -73,6 +73,7 @@ import AntispamConfigModal from "./AntispamConfigModal";
 import AntispamSolutionPickerModal from "./AntispamSolutionPickerModal";
 import MicrosoftTenantConfigModal from "./MicrosoftTenantConfigModal";
 import CampaignFormModal from "../CybersecuritePage/CampaignFormModal";
+import CampaignPickerModal from "./CampaignPickerModal";
 import { getCybersecuritePageCopy } from "../CybersecuritePage/cybersecuritePageI18n";
 import { listConfiguredAntivirusSolutions, listOverviewAntivirusSolutions, mergeAntivirusSources, normalizeAntivirusItem, removeAntivirusSolution, reorderAntivirusSolutions, buildAntivirusDetailNavigationPayload } from "./antivirusSolutionUtils";
 import { listConfiguredAntispamSolutions, listOverviewAntispamSolutions, mergeAntispamSources, normalizeAntispamItem, removeAntispamSolution, reorderAntispamSolutions, buildAntispamDetailNavigationPayload } from "./antispamSolutionUtils";
@@ -366,6 +367,7 @@ export default function ClientDetailPage({
   const [loadingCheckMK, setLoadingCheckMK] = useState(false);
   const [campaigns, setCampaigns] = useState([]);
   const [showCampaignModal, setShowCampaignModal] = useState(false);
+  const [campaignPickerOpen, setCampaignPickerOpen] = useState(false);
   const [savingCampaign, setSavingCampaign] = useState(false);
   const [campaignFormData, setCampaignFormData] = useState({
     client_id: "",
@@ -1552,6 +1554,18 @@ export default function ClientDetailPage({
     if (isCommunity || !client?.id || !canManageCampaigns) return;
     setCampaignFormData(buildDefaultCampaignForm());
     setShowCampaignModal(true);
+  };
+  const handleCampaignBrickClick = () => {
+    if (isCommunity) {
+      notifyProFeature(copy.proFeatures.campaigns, "cyberCampaigns");
+      return;
+    }
+    if (!client?.id) return;
+    if (campaigns.length === 0) {
+      if (canManageCampaigns) handleOpenCreateCampaign();
+      return;
+    }
+    setCampaignPickerOpen(true);
   };
   const handleSubmitCampaign = async e => {
     e?.preventDefault?.();
@@ -2903,9 +2917,6 @@ export default function ClientDetailPage({
                   clientName: client.name
                 }} onNodeClick={handleInfraNodeClick} onBrickClick={canManageSolutions || canManageCampaigns || canManageDevices ? brick => {
                   if (!canManageSolutions && !["Campagne"].includes(brick.type) && !parseCustomFamilyType(brick.type)) return;
-                  if (brick.type === "Campagne" && !canManageCampaigns) {
-                    // Still allow navigation to view campaigns if any
-                  }
                   const familyKey = brick.familyKey || parseCustomFamilyType(brick.type);
                   if (familyKey) {
                     if (!canManageDevices && !canManageSolutions) return;
@@ -2925,6 +2936,10 @@ export default function ClientDetailPage({
                   }
                   if (brick.type === "Antivirus") {
                     handleAntivirusBrickClick();
+                    return;
+                  }
+                  if (brick.type === "Campagne") {
+                    handleCampaignBrickClick();
                     return;
                   }
                   if (!onNavigate || !client?.id) return;
@@ -2947,19 +2962,6 @@ export default function ClientDetailPage({
                   if (brick.type === "TenantMicrosoft") {
                     handleMicrosoftTenantBrickClick();
                     return;
-                  }
-                  if (brick.type === "Campagne") {
-                    const campaign = brick.items?.[0];
-                    if (brick.count === 1 && campaign && onNavigate) {
-                      onNavigate("CampaignDetail", {
-                        ...campaign,
-                        client_id: campaign.client_id || client.id
-                      });
-                      return;
-                    }
-                    onNavigate?.("Cybersecurite", {
-                      activeTab: "campaigns"
-                    });
                   }
                 } : undefined} />
               </div>
@@ -4257,6 +4259,14 @@ export default function ClientDetailPage({
         </div>}
 
       <PageGuideTour open={pageGuideOpen} steps={enterpriseGuideSteps} title={copy.guideTitle} onClose={() => setPageGuideOpen(false)} />
+
+      <CampaignPickerModal open={campaignPickerOpen && Boolean(client?.id)} client={client} campaigns={campaigns} locale={locale} copy={copy} onClose={() => setCampaignPickerOpen(false)} onSelectCampaign={campaign => {
+      setCampaignPickerOpen(false);
+      handleOpenCampaign(campaign);
+    }} onAddCampaign={canManageCampaigns ? () => {
+      setCampaignPickerOpen(false);
+      handleOpenCreateCampaign();
+    } : undefined} />
 
       <CampaignFormModal open={showCampaignModal} onClose={() => {
       if (savingCampaign) return;

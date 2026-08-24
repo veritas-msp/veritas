@@ -85,6 +85,37 @@ export function buildDeviceQueueItems(statsItems, resolveMonitorStatus, options 
   });
 }
 
+/** Build device queue items from server-evaluated fleet issues (Step 2). */
+export function buildDeviceQueueItemsFromIssues(issueRows = [], options = {}) {
+  return (Array.isArray(issueRows) ? issueRows : []).map(row => {
+    const equipment = row?.equipment || {};
+    const issue = row?.primaryIssue || row?.issues?.[0] || null;
+    const status = row?.monitorStatus || issue?.monitorStatus || "ok";
+    const severity = severityFromTone(issue?.tone, status);
+    const reason = alertReason([issue?.label, issue?.detail].filter(Boolean).join(" — "), status);
+    const clientName = equipment?.clientName || "";
+    const assetName = equipment?.name || options.fallbackName || "—";
+    return {
+      id: `device-${getEquipmentListKey(equipment)}`,
+      domain: "devices",
+      severity,
+      tone: issue?.tone || status || "warn",
+      title: reason,
+      subtitle: joinMeta([assetName, equipment?.type, equipment?.ip], clientName),
+      label: reason,
+      clientId: equipment?.clientId ?? null,
+      clientName,
+      equipment,
+      job: null,
+      contract: null,
+      agent: null,
+      ticketSubject: [assetName, reason].filter(Boolean).join(" — "),
+      priority: row?.priority ?? issue?.priority ?? SEVERITY_RANK[severity] ?? 9,
+      sortTime: null
+    };
+  });
+}
+
 export function buildBackupQueueItems(jobs = [], options = {}) {
   const list = Array.isArray(jobs) ? jobs : [];
   return list.map(job => {
@@ -201,6 +232,7 @@ export function buildRmmQueueItems(offlineAgents = [], options = {}) {
 export function buildUnifiedSupervisionQueue({
   statsItems = [],
   resolveMonitorStatus,
+  deviceIssueItems = null,
   alertRules = null,
   checkmkEnabled = false,
   isMkMapped = () => false,
@@ -210,12 +242,18 @@ export function buildUnifiedSupervisionQueue({
   offlineAgents = [],
   labels = {}
 } = {}) {
-  const devices = resolveMonitorStatus ? buildDeviceQueueItems(statsItems, resolveMonitorStatus, {
-    alertRules,
-    checkmkEnabled,
-    isMkMapped,
-    fallbackName: labels.noName
-  }) : [];
+  const devices = Array.isArray(deviceIssueItems)
+    ? buildDeviceQueueItemsFromIssues(deviceIssueItems, {
+        fallbackName: labels.noName
+      })
+    : resolveMonitorStatus
+      ? buildDeviceQueueItems(statsItems, resolveMonitorStatus, {
+          alertRules,
+          checkmkEnabled,
+          isMkMapped,
+          fallbackName: labels.noName
+        })
+      : [];
   const backups = buildBackupQueueItems(backupJobs, {
     labels: labels.backup,
     fallbackName: labels.noName

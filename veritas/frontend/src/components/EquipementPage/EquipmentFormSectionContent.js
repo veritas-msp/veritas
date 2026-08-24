@@ -277,18 +277,6 @@ export default function EquipmentFormSectionContent({
               </label>
               <input id="equipment-form-warranty-end" type="date" className={styles.input} value={formData.expirationGarantie ?? ""} onChange={e => update("expirationGarantie", e.target.value)} />
             </div>
-            <div className={styles.field}>
-              <label className={styles.label} htmlFor="equipment-form-support-reference">
-                {getSharedEquipmentFieldLabel("supportReference", locale)}
-              </label>
-              <input id="equipment-form-support-reference" type="text" className={styles.input} value={formData.supportReference ?? ""} onChange={e => update("supportReference", e.target.value)} placeholder="SUP-001" />
-            </div>
-            <div className={styles.field}>
-              <label className={styles.label} htmlFor="equipment-form-support-contract">
-                {getSharedEquipmentFieldLabel("supportContract", locale)}
-              </label>
-              <input id="equipment-form-support-contract" type="text" className={styles.input} value={formData.supportContract ?? ""} onChange={e => update("supportContract", e.target.value)} placeholder="Gold 24/7" />
-            </div>
           </div>
         </>;
     case "network":

@@ -1332,7 +1332,7 @@ const CHECKMK = {
       info: { description: "Usage supervision" }
     },
     apiCredentials: "Identifiants Checkmk",
-    connectionDesc: "Renseignez l’URL de l’API REST Checkmk et un compte automatisation. Enregistrez avant de tester : le test utilise la configuration sauvegardée.",
+    connectionDesc: "Renseignez l’URL de l’API REST Checkmk et un compte automatisation. Le test utilise les valeurs du formulaire, sans enregistrement préalable.",
     apiUrl: "URL API Checkmk",
     username: "Nom d’utilisateur",
     password: "Mot de passe",
@@ -1340,25 +1340,25 @@ const CHECKMK = {
     sitePlaceholder: "ex. cmk",
     howToGetCredentials: "Comment obtenir un accès API ?",
     fillCredentialsBeforeTest: "Renseignez l’URL, l’utilisateur et le mot de passe avant de tester.",
-    testUsesSavedHint: "Le test de connexion utilise les paramètres déjà enregistrés. Enregistrez d’abord vos modifications.",
+    testUsesFormHint: "Le test de connexion utilise les valeurs saisies, sans sauvegarde.",
     footerActive: "Checkmk actif",
     footerInactive: "Checkmk inactif",
     testSubtitleSuccess: "Connexion Checkmk établie",
     testSubtitleFail: "Échec de la connexion",
     testApiSuccess: "L’API Checkmk a répondu correctement.",
-    checkCredentials: "Vérifiez l’URL et les identifiants, puis enregistrez.",
+    checkCredentials: "Vérifiez l’URL et les identifiants.",
     hosts: "Hôtes",
     guideTitle: "Obtenir vos identifiants",
     guideDesc: "Créez un utilisateur automatisation dans Checkmk et récupérez l’URL de l’API REST.",
     guideSteps: [
       { title: "Ouvrez Setup → Users", desc: "Créez un utilisateur dédié à l’API (automation) avec les droits de lecture hôtes/services." },
       { title: "Récupérez l’URL API", desc: "Utilisez l’URL REST au format …/site/check_mk/api/1.0 (selon votre instance)." },
-      { title: "Renseignez et enregistrez", desc: "Collez URL, utilisateur et mot de passe ici, enregistrez, puis testez la connexion." }
+      { title: "Renseignez et testez", desc: "Collez URL, utilisateur et mot de passe ici, testez la connexion, puis enregistrez." }
     ],
     infoTitle: "À propos de cette intégration",
     infoDesc: "Checkmk alimente la supervision des hôtes, services, alertes et rapports de monitoring dans Veritas.",
     infoApis: ["Inventaire hôtes et services", "Événements et notifications", "Rapports de disponibilité et métriques"],
-    infoFooter: "Après configuration, mappez les hôtes Checkmk aux équipements clients dans Supervision."
+    infoFooter: "Testez la connexion avant d’enregistrer. Le test utilise les valeurs saisies dans le formulaire, sans sauvegarde préalable. Après configuration, mappez les hôtes Checkmk aux équipements clients dans Supervision."
   },
   en: {
     title: "Checkmk",
@@ -1370,7 +1370,7 @@ const CHECKMK = {
       info: { description: "Monitoring usage" }
     },
     apiCredentials: "Checkmk credentials",
-    connectionDesc: "Enter the Checkmk REST API URL and an automation account. Save before testing: the test uses the saved configuration.",
+    connectionDesc: "Enter the Checkmk REST API URL and an automation account. The test uses the form values, without saving first.",
     apiUrl: "Checkmk API URL",
     username: "Username",
     password: "Password",
@@ -1378,25 +1378,25 @@ const CHECKMK = {
     sitePlaceholder: "e.g. cmk",
     howToGetCredentials: "How do I get API access?",
     fillCredentialsBeforeTest: "Enter URL, username and password before testing.",
-    testUsesSavedHint: "The connection test uses already saved settings. Save your changes first.",
+    testUsesFormHint: "The connection test uses the values entered in the form, without saving.",
     footerActive: "Checkmk active",
     footerInactive: "Checkmk inactive",
     testSubtitleSuccess: "Checkmk connection established",
     testSubtitleFail: "Connection failed",
     testApiSuccess: "The Checkmk API responded successfully.",
-    checkCredentials: "Check the URL and credentials, then save.",
+    checkCredentials: "Check the URL and credentials.",
     hosts: "Hosts",
     guideTitle: "Get your credentials",
     guideDesc: "Create an automation user in Checkmk and copy the REST API URL.",
     guideSteps: [
       { title: "Open Setup → Users", desc: "Create a dedicated automation user with host/service read permissions." },
       { title: "Copy the API URL", desc: "Use the REST URL in the form …/site/check_mk/api/1.0 (depending on your instance)." },
-      { title: "Enter and save", desc: "Paste URL, username and password here, save, then test the connection." }
+      { title: "Enter and test", desc: "Paste URL, username and password here, test the connection, then save." }
     ],
     infoTitle: "About this integration",
     infoDesc: "Checkmk powers host/service monitoring, alerts and monitoring reports in Veritas.",
     infoApis: ["Host and service inventory", "Events and notifications", "Availability reports and metrics"],
-    infoFooter: "After setup, map Checkmk hosts to client equipment in Supervision."
+    infoFooter: "Test the connection before saving. The test uses the values entered in the form, without prior save. After setup, map Checkmk hosts to client equipment in Supervision."
   },
   de: {
     title: "Checkmk",
@@ -1408,7 +1408,7 @@ const CHECKMK = {
       info: { description: "Monitoring-Nutzung" }
     },
     apiCredentials: "Checkmk-Zugangsdaten",
-    connectionDesc: "Geben Sie die Checkmk-REST-API-URL und ein Automatisierungskonto ein. Speichern Sie vor dem Test.",
+    connectionDesc: "Geben Sie die Checkmk-REST-API-URL und ein Automatisierungskonto ein. Der Test verwendet die Formularwerte ohne vorheriges Speichern.",
     apiUrl: "Checkmk-API-URL",
     username: "Benutzername",
     password: "Passwort",
@@ -1416,25 +1416,25 @@ const CHECKMK = {
     sitePlaceholder: "z. B. cmk",
     howToGetCredentials: "Wie erhalte ich API-Zugang?",
     fillCredentialsBeforeTest: "URL, Benutzername und Passwort vor dem Test eingeben.",
-    testUsesSavedHint: "Der Verbindungstest nutzt gespeicherte Einstellungen. Speichern Sie zuerst.",
+    testUsesFormHint: "Der Verbindungstest verwendet die eingegebenen Werte, ohne zu speichern.",
     footerActive: "Checkmk aktiv",
     footerInactive: "Checkmk inaktiv",
     testSubtitleSuccess: "Checkmk-Verbindung hergestellt",
     testSubtitleFail: "Verbindung fehlgeschlagen",
     testApiSuccess: "Die Checkmk-API hat korrekt geantwortet.",
-    checkCredentials: "URL und Zugangsdaten prüfen, dann speichern.",
+    checkCredentials: "URL und Zugangsdaten prüfen.",
     hosts: "Hosts",
     guideTitle: "Zugangsdaten erhalten",
     guideDesc: "Erstellen Sie einen Automatisierungsbenutzer in Checkmk und kopieren Sie die REST-API-URL.",
     guideSteps: [
       { title: "Setup → Users öffnen", desc: "Erstellen Sie einen Automatisierungsbenutzer mit Leserechten für Hosts/Services." },
       { title: "API-URL kopieren", desc: "REST-URL im Format …/site/check_mk/api/1.0 verwenden." },
-      { title: "Eingeben und speichern", desc: "URL, Benutzer und Passwort einfügen, speichern, dann testen." }
+      { title: "Eingeben und testen", desc: "URL, Benutzer und Passwort einfügen, testen, dann speichern." }
     ],
     infoTitle: "Über diese Integration",
     infoDesc: "Checkmk liefert Host-/Service-Monitoring, Alarme und Berichte in Veritas.",
     infoApis: ["Host- und Service-Inventar", "Ereignisse und Benachrichtigungen", "Verfügbarkeitsberichte und Metriken"],
-    infoFooter: "Nach der Einrichtung Hosts in Supervision zuordnen."
+    infoFooter: "Testen Sie die Verbindung vor dem Speichern. Der Test verwendet die Formularwerte ohne vorheriges Speichern. Nach der Einrichtung Hosts in Supervision zuordnen."
   },
   it: {
     title: "Checkmk",
@@ -1446,7 +1446,7 @@ const CHECKMK = {
       info: { description: "Uso monitoraggio" }
     },
     apiCredentials: "Credenziali Checkmk",
-    connectionDesc: "Inserite l’URL dell’API REST Checkmk e un account di automazione. Salvate prima di testare.",
+    connectionDesc: "Inserite l’URL dell’API REST Checkmk e un account di automazione. Il test usa i valori del modulo, senza salvataggio preliminare.",
     apiUrl: "URL API Checkmk",
     username: "Nome utente",
     password: "Password",
@@ -1454,25 +1454,25 @@ const CHECKMK = {
     sitePlaceholder: "es. cmk",
     howToGetCredentials: "Come ottenere l’accesso API?",
     fillCredentialsBeforeTest: "Inserite URL, utente e password prima di testare.",
-    testUsesSavedHint: "Il test usa le impostazioni già salvate. Salvate prima le modifiche.",
+    testUsesFormHint: "Il test di connessione usa i valori inseriti, senza salvare.",
     footerActive: "Checkmk attivo",
     footerInactive: "Checkmk inattivo",
     testSubtitleSuccess: "Connessione Checkmk stabilita",
     testSubtitleFail: "Connessione non riuscita",
     testApiSuccess: "L’API Checkmk ha risposto correttamente.",
-    checkCredentials: "Verificate URL e credenziali, poi salvate.",
+    checkCredentials: "Verificate URL e credenziali.",
     hosts: "Host",
     guideTitle: "Ottenere le credenziali",
     guideDesc: "Create un utente di automazione in Checkmk e copiate l’URL dell’API REST.",
     guideSteps: [
       { title: "Aprire Setup → Users", desc: "Create un utente automation con diritti di lettura host/servizi." },
       { title: "Copiare l’URL API", desc: "Usate l’URL REST nel formato …/site/check_mk/api/1.0." },
-      { title: "Inserire e salvare", desc: "Incollate URL, utente e password, salvate, poi testate." }
+      { title: "Inserire e testare", desc: "Incollate URL, utente e password, testate la connessione, poi salvate." }
     ],
     infoTitle: "Informazioni sull’integrazione",
     infoDesc: "Checkmk alimenta il monitoraggio host/servizi, alert e report in Veritas.",
     infoApis: ["Inventario host e servizi", "Eventi e notifiche", "Report di disponibilità e metriche"],
-    infoFooter: "Dopo la configurazione, mappate gli host in Supervisione."
+    infoFooter: "Testate la connessione prima di salvare. Il test usa i valori del modulo, senza salvataggio preliminare. Dopo la configurazione, mappate gli host in Supervisione."
   },
   es: {
     title: "Checkmk",
@@ -1484,7 +1484,7 @@ const CHECKMK = {
       info: { description: "Uso de supervisión" }
     },
     apiCredentials: "Credenciales Checkmk",
-    connectionDesc: "Introduzca la URL de la API REST de Checkmk y una cuenta de automatización. Guarde antes de probar.",
+    connectionDesc: "Introduzca la URL de la API REST de Checkmk y una cuenta de automatización. La prueba usa los valores del formulario, sin guardado previo.",
     apiUrl: "URL API Checkmk",
     username: "Usuario",
     password: "Contraseña",
@@ -1492,25 +1492,25 @@ const CHECKMK = {
     sitePlaceholder: "p. ej. cmk",
     howToGetCredentials: "¿Cómo obtener acceso API?",
     fillCredentialsBeforeTest: "Introduzca URL, usuario y contraseña antes de probar.",
-    testUsesSavedHint: "La prueba usa los ajustes ya guardados. Guarde primero los cambios.",
+    testUsesFormHint: "La prueba de conexión usa los valores introducidos, sin guardar.",
     footerActive: "Checkmk activo",
     footerInactive: "Checkmk inactivo",
     testSubtitleSuccess: "Conexión Checkmk establecida",
     testSubtitleFail: "Conexión fallida",
     testApiSuccess: "La API Checkmk respondió correctamente.",
-    checkCredentials: "Verifique la URL y las credenciales, luego guarde.",
+    checkCredentials: "Verifique la URL y las credenciales.",
     hosts: "Hosts",
     guideTitle: "Obtener sus credenciales",
     guideDesc: "Cree un usuario de automatización en Checkmk y copie la URL de la API REST.",
     guideSteps: [
       { title: "Abrir Setup → Users", desc: "Cree un usuario automation con permisos de lectura de hosts/servicios." },
       { title: "Copiar la URL API", desc: "Use la URL REST en el formato …/site/check_mk/api/1.0." },
-      { title: "Introducir y guardar", desc: "Pegue URL, usuario y contraseña, guarde y pruebe." }
+      { title: "Introducir y probar", desc: "Pegue URL, usuario y contraseña, pruebe la conexión y luego guarde." }
     ],
     infoTitle: "Acerca de esta integración",
     infoDesc: "Checkmk alimenta la supervisión de hosts/servicios, alertas e informes en Veritas.",
     infoApis: ["Inventario de hosts y servicios", "Eventos y notificaciones", "Informes de disponibilidad y métricas"],
-    infoFooter: "Tras la configuración, mapee los hosts en Supervisión."
+    infoFooter: "Pruebe la conexión antes de guardar. La prueba usa los valores del formulario, sin guardado previo. Tras la configuración, mapee los hosts en Supervisión."
   }
 };
 const WHATSAPP = {

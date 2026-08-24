@@ -30,7 +30,8 @@ export default function CybersecuritePage({
   cybersecuriteParams
 }) {
   const {
-    isCommunity
+    isCommunity,
+    loaded: editionLoaded
   } = useVeritasEdition();
   const locale = useAppLocale();
   const pageCopy = useMemo(() => getCybersecuritePageCopy(locale), [locale]);
@@ -71,7 +72,7 @@ export default function CybersecuritePage({
   const [antivirusPageSize, setAntivirusPageSize] = useState(10);
   const selectTab = tabKey => {
     if (tabKey === "campaigns" && isCommunity) {
-      setCampaignProPromoOpen(true);
+      if (editionLoaded) setCampaignProPromoOpen(true);
       return;
     }
     if (!MODULE_TABS.includes(tabKey)) return;
@@ -81,7 +82,7 @@ export default function CybersecuritePage({
     if (!cybersecuriteParams?.activeTab) return;
     const requested = cybersecuriteParams.activeTab;
     if (requested === "campaigns" && isCommunity) {
-      setCampaignProPromoOpen(true);
+      if (editionLoaded) setCampaignProPromoOpen(true);
       setActiveTab("antivirus");
       return;
     }
@@ -90,14 +91,18 @@ export default function CybersecuritePage({
       return;
     }
     setActiveTab(requested);
-  }, [cybersecuriteParams, isCommunity]);
+  }, [cybersecuriteParams, editionLoaded, isCommunity]);
   useEffect(() => {
-    if (!isCommunity) return;
+    if (!editionLoaded) return;
+    if (!isCommunity) {
+      setCampaignProPromoOpen(false);
+      return;
+    }
     if (activeTab === "campaigns") {
       setCampaignProPromoOpen(true);
       setActiveTab("antivirus");
     }
-  }, [isCommunity, activeTab]);
+  }, [editionLoaded, isCommunity, activeTab]);
   const [showModal, setShowModal] = useState(false);
   const [editingCampaign, setEditingCampaign] = useState(null);
   const [confirmDeleteId, setConfirmDeleteId] = useState(null);

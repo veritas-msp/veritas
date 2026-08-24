@@ -13,10 +13,12 @@ export default function DashboardTopCard({
 }) {
   if (!items?.length) {
     return <article className={styles.card}>
-        <h3 className={styles.cardTitle}>
-          {icon ? <Icon icon={icon} aria-hidden /> : null}
-          {title}
-        </h3>
+        <div className={styles.cardHeader}>
+          <h3 className={styles.cardTitle}>
+            {icon ? <Icon icon={icon} aria-hidden /> : null}
+            {title}
+          </h3>
+        </div>
         <p className={styles.emptyHint}>{emptyLabel}</p>
       </article>;
   }

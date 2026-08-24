@@ -466,7 +466,7 @@ export default function MainApp() {
     if (type === "Updates" && !isSuperAdminProtectedProfile(effectiveProfile)) {
       return;
     }
-    if (type === "Mon") {
+    if (type === "Mon" || type === "Rapport") {
       type = "Report";
     }
     if (!canOpenRestrictedTabs && !isAgentPathAllowed(type, {

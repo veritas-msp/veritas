@@ -1,0 +1,232 @@
+import { computeMonitoringSummary } from "../routes/integrations/checkmk/equipmentMonitoringSync.js";
+import { getSettingsMap } from "./settingsHelper.js";
+import { fetchEquipmentFleetList } from "./equipmentFleetList.js";
+import { loadAgentLastSeenMap, loadCheckmkMonitoringMap } from "./equipmentInventoryScan.js";
+import { evaluateEquipmentSupervisionCriteria } from "./equipmentSupervisionEvaluator.js";
+import {
+  getEvaluationThresholdsFromRules,
+  getOfflineAlertThresholdMinutesFromRules,
+  getSupervisionAlertRules,
+  isSupervisionCriterionEnabled
+} from "./supervisionAlertRules.js";
+
+const CHECKMK_CRITERIA = new Set(["monitor_critical", "monitor_warning", "unmapped", "no_data"]);
+
+const ISSUE_META = {
+  monitor_critical: { label: "Alert critical", tone: "bad", priority: 0, monitorStatus: "critical" },
+  monitor_warning: { label: "Warning supervision", tone: "warn", priority: 1, monitorStatus: "warning" },
+  agent_offline: { label: "Agent hors ligne", tone: "bad", priority: 0, monitorStatus: "offline" },
+  unmapped: { label: "Not mapped to CheckMK", tone: "warn", priority: 2, monitorStatus: "unmapped" },
+  no_data: { label: "No monitoring data", tone: "warn", priority: 3, monitorStatus: "no_data" },
+  warranty_expired: { label: "Warranty expired", tone: "bad", priority: 1, monitorStatus: "ok" },
+  warranty_soon: { label: "Warranty expires soon", tone: "warn", priority: 2, monitorStatus: "ok" },
+  maintenance_expired: { label: "Maintenance license expired", tone: "bad", priority: 0, monitorStatus: "ok" },
+  maintenance_soon: { label: "Maintenance license soon", tone: "warn", priority: 1, monitorStatus: "ok" },
+  battery_expired: { label: "Battery to replace", tone: "bad", priority: 1, monitorStatus: "ok" },
+  battery_soon: { label: "Battery to monitor", tone: "warn", priority: 2, monitorStatus: "ok" },
+  updates_pending: { label: "Pending updates", tone: "warn", priority: 1, monitorStatus: "ok" },
+  disk_critical: { label: "Critical disk", tone: "bad", priority: 0, monitorStatus: "ok" },
+  disk_warn: { label: "Disk warning", tone: "warn", priority: 2, monitorStatus: "ok" },
+  missing_ip: { label: "Missing IP", tone: "warn", priority: 3, monitorStatus: "ok" }
+};
+
+function toSupervisionFamily(equipment) {
+  const type = String(equipment?.type || "").trim();
+  if (type === "Servers" || type === "Serveurs" || type === "Server") return "servers";
+  if (type === "NAS" || type === "Storage" || type === "Stockage") return "stockage";
+  if (type === "Firewalls" || type === "Firewall") return "firewall";
+  if (type === "BorneWifi") return "wifi";
+  if (type === "Ordinateurs") return "ordinateurs";
+  if (type === "Alimentation") return "alimentation";
+  if (type === "Routeur") return "routeur";
+  if (type === "TOIP") return "toip";
+  if (type === "Internet") return "internet";
+  if (type === "Switch") return "switch";
+  const family = String(equipment?.family || "").toLowerCase();
+  if (family === "nas") return "stockage";
+  return family || null;
+}
+
+function lookupCheckmkRow(checkmkMap, clientId, equipmentId, family) {
+  const families = family === "stockage" ? ["stockage", "nas"] : [family];
+  for (const fam of families) {
+    const row = checkmkMap.get(`${clientId}:${equipmentId}:${fam}`);
+    if (row) return row;
+  }
+  return null;
+}
+
+async function isCheckmkIntegrationEnabled() {
+  try {
+    const map = await getSettingsMap([
+      "INTEGRATION_CHECKMK_ENABLED",
+      "CHECKMK_API_URL",
+      "CHECKMK_USERNAME",
+      "CHECKMK_PASSWORD",
+      "CHECKMK_SITE"
+    ]);
+    const raw = `${map.INTEGRATION_CHECKMK_ENABLED ?? ""}`.toLowerCase();
+    if (raw === "true") return true;
+    if (raw === "false") return false;
+    return ["CHECKMK_API_URL", "CHECKMK_USERNAME", "CHECKMK_PASSWORD", "CHECKMK_SITE"].some(
+      key => `${map[key] ?? ""}`.trim().length > 0
+    );
+  } catch {
+    return false;
+  }
+}
+
+function buildEvaluationData(equipment) {
+  const raw = equipment?.rawData && typeof equipment.rawData === "object" ? equipment.rawData : {};
+  return {
+    ...raw,
+    source: raw.source || (equipment.agentManaged ? "rmm" : undefined),
+    agentId: equipment.rmmAgentId || raw.agentId || raw.agent_id,
+    agent_id: equipment.rmmAgentId || raw.agent_id || raw.agentId,
+    agentOnline: equipment.agentOnline ?? raw.agentOnline,
+    expirationGarantie: equipment.expirationGarantie || raw.expirationGarantie,
+    dateBatterie: equipment.dateBatterie || raw.dateBatterie,
+    licences: equipment.licences || raw.licences,
+    typeServer: equipment.typeServer || raw.typeServer || raw.type,
+    type: equipment.typeServer || raw.type,
+    ip: equipment.ip || raw.ip,
+    ipNonFixe: raw.ipNonFixe,
+    checkmk_host_name: equipment.checkmkMapping?.checkmk_host_name || raw.checkmk_host_name
+  };
+}
+
+function mapCriterionToIssue(criterion) {
+  const key = criterion?.key;
+  const meta = ISSUE_META[key] || {
+    label: key || "Issue",
+    tone: "warn",
+    priority: 5,
+    monitorStatus: "ok"
+  };
+  let label = meta.label;
+  let detail;
+  const d = criterion?.detail;
+  if (key === "updates_pending" && d?.pendingCount != null) {
+    label = `${d.pendingCount} pending update${d.pendingCount > 1 ? "s" : ""}`;
+  } else if ((key === "disk_critical" || key === "disk_warn") && d?.pct != null) {
+    label = `Disk ${d.pct}% used`;
+    detail = d.drive || undefined;
+  } else if (d?.date) {
+    detail = String(d.date);
+  }
+  return {
+    key,
+    label,
+    detail,
+    tone: meta.tone,
+    priority: meta.priority,
+    monitorStatus: meta.monitorStatus
+  };
+}
+
+function toLeanEquipment(equipment) {
+  return {
+    id: equipment.id || equipment.dbId,
+    dbId: equipment.dbId || equipment.id,
+    clientId: equipment.clientId,
+    clientName: equipment.clientName,
+    type: equipment.type,
+    family: equipment.family,
+    name: equipment.name,
+    ip: equipment.ip || "",
+    serial: equipment.serial || "",
+    location: equipment.location || "",
+    model: equipment.model || "",
+    mac: equipment.mac || "",
+    manufacturer: equipment.manufacturer || "",
+    typeServer: equipment.typeServer || "",
+    systeme: equipment.systeme || "",
+    expirationGarantie: equipment.expirationGarantie || null,
+    dateBatterie: equipment.dateBatterie || null,
+    licences: equipment.licences,
+    agentOnline: equipment.agentOnline,
+    agentManaged: equipment.agentManaged,
+    rmmAgentId: equipment.rmmAgentId || null,
+    agentVersion: equipment.agentVersion || null,
+    checkmkMapping: equipment.checkmkMapping || null,
+    rawData: equipment.rawData || {},
+    is_active: equipment.is_active !== false,
+    status: "unknown"
+  };
+}
+
+/**
+ * Supervision device issues only — evaluates lean fleet + CheckMK summaries + RMM last-seen
+ * against the same criteria engine as the alert scanner.
+ */
+export async function fetchEquipmentFleetIssues() {
+  const [fleet, checkmkMap, agentMap, rules, checkmkEnabled] = await Promise.all([
+    fetchEquipmentFleetList(),
+    loadCheckmkMonitoringMap(),
+    loadAgentLastSeenMap(),
+    getSupervisionAlertRules(),
+    isCheckmkIntegrationEnabled()
+  ]);
+
+  const offlineAlertThresholdMinutes = getOfflineAlertThresholdMinutesFromRules(rules);
+  const items = [];
+
+  for (const equipment of fleet) {
+    const family = toSupervisionFamily(equipment);
+    if (!family) continue;
+
+    const isMkMapped = Boolean(equipment.checkmkMapping?.checkmk_host_name);
+    const mkRow = lookupCheckmkRow(checkmkMap, equipment.clientId, equipment.dbId, family);
+    const checkmkSummary = mkRow
+      ? computeMonitoringSummary(mkRow.monitoring_data, mkRow.last_synced_at)
+      : null;
+
+    const data = buildEvaluationData(equipment);
+    const agentId = equipment.rmmAgentId || data.agentId || null;
+    const lastSeenAt = agentId ? agentMap.get(String(agentId)) || data.lastInventoryAt || data.last_seen_at || null : data.lastInventoryAt || null;
+    const thresholds = getEvaluationThresholdsFromRules(family, rules);
+
+    let criteria = evaluateEquipmentSupervisionCriteria({
+      equipmentFamily: family,
+      data,
+      name: equipment.name,
+      ip: equipment.ip || null,
+      agentId,
+      lastSeenAt,
+      checkmkSummary: checkmkEnabled ? checkmkSummary : null,
+      isMkMapped: checkmkEnabled ? isMkMapped : false,
+      offlineAlertThresholdMinutes,
+      thresholds
+    });
+
+    if (!checkmkEnabled) {
+      criteria = criteria.filter(c => !CHECKMK_CRITERIA.has(c.key));
+    }
+
+    criteria = criteria.filter(c => isSupervisionCriterionEnabled(family, c.key, rules));
+    if (!criteria.length) continue;
+
+    const issues = criteria.map(mapCriterionToIssue).sort((a, b) => (a.priority ?? 9) - (b.priority ?? 9));
+    const primaryIssue = issues[0];
+    const monitorStatus = primaryIssue?.monitorStatus || "ok";
+
+    items.push({
+      equipment: toLeanEquipment(equipment),
+      monitorStatus,
+      issues,
+      primaryIssue,
+      priority: primaryIssue?.priority ?? 9
+    });
+  }
+
+  items.sort((a, b) => (a.priority ?? 9) - (b.priority ?? 9));
+
+  return {
+    items,
+    meta: {
+      scanned: fleet.length,
+      withIssues: items.length,
+      checkmkEnabled
+    }
+  };
+}

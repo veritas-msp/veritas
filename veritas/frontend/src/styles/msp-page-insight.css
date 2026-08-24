@@ -3,43 +3,9 @@
   position: relative;
 }
 
-.msp-page-insight::before {
-  content: "";
-  position: fixed;
-  inset: 0;
-  background:
-    linear-gradient(128deg, rgba(43, 95, 171, 0.1) 0%, transparent 46%),
-    linear-gradient(308deg, rgba(30, 74, 138, 0.08) 0%, transparent 44%),
-    linear-gradient(180deg, rgba(43, 95, 171, 0.03) 0%, transparent 38%, rgba(43, 95, 171, 0.05) 100%),
-    repeating-linear-gradient(
-      52deg,
-      rgba(16, 35, 60, 0.032) 0,
-      rgba(16, 35, 60, 0.032) 1px,
-      transparent 1px,
-      transparent 32px
-    ),
-    repeating-linear-gradient(
-      -38deg,
-      rgba(16, 35, 60, 0.024) 0,
-      rgba(16, 35, 60, 0.024) 1px,
-      transparent 1px,
-      transparent 32px
-    );
-  pointer-events: none;
-  z-index: 0;
-}
-
+.msp-page-insight::before,
 .msp-page-insight::after {
-  content: "";
-  position: fixed;
-  inset: 0;
-  background:
-    linear-gradient(90deg, transparent 0%, rgba(59, 130, 246, 0.05) 48%, transparent 100%),
-    linear-gradient(0deg, rgba(43, 95, 171, 0.06) 0%, transparent 22%),
-    radial-gradient(ellipse 52% 38% at 6% 88%, rgba(43, 95, 171, 0.12) 0%, transparent 70%),
-    radial-gradient(ellipse 48% 34% at 94% 10%, rgba(37, 99, 235, 0.1) 0%, transparent 68%);
-  pointer-events: none;
-  z-index: 0;
+  content: none;
 }
 
 .msp-page-insight > *,
@@ -52,38 +18,4 @@
 
 .msp-page-insight > header {
   z-index: 50;
-}
-
-.msp-page-insight :where(.card, .kpiCard, .panel, .toolbar, .mspHero, .stateBox, .emptyState) {
-  background-color: var(--msp-surface, #fff);
-  isolation: isolate;
-}
-
-html.dark .msp-page-insight::before {
-  background:
-    linear-gradient(128deg, rgba(74, 143, 212, 0.14) 0%, transparent 46%),
-    linear-gradient(308deg, rgba(43, 95, 171, 0.11) 0%, transparent 44%),
-    linear-gradient(180deg, rgba(74, 143, 212, 0.04) 0%, transparent 38%, rgba(43, 95, 171, 0.07) 100%),
-    repeating-linear-gradient(
-      52deg,
-      rgba(148, 163, 184, 0.028) 0,
-      rgba(148, 163, 184, 0.028) 1px,
-      transparent 1px,
-      transparent 32px
-    ),
-    repeating-linear-gradient(
-      -38deg,
-      rgba(148, 163, 184, 0.022) 0,
-      rgba(148, 163, 184, 0.022) 1px,
-      transparent 1px,
-      transparent 32px
-    );
-}
-
-html.dark .msp-page-insight::after {
-  background:
-    linear-gradient(90deg, transparent 0%, rgba(59, 130, 246, 0.07) 48%, transparent 100%),
-    linear-gradient(0deg, rgba(74, 143, 212, 0.08) 0%, transparent 22%),
-    radial-gradient(ellipse 52% 38% at 6% 88%, rgba(74, 143, 212, 0.14) 0%, transparent 70%),
-    radial-gradient(ellipse 48% 34% at 94% 10%, rgba(59, 130, 246, 0.11) 0%, transparent 68%);
 }

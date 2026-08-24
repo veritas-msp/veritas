@@ -7,7 +7,8 @@ import styles from "./SolutionDetailPageLayout.module.css";
 
 const BRAND_MARK = {
   gravityzone: styles.brandMarkGravityZone,
-  mailinblack: styles.brandMarkMailinblack
+  mailinblack: styles.brandMarkMailinblack,
+  microsoft: styles.brandMarkMicrosoft
 };
 
 export default function SolutionDetailPageLayout({
@@ -25,6 +26,7 @@ export default function SolutionDetailPageLayout({
   onRefreshSave,
   refreshLabel = "Refresh",
   refreshSaveLabel = "Refresh and save",
+  extraActions = null,
   footerHint,
   navEntries = [],
   activeSection,
@@ -32,7 +34,7 @@ export default function SolutionDetailPageLayout({
   navAriaLabel = "Sections",
   children
 }) {
-  const accentKey = ["gravityzone", "mailinblack"].includes(accent) ? accent : "default";
+  const accentKey = ["gravityzone", "mailinblack", "microsoft"].includes(accent) ? accent : "default";
   const busy = loading || refreshing;
   return (
     <div className={`${mspStyles.mspPage} ${layout.page} msp-page-grid`}>
@@ -70,6 +72,7 @@ export default function SolutionDetailPageLayout({
                     {refreshSaveLabel}
                   </button>
                 ) : null}
+                {extraActions}
               </>
             }
           />

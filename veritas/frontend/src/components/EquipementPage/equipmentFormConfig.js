@@ -273,7 +273,7 @@ export function getFirewallTypeLabel(value) {
 }
 const FIREWALL_FORM_PROFILES = {
   materiel: {
-    sectionIds: new Set(["identity", "hardware", "network", "ha", "licences", "notes"]),
+    sectionIds: new Set(["identity", "common", "hardware", "network", "ha", "licences", "notes"]),
     showModel: true,
     showSerial: true,
     showFirmware: true,
@@ -288,7 +288,7 @@ const FIREWALL_FORM_PROFILES = {
     adminUrlPlaceholder: "https://192.168.10.1:10443"
   },
   virtuel: {
-    sectionIds: new Set(["identity", "hardware", "network", "ha", "licences", "notes"]),
+    sectionIds: new Set(["identity", "common", "hardware", "network", "ha", "licences", "notes"]),
     showModel: true,
     showSerial: false,
     showFirmware: true,
@@ -303,7 +303,7 @@ const FIREWALL_FORM_PROFILES = {
     adminUrlPlaceholder: "https://192.168.10.1:10443"
   },
   cloud: {
-    sectionIds: new Set(["identity", "hardware", "network", "licences", "notes"]),
+    sectionIds: new Set(["identity", "common", "hardware", "network", "licences", "notes"]),
     showModel: true,
     showSerial: false,
     showFirmware: false,
@@ -318,7 +318,7 @@ const FIREWALL_FORM_PROFILES = {
     adminUrlPlaceholder: "https://admin.cloudprovider.com"
   },
   logiciel: {
-    sectionIds: new Set(["identity", "hardware", "network", "ha", "licences", "notes"]),
+    sectionIds: new Set(["identity", "common", "hardware", "network", "ha", "licences", "notes"]),
     showModel: true,
     showSerial: false,
     showFirmware: true,
@@ -333,7 +333,7 @@ const FIREWALL_FORM_PROFILES = {
     adminUrlPlaceholder: "https://192.168.10.1"
   },
   autre: {
-    sectionIds: new Set(["identity", "hardware", "network", "ha", "licences", "notes"]),
+    sectionIds: new Set(["identity", "common", "hardware", "network", "ha", "licences", "notes"]),
     showModel: true,
     showSerial: true,
     showFirmware: true,
@@ -392,7 +392,7 @@ export function getRouteurTypeLabel(value) {
 }
 const ROUTER_FORM_PROFILES = {
   Routeur: {
-    sectionIds: new Set(["identity", "hardware", "network", "notes"]),
+    sectionIds: new Set(["identity", "common", "hardware", "network", "notes"]),
     showModel: true,
     showSerial: true,
     showFirmware: true,
@@ -408,7 +408,7 @@ const ROUTER_FORM_PROFILES = {
     adminUrlPlaceholder: "https://192.168.1.1"
   },
   "SD-WAN": {
-    sectionIds: new Set(["identity", "hardware", "network", "notes"]),
+    sectionIds: new Set(["identity", "common", "hardware", "network", "notes"]),
     showModel: true,
     showSerial: false,
     showFirmware: false,
@@ -518,7 +518,7 @@ export function applyToipTypeChange(prev, nextType) {
 }
 const SERVER_FORM_PROFILES = {
   physique: {
-    sectionIds: new Set(["identity", "network", "hardware", "system", "ha", "remote", "notes"]),
+    sectionIds: new Set(["identity", "common", "network", "hardware", "system", "ha", "remote", "notes"]),
     showHardware: true,
     showSerial: true,
     showWarranty: true,
@@ -536,7 +536,7 @@ const SERVER_FORM_PROFILES = {
     namePlaceholder: "SRV-AD-01"
   },
   virtuel: {
-    sectionIds: new Set(["identity", "network", "system", "remote", "notes"]),
+    sectionIds: new Set(["identity", "common", "network", "system", "remote", "notes"]),
     showHardware: false,
     showSerial: false,
     showWarranty: false,
@@ -863,7 +863,7 @@ export function getStorageTypeLabel(value) {
 }
 const STORAGE_FORM_PROFILES = {
   nas: {
-    sectionIds: new Set(["identity", "network", "hardware", "storage", "notes"]),
+    sectionIds: new Set(["identity", "common", "network", "hardware", "storage", "notes"]),
     showHardware: true,
     showSerial: true,
     showWarranty: true,
@@ -880,7 +880,7 @@ const STORAGE_FORM_PROFILES = {
     namePlaceholder: "NAS-Backup"
   },
   san: {
-    sectionIds: new Set(["identity", "network", "hardware", "storage", "ha", "notes"]),
+    sectionIds: new Set(["identity", "common", "network", "hardware", "storage", "ha", "notes"]),
     showHardware: true,
     showSerial: true,
     showWarranty: true,
@@ -897,7 +897,7 @@ const STORAGE_FORM_PROFILES = {
     namePlaceholder: "SAN-Prod-01"
   },
   virtuel: {
-    sectionIds: new Set(["identity", "network", "hardware", "storage", "notes"]),
+    sectionIds: new Set(["identity", "common", "network", "hardware", "storage", "notes"]),
     showHardware: true,
     showSerial: false,
     showWarranty: false,
@@ -914,7 +914,7 @@ const STORAGE_FORM_PROFILES = {
     namePlaceholder: "VM-STORAGE-01"
   },
   cloud: {
-    sectionIds: new Set(["identity", "hardware", "storage", "notes"]),
+    sectionIds: new Set(["identity", "common", "hardware", "storage", "notes"]),
     showHardware: true,
     showSerial: false,
     showWarranty: false,
@@ -931,7 +931,7 @@ const STORAGE_FORM_PROFILES = {
     namePlaceholder: "CLOUD-BACKUP"
   },
   robot: {
-    sectionIds: new Set(["identity", "network", "hardware", "storage", "notes"]),
+    sectionIds: new Set(["identity", "common", "network", "hardware", "storage", "notes"]),
     showHardware: true,
     showSerial: true,
     showWarranty: true,
@@ -948,7 +948,7 @@ const STORAGE_FORM_PROFILES = {
     namePlaceholder: "ROBOT-BACKUP"
   },
   externe: {
-    sectionIds: new Set(["identity", "hardware", "storage", "notes"]),
+    sectionIds: new Set(["identity", "common", "hardware", "storage", "notes"]),
     showHardware: true,
     showSerial: false,
     showWarranty: false,
@@ -1200,7 +1200,7 @@ const SECTION_COMMON = {
   id: "common",
   label: "Facturation et installation",
   icon: "mdi:file-document-outline",
-  description: "Purchase, invoice, installation and support"
+  description: "Purchase, invoice and installation"
 };
 const SECTION_CONNECTION = {
   id: "connection",
@@ -1318,7 +1318,7 @@ export const EQUIPMENT_FORM_SECTIONS_BY_MODULE = {
     description: "Name, site and deployment type"
   }, {
     ...SECTION_COMMON,
-    description: "Purchase, invoice, installation and support"
+    description: "Purchase, invoice and installation"
   }, {
     ...SECTION_HARDWARE,
     description: "Brand, model, serial and warranty"
@@ -1331,7 +1331,7 @@ export const EQUIPMENT_FORM_SECTIONS_BY_MODULE = {
     description: "Name, site and type (Physical / Virtual)"
   }, {
     ...SECTION_COMMON,
-    description: "Purchase, invoice, installation and support"
+    description: "Purchase, invoice and installation"
   }, {
     ...SECTION_HARDWARE,
     description: "Brand, model, serial number and warranty"
@@ -1347,7 +1347,7 @@ export const EQUIPMENT_FORM_SECTIONS_BY_MODULE = {
     description: "Name, site and storage type"
   }, {
     ...SECTION_COMMON,
-    description: "Purchase, invoice, installation and support"
+    description: "Purchase, invoice and installation"
   }, {
     ...SECTION_HARDWARE,
     description: "Brand, model et serial number"
@@ -1363,7 +1363,7 @@ export const EQUIPMENT_FORM_SECTIONS_BY_MODULE = {
     description: "Name and site"
   }, {
     ...SECTION_COMMON,
-    description: "Purchase, invoice, installation and support"
+    description: "Purchase, invoice and installation"
   }, {
     ...SECTION_HARDWARE,
     description: "Brand, model, firmware and specifications"
@@ -1379,7 +1379,7 @@ export const EQUIPMENT_FORM_SECTIONS_BY_MODULE = {
     description: "Name and site"
   }, {
     ...SECTION_COMMON,
-    description: "Purchase, invoice, installation and support"
+    description: "Purchase, invoice and installation"
   }, {
     ...SECTION_HARDWARE,
     description: "Brand, model, serial number and firmware"
@@ -1395,7 +1395,7 @@ export const EQUIPMENT_FORM_SECTIONS_BY_MODULE = {
     description: "Name, site and deployment type (UPS / PDU)"
   }, {
     ...SECTION_COMMON,
-    description: "Purchase, invoice, installation and support"
+    description: "Purchase, invoice and installation"
   }, {
     ...SECTION_HARDWARE,
     description: "Brand, model, serial number, firmware et warranty"
@@ -1414,7 +1414,7 @@ export const EQUIPMENT_FORM_SECTIONS_BY_MODULE = {
     description: "Name, site and type (Router / SD-WAN)"
   }, {
     ...SECTION_COMMON,
-    description: "Purchase, invoice, installation and support"
+    description: "Purchase, invoice and installation"
   }, {
     ...SECTION_HARDWARE,
     description: "Brand, model and specifications"
@@ -1427,7 +1427,7 @@ export const EQUIPMENT_FORM_SECTIONS_BY_MODULE = {
     description: "Name, site and VoIP deployment type"
   }, {
     ...SECTION_COMMON,
-    description: "Purchase, invoice, installation and support"
+    description: "Purchase, invoice and installation"
   }, {
     ...SECTION_HARDWARE,
     description: "Brand, model, serial number and firmware"
@@ -1446,7 +1446,7 @@ export const EQUIPMENT_FORM_SECTIONS_BY_MODULE = {
     description: "Nom Veritas, type et lieu du poste"
   }, {
     ...SECTION_COMMON,
-    description: "Purchase, invoice, installation and support"
+    description: "Purchase, invoice and installation"
   }, {
     ...SECTION_HARDWARE,
     description: "Brand, model and serial number (recommended to link the RMM agent)"
@@ -2111,7 +2111,7 @@ export function buildEquipmentSectionMeta(form, moduleKey, {
   }
   const meta = {
     identity: Boolean(form?.name?.trim()),
-    common: Boolean(form?.purchaseDate?.trim() || form?.invoiceNumber?.trim() || form?.installDate?.trim() || form?.expirationGarantie?.trim() || form?.supportReference?.trim() || form?.supportContract?.trim()),
+    common: Boolean(form?.purchaseDate?.trim() || form?.invoiceNumber?.trim() || form?.installDate?.trim() || form?.expirationGarantie?.trim()),
     network: Boolean(form?.ip?.trim() || form?.vlan?.trim()),
     connection: false,
     hardware: Boolean(form?.manufacturer?.trim() || form?.model?.trim() || form?.serial?.trim()),

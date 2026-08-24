@@ -14,7 +14,6 @@
   --tenant-line: var(--msp-border);
   --tenant-panel: var(--msp-surface);
   --tenant-track: var(--msp-surface-3);
-
   height: 100%;
   min-height: 0;
   overflow-y: auto;
@@ -24,6 +23,50 @@
   background-color: var(--msp-bg);
   color: var(--msp-text);
   box-sizing: border-box;
+}
+
+.tenantVars {
+  --bg-primary: var(--msp-bg);
+  --bg-secondary: var(--msp-surface);
+  --bg-tertiary: var(--msp-surface-2);
+  --text-primary: var(--msp-text);
+  --text-secondary: var(--msp-text);
+  --text-muted: var(--msp-muted);
+  --border-primary: var(--msp-border);
+  --border-secondary: var(--msp-border-light);
+  --accent-primary: var(--msp-accent);
+  --tenant-ink: var(--msp-text);
+  --tenant-muted: var(--msp-muted);
+  --tenant-line: var(--msp-border);
+  --tenant-panel: var(--msp-surface);
+  --tenant-track: var(--msp-surface-3);
+  min-width: 0;
+}
+
+.subtitleLink {
+  border: none;
+  background: transparent;
+  padding: 0;
+  margin: 0;
+  font: inherit;
+  color: var(--msp-accent, #2b5fab);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.subtitleLink:hover {
+  text-decoration: underline;
+}
+
+.headerMenuWrap {
+  position: relative;
+}
+
+.tenantVars .reportIntro {
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  padding: 0;
 }
 
 .heroRow {

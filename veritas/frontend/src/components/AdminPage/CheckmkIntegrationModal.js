@@ -129,7 +129,12 @@ export default function CheckmkIntegrationModal({
     setTestResult(null);
     setTestError(null);
     try {
-      const data = await testCheckmkConnection();
+      const data = await testCheckmkConnection({
+        apiUrl: (apiUrl || "").trim(),
+        username: (username || "").trim(),
+        password: password || "",
+        site: (site || "").trim()
+      });
       setTestResult(data);
       setShowTestModal(true);
     } catch (err) {
@@ -188,7 +193,7 @@ export default function CheckmkIntegrationModal({
           <input id="checkmk-site" type="text" className={formStyles.input} value={site || ""} placeholder={copy.sitePlaceholder} onChange={e => onSiteChange(e.target.value)} disabled={saving || testing} autoComplete="off" />
         </div>
       </div>
-      <p className={formStyles.sectionDesc}>{copy.testUsesSavedHint}</p>
+      <p className={formStyles.sectionDesc}>{copy.testUsesFormHint}</p>
     </>;
 
   const renderGuide = () => <>

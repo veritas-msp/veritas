@@ -60,7 +60,7 @@ const toDisplayEquipmentType = type => {
   if (type === "Serveurs" || type === "Server") return "Servers";
   return type;
 };
-const EQUIPMENT_CACHE_KEY = "equipment_page_cache_v2";
+const EQUIPMENT_CACHE_KEY = "equipment_page_cache_v3";
 const EQUIPMENT_CACHE_TTL_MS = 5 * 60 * 1000;
 const SAUVEGARDE_COLUMN_KEYS = ["name", "server", "version", "jobsCount", "mappedJobsCount"];
 function formatCustomFamilyFieldValue(field, value, pageCopy) {
@@ -934,7 +934,20 @@ const EquipmentPage = forwardRef(function EquipmentPage({
     });
   };
   useEffect(() => {
+    if (!embedded) {
+      isMountedRef.current = true;
+      setLoading(false);
+      setError(null);
+      return () => {
+        isMountedRef.current = false;
+      };
+    }
     isMountedRef.current = true;
+    try {
+      sessionStorage.removeItem("equipment_page_cache_v2");
+    } catch {
+      // ignore
+    }
     const controller = createTrackedAbortController();
     loadEquipment(controller.signal);
     return () => {
@@ -1002,12 +1015,13 @@ const EquipmentPage = forwardRef(function EquipmentPage({
       </SmartTooltip>;
   };
   useEffect(() => {
+    if (!embedded) return undefined;
     const controller = createTrackedAbortController();
     if (!loading) {
       refreshMonitoringSummaries(controller.signal);
     }
     return () => controller.abort();
-  }, [loading, refreshMonitoringSummaries]);
+  }, [embedded, loading, refreshMonitoringSummaries]);
   const buildMkSyncPayload = useCallback(equipment => {
     const equipmentId = getEquipmentDbId(equipment);
     const clientId = equipment?.clientId;
@@ -1238,6 +1252,10 @@ const EquipmentPage = forwardRef(function EquipmentPage({
     return equipment;
   }, [allEquipment, embedded, fixedClientId, siteFilter]);
   useEffect(() => {
+    if (!embedded) {
+      setEquipmentTagsMap({});
+      return undefined;
+    }
     const clientIds = [...new Set(baseEquipment.map(eq => getEquipmentClientId(eq)).filter(Boolean))];
     if (!clientIds.length) {
       setEquipmentTagsMap({});
@@ -1264,7 +1282,7 @@ const EquipmentPage = forwardRef(function EquipmentPage({
       setEquipmentTagsMap({});
     });
     return () => controller.abort();
-  }, [baseEquipment]);
+  }, [embedded, baseEquipment]);
   const getEquipmentTags = useCallback(equipment => {
     const clientId = getEquipmentClientId(equipment);
     const dbId = getEquipmentDbId(equipment);
@@ -3463,7 +3481,7 @@ const EquipmentPage = forwardRef(function EquipmentPage({
           </div>}
         </>
       </div>
-    </div> : <SupervisionCenterPage loading={loading} error={error} statsItems={filteredForStats} resolveMonitorStatus={resolveMonitorStatus} onEquipmentOpen={handleEquipmentOpen} equipmentRmmAgents={equipmentRmmAgents} onNavigate={onNavigate} checkmkIntegrationEnabled={checkmkIntegrationEnabled} isMkMapped={isMkMappedEquipment} />}
+    </div> : <SupervisionCenterPage onEquipmentOpen={handleEquipmentOpen} onNavigate={onNavigate} />}
 
       {}
       {columnsComingSoonModal && <div className={styles.modalOverlay} onClick={() => setColumnsComingSoonModal(false)}>

@@ -177,8 +177,7 @@ export function AntivirusOverviewPanel({
   onClose,
   onSynced,
   asPage = false,
-  onBack,
-  backLabel = "Back"
+  onNavigate
 }) {
   const [activeSection, setActiveSection] = useState("overview");
   const [patchTab, setPatchTab] = useState("missing");
@@ -864,10 +863,21 @@ export function AntivirusOverviewPanel({
   }, []);
   if (!active || !antivirusItem?.companyId) return null;
   const mappingLabel = antivirusItem.mappingMode === "dedicated" ? "Dedicated tenant" : "Global tenant";
+  const openEnterprise = () => {
+    if (!client?.id || !onNavigate) return;
+    onNavigate("ContratDetail", {
+      clientId: client.id,
+      name: client.name
+    });
+  };
   if (asPage) {
-    return <SolutionDetailPageLayout accent="gravityzone" eyebrow="Cybersecurity · GravityZone" title={`Antivirus · ${companyName}`} titleIcon="simple-icons:bitdefender" subtitle={client?.name} backLabel={backLabel} onBack={onBack} loading={loading} refreshing={refreshing} loadingMessage="Loading GravityZone data…" onRefresh={() => loadDashboard()} footerHint={mappingLabel} onRefreshSave={() => loadDashboard({
+    const clientName = client?.name || "-";
+    const subtitle = client?.id && onNavigate ? <button type="button" className={styles.subtitleLink} onClick={openEnterprise}>
+        {clientName}
+      </button> : clientName;
+    return <SolutionDetailPageLayout accent="gravityzone" eyebrow="Cybersecurity · GravityZone" title={`Antivirus · ${companyName}`} titleIcon="simple-icons:bitdefender" subtitle={subtitle} loading={loading} refreshing={refreshing} loadingMessage="Loading GravityZone data…" onRefresh={() => loadDashboard({
       persist: true
-    })} refreshSaveLabel="Refresh and save" navEntries={navEntries} activeSection={activeSection} onSectionChange={setActiveSection} navAriaLabel="Sections">
+    })} refreshLabel="Refresh and save" footerHint={mappingLabel} navEntries={navEntries} activeSection={activeSection} onSectionChange={setActiveSection} navAriaLabel="Sections">
         {renderSectionContent()}
       </SolutionDetailPageLayout>;
   }

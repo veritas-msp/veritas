@@ -16,6 +16,21 @@
   background: linear-gradient(90deg, #c2410c 0%, #e85d3a 45%, #fb923c 100%);
 }
 
+.subtitleLink {
+  border: none;
+  background: transparent;
+  padding: 0;
+  margin: 0;
+  font: inherit;
+  color: var(--msp-accent, #2b5fab);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.subtitleLink:hover {
+  text-decoration: underline;
+}
+
 .metaPanel {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));

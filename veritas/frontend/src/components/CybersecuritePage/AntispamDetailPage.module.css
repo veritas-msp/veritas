@@ -203,6 +203,33 @@
   min-width: 0;
 }
 
+.headerMeta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 1rem;
+  font-size: 0.75rem;
+  color: var(--text-muted, #9ca3af);
+}
+
+.headerMetaItem {
+  white-space: nowrap;
+}
+
+.headerMetaLink {
+  border: none;
+  background: transparent;
+  padding: 0;
+  font: inherit;
+  color: var(--msp-accent, #2b5fab);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.headerMetaLink:hover {
+  text-decoration: underline;
+}
+
 .headerLogo {
   height: 1.75rem;
   width: auto;

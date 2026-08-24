@@ -26,12 +26,16 @@ export function Panel({
   className = ""
 }) {
   return <article className={`${styles.panel} ${className}`.trim()}>
-      {title ? <h3 className={styles.panelTitle}>
-          {icon ? <Icon icon={icon} aria-hidden /> : null}
-          {title}
-        </h3> : null}
-      {note ? <p className={styles.panelNote}>{note}</p> : null}
-      {children}
+      {title ? <header className={styles.panelHeader}>
+          <div className={styles.panelHeaderMain}>
+            <h3 className={styles.panelTitle}>
+              {icon ? <Icon icon={icon} aria-hidden /> : null}
+              {title}
+            </h3>
+            {note ? <p className={styles.panelNote}>{note}</p> : null}
+          </div>
+        </header> : null}
+      <div className={styles.panelBody}>{children}</div>
     </article>;
 }
 export function KpiRow({
@@ -40,17 +44,25 @@ export function KpiRow({
   if (!items?.length) return null;
   const count = items.length;
   const cols = count <= 2 ? 2 : count === 3 ? 3 : count === 4 ? 4 : count === 5 ? 5 : count === 6 ? 6 : 4;
+  const toneClass = {
+    blue: styles.kpiTone_blue,
+    amber: styles.kpiTone_amber,
+    red: styles.kpiTone_red,
+    teal: styles.kpiTone_teal,
+    purple: styles.kpiTone_purple,
+    orange: styles.kpiTone_orange,
+    green: styles.kpiTone_green,
+    rose: styles.kpiTone_rose
+  };
   return <div className={styles.kpiRow} style={{
     "--kpi-cols": String(cols)
   }}>
-      {items.map(item => <div key={item.key} className={styles.kpiCard}>
-          {item.icon ? <span className={styles.kpiIconWrap}>
-              <Icon icon={item.icon} className={styles.kpiIcon} aria-hidden />
+      {items.map(item => <div key={item.key} className={`${styles.kpiCard} ${toneClass[item.tone] || ""}`.trim()}>
+          {item.icon ? <span className={styles.kpiIconWrap} aria-hidden>
+              <Icon icon={item.icon} className={styles.kpiIcon} />
             </span> : null}
-          <div className={styles.kpiBody}>
-            <span className={styles.kpiValue}>{item.value}</span>
-            <span className={styles.kpiLabel}>{item.label}</span>
-          </div>
+          <span className={styles.kpiValue}>{item.value}</span>
+          <span className={styles.kpiLabel}>{item.label}</span>
         </div>)}
     </div>;
 }
@@ -105,22 +117,13 @@ export function PiePanel({
       <DashboardPieChart items={items} total={total} emptyLabel={emptyLabel} />
     </Panel>;
 }
-export function CategoryIntro({
-  title,
-  text
-}) {
-  return <div className={styles.categoryIntro}>
-      <h2 className={styles.categoryIntroTitle}>{title}</h2>
-      <p className={styles.categoryIntroText}>{text}</p>
-    </div>;
-}
 export function SectionTitle({
   icon,
   title
 }) {
-  return <h3 className={styles.sectionTitle}>
+  return <div className={styles.sectionHead}>
       {icon ? <Icon icon={icon} aria-hidden /> : null}
-      {title}
-    </h3>;
+      <h3 className={styles.sectionTitle}>{title}</h3>
+    </div>;
 }
 export { buildDistributionItems };

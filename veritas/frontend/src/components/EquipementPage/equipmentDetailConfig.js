@@ -31,6 +31,7 @@ function formatBool(value, {
   yes = "Yes",
   no = "No"
 } = {}) {
+  if (value === null || value === undefined || value === "") return null;
   return value ? yes : no;
 }
 function formatList(value, separator = ", ") {
@@ -130,8 +131,6 @@ const FIELD_FORMATTERS = {
     return f.remoteAccessId ? `${label} · ${f.remoteAccessId}` : label;
   },
   quickConnect: f => f.quickConnect,
-  supportReference: f => f.supportReference,
-  supportContract: f => f.supportContract,
   raid: f => f.raid,
   capacite: f => f.capacite ? `${f.capacite} Go` : null,
   nbDisquesActuels: f => f.nbDisquesActuels != null && f.nbDisquesActuels !== "" ? String(f.nbDisquesActuels) : null,
@@ -210,8 +209,6 @@ const FIELD_LABELS = {
   purchaseDate: "Date d'achat",
   invoiceNumber: "Numero de facture",
   installDate: "Date d'installation",
-  supportReference: "Reference support",
-  supportContract: "Contrat support",
   raid: "RAID",
   capacite: "Total capacity",
   nbDisquesActuels: "Installed disks",
@@ -242,14 +239,15 @@ const FIELD_LABELS = {
 };
 const SECTION_FIELDS = {
   billingInstallation: ["clientName", "location", "purchaseDate", "invoiceNumber", "installDate", "expirationGarantie"],
-  supportLifecycle: ["supportReference", "supportContract", "remoteAccessSolution", "licenceMaintenance", "autresLicenses"],
+  supportLifecycle: ["remoteAccessSolution", "licenceMaintenance", "autresLicenses"],
   technique: ["firewallType", "routeurType", "toipType", "alimentationType", "typeServer", "computerType", "storageType", "manufacturer", "model", "serial", "firmware", "systeme", "editionWindows", "windowsFeatureVersion", "windowsBuild", "windowsLicenseStatus", "domaine", "processeur", "memoire", "stockage", "hypervisor", "hostServerName", "role", "quickConnect", "raid", "capacite", "nbDisquesActuels", "nbDisquesMax", "luns", "numeroDisque", "modeHA", "roleHA", "firewallHAName", "serverHAName", "storageHAName", "manageable", "poeSupport", "empilage", "alimentationPoE", "nombreExtensions", "domaineSip", "capaciteVA", "capaciteW", "nbPrises", "dateBatterie"],
   reseau: ["ip", "gateway", "vlan", "mac", "adresseMac", "stormshieldWanUrl", "adminUrl", "assignedSsids", "fournisseur", "internetType", "debit", "debitDownload", "debitUpload", "categorie", "numeroLigne", "referenceContrat", "supportTelephone", "dateMiseEnService", "boxModele"],
   notes: ["commentaire"]
 };
+const BILLING_ALWAYS_VISIBLE_FIELDS = new Set(["purchaseDate", "invoiceNumber", "installDate", "expirationGarantie"]);
 const UNIFIED_DETAIL_SECTIONS = [
   { id: "billingInstallation", label: "Facturation et installation", icon: "mdi:file-document-outline", description: "Client, site, achat et installation" },
-  { id: "supportLifecycle", label: "Support / cycle de vie", icon: "mdi:lifebuoy", description: "Contrats, support et cycle de vie" },
+  { id: "supportLifecycle", label: "Support / cycle de vie", icon: "mdi:lifebuoy", description: "Prise en main et licences" },
   { id: "technique", label: "Technique", icon: "mdi:cog-outline", description: "Caracteristiques techniques et systeme" },
   { id: "reseau", label: "Reseau", icon: "mdi:lan", description: "Adressage, acces et connectivite" },
   { id: "notes", label: "Notes", icon: "mdi:note-text-outline", description: "Commentaires et informations utiles" }
@@ -328,8 +326,49 @@ function mergeRmmIntoFormData(equipment, formData) {
     computerType: canonicalizeComputerType(formData.computerType) || inferComputerTypeFromInventory(inventory) || ""
   };
 }
+const FIELD_ALLOWED_MODULES = {
+  modeHA: ["Firewalls", "Servers", "Storage"],
+  roleHA: ["Firewalls", "Servers", "Storage"],
+  firewallHAName: ["Firewalls"],
+  serverHAName: ["Servers"],
+  storageHAName: ["Storage"],
+  manageable: ["Switch", "Alimentation", "TOIP"],
+  poeSupport: ["Switch"],
+  empilage: ["Switch"],
+  alimentationPoE: ["BorneWifi"],
+  adminUrl: ["Switch", "Routeur", "Alimentation", "TOIP"],
+  firewallType: ["Firewalls"],
+  routeurType: ["Routeur"],
+  toipType: ["TOIP"],
+  alimentationType: ["Alimentation"],
+  typeServer: ["Servers"],
+  computerType: ["Ordinateurs"],
+  storageType: ["Storage"],
+  hypervisor: ["Servers"],
+  hostServerName: ["Servers"],
+  raid: ["Storage"],
+  capacite: ["Storage"],
+  nbDisquesActuels: ["Storage"],
+  nbDisquesMax: ["Storage"],
+  luns: ["Storage"],
+  numeroDisque: ["Storage"],
+  nombreExtensions: ["TOIP"],
+  domaineSip: ["TOIP"],
+  capaciteVA: ["Alimentation"],
+  capaciteW: ["Alimentation"],
+  nbPrises: ["Alimentation"],
+  dateBatterie: ["Alimentation"],
+  stormshieldWanUrl: ["Firewalls"],
+  licenceMaintenance: ["Firewalls"],
+  autresLicenses: ["Firewalls"],
+  remoteAccessSolution: ["Servers"],
+  assignedSsids: ["BorneWifi"],
+  quickConnect: ["Storage"]
+};
 function shouldShowField(fieldKey, formData, equipment) {
   const moduleKey = resolveModuleKey(equipment);
+  const allowedModules = FIELD_ALLOWED_MODULES[fieldKey];
+  if (allowedModules && !allowedModules.includes(moduleKey)) return false;
   if (fieldKey === "expirationGarantie" && equipment?.type === "BorneWifi") return false;
   if (fieldKey === "adresseMac") {
     const sections = getEquipmentFormSections(moduleKey, {
@@ -351,7 +390,7 @@ function shouldShowField(fieldKey, formData, equipment) {
   if (["processeur", "memoire", "stockage"].includes(fieldKey) && moduleKey === "Servers") {
     return true;
   }
-  if (["manufacturer", "model", "serial", "expirationGarantie"].includes(fieldKey) && moduleKey === "Servers") {
+  if (["manufacturer", "model", "serial"].includes(fieldKey) && moduleKey === "Servers") {
     return getServerFormProfile(formData.typeServer).showHardware;
   }
   if (["manufacturer", "model", "serial"].includes(fieldKey) && moduleKey === "Storage") {
@@ -488,7 +527,7 @@ function getFieldLabel(fieldKey, equipment, locale) {
     const localized = getEquipmentDetailFieldLabel(fieldKey, locale, equipment);
     if (localized && localized !== fieldKey) return localized;
   }
-  if (["purchaseDate", "invoiceNumber", "installDate", "supportReference", "supportContract"].includes(fieldKey)) {
+  if (["purchaseDate", "invoiceNumber", "installDate", "expirationGarantie"].includes(fieldKey)) {
     return getSharedEquipmentFieldLabel(fieldKey, locale);
   }
   if (equipment?.type === "Ordinateurs" && fieldKey === "name") return "Nom Veritas";
@@ -500,7 +539,7 @@ function buildSectionFields(sectionId, formData, equipment, fieldKeys, locale) {
   const seenValues = new Set();
   keys.forEach(fieldKey => {
     if (!shouldShowField(fieldKey, formData, equipment)) return;
-    const value = formatField(fieldKey, formData, equipment, locale);
+    const value = formatField(fieldKey, formData, equipment, locale) || (sectionId === "billingInstallation" && BILLING_ALWAYS_VISIBLE_FIELDS.has(fieldKey) ? EMPTY : null);
     if (!value) return;
     const label = getFieldLabel(fieldKey, equipment, locale);
     const dedupeKey = `${label}::${value}`;
@@ -537,9 +576,7 @@ export function buildDetailFormData(equipment, options = {}) {
     role: moduleKey === "Storage" ? base.role || equipment?.role || "" : base.role || equipment?.role || [],
     purchaseDate: base.purchaseDate || equipment?.purchaseDate || equipment?.rawData?.purchaseDate || "",
     invoiceNumber: base.invoiceNumber || equipment?.invoiceNumber || equipment?.rawData?.invoiceNumber || "",
-    installDate: base.installDate || equipment?.installDate || equipment?.rawData?.installDate || "",
-    supportReference: base.supportReference || equipment?.supportReference || equipment?.rawData?.supportReference || "",
-    supportContract: base.supportContract || equipment?.supportContract || equipment?.rawData?.supportContract || ""
+    installDate: base.installDate || equipment?.installDate || equipment?.dateInstallation || equipment?.rawData?.installDate || equipment?.rawData?.dateInstallation || "",
   };
   if (moduleKey === "Custom") {
     const fieldDefs = Array.isArray(customFamily?.fields) ? customFamily.fields : Array.isArray(equipment?.customFields) ? equipment.customFields : [];
@@ -591,10 +628,21 @@ export function buildEquipmentDetailSections(equipment, formData, locale) {
   const moduleKey = resolveModuleKey(equipment);
   const customFamily = equipment?.customFamily || null;
   const displayData = equipment?.type === "Ordinateurs" ? mergeRmmIntoFormData(equipment, formData) : formData;
-  const sections = UNIFIED_DETAIL_SECTIONS.map(section => ({
-    ...section,
-    fields: buildSectionFields(section.id, displayData, equipment, undefined, locale)
-  }));
+  const sections = UNIFIED_DETAIL_SECTIONS.map(section => {
+    const localized = locale
+      ? localizeEquipmentDetailSection(
+          section.id === "billingInstallation" ? { ...section, id: "common" } : section,
+          moduleKey,
+          {},
+          locale
+        )
+      : section;
+    return {
+      ...localized,
+      id: section.id,
+      fields: buildSectionFields(section.id, displayData, equipment, undefined, locale)
+    };
+  });
   if (moduleKey === "Custom") {
     const specificFieldKeys = (customFamily?.fields || [])
       .map(field => String(field?.fieldKey || "").trim())

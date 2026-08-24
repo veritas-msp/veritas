@@ -51,7 +51,7 @@ async function columnExists(tableName, columnName) {
      WHERE table_schema = 'public' AND table_name = $1 AND column_name = $2 LIMIT 1`, [tableName, columnName]);
   return result.rows.length > 0;
 }
-async function loadCheckmkMonitoringMap() {
+export async function loadCheckmkMonitoringMap() {
   const result = await pool.query(`SELECT equipment_id::text, client_id, equipment_family, monitoring_data, last_synced_at
      FROM v_b_equipment_checkmk_monitoring`);
   const map = new Map();
@@ -60,7 +60,7 @@ async function loadCheckmkMonitoringMap() {
   }
   return map;
 }
-async function loadAgentLastSeenMap() {
+export async function loadAgentLastSeenMap() {
   const result = await pool.query(`SELECT id::text AS agent_id, last_seen_at FROM v_b_rmm_agents WHERE status = 'active'`);
   return new Map(result.rows.map(r => [r.agent_id, r.last_seen_at]));
 }

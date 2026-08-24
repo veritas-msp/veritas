@@ -165,6 +165,10 @@ const CYBERSECURITE_PAGE_COPY = {
         active: "Actives",
         todo: "À traiter"
       },
+      rowsPerPage: "Lignes par page",
+      prevPage: "Page précédente",
+      nextPage: "Page suivante",
+      pageInfo: "Page {page} / {total}",
       antivirus: {
         eyebrow: "Antivirus",
         healthLabel: "Santé AV",
@@ -538,6 +542,10 @@ const CYBERSECURITE_PAGE_COPY = {
         active: "Active",
         todo: "To do"
       },
+      rowsPerPage: "Rows per page",
+      prevPage: "Previous page",
+      nextPage: "Next page",
+      pageInfo: "Page {page} / {total}",
       antivirus: {
         eyebrow: "Antivirus",
         healthLabel: "AV health",
@@ -911,6 +919,10 @@ const CYBERSECURITE_PAGE_COPY = {
         active: "Aktiv",
         todo: "Zu erledigen"
       },
+      rowsPerPage: "Zeilen pro Seite",
+      prevPage: "Vorherige Seite",
+      nextPage: "Nächste Seite",
+      pageInfo: "Seite {page} / {total}",
       antivirus: {
         eyebrow: "Antivirus",
         healthLabel: "AV-Gesundheit",
@@ -1284,6 +1296,10 @@ const CYBERSECURITE_PAGE_COPY = {
         active: "Attive",
         todo: "Da trattare"
       },
+      rowsPerPage: "Righe per pagina",
+      prevPage: "Pagina precedente",
+      nextPage: "Pagina successiva",
+      pageInfo: "Pagina {page} / {total}",
       antivirus: {
         eyebrow: "Antivirus",
         healthLabel: "Salute AV",
@@ -1657,6 +1673,10 @@ const CYBERSECURITE_PAGE_COPY = {
         active: "Activas",
         todo: "Por tratar"
       },
+      rowsPerPage: "Filas por página",
+      prevPage: "Página anterior",
+      nextPage: "Página siguiente",
+      pageInfo: "Página {page} / {total}",
       antivirus: {
         eyebrow: "Antivirus",
         healthLabel: "Salud AV",
@@ -2021,6 +2041,10 @@ export function getCybersecuritePageCopy(locale) {
       count: String(count)
     }),
     formatCampaignPageInfo: (page, total) => interpolate(t.campaigns.pageInfo, {
+      page: String(page),
+      total: String(total)
+    }),
+    formatMspPageInfo: (page, total) => interpolate(t.msp.pageInfo, {
       page: String(page),
       total: String(total)
     }),

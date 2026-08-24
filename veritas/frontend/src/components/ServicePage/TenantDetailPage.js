@@ -1,10 +1,11 @@
 import React, { useState, useEffect, useMemo, useRef } from "react";
 import { Icon } from "@iconify/react";
-import { FaSync } from "react-icons/fa";
 import { toast } from "react-toastify";
 import API_BASE_URL from "../../config";
 import styles from "./TenantDetailPage.module.css";
 import enterpriseDetailStyles from "../EnterprisesPage/EnterpriseDetailPage.module.css";
+import pageLayout from "../EnterprisesPage/EnterprisesPage.module.css";
+import SolutionDetailPageLayout from "../EnterprisesPage/SolutionDetailPageLayout";
 import SmartTooltip from "../SmartTooltip";
 import TenantReportOverview from "./TenantReportOverview";
 import LicensesTab from "./TenantDetailTabs/LicencesTab";
@@ -24,15 +25,21 @@ import { getTenantDetailCopy } from "./tenantDetailPageI18n";
 import { buildTenantReport, getConnectionOrganization, isConnectionOk } from "./tenantReportUtils";
 import { createTrackedAbortController } from "../../utils/pageLoadAbort";
 
-const TABS = [
-  { key: "rapport", icon: "mdi:clipboard-text-outline" },
-  { key: "utilisateurs", icon: "mdi:account-multiple" },
-  { key: "licences", icon: "mdi:license" },
-  { key: "exchange", icon: "simple-icons:microsoftexchange" },
-  { key: "sharepoint", icon: "mdi:microsoft-sharepoint" },
-  { key: "onedrive", icon: "entypo-social:onedrive" },
-  { key: "teams", icon: "simple-icons:microsoftteams" },
-  { key: "securite", icon: "mdi:shield-check" }
+const TENANT_GROUPS = [
+  { id: "overview" },
+  { id: "identity" },
+  { id: "workloads" }
+];
+
+const TENANT_SECTIONS = [
+  { id: "rapport", group: "overview", icon: "mdi:view-dashboard-outline" },
+  { id: "utilisateurs", group: "identity", icon: "mdi:account-multiple" },
+  { id: "licences", group: "identity", icon: "mdi:license" },
+  { id: "securite", group: "identity", icon: "mdi:shield-check" },
+  { id: "exchange", group: "workloads", icon: "simple-icons:microsoftexchange" },
+  { id: "sharepoint", group: "workloads", icon: "mdi:microsoft-sharepoint" },
+  { id: "onedrive", group: "workloads", icon: "entypo-social:onedrive" },
+  { id: "teams", group: "workloads", icon: "simple-icons:microsoftteams" }
 ];
 
 export default function TenantDetailPage({
@@ -43,7 +50,7 @@ export default function TenantDetailPage({
   const copy = useMemo(() => getTenantDetailCopy(locale), [locale]);
   const configCopy = useMemo(() => getEnterpriseConfigModalsCopy(locale), [locale]);
   const [detailData, setDetailData] = useState(() => tenantData ? { ...tenantData } : null);
-  const [loading] = useState(false);
+  const [loading, setLoading] = useState(() => Boolean(tenantData?.clientId));
   const [syncing, setSyncing] = useState(false);
   const [syncProgress, setSyncProgress] = useState(0);
   const [syncStatus, setSyncStatus] = useState("");
@@ -78,6 +85,7 @@ export default function TenantDetailPage({
       setMfaDetails([]);
       setLastSync(null);
       setViewMode("rapport");
+      setLoading(true);
       currentClientIdRef.current = newDetailData?.clientId || null;
       if (abortControllerRef.current) {
         abortControllerRef.current.abort();
@@ -141,7 +149,10 @@ export default function TenantDetailPage({
   }, [heroMenuOpen]);
 
   const loadStoredTenantData = async () => {
-    if (!detailData?.clientId) return;
+    if (!detailData?.clientId) {
+      setLoading(false);
+      return;
+    }
     const abortController = createTrackedAbortController();
     abortControllerRef.current = abortController;
     const targetClientId = detailData.clientId;
@@ -268,6 +279,9 @@ export default function TenantDetailPage({
       if (abortControllerRef.current === abortController) {
         abortControllerRef.current = null;
       }
+      if (currentClientIdRef.current === targetClientId) {
+        setLoading(false);
+      }
     }
   };
 
@@ -316,6 +330,30 @@ export default function TenantDetailPage({
     teamsData,
     adoptionScore
   }), [users, licences, securityData, mfaDetails, exchangeData, sharepointData, onedriveData, teamsData, adoptionScore]);
+
+  const navEntries = useMemo(() => {
+    const entries = [];
+    TENANT_GROUPS.forEach((group) => {
+      entries.push({
+        type: "group",
+        key: `group-${group.id}`,
+        label: copy.groups?.[group.id] || group.id
+      });
+      TENANT_SECTIONS.filter((section) => section.group === group.id).forEach((section) => {
+        entries.push({
+          type: "section",
+          key: section.id,
+          section: {
+            id: section.id,
+            icon: section.icon,
+            label: copy.tabs[section.id],
+            description: copy.tabHints?.[section.id] || copy.tabs[section.id]
+          }
+        });
+      });
+    });
+    return entries;
+  }, [copy]);
 
   const handleSync = async () => {
     if (!detailData?.clientId) {
@@ -495,121 +533,56 @@ export default function TenantDetailPage({
     : connectionOk
       ? (organizationName || copy.hero.connectionOk)
       : copy.hero.connectionError;
+  const clientName = detailData?.clientName || detailData?.nom || detailData?.name || tenantData?.clientName || "";
+  const pageTitle = organizationName
+    ? interpolate(copy.hero.pageTitle, { name: organizationName })
+    : copy.hero.pageTitleFallback;
+  const footerHint = [
+    connectionLabel,
+    `${copy.hero.lastSync}: ${lastSyncLabel}`,
+    tenantId ? `${copy.hero.tenantId}: ${tenantId}` : null
+  ].filter(Boolean).join(" · ");
+  const subtitle = clientName && detailData?.clientId
+    ? <button type="button" className={styles.subtitleLink} onClick={openEnterprise}>{clientName}</button>
+    : clientName || null;
 
   if (!detailData) {
-    return <div className={`${enterpriseDetailStyles.contratDetailPage} ${enterpriseDetailStyles.enterpriseDetailPage} ${styles.detailPage}`}>
+    return <SolutionDetailPageLayout accent="microsoft" eyebrow={copy.hero.eyebrow} title={copy.empty.title} titleIcon="mdi:microsoft" subtitle={copy.empty.text} navEntries={[]} navAriaLabel={copy.tabs.aria}>
         <div className={styles.emptyState}>
           <Icon icon="mdi:alert-circle" className={styles.emptyIcon} />
           <h2>{copy.empty.title}</h2>
           <p>{copy.empty.text}</p>
-          <button type="button" className={enterpriseDetailStyles.backBtn} onClick={() => onNavigate("Service", { activeTab: "microsoft" })}>
+          <button type="button" className={pageLayout.iconBtn} onClick={() => onNavigate("Service", { activeTab: "microsoft" })} aria-label={copy.empty.back} title={copy.empty.back}>
             <Icon icon="mdi:arrow-left" />
-            {copy.empty.back}
           </button>
         </div>
-      </div>;
+      </SolutionDetailPageLayout>;
   }
 
-  return <div className={`${enterpriseDetailStyles.contratDetailPage} ${enterpriseDetailStyles.enterpriseDetailPage} ${styles.detailPage}`}>
-      <header className={enterpriseDetailStyles.pageHero}>
-        <div className={`${enterpriseDetailStyles.heroRow} ${styles.heroRow}`}>
-          <button type="button" className={enterpriseDetailStyles.backBtn} onClick={openEnterprise}>
-            <Icon icon="mdi:arrow-left" />
-            {copy.hero.backEnterprise}
+  const extraActions = <div className={styles.headerMenuWrap} ref={heroActionsMenuRef}>
+      <SmartTooltip content={copy.hero.actions}>
+        <button type="button" className={pageLayout.iconBtn} onClick={() => setHeroMenuOpen((open) => !open)} aria-expanded={heroMenuOpen} aria-haspopup="menu" aria-label={copy.hero.actions}>
+          <Icon icon="mdi:dots-horizontal" />
+        </button>
+      </SmartTooltip>
+      {heroMenuOpen ? <div className={enterpriseDetailStyles.heroClientMenu} role="menu">
+          <button type="button" className={`${enterpriseDetailStyles.heroMenuItem} ${enterpriseDetailStyles.heroMenuItemDanger}`} role="menuitem" onClick={handleDeleteTenant} disabled={deletingTenant || loading}>
+            <Icon icon={deletingTenant ? "mdi:loading" : "mdi:delete-outline"} className={deletingTenant ? styles.spinning : undefined} />
+            <span>{copy.hero.delete}</span>
           </button>
-          <div className={enterpriseDetailStyles.heroMain}>
-            <div className={`${enterpriseDetailStyles.heroAvatar} ${styles.heroMsAvatar}`} aria-hidden>
-              <Icon icon="mdi:microsoft" />
-            </div>
-            <div className={enterpriseDetailStyles.heroText}>
-              <p className={enterpriseDetailStyles.heroEyebrow}>{copy.hero.eyebrow}</p>
-              <h1 className={enterpriseDetailStyles.heroTitle}>
-                {detailData.clientName || detailData.nom || detailData.name || copy.hero.eyebrow}
-              </h1>
-              <div className={enterpriseDetailStyles.heroMeta} aria-label={copy.hero.metaAria}>
-                {tenantId ? <span className={`${enterpriseDetailStyles.heroMetaItem} ${styles.heroTenantId}`} title={tenantId}>
-                    {copy.hero.tenantId}: {tenantId}
-                  </span> : null}
-                <span className={enterpriseDetailStyles.heroMetaItem}>
-                  {copy.hero.lastSync}: {lastSyncLabel}
-                </span>
-                <span className={`${enterpriseDetailStyles.heroMetaItem} ${connectionOk === false ? styles.heroStatusError : connectionOk ? styles.heroStatusOk : ""}`}>
-                  {connectionLabel}
-                </span>
-              </div>
-            </div>
-          </div>
-          <div className={enterpriseDetailStyles.heroActions} ref={heroActionsMenuRef}>
-            {syncing ? <div className={styles.syncProgress}>
-                <div className={styles.syncProgressBar}>
-                  <div className={styles.syncProgressFill} style={{ width: `${syncProgress}%` }} />
-                </div>
-                <span className={styles.syncProgressText}>{syncStatus}</span>
-              </div> : null}
-            <SmartTooltip content={syncing ? copy.hero.syncing : copy.hero.sync}>
-              <button type="button" className={enterpriseDetailStyles.heroMenuBtn} onClick={handleSync} disabled={syncing || loading} aria-label={copy.hero.sync}>
-                <FaSync className={syncing ? styles.spinning : ""} />
-              </button>
-            </SmartTooltip>
-            <SmartTooltip content={copy.hero.actions}>
-              <button type="button" className={enterpriseDetailStyles.heroMenuBtn} onClick={() => setHeroMenuOpen((open) => !open)} aria-expanded={heroMenuOpen} aria-haspopup="menu" aria-label={copy.hero.actions}>
-                <Icon icon="mdi:dots-horizontal" />
-              </button>
-            </SmartTooltip>
-            {heroMenuOpen ? <div className={enterpriseDetailStyles.heroClientMenu} role="menu">
-                <button type="button" className={`${enterpriseDetailStyles.heroMenuItem} ${enterpriseDetailStyles.heroMenuItemDanger}`} role="menuitem" onClick={handleDeleteTenant} disabled={deletingTenant || loading}>
-                  <Icon icon={deletingTenant ? "mdi:loading" : "mdi:delete-outline"} className={deletingTenant ? styles.spinning : undefined} />
-                  <span>{copy.hero.delete}</span>
-                </button>
-              </div> : null}
-          </div>
-        </div>
-      </header>
-
-      <div className={styles.shell}>
-        <nav className={styles.tabBar} aria-label={copy.tabs.aria}>
-          {TABS.map((tab) => <button key={tab.key} type="button" className={`${styles.tabBtn} ${viewMode === tab.key ? styles.tabBtnActive : ""}`} onClick={() => setViewMode(tab.key)}>
-              <Icon icon={tab.icon} />
-              {copy.tabs[tab.key]}
-            </button>)}
-        </nav>
-
-        <div className={styles.mainContent} key={viewMode}>
-          {syncing ? <div className={styles.syncSkeleton}>
-              <div className={styles.skeletonStatsCards}>
-                {[1, 2, 3].map((item) => <div key={item} className={styles.skeletonStatCard}>
-                    <div className={`${styles.skeletonShimmer} ${styles.skeletonStatCardIcon}`} />
-                    <div className={styles.skeletonStatCardContent}>
-                      <div className={`${styles.skeletonShimmer} ${styles.skeletonStatCardValue}`} />
-                      <div className={`${styles.skeletonShimmer} ${styles.skeletonStatCardLabel}`} />
-                    </div>
-                  </div>)}
-              </div>
-              <div className={`${styles.skeletonShimmer} ${styles.skeletonTableTitle}`} />
-              <div className={styles.skeletonTable}>
-                <div className={styles.skeletonTableHeader}>
-                  {[1, 2, 3, 4, 5].map((item) => <div key={item} className={`${styles.skeletonShimmer} ${styles.skeletonTableHeaderCell}`} />)}
-                </div>
-                {[1, 2, 3, 4, 5, 6, 7, 8].map((row) => <div key={row} className={styles.skeletonTableRow}>
-                    {[1, 2, 3, 4, 5].map((item) => <div key={item} className={`${styles.skeletonShimmer} ${styles.skeletonTableCell}`} />)}
-                  </div>)}
-              </div>
-            </div> : null}
-
-          {loading && !syncing ? <div className={styles.loadingState}>
-              <Icon icon="mdi:loading" className={styles.loadingSpinner} />
-              <p>{copy.loading}</p>
-            </div> : null}
-
-          {!syncing && !loading && viewMode === "rapport" ? <TenantReportOverview report={report} copy={copy} onOpenTab={setViewMode} /> : null}
-          {!syncing && !loading && viewMode === "licences" ? <LicensesTab licences={licences} dashboardMetrics={dashboardMetrics} theme="light" getLicenseDisplayName={getLicenseDisplayName} /> : null}
-          {!syncing && !loading && viewMode === "utilisateurs" ? <UsersTab users={users} dashboardMetrics={dashboardMetrics} detailData={detailData} mfaDetails={mfaDetails} theme="light" /> : null}
-          {!syncing && !loading && viewMode === "exchange" ? <ExchangeTab exchangeData={exchangeData} theme="light" /> : null}
-          {!syncing && !loading && viewMode === "teams" ? <TeamsTab teamsData={teamsData} theme="light" /> : null}
-          {!syncing && !loading && viewMode === "onedrive" ? <OneDriveTab onedriveData={onedriveData} theme="light" /> : null}
-          {!syncing && !loading && viewMode === "sharepoint" ? <SharePointTab sharepointData={sharepointData} theme="light" /> : null}
-          {!syncing && !loading && viewMode === "securite" ? <SecuriteTab securityData={securityData} users={users} mfaDetails={mfaDetails} clientId={detailData?.clientId} theme="light" /> : null}
-        </div>
-      </div>
+        </div> : null}
     </div>;
+
+  return <SolutionDetailPageLayout accent="microsoft" eyebrow={copy.hero.eyebrow} title={pageTitle} titleIcon="mdi:microsoft" subtitle={subtitle} loading={loading && !syncing} refreshing={syncing} loadingMessage={syncStatus || (syncing ? copy.hero.syncing : copy.loading)} onRefresh={handleSync} refreshLabel={copy.hero.sync} extraActions={extraActions} footerHint={footerHint} navEntries={navEntries} activeSection={viewMode} onSectionChange={setViewMode} navAriaLabel={copy.tabs.aria}>
+      <div className={styles.tenantVars} key={viewMode}>
+        {viewMode === "rapport" ? <TenantReportOverview report={report} copy={copy} onOpenTab={setViewMode} /> : null}
+        {viewMode === "licences" ? <LicensesTab licences={licences} dashboardMetrics={dashboardMetrics} theme="light" getLicenseDisplayName={getLicenseDisplayName} /> : null}
+        {viewMode === "utilisateurs" ? <UsersTab users={users} dashboardMetrics={dashboardMetrics} detailData={detailData} mfaDetails={mfaDetails} theme="light" /> : null}
+        {viewMode === "exchange" ? <ExchangeTab exchangeData={exchangeData} theme="light" /> : null}
+        {viewMode === "teams" ? <TeamsTab teamsData={teamsData} theme="light" /> : null}
+        {viewMode === "onedrive" ? <OneDriveTab onedriveData={onedriveData} theme="light" /> : null}
+        {viewMode === "sharepoint" ? <SharePointTab sharepointData={sharepointData} theme="light" /> : null}
+        {viewMode === "securite" ? <SecuriteTab securityData={securityData} users={users} mfaDetails={mfaDetails} clientId={detailData?.clientId} theme="light" /> : null}
+      </div>
+    </SolutionDetailPageLayout>;
 }

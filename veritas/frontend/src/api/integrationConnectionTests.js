@@ -11,26 +11,26 @@ async function handleTestResponse(res) {
   return data;
 }
 
-export async function testCheckmkConnection() {
-  const res = await fetch(`${API_BASE_URL}/checkmk/hosts`, {
-    method: "GET",
-    credentials: "include"
+export async function testCheckmkConnection({
+  apiUrl,
+  username,
+  password,
+  site
+} = {}) {
+  const res = await fetch(`${API_BASE_URL}/checkmk/test`, {
+    method: "POST",
+    credentials: "include",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({
+      CHECKMK_API_URL: apiUrl,
+      CHECKMK_USERNAME: username,
+      CHECKMK_PASSWORD: password,
+      CHECKMK_SITE: site
+    })
   });
-  const data = await res.json().catch(() => ({}));
-  if (!res.ok) {
-    const message = data.error || data.message || data.details || `Error ${res.status}`;
-    const err = new Error(message);
-    err.details = data.details && data.details !== message ? data.details : null;
-    throw err;
-  }
-  const hosts = Array.isArray(data) ? data : data.hosts || data.value || [];
-  const count = Array.isArray(hosts) ? hosts.length : Number(data.count) || 0;
-  return {
-    success: true,
-    message: "Checkmk connection OK",
-    hostsCount: count,
-    hosts: Array.isArray(hosts) ? hosts.slice(0, 20) : []
-  };
+  return handleTestResponse(res);
 }
 
 export async function testWhatsappConnection() {

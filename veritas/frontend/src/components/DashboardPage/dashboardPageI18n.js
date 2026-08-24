@@ -3,7 +3,7 @@ const DASHBOARD_COPY = {
   fr: {
     eyebrow: "Pilotage",
     title: "Tableau de bord KPI",
-    subtitle: "Indicateurs classés par métier : support, parc périphérique et entreprises.",
+    subtitle: "Indicateurs de l'activité support, du parc et des entreprises.",
     loading: "Chargement des indicateurs…",
     errorLoad: "Impossible de charger le tableau de bord.",
     proRequired: "Le tableau de bord KPI est réservé à Veritas Pro.",
@@ -265,7 +265,7 @@ const DASHBOARD_COPY = {
   en: {
     eyebrow: "Operations",
     title: "KPI dashboard",
-    subtitle: "Metrics grouped by area: support, device fleet and companies.",
+    subtitle: "Support, fleet and company activity metrics.",
     loading: "Loading metrics…",
     errorLoad: "Unable to load the dashboard.",
     proRequired: "The KPI dashboard is available with Veritas Pro.",

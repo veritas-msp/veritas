@@ -50,6 +50,17 @@ const DETAIL_COPY = {
     campaignsTitle: "Campagnes",
     campaignsOngoing: "{count} en cours",
     addCampaign: "Créer une campagne",
+    campaignPicker: {
+      eyebrow: "Cybersécurité",
+      title: "Campagnes",
+      introEmpty: "Aucune campagne pour ce client. Créez-en une pour démarrer le suivi.",
+      introOne: "Une campagne est liée à ce client. Ouvrez-la ou créez-en une autre.",
+      introMany: "{count} campagnes liées à ce client. Sélectionnez-en une pour l'ouvrir.",
+      countOne: "1 campagne",
+      countMany: "{count} campagnes",
+      untitled: "Campagne sans nom",
+      add: "Créer une campagne"
+    },
     vaultTitle: "Coffre-fort documentaire",
     addToVault: "Ajouter au coffre-fort",
     sidebar: {
@@ -424,6 +435,17 @@ const DETAIL_COPY = {
     campaignsTitle: "Campaigns",
     campaignsOngoing: "{count} ongoing",
     addCampaign: "Create a campaign",
+    campaignPicker: {
+      eyebrow: "Cybersecurity",
+      title: "Campaigns",
+      introEmpty: "No campaigns for this client. Create one to start tracking.",
+      introOne: "One campaign is linked to this client. Open it or create another.",
+      introMany: "{count} campaigns linked to this client. Select one to open it.",
+      countOne: "1 campaign",
+      countMany: "{count} campaigns",
+      untitled: "Untitled campaign",
+      add: "Create a campaign"
+    },
     vaultTitle: "Document vault",
     addToVault: "Add to vault",
     sidebar: {
@@ -796,6 +818,17 @@ const DETAIL_COPY = {
     campaignsTitle: "Kampagnen",
     campaignsOngoing: "{count} laufend",
     addCampaign: "Kampagne erstellen",
+    campaignPicker: {
+      eyebrow: "Cybersicherheit",
+      title: "Kampagnen",
+      introEmpty: "Keine Kampagnen für diesen Kunden. Erstellen Sie eine, um zu starten.",
+      introOne: "Eine Kampagne ist mit diesem Kunden verknüpft. Öffnen oder erstellen Sie eine weitere.",
+      introMany: "{count} Kampagnen für diesen Kunden. Wählen Sie eine zum Öffnen.",
+      countOne: "1 Kampagne",
+      countMany: "{count} Kampagnen",
+      untitled: "Kampagne ohne Namen",
+      add: "Kampagne erstellen"
+    },
     vaultTitle: "Dokumententresor",
     addToVault: "Zum Tresor hinzufügen",
     sidebar: {
@@ -1168,6 +1201,17 @@ const DETAIL_COPY = {
     campaignsTitle: "Campagne",
     campaignsOngoing: "{count} in corso",
     addCampaign: "Crea campagna",
+    campaignPicker: {
+      eyebrow: "Cybersicurezza",
+      title: "Campagne",
+      introEmpty: "Nessuna campagna per questo cliente. Creane una per iniziare.",
+      introOne: "Una campagna è collegata a questo cliente. Aprila o creane un'altra.",
+      introMany: "{count} campagne collegate a questo cliente. Selezionane una per aprirla.",
+      countOne: "1 campagna",
+      countMany: "{count} campagne",
+      untitled: "Campagna senza nome",
+      add: "Crea campagna"
+    },
     vaultTitle: "Cassaforte documenti",
     addToVault: "Aggiungi alla cassaforte",
     sidebar: {
@@ -1540,6 +1584,17 @@ const DETAIL_COPY = {
     campaignsTitle: "Campañas",
     campaignsOngoing: "{count} en curso",
     addCampaign: "Crear campaña",
+    campaignPicker: {
+      eyebrow: "Ciberseguridad",
+      title: "Campañas",
+      introEmpty: "Ninguna campaña para este cliente. Cree una para empezar el seguimiento.",
+      introOne: "Hay una campaña vinculada a este cliente. Ábrala o cree otra.",
+      introMany: "{count} campañas vinculadas a este cliente. Seleccione una para abrirla.",
+      countOne: "1 campaña",
+      countMany: "{count} campañas",
+      untitled: "Campaña sin nombre",
+      add: "Crear campaña"
+    },
     vaultTitle: "Caja fuerte documental",
     addToVault: "Añadir a la caja fuerte",
     sidebar: {

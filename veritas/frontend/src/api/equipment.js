@@ -286,7 +286,8 @@ export function mapClientHardwareEquipment(client) {
       const role = equipment.role || equipment.data?.role || [];
       const systeme = equipment.systeme || equipment.data?.systeme || equipment.os || "";
       const vlan = equipment.vlan || equipment.data?.vlan || "";
-      const expirationGarantie = equipment.expirationGarantie || equipment.data?.expirationGarantie || equipment.garantie || null;
+      const sharedBilling = buildSharedEquipmentFormData(equipment);
+      const expirationGarantie = equipment.expirationGarantie || equipment.data?.expirationGarantie || equipment.garantie || sharedBilling.expirationGarantie || null;
       const typeServer = equipment.type || equipment.data?.type || "";
       const storageType = type === "NAS" || type === "Stockage" || type === "Storage" ? equipment.type || equipment.data?.type || "" : "";
       const anydeskId = equipment.anydeskId || equipment.data?.anydeskId || "";
@@ -328,11 +329,9 @@ export function mapClientHardwareEquipment(client) {
         status: equipment.status || "unknown",
         is_active: isActive,
         uptime: equipment.uptime || "",
-        installDate: equipment.dateInstallation || equipment.installDate || null,
-        purchaseDate: equipment.purchaseDate || equipment.data?.purchaseDate || null,
-        invoiceNumber: equipment.invoiceNumber || equipment.data?.invoiceNumber || "",
-        supportReference: equipment.supportReference || equipment.data?.supportReference || "",
-        supportContract: equipment.supportContract || equipment.data?.supportContract || "",
+        installDate: sharedBilling.installDate || equipment.dateInstallation || equipment.installDate || null,
+        purchaseDate: sharedBilling.purchaseDate || equipment.purchaseDate || null,
+        invoiceNumber: sharedBilling.invoiceNumber || equipment.invoiceNumber || "",
         processeur,
         memoire,
         stockage,
@@ -448,7 +447,7 @@ export const getClientHardwareEquipment = async (clientId, options = {}) => {
 };
 export const getAllHardwareEquipment = async (options = {}) => {
   try {
-    const response = await fetch(`${API_BASE_URL}/clients/general`, {
+    const response = await fetch(`${API_BASE_URL}/clients/equipment-fleet`, {
       method: "GET",
       credentials: "include",
       signal: options.signal,
@@ -459,37 +458,33 @@ export const getAllHardwareEquipment = async (options = {}) => {
     if (!response.ok) {
       throw new Error(`Error ${response.status}: ${response.statusText}`);
     }
-    const clients = await response.json();
-    const clientList = Array.isArray(clients) ? clients : [];
-    const perClient = await Promise.all(clientList.map(async client => {
-      if (clientHasHardwareEquipements(client)) {
-        return mapClientHardwareEquipment(client);
-      }
-      if (!client?.id) {
-        return mapClientHardwareEquipment(client);
-      }
-      try {
-        const modulesData = await fetchClientModules(client.id, {
-          signal: options.signal
-        });
-        if (modulesData?.equipements && typeof modulesData.equipements === "object") {
-          return mapClientHardwareEquipment({
-            ...client,
-            equipements: modulesData.equipements
-          });
-        }
-      } catch (err) {
-        if (err?.name === "AbortError") throw err;
-        console.warn(`Loading client equipment ${client.id}:`, err);
-      }
-      return mapClientHardwareEquipment(client);
-    }));
-    return perClient.flat();
+    const rows = await response.json();
+    return Array.isArray(rows) ? rows : [];
   } catch (error) {
     if (error?.name === "AbortError") throw error;
     console.error("Error fetching all equipment:", error);
     throw error;
   }
+};
+
+/** Supervision ops: only devices with active alert criteria (server-evaluated). */
+export const getEquipmentFleetIssues = async (options = {}) => {
+  const response = await fetch(`${API_BASE_URL}/clients/equipment-fleet/issues`, {
+    method: "GET",
+    credentials: "include",
+    signal: options.signal,
+    headers: {
+      "Content-Type": "application/json"
+    }
+  });
+  if (!response.ok) {
+    throw new Error(`Error ${response.status}: ${response.statusText}`);
+  }
+  const data = await response.json();
+  return {
+    items: Array.isArray(data?.items) ? data.items : [],
+    meta: data?.meta || {}
+  };
 };
 
 /** Lean list for Admin equipment purge — avoids full /clients/general dump. */
@@ -732,7 +727,7 @@ function buildEquipmentDataPayload(type, formData, existingData = {}, equipment 
     vlan: formData.vlan || existingData.vlan,
     type: type === 'NAS' ? formData.type || existingData.type || 'NAS' : type === 'Routeur' ? formData.routeurType || existingData.routeurType || existingData.type || 'Routeur' : type === 'Alimentation' ? resolveAlimentationDeploymentType(formData.alimentationType, existingData.alimentationType, existingData.type) || 'Onduleur' : type === 'TOIP' ? resolveToipDeploymentType(formData.toipType, existingData.toipType, existingData.type) || 'IP-PBX' : type === 'Firewalls' ? formData.firewallType || existingData.firewallType || existingData.type || 'materiel' : type === 'Ordinateurs' ? canonicalizeComputerType(formData.computerType || existingData.type) || '' : formData.typeServer || existingData.type,
     role: type === 'NAS' ? formData.role || existingData.role || '' : Array.isArray(formData.role) ? formData.role : formData.role ? [formData.role] : existingData.role || [],
-    expirationGarantie: formData.expirationGarantie || existingData.expirationGarantie || existingData.garantie,
+    expirationGarantie: formData.expirationGarantie !== undefined ? formData.expirationGarantie : existingData.expirationGarantie || existingData.garantie,
     nbDisquesActuels: formData.nbDisquesActuels !== undefined ? formData.nbDisquesActuels : existingData.nbDisquesActuels || '',
     nbDisquesMax: formData.nbDisquesMax !== undefined ? formData.nbDisquesMax : existingData.nbDisquesMax || '',
     disques: formData.disques || existingData.disques || [],
@@ -808,19 +803,19 @@ function buildEquipmentDataPayload(type, formData, existingData = {}, equipment 
   if (type !== 'Internet') {
     applySiteFieldsToPayload(updatedData, siteValue);
   }
-  applySharedEquipmentFields(updatedData, sharedFields);
-  const fieldsToPreserve = ['site', 'location', 'emplacement', 'checkmk_host_name', 'checkmk_site', 'ipNonDesktop', 'unifiApiHost', 'unifiApiKey', 'unifiApiRejectUnauthorized', 'unifiApiConfiguredAt', 'stormshieldWanUrl'];
+  const payload = applySharedEquipmentFields(updatedData, sharedFields);
+  const fieldsToPreserve = ['site', 'location', 'emplacement', 'checkmk_host_name', 'checkmk_site', 'ipNonDesktop', 'unifiApiHost', 'unifiApiKey', 'unifiApiRejectUnauthorized', 'unifiApiConfiguredAt', 'stormshieldWanUrl', 'purchaseDate', 'invoiceNumber', 'installDate', 'expirationGarantie'];
   if (type === 'Serveurs') fieldsToPreserve.push('role');
-  Object.keys(updatedData).forEach(key => {
-    const value = updatedData[key];
+  Object.keys(payload).forEach(key => {
+    const value = payload[key];
     if (fieldsToPreserve.includes(key)) return;
     const isEmptyArray = Array.isArray(value) && value.length === 0;
     const isEmptyString = typeof value === 'string' && value.trim() === '';
     if (value === undefined || value === null || isEmptyString || isEmptyArray) {
-      delete updatedData[key];
+      delete payload[key];
     }
   });
-  return updatedData;
+  return payload;
 }
 export const createEquipment = async (clientId, moduleKey, formData) => {
   const type = normalizeEquipmentApiType(MODULE_KEY_TO_TYPE[moduleKey] || moduleKey);
@@ -1456,6 +1451,7 @@ const EQUIPMENT_TYPE_TO_FAMILY = {
   'Routeur': 'routeur',
   'TOIP': 'toip',
   'Sauvegarde': 'save',
+  'Backup': 'save',
   'Internet': 'internet'
 };
 export const updateEquipmentCheckMKMapping = async (clientId, equipmentType, equipmentName, mapping) => {

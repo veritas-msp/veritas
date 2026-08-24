@@ -32,6 +32,7 @@ import EquipmentStatsPanel from "./EquipmentStatsPanel";
 import { fetchEquipmentActivity } from "../../api/equipmentActivity";
 import { resolveEquipmentActivityRange, toDateInputValue } from "./equipmentActivityUtils";
 import { buildDetailFormData } from "./equipmentDetailConfig";
+import { patchEquipmentWithSharedFields } from "./sharedEquipmentFields";
 import { getEquipmentDetailTypeLabel, getEquipmentDetailCopy, formatEquipmentDetailRelative } from "./equipmentDetailPageI18n";
 import { canonicalizeComputerType, patchEquipmentLocation } from "./equipmentFormConfig";
 import { ConfirmModal } from "../AdminPage/AdminUi";
@@ -714,6 +715,7 @@ export default function EquipmentDetailPage({
       if (submitData.location !== undefined) {
         nextEquipment = patchEquipmentLocation(nextEquipment, submitData.location);
       }
+      nextEquipment = patchEquipmentWithSharedFields(nextEquipment, submitData);
       if (submitData.computerType !== undefined) {
         const computerType = canonicalizeComputerType(submitData.computerType);
         nextEquipment = {
@@ -1233,6 +1235,7 @@ export default function EquipmentDetailPage({
   const equipmentHeroTitle = equipment?.type === "Internet" ? formData.fournisseur && formData.internetType ? `${formData.fournisseur.toUpperCase()} ${formData.internetType.toUpperCase()}` : equipment.name : equipment?.name;
   const rmmStatusKey = showRmmHeroStatus ? getRmmAgentStatusKey(equipmentWithRmmLive) : null;
   const rmmStatusLabel = rmmStatusKey === "online" ? copy.agent.online : rmmStatusKey === "offline" ? copy.agent.offline : rmmStatusKey === "manual" ? copy.agent.manual : rmmStatusKey ? copy.agent.unknown : null;
+  const hasHeroOverflowMenu = Boolean(rmmManaged && rmmAgentId) || Boolean(checkmkIntegrationEnabled && equipment?.type !== "Internet") || Boolean(remoteAccessAction) || Boolean(isSynologyNasStorage && formData.quickConnect);
   if (!equipment) {
     return <div className={styles.detailPage}>
         <div className={styles.error}>{copy.notFound}</div>
@@ -1290,16 +1293,12 @@ export default function EquipmentDetailPage({
                 <Icon icon={editModalOpening ? "mdi:loading" : "mdi:pencil-outline"} className={editModalOpening ? styles.spinning : undefined} aria-hidden />
               </button>
             </SmartTooltip>
-            <SmartTooltip content={copy.hero.actionsTooltip}>
+            {hasHeroOverflowMenu ? <SmartTooltip content={copy.hero.actionsTooltip}>
               <button type="button" className={enterpriseDetailStyles.heroMenuBtn} onClick={() => setHeroMenuOpen(open => !open)} aria-expanded={heroMenuOpen} aria-haspopup="menu" aria-label={copy.hero.actionsAria}>
                 <Icon icon="mdi:dots-horizontal" aria-hidden />
               </button>
-            </SmartTooltip>
-            {heroMenuOpen ? <div className={enterpriseDetailStyles.heroClientMenu} role="menu">
-                <button type="button" className={enterpriseDetailStyles.heroMenuItem} role="menuitem" onClick={openEditEquipmentModal} disabled={editModalOpening}>
-                  <Icon icon="mdi:pencil-outline" aria-hidden />
-                  <span>{copy.hero.edit}</span>
-                </button>
+            </SmartTooltip> : null}
+            {hasHeroOverflowMenu && heroMenuOpen ? <div className={enterpriseDetailStyles.heroClientMenu} role="menu">
                 {rmmManaged && rmmAgentId ? rmmSyncPending ? <button type="button" className={enterpriseDetailStyles.heroMenuItem} role="menuitem" disabled={rmmSyncRequesting} onClick={handleRmmCancelSync}>
                       <Icon icon="mdi:sync-off" aria-hidden />
                       <span>{copy.hero.cancelFullSync}</span>

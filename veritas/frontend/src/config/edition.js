@@ -49,7 +49,7 @@ export function getCommunityTicketMacrosLimit(limits) {
   }
   return COMMUNITY_TICKET_MACROS_LIMIT;
 }
-export const PRO_ONLY_DOC_TYPES = new Set(["CampaignDetail", "Planning", "Dashboard", "TicketSales", "TicketSalesCreate", "TicketSalesDetail", "Rapport", "DocumentsHub"]);
+export const PRO_ONLY_DOC_TYPES = new Set(["CampaignDetail", "Planning", "Dashboard", "TicketSales", "TicketSalesCreate", "TicketSalesDetail", "Rapport", "Report", "DocumentsHub"]);
 export function isCampaignFeatureLocked(edition) {
   return isCommunityEdition(edition);
 }

@@ -27,6 +27,7 @@ export const DOC_TYPE_ACCESS_KEY = {
   Mon: "Mon",
   MonitoringDetail: "Mon",
   Rapport: "Mon",
+  Report: "Mon",
   DocumentsHub: "DocumentsHub",
   Admin: "Admin"
 };
@@ -151,13 +152,13 @@ export function buildAgentPath(docType, data = null, options = {}) {
         return contactId ? `/contacts/${encodeSeg(contactId)}` : "/contacts";
       }
     case "Rapport":
+    case "Report":
+    case "Mon":
       return "/reports";
     case "DocumentsHub":
       return "/documents";
     case "EquipmentInventory":
       return "/inventory";
-    case "Mon":
-      return "/reports";
     case "MonitoringDetail":
       {
         const clientId = d.client?.id || d.clientId;
@@ -209,7 +210,7 @@ export function parseAgentPath(pathname, search = "") {
   }, {
     re: /^\/monitoring$/,
     run: () => ({
-      docType: "Rapport",
+      docType: "Report",
       data: null,
       adminTab: null
     })
@@ -404,7 +405,7 @@ export function parseAgentPath(pathname, search = "") {
   }, {
     re: /^\/reports$/,
     run: () => ({
-      docType: "Rapport",
+      docType: "Report",
       data: null,
       adminTab: null
     })
