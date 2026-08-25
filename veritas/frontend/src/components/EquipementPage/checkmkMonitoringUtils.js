@@ -158,14 +158,16 @@ export function getCheckMKEventsInDateRange(events, filterKey, nowMs = Date.now(
     } = getCalendarMonthRange(filterKey);
     return events.filter(e => {
       const t = getCheckMKEventTimeMs(e);
-      return t != null && t >= startMs && t <= endMs;
+      // Keep undated events — dropping them made history look empty.
+      if (t == null) return true;
+      return t >= startMs && t <= endMs;
     });
   }
   const duration = getPeriodDurationMs(filterKey);
   const startMs = nowMs - duration;
   return events.filter(e => {
     const t = getCheckMKEventTimeMs(e);
-    if (t == null) return filterKey === '10y';
+    if (t == null) return true;
     return t >= startMs && t <= nowMs;
   });
 }
@@ -186,15 +188,21 @@ function parseEventStateRaw(rawState) {
   return 0;
 }
 export function getEventStateNum(event) {
-  if (typeof event?.state === 'number') return event.state;
+  if (typeof event?.state === 'number' && !Number.isNaN(event.state)) return event.state;
   if (event?.state != null && typeof event.state !== 'number') {
-    return parseEventStateRaw(event.state);
+    const parsed = parseEventStateRaw(event.state);
+    if (parsed !== 0 || /\b(OK|WARNING|CRITICAL|UNKNOWN)\b/i.test(String(event.state))) return parsed;
   }
   if (typeof event?.state_info === 'number') return event.state_info;
-  if (event?.state_info != null) return parseEventStateRaw(event.state_info);
+  if (event?.state_info != null) {
+    const parsed = parseEventStateRaw(event.state_info);
+    if (parsed !== 0 || /\b(OK|WARNING|CRITICAL|UNKNOWN)\b/i.test(String(event.state_info))) return parsed;
+  }
   if (Array.isArray(event)) return parseEventStateRaw(event[5]);
   if (event?.raw && Array.isArray(event.raw)) return parseEventStateRaw(event.raw[5]);
-  return 0;
+  // Fallback: infer from message / plugin output (CheckMK rows often bury state in text).
+  const blob = `${event?.message || ''} ${event?.plugin_output || ''} ${event?.event_text || ''} ${event?.type || ''}`;
+  return parseEventStateRaw(blob);
 }
 export function isAlertEvent(event) {
   const state = getEventStateNum(event);

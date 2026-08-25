@@ -809,7 +809,8 @@ export function filterCheckMKEventsByPeriod(events, startTime, endTime, {
   if (hasValidBounds) {
     filtered = events.filter(event => {
       const eventDate = parseCheckMKEventTime(event);
-      if (!eventDate) return false;
+      // Keep undated rows — CheckMK sometimes returns relative / empty times.
+      if (!eventDate) return true;
       return eventDate >= start && eventDate <= end;
     });
   }

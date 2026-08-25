@@ -15,31 +15,16 @@ import {
   formatServiceAge,
   getServiceLabel,
   filterAlertEventsOnly,
-  isCalendarMonthFilter,
-  getEventCalendarMonths,
   getEventsFilterShortLabel,
-  formatCalendarFilterLabel,
   formatRelativeFrench
 } from "./checkmkMonitoringUtils";
 
-const EVENTS_PER_PAGE = 12;
+const ROWS_PER_PAGE = 8;
 const HOST_STATE_COLORS = {
   UP: "#13BA8E",
   DOWN: "#ef4444",
   UNREACHABLE: "#f59e0b"
 };
-
-function TrendBadge({ value }) {
-  if (value == null || value === 0) {
-    return <span className={styles.kpiTrendFlat}>stable</span>;
-  }
-  const isUp = value > 0;
-  return (
-    <span className={isUp ? styles.kpiTrendUp : styles.kpiTrendDown}>
-      {isUp ? "▲" : "▼"} {Math.abs(value)}%
-    </span>
-  );
-}
 
 function getServiceOutput(service) {
   return (
@@ -53,7 +38,7 @@ function getServiceOutput(service) {
 }
 
 function formatHostTimestamp(raw) {
-  if (raw == null || raw === "") return "—";
+  if (raw == null || raw === "") return null;
   const num = Number(raw);
   if (!Number.isNaN(num) && num > 0) {
     const ms = num < 1e12 ? num * 1000 : num;
@@ -62,116 +47,48 @@ function formatHostTimestamp(raw) {
   return formatRelativeFrench(raw);
 }
 
-function HostInfoItem({ label, value, mono = false }) {
-  if (value == null || value === "" || value === "—") return null;
-  return (
-    <div className={styles.hostInfoItem}>
-      <span className={styles.hostInfoLabel}>{label}</span>
-      <span className={`${styles.hostInfoValue} ${mono ? styles.hostInfoMono : ""}`} title={String(value)}>
-        {String(value)}
-      </span>
-    </div>
-  );
+function sortAlertRows(list, sort) {
+  return [...list].sort((a, b) => {
+    let cmp = 0;
+    if (sort.col === "state") cmp = getEventStateNum(a) - getEventStateNum(b);
+    else if (sort.col === "timestamp") {
+      cmp = (getCheckMKEventTimeMs(a) ?? 0) - (getCheckMKEventTimeMs(b) ?? 0);
+    } else if (sort.col === "service") {
+      cmp = (a.service ?? "").localeCompare(b.service ?? "");
+    }
+    return sort.dir === "asc" ? cmp : -cmp;
+  });
 }
 
-function AlertTable({
-  rows,
-  emptyLabel,
-  sort,
-  onToggleSort,
-  onOpenRow,
-  page,
-  totalPages,
-  onPageChange,
-  totalCount
-}) {
+function CompactAlertList({ rows, emptyLabel, onOpenRow }) {
+  if (!rows.length) {
+    return <div className={styles.compactEmpty}>{emptyLabel}</div>;
+  }
   return (
-    <>
-      <div className={styles.tableWrap}>
-        <table className={styles.table}>
-          <thead>
-            <tr>
-              <th onClick={() => onToggleSort("state")}>
-                Statut {sort.col === "state" ? (sort.dir === "asc" ? "▲" : "▼") : ""}
-              </th>
-              <th onClick={() => onToggleSort("service")}>
-                Service {sort.col === "service" ? (sort.dir === "asc" ? "▲" : "▼") : ""}
-              </th>
-              <th>Message</th>
-              <th onClick={() => onToggleSort("timestamp")}>
-                Date {sort.col === "timestamp" ? (sort.dir === "asc" ? "▲" : "▼") : ""}
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows.length === 0 ? (
-              <tr>
-                <td colSpan={4} className={styles.emptyMsg}>
-                  {emptyLabel}
-                </td>
-              </tr>
-            ) : (
-              rows.map((event, idx) => {
-                const stateNum = getEventStateNum(event);
-                const meta = EVENT_STATE_META[Math.min(stateNum, 3)] || EVENT_STATE_META[3];
-                const svc = event.service ?? event.log_service_description ?? "—";
-                const msg = event.message ?? event.plugin_output ?? event.event_text ?? "—";
-                return (
-                  <tr key={event.id ?? idx} className={styles.dataRow} onClick={() => onOpenRow?.(event)}>
-                    <td>
-                      <span className={styles.statusBadge} style={{ backgroundColor: meta.color }}>
-                        {meta.label}
-                      </span>
-                    </td>
-                    <td className={styles.serviceName} title={svc}>
-                      {svc}
-                    </td>
-                    <td className={styles.messageCell} title={msg}>
-                      {msg}
-                    </td>
-                    <td className={styles.timeCell}>{formatEventTimestamp(event)}</td>
-                  </tr>
-                );
-              })
-            )}
-          </tbody>
-        </table>
-      </div>
-      {totalPages > 1 && (
-        <div className={styles.pagination}>
-          <button type="button" className={styles.pageBtn} disabled={page === 1} onClick={() => onPageChange(1)}>
-            <Icon icon="mdi:chevron-double-left" />
-          </button>
-          <button
-            type="button"
-            className={styles.pageBtn}
-            disabled={page === 1}
-            onClick={() => onPageChange(Math.max(1, page - 1))}
-          >
-            <Icon icon="mdi:chevron-left" />
-          </button>
-          <span className={styles.pageInfo}>
-            {page} / {totalPages} ({totalCount})
-          </span>
-          <button
-            type="button"
-            className={styles.pageBtn}
-            disabled={page === totalPages}
-            onClick={() => onPageChange(Math.min(totalPages, page + 1))}
-          >
-            <Icon icon="mdi:chevron-right" />
-          </button>
-          <button
-            type="button"
-            className={styles.pageBtn}
-            disabled={page === totalPages}
-            onClick={() => onPageChange(totalPages)}
-          >
-            <Icon icon="mdi:chevron-double-right" />
-          </button>
-        </div>
-      )}
-    </>
+    <ul className={styles.compactList}>
+      {rows.map((event, idx) => {
+        const stateNum = getEventStateNum(event);
+        const meta = EVENT_STATE_META[Math.min(stateNum, 3)] || EVENT_STATE_META[3];
+        const svc = event.service ?? event.log_service_description ?? "—";
+        const msg = event.message ?? event.plugin_output ?? event.event_text ?? "—";
+        return (
+          <li key={event.id ?? `${svc}-${idx}`} className={styles.compactRow} onClick={() => onOpenRow?.(event)}>
+            <span className={styles.statusBadge} style={{ backgroundColor: meta.color }}>
+              {meta.label}
+            </span>
+            <div className={styles.compactRowMain}>
+              <span className={styles.compactRowTitle} title={svc}>
+                {svc}
+              </span>
+              <span className={styles.compactRowMsg} title={msg}>
+                {msg}
+              </span>
+            </div>
+            <span className={styles.compactRowTime}>{formatEventTimestamp(event)}</span>
+          </li>
+        );
+      })}
+    </ul>
   );
 }
 
@@ -192,17 +109,10 @@ export default function CheckMKMonitoringPanel({
   const [serviceStateFilter, setServiceStateFilter] = useState(null);
   const [serviceSearch, setServiceSearch] = useState("");
   const [serviceSort, setServiceSort] = useState({ col: "state", dir: "asc" });
-  const [eventsDateFilter, setEventsDateFilter] = useState("1m");
-  const [eventStateFilter, setEventStateFilter] = useState(null);
-  const [eventServiceFilter, setEventServiceFilter] = useState(null);
-  const [eventsSearch, setEventsSearch] = useState("");
-  const [eventsPage, setEventsPage] = useState(1);
-  const [eventsSort, setEventsSort] = useState({ col: "timestamp", dir: "desc" });
-  const [notifDateFilter, setNotifDateFilter] = useState("1m");
-  const [notifStateFilter, setNotifStateFilter] = useState(null);
-  const [notifSearch, setNotifSearch] = useState("");
-  const [notifPage, setNotifPage] = useState(1);
-  const [notifSort, setNotifSort] = useState({ col: "timestamp", dir: "desc" });
+  const [rightTab, setRightTab] = useState("events");
+  const [historyFilter, setHistoryFilter] = useState("1m");
+  const [historySearch, setHistorySearch] = useState("");
+  const [historyPage, setHistoryPage] = useState(1);
 
   const panelClass = layout === "tab" ? `${styles.panel} ${styles.panelTab}` : styles.panel;
   const services = checkmkData?.services?.services || [];
@@ -226,17 +136,31 @@ export default function CheckMKMonitoringPanel({
         services,
         events: allEvents,
         availabilityByPeriod,
-        eventsDateFilter
+        eventsDateFilter: historyFilter
       }),
-    [services, allEvents, availabilityByPeriod, eventsDateFilter]
+    [services, allEvents, availabilityByPeriod, historyFilter]
   );
   const availUp = getCheckMKAvailabilityUp(
     checkmkData?.availability ?? availabilityByPeriod[checkmkAvailabilityPeriod]
   );
-  const notifsInRange = useMemo(
-    () => getCheckMKEventsInDateRange(allNotifications, notifDateFilter),
-    [allNotifications, notifDateFilter]
-  );
+
+  // Live problems from current service states (independent of event history).
+  const liveProblems = useMemo(() => {
+    return services
+      .filter(s => {
+        const state = s.state ?? 3;
+        return state === 1 || state === 2;
+      })
+      .map(s => ({
+        id: `live-${s.id || getServiceLabel(s)}`,
+        service: getServiceLabel(s),
+        state: s.state ?? 3,
+        message: getServiceOutput(s) || "Problème actuel",
+        time: s.lastStateChange ?? s.last_state_change ?? s.lastCheck ?? s.last_check ?? null,
+        _live: true
+      }))
+      .sort((a, b) => (b.state ?? 0) - (a.state ?? 0));
+  }, [services]);
 
   const filteredServices = useMemo(() => {
     let list = services;
@@ -263,88 +187,33 @@ export default function CheckMKMonitoringPanel({
     });
   }, [services, serviceStateFilter, serviceSearch, serviceSort]);
 
-  const eventsInRange = useMemo(
-    () => filterAlertEventsOnly(getCheckMKEventsInDateRange(allEvents, eventsDateFilter)),
-    [allEvents, eventsDateFilter]
-  );
-  const calendarMonthOptions = useMemo(
-    () => getEventCalendarMonths(filterAlertEventsOnly(allEvents)),
-    [allEvents]
-  );
-  const isCalendarFilter = isCalendarMonthFilter(eventsDateFilter);
-  const eventsFilterLabel = getEventsFilterShortLabel(eventsDateFilter);
-  const eventServices = useMemo(() => {
-    const set = new Set(eventsInRange.map(e => e.service ?? e.log_service_description).filter(Boolean));
-    return [...set].sort();
-  }, [eventsInRange]);
+  const historySource = rightTab === "notifications" ? allNotifications : allEvents;
+  const historyInRange = useMemo(() => {
+    const ranged = getCheckMKEventsInDateRange(historySource, historyFilter);
+    // Prefer alert rows; if history exists but none parse as alert, still show all.
+    const alerts = filterAlertEventsOnly(ranged);
+    return alerts.length > 0 || ranged.length === 0 ? alerts : ranged;
+  }, [historySource, historyFilter]);
 
-  const sortAlertRows = (list, sort) =>
-    [...list].sort((a, b) => {
-      let cmp = 0;
-      if (sort.col === "state") cmp = getEventStateNum(a) - getEventStateNum(b);
-      else if (sort.col === "timestamp") {
-        cmp = (getCheckMKEventTimeMs(a) ?? 0) - (getCheckMKEventTimeMs(b) ?? 0);
-      } else if (sort.col === "service") {
-        cmp = (a.service ?? "").localeCompare(b.service ?? "");
-      }
-      return sort.dir === "asc" ? cmp : -cmp;
-    });
-
-  const filteredEvents = useMemo(() => {
-    let list = eventsInRange;
-    if (eventStateFilter !== null) list = list.filter(e => getEventStateNum(e) === eventStateFilter);
-    if (eventServiceFilter) {
-      list = list.filter(e => (e.service ?? e.log_service_description) === eventServiceFilter);
-    }
-    if (eventsSearch.trim()) {
-      const q = eventsSearch.toLowerCase();
+  const filteredHistory = useMemo(() => {
+    let list = historyInRange;
+    if (historySearch.trim()) {
+      const q = historySearch.toLowerCase();
       list = list.filter(e => {
         const msg = e.message ?? e.plugin_output ?? e.event_text ?? "";
         const svc = e.service ?? e.log_service_description ?? "";
-        return `${msg} ${svc}`.toLowerCase().includes(q);
-      });
-    }
-    return sortAlertRows(list, eventsSort);
-  }, [eventsInRange, eventStateFilter, eventServiceFilter, eventsSearch, eventsSort]);
-
-  const filteredNotifications = useMemo(() => {
-    let list = notifsInRange;
-    if (notifStateFilter !== null) list = list.filter(e => getEventStateNum(e) === notifStateFilter);
-    if (notifSearch.trim()) {
-      const q = notifSearch.toLowerCase();
-      list = list.filter(e => {
-        const msg = e.message ?? e.plugin_output ?? "";
-        const svc = e.service ?? "";
         const type = e.type ?? "";
         return `${msg} ${svc} ${type}`.toLowerCase().includes(q);
       });
     }
-    return sortAlertRows(list, notifSort);
-  }, [notifsInRange, notifStateFilter, notifSearch, notifSort]);
+    return sortAlertRows(list, { col: "timestamp", dir: "desc" });
+  }, [historyInRange, historySearch]);
 
-  const totalEventPages = Math.max(1, Math.ceil(filteredEvents.length / EVENTS_PER_PAGE));
-  const paginatedEvents = filteredEvents.slice((eventsPage - 1) * EVENTS_PER_PAGE, eventsPage * EVENTS_PER_PAGE);
-  const totalNotifPages = Math.max(1, Math.ceil(filteredNotifications.length / EVENTS_PER_PAGE));
-  const paginatedNotifications = filteredNotifications.slice(
-    (notifPage - 1) * EVENTS_PER_PAGE,
-    notifPage * EVENTS_PER_PAGE
+  const totalHistoryPages = Math.max(1, Math.ceil(filteredHistory.length / ROWS_PER_PAGE));
+  const paginatedHistory = filteredHistory.slice(
+    (historyPage - 1) * ROWS_PER_PAGE,
+    historyPage * ROWS_PER_PAGE
   );
-
-  const toggleServiceSort = col => {
-    setServiceSort(prev =>
-      prev.col === col ? { col, dir: prev.dir === "asc" ? "desc" : "asc" } : { col, dir: "asc" }
-    );
-  };
-  const toggleEventsSort = col => {
-    setEventsSort(prev =>
-      prev.col === col ? { col, dir: prev.dir === "asc" ? "desc" : "asc" } : { col, dir: "desc" }
-    );
-  };
-  const toggleNotifSort = col => {
-    setNotifSort(prev =>
-      prev.col === col ? { col, dir: prev.dir === "asc" ? "desc" : "asc" } : { col, dir: "desc" }
-    );
-  };
 
   const serviceCounts = {
     all: services.length,
@@ -353,15 +222,11 @@ export default function CheckMKMonitoringPanel({
     2: services.filter(s => (s.state ?? 3) === 2).length,
     3: services.filter(s => (s.state ?? 3) === 3).length
   };
-  const eventStateCounts = {
-    all: eventsInRange.length,
-    1: eventsInRange.filter(e => getEventStateNum(e) === 1).length,
-    2: eventsInRange.filter(e => getEventStateNum(e) === 2).length
-  };
-  const notifStateCounts = {
-    all: notifsInRange.length,
-    1: notifsInRange.filter(e => getEventStateNum(e) === 1).length,
-    2: notifsInRange.filter(e => getEventStateNum(e) === 2).length
+
+  const toggleServiceSort = col => {
+    setServiceSort(prev =>
+      prev.col === col ? { col, dir: prev.dir === "asc" ? "desc" : "asc" } : { col, dir: "asc" }
+    );
   };
 
   if (!checkmkMapping?.checkmk_host_name) {
@@ -383,13 +248,15 @@ export default function CheckMKMonitoringPanel({
     return (
       <section className={panelClass}>
         <div className={`${styles.skeleton} ${styles.skeletonHeader}`} />
-        <div className={styles.kpiGrid}>
-          {[1, 2, 3, 4, 5, 6].map(i => (
+        <div className={styles.kpiStrip}>
+          {[1, 2, 3, 4].map(i => (
             <div key={i} className={`${styles.skeleton} ${styles.skeletonKpi}`} />
           ))}
         </div>
-        <div className={`${styles.skeleton} ${styles.skeletonSection}`} />
-        <div className={`${styles.skeleton} ${styles.skeletonSection}`} />
+        <div className={styles.splitLayout}>
+          <div className={`${styles.skeleton} ${styles.skeletonSection}`} />
+          <div className={`${styles.skeleton} ${styles.skeletonSection}`} />
+        </div>
       </section>
     );
   }
@@ -404,158 +271,113 @@ export default function CheckMKMonitoringPanel({
 
   const hostState = checkmkHostDetails?.state;
   const hostStateColor = HOST_STATE_COLORS[hostState] || "#6b7280";
-  const hostStats = checkmkHostDetails?.serviceStats || {};
-  const hostGroups = Array.isArray(checkmkHostDetails?.hostGroups)
-    ? checkmkHostDetails.hostGroups.join(", ")
-    : "";
-  const contactGroups = Array.isArray(checkmkHostDetails?.contactGroups)
-    ? checkmkHostDetails.contactGroups.join(", ")
-    : "";
+  const hostName =
+    checkmkHostDetails?.hostName || checkmkHostDetails?.title || checkmkMapping.checkmk_host_name;
+  const lastCheckLabel = formatHostTimestamp(checkmkHostDetails?.lastCheck);
+  const eventsFilterLabel = getEventsFilterShortLabel(historyFilter);
+  const rawEventsCount = allEvents.length;
+  const rawNotifsCount = allNotifications.length;
 
   return (
-    <section className={panelClass}>
-      <div className={styles.header}>
-        <div className={styles.titleBlock}>
-          <h2 className={styles.title}>
-            <Icon icon="simple-icons:checkmk" className={styles.titleIcon} />
-            {checkmkHostDetails?.hostName || checkmkHostDetails?.title || checkmkMapping.checkmk_host_name}
-            {checkmkHostDetails?.alias ? <span className={styles.alias}>({checkmkHostDetails.alias})</span> : null}
-          </h2>
-          <div className={styles.metaRow}>
-            {hostState ? (
-              <span
-                className={styles.hostStateBadge}
-                style={{
-                  background: `${hostStateColor}22`,
-                  color: hostStateColor,
-                  border: `1px solid ${hostStateColor}55`
-                }}
-              >
-                <Icon icon={hostState === "UP" ? "mdi:check-circle" : "mdi:alert-circle"} />
-                {hostState}
-              </span>
-            ) : null}
-            {checkmkMapping.checkmk_site ? (
-              <span className={styles.labelChip}>Site · {checkmkMapping.checkmk_site}</span>
-            ) : null}
-            {checkmkHostDetails?.ipAddress ? (
-              <span className={styles.ipText}>{checkmkHostDetails.ipAddress}</span>
-            ) : null}
-            {checkmkHostDetails?.inDowntime ? (
-              <span className={styles.labelChip}>Downtime</span>
-            ) : null}
-            {checkmkHostDetails?.acknowledged ? (
-              <span className={styles.labelChip}>Ack</span>
-            ) : null}
-            {checkmkHostDetails?.labels &&
-              Object.entries(checkmkHostDetails.labels)
-                .slice(0, 8)
-                .map(([k, v]) => (
-                  <span key={k} className={styles.labelChip}>
-                    {k}: {String(v)}
-                  </span>
-                ))}
+    <section className={`${panelClass} ${styles.panelCompact}`}>
+      <div className={styles.infoCard}>
+        <div className={styles.infoCardTop}>
+          <div className={styles.titleBlock}>
+            <h2 className={styles.title}>
+              <Icon icon="simple-icons:checkmk" className={styles.titleIcon} />
+              <span className={styles.titleHost}>{hostName}</span>
+              {checkmkHostDetails?.alias ? <span className={styles.alias}>({checkmkHostDetails.alias})</span> : null}
+            </h2>
+            <div className={styles.metaRow}>
+              {hostState ? (
+                <span
+                  className={styles.hostStateBadge}
+                  style={{
+                    background: `${hostStateColor}22`,
+                    color: hostStateColor,
+                    border: `1px solid ${hostStateColor}55`
+                  }}
+                >
+                  <Icon icon={hostState === "UP" ? "mdi:check-circle" : "mdi:alert-circle"} />
+                  {hostState}
+                </span>
+              ) : null}
+              {checkmkMapping.checkmk_site ? (
+                <span className={styles.labelChip}>Site · {checkmkMapping.checkmk_site}</span>
+              ) : null}
+              {checkmkHostDetails?.ipAddress ? (
+                <span className={styles.ipText}>{checkmkHostDetails.ipAddress}</span>
+              ) : null}
+              {checkmkHostDetails?.os || checkmkHostDetails?.osFamily ? (
+                <span className={styles.labelChip}>{checkmkHostDetails.os || checkmkHostDetails.osFamily}</span>
+              ) : null}
+              {equipment?.name ? <span className={styles.labelChip}>Veritas · {equipment.name}</span> : null}
+              {lastCheckLabel ? <span className={styles.labelChip}>Check · {lastCheckLabel}</span> : null}
+              {checkmkHostDetails?.inDowntime ? <span className={styles.labelChip}>Downtime</span> : null}
+            </div>
+          </div>
+        </div>
+
+        <div className={styles.kpiStrip}>
+          <div className={styles.kpiChip}>
+            <span className={styles.kpiLabel}>Santé</span>
+            <span
+              className={`${styles.kpiValue} ${
+                kpis.healthScore >= 90
+                  ? styles.kpiValueGood
+                  : kpis.healthScore >= 70
+                    ? styles.kpiValueWarn
+                    : styles.kpiValueBad
+              }`}
+            >
+              {kpis.healthScore != null ? `${kpis.healthScore}%` : "—"}
+            </span>
+            <span className={styles.kpiSub}>
+              {serviceCounts[0]} OK · {serviceCounts[1]} W · {serviceCounts[2]} C
+            </span>
+          </div>
+          <div className={styles.kpiChip}>
+            <span className={styles.kpiLabel}>Services</span>
+            <span className={styles.kpiValue}>{kpis.totalServices}</span>
+            <span className={styles.kpiSub}>monitorés</span>
+          </div>
+          <div className={styles.kpiChip}>
+            <span className={styles.kpiLabel}>Disponibilité</span>
+            <span className={`${styles.kpiValue} ${styles.kpiValueAccent}`}>
+              {loadingAvailability ? "…" : availUp != null ? `${Math.round(availUp)}%` : "—"}
+            </span>
+            <div className={styles.kpiPeriodRow}>
+              {CHECKMK_AVAILABILITY_PERIOD_OPTIONS.map(({ value, label }) => (
+                <button
+                  key={value}
+                  type="button"
+                  className={`${styles.periodPill} ${checkmkAvailabilityPeriod === value ? styles.periodPillActive : ""}`}
+                  onClick={() => onAvailabilityPeriodChange(value)}
+                  disabled={loadingAvailability}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div className={styles.kpiChip}>
+            <span className={styles.kpiLabel}>Problèmes live</span>
+            <span className={`${styles.kpiValue} ${liveProblems.length ? styles.kpiValueBad : styles.kpiValueGood}`}>
+              {liveProblems.length}
+            </span>
+            <span className={styles.kpiSub}>warn / crit actuels</span>
+          </div>
+          <div className={styles.kpiChip}>
+            <span className={styles.kpiLabel}>Historique ({eventsFilterLabel})</span>
+            <span className={styles.kpiValue}>{kpis.eventsInPeriod}</span>
+            <span className={styles.kpiSub}>
+              {rawEventsCount} events · {rawNotifsCount} notif.
+            </span>
           </div>
         </div>
       </div>
 
-      <div className={styles.hostInfoSection}>
-        <div className={styles.sectionHeader}>
-          <h3 className={styles.sectionTitle}>
-            <Icon icon="mdi:server" className={styles.sectionTitleIcon} />
-            Hôte CheckMK
-          </h3>
-        </div>
-        <div className={styles.hostInfoGrid}>
-          <HostInfoItem label="OS" value={checkmkHostDetails?.os || checkmkHostDetails?.osFamily} />
-          <HostInfoItem label="Agent" value={checkmkHostDetails?.agentVersion} />
-          <HostInfoItem label="Commande" value={checkmkHostDetails?.checkCommand} mono />
-          <HostInfoItem label="Dernier check" value={formatHostTimestamp(checkmkHostDetails?.lastCheck)} />
-          <HostInfoItem label="Dernier changement" value={formatHostTimestamp(checkmkHostDetails?.lastStateChange)} />
-          <HostInfoItem label="Période notif." value={checkmkHostDetails?.notificationPeriod} />
-          <HostInfoItem label="Groupes hôte" value={hostGroups} />
-          <HostInfoItem label="Contacts" value={contactGroups} />
-          <HostInfoItem
-            label="Services (hôte)"
-            value={
-              hostStats.total != null
-                ? `${hostStats.ok ?? 0} OK · ${hostStats.warn ?? 0} warn · ${hostStats.crit ?? 0} crit · ${hostStats.unknown ?? 0} unk / ${hostStats.total}`
-                : null
-            }
-          />
-          <HostInfoItem label="Sortie plugin" value={checkmkHostDetails?.pluginOutput} />
-          {equipment?.name ? <HostInfoItem label="Équipement Veritas" value={equipment.name} /> : null}
-        </div>
-      </div>
-
-      <div className={styles.kpiGrid}>
-        <div className={styles.kpiCard}>
-          <span className={styles.kpiLabel}>Santé services</span>
-          <span
-            className={`${styles.kpiValue} ${
-              kpis.healthScore >= 90
-                ? styles.kpiValueGood
-                : kpis.healthScore >= 70
-                  ? styles.kpiValueWarn
-                  : styles.kpiValueBad
-            }`}
-          >
-            {kpis.healthScore != null ? `${kpis.healthScore}%` : "—"}
-          </span>
-          <span className={styles.kpiSub}>
-            {kpis.okServices} OK · {kpis.warnServices} warn · {kpis.critServices} crit
-          </span>
-        </div>
-        <div className={styles.kpiCard}>
-          <span className={styles.kpiLabel}>Services monitorés</span>
-          <span className={styles.kpiValue}>{kpis.totalServices}</span>
-          <span className={styles.kpiSub}>état temps réel CheckMK</span>
-        </div>
-        <div className={styles.kpiCard}>
-          <span className={styles.kpiLabel}>Disponibilité</span>
-          <span className={`${styles.kpiValue} ${styles.kpiValueAccent}`}>
-            {loadingAvailability ? "…" : availUp != null ? `${Math.round(availUp)}%` : "—"}
-          </span>
-          <div className={styles.kpiPeriodRow}>
-            {CHECKMK_AVAILABILITY_PERIOD_OPTIONS.map(({ value, label }) => (
-              <button
-                key={value}
-                type="button"
-                className={`${styles.periodPill} ${checkmkAvailabilityPeriod === value ? styles.periodPillActive : ""}`}
-                onClick={() => onAvailabilityPeriodChange(value)}
-                disabled={loadingAvailability}
-              >
-                {label}
-              </button>
-            ))}
-          </div>
-        </div>
-        <div className={styles.kpiCard}>
-          <span className={styles.kpiLabel}>Alertes ({eventsFilterLabel})</span>
-          <span className={styles.kpiValue}>{kpis.eventsInPeriod}</span>
-          <span className={styles.kpiSub}>
-            ~{kpis.eventsPerDay}/j · <TrendBadge value={kpis.eventTrend} />
-          </span>
-        </div>
-        <div className={styles.kpiCard}>
-          <span className={styles.kpiLabel}>Critiques</span>
-          <span className={`${styles.kpiValue} ${kpis.critCount > 0 ? styles.kpiValueBad : styles.kpiValueGood}`}>
-            {kpis.critCount}
-          </span>
-          <span className={styles.kpiSub}>{kpis.warnCount} warnings sur la période</span>
-        </div>
-        <div className={styles.kpiCard}>
-          <span className={styles.kpiLabel}>Notifications</span>
-          <span className={styles.kpiValue}>{notifsInRange.length}</span>
-          <span className={styles.kpiSub}>
-            {checkmkData?.notifications?.last_notification_timestamp
-              ? `Dernière · ${formatRelativeFrench(checkmkData.notifications.last_notification_timestamp)}`
-              : "envoyées par CheckMK"}
-          </span>
-        </div>
-      </div>
-
-      <div className={styles.sectionsStack}>
+      <div className={styles.splitLayout}>
         <div className={styles.section}>
           <div className={styles.sectionHeader}>
             <h3 className={styles.sectionTitle}>
@@ -563,14 +385,14 @@ export default function CheckMKMonitoringPanel({
               Services monitorés
             </h3>
             <span className={styles.sectionCount}>
-              {filteredServices.length} / {services.length}
+              {filteredServices.length}/{services.length}
             </span>
           </div>
           <div className={styles.toolbar}>
             <input
               type="text"
               className={styles.searchInput}
-              placeholder="Rechercher un service…"
+              placeholder="Rechercher…"
               value={serviceSearch}
               onChange={e => setServiceSearch(e.target.value)}
             />
@@ -580,9 +402,9 @@ export default function CheckMKMonitoringPanel({
                 className={`${styles.filterPill} ${serviceStateFilter === null ? styles.filterPillActive : ""}`}
                 onClick={() => setServiceStateFilter(null)}
               >
-                Tous ({serviceCounts.all})
+                Tous
               </button>
-              {SERVICE_STATE_META.map(({ state, label, color }) => (
+              {SERVICE_STATE_META.filter(m => m.state !== 3).map(({ state, label, color }) => (
                 <button
                   key={state}
                   type="button"
@@ -595,7 +417,7 @@ export default function CheckMKMonitoringPanel({
               ))}
             </div>
           </div>
-          <div className={styles.tableWrap}>
+          <div className={`${styles.tableWrap} ${styles.tableWrapFill}`}>
             <table className={styles.table}>
               <thead>
                 <tr>
@@ -609,13 +431,12 @@ export default function CheckMKMonitoringPanel({
                   <th onClick={() => toggleServiceSort("age")}>
                     Âge {serviceSort.col === "age" ? (serviceSort.dir === "asc" ? "▲" : "▼") : ""}
                   </th>
-                  <th />
                 </tr>
               </thead>
               <tbody>
                 {filteredServices.length === 0 ? (
                   <tr>
-                    <td colSpan={5} className={styles.emptyMsg}>
+                    <td colSpan={4} className={styles.emptyMsg}>
                       Aucun service
                     </td>
                   </tr>
@@ -638,19 +459,6 @@ export default function CheckMKMonitoringPanel({
                           {output || "—"}
                         </td>
                         <td className={styles.timeCell}>{formatServiceAge(service)}</td>
-                        <td>
-                          <button
-                            type="button"
-                            className={styles.openBtn}
-                            onClick={e => {
-                              e.stopPropagation();
-                              onOpenService(service);
-                            }}
-                            title="Ouvrir dans CheckMK"
-                          >
-                            <Icon icon="mdi:open-in-new" />
-                          </button>
-                        </td>
                       </tr>
                     );
                   })
@@ -663,185 +471,63 @@ export default function CheckMKMonitoringPanel({
         <div className={styles.section}>
           <div className={styles.sectionHeader}>
             <h3 className={styles.sectionTitle}>
-              <Icon icon="mdi:timeline-alert" className={styles.sectionTitleIcon} />
-              Events
+              <Icon icon="mdi:bell-ring" className={styles.sectionTitleIcon} />
+              Events & notifications
             </h3>
-            <span className={styles.sectionCount}>
-              {filteredEvents.length} alerte{filteredEvents.length !== 1 ? "s" : ""}
-            </span>
-          </div>
-          <div className={styles.periodBar}>
-            <span className={styles.periodBarLabel}>Période :</span>
-            {CHECKMK_DATE_FILTER_OPTIONS.map(({ value, label }) => (
+            <div className={styles.rightTabs}>
               <button
-                key={value}
                 type="button"
-                className={`${styles.periodPill} ${eventsDateFilter === value ? styles.periodPillActive : ""}`}
+                className={`${styles.rightTab} ${rightTab === "events" ? styles.rightTabActive : ""}`}
                 onClick={() => {
-                  setEventsDateFilter(value);
-                  setEventsPage(1);
+                  setRightTab("events");
+                  setHistoryPage(1);
                 }}
               >
-                {label}
+                Events ({rawEventsCount})
               </button>
-            ))}
-          </div>
-          <div className={styles.calendarFilterBar}>
-            <div className={styles.calendarFilterRow}>
-              <span className={styles.periodBarLabel}>Mois :</span>
-              <input
-                type="month"
-                className={styles.monthInput}
-                value={isCalendarFilter ? eventsDateFilter : ""}
-                onChange={e => {
-                  const val = e.target.value;
-                  if (val) {
-                    setEventsDateFilter(val);
-                    setEventsPage(1);
-                  }
+              <button
+                type="button"
+                className={`${styles.rightTab} ${rightTab === "notifications" ? styles.rightTabActive : ""}`}
+                onClick={() => {
+                  setRightTab("notifications");
+                  setHistoryPage(1);
                 }}
-                max={`${new Date().getFullYear() + 5}-12`}
-                min="2010-01"
+              >
+                Notif. ({rawNotifsCount})
+              </button>
+            </div>
+          </div>
+
+          {liveProblems.length > 0 ? (
+            <div className={styles.liveProblemsBlock}>
+              <div className={styles.liveProblemsTitle}>
+                <Icon icon="mdi:alert-circle" />
+                Problèmes actuels ({liveProblems.length})
+              </div>
+              <CompactAlertList
+                rows={liveProblems.slice(0, 5)}
+                emptyLabel=""
+                onOpenRow={row => {
+                  const svc = services.find(s => getServiceLabel(s) === row.service);
+                  if (svc) onOpenService?.(svc);
+                }}
               />
-              {isCalendarFilter ? (
-                <>
-                  <button
-                    type="button"
-                    className={styles.calendarClearBtn}
-                    onClick={() => {
-                      setEventsDateFilter("1m");
-                      setEventsPage(1);
-                    }}
-                  >
-                    <Icon icon="mdi:close" />
-                  </button>
-                  <span className={styles.calendarActiveLabel}>{formatCalendarFilterLabel(eventsDateFilter)}</span>
-                </>
-              ) : null}
-            </div>
-            {calendarMonthOptions.length > 0 ? (
-              <div className={styles.calendarMonthChips}>
-                {calendarMonthOptions.map(({ key, count, label }) => (
-                  <button
-                    key={key}
-                    type="button"
-                    className={`${styles.calendarMonthChip} ${eventsDateFilter === key ? styles.calendarMonthChipActive : ""}`}
-                    onClick={() => {
-                      setEventsDateFilter(key);
-                      setEventsPage(1);
-                    }}
-                  >
-                    {label}
-                    <span className={styles.calendarMonthChipCount}>{count}</span>
-                  </button>
-                ))}
-              </div>
-            ) : null}
-          </div>
-          <div className={styles.toolbar}>
-            <input
-              type="text"
-              className={styles.searchInput}
-              placeholder="Rechercher…"
-              value={eventsSearch}
-              onChange={e => {
-                setEventsSearch(e.target.value);
-                setEventsPage(1);
-              }}
-            />
-            <div className={styles.filterPills}>
-              <button
-                type="button"
-                className={`${styles.filterPill} ${eventStateFilter === null ? styles.filterPillActive : ""}`}
-                onClick={() => {
-                  setEventStateFilter(null);
-                  setEventsPage(1);
-                }}
-              >
-                Warn + Crit ({eventStateCounts.all})
-              </button>
-              {EVENT_STATE_META.filter(m => m.state === 1 || m.state === 2).map(({ state, label, color }) => (
-                <button
-                  key={state}
-                  type="button"
-                  className={`${styles.filterPill} ${eventStateFilter === state ? styles.filterPillActive : ""}`}
-                  style={eventStateFilter === state ? { borderColor: color, color } : undefined}
-                  onClick={() => {
-                    setEventStateFilter(eventStateFilter === state ? null : state);
-                    setEventsPage(1);
-                  }}
-                >
-                  {label} ({eventStateCounts[state]})
-                </button>
-              ))}
-            </div>
-          </div>
-          {eventServices.length > 0 ? (
-            <div className={styles.toolbar} style={{ paddingTop: 0, borderBottom: "none" }}>
-              <div className={styles.filterPills}>
-                <button
-                  type="button"
-                  className={`${styles.filterPill} ${!eventServiceFilter ? styles.filterPillActive : ""}`}
-                  onClick={() => {
-                    setEventServiceFilter(null);
-                    setEventsPage(1);
-                  }}
-                >
-                  Tous services
-                </button>
-                {eventServices.slice(0, 8).map(svc => (
-                  <button
-                    key={svc}
-                    type="button"
-                    className={`${styles.filterPill} ${eventServiceFilter === svc ? styles.filterPillActive : ""}`}
-                    onClick={() => {
-                      setEventServiceFilter(eventServiceFilter === svc ? null : svc);
-                      setEventsPage(1);
-                    }}
-                    title={svc}
-                  >
-                    {svc.length > 18 ? `${svc.slice(0, 16)}…` : svc}
-                  </button>
-                ))}
-              </div>
             </div>
           ) : null}
-          <AlertTable
-            rows={paginatedEvents}
-            emptyLabel="Aucune alerte warning/critical sur cette période"
-            sort={eventsSort}
-            onToggleSort={toggleEventsSort}
-            onOpenRow={onOpenEvent}
-            page={eventsPage}
-            totalPages={totalEventPages}
-            onPageChange={setEventsPage}
-            totalCount={filteredEvents.length}
-          />
-        </div>
 
-        <div className={styles.section}>
-          <div className={styles.sectionHeader}>
-            <h3 className={styles.sectionTitle}>
-              <Icon icon="mdi:bell-ring" className={styles.sectionTitleIcon} />
-              Notifications
-            </h3>
-            <span className={styles.sectionCount}>
-              {filteredNotifications.length} notification{filteredNotifications.length !== 1 ? "s" : ""}
-            </span>
-          </div>
           <div className={styles.periodBar}>
-            <span className={styles.periodBarLabel}>Période :</span>
-            {CHECKMK_DATE_FILTER_OPTIONS.map(({ value, label }) => (
+            {CHECKMK_DATE_FILTER_OPTIONS.map(({ value, shortLabel, label }) => (
               <button
                 key={value}
                 type="button"
-                className={`${styles.periodPill} ${notifDateFilter === value ? styles.periodPillActive : ""}`}
+                className={`${styles.periodPill} ${historyFilter === value ? styles.periodPillActive : ""}`}
                 onClick={() => {
-                  setNotifDateFilter(value);
-                  setNotifPage(1);
+                  setHistoryFilter(value);
+                  setHistoryPage(1);
                 }}
+                title={label}
               >
-                {label}
+                {shortLabel || label}
               </button>
             ))}
           </div>
@@ -850,50 +536,51 @@ export default function CheckMKMonitoringPanel({
               type="text"
               className={styles.searchInput}
               placeholder="Rechercher…"
-              value={notifSearch}
+              value={historySearch}
               onChange={e => {
-                setNotifSearch(e.target.value);
-                setNotifPage(1);
+                setHistorySearch(e.target.value);
+                setHistoryPage(1);
               }}
             />
-            <div className={styles.filterPills}>
+          </div>
+
+          <CompactAlertList
+            rows={paginatedHistory}
+            emptyLabel={
+              rightTab === "notifications"
+                ? rawNotifsCount === 0
+                  ? "Aucune notification synchronisée. Forcez une sync pour remonter l’historique CheckMK."
+                  : "Aucune notification sur cette période."
+                : rawEventsCount === 0
+                  ? "Aucun event historique synchronisé. Les problèmes live ci-dessus viennent de l’état actuel des services."
+                  : "Aucun event sur cette période."
+            }
+            onOpenRow={onOpenEvent}
+          />
+
+          {totalHistoryPages > 1 ? (
+            <div className={styles.pagination}>
               <button
                 type="button"
-                className={`${styles.filterPill} ${notifStateFilter === null ? styles.filterPillActive : ""}`}
-                onClick={() => {
-                  setNotifStateFilter(null);
-                  setNotifPage(1);
-                }}
+                className={styles.pageBtn}
+                disabled={historyPage === 1}
+                onClick={() => setHistoryPage(p => Math.max(1, p - 1))}
               >
-                Toutes ({notifStateCounts.all})
+                <Icon icon="mdi:chevron-left" />
               </button>
-              {EVENT_STATE_META.filter(m => m.state === 1 || m.state === 2).map(({ state, label, color }) => (
-                <button
-                  key={state}
-                  type="button"
-                  className={`${styles.filterPill} ${notifStateFilter === state ? styles.filterPillActive : ""}`}
-                  style={notifStateFilter === state ? { borderColor: color, color } : undefined}
-                  onClick={() => {
-                    setNotifStateFilter(notifStateFilter === state ? null : state);
-                    setNotifPage(1);
-                  }}
-                >
-                  {label} ({notifStateCounts[state]})
-                </button>
-              ))}
+              <span className={styles.pageInfo}>
+                {historyPage}/{totalHistoryPages} ({filteredHistory.length})
+              </span>
+              <button
+                type="button"
+                className={styles.pageBtn}
+                disabled={historyPage === totalHistoryPages}
+                onClick={() => setHistoryPage(p => Math.min(totalHistoryPages, p + 1))}
+              >
+                <Icon icon="mdi:chevron-right" />
+              </button>
             </div>
-          </div>
-          <AlertTable
-            rows={paginatedNotifications}
-            emptyLabel="Aucune notification CheckMK sur cette période"
-            sort={notifSort}
-            onToggleSort={toggleNotifSort}
-            onOpenRow={onOpenEvent}
-            page={notifPage}
-            totalPages={totalNotifPages}
-            onPageChange={setNotifPage}
-            totalCount={filteredNotifications.length}
-          />
+          ) : null}
         </div>
       </div>
     </section>
