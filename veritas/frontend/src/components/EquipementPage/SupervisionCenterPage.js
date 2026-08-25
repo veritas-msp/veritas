@@ -8,8 +8,10 @@ import PageGuideTour from "../PageGuide/PageGuideTour";
 import { getSupervisionCenterGuideSteps } from "../PageGuide/supervisionCenterGuideSteps";
 import { useRegisterPageGuide } from "../../hooks/useRegisterPageGuide";
 import { useAuthContext } from "../../contexts/AuthContext";
+import { usePermissions } from "../../contexts/PermissionsContext";
 import { useAppLocale } from "../../hooks/useAppGeneralSettings";
 import { getLocaleTag } from "../../i18n/locales";
+import { isAdminOrSuperAdminProfile } from "../../utils/profileProtection";
 import { getSupervisionCenterCopy } from "./supervisionCenterPageI18n";
 import { getBackupMspPanelCopy } from "./backupMspPanelI18n";
 import { buildUnifiedSupervisionQueue, filterSupervisionQueue, countQueueBySeverity, countQueueByDomain, mergeQueueWithAlertState, countQueueByWorkflow } from "./supervisionQueueUtils";
@@ -81,10 +83,9 @@ export default function MonitoringCenterPage({
   const [pageGuideOpen, setPageGuideOpen] = useState(false);
   const openPageGuide = useCallback(() => setPageGuideOpen(true), []);
   useRegisterPageGuide(openPageGuide);
-  const {
-    user
-  } = useAuthContext();
-  const isAdmin = String(user?.role || "").toLowerCase() === "admin";
+  const { user } = useAuthContext();
+  const { isAdmin } = usePermissions();
+  const canManageAlertRules = isAdmin || isAdminOrSuperAdminProfile(user?.profile);
   const locale = useAppLocale();
   const localeTag = getLocaleTag(locale);
   const pageCopy = useMemo(() => getSupervisionCenterCopy(locale), [locale]);
@@ -435,8 +436,8 @@ export default function MonitoringCenterPage({
     }
   }, [onEquipmentOpen, onNavigate]);
   const visibleTabs = useMemo(() => {
-    return (pageCopy.tabs || []).filter(tab => tab.id !== "settings" || isAdmin);
-  }, [pageCopy.tabs, isAdmin]);
+    return (pageCopy.tabs || []).filter(tab => tab.id !== "settings" || canManageAlertRules);
+  }, [pageCopy.tabs, canManageAlertRules]);
   const tabBadges = {
     operations: totalIssues,
     history: historyAlerts.length,
@@ -506,8 +507,8 @@ export default function MonitoringCenterPage({
                   </div>
                 </div> : null}
 
-              {activeTab === "settings" && isAdmin && !error ? <div className={`${cyberStyles.tabContent} ${styles.content}`}>
-                  <MonitoringAlertRulesPanel catalog={alertRulesCatalog} rules={alertRules} isAdmin={isAdmin} onSaved={applyRules} />
+              {activeTab === "settings" && canManageAlertRules && !error ? <div className={`${cyberStyles.tabContent} ${styles.content}`}>
+                  <MonitoringAlertRulesPanel catalog={alertRulesCatalog} rules={alertRules} isAdmin={canManageAlertRules} onSaved={applyRules} />
                 </div> : null}
 
               {error ? <div className={styles.panel}>

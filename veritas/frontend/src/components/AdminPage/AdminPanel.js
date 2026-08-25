@@ -21,6 +21,7 @@ import AdminTickets from "./AdminTickets";
 import AdminInterconnections from "./AdminInterconnections";
 import AdminAi from "./AdminAi";
 import AdminRmm from "./AdminRmm";
+import AdminSupervisionAlertRules from "./AdminSupervisionAlertRules";
 import AdminMaintenance from "./AdminMaintenance";
 import AdminClientPortal from "./AdminClientPortal";
 import AdminLicense from "./AdminLicense";
@@ -59,6 +60,7 @@ const TAB_COMPONENTS = {
   integrations: AdminInterconnections,
   ai: AdminAi,
   rmm: AdminRmm,
+  "supervision-alert-rules": AdminSupervisionAlertRules,
   injection: AdminInjection,
   "equipment-purge": AdminEquipmentPurge,
   maintenance: AdminMaintenance,

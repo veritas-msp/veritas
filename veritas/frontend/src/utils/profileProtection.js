@@ -11,6 +11,17 @@ export function isSuperAdminProtectedProfile(name) {
   return key === "super admin" || key === "superadmin" || key === "super administrateur";
 }
 
+/** Admin or Super Admin profile (full platform administration). */
+export function isAdminOrSuperAdminProfile(name) {
+  const key = normalizeProfileName(name);
+  return (
+    isSuperAdminProtectedProfile(name) ||
+    key === "admin" ||
+    key === "administrateur" ||
+    key === "administrator"
+  );
+}
+
 /** @deprecated Use isSuperAdminProtectedProfile */
 export function isAdminProtectedProfile(name) {
   return isSuperAdminProtectedProfile(name);

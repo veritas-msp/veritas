@@ -85,6 +85,9 @@ export const ADMIN_NAV_STRUCTURE = [{
     key: "rmm",
     icon: "mdi:laptop-account"
   }, {
+    key: "supervision-alert-rules",
+    icon: "mdi:bell-cog-outline"
+  }, {
     key: "integrations",
     icon: "mdi:link-variant"
   }, {
@@ -198,6 +201,10 @@ const ADMIN_PANEL_COPY = {
       rmm: {
         label: "RMM · Agents",
         description: "Postes supervisés et enrôlement"
+      },
+      "supervision-alert-rules": {
+        label: "Règles d’alerte",
+        description: "Critères d’alertes natives (CheckMK, RMM…)"
       },
       integrations: {
         label: "Intégrations",
@@ -317,6 +324,10 @@ const ADMIN_PANEL_COPY = {
       rmm: {
         label: "RMM · Agents",
         description: "Supervised endpoints and enrollment"
+      },
+      "supervision-alert-rules": {
+        label: "Alert rules",
+        description: "Native alert criteria (CheckMK, RMM…)"
       },
       integrations: {
         label: "Integrations",
@@ -441,6 +452,10 @@ const ADMIN_PANEL_COPY = {
         label: "RMM · Agenten",
         description: "Überwachte Endpunkte und Enrollment"
       },
+      "supervision-alert-rules": {
+        label: "Alarmregeln",
+        description: "Kriterien für native Alarme (CheckMK, RMM…)"
+      },
       integrations: {
         label: "Integrationen",
         description: "Connectoren und Synchronisationen"
@@ -564,6 +579,10 @@ const ADMIN_PANEL_COPY = {
         label: "RMM · Agenti",
         description: "Postazioni supervisionate e enrollment"
       },
+      "supervision-alert-rules": {
+        label: "Regole avvisi",
+        description: "Criteri avvisi nativi (CheckMK, RMM…)"
+      },
       integrations: {
         label: "Integrazioni",
         description: "Connettori e sincronizzazioni"
@@ -686,6 +705,10 @@ const ADMIN_PANEL_COPY = {
       rmm: {
         label: "RMM · Agentes",
         description: "Equipos supervisados y enrolamiento"
+      },
+      "supervision-alert-rules": {
+        label: "Reglas de alerta",
+        description: "Criterios de alertas nativas (CheckMK, RMM…)"
       },
       integrations: {
         label: "Integraciones",
