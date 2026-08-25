@@ -113,27 +113,24 @@ export default function StorageStep({
     render: st => <span className={equipmentStyles.internetCellBold}>{st.raid || "-"}</span>
   }, {
     id: "capacite",
-    label: "Capacity",
+    label: "Capacité",
     render: st => st.capacite ?? st.capacity ?? "-"
   }, {
-    id: "nbDisquesActuels",
-    label: "NB disque actuels",
-    render: st => <span className={equipmentStyles.internetCellBold}>
-          {st.nbDisquesActuels ?? (Array.isArray(st.disques) ? st.disques.length : "-")}
-        </span>
-  }, {
-    id: "nbDisquesMax",
-    label: "Nb disque max",
-    render: st => <span className={equipmentStyles.internetCellBold}>
-          {st.nbDisquesMax ?? st.disquesMax ?? "-"}
-        </span>
+    id: "slots",
+    label: "Slots (utilisés / max)",
+    render: st => {
+      const used = st.nbDisquesActuels ?? (Array.isArray(st.disques) ? st.disques.length : null);
+      const max = st.nbDisquesMax ?? st.disquesMax ?? null;
+      if (used == null && max == null) return "-";
+      return <span className={equipmentStyles.internetCellBold}>{used ?? "—"} / {max ?? "—"}</span>;
+    }
   }, {
     id: "expirationGarantie",
-    label: "Date de garantie",
+    label: "Garantie",
     render: st => <ExpirationDateCell value={st.expirationGarantie || st.garantie} />
   }, {
     id: "espace",
-    label: "Space used",
+    label: "Espace utilisé / restant",
     render: st => {
       const key = getKey(st);
       const totalRaw = st.capacite ?? st.capacity ?? "";
@@ -170,6 +167,13 @@ export default function StorageStep({
         }}>
                 / {totalRaw}
               </span>}
+            {totalNumeric != null && !Number.isNaN(totalNumeric) && value !== "" && value != null && !Number.isNaN(Number(value)) ? <span style={{
+          fontSize: "0.75rem",
+          color: "#059669",
+          marginLeft: 4
+        }} title="Espace restant">
+                (reste {Math.max(0, totalNumeric - Number(value))})
+              </span> : null}
           </div>;
     }
   }, {

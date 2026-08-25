@@ -1,14 +1,18 @@
 export const REPORT_META = {
+  supervision: {
+    label: "Rapport de supervision",
+    shortLabel: "Supervision"
+  },
   infrastructure: {
-    label: "Infrastructure report",
+    label: "Rapport infrastructure",
     shortLabel: "Infrastructure"
   },
   cybersecurite: {
-    label: "Cybersecurity report",
-    shortLabel: "Cybersecurity"
+    label: "Rapport cybersécurité",
+    shortLabel: "Cybersécurité"
   },
   services: {
-    label: "Services report",
+    label: "Rapport services",
     shortLabel: "Services"
   }
 };
@@ -19,13 +23,13 @@ export function formatReportDate(value) {
   if (!value) return "";
   const d = new Date(value);
   if (Number.isNaN(d.getTime())) return String(value);
-  return d.toLocaleDateString("en-US");
+  return d.toLocaleDateString("fr-FR");
 }
 export function buildReportPeriodLabel(client) {
   const startLabel = formatReportDate(client?.reportStartDate);
   const endLabel = formatReportDate(client?.reportEndDate);
   if (startLabel && endLabel) {
-    return `Period from ${startLabel} to ${endLabel}`;
+    return `Période du ${startLabel} au ${endLabel}`;
   }
   return "";
 }

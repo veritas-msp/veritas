@@ -12,7 +12,8 @@ export default function MonitoringPage({
   clients = [],
   onNewDocument,
   onEditDocument,
-  onViewSummary
+  onViewSummary,
+  onNavigate
 }) {
   const [recentDocs, setRecentDocs] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -375,7 +376,7 @@ export default function MonitoringPage({
         <div className={styles.tableHeader}>
           <h1 className={styles.title}>
             <IconifyIcon icon="mdi:monitor-dashboard" className={styles.titleIcon} />
-            Monitoring reports
+            Rapports de supervision
           </h1>
           <div className={styles.searchBarContainer}>
             <div className={styles.headerSearchBox}>
@@ -393,8 +394,14 @@ export default function MonitoringPage({
             <span className={styles.resultCount}>
               {filteredDocs.length} report{filteredDocs.length > 1 ? "s" : ""}
             </span>
-            <button type="button" className={styles.addButton} onClick={() => setShowCreateModal(true)} title="Add a report">
-              <FaPlus />
+            <button type="button" className={styles.addButton} onClick={() => {
+              if (typeof onNavigate === "function") {
+                onNavigate("Report");
+                return;
+              }
+              setShowCreateModal(true);
+            }} title="Créer un rapport de supervision">
+              <FaPlus /> <span style={{ marginLeft: 6, fontSize: "0.85rem" }}>Créer un rapport de supervision</span>
             </button>
           </div>
         </div>

@@ -1,12 +1,12 @@
 import { interpolate, normalizeLocale, pickLocaleMessages } from "../../i18n/translate";
 import { REPORT_TYPE_DEFS } from "./reportTypeConstants";
 const WIZARD_STEPS = {
-  supervisionEtat: ["Périmètre", "État temps réel", "Synthèse", "Validation"],
+  supervisionEtat: ["Période", "Cartographie", "Infrastructure", "Récapitulatif", "Synthèse"],
   intervention: ["Contexte", "Interventions", "Compte-rendu", "Validation"],
   cahierRecette: ["Périmètre projet", "Solutions & matériel", "Fonctionnement", "Recette"]
 };
 const WIZARD_STEPS_EN = {
-  supervisionEtat: ["Scope", "Live status", "Summary", "Sign-off"],
+  supervisionEtat: ["Period", "Cartography", "Infrastructure", "Recap", "Summary"],
   intervention: ["Context", "Interventions", "Report", "Sign-off"],
   cahierRecette: ["Project scope", "Solutions & hardware", "Operation", "Acceptance"]
 };
@@ -105,7 +105,7 @@ const RAPPORT_PAGE = {
     reportTypes: {
       supervisionEtat: {
         title: "État de supervision",
-        description: "Instantané temps réel du parc supervisé : alertes, disponibilité et indicateurs clés."
+        description: "Rapport client sur une période : cartographie, disponibilité, sauvegarde, cyber, Office 365, tickets et alertes."
       },
       intervention: {
         title: "Rapport d'intervention",
@@ -152,6 +152,15 @@ const RAPPORT_PAGE = {
     wizardPlaceholderBadge: "En développement",
     wizardFinishSoon: "Finaliser · bientôt disponible",
     wizardStepOf: "Étape {current} sur {total}",
+    supervisionBuilder: {
+      periodTitle: "Période du rapport",
+      periodGateSubtitle: "Définissez la fenêtre d’analyse avant de parcourir les modules client.",
+      periodHint: "Tickets, alertes de supervision et disponibilité seront calculés sur cette période.",
+      startLabel: "Date de début",
+      endLabel: "Date de fin",
+      startBuilder: "Ouvrir le builder",
+      loading: "Chargement…"
+    },
     recap: {
       contract: "Contrat",
       contractExpires: "Expiration",
@@ -234,6 +243,15 @@ const RAPPORT_PAGE = {
     wizardPlaceholderBadge: "In development",
     wizardFinishSoon: "Finish · coming soon",
     wizardStepOf: "Step {current} of {total}",
+    supervisionBuilder: {
+      periodTitle: "Report period",
+      periodGateSubtitle: "Set the analysis window before reviewing client modules.",
+      periodHint: "Tickets, supervision alerts and availability are computed for this period.",
+      startLabel: "Start date",
+      endLabel: "End date",
+      startBuilder: "Open builder",
+      loading: "Loading…"
+    },
     recap: {
       contract: "Contract",
       contractExpires: "Expires",
@@ -514,6 +532,7 @@ export function getRapportPageCopy(locale) {
   return {
     ...copy,
     wizard: buildWizard(copy),
+    supervisionBuilder: copy.supervisionBuilder || {},
     recap: copy.recap,
     localeCode: code
   };

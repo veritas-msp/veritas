@@ -9,11 +9,13 @@ import styles from "./RapportPage.module.css";
 import cyberStyles from "../CybersecuritePage/CybersecuritePage.module.css";
 import ReportCreateWizard from "./RapportCreateWizard";
 import ReportBuilderPlaceholder from "./RapportBuilderPlaceholder";
+import SupervisionPeriodGate from "./SupervisionPeriodGate";
 import ReportInterventionBuilder from "./intervention/RapportInterventionBuilder";
 import { REPORT_TYPE_IDS } from "./reportTypeConstants";
 import MonitoringSteps, { getEnabledMonitoringSteps } from "./monitoring/MonitoringSteps";
 import { applyEquipmentPatchToEquipements } from "./monitoring/equipmentPatchUtils";
 import { buildCheckMKCacheEntry, buildCheckMKReportSnapshot, computeCheckMKEquipmentStatus, deriveServicesFromPeriodEvents, filterCheckMKEventsForReportPeriod, resolveCheckMKEquipmentKey } from "./monitoring/checkmkReportCacheUtils";
+import { isSupervisionReportBuilderType } from "./monitoring/supervisionReportBuilder";
 import enterpriseStyles from "../EnterprisesPage/EnterpriseDetailPage.module.css";
 import builderStyles from "./monitoring/RapportMonitoringBuilder.module.css";
 import { confirmLeaveMonitoringReport, isMonitoringReportBuilderActive } from "../../utils/monitoringReportGuard";
@@ -119,6 +121,7 @@ export default function ReportPage({
   const [saveVisibleToClient, setSaveVisibleToClient] = useState(false);
   const [recentDocs, setRecentDocs] = useState([]);
   const [stepStorageState, setStepStorageState] = useState(null);
+  const [startingSupervisionBuilder, setStartingSupervisionBuilder] = useState(false);
   const userInitial = useMemo(() => {
     if (typeof window === "undefined") return "L";
     try {
@@ -153,12 +156,12 @@ export default function ReportPage({
     return () => ac.abort();
   }, []);
   useEffect(() => {
-    if (builderType !== "monitoring" || !builderClient?.equipements) return;
+    if (!isSupervisionReportBuilderType(builderType) || !builderClient?.equipements) return;
     const eq = builderClient.equipements;
     const collect = arr => (Array.isArray(arr) ? arr : []).filter(i => i?.checkmk_host_name && i?.is_active !== false).map(i => ({
       equipment_id: i.id
     }));
-    const items = [...collect(eq.Servers), ...collect(eq.Firewalls), ...collect(eq.NAS), ...collect(eq.SAN ?? []), ...collect(eq.Switch), ...collect(eq.BorneWifi)];
+    const items = [...collect(eq.Serveurs), ...collect(eq.Servers), ...collect(eq.Firewalls), ...collect(eq.NAS), ...collect(eq.SAN ?? []), ...collect(eq.Switch), ...collect(eq.BorneWifi)];
     const initialStatuses = {};
     items.forEach(m => {
       if (m.equipment_id) initialStatuses[String(m.equipment_id)] = "unsynced";
@@ -175,7 +178,7 @@ export default function ReportPage({
   }, [builderClient, builderType]);
   const isBuilderActive = isMonitoringReportBuilderActive(builderType, builderClient);
   const isOnSummaryStep = useMemo(() => {
-    if (!builderClient || builderType !== "monitoring") return false;
+    if (!builderClient || !isSupervisionReportBuilderType(builderType)) return false;
     const steps = getEnabledMonitoringSteps(builderClient);
     return steps[builderStepIndex] === "summary";
   }, [builderClient, builderType, builderStepIndex]);
@@ -212,6 +215,54 @@ export default function ReportPage({
     } finally {
       startingReportRef.current = false;
     }
+  };
+  const handleConfirmSupervisionPeriod = async ({ startDate, endDate }) => {
+    if (!draftReport?.client || startingSupervisionBuilder) return;
+    const client = draftReport.client;
+    const clientId = client.id ?? client.uuid;
+    if (!clientId || !startDate || !endDate) {
+      toast.error("Période ou client invalide.");
+      return;
+    }
+    setStartingSupervisionBuilder(true);
+    try {
+      const [modulesData, enrichedClient] = await Promise.all([
+        fetchClientModules(clientId),
+        enrichBuilderClientWithSites(client)
+      ]);
+      const nextClient = {
+        ...enrichedClient,
+        equipements: modulesData?.equipements || enrichedClient.equipements || {},
+        modules_monitoring: modulesData?.modules_monitoring || enrichedClient.modules_monitoring || {},
+        reportStartDate: startDate,
+        reportEndDate: endDate
+      };
+      setBuilderClient(nextClient);
+      setBuilderType(REPORT_TYPE_IDS.SUPERVISION_ETAT);
+      setBuilderStepIndex(0);
+      setEquipmentComments({});
+      setGeneralComments([]);
+      setEquipmentMonitoringStatus({});
+      setEquipmentCheckMKData({});
+      setStepStorageState(null);
+      setDraftReport(null);
+      setCreateWizardStep("type");
+    } catch (err) {
+      console.error("Error starting supervision report builder:", err);
+      toast.error(err?.message || "Impossible de démarrer le rapport de supervision.");
+    } finally {
+      setStartingSupervisionBuilder(false);
+    }
+  };
+  const handlePeriodChange = ({ reportStartDate, reportEndDate }) => {
+    setBuilderClient(prev => {
+      if (!prev) return prev;
+      return {
+        ...prev,
+        reportStartDate: reportStartDate || prev.reportStartDate,
+        reportEndDate: reportEndDate || prev.reportEndDate
+      };
+    });
   };
   const handleBackFromDraftReport = () => {
     setDraftReport(null);
@@ -294,7 +345,7 @@ export default function ReportPage({
     setIsCommentsDrawerOpen(true);
   };
   const handleFocusEquipmentFromComment = (moduleKey, equipmentKey) => {
-    if (!builderClient || builderType !== "monitoring") return;
+    if (!builderClient || !isSupervisionReportBuilderType(builderType)) return;
     const stepsArray = getEnabledMonitoringSteps(builderClient);
     const targetIndex = stepsArray.findIndex(k => k === moduleKey);
     if (targetIndex >= 0) {
@@ -363,14 +414,14 @@ export default function ReportPage({
     };
   };
   const handleSyncAllMonitoring = async () => {
-    if (!builderClient || builderType !== "monitoring") return;
+    if (!builderClient || !isSupervisionReportBuilderType(builderType)) return;
     if (!builderClient.reportStartDate || !builderClient.reportEndDate) {
-      toast.error("The report period is not defined.");
+      toast.error("La période du rapport n’est pas définie.");
       return;
     }
     const clientId = builderClient.id || builderClient.uuid;
     if (!clientId) {
-      toast.error("Unable to identify the client for CheckMK synchronization.");
+      toast.error("Impossible d’identifier le client pour la synchronisation.");
       return;
     }
     const steps = getEnabledMonitoringSteps(builderClient);
@@ -429,10 +480,10 @@ export default function ReportPage({
         checkmk_host_name: i.checkmk_host_name,
         checkmk_site: i.checkmk_site ?? null
       }));
-      const mappings = [...collect(eq.Servers), ...collect(eq.Firewalls), ...collect(eq.NAS), ...collect(eq.SAN ?? []), ...collect(eq.Switch), ...collect(eq.BorneWifi)];
+      const mappings = [...collect(eq.Serveurs), ...collect(eq.Servers), ...collect(eq.Firewalls), ...collect(eq.NAS), ...collect(eq.SAN ?? []), ...collect(eq.Switch), ...collect(eq.BorneWifi)];
       if (mappings.length === 0) {
         setEquipmentMonitoringStatus({});
-        toast.info("No equipment mapped to CheckMK for this client.");
+        toast.info("Aucun équipement mappé à une supervision pour ce client.");
         return;
       }
       const startDate = new Date(builderClient.reportStartDate);
@@ -487,14 +538,14 @@ export default function ReportPage({
     moduleKey,
     equipmentKey
   }) => {
-    if (!builderClient || builderType !== "monitoring") return;
+    if (!builderClient || !isSupervisionReportBuilderType(builderType)) return;
     const hostName = item?.checkmk_host_name ?? item?.data?.checkmk_host_name;
     if (!hostName || typeof hostName !== "string" || !hostName.trim()) {
       toast.warn("This equipment has no CheckMK mapping configured.");
       return;
     }
     if (!builderClient.reportStartDate || !builderClient.reportEndDate) {
-      toast.error("The report period is not defined.");
+      toast.error("La période du rapport n’est pas définie.");
       return;
     }
     setSyncingEquipmentKey(equipmentKey);
@@ -636,13 +687,18 @@ export default function ReportPage({
           equipment: equipmentComments,
           general: generalComments
         },
+        period: {
+          start: builderClient?.reportStartDate || null,
+          end: builderClient?.reportEndDate || null
+        },
         stepStates: {
           Storage: stepStorageState
         },
-        checkMK: buildCheckMKReportSnapshot(equipmentCheckMKData, equipmentMonitoringStatus, builderClient?.reportStartDate, builderClient?.reportEndDate)
+        checkMK: buildCheckMKReportSnapshot(equipmentCheckMKData, equipmentMonitoringStatus, builderClient?.reportStartDate, builderClient?.reportEndDate),
+        reportType: REPORT_TYPE_IDS.SUPERVISION_ETAT
       });
       const clientName = builderClient?.name || builderClient?.nom || "CLIENT";
-      const reportPeriod = builderClient?.reportStartDate && builderClient?.reportEndDate ? `From ${formatReportDate(builderClient.reportStartDate)} to ${formatReportDate(builderClient.reportEndDate)}` : builderClient?.reportPeriod || null;
+      const reportPeriod = builderClient?.reportStartDate && builderClient?.reportEndDate ? `Du ${formatReportDate(builderClient.reportStartDate)} au ${formatReportDate(builderClient.reportEndDate)}` : builderClient?.reportPeriod || null;
       const result = await saveMonitoringDocument({
         name: saveName.trim(),
         client_name: clientName,
@@ -872,12 +928,13 @@ export default function ReportPage({
     if (Number.isNaN(d.getTime())) return isoDate;
     return d.toLocaleDateString(pageCopy.bcp47);
   };
-  const isLegacyMonitoringBuilder = builderType === "monitoring" && builderClient;
+  const isSupervisionBuilder = isSupervisionReportBuilderType(builderType) && builderClient;
   const isDraftWizard = Boolean(draftReport);
   const isInterventionDraft = isDraftWizard && draftReport?.type?.id === REPORT_TYPE_IDS.INTERVENTION;
+  const isSupervisionDraft = isDraftWizard && draftReport?.type?.id === REPORT_TYPE_IDS.SUPERVISION_ETAT;
   return <>
       <div className={`${cyberStyles.mspPage} msp-page-insight`}>
-        {isLegacyMonitoringBuilder ? <div className={styles.builderShell}>
+        {isSupervisionBuilder ? <div className={styles.builderShell}>
               <section ref={builderSectionRef} className={`${builderStyles.builderSection} ${isCommentsDrawerOpen ? builderStyles.builderSectionWithComments : ""}`}>
                 {}
                 <div className={builderStyles.builderHeaderWrapper}>
@@ -889,14 +946,14 @@ export default function ReportPage({
                         </button>
                         <Icon icon="mdi:file-chart" className={enterpriseStyles.headerIcon} />
                         <span>
-                          {builderClient ? builderClient.name || builderClient.nom || `Client #${builderClient.id}` : "Monitoring report"}
+                          {builderClient ? builderClient.name || builderClient.nom || `Client #${builderClient.id}` : "Rapport de supervision"}
                         </span>
                       </h1>
                       {builderClient && <div className={builderStyles.builderSubtitle}>
                           {(builderClient.reportStartDate || builderClient.reportEndDate) && <span style={{
                     opacity: 0.85
                   }}>
-                              {builderClient.reportStartDate && builderClient.reportEndDate ? `From ${formatReportDate(builderClient.reportStartDate)} to ${formatReportDate(builderClient.reportEndDate)}` : builderClient.reportStartDate ? `From ${formatReportDate(builderClient.reportStartDate)}` : `Until ${formatReportDate(builderClient.reportEndDate)}`}
+                              {builderClient.reportStartDate && builderClient.reportEndDate ? `Du ${formatReportDate(builderClient.reportStartDate)} au ${formatReportDate(builderClient.reportEndDate)}` : builderClient.reportStartDate ? `À partir du ${formatReportDate(builderClient.reportStartDate)}` : `Jusqu’au ${formatReportDate(builderClient.reportEndDate)}`}
                             </span>}
                         </div>}
                     </div>
@@ -907,7 +964,7 @@ export default function ReportPage({
                         <Icon icon="mdi:comment-text-outline" className={enterpriseStyles.headerActionIcon} />
                       </button>
 
-                      <button type="button" className={`${enterpriseStyles.headerActionButton} ${enterpriseStyles.headerActionButtonInactive}`} title={builderType === "monitoring" && builderClient && isSyncingOffice365Report ? "Office 365 synchronization in progress..." : "Synchronize monitoring data"} onClick={handleSyncAllMonitoring} disabled={isSyncingMonitoring || isSyncingOffice365Report}>
+                      <button type="button" className={`${enterpriseStyles.headerActionButton} ${enterpriseStyles.headerActionButtonInactive}`} title={isSupervisionReportBuilderType(builderType) && builderClient && isSyncingOffice365Report ? "Office 365 synchronization in progress..." : "Synchronize monitoring data"} onClick={handleSyncAllMonitoring} disabled={isSyncingMonitoring || isSyncingOffice365Report}>
                         <Icon icon="mdi:refresh" className={enterpriseStyles.headerActionIcon} style={{
                     animation: isSyncingMonitoring || isSyncingOffice365Report ? "spin 1s linear infinite" : "none"
                   }} />
@@ -1057,7 +1114,7 @@ export default function ReportPage({
                     </div>
                   </div>}
 
-                {builderType === "monitoring" && builderClient && <MonitoringSteps client={builderClient} activeStepIndex={builderStepIndex} onStepChange={setBuilderStepIndex} onOpenComments={handleOpenEquipmentComments} onRefreshClient={handleRefreshBuilderClient} onEquipmentSaved={handleReportEquipmentSaved} equipmentCommentCounts={equipmentCommentCounts} equipmentTicketCounts={equipmentTicketCounts} equipmentComments={equipmentComments} highlightedEquipmentKey={highlightedEquipmentKey} monitoringSyncStatus={equipmentMonitoringStatus} equipmentCheckMKData={equipmentCheckMKData} isSyncingMonitoring={isSyncingMonitoring} onSyncCheckMK={handleSyncSingleEquipment} syncingEquipmentKey={syncingEquipmentKey} isSyncingOffice365Report={isSyncingOffice365Report} allCommentsChronological={allCommentsChronological} summaryContentRef={summaryContentRef} stockageReportState={stepStorageState} onSetStorageReportState={setStepStorageState} />}
+                {isSupervisionReportBuilderType(builderType) && builderClient && <MonitoringSteps client={builderClient} activeStepIndex={builderStepIndex} onStepChange={setBuilderStepIndex} onOpenComments={handleOpenEquipmentComments} onRefreshClient={handleRefreshBuilderClient} onEquipmentSaved={handleReportEquipmentSaved} onPeriodChange={handlePeriodChange} onSyncAllMonitoring={handleSyncAllMonitoring} equipmentCommentCounts={equipmentCommentCounts} equipmentTicketCounts={equipmentTicketCounts} equipmentComments={equipmentComments} highlightedEquipmentKey={highlightedEquipmentKey} monitoringSyncStatus={equipmentMonitoringStatus} equipmentCheckMKData={equipmentCheckMKData} isSyncingMonitoring={isSyncingMonitoring} onSyncCheckMK={handleSyncSingleEquipment} syncingEquipmentKey={syncingEquipmentKey} isSyncingOffice365Report={isSyncingOffice365Report} allCommentsChronological={allCommentsChronological} summaryContentRef={summaryContentRef} stockageReportState={stepStorageState} onSetStorageReportState={setStepStorageState} />}
 
                 {isCommentsDrawerOpen && <div className={`${builderStyles.commentsDrawerOverlay} ${hasTabsBar ? builderStyles.commentsDrawerOverlayWithTabs : ""}`}>
                     <div className={builderStyles.commentsDrawer}>
@@ -1163,7 +1220,7 @@ export default function ReportPage({
                     </div>
                   </div>}
               </section>
-          </div> : isInterventionDraft ? <ReportInterventionBuilder copy={pageCopy} reportType={draftReport.type} client={draftReport.client} initialData={draftReport.initialData} documentId={draftReport.documentId} documentName={draftReport.documentName} onBack={handleBackFromDraftReport} /> : isDraftWizard ? <ReportBuilderPlaceholder copy={pageCopy} reportType={draftReport.type} client={draftReport.client} onBack={handleBackFromDraftReport} /> : <div className={cyberStyles.mspLayout}>
+          </div> : isInterventionDraft ? <ReportInterventionBuilder copy={pageCopy} reportType={draftReport.type} client={draftReport.client} initialData={draftReport.initialData} documentId={draftReport.documentId} documentName={draftReport.documentName} onBack={handleBackFromDraftReport} /> : isSupervisionDraft ? <SupervisionPeriodGate copy={pageCopy} reportType={draftReport.type} client={draftReport.client} onBack={handleBackFromDraftReport} onConfirm={handleConfirmSupervisionPeriod} confirming={startingSupervisionBuilder} /> : isDraftWizard ? <ReportBuilderPlaceholder copy={pageCopy} reportType={draftReport.type} client={draftReport.client} onBack={handleBackFromDraftReport} /> : <div className={cyberStyles.mspLayout}>
             <div className={cyberStyles.mspMain}>
               <header className={cyberStyles.mspHero}>
                 <div className={cyberStyles.mspHeroMain}>

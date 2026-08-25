@@ -51,6 +51,9 @@ export async function buildReportZipBlob(ref, config) {
   }
   const root = ref.current;
   const sections = [{
+    type: "supervision",
+    selector: '[data-export-section="supervision"]'
+  }, {
     type: "infrastructure",
     selector: '[data-export-section="infrastructure"]'
   }, {
@@ -63,9 +66,10 @@ export async function buildReportZipBlob(ref, config) {
   const zip = new JSZip();
   const clientName = (config.client.name || config.client.nom || "CLIENT").toString().replace(/\s+/g, " ");
   const fileNames = {
-    infrastructure: `${clientName} - Infrastructure report.html`,
-    cybersecurite: `${clientName} - Cybersecurity report.html`,
-    services: `${clientName} - Services report.html`
+    supervision: `${clientName} - Rapport de supervision.html`,
+    infrastructure: `${clientName} - Rapport infrastructure.html`,
+    cybersecurite: `${clientName} - Rapport cybersécurité.html`,
+    services: `${clientName} - Rapport services.html`
   };
   const commentsEl = root.querySelector('[data-export-comments="true"]');
   const commentsHtml = commentsEl ? commentsEl.outerHTML : "";

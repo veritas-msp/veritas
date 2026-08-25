@@ -577,7 +577,7 @@ const MonitoringRenderContent = ({
         docData
       };
     };
-    return <MonitoringHome clients={clients} onNewDocument={cfg => {
+    return <MonitoringHome clients={clients} onNavigate={onNavigate} onNewDocument={cfg => {
       try {
         const clientId = cfg?.client?.id || cfg?.clientId || null;
         const docName = cfg?.documentName || null;

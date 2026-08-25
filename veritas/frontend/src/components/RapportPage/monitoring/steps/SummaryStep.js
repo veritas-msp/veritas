@@ -15,7 +15,7 @@ export default function SummaryStep({
   stockageReportState = null,
   summaryContentRef = null
 }) {
-  const [activeTab, setActiveTab] = useState("infra");
+  const [activeTab, setActiveTab] = useState("overview");
   const renderTextWithLinks = value => {
     const text = String(value || "");
     if (!text) return "";
@@ -44,11 +44,11 @@ export default function SummaryStep({
     if (!value) return "";
     const d = new Date(value);
     if (Number.isNaN(d.getTime())) return String(value);
-    return d.toLocaleDateString("en-US");
+    return d.toLocaleDateString("fr-FR");
   };
   const startLabel = formatDate(client.reportStartDate);
   const endLabel = formatDate(client.reportEndDate);
-  const periodLabel = startLabel && endLabel ? `Report period: ${startLabel} → ${endLabel}` : "";
+  const periodLabel = startLabel && endLabel ? `Période du rapport : ${startLabel} → ${endLabel}` : "";
   const clientNumber = client?.code || client?.numeroClient || client?.id;
   const rawLabel = client?.name || client?.nom || clientNumber || "";
   const match = rawLabel.match(/^(\d{2,})-\s*(.*)$/);
@@ -57,7 +57,7 @@ export default function SummaryStep({
   const hasInfra = ["Internet", "Firewall", "Servers", "Storage", "Switch", "BorneWifi", "TOIP"].some(stepKey => isMonitoringStepEnabled(client, stepKey));
   const hasCyber = ["Backup", "Antivirus", "Antispam"].some(stepKey => isMonitoringStepEnabled(client, stepKey));
   const hasServices = ["Office365", "NDD"].some(stepKey => isMonitoringStepEnabled(client, stepKey));
-  const availableTabs = [];
+  const availableTabs = ["overview"];
   if (hasInfra) availableTabs.push("infra");
   if (hasCyber) availableTabs.push("cyber");
   if (hasServices) availableTabs.push("services");
@@ -66,7 +66,6 @@ export default function SummaryStep({
   return <div style={{
     marginTop: "1.5rem"
   }}>
-      {}
       <div className={styles.summaryHeader}>
         <h2 className={styles.summaryClientTitle}>
           {clientPrefix && <span className={styles.summaryClientNumber}>{clientPrefix}&nbsp;</span>}
@@ -75,31 +74,56 @@ export default function SummaryStep({
         {periodLabel && <p className={styles.summaryPeriodSubtitle}>{periodLabel}</p>}
       </div>
 
-      {}
       <div className={styles.summaryReportWrapper}>
         <div className={styles.summaryReportSeparator} />
         {availableTabs.length > 0 && <div className={styles.summaryTabs}>
+            <button type="button" className={`${styles.summaryTab} ${styles.summaryTabInfra} ${currentTab === "overview" ? styles.summaryTabActive : ""}`} onClick={() => setActiveTab("overview")}>
+                RAPPORT DE SUPERVISION
+              </button>
             {hasInfra && <button type="button" className={`${styles.summaryTab} ${styles.summaryTabInfra} ${currentTab === "infra" ? styles.summaryTabActive : ""}`} onClick={() => setActiveTab("infra")}>
                 INFRASTRUCTURE
               </button>}
             {hasCyber && <button type="button" className={`${styles.summaryTab} ${styles.summaryTabCyber} ${currentTab === "cyber" ? styles.summaryTabActive : ""}`} onClick={() => setActiveTab("cyber")}>
-                CYBERSECURITY
+                CYBERSÉCURITÉ
               </button>}
             {hasServices && <button type="button" className={`${styles.summaryTab} ${styles.summaryTabServices} ${currentTab === "services" ? styles.summaryTabActive : ""}`} onClick={() => setActiveTab("services")}>
                 SERVICES
               </button>}
           </div>}
-        <div className={`${styles.summaryReportTitle} ${currentTab === "infra" ? styles.summaryReportInfra : currentTab === "cyber" ? styles.summaryReportCyber : styles.summaryReportServices}`}>
-          {currentTab === "infra" && "INFRASTRUCTURE REPORT"}
-          {currentTab === "cyber" && "CYBERSECURITY REPORT"}
-          {currentTab === "services" && "SERVICES REPORT"}
+        <div className={`${styles.summaryReportTitle} ${currentTab === "cyber" ? styles.summaryReportCyber : currentTab === "services" ? styles.summaryReportServices : styles.summaryReportInfra}`}>
+          {currentTab === "overview" && "RAPPORT DE SUPERVISION"}
+          {currentTab === "infra" && "RAPPORT INFRASTRUCTURE"}
+          {currentTab === "cyber" && "RAPPORT CYBERSÉCURITÉ"}
+          {currentTab === "services" && "RAPPORT SERVICES"}
         </div>
       </div>
 
-      {}
       <div style={{
       marginTop: "1.5rem"
     }} ref={summaryContentRef}>
+        <div data-export-section="supervision" style={{
+        display: currentTab === "overview" ? "block" : "none"
+      }}>
+          <p style={{
+          margin: "0 0 1rem",
+          color: "#4b5563",
+          fontSize: "0.95rem"
+        }}>
+            Synthèse unique couvrant l’infrastructure, la continuité, la cybersécurité, les services cloud,
+            les tickets support et les alertes de supervision sur la période sélectionnée.
+          </p>
+          {hasInfra && <ReportSummaryInfrastructure client={client} equipmentCheckMKData={equipmentCheckMKData} equipmentComments={equipmentComments} equipmentCommentCounts={equipmentCommentCounts} equipmentTicketCounts={equipmentTicketCounts} stockageReportState={stockageReportState} />}
+          {hasCyber && <div style={{
+          marginTop: "1.5rem"
+        }}>
+              <ReportSummaryCybersecurity client={client} equipmentCheckMKData={equipmentCheckMKData} equipmentComments={equipmentComments} equipmentCommentCounts={equipmentCommentCounts} equipmentTicketCounts={equipmentTicketCounts} />
+            </div>}
+          {hasServices && <div style={{
+          marginTop: "1.5rem"
+        }}>
+              <ReportSummaryServices client={client} equipmentComments={equipmentComments} equipmentCommentCounts={equipmentCommentCounts} equipmentTicketCounts={equipmentTicketCounts} />
+            </div>}
+        </div>
         {hasInfra && <div data-export-section="infrastructure" style={{
         display: currentTab === "infra" ? "block" : "none"
       }}>
@@ -116,11 +140,10 @@ export default function SummaryStep({
             <ReportSummaryServices client={client} equipmentComments={equipmentComments} equipmentCommentCounts={equipmentCommentCounts} equipmentTicketCounts={equipmentTicketCounts} />
           </div>}
 
-        {}
         <section className={styles.reportCommentsContainer} data-export-comments="true">
           <div className={styles.reportCommentsHeader}>
             <IconifyIcon icon="mdi:comment-text-multiple-outline" width={20} height={20} />
-            <h4 className={styles.reportCommentsTitle}>Report comments</h4>
+            <h4 className={styles.reportCommentsTitle}>Commentaires du rapport</h4>
           </div>
 
           {Array.isArray(allComments) && allComments.length > 0 ? <div className={styles.reportCommentsList}>
@@ -137,8 +160,8 @@ export default function SummaryStep({
               equipmentLabel = parts[parts.length - 1].trim();
             }
             const contextLabel = [moduleLabel, equipmentLabel].filter(Boolean).join(" ");
-            const linkedLabel = isEquipment ? contextLabel || "Device" : "General comment";
-            const dateLabel = comment.createdAt ? new Date(comment.createdAt).toLocaleString("en-US") : "";
+            const linkedLabel = isEquipment ? contextLabel || "Périphérique" : "Commentaire général";
+            const dateLabel = comment.createdAt ? new Date(comment.createdAt).toLocaleString("fr-FR") : "";
             return <article key={isEquipment ? `eq-${comment.equipmentKey}-${comment.id}` : `gen-${comment.id}`} className={styles.reportCommentCard}>
                     <div className={styles.reportCommentMeta}>
                       {dateLabel} - {linkedLabel}
@@ -149,7 +172,7 @@ export default function SummaryStep({
                   </article>;
           })}
             </div> : <div className={styles.reportCommentsEmpty}>
-              No comments were added for this period.
+              Aucun commentaire ajouté pour cette période.
             </div>}
         </section>
       </div>
