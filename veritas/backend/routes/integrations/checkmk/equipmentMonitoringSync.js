@@ -153,6 +153,7 @@ function rowToResponse(row, availabilityPeriod = '1m') {
       events: monitoringData.events || null,
       availability: availabilityByPeriod[availabilityPeriod] ?? monitoringData.availability ?? null,
       hostEventsDetailed: monitoringData.hostEventsDetailed || null,
+      notifications: monitoringData.notifications || null,
       availabilityByPeriod
     },
     availabilityByPeriod
@@ -187,7 +188,7 @@ async function fetchAndMergeCheckMKData(req, {
   const queryBase = {
     site: siteParam
   };
-  const [services, events, hostDetails, hostEventsDetailed, avail1m, avail3m, avail1y] = await Promise.all([internalCheckMKGet(req, `/services/${encodeURIComponent(hostName)}`, {
+  const [services, events, hostDetails, hostEventsDetailed, notifications, avail1m, avail3m, avail1y] = await Promise.all([internalCheckMKGet(req, `/services/${encodeURIComponent(hostName)}`, {
     ...queryBase,
     start_time: eventsStartTime.toISOString(),
     end_time: eventsEndTime.toISOString()
@@ -196,6 +197,10 @@ async function fetchAndMergeCheckMKData(req, {
     start_time: eventsStartTime.toISOString(),
     end_time: eventsEndTime.toISOString()
   }), internalCheckMKGet(req, `/host/${encodeURIComponent(hostName)}`, queryBase), internalCheckMKGet(req, `/host-events/${encodeURIComponent(hostName)}`, {
+    ...queryBase,
+    start_time: eventsStartTime.toISOString(),
+    end_time: eventsEndTime.toISOString()
+  }), internalCheckMKGet(req, `/notifications/${encodeURIComponent(hostName)}`, {
     ...queryBase,
     start_time: eventsStartTime.toISOString(),
     end_time: eventsEndTime.toISOString()
@@ -244,6 +249,17 @@ async function fetchAndMergeCheckMKData(req, {
     events: mergeEventLists(prev.hostEventsDetailed?.events || [], hostEventsDetailed.events || []),
     events_count: mergeEventLists(prev.hostEventsDetailed?.events || [], hostEventsDetailed.events || []).length
   } : prev.hostEventsDetailed || null;
+  const incomingNotifications = notifications?.notifications || notifications?.events || [];
+  const mergedNotificationsList = mergeEventLists(prev.notifications?.notifications || prev.notifications?.events || [], incomingNotifications);
+  const mergedNotifications = notifications || prev.notifications ? {
+    ...(notifications || prev.notifications || {}),
+    notifications: mergedNotificationsList,
+    events: mergedNotificationsList,
+    notifications_count: mergedNotificationsList.length,
+    events_count: mergedNotificationsList.length,
+    last_notification: mergedNotificationsList[0] || null,
+    last_notification_timestamp: mergedNotificationsList[0]?.timestamp || null
+  } : prev.notifications || null;
   const availabilityByPeriod = {
     ...(prev.availabilityByPeriod || {}),
     ...(avail1m != null ? {
@@ -261,6 +277,7 @@ async function fetchAndMergeCheckMKData(req, {
       services: services || prev.services || null,
       events: mergedEvents,
       hostEventsDetailed: mergedHostEvents,
+      notifications: mergedNotifications,
       availabilityByPeriod,
       availability: availabilityByPeriod['1m'] ?? prev.availability ?? null
     },

@@ -26,9 +26,8 @@ const STATUS_CONFIG = {
   }
 };
 function buildTooltip(summary) {
-  if (!summary) return 'Not mapped to CheckMK';
-  if (summary.status === 'no_data') {
-    return 'Mapped to CheckMK · no synced data in database';
+  if (!summary || summary.status === 'no_data') {
+    return 'Mapped to CheckMK';
   }
   const lines = [];
   if (summary.critServices > 0) {
@@ -52,7 +51,7 @@ function buildTooltip(summary) {
   return lines.join(' · ');
 }
 function buildBadgeText(summary) {
-  if (!summary || summary.status === 'no_data') return '-';
+  if (!summary || summary.status === 'no_data') return 'OK';
   if (summary.status === 'critical') {
     const parts = [];
     if (summary.critServices > 0) parts.push(`${summary.critServices} crit`);
@@ -74,15 +73,17 @@ export default function CheckMKMonitoringStatusBadge({
   dotOnly = false
 }) {
   if (!isMapped) return null;
-  const status = summary?.status || 'no_data';
+  const rawStatus = summary?.status || 'no_data';
+  // Mapping alone is enough for a healthy (green) indicator — sync data is optional.
+  const status = !summary || rawStatus === 'no_data' ? 'ok' : rawStatus;
   const cfg = STATUS_CONFIG[status] || STATUS_CONFIG.no_data;
-  const tooltip = buildTooltip(summary);
-  const text = dotOnly ? '' : buildBadgeText(summary);
+  const tooltip = buildTooltip(summary || { status: 'ok' });
+  const text = dotOnly ? '' : buildBadgeText(summary || { status: 'ok' });
   return <SmartTooltip content={tooltip}>
       <span className={`${styles.badge} ${cfg.className} ${dotOnly ? styles.dotOnly : ''} ${compact ? styles.dotOnly : ''}`} aria-label={tooltip}>
         <Icon icon={cfg.icon} className={styles.badgeIcon} />
         {!compact && !dotOnly && status !== 'ok' && <span className={styles.badgeText}>{text}</span>}
-        {!compact && !dotOnly && status === 'ok' && summary?.status === 'ok' && <span className={styles.badgeText}>OK</span>}
+        {!compact && !dotOnly && status === 'ok' && <span className={styles.badgeText}>OK</span>}
       </span>
     </SmartTooltip>;
 }

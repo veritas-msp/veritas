@@ -8,6 +8,7 @@ import { getGlobalOvhStatus } from "../../api/clientOvh";
 import { parseCustomFamilyType } from "../../api/equipmentFamilies";
 import { getClientEquipmentTotal, mapClientHardwareEquipment } from "../../api/equipment";
 import { filterCustomFamilyMap, filterBySite } from "../../utils/siteFilterUtils";
+import { readEnterprisePeripheralsUi, writeEnterprisePeripheralsUi } from "../../utils/enterprisePeripheralsUiState";
 import { repairRmmTextEncoding } from "../../utils/rmmTextEncoding";
 import { fetchUsers } from "../../api/users";
 import { getClientCampaigns, createClientCampaign } from "../../api/campaigns";
@@ -290,6 +291,13 @@ export default function ClientDetailPage({
   const canManageDevices = can("clients_detail.devices");
   const canManageCampaigns = can("clients_detail.campaigns");
   const canManageVault = can("clients_detail.vault");
+  const resolvedClientId = urlClientId || clientData?.client?.id || clientData?.clientId || null;
+  const initialPeripheralsUi = useMemo(
+    () => readEnterprisePeripheralsUi(resolvedClientId),
+    // Restore once per mount for this client id
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [resolvedClientId]
+  );
   const [client, setClient] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -322,13 +330,15 @@ export default function ClientDetailPage({
   const [eventModalOpen, setEventModalOpen] = useState(false);
   const [editingEvent, setEditingEvent] = useState(null);
   const [sitesModalOpen, setSitesModalOpen] = useState(false);
-  const [equipmentSearchQuery, setEquipmentSearchQuery] = useState("");
+  const [equipmentSearchQuery, setEquipmentSearchQuery] = useState(() => initialPeripheralsUi?.searchQuery || "");
   const [equipmentResultCount, setEquipmentResultCount] = useState(0);
   const [hardwareEquipmentTotalCount, setHardwareEquipmentTotalCount] = useState(0);
   const [equipmentExportMenuOpen, setEquipmentExportMenuOpen] = useState(false);
-  const [activeEquipmentTableType, setActiveEquipmentTableType] = useState(null);
+  const [activeEquipmentTableType, setActiveEquipmentTableType] = useState(() => initialPeripheralsUi?.activeType || null);
   const equipmentPageRef = useRef(null);
   const equipmentSectionRef = useRef(null);
+  const pageRootRef = useRef(null);
+  const peripheralsUiClientRef = useRef(resolvedClientId);
   const equipmentExportMenuRef = useRef(null);
   const vaultPanelRef = useRef(null);
   const [contacts, setContacts] = useState([]);
@@ -399,7 +409,7 @@ export default function ClientDetailPage({
   const [customFamilyMap, setCustomFamilyMap] = useState([]);
   const [customEquipmentModal, setCustomEquipmentModal] = useState(null);
   const [equipmentRevision, setEquipmentRevision] = useState(0);
-  const [activeSiteFilter, setActiveSiteFilter] = useState(null);
+  const [activeSiteFilter, setActiveSiteFilter] = useState(() => initialPeripheralsUi?.siteFilter || null);
   const [domainsModalOpen, setDomainsModalOpen] = useState(false);
   const [domainsConfigModalOpen, setDomainsConfigModalOpen] = useState(false);
   const [domainsConfigInitialSection, setDomainsConfigInitialSection] = useState("overview");
@@ -744,16 +754,80 @@ export default function ClientDetailPage({
     };
   }, [urlClientId, clientData?.clientId, clientData?.client?.id]);
   useEffect(() => {
-    setActiveSiteFilter(null);
-    setSlaExpanded(false);
-    setContactsExpanded(false);
-    setContactsSectionExpanded(false);
-    setSitesSectionExpanded(false);
-    setNotesSectionExpanded(false);
-    setInfoExpanded(isCommunity);
-    setSitesSearch("");
-    setSitesPage(1);
+    const id = client?.id ?? null;
+    const prev = peripheralsUiClientRef.current;
+    peripheralsUiClientRef.current = id;
+    if (!id) return;
+    if (prev != null && String(prev) !== String(id)) {
+      // Switched to another enterprise in the same mount: reset section chrome.
+      setSlaExpanded(false);
+      setContactsExpanded(false);
+      setContactsSectionExpanded(false);
+      setSitesSectionExpanded(false);
+      setNotesSectionExpanded(false);
+      setInfoExpanded(isCommunity);
+      setSitesSearch("");
+      setSitesPage(1);
+      const saved = readEnterprisePeripheralsUi(id);
+      setActiveSiteFilter(saved?.siteFilter || null);
+      setEquipmentSearchQuery(saved?.searchQuery || "");
+      setActiveEquipmentTableType(saved?.activeType || null);
+      return;
+    }
+    // Same client (or first resolve): keep restored peripherals UI; only apply community default for info panel.
+    setInfoExpanded(prevExpanded => (prev == null ? isCommunity : prevExpanded));
   }, [client?.id, isCommunity]);
+  useEffect(() => {
+    if (!client?.id) return;
+    writeEnterprisePeripheralsUi(client.id, {
+      searchQuery: equipmentSearchQuery || "",
+      siteFilter: activeSiteFilter || null,
+      activeType: activeEquipmentTableType || null
+    });
+  }, [client?.id, equipmentSearchQuery, activeSiteFilter, activeEquipmentTableType]);
+  useEffect(() => {
+    const el = pageRootRef.current;
+    if (!el || !client?.id) return undefined;
+    let frame = 0;
+    const onScroll = () => {
+      cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(() => {
+        writeEnterprisePeripheralsUi(client.id, {
+          scrollY: el.scrollTop
+        });
+      });
+    };
+    el.addEventListener("scroll", onScroll, {
+      passive: true
+    });
+    return () => {
+      cancelAnimationFrame(frame);
+      el.removeEventListener("scroll", onScroll);
+      writeEnterprisePeripheralsUi(client.id, {
+        scrollY: el.scrollTop
+      });
+    };
+  }, [client?.id]);
+  useEffect(() => {
+    if (loading || !client?.id) return;
+    const savedY = readEnterprisePeripheralsUi(client.id)?.scrollY;
+    if (typeof savedY !== "number" || savedY <= 0) return;
+    const el = pageRootRef.current;
+    if (!el) return;
+    const restore = () => {
+      el.scrollTop = savedY;
+    };
+    const raf = requestAnimationFrame(() => {
+      restore();
+      // Second pass after panels/tables paint.
+      requestAnimationFrame(restore);
+    });
+    const timeout = window.setTimeout(restore, 120);
+    return () => {
+      cancelAnimationFrame(raf);
+      window.clearTimeout(timeout);
+    };
+  }, [loading, client?.id]);
   useEffect(() => {
     const timer = window.setInterval(() => setSlaNow(Date.now()), 60000);
     return () => window.clearInterval(timer);
@@ -765,6 +839,8 @@ export default function ClientDetailPage({
   useEffect(() => {
     if (!activeSiteFilter) return;
     const sites = normalizeClientSites(formData.sites);
+    // Avoid clearing a restored filter while sites are still loading.
+    if (!sites.length) return;
     const stillExists = sites.some(site => getSiteLocationValue(site) === activeSiteFilter);
     if (!stillExists) setActiveSiteFilter(null);
   }, [formData.sites, activeSiteFilter]);
@@ -2774,7 +2850,7 @@ export default function ClientDetailPage({
   const clientNameWithoutCode = getClientNameWithoutCode(client) || "-";
   const commercialUser = users.find(u => u.id === formData.commercialId);
   const commercialLabel = commercialUser?.username || commercialUser?.email || null;
-  return <div className={`${styles.contratDetailPage} ${styles.enterpriseDetailPage} msp-page-grid`}>
+  return <div ref={pageRootRef} className={`${styles.contratDetailPage} ${styles.enterpriseDetailPage} msp-page-grid`}>
       <header className={`${styles.pageHero} ${isCommunity ? styles.pageHeroProTeaser : ""}`} ref={headerRef} data-guide="enterprise-hero">
         <div className={styles.heroRow}>
           <div className={styles.heroMain}>
@@ -3028,7 +3104,7 @@ export default function ClientDetailPage({
                   <EquipmentPage ref={equipmentPageRef} embedded fixedClientId={client.id} embeddedClient={client ? {
                     ...client,
                     sites: formData.sites ?? client.sites ?? []
-                  } : null} onNavigate={onNavigate} searchQuery={equipmentSearchQuery} onSearchQueryChange={setEquipmentSearchQuery} onFilteredCountChange={setEquipmentResultCount} onTotalCountChange={setHardwareEquipmentTotalCount} onEquipmentChanged={refreshClientEquipment} onClientSsidsUpdated={ssids => {
+                  } : null} initialEmbeddedType={initialPeripheralsUi?.activeType || null} initialTablePageByType={initialPeripheralsUi?.tablePageByType || null} initialTableSort={initialPeripheralsUi?.tableSort || null} initialEmbeddedPageSize={initialPeripheralsUi?.pageSize || null} onNavigate={onNavigate} searchQuery={equipmentSearchQuery} onSearchQueryChange={setEquipmentSearchQuery} onFilteredCountChange={setEquipmentResultCount} onTotalCountChange={setHardwareEquipmentTotalCount} onEquipmentChanged={refreshClientEquipment} onClientSsidsUpdated={ssids => {
                     setClient(prev => prev ? {
                       ...prev,
                       ssids

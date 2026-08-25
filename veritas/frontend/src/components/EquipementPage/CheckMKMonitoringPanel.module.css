@@ -102,102 +102,57 @@
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
 }
 
-.gaugeWrap {
+.hostInfoSection {
+  margin-bottom: 0.85rem;
+  padding: 0.75rem 0.85rem;
+  border: 1px solid var(--msp-border-light, var(--msp-border));
+  border-radius: var(--msp-radius-sm, 10px);
+  background: var(--msp-surface-2);
+}
+
+.hostInfoGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 0.55rem 0.85rem;
+  margin-top: 0.55rem;
+}
+
+.hostInfoItem {
   display: flex;
   flex-direction: column;
-  align-items: center;
-  gap: 0.5rem;
-  flex-shrink: 0;
+  gap: 0.15rem;
+  min-width: 0;
 }
 
-.gaugeContainer {
-  position: relative;
-  width: 120px;
-  height: 68px;
-}
-
-.gaugeTrack {
-  width: 120px;
-  height: 60px;
-  border-radius: 60px 60px 0 0;
-  background: conic-gradient(
-    from 180deg at 50% 100%,
-    #ef4444 0deg,
-    #f59e0b 60deg,
-    var(--msp-accent) 120deg,
-    var(--msp-accent) 180deg
-  );
-  position: relative;
-  overflow: hidden;
-}
-
-.gaugeTrack::after {
-  content: "";
-  position: absolute;
-  bottom: 0;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 80px;
-  height: 40px;
-  background: var(--msp-surface-2);
-  border-radius: 40px 40px 0 0;
-}
-
-.gaugeNeedle {
-  position: absolute;
-  bottom: 4px;
-  left: 50%;
-  width: 3px;
-  height: 48px;
-  background: var(--msp-text);
-  transform-origin: bottom center;
-  transition: transform 0.4s ease;
-  border-radius: 2px;
-  z-index: 2;
-}
-
-.gaugeValue {
-  position: absolute;
-  bottom: 2px;
-  left: 50%;
-  transform: translateX(-50%);
-  font-size: 1.1rem;
-  font-weight: 700;
-  color: var(--msp-accent);
-  z-index: 3;
-}
-
-.periodButtons {
-  display: flex;
-  gap: 0.25rem;
-}
-
-.periodBtn {
-  padding: 0.22rem 0.5rem;
+.hostInfoLabel {
   font-size: 0.65rem;
-  font-weight: 600;
-  border-radius: 6px;
-  border: 1px solid var(--msp-border-light, var(--msp-border));
-  background: var(--msp-surface);
-  color: var(--msp-muted);
-  cursor: pointer;
-  transition: background 0.15s, border-color 0.15s, color 0.15s;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--msp-muted-light);
 }
 
-.periodBtn:hover:not(:disabled) {
-  border-color: var(--msp-accent);
+.hostInfoValue {
+  font-size: 0.78rem;
   color: var(--msp-text);
+  line-height: 1.35;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
 }
 
-.periodBtnActive {
-  background: var(--msp-accent-soft);
-  border-color: var(--msp-accent);
-  color: var(--msp-accent);
+.hostInfoMono {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.72rem;
 }
 
-.periodBtn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
+.kpiPeriodRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+  margin-top: 0.25rem;
 }
 
 .kpiGrid {
@@ -269,17 +224,11 @@
   color: var(--msp-accent);
 }
 
-.gridLayout {
-  display: grid;
-  grid-template-columns: 1fr;
+.gridLayout,
+.sectionsStack {
+  display: flex;
+  flex-direction: column;
   gap: 0.85rem;
-}
-
-@media (min-width: 1100px) {
-  .gridLayout {
-    grid-template-columns: 1fr 1fr;
-    align-items: start;
-  }
 }
 
 .section {

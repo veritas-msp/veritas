@@ -48,6 +48,10 @@ import { filterBySite } from "../../utils/siteFilterUtils";
 import { getEquipmentFormOptionsCopy, getRoleOptionLabel } from "./equipmentFormOptionsI18n";
 import EquipmentHaCell from "./EquipmentHaCell";
 import { buildHaPairColorMap, compareFirewallHaPairs, getFirewallHaSortValue, getFirewallHaState } from "./equipmentHaUtils";
+import { readSharedEquipmentFieldValue, getSharedEquipmentFieldLabel } from "./sharedEquipmentFields";
+import EquipmentCsvExportModal from "./EquipmentCsvExportModal";
+import { CSV_EXPORT_EXCLUDED_KEYS, getCsvExportFieldLabel, getDefaultCsvExportKeys } from "./equipmentCsvExportFields";
+import { writeEnterprisePeripheralsUi } from "../../utils/enterprisePeripheralsUiState";
 import { getExpirationStatus, getExpirationStatusColor, getMaintenanceLicenseExpiration } from "./constants/firewallLicenceUtils";
 import { createTrackedAbortController } from "../../utils/pageLoadAbort";
 function formatComputerTypeDisplay(value, locale) {
@@ -588,6 +592,18 @@ function buildEquipmentBaseColumns(locale, pageCopy, type) {
       label: label("installDate"),
       key: "installDate"
     },
+    purchaseDate: {
+      label: getSharedEquipmentFieldLabel("purchaseDate", locale) || "Purchase date",
+      key: "purchaseDate"
+    },
+    invoiceNumber: {
+      label: getSharedEquipmentFieldLabel("invoiceNumber", locale) || "Invoice number",
+      key: "invoiceNumber"
+    },
+    commentaire: {
+      label: getSharedEquipmentFieldLabel("commentaire", locale) || "Notes",
+      key: "commentaire"
+    },
     nbDisques: {
       label: label("nbDisques"),
       key: "nbDisques"
@@ -805,7 +821,11 @@ const EquipmentPage = forwardRef(function EquipmentPage({
   backupInstances = [],
   siteFilter = null,
   onCustomFamilyManage,
-  onEmbeddedActiveTypeChange
+  onEmbeddedActiveTypeChange,
+  initialEmbeddedType = null,
+  initialTablePageByType = null,
+  initialTableSort = null,
+  initialEmbeddedPageSize = null
 }, ref) {
   const {
     userRole
@@ -840,7 +860,10 @@ const EquipmentPage = forwardRef(function EquipmentPage({
   };
   const [clientSearchQuery, setClientSearchQuery] = useState("");
   const [selectedClients, setSelectedClients] = useState(new Set());
-  const [selectedTypes, setSelectedTypes] = useState(new Set());
+  const [selectedTypes, setSelectedTypes] = useState(() => {
+    if (embedded && initialEmbeddedType) return new Set([initialEmbeddedType]);
+    return new Set();
+  });
   const [visibleColumns, setVisibleColumns] = useState({});
   const [columnModalOpen, setColumnModalOpen] = useState({
     type: null,
@@ -849,12 +872,22 @@ const EquipmentPage = forwardRef(function EquipmentPage({
   const [columnsComingSoonModal, setColumnsComingSoonModal] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(true);
   const [viewMode, setViewMode] = useState({});
-  const [tableSort, setTableSort] = useState({});
+  const [tableSort, setTableSort] = useState(() => {
+    if (embedded && initialTableSort && typeof initialTableSort === "object") return initialTableSort;
+    return {};
+  });
   const [globalPageSize, setGlobalPageSize] = useDefaultPageSize();
-  const [embeddedPageSize, setEmbeddedPageSize] = useState(10);
+  const [embeddedPageSize, setEmbeddedPageSize] = useState(() => {
+    const saved = Number(initialEmbeddedPageSize);
+    return Number.isFinite(saved) && saved > 0 ? saved : 10;
+  });
   const pageSize = embedded ? embeddedPageSize : globalPageSize;
   const setPageSize = embedded ? setEmbeddedPageSize : setGlobalPageSize;
-  const [tablePageByType, setTablePageByType] = useState({});
+  const [tablePageByType, setTablePageByType] = useState(() => {
+    if (embedded && initialTablePageByType && typeof initialTablePageByType === "object") return initialTablePageByType;
+    return {};
+  });
+  const skipTablePageResetRef = useRef(Boolean(embedded && initialEmbeddedType));
   const scrollContainerRef = useRef(null);
   const [showBackToTop, setShowBackToTop] = useState(false);
   const [addFlowOpen, setAddFlowOpen] = useState(false);
@@ -870,6 +903,12 @@ const EquipmentPage = forwardRef(function EquipmentPage({
     client: null
   });
   const [exportMenuOpen, setExportMenuOpen] = useState(false);
+  const [csvExportModal, setCsvExportModal] = useState({
+    open: false,
+    type: null,
+    defaultKeys: [],
+    customFields: []
+  });
   const [embeddedRowMenuKey, setEmbeddedRowMenuKey] = useState(null);
   const exportMenuRef = useRef(null);
   const [monitoringSummaries, setMonitoringSummaries] = useState({});
@@ -920,8 +959,9 @@ const EquipmentPage = forwardRef(function EquipmentPage({
     });
     const summary = getEquipmentMkSummary(equipment);
     const status = String(summary?.status || "").toLowerCase();
-    const isHealthy = status === "ok" || status === "up" || status === "online";
-    return renderStateIcon(isHealthy, {
+    // Mapped = green immediately (no sync required). Only real alert states stay off-green.
+    const isDegraded = status === "critical" || status === "warning" || status === "down" || status === "offline";
+    return renderStateIcon(!isDegraded, {
       onLabel: "Supervision active",
       offLabel: "Supervision degradee"
     });
@@ -2529,15 +2569,45 @@ const EquipmentPage = forwardRef(function EquipmentPage({
   const buildEquipmentCsvRows = (equipmentList, columns) => {
     const headers = columns.map(col => col.label);
     const rows = equipmentList.map(equipment => columns.map(col => {
-      let value = equipment[col.key];
+      let value = equipment[col.key] ?? equipment?.rawData?.[col.key] ?? equipment?.fields?.[col.key] ?? equipment?.data?.[col.key];
+      if (["purchaseDate", "invoiceNumber", "installDate", "expirationGarantie", "commentaire"].includes(col.key)) {
+        value = readSharedEquipmentFieldValue(equipment, col.key);
+      }
+      if (col.key === "typeServer") {
+        value = equipment.typeServer || equipment.rawData?.type || value;
+      } else if (col.key === "firewallType") {
+        value = equipment.firewallType || equipment.rawData?.firewallType || equipment.rawData?.type || value;
+      } else if (col.key === "storageType") {
+        value = equipment.storageType || equipment.rawData?.storageType || equipment.rawData?.type || value;
+      } else if (col.key === "routeurType" || col.key === "toipType" || col.key === "alimentationType" || col.key === "internetType") {
+        value = equipment[col.key] || equipment.rawData?.[col.key] || equipment.rawData?.type || value;
+      } else if (col.key === "quickConnect") {
+        value = getSynologyQuickConnectValue(equipment) || value;
+      } else if (col.key === "ssidCount") {
+        const ssids = equipment.assignedSsids || equipment.rawData?.assignedSsids;
+        value = Array.isArray(ssids) ? ssids.length : value;
+      }
       if (col.key === 'uptime') {
         value = formatUptime(value);
-      } else if (col.key === 'installDate') {
+      } else if (col.key === 'installDate' || col.key === 'purchaseDate' || col.key === 'dateMiseEnService' || col.key === 'dateBatterie') {
         value = formatDate(value);
-      } else if (col.key === 'checkmkMapping') {
+      } else if (col.key === 'checkmkMapping' || col.key === 'mapping') {
         const mapping = equipment.checkmkMapping;
         const isMapped = mapping && mapping.checkmk_host_name && mapping.is_active !== false;
         value = isMapped ? 'Mapped' : 'Not mapped';
+      } else if (col.key === 'monitoring') {
+        if (!isMkMappedEquipment(equipment)) {
+          value = "Inactive";
+        } else {
+          const summary = getEquipmentMkSummary(equipment);
+          const status = String(summary?.status || "").toLowerCase();
+          const isDegraded = status === "critical" || status === "warning" || status === "down" || status === "offline";
+          value = isDegraded ? (status || "Degraded") : "OK";
+        }
+      } else if (col.key === 'agentStatus') {
+        value = resolveRmmAgentOnline(equipment) ? "Online" : "Offline";
+      } else if (col.key === 'activeStatus') {
+        value = equipment?.is_active !== false ? "Active" : "Inactive";
       } else if (col.key === 'memoire' && value) {
         value = `${value} GB`;
       } else if (col.key === 'stockage' && value) {
@@ -2559,11 +2629,11 @@ const EquipmentPage = forwardRef(function EquipmentPage({
         value = equipment.firmware || equipment.version || value;
       } else if (col.key === 'expirationGarantie') {
         value = formatDate(value) || formatValue(value);
-      } else if (col.key === 'maintenanceLicense') {
-        value = getFirewallMaintenanceLicenseDate(equipment);
+      } else if (col.key === 'maintenanceLicense' || col.key === 'licenceMaintenance') {
+        value = getFirewallMaintenanceLicenseDate(equipment) || value || "";
       } else if (col.key === 'vlan') {
         value = equipment.vlan || equipment.rawData?.vlan || value;
-      } else if (col.key === 'mac') {
+      } else if (col.key === 'mac' || col.key === 'adresseMac') {
         value = getEquipmentMac(equipment) || value;
       } else if (col.key === 'serial') {
         value = getEquipmentSerial(equipment) || value;
@@ -2573,6 +2643,13 @@ const EquipmentPage = forwardRef(function EquipmentPage({
         value = formatComputerTypeDisplay(equipment.computerType || equipment.rawData?.type || value, locale);
       } else if (col.key === 'role') {
         value = formatRoles(equipment.role || value);
+      } else if (col.key === 'assignedSsids') {
+        const ssids = equipment.assignedSsids || equipment.rawData?.assignedSsids;
+        value = Array.isArray(ssids) ? ssids.join(", ") : value;
+      } else if (col.key === 'remoteAccessSolution') {
+        value = equipment.remoteAccessSolution || equipment.rawData?.remoteAccessSolution || value;
+      } else if (col.key === 'remoteAccessId') {
+        value = equipment.remoteAccessId || equipment.anydeskId || equipment.rawData?.remoteAccessId || value;
       } else {
         value = formatValue(value);
       }
@@ -2611,8 +2688,8 @@ const EquipmentPage = forwardRef(function EquipmentPage({
     downloadCsv(csvContent, filename || `${type}_${exportDate}.csv`);
   };
   const getActiveExportType = () => {
+    if (embedded) return embeddedActiveType || null;
     if (selectedTypes.size === 1) return [...selectedTypes][0];
-    if (embedded) return [...selectedTypes][0] || null;
     return null;
   };
   const handleExportCurrentTable = () => {
@@ -2623,12 +2700,74 @@ const EquipmentPage = forwardRef(function EquipmentPage({
       return;
     }
     const equipmentList = equipmentByType[activeType] || [];
-    const columns = getColumnsForType(activeType);
-    const sortedList = getSortedEquipmentList(activeType, equipmentList);
+    const isCustom = String(activeType).startsWith("Custom:");
+    if (!isCustom && !equipmentList.length) {
+      toast.error('No data to export');
+      return;
+    }
+    if (isCustom) {
+      const familyKey = activeType.slice("Custom:".length);
+      const family = hexCustomFamilies.find(entry => entry.familyKey === familyKey);
+      const items = family ? getCustomFamilyItems(family) : [];
+      if (!items.length) {
+        toast.error('No data to export');
+        return;
+      }
+      const customFields = family?.fields || [];
+      const visibleKeys = ["name", "location", ...customFields.map(field => field.fieldKey || field.key).filter(Boolean)];
+      setCsvExportModal({
+        open: true,
+        type: activeType,
+        defaultKeys: getDefaultCsvExportKeys(activeType, visibleKeys, customFields),
+        customFields
+      });
+      return;
+    }
+    const visibleKeys = getColumnsForType(activeType)
+      .map(col => col.key)
+      .filter(key => key && !CSV_EXPORT_EXCLUDED_KEYS.has(key));
+    setCsvExportModal({
+      open: true,
+      type: activeType,
+      defaultKeys: getDefaultCsvExportKeys(activeType, visibleKeys),
+      customFields: []
+    });
+  };
+  const confirmCsvExportWithKeys = selectedKeys => {
+    const activeType = csvExportModal.type || getActiveExportType();
+    if (!activeType) {
+      toast.error('Select an equipment type or export all tables');
+      return;
+    }
+    const customFields = csvExportModal.customFields || [];
+    const isCustom = String(activeType).startsWith("Custom:");
+    let equipmentList = equipmentByType[activeType] || [];
+    if (isCustom) {
+      const familyKey = activeType.slice("Custom:".length);
+      const family = hexCustomFamilies.find(entry => entry.familyKey === familyKey);
+      equipmentList = family ? getCustomFamilyItems(family) : [];
+    }
+    const columns = (selectedKeys || []).map(key => ({
+      key,
+      label: getCsvExportFieldLabel(locale, activeType, key, customFields)
+    }));
+    if (!columns.length) {
+      toast.error('Select at least one field');
+      return;
+    }
+    const sortedList = isCustom ? equipmentList : getSortedEquipmentList(activeType, equipmentList);
     const exportDate = new Date().toISOString().split('T')[0];
     const clientSlug = (embeddedClient?.name || '').trim().replace(/[^\w.-]+/g, '_');
-    const filename = clientSlug ? `${clientSlug}_${activeType}_${exportDate}.csv` : `${activeType}_${exportDate}.csv`;
+    const typeSlug = String(activeType).replace(/^Custom:/, "Custom_").replace(/[^\w.-]+/g, "_");
+    const filename = clientSlug ? `${clientSlug}_${typeSlug}_${exportDate}.csv` : `${typeSlug}_${exportDate}.csv`;
+    setCsvExportModal({
+      open: false,
+      type: null,
+      defaultKeys: [],
+      customFields: []
+    });
     exportToCSV(sortedList, activeType, columns, filename);
+    toast.success('CSV export complete');
   };
   const handleExportAllTables = () => {
     setExportMenuOpen(false);
@@ -2693,8 +2832,22 @@ const EquipmentPage = forwardRef(function EquipmentPage({
     }
   }, [embedded, embeddedHardwareTotalCount, onTotalCountChange]);
   useEffect(() => {
+    if (skipTablePageResetRef.current) {
+      skipTablePageResetRef.current = false;
+      return;
+    }
     setTablePageByType({});
   }, [searchQuery, pageSize, mkStatusFilter, selectedClients, selectedTypes, tableSort]);
+  useEffect(() => {
+    if (!embedded || !fixedClientId) return;
+    const activeType = selectedTypes.size === 1 ? [...selectedTypes][0] : null;
+    writeEnterprisePeripheralsUi(fixedClientId, {
+      activeType,
+      tablePageByType,
+      tableSort,
+      pageSize: embeddedPageSize
+    });
+  }, [embedded, fixedClientId, selectedTypes, tablePageByType, tableSort, embeddedPageSize]);
   const getTablePage = useCallback(pageKey => {
     const page = Number(tablePageByType[pageKey]) || 1;
     return page < 1 ? 1 : page;
@@ -3054,7 +3207,7 @@ const EquipmentPage = forwardRef(function EquipmentPage({
                                       {formatCapacite(equipment.capacite)}
                                     </td>;
                             } else if (col.key === 'monitoring') {
-                              return <td key={col.key} onClick={e => e.stopPropagation()}>
+                              return <td key={col.key}>
                                       <div className={styles.monitoringStatusCell}>
                                         {embedded ? renderSupervisionDot(equipment) : renderMonitoringStatus(equipment)}
                                       </div>
@@ -3657,6 +3810,22 @@ const EquipmentPage = forwardRef(function EquipmentPage({
     }} />}
 
       {editEquipmentModal.client && <EquipmentFormModal open={editEquipmentModal.open} onClose={closeEditEquipmentModal} client={editEquipmentModal.client} equipment={editEquipmentModal.equipment} moduleKey={editEquipmentModal.moduleKey} mode={editEquipmentModal.mode} peerFirewalls={editModalPeerFirewalls} peerServers={editModalPeerServers} peerStorage={editModalPeerStorage} peerBorneWifi={editModalPeerBorneWifi} onSaved={handleEquipmentSaved} onDeleted={handleEquipmentDeleted} />}
+
+      <EquipmentCsvExportModal
+        open={csvExportModal.open}
+        locale={locale}
+        equipmentType={csvExportModal.type}
+        typeLabel={csvExportModal.type ? getEmbeddedTypeLabel(csvExportModal.type) : ""}
+        defaultKeys={csvExportModal.defaultKeys}
+        customFields={csvExportModal.customFields}
+        onClose={() => setCsvExportModal({
+          open: false,
+          type: null,
+          defaultKeys: [],
+          customFields: []
+        })}
+        onExport={confirmCsvExportWithKeys}
+      />
 
       <ConfirmModal open={!!rmmRevokeTarget} title={modalsCopy.confirm?.rmmRevoke?.title} message={rmmRevokeTarget ? interpolate(modalsCopy.confirm?.rmmRevoke?.message, {
       name: rmmRevokeTarget.name || rmmRevokeTarget.rawData?.nom || modalsCopy.confirm?.rmmRevoke?.untitledAgent

@@ -1438,6 +1438,33 @@ export const getCheckMKHostDetails = async (hostName, site = null, options = {})
     throw error;
   }
 };
+export const getCheckMKNotifications = async (hostName, startTime = null, endTime = null, site = null, options = {}) => {
+  try {
+    const url = withApiQuery(`${API_BASE_URL}/checkmk/notifications/${encodeURIComponent(hostName)}`, {
+      start_time: startTime || undefined,
+      end_time: endTime || undefined,
+      site: site || undefined
+    });
+    const response = await fetch(url, {
+      method: 'GET',
+      credentials: 'include',
+      signal: options.signal,
+      headers: {
+        'Content-Type': 'application/json'
+      }
+    });
+    if (!response.ok) {
+      throw new Error(`Error ${response.status}: ${response.statusText}`);
+    }
+    return await response.json();
+  } catch (error) {
+    if (error?.name === 'AbortError') {
+      throw error;
+    }
+    console.error('Error fetching CheckMK notifications:', error);
+    throw error;
+  }
+};
 const EQUIPMENT_TYPE_TO_FAMILY = {
   'Serveurs': 'servers',
   'Servers': 'servers',
