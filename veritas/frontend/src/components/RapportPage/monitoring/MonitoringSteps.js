@@ -20,7 +20,7 @@ import CartographieStep from "./steps/CartographieStep";
 import RecapStep from "./steps/RecapStep";
 import EquipmentEditModal from "./EquipmentEditModal";
 import { findEquipmentLocation } from "./equipmentPatchUtils";
-import { getCheckMKCachedData } from "./checkmkReportCacheUtils";
+import { getCheckMKCachedData, getCheckmkHostName } from "./checkmkReportCacheUtils";
 const AntivirusStepLazy = lazy(() => import("./steps/AntivirusStep"));
 
 export const MONITORING_MODULE_STEP_ORDER = [
@@ -206,10 +206,26 @@ export default function MonitoringSteps({
     return { start, end, startTime: start, endTime: end };
   }, [client?.reportStartDate, client?.reportEndDate]);
 
-  const handleOpenCheckMKDetail = (item, { moduleKey, equipmentKey }) => {
-    const preLoadedData = getCheckMKCachedData(equipmentCheckMKData, item, equipmentKey);
+  const handleOpenCheckMKDetail = async (item, { moduleKey, equipmentKey }) => {
     const resolvedKey = item?.id != null ? String(item.id) : equipmentKey != null ? String(equipmentKey) : null;
-    setCheckMKModal({ isOpen: true, equipment: item, moduleKey, equipmentKey: resolvedKey, preLoadedData });
+    let preLoadedData = getCheckMKCachedData(equipmentCheckMKData, item, equipmentKey);
+    setCheckMKModal({
+      isOpen: true,
+      equipment: item,
+      moduleKey,
+      equipmentKey: resolvedKey,
+      preLoadedData
+    });
+    // If mapped but cache empty (or sync still running), fetch this host for the modal.
+    if (!preLoadedData && getCheckmkHostName(item) && typeof onSyncCheckMK === "function") {
+      const cacheEntry = await onSyncCheckMK(item, { moduleKey, equipmentKey: resolvedKey || equipmentKey });
+      if (cacheEntry) {
+        setCheckMKModal(prev => prev.isOpen && prev.equipmentKey === resolvedKey ? {
+          ...prev,
+          preLoadedData: cacheEntry
+        } : prev);
+      }
+    }
   };
 
   const handleCloseCheckMKModal = () => {

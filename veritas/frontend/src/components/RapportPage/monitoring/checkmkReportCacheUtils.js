@@ -23,6 +23,58 @@ export function buildCheckMKCacheEntry(services, events, availability, period = 
     } : null
   };
 }
+
+export function getCheckmkHostName(item) {
+  const host = item?.checkmk_host_name ?? item?.data?.checkmk_host_name ?? null;
+  if (typeof host !== "string") return null;
+  const trimmed = host.trim();
+  return trimmed || null;
+}
+
+export function getCheckmkSite(item) {
+  return item?.checkmk_site ?? item?.data?.checkmk_site ?? null;
+}
+
+export function isEquipmentMappedForCheckMK(item) {
+  return Boolean(getCheckmkHostName(item) && item?.is_active !== false);
+}
+
+/** Collect all hardware items with an active CheckMK host mapping. */
+export function collectCheckMKMappedEquipment(equipements = {}) {
+  const eq = equipements && typeof equipements === "object" ? equipements : {};
+  const lists = [
+    eq.Internet,
+    eq.Serveurs,
+    eq.Servers,
+    eq.Firewalls,
+    eq.NAS,
+    eq.SAN,
+    eq.Switch,
+    eq.BorneWifi,
+    eq.TOIP?.solutions,
+    Array.isArray(eq.TOIP) ? eq.TOIP : null
+  ];
+  const seen = new Set();
+  const mappings = [];
+  lists.forEach(list => {
+    if (!Array.isArray(list)) return;
+    list.forEach(item => {
+      if (!isEquipmentMappedForCheckMK(item)) return;
+      const hostName = getCheckmkHostName(item);
+      const equipmentId = item?.id ?? item?.uuid ?? null;
+      const dedupeKey = equipmentId != null ? `id:${equipmentId}` : `host:${hostName}`;
+      if (seen.has(dedupeKey)) return;
+      seen.add(dedupeKey);
+      mappings.push({
+        equipment_id: equipmentId,
+        checkmk_host_name: hostName,
+        checkmk_site: getCheckmkSite(item),
+        item
+      });
+    });
+  });
+  return mappings;
+}
 export function computeCheckMKEquipmentStatus({
   services,
   events,
@@ -165,7 +217,8 @@ export function filterCheckMKDisplayData(preLoadedData, reportPeriod) {
   if (!preLoadedData) return null;
   const periodEvents = filterCheckMKEventsForReportPeriod(preLoadedData.events, reportPeriod);
   const events = periodEvents.filter(event => Number(event?.state) === 2);
-  const services = deriveServicesFromPeriodEvents(periodEvents);
+  const cachedServices = Array.isArray(preLoadedData.services) ? preLoadedData.services : [];
+  const services = cachedServices.length > 0 ? cachedServices : deriveServicesFromPeriodEvents(periodEvents);
   return {
     ...preLoadedData,
     events,

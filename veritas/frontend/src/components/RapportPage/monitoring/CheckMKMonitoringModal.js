@@ -28,19 +28,19 @@ export default function CheckMKMonitoringModal({
       if (!s || s === "-") return s;
       try {
         const d = new Date(s);
-        return isNaN(d.getTime()) ? s : d.toLocaleDateString("en-US");
+        return isNaN(d.getTime()) ? s : d.toLocaleDateString("fr-FR");
       } catch {
         return s;
       }
     };
-    return `From ${fmt(start)} to ${fmt(end)}`;
+    return `Du ${fmt(start)} au ${fmt(end)}`;
   }, [reportPeriod]);
   const syncedAtLabel = useMemo(() => {
     if (!preLoadedData?.syncedAt) return null;
     try {
       const d = new Date(preLoadedData.syncedAt);
       if (isNaN(d.getTime())) return null;
-      return d.toLocaleString("en-US");
+      return d.toLocaleString("fr-FR");
     } catch {
       return null;
     }
@@ -87,13 +87,13 @@ export default function CheckMKMonitoringModal({
               {equipmentName}
             </h2>
             <div className={styles.period}>{periodLabel}</div>
-            {syncedAtLabel && <div className={styles.syncedAt}>Data from {syncedAtLabel}</div>}
+            {syncedAtLabel && <div className={styles.syncedAt}>Données du {syncedAtLabel}</div>}
           </div>
           <div className={styles.headerActions}>
-            {hostName && typeof onRefresh === "function" && <button type="button" className={styles.refreshBtn} onClick={handleRefresh} disabled={refreshing} title="Refresh from CheckMK" aria-label="Refresh from CheckMK">
+            {hostName && typeof onRefresh === "function" && <button type="button" className={styles.refreshBtn} onClick={handleRefresh} disabled={refreshing} title="Rafraîchir depuis la supervision" aria-label="Rafraîchir">
                 <Icon icon="mdi:refresh" width={18} height={18} className={refreshing ? styles.refreshSpinning : undefined} />
               </button>}
-            <button type="button" className={styles.closeBtn} onClick={onClose} title="Close" aria-label="Close">
+            <button type="button" className={styles.closeBtn} onClick={onClose} title="Fermer" aria-label="Fermer">
               ×
             </button>
           </div>
@@ -101,21 +101,19 @@ export default function CheckMKMonitoringModal({
 
         <div className={styles.body}>
           {!hostName ? <div className={styles.infoNotice}>
-              No CheckMK mapping for this device. Configure the mapping
-              from the equipment record to display monitoring data.
+              Aucun mapping supervision pour cet équipement.
             </div> : error || refreshingError ? <div className={styles.infoNotice} style={{
           background: "#fef2f2",
           borderColor: "#fca5a5",
           color: "#991b1b"
         }}>
               {error || refreshingError}
-            </div> : refreshing && !hasCachedData ? <div className={styles.infoNotice}>CheckMK synchronization in progress…</div> : !hasCachedData ? <div className={styles.infoNotice}>
-              No CheckMK data recorded for this period. Use the sync
-              button in the report header, the row button, or
-              the refresh icon above.
+            </div> : refreshing && !hasCachedData ? <div className={styles.infoNotice}>Synchronisation supervision en cours…</div> : !hasCachedData ? <div className={styles.infoNotice}>
+              Aucune donnée pour cette période. Lancez la synchronisation
+              (en-tête du rapport ou icône de rafraîchissement).
             </div> : <>
               {availabilityPercent != null && <div className={styles.section}>
-                  <h3 className={styles.sectionTitle}>Availability over the period</h3>
+                  <h3 className={styles.sectionTitle}>Disponibilité sur la période</h3>
                   <div className={styles.availabilityBlock}>
                     <div className={styles.availabilityBar}>
                       <div className={`${styles.availabilityFill} ${availabilityClass}`} style={{

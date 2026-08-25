@@ -40,16 +40,20 @@ export default function InternetStep({
   client,
   onOpenComments,
   onTicketCreatedForEquipment,
+  onOpenCheckMKDetail,
+  onSyncCheckMK,
   onEditEquipment,
   commentCounts,
   ticketCounts,
   highlightedEquipmentKey,
-  reportPeriod
+  reportPeriod,
+  monitoringSyncStatus,
+  syncingEquipmentKey
 }) {
   const connexions = Array.isArray(client?.equipements?.Internet) ? client.equipements.Internet : [];
   const columns = [{
     id: "name",
-    label: "Name",
+    label: "Nom",
     render: item => <div className={equipmentStyles.nameCell}>
           {getInternetConnectionIcon(item)}
           <span className={equipmentStyles.internetCellBold}>
@@ -62,7 +66,7 @@ export default function InternetStep({
     render: item => item.site || item.location || "-"
   }, {
     id: "ip",
-    label: "IP address",
+    label: "IP",
     render: item => formatInternetIpDisplay(item)
   }, {
     id: "internetType",
@@ -76,12 +80,12 @@ export default function InternetStep({
         </span>
   }, {
     id: "debit",
-    label: "Bandwidth",
+    label: "Débit",
     render: item => formatInternetDebitDisplay(item) || item.debit || item.bandwidth || "-"
   }, {
     id: "categorie",
-    label: "Category",
+    label: "Catégorie",
     render: item => item.categorie || "-"
   }];
-  return <InfrastructureEquipmentTable title="Internet connections" moduleKey="Internet" equipments={connexions} columns={columns} onOpenComments={onOpenComments} onCreateTicket={onTicketCreatedForEquipment} clientId={client?.id ?? client?.uuid} commentCounts={commentCounts} ticketCounts={ticketCounts} highlightedEquipmentKey={highlightedEquipmentKey} reportPeriod={reportPeriod} onEditEquipment={onEditEquipment} />;
+  return <InfrastructureEquipmentTable title="Connexions Internet" moduleKey="Internet" equipments={connexions} columns={columns} onOpenComments={onOpenComments} onCreateTicket={onTicketCreatedForEquipment} onOpenCheckMKDetail={onOpenCheckMKDetail} onSyncCheckMK={onSyncCheckMK} syncingEquipmentKey={syncingEquipmentKey} clientId={client?.id ?? client?.uuid} commentCounts={commentCounts} ticketCounts={ticketCounts} highlightedEquipmentKey={highlightedEquipmentKey} reportPeriod={reportPeriod} monitoringSyncStatus={monitoringSyncStatus} onEditEquipment={onEditEquipment} />;
 }

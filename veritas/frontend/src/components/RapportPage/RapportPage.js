@@ -14,7 +14,7 @@ import ReportInterventionBuilder from "./intervention/RapportInterventionBuilder
 import { REPORT_TYPE_IDS } from "./reportTypeConstants";
 import MonitoringSteps, { getEnabledMonitoringSteps } from "./monitoring/MonitoringSteps";
 import { applyEquipmentPatchToEquipements } from "./monitoring/equipmentPatchUtils";
-import { buildCheckMKCacheEntry, buildCheckMKReportSnapshot, computeCheckMKEquipmentStatus, deriveServicesFromPeriodEvents, filterCheckMKEventsForReportPeriod, resolveCheckMKEquipmentKey } from "./monitoring/checkmkReportCacheUtils";
+import { buildCheckMKCacheEntry, buildCheckMKReportSnapshot, collectCheckMKMappedEquipment, computeCheckMKEquipmentStatus, deriveServicesFromPeriodEvents, filterCheckMKEventsForReportPeriod, getCheckmkHostName, getCheckmkSite, resolveCheckMKEquipmentKey } from "./monitoring/checkmkReportCacheUtils";
 import { isSupervisionReportBuilderType } from "./monitoring/supervisionReportBuilder";
 import builderStyles from "./monitoring/RapportMonitoringBuilder.module.css";
 import shellStyles from "./RapportBuilderPlaceholder.module.css";
@@ -157,14 +157,10 @@ export default function ReportPage({
   }, []);
   useEffect(() => {
     if (!isSupervisionReportBuilderType(builderType) || !builderClient?.equipements) return;
-    const eq = builderClient.equipements;
-    const collect = arr => (Array.isArray(arr) ? arr : []).filter(i => i?.checkmk_host_name && i?.is_active !== false).map(i => ({
-      equipment_id: i.id
-    }));
-    const items = [...collect(eq.Serveurs), ...collect(eq.Servers), ...collect(eq.Firewalls), ...collect(eq.NAS), ...collect(eq.SAN ?? []), ...collect(eq.Switch), ...collect(eq.BorneWifi)];
+    const mappings = collectCheckMKMappedEquipment(builderClient.equipements);
     const initialStatuses = {};
-    items.forEach(m => {
-      if (m.equipment_id) initialStatuses[String(m.equipment_id)] = "unsynced";
+    mappings.forEach(m => {
+      if (m.equipment_id != null) initialStatuses[String(m.equipment_id)] = "unsynced";
     });
     setEquipmentMonitoringStatus(prev => {
       const next = {
@@ -247,6 +243,18 @@ export default function ReportPage({
       setStepStorageState(null);
       setDraftReport(null);
       setCreateWizardStep("type");
+      // Sync CheckMK mappings immediately so detail modals have period data.
+      void (async () => {
+        try {
+          const result = await syncCheckMKForClient(nextClient, { silent: true });
+          if (result?.total > 0) {
+            toast.success(`Supervision synchronisée (${result.synced}/${result.total}).`);
+          }
+        } catch (syncErr) {
+          console.error("Auto CheckMK sync on report create:", syncErr);
+          toast.warn("Rapport ouvert, mais la synchronisation supervision a échoué.");
+        }
+      })();
     } catch (err) {
       console.error("Error starting supervision report builder:", err);
       toast.error(err?.message || "Impossible de démarrer le rapport de supervision.");
@@ -257,11 +265,24 @@ export default function ReportPage({
   const handlePeriodChange = ({ reportStartDate, reportEndDate }) => {
     setBuilderClient(prev => {
       if (!prev) return prev;
-      return {
+      const next = {
         ...prev,
         reportStartDate: reportStartDate || prev.reportStartDate,
         reportEndDate: reportEndDate || prev.reportEndDate
       };
+      const periodChanged =
+        next.reportStartDate !== prev.reportStartDate || next.reportEndDate !== prev.reportEndDate;
+      if (periodChanged && next.reportStartDate && next.reportEndDate) {
+        window.clearTimeout(handlePeriodChange._resyncTimer);
+        handlePeriodChange._resyncTimer = window.setTimeout(() => {
+          void syncCheckMKForClient(next, { silent: true }).then(result => {
+            if (result?.total > 0) {
+              toast.info(`Supervision resynchronisée pour la nouvelle période (${result.synced}/${result.total}).`);
+            }
+          });
+        }, 400);
+      }
+      return next;
     });
   };
   const handleBackFromDraftReport = () => {
@@ -397,28 +418,116 @@ export default function ReportPage({
       end: endIso
     };
     const reportPeriodResp = await getCheckMKReportPeriodData(hostName, startIso, endIso, site).catch(() => null);
-    const rawEvents = reportPeriodResp?.events?.events ?? [];
-    const periodEvents = filterCheckMKEventsForReportPeriod(rawEvents, reportPeriod);
+    const rawEvents = reportPeriodResp?.events?.events ?? reportPeriodResp?.events ?? [];
+    const eventsList = Array.isArray(rawEvents) ? rawEvents : [];
+    const periodEvents = filterCheckMKEventsForReportPeriod(eventsList, reportPeriod);
     const criticalEvents = periodEvents.filter(event => Number(event?.state) === 2);
     const availability = reportPeriodResp?.availability?.availability ?? reportPeriodResp?.availability ?? null;
     const periodServices = deriveServicesFromPeriodEvents(periodEvents);
     const parsed = {
       services: periodServices,
-      events: criticalEvents,
+      events: periodEvents,
       availability,
       eventsCount: criticalEvents.length
     };
     return {
       cacheEntry: buildCheckMKCacheEntry(parsed.services, parsed.events, parsed.availability, reportPeriod),
-      status: computeCheckMKEquipmentStatus(parsed)
+      status: computeCheckMKEquipmentStatus({
+        services: periodServices,
+        events: criticalEvents,
+        availability,
+        eventsCount: criticalEvents.length
+      })
     };
   };
+
+  const syncCheckMKForClient = async (client, {
+    silent = false
+  } = {}) => {
+    if (!client?.reportStartDate || !client?.reportEndDate) {
+      if (!silent) toast.error("La période du rapport n’est pas définie.");
+      return {
+        synced: 0,
+        total: 0
+      };
+    }
+    const mappings = collectCheckMKMappedEquipment(client.equipements);
+    if (mappings.length === 0) {
+      if (!silent) toast.info("Aucun équipement mappé à une supervision pour ce client.");
+      setEquipmentMonitoringStatus({});
+      setEquipmentCheckMKData({});
+      return {
+        synced: 0,
+        total: 0
+      };
+    }
+    setIsSyncingMonitoring(true);
+    try {
+      const startDate = new Date(client.reportStartDate);
+      const endDate = new Date(client.reportEndDate);
+      endDate.setHours(23, 59, 59, 999);
+      const startIso = startDate.toISOString();
+      const endIso = endDate.toISOString();
+      const results = {};
+      const checkMKDataByEquipment = {};
+      const concurrency = 3;
+      let index = 0;
+      let synced = 0;
+      const worker = async () => {
+        while (index < mappings.length) {
+          const currentIndex = index;
+          index += 1;
+          const mapping = mappings[currentIndex];
+          const hostName = mapping.checkmk_host_name;
+          if (!hostName) continue;
+          try {
+            const {
+              cacheEntry,
+              status
+            } = await fetchCheckMKDataForHost(hostName, mapping.checkmk_site || null, startIso, endIso);
+            const equipmentId = mapping.equipment_id;
+            if (equipmentId != null) {
+              const key = String(equipmentId);
+              results[key] = status;
+              checkMKDataByEquipment[key] = cacheEntry;
+              synced += 1;
+            }
+          } catch (err) {
+            console.error("Error synchronizing CheckMK for an equipment item:", err);
+            if (mapping.equipment_id != null) {
+              results[String(mapping.equipment_id)] = "unsynced";
+            }
+          }
+        }
+      };
+      const workers = [];
+      for (let i = 0; i < concurrency && i < mappings.length; i += 1) {
+        workers.push(worker());
+      }
+      await Promise.all(workers);
+      setEquipmentMonitoringStatus(results);
+      setEquipmentCheckMKData(checkMKDataByEquipment);
+      if (!silent) {
+        toast.success(`Supervision synchronisée (${synced}/${mappings.length}).`);
+      }
+      return {
+        synced,
+        total: mappings.length
+      };
+    } catch (err) {
+      console.error("Error during CheckMK synchronization:", err);
+      if (!silent) toast.error("Erreur lors de la synchronisation supervision.");
+      return {
+        synced: 0,
+        total: mappings.length
+      };
+    } finally {
+      setIsSyncingMonitoring(false);
+    }
+  };
+
   const handleSyncAllMonitoring = async () => {
     if (!builderClient || !isSupervisionReportBuilderType(builderType)) return;
-    if (!builderClient.reportStartDate || !builderClient.reportEndDate) {
-      toast.error("La période du rapport n’est pas définie.");
-      return;
-    }
     const clientId = builderClient.id || builderClient.uuid;
     if (!clientId) {
       toast.error("Impossible d’identifier le client pour la synchronisation.");
@@ -472,76 +581,18 @@ export default function ReportPage({
       }
       return;
     }
-    setIsSyncingMonitoring(true);
-    try {
-      const eq = builderClient.equipements || {};
-      const collect = arr => (Array.isArray(arr) ? arr : []).filter(i => i?.checkmk_host_name && i?.is_active !== false).map(i => ({
-        equipment_id: i.id,
-        checkmk_host_name: i.checkmk_host_name,
-        checkmk_site: i.checkmk_site ?? null
-      }));
-      const mappings = [...collect(eq.Serveurs), ...collect(eq.Servers), ...collect(eq.Firewalls), ...collect(eq.NAS), ...collect(eq.SAN ?? []), ...collect(eq.Switch), ...collect(eq.BorneWifi)];
-      if (mappings.length === 0) {
-        setEquipmentMonitoringStatus({});
-        toast.info("Aucun équipement mappé à une supervision pour ce client.");
-        return;
-      }
-      const startDate = new Date(builderClient.reportStartDate);
-      const endDate = new Date(builderClient.reportEndDate);
-      endDate.setHours(23, 59, 59, 999);
-      const startIso = startDate.toISOString();
-      const endIso = endDate.toISOString();
-      const results = {};
-      const checkMKDataByEquipment = {};
-      const concurrency = 3;
-      let index = 0;
-      const worker = async () => {
-        while (index < mappings.length) {
-          const currentIndex = index;
-          index += 1;
-          const mapping = mappings[currentIndex];
-          const hostName = mapping.checkmk_host_name;
-          if (!hostName) continue;
-          const site = mapping.checkmk_site || null;
-          try {
-            const {
-              cacheEntry,
-              status
-            } = await fetchCheckMKDataForHost(hostName, site, startIso, endIso);
-            const equipmentId = mapping.equipment_id;
-            if (equipmentId) {
-              const key = String(equipmentId);
-              results[key] = status;
-              checkMKDataByEquipment[key] = cacheEntry;
-            }
-          } catch (err) {
-            console.error("Error synchronizing CheckMK for an equipment item:", err);
-          }
-        }
-      };
-      const workers = [];
-      for (let i = 0; i < concurrency && i < mappings.length; i += 1) {
-        workers.push(worker());
-      }
-      await Promise.all(workers);
-      setEquipmentMonitoringStatus(results);
-      setEquipmentCheckMKData(checkMKDataByEquipment);
-      toast.success("CheckMK data synchronization complete.");
-    } catch (err) {
-      console.error("Error during CheckMK synchronization:", err);
-      toast.error("Error synchronizing CheckMK data.");
-    } finally {
-      setIsSyncingMonitoring(false);
-    }
+    await syncCheckMKForClient(builderClient, {
+      silent: false
+    });
   };
   const handleSyncSingleEquipment = async (item, {
     moduleKey,
     equipmentKey
   }) => {
     if (!builderClient || !isSupervisionReportBuilderType(builderType)) return;
-    const hostName = item?.checkmk_host_name ?? item?.data?.checkmk_host_name;
-    if (!hostName || typeof hostName !== "string" || !hostName.trim()) {
-      toast.warn("This equipment has no CheckMK mapping configured.");
+    const hostName = getCheckmkHostName(item);
+    if (!hostName) {
+      toast.warn("Cet équipement n’a pas de mapping supervision.");
       return;
     }
     if (!builderClient.reportStartDate || !builderClient.reportEndDate) {
@@ -556,7 +607,7 @@ export default function ReportPage({
       endDate.setHours(23, 59, 59, 999);
       const startIso = startDate.toISOString();
       const endIso = endDate.toISOString();
-      const site = item?.checkmk_site ?? item?.data?.checkmk_site ?? null;
+      const site = getCheckmkSite(item);
       const {
         cacheEntry,
         status
@@ -572,10 +623,11 @@ export default function ReportPage({
           [key]: cacheEntry
         }));
       }
-      toast.success("CheckMK data updated for this equipment.");
+      return cacheEntry;
     } catch (err) {
       console.error("CheckMK equipment sync error:", err);
-      toast.error("Error retrieving CheckMK data.");
+      toast.error("Erreur lors de la récupération des données supervision.");
+      return null;
     } finally {
       setSyncingEquipmentKey(null);
       setIsSyncingMonitoring(false);
