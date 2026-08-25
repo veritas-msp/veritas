@@ -15,15 +15,18 @@ const SUPERVISION_FAMILY_EQUIPMENT_KEYS = {
 const CRITERION_KEYS = ["monitor_critical", "monitor_warning", "agent_offline", "updates_pending", "disk_critical", "disk_warn", "unmapped", "no_data", "warranty_expired", "warranty_soon", "maintenance_expired", "maintenance_soon", "battery_expired", "battery_soon", "missing_ip"];
 const ALERT_RULES_COPY = {
   fr: {
-    title: "Règles d'alerte",
-    subtitle: "Choisissez les situations qui remontent dans le centre de supervision et peuvent générer des tickets automatiques (si les alertes sont activées sur le périphérique).",
+    title: "Règles d'alerte par périphérique",
+    subtitle: "Choisissez, pour chaque type de périphérique, les situations qui remontent dans le centre de supervision et peuvent créer un ticket (si les alertes sont actives sur l'équipement).",
     readOnly: "Lecture seule · réservé aux administrateurs.",
-    resetAll: "Réinitialiser tout",
+    resetAll: "Tout réinitialiser",
     save: "Enregistrer",
     saving: "Enregistrement…",
     resetFamily: "Réinitialiser {label}",
     activeCount: "{enabled}/{total} actives",
-    toggleOn: "Alerte active",
+    familyHint: "{enabled} règle(s) active(s) sur {total}",
+    familyNavAria: "Types de périphériques",
+    unsavedChanges: "Modifications non enregistrées",
+    toggleOn: "Active",
     toggleOff: "Ignorée",
     toasts: {
       saved: "Règles d'alerte enregistrées",
@@ -39,28 +42,32 @@ const ALERT_RULES_COPY = {
         description: "Avertissement remonté par CheckMK ou la supervision."
       },
       agent_offline: {
-        label: "Agent RMM hors ligne (+48 h)",
-        description: "Poste géré par l'agent RMM sans inventaire depuis plus de 48 heures."
+        label: "Agent RMM hors ligne",
+        description: "Poste géré par l'agent RMM sans inventaire depuis le seuil défini.",
+        parameters: { minutes: "Seuil hors ligne" }
       },
       updates_pending: {
-        label: "Mises à jour obsolètes",
-        description: "Mises à jour Windows en attente sur un poste RMM."
+        label: "Mises à jour en attente",
+        description: "Mises à jour Windows en attente sur un poste RMM.",
+        parameters: { minPending: "Nombre minimum" }
       },
       disk_critical: {
-        label: "Disque critique (≥ 90 %)",
-        description: "Espace disque critique sur un poste RMM."
+        label: "Disque critique",
+        description: "Espace disque critique sur un poste RMM.",
+        parameters: { percent: "Seuil critique" }
       },
       disk_warn: {
-        label: "Disque à surveiller (≥ 80 %)",
-        description: "Espace disque élevé sur un poste RMM."
+        label: "Disque à surveiller",
+        description: "Espace disque élevé sur un poste RMM.",
+        parameters: { percent: "Seuil d'avertissement" }
       },
       unmapped: {
-        label: "Non mappé CheckMK",
-        description: "Périphérique éligible à CheckMK sans mapping configuré."
+        label: "Non mappé à une supervision",
+        description: "Périphérique éligible sans liaison à une intégration de supervision."
       },
       no_data: {
         label: "Sans données supervision",
-        description: "Périphérique mappé CheckMK mais sans données récentes."
+        description: "Périphérique lié à une intégration de supervision mais sans données récentes."
       },
       warranty_expired: {
         label: "Garantie expirée",
@@ -68,7 +75,8 @@ const ALERT_RULES_COPY = {
       },
       warranty_soon: {
         label: "Garantie expire bientôt",
-        description: "Fin de garantie dans les prochains mois."
+        description: "Fin de garantie dans le nombre de jours configuré.",
+        parameters: { days: "Jours avant expiration" }
       },
       maintenance_expired: {
         label: "Licence maintenance expirée",
@@ -76,7 +84,8 @@ const ALERT_RULES_COPY = {
       },
       maintenance_soon: {
         label: "Licence maintenance bientôt",
-        description: "Contrat de maintenance firewall à renouveler."
+        description: "Contrat de maintenance firewall à renouveler.",
+        parameters: { days: "Jours avant expiration" }
       },
       battery_expired: {
         label: "Batterie à remplacer",
@@ -84,7 +93,8 @@ const ALERT_RULES_COPY = {
       },
       battery_soon: {
         label: "Batterie à surveiller",
-        description: "Date batterie onduleur proche."
+        description: "Date batterie onduleur proche.",
+        parameters: { days: "Jours avant expiration" }
       },
       missing_ip: {
         label: "IP non renseignée",
@@ -93,16 +103,19 @@ const ALERT_RULES_COPY = {
     }
   },
   en: {
-    title: "Alert rules",
-    subtitle: "Choose which situations appear in the supervision center and may generate automatic tickets (when alerts are enabled on the device).",
+    title: "Alert rules by device type",
+    subtitle: "For each device type, choose which situations appear in the supervision center and may create a ticket (when alerts are enabled on the device).",
     readOnly: "Read-only · administrators only.",
     resetAll: "Reset all",
     save: "Save",
     saving: "Saving…",
     resetFamily: "Reset {label}",
     activeCount: "{enabled}/{total} active",
-    toggleOn: "Alert enabled",
-    toggleOff: "Ignored",
+    familyHint: "{enabled} active rule(s) out of {total}",
+    familyNavAria: "Device types",
+    unsavedChanges: "Unsaved changes",
+    toggleOn: "On",
+    toggleOff: "Off",
     toasts: {
       saved: "Alert rules saved",
       saveFailed: "Unable to save rules"
@@ -117,28 +130,32 @@ const ALERT_RULES_COPY = {
         description: "Warning reported by CheckMK or supervision."
       },
       agent_offline: {
-        label: "RMM agent offline (+48 h)",
-        description: "Workstation managed by the RMM agent with no inventory for more than 48 hours."
+        label: "RMM agent offline",
+        description: "Workstation managed by the RMM agent with no inventory since the configured threshold.",
+        parameters: { minutes: "Offline threshold" }
       },
       updates_pending: {
-        label: "Outdated updates",
-        description: "Pending Windows updates on an RMM-managed workstation."
+        label: "Pending updates",
+        description: "Pending Windows updates on an RMM-managed workstation.",
+        parameters: { minPending: "Minimum count" }
       },
       disk_critical: {
-        label: "Critical disk (≥ 90%)",
-        description: "Critical disk space on an RMM-managed workstation."
+        label: "Critical disk",
+        description: "Critical disk space on an RMM-managed workstation.",
+        parameters: { percent: "Critical threshold" }
       },
       disk_warn: {
-        label: "Disk to monitor (≥ 80%)",
-        description: "High disk usage on an RMM-managed workstation."
+        label: "Disk warning",
+        description: "High disk usage on an RMM-managed workstation.",
+        parameters: { percent: "Warning threshold" }
       },
       unmapped: {
-        label: "Not mapped to CheckMK",
-        description: "CheckMK-eligible device without configured mapping."
+        label: "Not mapped to supervision",
+        description: "Eligible device with no link to a supervision integration."
       },
       no_data: {
         label: "No supervision data",
-        description: "Device mapped to CheckMK but with no recent data."
+        description: "Device linked to a supervision integration but with no recent data."
       },
       warranty_expired: {
         label: "Warranty expired",
@@ -211,12 +228,12 @@ const ALERT_RULES_COPY = {
         description: "Hohe Speichernutzung auf einem RMM-Arbeitsplatz."
       },
       unmapped: {
-        label: "CheckMK nicht zugeordnet",
-        description: "CheckMK-fähiges Gerät ohne konfiguriertes Mapping."
+        label: "Nicht einer Supervision zugeordnet",
+        description: "Geeignetes Gerät ohne Verknüpfung zu einer Supervisions-Integration."
       },
       no_data: {
         label: "Keine Überwachungsdaten",
-        description: "CheckMK-zugeordnetes Gerät ohne aktuelle Daten."
+        description: "Gerät mit Supervisions-Integration, aber ohne aktuelle Daten."
       },
       warranty_expired: {
         label: "Garantie abgelaufen",
@@ -289,12 +306,12 @@ const ALERT_RULES_COPY = {
         description: "Spazio disco elevato su una postazione RMM."
       },
       unmapped: {
-        label: "Non mappato CheckMK",
-        description: "Dispositivo idoneo a CheckMK senza mapping configurato."
+        label: "Non mappato a una supervisione",
+        description: "Dispositivo idoneo senza collegamento a un'integrazione di supervisione."
       },
       no_data: {
         label: "Senza dati di supervisione",
-        description: "Dispositivo mappato CheckMK ma senza dati recenti."
+        description: "Dispositivo collegato a un'integrazione di supervisione ma senza dati recenti."
       },
       warranty_expired: {
         label: "Garanzia scaduta",
@@ -367,12 +384,12 @@ const ALERT_RULES_COPY = {
         description: "Espacio en disco elevado en un equipo RMM."
       },
       unmapped: {
-        label: "Sin mapear en CheckMK",
-        description: "Dispositivo elegible para CheckMK sin mapping configurado."
+        label: "Sin mapear a una supervisión",
+        description: "Dispositivo elegible sin vínculo a una integración de supervisión."
       },
       no_data: {
         label: "Sin datos de supervisión",
-        description: "Dispositivo mapeado en CheckMK pero sin datos recientes."
+        description: "Dispositivo vinculado a una integración de supervisión pero sin datos recientes."
       },
       warranty_expired: {
         label: "Garantía caducada",
@@ -409,6 +426,8 @@ export function getSupervisionAlertRulesCopy(locale) {
   const t = pickLocaleMessages(ALERT_RULES_COPY, locale);
   return {
     ...t,
+    familyNavAria: t.familyNavAria || "Device types",
+    unsavedChanges: t.unsavedChanges || "Unsaved changes",
     getFamilyLabel: (familyKey, fallback) => {
       const equipmentKey = SUPERVISION_FAMILY_EQUIPMENT_KEYS[familyKey];
       return equipmentKey ? getEquipmentFamilyLabel(equipmentKey, locale, fallback) : fallback || familyKey;
@@ -425,7 +444,15 @@ export function getSupervisionAlertRulesCopy(locale) {
       }
       return fallback || "";
     },
+    getParameterLabel: (criterionKey, paramKey, fallback) => {
+      const fromCopy = t.criteria?.[criterionKey]?.parameters?.[paramKey];
+      return fromCopy || fallback || paramKey;
+    },
     formatActiveCount: (enabled, total) => interpolate(t.activeCount, {
+      enabled: String(enabled),
+      total: String(total)
+    }),
+    formatFamilyHint: (enabled, total) => interpolate(t.familyHint || t.activeCount, {
       enabled: String(enabled),
       total: String(total)
     }),

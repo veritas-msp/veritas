@@ -11,7 +11,7 @@ const SUPERVISION_COPY = {
     tabs: {
       operations: "Alertes",
       history: "Historique",
-      settings: "Règles"
+      settings: "Règles d'alerte"
     },
     guide: {
       fabLabel: "Guide du centre de supervision",
@@ -233,7 +233,7 @@ const SUPERVISION_COPY = {
         monitor_critical: "Intervenir sur l'alerte CheckMK et rétablir le service.",
         monitor_warning: "Analyser le warning CheckMK avant dégradation.",
         agent_offline: "Contrôler alimentation, réseau et service agent RMM (hors ligne depuis plus de 48 h).",
-        unmapped: "Mapper l'équipement à un hôte CheckMK depuis la fiche matériel.",
+        unmapped: "Lier l'équipement à une intégration de supervision depuis la fiche matériel.",
         no_data: "Vérifier le mapping CheckMK et la remontée des métriques.",
         warranty_expired: "Renouveler ou mettre à jour la garantie constructeur.",
         warranty_soon: "Planifier le renouvellement de garantie.",
@@ -250,7 +250,7 @@ const SUPERVISION_COPY = {
         critical: "Alerte supervision critique · intervention immédiate.",
         offline: "Agent RMM hors ligne · vérifier connectivité du poste.",
         warning: "Warning supervision · analyser avant dégradation.",
-        unmapped: "Équipement non mappé CheckMK · activer la supervision.",
+        unmapped: "Équipement non lié à une supervision · activer le mapping.",
         no_data: "Aucune donnée de supervision · vérifier le mapping.",
         default: "Point de vigilance à traiter depuis la fiche matériel."
       }
@@ -365,7 +365,7 @@ const SUPERVISION_COPY = {
     tabs: {
       operations: "Alerts",
       history: "History",
-      settings: "Rules"
+      settings: "Alert rules"
     },
     guide: {
       fabLabel: "Monitoring center guide",
@@ -591,7 +591,7 @@ const SUPERVISION_COPY = {
         monitor_critical: "Address the CheckMK alert and restore the service.",
         monitor_warning: "Analyze the CheckMK warning before degradation.",
         agent_offline: "Check power, network, and RMM agent service (offline for more than 48 h).",
-        unmapped: "Map the equipment to a CheckMK host from the hardware record.",
+        unmapped: "Link the device to a supervision integration from the hardware record.",
         no_data: "Verify CheckMK mapping and metric collection.",
         warranty_expired: "Renew or update the manufacturer warranty.",
         warranty_soon: "Plan warranty renewal.",
@@ -608,7 +608,7 @@ const SUPERVISION_COPY = {
         critical: "Critical supervision alert · immediate action required.",
         offline: "RMM agent offline · check endpoint connectivity.",
         warning: "Monitoring warning · analyze before degradation.",
-        unmapped: "Equipment not mapped to CheckMK · enable supervision.",
+        unmapped: "Device not linked to supervision · enable mapping.",
         no_data: "No supervision data · verify mapping.",
         default: "Item to handle from the hardware record."
       }
@@ -949,7 +949,7 @@ const SUPERVISION_COPY = {
         monitor_critical: "CheckMK-Alarm bearbeiten und Dienst wiederherstellen.",
         monitor_warning: "CheckMK-Warnung vor Verschlechterung analysieren.",
         agent_offline: "Strom, Netzwerk und RMM-Agent prüfen (offline seit über 48 h).",
-        unmapped: "Gerät in der Hardware-Akte einem CheckMK-Host zuordnen.",
+        unmapped: "Gerät in der Hardware-Akte mit einer Supervisions-Integration verknüpfen.",
         no_data: "CheckMK-Mapping und Metriken prüfen.",
         warranty_expired: "Herstellergarantie erneuern oder aktualisieren.",
         warranty_soon: "Garantieverlängerung planen.",
@@ -966,7 +966,7 @@ const SUPERVISION_COPY = {
         critical: "Kritischer Überwachungsalarm · sofort handeln.",
         offline: "RMM-Agent offline · Konnektivität prüfen.",
         warning: "Überwachungswarnung · vor Verschlechterung analysieren.",
-        unmapped: "Gerät nicht CheckMK zugeordnet · Überwachung aktivieren.",
+        unmapped: "Gerät nicht mit einer Supervision verknüpft · Mapping aktivieren.",
         no_data: "Keine Überwachungsdaten · Mapping prüfen.",
         default: "Punkt aus der Hardware-Akte bearbeiten."
       }
@@ -1306,7 +1306,7 @@ const SUPERVISION_COPY = {
         monitor_critical: "Intervenire sull'alert CheckMK e ripristinare il servizio.",
         monitor_warning: "Analizzare il warning CheckMK prima del degrado.",
         agent_offline: "Controllare alimentazione, rete e agente RMM (offline da oltre 48 h).",
-        unmapped: "Associare l'equipaggiamento a un host CheckMK dalla scheda hardware.",
+        unmapped: "Collegare l'apparecchiatura a un'integrazione di supervisione dalla scheda hardware.",
         no_data: "Verificare mapping CheckMK e metriche.",
         warranty_expired: "Rinnovare o aggiornare la garanzia costruttore.",
         warranty_soon: "Pianificare il rinnovo garanzia.",
@@ -1323,7 +1323,7 @@ const SUPERVISION_COPY = {
         critical: "Alert supervisione critico · intervento immediato.",
         offline: "Agente RMM offline · verificare connettività.",
         warning: "Warning supervisione · analizzare prima del degrado.",
-        unmapped: "Equipaggiamento non mappato CheckMK · attivare supervisione.",
+        unmapped: "Apparecchiatura non collegata a una supervisione · attivare il mapping.",
         no_data: "Nessun dato supervisione · verificare mapping.",
         default: "Punto da trattare dalla scheda hardware."
       }
@@ -1664,7 +1664,7 @@ const SUPERVISION_COPY = {
         monitor_critical: "Actuar sobre la alerta CheckMK y restablecer el servicio.",
         monitor_warning: "Analizar el warning CheckMK antes de la degradación.",
         agent_offline: "Comprobar alimentación, red y agente RMM (offline más de 48 h).",
-        unmapped: "Asociar el equipo a un host CheckMK desde la ficha hardware.",
+        unmapped: "Vincular el equipo a una integración de supervisión desde la ficha hardware.",
         no_data: "Verificar mapping CheckMK y métricas.",
         warranty_expired: "Renovar o actualizar la garantía del fabricante.",
         warranty_soon: "Planificar renovación de garantía.",
@@ -1681,7 +1681,7 @@ const SUPERVISION_COPY = {
         critical: "Alerta crítica de supervisión · intervención inmediata.",
         offline: "Agente RMM offline · verificar conectividad.",
         warning: "Warning de supervisión · analizar antes de degradación.",
-        unmapped: "Equipo no mapeado CheckMK · activar supervisión.",
+        unmapped: "Equipo no vinculado a una supervisión · activar el mapeo.",
         no_data: "Sin datos de supervisión · verificar mapping.",
         default: "Punto a tratar desde la ficha hardware."
       }

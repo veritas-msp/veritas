@@ -83,8 +83,8 @@ export const SUPERVISION_ALERT_CRITERIA = [{
   }]
 }, {
   key: "unmapped",
-  label: "Not mapped to CheckMK",
-  description: "CheckMK-eligible device without a configured mapping (coverage alert).",
+  label: "Not mapped to supervision",
+  description: "Eligible device with no link to a supervision integration (coverage alert).",
   families: ["servers", "stockage", "firewall", "switch", "wifi", "routeur", "internet", "toip"],
   defaultEnabled: true,
   defaultSeverity: "normal",
@@ -92,7 +92,7 @@ export const SUPERVISION_ALERT_CRITERIA = [{
 }, {
   key: "no_data",
   label: "No supervision data",
-  description: "Device mapped to CheckMK but without recent data.",
+  description: "Device linked to a supervision integration but without recent data.",
   families: ["servers", "stockage", "firewall", "switch", "wifi", "routeur", "internet", "toip"],
   defaultEnabled: false,
   defaultSeverity: "normal",

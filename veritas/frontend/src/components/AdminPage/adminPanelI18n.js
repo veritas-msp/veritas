@@ -204,7 +204,7 @@ const ADMIN_PANEL_COPY = {
       },
       "supervision-alert-rules": {
         label: "Règles d’alerte",
-        description: "Critères d’alertes natives (CheckMK, RMM…)"
+        description: "Critères par type de périphérique (CheckMK, RMM…)"
       },
       integrations: {
         label: "Intégrations",

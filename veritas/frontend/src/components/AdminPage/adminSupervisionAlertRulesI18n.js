@@ -2,28 +2,28 @@ import { createLocaleGetter } from "../../i18n/translate";
 
 const COPY = {
   fr: {
-    title: "Règles d’alerte supervision",
-    subtitle: "Critères qui déclenchent les alertes natives Veritas (CheckMK, RMM, etc.)",
+    title: "Règles d’alerte par périphérique",
+    subtitle: "Critères d’alertes natives Veritas, organisés par type d’équipement",
     loading: "Chargement des règles…"
   },
   en: {
-    title: "Supervision alert rules",
-    subtitle: "Criteria that trigger native Veritas alerts (CheckMK, RMM, etc.)",
+    title: "Alert rules by device type",
+    subtitle: "Native Veritas alert criteria, organized by device type",
     loading: "Loading rules…"
   },
   de: {
-    title: "Supervisions-Alarmregeln",
-    subtitle: "Kriterien für native Veritas-Alarme (CheckMK, RMM usw.)",
+    title: "Alarmregeln nach Gerätetyp",
+    subtitle: "Native Veritas-Alarmkriterien, nach Gerätetyp organisiert",
     loading: "Regeln werden geladen…"
   },
   it: {
-    title: "Regole avvisi supervisione",
-    subtitle: "Criteri che attivano gli avvisi nativi Veritas (CheckMK, RMM, ecc.)",
+    title: "Regole avvisi per tipo di periferica",
+    subtitle: "Criteri avvisi nativi Veritas, organizzati per tipo di dispositivo",
     loading: "Caricamento regole…"
   },
   es: {
-    title: "Reglas de alerta de supervisión",
-    subtitle: "Criterios que disparan las alertas nativas de Veritas (CheckMK, RMM, etc.)",
+    title: "Reglas de alerta por tipo de periférico",
+    subtitle: "Criterios de alertas nativas Veritas, organizados por tipo de equipo",
     loading: "Cargando reglas…"
   }
 };

@@ -1,13 +1,29 @@
 import { useCallback, useEffect, useState } from "react";
 import { fetchSupervisionAlertRules } from "../api/supervisionAlertRules";
-import { buildDefaultMonitoringAlertRules } from "../components/EquipementPage/supervisionAlertRulesConfig";
+import {
+  buildDefaultMonitoringAlertRules,
+  normalizeRulesTree
+} from "../components/EquipementPage/supervisionAlertRulesConfig";
+
 let sharedRules = null;
+let sharedCatalog = null;
 let sharedPromise = null;
+
+function normalizePayload(data) {
+  const catalog = data && typeof data === "object" ? data : {};
+  const rules = normalizeRulesTree(catalog.rules, catalog.criteria, catalog.families);
+  return {
+    ...catalog,
+    rules
+  };
+}
+
 export function useSupervisionAlertRules() {
   const [rules, setRules] = useState(sharedRules || buildDefaultMonitoringAlertRules());
-  const [catalog, setCatalog] = useState(null);
+  const [catalog, setCatalog] = useState(sharedCatalog);
   const [loading, setLoading] = useState(!sharedRules);
   const [error, setError] = useState(null);
+
   const load = useCallback(async (fresh = false) => {
     if (!fresh && sharedPromise) {
       try {
@@ -24,33 +40,42 @@ export function useSupervisionAlertRules() {
     }
     setLoading(true);
     setError(null);
-    sharedPromise = fetchSupervisionAlertRules();
+    sharedPromise = fetchSupervisionAlertRules().then(normalizePayload);
     try {
       const data = await sharedPromise;
       sharedRules = data.rules;
+      sharedCatalog = data;
       setRules(data.rules);
       setCatalog(data);
       return data;
     } catch (err) {
+      sharedPromise = null;
       setError(err);
       return null;
     } finally {
       setLoading(false);
     }
   }, []);
+
   useEffect(() => {
     load();
   }, [load]);
+
   const applyRules = useCallback(nextRules => {
-    sharedRules = nextRules;
-    setRules(nextRules);
-    if (catalog) {
-      setCatalog({
-        ...catalog,
-        rules: nextRules
-      });
-    }
-  }, [catalog]);
+    const normalized = normalizeRulesTree(nextRules, sharedCatalog?.criteria, sharedCatalog?.families);
+    sharedRules = normalized;
+    setRules(normalized);
+    setCatalog(prev => {
+      const next = prev
+        ? { ...prev, rules: normalized }
+        : sharedCatalog
+          ? { ...sharedCatalog, rules: normalized }
+          : null;
+      sharedCatalog = next;
+      return next;
+    });
+  }, []);
+
   return {
     rules,
     catalog,
@@ -60,7 +85,9 @@ export function useSupervisionAlertRules() {
     applyRules
   };
 }
+
 export function invalidateSupervisionAlertRulesCache() {
   sharedRules = null;
+  sharedCatalog = null;
   sharedPromise = null;
 }

@@ -16,7 +16,7 @@ const ISSUE_META = {
   monitor_critical: { label: "Alert critical", tone: "bad", priority: 0, monitorStatus: "critical" },
   monitor_warning: { label: "Warning supervision", tone: "warn", priority: 1, monitorStatus: "warning" },
   agent_offline: { label: "Agent hors ligne", tone: "bad", priority: 0, monitorStatus: "offline" },
-  unmapped: { label: "Not mapped to CheckMK", tone: "warn", priority: 2, monitorStatus: "unmapped" },
+  unmapped: { label: "Not mapped to supervision", tone: "warn", priority: 2, monitorStatus: "unmapped" },
   no_data: { label: "No monitoring data", tone: "warn", priority: 3, monitorStatus: "no_data" },
   warranty_expired: { label: "Warranty expired", tone: "bad", priority: 1, monitorStatus: "ok" },
   warranty_soon: { label: "Warranty expires soon", tone: "warn", priority: 2, monitorStatus: "ok" },
