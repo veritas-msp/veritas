@@ -16,8 +16,8 @@ import MonitoringSteps, { getEnabledMonitoringSteps } from "./monitoring/Monitor
 import { applyEquipmentPatchToEquipements } from "./monitoring/equipmentPatchUtils";
 import { buildCheckMKCacheEntry, buildCheckMKReportSnapshot, computeCheckMKEquipmentStatus, deriveServicesFromPeriodEvents, filterCheckMKEventsForReportPeriod, resolveCheckMKEquipmentKey } from "./monitoring/checkmkReportCacheUtils";
 import { isSupervisionReportBuilderType } from "./monitoring/supervisionReportBuilder";
-import enterpriseStyles from "../EnterprisesPage/EnterpriseDetailPage.module.css";
 import builderStyles from "./monitoring/RapportMonitoringBuilder.module.css";
+import shellStyles from "./RapportBuilderPlaceholder.module.css";
 import { confirmLeaveMonitoringReport, isMonitoringReportBuilderActive } from "../../utils/monitoringReportGuard";
 import saveModalStyles from "../Monitoring/MonitoringSummary/MonitoringSummary.module.css";
 import { exportReportAsZIP, buildReportZipBlob } from "./exportRapportZip";
@@ -934,55 +934,68 @@ export default function ReportPage({
   const isSupervisionDraft = isDraftWizard && draftReport?.type?.id === REPORT_TYPE_IDS.SUPERVISION_ETAT;
   return <>
       <div className={`${cyberStyles.mspPage} msp-page-insight`}>
-        {isSupervisionBuilder ? <div className={styles.builderShell}>
-              <section ref={builderSectionRef} className={`${builderStyles.builderSection} ${isCommentsDrawerOpen ? builderStyles.builderSectionWithComments : ""}`}>
-                {}
-                <div className={builderStyles.builderHeaderWrapper}>
-                  <div className={`${enterpriseStyles.header} ${enterpriseStyles.headerInColumn}`}>
-                    <div className={enterpriseStyles.headerTitle}>
-                      <h1>
-                        <button type="button" className={enterpriseStyles.backButton} onClick={handleBackToSelection} title="Back">
-                          <Icon icon="mdi:arrow-left" />
-                        </button>
-                        <Icon icon="mdi:file-chart" className={enterpriseStyles.headerIcon} />
-                        <span>
-                          {builderClient ? builderClient.name || builderClient.nom || `Client #${builderClient.id}` : "Rapport de supervision"}
-                        </span>
-                      </h1>
-                      {builderClient && <div className={builderStyles.builderSubtitle}>
-                          {(builderClient.reportStartDate || builderClient.reportEndDate) && <span style={{
-                    opacity: 0.85
-                  }}>
-                              {builderClient.reportStartDate && builderClient.reportEndDate ? `Du ${formatReportDate(builderClient.reportStartDate)} au ${formatReportDate(builderClient.reportEndDate)}` : builderClient.reportStartDate ? `À partir du ${formatReportDate(builderClient.reportStartDate)}` : `Jusqu’au ${formatReportDate(builderClient.reportEndDate)}`}
-                            </span>}
-                        </div>}
+        {isSupervisionBuilder ? <div className={shellStyles.shell}>
+              <header className={shellStyles.header}>
+                <button type="button" className={shellStyles.backBtn} onClick={handleBackToSelection}>
+                  <Icon icon="mdi:arrow-left" aria-hidden />
+                  Retour
+                </button>
+                <div className={shellStyles.headerRow}>
+                  <div className={shellStyles.headerMain}>
+                    <div className={shellStyles.headerIcon}>
+                      <Icon icon="mdi:radar" aria-hidden />
                     </div>
-                    <div className={enterpriseStyles.headerActions}>
-                      <button type="button" className={`${enterpriseStyles.headerActionButton} ${isCommentsDrawerOpen ? enterpriseStyles.headerActionButtonActive : enterpriseStyles.headerActionButtonInactive}`} title="Show / hide comments" onClick={() => {
-                  setIsCommentsDrawerOpen(prev => !prev);
-                }}>
-                        <Icon icon="mdi:comment-text-outline" className={enterpriseStyles.headerActionIcon} />
-                      </button>
-
-                      <button type="button" className={`${enterpriseStyles.headerActionButton} ${enterpriseStyles.headerActionButtonInactive}`} title={isSupervisionReportBuilderType(builderType) && builderClient && isSyncingOffice365Report ? "Office 365 synchronization in progress..." : "Synchronize monitoring data"} onClick={handleSyncAllMonitoring} disabled={isSyncingMonitoring || isSyncingOffice365Report}>
-                        <Icon icon="mdi:refresh" className={enterpriseStyles.headerActionIcon} style={{
-                    animation: isSyncingMonitoring || isSyncingOffice365Report ? "spin 1s linear infinite" : "none"
-                  }} />
-                      </button>
-
-                      {isOnSummaryStep && <>
-                          <button type="button" className={`${enterpriseStyles.headerActionButton} ${enterpriseStyles.headerActionButtonInactive}`} title="Download the 3 reports as a ZIP (HTML)" onClick={handleDownloadZip} disabled={!builderClient}>
-                            <Icon icon="mdi:download" className={enterpriseStyles.headerActionIcon} />
-                          </button>
-                          <button type="button" className={`${enterpriseStyles.headerActionButton} ${enterpriseStyles.headerActionButtonInactive}`} title="Save the report" onClick={() => builderClient && setShowSaveModal(true)} disabled={!builderClient}>
-                            <Icon icon="mdi:content-save-outline" className={enterpriseStyles.headerActionIcon} />
-                          </button>
-                        </>}
+                    <div className={shellStyles.headerCopy}>
+                      <span className={shellStyles.headerEyebrow}>
+                        {builderClient?.name || builderClient?.nom || `Client #${builderClient?.id}`}
+                      </span>
+                      <h1 className={shellStyles.headerTitle}>État de supervision</h1>
+                      <p className={shellStyles.headerSubtitle}>
+                        {builderClient?.reportStartDate && builderClient?.reportEndDate
+                          ? `Du ${formatReportDate(builderClient.reportStartDate)} au ${formatReportDate(builderClient.reportEndDate)}`
+                          : "Définissez la période puis parcourez les modules."}
+                      </p>
                     </div>
                   </div>
+                  <div className={shellStyles.headerActions}>
+                    <button
+                      type="button"
+                      className={`${shellStyles.headerActionBtn} ${isCommentsDrawerOpen ? shellStyles.headerActionBtnActive : ""}`}
+                      title="Commentaires"
+                      onClick={() => setIsCommentsDrawerOpen(prev => !prev)}
+                    >
+                      <Icon icon="mdi:comment-text-outline" width={18} height={18} />
+                    </button>
+                    <button
+                      type="button"
+                      className={shellStyles.headerActionBtn}
+                      title="Synchroniser"
+                      onClick={handleSyncAllMonitoring}
+                      disabled={isSyncingMonitoring || isSyncingOffice365Report}
+                    >
+                      <Icon
+                        icon="mdi:refresh"
+                        width={18}
+                        height={18}
+                        style={{ animation: isSyncingMonitoring || isSyncingOffice365Report ? "spin 1s linear infinite" : "none" }}
+                      />
+                    </button>
+                    {isOnSummaryStep ? (
+                      <>
+                        <button type="button" className={shellStyles.headerActionBtn} title="Télécharger ZIP" onClick={handleDownloadZip} disabled={!builderClient}>
+                          <Icon icon="mdi:download" width={18} height={18} />
+                        </button>
+                        <button type="button" className={shellStyles.headerActionBtn} title="Enregistrer" onClick={() => builderClient && setShowSaveModal(true)} disabled={!builderClient}>
+                          <Icon icon="mdi:content-save-outline" width={18} height={18} />
+                        </button>
+                      </>
+                    ) : null}
+                  </div>
                 </div>
+              </header>
 
-                {}
+              <div ref={builderSectionRef} style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column", position: "relative" }}>
+
                 {showSaveModal && <div className={saveModalStyles.modalOverlay} onClick={e => {
             if (e.target === e.currentTarget) setShowSaveModal(false);
           }}>
@@ -994,16 +1007,16 @@ export default function ReportPage({
                   gap: "0.75rem"
                 }}>
                           <Icon icon="mdi:content-save" className={saveModalStyles.modalIcon} />
-                          <h3>Save monitoring report</h3>
+                          <h3>Enregistrer le rapport</h3>
                         </div>
-                        <button type="button" className={saveModalStyles.closeButton} onClick={() => setShowSaveModal(false)} title="Close">
+                        <button type="button" className={saveModalStyles.closeButton} onClick={() => setShowSaveModal(false)} title="Fermer">
                           <Icon icon="mdi:close" />
                         </button>
                       </div>
                       <div className={saveModalStyles.modalBody}>
                         <div className={saveModalStyles.saveInputSection}>
-                          <label className={saveModalStyles.saveInputLabel}>Document name</label>
-                          <input type="text" value={saveName} onChange={e => setSaveName(e.target.value)} placeholder="E.g. Monitoring Report - Client Alpha" className={saveModalStyles.saveInput} />
+                          <label className={saveModalStyles.saveInputLabel}>Nom du document</label>
+                          <input type="text" value={saveName} onChange={e => setSaveName(e.target.value)} placeholder="Ex. Rapport supervision — Client Alpha" className={saveModalStyles.saveInput} />
                         </div>
                         <ReportSaveVisibilitySwitch visibleToClient={saveVisibleToClient} onChange={setSaveVisibleToClient} disabled={saving} />
                         {recentDocs.length > 0 && <div className={saveModalStyles.recentDocs}>
@@ -1012,19 +1025,19 @@ export default function ReportPage({
                       fontSize: "1.1rem",
                       marginRight: "0.5rem"
                     }} />
-                              My documents ({recentDocs.length})
+                              Mes documents ({recentDocs.length})
                             </h4>
                             <div className={saveModalStyles.docsTableContainer}>
                               <table className={saveModalStyles.docsTable}>
                                 <thead>
                                   <tr>
-                                    <th>Name</th>
+                                    <th>Nom</th>
                                     <th>Client</th>
-                                    <th>Period</th>
+                                    <th>Période</th>
                                   </tr>
                                 </thead>
                                 <tbody>
-                                  {recentDocs.slice(0, 10).map(doc => <tr key={doc.id} className={saveModalStyles.docTableRow} onClick={() => handleLoadSavedDocument(doc)} title="Click to reuse this name">
+                                  {recentDocs.slice(0, 10).map(doc => <tr key={doc.id} className={saveModalStyles.docTableRow} onClick={() => handleLoadSavedDocument(doc)} title="Réutiliser ce nom">
                                       <td className={saveModalStyles.docNameCell}>
                                         <span className={saveModalStyles.docName}>{doc.name}</span>
                                       </td>
@@ -1039,7 +1052,7 @@ export default function ReportPage({
                       <div className={saveModalStyles.modalActions} style={{
                 justifyContent: "flex-end"
               }}>
-                        <button type="button" onClick={() => handleSaveReport()} className={saveModalStyles.primaryButton} disabled={saving || !saveName.trim()} title="Save">
+                        <button type="button" onClick={() => handleSaveReport()} className={saveModalStyles.primaryButton} disabled={saving || !saveName.trim()} title="Enregistrer">
                           {saving ? <Icon icon="mdi:loading" style={{
                     fontSize: "1.1rem",
                     animation: "spin 1s linear infinite"
@@ -1051,7 +1064,6 @@ export default function ReportPage({
                     </div>
                   </div>}
 
-                {}
                 {showOverwriteConfirm && pendingSave && <div className={saveModalStyles.modalOverlay} onClick={e => {
             if (e.target === e.currentTarget) {
               setShowOverwriteConfirm(false);
@@ -1066,12 +1078,12 @@ export default function ReportPage({
                   gap: "0.75rem"
                 }}>
                           <Icon icon="mdi:alert" className={saveModalStyles.modalIcon} />
-                          <h3>Existing document</h3>
+                          <h3>Document existant</h3>
                         </div>
                         <button type="button" className={saveModalStyles.closeButton} onClick={() => {
                   setShowOverwriteConfirm(false);
                   setPendingSave(null);
-                }} title="Close">
+                }} title="Fermer">
                           <Icon icon="mdi:close" />
                         </button>
                       </div>
@@ -1082,7 +1094,7 @@ export default function ReportPage({
                   lineHeight: 1.6,
                   color: "#1a1a1a"
                 }}>
-                          A document named &quot;{saveName}&quot; already exists. Do you want to overwrite it?
+                          Un document nommé &quot;{saveName}&quot; existe déjà. Voulez-vous l’écraser ?
                         </p>
                       </div>
                       <div className={saveModalStyles.modalActions} style={{
@@ -1094,7 +1106,7 @@ export default function ReportPage({
                   setShowOverwriteConfirm(false);
                   setPendingSave(null);
                 }}>
-                          Cancel
+                          Annuler
                         </button>
                         <button type="button" onClick={handleOverwriteConfirm} disabled={saving} className={saveModalStyles.primaryButton} style={{
                   backgroundColor: "#dc2626",
@@ -1108,7 +1120,7 @@ export default function ReportPage({
                           <Icon icon={saving ? "mdi:loading" : "mdi:check"} style={saving ? {
                     animation: "spin 1s linear infinite"
                   } : undefined} />
-                          {saving ? "Saving..." : "Yes, overwrite"}
+                          {saving ? "Enregistrement…" : "Oui, écraser"}
                         </button>
                       </div>
                     </div>
@@ -1219,7 +1231,7 @@ export default function ReportPage({
                       </div>
                     </div>
                   </div>}
-              </section>
+              </div>
           </div> : isInterventionDraft ? <ReportInterventionBuilder copy={pageCopy} reportType={draftReport.type} client={draftReport.client} initialData={draftReport.initialData} documentId={draftReport.documentId} documentName={draftReport.documentName} onBack={handleBackFromDraftReport} /> : isSupervisionDraft ? <SupervisionPeriodGate copy={pageCopy} reportType={draftReport.type} client={draftReport.client} onBack={handleBackFromDraftReport} onConfirm={handleConfirmSupervisionPeriod} confirming={startingSupervisionBuilder} /> : isDraftWizard ? <ReportBuilderPlaceholder copy={pageCopy} reportType={draftReport.type} client={draftReport.client} onBack={handleBackFromDraftReport} /> : <div className={cyberStyles.mspLayout}>
             <div className={cyberStyles.mspMain}>
               <header className={cyberStyles.mspHero}>
