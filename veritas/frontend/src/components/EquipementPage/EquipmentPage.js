@@ -782,7 +782,7 @@ const EMBEDDED_TYPE_COLUMNS = {
   Routeur: ["name", "activeStatus", "location", "model", "serial", "ip", "monitoring", "mapping"],
   Servers: ["name", "activeStatus", "location", "model", "serial", "ip", "systeme", "ha", "monitoring", "mapping"],
   Storage: ["name", "activeStatus", "location", "model", "serial", "ip", "disksUsage", "capacite", "raid", "ha", "monitoring", "mapping"],
-  Ordinateurs: ["name", "activeStatus", "location", "model", "serial", "systeme", "memoire", "processeur", "agentStatus", "mapping"],
+  Ordinateurs: ["name", "activeStatus", "location", "model", "serial", "systeme", "agentStatus", "mapping"],
   Switch: ["name", "activeStatus", "location", "model", "serial", "mac", "ha", "monitoring", "mapping"],
   BorneWifi: ["name", "activeStatus", "location", "model", "serial", "mac", "ssidCount", "monitoring", "mapping"],
   TOIP: ["name", "activeStatus", "location", "model", "version", "ip", "mapping"],
@@ -941,12 +941,18 @@ const EquipmentPage = forwardRef(function EquipmentPage({
   };
   const renderStateIcon = (active, {
     onLabel = "Actif",
-    offLabel = "Inactif"
-  } = {}) => <SmartTooltip content={active ? onLabel : offLabel}>
+    offLabel = "Inactif",
+    warn = false,
+    warnLabel = null
+  } = {}) => {
+    const label = warn ? warnLabel || offLabel : active ? onLabel : offLabel;
+    const color = warn ? "#f59e0b" : active ? "#22c55e" : "#94a3b8";
+    return <SmartTooltip content={label}>
       <Icon icon="mdi:circle" width={12} height={12} style={{
-      color: active ? "#22c55e" : "#94a3b8"
-    }} aria-label={active ? onLabel : offLabel} />
+      color
+    }} aria-label={label} />
     </SmartTooltip>;
+  };
   const renderActiveStatusIcon = equipment => renderStateIcon(equipment?.is_active !== false);
   const renderSupervisionDot = equipment => {
     if (!isCheckMKMappableType(equipment?.type)) return renderStateIcon(false, {
@@ -959,11 +965,17 @@ const EquipmentPage = forwardRef(function EquipmentPage({
     });
     const summary = getEquipmentMkSummary(equipment);
     const status = String(summary?.status || "").toLowerCase();
-    // Mapped = green immediately (no sync required). Only real alert states stay off-green.
-    const isDegraded = status === "critical" || status === "warning" || status === "down" || status === "offline";
-    return renderStateIcon(!isDegraded, {
+    const isCritical = status === "critical" || status === "down" || status === "offline";
+    const isWarning = status === "warning";
+    if (isCritical || isWarning) {
+      return renderStateIcon(false, {
+        warn: true,
+        warnLabel: isCritical ? "Supervision : critique" : "Supervision : avertissement"
+      });
+    }
+    return renderStateIcon(true, {
       onLabel: "Supervision active",
-      offLabel: "Supervision degradee"
+      offLabel: "Supervision inactive"
     });
   };
   const renderAgentDot = equipment => {

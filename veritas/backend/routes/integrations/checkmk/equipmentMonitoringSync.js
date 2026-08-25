@@ -79,6 +79,112 @@ export function computeMonitoringSummary(monitoringData, lastSyncedAt) {
     lastSyncedAt: lastSyncedAt || null
   };
 }
+
+/**
+ * Count CheckMK events + notifications within the last N days (integration supervision history).
+ */
+export function countCheckmkHistoryLastDays(monitoringData, days = 30) {
+  if (!monitoringData || typeof monitoringData !== 'object') {
+    return {
+      events: 0,
+      notifications: 0,
+      total: 0
+    };
+  }
+  const sinceDays = Math.min(Math.max(Number(days) || 30, 1), 365);
+  const cutoff = Date.now() - sinceDays * 24 * 60 * 60 * 1000;
+  const events = Array.isArray(monitoringData?.events?.events) ? monitoringData.events.events : [];
+  const notifications = Array.isArray(monitoringData?.notifications?.notifications)
+    ? monitoringData.notifications.notifications
+    : Array.isArray(monitoringData?.notifications?.events)
+      ? monitoringData.notifications.events
+      : [];
+  const inWindow = item => {
+    const t = getEventTimeMs(item);
+    return t != null && t >= cutoff;
+  };
+  const eventsCount = events.filter(inWindow).length;
+  const notificationsCount = notifications.filter(inWindow).length;
+  return {
+    events: eventsCount,
+    notifications: notificationsCount,
+    total: eventsCount + notificationsCount
+  };
+}
+
+/**
+ * Flatten recent CheckMK events/notifications for equipment alert history.
+ */
+export function listCheckmkHistoryItems(monitoringData, {
+  days = 30,
+  limit = 50
+} = {}) {
+  if (!monitoringData || typeof monitoringData !== 'object') return [];
+  const sinceDays = Math.min(Math.max(Number(days) || 30, 1), 365);
+  const lim = Math.min(Math.max(Number(limit) || 50, 1), 200);
+  const cutoff = Date.now() - sinceDays * 24 * 60 * 60 * 1000;
+  const events = Array.isArray(monitoringData?.events?.events) ? monitoringData.events.events : [];
+  const notifications = Array.isArray(monitoringData?.notifications?.notifications)
+    ? monitoringData.notifications.notifications
+    : Array.isArray(monitoringData?.notifications?.events)
+      ? monitoringData.notifications.events
+      : [];
+  const items = [];
+  for (const event of events) {
+    const t = getEventTimeMs(event);
+    if (t == null || t < cutoff) continue;
+    const state = getEventStateNum(event);
+    const severity = state === 2 ? 'critical' : state === 1 ? 'warning' : 'info';
+    const title = event?.description || event?.plugin_output || event?.service_description
+      || event?.text || event?.message || event?.host_name || 'CheckMK event';
+    items.push({
+      id: `ckmk-evt-${t}-${String(title).slice(0, 40)}`,
+      source: 'checkmk',
+      kind: 'event',
+      title: String(title),
+      subtitle: event?.service_description || event?.host_name || null,
+      typeKey: 'checkmk_event',
+      typeKind: 'label',
+      domain: 'devices',
+      criterionKey: null,
+      eventType: 'checkmk_event',
+      severity,
+      status: 'open',
+      at: new Date(t).toISOString(),
+      ticketId: null
+    });
+  }
+  for (const notif of notifications) {
+    const t = getEventTimeMs(notif);
+    if (t == null || t < cutoff) continue;
+    const state = getEventStateNum(notif);
+    const severity = state === 2 ? 'critical' : state === 1 ? 'warning' : 'info';
+    const title = notif?.description || notif?.plugin_output || notif?.service_description
+      || notif?.text || notif?.message || notif?.host_name || 'CheckMK notification';
+    items.push({
+      id: `ckmk-notif-${t}-${String(title).slice(0, 40)}`,
+      source: 'checkmk',
+      kind: 'notification',
+      title: String(title),
+      subtitle: notif?.service_description || notif?.host_name || null,
+      typeKey: 'checkmk_notification',
+      typeKind: 'label',
+      domain: 'devices',
+      criterionKey: null,
+      eventType: 'checkmk_notification',
+      severity,
+      status: 'open',
+      at: new Date(t).toISOString(),
+      ticketId: null
+    });
+  }
+  items.sort((a, b) => {
+    const ta = a.at ? new Date(a.at).getTime() : 0;
+    const tb = b.at ? new Date(b.at).getTime() : 0;
+    return tb - ta;
+  });
+  return items.slice(0, lim);
+}
 const INTERNAL_BASE = `http://127.0.0.1:${process.env.PORT || 3001}`;
 const EQUIPMENT_FAMILY_TABLES = {
   servers: 'v_b_clients_m_servers',

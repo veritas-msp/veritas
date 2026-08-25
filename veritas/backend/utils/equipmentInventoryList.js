@@ -1,4 +1,8 @@
 import { pool } from "../database/db.js";
+import {
+  computeMonitoringSummary,
+  countCheckmkHistoryLastDays
+} from "../routes/integrations/checkmk/equipmentMonitoringSync.js";
 import { fetchEquipmentPurgeList, PURGE_HARDWARE_FAMILIES } from "./equipmentPurgeList.js";
 import { applyEquipmentAlertSettings, isAlertSuspensionActive, resolveAlertStatusFromSettings, resolveEquipmentFamilyKey } from "./equipmentMonitoringAlerts.js";
 
@@ -289,7 +293,36 @@ async function loadAlertCountsLastMonth(ids) {
   return map;
 }
 
-function attachAlertFields(item, settingsMap, countMap) {
+async function loadCheckmkMonitoringByIds(ids) {
+  const uuids = [...new Set((Array.isArray(ids) ? ids : []).filter(isUuid))];
+  if (!uuids.length) return new Map();
+  const result = await queryOrEmpty(
+    `SELECT equipment_id::text AS equipment_id, checkmk_host_name, monitoring_data, last_synced_at
+     FROM v_b_equipment_checkmk_monitoring
+     WHERE equipment_id = ANY($1::uuid[])`,
+    [uuids]
+  );
+  const map = new Map();
+  for (const row of result.rows || []) {
+    const key = String(row.equipment_id || "").toLowerCase();
+    if (!key) continue;
+    map.set(key, row);
+  }
+  return map;
+}
+
+function resolveSupervisionStatus(mkRow) {
+  if (!mkRow) return "inactive";
+  const host = String(mkRow.checkmk_host_name || "").trim();
+  if (!host) return "inactive";
+  const summary = computeMonitoringSummary(mkRow.monitoring_data, mkRow.last_synced_at);
+  const status = String(summary?.status || "").toLowerCase();
+  if (status === "critical") return "critical";
+  if (status === "warning") return "warning";
+  return "ok";
+}
+
+function attachAlertFields(item, settingsMap, nativeCountMap, checkmkMap) {
   let settings = null;
   for (const key of settingsLookupKeys(item)) {
     if (settingsMap.has(key)) {
@@ -299,23 +332,33 @@ function attachAlertFields(item, settingsMap, countMap) {
   }
   const alertStatus = resolveAlertStatusFromSettings(settings);
   const dbId = String(item?.dbId || "").trim().toLowerCase();
+  const mkRow = dbId ? checkmkMap.get(dbId) : null;
+  const supervisionStatus = resolveSupervisionStatus(mkRow);
+  const supervisionMapped = supervisionStatus !== "inactive";
+  const nativeLastMonth = dbId ? nativeCountMap.get(dbId) || 0 : 0;
+  const checkmkLastMonth = mkRow ? countCheckmkHistoryLastDays(mkRow.monitoring_data, 30).total : 0;
   return {
     ...item,
     alertStatus,
     alertsEnabled: Boolean(settings?.alertsEnabled),
     alertSuspended: isAlertSuspensionActive(settings),
-    alertsLastMonth: dbId ? countMap.get(dbId) || 0 : 0
+    supervisionStatus,
+    supervisionMapped,
+    alertsNativeLastMonth: nativeLastMonth,
+    alertsSupervisionLastMonth: checkmkLastMonth,
+    alertsLastMonth: nativeLastMonth + checkmkLastMonth
   };
 }
 
 async function enrichInventoryWithAlerts(items) {
   const list = Array.isArray(items) ? items : [];
   const ids = list.map(item => item.dbId).filter(Boolean);
-  const [settingsMap, countMap] = await Promise.all([
+  const [settingsMap, nativeCountMap, checkmkMap] = await Promise.all([
     loadAlertSettingsByKey(ids),
-    loadAlertCountsLastMonth(ids)
+    loadAlertCountsLastMonth(ids),
+    loadCheckmkMonitoringByIds(ids)
   ]);
-  return list.map(item => attachAlertFields(item, settingsMap, countMap));
+  return list.map(item => attachAlertFields(item, settingsMap, nativeCountMap, checkmkMap));
 }
 
 function resolveStandardTable(item) {

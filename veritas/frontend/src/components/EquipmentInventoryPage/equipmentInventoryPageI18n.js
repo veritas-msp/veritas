@@ -13,6 +13,18 @@ const COPY = {
     filterClientAll: "Toutes les entreprises",
     filterTypeAll: "Tous les types",
     filterTypeAria: "Filtrer par type de périphérique",
+    filters: {
+      aria: "Filtres inventaire",
+      search: "Recherche",
+      status: "Statut",
+      companies: "Entreprises",
+      types: "Types",
+      searchCompany: "Rechercher une entreprise…",
+      noCompanyFound: "Aucune entreprise trouvée",
+      clear: "Effacer",
+      clearAll: "Réinitialiser les filtres",
+      none: "Aucun"
+    },
     refresh: "Actualiser",
     loading: "Chargement de l’inventaire…",
     emptyTitle: "Aucun périphérique trouvé",
@@ -37,6 +49,7 @@ const COPY = {
       site: "Site",
       status: "Statut",
       alerts: "Alertes",
+      supervision: "Supervision",
       alertsMonth: "30 jours",
       actions: "Actions"
     },
@@ -45,10 +58,18 @@ const COPY = {
       inactive: "Inactif"
     },
     alertStatus: {
-      active: "Actives",
-      disabled: "Désactivées",
-      suspended: "Suspendues"
+      active: "Alertes natives actives",
+      disabled: "Alertes natives désactivées",
+      suspended: "Alertes natives suspendues"
     },
+    supervisionStatus: {
+      ok: "Supervision active (intégration)",
+      inactive: "Supervision inactive",
+      warning: "Supervision : avertissement",
+      critical: "Supervision : critique"
+    },
+    alertsMonthBreakdown: "{native} alerte(s) native(s) · {supervision} événement(s)/notification(s) intégration",
+
     bulk: {
       selected: "périphérique sélectionné",
       selectedPlural: "périphériques sélectionnés",
@@ -65,8 +86,8 @@ const COPY = {
       editStatus: "Statut du périphérique",
       editLocation: "Site",
       locationPlaceholder: "Site / emplacement",
-      editAlerts: "Alertes supervision",
-      alertsHint: "Applique le même mode d’alertes qu’en fiche périphérique (actives, désactivées ou suspendues).",
+      editAlerts: "Alertes natives Veritas",
+      alertsHint: "Mode des alertes natives Veritas (actives, désactivées ou suspendues) — distinct de la supervision via intégration.",
       apply: "Appliquer",
       saving: "Application…",
       submitError: "Impossible d’appliquer les modifications",
@@ -75,7 +96,7 @@ const COPY = {
       }
     },
     toastLoadError: "Impossible de charger l’inventaire.",
-    alertsMonthHint: "Alertes remontées sur les 30 derniers jours",
+    alertsMonthHint: "Alertes natives Veritas + événements/notifications de supervision (intégration) sur 30 jours",
     toasts: {
       bulkSuccess: "{count} périphérique mis à jour",
       bulkSuccessPlural: "{count} périphériques mis à jour",
@@ -95,6 +116,18 @@ const COPY = {
     filterClientAll: "All companies",
     filterTypeAll: "All types",
     filterTypeAria: "Filter by device type",
+    filters: {
+      aria: "Inventory filters",
+      search: "Search",
+      status: "Status",
+      companies: "Companies",
+      types: "Types",
+      searchCompany: "Search a company…",
+      noCompanyFound: "No company found",
+      clear: "Clear",
+      clearAll: "Reset filters",
+      none: "None"
+    },
     refresh: "Refresh",
     loading: "Loading inventory…",
     emptyTitle: "No devices found",
@@ -119,6 +152,7 @@ const COPY = {
       site: "Site",
       status: "Status",
       alerts: "Alerts",
+      supervision: "Supervision",
       alertsMonth: "30 days",
       actions: "Actions"
     },
@@ -127,10 +161,17 @@ const COPY = {
       inactive: "Inactive"
     },
     alertStatus: {
-      active: "Active",
-      disabled: "Disabled",
-      suspended: "Suspended"
+      active: "Native alerts active",
+      disabled: "Native alerts disabled",
+      suspended: "Native alerts suspended"
     },
+    supervisionStatus: {
+      ok: "Supervision active (integration)",
+      inactive: "Supervision inactive",
+      warning: "Supervision: warning",
+      critical: "Supervision: critical"
+    },
+    alertsMonthBreakdown: "{native} native alert(s) · {supervision} integration event(s)/notification(s)",
     bulk: {
       selected: "device selected",
       selectedPlural: "devices selected",
@@ -157,7 +198,7 @@ const COPY = {
       }
     },
     toastLoadError: "Unable to load the inventory.",
-    alertsMonthHint: "Alerts raised in the last 30 days",
+    alertsMonthHint: "Native Veritas alerts + supervision events/notifications (integration) over 30 days",
     toasts: {
       bulkSuccess: "{count} device updated",
       bulkSuccessPlural: "{count} devices updated",
@@ -177,6 +218,18 @@ const COPY = {
     filterClientAll: "Alle Unternehmen",
     filterTypeAll: "Alle Typen",
     filterTypeAria: "Nach Gerätetyp filtern",
+    filters: {
+      aria: "Inventarfilter",
+      search: "Suche",
+      status: "Status",
+      companies: "Unternehmen",
+      types: "Typen",
+      searchCompany: "Unternehmen suchen…",
+      noCompanyFound: "Kein Unternehmen gefunden",
+      clear: "Löschen",
+      clearAll: "Filter zurücksetzen",
+      none: "Keine"
+    },
     refresh: "Aktualisieren",
     loading: "Inventar wird geladen…",
     emptyTitle: "Keine Geräte gefunden",
@@ -201,6 +254,7 @@ const COPY = {
       site: "Standort",
       status: "Status",
       alerts: "Alarme",
+      supervision: "Supervision",
       alertsMonth: "30 Tage",
       actions: "Aktionen"
     },
@@ -209,10 +263,17 @@ const COPY = {
       inactive: "Inaktiv"
     },
     alertStatus: {
-      active: "Aktiv",
-      disabled: "Deaktiviert",
-      suspended: "Ausgesetzt"
+      active: "Native Alarme aktiv",
+      disabled: "Native Alarme deaktiviert",
+      suspended: "Native Alarme ausgesetzt"
     },
+    supervisionStatus: {
+      ok: "Supervision aktiv (Integration)",
+      inactive: "Supervision inaktiv",
+      warning: "Supervision: Warnung",
+      critical: "Supervision: kritisch"
+    },
+    alertsMonthBreakdown: "{native} native Alarm(e) · {supervision} Integrations-Ereignis(se)/Benachrichtigung(en)",
     bulk: {
       selected: "Gerät ausgewählt",
       selectedPlural: "Geräte ausgewählt",
@@ -239,7 +300,7 @@ const COPY = {
       }
     },
     toastLoadError: "Inventar konnte nicht geladen werden.",
-    alertsMonthHint: "Alarme der letzten 30 Tage",
+    alertsMonthHint: "Native Veritas-Alarme + Supervisions-Ereignisse/Benachrichtigungen (Integration) der letzten 30 Tage",
     toasts: {
       bulkSuccess: "{count} Gerät aktualisiert",
       bulkSuccessPlural: "{count} Geräte aktualisiert",
@@ -259,6 +320,18 @@ const COPY = {
     filterClientAll: "Tutte le aziende",
     filterTypeAll: "Tutti i tipi",
     filterTypeAria: "Filtra per tipo di periferica",
+    filters: {
+      aria: "Filtri inventario",
+      search: "Ricerca",
+      status: "Stato",
+      companies: "Aziende",
+      types: "Tipi",
+      searchCompany: "Cerca un'azienda…",
+      noCompanyFound: "Nessuna azienda trovata",
+      clear: "Cancella",
+      clearAll: "Reimposta filtri",
+      none: "Nessuno"
+    },
     refresh: "Aggiorna",
     loading: "Caricamento inventario…",
     emptyTitle: "Nessuna periferica trovata",
@@ -283,6 +356,7 @@ const COPY = {
       site: "Sede",
       status: "Stato",
       alerts: "Avvisi",
+      supervision: "Supervisione",
       alertsMonth: "30 giorni",
       actions: "Azioni"
     },
@@ -291,10 +365,17 @@ const COPY = {
       inactive: "Inattivo"
     },
     alertStatus: {
-      active: "Attivi",
-      disabled: "Disattivati",
-      suspended: "Sospesi"
+      active: "Avvisi nativi attivi",
+      disabled: "Avvisi nativi disattivati",
+      suspended: "Avvisi nativi sospesi"
     },
+    supervisionStatus: {
+      ok: "Supervisione attiva (integrazione)",
+      inactive: "Supervisione inattiva",
+      warning: "Supervisione: avviso",
+      critical: "Supervisione: critica"
+    },
+    alertsMonthBreakdown: "{native} avviso/i nativo/i · {supervision} evento/i/notifica/e integrazione",
     bulk: {
       selected: "periferica selezionata",
       selectedPlural: "periferiche selezionate",
@@ -321,7 +402,7 @@ const COPY = {
       }
     },
     toastLoadError: "Impossibile caricare l’inventario.",
-    alertsMonthHint: "Avvisi degli ultimi 30 giorni",
+    alertsMonthHint: "Avvisi nativi Veritas + eventi/notifiche di supervisione (integrazione) degli ultimi 30 giorni",
     toasts: {
       bulkSuccess: "{count} periferica aggiornata",
       bulkSuccessPlural: "{count} periferiche aggiornate",
@@ -341,6 +422,18 @@ const COPY = {
     filterClientAll: "Todas las empresas",
     filterTypeAll: "Todos los tipos",
     filterTypeAria: "Filtrar por tipo de periférico",
+    filters: {
+      aria: "Filtros de inventario",
+      search: "Búsqueda",
+      status: "Estado",
+      companies: "Empresas",
+      types: "Tipos",
+      searchCompany: "Buscar una empresa…",
+      noCompanyFound: "Ninguna empresa encontrada",
+      clear: "Borrar",
+      clearAll: "Restablecer filtros",
+      none: "Ninguno"
+    },
     refresh: "Actualizar",
     loading: "Cargando inventario…",
     emptyTitle: "No se encontraron periféricos",
@@ -365,6 +458,7 @@ const COPY = {
       site: "Sitio",
       status: "Estado",
       alerts: "Alertas",
+      supervision: "Supervisión",
       alertsMonth: "30 días",
       actions: "Acciones"
     },
@@ -373,10 +467,17 @@ const COPY = {
       inactive: "Inactivo"
     },
     alertStatus: {
-      active: "Activas",
-      disabled: "Desactivadas",
-      suspended: "Suspendidas"
+      active: "Alertas nativas activas",
+      disabled: "Alertas nativas desactivadas",
+      suspended: "Alertas nativas suspendidas"
     },
+    supervisionStatus: {
+      ok: "Supervisión activa (integración)",
+      inactive: "Supervisión inactiva",
+      warning: "Supervisión: advertencia",
+      critical: "Supervisión: crítica"
+    },
+    alertsMonthBreakdown: "{native} alerta(s) nativa(s) · {supervision} evento(s)/notificación(es) de integración",
     bulk: {
       selected: "periférico seleccionado",
       selectedPlural: "periféricos seleccionados",
@@ -403,7 +504,7 @@ const COPY = {
       }
     },
     toastLoadError: "No se pudo cargar el inventario.",
-    alertsMonthHint: "Alertas de los últimos 30 días",
+    alertsMonthHint: "Alertas nativas Veritas + eventos/notificaciones de supervisión (integración) de los últimos 30 días",
     toasts: {
       bulkSuccess: "{count} periférico actualizado",
       bulkSuccessPlural: "{count} periféricos actualizados",
@@ -460,6 +561,10 @@ export function getEquipmentInventoryPageCopy(locale) {
     formatBulkPartial: (updated, failed) => interpolate(t.toasts.bulkPartial, {
       updated: String(updated),
       failed: String(failed)
+    }),
+    formatAlertsMonthBreakdown: (native, supervision) => interpolate(t.alertsMonthBreakdown, {
+      native: String(native ?? 0),
+      supervision: String(supervision ?? 0)
     })
   };
 }

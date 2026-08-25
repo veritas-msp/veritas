@@ -605,7 +605,7 @@ const FR = {
   },
   alertsGlance: {
     title: "Historique des alertes",
-    subtitle: "Alertes remontées sur les 30 derniers jours",
+    subtitle: "Alertes natives Veritas et événements/notifications de supervision (intégration) sur 30 jours",
     empty: "Aucune alerte sur les 30 derniers jours pour cet équipement.",
     loading: "Chargement…",
     error: "Impossible de charger les alertes.",
@@ -635,7 +635,9 @@ const FR = {
     eventTypes: {
       criterion_activated: "Déclenchée",
       criterion_resolved: "Résolue",
-      alert: "Alerte"
+      alert: "Alerte",
+      checkmk_event: "CheckMK · événement",
+      checkmk_notification: "CheckMK · notification"
     }
   },
   toasts: {
@@ -1294,7 +1296,7 @@ const EN = {
   },
   alertsGlance: {
     title: "Alert history",
-    subtitle: "Alerts raised in the last 30 days",
+    subtitle: "Native Veritas alerts and supervision events/notifications (integration) over 30 days",
     empty: "No alerts in the last 30 days for this equipment.",
     loading: "Loading…",
     error: "Unable to load alerts.",
@@ -1324,7 +1326,9 @@ const EN = {
     eventTypes: {
       criterion_activated: "Triggered",
       criterion_resolved: "Resolved",
-      alert: "Alert"
+      alert: "Alert",
+      checkmk_event: "CheckMK · event",
+      checkmk_notification: "CheckMK · notification"
     }
   },
   toasts: {

@@ -1,4 +1,5 @@
 import { pool } from "../database/db.js";
+import { listCheckmkHistoryItems } from "../routes/integrations/checkmk/equipmentMonitoringSync.js";
 import { ensureSupervisionAlertsSchema } from "../services/ensureSupervisionAlertsSchema.js";
 
 const ACTIVE_STATUSES = new Set(["open", "acked", "linked"]);
@@ -392,6 +393,20 @@ export async function listRecentEquipmentAlerts({
       at: event.created_at || null,
       ticketId: event.ticket_id || null
     });
+  }
+
+  if (isUuid(token)) {
+    const mk = await queryOrEmpty(
+      `SELECT monitoring_data
+       FROM v_b_equipment_checkmk_monitoring
+       WHERE equipment_id = $1::uuid
+       LIMIT 1`,
+      [token]
+    );
+    const monitoringData = mk.rows?.[0]?.monitoring_data || null;
+    for (const row of listCheckmkHistoryItems(monitoringData, { days: sinceDays, limit: lim })) {
+      items.push(row);
+    }
   }
 
   items.sort((a, b) => {

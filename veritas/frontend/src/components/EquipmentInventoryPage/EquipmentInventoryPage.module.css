@@ -1,8 +1,281 @@
-.typeChipRow {
-  max-width: none;
-  flex-wrap: wrap;
-  overflow: visible;
-  padding: 0.15rem 0.15rem 0;
+.inventoryShell {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  height: 100%;
+  max-height: none;
+}
+
+.viewsLayout {
+  display: grid;
+  grid-template-columns: 260px minmax(0, 1fr);
+  gap: 0.65rem;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.filtersPane {
+  border: 1px solid var(--msp-border, #e2e8f0);
+  border-radius: var(--msp-radius, 16px);
+  background: var(--msp-surface, #fff);
+  box-shadow: var(--msp-shadow, 0 1px 2px rgba(15, 28, 46, 0.04));
+  padding: 0.55rem 0.6rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+  align-self: stretch;
+  height: 100%;
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+}
+
+.filtersPaneSection {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  min-height: 0;
+}
+
+.filtersPaneSectionGrow {
+  flex: 1 1 0;
+  min-height: 120px;
+}
+
+.filtersPaneSection + .filtersPaneSection {
+  padding-top: 0.45rem;
+  border-top: 1px solid var(--msp-border-light, #eef2f7);
+}
+
+.filtersPaneHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.35rem;
+  padding-bottom: 0.2rem;
+}
+
+.filtersPaneTitle {
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--msp-muted-light, #8b9bb5);
+}
+
+.filtersPaneAction {
+  border: none;
+  background: transparent;
+  color: var(--msp-accent, #2b5fab);
+  font-size: 0.72rem;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 0.1rem 0.2rem;
+}
+
+.filtersPaneAction:hover {
+  text-decoration: underline;
+}
+
+.filterSearchWrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.filterSearchIcon {
+  position: absolute;
+  left: 0.55rem;
+  color: var(--msp-muted-light, #8b9bb5);
+  font-size: 0.9rem;
+  pointer-events: none;
+}
+
+.filterSearchInput {
+  width: 100%;
+  border: 1px solid var(--msp-border, #e2e8f0);
+  border-radius: 10px;
+  background: var(--msp-surface-2, #f8fafc);
+  color: var(--msp-text, #0f1c2e);
+  padding: 0.42rem 1.75rem 0.42rem 1.85rem;
+  font-size: 0.78rem;
+}
+
+.filterSearchInput:focus {
+  outline: none;
+  border-color: var(--msp-accent, #2b5fab);
+  box-shadow: 0 0 0 3px rgba(43, 95, 171, 0.12);
+}
+
+.filterSearchClear {
+  position: absolute;
+  right: 0.35rem;
+  border: none;
+  background: transparent;
+  color: var(--msp-muted, #5c6b82);
+  cursor: pointer;
+  display: inline-flex;
+  padding: 0.25rem;
+}
+
+.filtersList {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 0.22rem;
+  padding-right: 2px;
+}
+
+.filterItem {
+  width: 100%;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--msp-text, #0f1c2e);
+  padding: 0.42rem 0.48rem;
+  cursor: pointer;
+  text-align: left;
+  transition: background 0.12s ease, border-color 0.12s ease;
+}
+
+.filterItem:hover:not(:disabled) {
+  background: rgba(43, 95, 171, 0.05);
+  border-color: var(--msp-border-light, #eef2f7);
+}
+
+.filterItemActive {
+  background: rgba(43, 95, 171, 0.1);
+  border-color: rgba(43, 95, 171, 0.28);
+}
+
+.filterItemDisabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.filterItemMain {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  min-width: 0;
+}
+
+.filterItemCount {
+  flex-shrink: 0;
+  min-width: 1.4rem;
+  height: 1.25rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  background: rgba(100, 116, 139, 0.12);
+  color: var(--msp-muted, #5c6b82);
+  font-size: 0.68rem;
+  font-weight: 700;
+  padding: 0 0.3rem;
+}
+
+.filterItemActive .filterItemCount {
+  background: rgba(43, 95, 171, 0.16);
+  color: var(--msp-accent, #2b5fab);
+}
+
+.filterItemIcon {
+  flex-shrink: 0;
+  font-size: 0.95rem;
+  color: var(--msp-muted-light, #8b9bb5);
+}
+
+.filterTypeIcon {
+  display: inline-flex;
+  width: 1rem;
+  height: 1rem;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.filterItemLabel {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+
+.filterHint {
+  margin: 0.35rem 0.2rem;
+  font-size: 0.72rem;
+  color: var(--msp-muted, #5c6b82);
+}
+
+.mainColumn {
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--msp-border, #e2e8f0);
+  border-radius: var(--msp-radius, 16px);
+  background: var(--msp-surface, #fff);
+  box-shadow: var(--msp-shadow, 0 1px 2px rgba(15, 28, 46, 0.04));
+  overflow: hidden;
+}
+
+.listBody {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  flex: 1;
+}
+
+.tableToolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.55rem 0.75rem;
+  border-bottom: 1px solid var(--msp-border-light, #eef2f7);
+}
+
+.tableMeta {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--msp-muted, #5c6b82);
+}
+
+.listArea {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+}
+
+.sortableTh {
+  cursor: pointer;
+  user-select: none;
+  white-space: nowrap;
+}
+
+.sortableTh:hover {
+  color: var(--msp-accent, #2b5fab);
+}
+
+.sortableThActive {
+  color: var(--msp-accent, #2b5fab);
+}
+
+.sortableThInner {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.sortIcon {
+  font-size: 0.85rem;
+  opacity: 0.7;
 }
 
 .chipIcon {
@@ -54,16 +327,10 @@
 }
 
 .actionsCol {
-  position: sticky;
-  right: 0;
-  z-index: 2;
   width: 6.5rem;
   min-width: 6.5rem;
-  padding-left: 0.45rem !important;
-  padding-right: 0.55rem !important;
   text-align: right;
-  background: var(--msp-surface);
-  box-shadow: -8px 0 10px -8px rgba(15, 28, 46, 0.12);
+  white-space: nowrap;
 }
 
 .actionsCol :global(button) {
@@ -71,45 +338,30 @@
   height: 26px;
 }
 
-th.actionsCol {
-  z-index: 3;
-  background: var(--msp-surface-2);
+.dotCol {
+  text-align: center;
+  width: 4.25rem;
+  vertical-align: middle;
 }
 
-tr:hover .actionsCol,
-tr:focus-visible .actionsCol {
-  background: var(--msp-surface-2);
+.statusDot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  display: inline-block;
+  vertical-align: middle;
 }
 
-.alertBadge {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.28rem;
-  padding: 0.14rem 0.48rem;
-  border-radius: 999px;
-  font-size: 0.72rem;
-  font-weight: 650;
-  white-space: nowrap;
+.statusDotOk {
+  background: #22c55e;
 }
 
-.alertBadge :global(svg) {
-  width: 13px;
-  height: 13px;
+.statusDotOff {
+  background: #94a3b8;
 }
 
-.alertActive {
-  background: rgba(34, 197, 94, 0.14);
-  color: #16a34a;
-}
-
-.alertDisabled {
-  background: rgba(100, 116, 139, 0.12);
-  color: #64748b;
-}
-
-.alertSuspended {
-  background: rgba(245, 158, 11, 0.16);
-  color: #d97706;
+.statusDotWarn {
+  background: #f59e0b;
 }
 
 .countCol {
@@ -132,4 +384,25 @@ tr:focus-visible .actionsCol {
 .countPillHot {
   background: rgba(220, 38, 38, 0.12);
   color: #b42318;
+}
+
+@media (max-width: 1100px) {
+  .viewsLayout {
+    grid-template-columns: 1fr;
+    overflow: visible;
+  }
+
+  .filtersPane {
+    height: auto;
+    max-height: none;
+  }
+
+  .filtersPaneSectionGrow {
+    min-height: 0;
+    flex: 0 0 auto;
+  }
+
+  .filtersList {
+    max-height: 180px;
+  }
 }

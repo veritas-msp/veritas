@@ -29,6 +29,12 @@ function resolveAlertTitle(alert, glance, criteriaCopy) {
 }
 
 function resolveTypeLabel(alert, glance, criteriaCopy) {
+  if (alert.source === "checkmk" || alert.typeKey === "checkmk_event" || alert.typeKey === "checkmk_notification") {
+    if (alert.kind === "notification" || alert.eventType === "checkmk_notification") {
+      return glance.eventTypes?.checkmk_notification || "CheckMK · notification";
+    }
+    return glance.eventTypes?.checkmk_event || "CheckMK · événement";
+  }
   if (alert.criterionKey) {
     return criteriaCopy.getCriterionLabel(alert.criterionKey, alert.criterionKey);
   }

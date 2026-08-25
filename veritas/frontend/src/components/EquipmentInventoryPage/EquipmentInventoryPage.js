@@ -18,10 +18,7 @@ import { usePermissions } from "../../contexts/PermissionsContext";
 import styles from "./EquipmentInventoryPage.module.css";
 import { createTrackedAbortController } from "../../utils/pageLoadAbort";
 
-function InventoryDeviceIcon({
-  item,
-  className
-}) {
+function InventoryDeviceIcon({ item, className }) {
   if (item?.isCustom && item.familyIcon) {
     return <Icon icon={item.familyIcon} className={className} aria-hidden />;
   }
@@ -31,6 +28,7 @@ function InventoryDeviceIcon({
 function compactSerial(value) {
   return String(value || "").toLowerCase().replace(/[\s\-_.]/g, "");
 }
+
 function searchBlob(item) {
   return [
     item?.name,
@@ -42,8 +40,12 @@ function searchBlob(item) {
     item?.mac,
     item?.location,
     item?.model
-  ].filter(Boolean).join(" ").toLowerCase();
+  ]
+    .filter(Boolean)
+    .join(" ")
+    .toLowerCase();
 }
+
 function matchesInventorySearch(item, query) {
   const q = String(query || "").trim().toLowerCase();
   if (!q) return true;
@@ -55,37 +57,90 @@ function matchesInventorySearch(item, query) {
 
 function typeLabel(item, locale) {
   if (item?.isCustom) return item.familyLabel || item.familyKey || item.type;
-  return getLocalizedEquipmentTypeLabel(item?.familyLabel || item?.type, locale, item?.familyLabel || item?.type || "—");
+  return getLocalizedEquipmentTypeLabel(
+    item?.familyLabel || item?.type,
+    locale,
+    item?.familyLabel || item?.type || "—"
+  );
 }
 
 function alertStatusMeta(item, copy) {
-  const status = item?.alertStatus || (item?.alertSuspended ? "suspended" : item?.alertsEnabled ? "active" : "disabled");
+  const status =
+    item?.alertStatus || (item?.alertSuspended ? "suspended" : item?.alertsEnabled ? "active" : "disabled");
   if (status === "active") {
     return {
       status,
       label: copy.alertStatus?.active || "Active",
-      icon: "mdi:bell-ring-outline",
-      className: styles.alertActive
+      tone: "ok"
     };
   }
   if (status === "suspended") {
     return {
       status,
       label: copy.alertStatus?.suspended || "Suspended",
-      icon: "mdi:bell-sleep-outline",
-      className: styles.alertSuspended
+      tone: "warn"
     };
   }
   return {
     status: "disabled",
     label: copy.alertStatus?.disabled || "Disabled",
-    icon: "mdi:bell-off-outline",
-    className: styles.alertDisabled
+    tone: "off"
   };
 }
 
+function supervisionStatusMeta(item, copy) {
+  const status = String(item?.supervisionStatus || "inactive").toLowerCase();
+  if (status === "critical") {
+    return {
+      status,
+      label: copy.supervisionStatus?.critical || "Critical",
+      tone: "warn"
+    };
+  }
+  if (status === "warning") {
+    return {
+      status,
+      label: copy.supervisionStatus?.warning || "Warning",
+      tone: "warn"
+    };
+  }
+  if (status === "ok") {
+    return {
+      status,
+      label: copy.supervisionStatus?.ok || "Active",
+      tone: "ok"
+    };
+  }
+  return {
+    status: "inactive",
+    label: copy.supervisionStatus?.inactive || "Inactive",
+    tone: "off"
+  };
+}
+
+function StatusDot({ tone, label }) {
+  return (
+    <SmartTooltip content={label}>
+      <span
+        className={`${styles.statusDot} ${
+          tone === "ok" ? styles.statusDotOk : tone === "warn" ? styles.statusDotWarn : styles.statusDotOff
+        }`}
+        aria-label={label}
+        role="img"
+      />
+    </SmartTooltip>
+  );
+}
+
 function toEquipmentDetailPayload(item) {
-  const uiType = item?.type === "Serveurs" ? "Servers" : item?.type === "Stockage" ? "Storage" : item?.type === "Videosurveillance" ? "Security camera" : item?.type;
+  const uiType =
+    item?.type === "Serveurs"
+      ? "Servers"
+      : item?.type === "Stockage"
+        ? "Storage"
+        : item?.type === "Videosurveillance"
+          ? "Security camera"
+          : item?.type;
   const dbId = item?.dbId || null;
   return {
     ...item,
@@ -98,9 +153,42 @@ function toEquipmentDetailPayload(item) {
   };
 }
 
-export default function EquipmentInventoryPage({
-  onNavigate
-}) {
+function compareValues(a, b, locale) {
+  if (a == null && b == null) return 0;
+  if (a == null) return 1;
+  if (b == null) return -1;
+  if (typeof a === "number" && typeof b === "number") return a - b;
+  return String(a).localeCompare(String(b), locale, { sensitivity: "base", numeric: true });
+}
+
+function getSortValue(item, key, locale) {
+  switch (key) {
+    case "company":
+      return item.clientName || "";
+    case "name":
+      return item.name || "";
+    case "type":
+      return typeLabel(item, locale);
+    case "ip":
+      return item.ip || "";
+    case "serial":
+      return item.serial || "";
+    case "site":
+      return item.location || "";
+    case "status":
+      return item.is_active === false ? 1 : 0;
+    case "alerts":
+      return item?.alertStatus || (item?.alertSuspended ? "suspended" : item?.alertsEnabled ? "active" : "disabled");
+    case "supervision":
+      return item?.supervisionStatus || "inactive";
+    case "alertsMonth":
+      return Number(item.alertsLastMonth) || 0;
+    default:
+      return "";
+  }
+}
+
+export default function EquipmentInventoryPage({ onNavigate }) {
   const locale = useAppLocale();
   const copy = useMemo(() => getEquipmentInventoryPageCopy(locale), [locale]);
   const { can } = usePermissions();
@@ -108,9 +196,11 @@ export default function EquipmentInventoryPage({
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
-  const [clientFilter, setClientFilter] = useState("");
-  const [typeFilter, setTypeFilter] = useState("");
+  const [clientFilterSearch, setClientFilterSearch] = useState("");
+  const [selectedClients, setSelectedClients] = useState(() => new Set());
+  const [selectedTypes, setSelectedTypes] = useState(() => new Set());
   const [statusFilter, setStatusFilter] = useState("all");
+  const [sort, setSort] = useState({ key: "company", dir: "asc" });
   const [openMenuKey, setOpenMenuKey] = useState(null);
   const [selectedIds, setSelectedIds] = useState(() => new Set());
   const [bulkModalOpen, setBulkModalOpen] = useState(false);
@@ -144,7 +234,8 @@ export default function EquipmentInventoryPage({
     let active = 0;
     let inactive = 0;
     items.forEach(item => {
-      if (item.is_active === false) inactive += 1;else active += 1;
+      if (item.is_active === false) inactive += 1;
+      else active += 1;
     });
     return {
       total: items.length,
@@ -157,17 +248,30 @@ export default function EquipmentInventoryPage({
     const map = new Map();
     items.forEach(item => {
       if (item?.clientId == null) return;
-      if (!map.has(String(item.clientId))) {
-        map.set(String(item.clientId), item.clientName || String(item.clientId));
+      const id = String(item.clientId);
+      const existing = map.get(id);
+      if (existing) {
+        existing.count += 1;
+        return;
       }
+      map.set(id, {
+        id,
+        name: item.clientName || id,
+        count: 1
+      });
     });
-    return [...map.entries()].map(([id, name]) => ({
-      id,
-      name
-    })).sort((a, b) => a.name.localeCompare(b.name, locale, {
-      sensitivity: "base"
-    }));
+    return [...map.values()].sort((a, b) =>
+      a.name.localeCompare(b.name, locale, {
+        sensitivity: "base"
+      })
+    );
   }, [items, locale]);
+
+  const filteredClientsForPane = useMemo(() => {
+    const q = clientFilterSearch.trim().toLowerCase();
+    if (!q) return clientOptions;
+    return clientOptions.filter(opt => opt.name.toLowerCase().includes(q));
+  }, [clientOptions, clientFilterSearch]);
 
   const typeOptions = useMemo(() => {
     const map = new Map();
@@ -186,22 +290,30 @@ export default function EquipmentInventoryPage({
         familyIcon: item.isCustom ? item.familyIcon : null
       });
     });
-    return [...map.values()].sort((a, b) => a.name.localeCompare(b.name, locale, {
-      sensitivity: "base"
-    }));
+    return [...map.values()].sort((a, b) =>
+      a.name.localeCompare(b.name, locale, {
+        sensitivity: "base"
+      })
+    );
   }, [items, locale]);
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
-    return items.filter(item => {
-      if (clientFilter && String(item.clientId) !== clientFilter) return false;
-      if (typeFilter && item.type !== typeFilter) return false;
+    let list = items.filter(item => {
+      if (selectedClients.size > 0 && !selectedClients.has(String(item.clientId))) return false;
+      if (selectedTypes.size > 0 && !selectedTypes.has(item.type)) return false;
       if (statusFilter === "active" && item.is_active === false) return false;
       if (statusFilter === "inactive" && item.is_active !== false) return false;
       if (q && !matchesInventorySearch(item, q)) return false;
       return true;
     });
-  }, [items, search, clientFilter, typeFilter, statusFilter]);
+    const dir = sort.dir === "asc" ? 1 : -1;
+    list = [...list].sort((a, b) => {
+      const cmp = compareValues(getSortValue(a, sort.key, locale), getSortValue(b, sort.key, locale), locale);
+      return cmp * dir;
+    });
+    return list;
+  }, [items, search, selectedClients, selectedTypes, statusFilter, sort, locale]);
 
   const {
     page,
@@ -212,12 +324,12 @@ export default function EquipmentInventoryPage({
     paginatedItems
   } = useTablePagination(filtered, {
     initialPageSize: 25,
-    resetDeps: [search, clientFilter, typeFilter, statusFilter]
+    resetDeps: [search, selectedClients, selectedTypes, statusFilter, sort.key, sort.dir]
   });
 
   useEffect(() => {
     setOpenMenuKey(null);
-  }, [search, clientFilter, typeFilter, statusFilter, page]);
+  }, [search, selectedClients, selectedTypes, statusFilter, page, sort]);
 
   useEffect(() => {
     setSelectedIds(prev => {
@@ -237,7 +349,8 @@ export default function EquipmentInventoryPage({
   const toggleItemSelection = (itemId, checked) => {
     setSelectedIds(prev => {
       const next = new Set(prev);
-      if (checked) next.add(itemId);else next.delete(itemId);
+      if (checked) next.add(itemId);
+      else next.delete(itemId);
       return next;
     });
   };
@@ -262,8 +375,45 @@ export default function EquipmentInventoryPage({
     load();
   };
 
-  const toggleType = next => {
-    setTypeFilter(typeFilter === next ? "" : next);
+  const toggleClient = clientId => {
+    const id = String(clientId);
+    setSelectedClients(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const toggleType = typeId => {
+    setSelectedTypes(prev => {
+      const next = new Set(prev);
+      if (next.has(typeId)) next.delete(typeId);
+      else next.add(typeId);
+      return next;
+    });
+  };
+
+  const clearFilters = () => {
+    setSearch("");
+    setClientFilterSearch("");
+    setSelectedClients(new Set());
+    setSelectedTypes(new Set());
+    setStatusFilter("all");
+  };
+
+  const toggleSort = key => {
+    setSort(prev =>
+      prev.key === key
+        ? {
+            key,
+            dir: prev.dir === "asc" ? "desc" : "asc"
+          }
+        : {
+            key,
+            dir: "asc"
+          }
+    );
   };
 
   const openItem = item => {
@@ -271,194 +421,427 @@ export default function EquipmentInventoryPage({
     onNavigate("EquipmentDetail", toEquipmentDetailPayload(item));
   };
 
-  const hasFilters = Boolean(search.trim() || clientFilter || typeFilter || statusFilter !== "all");
+  const hasFilters = Boolean(
+    search.trim() || selectedClients.size > 0 || selectedTypes.size > 0 || statusFilter !== "all"
+  );
   const statusCounts = {
     all: stats.total,
     active: stats.active,
     inactive: stats.inactive
   };
 
-  return <div className={`${cyberStyles.mspPage} ${layout.page} msp-page-grid`}>
+  const renderSortHeader = (key, label) => {
+    const active = sort.key === key;
+    return (
+      <th
+        className={`${styles.sortableTh} ${active ? styles.sortableThActive : ""}`}
+        onClick={() => toggleSort(key)}
+        aria-sort={active ? (sort.dir === "asc" ? "ascending" : "descending") : "none"}
+      >
+        <span className={styles.sortableThInner}>
+          {label}
+          <Icon
+            icon={active ? (sort.dir === "asc" ? "mdi:arrow-up" : "mdi:arrow-down") : "mdi:unfold-more-horizontal"}
+            className={styles.sortIcon}
+            aria-hidden
+          />
+        </span>
+      </th>
+    );
+  };
+
+  const renderFilterItem = (key, label, count, active, onClick, iconNode) => (
+    <button
+      key={key}
+      type="button"
+      className={`${styles.filterItem} ${active ? styles.filterItemActive : ""} ${count === 0 ? styles.filterItemDisabled : ""}`}
+      onClick={onClick}
+      disabled={count === 0 && !active}
+    >
+      <span className={styles.filterItemMain}>
+        <span className={styles.filterItemCount}>{count}</span>
+        {iconNode}
+        <span className={styles.filterItemLabel}>{label}</span>
+      </span>
+    </button>
+  );
+
+  return (
+    <div className={`${cyberStyles.mspPage} ${layout.page} msp-page-grid`}>
       <div className={cyberStyles.mspLayout}>
         <div className={cyberStyles.mspMain}>
-          <MspPageHero eyebrow={copy.eyebrow} title={copy.pageTitle} subtitle={loading ? copy.loadingPortfolio : copy.formatSubtitle(filtered.length, items.length)} icon="mdi:devices" actions={<SmartTooltip content={copy.refresh}>
-                <button type="button" className={layout.iconBtn} onClick={load} disabled={loading} aria-label={copy.refresh}>
+          <MspPageHero
+            eyebrow={copy.eyebrow}
+            title={copy.pageTitle}
+            subtitle={loading ? copy.loadingPortfolio : copy.formatSubtitle(filtered.length, items.length)}
+            icon="mdi:devices"
+            actions={
+              <SmartTooltip content={copy.refresh}>
+                <button
+                  type="button"
+                  className={layout.iconBtn}
+                  onClick={load}
+                  disabled={loading}
+                  aria-label={copy.refresh}
+                >
                   <Icon icon="mdi:refresh" />
                 </button>
-              </SmartTooltip>} />
+              </SmartTooltip>
+            }
+          />
 
           <main className={`${cyberStyles.mspContent} ${cyberStyles.mspContentList}`}>
-            <div className={`${layout.shell} ${layout.shellWide} ${layout.shellFull}`}>
-              <div className={layout.toolbar}>
-                {!loading ? <div className={layout.statusChips} role="group">
-                    {copy.statusFilterItems.map(item => {
-                  const count = statusCounts[item.key] || 0;
-                  const active = statusFilter === item.key;
-                  return <button key={item.key} type="button" className={`${layout.statusChip} ${active ? layout.statusChipActive : ""} ${count === 0 ? layout.statusChipDisabled : ""}`} onClick={() => setStatusFilter(item.key)} disabled={count === 0}>
-                          <span className={`${layout.statusChipIcon} ${layout[`kpiIcon_${item.kpiTone}`]}`}>
-                            <Icon icon={item.icon} />
-                          </span>
-                          <span className={layout.statusChipLabel}>{item.label}</span>
-                          <span className={layout.statusChipCount}>{count}</span>
-                        </button>;
-                })}
-                  </div> : null}
-                <select className={layout.sortSelect} value={clientFilter} onChange={e => setClientFilter(e.target.value)} aria-label={copy.filterClientAll}>
-                  <option value="">{copy.filterClientAll}</option>
-                  {clientOptions.map(opt => <option key={opt.id} value={opt.id}>{opt.name}</option>)}
-                </select>
-                <div className={layout.searchWrap}>
-                  <Icon icon="mdi:magnify" className={layout.searchIcon} aria-hidden />
-                  <input type="text" inputMode="search" enterKeyHint="search" placeholder={copy.searchPlaceholder} value={search} onChange={e => setSearch(e.target.value)} className={layout.searchInput} aria-label={copy.searchAria} />
-                  {search ? <SmartTooltip content={copy.clearSearch}>
-                      <button type="button" onClick={() => setSearch("")} className={layout.clearButton} aria-label={copy.clearSearch}>
-                        <FaTimes />
-                      </button>
-                    </SmartTooltip> : null}
-                </div>
-                <span className={layout.toolbarMeta}>{filtered.length}</span>
-              </div>
-
-              {typeOptions.length > 0 ? <div className={`${layout.statusChips} ${styles.typeChipRow}`} role="group" aria-label={copy.filterTypeAria}>
-                  <button type="button" className={`${layout.statusChip} ${!typeFilter ? layout.statusChipActive : ""}`} onClick={() => setTypeFilter("")} aria-pressed={!typeFilter}>
-                    <span className={`${layout.statusChipIcon} ${layout.kpiIcon_blue}`}>
-                      <Icon icon="mdi:devices" />
-                    </span>
-                    <span className={layout.statusChipLabel}>{copy.filterTypeAll}</span>
-                    <span className={layout.statusChipCount}>{items.length}</span>
-                  </button>
-                  {typeOptions.map(opt => <button key={opt.id} type="button" className={`${layout.statusChip} ${typeFilter === opt.id ? layout.statusChipActive : ""}`} onClick={() => toggleType(opt.id)} aria-pressed={typeFilter === opt.id}>
-                      <span className={`${layout.statusChipIcon} ${layout.kpiIcon_gray}`}>
-                        <InventoryDeviceIcon item={opt.familyIcon ? {
-                    isCustom: true,
-                    familyIcon: opt.familyIcon
-                  } : {
-                    type: opt.id
-                  }} className={styles.chipIcon} />
-                      </span>
-                      <span className={layout.statusChipLabel}>{opt.name}</span>
-                      <span className={layout.statusChipCount}>{opt.count}</span>
-                    </button>)}
-                </div> : null}
-
-              {loading ? <div className={layout.stateBox}>
-                  <Icon icon="mdi:loading" className={layout.spinning} />
-                  <span>{copy.loading}</span>
-                </div> : filtered.length === 0 ? <div className={layout.emptyState}>
-                  <Icon icon="mdi:devices" className={layout.emptyStateIcon} />
-                  <p className={layout.emptyStateTitle}>{copy.emptyTitle}</p>
-                  <p className={layout.emptyStateHint}>{hasFilters ? copy.emptyFiltered : copy.emptyHint}</p>
-                </div> : <div className={layout.listBody}>
-                  {selectedCount > 0 && canBulkEdit ? <div className={layout.bulkBar}>
-                      <div className={layout.bulkInfo}>
-                        <strong>{selectedCount}</strong>
-                        <span>{selectedCount > 1 ? copy.bulk.selectedPlural : copy.bulk.selected}</span>
-                      </div>
-                      <div className={layout.bulkActions}>
-                        {!allFilteredSelected ? <button type="button" className={layout.bulkBtnGhost} onClick={selectAllFiltered}>
-                            {copy.formatSelectAllFiltered(filtered.length)}
-                          </button> : null}
-                        <button type="button" className={layout.bulkBtn} onClick={() => setBulkModalOpen(true)}>
-                          <Icon icon="mdi:pencil-outline" />
-                          {copy.bulk.edit}
+            <div className={`${layout.shell} ${layout.shellWide} ${layout.shellFull} ${styles.inventoryShell}`}>
+              <div className={styles.viewsLayout}>
+                <aside className={styles.filtersPane} aria-label={copy.filters?.aria || "Filters"}>
+                  <div className={styles.filtersPaneSection}>
+                    <div className={styles.filtersPaneHeader}>
+                      <span className={styles.filtersPaneTitle}>{copy.filters?.search || "Search"}</span>
+                      {hasFilters ? (
+                        <button type="button" className={styles.filtersPaneAction} onClick={clearFilters}>
+                          {copy.filters?.clearAll || "Reset"}
                         </button>
-                        <button type="button" className={layout.bulkBtnGhost} onClick={clearSelection}>
-                          {copy.bulk.clearSelection}
+                      ) : null}
+                    </div>
+                    <div className={styles.filterSearchWrap}>
+                      <Icon icon="mdi:magnify" className={styles.filterSearchIcon} aria-hidden />
+                      <input
+                        type="text"
+                        inputMode="search"
+                        enterKeyHint="search"
+                        className={styles.filterSearchInput}
+                        placeholder={copy.searchPlaceholder}
+                        value={search}
+                        onChange={e => setSearch(e.target.value)}
+                        aria-label={copy.searchAria}
+                      />
+                      {search ? (
+                        <button
+                          type="button"
+                          className={styles.filterSearchClear}
+                          onClick={() => setSearch("")}
+                          aria-label={copy.clearSearch}
+                        >
+                          <FaTimes />
                         </button>
-                      </div>
-                    </div> : null}
-                  <div className={layout.listArea}>
-                    <div className={layout.dataTableWrap}>
-                      <table className={`${layout.dataTable} ${styles.ticketLikeTable}`}>
-                        <thead>
-                          <tr>
-                            {canBulkEdit ? <th className={layout.checkboxCell}>
-                                <input type="checkbox" className={layout.rowCheckbox} checked={allOnPageSelected} onChange={toggleSelectAllOnPage} onClick={e => e.stopPropagation()} aria-label={copy.bulk.selectAll} />
-                              </th> : null}
-                            <th className={styles.brandCol} aria-hidden />
-                            <th>{copy.columns.company}</th>
-                            <th>{copy.columns.name}</th>
-                            <th>{copy.columns.type}</th>
-                            <th>{copy.columns.ip}</th>
-                            <th>{copy.columns.serial}</th>
-                            <th>{copy.columns.site}</th>
-                            <th>{copy.columns.status}</th>
-                            <th>{copy.columns.alerts}</th>
-                            <th title={copy.alertsMonthHint}>{copy.columns.alertsMonth}</th>
-                            <th className={styles.actionsCol}>{copy.columns.actions}</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {paginatedItems.map(item => {
-                      const isSelected = selectedIds.has(item.id);
-                      const alertMeta = alertStatusMeta(item, copy);
-                      const monthCount = Number(item.alertsLastMonth) || 0;
-                      return <tr key={item.id} className={`${layout.dataTableRow} ${isSelected ? layout.selectedRow : ""}`} onClick={() => openItem(item)} onKeyDown={e => {
-                      if (e.key === "Enter" || e.key === " ") {
-                        e.preventDefault();
-                        openItem(item);
-                      }
-                    }} role="button" tabIndex={0}>
-                              {canBulkEdit ? <td className={layout.checkboxCell} onClick={e => e.stopPropagation()}>
-                                  <input type="checkbox" className={layout.rowCheckbox} checked={isSelected} onChange={e => toggleItemSelection(item.id, e.target.checked)} aria-label={copy.formatBulkSelectRow(item.name)} />
-                                </td> : null}
-                              <td className={styles.brandCol}>
-                                <InventoryDeviceIcon item={item} className={styles.brandIcon} />
-                              </td>
-                              <td>{item.clientName || "—"}</td>
-                              <td className={layout.colCompany}>{item.name || "—"}</td>
-                              <td>{typeLabel(item, locale)}</td>
-                              <td>{item.ip || "—"}</td>
-                              <td>{item.serial || "—"}</td>
-                              <td>{item.location || "—"}</td>
-                              <td>{item.is_active === false ? copy.status.inactive : copy.status.active}</td>
-                              <td>
-                                <span className={`${styles.alertBadge} ${alertMeta.className}`}>
-                                  <Icon icon={alertMeta.icon} aria-hidden />
-                                  {alertMeta.label}
-                                </span>
-                              </td>
-                              <td className={styles.countCol} title={copy.alertsMonthHint}>
-                                <span className={`${styles.countPill} ${monthCount > 0 ? styles.countPillHot : ""}`}>{monthCount}</span>
-                              </td>
-                              <td className={styles.actionsCol} onClick={e => e.stopPropagation()}>
-                                <InventoryEquipmentActions equipment={item} locale={locale} menuKey={item.id} openMenuKey={openMenuKey} onOpenChange={setOpenMenuKey} onOpen={openItem} />
-                              </td>
-                            </tr>;
-                    })}
-                        </tbody>
-                      </table>
+                      ) : null}
                     </div>
                   </div>
-                  {filtered.length > 0 ? <div className={layout.pagination}>
-                      <div className={layout.paginationLeft}>
-                        <span className={layout.paginationLabel}>{copy.perPage}</span>
-                        <select className={layout.paginationSelect} value={pageSize} onChange={e => setPageSize(Number(e.target.value))}>
-                          <option value={10}>10</option>
-                          <option value={25}>25</option>
-                          <option value={50}>50</option>
-                          <option value={100}>100</option>
-                        </select>
+
+                  <div className={styles.filtersPaneSection}>
+                    <div className={styles.filtersPaneHeader}>
+                      <span className={styles.filtersPaneTitle}>{copy.filters?.status || "Status"}</span>
+                    </div>
+                    <div className={styles.filtersList}>
+                      {copy.statusFilterItems.map(item =>
+                        renderFilterItem(
+                          item.key,
+                          item.label,
+                          statusCounts[item.key] || 0,
+                          statusFilter === item.key,
+                          () => setStatusFilter(item.key),
+                          <Icon icon={item.icon} className={styles.filterItemIcon} aria-hidden />
+                        )
+                      )}
+                    </div>
+                  </div>
+
+                  <div className={`${styles.filtersPaneSection} ${styles.filtersPaneSectionGrow}`}>
+                    <div className={styles.filtersPaneHeader}>
+                      <span className={styles.filtersPaneTitle}>{copy.filters?.companies || "Companies"}</span>
+                      {selectedClients.size > 0 ? (
+                        <button
+                          type="button"
+                          className={styles.filtersPaneAction}
+                          onClick={() => setSelectedClients(new Set())}
+                        >
+                          {copy.filters?.clear || "Clear"}
+                        </button>
+                      ) : null}
+                    </div>
+                    <div className={styles.filterSearchWrap}>
+                      <Icon icon="mdi:magnify" className={styles.filterSearchIcon} aria-hidden />
+                      <input
+                        type="text"
+                        className={styles.filterSearchInput}
+                        value={clientFilterSearch}
+                        onChange={e => setClientFilterSearch(e.target.value)}
+                        placeholder={copy.filters?.searchCompany || copy.filterClientAll}
+                        autoComplete="off"
+                        aria-label={copy.filters?.searchCompany || copy.filterClientAll}
+                      />
+                      {clientFilterSearch ? (
+                        <button
+                          type="button"
+                          className={styles.filterSearchClear}
+                          onClick={() => setClientFilterSearch("")}
+                          aria-label={copy.clearSearch}
+                        >
+                          <FaTimes />
+                        </button>
+                      ) : null}
+                    </div>
+                    <div className={styles.filtersList}>
+                      {filteredClientsForPane.length === 0 ? (
+                        <p className={styles.filterHint}>{copy.filters?.noCompanyFound || "—"}</p>
+                      ) : (
+                        filteredClientsForPane.map(opt =>
+                          renderFilterItem(
+                            opt.id,
+                            opt.name,
+                            opt.count,
+                            selectedClients.has(opt.id),
+                            () => toggleClient(opt.id),
+                            <Icon icon="mdi:office-building-outline" className={styles.filterItemIcon} aria-hidden />
+                          )
+                        )
+                      )}
+                    </div>
+                  </div>
+
+                  <div className={`${styles.filtersPaneSection} ${styles.filtersPaneSectionGrow}`}>
+                    <div className={styles.filtersPaneHeader}>
+                      <span className={styles.filtersPaneTitle}>{copy.filters?.types || "Types"}</span>
+                      {selectedTypes.size > 0 ? (
+                        <button
+                          type="button"
+                          className={styles.filtersPaneAction}
+                          onClick={() => setSelectedTypes(new Set())}
+                        >
+                          {copy.filters?.clear || "Clear"}
+                        </button>
+                      ) : null}
+                    </div>
+                    <div className={styles.filtersList}>
+                      {typeOptions.map(opt =>
+                        renderFilterItem(
+                          opt.id,
+                          opt.name,
+                          opt.count,
+                          selectedTypes.has(opt.id),
+                          () => toggleType(opt.id),
+                          <span className={styles.filterTypeIcon}>
+                            <InventoryDeviceIcon
+                              item={
+                                opt.familyIcon
+                                  ? { isCustom: true, familyIcon: opt.familyIcon }
+                                  : { type: opt.id }
+                              }
+                              className={styles.chipIcon}
+                            />
+                          </span>
+                        )
+                      )}
+                    </div>
+                  </div>
+                </aside>
+
+                <div className={styles.mainColumn}>
+                  {loading ? (
+                    <div className={layout.stateBox}>
+                      <Icon icon="mdi:loading" className={layout.spinning} />
+                      <span>{copy.loading}</span>
+                    </div>
+                  ) : filtered.length === 0 ? (
+                    <div className={layout.emptyState}>
+                      <Icon icon="mdi:devices" className={layout.emptyStateIcon} />
+                      <p className={layout.emptyStateTitle}>{copy.emptyTitle}</p>
+                      <p className={layout.emptyStateHint}>{hasFilters ? copy.emptyFiltered : copy.emptyHint}</p>
+                    </div>
+                  ) : (
+                    <div className={styles.listBody}>
+                      <div className={styles.tableToolbar}>
+                        <span className={styles.tableMeta}>{filtered.length}</span>
+                        {selectedCount > 0 && canBulkEdit ? (
+                          <div className={layout.bulkActions}>
+                            {!allFilteredSelected ? (
+                              <button type="button" className={layout.bulkBtnGhost} onClick={selectAllFiltered}>
+                                {copy.formatSelectAllFiltered(filtered.length)}
+                              </button>
+                            ) : null}
+                            <button type="button" className={layout.bulkBtn} onClick={() => setBulkModalOpen(true)}>
+                              <Icon icon="mdi:pencil-outline" />
+                              {copy.bulk.edit}
+                            </button>
+                            <button type="button" className={layout.bulkBtnGhost} onClick={clearSelection}>
+                              {copy.bulk.clearSelection}
+                            </button>
+                          </div>
+                        ) : null}
                       </div>
-                      <div className={layout.paginationRight}>
-                        <SmartTooltip content={copy.prevPage}>
-                          <button type="button" className={layout.pageBtn} onClick={() => setPage(Math.max(1, page - 1))} disabled={page <= 1} aria-label={copy.prevPage}>
-                            <FaChevronLeft />
-                          </button>
-                        </SmartTooltip>
-                        <span className={layout.paginationInfo}>{copy.formatPageInfo(page, totalPages)}</span>
-                        <SmartTooltip content={copy.nextPage}>
-                          <button type="button" className={layout.pageBtn} onClick={() => setPage(Math.min(totalPages, page + 1))} disabled={page >= totalPages} aria-label={copy.nextPage}>
-                            <FaChevronRight />
-                          </button>
-                        </SmartTooltip>
+
+                      {selectedCount > 0 && canBulkEdit ? (
+                        <div className={layout.bulkBar}>
+                          <div className={layout.bulkInfo}>
+                            <strong>{selectedCount}</strong>
+                            <span>{selectedCount > 1 ? copy.bulk.selectedPlural : copy.bulk.selected}</span>
+                          </div>
+                        </div>
+                      ) : null}
+
+                      <div className={styles.listArea}>
+                        <div className={layout.dataTableWrap}>
+                          <table className={`${layout.dataTable} ${styles.ticketLikeTable}`}>
+                            <thead>
+                              <tr>
+                                {canBulkEdit ? (
+                                  <th className={layout.checkboxCell}>
+                                    <input
+                                      type="checkbox"
+                                      className={layout.rowCheckbox}
+                                      checked={allOnPageSelected}
+                                      onChange={toggleSelectAllOnPage}
+                                      onClick={e => e.stopPropagation()}
+                                      aria-label={copy.bulk.selectAll}
+                                    />
+                                  </th>
+                                ) : null}
+                                <th className={styles.brandCol} aria-hidden />
+                                {renderSortHeader("company", copy.columns.company)}
+                                {renderSortHeader("name", copy.columns.name)}
+                                {renderSortHeader("type", copy.columns.type)}
+                                {renderSortHeader("ip", copy.columns.ip)}
+                                {renderSortHeader("serial", copy.columns.serial)}
+                                {renderSortHeader("site", copy.columns.site)}
+                                {renderSortHeader("status", copy.columns.status)}
+                                {renderSortHeader("alerts", copy.columns.alerts)}
+                                {renderSortHeader("supervision", copy.columns.supervision)}
+                                {renderSortHeader("alertsMonth", copy.columns.alertsMonth)}
+                                <th className={styles.actionsCol}>{copy.columns.actions}</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {paginatedItems.map(item => {
+                                const isSelected = selectedIds.has(item.id);
+                                const alertMeta = alertStatusMeta(item, copy);
+                                const supervisionMeta = supervisionStatusMeta(item, copy);
+                                const monthCount = Number(item.alertsLastMonth) || 0;
+                                const monthTitle = copy.formatAlertsMonthBreakdown
+                                  ? copy.formatAlertsMonthBreakdown(
+                                      item.alertsNativeLastMonth,
+                                      item.alertsSupervisionLastMonth
+                                    )
+                                  : copy.alertsMonthHint;
+                                return (
+                                  <tr
+                                    key={item.id}
+                                    className={`${layout.dataTableRow} ${isSelected ? layout.selectedRow : ""}`}
+                                    onClick={() => openItem(item)}
+                                    onKeyDown={e => {
+                                      if (e.key === "Enter" || e.key === " ") {
+                                        e.preventDefault();
+                                        openItem(item);
+                                      }
+                                    }}
+                                    role="button"
+                                    tabIndex={0}
+                                  >
+                                    {canBulkEdit ? (
+                                      <td className={layout.checkboxCell} onClick={e => e.stopPropagation()}>
+                                        <input
+                                          type="checkbox"
+                                          className={layout.rowCheckbox}
+                                          checked={isSelected}
+                                          onChange={e => toggleItemSelection(item.id, e.target.checked)}
+                                          aria-label={copy.formatBulkSelectRow(item.name)}
+                                        />
+                                      </td>
+                                    ) : null}
+                                    <td className={styles.brandCol}>
+                                      <InventoryDeviceIcon item={item} className={styles.brandIcon} />
+                                    </td>
+                                    <td>{item.clientName || "—"}</td>
+                                    <td className={layout.colCompany}>{item.name || "—"}</td>
+                                    <td>{typeLabel(item, locale)}</td>
+                                    <td>{item.ip || "—"}</td>
+                                    <td>{item.serial || "—"}</td>
+                                    <td>{item.location || "—"}</td>
+                                    <td>{item.is_active === false ? copy.status.inactive : copy.status.active}</td>
+                                    <td className={styles.dotCol}>
+                                      <StatusDot tone={alertMeta.tone} label={alertMeta.label} />
+                                    </td>
+                                    <td className={styles.dotCol}>
+                                      <StatusDot tone={supervisionMeta.tone} label={supervisionMeta.label} />
+                                    </td>
+                                    <td className={styles.countCol} title={monthTitle}>
+                                      <span
+                                        className={`${styles.countPill} ${monthCount > 0 ? styles.countPillHot : ""}`}
+                                      >
+                                        {monthCount}
+                                      </span>
+                                    </td>
+                                    <td className={styles.actionsCol} onClick={e => e.stopPropagation()}>
+                                      <InventoryEquipmentActions
+                                        equipment={item}
+                                        locale={locale}
+                                        menuKey={item.id}
+                                        openMenuKey={openMenuKey}
+                                        onOpenChange={setOpenMenuKey}
+                                        onOpen={openItem}
+                                      />
+                                    </td>
+                                  </tr>
+                                );
+                              })}
+                            </tbody>
+                          </table>
+                        </div>
                       </div>
-                    </div> : null}
-                </div>}
+
+                      <div className={layout.pagination}>
+                        <div className={layout.paginationLeft}>
+                          <span className={layout.paginationLabel}>{copy.perPage}</span>
+                          <select
+                            className={layout.paginationSelect}
+                            value={pageSize}
+                            onChange={e => setPageSize(Number(e.target.value))}
+                          >
+                            <option value={10}>10</option>
+                            <option value={25}>25</option>
+                            <option value={50}>50</option>
+                            <option value={100}>100</option>
+                          </select>
+                        </div>
+                        <div className={layout.paginationRight}>
+                          <SmartTooltip content={copy.prevPage}>
+                            <button
+                              type="button"
+                              className={layout.pageBtn}
+                              onClick={() => setPage(Math.max(1, page - 1))}
+                              disabled={page <= 1}
+                              aria-label={copy.prevPage}
+                            >
+                              <FaChevronLeft />
+                            </button>
+                          </SmartTooltip>
+                          <span className={layout.paginationInfo}>{copy.formatPageInfo(page, totalPages)}</span>
+                          <SmartTooltip content={copy.nextPage}>
+                            <button
+                              type="button"
+                              className={layout.pageBtn}
+                              onClick={() => setPage(Math.min(totalPages, page + 1))}
+                              disabled={page >= totalPages}
+                              aria-label={copy.nextPage}
+                            >
+                              <FaChevronRight />
+                            </button>
+                          </SmartTooltip>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
             </div>
           </main>
         </div>
       </div>
-      <InventoryBulkEditModal open={bulkModalOpen} onClose={() => setBulkModalOpen(false)} items={selectedItems} onSuccess={handleBulkSuccess} />
-    </div>;
+      <InventoryBulkEditModal
+        open={bulkModalOpen}
+        onClose={() => setBulkModalOpen(false)}
+        items={selectedItems}
+        onSuccess={handleBulkSuccess}
+      />
+    </div>
+  );
 }
