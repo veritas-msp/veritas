@@ -272,9 +272,15 @@ export function AntispamOverviewPanel({
   onClose,
   onSynced,
   asPage = false,
-  onNavigate
+  onNavigate,
+  cachedOnly = false,
+  embed = false,
+  activeSection: controlledSection,
+  onSectionChange
 }) {
-  const [activeSection, setActiveSection] = useState("overview");
+  const [internalSection, setInternalSection] = useState("overview");
+  const activeSection = controlledSection ?? internalSection;
+  const setActiveSection = onSectionChange || setInternalSection;
   const [loading, setLoading] = useState(() => !antispamItem?.syncData?.dashboard);
   const [refreshing, setRefreshing] = useState(false);
   const [dashboard, setDashboard] = useState(null);
@@ -337,19 +343,24 @@ export function AntispamOverviewPanel({
   }, [customerId, credentialContext, client?.id, antispamItem, onSynced]);
   useEffect(() => {
     if (active && customerId) {
-      setActiveSection("overview");
+      if (controlledSection == null) setActiveSection("overview");
       const cached = antispamItem?.syncData?.dashboard;
       if (cached) {
         dashboardRef.current = cached;
         setDashboard(cached);
       }
       if (antispamItem?.syncData?.lastSync) setLastPersistedAt(antispamItem.syncData.lastSync);
+      if (cachedOnly) {
+        setLoading(false);
+        setRefreshing(false);
+        return undefined;
+      }
       loadDashboard();
     }
     return () => {
       abortRef.current?.abort();
     };
-  }, [active, customerId, loadDashboard, antispamItem?.syncData]);
+  }, [active, customerId, loadDashboard, antispamItem?.syncData, cachedOnly, controlledSection, setActiveSection]);
   const sections = dashboard?.sections || {};
   const customerName = sections.customer?.data?.name || antispamItem?.customerName || antispamItem?.nom || antispamItem?.name || "Mailinblack Protect";
   const sectionViews = useMemo(() => {
@@ -660,6 +671,16 @@ export function AntispamOverviewPanel({
       name: client.name
     });
   };
+  if (embed) {
+    if (loading && !dashboard) {
+      return <div className={styles.loadingBlock}>
+          <Icon icon="mdi:loading" className={formStyles.spinning} aria-hidden />
+          Loading Mailinblack data…
+        </div>;
+    }
+    if (loadError && !dashboard) return <SectionError error={loadError} />;
+    return renderSectionContent();
+  }
   if (asPage) {
     const clientName = client?.name || "-";
     const subtitle = <>

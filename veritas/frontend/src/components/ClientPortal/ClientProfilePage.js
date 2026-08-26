@@ -20,6 +20,7 @@ import tableStyles from "../TicketPage/TicketPage.module.css";
 import pageStyles from "./ClientPortalPages.module.css";
 import contactStyles from "../ContactsPage/ContactDetailPage.module.css";
 import formStyles from "../EnterprisesPage/EnterpriseFormModal.module.css";
+import MspPageHero from "../Misc/MspPageHero/MspPageHero";
 function normalizePhone(value) {
   let normalized = String(value || "").trim();
   if (normalized.startsWith("00")) {
@@ -245,21 +246,18 @@ export default function ClientProfilePage() {
   };
   return <div className={`${portalLayout.mainScrollFill} ${layout.page}`}>
       <div className={`${portalLayout.portalShell} ${tableStyles.ticketShell}`}>
-        <header className={layout.hero}>
-          <div className={layout.heroText}>
-            <p className={layout.eyebrow}>
-              <Icon icon="mdi:account-circle-outline" aria-hidden />
-              {t.eyebrow}
-            </p>
-            <h1 className={layout.pageTitle}>{t.pageTitle}</h1>
-            <p className={layout.pageSubtitle}>
-              {loading ? copy.common.loading : displayName}
-            </p>
-          </div>
-          {!loading ? <div className={pageStyles.profileHeroAvatar}>
+        <MspPageHero
+          className={pageStyles.portalPageHero}
+          eyebrow={t.eyebrow}
+          title={t.pageTitle}
+          subtitle={loading ? copy.common.loading : displayName}
+          icon="mdi:account-circle-outline"
+          actions={!loading ? (
+            <div className={pageStyles.profileHeroAvatar}>
               <UserAvatar user={profile || authUser} name={displayName} size={72} variant="client" />
-            </div> : null}
-        </header>
+            </div>
+          ) : null}
+        />
 
         <div className={tableStyles.mainColumn}>
           {loading ? <div className={layout.stateBox}>

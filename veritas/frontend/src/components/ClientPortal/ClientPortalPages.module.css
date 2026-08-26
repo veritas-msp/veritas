@@ -1,5 +1,94 @@
 
 
+.portalPageHero {
+  margin: 0;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.tabBar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+  padding: 0.25rem;
+  border-radius: 12px;
+  background: var(--msp-surface-2, #eef3f8);
+  border: 1px solid var(--msp-border, #9aabc0);
+}
+
+.tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.5rem 0.85rem;
+  border: none;
+  border-radius: 9px;
+  background: transparent;
+  color: var(--msp-muted, #4a5a70);
+  font-size: 0.8rem;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s, box-shadow 0.15s;
+}
+
+.tab:hover {
+  color: var(--msp-accent, #2b5fab);
+}
+
+.tabActive {
+  background: var(--msp-surface, #fff);
+  color: var(--msp-accent, #2b5fab);
+  box-shadow: 0 1px 3px rgba(15, 28, 46, 0.08);
+}
+
+.tabIcon {
+  font-size: 1.05rem;
+  flex-shrink: 0;
+}
+
+.tabLabel {
+  white-space: nowrap;
+}
+
+.tabCount {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.35rem;
+  padding: 0.05rem 0.35rem;
+  border-radius: 999px;
+  background: rgba(43, 95, 171, 0.1);
+  color: inherit;
+  font-size: 0.72rem;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.2;
+}
+
+.tabActive .tabCount {
+  background: rgba(43, 95, 171, 0.14);
+}
+
+.tabStack {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+}
+
+:global(html.dark) .tabBar {
+  background: var(--msp-surface-2, #162338);
+  border-color: var(--msp-border, #3d5478);
+}
+
+:global(html.dark) .tabActive {
+  background: var(--msp-surface, #1f2d4a);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
+}
+
+:global(html.dark) .tabCount {
+  background: rgba(90, 157, 224, 0.16);
+}
+
 .kpiRow2 {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -18,6 +107,12 @@
 }
 
 .kpiRowFamily > button {
+  text-align: left;
+}
+
+.kpiRowFamily > a {
+  text-decoration: none;
+  color: inherit;
   text-align: left;
 }
 

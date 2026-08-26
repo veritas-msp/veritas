@@ -13,6 +13,7 @@ import pageStyles from "./ClientPortalPages.module.css";
 import formStyles from "../EnterprisesPage/EnterpriseFormModal.module.css";
 import VaultDocumentPreviewModal from "../shared/VaultDocumentPreviewModal/VaultDocumentPreviewModal";
 import ClientVaultSecretDeleteModal from "./ClientVaultSecretDeleteModal";
+import MspPageHero from "../Misc/MspPageHero/MspPageHero";
 import { getClientPortalCopy } from "./clientPortalI18n";
 const IMAGE_MIMES = new Set(["image/jpeg", "image/png", "image/gif", "image/webp"]);
 export default function ClientVaultPage() {
@@ -123,18 +124,13 @@ export default function ClientVaultPage() {
   };
   return <div className={`${portalLayout.mainScrollFill} ${layout.page}`}>
       <div className={`${portalLayout.portalShell} ${tableStyles.ticketShell}`}>
-        <header className={layout.hero}>
-          <div className={layout.heroText}>
-            <p className={layout.eyebrow}>
-              <Icon icon="mdi:safe-square-outline" aria-hidden />
-              {t.eyebrow}
-            </p>
-            <h1 className={layout.pageTitle}>{t.pageTitle}</h1>
-            <p className={layout.pageSubtitle}>
-              {loading ? copy.common.loading : countLabel}
-            </p>
-          </div>
-        </header>
+        <MspPageHero
+          className={pageStyles.portalPageHero}
+          eyebrow={t.eyebrow}
+          title={t.pageTitle}
+          subtitle={loading ? copy.common.loading : countLabel}
+          icon="mdi:safe-square-outline"
+        />
 
         {!loading ? <div className={pageStyles.kpiRow2}>
             {vaultTabs.map(tab => {

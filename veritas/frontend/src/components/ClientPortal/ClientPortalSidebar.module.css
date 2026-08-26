@@ -177,25 +177,31 @@
   min-height: 8px;
 }
 
+.contextFilters {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 10px;
+  padding: 0 2px;
+}
+
 .companySwitch {
   width: 100%;
   display: flex;
   flex-direction: column;
-  gap: 6px;
-  padding: 2px 0 0;
-}
-
-.companySwitch + .companySwitch {
-  padding-top: 6px;
+  gap: 5px;
+  padding: 0;
 }
 
 .companySwitchLabel {
-  font-size: 0.65rem;
+  font-size: 0.68rem;
   font-weight: 700;
+  letter-spacing: 0.04em;
   text-transform: uppercase;
-  letter-spacing: 0.06em;
   color: var(--sb-muted, var(--msp-muted, #6e8098));
-  text-align: center;
+  text-align: left;
+  padding: 0 2px;
 }
 
 .companySwitchSelectWrap {
@@ -241,8 +247,8 @@
 }
 
 .companySwitchSelect:disabled {
-  opacity: 0.65;
-  cursor: wait;
+  opacity: 0.85;
+  cursor: default;
 }
 
 .companySwitchSelectWrap::after {

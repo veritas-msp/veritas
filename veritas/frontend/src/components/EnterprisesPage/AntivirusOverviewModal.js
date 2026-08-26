@@ -177,9 +177,15 @@ export function AntivirusOverviewPanel({
   onClose,
   onSynced,
   asPage = false,
-  onNavigate
+  onNavigate,
+  cachedOnly = false,
+  embed = false,
+  activeSection: controlledSection,
+  onSectionChange
 }) {
-  const [activeSection, setActiveSection] = useState("overview");
+  const [internalSection, setInternalSection] = useState("overview");
+  const activeSection = controlledSection ?? internalSection;
+  const setActiveSection = onSectionChange || setInternalSection;
   const [patchTab, setPatchTab] = useState("missing");
   const [loading, setLoading] = useState(() => !antivirusItem?.syncData?.dashboard);
   const [refreshing, setRefreshing] = useState(false);
@@ -259,7 +265,7 @@ export function AntivirusOverviewPanel({
   }, [companyId, credentialContext, client?.id, antivirusItem, onSynced]);
   useEffect(() => {
     if (active && companyId) {
-      setActiveSection("overview");
+      if (controlledSection == null) setActiveSection("overview");
       setPatchTab("missing");
       const cached = antivirusItem?.syncData;
       if (cached?.dashboard) {
@@ -269,12 +275,20 @@ export function AntivirusOverviewPanel({
       if (cached?.statistics) setStatistics(cached.statistics);
       if (cached?.enrichedSummary) setEnrichedSummary(cached.enrichedSummary);
       if (cached?.lastSync) setLastPersistedAt(cached.lastSync);
+      if (cachedOnly) {
+        setLoading(false);
+        setRefreshing(false);
+        if (!cached?.dashboard) {
+          setLoadError(null);
+        }
+        return undefined;
+      }
       loadDashboard();
     }
     return () => {
       abortRef.current?.abort();
     };
-  }, [active, companyId, loadDashboard, antivirusItem?.syncData]);
+  }, [active, companyId, loadDashboard, antivirusItem?.syncData, cachedOnly, controlledSection, setActiveSection]);
   const sections = dashboard?.sections || {};
   const companyName = sections.company?.data?.name || antivirusItem?.companyName || antivirusItem?.nom || antivirusItem?.name || "GravityZone";
   const sectionViews = useMemo(() => {
@@ -870,6 +884,16 @@ export function AntivirusOverviewPanel({
       name: client.name
     });
   };
+  if (embed) {
+    if (loading && !dashboard) {
+      return <div className={styles.loadingBlock}>
+          <Icon icon="mdi:loading" className={formStyles.spinning} aria-hidden />
+          Loading GravityZone data…
+        </div>;
+    }
+    if (loadError && !dashboard) return <SectionError error={loadError} />;
+    return renderSectionContent();
+  }
   if (asPage) {
     const clientName = client?.name || "-";
     const subtitle = client?.id && onNavigate ? <button type="button" className={styles.subtitleLink} onClick={openEnterprise}>

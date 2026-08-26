@@ -21,6 +21,7 @@ import ClientTicketCreatePage from "./components/ClientPortal/ClientTicketCreate
 import ClientVaultPage from "./components/ClientPortal/ClientVaultPage";
 import ClientDevicesPage from "./components/ClientPortal/ClientDevicesPage";
 import ClientServicesPage from "./components/ClientPortal/ClientServicesPage";
+import ClientCybersecurityPage from "./components/ClientPortal/ClientCybersecurityPage";
 import ClientContractPage from "./components/ClientPortal/ClientContractPage";
 import SetupPage from "./components/Setup/SetupPage";
 import SetupGate from "./components/Setup/SetupGate";
@@ -126,6 +127,7 @@ export default function App() {
                 <Route path="tickets/:ticketId" element={<ClientTicketDetailPage />} />
                 <Route path="devices" element={<ClientDevicesPage />} />
                 <Route path="services" element={<ClientServicesPage />} />
+                <Route path="cybersecurity" element={<ClientCybersecurityPage />} />
                 <Route path="contract" element={<ClientContractPage />} />
                 <Route path="documents" element={<ClientVaultPage />} />
                 <Route path="profile" element={<ClientProfilePage />} />

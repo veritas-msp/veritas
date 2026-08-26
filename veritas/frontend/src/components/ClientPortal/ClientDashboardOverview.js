@@ -148,7 +148,10 @@ export default function ClientDashboardOverview({
         <div className={styles.tileGrid}>
           {cloudTypes.map(entry => {
           const summaryText = formatCloudSummary(entry.summary, copy.dashboard);
-          return <OverviewTile key={entry.type} to="/client/services" subscribed={entry.subscribed} active={entry.active} icon={entry.icon} label={entry.label}>
+          const tileTo = entry.type === "antivirus" || entry.type === "antispam"
+            ? "/client/cybersecurity"
+            : "/client/services";
+          return <OverviewTile key={entry.type} to={tileTo} subscribed={entry.subscribed} active={entry.active} icon={entry.icon} label={entry.label}>
                 <span className={styles.tileLabel}>{entry.label}</span>
                 <span className={styles.tileValue}>{entry.subscribed && entry.count > 0 ? entry.count : "—"}</span>
                 <span className={styles.tileMeta}>

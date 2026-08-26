@@ -82,7 +82,7 @@ export function getPortalEquipmentField(item, key) {
     case "serial":
       return pick(item, "serial", "numeroSerie", "serialNumber");
     case "systeme":
-      return pick(item, "systeme", "os");
+      return pick(item, "systeme", "os", "osName") || (item.os && (item.os.name || item.os.label)) || "";
     case "ip":
       return pick(item, "ip", "ipAddress");
     case "mac":

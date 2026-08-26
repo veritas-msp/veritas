@@ -8,10 +8,11 @@ import pageStyles from "./ClientPortalPages.module.css";
 import ClientPortalFleetStats from "./ClientPortalFleetStats";
 import ClientDevicesListTab from "./ClientDevicesListTab";
 import EquipmentCsvExportModal from "../EquipementPage/EquipmentCsvExportModal";
+import MspPageHero from "../Misc/MspPageHero/MspPageHero";
+import PortalTabBar from "./PortalTabBar";
 import { getClientPortalCopy } from "./clientPortalI18n";
 import { mapPortalComputers, usePortalDashboard } from "./usePortalDashboard";
 import {
-  PORTAL_FAMILY_TONES,
   buildPortalCsvContent,
   downloadPortalCsv,
   getPortalCsvDefaultKeys,
@@ -25,7 +26,9 @@ function mapWorkstationItem(item) {
     ...item,
     id: String(item.id || item.dbId || item.name || item.nom),
     name: item.name || item.nom || item.hostname || "-",
+    type: item.type || "Ordinateurs",
     active: item.is_active !== false && item.active !== false,
+    is_active: item.is_active !== false && item.active !== false,
     monitored: Boolean(item.monitored || item.agentManaged || item.checkmk_host_name || item.agent_id || item.agentId)
   };
 }
@@ -35,7 +38,10 @@ function mapInfraItem(item) {
     ...item,
     id: String(item.id || item.name),
     name: item.name || item.nom || "-",
+    typeServer: item.typeServer || item.serverType || "",
+    manufacturer: item.manufacturer || item.fabricant || item.marque || "",
     active: item.active !== false,
+    is_active: item.active !== false,
     monitored: Boolean(item.monitored)
   };
 }
@@ -81,33 +87,39 @@ export default function ClientDevicesPage() {
     ? activeFamilyKey
     : categories[0]?.key || null;
 
-  const pageTabs = useMemo(() => [{
+  const familyTabs = useMemo(
+    () => categories.map(cat => ({
+      key: cat.key,
+      label: cat.label,
+      icon: cat.icon,
+      count: cat.count
+    })),
+    [categories]
+  );
+
+  const viewTabs = useMemo(() => [{
     key: "tables",
     label: t.tabTables,
-    icon: "mdi:table",
-    tone: "blue"
+    icon: "mdi:table"
   }, {
     key: "fleet",
     label: t.tabFleet,
-    icon: "mdi:chart-box-outline",
-    tone: "violet"
+    icon: "mdi:chart-box-outline"
   }], [t.tabTables, t.tabFleet]);
 
-  const handleFamilyClick = key => {
-    setActiveFamilyKey(key);
-  };
-
-  const handleExport = category => {
+  const handleExport = (category, visibleKeys) => {
     if (!category?.items?.length) {
       toast.error(t.exportEmpty);
       return;
     }
-    const visibleKeys = getPortalTableColumns(category.key);
+    const keys = Array.isArray(visibleKeys) && visibleKeys.length
+      ? visibleKeys
+      : getPortalTableColumns(category.key);
     setCsvExport({
       familyKey: category.key,
       typeLabel: category.label,
       items: category.items,
-      defaultKeys: getPortalCsvDefaultKeys(category.key, visibleKeys)
+      defaultKeys: getPortalCsvDefaultKeys(category.key, keys)
     });
   };
 
@@ -147,18 +159,13 @@ export default function ClientDevicesPage() {
   return (
     <div className={`${styles.mainScrollFill} ${layout.page}`}>
       <div className={`${styles.mainContent} ${styles.portalShell}`}>
-        <header className={styles.topBar}>
-          <div>
-            <p className={styles.pageEyebrow}>
-              <Icon icon="mdi:devices" aria-hidden />
-              {t.eyebrow}
-            </p>
-            <h1 className={styles.pageTitle}>{t.pageTitle}</h1>
-          </div>
-          <span className={styles.panelCount}>
-            {copy.formatEquipmentCount(stats?.totalEquipment ?? 0)}
-          </span>
-        </header>
+        <MspPageHero
+          className={pageStyles.portalPageHero}
+          eyebrow={t.eyebrow}
+          title={t.pageTitle}
+          subtitle={copy.formatEquipmentCount(stats?.totalEquipment ?? 0)}
+          icon="mdi:devices"
+        />
 
         {isEmpty ? (
           <section className={styles.panel}>
@@ -170,50 +177,19 @@ export default function ClientDevicesPage() {
           </section>
         ) : (
           <>
-            <div className={pageStyles.kpiRowFamily}>
-              {categories.map((cat, index) => {
-                const active = resolvedFamilyKey === cat.key;
-                const tone = PORTAL_FAMILY_TONES[index % PORTAL_FAMILY_TONES.length];
-                return (
-                  <button
-                    key={cat.key}
-                    type="button"
-                    className={`${layout.kpiCard} ${active ? layout.kpiCardActive : ""}`.trim()}
-                    onClick={() => handleFamilyClick(cat.key)}
-                    aria-pressed={active}
-                  >
-                    <div className={`${layout.kpiIconWrap} ${layout[`kpiIcon_${tone}`] || layout.kpiIcon_blue}`}>
-                      <Icon icon={cat.icon} aria-hidden />
-                    </div>
-                    <div className={layout.kpiBody}>
-                      <span className={layout.kpiValue}>{cat.count}</span>
-                      <span className={layout.kpiLabel}>{cat.label}</span>
-                    </div>
-                  </button>
-                );
-              })}
-            </div>
-
-            <div className={pageStyles.kpiRow2}>
-              {pageTabs.map(tab => {
-                const active = activeTab === tab.key;
-                return (
-                  <button
-                    key={tab.key}
-                    type="button"
-                    className={`${layout.kpiCard} ${active ? layout.kpiCardActive : ""}`.trim()}
-                    onClick={() => setActiveTab(tab.key)}
-                    aria-pressed={active}
-                  >
-                    <div className={`${layout.kpiIconWrap} ${layout[`kpiIcon_${tab.tone}`] || layout.kpiIcon_blue}`}>
-                      <Icon icon={tab.icon} aria-hidden />
-                    </div>
-                    <div className={layout.kpiBody}>
-                      <span className={layout.kpiLabel}>{tab.label}</span>
-                    </div>
-                  </button>
-                );
-              })}
+            <div className={pageStyles.tabStack}>
+              <PortalTabBar
+                items={familyTabs}
+                activeKey={resolvedFamilyKey}
+                onChange={setActiveFamilyKey}
+                ariaLabel={t.filterByType}
+              />
+              <PortalTabBar
+                items={viewTabs}
+                activeKey={activeTab}
+                onChange={setActiveTab}
+                ariaLabel={t.tabTables}
+              />
             </div>
 
             {activeTab === "fleet" ? (
@@ -254,7 +230,7 @@ export default function ClientDevicesPage() {
         locale={locale}
         equipmentType={csvExport ? getPortalExportType(csvExport.familyKey) : "Servers"}
         typeLabel={csvExport?.typeLabel || ""}
-        defaultKeys={csvExport?.defaultKeys || []}
+        defaultKeys={csvExport?.defaultKeys}
         onClose={() => setCsvExport(null)}
         onExport={handleCsvExport}
       />

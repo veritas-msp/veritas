@@ -3,12 +3,13 @@ import { Icon } from "@iconify/react";
 import { useAppLocale } from "../../hooks/useAppGeneralSettings";
 import styles from "./ClientDashboard.module.css";
 import layout from "../EnterprisesPage/EnterprisesPage.module.css";
-import ClientServicesDetailView from "./ClientServicesDetailView";
 import MspPageHero from "../Misc/MspPageHero/MspPageHero";
 import pageStyles from "./ClientPortalPages.module.css";
 import { getClientPortalCopy } from "./clientPortalI18n";
 import { usePortalDashboard } from "./usePortalDashboard";
-export default function ClientServicesPage() {
+import ClientCybersecurityDetailView from "./ClientCybersecurityDetailView";
+
+export default function ClientCybersecurityPage() {
   const {
     dashboard: rawData,
     scopedDashboard,
@@ -18,48 +19,71 @@ export default function ClientServicesPage() {
   const data = scopedDashboard || rawData;
   const locale = useAppLocale();
   const copy = useMemo(() => getClientPortalCopy(locale), [locale]);
-  const t = copy.services;
+  const t = copy.cybersecurity;
+
+  const antivirusItems = useMemo(() => {
+    const group = data?.cloudServices?.find(entry => entry.type === "antivirus");
+    return group?.items || [];
+  }, [data?.cloudServices]);
+
+  const antispamItems = useMemo(() => {
+    const group = data?.cloudServices?.find(entry => entry.type === "antispam");
+    return group?.items || [];
+  }, [data?.cloudServices]);
+
+  const hasContent = antivirusItems.length > 0 || antispamItems.length > 0;
+  const subtitleCount = antivirusItems.length + antispamItems.length;
+
   if (loading && !data) {
-    return <div className={`${styles.mainScrollFill} ${layout.page}`}>
+    return (
+      <div className={`${styles.mainScrollFill} ${layout.page}`}>
         <div className={styles.loadingInline}>
           <span className={styles.spinner} />
           <span>{copy.common.loading}</span>
         </div>
-      </div>;
+      </div>
+    );
   }
   if (error && !data) {
-    return <div className={`${styles.mainScrollFill} ${layout.page}`}>
+    return (
+      <div className={`${styles.mainScrollFill} ${layout.page}`}>
         <div className={styles.emptyState}>
           <Icon icon="mdi:alert-circle-outline" className={styles.emptyStateIcon} aria-hidden />
           <p className={styles.emptyStateTitle}>{copy.layout.loadError}</p>
         </div>
-      </div>;
+      </div>
+    );
   }
   if (!data) return null;
-  const {
-    cloudServices,
-    stats
-  } = data;
-  const hasServices = cloudServices?.some(group =>
-    group?.items?.length > 0 && group.type !== "antivirus" && group.type !== "antispam"
-  );
-  return <div className={`${styles.mainScrollFill} ${layout.page}`}>
+
+  return (
+    <div className={`${styles.mainScrollFill} ${layout.page}`}>
       <div className={`${styles.mainContent} ${styles.portalShell}`}>
         <MspPageHero
           className={pageStyles.portalPageHero}
           eyebrow={t.eyebrow}
           title={t.pageTitle}
-          subtitle={copy.formatServiceCount(stats?.cloudCount ?? 0)}
-          icon="mdi:cloud-outline"
+          subtitle={hasContent ? copy.formatServiceCount(subtitleCount) : undefined}
+          icon="mdi:shield-lock-outline"
         />
 
-        {hasServices ? <ClientServicesDetailView cloudServices={cloudServices} /> : <section className={styles.panel}>
+        {hasContent ? (
+          <ClientCybersecurityDetailView
+            antivirusItems={antivirusItems}
+            antispamItems={antispamItems}
+            copy={t}
+            formatDate={copy.formatPortalDate}
+          />
+        ) : (
+          <section className={styles.panel}>
             <div className={styles.emptyState}>
-              <Icon icon="mdi:cloud-off-outline" className={styles.emptyStateIcon} aria-hidden />
+              <Icon icon="mdi:shield-off-outline" className={styles.emptyStateIcon} aria-hidden />
               <p className={styles.emptyStateTitle}>{t.emptyTitle}</p>
               <p className={styles.empty}>{t.emptyDesc}</p>
             </div>
-          </section>}
+          </section>
+        )}
       </div>
-    </div>;
+    </div>
+  );
 }

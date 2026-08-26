@@ -19,6 +19,8 @@ import s from "../TicketPage/TicketCreatePage.module.css";
 import { getClientPortalCopy } from "./clientPortalI18n";
 import { filterPortalTicketsBySite, getPortalEquipmentSiteById } from "./portalSiteFilter";
 import { buildAvailabilityContactSlots, buildPortalClientEquipments, formatContactSlotLabel, getEquipmentLinkLabel, getEquipmentLinkSearchText, getEquipmentTypeLabel, getTodayDateString, serializeContactSlots } from "./clientPortalTicketCreateUtils";
+import pageStyles from "./ClientPortalPages.module.css";
+import MspPageHero from "../Misc/MspPageHero/MspPageHero";
 const TIP_ICONS = ["mdi:text-box-search-outline", "mdi:alert-circle-outline", "mdi:history", "mdi:paperclip"];
 const MAX_ATTACHMENT_SIZE_BYTES = 15 * 1024 * 1024;
 const MAX_ATTACHMENT_FILES = 10;
@@ -519,26 +521,25 @@ export default function ClientTicketCreatePage() {
         </div> : null}
 
       <div className={portalLayout.portalShell}>
-        <header className={layout.hero}>
-          <div className={layout.heroText}>
-            <p className={layout.eyebrow}>
-              <Icon icon="mingcute:ticket-fill" aria-hidden />
-              {tc.eyebrow}
-            </p>
-            <h1 className={layout.pageTitle}>{tc.pageTitle}</h1>
-            <p className={layout.pageSubtitle}>{tc.pageSubtitle}</p>
-          </div>
-          <div className={layout.heroActions}>
-            <Link to="/client/tickets" className={s.btnSecondary}>
-              <Icon icon="mdi:arrow-left" aria-hidden />
-              {copy.common.back}
-            </Link>
-            <button type="button" className={layout.primaryBtn} onClick={handleOpenConfirm} disabled={submitting}>
-              <Icon icon="mdi:check" aria-hidden />
-              {submitting ? tc.creating : tc.createBtn}
-            </button>
-          </div>
-        </header>
+        <MspPageHero
+          className={pageStyles.portalPageHero}
+          eyebrow={tc.eyebrow}
+          title={tc.pageTitle}
+          subtitle={tc.pageSubtitle}
+          icon="mingcute:ticket-fill"
+          actions={
+            <>
+              <Link to="/client/tickets" className={s.btnSecondary}>
+                <Icon icon="mdi:arrow-left" aria-hidden />
+                {copy.common.back}
+              </Link>
+              <button type="button" className={layout.primaryBtn} onClick={handleOpenConfirm} disabled={submitting}>
+                <Icon icon="mdi:check" aria-hidden />
+                {submitting ? tc.creating : tc.createBtn}
+              </button>
+            </>
+          }
+        />
 
         <div className={s.typeKpiRow}>
           {ticketTypes.map(item => <button key={item.key} type="button" className={`${layout.kpiCard} ${type === item.key ? layout.kpiCardActive : ""}`.trim()} onClick={() => setType(item.key)} aria-pressed={type === item.key}>

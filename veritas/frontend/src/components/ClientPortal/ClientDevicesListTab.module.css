@@ -8,9 +8,11 @@
   display: flex;
   align-items: center;
   gap: 10px;
+  flex-wrap: wrap;
 }
 
-.exportBtn {
+.exportBtn,
+.toolBtn {
   display: inline-flex;
   align-items: center;
   gap: 6px;
@@ -25,52 +27,67 @@
   cursor: pointer;
 }
 
-.exportBtn:hover:not(:disabled) {
+.exportBtn:hover:not(:disabled),
+.toolBtn:hover:not(:disabled) {
   border-color: var(--msp-accent, #2b5fab);
 }
 
-.exportBtn:disabled {
+.exportBtn:disabled,
+.toolBtn:disabled {
   opacity: 0.45;
   cursor: not-allowed;
+}
+
+.toolBtnLabel {
+  display: inline;
 }
 
 table.deviceTable {
   min-width: 720px;
 }
 
-.statusBadge {
-  display: inline-block;
-  padding: 2px 8px;
-  border-radius: 999px;
-  font-size: 0.72rem;
+.nameCell,
+.osCell {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-width: 0;
+}
+
+.brandIconWrap {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.35rem;
+  height: 1.35rem;
+  flex-shrink: 0;
+  color: var(--msp-muted, #5c6b82);
+}
+
+.brandIcon,
+.brandIconWrap img,
+.brandIconWrap :global(img) {
+  width: 16px;
+  height: 16px;
+  object-fit: contain;
+}
+
+.nameText {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   font-weight: 600;
 }
 
-.statusActive {
-  background: rgba(22, 163, 74, 0.12);
-  color: #15803d;
+.osIcon {
+  flex-shrink: 0;
+  color: var(--msp-muted, #5c6b82);
 }
 
-.statusInactive {
-  background: rgba(107, 114, 128, 0.12);
-  color: #4b5563;
-}
-
-.supervisionOk {
-  color: #15803d;
-  font-size: 0.82rem;
-  font-weight: 500;
-}
-
-.supervisionWarn {
-  color: #b45309;
-  font-size: 0.82rem;
-  font-weight: 500;
-}
-
-.supervisionMuted {
-  color: var(--portal-text-muted, #6b7a90);
-  font-size: 0.82rem;
+.stateCell {
+  text-align: center;
+  width: 4.5rem;
 }
 
 .emptyCategory {
@@ -80,30 +97,150 @@ table.deviceTable {
   color: var(--portal-text-muted, #6b7a90);
 }
 
-:global(html.dark) .exportBtn {
+.modalOverlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  background: rgba(15, 28, 46, 0.45);
+}
+
+.modalContent {
+  width: min(420px, 100%);
+  max-height: min(80vh, 560px);
+  display: flex;
+  flex-direction: column;
+  border-radius: var(--msp-radius, 16px);
+  border: 1px solid var(--msp-border, #9aabc0);
+  background: var(--msp-surface, #fff);
+  box-shadow: var(--msp-shadow-panel, 0 8px 22px -12px rgba(15, 28, 46, 0.2));
+  overflow: hidden;
+}
+
+.modalHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.9rem 1rem;
+  border-bottom: 1px solid var(--msp-border, #e2e8f0);
+}
+
+.modalTitle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--msp-text, #0a1422);
+}
+
+.modalClose {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--msp-muted, #4a5a70);
+  cursor: pointer;
+}
+
+.modalClose:hover {
+  background: var(--msp-surface-2, #eef3f8);
+}
+
+.modalBody {
+  padding: 0.85rem 1rem 1rem;
+  overflow: auto;
+}
+
+.modalHint {
+  margin: 0 0 0.75rem;
+  font-size: 0.8rem;
+  line-height: 1.4;
+  color: var(--msp-muted, #4a5a70);
+}
+
+.columnsList {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.columnCheckbox {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  padding: 0.45rem 0.55rem;
+  border-radius: 8px;
+  font-size: 0.84rem;
+  font-weight: 500;
+  color: var(--msp-text, #0a1422);
+  cursor: pointer;
+}
+
+.columnCheckbox:hover {
+  background: var(--msp-surface-2, #eef3f8);
+}
+
+.columnCheckbox input {
+  accent-color: var(--msp-accent, #2b5fab);
+}
+
+.modalFooter {
+  display: flex;
+  justify-content: flex-end;
+  padding: 0.75rem 1rem;
+  border-top: 1px solid var(--msp-border, #e2e8f0);
+}
+
+.modalOk {
+  padding: 0.5rem 0.95rem;
+  border: none;
+  border-radius: 10px;
+  background: var(--msp-accent, #2b5fab);
+  color: #fff;
+  font-size: 0.82rem;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.modalOk:hover {
+  filter: brightness(1.05);
+}
+
+:global(html.dark) .exportBtn,
+:global(html.dark) .toolBtn {
   background: var(--msp-surface, #1f2d4a);
   border-color: var(--msp-border, #3d5478);
   color: var(--msp-text, #f0f4fa);
 }
 
-:global(html.dark) .statusActive {
-  background: rgba(74, 222, 128, 0.16);
-  color: #4ade80;
+:global(html.dark) .modalContent {
+  background: var(--msp-surface, #1f2d4a);
+  border-color: var(--msp-border, #3d5478);
 }
 
-:global(html.dark) .statusInactive {
-  background: rgba(148, 163, 184, 0.16);
-  color: #94a3b8;
+:global(html.dark) .modalHeader,
+:global(html.dark) .modalFooter {
+  border-color: var(--msp-border, #3d5478);
 }
 
-:global(html.dark) .supervisionOk {
-  color: #4ade80;
+:global(html.dark) .columnCheckbox:hover,
+:global(html.dark) .modalClose:hover {
+  background: var(--msp-surface-2, #162338);
 }
 
-:global(html.dark) .supervisionWarn {
-  color: #fbbf24;
-}
-
-:global(html.dark) .supervisionMuted {
-  color: #9bb0c9;
+@media (max-width: 640px) {
+  .toolBtnLabel {
+    display: none;
+  }
 }

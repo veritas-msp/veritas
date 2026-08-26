@@ -4,12 +4,38 @@
   gap: 16px;
 }
 
+.tenantRoot {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.tenantTabBar {
+  flex-wrap: wrap;
+}
+
+.tenantDetailPane {
+  min-width: 0;
+}
+
+.tenantHint {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: var(--msp-radius, 10px);
+  background: color-mix(in srgb, var(--msp-surface, #fff) 92%, var(--msp-primary, #2563eb) 8%);
+  color: var(--msp-muted, #6b7a90);
+  font-size: 0.85rem;
+}
+
 .serviceTable {
   min-width: 720px;
 }
 
 .tenantFacts {
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
 }
 
 .expBadge {

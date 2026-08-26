@@ -604,12 +604,13 @@
 
 .actionRequiredPanel {
   padding: 16px 18px;
-  border-radius: 12px;
+  border-radius: var(--msp-radius, 16px);
   border: 1px solid #fcd34d;
   background: linear-gradient(180deg, #fffbeb 0%, #fff 100%);
   display: flex;
   flex-direction: column;
   gap: 12px;
+  box-shadow: var(--msp-shadow-panel, 0 8px 22px -12px rgba(15, 28, 46, 0.2));
 }
 
 :global(.dark) .actionRequiredPanel {
@@ -724,9 +725,10 @@
 
 .pageTitle {
   margin: 0;
-  font-size: 1.25rem;
+  font-size: 1.35rem;
   font-weight: 700;
-  color: var(--portal-text);
+  letter-spacing: -0.02em;
+  color: var(--msp-text, var(--portal-text));
 }
 
 .pageEyebrow {
@@ -736,7 +738,7 @@
   margin: 0 0 4px;
   font-size: 0.78rem;
   font-weight: 600;
-  color: var(--portal-text-muted);
+  color: var(--msp-muted, var(--portal-text-muted));
   text-transform: uppercase;
   letter-spacing: 0.04em;
 }
@@ -746,16 +748,17 @@
 }
 
 .healthBadge {
-  display: flex;
+  display: inline-flex;
   align-items: center;
   gap: 6px;
-  font-size: 0.82rem;
+  font-size: 0.8rem;
   font-weight: 600;
-  color: var(--portal-text);
-  background: var(--portal-surface);
-  border: 1px solid var(--portal-border);
+  color: var(--msp-text, var(--portal-text));
+  background: var(--msp-surface, var(--portal-surface));
+  border: 1px solid var(--msp-border, var(--portal-border));
   border-radius: 999px;
-  padding: 5px 12px;
+  padding: 0.4rem 0.85rem;
+  box-shadow: var(--msp-shadow-panel, 0 1px 2px rgba(15, 28, 46, 0.06));
 }
 
 .healthDot {
@@ -768,9 +771,9 @@
 .panel {
   background: var(--msp-surface, var(--portal-surface));
   border: 1px solid var(--msp-border, var(--portal-border));
-  border-radius: 12px;
+  border-radius: var(--msp-radius, 16px);
   padding: 16px 18px;
-  box-shadow: var(--msp-shadow-panel, 0 2px 8px rgba(11, 33, 56, 0.04));
+  box-shadow: var(--msp-shadow-panel, 0 8px 22px -12px rgba(15, 28, 46, 0.2));
 }
 
 .panelHeader {
@@ -788,7 +791,7 @@
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.04em;
-  color: var(--portal-text-muted);
+  color: var(--msp-muted, var(--portal-text-muted));
 }
 
 .panelCount {
@@ -1186,18 +1189,18 @@
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.04em;
-  color: var(--portal-text-muted);
-  border-bottom: 1px solid var(--portal-border);
+  color: var(--msp-muted, var(--portal-text-muted));
+  border-bottom: 1px solid var(--msp-border, var(--portal-border));
 }
 
 .table td {
   padding: 8px 10px;
-  color: var(--portal-text);
-  border-bottom: 1px solid var(--portal-border-light);
+  color: var(--msp-text, var(--portal-text));
+  border-bottom: 1px solid var(--msp-border, var(--portal-border-light));
 }
 
 .table tr:last-child td { border-bottom: none; }
-.table tr:hover td { background: var(--portal-hover-strong); }
+.table tr:hover td { background: var(--msp-surface-2, var(--portal-hover-strong)); }
 
 .badge {
   display: inline-block;
@@ -1205,14 +1208,14 @@
   border-radius: 999px;
   font-size: 0.72rem;
   font-weight: 600;
-  background: var(--portal-badge-bg);
-  color: var(--portal-text-secondary);
+  background: var(--msp-surface-2, var(--portal-badge-bg));
+  color: var(--msp-muted, var(--portal-text-secondary));
 }
 
 .empty {
   margin: 0;
   font-size: 0.82rem;
-  color: var(--portal-text-muted);
+  color: var(--msp-muted, var(--portal-text-muted));
 }
 
 

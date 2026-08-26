@@ -2,8 +2,13 @@
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
+.infoFacts {
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+}
+
 @media (max-width: 640px) {
-  .referentFacts {
+  .referentFacts,
+  .infoFacts {
     grid-template-columns: 1fr;
   }
 }

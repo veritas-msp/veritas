@@ -56,40 +56,163 @@ function mapLicenseRows(licences = []) {
     expiration: pickDate(lic.expirationDate, lic.expiration)
   })).filter(lic => lic.name);
 }
+/** Licences au format attendu par les onglets agent (utilisees / nom). */
+function mapLicencesForTabs(licences = []) {
+  if (!Array.isArray(licences)) return [];
+  return licences.map(lic => {
+    const total = pickNumber(lic.total, lic.totalLicenses, lic.prepaidUnits?.enabled);
+    const utilisees = pickNumber(lic.utilisees, lic.consumed, lic.used, lic.usedLicenses, lic.consumedUnits);
+    const nom = pickString(lic.nom, lic.friendlyName, lic.productName, lic.displayName, lic.name, lic.skuPartNumber);
+    return {
+      ...lic,
+      total: total ?? lic.total,
+      utilisees: utilisees ?? lic.utilisees,
+      nom: nom || lic.nom,
+      displayName: pickString(lic.displayName, lic.friendlyName, lic.productName, lic.nom, lic.name) || nom
+    };
+  });
+}
+function mapUsersForPortal(users = []) {
+  if (!Array.isArray(users)) return [];
+  return users.map(user => ({
+    id: user.id || null,
+    displayName: pickString(user.displayName, user.name),
+    name: pickString(user.name, user.displayName),
+    userPrincipalName: pickString(user.userPrincipalName, user.email, user.mail),
+    email: pickString(user.email, user.mail, user.userPrincipalName),
+    accountEnabled: user.accountEnabled !== false,
+    lastLoginDate: user.lastLoginDate || user.lastSignInDateTime || null,
+    licenses: Array.isArray(user.licenses) ? user.licenses : Array.isArray(user.assignedLicenses) ? user.assignedLicenses : [],
+    assignedLicenses: Array.isArray(user.assignedLicenses) ? user.assignedLicenses : undefined,
+    isAdmin: Boolean(user.isAdmin || user.isGlobalAdmin || user.isCompanyAdmin)
+  }));
+}
+function pickWorkload(data, camelKey, shortKey) {
+  if (!data || typeof data !== "object") return null;
+  const value = data[camelKey] !== undefined ? data[camelKey] : data[shortKey];
+  if (value == null) return null;
+  return value;
+}
 function mapO365Details(row, data) {
-  const licences = mapLicenseRows(data.licences);
+  const rawLicences = Array.isArray(data.licences)
+    ? data.licences
+    : Array.isArray(data.licenses)
+      ? data.licenses
+      : [];
+  const licences = mapLicenseRows(rawLicences);
   const totalLicenses = licences.reduce((sum, lic) => sum + (lic.total ?? 0), 0);
   const usedLicenses = licences.reduce((sum, lic) => sum + (lic.used ?? 0), 0);
+  const users = mapUsersForPortal(data.users);
   return {
     kind: "o365",
     product: pickString(data.tenantName, data.organization, row.name, "Microsoft 365"),
     tenantName: pickString(data.tenantName, data.organization, row.name),
     tenantId: data.tenantId || data.tenant_id || null,
-    userCount: Array.isArray(data.users) ? data.users.length : pickNumber(data.userCount, data.nombreUtilisateurs),
+    userCount: users.length || pickNumber(data.userCount, data.nombreUtilisateurs),
     licensesTotal: totalLicenses || null,
     licensesUsed: usedLicenses || null,
     licenses: licences,
+    licences: mapLicencesForTabs(rawLicences),
+    users,
+    exchange: pickWorkload(data, "exchangeData", "exchange"),
+    teams: pickWorkload(data, "teamsData", "teams"),
+    sharepoint: pickWorkload(data, "sharepointData", "sharepoint"),
+    onedrive: pickWorkload(data, "onedriveData", "onedrive"),
+    security: pickWorkload(data, "securityData", "security"),
+    adoptionScore: data.adoptionScore ?? null,
+    lastUpdate: pickDate(data.lastUpdate, data.last_update, row.updated_at, row.updatedAt),
     expiration: earliestDate(...licences.map(lic => lic.expiration).filter(Boolean), data.expiration)
   };
 }
+function sanitizePortalSyncData(syncData) {
+  if (!syncData || typeof syncData !== "object" || Array.isArray(syncData)) return null;
+  const {
+    dashboard = null,
+    statistics = null,
+    enrichedSummary = null,
+    enrichedEndpoints = null,
+    license = null,
+    endpoints = null,
+    company = null,
+    customer = null,
+    lastSync = null
+  } = syncData;
+  return {
+    dashboard,
+    statistics,
+    enrichedSummary,
+    enrichedEndpoints: Array.isArray(enrichedEndpoints) ? enrichedEndpoints : null,
+    license,
+    endpoints,
+    company,
+    customer,
+    lastSync: pickDate(lastSync)
+  };
+}
+function mapPortalEndpoints(endpoints = []) {
+  if (!Array.isArray(endpoints)) return [];
+  return endpoints.map(ep => ({
+    id: ep.id || null,
+    name: pickString(ep.name, "Sans nom"),
+    ip: pickString(ep.ip) || "",
+    type: pickString(ep.type, ep.machineType, "autre"),
+    operatingSystem: pickString(ep.operatingSystem, ep.os) || "",
+    fqdn: pickString(ep.fqdn) || "",
+    isManaged: Boolean(ep.isManaged)
+  }));
+}
 function mapAntivirusDetails(row, data) {
+  const syncData = sanitizePortalSyncData(data.syncData);
+  const endpoints = mapPortalEndpoints(
+    Array.isArray(data.endpoints)
+      ? data.endpoints
+      : Array.isArray(syncData?.endpoints?.list)
+        ? syncData.endpoints.list
+        : Array.isArray(syncData?.endpoints)
+          ? syncData.endpoints
+          : []
+  );
+  const companyId = pickString(data.companyId, data.company_id, syncData?.company?.id);
+  const mappingMode = pickString(data.mappingMode, data.mapping_mode) || (companyId ? "reseller" : "manual");
   return {
     kind: "antivirus",
     product: pickString(data.solution, data.logiciel, data.companyName, row.name),
     provider: pickString(data.providerId) || null,
-    licensesTotal: pickNumber(data.licencesTotales, data.totalLicenses, data.license?.totalLicenses),
-    licensesUsed: pickNumber(data.licencesUtilisees, data.usedLicenses, data.license?.usedLicenses),
-    expiration: pickDate(data.expiration, data.expirationDate, data.license?.expirationDate),
-    endpointCount: Array.isArray(data.endpoints) ? data.endpoints.length : null
+    providerId: pickString(data.providerId) || null,
+    companyId: companyId || null,
+    companyName: pickString(data.companyName, syncData?.company?.name, data.solution, row.name),
+    mappingMode,
+    isManual: mappingMode === "manual" || !companyId,
+    licensesTotal: pickNumber(data.licencesTotales, data.totalLicenses, data.license?.totalLicenses, syncData?.license?.totalLicenses, syncData?.dashboard?.sections?.license?.data?.total),
+    licensesUsed: pickNumber(data.licencesUtilisees, data.usedLicenses, data.license?.usedLicenses, syncData?.license?.usedLicenses, syncData?.dashboard?.sections?.license?.data?.used),
+    expiration: pickDate(data.expiration, data.expirationDate, data.license?.expirationDate, syncData?.license?.expirationDate, syncData?.dashboard?.sections?.license?.data?.expirationDate),
+    endpointCount: endpoints.length || pickNumber(syncData?.dashboard?.sections?.endpoints?.total) || null,
+    endpoints,
+    syncData,
+    lastSync: pickDate(syncData?.lastSync, data.lastSync)
   };
 }
 function mapAntispamDetails(row, data) {
+  const syncData = sanitizePortalSyncData(data.syncData);
+  const customerId = pickString(data.customerId, data.customer_id, data.authClientId, syncData?.customer?.id);
+  const mappingMode = pickString(data.mappingMode, data.mapping_mode) || (customerId ? "reseller" : "manual");
+  const domainsTotal = pickNumber(data.domainesSurveilles, data.licences, data.nombre_licences, data.licensesTotal, syncData?.dashboard?.sections?.domains?.total);
+  const usersTotal = pickNumber(data.utilisateursProteges, data.utilisateurs, data.nombre_utilisateurs, syncData?.dashboard?.sections?.users?.total);
   return {
     kind: "antispam",
     product: pickString(data.logiciel, data.solution, data.customerName, row.name),
-    licensesTotal: pickNumber(data.domainesSurveilles, data.licences, data.nombre_licences, data.licensesTotal),
-    licensesUsed: pickNumber(data.utilisateursProteges, data.utilisateurs, data.nombre_utilisateurs),
-    expiration: pickDate(data.expiration, data.expirityDate)
+    providerId: pickString(data.providerId) || null,
+    customerId: customerId || null,
+    customerName: pickString(data.customerName, syncData?.customer?.name, data.solution, row.name),
+    mappingMode,
+    isManual: mappingMode === "manual" || !customerId,
+    licensesTotal: domainsTotal,
+    licensesUsed: usersTotal,
+    domainesSurveilles: domainsTotal,
+    utilisateursProteges: usersTotal,
+    expiration: pickDate(data.expiration, data.expirityDate, data.expirationDate),
+    syncData,
+    lastSync: pickDate(syncData?.lastSync, data.lastSync)
   };
 }
 function mapSaveJobDetails(job, instanceName, index, parentId) {

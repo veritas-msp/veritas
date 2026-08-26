@@ -8,15 +8,9 @@ import layout from "../EnterprisesPage/EnterprisesPage.module.css";
 import pageStyles from "./ClientPortalPages.module.css";
 import tableStyles from "../TicketPage/TicketPage.module.css";
 import listStyles from "./ClientDevicesListTab.module.css";
+import PortalTabBar from "./PortalTabBar";
+import ClientPortalTenantView from "./ClientPortalTenantView";
 import styles from "./ClientServicesDetailView.module.css";
-
-const FAMILY_TONES = {
-  o365: "blue",
-  save: "teal",
-  ndd: "amber",
-  antivirus: "green",
-  antispam: "violet"
-};
 
 function getExpirationMeta(dateValue, copy) {
   if (!dateValue) {
@@ -109,73 +103,6 @@ function collectBackupJobs(items) {
     });
   });
   return jobs;
-}
-
-function TenantView({ items, copy, formatDate }) {
-  const tenant = items[0];
-  if (!tenant) return null;
-  const details = tenant.details || {};
-  const licenses = tenant.licenses || [];
-  const used = tenant.licensesUsed;
-  const total = tenant.licensesTotal;
-  const available = total != null && used != null ? Math.max(0, total - used) : null;
-  const kpis = [
-    { key: "name", icon: "mdi:microsoft-office", tone: "blue", value: details.tenantName || tenant.product || tenant.name, label: copy.tenantName },
-    { key: "users", icon: "mdi:account-multiple", tone: "teal", value: details.userCount ?? "—", label: copy.tenantUsers },
-    { key: "licenses", icon: "mdi:license", tone: "violet", value: used != null && total != null ? interpolate(copy.licensesSummary, { used: String(used), total: String(total) }) : "—", label: copy.tenantLicenses },
-    { key: "available", icon: "mdi:license", tone: "green", value: available ?? "—", label: copy.tenantLicensesAvailable }
-  ];
-  return (
-    <>
-      <div className={pageStyles.kpiRowFamily}>
-        {kpis.map(item => (
-          <div key={item.key} className={layout.kpiCard}>
-            <div className={`${layout.kpiIconWrap} ${layout[`kpiIcon_${item.tone}`] || layout.kpiIcon_blue}`}>
-              <Icon icon={item.icon} aria-hidden />
-            </div>
-            <div className={layout.kpiBody}>
-              <span className={layout.kpiValue}>{item.value}</span>
-              <span className={layout.kpiLabel}>{item.label}</span>
-            </div>
-          </div>
-        ))}
-      </div>
-      {details.tenantId ? (
-        <section className={portalStyles.panel}>
-          <div className={portalStyles.panelHeader}>
-            <span className={portalStyles.panelTitle}>{copy.tenantTitle}</span>
-          </div>
-          <dl className={`${portalStyles.infoCardFacts} ${styles.tenantFacts}`}>
-            <div>
-              <dt>{copy.tenantId}</dt>
-              <dd>{details.tenantId}</dd>
-            </div>
-            <div>
-              <dt>{copy.tableStatus}</dt>
-              <dd><StatusBadge active={tenant.active} copy={copy} /></dd>
-            </div>
-          </dl>
-        </section>
-      ) : null}
-      <section className={portalStyles.panel}>
-        <div className={portalStyles.panelHeader}>
-          <span className={portalStyles.panelTitle}>{copy.licensesTitle}</span>
-          <span className={portalStyles.panelCount}>{licenses.length}</span>
-        </div>
-        <ServiceTable
-          emptyLabel={copy.noLicenseRows}
-          columns={[
-            { key: "name", label: copy.licenseName, render: row => row.name },
-            { key: "total", label: copy.licenseTotal, render: row => row.total ?? "—" },
-            { key: "used", label: copy.licenseUsed, render: row => row.used ?? "—" },
-            { key: "available", label: copy.tenantLicensesAvailable, render: row => row.total != null && row.used != null ? Math.max(0, row.total - row.used) : "—" },
-            { key: "expiration", label: copy.licenseExpiration, render: row => <ExpirationBadge dateValue={row.expiration} copy={copy} formatDate={formatDate} /> }
-          ]}
-          rows={licenses.map((lic, index) => ({ ...lic, id: `${lic.name}-${index}` }))}
-        />
-      </section>
-    </>
-  );
 }
 
 function BackupView({ items, copy, formatDate }) {
@@ -322,12 +249,24 @@ export default function ClientServicesDetailView({ cloudServices = [] }) {
   const locale = useAppLocale();
   const copy = useMemo(() => getClientPortalCopy(locale), [locale]);
   const t = copy.services;
-  const groups = useMemo(() => (cloudServices || []).filter(group => group?.items?.length > 0), [cloudServices]);
+  const groups = useMemo(
+    () => (cloudServices || []).filter(group => group?.items?.length > 0 && group.type !== "antivirus" && group.type !== "antispam"),
+    [cloudServices]
+  );
   const [activeType, setActiveType] = useState(null);
   const resolvedType = activeType && groups.some(group => group.type === activeType)
     ? activeType
     : groups[0]?.type || null;
   const activeGroup = groups.find(group => group.type === resolvedType) || null;
+  const serviceTabs = useMemo(
+    () => groups.map(group => ({
+      key: group.type,
+      label: group.label,
+      icon: group.icon,
+      count: group.items.length
+    })),
+    [groups]
+  );
 
   if (!groups.length) {
     return (
@@ -341,32 +280,15 @@ export default function ClientServicesDetailView({ cloudServices = [] }) {
 
   return (
     <div className={styles.root}>
-      <div className={pageStyles.kpiRowFamily}>
-        {groups.map(group => {
-          const active = resolvedType === group.type;
-          const tone = FAMILY_TONES[group.type] || "blue";
-          return (
-            <button
-              key={group.type}
-              type="button"
-              className={`${layout.kpiCard} ${active ? layout.kpiCardActive : ""}`.trim()}
-              onClick={() => setActiveType(group.type)}
-              aria-pressed={active}
-            >
-              <div className={`${layout.kpiIconWrap} ${layout[`kpiIcon_${tone}`] || layout.kpiIcon_blue}`}>
-                <Icon icon={group.icon} aria-hidden />
-              </div>
-              <div className={layout.kpiBody}>
-                <span className={layout.kpiValue}>{group.items.length}</span>
-                <span className={layout.kpiLabel}>{group.label}</span>
-              </div>
-            </button>
-          );
-        })}
-      </div>
+      <PortalTabBar
+        items={serviceTabs}
+        activeKey={resolvedType}
+        onChange={setActiveType}
+        ariaLabel={t.filterByType}
+      />
 
       {activeGroup?.type === "o365" ? (
-        <TenantView items={activeGroup.items} copy={t} formatDate={copy.formatPortalDate} />
+        <ClientPortalTenantView items={activeGroup.items} copy={t} />
       ) : activeGroup?.type === "save" ? (
         <BackupView items={activeGroup.items} copy={t} formatDate={copy.formatPortalDate} />
       ) : activeGroup?.type === "ndd" ? (

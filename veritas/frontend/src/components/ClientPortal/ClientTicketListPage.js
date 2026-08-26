@@ -9,6 +9,8 @@ import portalLayout from "./ClientDashboard.module.css";
 import layout from "../EnterprisesPage/EnterprisesPage.module.css";
 import tableStyles from "../TicketPage/TicketPage.module.css";
 import portalStyles from "./ClientPortalTickets.module.css";
+import pageStyles from "./ClientPortalPages.module.css";
+import MspPageHero from "../Misc/MspPageHero/MspPageHero";
 import { getClientPortalCopy } from "./clientPortalI18n";
 import { getPortalPriorityVisual, getPortalStatusFilters, getPortalTicketActionRequiredBadge, isPortalTicketActionRequired, isPortalTicketPendingClientResponse, isPortalTicketPendingValidation, sortPortalTickets } from "./clientPortalTicketUi";
 import { filterPortalTicketsBySite, getPortalEquipmentSiteById } from "./portalSiteFilter";
@@ -103,23 +105,18 @@ export default function ClientTicketListPage() {
   const isSupervisor = dashboard?.portalRole === "supervisor";
   return <div className={`${portalLayout.mainScrollFill} ${layout.page}`}>
       <div className={`${portalLayout.portalShell} ${tableStyles.ticketShell}`}>
-        <header className={layout.hero}>
-          <div className={layout.heroText}>
-            <p className={layout.eyebrow}>
-              <Icon icon="mdi:lifebuoy" aria-hidden />
-              {t.eyebrow}
-            </p>
-            <h1 className={layout.pageTitle}>{isSupervisor ? t.pageTitleSupervisor : t.pageTitle}</h1>
-            <p className={layout.pageSubtitle}>
-              {loading ? t.loading : copy.formatTicketCount(totalCount)}
-            </p>
-          </div>
-          <div className={layout.heroActions}>
+        <MspPageHero
+          className={pageStyles.portalPageHero}
+          eyebrow={t.eyebrow}
+          title={isSupervisor ? t.pageTitleSupervisor : t.pageTitle}
+          subtitle={loading ? t.loading : copy.formatTicketCount(totalCount)}
+          icon="mdi:lifebuoy"
+          actions={
             <Link to="/client/tickets/new" className={`${layout.primaryBtn} ${layout.primaryBtnIconOnly}`} aria-label={t.newTicketAria}>
               <FaPlus />
             </Link>
-          </div>
-        </header>
+          }
+        />
 
         {!loading ? <div className={tableStyles.kpiRow4}>
             {statusFilters.map(item => {

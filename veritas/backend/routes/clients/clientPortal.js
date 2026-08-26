@@ -499,13 +499,18 @@ async function fetchEquipmentItems(clientId, type, {
     if (cloudPortal) {
       return expandCloudServiceRows(type, row, data);
     }
+    const safe = pickPortalEquipmentData(data);
     return [{
       id: row.id,
       active: row.is_active !== false,
       monitored: hasCheckmk ? Boolean(row.checkmk_host_name) : false,
-      ...pickPortalEquipmentData(data),
+      ...safe,
       name: row.name || data.nom || row.item_key || "Sans nom",
-      type
+      type,
+      typeServer: safe.typeServer || (type === "servers" ? safe.type || data.type || "" : safe.typeServer || ""),
+      computerType: safe.computerType || (type === "ordinateurs" ? safe.type || data.type || "" : safe.computerType || ""),
+      internetType: safe.internetType || (type === "internet" ? safe.type || data.type || "" : safe.internetType || ""),
+      storageType: safe.storageType || (type === "stockage" ? safe.type || data.type || "" : safe.storageType || "")
     }];
   };
   try {

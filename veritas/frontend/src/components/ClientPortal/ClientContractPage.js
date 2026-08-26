@@ -7,6 +7,7 @@ import styles from "./ClientDashboard.module.css";
 import pageStyles from "./ClientPortalPages.module.css";
 import contractStyles from "./ClientContractPage.module.css";
 import portalStyles from "./ClientPortalTickets.module.css";
+import MspPageHero from "../Misc/MspPageHero/MspPageHero";
 import { getClientPortalCopy } from "./clientPortalI18n";
 import { usePortalDashboard, mapPortalComputers } from "./usePortalDashboard";
 import { buildContractOptionsGroups } from "./clientPortalContract";
@@ -53,63 +54,44 @@ export default function ClientContractPage() {
   if (!data) return null;
 
   const { client, contrat, commercial } = data;
-  const factItems = [
-    {
-      key: "start",
-      icon: "mdi:calendar-start",
-      tone: "blue",
-      value: contrat?.debut ? copy.formatPortalDate(contrat.debut) : "—",
-      label: layoutCopy.contractStart
-    },
-    {
-      key: "expiration",
-      icon: "mdi:calendar-end",
-      tone: "amber",
-      value: contrat?.expiration ? copy.formatPortalDate(contrat.expiration) : "—",
-      label: layoutCopy.contractExpiration
-    },
-    {
-      key: "status",
-      icon: contrat?.suspendu ? "mdi:pause-circle-outline" : "mdi:check-circle-outline",
-      tone: contrat?.suspendu ? "orange" : "green",
-      value: contrat?.suspendu ? layoutCopy.contractSuspended : layoutCopy.contractActive,
-      label: layoutCopy.contractStatus
-    },
-    {
-      key: "company",
-      icon: "mdi:office-building-outline",
-      tone: "violet",
-      value: client?.name || "—",
-      label: copy.dashboard.companyName
-    }
-  ];
 
   return (
     <div className={`${styles.mainScrollFill} ${layout.page}`}>
       <div className={`${styles.mainContent} ${styles.portalShell}`}>
-        <header className={styles.topBar}>
-          <div>
-            <p className={styles.pageEyebrow}>
-              <Icon icon="mdi:file-document-outline" aria-hidden />
-              {t.eyebrow}
-            </p>
-            <h1 className={styles.pageTitle}>{t.pageTitle}</h1>
-          </div>
-        </header>
+        <MspPageHero
+          className={pageStyles.portalPageHero}
+          eyebrow={t.eyebrow}
+          title={t.pageTitle}
+          subtitle={client?.name || undefined}
+          icon="mdi:file-document-outline"
+        />
 
-        <div className={pageStyles.kpiRowFamily}>
-          {factItems.map(item => (
-            <div key={item.key} className={layout.kpiCard}>
-              <div className={`${layout.kpiIconWrap} ${layout[`kpiIcon_${item.tone}`] || layout.kpiIcon_blue}`}>
-                <Icon icon={item.icon} aria-hidden />
-              </div>
-              <div className={layout.kpiBody}>
-                <span className={layout.kpiValue}>{item.value}</span>
-                <span className={layout.kpiLabel}>{item.label}</span>
-              </div>
+        <section className={styles.panel}>
+          <div className={styles.panelHeader}>
+            <span className={styles.panelTitle}>
+              <Icon icon="mdi:information-outline" aria-hidden />
+              {t.contractPanelTitle}
+            </span>
+          </div>
+          <dl className={`${styles.infoCardFacts} ${contractStyles.infoFacts}`}>
+            <div>
+              <dt>{layoutCopy.contractStart}</dt>
+              <dd>{contrat?.debut ? copy.formatPortalDate(contrat.debut) : "—"}</dd>
             </div>
-          ))}
-        </div>
+            <div>
+              <dt>{layoutCopy.contractExpiration}</dt>
+              <dd>{contrat?.expiration ? copy.formatPortalDate(contrat.expiration) : "—"}</dd>
+            </div>
+            <div>
+              <dt>{layoutCopy.contractStatus}</dt>
+              <dd>{contrat?.suspendu ? layoutCopy.contractSuspended : layoutCopy.contractActive}</dd>
+            </div>
+            <div>
+              <dt>{copy.dashboard.companyName}</dt>
+              <dd>{client?.name || "—"}</dd>
+            </div>
+          </dl>
+        </section>
 
         {commercial ? (
           <section className={styles.panel}>

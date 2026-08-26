@@ -1,41 +1,214 @@
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { createPortal } from "react-dom";
 import { Icon } from "@iconify/react";
+import { FaColumns, FaTimes } from "react-icons/fa";
 import { useAppLocale } from "../../hooks/useAppGeneralSettings";
+import SmartTooltip from "../SmartTooltip";
+import EquipmentBrandIcon from "../EquipementPage/constants/EquipmentBrandIcon";
+import { getOsIconName, repairOsLabel } from "../EquipementPage/osIconUtils";
 import { getClientPortalCopy } from "./clientPortalI18n";
 import {
   formatPortalFieldDisplay,
   getPortalColumnLabel,
   getPortalEquipmentField,
+  getPortalExportType,
   getPortalTableColumns
 } from "./portalEquipmentTables";
 import portalStyles from "./ClientDashboard.module.css";
 import tableStyles from "../TicketPage/TicketPage.module.css";
 import styles from "./ClientDevicesListTab.module.css";
 
-function StatusBadge({ active, copy }) {
+const COLUMNS_STORAGE_PREFIX = "veritas_portal_device_columns_v1_";
+
+function readStoredColumns(familyKey, defaults) {
+  try {
+    const raw = localStorage.getItem(`${COLUMNS_STORAGE_PREFIX}${familyKey}`);
+    if (!raw) return defaults;
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed) || !parsed.length) return defaults;
+    const allowed = new Set(defaults);
+    const filtered = parsed.filter(key => allowed.has(key));
+    return filtered.length ? filtered : defaults;
+  } catch {
+    return defaults;
+  }
+}
+
+function writeStoredColumns(familyKey, keys) {
+  try {
+    localStorage.setItem(`${COLUMNS_STORAGE_PREFIX}${familyKey}`, JSON.stringify(keys));
+  } catch {
+    // ignore quota / private mode
+  }
+}
+
+function toBrandEquipment(item, familyKey) {
+  const exportType = getPortalExportType(familyKey);
+  const subtype =
+    item.typeServer ||
+    item.internetType ||
+    item.storageType ||
+    item.computerType ||
+    item.firewallType ||
+    item.serverType ||
+    "";
+  return {
+    ...item,
+    type: exportType,
+    typeServer: item.typeServer || item.serverType || (exportType === "Servers" ? subtype : ""),
+    computerType: item.computerType || (exportType === "Ordinateurs" ? subtype : ""),
+    manufacturer: item.manufacturer || item.fabricant || item.marque || "",
+    rawData: {
+      ...(item.rawData && typeof item.rawData === "object" ? item.rawData : {}),
+      type: subtype || item.type || "",
+      fabricant: item.fabricant || item.manufacturer || item.marque || "",
+      marque: item.marque || item.manufacturer || item.fabricant || "",
+      fournisseur: item.fournisseur || ""
+    }
+  };
+}
+
+function StateDot({ active, onLabel, offLabel, warn = false, warnLabel = null }) {
+  const label = warn ? warnLabel || offLabel : active ? onLabel : offLabel;
+  const color = warn ? "#f59e0b" : active ? "#22c55e" : "#94a3b8";
   return (
-    <span className={`${styles.statusBadge} ${active ? styles.statusActive : styles.statusInactive}`}>
-      {active ? copy.statusActive : copy.statusInactive}
-    </span>
+    <SmartTooltip content={label}>
+      <Icon icon="mdi:circle" width={12} height={12} style={{ color }} aria-label={label} />
+    </SmartTooltip>
   );
 }
 
-function MonitoringCell({ item, copy, columnKey }) {
-  if (columnKey === "agentStatus") {
-    const status = getPortalEquipmentField(item, "agentStatus");
-    if (status === "online") return <span className={styles.supervisionOk}>{copy.agentOnline}</span>;
-    if (status === "offline") return <span className={styles.supervisionWarn}>{copy.agentOffline}</span>;
-    if (status === "supervised") return <span className={styles.supervisionOk}>{copy.supervised}</span>;
-    return <span className={styles.supervisionMuted}>{copy.notSupervised}</span>;
-  }
-  const monitored = Boolean(getPortalEquipmentField(item, "monitoring"));
-  return monitored
-    ? <span className={styles.supervisionOk}>{copy.supervised}</span>
-    : <span className={styles.supervisionMuted}>{copy.notSupervised}</span>;
+function StatusDot({ active, copy }) {
+  return (
+    <StateDot
+      active={Boolean(active)}
+      onLabel={copy.statusActive}
+      offLabel={copy.statusInactive}
+    />
+  );
 }
 
-function EquipmentTable({ familyKey, items, copy, locale }) {
-  const columns = getPortalTableColumns(familyKey);
+function SupervisionDot({ item, copy, columnKey }) {
+  if (columnKey === "agentStatus") {
+    const status = getPortalEquipmentField(item, "agentStatus");
+    if (status === "online" || status === "supervised") {
+      return (
+        <StateDot
+          active
+          onLabel={status === "online" ? copy.agentOnline : copy.supervised}
+          offLabel={copy.notSupervised}
+        />
+      );
+    }
+    if (status === "offline") {
+      return (
+        <StateDot
+          active={false}
+          warn
+          onLabel={copy.agentOnline}
+          offLabel={copy.agentOffline}
+          warnLabel={copy.agentOffline}
+        />
+      );
+    }
+    return (
+      <StateDot
+        active={false}
+        onLabel={copy.supervised}
+        offLabel={copy.notSupervised}
+      />
+    );
+  }
+  const monitored = Boolean(getPortalEquipmentField(item, "monitoring"));
+  return (
+    <StateDot
+      active={monitored}
+      onLabel={copy.supervised}
+      offLabel={copy.notSupervised}
+    />
+  );
+}
+
+function NameCell({ item, familyKey }) {
+  const name = getPortalEquipmentField(item, "name");
+  return (
+    <div className={styles.nameCell}>
+      <span className={styles.brandIconWrap} aria-hidden>
+        <EquipmentBrandIcon
+          equipment={toBrandEquipment(item, familyKey)}
+          equipmentType={getPortalExportType(familyKey)}
+          className={styles.brandIcon}
+        />
+      </span>
+      <span className={styles.nameText}>{name}</span>
+    </div>
+  );
+}
+
+function OsCell({ item }) {
+  const osLabel = repairOsLabel(getPortalEquipmentField(item, "systeme")) || "";
+  const display = osLabel || "—";
+  const iconName = osLabel ? getOsIconName(osLabel, { withFallback: true }) : null;
+  return (
+    <div className={styles.osCell}>
+      {iconName ? <Icon icon={iconName} className={styles.osIcon} width={18} height={18} aria-hidden /> : null}
+      <span>{display}</span>
+    </div>
+  );
+}
+
+function ColumnsModal({ open, familyKey, availableColumns, visibleColumns, onToggle, onClose, copy, locale, devicesCopy }) {
+  if (!open) return null;
+  return createPortal(
+    <div className={styles.modalOverlay} onClick={onClose} role="presentation">
+      <div
+        className={styles.modalContent}
+        onClick={e => e.stopPropagation()}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="portal-device-columns-title"
+      >
+        <div className={styles.modalHeader}>
+          <h2 id="portal-device-columns-title" className={styles.modalTitle}>
+            <FaColumns aria-hidden />
+            {copy.columnsTitle}
+          </h2>
+          <button type="button" className={styles.modalClose} onClick={onClose} aria-label={copy.columnsClose}>
+            <FaTimes />
+          </button>
+        </div>
+        <div className={styles.modalBody}>
+          <p className={styles.modalHint}>{copy.columnsHint}</p>
+          <div className={styles.columnsList}>
+            {availableColumns.map(colKey => {
+              const checked = visibleColumns.includes(colKey);
+              const locked = colKey === "name" && checked && visibleColumns.length === 1;
+              return (
+                <label key={colKey} className={styles.columnCheckbox}>
+                  <input
+                    type="checkbox"
+                    checked={checked}
+                    disabled={locked}
+                    onChange={() => onToggle(colKey)}
+                  />
+                  <span>{getPortalColumnLabel(locale, familyKey, colKey, devicesCopy)}</span>
+                </label>
+              );
+            })}
+          </div>
+        </div>
+        <div className={styles.modalFooter}>
+          <button type="button" className={styles.modalOk} onClick={onClose}>
+            {copy.columnsClose}
+          </button>
+        </div>
+      </div>
+    </div>,
+    document.body
+  );
+}
+
+function EquipmentTable({ familyKey, items, columns, copy, locale }) {
   if (!items.length) {
     return <p className={styles.emptyCategory}>{copy.noItemsInCategory}</p>;
   }
@@ -54,17 +227,31 @@ function EquipmentTable({ familyKey, items, copy, locale }) {
             {items.map(item => (
               <tr key={item.id}>
                 {columns.map(colKey => {
-                  if (colKey === "activeStatus") {
+                  if (colKey === "name") {
                     return (
                       <td key={colKey}>
-                        <StatusBadge active={getPortalEquipmentField(item, "activeStatus")} copy={copy} />
+                        <NameCell item={item} familyKey={familyKey} />
+                      </td>
+                    );
+                  }
+                  if (colKey === "systeme") {
+                    return (
+                      <td key={colKey}>
+                        <OsCell item={item} />
+                      </td>
+                    );
+                  }
+                  if (colKey === "activeStatus") {
+                    return (
+                      <td key={colKey} className={styles.stateCell}>
+                        <StatusDot active={getPortalEquipmentField(item, "activeStatus")} copy={copy} />
                       </td>
                     );
                   }
                   if (colKey === "monitoring" || colKey === "agentStatus") {
                     return (
-                      <td key={colKey}>
-                        <MonitoringCell item={item} copy={copy} columnKey={colKey} />
+                      <td key={colKey} className={styles.stateCell}>
+                        <SupervisionDot item={item} copy={copy} columnKey={colKey} />
                       </td>
                     );
                   }
@@ -91,6 +278,35 @@ export default function ClientDevicesListTab({
     () => categories.find(cat => cat.key === activeFamilyKey) || categories[0] || null,
     [categories, activeFamilyKey]
   );
+  const availableColumns = useMemo(
+    () => (activeCategory ? getPortalTableColumns(activeCategory.key) : []),
+    [activeCategory]
+  );
+  const [visibleColumns, setVisibleColumns] = useState(availableColumns);
+  const [columnsModalOpen, setColumnsModalOpen] = useState(false);
+
+  useEffect(() => {
+    if (!activeCategory) {
+      setVisibleColumns([]);
+      return;
+    }
+    setVisibleColumns(readStoredColumns(activeCategory.key, getPortalTableColumns(activeCategory.key)));
+    setColumnsModalOpen(false);
+  }, [activeCategory?.key]);
+
+  const toggleColumn = colKey => {
+    if (!activeCategory) return;
+    setVisibleColumns(prev => {
+      const next = prev.includes(colKey)
+        ? prev.filter(key => key !== colKey)
+        : [...prev, colKey].sort(
+          (a, b) => availableColumns.indexOf(a) - availableColumns.indexOf(b)
+        );
+      const safe = next.length ? next : ["name"];
+      writeStoredColumns(activeCategory.key, safe);
+      return safe;
+    });
+  };
 
   if (!categories.length) {
     return (
@@ -104,6 +320,8 @@ export default function ClientDevicesListTab({
 
   if (!activeCategory) return null;
 
+  const displayedColumns = visibleColumns.filter(key => availableColumns.includes(key));
+
   return (
     <div className={styles.root}>
       <section className={portalStyles.panel}>
@@ -116,8 +334,18 @@ export default function ClientDevicesListTab({
             <span className={portalStyles.panelCount}>{activeCategory.count}</span>
             <button
               type="button"
+              className={styles.toolBtn}
+              onClick={() => setColumnsModalOpen(true)}
+              title={t.columnsBtn}
+              aria-label={t.columnsBtn}
+            >
+              <FaColumns aria-hidden />
+              <span className={styles.toolBtnLabel}>{t.columnsBtn}</span>
+            </button>
+            <button
+              type="button"
               className={styles.exportBtn}
-              onClick={() => onExport?.(activeCategory)}
+              onClick={() => onExport?.(activeCategory, displayedColumns)}
               disabled={!activeCategory.items?.length}
             >
               <Icon icon="mdi:file-delimited-outline" aria-hidden />
@@ -128,10 +356,23 @@ export default function ClientDevicesListTab({
         <EquipmentTable
           familyKey={activeCategory.key}
           items={activeCategory.items}
+          columns={displayedColumns.length ? displayedColumns : ["name"]}
           copy={t}
           locale={locale}
         />
       </section>
+
+      <ColumnsModal
+        open={columnsModalOpen}
+        familyKey={activeCategory.key}
+        availableColumns={availableColumns}
+        visibleColumns={displayedColumns.length ? displayedColumns : ["name"]}
+        onToggle={toggleColumn}
+        onClose={() => setColumnsModalOpen(false)}
+        copy={t}
+        locale={locale}
+        devicesCopy={t}
+      />
     </div>
   );
 }

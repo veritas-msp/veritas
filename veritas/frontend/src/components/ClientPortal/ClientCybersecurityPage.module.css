@@ -1,0 +1,37 @@
+.root {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.solutionRoot {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.sectionTabBar {
+  flex-wrap: wrap;
+}
+
+.sectionPane {
+  min-width: 0;
+}
+
+.syncHint,
+.manualHint {
+  display: inline-flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: var(--msp-radius, 10px);
+  background: color-mix(in srgb, var(--msp-surface, #fff) 92%, var(--msp-primary, #2563eb) 8%);
+  color: var(--msp-muted, #6b7a90);
+  font-size: 0.85rem;
+  line-height: 1.4;
+}
+
+.manualHint {
+  margin-top: 12px;
+}

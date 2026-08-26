@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { Icon } from "@iconify/react";
 import { FaTimes } from "react-icons/fa";
@@ -8,6 +8,8 @@ import {
   getDefaultCsvExportKeys
 } from "./equipmentCsvExportFields";
 import styles from "./EquipmentCsvExportModal.module.css";
+
+const EMPTY_ARRAY = Object.freeze([]);
 
 const GROUP_LABELS = {
   fr: {
@@ -50,20 +52,29 @@ function getCopy(locale) {
   return String(locale || "fr").toLowerCase().startsWith("en") ? GROUP_LABELS.en : GROUP_LABELS.fr;
 }
 
+function resolveInitialKeys(defaultKeys, equipmentType, customFields, fields) {
+  const available = new Set(fields.map(field => field.key));
+  const fromDefaults = (Array.isArray(defaultKeys) ? defaultKeys : []).filter(key => available.has(key));
+  if (fromDefaults.length > 0) return fromDefaults;
+  return getDefaultCsvExportKeys(equipmentType, EMPTY_ARRAY, customFields).filter(key => available.has(key));
+}
+
 export default function EquipmentCsvExportModal({
   open,
   locale = "fr",
   equipmentType,
   typeLabel,
-  defaultKeys = [],
-  customFields = [],
+  defaultKeys = EMPTY_ARRAY,
+  customFields = EMPTY_ARRAY,
   onClose,
   onExport
 }) {
   const copy = useMemo(() => getCopy(locale), [locale]);
+  const stableCustomFields = Array.isArray(customFields) ? customFields : EMPTY_ARRAY;
+  const stableDefaultKeys = Array.isArray(defaultKeys) ? defaultKeys : EMPTY_ARRAY;
   const fields = useMemo(
-    () => buildCsvExportFieldOptions(locale, equipmentType, customFields),
-    [locale, equipmentType, customFields]
+    () => buildCsvExportFieldOptions(locale, equipmentType, stableCustomFields),
+    [locale, equipmentType, stableCustomFields]
   );
   const groups = useMemo(() => {
     const order = getCsvExportGroupOrder();
@@ -75,15 +86,36 @@ export default function EquipmentCsvExportModal({
       }))
       .filter(group => group.fields.length > 0);
   }, [copy, fields]);
-  const [selected, setSelected] = useState(() => new Set(defaultKeys));
+
+  const [selected, setSelected] = useState(() => new Set());
+  const tableDefaultsRef = useRef(EMPTY_ARRAY);
+  const initSnapshotRef = useRef({
+    defaultKeys: EMPTY_ARRAY,
+    equipmentType: null,
+    customFields: EMPTY_ARRAY,
+    fields: EMPTY_ARRAY
+  });
+
+  // Keep latest props for toolbar actions without resetting selection on re-render.
+  initSnapshotRef.current = {
+    defaultKeys: stableDefaultKeys,
+    equipmentType,
+    customFields: stableCustomFields,
+    fields
+  };
 
   useEffect(() => {
     if (!open) return;
-    const defaults = defaultKeys?.length
-      ? defaultKeys
-      : getDefaultCsvExportKeys(equipmentType, [], customFields);
-    setSelected(new Set(defaults.filter(key => fields.some(field => field.key === key))));
-  }, [open, defaultKeys, equipmentType, customFields, fields]);
+    const snapshot = initSnapshotRef.current;
+    const initialKeys = resolveInitialKeys(
+      snapshot.defaultKeys,
+      snapshot.equipmentType,
+      snapshot.customFields,
+      snapshot.fields
+    );
+    tableDefaultsRef.current = initialKeys;
+    setSelected(new Set(initialKeys));
+  }, [open]);
 
   useEffect(() => {
     if (!open) return undefined;
@@ -110,14 +142,22 @@ export default function EquipmentCsvExportModal({
     });
   };
 
-  const selectAll = () => setSelected(new Set(fields.map(field => field.key)));
-  const selectDefaults = () => {
-    const defaults = defaultKeys?.length
-      ? defaultKeys
-      : getDefaultCsvExportKeys(equipmentType, [], customFields);
-    setSelected(new Set(defaults.filter(key => fields.some(field => field.key === key))));
+  const selectAll = () => {
+    setSelected(new Set(fields.map(field => field.key)));
   };
-  const clearAll = () => setSelected(new Set());
+
+  const selectDefaults = () => {
+    const available = new Set(fields.map(field => field.key));
+    const defaults = (tableDefaultsRef.current?.length
+      ? tableDefaultsRef.current
+      : resolveInitialKeys(stableDefaultKeys, equipmentType, stableCustomFields, fields)
+    ).filter(key => available.has(key));
+    setSelected(new Set(defaults));
+  };
+
+  const clearAll = () => {
+    setSelected(new Set());
+  };
 
   const handleExport = () => {
     const orderedKeys = fields.map(field => field.key).filter(key => selected.has(key));
@@ -126,6 +166,8 @@ export default function EquipmentCsvExportModal({
   };
 
   const selectedCount = selected.size;
+  const allSelected = fields.length > 0 && selectedCount === fields.length;
+  const noneSelected = selectedCount === 0;
 
   return createPortal(
     <div className={styles.overlay} onClick={onClose} role="presentation">
@@ -159,10 +201,20 @@ export default function EquipmentCsvExportModal({
           <button type="button" className={styles.toolBtn} onClick={selectDefaults}>
             {copy.selectDefaults}
           </button>
-          <button type="button" className={styles.toolBtn} onClick={selectAll}>
+          <button
+            type="button"
+            className={styles.toolBtn}
+            onClick={selectAll}
+            disabled={allSelected || fields.length === 0}
+          >
             {copy.selectAll}
           </button>
-          <button type="button" className={styles.toolBtn} onClick={clearAll}>
+          <button
+            type="button"
+            className={styles.toolBtn}
+            onClick={clearAll}
+            disabled={noneSelected}
+          >
             {copy.clear}
           </button>
           <span className={styles.count}>
