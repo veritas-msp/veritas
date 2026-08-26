@@ -169,7 +169,8 @@ function ColumnsModal({
   onClose,
   copy,
   locale,
-  devicesCopy
+  devicesCopy,
+  customFields = []
 }) {
   if (!open) return null;
   return createPortal(
@@ -212,7 +213,7 @@ function ColumnsModal({
                     disabled={locked}
                     onChange={() => onToggle(colKey)}
                   />
-                  <span>{getPortalColumnLabel(locale, familyKey, colKey, devicesCopy)}</span>
+                  <span>{getPortalColumnLabel(locale, familyKey, colKey, devicesCopy, customFields)}</span>
                 </label>
               );
             })}
@@ -229,7 +230,7 @@ function ColumnsModal({
   );
 }
 
-function EquipmentTable({ familyKey, items, columns, copy, locale }) {
+function EquipmentTable({ familyKey, items, columns, copy, locale, customFields = [] }) {
   if (!items.length) {
     return <p className={styles.emptyCategory}>{copy.noItemsInCategory}</p>;
   }
@@ -240,7 +241,7 @@ function EquipmentTable({ familyKey, items, columns, copy, locale }) {
           <thead>
             <tr>
               {columns.map(colKey => (
-                <th key={colKey}>{getPortalColumnLabel(locale, familyKey, colKey, copy)}</th>
+                <th key={colKey}>{getPortalColumnLabel(locale, familyKey, colKey, copy, customFields)}</th>
               ))}
             </tr>
           </thead>
@@ -276,7 +277,16 @@ function EquipmentTable({ familyKey, items, columns, copy, locale }) {
                       </td>
                     );
                   }
-                  return <td key={colKey}>{formatPortalFieldDisplay(item, colKey, copy)}</td>;
+                  return (
+                    <td key={colKey}>
+                      {formatPortalFieldDisplay(
+                        item,
+                        colKey,
+                        copy,
+                        customFields.find(field => (field?.fieldKey || field?.key) === colKey)
+                      )}
+                    </td>
+                  );
                 })}
               </tr>
             ))}
@@ -299,13 +309,14 @@ export default function ClientDevicesListTab({
     () => categories.find(cat => cat.key === activeFamilyKey) || categories[0] || null,
     [categories, activeFamilyKey]
   );
+  const customFields = Array.isArray(activeCategory?.fields) ? activeCategory.fields : null;
   const defaultColumns = useMemo(
-    () => (activeCategory ? getPortalTableColumns(activeCategory.key) : []),
-    [activeCategory]
+    () => (activeCategory ? getPortalTableColumns(activeCategory.key, customFields || []) : []),
+    [activeCategory, customFields]
   );
   const availableColumns = useMemo(
-    () => (activeCategory ? getPortalAvailableTableColumns(activeCategory.key) : []),
-    [activeCategory]
+    () => (activeCategory ? getPortalAvailableTableColumns(activeCategory.key, customFields || []) : []),
+    [activeCategory, customFields]
   );
   const [visibleColumns, setVisibleColumns] = useState(defaultColumns);
   const [columnsModalOpen, setColumnsModalOpen] = useState(false);
@@ -315,11 +326,11 @@ export default function ClientDevicesListTab({
       setVisibleColumns([]);
       return;
     }
-    const allowed = getPortalAvailableTableColumns(activeCategory.key);
+    const allowed = getPortalAvailableTableColumns(activeCategory.key, activeCategory.fields || []);
     setVisibleColumns(readStoredColumns(
       activeCategory.key,
       allowed,
-      getPortalTableColumns(activeCategory.key)
+      getPortalTableColumns(activeCategory.key, activeCategory.fields || [])
     ));
     setColumnsModalOpen(false);
   }, [activeCategory?.key]);
@@ -392,6 +403,7 @@ export default function ClientDevicesListTab({
           columns={displayedColumns.length ? displayedColumns : ["name"]}
           copy={t}
           locale={locale}
+          customFields={customFields || []}
         />
       </section>
 
@@ -407,6 +419,7 @@ export default function ClientDevicesListTab({
         copy={t}
         locale={locale}
         devicesCopy={t}
+        customFields={customFields || []}
       />
     </div>
   );

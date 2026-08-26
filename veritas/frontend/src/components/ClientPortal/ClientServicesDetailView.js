@@ -292,7 +292,7 @@ export default function ClientServicesDetailView({ cloudServices = [] }) {
       />
 
       {activeGroup?.type === "o365" ? (
-        <ClientPortalTenantView items={activeGroup.items} copy={t} />
+        <ClientPortalTenantView items={activeGroup.items} copy={t} formatDate={copy.formatPortalDate} />
       ) : activeGroup?.type === "save" ? (
         <BackupView items={activeGroup.items} copy={t} formatDate={copy.formatPortalDate} />
       ) : activeGroup?.type === "ndd" ? (

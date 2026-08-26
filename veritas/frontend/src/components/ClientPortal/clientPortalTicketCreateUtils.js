@@ -102,9 +102,9 @@ export function buildPortalClientEquipments(dashboard) {
         id: item.id,
         type: groupLabel,
         name: item.name || item.label || groupLabel,
-        serial: item.serial || item.serial_number || "",
-        site: item.site || item.location || item.emplacement,
-        location: item.location || item.site || item.emplacement
+        serial: item.serial || item.serial_number || item.numeroSerie || "",
+        site: item.site || item.location || item.emplacement || item.fields?.site,
+        location: item.location || item.site || item.emplacement || item.fields?.location
       });
     });
   });

@@ -15,6 +15,7 @@ import { normalizeContactCommunications, syncLegacyContactFields, validateContac
 import { syncPortalUserFromContact, switchPortalCompany, listPortalCompaniesForContact } from "../../utils/contactPortal.js";
 import { buildSessionPayload, isImpersonationPayload, buildImpersonationClientPayload, setSessionCookie, signSessionToken } from "../../utils/authSession.js";
 import { contactBelongsToClient, pickHomeClientId } from "../../services/contactClientLinks.js";
+import { listClientCustomEquipment, listEquipmentFamilies } from "../../utils/equipmentFamilies.js";
 const router = express.Router();
 router.use(verifyJWT, requireRole("client"));
 const INFRA_TABLES = [{
@@ -469,6 +470,74 @@ function pickPortalEquipmentData(data) {
   }
   return out;
 }
+function sanitizePortalCustomFieldValue(value) {
+  if (value == null || value === "") return undefined;
+  if (typeof value === "boolean" || typeof value === "number") return value;
+  if (typeof value === "string") return value;
+  if (Array.isArray(value)) {
+    const labels = value.map(entry => {
+      if (entry == null || entry === "") return "";
+      if (typeof entry === "object") return entry.name || entry.label || "";
+      return String(entry);
+    }).filter(Boolean);
+    return labels.length ? labels.join(", ") : undefined;
+  }
+  return undefined;
+}
+function mapPortalCustomEquipmentItem(item, fieldKeys = []) {
+  const data = item?.data && typeof item.data === "object" ? item.data : {};
+  const fields = item?.fields && typeof item.fields === "object" ? item.fields : data;
+  const safe = pickPortalEquipmentData({
+    ...data,
+    ...fields
+  });
+  const customFields = {};
+  fieldKeys.forEach(key => {
+    if (!key || Object.prototype.hasOwnProperty.call(safe, key)) return;
+    const value = sanitizePortalCustomFieldValue(fields[key] ?? data[key]);
+    if (value === undefined) return;
+    customFields[key] = value;
+  });
+  return {
+    id: item.id,
+    active: item.isActive !== false,
+    monitored: false,
+    ...safe,
+    ...customFields,
+    name: item.name || safe.name || data.name || "Sans nom",
+    type: `custom:${item.familyKey}`,
+    familyKey: item.familyKey,
+    site: safe.site || data.site || data.location || fields.site || "",
+    location: safe.location || data.location || data.site || fields.location || fields.site || ""
+  };
+}
+async function fetchPortalCustomFamilies(clientId) {
+  try {
+    const [families, items] = await Promise.all([listEquipmentFamilies({
+      includeDisabled: false
+    }), listClientCustomEquipment(clientId)]);
+    return (families || []).map(family => {
+      const fieldKeys = (family.fields || []).map(field => field.fieldKey).filter(Boolean);
+      const familyItems = (items || []).filter(item => item.familyKey === family.familyKey).map(item => mapPortalCustomEquipmentItem(item, fieldKeys));
+      return {
+        type: `custom:${family.familyKey}`,
+        familyKey: family.familyKey,
+        custom: true,
+        label: family.label,
+        icon: family.icon || "mdi:devices",
+        fields: (family.fields || []).map(field => ({
+          fieldKey: field.fieldKey,
+          label: field.label,
+          fieldType: field.fieldType
+        })),
+        items: familyItems
+      };
+    });
+  } catch (err) {
+    if (err.code === "42P01") return [];
+    throw err;
+  }
+}
 async function fetchClientComputersForPortal(clientId) {
   const table = "v_b_clients_m_ordinateurs";
   try {
@@ -602,7 +671,9 @@ router.get("/dashboard", async (req, res) => {
     })))).flat();
     const computers = await fetchClientComputersForPortal(clientId);
     const computerCount = computers.length;
-    const allItems = [...infraItems, ...cloudItems];
+    const customFamilies = await fetchPortalCustomFamilies(clientId);
+    const customItems = customFamilies.flatMap(group => group.items || []);
+    const allItems = [...infraItems, ...cloudItems, ...customItems];
     const activeCount = allItems.filter(i => i.active).length + computerCount;
     let tickets = [];
     try {
@@ -662,10 +733,10 @@ router.get("/dashboard", async (req, res) => {
         vaultFileCount
       },
       computers,
-      infrastructure: INFRA_TABLES.map(t => ({
+      infrastructure: [...INFRA_TABLES.map(t => ({
         ...t,
         items: infraItems.filter(i => i.type === t.type)
-      })).filter(g => g.items.length > 0),
+      })).filter(g => g.items.length > 0), ...customFamilies],
       cloudServices: CLOUD_TABLES.map(t => ({
         ...t,
         items: cloudItems.filter(i => i.type === t.type)

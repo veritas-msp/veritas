@@ -70,13 +70,15 @@ export default function ClientDevicesPage() {
       });
     }
     (data.infrastructure || []).forEach(group => {
-      if (!group?.items?.length) return;
+      if (!group?.custom && !group?.items?.length) return;
       list.push({
         key: group.type,
         label: group.label,
-        icon: group.icon || "mdi:server",
-        items: group.items.map(mapInfraItem),
-        count: group.items.length
+        icon: group.icon || "mdi:devices",
+        items: (group.items || []).map(mapInfraItem),
+        count: (group.items || []).length,
+        custom: Boolean(group.custom),
+        fields: Array.isArray(group.fields) ? group.fields : []
       });
     });
     return list;
@@ -113,18 +115,19 @@ export default function ClientDevicesPage() {
     }
     const keys = Array.isArray(visibleKeys) && visibleKeys.length
       ? visibleKeys
-      : getPortalTableColumns(category.key);
+      : getPortalTableColumns(category.key, category.fields || []);
     setCsvExport({
       familyKey: category.key,
       typeLabel: category.label,
       items: category.items,
-      defaultKeys: getPortalCsvDefaultKeys(category.key, keys)
+      customFields: category.fields || [],
+      defaultKeys: getPortalCsvDefaultKeys(category.key, keys, category.fields || [])
     });
   };
 
   const handleCsvExport = keys => {
     if (!csvExport) return;
-    const csv = buildPortalCsvContent(csvExport.items, keys, locale, csvExport.familyKey, t);
+    const csv = buildPortalCsvContent(csvExport.items, keys, locale, csvExport.familyKey, t, csvExport.customFields);
     const date = new Date().toISOString().split("T")[0];
     downloadPortalCsv(csv, `${slugifyPortalCsvName(csvExport.typeLabel)}_${date}.csv`);
     setCsvExport(null);
@@ -230,6 +233,7 @@ export default function ClientDevicesPage() {
         equipmentType={csvExport ? getPortalExportType(csvExport.familyKey) : "Servers"}
         typeLabel={csvExport?.typeLabel || ""}
         defaultKeys={csvExport?.defaultKeys}
+        customFields={csvExport?.customFields || []}
         onClose={() => setCsvExport(null)}
         onExport={handleCsvExport}
       />

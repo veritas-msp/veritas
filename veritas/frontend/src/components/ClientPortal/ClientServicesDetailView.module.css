@@ -39,6 +39,77 @@
   grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
 }
 
+.tenantSearch {
+  display: block;
+  width: min(360px, 100%);
+  margin: 12px 0;
+  padding: 8px 12px;
+  border-radius: var(--msp-radius-sm, 10px);
+  border: 1px solid var(--msp-border, var(--portal-border, #e4e8ee));
+  background: var(--msp-surface, var(--portal-surface, #fff));
+  color: var(--msp-text, var(--portal-text, #1a2332));
+  font: inherit;
+  font-size: 0.85rem;
+}
+
+.tenantSearch:focus {
+  outline: none;
+  border-color: var(--msp-accent, #2b5fab);
+  box-shadow: 0 0 0 3px rgba(43, 95, 171, 0.12);
+}
+
+:global(html.dark) .tenantSearch,
+:global(html.dark) .tenantPicker select {
+  background: var(--msp-surface, #1b2433);
+  border-color: var(--msp-border, #2d3a4d);
+  color: var(--msp-text, #e8eef6);
+}
+
+.tenantSubTitle {
+  margin: 16px 0 10px;
+  font-size: 0.82rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--msp-muted, var(--portal-text-muted, #6b7a90));
+}
+
+.tenantAppsGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.tenantTableWrap {
+  overflow: auto;
+  margin-top: 4px;
+  max-height: 560px;
+}
+
+.tenantAppTable {
+  min-width: 420px;
+}
+
+.tenantPicker {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--msp-muted, var(--portal-text-muted, #6b7a90));
+}
+
+.tenantPicker select {
+  min-width: 220px;
+  padding: 8px 12px;
+  border-radius: var(--msp-radius-sm, 10px);
+  border: 1px solid var(--msp-border, var(--portal-border, #e4e8ee));
+  background: var(--msp-surface, var(--portal-surface, #fff));
+  color: var(--msp-text, var(--portal-text, #1a2332));
+  font: inherit;
+  font-weight: 600;
+}
+
 .expBadge {
   display: inline-flex;
   flex-direction: column;
@@ -84,5 +155,9 @@
 @media (max-width: 768px) {
   .serviceTable {
     min-width: 560px;
+  }
+
+  .tenantAppsGrid {
+    grid-template-columns: 1fr;
   }
 }

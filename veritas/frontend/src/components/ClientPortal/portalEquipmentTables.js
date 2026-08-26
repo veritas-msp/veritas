@@ -53,19 +53,38 @@ function formatCsvCell(value) {
   return text;
 }
 
+export function isPortalCustomFamilyKey(familyKey) {
+  return String(familyKey || "").startsWith("custom:");
+}
+
+export function getPortalCustomFieldKeys(customFields = []) {
+  return (Array.isArray(customFields) ? customFields : [])
+    .map(field => field?.fieldKey || field?.key)
+    .filter(Boolean);
+}
+
 export function getPortalExportType(familyKey) {
+  if (isPortalCustomFamilyKey(familyKey)) {
+    return `Custom:${String(familyKey).slice("custom:".length)}`;
+  }
   return PORTAL_TYPE_TO_EXPORT[familyKey] || "Servers";
 }
 
-export function getPortalTableColumns(familyKey) {
+export function getPortalTableColumns(familyKey, customFields = []) {
+  if (isPortalCustomFamilyKey(familyKey)) {
+    const fieldKeys = getPortalCustomFieldKeys(customFields);
+    return ["name", ...fieldKeys.filter(key => key !== "name"), "location", "activeStatus"].filter(
+      (key, index, list) => list.indexOf(key) === index
+    );
+  }
   const exportType = getPortalExportType(familyKey);
   return TABLE_COLUMNS_BY_EXPORT_TYPE[exportType] || ["name", "activeStatus", "monitoring"];
 }
 
-export function getPortalAvailableTableColumns(familyKey) {
+export function getPortalAvailableTableColumns(familyKey, customFields = []) {
   const exportType = getPortalExportType(familyKey);
-  const defaults = getPortalTableColumns(familyKey);
-  const exportKeys = getCsvExportKeysForType(exportType).filter(key => {
+  const defaults = getPortalTableColumns(familyKey, customFields);
+  const exportKeys = getCsvExportKeysForType(exportType, customFields).filter(key => {
     if (!key || CSV_EXPORT_EXCLUDED_KEYS.has(key) || key === "client") return false;
     return true;
   });
@@ -81,14 +100,18 @@ export function getPortalAvailableTableColumns(familyKey) {
   return merged;
 }
 
-export function getPortalColumnLabel(locale, familyKey, colKey, copy) {
+export function getPortalColumnLabel(locale, familyKey, colKey, copy, customFields = []) {
   if (colKey === "activeStatus") return copy.tableStatus;
   if (colKey === "monitoring") return copy.tableSupervision;
   if (colKey === "agentStatus") return copy.tableSupervision;
+  const customLabel = (Array.isArray(customFields) ? customFields : []).find(
+    field => (field?.fieldKey || field?.key) === colKey
+  )?.label;
+  if (customLabel) return customLabel;
   const exportType = getPortalExportType(familyKey);
   const equipmentLabel = getEquipmentColumnLabel(locale, exportType, colKey);
   if (equipmentLabel && equipmentLabel !== colKey) return equipmentLabel;
-  const csvLabel = getCsvExportFieldLabel(locale, exportType, colKey);
+  const csvLabel = getCsvExportFieldLabel(locale, exportType, colKey, customFields);
   return (csvLabel && csvLabel !== colKey ? csvLabel : equipmentLabel) || colKey;
 }
 
@@ -126,12 +149,16 @@ export function getPortalEquipmentField(item, key) {
       if (item.monitored || item.agentManaged || item.agent_id || item.agentId || item.checkmk_host_name) return "supervised";
       return "none";
     }
-    default:
+    default: {
+      if (item?.[key] != null && item[key] !== "") return item[key];
+      if (item?.fields?.[key] != null && item.fields[key] !== "") return item.fields[key];
+      if (item?.data?.[key] != null && item.data[key] !== "") return item.data[key];
       return pick(item, key);
+    }
   }
 }
 
-export function formatPortalFieldDisplay(item, key, copy) {
+export function formatPortalFieldDisplay(item, key, copy, fieldDef) {
   const value = getPortalEquipmentField(item, key);
   if (key === "activeStatus") return value ? copy.statusActive : copy.statusInactive;
   if (key === "monitoring") return value ? copy.supervised : copy.notSupervised;
@@ -141,7 +168,13 @@ export function formatPortalFieldDisplay(item, key, copy) {
     if (value === "supervised") return copy.supervised;
     return copy.notSupervised;
   }
-  if (typeof value === "boolean") return value ? copy.statusActive : copy.statusInactive;
+  if (fieldDef?.fieldType === "boolean" || typeof value === "boolean") {
+    return value ? copy.statusActive : copy.statusInactive;
+  }
+  if (fieldDef?.fieldType === "date" && value) {
+    const date = new Date(value);
+    if (!Number.isNaN(date.getTime())) return date.toLocaleDateString();
+  }
   if (Array.isArray(value)) {
     const labels = value.map(entry => {
       if (entry == null || entry === "") return "";
@@ -153,16 +186,16 @@ export function formatPortalFieldDisplay(item, key, copy) {
   return value || "—";
 }
 
-export function getPortalCsvDefaultKeys(familyKey, visibleKeys = []) {
-  return getDefaultCsvExportKeys(getPortalExportType(familyKey), visibleKeys);
+export function getPortalCsvDefaultKeys(familyKey, visibleKeys = [], customFields = []) {
+  return getDefaultCsvExportKeys(getPortalExportType(familyKey), visibleKeys, customFields);
 }
 
-export function getPortalCsvFieldLabel(locale, familyKey, key) {
-  return getCsvExportFieldLabel(locale, getPortalExportType(familyKey), key);
+export function getPortalCsvFieldLabel(locale, familyKey, key, customFields = []) {
+  return getCsvExportFieldLabel(locale, getPortalExportType(familyKey), key, customFields);
 }
 
-export function buildPortalCsvContent(items, keys, locale, familyKey, copy) {
-  const headers = keys.map(key => getPortalCsvFieldLabel(locale, familyKey, key));
+export function buildPortalCsvContent(items, keys, locale, familyKey, copy, customFields = []) {
+  const headers = keys.map(key => getPortalCsvFieldLabel(locale, familyKey, key, customFields));
   const rows = items.map(item => keys.map(key => {
     if (key === "activeStatus") return isActiveItem(item) ? copy.statusActive : copy.statusInactive;
     if (key === "monitoring") {

@@ -95,7 +95,7 @@ export function filterPortalDashboardBySite(dashboard, siteFilter) {
       ...group,
       items: filterBySite(group.items, siteFilter)
     }))
-    .filter(group => group.items.length > 0);
+    .filter(group => group.custom || group.items.length > 0);
   const cloudServices = (dashboard.cloudServices || [])
     .map(group => ({
       ...group,

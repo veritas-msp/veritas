@@ -56,22 +56,6 @@ function mapLicenseRows(licences = []) {
     expiration: pickDate(lic.expirationDate, lic.expiration)
   })).filter(lic => lic.name);
 }
-/** Licences au format attendu par les onglets agent (utilisees / nom). */
-function mapLicencesForTabs(licences = []) {
-  if (!Array.isArray(licences)) return [];
-  return licences.map(lic => {
-    const total = pickNumber(lic.total, lic.totalLicenses, lic.prepaidUnits?.enabled);
-    const utilisees = pickNumber(lic.utilisees, lic.consumed, lic.used, lic.usedLicenses, lic.consumedUnits);
-    const nom = pickString(lic.nom, lic.friendlyName, lic.productName, lic.displayName, lic.name, lic.skuPartNumber);
-    return {
-      ...lic,
-      total: total ?? lic.total,
-      utilisees: utilisees ?? lic.utilisees,
-      nom: nom || lic.nom,
-      displayName: pickString(lic.displayName, lic.friendlyName, lic.productName, lic.nom, lic.name) || nom
-    };
-  });
-}
 function formatUserLicenseLabel(licenses) {
   if (typeof licenses === "string" && licenses.trim()) return licenses.trim();
   if (!Array.isArray(licenses) || !licenses.length) return "";
@@ -80,21 +64,51 @@ function formatUserLicenseLabel(licenses) {
     return pickString(lic?.friendlyName, lic?.productName, lic?.skuPartNumber, lic?.displayName, lic?.name, lic?.nom);
   }).filter(Boolean).join(", ");
 }
-function mapUsersForPortal(users = []) {
+function userHasMfaEnabled(user) {
+  if (user?.has_mfa === true || user?.hasMfa === true || user?.mfaEnabled === true) return true;
+  if (user?.has_mfa === false || user?.hasMfa === false || user?.mfaEnabled === false) return false;
+  const methods = user?.mfa_methods || user?.mfaMethods || [];
+  if (!Array.isArray(methods) || !methods.length) return null;
+  const ignored = new Set(["passwordauthenticationmethod", "password", "windowshelloforbusinessauthenticationmethod"]);
+  return methods.some(method => !ignored.has(String(method || "").toLowerCase()));
+}
+function pickMfaDetails(data = {}) {
+  if (Array.isArray(data.mfaDetails) && data.mfaDetails.length) return data.mfaDetails;
+  if (Array.isArray(data.userMfaDetails) && data.userMfaDetails.length) return data.userMfaDetails;
+  const security = pickWorkload(data, "securityData", "security") || {};
+  if (Array.isArray(security.mfaDetails) && security.mfaDetails.length) return security.mfaDetails;
+  if (Array.isArray(security.userMfaDetails) && security.userMfaDetails.length) return security.userMfaDetails;
+  return [];
+}
+function findMfaEntry(user, mfaDetails = []) {
+  if (!Array.isArray(mfaDetails) || !mfaDetails.length || !user) return null;
+  const upn = String(user.userPrincipalName || user.email || user.mail || "").toLowerCase();
+  const id = String(user.id || user.userId || "");
+  return mfaDetails.find(entry => {
+    const entryUpn = String(entry.userPrincipalName || entry.upn || entry.email || "").toLowerCase();
+    const entryId = String(entry.id || entry.userId || "");
+    return (entryUpn && upn && entryUpn === upn) || (id && entryId && entryId === id);
+  }) || null;
+}
+function mapUsersForPortal(users = [], mfaDetails = []) {
   if (!Array.isArray(users)) return [];
-  return users.map(user => ({
-    ...user,
-    id: user.id || null,
-    displayName: pickString(user.displayName, user.name),
-    name: pickString(user.name, user.displayName),
-    userPrincipalName: pickString(user.userPrincipalName, user.email, user.mail),
-    email: pickString(user.email, user.mail, user.userPrincipalName),
-    accountEnabled: user.accountEnabled !== false,
-    lastLoginDate: user.lastLoginDate || user.lastSignInDateTime || null,
-    createdDate: user.createdDate || user.createdDateTime || null,
-    licenses: formatUserLicenseLabel(user.licenses) || formatUserLicenseLabel(user.assignedLicenses),
-    isAdmin: Boolean(user.isAdmin || user.isGlobalAdmin || user.isCompanyAdmin)
-  }));
+  return users.map(user => {
+    const mfa = findMfaEntry(user, mfaDetails);
+    const mfaFields = mfa ? {
+      has_mfa: mfa.has_mfa ?? mfa.hasMfa ?? user.has_mfa,
+      mfa_methods: mfa.mfa_methods || mfa.mfaMethods || user.mfa_methods || user.mfaMethods
+    } : user;
+    return {
+      id: user.id || null,
+      name: pickString(user.displayName, user.name) || "—",
+      email: pickString(user.userPrincipalName, user.email, user.mail),
+      accountEnabled: user.accountEnabled !== false,
+      lastLoginDate: pickDate(user.lastLoginDate, user.lastSignInDateTime),
+      licenses: formatUserLicenseLabel(user.licenses) || formatUserLicenseLabel(user.assignedLicenses),
+      isAdmin: Boolean(user.isAdmin || user.isGlobalAdmin || user.isCompanyAdmin || mfa?.is_admin || mfa?.isAdmin),
+      mfaEnabled: userHasMfaEnabled(mfaFields)
+    };
+  });
 }
 function pickWorkload(data, camelKey, shortKey) {
   if (!data || typeof data !== "object") return null;
@@ -102,35 +116,143 @@ function pickWorkload(data, camelKey, shortKey) {
   if (value == null) return null;
   return value;
 }
+function asList(value) {
+  if (Array.isArray(value)) return value;
+  if (Array.isArray(value?.value)) return value.value;
+  return [];
+}
+function mapO365Licenses(rawLicences = []) {
+  return mapLicenseRows(rawLicences).filter(lic => {
+    const total = lic.total ?? 0;
+    return total > 0 && total < 10000;
+  }).map(lic => ({
+    ...lic,
+    available: Math.max(0, (lic.total ?? 0) - (lic.used ?? 0))
+  }));
+}
+function summarizeExchange(raw) {
+  if (!raw || raw.success === false) return null;
+  const activity = raw.emailActivity || {};
+  const mailboxes = raw.mailboxes || raw.Mailboxes || {};
+  const quotas = Array.isArray(mailboxes.quotas) ? mailboxes.quotas : [];
+  const sent = pickNumber(activity.sent) || 0;
+  const received = pickNumber(activity.received) || 0;
+  const read = pickNumber(activity.read) || 0;
+  const mailboxCount = pickNumber(mailboxes.total, mailboxes.count, quotas.length);
+  if (!mailboxCount && !sent && !received && !read && !quotas.length) return null;
+  const quotasFull = quotas.filter(quota => {
+    const used = Number(quota.storageUsed || quota.used || 0);
+    const limit = Number(quota.storageLimit || quota.prohibitSendQuota || quota.quota || 0);
+    if (limit > 0) return used / limit >= 0.9;
+    return used / (1024 * 1024 * 1024) > 50;
+  }).length;
+  return {
+    mailboxCount,
+    sent,
+    received,
+    read,
+    storage: mailboxes.totalSize || null,
+    quotasFull: quotas.length ? quotasFull : null
+  };
+}
+function summarizeTeams(raw) {
+  if (!raw || raw.success === false) return null;
+  const list = asList(raw?.teams?.teamsList).length
+    ? asList(raw.teams.teamsList)
+    : asList(raw?.teamsList).length
+      ? asList(raw.teamsList)
+      : asList(raw?.teams);
+  if (!list.length && raw.teamsCount == null && raw.total == null) return null;
+  return {
+    teamCount: pickNumber(raw.teams?.total, raw.teamsCount, raw.total, list.length) || list.length,
+    teams: list.slice(0, 100).map((team, index) => ({
+      id: team.id || `team-${index}`,
+      name: pickString(team.displayName, team.name) || "—",
+      members: pickNumber(team.memberCount) || 0,
+      channels: pickNumber(team.channelCount) || 0,
+      visibility: String(team.visibility || "").toLowerCase() === "private" ? "private" : "public"
+    }))
+  };
+}
+function summarizeSharePoint(raw) {
+  if (!raw || raw.success === false) return null;
+  const sites = asList(raw.sites);
+  if (!sites.length && raw.storageUsed == null) return null;
+  return {
+    siteCount: sites.length,
+    storageUsed: raw.storageUsed ?? null,
+    sites: sites.slice(0, 100).map((site, index) => ({
+      id: site.id || `site-${index}`,
+      name: pickString(site.name, site.displayName) || "—",
+      url: pickString(site.webUrl, site.url),
+      lastActivity: pickDate(site.lastActivityDate, site.lastModifiedDateTime),
+      active: site.isActive !== false
+    }))
+  };
+}
+function summarizeOneDrive(raw) {
+  if (!raw || raw.success === false) return null;
+  const storage = raw.storage || {};
+  if (storage.totalUsed == null && storage.totalFiles == null && storage.averagePerUser == null) return null;
+  return {
+    totalUsed: storage.totalUsed ?? null,
+    totalFiles: pickNumber(storage.totalFiles),
+    averagePerUser: storage.averagePerUser ?? null
+  };
+}
+function summarizeSecurity(raw, users = []) {
+  const score = raw?.secureScore || {};
+  const current = pickNumber(score.currentScore, raw?.secureScoreCurrent);
+  const max = pickNumber(score.maxScore, raw?.secureScoreMax) || 100;
+  const pct = pickNumber(score.percentage) ?? (current != null && max ? Math.round(current / max * 100) : null);
+  const recos = Array.isArray(raw?.secureScoreRecommendations) ? raw.secureScoreRecommendations : [];
+  const recommendations = recos.slice(0, 12).map((rec, index) => ({
+    id: rec.id || rec.controlName || `reco-${index}`,
+    title: pickString(rec.title, rec.controlName, rec.controlDisplayName) || "—",
+    score: pickNumber(rec.maxScore, rec.scoreInPercentage, rec.score)
+  })).filter(rec => rec.title !== "—");
+  const knownMfa = users.filter(user => user.mfaEnabled != null);
+  const mfaEnabled = knownMfa.filter(user => user.mfaEnabled === true).length;
+  const mfaCoverage = knownMfa.length ? Math.round(mfaEnabled / knownMfa.length * 100) : null;
+  if (pct == null && !recommendations.length && mfaCoverage == null) return null;
+  return {
+    secureScore: current,
+    secureScoreMax: max,
+    secureScorePct: pct,
+    recommendations,
+    mfaEnabled,
+    mfaKnown: knownMfa.length,
+    mfaCoverage
+  };
+}
 function mapO365Details(row, data) {
   const rawLicences = Array.isArray(data.licences)
     ? data.licences
     : Array.isArray(data.licenses)
       ? data.licenses
       : [];
-  const licences = mapLicenseRows(rawLicences);
-  const totalLicenses = licences.reduce((sum, lic) => sum + (lic.total ?? 0), 0);
-  const usedLicenses = licences.reduce((sum, lic) => sum + (lic.used ?? 0), 0);
-  const users = mapUsersForPortal(data.users);
+  const licenses = mapO365Licenses(rawLicences);
+  const totalLicenses = licenses.reduce((sum, lic) => sum + (lic.total ?? 0), 0);
+  const usedLicenses = licenses.reduce((sum, lic) => sum + (lic.used ?? 0), 0);
+  const users = mapUsersForPortal(data.users, pickMfaDetails(data));
+  const security = summarizeSecurity(pickWorkload(data, "securityData", "security"), users);
   return {
     kind: "o365",
     product: pickString(data.tenantName, data.organization, row.name, "Microsoft 365"),
     tenantName: pickString(data.tenantName, data.organization, row.name),
     tenantId: data.tenantId || data.tenant_id || null,
     userCount: users.length || pickNumber(data.userCount, data.nombreUtilisateurs),
-    licensesTotal: totalLicenses || null,
-    licensesUsed: usedLicenses || null,
-    licenses: licences,
-    licences: mapLicencesForTabs(rawLicences),
+    licensesTotal: licenses.length ? totalLicenses : null,
+    licensesUsed: licenses.length ? usedLicenses : null,
+    licenses,
     users,
-    exchange: pickWorkload(data, "exchangeData", "exchange"),
-    teams: pickWorkload(data, "teamsData", "teams"),
-    sharepoint: pickWorkload(data, "sharepointData", "sharepoint"),
-    onedrive: pickWorkload(data, "onedriveData", "onedrive"),
-    security: pickWorkload(data, "securityData", "security"),
-    adoptionScore: data.adoptionScore ?? null,
+    exchange: summarizeExchange(pickWorkload(data, "exchangeData", "exchange")),
+    teams: summarizeTeams(pickWorkload(data, "teamsData", "teams")),
+    sharepoint: summarizeSharePoint(pickWorkload(data, "sharepointData", "sharepoint")),
+    onedrive: summarizeOneDrive(pickWorkload(data, "onedriveData", "onedrive")),
+    security,
     lastUpdate: pickDate(data.lastUpdate, data.last_update, row.updated_at, row.updatedAt),
-    expiration: earliestDate(...licences.map(lic => lic.expiration).filter(Boolean), data.expiration)
+    expiration: earliestDate(...licenses.map(lic => lic.expiration).filter(Boolean), data.expiration)
   };
 }
 function sanitizePortalSyncData(syncData) {
