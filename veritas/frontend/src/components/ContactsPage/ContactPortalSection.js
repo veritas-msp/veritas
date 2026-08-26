@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Icon } from "@iconify/react";
 import { toast } from "react-toastify";
-import { createContactPortal, setContactPortalActive, resetContactPortalPassword, deleteContactPortal, impersonateContactPortal, stopPortalImpersonation, getPortalStatusFromContact, fetchClientPortalUsage } from "../../api/contactPortal";
+import { createContactPortal, setContactPortalActive, setContactPortalRole, resetContactPortalPassword, deleteContactPortal, impersonateContactPortal, stopPortalImpersonation, getPortalStatusFromContact, fetchClientPortalUsage } from "../../api/contactPortal";
 import { useAppFormatters, useAppLocale } from "../../hooks/useAppGeneralSettings";
 import { useVeritasEdition } from "../../hooks/useVeritasEdition";
 import { getCommunityClientPortalLimit } from "../../config/edition";
@@ -11,6 +11,33 @@ import ContactPortalPasswordModal from "./ContactPortalPasswordModal";
 import ContactPortalRevokeModal from "./ContactPortalRevokeModal";
 import PortalImpersonationOverlay from "./PortalImpersonationOverlay";
 import s from "./ContactPortalSection.module.css";
+function normalizePortalRole(value) {
+  return String(value || "").toLowerCase() === "supervisor" ? "supervisor" : "user";
+}
+function PortalRolePicker({
+  value,
+  onChange,
+  disabled,
+  copy
+}) {
+  const role = normalizePortalRole(value);
+  return <div className={s.roleCard}>
+      <div className={s.toggleText}>
+        <span className={s.toggleTitle}>{copy.roleTitle}</span>
+        <span className={s.toggleHint}>
+          {role === "supervisor" ? copy.roleSupervisorHint : copy.roleUserHint}
+        </span>
+      </div>
+      <div className={s.roleSeg} role="radiogroup" aria-label={copy.roleAria}>
+        <button type="button" role="radio" aria-checked={role === "user"} className={`${s.roleBtn} ${role === "user" ? s.roleBtnActive : ""}`.trim()} disabled={disabled} onClick={() => onChange("user")}>
+          {copy.roleUser}
+        </button>
+        <button type="button" role="radio" aria-checked={role === "supervisor"} className={`${s.roleBtn} ${role === "supervisor" ? s.roleBtnActive : ""}`.trim()} disabled={disabled} onClick={() => onChange("supervisor")}>
+          {copy.roleSupervisor}
+        </button>
+      </div>
+    </div>;
+}
 export default function ContactPortalSection({
   contact,
   onUpdated,
@@ -30,6 +57,7 @@ export default function ContactPortalSection({
   const [busy, setBusy] = useState(false);
   const [passwordModal, setPasswordModal] = useState(null);
   const [showRevoke, setShowRevoke] = useState(false);
+  const [createPortalRole, setCreatePortalRole] = useState("user");
   const [portalUsage, setPortalUsage] = useState({
     active: 0,
     max: maxPortalUsers
@@ -57,6 +85,9 @@ export default function ContactPortalSection({
   useEffect(() => {
     loadPortalUsage();
   }, [loadPortalUsage]);
+  useEffect(() => {
+    setCreatePortalRole(normalizePortalRole(contact?.portal_role));
+  }, [contact?.id, contact?.portal_role]);
   if (!contact?.id) return null;
   const activePortalCount = portalUsage.active;
   const portalAtLimit = maxPortalUsers != null && activePortalCount >= maxPortalUsers;
@@ -101,13 +132,27 @@ export default function ContactPortalSection({
   const handleCreate = async password => {
     setBusy(true);
     try {
-      await createContactPortal(contact.id, password);
+      await createContactPortal(contact.id, password, createPortalRole);
       toast.success(toastCopy.created);
       setPasswordModal(null);
       refresh();
     } catch (e) {
       toast.error(e.message);
       throw e;
+    } finally {
+      setBusy(false);
+    }
+  };
+  const handleRoleChange = async next => {
+    const role = normalizePortalRole(next);
+    if (role === normalizePortalRole(contact.portal_role)) return;
+    setBusy(true);
+    try {
+      await setContactPortalRole(contact.id, role);
+      toast.success(toastCopy.roleUpdated);
+      refresh();
+    } catch (e) {
+      toast.error(e.message || toastCopy.roleError);
     } finally {
       setBusy(false);
     }
@@ -262,6 +307,8 @@ export default function ContactPortalSection({
             </label> : null}
           </div>
 
+          <PortalRolePicker value={contact.portal_role} onChange={handleRoleChange} disabled={busy || !canManage} copy={portalCopy} />
+
           {canManage ? <div className={s.actions}>
             <button type="button" className={s.actionBtn} onClick={() => setPasswordModal("reset")} disabled={busy}>
               <Icon icon="mdi:key-outline" aria-hidden />
@@ -284,6 +331,7 @@ export default function ContactPortalSection({
           email: loginEmail
         })}
             </p>
+            <PortalRolePicker value={createPortalRole} onChange={setCreatePortalRole} disabled={busy} copy={portalCopy} />
             <button type="button" className={s.primaryBtn} onClick={openCreateModal} disabled={busy || contactInactive || portalAtLimit} title={portalAtLimit ? interpolate(portalCopy.limitTooltip, {
         max: String(maxPortalUsers)
       }) : undefined}>

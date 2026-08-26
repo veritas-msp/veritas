@@ -5,17 +5,16 @@ import multer from "multer";
 import { pool } from "../../database/db.js";
 import verifyJWT from "../../middleware/auth.js";
 import { requireRole } from "../../middleware/roles.js";
-import { addPortalTicketComment, updatePortalTicketComment, countPortalTicketsActionRequired, createPortalTicket, getPortalTicketDetail, getPortalUserContext, listPortalTickets, listPortalTicketsActionRequired, portalAttachmentUpload, submitPortalTicketSatisfaction, updatePortalTicketSatisfaction, submitPortalResolutionValidation } from "../../services/clientPortalTicketService.js";
+import { addPortalTicketComment, updatePortalTicketComment, assertPortalTicketVisible, countPortalTicketsActionRequired, createPortalTicket, getPortalTicketDetail, getPortalUserContext, listPortalTickets, listPortalTicketsActionRequired, portalAttachmentUpload, submitPortalTicketSatisfaction, updatePortalTicketSatisfaction, submitPortalResolutionValidation } from "../../services/clientPortalTicketService.js";
 import { countPortalVaultFiles, getPortalVaultFileRecord, listPortalVaultFiles, resolveClientFileDiskPath } from "../../services/clientPortalVaultService.js";
 import { countPortalVaultSecrets, listPortalVaultSecrets, revealPortalVaultSecret, requestPortalVaultSecretRevocation } from "../../services/clientVaultSecretService.js";
-import { isCommunity } from "../../utils/edition.js";
-import { COMMUNITY_SALES_TICKET_SQL_PLAIN } from "../../utils/ticketEditionGuard.js";
+import { normalizePortalTicketRole } from "../../utils/portalTicketRole.js";
 import { transformClientModulesToFrontend } from "../../utils/transformClientModules.js";
 import { expandCloudServiceRows } from "../../utils/portalCloudServices.js";
 import { normalizeContactCommunications, syncLegacyContactFields, validateContactCommunications } from "../../utils/contactCommunications.js";
 import { syncPortalUserFromContact, switchPortalCompany, listPortalCompaniesForContact } from "../../utils/contactPortal.js";
 import { buildSessionPayload, isImpersonationPayload, buildImpersonationClientPayload, setSessionCookie, signSessionToken } from "../../utils/authSession.js";
-import { contactBelongsToClient } from "../../services/contactClientLinks.js";
+import { contactBelongsToClient, pickHomeClientId } from "../../services/contactClientLinks.js";
 const router = express.Router();
 router.use(verifyJWT, requireRole("client"));
 const INFRA_TABLES = [{
@@ -115,7 +114,7 @@ function parseJsonField(value, fallback = {}) {
     return fallback;
   }
 }
-const CLIENT_DASHBOARD_COLUMNS = ["id", "name", "email", "phone", "address", "siret", "secteur", "contrat", "modules", "options", "commercial_id", "created_at"];
+const CLIENT_DASHBOARD_COLUMNS = ["id", "name", "email", "phone", "address", "siret", "secteur", "contrat", "modules", "options", "commercial_id", "created_at", "sites", "ssids", "ssid"];
 function extractLocationFromAddress(address) {
   if (!address) {
     return {
@@ -196,6 +195,57 @@ async function loadClientRow(clientId) {
     return rows[0] || null;
   }
 }
+function mapSitesForPortal(raw) {
+  const parsed = Array.isArray(raw) ? raw : parseJsonField(raw, []);
+  const list = Array.isArray(parsed) ? parsed : [];
+  return list.map((site, index) => {
+    if (typeof site === "string") {
+      const name = site.trim();
+      if (!name) return null;
+      return {
+        id: `legacy-${index}`,
+        name,
+        isPrimary: false,
+        addressCity: null,
+        addressPostalCode: null,
+        addressStreet: null,
+        sortOrder: index
+      };
+    }
+    if (!site || typeof site !== "object") return null;
+    const name = String(site.name || site.label || site.site || "").trim();
+    if (!name) return null;
+    return {
+      id: site.id || `legacy-${index}`,
+      name,
+      isPrimary: Boolean(site.isPrimary),
+      addressCity: site.addressCity || site.city || null,
+      addressPostalCode: site.addressPostalCode || site.postalCode || null,
+      addressStreet: site.addressStreet || site.street || null,
+      sortOrder: Number.isFinite(Number(site.sortOrder)) ? Number(site.sortOrder) : index
+    };
+  }).filter(Boolean).sort((a, b) => (a.sortOrder || 0) - (b.sortOrder || 0));
+}
+function mapSsidsForPortal(raw) {
+  const parsed = Array.isArray(raw) ? raw : parseJsonField(raw, []);
+  const list = Array.isArray(parsed) ? parsed : [];
+  return list.map((entry, index) => {
+    if (typeof entry === "string") {
+      const nom = entry.trim();
+      return nom ? { id: `legacy-${index}`, nom, type: "prive", bande: "", portailCaptif: false } : null;
+    }
+    if (!entry || typeof entry !== "object") return null;
+    const nom = String(entry.nom || entry.name || entry.ssid || "").trim();
+    if (!nom) return null;
+    return {
+      id: entry.id || `ssid-${index}`,
+      nom,
+      type: entry.type === "public" ? "public" : "prive",
+      bande: entry.bande || "",
+      portailCaptif: Boolean(entry.portailCaptif)
+    };
+  }).filter(Boolean);
+}
 function mapClientForPortal(client) {
   const location = extractLocationFromAddress(client.address);
   const options = parseJsonField(client.options, {});
@@ -210,7 +260,9 @@ function mapClientForPortal(client) {
     address: location.addressLine,
     siret: client.siret || null,
     secteur: client.secteur || null,
-    created_at: client.created_at || null
+    created_at: client.created_at || null,
+    sites: mapSitesForPortal(client.sites),
+    ssids: mapSsidsForPortal(client.ssids || client.ssid)
   };
 }
 function getClientId(req, res) {
@@ -231,6 +283,23 @@ function validationErrorOrNull(req, res) {
     errors: errors.array()
   });
 }
+async function resolvePortalContactId(userRow) {
+  if (userRow?.contact_id) return userRow.contact_id;
+  const email = String(userRow?.email || "").trim();
+  if (!email) return null;
+  const { rows } = await pool.query(
+    `SELECT id FROM v_b_contacts WHERE LOWER(TRIM(email)) = LOWER($1) ORDER BY id ASC LIMIT 2`,
+    [email]
+  );
+  if (rows.length !== 1) return null;
+  const contactId = rows[0].id;
+  await pool.query(
+    `UPDATE v_b_users SET contact_id = $1 WHERE id = $2 AND contact_id IS NULL AND role = 'client'`,
+    [contactId, userRow.id]
+  );
+  return contactId;
+}
+
 async function getPortalContext(req, res) {
   const userRow = await getPortalUserContext(req.user.id);
   if (!userRow) {
@@ -239,27 +308,46 @@ async function getPortalContext(req, res) {
     });
     return null;
   }
-  const clientId = userRow.client_id || req.user.client_id;
+  let clientId = userRow.client_id || req.user.client_id;
+  const contactId = await resolvePortalContactId(userRow);
+  if (contactId) {
+    const ok = clientId
+      ? await contactBelongsToClient(contactId, clientId).catch(() => false)
+      : false;
+    if (!ok) {
+      const home = await pickHomeClientId(contactId, clientId);
+      if (!home) {
+        res.status(403).json({
+          error: "Active company is not linked to this contact."
+        });
+        return null;
+      }
+      await pool.query(
+        `UPDATE v_b_users SET client_id = $1 WHERE id = $2 AND role = 'client'`,
+        [home, userRow.id]
+      );
+      clientId = home;
+    }
+  }
   if (!clientId) {
     res.status(403).json({
       error: "No company associated with this account."
     });
     return null;
   }
-  if (userRow.contact_id) {
-    const ok = await contactBelongsToClient(userRow.contact_id, clientId).catch(() => false);
-    if (!ok) {
-      res.status(403).json({
-        error: "Active company is not linked to this contact."
-      });
-      return null;
-    }
-  }
   return {
     clientId,
     userId: userRow.id,
-    contactId: userRow.contact_id || null,
-    email: userRow.email
+    contactId: contactId || null,
+    email: userRow.email,
+    portalRole: normalizePortalTicketRole(userRow.portal_role)
+  };
+}
+function ticketScope(ctx) {
+  return {
+    contactId: ctx.contactId || null,
+    userId: ctx.userId,
+    portalRole: ctx.portalRole
   };
 }
 function parseModuleRowData(row) {
@@ -273,6 +361,93 @@ function parseModuleRowData(row) {
     row.data = {};
   }
   return row;
+}
+const PORTAL_SAFE_DATA_KEYS = [
+  "nom",
+  "name",
+  "site",
+  "location",
+  "emplacement",
+  "modele",
+  "model",
+  "fabricant",
+  "manufacturer",
+  "marque",
+  "numeroSerie",
+  "serial",
+  "serialNumber",
+  "ip",
+  "ipAddress",
+  "mac",
+  "adresseMac",
+  "macAddress",
+  "systeme",
+  "os",
+  "firmware",
+  "version",
+  "fournisseur",
+  "debit",
+  "debitDownload",
+  "debitUpload",
+  "type",
+  "vlan",
+  "capacite",
+  "capacity",
+  "raid",
+  "hostname",
+  "categorie",
+  "processeur",
+  "memoire",
+  "stockage",
+  "ssids",
+  "assignedSsids",
+  "assignedSsidIds",
+  "ssidCount",
+  "internetType",
+  "boxModele",
+  "raid",
+  "nbDisquesActuels",
+  "nbDisquesMax",
+  "modeHA",
+  "roleHA",
+  "ha",
+  "firewallType",
+  "licenceMaintenance",
+  "maintenanceLicense",
+  "licences",
+  "manageable",
+  "poeSupport",
+  "empilage",
+  "alimentationPoE",
+  "routeurType",
+  "alimentationType",
+  "capaciteVA",
+  "capaciteW",
+  "nbPrises",
+  "dateBatterie",
+  "toipType",
+  "nombreExtensions",
+  "domaineSip",
+  "computerType",
+  "expirationGarantie",
+  "garantie",
+  "installDate",
+  "role",
+  "hypervisor",
+  "hostServerName",
+  "typeServer",
+  "storageType",
+  "debitUpload",
+  "categorie"
+];
+function pickPortalEquipmentData(data) {
+  const src = data && typeof data === "object" ? data : {};
+  const out = {};
+  for (const key of PORTAL_SAFE_DATA_KEYS) {
+    if (src[key] == null || src[key] === "") continue;
+    out[key] = src[key];
+  }
+  return out;
 }
 async function fetchClientComputersForPortal(clientId) {
   const table = "v_b_clients_m_ordinateurs";
@@ -326,10 +501,11 @@ async function fetchEquipmentItems(clientId, type, {
     }
     return [{
       id: row.id,
-      name: row.name || data.nom || row.item_key || "Sans nom",
-      type,
       active: row.is_active !== false,
-      monitored: hasCheckmk ? Boolean(row.checkmk_host_name) : false
+      monitored: hasCheckmk ? Boolean(row.checkmk_host_name) : false,
+      ...pickPortalEquipmentData(data),
+      name: row.name || data.nom || row.item_key || "Sans nom",
+      type
     }];
   };
   try {
@@ -384,8 +560,10 @@ router.get("/equipment/:equipmentId/notes", [param("equipmentId").isUUID()], asy
   }
 });
 router.get("/dashboard", async (req, res) => {
-  const clientId = getClientId(req, res);
-  if (!clientId) return;
+  const ctx = await getPortalContext(req, res);
+  if (!ctx) return;
+  const clientId = ctx.clientId;
+  const scope = ticketScope(ctx);
   try {
     const client = await loadClientRow(clientId);
     if (!client) return res.status(404).json({
@@ -403,26 +581,21 @@ router.get("/dashboard", async (req, res) => {
     const activeCount = allItems.filter(i => i.active).length + computerCount;
     let tickets = [];
     try {
-      const salesFilter = isCommunity() ? ` AND ${COMMUNITY_SALES_TICKET_SQL_PLAIN}` : "";
-      const {
-        rows
-      } = await pool.query(`SELECT id, title, status, priority, created_at, updated_at
-         FROM v_b_tickets WHERE client_id = $1${salesFilter}
-         ORDER BY created_at DESC LIMIT 10`, [clientId]);
-      tickets = rows.map(row => ({
-        ...row,
-        status: row.status === "open" ? "new" : row.status
-      }));
+      tickets = await listPortalTickets(clientId, {
+        limit: 10,
+        ...scope
+      });
     } catch (err) {
       if (err.code !== "42P01") throw err;
     }
     let actionRequiredTickets = [];
     let actionRequiredCount = 0;
     try {
-      actionRequiredCount = await countPortalTicketsActionRequired(clientId);
+      actionRequiredCount = await countPortalTicketsActionRequired(clientId, scope);
       if (actionRequiredCount > 0) {
         actionRequiredTickets = await listPortalTicketsActionRequired(clientId, {
-          limit: 5
+          limit: 5,
+          ...scope
         });
       }
     } catch (err) {
@@ -475,7 +648,8 @@ router.get("/dashboard", async (req, res) => {
       tickets,
       actionRequiredTickets,
       pendingValidationTickets: actionRequiredTickets,
-      files
+      files,
+      portalRole: ctx.portalRole
     });
   } catch (err) {
     console.error("/client-portal/dashboard:", err);
@@ -499,7 +673,8 @@ router.get("/tickets", [query("status").optional().isString(), query("search").o
       status: req.query.status,
       search: req.query.search,
       limit: req.query.limit,
-      offset: req.query.offset
+      offset: req.query.offset,
+      ...ticketScope(ctx)
     });
     res.json({
       tickets
@@ -517,7 +692,7 @@ router.get("/tickets/:id", [param("id").isUUID()], async (req, res) => {
   const ctx = await getPortalContext(req, res);
   if (!ctx) return;
   try {
-    const ticket = await getPortalTicketDetail(ctx.clientId, req.params.id);
+    const ticket = await getPortalTicketDetail(ctx.clientId, req.params.id, ticketScope(ctx));
     if (!ticket) return res.status(404).json({
       error: "Ticket not found."
     });
@@ -541,6 +716,7 @@ router.post("/tickets", [body("title").notEmpty().withMessage("Title is required
       clientId: ctx.clientId,
       contactId: ctx.contactId,
       userId: ctx.userId,
+      portalRole: ctx.portalRole,
       title: req.body.title,
       description: req.body.description,
       priority: req.body.priority,
@@ -570,7 +746,8 @@ router.post("/tickets/:id/comments", portalAttachmentUpload.array("attachments",
       ticketId: req.params.id,
       userId: ctx.userId,
       content: req.body?.content,
-      files: Array.isArray(req.files) ? req.files : []
+      files: Array.isArray(req.files) ? req.files : [],
+      ...ticketScope(ctx)
     });
     if (!comment) return res.status(404).json({
       error: "Ticket not found."
@@ -619,7 +796,8 @@ router.patch("/tickets/:id/comments/:commentId", [param("id").isUUID(), param("c
       ticketId: req.params.id,
       userId: ctx.userId,
       commentId: req.params.commentId,
-      content: req.body.content
+      content: req.body.content,
+      ...ticketScope(ctx)
     });
     if (!comment) return res.status(404).json({
       error: "Ticket not found."
@@ -668,6 +846,10 @@ router.post("/tickets/:id/validate-resolution", [param("id").isUUID(), body("acc
   const ctx = await getPortalContext(req, res);
   if (!ctx) return;
   try {
+    const visible = await assertPortalTicketVisible(ctx.clientId, req.params.id, ticketScope(ctx));
+    if (!visible) return res.status(404).json({
+      error: "Ticket not found."
+    });
     const result = await submitPortalResolutionValidation({
       clientId: ctx.clientId,
       ticketId: req.params.id,
@@ -678,7 +860,7 @@ router.post("/tickets/:id/validate-resolution", [param("id").isUUID(), body("acc
     if (!result) return res.status(404).json({
       error: "Ticket not found."
     });
-    const ticket = await getPortalTicketDetail(ctx.clientId, req.params.id);
+    const ticket = await getPortalTicketDetail(ctx.clientId, req.params.id, ticketScope(ctx));
     res.json({
       ...result,
       ticket
@@ -719,6 +901,10 @@ router.post("/tickets/:id/satisfaction", [param("id").isUUID(), body("ratings").
   const ctx = await getPortalContext(req, res);
   if (!ctx) return;
   try {
+    const visible = await assertPortalTicketVisible(ctx.clientId, req.params.id, ticketScope(ctx));
+    if (!visible) return res.status(404).json({
+      error: "Ticket not found."
+    });
     const satisfaction = await submitPortalTicketSatisfaction({
       clientId: ctx.clientId,
       ticketId: req.params.id,
@@ -772,6 +958,10 @@ router.patch("/tickets/:id/satisfaction", [param("id").isUUID(), body("ratings")
   const ctx = await getPortalContext(req, res);
   if (!ctx) return;
   try {
+    const visible = await assertPortalTicketVisible(ctx.clientId, req.params.id, ticketScope(ctx));
+    if (!visible) return res.status(404).json({
+      error: "Ticket not found."
+    });
     const satisfaction = await updatePortalTicketSatisfaction({
       clientId: ctx.clientId,
       ticketId: req.params.id,
@@ -1056,14 +1246,37 @@ router.patch("/contact", [body("communications").isArray()], async (req, res) =>
   }
 });
 router.get("/companies", async (req, res) => {
-  const ctx = await getPortalContext(req, res);
-  if (!ctx) return;
   try {
-    if (!ctx.contactId) return res.json({ companies: [], activeClientId: ctx.clientId });
-    const companies = await listPortalCompaniesForContact(ctx.contactId);
+    const userRow = await getPortalUserContext(req.user.id);
+    if (!userRow) {
+      return res.status(403).json({
+        error: "Portal account not found."
+      });
+    }
+    const contactId = await resolvePortalContactId(userRow);
+    const companies = contactId ? await listPortalCompaniesForContact(contactId) : [];
+    let activeClientId = userRow.client_id || req.user.client_id || null;
+    if (activeClientId && companies.length > 0 && !companies.some(c => Number(c.client_id) === Number(activeClientId))) {
+      activeClientId = companies[0].client_id;
+    }
+    if (activeClientId && !companies.some(c => Number(c.client_id) === Number(activeClientId))) {
+      const { rows } = await pool.query(
+        `SELECT id, name FROM v_b_clients WHERE id = $1 LIMIT 1`,
+        [activeClientId]
+      );
+      if (rows[0]) {
+        companies.unshift({
+          id: Number(rows[0].id),
+          client_id: Number(rows[0].id),
+          name: rows[0].name || null,
+          poste: null,
+          is_primary: false
+        });
+      }
+    }
     return res.json({
       companies,
-      activeClientId: ctx.clientId
+      activeClientId
     });
   } catch (err) {
     console.error("GET /client-portal/companies:", err);

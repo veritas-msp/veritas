@@ -42,6 +42,7 @@ export default function PortalTicketInfoPanel({
           <InfoLine label={t.type} value={copy.getTicketTypeLabel(ticket.type)} />
           <InfoLine label={t.channel} value={copy.getChannelLabel(ticket.channel)} />
           <InfoLine label={t.reference} value={`#${ticket.ticket_number || ticket.id}`} />
+          {ticket.requester_name ? <InfoLine label={t.requester} value={ticket.requester_name} /> : null}
         </section>
 
         <section className={portalStyles.portalTicketAsideSection}>

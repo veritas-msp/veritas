@@ -176,3 +176,83 @@
   flex: 1;
   min-height: 8px;
 }
+
+.companySwitch {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 2px 0 0;
+}
+
+.companySwitch + .companySwitch {
+  padding-top: 6px;
+}
+
+.companySwitchLabel {
+  font-size: 0.65rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--sb-muted, var(--msp-muted, #6e8098));
+  text-align: center;
+}
+
+.companySwitchSelectWrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.companySwitchIcon {
+  position: absolute;
+  left: 10px;
+  font-size: 1rem;
+  color: var(--sb-muted, var(--msp-muted, #5c6b82));
+  pointer-events: none;
+}
+
+.companySwitchSelect {
+  width: 100%;
+  appearance: none;
+  -webkit-appearance: none;
+  padding: 8px 28px 8px 32px;
+  border-radius: 10px;
+  border: 1px solid var(--sb-btn-border, var(--msp-border, #c5d0df));
+  background: var(--sb-btn-bg, var(--msp-surface-2, #f7f9fc));
+  color: var(--sb-text, var(--msp-text, #0a1422));
+  font-size: 0.8rem;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  text-overflow: ellipsis;
+  color-scheme: light;
+}
+
+:global(.dark) .companySwitchSelect,
+:global(html.dark) .companySwitchSelect {
+  color-scheme: dark;
+}
+
+.companySwitchSelect:hover:not(:disabled),
+.companySwitchSelect:focus-visible {
+  border-color: var(--msp-accent, #2b5fab);
+  outline: none;
+}
+
+.companySwitchSelect:disabled {
+  opacity: 0.65;
+  cursor: wait;
+}
+
+.companySwitchSelectWrap::after {
+  content: "";
+  position: absolute;
+  right: 10px;
+  width: 0;
+  height: 0;
+  border-left: 4px solid transparent;
+  border-right: 4px solid transparent;
+  border-top: 5px solid var(--sb-muted, #6e8098);
+  pointer-events: none;
+}

@@ -1,7 +1,9 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useOutletContext } from "react-router-dom";
 import { mapClientHardwareEquipment } from "../../api/equipment";
 import { fetchPortalDashboard } from "../../api/clientPortalTickets";
+import { filterBySite } from "../../utils/siteFilterUtils";
+import { filterPortalDashboardBySite } from "./portalSiteFilter";
 export function usePortalDashboard() {
   const outletContext = useOutletContext() || {};
   const outletDashboard = outletContext.dashboard ?? null;
@@ -34,8 +36,19 @@ export function usePortalDashboard() {
       cancelled = true;
     };
   }, [outletDashboard]);
+  const dashboard = outletDashboard ?? localDashboard;
+  const siteFilter = outletContext.siteFilter || null;
+  const scopedDashboard = useMemo(
+    () => outletContext.scopedDashboard || filterPortalDashboardBySite(dashboard, siteFilter),
+    [outletContext.scopedDashboard, dashboard, siteFilter]
+  );
   return {
-    dashboard: outletDashboard ?? localDashboard,
+    dashboard,
+    scopedDashboard,
+    siteFilter,
+    sites: outletContext.sites || [],
+    setSiteFilter: outletContext.setSiteFilter,
+    activeClientId: outletContext.activeClientId ?? dashboard?.client?.id ?? null,
     loading: outletDashboard ? false : loading,
     error
   };
@@ -49,4 +62,7 @@ export function mapPortalComputers(dashboard) {
       Ordinateurs: dashboard.computers
     }
   }).filter(eq => eq.type === "Ordinateurs");
+}
+export function mapPortalComputersForSite(dashboard, siteFilter) {
+  return filterBySite(mapPortalComputers(dashboard), siteFilter);
 }

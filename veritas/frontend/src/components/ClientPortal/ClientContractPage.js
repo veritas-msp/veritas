@@ -4,20 +4,16 @@ import { useAppLocale } from "../../hooks/useAppGeneralSettings";
 import { useContractModuleOptions } from "../../hooks/useContractModuleOptions";
 import layout from "../EnterprisesPage/EnterprisesPage.module.css";
 import styles from "./ClientDashboard.module.css";
+import pageStyles from "./ClientPortalPages.module.css";
 import contractStyles from "./ClientContractPage.module.css";
 import portalStyles from "./ClientPortalTickets.module.css";
 import { getClientPortalCopy } from "./clientPortalI18n";
 import { usePortalDashboard, mapPortalComputers } from "./usePortalDashboard";
 import { buildContractOptionsGroups } from "./clientPortalContract";
+
 export default function ClientContractPage() {
-  const {
-    dashboard: data,
-    loading,
-    error
-  } = usePortalDashboard();
-  const {
-    modules: contractModules
-  } = useContractModuleOptions();
+  const { dashboard: data, loading, error } = usePortalDashboard();
+  const { modules: contractModules } = useContractModuleOptions();
   const locale = useAppLocale();
   const copy = useMemo(() => getClientPortalCopy(locale), [locale]);
   const t = copy.contract;
@@ -33,29 +29,63 @@ export default function ClientContractPage() {
     if (!enrichedData) return [];
     return buildContractOptionsGroups(enrichedData, copy, contractModules);
   }, [enrichedData, copy, contractModules]);
+
   if (loading && !data) {
-    return <div className={`${styles.mainScrollFill} ${layout.page}`}>
+    return (
+      <div className={`${styles.mainScrollFill} ${layout.page}`}>
         <div className={styles.loadingInline}>
           <span className={styles.spinner} />
           <span>{copy.common.loading}</span>
         </div>
-      </div>;
+      </div>
+    );
   }
   if (error && !data) {
-    return <div className={`${styles.mainScrollFill} ${layout.page}`}>
+    return (
+      <div className={`${styles.mainScrollFill} ${layout.page}`}>
         <div className={styles.emptyState}>
           <Icon icon="mdi:alert-circle-outline" className={styles.emptyStateIcon} aria-hidden />
           <p className={styles.emptyStateTitle}>{layoutCopy.loadError}</p>
         </div>
-      </div>;
+      </div>
+    );
   }
   if (!data) return null;
-  const {
-    client,
-    contrat,
-    commercial
-  } = data;
-  return <div className={`${styles.mainScrollFill} ${layout.page}`}>
+
+  const { client, contrat, commercial } = data;
+  const factItems = [
+    {
+      key: "start",
+      icon: "mdi:calendar-start",
+      tone: "blue",
+      value: contrat?.debut ? copy.formatPortalDate(contrat.debut) : "—",
+      label: layoutCopy.contractStart
+    },
+    {
+      key: "expiration",
+      icon: "mdi:calendar-end",
+      tone: "amber",
+      value: contrat?.expiration ? copy.formatPortalDate(contrat.expiration) : "—",
+      label: layoutCopy.contractExpiration
+    },
+    {
+      key: "status",
+      icon: contrat?.suspendu ? "mdi:pause-circle-outline" : "mdi:check-circle-outline",
+      tone: contrat?.suspendu ? "orange" : "green",
+      value: contrat?.suspendu ? layoutCopy.contractSuspended : layoutCopy.contractActive,
+      label: layoutCopy.contractStatus
+    },
+    {
+      key: "company",
+      icon: "mdi:office-building-outline",
+      tone: "violet",
+      value: client?.name || "—",
+      label: copy.dashboard.companyName
+    }
+  ];
+
+  return (
+    <div className={`${styles.mainScrollFill} ${layout.page}`}>
       <div className={`${styles.mainContent} ${styles.portalShell}`}>
         <header className={styles.topBar}>
           <div>
@@ -67,96 +97,77 @@ export default function ClientContractPage() {
           </div>
         </header>
 
-        <div className={styles.twoCol}>
-          <section className={styles.infoCard}>
-            <div className={styles.infoCardHeader}>
-              <Icon icon="mdi:file-document-outline" aria-hidden />
-              <span>{t.contractPanelTitle}</span>
+        <div className={pageStyles.kpiRowFamily}>
+          {factItems.map(item => (
+            <div key={item.key} className={layout.kpiCard}>
+              <div className={`${layout.kpiIconWrap} ${layout[`kpiIcon_${item.tone}`] || layout.kpiIcon_blue}`}>
+                <Icon icon={item.icon} aria-hidden />
+              </div>
+              <div className={layout.kpiBody}>
+                <span className={layout.kpiValue}>{item.value}</span>
+                <span className={layout.kpiLabel}>{item.label}</span>
+              </div>
             </div>
-            <dl className={styles.infoCardFacts}>
+          ))}
+        </div>
+
+        {commercial ? (
+          <section className={styles.panel}>
+            <div className={styles.panelHeader}>
+              <span className={styles.panelTitle}>
+                <Icon icon="mdi:account-tie-outline" aria-hidden />
+                {t.referentPanelTitle}
+              </span>
+            </div>
+            <dl className={`${styles.infoCardFacts} ${contractStyles.referentFacts}`}>
               <div>
-                <dt>{layoutCopy.contractStart}</dt>
-                <dd>{contrat?.debut ? copy.formatPortalDate(contrat.debut) : "-"}</dd>
+                <dt>{layoutCopy.referentName}</dt>
+                <dd>{commercial.name || "—"}</dd>
               </div>
               <div>
-                <dt>{layoutCopy.contractExpiration}</dt>
-                <dd>{contrat?.expiration ? copy.formatPortalDate(contrat.expiration) : "-"}</dd>
-              </div>
-              <div>
-                <dt>{layoutCopy.contractStatus}</dt>
-                <dd className={contrat?.suspendu ? styles.textWarn : styles.textOk}>
-                  {contrat?.suspendu ? layoutCopy.contractSuspended : layoutCopy.contractActive}
+                <dt>{layoutCopy.referentEmail}</dt>
+                <dd>
+                  {commercial.email ? (
+                    <a href={`mailto:${commercial.email}`} className={portalStyles.tableLink}>
+                      {commercial.email}
+                    </a>
+                  ) : "—"}
                 </dd>
               </div>
-              {client?.name ? <div>
-                  <dt>{copy.dashboard.companyName}</dt>
-                  <dd>{client.name}</dd>
-                </div> : null}
             </dl>
           </section>
-
-          {commercial ? <section className={styles.infoCard}>
-              <div className={styles.infoCardHeader}>
-                <Icon icon="mdi:account-tie-outline" aria-hidden />
-                <span>{t.referentPanelTitle}</span>
-              </div>
-              <dl className={styles.infoCardFacts}>
-                <div>
-                  <dt>{layoutCopy.referentName}</dt>
-                  <dd>{commercial.name || "-"}</dd>
-                </div>
-                <div>
-                  <dt>{layoutCopy.referentEmail}</dt>
-                  <dd>
-                    {commercial.email ? <a href={`mailto:${commercial.email}`} className={portalStyles.tableLink}>
-                        {commercial.email}
-                      </a> : "-"}
-                  </dd>
-                </div>
-              </dl>
-            </section> : <section className={styles.infoCard}>
-              <div className={styles.infoCardHeader}>
-                <Icon icon="mdi:office-building-outline" aria-hidden />
-                <span>{copy.dashboard.companyPanelTitle}</span>
-              </div>
-              <dl className={styles.infoCardFacts}>
-                <div>
-                  <dt>{copy.dashboard.companyName}</dt>
-                  <dd>{client?.name || "-"}</dd>
-                </div>
-                {client?.city ? <div>
-                    <dt>{copy.dashboard.companyLocation}</dt>
-                    <dd>
-                      {client.city}
-                      {client.country ? `, ${client.country}` : ""}
-                    </dd>
-                  </div> : null}
-              </dl>
-            </section>}
-        </div>
+        ) : null}
 
         <section className={styles.panel}>
           <div className={styles.panelHeader}>
             <span className={styles.panelTitle}>{t.optionsTitle}</span>
           </div>
-
           <div className={contractStyles.optionGroups}>
-            {optionGroups.map(group => <div key={group.key} className={contractStyles.optionGroup}>
+            {optionGroups.map(group => (
+              <div key={group.key} className={contractStyles.optionGroup}>
                 <h2 className={contractStyles.optionGroupTitle}>{group.title}</h2>
                 <ul className={contractStyles.optionList}>
                   {group.items.map(item => {
-                const statusLabel = item.subscribed ? t.optionActive : t.optionInactive;
-                return <li key={item.key} className={`${contractStyles.optionChip} ${item.subscribed ? contractStyles.optionChipActive : contractStyles.optionChipInactive}`.trim()} title={statusLabel}>
+                    const statusLabel = item.subscribed ? t.optionActive : t.optionInactive;
+                    return (
+                      <li
+                        key={item.key}
+                        className={`${contractStyles.optionChip} ${item.subscribed ? contractStyles.optionChipActive : contractStyles.optionChipInactive}`.trim()}
+                        title={statusLabel}
+                      >
                         <Icon icon={item.icon} className={contractStyles.optionChipIcon} aria-hidden />
                         <span className={contractStyles.optionChipLabel}>{item.label}</span>
                         <span className={contractStyles.optionChipDot} aria-hidden />
                         <span className={contractStyles.srOnly}>{statusLabel}</span>
-                      </li>;
-              })}
+                      </li>
+                    );
+                  })}
                 </ul>
-              </div>)}
+              </div>
+            ))}
           </div>
         </section>
       </div>
-    </div>;
+    </div>
+  );
 }

@@ -852,3 +852,31 @@
 .panelLink:hover {
   text-decoration: underline;
 }
+
+.richHtml {
+  white-space: normal;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.richHtml :where(p, ul, ol, blockquote, pre) {
+  margin: 0 0 0.55em;
+}
+
+.richHtml :where(p:last-child, ul:last-child, ol:last-child, blockquote:last-child, pre:last-child) {
+  margin-bottom: 0;
+}
+
+.richHtml :where(ul, ol) {
+  padding-left: 1.2em;
+}
+
+.richHtml a {
+  color: var(--msp-accent, #2b5fab);
+}
+
+.richHtml img {
+  max-width: 100%;
+  height: auto;
+  border-radius: 8px;
+}

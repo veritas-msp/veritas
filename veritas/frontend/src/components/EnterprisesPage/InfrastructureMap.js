@@ -183,10 +183,35 @@ function InfraEmptyMap({
   tenantInfo = {},
   googleWorkspaceInfo = {},
   campaignItems = [],
+  customFamilyMap = [],
+  onNodeClick,
   onBrickClick,
   isCommunity = false,
   copy
 }) {
+  const customItems = buildCustomFamilyHoneycombSlots(customFamilyMap).map(({
+    family,
+    slot
+  }) => {
+    const type = slot.type;
+    const categoryNode = {
+      type,
+      name: family.label,
+      displayName: family.label,
+      status: "unmonitored",
+      count: 0,
+      icon: family.icon,
+      familyKey: family.familyKey,
+      customFamily: family
+    };
+    return {
+      key: type,
+      type,
+      slot,
+      node: <InfraHexNode node={categoryNode} onClick={onNodeClick} copy={copy} />
+    };
+  });
+  const customFamilyBricks = buildCustomFamilyBricks(customFamilyMap);
   return <div className={styles.map}>
       <div className={styles.emptyMapBanner} role="status">
         <Icon icon="mdi:hexagon-multiple-outline" className={styles.emptyMapBannerIcon} aria-hidden />
@@ -196,12 +221,12 @@ function InfraEmptyMap({
         </div>
       </div>
 
-      <InfraMapCanvas honeycombEmpty backupInstances={backupInstances} items={EMPTY_HONEYCOMB_LAYOUT.map(slot => ({
+      <InfraMapCanvas honeycombEmpty backupInstances={backupInstances} items={[...EMPTY_HONEYCOMB_LAYOUT.map(slot => ({
       key: slot.type,
       type: slot.type,
       slot,
       node: <InfraPlaceholderHex type={slot.type} featured={slot.featured} copy={copy} />
-    }))} antivirusItems={antivirusItems} antispamItems={antispamItems} domainItems={domainItems} domainIntegrationReady={domainIntegrationReady} sslItems={sslItems} licenceItems={licenceItems} tenantInfo={tenantInfo} googleWorkspaceInfo={googleWorkspaceInfo} campaignItems={campaignItems} onBrickClick={onBrickClick} isCommunity={isCommunity} copy={copy} />
+    })), ...customItems]} antivirusItems={antivirusItems} antispamItems={antispamItems} domainItems={domainItems} domainIntegrationReady={domainIntegrationReady} sslItems={sslItems} licenceItems={licenceItems} tenantInfo={tenantInfo} googleWorkspaceInfo={googleWorkspaceInfo} campaignItems={campaignItems} customFamilyBricks={customFamilyBricks} onBrickClick={onBrickClick} isCommunity={isCommunity} copy={copy} />
     </div>;
 }
 function InfraMapSkeleton({
@@ -400,12 +425,11 @@ export default function InfrastructureMap({
         familyKey: family.familyKey,
         customFamily: family
       };
-      const hasData = categoryNode.count > 0;
       return {
         key: type,
         type,
         slot,
-        node: hasData ? <InfraHexNode node={categoryNode} onClick={onNodeClick} copy={copy} /> : <InfraPlaceholderHex type={type} icon={family.icon} label={family.label} copy={copy} />
+        node: <InfraHexNode node={categoryNode} onClick={onNodeClick} copy={copy} />
       };
     });
     return [...baseItems, ...customItems];
@@ -455,7 +479,7 @@ export default function InfrastructureMap({
       </div>;
   }
   if (!hasMapContent) {
-    return <InfraEmptyMap backupInstances={filteredBackupInstances} antivirusItems={antivirusItems} antispamItems={antispamItems} domainItems={domainItems} domainIntegrationReady={domainIntegrationReady} sslItems={sslItems} licenceItems={licenceItems} tenantInfo={tenantInfo} googleWorkspaceInfo={googleWorkspaceInfo} campaignItems={campaignItems} onBrickClick={onBrickClick} isCommunity={isCommunity} copy={copy} />;
+    return <InfraEmptyMap backupInstances={filteredBackupInstances} antivirusItems={antivirusItems} antispamItems={antispamItems} domainItems={domainItems} domainIntegrationReady={domainIntegrationReady} sslItems={sslItems} licenceItems={licenceItems} tenantInfo={tenantInfo} googleWorkspaceInfo={googleWorkspaceInfo} campaignItems={campaignItems} customFamilyMap={filteredCustomFamilyMap} onNodeClick={onNodeClick} onBrickClick={onBrickClick} isCommunity={isCommunity} copy={copy} />;
   }
   return <div className={styles.map}>
       {categorySummary.attention > 0 && <div className={styles.mapHeader}>

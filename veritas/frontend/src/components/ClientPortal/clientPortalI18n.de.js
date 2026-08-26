@@ -81,7 +81,15 @@ export default {
     stopImpersonation: "Impersonation beenden",
     loadError: "Fehler beim Laden des Portals.",
     stopImpersonationSuccess: "Zurück zu Ihrer Agenten-Sitzung.",
-    stopImpersonationError: "Impersonation konnte nicht beendet werden."
+    stopImpersonationError: "Impersonation konnte nicht beendet werden.",
+    switchCompanyLabel: "Unternehmen",
+    switchCompanyAria: "Unternehmen auswählen",
+    switchCompanySuccess: "Aktives Unternehmen aktualisiert.",
+    switchCompanyError: "Unternehmen konnte nicht gewechselt werden.",
+    switchingCompany: "Unternehmen wird gewechselt…",
+    switchSiteLabel: "Standort",
+    switchSiteAria: "Nach Standort filtern",
+    allSites: "Alle Standorte"
   },
   dashboard: {
     pageTitle: "Übersicht",
@@ -176,6 +184,10 @@ export default {
     emptyDesc: "Ihr Bestand und Ihre Infrastruktur erscheinen hier, sobald sie von Ihrem Veritas-Team konfiguriert wurden.",
     tabOverview: "Übersicht",
     tabDevices: "Geräte",
+    tabTables: "Peripheriegeräte",
+    tabFleet: "Flottenstatistik",
+    exportCsv: "CSV exportieren",
+    exportEmpty: "Keine Daten zum Exportieren.",
     filterAll: "Alle",
     filterByType: "Nach Typ filtern",
     typeWorkstations: "Arbeitsplätze",
@@ -192,7 +204,8 @@ export default {
     agentOffline: "Agent offline",
     agentUnknown: "Status unbekannt",
     noItemsInCategory: "Keine Geräte in dieser Kategorie.",
-    noWorkstationsData: "Detaillierte Arbeitsplatzdaten nicht verfügbar."
+    noWorkstationsData: "Detaillierte Arbeitsplatzdaten nicht verfügbar.",
+    noFleetData: "Keine Statistikdaten für diese Familie."
   },
   contract: {
     eyebrow: "Vertrag",
@@ -248,7 +261,24 @@ export default {
     domain: "Domain",
     jobCount: "{count} Jobs",
     jobCountOne: "{count} Job",
-    saveJobLabel: "Backup-Job"
+    saveJobLabel: "Backup-Job",
+    tenantTitle: "Microsoft 365 Tenant",
+    tenantName: "Tenant",
+    tenantId: "Tenant-ID",
+    tenantUsers: "Benutzer",
+    tenantLicenses: "Lizenzen",
+    tenantLicensesAvailable: "Verfügbar",
+    licensesTitle: "Lizenzen",
+    instancesTitle: "Instanzen",
+    jobsTitle: "Jobs",
+    tableInstance: "Instanz",
+    tableSoftware: "Software",
+    tableJobName: "Job",
+    domainsTitle: "Domainnamen",
+    expiringSoonCount: "Zu prüfen",
+    noItems: "Keine Einträge in dieser Kategorie.",
+    tableRole: "Rolle",
+    tableRenewal: "Verlängerung"
   },
   fleet: {
     workstations: "Arbeitsplätze",
@@ -504,6 +534,7 @@ export default {
     list: {
       eyebrow: "Support",
       pageTitle: "Meine Tickets",
+      pageTitleSupervisor: "Unternehmens-Tickets",
       loading: "Tickets werden geladen…",
       newTicketAria: "Neues Ticket",
       searchPlaceholder: "Ticket, Betreff…",
@@ -514,6 +545,7 @@ export default {
       newTicket: "Neues Ticket",
       tableId: "ID",
       tableSubject: "Betreff",
+      tableRequester: "Antragsteller",
       tableChannel: "Kanal",
       tableType: "Typ",
       tableStatus: "Status",
@@ -603,6 +635,7 @@ export default {
       type: "Typ:",
       channel: "Kanal:",
       reference: "Referenz:",
+      requester: "Antragsteller:",
       dates: "Daten",
       created: "Erstellt:",
       updated: "Zuletzt aktualisiert:",

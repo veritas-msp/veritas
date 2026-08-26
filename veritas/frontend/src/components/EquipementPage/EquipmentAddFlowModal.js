@@ -106,7 +106,7 @@ export default function EquipmentAddFlowModal({
       label: moduleLabels[catId] || catId,
       icon: EQUIPMENT_MODULE_ICONS[catId] || "mdi:cube-outline"
     }));
-    const custom = (Array.isArray(customFamilies) ? customFamilies : []).filter(family => family.displayMode !== "brick").map(family => ({
+    const custom = (Array.isArray(customFamilies) ? customFamilies : []).map(family => ({
       id: `Custom:${family.familyKey}`,
       label: family.label,
       icon: family.icon || "mdi:devices"

@@ -42,6 +42,20 @@ function normalizeMembershipRow(row) {
   };
 }
 
+function mergeMemberships(...groups) {
+  const list = [];
+  const seen = new Set();
+  for (const group of groups) {
+    for (const row of Array.isArray(group) ? group : []) {
+      const id = Number(row?.client_id);
+      if (!Number.isInteger(id) || id <= 0 || seen.has(id)) continue;
+      seen.add(id);
+      list.push(row);
+    }
+  }
+  return list;
+}
+
 function formatPrimaryName(contact) {
   if (!contact) return null;
   const prenom = String(contact.prenom || "").trim();
@@ -134,9 +148,11 @@ export async function listMembershipsForContact(contactId, { client } = {}) {
        ORDER BY cli.name NULLS LAST, l.client_id`,
       [id]
     );
-    if (rows.length > 0) return rows.map(normalizeMembershipRow).filter(Boolean);
-    // Dual-read: link table empty but legacy client_id still set
-    return listLegacyMembershipsForContact(id, { client });
+    const fromLinks = rows.map(normalizeMembershipRow).filter(Boolean);
+    const legacy = await listLegacyMembershipsForContact(id, { client });
+    const merged = mergeMemberships(fromLinks, legacy);
+    if (merged.length > 0) return merged;
+    return legacy;
   } catch (err) {
     if (isMissingRelationError(err)) {
       linksTableExistsCache = false;

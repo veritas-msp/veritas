@@ -79,6 +79,13 @@ export default function ClientPortalSidebar({
   copy,
   user,
   clientName,
+  companies = [],
+  activeClientId,
+  sites = [],
+  siteFilter = null,
+  onSwitchSite,
+  switching = false,
+  onSwitchCompany,
   actionRequiredCount,
   onLogout
 }) {
@@ -289,11 +296,45 @@ export default function ClientPortalSidebar({
                   <div className={sidebarStyles.brandMark}>V</div>
                   {!isCollapsed && <span className={sidebarStyles.logoText}>Veritas</span>}
                 </NavLink>}
-              {(!isCollapsed || isMobile) && clientName ? <div className={sidebarStyles.userMenuLabelSubtitle} style={{
+              {(!isCollapsed || isMobile) && (companies.length > 1 ? <div className={portalStyles.companySwitch}>
+                  <label className={portalStyles.companySwitchLabel} htmlFor="portal-company-switch">
+                    {t.switchCompanyLabel || "Entreprise"}
+                  </label>
+                  <div className={portalStyles.companySwitchSelectWrap}>
+                    <Icon icon="mdi:office-building-outline" className={portalStyles.companySwitchIcon} aria-hidden />
+                    <select id="portal-company-switch" className={portalStyles.companySwitchSelect} value={String(activeClientId || "")} disabled={switching || !onSwitchCompany} aria-label={t.switchCompanyAria || t.switchCompanyLabel || "Entreprise"} onChange={e => onSwitchCompany?.(e.target.value)}>
+                      {companies.map(company => {
+                  const id = company.client_id ?? company.id;
+                  return <option key={id} value={String(id)}>
+                            {company.name || `#${id}`}
+                          </option>;
+                })}
+                    </select>
+                  </div>
+                </div> : clientName ? <div className={sidebarStyles.userMenuLabelSubtitle} style={{
             textAlign: "center",
             padding: "0 4px"
           }}>
                   {clientName}
+                </div> : null)}
+              {(!isCollapsed || isMobile) && sites.length > 0 ? <div className={portalStyles.companySwitch}>
+                  <label className={portalStyles.companySwitchLabel} htmlFor="portal-site-switch">
+                    {t.switchSiteLabel || "Site"}
+                  </label>
+                  <div className={portalStyles.companySwitchSelectWrap}>
+                    <Icon icon="mdi:map-marker-outline" className={portalStyles.companySwitchIcon} aria-hidden />
+                    <select id="portal-site-switch" className={portalStyles.companySwitchSelect} value={siteFilter || ""} disabled={switching || !onSwitchSite} aria-label={t.switchSiteAria || t.switchSiteLabel || "Site"} onChange={e => onSwitchSite?.(e.target.value || null)}>
+                      <option value="">{t.allSites || "Tous les sites"}</option>
+                      {sites.map(site => {
+                  const name = site.name || site.label;
+                  const city = site.addressCity || site.city;
+                  const label = city && city !== name ? `${name} · ${city}` : name;
+                  return <option key={site.id || name} value={name}>
+                            {label}
+                          </option>;
+                })}
+                    </select>
+                  </div>
                 </div> : null}
             </div>
 

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useOutletContext } from "react-router-dom";
 import { Icon } from "@iconify/react";
 import { FaPlus, FaTimes } from "react-icons/fa";
 import { useAppLocale } from "../../hooks/useAppGeneralSettings";
@@ -11,6 +11,7 @@ import tableStyles from "../TicketPage/TicketPage.module.css";
 import portalStyles from "./ClientPortalTickets.module.css";
 import { getClientPortalCopy } from "./clientPortalI18n";
 import { getPortalPriorityVisual, getPortalStatusFilters, getPortalTicketActionRequiredBadge, isPortalTicketActionRequired, isPortalTicketPendingClientResponse, isPortalTicketPendingValidation, sortPortalTickets } from "./clientPortalTicketUi";
+import { filterPortalTicketsBySite, getPortalEquipmentSiteById } from "./portalSiteFilter";
 function computePortalStatusCounts(tickets, openStatuses) {
   const rows = Array.isArray(tickets) ? tickets : [];
   return {
@@ -38,6 +39,7 @@ function filterTicketsByStatus(tickets, filterKey, openStatuses) {
 }
 export default function ClientTicketListPage() {
   const navigate = useNavigate();
+  const { activeClientId, siteFilter, dashboard } = useOutletContext() || {};
   const locale = useAppLocale();
   const copy = useMemo(() => getClientPortalCopy(locale), [locale]);
   const t = copy.ticket.list;
@@ -57,8 +59,13 @@ export default function ClientTicketListPage() {
       setTickets([]);
       showError(err.message || t.loadError);
     }).finally(() => setLoading(false));
-  }, [t.loadError]);
-  const statusCounts = useMemo(() => computePortalStatusCounts(tickets, copy.PORTAL_OPEN_STATUSES), [tickets, copy.PORTAL_OPEN_STATUSES]);
+  }, [t.loadError, activeClientId]);
+  const equipmentSiteById = useMemo(() => getPortalEquipmentSiteById(dashboard), [dashboard]);
+  const ticketsForSite = useMemo(
+    () => filterPortalTicketsBySite(tickets, siteFilter, equipmentSiteById),
+    [tickets, siteFilter, equipmentSiteById]
+  );
+  const statusCounts = useMemo(() => computePortalStatusCounts(ticketsForSite, copy.PORTAL_OPEN_STATUSES), [ticketsForSite, copy.PORTAL_OPEN_STATUSES]);
   useEffect(() => {
     if (autoFilterApplied || loading) return;
     if (statusCounts.action_required > 0) {
@@ -66,12 +73,12 @@ export default function ClientTicketListPage() {
     }
     setAutoFilterApplied(true);
   }, [autoFilterApplied, loading, statusCounts.action_required]);
-  const filteredByStatus = useMemo(() => filterTicketsByStatus(tickets, filter, copy.PORTAL_OPEN_STATUSES), [tickets, filter, copy.PORTAL_OPEN_STATUSES]);
+  const filteredByStatus = useMemo(() => filterTicketsByStatus(ticketsForSite, filter, copy.PORTAL_OPEN_STATUSES), [ticketsForSite, filter, copy.PORTAL_OPEN_STATUSES]);
   const filteredTickets = useMemo(() => {
     const query = search.trim().toLowerCase();
     if (!query) return filteredByStatus;
     return filteredByStatus.filter(ticket => {
-      const label = `#${ticket.ticket_number || ticket.id} ${ticket.title || ""}`.toLowerCase();
+      const label = `#${ticket.ticket_number || ticket.id} ${ticket.title || ""} ${ticket.requester_name || ""}`.toLowerCase();
       return label.includes(query);
     });
   }, [filteredByStatus, search]);
@@ -93,6 +100,7 @@ export default function ClientTicketListPage() {
     return sortDirection === "asc" ? "ascending" : "descending";
   };
   const totalCount = sortedTickets.length;
+  const isSupervisor = dashboard?.portalRole === "supervisor";
   return <div className={`${portalLayout.mainScrollFill} ${layout.page}`}>
       <div className={`${portalLayout.portalShell} ${tableStyles.ticketShell}`}>
         <header className={layout.hero}>
@@ -101,7 +109,7 @@ export default function ClientTicketListPage() {
               <Icon icon="mdi:lifebuoy" aria-hidden />
               {t.eyebrow}
             </p>
-            <h1 className={layout.pageTitle}>{t.pageTitle}</h1>
+            <h1 className={layout.pageTitle}>{isSupervisor ? t.pageTitleSupervisor : t.pageTitle}</h1>
             <p className={layout.pageSubtitle}>
               {loading ? t.loading : copy.formatTicketCount(totalCount)}
             </p>
@@ -165,6 +173,10 @@ export default function ClientTicketListPage() {
                         {t.tableSubject}
                         {getSortIndicator("title")}
                       </th>
+                      {isSupervisor ? <th scope="col" aria-sort={getColumnAriaSort("requester_name")} onClick={() => handleSort("requester_name")}>
+                          {t.tableRequester}
+                          {getSortIndicator("requester_name")}
+                        </th> : null}
                       <th scope="col" aria-sort={getColumnAriaSort("channel")} onClick={() => handleSort("channel")}>
                         {t.tableChannel}
                         {getSortIndicator("channel")}
@@ -219,6 +231,7 @@ export default function ClientTicketListPage() {
                               </span>
                             </span>
                           </td>
+                          {isSupervisor ? <td>{ticket.requester_name || "—"}</td> : null}
                           <td>
                             <span className={tableStyles.channelCell} title={channelMeta.label}>
                               <Icon icon={channelMeta.icon} className={tableStyles.channelIcon} aria-hidden />

@@ -9,6 +9,19 @@ export const TICKET_COMMENT_CONFIG = {
   ALLOWED_TAGS: [...BASE_ALLOWED_TAGS, "img"],
   ALLOWED_ATTR: [...BASE_ALLOWED_ATTR, "src", "width", "height", "style"]
 };
+function convertLegacyFontTags(html) {
+  return String(html || "")
+    .replace(/<font\b([^>]*)>/gi, (_match, attrs) => {
+      const colorMatch = String(attrs || "").match(/\bcolor\s*=\s*(?:["']([^"']+)["']|([^\s>]+))/i);
+      const color = String(colorMatch?.[1] || colorMatch?.[2] || "").trim();
+      if (color && /^(#(?:[0-9a-f]{3}|[0-9a-f]{6}|[0-9a-f]{8})|rgba?\([^)]+\)|hsla?\([^)]+\)|[a-z]{3,20})$/i.test(color)) {
+        return `<span style="color: ${color}">`;
+      }
+      return "<span>";
+    })
+    .replace(/<\/font>/gi, "</span>");
+}
+
 function postProcessLinks(html) {
   if (typeof document === "undefined") return html;
   const tmp = document.createElement("div");
@@ -23,10 +36,11 @@ function postProcessLinks(html) {
   return tmp.innerHTML;
 }
 export function sanitizeHtml(raw, config = DEFAULT_CONFIG) {
+  const source = convertLegacyFontTags(String(raw ?? ""));
   if (typeof window === "undefined") {
-    return String(raw ?? "");
+    return source;
   }
-  const clean = DOMPurify.sanitize(String(raw ?? ""), config);
+  const clean = DOMPurify.sanitize(source, config);
   return postProcessLinks(clean);
 }
 export function sanitizeTicketCommentHtml(raw) {

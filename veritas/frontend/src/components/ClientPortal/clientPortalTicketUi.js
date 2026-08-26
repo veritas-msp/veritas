@@ -77,6 +77,10 @@ export function sortPortalTickets(tickets, sortBy, sortDirection, copy) {
         aValue = String(a.title || "").toLowerCase();
         bValue = String(b.title || "").toLowerCase();
         break;
+      case "requester_name":
+        aValue = String(a.requester_name || "").toLowerCase();
+        bValue = String(b.requester_name || "").toLowerCase();
+        break;
       case "channel":
         aValue = String(a.channel || "").toLowerCase();
         bValue = String(b.channel || "").toLowerCase();

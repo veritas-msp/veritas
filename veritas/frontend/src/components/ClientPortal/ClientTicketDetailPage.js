@@ -16,6 +16,9 @@ import { getClientPortalCopy } from "./clientPortalI18n";
 import PortalTicketInfoPanel from "./PortalTicketInfoPanel";
 import UserAvatar from "../shared/UserAvatar/UserAvatar";
 import { computeSatisfactionAverage, createEmptySatisfactionRatings, isSatisfactionComplete, resolveDisplayRatings } from "../../utils/ticketSatisfactionCriteria";
+import { toRichPreviewHtml } from "../../utils/sanitizeHtml";
+import { isIncomingEmailContent } from "../../utils/incomingEmailContent";
+import IncomingEmailMessage from "../TicketPage/IncomingEmailMessage";
 const BACKEND_BASE_URL = String(API_BASE_URL || "").replace(/\/api\/?$/, "");
 function toAbsoluteAttachmentUrl(rawPath) {
   const raw = String(rawPath || "").trim();
@@ -51,6 +54,26 @@ function isCommentEdited(comment) {
   const updatedAt = new Date(comment.updated_at).getTime();
   return Number.isFinite(updatedAt) && updatedAt > createdAt + 500;
 }
+function PortalRichContent({ content, className }) {
+  const raw = String(content || "");
+  if (!raw.trim()) return null;
+  if (isIncomingEmailContent(raw)) {
+    return (
+      <div className={className}>
+        <IncomingEmailMessage content={raw} />
+      </div>
+    );
+  }
+  return (
+    <div
+      className={className}
+      dangerouslySetInnerHTML={{
+        __html: toRichPreviewHtml(raw)
+      }}
+    />
+  );
+}
+
 function isOwnPortalComment(comment, user) {
   if (!comment || !user) return false;
   if (comment.author_user_id && user.id && String(comment.author_user_id) === String(user.id)) {
@@ -437,7 +460,7 @@ export default function ClientTicketDetailPage() {
                 <div className={tdStyles.commentMeta}>
                   <span>{td.initialDescription}</span>
                 </div>
-                <p className={tdStyles.descriptionBodyText}>{ticket.description}</p>
+                <PortalRichContent content={ticket.description} className={`${tdStyles.commentBody} ${portalStyles.richHtml}`} />
               </article> : null}
 
             <div className={tdStyles.timelineWrap}>
@@ -480,7 +503,7 @@ export default function ClientTicketDetailPage() {
                                   </> : copy.common.save}
                               </button>
                             </div>
-                          </div> : comment.content ? <div className={tdStyles.commentBody}>{comment.content}</div> : null}
+                          </div> : comment.content ? <PortalRichContent content={comment.content} className={`${tdStyles.commentBody} ${portalStyles.richHtml}`} /> : null}
                         {Array.isArray(comment.attachments) && comment.attachments.length > 0 ? <div className={tdStyles.attachmentsList}>
                             {comment.attachments.map(file => {
                       const attachment = normalizePortalAttachment(file, copy.common.attachment);

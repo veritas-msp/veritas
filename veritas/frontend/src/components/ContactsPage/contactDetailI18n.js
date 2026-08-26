@@ -111,7 +111,7 @@ const DETAIL_COPY = {
         },
         portal: {
           title: "Portail client",
-          content: "Gérez l'accès portail du contact : création de compte, activation, réinitialisation du mot de passe et suivi des connexions."
+          content: "Gérez l'accès portail du contact : création de compte, rôle (utilisateur ou superviseur), activation, réinitialisation du mot de passe et suivi des connexions."
         },
         sharedAccess: {
           title: "Partage d'accès",
@@ -239,6 +239,12 @@ const DETAIL_COPY = {
       toggleActive: "Le contact peut se connecter à l'espace client.",
       toggleInactive: "L'accès est suspendu sans supprimer le compte.",
       toggleAria: "Activer ou désactiver l'accès au dashboard",
+      roleTitle: "Rôle tickets",
+      roleUser: "Utilisateur",
+      roleSupervisor: "Superviseur",
+      roleUserHint: "Voit et agit uniquement sur ses propres tickets (demandeur).",
+      roleSupervisorHint: "Voit et agit sur tous les tickets de l'entreprise.",
+      roleAria: "Rôle portail pour les tickets",
       resetPassword: "Réinitialiser le MDP",
       impersonate: "Prendre le contrôle",
       impersonateTitle: "Visualiser le portail client avec le compte de ce contact",
@@ -256,7 +262,9 @@ const DETAIL_COPY = {
         created: "Compte portail créé",
         passwordUpdated: "Mot de passe mis à jour",
         deleted: "Compte portail supprimé",
-        impersonationError: "Impossible de démarrer l'impersonation."
+        impersonationError: "Impossible de démarrer l'impersonation.",
+        roleUpdated: "Rôle portail mis à jour",
+        roleError: "Impossible de mettre à jour le rôle portail."
       },
       passwordModal: {
         eyebrow: "Portail client MSP",
@@ -427,7 +435,7 @@ const DETAIL_COPY = {
         },
         portal: {
           title: "Client portal",
-          content: "Manage portal access: account creation, activation, password reset and login tracking."
+          content: "Manage portal access: account creation, ticket role (user or supervisor), activation, password reset and login tracking."
         },
         sharedAccess: {
           title: "Access sharing",
@@ -555,6 +563,12 @@ const DETAIL_COPY = {
       toggleActive: "The contact can sign in to the client space.",
       toggleInactive: "Access is suspended without deleting the account.",
       toggleAria: "Enable or disable dashboard access",
+      roleTitle: "Ticket role",
+      roleUser: "User",
+      roleSupervisor: "Supervisor",
+      roleUserHint: "Can only see and act on their own tickets (requester).",
+      roleSupervisorHint: "Can see and act on all company tickets.",
+      roleAria: "Portal ticket role",
       resetPassword: "Reset password",
       impersonate: "Take control",
       impersonateTitle: "View the client portal with this contact's account",
@@ -572,7 +586,9 @@ const DETAIL_COPY = {
         created: "Portal account created",
         passwordUpdated: "Password updated",
         deleted: "Portal account deleted",
-        impersonationError: "Unable to start impersonation."
+        impersonationError: "Unable to start impersonation.",
+        roleUpdated: "Portal role updated",
+        roleError: "Unable to update the portal role."
       },
       passwordModal: {
         eyebrow: "MSP client portal",
@@ -741,7 +757,7 @@ const DETAIL_COPY = {
         },
         portal: {
           title: "Kundenportal",
-          content: "Portalzugang verwalten: Konto erstellen, aktivieren, Passwort zurücksetzen und Anmeldungen verfolgen."
+          content: "Portalzugang verwalten: Konto erstellen, Ticket-Rolle (Benutzer oder Supervisor), aktivieren, Passwort zurücksetzen und Anmeldungen verfolgen."
         },
         sharedAccess: {
           title: "Zugriff teilen",
@@ -866,6 +882,12 @@ const DETAIL_COPY = {
       toggleActive: "Kontakt kann sich am Kundenbereich anmelden.",
       toggleInactive: "Zugang ausgesetzt ohne Konto zu löschen.",
       toggleAria: "Dashboard-Zugang umschalten",
+      roleTitle: "Ticket-Rolle",
+      roleUser: "Benutzer",
+      roleSupervisor: "Supervisor",
+      roleUserHint: "Sieht und bearbeitet nur die eigenen Tickets (Antragsteller).",
+      roleSupervisorHint: "Sieht und bearbeitet alle Tickets des Unternehmens.",
+      roleAria: "Portal-Ticketrolle",
       resetPassword: "Passwort zurücksetzen",
       impersonate: "Übernehmen",
       impersonateTitle: "Kundenportal mit diesem Konto anzeigen",
@@ -883,7 +905,9 @@ const DETAIL_COPY = {
         created: "Portal-Konto erstellt",
         passwordUpdated: "Passwort aktualisiert",
         deleted: "Portal-Konto gelöscht",
-        impersonationError: "Impersonation konnte nicht gestartet werden."
+        impersonationError: "Impersonation konnte nicht gestartet werden.",
+        roleUpdated: "Portalrolle aktualisiert",
+        roleError: "Portalrolle konnte nicht aktualisiert werden."
       },
       passwordModal: {
         eyebrow: "MSP-Kundenportal",
@@ -1052,7 +1076,7 @@ const DETAIL_COPY = {
         },
         portal: {
           title: "Portale cliente",
-          content: "Gestisci l'accesso portale: creazione account, attivazione, reset password e connessioni."
+          content: "Gestisci l'accesso portale: creazione account, ruolo ticket (utente o supervisore), attivazione, reset password e connessioni."
         },
         sharedAccess: {
           title: "Condivisione accessi",
@@ -1177,6 +1201,12 @@ const DETAIL_COPY = {
       toggleActive: "Il contatto può accedere allo spazio cliente.",
       toggleInactive: "Accesso sospeso senza eliminare l'account.",
       toggleAria: "Attiva/disattiva accesso dashboard",
+      roleTitle: "Ruolo ticket",
+      roleUser: "Utente",
+      roleSupervisor: "Supervisore",
+      roleUserHint: "Vede e agisce solo sui propri ticket (richiedente).",
+      roleSupervisorHint: "Vede e agisce su tutti i ticket dell'azienda.",
+      roleAria: "Ruolo ticket portale",
       resetPassword: "Reimposta password",
       impersonate: "Prendi controllo",
       impersonateTitle: "Visualizza portale con account del contatto",
@@ -1194,7 +1224,9 @@ const DETAIL_COPY = {
         created: "Account portale creato",
         passwordUpdated: "Password aggiornata",
         deleted: "Account portale eliminato",
-        impersonationError: "Impossibile avviare impersonation."
+        impersonationError: "Impossibile avviare impersonation.",
+        roleUpdated: "Ruolo portale aggiornato",
+        roleError: "Impossibile aggiornare il ruolo portale."
       },
       passwordModal: {
         eyebrow: "Portale cliente MSP",
@@ -1363,7 +1395,7 @@ const DETAIL_COPY = {
         },
         portal: {
           title: "Portal cliente",
-          content: "Gestione el acceso portal: creación de cuenta, activación, restablecimiento de contraseña y conexiones."
+          content: "Gestione el acceso portal: creación de cuenta, rol de tickets (usuario o supervisor), activación, restablecimiento de contraseña y conexiones."
         },
         sharedAccess: {
           title: "Compartir acceso",
@@ -1488,6 +1520,12 @@ const DETAIL_COPY = {
       toggleActive: "El contacto puede acceder al espacio cliente.",
       toggleInactive: "Acceso suspendido sin eliminar la cuenta.",
       toggleAria: "Activar/desactivar acceso al panel",
+      roleTitle: "Rol de tickets",
+      roleUser: "Usuario",
+      roleSupervisor: "Supervisor",
+      roleUserHint: "Solo ve y actúa sobre sus propios tickets (solicitante).",
+      roleSupervisorHint: "Ve y actúa sobre todos los tickets de la empresa.",
+      roleAria: "Rol de tickets del portal",
       resetPassword: "Restablecer contraseña",
       impersonate: "Tomar control",
       impersonateTitle: "Ver portal con la cuenta del contacto",
@@ -1505,7 +1543,9 @@ const DETAIL_COPY = {
         created: "Cuenta portal creada",
         passwordUpdated: "Contraseña actualizada",
         deleted: "Cuenta portal eliminada",
-        impersonationError: "No se pudo iniciar la impersonación."
+        impersonationError: "No se pudo iniciar la impersonación.",
+        roleUpdated: "Rol del portal actualizado",
+        roleError: "No se pudo actualizar el rol del portal."
       },
       passwordModal: {
         eyebrow: "Portal cliente MSP",

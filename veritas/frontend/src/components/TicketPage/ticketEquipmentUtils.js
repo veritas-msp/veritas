@@ -115,10 +115,14 @@ export function serializeEquipmentInfo({
   clientId,
   brand,
   model,
-  serial
+  serial,
+  site
 }) {
+  const siteName = String(site || "").trim();
+  const withSite = siteName ? { site: siteName } : {};
   if (!concerned) return {
-    concerned: false
+    concerned: false,
+    ...withSite
   };
   if (source === "veritas") {
     return {
@@ -127,7 +131,8 @@ export function serializeEquipmentInfo({
       equipmentId: String(equipmentId || "").trim(),
       name: String(name || "").trim(),
       type: String(type || "").trim(),
-      clientId: clientId ? String(clientId) : ""
+      clientId: clientId ? String(clientId) : "",
+      ...withSite
     };
   }
   return {
@@ -135,7 +140,8 @@ export function serializeEquipmentInfo({
     source: "external",
     brand: String(brand || "").trim(),
     model: String(model || "").trim(),
-    serial: String(serial || "").trim()
+    serial: String(serial || "").trim(),
+    ...withSite
   };
 }
 export function buildLinkedEquipmentComment(equipment, clientId) {

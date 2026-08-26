@@ -50,9 +50,9 @@ function isActivationFlag(row, data, type) {
 function mapLicenseRows(licences = []) {
   if (!Array.isArray(licences)) return [];
   return licences.map(lic => ({
-    name: pickString(lic.friendlyName, lic.productName, lic.skuPartNumber, lic.skuId, lic.name, lic.partNumber) || "Licence",
+    name: pickString(lic.friendlyName, lic.productName, lic.skuPartNumber, lic.skuId, lic.nom, lic.displayName, lic.name, lic.partNumber) || "Licence",
     total: pickNumber(lic.total, lic.totalLicenses, lic.prepaidUnits?.enabled),
-    used: pickNumber(lic.consumed, lic.used, lic.usedLicenses, lic.consumedUnits),
+    used: pickNumber(lic.consumed, lic.used, lic.usedLicenses, lic.consumedUnits, lic.utilisees),
     expiration: pickDate(lic.expirationDate, lic.expiration)
   })).filter(lic => lic.name);
 }
@@ -62,9 +62,10 @@ function mapO365Details(row, data) {
   const usedLicenses = licences.reduce((sum, lic) => sum + (lic.used ?? 0), 0);
   return {
     kind: "o365",
-    product: pickString(data.tenantName, row.name, "Microsoft 365"),
-    tenantId: data.tenantId || null,
-    userCount: Array.isArray(data.users) ? data.users.length : null,
+    product: pickString(data.tenantName, data.organization, row.name, "Microsoft 365"),
+    tenantName: pickString(data.tenantName, data.organization, row.name),
+    tenantId: data.tenantId || data.tenant_id || null,
+    userCount: Array.isArray(data.users) ? data.users.length : pickNumber(data.userCount, data.nombreUtilisateurs),
     licensesTotal: totalLicenses || null,
     licensesUsed: usedLicenses || null,
     licenses: licences,
@@ -90,6 +91,55 @@ function mapAntispamDetails(row, data) {
     licensesUsed: pickNumber(data.utilisateursProteges, data.utilisateurs, data.nombre_utilisateurs),
     expiration: pickDate(data.expiration, data.expirityDate)
   };
+}
+function mapSaveJobDetails(job, instanceName, index, parentId) {
+  return {
+    id: job.id || `${parentId || "job"}-${index}`,
+    name: pickString(job.nom, job.name, job.type, "Job"),
+    jobType: pickString(job.type, job.jobType),
+    lastBackup: pickDate(job.last_backup_date, job.lastBackupDate, job.lastBackup),
+    lastBackupDuration: pickString(job.last_backup_duration, job.lastBackupDuration)
+  };
+}
+function mapSaveInstance(row, inst, index) {
+  const jobs = Array.isArray(inst.jobs) ? inst.jobs : [];
+  const parentId = inst.id || inst.instanceId || `${row.id}-i${index}`;
+  const name = pickString(inst.nom, inst.name, row.name, "Instance");
+  return {
+    id: parentId,
+    name,
+    type: "save",
+    active: inst.is_active !== false,
+    monitored: false,
+    product: pickString(inst.logiciel, inst.software, name),
+    expiration: pickDate(inst.expiration, inst.expirationGarantie, inst.garantie),
+    licensesTotal: null,
+    licensesUsed: null,
+    licenses: [],
+    details: {
+      kind: "save",
+      product: pickString(inst.logiciel, inst.software, name),
+      capacity: pickString(inst.capacite, inst.capacity),
+      site: pickString(inst.site, inst.emplacement),
+      jobCount: jobs.length,
+      lastBackup: pickDate(...jobs.map(job => job.last_backup_date || job.lastBackupDate || job.lastBackup)),
+      jobs: jobs.map((job, jobIndex) => mapSaveJobDetails(job, name, jobIndex, parentId))
+    }
+  };
+}
+function expandSaveRows(row, data) {
+  if (isActivationFlag(row, data, "save")) return [];
+  if (Array.isArray(data.instances) && data.instances.length) {
+    return data.instances.map((inst, index) => mapSaveInstance(row, inst, index));
+  }
+  const mapped = mapCloudServiceForPortal("save", row, data);
+  if (!mapped) return [];
+  if (mapped.details?.kind === "save" && Array.isArray(data.jobs) && data.jobs.length) {
+    mapped.details.jobs = data.jobs.map((job, jobIndex) => mapSaveJobDetails(job, mapped.name, jobIndex, mapped.id));
+    mapped.details.jobCount = data.jobs.length;
+    mapped.details.lastBackup = pickDate(...mapped.details.jobs.map(job => job.lastBackup));
+  }
+  return [mapped];
 }
 function mapSaveDetails(row, data) {
   const isJob = row.item_key && String(row.item_key).startsWith("job-") || data.type === "job";
@@ -117,10 +167,11 @@ function mapNddDetails(row, data) {
     kind: "ndd",
     product: pickString(data.registrar, "Nom de domaine"),
     domain: pickString(data.nom, data.domaine, data.domain, data.name, row.name),
-    registrar: pickString(data.registrar),
+    registrar: pickString(data.registrar, data.provider, data.providerName),
     autoRenew: data.autoRenew === true || data.auto_renewal === true ? true : data.autoRenew === false || data.auto_renewal === false ? false : null,
     expiration: pickDate(data.expiration, data.expirationDate, data.expirityDate),
-    renewalMode: pickString(data.renewalMode)
+    renewalMode: pickString(data.renewalMode),
+    role: pickString(data.role, data.type)
   };
 }
 export function mapCloudServiceForPortal(type, row, rawData = {}) {
@@ -176,6 +227,9 @@ export function mapCloudServiceForPortal(type, row, rawData = {}) {
   };
 }
 export function expandCloudServiceRows(type, row, data) {
+  if (type === "save") {
+    return expandSaveRows(row, data);
+  }
   const mapped = mapCloudServiceForPortal(type, row, data);
   if (mapped) return [mapped];
   if (type === "antivirus" && Array.isArray(data.solutions) && data.solutions.length) {

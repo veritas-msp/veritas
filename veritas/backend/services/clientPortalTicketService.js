@@ -8,6 +8,10 @@ import { notifyInAppTicketCommented } from "./userNotificationService.js";
 import { getTicketSatisfaction, submitPortalTicketSatisfaction, updatePortalTicketSatisfaction, hasSatisfactionTable } from "./ticketSatisfactionService.js";
 import { ensureTicketStatusMatchesValidation, getTicketResolutionValidation, submitPortalResolutionValidation, hasResolutionValidationTable } from "./ticketResolutionValidationService.js";
 import { buildSlaInfoForTicket, loadClientContrat } from "../utils/ticketSla.js";
+import { isCommunity } from "../utils/edition.js";
+import { SUPPORT_TICKET_SQL, SUPPORT_TICKET_SQL_PLAIN } from "../utils/ticketEditionGuard.js";
+import { isPortalSupervisor, normalizePortalTicketRole } from "../utils/portalTicketRole.js";
+import { ensurePortalTicketRoleSchema } from "./ensurePortalTicketRoleSchema.js";
 const TICKET_UPLOAD_DIR = path.resolve(process.cwd(), "uploads", "tickets");
 fs.mkdirSync(TICKET_UPLOAD_DIR, {
   recursive: true
@@ -48,8 +52,11 @@ function normalizeContactSlots(rawSlots) {
 }
 function normalizeEquipmentInfo(rawInfo) {
   const info = rawInfo && typeof rawInfo === "object" ? rawInfo : {};
+  const site = String(info.site || info.location || "").trim();
+  const withSite = site ? { site } : {};
   if (!info.concerned) return {
-    concerned: false
+    concerned: false,
+    ...withSite
   };
   const source = String(info.source || "").trim() === "external" ? "external" : "veritas";
   if (source === "external") {
@@ -58,7 +65,8 @@ function normalizeEquipmentInfo(rawInfo) {
       source: "external",
       brand: String(info.brand || "").trim(),
       model: String(info.model || "").trim(),
-      serial: String(info.serial || "").trim()
+      serial: String(info.serial || "").trim(),
+      ...withSite
     };
   }
   return {
@@ -67,7 +75,8 @@ function normalizeEquipmentInfo(rawInfo) {
     equipmentId: String(info.equipmentId || info.equipment_id || "").trim(),
     name: String(info.name || "").trim(),
     type: String(info.type || "").trim(),
-    clientId: String(info.clientId || info.client_id || "").trim()
+    clientId: String(info.clientId || info.client_id || "").trim(),
+    ...withSite
   };
 }
 function buildPortalTicketDescription(baseDescription, {
@@ -107,15 +116,18 @@ async function insertInternalTicketComment(ticketId, userId, content) {
   await pool.query(`INSERT INTO v_b_ticket_comments (ticket_id, author_user_id, content, is_internal, created_at)
      VALUES ($1, $2, $3, true, NOW())`, [ticketId, userId || null, trimmed]);
 }
-async function assertPortalLinkedTicket(clientId, ticketId) {
+async function assertPortalLinkedTicket(clientId, ticketId, scope = {}) {
   if (!ticketId) return null;
-  const {
-    rows
-  } = await pool.query(`SELECT id, ticket_number, title, status, type, client_id
-     FROM v_b_tickets
-     WHERE id = $1 AND client_id = $2
-     LIMIT 1`, [ticketId, clientId]);
-  return rows[0] || null;
+  const ticket = await assertPortalTicketAccess(clientId, ticketId, scope);
+  if (!ticket) return null;
+  return {
+    id: ticket.id,
+    ticket_number: ticket.ticket_number,
+    title: ticket.title,
+    status: ticket.status,
+    type: ticket.type,
+    client_id: ticket.client_id
+  };
 }
 async function hasTicketColumn(columnName) {
   const key = String(columnName || "").trim();
@@ -133,6 +145,10 @@ async function hasTicketColumn(columnName) {
   } catch {
     return false;
   }
+}
+async function portalEquipmentInfoSelect(alias = "t") {
+  if (!(await hasTicketColumn("equipment_info"))) return "";
+  return `, ${alias}.equipment_info`;
 }
 async function hasRequesterContactColumn() {
   return hasTicketColumn("requester_contact_id");
@@ -173,6 +189,15 @@ function mapPortalValidationMeta(row) {
     requestedAt: row.requested_at || null
   };
 }
+function parsePortalEquipmentInfo(value) {
+  if (!value) return null;
+  if (typeof value === "object") return value;
+  try {
+    return JSON.parse(value);
+  } catch {
+    return null;
+  }
+}
 function mapPortalListRow(row) {
   const resolutionValidation = mapPortalValidationMeta(row);
   return {
@@ -186,11 +211,48 @@ function mapPortalListRow(row) {
     created_at: row.created_at,
     updated_at: row.updated_at,
     requester_contact_id: row.requester_contact_id ?? null,
+    requester_name: String(row.requester_name || "").trim() || null,
     hasSatisfaction: Boolean(row.has_satisfaction),
+    equipment_info: parsePortalEquipmentInfo(row.equipment_info),
     ...(resolutionValidation?.isPending ? {
       resolutionValidation
     } : {})
   };
+}
+function portalCol(alias, name) {
+  return alias ? `${alias}.${name}` : name;
+}
+async function portalRequesterSql(alias = "t") {
+  if (!(await hasRequesterContactColumn())) {
+    return {
+      select: ", NULL::text AS requester_name",
+      join: ""
+    };
+  }
+  return {
+    select: `, NULLIF(TRIM(CONCAT(COALESCE(reqc.prenom, ''), ' ', COALESCE(reqc.nom, ''))), '') AS requester_name`,
+    join: `LEFT JOIN v_b_contacts reqc ON reqc.id = ${alias}.requester_contact_id`
+  };
+}
+async function appendPortalTicketScope(where, params, scope = {}, alias = "t") {
+  if (isCommunity()) {
+    where.push(alias ? SUPPORT_TICKET_SQL : SUPPORT_TICKET_SQL_PLAIN);
+  }
+  if (isPortalSupervisor(scope.portalRole)) return;
+  const parts = [];
+  if (scope.contactId && (await hasRequesterContactColumn())) {
+    params.push(scope.contactId);
+    parts.push(`${portalCol(alias, "requester_contact_id")} = $${params.length}`);
+  }
+  if (scope.userId) {
+    params.push(scope.userId);
+    parts.push(`${portalCol(alias, "requester_user_id")} = $${params.length}`);
+  }
+  if (!parts.length) {
+    where.push("FALSE");
+    return;
+  }
+  where.push(`(${parts.join(" OR ")})`);
 }
 function buildPortalTicketSoftDeleteClauses(alias = "") {
   const prefix = alias ? `${alias}.` : "";
@@ -227,66 +289,92 @@ function mapPortalComment(row, attachments = [], authorProfile = null) {
   };
 }
 export async function getPortalUserContext(userId) {
+  await ensurePortalTicketRoleSchema();
   const {
     rows
-  } = await pool.query(`SELECT id, email, username, client_id, contact_id
+  } = await pool.query(`SELECT id, email, username, client_id, contact_id, COALESCE(portal_role, 'user') AS portal_role
      FROM v_b_users
      WHERE id = $1
      LIMIT 1`, [userId]);
-  return rows[0] || null;
+  const row = rows[0] || null;
+  if (!row) return null;
+  return {
+    ...row,
+    portal_role: normalizePortalTicketRole(row.portal_role)
+  };
 }
-export async function countPortalTicketsPendingValidation(clientId) {
+export async function countPortalTicketsPendingValidation(clientId, scope = {}) {
   if (!(await hasResolutionValidationTable())) return 0;
   const softDelete = buildPortalTicketSoftDeleteClauses("t");
   const softDeleteClauses = await softDelete.clauses();
+  const params = [clientId];
   const where = ["t.client_id = $1", "LOWER(t.status) = 'resolved'", "v.outcome = 'pending'", ...softDeleteClauses];
+  await appendPortalTicketScope(where, params, scope, "t");
   const {
     rows
   } = await pool.query(`SELECT COUNT(*)::int AS total
      FROM v_b_ticket_resolution_validations v
      INNER JOIN v_b_tickets t ON t.id = v.ticket_id
-     WHERE ${where.join(" AND ")}`, [clientId]);
+     WHERE ${where.join(" AND ")}`, params);
   return Number(rows[0]?.total) || 0;
 }
-export async function countPortalTicketsPendingClientResponse(clientId) {
+export async function countPortalTicketsPendingClientResponse(clientId, scope = {}) {
   const softDelete = buildPortalTicketSoftDeleteClauses("t");
   const softDeleteClauses = await softDelete.clauses();
+  const params = [clientId];
   const where = ["t.client_id = $1", "LOWER(t.status) = 'pending'", ...softDeleteClauses];
+  await appendPortalTicketScope(where, params, scope, "t");
   const {
     rows
   } = await pool.query(`SELECT COUNT(*)::int AS total
      FROM v_b_tickets t
-     WHERE ${where.join(" AND ")}`, [clientId]);
+     WHERE ${where.join(" AND ")}`, params);
   return Number(rows[0]?.total) || 0;
 }
-export async function countPortalTicketsActionRequired(clientId) {
-  const [validationCount, pendingCount] = await Promise.all([countPortalTicketsPendingValidation(clientId), countPortalTicketsPendingClientResponse(clientId)]);
+export async function countPortalTicketsActionRequired(clientId, scope = {}) {
+  const [validationCount, pendingCount] = await Promise.all([countPortalTicketsPendingValidation(clientId, scope), countPortalTicketsPendingClientResponse(clientId, scope)]);
   return validationCount + pendingCount;
 }
 export async function listPortalTicketsPendingClientResponse(clientId, {
   search,
   limit = 50,
-  offset = 0
+  offset = 0,
+  contactId,
+  userId,
+  portalRole
 } = {}) {
   return listPortalTickets(clientId, {
     status: "pending",
     search,
     limit,
-    offset
+    offset,
+    contactId,
+    userId,
+    portalRole
   });
 }
 export async function listPortalTicketsActionRequired(clientId, {
   search,
   limit = 50,
-  offset = 0
+  offset = 0,
+  contactId,
+  userId,
+  portalRole
 } = {}) {
+  const scope = {
+    contactId,
+    userId,
+    portalRole
+  };
   const safeLimit = Math.min(Math.max(Number(limit) || 50, 1), 200);
   const [validationRows, pendingRows] = await Promise.all([listPortalTicketsPendingValidation(clientId, {
     search,
-    limit: safeLimit
+    limit: safeLimit,
+    ...scope
   }), listPortalTicketsPendingClientResponse(clientId, {
     search,
-    limit: safeLimit
+    limit: safeLimit,
+    ...scope
   })]);
   const merged = [...validationRows, ...pendingRows];
   merged.sort((a, b) => {
@@ -299,13 +387,21 @@ export async function listPortalTicketsActionRequired(clientId, {
 export async function listPortalTicketsPendingValidation(clientId, {
   search,
   limit = 50,
-  offset = 0
+  offset = 0,
+  contactId,
+  userId,
+  portalRole
 } = {}) {
   if (!(await hasResolutionValidationTable())) return [];
   const softDelete = buildPortalTicketSoftDeleteClauses("t");
   const softDeleteClauses = await softDelete.clauses();
   const params = [clientId];
   const where = ["t.client_id = $1", "LOWER(t.status) = 'resolved'", "v.outcome = 'pending'", ...softDeleteClauses];
+  await appendPortalTicketScope(where, params, {
+    contactId,
+    userId,
+    portalRole
+  }, "t");
   if (search) {
     params.push(`%${String(search).trim()}%`);
     where.push(`(t.title ILIKE $${params.length} OR CAST(t.ticket_number AS TEXT) ILIKE $${params.length})`);
@@ -316,14 +412,19 @@ export async function listPortalTicketsPendingValidation(clientId, {
   const hasSatTable = await hasSatisfactionTable();
   const satJoin = hasSatTable ? "LEFT JOIN v_b_ticket_satisfaction sat ON sat.ticket_id = t.id" : "";
   const satSelect = hasSatTable ? ", (sat.id IS NOT NULL) AS has_satisfaction" : ", false AS has_satisfaction";
+  const equipmentSelect = await portalEquipmentInfoSelect("t");
+  const requesterSql = await portalRequesterSql("t");
   const {
     rows
   } = await pool.query(`SELECT t.id, t.ticket_number, t.title, t.status, t.priority, t.type, t.channel,
-            t.created_at, t.updated_at, t.requester_contact_id,
+            t.created_at, t.updated_at, t.requester_contact_id
+            ${requesterSql.select}
+            ${equipmentSelect},
             v.outcome AS validation_outcome, v.auto_close_at, v.resolution_reason, v.requested_at
             ${satSelect}
      FROM v_b_ticket_resolution_validations v
      INNER JOIN v_b_tickets t ON t.id = v.ticket_id
+     ${requesterSql.join}
      ${satJoin}
      WHERE ${where.join(" AND ")}
      ORDER BY v.requested_at ASC NULLS LAST, t.updated_at DESC
@@ -334,13 +435,19 @@ export async function listPortalTickets(clientId, {
   status,
   search,
   limit = 50,
-  offset = 0
+  offset = 0,
+  contactId,
+  userId,
+  portalRole
 } = {}) {
   if (status === "pending_validation") {
     return listPortalTicketsPendingValidation(clientId, {
       search,
       limit,
-      offset
+      offset,
+      contactId,
+      userId,
+      portalRole
     });
   }
   const hasDeletedAt = await hasTicketColumn("deleted_at");
@@ -349,6 +456,11 @@ export async function listPortalTickets(clientId, {
   const where = ["t.client_id = $1"];
   if (hasDeletedAt) where.push("t.deleted_at IS NULL");
   if (hasIsDeleted) where.push("COALESCE(t.is_deleted, false) = false");
+  await appendPortalTicketScope(where, params, {
+    contactId,
+    userId,
+    portalRole
+  }, "t");
   if (status) {
     const normalized = status === "new" ? "open" : status;
     params.push(normalized);
@@ -375,13 +487,18 @@ export async function listPortalTickets(clientId, {
          LIMIT 1
        ) v ON true` : "";
   const validationSelect = hasValidationTable ? ", v.outcome AS validation_outcome, v.auto_close_at, v.resolution_reason, v.requested_at" : "";
+  const equipmentSelect = await portalEquipmentInfoSelect("t");
+  const requesterSql = await portalRequesterSql("t");
   const {
     rows
   } = await pool.query(`SELECT t.id, t.ticket_number, t.title, t.status, t.priority, t.type, t.channel,
             t.created_at, t.updated_at, t.requester_contact_id
+            ${requesterSql.select}
+            ${equipmentSelect}
             ${validationSelect}
             ${satSelect}
      FROM v_b_tickets t
+     ${requesterSql.join}
      ${validationJoin}
      ${satJoin}
      WHERE ${where.join(" AND ")}
@@ -389,13 +506,14 @@ export async function listPortalTickets(clientId, {
      LIMIT $${params.length - 1} OFFSET $${params.length}`, params);
   return rows.map(mapPortalListRow);
 }
-async function assertPortalTicketAccess(clientId, ticketId) {
+async function assertPortalTicketAccess(clientId, ticketId, scope = {}) {
   const hasDeletedAt = await hasTicketColumn("deleted_at");
   const hasIsDeleted = await hasTicketColumn("is_deleted");
   const params = [ticketId, clientId];
   const where = ["id = $1", "client_id = $2"];
   if (hasDeletedAt) where.push("deleted_at IS NULL");
   if (hasIsDeleted) where.push("COALESCE(is_deleted, false) = false");
+  await appendPortalTicketScope(where, params, scope, "");
   const {
     rows
   } = await pool.query(`SELECT id, ticket_number, title, description, status, priority, type, channel,
@@ -405,16 +523,32 @@ async function assertPortalTicketAccess(clientId, ticketId) {
      LIMIT 1`, params);
   return rows[0] || null;
 }
+export async function assertPortalTicketVisible(clientId, ticketId, scope = {}) {
+  return assertPortalTicketAccess(clientId, ticketId, scope);
+}
 async function resolveAuthorProfiles(userIds = []) {
   return loadAuthorProfilesByUserIds(userIds);
 }
-export async function getPortalTicketDetail(clientId, ticketId) {
-  const ticket = await assertPortalTicketAccess(clientId, ticketId);
+async function resolveRequesterName(contactId) {
+  if (!contactId) return null;
+  try {
+    const { rows } = await pool.query(
+      `SELECT NULLIF(TRIM(CONCAT(COALESCE(prenom, ''), ' ', COALESCE(nom, ''))), '') AS requester_name
+       FROM v_b_contacts WHERE id = $1 LIMIT 1`,
+      [contactId]
+    );
+    return rows[0]?.requester_name || null;
+  } catch {
+    return null;
+  }
+}
+export async function getPortalTicketDetail(clientId, ticketId, scope = {}) {
+  const ticket = await assertPortalTicketAccess(clientId, ticketId, scope);
   if (!ticket) return null;
   await ensureTicketStatusMatchesValidation(ticketId).catch(err => {
     console.error(`[portal] ensureTicketStatusMatchesValidation ${ticketId}:`, err.message);
   });
-  const refreshedTicket = await assertPortalTicketAccess(clientId, ticketId);
+  const refreshedTicket = await assertPortalTicketAccess(clientId, ticketId, scope);
   if (!refreshedTicket) return null;
   const hasCommentUpdatedAt = await hasCommentColumn("updated_at");
   const commentsResult = await pool.query(`SELECT id, ticket_id, author_user_id, content, is_internal, created_at, ${commentUpdatedAtSelectSql(hasCommentUpdatedAt)}
@@ -450,6 +584,7 @@ export async function getPortalTicketDetail(clientId, ticketId) {
     channel: refreshedTicket.channel,
     client_id: refreshedTicket.client_id,
     requester_contact_id: refreshedTicket.requester_contact_id,
+    requester_name: await resolveRequesterName(refreshedTicket.requester_contact_id),
     created_at: refreshedTicket.created_at,
     updated_at: refreshedTicket.updated_at,
     closed_at: refreshedTicket.closed_at,
@@ -463,6 +598,7 @@ export async function createPortalTicket({
   clientId,
   contactId,
   userId,
+  portalRole = "user",
   title,
   description,
   priority = "normal",
@@ -527,7 +663,11 @@ export async function createPortalTicket({
       type: normalizedEquipmentInfo.type
     }, normalizedEquipmentInfo.clientId || clientId)).catch(() => {});
   }
-  const linkedTicket = linkedTicketId ? await assertPortalLinkedTicket(clientId, linkedTicketId) : null;
+  const linkedTicket = linkedTicketId ? await assertPortalLinkedTicket(clientId, linkedTicketId, {
+    contactId,
+    userId,
+    portalRole
+  }) : null;
   if (linkedTicket) {
     await insertInternalTicketComment(created.id, userId, buildLinkedTicketComment(linkedTicket)).catch(() => {});
   }
@@ -552,9 +692,15 @@ export async function addPortalTicketComment({
   ticketId,
   userId,
   content,
-  files = []
+  files = [],
+  contactId,
+  portalRole
 }) {
-  const ticket = await assertPortalTicketAccess(clientId, ticketId);
+  const ticket = await assertPortalTicketAccess(clientId, ticketId, {
+    contactId,
+    userId,
+    portalRole
+  });
   if (!ticket) return null;
   if (String(ticket.status || "").toLowerCase() === "closed") {
     const err = new Error("TICKET_CLOSED");
@@ -614,9 +760,15 @@ export async function updatePortalTicketComment({
   ticketId,
   userId,
   commentId,
-  content
+  content,
+  contactId,
+  portalRole
 }) {
-  const ticket = await assertPortalTicketAccess(clientId, ticketId);
+  const ticket = await assertPortalTicketAccess(clientId, ticketId, {
+    contactId,
+    userId,
+    portalRole
+  });
   if (!ticket) return null;
   if (isPortalTicketLockedForEdits(ticket.status)) {
     const err = new Error("TICKET_LOCKED");

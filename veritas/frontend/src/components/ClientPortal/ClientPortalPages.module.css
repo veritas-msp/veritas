@@ -11,6 +11,63 @@
   gap: 0.55rem;
 }
 
+.kpiRowFamily {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 0.75rem;
+}
+
+.kpiRowFamily > button {
+  text-align: left;
+}
+
+.kpiRowFamily > div {
+  cursor: default;
+}
+
+.kpiRowFamily > div :global([class*="kpiValue"]) {
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+:global(html.dark) .kpiRowFamily :global([class*="kpiIcon_blue"]),
+:global(html.dark) .kpiRow2 :global([class*="kpiIcon_blue"]) {
+  background: rgba(90, 157, 224, 0.18);
+  color: #5a9de0;
+}
+
+:global(html.dark) .kpiRowFamily :global([class*="kpiIcon_teal"]) {
+  background: rgba(45, 212, 191, 0.16);
+  color: #2dd4bf;
+}
+
+:global(html.dark) .kpiRowFamily :global([class*="kpiIcon_violet"]),
+:global(html.dark) .kpiRow2 :global([class*="kpiIcon_violet"]) {
+  background: rgba(167, 139, 250, 0.18);
+  color: #a78bfa;
+}
+
+:global(html.dark) .kpiRowFamily :global([class*="kpiIcon_green"]) {
+  background: rgba(74, 222, 128, 0.16);
+  color: #4ade80;
+}
+
+:global(html.dark) .kpiRowFamily :global([class*="kpiIcon_cyan"]) {
+  background: rgba(34, 211, 238, 0.16);
+  color: #22d3ee;
+}
+
+:global(html.dark) .kpiRowFamily :global([class*="kpiIcon_amber"]),
+:global(html.dark) .kpiRowFamily :global([class*="kpiIcon_orange"]) {
+  background: rgba(251, 191, 36, 0.16);
+  color: #fbbf24;
+}
+
+:global(html.dark) .kpiRowFamily :global([class*="kpiIcon_gray"]) {
+  background: rgba(148, 163, 184, 0.16);
+  color: #94a3b8;
+}
+
 .panelContent {
   flex: 1;
   min-height: 0;
@@ -553,7 +610,8 @@
 }
 
 @media (max-width: 720px) {
-  .kpiRow2 {
+  .kpiRow2,
+  .kpiRowFamily {
     grid-template-columns: 1fr;
   }
 

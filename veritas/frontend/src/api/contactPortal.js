@@ -13,13 +13,26 @@ export async function fetchContactPortal(contactId) {
   if (!res.ok) await parseError(res);
   return res.json();
 }
-export async function createContactPortal(contactId, password) {
+export async function createContactPortal(contactId, password, portalRole = "user") {
   const res = await fetch(`${API_BASE_URL}/contacts/${contactId}/portal`, {
     method: "POST",
     credentials: "include",
     headers: jsonHeaders,
     body: JSON.stringify({
-      password
+      password,
+      portal_role: portalRole
+    })
+  });
+  if (!res.ok) await parseError(res);
+  return res.json();
+}
+export async function setContactPortalRole(contactId, portalRole) {
+  const res = await fetch(`${API_BASE_URL}/contacts/${contactId}/portal`, {
+    method: "PATCH",
+    credentials: "include",
+    headers: jsonHeaders,
+    body: JSON.stringify({
+      portal_role: portalRole
     })
   });
   if (!res.ok) await parseError(res);

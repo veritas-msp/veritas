@@ -45,6 +45,7 @@ import { HARDWARE_TYPE_ORDER } from "../EnterprisesPage/infraHoneycombLayout";
 import { getInfraMapCopy } from "../EnterprisesPage/infraMapI18n";
 import { parseCustomFamilyType } from "../../api/equipmentFamilies";
 import { filterBySite } from "../../utils/siteFilterUtils";
+import { equipmentMatchesFleetFamily } from "../../utils/equipmentFamilyStats";
 import { getEquipmentFormOptionsCopy, getRoleOptionLabel } from "./equipmentFormOptionsI18n";
 import EquipmentHaCell from "./EquipmentHaCell";
 import { buildHaPairColorMap, compareFirewallHaPairs, getFirewallHaSortValue, getFirewallHaState } from "./equipmentHaUtils";
@@ -1261,15 +1262,15 @@ const EquipmentPage = forwardRef(function EquipmentPage({
       if (isMountedRef.current) setLoading(false);
     }
   };
-  const hexCustomFamilies = useMemo(() => (Array.isArray(customFamilyMap) ? customFamilyMap : []).filter(family => family.displayMode !== "brick"), [customFamilyMap]);
+  const customFamiliesForUi = useMemo(() => (Array.isArray(customFamilyMap) ? customFamilyMap : []), [customFamilyMap]);
   const filteredBackupRows = useMemo(() => {
     const instances = siteFilter ? filterBySite(backupInstances, siteFilter) : backupInstances;
     return mapBackupRows(instances, searchQuery);
   }, [backupInstances, searchQuery, siteFilter]);
   const embeddedTypeOrder = useMemo(() => {
-    const customTypes = hexCustomFamilies.map(family => `Custom:${family.familyKey}`);
+    const customTypes = customFamiliesForUi.map(family => `Custom:${family.familyKey}`);
     return [...HARDWARE_TYPE_ORDER, ...customTypes];
-  }, [hexCustomFamilies]);
+  }, [customFamiliesForUi]);
   const getCustomFamilyItems = useCallback(family => {
     const items = Array.isArray(family?.items) ? family.items : [];
     const query = String(searchQuery || "").trim().toLowerCase();
@@ -1401,25 +1402,25 @@ const EquipmentPage = forwardRef(function EquipmentPage({
     const counts = {
       ...typeCounts
     };
-    hexCustomFamilies.forEach(family => {
+    customFamiliesForUi.forEach(family => {
       counts[`Custom:${family.familyKey}`] = getCustomFamilyItems(family).length;
     });
     return counts;
-  }, [typeCounts, hexCustomFamilies, getCustomFamilyItems]);
+  }, [typeCounts, customFamiliesForUi, getCustomFamilyItems]);
   const supervisionDeviceTypeOrder = useMemo(() => {
-    const customTypes = hexCustomFamilies.map(family => `Custom:${family.familyKey}`);
+    const customTypes = customFamiliesForUi.map(family => `Custom:${family.familyKey}`);
     return [...FILTER_TYPE_ORDER, "Security camera", ...customTypes];
-  }, [hexCustomFamilies]);
+  }, [customFamiliesForUi]);
   const supervisionTypeCounts = embeddedTypeCounts;
   const supervisionTypeIconMap = useMemo(() => {
     const map = {
       ...TYPE_ICON_MAP
     };
-    hexCustomFamilies.forEach(family => {
+    customFamiliesForUi.forEach(family => {
       map[`Custom:${family.familyKey}`] = family.icon || "mdi:devices";
     });
     return map;
-  }, [hexCustomFamilies]);
+  }, [customFamiliesForUi]);
   const embeddedActiveType = useMemo(() => {
     if (!embedded) return null;
     if (selectedTypes.size === 1) return [...selectedTypes][0];
@@ -1429,27 +1430,27 @@ const EquipmentPage = forwardRef(function EquipmentPage({
   const activeCustomFamily = useMemo(() => {
     if (!embeddedActiveType?.startsWith("Custom:")) return null;
     const familyKey = embeddedActiveType.slice("Custom:".length);
-    return hexCustomFamilies.find(family => family.familyKey === familyKey) || null;
-  }, [embeddedActiveType, hexCustomFamilies]);
+    return customFamiliesForUi.find(family => family.familyKey === familyKey) || null;
+  }, [embeddedActiveType, customFamiliesForUi]);
   const getEmbeddedTypeLabel = useCallback(type => {
     if (!type) return "";
     if (String(type).startsWith("Custom:")) {
       const familyKey = type.slice("Custom:".length);
-      const family = hexCustomFamilies.find(entry => entry.familyKey === familyKey);
+      const family = customFamiliesForUi.find(entry => entry.familyKey === familyKey);
       return family?.label || familyKey;
     }
     return infraMapCopy.getHoneycombTypeLabel(type);
-  }, [hexCustomFamilies, infraMapCopy]);
+  }, [customFamiliesForUi, infraMapCopy]);
   const getEmbeddedTypeIcon = useCallback(type => {
     if (!type) return "mdi:devices";
     if (String(type).startsWith("Custom:")) {
       const familyKey = type.slice("Custom:".length);
-      const family = hexCustomFamilies.find(entry => entry.familyKey === familyKey);
+      const family = customFamiliesForUi.find(entry => entry.familyKey === familyKey);
       return family?.icon || "mdi:devices";
     }
     if (type === "Backup") return "mdi:backup-restore";
     return TYPE_ICON_MAP[type] || "mdi:devices";
-  }, [hexCustomFamilies]);
+  }, [customFamiliesForUi]);
   const panelActiveType = useMemo(() => {
     if (embedded) return embeddedActiveType;
     return resolveMonitoringActiveType(selectedTypes, supervisionDeviceTypeOrder, supervisionTypeCounts);
@@ -2719,7 +2720,7 @@ const EquipmentPage = forwardRef(function EquipmentPage({
     }
     if (isCustom) {
       const familyKey = activeType.slice("Custom:".length);
-      const family = hexCustomFamilies.find(entry => entry.familyKey === familyKey);
+      const family = customFamiliesForUi.find(entry => entry.familyKey === familyKey);
       const items = family ? getCustomFamilyItems(family) : [];
       if (!items.length) {
         toast.error('No data to export');
@@ -2756,7 +2757,7 @@ const EquipmentPage = forwardRef(function EquipmentPage({
     let equipmentList = equipmentByType[activeType] || [];
     if (isCustom) {
       const familyKey = activeType.slice("Custom:".length);
-      const family = hexCustomFamilies.find(entry => entry.familyKey === familyKey);
+      const family = customFamiliesForUi.find(entry => entry.familyKey === familyKey);
       equipmentList = family ? getCustomFamilyItems(family) : [];
     }
     const columns = (selectedKeys || []).map(key => ({
@@ -2819,7 +2820,11 @@ const EquipmentPage = forwardRef(function EquipmentPage({
     const displayType = toDisplayEquipmentType(type);
     setSelectedTypes(new Set([displayType]));
   }, []);
-  const getComputersForStats = useCallback(() => baseEquipment.filter(eq => eq.type === "Ordinateurs"), [baseEquipment]);
+  const getEquipmentForStats = useCallback(type => {
+    if (!type) return [];
+    return baseEquipment.filter(eq => equipmentMatchesFleetFamily(eq.type, type));
+  }, [baseEquipment]);
+  const getComputersForStats = useCallback(() => getEquipmentForStats("Ordinateurs"), [getEquipmentForStats]);
   const getEmbeddedActiveType = useCallback(() => embeddedActiveType, [embeddedActiveType]);
   useImperativeHandle(ref, () => ({
     openAddEquipmentModal,
@@ -2827,8 +2832,9 @@ const EquipmentPage = forwardRef(function EquipmentPage({
     handleExportAllTables,
     focusType,
     getComputersForStats,
+    getEquipmentForStats,
     getEmbeddedActiveType
-  }), [openAddEquipmentModal, handleExportCurrentTable, handleExportAllTables, focusType, getComputersForStats, getEmbeddedActiveType]);
+  }), [openAddEquipmentModal, handleExportCurrentTable, handleExportAllTables, focusType, getComputersForStats, getEquipmentForStats, getEmbeddedActiveType]);
   useEffect(() => {
     if (!embedded || !onEmbeddedActiveTypeChange) return;
     onEmbeddedActiveTypeChange(embeddedActiveType);
@@ -3641,7 +3647,7 @@ const EquipmentPage = forwardRef(function EquipmentPage({
                   {renderEquipmentPagination(sectionKey, total)}
                 </div>;
             })()}
-            {Object.keys(equipmentByType).length === 0 && filteredBackupRows.length === 0 && hexCustomFamilies.length === 0 && !(embedded && embeddedActiveType) && <div className={styles.noData}>
+            {Object.keys(equipmentByType).length === 0 && filteredBackupRows.length === 0 && customFamiliesForUi.length === 0 && !(embedded && embeddedActiveType) && <div className={styles.noData}>
                 No equipment found
               </div>}
           </div>}
@@ -3740,7 +3746,7 @@ const EquipmentPage = forwardRef(function EquipmentPage({
           </div>
         </div>}
 
-      <EquipmentAddFlowModal open={addFlowOpen} prefilledClient={embeddedClient || null} customFamilies={hexCustomFamilies} onClose={() => setAddFlowOpen(false)} onReady={handleAddFlowReady} onCustomFamilySelect={family => {
+      <EquipmentAddFlowModal open={addFlowOpen} prefilledClient={embeddedClient || null} customFamilies={customFamiliesForUi} onClose={() => setAddFlowOpen(false)} onReady={handleAddFlowReady} onCustomFamilySelect={family => {
       setAddFlowOpen(false);
       onCustomFamilyManage?.(family);
     }} />

@@ -44,6 +44,8 @@
   --portal-theme-option-active-bg: rgba(43, 95, 171, 0.35);
   --portal-theme-option-active-border: rgba(43, 95, 171, 0.65);
   --portal-theme-option-active-text: #ffffff;
+  --msp-shadow-panel: 0 8px 22px -12px rgba(15, 28, 46, 0.2);
+  --msp-kpi-active-bg: linear-gradient(180deg, #fff 0%, #f0f5fb 100%);
 
   min-height: 100dvh;
   max-height: 100dvh;
@@ -75,6 +77,8 @@
   --portal-theme-option-active-bg: rgba(43, 95, 171, 0.35);
   --portal-theme-option-active-border: rgba(43, 95, 171, 0.65);
   --portal-theme-option-active-text: #ffffff;
+  --msp-shadow-panel: 0 8px 24px -12px rgba(0, 0, 0, 0.5);
+  --msp-kpi-active-bg: linear-gradient(180deg, #2a3d5c 0%, #1f2d4a 100%);
 }
 
 
@@ -762,10 +766,11 @@
 
 
 .panel {
-  background: var(--portal-surface);
-  border: 1px solid var(--portal-border);
-  border-radius: 10px;
+  background: var(--msp-surface, var(--portal-surface));
+  border: 1px solid var(--msp-border, var(--portal-border));
+  border-radius: 12px;
   padding: 16px 18px;
+  box-shadow: var(--msp-shadow-panel, 0 2px 8px rgba(11, 33, 56, 0.04));
 }
 
 .panelHeader {
@@ -776,6 +781,9 @@
 }
 
 .panelTitle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   font-size: 0.82rem;
   font-weight: 700;
   text-transform: uppercase;
@@ -957,28 +965,35 @@
 }
 
 
-.dashboardTopRow {
+.kpiRow {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr)) minmax(0, 1.15fr) minmax(0, 1.15fr);
-  gap: 12px;
-  align-items: stretch;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.75rem;
 }
 
-.dashboardTopRow .infoCard {
-  padding: 12px 14px;
+.kpiRow a {
+  text-decoration: none;
+  color: inherit;
 }
 
-.dashboardTopRow .infoCardHeader {
-  margin-bottom: 8px;
+:global(html.dark) .kpiRow :global([class*="kpiIcon_blue"]) {
+  background: rgba(90, 157, 224, 0.18);
+  color: #5a9de0;
 }
 
-.dashboardTopRow .infoCardFacts {
-  gap: 8px;
+:global(html.dark) .kpiRow :global([class*="kpiIcon_green"]) {
+  background: rgba(74, 222, 128, 0.16);
+  color: #4ade80;
 }
 
-.dashboardTopRow .infoCardFacts dd {
-  font-size: 0.82rem;
-  word-break: break-word;
+:global(html.dark) .kpiRow :global([class*="kpiIcon_orange"]) {
+  background: rgba(251, 191, 36, 0.16);
+  color: #fbbf24;
+}
+
+:global(html.dark) .kpiRow :global([class*="kpiIcon_violet"]) {
+  background: rgba(167, 139, 250, 0.18);
+  color: #a78bfa;
 }
 
 .kpiGrid {
@@ -989,48 +1004,65 @@
 
 .kpiCard {
   display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 4px;
-  padding: 14px 16px;
-  border-radius: 10px;
-  border: 1px solid var(--portal-border);
-  background: var(--portal-surface);
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.85rem 1rem;
+  border: 1px solid var(--msp-border, var(--portal-border));
+  border-radius: 12px;
+  background-color: var(--msp-surface, var(--portal-surface));
+  box-shadow: var(--msp-shadow-panel, 0 2px 8px rgba(11, 33, 56, 0.06));
   text-decoration: none;
-  transition: border-color 0.15s, box-shadow 0.15s;
+  transition: border-color 0.15s, transform 0.15s, box-shadow 0.15s;
 }
 
 .kpiCard:hover {
   border-color: var(--portal-accent);
-  box-shadow: 0 2px 10px rgba(43, 95, 171, 0.12);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 14px rgba(15, 28, 46, 0.1);
+}
+
+:global(html.dark) .kpiCard {
+  background-color: var(--msp-surface, #1f2d4a);
+  border-color: var(--msp-border, #3d5478);
+  box-shadow: 0 8px 24px -12px rgba(0, 0, 0, 0.5);
 }
 
 .kpiCardIcon {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 32px;
-  height: 32px;
-  border-radius: 8px;
-  font-size: 1.1rem;
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  font-size: 1.25rem;
+  flex-shrink: 0;
 }
 
-.kpiCardIcon_blue { background: rgba(43, 95, 171, 0.12); color: var(--portal-accent); }
-.kpiCardIcon_green { background: rgba(16, 185, 129, 0.12); color: #10b981; }
-.kpiCardIcon_orange { background: rgba(245, 158, 11, 0.12); color: #f59e0b; }
-.kpiCardIcon_violet { background: rgba(139, 92, 246, 0.12); color: #8b5cf6; }
+.kpiCardIcon_blue { background: rgba(43, 95, 171, 0.12); color: #2b5fab; }
+.kpiCardIcon_green { background: rgba(22, 163, 74, 0.12); color: #15803d; }
+.kpiCardIcon_orange { background: rgba(245, 158, 11, 0.12); color: #d97706; }
+.kpiCardIcon_violet { background: rgba(124, 58, 237, 0.12); color: #6d28d9; }
+
+:global(html.dark) .kpiCardIcon_blue { background: rgba(90, 157, 224, 0.18); color: #5a9de0; }
+:global(html.dark) .kpiCardIcon_green { background: rgba(74, 222, 128, 0.16); color: #4ade80; }
+:global(html.dark) .kpiCardIcon_orange { background: rgba(251, 191, 36, 0.16); color: #fbbf24; }
+:global(html.dark) .kpiCardIcon_violet { background: rgba(167, 139, 250, 0.18); color: #a78bfa; }
 
 .kpiCardValue {
   font-size: 1.35rem;
-  font-weight: 800;
-  color: var(--portal-text);
+  font-weight: 700;
+  letter-spacing: -0.02em;
   line-height: 1.1;
+  font-variant-numeric: tabular-nums;
+  color: var(--msp-text, var(--portal-text));
 }
 
 .kpiCardLabel {
-  font-size: 0.76rem;
-  font-weight: 600;
-  color: var(--portal-text-muted);
+  display: block;
+  margin-top: 0.15rem;
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--msp-muted, var(--portal-text-muted));
 }
 
 .quickLinkGrid {
@@ -1196,7 +1228,7 @@
 }
 
 @media (max-width: 1200px) {
-  .dashboardTopRow {
+  .kpiRow {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
@@ -1207,7 +1239,7 @@
   .cloudGrid { grid-template-columns: 1fr 1fr; }
   .twoCol { grid-template-columns: 1fr; }
   .kpiGrid { grid-template-columns: repeat(2, 1fr); }
-  .dashboardTopRow {
+  .kpiRow {
     grid-template-columns: 1fr;
   }
 }

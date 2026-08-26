@@ -665,8 +665,11 @@ function normalizeContactSlots(rawSlots) {
 }
 function normalizeEquipmentInfo(rawInfo) {
   const info = rawInfo && typeof rawInfo === "object" ? rawInfo : {};
+  const site = String(info.site || info.location || "").trim();
+  const withSite = site ? { site } : {};
   if (!info.concerned) return {
-    concerned: false
+    concerned: false,
+    ...withSite
   };
   const source = String(info.source || "").trim() === "external" ? "external" : "veritas";
   if (source === "external") {
@@ -675,7 +678,8 @@ function normalizeEquipmentInfo(rawInfo) {
       source: "external",
       brand: String(info.brand || "").trim(),
       model: String(info.model || "").trim(),
-      serial: String(info.serial || "").trim()
+      serial: String(info.serial || "").trim(),
+      ...withSite
     };
   }
   return {
@@ -684,7 +688,8 @@ function normalizeEquipmentInfo(rawInfo) {
     equipmentId: String(info.equipmentId || info.equipment_id || "").trim(),
     name: String(info.name || "").trim(),
     type: String(info.type || "").trim(),
-    clientId: String(info.clientId || info.client_id || "").trim()
+    clientId: String(info.clientId || info.client_id || "").trim(),
+    ...withSite
   };
 }
 router.get("/automation-config", verifyJWT, async (_req, res) => {

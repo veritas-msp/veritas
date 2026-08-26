@@ -1,89 +1,93 @@
-.optionGroups {
+.referentFacts {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+@media (max-width: 640px) {
+  .referentFacts {
+    grid-template-columns: 1fr;
+  }
+}
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 18px;
 }
 
 .optionGroup {
   display: flex;
-  align-items: flex-start;
-  gap: 12px 16px;
-  flex-wrap: wrap;
+  flex-direction: column;
+  gap: 10px;
 }
 
 .optionGroupTitle {
   margin: 0;
-  flex: 0 0 auto;
-  min-width: 10.5rem;
-  padding-top: 5px;
-  font-size: 0.68rem;
+  font-size: 0.72rem;
   font-weight: 700;
   letter-spacing: 0.06em;
   text-transform: uppercase;
-  color: var(--portal-text-muted);
+  color: var(--msp-muted, var(--portal-text-muted));
 }
 
 .optionList {
   list-style: none;
   margin: 0;
   padding: 0;
-  flex: 1 1 12rem;
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
 }
 
 .optionChip {
   display: inline-flex;
   align-items: center;
-  gap: 5px;
-  padding: 4px 9px 4px 6px;
-  border-radius: 999px;
-  border: 1px solid var(--portal-border);
-  background: var(--portal-surface-alt);
-  font-size: 0.78rem;
+  gap: 6px;
+  padding: 8px 12px;
+  border-radius: 10px;
+  border: 1px solid var(--msp-border, var(--portal-border));
+  background: var(--msp-surface, var(--portal-surface));
+  box-shadow: var(--msp-shadow-panel, 0 1px 2px rgba(15, 28, 46, 0.06));
+  font-size: 0.8rem;
   font-weight: 600;
-  color: var(--portal-text);
+  color: var(--msp-text, var(--portal-text));
   line-height: 1.2;
-  white-space: nowrap;
 }
 
 .optionChipActive {
-  border-color: rgba(16, 185, 129, 0.35);
-  background: rgba(16, 185, 129, 0.08);
+  border-color: rgba(22, 163, 74, 0.35);
+  background: rgba(22, 163, 74, 0.08);
 }
 
 .optionChipInactive {
-  opacity: 0.5;
+  opacity: 0.55;
 }
 
 .optionChipIcon {
-  font-size: 0.95rem;
+  font-size: 1.05rem;
   flex-shrink: 0;
-  color: var(--portal-accent-text);
+  color: var(--msp-accent, var(--portal-accent-text));
 }
 
 .optionChipInactive .optionChipIcon {
-  color: var(--portal-text-muted);
+  color: var(--msp-muted, var(--portal-text-muted));
 }
 
 .optionChipLabel {
-  max-width: 11rem;
+  max-width: 14rem;
   overflow: hidden;
   text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .optionChipDot {
-  width: 7px;
-  height: 7px;
+  width: 8px;
+  height: 8px;
   border-radius: 50%;
   flex-shrink: 0;
-  background: var(--portal-text-muted);
+  background: var(--msp-muted, var(--portal-text-muted));
 }
 
 .optionChipActive .optionChipDot {
-  background: #10b981;
+  background: #16a34a;
 }
 
 .srOnly {
@@ -98,14 +102,17 @@
   border: 0;
 }
 
-@media (max-width: 640px) {
-  .optionGroupTitle {
-    width: 100%;
-    min-width: 0;
-    padding-top: 0;
-  }
+:global(html.dark) .optionChip {
+  background: var(--msp-surface, #1f2d4a);
+  border-color: var(--msp-border, #3d5478);
+  box-shadow: none;
+}
 
-  .optionList {
-    width: 100%;
-  }
+:global(html.dark) .optionChipActive {
+  background: rgba(74, 222, 128, 0.12);
+  border-color: rgba(74, 222, 128, 0.35);
+}
+
+:global(html.dark) .optionChipActive .optionChipDot {
+  background: #4ade80;
 }

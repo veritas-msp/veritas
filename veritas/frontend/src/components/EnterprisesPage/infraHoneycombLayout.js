@@ -171,7 +171,7 @@ export function buildCustomFamilyBricks(families = []) {
     count: family.count ?? (family.items || []).length,
     items: family.items || [],
     icon: family.icon,
-    alwaysClickable: false,
+    alwaysClickable: true,
     familyKey: family.familyKey,
     customFamily: family
   }));

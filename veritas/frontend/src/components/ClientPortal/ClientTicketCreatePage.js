@@ -10,12 +10,14 @@ import { useAppLocale } from "../../hooks/useAppGeneralSettings";
 import { interpolate } from "../../i18n/translate";
 import SmartTooltip from "../SmartTooltip";
 import { serializeEquipmentInfo } from "../TicketPage/ticketEquipmentUtils";
+import { filterBySite, getItemSiteValue } from "../../utils/siteFilterUtils";
 import { getTicketLinkLabel, getTicketLinkSearchText } from "../TicketPage/ticketLinkUtils";
 import portalLayout from "./ClientDashboard.module.css";
 import layout from "../EnterprisesPage/EnterprisesPage.module.css";
 import account from "../Misc/AccountPage/AccountPage.module.css";
 import s from "../TicketPage/TicketCreatePage.module.css";
 import { getClientPortalCopy } from "./clientPortalI18n";
+import { filterPortalTicketsBySite, getPortalEquipmentSiteById } from "./portalSiteFilter";
 import { buildAvailabilityContactSlots, buildPortalClientEquipments, formatContactSlotLabel, getEquipmentLinkLabel, getEquipmentLinkSearchText, getEquipmentTypeLabel, getTodayDateString, serializeContactSlots } from "./clientPortalTicketCreateUtils";
 const TIP_ICONS = ["mdi:text-box-search-outline", "mdi:alert-circle-outline", "mdi:history", "mdi:paperclip"];
 const MAX_ATTACHMENT_SIZE_BYTES = 15 * 1024 * 1024;
@@ -162,7 +164,8 @@ export default function ClientTicketCreatePage() {
   const priorityOptions = useMemo(() => copy.getPriorityOptions(), [copy]);
   const issueNatureOptions = useMemo(() => copy.getIssueNatureOptions(), [copy]);
   const {
-    dashboard: outletDashboard
+    dashboard: outletDashboard,
+    siteFilter
   } = useOutletContext() || {};
   const attachmentInputRef = useRef(null);
   const linkedTicketDropdownRef = useRef(null);
@@ -228,7 +231,10 @@ export default function ClientTicketCreatePage() {
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
-  const clientEquipments = useMemo(() => buildPortalClientEquipments(portalDashboard), [portalDashboard]);
+  const clientEquipments = useMemo(
+    () => filterBySite(buildPortalClientEquipments(portalDashboard), siteFilter),
+    [portalDashboard, siteFilter]
+  );
   const selectedEquipment = useMemo(() => clientEquipments.find(eq => String(eq.id) === String(equipmentId)) || null, [clientEquipments, equipmentId]);
   const availabilitySlots = useMemo(() => buildAvailabilityContactSlots({
     mode: availabilityMode,
@@ -244,10 +250,15 @@ export default function ClientTicketCreatePage() {
   }, [clientEquipments, equipmentSearch]);
   const filteredLinkableTickets = useMemo(() => {
     const query = linkedTicketSearch.trim().toLowerCase();
-    const rows = portalTickets.filter(ticket => String(ticket.status || "").toLowerCase() !== "closed");
+    const equipmentSiteById = getPortalEquipmentSiteById(portalDashboard);
+    const rows = filterPortalTicketsBySite(
+      portalTickets.filter(ticket => String(ticket.status || "").toLowerCase() !== "closed"),
+      siteFilter,
+      equipmentSiteById
+    );
     if (!query) return rows.slice(0, 20);
     return rows.filter(ticket => getTicketLinkSearchText(ticket).includes(query)).slice(0, 20);
-  }, [portalTickets, linkedTicketSearch]);
+  }, [portalTickets, linkedTicketSearch, siteFilter, portalDashboard]);
   const selectedLinkedTicket = useMemo(() => portalTickets.find(ticket => String(ticket.id) === String(linkedTicketId)) || null, [portalTickets, linkedTicketId]);
   const attachmentsSummary = useMemo(() => {
     if (attachmentFiles.length === 0) return copy.none;
@@ -441,6 +452,7 @@ export default function ClientTicketCreatePage() {
     setFormError("");
     setSubmitting(true);
     try {
+      const ticketSite = getItemSiteValue(selectedEquipment) || siteFilter || "";
       const equipmentInfo = serializeEquipmentInfo({
         concerned: equipmentConcerned,
         source: equipmentSource,
@@ -450,7 +462,8 @@ export default function ClientTicketCreatePage() {
         clientId,
         brand: equipmentBrand,
         model: equipmentModel,
-        serial: equipmentSerial
+        serial: equipmentSerial,
+        site: ticketSite
       });
       const ticket = await createPortalTicket({
         title: title.trim(),

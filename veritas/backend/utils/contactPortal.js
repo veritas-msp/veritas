@@ -3,6 +3,8 @@ import { randomUUID } from "crypto";
 import { pool } from "../database/db.js";
 import { sendPortalInviteEmail } from "./portalInvite.js";
 import { listMembershipsForContact, pickHomeClientId, contactBelongsToClient } from "../services/contactClientLinks.js";
+import { normalizePortalTicketRole } from "./portalTicketRole.js";
+import { ensurePortalTicketRoleSchema } from "../services/ensurePortalTicketRoleSchema.js";
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 export function buildPortalUsername(contact) {
   const parts = [contact.prenom, contact.nom].filter(Boolean).map(s => String(s).trim());
@@ -11,14 +13,21 @@ export function buildPortalUsername(contact) {
   return email.slice(0, 50) || "Contact";
 }
 export async function getPortalUserByContactId(contactId) {
+  await ensurePortalTicketRoleSchema();
   const {
     rows
   } = await pool.query(`SELECT id, email, username, role, client_id, contact_id, is_active,
-            last_login_at, created_at, COALESCE(password_pending, false) AS password_pending
+            last_login_at, created_at, COALESCE(password_pending, false) AS password_pending,
+            COALESCE(portal_role, 'user') AS portal_role
      FROM v_b_users
      WHERE contact_id = $1 AND role = 'client'
      LIMIT 1`, [contactId]);
-  return rows[0] || null;
+  const row = rows[0] || null;
+  if (!row) return null;
+  return {
+    ...row,
+    portal_role: normalizePortalTicketRole(row.portal_role)
+  };
 }
 export async function findPortalUserByEmail(email, excludeContactId = null) {
   const params = [email];
@@ -33,7 +42,8 @@ export async function findPortalUserByEmail(email, excludeContactId = null) {
   return rows[0] || null;
 }
 export async function createPortalUserForContact(contact, password, {
-  passwordPending = false
+  passwordPending = false,
+  portalRole = "user"
 } = {}) {
   if (!contact?.id) throw new Error("Invalid contact");
   const memberships = Array.isArray(contact.clients) && contact.clients.length
@@ -51,20 +61,29 @@ export async function createPortalUserForContact(contact, password, {
   if (existing) throw new Error("A portal account already exists for this contact.");
   const emailTaken = await findPortalUserByEmail(email, contact.id);
   if (emailTaken) throw new Error("This email address is already used by another account.");
+  await ensurePortalTicketRoleSchema();
   const hash = await bcrypt.hash(password, 10);
   const username = buildPortalUsername(contact);
   const contactActive = !String(contact.statut || "").toLowerCase().includes("inact");
+  const role = normalizePortalTicketRole(portalRole);
   const {
     rows
-  } = await pool.query(`INSERT INTO v_b_users (id, email, username, password_hash, role, client_id, contact_id, is_active, profile, password_pending)
-     VALUES ($1, $2, $3, $4, 'client', $5, $6, $7, NULL, $8)
-     RETURNING id, email, username, role, client_id, contact_id, is_active, last_login_at, created_at, password_pending`, [randomUUID(), email, username, hash, resolvedClientId, contact.id, contactActive, Boolean(passwordPending)]);
-  return rows[0];
+  } = await pool.query(`INSERT INTO v_b_users (id, email, username, password_hash, role, client_id, contact_id, is_active, profile, password_pending, portal_role)
+     VALUES ($1, $2, $3, $4, 'client', $5, $6, $7, NULL, $8, $9)
+     RETURNING id, email, username, role, client_id, contact_id, is_active, last_login_at, created_at, password_pending, portal_role`, [randomUUID(), email, username, hash, resolvedClientId, contact.id, contactActive, Boolean(passwordPending), role]);
+  const row = rows[0];
+  return row ? {
+    ...row,
+    portal_role: normalizePortalTicketRole(row.portal_role)
+  } : row;
 }
-export async function createPortalUserInviteForContact(contact) {
+export async function createPortalUserInviteForContact(contact, {
+  portalRole = "user"
+} = {}) {
   const pendingPassword = `${randomUUID()}${randomUUID()}`;
   const portal = await createPortalUserForContact(contact, pendingPassword, {
-    passwordPending: true
+    passwordPending: true,
+    portalRole
   });
   const {
     rows
@@ -160,9 +179,27 @@ export async function setPortalActive(contactId, active) {
   } = await pool.query(`UPDATE v_b_users
      SET is_active = $1
      WHERE contact_id = $2 AND role = 'client'
-     RETURNING id, email, username, role, client_id, contact_id, is_active, last_login_at, created_at`, [Boolean(active), contactId]);
+     RETURNING id, email, username, role, client_id, contact_id, is_active, last_login_at, created_at, portal_role`, [Boolean(active), contactId]);
   if (!rows[0]) throw new Error("No portal account exists for this contact.");
-  return rows[0];
+  return {
+    ...rows[0],
+    portal_role: normalizePortalTicketRole(rows[0].portal_role)
+  };
+}
+export async function setPortalTicketRole(contactId, portalRole) {
+  await ensurePortalTicketRoleSchema();
+  const role = normalizePortalTicketRole(portalRole);
+  const {
+    rows
+  } = await pool.query(`UPDATE v_b_users
+     SET portal_role = $1
+     WHERE contact_id = $2 AND role = 'client'
+     RETURNING id, email, username, role, client_id, contact_id, is_active, last_login_at, created_at, portal_role`, [role, contactId]);
+  if (!rows[0]) throw new Error("No portal account exists for this contact.");
+  return {
+    ...rows[0],
+    portal_role: normalizePortalTicketRole(rows[0].portal_role)
+  };
 }
 export async function deletePortalUserForContact(contactId) {
   const {
@@ -185,7 +222,8 @@ export const PORTAL_USER_SELECT = `
   u.is_active AS portal_active,
   u.last_login_at AS portal_last_login,
   u.email AS portal_email,
-  COALESCE(u.password_pending, false) AS portal_pending
+  COALESCE(u.password_pending, false) AS portal_pending,
+  COALESCE(u.portal_role, 'user') AS portal_role
 `;
 export const PORTAL_USER_JOIN = `
   LEFT JOIN v_b_users u ON u.contact_id = cts.id AND u.role = 'client'

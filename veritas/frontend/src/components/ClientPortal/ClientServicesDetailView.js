@@ -4,271 +4,376 @@ import { useAppLocale } from "../../hooks/useAppGeneralSettings";
 import { interpolate } from "../../i18n/translate";
 import { getClientPortalCopy } from "./clientPortalI18n";
 import portalStyles from "./ClientDashboard.module.css";
+import layout from "../EnterprisesPage/EnterprisesPage.module.css";
+import pageStyles from "./ClientPortalPages.module.css";
 import tableStyles from "../TicketPage/TicketPage.module.css";
 import listStyles from "./ClientDevicesListTab.module.css";
 import styles from "./ClientServicesDetailView.module.css";
+
+const FAMILY_TONES = {
+  o365: "blue",
+  save: "teal",
+  ndd: "amber",
+  antivirus: "green",
+  antispam: "violet"
+};
+
 function getExpirationMeta(dateValue, copy) {
   if (!dateValue) {
-    return {
-      label: copy.expirationUnknown,
-      tone: "muted"
-    };
+    return { label: copy.expirationUnknown, tone: "muted" };
   }
   const date = new Date(dateValue);
   if (Number.isNaN(date.getTime())) {
-    return {
-      label: copy.expirationUnknown,
-      tone: "muted"
-    };
+    return { label: copy.expirationUnknown, tone: "muted" };
   }
   const days = (date.getTime() - Date.now()) / 86400000;
-  if (days < 0) return {
-    label: copy.expirationExpired,
-    tone: "bad"
-  };
-  if (days <= 30) return {
-    label: copy.expirationSoon,
-    tone: "warn"
-  };
-  if (days <= 90) return {
-    label: copy.expirationWarning,
-    tone: "warn"
-  };
-  return {
-    label: copy.expirationOk,
-    tone: "ok"
-  };
+  if (days < 0) return { label: copy.expirationExpired, tone: "bad" };
+  if (days <= 30) return { label: copy.expirationSoon, tone: "warn" };
+  if (days <= 90) return { label: copy.expirationWarning, tone: "warn" };
+  return { label: copy.expirationOk, tone: "ok" };
 }
-function ExpirationBadge({
-  dateValue,
-  copy,
-  formatDate
-}) {
+
+function ExpirationBadge({ dateValue, copy, formatDate }) {
   const meta = getExpirationMeta(dateValue, copy);
-  return <span className={`${styles.expBadge} ${styles[`exp_${meta.tone}`]}`}>
+  return (
+    <span className={`${styles.expBadge} ${styles[`exp_${meta.tone}`]}`}>
       {dateValue ? formatDate(dateValue) : copy.expirationUnknown}
       <span className={styles.expBadgeSub}>{meta.label}</span>
-    </span>;
+    </span>
+  );
 }
-function formatLicenseSummary(item, copy) {
-  const total = item.licensesTotal;
-  const used = item.licensesUsed;
-  if (total != null && used != null) {
-    return interpolate(copy.licensesSummary, {
-      used: String(used),
-      total: String(total)
-    });
-  }
-  if (used != null) {
-    return interpolate(copy.licensesSummaryUsedOnly, {
-      used: String(used)
-    });
-  }
-  if (total != null) {
-    return interpolate(copy.licensesSummaryTotalOnly, {
-      total: String(total)
-    });
-  }
-  if (item.licenses?.length) {
-    return String(item.licenses.length);
-  }
-  return "—";
-}
-function buildDetailLines(item, copy, formatDate) {
-  const details = item.details || {};
-  const lines = [];
-  if (details.kind === "ndd" && details.domain) {
-    lines.push({
-      label: copy.domain,
-      value: details.domain
-    });
-  }
-  if (details.registrar) {
-    lines.push({
-      label: copy.registrar,
-      value: details.registrar
-    });
-  }
-  if (details.autoRenew != null) {
-    lines.push({
-      label: copy.tableDetails,
-      value: details.autoRenew ? copy.autoRenewYes : copy.autoRenewNo
-    });
-  }
-  if (details.userCount != null) {
-    lines.push({
-      label: copy.tableLicenses,
-      value: details.userCount > 1 ? interpolate(copy.userCount, {
-        count: String(details.userCount)
-      }) : interpolate(copy.userCountOne, {
-        count: String(details.userCount)
-      })
-    });
-  }
-  if (details.endpointCount != null) {
-    lines.push({
-      label: copy.tableDetails,
-      value: details.endpointCount > 1 ? interpolate(copy.endpointCount, {
-        count: String(details.endpointCount)
-      }) : interpolate(copy.endpointCountOne, {
-        count: String(details.endpointCount)
-      })
-    });
-  }
-  if (details.capacity) {
-    lines.push({
-      label: copy.capacity,
-      value: details.capacity
-    });
-  }
-  if (details.site) {
-    lines.push({
-      label: copy.site,
-      value: details.site
-    });
-  }
-  if (details.jobCount != null) {
-    lines.push({
-      label: copy.jobType,
-      value: details.jobCount > 1 ? interpolate(copy.jobCount, {
-        count: String(details.jobCount)
-      }) : interpolate(copy.jobCountOne, {
-        count: String(details.jobCount)
-      })
-    });
-  }
-  if (details.lastBackup) {
-    lines.push({
-      label: copy.lastBackup,
-      value: formatDate(details.lastBackup)
-    });
-  }
-  if (details.jobType && details.kind === "saveJob") {
-    lines.push({
-      label: copy.jobType,
-      value: details.jobType
-    });
-  }
-  return lines;
-}
-function ServiceCard({
-  item,
-  group,
-  copy,
-  formatDate
-}) {
-  const detailLines = buildDetailLines(item, copy, formatDate);
-  const hasLicenseTable = item.licenses?.length > 0;
-  return <article className={styles.serviceCard}>
-      <header className={styles.serviceCardHeader}>
-        <div className={styles.serviceCardTitleWrap}>
-          <div className={`${styles.serviceIcon} ${styles[`icon_${group.type}`] || ""}`}>
-            <Icon icon={group.icon} aria-hidden />
-          </div>
-          <div>
-            <h3 className={styles.serviceName}>{item.name}</h3>
-            <p className={styles.serviceProduct}>{item.product || group.label}</p>
-          </div>
-        </div>
-        <div className={styles.serviceCardMeta}>
-          <span className={`${listStyles.statusBadge} ${item.active ? listStyles.statusActive : listStyles.statusInactive}`}>
-            {item.active ? copy.statusActive : copy.statusInactive}
-          </span>
-          <ExpirationBadge dateValue={item.expiration} copy={copy} formatDate={formatDate} />
-        </div>
-      </header>
 
-      <div className={styles.serviceSummaryRow}>
-        <div className={styles.summaryItem}>
-          <span className={styles.summaryLabel}>{copy.tableLicenses}</span>
-          <strong>{formatLicenseSummary(item, copy)}</strong>
-        </div>
-        {detailLines.slice(0, 3).map(line => <div key={`${line.label}-${line.value}`} className={styles.summaryItem}>
-            <span className={styles.summaryLabel}>{line.label}</span>
-            <strong>{line.value}</strong>
-          </div>)}
+function StatusBadge({ active, copy }) {
+  return (
+    <span className={`${listStyles.statusBadge} ${active ? listStyles.statusActive : listStyles.statusInactive}`}>
+      {active ? copy.statusActive : copy.statusInactive}
+    </span>
+  );
+}
+
+function ServiceTable({ columns, rows, emptyLabel }) {
+  if (!rows.length) {
+    return <p className={listStyles.emptyCategory}>{emptyLabel}</p>;
+  }
+  return (
+    <div className={tableStyles.tablePanel}>
+      <div className={tableStyles.tableScroll}>
+        <table className={`${tableStyles.table} ${styles.serviceTable}`}>
+          <thead>
+            <tr>
+              {columns.map(col => (
+                <th key={col.key}>{col.label}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map(row => (
+              <tr key={row.id}>
+                {columns.map(col => (
+                  <td key={col.key}>{col.render(row)}</td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
       </div>
-
-      {hasLicenseTable ? <div className={tableStyles.tablePanel}>
-          <div className={tableStyles.tableScroll}>
-            <table className={tableStyles.table}>
-              <thead>
-                <tr>
-                  <th>{copy.licenseName}</th>
-                  <th>{copy.licenseTotal}</th>
-                  <th>{copy.licenseUsed}</th>
-                  <th>{copy.licenseExpiration}</th>
-                </tr>
-              </thead>
-              <tbody>
-                {item.licenses.map(lic => <tr key={`${lic.name}-${lic.expiration || "na"}`}>
-                    <td>{lic.name}</td>
-                    <td>{lic.total ?? "—"}</td>
-                    <td>{lic.used ?? "—"}</td>
-                    <td>
-                      <ExpirationBadge dateValue={lic.expiration} copy={copy} formatDate={formatDate} />
-                    </td>
-                  </tr>)}
-              </tbody>
-            </table>
-          </div>
-        </div> : null}
-
-      {!hasLicenseTable && detailLines.length > 3 ? <ul className={styles.detailList}>
-          {detailLines.slice(3).map(line => <li key={`${line.label}-${line.value}`}>
-              <span>{line.label}</span>
-              <strong>{line.value}</strong>
-            </li>)}
-        </ul> : null}
-    </article>;
+    </div>
+  );
 }
-export default function ClientServicesDetailView({
-  cloudServices = []
-}) {
+
+function collectBackupJobs(items) {
+  const jobs = [];
+  items.forEach(item => {
+    if (item.details?.kind === "saveJob") {
+      jobs.push({
+        id: item.id,
+        name: item.name,
+        instanceName: item.details.instanceName || item.product || "—",
+        jobType: item.details.jobType,
+        lastBackup: item.details.lastBackup,
+        lastBackupDuration: item.details.lastBackupDuration,
+        expiration: item.expiration
+      });
+      return;
+    }
+    (item.details?.jobs || []).forEach(job => {
+      jobs.push({
+        id: job.id,
+        name: job.name,
+        instanceName: item.name,
+        jobType: job.jobType,
+        lastBackup: job.lastBackup,
+        lastBackupDuration: job.lastBackupDuration,
+        expiration: item.expiration
+      });
+    });
+  });
+  return jobs;
+}
+
+function TenantView({ items, copy, formatDate }) {
+  const tenant = items[0];
+  if (!tenant) return null;
+  const details = tenant.details || {};
+  const licenses = tenant.licenses || [];
+  const used = tenant.licensesUsed;
+  const total = tenant.licensesTotal;
+  const available = total != null && used != null ? Math.max(0, total - used) : null;
+  const kpis = [
+    { key: "name", icon: "mdi:microsoft-office", tone: "blue", value: details.tenantName || tenant.product || tenant.name, label: copy.tenantName },
+    { key: "users", icon: "mdi:account-multiple", tone: "teal", value: details.userCount ?? "—", label: copy.tenantUsers },
+    { key: "licenses", icon: "mdi:license", tone: "violet", value: used != null && total != null ? interpolate(copy.licensesSummary, { used: String(used), total: String(total) }) : "—", label: copy.tenantLicenses },
+    { key: "available", icon: "mdi:license", tone: "green", value: available ?? "—", label: copy.tenantLicensesAvailable }
+  ];
+  return (
+    <>
+      <div className={pageStyles.kpiRowFamily}>
+        {kpis.map(item => (
+          <div key={item.key} className={layout.kpiCard}>
+            <div className={`${layout.kpiIconWrap} ${layout[`kpiIcon_${item.tone}`] || layout.kpiIcon_blue}`}>
+              <Icon icon={item.icon} aria-hidden />
+            </div>
+            <div className={layout.kpiBody}>
+              <span className={layout.kpiValue}>{item.value}</span>
+              <span className={layout.kpiLabel}>{item.label}</span>
+            </div>
+          </div>
+        ))}
+      </div>
+      {details.tenantId ? (
+        <section className={portalStyles.panel}>
+          <div className={portalStyles.panelHeader}>
+            <span className={portalStyles.panelTitle}>{copy.tenantTitle}</span>
+          </div>
+          <dl className={`${portalStyles.infoCardFacts} ${styles.tenantFacts}`}>
+            <div>
+              <dt>{copy.tenantId}</dt>
+              <dd>{details.tenantId}</dd>
+            </div>
+            <div>
+              <dt>{copy.tableStatus}</dt>
+              <dd><StatusBadge active={tenant.active} copy={copy} /></dd>
+            </div>
+          </dl>
+        </section>
+      ) : null}
+      <section className={portalStyles.panel}>
+        <div className={portalStyles.panelHeader}>
+          <span className={portalStyles.panelTitle}>{copy.licensesTitle}</span>
+          <span className={portalStyles.panelCount}>{licenses.length}</span>
+        </div>
+        <ServiceTable
+          emptyLabel={copy.noLicenseRows}
+          columns={[
+            { key: "name", label: copy.licenseName, render: row => row.name },
+            { key: "total", label: copy.licenseTotal, render: row => row.total ?? "—" },
+            { key: "used", label: copy.licenseUsed, render: row => row.used ?? "—" },
+            { key: "available", label: copy.tenantLicensesAvailable, render: row => row.total != null && row.used != null ? Math.max(0, row.total - row.used) : "—" },
+            { key: "expiration", label: copy.licenseExpiration, render: row => <ExpirationBadge dateValue={row.expiration} copy={copy} formatDate={formatDate} /> }
+          ]}
+          rows={licenses.map((lic, index) => ({ ...lic, id: `${lic.name}-${index}` }))}
+        />
+      </section>
+    </>
+  );
+}
+
+function BackupView({ items, copy, formatDate }) {
+  const instances = items.filter(item => item.details?.kind !== "saveJob");
+  const jobs = collectBackupJobs(items);
+  return (
+    <>
+      <div className={pageStyles.kpiRowFamily}>
+        <div className={layout.kpiCard}>
+          <div className={`${layout.kpiIconWrap} ${layout.kpiIcon_teal}`}>
+            <Icon icon="mdi:backup-restore" aria-hidden />
+          </div>
+          <div className={layout.kpiBody}>
+            <span className={layout.kpiValue}>{instances.length}</span>
+            <span className={layout.kpiLabel}>{copy.instancesTitle}</span>
+          </div>
+        </div>
+        <div className={layout.kpiCard}>
+          <div className={`${layout.kpiIconWrap} ${layout.kpiIcon_cyan}`}>
+            <Icon icon="mdi:calendar-clock" aria-hidden />
+          </div>
+          <div className={layout.kpiBody}>
+            <span className={layout.kpiValue}>{jobs.length}</span>
+            <span className={layout.kpiLabel}>{copy.jobsTitle}</span>
+          </div>
+        </div>
+      </div>
+      <section className={portalStyles.panel}>
+        <div className={portalStyles.panelHeader}>
+          <span className={portalStyles.panelTitle}>{copy.instancesTitle}</span>
+          <span className={portalStyles.panelCount}>{instances.length}</span>
+        </div>
+        <ServiceTable
+          emptyLabel={copy.noItems}
+          columns={[
+            { key: "name", label: copy.tableInstance, render: row => row.name },
+            { key: "product", label: copy.tableSoftware, render: row => row.product || "—" },
+            { key: "site", label: copy.site, render: row => row.details?.site || "—" },
+            { key: "capacity", label: copy.capacity, render: row => row.details?.capacity || "—" },
+            { key: "jobs", label: copy.jobsTitle, render: row => row.details?.jobCount ?? (row.details?.jobs?.length || 0) },
+            { key: "status", label: copy.tableStatus, render: row => <StatusBadge active={row.active} copy={copy} /> }
+          ]}
+          rows={instances}
+        />
+      </section>
+      <section className={portalStyles.panel}>
+        <div className={portalStyles.panelHeader}>
+          <span className={portalStyles.panelTitle}>{copy.jobsTitle}</span>
+          <span className={portalStyles.panelCount}>{jobs.length}</span>
+        </div>
+        <ServiceTable
+          emptyLabel={copy.noItems}
+          columns={[
+            { key: "name", label: copy.tableJobName, render: row => row.name },
+            { key: "instance", label: copy.tableInstance, render: row => row.instanceName || "—" },
+            { key: "type", label: copy.jobType, render: row => row.jobType || "—" },
+            { key: "last", label: copy.lastBackup, render: row => row.lastBackup ? formatDate(row.lastBackup) : "—" }
+          ]}
+          rows={jobs}
+        />
+      </section>
+    </>
+  );
+}
+
+function DomainsView({ items, copy, formatDate }) {
+  const expiringSoon = items.filter(item => {
+    const meta = getExpirationMeta(item.expiration, copy);
+    return meta.tone === "bad" || meta.tone === "warn";
+  }).length;
+  return (
+    <>
+      <div className={pageStyles.kpiRowFamily}>
+        <div className={layout.kpiCard}>
+          <div className={`${layout.kpiIconWrap} ${layout.kpiIcon_amber}`}>
+            <Icon icon="mdi:domain" aria-hidden />
+          </div>
+          <div className={layout.kpiBody}>
+            <span className={layout.kpiValue}>{items.length}</span>
+            <span className={layout.kpiLabel}>{copy.domainsTitle}</span>
+          </div>
+        </div>
+        <div className={layout.kpiCard}>
+          <div className={`${layout.kpiIconWrap} ${layout.kpiIcon_orange}`}>
+            <Icon icon="mdi:calendar-alert" aria-hidden />
+          </div>
+          <div className={layout.kpiBody}>
+            <span className={layout.kpiValue}>{expiringSoon}</span>
+            <span className={layout.kpiLabel}>{copy.expiringSoonCount}</span>
+          </div>
+        </div>
+      </div>
+      <section className={portalStyles.panel}>
+        <div className={portalStyles.panelHeader}>
+          <span className={portalStyles.panelTitle}>{copy.domainsTitle}</span>
+          <span className={portalStyles.panelCount}>{items.length}</span>
+        </div>
+        <ServiceTable
+          emptyLabel={copy.noItems}
+          columns={[
+            { key: "domain", label: copy.domain, render: row => row.details?.domain || row.name },
+            { key: "registrar", label: copy.registrar, render: row => row.details?.registrar || "—" },
+            { key: "role", label: copy.tableRole, render: row => row.details?.role || "—" },
+            { key: "renew", label: copy.tableRenewal, render: row => row.details?.autoRenew == null ? "—" : row.details.autoRenew ? copy.autoRenewYes : copy.autoRenewNo },
+            { key: "expiration", label: copy.tableExpiration, render: row => <ExpirationBadge dateValue={row.expiration} copy={copy} formatDate={formatDate} /> },
+            { key: "status", label: copy.tableStatus, render: row => <StatusBadge active={row.active} copy={copy} /> }
+          ]}
+          rows={items}
+        />
+      </section>
+    </>
+  );
+}
+
+function GenericServiceView({ items, copy, formatDate, title }) {
+  return (
+    <section className={portalStyles.panel}>
+      <div className={portalStyles.panelHeader}>
+        <span className={portalStyles.panelTitle}>{title}</span>
+        <span className={portalStyles.panelCount}>{items.length}</span>
+      </div>
+      <ServiceTable
+        emptyLabel={copy.noItems}
+        columns={[
+          { key: "name", label: copy.tableService, render: row => row.name },
+          { key: "product", label: copy.tableProduct, render: row => row.product || "—" },
+          { key: "licenses", label: copy.tableLicenses, render: row => {
+            if (row.licensesUsed != null && row.licensesTotal != null) {
+              return interpolate(copy.licensesSummary, { used: String(row.licensesUsed), total: String(row.licensesTotal) });
+            }
+            if (row.licensesTotal != null) return String(row.licensesTotal);
+            return "—";
+          } },
+          { key: "expiration", label: copy.tableExpiration, render: row => <ExpirationBadge dateValue={row.expiration} copy={copy} formatDate={formatDate} /> },
+          { key: "status", label: copy.tableStatus, render: row => <StatusBadge active={row.active} copy={copy} /> }
+        ]}
+        rows={items}
+      />
+    </section>
+  );
+}
+
+export default function ClientServicesDetailView({ cloudServices = [] }) {
   const locale = useAppLocale();
   const copy = useMemo(() => getClientPortalCopy(locale), [locale]);
   const t = copy.services;
   const groups = useMemo(() => (cloudServices || []).filter(group => group?.items?.length > 0), [cloudServices]);
-  const [typeFilter, setTypeFilter] = useState("all");
-  const visibleGroups = useMemo(() => {
-    if (typeFilter === "all") return groups;
-    return groups.filter(group => group.type === typeFilter);
-  }, [groups, typeFilter]);
-  const totalCount = groups.reduce((sum, group) => sum + group.items.length, 0);
+  const [activeType, setActiveType] = useState(null);
+  const resolvedType = activeType && groups.some(group => group.type === activeType)
+    ? activeType
+    : groups[0]?.type || null;
+  const activeGroup = groups.find(group => group.type === resolvedType) || null;
+
   if (!groups.length) {
-    return <div className={portalStyles.emptyState}>
+    return (
+      <div className={portalStyles.emptyState}>
         <Icon icon="mdi:cloud-off-outline" className={portalStyles.emptyStateIcon} aria-hidden />
         <p className={portalStyles.emptyStateTitle}>{t.emptyTitle}</p>
         <p className={portalStyles.empty}>{t.emptyDesc}</p>
-      </div>;
+      </div>
+    );
   }
-  return <div className={styles.root}>
-      <div className={listStyles.filterBar}>
-        <span className={listStyles.filterLabel}>{t.filterByType}</span>
-        <div className={listStyles.filterChips} role="tablist" aria-label={t.filterByType}>
-          <button type="button" role="tab" aria-selected={typeFilter === "all"} className={`${listStyles.chip} ${typeFilter === "all" ? listStyles.chipActive : ""}`.trim()} onClick={() => setTypeFilter("all")}>
-            {t.filterAll}
-            <span className={listStyles.chipCount}>{totalCount}</span>
-          </button>
-          {groups.map(group => <button key={group.type} type="button" role="tab" aria-selected={typeFilter === group.type} className={`${listStyles.chip} ${typeFilter === group.type ? listStyles.chipActive : ""}`.trim()} onClick={() => setTypeFilter(group.type)}>
-              <Icon icon={group.icon} aria-hidden />
-              {group.label}
-              <span className={listStyles.chipCount}>{group.items.length}</span>
-            </button>)}
-        </div>
+
+  return (
+    <div className={styles.root}>
+      <div className={pageStyles.kpiRowFamily}>
+        {groups.map(group => {
+          const active = resolvedType === group.type;
+          const tone = FAMILY_TONES[group.type] || "blue";
+          return (
+            <button
+              key={group.type}
+              type="button"
+              className={`${layout.kpiCard} ${active ? layout.kpiCardActive : ""}`.trim()}
+              onClick={() => setActiveType(group.type)}
+              aria-pressed={active}
+            >
+              <div className={`${layout.kpiIconWrap} ${layout[`kpiIcon_${tone}`] || layout.kpiIcon_blue}`}>
+                <Icon icon={group.icon} aria-hidden />
+              </div>
+              <div className={layout.kpiBody}>
+                <span className={layout.kpiValue}>{group.items.length}</span>
+                <span className={layout.kpiLabel}>{group.label}</span>
+              </div>
+            </button>
+          );
+        })}
       </div>
 
-      {visibleGroups.map(group => <section key={group.type} className={portalStyles.panel}>
-          <div className={portalStyles.panelHeader}>
-            <span className={portalStyles.panelTitle}>
-              <Icon icon={group.icon} aria-hidden />
-              {group.label}
-            </span>
-            <span className={portalStyles.panelCount}>{group.items.length}</span>
-          </div>
-          <div className={styles.cardsGrid}>
-            {group.items.map(item => <ServiceCard key={item.id} item={item} group={group} copy={t} formatDate={copy.formatPortalDate} />)}
-          </div>
-        </section>)}
-    </div>;
+      {activeGroup?.type === "o365" ? (
+        <TenantView items={activeGroup.items} copy={t} formatDate={copy.formatPortalDate} />
+      ) : activeGroup?.type === "save" ? (
+        <BackupView items={activeGroup.items} copy={t} formatDate={copy.formatPortalDate} />
+      ) : activeGroup?.type === "ndd" ? (
+        <DomainsView items={activeGroup.items} copy={t} formatDate={copy.formatPortalDate} />
+      ) : activeGroup ? (
+        <GenericServiceView items={activeGroup.items} copy={t} formatDate={copy.formatPortalDate} title={activeGroup.label} />
+      ) : null}
+    </div>
+  );
 }

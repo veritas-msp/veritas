@@ -8,10 +8,12 @@ import { getClientPortalCopy } from "./clientPortalI18n";
 import { usePortalDashboard } from "./usePortalDashboard";
 export default function ClientServicesPage() {
   const {
-    dashboard: data,
+    dashboard: rawData,
+    scopedDashboard,
     loading,
     error
   } = usePortalDashboard();
+  const data = scopedDashboard || rawData;
   const locale = useAppLocale();
   const copy = useMemo(() => getClientPortalCopy(locale), [locale]);
   const t = copy.services;

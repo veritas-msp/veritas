@@ -81,7 +81,15 @@ export default {
     stopImpersonation: "Salir de la suplantación",
     loadError: "Error al cargar el portal.",
     stopImpersonationSuccess: "Ha vuelto a su sesión de agente.",
-    stopImpersonationError: "No se pudo salir de la suplantación."
+    stopImpersonationError: "No se pudo salir de la suplantación.",
+    switchCompanyLabel: "Empresa",
+    switchCompanyAria: "Seleccionar empresa",
+    switchCompanySuccess: "Empresa activa actualizada.",
+    switchCompanyError: "No se pudo cambiar de empresa.",
+    switchingCompany: "Cambio de empresa…",
+    switchSiteLabel: "Sede",
+    switchSiteAria: "Filtrar por sede",
+    allSites: "Todas las sedes"
   },
   dashboard: {
     pageTitle: "Resumen",
@@ -176,6 +184,10 @@ export default {
     emptyDesc: "Su parque e infraestructura aparecerán aquí una vez configurados por su equipo Veritas.",
     tabOverview: "Resumen",
     tabDevices: "Equipos",
+    tabTables: "Periféricos",
+    tabFleet: "Estadísticas de flota",
+    exportCsv: "Exportar CSV",
+    exportEmpty: "No hay datos para exportar.",
     filterAll: "Todos",
     filterByType: "Filtrar por tipo",
     typeWorkstations: "Puestos de trabajo",
@@ -192,7 +204,8 @@ export default {
     agentOffline: "Agente desconectado",
     agentUnknown: "Estado desconocido",
     noItemsInCategory: "Ningún equipo en esta categoría.",
-    noWorkstationsData: "Datos detallados de puestos no disponibles."
+    noWorkstationsData: "Datos detallados de puestos no disponibles.",
+    noFleetData: "No hay datos estadísticos para esta familia."
   },
   contract: {
     eyebrow: "Contrato",
@@ -248,7 +261,24 @@ export default {
     domain: "Dominio",
     jobCount: "{count} jobs",
     jobCountOne: "{count} job",
-    saveJobLabel: "Job de copia"
+    saveJobLabel: "Job de copia",
+    tenantTitle: "Tenant Microsoft 365",
+    tenantName: "Tenant",
+    tenantId: "ID del tenant",
+    tenantUsers: "Usuarios",
+    tenantLicenses: "Licencias",
+    tenantLicensesAvailable: "Disponibles",
+    licensesTitle: "Licencias",
+    instancesTitle: "Instancias",
+    jobsTitle: "Jobs",
+    tableInstance: "Instancia",
+    tableSoftware: "Software",
+    tableJobName: "Job",
+    domainsTitle: "Nombres de dominio",
+    expiringSoonCount: "A vigilar",
+    noItems: "Ningún elemento en esta categoría.",
+    tableRole: "Rol",
+    tableRenewal: "Renovación"
   },
   fleet: {
     workstations: "Puestos de trabajo",
@@ -504,6 +534,7 @@ export default {
     list: {
       eyebrow: "Soporte",
       pageTitle: "Mis tickets",
+      pageTitleSupervisor: "Tickets de la empresa",
       loading: "Cargando tickets…",
       newTicketAria: "Nuevo ticket",
       searchPlaceholder: "Ticket, asunto…",
@@ -514,6 +545,7 @@ export default {
       newTicket: "Nuevo ticket",
       tableId: "ID",
       tableSubject: "Asunto",
+      tableRequester: "Solicitante",
       tableChannel: "Canal",
       tableType: "Tipo",
       tableStatus: "Estado",
@@ -603,6 +635,7 @@ export default {
       type: "Tipo:",
       channel: "Canal:",
       reference: "Referencia:",
+      requester: "Solicitante:",
       dates: "Fechas",
       created: "Creado:",
       updated: "Última actualización:",

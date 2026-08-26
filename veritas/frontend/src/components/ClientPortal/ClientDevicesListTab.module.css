@@ -4,68 +4,38 @@
   gap: 16px;
 }
 
-.filterBar {
+.panelActions {
   display: flex;
-  flex-direction: column;
+  align-items: center;
   gap: 10px;
 }
 
-.filterLabel {
-  font-size: 0.78rem;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  color: var(--portal-text-muted, #6b7a90);
-}
-
-.filterChips {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
-.chip {
+.exportBtn {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  padding: 8px 12px;
-  border-radius: 999px;
-  border: 1px solid var(--portal-border, #e4e8ee);
-  background: var(--portal-surface, #fff);
-  color: var(--portal-text-secondary, #374a5e);
-  font-size: 0.82rem;
-  font-weight: 500;
+  padding: 6px 10px;
+  border-radius: 8px;
+  border: 1px solid var(--msp-border, var(--portal-border, #e4e8ee));
+  background: var(--msp-surface, var(--portal-surface, #fff));
+  color: var(--msp-text, var(--portal-text, #1a2332));
+  font-size: 0.78rem;
+  font-weight: 600;
   font-family: inherit;
   cursor: pointer;
-  transition: background 0.15s, border-color 0.15s, color 0.15s;
 }
 
-.chip:hover {
-  border-color: rgba(43, 95, 171, 0.35);
-  background: var(--portal-hover, #f4f6f8);
+.exportBtn:hover:not(:disabled) {
+  border-color: var(--msp-accent, #2b5fab);
 }
 
-.chipActive {
-  background: rgba(43, 95, 171, 0.12);
-  border-color: rgba(43, 95, 171, 0.45);
-  color: var(--portal-accent-text, #2b5fab);
+.exportBtn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
 }
 
-.chipCount {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 20px;
-  height: 20px;
-  padding: 0 6px;
-  border-radius: 999px;
-  background: var(--portal-badge-bg, #e4e8ee);
-  font-size: 0.72rem;
-  font-weight: 700;
-}
-
-.chipActive .chipCount {
-  background: rgba(43, 95, 171, 0.2);
+table.deviceTable {
+  min-width: 720px;
 }
 
 .statusBadge {
@@ -110,8 +80,30 @@
   color: var(--portal-text-muted, #6b7a90);
 }
 
-.hint {
-  margin: 0 0 10px;
-  font-size: 0.8rem;
-  color: var(--portal-text-muted, #6b7a90);
+:global(html.dark) .exportBtn {
+  background: var(--msp-surface, #1f2d4a);
+  border-color: var(--msp-border, #3d5478);
+  color: var(--msp-text, #f0f4fa);
+}
+
+:global(html.dark) .statusActive {
+  background: rgba(74, 222, 128, 0.16);
+  color: #4ade80;
+}
+
+:global(html.dark) .statusInactive {
+  background: rgba(148, 163, 184, 0.16);
+  color: #94a3b8;
+}
+
+:global(html.dark) .supervisionOk {
+  color: #4ade80;
+}
+
+:global(html.dark) .supervisionWarn {
+  color: #fbbf24;
+}
+
+:global(html.dark) .supervisionMuted {
+  color: #9bb0c9;
 }

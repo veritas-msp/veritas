@@ -83,8 +83,13 @@ export default {
     stopImpersonationSuccess: "Returned to your agent session.",
     stopImpersonationError: "Unable to exit impersonation.",
     switchCompanyLabel: "Company",
+    switchCompanyAria: "Select company",
     switchCompanySuccess: "Active company updated.",
-    switchCompanyError: "Unable to switch company."
+    switchCompanyError: "Unable to switch company.",
+    switchingCompany: "Switching company…",
+    switchSiteLabel: "Site",
+    switchSiteAria: "Filter by site",
+    allSites: "All sites"
   },
   dashboard: {
     pageTitle: "Overview",
@@ -179,6 +184,10 @@ export default {
     emptyDesc: "Your fleet and infrastructure will appear here once configured by your Veritas team.",
     tabOverview: "Overview",
     tabDevices: "Devices",
+    tabTables: "Peripherals",
+    tabFleet: "Fleet statistics",
+    exportCsv: "Export CSV",
+    exportEmpty: "No data to export.",
     filterAll: "All",
     filterByType: "Filter by type",
     typeWorkstations: "Workstations",
@@ -195,7 +204,8 @@ export default {
     agentOffline: "Agent offline",
     agentUnknown: "Unknown status",
     noItemsInCategory: "No devices in this category.",
-    noWorkstationsData: "Detailed workstation data is unavailable."
+    noWorkstationsData: "Detailed workstation data is unavailable.",
+    noFleetData: "No statistics available for this family."
   },
   contract: {
     eyebrow: "Contract",
@@ -251,7 +261,24 @@ export default {
     domain: "Domain",
     jobCount: "{count} jobs",
     jobCountOne: "{count} job",
-    saveJobLabel: "Backup job"
+    saveJobLabel: "Backup job",
+    tenantTitle: "Microsoft 365 tenant",
+    tenantName: "Tenant",
+    tenantId: "Tenant ID",
+    tenantUsers: "Users",
+    tenantLicenses: "Licenses",
+    tenantLicensesAvailable: "Available",
+    licensesTitle: "Licenses",
+    instancesTitle: "Instances",
+    jobsTitle: "Jobs",
+    tableInstance: "Instance",
+    tableSoftware: "Software",
+    tableJobName: "Job",
+    domainsTitle: "Domain names",
+    expiringSoonCount: "To watch",
+    noItems: "No items in this category.",
+    tableRole: "Role",
+    tableRenewal: "Renewal"
   },
   fleet: {
     workstations: "Workstations",
@@ -507,6 +534,7 @@ export default {
     list: {
       eyebrow: "Support",
       pageTitle: "My tickets",
+      pageTitleSupervisor: "Company tickets",
       loading: "Loading tickets…",
       newTicketAria: "New ticket",
       searchPlaceholder: "Ticket, subject…",
@@ -517,6 +545,7 @@ export default {
       newTicket: "New ticket",
       tableId: "ID",
       tableSubject: "Subject",
+      tableRequester: "Requester",
       tableChannel: "Channel",
       tableType: "Type",
       tableStatus: "Status",
@@ -606,6 +635,7 @@ export default {
       type: "Type:",
       channel: "Channel:",
       reference: "Reference:",
+      requester: "Requester:",
       dates: "Dates",
       created: "Created:",
       updated: "Last updated:",

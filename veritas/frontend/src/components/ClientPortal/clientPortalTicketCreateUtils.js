@@ -73,7 +73,9 @@ export function buildPortalClientEquipments(dashboard) {
       clientId,
       type: String(entry.type || "").trim(),
       name: String(entry.name || "").trim(),
-      serial: String(entry.serial || "").trim()
+      serial: String(entry.serial || "").trim(),
+      site: entry.site || entry.location || entry.emplacement || "",
+      location: entry.location || entry.site || entry.emplacement || ""
     });
   };
   if (Array.isArray(dashboard.computers) && dashboard.computers.length > 0) {
@@ -86,7 +88,9 @@ export function buildPortalClientEquipments(dashboard) {
       id: eq.id,
       type: eq.type || "Ordinateur",
       name: eq.name || eq.model,
-      serial: eq.serial
+      serial: eq.serial,
+      site: eq.site || eq.location || eq.emplacement,
+      location: eq.location || eq.site || eq.emplacement
     }));
   }
   const groups = [...(Array.isArray(dashboard.infrastructure) ? dashboard.infrastructure : []), ...(Array.isArray(dashboard.cloudServices) ? dashboard.cloudServices : [])];
@@ -98,7 +102,9 @@ export function buildPortalClientEquipments(dashboard) {
         id: item.id,
         type: groupLabel,
         name: item.name || item.label || groupLabel,
-        serial: item.serial || item.serial_number || ""
+        serial: item.serial || item.serial_number || "",
+        site: item.site || item.location || item.emplacement,
+        location: item.location || item.site || item.emplacement
       });
     });
   });

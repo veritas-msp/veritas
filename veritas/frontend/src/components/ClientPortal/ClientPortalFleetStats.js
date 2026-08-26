@@ -3,7 +3,10 @@ import { Icon } from "@iconify/react";
 import { useAppLocale } from "../../hooks/useAppGeneralSettings";
 import { interpolate } from "../../i18n/translate";
 import { buildComputerFleetStats } from "../../utils/computerFleetStats";
+import { isComputerFleetFamily } from "../../utils/equipmentFamilyStats";
+import { getEquipmentFamilyStatsCopy } from "../../utils/equipmentFamilyStatsI18n";
 import { KpiCard, StatsPieChart, StatsDistributionBars, StatsDashboardBody, statsDashboardStyles as fleetStyles } from "../EnterprisesPage/StatsDashboardWidgets";
+import EquipmentFamilyStatsView from "../EnterprisesPage/EquipmentFamilyStatsView";
 import { getClientPortalCopy } from "./clientPortalI18n";
 import styles from "./ClientPortalFleetStats.module.css";
 const LOCALE_MAP = {
@@ -32,13 +35,18 @@ function localizePowerProfile(profile, label, chartLabels) {
   return chartLabels[keyMap[profile]] || label;
 }
 export default function ClientPortalFleetStats({
-  computers = []
+  computers = [],
+  items,
+  familyKey = "Ordinateurs",
+  clientSsids = []
 }) {
+  const list = Array.isArray(items) ? items : computers;
   const locale = useAppLocale();
   const copy = useMemo(() => getClientPortalCopy(locale), [locale]);
+  const familyCopy = useMemo(() => getEquipmentFamilyStatsCopy(locale), [locale]);
   const fleet = copy.fleet;
   const [powerPeriod, setPowerPeriod] = useState("monthly");
-  const stats = useMemo(() => buildComputerFleetStats(computers), [computers]);
+  const stats = useMemo(() => buildComputerFleetStats(list), [list]);
   const localizedStats = useMemo(() => ({
     ...stats,
     osDistribution: copy.localizeFleetDistribution(stats.osDistribution),
@@ -50,6 +58,11 @@ export default function ClientPortalFleetStats({
     diskDistribution: copy.localizeFleetDistribution(stats.diskDistribution),
     agentVersionDistribution: copy.localizeFleetDistribution(stats.agentVersionDistribution)
   }), [copy, stats]);
+  if (!isComputerFleetFamily(familyKey)) {
+    return <div className={styles.root}>
+        <EquipmentFamilyStatsView items={list} familyType={familyKey} clientSsids={clientSsids} />
+      </div>;
+  }
   if (!stats.total) return null;
   const attentionCount = stats.fleetHealth?.attentionCount ?? (stats.windowsUpdates?.pending || 0) + (stats.diskAlerts || 0) + (stats.inventoryFreshness?.stale || 0);
   const fleetHealthLabel = copy.getFleetHealthLabel(attentionCount, stats.total);
@@ -85,6 +98,93 @@ export default function ClientPortalFleetStats({
           <KpiCard icon="mdi:microsoft-windows" label={fleet.windows11} value={stats.lifecycle.windows11} sub={windowsSub} tone={stats.lifecycle.windows10 > 0 ? "warn" : "good"} />
           <KpiCard icon="mdi:memory" label={fleet.avgRam} value={stats.hardwareSummary.avgRamGb != null ? `${stats.hardwareSummary.avgRamGb} Go` : "-"} sub={ramSub} />
           <KpiCard icon="mdi:flash-outline" label={powerPeriod === "annual" ? fleet.powerAnnual : fleet.powerMonthly} value={`${powerKwh} kWh`} sub={`≈ ${formatMoney(powerCost, locale)}`} />
+        </section>
+
+        <section className={`${fleetStyles.insightGrid} ${fleetStyles.insightGridAuto}`}>
+          <article className={fleetStyles.panel}>
+            <h3 className={fleetStyles.panelTitle}>
+              <Icon icon="mdi:microsoft-windows" />
+              {familyCopy.win11Title}
+            </h3>
+            <p className={fleetStyles.panelDesc}>{familyCopy.win11Disclaimer}</p>
+            <div className={fleetStyles.statusGrid}>
+              <div className={`${fleetStyles.statusCard} ${fleetStyles.statusGood}`}>
+                <span className={fleetStyles.statusCount}>{stats.win11Readiness.on_w11}</span>
+                <span className={fleetStyles.statusLabel}>{familyCopy.win11On}</span>
+              </div>
+              <div className={`${fleetStyles.statusCard} ${fleetStyles.statusInfo}`}>
+                <span className={fleetStyles.statusCount}>{stats.win11Readiness.ready}</span>
+                <span className={fleetStyles.statusLabel}>{familyCopy.win11Ready}</span>
+              </div>
+              <div className={`${fleetStyles.statusCard} ${fleetStyles.statusBad}`}>
+                <span className={fleetStyles.statusCount}>{stats.win11Readiness.blocked}</span>
+                <span className={fleetStyles.statusLabel}>{familyCopy.win11Blocked}</span>
+              </div>
+              <div className={`${fleetStyles.statusCard} ${fleetStyles.statusMuted}`}>
+                <span className={fleetStyles.statusCount}>{stats.win11Readiness.unknown}</span>
+                <span className={fleetStyles.statusLabel}>{familyCopy.win11Unknown}</span>
+              </div>
+            </div>
+            {stats.win11Readiness.tightRam > 0 ? (
+              <p className={fleetStyles.insightNote}>
+                {interpolate(familyCopy.win11TightRam, { count: String(stats.win11Readiness.tightRam) })}
+              </p>
+            ) : null}
+          </article>
+
+          <article className={fleetStyles.panel}>
+            <h3 className={fleetStyles.panelTitle}>
+              <Icon icon="mdi:shield-half-full" />
+              {familyCopy.warrantyTitle}
+            </h3>
+            <div className={fleetStyles.statusGrid}>
+              <div className={`${fleetStyles.statusCard} ${fleetStyles.statusGood}`}>
+                <span className={fleetStyles.statusCount}>{stats.warranty.ok}</span>
+                <span className={fleetStyles.statusLabel}>{familyCopy.warrantyOk}</span>
+              </div>
+              <div className={`${fleetStyles.statusCard} ${fleetStyles.statusInfo}`}>
+                <span className={fleetStyles.statusCount}>{stats.warranty.soon}</span>
+                <span className={fleetStyles.statusLabel}>{familyCopy.warrantySoon}</span>
+              </div>
+              <div className={`${fleetStyles.statusCard} ${fleetStyles.statusBad}`}>
+                <span className={fleetStyles.statusCount}>{stats.warranty.expired}</span>
+                <span className={fleetStyles.statusLabel}>{familyCopy.warrantyExpired}</span>
+              </div>
+              <div className={`${fleetStyles.statusCard} ${fleetStyles.statusMuted}`}>
+                <span className={fleetStyles.statusCount}>{stats.warranty.unknown}</span>
+                <span className={fleetStyles.statusLabel}>{familyCopy.warrantyUnknown}</span>
+              </div>
+            </div>
+          </article>
+
+          <article className={fleetStyles.panel}>
+            <h3 className={fleetStyles.panelTitle}>
+              <Icon icon="mdi:shield-lock-outline" />
+              {familyCopy.securityTitle}
+            </h3>
+            <ul className={fleetStyles.metricList}>
+              <li>
+                <span>{familyCopy.bitlockerOn}</span>
+                <strong className={fleetStyles.metricGood}>{stats.securityPosture.bitlockerOn}</strong>
+              </li>
+              <li>
+                <span>{familyCopy.bitlockerPartial}</span>
+                <strong className={stats.securityPosture.bitlockerPartial > 0 ? fleetStyles.metricWarn : ""}>{stats.securityPosture.bitlockerPartial}</strong>
+              </li>
+              <li>
+                <span>{familyCopy.bitlockerOff}</span>
+                <strong className={stats.securityPosture.bitlockerOff > 0 ? fleetStyles.metricBad : ""}>{stats.securityPosture.bitlockerOff}</strong>
+              </li>
+              <li>
+                <span>{familyCopy.defenderOn}</span>
+                <strong className={fleetStyles.metricGood}>{stats.securityPosture.defenderOn}</strong>
+              </li>
+              <li>
+                <span>{familyCopy.defenderOff}</span>
+                <strong className={stats.securityPosture.defenderOff > 0 ? fleetStyles.metricBad : ""}>{stats.securityPosture.defenderOff}</strong>
+              </li>
+            </ul>
+          </article>
         </section>
 
         <section className={`${fleetStyles.chartGrid} ${styles.chartGridWide}`}>

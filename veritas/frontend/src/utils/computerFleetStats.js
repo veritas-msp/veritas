@@ -2,7 +2,7 @@ import { getRmmInventoryFromEquipment, getRmmChassisInfo, isRmmManagedEquipment,
 import { canonicalizeComputerType, getComputerTypeLabel, inferComputerTypeFromInventory } from "../components/EquipementPage/equipmentFormConfig";
 import { repairRmmTextEncoding } from "./rmmTextEncoding";
 import { fetchClientModules } from "../api/clients";
-import { mapClientHardwareEquipment } from "../api/equipment";
+import { mapClientHardwareEquipment, getAllHardwareEquipment } from "../api/equipment";
 import { filterBySite } from "./siteFilterUtils";
 import API_BASE_URL from "../config";
 export const FLEET_CHART_COLORS = ["#2b5fab", "#4a8fd4", "#1a3d75", "#6ba3e0", "#3d6eb8", "#8fa8c4", "#5c7cba", "#9eb8e8", "#243047", "#c5d0df"];
@@ -692,8 +692,32 @@ export function buildComputerFleetStats(computers, options = {}) {
     }
   };
 }
+function equipmentTypeMatches(eqType, requestedType) {
+  if (!requestedType) return true;
+  const actual = String(eqType || "").trim();
+  const requested = String(requestedType || "").trim();
+  if (!requested || actual === requested) return true;
+  const norm = value => String(value || "").trim().toLowerCase();
+  const a = norm(actual);
+  const b = norm(requested);
+  if (a === b) return true;
+  const groups = [
+    ["ordinateurs", "workstations", "computers"],
+    ["servers", "serveurs", "server"],
+    ["storage", "stockage", "nas"],
+    ["firewalls", "firewall"],
+    ["bornewifi", "wifi"],
+    ["routeur", "router"],
+    ["alimentation", "power"],
+    ["internet"],
+    ["switch"],
+    ["toip"]
+  ];
+  return groups.some(group => group.includes(a) && group.includes(b));
+}
+
 export async function loadClientEquipmentForFleetStats(clientId, equipmentType = "Ordinateurs", siteFilter = null) {
-  if (!clientId) return [];
+  if (!clientId) return { items: [], clientSsids: [] };
   const [modulesData, clientRes] = await Promise.all([fetchClientModules(clientId), fetch(`${API_BASE_URL}/clients/general/${clientId}`, {
     method: "GET",
     credentials: "include",
@@ -706,9 +730,21 @@ export async function loadClientEquipmentForFleetStats(clientId, equipmentType =
     equipements: modulesData?.equipements || clientRes?.equipements || {},
     sites: clientRes?.sites || []
   };
-  let items = mapClientHardwareEquipment(clientForMap).filter(eq => eq.type === equipmentType);
+  let items = mapClientHardwareEquipment(clientForMap).filter(eq => equipmentTypeMatches(eq.type, equipmentType));
+  if (String(equipmentType).startsWith("Custom:") && items.length === 0) {
+    const fleet = await getAllHardwareEquipment().catch(() => []);
+    items = (Array.isArray(fleet) ? fleet : []).filter(eq => String(eq.clientId) === String(clientId) && equipmentTypeMatches(eq.type, equipmentType));
+  }
   if (siteFilter) {
     items = filterBySite(items, siteFilter);
   }
-  return items;
+  const clientSsids = Array.isArray(clientRes?.ssids)
+    ? clientRes.ssids
+    : Array.isArray(clientRes?.ssid)
+      ? clientRes.ssid
+      : [];
+  return {
+    items,
+    clientSsids
+  };
 }

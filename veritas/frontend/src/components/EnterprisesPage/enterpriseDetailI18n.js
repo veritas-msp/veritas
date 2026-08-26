@@ -41,7 +41,7 @@ const DETAIL_COPY = {
     exportCurrentTable: "Table actuelle",
     exportAllTables: "Toutes les tables",
     addEquipment: "Ajouter un équipement",
-    computerFleetStats: "Statistiques du parc ordinateurs",
+    computerFleetStats: "Statistiques du parc",
     activityTitle: "Activité",
     supportTicketsTitle: "Tickets Support",
     openCount: "{count} ouvert(s)",
@@ -206,7 +206,7 @@ const DETAIL_COPY = {
       withDetails: "Éléments liés ({total}) · {details}. Retirez-les avant de supprimer l'entreprise."
     },
     toast: {
-      noComputersToAnalyze: "Aucun ordinateur à analyser pour cette entreprise.",
+      noComputersToAnalyze: "Aucun équipement à analyser pour cette famille.",
       contactCardCopied: "Carte contact copiée",
       contactCardCopyError: "Impossible de copier la carte contact",
       noChanges: "Aucune modification détectée",
@@ -426,7 +426,7 @@ const DETAIL_COPY = {
     exportCurrentTable: "Current table",
     exportAllTables: "All tables",
     addEquipment: "Add equipment",
-    computerFleetStats: "Computer fleet statistics",
+    computerFleetStats: "Fleet statistics",
     activityTitle: "Activity",
     supportTicketsTitle: "Support tickets",
     openCount: "{count} open",
@@ -591,7 +591,7 @@ const DETAIL_COPY = {
       withDetails: "Linked items ({total}) · {details}. Remove them before deleting the company."
     },
     toast: {
-      noComputersToAnalyze: "No computers to analyze for this company.",
+      noComputersToAnalyze: "No equipment to analyze for this family.",
       contactCardCopied: "Contact card copied",
       contactCardCopyError: "Unable to copy contact card",
       noChanges: "No changes detected",
@@ -809,7 +809,7 @@ const DETAIL_COPY = {
     exportCurrentTable: "Aktuelle Tabelle",
     exportAllTables: "Alle Tabellen",
     addEquipment: "Gerät hinzufügen",
-    computerFleetStats: "Computerflotten-Statistiken",
+    computerFleetStats: "Flottenstatistiken",
     activityTitle: "Aktivität",
     supportTicketsTitle: "Support-Tickets",
     openCount: "{count} offen",
@@ -974,7 +974,7 @@ const DETAIL_COPY = {
       withDetails: "Verknüpfte Elemente ({total}) · {details}. Entfernen Sie diese vor dem Löschen des Unternehmens."
     },
     toast: {
-      noComputersToAnalyze: "Keine Computer zur Analyse für dieses Unternehmen.",
+      noComputersToAnalyze: "Keine Geräte zur Analyse für diese Familie.",
       contactCardCopied: "Kontaktkarte kopiert",
       contactCardCopyError: "Kontaktkarte konnte nicht kopiert werden",
       noChanges: "Keine Änderungen erkannt",
@@ -1192,7 +1192,7 @@ const DETAIL_COPY = {
     exportCurrentTable: "Tabella attuale",
     exportAllTables: "Tutte le tabelle",
     addEquipment: "Aggiungi dispositivo",
-    computerFleetStats: "Statistiche parco computer",
+    computerFleetStats: "Statistiche del parco",
     activityTitle: "Attività",
     supportTicketsTitle: "Ticket Supporto",
     openCount: "{count} aperto/i",
@@ -1357,7 +1357,7 @@ const DETAIL_COPY = {
       withDetails: "Elementi collegati ({total}) · {details}. Rimuoverli prima di eliminare l'azienda."
     },
     toast: {
-      noComputersToAnalyze: "Nessun computer da analizzare per questa azienda.",
+      noComputersToAnalyze: "Nessuna apparecchiatura da analizzare per questa famiglia.",
       contactCardCopied: "Scheda contatto copiata",
       contactCardCopyError: "Impossibile copiare la scheda contatto",
       noChanges: "Nessuna modifica rilevata",
@@ -1575,7 +1575,7 @@ const DETAIL_COPY = {
     exportCurrentTable: "Tabla actual",
     exportAllTables: "Todas las tablas",
     addEquipment: "Añadir equipo",
-    computerFleetStats: "Estadísticas del parque informático",
+    computerFleetStats: "Estadísticas del parque",
     activityTitle: "Actividad",
     supportTicketsTitle: "Tickets Soporte",
     openCount: "{count} abierto(s)",
@@ -1740,7 +1740,7 @@ const DETAIL_COPY = {
       withDetails: "Elementos vinculados ({total}) · {details}. Elimínelos antes de borrar la empresa."
     },
     toast: {
-      noComputersToAnalyze: "Ningún ordenador que analizar para esta empresa.",
+      noComputersToAnalyze: "Ningún equipo que analizar para esta familia.",
       contactCardCopied: "Ficha contacto copiada",
       contactCardCopyError: "No se pudo copiar la ficha contacto",
       noChanges: "No se detectaron cambios",

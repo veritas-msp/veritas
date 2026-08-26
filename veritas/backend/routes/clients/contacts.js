@@ -3,7 +3,7 @@ import { pool } from '../../database/db.js';
 import verifyJWT from '../../middleware/auth.js';
 import { requirePermission } from '../../middleware/permissions.js';
 import { dispatchNotificationEvent } from "../../services/notificationDispatcher.js";
-import { PORTAL_USER_JOIN, PORTAL_USER_SELECT, createPortalUserForContact, createPortalUserInviteForContact, resendPortalInviteForContact, syncPortalUserFromContact, setPortalActive, deletePortalUserForContact, resetPortalPassword, getPortalUserByContactId } from '../../utils/contactPortal.js';
+import { PORTAL_USER_JOIN, PORTAL_USER_SELECT, createPortalUserForContact, createPortalUserInviteForContact, resendPortalInviteForContact, syncPortalUserFromContact, setPortalActive, setPortalTicketRole, deletePortalUserForContact, resetPortalPassword, getPortalUserByContactId } from '../../utils/contactPortal.js';
 import { registerContactMetaRoutes, fetchTagsByContactIdMap, attachContactTags, fetchTagsForContactId } from './contactMeta.js';
 import { normalizeContactSexe } from '../../utils/contactSexe.js';
 import { normalizeContactCommunications, syncLegacyContactFields, validateContactCommunications } from '../../utils/contactCommunications.js';
@@ -25,6 +25,7 @@ import {
   syncHomeClientId
 } from '../../services/contactClientLinks.js';
 import { attachOrphanTicketsToContact } from '../../services/ticketEmailThread.js';
+import { normalizePortalTicketRole } from '../../utils/portalTicketRole.js';
 const PORTAL_PASSWORD_ERROR = `Password too weak: at least ${PORTAL_PASSWORD_MIN_LENGTH} characters, with at least one letter and one digit.`;
 const router = express.Router();
 router.use(verifyJWT);
@@ -252,7 +253,8 @@ router.get('/:id/portal', verifyJWT, requireAgent, async (req, res) => {
       email: contact.portal_email,
       is_active: contact.portal_active,
       last_login_at: contact.portal_last_login,
-      password_pending: Boolean(contact.portal_pending)
+      password_pending: Boolean(contact.portal_pending),
+      portal_role: normalizePortalTicketRole(contact.portal_role)
     } : null;
     res.json({
       contact_id: contactId,
@@ -275,7 +277,9 @@ router.post('/:id/portal', verifyJWT, requireAgent, requirePermission('contacts_
     if (!contact) return res.status(404).json({
       error: "Contact not found"
     });
-    const portal = await createPortalUserInviteForContact(contact);
+    const portal = await createPortalUserInviteForContact(contact, {
+      portalRole: normalizePortalTicketRole(req.body?.portal_role)
+    });
     invalidateContactsListCache(contact.client_id);
     invalidateContactsListCache(null);
     res.status(201).json({
@@ -319,13 +323,15 @@ router.patch('/:id/portal', verifyJWT, requireAgent, requirePermission('contacts
   if (!contactId) return res.status(400).json({
     error: "Invalid ID contact"
   });
-  if (req.body?.is_active === undefined) {
+  const hasActive = req.body?.is_active !== undefined;
+  const hasRole = req.body?.portal_role !== undefined;
+  if (!hasActive && !hasRole) {
     return res.status(400).json({
-      error: "Champ is_active required."
+      error: "Champ is_active or portal_role required."
     });
   }
   try {
-    if (req.body?.is_active === true) {
+    if (hasActive && req.body?.is_active === true) {
       const contactBefore = await loadContactById(contactId);
       if (!contactBefore) return res.status(404).json({
         error: "Contact not found"
@@ -334,7 +340,13 @@ router.patch('/:id/portal', verifyJWT, requireAgent, requirePermission('contacts
         await assertCommunityClientPortalLimit(1);
       }
     }
-    const portal = await setPortalActive(contactId, req.body.is_active);
+    let portal = null;
+    if (hasActive) {
+      portal = await setPortalActive(contactId, req.body.is_active);
+    }
+    if (hasRole) {
+      portal = await setPortalTicketRole(contactId, req.body.portal_role);
+    }
     const contact = await loadContactById(contactId);
     invalidateContactsListCache(contact?.client_id);
     invalidateContactsListCache(null);

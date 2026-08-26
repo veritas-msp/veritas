@@ -7,6 +7,7 @@ import { listClientMailinblackTenants } from "../../api/clientMailinblack";
 import { getGlobalOvhStatus } from "../../api/clientOvh";
 import { parseCustomFamilyType } from "../../api/equipmentFamilies";
 import { getClientEquipmentTotal, mapClientHardwareEquipment } from "../../api/equipment";
+import { equipmentMatchesFleetFamily } from "../../utils/equipmentFamilyStats";
 import { filterCustomFamilyMap, filterBySite } from "../../utils/siteFilterUtils";
 import { readEnterprisePeripheralsUi, writeEnterprisePeripheralsUi } from "../../utils/enterprisePeripheralsUiState";
 import { repairRmmTextEncoding } from "../../utils/rmmTextEncoding";
@@ -869,6 +870,14 @@ export default function ClientDetailPage({
     };
   }, [client?.id]);
   useEffect(() => {
+    if (!client?.id) return undefined;
+    const handleFamiliesUpdated = () => {
+      void refreshClientEquipment();
+    };
+    window.addEventListener("equipmentFamiliesUpdated", handleFamiliesUpdated);
+    return () => window.removeEventListener("equipmentFamiliesUpdated", handleFamiliesUpdated);
+  }, [client?.id, refreshClientEquipment]);
+  useEffect(() => {
     if (client?.id) {
       loadContacts(client.id);
       return;
@@ -1705,24 +1714,30 @@ export default function ClientDetailPage({
     } catch {}
     onNavigate?.("Admin");
   };
-  const getEnterpriseComputers = useCallback(() => {
+  const getEnterpriseEquipment = useCallback((tableType) => {
     if (!client?.id) return [];
     const clientForMap = {
       ...client,
       sites: formData.sites ?? client.sites ?? [],
       equipements: client.equipements || {}
     };
-    let computers = mapClientHardwareEquipment(clientForMap).filter(eq => eq.type === "Ordinateurs");
+    let items = mapClientHardwareEquipment(clientForMap).filter(eq => equipmentMatchesFleetFamily(eq.type, tableType));
     if (activeSiteFilter) {
-      computers = filterBySite(computers, activeSiteFilter);
+      items = filterBySite(items, activeSiteFilter);
     }
-    return computers;
+    return items;
   }, [client, formData.sites, activeSiteFilter]);
   const openComputerFleetStats = useCallback((options = {}) => {
     if (!client?.id) return;
-    const fromEquipmentPage = equipmentPageRef.current?.getComputersForStats?.();
-    const computers = Array.isArray(fromEquipmentPage) && fromEquipmentPage.length > 0 ? fromEquipmentPage : getEnterpriseComputers();
-    if (!computers.length) {
+    const tableType = options.equipmentType
+      || activeEquipmentTableType
+      || equipmentPageRef.current?.getEmbeddedActiveType?.()
+      || "Ordinateurs";
+    const fromEquipmentPage = equipmentPageRef.current?.getEquipmentForStats?.(tableType)
+      || (tableType === "Ordinateurs" ? equipmentPageRef.current?.getComputersForStats?.() : null);
+    const fallback = getEnterpriseEquipment(tableType);
+    const items = Array.isArray(fromEquipmentPage) && fromEquipmentPage.length > 0 ? fromEquipmentPage : fallback;
+    if (!items.length) {
       toast.info(copy.toast.noComputersToAnalyze);
       return;
     }
@@ -1730,21 +1745,19 @@ export default function ClientDetailPage({
       clientId: client.id,
       clientName: getClientNameWithoutCode(client) || client?.name || "",
       client_number: getClientNumber(client) || undefined,
-      equipmentType: "Ordinateurs",
+      equipmentType: tableType,
       siteFilter: activeSiteFilter || null
     }, options.background ? {
       background: true
     } : undefined);
-  }, [client, getEnterpriseComputers, activeSiteFilter, onNavigate]);
+  }, [client, getEnterpriseEquipment, activeSiteFilter, activeEquipmentTableType, onNavigate, copy.toast.noComputersToAnalyze]);
   const equipmentStatsAction = useMemo(() => {
     const tableType = activeEquipmentTableType || equipmentPageRef.current?.getEmbeddedActiveType?.() || null;
-    if (tableType === "Ordinateurs") {
-      return {
-        label: copy.computerFleetStats,
-        run: openComputerFleetStats
-      };
-    }
-    return null;
+    if (!tableType) return null;
+    return {
+      label: copy.computerFleetStats,
+      run: () => openComputerFleetStats({ equipmentType: tableType })
+    };
   }, [activeEquipmentTableType, openComputerFleetStats, copy.computerFleetStats]);
   const handleInfraNodeClick = useCallback(node => {
     const familyKey = node?.familyKey || parseCustomFamilyType(node?.type);
@@ -2998,10 +3011,18 @@ export default function ClientDetailPage({
                     if (!canManageDevices && !canManageSolutions) return;
                     const family = customFamilyMap.find(entry => entry.familyKey === familyKey);
                     if (family) {
-                      setCustomEquipmentModal({
-                        family,
-                        item: null
+                      equipmentPageRef.current?.focusType?.(`Custom:${familyKey}`);
+                      equipmentSectionRef.current?.scrollIntoView({
+                        behavior: "smooth",
+                        block: "start"
                       });
+                      const itemCount = Number(family.count) || (Array.isArray(family.items) ? family.items.length : 0);
+                      if (canManageDevices && itemCount === 0) {
+                        setCustomEquipmentModal({
+                          family,
+                          item: null
+                        });
+                      }
                       return;
                     }
                   }
@@ -3064,7 +3085,8 @@ export default function ClientDetailPage({
                       if (e.button === 1) {
                         e.preventDefault();
                         openComputerFleetStats({
-                          background: true
+                          background: true,
+                          equipmentType: activeEquipmentTableType || undefined
                         });
                       }
                     }} aria-label={equipmentStatsAction.label}>
