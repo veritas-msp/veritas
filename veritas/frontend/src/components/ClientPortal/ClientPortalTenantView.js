@@ -174,7 +174,7 @@ export default function ClientPortalTenantView({ items, copy }) {
         className={styles.tenantTabBar}
       />
 
-      <div className={`${tenantStyles.tenantVars} ${styles.tenantDetailPane}`} key={viewMode}>
+      <div className={`${tenantStyles.tenantVars} ${styles.tenantDetailPane} ${portalStyles.portalEmbed}`} key={viewMode}>
         {viewMode === "rapport" ? (
           <TenantReportOverview report={report} copy={tenantCopy} onOpenTab={setViewMode} />
         ) : null}

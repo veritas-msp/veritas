@@ -513,7 +513,7 @@ export default function ClientTicketCreatePage() {
     label: tc.availabilityRange,
     icon: "mdi:calendar-clock-outline"
   }], [tc.availabilityNone, tc.availabilityFrom, tc.availabilityRange]);
-  return <div className={`${portalLayout.mainScrollFill} ${layout.page}`} onDragEnter={handlePageDragEnter} onDragLeave={handlePageDragLeave} onDragOver={handlePageDragOver} onDrop={handlePageDrop}>
+  return <div className={`${portalLayout.mainScrollFill} ${portalLayout.portalPage}`} onDragEnter={handlePageDragEnter} onDragLeave={handlePageDragLeave} onDragOver={handlePageDragOver} onDrop={handlePageDrop}>
       {isAttachmentDragOver ? <div className={s.pageDropOverlay} aria-hidden>
           <Icon icon="mdi:upload-outline" className={s.pageDropOverlayIcon} />
           <p className={s.pageDropOverlayTitle}>{tc.dropTitle}</p>

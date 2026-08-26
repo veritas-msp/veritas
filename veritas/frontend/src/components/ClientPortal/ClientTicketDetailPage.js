@@ -365,7 +365,7 @@ export default function ClientTicketDetailPage() {
     }
   };
   if (loading) {
-    return <div className={`${portalLayout.mainScrollFill} ${layout.page}`}>
+    return <div className={`${portalLayout.mainScrollFill} ${portalLayout.portalPage}`}>
         <div className={layout.stateBox}>
           <Icon icon="mdi:loading" className={layout.spinning} aria-hidden />
           <span>{td.loading}</span>
@@ -373,7 +373,7 @@ export default function ClientTicketDetailPage() {
       </div>;
   }
   if (!ticket) {
-    return <div className={`${portalLayout.mainScrollFill} ${layout.page}`}>
+    return <div className={`${portalLayout.mainScrollFill} ${portalLayout.portalPage}`}>
         <div className={layout.emptyState}>
           <p className={layout.emptyStateTitle}>{td.notFound}</p>
           <Link to="/client/tickets" className={layout.primaryBtn}>
@@ -389,7 +389,7 @@ export default function ClientTicketDetailPage() {
     setSatisfactionModalOpen(false);
     setSatisfactionEditing(false);
   };
-  return <div className={`${portalLayout.mainScrollFill} ${layout.page}`}>
+  return <div className={`${portalLayout.mainScrollFill} ${portalLayout.portalPage}`}>
       <div className={`${tdStyles.shell} ${portalStyles.portalDetailShell}`}>
         <header className={`${tdStyles.ticketChromeBar} ${tdStyles.ticketHeaderBar}`}>
           <div className={tdStyles.ticketHeroTrack}>

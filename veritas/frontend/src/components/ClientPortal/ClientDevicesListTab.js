@@ -9,6 +9,7 @@ import { getOsIconName, repairOsLabel } from "../EquipementPage/osIconUtils";
 import { getClientPortalCopy } from "./clientPortalI18n";
 import {
   formatPortalFieldDisplay,
+  getPortalAvailableTableColumns,
   getPortalColumnLabel,
   getPortalEquipmentField,
   getPortalExportType,
@@ -20,17 +21,17 @@ import styles from "./ClientDevicesListTab.module.css";
 
 const COLUMNS_STORAGE_PREFIX = "veritas_portal_device_columns_v1_";
 
-function readStoredColumns(familyKey, defaults) {
+function readStoredColumns(familyKey, allowedKeys, fallbackKeys) {
   try {
     const raw = localStorage.getItem(`${COLUMNS_STORAGE_PREFIX}${familyKey}`);
-    if (!raw) return defaults;
+    if (!raw) return fallbackKeys;
     const parsed = JSON.parse(raw);
-    if (!Array.isArray(parsed) || !parsed.length) return defaults;
-    const allowed = new Set(defaults);
+    if (!Array.isArray(parsed) || !parsed.length) return fallbackKeys;
+    const allowed = new Set(allowedKeys);
     const filtered = parsed.filter(key => allowed.has(key));
-    return filtered.length ? filtered : defaults;
+    return filtered.length ? filtered : fallbackKeys;
   } catch {
-    return defaults;
+    return fallbackKeys;
   }
 }
 
@@ -157,7 +158,19 @@ function OsCell({ item }) {
   );
 }
 
-function ColumnsModal({ open, familyKey, availableColumns, visibleColumns, onToggle, onClose, copy, locale, devicesCopy }) {
+function ColumnsModal({
+  open,
+  familyKey,
+  availableColumns,
+  visibleColumns,
+  onToggle,
+  onShowAll,
+  onResetDefaults,
+  onClose,
+  copy,
+  locale,
+  devicesCopy
+}) {
   if (!open) return null;
   return createPortal(
     <div className={styles.modalOverlay} onClick={onClose} role="presentation">
@@ -179,6 +192,14 @@ function ColumnsModal({ open, familyKey, availableColumns, visibleColumns, onTog
         </div>
         <div className={styles.modalBody}>
           <p className={styles.modalHint}>{copy.columnsHint}</p>
+          <div className={styles.columnsToolbar}>
+            <button type="button" className={styles.columnsToolBtn} onClick={onShowAll}>
+              {copy.columnsShowAll}
+            </button>
+            <button type="button" className={styles.columnsToolBtn} onClick={onResetDefaults}>
+              {copy.columnsReset}
+            </button>
+          </div>
           <div className={styles.columnsList}>
             {availableColumns.map(colKey => {
               const checked = visibleColumns.includes(colKey);
@@ -278,11 +299,15 @@ export default function ClientDevicesListTab({
     () => categories.find(cat => cat.key === activeFamilyKey) || categories[0] || null,
     [categories, activeFamilyKey]
   );
-  const availableColumns = useMemo(
+  const defaultColumns = useMemo(
     () => (activeCategory ? getPortalTableColumns(activeCategory.key) : []),
     [activeCategory]
   );
-  const [visibleColumns, setVisibleColumns] = useState(availableColumns);
+  const availableColumns = useMemo(
+    () => (activeCategory ? getPortalAvailableTableColumns(activeCategory.key) : []),
+    [activeCategory]
+  );
+  const [visibleColumns, setVisibleColumns] = useState(defaultColumns);
   const [columnsModalOpen, setColumnsModalOpen] = useState(false);
 
   useEffect(() => {
@@ -290,22 +315,30 @@ export default function ClientDevicesListTab({
       setVisibleColumns([]);
       return;
     }
-    setVisibleColumns(readStoredColumns(activeCategory.key, getPortalTableColumns(activeCategory.key)));
+    const allowed = getPortalAvailableTableColumns(activeCategory.key);
+    setVisibleColumns(readStoredColumns(
+      activeCategory.key,
+      allowed,
+      getPortalTableColumns(activeCategory.key)
+    ));
     setColumnsModalOpen(false);
   }, [activeCategory?.key]);
 
-  const toggleColumn = colKey => {
+  const applyColumns = nextKeys => {
     if (!activeCategory) return;
-    setVisibleColumns(prev => {
-      const next = prev.includes(colKey)
-        ? prev.filter(key => key !== colKey)
-        : [...prev, colKey].sort(
-          (a, b) => availableColumns.indexOf(a) - availableColumns.indexOf(b)
-        );
-      const safe = next.length ? next : ["name"];
-      writeStoredColumns(activeCategory.key, safe);
-      return safe;
-    });
+    const allowed = new Set(availableColumns);
+    const ordered = availableColumns.filter(key => nextKeys.includes(key) && allowed.has(key));
+    const safe = ordered.length ? ordered : ["name"];
+    writeStoredColumns(activeCategory.key, safe);
+    setVisibleColumns(safe);
+  };
+
+  const toggleColumn = colKey => {
+    applyColumns(
+      visibleColumns.includes(colKey)
+        ? visibleColumns.filter(key => key !== colKey)
+        : [...visibleColumns, colKey]
+    );
   };
 
   if (!categories.length) {
@@ -368,6 +401,8 @@ export default function ClientDevicesListTab({
         availableColumns={availableColumns}
         visibleColumns={displayedColumns.length ? displayedColumns : ["name"]}
         onToggle={toggleColumn}
+        onShowAll={() => applyColumns(availableColumns)}
+        onResetDefaults={() => applyColumns(defaultColumns)}
         onClose={() => setColumnsModalOpen(false)}
         copy={t}
         locale={locale}

@@ -2,7 +2,6 @@ import { useMemo } from "react";
 import { Icon } from "@iconify/react";
 import { useAppLocale } from "../../hooks/useAppGeneralSettings";
 import styles from "./ClientDashboard.module.css";
-import layout from "../EnterprisesPage/EnterprisesPage.module.css";
 import MspPageHero from "../Misc/MspPageHero/MspPageHero";
 import pageStyles from "./ClientPortalPages.module.css";
 import { getClientPortalCopy } from "./clientPortalI18n";
@@ -36,7 +35,7 @@ export default function ClientCybersecurityPage() {
 
   if (loading && !data) {
     return (
-      <div className={`${styles.mainScrollFill} ${layout.page}`}>
+      <div className={`${styles.mainScrollFill} ${styles.portalPage}`}>
         <div className={styles.loadingInline}>
           <span className={styles.spinner} />
           <span>{copy.common.loading}</span>
@@ -46,7 +45,7 @@ export default function ClientCybersecurityPage() {
   }
   if (error && !data) {
     return (
-      <div className={`${styles.mainScrollFill} ${layout.page}`}>
+      <div className={`${styles.mainScrollFill} ${styles.portalPage}`}>
         <div className={styles.emptyState}>
           <Icon icon="mdi:alert-circle-outline" className={styles.emptyStateIcon} aria-hidden />
           <p className={styles.emptyStateTitle}>{copy.layout.loadError}</p>
@@ -57,7 +56,7 @@ export default function ClientCybersecurityPage() {
   if (!data) return null;
 
   return (
-    <div className={`${styles.mainScrollFill} ${layout.page}`}>
+    <div className={`${styles.mainScrollFill} ${styles.portalPage}`}>
       <div className={`${styles.mainContent} ${styles.portalShell}`}>
         <MspPageHero
           className={pageStyles.portalPageHero}

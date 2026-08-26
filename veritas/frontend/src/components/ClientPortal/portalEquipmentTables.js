@@ -1,5 +1,5 @@
 import { getEquipmentColumnLabel } from "../EquipementPage/equipmentPageI18n";
-import { getDefaultCsvExportKeys, getCsvExportFieldLabel } from "../EquipementPage/equipmentCsvExportFields";
+import { getDefaultCsvExportKeys, getCsvExportFieldLabel, getCsvExportKeysForType, CSV_EXPORT_EXCLUDED_KEYS } from "../EquipementPage/equipmentCsvExportFields";
 
 export const PORTAL_FAMILY_TONES = ["blue", "teal", "violet", "green", "cyan", "amber", "orange", "gray"];
 
@@ -62,11 +62,34 @@ export function getPortalTableColumns(familyKey) {
   return TABLE_COLUMNS_BY_EXPORT_TYPE[exportType] || ["name", "activeStatus", "monitoring"];
 }
 
+export function getPortalAvailableTableColumns(familyKey) {
+  const exportType = getPortalExportType(familyKey);
+  const defaults = getPortalTableColumns(familyKey);
+  const exportKeys = getCsvExportKeysForType(exportType).filter(key => {
+    if (!key || CSV_EXPORT_EXCLUDED_KEYS.has(key) || key === "client") return false;
+    return true;
+  });
+  const extras = defaults.filter(key => key === "activeStatus" || !exportKeys.includes(key));
+  const merged = [];
+  const seen = new Set();
+  [...exportKeys, ...extras].forEach(key => {
+    if (seen.has(key)) return;
+    seen.add(key);
+    merged.push(key);
+  });
+  if (!merged.includes("name")) merged.unshift("name");
+  return merged;
+}
+
 export function getPortalColumnLabel(locale, familyKey, colKey, copy) {
   if (colKey === "activeStatus") return copy.tableStatus;
   if (colKey === "monitoring") return copy.tableSupervision;
   if (colKey === "agentStatus") return copy.tableSupervision;
-  return getEquipmentColumnLabel(locale, getPortalExportType(familyKey), colKey) || colKey;
+  const exportType = getPortalExportType(familyKey);
+  const equipmentLabel = getEquipmentColumnLabel(locale, exportType, colKey);
+  if (equipmentLabel && equipmentLabel !== colKey) return equipmentLabel;
+  const csvLabel = getCsvExportFieldLabel(locale, exportType, colKey);
+  return (csvLabel && csvLabel !== colKey ? csvLabel : equipmentLabel) || colKey;
 }
 
 export function getPortalEquipmentField(item, key) {
@@ -117,6 +140,15 @@ export function formatPortalFieldDisplay(item, key, copy) {
     if (value === "offline") return copy.agentOffline;
     if (value === "supervised") return copy.supervised;
     return copy.notSupervised;
+  }
+  if (typeof value === "boolean") return value ? copy.statusActive : copy.statusInactive;
+  if (Array.isArray(value)) {
+    const labels = value.map(entry => {
+      if (entry == null || entry === "") return "";
+      if (typeof entry === "object") return entry.name || entry.label || entry.ssid || "";
+      return String(entry);
+    }).filter(Boolean);
+    return labels.join(", ") || "—";
   }
   return value || "—";
 }

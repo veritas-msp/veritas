@@ -59,7 +59,7 @@ export default function ClientDashboard() {
   }];
 
   return (
-    <div className={`${styles.mainScrollFill} ${layout.page}`}>
+    <div className={`${styles.mainScrollFill} ${styles.portalPage}`}>
       <div className={`${styles.mainContent} ${styles.portalShell}`}>
         <MspPageHero
           className={pageStyles.portalPageHero}

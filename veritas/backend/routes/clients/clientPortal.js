@@ -438,7 +438,27 @@ const PORTAL_SAFE_DATA_KEYS = [
   "typeServer",
   "storageType",
   "debitUpload",
-  "categorie"
+  "categorie",
+  "commentaire",
+  "gateway",
+  "adminUrl",
+  "purchaseDate",
+  "invoiceNumber",
+  "numeroLigne",
+  "referenceContrat",
+  "supportTelephone",
+  "dateMiseEnService",
+  "remoteAccessSolution",
+  "remoteAccessId",
+  "serverHAName",
+  "firewallHAName",
+  "storageHAName",
+  "stormshieldWanUrl",
+  "powerRating",
+  "domaine",
+  "osName",
+  "ipNonFixe",
+  "quickConnect"
 ];
 function pickPortalEquipmentData(data) {
   const src = data && typeof data === "object" ? data : {};

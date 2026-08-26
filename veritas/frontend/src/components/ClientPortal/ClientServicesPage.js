@@ -2,7 +2,6 @@ import { useMemo } from "react";
 import { Icon } from "@iconify/react";
 import { useAppLocale } from "../../hooks/useAppGeneralSettings";
 import styles from "./ClientDashboard.module.css";
-import layout from "../EnterprisesPage/EnterprisesPage.module.css";
 import ClientServicesDetailView from "./ClientServicesDetailView";
 import MspPageHero from "../Misc/MspPageHero/MspPageHero";
 import pageStyles from "./ClientPortalPages.module.css";
@@ -20,7 +19,7 @@ export default function ClientServicesPage() {
   const copy = useMemo(() => getClientPortalCopy(locale), [locale]);
   const t = copy.services;
   if (loading && !data) {
-    return <div className={`${styles.mainScrollFill} ${layout.page}`}>
+    return <div className={`${styles.mainScrollFill} ${styles.portalPage}`}>
         <div className={styles.loadingInline}>
           <span className={styles.spinner} />
           <span>{copy.common.loading}</span>
@@ -28,7 +27,7 @@ export default function ClientServicesPage() {
       </div>;
   }
   if (error && !data) {
-    return <div className={`${styles.mainScrollFill} ${layout.page}`}>
+    return <div className={`${styles.mainScrollFill} ${styles.portalPage}`}>
         <div className={styles.emptyState}>
           <Icon icon="mdi:alert-circle-outline" className={styles.emptyStateIcon} aria-hidden />
           <p className={styles.emptyStateTitle}>{copy.layout.loadError}</p>
@@ -43,7 +42,7 @@ export default function ClientServicesPage() {
   const hasServices = cloudServices?.some(group =>
     group?.items?.length > 0 && group.type !== "antivirus" && group.type !== "antispam"
   );
-  return <div className={`${styles.mainScrollFill} ${layout.page}`}>
+  return <div className={`${styles.mainScrollFill} ${styles.portalPage}`}>
       <div className={`${styles.mainContent} ${styles.portalShell}`}>
         <MspPageHero
           className={pageStyles.portalPageHero}

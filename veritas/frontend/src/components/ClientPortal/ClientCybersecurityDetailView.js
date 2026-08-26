@@ -140,7 +140,7 @@ function PortalAntivirusView({ items, copy, formatDate }) {
             ariaLabel={copy.antivirusSectionsAria}
             className={styles.sectionTabBar}
           />
-          <div className={styles.sectionPane}>
+          <div className={`${styles.sectionPane} ${portalStyles.portalEmbed}`}>
             <AntivirusOverviewPanel
               active
               asPage
@@ -224,7 +224,7 @@ function PortalAntispamView({ items, copy, formatDate }) {
             ariaLabel={copy.antispamSectionsAria}
             className={styles.sectionTabBar}
           />
-          <div className={styles.sectionPane}>
+          <div className={`${styles.sectionPane} ${portalStyles.portalEmbed}`}>
             <AntispamOverviewPanel
               active
               asPage

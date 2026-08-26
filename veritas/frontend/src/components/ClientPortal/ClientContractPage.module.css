@@ -49,10 +49,10 @@
   align-items: center;
   gap: 6px;
   padding: 8px 12px;
-  border-radius: 10px;
+  border-radius: var(--msp-radius-sm, 10px);
   border: 1px solid var(--msp-border, var(--portal-border));
   background: var(--msp-surface, var(--portal-surface));
-  box-shadow: var(--msp-shadow-panel, 0 1px 2px rgba(15, 28, 46, 0.06));
+  box-shadow: var(--msp-shadow);
   font-size: 0.8rem;
   font-weight: 600;
   color: var(--msp-text, var(--portal-text));

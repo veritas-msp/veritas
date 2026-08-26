@@ -56,7 +56,7 @@
 
 .heroStat {
   padding: 16px 18px;
-  border-radius: 14px;
+  border-radius: var(--msp-radius, 16px);
   background: linear-gradient(135deg, rgba(43, 95, 171, 0.12) 0%, rgba(43, 95, 171, 0.04) 100%);
   border: 1px solid rgba(43, 95, 171, 0.16);
 }
@@ -92,9 +92,10 @@
   height: 100%;
   min-height: 132px;
   padding: 14px;
-  border-radius: 14px;
+  border-radius: var(--msp-radius, 16px);
   border: 1px solid var(--portal-border, #e4e8ee);
   background: var(--portal-surface, #fff);
+  box-shadow: var(--msp-shadow-panel, 0 8px 22px -12px rgba(15, 28, 46, 0.2));
   display: flex;
   flex-direction: column;
   gap: 10px;
@@ -129,7 +130,7 @@
 .tileIconWrap {
   width: 36px;
   height: 36px;
-  border-radius: 10px;
+  border-radius: var(--msp-radius-sm, 10px);
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -174,6 +175,16 @@
   font-size: 0.72rem;
   font-weight: 600;
   color: var(--portal-accent-text, #2b5fab);
+}
+
+:global(html.dark) .tile {
+  background: var(--portal-surface, #1a2540);
+  border-color: var(--portal-border, #2f4260);
+  box-shadow: var(--msp-shadow-panel, 0 8px 24px -12px rgba(0, 0, 0, 0.5));
+}
+
+:global(html.dark) .tileInactive {
+  background: var(--portal-surface-alt, #152035);
 }
 
 @media (max-width: 900px) {

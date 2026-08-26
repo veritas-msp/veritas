@@ -244,7 +244,7 @@ export default function ClientProfilePage() {
     if (!portalEmailConfirm) return;
     await performSaveContact(portalEmailConfirm.communications);
   };
-  return <div className={`${portalLayout.mainScrollFill} ${layout.page}`}>
+  return <div className={`${portalLayout.mainScrollFill} ${portalLayout.portalPage}`}>
       <div className={`${portalLayout.portalShell} ${tableStyles.ticketShell}`}>
         <MspPageHero
           className={pageStyles.portalPageHero}

@@ -3,7 +3,6 @@ import { Icon } from "@iconify/react";
 import { toast } from "react-toastify";
 import { useAppLocale } from "../../hooks/useAppGeneralSettings";
 import styles from "./ClientDashboard.module.css";
-import layout from "../EnterprisesPage/EnterprisesPage.module.css";
 import pageStyles from "./ClientPortalPages.module.css";
 import ClientPortalFleetStats from "./ClientPortalFleetStats";
 import ClientDevicesListTab from "./ClientDevicesListTab";
@@ -133,7 +132,7 @@ export default function ClientDevicesPage() {
 
   if (loading && !data) {
     return (
-      <div className={`${styles.mainScrollFill} ${layout.page}`}>
+      <div className={`${styles.mainScrollFill} ${styles.portalPage}`}>
         <div className={styles.loadingInline}>
           <span className={styles.spinner} />
           <span>{copy.common.loading}</span>
@@ -143,7 +142,7 @@ export default function ClientDevicesPage() {
   }
   if (error && !data) {
     return (
-      <div className={`${styles.mainScrollFill} ${layout.page}`}>
+      <div className={`${styles.mainScrollFill} ${styles.portalPage}`}>
         <div className={styles.emptyState}>
           <Icon icon="mdi:alert-circle-outline" className={styles.emptyStateIcon} aria-hidden />
           <p className={styles.emptyStateTitle}>{copy.layout.loadError}</p>
@@ -157,7 +156,7 @@ export default function ClientDevicesPage() {
   const isEmpty = categories.length === 0;
 
   return (
-    <div className={`${styles.mainScrollFill} ${layout.page}`}>
+    <div className={`${styles.mainScrollFill} ${styles.portalPage}`}>
       <div className={`${styles.mainContent} ${styles.portalShell}`}>
         <MspPageHero
           className={pageStyles.portalPageHero}

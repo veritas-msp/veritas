@@ -77,9 +77,9 @@
   min-width: 0;
   min-height: 0;
   border: 1px solid var(--portal-border, #e4e8ee);
-  border-radius: 12px;
+  border-radius: var(--msp-radius, 16px);
   background: var(--portal-surface, #fff);
-  box-shadow: 0 1px 2px rgba(15, 28, 46, 0.03), 0 4px 16px rgba(15, 28, 46, 0.04);
+  box-shadow: var(--msp-shadow-panel, 0 8px 22px -12px rgba(15, 28, 46, 0.2));
   overflow: hidden;
   display: flex;
   flex-direction: column;
@@ -289,11 +289,11 @@
 
 .portalSatisfactionPane {
   flex-shrink: 0;
-  border: 1px solid var(--msp-border-light, #eef2f7);
-  border-radius: 14px;
-  background: var(--msp-surface, #fff);
+  border: 1px solid var(--msp-border, var(--portal-border, #e4e8ee));
+  border-radius: var(--msp-radius, 16px);
+  background: var(--msp-surface, var(--portal-surface, #fff));
   padding: 0.85rem 1rem;
-  box-shadow: 0 1px 2px rgba(15, 28, 46, 0.03), 0 4px 16px rgba(15, 28, 46, 0.04);
+  box-shadow: var(--msp-shadow-panel, 0 8px 22px -12px rgba(15, 28, 46, 0.2));
 }
 
 
@@ -303,7 +303,7 @@
   gap: 1rem;
   flex-wrap: wrap;
   padding: 1rem 1.15rem;
-  border-radius: 14px;
+  border-radius: var(--msp-radius, 16px);
   border: 1px solid rgba(43, 95, 171, 0.35);
   background: linear-gradient(
     135deg,
@@ -386,7 +386,7 @@
   gap: 1rem;
   flex-wrap: wrap;
   padding: 0.85rem 1rem;
-  border-radius: 12px;
+  border-radius: var(--msp-radius, 16px);
   border: 1px solid rgba(22, 163, 74, 0.35);
   background: rgba(22, 163, 74, 0.08);
 }
@@ -452,7 +452,7 @@
 .satisfactionThanksEditBtn {
   flex-shrink: 0;
   padding: 0.35rem 0.65rem;
-  border: 1px solid var(--msp-border, #c5d0df);
+  border: 1px solid var(--msp-border, var(--portal-border, #e4e8ee));
   border-radius: 8px;
   background: var(--msp-surface, #fff);
   color: var(--msp-text, #1a2332);
@@ -527,7 +527,7 @@
   display: flex;
   flex-direction: column;
   border-radius: 16px;
-  border: 1px solid var(--msp-border, #c5d0df);
+  border: 1px solid var(--msp-border, var(--portal-border, #e4e8ee));
   background: var(--msp-surface, #fff);
   box-shadow: 0 24px 48px rgba(6, 10, 16, 0.35);
   overflow: hidden;

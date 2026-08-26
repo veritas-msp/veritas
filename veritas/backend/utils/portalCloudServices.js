@@ -72,9 +72,18 @@ function mapLicencesForTabs(licences = []) {
     };
   });
 }
+function formatUserLicenseLabel(licenses) {
+  if (typeof licenses === "string" && licenses.trim()) return licenses.trim();
+  if (!Array.isArray(licenses) || !licenses.length) return "";
+  return licenses.map(lic => {
+    if (typeof lic === "string") return lic.trim();
+    return pickString(lic?.friendlyName, lic?.productName, lic?.skuPartNumber, lic?.displayName, lic?.name, lic?.nom);
+  }).filter(Boolean).join(", ");
+}
 function mapUsersForPortal(users = []) {
   if (!Array.isArray(users)) return [];
   return users.map(user => ({
+    ...user,
     id: user.id || null,
     displayName: pickString(user.displayName, user.name),
     name: pickString(user.name, user.displayName),
@@ -82,8 +91,8 @@ function mapUsersForPortal(users = []) {
     email: pickString(user.email, user.mail, user.userPrincipalName),
     accountEnabled: user.accountEnabled !== false,
     lastLoginDate: user.lastLoginDate || user.lastSignInDateTime || null,
-    licenses: Array.isArray(user.licenses) ? user.licenses : Array.isArray(user.assignedLicenses) ? user.assignedLicenses : [],
-    assignedLicenses: Array.isArray(user.assignedLicenses) ? user.assignedLicenses : undefined,
+    createdDate: user.createdDate || user.createdDateTime || null,
+    licenses: formatUserLicenseLabel(user.licenses) || formatUserLicenseLabel(user.assignedLicenses),
     isAdmin: Boolean(user.isAdmin || user.isGlobalAdmin || user.isCompanyAdmin)
   }));
 }

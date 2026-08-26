@@ -367,8 +367,8 @@ export default function UsersTab({
           bValue = getStatusValue(b);
           break;
         case 'licence':
-          aValue = (a.licenses || 'None').toLowerCase();
-          bValue = (b.licenses || 'None').toLowerCase();
+          aValue = (typeof a.licenses === 'string' ? a.licenses : Array.isArray(a.licenses) ? a.licenses.join(', ') : a.licenses || 'None').toString().toLowerCase();
+          bValue = (typeof b.licenses === 'string' ? b.licenses : Array.isArray(b.licenses) ? b.licenses.join(', ') : b.licenses || 'None').toString().toLowerCase();
           break;
         case 'mfaActive':
           {
@@ -934,7 +934,15 @@ export default function UsersTab({
               const statusLabel = user.accountEnabled === false ? 'Blocked' : isActive30 ? 'Active' : isInactive ? 'Inactive (>90d)' : 'Inactive';
               const statusBg = user.accountEnabled === false ? '#fee2e2' : isActive30 ? '#d1fae5' : isInactive ? '#fef3c7' : '#e0e7ff';
               const statusColor = user.accountEnabled === false ? '#dc2626' : isActive30 ? '#059669' : isInactive ? '#d97706' : '#4338ca';
-              const licenseNames = user.licenses ? user.licenses.split(', ').map(lic => getLicenseDisplayName(lic.trim())).join(', ') : 'None';
+              const licenseNames = (() => {
+                const raw = user.licenses;
+                if (!raw) return 'None';
+                const parts = Array.isArray(raw)
+                  ? raw.map(lic => (typeof lic === 'string' ? lic : lic?.displayName || lic?.name || lic?.nom || '')).filter(Boolean)
+                  : String(raw).split(', ');
+                const labels = parts.map(lic => getLicenseDisplayName(String(lic).trim())).filter(Boolean);
+                return labels.length ? labels.join(', ') : 'None';
+              })();
               const userUpn = user.userPrincipalName || user.email || '';
               const mfaUser = mfaDetails.find(m => (m.userPrincipalName || m.user_principal_name || '') === userUpn);
               const mfaMethodsRaw = mfaUser?.mfa_methods || mfaUser?.mfaMethods || [];

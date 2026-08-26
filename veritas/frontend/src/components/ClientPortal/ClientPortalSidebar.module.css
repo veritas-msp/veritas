@@ -86,7 +86,7 @@
   width: 40px;
   height: 40px;
   padding: 0;
-  border: 1px solid var(--sb-btn-border, var(--msp-border, #c5d0df));
+  border: 1px solid var(--sb-btn-border, var(--msp-border, var(--portal-border, #e4e8ee)));
   border-radius: 10px;
   background: var(--sb-btn-bg, var(--msp-surface-2, #f7f9fc));
   color: var(--sb-muted, var(--msp-muted, #5c6b82));
@@ -223,8 +223,8 @@
   appearance: none;
   -webkit-appearance: none;
   padding: 8px 28px 8px 32px;
-  border-radius: 10px;
-  border: 1px solid var(--sb-btn-border, var(--msp-border, #c5d0df));
+  border-radius: var(--msp-radius-sm, 10px);
+  border: 1px solid var(--sb-btn-border, var(--msp-border, var(--portal-border, #e4e8ee)));
   background: var(--sb-btn-bg, var(--msp-surface-2, #f7f9fc));
   color: var(--sb-text, var(--msp-text, #0a1422));
   font-size: 0.8rem;

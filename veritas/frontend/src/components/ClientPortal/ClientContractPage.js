@@ -2,7 +2,6 @@ import { useMemo } from "react";
 import { Icon } from "@iconify/react";
 import { useAppLocale } from "../../hooks/useAppGeneralSettings";
 import { useContractModuleOptions } from "../../hooks/useContractModuleOptions";
-import layout from "../EnterprisesPage/EnterprisesPage.module.css";
 import styles from "./ClientDashboard.module.css";
 import pageStyles from "./ClientPortalPages.module.css";
 import contractStyles from "./ClientContractPage.module.css";
@@ -33,7 +32,7 @@ export default function ClientContractPage() {
 
   if (loading && !data) {
     return (
-      <div className={`${styles.mainScrollFill} ${layout.page}`}>
+      <div className={`${styles.mainScrollFill} ${styles.portalPage}`}>
         <div className={styles.loadingInline}>
           <span className={styles.spinner} />
           <span>{copy.common.loading}</span>
@@ -43,7 +42,7 @@ export default function ClientContractPage() {
   }
   if (error && !data) {
     return (
-      <div className={`${styles.mainScrollFill} ${layout.page}`}>
+      <div className={`${styles.mainScrollFill} ${styles.portalPage}`}>
         <div className={styles.emptyState}>
           <Icon icon="mdi:alert-circle-outline" className={styles.emptyStateIcon} aria-hidden />
           <p className={styles.emptyStateTitle}>{layoutCopy.loadError}</p>
@@ -56,7 +55,7 @@ export default function ClientContractPage() {
   const { client, contrat, commercial } = data;
 
   return (
-    <div className={`${styles.mainScrollFill} ${layout.page}`}>
+    <div className={`${styles.mainScrollFill} ${styles.portalPage}`}>
       <div className={`${styles.mainContent} ${styles.portalShell}`}>
         <MspPageHero
           className={pageStyles.portalPageHero}

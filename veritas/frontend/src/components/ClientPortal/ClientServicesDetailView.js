@@ -4,8 +4,6 @@ import { useAppLocale } from "../../hooks/useAppGeneralSettings";
 import { interpolate } from "../../i18n/translate";
 import { getClientPortalCopy } from "./clientPortalI18n";
 import portalStyles from "./ClientDashboard.module.css";
-import layout from "../EnterprisesPage/EnterprisesPage.module.css";
-import pageStyles from "./ClientPortalPages.module.css";
 import tableStyles from "../TicketPage/TicketPage.module.css";
 import listStyles from "./ClientDevicesListTab.module.css";
 import PortalTabBar from "./PortalTabBar";
@@ -75,6 +73,24 @@ function ServiceTable({ columns, rows, emptyLabel }) {
   );
 }
 
+function InfoFactsCard({ title, facts }) {
+  return (
+    <section className={portalStyles.panel}>
+      <div className={portalStyles.panelHeader}>
+        <span className={portalStyles.panelTitle}>{title}</span>
+      </div>
+      <dl className={`${portalStyles.infoCardFacts} ${styles.tenantFacts}`}>
+        {facts.map(fact => (
+          <div key={fact.key}>
+            <dt>{fact.label}</dt>
+            <dd>{fact.value}</dd>
+          </div>
+        ))}
+      </dl>
+    </section>
+  );
+}
+
 function collectBackupJobs(items) {
   const jobs = [];
   items.forEach(item => {
@@ -108,28 +124,22 @@ function collectBackupJobs(items) {
 function BackupView({ items, copy, formatDate }) {
   const instances = items.filter(item => item.details?.kind !== "saveJob");
   const jobs = collectBackupJobs(items);
+  const lastBackup = jobs
+    .map(job => job.lastBackup)
+    .filter(Boolean)
+    .sort((a, b) => new Date(b).getTime() - new Date(a).getTime())[0];
+  const anyActive = instances.some(item => item.active) || jobs.length > 0;
   return (
     <>
-      <div className={pageStyles.kpiRowFamily}>
-        <div className={layout.kpiCard}>
-          <div className={`${layout.kpiIconWrap} ${layout.kpiIcon_teal}`}>
-            <Icon icon="mdi:backup-restore" aria-hidden />
-          </div>
-          <div className={layout.kpiBody}>
-            <span className={layout.kpiValue}>{instances.length}</span>
-            <span className={layout.kpiLabel}>{copy.instancesTitle}</span>
-          </div>
-        </div>
-        <div className={layout.kpiCard}>
-          <div className={`${layout.kpiIconWrap} ${layout.kpiIcon_cyan}`}>
-            <Icon icon="mdi:calendar-clock" aria-hidden />
-          </div>
-          <div className={layout.kpiBody}>
-            <span className={layout.kpiValue}>{jobs.length}</span>
-            <span className={layout.kpiLabel}>{copy.jobsTitle}</span>
-          </div>
-        </div>
-      </div>
+      <InfoFactsCard
+        title={copy.infoTitle}
+        facts={[
+          { key: "instances", label: copy.instancesTitle, value: instances.length },
+          { key: "jobs", label: copy.jobsTitle, value: jobs.length },
+          { key: "last", label: copy.lastBackup, value: lastBackup ? formatDate(lastBackup) : "—" },
+          { key: "status", label: copy.tableStatus, value: <StatusBadge active={anyActive} copy={copy} /> }
+        ]}
+      />
       <section className={portalStyles.panel}>
         <div className={portalStyles.panelHeader}>
           <span className={portalStyles.panelTitle}>{copy.instancesTitle}</span>
@@ -173,28 +183,22 @@ function DomainsView({ items, copy, formatDate }) {
     const meta = getExpirationMeta(item.expiration, copy);
     return meta.tone === "bad" || meta.tone === "warn";
   }).length;
+  const nextExpiration = items
+    .map(item => item.expiration)
+    .filter(Boolean)
+    .sort((a, b) => new Date(a).getTime() - new Date(b).getTime())[0];
+  const anyActive = items.some(item => item.active);
   return (
     <>
-      <div className={pageStyles.kpiRowFamily}>
-        <div className={layout.kpiCard}>
-          <div className={`${layout.kpiIconWrap} ${layout.kpiIcon_amber}`}>
-            <Icon icon="mdi:domain" aria-hidden />
-          </div>
-          <div className={layout.kpiBody}>
-            <span className={layout.kpiValue}>{items.length}</span>
-            <span className={layout.kpiLabel}>{copy.domainsTitle}</span>
-          </div>
-        </div>
-        <div className={layout.kpiCard}>
-          <div className={`${layout.kpiIconWrap} ${layout.kpiIcon_orange}`}>
-            <Icon icon="mdi:calendar-alert" aria-hidden />
-          </div>
-          <div className={layout.kpiBody}>
-            <span className={layout.kpiValue}>{expiringSoon}</span>
-            <span className={layout.kpiLabel}>{copy.expiringSoonCount}</span>
-          </div>
-        </div>
-      </div>
+      <InfoFactsCard
+        title={copy.infoTitle}
+        facts={[
+          { key: "domains", label: copy.domainsTitle, value: items.length },
+          { key: "watch", label: copy.expiringSoonCount, value: expiringSoon },
+          { key: "next", label: copy.nextExpiration, value: nextExpiration ? formatDate(nextExpiration) : "—" },
+          { key: "status", label: copy.tableStatus, value: <StatusBadge active={anyActive} copy={copy} /> }
+        ]}
+      />
       <section className={portalStyles.panel}>
         <div className={portalStyles.panelHeader}>
           <span className={portalStyles.panelTitle}>{copy.domainsTitle}</span>

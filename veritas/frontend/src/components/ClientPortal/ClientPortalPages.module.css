@@ -4,6 +4,10 @@
   margin: 0;
   width: 100%;
   box-sizing: border-box;
+  border-radius: var(--msp-radius, 16px);
+  border-color: var(--msp-border, var(--portal-border, #e4e8ee));
+  background: var(--msp-surface, var(--portal-surface, #fff));
+  box-shadow: var(--msp-shadow-panel, 0 8px 22px -12px rgba(15, 28, 46, 0.2));
 }
 
 .tabBar {
@@ -11,9 +15,9 @@
   flex-wrap: wrap;
   gap: 0.3rem;
   padding: 0.25rem;
-  border-radius: 12px;
-  background: var(--msp-surface-2, #eef3f8);
-  border: 1px solid var(--msp-border, #9aabc0);
+  border-radius: var(--msp-radius-sm, 10px);
+  background: var(--msp-surface-2, var(--portal-surface-alt, #f4f6f8));
+  border: 1px solid var(--msp-border, var(--portal-border, #e4e8ee));
 }
 
 .tab {
@@ -22,9 +26,9 @@
   gap: 0.4rem;
   padding: 0.5rem 0.85rem;
   border: none;
-  border-radius: 9px;
+  border-radius: 8px;
   background: transparent;
-  color: var(--msp-muted, #4a5a70);
+  color: var(--msp-muted, var(--portal-text-muted, #6b7a90));
   font-size: 0.8rem;
   font-weight: 600;
   font-family: inherit;
@@ -33,12 +37,12 @@
 }
 
 .tab:hover {
-  color: var(--msp-accent, #2b5fab);
+  color: var(--msp-accent, var(--portal-accent-text, #2b5fab));
 }
 
 .tabActive {
-  background: var(--msp-surface, #fff);
-  color: var(--msp-accent, #2b5fab);
+  background: var(--msp-surface, var(--portal-surface, #fff));
+  color: var(--msp-accent, var(--portal-accent-text, #2b5fab));
   box-shadow: 0 1px 3px rgba(15, 28, 46, 0.08);
 }
 
@@ -179,11 +183,11 @@
 .docCard {
   display: flex;
   flex-direction: column;
-  border: 1px solid var(--msp-border, #c5d0df);
-  border-radius: 12px;
-  background: var(--msp-surface, #fff);
+  border: 1px solid var(--msp-border, var(--portal-border, #e4e8ee));
+  border-radius: var(--msp-radius, 16px);
+  background: var(--msp-surface, var(--portal-surface, #fff));
   overflow: hidden;
-  box-shadow: var(--msp-shadow, 0 1px 2px rgba(15, 28, 46, 0.06));
+  box-shadow: var(--msp-shadow-panel, 0 8px 22px -12px rgba(15, 28, 46, 0.2));
   transition: border-color 0.15s, box-shadow 0.15s;
 }
 
@@ -276,7 +280,7 @@
   width: 32px;
   height: 32px;
   border-radius: 8px;
-  border: 1px solid var(--msp-border, #c5d0df);
+  border: 1px solid var(--msp-border, var(--portal-border, #e4e8ee));
   background: var(--msp-surface, #fff);
   color: var(--msp-muted, #5c6b82);
   text-decoration: none;
@@ -301,9 +305,10 @@
   align-items: flex-start;
   gap: 0.75rem;
   padding: 0.9rem 1rem;
-  border: 1px solid var(--msp-border, #c5d0df);
-  border-radius: 12px;
-  background: var(--msp-surface, #fff);
+  border: 1px solid var(--msp-border, var(--portal-border, #e4e8ee));
+  border-radius: var(--msp-radius, 16px);
+  background: var(--msp-surface, var(--portal-surface, #fff));
+  box-shadow: var(--msp-shadow-panel, 0 8px 22px -12px rgba(15, 28, 46, 0.2));
 }
 
 .secretCardIconWrap {
@@ -361,9 +366,9 @@
 }
 
 .profileSection {
-  border: 1px solid var(--msp-border-light, #eef2f7);
-  border-radius: 12px;
-  background: var(--msp-surface-2, #f7f9fc);
+  border: 1px solid var(--msp-border, var(--portal-border, #e4e8ee));
+  border-radius: var(--msp-radius, 16px);
+  background: var(--msp-surface-2, var(--portal-surface-alt, #f4f6f8));
   padding: 1rem 1.1rem;
   display: grid;
   gap: 0.65rem;
@@ -585,9 +590,9 @@
   flex-direction: column;
   gap: 0.65rem;
   padding: 0.85rem 1rem;
-  border-radius: 10px;
-  border: 1px solid var(--msp-border, #c5d0df);
-  background: var(--msp-surface-2, #f7f9fc);
+  border-radius: var(--msp-radius-sm, 10px);
+  border: 1px solid var(--msp-border, var(--portal-border, #e4e8ee));
+  background: var(--msp-surface-2, var(--portal-surface-alt, #f4f6f8));
 }
 
 .portalEmailLabel {
@@ -655,7 +660,7 @@
   min-width: 0;
   padding: 0.55rem 0.65rem;
   border-radius: 8px;
-  border: 1px solid var(--msp-border, #c5d0df);
+  border: 1px solid var(--msp-border, var(--portal-border, #e4e8ee));
   background: var(--msp-surface-2, #f7f9fc);
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   font-size: 0.85rem;
@@ -668,7 +673,7 @@
   align-items: center;
   justify-content: center;
   width: 36px;
-  border: 1px solid var(--msp-border, #c5d0df);
+  border: 1px solid var(--msp-border, var(--portal-border, #e4e8ee));
   border-radius: 8px;
   background: var(--msp-surface, #fff);
   color: var(--msp-muted, #5c6b82);

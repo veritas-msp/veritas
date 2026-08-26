@@ -24,9 +24,10 @@
   gap: 8px;
   margin: 0;
   padding: 10px 12px;
-  border-radius: var(--msp-radius, 10px);
-  background: color-mix(in srgb, var(--msp-surface, #fff) 92%, var(--msp-primary, #2563eb) 8%);
-  color: var(--msp-muted, #6b7a90);
+  border-radius: var(--msp-radius-sm, 10px);
+  border: 1px solid var(--msp-border, var(--portal-border, #e4e8ee));
+  background: var(--msp-surface-2, var(--portal-surface-alt, #f4f6f8));
+  color: var(--msp-muted, var(--portal-text-muted, #6b7a90));
   font-size: 0.85rem;
 }
 
