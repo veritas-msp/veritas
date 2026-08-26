@@ -45,9 +45,11 @@ export default function InternetStep({
   onEditEquipment,
   commentCounts,
   ticketCounts,
+  alertCounts,
   highlightedEquipmentKey,
   reportPeriod,
   monitoringSyncStatus,
+  equipmentCheckMKData,
   syncingEquipmentKey
 }) {
   const connexions = Array.isArray(client?.equipements?.Internet) ? client.equipements.Internet : [];
@@ -87,5 +89,5 @@ export default function InternetStep({
     label: "Catégorie",
     render: item => item.categorie || "-"
   }];
-  return <InfrastructureEquipmentTable title="Connexions Internet" moduleKey="Internet" equipments={connexions} columns={columns} onOpenComments={onOpenComments} onCreateTicket={onTicketCreatedForEquipment} onOpenCheckMKDetail={onOpenCheckMKDetail} onSyncCheckMK={onSyncCheckMK} syncingEquipmentKey={syncingEquipmentKey} clientId={client?.id ?? client?.uuid} commentCounts={commentCounts} ticketCounts={ticketCounts} highlightedEquipmentKey={highlightedEquipmentKey} reportPeriod={reportPeriod} monitoringSyncStatus={monitoringSyncStatus} onEditEquipment={onEditEquipment} />;
+  return <InfrastructureEquipmentTable title="Connexions Internet" moduleKey="Internet" equipments={connexions} columns={columns} onOpenComments={onOpenComments} onCreateTicket={onTicketCreatedForEquipment} onOpenCheckMKDetail={onOpenCheckMKDetail} onSyncCheckMK={onSyncCheckMK} syncingEquipmentKey={syncingEquipmentKey} clientId={client?.id ?? client?.uuid} commentCounts={commentCounts} ticketCounts={ticketCounts} alertCounts={alertCounts} highlightedEquipmentKey={highlightedEquipmentKey} reportPeriod={reportPeriod} monitoringSyncStatus={monitoringSyncStatus} equipmentCheckMKData={equipmentCheckMKData} onEditEquipment={onEditEquipment} />;
 }

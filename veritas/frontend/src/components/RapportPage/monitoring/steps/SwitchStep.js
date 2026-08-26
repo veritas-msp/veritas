@@ -11,9 +11,11 @@ export default function SwitchStep({
   onEditEquipment,
   commentCounts,
   ticketCounts,
+  alertCounts,
   highlightedEquipmentKey,
   reportPeriod,
   monitoringSyncStatus,
+  equipmentCheckMKData,
   syncingEquipmentKey
 }) {
   const switches = Array.isArray(client?.equipements?.Switch) ? client.equipements.Switch : [];
@@ -59,5 +61,5 @@ export default function SwitchStep({
     label: "Adresse Mac",
     render: sw => sw.adresseMac || sw.mac || "-"
   }];
-  return <InfrastructureEquipmentTable title="Switches" moduleKey="Switch" equipments={switches} columns={columns} onOpenComments={onOpenComments} onCreateTicket={onTicketCreatedForEquipment} onOpenCheckMKDetail={onOpenCheckMKDetail} clientId={client?.id ?? client?.uuid} onSyncCheckMK={onSyncCheckMK} syncingEquipmentKey={syncingEquipmentKey} onEditEquipment={onEditEquipment} commentCounts={commentCounts} ticketCounts={ticketCounts} highlightedEquipmentKey={highlightedEquipmentKey} reportPeriod={reportPeriod} monitoringSyncStatus={monitoringSyncStatus} />;
+  return <InfrastructureEquipmentTable title="Switches" moduleKey="Switch" equipments={switches} columns={columns} onOpenComments={onOpenComments} onCreateTicket={onTicketCreatedForEquipment} onOpenCheckMKDetail={onOpenCheckMKDetail} clientId={client?.id ?? client?.uuid} onSyncCheckMK={onSyncCheckMK} syncingEquipmentKey={syncingEquipmentKey} onEditEquipment={onEditEquipment} commentCounts={commentCounts} ticketCounts={ticketCounts} alertCounts={alertCounts} highlightedEquipmentKey={highlightedEquipmentKey} reportPeriod={reportPeriod} monitoringSyncStatus={monitoringSyncStatus} equipmentCheckMKData={equipmentCheckMKData} />;
 }

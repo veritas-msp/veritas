@@ -1279,6 +1279,82 @@
   padding: 0 3px;
 }
 
+.insightMuted {
+  color: #9ca3af;
+  font-size: 0.85rem;
+}
+
+.insightCount {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.5rem;
+  padding: 0.15rem 0.45rem;
+  border-radius: 6px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  line-height: 1.2;
+}
+
+.insightCount_ticket {
+  background: #fef2f2;
+  color: #b91c1c;
+}
+
+.insightCount_alert {
+  background: #fff7ed;
+  color: #c2410c;
+}
+
+.insightSupervision {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.15rem 0.45rem;
+  border-radius: 6px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.insightSupervision_ok {
+  background: #ecfdf5;
+  color: #047857;
+}
+
+.insightSupervision_warn {
+  background: #fffbeb;
+  color: #b45309;
+}
+
+.insightSupervision_critical {
+  background: #fef2f2;
+  color: #b91c1c;
+}
+
+.insightSupervision_muted {
+  background: #f3f4f6;
+  color: #6b7280;
+}
+
+.commentTicketLink {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  margin-top: 0.35rem;
+  color: #2563eb;
+  font-size: 0.8rem;
+  font-weight: 500;
+  text-decoration: none;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+}
+
+.commentTicketLink:hover {
+  text-decoration: underline;
+}
+
 .infraTableEmpty {
   padding: 0.75rem 0.25rem;
   font-size: 0.85rem;

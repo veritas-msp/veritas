@@ -75,9 +75,11 @@ export default function FirewallStep({
   onEditEquipment,
   commentCounts,
   ticketCounts,
+  alertCounts,
   highlightedEquipmentKey,
   reportPeriod,
   monitoringSyncStatus,
+  equipmentCheckMKData,
   syncingEquipmentKey
 }) {
   const raw = Array.isArray(client?.equipements?.Firewalls) ? client.equipements.Firewalls : [];
@@ -130,5 +132,5 @@ export default function FirewallStep({
     label: "Maintenance license date",
     render: fw => <ExpirationDateCell value={getMaintenanceLicenseExpiration(fw.licences)} formatFn={v => formatMaintenanceDateFr(v) || "-"} />
   }];
-  return <InfrastructureEquipmentTable title="Firewalls" moduleKey="Firewall" equipments={firewalls} columns={columns} onOpenComments={onOpenComments} onCreateTicket={onTicketCreatedForEquipment} onOpenCheckMKDetail={onOpenCheckMKDetail} clientId={client?.id ?? client?.uuid} onSyncCheckMK={onSyncCheckMK} syncingEquipmentKey={syncingEquipmentKey} commentCounts={commentCounts} ticketCounts={ticketCounts} highlightedEquipmentKey={highlightedEquipmentKey} reportPeriod={reportPeriod} monitoringSyncStatus={monitoringSyncStatus} onEditEquipment={onEditEquipment} />;
+  return <InfrastructureEquipmentTable title="Firewalls" moduleKey="Firewall" equipments={firewalls} columns={columns} onOpenComments={onOpenComments} onCreateTicket={onTicketCreatedForEquipment} onOpenCheckMKDetail={onOpenCheckMKDetail} clientId={client?.id ?? client?.uuid} onSyncCheckMK={onSyncCheckMK} syncingEquipmentKey={syncingEquipmentKey} commentCounts={commentCounts} ticketCounts={ticketCounts} alertCounts={alertCounts} highlightedEquipmentKey={highlightedEquipmentKey} reportPeriod={reportPeriod} monitoringSyncStatus={monitoringSyncStatus} equipmentCheckMKData={equipmentCheckMKData} onEditEquipment={onEditEquipment} />;
 }

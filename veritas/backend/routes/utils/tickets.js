@@ -1364,6 +1364,7 @@ router.get("/", verifyJWT, requirePermission("tickets.view"), [query("status").o
     const hasMajorIncident = await hasTicketColumn("is_major_incident");
     const hasDeletedAt = await hasTicketColumn("deleted_at");
     const hasIsDeleted = await hasTicketColumn("is_deleted");
+    const hasEquipmentInfo = await hasTicketColumn("equipment_info");
     const {
       status,
       priority,
@@ -1454,6 +1455,7 @@ router.get("/", verifyJWT, requirePermission("tickets.view"), [query("status").o
           t.created_at,
           t.updated_at,
           t.resolved_at,
+          ${hasEquipmentInfo ? "t.equipment_info," : ""}
           ${hasSlaInfo ? "t.sla_info," : ""}
           c.contrat AS client_contrat,
           ${FIRST_TAKEOVER_AT_SQL},

@@ -339,7 +339,7 @@ function SolutionDetailBlock({
   return <div className={styles.antivirusSolutionSections}>
       <h4 className={styles.stepSectionTitle}>{getSolutionName(solution)}</h4>
 
-      {policyEquipments.length > 0 && <InfrastructureEquipmentTable title="Security policies" moduleKey="Antivirus" equipments={policyEquipments} columns={ANTIVIRUS_POLICY_COLUMNS} showSearch={true} showActions={false} totalCountLabel={`${policyEquipments.length} policy(ies) in total`} />}
+      {policyEquipments.length > 0 && <InfrastructureEquipmentTable title="Security policies" moduleKey="Antivirus" equipments={policyEquipments} columns={ANTIVIRUS_POLICY_COLUMNS} showSearch={true} showActions={false} showInsightColumns={false} totalCountLabel={`${policyEquipments.length} policy(ies) in total`} />}
 
       {endpointList.length > 0 && <section className={styles.antivirusEndpointsSection}>
           <MonitoringStepSubsectionHeader title={`Endpoints (${sortedEndpoints.length}${endpointList.length !== sortedEndpoints.length ? ` / ${endpointList.length}` : ""})`} searchValue={endpointSearch} onSearchChange={setEndpointSearch} onSearchClear={() => setEndpointSearch("")} searchPlaceholder="Search (name, FQDN, IP, OS, type)..." />
@@ -540,6 +540,7 @@ export default function AntivirusStep({
   onAntivirusSyncStateChange,
   commentCounts,
   ticketCounts,
+  alertCounts,
   highlightedEquipmentKey,
   reportPeriod
 }) {
@@ -763,7 +764,7 @@ export default function AntivirusStep({
     }
   };
   return <MonitoringStepShell>
-      <InfrastructureEquipmentTable title="Antivirus" moduleKey="Antivirus" equipments={antivirusList} columns={columns} onOpenComments={onOpenComments} onCreateTicket={onTicketCreatedForEquipment} clientId={client?.id ?? client?.uuid} onSyncCheckMK={handleSyncCheckMK} commentCounts={commentCounts} ticketCounts={ticketCounts} highlightedEquipmentKey={highlightedEquipmentKey} reportPeriod={reportPeriod} syncingEquipmentKey={syncingKey} forceSyncButton={true} showSearch={false} externalLink={{
+      <InfrastructureEquipmentTable title="Antivirus" moduleKey="Antivirus" equipments={antivirusList} columns={columns} onOpenComments={onOpenComments} onCreateTicket={onTicketCreatedForEquipment} clientId={client?.id ?? client?.uuid} onSyncCheckMK={handleSyncCheckMK} commentCounts={commentCounts} ticketCounts={ticketCounts} alertCounts={alertCounts} highlightedEquipmentKey={highlightedEquipmentKey} reportPeriod={reportPeriod} syncingEquipmentKey={syncingKey} forceSyncButton={true} showSearch={false} externalLink={{
       url: "https://gravityzone.bitdefender.com/",
       title: "Open Bitdefender GravityZone"
     }} />

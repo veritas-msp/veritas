@@ -4,6 +4,33 @@ import equipmentStyles from "../../EquipementPage/EquipmentPage.module.css";
 import styles from "./RapportMonitoringBuilder.module.css";
 import { MonitoringStepHeader } from "./MonitoringStepLayout";
 import { isEquipmentMappedForCheckMK } from "./checkmkReportCacheUtils";
+import { getSupervisionColumnMeta } from "./supervisionReportInsights";
+
+function InsightCountCell({ count, tone = "neutral", emptyLabel = "—" }) {
+  const n = Number(count) || 0;
+  if (n <= 0) {
+    return <span className={styles.insightMuted}>{emptyLabel}</span>;
+  }
+  return (
+    <span className={`${styles.insightCount} ${styles[`insightCount_${tone}`] || ""}`}>
+      {n}
+    </span>
+  );
+}
+
+function SupervisionStatusCell({ item, monitoringSyncStatus, equipmentCheckMKData }) {
+  const meta = getSupervisionColumnMeta(item, monitoringSyncStatus, equipmentCheckMKData);
+  if (!meta.mapped) {
+    return <span className={styles.insightMuted}>—</span>;
+  }
+  return (
+    <span className={`${styles.insightSupervision} ${styles[`insightSupervision_${meta.tone}`] || ""}`} title={meta.hostName || undefined}>
+      {meta.label}
+      {meta.events > 0 ? ` · ${meta.events}` : ""}
+    </span>
+  );
+}
+
 export default function InfrastructureEquipmentTable({
   title,
   equipments,
@@ -16,9 +43,11 @@ export default function InfrastructureEquipmentTable({
   clientId,
   commentCounts,
   ticketCounts,
+  alertCounts = {},
   highlightedEquipmentKey,
   reportPeriod,
   monitoringSyncStatus = {},
+  equipmentCheckMKData = {},
   syncingEquipmentKey = null,
   externalLink = null,
   forceSyncButton = false,
@@ -27,6 +56,7 @@ export default function InfrastructureEquipmentTable({
   showSearch = true,
   onEditEquipment = null,
   showActions = true,
+  showInsightColumns = true,
   emptyMessage = null,
   totalCountLabel = null
 }) {
@@ -42,6 +72,46 @@ export default function InfrastructureEquipmentTable({
       return candidate.includes(q);
     });
   }, [safeEquipments, search]);
+
+  const displayColumns = useMemo(() => {
+    const base = Array.isArray(columns) ? columns : [];
+    if (!showInsightColumns) return base;
+    const insightCols = [
+      {
+        id: "__insight_tickets",
+        label: "Tickets",
+        render: (item, ctx) => (
+          <InsightCountCell
+            count={ticketCounts?.[ctx.equipmentKey] || 0}
+            tone="ticket"
+          />
+        )
+      },
+      {
+        id: "__insight_alerts",
+        label: "Alertes",
+        render: (item, ctx) => (
+          <InsightCountCell
+            count={alertCounts?.[ctx.equipmentKey] || 0}
+            tone="alert"
+          />
+        )
+      },
+      {
+        id: "__insight_supervision",
+        label: "Supervision",
+        render: item => (
+          <SupervisionStatusCell
+            item={item}
+            monitoringSyncStatus={monitoringSyncStatus}
+            equipmentCheckMKData={equipmentCheckMKData}
+          />
+        )
+      }
+    ];
+    return [...base, ...insightCols];
+  }, [columns, showInsightColumns, ticketCounts, alertCounts, monitoringSyncStatus, equipmentCheckMKData]);
+
   const getMonitoringButtonClass = (isMappedForMonitoring, syncStatus) => {
     const base = equipmentStyles.mappingActionButton;
     if (!isMappedForMonitoring) return base;
@@ -61,7 +131,7 @@ export default function InfrastructureEquipmentTable({
             <table className={equipmentStyles.equipmentTable}>
               <thead>
                 <tr>
-                  {columns.map(col => <th key={col.id || col.accessor}>
+                  {displayColumns.map(col => <th key={col.id || col.accessor}>
                       <span className={equipmentStyles.thContent}>{col.label}</span>
                     </th>)}
                   {showActions && <th>
@@ -88,7 +158,7 @@ export default function InfrastructureEquipmentTable({
               const hasEditAction = typeof onEditEquipment === "function";
               const hasMainActions = hasMonitoringAction || hasSyncAction || hasCommentsAction || hasTicketAction || hasExtraActions || hasExternalLink;
               return <tr key={equipmentKey} className={`${equipmentStyles.equipmentRow} ${isHighlighted ? styles.infraTableRowHighlight : ""}`}>
-                      {columns.map(col => {
+                      {displayColumns.map(col => {
                   const value = typeof col.render === "function" ? col.render(item, {
                     moduleKey,
                     equipmentKey

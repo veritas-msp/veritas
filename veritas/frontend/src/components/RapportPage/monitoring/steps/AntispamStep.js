@@ -144,6 +144,7 @@ export default function AntispamStep(props) {
     onTicketCreatedForEquipment,
     commentCounts = {},
     ticketCounts = {},
+    alertCounts = {},
     highlightedEquipmentKey,
     reportPeriod
   } = props || {};
@@ -315,7 +316,7 @@ export default function AntispamStep(props) {
       <InfrastructureEquipmentTable title="Antispam" moduleKey="Antispam" equipments={antispamList} columns={columns} onOpenComments={typeof onOpenComments === "function" ? onOpenComments : undefined} onCreateTicket={typeof onTicketCreatedForEquipment === "function" ? onTicketCreatedForEquipment : undefined} onEditEquipment={item => setEditAntispamModal({
       open: true,
       solution: item
-    })} clientId={client?.id ?? client?.uuid} commentCounts={commentCounts} ticketCounts={ticketCounts} highlightedEquipmentKey={highlightedEquipmentKey} reportPeriod={reportPeriod} headerActions={<>
+    })} clientId={client?.id ?? client?.uuid} commentCounts={commentCounts} ticketCounts={ticketCounts} alertCounts={alertCounts} highlightedEquipmentKey={highlightedEquipmentKey} reportPeriod={reportPeriod} headerActions={<>
             <MonitoringStepToolbarButton icon="mdi:upload" label="Import a CSV" onClick={() => {
         if (antispamList.length === 1) {
           openImportForSolution(antispamList[0]);

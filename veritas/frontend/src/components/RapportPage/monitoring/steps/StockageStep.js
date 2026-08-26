@@ -47,9 +47,11 @@ export default function StorageStep({
   onEditEquipment,
   commentCounts,
   ticketCounts,
+  alertCounts,
   highlightedEquipmentKey,
   reportPeriod,
   monitoringSyncStatus,
+  equipmentCheckMKData,
   syncingEquipmentKey,
   persistedState,
   onPersistState
@@ -252,5 +254,5 @@ export default function StorageStep({
     label: "Role",
     render: st => st.role || "-"
   }];
-  return <InfrastructureEquipmentTable title="Storage (NAS / SAN)" moduleKey="Storage" equipments={stockages} columns={columns} onOpenComments={onOpenComments} onCreateTicket={onTicketCreatedForEquipment} onOpenCheckMKDetail={onOpenCheckMKDetail} clientId={client?.id ?? client?.uuid} onSyncCheckMK={onSyncCheckMK} syncingEquipmentKey={syncingEquipmentKey} commentCounts={commentCounts} ticketCounts={ticketCounts} highlightedEquipmentKey={highlightedEquipmentKey} reportPeriod={reportPeriod} monitoringSyncStatus={monitoringSyncStatus} onEditEquipment={onEditEquipment} />;
+  return <InfrastructureEquipmentTable title="Storage (NAS / SAN)" moduleKey="Storage" equipments={stockages} columns={columns} onOpenComments={onOpenComments} onCreateTicket={onTicketCreatedForEquipment} onOpenCheckMKDetail={onOpenCheckMKDetail} clientId={client?.id ?? client?.uuid} onSyncCheckMK={onSyncCheckMK} syncingEquipmentKey={syncingEquipmentKey} commentCounts={commentCounts} ticketCounts={ticketCounts} alertCounts={alertCounts} highlightedEquipmentKey={highlightedEquipmentKey} reportPeriod={reportPeriod} monitoringSyncStatus={monitoringSyncStatus} equipmentCheckMKData={equipmentCheckMKData} onEditEquipment={onEditEquipment} />;
 }

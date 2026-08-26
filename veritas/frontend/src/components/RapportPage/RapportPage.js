@@ -15,7 +15,10 @@ import { REPORT_TYPE_IDS } from "./reportTypeConstants";
 import MonitoringSteps, { getEnabledMonitoringSteps } from "./monitoring/MonitoringSteps";
 import { applyEquipmentPatchToEquipements } from "./monitoring/equipmentPatchUtils";
 import { buildCheckMKCacheEntry, buildCheckMKReportSnapshot, collectCheckMKMappedEquipment, computeCheckMKEquipmentStatus, deriveServicesFromPeriodEvents, filterCheckMKEventsForReportPeriod, getCheckmkHostName, getCheckmkSite, resolveCheckMKEquipmentKey } from "./monitoring/checkmkReportCacheUtils";
+import { fetchTickets } from "../../api/tickets";
+import { fetchSupervisionAlertsHistory } from "../../api/supervisionAlerts";
 import { isSupervisionReportBuilderType } from "./monitoring/supervisionReportBuilder";
+import { buildPeriodInsights, mergeSeededTicketComments } from "./monitoring/supervisionReportInsights";
 import builderStyles from "./monitoring/RapportMonitoringBuilder.module.css";
 import shellStyles from "./RapportBuilderPlaceholder.module.css";
 import { confirmLeaveMonitoringReport, isMonitoringReportBuilderActive } from "../../utils/monitoringReportGuard";
@@ -122,6 +125,9 @@ export default function ReportPage({
   const [recentDocs, setRecentDocs] = useState([]);
   const [stepStorageState, setStepStorageState] = useState(null);
   const [startingSupervisionBuilder, setStartingSupervisionBuilder] = useState(false);
+  const [equipmentAlertCounts, setEquipmentAlertCounts] = useState({});
+  const [equipmentTicketInsightCounts, setEquipmentTicketInsightCounts] = useState({});
+  const periodInsightsAbortRef = useRef(null);
   const userInitial = useMemo(() => {
     if (typeof window === "undefined") return "L";
     try {
@@ -212,6 +218,46 @@ export default function ReportPage({
       startingReportRef.current = false;
     }
   };
+  const loadPeriodInsights = async (client, startDate, endDate) => {
+    const clientId = client?.id ?? client?.uuid;
+    if (!clientId || !startDate || !endDate) {
+      setEquipmentAlertCounts({});
+      setEquipmentTicketInsightCounts({});
+      return;
+    }
+    if (periodInsightsAbortRef.current) {
+      periodInsightsAbortRef.current.abort();
+    }
+    const controller = new AbortController();
+    periodInsightsAbortRef.current = controller;
+    try {
+      const [ticketRows, alertRows] = await Promise.all([
+        fetchTickets({ clientId, limit: 200 }, { signal: controller.signal }).catch(() => []),
+        fetchSupervisionAlertsHistory({
+          clientId,
+          limit: 200,
+          status: "all",
+          signal: controller.signal
+        }).catch(() => [])
+      ]);
+      if (controller.signal.aborted) return;
+      const ticketList = Array.isArray(ticketRows) ? ticketRows : ticketRows?.tickets || [];
+      const alertList = Array.isArray(alertRows) ? alertRows : [];
+      const insights = buildPeriodInsights({
+        client,
+        tickets: ticketList,
+        alerts: alertList,
+        startDate,
+        endDate
+      });
+      setEquipmentTicketInsightCounts(insights.ticketCounts || {});
+      setEquipmentAlertCounts(insights.alertCounts || {});
+      setEquipmentComments(prev => mergeSeededTicketComments(prev, insights.seededCommentsByEquipmentKey));
+    } catch (err) {
+      if (err?.name === "AbortError") return;
+      console.warn("Unable to load period insights for supervision report:", err);
+    }
+  };
   const handleConfirmSupervisionPeriod = async ({ startDate, endDate }) => {
     if (!draftReport?.client || startingSupervisionBuilder) return;
     const client = draftReport.client;
@@ -240,6 +286,8 @@ export default function ReportPage({
       setGeneralComments([]);
       setEquipmentMonitoringStatus({});
       setEquipmentCheckMKData({});
+      setEquipmentAlertCounts({});
+      setEquipmentTicketInsightCounts({});
       setStepStorageState(null);
       setDraftReport(null);
       setCreateWizardStep("type");
@@ -255,6 +303,7 @@ export default function ReportPage({
           toast.warn("Rapport ouvert, mais la synchronisation supervision a échoué.");
         }
       })();
+      void loadPeriodInsights(nextClient, startDate, endDate);
     } catch (err) {
       console.error("Error starting supervision report builder:", err);
       toast.error(err?.message || "Impossible de démarrer le rapport de supervision.");
@@ -280,6 +329,7 @@ export default function ReportPage({
               toast.info(`Supervision resynchronisée pour la nouvelle période (${result.synced}/${result.total}).`);
             }
           });
+          void loadPeriodInsights(next, next.reportStartDate, next.reportEndDate);
         }, 400);
       }
       return next;
@@ -299,6 +349,8 @@ export default function ReportPage({
     setIsCommentsDrawerOpen(false);
     setEquipmentMonitoringStatus({});
     setEquipmentCheckMKData({});
+    setEquipmentAlertCounts({});
+    setEquipmentTicketInsightCounts({});
     setStepStorageState(null);
   };
   const enrichBuilderClientWithSites = async client => {
@@ -326,13 +378,17 @@ export default function ReportPage({
     return result;
   }, [equipmentComments]);
   const equipmentTicketCounts = useMemo(() => {
-    const result = {};
+    const result = {
+      ...equipmentTicketInsightCounts
+    };
     Object.entries(equipmentComments).forEach(([key, list]) => {
       const count = (list || []).filter(c => c.isTicketComment === true).length;
-      if (count > 0) result[key] = count;
+      if (count > 0) {
+        result[key] = Math.max(result[key] || 0, count);
+      }
     });
     return result;
-  }, [equipmentComments]);
+  }, [equipmentComments, equipmentTicketInsightCounts]);
   const allCommentsChronological = useMemo(() => {
     const equipment = Object.entries(equipmentComments).flatMap(([equipmentKey, list]) => (list || []).map(c => ({
       ...c,
@@ -1178,7 +1234,7 @@ export default function ReportPage({
                     </div>
                   </div>}
 
-                {isSupervisionReportBuilderType(builderType) && builderClient && <MonitoringSteps client={builderClient} activeStepIndex={builderStepIndex} onStepChange={setBuilderStepIndex} onOpenComments={handleOpenEquipmentComments} onRefreshClient={handleRefreshBuilderClient} onEquipmentSaved={handleReportEquipmentSaved} onPeriodChange={handlePeriodChange} onSyncAllMonitoring={handleSyncAllMonitoring} equipmentCommentCounts={equipmentCommentCounts} equipmentTicketCounts={equipmentTicketCounts} equipmentComments={equipmentComments} highlightedEquipmentKey={highlightedEquipmentKey} monitoringSyncStatus={equipmentMonitoringStatus} equipmentCheckMKData={equipmentCheckMKData} isSyncingMonitoring={isSyncingMonitoring} onSyncCheckMK={handleSyncSingleEquipment} syncingEquipmentKey={syncingEquipmentKey} isSyncingOffice365Report={isSyncingOffice365Report} allCommentsChronological={allCommentsChronological} summaryContentRef={summaryContentRef} stockageReportState={stepStorageState} onSetStorageReportState={setStepStorageState} />}
+                {isSupervisionReportBuilderType(builderType) && builderClient && <MonitoringSteps client={builderClient} activeStepIndex={builderStepIndex} onStepChange={setBuilderStepIndex} onOpenComments={handleOpenEquipmentComments} onRefreshClient={handleRefreshBuilderClient} onEquipmentSaved={handleReportEquipmentSaved} onPeriodChange={handlePeriodChange} onSyncAllMonitoring={handleSyncAllMonitoring} equipmentCommentCounts={equipmentCommentCounts} equipmentTicketCounts={equipmentTicketCounts} equipmentAlertCounts={equipmentAlertCounts} equipmentComments={equipmentComments} highlightedEquipmentKey={highlightedEquipmentKey} monitoringSyncStatus={equipmentMonitoringStatus} equipmentCheckMKData={equipmentCheckMKData} isSyncingMonitoring={isSyncingMonitoring} onSyncCheckMK={handleSyncSingleEquipment} syncingEquipmentKey={syncingEquipmentKey} isSyncingOffice365Report={isSyncingOffice365Report} allCommentsChronological={allCommentsChronological} summaryContentRef={summaryContentRef} stockageReportState={stepStorageState} onSetStorageReportState={setStepStorageState} />}
 
                 {isCommentsDrawerOpen && <div className={`${builderStyles.commentsDrawerOverlay} ${hasTabsBar ? builderStyles.commentsDrawerOverlayWithTabs : ""}`}>
                     <div className={builderStyles.commentsDrawer}>
@@ -1207,10 +1263,10 @@ export default function ReportPage({
                       } : undefined}>
                                   <div className={builderStyles.commentMeta}>
                                           <span className={builderStyles.commentAuthor}>
-                                            {comment.author || "Unknown author"}
+                                            {comment.isTicketComment ? "Support · Ticket" : comment.author || "Unknown author"}
                                           </span>
                                           <span className={builderStyles.commentDate}>
-                                            {comment.createdAt ? new Date(comment.createdAt).toLocaleString("en-US") : ""}
+                                            {comment.createdAt ? new Date(comment.createdAt).toLocaleString("fr-FR") : ""}
                                           </span>
                                         </div>
                                         {isEquipment && comment.referenceLabel && <div className={builderStyles.commentReference}>
@@ -1230,7 +1286,15 @@ export default function ReportPage({
                                             <div className={builderStyles.commentText}>
                                               {comment.text}
                                             </div>
-                                            <div className={builderStyles.commentActions}>
+                                            {comment.isTicketComment && comment.ticketId && typeof onNavigate === "function" ? <button type="button" className={builderStyles.commentTicketLink} onClick={e => {
+                              e.stopPropagation();
+                              onNavigate("TicketDetail", {
+                                ticketId: comment.ticketId
+                              });
+                            }} onMouseDown={e => e.stopPropagation()}>
+                                              Ouvrir le ticket
+                                            </button> : null}
+                                            {!comment.isTicketComment && <div className={builderStyles.commentActions}>
                                               <button type="button" onClick={e => {
                               e.stopPropagation();
                               isEquipment ? handleStartEditEquipmentComment(comment.equipmentKey, comment) : handleStartEditGeneralComment(comment);
@@ -1243,7 +1307,7 @@ export default function ReportPage({
                             }} onMouseDown={e => e.stopPropagation()}>
                                           Delete
                                         </button>
-                                      </div>
+                                      </div>}
                                     </>}
                                 </div>;
                     })}

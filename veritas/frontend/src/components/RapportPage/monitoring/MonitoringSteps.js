@@ -169,6 +169,7 @@ export default function MonitoringSteps({
   onSyncAllMonitoring,
   equipmentCommentCounts,
   equipmentTicketCounts,
+  equipmentAlertCounts = {},
   equipmentComments = {},
   highlightedEquipmentKey,
   monitoringSyncStatus,
@@ -271,13 +272,14 @@ export default function MonitoringSteps({
     onAntivirusSyncStateChange: setIsSyncingAntivirus,
     commentCounts: equipmentCommentCounts,
     ticketCounts: equipmentTicketCounts,
+    alertCounts: equipmentAlertCounts,
     highlightedEquipmentKey,
     monitoringSyncStatus,
     equipmentCheckMKData,
     isSyncingMonitoring,
     onSyncCheckMK,
     syncingEquipmentKey
-  }), [reportPeriod, onOpenComments, onTicketCreatedForEquipment, onRefreshClient, equipmentCommentCounts, equipmentTicketCounts, highlightedEquipmentKey, monitoringSyncStatus, equipmentCheckMKData, isSyncingMonitoring, onSyncCheckMK, syncingEquipmentKey]);
+  }), [reportPeriod, onOpenComments, onTicketCreatedForEquipment, onRefreshClient, equipmentCommentCounts, equipmentTicketCounts, equipmentAlertCounts, highlightedEquipmentKey, monitoringSyncStatus, equipmentCheckMKData, isSyncingMonitoring, onSyncCheckMK, syncingEquipmentKey]);
 
   const setCurrentIndex = updater => {
     setInternalIndex(prev => {
@@ -325,15 +327,15 @@ export default function MonitoringSteps({
       case "TOIP":
         return <TOIPStep client={client} {...infraStepProps} />;
       case "Backup":
-        return <BackupStep client={client} reportPeriod={reportPeriod} onRefreshClient={onRefreshClient} onOpenComments={onOpenComments} onTicketCreatedForEquipment={onTicketCreatedForEquipment} commentCounts={equipmentCommentCounts} ticketCounts={equipmentTicketCounts} highlightedEquipmentKey={highlightedEquipmentKey} />;
+        return <BackupStep client={client} reportPeriod={reportPeriod} onRefreshClient={onRefreshClient} onOpenComments={onOpenComments} onTicketCreatedForEquipment={onTicketCreatedForEquipment} commentCounts={equipmentCommentCounts} ticketCounts={equipmentTicketCounts} alertCounts={equipmentAlertCounts} highlightedEquipmentKey={highlightedEquipmentKey} />;
       case "Antivirus":
         return <Suspense fallback={<div style={{ padding: "1rem" }}>Chargement Antivirus…</div>}><AntivirusStepLazy client={client} {...infraStepProps} /></Suspense>;
       case "Antispam":
-        return <AntispamStep client={client} onRefreshClient={onRefreshClient} onOpenComments={onOpenComments} onTicketCreatedForEquipment={onTicketCreatedForEquipment} commentCounts={equipmentCommentCounts} ticketCounts={equipmentTicketCounts} highlightedEquipmentKey={highlightedEquipmentKey} reportPeriod={reportPeriod} />;
+        return <AntispamStep client={client} onRefreshClient={onRefreshClient} onOpenComments={onOpenComments} onTicketCreatedForEquipment={onTicketCreatedForEquipment} commentCounts={equipmentCommentCounts} ticketCounts={equipmentTicketCounts} alertCounts={equipmentAlertCounts} highlightedEquipmentKey={highlightedEquipmentKey} reportPeriod={reportPeriod} />;
       case "Office365":
-        return <Office365Step client={client} reportPeriod={reportPeriod} onRefreshClient={onRefreshClient} onOpenComments={onOpenComments} onTicketCreatedForEquipment={onTicketCreatedForEquipment} commentCounts={equipmentCommentCounts} ticketCounts={equipmentTicketCounts} highlightedEquipmentKey={highlightedEquipmentKey} />;
+        return <Office365Step client={client} reportPeriod={reportPeriod} onRefreshClient={onRefreshClient} onOpenComments={onOpenComments} onTicketCreatedForEquipment={onTicketCreatedForEquipment} commentCounts={equipmentCommentCounts} ticketCounts={equipmentTicketCounts} alertCounts={equipmentAlertCounts} highlightedEquipmentKey={highlightedEquipmentKey} />;
       case "NDD":
-        return <NDDStep client={client} onRefreshClient={onRefreshClient} onOpenComments={onOpenComments} onTicketCreatedForEquipment={onTicketCreatedForEquipment} commentCounts={equipmentCommentCounts} ticketCounts={equipmentTicketCounts} highlightedEquipmentKey={highlightedEquipmentKey} />;
+        return <NDDStep client={client} onRefreshClient={onRefreshClient} onOpenComments={onOpenComments} onTicketCreatedForEquipment={onTicketCreatedForEquipment} commentCounts={equipmentCommentCounts} ticketCounts={equipmentTicketCounts} alertCounts={equipmentAlertCounts} highlightedEquipmentKey={highlightedEquipmentKey} />;
       case "recap":
         return <RecapStep client={client} reportPeriod={reportPeriod} allCommentsChronological={allCommentsChronological} recapSnapshot={recapSnapshot} />;
       case "summary":

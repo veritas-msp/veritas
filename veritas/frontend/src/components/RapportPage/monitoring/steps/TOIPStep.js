@@ -8,9 +8,11 @@ export default function TOIPStep({
   onSyncCheckMK,
   commentCounts,
   ticketCounts,
+  alertCounts,
   highlightedEquipmentKey,
   reportPeriod,
   monitoringSyncStatus,
+  equipmentCheckMKData,
   syncingEquipmentKey
 }) {
   const rawTOIP = client?.equipements?.TOIP;
@@ -29,5 +31,5 @@ export default function TOIPStep({
     label: "Site",
     render: sol => sol.site || "-"
   }];
-  return <InfrastructureEquipmentTable title="TOIP / VOIP" moduleKey="TOIP" equipments={solutions} columns={columns} onOpenComments={onOpenComments} onCreateTicket={onTicketCreatedForEquipment} onOpenCheckMKDetail={onOpenCheckMKDetail} clientId={client?.id ?? client?.uuid} onSyncCheckMK={onSyncCheckMK} syncingEquipmentKey={syncingEquipmentKey} commentCounts={commentCounts} ticketCounts={ticketCounts} highlightedEquipmentKey={highlightedEquipmentKey} reportPeriod={reportPeriod} monitoringSyncStatus={monitoringSyncStatus} />;
+  return <InfrastructureEquipmentTable title="TOIP / VOIP" moduleKey="TOIP" equipments={solutions} columns={columns} onOpenComments={onOpenComments} onCreateTicket={onTicketCreatedForEquipment} onOpenCheckMKDetail={onOpenCheckMKDetail} clientId={client?.id ?? client?.uuid} onSyncCheckMK={onSyncCheckMK} syncingEquipmentKey={syncingEquipmentKey} commentCounts={commentCounts} ticketCounts={ticketCounts} alertCounts={alertCounts} highlightedEquipmentKey={highlightedEquipmentKey} reportPeriod={reportPeriod} monitoringSyncStatus={monitoringSyncStatus} equipmentCheckMKData={equipmentCheckMKData} />;
 }

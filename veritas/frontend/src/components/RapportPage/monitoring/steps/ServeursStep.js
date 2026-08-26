@@ -97,6 +97,7 @@ export default function ServersStep({
   onEditEquipment,
   commentCounts,
   ticketCounts,
+  alertCounts,
   highlightedEquipmentKey,
   reportPeriod,
   monitoringSyncStatus,
@@ -233,9 +234,11 @@ export default function ServersStep({
       syncingEquipmentKey={syncingEquipmentKey}
       commentCounts={commentCounts}
       ticketCounts={ticketCounts}
+      alertCounts={alertCounts}
       highlightedEquipmentKey={highlightedEquipmentKey}
       reportPeriod={reportPeriod}
       monitoringSyncStatus={monitoringSyncStatus}
+      equipmentCheckMKData={equipmentCheckMKData}
       onEditEquipment={onEditEquipment}
     />
   );
