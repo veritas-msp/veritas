@@ -44,6 +44,17 @@ export async function ensureSuperAdminProfile(client = null) {
       await db.query(`UPDATE v_b_users_profiles
         SET equipment_inventory_enabled = infrastructure_enabled`);
     }
+    const hadKnowledgeBase = await columnExists(db, "v_b_users_profiles", "knowledge_base_enabled");
+    await db.query(`ALTER TABLE v_b_users_profiles
+      ADD COLUMN IF NOT EXISTS knowledge_base_enabled BOOLEAN NOT NULL DEFAULT FALSE`);
+    if (!hadKnowledgeBase) {
+      await db.query(`UPDATE v_b_users_profiles
+        SET knowledge_base_enabled = TRUE
+        WHERE LOWER(REPLACE(REPLACE(name, '-', ' '), '_', ' ')) IN (
+          'super admin', 'superadmin', 'super administrateur',
+          'administrateur', 'administrator', 'admin'
+        )`);
+    }
     const hadSales = await columnExists(db, "v_b_users_profiles", "sales_enabled");
     const hadAdminFlag = await columnExists(db, "v_b_users_profiles", "administration_enabled");
     await db.query(`ALTER TABLE v_b_users_profiles
@@ -66,11 +77,11 @@ export async function ensureSuperAdminProfile(client = null) {
         monitoring_enabled, infrastructure_enabled, cybersecurite_enabled,
         planning_enabled, service_enabled, contrat_enabled, contact_enabled,
         configurateur_enabled, tickets_enabled, sales_enabled, dashboard_enabled,
-        documents_enabled, equipment_inventory_enabled, administration_enabled, display_order
+        documents_enabled, equipment_inventory_enabled, knowledge_base_enabled, administration_enabled, display_order
       ) VALUES (
         $1,
         'Accès total non modifiable — propriétaire de l''instance.',
-        true, true, true, true, true, true, true, true, true, true, true, true, true, true, 1
+        true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, 1
       )
       ON CONFLICT (name) DO NOTHING
       RETURNING name`, [SUPER_ADMIN_PROFILE_NAME]);
@@ -88,6 +99,7 @@ export async function ensureSuperAdminProfile(client = null) {
         dashboard_enabled = TRUE,
         documents_enabled = TRUE,
         equipment_inventory_enabled = TRUE,
+        knowledge_base_enabled = TRUE,
         administration_enabled = TRUE
       WHERE name = $1`, [SUPER_ADMIN_PROFILE_NAME]);
     return result.rowCount > 0;

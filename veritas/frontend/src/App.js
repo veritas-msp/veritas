@@ -19,6 +19,8 @@ import ClientTicketDetailPage from "./components/ClientPortal/ClientTicketDetail
 import ClientProfilePage from "./components/ClientPortal/ClientProfilePage";
 import ClientTicketCreatePage from "./components/ClientPortal/ClientTicketCreatePage";
 import ClientVaultPage from "./components/ClientPortal/ClientVaultPage";
+import ClientKnowledgeBasePage from "./components/ClientPortal/ClientKnowledgeBasePage";
+import ClientKnowledgeArticlePage from "./components/ClientPortal/ClientKnowledgeArticlePage";
 import ClientDevicesPage from "./components/ClientPortal/ClientDevicesPage";
 import ClientServicesPage from "./components/ClientPortal/ClientServicesPage";
 import ClientCybersecurityPage from "./components/ClientPortal/ClientCybersecurityPage";
@@ -129,6 +131,8 @@ export default function App() {
                 <Route path="services" element={<ClientServicesPage />} />
                 <Route path="cybersecurity" element={<ClientCybersecurityPage />} />
                 <Route path="contract" element={<ClientContractPage />} />
+                <Route path="knowledge-base" element={<ClientKnowledgeBasePage />} />
+                <Route path="knowledge-base/:articleId" element={<ClientKnowledgeArticlePage />} />
                 <Route path="documents" element={<ClientVaultPage />} />
                 <Route path="profile" element={<ClientProfilePage />} />
               </Route>

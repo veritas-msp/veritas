@@ -37,6 +37,10 @@ const NAV_ITEMS = [{
   icon: "mdi:file-document-outline",
   labelKey: "navContract"
 }, {
+  to: "/client/knowledge-base",
+  icon: "mdi:book-open-page-variant-outline",
+  labelKey: "navKnowledgeBase"
+}, {
   to: "/client/documents",
   icon: "mdi:safe-square-outline",
   labelKey: "navVault"

@@ -44,6 +44,7 @@ export default {
     navServices: "Servicios",
     navCybersecurity: "Ciberseguridad",
     navContract: "Contrato",
+    navKnowledgeBase: "Base de conocimiento",
     navVault: "Mi caja fuerte",
     navProfile: "Mi perfil",
     accountMenu: "Cuenta",
@@ -966,5 +967,19 @@ export default {
       Procédure: "Procedimiento",
       Autre: "Otro"
     }
+  },
+  knowledgeBase: {
+    eyebrow: "Recursos",
+    pageTitle: "Base de conocimiento",
+    subtitle: "Guías y artículos compartidos por su equipo de soporte.",
+    searchPlaceholder: "Buscar un artículo…",
+    loading: "Cargando artículos…",
+    loadError: "No se pudo cargar la base de conocimiento.",
+    emptyTitle: "Ningún artículo disponible",
+    emptyHint: "Los artículos publicados para su empresa aparecerán aquí.",
+    emptyFiltered: "Ningún resultado para esta búsqueda.",
+    updated: "Actualizado el",
+    back: "Volver a los artículos",
+    notFound: "Artículo no encontrado."
   }
 };

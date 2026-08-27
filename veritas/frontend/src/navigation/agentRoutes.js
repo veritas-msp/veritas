@@ -29,6 +29,8 @@ export const DOC_TYPE_ACCESS_KEY = {
   Rapport: "Mon",
   Report: "Mon",
   DocumentsHub: "DocumentsHub",
+  KnowledgeBase: "KnowledgeBase",
+  KnowledgeBaseEditor: "KnowledgeBase",
   Admin: "Admin"
 };
 const QUERY_KEYS = {
@@ -157,6 +159,8 @@ export function buildAgentPath(docType, data = null, options = {}) {
       return "/reports";
     case "DocumentsHub":
       return "/documents";
+    case "KnowledgeBase":
+      return d.articleId ? `/knowledge-base/${encodeSeg(d.articleId)}` : "/knowledge-base";
     case "EquipmentInventory":
       return "/inventory";
     case "MonitoringDetail":
@@ -413,6 +417,22 @@ export function parseAgentPath(pathname, search = "") {
     re: /^\/documents$/,
     run: () => ({
       docType: "DocumentsHub",
+      data: null,
+      adminTab: null
+    })
+  }, {
+    re: /^\/knowledge-base\/([^/]+)$/,
+    run: ([, articleId]) => ({
+      docType: "KnowledgeBase",
+      data: {
+        articleId: decodeURIComponent(articleId)
+      },
+      adminTab: null
+    })
+  }, {
+    re: /^\/knowledge-base$/,
+    run: () => ({
+      docType: "KnowledgeBase",
       data: null,
       adminTab: null
     })

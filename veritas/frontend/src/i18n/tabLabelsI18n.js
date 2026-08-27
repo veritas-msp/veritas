@@ -64,7 +64,8 @@ const TAB_LABELS_COPY = {
       supervisionCenter: "Supervision",
       monitoringList: "Monitoring",
       documentsList: "Documents",
-      inventoryList: "Inventaire périphériques"
+      inventoryList: "Inventaire périphériques",
+      knowledgeBase: "Base de connaissances"
     }
   },
   en: {
@@ -87,7 +88,8 @@ const TAB_LABELS_COPY = {
       Hardware: "Supervision",
       Mon: "Monitoring",
       DocumentsHub: "Documents",
-      EquipmentInventory: "Device inventory"
+      EquipmentInventory: "Device inventory",
+      KnowledgeBase: "Knowledge base"
     },
     equipmentTypes: {
       serveurs: "Servers",
@@ -131,7 +133,8 @@ const TAB_LABELS_COPY = {
       supervisionCenter: "Supervision",
       monitoringList: "Monitoring",
       documentsList: "Documents",
-      inventoryList: "Device inventory"
+      inventoryList: "Device inventory",
+      knowledgeBase: "Knowledge base"
     }
   },
   de: {
@@ -197,7 +200,8 @@ const TAB_LABELS_COPY = {
       supervisionCenter: "Supervision",
       monitoringList: "Monitoring",
       documentsList: "Dokumente",
-      inventoryList: "Geräteinventar"
+      inventoryList: "Geräteinventar",
+      knowledgeBase: "Wissensdatenbank"
     }
   },
   it: {
@@ -263,7 +267,8 @@ const TAB_LABELS_COPY = {
       supervisionCenter: "Supervisione",
       monitoringList: "Monitoring",
       documentsList: "Documenti",
-      inventoryList: "Inventario periferiche"
+      inventoryList: "Inventario periferiche",
+      knowledgeBase: "Knowledge base"
     }
   },
   es: {
@@ -329,7 +334,8 @@ const TAB_LABELS_COPY = {
       supervisionCenter: "Supervisión",
       monitoringList: "Monitorización",
       documentsList: "Documentos",
-      inventoryList: "Inventario de periféricos"
+      inventoryList: "Inventario de periféricos",
+      knowledgeBase: "Base de conocimiento"
     }
   }
 };

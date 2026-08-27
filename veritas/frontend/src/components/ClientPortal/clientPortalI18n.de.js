@@ -44,6 +44,7 @@ export default {
     navServices: "Dienste",
     navCybersecurity: "Cybersicherheit",
     navContract: "Vertrag",
+    navKnowledgeBase: "Wissensdatenbank",
     navVault: "Mein Tresor",
     navProfile: "Mein Profil",
     accountMenu: "Konto",
@@ -966,5 +967,19 @@ export default {
       "Procédure": "Verfahren",
       "Autre": "Sonstiges"
     }
+  },
+  knowledgeBase: {
+    eyebrow: "Ressourcen",
+    pageTitle: "Wissensdatenbank",
+    subtitle: "Leitfäden und Artikel Ihres Support-Teams.",
+    searchPlaceholder: "Artikel suchen…",
+    loading: "Artikel werden geladen…",
+    loadError: "Die Wissensdatenbank konnte nicht geladen werden.",
+    emptyTitle: "Keine Artikel verfügbar",
+    emptyHint: "Für Ihr Unternehmen veröffentlichte Artikel erscheinen hier.",
+    emptyFiltered: "Keine Ergebnisse für diese Suche.",
+    updated: "Aktualisiert am",
+    back: "Zurück zu den Artikeln",
+    notFound: "Artikel nicht gefunden."
   }
 };

@@ -35,6 +35,7 @@ import UpdatesPage from "../components/UpdatesPage/UpdatesPage";
 import ComingSoonPage from "../components/Misc/ComingSoonPage/ComingSoonPage";
 import DashboardPage from "../components/DashboardPage/DashboardPage";
 import DocumentsHubPage from "../components/DocumentsHubPage/DocumentsHubPage";
+import KnowledgeBasePage from "../components/KnowledgeBasePage/KnowledgeBasePage";
 import EquipmentInventoryPage from "../components/EquipmentInventoryPage/EquipmentInventoryPage";
 import TabLauncherPage from "../components/TabLauncher/TabLauncherPage";
 import { createListTabData, isListTabDocType } from "../navigation/tabTypes";
@@ -1057,6 +1058,8 @@ export default function MainApp() {
         return <RapportPage onNavigate={handleDocSelect} hasTabsBar={tabs.length > 0} onMonitoringReportGuardChange={handleMonitoringReportGuardChange} />;
       case "DocumentsHub":
         return <DocumentsHubPage />;
+      case "KnowledgeBase":
+        return <KnowledgeBasePage onNavigate={handleDocSelect} />;
       case "EquipmentInventory":
         return <EquipmentInventoryPage onNavigate={handleDocSelect} />;
       case "MonitoringDetail":

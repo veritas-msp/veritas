@@ -150,7 +150,7 @@ export default function Sidebar({
   const showCrmSection = !!(access["Contrat"] || access["Contact"]);
   const showExploitationSection = !!(access["Ticket"] || access["TicketSales"] || access["Planning"]);
   const showManagedSection = !!(access["Hardware"] || access["EquipmentInventory"] || access["Cybersecurite"] || access["Service"]);
-  const showPilotageSection = !!(access["Dashboard"] || DOCUMENTS_CONFIG.some(doc => access[doc.key] && doc.key !== "Mon" && !(doc.key === "DocumentsHub" && isCommunity)) || !!access["Mon"] && !isCommunity);
+  const showPilotageSection = !!(access["Dashboard"] || access["KnowledgeBase"] || DOCUMENTS_CONFIG.some(doc => access[doc.key] && doc.key !== "Mon" && !(doc.key === "DocumentsHub" && isCommunity)) || !!access["Mon"] && !isCommunity);
   const sidebarGuide = useMemo(() => buildSidebarGuideSteps({
     locale,
     showCrmSection,
@@ -394,6 +394,10 @@ export default function Sidebar({
                     onSelect("Dashboard");
                     if (isMobile) setShowMenu(false);
                   }} icon={<Icon icon="mdi:chart-box-outline" className={styles.itemIcon} />} label={!isCollapsed ? copy.nav.dashboard : null} />}
+                    {!!access["KnowledgeBase"] && <SidebarAccessNavItem key="KnowledgeBase" itemKey="KnowledgeBase" showTooltip={showIconTooltip} tooltip={copy.nav.knowledgeBase} className={`${styles.navItem} ${current === "KnowledgeBase" ? styles.active : ""}`} onClick={() => {
+                    onSelect("KnowledgeBase");
+                    if (isMobile) setShowMenu(false);
+                  }} icon={<Icon icon="mdi:book-open-page-variant-outline" className={styles.itemIcon} />} label={!isCollapsed ? copy.nav.knowledgeBase : null} />}
                     {DOCUMENTS_CONFIG.filter(doc => {
                     if (doc.key === "Mon") return false;
                     if (doc.key === "DocumentsHub" && isCommunity) return false;

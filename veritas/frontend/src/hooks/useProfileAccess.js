@@ -15,6 +15,10 @@ const PAGES_ACCESS_CONFIG = [{
   label: "Device inventory",
   accessKey: "equipment_inventory_enabled"
 }, {
+  key: "KnowledgeBase",
+  label: "Knowledge base",
+  accessKey: "knowledge_base_enabled"
+}, {
   key: "Cybersecurite",
   label: "Cybersecurity",
   accessKey: "cybersecurite_enabled"

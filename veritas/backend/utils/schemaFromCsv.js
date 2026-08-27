@@ -183,6 +183,8 @@ ALTER TABLE v_b_users_profiles
   ADD COLUMN IF NOT EXISTS documents_enabled BOOLEAN NOT NULL DEFAULT FALSE;
 ALTER TABLE v_b_users_profiles
   ADD COLUMN IF NOT EXISTS equipment_inventory_enabled BOOLEAN NOT NULL DEFAULT FALSE;
+ALTER TABLE v_b_users_profiles
+  ADD COLUMN IF NOT EXISTS knowledge_base_enabled BOOLEAN NOT NULL DEFAULT FALSE;
 
 INSERT INTO v_b_users_profiles (
   name, label,

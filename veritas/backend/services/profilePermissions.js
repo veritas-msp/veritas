@@ -14,6 +14,7 @@ export const PROFILE_PERMISSION_FLAGS = [
   "dashboard_enabled",
   "documents_enabled",
   "equipment_inventory_enabled",
+  "knowledge_base_enabled",
   "administration_enabled"
 ];
 

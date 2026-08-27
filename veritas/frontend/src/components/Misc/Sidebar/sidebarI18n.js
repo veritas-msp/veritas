@@ -24,7 +24,8 @@ const SIDEBAR_COPY = {
       cloud: "Cloud IT et services",
       reports: "Rapports",
       monitoring: "Monitoring",
-      documents: "Documents"
+      documents: "Documents",
+      knowledgeBase: "Base de connaissances"
     },
     modules: {
       addModule: "Ajouter un module",
@@ -71,7 +72,8 @@ const SIDEBAR_COPY = {
       cloud: "Cloud IT & Services",
       reports: "Reports",
       monitoring: "Monitoring",
-      documents: "Documents"
+      documents: "Documents",
+      knowledgeBase: "Knowledge base"
     },
     modules: {
       addModule: "Add a module",
@@ -118,7 +120,8 @@ const SIDEBAR_COPY = {
       cloud: "Cloud IT & Services",
       reports: "Berichte",
       monitoring: "Monitoring",
-      documents: "Dokumente"
+      documents: "Dokumente",
+      knowledgeBase: "Wissensdatenbank"
     },
     modules: {
       addModule: "Modul hinzufügen",
@@ -165,7 +168,8 @@ const SIDEBAR_COPY = {
       cloud: "Cloud IT e servizi",
       reports: "Report",
       monitoring: "Monitoraggio",
-      documents: "Documenti"
+      documents: "Documenti",
+      knowledgeBase: "Knowledge base"
     },
     modules: {
       addModule: "Aggiungi un modulo",
@@ -212,7 +216,8 @@ const SIDEBAR_COPY = {
       cloud: "Cloud IT y servicios",
       reports: "Informes",
       monitoring: "Monitorización",
-      documents: "Documentos"
+      documents: "Documentos",
+      knowledgeBase: "Base de conocimiento"
     },
     modules: {
       addModule: "Añadir un módulo",
@@ -242,5 +247,6 @@ export function localizeDocumentLabel(key, fallbackLabel, locale) {
   if (key === "Mon") return nav.monitoring;
   if (key === "DocumentsHub") return nav.documents;
   if (key === "EquipmentInventory") return nav.inventory;
+  if (key === "KnowledgeBase") return nav.knowledgeBase;
   return fallbackLabel;
 }

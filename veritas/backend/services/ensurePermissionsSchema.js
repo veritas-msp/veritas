@@ -99,7 +99,7 @@ export async function ensurePermissionsSchema() {
               monitoring_enabled, infrastructure_enabled, cybersecurite_enabled,
               planning_enabled, service_enabled, contrat_enabled, contact_enabled,
               configurateur_enabled, tickets_enabled, dashboard_enabled, documents_enabled,
-              equipment_inventory_enabled
+              equipment_inventory_enabled, knowledge_base_enabled
        FROM v_b_users_profiles`);
     const needsFullSeed = ensuredCatalogSize !== ALL_PERMISSION_KEYS.length;
     for (const profile of profiles.rows) {

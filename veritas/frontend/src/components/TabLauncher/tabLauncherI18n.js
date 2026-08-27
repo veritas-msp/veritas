@@ -39,6 +39,8 @@ const TAB_LAUNCHER_COPY = {
       billingDesc: "Suivi de la facturation MSP",
       documents: "Documents",
       documentsDesc: "Hub documentaire · ouvrir en onglet",
+      knowledgeBase: "Base de connaissances",
+      knowledgeBaseDesc: "Articles internes et portail client",
       myDocs: "Mes documents",
       myDocsDesc: "Espace documentaire personnel",
       admin: "Administration",
@@ -88,6 +90,8 @@ const TAB_LAUNCHER_COPY = {
       billingDesc: "MSP billing overview",
       documents: "Documents",
       documentsDesc: "Document hub · open in a tab",
+      knowledgeBase: "Knowledge base",
+      knowledgeBaseDesc: "Internal articles and client portal",
       myDocs: "My documents",
       myDocsDesc: "Personal document space",
       admin: "Administration",
@@ -137,6 +141,8 @@ const TAB_LAUNCHER_COPY = {
       billingDesc: "MSP-Abrechnungsübersicht",
       documents: "Dokumente",
       documentsDesc: "Dokumenten-Hub · als Tab öffnen",
+      knowledgeBase: "Wissensdatenbank",
+      knowledgeBaseDesc: "Interne Artikel und Kundenportal",
       myDocs: "Meine Dokumente",
       myDocsDesc: "Persönlicher Dokumentenbereich",
       admin: "Administration",
@@ -186,6 +192,8 @@ const TAB_LAUNCHER_COPY = {
       billingDesc: "Panoramica fatturazione MSP",
       documents: "Documenti",
       documentsDesc: "Hub documentale · apri in scheda",
+      knowledgeBase: "Knowledge base",
+      knowledgeBaseDesc: "Articoli interni e portale cliente",
       myDocs: "I miei documenti",
       myDocsDesc: "Spazio documenti personale",
       admin: "Amministrazione",
@@ -235,6 +243,8 @@ const TAB_LAUNCHER_COPY = {
       billingDesc: "Resumen de facturación MSP",
       documents: "Documentos",
       documentsDesc: "Hub documental · abrir en pestaña",
+      knowledgeBase: "Base de conocimiento",
+      knowledgeBaseDesc: "Artículos internos y portal cliente",
       myDocs: "Mis documentos",
       myDocsDesc: "Espacio documental personal",
       admin: "Administración",
@@ -334,6 +344,12 @@ export const TAB_LAUNCHER_SECTIONS = [{
     accessKey: "DocumentsHub",
     opensTab: true,
     proOnly: true
+  }, {
+    docType: "KnowledgeBase",
+    icon: "mdi:book-open-page-variant-outline",
+    labelKey: "knowledgeBase",
+    descKey: "knowledgeBaseDesc",
+    accessKey: "KnowledgeBase"
   }]
 }, {
   sectionKey: "account",

@@ -19,6 +19,7 @@ const USERS_COPY = {
       dashboard: "Tableau de bord KPI",
       documents: "Documents",
       rapports: "Rapports",
+      knowledgeBase: "Base de connaissances",
       administration: "Administration"
     },
     mfa: {
@@ -185,6 +186,7 @@ const USERS_COPY = {
       dashboard: "KPI Dashboard",
       documents: "Documents",
       rapports: "Reports",
+      knowledgeBase: "Knowledge base",
       administration: "Administration"
     },
     mfa: {
@@ -351,6 +353,7 @@ const USERS_COPY = {
       dashboard: "KPI-Dashboard",
       documents: "Dokumente",
       rapports: "Berichte",
+      knowledgeBase: "Wissensdatenbank",
       administration: "Administration"
     },
     mfa: {
@@ -517,6 +520,7 @@ const USERS_COPY = {
       dashboard: "Dashboard KPI",
       documents: "Documenti",
       rapports: "Report",
+      knowledgeBase: "Knowledge base",
       administration: "Amministrazione"
     },
     mfa: {
@@ -683,6 +687,7 @@ const USERS_COPY = {
       dashboard: "Panel KPI",
       documents: "Documentos",
       rapports: "Informes",
+      knowledgeBase: "Base de conocimiento",
       administration: "Administración"
     },
     mfa: {
@@ -866,6 +871,9 @@ const ACCESS_COLUMN_KEYS = [{
 }, {
   key: "documents",
   accessKey: "documents_enabled"
+}, {
+  key: "knowledgeBase",
+  accessKey: "knowledge_base_enabled"
 }, {
   key: "rapports",
   accessKey: "monitoring_enabled"

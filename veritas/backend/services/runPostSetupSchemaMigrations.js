@@ -19,6 +19,7 @@ import { ensureSalesTicketCategoriesSchema } from "./ensureSalesTicketCategories
 import { ensureContactClientLinksSchema } from "./ensureContactClientLinksSchema.js";
 import { ensureKpiReportSchedulesSchema } from "./ensureKpiReportSchedulesSchema.js";
 import { ensurePortalTicketRoleSchema } from "./ensurePortalTicketRoleSchema.js";
+import { ensureKnowledgeArticlesSchema } from "./ensureKnowledgeArticlesSchema.js";
 import { runIncrementalAvrilMigrations } from "../utils/incrementalAvrilMigrations.js";
 export async function runPostSetupSchemaMigrations() {
   await ensureProfilesSchema();
@@ -42,6 +43,7 @@ export async function runPostSetupSchemaMigrations() {
   await ensureContactClientLinksSchema();
   await ensureKpiReportSchedulesSchema();
   await ensurePortalTicketRoleSchema();
+  await ensureKnowledgeArticlesSchema();
   try {
     await runIncrementalAvrilMigrations();
   } catch (err) {
@@ -53,4 +55,5 @@ export async function runPostSetupSchemaMigrations() {
   await ensureSalesTicketCategoriesSchema();
   await ensureContactClientLinksSchema();
   await ensurePortalTicketRoleSchema();
+  await ensureKnowledgeArticlesSchema();
 }

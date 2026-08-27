@@ -1,5 +1,6 @@
 import express from "express";
 import fs from "fs";
+import path from "path";
 import { body, param, query, validationResult } from "express-validator";
 import multer from "multer";
 import { pool } from "../../database/db.js";
@@ -16,6 +17,7 @@ import { syncPortalUserFromContact, switchPortalCompany, listPortalCompaniesForC
 import { buildSessionPayload, isImpersonationPayload, buildImpersonationClientPayload, setSessionCookie, signSessionToken } from "../../utils/authSession.js";
 import { contactBelongsToClient, pickHomeClientId } from "../../services/contactClientLinks.js";
 import { listClientCustomEquipment, listEquipmentFamilies } from "../../utils/equipmentFamilies.js";
+import { getKnowledgeAsset, getPortalKnowledgeArticle, KNOWLEDGE_ASSETS_DIR, listPortalKnowledgeArticles, portalCanAccessAsset } from "../../services/knowledgeArticlesService.js";
 const router = express.Router();
 router.use(verifyJWT, requireRole("client"));
 const INFRA_TABLES = [{
@@ -1269,6 +1271,77 @@ router.post("/vault-secrets/:id/request-revocation", [param("id").isUUID()], asy
     const status = err.message?.includes("not found") ? 404 : 400;
     res.status(status).json({
       error: err.message || "Unable to delete this vault entry."
+    });
+  }
+});
+router.get("/knowledge-base", [query("search").optional().isString()], async (req, res) => {
+  if (validationErrorOrNull(req, res)) return;
+  const ctx = await getPortalContext(req, res);
+  if (!ctx) return;
+  try {
+    const articles = await listPortalKnowledgeArticles(ctx.clientId, ctx.contactId, {
+      search: req.query.search
+    });
+    res.json({
+      articles,
+      total: articles.length
+    });
+  } catch (err) {
+    console.error("GET /client-portal/knowledge-base:", err);
+    res.status(500).json({
+      error: "Error loading knowledge base."
+    });
+  }
+});
+router.get("/knowledge-base/:id", [param("id").isUUID()], async (req, res) => {
+  if (validationErrorOrNull(req, res)) return;
+  const ctx = await getPortalContext(req, res);
+  if (!ctx) return;
+  try {
+    const article = await getPortalKnowledgeArticle(ctx.clientId, ctx.contactId, req.params.id);
+    if (!article) {
+      return res.status(404).json({
+        error: "Article not found."
+      });
+    }
+    res.json({ article });
+  } catch (err) {
+    console.error("GET /client-portal/knowledge-base/:id:", err);
+    res.status(500).json({
+      error: "Error loading article."
+    });
+  }
+});
+router.get("/knowledge-base/:id/assets/:assetId", [param("id").isUUID(), param("assetId").isUUID()], async (req, res) => {
+  if (validationErrorOrNull(req, res)) return;
+  const ctx = await getPortalContext(req, res);
+  if (!ctx) return;
+  try {
+    const allowed = await portalCanAccessAsset(ctx.clientId, ctx.contactId, req.params.id);
+    if (!allowed) {
+      return res.status(404).json({
+        error: "Article not found."
+      });
+    }
+    const asset = await getKnowledgeAsset(req.params.id, req.params.assetId);
+    if (!asset) {
+      return res.status(404).json({
+        error: "File not found."
+      });
+    }
+    const filePath = path.join(KNOWLEDGE_ASSETS_DIR, asset.stored_name);
+    if (!fs.existsSync(filePath)) {
+      return res.status(404).json({
+        error: "File not found."
+      });
+    }
+    res.setHeader("Content-Type", asset.mime_type || "application/octet-stream");
+    res.setHeader("Cache-Control", "private, max-age=86400");
+    fs.createReadStream(filePath).pipe(res);
+  } catch (err) {
+    console.error("GET /client-portal/knowledge-base/:id/assets/:assetId:", err);
+    res.status(500).json({
+      error: "Error loading file."
     });
   }
 });

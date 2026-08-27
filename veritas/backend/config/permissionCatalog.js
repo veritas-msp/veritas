@@ -340,6 +340,12 @@ export const PERMISSION_CATALOG = [{
   matrix: false,
   actions: ["view", "manage"]
 }, {
+  group: "knowledge_base",
+  label: "Knowledge base",
+  section: "tools",
+  moduleFlag: "knowledge_base_enabled",
+  actions: ["view", "create", "edit", "delete"]
+}, {
   group: "configurateur",
   label: "Configurator",
   section: "tools",
@@ -542,6 +548,7 @@ export const VIEW_PERMISSION_TO_MODULE_FLAG = {
   "cybersecurite.view": "cybersecurite_enabled",
   "documents.view": "documents_enabled",
   "vault.view": "documents_enabled",
+  "knowledge_base.view": "knowledge_base_enabled",
   "configurateur.view": "configurateur_enabled",
   "config.view": "administration_enabled"
 };
@@ -559,6 +566,7 @@ export const ACCESS_KEY_TO_VIEW_PERMISSIONS = {
   Cybersecurite: ["cybersecurite.view"],
   Mon: ["monitoring.view"],
   DocumentsHub: ["documents.view"],
+  KnowledgeBase: ["knowledge_base.view"],
   Admin: ["config.view"]
 };
 
@@ -575,6 +583,7 @@ export const MODULE_FLAG_TO_GROUPS = {
   monitoring_enabled: ["monitoring"],
   cybersecurite_enabled: ["cybersecurite"],
   documents_enabled: ["documents", "vault"],
+  knowledge_base_enabled: ["knowledge_base"],
   configurateur_enabled: ["configurateur"],
   administration_enabled: ["config", "users"]
 };

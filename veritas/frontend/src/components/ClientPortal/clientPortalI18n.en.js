@@ -44,6 +44,7 @@ export default {
     navServices: "Services",
     navCybersecurity: "Cybersecurity",
     navContract: "Contract",
+    navKnowledgeBase: "Knowledge base",
     navVault: "My vault",
     navProfile: "My profile",
     accountMenu: "Account",
@@ -966,5 +967,19 @@ export default {
       Procédure: "Procedure",
       Autre: "Other"
     }
+  },
+  knowledgeBase: {
+    eyebrow: "Resources",
+    pageTitle: "Knowledge base",
+    subtitle: "Guides and articles shared by your support team.",
+    searchPlaceholder: "Search an article…",
+    loading: "Loading articles…",
+    loadError: "Unable to load the knowledge base.",
+    emptyTitle: "No articles available",
+    emptyHint: "Articles published for your company will appear here.",
+    emptyFiltered: "No results for this search.",
+    updated: "Updated on",
+    back: "Back to articles",
+    notFound: "Article not found."
   }
 };
