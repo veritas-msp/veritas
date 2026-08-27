@@ -1,6 +1,35 @@
 import { EQUIPMENT_MODULE_LABELS } from "../EquipementPage/equipmentFormConfig";
 import { HARDWARE_TYPE_ORDER } from "../EnterprisesPage/infraHoneycombLayout";
 import { INFRA_TYPE_ICONS } from "../EnterprisesPage/infraMapUtils";
+
+export function slugifyEquipmentFieldKey(value) {
+  return String(value || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9]+/g, "_")
+    .replace(/^_+|_+$/g, "")
+    .slice(0, 72);
+}
+
+export function uniqueEquipmentFieldKeys(fields = []) {
+  const used = new Set();
+  return (Array.isArray(fields) ? fields : []).map(field => {
+    const label = String(field?.label || "").trim();
+    const base = slugifyEquipmentFieldKey(label) || slugifyEquipmentFieldKey(field?.fieldKey) || "champ";
+    let fieldKey = base;
+    let n = 2;
+    while (used.has(fieldKey)) {
+      fieldKey = `${base}_${n++}`.slice(0, 72);
+    }
+    used.add(fieldKey);
+    return {
+      ...field,
+      fieldKey
+    };
+  });
+}
 export const EQUIPMENT_FAMILY_FORM_SECTIONS = [{
   id: "identity",
   label: "Identity",
@@ -119,6 +148,7 @@ export function buildEquipmentFamilyDraftFromFamily(family) {
     honeycombQ: family.honeycombQ == null ? "" : String(family.honeycombQ),
     honeycombR: family.honeycombR == null ? "" : String(family.honeycombR),
     fields: (family.fields || []).map(field => ({
+      id: field.id,
       fieldKey: field.fieldKey || "",
       label: field.label || "",
       fieldType: field.fieldType || "text",

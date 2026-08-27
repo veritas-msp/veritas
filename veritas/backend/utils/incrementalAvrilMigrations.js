@@ -192,6 +192,22 @@ export async function buildIncrementalAvrilMigrationPlan(client = pool) {
   } else if ((await tableExists(client, "v_b_users_profiles")) && !(await columnExists(client, "v_b_users_profiles", "knowledge_base_enabled"))) {
     plan.push("20260827_knowledge_articles.sql");
   }
+  if ((await tableExists(client, "v_b_knowledge_articles")) && !(await columnExists(client, "v_b_knowledge_articles", "visible_to_all_clients"))) {
+    plan.push("20260827_knowledge_articles_all_audience.sql");
+  }
+  if ((await tableExists(client, "v_b_knowledge_articles")) && !(await tableExists(client, "v_b_knowledge_folders"))) {
+    plan.push("20260827_knowledge_folders.sql");
+  }
+  if ((await tableExists(client, "v_b_knowledge_articles")) && !(await tableExists(client, "v_b_knowledge_categories"))) {
+    plan.push("20260827_knowledge_categories.sql");
+  }
+  if (
+    (await tableExists(client, "v_b_knowledge_articles"))
+    && (await tableExists(client, "v_b_client_tags"))
+    && !(await tableExists(client, "v_b_knowledge_article_client_tags"))
+  ) {
+    plan.push("20260827_knowledge_visibility_tags.sql");
+  }
   if (await tableExists(client, "v_b_users_profiles")) {
     const {
       rows

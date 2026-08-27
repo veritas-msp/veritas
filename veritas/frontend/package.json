@@ -17,6 +17,8 @@
     "@dnd-kit/sortable": "^10.0.0",
     "@dnd-kit/utilities": "^3.2.2",
     "@iconify/react": "^6.0.2",
+    "@mantine/core": "^7.17.8",
+    "@mantine/hooks": "^7.17.8",
     "@mdi/js": "^7.4.47",
     "@mdi/react": "^1.6.1",
     "@testing-library/dom": "^10.4.0",

@@ -5,7 +5,6 @@ import { FaTimes } from "react-icons/fa";
 import { toast } from "react-toastify";
 import { useCommonCopy } from "../../hooks/useCommonCopy";
 import { getClientOffice365Credentials } from "../../api/clientOffice365";
-import { getIconPath } from "../../utils/assetHelper";
 import { formatMicrosoftTenantSummary, normalizeMicrosoftTenantCredentials } from "../EnterprisesPage/microsoftTenantSolutionUtils";
 import styles from "../EnterprisesPage/EnterpriseFormModal.module.css";
 import localStyles from "./CampaignFormModal.module.css";
@@ -20,8 +19,7 @@ const CAMPAIGN_PROVIDERS = [{
   id: "microsoft",
   labelKey: "providerMicrosoft",
   status: "available",
-  icon: "mdi:microsoft",
-  image: "office365.png"
+  icon: "mdi:microsoft-office"
 }, {
   id: "google_workspace",
   labelKey: "providerGoogle",
@@ -337,7 +335,7 @@ export default function CampaignFormModal({
                       const isComingSoon = provider.status === "comingSoon";
                       return <button key={provider.id} type="button" role="option" aria-selected={isSelected} className={`${localStyles.providerCard} ${isSelected ? localStyles.providerCardSelected : ""} ${isComingSoon || isEditing ? localStyles.providerCardDisabled : ""}`} onClick={() => handleSelectProvider(provider)} disabled={isComingSoon || isEditing} title={isComingSoon ? modalCopy.providerComingSoon : modalCopy[provider.labelKey] || provider.id}>
                               <span className={localStyles.providerCardIcon} aria-hidden>
-                                {provider.image ? <img src={getIconPath(provider.image)} alt="" /> : <Icon icon={provider.icon} />}
+                                <Icon icon={provider.icon} />
                               </span>
                               <span className={localStyles.providerCardLabel}>
                                 {modalCopy[provider.labelKey] || provider.id}

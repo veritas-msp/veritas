@@ -113,7 +113,8 @@ export default function TechNewsReactions({
   myReaction = null,
   pending = false,
   onReact,
-  t
+  t,
+  className
 }) {
   const [openEmoji, setOpenEmoji] = useState(null);
   const [pickerOpen, setPickerOpen] = useState(false);
@@ -177,7 +178,7 @@ export default function TechNewsReactions({
   return (
     <div
       ref={rootRef}
-      className={`${styles.reactionsBar} ${styles.reactionsBarCompact}`}
+      className={`${styles.reactionsBar} ${styles.reactionsBarCompact}${className ? ` ${className}` : ""}`}
       onClick={e => e.stopPropagation()}
       role="group"
       aria-label={t.reactionsLabel}

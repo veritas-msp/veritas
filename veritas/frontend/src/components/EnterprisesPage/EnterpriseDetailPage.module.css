@@ -777,6 +777,7 @@
   border: 1px solid var(--msp-border);
   border-radius: var(--msp-radius-sm);
   background: var(--msp-surface);
+  overflow: hidden;
   transition: border-color 0.15s ease;
 }
 
@@ -799,12 +800,32 @@
   min-width: 0;
   border: none !important;
   background: transparent !important;
+  background-color: transparent !important;
   color: var(--msp-text) !important;
   font-size: 0.8125rem !important;
   padding: 0.4rem 0 !important;
   outline: none !important;
   box-shadow: none !important;
   appearance: none;
+  -webkit-appearance: none;
+}
+
+.searchBox .searchInput:not([type="checkbox"]):not([type="radio"]),
+.searchBox .searchInput:not([type="checkbox"]):not([type="radio"]):hover,
+.searchBox .searchInput:not([type="checkbox"]):not([type="radio"]):focus,
+.searchBox .searchInput:not([type="checkbox"]):not([type="radio"]):focus-visible {
+  background: transparent !important;
+  background-color: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  outline: none !important;
+}
+
+.searchInput::-webkit-search-decoration,
+.searchInput::-webkit-search-cancel-button,
+.searchInput::-webkit-search-results-button,
+.searchInput::-webkit-search-results-decoration {
+  display: none;
   -webkit-appearance: none;
 }
 
@@ -1786,6 +1807,16 @@
   background: var(--msp-surface, #fff);
   color: var(--msp-text, #0f1c2e);
   font-size: 0.74rem;
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+.sitesSearchInput::-webkit-search-decoration,
+.sitesSearchInput::-webkit-search-cancel-button,
+.sitesSearchInput::-webkit-search-results-button,
+.sitesSearchInput::-webkit-search-results-decoration {
+  display: none;
+  -webkit-appearance: none;
 }
 
 .sitesSearchInput:focus,
@@ -3403,6 +3434,35 @@ button.sidebarOptionIcon:hover {
 
 :global(html.dark) .searchBox:focus-within {
   border-color: var(--msp-accent);
+}
+
+:global(html.dark) .searchBox .searchInput:not([type="checkbox"]):not([type="radio"]),
+:global(html.dark) .searchBox .searchInput:not([type="checkbox"]):not([type="radio"]):hover,
+:global(html.dark) .searchBox .searchInput:not([type="checkbox"]):not([type="radio"]):focus,
+:global(html.dark) .searchBox .searchInput:not([type="checkbox"]):not([type="radio"]):focus-visible {
+  background: transparent !important;
+  background-color: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  color: var(--msp-text) !important;
+}
+
+:global(html.dark) .sitesSearchInput:not([type="checkbox"]):not([type="radio"]),
+:global(html.dark) .sitesSearchInput:not([type="checkbox"]):not([type="radio"]):hover {
+  background: var(--msp-surface-2) !important;
+  background-color: var(--msp-surface-2) !important;
+  border-color: var(--msp-border) !important;
+  color: var(--msp-text) !important;
+  box-shadow: none !important;
+}
+
+:global(html.dark) .sitesSearchInput:not([type="checkbox"]):not([type="radio"]):focus,
+:global(html.dark) .sitesSearchInput:not([type="checkbox"]):not([type="radio"]):focus-visible {
+  background: var(--msp-surface-2) !important;
+  background-color: var(--msp-surface-2) !important;
+  border-color: var(--msp-accent) !important;
+  color: var(--msp-text) !important;
+  box-shadow: 0 0 0 3px var(--msp-accent-soft) !important;
 }
 
 :global(html.dark) .heroClientMenu {

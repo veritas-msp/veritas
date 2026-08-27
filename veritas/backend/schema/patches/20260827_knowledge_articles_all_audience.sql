@@ -1,0 +1,3 @@
+ALTER TABLE v_b_knowledge_articles
+  ADD COLUMN IF NOT EXISTS visible_to_all_clients BOOLEAN NOT NULL DEFAULT FALSE,
+  ADD COLUMN IF NOT EXISTS visible_to_all_contacts BOOLEAN NOT NULL DEFAULT FALSE;

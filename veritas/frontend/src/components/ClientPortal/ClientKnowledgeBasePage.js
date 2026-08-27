@@ -43,46 +43,49 @@ export default function ClientKnowledgeBasePage() {
   }, [load, search]);
 
   return (
-    <div className={pageStyles.page}>
-      <MspPageHero
-        eyebrow={t.eyebrow}
-        title={t.pageTitle}
-        subtitle={t.subtitle}
-        icon="mdi:book-open-page-variant-outline"
-      />
-      <section className={portalStyles.panel}>
-        <input
-          className={pageStyles.search}
-          value={search}
-          onChange={event => setSearch(event.target.value)}
-          placeholder={t.searchPlaceholder}
+    <div className={`${portalStyles.mainScrollFill} ${portalStyles.portalPage}`}>
+      <div className={`${portalStyles.mainContent} ${portalStyles.portalShell}`}>
+        <MspPageHero
+          className={pageStyles.portalPageHero}
+          eyebrow={t.eyebrow}
+          title={t.pageTitle}
+          subtitle={t.subtitle}
+          icon="mdi:book-open-page-variant-outline"
         />
-        {loading ? (
-          <p className={portalStyles.empty}>{t.loading}</p>
-        ) : articles.length === 0 ? (
-          <div className={portalStyles.emptyState}>
-            <Icon icon="mdi:book-open-blank-variant" className={portalStyles.emptyStateIcon} aria-hidden />
-            <p className={portalStyles.emptyStateTitle}>{search ? t.emptyFiltered : t.emptyTitle}</p>
-            <p className={portalStyles.empty}>{t.emptyHint}</p>
-          </div>
-        ) : (
-          <ul className={pageStyles.list}>
-            {articles.map(article => (
-              <li key={article.id}>
-                <Link to={`/client/knowledge-base/${article.id}`} className={pageStyles.listLink}>
-                  <span>
-                    <strong>{article.title}</strong>
-                    {article.category ? <span className={pageStyles.meta}> · {article.category}</span> : null}
-                    {article.excerpt ? <p className={pageStyles.excerpt}>{article.excerpt}</p> : null}
-                    <span className={pageStyles.meta}>{t.updated} {formatDate(article.updatedAt || article.publishedAt, locale)}</span>
-                  </span>
-                  <Icon icon="mdi:chevron-right" />
-                </Link>
-              </li>
-            ))}
-          </ul>
-        )}
-      </section>
+        <section className={portalStyles.panel}>
+          <input
+            className={pageStyles.search}
+            value={search}
+            onChange={event => setSearch(event.target.value)}
+            placeholder={t.searchPlaceholder}
+          />
+          {loading ? (
+            <p className={portalStyles.empty}>{t.loading}</p>
+          ) : articles.length === 0 ? (
+            <div className={portalStyles.emptyState}>
+              <Icon icon="mdi:book-open-blank-variant" className={portalStyles.emptyStateIcon} aria-hidden />
+              <p className={portalStyles.emptyStateTitle}>{search ? t.emptyFiltered : t.emptyTitle}</p>
+              <p className={portalStyles.empty}>{t.emptyHint}</p>
+            </div>
+          ) : (
+            <ul className={pageStyles.list}>
+              {articles.map(article => (
+                <li key={article.id}>
+                  <Link to={`/client/knowledge-base/${article.id}`} className={pageStyles.listLink}>
+                    <span>
+                      <strong>{article.title}</strong>
+                      {article.category ? <span className={pageStyles.meta}> · {article.category}</span> : null}
+                      {article.excerpt ? <p className={pageStyles.excerpt}>{article.excerpt}</p> : null}
+                      <span className={pageStyles.meta}>{t.updated} {formatDate(article.updatedAt || article.publishedAt, locale)}</span>
+                    </span>
+                    <Icon icon="mdi:chevron-right" />
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
+      </div>
     </div>
   );
 }

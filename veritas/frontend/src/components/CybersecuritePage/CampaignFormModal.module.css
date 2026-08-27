@@ -53,14 +53,17 @@
   height: 2.1rem;
   border-radius: 8px;
   background: var(--msp-surface-2, #f7f9fc);
-  color: var(--msp-accent, #2b5fab);
+  color: var(--msp-text, #0f1c2e);
   font-size: 1.15rem;
 }
 
-.providerCardIcon img {
-  width: 1.25rem;
-  height: 1.25rem;
-  object-fit: contain;
+.providerCardIcon svg {
+  color: inherit;
+}
+
+:global(html.dark) .providerCardIcon {
+  background: var(--msp-surface, #1a2540);
+  color: var(--msp-text, #f0f4fa);
 }
 
 .providerCardLabel {

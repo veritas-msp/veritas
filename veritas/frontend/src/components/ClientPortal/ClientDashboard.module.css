@@ -1336,3 +1336,30 @@
 @media (min-width: 1600px) {
   .mainScroll { padding: 24px 32px; }
 }
+
+@media print {
+  .layout > :first-child,
+  .impersonationBanner {
+    display: none !important;
+  }
+
+  .layout {
+    display: block !important;
+    background: #fff !important;
+  }
+
+  .main {
+    margin-left: 0 !important;
+    min-height: auto !important;
+    max-height: none !important;
+    overflow: visible !important;
+    background: #fff !important;
+    color: #111 !important;
+  }
+
+  .mainScroll {
+    padding: 0 !important;
+    overflow: visible !important;
+    max-height: none !important;
+  }
+}

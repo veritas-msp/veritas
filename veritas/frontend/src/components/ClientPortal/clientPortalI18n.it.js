@@ -980,6 +980,13 @@ export default {
     emptyFiltered: "Nessun risultato per questa ricerca.",
     updated: "Aggiornato il",
     back: "Torna agli articoli",
-    notFound: "Articolo non trovato."
+    notFound: "Articolo non trovato.",
+    print: "Stampa",
+    downloadPdf: "Scarica PDF",
+    copyLink: "Copia link",
+    linkCopied: "Link copiato.",
+    pdfGenerating: "Generazione PDF…",
+    pdfError: "Impossibile generare il PDF.",
+    copyError: "Impossibile copiare il link."
   }
 };

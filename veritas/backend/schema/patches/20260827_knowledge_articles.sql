@@ -8,6 +8,8 @@ CREATE TABLE IF NOT EXISTS v_b_knowledge_articles (
   category VARCHAR(64) NULL,
   status VARCHAR(16) NOT NULL DEFAULT 'draft',
   visible_to_agents BOOLEAN NOT NULL DEFAULT TRUE,
+  visible_to_all_clients BOOLEAN NOT NULL DEFAULT FALSE,
+  visible_to_all_contacts BOOLEAN NOT NULL DEFAULT FALSE,
   content_json JSONB NOT NULL DEFAULT '{"type":"doc","content":[{"type":"paragraph"}]}'::jsonb,
   content_html TEXT NOT NULL DEFAULT '',
   content_plain TEXT NULL,

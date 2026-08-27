@@ -296,6 +296,9 @@ export default function MainApp() {
       const clientName = data?.client?.name || data?.client?.nom || 'CLIENT';
       return `monitoring-${clientName}`.replace(/\s+/g, '-');
     }
+    if (type === "KnowledgeBaseArticle" && data?.articleId) {
+      return `kb-${data.mode === "edit" ? "edit" : "read"}-${data.articleId}`;
+    }
     return `${type}-${Date.now()}`;
   }, []);
   const updateTabTitle = (tabId, newTitle) => {
@@ -382,7 +385,7 @@ export default function MainApp() {
       return;
     }
     const routeState = routeToMainAppState(parsed);
-    const tabTypes = ["ContratDetail", "ContactDetail", "Equipment", "EquipmentDetail", "JobDetail", "ComputerFleetStats", "MonitoringDetail", "CampaignDetail", "AntivirusDetail", "AntispamDetail", "TenantDetail", "TicketDetail", "TicketSalesDetail"];
+    const tabTypes = ["ContratDetail", "ContactDetail", "Equipment", "EquipmentDetail", "JobDetail", "ComputerFleetStats", "MonitoringDetail", "CampaignDetail", "AntivirusDetail", "AntispamDetail", "TenantDetail", "TicketDetail", "TicketSalesDetail", "KnowledgeBaseArticle"];
     const nextTabId = tabTypes.includes(routeState.docType) && parsed.data ? generateTabId(routeState.docType, parsed.data) : null;
     if (routeState.docType !== currentDocType || nextTabId && nextTabId !== activeTabId) {
       abortInFlightPageLoads();
@@ -553,7 +556,7 @@ export default function MainApp() {
         console.error("Error while deleting de l'onglet actif:", error);
       }
     }
-    const tabTypes = ["ContratDetail", "ContactDetail", "Equipment", "EquipmentDetail", "JobDetail", "ComputerFleetStats", "MonitoringDetail", "CampaignDetail", "AntivirusDetail", "AntispamDetail", "TenantDetail", "TicketDetail", "TicketSalesDetail"];
+    const tabTypes = ["ContratDetail", "ContactDetail", "Equipment", "EquipmentDetail", "JobDetail", "ComputerFleetStats", "MonitoringDetail", "CampaignDetail", "AntivirusDetail", "AntispamDetail", "TenantDetail", "TicketDetail", "TicketSalesDetail", "KnowledgeBaseArticle"];
     if (tabTypes.includes(type) && data) {
       const normalizedData = {
         ...data
@@ -1059,6 +1062,7 @@ export default function MainApp() {
       case "DocumentsHub":
         return <DocumentsHubPage />;
       case "KnowledgeBase":
+      case "KnowledgeBaseArticle":
         return <KnowledgeBasePage onNavigate={handleDocSelect} />;
       case "EquipmentInventory":
         return <EquipmentInventoryPage onNavigate={handleDocSelect} />;
@@ -1120,6 +1124,7 @@ export default function MainApp() {
   } = usePlatformUpdateAlert(effectiveProfile);
 
   const sidebarCurrent = useMemo(() => {
+    if (currentDocType === "KnowledgeBaseArticle") return "KnowledgeBase";
     if (currentDocType === "TicketSalesDetail") return "TicketSales";
     if (currentDocType !== "TicketDetail") return currentDocType;
     const family = ticketDetailNavFamily || ticketDetailData?.ticketFamily || (ticketDetailData?.fromPage === "TicketSales" ? "sales" : null);

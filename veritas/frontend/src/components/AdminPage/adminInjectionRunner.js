@@ -15,6 +15,7 @@ import { deleteClientFile, uploadClientFile } from "../../api/clientFiles";
 import { createTicket, permanentlyDeleteTicket } from "../../api/tickets";
 import { interpolate } from "../../i18n/translate";
 import { canonicalizeComputerType } from "../EquipementPage/equipmentFormConfig";
+import { slugifyEquipmentFieldKey } from "./equipmentFamilyConstants";
 
 const DEFAULT_INJECTION_ERRORS = {
   missingName: "Missing name",
@@ -331,6 +332,27 @@ function canonicalizeEquipmentDataField(field) {
   const raw = String(field || "").trim();
   if (!raw) return raw;
   return EQUIPMENT_DATA_FIELD_ALIASES[normKey(raw)] || raw;
+}
+
+function compactNormKey(value) {
+  return normKey(value).replace(/_/g, "");
+}
+
+function resolveCustomEquipmentFieldKey(rawField, fields = []) {
+  const raw = String(rawField || "").trim();
+  if (!raw) return null;
+  const normalized = normKey(raw);
+  const compact = compactNormKey(raw);
+  for (const field of fields) {
+    const key = String(field?.fieldKey || "").trim();
+    const labelSlug = slugifyEquipmentFieldKey(field?.label || "");
+    if (!key && !labelSlug) continue;
+    if (key && (normKey(key) === normalized || compactNormKey(key) === compact)) return key;
+    if (labelSlug && (normKey(labelSlug) === normalized || compactNormKey(labelSlug) === compact)) {
+      return key || labelSlug;
+    }
+  }
+  return null;
 }
 
 function normalizeContactStatus(value) {
@@ -1015,17 +1037,14 @@ export async function runInjection({
           data.notes = notes;
           if (!data.commentaire) data.commentaire = notes;
         }
-        const customFieldKeys = new Set(
-          (familyEntry.fields || []).map(field => String(field.fieldKey || "").trim()).filter(Boolean)
-        );
+        const customFields = Array.isArray(familyEntry.fields) ? familyEntry.fields : [];
         for (const [rawKey, rawValue] of Object.entries(row || {})) {
           const key = normKey(rawKey);
           if (!key.startsWith("data_") || key === "data_json") continue;
           const rawField = String(rawKey).slice(String(rawKey).toLowerCase().indexOf("data_") + 5);
           let field;
           if (familyEntry.isCustom) {
-            const match = [...customFieldKeys].find(k => normKey(k) === normKey(rawField));
-            field = match || rawField;
+            field = resolveCustomEquipmentFieldKey(rawField, customFields) || canonicalizeEquipmentDataField(rawField);
           } else {
             field = canonicalizeEquipmentDataField(rawField);
           }

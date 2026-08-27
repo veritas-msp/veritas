@@ -41,7 +41,7 @@ export const TAB_FOLDER_GROUPS = [{
   icon: "mdi:chart-line"
 }, {
   key: "documents",
-  types: ["DocumentsHub", "KnowledgeBase"],
+  types: ["DocumentsHub", "KnowledgeBase", "KnowledgeBaseArticle"],
   icon: "mdi:folder-outline"
 }];
 const TYPE_TO_FOLDER = new Map();

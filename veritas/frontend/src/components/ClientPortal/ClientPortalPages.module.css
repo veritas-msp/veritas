@@ -811,3 +811,70 @@
   border: 1px solid var(--msp-border, #c5d0df);
   padding: 0.35rem 0.5rem;
 }
+
+.articleActions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.articleAction {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  height: 36px;
+  padding: 0 0.75rem;
+  border: 1px solid var(--msp-border, #c5d0df);
+  border-radius: 10px;
+  background: var(--msp-surface-2, #eef3f8);
+  color: inherit;
+  font: inherit;
+  font-size: 0.82rem;
+  font-weight: 650;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.articleAction:hover:not(:disabled) {
+  border-color: var(--msp-accent, #2b5fab);
+  color: var(--msp-accent, #2b5fab);
+}
+
+.articleAction:disabled {
+  opacity: 0.55;
+  cursor: wait;
+}
+
+.printHeader {
+  display: none;
+}
+
+@media print {
+  .articleActions,
+  .backLink {
+    display: none !important;
+  }
+
+  .portalPageHero {
+    display: none !important;
+  }
+
+  .printHeader {
+    display: block;
+    margin: 0 0 1rem;
+  }
+
+  .printHeader h1 {
+    margin: 0 0 0.35rem;
+    font-size: 1.6rem;
+  }
+
+  .articleBody {
+    color: #111;
+  }
+
+  .articleBody :global(a) {
+    color: #111;
+  }
+}

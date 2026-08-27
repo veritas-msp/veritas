@@ -148,6 +148,11 @@ export function generateTabTitle(type, data = {}, locale = "fr") {
   if (type === "Dashboard") return d.dashboardKpi;
   if (type === "DocumentsHub") return d.documentsList;
   if (type === "EquipmentInventory") return d.inventoryList;
+  if (type === "KnowledgeBaseArticle") {
+    const title = truncateLabel(data?.title || data?.name, 24) || d.knowledgeBase;
+    if (data?.mode === "edit") return `${title} · ${d.knowledgeArticleEdit}`;
+    return title;
+  }
   if (type === "KnowledgeBase") return d.knowledgeBase || type;
   return type;
 }

@@ -9,6 +9,9 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const root = path.join(__dirname, "..");
 const TABLE_MIGRATION = "schema/patches/20260827_knowledge_articles.sql";
 const GRANTS_MIGRATION = "schema/patches/20260827_knowledge_articles_grants.sql";
+const FOLDERS_MIGRATION = "schema/patches/20260827_knowledge_folders.sql";
+const CATEGORIES_MIGRATION = "schema/patches/20260827_knowledge_categories.sql";
+const VISIBILITY_TAGS_MIGRATION = "schema/patches/20260827_knowledge_visibility_tags.sql";
 let ensured = false;
 
 async function tableExists(client, table) {
@@ -35,6 +38,30 @@ export async function ensureKnowledgeArticlesSchema() {
     if (!(await tableExists(client, "v_b_knowledge_articles"))) {
       await runPatch(client, TABLE_MIGRATION);
       await runPatch(client, GRANTS_MIGRATION);
+    } else {
+      await client.query(`
+        ALTER TABLE v_b_knowledge_articles
+          ADD COLUMN IF NOT EXISTS visible_to_all_clients BOOLEAN NOT NULL DEFAULT FALSE,
+          ADD COLUMN IF NOT EXISTS visible_to_all_contacts BOOLEAN NOT NULL DEFAULT FALSE
+      `);
+    }
+    if (!(await tableExists(client, "v_b_knowledge_folders"))) {
+      await runPatch(client, FOLDERS_MIGRATION);
+    } else {
+      await client.query(`
+        ALTER TABLE v_b_knowledge_articles
+          ADD COLUMN IF NOT EXISTS folder_id UUID NULL
+      `);
+    }
+    if (!(await tableExists(client, "v_b_knowledge_categories"))) {
+      await runPatch(client, CATEGORIES_MIGRATION);
+    }
+    if (
+      (await tableExists(client, "v_b_knowledge_articles"))
+      && (await tableExists(client, "v_b_client_tags"))
+      && !(await tableExists(client, "v_b_knowledge_article_client_tags"))
+    ) {
+      await runPatch(client, VISIBILITY_TAGS_MIGRATION);
     }
     ensured = true;
   } catch (err) {

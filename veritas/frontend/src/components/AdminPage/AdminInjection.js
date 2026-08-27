@@ -551,8 +551,8 @@ export default function AdminInjection({
                         </tr>
                       </thead>
                       <tbody>
-                        {selectedFamily.fields.map(field => (
-                          <tr key={field.key}>
+                        {selectedFamily.fields.map((field, index) => (
+                          <tr key={`${field.csvColumn}-${field.key}-${index}`}>
                             <td>
                               <code>{field.csvColumn}</code>
                               {field.required ? (

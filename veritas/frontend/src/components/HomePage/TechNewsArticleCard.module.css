@@ -1,0 +1,117 @@
+.card {
+  position: relative;
+  background: light-dark(var(--mantine-color-white), var(--mantine-color-dark-6));
+  overflow: hidden;
+}
+
+.cover {
+  height: 4.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.cover[data-category="cve"] {
+  background: linear-gradient(135deg, #fecaca 0%, #ef4444 100%);
+  color: #7f1d1d;
+}
+
+.cover[data-category="security"] {
+  background: linear-gradient(135deg, #fed7aa 0%, #f97316 100%);
+  color: #9a3412;
+}
+
+.cover[data-category="news"] {
+  background: linear-gradient(135deg, #bfdbfe 0%, #3b82f6 100%);
+  color: #1e3a8a;
+}
+
+.cover[data-category="tech"] {
+  background: linear-gradient(135deg, #99f6e4 0%, #14b8a6 100%);
+  color: #115e59;
+}
+
+.coverIcon {
+  font-size: 1.85rem;
+  opacity: 0.88;
+}
+
+.badge {
+  position: absolute;
+  top: 0.55rem;
+  right: 0.55rem;
+  z-index: 1;
+  pointer-events: none;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.body {
+  display: block;
+  width: 100%;
+  margin-top: 0.7rem;
+  text-align: left;
+  color: inherit;
+}
+
+.title {
+  font-size: 0.86rem;
+  line-height: 1.35;
+  color: light-dark(var(--mantine-color-dark-7), var(--mantine-color-gray-0));
+}
+
+.body:hover .title {
+  color: var(--msp-accent, #2b5fab);
+}
+
+.footer {
+  margin-top: 0.75rem;
+  padding-top: 0.65rem;
+  border-top: 1px solid light-dark(var(--mantine-color-gray-2), var(--mantine-color-dark-5));
+}
+
+.sourceGroup {
+  min-width: 0;
+}
+
+.sourceMeta {
+  min-width: 0;
+}
+
+.action {
+  flex-shrink: 0;
+  background: light-dark(var(--mantine-color-gray-0), var(--mantine-color-dark-5));
+}
+
+.reactions {
+  margin-top: 0.35rem;
+}
+
+.reactions :global([class*="reactionsBar"]) {
+  padding: 0.15rem 0 0;
+}
+
+:global(html.dark) .cover[data-category="cve"] {
+  background: linear-gradient(135deg, #7f1d1d 0%, #b91c1c 100%);
+  color: #fecaca;
+}
+
+:global(html.dark) .cover[data-category="security"] {
+  background: linear-gradient(135deg, #7c2d12 0%, #c2410c 100%);
+  color: #fed7aa;
+}
+
+:global(html.dark) .cover[data-category="news"] {
+  background: linear-gradient(135deg, #1e3a8a 0%, #2563eb 100%);
+  color: #bfdbfe;
+}
+
+:global(html.dark) .cover[data-category="tech"] {
+  background: linear-gradient(135deg, #115e59 0%, #0f766e 100%);
+  color: #99f6e4;
+}
+
+:global(html.dark) .body:hover .title {
+  color: #74c0fc;
+}

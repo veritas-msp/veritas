@@ -512,9 +512,11 @@
   background-color: #ffffff;
 }
 
-input::placeholder,
-select::placeholder,
-textarea::placeholder {
+.searchInput::placeholder,
+.addTypeInput::placeholder,
+.formInput::placeholder,
+.input::placeholder,
+.maintenanceTextarea::placeholder {
   color: #6b7280;
 }
 
@@ -4363,18 +4365,17 @@ textarea.input {
 :global(html.dark) .addTypeInput,
 :global(html.dark) .formInput,
 :global(html.dark) .input,
-:global(html.dark) .maintenanceTextarea,
-:global(html.dark) input:not([type="checkbox"]):not([type="radio"]),
-:global(html.dark) select,
-:global(html.dark) textarea {
+:global(html.dark) .maintenanceTextarea {
   background-color: var(--msp-surface) !important;
   color: var(--msp-text) !important;
   border-color: var(--msp-border) !important;
 }
 
-:global(html.dark) input:not([type="checkbox"]):not([type="radio"]):hover,
-:global(html.dark) select:hover,
-:global(html.dark) textarea:hover {
+:global(html.dark) .searchInput:hover,
+:global(html.dark) .addTypeInput:hover,
+:global(html.dark) .formInput:hover,
+:global(html.dark) .input:hover,
+:global(html.dark) .maintenanceTextarea:hover {
   background-color: var(--msp-surface-2) !important;
   border-color: var(--msp-muted-light) !important;
 }

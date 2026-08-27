@@ -31,6 +31,7 @@ export const DOC_TYPE_ACCESS_KEY = {
   DocumentsHub: "DocumentsHub",
   KnowledgeBase: "KnowledgeBase",
   KnowledgeBaseEditor: "KnowledgeBase",
+  KnowledgeBaseArticle: "KnowledgeBase",
   Admin: "Admin"
 };
 const QUERY_KEYS = {
@@ -160,7 +161,15 @@ export function buildAgentPath(docType, data = null, options = {}) {
     case "DocumentsHub":
       return "/documents";
     case "KnowledgeBase":
-      return d.articleId ? `/knowledge-base/${encodeSeg(d.articleId)}` : "/knowledge-base";
+      return "/knowledge-base";
+    case "KnowledgeBaseArticle":
+    case "KnowledgeBaseEditor":
+      {
+        const articleId = d.articleId;
+        if (!articleId) return "/knowledge-base";
+        const base = `/knowledge-base/${encodeSeg(articleId)}`;
+        return d.mode === "edit" ? `${base}/edit` : base;
+      }
     case "EquipmentInventory":
       return "/inventory";
     case "MonitoringDetail":
@@ -421,11 +430,22 @@ export function parseAgentPath(pathname, search = "") {
       adminTab: null
     })
   }, {
+    re: /^\/knowledge-base\/([^/]+)\/edit$/,
+    run: ([, articleId]) => ({
+      docType: "KnowledgeBaseArticle",
+      data: {
+        articleId: decodeURIComponent(articleId),
+        mode: "edit"
+      },
+      adminTab: null
+    })
+  }, {
     re: /^\/knowledge-base\/([^/]+)$/,
     run: ([, articleId]) => ({
-      docType: "KnowledgeBase",
+      docType: "KnowledgeBaseArticle",
       data: {
-        articleId: decodeURIComponent(articleId)
+        articleId: decodeURIComponent(articleId),
+        mode: "read"
       },
       adminTab: null
     })

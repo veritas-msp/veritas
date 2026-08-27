@@ -10,14 +10,22 @@ async function handleJsonResponse(response, fallbackMessage) {
   return data;
 }
 
-export async function fetchKnowledgeArticles({ search, status } = {}) {
+export async function fetchKnowledgeArticles({ search, status, folderId, category } = {}) {
   const params = new URLSearchParams();
   if (search) params.set("search", search);
   if (status) params.set("status", status);
+  if (folderId) params.set("folderId", folderId);
+  if (category) params.set("category", category);
   const query = params.toString();
   const response = await fetch(`${BASE}${query ? `?${query}` : ""}`, { credentials: "include" });
   const data = await handleJsonResponse(response, "Error loading articles.");
   return Array.isArray(data?.articles) ? data.articles : [];
+}
+
+export async function fetchKnowledgeTagCatalog() {
+  const response = await fetch(`${BASE}/tag-catalog`, { credentials: "include" });
+  const data = await handleJsonResponse(response, "Error loading tags.");
+  return Array.isArray(data?.tags) ? data.tags : [];
 }
 
 export async function fetchKnowledgeArticle(id) {
@@ -76,6 +84,111 @@ export async function deleteKnowledgeArticle(id) {
   await handleJsonResponse(response, "Error deleting article.");
 }
 
+export async function deleteKnowledgeArticles(ids) {
+  const response = await fetch(`${BASE}/bulk-delete`, {
+    method: "POST",
+    credentials: "include",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ ids })
+  });
+  return handleJsonResponse(response, "Error deleting articles.");
+}
+
+export async function moveKnowledgeArticles(ids, folderId) {
+  const response = await fetch(`${BASE}/bulk-move`, {
+    method: "POST",
+    credentials: "include",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ ids, folderId: folderId || null })
+  });
+  return handleJsonResponse(response, "Error moving articles.");
+}
+
+const FOLDERS_BASE = `${API_BASE_URL}/knowledge-folders`;
+
+export async function fetchKnowledgeFolders() {
+  const response = await fetch(FOLDERS_BASE, { credentials: "include" });
+  const data = await handleJsonResponse(response, "Error loading folders.");
+  return {
+    folders: Array.isArray(data?.folders) ? data.folders : [],
+    tree: Array.isArray(data?.tree) ? data.tree : []
+  };
+}
+
+export async function fetchKnowledgeFolder(id) {
+  const response = await fetch(`${FOLDERS_BASE}/${id}`, { credentials: "include" });
+  const data = await handleJsonResponse(response, "Error loading folder.");
+  return data;
+}
+
+export async function createKnowledgeFolder(payload) {
+  const response = await fetch(FOLDERS_BASE, {
+    method: "POST",
+    credentials: "include",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload)
+  });
+  const data = await handleJsonResponse(response, "Error creating folder.");
+  return data.folder;
+}
+
+export async function updateKnowledgeFolder(id, payload) {
+  const response = await fetch(`${FOLDERS_BASE}/${id}`, {
+    method: "PATCH",
+    credentials: "include",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload)
+  });
+  const data = await handleJsonResponse(response, "Error saving folder.");
+  return data;
+}
+
+export async function deleteKnowledgeFolder(id) {
+  const response = await fetch(`${FOLDERS_BASE}/${id}`, {
+    method: "DELETE",
+    credentials: "include"
+  });
+  await handleJsonResponse(response, "Error deleting folder.");
+}
+
+const CATEGORIES_BASE = `${API_BASE_URL}/knowledge-categories`;
+
+export async function fetchKnowledgeCategories() {
+  const response = await fetch(CATEGORIES_BASE, { credentials: "include" });
+  const data = await handleJsonResponse(response, "Error loading categories.");
+  return Array.isArray(data?.categories) ? data.categories : [];
+}
+
+export async function createKnowledgeCategory(name) {
+  const response = await fetch(CATEGORIES_BASE, {
+    method: "POST",
+    credentials: "include",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ name })
+  });
+  const data = await handleJsonResponse(response, "Error creating category.");
+  return data.category;
+}
+
+export async function updateKnowledgeCategory(id, name) {
+  const response = await fetch(`${CATEGORIES_BASE}/${id}`, {
+    method: "PATCH",
+    credentials: "include",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ name })
+  });
+  const data = await handleJsonResponse(response, "Error saving category.");
+  return data.category;
+}
+
+export async function deleteKnowledgeCategory(id) {
+  const response = await fetch(`${CATEGORIES_BASE}/${id}`, {
+    method: "DELETE",
+    credentials: "include"
+  });
+  await handleJsonResponse(response, "Error deleting category.");
+}
+
 export async function uploadKnowledgeAsset(articleId, file) {
   const form = new FormData();
   form.append("file", file);
@@ -98,7 +211,7 @@ export function resolveKnowledgeAssetUrl(url) {
 }
 
 export function resolveKnowledgeHtml(html) {
-  return String(html || "").replace(/(src=")(\/api\/[^"]+)/g, (_match, prefix, path) => `${prefix}${resolveKnowledgeAssetUrl(path)}`);
+  return String(html || "").replace(/((?:src|href)=")(\/api\/[^"]+)/g, (_match, prefix, path) => `${prefix}${resolveKnowledgeAssetUrl(path)}`);
 }
 
 export function toStoredKnowledgeHtml(html) {
@@ -107,7 +220,7 @@ export function toStoredKnowledgeHtml(html) {
 
 export function resolveKnowledgeJson(json) {
   try {
-    return JSON.parse(JSON.stringify(json || {}).replace(/"src":"(\/api\/[^"]+)"/g, (_match, path) => `"src":"${resolveKnowledgeAssetUrl(path)}"`));
+    return JSON.parse(JSON.stringify(json || {}).replace(/"(src|href)":"(\/api\/[^"]+)"/g, (_match, key, path) => `"${key}":"${resolveKnowledgeAssetUrl(path)}"`));
   } catch {
     return json;
   }

@@ -13,26 +13,50 @@ import TaskItem from "@tiptap/extension-task-item";
 import Highlight from "@tiptap/extension-highlight";
 import Underline from "@tiptap/extension-underline";
 import { Icon } from "@iconify/react";
+import { toast } from "react-toastify";
 import { resolveKnowledgeAssetUrl, uploadKnowledgeAsset } from "../../api/knowledgeBase";
+import { KNOWLEDGE_EDITOR_NODES, toVideoEmbedSrc } from "./knowledgeEditorNodes";
 import styles from "./knowledgeBase.module.css";
 
 const EMPTY_DOC = { type: "doc", content: [{ type: "paragraph" }] };
 
-function slashCommands(copy) {
+function slashCommands(copy, localeTag) {
+  const s = copy.slash || {};
   return [
-    { id: "heading1", label: copy.slash.heading1, icon: "mdi:format-header-1", run: editor => editor.chain().focus().toggleHeading({ level: 1 }).run() },
-    { id: "heading2", label: copy.slash.heading2, icon: "mdi:format-header-2", run: editor => editor.chain().focus().toggleHeading({ level: 2 }).run() },
-    { id: "heading3", label: copy.slash.heading3, icon: "mdi:format-header-3", run: editor => editor.chain().focus().toggleHeading({ level: 3 }).run() },
-    { id: "paragraph", label: copy.slash.paragraph, icon: "mdi:format-paragraph", run: editor => editor.chain().focus().setParagraph().run() },
-    { id: "bullet", label: copy.slash.bullet, icon: "mdi:format-list-bulleted", run: editor => editor.chain().focus().toggleBulletList().run() },
-    { id: "numbered", label: copy.slash.numbered, icon: "mdi:format-list-numbered", run: editor => editor.chain().focus().toggleOrderedList().run() },
-    { id: "todo", label: copy.slash.todo, icon: "mdi:checkbox-marked-outline", run: editor => editor.chain().focus().toggleTaskList().run() },
-    { id: "quote", label: copy.slash.quote, icon: "mdi:format-quote-close", run: editor => editor.chain().focus().toggleBlockquote().run() },
-    { id: "code", label: copy.slash.code, icon: "mdi:code-braces", run: editor => editor.chain().focus().toggleCodeBlock().run() },
-    { id: "table", label: copy.slash.table, icon: "mdi:table", run: editor => editor.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run() },
-    { id: "image", label: copy.slash.image, icon: "mdi:image-outline", run: "image" },
-    { id: "divider", label: copy.slash.divider, icon: "mdi:minus", run: editor => editor.chain().focus().setHorizontalRule().run() }
+    { id: "heading1", group: "headings", label: s.heading1, icon: "mdi:format-header-1", keys: "Ctrl ⇧ 1", run: editor => editor.chain().focus().toggleHeading({ level: 1 }).run() },
+    { id: "heading2", group: "headings", label: s.heading2, icon: "mdi:format-header-2", keys: "Ctrl ⇧ 2", run: editor => editor.chain().focus().toggleHeading({ level: 2 }).run() },
+    { id: "heading3", group: "headings", label: s.heading3, icon: "mdi:format-header-3", keys: "Ctrl ⇧ 3", run: editor => editor.chain().focus().toggleHeading({ level: 3 }).run() },
+    { id: "heading4", group: "headings", label: s.heading4, icon: "mdi:format-header-4", keys: "Ctrl ⇧ 4", run: editor => editor.chain().focus().toggleHeading({ level: 4 }).run() },
+    { id: "paragraph", group: "headings", label: s.paragraph, icon: "mdi:format-paragraph", run: editor => editor.chain().focus().setParagraph().run() },
+    { id: "todo", group: "lists", label: s.todo, icon: "mdi:checkbox-marked-outline", keys: "Ctrl ⇧ 7", run: editor => editor.chain().focus().toggleTaskList().run() },
+    { id: "bullet", group: "lists", label: s.bullet, icon: "mdi:format-list-bulleted", keys: "Ctrl ⇧ 8", run: editor => editor.chain().focus().toggleBulletList().run() },
+    { id: "numbered", group: "lists", label: s.numbered, icon: "mdi:format-list-numbered", keys: "Ctrl ⇧ 9", run: editor => editor.chain().focus().toggleOrderedList().run() },
+    { id: "image", group: "media", label: s.image, icon: "mdi:image-outline", run: "image" },
+    { id: "video", group: "media", label: s.video, icon: "mdi:play-box-outline", run: "video" },
+    { id: "pdf", group: "media", label: s.pdf, icon: "mdi:file-pdf-box", run: "pdf" },
+    { id: "attachment", group: "media", label: s.attachment, icon: "mdi:paperclip", run: "file" },
+    { id: "table", group: "blocks", label: s.table, icon: "mdi:table", run: editor => editor.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run() },
+    { id: "quote", group: "blocks", label: s.quote, icon: "mdi:format-quote-close", keys: "Ctrl ]", run: editor => editor.chain().focus().toggleBlockquote().run() },
+    { id: "code", group: "blocks", label: s.code, icon: "mdi:code-braces", keys: "Ctrl ⇧ C", run: editor => editor.chain().focus().toggleCodeBlock().run() },
+    { id: "math", group: "blocks", label: s.math, icon: "mdi:function-variant", run: "math" },
+    { id: "toggle", group: "blocks", label: s.toggle, icon: "mdi:chevron-down-box-outline", run: editor => editor.chain().focus().setToggleBlock(s.togglePlaceholder).run() },
+    { id: "divider", group: "inserts", label: s.divider, icon: "mdi:minus", keys: "Ctrl _", run: editor => editor.chain().focus().setHorizontalRule().run() },
+    { id: "pageBreak", group: "inserts", label: s.pageBreak, icon: "mdi:page-layout-header-footer", run: editor => editor.chain().focus().setPageBreak().run() },
+    { id: "date", group: "inserts", label: s.date, icon: "mdi:calendar", run: editor => editor.chain().focus().insertContent(formatStamp(localeTag, "date")).run() },
+    { id: "time", group: "inserts", label: s.time, icon: "mdi:clock-outline", run: editor => editor.chain().focus().insertContent(formatStamp(localeTag, "time")).run() },
+    { id: "datetime", group: "inserts", label: s.datetime, icon: "mdi:calendar-clock", run: editor => editor.chain().focus().insertContent(formatStamp(localeTag, "datetime")).run() },
+    { id: "calloutInfo", group: "notices", label: s.calloutInfo, icon: "mdi:information-outline", run: editor => editor.chain().focus().setCallout("info").run() },
+    { id: "calloutSuccess", group: "notices", label: s.calloutSuccess, icon: "mdi:check-circle-outline", run: editor => editor.chain().focus().setCallout("success").run() },
+    { id: "calloutWarning", group: "notices", label: s.calloutWarning, icon: "mdi:alert-outline", run: editor => editor.chain().focus().setCallout("warning").run() },
+    { id: "calloutDanger", group: "notices", label: s.calloutDanger, icon: "mdi:alert-octagon-outline", run: editor => editor.chain().focus().setCallout("danger").run() }
   ];
+}
+
+function formatStamp(localeTag, kind) {
+  const now = new Date();
+  if (kind === "date") return now.toLocaleDateString(localeTag, { dateStyle: "long" });
+  if (kind === "time") return now.toLocaleTimeString(localeTag, { timeStyle: "short" });
+  return now.toLocaleString(localeTag, { dateStyle: "medium", timeStyle: "short" });
 }
 
 function getSlashQuery(editor) {
@@ -54,27 +78,50 @@ function deleteSlashToken(editor) {
   editor.chain().focus().deleteRange({ from, to: $from.pos }).run();
 }
 
+function emptyParagraphCoords(editor) {
+  if (!editor) return null;
+  const { $from } = editor.state.selection;
+  if ($from.parent.type.name !== "paragraph" || $from.parent.content.size !== 0) return null;
+  try {
+    return editor.view.coordsAtPos($from.pos);
+  } catch {
+    return null;
+  }
+}
+
 export default function KnowledgeBaseEditor({
   articleId,
   contentJson,
   editable,
   copy,
+  locale = "fr",
   onChange
 }) {
   const fileRef = useRef(null);
+  const areaRef = useRef(null);
+  const menuRef = useRef(null);
+  const chromeRef = useRef(() => {});
   const [slash, setSlash] = useState(null);
   const [slashIndex, setSlashIndex] = useState(0);
-  const commands = useMemo(() => slashCommands(copy), [copy]);
+  const [plus, setPlus] = useState(null);
+  const [fileKind, setFileKind] = useState("image");
+  const [ask, setAsk] = useState(null);
+  const localeTag = locale === "en" ? "en-GB" : locale === "de" ? "de-DE" : locale === "it" ? "it-IT" : locale === "es" ? "es-ES" : "fr-FR";
+  const commands = useMemo(() => slashCommands(copy, localeTag), [copy, localeTag]);
   const filtered = useMemo(() => {
-    const q = String(slash?.query || "").toLowerCase();
-    return commands.filter(item => !q || item.label.toLowerCase().includes(q) || item.id.includes(q));
+    const q = String(slash?.query || "").toLowerCase().trim();
+    return commands.filter(item => item.label && (!q || item.label.toLowerCase().includes(q) || item.id.toLowerCase().includes(q)));
   }, [commands, slash]);
 
   const editor = useEditor({
     editable,
     extensions: [
-      StarterKit.configure({ heading: { levels: [1, 2, 3] } }),
-      Placeholder.configure({ placeholder: copy.editorPlaceholder }),
+      StarterKit.configure({ heading: { levels: [1, 2, 3, 4] } }),
+      Placeholder.configure({
+        placeholder: copy.editorPlaceholder,
+        showOnlyWhenEditable: true,
+        showOnlyCurrent: true
+      }),
       Underline,
       Highlight,
       Link.configure({ openOnClick: false, autolink: true }),
@@ -84,7 +131,8 @@ export default function KnowledgeBaseEditor({
       TableHeader,
       TableCell,
       TaskList,
-      TaskItem.configure({ nested: true })
+      TaskItem.configure({ nested: true }),
+      ...KNOWLEDGE_EDITOR_NODES
     ],
     content: contentJson && typeof contentJson === "object" ? contentJson : EMPTY_DOC,
     onUpdate: ({ editor: current }) => {
@@ -92,20 +140,45 @@ export default function KnowledgeBaseEditor({
         json: current.getJSON(),
         html: current.getHTML()
       });
-      const query = getSlashQuery(current);
-      if (query == null) {
-        setSlash(null);
-        return;
-      }
+      chromeRef.current(current);
+    },
+    onSelectionUpdate: ({ editor: current }) => {
+      chromeRef.current(current);
+    }
+  }, [articleId]);
+
+  const syncChrome = useCallback(current => {
+    if (!editable) {
+      setSlash(null);
+      setPlus(null);
+      return;
+    }
+    const query = getSlashQuery(current);
+    if (query != null) {
       const coords = current.view.coordsAtPos(current.state.selection.from);
       setSlash({
         query,
+        fromPlus: false,
         top: coords.bottom + 8,
         left: coords.left
       });
       setSlashIndex(0);
+      setPlus(null);
+      return;
     }
-  }, [articleId]);
+    setSlash(prev => (prev && !prev.fromPlus ? null : prev));
+    const coords = emptyParagraphCoords(current);
+    if (!coords || !areaRef.current) {
+      setPlus(null);
+      return;
+    }
+    setPlus({
+      top: coords.top,
+      left: Math.max(8, coords.left - 32)
+    });
+  }, [editable]);
+
+  chromeRef.current = syncChrome;
 
   useEffect(() => {
     if (!editor) return;
@@ -119,20 +192,58 @@ export default function KnowledgeBaseEditor({
     if (current !== next) editor.commands.setContent(contentJson, false);
   }, [editor, articleId]);
 
-  const pickImage = useCallback(() => {
-    fileRef.current?.click();
+  const pickFile = useCallback(kind => {
+    setFileKind(kind);
+    window.setTimeout(() => fileRef.current?.click(), 0);
+  }, []);
+
+  const openAsk = useCallback(kind => {
+    setAsk({ kind, value: "" });
   }, []);
 
   const applyCommand = useCallback(async item => {
     if (!editor || !item) return;
-    deleteSlashToken(editor);
+    if (slash && !slash.fromPlus) deleteSlashToken(editor);
     setSlash(null);
     if (item.run === "image") {
-      pickImage();
+      pickFile("image");
+      return;
+    }
+    if (item.run === "pdf") {
+      pickFile("pdf");
+      return;
+    }
+    if (item.run === "file") {
+      pickFile("file");
+      return;
+    }
+    if (item.run === "video") {
+      openAsk("video");
+      return;
+    }
+    if (item.run === "math") {
+      openAsk("math");
       return;
     }
     item.run(editor);
-  }, [editor, pickImage]);
+  }, [editor, slash, pickFile, openAsk]);
+
+  const submitAsk = useCallback(event => {
+    event?.preventDefault?.();
+    if (!editor || !ask) return;
+    const value = String(ask.value || "").trim();
+    setAsk(null);
+    if (!value) return;
+    if (ask.kind === "video") {
+      const src = toVideoEmbedSrc(value);
+      if (src) editor.chain().focus().setVideoEmbed({ src, provider: "embed" }).run();
+      else toast.error(copy.slash.videoPrompt);
+      return;
+    }
+    if (ask.kind === "math") {
+      editor.chain().focus().setMathBlock(value).run();
+    }
+  }, [ask, editor, copy.slash]);
 
   const onFile = useCallback(async event => {
     const file = event.target.files?.[0];
@@ -140,11 +251,50 @@ export default function KnowledgeBaseEditor({
     if (!file || !articleId || !editor) return;
     try {
       const asset = await uploadKnowledgeAsset(articleId, file);
-      if (asset?.url) editor.chain().focus().setImage({ src: resolveKnowledgeAssetUrl(asset.url), alt: file.name }).run();
-    } catch {
-      /* toast handled by caller if needed */
+      if (!asset?.url) return;
+      const src = resolveKnowledgeAssetUrl(asset.url);
+      if (fileKind === "image" || file.type.startsWith("image/")) {
+        editor.chain().focus().setImage({ src, alt: file.name }).run();
+        return;
+      }
+      if (fileKind === "pdf" || file.type === "application/pdf") {
+        editor.chain().focus().setPdfEmbed({ src, title: file.name }).run();
+        return;
+      }
+      if (file.type.startsWith("video/")) {
+        editor.chain().focus().setVideoEmbed({ src, provider: "file" }).run();
+        return;
+      }
+      editor.chain().focus().setAttachment({ href: src, name: file.name, mime: file.type }).run();
+    } catch (err) {
+      toast.error(err.message || copy.saveError);
     }
-  }, [articleId, editor]);
+  }, [articleId, editor, fileKind, copy.saveError]);
+
+  const openPlusMenu = useCallback(() => {
+    if (!editor) return;
+    editor.chain().focus().run();
+    let top = plus?.top;
+    let left = plus?.left;
+    if (top == null || left == null) {
+      try {
+        const coords = editor.view.coordsAtPos(editor.state.selection.from);
+        top = coords.bottom;
+        left = coords.left;
+      } catch {
+        return;
+      }
+    } else {
+      top += 28;
+    }
+    setSlash({
+      query: "",
+      fromPlus: true,
+      top,
+      left
+    });
+    setSlashIndex(0);
+  }, [plus, editor]);
 
   useEffect(() => {
     if (!slash) return undefined;
@@ -167,6 +317,27 @@ export default function KnowledgeBaseEditor({
     return () => window.removeEventListener("keydown", onKey, true);
   }, [slash, filtered, slashIndex, applyCommand]);
 
+  useEffect(() => {
+    if (!slash?.fromPlus) return undefined;
+    const onPointer = event => {
+      if (menuRef.current?.contains(event.target)) return;
+      setSlash(null);
+    };
+    window.addEventListener("pointerdown", onPointer);
+    return () => window.removeEventListener("pointerdown", onPointer);
+  }, [slash]);
+
+  useEffect(() => {
+    const el = areaRef.current;
+    if (!el || !editor) return undefined;
+    const onScroll = () => {
+      setSlash(current => (current?.fromPlus ? null : current));
+      chromeRef.current(editor);
+    };
+    el.addEventListener("scroll", onScroll, { passive: true });
+    return () => el.removeEventListener("scroll", onScroll);
+  }, [editor]);
+
   if (!editor) return null;
 
   const tool = (isActive, icon, action, label) => (
@@ -175,8 +346,16 @@ export default function KnowledgeBaseEditor({
     </button>
   );
 
+  const accept = fileKind === "pdf"
+    ? "application/pdf"
+    : fileKind === "file"
+      ? "*/*"
+      : fileKind === "video"
+        ? "video/*"
+        : "image/*";
+
   return (
-    <div>
+    <div className={styles.editorBody}>
       <div className={styles.editorBar}>
         {tool(editor.isActive("bold"), "mdi:format-bold", () => editor.chain().focus().toggleBold().run(), "Bold")}
         {tool(editor.isActive("italic"), "mdi:format-italic", () => editor.chain().focus().toggleItalic().run(), "Italic")}
@@ -185,31 +364,71 @@ export default function KnowledgeBaseEditor({
         {tool(editor.isActive("bulletList"), "mdi:format-list-bulleted", () => editor.chain().focus().toggleBulletList().run(), copy.slash.bullet)}
         {tool(editor.isActive("orderedList"), "mdi:format-list-numbered", () => editor.chain().focus().toggleOrderedList().run(), copy.slash.numbered)}
         {tool(editor.isActive("taskList"), "mdi:checkbox-marked-outline", () => editor.chain().focus().toggleTaskList().run(), copy.slash.todo)}
-        {tool(false, "mdi:image-outline", pickImage, copy.insertImage)}
+        {tool(false, "mdi:plus", openPlusMenu, copy.insertBlock)}
+        {tool(false, "mdi:image-outline", () => pickFile("image"), copy.insertImage)}
         {tool(false, "mdi:undo", () => editor.chain().focus().undo().run(), "Undo")}
         {tool(false, "mdi:redo", () => editor.chain().focus().redo().run(), "Redo")}
       </div>
-      <div className={styles.editorArea}>
+      <div className={styles.editorArea} ref={areaRef}>
         <EditorContent editor={editor} />
       </div>
-      <input ref={fileRef} className={styles.hiddenFile} type="file" accept="image/*" onChange={onFile} />
+      <input ref={fileRef} className={styles.hiddenFile} type="file" accept={accept} onChange={onFile} />
+      {editable && plus && !slash ? (
+        <button type="button" className={styles.blockPlus} style={{ top: plus.top, left: plus.left }} onClick={openPlusMenu} title={copy.insertBlock} aria-label={copy.insertBlock}>
+          <Icon icon="mdi:plus" />
+        </button>
+      ) : null}
       {slash && filtered.length > 0 ? (
-        <div className={styles.slashMenu} style={{ top: slash.top, left: slash.left }} role="listbox">
-          {filtered.map((item, index) => (
-            <button
-              key={item.id}
-              type="button"
-              className={`${styles.slashItem} ${index === slashIndex ? styles.slashItemActive : ""}`}
-              onMouseDown={event => {
-                event.preventDefault();
-                applyCommand(item);
-              }}
-            >
-              <Icon icon={item.icon} />
-              {item.label}
-            </button>
-          ))}
+        <div ref={menuRef} className={styles.slashMenu} style={{ top: slash.top, left: slash.left }} role="listbox">
+          {filtered.map((item, index) => {
+            const showSep = index > 0 && filtered[index - 1].group !== item.group;
+            return (
+              <div key={item.id}>
+                {showSep ? <div className={styles.slashSep} /> : null}
+                <button
+                  type="button"
+                  className={`${styles.slashItem} ${index === slashIndex ? styles.slashItemActive : ""}`}
+                  onMouseDown={event => {
+                    event.preventDefault();
+                    applyCommand(item);
+                  }}
+                >
+                  <span className={styles.slashIcon}><Icon icon={item.icon} /></span>
+                  <span className={styles.slashLabel}>{item.label}</span>
+                  {item.keys ? <span className={styles.slashKeys}>{item.keys}</span> : null}
+                </button>
+              </div>
+            );
+          })}
         </div>
+      ) : null}
+      {ask ? (
+        <form className={styles.embedPrompt} onSubmit={submitAsk}>
+          <div className={styles.embedPromptTitle}>{ask.kind === "math" ? copy.slash.mathPrompt : copy.slash.videoPrompt}</div>
+          <input
+            className={styles.search}
+            value={ask.value}
+            onChange={event => setAsk(current => ({ ...current, value: event.target.value }))}
+            placeholder={ask.kind === "math" ? "E = mc^2" : "https://"}
+            autoFocus
+          />
+          <div className={styles.embedPromptActions}>
+            {ask.kind === "video" ? (
+              <button
+                type="button"
+                className={styles.secondaryBtn}
+                onClick={() => {
+                  setAsk(null);
+                  pickFile("video");
+                }}
+              >
+                {copy.slash.videoFile}
+              </button>
+            ) : null}
+            <button type="button" className={styles.secondaryBtn} onClick={() => setAsk(null)}>{copy.modalCancel}</button>
+            <button type="submit" className={styles.secondaryBtn}>{copy.save}</button>
+          </div>
+        </form>
       ) : null}
     </div>
   );

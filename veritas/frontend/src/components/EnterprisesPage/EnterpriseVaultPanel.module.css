@@ -34,11 +34,51 @@
 .filters .searchWrap {
   flex: 1 1 240px;
   max-width: none;
+  overflow: hidden;
+}
+
+.filters .searchWrap :global(input:not([type="checkbox"]):not([type="radio"])),
+.filters .searchWrap :global(input:not([type="checkbox"]):not([type="radio"]):hover),
+.filters .searchWrap :global(input:not([type="checkbox"]):not([type="radio"]):focus),
+.filters .searchWrap :global(input:not([type="checkbox"]):not([type="radio"]):focus-visible),
+:global(html.dark) .filters .searchWrap :global(input:not([type="checkbox"]):not([type="radio"])),
+:global(html.dark) .filters .searchWrap :global(input:not([type="checkbox"]):not([type="radio"]):hover),
+:global(html.dark) .filters .searchWrap :global(input:not([type="checkbox"]):not([type="radio"]):focus),
+:global(html.dark) .filters .searchWrap :global(input:not([type="checkbox"]):not([type="radio"]):focus-visible) {
+  background: transparent !important;
+  background-color: transparent !important;
+  border: none !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  outline: none !important;
+  -webkit-appearance: none;
+  appearance: none;
+  color: inherit !important;
+}
+
+.filters .searchWrap :global(input::-webkit-search-decoration),
+.filters .searchWrap :global(input::-webkit-search-cancel-button),
+.filters .searchWrap :global(input::-webkit-search-results-button),
+.filters .searchWrap :global(input::-webkit-search-results-decoration) {
+  display: none;
+  -webkit-appearance: none;
 }
 
 .filterSelect {
   flex: 0 1 200px;
   min-width: 160px;
+  appearance: none;
+  -webkit-appearance: none;
+}
+
+:global(html.dark) .filters .searchWrap,
+:global(html.dark) .filters .searchWrap:focus-within,
+:global(html.dark) .filterSelect,
+:global(html.dark) .filterSelect:hover,
+:global(html.dark) .filterSelect:focus {
+  background: var(--msp-surface-2) !important;
+  color: var(--msp-text) !important;
+  border-color: var(--msp-border) !important;
 }
 
 .loadingState {

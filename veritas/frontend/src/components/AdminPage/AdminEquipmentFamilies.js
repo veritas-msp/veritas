@@ -5,7 +5,7 @@ import { toast } from "react-toastify";
 import { Icon } from "@iconify/react";
 import { createEquipmentFamily, deleteEquipmentFamily, fetchEquipmentFamilies, updateEquipmentFamily } from "../../api/equipmentFamilies";
 import EquipmentFamilyFormModal from "./EquipmentFamilyFormModal";
-import { buildDefaultEquipmentFamilyDraft, buildEquipmentFamilyDraftFromFamily, getDefaultEquipmentFamilies } from "./equipmentFamilyConstants";
+import { buildDefaultEquipmentFamilyDraft, buildEquipmentFamilyDraftFromFamily, getDefaultEquipmentFamilies, uniqueEquipmentFieldKeys } from "./equipmentFamilyConstants";
 import { Btn, Card, ConfirmModal, Page, Switch, Table, Toolbar } from "./AdminUi";
 import adminUi from "./AdminUi.module.css";
 const EMPTY_FORM = buildDefaultEquipmentFamilyDraft();
@@ -77,13 +77,13 @@ export default function AdminEquipmentFamilies() {
         sortOrder: form.sortOrder === "" ? 100 : Number(form.sortOrder),
         honeycombQ: form.honeycombQ === "" ? null : Number(form.honeycombQ),
         honeycombR: form.honeycombR === "" ? null : Number(form.honeycombR),
-        fields: (form.fields || []).map((field, index) => ({
-          fieldKey: field.fieldKey,
+        fields: uniqueEquipmentFieldKeys((form.fields || []).map((field, index) => ({
+          id: field.id,
           label: String(field.label || "").trim(),
           fieldType: field.fieldType || "text",
           required: Boolean(field.required),
           displayOrder: (index + 1) * 10
-        })).filter(field => field.label)
+        })).filter(field => field.label))
       };
       if (!payload.label) {
         toast.warn(copy.labelRequired);

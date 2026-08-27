@@ -10,6 +10,7 @@ import { setUserLocaleOverride, useAppLocale } from "../../../hooks/useAppGenera
 import { APP_LOCALES } from "../../../i18n/locales";
 import AvatarEditor from "../../shared/UserAvatar/AvatarEditor";
 import UserAvatar from "../../shared/UserAvatar/UserAvatar";
+import UserInfoIcons from "./UserInfoIcons";
 import { DEFAULT_TICKET_CHAT_UI_SETTINGS, TICKET_CHAT_UI_SETTINGS_KEY, normalizeTicketChatUiSettings } from "../../../utils/ticketChatUiSettings";
 import { DEFAULT_USER_IN_APP_PREFERENCES, normalizeUserInAppPreferences } from "../../../utils/inAppNotificationSettings";
 import { Modal, ModalFooter, ModalForm, IconField, Input, Btn, BtnIcon, FieldRow, Switch, ChoiceGroup } from "../../AdminPage/AdminUi";
@@ -420,19 +421,23 @@ export default function UserProfile() {
             {t.accountDisabled}
           </div>}
 
-        <header className={layout.hero}>
+        <header className={`${layout.hero} ${s.heroWithUser}`}>
           <div className={layout.heroText}>
             <p className={layout.eyebrow}>
               <Icon icon="mdi:account-circle-outline" aria-hidden />
               {t.eyebrow}
             </p>
             <h1 className={layout.pageTitle}>{t.pageTitle}</h1>
-            <p className={layout.pageSubtitle}>
-              {displayName} · {user.email}
-            </p>
           </div>
           <div className={layout.heroActions}>
-            <UserAvatar user={user} name={displayName} size={80} variant="agent" />
+            <UserInfoIcons
+              user={user}
+              name={displayName}
+              job={user.profile_label || t.roles[user.role] || user.profile || ""}
+              email={user.email}
+              detail={formatProfileDate(user.last_login_at, locale)}
+              detailIcon="tabler:clock"
+            />
           </div>
         </header>
 

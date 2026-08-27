@@ -409,6 +409,7 @@
   border: 1px solid var(--msp-border);
   border-radius: var(--msp-radius-sm);
   background: var(--msp-surface-2);
+  overflow: hidden;
   transition: border-color 0.15s, box-shadow 0.15s, background 0.15s;
 }
 
@@ -432,19 +433,35 @@
   padding: 0.3rem 0 !important;
   border: none !important;
   background: transparent !important;
+  background-color: transparent !important;
   color: var(--msp-text) !important;
   font-size: 0.8125rem !important;
   box-shadow: none !important;
+  outline: none !important;
   -webkit-appearance: none;
   appearance: none;
+  color-scheme: inherit;
 }
 
+.searchInput::-webkit-search-decoration,
+.searchInput::-webkit-search-cancel-button,
+.searchInput::-webkit-search-results-button,
+.searchInput::-webkit-search-results-decoration {
+  display: none;
+  -webkit-appearance: none;
+}
+
+.searchWrap .searchInput:not([type="checkbox"]):not([type="radio"]),
+.searchWrap .searchInput:not([type="checkbox"]):not([type="radio"]):focus,
+.searchWrap .searchInput:not([type="checkbox"]):not([type="radio"]):hover,
 .page .searchWrap .searchInput,
 .page .searchWrap .searchInput:focus,
 .page .searchWrap .searchInput:hover {
   background: transparent !important;
+  background-color: transparent !important;
   border: none !important;
   box-shadow: none !important;
+  outline: none !important;
   color: var(--msp-text) !important;
 }
 
@@ -1518,15 +1535,21 @@
 }
 
 
+:global(html.dark) .searchWrap:focus-within,
 :global(html.dark) .page .searchWrap:focus-within {
   background: var(--msp-surface-2);
 }
 
+:global(html.dark) .searchWrap .searchInput:not([type="checkbox"]):not([type="radio"]),
+:global(html.dark) .searchWrap .searchInput:not([type="checkbox"]):not([type="radio"]):focus,
+:global(html.dark) .searchWrap .searchInput:not([type="checkbox"]):not([type="radio"]):hover,
 :global(html.dark) .page .searchWrap .searchInput,
 :global(html.dark) .page .searchWrap .searchInput:focus,
 :global(html.dark) .page .searchWrap .searchInput:hover {
   background: transparent !important;
+  background-color: transparent !important;
   border: none !important;
+  box-shadow: none !important;
   color: var(--msp-text) !important;
 }
 

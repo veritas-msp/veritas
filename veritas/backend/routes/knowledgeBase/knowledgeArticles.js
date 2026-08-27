@@ -10,11 +10,14 @@ import {
   addKnowledgeAsset,
   createKnowledgeArticle,
   deleteKnowledgeArticle,
+  deleteKnowledgeArticles,
   ensureKnowledgeUploadsDir,
   getKnowledgeArticle,
   getKnowledgeAsset,
   KNOWLEDGE_ASSETS_DIR,
   listKnowledgeArticles,
+  listKnowledgeTagCatalog,
+  moveKnowledgeArticles,
   publishKnowledgeArticle,
   unpublishKnowledgeArticle,
   updateKnowledgeArticle
@@ -23,7 +26,34 @@ import {
 const router = express.Router();
 router.use(verifyJWT);
 
-const ALLOWED_MIME = new Set(["image/jpeg", "image/png", "image/gif", "image/webp", "image/svg+xml"]);
+const ALLOWED_MIME = new Set([
+  "image/jpeg",
+  "image/png",
+  "image/gif",
+  "image/webp",
+  "image/svg+xml",
+  "application/pdf",
+  "video/mp4",
+  "video/webm",
+  "video/quicktime",
+  "video/ogg",
+  "text/plain",
+  "text/csv",
+  "application/zip",
+  "application/x-zip-compressed",
+  "application/msword",
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  "application/vnd.ms-excel",
+  "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+  "application/vnd.ms-powerpoint",
+  "application/vnd.openxmlformats-officedocument.presentationml.presentation"
+]);
+const ALLOWED_EXT = new Set([
+  ".jpg", ".jpeg", ".png", ".gif", ".webp", ".svg", ".pdf",
+  ".mp4", ".webm", ".mov", ".ogg",
+  ".txt", ".csv", ".zip",
+  ".doc", ".docx", ".xls", ".xlsx", ".ppt", ".pptx"
+]);
 ensureKnowledgeUploadsDir();
 
 const storage = multer.diskStorage({
@@ -39,10 +69,12 @@ const storage = multer.diskStorage({
 
 const upload = multer({
   storage,
-  limits: { fileSize: 8 * 1024 * 1024 },
+  limits: { fileSize: 25 * 1024 * 1024 },
   fileFilter: (_req, file, cb) => {
-    if (ALLOWED_MIME.has(file.mimetype)) cb(null, true);
-    else cb(new Error(`File type not allowed: ${file.mimetype}`));
+    if (ALLOWED_MIME.has(file.mimetype)) return cb(null, true);
+    const ext = path.extname(file.originalname || "").toLowerCase();
+    if (file.mimetype === "application/octet-stream" && ALLOWED_EXT.has(ext)) return cb(null, true);
+    cb(new Error(`File type not allowed: ${file.mimetype}`));
   }
 });
 
@@ -62,7 +94,7 @@ function canSeeDrafts(canManage, article) {
 router.get(
   "/",
   requirePermission("knowledge_base.view"),
-  [query("search").optional().isString(), query("status").optional().isIn(["draft", "published", "all"])],
+  [query("search").optional().isString(), query("status").optional().isIn(["draft", "published", "all"]), query("folderId").optional().isString(), query("category").optional().isString()],
   async (req, res) => {
     if (validationErrorOrNull(req, res)) return;
     try {
@@ -71,7 +103,9 @@ router.get(
       const articles = await listKnowledgeArticles({
         search: req.query.search,
         status: canManage ? status : "published",
-        includeDrafts: canManage
+        includeDrafts: canManage,
+        folderId: req.query.folderId,
+        category: req.query.category
       });
       res.json({ articles });
     } catch (err) {
@@ -86,12 +120,55 @@ router.post("/", requirePermission("knowledge_base.create"), async (req, res) =>
     const article = await createKnowledgeArticle({
       title: req.body?.title,
       category: req.body?.category,
-      authorUserId: req.user?.id
+      authorUserId: req.user?.id,
+      folderId: req.body?.folderId
     });
     res.status(201).json({ article });
   } catch (err) {
     console.error("[POST /knowledge-articles]", err);
-    res.status(500).json({ error: "Error creating article." });
+    res.status(err.status || 500).json({ error: err.message || "Error creating article." });
+  }
+});
+
+router.post(
+  "/bulk-move",
+  requireAnyPermission("knowledge_base.edit", "knowledge_base.create"),
+  [body("ids").isArray({ min: 1, max: 100 }), body("ids.*").isUUID(), body("folderId").optional({ nullable: true }).isUUID()],
+  async (req, res) => {
+    if (validationErrorOrNull(req, res)) return;
+    try {
+      const result = await moveKnowledgeArticles(req.body.ids, req.body.folderId);
+      res.json(result);
+    } catch (err) {
+      console.error("[POST /knowledge-articles/bulk-move]", err);
+      res.status(err.status || 500).json({ error: err.message || "Error moving articles." });
+    }
+  }
+);
+
+router.post(
+  "/bulk-delete",
+  requirePermission("knowledge_base.delete"),
+  [body("ids").isArray({ min: 1, max: 100 }), body("ids.*").isUUID()],
+  async (req, res) => {
+    if (validationErrorOrNull(req, res)) return;
+    try {
+      const result = await deleteKnowledgeArticles(req.body.ids);
+      res.json(result);
+    } catch (err) {
+      console.error("[POST /knowledge-articles/bulk-delete]", err);
+      res.status(500).json({ error: "Error deleting articles." });
+    }
+  }
+);
+
+router.get("/tag-catalog", requirePermission("knowledge_base.view"), async (_req, res) => {
+  try {
+    const tags = await listKnowledgeTagCatalog();
+    res.json({ tags });
+  } catch (err) {
+    console.error("[GET /knowledge-articles/tag-catalog]", err);
+    res.status(500).json({ error: "Error loading tags." });
   }
 });
 
@@ -121,11 +198,16 @@ router.patch(
         title: req.body?.title,
         category: req.body?.category,
         visibleToAgents: req.body?.visibleToAgents,
+        visibleToAllClients: req.body?.visibleToAllClients,
+        visibleToAllContacts: req.body?.visibleToAllContacts,
         contentJson: req.body?.contentJson,
         contentHtml: req.body?.contentHtml,
         status: req.body?.status,
         clientIds: req.body?.clientIds,
-        contactIds: req.body?.contactIds
+        contactIds: req.body?.contactIds,
+        clientTagIds: req.body?.clientTagIds,
+        contactTagIds: req.body?.contactTagIds,
+        folderId: req.body?.folderId
       });
       if (!article) return res.status(404).json({ error: "Article not found." });
       res.json({ article });
@@ -145,8 +227,12 @@ router.post(
     try {
       const article = await publishKnowledgeArticle(req.params.id, {
         visibleToAgents: req.body?.visibleToAgents,
+        visibleToAllClients: req.body?.visibleToAllClients,
+        visibleToAllContacts: req.body?.visibleToAllContacts,
         clientIds: req.body?.clientIds,
-        contactIds: req.body?.contactIds
+        contactIds: req.body?.contactIds,
+        clientTagIds: req.body?.clientTagIds,
+        contactTagIds: req.body?.contactTagIds
       });
       if (!article) return res.status(404).json({ error: "Article not found." });
       res.json({ article });
@@ -216,7 +302,7 @@ router.post(
       res.status(201).json({ asset });
     } catch (err) {
       console.error("[POST /knowledge-articles/:id/assets]", err);
-      res.status(500).json({ error: "Error uploading image." });
+      res.status(500).json({ error: "Error uploading file." });
     }
   }
 );

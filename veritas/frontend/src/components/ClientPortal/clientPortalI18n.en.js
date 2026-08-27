@@ -980,6 +980,13 @@ export default {
     emptyFiltered: "No results for this search.",
     updated: "Updated on",
     back: "Back to articles",
-    notFound: "Article not found."
+    notFound: "Article not found.",
+    print: "Print",
+    downloadPdf: "Download PDF",
+    copyLink: "Copy link",
+    linkCopied: "Link copied.",
+    pdfGenerating: "Generating PDF…",
+    pdfError: "Unable to generate the PDF.",
+    copyError: "Unable to copy the link."
   }
 };

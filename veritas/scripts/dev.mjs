@@ -59,7 +59,9 @@ function isRealError(line) {
     /\bEADDRINUSE\b/.test(line) ||
     /\bCannot find module\b/i.test(line) ||
     /\bModule not found\b/i.test(line) ||
-    /\bSyntaxError\b/.test(line) ||
+    /\bSyntaxError\b/i.test(line) ||
+    /syntax error/i.test(line) ||
+    /Unexpected \}/i.test(line) ||
     /\bTypeError\b/.test(line) ||
     /\bENOENT\b/.test(line) ||
     /^\s*Error:\s/.test(line)

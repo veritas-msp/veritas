@@ -1,12 +1,26 @@
 /** Catalogue des champs métier CSV équipements (colonnes data_* → data.<clé>). */
 
+import { slugifyEquipmentFieldKey } from "./equipmentFamilyConstants";
+
 function L(fr, en, de, it, es) {
   return { fr, en, de: de || en, it: it || en, es: es || en };
 }
 
 function pickLocale(map, locale) {
+  if (typeof map === "string") return map;
   const key = String(locale || "en").toLowerCase().slice(0, 2);
   return map?.[key] || map?.en || map?.fr || "";
+}
+
+function uniqueCsvColumn(base, used) {
+  const root = String(base || "data_champ").slice(0, 80) || "data_champ";
+  let column = root;
+  let n = 2;
+  while (used.has(column)) {
+    column = `${root}_${n++}`.slice(0, 80);
+  }
+  used.add(column);
+  return column;
 }
 
 /** English CSV suffix for a French (or mixed) data.* key. */
@@ -318,34 +332,47 @@ export function getEquipmentInjectionFamilies(locale) {
 export function buildCustomEquipmentInjectionFamily(family, locale) {
   const familyKey = String(family?.familyKey || "").trim();
   if (!familyKey) return null;
-  const mergedDefs = [...SHARED_HARDWARE.map(field => ({
-    fieldKey: field.key,
-    fieldType: ["purchaseDate", "installDate", "expirationGarantie"].includes(field.key) ? "date" : field.key === "commentaire" ? "textarea" : "text",
-    label: pickLocale(field.label, locale),
-    required: false
-  })), ...(Array.isArray(family.fields) ? family.fields : [])];
-  const seenFieldKeys = new Set();
-  const fieldDefs = mergedDefs.filter(field => {
-    const key = String(field?.fieldKey || "").trim();
-    if (!key || seenFieldKeys.has(key)) return false;
-    seenFieldKeys.add(key);
-    return true;
-  });
-  const customFields = fieldDefs.map(field => {
-    const key = String(field.fieldKey || "").trim();
-    const type = String(field.fieldType || "text").toLowerCase();
-    return mapInjectionField({
-      key,
-      csvColumn: `data_${key}`,
-      required: Boolean(field.required),
-      label: field.label || key,
-      values: FIELD_TYPE_VALUES[type] || FIELD_TYPE_VALUES.text
-    }, locale);
-  });
   const familyValues = L(
     `${familyKey} (ou libellé « ${family.label || familyKey} »)`,
     `${familyKey} (or label “${family.label || familyKey}”)`
   );
+  const baseFields = equipmentBaseFields(familyKey).map(field => {
+    if (field.key === "_family") {
+      return mapInjectionField({ ...field, values: familyValues }, locale);
+    }
+    return mapInjectionField(field, locale);
+  });
+  const usedCsv = new Set(baseFields.map(field => field.csvColumn).filter(Boolean));
+  const sharedKeys = new Set(SHARED_HARDWARE.map(field => field.key));
+  const sharedFields = SHARED_HARDWARE.map(field => {
+    const csvColumn = uniqueCsvColumn(equipmentCsvColumnForDataKey(field.key), usedCsv);
+    const type = ["purchaseDate", "installDate", "expirationGarantie"].includes(field.key)
+      ? "date"
+      : field.key === "commentaire" ? "textarea" : "text";
+    return mapInjectionField({
+      key: field.key,
+      csvColumn,
+      required: false,
+      label: field.label,
+      values: FIELD_TYPE_VALUES[type]
+    }, locale);
+  });
+  const customFields = [];
+  for (const field of Array.isArray(family.fields) ? family.fields : []) {
+    const key = String(field?.fieldKey || "").trim();
+    const label = String(field?.label || "").trim();
+    if (!label && !key) continue;
+    if (sharedKeys.has(key)) continue;
+    const type = String(field.fieldType || "text").toLowerCase();
+    const suffix = slugifyEquipmentFieldKey(label) || EQUIPMENT_CSV_KEY_BY_DATA_KEY[key] || key || "champ";
+    customFields.push(mapInjectionField({
+      key: key || suffix,
+      csvColumn: uniqueCsvColumn(`data_${suffix}`, usedCsv),
+      required: Boolean(field.required),
+      label: label || key,
+      values: FIELD_TYPE_VALUES[type] || FIELD_TYPE_VALUES.text
+    }, locale));
+  }
   return {
     id: `custom:${familyKey}`,
     icon: family.icon || "mdi:devices",
@@ -353,12 +380,8 @@ export function buildCustomEquipmentInjectionFamily(family, locale) {
     isCustom: true,
     familyKey,
     fields: [
-      ...equipmentBaseFields(familyKey).map(field => {
-        if (field.key === "_family") {
-          return mapInjectionField({ ...field, values: familyValues }, locale);
-        }
-        return mapInjectionField(field, locale);
-      }),
+      ...baseFields,
+      ...sharedFields,
       ...customFields
     ]
   };

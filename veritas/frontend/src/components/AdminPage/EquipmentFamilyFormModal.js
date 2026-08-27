@@ -9,11 +9,9 @@ import { useAppLocale } from "../../hooks/useAppGeneralSettings";
 import { getEquipmentDisplayModes, getEquipmentFamilyFormSections, getEquipmentFieldTypes } from "./adminFormModalsI18n";
 import { interpolate } from "../../i18n/translate";
 import IconPicker, { EQUIPMENT_FAMILY_ICON_CHOICES } from "./IconPicker";
+import { slugifyEquipmentFieldKey } from "./equipmentFamilyConstants";
 import layout from "../EnterprisesPage/EnterpriseFormModal.module.css";
 import styles from "./EquipmentFamilyFormModal.module.css";
-function slugifyFieldKey(label) {
-  return String(label || "champ").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim().replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "").slice(0, 72);
-}
 export default function EquipmentFamilyFormModal({
   open,
   mode = "create",
@@ -49,12 +47,13 @@ export default function EquipmentFamilyFormModal({
   const updateField = (index, patch) => {
     setDraft(prev => {
       const fields = [...(prev.fields || [])];
+      const previous = fields[index] || {};
       fields[index] = {
-        ...fields[index],
+        ...previous,
         ...patch
       };
-      if (patch.label && (!fields[index].fieldKey || fields[index].fieldKey === slugifyFieldKey(fields[index].label))) {
-        fields[index].fieldKey = slugifyFieldKey(patch.label);
+      if (patch.label !== undefined) {
+        fields[index].fieldKey = slugifyEquipmentFieldKey(fields[index].label) || "champ";
       }
       return {
         ...prev,

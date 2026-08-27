@@ -1,0 +1,15 @@
+.icon {
+  color: #adb5bd;
+}
+
+.name {
+  color: #2b5fab;
+}
+
+:global(html.dark) .icon {
+  color: #909296;
+}
+
+:global(html.dark) .name {
+  color: #74c0fc;
+}

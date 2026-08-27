@@ -20,7 +20,8 @@ const TAB_LABELS_COPY = {
       Hardware: "Supervision",
       Mon: "Monitoring",
       DocumentsHub: "Documents",
-      EquipmentInventory: "Inventaire périphériques"
+      EquipmentInventory: "Inventaire périphériques",
+      KnowledgeBaseArticle: "Article"
     },
     equipmentTypes: {
       serveurs: "Serveurs",
@@ -65,7 +66,8 @@ const TAB_LABELS_COPY = {
       monitoringList: "Monitoring",
       documentsList: "Documents",
       inventoryList: "Inventaire périphériques",
-      knowledgeBase: "Base de connaissances"
+      knowledgeBase: "Base de connaissances",
+      knowledgeArticleEdit: "Édition"
     }
   },
   en: {
@@ -89,7 +91,8 @@ const TAB_LABELS_COPY = {
       Mon: "Monitoring",
       DocumentsHub: "Documents",
       EquipmentInventory: "Device inventory",
-      KnowledgeBase: "Knowledge base"
+      KnowledgeBase: "Knowledge base",
+      KnowledgeBaseArticle: "Article"
     },
     equipmentTypes: {
       serveurs: "Servers",
@@ -134,7 +137,8 @@ const TAB_LABELS_COPY = {
       monitoringList: "Monitoring",
       documentsList: "Documents",
       inventoryList: "Device inventory",
-      knowledgeBase: "Knowledge base"
+      knowledgeBase: "Knowledge base",
+      knowledgeArticleEdit: "Edit"
     }
   },
   de: {
@@ -157,7 +161,8 @@ const TAB_LABELS_COPY = {
       Hardware: "Supervision",
       Mon: "Monitoring",
       DocumentsHub: "Documents",
-      EquipmentInventory: "Geräteinventar"
+      EquipmentInventory: "Geräteinventar",
+      KnowledgeBaseArticle: "Artikel"
     },
     equipmentTypes: {
       serveurs: "Server",
@@ -201,7 +206,8 @@ const TAB_LABELS_COPY = {
       monitoringList: "Monitoring",
       documentsList: "Dokumente",
       inventoryList: "Geräteinventar",
-      knowledgeBase: "Wissensdatenbank"
+      knowledgeBase: "Wissensdatenbank",
+      knowledgeArticleEdit: "Bearbeiten"
     }
   },
   it: {
@@ -224,7 +230,8 @@ const TAB_LABELS_COPY = {
       Hardware: "Supervisione",
       Mon: "Monitoring",
       DocumentsHub: "Documenti",
-      EquipmentInventory: "Inventario periferiche"
+      EquipmentInventory: "Inventario periferiche",
+      KnowledgeBaseArticle: "Articolo"
     },
     equipmentTypes: {
       serveurs: "Server",
@@ -268,7 +275,8 @@ const TAB_LABELS_COPY = {
       monitoringList: "Monitoring",
       documentsList: "Documenti",
       inventoryList: "Inventario periferiche",
-      knowledgeBase: "Knowledge base"
+      knowledgeBase: "Knowledge base",
+      knowledgeArticleEdit: "Modifica"
     }
   },
   es: {
@@ -291,7 +299,8 @@ const TAB_LABELS_COPY = {
       Hardware: "Supervisión",
       Mon: "Monitorización",
       DocumentsHub: "Documentos",
-      EquipmentInventory: "Inventario de periféricos"
+      EquipmentInventory: "Inventario de periféricos",
+      KnowledgeBaseArticle: "Artículo"
     },
     equipmentTypes: {
       serveurs: "Servidores",
@@ -335,7 +344,8 @@ const TAB_LABELS_COPY = {
       monitoringList: "Monitorización",
       documentsList: "Documentos",
       inventoryList: "Inventario de periféricos",
-      knowledgeBase: "Base de conocimiento"
+      knowledgeBase: "Base de conocimiento",
+      knowledgeArticleEdit: "Edición"
     }
   }
 };

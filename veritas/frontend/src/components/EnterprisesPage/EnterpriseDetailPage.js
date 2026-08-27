@@ -3633,7 +3633,7 @@ export default function ClientDetailPage({
                   </div> : <>
                   <div className={styles.sitesToolbar}>
                     <Icon icon="mdi:magnify" className={styles.sitesSearchIcon} aria-hidden />
-                    <input type="search" className={styles.sitesSearchInput} value={sitesSearch} onChange={event => {
+                    <input type="text" inputMode="search" autoComplete="off" className={styles.sitesSearchInput} value={sitesSearch} onChange={event => {
                     setSitesSearch(event.target.value);
                     setSitesPage(1);
                   }} placeholder={copy.searchSites} aria-label={copy.searchSitesAria} />
