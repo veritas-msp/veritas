@@ -2,7 +2,24 @@ import { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import { Icon } from "@iconify/react";
 import { FaColumns, FaTimes } from "react-icons/fa";
+import {
+  DndContext,
+  KeyboardSensor,
+  PointerSensor,
+  closestCenter,
+  useSensor,
+  useSensors
+} from "@dnd-kit/core";
+import {
+  SortableContext,
+  arrayMove,
+  sortableKeyboardCoordinates,
+  useSortable,
+  verticalListSortingStrategy
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 import { useAppLocale } from "../../hooks/useAppGeneralSettings";
+import { interpolate } from "../../i18n/translate";
 import SmartTooltip from "../SmartTooltip";
 import EquipmentBrandIcon from "../EquipementPage/constants/EquipmentBrandIcon";
 import { getOsIconName, repairOsLabel } from "../EquipementPage/osIconUtils";
@@ -41,6 +58,65 @@ function writeStoredColumns(familyKey, keys) {
   } catch {
     // ignore quota / private mode
   }
+}
+
+function buildColumnEditorOrder(visibleColumns, availableColumns) {
+  const available = Array.isArray(availableColumns) ? availableColumns : [];
+  const allowed = new Set(available);
+  const seen = new Set();
+  const order = [];
+  for (const key of Array.isArray(visibleColumns) ? visibleColumns : []) {
+    if (!allowed.has(key) || seen.has(key)) continue;
+    seen.add(key);
+    order.push(key);
+  }
+  for (const key of available) {
+    if (seen.has(key)) continue;
+    seen.add(key);
+    order.push(key);
+  }
+  return order;
+}
+
+function SortableColumnRow({ columnId, label, checked, locked, dragAria, onToggle }) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging
+  } = useSortable({ id: columnId });
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition
+  };
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className={`${styles.columnRow} ${isDragging ? styles.columnRowDragging : ""} ${checked ? "" : styles.columnRowUnchecked}`.trim()}
+    >
+      <button
+        type="button"
+        className={styles.dragHandle}
+        aria-label={dragAria}
+        {...attributes}
+        {...listeners}
+      >
+        <Icon icon="mdi:drag-vertical" aria-hidden />
+      </button>
+      <label className={styles.columnCheck}>
+        <input
+          type="checkbox"
+          checked={checked}
+          disabled={locked}
+          onChange={() => onToggle(columnId)}
+        />
+        <span>{label}</span>
+      </label>
+    </div>
+  );
 }
 
 function toBrandEquipment(item, familyKey) {
@@ -163,16 +239,63 @@ function ColumnsModal({
   familyKey,
   availableColumns,
   visibleColumns,
-  onToggle,
-  onShowAll,
-  onResetDefaults,
+  defaultColumns,
+  onChange,
   onClose,
   copy,
   locale,
   devicesCopy,
   customFields = []
 }) {
+  const [columnOrder, setColumnOrder] = useState(() => buildColumnEditorOrder(visibleColumns, availableColumns));
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
+  );
+
+  useEffect(() => {
+    if (!open) return;
+    setColumnOrder(buildColumnEditorOrder(visibleColumns, availableColumns));
+  }, [open, familyKey]);
+
   if (!open) return null;
+
+  const visibleSet = new Set(visibleColumns);
+  const emitVisible = order => {
+    onChange(order.filter(key => visibleSet.has(key)));
+  };
+
+  const handleToggle = columnId => {
+    const nextVisible = new Set(visibleSet);
+    if (nextVisible.has(columnId)) nextVisible.delete(columnId);
+    else nextVisible.add(columnId);
+    if (!nextVisible.size) return;
+    const nextOrder = columnOrder.includes(columnId) ? columnOrder : [...columnOrder, columnId];
+    if (nextOrder !== columnOrder) setColumnOrder(nextOrder);
+    onChange(nextOrder.filter(key => nextVisible.has(key)));
+  };
+
+  const handleDragEnd = event => {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+    const oldIndex = columnOrder.indexOf(active.id);
+    const newIndex = columnOrder.indexOf(over.id);
+    if (oldIndex < 0 || newIndex < 0) return;
+    const nextOrder = arrayMove(columnOrder, oldIndex, newIndex);
+    setColumnOrder(nextOrder);
+    emitVisible(nextOrder);
+  };
+
+  const handleShowAll = () => {
+    setColumnOrder(availableColumns);
+    onChange(availableColumns);
+  };
+
+  const handleReset = () => {
+    setColumnOrder(buildColumnEditorOrder(defaultColumns, availableColumns));
+    onChange(defaultColumns);
+  };
+
   return createPortal(
     <div className={styles.modalOverlay} onClick={onClose} role="presentation">
       <div
@@ -193,31 +316,42 @@ function ColumnsModal({
         </div>
         <div className={styles.modalBody}>
           <p className={styles.modalHint}>{copy.columnsHint}</p>
+          <p className={styles.modalReorderHint}>{copy.columnsReorderHint}</p>
           <div className={styles.columnsToolbar}>
-            <button type="button" className={styles.columnsToolBtn} onClick={onShowAll}>
+            <button type="button" className={styles.columnsToolBtn} onClick={handleShowAll}>
               {copy.columnsShowAll}
             </button>
-            <button type="button" className={styles.columnsToolBtn} onClick={onResetDefaults}>
+            <button type="button" className={styles.columnsToolBtn} onClick={handleReset}>
               {copy.columnsReset}
             </button>
           </div>
-          <div className={styles.columnsList}>
-            {availableColumns.map(colKey => {
-              const checked = visibleColumns.includes(colKey);
-              const locked = colKey === "name" && checked && visibleColumns.length === 1;
-              return (
-                <label key={colKey} className={styles.columnCheckbox}>
-                  <input
-                    type="checkbox"
-                    checked={checked}
-                    disabled={locked}
-                    onChange={() => onToggle(colKey)}
-                  />
-                  <span>{getPortalColumnLabel(locale, familyKey, colKey, devicesCopy, customFields)}</span>
-                </label>
-              );
-            })}
-          </div>
+          <DndContext
+            id={`portal-device-columns-${familyKey}`}
+            sensors={sensors}
+            collisionDetection={closestCenter}
+            onDragEnd={handleDragEnd}
+          >
+            <SortableContext items={columnOrder} strategy={verticalListSortingStrategy}>
+              <div className={styles.columnsList}>
+                {columnOrder.map(colKey => {
+                  const label = getPortalColumnLabel(locale, familyKey, colKey, devicesCopy, customFields);
+                  const checked = visibleSet.has(colKey);
+                  const locked = colKey === "name" && checked && visibleSet.size === 1;
+                  return (
+                    <SortableColumnRow
+                      key={colKey}
+                      columnId={colKey}
+                      label={label}
+                      checked={checked}
+                      locked={locked}
+                      dragAria={interpolate(copy.columnsDrag || "{name}", { name: label })}
+                      onToggle={handleToggle}
+                    />
+                  );
+                })}
+              </div>
+            </SortableContext>
+          </DndContext>
         </div>
         <div className={styles.modalFooter}>
           <button type="button" className={styles.modalOk} onClick={onClose}>
@@ -338,18 +472,18 @@ export default function ClientDevicesListTab({
   const applyColumns = nextKeys => {
     if (!activeCategory) return;
     const allowed = new Set(availableColumns);
-    const ordered = availableColumns.filter(key => nextKeys.includes(key) && allowed.has(key));
-    const safe = ordered.length ? ordered : ["name"];
+    const ordered = [];
+    const seen = new Set();
+    for (const key of Array.isArray(nextKeys) ? nextKeys : []) {
+      if (!allowed.has(key) || seen.has(key)) continue;
+      seen.add(key);
+      ordered.push(key);
+    }
+    const safe = ordered.length
+      ? ordered
+      : allowed.has("name") ? ["name"] : availableColumns.slice(0, 1);
     writeStoredColumns(activeCategory.key, safe);
     setVisibleColumns(safe);
-  };
-
-  const toggleColumn = colKey => {
-    applyColumns(
-      visibleColumns.includes(colKey)
-        ? visibleColumns.filter(key => key !== colKey)
-        : [...visibleColumns, colKey]
-    );
   };
 
   if (!categories.length) {
@@ -412,9 +546,8 @@ export default function ClientDevicesListTab({
         familyKey={activeCategory.key}
         availableColumns={availableColumns}
         visibleColumns={displayedColumns.length ? displayedColumns : ["name"]}
-        onToggle={toggleColumn}
-        onShowAll={() => applyColumns(availableColumns)}
-        onResetDefaults={() => applyColumns(defaultColumns)}
+        defaultColumns={defaultColumns}
+        onChange={applyColumns}
         onClose={() => setColumnsModalOpen(false)}
         copy={t}
         locale={locale}

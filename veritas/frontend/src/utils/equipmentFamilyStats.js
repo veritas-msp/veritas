@@ -73,6 +73,21 @@ export function isComputerFleetFamily(type) {
   return canonicalizeFleetFamily(type) === "computers";
 }
 
+const WARRANTY_FLEET_FAMILIES = new Set([
+  "computers",
+  "servers",
+  "storage",
+  "firewalls",
+  "switch",
+  "wifi",
+  "router",
+  "power"
+]);
+
+export function familyShowsWarrantyStats(type) {
+  return WARRANTY_FLEET_FAMILIES.has(canonicalizeFleetFamily(type));
+}
+
 export function getFleetFamilyExportType(type) {
   return FLEET_FAMILY_META[canonicalizeFleetFamily(type)]?.exportType || String(type || "Servers");
 }

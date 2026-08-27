@@ -211,8 +211,8 @@ export const HONEYCOMB_THEME_GROUPS = [{
     r: -1
   }, {
     type: "Alimentation",
-    q: 0,
-    r: 1
+    q: 1,
+    r: 0
   }]
 }, {
   id: "lan",

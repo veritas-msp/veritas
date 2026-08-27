@@ -797,6 +797,19 @@ function getEmbeddedCellClassName(colKey, styles) {
   return undefined;
 }
 const EMBEDDED_DEFAULT_TYPE = "Internet";
+const MK_CRITICAL_STATUSES = new Set(["critical", "down", "offline"]);
+function normalizeMkAlertStatus(status) {
+  const value = String(status || "").toLowerCase();
+  if (MK_CRITICAL_STATUSES.has(value)) return "critical";
+  if (value === "warning") return "warning";
+  return value;
+}
+function matchesMkAlertFilter(status, filterKey) {
+  const normalized = normalizeMkAlertStatus(status);
+  if (filterKey === "critical") return normalized === "critical";
+  if (filterKey === "warning") return normalized === "warning";
+  return false;
+}
 const getFirstAvailableType = (typeOrder, counts, fallback = EMBEDDED_DEFAULT_TYPE) => {
   const withEquipment = typeOrder.find(type => (counts[type] || 0) > 0);
   return withEquipment || fallback;
@@ -1380,8 +1393,8 @@ const EquipmentPage = forwardRef(function EquipmentPage({
     filteredForStats.forEach(eq => {
       if (!isMkMappedEquipment(eq)) return;
       mapped += 1;
-      const status = getEquipmentMkSummary(eq)?.status;
-      if (status === 'critical') critical += 1;else if (status === 'warning') warning += 1;
+      const status = normalizeMkAlertStatus(getEquipmentMkSummary(eq)?.status);
+      if (status === "critical") critical += 1;else if (status === "warning") warning += 1;
     });
     return {
       critical,
@@ -1407,6 +1420,24 @@ const EquipmentPage = forwardRef(function EquipmentPage({
     });
     return counts;
   }, [typeCounts, customFamiliesForUi, getCustomFamilyItems]);
+  const mkFilteredTypeCounts = useMemo(() => {
+    if (!mkStatusFilter) return null;
+    const counts = {};
+    filteredForStats.forEach(eq => {
+      if (!isMkMappedEquipment(eq)) return;
+      if (!matchesMkAlertFilter(getEquipmentMkSummary(eq)?.status, mkStatusFilter)) return;
+      const displayType = toDisplayEquipmentType(eq.type);
+      counts[displayType] = (counts[displayType] || 0) + 1;
+    });
+    return counts;
+  }, [filteredForStats, mkStatusFilter, monitoringSummaries]);
+  const findFirstTypeMatchingMkFilter = useCallback(filterKey => {
+    if (!filterKey) return null;
+    const order = embedded ? embeddedTypeOrder : FILTER_TYPE_ORDER;
+    return order.find(type => {
+      return filteredForStats.some(eq => toDisplayEquipmentType(eq.type) === type && isMkMappedEquipment(eq) && matchesMkAlertFilter(getEquipmentMkSummary(eq)?.status, filterKey));
+    }) || null;
+  }, [embedded, embeddedTypeOrder, filteredForStats, monitoringSummaries]);
   const supervisionDeviceTypeOrder = useMemo(() => {
     const customTypes = customFamiliesForUi.map(family => `Custom:${family.familyKey}`);
     return [...FILTER_TYPE_ORDER, "Security camera", ...customTypes];
@@ -1489,7 +1520,8 @@ const EquipmentPage = forwardRef(function EquipmentPage({
   }, [baseEquipment]);
   useEffect(() => {
     if (!embedded || loading) return;
-    const firstAvailable = getFirstAvailableType(embeddedTypeOrder, embeddedTypeCounts, EMBEDDED_DEFAULT_TYPE);
+    const countsForNav = mkStatusFilter && mkFilteredTypeCounts ? mkFilteredTypeCounts : embeddedTypeCounts;
+    const firstAvailable = getFirstAvailableType(embeddedTypeOrder, countsForNav, EMBEDDED_DEFAULT_TYPE);
     if (!firstAvailable) return;
     setSelectedTypes(prev => {
       if (prev.size === 0) return new Set([firstAvailable]);
@@ -1497,13 +1529,13 @@ const EquipmentPage = forwardRef(function EquipmentPage({
       if (prev.size !== 1 || !embeddedTypeOrder.includes(currentType)) {
         return new Set([firstAvailable]);
       }
-      if ((embeddedTypeCounts[currentType] || 0) > 0) return prev;
-      if (!searchQuery.trim()) return prev;
-      if ((embeddedTypeCounts[firstAvailable] || 0) === 0) return prev;
+      if ((countsForNav[currentType] || 0) > 0) return prev;
+      if (!searchQuery.trim() && !mkStatusFilter) return prev;
+      if ((countsForNav[firstAvailable] || 0) === 0) return prev;
       if (currentType === firstAvailable) return prev;
       return new Set([firstAvailable]);
     });
-  }, [embedded, loading, embeddedTypeOrder, embeddedTypeCounts, searchQuery]);
+  }, [embedded, loading, embeddedTypeOrder, embeddedTypeCounts, mkFilteredTypeCounts, mkStatusFilter, searchQuery]);
   const filteredEquipment = useMemo(() => {
     let filtered = [...baseEquipment];
     if (searchQuery.trim()) {
@@ -1522,10 +1554,7 @@ const EquipmentPage = forwardRef(function EquipmentPage({
     if (mkStatusFilter) {
       filtered = filtered.filter(eq => {
         if (!isMkMappedEquipment(eq)) return false;
-        const status = getEquipmentMkSummary(eq)?.status;
-        if (mkStatusFilter === 'critical') return status === 'critical';
-        if (mkStatusFilter === 'warning') return status === 'warning';
-        return status === 'critical' || status === 'warning';
+        return matchesMkAlertFilter(getEquipmentMkSummary(eq)?.status, mkStatusFilter);
       });
     }
     return filtered;
@@ -1683,7 +1712,14 @@ const EquipmentPage = forwardRef(function EquipmentPage({
     setMkStatusFilter(null);
   };
   const toggleMkStatusFilter = filterKey => {
-    setMkStatusFilter(prev => prev === filterKey ? null : filterKey);
+    const next = mkStatusFilter === filterKey ? null : filterKey;
+    setMkStatusFilter(next);
+    if (!next) return;
+    const currentType = selectedTypes.size === 1 ? [...selectedTypes][0] : null;
+    const currentHasMatch = Boolean(currentType && filteredForStats.some(eq => toDisplayEquipmentType(eq.type) === currentType && isMkMappedEquipment(eq) && matchesMkAlertFilter(getEquipmentMkSummary(eq)?.status, next)));
+    if (currentHasMatch) return;
+    const firstType = findFirstTypeMatchingMkFilter(next);
+    if (firstType) setSelectedTypes(new Set([firstType]));
   };
   const handleTypeCardClick = type => {
     setSelectedTypes(prev => {
@@ -3004,14 +3040,11 @@ const EquipmentPage = forwardRef(function EquipmentPage({
                         <Icon icon="simple-icons:checkmk" className={styles.embeddedMonitorIcon} aria-hidden />
                         {mkAlertStats.mapped}
                       </span>
-                      <button type="button" className={`${styles.embeddedMonitorPill} ${styles.embeddedMonitorPillIssues} ${mkStatusFilter === "issues" ? styles.embeddedMonitorPillActive : ""}`} onClick={() => toggleMkStatusFilter("issues")} disabled={mkAlertStats.issues === 0} title={embeddedCopy.mkAlertsTitle}>
-                        {embeddedCopy.mkAlertsLabel} {mkAlertStats.issues}
+                      <button type="button" className={`${styles.embeddedMonitorPill} ${styles.embeddedMonitorPillCritical} ${mkStatusFilter === "critical" ? styles.embeddedMonitorPillActive : ""}`} onClick={() => toggleMkStatusFilter("critical")} disabled={mkAlertStats.critical === 0} title={embeddedCopy.mkCriticalTitle}>
+                        {embeddedCopy.mkCriticalLabel} {mkAlertStats.critical}
                       </button>
-                      <button type="button" className={`${styles.embeddedMonitorPill} ${styles.embeddedMonitorPillCritical} ${mkStatusFilter === "critical" ? styles.embeddedMonitorPillActive : ""}`} onClick={() => toggleMkStatusFilter("critical")} disabled={mkAlertStats.critical === 0}>
-                        Crit. {mkAlertStats.critical}
-                      </button>
-                      <button type="button" className={`${styles.embeddedMonitorPill} ${styles.embeddedMonitorPillWarning} ${mkStatusFilter === "warning" ? styles.embeddedMonitorPillActive : ""}`} onClick={() => toggleMkStatusFilter("warning")} disabled={mkAlertStats.warning === 0}>
-                        Warn. {mkAlertStats.warning}
+                      <button type="button" className={`${styles.embeddedMonitorPill} ${styles.embeddedMonitorPillWarning} ${mkStatusFilter === "warning" ? styles.embeddedMonitorPillActive : ""}`} onClick={() => toggleMkStatusFilter("warning")} disabled={mkAlertStats.warning === 0} title={embeddedCopy.mkWarningTitle}>
+                        {embeddedCopy.mkWarningLabel} {mkAlertStats.warning}
                       </button>
                       {mkStatusFilter && <button type="button" className={styles.embeddedMonitorClear} onClick={() => setMkStatusFilter(null)} title={embeddedCopy.mkClearFilterTitle}>
                           <FaTimes aria-hidden />
@@ -3039,17 +3072,13 @@ const EquipmentPage = forwardRef(function EquipmentPage({
                   <span>Monitoring</span>
                 </div>
                 <div className={styles.mkAlertPills}>
-                  <button type="button" className={`${styles.mkAlertPill} ${styles.mkAlertPillIssues} ${mkStatusFilter === 'issues' ? styles.mkAlertPillActive : ''}`} onClick={() => toggleMkStatusFilter('issues')} disabled={mkAlertStats.issues === 0} title="Show devices with warning or critical alerts">
-                    <Icon icon="mdi:bell-alert" />
-                    Alerts ({mkAlertStats.issues})
-                  </button>
-                  <button type="button" className={`${styles.mkAlertPill} ${styles.mkAlertPillCritical} ${mkStatusFilter === 'critical' ? styles.mkAlertPillActive : ''}`} onClick={() => toggleMkStatusFilter('critical')} disabled={mkAlertStats.critical === 0} title="Critical services or recent critical alerts">
+                  <button type="button" className={`${styles.mkAlertPill} ${styles.mkAlertPillCritical} ${mkStatusFilter === "critical" ? styles.mkAlertPillActive : ""}`} onClick={() => toggleMkStatusFilter("critical")} disabled={mkAlertStats.critical === 0} title={embeddedCopy.mkCriticalTitle}>
                     <Icon icon="mdi:alert-circle" />
-                    Critical ({mkAlertStats.critical})
+                    {embeddedCopy.mkCriticalLabel} ({mkAlertStats.critical})
                   </button>
-                  <button type="button" className={`${styles.mkAlertPill} ${styles.mkAlertPillWarning} ${mkStatusFilter === 'warning' ? styles.mkAlertPillActive : ''}`} onClick={() => toggleMkStatusFilter('warning')} disabled={mkAlertStats.warning === 0} title="Services in warning or recent warning notifications">
+                  <button type="button" className={`${styles.mkAlertPill} ${styles.mkAlertPillWarning} ${mkStatusFilter === "warning" ? styles.mkAlertPillActive : ""}`} onClick={() => toggleMkStatusFilter("warning")} disabled={mkAlertStats.warning === 0} title={embeddedCopy.mkWarningTitle}>
                     <Icon icon="mdi:alert" />
-                    Warnings ({mkAlertStats.warning})
+                    {embeddedCopy.mkWarningLabel} ({mkAlertStats.warning})
                   </button>
                   {mkStatusFilter && <button type="button" className={styles.mkAlertPillClear} onClick={() => setMkStatusFilter(null)}>
                       <FaTimes /> Show all

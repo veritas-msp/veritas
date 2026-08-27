@@ -193,6 +193,13 @@ table.deviceTable {
   color: var(--msp-muted, #4a5a70);
 }
 
+.modalReorderHint {
+  margin: -0.45rem 0 0.75rem;
+  font-size: 0.76rem;
+  line-height: 1.4;
+  color: var(--msp-muted, #6b7a90);
+}
+
 .columnsToolbar {
   display: flex;
   flex-wrap: wrap;
@@ -222,24 +229,80 @@ table.deviceTable {
   gap: 0.35rem;
 }
 
-.columnCheckbox {
+.columnRow {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.35rem 0.5rem 0.35rem 0.25rem;
+  border: 1px solid var(--msp-border, #e4e8ee);
+  border-radius: 10px;
+  background: var(--msp-surface-2, #f7f9fc);
+  user-select: none;
+}
+
+.columnRow:hover {
+  border-color: rgba(43, 95, 171, 0.28);
+  background: rgba(43, 95, 171, 0.06);
+}
+
+.columnRowDragging {
+  opacity: 0.95;
+  box-shadow: 0 10px 24px rgba(15, 28, 46, 0.14);
+  border-color: rgba(43, 95, 171, 0.4);
+  background: var(--msp-surface, #fff);
+  z-index: 2;
+}
+
+.columnRowUnchecked {
+  opacity: 0.7;
+}
+
+.dragHandle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.7rem;
+  height: 1.7rem;
+  padding: 0;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--msp-muted, #6b7a90);
+  cursor: grab;
+  flex-shrink: 0;
+  font-size: 1.1rem;
+  touch-action: none;
+}
+
+.dragHandle:hover {
+  background: rgba(15, 28, 46, 0.06);
+  color: var(--msp-text, #0f1c2e);
+}
+
+.dragHandle:active {
+  cursor: grabbing;
+}
+
+.columnCheck {
   display: flex;
   align-items: center;
   gap: 0.55rem;
-  padding: 0.45rem 0.55rem;
-  border-radius: 8px;
+  flex: 1;
+  min-width: 0;
   font-size: 0.84rem;
   font-weight: 500;
   color: var(--msp-text, #0a1422);
   cursor: pointer;
 }
 
-.columnCheckbox:hover {
-  background: var(--msp-surface-2, #eef3f8);
+.columnCheck input {
+  accent-color: var(--msp-accent, #2b5fab);
+  cursor: pointer;
+  flex-shrink: 0;
 }
 
-.columnCheckbox input {
-  accent-color: var(--msp-accent, #2b5fab);
+.columnCheck input:disabled {
+  cursor: not-allowed;
 }
 
 .modalFooter {
@@ -282,9 +345,23 @@ table.deviceTable {
   border-color: var(--msp-border, #3d5478);
 }
 
-:global(html.dark) .columnCheckbox:hover,
-:global(html.dark) .modalClose:hover {
+:global(html.dark) .columnRow {
   background: var(--msp-surface-2, #162338);
+  border-color: var(--msp-border, #3d5478);
+}
+
+:global(html.dark) .columnRow:hover,
+:global(html.dark) .modalClose:hover {
+  background: rgba(90, 157, 224, 0.12);
+}
+
+:global(html.dark) .columnRowDragging {
+  background: var(--msp-surface, #1f2d4a);
+}
+
+:global(html.dark) .dragHandle:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--msp-text, #f0f4fa);
 }
 
 @media (max-width: 640px) {

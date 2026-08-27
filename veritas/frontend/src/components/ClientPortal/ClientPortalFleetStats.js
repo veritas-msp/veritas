@@ -132,12 +132,12 @@ export default function ClientPortalFleetStats({
             ) : null}
           </article>
 
-          <article className={fleetStyles.panel}>
+          <article className={`${fleetStyles.panel} ${fleetStyles.warrantyPanel}`}>
             <h3 className={fleetStyles.panelTitle}>
               <Icon icon="mdi:shield-half-full" />
               {familyCopy.warrantyTitle}
             </h3>
-            <div className={fleetStyles.statusGrid}>
+            <div className={fleetStyles.statusGrid4}>
               <div className={`${fleetStyles.statusCard} ${fleetStyles.statusGood}`}>
                 <span className={fleetStyles.statusCount}>{stats.warranty.ok}</span>
                 <span className={fleetStyles.statusLabel}>{familyCopy.warrantyOk}</span>

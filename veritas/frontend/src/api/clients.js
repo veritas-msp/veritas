@@ -1,6 +1,7 @@
 import API_BASE_URL from "../config";
 import { normalizeClientSites } from "../utils/clientSites";
 import { aggregateAntivirusEquipementFromRows } from "../utils/antivirusModuleRows";
+import { fetchEquipmentFamilies } from "./equipmentFamilies";
 const BASE_URL = `${API_BASE_URL}/clients`;
 const MODULES_BASE_URL = `${API_BASE_URL}/clients/modules`;
 const CYBER_PAGE_DATA_CACHE_KEY = "cyber_page_data_cache_v1";
@@ -360,10 +361,30 @@ export async function fetchClientCustomEquipmentMap(clientId, options = {}) {
   });
   if (!res.ok) {
     return {
-      families: []
+      families: [],
+      unavailable: true
     };
   }
-  return res.json();
+  const data = await res.json().catch(() => ({}));
+  return {
+    ...data,
+    families: Array.isArray(data?.families) ? data.families : [],
+    unavailable: false
+  };
+}
+export async function resolveClientCustomFamilyMap(clientId, options = {}) {
+  const customMap = await fetchClientCustomEquipmentMap(clientId, options);
+  const mappedFamilies = Array.isArray(customMap?.families) ? customMap.families : [];
+  if (!customMap?.unavailable) return mappedFamilies;
+  const defs = await fetchEquipmentFamilies({
+    signal: options.signal
+  }).catch(() => []);
+  const existingByKey = new Map(mappedFamilies.map(family => [family.familyKey, family]));
+  return (Array.isArray(defs) ? defs : []).map(family => existingByKey.get(family.familyKey) || {
+    ...family,
+    items: [],
+    count: 0
+  });
 }
 export async function fetchClientCustomEquipment(clientId, familyKey, options = {}) {
   const query = familyKey ? `?familyKey=${encodeURIComponent(familyKey)}` : "";

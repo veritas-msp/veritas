@@ -2,7 +2,7 @@ import { useMemo } from "react";
 import { Icon } from "@iconify/react";
 import { useAppLocale } from "../../hooks/useAppGeneralSettings";
 import { interpolate } from "../../i18n/translate";
-import { buildEquipmentFamilyStats } from "../../utils/equipmentFamilyStats";
+import { buildEquipmentFamilyStats, familyShowsWarrantyStats } from "../../utils/equipmentFamilyStats";
 import { getEquipmentFamilyStatsCopy } from "../../utils/equipmentFamilyStatsI18n";
 import { KpiCard, StatsPieChart, StatsDistributionBars, StatsDashboardBody, statsDashboardStyles as styles } from "./StatsDashboardWidgets";
 
@@ -312,6 +312,8 @@ export default function EquipmentFamilyStatsView({
     );
   }
   const warrantyTone = common.warranty.expired > 0 ? "bad" : common.warranty.soon > 0 ? "warn" : "good";
+  const showWarranty = familyShowsWarrantyStats(stats.family);
+  const showWifiSsids = stats.family === "wifi" && hasUsefulDistribution(stats.specifics?.ssidDistribution);
   return (
     <StatsDashboardBody>
       <section className={styles.kpiGrid}>
@@ -330,23 +332,27 @@ export default function EquipmentFamilyStatsView({
           sub={interpolate(copy.monitoredSub, { monitored: String(common.monitored), unmonitored: String(common.unmonitored) })}
           tone={common.monitoredPct >= 70 ? "good" : common.monitoredPct > 0 ? "warn" : "neutral"}
         />
-        <KpiCard
-          icon="mdi:shield-half-full"
-          label={copy.warrantyKpi}
-          value={common.warrantyOkPct != null ? `${common.warrantyOkPct}%` : "-"}
-          sub={interpolate(copy.warrantyKpiSub, { expired: String(common.warranty.expired), soon: String(common.warranty.soon) })}
-          tone={common.warrantyOkPct == null ? "neutral" : warrantyTone}
-        />
+        {showWarranty ? (
+          <KpiCard
+            icon="mdi:shield-half-full"
+            label={copy.warrantyKpi}
+            value={common.warrantyOkPct != null ? `${common.warrantyOkPct}%` : "-"}
+            sub={interpolate(copy.warrantyKpiSub, { expired: String(common.warranty.expired), soon: String(common.warranty.soon) })}
+            tone={common.warrantyOkPct == null ? "neutral" : warrantyTone}
+          />
+        ) : null}
         <SpecificKpis family={stats.family} specifics={stats.specifics} copy={copy} />
       </section>
 
+      {showWarranty || showWifiSsids ? (
       <section className={`${styles.insightGrid} ${styles.insightGridAuto}`}>
-        <article className={styles.panel}>
+        {showWarranty ? (
+        <article className={`${styles.panel} ${styles.warrantyPanel}`}>
           <h3 className={styles.panelTitle}>
             <Icon icon="mdi:shield-half-full" aria-hidden />
             {copy.warrantyTitle}
           </h3>
-          <div className={styles.statusGrid}>
+          <div className={styles.statusGrid4}>
             <div className={`${styles.statusCard} ${styles.statusGood}`}>
               <span className={styles.statusCount}>{common.warranty.ok}</span>
               <span className={styles.statusLabel}>{copy.warrantyOk}</span>
@@ -365,7 +371,8 @@ export default function EquipmentFamilyStatsView({
             </div>
           </div>
         </article>
-        {stats.family === "wifi" && hasUsefulDistribution(stats.specifics?.ssidDistribution) ? (
+        ) : null}
+        {showWifiSsids ? (
           <article className={styles.panel}>
             <h3 className={styles.panelTitle}>
               <Icon icon="mdi:wifi" aria-hidden />
@@ -382,6 +389,7 @@ export default function EquipmentFamilyStatsView({
           </article>
         ) : null}
       </section>
+      ) : null}
 
       <section className={styles.chartGrid}>
         <ChartPanel icon="mdi:factory" title={copy.brandsTitle}>

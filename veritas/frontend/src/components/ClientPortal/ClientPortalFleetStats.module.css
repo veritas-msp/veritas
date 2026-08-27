@@ -18,6 +18,11 @@
   box-shadow: var(--msp-shadow-panel, 0 8px 22px -12px rgba(15, 28, 46, 0.2));
 }
 
+.root :global([class*="warrantyPanel"]) {
+  grid-column: 1 / -1;
+  order: 10;
+}
+
 .root :global([class*="kpiCard"]:not([class*="kpiIcon"]):not([class*="kpiBody"]):not([class*="kpiLabel"]):not([class*="kpiValue"]):not([class*="kpiSub"]):not([class*="kpi_"])) {
   border-radius: var(--msp-radius-sm, 10px);
   border-color: var(--msp-border);

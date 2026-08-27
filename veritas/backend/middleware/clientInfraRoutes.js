@@ -1,7 +1,7 @@
 import { requirePro } from "./edition.js";
 const INFRA_ROOT_PATHS = new Set(["/equipment-counts"]);
-const INFRA_CLIENT_SUBPATHS = new Set(["modules", "logs", "antivirus", "antispam", "custom-equipment", "custom-equipment-map"]);
-const COMMUNITY_INFRA_CLIENT_SUBPATHS = new Set(["ssl-certificates", "licences"]);
+const INFRA_CLIENT_SUBPATHS = new Set(["modules", "logs", "antivirus", "antispam", "custom-equipment"]);
+const COMMUNITY_INFRA_CLIENT_SUBPATHS = new Set(["ssl-certificates", "licences", "custom-equipment-map"]);
 export function isClientInfraApiPath(pathname) {
   const path = String(pathname || "").split("?")[0];
   if (INFRA_ROOT_PATHS.has(path)) return true;

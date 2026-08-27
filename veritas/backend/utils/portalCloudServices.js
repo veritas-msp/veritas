@@ -1,10 +1,94 @@
-﻿const MODULE_FLAG_LABELS = {
+﻿import { pool } from "../database/db.js";
+import fetch from "node-fetch";
+
+const MODULE_FLAG_LABELS = {
   o365: ["Office365", "Microsoft 365"],
   save: ["Sauvegarde"],
   antivirus: ["Antivirus"],
   antispam: ["Antispam"],
   ndd: ["NDD"]
 };
+
+const LICENSE_NAME_MAPPING = {
+  SPB: "Microsoft 365 Business Premium",
+  SPE_E3: "Microsoft 365 E3",
+  SPE_E5: "Microsoft 365 E5",
+  SPE_F1: "Microsoft 365 F1",
+  SPE_E3_RPA1: "Microsoft 365 E3",
+  Microsoft_365_Business_Premium: "Microsoft 365 Business Premium",
+  Microsoft_365_Business_Standard: "Microsoft 365 Business Standard",
+  Microsoft_365_Business_Basic: "Microsoft 365 Business Basic",
+  Microsoft_365_E3: "Microsoft 365 E3",
+  Microsoft_365_E5: "Microsoft 365 E5",
+  Microsoft_365_F3: "Microsoft 365 F3",
+  Microsoft_365_F1: "Microsoft 365 F1",
+  ENTERPRISEPACK: "Office 365 E3",
+  ENTERPRISEPREMIUM: "Office 365 E5",
+  ENTERPRISEWITHSCAL: "Office 365 E3 with telephony",
+  ENTERPRISEPACKPLUS_FACULTY: "Office 365 A3 (Faculty)",
+  M365EDU_A3_FACULTY: "Microsoft 365 A3 (Enseignants)",
+  M365EDU_A3_STUDENT: "Microsoft 365 A3 (Students)",
+  M365EDU_A5_FACULTY: "Microsoft 365 A5 (Enseignants)",
+  M365EDU_A5_STUDENT: "Microsoft 365 A5 (Students)",
+  O365_BUSINESS: "Microsoft 365 Business Basic",
+  O365_BUSINESS_ESSENTIALS: "Microsoft 365 Business Basic",
+  O365_BUSINESS_PREMIUM: "Microsoft 365 Business Premium",
+  SMB_BUSINESS: "Microsoft 365 Business Standard",
+  SMB_BUSINESS_ESSENTIALS: "Microsoft 365 Business Basic",
+  SMB_BUSINESS_PREMIUM: "Microsoft 365 Business Premium",
+  EXCHANGESTANDARD: "Exchange Online Plan 1",
+  EXCHANGEENTERPRISE: "Exchange Online Plan 2",
+  EXCHANGEARCHIVE_ADDON: "Exchange Online Archiving",
+  EXCHANGEDESKLESS: "Exchange Online Kiosk",
+  SHAREPOINTSTANDARD: "SharePoint Online Plan 1",
+  SHAREPOINTENTERPRISE: "SharePoint Online Plan 2",
+  SHAREPOINTWAC: "Office for the web",
+  TEAMS_EXPLORATORY: "Microsoft Teams Exploratory",
+  TEAMS1: "Microsoft Teams (Essentiel)",
+  TEAMS_COMMERCIAL: "Microsoft Teams Commercial",
+  TEAMS_EDU: "Microsoft Teams for Education",
+  AAD_PREMIUM: "Microsoft Entra ID P1",
+  AAD_PREMIUM_P2: "Microsoft Entra ID P2",
+  AAD_BASIC: "Azure AD Basic",
+  EMS: "Enterprise Mobility + Security E3",
+  EMSPREMIUM: "Enterprise Mobility + Security E5",
+  OFFICESUBSCRIPTION: "Microsoft 365 Apps for enterprise",
+  OFFICE_PRO_PLUS_SUBSCRIPTION_SMBIZ: "Office 365 ProPlus",
+  OFFICE365_MIDSIZE_BUSINESS: "Office 365 Midsize Business",
+  INTUNE_A: "Microsoft Intune",
+  INTUNE_A_VL: "Microsoft Intune (Volume)",
+  VISIOCLIENT: "Visio Plan 2",
+  VISIOONLINE_PLAN1: "Visio Plan 1",
+  VISIOONLINE_PLAN2: "Visio Plan 2",
+  PROJECTPROFESSIONAL: "Project Plan 3",
+  PROJECTONLINE_PLAN_1: "Project Plan 1",
+  PROJECTONLINE_PLAN_2: "Project Plan 3",
+  PROJECTPREMIUM: "Project Plan 5",
+  POWER_BI_STANDARD: "Power BI Free",
+  POWER_BI_PRO: "Power BI Pro",
+  POWER_BI_PREMIUM: "Power BI Premium",
+  FLOW_FREE: "Power Automate (Gratuit)",
+  POWERAPPS_VIRAL: "Power Apps (Gratuit)",
+  POWERAPPS_PER_USER: "Power Apps per user",
+  STREAM: "Microsoft Stream",
+  YAMMER_ENTERPRISE: "Yammer Enterprise",
+  ENTERPRISEPACK_GOV: "Office 365 E3 (Gouvernement)",
+  ENTERPRISEPREMIUM_GOV: "Office 365 E5 (Gouvernement)",
+  STANDARDWOFFPACK_STUDENT: "Office 365 Education (Students)",
+  STANDARDWOFFPACK_FACULTY: "Office 365 Education (Faculty)",
+  DESKLESSPACK: "Office 365 F3",
+  WIN_DEF_ATP: "Microsoft Defender for Endpoint",
+  ATP_ENTERPRISE: "Microsoft Defender for Office 365",
+  IDENTITY_THREAT_PROTECTION: "Microsoft 365 E5 Security",
+  MCOSTANDARD: "Skype for Business Online Plan 2",
+  MCOMEETADV: "Audio Conferencing",
+  PHONESYSTEM_VIRTUALUSER: "Phone System - Virtual User",
+  MCOPSTN1: "Domestic Calling Plan",
+  MCOPSTN2: "International Calling Plan"
+};
+
+const PORTAL_RECOS_CACHE = new Map();
+const PORTAL_RECOS_TTL_MS = 5 * 60 * 1000;
 function pickString(...values) {
   for (const value of values) {
     if (value == null) continue;
@@ -47,27 +131,71 @@ function isActivationFlag(row, data, type) {
   if (labels.includes(key) && keys.length <= 1) return true;
   return false;
 }
+function asBool(value) {
+  if (value === true || value === 1 || value === "1" || value === "true" || value === "t") return true;
+  if (value === false || value === 0 || value === "0" || value === "false" || value === "f") return false;
+  return null;
+}
+function isSkuCode(value) {
+  const text = String(value || "").trim();
+  if (!text) return true;
+  if (/^[0-9a-f]{8}-[0-9a-f-]{27,}$/i.test(text)) return true;
+  if (/\s/.test(text)) return false;
+  return /^[A-Z0-9]+(_[A-Z0-9]+)*$/i.test(text);
+}
+function friendlyLicenseName(sku) {
+  const raw = String(sku || "").trim();
+  if (!raw) return null;
+  const normalized = raw.toUpperCase();
+  if (LICENSE_NAME_MAPPING[normalized] || LICENSE_NAME_MAPPING[raw]) {
+    return LICENSE_NAME_MAPPING[normalized] || LICENSE_NAME_MAPPING[raw];
+  }
+  const compact = normalized.replace(/[^A-Z0-9_]/g, "_");
+  if (LICENSE_NAME_MAPPING[compact]) return LICENSE_NAME_MAPPING[compact];
+  for (const [key, label] of Object.entries(LICENSE_NAME_MAPPING)) {
+    const keyNorm = key.toUpperCase();
+    if (normalized === keyNorm || normalized.startsWith(`${keyNorm}_`) || keyNorm.startsWith(`${normalized}_`)) {
+      return label;
+    }
+  }
+  return null;
+}
+function resolveLicenseName(lic, fallback = "Licence") {
+  if (typeof lic === "string") {
+    const mapped = friendlyLicenseName(lic);
+    if (mapped) return mapped;
+    return isSkuCode(lic) ? (friendlyLicenseName(lic) || lic.replace(/_/g, " ")) : lic;
+  }
+  const display = pickString(lic?.displayName, lic?.friendlyName, lic?.productName, lic?.skuDisplayName);
+  const sku = pickString(lic?.skuPartNumber, lic?.nom, lic?.partNumber, lic?.name, lic?.skuId);
+  if (display && !isSkuCode(display)) return display;
+  return friendlyLicenseName(sku) || friendlyLicenseName(display) || display || sku || fallback;
+}
 function mapLicenseRows(licences = []) {
   if (!Array.isArray(licences)) return [];
   return licences.map(lic => ({
-    name: pickString(lic.friendlyName, lic.productName, lic.skuPartNumber, lic.skuId, lic.nom, lic.displayName, lic.name, lic.partNumber) || "Licence",
+    name: resolveLicenseName(lic),
+    sku: pickString(lic.skuPartNumber, lic.nom, lic.partNumber),
     total: pickNumber(lic.total, lic.totalLicenses, lic.prepaidUnits?.enabled),
     used: pickNumber(lic.consumed, lic.used, lic.usedLicenses, lic.consumedUnits, lic.utilisees),
     expiration: pickDate(lic.expirationDate, lic.expiration)
   })).filter(lic => lic.name);
 }
 function formatUserLicenseLabel(licenses) {
-  if (typeof licenses === "string" && licenses.trim()) return licenses.trim();
+  if (typeof licenses === "string" && licenses.trim()) {
+    return licenses.split(/[,;]/).map(part => resolveLicenseName(part.trim())).filter(Boolean).join(", ");
+  }
   if (!Array.isArray(licenses) || !licenses.length) return "";
   return licenses.map(lic => {
-    if (typeof lic === "string") return lic.trim();
-    return pickString(lic?.friendlyName, lic?.productName, lic?.skuPartNumber, lic?.displayName, lic?.name, lic?.nom);
+    if (typeof lic === "string") return resolveLicenseName(lic.trim());
+    return resolveLicenseName(lic);
   }).filter(Boolean).join(", ");
 }
 function userHasMfaEnabled(user) {
-  if (user?.has_mfa === true || user?.hasMfa === true || user?.mfaEnabled === true) return true;
-  if (user?.has_mfa === false || user?.hasMfa === false || user?.mfaEnabled === false) return false;
-  const methods = user?.mfa_methods || user?.mfaMethods || [];
+  if (!user) return null;
+  const flagged = asBool(user.has_mfa ?? user.hasMfa ?? user.hasMFA ?? user.mfaEnabled);
+  if (flagged != null) return flagged;
+  const methods = user.mfa_methods || user.mfaMethods || [];
   if (!Array.isArray(methods) || !methods.length) return null;
   const ignored = new Set(["passwordauthenticationmethod", "password", "windowshelloforbusinessauthenticationmethod"]);
   return methods.some(method => !ignored.has(String(method || "").toLowerCase()));
@@ -85,8 +213,8 @@ function findMfaEntry(user, mfaDetails = []) {
   const upn = String(user.userPrincipalName || user.email || user.mail || "").toLowerCase();
   const id = String(user.id || user.userId || "");
   return mfaDetails.find(entry => {
-    const entryUpn = String(entry.userPrincipalName || entry.upn || entry.email || "").toLowerCase();
-    const entryId = String(entry.id || entry.userId || "");
+    const entryUpn = String(entry.userPrincipalName || entry.user_principal_name || entry.upn || entry.email || "").toLowerCase();
+    const entryId = String(entry.id || entry.userId || entry.user_id || "");
     return (entryUpn && upn && entryUpn === upn) || (id && entryId && entryId === id);
   }) || null;
 }
@@ -95,7 +223,8 @@ function mapUsersForPortal(users = [], mfaDetails = []) {
   return users.map(user => {
     const mfa = findMfaEntry(user, mfaDetails);
     const mfaFields = mfa ? {
-      has_mfa: mfa.has_mfa ?? mfa.hasMfa ?? user.has_mfa,
+      has_mfa: mfa.has_mfa ?? mfa.hasMfa ?? mfa.hasMFA ?? user.has_mfa,
+      hasMFA: mfa.hasMFA ?? mfa.has_mfa ?? mfa.hasMfa,
       mfa_methods: mfa.mfa_methods || mfa.mfaMethods || user.mfa_methods || user.mfaMethods
     } : user;
     return {
@@ -105,8 +234,11 @@ function mapUsersForPortal(users = [], mfaDetails = []) {
       accountEnabled: user.accountEnabled !== false,
       lastLoginDate: pickDate(user.lastLoginDate, user.lastSignInDateTime),
       licenses: formatUserLicenseLabel(user.licenses) || formatUserLicenseLabel(user.assignedLicenses),
-      isAdmin: Boolean(user.isAdmin || user.isGlobalAdmin || user.isCompanyAdmin || mfa?.is_admin || mfa?.isAdmin),
-      mfaEnabled: userHasMfaEnabled(mfaFields)
+      isAdmin: mfa
+        ? asBool(mfa.is_admin ?? mfa.isAdmin) === true
+        : asBool(user.isAdmin || user.isGlobalAdmin || user.isCompanyAdmin) === true ? true : null,
+      adminRole: pickString(mfa?.admin_role, mfa?.adminRole, user.adminRole),
+      mfaEnabled: mfa ? userHasMfaEnabled(mfaFields) : userHasMfaEnabled(user)
     };
   });
 }
@@ -128,7 +260,7 @@ function mapO365Licenses(rawLicences = []) {
   }).map(lic => ({
     ...lic,
     available: Math.max(0, (lic.total ?? 0) - (lic.used ?? 0))
-  }));
+  })).sort((a, b) => (b.used ?? 0) - (a.used ?? 0) || (b.total ?? 0) - (a.total ?? 0));
 }
 function summarizeExchange(raw) {
   if (!raw || raw.success === false) return null;
@@ -139,21 +271,68 @@ function summarizeExchange(raw) {
   const received = pickNumber(activity.received) || 0;
   const read = pickNumber(activity.read) || 0;
   const mailboxCount = pickNumber(mailboxes.total, mailboxes.count, quotas.length);
-  if (!mailboxCount && !sent && !received && !read && !quotas.length) return null;
+  const dailyActivity = Array.isArray(activity.dailyActivity)
+    ? activity.dailyActivity.slice(-90).map(day => ({
+      date: day.date,
+      sent: pickNumber(day.sent) || 0,
+      received: pickNumber(day.received) || 0,
+      read: pickNumber(day.read) || 0
+    }))
+    : [];
+  if (!mailboxCount && !sent && !received && !read && !quotas.length && !dailyActivity.length) return null;
   const quotasFull = quotas.filter(quota => {
     const used = Number(quota.storageUsed || quota.used || 0);
-    const limit = Number(quota.storageLimit || quota.prohibitSendQuota || quota.quota || 0);
+    const limit = Number(quota.storageLimit || quota.storageQuota || quota.prohibitSendQuota || quota.quota || 0);
+    const percent = pickNumber(quota.usagePercent, quota.quotaPercent);
+    if (percent != null) return percent >= 90;
     if (limit > 0) return used / limit >= 0.9;
     return used / (1024 * 1024 * 1024) > 50;
   }).length;
+  const quotaBuckets = { over50: 0, from25: 0, from10: 0, from5: 0, under5: 0 };
+  quotas.forEach(quota => {
+    const gb = Number(quota.storageUsed || quota.used || 0) / (1024 ** 3);
+    if (gb > 50) quotaBuckets.over50 += 1;
+    else if (gb >= 25) quotaBuckets.from25 += 1;
+    else if (gb >= 10) quotaBuckets.from10 += 1;
+    else if (gb >= 5) quotaBuckets.from5 += 1;
+    else quotaBuckets.under5 += 1;
+  });
   return {
     mailboxCount,
     sent,
     received,
     read,
+    readRate: pickNumber(activity.readRate),
+    averages: activity.averages || null,
     storage: mailboxes.totalSize || null,
-    quotasFull: quotas.length ? quotasFull : null
+    averageSize: mailboxes.averageSize || null,
+    quotasFull: quotas.length ? quotasFull : null,
+    dailyActivity,
+    quotaBuckets: quotas.length ? quotaBuckets : null,
+    quotas: quotas.slice(0, 40).map((quota, index) => ({
+      id: quota.email || quota.user || `quota-${index}`,
+      name: pickString(quota.displayName, quota.user, quota.email) || "—",
+      email: pickString(quota.email),
+      used: quota.storageUsed ?? quota.used ?? null,
+      quota: quota.storageQuota ?? quota.quota ?? null,
+      percent: pickNumber(quota.usagePercent, quota.quotaPercent)
+    })).sort((a, b) => (b.percent ?? 0) - (a.percent ?? 0)),
+    topUsers: (Array.isArray(raw.topUsers) ? raw.topUsers : []).slice(0, 8).map((user, index) => ({
+      id: user.email || user.name || `top-${index}`,
+      name: pickString(user.name, user.displayName, user.email) || "—",
+      email: pickString(user.email),
+      sent: pickNumber(user.sent) || 0,
+      received: pickNumber(user.received) || 0,
+      read: pickNumber(user.read) || 0,
+      total: pickNumber(user.total, (user.sent || 0) + (user.received || 0)) || 0
+    }))
   };
+}
+function pickTeamsActivityBlock(raw, key) {
+  const value = raw?.activity?.[key] || raw?.[key];
+  if (value && typeof value === "object" && !Array.isArray(value)) return value;
+  if (typeof value === "number") return { total: value };
+  return {};
 }
 function summarizeTeams(raw) {
   if (!raw || raw.success === false) return null;
@@ -162,16 +341,59 @@ function summarizeTeams(raw) {
     : asList(raw?.teamsList).length
       ? asList(raw.teamsList)
       : asList(raw?.teams);
-  if (!list.length && raw.teamsCount == null && raw.total == null) return null;
+  const messages = pickTeamsActivityBlock(raw, "messages");
+  const meetings = pickTeamsActivityBlock(raw, "meetings");
+  const calls = pickTeamsActivityBlock(raw, "calls");
+  const usage = raw?.activity?.usage && typeof raw.activity.usage === "object" ? raw.activity.usage : {};
+  const dailyActivity = Array.isArray(raw?.licensedActivity?.dailyActivity)
+    ? raw.licensedActivity.dailyActivity.slice(-90).map(day => ({
+      date: day.date,
+      channelMessages: pickNumber(day.channelMessages) || 0,
+      chatMessages: pickNumber(day.chatMessages) || 0,
+      oneOnOneCalls: pickNumber(day.oneOnOneCalls) || 0,
+      totalMeetings: pickNumber(day.totalMeetings) || 0
+    }))
+    : [];
+  const teamCount = pickNumber(raw.teams?.total, raw.teamsCount, raw.total, list.length);
+  const hasActivity = Boolean(
+    pickNumber(messages.total)
+    || pickNumber(meetings.total)
+    || pickNumber(calls.total)
+    || dailyActivity.length
+    || pickNumber(usage.licensedUsers)
+    || pickNumber(usage.activeUsers, raw.teams?.activeUsers)
+  );
+  if (!list.length && teamCount == null && !hasActivity) return null;
   return {
-    teamCount: pickNumber(raw.teams?.total, raw.teamsCount, raw.total, list.length) || list.length,
+    teamCount: teamCount ?? list.length,
     teams: list.slice(0, 100).map((team, index) => ({
       id: team.id || `team-${index}`,
       name: pickString(team.displayName, team.name) || "—",
       members: pickNumber(team.memberCount) || 0,
       channels: pickNumber(team.channelCount) || 0,
       visibility: String(team.visibility || "").toLowerCase() === "private" ? "private" : "public"
-    }))
+    })),
+    licensedUsers: pickNumber(usage.licensedUsers),
+    activeUsers: pickNumber(usage.activeUsers, raw.teams?.activeUsers),
+    messages: {
+      total: pickNumber(messages.total) || 0,
+      privateChat: pickNumber(messages.privateChat) || 0,
+      teamChat: pickNumber(messages.teamChat) || 0
+    },
+    meetings: {
+      total: pickNumber(meetings.total) || 0,
+      organized: pickNumber(meetings.organized) || 0,
+      attended: pickNumber(meetings.attended) || 0
+    },
+    calls: {
+      total: pickNumber(calls.total) || 0,
+      totalDuration: pickString(calls.totalDuration),
+      averageDuration: pickString(calls.averageDuration),
+      audioDuration: pickString(calls.audioDuration),
+      videoDuration: pickString(calls.videoDuration),
+      screenShareDuration: pickString(calls.screenShareDuration)
+    },
+    dailyActivity
   };
 }
 function summarizeSharePoint(raw) {
@@ -200,21 +422,60 @@ function summarizeOneDrive(raw) {
     averagePerUser: storage.averagePerUser ?? null
   };
 }
-function summarizeSecurity(raw, users = []) {
+function stripHtml(value) {
+  return String(value || "").replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
+}
+function mapRecommendationRow(rec, index) {
+  const title = pickString(
+    rec.titleFr,
+    rec.title,
+    rec.controlDisplayName,
+    stripHtml(rec.description),
+    rec.controlName,
+    rec.name
+  );
+  const current = pickNumber(rec.currentScore, rec.score, rec.controlScore);
+  const max = pickNumber(rec.maxScore, rec.controlMaxScore);
+  const score = max != null && current != null
+    ? `${Math.round(current)} / ${Math.round(max)}`
+    : pickNumber(rec.scoreInPercentage, rec.score, max);
+  return {
+    id: rec.id || rec.controlName || rec.controlId || `reco-${index}`,
+    title: title || "—",
+    score,
+    currentScore: current,
+    maxScore: max
+  };
+}
+function pickRecommendationLists(raw = {}, extra = []) {
+  const lists = [
+    extra,
+    raw.secureScoreRecommendations,
+    raw.recommendations,
+    raw.controlScores,
+    raw.secureScore?.controlScores
+  ];
+  for (const list of lists) {
+    if (Array.isArray(list) && list.length) return list;
+  }
+  return [];
+}
+function summarizeSecurity(raw, users = [], extraRecos = []) {
   const score = raw?.secureScore || {};
   const current = pickNumber(score.currentScore, raw?.secureScoreCurrent);
   const max = pickNumber(score.maxScore, raw?.secureScoreMax) || 100;
-  const pct = pickNumber(score.percentage) ?? (current != null && max ? Math.round(current / max * 100) : null);
-  const recos = Array.isArray(raw?.secureScoreRecommendations) ? raw.secureScoreRecommendations : [];
-  const recommendations = recos.slice(0, 12).map((rec, index) => ({
-    id: rec.id || rec.controlName || `reco-${index}`,
-    title: pickString(rec.title, rec.controlName, rec.controlDisplayName) || "—",
-    score: pickNumber(rec.maxScore, rec.scoreInPercentage, rec.score)
-  })).filter(rec => rec.title !== "—");
+  const pct = pickNumber(score.percentage) ?? (current != null && max ? Math.round((current / max) * 100) : null);
+  const recos = pickRecommendationLists(raw || {}, extraRecos).filter(rec => {
+    const cur = pickNumber(rec.currentScore, rec.score, rec.controlScore);
+    const recMax = pickNumber(rec.maxScore, rec.controlMaxScore);
+    if (recMax != null && recMax > 0 && cur != null) return cur < recMax;
+    return true;
+  });
+  const recommendations = recos.slice(0, 20).map(mapRecommendationRow).filter(rec => rec.title !== "—");
   const knownMfa = users.filter(user => user.mfaEnabled != null);
   const mfaEnabled = knownMfa.filter(user => user.mfaEnabled === true).length;
   const mfaCoverage = knownMfa.length ? Math.round(mfaEnabled / knownMfa.length * 100) : null;
-  if (pct == null && !recommendations.length && mfaCoverage == null) return null;
+  if (pct == null && current == null && !recommendations.length && mfaCoverage == null) return null;
   return {
     secureScore: current,
     secureScoreMax: max,
@@ -224,6 +485,107 @@ function summarizeSecurity(raw, users = []) {
     mfaKnown: knownMfa.length,
     mfaCoverage
   };
+}
+export function snapshotHasRecommendations(data = {}) {
+  const security = pickWorkload(data, "securityData", "security") || {};
+  return pickRecommendationLists(security, data.secureScoreRecommendations || []).length > 0;
+}
+export async function fetchPortalMfaDetails(clientId) {
+  if (!clientId) return [];
+  try {
+    const result = await pool.query(`
+      SELECT
+        user_id as id,
+        display_name,
+        user_principal_name,
+        account_enabled,
+        has_mfa,
+        mfa_methods,
+        is_admin,
+        admin_role
+      FROM v_b_clients_c_azure_mfa
+      WHERE client_id = $1
+      ORDER BY display_name ASC
+    `, [clientId]);
+    return result.rows.map(row => ({
+      id: row.id,
+      displayName: row.display_name,
+      userPrincipalName: row.user_principal_name,
+      email: row.user_principal_name,
+      accountEnabled: row.account_enabled,
+      has_mfa: row.has_mfa,
+      hasMfa: row.has_mfa,
+      hasMFA: row.has_mfa,
+      mfa_methods: row.mfa_methods || [],
+      mfaMethods: row.mfa_methods || [],
+      is_admin: row.is_admin === true,
+      isAdmin: row.is_admin === true,
+      admin_role: row.admin_role || null
+    }));
+  } catch (err) {
+    if (err.code === "42P01") return [];
+    console.error("fetchPortalMfaDetails", err.message);
+    return [];
+  }
+}
+function mapControlScoresToRecommendations(controls = []) {
+  if (!Array.isArray(controls)) return [];
+  return controls.filter(control => {
+    const current = pickNumber(control.score, control.currentScore, control.controlScore) || 0;
+    const max = pickNumber(control.maxScore, control.controlMaxScore) || 0;
+    return max > 0 && current < max;
+  }).slice(0, 20).map((control, index) => ({
+    id: control.controlName || control.controlId || control.id || `reco-${index}`,
+    title: pickString(stripHtml(control.description), control.title, control.controlDisplayName, control.controlName),
+    controlName: control.controlName,
+    currentScore: pickNumber(control.score, control.currentScore),
+    maxScore: pickNumber(control.maxScore),
+    score: pickNumber(control.score, control.currentScore)
+  }));
+}
+export async function fetchPortalSecureScoreRecommendations(clientId) {
+  if (!clientId) return [];
+  const cached = PORTAL_RECOS_CACHE.get(clientId);
+  if (cached && Date.now() - cached.at < PORTAL_RECOS_TTL_MS) return cached.recos;
+  try {
+    const { getClientOffice365Credentials, getMicrosoftGraphToken } = await import("../routes/integrations/office365.js");
+    const credentials = await getClientOffice365Credentials(clientId);
+    if (!credentials?.tenantId || !credentials?.clientId || !credentials?.clientSecret) return [];
+    const token = await getMicrosoftGraphToken(credentials.tenantId, credentials.clientId, credentials.clientSecret);
+    const urls = [
+      "https://graph.microsoft.com/v1.0/security/secureScores?$top=5&$orderby=createdDateTime desc",
+      "https://graph.microsoft.com/v1.0/security/secureScores?$top=5"
+    ];
+    let payload = null;
+    for (const url of urls) {
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), 8000);
+      try {
+        const response = await fetch(url, {
+          headers: { Authorization: `Bearer ${token}` },
+          signal: controller.signal
+        });
+        if (response.ok) {
+          payload = await response.json();
+          break;
+        }
+      } catch {
+        // try next URL
+      } finally {
+        clearTimeout(timer);
+      }
+    }
+    if (!payload) return [];
+    const latest = (payload.value || []).find(score => Array.isArray(score.controlScores) && score.controlScores.length)
+      || payload.value?.[0]
+      || null;
+    const recos = mapControlScoresToRecommendations(latest?.controlScores);
+    PORTAL_RECOS_CACHE.set(clientId, { at: Date.now(), recos });
+    return recos;
+  } catch (err) {
+    console.warn("fetchPortalSecureScoreRecommendations", err.message);
+    return [];
+  }
 }
 function mapO365Details(row, data) {
   const rawLicences = Array.isArray(data.licences)
@@ -235,7 +597,8 @@ function mapO365Details(row, data) {
   const totalLicenses = licenses.reduce((sum, lic) => sum + (lic.total ?? 0), 0);
   const usedLicenses = licenses.reduce((sum, lic) => sum + (lic.used ?? 0), 0);
   const users = mapUsersForPortal(data.users, pickMfaDetails(data));
-  const security = summarizeSecurity(pickWorkload(data, "securityData", "security"), users);
+  const securityRaw = pickWorkload(data, "securityData", "security") || {};
+  const security = summarizeSecurity(securityRaw, users, data.portalSecureScoreRecommendations || []);
   return {
     kind: "o365",
     product: pickString(data.tenantName, data.organization, row.name, "Microsoft 365"),
@@ -346,13 +709,67 @@ function mapAntispamDetails(row, data) {
     lastSync: pickDate(syncData?.lastSync, data.lastSync)
   };
 }
+function pickJobLastBackup(...sources) {
+  const values = [];
+  sources.forEach(source => {
+    if (source == null || source === "") return;
+    if (typeof source === "object" && !(source instanceof Date)) {
+      values.push(
+        source.last_backup_start,
+        source.lastBackupStart,
+        source.last_backup_date,
+        source.lastBackupDate,
+        source.lastBackup
+      );
+      return;
+    }
+    values.push(source);
+  });
+  return pickDate(...values);
+}
+function pickJobLastBackupDuration(...sources) {
+  for (const source of sources) {
+    if (source == null || source === "") continue;
+    if (typeof source === "object" && !(source instanceof Date)) {
+      const label = pickString(source.last_backup_duration, source.lastBackupDuration);
+      if (label) return label;
+      continue;
+    }
+    const label = pickString(source);
+    if (label) return label;
+  }
+  return null;
+}
+function toBackupTimestamp(value) {
+  if (value == null || value === "") return null;
+  if (value instanceof Date) {
+    return Number.isNaN(value.getTime()) ? null : value.toISOString();
+  }
+  const date = new Date(value);
+  if (!Number.isNaN(date.getTime())) return date.toISOString();
+  return String(value);
+}
+export function attachSaveBackupFields(data, row = {}) {
+  const next = data && typeof data === "object" && !Array.isArray(data) ? { ...data } : {};
+  const lastBackupDate = toBackupTimestamp(row.last_backup_date ?? next.last_backup_date);
+  const lastBackupStart = toBackupTimestamp(row.last_backup_start ?? next.last_backup_start);
+  const lastBackupDuration = row.last_backup_duration != null && row.last_backup_duration !== ""
+    ? String(row.last_backup_duration)
+    : next.last_backup_duration != null && next.last_backup_duration !== ""
+      ? String(next.last_backup_duration)
+      : null;
+  if (lastBackupDate) next.last_backup_date = lastBackupDate;
+  if (lastBackupStart) next.last_backup_start = lastBackupStart;
+  if (lastBackupDuration) next.last_backup_duration = lastBackupDuration;
+  return next;
+}
 function mapSaveJobDetails(job, instanceName, index, parentId) {
   return {
     id: job.id || `${parentId || "job"}-${index}`,
     name: pickString(job.nom, job.name, job.type, "Job"),
     jobType: pickString(job.type, job.jobType),
-    lastBackup: pickDate(job.last_backup_date, job.lastBackupDate, job.lastBackup),
-    lastBackupDuration: pickString(job.last_backup_duration, job.lastBackupDuration)
+    lastBackup: pickJobLastBackup(job),
+    lastBackupDuration: pickJobLastBackupDuration(job)
   };
 }
 function mapSaveInstance(row, inst, index) {
@@ -361,6 +778,7 @@ function mapSaveInstance(row, inst, index) {
   const name = pickString(inst.nom, inst.name, row.name, "Instance");
   return {
     id: parentId,
+    itemKey: inst.item_key || inst.itemKey || row.item_key || null,
     name,
     type: "save",
     active: inst.is_active !== false,
@@ -376,7 +794,7 @@ function mapSaveInstance(row, inst, index) {
       capacity: pickString(inst.capacite, inst.capacity),
       site: pickString(inst.site, inst.emplacement),
       jobCount: jobs.length,
-      lastBackup: pickDate(...jobs.map(job => job.last_backup_date || job.lastBackupDate || job.lastBackup)),
+      lastBackup: pickJobLastBackup(...jobs),
       jobs: jobs.map((job, jobIndex) => mapSaveJobDetails(job, name, jobIndex, parentId))
     }
   };
@@ -391,7 +809,7 @@ function expandSaveRows(row, data) {
   if (mapped.details?.kind === "save" && Array.isArray(data.jobs) && data.jobs.length) {
     mapped.details.jobs = data.jobs.map((job, jobIndex) => mapSaveJobDetails(job, mapped.name, jobIndex, mapped.id));
     mapped.details.jobCount = data.jobs.length;
-    mapped.details.lastBackup = pickDate(...mapped.details.jobs.map(job => job.lastBackup));
+    mapped.details.lastBackup = pickJobLastBackup(...mapped.details.jobs);
   }
   return [mapped];
 }
@@ -402,7 +820,9 @@ function mapSaveDetails(row, data) {
       kind: "saveJob",
       product: pickString(data.type, data.nom, "Backup job"),
       jobType: pickString(data.type, data.jobType),
-      lastBackup: pickDate(data.last_backup_date, data.lastBackupDate, data.lastBackup),
+      lastBackup: pickJobLastBackup(data),
+      lastBackupDuration: pickJobLastBackupDuration(data),
+      instanceName: pickString(data.instanceName, data.instance, data.instanceNom),
       expiration: pickDate(data.expiration, data.expirationGarantie)
     };
   }
@@ -413,25 +833,69 @@ function mapSaveDetails(row, data) {
     site: pickString(data.site, data.emplacement),
     expiration: pickDate(data.expiration, data.expirationGarantie, data.garantie),
     jobCount: Array.isArray(data.jobs) ? data.jobs.length : null,
-    lastBackup: pickDate(...(Array.isArray(data.jobs) ? data.jobs.map(job => job.last_backup_date || job.lastBackupDate) : []))
+    lastBackup: pickJobLastBackup(data, ...(Array.isArray(data.jobs) ? data.jobs : []))
   };
 }
+function formatPortalLabelList(value) {
+  if (value == null || value === "") return null;
+  if (Array.isArray(value)) {
+    const labels = value.map(entry => {
+      if (entry == null || entry === "") return "";
+      if (typeof entry === "object") return pickString(entry.name, entry.label, entry.title, entry.role);
+      return String(entry).trim();
+    }).filter(Boolean);
+    return labels.length ? labels.join(", ") : null;
+  }
+  if (typeof value === "object") {
+    return pickString(value.name, value.label, value.title, value.role);
+  }
+  const text = String(value).trim();
+  return text && text !== "N/A" ? text : null;
+}
+function pickNddRole(data = {}) {
+  const generic = new Set(["ndd", "domain", "domaine", "domains", "dns"]);
+  const raw = data.role ?? data.roles ?? data.fonction ?? data.usage ?? data.category ?? data.categorie ?? data.domainRole ?? data.type;
+  const label = formatPortalLabelList(raw);
+  if (!label) return null;
+  if (generic.has(label.toLowerCase())) return null;
+  return label;
+}
+function pickNddAutoRenew(data = {}) {
+  const nestedRenew = data.syncData?.serviceInfos?.renew || data.syncData?.renew || {};
+  const flagged = asBool(
+    data.autoRenew
+    ?? data.auto_renewal
+    ?? data.auto_renew
+    ?? data.autorenew
+    ?? nestedRenew.automatic
+  );
+  if (flagged != null) return flagged;
+  const mode = String(data.renewalMode || data.renewal || nestedRenew.mode || "").toLowerCase();
+  if (mode === "automatic" || mode === "auto") return true;
+  if (mode === "manual" || mode === "manuel") return false;
+  if (nestedRenew.manualPayment === true) return false;
+  return null;
+}
 function mapNddDetails(row, data) {
+  const autoRenew = pickNddAutoRenew(data);
+  const renewalMode = pickString(data.renewalMode);
   return {
     kind: "ndd",
     product: pickString(data.registrar, "Nom de domaine"),
     domain: pickString(data.nom, data.domaine, data.domain, data.name, row.name),
-    registrar: pickString(data.registrar, data.provider, data.providerName),
-    autoRenew: data.autoRenew === true || data.auto_renewal === true ? true : data.autoRenew === false || data.auto_renewal === false ? false : null,
+    registrar: pickString(data.registrar, data.provider, data.providerName, data.registrarName),
+    autoRenew,
     expiration: pickDate(data.expiration, data.expirationDate, data.expirityDate),
-    renewalMode: pickString(data.renewalMode),
-    role: pickString(data.role, data.type)
+    renewalMode: renewalMode && renewalMode.toLowerCase() !== "unknown" ? renewalMode : (autoRenew === true ? "automatic" : autoRenew === false ? "manual" : null),
+    role: pickNddRole(data),
+    hasDnsZone: data.hasDnsZone === true || Boolean(data.dnsZone) ? true : data.hasDnsZone === false ? false : null
   };
 }
 export function mapCloudServiceForPortal(type, row, rawData = {}) {
   const data = rawData && typeof rawData === "object" ? rawData : {};
   const base = {
     id: row.id,
+    itemKey: row.item_key || null,
     name: pickString(row.name, data.nom, data.name, data.domaine, data.domain, row.item_key) || "Sans nom",
     type,
     active: row.is_active !== false,
@@ -479,6 +943,28 @@ export function mapCloudServiceForPortal(type, row, rawData = {}) {
     licenses: details.licenses || [],
     details
   };
+}
+export function linkSaveJobsToInstances(items) {
+  const list = Array.isArray(items) ? items : [];
+  const instances = list.filter(item => item?.details?.kind !== "saveJob");
+  const byId = new Map();
+  instances.forEach(item => {
+    byId.set(String(item.id), item);
+    if (item.itemKey) byId.set(String(item.itemKey), item);
+  });
+  list.forEach(job => {
+    if (job?.details?.kind !== "saveJob") return;
+    const key = String(job.itemKey || "");
+    const instanceId = key.startsWith("job-") ? key.slice(4) : "";
+    const instance = instanceId ? byId.get(instanceId) : null;
+    if (!instance) return;
+    job.details.instanceName = instance.name || job.details.instanceName;
+    if (!Array.isArray(instance.details?.jobs) || !instance.details.jobs.length) {
+      instance.details.jobCount = (instance.details.jobCount || 0) + 1;
+    }
+    instance.details.lastBackup = pickJobLastBackup(instance.details, job.details);
+  });
+  return list;
 }
 export function expandCloudServiceRows(type, row, data) {
   if (type === "save") {

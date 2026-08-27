@@ -43,6 +43,32 @@ function StatusBadge({ active, copy }) {
   );
 }
 
+function formatDomainRole(row, copy) {
+  const raw = row.details?.role ?? row.role ?? row.details?.type;
+  if (Array.isArray(raw)) {
+    const labels = raw.map(entry => {
+      if (entry == null || entry === "") return "";
+      if (typeof entry === "object") return entry.name || entry.label || "";
+      return String(entry).trim();
+    }).filter(Boolean);
+    if (labels.length) return labels.join(", ");
+  } else if (raw != null && String(raw).trim() && !["ndd", "domain", "domaine"].includes(String(raw).trim().toLowerCase())) {
+    return String(raw).trim();
+  }
+  if (row.details?.hasDnsZone === true) return copy.dnsZoneHosted || "Zone DNS";
+  if (row.details?.hasDnsZone === false) return copy.dnsZoneExternal || "—";
+  return "—";
+}
+
+function formatDomainRenewal(details, copy) {
+  if (details?.autoRenew === true) return copy.autoRenewYes;
+  if (details?.autoRenew === false) return copy.autoRenewNo;
+  const mode = String(details?.renewalMode || "").toLowerCase();
+  if (mode === "automatic" || mode === "auto") return copy.autoRenewYes;
+  if (mode === "manual" || mode === "manuel") return copy.autoRenewNo;
+  return "—";
+}
+
 function ServiceTable({ columns, rows, emptyLabel }) {
   if (!rows.length) {
     return <p className={listStyles.emptyCategory}>{emptyLabel}</p>;
@@ -209,8 +235,8 @@ function DomainsView({ items, copy, formatDate }) {
           columns={[
             { key: "domain", label: copy.domain, render: row => row.details?.domain || row.name },
             { key: "registrar", label: copy.registrar, render: row => row.details?.registrar || "—" },
-            { key: "role", label: copy.tableRole, render: row => row.details?.role || "—" },
-            { key: "renew", label: copy.tableRenewal, render: row => row.details?.autoRenew == null ? "—" : row.details.autoRenew ? copy.autoRenewYes : copy.autoRenewNo },
+            { key: "role", label: copy.tableRole, render: row => formatDomainRole(row, copy) },
+            { key: "renew", label: copy.tableRenewal, render: row => formatDomainRenewal(row.details, copy) },
             { key: "expiration", label: copy.tableExpiration, render: row => <ExpirationBadge dateValue={row.expiration} copy={copy} formatDate={formatDate} /> },
             { key: "status", label: copy.tableStatus, render: row => <StatusBadge active={row.active} copy={copy} /> }
           ]}
@@ -294,7 +320,7 @@ export default function ClientServicesDetailView({ cloudServices = [] }) {
       {activeGroup?.type === "o365" ? (
         <ClientPortalTenantView items={activeGroup.items} copy={t} formatDate={copy.formatPortalDate} />
       ) : activeGroup?.type === "save" ? (
-        <BackupView items={activeGroup.items} copy={t} formatDate={copy.formatPortalDate} />
+        <BackupView items={activeGroup.items} copy={t} formatDate={copy.formatPortalDateTime} />
       ) : activeGroup?.type === "ndd" ? (
         <DomainsView items={activeGroup.items} copy={t} formatDate={copy.formatPortalDate} />
       ) : activeGroup ? (

@@ -130,6 +130,17 @@
   margin-top: 0.65rem;
 }
 
+.statusGrid4 {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.45rem;
+  margin-top: 0.65rem;
+}
+
+.warrantyPanel {
+  min-width: 0;
+}
+
 .statusCard {
   display: flex;
   flex-direction: column;
@@ -602,6 +613,10 @@
 
 @media (max-width: 720px) {
   .kpiGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .statusGrid4 {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 

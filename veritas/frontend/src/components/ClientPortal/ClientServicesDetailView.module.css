@@ -80,6 +80,24 @@
   gap: 16px;
 }
 
+.tenantAppWide {
+  grid-column: 1 / -1;
+}
+
+.tenantChart {
+  width: 100%;
+  min-height: 240px;
+  margin-top: 8px;
+}
+
+.tenantQuotaGrid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr);
+  gap: 16px;
+  margin-top: 12px;
+  align-items: start;
+}
+
 .tenantTableWrap {
   overflow: auto;
   margin-top: 4px;
@@ -158,6 +176,10 @@
   }
 
   .tenantAppsGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .tenantQuotaGrid {
     grid-template-columns: 1fr;
   }
 }

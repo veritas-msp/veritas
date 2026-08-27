@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { Icon } from "@iconify/react";
 import { interpolate } from "../../i18n/translate";
 import { getLicenseDisplayName } from "../ServicePage/TenantDetailTabs/utils";
+import { ExchangePortalPanel, TeamsPortalPanel, AppPanelHeader } from "./ClientPortalTenantApps";
 import portalStyles from "./ClientDashboard.module.css";
 import tableStyles from "../TicketPage/TicketPage.module.css";
 import listStyles from "./ClientDevicesListTab.module.css";
@@ -125,7 +126,7 @@ export default function ClientPortalTenantView({ items, copy, formatDate }) {
     return source.map((lic, index) => {
       const total = lic.total ?? 0;
       const used = lic.used ?? lic.utilisees ?? 0;
-      const rawName = lic.name || lic.nom || lic.displayName || "";
+      const rawName = lic.name || lic.displayName || lic.nom || lic.sku || "";
       return {
         id: lic.id || lic.skuId || rawName || `lic-${index}`,
         name: getLicenseDisplayName(rawName),
@@ -134,7 +135,7 @@ export default function ClientPortalTenantView({ items, copy, formatDate }) {
         available: lic.available ?? Math.max(0, total - used),
         expiration: lic.expiration || null
       };
-    });
+    }).sort((a, b) => (b.used ?? 0) - (a.used ?? 0) || (b.total ?? 0) - (a.total ?? 0));
   }, [details.licenses, tenant?.licenses]);
 
   const security = details.security || null;
@@ -289,7 +290,19 @@ export default function ClientPortalTenantView({ items, copy, formatDate }) {
               <dl className={`${portalStyles.infoCardFacts} ${styles.tenantFacts}`}>
                 <div>
                   <dt>{copy.tenantSecureScore}</dt>
-                  <dd>{security.secureScorePct != null ? `${Math.round(security.secureScorePct)} %` : "—"}</dd>
+                  <dd>
+                    {security.secureScore != null
+                      ? interpolate(copy.secureScoreValue, {
+                        score: String(Math.round(security.secureScore)),
+                        max: String(Math.round(security.secureScoreMax || 100)),
+                        pct: String(Math.round(security.secureScorePct ?? (security.secureScoreMax
+                          ? (security.secureScore / security.secureScoreMax) * 100
+                          : 0)))
+                      })
+                      : security.secureScorePct != null
+                        ? `${Math.round(security.secureScorePct)} %`
+                        : "—"}
+                  </dd>
                 </div>
                 <div>
                   <dt>{copy.tenantMfa}</dt>
@@ -324,69 +337,28 @@ export default function ClientPortalTenantView({ items, copy, formatDate }) {
       {viewMode === "applications" ? (
         hasApps ? (
           <div className={styles.tenantAppsGrid}>
-            <section className={portalStyles.panel}>
-              <div className={portalStyles.panelHeader}>
-                <span className={portalStyles.panelTitle}>
-                  <Icon icon="simple-icons:microsoftexchange" aria-hidden />
-                  {copy.exchangeTitle}
-                </span>
-              </div>
-              {exchange ? (
-                <dl className={`${portalStyles.infoCardFacts} ${styles.tenantFacts}`}>
-                  <div>
-                    <dt>{copy.mailboxes}</dt>
-                    <dd>{exchange.mailboxCount ?? "—"}</dd>
-                  </div>
-                  <div>
-                    <dt>{copy.mailSent}</dt>
-                    <dd>{exchange.sent ?? "—"}</dd>
-                  </div>
-                  <div>
-                    <dt>{copy.mailReceived}</dt>
-                    <dd>{exchange.received ?? "—"}</dd>
-                  </div>
-                  <div>
-                    <dt>{copy.mailStorage}</dt>
-                    <dd>{formatStorage(exchange.storage)}</dd>
-                  </div>
-                  <div>
-                    <dt>{copy.quotasFull}</dt>
-                    <dd>{exchange.quotasFull ?? "—"}</dd>
-                  </div>
-                </dl>
-              ) : (
-                <p className={portalStyles.empty}>{copy.noItems}</p>
-              )}
-            </section>
-
-            <section className={portalStyles.panel}>
-              <div className={portalStyles.panelHeader}>
-                <span className={portalStyles.panelTitle}>
-                  <Icon icon="simple-icons:microsoftteams" aria-hidden />
-                  {copy.teamsTitle}
-                </span>
-                {teams?.teamCount != null ? <span className={portalStyles.panelCount}>{teams.teamCount}</span> : null}
-              </div>
-              {teams ? (
-                <ServiceTable
-                  emptyLabel={copy.noItems}
-                  tableClassName={styles.tenantAppTable}
-                  columns={[
-                    { key: "name", label: copy.teamName, render: row => row.name },
-                    { key: "members", label: copy.teamMembers, render: row => row.members },
-                    { key: "channels", label: copy.teamChannels, render: row => row.channels },
-                    {
-                      key: "visibility",
-                      label: copy.teamVisibility,
-                      render: row => row.visibility === "private" ? copy.visibilityPrivate : copy.visibilityPublic
-                    }
-                  ]}
-                  rows={teams.teams || []}
+            {exchange ? (
+              <section className={`${portalStyles.panel} ${styles.tenantAppWide}`}>
+                <AppPanelHeader icon="simple-icons:microsoftexchange" title={copy.exchangeTitle} />
+                <ExchangePortalPanel
+                  exchange={exchange}
+                  copy={copy}
+                  formatStorage={formatStorage}
+                  ServiceTable={ServiceTable}
                 />
-              ) : (
-                <p className={portalStyles.empty}>{copy.noItems}</p>
-              )}
-            </section>
+              </section>
+            ) : null}
+
+            {teams ? (
+              <section className={`${portalStyles.panel} ${styles.tenantAppWide}`}>
+                <AppPanelHeader icon="simple-icons:microsoftteams" title={copy.teamsTitle} count={teams?.teamCount} />
+                <TeamsPortalPanel
+                  teams={teams}
+                  copy={copy}
+                  ServiceTable={ServiceTable}
+                />
+              </section>
+            ) : null}
 
             <section className={portalStyles.panel}>
               <div className={portalStyles.panelHeader}>

@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo, useRef, useCallback } from "react"
 import { useParams, useNavigate } from "react-router-dom";
 import { Icon } from "@iconify/react";
 import { toast } from 'react-toastify';
-import { updateClient, saveClientModules, getClientLogs, getClientCheckMKStats, fetchClientAntivirus, fetchClientAntispam, fetchClientDomains, fetchClientSslCertificates, fetchClientLicences, fetchClientCustomEquipmentMap, fetchClientModules, fetchContacts, fetchClientTags, addClientTag, removeClientTag, fetchClientNotes, createClientNote, updateClientNote, deleteClientNote, addContact, updateContact, addContactMembership, setContactPrimaryForClient, deleteClient, fetchClientSupportCredits, fetchClientDeletionCheck } from "../../api/clients";
+import { updateClient, saveClientModules, getClientLogs, getClientCheckMKStats, fetchClientAntivirus, fetchClientAntispam, fetchClientDomains, fetchClientSslCertificates, fetchClientLicences, fetchClientModules, fetchContacts, fetchClientTags, addClientTag, removeClientTag, fetchClientNotes, createClientNote, updateClientNote, deleteClientNote, addContact, updateContact, addContactMembership, setContactPrimaryForClient, deleteClient, fetchClientSupportCredits, fetchClientDeletionCheck, resolveClientCustomFamilyMap } from "../../api/clients";
 import { listClientMailinblackTenants } from "../../api/clientMailinblack";
 import { getGlobalOvhStatus } from "../../api/clientOvh";
 import { parseCustomFamilyType } from "../../api/equipmentFamilies";
@@ -852,8 +852,8 @@ export default function ClientDetailPage({
   }, [hardwareEquipmentTotalCount, customFamilyMap]);
   const refreshClientEquipment = useCallback(async () => {
     if (!client?.id) return null;
-    const [modulesData, customMap] = await Promise.all([fetchClientModules(client.id), fetchClientCustomEquipmentMap(client.id)]);
-    const customFamilies = customMap?.families || [];
+    const [modulesData, customFamilies] = await Promise.all([fetchClientModules(client.id), resolveClientCustomFamilyMap(client.id)]);
+    const families = Array.isArray(customFamilies) ? customFamilies : [];
     setClient(prev => {
       if (!prev) return prev;
       return {
@@ -861,12 +861,12 @@ export default function ClientDetailPage({
         equipements: modulesData?.equipements ?? prev.equipements
       };
     });
-    setCustomFamilyMap(customFamilies);
+    setCustomFamilyMap(families);
     setEquipmentRevision(revision => revision + 1);
     loadTotalEquipment(client.id, null, modulesData);
     return {
       modulesData,
-      customFamilies
+      customFamilies: families
     };
   }, [client?.id]);
   useEffect(() => {
@@ -1279,6 +1279,7 @@ export default function ClientDetailPage({
     setDomainsData([]);
     setSslData([]);
     setLicensesData([]);
+    setCustomFamilyMap([]);
     setBackupInstances([]);
     setBackupJobs([]);
     setDocuments([]);
@@ -1372,7 +1373,7 @@ export default function ClientDetailPage({
         if (isCurrentRequest() && isMountedRef.current) setLoadingUsers(false);
       });
       void loadClientModules(clientInfo.id, modulesData, clientInfo);
-      const parallelLoads = [loadClientTagsAndNotes(clientInfo.id, signal), loadClientActivity(clientInfo.id, signal), loadTotalEquipment(clientInfo.id, clientInfo, modulesData, signal), loadBackupData(clientInfo.id, signal, {
+      const parallelLoads = [loadCustomFamilyMap(clientInfo.id, signal), loadClientTagsAndNotes(clientInfo.id, signal), loadClientActivity(clientInfo.id, signal), loadTotalEquipment(clientInfo.id, clientInfo, modulesData, signal), loadBackupData(clientInfo.id, signal, {
         silent: true
       })];
       if (!isCommunity) {
@@ -2332,6 +2333,21 @@ export default function ClientDetailPage({
   const closeEnterpriseEditModal = () => {
     handleCancelInfo();
   };
+  const loadCustomFamilyMap = async (clientId = null, signal) => {
+    const targetClientId = clientId || client?.id;
+    if (!targetClientId) return;
+    try {
+      const families = await resolveClientCustomFamilyMap(targetClientId, {
+        signal
+      });
+      if (signal?.aborted) return;
+      setCustomFamilyMap(Array.isArray(families) ? families : []);
+    } catch (error) {
+      if (error?.name === "AbortError") return;
+      console.error("Error loading custom equipment families:", error);
+      if (!signal?.aborted) setCustomFamilyMap([]);
+    }
+  };
   const loadSslLicensesData = async (clientId = null, signal) => {
     const targetClientId = clientId || client?.id;
     if (!targetClientId) return;
@@ -2388,14 +2404,6 @@ export default function ClientDetailPage({
       } else {
         const modulesData = await getClientModulesOnce(targetClientId, signal).catch(e => e?.name === "AbortError" ? Promise.reject(e) : null);
         setLicensesData(modulesData ? extractLicensesFromModules(modulesData) : []);
-      }
-      const customMap = await fetchClientCustomEquipmentMap(targetClientId, {
-        signal
-      }).catch(e => e?.name === "AbortError" ? Promise.reject(e) : {
-        families: []
-      });
-      if (!signal?.aborted) {
-        setCustomFamilyMap(customMap?.families || []);
       }
     } catch (error) {
       if (error?.name === "AbortError") return;

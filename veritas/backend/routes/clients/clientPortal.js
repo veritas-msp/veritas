@@ -10,7 +10,7 @@ import { countPortalVaultFiles, getPortalVaultFileRecord, listPortalVaultFiles, 
 import { countPortalVaultSecrets, listPortalVaultSecrets, revealPortalVaultSecret, requestPortalVaultSecretRevocation } from "../../services/clientVaultSecretService.js";
 import { normalizePortalTicketRole } from "../../utils/portalTicketRole.js";
 import { transformClientModulesToFrontend } from "../../utils/transformClientModules.js";
-import { expandCloudServiceRows } from "../../utils/portalCloudServices.js";
+import { expandCloudServiceRows, attachSaveBackupFields, linkSaveJobsToInstances, fetchPortalMfaDetails, fetchPortalSecureScoreRecommendations, snapshotHasRecommendations } from "../../utils/portalCloudServices.js";
 import { normalizeContactCommunications, syncLegacyContactFields, validateContactCommunications } from "../../utils/contactCommunications.js";
 import { syncPortalUserFromContact, switchPortalCompany, listPortalCompaniesForContact } from "../../utils/contactPortal.js";
 import { buildSessionPayload, isImpersonationPayload, buildImpersonationClientPayload, setSessionCookie, signSessionToken } from "../../utils/authSession.js";
@@ -576,17 +576,31 @@ async function fetchEquipmentItems(clientId, type, {
 } = {}) {
   const table = TABLE_MAP[type];
   if (!table) return [];
-  const selectWithCheckmk = `SELECT id, name, item_key, is_active, data, checkmk_host_name
+  const saveExtra = type === "save" ? ", last_backup_date, last_backup_duration, last_backup_start" : "";
+  const selectWithCheckmk = `SELECT id, name, item_key, is_active, data, checkmk_host_name${saveExtra}
        FROM ${table}
        WHERE client_id = $1
        ORDER BY name NULLS LAST, item_key NULLS LAST`;
+  const selectWithCheckmkNoSave = `SELECT id, name, item_key, is_active, data, checkmk_host_name
+       FROM ${table}
+       WHERE client_id = $1
+       ORDER BY name NULLS LAST, item_key NULLS LAST`;
+  const selectBasicWithSave = `SELECT id, name, item_key, is_active, data${saveExtra}
+           FROM ${table} WHERE client_id = $1
+           ORDER BY name NULLS LAST, item_key NULLS LAST`;
   const selectBasic = `SELECT id, name, item_key, is_active, data
            FROM ${table} WHERE client_id = $1
            ORDER BY name NULLS LAST, item_key NULLS LAST`;
-  const mapRow = (row, hasCheckmk) => {
+  const mapRows = (rows, hasCheckmk, portalExtras = {}) => {
+    const mapped = rows.flatMap(row => {
     const data = parseJsonField(row.data, {});
     if (cloudPortal) {
-      return expandCloudServiceRows(type, row, data);
+      if (type === "o365") {
+        if (portalExtras.mfaDetails?.length) data.userMfaDetails = portalExtras.mfaDetails;
+        if (portalExtras.recommendations?.length) data.portalSecureScoreRecommendations = portalExtras.recommendations;
+      }
+      const portalData = type === "save" ? attachSaveBackupFields(data, row) : data;
+      return expandCloudServiceRows(type, row, portalData);
     }
     const safe = pickPortalEquipmentData(data);
     return [{
@@ -601,25 +615,45 @@ async function fetchEquipmentItems(clientId, type, {
       internetType: safe.internetType || (type === "internet" ? safe.type || data.type || "" : safe.internetType || ""),
       storageType: safe.storageType || (type === "stockage" ? safe.type || data.type || "" : safe.storageType || "")
     }];
+    });
+    if (cloudPortal && type === "save") return linkSaveJobsToInstances(mapped);
+    return mapped;
+  };
+  const loadPortalExtras = async rows => {
+    if (!cloudPortal || type !== "o365") return {};
+    const mfaDetails = await fetchPortalMfaDetails(clientId);
+    const hasRecos = rows.some(row => snapshotHasRecommendations(parseJsonField(row.data, {})));
+    const recommendations = hasRecos ? [] : await fetchPortalSecureScoreRecommendations(clientId);
+    return { mfaDetails, recommendations };
   };
   try {
     const {
       rows
     } = await pool.query(selectWithCheckmk, [clientId]);
-    return rows.flatMap(row => mapRow(row, true));
+    const extras = await loadPortalExtras(rows);
+    return mapRows(rows, true, extras);
   } catch (err) {
-    if (err.code === "42703") {
+    if (err.code === "42P01") return [];
+    if (err.code !== "42703") throw err;
+    const attempts = [];
+    if (saveExtra) {
+      attempts.push({ sql: selectWithCheckmkNoSave, hasCheckmk: true });
+      attempts.push({ sql: selectBasicWithSave, hasCheckmk: false });
+    }
+    attempts.push({ sql: selectBasic, hasCheckmk: false });
+    for (const attempt of attempts) {
       try {
         const {
           rows
-        } = await pool.query(selectBasic, [clientId]);
-        return rows.flatMap(row => mapRow(row, false));
-      } catch {
-        return [];
+        } = await pool.query(attempt.sql, [clientId]);
+        const extras = await loadPortalExtras(rows);
+        return mapRows(rows, attempt.hasCheckmk, extras);
+      } catch (retryErr) {
+        if (retryErr.code === "42P01") return [];
+        if (retryErr.code !== "42703") throw retryErr;
       }
     }
-    if (err.code === "42P01") return [];
-    throw err;
+    return [];
   }
 }
 router.get("/equipment/:equipmentId/notes", [param("equipmentId").isUUID()], async (req, res) => {

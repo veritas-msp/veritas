@@ -4259,6 +4259,19 @@ router.get("/sync-all", verifyJWT, async (req, res) => {
           getAllPages: true
         }).catch(() => null)]);
         const identitySecureScore = secureScores?.value?.find(score => score.controlCategory === 'Identity' || !score.controlCategory) || secureScores?.value?.[0];
+        const latestWithControls = getLatestSecureScoreWithControls(secureScores) || identitySecureScore;
+        const controlScores = (latestWithControls?.controlScores || []).filter(control => {
+          const current = Number(control?.score ?? control?.currentScore ?? 0);
+          const max = Number(control?.maxScore ?? 0);
+          return Number.isFinite(max) && max > 0 && current < max;
+        }).slice(0, 25).map(control => ({
+          id: control.controlName || control.controlId || control.id,
+          controlName: control.controlName || null,
+          title: String(control.description || control.title || control.controlName || "").replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim().slice(0, 220),
+          currentScore: Number(control.score ?? control.currentScore ?? 0),
+          maxScore: Number(control.maxScore ?? 0),
+          score: Number(control.score ?? control.currentScore ?? 0)
+        }));
         return {
           success: true,
           secureScore: identitySecureScore ? {
@@ -4266,6 +4279,8 @@ router.get("/sync-all", verifyJWT, async (req, res) => {
             maxScore: identitySecureScore.maxScore || 0,
             percentage: identitySecureScore.maxScore > 0 ? identitySecureScore.currentScore / identitySecureScore.maxScore * 100 : 0
           } : null,
+          controlScores,
+          secureScoreRecommendations: controlScores,
           mfa: {
             usersWithMFA: 0,
             usersWithoutMFA: usersData?.value?.length || 0
