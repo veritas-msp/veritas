@@ -4,7 +4,8 @@ import path from "path";
 import multer from "multer";
 import { body, param, query, validationResult } from "express-validator";
 import verifyJWT from "../../middleware/auth.js";
-import { requirePermission, requireAnyPermission } from "../../middleware/permissions.js";
+import { requireAnyPermission, requirePermission } from "../../middleware/permissions.js";
+import { allowAssetEmbedding } from "../../middleware/securityHeaders.js";
 import { userHasAnyPermission } from "../../services/permissionService.js";
 import {
   addKnowledgeAsset,
@@ -13,15 +14,21 @@ import {
   deleteKnowledgeArticles,
   ensureKnowledgeUploadsDir,
   getKnowledgeArticle,
+  getKnowledgeArticleRevision,
   getKnowledgeAsset,
   KNOWLEDGE_ASSETS_DIR,
   listKnowledgeArticles,
+  listKnowledgeArticleRevisions,
   listKnowledgeTagCatalog,
   moveKnowledgeArticles,
   publishKnowledgeArticle,
+  restoreKnowledgeArticleRevision,
+  setArticlePublicLink,
   unpublishKnowledgeArticle,
   updateKnowledgeArticle
 } from "../../services/knowledgeArticlesService.js";
+import { deleteArticleComment } from "../../services/knowledgeArticleFeedbackService.js";
+import { listSearchMisses } from "../../services/knowledgeArticleExtrasService.js";
 
 const router = express.Router();
 router.use(verifyJWT);
@@ -121,7 +128,9 @@ router.post("/", requirePermission("knowledge_base.create"), async (req, res) =>
       title: req.body?.title,
       category: req.body?.category,
       authorUserId: req.user?.id,
-      folderId: req.body?.folderId
+      folderId: req.body?.folderId,
+      contentJson: req.body?.contentJson,
+      contentHtml: req.body?.contentHtml
     });
     res.status(201).json({ article });
   } catch (err) {
@@ -161,6 +170,16 @@ router.post(
     }
   }
 );
+
+router.get("/insights/search-misses", requirePermission("knowledge_base.view"), async (_req, res) => {
+  try {
+    const misses = await listSearchMisses();
+    res.json({ misses });
+  } catch (err) {
+    console.error("[GET /knowledge-articles/insights/search-misses]", err);
+    res.status(500).json({ error: "Error loading search insights." });
+  }
+});
 
 router.get("/tag-catalog", requirePermission("knowledge_base.view"), async (_req, res) => {
   try {
@@ -207,7 +226,13 @@ router.patch(
         contactIds: req.body?.contactIds,
         clientTagIds: req.body?.clientTagIds,
         contactTagIds: req.body?.contactTagIds,
-        folderId: req.body?.folderId
+        folderId: req.body?.folderId,
+        ratingsEnabled: req.body?.ratingsEnabled,
+        commentsEnabled: req.body?.commentsEnabled,
+        commentsCompany: req.body?.commentsCompany,
+        relatedIds: req.body?.relatedIds,
+        skipRevision: req.body?.skipRevision === true,
+        editorUserId: req.user?.id
       });
       if (!article) return res.status(404).json({ error: "Article not found." });
       res.json({ article });
@@ -232,7 +257,8 @@ router.post(
         clientIds: req.body?.clientIds,
         contactIds: req.body?.contactIds,
         clientTagIds: req.body?.clientTagIds,
-        contactTagIds: req.body?.contactTagIds
+        contactTagIds: req.body?.contactTagIds,
+        editorUserId: req.user?.id
       });
       if (!article) return res.status(404).json({ error: "Article not found." });
       res.json({ article });
@@ -250,12 +276,108 @@ router.post(
   async (req, res) => {
     if (validationErrorOrNull(req, res)) return;
     try {
-      const article = await unpublishKnowledgeArticle(req.params.id);
+      const article = await unpublishKnowledgeArticle(req.params.id, { editorUserId: req.user?.id });
       if (!article) return res.status(404).json({ error: "Article not found." });
       res.json({ article });
     } catch (err) {
       console.error("[POST /knowledge-articles/:id/unpublish]", err);
       res.status(500).json({ error: "Error reverting article to draft." });
+    }
+  }
+);
+
+router.post(
+  "/:id/public-link",
+  requireAnyPermission("knowledge_base.edit", "knowledge_base.create"),
+  [param("id").isUUID(), body("enabled").optional().isBoolean(), body("rotate").optional().isBoolean()],
+  async (req, res) => {
+    if (validationErrorOrNull(req, res)) return;
+    try {
+      const article = await setArticlePublicLink(req.params.id, {
+        enabled: req.body?.enabled,
+        rotate: req.body?.rotate === true
+      });
+      if (!article) return res.status(404).json({ error: "Article not found." });
+      res.json({ article });
+    } catch (err) {
+      console.error("[POST /knowledge-articles/:id/public-link]", err);
+      res.status(500).json({ error: "Error updating public link." });
+    }
+  }
+);
+
+router.get("/:id/revisions", requirePermission("knowledge_base.view"), [param("id").isUUID()], async (req, res) => {
+  if (validationErrorOrNull(req, res)) return;
+  try {
+    const canManage = await userHasAnyPermission(req.user, ["knowledge_base.create", "knowledge_base.edit"]);
+    const article = await getKnowledgeArticle(req.params.id);
+    if (!article || !canSeeDrafts(canManage, article)) {
+      return res.status(404).json({ error: "Article not found." });
+    }
+    const revisions = await listKnowledgeArticleRevisions(req.params.id);
+    res.json({ revisions });
+  } catch (err) {
+    console.error("[GET /knowledge-articles/:id/revisions]", err);
+    res.status(500).json({ error: "Error loading history." });
+  }
+});
+
+router.get(
+  "/:id/revisions/:revisionId",
+  requirePermission("knowledge_base.view"),
+  [param("id").isUUID(), param("revisionId").isUUID()],
+  async (req, res) => {
+    if (validationErrorOrNull(req, res)) return;
+    try {
+      const canManage = await userHasAnyPermission(req.user, ["knowledge_base.create", "knowledge_base.edit"]);
+      const article = await getKnowledgeArticle(req.params.id);
+      if (!article || !canSeeDrafts(canManage, article)) {
+        return res.status(404).json({ error: "Article not found." });
+      }
+      const revision = await getKnowledgeArticleRevision(req.params.id, req.params.revisionId);
+      if (!revision) return res.status(404).json({ error: "Revision not found." });
+      res.json({ revision });
+    } catch (err) {
+      console.error("[GET /knowledge-articles/:id/revisions/:revisionId]", err);
+      res.status(500).json({ error: "Error loading revision." });
+    }
+  }
+);
+
+router.post(
+  "/:id/revisions/:revisionId/restore",
+  requireAnyPermission("knowledge_base.edit", "knowledge_base.create"),
+  [param("id").isUUID(), param("revisionId").isUUID()],
+  async (req, res) => {
+    if (validationErrorOrNull(req, res)) return;
+    try {
+      const article = await restoreKnowledgeArticleRevision(req.params.id, req.params.revisionId, req.user?.id);
+      if (!article) return res.status(404).json({ error: "Revision not found." });
+      const revisions = await listKnowledgeArticleRevisions(req.params.id);
+      res.json({ article, revisions });
+    } catch (err) {
+      console.error("[POST /knowledge-articles/:id/revisions/:revisionId/restore]", err);
+      res.status(500).json({ error: "Error restoring revision." });
+    }
+  }
+);
+
+router.delete(
+  "/:id/comments/:commentId",
+  requireAnyPermission("knowledge_base.edit", "knowledge_base.create"),
+  [param("id").isUUID(), param("commentId").isUUID()],
+  async (req, res) => {
+    if (validationErrorOrNull(req, res)) return;
+    try {
+      const article = await getKnowledgeArticle(req.params.id);
+      if (!article) return res.status(404).json({ error: "Article not found." });
+      const ok = await deleteArticleComment(req.params.id, req.params.commentId, { asAgent: true });
+      if (!ok) return res.status(404).json({ error: "Comment not found." });
+      const next = await getKnowledgeArticle(req.params.id);
+      res.json({ article: next });
+    } catch (err) {
+      console.error("[DELETE /knowledge-articles/:id/comments/:commentId]", err);
+      res.status(err.status || 500).json({ error: err.message || "Error deleting comment." });
     }
   }
 );
@@ -323,7 +445,9 @@ router.get(
       if (!asset) return res.status(404).json({ error: "File not found." });
       const filePath = path.join(KNOWLEDGE_ASSETS_DIR, asset.stored_name);
       if (!fs.existsSync(filePath)) return res.status(404).json({ error: "File not found." });
+      allowAssetEmbedding(res);
       res.setHeader("Content-Type", asset.mime_type || "application/octet-stream");
+      res.setHeader("Content-Disposition", `inline; filename="${encodeURIComponent(asset.file_name || "file")}"`);
       res.setHeader("Cache-Control", "private, max-age=86400");
       fs.createReadStream(filePath).pipe(res);
     } catch (err) {

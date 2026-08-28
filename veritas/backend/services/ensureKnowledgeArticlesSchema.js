@@ -12,6 +12,10 @@ const GRANTS_MIGRATION = "schema/patches/20260827_knowledge_articles_grants.sql"
 const FOLDERS_MIGRATION = "schema/patches/20260827_knowledge_folders.sql";
 const CATEGORIES_MIGRATION = "schema/patches/20260827_knowledge_categories.sql";
 const VISIBILITY_TAGS_MIGRATION = "schema/patches/20260827_knowledge_visibility_tags.sql";
+const REVISIONS_MIGRATION = "schema/patches/20260827_knowledge_article_revisions.sql";
+const FEEDBACK_MIGRATION = "schema/patches/20260827_knowledge_article_feedback.sql";
+const EXTRAS_MIGRATION = "schema/patches/20260827_knowledge_article_extras.sql";
+const PUBLIC_MIGRATION = "schema/patches/20260828_knowledge_article_public.sql";
 let ensured = false;
 
 async function tableExists(client, table) {
@@ -42,7 +46,10 @@ export async function ensureKnowledgeArticlesSchema() {
       await client.query(`
         ALTER TABLE v_b_knowledge_articles
           ADD COLUMN IF NOT EXISTS visible_to_all_clients BOOLEAN NOT NULL DEFAULT FALSE,
-          ADD COLUMN IF NOT EXISTS visible_to_all_contacts BOOLEAN NOT NULL DEFAULT FALSE
+          ADD COLUMN IF NOT EXISTS visible_to_all_contacts BOOLEAN NOT NULL DEFAULT FALSE,
+          ADD COLUMN IF NOT EXISTS updated_by_user_id UUID NULL,
+          ADD COLUMN IF NOT EXISTS feedback_ratings_enabled BOOLEAN NOT NULL DEFAULT FALSE,
+          ADD COLUMN IF NOT EXISTS feedback_comments_enabled BOOLEAN NOT NULL DEFAULT FALSE
       `);
     }
     if (!(await tableExists(client, "v_b_knowledge_folders"))) {
@@ -62,6 +69,39 @@ export async function ensureKnowledgeArticlesSchema() {
       && !(await tableExists(client, "v_b_knowledge_article_client_tags"))
     ) {
       await runPatch(client, VISIBILITY_TAGS_MIGRATION);
+    }
+    if (
+      (await tableExists(client, "v_b_knowledge_articles"))
+      && !(await tableExists(client, "v_b_knowledge_article_revisions"))
+    ) {
+      await runPatch(client, REVISIONS_MIGRATION);
+    }
+    if (
+      (await tableExists(client, "v_b_knowledge_articles"))
+      && !(await tableExists(client, "v_b_knowledge_article_ratings"))
+    ) {
+      await runPatch(client, FEEDBACK_MIGRATION);
+    }
+    if (await tableExists(client, "v_b_knowledge_article_comments")) {
+      await client.query(`
+        ALTER TABLE v_b_knowledge_article_comments
+          ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ NULL
+      `);
+    }
+    if (
+      (await tableExists(client, "v_b_knowledge_articles"))
+      && !(await tableExists(client, "v_b_knowledge_article_links"))
+    ) {
+      await runPatch(client, EXTRAS_MIGRATION);
+    } else if (await tableExists(client, "v_b_knowledge_articles")) {
+      await client.query(`
+        ALTER TABLE v_b_knowledge_articles
+          ADD COLUMN IF NOT EXISTS view_count INTEGER NOT NULL DEFAULT 0,
+          ADD COLUMN IF NOT EXISTS feedback_comments_company BOOLEAN NOT NULL DEFAULT FALSE
+      `);
+    }
+    if (await tableExists(client, "v_b_knowledge_articles")) {
+      await runPatch(client, PUBLIC_MIGRATION);
     }
     ensured = true;
   } catch (err) {

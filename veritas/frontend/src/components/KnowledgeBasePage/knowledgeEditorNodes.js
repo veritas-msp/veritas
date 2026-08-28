@@ -130,27 +130,71 @@ export const VideoEmbed = Node.create({
   }
 });
 
+function PdfEmbedView({ node, selected }) {
+  const src = node.attrs.src || "";
+  const title = node.attrs.title || "PDF";
+  return (
+    <NodeViewWrapper
+      as="div"
+      className={`kb-pdf-embed${selected ? " ProseMirror-selectednode" : ""}`}
+      data-type="pdf-embed"
+      data-src={src}
+      data-title={title}
+    >
+      <div className="kb-pdf-toolbar" contentEditable={false}>
+        <span className="kb-pdf-name">{title}</span>
+        {src ? (
+          <a href={src} target="_blank" rel="noopener noreferrer" className="kb-pdf-open" onClick={event => event.stopPropagation()}>
+            ↗
+          </a>
+        ) : null}
+      </div>
+      {src ? (
+        <iframe src={src} title={title} className="kb-pdf" />
+      ) : (
+        <div className="kb-pdf-empty">PDF</div>
+      )}
+    </NodeViewWrapper>
+  );
+}
+
 export const PdfEmbed = Node.create({
   name: "pdfEmbed",
   group: "block",
   atom: true,
   selectable: true,
+  draggable: true,
   addAttributes() {
     return {
-      src: { default: null },
-      title: { default: "PDF" }
+      src: {
+        default: null,
+        parseHTML: el => el.getAttribute("data-src") || el.getAttribute("src") || el.querySelector?.("iframe")?.getAttribute("src") || null
+      },
+      title: {
+        default: "PDF",
+        parseHTML: el => el.getAttribute("data-title") || el.getAttribute("title") || el.querySelector?.("iframe")?.getAttribute("title") || "PDF"
+      }
     };
   },
   parseHTML() {
-    return [{ tag: "iframe[data-type='pdf-embed']" }, { tag: "div[data-type='pdf-embed']" }];
+    return [{ tag: "div[data-type='pdf-embed']" }, { tag: "iframe[data-type='pdf-embed']" }];
   },
   renderHTML({ HTMLAttributes }) {
-    const { src, title, ...rest } = HTMLAttributes;
+    const src = HTMLAttributes.src || HTMLAttributes["data-src"] || "";
+    const title = HTMLAttributes.title || HTMLAttributes["data-title"] || "PDF";
     return [
       "div",
-      mergeAttributes({ "data-type": "pdf-embed", class: "kb-pdf-embed" }, rest),
-      ["iframe", { src, title: title || "PDF", class: "kb-pdf" }]
+      {
+        "data-type": "pdf-embed",
+        "data-src": src,
+        "data-title": title,
+        class: "kb-pdf-embed"
+      },
+      ["iframe", { src, title, class: "kb-pdf" }]
     ];
+  },
+  addNodeView() {
+    return ReactNodeViewRenderer(PdfEmbedView);
   },
   addCommands() {
     return {
@@ -241,14 +285,15 @@ export const KNOWLEDGE_EDITOR_NODES = [Callout, ToggleBlock, VideoEmbed, PdfEmbe
 export const KNOWLEDGE_ARTICLE_HTML_CONFIG = {
   ALLOWED_TAGS: [
     "p", "br", "strong", "em", "b", "i", "u", "s", "ul", "ol", "li", "a",
-    "h1", "h2", "h3", "h4", "blockquote", "code", "pre", "span", "div",
+    "h1", "h2", "h3", "h4", "blockquote", "code", "pre", "span", "div", "label",
     "img", "table", "thead", "tbody", "tr", "th", "td", "hr", "input",
-    "details", "summary", "iframe", "video", "source"
+    "img", "table", "thead", "tbody", "tr", "th", "td", "hr", "input",
+    "details", "summary", "iframe", "video", "source", "mark"
   ],
   ALLOWED_ATTR: [
-    "href", "target", "rel", "src", "alt", "title", "class", "colspan", "rowspan",
+    "id", "href", "target", "rel", "src", "alt", "title", "class", "colspan", "rowspan",
     "data-type", "data-checked", "data-tone", "data-summary", "data-src", "data-latex",
-    "data-name", "type", "checked", "controls", "allowfullscreen", "allow",
+    "data-name", "data-title", "type", "checked", "controls", "allowfullscreen", "allow",
     "frameborder", "download", "open", "width", "height", "name", "mime"
   ],
   ADD_TAGS: ["iframe", "video", "source", "details", "summary"],

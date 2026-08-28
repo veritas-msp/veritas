@@ -19,9 +19,9 @@ export default function MspPageHero({
           {eyebrow ? <span className={cyberStyles.mspEyebrow}>{eyebrow}</span> : null}
           <h1 className={cyberStyles.mspTitle}>{title}</h1>
           {subtitle ? <p className={cyberStyles.mspSubtitle}>{subtitle}</p> : null}
+          {children}
         </div>
       </div>
       {actions ? <div className={cyberStyles.mspHeroActions}>{actions}</div> : null}
-      {children}
     </header>;
 }

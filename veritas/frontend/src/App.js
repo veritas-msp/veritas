@@ -20,7 +20,7 @@ import ClientProfilePage from "./components/ClientPortal/ClientProfilePage";
 import ClientTicketCreatePage from "./components/ClientPortal/ClientTicketCreatePage";
 import ClientVaultPage from "./components/ClientPortal/ClientVaultPage";
 import ClientKnowledgeBasePage from "./components/ClientPortal/ClientKnowledgeBasePage";
-import ClientKnowledgeArticlePage from "./components/ClientPortal/ClientKnowledgeArticlePage";
+import PublicKnowledgeArticlePage from "./components/KnowledgeBasePage/PublicKnowledgeArticlePage";
 import ClientDevicesPage from "./components/ClientPortal/ClientDevicesPage";
 import ClientServicesPage from "./components/ClientPortal/ClientServicesPage";
 import ClientCybersecurityPage from "./components/ClientPortal/ClientCybersecurityPage";
@@ -120,6 +120,7 @@ export default function App() {
           <SetupGate>
             <Routes>
               <Route path="/setup" element={<SetupPage />} />
+              <Route path="/kb/:token" element={<PublicKnowledgeArticlePage />} />
               <Route path="/client" element={<ProtectedRoute requiredRole="client">
                     <ClientPortalLayout />
                   </ProtectedRoute>}>

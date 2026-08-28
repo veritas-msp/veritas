@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Icon } from "@iconify/react";
+import SmartTooltip from "../SmartTooltip";
 import styles from "./knowledgeBase.module.css";
 
 const EXPANDED_STORAGE_KEY = "veritas.kb.folderExpanded";
@@ -83,11 +84,13 @@ function FolderNode({
         ) : (
           <span className={styles.folderToggleSpacer} aria-hidden />
         )}
-        <button type="button" className={styles.folderMain} onClick={() => onSelect(node.id)}>
-          <Icon icon="mdi:folder-outline" />
-          <span className={styles.folderName}>{node.name}</span>
-          <span className={styles.folderCount}>{node.articleCount || 0}</span>
-        </button>
+        <SmartTooltip content={node.name} className={styles.folderNameTip}>
+          <button type="button" className={styles.folderMain} onClick={() => onSelect(node.id)}>
+            <Icon icon="mdi:folder-outline" />
+            <span className={styles.folderName}>{node.name}</span>
+            <span className={styles.folderCount}>{node.articleCount || 0}</span>
+          </button>
+        </SmartTooltip>
         {canManage ? (
           <div className={styles.folderTools}>
             <button type="button" className={styles.folderTool} title={copy.shareFolder} onClick={() => onShare(node)}><Icon icon="mdi:share-variant-outline" /></button>

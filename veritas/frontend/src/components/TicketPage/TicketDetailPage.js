@@ -62,6 +62,7 @@ import { buildClientContractSummary, buildDefaultResolveCreditAmounts, buildSupp
 import { computeSatisfactionAverage, resolveDisplayRatings } from "../../utils/ticketSatisfactionCriteria";
 import { getTicketSatisfactionCriteria } from "../../i18n/ticketSatisfactionCriteriaI18n";
 import { createTrackedAbortController } from "../../utils/pageLoadAbort";
+import TicketKnowledgeSuggestions from "./TicketKnowledgeSuggestions";
 const CONTRACT_FACT_STATUS_CLASS = {
   active: fs.contractFact_active,
   expiring: fs.contractFact_expiring,
@@ -5045,6 +5046,12 @@ export default function TicketDetailPage({
                     </dl>}
                 </RightPaneStaticSection>
               </> : null}
+
+            <TicketKnowledgeSuggestions
+              query={editForm.title || ticket?.title || titleDraft}
+              copy={copy}
+              onOpen={article => onNavigate?.("KnowledgeBaseArticle", { articleId: article.id, mode: "read", title: article.title })}
+            />
 
             <RightPaneCollapsibleSection sectionId="ticket-detail-contact-body" title={copy.rightPane.contact} expanded={rightPaneCollapse.contact} onToggle={() => toggleRightPaneCollapse("contact")}>
               <div className={`${styles.contextLine} ${styles.contextLineWithAction}`.trim()}>

@@ -57,11 +57,13 @@ function isRealError(line) {
   return (
     /\bFailed to compile\b/i.test(line) ||
     /\bEADDRINUSE\b/.test(line) ||
+    /already running on port/i.test(line) ||
     /\bCannot find module\b/i.test(line) ||
     /\bModule not found\b/i.test(line) ||
     /\bSyntaxError\b/i.test(line) ||
     /syntax error/i.test(line) ||
     /Unexpected \}/i.test(line) ||
+    /\bReferenceError\b/.test(line) ||
     /\bTypeError\b/.test(line) ||
     /\bENOENT\b/.test(line) ||
     /^\s*Error:\s/.test(line)
@@ -94,6 +96,7 @@ function spawnNpm(args, env = {}) {
     VERITAS_QUIET_BOOT: "1",
     BROWSER: "none",
     DISABLE_ESLINT_PLUGIN: "true",
+    CI: "",
     NODE_OPTIONS: [process.env.NODE_OPTIONS, "--no-deprecation"].filter(Boolean).join(" "),
     ...env
   };

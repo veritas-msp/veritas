@@ -16,6 +16,7 @@ import { buildLinkedTicketComment, getTicketLinkLabel, getTicketLinkSearchText }
 import { formatClientSlaRows, parseClientSla } from "../../utils/ticketSlaUtils";
 import ContactFormModal from "../ContactsPage/ContactFormModal";
 import SmartTooltip from "../SmartTooltip";
+import TicketKnowledgeSuggestions from "./TicketKnowledgeSuggestions";
 import layout from "../EnterprisesPage/EnterprisesPage.module.css";
 import account from "../Misc/AccountPage/AccountPage.module.css";
 import s from "./TicketCreatePage.module.css";
@@ -1574,6 +1575,11 @@ export default function TicketCreatePage({
                   }} placeholder={copy.getTitlePlaceholder(type)} maxLength={200} />
                   </div>
                   <span className={s.charCount}>{title.length}/200</span>
+                  <TicketKnowledgeSuggestions
+                    query={title}
+                    copy={copy}
+                    onOpen={article => onNavigate?.("KnowledgeBaseArticle", { articleId: article.id, mode: "read", title: article.title })}
+                  />
                 </div>
 
                 <div className={s.fieldBlock}>

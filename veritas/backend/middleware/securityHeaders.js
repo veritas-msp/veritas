@@ -38,6 +38,7 @@ const SPA_CSP = [
   "font-src 'self' data:",
   "connect-src 'self' https://api.iconify.design https://api.simplesvg.com https://api.unisvg.com",
   "worker-src 'self' blob:",
+  "frame-src 'self'",
   "frame-ancestors 'none'",
   "base-uri 'self'",
   "form-action 'self'",
@@ -60,4 +61,21 @@ export function securityHeaders(req, res, next) {
   }
 
   next();
+}
+
+function embedAncestorOrigins() {
+  const fromEnv = String(process.env.ALLOWED_ORIGINS || "")
+    .split(",")
+    .map(origin => origin.trim().replace(/\/+$/, ""))
+    .filter(Boolean);
+  const frontendBase = String(process.env.FRONTEND_BASE_URL || "").trim().replace(/\/+$/, "");
+  const list = ["'self'", "http://localhost:3000", "http://127.0.0.1:3000", ...fromEnv];
+  if (frontendBase) list.push(frontendBase);
+  return [...new Set(list)].join(" ");
+}
+
+/** Allow the SPA to embed authenticated files (PDF) in an iframe. */
+export function allowAssetEmbedding(res) {
+  res.removeHeader("X-Frame-Options");
+  res.setHeader("Content-Security-Policy", `frame-ancestors ${embedAncestorOrigins()}`);
 }

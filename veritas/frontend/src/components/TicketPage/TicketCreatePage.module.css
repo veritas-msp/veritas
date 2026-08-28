@@ -3739,3 +3739,63 @@ button.switch:disabled {
   border-color: rgba(251, 191, 36, 0.4);
   color: #fcd34d;
 }
+
+.kbSuggest {
+  margin-top: 0.55rem;
+  border: 1px solid var(--msp-border-light, #dbe3ee);
+  border-radius: 10px;
+  background: var(--msp-surface-2, #f6f8fb);
+  padding: 0.55rem 0.65rem 0.35rem;
+}
+
+.kbSuggestTitle {
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: var(--msp-muted, #5c6b82);
+  margin-bottom: 0.3rem;
+}
+
+.kbSuggestList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.kbSuggestItem {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.45rem;
+  width: 100%;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  padding: 0.35rem 0.15rem;
+  cursor: pointer;
+  border-radius: 8px;
+}
+
+.kbSuggestItem:hover {
+  background: var(--msp-surface, #fff);
+}
+
+.kbSuggestItem svg {
+  flex-shrink: 0;
+  margin-top: 0.1rem;
+  color: var(--msp-accent, #2b5fab);
+}
+
+.kbSuggestText {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  gap: 0.05rem;
+}
+
+.kbSuggestText small {
+  color: var(--msp-muted, #5c6b82);
+  font-size: 0.75rem;
+}

@@ -82,6 +82,13 @@ export const setupMigrateRateLimit = createRateLimiter({
   message: "Too many migration requests. Wait one minute, then try again.",
   skipInDevelopment: false
 });
+export const publicKnowledgeRateLimit = createRateLimiter({
+  name: "public-knowledge",
+  windowMs: 60_000,
+  max: 90,
+  message: "Too many requests. Please try again in a minute.",
+  skipInDevelopment: false
+});
 export function resetRateLimitBuckets() {
   buckets.clear();
 }

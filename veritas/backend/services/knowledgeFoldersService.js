@@ -188,6 +188,25 @@ export async function getKnowledgeFolder(folderId) {
   return mapFolderRow(row, audience);
 }
 
+export async function getFolderBreadcrumb(folderId) {
+  if (!isUuid(folderId)) return [];
+  const { rows } = await pool.query(
+    `WITH RECURSIVE chain AS (
+       SELECT f.id, f.name, f.parent_id, 0 AS depth
+         FROM v_b_knowledge_folders f
+        WHERE f.id = $1
+       UNION ALL
+       SELECT p.id, p.name, p.parent_id, c.depth + 1
+         FROM v_b_knowledge_folders p
+         JOIN chain c ON p.id = c.parent_id
+        WHERE c.depth < $2
+     )
+     SELECT id, name FROM chain ORDER BY depth DESC`,
+    [folderId, MAX_DEPTH]
+  );
+  return rows.map(row => ({ id: row.id, name: row.name || "" }));
+}
+
 export async function getFolderChain(folderId) {
   if (!isUuid(folderId)) return [];
   const { rows } = await pool.query(

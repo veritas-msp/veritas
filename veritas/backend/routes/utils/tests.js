@@ -43,7 +43,16 @@ router.get('/db-status', async (req, res) => {
     res.json(payload);
   }
 });
-router.use(requireSetupOrAdmin);
+router.use([
+  "/db-stats",
+  "/db-test",
+  "/db-apply",
+  "/db-maintenance",
+  "/unifi-status",
+  "/unifi-test",
+  "/github-test",
+  "/email-test"
+], requireSetupOrAdmin);
 router.get('/db-stats', async (req, res) => {
   if (!process.env.DATABASE_URL?.trim()) {
     return res.status(503).json({

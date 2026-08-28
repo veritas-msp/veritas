@@ -208,6 +208,36 @@ export async function buildIncrementalAvrilMigrationPlan(client = pool) {
   ) {
     plan.push("20260827_knowledge_visibility_tags.sql");
   }
+  if (
+    (await tableExists(client, "v_b_knowledge_articles"))
+    && !(await tableExists(client, "v_b_knowledge_article_revisions"))
+  ) {
+    plan.push("20260827_knowledge_article_revisions.sql");
+  }
+  if (
+    (await tableExists(client, "v_b_knowledge_articles"))
+    && !(await tableExists(client, "v_b_knowledge_article_ratings"))
+  ) {
+    plan.push("20260827_knowledge_article_feedback.sql");
+  }
+  if (
+    (await tableExists(client, "v_b_knowledge_article_comments"))
+    && !(await columnExists(client, "v_b_knowledge_article_comments", "updated_at"))
+  ) {
+    plan.push("20260827_knowledge_article_comment_updated_at.sql");
+  }
+  if (
+    (await tableExists(client, "v_b_knowledge_articles"))
+    && !(await tableExists(client, "v_b_knowledge_article_links"))
+  ) {
+    plan.push("20260827_knowledge_article_extras.sql");
+  }
+  if (
+    (await tableExists(client, "v_b_knowledge_articles"))
+    && !(await columnExists(client, "v_b_knowledge_articles", "public_token"))
+  ) {
+    plan.push("20260828_knowledge_article_public.sql");
+  }
   if (await tableExists(client, "v_b_users_profiles")) {
     const {
       rows

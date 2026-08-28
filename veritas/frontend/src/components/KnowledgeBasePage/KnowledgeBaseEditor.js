@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { useEditor, EditorContent } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import Placeholder from "@tiptap/extension-placeholder";
@@ -19,6 +20,26 @@ import { KNOWLEDGE_EDITOR_NODES, toVideoEmbedSrc } from "./knowledgeEditorNodes"
 import styles from "./knowledgeBase.module.css";
 
 const EMPTY_DOC = { type: "doc", content: [{ type: "paragraph" }] };
+const MENU_MARGIN = 12;
+const MENU_WIDTH = 320;
+const MENU_MAX_HEIGHT = 420;
+
+function placeMenuNear(anchor) {
+  const width = MENU_WIDTH;
+  const height = Math.min(MENU_MAX_HEIGHT, Math.max(160, window.innerHeight - MENU_MARGIN * 2));
+  let left = Number(anchor.left) || 0;
+  let top = (Number(anchor.bottom) || 0) + 6;
+  if (left + width > window.innerWidth - MENU_MARGIN) {
+    left = window.innerWidth - width - MENU_MARGIN;
+  }
+  if (left < MENU_MARGIN) left = MENU_MARGIN;
+  if (top + height > window.innerHeight - MENU_MARGIN) {
+    const above = (Number(anchor.top) || 0) - height - 6;
+    top = above >= MENU_MARGIN ? above : MENU_MARGIN;
+  }
+  if (top < MENU_MARGIN) top = MENU_MARGIN;
+  return { top, left };
+}
 
 function slashCommands(copy, localeTag) {
   const s = copy.slash || {};
@@ -106,6 +127,7 @@ export default function KnowledgeBaseEditor({
   const [plus, setPlus] = useState(null);
   const [fileKind, setFileKind] = useState("image");
   const [ask, setAsk] = useState(null);
+  const [bubble, setBubble] = useState(null);
   const localeTag = locale === "en" ? "en-GB" : locale === "de" ? "de-DE" : locale === "it" ? "it-IT" : locale === "es" ? "es-ES" : "fr-FR";
   const commands = useMemo(() => slashCommands(copy, localeTag), [copy, localeTag]);
   const filtered = useMemo(() => {
@@ -151,7 +173,23 @@ export default function KnowledgeBaseEditor({
     if (!editable) {
       setSlash(null);
       setPlus(null);
+      setBubble(null);
       return;
+    }
+    const { from, to, empty } = current.state.selection;
+    if (!empty) {
+      try {
+        const start = current.view.coordsAtPos(from);
+        const end = current.view.coordsAtPos(to);
+        setBubble({
+          top: Math.max(8, start.top - 44),
+          left: (start.left + end.left) / 2
+        });
+      } catch {
+        setBubble(null);
+      }
+    } else {
+      setBubble(null);
     }
     const query = getSlashQuery(current);
     if (query != null) {
@@ -159,8 +197,11 @@ export default function KnowledgeBaseEditor({
       setSlash({
         query,
         fromPlus: false,
-        top: coords.bottom + 8,
-        left: coords.left
+        ...placeMenuNear({
+          left: coords.left,
+          top: coords.top,
+          bottom: coords.bottom
+        })
       });
       setSlashIndex(0);
       setPlus(null);
@@ -242,6 +283,11 @@ export default function KnowledgeBaseEditor({
     }
     if (ask.kind === "math") {
       editor.chain().focus().setMathBlock(value).run();
+      return;
+    }
+    if (ask.kind === "link") {
+      if (value) editor.chain().focus().extendMarkRange("link").setLink({ href: value }).run();
+      else editor.chain().focus().extendMarkRange("link").unsetLink().run();
     }
   }, [ask, editor, copy.slash]);
 
@@ -271,27 +317,23 @@ export default function KnowledgeBaseEditor({
     }
   }, [articleId, editor, fileKind, copy.saveError]);
 
-  const openPlusMenu = useCallback(() => {
+  const openPlusMenu = useCallback(event => {
     if (!editor) return;
+    event?.preventDefault?.();
+    event?.stopPropagation?.();
     editor.chain().focus().run();
-    let top = plus?.top;
-    let left = plus?.left;
-    if (top == null || left == null) {
-      try {
-        const coords = editor.view.coordsAtPos(editor.state.selection.from);
-        top = coords.bottom;
-        left = coords.left;
-      } catch {
-        return;
-      }
-    } else {
-      top += 28;
-    }
+    const rect = event?.currentTarget?.getBoundingClientRect?.();
+    const anchor = rect
+      ? { left: rect.left, top: rect.top, bottom: rect.bottom }
+      : {
+          left: plus?.left ?? MENU_MARGIN,
+          top: plus?.top ?? MENU_MARGIN,
+          bottom: (plus?.top ?? MENU_MARGIN) + 24
+        };
     setSlash({
       query: "",
       fromPlus: true,
-      top,
-      left
+      ...placeMenuNear(anchor)
     });
     setSlashIndex(0);
   }, [plus, editor]);
@@ -321,10 +363,29 @@ export default function KnowledgeBaseEditor({
     if (!slash?.fromPlus) return undefined;
     const onPointer = event => {
       if (menuRef.current?.contains(event.target)) return;
+      if (event.target.closest?.("[data-kb-plus]")) return;
       setSlash(null);
     };
     window.addEventListener("pointerdown", onPointer);
     return () => window.removeEventListener("pointerdown", onPointer);
+  }, [slash]);
+
+  useLayoutEffect(() => {
+    if (!slash || !menuRef.current) return;
+    const el = menuRef.current;
+    const rect = el.getBoundingClientRect();
+    let { top, left } = slash;
+    if (rect.right > window.innerWidth - MENU_MARGIN) {
+      left = Math.max(MENU_MARGIN, window.innerWidth - rect.width - MENU_MARGIN);
+    }
+    if (rect.bottom > window.innerHeight - MENU_MARGIN) {
+      top = Math.max(MENU_MARGIN, window.innerHeight - rect.height - MENU_MARGIN);
+    }
+    if (rect.left < MENU_MARGIN) left = MENU_MARGIN;
+    if (rect.top < MENU_MARGIN) top = MENU_MARGIN;
+    if (Math.abs(top - slash.top) > 1 || Math.abs(left - slash.left) > 1) {
+      setSlash(current => (current ? { ...current, top, left } : current));
+    }
   }, [slash]);
 
   useEffect(() => {
@@ -340,8 +401,8 @@ export default function KnowledgeBaseEditor({
 
   if (!editor) return null;
 
-  const tool = (isActive, icon, action, label) => (
-    <button type="button" className={`${styles.toolBtn} ${isActive ? styles.toolBtnActive : ""}`} onClick={action} disabled={!editable} title={label}>
+  const tool = (isActive, icon, action, label, extra = {}) => (
+    <button type="button" className={`${styles.toolBtn} ${isActive ? styles.toolBtnActive : ""}`} onClick={action} disabled={!editable} title={label} {...extra}>
       <Icon icon={icon} />
     </button>
   );
@@ -361,24 +422,26 @@ export default function KnowledgeBaseEditor({
         {tool(editor.isActive("italic"), "mdi:format-italic", () => editor.chain().focus().toggleItalic().run(), "Italic")}
         {tool(editor.isActive("underline"), "mdi:format-underline", () => editor.chain().focus().toggleUnderline().run(), "Underline")}
         {tool(editor.isActive("highlight"), "mdi:format-color-highlight", () => editor.chain().focus().toggleHighlight().run(), "Highlight")}
+        {tool(editor.isActive("link"), "mdi:link-variant", () => setAsk({ kind: "link", value: editor.getAttributes("link").href || "" }), copy.insertLink)}
         {tool(editor.isActive("bulletList"), "mdi:format-list-bulleted", () => editor.chain().focus().toggleBulletList().run(), copy.slash.bullet)}
         {tool(editor.isActive("orderedList"), "mdi:format-list-numbered", () => editor.chain().focus().toggleOrderedList().run(), copy.slash.numbered)}
         {tool(editor.isActive("taskList"), "mdi:checkbox-marked-outline", () => editor.chain().focus().toggleTaskList().run(), copy.slash.todo)}
-        {tool(false, "mdi:plus", openPlusMenu, copy.insertBlock)}
+        {tool(false, "mdi:plus", openPlusMenu, copy.insertBlock, { "data-kb-plus": true })}
         {tool(false, "mdi:image-outline", () => pickFile("image"), copy.insertImage)}
         {tool(false, "mdi:undo", () => editor.chain().focus().undo().run(), "Undo")}
         {tool(false, "mdi:redo", () => editor.chain().focus().redo().run(), "Redo")}
       </div>
+      {editable ? <p className={styles.slashHint}>{copy.slashHint}</p> : null}
       <div className={styles.editorArea} ref={areaRef}>
         <EditorContent editor={editor} />
       </div>
       <input ref={fileRef} className={styles.hiddenFile} type="file" accept={accept} onChange={onFile} />
       {editable && plus && !slash ? (
-        <button type="button" className={styles.blockPlus} style={{ top: plus.top, left: plus.left }} onClick={openPlusMenu} title={copy.insertBlock} aria-label={copy.insertBlock}>
+        <button type="button" data-kb-plus className={styles.blockPlus} style={{ top: plus.top, left: plus.left }} onClick={openPlusMenu} title={copy.insertBlock} aria-label={copy.insertBlock}>
           <Icon icon="mdi:plus" />
         </button>
       ) : null}
-      {slash && filtered.length > 0 ? (
+      {slash && filtered.length > 0 ? createPortal(
         <div ref={menuRef} className={styles.slashMenu} style={{ top: slash.top, left: slash.left }} role="listbox">
           {filtered.map((item, index) => {
             const showSep = index > 0 && filtered[index - 1].group !== item.group;
@@ -400,11 +463,24 @@ export default function KnowledgeBaseEditor({
               </div>
             );
           })}
-        </div>
+        </div>,
+        document.body
+      ) : null}
+      {editable && bubble && !slash ? createPortal(
+        <div className={styles.bubbleMenu} style={{ top: bubble.top, left: bubble.left }} role="toolbar">
+          {tool(editor.isActive("bold"), "mdi:format-bold", () => editor.chain().focus().toggleBold().run(), "Bold")}
+          {tool(editor.isActive("italic"), "mdi:format-italic", () => editor.chain().focus().toggleItalic().run(), "Italic")}
+          {tool(editor.isActive("heading", { level: 2 }), "mdi:format-header-2", () => editor.chain().focus().toggleHeading({ level: 2 }).run(), copy.slash.heading2)}
+          {tool(editor.isActive("link"), "mdi:link-variant", () => setAsk({ kind: "link", value: editor.getAttributes("link").href || "" }), copy.insertLink)}
+          {editor.isActive("link") ? tool(false, "mdi:link-off", () => editor.chain().focus().unsetLink().run(), copy.unlink) : null}
+        </div>,
+        document.body
       ) : null}
       {ask ? (
         <form className={styles.embedPrompt} onSubmit={submitAsk}>
-          <div className={styles.embedPromptTitle}>{ask.kind === "math" ? copy.slash.mathPrompt : copy.slash.videoPrompt}</div>
+          <div className={styles.embedPromptTitle}>
+            {ask.kind === "math" ? copy.slash.mathPrompt : ask.kind === "link" ? copy.linkPrompt : copy.slash.videoPrompt}
+          </div>
           <input
             className={styles.search}
             value={ask.value}

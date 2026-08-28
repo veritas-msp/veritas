@@ -45,6 +45,18 @@ export async function createKnowledgeArticle(payload = {}) {
   return data.article;
 }
 
+export async function fetchKnowledgeArticleRevision(id, revisionId) {
+  const response = await fetch(`${BASE}/${id}/revisions/${revisionId}`, { credentials: "include" });
+  const data = await handleJsonResponse(response, "Error loading revision.");
+  return data.revision;
+}
+
+export async function fetchKnowledgeSearchMisses() {
+  const response = await fetch(`${BASE}/insights/search-misses`, { credentials: "include" });
+  const data = await handleJsonResponse(response, "Error loading search insights.");
+  return Array.isArray(data?.misses) ? data.misses : [];
+}
+
 export async function updateKnowledgeArticle(id, payload) {
   const response = await fetch(`${BASE}/${id}`, {
     method: "PATCH",
@@ -74,6 +86,38 @@ export async function unpublishKnowledgeArticle(id) {
   });
   const data = await handleJsonResponse(response, "Error reverting article.");
   return data.article;
+}
+
+export async function updateKnowledgeArticlePublicLink(id, { enabled, rotate } = {}) {
+  const response = await fetch(`${BASE}/${id}/public-link`, {
+    method: "POST",
+    credentials: "include",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ enabled, rotate })
+  });
+  const data = await handleJsonResponse(response, "Error updating public link.");
+  return data.article;
+}
+
+export async function fetchPublicKnowledgeArticle(token) {
+  const response = await fetch(`${API_BASE_URL}/public/knowledge/${encodeURIComponent(token)}`);
+  const data = await handleJsonResponse(response, "Article not found.");
+  return data.article;
+}
+
+export async function fetchKnowledgeArticleRevisions(id) {
+  const response = await fetch(`${BASE}/${id}/revisions`, { credentials: "include" });
+  const data = await handleJsonResponse(response, "Error loading history.");
+  return Array.isArray(data?.revisions) ? data.revisions : [];
+}
+
+export async function restoreKnowledgeArticleRevision(id, revisionId) {
+  const response = await fetch(`${BASE}/${id}/revisions/${revisionId}/restore`, {
+    method: "POST",
+    credentials: "include"
+  });
+  const data = await handleJsonResponse(response, "Error restoring revision.");
+  return data;
 }
 
 export async function deleteKnowledgeArticle(id) {
@@ -234,9 +278,12 @@ export function toStoredKnowledgeJson(json) {
   }
 }
 
-export async function fetchPortalKnowledgeArticles({ search } = {}) {
+export async function fetchPortalKnowledgeArticles({ search, folderId, category, favorites } = {}) {
   const params = new URLSearchParams();
   if (search) params.set("search", search);
+  if (folderId) params.set("folderId", folderId);
+  if (category) params.set("category", category);
+  if (favorites) params.set("favorites", "1");
   const query = params.toString();
   const response = await fetch(`${PORTAL_BASE}${query ? `?${query}` : ""}`, { credentials: "include" });
   const data = await handleJsonResponse(response, "Error loading knowledge base.");
@@ -249,5 +296,76 @@ export async function fetchPortalKnowledgeArticles({ search } = {}) {
 export async function fetchPortalKnowledgeArticle(id) {
   const response = await fetch(`${PORTAL_BASE}/${id}`, { credentials: "include" });
   const data = await handleJsonResponse(response, "Error loading article.");
+  return data.article;
+}
+
+export async function deleteKnowledgeArticleComment(articleId, commentId) {
+  const response = await fetch(`${BASE}/${articleId}/comments/${commentId}`, {
+    method: "DELETE",
+    credentials: "include"
+  });
+  const data = await handleJsonResponse(response, "Error deleting comment.");
+  return data.article;
+}
+
+export async function ratePortalKnowledgeArticle(id, rating) {
+  const response = await fetch(`${PORTAL_BASE}/${id}/rating`, {
+    method: "POST",
+    credentials: "include",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ rating })
+  });
+  const data = await handleJsonResponse(response, "Error saving rating.");
+  return data.article;
+}
+
+export async function commentPortalKnowledgeArticle(id, body) {
+  const response = await fetch(`${PORTAL_BASE}/${id}/comments`, {
+    method: "POST",
+    credentials: "include",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ body })
+  });
+  const data = await handleJsonResponse(response, "Error posting comment.");
+  return data.article;
+}
+
+export async function updatePortalKnowledgeComment(articleId, commentId, body) {
+  const response = await fetch(`${PORTAL_BASE}/${articleId}/comments/${commentId}`, {
+    method: "PATCH",
+    credentials: "include",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ body })
+  });
+  const data = await handleJsonResponse(response, "Error editing comment.");
+  return data.article;
+}
+
+export async function markPortalKnowledgeHelpful(id, helpful) {
+  const response = await fetch(`${PORTAL_BASE}/${id}/helpful`, {
+    method: "POST",
+    credentials: "include",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ helpful })
+  });
+  const data = await handleJsonResponse(response, "Error saving feedback.");
+  return data.article;
+}
+
+export async function togglePortalKnowledgeFavorite(id) {
+  const response = await fetch(`${PORTAL_BASE}/${id}/favorite`, {
+    method: "POST",
+    credentials: "include"
+  });
+  const data = await handleJsonResponse(response, "Error saving favorite.");
+  return data.article;
+}
+
+export async function deletePortalKnowledgeComment(articleId, commentId) {
+  const response = await fetch(`${PORTAL_BASE}/${articleId}/comments/${commentId}`, {
+    method: "DELETE",
+    credentials: "include"
+  });
+  const data = await handleJsonResponse(response, "Error deleting comment.");
   return data.article;
 }

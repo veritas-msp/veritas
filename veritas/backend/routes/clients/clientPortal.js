@@ -18,6 +18,8 @@ import { buildSessionPayload, isImpersonationPayload, buildImpersonationClientPa
 import { contactBelongsToClient, pickHomeClientId } from "../../services/contactClientLinks.js";
 import { listClientCustomEquipment, listEquipmentFamilies } from "../../utils/equipmentFamilies.js";
 import { getKnowledgeAsset, getPortalKnowledgeArticle, KNOWLEDGE_ASSETS_DIR, listPortalKnowledgeArticles, portalCanAccessAsset } from "../../services/knowledgeArticlesService.js";
+import { toggleFavorite, upsertHelpful } from "../../services/knowledgeArticleExtrasService.js";
+import { allowAssetEmbedding } from "../../middleware/securityHeaders.js";
 const router = express.Router();
 router.use(verifyJWT, requireRole("client"));
 const INFRA_TABLES = [{
@@ -1274,13 +1276,21 @@ router.post("/vault-secrets/:id/request-revocation", [param("id").isUUID()], asy
     });
   }
 });
-router.get("/knowledge-base", [query("search").optional().isString()], async (req, res) => {
+router.get("/knowledge-base", [
+  query("search").optional().isString(),
+  query("folderId").optional().isString(),
+  query("category").optional().isString(),
+  query("favorites").optional().isIn(["1", "true"])
+], async (req, res) => {
   if (validationErrorOrNull(req, res)) return;
   const ctx = await getPortalContext(req, res);
   if (!ctx) return;
   try {
     const articles = await listPortalKnowledgeArticles(ctx.clientId, ctx.contactId, {
-      search: req.query.search
+      search: req.query.search,
+      folderId: req.query.folderId,
+      category: req.query.category,
+      favoritesOnly: req.query.favorites === "1" || req.query.favorites === "true"
     });
     res.json({
       articles,
@@ -1298,7 +1308,7 @@ router.get("/knowledge-base/:id", [param("id").isUUID()], async (req, res) => {
   const ctx = await getPortalContext(req, res);
   if (!ctx) return;
   try {
-    const article = await getPortalKnowledgeArticle(ctx.clientId, ctx.contactId, req.params.id);
+    const article = await getPortalKnowledgeArticle(ctx.clientId, ctx.contactId, req.params.id, { recordView: true });
     if (!article) {
       return res.status(404).json({
         error: "Article not found."
@@ -1312,6 +1322,150 @@ router.get("/knowledge-base/:id", [param("id").isUUID()], async (req, res) => {
     });
   }
 });
+router.post(
+  "/knowledge-base/:id/rating",
+  [param("id").isUUID(), body("rating").isInt({ min: 1, max: 5 })],
+  async (req, res) => {
+    if (validationErrorOrNull(req, res)) return;
+    const ctx = await getPortalContext(req, res);
+    if (!ctx) return;
+    try {
+      if (!ctx.contactId) {
+        return res.status(400).json({ error: "A contact is required to rate this article." });
+      }
+      const visible = await getPortalKnowledgeArticle(ctx.clientId, ctx.contactId, req.params.id, { includeFeedback: false });
+      if (!visible) return res.status(404).json({ error: "Article not found." });
+      await upsertArticleRating(req.params.id, {
+        contactId: ctx.contactId,
+        clientId: ctx.clientId,
+        rating: req.body.rating
+      });
+      const article = await getPortalKnowledgeArticle(ctx.clientId, ctx.contactId, req.params.id);
+      res.json({ article });
+    } catch (err) {
+      console.error("POST /client-portal/knowledge-base/:id/rating:", err);
+      res.status(err.status || 500).json({ error: err.message || "Error saving rating." });
+    }
+  }
+);
+router.post(
+  "/knowledge-base/:id/comments",
+  [param("id").isUUID(), body("body").isString().isLength({ min: 1, max: 2000 })],
+  async (req, res) => {
+    if (validationErrorOrNull(req, res)) return;
+    const ctx = await getPortalContext(req, res);
+    if (!ctx) return;
+    try {
+      if (!ctx.contactId) {
+        return res.status(400).json({ error: "A contact is required to comment." });
+      }
+      const visible = await getPortalKnowledgeArticle(ctx.clientId, ctx.contactId, req.params.id, { includeFeedback: false });
+      if (!visible) return res.status(404).json({ error: "Article not found." });
+      await addArticleComment(req.params.id, {
+        contactId: ctx.contactId,
+        clientId: ctx.clientId,
+        body: req.body.body
+      });
+      const article = await getPortalKnowledgeArticle(ctx.clientId, ctx.contactId, req.params.id);
+      res.json({ article });
+    } catch (err) {
+      console.error("POST /client-portal/knowledge-base/:id/comments:", err);
+      res.status(err.status || 500).json({ error: err.message || "Error posting comment." });
+    }
+  }
+);
+async function updatePortalKnowledgeComment(req, res) {
+  if (validationErrorOrNull(req, res)) return;
+  const ctx = await getPortalContext(req, res);
+  if (!ctx) return;
+  try {
+    if (!ctx.contactId) {
+      return res.status(400).json({ error: "A contact is required." });
+    }
+    const visible = await getPortalKnowledgeArticle(ctx.clientId, ctx.contactId, req.params.id, { includeFeedback: false });
+    if (!visible) return res.status(404).json({ error: "Article not found." });
+    const ok = await updateArticleComment(req.params.id, req.params.commentId, {
+      contactId: ctx.contactId,
+      body: req.body.body
+    });
+    if (!ok) return res.status(404).json({ error: "Comment not found." });
+    const article = await getPortalKnowledgeArticle(ctx.clientId, ctx.contactId, req.params.id);
+    res.json({ article });
+  } catch (err) {
+    console.error(`${req.method} /client-portal/knowledge-base/:id/comments/:commentId:`, err);
+    res.status(err.status || 500).json({ error: err.message || "Error editing comment." });
+  }
+}
+const updatePortalCommentValidators = [param("id").isUUID(), param("commentId").isUUID(), body("body").isString().isLength({ min: 1, max: 2000 })];
+router.patch("/knowledge-base/:id/comments/:commentId", updatePortalCommentValidators, updatePortalKnowledgeComment);
+router.put("/knowledge-base/:id/comments/:commentId", updatePortalCommentValidators, updatePortalKnowledgeComment);
+router.delete(
+  "/knowledge-base/:id/comments/:commentId",
+  [param("id").isUUID(), param("commentId").isUUID()],
+  async (req, res) => {
+    if (validationErrorOrNull(req, res)) return;
+    const ctx = await getPortalContext(req, res);
+    if (!ctx) return;
+    try {
+      if (!ctx.contactId) {
+        return res.status(400).json({ error: "A contact is required." });
+      }
+      const visible = await getPortalKnowledgeArticle(ctx.clientId, ctx.contactId, req.params.id, { includeFeedback: false });
+      if (!visible) return res.status(404).json({ error: "Article not found." });
+      const ok = await deleteArticleComment(req.params.id, req.params.commentId, { contactId: ctx.contactId });
+      if (!ok) return res.status(404).json({ error: "Comment not found." });
+      const article = await getPortalKnowledgeArticle(ctx.clientId, ctx.contactId, req.params.id);
+      res.json({ article });
+    } catch (err) {
+      console.error("DELETE /client-portal/knowledge-base/:id/comments/:commentId:", err);
+      res.status(err.status || 500).json({ error: err.message || "Error deleting comment." });
+    }
+  }
+);
+router.post(
+  "/knowledge-base/:id/helpful",
+  [param("id").isUUID(), body("helpful").isBoolean()],
+  async (req, res) => {
+    if (validationErrorOrNull(req, res)) return;
+    const ctx = await getPortalContext(req, res);
+    if (!ctx) return;
+    try {
+      if (!ctx.contactId) {
+        return res.status(400).json({ error: "A contact is required." });
+      }
+      const visible = await getPortalKnowledgeArticle(ctx.clientId, ctx.contactId, req.params.id, { includeFeedback: false });
+      if (!visible) return res.status(404).json({ error: "Article not found." });
+      await upsertHelpful(req.params.id, { contactId: ctx.contactId, helpful: req.body.helpful });
+      const article = await getPortalKnowledgeArticle(ctx.clientId, ctx.contactId, req.params.id);
+      res.json({ article });
+    } catch (err) {
+      console.error("POST /client-portal/knowledge-base/:id/helpful:", err);
+      res.status(err.status || 500).json({ error: err.message || "Error saving feedback." });
+    }
+  }
+);
+router.post(
+  "/knowledge-base/:id/favorite",
+  [param("id").isUUID()],
+  async (req, res) => {
+    if (validationErrorOrNull(req, res)) return;
+    const ctx = await getPortalContext(req, res);
+    if (!ctx) return;
+    try {
+      if (!ctx.contactId) {
+        return res.status(400).json({ error: "A contact is required." });
+      }
+      const visible = await getPortalKnowledgeArticle(ctx.clientId, ctx.contactId, req.params.id, { includeFeedback: false });
+      if (!visible) return res.status(404).json({ error: "Article not found." });
+      await toggleFavorite(req.params.id, ctx.contactId);
+      const article = await getPortalKnowledgeArticle(ctx.clientId, ctx.contactId, req.params.id);
+      res.json({ article });
+    } catch (err) {
+      console.error("POST /client-portal/knowledge-base/:id/favorite:", err);
+      res.status(err.status || 500).json({ error: err.message || "Error saving favorite." });
+    }
+  }
+);
 router.get("/knowledge-base/:id/assets/:assetId", [param("id").isUUID(), param("assetId").isUUID()], async (req, res) => {
   if (validationErrorOrNull(req, res)) return;
   const ctx = await getPortalContext(req, res);
@@ -1336,7 +1490,9 @@ router.get("/knowledge-base/:id/assets/:assetId", [param("id").isUUID(), param("
       });
     }
     res.setHeader("Content-Type", asset.mime_type || "application/octet-stream");
+    res.setHeader("Content-Disposition", `inline; filename="${encodeURIComponent(asset.file_name || "file")}"`);
     res.setHeader("Cache-Control", "private, max-age=86400");
+    allowAssetEmbedding(res);
     fs.createReadStream(filePath).pipe(res);
   } catch (err) {
     console.error("GET /client-portal/knowledge-base/:id/assets/:assetId:", err);

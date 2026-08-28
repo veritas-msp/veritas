@@ -15,6 +15,7 @@ import KnowledgeArticleEditor from "./KnowledgeArticleEditor";
 import KnowledgeCategoryModal from "./KnowledgeCategoryModal";
 import KnowledgeFolderModal from "./KnowledgeFolderModal";
 import KnowledgeFolderTree, { flattenFolderOptions } from "./KnowledgeFolderTree";
+import { articleTemplates, templateToHtml } from "./knowledgeArticleHelpers";
 import styles from "./knowledgeBase.module.css";
 
 function KnowledgeBaseShell({ children }) {
@@ -56,6 +57,7 @@ export default function KnowledgeBasePage({ onNavigate }) {
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState("all");
   const [creating, setCreating] = useState(false);
+  const [templateOpen, setTemplateOpen] = useState(false);
   const [selected, setSelected] = useState(() => new Set());
   const [confirmDelete, setConfirmDelete] = useState(null);
   const [deleting, setDeleting] = useState(false);
@@ -128,14 +130,18 @@ export default function KnowledgeBasePage({ onNavigate }) {
     onNavigate?.("KnowledgeBase");
   }, [onNavigate]);
 
-  const create = useCallback(async () => {
+  const create = useCallback(async (template = null) => {
     setCreating(true);
     try {
       const article = await createKnowledgeArticle({
-        title: copy.untitled,
-        folderId: currentFolder !== "all" && currentFolder !== "root" ? currentFolder : null
+        title: template?.title || copy.untitled,
+        category: template?.category || undefined,
+        folderId: currentFolder !== "all" && currentFolder !== "root" ? currentFolder : null,
+        contentJson: template?.json || undefined,
+        contentHtml: template?.json ? templateToHtml(template.json) : undefined
       });
       toast.success(copy.created);
+      setTemplateOpen(false);
       openArticle(article.id, "edit", article.title || copy.untitled);
     } catch (err) {
       toast.error(err.message || copy.createError);
@@ -286,7 +292,7 @@ export default function KnowledgeBasePage({ onNavigate }) {
         subtitle={copy.subtitle}
         icon="mdi:book-open-page-variant-outline"
         actions={canCreate ? (
-          <button type="button" className={layout.primaryBtn} onClick={create} disabled={creating}>
+          <button type="button" className={layout.primaryBtn} onClick={() => setTemplateOpen(true)} disabled={creating}>
             <Icon icon="mdi:plus" /> {copy.newArticle}
           </button>
         ) : null}
@@ -426,6 +432,7 @@ export default function KnowledgeBasePage({ onNavigate }) {
                       <span className={`${styles.badge} ${article.status === "draft" ? styles.badgeDraft : ""}`}>
                         {article.status === "published" ? copy.statusPublished : copy.statusDraft}
                       </span>
+                      {article.publicEnabled ? <span>{copy.publicLinkTitle}</span> : null}
                       {article.visibleToAgents ? <span>{copy.audienceAgents}</span> : null}
                       {article.visibleToAllClients ? (
                         <span>{copy.audienceAllClients}</span>
@@ -448,33 +455,59 @@ export default function KnowledgeBasePage({ onNavigate }) {
                       ) : null}
                       {article.category ? <span>{article.category}</span> : null}
                       {article.folderName ? <span>{article.folderName}</span> : null}
-                      <span>{copy.updated} {formatDate(article.updatedAt, locale)}</span>
+                      {article.authorName ? <span>{interpolate(copy.createdBy, { name: article.authorName })}</span> : null}
+                      {article.updatedByName || article.updatedAt ? (
+                        <span>
+                          {interpolate(copy.updatedByAt, {
+                            name: article.updatedByName || article.authorName || copy.unknownAuthor,
+                            when: formatDate(article.updatedAt, locale) || "—"
+                          })}
+                        </span>
+                      ) : (
+                        <span>{copy.updated} {formatDate(article.updatedAt, locale)}</span>
+                      )}
+                      {article.ratingCount ? (
+                        <span>{interpolate(copy.listFeedbackRating, { avg: String(article.ratingAverage || 0), count: String(article.ratingCount) })}</span>
+                      ) : article.ratingsEnabled ? (
+                        <span>{copy.listFeedbackRatingsOn}</span>
+                      ) : null}
+                      {article.commentCount ? (
+                        <span>{interpolate(copy.listFeedbackComments, { count: String(article.commentCount) })}</span>
+                      ) : article.commentsEnabled ? (
+                        <span>{copy.listFeedbackCommentsOn}</span>
+                      ) : null}
                     </div>
                   </div>
                   <div className={styles.cardActions}>
                     <button
                       type="button"
                       className={styles.cardAction}
+                      title={copy.read}
+                      aria-label={copy.read}
                       onClick={() => openArticle(article.id, "read", article.title || copy.untitled)}
                     >
-                      <Icon icon="mdi:eye-outline" /> {copy.read}
+                      <Icon icon="mdi:eye-outline" width={18} />
                     </button>
                     {canEdit ? (
                       <button
                         type="button"
                         className={styles.cardAction}
+                        title={copy.edit}
+                        aria-label={copy.edit}
                         onClick={() => openArticle(article.id, "edit", article.title || copy.untitled)}
                       >
-                        <Icon icon="mdi:pencil-outline" /> {copy.edit}
+                        <Icon icon="mdi:pencil-outline" width={18} />
                       </button>
                     ) : null}
                     {canDelete ? (
                       <button
                         type="button"
                         className={`${styles.cardAction} ${styles.cardActionDanger}`}
+                        title={copy.delete}
+                        aria-label={copy.delete}
                         onClick={() => setConfirmDelete({ id: article.id, title: article.title || copy.untitled })}
                       >
-                        <Icon icon="mdi:trash-can-outline" /> {copy.delete}
+                        <Icon icon="mdi:trash-can-outline" width={18} />
                       </button>
                     ) : null}
                   </div>
@@ -496,6 +529,29 @@ export default function KnowledgeBasePage({ onNavigate }) {
           load();
         }}
       />
+      {templateOpen ? (
+        <div className={styles.modalOverlay} onClick={() => { if (!creating) setTemplateOpen(false); }}>
+          <div className={styles.modalShell} onClick={event => event.stopPropagation()}>
+            <div className={styles.modalHead}>
+              <h2>{copy.templatesTitle}</h2>
+              <button type="button" className={styles.folderTool} onClick={() => setTemplateOpen(false)}><Icon icon="mdi:close" /></button>
+            </div>
+            <div className={styles.modalBody}>
+              <div className={styles.templateGrid}>
+                <button type="button" className={styles.templateCard} disabled={creating} onClick={() => create(null)}>
+                  <strong>{copy.templatesBlank}</strong>
+                </button>
+                {articleTemplates(copy).map(template => (
+                  <button key={template.id} type="button" className={styles.templateCard} disabled={creating} onClick={() => create(template)}>
+                    <strong>{template.title}</strong>
+                    <span>{template.description}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      ) : null}
       <KnowledgeFolderModal
         open={Boolean(folderModal)}
         mode={folderModal?.mode || "create"}
