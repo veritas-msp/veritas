@@ -36,16 +36,24 @@ export const FLEET_FAMILY_CANON = {
 export const FLEET_FAMILY_META = {
   computers: { exportType: "Ordinateurs", icon: "mdi:laptop" },
   internet: { exportType: "Internet", icon: "mdi:web" },
-  firewalls: { exportType: "Firewalls", icon: "mdi:shield-lock" },
+  firewalls: { exportType: "Firewalls", icon: "mdi:shield-outline" },
   servers: { exportType: "Servers", icon: "mdi:server" },
   storage: { exportType: "Storage", icon: "mdi:harddisk" },
   switch: { exportType: "Switch", icon: "mdi:lan" },
   wifi: { exportType: "BorneWifi", icon: "mdi:wifi" },
   router: { exportType: "Routeur", icon: "mdi:router-wireless" },
-  power: { exportType: "Alimentation", icon: "mdi:battery-charging" },
+  power: { exportType: "Alimentation", icon: "mdi:power-plug" },
   toip: { exportType: "TOIP", icon: "mdi:phone-voip" },
   generic: { exportType: "Servers", icon: "mdi:devices" }
 };
+
+export function getFleetFamilyIcon(type, customIcon) {
+  const icon = String(customIcon || "").trim();
+  if (icon) return icon;
+  const raw = String(type || "").trim();
+  if (raw.startsWith("Custom:")) return "mdi:devices";
+  return FLEET_FAMILY_META[canonicalizeFleetFamily(raw)]?.icon || "mdi:devices";
+}
 
 export function canonicalizeFleetFamily(type) {
   const raw = String(type || "").trim();

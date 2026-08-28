@@ -1,4 +1,5 @@
 import { getClientNumber, getClientNameWithoutCode } from "./clientDisplay";
+import { getLocalizedEquipmentTypeLabel } from "../i18n/equipmentFamilyLabels";
 import { getTabLabelsCopy } from "../i18n/tabLabelsI18n";
 function formatClientShortLabel(data) {
   const number = (data?.client_number ?? data?.clientNumber ?? getClientNumber(data)) || null;
@@ -108,10 +109,13 @@ export function generateTabTitle(type, data = {}, locale = "fr") {
     return d.antispam;
   }
   if (type === "ComputerFleetStats") {
-    const clientLabel = formatClientShortLabel(data);
-    const typeLabel = data?.equipmentType === "Ordinateurs" ? copy.equipmentTypes.Ordinateurs : equipmentTypeLabel(data?.equipmentType, copy) || d.fleet;
-    if (clientLabel) return `${clientLabel} · ${d.statsPrefix} ${typeLabel}`;
-    return `${d.statsPrefix} ${typeLabel}`;
+    const number = (data?.client_number ?? data?.clientNumber ?? getClientNumber(data)) || "";
+    const customType = String(data?.equipmentType || "");
+    const typeLabel = String(data?.familyLabel || "").trim()
+      || (customType.startsWith("Custom:") ? customType.slice("Custom:".length) : "")
+      || getLocalizedEquipmentTypeLabel(data?.equipmentType, locale, equipmentTypeLabel(data?.equipmentType, copy) || d.fleet);
+    if (number && typeLabel) return `${number} · ${typeLabel}`;
+    return typeLabel || d.fleet;
   }
   if (type === "TenantDetail") {
     const clientLabel = formatClientShortLabel({

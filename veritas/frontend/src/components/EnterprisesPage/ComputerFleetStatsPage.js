@@ -3,11 +3,15 @@ import { Icon } from "@iconify/react";
 import { toast } from "react-toastify";
 import { useAppLocale } from "../../hooks/useAppGeneralSettings";
 import { loadClientEquipmentForFleetStats } from "../../utils/computerFleetStats";
-import { canonicalizeFleetFamily, isComputerFleetFamily } from "../../utils/equipmentFamilyStats";
+import { canonicalizeFleetFamily, getFleetFamilyIcon, isComputerFleetFamily } from "../../utils/equipmentFamilyStats";
 import { getEquipmentFamilyStatsCopy } from "../../utils/equipmentFamilyStatsI18n";
+import MspPageHero from "../Misc/MspPageHero/MspPageHero";
 import SmartTooltip from "../SmartTooltip";
 import ComputerFleetStatsView from "./ComputerFleetStatsView";
 import EquipmentFamilyStatsView from "./EquipmentFamilyStatsView";
+import cyberStyles from "../CybersecuritePage/CybersecuritePage.module.css";
+import layout from "./EnterprisesPage.module.css";
+import solutionStyles from "./SolutionDetailPageLayout.module.css";
 import pageStyles from "./ComputerFleetStatsPage.module.css";
 
 export default function ComputerFleetStatsPage({
@@ -36,7 +40,7 @@ export default function ComputerFleetStatsPage({
       setItems([]);
       setClientSsids([]);
       setLoading(false);
-      setError("Company not found.");
+      setError(copy.companyNotFound);
       return;
     }
     setLoading(true);
@@ -56,7 +60,7 @@ export default function ComputerFleetStatsPage({
     } finally {
       setLoading(false);
     }
-  }, [clientId, equipmentType, siteFilter, copy.emptyFleet]);
+  }, [clientId, equipmentType, siteFilter, copy.emptyFleet, copy.companyNotFound]);
 
   useEffect(() => {
     loadItems();
@@ -64,8 +68,8 @@ export default function ComputerFleetStatsPage({
 
   useEffect(() => {
     if (!window.updateTabTitle || !statsData?.clientId) return;
-    window.updateTabTitle("ComputerFleetStats", statsData, clientName ? `${clientName} · ${familyLabel}` : familyLabel);
-  }, [statsData, clientName, familyLabel]);
+    window.updateTabTitle("ComputerFleetStats", statsData);
+  }, [statsData]);
 
   const handleBack = () => {
     if (!clientId || !onNavigate) return;
@@ -78,46 +82,73 @@ export default function ComputerFleetStatsPage({
 
   const handleRefresh = async () => {
     await loadItems();
-    toast.success("Statistics refreshed.");
+    toast.success(copy.refreshed);
   };
 
-  return <div className={pageStyles.page}>
-      <header className={pageStyles.header}>
-        <div className={pageStyles.headerLeft}>
-          <div className={pageStyles.headerCopy}>
-            <h1 className={pageStyles.title}>
-              <Icon icon="mdi:chart-box-outline" className={pageStyles.titleIcon} aria-hidden />
-              {familyLabel}
-            </h1>
-            <p className={pageStyles.subtitle}>
-              {clientName || "Company"}
-              {siteFilter ? ` · ${siteFilter}` : ""}
-              {!loading && !error ? ` · ${items.length}` : ""}
-            </p>
-          </div>
-        </div>
-        <div className={pageStyles.headerActions}>
-          <SmartTooltip as="span" content="Refresh">
-            <button type="button" className={pageStyles.iconBtn} onClick={handleRefresh} disabled={loading} aria-label="Refresh">
-              <Icon icon={loading ? "mdi:loading" : "mdi:refresh"} className={loading ? pageStyles.spin : undefined} aria-hidden />
-            </button>
-          </SmartTooltip>
-        </div>
-      </header>
+  const subtitle = [
+    clientName || copy.companyFallback,
+    siteFilter,
+    !loading && !error ? String(items.length) : null
+  ].filter(Boolean).join(" · ");
 
-      <main className={pageStyles.content}>
-        {loading ? <div className={pageStyles.loadingState}>
-            <Icon icon="mdi:loading" className={pageStyles.spin} aria-hidden />
-            <span>Loading statistics…</span>
-          </div> : error ? <div className={pageStyles.emptyState}>
-            <Icon icon="mdi:chart-box-outline" className={pageStyles.emptyIcon} aria-hidden />
-            <p>{error}</p>
-            <button type="button" className={pageStyles.textBtn} onClick={handleBack}>
-              Back to record
-            </button>
-          </div> : isComputerFleetFamily(equipmentType)
-            ? <ComputerFleetStatsView computers={items} />
-            : <EquipmentFamilyStatsView items={items} familyType={equipmentType} clientSsids={clientSsids} />}
-      </main>
-    </div>;
+  return (
+    <div className={`${cyberStyles.mspPage} ${layout.page} msp-page-grid`}>
+      <div className={cyberStyles.mspLayout}>
+        <div className={cyberStyles.mspMain}>
+          <MspPageHero
+            eyebrow={copy.pageEyebrow}
+            title={familyLabel}
+            subtitle={subtitle}
+            icon={getFleetFamilyIcon(equipmentType, statsData?.familyIcon)}
+            actions={
+              <>
+                {clientId && onNavigate ? (
+                  <button type="button" className={solutionStyles.backBtn} onClick={handleBack}>
+                    <Icon icon="mdi:arrow-left" aria-hidden />
+                    <span>{copy.back}</span>
+                  </button>
+                ) : null}
+                <SmartTooltip content={copy.refresh}>
+                  <button
+                    type="button"
+                    className={layout.iconBtn}
+                    onClick={handleRefresh}
+                    disabled={loading}
+                    aria-label={copy.refresh}
+                  >
+                    <Icon icon={loading ? "mdi:loading" : "mdi:refresh"} className={loading ? pageStyles.spin : undefined} aria-hidden />
+                  </button>
+                </SmartTooltip>
+              </>
+            }
+          />
+
+          <main className={cyberStyles.mspContent}>
+            <div className={pageStyles.body}>
+              {loading ? (
+                <div className={pageStyles.loadingState}>
+                  <Icon icon="mdi:loading" className={pageStyles.spin} aria-hidden />
+                  <span>{copy.loading}</span>
+                </div>
+              ) : error ? (
+                <div className={pageStyles.emptyState}>
+                  <Icon icon="mdi:chart-box-outline" className={pageStyles.emptyIcon} aria-hidden />
+                  <p>{error}</p>
+                  {clientId && onNavigate ? (
+                    <button type="button" className={pageStyles.textBtn} onClick={handleBack}>
+                      {copy.back}
+                    </button>
+                  ) : null}
+                </div>
+              ) : isComputerFleetFamily(equipmentType) ? (
+                <ComputerFleetStatsView computers={items} />
+              ) : (
+                <EquipmentFamilyStatsView items={items} familyType={equipmentType} clientSsids={clientSsids} />
+              )}
+            </div>
+          </main>
+        </div>
+      </div>
+    </div>
+  );
 }

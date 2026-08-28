@@ -93,6 +93,7 @@ export default function AdminInjection({
   const [docDrafts, setDocDrafts] = useState([]);
   const [docsModalOpen, setDocsModalOpen] = useState(false);
   const [clients, setClients] = useState([]);
+  const [dragOver, setDragOver] = useState(false);
   const [updateExistingEquipment, setUpdateExistingEquipment] = useState(true);
   const csvInputRef = useRef(null);
   const filesInputRef = useRef(null);

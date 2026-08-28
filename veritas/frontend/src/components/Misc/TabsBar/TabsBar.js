@@ -6,6 +6,7 @@ import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, us
 import { arrayMove, SortableContext, sortableKeyboardCoordinates, horizontalListSortingStrategy, useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { getTabTooltip } from "../../../utils/tabLabels";
+import { getFleetFamilyIcon } from "../../../utils/equipmentFamilyStats";
 import { groupTabsIntoFolders, shouldUseFolderMode } from "../../../utils/tabSort";
 import { useAppLocale } from "../../../hooks/useAppGeneralSettings";
 import { useCommonCopy } from "../../../hooks/useCommonCopy";
@@ -93,6 +94,8 @@ function getTabIcon(type, tabData) {
       return "mdi:email-secure";
     case "TenantDetail":
       return "mdi:microsoft-azure";
+    case "ComputerFleetStats":
+      return getFleetFamilyIcon(tabData?.equipmentType, tabData?.familyIcon);
     default:
       return "mdi:file-document";
   }

@@ -1756,15 +1756,17 @@ export default function ClientDetailPage({
       return;
     }
     const familyKey = parseCustomFamilyType(tableType);
-    const familyLabel = familyKey
-      ? ((customFamilyMap || []).find(entry => entry.familyKey === familyKey)?.label || familyKey)
-      : undefined;
+    const customFamily = familyKey
+      ? ((customFamilyMap || []).find(entry => entry.familyKey === familyKey) || null)
+      : null;
+    const familyLabel = customFamily?.label || familyKey || undefined;
     onNavigate?.("ComputerFleetStats", {
       clientId: client.id,
       clientName: getClientNameWithoutCode(client) || client?.name || "",
       client_number: getClientNumber(client) || undefined,
       equipmentType: tableType,
       familyLabel,
+      familyIcon: customFamily?.icon || undefined,
       siteFilter: activeSiteFilter || null
     }, options.background ? {
       background: true

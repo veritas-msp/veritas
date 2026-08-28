@@ -39,7 +39,7 @@ const QUERY_KEYS = {
   AntispamDetail: ["customerId", "mailinblackTenantId", "productName", "logiciel", "solution"],
   EquipmentDetail: ["id", "clientId", "type", "name"],
   JobDetail: ["id", "clientId", "nom", "name"],
-  ComputerFleetStats: ["equipmentType", "siteFilter"],
+  ComputerFleetStats: ["equipmentType", "siteFilter", "client_number", "familyLabel", "familyIcon"],
   Cybersecurite: ["tab", "clientId"],
   Service: ["tab", "clientId"],
   Contrat: ["openClientId", "highlight"],
