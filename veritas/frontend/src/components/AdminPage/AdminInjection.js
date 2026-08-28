@@ -8,7 +8,11 @@ import { fetchEquipmentFamilies } from "../../api/equipmentFamilies";
 import { getAdminInjectionCopy } from "./adminInjectionI18n";
 import {
   buildEquipmentFamilyCsvTemplate,
-  mergeEquipmentInjectionFamilies
+  EQUIPMENT_MATCH_KEY_DEFAULT,
+  getEquipmentMatchKeyOptions,
+  isEquipmentMatchableField,
+  mergeEquipmentInjectionFamilies,
+  resolveEquipmentMatchKeys
 } from "./adminInjectionEquipmentFields";
 import { getInjectionFieldRows, hasInjectionFieldCatalog, FIELDS_GUIDE_UI } from "./adminInjectionFieldCatalog";
 import { useContractModuleOptions } from "../../hooks/useContractModuleOptions";
@@ -39,6 +43,18 @@ const ENTITY_ICONS = {
   tickets: "mdi:ticket-outline"
 };
 
+const MATCH_KEYS_STORAGE = "veritas.admin.injection.equipmentMatchKeys";
+
+function readStoredMatchKeys() {
+  try {
+    const parsed = JSON.parse(window.localStorage.getItem(MATCH_KEYS_STORAGE) || "{}");
+    if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) return parsed;
+  } catch {
+    /* ignore */
+  }
+  return {};
+}
+
 function injectionLineIcon(status) {
   if (status === "updated") return "mdi:pencil-circle-outline";
   if (status === "ok") return "mdi:check-circle-outline";
@@ -57,6 +73,8 @@ export default function AdminInjection({
   const [customFamilies, setCustomFamilies] = useState([]);
   const [familiesLoading, setFamiliesLoading] = useState(false);
   const [selectedFamilyId, setSelectedFamilyId] = useState("servers");
+  const [updateExistingEquipment, setUpdateExistingEquipment] = useState(true);
+  const [equipmentMatchKeys, setEquipmentMatchKeys] = useState(readStoredMatchKeys);
   const equipmentFamilies = useMemo(
     () => mergeEquipmentInjectionFamilies(locale, customFamilies),
     [locale, customFamilies]
@@ -69,6 +87,18 @@ export default function AdminInjection({
     () => equipmentFamilies.find(f => f.id === selectedFamilyId) || equipmentFamilies[0] || null,
     [equipmentFamilies, selectedFamilyId]
   );
+  const matchKeyOptions = useMemo(
+    () => getEquipmentMatchKeyOptions(selectedFamily),
+    [selectedFamily]
+  );
+  const selectedMatchKeys = useMemo(() => {
+    const familyKey = selectedFamily?.familyKey || selectedFamily?.id;
+    return resolveEquipmentMatchKeys(
+      familyKey,
+      equipmentMatchKeys,
+      matchKeyOptions.map(option => option.key)
+    );
+  }, [equipmentMatchKeys, selectedFamily, matchKeyOptions]);
   const contractOptionKeysNote = useMemo(
     () => enabledModules.map(mod => mod.moduleKey).filter(Boolean).join(", "),
     [enabledModules]
@@ -94,7 +124,6 @@ export default function AdminInjection({
   const [docsModalOpen, setDocsModalOpen] = useState(false);
   const [clients, setClients] = useState([]);
   const [dragOver, setDragOver] = useState(false);
-  const [updateExistingEquipment, setUpdateExistingEquipment] = useState(true);
   const csvInputRef = useRef(null);
   const filesInputRef = useRef(null);
   const folderInputRef = useRef(null);
@@ -303,7 +332,8 @@ export default function AdminInjection({
         messages: copy.errors,
         control,
         equipmentFamilyRegistry: activeView === "equipment" ? equipmentRegistry : null,
-        updateExistingEquipment: activeView === "equipment" ? updateExistingEquipment : false
+        updateExistingEquipment: activeView === "equipment" ? updateExistingEquipment : false,
+        equipmentMatchKeys: activeView === "equipment" ? equipmentMatchKeys : {}
       });
       setReport(result);
       if (result.cancelled) {
@@ -554,14 +584,50 @@ export default function AdminInjection({
                     <table className={styles.equipmentFieldsTable}>
                       <thead>
                         <tr>
+                          <th className={styles.equipmentKeyCol}>{copy.equipmentGuideKeyCol}</th>
                           <th>{copy.equipmentGuideCsvCol}</th>
                           <th>{copy.equipmentGuideMeaning}</th>
                           <th>{copy.equipmentGuideValues}</th>
                         </tr>
                       </thead>
                       <tbody>
-                        {selectedFamily.fields.map((field, index) => (
-                          <tr key={`${field.csvColumn}-${field.key}-${index}`}>
+                        {selectedFamily.fields.map((field, index) => {
+                          const matchable = isEquipmentMatchableField(field.key);
+                          const checked = selectedMatchKeys.includes(field.key);
+                          return (
+                          <tr
+                            key={`${field.csvColumn}-${field.key}-${index}`}
+                            className={checked ? styles.equipmentKeyRow : undefined}
+                          >
+                            <td className={styles.equipmentKeyCol}>
+                              {matchable ? (
+                                <input
+                                  type="checkbox"
+                                  checked={checked}
+                                  disabled={running}
+                                  aria-label={copy.equipmentGuideKeyAria}
+                                  onChange={() => {
+                                    const familyKey = selectedFamily?.familyKey || selectedFamily?.id;
+                                    if (!familyKey) return;
+                                    const allowed = matchKeyOptions.map(option => option.key);
+                                    const current = resolveEquipmentMatchKeys(familyKey, equipmentMatchKeys, allowed);
+                                    const nextKeys = current.includes(field.key)
+                                      ? current.filter(key => key !== field.key)
+                                      : [...current, field.key];
+                                    const persisted = nextKeys.length ? nextKeys : [EQUIPMENT_MATCH_KEY_DEFAULT];
+                                    setEquipmentMatchKeys(prev => {
+                                      const next = { ...prev, [familyKey]: persisted };
+                                      try {
+                                        window.localStorage.setItem(MATCH_KEYS_STORAGE, JSON.stringify(next));
+                                      } catch {
+                                        /* ignore */
+                                      }
+                                      return next;
+                                    });
+                                  }}
+                                />
+                              ) : null}
+                            </td>
                             <td>
                               <code>{field.csvColumn}</code>
                               {field.required ? (
@@ -571,7 +637,8 @@ export default function AdminInjection({
                             <td>{field.label}</td>
                             <td>{field.values}</td>
                           </tr>
-                        ))}
+                          );
+                        })}
                       </tbody>
                     </table>
                   </div>
@@ -638,7 +705,7 @@ export default function AdminInjection({
           ) : (
             <div className={styles.injectActions}>
             {activeView === "equipment" ? (
-              <label className={styles.upsertRow}>
+              <label className={styles.upsertCheck}>
                 <input
                   type="checkbox"
                   checked={updateExistingEquipment}
@@ -653,20 +720,15 @@ export default function AdminInjection({
             ) : null}
             <div className={styles.actions}>
               <Btn variant="secondary" icon="mdi:download" onClick={handleDownloadTemplate}>
-                {activeView === "equipment" && selectedFamily ? copy.downloadFamilyTemplate : copy.downloadTemplate}
+                {activeView === "equipment" ? copy.downloadFamilyTemplate : copy.downloadTemplate}
               </Btn>
-              {activeView === "equipment" ? (
-                <Btn variant="secondary" icon="mdi:file-download-outline" onClick={() => downloadCsvTemplate("equipment")}>
-                  {copy.downloadTemplate}
-                </Btn>
-              ) : null}
               <Btn
                 variant="secondary"
                 icon="mdi:file-delimited-outline"
                 onClick={() => csvInputRef.current?.click()}
                 disabled={running}
               >
-                {csvName || copy.pickCsv}
+                {csvName || (activeView === "equipment" ? copy.pickInjectFile : copy.pickCsv)}
               </Btn>
               <input ref={csvInputRef} type="file" accept=".csv,text/csv" hidden onChange={onCsvChange} />
               <Btn icon="mdi:database-import" onClick={handleInject} disabled={running || !rows.length}>

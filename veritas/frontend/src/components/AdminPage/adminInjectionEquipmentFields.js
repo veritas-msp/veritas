@@ -414,3 +414,73 @@ export function buildEquipmentFamilyCsvTemplate(familyGuide) {
   });
   return `${headers.join(",")}\n${sample.join(",")}\n`;
 }
+
+export const EQUIPMENT_MATCH_KEY_DEFAULT = "_name";
+
+const MATCH_KEY_EXCLUDED = new Set([
+  "_client_name",
+  "_client_id",
+  "_family",
+  "_is_active",
+  "_notes",
+  "_os",
+  "_data_json",
+  "commentaire",
+  "purchaseDate",
+  "invoiceNumber",
+  "installDate",
+  "expirationGarantie",
+  "dateBatterie",
+  "dateMiseEnService",
+  "ipNonFixe",
+  "manageable",
+  "poeSupport",
+  "empilage",
+  "alimentationPoE"
+]);
+
+const MATCH_KEY_PRIORITY = ["_name", "_item_key", "_ip", "numeroSerie", "adresseMac", "netbios"];
+
+/** Identity-like CSV fields the user can pick as upsert match key for a family. */
+export function getEquipmentMatchKeyOptions(family) {
+  const fields = Array.isArray(family?.fields) ? family.fields : [];
+  const seen = new Set();
+  const options = [];
+  for (const field of fields) {
+    const key = String(field?.key || "").trim();
+    if (!key || seen.has(key) || MATCH_KEY_EXCLUDED.has(key)) continue;
+    seen.add(key);
+    options.push({
+      key,
+      label: field.label || field.csvColumn || key,
+      csvColumn: field.csvColumn || ""
+    });
+  }
+  const rank = key => {
+    const index = MATCH_KEY_PRIORITY.indexOf(key);
+    return index === -1 ? MATCH_KEY_PRIORITY.length : index;
+  };
+  options.sort((a, b) => {
+    const delta = rank(a.key) - rank(b.key);
+    if (delta !== 0) return delta;
+    return String(a.label).localeCompare(String(b.label), "fr");
+  });
+  return options;
+}
+
+export function isEquipmentMatchableField(fieldKey) {
+  return Boolean(String(fieldKey || "").trim()) && !MATCH_KEY_EXCLUDED.has(String(fieldKey).trim());
+}
+
+export function resolveEquipmentMatchKeys(familyKey, matchKeysByFamily = {}, allowedKeys = null) {
+  const key = String(familyKey || "").trim();
+  const stored = matchKeysByFamily?.[key] || matchKeysByFamily?.[key.toLowerCase()];
+  const raw = Array.isArray(stored)
+    ? stored.map(value => String(value || "").trim()).filter(Boolean)
+    : (typeof stored === "string" && stored.trim() ? [stored.trim()] : []);
+  const allowed = Array.isArray(allowedKeys) && allowedKeys.length ? new Set(allowedKeys) : null;
+  const filtered = allowed ? raw.filter(value => allowed.has(value)) : raw;
+  if (filtered.length) return filtered;
+  if (!allowed || allowed.has(EQUIPMENT_MATCH_KEY_DEFAULT)) return [EQUIPMENT_MATCH_KEY_DEFAULT];
+  return allowedKeys?.length ? [allowedKeys[0]] : [EQUIPMENT_MATCH_KEY_DEFAULT];
+}

@@ -20,6 +20,7 @@ import { createTicket, permanentlyDeleteTicket } from "../../api/tickets";
 import { interpolate } from "../../i18n/translate";
 import { canonicalizeComputerType } from "../EquipementPage/equipmentFormConfig";
 import { slugifyEquipmentFieldKey } from "./equipmentFamilyConstants";
+import { EQUIPMENT_MATCH_KEY_DEFAULT, resolveEquipmentMatchKeys } from "./adminInjectionEquipmentFields";
 
 const DEFAULT_INJECTION_ERRORS = {
   missingName: "Missing name",
@@ -36,8 +37,9 @@ const DEFAULT_INJECTION_ERRORS = {
   validationAborted: "Injection cancelled: fix validation errors — nothing was injected.",
   rollbackAborted: "Injection cancelled after error — {count} created item(s) rolled back. Nothing was kept.",
   userCancelled: "Injection cancelled by user — {count} created item(s) rolled back. Nothing was kept.",
-  ambiguousEquipment: "Several matching devices for {name} in family {family}. Add a serial number (or item_key) to disambiguate.",
-  duplicateInFile: "Duplicate row in the CSV for {name} (family {family}).",
+  ambiguousEquipment: "Several matching devices for “{value}” ({field}) in family {family}.",
+  duplicateInFile: "Duplicate row in the CSV for “{value}” ({field}, family {family}).",
+  missingMatchKey: "Match key “{field}” is empty for {name} (family {family}).",
   created: "Created",
   updated: "Updated",
   ok: "OK"
@@ -363,10 +365,6 @@ function resolveCustomEquipmentFieldKey(rawField, fields = []) {
   return null;
 }
 
-function compactSerialValue(value) {
-  return String(value || "").toLowerCase().replace(/[\s\-_.]/g, "");
-}
-
 function pickSerialFromBag(bag) {
   if (!bag || typeof bag !== "object") return "";
   const serialKeys = new Set(["numeroserie", "serial", "sn", "serialnumber", "nserie"]);
@@ -410,30 +408,83 @@ function cloneEquipmentData(value) {
   }
 }
 
-function findExistingEquipment(list, { name, itemKey, serial, isCustom }) {
-  const rows = Array.isArray(list) ? list : [];
-  const wantedKey = String(itemKey || "").trim();
-  if (wantedKey) {
-    const byKey = rows.filter(item => String(item?.item_key || "").trim() === wantedKey);
-    if (byKey.length === 1) return { item: byKey[0] };
-    if (byKey.length > 1) return { ambiguous: true };
+function compactIdentityValue(value) {
+  return String(value || "").toLowerCase().replace(/[\s\-_.:]/g, "");
+}
+
+function normalizeMatchValue(value, matchKey) {
+  const raw = String(value ?? "").trim();
+  if (!raw) return "";
+  if (matchKey === "_item_key") return raw;
+  if (["numeroSerie", "adresseMac", "_ip", "serial", "mac"].includes(matchKey)) {
+    return compactIdentityValue(raw);
   }
-  const serialCompact = compactSerialValue(serial);
-  if (serialCompact) {
-    const bySerial = rows.filter(item => compactSerialValue(readExistingEquipmentSerial(item)) === serialCompact);
-    if (bySerial.length === 1) return { item: bySerial[0] };
-    if (bySerial.length > 1) {
-      const needle = String(name || "").trim().toLowerCase();
-      const byName = bySerial.filter(item => readExistingEquipmentName(item, isCustom).toLowerCase() === needle);
-      if (byName.length === 1) return { item: byName[0] };
-      if (byName.length > 1) return { ambiguous: true };
-    }
+  return raw.toLowerCase();
+}
+
+function matchKeyColumnLabel(matchKey) {
+  if (matchKey === "_name") return "name";
+  if (matchKey === "_item_key") return "item_key";
+  if (matchKey === "_ip") return "ip";
+  return String(matchKey || "").replace(/^_/, "") || "name";
+}
+
+function matchKeyColumnLabels(matchKeys) {
+  return (Array.isArray(matchKeys) ? matchKeys : [matchKeys]).map(matchKeyColumnLabel).join(" + ");
+}
+
+function readExistingMatchValue(item, matchKey, isCustom) {
+  if (matchKey === "_name") return readExistingEquipmentName(item, isCustom);
+  if (matchKey === "_item_key") return String(item?.item_key || "").trim();
+  const bag = {
+    ...cloneEquipmentData(item?.data),
+    ...(item?.fields && typeof item.fields === "object" ? cloneEquipmentData(item.fields) : {})
+  };
+  if (matchKey === "_ip") {
+    return String(item?.ip || bag.ip || "").trim();
   }
-  const needle = String(name || "").trim().toLowerCase();
-  if (!needle) return { item: null };
-  const byName = rows.filter(item => readExistingEquipmentName(item, isCustom).toLowerCase() === needle);
-  if (byName.length === 1) return { item: byName[0] };
-  if (byName.length > 1) return { ambiguous: true };
+  const dataKey = matchKey.startsWith("_") ? matchKey.slice(1) : matchKey;
+  const canonical = canonicalizeEquipmentDataField(dataKey);
+  const candidates = [bag[canonical], bag[dataKey], item?.[canonical], item?.[dataKey]];
+  if (canonical === "numeroSerie") candidates.push(readExistingEquipmentSerial(item));
+  if (canonical === "adresseMac") {
+    candidates.push(item?.mac, item?.adresseMac, bag.mac, bag.mac_address);
+  }
+  for (const value of candidates) {
+    if (value != null && String(value).trim()) return String(value).trim();
+  }
+  return "";
+}
+
+function readRowMatchValue({ name, itemKey, ip, data, matchKey }) {
+  if (matchKey === "_name") return name;
+  if (matchKey === "_item_key") return itemKey;
+  if (matchKey === "_ip") return ip || String(data?.ip || "").trim();
+  const dataKey = matchKey.startsWith("_") ? matchKey.slice(1) : matchKey;
+  const canonical = canonicalizeEquipmentDataField(dataKey);
+  return String(data?.[canonical] ?? data?.[dataKey] ?? "").trim();
+}
+
+function findExistingEquipment(list, { matchKeys, rowCtx, isCustom }) {
+  const keys = Array.isArray(matchKeys) && matchKeys.length ? matchKeys : [EQUIPMENT_MATCH_KEY_DEFAULT];
+  const needles = keys.map(matchKey => ({
+    matchKey,
+    value: normalizeMatchValue(readRowMatchValue({ ...rowCtx, matchKey }), matchKey)
+  }));
+  if (needles.some(entry => !entry.value)) {
+    return {
+      item: null,
+      emptyKey: true,
+      emptyFields: needles.filter(entry => !entry.value).map(entry => matchKeyColumnLabel(entry.matchKey))
+    };
+  }
+  const matches = (Array.isArray(list) ? list : []).filter(item => (
+    needles.every(({ matchKey, value }) => (
+      normalizeMatchValue(readExistingMatchValue(item, matchKey, isCustom), matchKey) === value
+    ))
+  ));
+  if (matches.length === 1) return { item: matches[0] };
+  if (matches.length > 1) return { ambiguous: true };
   return { item: null };
 }
 
@@ -957,7 +1008,8 @@ export async function runInjection({
   messages,
   control,
   equipmentFamilyRegistry = null,
-  updateExistingEquipment = true
+  updateExistingEquipment = true,
+  equipmentMatchKeys = {}
 }) {
   const report = createEmptyReport();
   const push = makePusher(report, onProgress, rows.length);
@@ -1181,16 +1233,32 @@ export async function runInjection({
           if (canonical) data.type = canonical;
         }
         const itemKey = cell(row, "item_key", "itemKey", "key") || "";
-        const serial = pickSerialFromBag(data)
-          || cell(row, "serial", "serial_number", "numero_serie", "numeroSerie")
-          || "";
-        const identityKey = compactSerialValue(serial)
-          ? `s:${client.id}:${family}:${compactSerialValue(serial)}`
-          : `n:${client.id}:${family}:${name.toLowerCase()}`;
+        const matchKeys = resolveEquipmentMatchKeys(family, equipmentMatchKeys);
+        const matchField = matchKeyColumnLabels(matchKeys);
+        const rowCtx = { name, itemKey, ip, data };
+        const matchValues = matchKeys.map(matchKey => readRowMatchValue({ ...rowCtx, matchKey }));
+        const normalizedParts = matchKeys.map((matchKey, index) => (
+          `${matchKey}:${normalizeMatchValue(matchValues[index], matchKey)}`
+        ));
+        const hasEmptyMatch = matchValues.some((value, index) => !normalizeMatchValue(value, matchKeys[index]));
+        if (updateExistingEquipment && hasEmptyMatch) {
+          return {
+            error: injectionError(msg, "missingMatchKey", {
+              field: matchField,
+              name,
+              family
+            })
+          };
+        }
+        const identityKey = hasEmptyMatch
+          ? `n:${client.id}:${family}:${name.toLowerCase()}`
+          : `k:${client.id}:${family}:${normalizedParts.join("|")}`;
         if (pendingIdentities.has(identityKey)) {
           return {
             error: injectionError(msg, "duplicateInFile", {
               name,
+              value: matchValues.filter(Boolean).join(" / ") || name,
+              field: matchField,
               family
             })
           };
@@ -1201,15 +1269,16 @@ export async function runInjection({
         if (updateExistingEquipment) {
           const currentItems = await loadFamilyItems(client.id, family, familyEntry.isCustom);
           const match = findExistingEquipment(currentItems, {
-            name,
-            itemKey,
-            serial,
+            matchKeys,
+            rowCtx,
             isCustom: familyEntry.isCustom
           });
           if (match.ambiguous) {
             return {
               error: injectionError(msg, "ambiguousEquipment", {
                 name,
+                value: matchValues.filter(Boolean).join(" / "),
+                field: matchField,
                 family
               })
             };
@@ -1221,6 +1290,8 @@ export async function runInjection({
               return {
                 error: injectionError(msg, "duplicateInFile", {
                   name,
+                  value: matchValues.filter(Boolean).join(" / ") || name,
+                  field: matchField,
                   family
                 })
               };
