@@ -26,6 +26,9 @@ const COPY = {
       none: "Aucun"
     },
     refresh: "Actualiser",
+    exportCsv: "Exporter la vue filtrée",
+    exportCsvAria: "Exporter le tableau filtré en CSV",
+    exportFilenamePrefix: "inventaire-peripheriques",
     loading: "Chargement de l’inventaire…",
     emptyTitle: "Aucun périphérique trouvé",
     emptyHint: "Ajustez vos filtres ou actualisez l’inventaire.",
@@ -101,7 +104,11 @@ const COPY = {
       bulkSuccess: "{count} périphérique mis à jour",
       bulkSuccessPlural: "{count} périphériques mis à jour",
       bulkPartial: "{updated} mis à jour, {failed} en échec",
-      bulkError: "Aucune modification appliquée"
+      bulkError: "Aucune modification appliquée",
+      exportSuccess: "{count} périphérique exporté",
+      exportSuccessPlural: "{count} périphériques exportés",
+      exportEmpty: "Aucun périphérique à exporter.",
+      exportError: "Impossible d’exporter l’inventaire."
     }
   },
   en: {
@@ -129,6 +136,9 @@ const COPY = {
       none: "None"
     },
     refresh: "Refresh",
+    exportCsv: "Export filtered view",
+    exportCsvAria: "Export the filtered table as CSV",
+    exportFilenamePrefix: "device-inventory",
     loading: "Loading inventory…",
     emptyTitle: "No devices found",
     emptyHint: "Adjust your filters or refresh the inventory.",
@@ -203,7 +213,11 @@ const COPY = {
       bulkSuccess: "{count} device updated",
       bulkSuccessPlural: "{count} devices updated",
       bulkPartial: "{updated} updated, {failed} failed",
-      bulkError: "No changes applied"
+      bulkError: "No changes applied",
+      exportSuccess: "{count} device exported",
+      exportSuccessPlural: "{count} devices exported",
+      exportEmpty: "No devices to export.",
+      exportError: "Unable to export the inventory."
     }
   },
   de: {
@@ -231,6 +245,9 @@ const COPY = {
       none: "Keine"
     },
     refresh: "Aktualisieren",
+    exportCsv: "Gefilterte Ansicht exportieren",
+    exportCsvAria: "Gefilterte Tabelle als CSV exportieren",
+    exportFilenamePrefix: "geraeteinventar",
     loading: "Inventar wird geladen…",
     emptyTitle: "Keine Geräte gefunden",
     emptyHint: "Passen Sie die Filter an oder aktualisieren Sie das Inventar.",
@@ -305,7 +322,11 @@ const COPY = {
       bulkSuccess: "{count} Gerät aktualisiert",
       bulkSuccessPlural: "{count} Geräte aktualisiert",
       bulkPartial: "{updated} aktualisiert, {failed} fehlgeschlagen",
-      bulkError: "Keine Änderungen übernommen"
+      bulkError: "Keine Änderungen übernommen",
+      exportSuccess: "{count} Gerät exportiert",
+      exportSuccessPlural: "{count} Geräte exportiert",
+      exportEmpty: "Keine Geräte zum Exportieren.",
+      exportError: "Inventar konnte nicht exportiert werden."
     }
   },
   it: {
@@ -333,6 +354,9 @@ const COPY = {
       none: "Nessuno"
     },
     refresh: "Aggiorna",
+    exportCsv: "Esporta la vista filtrata",
+    exportCsvAria: "Esporta la tabella filtrata in CSV",
+    exportFilenamePrefix: "inventario-periferiche",
     loading: "Caricamento inventario…",
     emptyTitle: "Nessuna periferica trovata",
     emptyHint: "Modifica i filtri o aggiorna l’inventario.",
@@ -407,7 +431,11 @@ const COPY = {
       bulkSuccess: "{count} periferica aggiornata",
       bulkSuccessPlural: "{count} periferiche aggiornate",
       bulkPartial: "{updated} aggiornate, {failed} in errore",
-      bulkError: "Nessuna modifica applicata"
+      bulkError: "Nessuna modifica applicata",
+      exportSuccess: "{count} periferica esportata",
+      exportSuccessPlural: "{count} periferiche esportate",
+      exportEmpty: "Nessuna periferica da esportare.",
+      exportError: "Impossibile esportare l’inventario."
     }
   },
   es: {
@@ -435,6 +463,9 @@ const COPY = {
       none: "Ninguno"
     },
     refresh: "Actualizar",
+    exportCsv: "Exportar la vista filtrada",
+    exportCsvAria: "Exportar la tabla filtrada a CSV",
+    exportFilenamePrefix: "inventario-perifericos",
     loading: "Cargando inventario…",
     emptyTitle: "No se encontraron periféricos",
     emptyHint: "Ajuste los filtros o actualice el inventario.",
@@ -509,7 +540,11 @@ const COPY = {
       bulkSuccess: "{count} periférico actualizado",
       bulkSuccessPlural: "{count} periféricos actualizados",
       bulkPartial: "{updated} actualizados, {failed} con error",
-      bulkError: "No se aplicaron cambios"
+      bulkError: "No se aplicaron cambios",
+      exportSuccess: "{count} periférico exportado",
+      exportSuccessPlural: "{count} periféricos exportados",
+      exportEmpty: "No hay periféricos para exportar.",
+      exportError: "No se pudo exportar el inventario."
     }
   }
 };
@@ -565,6 +600,9 @@ export function getEquipmentInventoryPageCopy(locale) {
     formatAlertsMonthBreakdown: (native, supervision) => interpolate(t.alertsMonthBreakdown, {
       native: String(native ?? 0),
       supervision: String(supervision ?? 0)
+    }),
+    formatExportSuccess: count => interpolate(count > 1 ? t.toasts.exportSuccessPlural : t.toasts.exportSuccess, {
+      count: String(count)
     })
   };
 }

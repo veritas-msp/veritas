@@ -213,6 +213,57 @@ function fieldKeyFromColumn(key) {
   return String(key || "").slice(3);
 }
 
+function csvCell(value) {
+  const text = value == null ? "" : String(value);
+  if (/[;"\n\r]/.test(text)) return `"${text.replace(/"/g, '""')}"`;
+  return text;
+}
+
+function downloadCsvFile(csvContent, filename) {
+  const blob = new Blob([`\uFEFF${csvContent}`], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
+}
+
+function getInventoryColumnValue(item, columnId, { locale, copy, customFields }) {
+  if (isCustomColumnKey(columnId)) {
+    const fieldKey = fieldKeyFromColumn(columnId);
+    const field = (customFields || []).find(entry => (entry.fieldKey || entry.key) === fieldKey) || { fieldKey };
+    const display = formatInventoryFieldValue(field, getCustomFieldRaw(item, fieldKey), locale);
+    return display === "—" ? "" : display;
+  }
+  switch (columnId) {
+    case "company":
+      return item.clientName || "";
+    case "name":
+      return item.name || "";
+    case "type":
+      return typeLabel(item, locale);
+    case "ip":
+      return item.ip || "";
+    case "serial":
+      return item.serial || "";
+    case "site":
+      return item.location || "";
+    case "status":
+      return item.is_active === false ? copy.status.inactive : copy.status.active;
+    case "alerts":
+      return alertStatusMeta(item, copy).label;
+    case "supervision":
+      return supervisionStatusMeta(item, copy).label;
+    case "alertsMonth":
+      return String(Number(item.alertsLastMonth) || 0);
+    default:
+      return "";
+  }
+}
+
 function getSortValue(item, key, locale) {
   if (isCustomColumnKey(key)) return getCustomFieldRaw(item, fieldKeyFromColumn(key));
   switch (key) {
@@ -547,6 +598,35 @@ export default function EquipmentInventoryPage({ onNavigate }) {
     return copy.columns[key] || key;
   };
 
+  const handleExportCsv = () => {
+    if (!filtered.length) {
+      toast.error(copy.toasts?.exportEmpty || copy.toastLoadError);
+      return;
+    }
+    try {
+      const customFields = customFamilyView?.fields || [];
+      const headers = tableColumns.map(getColumnLabel);
+      const rows = filtered.map(item =>
+        tableColumns.map(columnId =>
+          csvCell(
+            getInventoryColumnValue(item, columnId, {
+              locale,
+              copy,
+              customFields
+            })
+          )
+        )
+      );
+      const csvContent = [headers.map(csvCell).join(";"), ...rows.map(row => row.join(";"))].join("\n");
+      const timestamp = new Date().toISOString().slice(0, 19).replace(/[:T]/g, "-");
+      const prefix = copy.exportFilenamePrefix || "inventaire-peripheriques";
+      downloadCsvFile(csvContent, `${prefix}-${timestamp}.csv`);
+      toast.success(copy.formatExportSuccess(filtered.length));
+    } catch (error) {
+      toast.error(error.message || copy.toasts?.exportError || copy.toastLoadError);
+    }
+  };
+
   const renderColumnCell = (item, columnId, extras) => {
     if (isCustomColumnKey(columnId)) {
       const fieldKey = fieldKeyFromColumn(columnId);
@@ -650,17 +730,30 @@ export default function EquipmentInventoryPage({ onNavigate }) {
             subtitle={loading ? copy.loadingPortfolio : copy.formatSubtitle(filtered.length, items.length)}
             icon="mdi:devices"
             actions={
-              <SmartTooltip content={copy.refresh}>
-                <button
-                  type="button"
-                  className={layout.iconBtn}
-                  onClick={load}
-                  disabled={loading}
-                  aria-label={copy.refresh}
-                >
-                  <Icon icon="mdi:refresh" />
-                </button>
-              </SmartTooltip>
+              <>
+                <SmartTooltip content={copy.exportCsv}>
+                  <button
+                    type="button"
+                    className={layout.iconBtn}
+                    onClick={handleExportCsv}
+                    disabled={loading || filtered.length === 0}
+                    aria-label={copy.exportCsvAria}
+                  >
+                    <Icon icon="mdi:download-outline" />
+                  </button>
+                </SmartTooltip>
+                <SmartTooltip content={copy.refresh}>
+                  <button
+                    type="button"
+                    className={layout.iconBtn}
+                    onClick={load}
+                    disabled={loading}
+                    aria-label={copy.refresh}
+                  >
+                    <Icon icon="mdi:refresh" />
+                  </button>
+                </SmartTooltip>
+              </>
             }
           />
 
