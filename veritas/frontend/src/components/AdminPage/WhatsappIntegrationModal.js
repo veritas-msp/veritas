@@ -48,7 +48,7 @@ function WhatsappTestResultModal({
           </button>
         </header>
 
-        <div className={formStyles.body}>
+        <div className={formStyles.bodySingle}>
           <div className={formStyles.content}>
             <div className={`${styles.resultNotice} ${isSuccess ? styles.resultNoticeSuccess : styles.resultNoticeError}`}>
               <Icon icon={isSuccess ? "mdi:check-circle-outline" : "mdi:alert-circle-outline"} className={styles.resultNoticeIcon} aria-hidden />

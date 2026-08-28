@@ -6,6 +6,22 @@ const LABELS = {
     devicesTitle: "Périphériques",
     enterpriseTitle: "Entreprise",
     ticketsCreated: "Tickets créés",
+    articlesPublished: "Articles publiés",
+    knowledgeViews: "Vues articles",
+    knowledgeTitle: "Base de connaissances",
+    knowledgeCreated: "Créés (période)",
+    knowledgeComments: "Commentaires",
+    knowledgeRating: "Note moyenne",
+    knowledgeHelpful: "Taux utile",
+    knowledgePublic: "Liens publics",
+    topArticles: "Articles les plus consultés",
+    article: "Article",
+    views: "Vues",
+    comments: "Commentaires",
+    rating: "Note",
+    searchMisses: "Recherches sans résultat",
+    query: "Recherche",
+    hits: "Occurrences",
     ticketsClosed: "Clôturés",
     ticketsOpen: "Ouverts",
     closureRate: "Taux de clôture",
@@ -55,6 +71,22 @@ const LABELS = {
     devicesTitle: "Devices",
     enterpriseTitle: "Company",
     ticketsCreated: "Tickets created",
+    knowledgeTitle: "Knowledge base",
+    articlesPublished: "Published articles",
+    knowledgeViews: "Article views",
+    knowledgeCreated: "Created (period)",
+    knowledgeComments: "Comments",
+    knowledgeRating: "Average rating",
+    knowledgeHelpful: "Helpful rate",
+    knowledgePublic: "Public links",
+    topArticles: "Most viewed articles",
+    article: "Article",
+    views: "Views",
+    comments: "Comments",
+    rating: "Rating",
+    searchMisses: "Searches with no result",
+    query: "Query",
+    hits: "Hits",
     ticketsClosed: "Closed",
     ticketsOpen: "Open",
     closureRate: "Closure rate",
@@ -99,7 +131,7 @@ const LABELS = {
   }
 };
 
-export const KPI_CATEGORIES = ["support", "devices", "enterprise"];
+export const KPI_CATEGORIES = ["support", "devices", "enterprise", "knowledge"];
 export const KPI_PERIOD_PRESETS = ["7d", "30d", "90d", "365d", "ytd"];
 export const KPI_FREQUENCIES = ["daily", "weekly", "monthly"];
 

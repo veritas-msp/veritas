@@ -105,7 +105,7 @@ export function generateKpiReportPdf({
   periodLabel,
   categories
 } = {}) {
-  const selected = new Set(categories?.length ? categories : ["support", "devices", "enterprise"]);
+  const selected = new Set(categories?.length ? categories : ["support", "devices", "enterprise", "knowledge"]);
   const L = labels || {};
   return new Promise((resolve, reject) => {
     const doc = new PDFDocument({
@@ -274,6 +274,68 @@ export function generateKpiReportPdf({
         label: solutionLabels[row.key] || row.key,
         count: row.count
       })), y);
+    }
+
+    if (selected.has("knowledge")) {
+      y = sectionTitle(doc, L.knowledgeTitle || "Base de connaissances", y);
+      const k = data?.knowledge?.overview || {};
+      y = drawKpiGrid(doc, [{
+        label: L.articlesPublished || "Articles publiés",
+        value: k.published
+      }, {
+        label: L.knowledgeCreated || "Créés (période)",
+        value: k.createdInPeriod
+      }, {
+        label: L.knowledgeViews || "Vues articles",
+        value: k.viewsTotal
+      }, {
+        label: L.knowledgeComments || "Commentaires",
+        value: k.commentsInPeriod
+      }, {
+        label: L.knowledgeRating || "Note moyenne",
+        value: k.avgRating != null ? `${k.avgRating} / 5` : "—"
+      }, {
+        label: L.knowledgeHelpful || "Taux utile",
+        value: k.helpfulRate != null ? `${k.helpfulRate} %` : "—"
+      }, {
+        label: L.knowledgePublic || "Liens publics",
+        value: k.publicEnabled
+      }], y);
+      y = ensureSpace(doc, y, 120);
+      doc.fillColor(TEXT).font("Helvetica-Bold").fontSize(9).text(L.topArticles || "Articles les plus consultés", MARGIN, y);
+      y += 14;
+      y = drawTable(doc, [{
+        key: "title",
+        label: L.article || "Article",
+        width: 247
+      }, {
+        key: "views",
+        label: L.views || "Vues",
+        width: 80
+      }, {
+        key: "comments",
+        label: L.comments || "Commentaires",
+        width: 110
+      }, {
+        key: "avgRating",
+        label: L.rating || "Note",
+        width: 110
+      }], (data?.knowledge?.topArticles || []).map(row => ({
+        ...row,
+        avgRating: row.avgRating != null ? `${row.avgRating} / 5` : "—"
+      })), y);
+      y = ensureSpace(doc, y, 100);
+      doc.fillColor(TEXT).font("Helvetica-Bold").fontSize(9).text(L.searchMisses || "Recherches sans résultat", MARGIN, y);
+      y += 14;
+      y = drawTable(doc, [{
+        key: "label",
+        label: L.query || "Recherche",
+        width: 407
+      }, {
+        key: "count",
+        label: L.hits || "Occurrences",
+        width: 140
+      }], data?.knowledge?.searchMisses || [], y);
     }
 
     doc.end();

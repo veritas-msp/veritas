@@ -19,6 +19,7 @@ import { contactBelongsToClient, pickHomeClientId } from "../../services/contact
 import { listClientCustomEquipment, listEquipmentFamilies } from "../../utils/equipmentFamilies.js";
 import { getKnowledgeAsset, getPortalKnowledgeArticle, KNOWLEDGE_ASSETS_DIR, listPortalKnowledgeArticles, portalCanAccessAsset } from "../../services/knowledgeArticlesService.js";
 import { toggleFavorite, upsertHelpful } from "../../services/knowledgeArticleExtrasService.js";
+import { addArticleComment, deleteArticleComment, updateArticleComment, upsertArticleRating } from "../../services/knowledgeArticleFeedbackService.js";
 import { allowAssetEmbedding } from "../../middleware/securityHeaders.js";
 const router = express.Router();
 router.use(verifyJWT, requireRole("client"));

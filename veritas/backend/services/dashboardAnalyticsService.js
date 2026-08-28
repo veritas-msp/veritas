@@ -767,6 +767,339 @@ async function fetchDevicesStats(filters = {}) {
     computersActive: Number(computersRow.active) || 0
   };
 }
+function emptyKnowledgeStats() {
+  return {
+    available: false,
+    overview: {
+      articlesTotal: 0,
+      published: 0,
+      drafts: 0,
+      createdInPeriod: 0,
+      publishedInPeriod: 0,
+      publicEnabled: 0,
+      viewsTotal: 0,
+      commentsInPeriod: 0,
+      ratingsInPeriod: 0,
+      avgRating: null,
+      helpfulYes: 0,
+      helpfulNo: 0,
+      helpfulRate: null,
+      favoritesInPeriod: 0,
+      searchMisses: 0
+    },
+    byStatus: [],
+    byCategory: [],
+    topArticles: [],
+    topConsumers: [],
+    searchMisses: [],
+    monthlyTrend: []
+  };
+}
+function buildKnowledgeArticleScopeClause(params, filters = {}, alias = "a") {
+  let clause = "";
+  if (filters.agentId) {
+    params.push(filters.agentId);
+    clause += ` AND ${alias}.author_user_id = $${params.length}::uuid`;
+  }
+  if (filters.clientId) {
+    params.push(filters.clientId);
+    clause += ` AND (
+      COALESCE(${alias}.visible_to_all_clients, FALSE) = TRUE
+      OR EXISTS (
+        SELECT 1 FROM v_b_knowledge_article_clients ac
+         WHERE ac.article_id = ${alias}.id AND ac.client_id = $${params.length}
+      )
+    )`;
+  }
+  if (filters.contactId) {
+    params.push(filters.contactId);
+    clause += ` AND (
+      COALESCE(${alias}.visible_to_all_contacts, FALSE) = TRUE
+      OR EXISTS (
+        SELECT 1 FROM v_b_knowledge_article_contacts ct
+         WHERE ct.article_id = ${alias}.id AND ct.contact_id = $${params.length}
+      )
+    )`;
+  }
+  return clause;
+}
+async function queryRowsOrEmpty(sql, params = []) {
+  try {
+    const result = await pool.query(sql, params);
+    return result.rows || [];
+  } catch (err) {
+    if (err.code === "42P01" || err.code === "42703") return [];
+    throw err;
+  }
+}
+async function fetchKnowledgeStats({
+  sinceIso,
+  untilIso,
+  filters = {}
+}) {
+  if (!(await tableExists("public.v_b_knowledge_articles"))) {
+    return emptyKnowledgeStats();
+  }
+  try {
+    const articleParams = [];
+    const articleScope = buildKnowledgeArticleScopeClause(articleParams, filters, "a");
+    const createdClause = buildRangeClause(articleParams, "a.created_at", sinceIso, untilIso);
+    const statusParams = [];
+    const statusScope = buildKnowledgeArticleScopeClause(statusParams, filters, "a");
+    const categoryParams = [];
+    const categoryScope = buildKnowledgeArticleScopeClause(categoryParams, filters, "a");
+    const topParams = [];
+    const topScope = buildKnowledgeArticleScopeClause(topParams, filters, "a");
+    const commentParams = [];
+    const commentScope = buildKnowledgeArticleScopeClause(commentParams, filters, "a");
+    const commentPeriod = buildRangeClause(commentParams, "cm.created_at", sinceIso, untilIso);
+    const ratingParams = [];
+    const ratingScope = buildKnowledgeArticleScopeClause(ratingParams, filters, "a");
+    const ratingPeriod = buildRangeClause(ratingParams, "r.updated_at", sinceIso, untilIso);
+    const helpfulParams = [];
+    const helpfulScope = buildKnowledgeArticleScopeClause(helpfulParams, filters, "a");
+    const helpfulPeriod = buildRangeClause(helpfulParams, "h.updated_at", sinceIso, untilIso);
+    const favoriteParams = [];
+    const favoriteScope = buildKnowledgeArticleScopeClause(favoriteParams, filters, "a");
+    const favoritePeriod = buildRangeClause(favoriteParams, "f.created_at", sinceIso, untilIso);
+    const consumerParams = [];
+    const consumerScope = buildKnowledgeArticleScopeClause(consumerParams, filters, "a");
+    const consumerPeriod = buildRangeClause(consumerParams, "x.created_at", sinceIso, untilIso);
+    const missParams = [];
+    const missPeriod = buildRangeClause(missParams, "m.last_at", sinceIso, untilIso);
+    const trendParams = [];
+    const trendScope = buildKnowledgeArticleScopeClause(trendParams, filters, "a");
+    const trendPeriod = buildRangeClause(trendParams, "cm.created_at", sinceIso, untilIso);
+    const [
+      overviewRows,
+      statusRows,
+      categoryRows,
+      topRows,
+      commentRows,
+      ratingRows,
+      helpfulRows,
+      favoriteRows,
+      consumerRows,
+      missRows,
+      trendRows
+    ] = await Promise.all([
+      queryRowsOrEmpty(
+        `SELECT
+           COUNT(*)::int AS articles_total,
+           COUNT(*) FILTER (WHERE a.status = 'published')::int AS published,
+           COUNT(*) FILTER (WHERE a.status = 'draft')::int AS drafts,
+           COUNT(*) FILTER (WHERE 1=1${createdClause})::int AS created_in_period,
+           COALESCE(SUM(COALESCE(a.view_count, 0)), 0)::bigint AS views_total
+         FROM v_b_knowledge_articles a
+         WHERE 1=1${articleScope}`,
+        articleParams
+      ),
+      queryRowsOrEmpty(
+        `SELECT COALESCE(a.status, 'draft') AS key, COUNT(*)::int AS count
+           FROM v_b_knowledge_articles a
+          WHERE 1=1${statusScope}
+          GROUP BY 1
+          ORDER BY count DESC`,
+        statusParams
+      ),
+      queryRowsOrEmpty(
+        `SELECT COALESCE(NULLIF(TRIM(a.category), ''), 'Uncategorized') AS key, COUNT(*)::int AS count
+           FROM v_b_knowledge_articles a
+          WHERE 1=1${categoryScope}
+          GROUP BY 1
+          ORDER BY count DESC`,
+        categoryParams
+      ),
+      queryRowsOrEmpty(
+        `SELECT a.id,
+                COALESCE(NULLIF(TRIM(a.title), ''), 'Untitled') AS title,
+                COALESCE(a.category, '') AS category,
+                COALESCE(a.status, 'draft') AS status,
+                COALESCE(a.view_count, 0)::int AS views
+           FROM v_b_knowledge_articles a
+          WHERE 1=1${topScope}
+          ORDER BY views DESC, a.updated_at DESC
+          LIMIT 10`,
+        topParams
+      ),
+      queryRowsOrEmpty(
+        `SELECT COUNT(*)::int AS count
+           FROM v_b_knowledge_article_comments cm
+           JOIN v_b_knowledge_articles a ON a.id = cm.article_id
+          WHERE 1=1${commentScope}${commentPeriod}`,
+        commentParams
+      ),
+      queryRowsOrEmpty(
+        `SELECT COUNT(*)::int AS count,
+                AVG(r.rating)::float AS avg_rating
+           FROM v_b_knowledge_article_ratings r
+           JOIN v_b_knowledge_articles a ON a.id = r.article_id
+          WHERE 1=1${ratingScope}${ratingPeriod}`,
+        ratingParams
+      ),
+      queryRowsOrEmpty(
+        `SELECT
+           COUNT(*) FILTER (WHERE h.helpful = TRUE)::int AS yes_count,
+           COUNT(*) FILTER (WHERE h.helpful = FALSE)::int AS no_count
+           FROM v_b_knowledge_article_helpful h
+           JOIN v_b_knowledge_articles a ON a.id = h.article_id
+          WHERE 1=1${helpfulScope}${helpfulPeriod}`,
+        helpfulParams
+      ),
+      queryRowsOrEmpty(
+        `SELECT COUNT(*)::int AS count
+           FROM v_b_knowledge_article_favorites f
+           JOIN v_b_knowledge_articles a ON a.id = f.article_id
+          WHERE 1=1${favoriteScope}${favoritePeriod}`,
+        favoriteParams
+      ),
+      queryRowsOrEmpty(
+        `SELECT c.id AS client_id,
+                COALESCE(c.name, c.contrat->>'nom', 'Client') AS label,
+                COUNT(*)::int AS count
+           FROM (
+             SELECT cm.article_id, cm.client_id, cm.created_at
+               FROM v_b_knowledge_article_comments cm
+             UNION ALL
+             SELECT r.article_id, r.client_id, r.updated_at
+               FROM v_b_knowledge_article_ratings r
+           ) x
+           JOIN v_b_knowledge_articles a ON a.id = x.article_id
+           JOIN v_b_clients c ON c.id = x.client_id
+          WHERE x.client_id IS NOT NULL${consumerScope}${consumerPeriod}
+          GROUP BY c.id, c.name, c.contrat
+          ORDER BY count DESC
+          LIMIT 10`,
+        consumerParams
+      ),
+      queryRowsOrEmpty(
+        `SELECT m.query AS label, m.hit_count::int AS count, m.last_at
+           FROM v_b_knowledge_search_misses m
+          WHERE 1=1${missPeriod}
+          ORDER BY m.hit_count DESC, m.last_at DESC
+          LIMIT 12`,
+        missParams
+      ),
+      queryRowsOrEmpty(
+        `SELECT to_char(date_trunc('month', cm.created_at), 'YYYY-MM') AS period,
+                COUNT(*)::int AS count
+           FROM v_b_knowledge_article_comments cm
+           JOIN v_b_knowledge_articles a ON a.id = cm.article_id
+          WHERE 1=1${trendScope}${trendPeriod}
+          GROUP BY 1
+          ORDER BY 1`,
+        trendParams
+      )
+    ]);
+    const overviewRow = overviewRows[0] || {};
+    const publishedParams = [];
+    const publishedScope = buildKnowledgeArticleScopeClause(publishedParams, filters, "a");
+    const publishedRange = buildRangeClause(publishedParams, "a.published_at", sinceIso, untilIso);
+    const publicParams = [];
+    const publicScope = buildKnowledgeArticleScopeClause(publicParams, filters, "a");
+    const [publishedRows, publicRows] = await Promise.all([
+      queryRowsOrEmpty(
+        `SELECT COUNT(*)::int AS count
+           FROM v_b_knowledge_articles a
+          WHERE a.published_at IS NOT NULL${publishedScope}${publishedRange}`,
+        publishedParams
+      ),
+      queryRowsOrEmpty(
+        `SELECT COUNT(*)::int AS count
+           FROM v_b_knowledge_articles a
+          WHERE COALESCE(a.public_enabled, FALSE) = TRUE${publicScope}`,
+        publicParams
+      )
+    ]);
+    const helpfulYes = Number(helpfulRows[0]?.yes_count) || 0;
+    const helpfulNo = Number(helpfulRows[0]?.no_count) || 0;
+    const helpfulTotal = helpfulYes + helpfulNo;
+    const topIds = topRows.map(row => row.id).filter(Boolean);
+    let commentByArticle = new Map();
+    let ratingByArticle = new Map();
+    if (topIds.length) {
+      const commentCountParams = [topIds];
+      const commentCountPeriod = buildRangeClause(commentCountParams, "cm.created_at", sinceIso, untilIso);
+      const [topComments, topRatings] = await Promise.all([
+        queryRowsOrEmpty(
+          `SELECT cm.article_id, COUNT(*)::int AS count
+             FROM v_b_knowledge_article_comments cm
+            WHERE cm.article_id = ANY($1::uuid[])${commentCountPeriod}
+            GROUP BY 1`,
+          commentCountParams
+        ),
+        queryRowsOrEmpty(
+          `SELECT article_id, ROUND(AVG(rating)::numeric, 1)::float AS avg_rating, COUNT(*)::int AS count
+             FROM v_b_knowledge_article_ratings
+            WHERE article_id = ANY($1::uuid[])
+            GROUP BY 1`,
+          [topIds]
+        )
+      ]);
+      commentByArticle = new Map(topComments.map(row => [String(row.article_id), Number(row.count) || 0]));
+      ratingByArticle = new Map(topRatings.map(row => [String(row.article_id), {
+        avgRating: round1(row.avg_rating),
+        count: Number(row.count) || 0
+      }]));
+    }
+    const missTotalRows = await queryRowsOrEmpty(
+      `SELECT COALESCE(SUM(m.hit_count), 0)::int AS count
+         FROM v_b_knowledge_search_misses m
+        WHERE 1=1${missPeriod}`,
+      missParams
+    );
+    return {
+      available: true,
+      overview: {
+        articlesTotal: Number(overviewRow.articles_total) || 0,
+        published: Number(overviewRow.published) || 0,
+        drafts: Number(overviewRow.drafts) || 0,
+        createdInPeriod: Number(overviewRow.created_in_period) || 0,
+        publishedInPeriod: Number(publishedRows[0]?.count) || 0,
+        publicEnabled: Number(publicRows[0]?.count) || 0,
+        viewsTotal: Number(overviewRow.views_total) || 0,
+        commentsInPeriod: Number(commentRows[0]?.count) || 0,
+        ratingsInPeriod: Number(ratingRows[0]?.count) || 0,
+        avgRating: round1(ratingRows[0]?.avg_rating),
+        helpfulYes,
+        helpfulNo,
+        helpfulRate: helpfulTotal ? roundPct(helpfulYes / helpfulTotal * 100) : null,
+        favoritesInPeriod: Number(favoriteRows[0]?.count) || 0,
+        searchMisses: Number(missTotalRows[0]?.count) || 0
+      },
+      byStatus: mapCountRows(statusRows, {
+        draft: "Draft",
+        published: "Published"
+      }),
+      byCategory: mapCountRows(categoryRows),
+      topArticles: topRows.map(row => {
+        const rating = ratingByArticle.get(String(row.id)) || {};
+        return {
+          id: row.id,
+          title: row.title,
+          category: row.category || "",
+          status: row.status,
+          views: Number(row.views) || 0,
+          comments: commentByArticle.get(String(row.id)) || 0,
+          avgRating: rating.avgRating ?? null
+        };
+      }),
+      topConsumers: (consumerRows || []).map(row => ({
+        key: String(row.client_id),
+        label: row.label,
+        count: Number(row.count) || 0
+      })),
+      searchMisses: (missRows || []).map(row => ({
+        label: row.label,
+        count: Number(row.count) || 0
+      })),
+      monthlyTrend: buildTrend(trendRows)
+    };
+  } catch (err) {
+    console.error("fetchKnowledgeStats:", err);
+    return emptyKnowledgeStats();
+  }
+}
 export async function fetchAnalyticsDashboard(options = "365d") {
   const input = typeof options === "string" ? {
     period: options
@@ -793,7 +1126,7 @@ export async function fetchAnalyticsDashboard(options = "365d") {
     clientId,
     contactId
   });
-  const [support, planning, enterprise, reports, devices, satisfactionAvailable] = await Promise.all([fetchSupportStats({
+  const [support, planning, enterprise, reports, devices, knowledge, satisfactionAvailable] = await Promise.all([fetchSupportStats({
     sinceIso,
     untilIso,
     filters
@@ -809,7 +1142,11 @@ export async function fetchAnalyticsDashboard(options = "365d") {
     sinceIso,
     untilIso,
     filters
-  }), fetchDevicesStats(filters), hasSatisfactionTable()]);
+  }), fetchDevicesStats(filters), fetchKnowledgeStats({
+    sinceIso,
+    untilIso,
+    filters
+  }), hasSatisfactionTable()]);
   return {
     period: range.period,
     since: sinceIso,
@@ -824,7 +1161,8 @@ export async function fetchAnalyticsDashboard(options = "365d") {
     modules: {
       satisfaction: satisfactionAvailable,
       planning: planning.available,
-      reports: reports.available
+      reports: reports.available,
+      knowledge: knowledge.available
     },
     summary: {
       ticketsCreated: support.overview.created,
@@ -837,6 +1175,8 @@ export async function fetchAnalyticsDashboard(options = "365d") {
       clientsTotal: enterprise.clientsPortfolio || enterprise.clientsTotal,
       reportsInPeriod: reports.inPeriod,
       equipMonitoredTotal: devices.equipMonitoredTotal,
+      knowledgeArticles: knowledge.overview.published,
+      knowledgeViews: knowledge.overview.viewsTotal,
       satisfactionAvg: support.satisfaction?.avgRating ?? null
     },
     support,
@@ -845,6 +1185,7 @@ export async function fetchAnalyticsDashboard(options = "365d") {
     crm: enterprise,
     reports,
     devices,
-    infrastructure: devices
+    infrastructure: devices,
+    knowledge
   };
 }

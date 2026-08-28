@@ -9,7 +9,7 @@ import modalLayout from "../EnterprisesPage/EnterpriseFormModal.module.css";
 import periodStyles from "./DashboardPeriodModal.module.css";
 import styles from "./DashboardPage.module.css";
 
-const CATEGORY_KEYS = ["support", "devices", "enterprise"];
+const CATEGORY_KEYS = ["support", "devices", "enterprise", "knowledge"];
 const EMPTY_FORM = {
   name: "",
   recipients: "",

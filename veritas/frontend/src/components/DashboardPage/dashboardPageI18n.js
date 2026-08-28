@@ -3,7 +3,7 @@ const DASHBOARD_COPY = {
   fr: {
     eyebrow: "Pilotage",
     title: "Tableau de bord KPI",
-    subtitle: "Indicateurs de l'activité support, du parc et des entreprises.",
+    subtitle: "Indicateurs de l'activité support, du parc, des entreprises et de la base de connaissances.",
     loading: "Chargement des indicateurs…",
     errorLoad: "Impossible de charger le tableau de bord.",
     proRequired: "Le tableau de bord KPI est réservé à Veritas Pro.",
@@ -65,12 +65,14 @@ const DASHBOARD_COPY = {
     tabs: {
       support: "Support",
       devices: "Périphériques",
-      enterprise: "Entreprise"
+      enterprise: "Entreprise",
+      knowledge: "Base de connaissances"
     },
     intros: {
       support: "Volume, délais et qualité du ticketing, plus les interventions planning.",
       devices: "Parc matériel, supervision et agents RMM.",
-      enterprise: "Portefeuille clients, contrats, modules et solutions déployées."
+      enterprise: "Portefeuille clients, contrats, modules et solutions déployées.",
+      knowledge: "Articles, consultations, retours clients et recherches sans résultat."
     },
     periods: {
       "7d": "7 jours",
@@ -181,6 +183,40 @@ const DASHBOARD_COPY = {
         campaigns: "Campagnes"
       }
     },
+    knowledge: {
+      published: "Articles publiés",
+      drafts: "Brouillons",
+      createdInPeriod: "Créés sur la période",
+      viewsTotal: "Vues cumulées",
+      viewsHint: "Les vues sont un cumul depuis la publication : la période filtre la création, les commentaires, notes, favoris et votes utiles.",
+      publicLinks: "Liens publics",
+      comments: "Commentaires",
+      avgRating: "Note moyenne",
+      helpfulRate: "Taux utile",
+      favorites: "Mis de côté",
+      searchMissHits: "Recherches sans résultat",
+      byStatus: "Par statut",
+      byCategory: "Par catégorie",
+      uncategorized: "Sans catégorie",
+      topArticles: "Articles les plus consultés",
+      topConsumers: "Entreprises les plus actives",
+      searchMisses: "Recherches sans article",
+      monthlyTrend: "Commentaires par mois",
+      statusLabels: {
+        draft: "Brouillon",
+        published: "Publié"
+      },
+      articleColumns: {
+        article: "Article",
+        views: "Vues",
+        comments: "Commentaires",
+        rating: "Note"
+      },
+      missColumns: {
+        query: "Recherche",
+        hits: "Occurrences"
+      }
+    },
     exportModal: {
       eyebrow: "Rapport KPI",
       titlePdf: "Exporter en PDF",
@@ -265,7 +301,7 @@ const DASHBOARD_COPY = {
   en: {
     eyebrow: "Operations",
     title: "KPI dashboard",
-    subtitle: "Support, fleet and company activity metrics.",
+    subtitle: "Support, fleet, company and knowledge-base activity metrics.",
     loading: "Loading metrics…",
     errorLoad: "Unable to load the dashboard.",
     proRequired: "The KPI dashboard is available with Veritas Pro.",
@@ -327,12 +363,14 @@ const DASHBOARD_COPY = {
     tabs: {
       support: "Support",
       devices: "Devices",
-      enterprise: "Company"
+      enterprise: "Company",
+      knowledge: "Knowledge base"
     },
     intros: {
       support: "Ticket volume, response times and quality, plus scheduled interventions.",
       devices: "Hardware fleet, monitoring coverage and RMM agents.",
-      enterprise: "Client portfolio, contracts, modules and deployed solutions."
+      enterprise: "Client portfolio, contracts, modules and deployed solutions.",
+      knowledge: "Articles, views, client feedback and searches with no result."
     },
     periods: {
       "7d": "7 days",
@@ -441,6 +479,40 @@ const DASHBOARD_COPY = {
         domain: "Domains",
         ssl: "SSL certificates",
         campaigns: "Campaigns"
+      }
+    },
+    knowledge: {
+      published: "Published articles",
+      drafts: "Drafts",
+      createdInPeriod: "Created in period",
+      viewsTotal: "Total views",
+      viewsHint: "Views are cumulative since publication. The period filters creation, comments, ratings, favorites and helpful votes.",
+      publicLinks: "Public links",
+      comments: "Comments",
+      avgRating: "Average rating",
+      helpfulRate: "Helpful rate",
+      favorites: "Saved for later",
+      searchMissHits: "Searches with no result",
+      byStatus: "By status",
+      byCategory: "By category",
+      uncategorized: "Uncategorized",
+      topArticles: "Most viewed articles",
+      topConsumers: "Most active companies",
+      searchMisses: "Searches with no article",
+      monthlyTrend: "Comments by month",
+      statusLabels: {
+        draft: "Draft",
+        published: "Published"
+      },
+      articleColumns: {
+        article: "Article",
+        views: "Views",
+        comments: "Comments",
+        rating: "Rating"
+      },
+      missColumns: {
+        query: "Query",
+        hits: "Hits"
       }
     },
     exportModal: {
@@ -585,6 +657,22 @@ function cloneLocale(source, overlay) {
         ...overlay.enterprise?.solutionLabels
       }
     },
+    knowledge: {
+      ...source.knowledge,
+      ...(overlay.knowledge || {}),
+      statusLabels: {
+        ...source.knowledge?.statusLabels,
+        ...overlay.knowledge?.statusLabels
+      },
+      articleColumns: {
+        ...source.knowledge?.articleColumns,
+        ...overlay.knowledge?.articleColumns
+      },
+      missColumns: {
+        ...source.knowledge?.missColumns,
+        ...overlay.knowledge?.missColumns
+      }
+    },
     exportModal: {
       ...source.exportModal,
       ...overlay.exportModal
@@ -606,7 +694,7 @@ function cloneLocale(source, overlay) {
 DASHBOARD_COPY.de = cloneLocale(DASHBOARD_COPY.en, {
   eyebrow: "Steuerung",
   title: "KPI-Dashboard",
-  subtitle: "Kennzahlen nach Bereich: Support, Gerätepark und Unternehmen.",
+  subtitle: "Kennzahlen nach Bereich: Support, Gerätepark, Unternehmen und Wissensdatenbank.",
   loading: "Kennzahlen werden geladen…",
   errorLoad: "Dashboard konnte nicht geladen werden.",
   proRequired: "Das KPI-Dashboard ist in Veritas Pro verfügbar.",
@@ -623,12 +711,34 @@ DASHBOARD_COPY.de = cloneLocale(DASHBOARD_COPY.en, {
   tabs: {
     support: "Support",
     devices: "Geräte",
-    enterprise: "Unternehmen"
+    enterprise: "Unternehmen",
+    knowledge: "Wissensdatenbank"
   },
   intros: {
     support: "Ticketvolumen, Laufzeiten und Qualität sowie geplante Einsätze.",
     devices: "Hardwarebestand, Überwachung und RMM-Agenten.",
-    enterprise: "Kundenportfolio, Verträge, Module und bereitgestellte Lösungen."
+    enterprise: "Kundenportfolio, Verträge, Module und bereitgestellte Lösungen.",
+    knowledge: "Artikel, Aufrufe, Kundenfeedback und Suchen ohne Treffer."
+  },
+  knowledge: {
+    published: "Veröffentlichte Artikel",
+    drafts: "Entwürfe",
+    createdInPeriod: "Im Zeitraum erstellt",
+    viewsTotal: "Aufrufe gesamt",
+    viewsHint: "Aufrufe sind kumuliert seit der Veröffentlichung. Der Zeitraum filtert Erstellung, Kommentare, Bewertungen, Favoriten und Hilfreich-Stimmen.",
+    publicLinks: "Öffentliche Links",
+    comments: "Kommentare",
+    avgRating: "Durchschnittsnote",
+    helpfulRate: "Hilfreich-Quote",
+    favorites: "Gemerkt",
+    searchMissHits: "Suchen ohne Treffer",
+    byStatus: "Nach Status",
+    byCategory: "Nach Kategorie",
+    uncategorized: "Ohne Kategorie",
+    topArticles: "Meistgelesene Artikel",
+    topConsumers: "Aktivste Unternehmen",
+    searchMisses: "Suchen ohne Artikel",
+    monthlyTrend: "Kommentare pro Monat"
   },
   periods: {
     "7d": "7 Tage",
@@ -669,7 +779,7 @@ DASHBOARD_COPY.de = cloneLocale(DASHBOARD_COPY.en, {
 DASHBOARD_COPY.it = cloneLocale(DASHBOARD_COPY.en, {
   eyebrow: "Pilotaggio",
   title: "Cruscotto KPI",
-  subtitle: "Indicatori per area: supporto, parco dispositivi e aziende.",
+  subtitle: "Indicatori per area: supporto, parco dispositivi, aziende e knowledge base.",
   loading: "Caricamento indicatori…",
   errorLoad: "Impossibile caricare il cruscotto.",
   proRequired: "Il cruscotto KPI è disponibile con Veritas Pro.",
@@ -686,12 +796,33 @@ DASHBOARD_COPY.it = cloneLocale(DASHBOARD_COPY.en, {
   tabs: {
     support: "Supporto",
     devices: "Dispositivi",
-    enterprise: "Azienda"
+    enterprise: "Azienda",
+    knowledge: "Knowledge base"
   },
   intros: {
     support: "Volume ticket, tempi e qualità, più gli interventi pianificati.",
     devices: "Parco hardware, supervisione e agenti RMM.",
-    enterprise: "Portafoglio clienti, contratti, moduli e soluzioni distribuite."
+    enterprise: "Portafoglio clienti, contratti, moduli e soluzioni distribuite.",
+    knowledge: "Articoli, consultazioni, feedback clienti e ricerche senza risultato."
+  },
+  knowledge: {
+    published: "Articoli pubblicati",
+    drafts: "Bozze",
+    createdInPeriod: "Creati nel periodo",
+    viewsTotal: "Visualizzazioni totali",
+    publicLinks: "Link pubblici",
+    comments: "Commenti",
+    avgRating: "Valutazione media",
+    helpfulRate: "Tasso utile",
+    favorites: "Salvati",
+    searchMissHits: "Ricerche senza risultato",
+    byStatus: "Per stato",
+    byCategory: "Per categoria",
+    uncategorized: "Senza categoria",
+    topArticles: "Articoli più consultati",
+    topConsumers: "Aziende più attive",
+    searchMisses: "Ricerche senza articolo",
+    monthlyTrend: "Commenti per mese"
   },
   periods: {
     "7d": "7 giorni",
@@ -718,7 +849,7 @@ DASHBOARD_COPY.it = cloneLocale(DASHBOARD_COPY.en, {
 DASHBOARD_COPY.es = cloneLocale(DASHBOARD_COPY.en, {
   eyebrow: "Gestión",
   title: "Cuadro de mando KPI",
-  subtitle: "Indicadores por área: soporte, parque de dispositivos y empresas.",
+  subtitle: "Indicadores por área: soporte, parque de dispositivos, empresas y base de conocimientos.",
   loading: "Cargando indicadores…",
   errorLoad: "No se pudo cargar el cuadro de mando.",
   proRequired: "El cuadro de mando KPI está disponible con Veritas Pro.",
@@ -735,12 +866,33 @@ DASHBOARD_COPY.es = cloneLocale(DASHBOARD_COPY.en, {
   tabs: {
     support: "Soporte",
     devices: "Dispositivos",
-    enterprise: "Empresa"
+    enterprise: "Empresa",
+    knowledge: "Base de conocimientos"
   },
   intros: {
     support: "Volumen, plazos y calidad de tickets, más las intervenciones planificadas.",
     devices: "Parque de hardware, supervisión y agentes RMM.",
-    enterprise: "Cartera de clientes, contratos, módulos y soluciones desplegadas."
+    enterprise: "Cartera de clientes, contratos, módulos y soluciones desplegadas.",
+    knowledge: "Artículos, consultas, comentarios de clientes y búsquedas sin resultado."
+  },
+  knowledge: {
+    published: "Artículos publicados",
+    drafts: "Borradores",
+    createdInPeriod: "Creados en el periodo",
+    viewsTotal: "Vistas acumuladas",
+    publicLinks: "Enlaces públicos",
+    comments: "Comentarios",
+    avgRating: "Nota media",
+    helpfulRate: "Tasa útil",
+    favorites: "Guardados",
+    searchMissHits: "Búsquedas sin resultado",
+    byStatus: "Por estado",
+    byCategory: "Por categoría",
+    uncategorized: "Sin categoría",
+    topArticles: "Artículos más consultados",
+    topConsumers: "Empresas más activas",
+    searchMisses: "Búsquedas sin artículo",
+    monthlyTrend: "Comentarios por mes"
   },
   periods: {
     "7d": "7 días",

@@ -32,6 +32,9 @@ const DASHBOARD_TABS = [{
 }, {
   key: "enterprise",
   icon: "mdi:domain"
+}, {
+  key: "knowledge",
+  icon: "mdi:book-open-page-variant-outline"
 }];
 
 function AgentRankingTable({
@@ -113,6 +116,61 @@ function FamilyTable({
               <td>{row.label}</td>
               <td>{formatNumber(row.count)}</td>
               <td>{formatNumber(row.monitored)}</td>
+            </tr>)}
+        </tbody>
+      </table>
+    </div>;
+}
+
+function KnowledgeArticleTable({
+  rows,
+  copy
+}) {
+  if (!rows?.length) return <p className={styles.emptyHint}>{copy.empty}</p>;
+  const cols = copy.knowledge.articleColumns;
+  return <div className={styles.tableWrap}>
+      <table className={styles.dataTable}>
+        <thead>
+          <tr>
+            <th>{cols.article}</th>
+            <th>{cols.views}</th>
+            <th>{cols.comments}</th>
+            <th>{cols.rating}</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((row, index) => <tr key={row.id || row.title}>
+              <td>
+                <span className={styles.rankBadge}>{index + 1}</span>
+                {row.title}
+              </td>
+              <td>{formatNumber(row.views)}</td>
+              <td>{formatNumber(row.comments)}</td>
+              <td>{formatRating(copy, row.avgRating)}</td>
+            </tr>)}
+        </tbody>
+      </table>
+    </div>;
+}
+
+function KnowledgeMissTable({
+  rows,
+  copy
+}) {
+  if (!rows?.length) return <p className={styles.emptyHint}>{copy.empty}</p>;
+  const cols = copy.knowledge.missColumns;
+  return <div className={styles.tableWrap}>
+      <table className={styles.dataTable}>
+        <thead>
+          <tr>
+            <th>{cols.query}</th>
+            <th>{cols.hits}</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map(row => <tr key={row.label}>
+              <td>{row.label}</td>
+              <td>{formatNumber(row.count)}</td>
             </tr>)}
         </tbody>
       </table>
@@ -239,9 +297,11 @@ export default function DashboardPage() {
   }, [copy.support.distributionModalSubtitle]);
   const enterprise = data?.enterprise || data?.crm || {};
   const devices = data?.devices || data?.infrastructure || {};
+  const knowledge = data?.knowledge || {};
   const distributions = useMemo(() => {
     if (!data) return {};
     const solutionLabels = copy.enterprise.solutionLabels || {};
+    const statusLabels = copy.knowledge?.statusLabels || {};
     return {
       supportStatus: buildDistributionItems(data.support?.byStatus || []).items,
       supportPriority: buildDistributionItems(data.support?.byPriority || []).items,
@@ -273,9 +333,21 @@ export default function DashboardPage() {
       topContacts: buildDistributionItems((data.support?.topContacts || []).map(row => ({
         name: row.label,
         count: row.count
+      }))).items,
+      knowledgeStatus: buildDistributionItems((data.knowledge?.byStatus || []).map(row => ({
+        name: statusLabels[row.key] || row.label,
+        count: row.count
+      }))).items,
+      knowledgeCategory: buildDistributionItems((data.knowledge?.byCategory || []).map(row => ({
+        name: row.key === "Uncategorized" ? copy.knowledge.uncategorized : row.label,
+        count: row.count
+      }))).items,
+      knowledgeConsumers: buildDistributionItems((data.knowledge?.topConsumers || []).map(row => ({
+        name: row.label,
+        count: row.count
       }))).items
     };
-  }, [copy.enterprise.solutionLabels, data, devices.families, enterprise.modules, enterprise.solutions]);
+  }, [copy.enterprise.solutionLabels, copy.knowledge, data, devices.families, enterprise.modules, enterprise.solutions]);
   const triggerPdfDownload = async categories => {
     const file = await downloadKpiReportPdf(periodFilter, scopeFilter, {
       categories,
@@ -361,6 +433,9 @@ export default function DashboardPage() {
           },
           enterprise,
           devices,
+          knowledge: {
+            overview: data?.knowledge?.overview
+          },
           period: {
             since: data?.since,
             until: data?.until
@@ -494,6 +569,99 @@ export default function DashboardPage() {
             <DistributionPanel title={copy.devices.families} icon="mdi:server-network" items={distributions.deviceFamilies} emptyLabel={copy.empty} />
             <Panel title={copy.devices.familyTable} icon="mdi:table">
               <FamilyTable rows={devices.families} copy={copy} />
+            </Panel>
+          </div>
+        </>;
+    }
+    if (activeTab === "knowledge") {
+      const overview = knowledge.overview || {};
+      return <>
+          <KpiRow items={[{
+          key: "published",
+          icon: "mdi:book-check-outline",
+          tone: "blue",
+          value: formatNumber(overview.published),
+          label: copy.knowledge.published
+        }, {
+          key: "drafts",
+          icon: "mdi:file-edit-outline",
+          tone: "amber",
+          value: formatNumber(overview.drafts),
+          label: copy.knowledge.drafts
+        }, {
+          key: "created",
+          icon: "mdi:plus-circle-outline",
+          tone: "teal",
+          value: formatNumber(overview.createdInPeriod),
+          label: copy.knowledge.createdInPeriod
+        }, {
+          key: "views",
+          icon: "mdi:eye-outline",
+          tone: "purple",
+          value: formatNumber(overview.viewsTotal),
+          label: copy.knowledge.viewsTotal
+        }, {
+          key: "public",
+          icon: "mdi:link-variant",
+          tone: "green",
+          value: formatNumber(overview.publicEnabled),
+          label: copy.knowledge.publicLinks
+        }]} />
+          <p className={styles.scopeHint}>
+            <Icon icon="mdi:information-outline" aria-hidden />
+            {copy.knowledge.viewsHint}
+          </p>
+          <KpiRow items={[{
+          key: "comments",
+          icon: "mdi:comment-text-outline",
+          tone: "blue",
+          value: formatNumber(overview.commentsInPeriod),
+          label: copy.knowledge.comments
+        }, {
+          key: "rating",
+          icon: "mdi:star-outline",
+          tone: "amber",
+          value: formatRating(copy, overview.avgRating),
+          label: copy.knowledge.avgRating
+        }, {
+          key: "helpful",
+          icon: "mdi:thumb-up-outline",
+          tone: "green",
+          value: formatPercent(copy, overview.helpfulRate),
+          label: copy.knowledge.helpfulRate
+        }, {
+          key: "favorites",
+          icon: "mdi:bookmark-outline",
+          tone: "purple",
+          value: formatNumber(overview.favoritesInPeriod),
+          label: copy.knowledge.favorites
+        }, {
+          key: "misses",
+          icon: "mdi:magnify-close",
+          tone: "rose",
+          value: formatNumber(overview.searchMisses),
+          label: copy.knowledge.searchMissHits
+        }]} />
+          <div className={styles.grid2}>
+            <PiePanel title={copy.knowledge.byStatus} icon="mdi:file-document-outline" items={distributions.knowledgeStatus} emptyLabel={copy.empty} />
+            <DistributionPanel title={copy.knowledge.byCategory} icon="mdi:tag-outline" items={distributions.knowledgeCategory} emptyLabel={copy.empty} />
+          </div>
+          <div className={styles.grid2}>
+            <Panel title={copy.knowledge.topArticles} icon="mdi:chart-box-outline">
+              <KnowledgeArticleTable rows={knowledge.topArticles} copy={copy} />
+            </Panel>
+            <DashboardTopCard title={copy.knowledge.topConsumers} icon="mdi:domain" items={distributions.knowledgeConsumers} emptyLabel={copy.empty} viewAllLabel={copy.support.viewAllStats} othersLabel={copy.support.othersCount.replace("{count}", formatNumber(Math.max(0, (distributions.knowledgeConsumers || []).length - 5)))} onOpen={() => openDistributionModal({
+            title: copy.knowledge.topConsumers,
+            icon: "mdi:domain",
+            items: distributions.knowledgeConsumers
+          })} />
+          </div>
+          <div className={styles.grid2}>
+            <Panel title={copy.knowledge.searchMisses} icon="mdi:text-search">
+              <KnowledgeMissTable rows={knowledge.searchMisses} copy={copy} />
+            </Panel>
+            <Panel title={copy.knowledge.monthlyTrend} icon="mdi:chart-timeline-variant">
+              <TrendBars items={knowledge.monthlyTrend} formatLabel={formatMonthLabel} emptyLabel={copy.empty} />
             </Panel>
           </div>
         </>;
