@@ -30,6 +30,10 @@ function compactSerial(value) {
 }
 
 function searchBlob(item) {
+  const dataValues =
+    item?.data && typeof item.data === "object" && !Array.isArray(item.data)
+      ? Object.values(item.data)
+      : [];
   return [
     item?.name,
     item?.clientName,
@@ -39,9 +43,10 @@ function searchBlob(item) {
     item?.serial,
     item?.mac,
     item?.location,
-    item?.model
+    item?.model,
+    ...dataValues
   ]
-    .filter(Boolean)
+    .filter(value => value != null && String(value).trim() !== "")
     .join(" ")
     .toLowerCase();
 }
@@ -161,7 +166,55 @@ function compareValues(a, b, locale) {
   return String(a).localeCompare(String(b), locale, { sensitivity: "base", numeric: true });
 }
 
+const NAME_FIELD_KEYS = new Set(["name", "nom"]);
+const STANDARD_INVENTORY_COLUMNS = [
+  "company",
+  "name",
+  "type",
+  "ip",
+  "serial",
+  "site",
+  "status",
+  "alerts",
+  "supervision",
+  "alertsMonth"
+];
+
+function getCustomFieldRaw(item, fieldKey) {
+  if (!fieldKey) return "";
+  return item?.fields?.[fieldKey] ?? item?.data?.[fieldKey] ?? item?.rawData?.[fieldKey] ?? "";
+}
+
+function formatInventoryFieldValue(field, value, locale) {
+  const lang = String(locale || "fr").toLowerCase().startsWith("fr") ? "fr" : "en";
+  if (field?.fieldType === "boolean") {
+    if (value === true || value === "true" || value === 1 || value === "1") return lang === "fr" ? "Oui" : "Yes";
+    if (value === false || value === "false" || value === 0 || value === "0") return lang === "fr" ? "Non" : "No";
+    return "—";
+  }
+  if (value == null || String(value).trim() === "") return "—";
+  if (field?.fieldType === "date") {
+    const parsed = new Date(value);
+    if (!Number.isNaN(parsed.getTime())) return parsed.toLocaleDateString(locale || "fr-FR");
+  }
+  if (field?.fieldType === "number" && (value === false || value === true)) return value ? "1" : "0";
+  return String(value);
+}
+
+function customColumnKey(fieldKey) {
+  return `cf:${fieldKey}`;
+}
+
+function isCustomColumnKey(key) {
+  return String(key || "").startsWith("cf:");
+}
+
+function fieldKeyFromColumn(key) {
+  return String(key || "").slice(3);
+}
+
 function getSortValue(item, key, locale) {
+  if (isCustomColumnKey(key)) return getCustomFieldRaw(item, fieldKeyFromColumn(key));
   switch (key) {
     case "company":
       return item.clientName || "";
@@ -315,6 +368,61 @@ export default function EquipmentInventoryPage({ onNavigate }) {
     return list;
   }, [items, search, selectedClients, selectedTypes, statusFilter, sort, locale]);
 
+  const customFamilyView = useMemo(() => {
+    let type = null;
+    if (selectedTypes.size === 1) {
+      type = [...selectedTypes][0];
+    } else if (selectedTypes.size === 0) {
+      const unique = [...new Set(filtered.map(item => item.type))];
+      if (unique.length === 1) type = unique[0];
+    }
+    if (!type || !String(type).startsWith("Custom:")) return null;
+    const sample =
+      items.find(item => item.type === type && Array.isArray(item.customFields) && item.customFields.length) ||
+      items.find(item => item.type === type) ||
+      filtered.find(item => item.type === type);
+    const fields = (Array.isArray(sample?.customFields) ? sample.customFields : [])
+      .filter(field => {
+        const key = String(field?.fieldKey || field?.key || "").trim();
+        return key && !NAME_FIELD_KEYS.has(key.toLowerCase());
+      })
+      .sort((a, b) => (Number(a.displayOrder) || 0) - (Number(b.displayOrder) || 0));
+    return {
+      type,
+      fields
+    };
+  }, [selectedTypes, filtered, items]);
+
+  const tableColumns = useMemo(() => {
+    if (customFamilyView) {
+      return [
+        "company",
+        "name",
+        ...customFamilyView.fields.map(field => customColumnKey(field.fieldKey || field.key)),
+        "status",
+        "alerts",
+        "supervision",
+        "alertsMonth"
+      ];
+    }
+    const source = filtered.length ? filtered : items;
+    const allCustom =
+      source.length > 0 &&
+      source.every(item => item.isCustom || String(item.type || "").startsWith("Custom:"));
+    if (allCustom) {
+      return ["company", "name", "type", "site", "status", "alerts", "supervision", "alertsMonth"];
+    }
+    return STANDARD_INVENTORY_COLUMNS;
+  }, [customFamilyView, filtered, items]);
+
+  useEffect(() => {
+    if (tableColumns.includes(sort.key)) return;
+    setSort({
+      key: "company",
+      dir: "asc"
+    });
+  }, [tableColumns, sort.key]);
+
   const {
     page,
     setPage,
@@ -430,10 +538,76 @@ export default function EquipmentInventoryPage({ onNavigate }) {
     inactive: stats.inactive
   };
 
+  const getColumnLabel = key => {
+    if (isCustomColumnKey(key)) {
+      const fieldKey = fieldKeyFromColumn(key);
+      const field = customFamilyView?.fields?.find(entry => (entry.fieldKey || entry.key) === fieldKey);
+      return field?.label || fieldKey;
+    }
+    return copy.columns[key] || key;
+  };
+
+  const renderColumnCell = (item, columnId, extras) => {
+    if (isCustomColumnKey(columnId)) {
+      const fieldKey = fieldKeyFromColumn(columnId);
+      const field =
+        customFamilyView?.fields?.find(entry => (entry.fieldKey || entry.key) === fieldKey) || { fieldKey };
+      const display = formatInventoryFieldValue(field, getCustomFieldRaw(item, fieldKey), locale);
+      return (
+        <td key={columnId} className={styles.customFieldCell} title={display === "—" ? undefined : display}>
+          {display}
+        </td>
+      );
+    }
+    switch (columnId) {
+      case "company":
+        return <td key={columnId}>{item.clientName || "—"}</td>;
+      case "name":
+        return (
+          <td key={columnId} className={layout.colCompany}>
+            {item.name || "—"}
+          </td>
+        );
+      case "type":
+        return <td key={columnId}>{typeLabel(item, locale)}</td>;
+      case "ip":
+        return <td key={columnId}>{item.ip || "—"}</td>;
+      case "serial":
+        return <td key={columnId}>{item.serial || "—"}</td>;
+      case "site":
+        return <td key={columnId}>{item.location || "—"}</td>;
+      case "status":
+        return <td key={columnId}>{item.is_active === false ? copy.status.inactive : copy.status.active}</td>;
+      case "alerts":
+        return (
+          <td key={columnId} className={styles.dotCol}>
+            <StatusDot tone={extras.alertMeta.tone} label={extras.alertMeta.label} />
+          </td>
+        );
+      case "supervision":
+        return (
+          <td key={columnId} className={styles.dotCol}>
+            <StatusDot tone={extras.supervisionMeta.tone} label={extras.supervisionMeta.label} />
+          </td>
+        );
+      case "alertsMonth":
+        return (
+          <td key={columnId} className={styles.countCol} title={extras.monthTitle}>
+            <span className={`${styles.countPill} ${extras.monthCount > 0 ? styles.countPillHot : ""}`}>
+              {extras.monthCount}
+            </span>
+          </td>
+        );
+      default:
+        return <td key={columnId}>—</td>;
+    }
+  };
+
   const renderSortHeader = (key, label) => {
     const active = sort.key === key;
     return (
       <th
+        key={key}
         className={`${styles.sortableTh} ${active ? styles.sortableThActive : ""}`}
         onClick={() => toggleSort(key)}
         aria-sort={active ? (sort.dir === "asc" ? "ascending" : "descending") : "none"}
@@ -685,10 +859,10 @@ export default function EquipmentInventoryPage({ onNavigate }) {
                             <thead>
                               <tr>
                                 {canBulkEdit ? (
-                                  <th className={layout.checkboxCell}>
+                                  <th className={styles.checkboxCell}>
                                     <input
                                       type="checkbox"
-                                      className={layout.rowCheckbox}
+                                      className={styles.rowCheckbox}
                                       checked={allOnPageSelected}
                                       onChange={toggleSelectAllOnPage}
                                       onClick={e => e.stopPropagation()}
@@ -697,16 +871,7 @@ export default function EquipmentInventoryPage({ onNavigate }) {
                                   </th>
                                 ) : null}
                                 <th className={styles.brandCol} aria-hidden />
-                                {renderSortHeader("company", copy.columns.company)}
-                                {renderSortHeader("name", copy.columns.name)}
-                                {renderSortHeader("type", copy.columns.type)}
-                                {renderSortHeader("ip", copy.columns.ip)}
-                                {renderSortHeader("serial", copy.columns.serial)}
-                                {renderSortHeader("site", copy.columns.site)}
-                                {renderSortHeader("status", copy.columns.status)}
-                                {renderSortHeader("alerts", copy.columns.alerts)}
-                                {renderSortHeader("supervision", copy.columns.supervision)}
-                                {renderSortHeader("alertsMonth", copy.columns.alertsMonth)}
+                                {tableColumns.map(columnId => renderSortHeader(columnId, getColumnLabel(columnId)))}
                                 <th className={styles.actionsCol}>{copy.columns.actions}</th>
                               </tr>
                             </thead>
@@ -737,10 +902,10 @@ export default function EquipmentInventoryPage({ onNavigate }) {
                                     tabIndex={0}
                                   >
                                     {canBulkEdit ? (
-                                      <td className={layout.checkboxCell} onClick={e => e.stopPropagation()}>
+                                      <td className={styles.checkboxCell} onClick={e => e.stopPropagation()}>
                                         <input
                                           type="checkbox"
-                                          className={layout.rowCheckbox}
+                                          className={styles.rowCheckbox}
                                           checked={isSelected}
                                           onChange={e => toggleItemSelection(item.id, e.target.checked)}
                                           aria-label={copy.formatBulkSelectRow(item.name)}
@@ -750,26 +915,14 @@ export default function EquipmentInventoryPage({ onNavigate }) {
                                     <td className={styles.brandCol}>
                                       <InventoryDeviceIcon item={item} className={styles.brandIcon} />
                                     </td>
-                                    <td>{item.clientName || "—"}</td>
-                                    <td className={layout.colCompany}>{item.name || "—"}</td>
-                                    <td>{typeLabel(item, locale)}</td>
-                                    <td>{item.ip || "—"}</td>
-                                    <td>{item.serial || "—"}</td>
-                                    <td>{item.location || "—"}</td>
-                                    <td>{item.is_active === false ? copy.status.inactive : copy.status.active}</td>
-                                    <td className={styles.dotCol}>
-                                      <StatusDot tone={alertMeta.tone} label={alertMeta.label} />
-                                    </td>
-                                    <td className={styles.dotCol}>
-                                      <StatusDot tone={supervisionMeta.tone} label={supervisionMeta.label} />
-                                    </td>
-                                    <td className={styles.countCol} title={monthTitle}>
-                                      <span
-                                        className={`${styles.countPill} ${monthCount > 0 ? styles.countPillHot : ""}`}
-                                      >
-                                        {monthCount}
-                                      </span>
-                                    </td>
+                                    {tableColumns.map(columnId =>
+                                      renderColumnCell(item, columnId, {
+                                        alertMeta,
+                                        supervisionMeta,
+                                        monthTitle,
+                                        monthCount
+                                      })
+                                    )}
                                     <td className={styles.actionsCol} onClick={e => e.stopPropagation()}>
                                       <InventoryEquipmentActions
                                         equipment={item}

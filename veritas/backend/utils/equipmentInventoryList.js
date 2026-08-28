@@ -11,11 +11,151 @@ const VIDEO_SURVEILLANCE_TABLES = [
   "v_b_clients_m_camera",
   "v_b_clients_m_cameras"
 ];
+const SKIP_CUSTOM_COLUMN_KEYS = new Set(["name", "nom"]);
+const SERIAL_KEY_RE = /^(numero[_]?serie|serial|sn|num[_]?serie|n[_]?serie)$/i;
+const SERIAL_LABEL_RE = /s[ée]rie|serial/i;
+const IP_KEY_RE = /^(ip|adresse[_]?ip|ip[_]?address)$/i;
+
+function parseJsonObject(value) {
+  if (value && typeof value === "object" && !Array.isArray(value)) return value;
+  if (typeof value === "string" && value.trim()) {
+    try {
+      const parsed = JSON.parse(value);
+      if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) return parsed;
+    } catch {
+      return {};
+    }
+  }
+  return {};
+}
+
+function parseJsonArray(value) {
+  if (Array.isArray(value)) return value;
+  if (typeof value === "string" && value.trim()) {
+    try {
+      const parsed = JSON.parse(value);
+      if (Array.isArray(parsed)) return parsed;
+    } catch {
+      return [];
+    }
+  }
+  return [];
+}
+
+function firstNonEmpty(...values) {
+  for (const value of values) {
+    if (value == null) continue;
+    const text = String(value).trim();
+    if (text) return text;
+  }
+  return "";
+}
+
+function pickFromObject(data, keys) {
+  for (const key of keys) {
+    const text = firstNonEmpty(data?.[key]);
+    if (text) return text;
+  }
+  return "";
+}
+
+function normalizeCustomFields(raw, data) {
+  const fromDef = parseJsonArray(raw)
+    .map((field, index) => ({
+      fieldKey: String(field?.fieldKey || field?.field_key || "").trim(),
+      label: String(field?.label || field?.fieldKey || field?.field_key || "").trim(),
+      fieldType: String(field?.fieldType || field?.field_type || "text"),
+      displayOrder: Number(field?.displayOrder ?? field?.display_order) || (index + 1) * 10
+    }))
+    .filter(field => field.fieldKey);
+  if (fromDef.length) return fromDef;
+  return Object.keys(data || {})
+    .filter(key => !SKIP_CUSTOM_COLUMN_KEYS.has(String(key).toLowerCase()))
+    .map((fieldKey, index) => ({
+      fieldKey,
+      label: fieldKey,
+      fieldType: "text",
+      displayOrder: (index + 1) * 10
+    }));
+}
+
+function pickByFieldMeta(data, fields, keyRe, labelRe) {
+  for (const field of fields) {
+    if (!keyRe.test(field.fieldKey || "") && !(labelRe && labelRe.test(field.label || ""))) continue;
+    const text = firstNonEmpty(data?.[field.fieldKey]);
+    if (text) return text;
+  }
+  return "";
+}
+
+function pickCustomSerial(data, fields) {
+  return pickFromObject(data, ["numeroSerie", "serial", "sn", "numero_serie", "num_serie"])
+    || pickByFieldMeta(data, fields, SERIAL_KEY_RE, SERIAL_LABEL_RE);
+}
+
+function pickCustomIp(data, fields) {
+  return pickFromObject(data, ["ip", "adresseIp", "adresse_ip"])
+    || pickByFieldMeta(data, fields, IP_KEY_RE, /^ip$/i);
+}
+
+async function loadCustomFieldsByFamilyKeys(familyKeys) {
+  const keys = [...new Set((Array.isArray(familyKeys) ? familyKeys : []).map(key => String(key || "").trim()).filter(Boolean))];
+  if (!keys.length) return new Map();
+  try {
+    const result = await pool.query(
+      `SELECT d.family_key, f.field_key, f.label, f.field_type, f.display_order
+       FROM v_b_equipment_family_definitions d
+       INNER JOIN v_b_equipment_family_fields f ON f.family_id = d.id
+       WHERE d.family_key = ANY($1::text[])
+       ORDER BY f.display_order ASC, f.id ASC`,
+      [keys]
+    );
+    const map = new Map();
+    for (const row of result.rows || []) {
+      const familyKey = String(row.family_key || "").trim();
+      if (!familyKey) continue;
+      const list = map.get(familyKey) || [];
+      list.push({
+        fieldKey: row.field_key,
+        label: row.label,
+        fieldType: row.field_type,
+        displayOrder: row.display_order
+      });
+      map.set(familyKey, list);
+    }
+    return map;
+  } catch (err) {
+    if (err?.code === "42P01") return new Map();
+    throw err;
+  }
+}
 
 function mapInventoryRow(row, extras = {}) {
   const dbId = String(row.id);
   const clientId = row.client_id;
   const name = row.display_name || row.row_name || row.item_key || "—";
+  const data = extras.data && typeof extras.data === "object" ? extras.data : null;
+  const customFields = Array.isArray(extras.customFields) ? extras.customFields : [];
+  const serial = extras.isCustom ? pickCustomSerial(data || {}, customFields) || row.serial || "" : row.serial || "";
+  const ip = extras.isCustom ? pickCustomIp(data || {}, customFields) || row.ip || "" : row.ip || "";
+  const stubRaw = {
+    type: row.device_type || "",
+    typeServer: row.device_type || "",
+    fournisseur: row.fournisseur || "",
+    marque: row.manufacturer || "",
+    fabricant: row.manufacturer || "",
+    manufacturer: row.manufacturer || "",
+    numeroSerie: serial,
+    serial,
+    ip,
+    modele: row.model || "",
+    model: row.model || "",
+    site: row.location || "",
+    location: row.location || "",
+    adresseMac: row.mac || "",
+    mac: row.mac || "",
+    ...(data || {})
+  };
   return {
     id: `${extras.family || "device"}:${clientId}:${dbId}`,
     dbId,
@@ -27,8 +167,8 @@ function mapInventoryRow(row, extras = {}) {
     familyLabel: extras.familyLabel || extras.type,
     isCustom: Boolean(extras.isCustom),
     name,
-    ip: row.ip || "",
-    serial: row.serial || "",
+    ip,
+    serial,
     location: row.location || "",
     model: row.model || "",
     mac: row.mac || "",
@@ -37,22 +177,20 @@ function mapInventoryRow(row, extras = {}) {
     typeServer: row.device_type || extras.typeServer || "",
     fournisseur: row.fournisseur || extras.fournisseur || "",
     familyIcon: extras.familyIcon || row.family_icon || null,
+    data: data || undefined,
+    fields: data || undefined,
+    customFields: extras.isCustom ? customFields : undefined,
+    customFamily: extras.isCustom
+      ? {
+          familyKey: extras.familyKey || null,
+          label: extras.familyLabel || extras.type,
+          icon: extras.familyIcon || row.family_icon || "mdi:devices",
+          fields: customFields
+        }
+      : undefined,
     rawData: extras.rawData || {
-      type: row.device_type || "",
-      typeServer: row.device_type || "",
-      fournisseur: row.fournisseur || "",
-      marque: row.manufacturer || "",
-      fabricant: row.manufacturer || "",
-      manufacturer: row.manufacturer || "",
-      numeroSerie: row.serial || "",
-      serial: row.serial || "",
-      ip: row.ip || "",
-      modele: row.model || "",
-      model: row.model || "",
-      site: row.location || "",
-      location: row.location || "",
-      adresseMac: row.mac || "",
-      mac: row.mac || ""
+      ...stubRaw,
+      ...(data ? { data } : {})
     },
     is_active: row.is_active !== false
   };
@@ -106,22 +244,29 @@ async function fetchCustomEquipmentRows() {
           NULLIF(TRIM(ce.data->>'fabricant'), ''),
           NULLIF(TRIM(ce.data->>'manufacturer'), ''),
           ''
-        ) AS manufacturer
+        ) AS manufacturer,
+        ce.data AS data_json
       FROM v_b_clients_m_custom_equipment ce
       INNER JOIN v_b_clients c ON c.id = ce.client_id
       LEFT JOIN v_b_equipment_family_definitions fd ON fd.family_key = ce.family_key
       WHERE ce.client_id IS NOT NULL
     `);
+    const familyKeys = [...new Set(result.rows.map(row => String(row.family_key || "").trim()).filter(Boolean))];
+    const fieldsByFamily = await loadCustomFieldsByFamilyKeys(familyKeys);
     return result.rows.map(row => {
       const familyKey = String(row.family_key || "custom");
       const familyLabel = row.family_label || familyKey;
+      const data = parseJsonObject(row.data_json);
+      const customFields = normalizeCustomFields(fieldsByFamily.get(familyKey) || [], data);
       return mapInventoryRow(row, {
         type: `Custom:${familyKey}`,
         family: `custom:${familyKey}`,
         familyKey,
         familyLabel,
         familyIcon: row.family_icon || "mdi:devices",
-        isCustom: true
+        isCustom: true,
+        data,
+        customFields
       });
     });
   } catch (err) {

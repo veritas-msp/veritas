@@ -245,6 +245,90 @@ const SECTION_FIELDS = {
   notes: ["commentaire"]
 };
 const BILLING_ALWAYS_VISIBLE_FIELDS = new Set(["purchaseDate", "invoiceNumber", "installDate", "expirationGarantie"]);
+const CUSTOM_SPECIFIC_EXCLUDED_KEYS = new Set([
+  "site",
+  "purchaseDate",
+  "invoiceNumber",
+  "installDate",
+  "expirationGarantie",
+  "supportReference",
+  "supportContract",
+  "commentaire",
+  "clientName",
+  "location"
+]);
+const CUSTOM_UNIFIED_KEEP_KEYS = new Set([
+  "clientName",
+  "location",
+  "purchaseDate",
+  "invoiceNumber",
+  "installDate",
+  "expirationGarantie",
+  "remoteAccessSolution",
+  "licenceMaintenance",
+  "autresLicenses",
+  "commentaire"
+]);
+const CUSTOM_FIELD_IDENTITY_ALIASES = {
+  marque: "manufacturer",
+  fabricant: "manufacturer",
+  manufacturer: "manufacturer",
+  brand: "manufacturer",
+  constructeur: "manufacturer",
+  modele: "model",
+  model: "model",
+  numeroserie: "serial",
+  serial: "serial",
+  sn: "serial",
+  serialnumber: "serial",
+  nserie: "serial",
+  numserie: "serial",
+  numerodeserie: "serial",
+  ip: "ip",
+  adresseip: "ip",
+  ipaddress: "ip",
+  mac: "mac",
+  adressemac: "mac",
+  macaddress: "mac",
+  firmware: "firmware",
+  version: "firmware",
+  gateway: "gateway",
+  vlan: "vlan",
+  fournisseur: "fournisseur",
+  vendor: "fournisseur"
+};
+
+function compactFieldKey(key) {
+  return String(key || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]/g, "");
+}
+
+function customFieldIdentity(key) {
+  const compact = compactFieldKey(key);
+  if (!compact) return "";
+  if (CUSTOM_FIELD_IDENTITY_ALIASES[compact]) return CUSTOM_FIELD_IDENTITY_ALIASES[compact];
+  if (compact.includes("numeroserie") || compact.includes("serialnumber") || compact.endsWith("serial")) return "serial";
+  if (compact.includes("modele") || compact === "model") return "model";
+  if (compact.includes("marque") || compact.includes("fabricant") || compact.includes("manufacturer")) return "manufacturer";
+  return compact;
+}
+
+function customFamilyCoversUnifiedKey(customFamily, unifiedKey) {
+  if (CUSTOM_UNIFIED_KEEP_KEYS.has(unifiedKey)) return false;
+  const fields = Array.isArray(customFamily?.fields) ? customFamily.fields : [];
+  if (!fields.length) return false;
+  const unifiedId = customFieldIdentity(unifiedKey);
+  return fields.some(field => {
+    const key = String(field?.fieldKey || "").trim();
+    if (!key) return false;
+    if (key === unifiedKey) return true;
+    const identity = customFieldIdentity(key);
+    return Boolean(unifiedId && identity && unifiedId === identity);
+  });
+}
 const UNIFIED_DETAIL_SECTIONS = [
   { id: "billingInstallation", label: "Facturation et installation", icon: "mdi:file-document-outline", description: "Client, site, achat et installation" },
   { id: "supportLifecycle", label: "Support / cycle de vie", icon: "mdi:lifebuoy", description: "Prise en main et licences" },
@@ -636,6 +720,12 @@ export function buildDetailFormData(equipment, options = {}) {
 export function buildEquipmentDetailSections(equipment, formData, locale) {
   const moduleKey = resolveModuleKey(equipment);
   const customFamily = equipment?.customFamily || null;
+  const customFieldDefs = Array.isArray(customFamily?.fields) && customFamily.fields.length
+    ? customFamily.fields
+    : Array.isArray(equipment?.customFields) ? equipment.customFields : [];
+  const customFamilyForFields = customFieldDefs.length
+    ? { ...customFamily, fields: customFieldDefs }
+    : customFamily;
   const displayData = equipment?.type === "Ordinateurs" ? mergeRmmIntoFormData(equipment, formData) : formData;
   const sections = UNIFIED_DETAIL_SECTIONS.map(section => {
     const localized = locale
@@ -646,17 +736,22 @@ export function buildEquipmentDetailSections(equipment, formData, locale) {
           locale
         )
       : section;
+    const fieldKeys = SECTION_FIELDS[section.id] || [];
+    const visibleKeys =
+      moduleKey === "Custom"
+        ? fieldKeys.filter(fieldKey => !customFamilyCoversUnifiedKey(customFamilyForFields, fieldKey))
+        : fieldKeys;
     return {
       ...localized,
       id: section.id,
-      fields: buildSectionFields(section.id, displayData, equipment, undefined, locale)
+      fields: buildSectionFields(section.id, displayData, equipment, visibleKeys, locale)
     };
   });
   if (moduleKey === "Custom") {
-    const specificFieldKeys = (customFamily?.fields || [])
+    const specificFieldKeys = customFieldDefs
       .map(field => String(field?.fieldKey || "").trim())
       .filter(Boolean)
-      .filter(fieldKey => !["site", "purchaseDate", "invoiceNumber", "installDate", "expirationGarantie", "supportReference", "supportContract", "commentaire"].includes(fieldKey));
+      .filter(fieldKey => !CUSTOM_SPECIFIC_EXCLUDED_KEYS.has(fieldKey));
     sections.push({
       id: "customSpecific",
       label: "Champs specifiques",

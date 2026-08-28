@@ -300,6 +300,63 @@
   padding: 0.45rem 0.6rem !important;
 }
 
+.checkboxCell {
+  width: 42px;
+  min-width: 42px;
+  text-align: center;
+  color: inherit;
+}
+
+.rowCheckbox {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 15px;
+  height: 15px;
+  margin: 0;
+  display: inline-block;
+  vertical-align: middle;
+  border: 1.5px solid var(--msp-border, #9aabc0);
+  border-radius: 4px;
+  background: var(--msp-surface, #fff);
+  background-color: var(--msp-surface, #fff);
+  accent-color: var(--msp-accent, #2b5fab);
+  color-scheme: light;
+  cursor: pointer;
+  color: transparent;
+}
+
+.rowCheckbox:checked {
+  background-color: var(--msp-accent, #2b5fab);
+  border-color: var(--msp-accent, #2b5fab);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath fill='none' stroke='%23fff' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round' d='M3.5 8.5l3 3 6-6'/%3E%3C/svg%3E");
+  background-size: 11px 11px;
+  background-position: center;
+  background-repeat: no-repeat;
+}
+
+.rowCheckbox:focus-visible {
+  outline: 2px solid var(--msp-accent, #2b5fab);
+  outline-offset: 2px;
+}
+
+:global(html.dark) .rowCheckbox {
+  color-scheme: dark;
+  background-color: var(--msp-surface-2, #162338);
+  border-color: var(--msp-border, #3d5478);
+}
+
+:global(html.dark) .rowCheckbox:checked {
+  background-color: var(--msp-accent, #5a9de0);
+  border-color: var(--msp-accent, #5a9de0);
+}
+
+.customFieldCell {
+  max-width: 12rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .brandCol {
   width: 2.25rem;
   min-width: 2.25rem;
