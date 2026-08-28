@@ -569,7 +569,12 @@ export function buildDetailFormData(equipment, options = {}) {
   const merged = {
     ...base,
     domaine: base.domaine || equipment?.domaine || equipment?.rawData?.domaine || "",
-    mac: base.mac || equipment?.mac || base.adresseMac || "",
+    mac: base.mac || equipment?.mac || equipment?.adresseMac || base.adresseMac || "",
+    serial: base.serial || equipment?.serial || equipment?.numeroSerie || "",
+    model: base.model || equipment?.model || equipment?.modele || "",
+    manufacturer: base.manufacturer || equipment?.manufacturer || equipment?.marque || equipment?.fabricant || "",
+    ip: base.ip || equipment?.ip || "",
+    location: base.location || equipment?.location || equipment?.site || "",
     luns: base.luns || equipment?.luns || equipment?.rawData?.luns || [],
     disques: base.disques || equipment?.disques || equipment?.rawData?.disques || [],
     licences: base.licences || equipment?.licences || equipment?.rawData?.licences || [],

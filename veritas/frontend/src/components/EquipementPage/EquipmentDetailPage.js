@@ -7,7 +7,7 @@ import enterpriseDetailStyles from "../EnterprisesPage/EnterpriseDetailPage.modu
 import SmartTooltip from "../SmartTooltip";
 import EquipmentFormModal from "./EquipmentFormModal";
 import CustomEquipmentModal from "../EnterprisesPage/CustomEquipmentModal";
-import { fetchClientGeneral } from "../../api/clients";
+import { fetchClientGeneral, fetchClientCustomEquipment } from "../../api/clients";
 import { normalizeClientSites } from "../../utils/clientSites";
 import { updateEquipment, getCheckMKAvailability, getClientHardwareEquipment, getEquipmentLogs, purgeEquipmentLogs, equipmentTypeToFamily, getEquipmentCheckMKMonitoring, syncEquipmentCheckMKMonitoring, fetchEquipmentTags, addEquipmentTag, removeEquipmentTag } from "../../api/equipment";
 import { requestRmmAgentSync, cancelRmmAgentSync, requestRmmAgentUpdate, cancelRmmAgentUpdate, requestRmmAgentHeartbeat, fetchRmmAgents } from "../../api/rmm";
@@ -48,7 +48,7 @@ import { useVeritasEdition } from "../../hooks/useVeritasEdition";
 import ProFeatureBadge from "../Misc/ProFeature/ProFeatureBadge";
 import ProFeaturePromoModal from "../Misc/ProFeature/ProFeaturePromoModal";
 import { notifyProFeature, setProFeaturePromoHandler } from "../Misc/ProFeature/proFeatureUtils";
-import { findEquipmentInList, getEquipmentClientId, getEquipmentDbId as resolveEquipmentDbId, getEquipmentListKey } from "../../utils/equipmentIdentity";
+import { findEquipmentInList, getEquipmentClientId, getEquipmentDbId as resolveEquipmentDbId, getEquipmentListKey, equipmentNeedsHydration } from "../../utils/equipmentIdentity";
 import { getRmmAgentId, getRmmAgentVersion, buildRmmAgentRowFromEquipment, getRmmSyncRequestedAt, isRmmManagedEquipment, patchEquipmentRmmSyncRequest, resolveRmmSyncRequestState, rmmSyncTimestampsMatch, formatRmmExpectedCollectionLabel, resolveRmmHeartbeatIntervalMinutes, agentSupportsImmediateFullSync, getRmmAgentStatusKey } from "./rmmMonitoringUtils";
 import { computeRmmDeviceHealth } from "./rmmDeviceHealthUtils";
 import { ScoreAside } from "./RmmDeviceScore";
@@ -414,6 +414,8 @@ export default function EquipmentDetailPage({
   const equipmentDbId = useMemo(() => resolveEquipmentDbId(equipment), [equipment]);
   const equipmentClientId = useMemo(() => getEquipmentClientId(equipment), [equipment]);
   const equipmentIdentityKey = useMemo(() => getEquipmentListKey(equipment), [equipment]);
+  const needsHydration = useMemo(() => equipmentNeedsHydration(equipment), [equipment]);
+  const lastHydratedKeyRef = useRef(null);
   const canManageEquipmentTags = Boolean(equipmentDbId && equipmentClientId);
   useEffect(() => {
     if (!canManageEquipmentTags) {
@@ -438,18 +440,71 @@ export default function EquipmentDetailPage({
   useEffect(() => {
     if (!equipment) return;
     abortAllPendingFetches();
-    setFormData(buildDetailFormData(equipment, {
-      clientSites,
-      clientSsids
-    }));
+    const alreadyHydrated = lastHydratedKeyRef.current === equipmentIdentityKey;
+    if (!(needsHydration && alreadyHydrated)) {
+      setFormData(buildDetailFormData(equipment, {
+        clientSites,
+        clientSsids
+      }));
+    }
     const mapping = equipment.checkmkMapping || checkmkMapping || null;
     setCheckmkMapping(mapping);
     if (checkmkIntegrationEnabled && mapping && mapping.checkmk_host_name) {
       loadCheckMKData();
-    } else {
+    } else if (!needsHydration) {
       setCheckmkData(null);
     }
-  }, [equipmentIdentityKey, checkmkIntegrationEnabled, clientSites, clientSsids]);
+  }, [equipmentIdentityKey, needsHydration, checkmkIntegrationEnabled, clientSites, clientSsids]);
+  useEffect(() => {
+    if (!needsHydration) return undefined;
+    const clientId = getEquipmentClientId(equipment);
+    const dbId = resolveEquipmentDbId(equipment);
+    if (!clientId || !dbId) return undefined;
+    let cancelled = false;
+    (async () => {
+      try {
+        const familyKey = parseCustomFamilyType(equipment.type) || equipment.familyKey || null;
+        const isCustom = Boolean(equipment.isCustom || familyKey && String(equipment.type || "").startsWith("Custom:"));
+        let refreshed = null;
+        if (isCustom && familyKey) {
+          let family = equipment.customFamily?.familyKey === familyKey ? equipment.customFamily : null;
+          if (!family?.fields) {
+            const families = await fetchEquipmentFamilies().catch(() => []);
+            family = (Array.isArray(families) ? families : []).find(entry => entry.familyKey === familyKey) || family;
+          }
+          const rows = await fetchClientCustomEquipment(clientId, familyKey);
+          const row = (Array.isArray(rows) ? rows : []).find(item => String(item?.id) === String(dbId));
+          if (row) {
+            refreshed = mapCustomEquipmentItem(row, family || {
+              familyKey,
+              label: equipment.familyLabel || equipment.customFamily?.label || familyKey,
+              icon: equipment.familyIcon || equipment.customFamily?.icon || "mdi:devices",
+              fields: equipment.customFields || []
+            }, {
+              clientId,
+              clientName: equipment.clientName
+            });
+          }
+        } else {
+          const list = await getClientHardwareEquipment(clientId);
+          refreshed = findEquipmentInList(list, equipment);
+        }
+        if (cancelled || !refreshed) return;
+        lastHydratedKeyRef.current = equipmentIdentityKey;
+        setFormData(buildDetailFormData(refreshed, {
+          clientSites,
+          clientSsids
+        }));
+        if (onUpdate) onUpdate(refreshed);
+        else onNavigateToEquipment?.(refreshed);
+      } catch (error) {
+        console.warn("Hydrate equipment detail:", error);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [equipmentIdentityKey]);
   useEffect(() => {
     if (!equipment?.clientId) {
       setClientSites([]);

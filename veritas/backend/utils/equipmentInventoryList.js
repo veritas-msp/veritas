@@ -43,7 +43,16 @@ function mapInventoryRow(row, extras = {}) {
       fournisseur: row.fournisseur || "",
       marque: row.manufacturer || "",
       fabricant: row.manufacturer || "",
-      manufacturer: row.manufacturer || ""
+      manufacturer: row.manufacturer || "",
+      numeroSerie: row.serial || "",
+      serial: row.serial || "",
+      ip: row.ip || "",
+      modele: row.model || "",
+      model: row.model || "",
+      site: row.location || "",
+      location: row.location || "",
+      adresseMac: row.mac || "",
+      mac: row.mac || ""
     },
     is_active: row.is_active !== false
   };

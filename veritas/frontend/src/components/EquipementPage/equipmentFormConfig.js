@@ -1832,7 +1832,17 @@ export function buildInitialFormData(equipment, moduleKey, {
 } = {}) {
   const raw = equipment?.data || equipment?.rawData || equipment;
   if (!raw && !equipment) return {};
-  const d = (key, def = "") => raw[key] ?? equipment?.[key] ?? def;
+  const pickValue = (...values) => {
+    for (const value of values) {
+      if (value === false || typeof value === "number") return value;
+      if (value != null && String(value).trim() !== "") return value;
+    }
+    return "";
+  };
+  const d = (key, def = "") => {
+    const found = pickValue(raw?.[key], equipment?.[key]);
+    return found === "" ? def : found;
+  };
   const base = {
     name: d("nom", d("name", "")),
     location: extractEquipmentSite(equipment),

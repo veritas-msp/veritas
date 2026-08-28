@@ -20,6 +20,28 @@ export function getEquipmentClientId(equipment) {
   if (!equipment) return null;
   return normalizeClientId(equipment.clientId ?? equipment.rawData?.client_id);
 }
+
+/** True when the payload is a lean inventory/URL stub and the full record still needs loading. */
+export function equipmentNeedsHydration(equipment) {
+  if (!equipment) return false;
+  if (!getEquipmentClientId(equipment) || !getEquipmentDbId(equipment)) return false;
+  if (equipment.fields && typeof equipment.fields === "object" && Object.keys(equipment.fields).length > 0) {
+    return false;
+  }
+  const raw = equipment.rawData;
+  if (raw && typeof raw === "object") {
+    if (raw.data && typeof raw.data === "object" && !Array.isArray(raw.data)) return false;
+    if (raw.item_key) return false;
+    if (isDbEquipmentId(raw.id) && (raw.nom || raw.name || raw.numeroSerie || raw.modele || raw.licences)) {
+      return false;
+    }
+  }
+  const data = equipment.data;
+  if (data && typeof data === "object" && !Array.isArray(data) && Object.keys(data).length > 4) {
+    return false;
+  }
+  return true;
+}
 export function normalizeEquipmentType(type) {
   if (type === "Stockage") return "NAS";
   return type;
