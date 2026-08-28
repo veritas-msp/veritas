@@ -590,6 +590,10 @@ export function buildDetailFormData(equipment, options = {}) {
       if (!field?.fieldKey) return;
       const value = customData[field.fieldKey];
       if (value == null) return;
+      if (field.fieldType === "number") {
+        detail[field.fieldKey] = value === false ? 0 : value === true ? 1 : value;
+        return;
+      }
       detail[field.fieldKey] = field.fieldType === "date" ? String(value).slice(0, 10) : value;
     });
     return detail;

@@ -737,13 +737,37 @@
 .panelFilterBadge {
   display: inline-flex;
   align-items: center;
-  padding: 0.2rem 0.55rem;
+  gap: 0.3rem;
+  padding: 0.2rem 0.3rem 0.2rem 0.55rem;
   border-radius: 999px;
   background: rgba(43, 95, 171, 0.1);
   border: 1px solid rgba(43, 95, 171, 0.22);
   color: var(--msp-accent, #2b5fab);
   font-size: 0.72rem;
   font-weight: 600;
+}
+
+.panelFilterBadgeClear {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.05rem;
+  height: 1.05rem;
+  padding: 0;
+  border: none;
+  border-radius: 999px;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  flex-shrink: 0;
+  opacity: 0.72;
+}
+
+.panelFilterBadgeClear:hover,
+.panelFilterBadgeClear:focus-visible {
+  opacity: 1;
+  background: rgba(43, 95, 171, 0.16);
+  outline: none;
 }
 
 .panelToolbar {

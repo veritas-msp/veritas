@@ -1,8 +1,9 @@
 import { getRmmInventoryFromEquipment, getRmmChassisInfo, isRmmManagedEquipment, getRmmAgentStatusKey, getWindowsUpdateStatus, getWorstDiskUsage, sanitizeRmmInventoryText, getSecuritySummary } from "../components/EquipementPage/rmmMonitoringUtils";
 import { canonicalizeComputerType, getComputerTypeLabel, inferComputerTypeFromInventory } from "../components/EquipementPage/equipmentFormConfig";
 import { repairRmmTextEncoding } from "./rmmTextEncoding";
-import { fetchClientModules } from "../api/clients";
-import { mapClientHardwareEquipment, getAllHardwareEquipment } from "../api/equipment";
+import { fetchClientModules, fetchClientCustomEquipment } from "../api/clients";
+import { mapClientHardwareEquipment } from "../api/equipment";
+import { mapCustomEquipmentItem, parseCustomFamilyType } from "../api/equipmentFamilies";
 import { filterBySite } from "./siteFilterUtils";
 import API_BASE_URL from "../config";
 export const FLEET_CHART_COLORS = ["#2b5fab", "#4a8fd4", "#1a3d75", "#6ba3e0", "#3d6eb8", "#8fa8c4", "#5c7cba", "#9eb8e8", "#243047", "#c5d0df"];
@@ -697,6 +698,11 @@ function equipmentTypeMatches(eqType, requestedType) {
   const actual = String(eqType || "").trim();
   const requested = String(requestedType || "").trim();
   if (!requested || actual === requested) return true;
+  const requestedFamilyKey = parseCustomFamilyType(requested);
+  const actualFamilyKey = parseCustomFamilyType(actual);
+  if (requestedFamilyKey || actualFamilyKey) {
+    return Boolean(requestedFamilyKey && actualFamilyKey && requestedFamilyKey === actualFamilyKey);
+  }
   const norm = value => String(value || "").trim().toLowerCase();
   const a = norm(actual);
   const b = norm(requested);
@@ -718,6 +724,35 @@ function equipmentTypeMatches(eqType, requestedType) {
 
 export async function loadClientEquipmentForFleetStats(clientId, equipmentType = "Ordinateurs", siteFilter = null) {
   if (!clientId) return { items: [], clientSsids: [] };
+  const familyKey = parseCustomFamilyType(equipmentType);
+  if (familyKey) {
+    const [rows, clientRes] = await Promise.all([
+      fetchClientCustomEquipment(clientId, familyKey).catch(() => []),
+      fetch(`${API_BASE_URL}/clients/general/${clientId}`, {
+        method: "GET",
+        credentials: "include",
+        headers: {
+          "Content-Type": "application/json"
+        }
+      }).then(response => response.ok ? response.json() : null).catch(() => null)
+    ]);
+    let items = (Array.isArray(rows) ? rows : []).map(item => mapCustomEquipmentItem(item, familyKey, {
+      clientId,
+      clientName: clientRes?.name || ""
+    }));
+    if (siteFilter) {
+      items = filterBySite(items, siteFilter);
+    }
+    const clientSsids = Array.isArray(clientRes?.ssids)
+      ? clientRes.ssids
+      : Array.isArray(clientRes?.ssid)
+        ? clientRes.ssid
+        : [];
+    return {
+      items,
+      clientSsids
+    };
+  }
   const [modulesData, clientRes] = await Promise.all([fetchClientModules(clientId), fetch(`${API_BASE_URL}/clients/general/${clientId}`, {
     method: "GET",
     credentials: "include",
@@ -731,10 +766,6 @@ export async function loadClientEquipmentForFleetStats(clientId, equipmentType =
     sites: clientRes?.sites || []
   };
   let items = mapClientHardwareEquipment(clientForMap).filter(eq => equipmentTypeMatches(eq.type, equipmentType));
-  if (String(equipmentType).startsWith("Custom:") && items.length === 0) {
-    const fleet = await getAllHardwareEquipment().catch(() => []);
-    items = (Array.isArray(fleet) ? fleet : []).filter(eq => String(eq.clientId) === String(clientId) && equipmentTypeMatches(eq.type, equipmentType));
-  }
   if (siteFilter) {
     items = filterBySite(items, siteFilter);
   }

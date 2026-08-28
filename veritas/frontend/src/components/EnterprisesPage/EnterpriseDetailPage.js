@@ -5,7 +5,7 @@ import { toast } from 'react-toastify';
 import { updateClient, saveClientModules, getClientLogs, getClientCheckMKStats, fetchClientAntivirus, fetchClientAntispam, fetchClientDomains, fetchClientSslCertificates, fetchClientLicences, fetchClientModules, fetchContacts, fetchClientTags, addClientTag, removeClientTag, fetchClientNotes, createClientNote, updateClientNote, deleteClientNote, addContact, updateContact, addContactMembership, setContactPrimaryForClient, deleteClient, fetchClientSupportCredits, fetchClientDeletionCheck, resolveClientCustomFamilyMap } from "../../api/clients";
 import { listClientMailinblackTenants } from "../../api/clientMailinblack";
 import { getGlobalOvhStatus } from "../../api/clientOvh";
-import { parseCustomFamilyType } from "../../api/equipmentFamilies";
+import { mapCustomEquipmentItem, parseCustomFamilyType } from "../../api/equipmentFamilies";
 import { getClientEquipmentTotal, mapClientHardwareEquipment } from "../../api/equipment";
 import { equipmentMatchesFleetFamily } from "../../utils/equipmentFamilyStats";
 import { filterCustomFamilyMap, filterBySite } from "../../utils/siteFilterUtils";
@@ -1717,6 +1717,19 @@ export default function ClientDetailPage({
   };
   const getEnterpriseEquipment = useCallback((tableType) => {
     if (!client?.id) return [];
+    const familyKey = parseCustomFamilyType(tableType);
+    if (familyKey) {
+      const family = (customFamilyMap || []).find(entry => entry.familyKey === familyKey);
+      const rawItems = Array.isArray(family?.items) ? family.items : [];
+      let items = rawItems.map(item => mapCustomEquipmentItem(item, family || familyKey, {
+        clientId: client.id,
+        clientName: client.name || ""
+      }));
+      if (activeSiteFilter) {
+        items = filterBySite(items, activeSiteFilter);
+      }
+      return items;
+    }
     const clientForMap = {
       ...client,
       sites: formData.sites ?? client.sites ?? [],
@@ -1727,7 +1740,7 @@ export default function ClientDetailPage({
       items = filterBySite(items, activeSiteFilter);
     }
     return items;
-  }, [client, formData.sites, activeSiteFilter]);
+  }, [client, formData.sites, activeSiteFilter, customFamilyMap]);
   const openComputerFleetStats = useCallback((options = {}) => {
     if (!client?.id) return;
     const tableType = options.equipmentType
@@ -1742,16 +1755,21 @@ export default function ClientDetailPage({
       toast.info(copy.toast.noComputersToAnalyze);
       return;
     }
+    const familyKey = parseCustomFamilyType(tableType);
+    const familyLabel = familyKey
+      ? ((customFamilyMap || []).find(entry => entry.familyKey === familyKey)?.label || familyKey)
+      : undefined;
     onNavigate?.("ComputerFleetStats", {
       clientId: client.id,
       clientName: getClientNameWithoutCode(client) || client?.name || "",
       client_number: getClientNumber(client) || undefined,
       equipmentType: tableType,
+      familyLabel,
       siteFilter: activeSiteFilter || null
     }, options.background ? {
       background: true
     } : undefined);
-  }, [client, getEnterpriseEquipment, activeSiteFilter, activeEquipmentTableType, onNavigate, copy.toast.noComputersToAnalyze]);
+  }, [client, getEnterpriseEquipment, activeSiteFilter, activeEquipmentTableType, customFamilyMap, onNavigate, copy.toast.noComputersToAnalyze]);
   const equipmentStatsAction = useMemo(() => {
     const tableType = activeEquipmentTableType || equipmentPageRef.current?.getEmbeddedActiveType?.() || null;
     if (!tableType) return null;
@@ -1760,6 +1778,16 @@ export default function ClientDetailPage({
       run: () => openComputerFleetStats({ equipmentType: tableType })
     };
   }, [activeEquipmentTableType, openComputerFleetStats, copy.computerFleetStats]);
+  const siteFilterBadge = activeSiteFilter ? <span className={styles.panelFilterBadge}>
+      {interpolate(copy.filterBadge, {
+      value: activeSiteFilter
+    })}
+      <button type="button" className={styles.panelFilterBadgeClear} onClick={() => setActiveSiteFilter(null)} aria-label={interpolate(copy.clearSiteFilterAria, {
+      value: activeSiteFilter
+    })} title={copy.clearSiteFilter}>
+        <Icon icon="mdi:close" aria-hidden />
+      </button>
+    </span> : null;
   const handleInfraNodeClick = useCallback(node => {
     const familyKey = node?.familyKey || parseCustomFamilyType(node?.type);
     if (node?.equipment?.name && !node?.isCategory) {
@@ -2989,11 +3017,7 @@ export default function ClientDetailPage({
               <div className={styles.panelHeader}>
                 <div className={styles.panelHeaderMain}>
                   <h2 className={styles.panelTitle}>{copy.infraMapTitle}</h2>
-                  {activeSiteFilter ? <span className={styles.panelFilterBadge}>
-                      {interpolate(copy.filterBadge, {
-                      value: activeSiteFilter
-                    })}
-                    </span> : null}
+                  {siteFilterBadge}
                 </div>
               </div>
               <div className={styles.panelBody}>
@@ -3076,11 +3100,7 @@ export default function ClientDetailPage({
               <div className={styles.panelHeader}>
                 <div className={styles.panelHeaderMain}>
                   <h2 className={styles.panelTitle}>{copy.peripheralsTitle}</h2>
-                  {activeSiteFilter ? <span className={styles.panelFilterBadge}>
-                      {interpolate(copy.filterBadge, {
-                      value: activeSiteFilter
-                    })}
-                    </span> : null}
+                  {siteFilterBadge}
                 </div>
                 <div className={styles.panelToolbar}>
                   <span className={styles.equipmentResultCount}>

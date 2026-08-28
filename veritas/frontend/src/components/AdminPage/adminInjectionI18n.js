@@ -222,6 +222,8 @@ const COPY = {
     equipmentGuideFamilyKey: "family =",
     equipmentFamiliesLoading: "Chargement des familles…",
     equipmentFamiliesError: "Impossible de charger les familles personnalisées.",
+    upsertEquipment: "Mettre à jour si existe déjà",
+    upsertEquipmentHint: "Correspondance par entreprise + famille + nom, ou n° de série. Les colonnes vides du CSV ne sont pas écrasées.",
     errors: {
       missingName: "Nom manquant",
       missingNom: "Nom de famille manquant",
@@ -237,6 +239,10 @@ const COPY = {
       validationAborted: "Injection annulée : corrigez les erreurs de validation — rien n'a été injecté.",
       rollbackAborted: "Injection annulée après erreur — {count} élément(s) créé(s) ont été annulés. Rien n'a été conservé.",
       userCancelled: "Injection annulée par l'utilisateur — {count} élément(s) créé(s) ont été annulés. Rien n'a été conservé.",
+      ambiguousEquipment: "Plusieurs équipements correspondent à {name} dans la famille {family}. Ajoutez un n° de série (ou item_key) pour lever l’ambiguïté.",
+      duplicateInFile: "Ligne en double dans le CSV pour {name} (famille {family}).",
+      created: "Créé",
+      updated: "Mis à jour",
       ok: "OK",
       linePrefix: "Ligne {line}"
     },
@@ -255,6 +261,7 @@ const COPY = {
     progress: "{current} / {total}",
     resultTitle: "Résultat",
     resultOk: "{count} réussi(s)",
+    resultUpdated: "{count} mis à jour",
     resultFailed: "{count} erreur(s)",
     resultSkipped: "{count} ignorée(s)",
     parseError: "Impossible de lire le CSV.",
@@ -317,6 +324,8 @@ const COPY = {
     equipmentGuideFamilyKey: "family =",
     equipmentFamiliesLoading: "Loading families…",
     equipmentFamiliesError: "Unable to load custom families.",
+    upsertEquipment: "Update if it already exists",
+    upsertEquipmentHint: "Matched by company + family + name, or serial number. Empty CSV columns are left unchanged.",
     errors: {
       missingName: "Missing name",
       missingNom: "Missing last name (nom)",
@@ -332,6 +341,10 @@ const COPY = {
       validationAborted: "Injection cancelled: fix validation errors — nothing was injected.",
       rollbackAborted: "Injection cancelled after error — {count} created item(s) rolled back. Nothing was kept.",
       userCancelled: "Injection cancelled by user — {count} created item(s) rolled back. Nothing was kept.",
+      ambiguousEquipment: "Several matching devices for {name} in family {family}. Add a serial number (or item_key) to disambiguate.",
+      duplicateInFile: "Duplicate row in the CSV for {name} (family {family}).",
+      created: "Created",
+      updated: "Updated",
       ok: "OK",
       linePrefix: "Line {line}"
     },
@@ -350,6 +363,7 @@ const COPY = {
     progress: "{current} / {total}",
     resultTitle: "Result",
     resultOk: "{count} succeeded",
+    resultUpdated: "{count} updated",
     resultFailed: "{count} error(s)",
     resultSkipped: "{count} skipped",
     parseError: "Unable to read the CSV.",
@@ -412,6 +426,8 @@ const COPY = {
     equipmentGuideFamilyKey: "family =",
     equipmentFamiliesLoading: "Familien werden geladen…",
     equipmentFamiliesError: "Benutzerdefinierte Familien konnten nicht geladen werden.",
+    upsertEquipment: "Aktualisieren, falls bereits vorhanden",
+    upsertEquipmentHint: "Abgleich über Unternehmen + Familie + Name, oder Seriennummer. Leere CSV-Spalten bleiben unverändert.",
     errors: {
       missingName: "Name fehlt",
       missingNom: "Nachname (nom) fehlt",
@@ -427,6 +443,10 @@ const COPY = {
       validationAborted: "Import abgebrochen: Validierungsfehler beheben — nichts wurde importiert.",
       rollbackAborted: "Import nach Fehler abgebrochen — {count} erstellte Element(e) zurückgerollt. Nichts wurde behalten.",
       userCancelled: "Import vom Benutzer abgebrochen — {count} erstellte Element(e) zurückgerollt. Nichts wurde behalten.",
+      ambiguousEquipment: "Mehrere passende Geräte für {name} in Familie {family}. Seriennummer (oder item_key) zur Unterscheidung hinzufügen.",
+      duplicateInFile: "Doppelte Zeile in der CSV für {name} (Familie {family}).",
+      created: "Erstellt",
+      updated: "Aktualisiert",
       ok: "OK",
       linePrefix: "Zeile {line}"
     },
@@ -445,6 +465,7 @@ const COPY = {
     progress: "{current} / {total}",
     resultTitle: "Ergebnis",
     resultOk: "{count} erfolgreich",
+    resultUpdated: "{count} aktualisiert",
     resultFailed: "{count} Fehler",
     resultSkipped: "{count} übersprungen",
     parseError: "CSV konnte nicht gelesen werden.",
@@ -507,6 +528,8 @@ const COPY = {
     equipmentGuideFamilyKey: "family =",
     equipmentFamiliesLoading: "Caricamento famiglie…",
     equipmentFamiliesError: "Impossibile caricare le famiglie personalizzate.",
+    upsertEquipment: "Aggiorna se esiste già",
+    upsertEquipmentHint: "Corrispondenza per azienda + famiglia + nome, o numero di serie. Le colonne CSV vuote non vengono sovrascritte.",
     errors: {
       missingName: "Nome mancante",
       missingNom: "Cognome (nom) mancante",
@@ -522,6 +545,10 @@ const COPY = {
       validationAborted: "Iniezione annullata: correggi gli errori di validazione — non è stato iniettato nulla.",
       rollbackAborted: "Iniezione annullata dopo un errore — {count} elemento/i creati annullati. Non è stato conservato nulla.",
       userCancelled: "Iniezione annullata dall'utente — {count} elemento/i creati annullati. Non è stato conservato nulla.",
+      ambiguousEquipment: "Più dispositivi corrispondono a {name} nella famiglia {family}. Aggiungi un numero di serie (o item_key) per disambiguare.",
+      duplicateInFile: "Riga duplicata nel CSV per {name} (famiglia {family}).",
+      created: "Creato",
+      updated: "Aggiornato",
       ok: "OK",
       linePrefix: "Riga {line}"
     },
@@ -540,6 +567,7 @@ const COPY = {
     progress: "{current} / {total}",
     resultTitle: "Risultato",
     resultOk: "{count} riusciti",
+    resultUpdated: "{count} aggiornati",
     resultFailed: "{count} errore/i",
     resultSkipped: "{count} ignorate",
     parseError: "Impossibile leggere il CSV.",
@@ -602,6 +630,8 @@ const COPY = {
     equipmentGuideFamilyKey: "family =",
     equipmentFamiliesLoading: "Cargando familias…",
     equipmentFamiliesError: "No se pudieron cargar las familias personalizadas.",
+    upsertEquipment: "Actualizar si ya existe",
+    upsertEquipmentHint: "Coincidencia por empresa + familia + nombre, o número de serie. Las columnas CSV vacías no se sobrescriben.",
     errors: {
       missingName: "Nombre faltante",
       missingNom: "Apellido (nom) faltante",
@@ -617,6 +647,10 @@ const COPY = {
       validationAborted: "Inyección cancelada: corrija los errores de validación — no se inyectó nada.",
       rollbackAborted: "Inyección cancelada tras un error — {count} elemento(s) creado(s) revertidos. No se conservó nada.",
       userCancelled: "Inyección cancelada por el usuario — {count} elemento(s) creado(s) revertidos. No se conservó nada.",
+      ambiguousEquipment: "Varios equipos coinciden con {name} en la familia {family}. Añada un número de serie (o item_key) para distinguirlo.",
+      duplicateInFile: "Fila duplicada en el CSV para {name} (familia {family}).",
+      created: "Creado",
+      updated: "Actualizado",
       ok: "OK",
       linePrefix: "Línea {line}"
     },
@@ -635,6 +669,7 @@ const COPY = {
     progress: "{current} / {total}",
     resultTitle: "Resultado",
     resultOk: "{count} correctos",
+    resultUpdated: "{count} actualizados",
     resultFailed: "{count} error(es)",
     resultSkipped: "{count} omitida(s)",
     parseError: "No se pudo leer el CSV.",
@@ -668,6 +703,9 @@ export function getAdminInjectionCopy(locale) {
       total
     }),
     resultOkLabel: count => interpolate(t.resultOk, {
+      count
+    }),
+    resultUpdatedLabel: count => interpolate(t.resultUpdated, {
       count
     }),
     resultFailedLabel: count => interpolate(t.resultFailed, {

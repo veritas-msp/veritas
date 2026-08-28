@@ -22,9 +22,10 @@ export default function ComputerFleetStatsPage({
   const equipmentType = statsData?.equipmentType || "Ordinateurs";
   const siteFilter = statsData?.siteFilter || null;
   const familyKey = canonicalizeFleetFamily(equipmentType);
-  const familyLabel = String(equipmentType || "").startsWith("Custom:")
-    ? String(equipmentType).slice("Custom:".length)
-    : (copy.familyTitle[familyKey] || equipmentType);
+  const familyLabel = statsData?.familyLabel
+    || (String(equipmentType || "").startsWith("Custom:")
+      ? String(equipmentType).slice("Custom:".length)
+      : (copy.familyTitle[familyKey] || equipmentType));
   const [items, setItems] = useState([]);
   const [clientSsids, setClientSsids] = useState([]);
   const [loading, setLoading] = useState(true);

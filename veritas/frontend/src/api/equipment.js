@@ -1,5 +1,5 @@
 import API_BASE_URL, { withApiQuery } from "../config";
-import { fetchClientModules } from "./clients";
+import { fetchClientModules, deleteClientCustomEquipment } from "./clients";
 import { getEquipmentDbId, isDbEquipmentId, findEquipmentInApiList } from "../utils/equipmentIdentity";
 import { inferComputerTypeFromInventory, canonicalizeComputerType, resolveAlimentationDeploymentType, resolveToipDeploymentType } from "../components/EquipementPage/equipmentFormConfig";
 import { repairRmmTextEncoding } from "../utils/rmmTextEncoding";
@@ -545,6 +545,23 @@ export const deleteEquipment = async equipment => {
     throw new Error("No equipment provided for deletion");
   }
   const clientId = equipment.clientId || equipment.rawData?.client_id;
+  const customFamilyKey = equipment.familyKey
+    || (String(equipment.type || "").startsWith("Custom:") ? String(equipment.type).slice("Custom:".length) : null)
+    || (String(equipment.family || "").startsWith("custom:") ? String(equipment.family).slice("custom:".length) : null);
+  const isCustom = Boolean(equipment.isCustom || customFamilyKey && (
+    String(equipment.type || "").startsWith("Custom:") || String(equipment.family || "").startsWith("custom:")
+  ));
+  if (isCustom) {
+    if (!clientId || !customFamilyKey) {
+      throw new Error("Incomplete information for equipment deletion");
+    }
+    const itemId = equipment.dbId || (isDbEquipmentId(equipment.id) && !String(equipment.id).includes(":") ? String(equipment.id) : null);
+    if (!itemId) {
+      throw new Error("Incomplete information for equipment deletion");
+    }
+    await deleteClientCustomEquipment(clientId, customFamilyKey, itemId);
+    return;
+  }
   let type = equipment.type || equipment.rawData?.type;
   let equipmentName = equipment.name || equipment.rawData?.nom || equipment.rawData?.name || '';
   if (!clientId || !type) {

@@ -39,6 +39,13 @@ const ENTITY_ICONS = {
   tickets: "mdi:ticket-outline"
 };
 
+function injectionLineIcon(status) {
+  if (status === "updated") return "mdi:pencil-circle-outline";
+  if (status === "ok") return "mdi:check-circle-outline";
+  if (status === "skip") return "mdi:minus-circle-outline";
+  return "mdi:alert-circle-outline";
+}
+
 export default function AdminInjection({
   isCommunity = false,
   onRunningChange
@@ -86,7 +93,7 @@ export default function AdminInjection({
   const [docDrafts, setDocDrafts] = useState([]);
   const [docsModalOpen, setDocsModalOpen] = useState(false);
   const [clients, setClients] = useState([]);
-  const [dragOver, setDragOver] = useState(false);
+  const [updateExistingEquipment, setUpdateExistingEquipment] = useState(true);
   const csvInputRef = useRef(null);
   const filesInputRef = useRef(null);
   const folderInputRef = useRef(null);
@@ -294,7 +301,8 @@ export default function AdminInjection({
         onProgress: setProgress,
         messages: copy.errors,
         control,
-        equipmentFamilyRegistry: activeView === "equipment" ? equipmentRegistry : null
+        equipmentFamilyRegistry: activeView === "equipment" ? equipmentRegistry : null,
+        updateExistingEquipment: activeView === "equipment" ? updateExistingEquipment : false
       });
       setReport(result);
       if (result.cancelled) {
@@ -627,6 +635,21 @@ export default function AdminInjection({
               </div>
             </>
           ) : (
+            <div className={styles.injectActions}>
+            {activeView === "equipment" ? (
+              <label className={styles.upsertRow}>
+                <input
+                  type="checkbox"
+                  checked={updateExistingEquipment}
+                  onChange={e => setUpdateExistingEquipment(e.target.checked)}
+                  disabled={running}
+                />
+                <span>
+                  <strong>{copy.upsertEquipment}</strong>
+                  <span className={styles.upsertHint}>{copy.upsertEquipmentHint}</span>
+                </span>
+              </label>
+            ) : null}
             <div className={styles.actions}>
               <Btn variant="secondary" icon="mdi:download" onClick={handleDownloadTemplate}>
                 {activeView === "equipment" && selectedFamily ? copy.downloadFamilyTemplate : copy.downloadTemplate}
@@ -665,6 +688,7 @@ export default function AdminInjection({
                 </>
               ) : null}
             </div>
+            </div>
           )}
 
           {progress && !docsModalOpen
@@ -680,6 +704,12 @@ export default function AdminInjection({
                         {copy.progressLabel(current, total)}
                         {" · "}
                         {copy.resultOkLabel(progress.ok || 0)}
+                        {progress.updated > 0 ? (
+                          <>
+                            {" · "}
+                            {copy.resultUpdatedLabel(progress.updated)}
+                          </>
+                        ) : null}
                         {" · "}
                         {copy.resultFailedLabel(progress.failed || 0)}
                       </p>
@@ -758,21 +788,16 @@ export default function AdminInjection({
                   <span className={styles.err}>{copy.injectAborted}</span>
                 ) : null}
                 <span className={styles.ok}>{copy.resultOkLabel(report.ok)}</span>
+                {report.updated > 0 ? (
+                  <span className={styles.updated}>{copy.resultUpdatedLabel(report.updated)}</span>
+                ) : null}
                 <span className={styles.err}>{copy.resultFailedLabel(report.failed)}</span>
                 {report.skipped > 0 ? <span>{copy.resultSkippedLabel(report.skipped)}</span> : null}
               </div>
               <ul className={styles.reportList}>
                 {report.lines.slice(0, 80).map((item, idx) => (
                   <li key={`${item.line}-${idx}`} className={styles[`line_${item.status}`]}>
-                    <Icon
-                      icon={
-                        item.status === "ok"
-                          ? "mdi:check-circle-outline"
-                          : item.status === "skip"
-                            ? "mdi:minus-circle-outline"
-                            : "mdi:alert-circle-outline"
-                      }
-                    />
+                    <Icon icon={injectionLineIcon(item.status)} />
                     <span>{copy.lineLabel(item.line)}</span>
                     <span>{item.message}</span>
                   </li>

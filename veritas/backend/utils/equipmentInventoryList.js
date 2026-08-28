@@ -3,7 +3,7 @@ import {
   computeMonitoringSummary,
   countCheckmkHistoryLastDays
 } from "../routes/integrations/checkmk/equipmentMonitoringSync.js";
-import { fetchEquipmentPurgeList, PURGE_HARDWARE_FAMILIES } from "./equipmentPurgeList.js";
+import { fetchStandardHardwarePurgeList, PURGE_HARDWARE_FAMILIES } from "./equipmentPurgeList.js";
 import { applyEquipmentAlertSettings, isAlertSuspensionActive, resolveAlertStatusFromSettings, resolveEquipmentFamilyKey } from "./equipmentMonitoringAlerts.js";
 
 const VIDEO_SURVEILLANCE_TABLES = [
@@ -571,7 +571,7 @@ export async function bulkUpdateEquipmentInventory({
  */
 export async function fetchEquipmentInventoryList() {
   const [standard, custom, video] = await Promise.all([
-    fetchEquipmentPurgeList(),
+    fetchStandardHardwarePurgeList(),
     fetchCustomEquipmentRows(),
     fetchVideoSurveillanceRows()
   ]);

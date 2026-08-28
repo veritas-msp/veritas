@@ -62,3 +62,34 @@ export function parseCustomFamilyType(type) {
   if (!type || !String(type).startsWith("Custom:")) return null;
   return String(type).slice("Custom:".length);
 }
+function pickCustomEquipmentValue(item, fields, data, keys) {
+  for (const key of keys) {
+    const value = item?.[key] ?? fields?.[key] ?? data?.[key];
+    if (value != null && String(value).trim() !== "") return value;
+  }
+  return "";
+}
+export function mapCustomEquipmentItem(item, familyOrKey, extras = {}) {
+  const family = familyOrKey && typeof familyOrKey === "object" ? familyOrKey : null;
+  const familyKey = family?.familyKey || familyOrKey || extras.familyKey || item?.familyKey || null;
+  const fields = item?.fields && typeof item.fields === "object" ? item.fields : {};
+  const data = item?.data && typeof item.data === "object" ? item.data : fields;
+  return {
+    ...item,
+    type: familyKey ? buildCustomFamilyType(familyKey) : item?.type,
+    familyKey,
+    customFamily: family || item?.customFamily || null,
+    customFields: family?.fields || item?.customFields || [],
+    clientId: item?.clientId || extras.clientId || null,
+    clientName: item?.clientName || extras.clientName || "",
+    name: item?.name || pickCustomEquipmentValue(item, fields, data, ["name", "nom"]),
+    location: item?.location || pickCustomEquipmentValue(item, fields, data, ["site", "location", "localisation"]),
+    manufacturer: item?.manufacturer || pickCustomEquipmentValue(item, fields, data, ["manufacturer", "marque", "brand", "constructeur"]),
+    model: item?.model || pickCustomEquipmentValue(item, fields, data, ["model", "modele", "modèle"]),
+    serial: item?.serial || pickCustomEquipmentValue(item, fields, data, ["serial", "numeroSerie", "numero_serie", "sn"]),
+    is_active: item?.is_active !== false && item?.isActive !== false,
+    rawData: item?.rawData || data || fields || {},
+    data: data || fields || {},
+    fields
+  };
+}

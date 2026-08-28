@@ -45,6 +45,10 @@ function buildFormFromItem(item, fields = []) {
     const value = item?.fields?.[field.fieldKey] ?? item?.data?.[field.fieldKey];
     if (field.fieldType === "boolean") {
       form[field.fieldKey] = Boolean(value);
+    } else if (field.fieldType === "number") {
+      if (value === false) form[field.fieldKey] = "0";
+      else if (value === true) form[field.fieldKey] = "1";
+      else if (value != null && value !== "") form[field.fieldKey] = String(value);
     } else if (value != null) {
       form[field.fieldKey] = field.fieldType === "date" ? String(value).slice(0, 10) : String(value);
     }
@@ -150,8 +154,17 @@ export default function CustomEquipmentModal({
       const value = form[field.fieldKey];
       if (field.fieldType === "boolean") {
         payloadFields[field.fieldKey] = Boolean(value);
+      } else if (field.fieldType === "number") {
+        if (value === false) payloadFields[field.fieldKey] = 0;
+        else if (value === true) payloadFields[field.fieldKey] = 1;
+        else if (value != null && String(value).trim() !== "") {
+          const amount = Number(value);
+          payloadFields[field.fieldKey] = Number.isFinite(amount) ? amount : null;
+        } else {
+          payloadFields[field.fieldKey] = null;
+        }
       } else if (value != null && String(value).trim() !== "") {
-        payloadFields[field.fieldKey] = field.fieldType === "number" ? Number(value) : value;
+        payloadFields[field.fieldKey] = value;
       } else {
         payloadFields[field.fieldKey] = null;
       }
@@ -163,13 +176,14 @@ export default function CustomEquipmentModal({
         fields: payloadFields
       };
       if (isAddMode) {
-        await addClientCustomEquipment(clientId, family.familyKey, payload);
+        const saved = await addClientCustomEquipment(clientId, family.familyKey, payload);
         toast.success("Equipment added");
+        await onRefresh?.(saved);
       } else {
-        await updateClientCustomEquipment(clientId, family.familyKey, item.id, payload);
+        const saved = await updateClientCustomEquipment(clientId, family.familyKey, item.id, payload);
         toast.success("Equipment updated");
+        await onRefresh?.(saved);
       }
-      await onRefresh?.();
       onClose();
     } catch (error) {
       toast.error(error.message || "Error while saving");
@@ -187,7 +201,7 @@ export default function CustomEquipmentModal({
     try {
       await deleteClientCustomEquipment(clientId, family.familyKey, item.id);
       toast.success("Equipment deleted");
-      await onRefresh?.();
+      await onRefresh?.(null);
       onClose();
     } catch (error) {
       toast.error(error.message || "Error while deleting");

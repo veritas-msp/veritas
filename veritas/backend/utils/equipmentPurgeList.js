@@ -159,15 +159,93 @@ function mapLeanRow(row, familyMeta) {
       anydeskId: row.anydesk_id || "",
       manageable: row.manageable === true
     },
-    is_active: row.is_active !== false
+    is_active: row.is_active !== false,
+    familyKey: familyMeta.familyKey || null,
+    familyLabel: familyMeta.familyLabel || familyMeta.type,
+    isCustom: Boolean(familyMeta.isCustom)
   };
 }
 
+async function fetchCustomEquipmentPurgeRows() {
+  try {
+    const result = await pool.query(`
+      SELECT
+        ce.id,
+        ce.client_id,
+        c.name AS client_name,
+        ce.family_key,
+        ce.name AS row_name,
+        ce.item_key,
+        ce.is_active,
+        COALESCE(NULLIF(TRIM(fd.label), ''), ce.family_key) AS family_label,
+        COALESCE(
+          NULLIF(TRIM(ce.data->>'nom'), ''),
+          NULLIF(TRIM(ce.data->>'name'), ''),
+          NULLIF(TRIM(ce.name), ''),
+          NULLIF(TRIM(ce.item_key), ''),
+          '—'
+        ) AS display_name,
+        COALESCE(NULLIF(TRIM(ce.data->>'ip'), ''), '') AS ip,
+        COALESCE(
+          NULLIF(TRIM(ce.data->>'numeroSerie'), ''),
+          NULLIF(TRIM(ce.data->>'serial'), ''),
+          NULLIF(TRIM(ce.data->>'sn'), ''),
+          ''
+        ) AS serial,
+        COALESCE(
+          NULLIF(TRIM(ce.data->>'site'), ''),
+          NULLIF(TRIM(ce.data->>'location'), ''),
+          NULLIF(TRIM(ce.data->>'emplacement'), ''),
+          ''
+        ) AS location,
+        COALESCE(
+          NULLIF(TRIM(ce.data->>'modele'), ''),
+          NULLIF(TRIM(ce.data->>'model'), ''),
+          ''
+        ) AS model,
+        COALESCE(
+          NULLIF(TRIM(ce.data->>'adresseMac'), ''),
+          NULLIF(TRIM(ce.data->>'mac'), ''),
+          ''
+        ) AS mac,
+        COALESCE(
+          NULLIF(TRIM(ce.data->>'marque'), ''),
+          NULLIF(TRIM(ce.data->>'fabricant'), ''),
+          NULLIF(TRIM(ce.data->>'manufacturer'), ''),
+          ''
+        ) AS manufacturer,
+        COALESCE(NULLIF(TRIM(ce.data->>'type'), ''), '') AS device_type,
+        COALESCE(NULLIF(TRIM(ce.data->>'fournisseur'), ''), '') AS fournisseur,
+        false AS manageable
+      FROM v_b_clients_m_custom_equipment ce
+      INNER JOIN v_b_clients c ON c.id = ce.client_id
+      LEFT JOIN v_b_equipment_family_definitions fd ON fd.family_key = ce.family_key
+      WHERE ce.client_id IS NOT NULL
+    `);
+    return result.rows.map(row => {
+      const familyKey = String(row.family_key || "custom");
+      const familyLabel = row.family_label || familyKey;
+      return mapLeanRow(row, {
+        type: `Custom:${familyKey}`,
+        family: `custom:${familyKey}`,
+        familyKey,
+        familyLabel,
+        isCustom: true
+      });
+    });
+  } catch (err) {
+    if (err?.code === "42P01") {
+      console.warn("[equipment-purge] custom equipment table missing");
+      return [];
+    }
+    throw err;
+  }
+}
+
 /**
- * Lean hardware list for admin purge — ~10 queries total (one per family),
- * projected JSON fields only (no full data blob).
+ * Native hardware families only (no custom). Used by inventory + purge.
  */
-export async function fetchEquipmentPurgeList() {
+export async function fetchStandardHardwarePurgeList() {
   const batches = await Promise.all(
     PURGE_HARDWARE_FAMILIES.map(async familyMeta => {
       try {
@@ -182,14 +260,18 @@ export async function fetchEquipmentPurgeList() {
       }
     })
   );
+  return batches.flat();
+}
 
-  const items = batches.flat();
+function sortPurgeItems(items) {
   items.sort((a, b) => {
     const byClient = String(a.clientName || "").localeCompare(String(b.clientName || ""), "fr", {
       sensitivity: "base"
     });
     if (byClient !== 0) return byClient;
-    const byType = String(a.type || "").localeCompare(String(b.type || ""), "fr", {
+    const typeA = a.familyLabel || a.type || "";
+    const typeB = b.familyLabel || b.type || "";
+    const byType = String(typeA).localeCompare(String(typeB), "fr", {
       sensitivity: "base"
     });
     if (byType !== 0) return byType;
@@ -198,4 +280,15 @@ export async function fetchEquipmentPurgeList() {
     });
   });
   return items;
+}
+
+/**
+ * Lean hardware list for admin purge — native families + custom equipment.
+ */
+export async function fetchEquipmentPurgeList() {
+  const [standard, custom] = await Promise.all([
+    fetchStandardHardwarePurgeList(),
+    fetchCustomEquipmentPurgeRows()
+  ]);
+  return sortPurgeItems([...standard, ...custom]);
 }

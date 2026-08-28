@@ -541,6 +541,46 @@
   align-items: center;
 }
 
+.injectActions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.upsertRow {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.6rem;
+  padding: 0.7rem 0.85rem;
+  border: 1px solid var(--msp-border, #d7dee8);
+  border-radius: 10px;
+  background: var(--msp-surface-2, #f5f7fb);
+  cursor: pointer;
+  font-size: 0.84rem;
+  color: var(--msp-text, #152033);
+}
+
+.upsertRow input {
+  margin-top: 0.18rem;
+  flex-shrink: 0;
+}
+
+.upsertRow span {
+  display: flex;
+  flex-direction: column;
+  gap: 0.18rem;
+}
+
+.upsertHint {
+  font-size: 0.78rem;
+  font-weight: 400;
+  color: var(--msp-muted, #5b6b7c);
+}
+
+.upsertRow input:disabled + span {
+  opacity: 0.65;
+}
+
 .progress {
   margin: 0;
   font-size: 0.82rem;
@@ -670,6 +710,10 @@
   color: #15803d;
 }
 
+.updated {
+  color: #1d4ed8;
+}
+
 .err {
   color: #dc2626;
 }
@@ -698,6 +742,10 @@
 
 .line_ok {
   color: #166534;
+}
+
+.line_updated {
+  color: #1d4ed8;
 }
 
 .line_error {

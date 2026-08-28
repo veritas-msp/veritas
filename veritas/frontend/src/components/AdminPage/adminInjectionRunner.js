@@ -8,8 +8,12 @@ import {
   deleteClientCustomEquipment,
   deleteClientModuleItem,
   deleteContact,
+  fetchClientCustomEquipment,
+  fetchClientModuleItems,
   fetchClientsList,
-  updateClient
+  updateClient,
+  updateClientCustomEquipment,
+  updateClientModuleItem
 } from "../../api/clients";
 import { deleteClientFile, uploadClientFile } from "../../api/clientFiles";
 import { createTicket, permanentlyDeleteTicket } from "../../api/tickets";
@@ -32,6 +36,10 @@ const DEFAULT_INJECTION_ERRORS = {
   validationAborted: "Injection cancelled: fix validation errors — nothing was injected.",
   rollbackAborted: "Injection cancelled after error — {count} created item(s) rolled back. Nothing was kept.",
   userCancelled: "Injection cancelled by user — {count} created item(s) rolled back. Nothing was kept.",
+  ambiguousEquipment: "Several matching devices for {name} in family {family}. Add a serial number (or item_key) to disambiguate.",
+  duplicateInFile: "Duplicate row in the CSV for {name} (family {family}).",
+  created: "Created",
+  updated: "Updated",
   ok: "OK"
 };
 
@@ -355,6 +363,80 @@ function resolveCustomEquipmentFieldKey(rawField, fields = []) {
   return null;
 }
 
+function compactSerialValue(value) {
+  return String(value || "").toLowerCase().replace(/[\s\-_.]/g, "");
+}
+
+function pickSerialFromBag(bag) {
+  if (!bag || typeof bag !== "object") return "";
+  const serialKeys = new Set(["numeroserie", "serial", "sn", "serialnumber", "nserie"]);
+  for (const [key, value] of Object.entries(bag)) {
+    if (value == null || !String(value).trim()) continue;
+    const compact = String(key).toLowerCase().replace(/[\s\-_.]/g, "");
+    if (serialKeys.has(compact)) return String(value).trim();
+  }
+  return "";
+}
+
+function readExistingEquipmentName(item, isCustom) {
+  if (isCustom) {
+    return String(item?.name || item?.fields?.name || item?.data?.name || item?.item_key || "").trim();
+  }
+  const data = cloneEquipmentData(item?.data);
+  return String(item?.name || data.nom || data.name || item?.item_key || "").trim();
+}
+
+function readExistingEquipmentSerial(item) {
+  return pickSerialFromBag(item)
+    || pickSerialFromBag(item?.fields)
+    || pickSerialFromBag(cloneEquipmentData(item?.data))
+    || "";
+}
+
+function cloneEquipmentData(value) {
+  let obj = value;
+  if (typeof value === "string") {
+    try {
+      obj = JSON.parse(value);
+    } catch {
+      obj = {};
+    }
+  }
+  if (!obj || typeof obj !== "object") return {};
+  try {
+    return JSON.parse(JSON.stringify(obj));
+  } catch {
+    return { ...obj };
+  }
+}
+
+function findExistingEquipment(list, { name, itemKey, serial, isCustom }) {
+  const rows = Array.isArray(list) ? list : [];
+  const wantedKey = String(itemKey || "").trim();
+  if (wantedKey) {
+    const byKey = rows.filter(item => String(item?.item_key || "").trim() === wantedKey);
+    if (byKey.length === 1) return { item: byKey[0] };
+    if (byKey.length > 1) return { ambiguous: true };
+  }
+  const serialCompact = compactSerialValue(serial);
+  if (serialCompact) {
+    const bySerial = rows.filter(item => compactSerialValue(readExistingEquipmentSerial(item)) === serialCompact);
+    if (bySerial.length === 1) return { item: bySerial[0] };
+    if (bySerial.length > 1) {
+      const needle = String(name || "").trim().toLowerCase();
+      const byName = bySerial.filter(item => readExistingEquipmentName(item, isCustom).toLowerCase() === needle);
+      if (byName.length === 1) return { item: byName[0] };
+      if (byName.length > 1) return { ambiguous: true };
+    }
+  }
+  const needle = String(name || "").trim().toLowerCase();
+  if (!needle) return { item: null };
+  const byName = rows.filter(item => readExistingEquipmentName(item, isCustom).toLowerCase() === needle);
+  if (byName.length === 1) return { item: byName[0] };
+  if (byName.length > 1) return { ambiguous: true };
+  return { item: null };
+}
+
 function normalizeContactStatus(value) {
   const raw = String(value || "").trim();
   if (!raw) return "actif";
@@ -469,13 +551,26 @@ function parseJsonCell(value) {
   }
 }
 
-function coerceValue(raw) {
+function coerceValue(raw, fieldType = null) {
   if (raw == null) return undefined;
+  const type = String(fieldType || "").trim().toLowerCase();
+  if (typeof raw === "number" && Number.isFinite(raw)) {
+    if (type === "boolean") return raw !== 0;
+    return raw;
+  }
+  if (typeof raw === "boolean") {
+    if (type === "number") return raw ? 1 : 0;
+    return raw;
+  }
   const text = String(raw).trim();
   if (!text) return undefined;
-  const asBool = parseBool(text);
-  if (asBool !== undefined && ["true", "false", "1", "0", "yes", "no", "oui", "non", "y", "n", "on", "off"].includes(text.toLowerCase())) {
-    return asBool;
+  if (type === "number") return parseNumber(text);
+  if (type === "boolean") return parseBool(text);
+  if (type === "date" || type === "text" || type === "textarea") return text;
+  const boolTokens = ["true", "false", "yes", "no", "oui", "non", "y", "n", "on", "off"];
+  if (boolTokens.includes(text.toLowerCase())) {
+    const asBool = parseBool(text);
+    if (asBool !== undefined) return asBool;
   }
   if (/^-?\d+([.,]\d+)?$/.test(text)) {
     const n = parseNumber(text);
@@ -861,7 +956,8 @@ export async function runInjection({
   onProgress,
   messages,
   control,
-  equipmentFamilyRegistry = null
+  equipmentFamilyRegistry = null,
+  updateExistingEquipment = true
 }) {
   const report = createEmptyReport();
   const push = makePusher(report, onProgress, rows.length);
@@ -993,6 +1089,28 @@ export async function runInjection({
   if (entity === "equipment") {
     const registry = equipmentFamilyRegistry || buildEquipmentFamilyRegistry([]);
     const knownKeys = registry.listKeys().join(", ");
+    const familyItemsCache = new Map();
+    const pendingIdentities = new Set();
+    const claimedExistingIds = new Set();
+    const loadFamilyItems = async (clientId, family, isCustom) => {
+      const cacheKey = `${clientId}::${family}`;
+      if (!familyItemsCache.has(cacheKey)) {
+        const rows = isCustom
+          ? await fetchClientCustomEquipment(clientId, family).catch(() => [])
+          : await fetchClientModuleItems(clientId, family).catch(() => []);
+        familyItemsCache.set(cacheKey, Array.isArray(rows) ? rows : []);
+      }
+      return familyItemsCache.get(cacheKey);
+    };
+    const rememberFamilyItem = (clientId, family, item) => {
+      const cacheKey = `${clientId}::${family}`;
+      const list = familyItemsCache.get(cacheKey) || [];
+      const itemId = item?.id;
+      const index = itemId == null ? -1 : list.findIndex(entry => String(entry?.id) === String(itemId));
+      if (index >= 0) list[index] = item;
+      else list.push(item);
+      familyItemsCache.set(cacheKey, list);
+    };
     return runAtomicBatch({
       rows,
       onProgress,
@@ -1000,7 +1118,7 @@ export async function runInjection({
       push,
       messages: msg,
       control,
-      validateRow: row => {
+      validateRow: async row => {
         const client = resolveClient(row, clientIndex);
         if (!client?.id) {
           return {
@@ -1043,12 +1161,15 @@ export async function runInjection({
           if (!key.startsWith("data_") || key === "data_json") continue;
           const rawField = String(rawKey).slice(String(rawKey).toLowerCase().indexOf("data_") + 5);
           let field;
+          let fieldType = null;
           if (familyEntry.isCustom) {
             field = resolveCustomEquipmentFieldKey(rawField, customFields) || canonicalizeEquipmentDataField(rawField);
+            const fieldDef = customFields.find(entry => String(entry?.fieldKey || "").trim() === String(field || "").trim());
+            fieldType = fieldDef?.fieldType || null;
           } else {
             field = canonicalizeEquipmentDataField(rawField);
           }
-          const value = coerceValue(rawValue);
+          const value = coerceValue(rawValue, fieldType);
           if (value !== undefined) data[field] = value;
         }
         if (!familyEntry.isCustom && family === "ordinateurs") {
@@ -1059,29 +1180,82 @@ export async function runInjection({
           const canonical = canonicalizeComputerType(rawType);
           if (canonical) data.type = canonical;
         }
-        for (const required of familyEntry.requiredFields || []) {
-          const value = data[required.key];
-          if (required.fieldType === "boolean") continue;
-          if (value == null || String(value).trim() === "") {
+        const itemKey = cell(row, "item_key", "itemKey", "key") || "";
+        const serial = pickSerialFromBag(data)
+          || cell(row, "serial", "serial_number", "numero_serie", "numeroSerie")
+          || "";
+        const identityKey = compactSerialValue(serial)
+          ? `s:${client.id}:${family}:${compactSerialValue(serial)}`
+          : `n:${client.id}:${family}:${name.toLowerCase()}`;
+        if (pendingIdentities.has(identityKey)) {
+          return {
+            error: injectionError(msg, "duplicateInFile", {
+              name,
+              family
+            })
+          };
+        }
+        const activeRaw = cell(row, "is_active", "active");
+        const isActive = activeRaw ? parseBool(activeRaw, true) : undefined;
+        let existing = null;
+        if (updateExistingEquipment) {
+          const currentItems = await loadFamilyItems(client.id, family, familyEntry.isCustom);
+          const match = findExistingEquipment(currentItems, {
+            name,
+            itemKey,
+            serial,
+            isCustom: familyEntry.isCustom
+          });
+          if (match.ambiguous) {
             return {
-              error: injectionError(msg, "missingRequiredField", {
-                field: required.label || required.key,
+              error: injectionError(msg, "ambiguousEquipment", {
+                name,
                 family
               })
             };
           }
+          existing = match.item || null;
+          if (existing?.id != null) {
+            const claimKey = `${client.id}:${family}:${existing.id}`;
+            if (claimedExistingIds.has(claimKey)) {
+              return {
+                error: injectionError(msg, "duplicateInFile", {
+                  name,
+                  family
+                })
+              };
+            }
+            claimedExistingIds.add(claimKey);
+          }
         }
+        if (!existing) {
+          for (const required of familyEntry.requiredFields || []) {
+            const value = data[required.key];
+            if (required.fieldType === "boolean") continue;
+            if (value == null || String(value).trim() === "") {
+              return {
+                error: injectionError(msg, "missingRequiredField", {
+                  field: required.label || required.key,
+                  family
+                })
+              };
+            }
+          }
+        }
+        pendingIdentities.add(identityKey);
+        const label = `${family}/${name} → ${client.name}`;
         if (familyEntry.isCustom) {
           return {
             prepared: {
               clientId: client.id,
               family,
               isCustom: true,
+              existing,
               item: {
                 name,
                 fields: data
               },
-              label: `${family}/${name} → ${client.name}`
+              label
             }
           };
         }
@@ -1090,38 +1264,106 @@ export async function runInjection({
             clientId: client.id,
             family,
             isCustom: false,
+            existing,
             item: {
               name,
-              item_key: cell(row, "item_key", "itemKey", "key") || undefined,
+              item_key: itemKey || undefined,
               data,
-              is_active: parseBool(cell(row, "is_active", "active"), true)
+              is_active: isActive
             },
-            label: `${family}/${name} → ${client.name}`
+            label
           }
         };
       },
       executePrepared: async prepared => {
+        if (prepared.existing?.id) {
+          if (prepared.isCustom) {
+            const previous = {
+              name: prepared.existing.name,
+              fields: cloneEquipmentData(prepared.existing.fields || prepared.existing.data || {})
+            };
+            const updated = await updateClientCustomEquipment(prepared.clientId, prepared.family, prepared.existing.id, {
+              name: prepared.item.name,
+              fields: prepared.item.fields
+            });
+            rememberFamilyItem(prepared.clientId, prepared.family, updated || prepared.existing);
+            return {
+              id: prepared.existing.id,
+              clientId: prepared.clientId,
+              family: prepared.family,
+              isCustom: true,
+              action: "updated",
+              previous,
+              label: `${prepared.label} · ${injectionError(msg, "updated")}`
+            };
+          }
+          const previousData = cloneEquipmentData(prepared.existing.data);
+          const previous = {
+            name: prepared.existing.name,
+            item_key: prepared.existing.item_key,
+            data: previousData,
+            is_active: prepared.existing.is_active
+          };
+          const mergedData = {
+            ...previousData,
+            ...(prepared.item.data || {})
+          };
+          const updated = await updateClientModuleItem(prepared.clientId, prepared.family, prepared.existing.id, {
+            name: prepared.item.name,
+            item_key: prepared.existing.item_key,
+            data: mergedData,
+            is_active: prepared.item.is_active !== undefined ? prepared.item.is_active : prepared.existing.is_active !== false
+          });
+          rememberFamilyItem(prepared.clientId, prepared.family, updated || prepared.existing);
+          return {
+            id: prepared.existing.id,
+            clientId: prepared.clientId,
+            family: prepared.family,
+            isCustom: false,
+            action: "updated",
+            previous,
+            label: `${prepared.label} · ${injectionError(msg, "updated")}`
+          };
+        }
         if (prepared.isCustom) {
           const created = await addClientCustomEquipment(prepared.clientId, prepared.family, prepared.item);
+          rememberFamilyItem(prepared.clientId, prepared.family, created);
           return {
             id: created?.id,
             clientId: prepared.clientId,
             family: prepared.family,
             isCustom: true,
-            label: prepared.label
+            action: "created",
+            label: `${prepared.label} · ${injectionError(msg, "created")}`
           };
         }
-        const created = await createClientModuleItem(prepared.clientId, prepared.family, prepared.item);
+        const created = await createClientModuleItem(prepared.clientId, prepared.family, {
+          ...prepared.item,
+          is_active: prepared.item.is_active !== undefined ? prepared.item.is_active : true
+        });
+        rememberFamilyItem(prepared.clientId, prepared.family, created);
         return {
           id: created?.id,
           clientId: prepared.clientId,
           family: prepared.family,
           isCustom: false,
-          label: prepared.label
+          action: "created",
+          label: `${prepared.label} · ${injectionError(msg, "created")}`
         };
       },
       rollbackCreated: async created => {
         if (!created?.id || !created?.clientId || !created?.family) return;
+        if (created.action === "updated" && created.previous) {
+          if (created.isCustom) {
+            await updateClientCustomEquipment(created.clientId, created.family, created.id, {
+              name: created.previous.name,
+              fields: created.previous.fields
+            });
+            return;
+          }
+          await updateClientModuleItem(created.clientId, created.family, created.id, created.previous);
+          return;
+        }
         if (created.isCustom) {
           await deleteClientCustomEquipment(created.clientId, created.family, created.id);
           return;
@@ -1198,6 +1440,7 @@ export async function runInjection({
 function createEmptyReport() {
   return {
     ok: 0,
+    updated: 0,
     failed: 0,
     skipped: 0,
     aborted: false,
@@ -1213,7 +1456,10 @@ function makePusher(report, onProgress, total) {
       message
     });
     if (status === "ok") report.ok += 1;
-    else if (status === "skip") report.skipped += 1;
+    else if (status === "updated") {
+      report.updated += 1;
+      report.ok += 1;
+    } else if (status === "skip") report.skipped += 1;
     else report.failed += 1;
     onProgress?.({
       ...report,
@@ -1248,7 +1494,7 @@ async function runAtomicBatch({
     await control?.checkpoint?.();
     const row = rows[i];
     const line = getLine(i, row);
-    const result = validateRow(row, line) || {};
+    const result = (await validateRow(row, line)) || {};
     if (result.error) {
       validationFailed = true;
       push("error", line, result.error);
@@ -1294,7 +1540,7 @@ async function runAtomicBatch({
       });
     }
     for (const item of created) {
-      push("ok", item.line, item.label);
+      push(item.action === "updated" ? "updated" : "ok", item.line, item.label);
     }
     return report;
   } catch (err) {
@@ -1315,6 +1561,7 @@ async function runAtomicBatch({
     report.aborted = true;
     report.cancelled = cancelledByUser;
     report.ok = 0;
+    report.updated = 0;
     report.failed = cancelledByUser ? 0 : 1;
     report.skipped = 0;
     report.lines = cancelledByUser

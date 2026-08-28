@@ -6,6 +6,7 @@ import styles from "./EquipmentDetailPage.module.css";
 import enterpriseDetailStyles from "../EnterprisesPage/EnterpriseDetailPage.module.css";
 import SmartTooltip from "../SmartTooltip";
 import EquipmentFormModal from "./EquipmentFormModal";
+import CustomEquipmentModal from "../EnterprisesPage/CustomEquipmentModal";
 import { fetchClientGeneral } from "../../api/clients";
 import { normalizeClientSites } from "../../utils/clientSites";
 import { updateEquipment, getCheckMKAvailability, getClientHardwareEquipment, getEquipmentLogs, purgeEquipmentLogs, equipmentTypeToFamily, getEquipmentCheckMKMonitoring, syncEquipmentCheckMKMonitoring, fetchEquipmentTags, addEquipmentTag, removeEquipmentTag } from "../../api/equipment";
@@ -51,7 +52,7 @@ import { findEquipmentInList, getEquipmentClientId, getEquipmentDbId as resolveE
 import { getRmmAgentId, getRmmAgentVersion, buildRmmAgentRowFromEquipment, getRmmSyncRequestedAt, isRmmManagedEquipment, patchEquipmentRmmSyncRequest, resolveRmmSyncRequestState, rmmSyncTimestampsMatch, formatRmmExpectedCollectionLabel, resolveRmmHeartbeatIntervalMinutes, agentSupportsImmediateFullSync, getRmmAgentStatusKey } from "./rmmMonitoringUtils";
 import { computeRmmDeviceHealth } from "./rmmDeviceHealthUtils";
 import { ScoreAside } from "./RmmDeviceScore";
-import { parseCustomFamilyType } from "../../api/equipmentFamilies";
+import { fetchEquipmentFamilies, mapCustomEquipmentItem, parseCustomFamilyType } from "../../api/equipmentFamilies";
 import { createTrackedAbortController } from "../../utils/pageLoadAbort";
 const CheckMKMappingModal = EquipmentMappingModal;
 export default function EquipmentDetailPage({
@@ -100,6 +101,7 @@ export default function EquipmentDetailPage({
   const [addingEquipmentTag, setAddingEquipmentTag] = useState(false);
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [editModalOpening, setEditModalOpening] = useState(false);
+  const [customEditFamily, setCustomEditFamily] = useState(null);
   const [alertModalOpen, setAlertModalOpen] = useState(false);
   const [proPromoFeature, setProPromoFeature] = useState(null);
   const [modalClient, setModalClient] = useState(null);
@@ -680,10 +682,6 @@ export default function EquipmentDetailPage({
     event?.preventDefault?.();
     setHeroMenuOpen(false);
     const clientId = getEquipmentClientId(equipment);
-    if (parseCustomFamilyType(equipment?.type)) {
-      toast.info("Edition custom disponible depuis la fiche entreprise.");
-      return;
-    }
     if (!clientId) {
       toast.error(copy.toasts.clientNotFound);
       return;
@@ -692,11 +690,30 @@ export default function EquipmentDetailPage({
     setEditModalOpening(true);
     try {
       const client = await fetchClientGeneral(clientId);
-      setModalClient({
+      const nextClient = {
         ...client,
         sites: Array.isArray(client.sites) ? [...client.sites] : client.sites,
         ssids: Array.isArray(client.ssids) ? [...client.ssids] : client.ssids
-      });
+      };
+      setModalClient(nextClient);
+      const familyKey = parseCustomFamilyType(equipment?.type) || equipment?.familyKey || null;
+      if (familyKey) {
+        let family = equipment?.customFamily?.familyKey === familyKey ? equipment.customFamily : null;
+        if (!family?.fields) {
+          const families = await fetchEquipmentFamilies().catch(() => []);
+          family = (Array.isArray(families) ? families : []).find(entry => entry.familyKey === familyKey) || family;
+        }
+        if (!family) {
+          family = {
+            familyKey,
+            label: equipment?.customFamily?.label || equipment?.familyLabel || familyKey,
+            icon: equipment?.customFamily?.icon || equipment?.familyIcon || "mdi:devices",
+            fields: equipment?.customFields || equipment?.customFamily?.fields || []
+          };
+        }
+        setCustomEditFamily(family);
+        return;
+      }
       setEditModalOpen(true);
       getClientHardwareEquipment(clientId).then(allEquipment => {
         const list = Array.isArray(allEquipment) ? allEquipment : [];
@@ -756,6 +773,28 @@ export default function EquipmentDetailPage({
   const handleEquipmentModalDeleted = () => {
     onUpdate?.(null);
     onBack?.();
+  };
+  const handleCustomEquipmentRefresh = async savedRow => {
+    if (!savedRow) {
+      handleEquipmentModalDeleted();
+      return;
+    }
+    const family = customEditFamily || equipment?.customFamily || null;
+    const nextEquipment = {
+      ...equipment,
+      ...mapCustomEquipmentItem(savedRow, family, {
+        clientId: getEquipmentClientId(equipment) || savedRow.clientId,
+        clientName: equipment?.clientName || modalClient?.name || ""
+      }),
+      id: equipment?.id,
+      dbId: equipment?.dbId || savedRow.id
+    };
+    setFormData(buildDetailFormData(nextEquipment, {
+      clientSites,
+      clientSsids,
+      customFamily: family
+    }));
+    onUpdate?.(nextEquipment);
   };
   const loadSSIDs = async () => {
     setGlobalSSIDs([]);
@@ -2150,6 +2189,11 @@ export default function EquipmentDetailPage({
     }} onConfirm={handlePurgeLogs} title={modalsCopy.confirm?.purgeLogs?.title} message={purgeLogsMessage} icon="mdi:delete-sweep" confirmLabel={modalsCopy.confirm?.purgeLogs?.confirm} confirmVariant="dangerSolid" confirmLoading={purgingLogs} />
 
       {editModalOpen && modalClient ? <EquipmentFormModal open={editModalOpen} onClose={() => setEditModalOpen(false)} client={modalClient} equipment={equipment} moduleKey={equipmentModuleKey || equipment?.type || "Servers"} mode="edit" peerFirewalls={peerFirewalls} peerServers={peerServers} peerStorage={peerStorage} peerBorneWifi={peerBorneWifi} onSaved={handleEquipmentModalSaved} onDeleted={handleEquipmentModalDeleted} /> : null}
+
+      <CustomEquipmentModal isOpen={Boolean(customEditFamily)} onClose={() => setCustomEditFamily(null)} family={customEditFamily} item={equipment ? {
+      ...equipment,
+      id: resolveEquipmentDbId(equipment) || equipment.id
+    } : null} client={modalClient} clientId={getEquipmentClientId(equipment)} onRefresh={handleCustomEquipmentRefresh} />
 
       <EquipmentAlertSuspensionModal open={alertModalOpen} onClose={() => setAlertModalOpen(false)} equipment={equipment} onNavigate={onNavigate} alert={alertSettings} />
 

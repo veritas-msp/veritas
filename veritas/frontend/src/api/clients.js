@@ -1396,6 +1396,16 @@ export async function saveClientModules(clientId, data) {
     }
   }
 }
+export async function fetchClientModuleItems(clientId, family, options = {}) {
+  const backendFamily = FAMILY_MAPPING[String(family || "").toLowerCase()] || String(family || "").toLowerCase();
+  const res = await fetch(`${MODULES_BASE_URL}/${clientId}/${backendFamily}`, {
+    credentials: "include",
+    signal: options.signal
+  });
+  if (!res.ok) return [];
+  const data = await res.json();
+  return Array.isArray(data) ? data : [];
+}
 export async function createClientModuleItem(clientId, family, item) {
   const backendFamily = FAMILY_MAPPING[family.toLowerCase()] || family.toLowerCase();
   const res = await fetch(`${MODULES_BASE_URL}/${clientId}/${backendFamily}`, {

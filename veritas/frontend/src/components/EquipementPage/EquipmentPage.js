@@ -43,7 +43,7 @@ import { getEquipmentPageCopy, getEquipmentColumnLabel, getEquipmentEmptyMessage
 import { getEquipmentModalsCopy, interpolate } from "./equipmentModalsI18n";
 import { HARDWARE_TYPE_ORDER } from "../EnterprisesPage/infraHoneycombLayout";
 import { getInfraMapCopy } from "../EnterprisesPage/infraMapI18n";
-import { parseCustomFamilyType } from "../../api/equipmentFamilies";
+import { mapCustomEquipmentItem, parseCustomFamilyType } from "../../api/equipmentFamilies";
 import { filterBySite } from "../../utils/siteFilterUtils";
 import { equipmentMatchesFleetFamily } from "../../utils/equipmentFamilyStats";
 import { getEquipmentFormOptionsCopy, getRoleOptionLabel } from "./equipmentFormOptionsI18n";
@@ -69,6 +69,12 @@ const EQUIPMENT_CACHE_KEY = "equipment_page_cache_v3";
 const EQUIPMENT_CACHE_TTL_MS = 5 * 60 * 1000;
 const SAUVEGARDE_COLUMN_KEYS = ["name", "server", "version", "jobsCount", "mappedJobsCount"];
 function formatCustomFamilyFieldValue(field, value, pageCopy) {
+  if (field?.fieldType === "number") {
+    if (value === false) return "0";
+    if (value === true) return "1";
+    if (value == null || value === "") return "-";
+    return String(value);
+  }
   if (value == null || value === "") return "-";
   if (field?.fieldType === "boolean") return value ? pageCopy.yes : pageCopy.no;
   if (field?.fieldType === "date") {
@@ -1297,17 +1303,9 @@ const EquipmentPage = forwardRef(function EquipmentPage({
       return Boolean(querySerial && compactSerial(serial).includes(querySerial));
     });
   }, [searchQuery]);
-  const buildCustomEquipmentDetailItem = useCallback((family, item) => ({
-    ...item,
-    type: `Custom:${family.familyKey}`,
-    familyKey: family.familyKey,
-    customFamily: family,
-    customFields: family.fields || [],
+  const buildCustomEquipmentDetailItem = useCallback((family, item) => mapCustomEquipmentItem(item, family, {
     clientId: item.clientId || embeddedClient?.id || fixedClientId || null,
-    clientName: item.clientName || embeddedClient?.name || "",
-    location: item.location || item.fields?.site || item.data?.site || "",
-    rawData: item.rawData || item.data || item.fields || {},
-    data: item.data || item.fields || {}
+    clientName: item.clientName || embeddedClient?.name || ""
   }), [embeddedClient, fixedClientId]);
   const baseEquipment = useMemo(() => {
     let equipment = allEquipment;
@@ -2023,7 +2021,7 @@ const EquipmentPage = forwardRef(function EquipmentPage({
   };
   const buildEquipmentSharePayload = (equipment, clientDisplay) => {
     const name = (equipment?.name || "").toString().trim() || "Equipment";
-    const type = (equipment?.type || "").toString().trim();
+    const type = (equipment?.customFamily?.label || equipment?.type || "").toString().trim();
     const client = (clientDisplay || equipment?.clientName || "").toString().trim();
     const ip = (equipment?.ip || "").toString().trim();
     const serial = (equipment?.serial || "").toString().trim();
@@ -2499,6 +2497,43 @@ const EquipmentPage = forwardRef(function EquipmentPage({
     }
     return items;
   };
+  const buildCustomEmbeddedMenuItems = (family, item) => {
+    const equipment = buildCustomEquipmentDetailItem(family, item);
+    const clientDisplay = formatClientDisplay(equipment.clientName || "");
+    const items = [];
+    if (onCustomFamilyManage) {
+      items.push({
+        id: "edit",
+        icon: "mdi:pencil-outline",
+        label: actions.editEquipment,
+        onClick: () => onCustomFamilyManage(family, item)
+      });
+    }
+    items.push({
+      id: "open",
+      icon: "mdi:open-in-new",
+      label: actions.openSheet,
+      onClick: () => handleEquipmentOpen(equipment)
+    });
+    items.push({
+      type: "divider"
+    });
+    items.push({
+      id: "copy",
+      icon: "mdi:content-copy",
+      label: actions.copySheet,
+      onClick: () => {
+        const payload = buildEquipmentSharePayload(equipment, clientDisplay);
+        copyToClipboard(payload.text, actions.copySheetToast);
+      }
+    }, {
+      id: "share",
+      icon: "mdi:share-variant",
+      label: actions.shareSheet,
+      onClick: () => shareEquipment(equipment, clientDisplay)
+    });
+    return items;
+  };
   const renderEmbeddedAnydeskQuickButton = equipment => {
     if (!canShowRemoteAccessButton(equipment) || !hasServerRemoteAccessConfigured(equipment)) return null;
     return <button type="button" className={`${styles.embeddedQuickActionButton} ${styles.embeddedQuickActionButtonRemoteActive}`} title={formatServerRemoteTitle(equipment)} aria-label={actions.serverRemote} onClick={e => {
@@ -2858,8 +2893,15 @@ const EquipmentPage = forwardRef(function EquipmentPage({
   }, []);
   const getEquipmentForStats = useCallback(type => {
     if (!type) return [];
+    const familyKey = parseCustomFamilyType(type);
+    if (familyKey) {
+      const family = customFamiliesForUi.find(entry => entry.familyKey === familyKey);
+      if (!family) return [];
+      const items = Array.isArray(family.items) ? family.items : [];
+      return items.map(item => buildCustomEquipmentDetailItem(family, item));
+    }
     return baseEquipment.filter(eq => equipmentMatchesFleetFamily(eq.type, type));
-  }, [baseEquipment]);
+  }, [baseEquipment, customFamiliesForUi, buildCustomEquipmentDetailItem]);
   const getComputersForStats = useCallback(() => getEquipmentForStats("Ordinateurs"), [getEquipmentForStats]);
   const getEmbeddedActiveType = useCallback(() => embeddedActiveType, [embeddedActiveType]);
   useImperativeHandle(ref, () => ({
@@ -3646,12 +3688,12 @@ const EquipmentPage = forwardRef(function EquipmentPage({
                         <tr>
                           <th>Nom</th>
                           {fields.map(field => <th key={field.fieldKey}>{field.label}</th>)}
-                          {onCustomFamilyManage ? <th>{pageCopy.actionsColumn}</th> : null}
+                          <th className={styles.embeddedColActions}>{pageCopy.actionsColumn}</th>
                         </tr>
                       </thead>
                       <tbody>
                         {items.length === 0 ? <tr>
-                            <td colSpan={fields.length + (onCustomFamilyManage ? 2 : 1)} className={styles.equipmentEmptyCell}>
+                            <td colSpan={fields.length + 2} className={styles.equipmentEmptyCell}>
                               No {family.label.toLowerCase()} for this client.
                             </td>
                           </tr> : pagedList.map(item => <tr key={item.id} className={styles.equipmentRowEmbedded} onClick={() => handleEquipmentOpen(buildCustomEquipmentDetailItem(family, item))} style={{
@@ -3661,14 +3703,11 @@ const EquipmentPage = forwardRef(function EquipmentPage({
                               {fields.map(field => <td key={field.fieldKey}>
                                   {formatCustomFamilyFieldValue(field, item.fields?.[field.fieldKey] ?? item.data?.[field.fieldKey], pageCopy)}
                                 </td>)}
-                              {onCustomFamilyManage ? <td>
-                                  <button type="button" className={styles.embeddedTableManageBtn} onClick={event => {
-                            event.stopPropagation();
-                            onCustomFamilyManage(family, item);
-                          }}>
-                                    Manage
-                                  </button>
-                                </td> : null}
+                              <td className={styles.embeddedColActions} onClick={event => event.stopPropagation()}>
+                                <div className={styles.embeddedRowActions}>
+                                  <EmbeddedEquipmentActionsMenu menuKey={`custom:${family.familyKey}:${item.id}`} openMenuKey={embeddedRowMenuKey} onOpenChange={setEmbeddedRowMenuKey} items={buildCustomEmbeddedMenuItems(family, item)} />
+                                </div>
+                              </td>
                             </tr>)}
                       </tbody>
                     </table>

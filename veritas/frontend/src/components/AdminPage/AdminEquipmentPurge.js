@@ -18,12 +18,25 @@ function equipmentSearchBlob(item) {
     item?.name,
     item?.clientName,
     item?.type,
+    item?.familyLabel,
+    item?.familyKey,
     item?.ip,
     item?.serial,
     item?.mac,
     item?.location,
     item?.model
   ].filter(Boolean).join(" ").toLowerCase();
+}
+
+function getPurgeTypeKey(item) {
+  if (item?.isCustom || String(item?.type || "").startsWith("Custom:")) {
+    return item.familyKey ? `Custom:${item.familyKey}` : String(item?.type || "");
+  }
+  return String(item?.type || "");
+}
+
+function getPurgeTypeLabel(item) {
+  return item?.familyLabel || item?.type || "";
 }
 
 function SearchableFilterSelect({
@@ -226,18 +239,22 @@ export default function AdminEquipmentPurge() {
   }, [items, locale]);
 
   const typeOptions = useMemo(() => {
-    const set = new Set();
+    const map = new Map();
     items.forEach(item => {
-      if (item?.type) set.add(item.type);
+      const id = getPurgeTypeKey(item);
+      if (!id) return;
+      if (!map.has(id)) map.set(id, getPurgeTypeLabel(item) || id);
     });
-    return [...set].sort((a, b) => a.localeCompare(b, locale, { sensitivity: "base" }));
+    return [...map.entries()]
+      .map(([id, name]) => ({ id, name }))
+      .sort((a, b) => a.name.localeCompare(b.name, locale, { sensitivity: "base" }));
   }, [items, locale]);
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
     return items.filter(item => {
       if (clientFilter && String(item.clientId) !== clientFilter) return false;
-      if (typeFilter && item.type !== typeFilter) return false;
+      if (typeFilter && getPurgeTypeKey(item) !== typeFilter) return false;
       if (q && !equipmentSearchBlob(item).includes(q)) return false;
       return true;
     });
@@ -371,7 +388,7 @@ export default function AdminEquipmentPurge() {
                 <SearchableFilterSelect
                   value={typeFilter}
                   onChange={setTypeFilter}
-                  options={typeOptions.map(type => ({ id: type, name: type }))}
+                  options={typeOptions}
                   allLabel={copy.filterTypeAll}
                   searchPlaceholder={copy.filterTypeSearch}
                   emptyLabel={copy.filterTypeEmpty}
@@ -460,7 +477,7 @@ export default function AdminEquipmentPurge() {
                               <div className={s.nameMain}>{name}</div>
                               {item.model ? <div className={s.nameSub}>{item.model}</div> : null}
                             </td>
-                            <td>{item.type || "—"}</td>
+                            <td>{getPurgeTypeLabel(item) || "—"}</td>
                             <td className={item.ip ? undefined : s.muted}>{item.ip || "—"}</td>
                             <td className={item.serial ? undefined : s.muted}>{item.serial || "—"}</td>
                             <td className={item.location ? undefined : s.muted}>{item.location || "—"}</td>
@@ -502,7 +519,7 @@ export default function AdminEquipmentPurge() {
                   <strong>{item.clientName || "—"}</strong>
                   {" · "}
                   {item.name || "—"}
-                  {item.type ? ` (${item.type})` : ""}
+                  {getPurgeTypeLabel(item) ? ` (${getPurgeTypeLabel(item)})` : ""}
                 </li>)}
               {deleteTargets.length > 10 ? <li>
                   {interpolate(copy.confirmOthers, { count: deleteTargets.length - 10 })}

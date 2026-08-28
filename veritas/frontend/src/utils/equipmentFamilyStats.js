@@ -99,7 +99,10 @@ function equipmentBags(item) {
     : item?.data && typeof item.data === "object" && !Array.isArray(item.data)
       ? item.data
       : {};
-  return [item, raw, nested].filter(bag => bag && typeof bag === "object");
+  const fields = item?.fields && typeof item.fields === "object" && !Array.isArray(item.fields)
+    ? item.fields
+    : {};
+  return [item, fields, raw, nested].filter(bag => bag && typeof bag === "object");
 }
 
 const FAMILY_TYPE_LABELS = new Set([
