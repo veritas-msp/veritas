@@ -12,6 +12,8 @@ import { useAppLocale } from "../../hooks/useAppGeneralSettings";
 import { getEnterpriseConfigModalsCopy } from "./enterpriseConfigModalsI18n";
 import { interpolate } from "../../i18n/translate";
 import { getSharedEquipmentFieldDefs, getSharedEquipmentFieldLabel, mergeCustomEquipmentFamilyFields } from "../EquipementPage/sharedEquipmentFields";
+import { getFormFields } from "../EquipementPage/equipmentFormFieldsI18n";
+const STATUS_FIELD_KEYS = new Set(["actif", "active", "is_active", "isActive"]);
 const SECTIONS = [{
   id: "identity",
   label: "Identity",
@@ -29,11 +31,29 @@ const SECTIONS = [{
   icon: "mdi:tune-variant"
 }];
 const LOCATION_FIELD_KEYS = new Set(["location", "lieu", "site", "emplacement"]);
+function readItemIsActive(item) {
+  const layers = [item, item?.fields, item?.data];
+  const keys = ["is_active", "isActive", "actif", "active"];
+  for (const layer of layers) {
+    if (!layer || typeof layer !== "object") continue;
+    for (const key of keys) {
+      const value = layer[key];
+      if (value === undefined || value === null || value === "") continue;
+      if (typeof value === "boolean") return value;
+      const normalized = String(value).trim().toLowerCase();
+      if (["false", "0", "no", "non", "off", "inactif", "inactive", "disabled"].includes(normalized)) return false;
+      if (["true", "1", "yes", "oui", "on", "actif", "active", "enabled"].includes(normalized)) return true;
+    }
+  }
+  return true;
+}
 function buildEmptyForm(fields = []) {
   const form = {
-    name: ""
+    name: "",
+    is_active: true
   };
   fields.forEach(field => {
+    if (STATUS_FIELD_KEYS.has(field.fieldKey)) return;
     form[field.fieldKey] = field.fieldType === "boolean" ? false : "";
   });
   return form;
@@ -41,6 +61,7 @@ function buildEmptyForm(fields = []) {
 function buildFormFromItem(item, fields = []) {
   const form = buildEmptyForm(fields);
   form.name = item?.name || "";
+  form.is_active = readItemIsActive(item);
   fields.forEach(field => {
     const value = item?.fields?.[field.fieldKey] ?? item?.data?.[field.fieldKey];
     if (field.fieldType === "boolean") {
@@ -75,6 +96,7 @@ export default function CustomEquipmentModal({
 }) {
   const locale = useAppLocale();
   const configCopy = useMemo(() => getEnterpriseConfigModalsCopy(locale), [locale]);
+  const formFields = useMemo(() => getFormFields(locale).fields || {}, [locale]);
   const [activeSection, setActiveSection] = useState("identity");
   const [form, setForm] = useState(() => buildEmptyForm(mergeCustomEquipmentFamilyFields(family?.fields || [])));
   const [initialSnapshot, setInitialSnapshot] = useState(() => buildEmptyForm(mergeCustomEquipmentFamilyFields(family?.fields || [])));
@@ -82,8 +104,8 @@ export default function CustomEquipmentModal({
   const [deleting, setDeleting] = useState(false);
   const fields = useMemo(() => mergeCustomEquipmentFamilyFields(family?.fields || []), [family?.fields]);
   const sharedFieldKeys = useMemo(() => new Set(getSharedEquipmentFieldDefs().map(field => field.key)), []);
-  const commonFields = useMemo(() => fields.filter(field => sharedFieldKeys.has(field.fieldKey)), [fields, sharedFieldKeys]);
-  const detailFields = useMemo(() => fields.filter(field => !sharedFieldKeys.has(field.fieldKey)), [fields, sharedFieldKeys]);
+  const commonFields = useMemo(() => fields.filter(field => sharedFieldKeys.has(field.fieldKey) && !STATUS_FIELD_KEYS.has(field.fieldKey)), [fields, sharedFieldKeys]);
+  const detailFields = useMemo(() => fields.filter(field => !sharedFieldKeys.has(field.fieldKey) && !STATUS_FIELD_KEYS.has(field.fieldKey)), [fields, sharedFieldKeys]);
   const isAddMode = !item?.id;
   const siteOptions = useMemo(() => normalizeClientSites(client?.sites || []).map(site => site.name).filter(Boolean), [client?.sites]);
   useEffect(() => {
@@ -151,6 +173,7 @@ export default function CustomEquipmentModal({
     }
     const payloadFields = {};
     fields.forEach(field => {
+      if (STATUS_FIELD_KEYS.has(field.fieldKey)) return;
       const value = form[field.fieldKey];
       if (field.fieldType === "boolean") {
         payloadFields[field.fieldKey] = Boolean(value);
@@ -173,7 +196,8 @@ export default function CustomEquipmentModal({
     try {
       const payload = {
         name,
-        fields: payloadFields
+        fields: payloadFields,
+        is_active: form.is_active !== false
       };
       if (isAddMode) {
         const saved = await addClientCustomEquipment(clientId, family.familyKey, payload);
@@ -313,6 +337,25 @@ export default function CustomEquipmentModal({
                     <input id="custom-equipment-name" type="text" className={styles.input} value={form.name} onChange={e => patchForm({
                     name: e.target.value
                   })} placeholder="Meeting room A" required />
+                  </div>
+                  <div className={`${styles.field} ${styles.fieldFull}`}>
+                    <span className={styles.label}>{formFields.status || "Statut"}</span>
+                    <div className={styles.modulesGrid}>
+                      <button type="button" className={`${styles.moduleTile} ${form.is_active !== false ? styles.moduleTileActive : ""}`} onClick={() => patchForm({
+                      is_active: true
+                    })} aria-pressed={form.is_active !== false}>
+                        {form.is_active !== false && <Icon icon="mdi:check-circle" className={styles.moduleCheck} aria-hidden />}
+                        <Icon icon="mdi:check-circle-outline" className={styles.moduleTileIcon} aria-hidden />
+                        <span className={styles.moduleTileLabel}>{formFields.active || "Actif"}</span>
+                      </button>
+                      <button type="button" className={`${styles.moduleTile} ${form.is_active === false ? styles.moduleTileActive : ""}`} onClick={() => patchForm({
+                      is_active: false
+                    })} aria-pressed={form.is_active === false}>
+                        {form.is_active === false && <Icon icon="mdi:check-circle" className={styles.moduleCheck} aria-hidden />}
+                        <Icon icon="mdi:close-circle-outline" className={styles.moduleTileIcon} aria-hidden />
+                        <span className={styles.moduleTileLabel}>{formFields.inactive || "Inactif"}</span>
+                      </button>
+                    </div>
                   </div>
                 </div>
               </> : null}

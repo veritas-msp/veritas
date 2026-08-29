@@ -3680,26 +3680,28 @@ const EquipmentPage = forwardRef(function EquipmentPage({
                 pagedList,
                 total
               } = getPagedSlice(items, sectionKey);
-              const fields = family.fields || [];
+              const fields = (family.fields || []).filter(field => !["actif", "active", "is_active", "isActive"].includes(field.fieldKey));
               return <div key={sectionKey} className={`${styles.equipmentTableSection} ${styles.equipmentTableSectionEmbedded}`}>
                   <div className={`${styles.tableWrapper} ${styles.tableWrapperEmbedded}`}>
                     <table className={styles.equipmentTableEmbedded}>
                       <thead>
                         <tr>
                           <th>Nom</th>
+                          <th>{pageCopy.columns?.activeStatus || "Actif"}</th>
                           {fields.map(field => <th key={field.fieldKey}>{field.label}</th>)}
                           <th className={styles.embeddedColActions}>{pageCopy.actionsColumn}</th>
                         </tr>
                       </thead>
                       <tbody>
                         {items.length === 0 ? <tr>
-                            <td colSpan={fields.length + 2} className={styles.equipmentEmptyCell}>
+                            <td colSpan={fields.length + 3} className={styles.equipmentEmptyCell}>
                               No {family.label.toLowerCase()} for this client.
                             </td>
                           </tr> : pagedList.map(item => <tr key={item.id} className={styles.equipmentRowEmbedded} onClick={() => handleEquipmentOpen(buildCustomEquipmentDetailItem(family, item))} style={{
                       cursor: "pointer"
                     }}>
                               <td>{item.name || "-"}</td>
+                              <td>{renderActiveStatusIcon(buildCustomEquipmentDetailItem(family, item))}</td>
                               {fields.map(field => <td key={field.fieldKey}>
                                   {formatCustomFamilyFieldValue(field, item.fields?.[field.fieldKey] ?? item.data?.[field.fieldKey], pageCopy)}
                                 </td>)}

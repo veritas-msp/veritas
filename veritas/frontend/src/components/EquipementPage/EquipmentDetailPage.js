@@ -35,7 +35,7 @@ import { resolveEquipmentActivityRange, toDateInputValue } from "./equipmentActi
 import { buildDetailFormData } from "./equipmentDetailConfig";
 import { patchEquipmentWithSharedFields } from "./sharedEquipmentFields";
 import { getEquipmentDetailTypeLabel, getEquipmentDetailCopy, formatEquipmentDetailRelative, formatAlertSettingsDateTime, getEquipmentCreatedAt } from "./equipmentDetailPageI18n";
-import { canonicalizeComputerType, patchEquipmentLocation } from "./equipmentFormConfig";
+import { canonicalizeComputerType, patchEquipmentLocation, readEquipmentIsActive } from "./equipmentFormConfig";
 import { ConfirmModal } from "../AdminPage/AdminUi";
 import { useAppLocale } from "../../hooks/useAppGeneralSettings";
 import { getEquipmentModalsCopy, interpolate } from "./equipmentModalsI18n";
@@ -1355,6 +1355,7 @@ export default function EquipmentDetailPage({
   const createdAtLabel = createdAtFormatted && createdAtFormatted !== "-" ? interpolate(copy.hero.createdInVeritas, {
     date: createdAtFormatted
   }) : null;
+  const equipmentIsActive = readEquipmentIsActive(equipment);
   const rmmStatusKey = showRmmHeroStatus ? getRmmAgentStatusKey(equipmentWithRmmLive) : null;
   const rmmStatusLabel = rmmStatusKey === "online" ? copy.agent.online : rmmStatusKey === "offline" ? copy.agent.offline : rmmStatusKey === "manual" ? copy.agent.manual : rmmStatusKey ? copy.agent.unknown : null;
   const showQuickConnectHero = Boolean(isSynologyNasStorage && formData.quickConnect);
@@ -1379,6 +1380,9 @@ export default function EquipmentDetailPage({
               </h1>
               <div className={`${enterpriseDetailStyles.heroMeta} ${styles.heroMetaPlain}`} aria-label={copy.hero.metaAria}>
                 <span className={styles.heroMetaPlainItem}>{typeDisplayLabel}</span>
+                <span className={`${styles.heroMetaPlainItem} ${equipmentIsActive ? styles.heroMetaStatusOnline : styles.heroMetaStatusOffline}`}>
+                  {equipmentIsActive ? copy.hero.active : copy.hero.inactive}
+                </span>
                 {createdAtLabel ? <span className={styles.heroMetaPlainItem} title={copy.stats.createdInVeritas}>
                     {createdAtLabel}
                   </span> : null}

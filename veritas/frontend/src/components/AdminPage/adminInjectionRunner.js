@@ -581,8 +581,8 @@ function cell(row, ...keys) {
 function parseBool(value, fallback = undefined) {
   if (value == null || String(value).trim() === "") return fallback;
   const v = String(value).trim().toLowerCase();
-  if (["1", "true", "yes", "oui", "y", "on"].includes(v)) return true;
-  if (["0", "false", "no", "non", "n", "off"].includes(v)) return false;
+  if (["1", "true", "yes", "oui", "y", "on", "actif", "active", "enabled"].includes(v)) return true;
+  if (["0", "false", "no", "non", "n", "off", "inactif", "inactive", "disabled"].includes(v)) return false;
   return fallback;
 }
 
@@ -1263,8 +1263,11 @@ export async function runInjection({
             })
           };
         }
-        const activeRaw = cell(row, "is_active", "active");
-        const isActive = activeRaw ? parseBool(activeRaw, true) : undefined;
+        const activeRaw = cell(row, "is_active", "active", "actif");
+        let isActive = parseBool(activeRaw, undefined);
+        if (isActive === undefined) {
+          isActive = parseBool(data.actif ?? data.is_active ?? data.active ?? data.isActive, undefined);
+        }
         let existing = null;
         if (updateExistingEquipment) {
           const currentItems = await loadFamilyItems(client.id, family, familyEntry.isCustom);
@@ -1324,7 +1327,8 @@ export async function runInjection({
               existing,
               item: {
                 name,
-                fields: data
+                fields: data,
+                is_active: isActive
               },
               label
             }
@@ -1355,7 +1359,8 @@ export async function runInjection({
             };
             const updated = await updateClientCustomEquipment(prepared.clientId, prepared.family, prepared.existing.id, {
               name: prepared.item.name,
-              fields: prepared.item.fields
+              fields: prepared.item.fields,
+              is_active: prepared.item.is_active !== undefined ? prepared.item.is_active : prepared.existing.is_active !== false
             });
             rememberFamilyItem(prepared.clientId, prepared.family, updated || prepared.existing);
             return {
@@ -1397,7 +1402,10 @@ export async function runInjection({
           };
         }
         if (prepared.isCustom) {
-          const created = await addClientCustomEquipment(prepared.clientId, prepared.family, prepared.item);
+          const created = await addClientCustomEquipment(prepared.clientId, prepared.family, {
+            ...prepared.item,
+            is_active: prepared.item.is_active !== undefined ? prepared.item.is_active : true
+          });
           rememberFamilyItem(prepared.clientId, prepared.family, created);
           return {
             id: created?.id,

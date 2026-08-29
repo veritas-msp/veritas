@@ -340,9 +340,41 @@ export async function deleteEquipmentFamily(id) {
     familyKey: result.rows[0].family_key
   };
 }
+const INACTIVE_FLAG_KEYS = new Set(["false", "0", "no", "non", "off", "inactive", "inactif", "disabled"]);
+const ACTIVE_FLAG_KEYS = new Set(["true", "1", "yes", "oui", "on", "active", "actif", "enabled"]);
+
+export function parseEquipmentActiveFlag(...values) {
+  for (const value of values) {
+    if (value === undefined || value === null || value === "") continue;
+    if (typeof value === "boolean") return value;
+    if (typeof value === "number") return value !== 0;
+    const key = String(value).trim().toLowerCase();
+    if (INACTIVE_FLAG_KEYS.has(key)) return false;
+    if (ACTIVE_FLAG_KEYS.has(key)) return true;
+  }
+  return undefined;
+}
+
+function resolveCustomIsActive(payload = {}, fallback = true) {
+  const fields = payload.fields && typeof payload.fields === "object" ? payload.fields : payload;
+  const parsed = parseEquipmentActiveFlag(
+    payload.is_active,
+    payload.isActive,
+    payload.actif,
+    payload.active,
+    fields?.is_active,
+    fields?.isActive,
+    fields?.actif,
+    fields?.active
+  );
+  return parsed !== undefined ? parsed : fallback;
+}
+
 export function mapCustomEquipmentRow(row) {
   const data = row.data && typeof row.data === "object" ? row.data : {};
   const name = String(data.name || row.name || row.item_key || "").trim();
+  const fromJson = parseEquipmentActiveFlag(data.actif, data.is_active, data.active, data.isActive);
+  const isActive = fromJson !== undefined ? fromJson : parseEquipmentActiveFlag(row.is_active) !== false;
   return {
     id: row.id,
     clientId: row.client_id,
@@ -353,7 +385,8 @@ export function mapCustomEquipmentRow(row) {
       ...data,
       name
     },
-    isActive: row.is_active !== false,
+    isActive,
+    is_active: isActive,
     createdAt: row.created_at,
     updatedAt: row.updated_at
   };
@@ -364,7 +397,7 @@ export async function listClientCustomEquipment(clientId, familyKey = null) {
   let query = `
     SELECT *
     FROM v_b_clients_m_custom_equipment
-    WHERE client_id = $1 AND is_active IS NOT FALSE
+    WHERE client_id = $1
   `;
   if (familyKey) {
     query += " AND family_key = $2";
@@ -393,14 +426,20 @@ export async function createClientCustomEquipment(clientId, familyKey, payload =
     name
   };
   delete data.name;
+  const isActive = resolveCustomIsActive(payload, true);
+  delete data.actif;
+  delete data.active;
+  delete data.is_active;
+  delete data.isActive;
   const storedData = {
     name,
-    ...data
+    ...data,
+    actif: isActive
   };
   const result = await pool.query(`INSERT INTO v_b_clients_m_custom_equipment
        (client_id, family_key, item_key, name, data, is_active)
-     VALUES ($1, $2, $3, $4, $5, TRUE)
-     RETURNING *`, [clientId, familyKey, name, name, JSON.stringify(storedData)]);
+     VALUES ($1, $2, $3, $4, $5, $6)
+     RETURNING *`, [clientId, familyKey, name, name, JSON.stringify(storedData), isActive]);
   return mapCustomEquipmentRow(result.rows[0]);
 }
 export async function updateClientCustomEquipment(clientId, familyKey, itemId, payload = {}) {
@@ -422,21 +461,27 @@ export async function updateClientCustomEquipment(clientId, familyKey, itemId, p
     throw err;
   }
   const incomingFields = payload.fields && typeof payload.fields === "object" ? payload.fields : payload;
+  const isActive = resolveCustomIsActive(payload, current.isActive !== false);
   const nextData = {
     ...current.data,
     ...incomingFields,
-    name
+    name,
+    actif: isActive
   };
   delete nextData.id;
   delete nextData.clientId;
   delete nextData.familyKey;
+  delete nextData.is_active;
+  delete nextData.isActive;
+  delete nextData.active;
   const result = await pool.query(`UPDATE v_b_clients_m_custom_equipment
      SET name = $4,
          item_key = $4,
          data = $5,
+         is_active = $6,
          updated_at = NOW()
      WHERE id = $1 AND client_id = $2 AND family_key = $3
-     RETURNING *`, [itemId, clientId, familyKey, name, JSON.stringify(nextData)]);
+     RETURNING *`, [itemId, clientId, familyKey, name, JSON.stringify(nextData), isActive]);
   return {
     item: mapCustomEquipmentRow(result.rows[0]),
     previous: current

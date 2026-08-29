@@ -137,6 +137,21 @@ export default function EquipmentFormSectionContent({
               </label>
               <SiteSuggestInput id="equipment-form-site" value={formData.location ?? ""} onChange={nextValue => update("location", nextValue)} sites={availableSites} placeholder={f.locationPlaceholder} />
             </div>
+            <div className={`${styles.field} ${styles.fieldFull}`}>
+              <span className={styles.label}>{f.status || "Statut"}</span>
+              <div className={styles.modulesGrid}>
+                <button type="button" className={`${styles.moduleTile} ${formData.is_active !== false ? styles.moduleTileActive : ""}`} onClick={() => update("is_active", true)} aria-pressed={formData.is_active !== false}>
+                  {formData.is_active !== false && <Icon icon="mdi:check-circle" className={styles.moduleCheck} aria-hidden />}
+                  <Icon icon="mdi:check-circle-outline" className={styles.moduleTileIcon} aria-hidden />
+                  <span className={styles.moduleTileLabel}>{f.active || "Actif"}</span>
+                </button>
+                <button type="button" className={`${styles.moduleTile} ${formData.is_active === false ? styles.moduleTileActive : ""}`} onClick={() => update("is_active", false)} aria-pressed={formData.is_active === false}>
+                  {formData.is_active === false && <Icon icon="mdi:check-circle" className={styles.moduleCheck} aria-hidden />}
+                  <Icon icon="mdi:close-circle-outline" className={styles.moduleTileIcon} aria-hidden />
+                  <span className={styles.moduleTileLabel}>{f.inactive || "Inactif"}</span>
+                </button>
+              </div>
+            </div>
           </div>
           {apiType === "Firewalls" && <div className={`${styles.field} ${styles.fieldFull}`} style={{
           marginTop: "1rem"

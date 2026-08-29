@@ -839,6 +839,20 @@ function buildEquipmentDataPayload(type, formData, existingData = {}, equipment 
   });
   return payload;
 }
+function resolveEquipmentIsActivePayload(formData, fallbacks = []) {
+  if (formData && Object.prototype.hasOwnProperty.call(formData, "is_active")) {
+    return formData.is_active !== false;
+  }
+  if (formData && Object.prototype.hasOwnProperty.call(formData, "isActive")) {
+    return formData.isActive !== false;
+  }
+  for (const source of fallbacks) {
+    if (!source || typeof source !== "object") continue;
+    if (source.is_active !== undefined && source.is_active !== null) return source.is_active !== false;
+    if (source.isActive !== undefined && source.isActive !== null) return source.isActive !== false;
+  }
+  return true;
+}
 export const createEquipment = async (clientId, moduleKey, formData) => {
   const type = normalizeEquipmentApiType(MODULE_KEY_TO_TYPE[moduleKey] || moduleKey);
   const family = TYPE_TO_FAMILY[type];
@@ -858,7 +872,7 @@ export const createEquipment = async (clientId, moduleKey, formData) => {
       item_key: itemKey,
       name,
       data,
-      is_active: true
+      is_active: resolveEquipmentIsActivePayload(formData)
     })
   });
   if (!response.ok) {
@@ -964,7 +978,7 @@ export const updateEquipment = async (equipmentId, formData, equipment = null) =
           item_key: stableItemKey || nextName,
           name: nextName,
           data: updatedData,
-          is_active: true
+          is_active: resolveEquipmentIsActivePayload(formData, [existingRow, equipment, existingData])
         })
       });
       if (!response.ok) {

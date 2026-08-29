@@ -69,6 +69,26 @@ function pickCustomEquipmentValue(item, fields, data, keys) {
   }
   return "";
 }
+function parseCustomActiveFlag(value) {
+  if (value === undefined || value === null || value === "") return undefined;
+  if (typeof value === "boolean") return value;
+  const normalized = String(value).trim().toLowerCase();
+  if (["false", "0", "no", "non", "off", "inactif", "inactive", "disabled"].includes(normalized)) return false;
+  if (["true", "1", "yes", "oui", "on", "actif", "active", "enabled"].includes(normalized)) return true;
+  return undefined;
+}
+function readCustomEquipmentIsActive(item, fields, data) {
+  const layers = [fields, data, item];
+  const keys = ["actif", "is_active", "isActive", "active"];
+  for (const layer of layers) {
+    if (!layer || typeof layer !== "object") continue;
+    for (const key of keys) {
+      const parsed = parseCustomActiveFlag(layer[key]);
+      if (parsed !== undefined) return parsed;
+    }
+  }
+  return true;
+}
 export function mapCustomEquipmentItem(item, familyOrKey, extras = {}) {
   const family = familyOrKey && typeof familyOrKey === "object" ? familyOrKey : null;
   const familyKey = family?.familyKey || familyOrKey || extras.familyKey || item?.familyKey || null;
@@ -87,7 +107,7 @@ export function mapCustomEquipmentItem(item, familyOrKey, extras = {}) {
     manufacturer: item?.manufacturer || pickCustomEquipmentValue(item, fields, data, ["manufacturer", "marque", "brand", "constructeur"]),
     model: item?.model || pickCustomEquipmentValue(item, fields, data, ["model", "modele", "modèle"]),
     serial: item?.serial || pickCustomEquipmentValue(item, fields, data, ["serial", "numeroSerie", "numero_serie", "sn"]),
-    is_active: item?.is_active !== false && item?.isActive !== false,
+    is_active: readCustomEquipmentIsActive(item, fields, data),
     createdAt: item?.createdAt || item?.created_at || extras.createdAt || null,
     created_at: item?.createdAt || item?.created_at || extras.createdAt || null,
     rawData: item?.rawData || data || fields || {},

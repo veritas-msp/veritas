@@ -1652,6 +1652,21 @@ function readEquipmentBool(equipment, key) {
   }
   return false;
 }
+export function readEquipmentIsActive(equipment) {
+  const layers = [equipment, equipment?.data, equipment?.rawData, equipment?.rawData?.data].filter(layer => layer && typeof layer === "object");
+  const keys = ["is_active", "isActive", "actif", "active"];
+  for (const layer of layers) {
+    for (const key of keys) {
+      if (layer[key] === undefined || layer[key] === null || layer[key] === "") continue;
+      const value = layer[key];
+      if (typeof value === "boolean") return value;
+      const normalized = String(value).trim().toLowerCase();
+      if (["false", "0", "no", "non", "off", "inactif", "inactive", "disabled"].includes(normalized)) return false;
+      if (["true", "1", "yes", "oui", "on", "actif", "active", "enabled"].includes(normalized)) return true;
+    }
+  }
+  return true;
+}
 function readEquipmentText(equipment, key, fallback = "") {
   const layers = [equipment, equipment?.data, equipment?.rawData, equipment?.rawData?.data].filter(layer => layer && typeof layer === "object");
   for (const layer of layers) {
@@ -1847,6 +1862,7 @@ export function buildInitialFormData(equipment, moduleKey, {
     name: d("nom", d("name", "")),
     location: extractEquipmentSite(equipment),
     ip: d("ip", ""),
+    is_active: readEquipmentIsActive(equipment),
     ...buildSharedEquipmentFormData(raw)
   };
   if (moduleKey === "Internet") {

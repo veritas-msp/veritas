@@ -45,7 +45,9 @@ const FR = {
     mappingCheckmk: "Mapping CheckMK",
     mapCheckmk: "Mapper CheckMK",
     openQuickConnect: "Ouvrir QuickConnect",
-    createdInVeritas: "Créé le {date}"
+    createdInVeritas: "Créé le {date}",
+    active: "Actif",
+    inactive: "Inactif"
   },
   specs: {
     title: "Fiche matériel",
@@ -738,7 +740,9 @@ const EN = {
     mappingCheckmk: "CheckMK mapping",
     mapCheckmk: "Map CheckMK",
     openQuickConnect: "Open QuickConnect",
-    createdInVeritas: "Created {date}"
+    createdInVeritas: "Created {date}",
+    active: "Active",
+    inactive: "Inactive"
   },
   specs: {
     title: "Hardware record",
@@ -1399,7 +1403,9 @@ const DE = {
     alertsTooltip: "Alarme: {status}",
     alertsAria: "Überwachungsalarme verwalten",
     alertsMenu: "Überwachungsalarme",
-    createdInVeritas: "Erstellt am {date}"
+    createdInVeritas: "Erstellt am {date}",
+    active: "Aktiv",
+    inactive: "Inaktiv"
   },
   tabs: {
     ...EN.tabs,
@@ -1769,7 +1775,9 @@ const IT = {
     alertsTooltip: "Avvisi: {status}",
     alertsAria: "Gestisci avvisi di supervisione",
     alertsMenu: "Avvisi di supervisione",
-    createdInVeritas: "Creato il {date}"
+    createdInVeritas: "Creato il {date}",
+    active: "Attivo",
+    inactive: "Inattivo"
   },
   tabs: {
     ...EN.tabs,
@@ -2138,7 +2146,9 @@ const ES = {
     alertsTooltip: "Alertas: {status}",
     alertsAria: "Gestionar alertas de supervisión",
     alertsMenu: "Alertas de supervisión",
-    createdInVeritas: "Creado el {date}"
+    createdInVeritas: "Creado el {date}",
+    active: "Activo",
+    inactive: "Inactivo"
   },
   tabs: {
     ...EN.tabs,

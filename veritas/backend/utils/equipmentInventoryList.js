@@ -5,6 +5,7 @@ import {
 } from "../routes/integrations/checkmk/equipmentMonitoringSync.js";
 import { fetchStandardHardwarePurgeList, PURGE_HARDWARE_FAMILIES } from "./equipmentPurgeList.js";
 import { applyEquipmentAlertSettings, isAlertSuspensionActive, resolveAlertStatusFromSettings, resolveEquipmentFamilyKey } from "./equipmentMonitoringAlerts.js";
+import { parseEquipmentActiveFlag } from "./equipmentFamilies.js";
 
 const VIDEO_SURVEILLANCE_TABLES = [
   "v_b_clients_m_videosurveillance",
@@ -192,7 +193,13 @@ function mapInventoryRow(row, extras = {}) {
       ...stubRaw,
       ...(data ? { data } : {})
     },
-    is_active: row.is_active !== false,
+    is_active: parseEquipmentActiveFlag(
+      extras.isCustom ? data?.actif : undefined,
+      extras.isCustom ? data?.is_active : undefined,
+      extras.isCustom ? data?.active : undefined,
+      extras.isCustom ? data?.isActive : undefined,
+      row.is_active
+    ) !== false,
     createdAt: row.created_at || row.createdAt || null,
     created_at: row.created_at || row.createdAt || null
   };
@@ -576,6 +583,7 @@ async function patchCustomEquipment(item, { isActive, location }) {
     data.emplacement = loc;
   }
   const nextActive = typeof isActive === "boolean" ? isActive : current.is_active !== false;
+  data.actif = nextActive;
   const result = await pool.query(
     `UPDATE v_b_clients_m_custom_equipment
      SET data = $4::jsonb, is_active = $5, updated_at = NOW()

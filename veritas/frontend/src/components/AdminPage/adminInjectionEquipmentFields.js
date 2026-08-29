@@ -115,7 +115,7 @@ function equipmentBaseFields(familyId) {
     { key: "_ip", csvColumn: "ip", label: L("Adresse IP", "IP address"), values: L("Ex. 10.0.0.10", "e.g. 10.0.0.10") },
     { key: "_os", csvColumn: "os", label: L("Système d'exploitation", "Operating system"), values: L("Ex. Windows 11 Pro, Windows Server 2022", "e.g. Windows 11 Pro, Windows Server 2022") },
     { key: "_notes", csvColumn: "notes", label: L("Notes", "Notes"), values: L("Texte libre, ex. Contrôleur de domaine", "Free text, e.g. Domain controller") },
-    { key: "_is_active", csvColumn: "is_active", label: L("Actif", "Active"), values: L("true | false, ex. true", "true | false, e.g. true") }
+    { key: "_is_active", csvColumn: "is_active", label: L("Actif", "Active"), values: L("true | false | actif | inactif (colonne is_active, active ou actif)", "true | false | actif | inactif (is_active, active or actif column)") }
   ];
 }
 
@@ -363,6 +363,7 @@ export function buildCustomEquipmentInjectionFamily(family, locale) {
     const label = String(field?.label || "").trim();
     if (!label && !key) continue;
     if (sharedKeys.has(key)) continue;
+    if (["actif", "active", "is_active", "isActive"].includes(key)) continue;
     const type = String(field.fieldType || "text").toLowerCase();
     const suffix = slugifyEquipmentFieldKey(label) || EQUIPMENT_CSV_KEY_BY_DATA_KEY[key] || key || "champ";
     customFields.push(mapInjectionField({

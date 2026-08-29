@@ -108,7 +108,8 @@ const PAGE_COPY = {
       jobsCount: "Jobs",
       mappedJobsCount: "Jobs mappés",
       logiciel: "Logiciel",
-      ha: "HA"
+      ha: "HA",
+      activeStatus: "Actif"
     },
     ha: {
       primary: "Primaire",
@@ -333,7 +334,8 @@ const PAGE_COPY = {
       jobsCount: "Jobs",
       mappedJobsCount: "Mapped jobs",
       logiciel: "Software",
-      ha: "HA"
+      ha: "HA",
+      activeStatus: "Active"
     },
     ha: {
       primary: "Primary",
@@ -552,7 +554,8 @@ const PAGE_COPY = {
       jobsCount: "Jobs",
       mappedJobsCount: "Zugeordnete Jobs",
       logiciel: "Software",
-      ha: "HA"
+      ha: "HA",
+      activeStatus: "Aktiv"
     },
     ha: {
       primary: "Primary",
@@ -767,7 +770,8 @@ const PAGE_COPY = {
       jobsCount: "Job",
       mappedJobsCount: "Job mappati",
       logiciel: "Software",
-      ha: "HA"
+      ha: "HA",
+      activeStatus: "Attivo"
     },
     ha: {
       primary: "Primario",
@@ -982,7 +986,8 @@ const PAGE_COPY = {
       jobsCount: "Jobs",
       mappedJobsCount: "Jobs mapeados",
       logiciel: "Software",
-      ha: "HA"
+      ha: "HA",
+      activeStatus: "Activo"
     },
     ha: {
       primary: "Primario",
