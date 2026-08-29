@@ -132,6 +132,7 @@ function SiteListCard({
   onEdit,
   dragHandleProps = null,
   dragHandleDisabled = false,
+  syncing = false,
   copy
 }) {
   const address = buildSiteAddress(site);
@@ -142,7 +143,7 @@ function SiteListCard({
         </button> : <span className={`${styles.dragHandle} ${styles.dragHandleDisabled}`} aria-hidden>
           <Icon icon="mdi:drag-vertical" />
         </span>}
-      <div className={`${styles.siteCard} ${isActive ? styles.siteCardActive : ""}`} onClick={() => onEdit?.(site)} onKeyDown={event => {
+      <div className={`${styles.siteCard} ${isActive ? styles.siteCardActive : ""} ${syncing ? styles.siteCardSyncing : ""}`} onClick={() => onEdit?.(site)} onKeyDown={event => {
       if (!onEdit) return;
       if (event.key === "Enter" || event.key === " ") {
         event.preventDefault();
@@ -156,7 +157,7 @@ function SiteListCard({
           </div>
           {address ? <p className={styles.siteCardAddress}>{address}</p> : null}
         </div>
-        <Icon icon={located ? "mdi:map-marker" : "mdi:map-marker-off-outline"} className={`${styles.siteCardPin} ${located ? "" : styles.siteCardPinMuted}`} aria-hidden />
+        <Icon icon={syncing ? "mdi:loading" : located ? "mdi:map-marker" : "mdi:map-marker-off-outline"} className={`${styles.siteCardPin} ${syncing ? styles.spinning : located ? "" : styles.siteCardPinMuted}`} aria-hidden />
       </div>
     </>;
 }
@@ -165,6 +166,7 @@ function SortableSiteRow({
   isActive,
   canReorder,
   onEdit,
+  syncing = false,
   copy
 }) {
   const siteId = site.id;
@@ -184,7 +186,7 @@ function SortableSiteRow({
     transition
   };
   return <li ref={setNodeRef} style={style} className={[styles.siteListItem, isDragging ? styles.siteListItemDragging : "", isActive ? styles.siteListItemActive : ""].filter(Boolean).join(" ")}>
-      <SiteListCard site={site} isActive={isActive} onEdit={onEdit} dragHandleDisabled={!canReorder} dragHandleProps={{
+      <SiteListCard site={site} isActive={isActive} onEdit={onEdit} syncing={syncing} dragHandleDisabled={!canReorder} dragHandleProps={{
       ...attributes,
       ...listeners
     }} copy={copy} />
@@ -212,6 +214,7 @@ export default function SitesModal({
   const [activeDragId, setActiveDragId] = useState(null);
   const [csvImportOpen, setCsvImportOpen] = useState(false);
   const [refreshingPositions, setRefreshingPositions] = useState(false);
+  const [refreshProgress, setRefreshProgress] = useState(null);
   const [listSearch, setListSearch] = useState("");
   const [listPage, setListPage] = useState(1);
   const geocodeAbortRef = useRef(false);
@@ -267,6 +270,13 @@ export default function SitesModal({
   useEffect(() => {
     setListPage(page => Math.min(page, listTotalPages));
   }, [listTotalPages]);
+  useEffect(() => {
+    const siteId = refreshProgress?.siteId;
+    if (!siteId) return;
+    const index = filteredSites.findIndex(site => site.id === siteId);
+    if (index < 0) return;
+    setListPage(Math.floor(index / LIST_PAGE_SIZE) + 1);
+  }, [refreshProgress?.siteId, filteredSites]);
   const wait = ms => new Promise(resolve => setTimeout(resolve, ms));
   const refreshSitePositions = async (sourceSites, {
     onlyMissing = false,
@@ -284,25 +294,48 @@ export default function SitesModal({
       return;
     }
     setRefreshingPositions(true);
+    setRefreshProgress({
+      current: 0,
+      total: targets.length,
+      siteId: null,
+      name: ""
+    });
+    let nextSites = assignClientSitesOrder(Array.isArray(sourceSites) ? sourceSites : []);
     let ok = 0;
     let failed = 0;
     try {
       for (let index = 0; index < targets.length; index += 1) {
         if (geocodeAbortRef.current) break;
         const site = targets[index];
+        setRefreshProgress({
+          current: index + 1,
+          total: targets.length,
+          siteId: site.id,
+          name: getSiteDisplayName(site)
+        });
         try {
           const coords = await geocodeSiteAddress(site);
           ok += 1;
-          setCurrentSites(prev => assignClientSitesOrder(prev.map(item => item.id === site.id ? {
+          nextSites = assignClientSitesOrder(nextSites.map(item => item.id === site.id ? {
             ...item,
             ...coords
-          } : item)));
+          } : item));
+          setCurrentSites(nextSites);
         } catch {
           failed += 1;
         }
         if (index < targets.length - 1) await wait(1100);
       }
       if (geocodeAbortRef.current) return;
+      if (ok > 0) {
+        try {
+          await onSave(nextSites, {
+            silent: true
+          });
+        } catch (error) {
+          toast.error(error.message || copy.toasts.saveFailed);
+        }
+      }
       if (ok > 0 && failed === 0) toast.success(interpolate(copy.toasts.positionsRefreshed, {
         count: String(ok)
       }));
@@ -313,6 +346,7 @@ export default function SitesModal({
       else toast.error(copy.toasts.positionsRefreshFailed);
     } finally {
       setRefreshingPositions(false);
+      setRefreshProgress(null);
     }
   };
   const handleRefreshAllPositions = () => {
@@ -518,9 +552,9 @@ export default function SitesModal({
                     <Icon icon="mdi:file-delimited-outline" aria-hidden />
                     CSV
                   </button>
-                  <button type="button" className={styles.addBtn} onClick={handleRefreshAllPositions} title={copy.refreshAllTitle} aria-label={copy.refreshAllTitle} disabled={refreshingPositions || Boolean(draft) || orderedSites.length === 0}>
+                  <button type="button" className={styles.addBtn} onClick={handleRefreshAllPositions} title={copy.refreshAllTitle} aria-label={refreshingPositions && refreshProgress ? copy.formatRefreshingAria(refreshProgress.current, refreshProgress.total, refreshProgress.name) : copy.refreshAllTitle} disabled={refreshingPositions || Boolean(draft) || orderedSites.length === 0}>
                     <Icon icon={refreshingPositions ? "mdi:loading" : "mdi:crosshairs-gps"} className={refreshingPositions ? styles.spinning : undefined} aria-hidden />
-                    {refreshingPositions ? copy.refreshingAll : copy.refreshAll}
+                    {refreshingPositions && refreshProgress ? copy.formatRefreshingProgress(refreshProgress.current, refreshProgress.total) : refreshingPositions ? copy.refreshingAll : copy.refreshAll}
                   </button>
                   <button type="button" className={styles.addBtn} onClick={startCreate} disabled={!canAddSite || refreshingPositions} title={atSiteLimit ? copy.formatLimitTooltip(maxSites) : undefined}>
                     <Icon icon="mdi:plus" aria-hidden />
@@ -528,6 +562,19 @@ export default function SitesModal({
                   </button>
                 </div>
               </div>
+
+              {refreshingPositions && refreshProgress ? <div className={styles.refreshProgress} role="status" aria-live="polite">
+                  <div className={styles.refreshProgressMeta}>
+                    <span className={styles.refreshProgressTitle}>{copy.refreshingAll}</span>
+                    <span className={styles.refreshProgressCount}>{copy.formatRefreshingProgress(refreshProgress.current, refreshProgress.total)}</span>
+                  </div>
+                  <div className={styles.refreshProgressTrack} aria-hidden>
+                    <div className={styles.refreshProgressFill} style={{
+                  width: `${Math.max(4, Math.round(refreshProgress.current / Math.max(refreshProgress.total, 1) * 100))}%`
+                }} />
+                  </div>
+                  {refreshProgress.name ? <p className={styles.refreshProgressName}>{copy.formatRefreshingCurrent(refreshProgress.name)}</p> : null}
+                </div> : null}
 
               {orderedSites.length > 0 ? <div className={styles.searchWrap}>
                   <Icon icon="mdi:magnify" className={styles.searchIcon} aria-hidden />
@@ -561,7 +608,7 @@ export default function SitesModal({
                     <DndContext sensors={sensors} collisionDetection={closestCenter} onDragStart={handleDragStart} onDragEnd={handleDragEnd} onDragCancel={handleDragCancel}>
                       <SortableContext items={sortableSiteIds} strategy={verticalListSortingStrategy}>
                         <ul className={styles.siteList}>
-                          {pagedSites.map(site => <SortableSiteRow key={getSiteId(site)} site={site} isActive={selectedId === site.id} canReorder={canReorder} onEdit={refreshingPositions ? undefined : startEdit} copy={copy} />)}
+                          {pagedSites.map(site => <SortableSiteRow key={getSiteId(site)} site={site} isActive={selectedId === site.id} canReorder={canReorder} onEdit={refreshingPositions ? undefined : startEdit} syncing={refreshProgress?.siteId === site.id} copy={copy} />)}
                         </ul>
                       </SortableContext>
                       <DragOverlay dropAnimation={{

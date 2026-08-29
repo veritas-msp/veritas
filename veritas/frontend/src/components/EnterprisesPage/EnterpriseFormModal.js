@@ -714,6 +714,34 @@ export default function EnterpriseFormModal({
               <MultiSuggestPicker singleSelect maxResults={8} inputId="enterprise-form-commercial" placeholder={loadingUsers ? f.loadingAgents : f.commercialSearchPlaceholder} options={commercialUserOptions} selectedIds={commercialId ? [commercialId] : []} emptyHint={f.noAgentSelected} emptyResultsHint={f.noAgentFound} onChange={ids => setCommercialId(ids[0] ? String(ids[0]) : "")} />
             </div>
           </>;
+      case "status":
+        {
+          const isInactive = form.statut === "inactive" || form.statut === "inactif";
+          const isActive = !isInactive;
+          return <>
+            <div className={styles.sectionHead}>
+              <h3 className={styles.sectionTitle}>{section?.label}</h3>
+              <p className={styles.sectionDesc}>{section?.description}</p>
+            </div>
+            <div className={styles.modulesGrid}>
+              <button type="button" className={`${styles.moduleTile} ${isActive ? styles.moduleTileActive : ""}`} onClick={() => patchForm({
+              statut: "actif"
+            })} aria-pressed={isActive}>
+                {isActive && <Icon icon="mdi:check-circle" className={styles.moduleCheck} aria-hidden />}
+                <Icon icon="mdi:domain" className={styles.moduleTileIcon} aria-hidden />
+                <span className={styles.moduleTileLabel}>{copy.statutActive}</span>
+              </button>
+              <button type="button" className={`${styles.moduleTile} ${isInactive ? styles.moduleTileActive : ""}`} onClick={() => patchForm({
+              statut: "inactive"
+            })} aria-pressed={isInactive}>
+                {isInactive && <Icon icon="mdi:check-circle" className={styles.moduleCheck} aria-hidden />}
+                <Icon icon="mdi:domain-off-outline" className={styles.moduleTileIcon} aria-hidden />
+                <span className={styles.moduleTileLabel}>{copy.statutInactive}</span>
+              </button>
+            </div>
+            <p className={styles.modulesSummary}>{copy.statusInactiveHint}</p>
+          </>;
+        }
       case "modules":
         return <>
             <div className={styles.sectionHead}>

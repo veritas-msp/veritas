@@ -493,10 +493,10 @@ export function AntispamOverviewPanel({
 
           <section className={dashStyles.chartGrid3}>
             <StatsPanel title="Fleet distribution" icon="mdi:chart-donut">
-              <StatsPieChart items={volumeDistribution.items} total={volumeDistribution.total} emptyLabel="No volume reported by the API" />
+              <StatsPieChart items={volumeDistribution.items} total={volumeDistribution.total} emptyLabel="No volume reported by the API" title="Fleet distribution" />
             </StatsPanel>
             <StatsPanel title="API status" icon="mdi:shield-check-outline">
-              <StatsPieChart items={apiStatusDistribution.items} total={apiStatusDistribution.total} emptyLabel="Statuss API indisponibles" />
+              <StatsPieChart items={apiStatusDistribution.items} total={apiStatusDistribution.total} emptyLabel="Statuss API indisponibles" title="API status" />
             </StatsPanel>
             {customer ? <StatsPanel title="Information client" icon="mdi:card-account-details-outline">
                 <ul className={dashStyles.metricList}>

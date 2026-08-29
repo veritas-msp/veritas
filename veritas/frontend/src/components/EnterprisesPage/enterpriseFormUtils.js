@@ -147,3 +147,12 @@ export function buildAdditiveMembershipsForEnterprise(contact, enterpriseId, {
   }
   return memberships;
 }
+export function normalizeCompanyStatusKey(statut) {
+  const value = String(statut || "").toLowerCase();
+  if (value.includes("inact")) return "inactive";
+  if (value.includes("act")) return "active";
+  return "active";
+}
+export function toCompanyStatusValue(keyOrStatut) {
+  return normalizeCompanyStatusKey(keyOrStatut) === "inactive" ? "inactive" : "actif";
+}

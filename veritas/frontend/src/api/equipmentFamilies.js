@@ -88,6 +88,8 @@ export function mapCustomEquipmentItem(item, familyOrKey, extras = {}) {
     model: item?.model || pickCustomEquipmentValue(item, fields, data, ["model", "modele", "modèle"]),
     serial: item?.serial || pickCustomEquipmentValue(item, fields, data, ["serial", "numeroSerie", "numero_serie", "sn"]),
     is_active: item?.is_active !== false && item?.isActive !== false,
+    createdAt: item?.createdAt || item?.created_at || extras.createdAt || null,
+    created_at: item?.createdAt || item?.created_at || extras.createdAt || null,
     rawData: item?.rawData || data || fields || {},
     data: data || fields || {},
     fields

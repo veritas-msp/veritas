@@ -48,6 +48,7 @@ const defaultClient = {
   addressPostalCode: "",
   addressCity: "",
   secteur: "",
+  statut: "actif",
   sites: [],
   ssids: [],
   contrat: {
@@ -123,6 +124,7 @@ export default function ClientModal({
     ...splitAddress(initialClient.address),
     secteur: initialClient.secteur || initialClient.sector || "",
     commercial: initialClient.commercialId || initialClient.commercial_id || "",
+    statut: initialClient.statut || "actif",
     sites: initialClient.sites || [],
     ssids: initialClient.ssid || initialClient.ssids || [],
     contrat: normalizeClientSlaInContrat({
@@ -227,7 +229,8 @@ export default function ClientModal({
       commercialId: form.commercial || null,
       siret: normalizedSiret || null,
       address: fullAddress,
-      secteur: form.secteur?.trim() || ""
+      secteur: form.secteur?.trim() || "",
+      statut: form.statut || "actif"
     };
     try {
       setSaving(true);

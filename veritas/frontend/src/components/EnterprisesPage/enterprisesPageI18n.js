@@ -1,4 +1,5 @@
 import { interpolate, pickLocaleMessages } from "../../i18n/translate";
+import { normalizeCompanyStatusKey } from "./enterpriseFormUtils";
 const STATUS_FILTER_KEYS = ["active", "expiring", "expired", "suspended"];
 const STATUS_FILTER_META = {
   active: {
@@ -20,6 +21,17 @@ const STATUS_FILTER_META = {
     icon: "mdi:pause-circle",
     color: "#f59e0b",
     kpiTone: "orange"
+  }
+};
+const COMPANY_STATUS_FILTER_KEYS = ["active", "inactive"];
+const COMPANY_STATUS_FILTER_META = {
+  active: {
+    icon: "mdi:domain",
+    kpiTone: "green"
+  },
+  inactive: {
+    icon: "mdi:domain-off",
+    kpiTone: "gray"
   }
 };
 const SORT_OPTION_VALUES = ["name:asc", "name:desc", "expiration:asc", "expiration:desc", "commercial:asc", "status:asc"];
@@ -63,13 +75,22 @@ const ENTERPRISES_COPY = {
       modules: "Modules",
       expiration: "Expiration",
       equipment: "Équipements",
-      tags: "Étiquettes"
+      tags: "Étiquettes",
+      companyStatus: "Statut"
     },
     statusFilters: {
       active: "Actifs",
       expiring: "Expire bientôt",
       expired: "Expirés",
       suspended: "Suspendus"
+    },
+    companyStatusFilters: {
+      active: "Actives",
+      inactive: "Inactives"
+    },
+    companyStatus: {
+      active: "Active",
+      inactive: "Inactive"
     },
     contractStatus: {
       suspended: "Suspendu",
@@ -142,6 +163,9 @@ const ENTERPRISES_COPY = {
       editDebut: "Date de début du contrat",
       editExpiration: "Date de fin du contrat",
       editModules: "Modules du contrat",
+      editStatut: "Statut",
+      statutActive: "Active",
+      statutInactive: "Inactive",
       modulesHint: "Les modules ci-dessous remplaceront ceux des entreprises sélectionnées.",
       commercialSearchPlaceholder: "Rechercher un agent…",
       loadingAgents: "Chargement des agents…",
@@ -195,13 +219,22 @@ const ENTERPRISES_COPY = {
       modules: "Modules",
       expiration: "Expiration",
       equipment: "Equipment",
-      tags: "Tags"
+      tags: "Tags",
+      companyStatus: "Status"
     },
     statusFilters: {
       active: "Active",
       expiring: "Expiring soon",
       expired: "Expired",
       suspended: "Suspended"
+    },
+    companyStatusFilters: {
+      active: "Active",
+      inactive: "Inactive"
+    },
+    companyStatus: {
+      active: "Active",
+      inactive: "Inactive"
     },
     contractStatus: {
       suspended: "Suspended",
@@ -274,6 +307,9 @@ const ENTERPRISES_COPY = {
       editDebut: "Contract start date",
       editExpiration: "Contract end date",
       editModules: "Contract modules",
+      editStatut: "Status",
+      statutActive: "Active",
+      statutInactive: "Inactive",
       modulesHint: "The modules below will replace those of the selected companies.",
       commercialSearchPlaceholder: "Search for an agent…",
       loadingAgents: "Loading agents…",
@@ -327,13 +363,22 @@ const ENTERPRISES_COPY = {
       modules: "Module",
       expiration: "Ablauf",
       equipment: "Geräte",
-      tags: "Tags"
+      tags: "Tags",
+      companyStatus: "Status"
     },
     statusFilters: {
       active: "Aktiv",
       expiring: "Läuft bald ab",
       expired: "Abgelaufen",
       suspended: "Ausgesetzt"
+    },
+    companyStatusFilters: {
+      active: "Aktiv",
+      inactive: "Inaktiv"
+    },
+    companyStatus: {
+      active: "Aktiv",
+      inactive: "Inaktiv"
     },
     contractStatus: {
       suspended: "Ausgesetzt",
@@ -406,6 +451,9 @@ const ENTERPRISES_COPY = {
       editDebut: "Vertragsbeginn",
       editExpiration: "Vertragsende",
       editModules: "Vertragsmodule",
+      editStatut: "Status",
+      statutActive: "Aktiv",
+      statutInactive: "Inaktiv",
       modulesHint: "Die untenstehenden Module ersetzen die Module der ausgewählten Unternehmen.",
       commercialSearchPlaceholder: "Agent suchen…",
       loadingAgents: "Agenten werden geladen…",
@@ -459,13 +507,22 @@ const ENTERPRISES_COPY = {
       modules: "Moduli",
       expiration: "Scadenza",
       equipment: "Attrezzature",
-      tags: "Etichette"
+      tags: "Etichette",
+      companyStatus: "Stato"
     },
     statusFilters: {
       active: "Attive",
       expiring: "In scadenza",
       expired: "Scadute",
       suspended: "Sospese"
+    },
+    companyStatusFilters: {
+      active: "Attive",
+      inactive: "Inattive"
+    },
+    companyStatus: {
+      active: "Attiva",
+      inactive: "Inattiva"
     },
     contractStatus: {
       suspended: "Sospeso",
@@ -538,6 +595,9 @@ const ENTERPRISES_COPY = {
       editDebut: "Data inizio contratto",
       editExpiration: "Data fine contratto",
       editModules: "Moduli contratto",
+      editStatut: "Stato",
+      statutActive: "Attiva",
+      statutInactive: "Inattiva",
       modulesHint: "I moduli sotto sostituiranno quelli delle aziende selezionate.",
       commercialSearchPlaceholder: "Cerca un agente…",
       loadingAgents: "Caricamento agenti…",
@@ -591,13 +651,22 @@ const ENTERPRISES_COPY = {
       modules: "Módulos",
       expiration: "Vencimiento",
       equipment: "Equipos",
-      tags: "Etiquetas"
+      tags: "Etiquetas",
+      companyStatus: "Estado"
     },
     statusFilters: {
       active: "Activas",
       expiring: "Por vencer",
       expired: "Vencidas",
       suspended: "Suspendidas"
+    },
+    companyStatusFilters: {
+      active: "Activas",
+      inactive: "Inactivas"
+    },
+    companyStatus: {
+      active: "Activa",
+      inactive: "Inactiva"
     },
     contractStatus: {
       suspended: "Suspendido",
@@ -670,6 +739,9 @@ const ENTERPRISES_COPY = {
       editDebut: "Fecha de inicio del contrato",
       editExpiration: "Fecha de fin del contrato",
       editModules: "Módulos del contrato",
+      editStatut: "Estado",
+      statutActive: "Activa",
+      statutInactive: "Inactiva",
       modulesHint: "Los módulos siguientes reemplazarán los de las empresas seleccionadas.",
       commercialSearchPlaceholder: "Buscar un agente…",
       loadingAgents: "Cargando agentes…",
@@ -701,6 +773,18 @@ export function getEnterprisesPageCopy(locale) {
       label: t.statusFilters[key],
       ...STATUS_FILTER_META[key]
     })),
+    companyStatusFilterItems: COMPANY_STATUS_FILTER_KEYS.map(key => ({
+      key,
+      label: t.companyStatusFilters[key],
+      ...COMPANY_STATUS_FILTER_META[key]
+    })),
+    getCompanyStatus: statut => {
+      const key = normalizeCompanyStatusKey(statut);
+      return {
+        key,
+        label: t.companyStatus[key] || t.companyStatus.active
+      };
+    },
     sortOptions: SORT_OPTION_VALUES.map(value => ({
       value,
       label: t.sortOptions[value]

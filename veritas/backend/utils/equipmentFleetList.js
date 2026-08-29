@@ -124,7 +124,8 @@ function buildFleetSelect(table, { withCheckmk }) {
       e.data->>'netbios' AS rmm_netbios,
       e.data->>'hostname' AS rmm_hostname,
       e.data->'network' AS rmm_network,
-      e.data->>'ipNonFixe' AS ip_non_fixe
+      e.data->>'ipNonFixe' AS ip_non_fixe,
+      e.created_at
       ${checkmkCols}
     FROM ${table} e
     INNER JOIN v_b_clients c ON c.id = e.client_id
@@ -246,6 +247,8 @@ function mapFleetRow(row, familyMeta) {
     checkmkMapping,
     rawData,
     is_active: row.is_active !== false,
+    createdAt: row.created_at || null,
+    created_at: row.created_at || null,
     status: "unknown"
   };
 }

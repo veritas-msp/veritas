@@ -158,6 +158,59 @@
   gap: 0.35rem;
 }
 
+.refreshProgress {
+  margin: 0.55rem 0.7rem 0.15rem;
+  padding: 0.55rem 0.65rem;
+  border-radius: 10px;
+  border: 1px solid rgba(43, 95, 171, 0.18);
+  background: var(--msp-accent-soft, rgba(43, 95, 171, 0.08));
+  flex-shrink: 0;
+}
+
+.refreshProgressMeta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.refreshProgressTitle {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--msp-accent, #2b5fab);
+}
+
+.refreshProgressCount {
+  font-size: 0.72rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--msp-text, #0f1c2e);
+}
+
+.refreshProgressTrack {
+  margin-top: 0.4rem;
+  height: 5px;
+  border-radius: 999px;
+  background: rgba(43, 95, 171, 0.14);
+  overflow: hidden;
+}
+
+.refreshProgressFill {
+  height: 100%;
+  border-radius: inherit;
+  background: var(--msp-accent, #2b5fab);
+  transition: width 0.25s ease;
+}
+
+.refreshProgressName {
+  margin: 0.35rem 0 0;
+  font-size: 0.74rem;
+  color: var(--msp-muted, #5c6b82);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .listTitle {
   font-size: 0.78rem;
   font-weight: 700;
@@ -480,6 +533,11 @@
 .siteCardActive {
   border-color: var(--msp-accent, #2b5fab);
   box-shadow: 0 0 0 2px rgba(43, 95, 171, 0.12);
+}
+
+.siteCardSyncing {
+  border-color: var(--msp-accent, #2b5fab);
+  background: var(--msp-accent-soft, rgba(43, 95, 171, 0.06));
 }
 
 .siteCardHead {

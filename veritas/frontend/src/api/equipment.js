@@ -404,6 +404,8 @@ export function mapClientHardwareEquipment(client) {
         commentaire: type === "Internet" || type === "Firewalls" || type === "Routeur" || type === "Switch" || type === "BorneWifi" || type === "Alimentation" || type === "TOIP" ? equipment.commentaire || "" : undefined,
         alimentationPoE: type === "BorneWifi" ? !!equipment.alimentationPoE : undefined,
         checkmkMapping: checkmkMapping || null,
+        createdAt: equipment.created_at || equipment.createdAt || null,
+        created_at: equipment.created_at || equipment.createdAt || null,
         rawData: equipment
       };
       equipmentMap.set(dedupeKey, equipmentData);
@@ -1025,7 +1027,7 @@ export const getEquipmentLogs = async (equipmentId, page = 1, limit = 10, option
       type = parts[1];
       equipmentName = parts.length > 3 ? parts.slice(2, -1).join('-') : parts.slice(2).join('-');
     }
-    const family = EQUIPMENT_TYPE_TO_LOG_FAMILY[type] || "servers";
+    const family = resolveEquipmentLogFamily(type, options);
     const logsUrl = withApiQuery(`${API_BASE_URL}/clients/modules/${clientId}/${family}/${encodeURIComponent(equipmentName)}/logs`, {
       page,
       limit,
@@ -1090,7 +1092,7 @@ export const purgeEquipmentLogs = async (equipmentId, options = {}) => {
     type = parts[1];
     equipmentName = parts.length > 3 ? parts.slice(2, -1).join("-") : parts.slice(2).join("-");
   }
-  const family = EQUIPMENT_TYPE_TO_LOG_FAMILY[type] || "servers";
+  const family = resolveEquipmentLogFamily(type, options);
   const logsUrl = withApiQuery(`${API_BASE_URL}/clients/modules/${clientId}/${family}/${encodeURIComponent(equipmentName)}/logs`, {
     equipment_id: options.dbId || undefined,
     search: options.search && String(options.search).trim() ? String(options.search).trim() : undefined,
@@ -1122,9 +1124,14 @@ const EQUIPMENT_TYPE_TO_LOG_FAMILY = {
   Routeur: "routeur",
   TOIP: "toip",
   Internet: "internet",
-  Ordinateurs: "ordinateurs"
+  Ordinateurs: "ordinateurs",
+  Videosurveillance: "videosurveillance"
 };
-function resolveEquipmentLogFamily(type) {
+function resolveEquipmentLogFamily(type, extras = {}) {
+  const customKey = extras.familyKey
+    || (String(type || "").startsWith("Custom:") ? String(type).slice("Custom:".length) : "")
+    || (String(extras.family || "").startsWith("custom:") ? String(extras.family).slice("custom:".length) : "");
+  if (customKey) return customKey;
   return EQUIPMENT_TYPE_TO_LOG_FAMILY[type] || EQUIPMENT_TYPE_TO_LOG_FAMILY[normalizeEquipmentApiType(type)] || "servers";
 }
 export const logEquipmentActivity = async ({

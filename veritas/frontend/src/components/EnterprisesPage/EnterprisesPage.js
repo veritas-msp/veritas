@@ -14,6 +14,7 @@ import { useDefaultPageSize } from "../../hooks/useDefaultPageSize";
 import { useEntityFavorites } from "../../hooks/useEntityFavorites";
 import { useAppFormatters, useAppLocale } from "../../hooks/useAppGeneralSettings";
 import { getEnterprisesPageCopy } from "./enterprisesPageI18n";
+import { normalizeCompanyStatusKey } from "./enterpriseFormUtils";
 import { getEquipmentCountValue, localizeEquipmentCountColumns } from "../../i18n/equipmentFamilyLabels";
 import { getLocalizedModuleLabel } from "../../i18n/contractModuleLabels";
 import { buildEmptyModulesMap, getAllActiveModuleKeys } from "../../constants/contractModules";
@@ -35,6 +36,7 @@ const ENTERPRISES_FAVORITES_SETTING = "enterprises_favorites";
 const ENTERPRISES_COLUMN_HEADERS = {
   client_number: "clientNumber",
   company: "company",
+  company_status: "companyStatus",
   primary_contact: "primaryContact",
   commercial: "commercial",
   modules: "modules",
@@ -43,6 +45,17 @@ const ENTERPRISES_COLUMN_HEADERS = {
   tags: "tags"
 };
 
+const LEGACY_ENTERPRISES_TABLE_COLUMNS = ["client_number", "company", "primary_contact", "commercial", "modules", "expiration", "equipment", "tags"];
+function withCompanyStatusColumn(columns) {
+  const list = Array.isArray(columns) ? [...columns] : [];
+  if (list.includes("company_status")) return list;
+  const isLegacyDefault = list.length === LEGACY_ENTERPRISES_TABLE_COLUMNS.length && LEGACY_ENTERPRISES_TABLE_COLUMNS.every((id, index) => list[index] === id);
+  if (!isLegacyDefault) return list;
+  const companyIdx = list.indexOf("company");
+  if (companyIdx >= 0) list.splice(companyIdx + 1, 0, "company_status");
+  else list.push("company_status");
+  return list;
+}
 function getExpiryClass(status) {
   if (status === "expired") return styles.expiryDate_expired;
   if (status === "expiring") return styles.expiryDate_expiring;
@@ -81,6 +94,7 @@ export default function EnterprisesPage({
   const [sortBy, setSortBy] = useState("name");
   const [sortOrder, setSortOrder] = useState("asc");
   const [statusFilters, setStatusFilters] = useState(new Set());
+  const [companyStatusFilters, setCompanyStatusFilters] = useState(new Set());
   const [selectedIds, setSelectedIds] = useState(() => new Set());
   const [bulkModalOpen, setBulkModalOpen] = useState(false);
   const [showClientModal, setShowClientModal] = useState(false);
@@ -107,9 +121,9 @@ export default function EnterprisesPage({
       try {
         const data = await fetchTicketTableColumns(ENTERPRISES_PAGE_SCOPE);
         if (cancelled) return;
-        setPublicTableColumns(Array.isArray(data?.public) ? data.public : [...DEFAULT_ENTERPRISES_TABLE_COLUMNS]);
-        setPrivateTableColumns(Array.isArray(data?.private) && data.private.length ? data.private : null);
-        setVisibleTableColumns(Array.isArray(data?.effective) && data.effective.length ? data.effective : [...DEFAULT_ENTERPRISES_TABLE_COLUMNS]);
+        setPublicTableColumns(withCompanyStatusColumn(Array.isArray(data?.public) ? data.public : [...DEFAULT_ENTERPRISES_TABLE_COLUMNS]));
+        setPrivateTableColumns(Array.isArray(data?.private) && data.private.length ? withCompanyStatusColumn(data.private) : null);
+        setVisibleTableColumns(withCompanyStatusColumn(Array.isArray(data?.effective) && data.effective.length ? data.effective : [...DEFAULT_ENTERPRISES_TABLE_COLUMNS]));
       } catch {
         if (!cancelled) toast.error(copyRef.current.toasts?.loadColumns || "Error loading columns");
       }
@@ -119,9 +133,9 @@ export default function EnterprisesPage({
     };
   }, []);
   const handleColumnsSaved = useCallback(result => {
-    if (Array.isArray(result?.public)) setPublicTableColumns(result.public);
-    setPrivateTableColumns(Array.isArray(result?.private) && result.private.length ? result.private : null);
-    setVisibleTableColumns(Array.isArray(result?.effective) && result.effective.length ? result.effective : [...DEFAULT_ENTERPRISES_TABLE_COLUMNS]);
+    if (Array.isArray(result?.public)) setPublicTableColumns(withCompanyStatusColumn(result.public));
+    setPrivateTableColumns(Array.isArray(result?.private) && result.private.length ? withCompanyStatusColumn(result.private) : null);
+    setVisibleTableColumns(withCompanyStatusColumn(Array.isArray(result?.effective) && result.effective.length ? result.effective : [...DEFAULT_ENTERPRISES_TABLE_COLUMNS]));
   }, []);
   useEffect(() => {
     const raw = pageParams?.highlight;
@@ -299,8 +313,11 @@ export default function EnterprisesPage({
         return statusFilters.has(contractStatus.status);
       });
     }
+    if (companyStatusFilters.size > 0) {
+      base = base.filter(client => companyStatusFilters.has(normalizeCompanyStatusKey(client.statut)));
+    }
     return base;
-  }, [clients, searchQuery, statusFilters, copy]);
+  }, [clients, searchQuery, statusFilters, companyStatusFilters, copy]);
   const filteredAndSortedClients = useMemo(() => {
     const filtered = [...kpiFilteredClients];
     filtered.sort((a, b) => {
@@ -352,6 +369,10 @@ export default function EnterprisesPage({
           aValue = (a.primaryContactName || "").toLowerCase();
           bValue = (b.primaryContactName || "").toLowerCase();
           break;
+        case "companyStatus":
+          aValue = normalizeCompanyStatusKey(a.statut);
+          bValue = normalizeCompanyStatusKey(b.statut);
+          break;
         default:
           if (sortBy.startsWith("equipment:")) {
             const equipKey = sortBy.slice("equipment:".length);
@@ -379,7 +400,7 @@ export default function EnterprisesPage({
   }, [filteredAndSortedClients, currentPage, pageSize]);
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchQuery, statusFilters, sortBy, sortOrder, pageSize]);
+  }, [searchQuery, statusFilters, companyStatusFilters, sortBy, sortOrder, pageSize]);
   useEffect(() => {
     if (currentPage > totalPages) setCurrentPage(totalPages);
   }, [currentPage, totalPages]);
@@ -437,6 +458,13 @@ export default function EnterprisesPage({
       return next;
     });
   };
+  const toggleCompanyStatusFilter = statusKey => {
+    setCompanyStatusFilters(prev => {
+      const next = new Set(prev);
+      if (next.has(statusKey)) next.delete(statusKey);else next.add(statusKey);
+      return next;
+    });
+  };
   const statusCounts = useMemo(() => {
     const counts = {
       active: 0,
@@ -451,6 +479,17 @@ export default function EnterprisesPage({
     });
     return counts;
   }, [kpiFilteredClients, copy]);
+  const companyStatusCounts = useMemo(() => {
+    const counts = {
+      active: 0,
+      inactive: 0
+    };
+    clients.forEach(client => {
+      const key = normalizeCompanyStatusKey(client.statut);
+      if (counts[key] !== undefined) counts[key] += 1;
+    });
+    return counts;
+  }, [clients]);
   const handleExportCsv = () => {
     const headers = [];
     tableColumns.forEach(columnId => {
@@ -475,6 +514,10 @@ export default function EnterprisesPage({
         }
         if (columnId === "company") {
           row.push(getClientNameWithoutCode(client) || client.name || "");
+          return;
+        }
+        if (columnId === "company_status") {
+          row.push(copy.getCompanyStatus(client.statut).label);
           return;
         }
         if (columnId === "primary_contact") {
@@ -541,6 +584,21 @@ export default function EnterprisesPage({
     }
   };
   const sortIndicator = column => sortBy === column ? sortOrder === "asc" ? " ▲" : " ▼" : "";
+  const renderCompanyStatus = client => {
+    const status = copy.getCompanyStatus(client.statut);
+    if (status.key === "active") {
+      return <SmartTooltip content={status.label}>
+          <span className={`${styles.portalStatusIcon} ${styles.portalStatusActive}`} aria-label={status.label}>
+            <Icon icon="mdi:domain" aria-hidden />
+          </span>
+        </SmartTooltip>;
+    }
+    return <SmartTooltip content={status.label}>
+        <span className={`${styles.portalStatusIcon} ${styles.portalStatusNone}`} aria-label={status.label}>
+          <Icon icon="mdi:domain-off-outline" aria-hidden />
+        </span>
+      </SmartTooltip>;
+  };
   const ThSort = ({
     label,
     col
@@ -592,6 +650,17 @@ export default function EnterprisesPage({
                 const count = statusCounts[item.key] || 0;
                 const active = statusFilters.has(item.key);
                 return <button key={item.key} type="button" className={`${styles.statusChip} ${active ? styles.statusChipActive : ""} ${count === 0 ? styles.statusChipDisabled : ""}`} onClick={() => toggleStatusFilter(item.key)} disabled={loading || error || count === 0}>
+                    <span className={`${styles.statusChipIcon} ${styles[`kpiIcon_${item.kpiTone}`]}`}>
+                      <Icon icon={item.icon} />
+                    </span>
+                    <span className={styles.statusChipLabel}>{item.label}</span>
+                    <span className={styles.statusChipCount}>{count}</span>
+                  </button>;
+              })}
+              {copy.companyStatusFilterItems.map(item => {
+                const count = companyStatusCounts[item.key] || 0;
+                const active = companyStatusFilters.has(item.key);
+                return <button key={`company-${item.key}`} type="button" className={`${styles.statusChip} ${active ? styles.statusChipActive : ""} ${count === 0 ? styles.statusChipDisabled : ""}`} onClick={() => toggleCompanyStatusFilter(item.key)} disabled={loading || error || count === 0}>
                     <span className={`${styles.statusChipIcon} ${styles[`kpiIcon_${item.kpiTone}`]}`}>
                       <Icon icon={item.icon} />
                     </span>
@@ -699,6 +768,11 @@ export default function EnterprisesPage({
                                   <SmartTooltip content={formatClientTabLabel(client)} as="span" className={styles.clientNameText}>
                                     {getClientNameWithoutCode(client) || client.name || "-"}
                                   </SmartTooltip>
+                                </td>;
+                            }
+                            if (columnId === "company_status") {
+                              return <td key={columnId} className={styles.colCompanyStatus}>
+                                  {renderCompanyStatus(client)}
                                 </td>;
                             }
                             if (columnId === "primary_contact") {

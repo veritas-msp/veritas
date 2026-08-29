@@ -166,7 +166,7 @@ export default function ComputerFleetStatsView({
               <Icon icon="mdi:factory" />
               Brands
             </h3>
-            <StatsPieChart items={stats.brandDistribution} total={stats.total} centerLabel={stats.total} />
+            <StatsPieChart items={stats.brandDistribution} total={stats.total} centerLabel={stats.total} title="Brands" />
           </article>
 
           <article className={styles.panel}>
@@ -174,7 +174,7 @@ export default function ComputerFleetStatsView({
               <Icon icon="mdi:laptop" />
               Models
             </h3>
-            <StatsPieChart items={stats.modelDistribution} total={stats.total} centerLabel={stats.total} emptyLabel="No model filled" />
+            <StatsPieChart items={stats.modelDistribution} total={stats.total} centerLabel={stats.total} emptyLabel="No model filled" title="Models" />
           </article>
 
           <article className={styles.panel}>
@@ -182,7 +182,7 @@ export default function ComputerFleetStatsView({
               <Icon icon="mdi:microsoft-windows" />
               Operating systems
             </h3>
-            <StatsPieChart items={stats.osDistribution} total={stats.total} centerLabel={stats.total} />
+            <StatsPieChart items={stats.osDistribution} total={stats.total} centerLabel={stats.total} title="Operating systems" />
           </article>
 
           <article className={styles.panel}>
@@ -190,7 +190,7 @@ export default function ComputerFleetStatsView({
               <Icon icon="mdi:laptop-account" />
               Form factor
             </h3>
-            <StatsPieChart items={stats.formFactorDistribution} total={stats.total} centerLabel={stats.total} />
+            <StatsPieChart items={stats.formFactorDistribution} total={stats.total} centerLabel={stats.total} title="Form factor" />
           </article>
         </section>
 
@@ -200,7 +200,7 @@ export default function ComputerFleetStatsView({
               <Icon icon="mdi:memory" />
               Memory (RAM)
             </h3>
-            <StatsDistributionBars items={stats.ramDistribution} />
+            <StatsDistributionBars items={stats.ramDistribution} title="Memory (RAM)" />
           </article>
 
           <article className={styles.panel}>
@@ -208,7 +208,7 @@ export default function ComputerFleetStatsView({
               <Icon icon="mdi:chip" />
               Processors
             </h3>
-            <StatsDistributionBars items={stats.cpuDistribution} />
+            <StatsDistributionBars items={stats.cpuDistribution} title="Processors" />
           </article>
 
           <article className={styles.panel}>
@@ -216,7 +216,7 @@ export default function ComputerFleetStatsView({
               <Icon icon="mdi:harddisk" />
               Storage
             </h3>
-            <StatsDistributionBars items={stats.diskDistribution} />
+            <StatsDistributionBars items={stats.diskDistribution} title="Storage" />
           </article>
         </section>
 
@@ -309,7 +309,7 @@ export default function ComputerFleetStatsView({
               </li>
             </ul>
             <h4 className={styles.subPanelTitle}>Versions agent RMM</h4>
-            <StatsDistributionBars items={stats.agentVersionDistribution} />
+            <StatsDistributionBars items={stats.agentVersionDistribution} title="Versions agent RMM" />
           </article>
         </section>
 

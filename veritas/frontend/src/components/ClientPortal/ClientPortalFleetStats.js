@@ -193,7 +193,7 @@ export default function ClientPortalFleetStats({
               <Icon icon="mdi:factory" />
               {fleet.brandsTitle}
             </h3>
-            <StatsPieChart items={localizedStats.brandDistribution} total={stats.total} centerLabel={stats.total} />
+            <StatsPieChart items={localizedStats.brandDistribution} total={stats.total} centerLabel={stats.total} othersLabel={familyCopy.others} title={fleet.brandsTitle} />
           </article>
 
           <article className={fleetStyles.panel}>
@@ -201,7 +201,7 @@ export default function ClientPortalFleetStats({
               <Icon icon="mdi:laptop" />
               {fleet.modelsTitle}
             </h3>
-            <StatsPieChart items={localizedStats.modelDistribution} total={stats.total} centerLabel={stats.total} emptyLabel={fleet.modelsEmpty} />
+            <StatsPieChart items={localizedStats.modelDistribution} total={stats.total} centerLabel={stats.total} emptyLabel={fleet.modelsEmpty} othersLabel={familyCopy.others} title={fleet.modelsTitle} />
           </article>
 
           <article className={fleetStyles.panel}>
@@ -209,7 +209,7 @@ export default function ClientPortalFleetStats({
               <Icon icon="mdi:microsoft-windows" />
               {fleet.osTitle}
             </h3>
-            <StatsPieChart items={localizedStats.osDistribution} total={stats.total} centerLabel={stats.total} />
+            <StatsPieChart items={localizedStats.osDistribution} total={stats.total} centerLabel={stats.total} othersLabel={familyCopy.others} title={fleet.osTitle} />
           </article>
 
           <article className={fleetStyles.panel}>
@@ -217,7 +217,7 @@ export default function ClientPortalFleetStats({
               <Icon icon="mdi:laptop-account" />
               {fleet.formFactorTitle}
             </h3>
-            <StatsPieChart items={localizedStats.formFactorDistribution} total={stats.total} centerLabel={stats.total} />
+            <StatsPieChart items={localizedStats.formFactorDistribution} total={stats.total} centerLabel={stats.total} othersLabel={familyCopy.others} title={fleet.formFactorTitle} />
           </article>
         </section>
 
@@ -227,7 +227,7 @@ export default function ClientPortalFleetStats({
               <Icon icon="mdi:memory" />
               {fleet.ramTitle}
             </h3>
-            <StatsDistributionBars items={localizedStats.ramDistribution} />
+            <StatsDistributionBars items={localizedStats.ramDistribution} title={fleet.ramTitle} />
           </article>
 
           <article className={fleetStyles.panel}>
@@ -235,7 +235,7 @@ export default function ClientPortalFleetStats({
               <Icon icon="mdi:chip" />
               {fleet.cpuTitle}
             </h3>
-            <StatsDistributionBars items={localizedStats.cpuDistribution} />
+            <StatsDistributionBars items={localizedStats.cpuDistribution} title={fleet.cpuTitle} />
           </article>
 
           <article className={fleetStyles.panel}>
@@ -243,7 +243,7 @@ export default function ClientPortalFleetStats({
               <Icon icon="mdi:harddisk" />
               {fleet.storageTitle}
             </h3>
-            <StatsDistributionBars items={localizedStats.diskDistribution} />
+            <StatsDistributionBars items={localizedStats.diskDistribution} title={fleet.storageTitle} />
           </article>
         </section>
 
@@ -340,7 +340,7 @@ export default function ClientPortalFleetStats({
               </li>
             </ul>
             <h4 className={fleetStyles.subPanelTitle}>{fleet.agentVersionsTitle}</h4>
-            <StatsDistributionBars items={localizedStats.agentVersionDistribution} />
+            <StatsDistributionBars items={localizedStats.agentVersionDistribution} title={fleet.agentVersionsTitle} />
           </article>
         </section>
 

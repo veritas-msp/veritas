@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { Children, cloneElement, isValidElement, useMemo } from "react";
 import { Icon } from "@iconify/react";
 import { useAppLocale } from "../../hooks/useAppGeneralSettings";
 import { interpolate } from "../../i18n/translate";
@@ -37,17 +37,17 @@ function ChartPanel({ icon, title, children }) {
         <Icon icon={icon} aria-hidden />
         {title}
       </h3>
-      {children}
+      {Children.map(children, child => isValidElement(child) ? cloneElement(child, { title }) : child)}
     </article>
   );
 }
 
-function DistributionPie({ items, total, copy, emptyLabel }) {
-  return <StatsPieChart items={localizeItems(items, copy)} total={total} centerLabel={total} emptyLabel={emptyLabel || copy.emptyChart} />;
+function DistributionPie({ items, total, copy, emptyLabel, title }) {
+  return <StatsPieChart items={localizeItems(items, copy)} total={total} centerLabel={total} emptyLabel={emptyLabel || copy.emptyChart} othersLabel={copy.others} title={title} />;
 }
 
-function DistributionBars({ items, copy }) {
-  return <StatsDistributionBars items={localizeItems(items, copy)} emptyLabel={copy.emptyChart} />;
+function DistributionBars({ items, copy, title }) {
+  return <StatsDistributionBars items={localizeItems(items, copy)} emptyLabel={copy.emptyChart} title={title} />;
 }
 
 function hasUsefulDistribution(items) {

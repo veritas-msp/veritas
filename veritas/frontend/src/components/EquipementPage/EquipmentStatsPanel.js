@@ -4,7 +4,7 @@ import enterpriseDetailStyles from "../EnterprisesPage/EnterpriseDetailPage.modu
 import styles from "./EquipmentDetailPage.module.css";
 import specsStyles from "./EquipmentDetailSpecsPanel.module.css";
 import EquipmentDateRangeFilter from "./EquipmentDateRangeFilter";
-import { getEquipmentDetailTypeLabel, formatEquipmentDetailRelative } from "./equipmentDetailPageI18n";
+import { getEquipmentDetailTypeLabel, formatEquipmentDetailRelative, formatAlertSettingsDateTime, getEquipmentCreatedAt } from "./equipmentDetailPageI18n";
 const STATUS_KEYS = ["new", "in_progress", "pending", "resolved", "closed"];
 const PRIORITY_KEYS = ["urgent", "high", "normal", "low"];
 export default function EquipmentStatsPanel({
@@ -90,6 +90,14 @@ export default function EquipmentStatsPanel({
       rows.push({
         label: copy.stats.lastSync,
         value: formatEquipmentDetailRelative(lastSync, locale)
+      });
+    }
+    const createdAt = getEquipmentCreatedAt(equipment);
+    const createdAtFormatted = createdAt ? formatAlertSettingsDateTime(createdAt, locale) : null;
+    if (createdAtFormatted && createdAtFormatted !== "-") {
+      rows.push({
+        label: copy.stats.createdInVeritas,
+        value: createdAtFormatted
       });
     }
     return rows;

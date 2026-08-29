@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "react-toastify";
 import { Icon } from "@iconify/react";
 import { Page, Card, Btn, Pagination } from "./AdminUi";
+import adminUi from "./AdminUi.module.css";
 import { useAppLocale } from "../../hooks/useAppGeneralSettings";
 import { fetchClientsList } from "../../api/clients";
 import { fetchEquipmentFamilies } from "../../api/equipmentFamilies";
@@ -115,6 +116,7 @@ export default function AdminInjection({
   }, [activeView, contractOptionKeysNote]);
   const showFieldGuide = activeView ? hasInjectionFieldCatalog(activeView) : false;
   const [rows, setRows] = useState([]);
+  const [previewSearch, setPreviewSearch] = useState("");
   const [csvName, setCsvName] = useState("");
   const [running, setRunning] = useState(false);
   const [paused, setPaused] = useState(false);
@@ -173,6 +175,7 @@ export default function AdminInjection({
 
   const resetWorkspaceState = useCallback(() => {
     setRows([]);
+    setPreviewSearch("");
     setCsvName("");
     setProgress(null);
     setReport(null);
@@ -226,9 +229,15 @@ export default function AdminInjection({
     setActiveView(null);
   };
 
-  const previewPagination = useTablePagination(rows, {
+  const normalizePreviewQuery = value => String(value ?? "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim().toLowerCase();
+  const filteredPreviewRows = useMemo(() => {
+    const query = normalizePreviewQuery(previewSearch);
+    if (!query) return rows;
+    return rows.filter(row => Object.values(row || {}).some(value => normalizePreviewQuery(value).includes(query)));
+  }, [rows, previewSearch]);
+  const previewPagination = useTablePagination(filteredPreviewRows, {
     initialPageSize: 10,
-    resetDeps: [activeView, csvName]
+    resetDeps: [activeView, csvName, previewSearch]
   });
   const previewRows = previewPagination.paginatedItems;
   const previewHeaders = useMemo(() => {
@@ -244,10 +253,12 @@ export default function AdminInjection({
       if (!parsed.rows.length) {
         toast.warn(copy.noRows);
         setRows([]);
+        setPreviewSearch("");
         setCsvName("");
         return;
       }
       setRows(parsed.rows);
+      setPreviewSearch("");
       setCsvName(file.name);
       setReport(null);
       setProgress(null);
@@ -798,9 +809,22 @@ export default function AdminInjection({
 
           {!isDocuments ? (
             <section className={styles.preview}>
-              <h3 className={styles.previewTitle}>{copy.previewTitleLabel(rows.length)}</h3>
+              <div className={styles.previewHead}>
+                <h3 className={styles.previewTitle}>
+                  {previewSearch.trim() ? copy.previewTitleFilteredLabel(filteredPreviewRows.length, rows.length) : copy.previewTitleLabel(rows.length)}
+                </h3>
+                {rows.length > 0 ? <div className={`${adminUi.searchWrap} ${styles.previewSearch}`}>
+                    <Icon icon="mdi:magnify" className={adminUi.searchIcon} aria-hidden />
+                    <input type="search" className={adminUi.searchInput} value={previewSearch} onChange={e => setPreviewSearch(e.target.value)} placeholder={copy.previewSearchPlaceholder} aria-label={copy.previewSearchAria} autoComplete="off" />
+                    {previewSearch ? <button type="button" className={adminUi.searchClear} onClick={() => setPreviewSearch("")} aria-label={copy.previewSearchClear}>
+                        <Icon icon="mdi:close" aria-hidden />
+                      </button> : null}
+                  </div> : null}
+              </div>
               {rows.length === 0 ? (
                 <p className={styles.empty}>{copy.previewEmpty}</p>
+              ) : filteredPreviewRows.length === 0 ? (
+                <p className={styles.empty}>{copy.previewSearchEmpty}</p>
               ) : (
                 <>
                   <div className={styles.tableWrap}>

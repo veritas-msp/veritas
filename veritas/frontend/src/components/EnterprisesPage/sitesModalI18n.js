@@ -7,6 +7,9 @@ const SITES_MODAL_COPY = {
     refreshAll: "Actualiser",
     refreshAllTitle: "Actualiser toutes les positions sur la carte",
     refreshingAll: "Actualisation…",
+    refreshingProgress: "{current} / {total}",
+    refreshingCurrent: "Localisation de {name}…",
+    refreshingAria: "Actualisation des positions {current} sur {total} · {name}",
     searchPlaceholder: "Rechercher un lieu…",
     searchAria: "Rechercher un lieu",
     noSearchResults: "Aucun lieu ne correspond à la recherche.",
@@ -95,8 +98,8 @@ const SITES_MODAL_COPY = {
       saveFailed: "Impossible d'enregistrer les lieux.",
       imported: "{count} lieu(x) ajouté(s).",
       positionsRefreshNone: "Aucune adresse à localiser.",
-      positionsRefreshed: "{count} position(s) mise(s) à jour.",
-      positionsRefreshPartial: "{ok} position(s) mise(s) à jour, {failed} échec(s).",
+      positionsRefreshed: "{count} position(s) mise(s) à jour et enregistrée(s).",
+      positionsRefreshPartial: "{ok} position(s) mise(s) à jour et enregistrée(s), {failed} échec(s).",
       positionsRefreshFailed: "Impossible de localiser les adresses."
     }
   },
@@ -107,6 +110,9 @@ const SITES_MODAL_COPY = {
     refreshAll: "Refresh",
     refreshAllTitle: "Refresh all map positions",
     refreshingAll: "Refreshing…",
+    refreshingProgress: "{current} / {total}",
+    refreshingCurrent: "Locating {name}…",
+    refreshingAria: "Refreshing positions {current} of {total} · {name}",
     searchPlaceholder: "Search a location…",
     searchAria: "Search a location",
     noSearchResults: "No location matches this search.",
@@ -195,8 +201,8 @@ const SITES_MODAL_COPY = {
       saveFailed: "Unable to save locations.",
       imported: "{count} location(s) added.",
       positionsRefreshNone: "No address to locate.",
-      positionsRefreshed: "{count} position(s) updated.",
-      positionsRefreshPartial: "{ok} position(s) updated, {failed} failed.",
+      positionsRefreshed: "{count} position(s) updated and saved.",
+      positionsRefreshPartial: "{ok} position(s) updated and saved, {failed} failed.",
       positionsRefreshFailed: "Unable to locate the addresses."
     }
   },
@@ -207,6 +213,9 @@ const SITES_MODAL_COPY = {
     refreshAll: "Aktualisieren",
     refreshAllTitle: "Alle Kartenpositionen aktualisieren",
     refreshingAll: "Aktualisierung…",
+    refreshingProgress: "{current} / {total}",
+    refreshingCurrent: "Lokalisierung von {name}…",
+    refreshingAria: "Positionen werden aktualisiert {current} von {total} · {name}",
     searchPlaceholder: "Standort suchen…",
     searchAria: "Standort suchen",
     noSearchResults: "Kein Standort entspricht der Suche.",
@@ -295,8 +304,8 @@ const SITES_MODAL_COPY = {
       saveFailed: "Standorte konnten nicht gespeichert werden.",
       imported: "{count} Standort(e) hinzugefügt.",
       positionsRefreshNone: "Keine Adresse zum Lokalisieren.",
-      positionsRefreshed: "{count} Position(en) aktualisiert.",
-      positionsRefreshPartial: "{ok} Position(en) aktualisiert, {failed} Fehler.",
+      positionsRefreshed: "{count} Position(en) aktualisiert und gespeichert.",
+      positionsRefreshPartial: "{ok} Position(en) aktualisiert und gespeichert, {failed} Fehler.",
       positionsRefreshFailed: "Adressen konnten nicht lokalisiert werden."
     }
   },
@@ -307,6 +316,9 @@ const SITES_MODAL_COPY = {
     refreshAll: "Aggiorna",
     refreshAllTitle: "Aggiorna tutte le posizioni sulla mappa",
     refreshingAll: "Aggiornamento…",
+    refreshingProgress: "{current} / {total}",
+    refreshingCurrent: "Localizzazione di {name}…",
+    refreshingAria: "Aggiornamento posizioni {current} di {total} · {name}",
     searchPlaceholder: "Cerca una sede…",
     searchAria: "Cerca una sede",
     noSearchResults: "Nessuna sede corrisponde alla ricerca.",
@@ -395,8 +407,8 @@ const SITES_MODAL_COPY = {
       saveFailed: "Impossibile salvare le sedi.",
       imported: "{count} sede/i aggiunta/e.",
       positionsRefreshNone: "Nessun indirizzo da localizzare.",
-      positionsRefreshed: "{count} posizione/i aggiornata/e.",
-      positionsRefreshPartial: "{ok} posizione/i aggiornata/e, {failed} errore/i.",
+      positionsRefreshed: "{count} posizione/i aggiornata/e e salvata/e.",
+      positionsRefreshPartial: "{ok} posizione/i aggiornata/e e salvata/e, {failed} errore/i.",
       positionsRefreshFailed: "Impossibile localizzare gli indirizzi."
     }
   },
@@ -407,6 +419,9 @@ const SITES_MODAL_COPY = {
     refreshAll: "Actualizar",
     refreshAllTitle: "Actualizar todas las posiciones en el mapa",
     refreshingAll: "Actualizando…",
+    refreshingProgress: "{current} / {total}",
+    refreshingCurrent: "Localizando {name}…",
+    refreshingAria: "Actualizando posiciones {current} de {total} · {name}",
     searchPlaceholder: "Buscar una ubicación…",
     searchAria: "Buscar una ubicación",
     noSearchResults: "Ninguna ubicación coincide con la búsqueda.",
@@ -495,8 +510,8 @@ const SITES_MODAL_COPY = {
       saveFailed: "No se pudieron guardar las ubicaciones.",
       imported: "{count} ubicación(es) añadida(s).",
       positionsRefreshNone: "Ninguna dirección que localizar.",
-      positionsRefreshed: "{count} posición(es) actualizada(s).",
-      positionsRefreshPartial: "{ok} posición(es) actualizada(s), {failed} error(es).",
+      positionsRefreshed: "{count} posición(es) actualizada(s) y guardada(s).",
+      positionsRefreshPartial: "{ok} posición(es) actualizada(s) y guardada(s), {failed} error(es).",
       positionsRefreshFailed: "No se pudieron localizar las direcciones."
     }
   }
@@ -538,6 +553,18 @@ export function getSitesModalCopy(locale) {
     }),
     formatLimitReached: max => interpolate(t.limits.reached, {
       max: String(max)
+    }),
+    formatRefreshingProgress: (current, total) => interpolate(t.refreshingProgress, {
+      current: String(current),
+      total: String(total)
+    }),
+    formatRefreshingCurrent: name => interpolate(t.refreshingCurrent, {
+      name: String(name || "")
+    }),
+    formatRefreshingAria: (current, total, name) => interpolate(t.refreshingAria, {
+      current: String(current),
+      total: String(total),
+      name: String(name || "")
     })
   };
 }

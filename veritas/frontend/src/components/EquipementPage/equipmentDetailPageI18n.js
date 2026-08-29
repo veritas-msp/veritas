@@ -44,7 +44,8 @@ const FR = {
     refreshCheckmk: "Actualiser CheckMK",
     mappingCheckmk: "Mapping CheckMK",
     mapCheckmk: "Mapper CheckMK",
-    openQuickConnect: "Ouvrir QuickConnect"
+    openQuickConnect: "Ouvrir QuickConnect",
+    createdInVeritas: "Créé le {date}"
   },
   specs: {
     title: "Fiche matériel",
@@ -119,6 +120,7 @@ const FR = {
     rmmManaged: "Agent RMM",
     rmmYes: "Géré par agent",
     lastSync: "Dernière remontée",
+    createdInVeritas: "Créé dans Veritas",
     avgResolution: "Délai moyen de résolution : {hours} h"
   },
   documents: {
@@ -735,7 +737,8 @@ const EN = {
     refreshCheckmk: "Refresh CheckMK",
     mappingCheckmk: "CheckMK mapping",
     mapCheckmk: "Map CheckMK",
-    openQuickConnect: "Open QuickConnect"
+    openQuickConnect: "Open QuickConnect",
+    createdInVeritas: "Created {date}"
   },
   specs: {
     title: "Hardware record",
@@ -810,6 +813,7 @@ const EN = {
     rmmManaged: "RMM agent",
     rmmYes: "Agent managed",
     lastSync: "Last sync",
+    createdInVeritas: "Created in Veritas",
     avgResolution: "Average resolution time: {hours} h"
   },
   documents: {
@@ -1394,7 +1398,8 @@ const DE = {
     ...EN.hero,
     alertsTooltip: "Alarme: {status}",
     alertsAria: "Überwachungsalarme verwalten",
-    alertsMenu: "Überwachungsalarme"
+    alertsMenu: "Überwachungsalarme",
+    createdInVeritas: "Erstellt am {date}"
   },
   tabs: {
     ...EN.tabs,
@@ -1641,6 +1646,7 @@ const DE = {
     rmmManaged: "RMM-Agent",
     rmmYes: "Durch Agent verwaltet",
     lastSync: "Letzte Meldung",
+    createdInVeritas: "In Veritas erstellt",
     avgResolution: "Durchschnittliche Lösungszeit: {hours} h"
   },
   activity: {
@@ -1762,7 +1768,8 @@ const IT = {
     ...EN.hero,
     alertsTooltip: "Avvisi: {status}",
     alertsAria: "Gestisci avvisi di supervisione",
-    alertsMenu: "Avvisi di supervisione"
+    alertsMenu: "Avvisi di supervisione",
+    createdInVeritas: "Creato il {date}"
   },
   tabs: {
     ...EN.tabs,
@@ -2009,6 +2016,7 @@ const IT = {
     rmmManaged: "Agente RMM",
     rmmYes: "Gestito da agente",
     lastSync: "Ultima sincronizzazione",
+    createdInVeritas: "Creato in Veritas",
     avgResolution: "Tempo medio di risoluzione: {hours} h"
   },
   activity: {
@@ -2129,7 +2137,8 @@ const ES = {
     ...EN.hero,
     alertsTooltip: "Alertas: {status}",
     alertsAria: "Gestionar alertas de supervisión",
-    alertsMenu: "Alertas de supervisión"
+    alertsMenu: "Alertas de supervisión",
+    createdInVeritas: "Creado el {date}"
   },
   tabs: {
     ...EN.tabs,
@@ -2376,6 +2385,7 @@ const ES = {
     rmmManaged: "Agente RMM",
     rmmYes: "Gestionado por agente",
     lastSync: "Última sincronización",
+    createdInVeritas: "Creado en Veritas",
     avgResolution: "Tiempo medio de resolución: {hours} h"
   },
   activity: {
@@ -2507,6 +2517,9 @@ export function getAlertDurationOptions(locale) {
     value,
     label: durations[String(value)] || String(value)
   }));
+}
+export function getEquipmentCreatedAt(equipment) {
+  return equipment?.createdAt || equipment?.created_at || equipment?.rawData?.created_at || equipment?.rawData?.createdAt || null;
 }
 export function formatAlertSettingsDateTime(iso, locale) {
   if (!iso) return "-";

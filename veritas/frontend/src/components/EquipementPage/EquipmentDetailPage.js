@@ -34,7 +34,7 @@ import { fetchEquipmentActivity } from "../../api/equipmentActivity";
 import { resolveEquipmentActivityRange, toDateInputValue } from "./equipmentActivityUtils";
 import { buildDetailFormData } from "./equipmentDetailConfig";
 import { patchEquipmentWithSharedFields } from "./sharedEquipmentFields";
-import { getEquipmentDetailTypeLabel, getEquipmentDetailCopy, formatEquipmentDetailRelative } from "./equipmentDetailPageI18n";
+import { getEquipmentDetailTypeLabel, getEquipmentDetailCopy, formatEquipmentDetailRelative, formatAlertSettingsDateTime, getEquipmentCreatedAt } from "./equipmentDetailPageI18n";
 import { canonicalizeComputerType, patchEquipmentLocation } from "./equipmentFormConfig";
 import { ConfirmModal } from "../AdminPage/AdminUi";
 import { useAppLocale } from "../../hooks/useAppGeneralSettings";
@@ -918,6 +918,8 @@ export default function EquipmentDetailPage({
         type: equipment.type,
         name: equipment.name,
         dbId: getEquipmentDbIdLocal() || equipment.dbId || null,
+        familyKey: equipment.familyKey || parseCustomFamilyType(equipment.type) || null,
+        family: equipment.family || null,
         search: logsSearch,
         category: logsCategory,
         signal: controller.signal
@@ -944,6 +946,8 @@ export default function EquipmentDetailPage({
         type: equipment.type,
         name: equipment.name,
         dbId: getEquipmentDbIdLocal() || equipment.dbId || null,
+        familyKey: equipment.familyKey || parseCustomFamilyType(equipment.type) || null,
+        family: equipment.family || null,
         search: logsSearch,
         category: logsCategory
       });
@@ -1346,6 +1350,11 @@ export default function EquipmentDetailPage({
     }
   };
   const equipmentHeroTitle = equipment?.type === "Internet" ? formData.fournisseur && formData.internetType ? `${formData.fournisseur.toUpperCase()} ${formData.internetType.toUpperCase()}` : equipment.name : equipment?.name;
+  const createdAtRaw = getEquipmentCreatedAt(equipment);
+  const createdAtFormatted = createdAtRaw ? formatAlertSettingsDateTime(createdAtRaw, locale) : null;
+  const createdAtLabel = createdAtFormatted && createdAtFormatted !== "-" ? interpolate(copy.hero.createdInVeritas, {
+    date: createdAtFormatted
+  }) : null;
   const rmmStatusKey = showRmmHeroStatus ? getRmmAgentStatusKey(equipmentWithRmmLive) : null;
   const rmmStatusLabel = rmmStatusKey === "online" ? copy.agent.online : rmmStatusKey === "offline" ? copy.agent.offline : rmmStatusKey === "manual" ? copy.agent.manual : rmmStatusKey ? copy.agent.unknown : null;
   const showQuickConnectHero = Boolean(isSynologyNasStorage && formData.quickConnect);
@@ -1370,6 +1379,9 @@ export default function EquipmentDetailPage({
               </h1>
               <div className={`${enterpriseDetailStyles.heroMeta} ${styles.heroMetaPlain}`} aria-label={copy.hero.metaAria}>
                 <span className={styles.heroMetaPlainItem}>{typeDisplayLabel}</span>
+                {createdAtLabel ? <span className={styles.heroMetaPlainItem} title={copy.stats.createdInVeritas}>
+                    {createdAtLabel}
+                  </span> : null}
                 {showRmmHeroStatus && rmmAgentVersion ? <span className={styles.heroMetaPlainItem} title={copy.agent.versionTitle}>
                     {interpolate(copy.agent.chip, {
                 version: rmmAgentVersion

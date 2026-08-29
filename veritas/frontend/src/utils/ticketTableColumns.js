@@ -36,6 +36,7 @@ export const TICKET_TABLE_COLUMN_IDS_BY_SCOPE = Object.freeze({
   enterprises: Object.freeze([
     "client_number",
     "company",
+    "company_status",
     "primary_contact",
     "commercial",
     "modules",
@@ -107,6 +108,7 @@ export const TICKET_TABLE_COLUMN_SORT_KEYS = Object.freeze({
   updated_at: "updated_at",
   client_number: "clientNumber",
   company: "name",
+  company_status: "companyStatus",
   primary_contact: "primaryContact",
   commercial: "commercial",
   modules: null,
@@ -125,6 +127,7 @@ export const TICKET_TABLE_COLUMN_SORT_KEYS = Object.freeze({
 export const ENTERPRISES_COLUMN_LABEL_KEYS = Object.freeze({
   client_number: "clientNumber",
   company: "company",
+  company_status: "companyStatus",
   primary_contact: "primaryContact",
   commercial: "commercial",
   modules: "modules",

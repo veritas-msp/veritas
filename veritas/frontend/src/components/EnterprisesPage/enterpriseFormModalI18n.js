@@ -1,7 +1,8 @@
 import { interpolate, pickLocaleMessages } from "../../i18n/translate";
-const SECTION_IDS = ["identity", "location", "contact", "contract", "modules", "support"];
+const SECTION_IDS = ["identity", "status", "location", "contact", "contract", "modules", "support"];
 const SECTION_ICONS = {
   identity: "mdi:domain",
+  status: "mdi:toggle-switch-outline",
   location: "mdi:map-marker-radius-outline",
   contact: "mdi:account-tie-outline",
   contract: "mdi:file-document-outline",
@@ -64,6 +65,10 @@ const COPY = {
         label: "Identité",
         description: "Nom légal, identifiant légal et secteur d'activité"
       },
+      status: {
+        label: "Statut",
+        description: "Disponibilité de l'entreprise dans le portefeuille"
+      },
       location: {
         label: "Lieux",
         description: "Adresse postale et sites physiques"
@@ -85,6 +90,9 @@ const COPY = {
         description: "Engagements SLA de réponse et résolution"
       }
     },
+    statutActive: "Active",
+    statutInactive: "Inactive",
+    statusInactiveHint: "Les entreprises inactives restent consultables dans le portefeuille.",
     modules: {
       summaryOne: "{count} service sélectionné sur {total} disponibles",
       summaryMany: "{count} services sélectionnés sur {total} disponibles",
@@ -193,6 +201,10 @@ const COPY = {
         label: "Identity",
         description: "Legal name, legal ID and industry sector"
       },
+      status: {
+        label: "Status",
+        description: "Company availability in the portfolio"
+      },
       location: {
         label: "Locations",
         description: "Postal address and physical sites"
@@ -214,6 +226,9 @@ const COPY = {
         description: "SLA response and resolution commitments"
       }
     },
+    statutActive: "Active",
+    statutInactive: "Inactive",
+    statusInactiveHint: "Inactive companies remain visible in the portfolio.",
     modules: {
       summaryOne: "{count} service selected of {total} available",
       summaryMany: "{count} services selected of {total} available",
@@ -322,6 +337,10 @@ const COPY = {
         label: "Identität",
         description: "Rechtlicher Name, Kennung und Branche"
       },
+      status: {
+        label: "Status",
+        description: "Verfügbarkeit des Unternehmens im Portfolio"
+      },
       location: {
         label: "Standorte",
         description: "Postadresse und physische Standorte"
@@ -343,6 +362,9 @@ const COPY = {
         description: "SLA-Reaktions- und Lösungszeiten"
       }
     },
+    statutActive: "Aktiv",
+    statutInactive: "Inaktiv",
+    statusInactiveHint: "Inaktive Unternehmen bleiben im Portfolio sichtbar.",
     modules: {
       summaryOne: "{count} Service ausgewählt von {total} verfügbar",
       summaryMany: "{count} Services ausgewählt von {total} verfügbar",
@@ -451,6 +473,10 @@ const COPY = {
         label: "Identità",
         description: "Ragione sociale, ID legale e settore"
       },
+      status: {
+        label: "Stato",
+        description: "Disponibilità dell'azienda nel portafoglio"
+      },
       location: {
         label: "Sedi",
         description: "Indirizzo postale e siti fisici"
@@ -472,6 +498,9 @@ const COPY = {
         description: "Impegni SLA di risposta e risoluzione"
       }
     },
+    statutActive: "Attiva",
+    statutInactive: "Inattiva",
+    statusInactiveHint: "Le aziende inattive restano consultabili nel portafoglio.",
     modules: {
       summaryOne: "{count} servizio selezionato su {total} disponibili",
       summaryMany: "{count} servizi selezionati su {total} disponibili",
@@ -580,6 +609,10 @@ const COPY = {
         label: "Identidad",
         description: "Nombre legal, ID legal y sector"
       },
+      status: {
+        label: "Estado",
+        description: "Disponibilidad de la empresa en la cartera"
+      },
       location: {
         label: "Ubicaciones",
         description: "Dirección postal y sedes físicas"
@@ -601,6 +634,9 @@ const COPY = {
         description: "Compromisos SLA de respuesta y resolución"
       }
     },
+    statutActive: "Activa",
+    statutInactive: "Inactiva",
+    statusInactiveHint: "Las empresas inactivas siguen siendo consultables en la cartera.",
     modules: {
       summaryOne: "{count} servicio seleccionado de {total} disponibles",
       summaryMany: "{count} servicios seleccionados de {total} disponibles",

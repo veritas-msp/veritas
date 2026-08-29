@@ -57,6 +57,9 @@ export async function buildIncrementalAvrilMigrationPlan(client = pool) {
   if (!(await columnExists(client, "v_b_clients", "client_number"))) {
     plan.push("20260619_clients_client_number.sql");
   }
+  if ((await tableExists(client, "v_b_clients")) && !(await columnExists(client, "v_b_clients", "statut"))) {
+    plan.push("20260829_clients_statut.sql");
+  }
   if (!(await tableExists(client, "v_b_client_support_credits"))) {
     plan.push("20260620_client_support_credits.sql", "20260620_client_support_credits_grants.sql");
   }

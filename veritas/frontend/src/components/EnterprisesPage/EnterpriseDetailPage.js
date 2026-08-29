@@ -39,7 +39,7 @@ import ContactFormModal from "../ContactsPage/ContactFormModal";
 import { exportReversibilityFolder } from "./exportReversibilityDossier";
 import EnterpriseVaultPanel from "./EnterpriseVaultPanel";
 import { getEnterpriseVaultCopy } from "./enterpriseVaultI18n";
-import { splitClientAddress, buildClientAddress, emptyPrimaryContact, mapContactToPrimary, pickPrimaryContact, normalizePrimaryContact, buildAdditiveMembershipsForEnterprise, isPrimaryContactPoste, isContactPrimaryForClient, sortContactsPrimaryFirst } from "./enterpriseFormUtils";
+import { splitClientAddress, buildClientAddress, emptyPrimaryContact, mapContactToPrimary, pickPrimaryContact, normalizePrimaryContact, buildAdditiveMembershipsForEnterprise, isPrimaryContactPoste, isContactPrimaryForClient, sortContactsPrimaryFirst, normalizeCompanyStatusKey, toCompanyStatusValue } from "./enterpriseFormUtils";
 import { buildSiteAddress, formatSitesForLog, getSiteDisplayName, getSiteId, getSiteLocationValue, normalizeClientSites, serializeSitesForCompare, siteMatchesQuery } from "../../utils/clientSites";
 import { normalizeServeurLieList } from "./backupJobUtils";
 import SiteMapPreview from "./SiteMapPreview";
@@ -517,7 +517,8 @@ export default function ClientDetailPage({
       debut: "",
       expiration: ""
     },
-    modules: {}
+    modules: {},
+    statut: "actif"
   });
   const [initialFormData, setInitialFormData] = useState(null);
   const [hasChanges, setHasChanges] = useState(false);
@@ -647,7 +648,8 @@ export default function ClientDetailPage({
           debut: "",
           expiration: ""
         },
-        modules: {}
+        modules: {},
+        statut: "actif"
       };
     }
     const addressParts = splitClientAddress(sourceClient.address || "");
@@ -665,7 +667,8 @@ export default function ClientDetailPage({
       sites: normalizeClientSites(sourceClient.sites),
       primaryContact: primary ? mapContactToPrimary(primary) : emptyPrimaryContact(),
       contrat: getContratData(sourceClient),
-      modules: getContractModules(sourceClient)
+      modules: getContractModules(sourceClient),
+      statut: toCompanyStatusValue(sourceClient.statut)
     };
   };
   const cloneFormSnapshot = data => ({
@@ -686,7 +689,7 @@ export default function ClientDetailPage({
   });
   const detectInfoChanges = (currentData, initialData) => {
     if (!initialData) return false;
-    const infoFields = ["clientNumber", "name", "commercialId", "secteur", "addressStreet", "addressPostalCode", "addressCity"];
+    const infoFields = ["clientNumber", "name", "commercialId", "secteur", "addressStreet", "addressPostalCode", "addressCity", "statut"];
     for (const field of infoFields) {
       if (String(currentData[field] || "").trim() !== String(initialData[field] || "").trim()) {
         return true;
@@ -2098,7 +2101,8 @@ export default function ClientDetailPage({
         options: formData.modules,
         siret: normalizeLegalIdentifier(formData.siret) || null,
         address: buildClientAddress(formData),
-        secteur: formData.secteur?.trim() || ""
+        secteur: formData.secteur?.trim() || "",
+        statut: toCompanyStatusValue(formData.statut)
       };
       const contactEmail = formData.primaryContact?.email?.trim();
       if (contactEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(contactEmail)) {
@@ -2815,8 +2819,9 @@ export default function ClientDetailPage({
   const handlePhotoUpload = () => {
     setPhotoModalOpen(true);
   };
-  const handleSitesSave = async newSites => {
+  const handleSitesSave = async (newSites, options = {}) => {
     const sites = normalizeClientSites(newSites);
+    const silent = options.silent === true;
     if (enterpriseEditModalOpen) {
       updateFormData({
         ...formData,
@@ -2838,7 +2843,7 @@ export default function ClientDetailPage({
         sites
       }));
       notifyEnterprisesListRefresh();
-      toast.success(copy.toast.sitesUpdated);
+      if (!silent) toast.success(copy.toast.sitesUpdated);
     } catch (error) {
       console.error("Error lors de la update des site:", error);
       toast.error(interpolate(copy.toast.sitesUpdateError, {
@@ -2897,6 +2902,8 @@ export default function ClientDetailPage({
       </div>;
   }
   const contractStatus = resolveContractStatus(formData.contrat?.expiration, formData.contrat?.suspendu);
+  const companyStatusKey = normalizeCompanyStatusKey(formData.statut);
+  const companyStatusLabel = companyStatusKey === "inactive" ? copy.companyStatusInactive : copy.companyStatusActive;
   const clientCode = getClientNumber(client);
   const clientNameWithoutCode = getClientNameWithoutCode(client) || "-";
   const commercialUser = users.find(u => u.id === formData.commercialId);
@@ -2914,6 +2921,9 @@ export default function ClientDetailPage({
                 <span>{clientNameWithoutCode}</span>
               </h1>
               <div className={styles.heroMeta} aria-label={copy.heroMetaAria}>
+                <span className={`${styles.contractBadge} ${companyStatusKey === "inactive" ? styles.contractBadge_suspended : styles.contractBadge_active}`}>
+                  {companyStatusLabel}
+                </span>
                 <span className={`${styles.contractBadge} ${styles[`contractBadge_${contractStatus.status}`] || styles.contractBadge_unknown}`}>
                   {contractStatus.label}
                 </span>

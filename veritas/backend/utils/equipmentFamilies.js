@@ -437,19 +437,20 @@ export async function updateClientCustomEquipment(clientId, familyKey, itemId, p
          updated_at = NOW()
      WHERE id = $1 AND client_id = $2 AND family_key = $3
      RETURNING *`, [itemId, clientId, familyKey, name, JSON.stringify(nextData)]);
-  return mapCustomEquipmentRow(result.rows[0]);
+  return {
+    item: mapCustomEquipmentRow(result.rows[0]),
+    previous: current
+  };
 }
 export async function deleteClientCustomEquipment(clientId, familyKey, itemId) {
   await ensureEquipmentFamilyTables();
   const result = await pool.query(`DELETE FROM v_b_clients_m_custom_equipment
      WHERE id = $1 AND client_id = $2 AND family_key = $3
-     RETURNING id`, [itemId, clientId, familyKey]);
+     RETURNING *`, [itemId, clientId, familyKey]);
   if (!result.rows.length) {
     const err = new Error("Equipment not found.");
     err.status = 404;
     throw err;
   }
-  return {
-    id: result.rows[0].id
-  };
+  return mapCustomEquipmentRow(result.rows[0]);
 }

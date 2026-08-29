@@ -27,7 +27,9 @@ function buildInitialForm(moduleDefinitions = []) {
     enableExpiration: false,
     contratExpiration: "",
     enableModules: false,
-    modules: buildEmptyModulesMap(moduleDefinitions)
+    modules: buildEmptyModulesMap(moduleDefinitions),
+    enableStatut: false,
+    statut: "actif"
   };
 }
 
@@ -77,7 +79,7 @@ export default function EnterpriseBulkEditModal({
   })), [users]);
   const moduleDefs = useMemo(() => (Array.isArray(contractModules) ? contractModules : []).filter(module => module?.enabled !== false), [contractModules]);
   const validateForm = () => {
-    const hasField = form.enableCommercial || form.enableDebut || form.enableExpiration || form.enableModules;
+    const hasField = form.enableCommercial || form.enableDebut || form.enableExpiration || form.enableModules || form.enableStatut;
     if (!hasField) return bulkCopy.validation.noField;
     if (form.enableCommercial && !String(form.commercialId || "").trim()) return bulkCopy.validation.noCommercial;
     return "";
@@ -91,6 +93,7 @@ export default function EnterpriseBulkEditModal({
       ...buildEmptyModulesMap(contractModules),
       ...form.modules
     };
+    if (form.enableStatut) updates.statut = form.statut === "inactive" ? "inactive" : "actif";
     return updates;
   };
   const handleSubmit = async () => {
@@ -211,6 +214,36 @@ export default function EnterpriseBulkEditModal({
                         <span>{getLocalizedModuleLabel(contractModules, key, locale)}</span>
                       </button>;
               })}
+                </div>
+              </div> : null}
+          </section>
+
+          <section className={styles.section}>
+            <div className={styles.sectionHead}>
+              <label>
+                <input type="checkbox" checked={form.enableStatut} onChange={e => setForm(prev => ({
+                ...prev,
+                enableStatut: e.target.checked
+              }))} />
+                {bulkCopy.editStatut}
+              </label>
+            </div>
+            {form.enableStatut ? <div className={styles.sectionBody}>
+                <div className={styles.modulesGrid}>
+                  <button type="button" className={`${styles.moduleTile} ${form.statut === "actif" ? styles.moduleTileActive : ""}`} onClick={() => setForm(prev => ({
+                ...prev,
+                statut: "actif"
+              }))} aria-pressed={form.statut === "actif"}>
+                    <Icon icon="mdi:domain" className={styles.moduleTileIcon} aria-hidden />
+                    <span>{bulkCopy.statutActive}</span>
+                  </button>
+                  <button type="button" className={`${styles.moduleTile} ${form.statut === "inactive" ? styles.moduleTileActive : ""}`} onClick={() => setForm(prev => ({
+                ...prev,
+                statut: "inactive"
+              }))} aria-pressed={form.statut === "inactive"}>
+                    <Icon icon="mdi:domain-off-outline" className={styles.moduleTileIcon} aria-hidden />
+                    <span>{bulkCopy.statutInactive}</span>
+                  </button>
                 </div>
               </div> : null}
           </section>

@@ -107,7 +107,8 @@ function buildLeanSelect(table) {
       CASE
         WHEN lower(COALESCE(e.data->>'manageable', '')) IN ('true', 't', '1', 'yes') THEN true
         ELSE false
-      END AS manageable
+      END AS manageable,
+      e.created_at
     FROM ${table} e
     INNER JOIN v_b_clients c ON c.id = e.client_id
     WHERE e.client_id IS NOT NULL
@@ -143,6 +144,8 @@ function mapLeanRow(row, familyMeta) {
     remoteAccessId: row.remote_access_id || "",
     anydeskId: row.anydesk_id || "",
     manageable: row.manageable === true,
+    createdAt: row.created_at || row.createdAt || null,
+    created_at: row.created_at || row.createdAt || null,
     rawData: {
       type: row.device_type || "",
       typeServer: row.device_type || "",

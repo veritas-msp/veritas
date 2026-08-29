@@ -192,7 +192,9 @@ function mapInventoryRow(row, extras = {}) {
       ...stubRaw,
       ...(data ? { data } : {})
     },
-    is_active: row.is_active !== false
+    is_active: row.is_active !== false,
+    createdAt: row.created_at || row.createdAt || null,
+    created_at: row.created_at || row.createdAt || null
   };
 }
 
@@ -245,6 +247,7 @@ async function fetchCustomEquipmentRows() {
           NULLIF(TRIM(ce.data->>'manufacturer'), ''),
           ''
         ) AS manufacturer,
+        ce.created_at,
         ce.data AS data_json
       FROM v_b_clients_m_custom_equipment ce
       INNER JOIN v_b_clients c ON c.id = ce.client_id
@@ -324,7 +327,8 @@ async function fetchVideoSurveillanceRows() {
             NULLIF(TRIM(e.data->>'fabricant'), ''),
             NULLIF(TRIM(e.data->>'manufacturer'), ''),
             ''
-          ) AS manufacturer
+          ) AS manufacturer,
+          e.created_at
         FROM ${table} e
         INNER JOIN v_b_clients c ON c.id = e.client_id
         WHERE e.client_id IS NOT NULL

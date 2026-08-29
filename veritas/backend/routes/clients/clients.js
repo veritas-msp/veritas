@@ -52,6 +52,13 @@ function normalizeClientNumber(value) {
   const trimmed = String(value).trim();
   return trimmed || null;
 }
+function normalizeClientStatut(value) {
+  const raw = String(value ?? "").trim().toLowerCase();
+  if (!raw) return "actif";
+  if (raw.includes("inact")) return "inactive";
+  if (raw.includes("act")) return "actif";
+  return "actif";
+}
 async function fetchTagsByClientId() {
   const byClientId = {};
   try {
@@ -310,7 +317,7 @@ const buildChanges = (modifiedFields, valueMap) => modifiedFields.map(field => (
   newValue: valueMap[field] !== undefined ? valueMap[field] : null
 }));
 async function getClientSnapshotForNotification(clientId) {
-  const preferredColumns = ["id", "name", "client_number", "email", "phone", "address", "siret", "secteur", "commercial_id", "contrat", "options", "modules", "sites", "office365_data"];
+  const preferredColumns = ["id", "name", "client_number", "email", "phone", "address", "siret", "secteur", "statut", "commercial_id", "contrat", "options", "modules", "sites", "office365_data"];
   try {
     const result = await pool.query(`SELECT ${preferredColumns.join(", ")}
        FROM v_b_clients
@@ -393,7 +400,7 @@ function appendClientSsidUpdate({
   updateValues.push(JSON.stringify(Array.isArray(payload) ? payload : []));
   return paramIndex + 1;
 }
-const CLIENTS_LIST_SELECT_COLUMNS = ["id", "name", "client_number", "address", "siret", "secteur", "contrat", "options", "modules", "commercial_id", "created_at", "updated_at"];
+const CLIENTS_LIST_SELECT_COLUMNS = ["id", "name", "client_number", "address", "siret", "secteur", "statut", "contrat", "options", "modules", "commercial_id", "created_at", "updated_at"];
 async function queryClientsListBaseRows() {
   const available = await getClientsAvailableColumns();
   const clientCols = CLIENTS_LIST_SELECT_COLUMNS.filter(col => available.has(col));
@@ -2094,6 +2101,25 @@ router.post('/:id/custom-equipment/:familyKey', verifyJWT, requirePermission('cl
     }
     const familyKey = String(req.params.familyKey || "").trim();
     const item = await createClientCustomEquipment(clientId, familyKey, req.body || {});
+    try {
+      const {
+        userId,
+        userName
+      } = await resolveRequestUserName(req);
+      await logEquipmentCreated(pool, {
+        clientId,
+        family: familyKey,
+        equipmentName: item.name || "",
+        equipmentId: item.id,
+        userId,
+        userName,
+        data: item.data || {},
+        name: item.name,
+        isActive: item.isActive !== false
+      });
+    } catch (logError) {
+      console.warn("[POST custom-equipment] equipment log:", logError?.message || logError);
+    }
     res.status(201).json(item);
   } catch (err) {
     if (err.status) {
@@ -2122,7 +2148,32 @@ router.put('/:id/custom-equipment/:familyKey/:itemId', verifyJWT, requirePermiss
     }
     const familyKey = String(req.params.familyKey || "").trim();
     const itemId = String(req.params.itemId || "").trim();
-    const item = await updateClientCustomEquipment(clientId, familyKey, itemId, req.body || {});
+    const {
+      item,
+      previous
+    } = await updateClientCustomEquipment(clientId, familyKey, itemId, req.body || {});
+    try {
+      const {
+        userId,
+        userName
+      } = await resolveRequestUserName(req);
+      await logEquipmentUpdated(pool, {
+        clientId,
+        family: familyKey,
+        equipmentName: item.name || previous?.name || "",
+        equipmentId: item.id,
+        userId,
+        userName,
+        oldName: previous?.name || null,
+        newName: item.name || null,
+        oldIsActive: previous?.isActive,
+        newIsActive: item.isActive,
+        oldData: previous?.data || {},
+        newData: item.data || {}
+      });
+    } catch (logError) {
+      console.warn("[PUT custom-equipment] equipment log:", logError?.message || logError);
+    }
     res.json(item);
   } catch (err) {
     if (err.status) {
@@ -2151,7 +2202,24 @@ router.delete('/:id/custom-equipment/:familyKey/:itemId', verifyJWT, requirePerm
     }
     const familyKey = String(req.params.familyKey || "").trim();
     const itemId = String(req.params.itemId || "").trim();
-    await deleteClientCustomEquipment(clientId, familyKey, itemId);
+    const deleted = await deleteClientCustomEquipment(clientId, familyKey, itemId);
+    try {
+      const {
+        userId,
+        userName
+      } = await resolveRequestUserName(req);
+      await logEquipmentDeleted(pool, {
+        clientId,
+        family: familyKey,
+        equipmentName: deleted.name || "",
+        equipmentId: deleted.id,
+        userId,
+        userName,
+        data: deleted.data || {}
+      });
+    } catch (logError) {
+      console.warn("[DELETE custom-equipment] equipment log:", logError?.message || logError);
+    }
     res.status(204).send();
   } catch (err) {
     if (err.status) {
@@ -2399,6 +2467,12 @@ router.post('/', requirePermission('clients.create'), async (req, res) => {
     const insertFields = ['name', 'options', 'contrat'];
     const insertValues = [name, JSON.stringify(modulesWithMonitoring), JSON.stringify(defaultContrat)];
     let paramIndex = 4;
+    const availableColumns = await getClientsAvailableColumns();
+    if (availableColumns.has("statut")) {
+      insertFields.push("statut");
+      insertValues.push(normalizeClientStatut(req.body.statut));
+      paramIndex++;
+    }
     if (commercialId && commercialId !== "") {
       insertFields.push('commercial_id');
       insertValues.push(commercialId);
@@ -2442,7 +2516,8 @@ router.post('/general', requirePermission('clients.create'), async (req, res) =>
       commercialId,
       address,
       siret,
-      secteur
+      secteur,
+      statut
     } = req.body;
     const resolvedClientNumber = normalizeClientNumber(clientNumber !== undefined ? clientNumber : client_number);
     const defaultOptions = options || modules || {
@@ -2481,10 +2556,18 @@ router.post('/general', requirePermission('clients.create'), async (req, res) =>
       insertFields.push('commercial_id');
       insertValues.push(commercialId);
     }
+    const availableColumns = await getClientsAvailableColumns();
+    if (availableColumns.has("statut")) {
+      insertFields.push("statut");
+      insertValues.push(normalizeClientStatut(statut));
+    }
     const placeholders = insertValues.map((_, i) => `$${i + 1}`).join(', ');
+    const returningCols = availableColumns.has("statut")
+      ? "id, name, client_number, contrat, options, sites, commercial_id, statut, created_at, updated_at"
+      : "id, name, client_number, contrat, options, sites, commercial_id, created_at, updated_at";
     const result = await pool.query(`INSERT INTO v_b_clients (${insertFields.join(', ')})
        VALUES (${placeholders})
-       RETURNING id, name, client_number, contrat, options, sites, commercial_id, created_at, updated_at`, insertValues);
+       RETURNING ${returningCols}`, insertValues);
     invalidateClientsListCache();
     res.status(201).json(result.rows[0]);
   } catch (err) {
@@ -2540,7 +2623,8 @@ router.post("/bulk", requirePermission("clients_detail.edit"), async (req, res) 
     const hasDebut = Object.prototype.hasOwnProperty.call(updates, "contratDebut");
     const hasExpiration = Object.prototype.hasOwnProperty.call(updates, "contratExpiration");
     const hasOptions = updates.options !== undefined && typeof updates.options === "object" && !Array.isArray(updates.options);
-    if (!hasCommercial && !hasDebut && !hasExpiration && !hasOptions) {
+    const hasStatut = Object.prototype.hasOwnProperty.call(updates, "statut");
+    if (!hasCommercial && !hasDebut && !hasExpiration && !hasOptions && !hasStatut) {
       return res.status(400).json({
         error: "No updates provided"
       });
@@ -2549,6 +2633,7 @@ router.post("/bulk", requirePermission("clients_detail.edit"), async (req, res) 
     const hasCommercialCol = availableColumns.has("commercial_id");
     const hasContratCol = availableColumns.has("contrat");
     const hasOptionsCol = availableColumns.has("options");
+    const hasStatutCol = availableColumns.has("statut");
     const updatedIds = [];
     const failed = [];
     for (const id of clientIds) {
@@ -2588,6 +2673,10 @@ router.post("/bulk", requirePermission("clients_detail.edit"), async (req, res) 
         if (hasOptions && hasOptionsCol) {
           updateFields.push(`options = $${paramIndex++}`);
           updateValues.push(JSON.stringify(updates.options || {}));
+        }
+        if (hasStatut && hasStatutCol) {
+          updateFields.push(`statut = $${paramIndex++}`);
+          updateValues.push(normalizeClientStatut(updates.statut));
         }
         if (updateFields.length === 0) {
           failed.push({
@@ -2644,10 +2733,11 @@ router.put('/:id', verifyJWT, requireClientUpdatePermissions, async (req, res) =
       office365_data,
       commercialId,
       siret,
-      secteur
+      secteur,
+      statut
     } = req.body;
     const resolvedClientNumber = clientNumber !== undefined || client_number !== undefined ? normalizeClientNumber(clientNumber !== undefined ? clientNumber : client_number) : undefined;
-    if (name !== undefined || clientNumber !== undefined || client_number !== undefined || email !== undefined || phone !== undefined || address !== undefined || office365_data !== undefined || sites !== undefined || ssid !== undefined || ssids !== undefined || options !== undefined || modules !== undefined || contrat !== undefined || commercialId !== undefined || siret !== undefined || secteur !== undefined || modules_monitoring !== undefined) {
+    if (name !== undefined || clientNumber !== undefined || client_number !== undefined || email !== undefined || phone !== undefined || address !== undefined || office365_data !== undefined || sites !== undefined || ssid !== undefined || ssids !== undefined || options !== undefined || modules !== undefined || contrat !== undefined || commercialId !== undefined || siret !== undefined || secteur !== undefined || modules_monitoring !== undefined || statut !== undefined) {
       const previousClientSnapshot = await getClientSnapshotForNotification(req.params.id);
       let updateFields = [];
       let updateValues = [];
@@ -2679,6 +2769,10 @@ router.put('/:id', verifyJWT, requireClientUpdatePermissions, async (req, res) =
       if (secteur !== undefined && hasClientColumn("secteur")) {
         updateFields.push(`secteur = $${paramIndex++}`);
         updateValues.push(secteur);
+      }
+      if (statut !== undefined && hasClientColumn("statut")) {
+        updateFields.push(`statut = $${paramIndex++}`);
+        updateValues.push(normalizeClientStatut(statut));
       }
       if (commercialId !== undefined && commercialId !== "" && hasClientColumn("commercial_id")) {
         updateFields.push(`commercial_id = $${paramIndex++}`);
@@ -2882,7 +2976,8 @@ router.put('/general/:id', verifyJWT, requireClientUpdatePermissions, async (req
       office365_data,
       commercialId,
       siret,
-      secteur
+      secteur,
+      statut
     } = req.body;
     const resolvedClientNumber = clientNumber !== undefined || client_number !== undefined ? normalizeClientNumber(clientNumber !== undefined ? clientNumber : client_number) : undefined;
     const previousClientSnapshot = await getClientSnapshotForNotification(req.params.id);
@@ -2916,6 +3011,10 @@ router.put('/general/:id', verifyJWT, requireClientUpdatePermissions, async (req
     if (secteur !== undefined && hasClientColumn("secteur")) {
       updateFields.push(`secteur = $${paramIndex++}`);
       updateValues.push(secteur);
+    }
+    if (statut !== undefined && hasClientColumn("statut")) {
+      updateFields.push(`statut = $${paramIndex++}`);
+      updateValues.push(normalizeClientStatut(statut));
     }
     if (commercialId !== undefined && commercialId !== "" && hasClientColumn("commercial_id")) {
       updateFields.push(`commercial_id = $${paramIndex++}`);
