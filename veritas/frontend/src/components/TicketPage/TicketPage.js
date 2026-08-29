@@ -1145,12 +1145,6 @@ export default function TicketPage({
                     <FaTimes />
                   </button> : null}
               </div>
-              <span className={layout.toolbarMeta} title={pageCopy.formatViewMeta(activeView?.name)}>
-                {pageCopy.formatTicketCount(totalCount)}
-              </span>
-              <select className={layout.sortSelect} value={ticketType} onChange={e => setTicketType(e.target.value)} aria-label={pageCopy.search.filterType}>
-                {pageCopy.typeFilterOptions.map(opt => <option key={opt.value || "all"} value={opt.value}>{opt.label}</option>)}
-              </select>
             </div>
 
             {loading ? <div className={layout.stateBox}>

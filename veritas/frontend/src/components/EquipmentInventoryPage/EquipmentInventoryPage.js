@@ -60,6 +60,17 @@ function matchesInventorySearch(item, query) {
   return Boolean(qSerial && serial.includes(qSerial));
 }
 
+function itemMatchesInventoryFilters(item, { search, selectedClients, selectedTypes, statusFilter }, omit = null) {
+  if (omit !== "search" && search && !matchesInventorySearch(item, search)) return false;
+  if (omit !== "clients" && selectedClients.size > 0 && !selectedClients.has(String(item.clientId))) return false;
+  if (omit !== "types" && selectedTypes.size > 0 && !selectedTypes.has(item.type)) return false;
+  if (omit !== "status") {
+    if (statusFilter === "active" && item.is_active === false) return false;
+    if (statusFilter === "inactive" && item.is_active !== false) return false;
+  }
+  return true;
+}
+
 function typeLabel(item, locale) {
   if (item?.isCustom) return item.familyLabel || item.familyKey || item.type;
   return getLocalizedEquipmentTypeLabel(
@@ -334,24 +345,34 @@ export default function EquipmentInventoryPage({ onNavigate }) {
     return () => loadAbortRef.current?.abort();
   }, [load]);
 
-  const stats = useMemo(() => {
+  const filterState = useMemo(
+    () => ({
+      search,
+      selectedClients,
+      selectedTypes,
+      statusFilter
+    }),
+    [search, selectedClients, selectedTypes, statusFilter]
+  );
+
+  const statusCounts = useMemo(() => {
+    let all = 0;
     let active = 0;
     let inactive = 0;
     items.forEach(item => {
+      if (!itemMatchesInventoryFilters(item, filterState, "status")) return;
+      all += 1;
       if (item.is_active === false) inactive += 1;
       else active += 1;
     });
-    return {
-      total: items.length,
-      active,
-      inactive
-    };
-  }, [items]);
+    return { all, active, inactive };
+  }, [items, filterState]);
 
   const clientOptions = useMemo(() => {
     const map = new Map();
     items.forEach(item => {
       if (item?.clientId == null) return;
+      if (!itemMatchesInventoryFilters(item, filterState, "clients")) return;
       const id = String(item.clientId);
       const existing = map.get(id);
       if (existing) {
@@ -364,12 +385,21 @@ export default function EquipmentInventoryPage({ onNavigate }) {
         count: 1
       });
     });
+    selectedClients.forEach(id => {
+      if (map.has(id)) return;
+      const sample = items.find(item => String(item.clientId) === id);
+      map.set(id, {
+        id,
+        name: sample?.clientName || id,
+        count: 0
+      });
+    });
     return [...map.values()].sort((a, b) =>
       a.name.localeCompare(b.name, locale, {
         sensitivity: "base"
       })
     );
-  }, [items, locale]);
+  }, [items, filterState, selectedClients, locale]);
 
   const filteredClientsForPane = useMemo(() => {
     const q = clientFilterSearch.trim().toLowerCase();
@@ -382,6 +412,7 @@ export default function EquipmentInventoryPage({ onNavigate }) {
     items.forEach(item => {
       const key = item?.type;
       if (!key) return;
+      if (!itemMatchesInventoryFilters(item, filterState, "types")) return;
       const existing = map.get(key);
       if (existing) {
         existing.count += 1;
@@ -394,30 +425,32 @@ export default function EquipmentInventoryPage({ onNavigate }) {
         familyIcon: item.isCustom ? item.familyIcon : null
       });
     });
+    selectedTypes.forEach(key => {
+      if (map.has(key)) return;
+      const sample = items.find(item => item.type === key);
+      map.set(key, {
+        id: key,
+        name: sample ? typeLabel(sample, locale) : key,
+        count: 0,
+        familyIcon: sample?.isCustom ? sample.familyIcon : null
+      });
+    });
     return [...map.values()].sort((a, b) =>
       a.name.localeCompare(b.name, locale, {
         sensitivity: "base"
       })
     );
-  }, [items, locale]);
+  }, [items, filterState, selectedTypes, locale]);
 
   const filtered = useMemo(() => {
-    const q = search.trim().toLowerCase();
-    let list = items.filter(item => {
-      if (selectedClients.size > 0 && !selectedClients.has(String(item.clientId))) return false;
-      if (selectedTypes.size > 0 && !selectedTypes.has(item.type)) return false;
-      if (statusFilter === "active" && item.is_active === false) return false;
-      if (statusFilter === "inactive" && item.is_active !== false) return false;
-      if (q && !matchesInventorySearch(item, q)) return false;
-      return true;
-    });
+    let list = items.filter(item => itemMatchesInventoryFilters(item, filterState));
     const dir = sort.dir === "asc" ? 1 : -1;
     list = [...list].sort((a, b) => {
       const cmp = compareValues(getSortValue(a, sort.key, locale), getSortValue(b, sort.key, locale), locale);
       return cmp * dir;
     });
     return list;
-  }, [items, search, selectedClients, selectedTypes, statusFilter, sort, locale]);
+  }, [items, filterState, sort, locale]);
 
   const customFamilyView = useMemo(() => {
     let type = null;
@@ -583,11 +616,6 @@ export default function EquipmentInventoryPage({ onNavigate }) {
   const hasFilters = Boolean(
     search.trim() || selectedClients.size > 0 || selectedTypes.size > 0 || statusFilter !== "all"
   );
-  const statusCounts = {
-    all: stats.total,
-    active: stats.active,
-    inactive: stats.inactive
-  };
 
   const getColumnLabel = key => {
     if (isCustomColumnKey(key)) {
@@ -763,41 +791,12 @@ export default function EquipmentInventoryPage({ onNavigate }) {
                 <aside className={styles.filtersPane} aria-label={copy.filters?.aria || "Filters"}>
                   <div className={styles.filtersPaneSection}>
                     <div className={styles.filtersPaneHeader}>
-                      <span className={styles.filtersPaneTitle}>{copy.filters?.search || "Search"}</span>
+                      <span className={styles.filtersPaneTitle}>{copy.filters?.status || "Status"}</span>
                       {hasFilters ? (
                         <button type="button" className={styles.filtersPaneAction} onClick={clearFilters}>
                           {copy.filters?.clearAll || "Reset"}
                         </button>
                       ) : null}
-                    </div>
-                    <div className={styles.filterSearchWrap}>
-                      <Icon icon="mdi:magnify" className={styles.filterSearchIcon} aria-hidden />
-                      <input
-                        type="text"
-                        inputMode="search"
-                        enterKeyHint="search"
-                        className={styles.filterSearchInput}
-                        placeholder={copy.searchPlaceholder}
-                        value={search}
-                        onChange={e => setSearch(e.target.value)}
-                        aria-label={copy.searchAria}
-                      />
-                      {search ? (
-                        <button
-                          type="button"
-                          className={styles.filterSearchClear}
-                          onClick={() => setSearch("")}
-                          aria-label={copy.clearSearch}
-                        >
-                          <FaTimes />
-                        </button>
-                      ) : null}
-                    </div>
-                  </div>
-
-                  <div className={styles.filtersPaneSection}>
-                    <div className={styles.filtersPaneHeader}>
-                      <span className={styles.filtersPaneTitle}>{copy.filters?.status || "Status"}</span>
                     </div>
                     <div className={styles.filtersList}>
                       {copy.statusFilterItems.map(item =>
@@ -880,23 +879,27 @@ export default function EquipmentInventoryPage({ onNavigate }) {
                       ) : null}
                     </div>
                     <div className={styles.filtersList}>
-                      {typeOptions.map(opt =>
-                        renderFilterItem(
-                          opt.id,
-                          opt.name,
-                          opt.count,
-                          selectedTypes.has(opt.id),
-                          () => toggleType(opt.id),
-                          <span className={styles.filterTypeIcon}>
-                            <InventoryDeviceIcon
-                              item={
-                                opt.familyIcon
-                                  ? { isCustom: true, familyIcon: opt.familyIcon }
-                                  : { type: opt.id }
-                              }
-                              className={styles.chipIcon}
-                            />
-                          </span>
+                      {typeOptions.length === 0 ? (
+                        <p className={styles.filterHint}>{copy.filters?.noTypeFound || "—"}</p>
+                      ) : (
+                        typeOptions.map(opt =>
+                          renderFilterItem(
+                            opt.id,
+                            opt.name,
+                            opt.count,
+                            selectedTypes.has(opt.id),
+                            () => toggleType(opt.id),
+                            <span className={styles.filterTypeIcon}>
+                              <InventoryDeviceIcon
+                                item={
+                                  opt.familyIcon
+                                    ? { isCustom: true, familyIcon: opt.familyIcon }
+                                    : { type: opt.id }
+                                }
+                                className={styles.chipIcon}
+                              />
+                            </span>
+                          )
                         )
                       )}
                     </div>
@@ -904,6 +907,31 @@ export default function EquipmentInventoryPage({ onNavigate }) {
                 </aside>
 
                 <div className={styles.mainColumn}>
+                  <div className={`${layout.toolbar} ${styles.toolbarGrow}`}>
+                    <div className={`${layout.searchWrap} ${styles.searchWrapFull}`}>
+                      <Icon icon="mdi:magnify" className={layout.searchIcon} aria-hidden />
+                      <input
+                        type="text"
+                        inputMode="search"
+                        enterKeyHint="search"
+                        className={layout.searchInput}
+                        placeholder={copy.searchPlaceholder}
+                        value={search}
+                        onChange={e => setSearch(e.target.value)}
+                        aria-label={copy.searchAria}
+                      />
+                      {search ? (
+                        <button
+                          type="button"
+                          className={layout.clearButton}
+                          onClick={() => setSearch("")}
+                          aria-label={copy.clearSearch}
+                        >
+                          <FaTimes />
+                        </button>
+                      ) : null}
+                    </div>
+                  </div>
                   {loading ? (
                     <div className={layout.stateBox}>
                       <Icon icon="mdi:loading" className={layout.spinning} />
@@ -916,10 +944,13 @@ export default function EquipmentInventoryPage({ onNavigate }) {
                       <p className={layout.emptyStateHint}>{hasFilters ? copy.emptyFiltered : copy.emptyHint}</p>
                     </div>
                   ) : (
-                    <div className={styles.listBody}>
-                      <div className={styles.tableToolbar}>
-                        <span className={styles.tableMeta}>{filtered.length}</span>
-                        {selectedCount > 0 && canBulkEdit ? (
+                    <>
+                      {selectedCount > 0 && canBulkEdit ? (
+                        <div className={layout.bulkBar}>
+                          <div className={layout.bulkInfo}>
+                            <strong>{selectedCount}</strong>
+                            <span>{selectedCount > 1 ? copy.bulk.selectedPlural : copy.bulk.selected}</span>
+                          </div>
                           <div className={layout.bulkActions}>
                             {!allFilteredSelected ? (
                               <button type="button" className={layout.bulkBtnGhost} onClick={selectAllFiltered}>
@@ -934,21 +965,12 @@ export default function EquipmentInventoryPage({ onNavigate }) {
                               {copy.bulk.clearSelection}
                             </button>
                           </div>
-                        ) : null}
-                      </div>
-
-                      {selectedCount > 0 && canBulkEdit ? (
-                        <div className={layout.bulkBar}>
-                          <div className={layout.bulkInfo}>
-                            <strong>{selectedCount}</strong>
-                            <span>{selectedCount > 1 ? copy.bulk.selectedPlural : copy.bulk.selected}</span>
-                          </div>
                         </div>
                       ) : null}
 
-                      <div className={styles.listArea}>
-                        <div className={layout.dataTableWrap}>
-                          <table className={`${layout.dataTable} ${styles.ticketLikeTable}`}>
+                      <div className={styles.tablePanel}>
+                        <div className={styles.tableScroll}>
+                          <table className={styles.table}>
                             <thead>
                               <tr>
                                 {canBulkEdit ? (
@@ -983,7 +1005,7 @@ export default function EquipmentInventoryPage({ onNavigate }) {
                                 return (
                                   <tr
                                     key={item.id}
-                                    className={`${layout.dataTableRow} ${isSelected ? layout.selectedRow : ""}`}
+                                    className={isSelected ? styles.selectedRow : undefined}
                                     onClick={() => openItem(item)}
                                     onKeyDown={e => {
                                       if (e.key === "Enter" || e.key === " ") {
@@ -1074,7 +1096,7 @@ export default function EquipmentInventoryPage({ onNavigate }) {
                           </SmartTooltip>
                         </div>
                       </div>
-                    </div>
+                    </>
                   )}
                 </div>
               </div>

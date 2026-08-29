@@ -1012,21 +1012,6 @@ export default function TicketSalesPage({
       setExporting(false);
     }
   };
-  const categoryFilterOptions = useMemo(() => {
-    const forms = salesForms.filter(form => {
-      if (form.enabled === false) return false;
-      if (ticketType === "installation") return form.kind === "installation";
-      if (ticketType === "prestation") return form.kind === "prestation";
-      return true;
-    });
-    return [{
-      value: "",
-      label: pageCopy.allCategories
-    }, ...forms.map(form => ({
-      value: form.categorySlug,
-      label: form.label
-    }))];
-  }, [salesForms, ticketType, pageCopy.allCategories]);
   return <div className={`${mspStyles.mspPage} ${layout.page} msp-page-grid`}>
       <div className={mspStyles.mspLayout}>
         <div className={mspStyles.mspMain}>
@@ -1113,13 +1098,6 @@ export default function TicketSalesPage({
                     <FaTimes />
                   </button> : null}
               </div>
-              <span className={layout.toolbarMeta}>{totalCount}</span>
-              <select className={layout.sortSelect} value={ticketType} onChange={e => setTicketType(e.target.value)} aria-label={pageCopy.search.filterType}>
-                {pageCopy.typeFilterOptions.map(opt => <option key={opt.value || "all-types"} value={opt.value}>{opt.label}</option>)}
-              </select>
-              <select className={layout.sortSelect} value={categoryFilter} onChange={e => setCategoryFilter(e.target.value)} aria-label={pageCopy.search.filterCategory}>
-                {categoryFilterOptions.map(opt => <option key={opt.value || "all"} value={opt.value}>{opt.label}</option>)}
-              </select>
             </div>
 
             {loading ? <div className={layout.stateBox}>

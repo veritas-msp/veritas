@@ -30,7 +30,7 @@ const SIDEBAR_GUIDE_COPY = {
     },
     utilities: {
       title: "Réglages rapides",
-      content: "Le ? ouvre l'aide de la page en cours lorsqu'elle existe, sinon ce guide du menu. Basculez aussi le thème et consultez vos notifications."
+      content: "La loupe ouvre la recherche globale (Ctrl+K). Le ? ouvre l'aide de la page en cours lorsqu'elle existe, sinon ce guide du menu. Basculez aussi le thème et consultez vos notifications."
     },
     account: {
       title: "Votre compte",
@@ -67,7 +67,7 @@ const SIDEBAR_GUIDE_COPY = {
     },
     utilities: {
       title: "Quick settings",
-      content: "? opens help for the current page when available, otherwise this menu tour. Also switch theme and check notifications."
+      content: "The magnifier opens global search (Ctrl+K). ? opens help for the current page when available, otherwise this menu tour. Also switch theme and check notifications."
     },
     account: {
       title: "Your account",
@@ -104,7 +104,7 @@ const SIDEBAR_GUIDE_COPY = {
     },
     utilities: {
       title: "Schnelleinstellungen",
-      content: "? öffnet die Seitenhilfe, falls vorhanden, sonst diese Menüführung. Thema wechseln und Benachrichtigungen prüfen."
+      content: "Die Lupe öffnet die globale Suche (Strg+K). ? öffnet die Seitenhilfe, falls vorhanden, sonst diese Menüführung. Thema wechseln und Benachrichtigungen prüfen."
     },
     account: {
       title: "Ihr Konto",
@@ -141,7 +141,7 @@ const SIDEBAR_GUIDE_COPY = {
     },
     utilities: {
       title: "Impostazioni rapide",
-      content: "Il ? apre la guida della pagina corrente se disponibile, altrimenti questo tour del menu. Cambiate anche tema e notifiche."
+      content: "La lente apre la ricerca globale (Ctrl+K). Il ? apre la guida della pagina corrente se disponibile, altrimenti questo tour del menu. Cambiate anche tema e notifiche."
     },
     account: {
       title: "Il vostro account",
@@ -178,7 +178,7 @@ const SIDEBAR_GUIDE_COPY = {
     },
     utilities: {
       title: "Ajustes rápidos",
-      content: "El ? abre la ayuda de la página actual si existe; si no, este recorrido del menú. También tema y notificaciones."
+      content: "La lupa abre la búsqueda global (Ctrl+K). El ? abre la ayuda de la página actual si existe; si no, este recorrido del menú. También tema y notificaciones."
     },
     account: {
       title: "Su cuenta",

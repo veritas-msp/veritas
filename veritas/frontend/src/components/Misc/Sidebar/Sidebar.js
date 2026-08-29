@@ -20,6 +20,7 @@ import { buildSidebarGuideSteps } from "../../PageGuide/sidebarGuideI18n";
 import { useSidebarGuide } from "../../../hooks/useSidebarGuide";
 import { hasRegisteredPageGuide, openRegisteredPageGuide, subscribePageGuideRegistry } from "../../PageGuide/pageGuideRegistry";
 import { isSuperAdminProtectedProfile } from "../../../utils/profileProtection";
+import GlobalSearchPalette, { getSearchShortcutLabel, useGlobalSearchHotkey } from "../GlobalSearch/GlobalSearchPalette";
 function normalizeProfileLabel(profile) {
   if (profile == null) return "";
   return String(profile).replace(/\s+$/, "").trim();
@@ -102,6 +103,10 @@ export default function Sidebar({
     autoStartAllowed: sidebarGuideAutoStart
   });
   const [pageGuideAvailable, setPageGuideAvailable] = useState(() => hasRegisteredPageGuide());
+  const [searchOpen, setSearchOpen] = useState(false);
+  const openSearch = useCallback(() => setSearchOpen(true), []);
+  const closeSearch = useCallback(() => setSearchOpen(false), []);
+  useGlobalSearchHotkey(openSearch);
   useEffect(() => subscribePageGuideRegistry(() => {
     setPageGuideAvailable(hasRegisteredPageGuide());
   }), []);
@@ -159,6 +164,8 @@ export default function Sidebar({
     showPilotageSection
   }), [locale, showCrmSection, showExploitationSection, showManagedSection, showPilotageSection]);
   const helpAria = pageGuideAvailable ? sidebarGuide.pageHelpAria || sidebarGuide.helpAria : sidebarGuide.helpAria;
+  const searchAria = copy.search?.aria || "Recherche globale";
+  const searchTooltip = `${copy.search?.tooltip || "Recherche"} (${getSearchShortcutLabel()})`;
   const updateUserMenuPosition = useCallback(() => {
     const root = userMenuRef.current;
     if (!root || !userMenuOpen) return;
@@ -440,6 +447,18 @@ export default function Sidebar({
             <div className={styles.utilitiesSection} data-sidebar-guide="utilities">
               {!isCollapsed && <div className={styles.sectionTitle}>{copy.sections.appearance}</div>}
               <div className={styles.utilitiesBtnRow}>
+                {showIconTooltip ? <SidebarTooltip as="button" type="button" content={searchTooltip} className={`${styles.squareBtn} ${searchOpen ? styles.squareBtnActive : ""}`} onClick={() => {
+                    setSearchOpen(true);
+                    if (isMobile) setShowMenu(false);
+                  }} aria-label={searchAria}>
+                    <Icon icon="mdi:magnify" className={styles.squareBtnIcon} aria-hidden />
+                  </SidebarTooltip> : <button type="button" className={`${styles.squareBtn} ${searchOpen ? styles.squareBtnActive : ""}`} onClick={() => {
+                    setSearchOpen(true);
+                    if (isMobile) setShowMenu(false);
+                  }} aria-label={searchAria}>
+                    <Icon icon="mdi:magnify" className={styles.squareBtnIcon} aria-hidden />
+                  </button>}
+
                 {showIconTooltip ? <SidebarTooltip as="button" type="button" content={helpAria} className={`${styles.squareBtn} ${sidebarGuideOpen ? styles.squareBtnActive : ""}`} onClick={startHelp} aria-label={helpAria}>
                     <span className={styles.helpBtnLabel} aria-hidden>
                       ?
@@ -518,5 +537,6 @@ export default function Sidebar({
       <ProFeaturePromoModal open={Boolean(proPromoFeature)} featureKey={proPromoFeature} onClose={() => setProPromoFeature(null)} />
 
       <PageGuideTour open={sidebarGuideOpen} steps={sidebarGuide.steps} title={sidebarGuide.tourTitle} locale={locale} onClose={closeSidebarGuide} />
+      <GlobalSearchPalette open={searchOpen} onClose={closeSearch} onNavigate={onNavigate || onSelect} access={access} userRole={userRole} />
     </>;
 }

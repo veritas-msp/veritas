@@ -38,6 +38,10 @@ const SIDEBAR_COPY = {
       light: "Clair",
       dark: "Sombre"
     },
+    search: {
+      tooltip: "Recherche",
+      aria: "Recherche globale"
+    },
     account: {
       menu: "Compte",
       menuAria: "Menu compte",
@@ -85,6 +89,10 @@ const SIDEBAR_COPY = {
       ariaGroup: "Display theme",
       light: "Light",
       dark: "Dark"
+    },
+    search: {
+      tooltip: "Search",
+      aria: "Global search"
     },
     account: {
       menu: "Account",
@@ -134,6 +142,10 @@ const SIDEBAR_COPY = {
       light: "Hell",
       dark: "Dunkel"
     },
+    search: {
+      tooltip: "Suche",
+      aria: "Globale Suche"
+    },
     account: {
       menu: "Konto",
       menuAria: "Kontomenü",
@@ -182,6 +194,10 @@ const SIDEBAR_COPY = {
       light: "Chiaro",
       dark: "Scuro"
     },
+    search: {
+      tooltip: "Ricerca",
+      aria: "Ricerca globale"
+    },
     account: {
       menu: "Account",
       menuAria: "Menu account",
@@ -229,6 +245,10 @@ const SIDEBAR_COPY = {
       ariaGroup: "Tema de visualización",
       light: "Claro",
       dark: "Oscuro"
+    },
+    search: {
+      tooltip: "Buscar",
+      aria: "Búsqueda global"
     },
     account: {
       menu: "Cuenta",

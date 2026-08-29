@@ -2174,12 +2174,6 @@ export default function PlanningPage({
                     <FaTimes />
                   </button>}
               </div>
-              <span className={layout.toolbarMeta}>{displayEvents.length}</span>
-              {hasActiveFilters && <SmartTooltip content={planningCopy.search.clearFilters}>
-                  <button type="button" className={`${layout.chip} ${layout.chipReset} ${layout.chipIconOnly}`} onClick={clearFilters} aria-label={planningCopy.search.clearFilters}>
-                    <Icon icon="mdi:filter-off" className={layout.chipIcon} />
-                  </button>
-                </SmartTooltip>}
             </div>
 
             {loading ? <div className={layout.stateBox}>

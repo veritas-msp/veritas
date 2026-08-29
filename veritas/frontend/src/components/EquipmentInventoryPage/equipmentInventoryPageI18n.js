@@ -21,6 +21,7 @@ const COPY = {
       types: "Types",
       searchCompany: "Rechercher une entreprise…",
       noCompanyFound: "Aucune entreprise trouvée",
+      noTypeFound: "Aucun type pour ces filtres",
       clear: "Effacer",
       clearAll: "Réinitialiser les filtres",
       none: "Aucun"
@@ -131,6 +132,7 @@ const COPY = {
       types: "Types",
       searchCompany: "Search a company…",
       noCompanyFound: "No company found",
+      noTypeFound: "No types for these filters",
       clear: "Clear",
       clearAll: "Reset filters",
       none: "None"
@@ -240,6 +242,7 @@ const COPY = {
       types: "Typen",
       searchCompany: "Unternehmen suchen…",
       noCompanyFound: "Kein Unternehmen gefunden",
+      noTypeFound: "Keine Typen für diese Filter",
       clear: "Löschen",
       clearAll: "Filter zurücksetzen",
       none: "Keine"
@@ -349,6 +352,7 @@ const COPY = {
       types: "Tipi",
       searchCompany: "Cerca un'azienda…",
       noCompanyFound: "Nessuna azienda trovata",
+      noTypeFound: "Nessun tipo per questi filtri",
       clear: "Cancella",
       clearAll: "Reimposta filtri",
       none: "Nessuno"
@@ -458,6 +462,7 @@ const COPY = {
       types: "Tipos",
       searchCompany: "Buscar una empresa…",
       noCompanyFound: "Ninguna empresa encontrada",
+      noTypeFound: "Ningún tipo para estos filtros",
       clear: "Borrar",
       clearAll: "Restablecer filtros",
       none: "Ninguno"
