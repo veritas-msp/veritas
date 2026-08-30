@@ -20,7 +20,7 @@ import { createTicket, permanentlyDeleteTicket } from "../../api/tickets";
 import { interpolate } from "../../i18n/translate";
 import { canonicalizeComputerType } from "../EquipementPage/equipmentFormConfig";
 import { slugifyEquipmentFieldKey } from "./equipmentFamilyConstants";
-import { EQUIPMENT_MATCH_KEY_DEFAULT, resolveEquipmentMatchKeys } from "./adminInjectionEquipmentFields";
+import { EQUIPMENT_MATCH_KEY_DEFAULT, INJECTION_ID_TO_SYSTEM_KEY, resolveEquipmentMatchKeys } from "./adminInjectionEquipmentFields";
 
 const DEFAULT_INJECTION_ERRORS = {
   missingName: "Missing name",
@@ -940,7 +940,7 @@ function normalizeFamilyLookupKey(raw) {
  * Build a registry of injectable system + custom equipment families.
  * @param {Array<{ familyKey: string, label?: string, enabled?: boolean, fields?: Array }>} customFamilies
  */
-export function buildEquipmentFamilyRegistry(customFamilies = []) {
+export function buildEquipmentFamilyRegistry(customFamilies = [], systemExtensions = {}) {
   const byKey = new Map();
   const aliases = new Map();
 
@@ -948,10 +948,22 @@ export function buildEquipmentFamilyRegistry(customFamilies = []) {
     aliases.set(normalizeFamilyLookupKey(alias), canonical);
   }
   for (const key of CANONICAL_EQUIPMENT_FAMILIES) {
+    const systemKey = INJECTION_ID_TO_SYSTEM_KEY[key];
+    const extra = systemKey && systemExtensions && typeof systemExtensions === "object"
+      ? systemExtensions[systemKey] || []
+      : [];
+    const requiredFields = extra
+      .filter(field => field?.required && field.fieldKey)
+      .map(field => ({
+        key: String(field.fieldKey).trim(),
+        label: field.label || field.fieldKey,
+        fieldType: field.fieldType || "text"
+      }));
     byKey.set(key, {
       familyKey: key,
       isCustom: false,
-      requiredFields: []
+      requiredFields,
+      fields: extra
     });
     aliases.set(normalizeFamilyLookupKey(key), key);
   }
@@ -1212,15 +1224,9 @@ export async function runInjection({
           const key = normKey(rawKey);
           if (!key.startsWith("data_") || key === "data_json") continue;
           const rawField = String(rawKey).slice(String(rawKey).toLowerCase().indexOf("data_") + 5);
-          let field;
-          let fieldType = null;
-          if (familyEntry.isCustom) {
-            field = resolveCustomEquipmentFieldKey(rawField, customFields) || canonicalizeEquipmentDataField(rawField);
-            const fieldDef = customFields.find(entry => String(entry?.fieldKey || "").trim() === String(field || "").trim());
-            fieldType = fieldDef?.fieldType || null;
-          } else {
-            field = canonicalizeEquipmentDataField(rawField);
-          }
+          let field = resolveCustomEquipmentFieldKey(rawField, customFields) || canonicalizeEquipmentDataField(rawField);
+          const fieldDef = customFields.find(entry => String(entry?.fieldKey || entry?.key || "").trim() === String(field || "").trim());
+          const fieldType = fieldDef?.fieldType || null;
           const value = coerceValue(rawValue, fieldType);
           if (value !== undefined) data[field] = value;
         }

@@ -3,9 +3,10 @@ import { useAdminCommonCopy, useAdminPageCopy } from "../../hooks/useAdminCopy";
 import { interpolate } from "../../i18n/translate";
 import { toast } from "react-toastify";
 import { Icon } from "@iconify/react";
-import { createEquipmentFamily, deleteEquipmentFamily, fetchEquipmentFamilies, updateEquipmentFamily } from "../../api/equipmentFamilies";
+import { createEquipmentFamily, deleteEquipmentFamily, fetchEquipmentFamilies, fetchSystemFamilyExtensions, updateEquipmentFamily, updateSystemFamilyExtensions } from "../../api/equipmentFamilies";
 import EquipmentFamilyFormModal from "./EquipmentFamilyFormModal";
 import { buildDefaultEquipmentFamilyDraft, buildEquipmentFamilyDraftFromFamily, getDefaultEquipmentFamilies, uniqueEquipmentFieldKeys } from "./equipmentFamilyConstants";
+import { getDefaultHoneycombSlot } from "../EnterprisesPage/infraHoneycombLayout";
 import { Btn, Card, ConfirmModal, Page, Switch, Table, Toolbar } from "./AdminUi";
 import adminUi from "./AdminUi.module.css";
 const EMPTY_FORM = buildDefaultEquipmentFamilyDraft();
@@ -19,7 +20,19 @@ export default function AdminEquipmentFamilies() {
   const [editing, setEditing] = useState(null);
   const [form, setForm] = useState(EMPTY_FORM);
   const [confirmDelete, setConfirmDelete] = useState(null);
-  const defaultFamilies = useMemo(() => getDefaultEquipmentFamilies(), []);
+  const [extensionsByKey, setExtensionsByKey] = useState({});
+  const [layoutsByKey, setLayoutsByKey] = useState({});
+  const defaultFamilies = useMemo(() => getDefaultEquipmentFamilies().map(family => {
+    const layout = layoutsByKey[family.familyKey];
+    const fallback = getDefaultHoneycombSlot(family.familyKey);
+    return {
+      ...family,
+      fields: extensionsByKey[family.familyKey] || [],
+      honeycombQ: layout?.honeycombQ ?? fallback.q,
+      honeycombR: layout?.honeycombR ?? fallback.r,
+      displayMode: layout?.displayMode || family.displayMode
+    };
+  }), [extensionsByKey, layoutsByKey]);
   const allFamilies = useMemo(() => {
     const custom = families.map(family => ({
       ...family,
@@ -36,10 +49,18 @@ export default function AdminEquipmentFamilies() {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const data = await fetchEquipmentFamilies({
-        admin: true
-      });
+      const [data, extensionsPayload] = await Promise.all([
+        fetchEquipmentFamilies({
+          admin: true
+        }),
+        fetchSystemFamilyExtensions().catch(() => ({
+          extensions: {},
+          layouts: {}
+        }))
+      ]);
       setFamilies(data);
+      setExtensionsByKey(extensionsPayload?.extensions && typeof extensionsPayload.extensions === "object" ? extensionsPayload.extensions : {});
+      setLayoutsByKey(extensionsPayload?.layouts && typeof extensionsPayload.layouts === "object" ? extensionsPayload.layouts : {});
     } catch (err) {
       toast.error(err.message || copy.loadError);
       setFamilies([]);
@@ -72,7 +93,6 @@ export default function AdminEquipmentFamilies() {
       const payload = {
         label: form.label.trim(),
         icon: form.icon.trim() || "mdi:devices",
-        displayMode: form.displayMode || "hexagon",
         enabled: form.enabled !== false,
         sortOrder: form.sortOrder === "" ? 100 : Number(form.sortOrder),
         honeycombQ: form.honeycombQ === "" ? null : Number(form.honeycombQ),
@@ -87,6 +107,19 @@ export default function AdminEquipmentFamilies() {
       };
       if (!payload.label) {
         toast.warn(copy.labelRequired);
+        return;
+      }
+      if (editing?.isSystem) {
+        const {
+          fields
+        } = await updateSystemFamilyExtensions(editing.familyKey, payload.fields);
+        setExtensionsByKey(prev => ({
+          ...prev,
+          [editing.familyKey]: fields || []
+        }));
+        toast.success(copy.updated);
+        notifyUpdated();
+        closeModal();
         return;
       }
       if (editing) {
@@ -169,28 +202,31 @@ export default function AdminEquipmentFamilies() {
     key: "fields",
     label: adminCopy.fields,
     width: "88px",
-    render: row => row.isSystem ? adminCopy.integrated : row.fields?.length || 0
+    render: row => {
+        const extra = row.fields?.length || 0;
+        if (row.isSystem) {
+          return extra
+            ? interpolate(extra > 1 ? copy.extraFieldsPlural : copy.extraFields, { count: String(extra) })
+            : adminCopy.integrated;
+        }
+        return extra;
+      }
   }, {
     key: "items",
     label: adminCopy.equipment,
     width: "88px",
     render: row => row.isSystem ? "-" : row.itemCount || 0
   }, {
-    key: "displayMode",
-    label: adminCopy.display,
-    width: "100px",
-    render: row => row.displayMode === "brick" ? adminCopy.brick : adminCopy.hexagon
-  }, {
     key: "actions",
     label: "",
     width: "88px",
-    render: row => row.isSystem ? <span className={adminUi.tableSubtext} title={adminCopy.builtInFamily}>-</span> : <div className={adminUi.tableActions}>
+    render: row => <div className={adminUi.tableActions}>
             <button type="button" className={adminUi.tableActionBtn} title={adminCopy.edit} onClick={() => openEdit(row)}>
               <Icon icon="mdi:pencil-outline" />
             </button>
-            <button type="button" className={`${adminUi.tableActionBtn} ${adminUi.tableActionBtnDanger}`} title={adminCopy.delete} onClick={() => setConfirmDelete(row)}>
+            {row.isSystem ? null : <button type="button" className={`${adminUi.tableActionBtn} ${adminUi.tableActionBtnDanger}`} title={adminCopy.delete} onClick={() => setConfirmDelete(row)}>
               <Icon icon="mdi:trash-can-outline" />
-            </button>
+            </button>}
           </div>
   }];
   return <Page>
@@ -211,7 +247,7 @@ export default function AdminEquipmentFamilies() {
         {loading ? <p className={adminUi.adminMutedText}>{adminCopy.loading}</p> : <Table columns={columns} rows={allFamilies} emptyMessage={copy.empty} />}
       </Card>
 
-      <EquipmentFamilyFormModal open={modalOpen} mode={editing ? "edit" : "create"} draft={form} setDraft={setForm} saving={saving} onClose={closeModal} onSave={saveFamily} />
+      <EquipmentFamilyFormModal open={modalOpen} mode={editing ? "edit" : "create"} variant={editing?.isSystem ? "system" : "custom"} draft={form} setDraft={setForm} saving={saving} onClose={closeModal} onSave={saveFamily} />
 
       <ConfirmModal open={Boolean(confirmDelete)} onClose={() => !saving && setConfirmDelete(null)} onConfirm={handleDelete} title={copy.deleteTitle} message={confirmDelete ? interpolate(copy.deleteMessage, {
       label: confirmDelete.label

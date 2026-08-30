@@ -5,6 +5,7 @@ import { inferComputerTypeFromInventory, canonicalizeComputerType, resolveAlimen
 import { repairRmmTextEncoding } from "../utils/rmmTextEncoding";
 import { resolveAssignedSsidIds, serializeAssignedSsidsForPersistence } from "../components/EquipementPage/wifiApSsidUtils";
 import { applySharedEquipmentFields, buildSharedEquipmentFormData } from "../components/EquipementPage/sharedEquipmentFields";
+import { applySystemExtensionFields } from "../utils/systemFamilyExtensions";
 export const getClientEquipment = async clientId => {
   try {
     const response = await fetch(`${API_BASE_URL}/maintenance/equipment/${clientId}`, {
@@ -825,12 +826,14 @@ function buildEquipmentDataPayload(type, formData, existingData = {}, equipment 
   if (type !== 'Internet') {
     applySiteFieldsToPayload(updatedData, siteValue);
   }
-  const payload = applySharedEquipmentFields(updatedData, sharedFields);
+  const extensionFields = formData.__systemExtensionFields || [];
+  const payload = applySystemExtensionFields(applySharedEquipmentFields(updatedData, sharedFields), formData, extensionFields);
+  const extensionKeys = new Set(extensionFields.map(field => field?.fieldKey).filter(Boolean));
   const fieldsToPreserve = ['site', 'location', 'emplacement', 'checkmk_host_name', 'checkmk_site', 'ipNonDesktop', 'unifiApiHost', 'unifiApiKey', 'unifiApiRejectUnauthorized', 'unifiApiConfiguredAt', 'stormshieldWanUrl', 'purchaseDate', 'invoiceNumber', 'installDate', 'expirationGarantie'];
   if (type === 'Serveurs') fieldsToPreserve.push('role');
   Object.keys(payload).forEach(key => {
     const value = payload[key];
-    if (fieldsToPreserve.includes(key)) return;
+    if (fieldsToPreserve.includes(key) || extensionKeys.has(key)) return;
     const isEmptyArray = Array.isArray(value) && value.length === 0;
     const isEmptyString = typeof value === 'string' && value.trim() === '';
     if (value === undefined || value === null || isEmptyString || isEmptyArray) {

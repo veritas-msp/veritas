@@ -14,6 +14,7 @@ import EquipmentRemoteAccessLaunchButton from "./EquipmentRemoteAccessLaunchButt
 import { shouldShowRemoteAccessFieldAction } from "./equipmentDetailRemoteAccess";
 import { useAppLocale } from "../../hooks/useAppGeneralSettings";
 import { getEquipmentDetailCopy } from "./equipmentDetailPageI18n";
+import useSystemFamilyExtensions from "../../hooks/useSystemFamilyExtensions";
 import styles from "./EquipmentDetailSpecsPanel.module.css";
 const DEBIT_FIELD_KEYS = new Set(["debit", "debitDownload", "debitUpload"]);
 function mergeInternetDisplaySections(sections) {
@@ -134,6 +135,7 @@ export default function EquipmentDetailSpecsPanel({
   title
 }) {
   const locale = useAppLocale();
+  const { fields: extensionFields } = useSystemFamilyExtensions(equipment?.type);
   const copy = useMemo(() => getEquipmentDetailCopy(locale), [locale]);
   const diskBayCopy = useMemo(() => getEquipmentFormOptionsCopy(locale).widgets?.diskBay || {}, [locale]);
   const panelTitle = title ?? copy.specs.title;
@@ -183,7 +185,7 @@ export default function EquipmentDetailSpecsPanel({
       showDisques: profile.showDisques
     });
   }, [equipment?.type, displayFormData]);
-  const rawSections = buildEquipmentDetailSections(equipment, displayFormData, locale);
+  const rawSections = buildEquipmentDetailSections(equipment, displayFormData, locale, { extensionFields });
   const baseSections = equipment?.type === "Internet" ? mergeInternetDisplaySections(rawSections) : rawSections;
   const sections = useMemo(() => {
     let nextSections = baseSections;

@@ -173,3 +173,65 @@
 .tileSelected .tileIcon {
   color: var(--msp-accent);
 }
+
+.popoverWrap {
+  position: relative;
+  display: inline-flex;
+}
+
+.trigger {
+  position: relative;
+  width: 56px;
+  height: 56px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--msp-border, #dde3ed);
+  border-radius: 12px;
+  background: var(--msp-surface-2, #f8fafc);
+  color: var(--msp-accent, #2b5fab);
+  cursor: pointer;
+}
+
+.trigger:hover,
+.triggerOpen {
+  border-color: var(--msp-accent, #2b5fab);
+  box-shadow: 0 0 0 2px rgba(43, 95, 171, 0.16);
+}
+
+.triggerIcon {
+  font-size: 1.7rem;
+}
+
+.triggerHint {
+  position: absolute;
+  right: -4px;
+  bottom: -4px;
+  width: 18px;
+  height: 18px;
+  border-radius: 999px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--msp-accent, #2b5fab);
+  color: #fff;
+  font-size: 0.7rem;
+  border: 2px solid var(--msp-surface, #fff);
+}
+
+.popover {
+  z-index: 13000;
+  width: min(28rem, calc(100vw - 1.5rem));
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  padding: 0.7rem;
+  border: 1px solid var(--msp-border, #dde3ed);
+  border-radius: 12px;
+  background: var(--msp-surface, #fff);
+  box-shadow: 0 16px 40px rgba(10, 22, 40, 0.18);
+}
+
+.popoverFixed {
+  position: fixed;
+}

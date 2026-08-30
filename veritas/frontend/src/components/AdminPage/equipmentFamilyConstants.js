@@ -109,6 +109,7 @@ export function buildDefaultEquipmentFamilyDraft() {
     sortOrder: "100",
     honeycombQ: "",
     honeycombR: "",
+    layoutTiles: [],
     fields: [{
       fieldKey: "marque",
       label: "Brand",
@@ -147,6 +148,7 @@ export function buildEquipmentFamilyDraftFromFamily(family) {
     sortOrder: String(family.sortOrder ?? "100"),
     honeycombQ: family.honeycombQ == null ? "" : String(family.honeycombQ),
     honeycombR: family.honeycombR == null ? "" : String(family.honeycombR),
+    layoutTiles: Array.isArray(family.layoutTiles) ? family.layoutTiles : [],
     fields: (family.fields || []).map(field => ({
       id: field.id,
       fieldKey: field.fieldKey || "",

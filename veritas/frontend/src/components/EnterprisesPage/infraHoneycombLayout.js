@@ -78,12 +78,118 @@ function allocateHoneycombSlots(count, reservedSlots = []) {
   }
   return allocated;
 }
-export function buildCustomFamilyHoneycombSlots(families = []) {
+export function honeycombSlotKey(q, r) {
+  return `${Number(q) || 0},${Number(r) || 0}`;
+}
+export function resolveHoneycombTileCollisions(tiles = []) {
+  const list = Array.isArray(tiles) ? tiles.map(tile => ({
+    ...tile
+  })) : [];
+  const kept = [];
+  const displaced = [];
+  const occupied = new Set();
+  list.forEach(tile => {
+    const key = honeycombSlotKey(tile.q, tile.r);
+    if (occupied.has(key)) {
+      displaced.push(tile);
+      return;
+    }
+    occupied.add(key);
+    kept.push(tile);
+  });
+  displaced.forEach(tile => {
+    const free = allocateHoneycombSlots(1, kept)[0] || {
+      q: 0,
+      r: 0
+    };
+    kept.push({
+      ...tile,
+      q: free.q,
+      r: free.r
+    });
+  });
+  return kept;
+}
+export const HEX_NEIGHBOR_DIRS = [{
+  id: "e",
+  dq: 1,
+  dr: 0,
+  icon: "mdi:arrow-right"
+}, {
+  id: "se",
+  dq: 0,
+  dr: 1,
+  icon: "mdi:arrow-bottom-right"
+}, {
+  id: "sw",
+  dq: -1,
+  dr: 1,
+  icon: "mdi:arrow-bottom-left"
+}, {
+  id: "w",
+  dq: -1,
+  dr: 0,
+  icon: "mdi:arrow-left"
+}, {
+  id: "nw",
+  dq: 0,
+  dr: -1,
+  icon: "mdi:arrow-top-left"
+}, {
+  id: "ne",
+  dq: 1,
+  dr: -1,
+  icon: "mdi:arrow-top-right"
+}];
+export function getHoneycombNeighbors(q, r) {
+  return HEX_NEIGHBOR_DIRS.map(dir => ({
+    ...dir,
+    q: Number(q) + dir.dq,
+    r: Number(r) + dir.dr
+  }));
+}
+export function findHoneycombTile(tiles, key) {
+  return (Array.isArray(tiles) ? tiles : []).find(tile => tile.key === key) || null;
+}
+export function findHoneycombTileAt(tiles, q, r) {
+  return (Array.isArray(tiles) ? tiles : []).find(tile => Number(tile.q) === Number(q) && Number(tile.r) === Number(r)) || null;
+}
+export function moveHoneycombTile(tiles, key, dq, dr) {
+  const list = (Array.isArray(tiles) ? tiles : []).map(tile => ({
+    ...tile
+  }));
+  const tile = list.find(entry => entry.key === key);
+  if (!tile) return list;
+  const fromQ = Number(tile.q) || 0;
+  const fromR = Number(tile.r) || 0;
+  const nextQ = fromQ + Number(dq) || 0;
+  const nextR = fromR + Number(dr) || 0;
+  const occupant = list.find(entry => entry.key !== key && Number(entry.q) === nextQ && Number(entry.r) === nextR);
+  tile.q = nextQ;
+  tile.r = nextR;
+  if (occupant) {
+    occupant.q = fromQ;
+    occupant.r = fromR;
+  }
+  return list;
+}
+export function placeHoneycombTile(tiles, key, q, r) {
+  const tile = findHoneycombTile(tiles, key);
+  if (!tile) return Array.isArray(tiles) ? tiles : [];
+  return moveHoneycombTile(tiles, key, Number(q) - Number(tile.q || 0), Number(r) - Number(tile.r || 0));
+}
+export function swapHoneycombTiles(tiles, aKey, bKey) {
+  if (!aKey || !bKey || aKey === bKey) return Array.isArray(tiles) ? tiles : [];
+  const a = findHoneycombTile(tiles, aKey);
+  if (!a) return Array.isArray(tiles) ? tiles : [];
+  return placeHoneycombTile(tiles, aKey, findHoneycombTile(tiles, bKey)?.q ?? a.q, findHoneycombTile(tiles, bKey)?.r ?? a.r);
+}
+export function buildCustomFamilyHoneycombSlots(families = [], reservedSlots = []) {
   const hexFamilies = (Array.isArray(families) ? families : []).filter(family => family.displayMode !== "brick");
   const manual = [];
   const auto = [];
   hexFamilies.forEach(family => {
-    if (family.honeycombQ != null && family.honeycombR != null) {
+    if (family.honeycombQ != null && family.honeycombR != null && family.honeycombQ !== "" && family.honeycombR !== "") {
       manual.push({
         family,
         slot: {
@@ -96,7 +202,8 @@ export function buildCustomFamilyHoneycombSlots(families = []) {
     }
     auto.push(family);
   });
-  const outerSlots = allocateHoneycombSlots(auto.length, manual.map(entry => entry.slot));
+  const reserved = [...(reservedSlots || []), ...manual.map(entry => entry.slot)];
+  const outerSlots = allocateHoneycombSlots(auto.length, reserved);
   const autoItems = auto.map((family, index) => ({
     family,
     slot: {
@@ -124,7 +231,9 @@ export function computeHoneycombClusterMetrics(slots = [], options = {}) {
       layoutScale: 1,
       displayScale: 1,
       rawWidthRem: 38,
-      rawHeightRem: 24
+      rawHeightRem: 24,
+      originX: 0,
+      originY: 0
     };
   }
   const count = slots.length;
@@ -136,18 +245,24 @@ export function computeHoneycombClusterMetrics(slots = [], options = {}) {
   } = HONEYCOMB_HEX;
   const halfW = w * layoutScale / 2;
   const halfH = h * layoutScale / 2;
-  let extentX = 0;
-  let extentY = 0;
+  let minX = Infinity;
+  let maxX = -Infinity;
+  let minY = Infinity;
+  let maxY = -Infinity;
   slots.forEach(slot => {
     const {
       x,
       y
     } = honeycombOffsetRem(slot.q ?? 0, slot.r ?? 0, layoutScale);
-    extentX = Math.max(extentX, Math.abs(x) + halfW);
-    extentY = Math.max(extentY, Math.abs(y) + halfH);
+    minX = Math.min(minX, x - halfW);
+    maxX = Math.max(maxX, x + halfW);
+    minY = Math.min(minY, y - halfH);
+    maxY = Math.max(maxY, y + halfH);
   });
-  const rawWidth = extentX * 2 + paddingRem * 2;
-  const rawHeight = extentY * 2 + paddingRem * 2;
+  const originX = (minX + maxX) / 2;
+  const originY = (minY + maxY) / 2;
+  const rawWidth = Math.max(w * layoutScale, maxX - minX) + paddingRem * 2;
+  const rawHeight = Math.max(h * layoutScale, maxY - minY) + paddingRem * 2;
   let displayScale = 1;
   if (rawWidth > maxWidthRem) {
     displayScale = maxWidthRem / rawWidth;
@@ -158,7 +273,19 @@ export function computeHoneycombClusterMetrics(slots = [], options = {}) {
     layoutScale,
     displayScale,
     rawWidthRem: rawWidth,
-    rawHeightRem: rawHeight
+    rawHeightRem: rawHeight,
+    originX,
+    originY
+  };
+}
+export function honeycombDisplayOffsetRem(q, r, metrics = {}) {
+  const {
+    x,
+    y
+  } = honeycombOffsetRem(q, r, metrics.layoutScale ?? 1);
+  return {
+    x: x - (Number(metrics.originX) || 0),
+    y: y - (Number(metrics.originY) || 0)
   };
 }
 export function buildCustomFamilyBricks(families = []) {
@@ -178,89 +305,173 @@ export function buildCustomFamilyBricks(families = []) {
 }
 export const HARDWARE_TYPE_ORDER = ["Internet", "Firewalls", "Routeur", "Servers", "Storage", "Ordinateurs", "Switch", "BorneWifi", "TOIP", "Alimentation"];
 export const HONEYCOMB_TABLE_TYPE_ORDER = HARDWARE_TYPE_ORDER.filter(type => type !== "Ordinateurs");
+export const DEFAULT_HONEYCOMB_SLOTS = [{
+  type: "Firewalls",
+  q: 0,
+  r: -1
+}, {
+  type: "Internet",
+  q: 0,
+  r: 0
+}, {
+  type: "Routeur",
+  q: 1,
+  r: -1
+}, {
+  type: "Servers",
+  q: 3,
+  r: -1
+}, {
+  type: "Storage",
+  q: 3,
+  r: 0
+}, {
+  type: "Ordinateurs",
+  q: 4,
+  r: -1
+}, {
+  type: "Alimentation",
+  q: 4,
+  r: 0
+}, {
+  type: "Switch",
+  q: 6,
+  r: -1
+}, {
+  type: "BorneWifi",
+  q: 6,
+  r: 0
+}, {
+  type: "TOIP",
+  q: 7,
+  r: -1
+}];
 export const HONEYCOMB_THEME_GROUPS = [{
   id: "edge",
   types: ["Internet", "Firewalls", "Routeur"],
-  slots: [{
-    type: "Firewalls",
-    q: 0,
-    r: -1
-  }, {
-    type: "Internet",
-    q: 0,
-    r: 0
-  }, {
-    type: "Routeur",
-    q: 1,
-    r: -1
-  }]
+  slots: DEFAULT_HONEYCOMB_SLOTS.filter(slot => ["Internet", "Firewalls", "Routeur"].includes(slot.type))
 }, {
   id: "compute",
   types: ["Servers", "Storage", "Ordinateurs", "Alimentation"],
-  slots: [{
-    type: "Servers",
-    q: 0,
-    r: -1
-  }, {
-    type: "Storage",
-    q: 0,
-    r: 0
-  }, {
-    type: "Ordinateurs",
-    q: 1,
-    r: -1
-  }, {
-    type: "Alimentation",
-    q: 1,
-    r: 0
-  }]
+  slots: DEFAULT_HONEYCOMB_SLOTS.filter(slot => ["Servers", "Storage", "Ordinateurs", "Alimentation"].includes(slot.type))
 }, {
   id: "lan",
   types: ["Switch", "BorneWifi", "TOIP"],
-  slots: [{
-    type: "Switch",
-    q: 0,
-    r: -1
-  }, {
-    type: "BorneWifi",
+  slots: DEFAULT_HONEYCOMB_SLOTS.filter(slot => ["Switch", "BorneWifi", "TOIP"].includes(slot.type))
+}];
+export const EMPTY_HONEYCOMB_LAYOUT = DEFAULT_HONEYCOMB_SLOTS;
+export function getDefaultHoneycombSlot(type) {
+  return DEFAULT_HONEYCOMB_SLOTS.find(slot => slot.type === type) || {
+    type,
     q: 0,
     r: 0
-  }, {
-    type: "TOIP",
-    q: 1,
-    r: -1
-  }]
-}];
-export const EMPTY_HONEYCOMB_LAYOUT = HONEYCOMB_THEME_GROUPS.flatMap(group => group.slots);
+  };
+}
+export function applyHoneycombLayoutOverrides(layouts = {}) {
+  return DEFAULT_HONEYCOMB_SLOTS.map(slot => {
+    const layout = layouts?.[slot.type];
+    if (layout && layout.displayMode === "brick") return null;
+    const q = layout?.honeycombQ == null || layout.honeycombQ === "" ? slot.q : Number(layout.honeycombQ);
+    const r = layout?.honeycombR == null || layout.honeycombR === "" ? slot.r : Number(layout.honeycombR);
+    return {
+      ...slot,
+      q: Number.isFinite(q) ? q : slot.q,
+      r: Number.isFinite(r) ? r : slot.r,
+      tileShape: layout?.tileShape || slot.tileShape || "hexagon"
+    };
+  }).filter(Boolean);
+}
 export function isHoneycombFeatured() {
   return false;
 }
-const THEME_CLUSTER_METRICS_OPTIONS = {
-  maxWidthRem: 28,
-  minWidthRem: 11,
-  minHeightRem: 15,
-  paddingRem: 0.45
+const UNIFIED_CLUSTER_METRICS_OPTIONS = {
+  maxWidthRem: 72,
+  minWidthRem: 12,
+  minHeightRem: 10,
+  paddingRem: 0.9
 };
+export function buildDefaultHoneycombEditorTiles(customFamilies = []) {
+  return buildHoneycombEditorTiles({
+    layouts: {},
+    customFamilies: (Array.isArray(customFamilies) ? customFamilies : []).map(family => ({
+      ...family,
+      honeycombQ: null,
+      honeycombR: null
+    }))
+  });
+}
+export function buildHoneycombEditorTiles({
+  layouts = {},
+  customFamilies = [],
+  current = null
+} = {}) {
+  const systemSlots = applyHoneycombLayoutOverrides(layouts);
+  const customEntries = buildCustomFamilyHoneycombSlots((Array.isArray(customFamilies) ? customFamilies : []).filter(family => !family.isSystem && family.displayMode !== "brick"), systemSlots);
+  let tiles = [...systemSlots.map(slot => ({
+    key: slot.type,
+    familyKey: slot.type,
+    isSystem: true,
+    q: slot.q,
+    r: slot.r,
+    displayMode: "hexagon",
+    tileShape: slot.tileShape || "hexagon"
+  })), ...customEntries.map(({
+    family,
+    slot
+  }) => ({
+    key: `Custom:${family.familyKey}`,
+    familyKey: family.familyKey,
+    id: family.id || null,
+    isSystem: false,
+    label: family.label,
+    icon: family.icon,
+    q: slot.q,
+    r: slot.r,
+    displayMode: family.displayMode || "hexagon",
+    tileShape: family.tileShape || "hexagon"
+  }))];
+  tiles = resolveHoneycombTileCollisions(tiles);
+  if (!current || current.displayMode === "brick") return tiles;
+  const currentKey = current.isSystem || HARDWARE_TYPE_ORDER.includes(current.familyKey) ? current.familyKey : current.familyKey ? `Custom:${current.familyKey}` : "__draft__";
+  const draftQ = current.honeycombQ === "" || current.honeycombQ == null ? null : Number(current.honeycombQ);
+  const draftR = current.honeycombR === "" || current.honeycombR == null ? null : Number(current.honeycombR);
+  const existing = tiles.find(tile => tile.key === currentKey);
+  if (existing) {
+    if (Number.isFinite(draftQ) && Number.isFinite(draftR) && (Number(existing.q) !== draftQ || Number(existing.r) !== draftR)) {
+      return resolveHoneycombTileCollisions(placeHoneycombTile(tiles, currentKey, draftQ, draftR));
+    }
+    return tiles;
+  }
+  const free = allocateHoneycombSlots(1, tiles)[0] || {
+    q: 0,
+    r: 0
+  };
+  const slot = Number.isFinite(draftQ) && Number.isFinite(draftR) ? {
+    q: draftQ,
+    r: draftR
+  } : free;
+  tiles = [...tiles, {
+    key: currentKey,
+    familyKey: current.familyKey,
+    id: current.id || null,
+    isSystem: Boolean(current.isSystem),
+    label: current.label,
+    icon: current.icon,
+    q: slot.q,
+    r: slot.r,
+    displayMode: current.displayMode || "hexagon",
+    tileShape: current.tileShape || "hexagon"
+  }];
+  return resolveHoneycombTileCollisions(placeHoneycombTile(tiles, currentKey, slot.q, slot.r));
+}
 export function buildHoneycombThemeClusters(items = []) {
   const list = Array.isArray(items) ? items : [];
-  const byType = Object.fromEntries(list.map(item => [item.type, item]));
-  const clusters = HONEYCOMB_THEME_GROUPS.map(group => {
-    const clusterItems = group.slots.map(slot => byType[slot.type]).filter(Boolean);
-    return {
-      id: group.id,
-      items: clusterItems,
-      clusterMetrics: computeHoneycombClusterMetrics(collectHoneycombSlotsFromItems(clusterItems), THEME_CLUSTER_METRICS_OPTIONS)
-    };
-  }).filter(cluster => cluster.items.length > 0);
-  const customItems = list.filter(item => String(item.type || "").startsWith("Custom:"));
-  if (customItems.length) {
-    clusters.push({
-      id: "custom",
-      items: customItems,
-      clusterMetrics: computeHoneycombClusterMetrics(collectHoneycombSlotsFromItems(customItems), THEME_CLUSTER_METRICS_OPTIONS)
-    });
-  }
-  return clusters;
+  if (!list.length) return [];
+  return [{
+    id: "hardware",
+    items: list,
+    clusterMetrics: computeHoneycombClusterMetrics(collectHoneycombSlotsFromItems(list), UNIFIED_CLUSTER_METRICS_OPTIONS)
+  }];
 }
 export const INFRA_BRICK_GROUPS = [{
   id: "cybersecurity",

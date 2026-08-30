@@ -1,0 +1,52 @@
+/* Clip the tile shell and its fill. Labels stay readable via the small inner inset. */
+.shapeHexagon,
+.shapeHexagon::before,
+.shapeHexagon > * {
+  clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
+}
+
+.shapeHexagon {
+  overflow: hidden;
+}
+
+.shapeRounded,
+.shapeCircle,
+.shapePentagon,
+.shapeOctagon {
+  --tile-h: var(--hex-w);
+  overflow: hidden;
+}
+
+.shapeRounded,
+.shapeRounded::before,
+.shapeRounded > * {
+  clip-path: none;
+  border-radius: 22%;
+}
+
+/* Real CSS border — the old “outer fill + inner inset” ring is uneven on circles. */
+.shapeRounded,
+.shapeCircle {
+  --tile-stroke: 2px;
+  --tile-ring-layer: none;
+  --tile-inner-inset: 0px;
+}
+
+.shapeCircle,
+.shapeCircle::before,
+.shapeCircle > * {
+  clip-path: none;
+  border-radius: 50%;
+}
+
+.shapePentagon,
+.shapePentagon::before,
+.shapePentagon > * {
+  clip-path: polygon(50% 2%, 98% 38%, 80% 98%, 20% 98%, 2% 38%);
+}
+
+.shapeOctagon,
+.shapeOctagon::before,
+.shapeOctagon > * {
+  clip-path: polygon(30% 0%, 70% 0%, 100% 30%, 100% 70%, 70% 100%, 30% 100%, 0% 70%, 0% 30%);
+}

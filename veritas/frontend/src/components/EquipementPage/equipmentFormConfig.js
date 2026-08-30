@@ -2292,6 +2292,14 @@ export function isEquipmentRequiredSectionIncomplete(form, moduleKey, sectionId,
   if (moduleKey === "TOIP" && sectionId === "hardware" && isAddMode) {
     return !form?.manufacturer?.trim();
   }
+  if (sectionId === "extra") {
+    const extraFields = Array.isArray(form?.__systemExtensionFields) ? form.__systemExtensionFields : [];
+    return extraFields.some(field => {
+      if (!field?.required || !field.fieldKey || field.fieldType === "boolean") return false;
+      const value = form[field.fieldKey];
+      return value == null || String(value).trim() === "";
+    });
+  }
   return false;
 }
 export function validateEquipmentForm(form, moduleKey, {

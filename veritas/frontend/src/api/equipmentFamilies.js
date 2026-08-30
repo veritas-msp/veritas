@@ -44,6 +44,65 @@ export async function updateEquipmentFamily(id, payload) {
   }
   return res.json();
 }
+export async function fetchSystemFamilyExtensions(options = {}) {
+  const query = options.familyKey ? `?familyKey=${encodeURIComponent(options.familyKey)}` : "";
+  const res = await fetch(`${BASE_URL}/extensions${query}`, {
+    credentials: "include",
+    signal: options.signal
+  });
+  if (!res.ok) {
+    const errText = await res.text().catch(() => "");
+    throw new Error(errText || `Error ${res.status} equipment-family extensions`);
+  }
+  return res.json();
+}
+export async function fetchEquipmentMapStyle(options = {}) {
+  const res = await fetch(`${BASE_URL}/map-style`, {
+    credentials: "include",
+    signal: options.signal
+  });
+  if (!res.ok) {
+    const errText = await res.text().catch(() => "");
+    throw new Error(errText || `Error ${res.status} equipment-map-style`);
+  }
+  return res.json();
+}
+export async function updateSystemFamilyLayouts(layouts, extra = {}) {
+  const res = await fetch(`${BASE_URL}/layouts`, {
+    method: "PUT",
+    credentials: "include",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({
+      layouts,
+      ...(extra.tileShape ? { tileShape: extra.tileShape } : {})
+    })
+  });
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    throw new Error(data.error || "Error updating family positions");
+  }
+  return res.json();
+}
+export async function updateSystemFamilyExtensions(familyKey, fields, layout = null) {
+  const res = await fetch(`${BASE_URL}/extensions/${encodeURIComponent(familyKey)}`, {
+    method: "PUT",
+    credentials: "include",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({
+      ...(Array.isArray(fields) ? { fields } : {}),
+      ...(layout && typeof layout === "object" ? { layout } : {})
+    })
+  });
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    throw new Error(data.error || "Error updating family fields");
+  }
+  return res.json();
+}
 export async function deleteEquipmentFamily(id) {
   const res = await fetch(`${BASE_URL}/${id}`, {
     method: "DELETE",

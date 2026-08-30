@@ -48,8 +48,8 @@ export default function ReportCreateWizard({
     onSelectClient("");
     onStepChange("client");
   };
-  return <div className={styles.picker}>
-      <nav className={styles.steps} aria-label={wizard.progressAria}>
+  return <div className={styles.picker} data-guide="report-wizard">
+      <nav className={styles.steps} aria-label={wizard.progressAria} data-guide="report-steps">
         <span className={`${styles.step} ${step === "client" ? styles.stepActive : styles.stepDone}`}>
           <span className={styles.stepIndex}>1</span>
           {wizard.stepClient}
@@ -61,7 +61,7 @@ export default function ReportCreateWizard({
         </span>
       </nav>
 
-      {step === "client" ? <section className={styles.stage}>
+      {step === "client" ? <section className={styles.stage} data-guide="report-client">
           <header className={styles.stageHeader}>
             <h2 className={styles.stageTitle}>{wizard.clientTitle}</h2>
             <p className={styles.stageHint}>{wizard.clientHint}</p>
@@ -100,7 +100,7 @@ export default function ReportCreateWizard({
             </div>}
         </section> : null}
 
-      {step === "type" ? <section className={styles.stage}>
+      {step === "type" ? <section className={styles.stage} data-guide="report-types">
           <header className={styles.stageHeader}>
             <h2 className={styles.stageTitle}>{wizard.typeTitle}</h2>
             <p className={styles.stageHint}>{wizard.typeHint}</p>

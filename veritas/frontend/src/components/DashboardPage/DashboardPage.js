@@ -22,6 +22,9 @@ import { DEFAULT_SCOPE_FILTER, getScopeFilterKey, isScopeFilterActive, isScopeFi
 import { DistributionPanel, formatHours, formatNumber, formatPercent, formatRating, KpiRow, MiniStat, Panel, PiePanel, SectionTitle, TrendBars, buildDistributionItems } from "./dashboardWidgets";
 import styles from "./DashboardPage.module.css";
 import { createTrackedAbortController } from "../../utils/pageLoadAbort";
+import PageGuideTour from "../PageGuide/PageGuideTour";
+import { getDashboardGuide } from "../PageGuide/dashboardGuideSteps";
+import { useRegisterPageGuide } from "../../hooks/useRegisterPageGuide";
 
 const DASHBOARD_TABS = [{
   key: "support",
@@ -181,6 +184,12 @@ export default function DashboardPage() {
   const locale = useAppLocale();
   const formatters = useAppFormatters();
   const copy = useMemo(() => getDashboardPageCopy(locale), [locale]);
+  const [pageGuideOpen, setPageGuideOpen] = useState(false);
+  const openPageGuide = useCallback(() => setPageGuideOpen(true), []);
+  useRegisterPageGuide(openPageGuide);
+  const kpiGuide = useMemo(() => getDashboardGuide(locale, {
+    showSupport: () => setActiveTab("support")
+  }), [locale]);
   const [activeTab, setActiveTab] = useState("support");
   const [periodFilter, setPeriodFilter] = useState(DEFAULT_PERIOD_FILTER);
   const [scopeFilter, setScopeFilter] = useState(DEFAULT_SCOPE_FILTER);
@@ -741,12 +750,12 @@ export default function DashboardPage() {
   return <div className={`${mspStyles.mspPage} ${styles.dashboardPage} msp-page-insight`}>
       <div className={mspStyles.mspLayout}>
         <div className={mspStyles.mspMain}>
-          <MspPageHero eyebrow={copy.eyebrow} title={copy.title} subtitle={heroSubtitle} icon="mdi:chart-box-outline" actions={<>
-                <button type="button" className={styles.periodOpenBtn} onClick={() => setPeriodModalOpen(true)} aria-label={copy.periodButtonAria}>
+          <MspPageHero guideId="kpi-hero" eyebrow={copy.eyebrow} title={copy.title} subtitle={heroSubtitle} icon="mdi:chart-box-outline" actions={<>
+                <button type="button" className={styles.periodOpenBtn} onClick={() => setPeriodModalOpen(true)} aria-label={copy.periodButtonAria} data-guide="kpi-period">
                   <Icon icon="mdi:calendar-range" aria-hidden />
                   <span className={styles.periodOpenLabel}>{periodLabel}</span>
                 </button>
-                <div className={styles.exportMenuWrap} ref={exportMenuRef}>
+                <div className={styles.exportMenuWrap} ref={exportMenuRef} data-guide="kpi-export">
                   <SmartTooltip content={copy.export}>
                     <button type="button" className={layout.iconBtn} onClick={() => setExportMenuOpen(open => !open)} aria-haspopup="menu" aria-expanded={exportMenuOpen} aria-label={copy.exportMenuAria}>
                       <Icon icon="mdi:export-variant" aria-hidden />
@@ -786,7 +795,7 @@ export default function DashboardPage() {
           <main className={mspStyles.mspContent}>
             <div className={`${layout.shell} ${layout.shellWide} ${layout.shellFull}`}>
               <div className={styles.contentToolbar}>
-                <div className={`${mspStyles.mspTabBar} ${styles.toolbarTabs}`} role="tablist" aria-label={copy.tabsAria}>
+                <div className={`${mspStyles.mspTabBar} ${styles.toolbarTabs}`} role="tablist" aria-label={copy.tabsAria} data-guide="kpi-tabs">
                   {DASHBOARD_TABS.map(({
                 key,
                 icon
@@ -795,9 +804,11 @@ export default function DashboardPage() {
                       {copy.tabs[key]}
                     </button>)}
                 </div>
-                <DashboardScopeFilter compact copy={copy.scopeFilter} value={scopeFilter} onChange={setScopeFilter} disabled={loading || refreshing} />
+                <div data-guide="kpi-scope">
+                  <DashboardScopeFilter compact copy={copy.scopeFilter} value={scopeFilter} onChange={setScopeFilter} disabled={loading || refreshing} />
+                </div>
               </div>
-              <div className={styles.tabContent} role="tabpanel">
+              <div className={styles.tabContent} role="tabpanel" data-guide="kpi-content">
                 {loading && <div className={styles.loadingState}>
                     <Icon icon="mdi:loading" className={styles.spinner} aria-hidden />
                     <span>{copy.loading}</span>
@@ -836,5 +847,6 @@ export default function DashboardPage() {
       <DashboardExportModal open={Boolean(exportModal)} mode={exportModal || "email"} copy={copy} defaultCategories={[activeTab]} onClose={() => setExportModal(null)} onSubmit={handleExportSubmit} />
       <DashboardScheduleModal open={scheduleOpen} copy={copy} formatters={formatters} onClose={() => setScheduleOpen(false)} />
       <DashboardDistributionModal open={Boolean(distributionModal)} title={distributionModal?.title} icon={distributionModal?.icon} subtitle={distributionModal?.subtitle} items={distributionModal?.items || []} emptyLabel={copy.empty} closeLabel={copy.support.distributionModalClose} onClose={() => setDistributionModal(null)} />
+      <PageGuideTour open={pageGuideOpen} steps={kpiGuide.steps} title={kpiGuide.tourTitle} locale={locale} onClose={() => setPageGuideOpen(false)} />
     </div>;
 }

@@ -18,6 +18,8 @@ import ModalDiscardConfirm from "../Misc/ModalDiscardConfirm";
 import { useModalCloseGuard } from "../../hooks/useModalCloseGuard";
 import styles from "../EnterprisesPage/EnterpriseFormModal.module.css";
 import { serializeAssignedSsidsForPersistence, serializeWifiSsidCatalogForPersistence, wifiSsidCatalogsEqual } from "./wifiApSsidUtils";
+import useSystemFamilyExtensions from "../../hooks/useSystemFamilyExtensions";
+import { buildExtensionFormValues } from "../../utils/systemFamilyExtensions";
 export default function EquipmentFormModal({
   open,
   onClose,
@@ -45,6 +47,7 @@ export default function EquipmentFormModal({
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [error, setError] = useState(null);
   const apiType = getApiType(moduleKey, equipment);
+  const { fields: extensionFields } = useSystemFamilyExtensions(apiType || moduleKey);
   const serverType = normalizeServerType(formData.typeServer || equipment?.type || equipment?.typeServer || "");
   const isPhysicalServer = apiType === "Servers" && serverType === "physique";
   const availableSites = useMemo(() => {
@@ -79,9 +82,17 @@ export default function EquipmentFormModal({
       storageType: formData.storageType,
       toipType: formData.toipType
     });
-    if (moduleKey !== "TOIP") return list;
-    return list.filter(section => section.id !== "voip" || isToipVoipSectionVisible(formData.toipType));
-  }, [moduleKey, locale, formData.firewallType, formData.routeurType, formData.typeServer, formData.storageType, formData.toipType]);
+    const withExtra = extensionFields.length
+      ? [...list, {
+        id: "extra",
+        label: locale === "fr" ? "Champs perso" : "Custom fields",
+        description: locale === "fr" ? "Champs ajoutés à cette famille" : "Fields added to this family",
+        icon: "mdi:form-textbox"
+      }]
+      : list;
+    if (moduleKey !== "TOIP") return withExtra;
+    return withExtra.filter(section => section.id !== "voip" || isToipVoipSectionVisible(formData.toipType));
+  }, [moduleKey, locale, formData.firewallType, formData.routeurType, formData.typeServer, formData.storageType, formData.toipType, extensionFields.length]);
   const hasChanges = useMemo(() => !equipmentFormsEqual(formData, initialSnapshot), [formData, initialSnapshot]);
   const hasUnsavedChanges = hasChanges;
   const {
@@ -109,18 +120,23 @@ export default function EquipmentFormModal({
       return;
     }
     const equipmentKey = isAddMode ? "new" : String(equipment?.id ?? equipment?.rawData?.id ?? equipment?.name ?? "");
-    const sessionKey = `${mode}:${moduleKey ?? ""}:${client?.id ?? ""}:${equipmentKey}`;
+    const extraKey = extensionFields.map(field => field.fieldKey).join(",");
+    const sessionKey = `${mode}:${moduleKey ?? ""}:${client?.id ?? ""}:${equipmentKey}:${extraKey}`;
     if (formSessionRef.current === sessionKey) return;
     formSessionRef.current = sessionKey;
-    const nextForm = buildInitialFormData(equipment, moduleKey, {
-      client,
-      peerBorneWifi
-    });
+    const nextForm = {
+      ...buildInitialFormData(equipment, moduleKey, {
+        client,
+        peerBorneWifi
+      }),
+      ...buildExtensionFormValues(equipment, extensionFields),
+      __systemExtensionFields: extensionFields
+    };
     setFormData(nextForm);
     setInitialSnapshot(cloneEquipmentFormSnapshot(nextForm));
     setActiveSection("identity");
     setError(null);
-  }, [open, isAddMode, mode, moduleKey, client?.id, equipment?.id, equipment?.name, equipment, client, peerBorneWifi]);
+  }, [open, isAddMode, mode, moduleKey, client?.id, equipment?.id, equipment?.name, equipment, client, peerBorneWifi, extensionFields]);
   const buildSubmitData = useCallback(() => {
     if (moduleKey === "Internet") {
       return syncInternetLegacyDebit(normalizeInternetFormData(formData));
@@ -401,7 +417,7 @@ export default function EquipmentFormModal({
             }}>
                 {error}
               </div>}
-            <EquipmentFormSectionContent activeSection={activeSection} moduleKey={moduleKey} apiType={apiType} formData={formData} setFormData={setFormData} update={update} updateBrandModel={updateBrandModel} availableSites={availableSites} firewallPartnerOptions={firewallPartnerOptions} serverHaPartnerOptions={serverHaPartnerOptions} storageHaPartnerOptions={storageHaPartnerOptions} hostServerOptions={hostServerOptions} isPhysicalServer={isPhysicalServer} serverType={serverType} isSynologyStorageForm={isSynologyStorageForm} brandModelCatalog={brandModelCatalog} storageBrandCatalog={storageBrandCatalog} isAddMode={isAddMode} isRequiredSectionIncomplete={isRequiredSectionIncomplete} formCopy={copy} />
+            <EquipmentFormSectionContent activeSection={activeSection} moduleKey={moduleKey} apiType={apiType} formData={formData} setFormData={setFormData} update={update} updateBrandModel={updateBrandModel} availableSites={availableSites} firewallPartnerOptions={firewallPartnerOptions} serverHaPartnerOptions={serverHaPartnerOptions} storageHaPartnerOptions={storageHaPartnerOptions} hostServerOptions={hostServerOptions} isPhysicalServer={isPhysicalServer} serverType={serverType} isSynologyStorageForm={isSynologyStorageForm} brandModelCatalog={brandModelCatalog} storageBrandCatalog={storageBrandCatalog} isAddMode={isAddMode} isRequiredSectionIncomplete={isRequiredSectionIncomplete} formCopy={copy} extensionFields={extensionFields} />
           </div>
         </div>
 

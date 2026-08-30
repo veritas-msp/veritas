@@ -2,6 +2,11 @@ import { pool } from "../database/db.js";
 let tablesReady = false;
 const FIELD_TYPES = new Set(["text", "textarea", "date", "number", "boolean"]);
 const DISPLAY_MODES = new Set(["hexagon", "brick"]);
+const TILE_SHAPES = new Set(["hexagon", "rounded", "circle", "pentagon", "octagon"]);
+function normalizeTileShape(value) {
+  const raw = String(value || "").trim().toLowerCase();
+  return TILE_SHAPES.has(raw) ? raw : "hexagon";
+}
 function slugifyFamilyKey(value) {
   return String(value || "famille").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 72) || "famille";
 }
@@ -487,6 +492,275 @@ export async function updateClientCustomEquipment(clientId, familyKey, itemId, p
     previous: current
   };
 }
+export const SYSTEM_FAMILY_KEYS = [
+  "Internet",
+  "Firewalls",
+  "Routeur",
+  "Servers",
+  "Storage",
+  "Ordinateurs",
+  "Switch",
+  "BorneWifi",
+  "TOIP",
+  "Alimentation"
+];
+
+const SYSTEM_FAMILY_ALIASES = {
+  Serveurs: "Servers",
+  Server: "Servers",
+  servers: "Servers",
+  NAS: "Storage",
+  Stockage: "Storage",
+  stockage: "Storage",
+  Firewall: "Firewalls",
+  firewall: "Firewalls",
+  BorneWiFi: "BorneWifi",
+  Wifi: "BorneWifi",
+  WiFi: "BorneWifi"
+};
+
+export function canonicalizeSystemFamilyKey(value) {
+  const raw = String(value || "").trim();
+  if (!raw) return null;
+  if (SYSTEM_FAMILY_ALIASES[raw]) return SYSTEM_FAMILY_ALIASES[raw];
+  const hit = SYSTEM_FAMILY_KEYS.find(key => key.toLowerCase() === raw.toLowerCase());
+  return hit || null;
+}
+
+function mapExtensionFieldRow(row) {
+  return {
+    id: row.id,
+    familyKey: row.family_key,
+    fieldKey: row.field_key,
+    label: row.label,
+    fieldType: row.field_type,
+    required: Boolean(row.required),
+    displayOrder: Number(row.display_order) || 0,
+    createdAt: row.created_at
+  };
+}
+
+export async function ensureSystemFamilyExtensionTable() {
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS v_b_equipment_family_extension_fields (
+      id SERIAL PRIMARY KEY,
+      family_key VARCHAR(80) NOT NULL,
+      field_key VARCHAR(80) NOT NULL,
+      label VARCHAR(120) NOT NULL,
+      field_type VARCHAR(20) NOT NULL DEFAULT 'text',
+      required BOOLEAN NOT NULL DEFAULT FALSE,
+      display_order INTEGER NOT NULL DEFAULT 100,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      UNIQUE (family_key, field_key)
+    )
+  `);
+}
+
+export async function listSystemFamilyExtensions(familyKey = null) {
+  await ensureSystemFamilyExtensionTable();
+  const canonical = familyKey ? canonicalizeSystemFamilyKey(familyKey) : null;
+  if (familyKey && !canonical) return [];
+  const result = canonical
+    ? await pool.query(
+      `SELECT * FROM v_b_equipment_family_extension_fields
+       WHERE family_key = $1
+       ORDER BY display_order ASC, id ASC`,
+      [canonical]
+    )
+    : await pool.query(
+      `SELECT * FROM v_b_equipment_family_extension_fields
+       ORDER BY family_key ASC, display_order ASC, id ASC`
+    );
+  return result.rows.map(mapExtensionFieldRow);
+}
+
+export async function listSystemFamilyExtensionsByKey() {
+  const fields = await listSystemFamilyExtensions();
+  const map = {};
+  SYSTEM_FAMILY_KEYS.forEach(key => {
+    map[key] = [];
+  });
+  fields.forEach(field => {
+    if (!map[field.familyKey]) map[field.familyKey] = [];
+    map[field.familyKey].push(field);
+  });
+  return map;
+}
+
+const RESERVED_SYSTEM_EXTENSION_KEYS = new Set([
+  "nom", "name", "ip", "type", "site", "location", "emplacement",
+  "marque", "modele", "numeroSerie", "adresseMac", "commentaire",
+  "is_active", "isActive", "actif", "active", "data"
+]);
+
+export async function ensureEquipmentMapStyleTable() {
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS v_b_equipment_map_style (
+      id SMALLINT PRIMARY KEY DEFAULT 1 CHECK (id = 1),
+      tile_shape VARCHAR(20) NOT NULL DEFAULT 'hexagon',
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )
+  `);
+  await pool.query(`
+    INSERT INTO v_b_equipment_map_style (id, tile_shape)
+    VALUES (1, 'hexagon')
+    ON CONFLICT (id) DO NOTHING
+  `);
+}
+
+export async function getEquipmentMapStyle() {
+  await ensureEquipmentMapStyleTable();
+  const result = await pool.query(`SELECT tile_shape FROM v_b_equipment_map_style WHERE id = 1`);
+  return { tileShape: normalizeTileShape(result.rows[0]?.tile_shape) };
+}
+
+export async function upsertEquipmentMapStyle(tileShape) {
+  const shape = normalizeTileShape(tileShape);
+  await ensureEquipmentMapStyleTable();
+  await pool.query(
+    `INSERT INTO v_b_equipment_map_style (id, tile_shape, updated_at)
+     VALUES (1, $1, NOW())
+     ON CONFLICT (id) DO UPDATE SET
+       tile_shape = EXCLUDED.tile_shape,
+       updated_at = NOW()`,
+    [shape]
+  );
+  return { tileShape: shape };
+}
+
+export async function ensureSystemFamilyLayoutTable() {
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS v_b_equipment_family_layout (
+      family_key VARCHAR(80) PRIMARY KEY,
+      honeycomb_q INTEGER,
+      honeycomb_r INTEGER,
+      display_mode VARCHAR(20) NOT NULL DEFAULT 'hexagon',
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )
+  `);
+}
+
+function mapLayoutRow(row) {
+  return {
+    familyKey: row.family_key,
+    honeycombQ: row.honeycomb_q == null ? null : Number(row.honeycomb_q),
+    honeycombR: row.honeycomb_r == null ? null : Number(row.honeycomb_r),
+    displayMode: DISPLAY_MODES.has(row.display_mode) ? row.display_mode : "hexagon"
+  };
+}
+
+export async function listSystemFamilyLayouts() {
+  await ensureSystemFamilyLayoutTable();
+  const result = await pool.query(
+    `SELECT * FROM v_b_equipment_family_layout ORDER BY family_key ASC`
+  );
+  const map = {};
+  SYSTEM_FAMILY_KEYS.forEach(key => {
+    map[key] = null;
+  });
+  (result.rows || []).forEach(row => {
+    const canonical = canonicalizeSystemFamilyKey(row.family_key);
+    if (!canonical) return;
+    map[canonical] = mapLayoutRow({ ...row, family_key: canonical });
+  });
+  return map;
+}
+
+export async function upsertSystemFamilyLayout(familyKey, layout = {}) {
+  const canonical = canonicalizeSystemFamilyKey(familyKey);
+  if (!canonical) {
+    const err = new Error("Unknown built-in family.");
+    err.status = 400;
+    throw err;
+  }
+  await ensureSystemFamilyLayoutTable();
+  const honeycombQ = layout.honeycombQ === "" || layout.honeycombQ == null ? null : Number(layout.honeycombQ);
+  const honeycombR = layout.honeycombR === "" || layout.honeycombR == null ? null : Number(layout.honeycombR);
+  const displayMode = DISPLAY_MODES.has(layout.displayMode) ? layout.displayMode : "hexagon";
+  const result = await pool.query(
+    `INSERT INTO v_b_equipment_family_layout (family_key, honeycomb_q, honeycomb_r, display_mode, updated_at)
+     VALUES ($1, $2, $3, $4, NOW())
+     ON CONFLICT (family_key) DO UPDATE SET
+       honeycomb_q = EXCLUDED.honeycomb_q,
+       honeycomb_r = EXCLUDED.honeycomb_r,
+       display_mode = EXCLUDED.display_mode,
+       updated_at = NOW()
+     RETURNING *`,
+    [
+      canonical,
+      Number.isFinite(honeycombQ) ? honeycombQ : null,
+      Number.isFinite(honeycombR) ? honeycombR : null,
+      displayMode
+    ]
+  );
+  return mapLayoutRow(result.rows[0]);
+}
+
+export async function upsertSystemFamilyLayouts(items = []) {
+  const map = {};
+  for (const item of Array.isArray(items) ? items : []) {
+    const canonical = canonicalizeSystemFamilyKey(item.familyKey || item.family_key);
+    if (!canonical) continue;
+    map[canonical] = await upsertSystemFamilyLayout(canonical, item);
+  }
+  return map;
+}
+
+export async function replaceSystemFamilyExtensions(familyKey, fields, layout = null) {
+  const canonical = canonicalizeSystemFamilyKey(familyKey);
+  if (!canonical) {
+    const err = new Error("Unknown built-in family.");
+    err.status = 400;
+    throw err;
+  }
+  if (Array.isArray(fields)) {
+    await ensureSystemFamilyExtensionTable();
+    const used = new Set();
+    const normalized = normalizeFamilyFields(fields).map(field => {
+      let fieldKey = field.fieldKey;
+      if (RESERVED_SYSTEM_EXTENSION_KEYS.has(fieldKey)) fieldKey = `extra_${fieldKey}`;
+      let unique = fieldKey;
+      let n = 2;
+      while (used.has(unique)) unique = `${fieldKey}_${n++}`.slice(0, 72);
+      used.add(unique);
+      return {
+        ...field,
+        fieldKey: unique
+      };
+    });
+    const client = await pool.connect();
+    try {
+      await client.query("BEGIN");
+      await client.query(
+        `DELETE FROM v_b_equipment_family_extension_fields WHERE family_key = $1`,
+        [canonical]
+      );
+      for (const field of normalized) {
+        await client.query(
+          `INSERT INTO v_b_equipment_family_extension_fields
+             (family_key, field_key, label, field_type, required, display_order)
+           VALUES ($1, $2, $3, $4, $5, $6)`,
+          [canonical, field.fieldKey, field.label, field.fieldType, field.required, field.displayOrder]
+        );
+      }
+      await client.query("COMMIT");
+    } catch (err) {
+      await client.query("ROLLBACK");
+      throw err;
+    } finally {
+      client.release();
+    }
+  }
+  let savedLayout = null;
+  if (layout && typeof layout === "object") {
+    savedLayout = await upsertSystemFamilyLayout(canonical, layout);
+  }
+  return {
+    fields: await listSystemFamilyExtensions(canonical),
+    layout: savedLayout
+  };
+}
+
 export async function deleteClientCustomEquipment(clientId, familyKey, itemId) {
   await ensureEquipmentFamilyTables();
   const result = await pool.query(`DELETE FROM v_b_clients_m_custom_equipment

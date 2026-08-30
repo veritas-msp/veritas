@@ -1,4 +1,7 @@
-import { useState, useEffect, useMemo, useRef } from "react";
+import { useState, useEffect, useMemo, useRef, useCallback } from "react";
+import PageGuideTour from "../PageGuide/PageGuideTour";
+import { getServicePageGuide } from "../PageGuide/servicePageGuideSteps";
+import { useRegisterPageGuide } from "../../hooks/useRegisterPageGuide";
 import React from "react";
 import { Icon } from "@iconify/react";
 import { toast } from 'react-toastify';
@@ -94,6 +97,12 @@ export default function ServicePage({
 }) {
   const locale = useAppLocale();
   const pageCopy = useMemo(() => getServicePageCopy(locale), [locale]);
+  const [pageGuideOpen, setPageGuideOpen] = useState(false);
+  const openPageGuide = useCallback(() => setPageGuideOpen(true), []);
+  useRegisterPageGuide(openPageGuide);
+  const serviceGuide = useMemo(() => getServicePageGuide(locale, {
+    showMicrosoft: () => setActiveTab("microsoft")
+  }), [locale]);
   const [activeTab, setActiveTab] = useState(MODULE_TABS.includes(serviceParams?.activeTab) ? serviceParams.activeTab : "microsoft");
   const [clients, setClients] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -599,8 +608,8 @@ export default function ServicePage({
   return <div className={`${cyberStyles.mspPage} ${layout.page} msp-page-grid`}>
       <div className={cyberStyles.mspLayout}>
       <div className={cyberStyles.mspMain}>
-        <MspPageHero eyebrow={pageCopy.eyebrow} title={pageCopy.pageTitle} subtitle={heroSubtitle} icon="mdi:cloud-outline" actions={<>
-              <nav className={cyberStyles.mspTabBar} role="tablist" aria-label={pageCopy.tabSectionsAria}>
+        <MspPageHero guideId="service-hero" eyebrow={pageCopy.eyebrow} title={pageCopy.pageTitle} subtitle={heroSubtitle} icon="mdi:cloud-outline" actions={<>
+              <nav className={cyberStyles.mspTabBar} role="tablist" aria-label={pageCopy.tabSectionsAria} data-guide="service-tabs">
                 {moduleTabs.map(tab => <button key={tab.key} type="button" role="tab" aria-selected={activeTab === tab.key} className={`${cyberStyles.mspTab} ${activeTab === tab.key ? cyberStyles.mspTabActive : ""}`} onClick={() => selectTab(tab.key)} title={tab.label}>
                     <Icon icon={tab.icon} className={cyberStyles.mspTabIcon} aria-hidden />
                     <span className={cyberStyles.mspTabLabelRow}>
@@ -609,7 +618,7 @@ export default function ServicePage({
                   </button>)}
               </nav>
               <SmartTooltip content={syncTooltip}>
-                <button type="button" className={layout.iconBtn} onClick={handleHeaderSync} disabled={syncingAny} aria-label={syncTooltip}>
+                <button type="button" className={layout.iconBtn} onClick={handleHeaderSync} disabled={syncingAny} aria-label={syncTooltip} data-guide="service-sync">
                   <Icon icon="mdi:cloud-sync-outline" className={syncingAny ? cyberStyles.spinning : undefined} aria-hidden />
                 </button>
               </SmartTooltip>
@@ -617,7 +626,7 @@ export default function ServicePage({
 
         <main className={`${cyberStyles.mspContent} ${cyberStyles.mspContentList}`}>
           <div className={`${layout.shell} ${layout.shellWide} ${layout.shellFull}`}>
-          <div className={cyberStyles.tabContent}>
+          <div className={cyberStyles.tabContent} data-guide="service-dashboard">
           {activeTab === "microsoft" && <MicrosoftTenantMspDashboard tenants={microsoftData} loading={loading} copy={pageCopy.microsoft} onOpenTenant={handleOpenTenant} />}
 
           {activeTab === "domain" && <DomainMspDashboard domains={allDomains} loading={loadingDomains} copy={pageCopy.domain} />}
@@ -641,5 +650,6 @@ export default function ServicePage({
         onClose={() => setMicrosoftSyncConfirmOpen(false)}
         onConfirm={confirmSyncMicrosoft}
       />
+      <PageGuideTour open={pageGuideOpen} steps={serviceGuide.steps} title={serviceGuide.tourTitle} locale={locale} onClose={() => setPageGuideOpen(false)} />
     </div>;
 }

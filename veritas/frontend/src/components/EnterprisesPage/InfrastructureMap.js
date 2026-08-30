@@ -8,12 +8,19 @@ import { useAppLocale } from "../../hooks/useAppGeneralSettings";
 import { getInfraMapCopy } from "./infraMapI18n";
 import { filterBySite, filterCustomFamilyMap, matchesSiteFilter } from "../../utils/siteFilterUtils";
 import InfraBrick from "./InfraBrick";
-import { buildInfraBrickGroups, buildCustomFamilyBricks, buildCustomFamilyHoneycombSlots, buildHoneycombThemeClusters, EMPTY_HONEYCOMB_LAYOUT, HONEYCOMB_THEME_GROUPS, INFRA_BRICK_GROUPS, honeycombOffsetRem, isHoneycombFeatured } from "./infraHoneycombLayout";
+import { buildHoneycombEditorTiles, buildInfraBrickGroups, buildCustomFamilyBricks, buildHoneycombThemeClusters, EMPTY_HONEYCOMB_LAYOUT, HONEYCOMB_THEME_GROUPS, INFRA_BRICK_GROUPS, honeycombDisplayOffsetRem, isHoneycombFeatured } from "./infraHoneycombLayout";
+import useSystemFamilyExtensions from "../../hooks/useSystemFamilyExtensions";
+import { isSquareTileShape, tileShapeClassName } from "./tileShapes";
+import shapeStyles from "./honeycombTileShapes.module.css";
 import styles from "./InfrastructureMap.module.css";
+function tileShapeClass(shape) {
+  return shapeStyles[tileShapeClassName(shape)] || shapeStyles.shapeHexagon;
+}
 function InfraHexNode({
   node,
   onClick,
-  copy
+  copy,
+  tileShape: tileShapeProp
 }) {
   const hasData = Number(node.count) > 0;
   const meta = copy.getStatusMeta(hasData ? node.status : "unmonitored");
@@ -29,7 +36,7 @@ function InfraHexNode({
       "--hex-accent": meta.color,
       "--hex-soft": meta.soft
     }} onClick={() => onClick?.(node)} aria-label={`${node.displayName || node.name}${statusTooltip ? `, ${statusTooltip}` : ""}${node.count > 0 ? `, ${copy.formatEquipmentCount(node.count)}` : ""}`}>
-        <span className={styles.hexShape} aria-hidden>
+        <span className={`${styles.hexShape} ${tileShapeClass(tileShapeProp || node.tileShape)}`} aria-hidden>
           <span className={styles.hexInner}>
             <Icon icon={icon} className={styles.hexIcon} />
             <span className={styles.hexName}>{node.displayName || node.name}</span>
@@ -41,27 +48,57 @@ function InfraHexNode({
       </button>
     </SmartTooltip>;
 }
+function remToPx(rem) {
+  const root = typeof document === "undefined" ? 16 : parseFloat(getComputedStyle(document.documentElement).fontSize);
+  return rem * (Number.isFinite(root) && root > 0 ? root : 16);
+}
 function HoneycombCluster({
   items,
-  clusterMetrics
+  clusterMetrics,
+  tileShape = "hexagon"
 }) {
+  const viewportRef = useRef(null);
+  const [viewportWidth, setViewportWidth] = useState(0);
   const metrics = clusterMetrics || {
     widthRem: 38,
     heightRem: 24,
     layoutScale: 1,
     displayScale: 1,
     rawWidthRem: 38,
-    rawHeightRem: 24
+    rawHeightRem: 24,
+    originX: 0,
+    originY: 0
   };
-  return <div className={styles.hexClusterViewport} style={{
-    width: `${metrics.widthRem}rem`,
-    height: `${metrics.heightRem}rem`
+  useEffect(() => {
+    const node = viewportRef.current;
+    if (!node || typeof ResizeObserver === "undefined") return undefined;
+    const observer = new ResizeObserver(entries => {
+      const width = entries[0]?.contentRect?.width;
+      if (width) setViewportWidth(width);
+    });
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, []);
+  const rawWidthPx = remToPx(metrics.rawWidthRem);
+  const rawHeightPx = remToPx(metrics.rawHeightRem);
+  const fitScale = viewportWidth && rawWidthPx ? Math.min(1.15, viewportWidth / rawWidthPx) : Math.min(1, metrics.displayScale || 1);
+  const fittedWidth = rawWidthPx * fitScale;
+  const fittedHeight = rawHeightPx ? rawHeightPx * fitScale + 12 : remToPx(metrics.heightRem);
+  return <div ref={viewportRef} className={styles.hexClusterViewport} style={{
+    height: `${fittedHeight}px`
   }}>
+      <div className={styles.hexClusterFit} style={{
+      width: `${fittedWidth}px`,
+      height: `${fittedHeight - 12}px`
+    }}>
       <div className={styles.hexCluster} style={{
       "--hex-layout-scale": metrics.layoutScale,
+      ...(isSquareTileShape(tileShape) ? {
+        "--tile-h": "var(--hex-w)"
+      } : {}),
       width: `${metrics.rawWidthRem}rem`,
       height: `${metrics.rawHeightRem}rem`,
-      transform: metrics.displayScale < 1 ? `scale(${metrics.displayScale})` : undefined
+      transform: `scale(${fitScale})`
     }}>
       {items.map(item => {
         const slot = item.slot || EMPTY_HONEYCOMB_LAYOUT.find(entry => entry.type === item.type) || {};
@@ -69,7 +106,7 @@ function HoneycombCluster({
         const {
           x,
           y
-        } = honeycombOffsetRem(slot.q ?? 0, slot.r ?? 0, metrics.layoutScale);
+        } = honeycombDisplayOffsetRem(slot.q ?? 0, slot.r ?? 0, metrics);
         return <div key={item.key} className={`${styles.hexSlot} ${featured ? styles.hexSlotFeatured : ""}`} style={{
           "--hex-x": `${x}rem`,
           "--hex-y": `${y}rem`
@@ -77,6 +114,7 @@ function HoneycombCluster({
             {item.node}
           </div>;
       })}
+      </div>
       </div>
     </div>;
 }
@@ -107,6 +145,7 @@ function InfraMapCanvas({
   googleWorkspaceInfo = {},
   campaignItems = [],
   customFamilyBricks = [],
+  tileShape = "hexagon",
   onBrickClick,
   isCommunity = false,
   copy
@@ -136,7 +175,7 @@ function InfraMapCanvas({
       <div className={styles.mapCanvas}>
         <div className={styles.mapLayout}>
           <div className={styles.mapHoneycomb}>
-            {hexClusters.map(cluster => <HoneycombCluster key={cluster.id} items={cluster.items} clusterMetrics={cluster.clusterMetrics} />)}
+            {hexClusters.map(cluster => <HoneycombCluster key={cluster.id} items={cluster.items} clusterMetrics={cluster.clusterMetrics} tileShape={tileShape} />)}
           </div>
           <div className={styles.mapModulesBar}>
             <div className={styles.mapModulesRow}>
@@ -155,6 +194,7 @@ function InfraPlaceholderHex({
   featured = false,
   icon,
   label,
+  tileShape,
   copy
 }) {
   const meta = copy.getStatusMeta("disabled");
@@ -164,7 +204,7 @@ function InfraPlaceholderHex({
     "--hex-accent": meta.color,
     "--hex-soft": meta.soft
   }} aria-hidden>
-      <span className={styles.hexShape}>
+      <span className={`${styles.hexShape} ${tileShapeClass(tileShape)}`}>
         <span className={styles.hexInner}>
           <Icon icon={resolvedIcon} className={styles.hexIcon} />
           <span className={styles.hexName}>{resolvedLabel}</span>
@@ -184,31 +224,49 @@ function InfraEmptyMap({
   googleWorkspaceInfo = {},
   campaignItems = [],
   customFamilyMap = [],
+  displayTiles = [],
+  tileShape = "hexagon",
   onNodeClick,
   onBrickClick,
   isCommunity = false,
   copy
 }) {
-  const customItems = buildCustomFamilyHoneycombSlots(customFamilyMap).map(({
-    family,
-    slot
-  }) => {
-    const type = slot.type;
-    const categoryNode = {
-      type,
-      name: family.label,
-      displayName: family.label,
-      status: "unmonitored",
-      count: 0,
-      icon: family.icon,
-      familyKey: family.familyKey,
-      customFamily: family
+  const items = (displayTiles.length ? displayTiles : buildHoneycombEditorTiles({
+    customFamilies: customFamilyMap
+  })).map(tile => {
+    const slot = {
+      type: tile.key,
+      q: tile.q,
+      r: tile.r
+    };
+    if (tile.isSystem) {
+      return {
+        key: tile.key,
+        type: tile.familyKey,
+        slot,
+        node: <InfraPlaceholderHex type={tile.familyKey} tileShape={tileShape} copy={copy} />
+      };
+    }
+    const family = customFamilyMap.find(entry => entry.familyKey === tile.familyKey) || {
+      familyKey: tile.familyKey,
+      label: tile.label,
+      icon: tile.icon
     };
     return {
-      key: type,
-      type,
+      key: tile.key,
+      type: tile.key,
       slot,
-      node: <InfraHexNode node={categoryNode} onClick={onNodeClick} copy={copy} />
+      node: <InfraHexNode node={{
+        type: tile.key,
+        name: family.label || tile.label,
+        displayName: family.label || tile.label,
+        status: "unmonitored",
+        count: 0,
+        icon: family.icon || tile.icon,
+        familyKey: family.familyKey,
+        customFamily: family,
+        tileShape
+      }} tileShape={tileShape} onClick={onNodeClick} copy={copy} />
     };
   });
   const customFamilyBricks = buildCustomFamilyBricks(customFamilyMap);
@@ -221,12 +279,7 @@ function InfraEmptyMap({
         </div>
       </div>
 
-      <InfraMapCanvas honeycombEmpty backupInstances={backupInstances} items={[...EMPTY_HONEYCOMB_LAYOUT.map(slot => ({
-      key: slot.type,
-      type: slot.type,
-      slot,
-      node: <InfraPlaceholderHex type={slot.type} featured={slot.featured} copy={copy} />
-    })), ...customItems]} antivirusItems={antivirusItems} antispamItems={antispamItems} domainItems={domainItems} domainIntegrationReady={domainIntegrationReady} sslItems={sslItems} licenceItems={licenceItems} tenantInfo={tenantInfo} googleWorkspaceInfo={googleWorkspaceInfo} campaignItems={campaignItems} customFamilyBricks={customFamilyBricks} onBrickClick={onBrickClick} isCommunity={isCommunity} copy={copy} />
+      <InfraMapCanvas honeycombEmpty backupInstances={backupInstances} items={items} antivirusItems={antivirusItems} antispamItems={antispamItems} domainItems={domainItems} domainIntegrationReady={domainIntegrationReady} sslItems={sslItems} licenceItems={licenceItems} tenantInfo={tenantInfo} googleWorkspaceInfo={googleWorkspaceInfo} campaignItems={campaignItems} customFamilyBricks={customFamilyBricks} tileShape={tileShape} onBrickClick={onBrickClick} isCommunity={isCommunity} copy={copy} />
     </div>;
 }
 function InfraMapSkeleton({
@@ -241,29 +294,10 @@ function InfraMapSkeleton({
               key: slot.type,
               type: slot.type,
               slot
-            })))).map(cluster => <div key={cluster.id} className={styles.hexClusterViewport} style={{
-              width: `${cluster.clusterMetrics.widthRem}rem`,
-              height: `${cluster.clusterMetrics.heightRem}rem`
-            }}>
-                <div className={styles.hexCluster} style={{
-                  "--hex-layout-scale": cluster.clusterMetrics.layoutScale,
-                  width: `${cluster.clusterMetrics.rawWidthRem}rem`,
-                  height: `${cluster.clusterMetrics.rawHeightRem}rem`
-                }}>
-                  {cluster.items.map(item => {
-                    const {
-                      x,
-                      y
-                    } = honeycombOffsetRem(item.slot.q, item.slot.r, cluster.clusterMetrics.layoutScale);
-                    return <div key={item.key} className={styles.hexSlot} style={{
-                      "--hex-x": `${x}rem`,
-                      "--hex-y": `${y}rem`
-                    }}>
-                      <div className={styles.skeletonHex} />
-                    </div>;
-                  })}
-                </div>
-              </div>)}
+            })))).map(cluster => <HoneycombCluster key={cluster.id} clusterMetrics={cluster.clusterMetrics} items={cluster.items.map(item => ({
+              ...item,
+              node: <div className={styles.skeletonHex} />
+            }))} />)}
           </div>
           <div className={styles.mapModulesBar}>
             <div className={styles.mapModulesRow}>
@@ -304,6 +338,7 @@ export default function InfrastructureMap({
 }) {
   const locale = useAppLocale();
   const copy = useMemo(() => getInfraMapCopy(locale), [locale]);
+  const { layouts, tileShape } = useSystemFamilyExtensions();
   const {
     enabled: checkmkIntegrationEnabled
   } = useCheckMKIntegrationEnabled();
@@ -359,8 +394,7 @@ export default function InfrastructureMap({
     const raw = aggregateCategoryNode(type, nodes);
     return {
       ...raw,
-      displayName: copy.getHoneycombTypeLabel(type),
-      subtitle: raw.count > 0 ? copy.formatStatusBreakdown(raw.statusBreakdown) : ""
+      displayName: copy.getHoneycombTypeLabel(type)
     };
   }, [copy]);
   const filteredEquipment = useMemo(() => filterBySite(equipment, siteFilter), [equipment, siteFilter]);
@@ -382,33 +416,44 @@ export default function InfrastructureMap({
     checkmkEnabled: checkmkIntegrationEnabled
   }), [filteredEquipment, summaries, checkmkIntegrationEnabled]);
   const honeycombNodes = useMemo(() => model.nodes, [model.nodes]);
+  const displayTiles = useMemo(() => buildHoneycombEditorTiles({
+    layouts,
+    customFamilies: customFamilyMap
+  }), [layouts, customFamilyMap]);
   const honeycombItems = useMemo(() => {
     const nodesByType = honeycombNodes.reduce((acc, node) => {
       if (!acc[node.type]) acc[node.type] = [];
       acc[node.type].push(node);
       return acc;
     }, {});
-    const baseItems = EMPTY_HONEYCOMB_LAYOUT.map(slot => {
-      const categoryNode = localizeCategoryNode(slot.type, nodesByType[slot.type] || []);
-      const hasData = categoryNode.count > 0;
-      return {
-        key: slot.type,
-        type: slot.type,
-        slot,
-        node: hasData ? <InfraHexNode node={categoryNode} onClick={onNodeClick} copy={copy} /> : <InfraPlaceholderHex type={slot.type} featured={slot.featured} copy={copy} />
+    return displayTiles.map(tile => {
+      const slot = {
+        type: tile.key,
+        q: tile.q,
+        r: tile.r
       };
-    });
-    const customItems = buildCustomFamilyHoneycombSlots(customFamilyMap).map(({
-      family,
-      slot
-    }) => {
-      const filteredFamily = filteredCustomFamilyMap.find(entry => entry.familyKey === family.familyKey) || {
-        ...family,
+      if (tile.isSystem) {
+        const categoryNode = {
+          ...localizeCategoryNode(tile.familyKey, nodesByType[tile.familyKey] || []),
+          tileShape
+        };
+        const hasData = categoryNode.count > 0;
+        return {
+          key: tile.key,
+          type: tile.familyKey,
+          slot,
+          node: hasData ? <InfraHexNode node={categoryNode} tileShape={tileShape} onClick={onNodeClick} copy={copy} /> : <InfraPlaceholderHex type={tile.familyKey} featured={slot.featured} tileShape={tileShape} copy={copy} />
+        };
+      }
+      const family = filteredCustomFamilyMap.find(entry => entry.familyKey === tile.familyKey) || customFamilyMap.find(entry => entry.familyKey === tile.familyKey) || {
+        familyKey: tile.familyKey,
+        label: tile.label,
+        icon: tile.icon,
         items: [],
         count: 0
       };
-      const type = slot.type;
-      const nodes = (filteredFamily.items || []).map(item => ({
+      const type = tile.key;
+      const nodes = (family.items || []).map(item => ({
         type,
         id: item.id,
         name: item.name,
@@ -416,39 +461,25 @@ export default function InfrastructureMap({
         status: "unmonitored",
         familyKey: family.familyKey,
         customFamily: family,
-        icon: family.icon
+        icon: family.icon || tile.icon
       }));
       const categoryNode = {
         ...localizeCategoryNode(type, nodes),
-        displayName: family.label,
-        icon: family.icon,
+        displayName: family.label || tile.label,
+        icon: family.icon || tile.icon,
         familyKey: family.familyKey,
-        customFamily: family
+        customFamily: family,
+        tileShape
       };
       return {
         key: type,
         type,
         slot,
-        node: <InfraHexNode node={categoryNode} onClick={onNodeClick} copy={copy} />
+        node: <InfraHexNode node={categoryNode} tileShape={tileShape} onClick={onNodeClick} copy={copy} />
       };
     });
-    return [...baseItems, ...customItems];
-  }, [honeycombNodes, customFamilyMap, filteredCustomFamilyMap, onNodeClick, copy, localizeCategoryNode]);
+  }, [honeycombNodes, displayTiles, customFamilyMap, filteredCustomFamilyMap, onNodeClick, copy, localizeCategoryNode, tileShape]);
   const customFamilyBricks = useMemo(() => buildCustomFamilyBricks(filteredCustomFamilyMap), [filteredCustomFamilyMap]);
-  const categorySummary = useMemo(() => {
-    const nodesByType = honeycombNodes.reduce((acc, node) => {
-      if (!acc[node.type]) acc[node.type] = [];
-      acc[node.type].push(node);
-      return acc;
-    }, {});
-    const categories = EMPTY_HONEYCOMB_LAYOUT.map(slot => localizeCategoryNode(slot.type, nodesByType[slot.type] || []));
-    return categories.reduce((acc, category) => {
-      if (toInfraDisplayStatus(category.status) === "attention") acc.attention += 1;
-      return acc;
-    }, {
-      attention: 0
-    });
-  }, [honeycombNodes, localizeCategoryNode]);
   const hasCustomFamilies = (customFamilyMap || []).length > 0;
   const hasMapContent = model.nodes.length > 0 || hasCustomFamilies || filteredBackupInstances.length > 0;
   const mapCanvasProps = {
@@ -465,6 +496,7 @@ export default function InfrastructureMap({
     googleWorkspaceInfo,
     campaignItems: filteredCampaignItems,
     customFamilyBricks,
+    tileShape,
     onBrickClick,
     isCommunity,
     copy
@@ -479,17 +511,9 @@ export default function InfrastructureMap({
       </div>;
   }
   if (!hasMapContent) {
-    return <InfraEmptyMap backupInstances={filteredBackupInstances} antivirusItems={antivirusItems} antispamItems={antispamItems} domainItems={domainItems} domainIntegrationReady={domainIntegrationReady} sslItems={sslItems} licenceItems={licenceItems} tenantInfo={tenantInfo} googleWorkspaceInfo={googleWorkspaceInfo} campaignItems={campaignItems} customFamilyMap={filteredCustomFamilyMap} onNodeClick={onNodeClick} onBrickClick={onBrickClick} isCommunity={isCommunity} copy={copy} />;
+    return <InfraEmptyMap backupInstances={filteredBackupInstances} antivirusItems={antivirusItems} antispamItems={antispamItems} domainItems={domainItems} domainIntegrationReady={domainIntegrationReady} sslItems={sslItems} licenceItems={licenceItems} tenantInfo={tenantInfo} googleWorkspaceInfo={googleWorkspaceInfo} campaignItems={campaignItems} customFamilyMap={filteredCustomFamilyMap} displayTiles={displayTiles} tileShape={tileShape} onNodeClick={onNodeClick} onBrickClick={onBrickClick} isCommunity={isCommunity} copy={copy} />;
   }
   return <div className={styles.map}>
-      {categorySummary.attention > 0 && <div className={styles.mapHeader}>
-          <div className={styles.mapSummary}>
-            <span className={`${styles.mapBadge} ${styles.mapBadgeAttention}`}>
-                {copy.formatAttentionCategories(categorySummary.attention)}
-              </span>
-          </div>
-        </div>}
-
       <InfraMapCanvas {...mapCanvasProps} />
     </div>;
 }

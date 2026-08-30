@@ -13,6 +13,7 @@ import AdminLoginBranding from "./AdminLoginBranding";
 import AdminTechNewsFeeds from "./AdminTechNewsFeeds";
 import AdminContractModuleOptions from "./AdminContractModuleOptions";
 import AdminEquipmentFamilies from "./AdminEquipmentFamilies";
+import AdminInfrastructureMap from "./AdminInfrastructureMap";
 import AdminPlanning from "./AdminPlanning";
 import AdminUsers from "./AdminUsers";
 import AdminPermissions from "./AdminPermissions";
@@ -44,6 +45,7 @@ const TAB_COMPONENTS = {
   "tech-news-feeds": AdminTechNewsFeeds,
   "contract-modules": AdminContractModuleOptions,
   "equipment-families": AdminEquipmentFamilies,
+  "infrastructure-map": AdminInfrastructureMap,
   planning: AdminPlanning,
   users: AdminUsers,
   permissions: AdminPermissions,
@@ -72,6 +74,7 @@ const ADMIN_PANEL_PRO_PROMO = {
   teams: "adminTeams",
   "contract-modules": "adminContractModules",
   "equipment-families": "adminEquipmentFamilies",
+  "infrastructure-map": "adminEquipmentFamilies",
   planning: "planning",
   "support-credits": "credits",
   sla: "sla",

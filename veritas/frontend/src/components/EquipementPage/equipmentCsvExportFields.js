@@ -399,7 +399,10 @@ export function getCsvExportKeysForType(type, customFields = []) {
   if (normalized.startsWith("Custom:")) {
     return uniqueKeys(["name", "location", ...getCustomFieldKeys(customFields), ...BILLING_KEYS, ...COMMON_NOTES]);
   }
-  return uniqueKeys(EXPORT_KEYS_BY_TYPE[normalized] || EXPORT_KEYS_BY_TYPE.Servers);
+  return uniqueKeys([
+    ...(EXPORT_KEYS_BY_TYPE[normalized] || EXPORT_KEYS_BY_TYPE.Servers),
+    ...getCustomFieldKeys(customFields)
+  ]);
 }
 
 export function getCsvExportFieldLabel(locale, type, key, customFields = []) {

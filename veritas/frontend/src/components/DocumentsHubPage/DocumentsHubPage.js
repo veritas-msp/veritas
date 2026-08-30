@@ -11,6 +11,9 @@ import { useAppLocale } from "../../hooks/useAppGeneralSettings";
 import { usePermissions } from "../../contexts/PermissionsContext";
 import { CATEGORY_KEYS, getDocumentsHubCopy } from "./documentsHubI18n";
 import { interpolate } from "../../i18n/translate";
+import PageGuideTour from "../PageGuide/PageGuideTour";
+import { getDocumentsHubGuide } from "../PageGuide/documentsHubGuideSteps";
+import { useRegisterPageGuide } from "../../hooks/useRegisterPageGuide";
 import DocumentsBulkEditModal from "./DocumentsBulkEditModal";
 import styles from "./DocumentsHubPage.module.css";
 import { createTrackedAbortController } from "../../utils/pageLoadAbort";
@@ -79,6 +82,10 @@ function SortableHeader({
 export default function DocumentsHubPage() {
   const locale = useAppLocale();
   const copy = useMemo(() => getDocumentsHubCopy(locale), [locale]);
+  const [pageGuideOpen, setPageGuideOpen] = useState(false);
+  const openPageGuide = useCallback(() => setPageGuideOpen(true), []);
+  useRegisterPageGuide(openPageGuide);
+  const docsGuide = useMemo(() => getDocumentsHubGuide(locale), [locale]);
   const { can } = usePermissions();
   const canEdit = can("documents.edit") || can("clients_detail.vault");
   const canDelete = can("documents.delete") || can("clients_detail.vault");
@@ -259,7 +266,7 @@ export default function DocumentsHubPage() {
   return <div className={`${cyberStyles.mspPage} msp-page-insight`}>
       <div className={cyberStyles.mspLayout}>
         <div className={cyberStyles.mspMain}>
-          <header className={cyberStyles.mspHero}>
+          <header className={cyberStyles.mspHero} data-guide="docs-hero">
             <div className={cyberStyles.mspHeroMain}>
               <div className={cyberStyles.mspBrandMark}>
                 <Icon icon="mdi:folder-multiple-outline" className={cyberStyles.mspBrandMarkIcon} />
@@ -273,14 +280,14 @@ export default function DocumentsHubPage() {
           </header>
 
           <div className={`${cyberStyles.mspContent} ${styles.content}`}>
-            <div className={styles.kpiRow}>
+            <div className={styles.kpiRow} data-guide="docs-kpis">
               <KpiCard icon="mdi:file-multiple-outline" label={copy.kpiTotal} value={String(stats.total)} />
               <KpiCard icon="mdi:office-building-outline" label={copy.kpiCompanies} value={String(stats.companies)} />
               <KpiCard icon="mdi:database-outline" label={copy.kpiSize} value={formatSize(stats.bytes, locale)} />
             </div>
 
             <div className={styles.panel}>
-              <div className={styles.toolbar}>
+              <div className={styles.toolbar} data-guide="docs-toolbar">
                 <div className={styles.searchWrap}>
                   <Icon icon="mdi:magnify" className={styles.searchIcon} aria-hidden />
                   <input className={styles.searchInput} value={search} onChange={e => setSearch(e.target.value)} placeholder={copy.searchPlaceholder} aria-label={copy.searchPlaceholder} />
@@ -305,7 +312,7 @@ export default function DocumentsHubPage() {
               {loading ? <div className={styles.loadingState}>
                   <span className={styles.spinner} aria-hidden />
                   <p>{copy.loading}</p>
-                </div> : filtered.length === 0 ? <div className={styles.empty}>
+                </div> : filtered.length === 0 ? <div className={styles.empty} data-guide="docs-table">
                   <div className={styles.emptyIconWrap}>
                     <Icon icon="mdi:folder-open-outline" className={styles.emptyIcon} />
                   </div>
@@ -318,7 +325,7 @@ export default function DocumentsHubPage() {
                 setEditOpen(true);
               } : undefined} onDelete={canDelete ? () => setBulkDeleteOpen(true) : undefined} onClear={clearSelection} />
                     </div> : null}
-                  <div className={styles.tableWrap}>
+                  <div className={styles.tableWrap} data-guide="docs-table">
                   <table className={styles.table}>
                     <thead>
                       <tr>
@@ -409,6 +416,7 @@ export default function DocumentsHubPage() {
       <ConfirmModal open={bulkDeleteOpen} title={copy.bulk.deleteTitle} message={copy.formatBulkDeleteMessage(selectedCount)} icon="mdi:delete-alert-outline" variant="danger" confirmLabel={copy.bulk.deleteConfirm} loading={busy} onConfirm={handleBulkDelete} onClose={() => {
       if (!busy) setBulkDeleteOpen(false);
     }} />
+      <PageGuideTour open={pageGuideOpen} steps={docsGuide.steps} title={docsGuide.tourTitle} locale={locale} onClose={() => setPageGuideOpen(false)} />
     </div>;
 }
 function KpiCard({

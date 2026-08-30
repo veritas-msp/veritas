@@ -11,6 +11,7 @@ import { formatAssignedSsidsDisplay, buildBorneWifiSsidFormState, normalizeWifiS
 import { shouldShowStorageDiskBays } from "./storageDiskUtils";
 import { getSharedEquipmentFieldLabel } from "./sharedEquipmentFields";
 import { parseCustomFamilyType } from "../../api/equipmentFamilies";
+import { buildExtensionFormValues, formatExtensionFieldValue, readExtensionFieldValue } from "../../utils/systemFamilyExtensions";
 const EMPTY = "-";
 function resolveModuleKey(equipment) {
   if (!equipment) return "Servers";
@@ -623,7 +624,8 @@ function buildSectionFields(sectionId, formData, equipment, fieldKeys, locale) {
   const seenValues = new Set();
   keys.forEach(fieldKey => {
     if (!shouldShowField(fieldKey, formData, equipment)) return;
-    const value = formatField(fieldKey, formData, equipment, locale) || (sectionId === "billingInstallation" && BILLING_ALWAYS_VISIBLE_FIELDS.has(fieldKey) ? EMPTY : null);
+    const alwaysShowEmpty = sectionId === "customSpecific" || sectionId === "systemExtra" || sectionId === "billingInstallation" && BILLING_ALWAYS_VISIBLE_FIELDS.has(fieldKey);
+    const value = formatField(fieldKey, formData, equipment, locale) || (alwaysShowEmpty ? EMPTY : null);
     if (!value) return;
     const label = getFieldLabel(fieldKey, equipment, locale);
     const dedupeKey = `${label}::${value}`;
@@ -693,7 +695,8 @@ export function buildDetailFormData(equipment, options = {}) {
       systeme: merged.systeme || equipment?.systeme || "",
       manufacturer: merged.manufacturer || equipment?.manufacturer || "",
       model: merged.model || equipment?.model || "",
-      serial: merged.serial || equipment?.serial || ""
+      serial: merged.serial || equipment?.serial || "",
+      ...buildExtensionFormValues(equipment, options.extensionFields || equipment?.systemExtensionFields || [])
     });
   }
   if (equipment?.type === "BorneWifi") {
@@ -712,12 +715,16 @@ export function buildDetailFormData(equipment, options = {}) {
       ...merged,
       ssids: Array.isArray(rawSsids) ? rawSsids : [],
       clientSsids: mergedCatalog,
-      assignedSsidIds
+      assignedSsidIds,
+      ...buildExtensionFormValues(equipment, options.extensionFields || equipment?.systemExtensionFields || [])
     };
   }
-  return merged;
+  return {
+    ...merged,
+    ...buildExtensionFormValues(equipment, options.extensionFields || equipment?.systemExtensionFields || [])
+  };
 }
-export function buildEquipmentDetailSections(equipment, formData, locale) {
+export function buildEquipmentDetailSections(equipment, formData, locale, options = {}) {
   const moduleKey = resolveModuleKey(equipment);
   const customFamily = equipment?.customFamily || null;
   const customFieldDefs = Array.isArray(customFamily?.fields) && customFamily.fields.length
@@ -759,6 +766,30 @@ export function buildEquipmentDetailSections(equipment, formData, locale) {
       description: "Champs propres a cette famille",
       fields: buildSectionFields("customSpecific", displayData, equipment, specificFieldKeys, locale)
     });
+  }
+  const extensionFields = options.extensionFields || equipment?.systemExtensionFields || [];
+  if (moduleKey !== "Custom" && extensionFields.length) {
+    const labels = locale === "fr" ? { yes: "Oui", no: "Non" } : { yes: "Yes", no: "No" };
+    const extraFields = extensionFields.map(field => {
+      const raw = displayData?.[field.fieldKey] ?? readExtensionFieldValue(equipment, field.fieldKey);
+      const value = formatExtensionFieldValue(field, raw, labels);
+      return {
+        key: field.fieldKey,
+        label: field.label || field.fieldKey,
+        value: value || EMPTY,
+        mono: false,
+        source: "manual"
+      };
+    });
+    if (extraFields.length) {
+      sections.push({
+        id: "systemExtra",
+        label: locale === "fr" ? "Champs perso" : "Custom fields",
+        icon: "mdi:form-textbox",
+        description: locale === "fr" ? "Champs ajoutés à cette famille" : "Fields added to this family",
+        fields: extraFields
+      });
+    }
   }
   return sections.filter(section => section.fields.length > 0);
 }

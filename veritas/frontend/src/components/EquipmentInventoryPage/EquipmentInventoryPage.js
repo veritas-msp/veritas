@@ -1,4 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import PageGuideTour from "../PageGuide/PageGuideTour";
+import { getEquipmentInventoryGuide } from "../PageGuide/equipmentInventoryGuideSteps";
+import { useRegisterPageGuide } from "../../hooks/useRegisterPageGuide";
 import { Icon } from "@iconify/react";
 import { FaChevronLeft, FaChevronRight, FaTimes } from "react-icons/fa";
 import { toast } from "react-toastify";
@@ -17,6 +20,7 @@ import InventoryBulkEditModal from "./InventoryBulkEditModal";
 import { usePermissions } from "../../contexts/PermissionsContext";
 import styles from "./EquipmentInventoryPage.module.css";
 import { createTrackedAbortController } from "../../utils/pageLoadAbort";
+import useSystemFamilyExtensions from "../../hooks/useSystemFamilyExtensions";
 
 function InventoryDeviceIcon({ item, className }) {
   if (item?.isCustom && item.familyIcon) {
@@ -193,7 +197,11 @@ const STANDARD_INVENTORY_COLUMNS = [
 
 function getCustomFieldRaw(item, fieldKey) {
   if (!fieldKey) return "";
-  return item?.fields?.[fieldKey] ?? item?.data?.[fieldKey] ?? item?.rawData?.[fieldKey] ?? "";
+  return item?.fields?.[fieldKey]
+    ?? item?.data?.[fieldKey]
+    ?? item?.rawData?.[fieldKey]
+    ?? item?.rawData?.data?.[fieldKey]
+    ?? "";
 }
 
 function formatInventoryFieldValue(field, value, locale) {
@@ -305,7 +313,12 @@ function getSortValue(item, key, locale) {
 
 export default function EquipmentInventoryPage({ onNavigate }) {
   const locale = useAppLocale();
+  const { fieldsFor } = useSystemFamilyExtensions();
   const copy = useMemo(() => getEquipmentInventoryPageCopy(locale), [locale]);
+  const [pageGuideOpen, setPageGuideOpen] = useState(false);
+  const openPageGuide = useCallback(() => setPageGuideOpen(true), []);
+  useRegisterPageGuide(openPageGuide);
+  const inventoryGuide = useMemo(() => getEquipmentInventoryGuide(locale), [locale]);
   const { can } = usePermissions();
   const canBulkEdit = can("clients_detail.devices") || can("infrastructure.edit") || can("supervision.manage");
   const [items, setItems] = useState([]);
@@ -460,29 +473,52 @@ export default function EquipmentInventoryPage({ onNavigate }) {
       const unique = [...new Set(filtered.map(item => item.type))];
       if (unique.length === 1) type = unique[0];
     }
-    if (!type || !String(type).startsWith("Custom:")) return null;
+    if (!type) return null;
     const sample =
-      items.find(item => item.type === type && Array.isArray(item.customFields) && item.customFields.length) ||
+      items.find(item => item.type === type && (Array.isArray(item.customFields) && item.customFields.length || Array.isArray(item.systemExtensionFields) && item.systemExtensionFields.length)) ||
       items.find(item => item.type === type) ||
       filtered.find(item => item.type === type);
-    const fields = (Array.isArray(sample?.customFields) ? sample.customFields : [])
+    const fromHook = fieldsFor(type);
+    const sourceFields = String(type).startsWith("Custom:")
+      ? (Array.isArray(sample?.customFields) ? sample.customFields : [])
+      : (fromHook.length ? fromHook : Array.isArray(sample?.systemExtensionFields) ? sample.systemExtensionFields : []);
+    const fields = sourceFields
       .filter(field => {
         const key = String(field?.fieldKey || field?.key || "").trim();
         return key && !NAME_FIELD_KEYS.has(key.toLowerCase());
       })
       .sort((a, b) => (Number(a.displayOrder) || 0) - (Number(b.displayOrder) || 0));
+    if (!fields.length) return null;
     return {
       type,
       fields
     };
-  }, [selectedTypes, filtered, items]);
+  }, [selectedTypes, filtered, items, fieldsFor]);
 
   const tableColumns = useMemo(() => {
-    if (customFamilyView) {
+    const extraKeys = customFamilyView
+      ? customFamilyView.fields.map(field => customColumnKey(field.fieldKey || field.key))
+      : [];
+    if (customFamilyView && String(customFamilyView.type).startsWith("Custom:")) {
       return [
         "company",
         "name",
-        ...customFamilyView.fields.map(field => customColumnKey(field.fieldKey || field.key)),
+        ...extraKeys,
+        "status",
+        "alerts",
+        "supervision",
+        "alertsMonth"
+      ];
+    }
+    if (extraKeys.length) {
+      return [
+        "company",
+        "name",
+        "type",
+        "ip",
+        "serial",
+        "site",
+        ...extraKeys,
         "status",
         "alerts",
         "supervision",
@@ -753,6 +789,7 @@ export default function EquipmentInventoryPage({ onNavigate }) {
       <div className={cyberStyles.mspLayout}>
         <div className={cyberStyles.mspMain}>
           <MspPageHero
+            guideId="inventory-hero"
             eyebrow={copy.eyebrow}
             title={copy.pageTitle}
             subtitle={loading ? copy.loadingPortfolio : copy.formatSubtitle(filtered.length, items.length)}
@@ -788,7 +825,7 @@ export default function EquipmentInventoryPage({ onNavigate }) {
           <main className={`${cyberStyles.mspContent} ${cyberStyles.mspContentList}`}>
             <div className={`${layout.shell} ${layout.shellWide} ${layout.shellFull} ${styles.inventoryShell}`}>
               <div className={styles.viewsLayout}>
-                <aside className={styles.filtersPane} aria-label={copy.filters?.aria || "Filters"}>
+                <aside className={styles.filtersPane} aria-label={copy.filters?.aria || "Filters"} data-guide="inventory-filters">
                   <div className={styles.filtersPaneSection}>
                     <div className={styles.filtersPaneHeader}>
                       <span className={styles.filtersPaneTitle}>{copy.filters?.status || "Status"}</span>
@@ -907,7 +944,7 @@ export default function EquipmentInventoryPage({ onNavigate }) {
                 </aside>
 
                 <div className={styles.mainColumn}>
-                  <div className={`${layout.toolbar} ${styles.toolbarGrow}`}>
+                  <div className={`${layout.toolbar} ${styles.toolbarGrow}`} data-guide="inventory-search">
                     <div className={`${layout.searchWrap} ${styles.searchWrapFull}`}>
                       <Icon icon="mdi:magnify" className={layout.searchIcon} aria-hidden />
                       <input
@@ -938,7 +975,7 @@ export default function EquipmentInventoryPage({ onNavigate }) {
                       <span>{copy.loading}</span>
                     </div>
                   ) : filtered.length === 0 ? (
-                    <div className={layout.emptyState}>
+                    <div className={layout.emptyState} data-guide="inventory-table">
                       <Icon icon="mdi:devices" className={layout.emptyStateIcon} />
                       <p className={layout.emptyStateTitle}>{copy.emptyTitle}</p>
                       <p className={layout.emptyStateHint}>{hasFilters ? copy.emptyFiltered : copy.emptyHint}</p>
@@ -968,7 +1005,7 @@ export default function EquipmentInventoryPage({ onNavigate }) {
                         </div>
                       ) : null}
 
-                      <div className={styles.tablePanel}>
+                      <div className={styles.tablePanel} data-guide="inventory-table">
                         <div className={styles.tableScroll}>
                           <table className={styles.table}>
                             <thead>
@@ -1110,6 +1147,7 @@ export default function EquipmentInventoryPage({ onNavigate }) {
         items={selectedItems}
         onSuccess={handleBulkSuccess}
       />
+      <PageGuideTour open={pageGuideOpen} steps={inventoryGuide.steps} title={inventoryGuide.tourTitle} locale={locale} onClose={() => setPageGuideOpen(false)} />
     </div>
   );
 }

@@ -196,8 +196,32 @@ const EXTRA = {
       metaActivePlural: "{defaults} par défaut · {custom} personnalisée · {active} actives",
       metaBothPlural: "{defaults} par défaut · {custom} personnalisées · {active} actives",
       empty: "Aucune famille configurée.",
+      extraFields: "+{count} champ perso",
+      extraFieldsPlural: "+{count} champs perso",
       deleteTitle: "Supprimer la famille",
       deleteMessage: "Supprimer « {label} » ? Les matériels existants seront également supprimés."
+    },
+    infrastructureMap: {
+      loadError: "Impossible de charger la cartographie",
+      saved: "Cartographie enregistrée",
+      saveError: "Erreur lors de l'enregistrement",
+      title: "Cartographie infrastructure",
+      description: "Réorganisez les hexagones de toutes les familles (par défaut et personnalisées) sur la fiche entreprise.",
+      save: "Enregistrer",
+      saving: "Enregistrement…",
+      reset: "Positions par défaut",
+      resetHint: "Remet tous les hexagones à leur emplacement d’origine. Enregistrez ensuite pour confirmer.",
+      resetApplied: "Positions par défaut rétablies. Enregistrez pour confirmer.",
+      shapeLabel: "Forme de la grille",
+      shapeHint: "Ce preset s’applique à toutes les tuiles de la cartographie.",
+      tileShapes: {
+        hexagon: "Hexagone",
+        rounded: "Carré arrondi",
+        circle: "Cercle",
+        pentagon: "Pentagone",
+        octagon: "Octogone"
+      },
+      brickNote: "Familles affichées en brique, hors nid d'abeille"
     },
     contractModules: {
       loadError: "Impossible de charger les options",
@@ -423,8 +447,32 @@ const EXTRA = {
       metaActivePlural: "{defaults} default · {custom} custom · {active} active",
       metaBothPlural: "{defaults} default · {custom} custom · {active} active",
       empty: "No families configured.",
+      extraFields: "+{count} extra field",
+      extraFieldsPlural: "+{count} extra fields",
       deleteTitle: "Delete family",
       deleteMessage: "Delete « {label} »? Existing equipment will also be deleted."
+    },
+    infrastructureMap: {
+      loadError: "Unable to load the map",
+      saved: "Map saved",
+      saveError: "Error while saving",
+      title: "Infrastructure map",
+      description: "Reorder hexagons for all families (built-in and custom) on the company record.",
+      save: "Save",
+      saving: "Saving…",
+      reset: "Default positions",
+      resetHint: "Move every hexagon back to its original slot. Save afterwards to confirm.",
+      resetApplied: "Default positions restored. Save to confirm.",
+      shapeLabel: "Grid shape",
+      shapeHint: "This preset applies to every tile on the map.",
+      tileShapes: {
+        hexagon: "Hexagon",
+        rounded: "Rounded square",
+        circle: "Circle",
+        pentagon: "Pentagon",
+        octagon: "Octagon"
+      },
+      brickNote: "Families shown as side bricks, outside the honeycomb"
     },
     contractModules: {
       loadError: "Unable to load options",
@@ -638,8 +686,32 @@ const EXTRA = {
       metaActivePlural: "{defaults} Standard · {custom} benutzerdefiniert · {active} aktiv",
       metaBothPlural: "{defaults} Standard · {custom} benutzerdefiniert · {active} aktiv",
       empty: "Keine Familien konfiguriert.",
+      extraFields: "+{count} Extrafeld",
+      extraFieldsPlural: "+{count} Extrafelder",
       deleteTitle: "Familie löschen",
       deleteMessage: "« {label} » löschen? Vorhandene Geräte werden ebenfalls gelöscht."
+    },
+    infrastructureMap: {
+      loadError: "Karte konnte nicht geladen werden",
+      saved: "Karte gespeichert",
+      saveError: "Fehler beim Speichern",
+      title: "Infrastrukturkarte",
+      description: "Ordnen Sie die Sechsecke aller Familien (Standard und benutzerdefiniert) auf der Unternehmensakte neu an.",
+      save: "Speichern",
+      saving: "Speichern…",
+      reset: "Standardpositionen",
+      resetHint: "Setzt alle Sechsecke auf ihre Ursprungsposition zurück. Anschließend speichern.",
+      resetApplied: "Standardpositionen wiederhergestellt. Speichern zum Bestätigen.",
+      shapeLabel: "Gitterform",
+      shapeHint: "Dieses Preset gilt für alle Kacheln der Karte.",
+      tileShapes: {
+        hexagon: "Sechseck",
+        rounded: "Abgerundetes Quadrat",
+        circle: "Kreis",
+        pentagon: "Pentagon",
+        octagon: "Achteck"
+      },
+      brickNote: "Familien als seitliche Steine, außerhalb der Wabe"
     },
     contractModules: {
       loadError: "Optionen konnten nicht geladen werden",
@@ -853,8 +925,32 @@ const EXTRA = {
       metaActivePlural: "{defaults} predefinite · {custom} personalizzata · {active} attive",
       metaBothPlural: "{defaults} predefinite · {custom} personalizzate · {active} attive",
       empty: "Nessuna famiglia configurata.",
+      extraFields: "+{count} campo extra",
+      extraFieldsPlural: "+{count} campi extra",
       deleteTitle: "Elimina famiglia",
       deleteMessage: "Eliminare « {label} »? Anche i dispositivi esistenti verranno eliminati."
+    },
+    infrastructureMap: {
+      loadError: "Impossibile caricare la mappa",
+      saved: "Mappa salvata",
+      saveError: "Errore durante il salvataggio",
+      title: "Mappa infrastruttura",
+      description: "Riordina gli esagoni di tutte le famiglie (integrate e personalizzate) sulla scheda azienda.",
+      save: "Salva",
+      saving: "Salvataggio…",
+      reset: "Posizioni predefinite",
+      resetHint: "Riporta tutti gli esagoni alla posizione originale. Salva per confermare.",
+      resetApplied: "Posizioni predefinite ripristinate. Salva per confermare.",
+      shapeLabel: "Forma della griglia",
+      shapeHint: "Questo preset si applica a tutte le tessere della mappa.",
+      tileShapes: {
+        hexagon: "Esagono",
+        rounded: "Quadrato arrotondato",
+        circle: "Cerchio",
+        pentagon: "Pentagono",
+        octagon: "Ottagono"
+      },
+      brickNote: "Famiglie mostrate come mattoni, fuori dal nido d'ape"
     },
     contractModules: {
       loadError: "Impossibile caricare le opzioni",
@@ -1068,8 +1164,32 @@ const EXTRA = {
       metaActivePlural: "{defaults} predeterminada · {custom} personalizada · {active} activas",
       metaBothPlural: "{defaults} predeterminadas · {custom} personalizadas · {active} activas",
       empty: "Ninguna familia configurada.",
+      extraFields: "+{count} campo extra",
+      extraFieldsPlural: "+{count} campos extra",
       deleteTitle: "Eliminar familia",
       deleteMessage: "¿Eliminar « {label} »? Los equipos existentes también se eliminarán."
+    },
+    infrastructureMap: {
+      loadError: "No se pudo cargar el mapa",
+      saved: "Mapa guardado",
+      saveError: "Error al guardar",
+      title: "Mapa de infraestructura",
+      description: "Reorganice los hexágonos de todas las familias (integradas y personalizadas) en la ficha de empresa.",
+      save: "Guardar",
+      saving: "Guardando…",
+      reset: "Posiciones por defecto",
+      resetHint: "Devuelve todos los hexágonos a su posición original. Guarde después para confirmar.",
+      resetApplied: "Posiciones por defecto restauradas. Guarde para confirmar.",
+      shapeLabel: "Forma de la cuadrícula",
+      shapeHint: "Este ajuste se aplica a todas las fichas del mapa.",
+      tileShapes: {
+        hexagon: "Hexágono",
+        rounded: "Cuadrado redondeado",
+        circle: "Círculo",
+        pentagon: "Pentágono",
+        octagon: "Octágono"
+      },
+      brickNote: "Familias mostradas como ladrillos, fuera del panal"
     },
     contractModules: {
       loadError: "No se pudieron cargar las opciones",

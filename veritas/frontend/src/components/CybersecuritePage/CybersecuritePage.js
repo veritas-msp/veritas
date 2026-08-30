@@ -1,4 +1,7 @@
-import { useState, useEffect, useMemo, useRef } from "react";
+import { useState, useEffect, useMemo, useRef, useCallback } from "react";
+import PageGuideTour from "../PageGuide/PageGuideTour";
+import { getCybersecuriteGuide } from "../PageGuide/cybersecuriteGuideSteps";
+import { useRegisterPageGuide } from "../../hooks/useRegisterPageGuide";
 import React from "react";
 import { Icon } from "@iconify/react";
 import { toast } from 'react-toastify';
@@ -34,6 +37,12 @@ export default function CybersecuritePage({
   } = useVeritasEdition();
   const locale = useAppLocale();
   const pageCopy = useMemo(() => getCybersecuritePageCopy(locale), [locale]);
+  const [pageGuideOpen, setPageGuideOpen] = useState(false);
+  const openPageGuide = useCallback(() => setPageGuideOpen(true), []);
+  useRegisterPageGuide(openPageGuide);
+  const cyberGuide = useMemo(() => getCybersecuriteGuide(locale, {
+    showAntivirus: () => setActiveTab("antivirus")
+  }), [locale]);
   const commonCopy = useMemo(() => getCommonCopy(locale), [locale]);
   const campaignsCopy = pageCopy.campaigns;
   const [campaignProPromoOpen, setCampaignProPromoOpen] = useState(false);
@@ -707,8 +716,8 @@ export default function CybersecuritePage({
   return <div className={`${styles.mspPage} ${layout.page} msp-page-grid`}>
       <div className={styles.mspLayout}>
       <div className={styles.mspMain}>
-        <MspPageHero eyebrow={pageCopy.eyebrow} title={pageCopy.pageTitle} subtitle={heroSubtitle} icon="mdi:shield-lock" actions={<>
-              <nav className={styles.mspTabBar} role="tablist" aria-label={pageCopy.tabSectionsAria}>
+        <MspPageHero guideId="cyber-hero" eyebrow={pageCopy.eyebrow} title={pageCopy.pageTitle} subtitle={heroSubtitle} icon="mdi:shield-lock" actions={<>
+              <nav className={styles.mspTabBar} role="tablist" aria-label={pageCopy.tabSectionsAria} data-guide="cyber-tabs">
                 {moduleTabs.map(tab => {
               const locked = tab.proOnly && isCommunity;
               return <button key={tab.key} type="button" role="tab" aria-selected={activeTab === tab.key} className={`${styles.mspTab} ${activeTab === tab.key ? styles.mspTabActive : ""} ${locked ? styles.mspTabProLocked : ""}`} onClick={() => selectTab(tab.key)} title={locked ? `${tab.label}${pageCopy.proTabSuffix || ""}` : tab.label}>
@@ -721,7 +730,7 @@ export default function CybersecuritePage({
             })}
               </nav>
               {showFleetSync ? <SmartTooltip content={syncTooltip}>
-                <button type="button" className={layout.iconBtn} onClick={syncAllFleet} disabled={syncingFleet} aria-label={activeTab === "antispam" ? heroActionsCopy.syncAntispamAria : heroActionsCopy.syncAntivirusAria}>
+                <button type="button" className={layout.iconBtn} onClick={syncAllFleet} disabled={syncingFleet} aria-label={activeTab === "antispam" ? heroActionsCopy.syncAntispamAria : heroActionsCopy.syncAntivirusAria} data-guide="cyber-sync">
                   <Icon icon="mdi:cloud-sync-outline" className={syncingFleet ? styles.spinning : undefined} aria-hidden />
                 </button>
               </SmartTooltip> : null}
@@ -729,7 +738,7 @@ export default function CybersecuritePage({
 
         <main className={`${styles.mspContent} ${styles.mspContentList}`}>
           <div className={`${layout.shell} ${layout.shellWide} ${layout.shellFull}`}>
-          <div className={styles.tabContent}>
+          <div className={styles.tabContent} data-guide="cyber-dashboard">
                 {activeTab === "antivirus" ? <AntivirusMspDashboard copy={pageCopy} clients={clients} loading={loadingCyberData} onOpenSolution={handleViewAntivirusSolution} onOpenClient={handleOpenAntivirusClient} onSolutionsChanged={() => loadClients({
                   withModules: true,
                   force: true,
@@ -802,5 +811,6 @@ export default function CybersecuritePage({
             </div>
           </div>}
       <ProFeaturePromoModal open={campaignProPromoOpen} featureKey={pageCopy.proFeatureKey} onClose={() => setCampaignProPromoOpen(false)} />
+      <PageGuideTour open={pageGuideOpen} steps={cyberGuide.steps} title={cyberGuide.tourTitle} locale={locale} onClose={() => setPageGuideOpen(false)} />
     </div>;
 }

@@ -55,6 +55,8 @@ import { CSV_EXPORT_EXCLUDED_KEYS, getCsvExportFieldLabel, getDefaultCsvExportKe
 import { writeEnterprisePeripheralsUi } from "../../utils/enterprisePeripheralsUiState";
 import { getExpirationStatus, getExpirationStatusColor, getMaintenanceLicenseExpiration } from "./constants/firewallLicenceUtils";
 import { createTrackedAbortController } from "../../utils/pageLoadAbort";
+import useSystemFamilyExtensions from "../../hooks/useSystemFamilyExtensions";
+import { formatExtensionFieldValue, readExtensionFieldValue } from "../../utils/systemFamilyExtensions";
 function formatComputerTypeDisplay(value, locale) {
   const key = canonicalizeComputerType(value);
   if (!key) return "";
@@ -857,6 +859,7 @@ const EquipmentPage = forwardRef(function EquipmentPage({
     rules: supervisionAlertRules
   } = useSupervisionAlertRules();
   const locale = useAppLocale();
+  const { fieldsFor } = useSystemFamilyExtensions();
   const pageCopy = useMemo(() => getEquipmentPageCopy(locale), [locale]);
   const actions = pageCopy.actions;
   const infraMapCopy = useMemo(() => getInfraMapCopy(locale), [locale]);
@@ -1627,13 +1630,22 @@ const EquipmentPage = forwardRef(function EquipmentPage({
       }
       return col;
     }).filter(Boolean);
+    const extraColumns = (fieldsFor(type) || []).map(field => ({
+      key: `ext:${field.fieldKey}`,
+      label: field.label || field.fieldKey,
+      field
+    }));
+    const mappingIndex = columns.findIndex(col => col.key === "mapping" || col.key === "checkmkMapping");
+    const withExtra = mappingIndex >= 0
+      ? [...columns.slice(0, mappingIndex), ...extraColumns, ...columns.slice(mappingIndex)]
+      : [...columns, ...extraColumns];
     if (embedded) {
       return [{
         label: "",
         key: "brandIcon"
-      }, ...columns];
+      }, ...withExtra];
     }
-    return columns;
+    return withExtra;
   };
   const getAllAvailableColumnsForType = type => {
     const baseColumns = buildEquipmentBaseColumns(locale, pageCopy, type);
@@ -1650,11 +1662,16 @@ const EquipmentPage = forwardRef(function EquipmentPage({
       'Internet': INTERNET_COLUMN_KEYS
     };
     const defaultColumns = typeColumns[type] || typeColumns['Servers'];
-    return defaultColumns.map(colKey => {
+    const base = defaultColumns.map(colKey => {
       const col = baseColumns[colKey];
       if (!col) return null;
       return col;
     }).filter(Boolean);
+    return [...base, ...(fieldsFor(type) || []).map(field => ({
+      key: `ext:${field.fieldKey}`,
+      label: field.label || field.fieldKey,
+      field
+    }))];
   };
   const toggleColumn = (type, columnKey) => {
     setVisibleColumns(prev => {
@@ -1752,6 +1769,12 @@ const EquipmentPage = forwardRef(function EquipmentPage({
     });
   };
   const getSortValue = (equipment, colKey) => {
+    if (String(colKey).startsWith("ext:")) {
+      const rawExt = readExtensionFieldValue(equipment, String(colKey).slice(4));
+      if (rawExt == null) return "";
+      if (typeof rawExt === "boolean") return rawExt ? 1 : 0;
+      return String(rawExt).toLowerCase();
+    }
     const raw = equipment[colKey];
     const stripClientCodePrefix = value => (value || "").toString().trim().replace(/^\d+\s*[-\s]*\s*/, "").toLowerCase();
     if (colKey === "checkmkMapping") {
@@ -2653,7 +2676,16 @@ const EquipmentPage = forwardRef(function EquipmentPage({
   const buildEquipmentCsvRows = (equipmentList, columns) => {
     const headers = columns.map(col => col.label);
     const rows = equipmentList.map(equipment => columns.map(col => {
-      let value = equipment[col.key] ?? equipment?.rawData?.[col.key] ?? equipment?.fields?.[col.key] ?? equipment?.data?.[col.key];
+      const csvFieldKey = String(col.key).startsWith("ext:") ? String(col.key).slice(4) : col.key;
+      let value = String(col.key).startsWith("ext:")
+        ? readExtensionFieldValue(equipment, csvFieldKey)
+        : equipment[col.key] ?? equipment?.rawData?.[col.key] ?? equipment?.fields?.[col.key] ?? equipment?.data?.[col.key];
+      if ((value == null || value === "") && csvFieldKey && csvFieldKey !== col.key) {
+        value = readExtensionFieldValue(equipment, csvFieldKey);
+      } else if ((value == null || value === "") && !["name", "client", "clientName", "brandIcon", "mapping", "checkmkMapping", "monitoring"].includes(col.key)) {
+        const fromExt = readExtensionFieldValue(equipment, csvFieldKey);
+        if (fromExt !== "") value = fromExt;
+      }
       if (["purchaseDate", "invoiceNumber", "installDate", "expirationGarantie", "commentaire"].includes(col.key)) {
         value = readSharedEquipmentFieldValue(equipment, col.key);
       }
@@ -2807,14 +2839,15 @@ const EquipmentPage = forwardRef(function EquipmentPage({
       });
       return;
     }
+    const extraFields = fieldsFor(activeType) || [];
     const visibleKeys = getColumnsForType(activeType)
-      .map(col => col.key)
+      .map(col => String(col.key).startsWith("ext:") ? String(col.key).slice(4) : col.key)
       .filter(key => key && !CSV_EXPORT_EXCLUDED_KEYS.has(key));
     setCsvExportModal({
       open: true,
       type: activeType,
-      defaultKeys: getDefaultCsvExportKeys(activeType, visibleKeys),
-      customFields: []
+      defaultKeys: getDefaultCsvExportKeys(activeType, visibleKeys, extraFields),
+      customFields: extraFields
     });
   };
   const confirmCsvExportWithKeys = selectedKeys => {
@@ -3249,6 +3282,14 @@ const EquipmentPage = forwardRef(function EquipmentPage({
                           if (e.button === 1) handleEquipmentMiddleClick(e, equipment);
                         }}>
                               {columns.map(col => {
+                            if (String(col.key).startsWith("ext:")) {
+                              const field = col.field || (fieldsFor(type) || []).find(entry => `ext:${entry.fieldKey}` === col.key);
+                              const fieldKey = field?.fieldKey || String(col.key).slice(4);
+                              return <td key={col.key}>{formatExtensionFieldValue(field, readExtensionFieldValue(equipment, fieldKey), {
+                                yes: pageCopy.yes,
+                                no: pageCopy.no
+                              })}</td>;
+                            }
                             const value = equipment[col.key];
                             if (col.key === "brandIcon") {
                               return <td key={col.key} className={styles.embeddedColBrand}>
@@ -3564,6 +3605,17 @@ const EquipmentPage = forwardRef(function EquipmentPage({
                               </div>
                               <div className={styles.cardContent}>
                                 {columns.filter(col => col.key !== 'name' && col.key !== 'checkmkMapping').map(col => {
+                            if (String(col.key).startsWith("ext:")) {
+                              const field = col.field || (fieldsFor(type) || []).find(entry => `ext:${entry.fieldKey}` === col.key);
+                              const fieldKey = field?.fieldKey || String(col.key).slice(4);
+                              return <div key={col.key} className={styles.cardField}>
+                                      <span className={styles.cardLabel}>{col.label}:</span>
+                                      <span className={styles.cardValue}>{formatExtensionFieldValue(field, readExtensionFieldValue(equipment, fieldKey), {
+                                yes: pageCopy.yes,
+                                no: pageCopy.no
+                              })}</span>
+                                    </div>;
+                            }
                             const value = equipment[col.key];
                             let displayValue = '-';
                             if (col.key === 'uptime') {

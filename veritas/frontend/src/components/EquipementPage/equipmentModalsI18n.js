@@ -108,7 +108,8 @@ const EQUIPMENT_MODALS = {
       toipTypeRequired: "Le type d'équipement est obligatoire",
       internetTypeRequired: "Le type de connexion est obligatoire",
       providerRequired: "Le fournisseur est obligatoire",
-      ipRequired: "Renseignez une adresse IP ou indiquez « IP non fixe »"
+      ipRequired: "Renseignez une adresse IP ou indiquez « IP non fixe »",
+      extraFieldRequired: "{field} est obligatoire"
     },
     sections: {
       identity: {
@@ -319,7 +320,8 @@ const EQUIPMENT_MODALS = {
       toipTypeRequired: "Equipment type is required",
       internetTypeRequired: "Connection type is required",
       providerRequired: "Provider is required",
-      ipRequired: "Enter an IP address or check « non-fixed IP »"
+      ipRequired: "Enter an IP address or check « non-fixed IP »",
+      extraFieldRequired: "{field} is required"
     },
     sections: {
       identity: {
@@ -530,7 +532,8 @@ const EQUIPMENT_MODALS = {
       toipTypeRequired: "Gerätetyp erforderlich",
       internetTypeRequired: "Verbindungstyp erforderlich",
       providerRequired: "Anbieter erforderlich",
-      ipRequired: "IP-Adresse eingeben oder « dynamische IP » wählen"
+      ipRequired: "IP-Adresse eingeben oder « dynamische IP » wählen",
+      extraFieldRequired: "{field} ist erforderlich"
     },
     sections: {
       identity: {
@@ -741,7 +744,8 @@ const EQUIPMENT_MODALS = {
       toipTypeRequired: "Tipo dispositivo obbligatorio",
       internetTypeRequired: "Tipo connessione obbligatorio",
       providerRequired: "Fornitore obbligatorio",
-      ipRequired: "Inserisci IP o seleziona « IP non fisso »"
+      ipRequired: "Inserisci IP o seleziona « IP non fisso »",
+      extraFieldRequired: "{field} è obbligatorio"
     },
     sections: {
       identity: {
@@ -952,7 +956,8 @@ const EQUIPMENT_MODALS = {
       toipTypeRequired: "Tipo de equipo obligatorio",
       internetTypeRequired: "Tipo de conexión obligatorio",
       providerRequired: "Proveedor obligatorio",
-      ipRequired: "Introduzca IP o marque « IP no fija »"
+      ipRequired: "Introduzca IP o marque « IP no fija »",
+      extraFieldRequired: "{field} es obligatorio"
     },
     sections: {
       identity: {
@@ -1233,6 +1238,17 @@ export function validateEquipmentFormI18n(form, moduleKey, locale, {
     if (!form?.ipNonFixe && !form?.ip?.trim()) {
       setActiveSection("internetNetwork");
       return v.ipRequired;
+    }
+  }
+  const extraFields = Array.isArray(form?.__systemExtensionFields) ? form.__systemExtensionFields : [];
+  for (const field of extraFields) {
+    if (!field?.required || !field.fieldKey || field.fieldType === "boolean") continue;
+    const value = form[field.fieldKey];
+    if (value == null || String(value).trim() === "") {
+      setActiveSection("extra");
+      return interpolate(v.extraFieldRequired || "{field}", {
+        field: field.label || field.fieldKey
+      });
     }
   }
   return null;

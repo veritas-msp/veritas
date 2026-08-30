@@ -5,7 +5,7 @@ import { Page, Card, Btn, Pagination } from "./AdminUi";
 import adminUi from "./AdminUi.module.css";
 import { useAppLocale } from "../../hooks/useAppGeneralSettings";
 import { fetchClientsList } from "../../api/clients";
-import { fetchEquipmentFamilies } from "../../api/equipmentFamilies";
+import { fetchEquipmentFamilies, fetchSystemFamilyExtensions } from "../../api/equipmentFamilies";
 import { getAdminInjectionCopy } from "./adminInjectionI18n";
 import {
   buildEquipmentFamilyCsvTemplate,
@@ -72,17 +72,18 @@ export default function AdminInjection({
   const { enabledModules } = useContractModuleOptions();
   const [activeView, setActiveView] = useState(null);
   const [customFamilies, setCustomFamilies] = useState([]);
+  const [systemExtensions, setSystemExtensions] = useState({});
   const [familiesLoading, setFamiliesLoading] = useState(false);
   const [selectedFamilyId, setSelectedFamilyId] = useState("servers");
   const [updateExistingEquipment, setUpdateExistingEquipment] = useState(true);
   const [equipmentMatchKeys, setEquipmentMatchKeys] = useState(readStoredMatchKeys);
   const equipmentFamilies = useMemo(
-    () => mergeEquipmentInjectionFamilies(locale, customFamilies),
-    [locale, customFamilies]
+    () => mergeEquipmentInjectionFamilies(locale, customFamilies, systemExtensions),
+    [locale, customFamilies, systemExtensions]
   );
   const equipmentRegistry = useMemo(
-    () => buildEquipmentFamilyRegistry(customFamilies),
-    [customFamilies]
+    () => buildEquipmentFamilyRegistry(customFamilies, systemExtensions),
+    [customFamilies, systemExtensions]
   );
   const selectedFamily = useMemo(
     () => equipmentFamilies.find(f => f.id === selectedFamilyId) || equipmentFamilies[0] || null,
@@ -155,8 +156,12 @@ export default function AdminInjection({
   const loadCustomFamilies = useCallback(async () => {
     setFamiliesLoading(true);
     try {
-      const data = await fetchEquipmentFamilies({ admin: true });
+      const [data, extensionsPayload] = await Promise.all([
+        fetchEquipmentFamilies({ admin: true }),
+        fetchSystemFamilyExtensions().catch(() => ({ extensions: {} }))
+      ]);
       setCustomFamilies(Array.isArray(data) ? data.filter(f => f.enabled !== false) : []);
+      setSystemExtensions(extensionsPayload?.extensions && typeof extensionsPayload.extensions === "object" ? extensionsPayload.extensions : {});
     } catch {
       setCustomFamilies([]);
       toast.error(copy.equipmentFamiliesError);

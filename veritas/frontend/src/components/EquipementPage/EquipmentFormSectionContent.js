@@ -47,7 +47,8 @@ export default function EquipmentFormSectionContent({
   storageBrandCatalog,
   isAddMode = false,
   isRequiredSectionIncomplete,
-  formCopy = {}
+  formCopy = {},
+  extensionFields = []
 }) {
   const locale = useAppLocale();
   const f = formCopy.fields || {};
@@ -101,12 +102,17 @@ export default function EquipmentFormSectionContent({
   } : null;
   const normalizedServerType = normalizeServerType(serverType || formData.typeServer);
   const normalizedStorageType = normalizeStorageType(formData.storageType);
+  const extraCopy = {
+    label: locale === "fr" ? "Champs perso" : "Custom fields",
+    description: locale === "fr" ? "Champs ajoutés à cette famille" : "Fields added to this family",
+    yes: locale === "fr" ? "Oui" : "Yes"
+  };
   const sectionIncomplete = isAddMode && typeof isRequiredSectionIncomplete === "function" && isRequiredSectionIncomplete(activeSection);
   const sectionHead = <div className={styles.sectionHead}>
       <h3 className={`${styles.sectionTitle} ${sectionIncomplete ? styles.navItemLabelRequired : ""}`}>
-        {section?.label}
+        {activeSection === "extra" ? extraCopy.label : section?.label}
       </h3>
-      <p className={styles.sectionDesc}>{section?.description}</p>
+      <p className={styles.sectionDesc}>{activeSection === "extra" ? extraCopy.description : section?.description}</p>
     </div>;
   switch (activeSection) {
     case "identity":
@@ -884,6 +890,36 @@ export default function EquipmentFormSectionContent({
                 </label>
                 <input id="storage-numero-disque" type="text" className={styles.input} value={formData.numeroDisque ?? ""} onChange={e => update("numeroDisque", e.target.value)} placeholder="1" />
               </div>}
+          </div>
+        </>;
+    case "extra":
+      return <>
+          {sectionHead}
+          <div className={styles.fieldGrid2}>
+            {extensionFields.map(field => {
+              const id = `equipment-ext-${field.fieldKey}`;
+              const labelClass = field.required ? `${styles.label} ${styles.labelRequired}` : styles.label;
+              const value = formData[field.fieldKey];
+              if (field.fieldType === "textarea") {
+                return <div key={field.fieldKey} className={`${styles.field} ${styles.fieldFull}`}>
+                    <label className={labelClass} htmlFor={id}>{field.label}</label>
+                    <textarea id={id} className={styles.input} rows={4} value={value || ""} onChange={e => update(field.fieldKey, e.target.value)} />
+                  </div>;
+              }
+              if (field.fieldType === "boolean") {
+                return <div key={field.fieldKey} className={styles.field}>
+                    <label className={styles.label} htmlFor={id}>{field.label}</label>
+                    <label className={styles.label} style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                      <input id={id} type="checkbox" checked={Boolean(value)} onChange={e => update(field.fieldKey, e.target.checked)} />
+                      {extraCopy.yes}
+                    </label>
+                  </div>;
+              }
+              return <div key={field.fieldKey} className={styles.field}>
+                  <label className={labelClass} htmlFor={id}>{field.label}</label>
+                  <input id={id} type={field.fieldType === "date" ? "date" : field.fieldType === "number" ? "number" : "text"} className={styles.input} value={value ?? ""} onChange={e => update(field.fieldKey, field.fieldType === "number" ? e.target.value : e.target.value)} />
+                </div>;
+            })}
           </div>
         </>;
     default:

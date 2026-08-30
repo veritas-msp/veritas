@@ -1,4 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import PageGuideTour from "../PageGuide/PageGuideTour";
+import { getKnowledgeBaseGuide } from "../PageGuide/knowledgeBaseGuideSteps";
+import { useRegisterPageGuide } from "../../hooks/useRegisterPageGuide";
 import { useLocation } from "react-router-dom";
 import { Icon } from "@iconify/react";
 import { toast } from "react-toastify";
@@ -49,6 +52,10 @@ export default function KnowledgeBasePage({ onNavigate }) {
   const articleMode = articleMatch?.mode || "read";
   const locale = useAppLocale();
   const copy = useMemo(() => getKnowledgeBaseCopy(locale), [locale]);
+  const [pageGuideOpen, setPageGuideOpen] = useState(false);
+  const openPageGuide = useCallback(() => setPageGuideOpen(true), []);
+  useRegisterPageGuide(openPageGuide);
+  const kbGuide = useMemo(() => getKnowledgeBaseGuide(locale), [locale]);
   const canCreate = useCan("knowledge_base.create");
   const canEdit = useCan("knowledge_base.edit") || canCreate;
   const canDelete = useCan("knowledge_base.delete");
@@ -280,6 +287,7 @@ export default function KnowledgeBasePage({ onNavigate }) {
           canDelete={canDelete}
           onBack={backToList}
         />
+        <PageGuideTour open={pageGuideOpen} steps={kbGuide.steps} title={kbGuide.tourTitle} locale={locale} onClose={() => setPageGuideOpen(false)} />
       </KnowledgeBaseShell>
     );
   }
@@ -287,6 +295,7 @@ export default function KnowledgeBasePage({ onNavigate }) {
   return (
     <KnowledgeBaseShell>
       <MspPageHero
+        guideId="kb-hero"
         eyebrow={copy.eyebrow}
         title={copy.pageTitle}
         subtitle={copy.subtitle}
@@ -299,7 +308,7 @@ export default function KnowledgeBasePage({ onNavigate }) {
       />
       <main className={cyberStyles.mspContent}>
         <div className={styles.content}>
-          <div className={styles.kpiRow}>
+          <div className={styles.kpiRow} data-guide="kb-kpis">
             <div className={styles.kpiCard}>
               <div className={styles.kpiIconWrap}><Icon icon="mdi:book-open-page-variant-outline" width={20} /></div>
               <div>
@@ -323,6 +332,7 @@ export default function KnowledgeBasePage({ onNavigate }) {
             </div>
           </div>
           <div className={styles.contentSplit}>
+            <div data-guide="kb-folders">
             <KnowledgeFolderTree
               copy={copy}
               tree={folderTree}
@@ -334,8 +344,9 @@ export default function KnowledgeBasePage({ onNavigate }) {
               onShare={node => setFolderModal({ mode: "share", folder: node })}
               onDelete={node => setConfirmFolderDelete(node)}
             />
+            </div>
             <div className={styles.listColumn}>
-          <div className={styles.toolbar}>
+          <div className={styles.toolbar} data-guide="kb-toolbar">
             {canDelete || canEdit ? articles.length > 0 ? (
               <label className={styles.selectAll}>
                 <input type="checkbox" checked={allSelected} onChange={toggleSelectAll} aria-label={copy.selectAll} />
@@ -407,14 +418,14 @@ export default function KnowledgeBasePage({ onNavigate }) {
             </div>
           ) : null}
           {loading ? (
-            <div className={styles.empty}>{copy.loading}</div>
+            <div className={styles.empty} data-guide="kb-list">{copy.loading}</div>
           ) : articles.length === 0 ? (
-            <div className={styles.empty}>
+            <div className={styles.empty} data-guide="kb-list">
               <p>{search || status !== "all" || categoryFilter ? copy.emptyFiltered : currentFolder !== "all" ? copy.emptyFolder : copy.emptyTitle}</p>
               <p className={styles.emptyHint}>{copy.emptyHint}</p>
             </div>
           ) : (
-            <div className={styles.list}>
+            <div className={styles.list} data-guide="kb-list">
               {articles.map(article => (
                 <div key={article.id} className={`${styles.card} ${canDelete || canEdit ? styles.cardWithSelect : ""}`}>
                   {canDelete || canEdit ? (
@@ -585,6 +596,7 @@ export default function KnowledgeBasePage({ onNavigate }) {
         onClose={() => { if (!deleting) setConfirmDelete(null); }}
         onConfirm={confirmDelete === "bulk" ? confirmBulkDelete : confirmSingleDelete}
       />
+      <PageGuideTour open={pageGuideOpen} steps={kbGuide.steps} title={kbGuide.tourTitle} locale={locale} onClose={() => setPageGuideOpen(false)} />
     </KnowledgeBaseShell>
   );
 }

@@ -86,16 +86,16 @@ export default function ContractModuleOptionFormModal({
               <p className={layout.sectionDesc}>{modalCopy.presentationDesc}</p>
             </div>
             <div className={layout.fieldStack}>
-              <div className={layout.field}>
-                <span className={layout.label}>{adminCopy.icon}</span>
-                <div className={styles.iconPickerWrap}>
-                  <IconPicker value={draft.icon || "mdi:puzzle-outline"} onChange={icon => patchDraft({
-                  icon
-                })} />
-                </div>
-              </div>
-              <div className={layout.fieldGrid2}>
+              <div className={styles.presentationRow}>
                 <div className={layout.field}>
+                  <span className={layout.label}>{adminCopy.icon}</span>
+                  <div className={styles.iconPickerWrap}>
+                    <IconPicker value={draft.icon || "mdi:puzzle-outline"} onChange={icon => patchDraft({
+                    icon
+                  })} searchable popover searchPlaceholder={modalCopy.iconSearchPlaceholder} searchAria={modalCopy.iconSearchAria} clearSearchLabel={modalCopy.iconClearSearch} changeLabel={modalCopy.iconChangeLabel} pickerAria={modalCopy.iconPickerAria} />
+                  </div>
+                </div>
+                <div className={`${layout.field} ${styles.orderField}`}>
                   <label className={layout.label} htmlFor="option-sort-order">
                     {adminCopy.order}
                   </label>

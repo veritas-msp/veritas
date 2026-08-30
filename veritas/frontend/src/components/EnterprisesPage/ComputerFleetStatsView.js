@@ -2,6 +2,8 @@ import { useMemo, useState } from "react";
 import { Icon } from "@iconify/react";
 import { buildComputerFleetStats, POWER_PROFILES } from "../../utils/computerFleetStats";
 import { StatsPieChart, StatsDistributionBars, statsDashboardStyles as shared } from "./StatsDashboardWidgets";
+import useSystemFamilyExtensions from "../../hooks/useSystemFamilyExtensions";
+import { buildExtensionDistributions } from "../../utils/systemFamilyExtensions";
 import SmartTooltip from "../SmartTooltip";
 import dash from "./ComputerFleetStatsView.module.css";
 
@@ -35,6 +37,13 @@ function Fact({ label, value, tone }) {
 
 export default function ComputerFleetStatsView({ computers = [] }) {
   const [powerPeriod, setPowerPeriod] = useState("monthly");
+  const { fields: extensionFields } = useSystemFamilyExtensions("Ordinateurs");
+  const extraDistributions = useMemo(
+    () => buildExtensionDistributions(computers, extensionFields).filter(entry =>
+      (entry.items || []).some(item => item.name !== "Non renseigné")
+    ),
+    [computers, extensionFields]
+  );
   const stats = useMemo(() => buildComputerFleetStats(computers), [computers]);
   const powerKwh = powerPeriod === "annual" ? stats.power.annualKwh : stats.power.monthlyKwh;
   const powerCost = powerPeriod === "annual" ? stats.power.annualCostEur : stats.power.monthlyCostEur;
@@ -260,6 +269,19 @@ export default function ComputerFleetStatsView({ computers = [] }) {
             ))}
           </article>
         </section>
+        {extraDistributions.length ? (
+          <section className={shared.chartGrid}>
+            {extraDistributions.map((entry) => (
+              <article key={entry.fieldKey} className={shared.panel}>
+                <h3 className={shared.panelTitle}>
+                  <Icon icon="mdi:form-textbox" aria-hidden />
+                  {entry.label}
+                </h3>
+                <StatsPieChart items={entry.items} total={stats.total} centerLabel={stats.total} emptyLabel="—" othersLabel="Autres" title={entry.label} />
+              </article>
+            ))}
+          </section>
+        ) : null}
       </div>
     </div>
   );

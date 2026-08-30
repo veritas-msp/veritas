@@ -5,7 +5,7 @@ import {
 } from "../routes/integrations/checkmk/equipmentMonitoringSync.js";
 import { fetchStandardHardwarePurgeList, PURGE_HARDWARE_FAMILIES } from "./equipmentPurgeList.js";
 import { applyEquipmentAlertSettings, isAlertSuspensionActive, resolveAlertStatusFromSettings, resolveEquipmentFamilyKey } from "./equipmentMonitoringAlerts.js";
-import { parseEquipmentActiveFlag } from "./equipmentFamilies.js";
+import { canonicalizeSystemFamilyKey, listSystemFamilyExtensionsByKey, parseEquipmentActiveFlag } from "./equipmentFamilies.js";
 
 const VIDEO_SURVEILLANCE_TABLES = [
   "v_b_clients_m_videosurveillance",
@@ -736,18 +736,24 @@ export async function bulkUpdateEquipmentInventory({
  * Full device inventory across all clients: standard hardware, custom families, cameras.
  */
 export async function fetchEquipmentInventoryList() {
-  const [standard, custom, video] = await Promise.all([
+  const [standard, custom, video, extensionsByKey] = await Promise.all([
     fetchStandardHardwarePurgeList(),
     fetchCustomEquipmentRows(),
-    fetchVideoSurveillanceRows()
+    fetchVideoSurveillanceRows(),
+    listSystemFamilyExtensionsByKey().catch(() => ({}))
   ]);
   const items = [
-    ...standard.map(row => ({
-      ...row,
-      familyLabel: row.type,
-      familyKey: null,
-      isCustom: false
-    })),
+    ...standard.map(row => {
+      const familyKey = canonicalizeSystemFamilyKey(row.type);
+      const systemExtensionFields = familyKey ? extensionsByKey[familyKey] || [] : [];
+      return {
+        ...row,
+        familyLabel: row.type,
+        familyKey: familyKey || null,
+        isCustom: false,
+        systemExtensionFields
+      };
+    }),
     ...custom,
     ...video
   ];

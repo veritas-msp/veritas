@@ -33,6 +33,7 @@ import EquipmentStatsPanel from "./EquipmentStatsPanel";
 import { fetchEquipmentActivity } from "../../api/equipmentActivity";
 import { resolveEquipmentActivityRange, toDateInputValue } from "./equipmentActivityUtils";
 import { buildDetailFormData } from "./equipmentDetailConfig";
+import useSystemFamilyExtensions from "../../hooks/useSystemFamilyExtensions";
 import { patchEquipmentWithSharedFields } from "./sharedEquipmentFields";
 import { getEquipmentDetailTypeLabel, getEquipmentDetailCopy, formatEquipmentDetailRelative, formatAlertSettingsDateTime, getEquipmentCreatedAt } from "./equipmentDetailPageI18n";
 import { canonicalizeComputerType, patchEquipmentLocation, readEquipmentIsActive } from "./equipmentFormConfig";
@@ -64,6 +65,7 @@ export default function EquipmentDetailPage({
 }) {
   const CHECKMK_SYNC_MIN_INTERVAL_MS = 30 * 60 * 1000;
   const locale = useAppLocale();
+  const { fields: systemExtensionFields } = useSystemFamilyExtensions(equipment?.type);
   const modalsCopy = useMemo(() => getEquipmentModalsCopy(locale), [locale]);
   const copy = useMemo(() => getEquipmentDetailCopy(locale), [locale]);
   const {
@@ -175,6 +177,12 @@ export default function EquipmentDetailPage({
   };
   const equipmentDisplayType = equipment?.type === "NAS" ? "Storage" : equipment?.type;
   const equipmentModuleKey = equipment ? getEditModuleKey(equipment) : null;
+  const toDetailFormData = useCallback((source, extra = {}) => buildDetailFormData(source, {
+    clientSites,
+    clientSsids,
+    extensionFields: systemExtensionFields,
+    ...extra
+  }), [clientSites, clientSsids, systemExtensionFields]);
   const alertSettings = useEquipmentAlertSettings(equipment);
   const rmmManaged = isRmmManagedEquipment(equipment);
   const rmmAgentId = getRmmAgentId(equipment);
@@ -355,10 +363,7 @@ export default function EquipmentDetailPage({
         } else if (currentOverride === undefined) {
           setSyncRequestOverride(undefined);
         }
-        setFormData(buildDetailFormData(nextEquipment, {
-          clientSites,
-          clientSsids
-        }));
+        setFormData(toDetailFormData(nextEquipment));
         const rmmSnapshot = JSON.stringify({
           dbId: resolveEquipmentDbId(nextEquipment),
           syncAt: getRmmSyncRequestedAt(nextEquipment),
@@ -409,7 +414,7 @@ export default function EquipmentDetailPage({
   };
   const [initialFormData, setInitialFormData] = useState(null);
   const [hasInfoChanges, setHasInfoChanges] = useState(false);
-  const [formData, setFormData] = useState(() => buildDetailFormData(equipment));
+  const [formData, setFormData] = useState(() => buildDetailFormData(equipment, { extensionFields: systemExtensionFields }));
   const remoteAccessAction = useMemo(() => resolveEquipmentRemoteAccessAction(equipment, formData, locale), [equipment, formData, locale]);
   const equipmentDbId = useMemo(() => resolveEquipmentDbId(equipment), [equipment]);
   const equipmentClientId = useMemo(() => getEquipmentClientId(equipment), [equipment]);
@@ -442,10 +447,7 @@ export default function EquipmentDetailPage({
     abortAllPendingFetches();
     const alreadyHydrated = lastHydratedKeyRef.current === equipmentIdentityKey;
     if (!(needsHydration && alreadyHydrated)) {
-      setFormData(buildDetailFormData(equipment, {
-        clientSites,
-        clientSsids
-      }));
+      setFormData(toDetailFormData(equipment));
     }
     const mapping = equipment.checkmkMapping || checkmkMapping || null;
     setCheckmkMapping(mapping);
@@ -491,10 +493,7 @@ export default function EquipmentDetailPage({
         }
         if (cancelled || !refreshed) return;
         lastHydratedKeyRef.current = equipmentIdentityKey;
-        setFormData(buildDetailFormData(refreshed, {
-          clientSites,
-          clientSsids
-        }));
+        setFormData(toDetailFormData(refreshed));
         if (onUpdate) onUpdate(refreshed);
         else onNavigateToEquipment?.(refreshed);
       } catch (error) {
@@ -805,20 +804,14 @@ export default function EquipmentDetailPage({
           }
         };
       }
-      setFormData(buildDetailFormData(nextEquipment, {
-        clientSites,
-        clientSsids
-      }));
+      setFormData(toDetailFormData(nextEquipment));
       onUpdate?.(nextEquipment);
     }
     try {
       const list = await getClientHardwareEquipment(getEquipmentClientId(equipment) || equipment.clientId);
       const refreshed = findEquipmentInList(list, nextEquipment || equipment);
       if (refreshed) {
-        setFormData(buildDetailFormData(refreshed, {
-          clientSites,
-          clientSsids
-        }));
+        setFormData(toDetailFormData(refreshed));
         onUpdate?.(refreshed);
       }
     } catch (error) {
@@ -844,11 +837,7 @@ export default function EquipmentDetailPage({
       id: equipment?.id,
       dbId: equipment?.dbId || savedRow.id
     };
-    setFormData(buildDetailFormData(nextEquipment, {
-      clientSites,
-      clientSsids,
-      customFamily: family
-    }));
+    setFormData(toDetailFormData(nextEquipment, { customFamily: family }));
     onUpdate?.(nextEquipment);
   };
   const loadSSIDs = async () => {

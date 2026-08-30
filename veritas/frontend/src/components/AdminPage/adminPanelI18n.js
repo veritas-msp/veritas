@@ -47,6 +47,8 @@ export const ADMIN_NAV_STRUCTURE = [{
       key: "contract-modules"
     }, {
       key: "equipment-families"
+    }, {
+      key: "infrastructure-map"
     }]
   }]
 }, {
@@ -169,6 +171,10 @@ const ADMIN_PANEL_COPY = {
       "equipment-families": {
         label: "Familles matériel",
         description: "Types d'équipements et champs"
+      },
+      "infrastructure-map": {
+        label: "Cartographie",
+        description: "Position des hexagones sur la fiche"
       },
       tickets: {
         label: "Paramètres support",
@@ -293,6 +299,10 @@ const ADMIN_PANEL_COPY = {
         label: "Equipment families",
         description: "Equipment types and fields"
       },
+      "infrastructure-map": {
+        label: "Mapping",
+        description: "Hexagon positions on the record"
+      },
       tickets: {
         label: "Support settings",
         description: "Templates, macros, categories, and views"
@@ -415,6 +425,10 @@ const ADMIN_PANEL_COPY = {
       "equipment-families": {
         label: "Gerätefamilien",
         description: "Gerätetypen und Felder"
+      },
+      "infrastructure-map": {
+        label: "Karte",
+        description: "Position der Sechsecke auf der Akte"
       },
       tickets: {
         label: "Support-Einstellungen",
@@ -543,6 +557,10 @@ const ADMIN_PANEL_COPY = {
         label: "Famiglie hardware",
         description: "Tipi di equipaggiamento e campi"
       },
+      "infrastructure-map": {
+        label: "Mappa",
+        description: "Posizione degli esagoni sulla scheda"
+      },
       tickets: {
         label: "Impostazioni supporto",
         description: "Template, macro, categorie e viste"
@@ -669,6 +687,10 @@ const ADMIN_PANEL_COPY = {
       "equipment-families": {
         label: "Familias de hardware",
         description: "Tipos de equipos y campos"
+      },
+      "infrastructure-map": {
+        label: "Cartografía",
+        description: "Posición de los hexágonos en la ficha"
       },
       tickets: {
         label: "Ajustes de soporte",

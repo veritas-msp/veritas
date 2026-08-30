@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Icon } from "@iconify/react";
 import { toast } from "react-toastify";
 import { fetchClientsList, fetchClientModules, fetchClientGeneral } from "../../api/clients";
@@ -28,6 +28,9 @@ import { uploadReportArchiveToClientVault } from "../../utils/uploadReportToClie
 import ReportSaveVisibilitySwitch from "../shared/ReportSaveVisibilitySwitch";
 import { safeJsonClone } from "../../utils/safeJson";
 import { useAppLocale } from "../../hooks/useAppGeneralSettings";
+import PageGuideTour from "../PageGuide/PageGuideTour";
+import { getRapportGuide } from "../PageGuide/rapportGuideSteps";
+import { useRegisterPageGuide } from "../../hooks/useRegisterPageGuide";
 import { getRapportPageCopy, getReportTypes } from "./rapportPageI18n";
 import { createTrackedAbortController } from "../../utils/pageLoadAbort";
 const RAPPORT_CLIENTS_CACHE_KEY = "rapport_clients_list_cache_v1";
@@ -85,6 +88,9 @@ export default function ReportPage({
 }) {
   const locale = useAppLocale();
   const pageCopy = useMemo(() => getRapportPageCopy(locale), [locale]);
+  const [pageGuideOpen, setPageGuideOpen] = useState(false);
+  const openPageGuide = useCallback(() => setPageGuideOpen(true), []);
+  useRegisterPageGuide(openPageGuide);
   const reportTypes = useMemo(() => getReportTypes(pageCopy, pageCopy.localeCode || locale), [pageCopy, locale]);
   const [clients, setClients] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -94,6 +100,12 @@ export default function ReportPage({
   const [builderClient, setBuilderClient] = useState(null);
   const [builderStepIndex, setBuilderStepIndex] = useState(0);
   const [createWizardStep, setCreateWizardStep] = useState("client");
+  const rapportGuide = useMemo(() => getRapportGuide(locale, {
+    showClient: () => setCreateWizardStep("client"),
+    showTypes: () => {
+      if (selectedClientId) setCreateWizardStep("type");
+    }
+  }), [locale, selectedClientId]);
   const [selectedReportTypeId, setSelectedReportTypeId] = useState(null);
   const [draftReport, setDraftReport] = useState(null);
   const [reportStartDate, setReportStartDate] = useState("");
@@ -1043,7 +1055,7 @@ export default function ReportPage({
   return <>
       <div className={`${cyberStyles.mspPage} msp-page-insight`}>
         {isSupervisionBuilder ? <div className={shellStyles.shell}>
-              <header className={shellStyles.header}>
+              <header className={shellStyles.header} data-guide="report-hero">
                 <button type="button" className={shellStyles.backBtn} onClick={handleBackToSelection}>
                   <Icon icon="mdi:arrow-left" aria-hidden />
                   Retour
@@ -1350,7 +1362,7 @@ export default function ReportPage({
               </div>
           </div> : isInterventionDraft ? <ReportInterventionBuilder copy={pageCopy} reportType={draftReport.type} client={draftReport.client} initialData={draftReport.initialData} documentId={draftReport.documentId} documentName={draftReport.documentName} onBack={handleBackFromDraftReport} /> : isSupervisionDraft ? <SupervisionPeriodGate copy={pageCopy} reportType={draftReport.type} client={draftReport.client} onBack={handleBackFromDraftReport} onConfirm={handleConfirmSupervisionPeriod} confirming={startingSupervisionBuilder} /> : isDraftWizard ? <ReportBuilderPlaceholder copy={pageCopy} reportType={draftReport.type} client={draftReport.client} onBack={handleBackFromDraftReport} /> : <div className={cyberStyles.mspLayout}>
             <div className={cyberStyles.mspMain}>
-              <header className={cyberStyles.mspHero}>
+              <header className={cyberStyles.mspHero} data-guide="report-hero">
                 <div className={cyberStyles.mspHeroMain}>
                   <div className={cyberStyles.mspBrandMark}>
                     <Icon icon="mingcute:report-forms-fill" className={cyberStyles.mspBrandMarkIcon} />
@@ -1373,5 +1385,6 @@ export default function ReportPage({
             </div>
           </div>}
       </div>
+      <PageGuideTour open={pageGuideOpen} steps={rapportGuide.steps} title={rapportGuide.tourTitle} locale={locale} onClose={() => setPageGuideOpen(false)} />
     </>;
 }

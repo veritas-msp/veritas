@@ -1,4 +1,6 @@
 import { Children, cloneElement, isValidElement, useMemo } from "react";
+import useSystemFamilyExtensions from "../../hooks/useSystemFamilyExtensions";
+import { buildExtensionDistributions } from "../../utils/systemFamilyExtensions";
 import { Icon } from "@iconify/react";
 import { useAppLocale } from "../../hooks/useAppGeneralSettings";
 import { interpolate } from "../../i18n/translate";
@@ -411,6 +413,23 @@ export default function EquipmentFamilyStatsView({
       </section>
 
       <SpecificCharts family={stats.family} specifics={stats.specifics} total={common.total} copy={copy} />
+      <ExtensionCharts items={items} familyType={familyType} total={common.total} copy={copy} />
     </StatsDashboardBody>
+  );
+}
+
+function ExtensionCharts({ items, familyType, total, copy }) {
+  const { fields } = useSystemFamilyExtensions(familyType);
+  const distributions = useMemo(() => buildExtensionDistributions(items, fields), [items, fields]);
+  const useful = distributions.filter(entry => hasUsefulDistribution(entry.items));
+  if (!useful.length) return null;
+  return (
+    <section className={styles.chartGrid}>
+      {useful.map(entry => (
+        <ChartPanel key={entry.fieldKey} icon="mdi:form-textbox" title={entry.label}>
+          <DistributionPie items={entry.items} total={total} copy={copy} />
+        </ChartPanel>
+      ))}
+    </section>
   );
 }

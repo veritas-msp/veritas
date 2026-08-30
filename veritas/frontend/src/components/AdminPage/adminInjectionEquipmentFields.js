@@ -388,8 +388,55 @@ export function buildCustomEquipmentInjectionFamily(family, locale) {
   };
 }
 
-export function mergeEquipmentInjectionFamilies(locale, customFamilies = []) {
-  const system = getEquipmentInjectionFamilies(locale);
+export const INJECTION_ID_TO_SYSTEM_KEY = {
+  servers: "Servers",
+  internet: "Internet",
+  switch: "Switch",
+  firewall: "Firewalls",
+  wifi: "BorneWifi",
+  stockage: "Storage",
+  alimentation: "Alimentation",
+  routeur: "Routeur",
+  toip: "TOIP",
+  ordinateurs: "Ordinateurs"
+};
+
+function appendSystemExtensionInjectionFields(family, extraFields, locale) {
+  const extras = Array.isArray(extraFields) ? extraFields : [];
+  if (!extras.length) return family;
+  const usedCsv = new Set((family.fields || []).map(field => field.csvColumn).filter(Boolean));
+  const usedKeys = new Set((family.fields || []).map(field => field.key).filter(Boolean));
+  const extraMapped = [];
+  for (const field of extras) {
+    const key = String(field?.fieldKey || "").trim();
+    const label = String(field?.label || "").trim();
+    if (!key || usedKeys.has(key)) continue;
+    usedKeys.add(key);
+    const type = String(field.fieldType || "text").toLowerCase();
+    extraMapped.push(mapInjectionField({
+      key,
+      csvColumn: uniqueCsvColumn(equipmentCsvColumnForDataKey(key), usedCsv),
+      required: Boolean(field.required),
+      label: label || key,
+      values: FIELD_TYPE_VALUES[type] || FIELD_TYPE_VALUES.text
+    }, locale));
+  }
+  if (!extraMapped.length) return family;
+  const fields = [...(family.fields || [])];
+  const jsonIdx = fields.findIndex(entry => entry.key === "_data_json");
+  const insertAt = jsonIdx >= 0 ? jsonIdx : fields.length;
+  fields.splice(insertAt, 0, ...extraMapped);
+  return {
+    ...family,
+    fields
+  };
+}
+
+export function mergeEquipmentInjectionFamilies(locale, customFamilies = [], systemExtensions = {}) {
+  const system = getEquipmentInjectionFamilies(locale).map(family => {
+    const systemKey = INJECTION_ID_TO_SYSTEM_KEY[family.id] || family.familyKey;
+    return appendSystemExtensionInjectionFields(family, systemExtensions[systemKey] || [], locale);
+  });
   const custom = (Array.isArray(customFamilies) ? customFamilies : [])
     .filter(family => family && family.enabled !== false && !family.isSystem)
     .map(family => buildCustomEquipmentInjectionFamily(family, locale))
