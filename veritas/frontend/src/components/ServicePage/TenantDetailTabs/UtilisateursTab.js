@@ -5,6 +5,7 @@ import { toast } from 'react-toastify';
 import styles from '../TenantDetailPage.module.css';
 import SmartTooltip from '../../SmartTooltip';
 import { getLicenseDisplayName } from './utils';
+import { getMfaMethods, getMfaUserForUser, normalizeMfaList, userHasMethod, userHasMfa, userIsAdmin } from '../mfaDetailsUtils';
 function getMfaMethodLabel(methodType) {
   const labels = {
     microsoftauthenticatorauthenticationmethod: 'Microsoft Authenticator',
@@ -99,16 +100,6 @@ const MFA_METHOD_FILTERS_LINE2 = [{
   label: 'Software auth',
   tooltip: 'Filter by OATH app (TOTP codes)'
 }];
-function getMfaUserForUser(user, mfaDetails) {
-  const upn = (user.userPrincipalName || user.email || '').toLowerCase().trim();
-  const userId = user.id;
-  return mfaDetails.find(m => {
-    const mUpn = (m.userPrincipalName || m.user_principal_name || '').toLowerCase().trim();
-    if (mUpn && upn && mUpn === upn) return true;
-    if (userId && m.id && String(m.id) === String(userId)) return true;
-    return false;
-  }) || null;
-}
 const ADMIN_ROLE_ICONS = [{
   pattern: /global\s*administrator/i,
   icon: 'mdi:earth',
@@ -217,17 +208,6 @@ function getAdminRoleIcons(adminRoleString) {
   }
   return result;
 }
-function userHasMfa(mfaUser) {
-  if (!mfaUser) return false;
-  if (mfaUser.has_mfa === true) return true;
-  const methods = mfaUser.mfa_methods || mfaUser.mfaMethods || [];
-  return Array.isArray(methods) && methods.some(m => getMfaMethodIcon(m) !== null);
-}
-function userHasMethod(mfaUser, methodKey) {
-  if (!mfaUser) return false;
-  const methods = mfaUser.mfa_methods || mfaUser.mfaMethods || [];
-  return Array.isArray(methods) && methods.includes(methodKey);
-}
 function isLikelyServiceAccountFromUser(user) {
   const name = (user.name || user.displayName || '').toString();
   const upn = (user.userPrincipalName || user.email || '').toString();
@@ -257,14 +237,11 @@ function getFilteredUsers(users, filter, mfaDetails = []) {
     case USER_FILTER_MFA_ACTIF:
       return users.filter(u => userHasMfa(getMfaUserForUser(u, mfaDetails)));
     case USER_FILTER_ADMIN:
-      return users.filter(u => {
-        const m = getMfaUserForUser(u, mfaDetails);
-        return m && m.is_admin === true;
-      });
+      return users.filter(u => userIsAdmin(getMfaUserForUser(u, mfaDetails)));
     case USER_FILTER_NON_ADMIN:
       return users.filter(u => {
         const m = getMfaUserForUser(u, mfaDetails);
-        return m && m.is_admin !== true;
+        return m && !userIsAdmin(m);
       });
     case USER_FILTER_MFA_INACTIF:
       return users.filter(u => {
@@ -290,9 +267,10 @@ export default function UsersTab({
   users,
   dashboardMetrics,
   detailData,
-  mfaDetails = [],
+  mfaDetails: mfaDetailsProp = [],
   theme
 }) {
+  const mfaDetails = useMemo(() => normalizeMfaList(mfaDetailsProp), [mfaDetailsProp]);
   const [sortColumn, setSortColumn] = useState(null);
   const [sortDirection, setSortDirection] = useState('asc');
   const [currentPage, setCurrentPage] = useState(1);
@@ -371,29 +349,13 @@ export default function UsersTab({
           bValue = (typeof b.licenses === 'string' ? b.licenses : Array.isArray(b.licenses) ? b.licenses.join(', ') : b.licenses || 'None').toString().toLowerCase();
           break;
         case 'mfaActive':
-          {
-            const getMfaInfo = u => {
-              const upn = u.userPrincipalName || u.email || '';
-              const mfa = mfaDetails.find(m => (m.userPrincipalName || m.user_principal_name || '') === upn);
-              const methods = mfa?.mfa_methods || mfa?.mfaMethods || [];
-              const hasMfa = mfa?.has_mfa ?? (Array.isArray(methods) && methods.some(m => getMfaMethodIcon(m) !== null));
-              return hasMfa ? 1 : 0;
-            };
-            aValue = getMfaInfo(a);
-            bValue = getMfaInfo(b);
-            break;
-          }
+          aValue = userHasMfa(getMfaUserForUser(a, mfaDetails)) ? 1 : 0;
+          bValue = userHasMfa(getMfaUserForUser(b, mfaDetails)) ? 1 : 0;
+          break;
         case 'admin':
-          {
-            const getAdminInfo = u => {
-              const upn = u.userPrincipalName || u.email || '';
-              const mfa = mfaDetails.find(m => (m.userPrincipalName || m.user_principal_name || '') === upn);
-              return mfa?.is_admin === true ? 1 : 0;
-            };
-            aValue = getAdminInfo(a);
-            bValue = getAdminInfo(b);
-            break;
-          }
+          aValue = userIsAdmin(getMfaUserForUser(a, mfaDetails)) ? 1 : 0;
+          bValue = userIsAdmin(getMfaUserForUser(b, mfaDetails)) ? 1 : 0;
+          break;
         case 'roleAdmin':
           {
             const getRoleAdminStats = u => {
@@ -421,18 +383,9 @@ export default function UsersTab({
             break;
           }
         case 'methodes':
-          {
-            const getMethodCount = u => {
-              const upn = u.userPrincipalName || u.email || '';
-              const mfa = mfaDetails.find(m => (m.userPrincipalName || m.user_principal_name || '') === upn);
-              const methods = mfa?.mfa_methods || mfa?.mfaMethods || [];
-              if (!Array.isArray(methods)) return 0;
-              return methods.filter(m => getMfaMethodIcon(m) !== null).length;
-            };
-            aValue = getMethodCount(a);
-            bValue = getMethodCount(b);
-            break;
-          }
+          aValue = getMfaMethods(getMfaUserForUser(a, mfaDetails)).filter(m => getMfaMethodIcon(m) !== null).length;
+          bValue = getMfaMethods(getMfaUserForUser(b, mfaDetails)).filter(m => getMfaMethodIcon(m) !== null).length;
+          break;
         default:
           return 0;
       }
@@ -555,13 +508,10 @@ export default function UsersTab({
     const m = getMfaUserForUser(u, mfaDetails);
     return m && !userHasMfa(m);
   }).length;
-  const adminCount = filteredUsers.filter(u => {
-    const m = getMfaUserForUser(u, mfaDetails);
-    return m && m.is_admin === true;
-  }).length;
+  const adminCount = filteredUsers.filter(u => userIsAdmin(getMfaUserForUser(u, mfaDetails))).length;
   const nonAdminCount = filteredUsers.filter(u => {
     const m = getMfaUserForUser(u, mfaDetails);
-    return m && m.is_admin !== true;
+    return m && !userIsAdmin(m);
   }).length;
   const methodCounts = useMemo(() => {
     const counts = {};
@@ -943,12 +893,10 @@ export default function UsersTab({
                 const labels = parts.map(lic => getLicenseDisplayName(String(lic).trim())).filter(Boolean);
                 return labels.length ? labels.join(', ') : 'None';
               })();
-              const userUpn = user.userPrincipalName || user.email || '';
-              const mfaUser = mfaDetails.find(m => (m.userPrincipalName || m.user_principal_name || '') === userUpn);
-              const mfaMethodsRaw = mfaUser?.mfa_methods || mfaUser?.mfaMethods || [];
-              const mfaMethods = Array.isArray(mfaMethodsRaw) ? [...new Set(mfaMethodsRaw)] : [];
-              const hasMfa = mfaUser?.has_mfa ?? (mfaMethods.length > 0 && mfaMethods.some(m => getMfaMethodIcon(m) !== null));
-              const isAdmin = mfaUser?.is_admin === true;
+              const mfaUser = getMfaUserForUser(user, mfaDetails);
+              const mfaMethods = [...new Set(getMfaMethods(mfaUser).filter(m => getMfaMethodIcon(m) !== null))];
+              const hasMfa = userHasMfa(mfaUser);
+              const isAdmin = userIsAdmin(mfaUser);
               const methodIcons = mfaMethods.length > 0 ? mfaMethods.filter(m => getMfaMethodIcon(m) !== null).map((method, i) => <SmartTooltip key={i} content={getMfaMethodLabel(method)} placement="top">
                           <span className={styles.mfaMethodIcon}>
                             {getMfaMethodIcon(method)}

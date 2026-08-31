@@ -1,16 +1,11 @@
 import React, { useState, useMemo } from "react";
 import { Icon } from "@iconify/react";
-import { toast } from "react-toastify";
-import API_BASE_URL from "../../../../config";
-import InfrastructureEquipmentTable from "../InfrastructureEquipmentTable";
 import equipmentStyles from "../../../EquipementPage/EquipmentPage.module.css";
 import styles from "../RapportMonitoringBuilder.module.css";
 import { AntivirusOverviewPanel } from "../../../EnterprisesPage/AntivirusOverviewModal";
+import SolutionDetailPageLayout from "../../../EnterprisesPage/SolutionDetailPageLayout";
 import { normalizeAntivirusItem } from "../../../EnterprisesPage/antivirusSolutionUtils";
 import { MonitoringStepShell, MonitoringStepSubsectionHeader } from "../MonitoringStepLayout";
-function getAuthHeaders() {
-  return {};
-}
 function normalizeAntivirus(sol) {
   if (!sol) return sol;
   const name = sol.solution || sol.logiciel || sol.nom || sol.name || "Solution antivirus";
@@ -22,21 +17,6 @@ function normalizeAntivirus(sol) {
 }
 function getSolutionName(sol) {
   return sol.solution || sol.logiciel || sol.nom || sol.name || "Solution antivirus";
-}
-function formatExpiration(sol) {
-  const raw = sol.expiration ?? sol.expirityDate ?? sol.syncData?.license?.expirationDate ?? null;
-  if (!raw) return "-";
-  try {
-    const d = new Date(raw);
-    return isNaN(d.getTime()) ? String(raw) : d.toLocaleDateString("en-US");
-  } catch {
-    return String(raw);
-  }
-}
-function getEndpointsCount(sol) {
-  const list = sol.syncData?.endpoints?.list ?? sol.endpoints ?? [];
-  if (Array.isArray(list)) return list.length;
-  return sol.syncData?.endpoints?.total ?? sol.endpointsTotal ?? "-";
 }
 function getEndpointTypeIcon(type) {
   const t = (type ?? "").toLowerCase();
@@ -199,7 +179,8 @@ function SolutionDetailBlock({
   endpointSearch,
   setEndpointSearch,
   endpointSort,
-  setEndpointSort
+  setEndpointSort,
+  section = "endpoints"
 }) {
   const endpointList = useMemo(() => {
     const raw = solution.syncData?.endpoints?.list ?? solution.endpoints ?? [];
@@ -338,12 +319,33 @@ function SolutionDetailBlock({
     return ep.policyName || null;
   };
   const isEndpointInfected = (ep, enriched) => enriched?.isInfected === true || ep.isInfected === true || enriched?.malwareDetected === true || ep.malwareDetected === true;
-  return <div className={styles.antivirusSolutionSections}>
-      <h4 className={styles.stepSectionTitle}>{getSolutionName(solution)}</h4>
-
-      {policyEquipments.length > 0 && <InfrastructureEquipmentTable title="Security policies" moduleKey="Antivirus" equipments={policyEquipments} columns={ANTIVIRUS_POLICY_COLUMNS} showSearch={true} showActions={false} showInsightColumns={false} totalCountLabel={`${policyEquipments.length} policy(ies) in total`} />}
-
-      {endpointList.length > 0 && <section className={styles.antivirusEndpointsSection}>
+  if (section === "policies") {
+    if (policyEquipments.length === 0) {
+      return <div className={styles.antivirusModalNoData}>Aucune politique à afficher.</div>;
+    }
+    return <div className={equipmentStyles.hardwarePageEmbedded}>
+            <div className={`${equipmentStyles.tableWrapperEmbedded} ${styles.antivirusEndpointsTableWrapper}`}>
+              <table className={equipmentStyles.equipmentTableEmbedded}>
+                <thead>
+                  <tr>
+                    {ANTIVIRUS_POLICY_COLUMNS.map(col => <th key={col.id}>
+                        <span className={equipmentStyles.thContent}>{col.label}</span>
+                      </th>)}
+                  </tr>
+                </thead>
+                <tbody>
+                  {policyEquipments.map(row => <tr key={row.id}>
+                      {ANTIVIRUS_POLICY_COLUMNS.map(col => <td key={col.id}>{col.render(row)}</td>)}
+                    </tr>)}
+                </tbody>
+              </table>
+            </div>
+          </div>;
+  }
+  if (endpointList.length === 0) {
+    return <div className={styles.antivirusModalNoData}>Aucun endpoint à afficher.</div>;
+  }
+  return <section className={styles.antivirusEndpointsSection}>
           <MonitoringStepSubsectionHeader title={`Endpoints (${sortedEndpoints.length}${endpointList.length !== sortedEndpoints.length ? ` / ${endpointList.length}` : ""})`} searchValue={endpointSearch} onSearchChange={setEndpointSearch} onSearchClear={() => setEndpointSearch("")} searchPlaceholder="Search (name, FQDN, IP, OS, type)..." />
           <div className={equipmentStyles.hardwarePageEmbedded}>
             <div className={`${equipmentStyles.tableWrapperEmbedded} ${styles.antivirusEndpointsTableWrapper}`}>
@@ -527,24 +529,52 @@ function SolutionDetailBlock({
             </table>
             </div>
           </div>
-        </section>}
+        </section>;
+}
 
-      {policyEquipments.length === 0 && endpointList.length === 0 && <div className={styles.antivirusModalNoData}>
-          Synchronize to load policies and endpoints.
-        </div>}
+const ANTIVIRUS_FALLBACK_NAV = [{
+  type: "section",
+  key: "policies",
+  section: {
+    id: "policies",
+    icon: "mdi:shield-account-outline",
+    label: "Politiques"
+  }
+}, {
+  type: "section",
+  key: "endpoints",
+  section: {
+    id: "endpoints",
+    icon: "mdi:monitor",
+    label: "Endpoints"
+  }
+}];
+
+function AntivirusFallbackPanel({
+  solution,
+  endpointSearch,
+  setEndpointSearch,
+  endpointSort,
+  setEndpointSort
+}) {
+  const [section, setSection] = useState("endpoints");
+  const enrichedEndpointsSource = Array.isArray(solution.syncData?.endpoints?.list) && solution.syncData.endpoints.list || Array.isArray(solution.syncData?.endpoints) && solution.syncData.endpoints || Array.isArray(solution.endpoints) && solution.endpoints || [];
+  const policiesList = solution.syncData?.policies || solution.data?.policies || solution.policies || [];
+  const hasPolicies = extractPoliciesList(policiesList).length > 0;
+  const hasEndpoints = enrichedEndpointsSource.length > 0;
+  if (!hasPolicies && !hasEndpoints) return null;
+  const navEntries = ANTIVIRUS_FALLBACK_NAV.filter(entry => entry.key === "policies" ? hasPolicies : hasEndpoints);
+  const activeSection = navEntries.some(entry => entry.section.id === section) ? section : navEntries[0]?.section.id || "endpoints";
+  return <div className={styles.solutionOverviewEmbed}>
+      <SolutionDetailPageLayout embedded accent="gravityzone" title={getSolutionName(solution)} titleIcon="simple-icons:bitdefender" navEntries={navEntries} activeSection={activeSection} onSectionChange={setSection} navAriaLabel="Sections">
+        <SolutionDetailBlock solution={solution} enrichedEndpoints={enrichedEndpointsSource} policiesList={policiesList} endpointSearch={endpointSearch} setEndpointSearch={setEndpointSearch} endpointSort={endpointSort} setEndpointSort={setEndpointSort} section={activeSection} />
+      </SolutionDetailPageLayout>
     </div>;
 }
+
 export default function AntivirusStep({
   client,
-  onOpenComments,
-  onTicketCreatedForEquipment,
-  onRefreshClient,
-  onAntivirusSyncStateChange,
-  commentCounts,
-  ticketCounts,
-  alertCounts,
-  highlightedEquipmentKey,
-  reportPeriod
+  onRefreshClient
 }) {
   const rawAntivirus = client?.equipements?.Antivirus;
   const [endpointSearch, setEndpointSearch] = useState("");
@@ -552,7 +582,6 @@ export default function AntivirusStep({
     column: null,
     direction: "asc"
   });
-  const [syncingKey, setSyncingKey] = useState(null);
   let solutions = [];
   if (Array.isArray(rawAntivirus)) {
     solutions = rawAntivirus;
@@ -561,216 +590,13 @@ export default function AntivirusStep({
   }
   const antivirusList = solutions.map(sol => normalizeAntivirusItem(normalizeAntivirus(sol)) || normalizeAntivirus(sol));
   const solutionsWithCompany = useMemo(() => antivirusList.filter(s => s.companyId), [antivirusList]);
-  const columns = [{
-    id: "solution",
-    label: "Solution",
-    render: sol => <span style={{
-      display: "inline-flex",
-      alignItems: "center",
-      gap: "0.35rem"
-    }}>
-          <Icon icon="simple-icons:bitdefender" width={18} height={18} title="Bitdefender" />
-          {sol.nom || sol.solution || sol.logiciel || "-"}
-        </span>
-  }, {
-    id: "company",
-    label: "Company",
-    render: sol => sol.companyName ?? sol.syncData?.company?.name ?? "-"
-  }, {
-    id: "utilisateurs",
-    label: "Users",
-    render: sol => sol.licencesUtilisees ?? sol.utilisateurs ?? sol.syncData?.license?.usedLicenses ?? "-"
-  }, {
-    id: "licences",
-    label: "Licenses",
-    render: sol => sol.licencesTotales ?? sol.licences ?? sol.syncData?.license?.totalLicenses ?? "-"
-  }, {
-    id: "endpoints",
-    label: "Endpoints",
-    render: sol => {
-      const list = sol.syncData?.endpoints?.list ?? sol.endpoints ?? [];
-      if (Array.isArray(list)) return list.length;
-      return sol.syncData?.endpoints?.total ?? sol.endpointsTotal ?? "-";
-    }
-  }, {
-    id: "expiration",
-    label: "Expiration",
-    render: sol => formatExpiration(sol)
-  }];
-  const handleSyncCheckMK = async (sol, {
-    equipmentKey
-  }) => {
-    const companyId = sol.companyId ?? sol.syncData?.company?.id ?? null;
-    if (!companyId) {
-      toast.error("Cannot sync: Bitdefender Company ID missing.");
-      return;
-    }
-    const clientId = client?.id ?? client?.uuid;
-    if (!clientId) {
-      toast.error("Client not identified.");
-      return;
-    }
-    setSyncingKey(equipmentKey);
-    if (typeof onAntivirusSyncStateChange === "function") {
-      onAntivirusSyncStateChange(true);
-    }
-    try {
-      const response = await fetch(`${API_BASE_URL}/bitdefender/sync/${companyId}`, {
-        method: "POST",
-        headers: {
-          ...getAuthHeaders(),
-          "Content-Type": "application/json"
-        },
-        credentials: "include"
-      });
-      if (!response.ok) {
-        const errData = await response.json().catch(() => ({}));
-        throw new Error(errData.error || `HTTP error: ${response.status}`);
-      }
-      const result = await response.json();
-      if (!result?.success || !result?.data) {
-        throw new Error(result?.error || "Error during synchronization");
-      }
-      const syncData = result.data;
-      const [statsResponse, enrichedResponse, policiesResponse] = await Promise.all([fetch(`${API_BASE_URL}/bitdefender/statistics/${companyId}`, {
-        headers: getAuthHeaders(),
-        credentials: "include"
-      }).catch(() => ({
-        ok: false
-      })), fetch(`${API_BASE_URL}/bitdefender/endpoints/${companyId}/enriched`, {
-        headers: getAuthHeaders(),
-        credentials: "include"
-      }).catch(() => ({
-        ok: false
-      })), fetch(`${API_BASE_URL}/bitdefender/policies/${companyId}`, {
-        headers: getAuthHeaders(),
-        credentials: "include"
-      }).catch(() => ({
-        ok: false
-      }))]);
-      const statsJson = statsResponse.ok ? await statsResponse.json() : null;
-      const stats = statsJson?.statistics || statsJson?.data || null;
-      const enrichedJson = enrichedResponse.ok ? await enrichedResponse.json() : null;
-      const enrichedEndpoints = enrichedJson?.endpoints || enrichedJson?.data?.endpoints || [];
-      const enrichedCompany = enrichedJson?.company || enrichedJson?.data?.company || syncData?.company || null;
-      const policiesJson = policiesResponse.ok ? await policiesResponse.json() : null;
-      const policiesList = extractPoliciesList(policiesJson?.policies || policiesJson?.data?.policies);
-      const baseEndpoints = syncData?.endpoints?.list || syncData?.endpoints || [];
-      const enrichedById = {};
-      enrichedEndpoints.forEach(ep => {
-        if (ep && ep.id != null) {
-          enrichedById[ep.id] = ep;
-        }
-      });
-      const policyById = {};
-      policiesList.forEach(p => {
-        if (p && p.id != null) {
-          policyById[p.id] = p;
-        }
-      });
-      const previousEndpoints = sol.endpoints || sol.syncData?.endpoints?.list || sol.syncData?.endpoints || [];
-      const makeKey = ep => {
-        if (!ep) return "";
-        if (ep.id != null) return `id:${String(ep.id)}`;
-        const name = ep.name || ep.computerName || "";
-        const ip = ep.ip || "";
-        const fqdn = ep.fqdn || "";
-        return `k:${name}|${ip}|${fqdn}`;
-      };
-      const mergedMap = new Map();
-      (Array.isArray(previousEndpoints) ? previousEndpoints : []).forEach(ep => {
-        const key = makeKey(ep);
-        if (!key) return;
-        mergedMap.set(key, ep);
-      });
-      baseEndpoints.forEach(ep => {
-        const key = makeKey(ep);
-        if (!key) return;
-        const existing = mergedMap.get(key) || {};
-        const enriched = ep && ep.id != null ? enrichedById[ep.id] || {} : {};
-        const endpointPolicy = enriched.policy || ep.policy || existing.policy || null;
-        let policyName = existing.policyName || null;
-        if (endpointPolicy && endpointPolicy.id != null && policyById[endpointPolicy.id]) {
-          policyName = policyById[endpointPolicy.id].name || null;
-        } else if (endpointPolicy && endpointPolicy.name) {
-          policyName = endpointPolicy.name;
-        }
-        const mergedEp = {
-          ...existing,
-          ...ep,
-          lastSeen: enriched.lastSeen ?? ep.lastSeen ?? existing.lastSeen,
-          modules: enriched.modules ?? ep.modules ?? existing.modules,
-          policy: endpointPolicy || existing.policy,
-          policyName: policyName || existing.policyName,
-          isInfected: enriched.isInfected ?? ep.isInfected ?? existing.isInfected,
-          endpointState: enriched.endpointState ?? ep.endpointState ?? existing.endpointState
-        };
-        mergedMap.set(key, mergedEp);
-      });
-      const mergedEndpoints = Array.from(mergedMap.values());
-      const solutionName = sol.solution || sol.logiciel || sol.nom || "GravityZone BitDefender";
-      const companyName = sol.companyName ?? enrichedCompany?.name ?? syncData?.company?.name ?? "";
-      const license = syncData?.license || stats || null;
-      const total = license?.totalLicenses ?? license?.raw?.totalSlots ?? license?.raw?.total ?? null;
-      const used = license?.usedLicenses ?? license?.raw?.usedSlots ?? license?.raw?.used ?? null;
-      const expirationDate = license?.expirationDate ?? license?.raw?.expiryDate ?? license?.raw?.expirationDate ?? null;
-      const expiration = expirationDate ? new Date(expirationDate).toISOString().split("T")[0] : "";
-      const putResponse = await fetch(`${API_BASE_URL}/bitdefender/antivirus/${clientId}`, {
-        method: "PUT",
-        headers: {
-          ...getAuthHeaders(),
-          "Content-Type": "application/json"
-        },
-        credentials: "include",
-        body: JSON.stringify({
-          item_key: `solution-${solutionName}-${companyId}`,
-          name: `${solutionName} #1`,
-          data: {
-            solution: solutionName,
-            companyId,
-            companyName,
-            licencesTotales: total != null ? String(total) : "",
-            licencesUtilisees: used != null ? String(used) : "",
-            expiration,
-            endpoints: Array.isArray(mergedEndpoints) ? mergedEndpoints : [],
-            syncData: {
-              company: enrichedCompany || syncData?.company || null,
-              license: license || null,
-              endpoints: mergedEndpoints,
-              policies: policiesList,
-              lastSync: new Date().toISOString()
-            }
-          }
-        })
-      });
-      if (!putResponse.ok) {
-        const errData = await putResponse.json().catch(() => ({}));
-        throw new Error(errData.error || "Error while saving");
-      }
-      const putResult = await putResponse.json();
-      if (putResult?.success !== true) {
-        throw new Error(putResult?.error || "Error while saving");
-      }
-      if (typeof onRefreshClient === "function") {
-        await onRefreshClient();
-      }
-      toast.success("Bitdefender synchronization successful. Data updated.");
-    } catch (err) {
-      console.error("Sync Bitdefender:", err);
-      toast.error(err?.message || "Error during Bitdefender synchronization.");
-    } finally {
-      setSyncingKey(null);
-      if (typeof onAntivirusSyncStateChange === "function") {
-        onAntivirusSyncStateChange(false);
-      }
-    }
-  };
+  const localSolutions = useMemo(() => antivirusList.filter(sol => !sol.companyId), [antivirusList]);
+  if (antivirusList.length === 0) {
+    return <MonitoringStepShell>
+        <div className={styles.antivirusModalNoData}>Aucune solution antivirus configurée.</div>
+      </MonitoringStepShell>;
+  }
   return <MonitoringStepShell>
-      <InfrastructureEquipmentTable title="Antivirus" moduleKey="Antivirus" equipments={antivirusList} columns={columns} onOpenComments={onOpenComments} onCreateTicket={onTicketCreatedForEquipment} clientId={client?.id ?? client?.uuid} commentCounts={commentCounts} ticketCounts={ticketCounts} alertCounts={alertCounts} highlightedEquipmentKey={highlightedEquipmentKey} reportPeriod={reportPeriod} showSearch={false} externalLink={{
-      url: "https://gravityzone.bitdefender.com/",
-      title: "Open Bitdefender GravityZone"
-    }} />
-
       {solutionsWithCompany.map(solution => {
       const item = normalizeAntivirusItem(solution) || solution;
       const companyId = item.companyId;
@@ -781,13 +607,6 @@ export default function AntivirusStep({
         }} antivirusItem={item} onSynced={typeof onRefreshClient === "function" ? onRefreshClient : undefined} />
           </div>;
     })}
-      {antivirusList.filter(sol => !sol.companyId).map(solution => {
-      const enrichedEndpointsSource = Array.isArray(solution.syncData?.endpoints?.list) && solution.syncData.endpoints.list || Array.isArray(solution.syncData?.endpoints) && solution.syncData.endpoints || Array.isArray(solution.endpoints) && solution.endpoints || [];
-      const policiesList = solution.syncData?.policies || solution.data?.policies || solution.policies || [];
-      if (!enrichedEndpointsSource.length && !extractPoliciesList(policiesList).length) return null;
-      return <div key={getSolutionName(solution)}>
-            <SolutionDetailBlock solution={solution} enrichedEndpoints={enrichedEndpointsSource} policiesList={policiesList} endpointSearch={endpointSearch} setEndpointSearch={setEndpointSearch} endpointSort={endpointSort} setEndpointSort={setEndpointSort} />
-          </div>;
-    })}
+      {localSolutions.map(solution => <AntivirusFallbackPanel key={getSolutionName(solution)} solution={solution} endpointSearch={endpointSearch} setEndpointSearch={setEndpointSearch} endpointSort={endpointSort} setEndpointSort={setEndpointSort} />)}
     </MonitoringStepShell>;
 }

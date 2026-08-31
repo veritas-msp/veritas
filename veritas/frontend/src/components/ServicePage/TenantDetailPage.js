@@ -24,6 +24,7 @@ import { getLicenseDisplayName } from "./TenantDetailTabs/utils";
 import { getTenantDetailCopy } from "./tenantDetailPageI18n";
 import { buildTenantReport, getConnectionOrganization, isConnectionOk } from "./tenantReportUtils";
 import { createTrackedAbortController } from "../../utils/pageLoadAbort";
+import { normalizeMfaList, pickMfaDetailsFromSnapshot } from "./mfaDetailsUtils";
 
 const TENANT_GROUPS = [
   { id: "overview" },
@@ -33,14 +34,19 @@ const TENANT_GROUPS = [
 
 const TENANT_SECTIONS = [
   { id: "rapport", group: "overview", icon: "mdi:view-dashboard-outline" },
-  { id: "utilisateurs", group: "identity", icon: "mdi:account-multiple" },
   { id: "licences", group: "identity", icon: "mdi:license" },
+  { id: "utilisateurs", group: "identity", icon: "mdi:account-multiple" },
   { id: "securite", group: "identity", icon: "mdi:shield-check" },
   { id: "exchange", group: "workloads", icon: "simple-icons:microsoftexchange" },
   { id: "sharepoint", group: "workloads", icon: "mdi:microsoft-sharepoint" },
   { id: "onedrive", group: "workloads", icon: "entypo-social:onedrive" },
   { id: "teams", group: "workloads", icon: "simple-icons:microsoftteams" }
 ];
+
+function resolveTenantSection(embedded, section) {
+  if (embedded && (!section || section === "rapport")) return "licences";
+  return section || "rapport";
+}
 
 export default function TenantDetailPage({
   onNavigate,
@@ -59,7 +65,7 @@ export default function TenantDetailPage({
   const [syncStatus, setSyncStatus] = useState("");
   const [statistics, setStatistics] = useState(null);
   const [lastSync, setLastSync] = useState(null);
-  const [viewMode, setViewMode] = useState(() => initialSection || "rapport");
+  const [viewMode, setViewMode] = useState(() => resolveTenantSection(embedded, initialSection));
   const [exchangeData, setExchangeData] = useState(null);
   const [teamsData, setTeamsData] = useState(null);
   const [onedriveData, setOnedriveData] = useState(null);
@@ -87,7 +93,7 @@ export default function TenantDetailPage({
       setConnectionStatus(null);
       setMfaDetails([]);
       setLastSync(null);
-      setViewMode(initialSection || "rapport");
+      setViewMode(resolveTenantSection(embedded, initialSection));
       setLoading(true);
       currentClientIdRef.current = newDetailData?.clientId || null;
       if (abortControllerRef.current) {
@@ -98,8 +104,11 @@ export default function TenantDetailPage({
   }, [tenantData?.clientId, detailData?.clientId]);
 
   useEffect(() => {
-    if (initialSection) setViewMode(initialSection);
-  }, [initialSection]);
+    if (initialSection) setViewMode(resolveTenantSection(embedded, initialSection));
+  }, [embedded, initialSection]);
+  useEffect(() => {
+    if (embedded && viewMode === "rapport") setViewMode("licences");
+  }, [embedded, viewMode]);
   useEffect(() => {
     currentClientIdRef.current = detailData?.clientId || null;
   }, [detailData?.clientId]);
@@ -125,12 +134,11 @@ export default function TenantDetailPage({
     if (!detailData?.clientId) return undefined;
     let cancelled = false;
     getClientMfaDetails(detailData.clientId).then((result) => {
-      if (!cancelled && result?.userMfaDetails) {
-        setMfaDetails(result.userMfaDetails);
+      const fromApi = normalizeMfaList(result?.userMfaDetails);
+      if (!cancelled && fromApi.length) {
+        setMfaDetails(fromApi);
       }
-    }).catch(() => {
-      if (!cancelled) setMfaDetails([]);
-    });
+    }).catch(() => {});
     return () => {
       cancelled = true;
     };
@@ -272,6 +280,10 @@ export default function TenantDetailPage({
                 });
               }
               setStatistics(tenantRecord.data);
+              const snapshotMfa = pickMfaDetailsFromSnapshot(tenantRecord.data);
+              if (snapshotMfa.length) {
+                setMfaDetails((prev) => (Array.isArray(prev) && prev.length ? prev : snapshotMfa));
+              }
             }
           }
         }
@@ -338,13 +350,18 @@ export default function TenantDetailPage({
 
   const navEntries = useMemo(() => {
     const entries = [];
+    const visibleSections = embedded
+      ? TENANT_SECTIONS.filter((section) => section.id !== "rapport")
+      : TENANT_SECTIONS;
     TENANT_GROUPS.forEach((group) => {
+      const groupSections = visibleSections.filter((section) => section.group === group.id);
+      if (groupSections.length === 0) return;
       entries.push({
         type: "group",
         key: `group-${group.id}`,
         label: copy.groups?.[group.id] || group.id
       });
-      TENANT_SECTIONS.filter((section) => section.group === group.id).forEach((section) => {
+      groupSections.forEach((section) => {
         entries.push({
           type: "section",
           key: section.id,
@@ -358,7 +375,7 @@ export default function TenantDetailPage({
       });
     });
     return entries;
-  }, [copy]);
+  }, [copy, embedded]);
 
   const handleSync = async () => {
     if (!detailData?.clientId) {
@@ -605,7 +622,7 @@ export default function TenantDetailPage({
 
   return <SolutionDetailPageLayout embedded={embedded} accent="microsoft" eyebrow={copy.hero.eyebrow} title={pageTitle} titleIcon="mdi:microsoft" subtitle={embedded ? (clientName || null) : subtitle} loading={loading && !syncing} refreshing={syncing} loadingMessage={syncStatus || (syncing ? copy.hero.syncing : copy.loading)} onRefresh={handleSync} refreshLabel={copy.hero.sync} extraActions={extraActions} footerHint={footerHint} navEntries={navEntries} activeSection={viewMode} onSectionChange={setViewMode} navAriaLabel={copy.tabs.aria}>
       <div className={styles.tenantVars} key={viewMode}>
-        {viewMode === "rapport" ? <TenantReportOverview report={report} copy={copy} onOpenTab={setViewMode} /> : null}
+        {viewMode === "rapport" && !embedded ? <TenantReportOverview report={report} copy={copy} onOpenTab={setViewMode} /> : null}
         {viewMode === "licences" ? <LicensesTab licences={licences} dashboardMetrics={dashboardMetrics} theme="light" getLicenseDisplayName={getLicenseDisplayName} /> : null}
         {viewMode === "utilisateurs" ? <UsersTab users={users} dashboardMetrics={dashboardMetrics} detailData={detailData} mfaDetails={mfaDetails} theme="light" /> : null}
         {viewMode === "exchange" ? <ExchangeTab exchangeData={exchangeData} theme="light" /> : null}

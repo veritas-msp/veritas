@@ -791,6 +791,7 @@ router.get("/data", verifyJWT, async (req, res) => {
         title: user.jobTitle || "",
         licenses: licenseNames,
         userPrincipalName: user.userPrincipalName,
+        id: user.id || null,
         lastLoginDate,
         accountEnabled: user.accountEnabled !== false,
         createdDate: user.createdDateTime || null,
@@ -3109,17 +3110,41 @@ router.get("/mfa-details/:clientId", verifyJWT, async (req, res) => {
         message: "No MFA details saved for this client"
       });
     }
-    const userMfaDetails = result.rows.map(row => ({
-      id: row.id,
-      displayName: row.display_name,
-      userPrincipalName: row.user_principal_name,
-      accountEnabled: row.account_enabled,
-      hasMFA: row.has_mfa,
-      mfaMethods: row.mfa_methods || [],
-      latestMfaRegistrationDate: row.latest_mfa_registration_date,
-      is_admin: row.is_admin,
-      admin_role: row.admin_role || null
-    }));
+    const userMfaDetails = result.rows.map(row => {
+      const methods = (() => {
+        const raw = row.mfa_methods;
+        if (Array.isArray(raw)) return raw;
+        if (raw && typeof raw === "object") return Object.values(raw);
+        if (typeof raw === "string") {
+          try {
+            const parsed = JSON.parse(raw);
+            return Array.isArray(parsed) ? parsed : [];
+          } catch {
+            return [];
+          }
+        }
+        return [];
+      })();
+      const hasMfa = row.has_mfa === true || row.has_mfa === "t" || row.has_mfa === "true" || methods.length > 0;
+      const isAdmin = row.is_admin === true || row.is_admin === "t" || row.is_admin === "true";
+      return {
+        id: row.id,
+        displayName: row.display_name,
+        userPrincipalName: row.user_principal_name,
+        email: row.user_principal_name,
+        accountEnabled: row.account_enabled,
+        has_mfa: hasMfa,
+        hasMfa: hasMfa,
+        hasMFA: hasMfa,
+        mfa_methods: methods,
+        mfaMethods: methods,
+        latestMfaRegistrationDate: row.latest_mfa_registration_date,
+        is_admin: isAdmin,
+        isAdmin: isAdmin,
+        admin_role: row.admin_role || null,
+        adminRole: row.admin_role || null
+      };
+    });
     res.json({
       success: true,
       userMfaDetails: userMfaDetails
@@ -3224,6 +3249,7 @@ async function fetchOffice365DataInternal(clientId, credentials) {
       const email = user.mail || user.userPrincipalName || "";
       const isServiceAccount = isLikelyServiceAccount(user.displayName, user.userPrincipalName, user.mail);
       return {
+        id: user.id || null,
         name,
         email,
         department: user.department || "",

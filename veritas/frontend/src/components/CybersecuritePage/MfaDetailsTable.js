@@ -7,6 +7,7 @@ import styles from "./MfaDetailsTable.module.css";
 import SmartTooltip from "../SmartTooltip";
 import { useAppLocale } from "../../hooks/useAppGeneralSettings";
 import { getCampaignDetailCopy, formatCampaignDetail } from "./campaignDetailI18n";
+import { normalizeMfaList, parseMfaMethods, userHasMfa, userIsAdmin } from "../ServicePage/mfaDetailsUtils";
 export default function MfaDetailsTable({
   clientId,
   onUpdate,
@@ -168,7 +169,7 @@ export default function MfaDetailsTable({
       setError(null);
       const result = await getClientMfaDetails(clientId);
       if (result.success) {
-        setMfaDetails(result.userMfaDetails || []);
+        setMfaDetails(normalizeMfaList(result.userMfaDetails));
       }
     } catch (err) {
       setError(err.message);
@@ -213,7 +214,7 @@ export default function MfaDetailsTable({
     }
   };
   const hasRealMfaMethods = user => {
-    return user.mfaMethods && user.mfaMethods.some(method => getMfaMethodIcon(method) !== null);
+    return userHasMfa(user) || parseMfaMethods(user?.mfaMethods || user?.mfa_methods).some(method => getMfaMethodIcon(method) !== null);
   };
   const isLikelyServiceAccountFromMfaUser = user => {
     const name = (user.displayName || '').toString();
@@ -573,7 +574,7 @@ export default function MfaDetailsTable({
                               </SmartTooltip>)}
                           </div>;
                 }
-                if (user.is_admin === true) {
+                if (userIsAdmin(user)) {
                   return <SmartTooltip content={tableCopy.isAdminTooltip} placement="top">
                             <span className={styles.mfaMethodIcon} title={tableCopy.isAdminTooltip}>
                               <Icon icon="mdi:shield-account-outline" />
@@ -586,7 +587,7 @@ export default function MfaDetailsTable({
               })()}
                   </td>
                   <td>
-                    {user.is_admin === true ? <FaCheck style={{
+                    {userIsAdmin(user) ? <FaCheck style={{
                 color: '#10b981',
                 fontSize: '1rem'
               }} title={tableCopy.isAdminTooltip} /> : <FaTimes style={{

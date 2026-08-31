@@ -1,12 +1,10 @@
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import React, { useCallback, useRef, useState } from "react";
 import { Icon } from "@iconify/react";
 import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, Legend as RechartsLegend } from "recharts";
 import { toast } from "react-toastify";
 import API_BASE_URL from "../../../../config";
-import { getIconPath } from "../../../../utils/assetHelper";
-import InfrastructureEquipmentTable from "../InfrastructureEquipmentTable";
-import AntispamSolutionModal from "../../../CybersecuritePage/AntispamSolutionModal";
 import { AntispamOverviewPanel } from "../../../EnterprisesPage/AntispamOverviewModal";
+import SolutionDetailPageLayout from "../../../EnterprisesPage/SolutionDetailPageLayout";
 import { isManualAntispamSolution, normalizeAntispamItem } from "../../../EnterprisesPage/antispamSolutionUtils";
 import styles from "../RapportMonitoringBuilder.module.css";
 import { MonitoringStepShell, MonitoringStepSubsectionHeader, MonitoringStepToolbarButton } from "../MonitoringStepLayout";
@@ -18,16 +16,6 @@ function normalizeAntispam(sol) {
     nom: name,
     name
   };
-}
-function formatExpiration(sol) {
-  const raw = sol.expiration ?? sol.expirityDate ?? null;
-  if (!raw) return "-";
-  try {
-    const d = new Date(raw);
-    return isNaN(d.getTime()) ? `${raw}` : d.toLocaleDateString("en-US");
-  } catch {
-    return `${raw}`;
-  }
 }
 function getAuthHeaders() {
   return {};
@@ -141,28 +129,15 @@ function parseStatsCSV(rows) {
 export default function AntispamStep(props) {
   const {
     client,
-    onRefreshClient,
-    onOpenComments,
-    onTicketCreatedForEquipment,
-    commentCounts = {},
-    ticketCounts = {},
-    alertCounts = {},
-    highlightedEquipmentKey,
-    reportPeriod
+    onRefreshClient
   } = props || {};
   const [isImporting, setIsImporting] = useState(false);
   const [targetSolution, setTargetSolution] = useState(null);
-  const [editAntispamModal, setEditAntispamModal] = useState({
-    open: false,
-    solution: null
-  });
   const [importedDataBySolutionId, setImportedDataBySolutionId] = useState({});
   const [usersSortBySolutionId, setUsersSortBySolutionId] = useState({});
-  const [statsSortBySolutionId, setStatsSortBySolutionId] = useState({});
   const [usersSearchBySolutionId, setUsersSearchBySolutionId] = useState({});
+  const [manualSectionById, setManualSectionById] = useState({});
   const fileInputRef = useRef(null);
-  const helpPopoverRef = useRef(null);
-  const [helpPopoverOpen, setHelpPopoverOpen] = useState(false);
   const rawAntispam = client?.equipements?.Antispam;
   let solutions = [];
   if (Array.isArray(rawAntispam)) {
@@ -171,16 +146,6 @@ export default function AntispamStep(props) {
     solutions = rawAntispam.solutions;
   }
   const antispamList = solutions.map(sol => normalizeAntispamItem(normalizeAntispam(sol)) || normalizeAntispam(sol));
-  useEffect(() => {
-    if (!helpPopoverOpen) return;
-    const onPointerDown = e => {
-      if (helpPopoverRef.current && !helpPopoverRef.current.contains(e.target)) {
-        setHelpPopoverOpen(false);
-      }
-    };
-    document.addEventListener("mousedown", onPointerDown);
-    return () => document.removeEventListener("mousedown", onPointerDown);
-  }, [helpPopoverOpen]);
   const handleImportedDataSave = useCallback(async (solution, file) => {
     if (!solution?.id) {
       toast.error("Cannot import: antispam ID not found.");
@@ -274,97 +239,27 @@ export default function AntispamStep(props) {
     await handleImportedDataSave(targetSolution, file);
     e.target.value = "";
   }, [targetSolution, handleImportedDataSave]);
-  const columns = [{
-    id: "solution",
-    label: "Solution",
-    render: sol => <span style={{
-      display: "inline-flex",
-      alignItems: "center",
-      gap: "0.35rem"
-    }}>
-          <img src={getIconPath("mailinblack.png")} alt="Mail In Black" style={{
-        width: 18,
-        height: 18,
-        objectFit: "contain",
-        borderRadius: 4
-      }} />
-          {sol.nom || sol.logiciel || sol.solution || "-"}
-        </span>
-  }, {
-    id: "company",
-    label: "Company",
-    render: () => client?.name || client?.nom || "-"
-  }, {
-    id: "utilisateurs",
-    label: "Protected users",
-    render: sol => sol.utilisateursProteges ?? sol.utilisateurs ?? sol.nombre_utilisateurs ?? "-"
-  }, {
-    id: "domaines",
-    label: "Monitored domains",
-    render: sol => {
-      const raw = sol.domainesSurveilles ?? sol.domaines ?? sol.licences ?? sol.nombre_licences;
-      return raw ?? "-";
-    }
-  }, {
-    id: "expiration",
-    label: "Expiration",
-    render: sol => formatExpiration(sol)
-  }];
   const getSolutionData = useCallback(solution => importedDataBySolutionId[solution?.id] || solution?.data || solution || {}, [importedDataBySolutionId]);
-  return <>
+  const linkedSolutions = antispamList.filter(sol => {
+    const item = normalizeAntispamItem(sol) || sol;
+    return Boolean(item?.customerId) && !isManualAntispamSolution(item);
+  });
+  const manualSolutions = antispamList.filter(sol => {
+    const item = normalizeAntispamItem(sol) || sol;
+    return !item?.customerId || isManualAntispamSolution(item);
+  });
+  if (antispamList.length === 0) {
+    return <MonitoringStepShell>
+        <div className={styles.antivirusModalNoData}>Aucune solution antispam configurée.</div>
+      </MonitoringStepShell>;
+  }
+  return <MonitoringStepShell>
       <input ref={fileInputRef} type="file" accept=".csv,text/csv" onChange={handleFileSelect} style={{
       display: "none"
     }} />
-      <InfrastructureEquipmentTable title="Antispam" moduleKey="Antispam" equipments={antispamList} columns={columns} onOpenComments={typeof onOpenComments === "function" ? onOpenComments : undefined} onCreateTicket={typeof onTicketCreatedForEquipment === "function" ? onTicketCreatedForEquipment : undefined} onEditEquipment={item => setEditAntispamModal({
-      open: true,
-      solution: item
-    })} clientId={client?.id ?? client?.uuid} commentCounts={commentCounts} ticketCounts={ticketCounts} alertCounts={alertCounts} highlightedEquipmentKey={highlightedEquipmentKey} reportPeriod={reportPeriod} headerActions={<>
-            <MonitoringStepToolbarButton icon="mdi:upload" label="Import a CSV" onClick={() => {
-        if (antispamList.length === 1) {
-          openImportForSolution(antispamList[0]);
-        } else if (antispamList.length > 1) {
-          toast.info("Select a solution in the table, then use the import icon in the Actions column.");
-        } else {
-          toast.info("No Antispam solution configured for this client.");
-        }
-      }} title="Import un fichier CSV Antispam" />
-            <div className={styles.firewallHelpWrap} ref={helpPopoverRef}>
-              <button type="button" className={styles.infraIconButton} aria-expanded={helpPopoverOpen} aria-haspopup="dialog" title="Aide export CSV Mail In Black" onClick={e => {
-          e.stopPropagation();
-          setHelpPopoverOpen(v => !v);
-        }}>
-                <Icon icon="mdi:help-circle-outline" />
-              </button>
-              {helpPopoverOpen ? <div className={styles.firewallHelpPopover} role="dialog" aria-label="Export CSV from Mail In Black">
-                  <p className={styles.firewallHelpPopoverTitle}>Export CSV (Mail In Black)</p>
-                  <ol className={styles.firewallHelpPopoverList}>
-                    <li>Connectez-vous au portail d&apos;administration.</li>
-                    <li>Go to the Reports / Statistics or Users menu.</li>
-                    <li>Filter the desired period and/or domain.</li>
-                    <li>Use the CSV export button (Export / Download).</li>
-                    <li>Importez ensuite le fichier ici dans Veritas.</li>
-                  </ol>
-                </div> : null}
-            </div>
-          </>} renderExtraActions={null} externalLink={{
-      url: "https://partner.mailinblack.com/login",
-      title: "Open Mail In Black"
-    }} />
 
-      {editAntispamModal.open && editAntispamModal.solution && client && <AntispamSolutionModal mode="edit" client={client} initialSolution={editAntispamModal.solution} onClose={() => setEditAntispamModal({
-      open: false,
-      solution: null
-    })} onSaved={() => {
-      if (typeof onRefreshClient === "function") onRefreshClient();
-      setEditAntispamModal({
-        open: false,
-        solution: null
-      });
-    }} />}
-
-      {antispamList.map(solution => {
+      {linkedSolutions.map(solution => {
       const item = normalizeAntispamItem(solution) || solution;
-      if (!item?.customerId) return null;
       return <div key={String(item.customerId)} className={styles.solutionOverviewEmbed}>
             <AntispamOverviewPanel active embedded client={{
           id: client?.id ?? client?.uuid,
@@ -373,19 +268,13 @@ export default function AntispamStep(props) {
           </div>;
     })}
 
-      {antispamList.map(solution => {
+      {manualSolutions.map(solution => {
       const item = normalizeAntispamItem(solution) || solution;
-      if (item?.customerId && !isManualAntispamSolution(item)) return null;
       const solutionKey = String(solution.id || solution.item_key || solution.nom || "antispam");
       const solutionData = getSolutionData(solution);
       const usersData = Array.isArray(solutionData?.usersData) ? solutionData.usersData : [];
       const statsData = Array.isArray(solutionData?.statsData) ? solutionData.statsData : [];
-      if (usersData.length === 0 && statsData.length === 0) return null;
       const usersSort = usersSortBySolutionId[solutionKey] || {
-        column: null,
-        direction: "asc"
-      };
-      const statsSort = statsSortBySolutionId[solutionKey] || {
         column: null,
         direction: "asc"
       };
@@ -427,61 +316,30 @@ export default function AntispamStep(props) {
           return usersSort.direction === "asc" ? cmp : -cmp;
         });
       })();
-      const sortedStats = (() => {
-        if (!statsSort.column) return statsData;
-        const getValue = s => {
-          switch (statsSort.column) {
-            case "period":
-              return String(s.period || "").toLowerCase();
-            case "valid":
-              return Number(s.valid || 0);
-            case "infected":
-              return Number(s.infected || 0);
-            case "spam":
-              return Number(s.spam || 0);
-            case "banned":
-              return Number(s.banned || 0);
-            case "spearphishing":
-              return Number(s.spearphishing || 0);
-            case "pending":
-              return Number(s.pending || 0);
-            case "total":
-              return Number(s.total || 0);
-            default:
-              return "";
-          }
-        };
-        return [...statsData].sort((a, b) => {
-          const va = getValue(a);
-          const vb = getValue(b);
-          if (typeof va === "number" && typeof vb === "number") {
-            return statsSort.direction === "asc" ? va - vb : vb - va;
-          }
-          const cmp = String(va).localeCompare(String(vb), "fr");
-          return statsSort.direction === "asc" ? cmp : -cmp;
-        });
-      })();
-      const aggregatedStats = statsData.reduce((acc, s) => ({
-        valid: acc.valid + (s.valid ?? 0),
-        infected: acc.infected + (s.infected ?? 0),
-        spam: acc.spam + (s.spam ?? 0),
-        banned: acc.banned + (s.banned ?? 0),
-        spearphishing: acc.spearphishing + (s.spearphishing ?? 0),
-        pending: acc.pending + (s.pending ?? 0),
-        total: acc.total + (s.total ?? 0)
-      }), {
-        valid: 0,
-        infected: 0,
-        spam: 0,
-        banned: 0,
-        spearphishing: 0,
-        pending: 0,
-        total: 0
-      });
-      return <MonitoringStepShell key={`imports-${solutionKey}`} className={styles.antivirusSolutionSections}>
-            {usersData.length > 0 && <div style={{
-          marginBottom: "1rem"
-        }}>
+      const navEntries = [{
+        type: "section",
+        key: "users",
+        section: {
+          id: "users",
+          icon: "mdi:account-group-outline",
+          label: "Utilisateurs"
+        }
+      }, {
+        type: "section",
+        key: "stats",
+        section: {
+          id: "stats",
+          icon: "mdi:chart-line",
+          label: "Statistiques"
+        }
+      }];
+      const section = navEntries.some(entry => entry.section.id === manualSectionById[solutionKey]) ? manualSectionById[solutionKey] : navEntries[0]?.section.id || "users";
+      return <div key={`imports-${solutionKey}`} className={styles.solutionOverviewEmbed}>
+            <SolutionDetailPageLayout embedded accent="mailinblack" title={item.nom || item.logiciel || "Antispam"} titleIcon="mdi:email-secure-outline" navEntries={navEntries} activeSection={section} onSectionChange={next => setManualSectionById(prev => ({
+          ...prev,
+          [solutionKey]: next
+        }))} navAriaLabel="Sections" extraActions={<MonitoringStepToolbarButton icon={isImporting ? "mdi:loading" : "mdi:upload"} label="Importer un CSV" onClick={() => openImportForSolution(solution)} title="Importer un fichier CSV Antispam" disabled={isImporting} />}>
+            {section === "users" ? usersData.length > 0 ? <div>
                 <MonitoringStepSubsectionHeader title={`Users (${sortedUsers.length}${usersData.length !== sortedUsers.length ? ` / ${usersData.length}` : ""})`} searchValue={usersSearch} onSearchChange={value => setUsersSearchBySolutionId(prev => ({
             ...prev,
             [solutionKey]: value
@@ -530,102 +388,9 @@ export default function AntispamStep(props) {
                     </tbody>
                   </table>
                 </div>
-              </div>}
+              </div> : <div className={styles.antivirusModalNoData}>Aucun utilisateur importé. Importez un CSV pour afficher la liste.</div> : null}
 
-            {statsData.length > 0 && <div style={{
-          marginBottom: "1rem"
-        }}>
-                <h5 className={styles.stepSectionTitle}>
-                  Statistics ({statsData.length} periods)
-                </h5>
-
-                <div style={{
-            display: "flex",
-            flexWrap: "wrap",
-            gap: "1rem",
-            alignItems: "stretch",
-            marginTop: "0.5rem",
-            marginBottom: "1rem"
-          }}>
-                  {[{
-              icon: "mdi:email",
-              label: "Total emails",
-              value: aggregatedStats.total
-            }, {
-              icon: "mdi:check-circle",
-              label: "Emails valides",
-              value: aggregatedStats.valid
-            }, {
-              icon: "mdi:email-alert",
-              label: "Spam",
-              value: aggregatedStats.spam
-            }, {
-              icon: "mdi:shield-lock",
-              label: "Blocked (banned)",
-              value: aggregatedStats.banned
-            }, {
-              icon: "mdi:target-account",
-              label: "Spearphishing",
-              value: aggregatedStats.spearphishing
-            }, {
-              icon: "mdi:timer-sand",
-              label: "Pending",
-              value: aggregatedStats.pending
-            }].map((card, idx) => <div key={idx} style={{
-              flex: "1 1 220px",
-              minWidth: 0,
-              border: "1px solid #e5e7eb",
-              borderRadius: 8,
-              padding: "0.75rem 1rem",
-              display: "flex",
-              alignItems: "center",
-              gap: "0.75rem",
-              background: "#ffffff"
-            }}>
-                      <div style={{
-                width: 32,
-                height: 32,
-                borderRadius: 999,
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                background: "#f3f4f6",
-                color: "#4b5563",
-                flexShrink: 0
-              }}>
-                        <Icon icon={card.icon} width={18} height={18} />
-                      </div>
-                      <div style={{
-                display: "flex",
-                flexDirection: "column",
-                gap: "0.15rem",
-                minWidth: 0
-              }}>
-                        <div style={{
-                  fontSize: "1.1rem",
-                  fontWeight: 700,
-                  color: "#111827"
-                }}>
-                          {typeof card.value === "number" ? card.value.toLocaleString() : "N/A"}
-                        </div>
-                        <div style={{
-                  fontSize: "0.75rem",
-                  textTransform: "uppercase",
-                  letterSpacing: "0.06em",
-                  color: "#6b7280"
-                }}>
-                          {card.label}
-                        </div>
-                      </div>
-                    </div>)}
-                </div>
-
-                {sortedStats.length > 0 && <div style={{
-            marginTop: "0.5rem"
-          }}>
-                    <h5 className={styles.antivirusModalSubtitle}>
-                      Trend by period
-                    </h5>
+            {section === "stats" ? statsData.length > 0 ? <div>
                     <div style={{
               background: "#ffffff",
               borderRadius: 10,
@@ -634,7 +399,7 @@ export default function AntispamStep(props) {
               height: 280
             }}>
                       <ResponsiveContainer width="100%" height="100%">
-                        <LineChart data={sortedStats.map(s => ({
+                        <LineChart data={statsData.map(s => ({
                   periode: s.period || "",
                   valides: s.valid ?? 0,
                   infectes: s.infected ?? 0,
@@ -667,9 +432,9 @@ export default function AntispamStep(props) {
                         </LineChart>
                       </ResponsiveContainer>
                     </div>
-                  </div>}
-              </div>}
-          </MonitoringStepShell>;
+              </div> : <div className={styles.antivirusModalNoData}>Aucune statistique importée. Importez un CSV pour afficher le graphique.</div> : null}
+          </SolutionDetailPageLayout>
+          </div>;
     })}
-    </>;
+    </MonitoringStepShell>;
 }

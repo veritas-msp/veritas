@@ -9,6 +9,7 @@ import API_BASE_URL from "../../../config";
 import { scoreToLetter, scoreToLabel, letterToColor, letterToBackground } from "../../../utils/gradeUtils";
 import { getIconPath } from "../../../utils/assetHelper";
 import { getClientMfaDetails } from "../../../api/clientOffice365";
+import { normalizeMfaList } from "../../ServicePage/mfaDetailsUtils";
 import DashboardTab from "./O365Tabs/DashboardTab";
 import LicensesTab from "./O365Tabs/LicencesTab";
 import UsersTab from "./O365Tabs/UtilisateursTab";
@@ -268,7 +269,7 @@ const O365 = ({
     let cancelled = false;
     getClientMfaDetails(clientId).then(result => {
       if (!cancelled && result?.userMfaDetails) {
-        setMfaDetails(result.userMfaDetails);
+        setMfaDetails(normalizeMfaList(result.userMfaDetails));
       }
     }).catch(() => {
       if (!cancelled) setMfaDetails([]);

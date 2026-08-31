@@ -10,6 +10,7 @@ import API_BASE_URL from "../../config.js";
 import styles from "./MicrosoftSecurityStats.module.css";
 import { useAppLocale } from "../../hooks/useAppGeneralSettings";
 import { getCampaignDetailCopy, formatCampaignDetail } from "./campaignDetailI18n";
+import { normalizeMfaList } from "../ServicePage/mfaDetailsUtils";
 export default function MicrosoftSecurityStats({
   campaign,
   clientId,
@@ -275,7 +276,7 @@ export default function MicrosoftSecurityStats({
     try {
       const result = await getClientMfaDetails(clientId);
       if (result.success && result.userMfaDetails) {
-        setMfaUserData(result.userMfaDetails);
+        setMfaUserData(normalizeMfaList(result.userMfaDetails));
       }
     } catch (error) {
       console.error('Error while loading des data MFA utilisateurs:', error);

@@ -507,21 +507,31 @@ export async function fetchPortalMfaDetails(clientId) {
       WHERE client_id = $1
       ORDER BY display_name ASC
     `, [clientId]);
-    return result.rows.map(row => ({
+    return result.rows.map(row => {
+      const methods = Array.isArray(row.mfa_methods)
+        ? row.mfa_methods
+        : typeof row.mfa_methods === "string"
+          ? (() => { try { const parsed = JSON.parse(row.mfa_methods); return Array.isArray(parsed) ? parsed : []; } catch { return []; } })()
+          : [];
+      const hasMfa = row.has_mfa === true;
+      const isAdmin = row.is_admin === true;
+      return {
       id: row.id,
       displayName: row.display_name,
       userPrincipalName: row.user_principal_name,
       email: row.user_principal_name,
       accountEnabled: row.account_enabled,
-      has_mfa: row.has_mfa,
-      hasMfa: row.has_mfa,
-      hasMFA: row.has_mfa,
-      mfa_methods: row.mfa_methods || [],
-      mfaMethods: row.mfa_methods || [],
-      is_admin: row.is_admin === true,
-      isAdmin: row.is_admin === true,
-      admin_role: row.admin_role || null
-    }));
+      has_mfa: hasMfa,
+      hasMfa: hasMfa,
+      hasMFA: hasMfa,
+      mfa_methods: methods,
+      mfaMethods: methods,
+      is_admin: isAdmin,
+      isAdmin: isAdmin,
+      admin_role: row.admin_role || null,
+      adminRole: row.admin_role || null
+    };
+    });
   } catch (err) {
     if (err.code === "42P01") return [];
     console.error("fetchPortalMfaDetails", err.message);

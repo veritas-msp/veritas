@@ -2393,28 +2393,9 @@
 .solutionOverviewEmbed {
   min-width: 0;
   width: 100%;
+  min-height: 640px;
 }
 
 .solutionOverviewEmbed :global(.msp-page-grid) {
   min-height: 0;
-}
-
-.solutionCommentBar {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
-  align-items: center;
-}
-
-.solutionCommentChip {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.3rem;
-  padding: 0.3rem 0.5rem;
-  border: 1px solid var(--msp-border, #d5deea);
-  border-radius: 10px;
-  background: var(--msp-surface, #fff);
-  font-size: 0.78rem;
-  font-weight: 600;
-  color: var(--msp-muted, #5c6b82);
 }

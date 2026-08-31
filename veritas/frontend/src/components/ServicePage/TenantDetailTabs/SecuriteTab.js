@@ -5,6 +5,7 @@ import API_BASE_URL from '../../../config';
 import { sanitizeRemediationHtml } from '../../../utils/sanitizeHtml';
 import styles from '../TenantDetailPage.module.css';
 import enterpriseStyles from '../../EnterprisesPage/EnterprisesPage.module.css';
+import { getMfaUserForUser, getMfaMethods, userHasMfa, userIsAdmin } from '../mfaDetailsUtils';
 function isLikelyServiceAccountFromUser(user) {
   const name = (user.name || user.displayName || '').toString();
   const upn = (user.userPrincipalName || user.email || '').toString();
@@ -12,29 +13,6 @@ function isLikelyServiceAccountFromUser(user) {
   const combined = `${name} ${upn} ${email}`.toLowerCase();
   const patterns = [/aad_/, /msol_/, /sync_/, /svc_/, /service_/, /\$@/, /_srv/, /_service/, /_sync/, /compte de service|service account|compte service/, /bot\./, /bot@/, /connector/, /automation/, /azure ad sync|ad sync|dirsync|aadconnect|dir sync/, /directory synchronization|synchronization service|on-premises/, /healthmailbox|systemmailbox|federatedemail/];
   return patterns.some(p => p.test(combined));
-}
-function getMfaUserForUser(user, mfaDetails) {
-  const upn = (user.userPrincipalName || user.email || '').toLowerCase().trim();
-  const userId = user.id;
-  return mfaDetails.find(m => {
-    const mUpn = (m.userPrincipalName || m.user_principal_name || '').toLowerCase().trim();
-    if (mUpn && upn && mUpn === upn) return true;
-    if (userId && m.id && String(m.id) === String(userId)) return true;
-    return false;
-  }) || null;
-}
-const IGNORED_MFA_METHODS = new Set(['passwordauthenticationmethod', 'windowshelloforbusinessauthenticationmethod']);
-function userHasMfa(mfaUser) {
-  if (!mfaUser) return false;
-  if (mfaUser.has_mfa === true) return true;
-  const methods = mfaUser.mfa_methods || mfaUser.mfaMethods || [];
-  if (!Array.isArray(methods)) return false;
-  return methods.some(m => !IGNORED_MFA_METHODS.has(m));
-}
-function getMethodsFromMfaUser(mfaUser) {
-  const methods = mfaUser?.mfa_methods || mfaUser?.mfaMethods || [];
-  if (!Array.isArray(methods)) return [];
-  return methods.filter(m => !IGNORED_MFA_METHODS.has(m));
 }
 const MFA_METHOD_LABELS = {
   microsoftauthenticatorauthenticationmethod: 'Authenticator',
@@ -257,14 +235,14 @@ export default function SecuriteTab({
       const mfaUser = getMfaUserForUser(user, mfaDetails);
       if (!mfaUser) return;
       const hasMfa = userHasMfa(mfaUser);
-      const methods = getMethodsFromMfaUser(mfaUser);
+      const methods = getMfaMethods(mfaUser);
       if (hasMfa) {
         usersWithMFA += 1;
         methods.forEach(m => {
           totalMethodCounts[m] = (totalMethodCounts[m] || 0) + 1;
         });
       } else usersWithoutMFA += 1;
-      if (mfaUser.is_admin === true) {
+      if (userIsAdmin(mfaUser)) {
         adminsTotal += 1;
         if (hasMfa) {
           adminsWithMFA += 1;

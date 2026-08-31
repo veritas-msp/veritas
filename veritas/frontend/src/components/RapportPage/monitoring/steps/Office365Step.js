@@ -389,7 +389,7 @@ function getAuthHeaders() {
   return {};
 }
 function mapHighlightedKeyToTenantSection(key) {
-  if (!key || typeof key !== "string") return "rapport";
+  if (!key || typeof key !== "string") return "licences";
   if (key === "Office365:exchange") return "exchange";
   if (key === "Office365:teams") return "teams";
   if (key === "Office365:onedrive") return "onedrive";
@@ -397,75 +397,11 @@ function mapHighlightedKeyToTenantSection(key) {
   if (key === "Office365:security") return "securite";
   if (key.startsWith("Office365:licence:")) return "licences";
   if (key.startsWith("Office365:user:")) return "utilisateurs";
-  return "rapport";
-}
-function Office365SectionComments({
-  onOpenComments,
-  onTicketCreatedForEquipment,
-  commentCounts = {},
-  ticketCounts = {}
-}) {
-  const sections = [{
-    key: "Office365",
-    label: "Tenant",
-    nom: "Office 365"
-  }, {
-    key: "Office365:exchange",
-    label: "Exchange",
-    nom: "Exchange"
-  }, {
-    key: "Office365:teams",
-    label: "Teams",
-    nom: "Teams"
-  }, {
-    key: "Office365:onedrive",
-    label: "OneDrive",
-    nom: "OneDrive"
-  }, {
-    key: "Office365:sharepoint",
-    label: "SharePoint",
-    nom: "SharePoint"
-  }, {
-    key: "Office365:security",
-    label: "Sécurité",
-    nom: "Sécurité"
-  }];
-  if (typeof onOpenComments !== "function" && typeof onTicketCreatedForEquipment !== "function") return null;
-  return <div className={styles.solutionCommentBar}>
-      {sections.map(section => {
-      const commentCount = commentCounts[section.key] || 0;
-      const ticketCount = ticketCounts[section.key] || 0;
-      const item = {
-        nom: section.nom,
-        name: section.nom
-      };
-      return <div key={section.key} className={styles.solutionCommentChip}>
-            <span>{section.label}</span>
-            {typeof onOpenComments === "function" ? <button type="button" className={styles.infraIconButton} title={`${section.label} — commentaires`} onClick={() => onOpenComments(item, {
-          moduleKey: "Office365",
-          equipmentKey: section.key
-        })}>
-                <Icon icon="mdi:comment-text-outline" />
-                {commentCount > 0 ? <span className={styles.infraCommentBadge}>{commentCount}</span> : null}
-              </button> : null}
-            {typeof onTicketCreatedForEquipment === "function" ? <button type="button" className={styles.infraIconButton} title={`${section.label} — ticket`} onClick={() => onTicketCreatedForEquipment(item, {
-          moduleKey: "Office365",
-          equipmentKey: section.key
-        })}>
-                <Icon icon="mdi:ticket-outline" />
-                {ticketCount > 0 ? <span className={styles.infraTicketBadge}>{ticketCount}</span> : null}
-              </button> : null}
-          </div>;
-    })}
-    </div>;
+  return "licences";
 }
 function Office365AttachedDetail({
   client,
   reportPeriod,
-  onOpenComments,
-  onTicketCreatedForEquipment,
-  commentCounts,
-  ticketCounts,
   highlightedEquipmentKey
 }) {
   const tenantData = buildMicrosoftTenantDetailNavigationPayload(client);
@@ -475,7 +411,6 @@ function Office365AttachedDetail({
     end: client?.reportEndDate
   };
   return <MonitoringStepShell>
-      <Office365SectionComments onOpenComments={onOpenComments} onTicketCreatedForEquipment={onTicketCreatedForEquipment} commentCounts={commentCounts} ticketCounts={ticketCounts} />
       <div className={styles.solutionOverviewEmbed}>
         <TenantDetailPage tenantData={tenantData} embedded reportPeriod={period} initialSection={initialSection} />
       </div>
