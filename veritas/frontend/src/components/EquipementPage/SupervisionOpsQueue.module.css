@@ -506,6 +506,202 @@ th.actionsCol {
   color: #a8d4ff;
 }
 
+.choiceOverlay {
+  position: fixed;
+  inset: 0;
+  z-index: var(--modal-overlay-z-index, 12000);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.25rem;
+  background: rgba(10, 22, 40, 0.55);
+  backdrop-filter: blur(10px);
+}
+
+.choiceShell {
+  width: min(420px, 100%);
+  display: flex;
+  flex-direction: column;
+  border-radius: 18px;
+  overflow: hidden;
+  background: var(--msp-surface, #fff);
+  border: 1px solid var(--msp-border, #dde3ed);
+  box-shadow: 0 24px 64px rgba(10, 22, 40, 0.24);
+}
+
+.choiceHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 1rem 1.1rem;
+  border-bottom: 1px solid var(--msp-border-light, #eef2f7);
+  background: var(--msp-surface-2, #f8fafc);
+}
+
+.choiceHeaderMain {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  min-width: 0;
+}
+
+.choiceIconWrap {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  flex-shrink: 0;
+  border-radius: 11px;
+  background: rgba(43, 95, 171, 0.1);
+  border: 1px solid rgba(43, 95, 171, 0.18);
+  color: var(--msp-accent, #2b5fab);
+  font-size: 1.25rem;
+}
+
+.choiceTitle {
+  margin: 0;
+  font-size: 1.02rem;
+  font-weight: 700;
+  color: var(--msp-text, #0f1c2e);
+}
+
+.choiceSubtitle {
+  margin: 0.3rem 0 0;
+  font-size: 0.82rem;
+  color: var(--msp-muted, #5c6b82);
+  line-height: 1.4;
+}
+
+.choiceClose {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--msp-muted, #5c6b82);
+  border-radius: 9px;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.choiceClose:hover {
+  border-color: var(--msp-border, #e2e8f0);
+  background: var(--msp-surface, #fff);
+  color: var(--msp-text, #0f1c2e);
+}
+
+.choiceList {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  padding: 0.9rem 1.1rem 1.1rem;
+}
+
+.choiceOption {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  width: 100%;
+  padding: 0.75rem 0.85rem;
+  border: 1px solid var(--msp-border, #dde3ed);
+  border-radius: 12px;
+  background: var(--msp-surface, #fff);
+  text-align: left;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.choiceOption:hover {
+  border-color: rgba(43, 95, 171, 0.4);
+  background: rgba(43, 95, 171, 0.06);
+}
+
+.choiceOptionIcon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  flex-shrink: 0;
+  border-radius: 10px;
+  background: var(--msp-surface-2, #f8fafc);
+  color: var(--msp-accent, #2b5fab);
+  font-size: 1.15rem;
+}
+
+.choiceOptionBody {
+  min-width: 0;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.choiceOptionTitle {
+  font-size: 0.88rem;
+  font-weight: 650;
+  color: var(--msp-text, #0f1c2e);
+}
+
+.choiceOptionDesc {
+  font-size: 0.75rem;
+  color: var(--msp-muted, #5c6b82);
+  line-height: 1.35;
+}
+
+.choiceOptionChevron {
+  flex-shrink: 0;
+  color: var(--msp-muted, #5c6b82);
+  font-size: 1.15rem;
+}
+
+:global(html.dark) .choiceShell {
+  background: var(--msp-surface, #1a2540);
+  border-color: var(--msp-border, #2f4260);
+}
+
+:global(html.dark) .choiceHeader {
+  background: var(--msp-surface-2, #152035);
+  border-color: var(--msp-border, #2f4260);
+}
+
+:global(html.dark) .choiceTitle,
+:global(html.dark) .choiceOptionTitle {
+  color: var(--msp-text, #e8edf5);
+}
+
+:global(html.dark) .choiceSubtitle,
+:global(html.dark) .choiceOptionDesc,
+:global(html.dark) .choiceOptionChevron,
+:global(html.dark) .choiceClose {
+  color: var(--msp-muted, #8fa8c4);
+}
+
+:global(html.dark) .choiceClose:hover {
+  background: var(--msp-surface, #1a2540);
+  border-color: var(--msp-border, #2f4260);
+  color: var(--msp-text, #e8edf5);
+}
+
+:global(html.dark) .choiceOption {
+  background: var(--msp-surface, #1a2540);
+  border-color: var(--msp-border, #2f4260);
+}
+
+:global(html.dark) .choiceOption:hover {
+  background: rgba(90, 143, 212, 0.12);
+  border-color: rgba(90, 143, 212, 0.4);
+}
+
+:global(html.dark) .choiceOptionIcon {
+  background: var(--msp-surface-2, #152035);
+  color: #a8d4ff;
+}
+
 :global(html:not(.dark)) .toolbar,
 :global(html:not(.dark)) .tableWrap {
   background: var(--msp-surface, #fff);

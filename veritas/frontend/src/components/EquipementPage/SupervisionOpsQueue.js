@@ -1,8 +1,11 @@
 import { Icon } from "@iconify/react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { createPortal } from "react-dom";
+import { FaTimes } from "react-icons/fa";
 import MspEmptyState from "../Misc/MspEmptyState/MspEmptyState";
 import SmartTooltip from "../SmartTooltip";
 import { interpolate } from "../../i18n/translate";
+import { useCommonCopy } from "../../hooks/useCommonCopy";
 import styles from "./SupervisionOpsQueue.module.css";
 
 function toneClass(tone, severity) {
@@ -76,6 +79,79 @@ function QueueActionButton({
     </SmartTooltip>;
 }
 
+function RemediationChoiceModal({
+  item,
+  copy,
+  onClose,
+  onSupport,
+  onPresta,
+  onPlan
+}) {
+  const common = useCommonCopy();
+  const modal = copy.createModal || {};
+  useEffect(() => {
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    const onKey = event => {
+      if (event.key === "Escape") onClose?.();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener("keydown", onKey);
+    };
+  }, [onClose]);
+  const options = [{
+    id: "support",
+    icon: "mdi:message-processing-outline",
+    title: copy.actions?.support,
+    description: modal.supportDesc,
+    onPick: onSupport
+  }, {
+    id: "presta",
+    icon: "mdi:briefcase-outline",
+    title: copy.actions?.presta,
+    description: modal.prestaDesc,
+    onPick: onPresta
+  }, {
+    id: "plan",
+    icon: "mdi:calendar-plus",
+    title: copy.actions?.plan,
+    description: modal.planDesc,
+    onPick: onPlan
+  }];
+  return createPortal(<div className={styles.choiceOverlay} onClick={onClose} role="presentation">
+      <div className={styles.choiceShell} onClick={event => event.stopPropagation()} role="dialog" aria-modal="true" aria-labelledby="supervision-create-title">
+        <header className={styles.choiceHeader}>
+          <div className={styles.choiceHeaderMain}>
+            <div className={styles.choiceIconWrap} aria-hidden>
+              <Icon icon="mdi:plus" />
+            </div>
+            <div>
+              <h2 id="supervision-create-title" className={styles.choiceTitle}>{modal.title}</h2>
+              {item?.title ? <p className={styles.choiceSubtitle}>{item.title}</p> : modal.subtitle ? <p className={styles.choiceSubtitle}>{modal.subtitle}</p> : null}
+            </div>
+          </div>
+          <button type="button" className={styles.choiceClose} onClick={onClose} aria-label={common.close}>
+            <FaTimes />
+          </button>
+        </header>
+        <div className={styles.choiceList}>
+          {options.map(option => <button key={option.id} type="button" className={styles.choiceOption} onClick={() => option.onPick?.(item)}>
+              <span className={styles.choiceOptionIcon} aria-hidden>
+                <Icon icon={option.icon} />
+              </span>
+              <span className={styles.choiceOptionBody}>
+                <span className={styles.choiceOptionTitle}>{option.title}</span>
+                {option.description ? <span className={styles.choiceOptionDesc}>{option.description}</span> : null}
+              </span>
+              <Icon icon="mdi:chevron-right" className={styles.choiceOptionChevron} aria-hidden />
+            </button>)}
+        </div>
+      </div>
+    </div>, document.getElementById("modal-root") || document.body);
+}
+
 function SortableHeader({
   column,
   label,
@@ -125,6 +201,7 @@ export default function SupervisionOpsQueue({
   onTicketPresta,
   onPlanEvent,
   onAck,
+  onUnack,
   onResolve,
   onDismiss,
   busyId = null,
@@ -135,6 +212,12 @@ export default function SupervisionOpsQueue({
   const columns = copy.columns || {};
   const [sortKey, setSortKey] = useState(null);
   const [sortDir, setSortDir] = useState("asc");
+  const [createItem, setCreateItem] = useState(null);
+  const closeCreateModal = () => setCreateItem(null);
+  const pickCreate = (handler, item) => {
+    setCreateItem(null);
+    handler?.(item);
+  };
   const handleSort = column => {
     if (sortKey === column) {
       setSortDir(prev => prev === "asc" ? "desc" : "asc");
@@ -247,7 +330,8 @@ export default function SupervisionOpsQueue({
     count: workflowCounts.linked || 0
   }];
 
-  return <div className={styles.root}>
+  return <>
+    <div className={styles.root}>
       <div className={styles.toolbar} data-guide="supervision-filters">
         <label className={styles.searchBox}>
           <Icon icon="mdi:magnify" aria-hidden />
@@ -347,10 +431,8 @@ export default function SupervisionOpsQueue({
                     </td>
                     <td className={styles.actionsCol} onClick={e => e.stopPropagation()}>
                       <div className={styles.rowActions} role="group" aria-label={copy.actionsAria || "Actions"}>
-                        {wf === "open" ? <QueueActionButton hint={actionHint(copy, "ack")} label={copy.actions.ack} icon="mdi:eye-check-outline" disabled={busy} onClick={() => onAck?.(item)} /> : null}
-                        <QueueActionButton hint={actionHint(copy, "support")} label={copy.actions.support} icon="mdi:message-processing-outline" disabled={busy} onClick={() => onTicketSupport?.(item)} />
-                        <QueueActionButton hint={actionHint(copy, "presta")} label={copy.actions.presta} icon="mdi:briefcase-outline" disabled={busy} onClick={() => onTicketPresta?.(item)} />
-                        <QueueActionButton hint={actionHint(copy, "plan")} label={copy.actions.plan} icon="mdi:calendar-plus" disabled={busy} onClick={() => onPlanEvent?.(item)} />
+                        {wf === "open" ? <QueueActionButton hint={actionHint(copy, "ack")} label={copy.actions.ack} icon="mdi:eye-check-outline" disabled={busy} onClick={() => onAck?.(item)} /> : wf === "acked" ? <QueueActionButton hint={actionHint(copy, "unack")} label={copy.actions.unack} icon="mdi:account-remove-outline" disabled={busy} onClick={() => onUnack?.(item)} /> : null}
+                        <QueueActionButton hint={actionHint(copy, "create")} label={copy.actions.create} icon="mdi:plus" disabled={busy} onClick={() => setCreateItem(item)} />
                         <QueueActionButton hint={actionHint(copy, "resolve")} label={copy.actions.resolve} icon="mdi:check-circle-outline" disabled={busy} onClick={() => onResolve?.(item)} />
                         <QueueActionButton hint={actionHint(copy, "dismiss")} label={copy.actions.dismiss} icon="mdi:close-circle-outline" disabled={busy} onClick={() => onDismiss?.(item)} />
                         <QueueActionButton hint={actionHint(copy, "open")} label={copy.actions.open} icon="mdi:open-in-new" primary onClick={() => onOpenItem?.(item)} />
@@ -361,5 +443,7 @@ export default function SupervisionOpsQueue({
             </tbody>
           </table>
         </div>}
-    </div>;
+    </div>
+    {createItem ? <RemediationChoiceModal item={createItem} copy={copy} onClose={closeCreateModal} onSupport={item => pickCreate(onTicketSupport, item)} onPresta={item => pickCreate(onTicketPresta, item)} onPlan={item => pickCreate(onPlanEvent, item)} /> : null}
+  </>;
 }

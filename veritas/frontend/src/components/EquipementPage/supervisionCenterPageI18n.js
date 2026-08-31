@@ -90,19 +90,30 @@ const SUPERVISION_COPY = {
         support: "Ticket Support",
         presta: "Ticket Presta",
         plan: "Planifier",
+        create: "Créer",
         open: "Ouvrir",
         ack: "Prendre en charge",
+        unack: "Rendre",
         resolve: "Résoudre",
         dismiss: "Ignorer"
       },
       actionHints: {
         ack: "Prendre en charge cette alerte",
+        unack: "Rendre cette alerte et me retirer de la prise en charge",
+        create: "Créer un ticket ou planifier un événement",
         support: "Créer un ticket Support lié à cette alerte",
         presta: "Créer un ticket Presta lié à cette alerte",
         plan: "Planifier un événement lié à cette alerte",
         resolve: "Marquer comme résolue et envoyer dans l'historique",
         dismiss: "Ignorer l'alerte et l'envoyer dans l'historique",
         open: "Ouvrir la fiche ou le détail lié"
+      },
+      createModal: {
+        title: "Créer une remédiation",
+        subtitle: "Choisissez le type d'action à lier à cette alerte.",
+        supportDesc: "Ouvrir un ticket Support lié à l'alerte",
+        prestaDesc: "Ouvrir un ticket Presta lié à l'alerte",
+        planDesc: "Planifier un événement lié à l'alerte"
       },
       columns: {
         alert: "Alerte",
@@ -115,6 +126,7 @@ const SUPERVISION_COPY = {
       },
       toasts: {
         acked: "Alerte prise en charge",
+        unacked: "Alerte rendue — plus personne n'est assigné",
         resolved: "Alerte résolue — déplacée dans l'historique",
         dismissed: "Alerte ignorée — déplacée dans l'historique",
         linked: "Remédiation liée à l'alerte",
@@ -155,7 +167,7 @@ const SUPERVISION_COPY = {
       actions: {
         opened: "Ouverte",
         ack: "Prise en charge",
-        unack: "Ack annulé",
+        unack: "Rendue",
         link: "Remédiation liée",
         resolved: "Résolue",
         dismissed: "Ignorée",
@@ -448,19 +460,30 @@ const SUPERVISION_COPY = {
         support: "Support ticket",
         presta: "Service ticket",
         plan: "Schedule",
+        create: "Create",
         open: "Open",
         ack: "Acknowledge",
+        unack: "Release",
         resolve: "Resolve",
         dismiss: "Dismiss"
       },
       actionHints: {
         ack: "Acknowledge this alert — mark that you are handling it",
+        unack: "Release this alert and unassign yourself",
+        create: "Create a ticket or schedule an event",
         support: "Create a Support ticket linked to this alert",
         presta: "Create a Service ticket linked to this alert",
         plan: "Schedule a planning event linked to this alert",
         resolve: "Mark as resolved and move to history",
         dismiss: "Dismiss the alert and move it to history",
         open: "Open the related record or details"
+      },
+      createModal: {
+        title: "Create a remediation",
+        subtitle: "Choose the action to link to this alert.",
+        supportDesc: "Open a Support ticket linked to the alert",
+        prestaDesc: "Open a Service ticket linked to the alert",
+        planDesc: "Schedule an event linked to the alert"
       },
       columns: {
         alert: "Alert",
@@ -473,6 +496,7 @@ const SUPERVISION_COPY = {
       },
       toasts: {
         acked: "Alert acknowledged",
+        unacked: "Alert released — no longer assigned",
         resolved: "Alert resolved — moved to history",
         dismissed: "Alert dismissed — moved to history",
         linked: "Remediation linked to alert",
@@ -513,7 +537,7 @@ const SUPERVISION_COPY = {
       actions: {
         opened: "Opened",
         ack: "Acknowledged",
-        unack: "Unacknowledged",
+        unack: "Released",
         link: "Remediation linked",
         resolved: "Resolved",
         dismissed: "Dismissed",
@@ -806,19 +830,30 @@ const SUPERVISION_COPY = {
         support: "Support-Ticket",
         presta: "Service-Ticket",
         plan: "Planen",
+        create: "Erstellen",
         open: "Öffnen",
         ack: "Bestätigen",
+        unack: "Freigeben",
         resolve: "Lösen",
         dismiss: "Ignorieren"
       },
       actionHints: {
         ack: "Diesen Alarm bestätigen (übernehmen)",
+        unack: "Diesen Alarm freigeben und sich selbst entfernen",
+        create: "Ticket erstellen oder Termin planen",
         support: "Support-Ticket zu diesem Alarm erstellen",
         presta: "Service-Ticket zu diesem Alarm erstellen",
         plan: "Termin zu diesem Alarm planen",
         resolve: "Als gelöst markieren und in den Verlauf verschieben",
         dismiss: "Alarm ignorieren und in den Verlauf verschieben",
         open: "Zugehörigen Datensatz oder Details öffnen"
+      },
+      createModal: {
+        title: "Maßnahme erstellen",
+        subtitle: "Wählen Sie die Aktion, die mit diesem Alarm verknüpft wird.",
+        supportDesc: "Support-Ticket zu diesem Alarm öffnen",
+        prestaDesc: "Service-Ticket zu diesem Alarm öffnen",
+        planDesc: "Termin zu diesem Alarm planen"
       },
       columns: {
         alert: "Alarm",
@@ -831,6 +866,7 @@ const SUPERVISION_COPY = {
       },
       toasts: {
         acked: "Alarm bestätigt",
+        unacked: "Alarm freigegeben — niemand mehr zugewiesen",
         resolved: "Alarm gelöst — in den Verlauf verschoben",
         dismissed: "Alarm ignoriert — in den Verlauf verschoben",
         linked: "Maßnahme mit Alarm verknüpft",
@@ -871,7 +907,7 @@ const SUPERVISION_COPY = {
       actions: {
         opened: "Geöffnet",
         ack: "Bestätigt",
-        unack: "Bestätigung aufgehoben",
+        unack: "Freigegeben",
         link: "Maßnahme verknüpft",
         resolved: "Gelöst",
         dismissed: "Ignoriert",
@@ -1164,19 +1200,30 @@ const SUPERVISION_COPY = {
         support: "Ticket Support",
         presta: "Ticket Presta",
         plan: "Pianifica",
+        create: "Crea",
         open: "Apri",
         ack: "Prendi in carico",
+        unack: "Rilascia",
         resolve: "Risolvi",
         dismiss: "Ignora"
       },
       actionHints: {
         ack: "Prendi in carico questo allarme (ack)",
+        unack: "Rilascia questo allarme e rimuoviti dall'assegnazione",
+        create: "Crea un ticket o pianifica un evento",
         support: "Crea un ticket Support collegato a questo allarme",
         presta: "Crea un ticket Presta collegato a questo allarme",
         plan: "Pianifica un evento collegato a questo allarme",
         resolve: "Segna come risolto e sposta in cronologia",
         dismiss: "Ignora l'allarme e spostalo in cronologia",
         open: "Apri la scheda o il dettaglio collegato"
+      },
+      createModal: {
+        title: "Crea un rimedio",
+        subtitle: "Scegli l'azione da collegare a questo allarme.",
+        supportDesc: "Apri un ticket Support collegato all'allarme",
+        prestaDesc: "Apri un ticket Presta collegato all'allarme",
+        planDesc: "Pianifica un evento collegato all'allarme"
       },
       columns: {
         alert: "Allarme",
@@ -1189,6 +1236,7 @@ const SUPERVISION_COPY = {
       },
       toasts: {
         acked: "Allarme preso in carico",
+        unacked: "Allarme rilasciato — nessuno più assegnato",
         resolved: "Allarme risolto — spostato in cronologia",
         dismissed: "Allarme ignorato — spostato in cronologia",
         linked: "Rimedio collegato all'allarme",
@@ -1229,7 +1277,7 @@ const SUPERVISION_COPY = {
       actions: {
         opened: "Aperto",
         ack: "Preso in carico",
-        unack: "Ack annullato",
+        unack: "Rilasciato",
         link: "Rimedio collegato",
         resolved: "Risolto",
         dismissed: "Ignorato",
@@ -1521,19 +1569,30 @@ const SUPERVISION_COPY = {
         support: "Ticket Soporte",
         presta: "Ticket Presta",
         plan: "Planificar",
+        create: "Crear",
         open: "Abrir",
         ack: "Acusar recibo",
+        unack: "Liberar",
         resolve: "Resolver",
         dismiss: "Ignorar"
       },
       actionHints: {
         ack: "Acusar recibo de esta alerta (tomar cargo)",
+        unack: "Liberar esta alerta y quitarme de la asignación",
+        create: "Crear un ticket o planificar un evento",
         support: "Crear un ticket Soporte vinculado a esta alerta",
         presta: "Crear un ticket Presta vinculado a esta alerta",
         plan: "Planificar un evento vinculado a esta alerta",
         resolve: "Marcar como resuelta y enviar al historial",
         dismiss: "Ignorar la alerta y enviarla al historial",
         open: "Abrir la ficha o el detalle vinculado"
+      },
+      createModal: {
+        title: "Crear una remediación",
+        subtitle: "Elija la acción a vincular a esta alerta.",
+        supportDesc: "Abrir un ticket Soporte vinculado a la alerta",
+        prestaDesc: "Abrir un ticket Presta vinculado a la alerta",
+        planDesc: "Planificar un evento vinculado a la alerta"
       },
       columns: {
         alert: "Alerta",
@@ -1546,6 +1605,7 @@ const SUPERVISION_COPY = {
       },
       toasts: {
         acked: "Alerta acusada",
+        unacked: "Alerta liberada — ya no hay nadie asignado",
         resolved: "Alerta resuelta — movida al historial",
         dismissed: "Alerta ignorada — movida al historial",
         linked: "Remediación vinculada a la alerta",
@@ -1586,7 +1646,7 @@ const SUPERVISION_COPY = {
       actions: {
         opened: "Abierta",
         ack: "Acusada",
-        unack: "Ack anulado",
+        unack: "Liberada",
         link: "Remediación vinculada",
         resolved: "Resuelta",
         dismissed: "Ignorada",

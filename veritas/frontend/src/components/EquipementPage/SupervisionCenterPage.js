@@ -16,6 +16,7 @@ import SupervisionAlertHistory from "./SupervisionAlertHistory";
 import PlanningEventModalBridge from "../PlanningPage/PlanningEventModalBridge";
 import {
   ackSupervisionAlert,
+  unackSupervisionAlert,
   dismissSupervisionAlert,
   ensureSupervisionAlertsSeen,
   fetchSupervisionAlertStates,
@@ -271,6 +272,7 @@ export default function MonitoringCenterPage({
     }
   }, [applyAlertResult, pageCopy.ops, refreshHistory]);
   const handleAckAlert = useCallback(item => runAlertAction(item, i => ackSupervisionAlert(i), "acked"), [runAlertAction]);
+  const handleUnackAlert = useCallback(item => runAlertAction(item, i => unackSupervisionAlert(i), "unacked"), [runAlertAction]);
   const handleResolveAlert = useCallback(item => runAlertAction(item, i => resolveSupervisionAlert(i), "resolved"), [runAlertAction]);
   const handleDismissAlert = useCallback(item => runAlertAction(item, i => dismissSupervisionAlert(i), "dismissed"), [runAlertAction]);
   const linkRemediation = useCallback(async (item, link) => {
@@ -381,7 +383,7 @@ export default function MonitoringCenterPage({
             <div className={`${layout.shell} ${layout.shellFull} ${styles.contentShell}`}>
               {activeTab === "operations" && !error ? <div className={`${dashStyles.dashboard} ${styles.dashboard}`} data-guide="supervision-ops">
                   <div className={`${cyberStyles.tabContent} ${styles.content}`}>
-                    <SupervisionOpsQueue items={filteredQueue} kpi={severityCounts} workflowCounts={workflowCounts} severityFilter={opsSeverityFilter} workflowFilter={opsWorkflowFilter} searchQuery={opsSearchQuery} onSeverityFilter={setOpsSeverityFilter} onWorkflowFilter={setOpsWorkflowFilter} onSearchChange={setOpsSearchQuery} onOpenItem={handleOpenQueueItem} onTicketSupport={handleTicketSupport} onTicketPresta={handleTicketPresta} onPlanEvent={handlePlanEvent} onAck={handleAckAlert} onResolve={handleResolveAlert} onDismiss={handleDismissAlert} busyId={alertActionBusyId} localeTag={localeTag} copy={pageCopy.ops} showDomain={false} />
+                    <SupervisionOpsQueue items={filteredQueue} kpi={severityCounts} workflowCounts={workflowCounts} severityFilter={opsSeverityFilter} workflowFilter={opsWorkflowFilter} searchQuery={opsSearchQuery} onSeverityFilter={setOpsSeverityFilter} onWorkflowFilter={setOpsWorkflowFilter} onSearchChange={setOpsSearchQuery} onOpenItem={handleOpenQueueItem} onTicketSupport={handleTicketSupport} onTicketPresta={handleTicketPresta} onPlanEvent={handlePlanEvent} onAck={handleAckAlert} onUnack={handleUnackAlert} onResolve={handleResolveAlert} onDismiss={handleDismissAlert} busyId={alertActionBusyId} localeTag={localeTag} copy={pageCopy.ops} showDomain={false} />
                   </div>
                 </div> : null}
 
