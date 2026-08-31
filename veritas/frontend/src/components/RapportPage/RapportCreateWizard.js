@@ -174,7 +174,7 @@ export default function ReportCreateWizard({
       </nav>
 
       {step === "client" ? <section className={styles.stageSplit} data-guide="report-client">
-          <div className={styles.stageLeft}>
+          <div className={`${styles.stageLeft} ${selectedClient && !showClientList ? styles.stageLeftRecap : ""}`.trim()}>
             <header className={styles.stageHeader}>
               <h2 className={styles.stageTitle}>{wizard.clientTitle}</h2>
               <p className={styles.stageHint}>{wizard.clientHint}</p>
@@ -216,10 +216,12 @@ export default function ReportCreateWizard({
                 <div className={styles.recapScroll}>
                   <ReportEnterpriseRecap client={selectedClient} copy={copy} openTicketCount={openTicketCount} openTicketLoading={openTicketLoading} sites={clientSites} sitesLoading={sitesLoading} embedded onChangeClient={handleChangeClient} changeLabel={wizard.changeClient} />
                 </div>
-                <button type="button" className={styles.continueBtn} onClick={handleContinue}>
-                  {wizard.formatContinueWith(selectedClientName)}
-                  <Icon icon="mdi:arrow-right" aria-hidden />
-                </button>
+                <div className={styles.continueRow}>
+                  <button type="button" className={styles.continueBtn} onClick={handleContinue}>
+                    {wizard.formatContinueWith(selectedClientName)}
+                    <Icon icon="mdi:arrow-right" aria-hidden />
+                  </button>
+                </div>
               </> : null}
           </div>
 
@@ -260,15 +262,9 @@ export default function ReportCreateWizard({
         </section> : null}
 
       {step === "type" ? <section className={`${styles.stage} ${styles.stageTypes}`} data-guide="report-types">
-          <header className={styles.stageHeaderRow}>
-            <div className={styles.stageHeader}>
-              <h2 className={styles.stageTitle}>{wizard.typeTitle}</h2>
-              <p className={styles.stageHint}>{wizard.typeHint}</p>
-            </div>
-            {selectedClient ? <button type="button" className={styles.clientChip} onClick={handleChangeClient}>
-                <span>{getClientName(selectedClient, copy)}</span>
-                <span className={styles.clientChipAction}>{wizard.changeClient}</span>
-              </button> : null}
+          <header className={styles.stageHeader}>
+            <h2 className={styles.stageTitle}>{wizard.typeTitle}</h2>
+            <p className={styles.stageHint}>{wizard.typeHint}</p>
           </header>
 
           <div className={styles.typeGrid} role="list">
@@ -285,21 +281,12 @@ export default function ReportCreateWizard({
                     if (!comingSoon) onStartReport(type.id);
                   }}
                 >
-                <span className={styles.typeCardTop}>
-                  <span className={`${styles.typeCardIcon} ${comingSoon ? styles.typeCardIconSoon : ""}`} aria-hidden>
-                    <Icon icon={type.icon} />
-                  </span>
-                  {comingSoon ? <span className={styles.typeCardBadge}>{copy.create.badgeSoon}</span> : null}
+                {comingSoon ? <span className={styles.typeCardBadge}>{copy.create.badgeSoon}</span> : null}
+                <span className={`${styles.typeCardIcon} ${comingSoon ? styles.typeCardIconSoon : ""}`} aria-hidden>
+                  <Icon icon={type.icon} />
                 </span>
                 <span className={styles.typeCardTitle}>{type.title}</span>
                 <span className={styles.typeCardDescription}>{type.description}</span>
-                {Array.isArray(type.steps) && type.steps.length > 0 ? <span className={styles.typeCardSteps}>
-                    {type.steps.map(stepLabel => <span key={stepLabel}>{stepLabel}</span>)}
-                  </span> : null}
-                <span className={`${styles.typeCardAction} ${comingSoon ? styles.typeCardActionSoon : ""}`}>
-                  {comingSoon ? copy.create.badgeSoon : wizard.startReport}
-                  {comingSoon ? null : <Icon icon="mdi:arrow-right" aria-hidden />}
-                </span>
               </button>;
             })}
           </div>

@@ -25,6 +25,7 @@ import { getTenantDetailCopy } from "./tenantDetailPageI18n";
 import { buildTenantReport, getConnectionOrganization, isConnectionOk } from "./tenantReportUtils";
 import { createTrackedAbortController } from "../../utils/pageLoadAbort";
 import { normalizeMfaList, pickMfaDetailsFromSnapshot } from "./mfaDetailsUtils";
+import { filterExchangeDataByPeriod, filterTeamsDataByPeriod } from "./TenantDetailTabs/office365Period";
 
 const TENANT_GROUPS = [
   { id: "overview" },
@@ -336,17 +337,26 @@ export default function TenantDetailPage({
     };
   }, [users, licences]);
 
+  const periodExchangeData = useMemo(
+    () => filterExchangeDataByPeriod(exchangeData, reportPeriod),
+    [exchangeData, reportPeriod]
+  );
+  const periodTeamsData = useMemo(
+    () => filterTeamsDataByPeriod(teamsData, reportPeriod),
+    [teamsData, reportPeriod]
+  );
+
   const report = useMemo(() => buildTenantReport({
     users,
     licences,
     securityData,
     mfaDetails,
-    exchangeData,
+    exchangeData: periodExchangeData,
     sharepointData,
     onedriveData,
-    teamsData,
+    teamsData: periodTeamsData,
     adoptionScore
-  }), [users, licences, securityData, mfaDetails, exchangeData, sharepointData, onedriveData, teamsData, adoptionScore]);
+  }), [users, licences, securityData, mfaDetails, periodExchangeData, sharepointData, onedriveData, periodTeamsData, adoptionScore]);
 
   const navEntries = useMemo(() => {
     const entries = [];
@@ -621,15 +631,15 @@ export default function TenantDetailPage({
     </div>;
 
   return <SolutionDetailPageLayout embedded={embedded} accent="microsoft" eyebrow={copy.hero.eyebrow} title={pageTitle} titleIcon="mdi:microsoft" subtitle={embedded ? (clientName || null) : subtitle} loading={loading && !syncing} refreshing={syncing} loadingMessage={syncStatus || (syncing ? copy.hero.syncing : copy.loading)} onRefresh={embedded ? undefined : handleSync} refreshLabel={copy.hero.sync} extraActions={extraActions} footerHint={footerHint} navEntries={navEntries} activeSection={viewMode} onSectionChange={setViewMode} navAriaLabel={copy.tabs.aria}>
-      <div className={styles.tenantVars} key={viewMode}>
+      <div className={`${styles.tenantVars} ${embedded ? styles.tenantVarsFill : ""}`} key={viewMode}>
         {viewMode === "rapport" && !embedded ? <TenantReportOverview report={report} copy={copy} onOpenTab={setViewMode} /> : null}
         {viewMode === "licences" ? <LicensesTab licences={licences} dashboardMetrics={dashboardMetrics} theme="light" getLicenseDisplayName={getLicenseDisplayName} /> : null}
-        {viewMode === "utilisateurs" ? <UsersTab users={users} dashboardMetrics={dashboardMetrics} detailData={detailData} mfaDetails={mfaDetails} theme="light" /> : null}
-        {viewMode === "exchange" ? <ExchangeTab exchangeData={exchangeData} theme="light" /> : null}
-        {viewMode === "teams" ? <TeamsTab teamsData={teamsData} theme="light" /> : null}
-        {viewMode === "onedrive" ? <OneDriveTab onedriveData={onedriveData} theme="light" /> : null}
-        {viewMode === "sharepoint" ? <SharePointTab sharepointData={sharepointData} theme="light" /> : null}
-        {viewMode === "securite" ? <SecuriteTab securityData={securityData} users={users} mfaDetails={mfaDetails} clientId={detailData?.clientId} theme="light" /> : null}
+        {viewMode === "utilisateurs" ? <UsersTab users={users} dashboardMetrics={dashboardMetrics} detailData={detailData} mfaDetails={mfaDetails} theme="light" embedded={embedded} /> : null}
+        {viewMode === "exchange" ? <ExchangeTab exchangeData={periodExchangeData} theme="light" /> : null}
+        {viewMode === "teams" ? <TeamsTab teamsData={periodTeamsData} theme="light" embedded={embedded} /> : null}
+        {viewMode === "onedrive" ? <OneDriveTab onedriveData={onedriveData} theme="light" embedded={embedded} /> : null}
+        {viewMode === "sharepoint" ? <SharePointTab sharepointData={sharepointData} theme="light" embedded={embedded} /> : null}
+        {viewMode === "securite" ? <SecuriteTab securityData={securityData} users={users} mfaDetails={mfaDetails} clientId={detailData?.clientId} theme="light" embedded={embedded} /> : null}
       </div>
     </SolutionDetailPageLayout>;
 }

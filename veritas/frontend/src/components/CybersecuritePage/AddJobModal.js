@@ -4,7 +4,7 @@ import { Icon } from "@iconify/react";
 import { FaTimes } from "react-icons/fa";
 import { toast } from "react-toastify";
 import { fetchClientModules, saveClientModules } from "../../api/clients";
-import { isBackupJobActive, normalizeServeurLieList } from "../EnterprisesPage/backupJobUtils";
+import { isBackupJobActive, normalizeServeurLieList, pickBackupJobType } from "../EnterprisesPage/backupJobUtils";
 import MultiSuggestPicker from "../AdminPage/MultiSuggestPicker";
 import styles from "./InstanceSauvegardeModal.module.css";
 const generateUUID = () => {
@@ -169,7 +169,7 @@ export default function AddJobModal({
       nom: initialJob.nom || initialJob.jobName || "",
       serveurLie: normalizeServeurLieList(initialJob.serveurLie || initialJob.source),
       stockageLie: initialJob.destination || initialJob.stockageLie || "",
-      type: initialJob.type || initialJob.typeBackup || "",
+      type: pickBackupJobType(initialJob),
       regularite: initialJob.regularite || "",
       horaire: initialJob.horaire || (initialJob.horaire === 0 ? "00:00" : "") || "",
       retention: initialJob.retention || "",
@@ -198,7 +198,7 @@ export default function AddJobModal({
     try {
       const data = await fetchClientModules(clientId);
       const eq = data.equipements || {};
-      const currentInstances = eq.Backup?.instances || [];
+      const currentInstances = eq.Sauvegarde?.instances || eq.Backup?.instances || [];
       if (isEdit && initialJob) {
         const jobId = initialJob.id;
         const updatedJob = {
@@ -208,6 +208,7 @@ export default function AddJobModal({
           stockageLie: isHycu ? "" : form.stockageLie || "",
           destination: isHycu ? "Datacenter PSI" : form.stockageLie || "",
           type: form.type || "",
+          typeBackup: form.type || "",
           regularite: form.regularite || "",
           horaire: form.horaire || "",
           retention: form.retention || "",
@@ -224,7 +225,7 @@ export default function AddJobModal({
         await saveClientModules(clientId, {
           equipements: {
             ...eq,
-            Backup: {
+            Sauvegarde: {
               instances: updatedInstances
             }
           }
@@ -238,6 +239,7 @@ export default function AddJobModal({
           stockageLie: isHycu ? "" : form.stockageLie || "",
           destination: isHycu ? "Datacenter PSI" : form.stockageLie || "",
           type: form.type || "",
+          typeBackup: form.type || "",
           regularite: form.regularite || "",
           horaire: form.horaire || "",
           retention: form.retention || "",
@@ -255,7 +257,7 @@ export default function AddJobModal({
         await saveClientModules(clientId, {
           equipements: {
             ...eq,
-            Backup: {
+            Sauvegarde: {
               instances: updatedInstances
             }
           }

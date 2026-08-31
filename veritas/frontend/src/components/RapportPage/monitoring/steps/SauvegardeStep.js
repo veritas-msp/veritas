@@ -7,7 +7,8 @@ import equipmentStyles from "../../../EquipementPage/EquipmentPage.module.css";
 import API_BASE_URL from "../../../../config";
 import styles from "../RapportMonitoringBuilder.module.css";
 import { MonitoringStepShell, MonitoringStepSection, MonitoringStepTableWrap } from "../MonitoringStepLayout";
-import { formatServeurLieLabel } from "../../../EnterprisesPage/backupJobUtils";
+import { formatServeurLieLabel, pickBackupJobType, pickBackupJobDestination } from "../../../EnterprisesPage/backupJobUtils";
+import { getBackupJobStatus, getBackupJobStatusLabel, getBackupJobStatusTitle, getBackupJobRowStyle, normalizeBackupJobForStatus } from "../../../CybersecuritePage/backupJobStatusUtils";
 function formatDate(raw) {
   if (!raw) return "-";
   try {
@@ -25,14 +26,6 @@ function formatDateTime(raw) {
   } catch {
     return `${raw}`;
   }
-}
-function getStatusLabel(status) {
-  const s = String(status || "").toUpperCase();
-  if (s === "SUCCESS") return "Succes";
-  if (s === "WARNING") return "Warning";
-  if (s === "FAIL" || s === "FAILED") return "Error";
-  if (s === "RUNNING") return "In progress";
-  return s || "-";
 }
 function renderInstanceIcon(inst) {
   if (inst.logiciel === "Veeam") {
@@ -58,8 +51,10 @@ function renderInstanceIcon(inst) {
     verticalAlign: "middle"
   }} />;
 }
-function getAuthHeaders() {
-  return {};
+function getBackupInstanceEquipmentKey(inst, instances = []) {
+  const idx = Array.isArray(instances) ? instances.indexOf(inst) : -1;
+  const instanceName = inst?.nom || inst?.logiciel || (idx >= 0 ? `instance-${idx}` : inst?.id || "instance");
+  return inst?.commentKey || (inst?.id != null ? `Backup:instance:${inst.id}` : `Backup:instance:${instanceName}`);
 }
 export default function BackupStep({
   client,
@@ -162,6 +157,33 @@ export default function BackupStep({
     label: "Contacts",
     icon: "mdi:contacts-outline"
   }];
+  const renderInstanceActions = inst => {
+    const instanceLabel = inst.nom || inst.logiciel || "Instance";
+    const equipmentKey = getBackupInstanceEquipmentKey(inst, instances);
+    const commentCount = commentCounts?.[equipmentKey] ?? 0;
+    const item = {
+      ...inst,
+      nom: instanceLabel,
+      name: instanceLabel,
+      commentKey: equipmentKey
+    };
+    return <div className={equipmentStyles.mappingActions}>
+        <div className={equipmentStyles.mappingActionsGroup}>
+          {typeof onOpenComments === "function" ? <span className={styles.infraActionBadgeWrap}>
+              <button type="button" className={equipmentStyles.mappingActionButton} title={commentCount > 0 ? "Voir / ajouter une note au rapport" : "Commenter dans le rapport"} onClick={() => onOpenComments(item, {
+            moduleKey: "Backup",
+            equipmentKey
+          })}>
+                <Icon icon="mdi:comment-text-outline" width={16} height={16} />
+              </button>
+              {commentCount > 0 ? <span className={styles.infraCommentBadge}>{commentCount}</span> : null}
+            </span> : null}
+          <button type="button" className={equipmentStyles.mappingActionButton} title="Modifier l’instance" onClick={() => openBackupConfig(inst)}>
+            <Icon icon="mdi:pencil" width={16} height={16} />
+          </button>
+        </div>
+      </div>;
+  };
   const renderStandardInstanceTable = (list, title) => {
     if (!list || list.length === 0) return null;
     return <MonitoringStepSection title={title} count={list.length}>
@@ -179,7 +201,9 @@ export default function BackupStep({
               const jobs = Array.isArray(inst.jobs) ? inst.jobs : [];
               const instanceLabel = inst.nom || inst.logiciel || `Instance ${idx + 1}`;
               const server = inst.server || inst.serveur || inst.serveurLie || "-";
-              return <tr key={inst.id || idx} className={`${equipmentStyles.equipmentRow} ${equipmentStyles.equipmentRowEmbedded}`}>
+              const equipmentKey = getBackupInstanceEquipmentKey(inst, instances);
+              const isHighlighted = highlightedEquipmentKey != null && String(highlightedEquipmentKey) === String(equipmentKey);
+              return <tr key={inst.id || idx} className={`${equipmentStyles.equipmentRow} ${equipmentStyles.equipmentRowEmbedded} ${isHighlighted ? styles.infraTableRowHighlight : ""}`}>
                     <td>
                       <span style={{
                     display: "inline-flex",
@@ -194,9 +218,7 @@ export default function BackupStep({
                     <td>{inst.expiration ? formatDate(inst.expiration) : "-"}</td>
                     <td>{jobs.length}</td>
                     <td onClick={e => e.stopPropagation()}>
-                      <button type="button" className={equipmentStyles.mappingActionButton} title="Modifier l’instance" onClick={() => openBackupConfig(inst)}>
-                        <Icon icon="mdi:pencil" width={16} height={16} />
-                      </button>
+                      {renderInstanceActions(inst)}
                     </td>
                   </tr>;
             })}
@@ -222,7 +244,9 @@ export default function BackupStep({
               const modules = inst.activeBackupModules || {};
               const storage = inst.activeBackupStorage || "-";
               const instanceLabel = inst.nom || inst.logiciel || `Instance ${idx + 1}`;
-              return <tr key={inst.id || idx} className={`${equipmentStyles.equipmentRow} ${equipmentStyles.equipmentRowEmbedded}`}>
+              const equipmentKey = getBackupInstanceEquipmentKey(inst, instances);
+              const isHighlighted = highlightedEquipmentKey != null && String(highlightedEquipmentKey) === String(equipmentKey);
+              return <tr key={inst.id || idx} className={`${equipmentStyles.equipmentRow} ${equipmentStyles.equipmentRowEmbedded} ${isHighlighted ? styles.infraTableRowHighlight : ""}`}>
                     <td>{instanceLabel}</td>
                     <td>
                       <span style={{
@@ -244,9 +268,7 @@ export default function BackupStep({
                     </td>
                     <td>{storage}</td>
                     <td onClick={e => e.stopPropagation()}>
-                      <button type="button" className={equipmentStyles.mappingActionButton} title="Modifier l’instance" onClick={() => openBackupConfig(inst)}>
-                        <Icon icon="mdi:pencil" width={16} height={16} />
-                      </button>
+                      {renderInstanceActions(inst)}
                     </td>
                   </tr>;
             })}
@@ -277,15 +299,15 @@ export default function BackupStep({
               const instanceLabel = inst.nom || inst.logiciel || `Instance ${idx + 1}`;
               const source = formatNas(inst.hyperbackupSource);
               const dest = formatNas(inst.hyperbackupDestination);
-              return <tr key={inst.id || idx} className={`${equipmentStyles.equipmentRow} ${equipmentStyles.equipmentRowEmbedded}`}>
+              const equipmentKey = getBackupInstanceEquipmentKey(inst, instances);
+              const isHighlighted = highlightedEquipmentKey != null && String(highlightedEquipmentKey) === String(equipmentKey);
+              return <tr key={inst.id || idx} className={`${equipmentStyles.equipmentRow} ${equipmentStyles.equipmentRowEmbedded} ${isHighlighted ? styles.infraTableRowHighlight : ""}`}>
                     <td>{instanceLabel}</td>
                     <td>{source}</td>
                     <td>{dest}</td>
                     <td>{jobs.length}</td>
                     <td onClick={e => e.stopPropagation()}>
-                      <button type="button" className={equipmentStyles.mappingActionButton} title="Modifier l’instance" onClick={() => openBackupConfig(inst)}>
-                        <Icon icon="mdi:pencil" width={16} height={16} />
-                      </button>
+                      {renderInstanceActions(inst)}
                     </td>
                   </tr>;
             })}
@@ -307,7 +329,7 @@ export default function BackupStep({
           <table className={equipmentStyles.equipmentTableEmbedded}>
             <thead>
               <tr>
-                {["Name", "Backup type", "Instance", "Server", "Destination", "Frequency", "Schedule", "Retention", "Last backup", "Duration", "Last sync", "Last status", "Actions"].map(label => <th key={label}>
+                {["Name", "Backup type", "Instance", "Server", "Destination", "Frequency", "Schedule", "Retention", "Last backup", "Last sync", "Last status", "Actions"].map(label => <th key={label}>
                     <span className={equipmentStyles.thContent}>{label}</span>
                   </th>)}
               </tr>
@@ -326,29 +348,13 @@ export default function BackupStep({
                 ...job
               };
               const lastBackupStart = job.last_backup_start ?? job.lastBackupStart ?? job.last_backup_date ?? job.lastBackupDate;
-              const lastBackupDuration = job.last_backup_duration ?? job.lastBackupDuration;
               const lastBackupSync = job.last_backup_date ?? job.lastBackupDate;
-              const typeBackup = job.typeBackup || job.type;
+              const typeBackup = pickBackupJobType(job);
               const typeLabel = typeBackup ? typeBackup.charAt(0).toUpperCase() + typeBackup.slice(1) : "-";
-              const destination = job._instanceLogiciel === "HYCU Backup" ? "DataCenter PSI" : job.destination || formatServeurLieLabel(job.serveurLie || job.source, "") || "-";
-              const isHycuJob = job._instanceLogiciel === "HYCU Backup";
-              const lastBackupMs = lastBackupStart ? new Date(lastBackupStart).getTime() : null;
-              const now = Date.now();
-              const H24 = 24 * 60 * 60 * 1000;
-              const H48 = 48 * 60 * 60 * 1000;
-              const isRed = !isHycuJob && (lastBackupMs == null || now - lastBackupMs > H48);
-              const isOrange = !isHycuJob && !isRed && lastBackupMs != null && now - lastBackupMs > H24;
-              const rowAlertStyle = isHycuJob ? {
-                backgroundColor: "#f9fafb"
-              } : isRed ? {
-                backgroundColor: "#fee2e2",
-                fontWeight: "bold"
-              } : isOrange ? {
-                backgroundColor: "#ffedd5",
-                fontWeight: "bold"
-              } : {
-                backgroundColor: "#dcfce7"
-              };
+              const destination = pickBackupJobDestination(job, job._instance || { logiciel: job._instanceLogiciel }, "-");
+              const statusJob = normalizeBackupJobForStatus(job, job._instance || { logiciel: job._instanceLogiciel });
+              const jobStatus = getBackupJobStatus(statusJob);
+              const rowAlertStyle = getBackupJobRowStyle(jobStatus);
               return <tr key={`${instanceName}-${jobName}-${index}`} className={`${equipmentStyles.equipmentRow} ${equipmentStyles.equipmentRowEmbedded} ${isHighlighted ? styles.infraTableRowHighlight : ""}`} style={rowAlertStyle}>
                       <td>{jobName}</td>
                       <td>{typeLabel}</td>
@@ -367,7 +373,6 @@ export default function BackupStep({
                     }
                   })() : "-"}
                       </td>
-                      <td>{lastBackupDuration || "-"}</td>
                       <td>
                         {lastBackupSync ? (() => {
                     try {
@@ -377,7 +382,7 @@ export default function BackupStep({
                     }
                   })() : "-"}
                       </td>
-                      <td>{getStatusLabel(job.lastStatus)}</td>
+                      <td title={getBackupJobStatusTitle(jobStatus)}>{getBackupJobStatusLabel(jobStatus)}</td>
                       <td onClick={e => e.stopPropagation()}>
                         <div className={equipmentStyles.mappingActions}>
                           <div className={equipmentStyles.mappingActionsGroup}>

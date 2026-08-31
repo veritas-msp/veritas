@@ -18,7 +18,7 @@ import { getBackupMspPanelCopy } from "./backupMspPanelI18n";
 import { interpolate } from "../../i18n/translate";
 import { getLocaleTag } from "../../i18n/locales";
 import MspEmptyState from "../Misc/MspEmptyState/MspEmptyState";
-import { formatServeurLieLabel, isBackupJobActive, normalizeServeurLieList } from "../EnterprisesPage/backupJobUtils";
+import { formatServeurLieLabel, isBackupJobActive, normalizeServeurLieList, pickBackupJobType, pickBackupJobDestination } from "../EnterprisesPage/backupJobUtils";
 import { createTrackedAbortController } from "../../utils/pageLoadAbort";
 const BACKUPS_CACHE_KEY = "cyber_backups_cache_v1";
 const BACKUPS_CACHE_TTL_MS = 3 * 60 * 1000;
@@ -224,11 +224,11 @@ export default function BackupMspPanel({
               instanceId: instance.id,
               instanceLogiciel: instance.logiciel || "",
               nom: job.nom || "",
-              typeBackup: job.type || "",
+              typeBackup: pickBackupJobType(job),
               regularite: job.regularite || "",
               horaire: job.horaire || "",
               retention: job.retention || "",
-              destination: job.destination || "",
+              destination: pickBackupJobDestination(job, instance),
               serveurLie: normalizeServeurLieList(job.serveurLie),
               stockageLie: job.stockageLie || "",
               replicationVers: job.replicationVers || "",
@@ -799,7 +799,7 @@ export default function BackupMspPanel({
                           </td>
                           <td>{formatServeurLieLabel(item.serveurLie, "-")}</td>
                           <td className={styles.boldCell}>
-                            {item.instanceLogiciel === "HYCU Backup" ? "DataCenter PSI" : item.destination || "-"}
+                            {item.instanceLogiciel === "HYCU Backup" ? "DataCenter PSI" : item.destination || item.stockageLie || "-"}
                           </td>
                           <td className={`${styles.dateCell} ${styles.boldCell}`}>
                             {item.last_backup_start ?? item.rawData?.last_backup_start ? (() => {

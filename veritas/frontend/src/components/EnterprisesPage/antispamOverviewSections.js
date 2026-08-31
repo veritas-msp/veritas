@@ -12,55 +12,48 @@ export const ANTISPAM_OVERVIEW_SECTIONS = [{
   id: "overview",
   group: "core",
   label: "Summary",
-  description: "KPIs and API status",
+  description: "Key figures",
   icon: "mdi:view-dashboard-outline"
 }, {
   id: "domains",
   group: "admin",
   label: "Domains",
-  description: "GET /admin/domains",
+  description: "Monitored domains",
   icon: "mdi:web",
   sectionKey: "domains"
 }, {
   id: "users",
   group: "admin",
   label: "Users",
-  description: "GET /admin/users",
+  description: "Protected accounts",
   icon: "mdi:account-group-outline",
   sectionKey: "users"
 }, {
   id: "emails",
   group: "admin",
   label: "E-mails",
-  description: "GET /admin/emails",
+  description: "Admin addresses",
   icon: "mdi:email-outline",
   sectionKey: "emails"
 }, {
   id: "servers",
   group: "admin",
   label: "Servers",
-  description: "GET /admin/servers",
+  description: "Mail servers",
   icon: "mdi:server-network",
   sectionKey: "servers"
 }, {
   id: "senders",
   group: "protect",
   label: "Senders",
-  description: "GET /protect/senders",
+  description: "Protect list",
   icon: "mdi:email-arrow-right-outline",
   sectionKey: "senders"
 }, {
   id: "spools",
   group: "protect",
   label: "Spools",
-  description: "GET /protect/spools",
+  description: "Queued messages",
   icon: "mdi:email-multiple-outline",
   sectionKey: "spools"
-}, {
-  id: "detectSpools",
-  group: "protect",
-  label: "Advanced spools",
-  description: "GET /protect/detect/spools",
-  icon: "mdi:radar",
-  sectionKey: "detectSpools"
 }];

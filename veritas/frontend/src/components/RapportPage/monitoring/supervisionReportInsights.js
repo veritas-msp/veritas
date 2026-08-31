@@ -1,4 +1,5 @@
 import { getEquipmentDbId } from "../../../utils/equipmentIdentity";
+import { getTicketDescriptionPreview } from "../../../utils/incomingEmailContent";
 import { isDateWithinPeriod } from "./supervisionReportBuilder";
 import { getCheckmkHostName, isEquipmentMappedForCheckMK } from "./checkmkReportCacheUtils";
 
@@ -63,6 +64,24 @@ function ticketCreatedAt(ticket) {
   return ticket?.created_at || ticket?.createdAt || ticket?.updated_at || ticket?.updatedAt || null;
 }
 
+function ticketSubjectPreview(ticket, title) {
+  const preview = getTicketDescriptionPreview(ticket?.description, {
+    maxChars: 140,
+    maxLines: 2
+  });
+  const raw = String(preview.subject || preview.body || "").replace(/\s+/g, " ").trim();
+  if (!raw) return "";
+  const normalizedTitle = String(title || "").trim().toLowerCase();
+  if (normalizedTitle && raw.toLowerCase() === normalizedTitle) return "";
+  return raw;
+}
+
+function ticketCategoryLabel(ticket) {
+  const raw = ticket?.category || ticket?.type || ticket?.prestation || "";
+  const text = String(raw).replace(/^prestation-/, "").replace(/-/g, " ").trim();
+  return text || "Support";
+}
+
 function alertEquipmentId(alert) {
   return normalizeInsightEquipmentId(alert?.equipmentId || alert?.equipment_id || null);
 }
@@ -121,15 +140,8 @@ export function buildPeriodInsights({
       const number = ticket.ticket_number || ticket.ticketNumber || "";
       const title = ticket.title || ticket.subject || "Ticket";
       const createdAt = ticketCreatedAt(ticket);
-      const dateLabel = createdAt
-        ? new Date(createdAt).toLocaleString("fr-FR", {
-            day: "2-digit",
-            month: "2-digit",
-            year: "numeric",
-            hour: "2-digit",
-            minute: "2-digit"
-          })
-        : "";
+      const subjectPreview = ticketSubjectPreview(ticket, title);
+      const categoryLabel = ticketCategoryLabel(ticket);
       const moduleKey = flat.find(f => f.equipmentKey === equipmentKey)?.moduleKey || null;
       const infraModules = ["Internet", "Firewall", "Servers", "Storage", "Switch", "BorneWifi", "TOIP"];
       const cyberModules = ["Backup", "Antivirus", "Antispam"];
@@ -144,14 +156,15 @@ export function buildPeriodInsights({
         source: "ticket",
         ticketId: ticket.id,
         ticketNumber: number,
-        text: number
-          ? `Ticket #${number} — ${title}${dateLabel ? `\n${dateLabel}` : ""}`
-          : `${title}${dateLabel ? `\n${dateLabel}` : ""}`,
+        ticketTitle: title,
+        ticketSubject: subjectPreview,
+        ticketCategory: categoryLabel,
+        text: title,
         createdAt: createdAt || new Date().toISOString(),
-        author: "Support",
+        author: categoryLabel,
         moduleKey,
         category,
-        referenceLabel: number ? `#${number}` : title
+        referenceLabel: title
       };
       if (!seededCommentsByEquipmentKey[equipmentKey]) seededCommentsByEquipmentKey[equipmentKey] = [];
       seededCommentsByEquipmentKey[equipmentKey].push(comment);

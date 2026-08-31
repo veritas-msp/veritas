@@ -206,6 +206,11 @@ function MonitoringSummary({
                           ...jobItem.data
                         };
                         delete jobData.type;
+                        const backupType = jobItem.data?.typeBackup || jobItem.data?.jobType || (jobItem.data?.type && String(jobItem.data.type).toLowerCase() !== "job" ? jobItem.data.type : "");
+                        if (backupType) {
+                          jobData.type = backupType;
+                          jobData.typeBackup = backupType;
+                        }
                         return {
                           id: jobItem.id,
                           ...jobData

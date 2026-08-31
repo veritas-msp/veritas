@@ -13,7 +13,8 @@ const TEAMS_SORT_KEYS = {
 };
 export default function TeamsTab({
   teamsData,
-  theme
+  theme,
+  embedded = false
 }) {
   const [teamsSearchQuery, setTeamsSearchQuery] = useState('');
   const [teamsCurrentPage, setTeamsCurrentPage] = useState(1);
@@ -169,6 +170,118 @@ export default function TeamsTab({
         </div>
       </div>;
   }
+  if (embedded) {
+    return <div className={styles.tabFill}>
+        <h2 className={styles.sectionTitle}>Microsoft Teams</h2>
+        <div className={styles.kpiSectionBlock}>
+          <h3 className={styles.kpiSectionBlockTitle}>Users</h3>
+          <div className={styles.metricsRow4}>
+            <div className={styles.metricItem}>
+              <div className={styles.metricLabel}>Number of users</div>
+              <div className={styles.metricValue}>{licensedUsers}</div>
+            </div>
+            <div className={styles.metricItem}>
+              <div className={styles.metricLabel}>Active</div>
+              <div className={styles.metricValue}>{activeUsers}</div>
+            </div>
+            <div className={styles.metricItem}>
+              <div className={styles.metricLabel}>Inactive</div>
+              <div className={styles.metricValue}>{inactiveUsers}</div>
+            </div>
+            <div className={styles.metricItem}>
+              <div className={styles.metricLabel}>Adoption rate</div>
+              <div className={styles.metricValue}>{licensedUsers > 0 ? `${(activeUsers / licensedUsers * 100).toFixed(1)}%` : "N/A"}</div>
+            </div>
+          </div>
+        </div>
+        <div className={styles.kpiSectionBlock}>
+          <h3 className={styles.kpiSectionBlockTitle}>Messages</h3>
+          <div className={styles.metricsRow4}>
+            <div className={styles.metricItem}>
+              <div className={styles.metricLabel}>Total messages</div>
+              <div className={styles.metricValue}>{(messageStats.total || 0).toLocaleString()}</div>
+            </div>
+            <div className={styles.metricItem}>
+              <div className={styles.metricLabel}>Private chat</div>
+              <div className={styles.metricValue}>{(messageStats.privateChat || 0).toLocaleString()}</div>
+            </div>
+            <div className={styles.metricItem}>
+              <div className={styles.metricLabel}>Channel messages</div>
+              <div className={styles.metricValue}>{(messageStats.teamChat || 0).toLocaleString()}</div>
+            </div>
+            <div className={styles.metricItem}>
+              <div className={styles.metricLabel}>Urgent</div>
+              <div className={styles.metricValue}>{(messageStats.urgent || 0).toLocaleString()}</div>
+            </div>
+          </div>
+        </div>
+        <div className={styles.kpiSectionBlock}>
+          <h3 className={styles.kpiSectionBlockTitle}>Meetings</h3>
+          <div className={styles.metricsRow4}>
+            <div className={styles.metricItem}>
+              <div className={styles.metricLabel}>Total meetings</div>
+              <div className={styles.metricValue}>{(meetingsStats.total || 0).toLocaleString()}</div>
+            </div>
+            <div className={styles.metricItem}>
+              <div className={styles.metricLabel}>Organized</div>
+              <div className={styles.metricValue}>{(meetingsStats.organized || 0).toLocaleString()}</div>
+            </div>
+            <div className={styles.metricItem}>
+              <div className={styles.metricLabel}>Participations</div>
+              <div className={styles.metricValue}>{(meetingsStats.attended || 0).toLocaleString()}</div>
+            </div>
+            <div className={styles.metricItem}>
+              <div className={styles.metricLabel}>Ad hoc</div>
+              <div className={styles.metricValue}>{(meetingsStats.adHoc?.organized || 0).toLocaleString()}</div>
+            </div>
+          </div>
+        </div>
+        <div className={styles.kpiSectionBlock}>
+          <h3 className={styles.kpiSectionBlockTitle}>Calls</h3>
+          <div className={styles.metricsRow4}>
+            <div className={styles.metricItem}>
+              <div className={styles.metricLabel}>Total calls</div>
+              <div className={styles.metricValue}>{(callsStats.total || 0).toLocaleString()}</div>
+            </div>
+            <div className={styles.metricItem}>
+              <div className={styles.metricLabel}>Total duration</div>
+              <div className={styles.metricValue}>{callsStats.totalDuration || "0h 0m"}</div>
+            </div>
+            <div className={styles.metricItem}>
+              <div className={styles.metricLabel}>Average duration</div>
+              <div className={styles.metricValue}>{callsStats.averageDuration || "0h 0m"}</div>
+            </div>
+            <div className={styles.metricItem}>
+              <div className={styles.metricLabel}>Video duration</div>
+              <div className={styles.metricValue}>{callsStats.videoDuration || "0h 0m"}</div>
+            </div>
+          </div>
+        </div>
+        <div className={`${styles.licensesTableContainer} ${styles.tableFill}`}>
+          <table className={styles.licensesTable}>
+            <thead>
+              <tr>
+                <th>Name</th>
+                <th>Visibility</th>
+                <th>Membres</th>
+                <th>Canaux</th>
+              </tr>
+            </thead>
+            <tbody>
+              {allTeams.length === 0 ? <tr>
+                  <td colSpan={4}>No Teams teams available.</td>
+                </tr> : allTeams.map((team, idx) => <tr key={team.id || idx}>
+                  <td>{team.displayName || team.name || "N/A"}</td>
+                  <td>{team.visibility || team.accessType || "-"}</td>
+                  <td>{team.memberCount ?? team.membersCount ?? (Array.isArray(team.members) ? team.members.length : "-")}</td>
+                  <td>{team.channelCount ?? team.channelsCount ?? (Array.isArray(team.channels) ? team.channels.length : "-")}</td>
+                </tr>)}
+            </tbody>
+          </table>
+        </div>
+      </div>;
+  }
+
   return <div>
       <h2 className={styles.sectionTitle}>Microsoft Teams</h2>
 

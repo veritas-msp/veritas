@@ -6,7 +6,7 @@ import { getBackupJobStatus, getBackupJobStatusLabel, getBackupJobStatusTitle, i
 import EquipmentMappingModal from "./EquipmentMappingModal";
 import { buildBackupFleetRow } from "./backupMspUtils";
 import { getJobDetailCopy } from "./jobDetailPageI18n";
-import { formatServeurLieLabel, isBackupJobActive, normalizeServeurLieList } from "../EnterprisesPage/backupJobUtils";
+import { formatServeurLieLabel, isBackupJobActive, normalizeServeurLieList, pickBackupJobType, pickBackupJobDestination } from "../EnterprisesPage/backupJobUtils";
 import styles from "./JobDetailPage.module.css";
 function formatDuration(value) {
   if (value == null || value === "") return null;
@@ -33,11 +33,11 @@ function normalizeIncomingJob(data) {
       instanceId: data.instanceId,
       instanceLogiciel: data.instanceLogiciel || data.providerName || "",
       nom: data.nom || data.jobName || data.name || "",
-      typeBackup: data.typeBackup || data.jobType || "",
+      typeBackup: pickBackupJobType(data),
       regularite: data.regularite || "",
       horaire: data.horaire || "",
       retention: data.retention || "",
-      destination: data.destination || "",
+      destination: pickBackupJobDestination(data),
       serveurLie: normalizeServeurLieList(data.serveurLie || data.server),
       stockageLie: data.stockageLie || "",
       replicationVers: data.replicationVers || "",
@@ -82,11 +82,11 @@ function findJobInCyberData(clients, {
             instanceId: instance.id,
             instanceLogiciel: instance.logiciel || "",
             nom: job.nom || "",
-            typeBackup: job.type || "",
+            typeBackup: pickBackupJobType(job),
             regularite: job.regularite || "",
             horaire: job.horaire || "",
             retention: job.retention || "",
-            destination: job.destination || "",
+            destination: pickBackupJobDestination(job, instance),
             serveurLie: normalizeServeurLieList(job.serveurLie),
             stockageLie: job.stockageLie || "",
             replicationVers: job.replicationVers || "",

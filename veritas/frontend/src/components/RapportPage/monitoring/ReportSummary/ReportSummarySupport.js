@@ -102,6 +102,18 @@ function formatDateFr(value) {
   return d.toLocaleDateString("fr-FR");
 }
 
+function creditsConsumedInPeriod(ledger = [], start, end) {
+  if (!Array.isArray(ledger) || !ledger.length) return 0;
+  return ledger.reduce((sum, entry) => {
+    const kind = String(entry?.kind || "").toLowerCase();
+    if (kind !== "debit") return sum;
+    if (!isDateWithinPeriod(entry?.created_at || entry?.createdAt, start, end)) return sum;
+    const delta = Number(entry?.delta);
+    if (!Number.isFinite(delta)) return sum;
+    return sum + Math.abs(delta);
+  }, 0);
+}
+
 function ticketCreatedAt(ticket) {
   return ticket?.created_at || ticket?.createdAt || ticket?.date_creation || null;
 }
@@ -304,8 +316,10 @@ export default function ReportSummarySupport({ client }) {
 
   const packs = Array.isArray(credits?.packs) ? credits.packs : [];
   const creditTotals = computeSupportCreditTotals(credits?.balance, packs);
+  const consumedOnPeriod = creditsConsumedInPeriod(credits?.ledger, start, end);
+  const consumedAllTime = Math.max(0, (Number(creditTotals.total) || 0) - (Number(creditTotals.remaining) || 0));
   const visiblePacks = packs.filter(pack => ["active", "upcoming", "depleted"].includes(String(pack.status || "")));
-  const showCredits = Boolean(credits) && (creditTotals.remaining > 0 || visiblePacks.length > 0);
+  const showCredits = Boolean(credits) && (creditTotals.remaining > 0 || visiblePacks.length > 0 || consumedOnPeriod > 0);
 
   const contrat = client?.contrat && typeof client.contrat === "object" ? client.contrat : {};
   const validity = contractTone(contrat);
@@ -447,16 +461,21 @@ export default function ReportSummarySupport({ client }) {
               <span className={styles.factValue}>{contrat.type}</span>
             </div>
           ) : null}
-          {showCredits ? (
-            <div className={styles.factCard}>
-              <span className={styles.factLabel}>Crédit tickets</span>
-              <span className={styles.factValue}>
-                {creditTotals.remaining}
-                {creditTotals.total > 0 ? ` / ${creditTotals.total}` : ""}
-              </span>
-              <span className={styles.factHint}>restant{creditTotals.remaining > 1 ? "s" : ""}</span>
-            </div>
-          ) : null}
+          <div className={styles.factCard}>
+            <span className={styles.factLabel}>Crédits consommés</span>
+            <span className={styles.factValue}>{consumedOnPeriod}</span>
+            <span className={styles.factHint}>{periodLabel}</span>
+          </div>
+          <div className={styles.factCard}>
+            <span className={styles.factLabel}>Crédits restants</span>
+            <span className={styles.factValue}>
+              {showCredits || creditTotals.remaining > 0 || creditTotals.total > 0 ? creditTotals.remaining : "—"}
+              {creditTotals.total > 0 ? ` / ${creditTotals.total}` : ""}
+            </span>
+            <span className={styles.factHint}>
+              {consumedAllTime > 0 ? `${consumedAllTime} consommés au global` : "restant"}
+            </span>
+          </div>
         </div>
       </section>
 

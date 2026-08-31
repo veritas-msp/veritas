@@ -71,7 +71,7 @@ function extractErrorMessage(body, status) {
 function parseList(payload, depth = 0) {
   if (!payload || depth > 4) return [];
   if (Array.isArray(payload)) return payload;
-  const directKeys = ['items', 'content', 'data', 'results', 'list', 'customers', 'clients', 'senders', 'spools', 'domains', 'users', 'elements', 'records', 'values', 'rows'];
+  const directKeys = ['items', 'content', 'data', 'results', 'list', 'customers', 'clients', 'senders', 'spools', 'domains', 'users', 'emails', 'servers', 'mailboxes', 'elements', 'records', 'values', 'rows'];
   for (const key of directKeys) {
     const candidate = payload[key];
     if (Array.isArray(candidate)) return candidate;
@@ -357,7 +357,8 @@ async function safeMailinblackCall(fn) {
       ok: false,
       data: null,
       permissionDenied: Boolean(err.permissionDenied || err.status === 401 || err.status === 403),
-      error
+      error,
+      httpStatus: err.status || null
     };
   }
 }
@@ -490,7 +491,7 @@ function scalarFrom(value, depth = 0) {
     return null;
   }
   if (typeof value === 'object') {
-    const nestedKeys = ['email', 'address', 'value', 'name', 'label', 'fqdn', 'domain', 'mainEmail', 'mail', 'date', 'expirationDate', 'expiration', 'status'];
+    const nestedKeys = ['email', 'address', 'value', 'name', 'label', 'fqdn', 'domain', 'mainEmail', 'mail', 'mailAddress', 'date', 'expirationDate', 'expiration', 'status'];
     for (const key of nestedKeys) {
       if (value[key] != null) {
         const inner = scalarFrom(value[key], depth + 1);
@@ -508,6 +509,117 @@ function pickFirst(...values) {
     if (typeof value === 'boolean') return value;
     const resolved = scalarFrom(value);
     if (resolved != null && resolved !== '') return resolved;
+  }
+  return null;
+}
+function isTruthyFlag(value) {
+  return value === true || value === 1 || value === '1' || value === 'true' || value === 'yes' || value === 'YES';
+}
+function isFalsyFlag(value) {
+  return value === false || value === 0 || value === '0' || value === 'false' || value === 'no' || value === 'NO';
+}
+function looksLikeEmail(value) {
+  const str = String(value || '').trim();
+  return Boolean(str.includes('@') && str.length > 3 && !/\s/.test(str));
+}
+function pickEmailValue(...values) {
+  for (const value of values) {
+    if (value == null || value === '') continue;
+    if (typeof value === 'string' || typeof value === 'number') {
+      const str = String(value).trim();
+      if (looksLikeEmail(str)) return str;
+      continue;
+    }
+    if (Array.isArray(value)) {
+      const inner = pickEmailValue(...value);
+      if (inner) return inner;
+      continue;
+    }
+    if (typeof value === 'object') {
+      const inner = pickEmailValue(value.email, value.mail, value.address, value.value, value.mainEmail, value.mailAddress, value.eMail, value.Email, value.sender, value.from, value.to, value.recipient, value.login, value.username, value.expediteur, value.destinataire, value.content, value.items, value.data, value.list, value.results);
+      if (inner) return inner;
+    }
+  }
+  return null;
+}
+function findEmailOnObject(item) {
+  if (!item || typeof item !== 'object') return null;
+  const direct = pickEmailValue(item.mainEmail, item.email, item.mail, item.mailAddress, item.eMail, item.Email, item.login, item.username, item.primaryEmail, item.userPrincipalName, item.upn, item.account, item.mailbox, item.emails, item.emailAddresses, item.mailAddresses, item.aliases, item.emailList);
+  if (direct) return direct;
+  for (const [key, val] of Object.entries(item)) {
+    if (/mail|email|login|alias|account|upn|mailbox/i.test(key) && !/password|token|key|hash/i.test(key)) {
+      const found = pickEmailValue(val);
+      if (found) return found;
+    }
+  }
+  if (looksLikeEmail(item.name) || looksLikeEmail(item.displayName) || looksLikeEmail(item.fullName)) {
+    return String(item.name || item.displayName || item.fullName).trim();
+  }
+  return null;
+}
+function toIsoDate(value) {
+  if (value == null || value === '' || value === 0 || value === '0') return null;
+  if (value instanceof Date) {
+    return Number.isNaN(value.getTime()) || value.getUTCFullYear() < 1990 ? null : value.toISOString();
+  }
+  if (typeof value === 'number' || typeof value === 'string' && /^\d+(\.\d+)?$/.test(value.trim())) {
+    const n = Number(value);
+    if (!Number.isFinite(n) || n === 0) return null;
+    const ms = n < 1e12 ? n * 1000 : n;
+    const d = new Date(ms);
+    if (Number.isNaN(d.getTime()) || d.getUTCFullYear() < 1990) return null;
+    return d.toISOString();
+  }
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime()) || parsed.getUTCFullYear() < 1990) return null;
+  return parsed.toISOString();
+}
+function pickDateValue(...values) {
+  for (const value of values) {
+    if (value == null || value === '') continue;
+    if (typeof value === 'object' && !Array.isArray(value) && !(value instanceof Date)) {
+      const nested = pickDateValue(value.date, value.datetime, value.timestamp, value.value, value.iso, value.utc, value.createdAt, value.updatedAt, value.dateTime);
+      if (nested) return nested;
+      continue;
+    }
+    const iso = toIsoDate(value);
+    if (iso) return iso;
+  }
+  return null;
+}
+function pickAddressList(value) {
+  if (Array.isArray(value)) {
+    const parts = value.map(entry => pickEmailValue(entry) || pickFirst(entry)).filter(Boolean);
+    return parts.length ? parts.join(', ') : null;
+  }
+  return pickEmailValue(value) || (typeof value === 'string' && value.trim() ? value.trim() : pickFirst(value));
+}
+function nestedMail(item) {
+  if (!item || typeof item !== 'object') return {};
+  const nested = item.mail || item.message || item.payload || item.spool || item.content;
+  return nested && typeof nested === 'object' && !Array.isArray(nested) ? nested : {};
+}
+function isNotFoundResult(result) {
+  if (!result || result.ok) return false;
+  if (result.httpStatus === 404 || result.httpStatus === 405) return true;
+  const msg = String(result.error || '').toLowerCase();
+  return msg === 'not found' || msg.includes('not found') || /\b404\b/.test(msg);
+}
+function emptyListSection(exploited = true) {
+  return {
+    status: 'empty',
+    error: null,
+    items: [],
+    total: 0,
+    exploited
+  };
+}
+function findDateOnObject(item, keyPattern) {
+  if (!item || typeof item !== 'object') return null;
+  for (const [key, val] of Object.entries(item)) {
+    if (!keyPattern.test(key) || /password|token|hash/i.test(key)) continue;
+    const found = pickDateValue(val);
+    if (found) return found;
   }
   return null;
 }
@@ -531,17 +643,30 @@ function formatMx(item) {
   return pickFirst(item.mx, item.mxRecord, item.mailServer, item.mxHost, item.mxValue);
 }
 function formatUserStatus(item) {
-  if (item.protected === true || item.isProtected === true || item.licenseProtect === true || item.hasLicense === true) return 'Protected';
-  if (item.protected === false || item.isProtected === false || item.licenseProtect === false) return 'Unprotected';
-  if (item.enabled === true || item.active === true || item.isEnabled === true) return 'Active';
-  if (item.enabled === false || item.active === false || item.isEnabled === false) return 'Disabled';
-  return pickFirst(item.status, item.state, item.accountStatus, item.protectionStatus);
+  if (isTruthyFlag(item.protected) || isTruthyFlag(item.isProtected) || isTruthyFlag(item.licenseProtect) || isTruthyFlag(item.licenceProtect) || isTruthyFlag(item.hasLicense) || isTruthyFlag(item.protect)) return 'Protected';
+  if (isFalsyFlag(item.protected) || isFalsyFlag(item.isProtected) || isFalsyFlag(item.licenseProtect) || isFalsyFlag(item.licenceProtect)) return 'Unprotected';
+  if (isTruthyFlag(item.enabled) || isTruthyFlag(item.active) || isTruthyFlag(item.isEnabled) || isTruthyFlag(item.isActive)) return 'Active';
+  if (isFalsyFlag(item.enabled) || isFalsyFlag(item.active) || isFalsyFlag(item.isEnabled)) return 'Disabled';
+  return pickFirst(item.status, item.state, item.accountStatus, item.protectionStatus, item.statut);
+}
+function formatUserRole(item) {
+  const direct = pickFirst(item.role, item.profile, item.profileName, item.type, item.profileType, item.userType, item.jobTitle, item.fonction, item.right);
+  if (direct) return String(direct);
+  const profiles = item.profiles || item.roles || item.rights || item.groups;
+  if (Array.isArray(profiles) && profiles.length) {
+    const names = profiles.map(entry => typeof entry === 'string' ? entry : pickFirst(entry?.name, entry?.label, entry?.role, entry?.code, entry?.title)).filter(Boolean);
+    if (names.length) return names.join(', ');
+  }
+  if (isTruthyFlag(item.isAdmin) || isTruthyFlag(item.admin)) return 'Admin';
+  if (isTruthyFlag(item.isManager) || isTruthyFlag(item.manager)) return 'Manager';
+  if (isTruthyFlag(item.isUser)) return 'User';
+  return null;
 }
 function formatSenderStatus(item) {
   const raw = pickFirst(item.status, item.state, item.verdict, item.typeLabel, item.listType);
   if (raw) return raw;
-  if (item.authorized === true || item.isAuthorized === true || item.trusted === true) return 'Authorized';
-  if (item.banned === true || item.blocked === true || item.authorized === false) return 'Banned';
+  if (item.authorized === true || item.isAuthorized === true || item.trusted === true || isTruthyFlag(item.authorized)) return 'Authorized';
+  if (item.banned === true || item.blocked === true || item.authorized === false || isTruthyFlag(item.banned) || isTruthyFlag(item.blocked)) return 'Banned';
   return null;
 }
 function joinName(item) {
@@ -552,8 +677,8 @@ function joinName(item) {
 }
 function normalizeSender(item) {
   if (!item || typeof item !== 'object') return null;
-  const email = pickFirst(item.email, item.address, item.sender, item.mail, item.value, item.name, item.senderEmail);
-  const id = item.id ?? item.senderId ?? email;
+  const email = pickEmailValue(item.email, item.address, item.sender, item.mail, item.value, item.name, item.senderEmail, item.mailAddress) || pickFirst(item.email, item.address, item.sender, item.mail, item.value, item.name, item.senderEmail);
+  const id = item.id ?? item.senderId ?? item.uuid ?? email;
   if (!id) return null;
   const domain = pickFirst(item.domain, item.senderDomain, item.fqdn, extractDomainFromEmail(email));
   return {
@@ -561,25 +686,42 @@ function normalizeSender(item) {
     email: email || '—',
     domain: domain || null,
     status: formatSenderStatus(item),
-    authorized: item.authorized ?? item.isAuthorized ?? item.trusted ?? (String(item.status || item.type || '').toLowerCase().includes('auth') ? true : null),
-    lastSeen: pickFirst(item.lastSeen, item.lastActivity, item.updatedAt, item.lastUseDate, item.lastConnectionDate, item.lastUsed, item.date)
+    authorized: item.authorized ?? item.isAuthorized ?? item.trusted ?? (String(item.status || item.type || item.listType || '').toLowerCase().includes('auth') ? true : null),
+    lastSeen: pickDateValue(item.lastSeen, item.lastActivity, item.updatedAt, item.lastUseDate, item.lastConnectionDate, item.lastUsed, item.date, item.creationDate, item.createdAt, item.addedDate, item.addedAt, item.insertDate, item.dateAdded, item.created, item.createdOn, item.createdDate, item.addDate, item.insertionDate) || findDateOnObject(item, /date|seen|creat|add|insert|updat/i)
   };
 }
 function normalizeSpool(item) {
   if (!item || typeof item !== 'object') return null;
-  const id = item.id ?? item.spoolId ?? item.messageId ?? item.uuid ?? item.mailId;
-  if (!id) return null;
+  const nested = nestedMail(item);
+  const source = {
+    ...nested,
+    ...item
+  };
+  let sender = pickAddressList(source.sender || source.from || source.mailFrom || source.senderEmail || source.senderAddress || source.fromAddress || source.fromMail || source.source || source.expediteur || source.mail_from);
+  let recipient = pickAddressList(source.recipient || source.recipients || source.to || source.mailTo || source.rcptTo || source.recipientEmail || source.toAddress || source.toMail || source.destination || source.destinataire || source.rcpt);
+  if (!sender || !recipient) {
+    for (const [key, val] of Object.entries(source)) {
+      if (!sender && /from|sender|expediteur|mailfrom/i.test(key)) sender = pickAddressList(val);
+      if (!recipient && /^(to|recipient|destinataire|rcpt)/i.test(key)) recipient = pickAddressList(val);
+    }
+  }
+  const subject = pickFirst(source.subject, source.title, source.object, source.objet, nested.subject) || '—';
+  const receivedAt = pickDateValue(source.receivedAt, source.date, source.createdAt, source.receptionDate, source.timestamp, source.receivedDate, source.insertDate, source.createdDate, source.dateReception, source.receivedOn, source.created, source.datetime);
+  const id = source.id ?? source.spoolId ?? source.messageId ?? source.uuid ?? source.mailId ?? source.uid ?? source.key;
+  if (!id && subject === '—' && !sender && !recipient) return null;
+  const category = pickFirst(source.category, source.folder, source.queue, source.type, source.spoolType, source.kind, source.categorie);
+  const threat = pickFirst(source.threat, source.reason, source.detection, source.scoreLabel, source.analysis, source.verdictReason, source.filterReason, source.spamType, source.cause, source.reasonLabel, source.typeAnalyse, source.menace, source.filter, source.reasonCode) || (/spam|virus|phish|malware|threat|ransom|suspect/i.test(String(category || '')) ? category : null);
   return {
-    id: String(id),
-    subject: pickFirst(item.subject, item.title, item.object) || '—',
-    sender: pickFirst(item.sender, item.from, item.mailFrom, item.senderEmail, item.senderAddress, item.fromAddress, item.fromMail, item.source),
-    recipient: pickFirst(item.recipient, item.to, item.mailTo, item.rcptTo, item.recipientEmail, item.toAddress, item.toMail, item.destination),
-    status: pickFirst(item.status, item.state, item.verdict, item.spoolStatus, item.queueStatus),
-    category: pickFirst(item.category, item.folder, item.queue, item.type, item.spoolType),
-    threat: pickFirst(item.threat, item.reason, item.detection, item.scoreLabel, item.analysis, item.verdictReason, item.filterReason),
-    score: item.score ?? item.spamScore ?? item.note ?? null,
-    size: item.size ?? item.sizeBytes ?? item.messageSize ?? null,
-    receivedAt: pickFirst(item.receivedAt, item.date, item.createdAt, item.receptionDate, item.timestamp, item.receivedDate, item.insertDate, item.createdDate)
+    id: String(id || `${sender || ''}|${recipient || ''}|${subject}|${receivedAt || ''}`),
+    subject,
+    sender: sender || null,
+    recipient: recipient || null,
+    status: pickFirst(source.status, source.state, source.verdict, source.spoolStatus, source.queueStatus, source.mailStatus, source.statut, source.etat, isTruthyFlag(source.processed) || isTruthyFlag(source.treated) ? 'Processed' : null, isTruthyFlag(source.waiting) ? 'Waiting' : null, isTruthyFlag(source.quarantined) ? 'Quarantined' : null),
+    category,
+    threat,
+    score: source.score ?? source.spamScore ?? source.note ?? nested.score ?? null,
+    size: source.size ?? source.sizeBytes ?? source.messageSize ?? null,
+    receivedAt
   };
 }
 function normalizeDomain(item) {
@@ -607,19 +749,19 @@ function normalizeDomain(item) {
 }
 function normalizeUser(item) {
   if (!item || typeof item !== 'object') return null;
-  const emailsList = Array.isArray(item.emails) ? item.emails : Array.isArray(item.emailAddresses) ? item.emailAddresses : [];
-  const email = pickFirst(item.mainEmail, item.email, item.mail, item.login, item.username, item.primaryEmail, item.mailAddress, emailsList[0]);
-  const id = item.id ?? item.userId ?? email;
+  const email = findEmailOnObject(item);
+  const name = joinName(item);
+  const id = item.id ?? item.userId ?? item.uuid ?? email;
   if (!id) return null;
   return {
     id: String(id),
-    email: email || '—',
-    name: joinName(item),
+    email: email || (looksLikeEmail(name) ? String(name).trim() : '—'),
+    name,
     firstName: pickFirst(item.firstName, item.firstname, item.prenom),
     lastName: pickFirst(item.lastName, item.lastname, item.nom),
     status: formatUserStatus(item),
-    role: pickFirst(item.role, item.profile, item.profileName, item.type, item.profileType, item.userType),
-    lastLogin: pickFirst(item.lastLogin, item.lastConnectionDate, item.lastConnection, item.lastAccessDate, item.updatedAt)
+    role: formatUserRole(item),
+    lastLogin: pickDateValue(item.lastLogin, item.lastLoginDate, item.lastConnectionDate, item.lastConnection, item.lastAccessDate, item.lastAccess, item.lastAuthDate, item.lastAuthenticationDate, item.lastAuth, item.lastLogon, item.connectedAt, item.lastActivity, item.updatedAt, item.connectionDate, item.lastSeen) || findDateOnObject(item, /login|auth|connection|access|logon|lastseen/i)
   };
 }
 function normalizeEmail(item) {
@@ -701,7 +843,8 @@ async function mailinblackFetchListSection(apiUrl, session, credentials, module,
   let lastResult = {
     ok: false,
     permissionDenied: false,
-    error: 'No data returned'
+    error: 'No data returned',
+    httpStatus: null
   };
   let emptyOkResult = null;
   for (const currentModule of modulesToTry) {
@@ -756,6 +899,9 @@ async function mailinblackFetchListSection(apiUrl, session, credentials, module,
     return buildSectionFromResult(emptyOkResult, normalizer, {
       exploited
     });
+  }
+  if (isNotFoundResult(lastResult)) {
+    return emptyListSection(exploited);
   }
   return buildSectionFromResult(lastResult, normalizer, {
     exploited
@@ -824,11 +970,9 @@ export async function mailinblackGetCustomer(apiUrl, credentials, customerId) {
 export async function mailinblackBuildDashboard(apiUrl, credentials, customerId = null) {
   const session = await mailinblackAuthenticate(credentials);
   const effectiveCustomerId = customerId || session.clientId || credentials?.authClientId || null;
-  const [senders, spools, detectSpools, domains, users, emailsRaw, servers, customerRes] = await Promise.all([mailinblackFetchListSection(apiUrl, session, credentials, 'protect', 'senders', normalizeSender, {
+  const [senders, spools, domains, users, emailsRaw, servers, customerRes] = await Promise.all([mailinblackFetchListSection(apiUrl, session, credentials, 'protect', 'senders', normalizeSender, {
     exploited: true
   }), mailinblackFetchListSection(apiUrl, session, credentials, 'protect', 'spools', normalizeSpool, {
-    exploited: true
-  }), mailinblackFetchListSection(apiUrl, session, credentials, 'protect', 'detect/spools', normalizeSpool, {
     exploited: true
   }), mailinblackFetchListSection(apiUrl, session, credentials, 'admin', 'domains', normalizeDomain, {
     exploited: true
@@ -897,7 +1041,6 @@ export async function mailinblackBuildDashboard(apiUrl, credentials, customerId 
       customer,
       senders,
       spools,
-      detectSpools,
       domains,
       users,
       emails,

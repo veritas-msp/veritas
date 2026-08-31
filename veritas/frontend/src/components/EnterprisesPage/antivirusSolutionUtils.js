@@ -21,6 +21,17 @@ function resolveAntivirusTenantLabel(item) {
   }
   return null;
 }
+export function formatAntivirusEndpointType(type) {
+  if (type == null || type === "") return "-";
+  if (type === 1 || type === "1") return "Physique";
+  if (type === 2 || type === 3 || type === "2" || type === "3") return "Virtuel";
+  const raw = String(type).trim();
+  const t = raw.toLowerCase();
+  if (t === "virtuel" || t === "virtual") return "Virtuel";
+  if (t === "physique" || t === "physical") return "Physique";
+  if (t === "autre" || t === "other") return "Autre";
+  return raw.charAt(0).toUpperCase() + raw.slice(1);
+}
 export function getAntivirusSolutionModeLabel(solution) {
   const mode = solution?.mappingMode || "reseller";
   if (mode === "dedicated") return "Dedicated tenant";

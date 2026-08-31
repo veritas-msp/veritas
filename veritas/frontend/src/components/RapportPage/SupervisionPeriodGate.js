@@ -201,44 +201,46 @@ export default function SupervisionPeriodGate({
               </span>
             ) : null}
           </div>
-          <div className={styles.presets}>
-            {[
-              ["7d", periodCopy.preset7d],
-              ["30d", periodCopy.preset30d],
-              ["thisMonth", periodCopy.presetThisMonth],
-              ["lastMonth", periodCopy.presetLastMonth]
-            ].map(([key, label]) => (
-              <button
-                key={key}
-                type="button"
-                className={`${styles.preset} ${activePreset === key ? styles.presetActive : ""}`}
-                onClick={() => applyPreset(key)}
-              >
-                {label}
-              </button>
-            ))}
-          </div>
-          <div className={styles.dates}>
-            <label className={styles.dateField}>
-              {periodCopy.startLabel}
-              <input
-                className={styles.dateInput}
-                type="date"
-                value={startDate}
-                max={endDate || undefined}
-                onChange={event => setStartDate(event.target.value)}
-              />
-            </label>
-            <label className={styles.dateField}>
-              {periodCopy.endLabel}
-              <input
-                className={styles.dateInput}
-                type="date"
-                value={endDate}
-                min={startDate || undefined}
-                onChange={event => setEndDate(event.target.value)}
-              />
-            </label>
+          <div className={styles.periodRow}>
+            <div className={styles.presets}>
+              {[
+                ["7d", periodCopy.preset7d],
+                ["30d", periodCopy.preset30d],
+                ["thisMonth", periodCopy.presetThisMonth],
+                ["lastMonth", periodCopy.presetLastMonth]
+              ].map(([key, label]) => (
+                <button
+                  key={key}
+                  type="button"
+                  className={`${styles.preset} ${activePreset === key ? styles.presetActive : ""}`}
+                  onClick={() => applyPreset(key)}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+            <div className={styles.dates}>
+              <label className={styles.dateField}>
+                {periodCopy.startLabel}
+                <input
+                  className={styles.dateInput}
+                  type="date"
+                  value={startDate}
+                  max={endDate || undefined}
+                  onChange={event => setStartDate(event.target.value)}
+                />
+              </label>
+              <label className={styles.dateField}>
+                {periodCopy.endLabel}
+                <input
+                  className={styles.dateInput}
+                  type="date"
+                  value={endDate}
+                  min={startDate || undefined}
+                  onChange={event => setEndDate(event.target.value)}
+                />
+              </label>
+            </div>
           </div>
         </section>
 

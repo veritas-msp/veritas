@@ -17,6 +17,32 @@ export function isBackupJobMapped(job) {
   const raw = job.rawData;
   return !!(job.checkmk_host_name || job.checkmk_service_name || raw?.checkmk_host_name || raw?.checkmk_service_name);
 }
+
+/** Shape a raw instance job so getBackupJobStatus can evaluate it. */
+export function normalizeBackupJobForStatus(job, instance = {}) {
+  if (!job || typeof job !== "object") return null;
+  const mapping = job.checkmkMapping && typeof job.checkmkMapping === "object"
+    ? job.checkmkMapping
+    : job.checkmk_host_name || job.checkmk_service_name
+      ? {
+          checkmk_host_name: job.checkmk_host_name || null,
+          checkmk_site: job.checkmk_site || null,
+          checkmk_service_name: job.checkmk_service_name || null,
+          is_active: true
+        }
+      : null;
+  return {
+    ...job,
+    type: "job",
+    instanceLogiciel: instance.logiciel || job.instanceLogiciel || job._instanceLogiciel || "",
+    isMapped: Boolean(job.isMapped || mapping),
+    checkmkMapping: mapping,
+    last_backup_start: job.last_backup_start ?? job.lastBackupStart ?? job.rawData?.last_backup_start ?? null,
+    last_backup_date: job.last_backup_date ?? job.lastBackupDate ?? job.rawData?.last_backup_date ?? null,
+    last_backup_duration: job.last_backup_duration ?? job.lastBackupDuration ?? job.rawData?.last_backup_duration ?? null,
+    rawData: job.rawData && typeof job.rawData === "object" ? job.rawData : job
+  };
+}
 export function getBackupJobStatus(job) {
   if (!job || job.type !== 'job') return 'ok';
   if (!isBackupJobActive(job)) return 'inactive';

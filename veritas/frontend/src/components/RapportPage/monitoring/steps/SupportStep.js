@@ -1,10 +1,12 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { Icon } from "@iconify/react";
 import { fetchTickets, fetchTicketCategories } from "../../../../api/tickets";
+import { fetchClientSupportCredits } from "../../../../api/clients";
 import { MonitoringStepShell, MonitoringStepSection } from "../MonitoringStepLayout";
 import { isDateWithinPeriod } from "../supervisionReportBuilder";
 import { isSalesTicket } from "../../../../utils/salesTicketUtils";
 import { getLocalizedEquipmentTypeLabel } from "../../../TicketPage/ticketEquipmentUtils";
+import { computeSupportCreditTotals } from "../../../TicketPage/ticketClientSummaryUtils";
 import styles from "../RapportMonitoringBuilder.module.css";
 
 const STATUS_LABELS = {
@@ -143,6 +145,49 @@ function percent(part, total) {
   return Math.round((part / total) * 100);
 }
 
+function parseClientContrat(raw) {
+  if (!raw) return {};
+  if (typeof raw === "object") return raw;
+  if (typeof raw === "string") {
+    try {
+      const parsed = JSON.parse(raw);
+      return parsed && typeof parsed === "object" ? parsed : {};
+    } catch {
+      return {};
+    }
+  }
+  return {};
+}
+
+function contractTone(contrat = {}) {
+  if (contrat.suspendu) {
+    return { label: "Suspendu", className: styles.supportBadgeWarn };
+  }
+  const end = contrat.expiration ? new Date(contrat.expiration) : null;
+  if (!end || Number.isNaN(end.getTime())) {
+    return { label: "Non renseigné", className: styles.supportBadgeMuted };
+  }
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  end.setHours(0, 0, 0, 0);
+  if (end < today) return { label: "Expiré", className: styles.supportBadgeDanger };
+  const days = Math.ceil((end - today) / (1000 * 60 * 60 * 24));
+  if (days <= 30) return { label: `Expire dans ${days} j`, className: styles.supportBadgeWarn };
+  return { label: "Actif", className: styles.supportBadgeOk };
+}
+
+function creditsConsumedInPeriod(ledger = [], start, end) {
+  if (!Array.isArray(ledger) || !ledger.length) return 0;
+  return ledger.reduce((sum, entry) => {
+    const kind = String(entry?.kind || "").toLowerCase();
+    if (kind !== "debit") return sum;
+    if (!isDateWithinPeriod(entry?.created_at || entry?.createdAt, start, end)) return sum;
+    const delta = Number(entry?.delta);
+    if (!Number.isFinite(delta)) return sum;
+    return sum + Math.abs(delta);
+  }, 0);
+}
+
 function BreakdownBars({ items, total, emptyLabel, color = "#2b5fab" }) {
   if (!items.length) {
     return <p className={styles.supportEmpty}>{emptyLabel}</p>;
@@ -175,12 +220,14 @@ export default function SupportStep({ client, reportPeriod = {} }) {
   const end = reportPeriod.end || client?.reportEndDate;
   const [tickets, setTickets] = useState([]);
   const [categoryNames, setCategoryNames] = useState({});
+  const [credits, setCredits] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
   useEffect(() => {
     if (!clientId) {
       setTickets([]);
+      setCredits(null);
       return undefined;
     }
     const controller = new AbortController();
@@ -189,12 +236,14 @@ export default function SupportStep({ client, reportPeriod = {} }) {
       setLoading(true);
       setError(null);
       try {
-        const [ticketRows, categories] = await Promise.all([
+        const [ticketRows, categories, creditSummary] = await Promise.all([
           fetchClientTickets(clientId, controller.signal),
-          fetchTicketCategories({ signal: controller.signal }).catch(() => [])
+          fetchTicketCategories({ signal: controller.signal }).catch(() => []),
+          fetchClientSupportCredits(clientId, { signal: controller.signal }).catch(() => null)
         ]);
         if (cancelled || controller.signal.aborted) return;
         setTickets(Array.isArray(ticketRows) ? ticketRows.filter(t => !isSalesTicket(t)) : []);
+        setCredits(creditSummary);
         const names = {};
         (Array.isArray(categories) ? categories : []).forEach(cat => {
           const id = String(cat?.id || "").trim();
@@ -206,6 +255,7 @@ export default function SupportStep({ client, reportPeriod = {} }) {
         if (cancelled || err?.name === "AbortError") return;
         setError(err?.message || "Impossible de charger les tickets support.");
         setTickets([]);
+        setCredits(null);
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -325,6 +375,68 @@ export default function SupportStep({ client, reportPeriod = {} }) {
   const periodLabel =
     start && end ? `${formatDateFr(start)} → ${formatDateFr(end)}` : "Période non définie";
 
+  const contrat = parseClientContrat(client?.contrat);
+  const validity = contractTone(contrat);
+  const packs = Array.isArray(credits?.packs) ? credits.packs : [];
+  const creditTotals = computeSupportCreditTotals(credits?.balance, packs);
+  const consumedOnPeriod = creditsConsumedInPeriod(credits?.ledger, start, end);
+  const consumedAllTime = Math.max(0, (Number(creditTotals.total) || 0) - (Number(creditTotals.remaining) || 0));
+  const hasCreditData = Boolean(credits) && (creditTotals.total > 0 || creditTotals.remaining > 0 || consumedOnPeriod > 0 || packs.length > 0);
+
+  const contractCards = [
+    {
+      key: "expiration",
+      label: "Expiration du contrat",
+      value: formatDateFr(contrat.expiration),
+      hint: validity.label,
+      hintClass: validity.className,
+      icon: "mdi:calendar-end",
+      color: "#0f766e"
+    },
+    contrat.debut
+      ? {
+          key: "start",
+          label: "Début du contrat",
+          value: formatDateFr(contrat.debut),
+          icon: "mdi:calendar-start",
+          color: "#2b5fab"
+        }
+      : null,
+    contrat.type
+      ? {
+          key: "type",
+          label: "Type de contrat",
+          value: contrat.type,
+          icon: "mdi:file-document-outline",
+          color: "#6366f1"
+        }
+      : null,
+    {
+      key: "consumed-period",
+      label: "Crédits consommés",
+      value: consumedOnPeriod,
+      hint: periodLabel,
+      icon: "mdi:ticket-confirmation-outline",
+      color: "#b45309"
+    },
+    {
+      key: "remaining",
+      label: "Crédits restants",
+      value: hasCreditData ? creditTotals.remaining : "—",
+      hint: hasCreditData && creditTotals.total > 0 ? `sur ${creditTotals.total} au total` : "Aucun carnet",
+      icon: "mdi:ticket-percent-outline",
+      color: "#047857"
+    },
+    {
+      key: "total",
+      label: "Total de crédits",
+      value: hasCreditData ? creditTotals.total : "—",
+      hint: hasCreditData && consumedAllTime > 0 ? `${consumedAllTime} consommés au global` : "Tous carnets",
+      icon: "mdi:ticket-outline",
+      color: "#1d4ed8"
+    }
+  ].filter(Boolean);
+
   const kpiCards = [
     {
       key: "created",
@@ -388,9 +500,28 @@ export default function SupportStep({ client, reportPeriod = {} }) {
 
   return (
     <MonitoringStepShell>
-      <p className={styles.supportIntro}>
-        Activité support sur la période {periodLabel} : volume, traitement, catégories ITIL et tickets liés à un matériel.
-      </p>
+      <MonitoringStepSection title="Contrat et crédits">
+        <div className={styles.supportKpiGrid}>
+          {contractCards.map(card => (
+            <article key={card.key} className={styles.supportKpiCard}>
+              <span className={styles.supportKpiIcon} style={{ color: card.color }}>
+                <Icon icon={card.icon} width={20} height={20} />
+              </span>
+              <div className={styles.supportKpiContent}>
+                <div className={styles.supportKpiValue}>{card.value}</div>
+                <div className={styles.supportKpiLabel}>{card.label}</div>
+                {card.hint ? (
+                  card.hintClass ? (
+                    <span className={`${styles.supportBadge} ${card.hintClass}`}>{card.hint}</span>
+                  ) : (
+                    <div className={styles.supportKpiHint}>{card.hint}</div>
+                  )
+                ) : null}
+              </div>
+            </article>
+          ))}
+        </div>
+      </MonitoringStepSection>
       {loading ? (
         <div className={styles.supportState}>Chargement des tickets support…</div>
       ) : null}

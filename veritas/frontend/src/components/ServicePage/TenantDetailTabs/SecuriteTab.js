@@ -75,7 +75,8 @@ export default function SecuriteTab({
   users,
   mfaDetails = [],
   clientId,
-  theme
+  theme,
+  embedded = false
 }) {
   const [secureRecommendations, setSecureRecommendations] = useState(() => Array.isArray(securityData?.secureScoreRecommendations) ? securityData.secureScoreRecommendations : []);
   const [recsLoading, setRecsLoading] = useState(false);
@@ -297,6 +298,68 @@ export default function SecuriteTab({
         </div>
       </div>;
   }
+  if (embedded) {
+    const globalTotal = kpiStats.usersWithMFA + kpiStats.usersWithoutMFA;
+    const adminTotal = kpiStats.adminsTotal;
+    const nonAdminTotal = kpiStats.nonAdminWithMFA + kpiStats.nonAdminWithoutMFA;
+    const rate = (withMfa, total) => total > 0 ? `${Math.round(withMfa / total * 100)}%` : "-";
+    const recs = sortedSecureRecommendations;
+    return <div className={styles.tabFill}>
+        <h2 className={styles.sectionTitle}>Security</h2>
+        <div className={styles.metricsRow4}>
+          <div className={styles.metricItem}>
+            <div className={styles.metricLabel}>Secure Score</div>
+            <div className={styles.metricValue}>
+              {identityScoreCurrent != null ? `${Math.round(identityScoreCurrent)} / ${identityScoreMax || 100}` : "-"}
+            </div>
+            {identityScorePercentage != null ? <div className={styles.mutedHint}>{Math.round(identityScorePercentage)}% obtained</div> : null}
+          </div>
+          <div className={styles.metricItem}>
+            <div className={styles.metricLabel}>Global MFA</div>
+            <div className={styles.metricValue}>{rate(kpiStats.usersWithMFA, globalTotal)}</div>
+            <div className={styles.mutedHint}>{kpiStats.usersWithMFA} with · {kpiStats.usersWithoutMFA} without</div>
+          </div>
+          <div className={styles.metricItem}>
+            <div className={styles.metricLabel}>Admin MFA</div>
+            <div className={styles.metricValue}>{rate(kpiStats.adminsWithMFA, adminTotal)}</div>
+            <div className={styles.mutedHint}>{kpiStats.adminsWithMFA} with · {kpiStats.adminsWithoutMFA} without</div>
+          </div>
+          <div className={styles.metricItem}>
+            <div className={styles.metricLabel}>Non-admin MFA</div>
+            <div className={styles.metricValue}>{rate(kpiStats.nonAdminWithMFA, nonAdminTotal)}</div>
+            <div className={styles.mutedHint}>{kpiStats.nonAdminWithMFA} with · {kpiStats.nonAdminWithoutMFA} without</div>
+          </div>
+        </div>
+        <h3 className={styles.kpiSectionBlockTitle}>Recommendations</h3>
+        <div className={`${styles.licensesTableContainer} ${styles.tableFill}`}>
+          <table className={styles.licensesTable}>
+            <thead>
+              <tr>
+                <th>Recommendation</th>
+                <th>Category</th>
+                <th>Priority</th>
+                <th>Points</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              {recsLoading ? <tr>
+                  <td colSpan={5}>Loading Microsoft recommendations…</td>
+                </tr> : recs.length === 0 ? <tr>
+                  <td colSpan={5}>{recsError || "No recommendations returned for this tenant."}</td>
+                </tr> : recs.map((rec, idx) => <tr key={rec.id || idx}>
+                  <td>{rec.titleFr || rec.title || rec.displayName || "-"}</td>
+                  <td>{rec.categoryFr || rec.category || "-"}</td>
+                  <td>{rec.priorityLabel || rec.priority || "-"}</td>
+                  <td>{rec.maxScore != null ? rec.maxScore : "-"}</td>
+                  <td>{rec.stateLabel || rec.state || "-"}</td>
+                </tr>)}
+            </tbody>
+          </table>
+        </div>
+      </div>;
+  }
+
   return <div>
       <h2 className={styles.sectionTitle}>Security</h2>
       

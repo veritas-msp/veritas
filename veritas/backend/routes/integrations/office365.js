@@ -3328,6 +3328,16 @@ async function fetchExchangeDataInternal(accessToken, startDate, endDate, period
           read
         });
       });
+      if (startDate && endDate) {
+        const startDateOnly = new Date(startDate.getFullYear(), startDate.getMonth(), startDate.getDate());
+        const endDateOnly = new Date(endDate.getFullYear(), endDate.getMonth(), endDate.getDate());
+        dailyActivity = dailyActivity.filter(day => {
+          const dayDate = new Date(day.date);
+          if (Number.isNaN(dayDate.getTime())) return false;
+          const dayDateOnly = new Date(dayDate.getFullYear(), dayDate.getMonth(), dayDate.getDate());
+          return dayDateOnly >= startDateOnly && dayDateOnly <= endDateOnly;
+        });
+      }
       dailyActivity.sort((a, b) => {
         const dateA = new Date(a.date);
         const dateB = new Date(b.date);
@@ -3636,7 +3646,7 @@ async function fetchTeamsDataInternal(accessToken, startDate, endDate, period = 
         return null;
       }
     };
-    const [teams, teamsActivity, teamsDeviceUsage, callRecords] = await Promise.all([callMicrosoftGraph("/teams", accessToken, {
+    const [teams, teamsActivity, teamsDeviceUsage, callRecords, teamsActivityCounts] = await Promise.all([callMicrosoftGraph("/teams", accessToken, {
       getAllPages: true
     }).catch(() => null), callMicrosoftGraph(`/reports/getTeamsUserActivityUserDetail(period='${period}')`, accessToken, {
       isReport: true
@@ -3644,6 +3654,8 @@ async function fetchTeamsDataInternal(accessToken, startDate, endDate, period = 
       isReport: true
     }).catch(() => null), callMicrosoftGraph("/communications/callRecords", accessToken, {
       getAllPages: true
+    }).catch(() => null), callMicrosoftGraph(`/reports/getTeamsUserActivityCounts(period='${period}')`, accessToken, {
+      isReport: true
     }).catch(() => null)]);
     let totalTeams = 0;
     let activeUsers = new Set();
@@ -3854,6 +3866,37 @@ async function fetchTeamsDataInternal(accessToken, startDate, endDate, period = 
       screenShareDurationSeconds
     };
     let dailyActivity = Array.from(dailyActivityMap.values()).sort((a, b) => new Date(a.date) - new Date(b.date));
+    if (teamsActivityCounts && Array.isArray(teamsActivityCounts.value) && teamsActivityCounts.value.length > 0) {
+      dailyActivity = teamsActivityCounts.value.map(day => {
+        const date = day.ReportDate || day['Report Date'] || day.reportDate || day.date || '';
+        return {
+          date,
+          channelMessages: parseNumber(day['Team Chat Messages'] || day.TeamChatMessages || day.teamChatMessages || day['Team Chat Message Count']),
+          chatMessages: parseNumber(day['Private Chat Messages'] || day.PrivateChatMessages || day.privateChatMessages || day['Private Chat Message Count']),
+          oneOnOneCalls: parseNumber(day.Calls || day.calls || day['Call Count'] || day.CallCount),
+          totalMeetings: parseNumber(day.Meetings || day.meetings || day['Meeting Count'] || day.MeetingCount)
+        };
+      }).filter(day => day.date).sort((a, b) => new Date(a.date) - new Date(b.date));
+    }
+    if (startDate && endDate && dailyActivity.length > 0) {
+      const startDateOnly = new Date(startDate.getFullYear(), startDate.getMonth(), startDate.getDate());
+      const endDateOnly = new Date(endDate.getFullYear(), endDate.getMonth(), endDate.getDate());
+      dailyActivity = dailyActivity.filter(day => {
+        const dayDate = new Date(day.date);
+        if (Number.isNaN(dayDate.getTime())) return false;
+        const dayDateOnly = new Date(dayDate.getFullYear(), dayDate.getMonth(), dayDate.getDate());
+        return dayDateOnly >= startDateOnly && dayDateOnly <= endDateOnly;
+      });
+      teamChatMessages = dailyActivity.reduce((sum, d) => sum + (Number(d.channelMessages) || 0), 0);
+      privateChatMessages = dailyActivity.reduce((sum, d) => sum + (Number(d.chatMessages) || 0), 0);
+      totalMeetings = dailyActivity.reduce((sum, d) => sum + (Number(d.totalMeetings) || 0), 0);
+      callCountFromActivity = dailyActivity.reduce((sum, d) => sum + (Number(d.oneOnOneCalls) || 0), 0);
+      urgentMessages = 0;
+      meetingsOrganized = 0;
+      meetingsAttended = 0;
+      adHocMeetingsOrganized = 0;
+      callsStats.total = callCountFromActivity;
+    }
     const messagesStats = {
       total: teamChatMessages + privateChatMessages,
       teamChat: teamChatMessages,

@@ -7,6 +7,17 @@ function firstCheckmkString(...values) {
   return null;
 }
 
+function pickBackupJobType(data = {}) {
+  const candidates = [data.typeBackup, data.jobType, data.type];
+  for (const raw of candidates) {
+    if (raw == null || raw === false) continue;
+    const text = String(raw).trim();
+    if (!text || text.toLowerCase() === 'job') continue;
+    return text;
+  }
+  return '';
+}
+
 function pickCheckmkFields(row = {}, data = {}) {
   const mapping = data.checkmkMapping && typeof data.checkmkMapping === "object"
     ? data.checkmkMapping
@@ -201,8 +212,13 @@ export function transformClientModulesToFrontend(rawData, options = {}) {
               const jobData = {
                 ...jobItem.data
               };
+              const backupType = pickBackupJobType(jobData);
               if (jobData.type === 'job') {
                 delete jobData.type;
+              }
+              if (backupType) {
+                jobData.type = backupType;
+                jobData.typeBackup = backupType;
               }
               const lastBackupDate = jobItem.last_backup_date ?? jobData.last_backup_date ?? null;
               const lastBackupDuration = jobItem.last_backup_duration ?? jobData.last_backup_duration ?? null;

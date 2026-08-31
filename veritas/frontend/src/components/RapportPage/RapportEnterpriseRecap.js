@@ -117,25 +117,34 @@ export default function ReportEnterpriseRecap({
   const contractBadge = getContractBadge(client?.contrat?.expiration, client?.contrat?.suspendu, recap);
   const clientName = client?.name || client?.nom || "-";
   const clientNumber = client?.client_number || client?.clientNumber;
+  const contractFacts = [client?.commercial ? {
+    key: "commercial",
+    label: recap.commercial,
+    value: client.commercial
+  } : null, client?.primaryContactName ? {
+    key: "contact",
+    label: recap.contact,
+    value: client.primaryContactName
+  } : null].filter(Boolean);
   return <article className={`${styles.recapCard} ${embedded ? styles.recapCardEmbedded : ""}`.trim()}>
       <header className={styles.recapHeader}>
-        <div className={styles.recapHeaderIcon}>
-          <Icon icon="mdi:office-building-outline" aria-hidden />
-        </div>
-        <div className={styles.recapHeaderCopy}>
-          <h3 className={styles.recapTitle}>{clientName}</h3>
-          {clientNumber ? <span className={styles.recapMeta}>
-              {recap.clientNumber} · {clientNumber}
-            </span> : null}
-        </div>
-        <div className={styles.recapHeaderActions}>
+        <div className={styles.recapHeaderMain}>
+          <div className={styles.recapHeaderIcon}>
+            <Icon icon="mdi:office-building-outline" aria-hidden />
+          </div>
+          <div className={styles.recapHeaderCopy}>
+            <h3 className={styles.recapTitle}>{clientName}</h3>
+            {clientNumber ? <span className={styles.recapMeta}>
+                {recap.clientNumber} · {clientNumber}
+              </span> : null}
+          </div>
           <span className={`${styles.contractBadge} ${styles[`contractBadge_${contractBadge.tone}`]}`}>
             {contractBadge.label}
           </span>
-          {onChangeClient ? <button type="button" className={styles.changeBtn} onClick={onChangeClient}>
-              {changeLabel}
-            </button> : null}
         </div>
+        {onChangeClient ? <button type="button" className={styles.changeBtn} onClick={onChangeClient}>
+            {changeLabel}
+          </button> : null}
       </header>
 
       <div className={styles.statStrip}>
@@ -157,86 +166,74 @@ export default function ReportEnterpriseRecap({
         </div>
       </div>
 
-      <div className={styles.recapGrid}>
-        <section className={styles.recapSection}>
-          <h4 className={styles.recapSectionTitle}>
+      <div className={styles.recapRows}>
+        <section className={styles.recapRow}>
+          <h4 className={styles.recapRowLabel}>
             <Icon icon="mdi:file-document-outline" aria-hidden />
             {recap.contract}
           </h4>
-          <dl className={styles.recapFacts}>
-            <div>
-              <dt>{recap.contractExpires}</dt>
-              <dd>{formatDate(client?.contrat?.expiration)}</dd>
-            </div>
-            {client?.commercial ? <div>
-                <dt>{recap.commercial}</dt>
-                <dd>{client.commercial}</dd>
-              </div> : null}
-            {client?.primaryContactName ? <div>
-                <dt>{recap.contact}</dt>
-                <dd>{client.primaryContactName}</dd>
-              </div> : null}
-          </dl>
+          <div className={styles.recapRowBody}>
+            {contractFacts.length > 0 ? contractFacts.map(fact => <span key={fact.key} className={styles.recapInlineFact}>
+                  <span className={styles.recapInlineKey}>{fact.label}</span>
+                  <span className={styles.recapInlineValue}>{fact.value}</span>
+                </span>) : null}
+            {activeOptions.length > 0 ? <ul className={styles.chipList}>
+                {activeOptions.map(key => <li key={key} className={styles.chip}>
+                    {key}
+                  </li>)}
+              </ul> : <p className={styles.emptyHint}>{recap.noOptions}</p>}
+          </div>
         </section>
 
-        <section className={styles.recapSection}>
-          <h4 className={styles.recapSectionTitle}>
-            <Icon icon="mdi:tune-variant" aria-hidden />
-            {recap.contractOptions}
-          </h4>
-          {activeOptions.length > 0 ? <ul className={styles.chipList}>
-              {activeOptions.map(key => <li key={key} className={styles.chip}>
-                  {key}
-                </li>)}
-            </ul> : <p className={styles.emptyHint}>{recap.noOptions}</p>}
-        </section>
-
-        <section className={styles.recapSection}>
-          <h4 className={styles.recapSectionTitle}>
+        <section className={styles.recapRow}>
+          <h4 className={styles.recapRowLabel}>
             <Icon icon="mdi:chart-timeline-variant" aria-hidden />
             {recap.services}
           </h4>
-          {monitoringModules.length > 0 ? <ul className={styles.chipList}>
-              {monitoringModules.map(module => <li key={module.key} className={`${styles.chip} ${styles.chipAccent}`}>
-                  {module.label}
-                </li>)}
-            </ul> : <p className={styles.emptyHint}>{recap.noServices}</p>}
+          <div className={styles.recapRowBody}>
+            {monitoringModules.length > 0 ? <ul className={styles.chipList}>
+                {monitoringModules.map(module => <li key={module.key} className={`${styles.chip} ${styles.chipAccent}`}>
+                    {module.label}
+                  </li>)}
+              </ul> : <p className={styles.emptyHint}>{recap.noServices}</p>}
+          </div>
         </section>
 
-        <section className={styles.recapSection}>
-          <h4 className={styles.recapSectionTitle}>
+        <section className={styles.recapRow}>
+          <h4 className={styles.recapRowLabel}>
             <Icon icon="mdi:devices" aria-hidden />
             {recap.equipment}
           </h4>
-          {equipmentItems.length > 0 ? <ul className={styles.equipmentList}>
-              {equipmentItems.map(item => <li key={item.key} className={styles.equipmentItem}>
-                  <Icon icon={item.icon} aria-hidden />
-                  <span className={styles.equipmentLabel}>{item.label}</span>
-                  <span className={styles.equipmentCount}>{item.count}</span>
-                </li>)}
-            </ul> : <p className={styles.emptyHint}>{recap.noEquipment}</p>}
+          <div className={styles.recapRowBody}>
+            {equipmentItems.length > 0 ? <ul className={styles.equipmentList}>
+                {equipmentItems.map(item => <li key={item.key} className={styles.equipmentItem}>
+                    <Icon icon={item.icon} aria-hidden />
+                    <span className={styles.equipmentLabel}>{item.label}</span>
+                    <span className={styles.equipmentCount}>{item.count}</span>
+                  </li>)}
+              </ul> : <p className={styles.emptyHint}>{recap.noEquipment}</p>}
+          </div>
         </section>
 
-        <section className={`${styles.recapSection} ${styles.recapSectionWide}`}>
-          <h4 className={styles.recapSectionTitle}>
+        <section className={styles.recapRow}>
+          <h4 className={styles.recapRowLabel}>
             <Icon icon="mdi:map-marker-outline" aria-hidden />
             {recap.sites}
           </h4>
-          {sitesLoading ? <p className={styles.emptyHint}>{recap.openTicketsLoading || "…"}</p> : siteItems.length > 0 ? <ul className={styles.siteList}>
-              {siteItems.map(site => {
+          <div className={styles.recapRowBody}>
+            {sitesLoading ? <p className={styles.emptyHint}>{recap.openTicketsLoading || "…"}</p> : siteItems.length > 0 ? <ul className={styles.siteList}>
+                {siteItems.map(site => {
             const address = buildSiteAddress(site);
             return <li key={getSiteId(site)} className={styles.siteItem}>
-                    <Icon icon="mdi:map-marker-outline" aria-hidden />
-                    <span className={styles.siteCopy}>
-                      <span className={styles.siteName}>
-                        {getSiteDisplayName(site)}
-                        {site.isPrimary ? <span className={`${styles.chip} ${styles.chipAccent}`}>{recap.sitePrimary}</span> : null}
-                      </span>
-                      {address ? <span className={styles.siteAddress}>{address}</span> : null}
+                    <span className={styles.siteName}>
+                      {getSiteDisplayName(site)}
+                      {site.isPrimary ? <span className={`${styles.chip} ${styles.chipAccent}`}>{recap.sitePrimary}</span> : null}
                     </span>
+                    {address ? <span className={styles.siteAddress}>{address}</span> : null}
                   </li>;
           })}
-            </ul> : <p className={styles.emptyHint}>{recap.noSites}</p>}
+              </ul> : <p className={styles.emptyHint}>{recap.noSites}</p>}
+          </div>
         </section>
       </div>
     </article>;

@@ -14,7 +14,7 @@ import { getIconPath } from "../../utils/assetHelper";
 import layout from "./EnterpriseFormModal.module.css";
 import styles from "./BackupConfigModal.module.css";
 import { getBackupModalCopy, supportsJobs, ACTIVE_BACKUP_MODULE_KEYS } from "./backupConfigModalI18n";
-import { coerceStoredOption, formatServeurLieLabel, isBackupJobActive, normalizeServeurLieList } from "./backupJobUtils";
+import { coerceStoredOption, formatServeurLieLabel, isBackupJobActive, normalizeServeurLieList, pickBackupJobType } from "./backupJobUtils";
 import MultiSuggestPicker from "../AdminPage/MultiSuggestPicker";
 import EquipmentMappingModal from "../EquipementPage/EquipmentMappingModal";
 const EMPTY_JOB = {
@@ -62,7 +62,8 @@ function normalizeInstances(raw) {
     jobs: Array.isArray(instance.jobs) ? instance.jobs.map(job => ({
       ...job,
       nom: coerceStoredOption(job.nom),
-      type: coerceStoredOption(job.type),
+      type: pickBackupJobType(job),
+      typeBackup: pickBackupJobType(job),
       regularite: coerceStoredOption(job.regularite),
       retention: coerceStoredOption(job.retention),
       horaire: coerceStoredOption(job.horaire),
@@ -288,7 +289,7 @@ function JobCard({
   isDefault,
   canMap
 }) {
-  const typeLabel = copy.resolveOptionLabel(copy.jobTypeOptions, job.type);
+  const typeLabel = copy.resolveOptionLabel(copy.jobTypeOptions, pickBackupJobType(job));
   const regularityLabel = copy.resolveOptionLabel(copy.regularityOptions, job.regularite, "");
   const retentionLabel = copy.resolveOptionLabel(copy.retentionOptions, job.retention);
   const scheduleParts = [regularityLabel, job.horaire].filter(Boolean);
@@ -462,6 +463,8 @@ export default function BackupConfigModal({
         setJobDraft({
           ...EMPTY_JOB,
           ...job,
+          type: pickBackupJobType(job),
+          typeBackup: pickBackupJobType(job),
           serveurLie: normalizeServeurLieList(job.serveurLie),
           stockageLie: instance.logiciel === "HYCU Backup" ? "Datacenter PSI" : job.stockageLie || "",
           actif: isBackupJobActive(job)
@@ -538,6 +541,8 @@ export default function BackupConfigModal({
     setJobDraft({
       ...EMPTY_JOB,
       ...job,
+      type: pickBackupJobType(job),
+      typeBackup: pickBackupJobType(job),
       serveurLie: normalizeServeurLieList(job.serveurLie),
       stockageLie: selectedInstance?.logiciel === "HYCU Backup" ? "Datacenter PSI" : job.stockageLie || "",
       actif: isBackupJobActive(job)
@@ -617,8 +622,11 @@ export default function BackupConfigModal({
               ...jobDraft,
               id: editingJobId,
               nom,
+              type: jobDraft.type || "",
+              typeBackup: jobDraft.type || "",
               serveurLie: normalizeServeurLieList(jobDraft.serveurLie),
               stockageLie: inst.logiciel === "HYCU Backup" ? "Datacenter PSI" : jobDraft.stockageLie,
+              destination: inst.logiciel === "HYCU Backup" ? "Datacenter PSI" : jobDraft.stockageLie || "",
               actif: jobDraft.actif !== false
             } : j)
           };
@@ -629,8 +637,11 @@ export default function BackupConfigModal({
             id: generateUUID(),
             ...jobDraft,
             nom,
+            type: jobDraft.type || "",
+            typeBackup: jobDraft.type || "",
             serveurLie: normalizeServeurLieList(jobDraft.serveurLie),
             stockageLie: inst.logiciel === "HYCU Backup" ? "Datacenter PSI" : jobDraft.stockageLie,
+            destination: inst.logiciel === "HYCU Backup" ? "Datacenter PSI" : jobDraft.stockageLie || "",
             actif: jobDraft.actif !== false
           }]
         };

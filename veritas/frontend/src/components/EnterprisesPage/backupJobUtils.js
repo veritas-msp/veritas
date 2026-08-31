@@ -30,6 +30,49 @@ export function formatServeurLieLabel(raw, empty = "—") {
   return list.length ? list.join(", ") : empty;
 }
 
+/** Backup kind (full / incremental / …), ignoring the `type: "job"` discriminator. */
+export function pickBackupJobType(job) {
+  if (!job || typeof job !== "object") return "";
+  const sources = [job, job.rawData].filter(src => src && typeof src === "object");
+  for (const src of sources) {
+    const candidates = [src.typeBackup, src.jobType, src.type];
+    for (const raw of candidates) {
+      const value = coerceStoredOption(raw);
+      if (!value || value.toLowerCase() === "job") continue;
+      return value;
+    }
+  }
+  return "";
+}
+
+const HYCU_DESTINATION = "DataCenter PSI";
+
+function isHycuBackupLogiciel(value) {
+  return String(value || "").trim() === "HYCU Backup";
+}
+
+/** Storage destination (NAS / Datacenter), never the backup target (cible). */
+export function pickBackupJobDestination(job, instance = {}, empty = "") {
+  if (!job || typeof job !== "object") return empty;
+  const logiciel = instance.logiciel || job.instanceLogiciel || job._instanceLogiciel || job._instance?.logiciel || "";
+  if (isHycuBackupLogiciel(logiciel)) return HYCU_DESTINATION;
+  const sources = [job, job.rawData, instance].filter(src => src && typeof src === "object");
+  const targets = new Set(
+    normalizeServeurLieList(job.serveurLie || job.source || job.rawData?.serveurLie)
+      .map(value => value.toLowerCase())
+  );
+  for (const src of sources) {
+    const candidates = [src.stockageLie, src.destination, src.activeBackupStorage, src.hyperbackupDestination];
+    for (const raw of candidates) {
+      const value = coerceStoredOption(raw);
+      if (!value) continue;
+      if (targets.has(value.toLowerCase())) continue;
+      return value;
+    }
+  }
+  return empty;
+}
+
 export function jobHasServeurLie(raw) {
   return normalizeServeurLieList(raw).length > 0;
 }

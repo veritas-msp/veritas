@@ -39,7 +39,9 @@ export default function ExchangeTab({
         </div>
       </div>;
   }
-  if (!exchangeData.emailActivity || exchangeData.emailActivity.sent === 0 && exchangeData.emailActivity.received === 0 && exchangeData.emailActivity.read === 0) {
+  const hasEmailActivity = Boolean(exchangeData.emailActivity && (exchangeData.emailActivity.sent || exchangeData.emailActivity.received || exchangeData.emailActivity.read || exchangeData.emailActivity.dailyActivity?.length));
+  const hasMailboxes = Boolean(exchangeData.mailboxes);
+  if (!hasEmailActivity && !hasMailboxes) {
     return <div className={styles.exchangeSection} style={{
       position: 'relative'
     }}>
@@ -121,7 +123,7 @@ export default function ExchangeTab({
     }
     return null;
   };
-  const weeklyStats = exchangeData.emailActivity?.weeklyStats || null;
+  const weeklyStats = exchangeData.emailActivity?.dailyActivity?.length > 0 ? exchangeData.emailActivity?.weeklyStats || null : null;
   let weeklySummary = null;
   if (weeklyStats) {
     const weeklyData = [{

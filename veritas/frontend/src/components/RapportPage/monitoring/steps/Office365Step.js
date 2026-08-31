@@ -299,45 +299,48 @@ function getMfaMethodLabelFromKey(methodKey) {
       return String(methodKey || "").replace("authenticationmethod", "").replace(/([A-Z])/g, " $1").trim();
   }
 }
-function filterExchangeDataByPeriod(exchange, reportPeriod) {
-  if (!exchange || !exchange.emailActivity) return exchange;
-  const daily = Array.isArray(exchange.emailActivity.dailyActivity) ? exchange.emailActivity.dailyActivity : null;
-  if (!daily || daily.length === 0) return exchange;
-  const periodStart = reportPeriod?.startTime || reportPeriod?.start || reportPeriod?.from;
-  const periodEnd = reportPeriod?.endTime || reportPeriod?.end || reportPeriod?.to;
-  if (!periodStart || !periodEnd) return exchange;
-  const startDate = new Date(periodStart);
-  const endDate = new Date(periodEnd);
-  if (Number.isNaN(startDate.getTime()) || Number.isNaN(endDate.getTime())) {
-    return exchange;
-  }
+function parseActivityDate(value) {
+  if (!value) return null;
+  const d = new Date(value);
+  return Number.isNaN(d.getTime()) ? null : d;
+}
+function resolveReportPeriodBounds(reportPeriod, client = null) {
+  const startRaw = reportPeriod?.startTime || reportPeriod?.start || reportPeriod?.from || client?.reportStartDate;
+  const endRaw = reportPeriod?.endTime || reportPeriod?.end || reportPeriod?.to || client?.reportEndDate;
+  if (!startRaw || !endRaw) return null;
+  const startDate = new Date(startRaw);
+  const endDate = new Date(endRaw);
+  if (Number.isNaN(startDate.getTime()) || Number.isNaN(endDate.getTime())) return null;
+  startDate.setHours(0, 0, 0, 0);
   endDate.setHours(23, 59, 59, 999);
-  const filteredDaily = daily.filter(day => {
-    const d = new Date(day.date);
-    if (Number.isNaN(d.getTime())) return false;
-    return d >= startDate && d <= endDate;
+  return {
+    startDate,
+    endDate
+  };
+}
+function getActivityDayDate(day) {
+  if (!day || typeof day !== "object") return null;
+  return parseActivityDate(day.date || day.reportDate || day.ReportDate || day["Report Date"] || day.ReportRefreshDate);
+}
+function filterDailyActivityByPeriod(daily, bounds) {
+  if (!Array.isArray(daily)) return [];
+  if (!bounds) return daily;
+  return daily.filter(day => {
+    const d = getActivityDayDate(day);
+    if (!d) return false;
+    const t = d.getTime();
+    return t >= bounds.startDate.getTime() && t <= bounds.endDate.getTime();
   });
-  if (filteredDaily.length === 0) {
-    return {
-      ...exchange,
-      emailActivity: {
-        ...exchange.emailActivity,
-        dailyActivity: [],
-        sent: 0,
-        received: 0,
-        read: 0,
-        averages: {
-          sent: 0,
-          received: 0,
-          read: 0
-        },
-        readRate: 0
-      }
-    };
-  }
-  const sent = filteredDaily.reduce((sum, d) => sum + (d.sent || 0), 0);
-  const received = filteredDaily.reduce((sum, d) => sum + (d.received || 0), 0);
-  const read = filteredDaily.reduce((sum, d) => sum + (d.read || 0), 0);
+}
+function filterExchangeDataByPeriod(exchange, reportPeriod, client = null) {
+  if (!exchange) return exchange;
+  const bounds = resolveReportPeriodBounds(reportPeriod, client);
+  if (!bounds) return exchange;
+  const daily = Array.isArray(exchange.emailActivity?.dailyActivity) ? exchange.emailActivity.dailyActivity : [];
+  const filteredDaily = filterDailyActivityByPeriod(daily, bounds);
+  const sent = filteredDaily.reduce((sum, d) => sum + (Number(d.sent) || 0), 0);
+  const received = filteredDaily.reduce((sum, d) => sum + (Number(d.received) || 0), 0);
+  const read = filteredDaily.reduce((sum, d) => sum + (Number(d.read) || 0), 0);
   const daysCount = filteredDaily.length;
   const averages = {
     sent: daysCount > 0 ? Math.round(sent / daysCount) : 0,
@@ -347,8 +350,9 @@ function filterExchangeDataByPeriod(exchange, reportPeriod) {
   const readRate = received > 0 ? read / received * 100 : 0;
   return {
     ...exchange,
+    topUsers: [],
     emailActivity: {
-      ...exchange.emailActivity,
+      ...(exchange.emailActivity || {}),
       dailyActivity: filteredDaily,
       sent,
       received,
@@ -358,32 +362,64 @@ function filterExchangeDataByPeriod(exchange, reportPeriod) {
     }
   };
 }
-function filterTeamsDataByPeriod(teams, reportPeriod) {
-  if (!teams || !teams.licensedActivity || !Array.isArray(teams.licensedActivity.dailyActivity)) {
-    return teams;
-  }
-  const periodStart = reportPeriod?.startTime || reportPeriod?.start || reportPeriod?.from;
-  const periodEnd = reportPeriod?.endTime || reportPeriod?.end || reportPeriod?.to;
-  if (!periodStart || !periodEnd) return teams;
-  const startDate = new Date(periodStart);
-  const endDate = new Date(periodEnd);
-  if (Number.isNaN(startDate.getTime()) || Number.isNaN(endDate.getTime())) {
-    return teams;
-  }
-  endDate.setHours(23, 59, 59, 999);
-  const originalDaily = teams.licensedActivity.dailyActivity;
-  const filteredDaily = originalDaily.filter(day => {
-    const d = new Date(day.date);
-    if (Number.isNaN(d.getTime())) return false;
-    return d >= startDate && d <= endDate;
-  });
+function filterTeamsDataByPeriod(teams, reportPeriod, client = null) {
+  if (!teams) return teams;
+  const bounds = resolveReportPeriodBounds(reportPeriod, client);
+  if (!bounds) return teams;
+  const originalDaily = Array.isArray(teams.licensedActivity?.dailyActivity) ? teams.licensedActivity.dailyActivity : Array.isArray(teams.activity?.dailyActivity) ? teams.activity.dailyActivity : Array.isArray(teams.dailyActivity) ? teams.dailyActivity : [];
+  const filteredDaily = filterDailyActivityByPeriod(originalDaily, bounds);
+  const channelMessages = filteredDaily.reduce((sum, d) => sum + (Number(d.channelMessages) || 0), 0);
+  const chatMessages = filteredDaily.reduce((sum, d) => sum + (Number(d.chatMessages) || 0), 0);
+  const oneOnOneCalls = filteredDaily.reduce((sum, d) => sum + (Number(d.oneOnOneCalls) || Number(d.calls) || 0), 0);
+  const totalMeetings = filteredDaily.reduce((sum, d) => sum + (Number(d.totalMeetings) || Number(d.meetings) || 0), 0);
+  const prevActivity = teams.activity && typeof teams.activity === "object" ? teams.activity : {};
+  const prevMessages = prevActivity.messages && typeof prevActivity.messages === "object" ? prevActivity.messages : {};
+  const prevMeetings = prevActivity.meetings && typeof prevActivity.meetings === "object" ? prevActivity.meetings : {};
+  const prevCalls = prevActivity.calls && typeof prevActivity.calls === "object" ? prevActivity.calls : {};
   return {
     ...teams,
     licensedActivity: {
-      ...teams.licensedActivity,
-      dailyActivity: filteredDaily
+      ...(teams.licensedActivity || {}),
+      dailyActivity: filteredDaily,
+      totalChannelMessages: channelMessages,
+      totalChatMessages: chatMessages,
+      totalMeetings,
+      totalCalls: oneOnOneCalls
+    },
+    activity: {
+      ...prevActivity,
+      messages: {
+        ...prevMessages,
+        total: channelMessages + chatMessages,
+        teamChat: channelMessages,
+        privateChat: chatMessages
+      },
+      meetings: {
+        ...prevMeetings,
+        total: totalMeetings
+      },
+      calls: {
+        ...prevCalls,
+        total: oneOnOneCalls
+      }
     }
   };
+}
+function renderO365KpiRow(cards, styles) {
+  return <div className={styles.o365KpiRow4}>
+      {cards.map((card, idx) => <div key={card.label || idx} className={styles.exchangeKpiCard}>
+          <div className={styles.exchangeKpiIcon}>
+            <Icon icon={card.icon || "mdi:chart-box-outline"} width={18} height={18} />
+          </div>
+          <div className={styles.exchangeKpiContent}>
+            <div className={styles.exchangeKpiValue}>
+              {typeof card.value === "number" ? card.value.toLocaleString() : card.value ?? "-"}
+            </div>
+            <div className={styles.exchangeKpiLabel}>{card.label}</div>
+            {card.sub ? <div className={styles.exchangeKpiSub}>{card.sub}</div> : null}
+          </div>
+        </div>)}
+    </div>;
 }
 function getAuthHeaders() {
   return {};
@@ -610,9 +646,9 @@ function Office365LegacyStep({
     const adoptionScore = snapshot.adoptionScore || null;
     const secureScore = snapshot.securityData?.secureScore || snapshot.security?.secureScore || null;
     const rawExchange = snapshot.exchangeData ?? snapshot.exchange ?? null;
-    const exchange = filterExchangeDataByPeriod(rawExchange, reportPeriod);
+    const exchange = filterExchangeDataByPeriod(rawExchange, reportPeriod, client);
     const rawTeams = snapshot.teamsData ?? snapshot.teams ?? null;
-    const teams = filterTeamsDataByPeriod(rawTeams, reportPeriod);
+    const teams = filterTeamsDataByPeriod(rawTeams, reportPeriod, client);
     const onedrive = snapshot.onedriveData ?? snapshot.onedrive ?? null;
     const sharepoint = snapshot.sharepointData ?? snapshot.sharepoint ?? null;
     const security = snapshot.securityData ?? snapshot.security ?? null;
@@ -632,7 +668,7 @@ function Office365LegacyStep({
       sharepointData: sharepoint,
       securityData: security
     };
-  }, [snapshot, reportPeriod]);
+  }, [snapshot, reportPeriod, client]);
   const o365Subtitle = useMemo(() => {
     if (reportPeriod?.start && reportPeriod?.end) {
       try {
@@ -873,10 +909,10 @@ function Office365LegacyStep({
     });
   }, [licences, licencesSort]);
   const sortedUsers = useMemo(() => {
-    if (!usersSort.column) return filteredUsers;
+    if (!usersSort.column) return displayUsers;
     const dir = usersSort.direction === "asc" ? 1 : -1;
     const toTime = d => d instanceof Date ? d.getTime() : 0;
-    return [...filteredUsers].sort((a, b) => {
+    return [...displayUsers].sort((a, b) => {
       const createdA = a.createdDate ? new Date(a.createdDate) : null;
       const createdB = b.createdDate ? new Date(b.createdDate) : null;
       const lastLoginA = a.lastLoginDate ? new Date(a.lastLoginDate) : null;
@@ -945,7 +981,7 @@ function Office365LegacyStep({
       if (va > vb) return 1 * dir;
       return 0;
     });
-  }, [filteredUsers, usersSort]);
+  }, [displayUsers, usersSort]);
   const getSortIcon = (isActive, direction) => {
     if (!isActive) {
       return <Icon icon="mdi:swap-vertical" width={14} height={14} style={{
@@ -1167,318 +1203,9 @@ function Office365LegacyStep({
                 </div>
               </div>}
 
-            {activeTab === "utilisateurs" && <div>
-                <div className={styles.antivirusModalEndpointsHeader}>
-                  <h4 className={styles.antivirusDetailBlockTitle}>
-                    Users
-                  </h4>
-                  <div className={styles.antivirusModalEndpointsSearch}>
-                    <Icon icon="mdi:magnify" className={styles.antivirusModalSearchIcon} />
-                    <input type="text" className={styles.antivirusModalSearchInput} placeholder="Search by name or email..." value={userSearchQuery} onChange={e => setUserSearchQuery(e.target.value)} />
-                  </div>
-                </div>
-
-                {domainCounts.length > 0 && <div style={{
-            marginTop: "0.75rem",
-            marginBottom: "0.75rem"
-          }}>
-                    <h5 style={{
-              margin: "0 0 0.35rem",
-              fontSize: "0.9rem",
-              fontWeight: 600,
-              color: "#111827"
-            }}>
-                      Filters par domaine
-                    </h5>
-                    <div style={{
-              display: "flex",
-              flexWrap: "wrap",
-              gap: "0.6rem"
-            }}>
-                      <button type="button" onClick={() => setDomainAndResetFilters(DOMAIN_FILTER_ALL)} style={{
-                display: "inline-flex",
-                alignItems: "center",
-                gap: "0.5rem",
-                padding: "0.45rem 0.7rem",
-                borderRadius: 999,
-                border: domainFilter === DOMAIN_FILTER_ALL ? "1px solid #2563eb" : "1px solid #e5e7eb",
-                backgroundColor: domainFilter === DOMAIN_FILTER_ALL ? "#eff6ff" : "#ffffff",
-                fontSize: "0.8rem",
-                cursor: "pointer"
-              }}>
-                        <Icon icon="mdi:earth" width={16} height={16} />
-                        <span>Tous les domaines</span>
-                        <span style={{
-                  fontWeight: 600
-                }}>
-                          {displayUsers.length.toLocaleString()}
-                        </span>
-                      </button>
-                      {domainCounts.map(({
-                domain,
-                count
-              }) => {
-                const isActive = domainFilter === domain;
-                const label = domain === NO_DOMAIN_KEY ? "Sans domaine" : domain;
-                return <button key={domain} type="button" onClick={() => setDomainAndResetFilters(domain)} style={{
-                  display: "inline-flex",
-                  alignItems: "center",
-                  gap: "0.5rem",
-                  padding: "0.45rem 0.7rem",
-                  borderRadius: 999,
-                  border: isActive ? "1px solid #2563eb" : "1px solid #e5e7eb",
-                  backgroundColor: isActive ? "#eff6ff" : "#ffffff",
-                  fontSize: "0.8rem",
-                  cursor: "pointer"
-                }}>
-                            <Icon icon="mdi:domain" width={16} height={16} />
-                            <span style={{
-                    maxWidth: 180,
-                    overflow: "hidden",
-                    textOverflow: "ellipsis",
-                    whiteSpace: "nowrap"
-                  }} title={label}>
-                              {label}
-                            </span>
-                            <span style={{
-                    fontWeight: 600
-                  }}>
-                              {count.toLocaleString()}
-                            </span>
-                          </button>;
-              })}
-                    </div>
-                  </div>}
-
-                <div style={{
-            marginBottom: "0.75rem"
-          }}>
-                  <h5 style={{
-              margin: "0 0 0.35rem",
-              fontSize: "0.9rem",
-              fontWeight: 600,
-              color: "#111827"
-            }}>
-                    Filters globaux
-                  </h5>
-                  <div style={{
-              display: "flex",
-              flexWrap: "wrap",
-              gap: "0.6rem"
-            }}>
-                    <button type="button" onClick={clearActiveFilters} style={{
-                display: "inline-flex",
-                alignItems: "center",
-                gap: "0.5rem",
-                padding: "0.45rem 0.7rem",
-                borderRadius: 8,
-                border: activeFilters.length === 0 ? "1px solid #2563eb" : "1px solid #e5e7eb",
-                backgroundColor: activeFilters.length === 0 ? "#eff6ff" : "#ffffff",
-                fontSize: "0.8rem",
-                cursor: "pointer"
-              }}>
-                      <Icon icon="mdi:account-multiple" width={16} height={16} />
-                      <span>Total users</span>
-                      <span style={{
-                  fontWeight: 600
-                }}>
-                        {filteredUsers.length.toLocaleString()}
-                      </span>
-                    </button>
-
-                    <button type="button" onClick={() => toggleFilter(USER_FILTER_ADMIN)} style={{
-                display: "inline-flex",
-                alignItems: "center",
-                gap: "0.5rem",
-                padding: "0.45rem 0.7rem",
-                borderRadius: 8,
-                border: activeFilters.includes(USER_FILTER_ADMIN) ? "1px solid #3b82f6" : "1px solid #e5e7eb",
-                backgroundColor: "#ffffff",
-                fontSize: "0.8rem",
-                cursor: "pointer"
-              }}>
-                      <Icon icon="mdi:shield-account" width={16} height={16} style={{
-                  color: "#3b82f6"
-                }} />
-                      <span>Admin</span>
-                      <span style={{
-                  fontWeight: 600,
-                  color: "#3b82f6"
-                }}>
-                        {adminCount}
-                      </span>
-                    </button>
-
-                    <button type="button" onClick={() => toggleFilter(USER_FILTER_NON_ADMIN)} style={{
-                display: "inline-flex",
-                alignItems: "center",
-                gap: "0.5rem",
-                padding: "0.45rem 0.7rem",
-                borderRadius: 8,
-                border: activeFilters.includes(USER_FILTER_NON_ADMIN) ? "1px solid #4b5563" : "1px solid #e5e7eb",
-                backgroundColor: "#ffffff",
-                fontSize: "0.8rem",
-                cursor: "pointer"
-              }}>
-                      <Icon icon="mdi:account-outline" width={16} height={16} />
-                      <span>Non-admin</span>
-                      <span style={{
-                  fontWeight: 600
-                }}>{nonAdminCount}</span>
-                    </button>
-
-                    <button type="button" onClick={() => toggleFilter(USER_FILTER_ACTIVE_30)} style={{
-                display: "inline-flex",
-                alignItems: "center",
-                gap: "0.5rem",
-                padding: "0.45rem 0.7rem",
-                borderRadius: 8,
-                border: activeFilters.includes(USER_FILTER_ACTIVE_30) ? "1px solid #10b981" : "1px solid #e5e7eb",
-                backgroundColor: "#ffffff",
-                fontSize: "0.8rem",
-                cursor: "pointer"
-              }}>
-                      <Icon icon="mdi:check-circle" width={16} height={16} style={{
-                  color: "#10b981"
-                }} />
-                      <span>Active user</span>
-                      <span style={{
-                  fontWeight: 600,
-                  color: "#10b981"
-                }}>
-                        {activeUsers30Count.toLocaleString()}
-                      </span>
-                    </button>
-
-                    <button type="button" onClick={() => toggleFilter(USER_FILTER_INACTIVE_90)} style={{
-                display: "inline-flex",
-                alignItems: "center",
-                gap: "0.5rem",
-                padding: "0.45rem 0.7rem",
-                borderRadius: 8,
-                border: activeFilters.includes(USER_FILTER_INACTIVE_90) ? "1px solid #f59e0b" : "1px solid #e5e7eb",
-                backgroundColor: "#ffffff",
-                fontSize: "0.8rem",
-                cursor: "pointer"
-              }}>
-                      <Icon icon="mdi:clock-outline" width={16} height={16} style={{
-                  color: "#f59e0b"
-                }} />
-                      <span>Inactive user</span>
-                      <span style={{
-                  fontWeight: 600,
-                  color: "#f59e0b"
-                }}>
-                        {inactiveUsers90}
-                      </span>
-                    </button>
-
-                    <button type="button" onClick={() => toggleFilter(USER_FILTER_BLOCKED)} style={{
-                display: "inline-flex",
-                alignItems: "center",
-                gap: "0.5rem",
-                padding: "0.45rem 0.7rem",
-                borderRadius: 8,
-                border: activeFilters.includes(USER_FILTER_BLOCKED) ? "1px solid #ef4444" : "1px solid #e5e7eb",
-                backgroundColor: "#ffffff",
-                fontSize: "0.8rem",
-                cursor: "pointer"
-              }}>
-                      <Icon icon="mdi:account-cancel" width={16} height={16} style={{
-                  color: "#ef4444"
-                }} />
-                      <span>User blocked</span>
-                      <span style={{
-                  fontWeight: 600,
-                  color: "#ef4444"
-                }}>
-                        {blockedUsers}
-                      </span>
-                    </button>
-
-                    <button type="button" onClick={() => toggleFilter(USER_FILTER_MFA_ACTIF)} style={{
-                display: "inline-flex",
-                alignItems: "center",
-                gap: "0.5rem",
-                padding: "0.45rem 0.7rem",
-                borderRadius: 8,
-                border: activeFilters.includes(USER_FILTER_MFA_ACTIF) ? "1px solid #10b981" : "1px solid #e5e7eb",
-                backgroundColor: "#ffffff",
-                fontSize: "0.8rem",
-                cursor: "pointer"
-              }}>
-                      <Icon icon="mdi:shield-check" width={16} height={16} style={{
-                  color: "#10b981"
-                }} />
-                      <span>MFA actif</span>
-                      <span style={{
-                  fontWeight: 600,
-                  color: "#10b981"
-                }}>
-                        {mfaActiveCount}
-                      </span>
-                    </button>
-
-                    <button type="button" onClick={() => toggleFilter(USER_FILTER_MFA_INACTIF)} style={{
-                display: "inline-flex",
-                alignItems: "center",
-                gap: "0.5rem",
-                padding: "0.45rem 0.7rem",
-                borderRadius: 8,
-                border: activeFilters.includes(USER_FILTER_MFA_INACTIF) ? "1px solid #ef4444" : "1px solid #e5e7eb",
-                backgroundColor: "#ffffff",
-                fontSize: "0.8rem",
-                cursor: "pointer"
-              }}>
-                      <Icon icon="mdi:shield-off" width={16} height={16} style={{
-                  color: "#ef4444"
-                }} />
-                      <span>MFA inactif</span>
-                      <span style={{
-                  fontWeight: 600,
-                  color: "#ef4444"
-                }}>
-                        {mfaInactiveCount}
-                      </span>
-                    </button>
-
-                    {[{
-                key: "phoneauthenticationmethod",
-                label: "Phone/SMS"
-              }, {
-                key: "emailauthenticationmethod",
-                label: "Email"
-              }, {
-                key: "microsoftauthenticatorauthenticationmethod",
-                label: "Authenticator"
-              }, {
-                key: "softwareoathauthenticationmethod",
-                label: "Software auth"
-              }].map(({
-                key,
-                label
-              }) => <button key={key} type="button" onClick={() => toggleFilter(USER_FILTER_METHOD_PREFIX + key)} style={{
-                display: "inline-flex",
-                alignItems: "center",
-                gap: "0.5rem",
-                padding: "0.45rem 0.7rem",
-                borderRadius: 8,
-                border: activeFilters.includes(USER_FILTER_METHOD_PREFIX + key) ? "1px solid #6b7280" : "1px solid #e5e7eb",
-                backgroundColor: "#ffffff",
-                fontSize: "0.8rem",
-                cursor: "pointer"
-              }}>
-                        <span>{getMfaMethodIcon(key)}</span>
-                        <span>{label}</span>
-                        <span style={{
-                  fontWeight: 600
-                }}>
-                          {methodCounts[key] ?? 0}
-                        </span>
-                      </button>)}
-                  </div>
-                </div>
-                <div className={styles.antivirusModalEndpointsScroll}>
+            {activeTab === "utilisateurs" && <div className={styles.o365TabPane}>
+                <h4 className={styles.antivirusDetailBlockTitle}>Users</h4>
+                <div className={styles.o365TableFill}>
                   <table className={styles.antivirusModalTable}>
                     <thead>
                       <tr>
@@ -2101,7 +1828,7 @@ function Office365LegacyStep({
                   </>}
               </div>}
 
-            {activeTab === "teams" && <div>
+            {activeTab === "teams" && <div className={styles.o365TabPane}>
                 <div className={styles.infraTableHeaderInline}>
                   <div className={styles.infraTableHeaderInlineInfo}>
                     <h4 className={styles.antivirusDetailBlockTitle}>Microsoft Teams</h4>
@@ -2151,16 +1878,9 @@ function Office365LegacyStep({
               };
               const dailyActivity = teamsData.licensedActivity?.dailyActivity;
               return <>
-                          {}
-                          <div style={{
-                  display: "flex",
-                  gap: "1rem",
-                  alignItems: "stretch",
-                  marginTop: "0.5rem",
-                  marginBottom: "1rem",
-                  flexWrap: "wrap"
-                }}>
-                            {[{
+                          <div className={styles.o365KpiSection}>
+                            <h5 className={styles.o365KpiSectionTitle}>Users</h5>
+                            {renderO365KpiRow([{
                     icon: "mdi:account-group",
                     label: "Number of users",
                     value: licensedUsers
@@ -2176,196 +1896,70 @@ function Office365LegacyStep({
                     icon: "mdi:percent",
                     label: "Taux d'adoption",
                     value: adoptionRate != null ? `${adoptionRate.toFixed(1)}%` : "N/A"
-                  }].map((card, idx) => <div key={idx} style={{
-                    flex: "1 1 0",
-                    minWidth: 0,
-                    border: "1px solid #e5e7eb",
-                    borderRadius: 8,
-                    padding: "0.75rem 1rem",
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "0.75rem",
-                    background: "#ffffff"
-                  }}>
-                                <div style={{
-                      width: 32,
-                      height: 32,
-                      borderRadius: 999,
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      background: "#f3f4f6",
-                      color: "#4b5563",
-                      flexShrink: 0
-                    }}>
-                                  <Icon icon={card.icon} width={18} height={18} />
-                                </div>
-                                <div style={{
-                      display: "flex",
-                      flexDirection: "column",
-                      gap: "0.15rem",
-                      minWidth: 0
-                    }}>
-                                  <div style={{
-                        fontSize: "1.1rem",
-                        fontWeight: 700,
-                        color: "#111827"
-                      }}>
-                                    {typeof card.value === "number" ? card.value.toLocaleString() : card.value}
-                                  </div>
-                                  <div style={{
-                        fontSize: "0.75rem",
-                        textTransform: "uppercase",
-                        letterSpacing: "0.06em",
-                        color: "#6b7280"
-                      }}>
-                                    {card.label}
-                                  </div>
-                                </div>
-                              </div>)}
+                  }], styles)}
+                          </div>
+                          <div className={styles.o365KpiSection}>
+                            <h5 className={styles.o365KpiSectionTitle}>Messages</h5>
+                            {renderO365KpiRow([{
+                    icon: "mdi:message-text-outline",
+                    label: "Total messages",
+                    value: messageStats.total || 0
+                  }, {
+                    icon: "mdi:chat-processing-outline",
+                    label: "Private chat",
+                    value: messageStats.privateChat || 0
+                  }, {
+                    icon: "mdi:pound-box-outline",
+                    label: "Channel messages",
+                    value: messageStats.teamChat || 0
+                  }, {
+                    icon: "mdi:alert-decagram-outline",
+                    label: "Urgent",
+                    value: messageStats.urgent || 0
+                  }], styles)}
+                          </div>
+                          <div className={styles.o365KpiSection}>
+                            <h5 className={styles.o365KpiSectionTitle}>Meetings</h5>
+                            {renderO365KpiRow([{
+                    icon: "mdi:calendar-clock-outline",
+                    label: "Total meetings",
+                    value: meetingsStats.total || 0
+                  }, {
+                    icon: "mdi:calendar-plus",
+                    label: "Organized",
+                    value: meetingsStats.organized || 0
+                  }, {
+                    icon: "mdi:account-check-outline",
+                    label: "Participations",
+                    value: meetingsStats.attended || 0
+                  }, {
+                    icon: "mdi:calendar-blank-outline",
+                    label: "Ad hoc",
+                    value: meetingsStats.adHoc?.organized || 0
+                  }], styles)}
+                          </div>
+                          <div className={styles.o365KpiSection}>
+                            <h5 className={styles.o365KpiSectionTitle}>Calls</h5>
+                            {renderO365KpiRow([{
+                    icon: "mdi:phone-outline",
+                    label: "Total calls",
+                    value: callsStats.total || 0
+                  }, {
+                    icon: "mdi:timer-outline",
+                    label: "Total duration",
+                    value: callsStats.totalDuration || "0h 0m"
+                  }, {
+                    icon: "mdi:clock-time-four-outline",
+                    label: "Average duration",
+                    value: callsStats.averageDuration || "0h 0m"
+                  }, {
+                    icon: "mdi:video-outline",
+                    label: "Video duration",
+                    value: callsStats.videoDuration || "0h 0m"
+                  }], styles)}
                           </div>
 
-                          {}
-                          <div style={{
-                  display: "flex",
-                  gap: "1.5rem",
-                  alignItems: "stretch",
-                  marginTop: "0.5rem",
-                  marginBottom: "1.25rem",
-                  flexWrap: "wrap"
-                }}>
-                            {}
-                            <div style={{
-                    flex: "0 0 360px",
-                    minWidth: 0,
-                    maxWidth: "100%"
-                  }}>
-                              <h5 className={styles.antivirusModalSubtitle}>
-                                Messages, meetings and calls
-                              </h5>
-                              <div style={{
-                      display: "flex",
-                      flexDirection: "column",
-                      gap: "0.75rem",
-                      marginTop: "0.5rem"
-                    }}>
-                                <div style={{
-                        display: "flex",
-                        flexWrap: "wrap",
-                        gap: "0.75rem"
-                      }}>
-                                  {[{
-                          label: "Total messages",
-                          value: messageStats.total || 0,
-                          color: "#3b82f6"
-                        }, {
-                          label: "Private chat messages",
-                          value: messageStats.privateChat || 0
-                        }, {
-                          label: "Messages de canal",
-                          value: messageStats.teamChat || 0
-                        }].map((kpi, idx) => <div key={idx} style={{
-                          flex: "1 1 0",
-                          minWidth: 0
-                        }}>
-                                      <div style={{
-                            fontSize: "0.75rem",
-                            textTransform: "uppercase",
-                            letterSpacing: "0.06em",
-                            color: "#6b7280",
-                            marginBottom: 2
-                          }}>
-                                        {kpi.label}
-                                      </div>
-                                      <div style={{
-                            fontSize: "1rem",
-                            fontWeight: 600,
-                            color: kpi.color || "#111827"
-                          }}>
-                                        {kpi.value.toLocaleString()}
-                                      </div>
-                                    </div>)}
-                                </div>
-
-                                <div style={{
-                        display: "flex",
-                        flexWrap: "wrap",
-                        gap: "0.75rem"
-                      }}>
-                                  {[{
-                          label: "Total meetings",
-                          value: meetingsStats.total || 0,
-                          color: "#8b5cf6"
-                        }, {
-                          label: "Total organized",
-                          value: meetingsStats.organized || 0
-                        }, {
-                          label: "Total participations",
-                          value: meetingsStats.attended || 0
-                        }].map((kpi, idx) => <div key={idx} style={{
-                          flex: "1 1 0",
-                          minWidth: 0
-                        }}>
-                                      <div style={{
-                            fontSize: "0.75rem",
-                            textTransform: "uppercase",
-                            letterSpacing: "0.06em",
-                            color: "#6b7280",
-                            marginBottom: 2
-                          }}>
-                                        {kpi.label}
-                                      </div>
-                                      <div style={{
-                            fontSize: "1rem",
-                            fontWeight: 600,
-                            color: kpi.color || "#111827"
-                          }}>
-                                        {kpi.value.toLocaleString()}
-                                      </div>
-                                    </div>)}
-                                </div>
-
-                                <div style={{
-                        display: "flex",
-                        flexWrap: "wrap",
-                        gap: "0.75rem"
-                      }}>
-                                  {[{
-                          label: "Total calls",
-                          value: callsStats.total || 0
-                        }, {
-                          label: "Total duration",
-                          value: callsStats.totalDuration || "0h 0m"
-                        }, {
-                          label: "Average duration",
-                          value: callsStats.averageDuration || "0h 0m"
-                        }].map((kpi, idx) => <div key={idx} style={{
-                          flex: "1 1 0",
-                          minWidth: 0
-                        }}>
-                                      <div style={{
-                            fontSize: "0.75rem",
-                            textTransform: "uppercase",
-                            letterSpacing: "0.06em",
-                            color: "#6b7280",
-                            marginBottom: 2
-                          }}>
-                                        {kpi.label}
-                                      </div>
-                                      <div style={{
-                            fontSize: "1rem",
-                            fontWeight: 600,
-                            color: "#111827"
-                          }}>
-                                        {typeof kpi.value === "number" ? kpi.value.toLocaleString() : kpi.value}
-                                      </div>
-                                    </div>)}
-                                </div>
-                              </div>
-                            </div>
-
-                            {}
-                            {Array.isArray(dailyActivity) && dailyActivity.length > 0 && <div style={{
+                          {Array.isArray(dailyActivity) && dailyActivity.length > 0 && <div style={{
                     flex: "1 1 0",
                     minWidth: 0
                   }}>
@@ -2416,20 +2010,18 @@ function Office365LegacyStep({
                                     </ResponsiveContainer>
                                   </div>
                                 </div>}
-                          </div>
                         </>;
             })()}
 
                     {}
-                    <div className={styles.antivirusModalEndpointsScroll}>
+                    <div className={styles.o365TableFill}>
                       <table className={styles.antivirusModalTable}>
                         <thead>
                           <tr>
                             <th className={styles.antivirusStickyTh}>Name</th>
-                            <th className={styles.antivirusStickyTh}>
-                              Owners
-                            </th>
+                            <th className={styles.antivirusStickyTh}>Visibility</th>
                             <th className={styles.antivirusStickyTh}>Membres</th>
+                            <th className={styles.antivirusStickyTh}>Canaux</th>
                           </tr>
                         </thead>
                         <tbody>
@@ -2438,19 +2030,14 @@ function Office365LegacyStep({
                     const teamsList = Array.isArray(rawTeams?.teamsList) ? rawTeams.teamsList : Array.isArray(rawTeams) ? rawTeams : [];
                     if (!teamsList.length) {
                       return <tr>
-                                  <td colSpan={3}>
-                                    No Teams teams available.
-                                  </td>
+                                  <td colSpan={4}>No Teams teams available.</td>
                                 </tr>;
                     }
                     return teamsList.map((t, idx) => <tr key={t.id || t.displayName || idx}>
                                 <td>{t.displayName || t.name || "-"}</td>
-                                <td>
-                                  {t.ownersCount ?? (Array.isArray(t.owners) ? t.owners.length : "-")}
-                                </td>
-                                <td>
-                                  {t.membersCount ?? (Array.isArray(t.members) ? t.members.length : "-")}
-                                </td>
+                                <td>{t.visibility || t.accessType || "-"}</td>
+                                <td>{t.memberCount ?? t.membersCount ?? (Array.isArray(t.members) ? t.members.length : "-")}</td>
+                                <td>{t.channelCount ?? t.channelsCount ?? (Array.isArray(t.channels) ? t.channels.length : "-")}</td>
                               </tr>);
                   })()}
                         </tbody>
@@ -2503,14 +2090,7 @@ function Office365LegacyStep({
                   </div>}
                 {onedriveData && onedriveData.success !== false && <>
                     {}
-                    <div style={{
-              display: "flex",
-              flexWrap: "wrap",
-              gap: "1rem",
-              alignItems: "stretch",
-              marginTop: "0.5rem",
-              marginBottom: "1rem"
-            }}>
+                    <div className={styles.o365KpiRow4}>
                       {[{
                 icon: "mdi:database",
                 label: "Total space used",
@@ -2688,7 +2268,7 @@ function Office365LegacyStep({
                   </>}
               </div>}
 
-            {activeTab === "sharepoint" && <div>
+            {activeTab === "sharepoint" && <div className={styles.o365TabPane}>
                 <div className={styles.infraTableHeaderInline}>
                   <div className={styles.infraTableHeaderInlineInfo}>
                     <h4 className={styles.antivirusDetailBlockTitle}>SharePoint</h4>
@@ -2734,94 +2314,7 @@ function Office365LegacyStep({
                   </div>}
 
                 {sharepointData && sharepointData.success !== false && <>
-                    {}
-                    <div style={{
-              display: "flex",
-              flexWrap: "wrap",
-              gap: "1rem",
-              alignItems: "stretch",
-              marginTop: "0.5rem",
-              marginBottom: "1rem"
-            }}>
-                      {[{
-                icon: "mdi:share-variant",
-                label: "Sites totaux",
-                value: sharepointData.stats?.totalSites !== undefined ? sharepointData.stats.totalSites : Array.isArray(sharepointData.sites) ? sharepointData.sites.length : 0
-              }, {
-                icon: "mdi:check-circle",
-                label: "Sites actifs",
-                value: sharepointData.stats?.activeSites !== undefined ? sharepointData.stats.activeSites : Array.isArray(sharepointData.sites) ? sharepointData.sites.filter(s => s.isActive !== false).length : 0
-              }, sharepointData.activeUsers !== undefined ? {
-                icon: "mdi:account-group",
-                label: "Active users",
-                value: sharepointData.activeUsers
-              } : null, sharepointData.pagesViewed !== undefined ? {
-                icon: "mdi:file-eye",
-                label: "Pages vues",
-                value: sharepointData.pagesViewed
-              } : null, sharepointData.filesModified !== undefined ? {
-                icon: "mdi:file-edit",
-                label: "Files modified",
-                value: sharepointData.filesModified
-              } : null, sharepointData.filesTotal !== undefined ? {
-                icon: "mdi:file-multiple",
-                label: "Total files",
-                value: sharepointData.filesTotal
-              } : null, sharepointData.storageUsed !== undefined ? {
-                icon: "mdi:database",
-                label: "Storage used",
-                value: typeof sharepointData.storageUsed === "number" ? `${(sharepointData.storageUsed / 1024 / 1024 / 1024).toFixed(2)} GB` : sharepointData.storageUsed || "N/A"
-              } : null].filter(Boolean).map((card, idx) => <div key={idx} style={{
-                flex: "1 1 0",
-                minWidth: 0,
-                border: "1px solid #e5e7eb",
-                borderRadius: 8,
-                padding: "0.75rem 1rem",
-                display: "flex",
-                alignItems: "center",
-                gap: "0.75rem",
-                background: "#ffffff"
-              }}>
-                            <div style={{
-                  width: 32,
-                  height: 32,
-                  borderRadius: 999,
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  background: "#f3f4f6",
-                  color: "#4b5563",
-                  flexShrink: 0
-                }}>
-                              <Icon icon={card.icon} width={18} height={18} />
-                            </div>
-                            <div style={{
-                  display: "flex",
-                  flexDirection: "column",
-                  gap: "0.15rem",
-                  minWidth: 0
-                }}>
-                              <div style={{
-                    fontSize: "1.05rem",
-                    fontWeight: 700,
-                    color: card.color || "#111827"
-                  }}>
-                                {typeof card.value === "number" ? card.value.toLocaleString() : card.value}
-                              </div>
-                              <div style={{
-                    fontSize: "0.75rem",
-                    textTransform: "uppercase",
-                    letterSpacing: "0.06em",
-                    color: "#6b7280"
-                  }}>
-                                {card.label}
-                              </div>
-                            </div>
-                          </div>)}
-                    </div>
-
-                    {}
-                    {Array.isArray(sharepointData.sites) && sharepointData.sites.length > 0 && <div className={styles.antivirusModalEndpointsScroll}>
+                    {Array.isArray(sharepointData.sites) && sharepointData.sites.length > 0 && <div className={styles.o365TableFill}>
                           <table className={styles.antivirusModalTable}>
                             <thead>
                               <tr>
@@ -2884,7 +2377,7 @@ function Office365LegacyStep({
                   </>}
               </div>}
 
-            {activeTab === "securite" && <div>
+            {activeTab === "securite" && <div className={styles.o365TabPane}>
                 <div className={styles.infraTableHeaderInline}>
                   <div className={styles.infraTableHeaderInlineInfo}>
                     <h4 className={styles.antivirusDetailBlockTitle}>Security</h4>
@@ -2927,223 +2420,61 @@ function Office365LegacyStep({
                     </div>
                   </div>}
                 {securityData && securityData.success !== false && <>
-                    {}
-                    {metrics.secureScore?.currentScore != null && <div style={{
-              marginTop: "0.5rem",
-              marginBottom: "1rem",
-              padding: "0.75rem 1rem",
-              borderRadius: 8,
-              background: "#ffffff",
-              border: "1px solid #e5e7eb"
-            }}>
-                        <div style={{
-                fontSize: "0.85rem",
-                fontWeight: 600,
-                color: "#111827",
-                marginBottom: "0.75rem"
-              }}>
-                          Overall security score
-                        </div>
-                        <div style={{
-                display: "flex",
-                alignItems: "flex-end",
-                gap: "0.5rem",
-                marginBottom: "0.5rem"
-              }}>
-                          <div style={{
-                  fontSize: "2.5rem",
-                  fontWeight: 700,
-                  color: "#111827",
-                  lineHeight: 1
-                }}>
-                            {Math.round(metrics.secureScore.currentScore)}
+                    {(() => {
+              const recs = Array.isArray(securityData.secureScoreRecommendations) ? securityData.secureScoreRecommendations : [];
+              const globalTotal = securityKpiStats.usersWithMFA + securityKpiStats.usersWithoutMFA;
+              const adminTotal = securityKpiStats.adminsTotal;
+              const nonAdminTotal = securityKpiStats.nonAdminWithMFA + securityKpiStats.nonAdminWithoutMFA;
+              const rate = (withMfa, total) => total > 0 ? `${Math.round(withMfa / total * 100)}%` : "-";
+              return <>
+                          {renderO365KpiRow([{
+                    icon: "mdi:shield-check",
+                    label: "Secure Score",
+                    value: metrics.secureScore?.currentScore != null ? `${Math.round(metrics.secureScore.currentScore)} / ${metrics.secureScore.maxScore || 100}` : "-",
+                    sub: typeof metrics.secureScore?.percentage === "number" ? `${Math.round(metrics.secureScore.percentage)}% obtained` : null
+                  }, {
+                    icon: "mdi:earth",
+                    label: "Global MFA",
+                    value: rate(securityKpiStats.usersWithMFA, globalTotal),
+                    sub: `${securityKpiStats.usersWithMFA} with · ${securityKpiStats.usersWithoutMFA} without`
+                  }, {
+                    icon: "mdi:account-supervisor",
+                    label: "Admin MFA",
+                    value: rate(securityKpiStats.adminsWithMFA, adminTotal),
+                    sub: `${securityKpiStats.adminsWithMFA} with · ${securityKpiStats.adminsWithoutMFA} without`
+                  }, {
+                    icon: "mdi:account-group-outline",
+                    label: "Non-admin MFA",
+                    value: rate(securityKpiStats.nonAdminWithMFA, nonAdminTotal),
+                    sub: `${securityKpiStats.nonAdminWithMFA} with · ${securityKpiStats.nonAdminWithoutMFA} without`
+                  }], styles)}
+                          <h5 className={styles.o365KpiSectionTitle}>Recommendations</h5>
+                          <div className={styles.o365TableFill}>
+                            <table className={styles.antivirusModalTable}>
+                              <thead>
+                                <tr>
+                                  <th className={styles.antivirusStickyTh}>Recommendation</th>
+                                  <th className={styles.antivirusStickyTh}>Category</th>
+                                  <th className={styles.antivirusStickyTh}>Priority</th>
+                                  <th className={styles.antivirusStickyTh}>Points</th>
+                                  <th className={styles.antivirusStickyTh}>Status</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {recs.length === 0 ? <tr>
+                                    <td colSpan={5}>No recommendations returned for this tenant.</td>
+                                  </tr> : recs.map((rec, idx) => <tr key={rec.id || idx}>
+                                    <td>{rec.titleFr || rec.title || rec.displayName || "-"}</td>
+                                    <td>{rec.categoryFr || rec.category || "-"}</td>
+                                    <td>{rec.priorityLabel || rec.priority || "-"}</td>
+                                    <td>{rec.maxScore != null ? rec.maxScore : "-"}</td>
+                                    <td>{rec.stateLabel || rec.state || "-"}</td>
+                                  </tr>)}
+                              </tbody>
+                            </table>
                           </div>
-                          <div style={{
-                  fontSize: "1rem",
-                  color: "#6b7280",
-                  fontWeight: 500,
-                  marginBottom: "0.25rem"
-                }}>
-                            / {metrics.secureScore.maxScore || 100}
-                          </div>
-                        </div>
-                        {typeof metrics.secureScore?.percentage === "number" && <>
-                            <div style={{
-                  fontSize: "0.9rem",
-                  fontWeight: 600,
-                  color: "#374151",
-                  marginTop: "0.5rem"
-                }}>
-                              {Math.round(metrics.secureScore.percentage)}% des
-                              points obtenus
-                            </div>
-                            <div style={{
-                  marginTop: "0.75rem",
-                  width: "100%",
-                  height: 6,
-                  background: "#e5e7eb",
-                  borderRadius: 999
-                }}>
-                              <div style={{
-                    width: `${Math.min(100, Math.max(0, metrics.secureScore.percentage))}%`,
-                    height: "100%",
-                    borderRadius: 999,
-                    background: "#10b981"
-                  }} />
-                            </div>
-                          </>}
-                      </div>}
-
-                    {}
-                    <div style={{
-              display: "grid",
-              gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))",
-              gap: "1rem",
-              marginBottom: "1rem"
-            }}>
-                      {[{
-                title: "Global",
-                icon: "mdi:earth",
-                total: securityKpiStats.totalUsers,
-                withMfa: securityKpiStats.usersWithMFA,
-                withoutMfa: securityKpiStats.usersWithoutMFA,
-                top3: securityKpiStats.top3Total
-              }, {
-                title: "Administrator users",
-                icon: "mdi:account-supervisor",
-                total: securityKpiStats.adminsTotal,
-                withMfa: securityKpiStats.adminsWithMFA,
-                withoutMfa: securityKpiStats.adminsWithoutMFA,
-                top3: securityKpiStats.top3Admin
-              }, {
-                title: "Non-administrator users",
-                icon: "mdi:account-group-outline",
-                total: securityKpiStats.nonAdminWithMFA + securityKpiStats.nonAdminWithoutMFA,
-                withMfa: securityKpiStats.nonAdminWithMFA,
-                withoutMfa: securityKpiStats.nonAdminWithoutMFA,
-                top3: securityKpiStats.top3NonAdmin
-              }].map((section, idx) => {
-                const rate = section.withMfa + section.withoutMfa > 0 ? Math.round(section.withMfa / (section.withMfa + section.withoutMfa) * 100) : 0;
-                return <div key={idx} style={{
-                  padding: "0.75rem 1rem",
-                  borderRadius: 8,
-                  background: "#ffffff",
-                  border: "1px solid #e5e7eb"
-                }}>
-                            <div style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "0.5rem",
-                    marginBottom: "1rem",
-                    fontSize: "0.9rem",
-                    fontWeight: 600,
-                    color: "#111827"
-                  }}>
-                              <Icon icon={section.icon} width={20} height={20} style={{
-                      color: "#6b7280"
-                    }} />
-                              {section.title}
-                            </div>
-                            <div style={{
-                    display: "grid",
-                    gridTemplateColumns: "repeat(3, 1fr)",
-                    gap: "1rem",
-                    marginBottom: "1rem"
-                  }}>
-                              <div>
-                                <div style={{
-                        fontSize: "0.7rem",
-                        color: "#6b7280",
-                        marginBottom: "0.25rem"
-                      }}>
-                                  Avec MFA
-                                </div>
-                                <div style={{
-                        fontSize: "1.25rem",
-                        fontWeight: 700,
-                        color: "#10b981"
-                      }}>
-                                  {section.withMfa.toLocaleString()}
-                                </div>
-                              </div>
-                              <div>
-                                <div style={{
-                        fontSize: "0.7rem",
-                        color: "#6b7280",
-                        marginBottom: "0.25rem"
-                      }}>
-                                  Sans MFA
-                                </div>
-                                <div style={{
-                        fontSize: "1.25rem",
-                        fontWeight: 700,
-                        color: "#ef4444"
-                      }}>
-                                  {section.withoutMfa.toLocaleString()}
-                                </div>
-                              </div>
-                              <div>
-                                <div style={{
-                        fontSize: "0.7rem",
-                        color: "#6b7280",
-                        marginBottom: "0.25rem"
-                      }}>
-                                  Taux
-                                </div>
-                                <div style={{
-                        fontSize: "1.25rem",
-                        fontWeight: 700,
-                        color: "#111827"
-                      }}>
-                                  {rate}%
-                                </div>
-                              </div>
-                            </div>
-                            <div style={{
-                    fontSize: "0.75rem",
-                    color: "#6b7280",
-                    paddingTop: "0.75rem",
-                    borderTop: "1px solid #e5e7eb"
-                  }}>
-                              <div style={{
-                      fontWeight: 600,
-                      marginBottom: "0.5rem",
-                      color: "#374151"
-                    }}>
-                                Top 3 preferred methods
-                              </div>
-                              {section.top3.length > 0 ? <div style={{
-                      display: "flex",
-                      flexWrap: "wrap",
-                      gap: "0.5rem",
-                      alignItems: "center"
-                    }}>
-                                  {section.top3.map(({
-                        key,
-                        count
-                      }) => <span key={key} style={{
-                        display: "inline-flex",
-                        alignItems: "center",
-                        gap: "0.35rem",
-                        fontSize: "0.75rem",
-                        color: "#111827"
-                      }}>
-                                      {getMfaMethodIcon(key)}
-                                      {getMfaMethodLabelFromKey(key)}
-                                      <span style={{
-                          color: "#6b7280",
-                          fontWeight: 600
-                        }}>
-                                        ({count})
-                                      </span>
-                                    </span>)}
-                                </div> : <span style={{
-                      color: "#9ca3af"
-                    }}>-</span>}
-                            </div>
-                          </div>;
-              })}
-                    </div>
+                        </>;
+            })()}
                   </>}
               </div>}
           </>}

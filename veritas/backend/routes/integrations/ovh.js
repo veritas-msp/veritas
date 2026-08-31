@@ -466,8 +466,6 @@ router.post('/domains/sync-all', async (req, res) => {
         details: 'Please configure Application Key, Application Secret and Consumer Key in administration settings.'
       });
     }
-    const clientsResult = await pool.query('SELECT id, name FROM v_b_clients ORDER BY name');
-    const clients = clientsResult.rows;
     const domainList = await callOvhApi('/domain');
     if (!Array.isArray(domainList)) {
       return res.status(500).json({
@@ -475,40 +473,43 @@ router.post('/domains/sync-all', async (req, res) => {
         error: 'Unexpected response format from OVH API'
       });
     }
+    const assignedResult = await pool.query(`SELECT id, client_id, item_key, data FROM v_b_clients_m_ndd`);
+    const assignedByName = new Map();
+    for (const row of assignedResult.rows) {
+      const data = row.data && typeof row.data === 'object' ? row.data : {};
+      const names = [data.nom, data.name, data.domain, data.domaine, row.item_key, row.name].filter(Boolean);
+      for (const rawName of names) {
+        const key = String(rawName).trim().toLowerCase();
+        if (key && !assignedByName.has(key)) assignedByName.set(key, row);
+      }
+    }
     let syncedCount = 0;
+    let skippedUnassigned = 0;
     let errorCount = 0;
     for (const domainName of domainList) {
       try {
-        const [domainInfo, expirationInfo] = await Promise.allSettled([callOvhApi(`/domain/${encodeURIComponent(domainName)}`), callOvhApi(`/domain/${encodeURIComponent(domainName)}/serviceInfos`).catch(() => null)]);
-        const domainData = domainInfo.status === 'fulfilled' ? domainInfo.value : {};
+        const assigned = assignedByName.get(String(domainName || '').trim().toLowerCase());
+        if (!assigned) {
+          skippedUnassigned++;
+          continue;
+        }
+        const [expirationInfo] = await Promise.allSettled([callOvhApi(`/domain/${encodeURIComponent(domainName)}/serviceInfos`).catch(() => null)]);
         const expirationData = expirationInfo.status === 'fulfilled' && expirationInfo.value ? expirationInfo.value : null;
         const expiration = expirationData?.expiration || expirationData?.expir || null;
-        const existingDomain = await pool.query(`SELECT id, client_id FROM v_b_clients_m_ndd 
-           WHERE data->>'nom' = $1 OR data->>'name' = $1 OR item_key = $1`, [domainName]);
+        const existingData = assigned.data && typeof assigned.data === 'object' ? assigned.data : {};
         const domainDataToSave = {
-          nom: domainName,
-          name: domainName,
-          registrar: 'OVH',
-          expiration: expiration,
-          expirationDate: expiration
+          ...existingData,
+          nom: existingData.nom || domainName,
+          name: existingData.name || domainName,
+          domain: existingData.domain || domainName,
+          registrar: existingData.registrar || 'OVH',
+          providerId: existingData.providerId || 'ovh',
+          expiration: expiration || existingData.expiration || null,
+          expirationDate: expiration || existingData.expirationDate || null
         };
-        if (existingDomain.rows.length > 0) {
-          await pool.query(`UPDATE v_b_clients_m_ndd 
-             SET data = $1, updated_at = NOW()
-             WHERE id = $2`, [JSON.stringify(domainDataToSave), existingDomain.rows[0].id]);
-        } else {
-          const clientsWithNDD = await pool.query(`SELECT DISTINCT client_id FROM v_b_clients_m_ndd`);
-          if (clientsWithNDD.rows.length > 0) {
-            const clientId = clientsWithNDD.rows[0].client_id;
-            await pool.query(`INSERT INTO v_b_clients_m_ndd (client_id, item_key, data, is_active, created_at, updated_at)
-               VALUES ($1, $2, $3, true, NOW(), NOW())`, [clientId, domainName, JSON.stringify(domainDataToSave)]);
-          } else {
-            if (clients.length > 0) {
-              await pool.query(`INSERT INTO v_b_clients_m_ndd (client_id, item_key, data, is_active, created_at, updated_at)
-                 VALUES ($1, $2, $3, true, NOW(), NOW())`, [clients[0].id, domainName, JSON.stringify(domainDataToSave)]);
-            }
-          }
-        }
+        await pool.query(`UPDATE v_b_clients_m_ndd
+           SET data = $1, updated_at = NOW()
+           WHERE id = $2`, [JSON.stringify(domainDataToSave), assigned.id]);
         syncedCount++;
       } catch (domainError) {
         console.error(`Error synchronisation du domaine ${domainName}:`, domainError);
@@ -519,6 +520,7 @@ router.post('/domains/sync-all', async (req, res) => {
       success: true,
       message: `Synchronization completed: ${syncedCount} domain(s) synchronized${errorCount > 0 ? `, ${errorCount} erreur(s)` : ''}`,
       syncedCount,
+      skippedUnassigned,
       errorCount,
       totalDomains: domainList.length
     });

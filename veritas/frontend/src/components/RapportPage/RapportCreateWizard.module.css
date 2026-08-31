@@ -91,18 +91,22 @@
 .stageRight {
   display: flex;
   flex-direction: column;
-  gap: 1rem;
+  gap: 1.15rem;
   min-width: 0;
   min-height: 0;
   overflow: hidden;
 }
 
 .stageLeft {
-  padding-right: 1.5rem;
+  padding-right: 1.75rem;
+}
+
+.stageLeftRecap {
+  gap: 1.45rem;
 }
 
 .stageRight {
-  padding-left: 1.5rem;
+  padding-left: 1.75rem;
   border-left: 1px solid var(--msp-border-light, #e2e8f0);
 }
 
@@ -130,7 +134,7 @@
 .stageHeader,
 .search,
 .recentHeader,
-.continueBtn {
+.continueRow {
   flex-shrink: 0;
 }
 
@@ -138,7 +142,8 @@
   display: flex;
   align-items: center;
   gap: 0.55rem;
-  min-height: 2.75rem;
+  min-height: 2.85rem;
+  margin-bottom: 0.35rem;
   padding: 0 0.85rem;
   border-radius: 12px;
   border: 1px solid var(--msp-border, #c5d0df);
@@ -348,12 +353,17 @@
   color: var(--msp-accent, #2b5fab);
 }
 
+.continueRow {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: auto;
+  padding-top: 0.35rem;
+}
+
 .continueBtn {
   display: inline-flex;
   align-items: center;
   gap: 0.45rem;
-  align-self: flex-start;
-  margin-top: auto;
   padding: 0.7rem 1.1rem;
   border: none;
   border-radius: 10px;
@@ -371,28 +381,39 @@
 
 .stageTypes {
   overflow: hidden;
+  align-items: stretch;
+}
+
+.stageTypes .stageHeader {
+  text-align: center;
+  align-items: center;
 }
 
 .typeGrid {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 0.85rem;
+  grid-template-columns: repeat(3, minmax(11.5rem, 14.5rem));
+  gap: 1.15rem;
   flex: 1;
   min-height: 0;
-  align-items: start;
-  align-content: start;
+  justify-content: center;
+  align-content: center;
   overflow: auto;
-  padding: 0.35rem 0.55rem 0.85rem 0.15rem;
+  width: 100%;
+  margin: 0 auto;
+  padding: 0.5rem 0.75rem 0.85rem;
 }
 
 .typeCard {
+  position: relative;
   display: flex;
   flex-direction: column;
-  align-items: flex-start;
+  align-items: center;
+  justify-content: center;
   gap: 0.55rem;
   width: 100%;
+  aspect-ratio: 1 / 1;
   height: auto;
-  padding: 1rem 1.05rem 0.95rem;
+  padding: 1.35rem 1.1rem 1.2rem;
   border-radius: 16px;
   border: 1px solid var(--msp-border, #c5d0df);
   background: linear-gradient(
@@ -401,7 +422,7 @@
     var(--msp-surface-2, #f7f9fc) 100%
   );
   box-shadow: var(--msp-shadow-soft, 0 2px 12px rgba(11, 33, 56, 0.05));
-  text-align: left;
+  text-align: center;
   font-family: inherit;
   color: inherit;
   cursor: pointer;
@@ -426,24 +447,16 @@
   box-shadow: var(--msp-shadow-soft, 0 2px 12px rgba(11, 33, 56, 0.05));
 }
 
-.typeCardTop {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 0.5rem;
-  width: 100%;
-}
-
 .typeCardIcon {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 2.5rem;
-  height: 2.5rem;
-  border-radius: 12px;
+  width: 3.35rem;
+  height: 3.35rem;
+  border-radius: 14px;
   background: var(--msp-accent-soft, rgba(43, 95, 171, 0.1));
   color: var(--msp-accent, #2b5fab);
-  font-size: 1.25rem;
+  font-size: 1.55rem;
   flex-shrink: 0;
 }
 
@@ -453,13 +466,15 @@
 }
 
 .typeCardBadge {
-  flex-shrink: 0;
+  position: absolute;
+  top: 0.7rem;
+  right: 0.7rem;
   padding: 0.18rem 0.5rem;
   border-radius: 999px;
   border: 1px solid var(--msp-border-light, #e2e8f0);
   background: var(--msp-surface-2, #f7f9fc);
   color: var(--msp-muted, #5c6b82);
-  font-size: 0.62rem;
+  font-size: 0.58rem;
   font-weight: 700;
   letter-spacing: 0.04em;
   text-transform: uppercase;
@@ -475,47 +490,9 @@
 
 .typeCardDescription {
   margin: 0;
-  font-size: 0.82rem;
-  line-height: 1.45;
-  color: var(--msp-muted, #5c6b82);
-}
-
-.typeCardSteps {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.35rem;
-}
-
-.typeCardSteps span {
-  padding: 0.22rem 0.55rem;
-  border-radius: 999px;
-  border: 1px solid var(--msp-border-light, #e2e8f0);
-  background: var(--msp-surface, #fff);
-  font-size: 0.68rem;
-  font-weight: 650;
-  color: var(--msp-text, #0f1c2e);
-}
-
-.typeCardAction {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.35rem;
-  margin-top: 0.15rem;
-  color: var(--msp-accent, #2b5fab);
-  font-size: 0.84rem;
-  font-weight: 650;
-}
-
-.typeCardActionSoon {
-  color: var(--msp-muted, #5c6b82);
-}
-
-.typeCard:hover .typeCardAction {
-  color: var(--msp-accent-dark, #1a3d75);
-}
-
-.typeCardSoon:hover .typeCardAction,
-.typeCard:disabled:hover .typeCardAction {
+  max-width: 16rem;
+  font-size: 0.8rem;
+  line-height: 1.4;
   color: var(--msp-muted, #5c6b82);
 }
 
@@ -543,10 +520,11 @@
 .recentList {
   display: flex;
   flex-direction: column;
+  gap: 0.65rem;
   flex: 1;
   min-height: 0;
   margin: 0;
-  padding: 0;
+  padding: 0.15rem 0 0.25rem;
   list-style: none;
   overflow: auto;
   scrollbar-width: thin;
@@ -555,21 +533,22 @@
 .recentItem {
   display: flex;
   flex-direction: column;
-  gap: 0.35rem;
+  gap: 0.45rem;
   width: 100%;
-  padding: 0.8rem 0.85rem;
-  border: none;
-  border-bottom: 1px solid var(--msp-border-light, #e2e8f0);
-  background: transparent;
+  padding: 1rem 1.05rem;
+  border: 1px solid var(--msp-border-light, #e2e8f0);
+  border-radius: 12px;
+  background: var(--msp-surface, #fff);
   text-align: left;
   font-family: inherit;
   color: inherit;
   cursor: pointer;
-  transition: background 0.12s;
+  transition: background 0.12s, border-color 0.12s;
 }
 
 .recentItem:hover {
   background: rgba(43, 95, 171, 0.04);
+  border-color: var(--msp-accent, #2b5fab);
 }
 
 .recentItemTop {
@@ -616,10 +595,13 @@
   flex-direction: column;
   align-items: flex-start;
   justify-content: center;
-  gap: 0.45rem;
+  gap: 0.55rem;
   flex: 1;
   min-height: 0;
-  padding: 1.25rem 0;
+  padding: 1.75rem 1.1rem;
+  border-radius: 12px;
+  border: 1px dashed var(--msp-border, #c5d0df);
+  background: var(--msp-surface-2, #f7f9fc);
   color: var(--msp-muted, #5c6b82);
   font-size: 0.84rem;
 }
@@ -637,11 +619,12 @@
 :global(html.dark) .search,
 :global(html.dark) .stepIndex,
 :global(html.dark) .typeCard,
-:global(html.dark) .typeCardSteps span {
+:global(html.dark) .recentItem {
   background: var(--msp-surface, #12122a);
 }
 
-:global(html.dark) .typeCardBadge {
+:global(html.dark) .typeCardBadge,
+:global(html.dark) .recentEmpty {
   background: var(--msp-surface-2, #1c1c38);
   border-color: var(--msp-border, #3a3a5c);
 }
@@ -658,6 +641,7 @@
   min-height: 0;
   overflow: auto;
   scrollbar-width: thin;
+  padding-top: 0.35rem;
 }
 
 @media (max-width: 960px) {
@@ -692,7 +676,7 @@
   }
 
   .typeGrid {
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(2, minmax(10.5rem, 13.5rem));
     overflow: auto;
   }
 
@@ -701,8 +685,14 @@
   }
 }
 
+@media (max-width: 560px) {
+  .typeGrid {
+    grid-template-columns: minmax(12rem, 16rem);
+  }
+}
+
 @media (max-width: 1100px) and (min-width: 961px) {
   .typeGrid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: repeat(3, minmax(10.5rem, 13rem));
   }
 }

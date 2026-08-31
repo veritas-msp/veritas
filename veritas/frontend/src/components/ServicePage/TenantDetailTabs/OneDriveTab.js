@@ -2,7 +2,8 @@ import React from 'react';
 import styles from '../TenantDetailPage.module.css';
 export default function OneDriveTab({
   onedriveData,
-  theme
+  theme,
+  embedded = false
 }) {
   if (!onedriveData) {
     return <div>
@@ -31,7 +32,7 @@ export default function OneDriveTab({
   return <div>
       <h2 className={styles.sectionTitle}>OneDrive</h2>
       
-      <div className={styles.metricsRow}>
+      <div className={embedded ? styles.metricsRow4 : styles.metricsRow}>
         <div className={styles.metricItem}>
           <div className={styles.metricLabel}>Total space used</div>
           <div className={styles.metricValue} style={{

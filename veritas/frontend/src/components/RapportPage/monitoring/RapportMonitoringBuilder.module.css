@@ -2506,6 +2506,62 @@
   padding: 0;
   border: none;
   background: transparent;
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.o365TabPane {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  height: 100%;
+}
+
+.o365TableFill {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  border: 1px solid var(--msp-border, #e2e8f0);
+  border-radius: var(--msp-radius-sm, 10px);
+  background: var(--msp-surface, #ffffff);
+  box-shadow: var(--msp-shadow, 0 1px 2px rgba(15, 28, 46, 0.04));
+}
+
+.o365TableFill .antivirusModalTable {
+  width: 100%;
+}
+
+.o365KpiRow4 {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.75rem;
+  margin-top: 0.35rem;
+  margin-bottom: 1rem;
+}
+
+.o365KpiSection {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  margin-bottom: 1rem;
+}
+
+.o365KpiSectionTitle {
+  margin: 0;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--msp-muted, #5c6b82);
+}
+
+@media (max-width: 1100px) {
+  .o365KpiRow4 {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
 
 .solutionOverviewEmbed {
@@ -2513,6 +2569,7 @@
   width: 100%;
   flex: 1;
   min-height: 0;
+  height: 100%;
   display: flex;
   flex-direction: column;
 }
@@ -2595,6 +2652,37 @@
   font-size: 0.72rem;
   color: var(--msp-muted, #5c6b82);
   line-height: 1.35;
+}
+
+.supportBadge {
+  display: inline-flex;
+  align-items: center;
+  width: fit-content;
+  margin-top: 0.15rem;
+  padding: 0.12rem 0.5rem;
+  border-radius: 999px;
+  font-size: 0.7rem;
+  font-weight: 650;
+}
+
+.supportBadgeOk {
+  background: #ecfdf5;
+  color: #047857;
+}
+
+.supportBadgeWarn {
+  background: #fffbeb;
+  color: #b45309;
+}
+
+.supportBadgeDanger {
+  background: #fef2f2;
+  color: #b91c1c;
+}
+
+.supportBadgeMuted {
+  background: #f3f4f6;
+  color: #4b5563;
 }
 
 .supportBreakdownGrid {

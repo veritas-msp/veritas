@@ -1,4 +1,4 @@
-import { fetchClientModules, saveClientModules } from "../../api/clients";
+import { deleteClientModuleItem, fetchClientModules, saveClientModules } from "../../api/clients";
 import { fetchOvhDomains, fetchOvhDomainDetails } from "../../api/clientOvh";
 import { getDnsProvider, inferProviderIdFromDomain } from "./dnsFormConfig";
 function formatDateForStorage(raw) {
@@ -116,15 +116,12 @@ export function extractDomainsFromModules(modulesData) {
 }
 function buildDomainDedupeKey(item) {
   const normalized = normalizeDomainItem(item);
-  return (normalized?.nom || "").trim().toLowerCase();
+  return (normalized?.nom || "").trim().toLowerCase().replace(/\.+$/, "");
 }
-export function listConfiguredDomains(client, domainItems = [], modulesData = null) {
-  const sources = [...extractDomainsFromModules(modulesData || {
-    equipements: client?.equipements
-  }), ...(domainItems || []).map(item => normalizeDomainItem(item)).filter(Boolean)];
+function uniqueConfiguredDomains(list) {
   const seen = new Set();
   const configured = [];
-  for (const item of sources) {
+  for (const item of list) {
     if (!isDomainConfigured(item)) continue;
     const dedupeKey = buildDomainDedupeKey(item);
     if (!dedupeKey || seen.has(dedupeKey)) continue;
@@ -133,14 +130,38 @@ export function listConfiguredDomains(client, domainItems = [], modulesData = nu
   }
   return configured;
 }
+export function listConfiguredDomains(client, domainItems = [], modulesData = null) {
+  const equipements = modulesData?.equipements || client?.equipements;
+  const nddFromEquipements = Array.isArray(equipements?.NDD) ? equipements.NDD : null;
+  const fromModules = (nddFromEquipements || []).map(item => normalizeDomainItem(item)).filter(Boolean);
+  if (nddFromEquipements != null) {
+    return uniqueConfiguredDomains(fromModules);
+  }
+  const fromItems = (domainItems || []).map(item => normalizeDomainItem(item)).filter(Boolean);
+  return uniqueConfiguredDomains(fromItems);
+}
 export function isClientDomainsConfigured(client, domainItems = [], modulesData = null) {
   return listConfiguredDomains(client, domainItems, modulesData).length > 0;
 }
 function domainMatches(a, b) {
-  return buildDomainDedupeKey(a) === buildDomainDedupeKey(b);
+  const aId = a?.id != null ? String(a.id) : "";
+  const bId = b?.id != null ? String(b.id) : "";
+  if (aId && bId && aId === bId) return true;
+  const aKey = buildDomainDedupeKey(a);
+  const bKey = buildDomainDedupeKey(b);
+  return Boolean(aKey) && aKey === bKey;
+}
+function withDomainItemKey(domain) {
+  const normalized = normalizeDomainItem(domain);
+  if (!normalized) return null;
+  const key = normalized.item_key || normalized.nom || normalized.name || "";
+  return {
+    ...normalized,
+    item_key: key
+  };
 }
 export async function saveMonitoredDomains(clientId, domains) {
-  const normalized = (domains || []).map(d => normalizeDomainItem(d)).filter(isDomainConfigured);
+  const normalized = (domains || []).map(d => withDomainItemKey(d)).filter(isDomainConfigured);
   const modulesData = await fetchClientModules(clientId);
   await saveClientModules(clientId, {
     modules: modulesData?.modules || {
@@ -156,13 +177,22 @@ export async function saveMonitoredDomains(clientId, domains) {
   return normalized;
 }
 export async function removeMonitoredDomain(clientId, domain) {
-  const normalized = normalizeDomainItem(domain);
-  if (!clientId || !normalized?.nom) {
+  const normalized = normalizeDomainItem(domain) || domain;
+  if (!clientId || !normalized?.nom && normalized?.id == null) {
     throw new Error("Domaine introuvable.");
   }
   const modulesData = await fetchClientModules(clientId);
   const existing = extractDomainsFromModules(modulesData);
   const remaining = existing.filter(entry => !domainMatches(entry, normalized));
+  const removed = existing.filter(entry => domainMatches(entry, normalized));
+  const idsToDelete = [...removed.map(entry => entry.id), normalized.id].filter(Boolean);
+  for (const id of [...new Set(idsToDelete.map(id => String(id)))]) {
+    try {
+      await deleteClientModuleItem(clientId, "ndd", id);
+    } catch {
+      // La sync ci-dessous retire aussi les lignes absentes de remaining.
+    }
+  }
   return saveMonitoredDomains(clientId, remaining);
 }
 export async function reorderMonitoredDomains(clientId, orderedItems = []) {

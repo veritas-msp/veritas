@@ -109,9 +109,29 @@
 
 .kpiGrid {
   display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 0.65rem;
   margin-bottom: 1.25rem;
+  width: 100%;
+}
+
+.kpiGridLicense {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.65rem;
+  margin-bottom: 0;
+  width: 100%;
+  align-self: stretch;
+}
+
+.kpiGridLicense .kpiCard {
+  min-width: 0;
+  width: 100%;
+}
+
+.kpiGridLicense .kpiValue,
+.kpiGridLicense .kpiLabel {
+  font-weight: 400;
 }
 
 .kpiCard {
@@ -123,7 +143,7 @@
 
 .kpiValue {
   font-size: 1.35rem;
-  font-weight: 800;
+  font-weight: 400;
   color: var(--msp-text, #0f1c2e);
   line-height: 1.1;
 }
@@ -237,6 +257,39 @@
   border-radius: 10px;
 }
 
+.listSectionFill {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  width: 100%;
+}
+
+.listSectionMeta {
+  flex-shrink: 0;
+  margin-bottom: 0.75rem;
+}
+
+.listSectionCount {
+  margin-left: 0.5rem;
+  font-size: 0.78rem;
+  color: var(--msp-muted);
+}
+
+.tableScrollFill {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  border: 1px solid var(--msp-border, #dde3ed);
+  border-radius: 10px;
+  display: flex;
+  flex-direction: column;
+}
+
+.tableScrollFill .dataTable {
+  width: 100%;
+}
+
 .dataTable {
   width: 100%;
   border-collapse: collapse;
@@ -261,6 +314,26 @@
 
 .dataTable td {
   color: var(--msp-text, #0f1c2e);
+}
+
+.policyNameCell {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  min-width: 0;
+}
+
+.policyNameCell svg {
+  flex-shrink: 0;
+  color: var(--msp-accent, #2b5fab);
+}
+
+.appliedOk {
+  color: #059669;
+}
+
+.appliedIdle {
+  color: var(--msp-muted, #5c6b82);
 }
 
 .mono {
@@ -333,33 +406,6 @@
   font-size: 0.875rem;
 }
 
-.kpiValueSmall {
-  font-size: 1rem;
-}
-
-.licenseExpirationBanner {
-  display: flex;
-  align-items: center;
-  gap: 0.65rem;
-  padding: 0.75rem 0.9rem;
-  margin-bottom: 1rem;
-  border-radius: 10px;
-  border: 1px solid rgba(43, 95, 171, 0.2);
-  background: rgba(43, 95, 171, 0.05);
-  font-size: 0.8rem;
-  color: var(--msp-text, #0f1c2e);
-}
-
-.licenseExpirationBannerWarn {
-  border-color: rgba(245, 158, 11, 0.35);
-  background: rgba(245, 158, 11, 0.08);
-}
-
-.licenseExpirationBannerDanger {
-  border-color: rgba(239, 68, 68, 0.35);
-  background: rgba(239, 68, 68, 0.06);
-}
-
 .chartsSection {
   margin: 1.25rem 0;
 }
@@ -414,7 +460,8 @@
 }
 
 @media (max-width: 900px) {
-  .kpiGrid {
+  .kpiGrid,
+  .kpiGridLicense {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
@@ -424,7 +471,8 @@
 }
 
 @media (max-width: 640px) {
-  .kpiGrid {
+  .kpiGrid,
+  .kpiGridLicense {
     grid-template-columns: 1fr;
   }
 

@@ -268,7 +268,8 @@ export default function UsersTab({
   dashboardMetrics,
   detailData,
   mfaDetails: mfaDetailsProp = [],
-  theme
+  theme,
+  embedded = false
 }) {
   const mfaDetails = useMemo(() => normalizeMfaList(mfaDetailsProp), [mfaDetailsProp]);
   const [sortColumn, setSortColumn] = useState(null);
@@ -485,7 +486,7 @@ export default function UsersTab({
   const safeCurrentPage = Math.min(currentPage, totalPages);
   const startIndex = (safeCurrentPage - 1) * usersPerPage;
   const endIndex = startIndex + usersPerPage;
-  const paginatedUsers = sortedUsers.slice(startIndex, endIndex);
+  const paginatedUsers = embedded ? sortedUsers : sortedUsers.slice(startIndex, endIndex);
   const handlePreviousPage = () => {
     setCurrentPage(prev => Math.max(1, prev - 1));
   };
@@ -533,11 +534,11 @@ export default function UsersTab({
       count
     })).sort((a, b) => b.count - a.count || (a.domain === NO_DOMAIN_KEY ? 1 : b.domain === NO_DOMAIN_KEY ? -1 : a.domain.localeCompare(b.domain)));
   }, [displayUsers]);
-  return <section className={styles.kpiSection}>
+  return <section className={`${styles.kpiSection} ${embedded ? styles.tabFill : ""}`}>
       <h2 className={styles.sectionTitle}>Users</h2>
       {users.length > 0 ? <>
           {}
-          {domainCounts.length > 0 && <>
+          {!embedded && domainCounts.length > 0 && <>
               <h3 className={styles.subsectionTitle}>
                 Domain filters
               </h3>
@@ -574,7 +575,7 @@ export default function UsersTab({
             </>}
 
           {}
-          {dashboardMetrics && <>
+          {!embedded && dashboardMetrics && <>
               <h3 className={styles.subsectionTitle} style={{
           marginTop: domainCounts.length > 0 ? '0.5rem' : '0'
         }}>
@@ -700,14 +701,13 @@ export default function UsersTab({
             </>}
 
           {}
-          <h3 className={styles.sectionTitle} style={{
+          {!embedded ? <h3 className={styles.sectionTitle} style={{
         marginTop: '1rem'
       }}>
             Users table
-          </h3>
+          </h3> : null}
 
-          {}
-          <div className={styles.serviceAccountsRow}>
+          {!embedded ? <div className={styles.serviceAccountsRow}>
             <div className={styles.serviceAccountsLeft}>
               <div className={styles.serviceAccountsSearchContainer}>
                 <div className={styles.serviceAccountsSearchBox}>
@@ -744,8 +744,8 @@ export default function UsersTab({
                 <Icon icon="mdi:file-export" className={styles.headerActionIcon} />
               </button>
             </SmartTooltip>
-          </div>
-          <div className={styles.licensesTableContainer} style={{
+          </div> : null}
+          <div className={`${styles.licensesTableContainer} ${embedded ? styles.tableFill : ""}`} style={embedded ? undefined : {
         overflowY: 'hidden',
         maxHeight: 'none'
       }}>
@@ -1019,7 +1019,7 @@ export default function UsersTab({
           </div>
 
           {}
-          {totalPages > 1 && <div className={styles.pagination}>
+          {!embedded && totalPages > 1 && <div className={styles.pagination}>
               <button type="button" className={styles.paginationButton} onClick={handlePreviousPage} disabled={safeCurrentPage === 1} aria-label="Previous">
                 <FaChevronLeft />
               </button>

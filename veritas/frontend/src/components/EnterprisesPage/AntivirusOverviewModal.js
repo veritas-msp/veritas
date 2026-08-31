@@ -2,9 +2,9 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { Icon } from "@iconify/react";
 import { FaTimes } from "react-icons/fa";
-import { ANTIVIRUS_OVERVIEW_GROUPS, ANTIVIRUS_OVERVIEW_SECTIONS } from "./antivirusOverviewSections";
+import { ANTIVIRUS_OVERVIEW_SECTIONS } from "./antivirusOverviewSections";
 import { fetchGravityZoneDashboard, fetchBitdefenderStatistics, fetchBitdefenderEnrichedEndpoints } from "../../api/clientBitdefender";
-import { syncAndPersistAntivirusSolution } from "./antivirusSolutionUtils";
+import { formatAntivirusEndpointType, syncAndPersistAntivirusSolution } from "./antivirusSolutionUtils";
 import AntivirusOverviewCharts from "./AntivirusOverviewCharts";
 import { showError, showSuccess } from "../../utils/toast";
 import formStyles from "./EnterpriseFormModal.module.css";
@@ -21,6 +21,23 @@ function formatDate(value) {
     return String(value);
   }
 }
+function collectPolicyUsage(endpoints = []) {
+  const list = Array.isArray(endpoints) ? endpoints : Array.isArray(endpoints?.endpoints) ? endpoints.endpoints : [];
+  const byId = new Map();
+  for (const ep of list) {
+    const policyId = ep?.policy?.id;
+    if (policyId == null) continue;
+    const key = String(policyId);
+    const current = byId.get(key) || {
+      count: 0,
+      applied: 0
+    };
+    current.count += 1;
+    if (ep.policy?.applied) current.applied += 1;
+    byId.set(key, current);
+  }
+  return byId;
+}
 function formatDateShort(value) {
   if (!value) return "-";
   try {
@@ -30,37 +47,6 @@ function formatDateShort(value) {
   } catch {
     return String(value);
   }
-}
-function daysUntilExpiration(value) {
-  if (!value) return null;
-  const exp = new Date(value);
-  if (Number.isNaN(exp.getTime())) return null;
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  exp.setHours(0, 0, 0, 0);
-  return Math.ceil((exp - today) / (1000 * 60 * 60 * 24));
-}
-function LicenseExpirationNotice({
-  expirationDate
-}) {
-  if (!expirationDate) return null;
-  const daysLeft = daysUntilExpiration(expirationDate);
-  let bannerClass = styles.licenseExpirationBanner;
-  let icon = "mdi:calendar-clock";
-  let message = `Licenses valid until ${formatDateShort(expirationDate)}.`;
-  if (daysLeft != null && daysLeft < 0) {
-    bannerClass = `${styles.licenseExpirationBanner} ${styles.licenseExpirationBannerDanger}`;
-    icon = "mdi:alert-circle-outline";
-    message = `Licenses expired on ${formatDateShort(expirationDate)}.`;
-  } else if (daysLeft != null && daysLeft <= 30) {
-    bannerClass = `${styles.licenseExpirationBanner} ${styles.licenseExpirationBannerWarn}`;
-    icon = "mdi:alert-outline";
-    message = `Expires on ${formatDateShort(expirationDate)} · ${daysLeft} day${daysLeft > 1 ? "s" : ""} remaining.`;
-  }
-  return <div className={bannerClass}>
-      <Icon icon={icon} aria-hidden />
-      <span>{message}</span>
-    </div>;
 }
 function resolveApiDisplayStatus(status, preview = false) {
   if (!preview) return status;
@@ -120,12 +106,15 @@ function SectionError({
 function DataTable({
   columns,
   rows,
-  emptyLabel = "No data"
+  emptyLabel = "No data",
+  fillHeight = false
 }) {
   if (!rows?.length) {
-    return <div className={styles.emptyState}>{emptyLabel}</div>;
+    return <div className={fillHeight ? styles.tableScrollFill : undefined}>
+        <div className={styles.emptyState}>{emptyLabel}</div>
+      </div>;
   }
-  return <div className={styles.tableScroll}>
+  return <div className={fillHeight ? styles.tableScrollFill : styles.tableScroll}>
       <table className={styles.dataTable}>
         <thead>
           <tr>
@@ -143,10 +132,11 @@ function DataTable({
     </div>;
 }
 function renderListSection(section, {
-  preview = false
+  preview = false,
+  fillHeight = false
 } = {}) {
   if (!section) return <div className={styles.emptyState}>Section unavailable</div>;
-  return <>
+  return <div className={fillHeight ? styles.listSectionFill : undefined}>
       {preview ? <div className={styles.previewBanner}>
           <Icon icon="mdi:flask-outline" aria-hidden />
           <span>
@@ -155,20 +145,14 @@ function renderListSection(section, {
           </span>
         </div> : null}
       <SectionError error={section.error} />
-      <div style={{
-      marginBottom: "0.75rem"
-    }}>
+      <div className={styles.listSectionMeta}>
         <StatusPill status={section.status} />
-        {section.total != null ? <span style={{
-        marginLeft: "0.5rem",
-        fontSize: "0.78rem",
-        color: "var(--msp-muted)"
-      }}>
+        {section.total != null ? <span className={styles.listSectionCount}>
             {section.total} item{section.total > 1 ? "s" : ""}
           </span> : null}
       </div>
-      <DataTable columns={section.columns} rows={section.items} emptyLabel={section.status === "permission_denied" ? "Access denied · enable this API for the GravityZone key" : "No data returned"} />
-    </>;
+      <DataTable columns={section.columns} rows={section.items} emptyLabel={section.status === "permission_denied" ? "Access denied · enable this API for the GravityZone key" : "No data returned"} fillHeight={fillHeight} />
+    </div>;
 }
 export function AntivirusOverviewPanel({
   active = true,
@@ -187,23 +171,32 @@ export function AntivirusOverviewPanel({
   const [internalSection, setInternalSection] = useState("overview");
   const activeSection = controlledSection ?? internalSection;
   const setActiveSection = onSectionChange || setInternalSection;
-  const [patchTab, setPatchTab] = useState("missing");
-  const [loading, setLoading] = useState(() => !antivirusItem?.syncData?.dashboard);
+  const cachedSync = antivirusItem?.syncData;
+  const [loading, setLoading] = useState(() => !cachedSync?.dashboard);
   const [refreshing, setRefreshing] = useState(false);
-  const [dashboard, setDashboard] = useState(null);
-  const [statistics, setStatistics] = useState(null);
-  const [enrichedSummary, setEnrichedSummary] = useState(null);
-  const [lastPersistedAt, setLastPersistedAt] = useState(null);
+  const [dashboard, setDashboard] = useState(() => cachedSync?.dashboard || null);
+  const [statistics, setStatistics] = useState(() => cachedSync?.statistics || null);
+  const [enrichedSummary, setEnrichedSummary] = useState(() => cachedSync?.enrichedSummary || null);
+  const [enrichedEndpoints, setEnrichedEndpoints] = useState(() => cachedSync?.enrichedEndpoints || null);
+  const [lastPersistedAt, setLastPersistedAt] = useState(() => cachedSync?.lastSync || null);
   const [loadError, setLoadError] = useState(null);
   const abortRef = useRef(null);
   const requestIdRef = useRef(0);
-  const dashboardRef = useRef(null);
-  const credentialContext = useMemo(() => ({
-    clientId: client?.id,
-    bitdefenderTenantId: antivirusItem?.bitdefenderTenantId,
-    mappingMode: antivirusItem?.mappingMode || "reseller"
-  }), [client?.id, antivirusItem]);
+  const dashboardRef = useRef(cachedSync?.dashboard || null);
+  const loadedKeyRef = useRef(null);
+  const antivirusItemRef = useRef(antivirusItem);
+  const onSyncedRef = useRef(onSynced);
+  antivirusItemRef.current = antivirusItem;
+  onSyncedRef.current = onSynced;
   const companyId = antivirusItem?.companyId;
+  const clientId = client?.id;
+  const tenantId = antivirusItem?.bitdefenderTenantId || null;
+  const mappingMode = antivirusItem?.mappingMode || "reseller";
+  const credentialContext = useMemo(() => ({
+    clientId,
+    bitdefenderTenantId: tenantId,
+    mappingMode
+  }), [clientId, tenantId, mappingMode]);
   const loadDashboard = useCallback(async ({
     persist = false
   } = {}) => {
@@ -212,17 +205,18 @@ export function AntivirusOverviewPanel({
     const controller = new AbortController();
     abortRef.current = controller;
     const requestId = ++requestIdRef.current;
-    const hasContent = Boolean(dashboardRef.current || antivirusItem?.syncData?.dashboard);
+    const item = antivirusItemRef.current;
+    const hasContent = Boolean(dashboardRef.current || item?.syncData?.dashboard);
     if (hasContent) setRefreshing(true);else setLoading(true);
     setLoadError(null);
     try {
       const signal = controller.signal;
-      if (persist && client?.id) {
-        const persisted = await syncAndPersistAntivirusSolution(client.id, antivirusItem, {
+      if (persist && clientId) {
+        const persisted = await syncAndPersistAntivirusSolution(clientId, item, {
           signal
         });
         if (signal.aborted || requestId !== requestIdRef.current) return;
-        await onSynced?.();
+        await onSyncedRef.current?.();
         if (signal.aborted || requestId !== requestIdRef.current) return;
         showSuccess("Antivirus data refreshed and saved.");
         if (persisted.dashboard) {
@@ -231,6 +225,7 @@ export function AntivirusOverviewPanel({
         }
         setStatistics(persisted.statistics || null);
         setEnrichedSummary(persisted.enrichedSummary || null);
+        setEnrichedEndpoints(persisted.enrichedEndpoints || persisted.updatedPayload?.syncData?.enrichedEndpoints || null);
         setLastPersistedAt(persisted.updatedPayload?.syncData?.lastSync || new Date().toISOString());
         return;
       }
@@ -249,11 +244,13 @@ export function AntivirusOverviewPanel({
         signal
       }).catch(ignoreUnlessAbort)]);
       if (signal.aborted || requestId !== requestIdRef.current) return;
+      const latest = antivirusItemRef.current;
       dashboardRef.current = dashboardData;
       setDashboard(dashboardData);
-      setStatistics(statisticsRes?.statistics || antivirusItem?.syncData?.statistics || null);
-      setEnrichedSummary(enrichedRes?.summary || antivirusItem?.syncData?.enrichedSummary || null);
-      setLastPersistedAt(antivirusItem?.syncData?.lastSync || null);
+      setStatistics(statisticsRes?.statistics || latest?.syncData?.statistics || null);
+      setEnrichedSummary(enrichedRes?.summary || latest?.syncData?.enrichedSummary || null);
+      setEnrichedEndpoints(enrichedRes?.endpoints || latest?.syncData?.enrichedEndpoints || null);
+      setLastPersistedAt(latest?.syncData?.lastSync || null);
     } catch (err) {
       if (err?.name === "AbortError" || controller.signal.aborted || requestId !== requestIdRef.current) return;
       setLoadError(err.message);
@@ -263,39 +260,46 @@ export function AntivirusOverviewPanel({
       setLoading(false);
       setRefreshing(false);
     }
-  }, [companyId, credentialContext, client?.id, antivirusItem, onSynced]);
+  }, [companyId, credentialContext, clientId]);
   useEffect(() => {
-    if (active && companyId) {
-      if (controlledSection == null) setActiveSection("overview");
-      setPatchTab("missing");
-      const cached = antivirusItem?.syncData;
-      if (cached?.dashboard) {
-        dashboardRef.current = cached.dashboard;
-        setDashboard(cached.dashboard);
-      }
-      if (cached?.statistics) setStatistics(cached.statistics);
-      if (cached?.enrichedSummary) setEnrichedSummary(cached.enrichedSummary);
-      if (cached?.lastSync) setLastPersistedAt(cached.lastSync);
-      if (cachedOnly) {
-        setLoading(false);
-        setRefreshing(false);
-        if (!cached?.dashboard) {
-          setLoadError(null);
-        }
-        return undefined;
-      }
-      loadDashboard();
+    if (controlledSection != null) return;
+    setActiveSection("overview");
+  }, [companyId, controlledSection, setActiveSection]);
+  useEffect(() => {
+    if (!active || !companyId) return undefined;
+    const cached = antivirusItemRef.current?.syncData;
+    if (cached?.dashboard) {
+      dashboardRef.current = cached.dashboard;
+      setDashboard(cached.dashboard);
     }
+    if (cached?.statistics) setStatistics(cached.statistics);
+    if (cached?.enrichedSummary) setEnrichedSummary(cached.enrichedSummary);
+    if (cached?.enrichedEndpoints) setEnrichedEndpoints(cached.enrichedEndpoints);
+    if (cached?.lastSync) setLastPersistedAt(cached.lastSync);
+    if (cachedOnly) {
+      setLoading(false);
+      setRefreshing(false);
+      return undefined;
+    }
+    const loadKey = `${companyId}:${tenantId || ""}:${mappingMode}`;
+    if (loadedKeyRef.current === loadKey && dashboardRef.current) {
+      setLoading(false);
+      return undefined;
+    }
+    loadedKeyRef.current = loadKey;
+    loadDashboard();
+  }, [active, companyId, tenantId, mappingMode, cachedOnly, loadDashboard]);
+  useEffect(() => {
     return () => {
       abortRef.current?.abort();
     };
-  }, [active, companyId, loadDashboard, antivirusItem?.syncData, cachedOnly, controlledSection, setActiveSection]);
+  }, [companyId]);
   const sections = dashboard?.sections || {};
   const companyName = sections.company?.data?.name || antivirusItem?.companyName || antivirusItem?.nom || antivirusItem?.name || "GravityZone";
   const sectionViews = useMemo(() => {
     const endpoints = sections.endpoints;
     const policies = sections.policies;
-    const reports = sections.reports;
+    const policyUsage = collectPolicyUsage(enrichedEndpoints);
     return {
       endpoints: endpoints ? {
         ...endpoints,
@@ -304,7 +308,8 @@ export function AntivirusOverviewPanel({
           label: "Poste"
         }, {
           key: "type",
-          label: "Type"
+          label: "Type",
+          render: row => formatAntivirusEndpointType(row.type ?? row.machineType)
         }, {
           key: "os",
           label: "OS"
@@ -319,222 +324,57 @@ export function AntivirusOverviewPanel({
       } : null,
       policies: policies ? {
         ...policies,
+        items: (policies.items || []).map(policy => {
+          const usage = policyUsage.get(String(policy.id));
+          const workstations = usage?.count ?? policy.endpointsCount ?? 0;
+          return {
+            ...policy,
+            workstations,
+            appliedCount: usage?.applied ?? 0
+          };
+        }),
         columns: [{
           key: "name",
-          label: "Politique"
+          label: "Politique",
+          render: row => <span className={styles.policyNameCell}>
+              <Icon icon="mdi:shield-account-outline" width={16} height={16} aria-hidden />
+              {row.name || "-"}
+            </span>
         }, {
-          key: "id",
-          label: "ID",
-          mono: true
-        }]
-      } : null,
-      reports: reports ? {
-        ...reports,
-        columns: [{
-          key: "name",
-          label: "Report"
+          key: "workstations",
+          label: "Workstations",
+          render: row => row.workstations ?? 0
         }, {
-          key: "type",
-          label: "Type"
-        }, {
-          key: "lastRun",
-          label: "Last run",
-          render: r => formatDate(r.lastRun)
-        }]
-      } : null,
-      incidents: sections.incidents ? {
-        ...sections.incidents,
-        columns: [{
-          key: "name",
-          label: "Menace / incident"
-        }, {
-          key: "severity",
-          label: "Severity"
-        }, {
-          key: "status",
-          label: "Status"
-        }, {
-          key: "endpoint",
-          label: "Poste"
-        }, {
-          key: "detectedAt",
-          label: "Detected",
-          render: r => formatDate(r.detectedAt)
-        }]
-      } : null,
-      quarantine: sections.quarantine ? {
-        ...sections.quarantine,
-        columns: [{
-          key: "fileName",
-          label: "File"
-        }, {
-          key: "threat",
-          label: "Menace"
-        }, {
-          key: "endpoint",
-          label: "Poste"
-        }, {
-          key: "quarantinedAt",
-          label: "Date",
-          render: r => formatDate(r.quarantinedAt)
-        }]
-      } : null,
-      phasr: sections.phasr ? {
-        ...sections.phasr,
-        columns: [{
-          key: "name",
-          label: "Recommandation"
-        }, {
-          key: "severity",
-          label: "Risque"
-        }, {
-          key: "status",
-          label: "Status"
-        }, {
-          key: "resource",
-          label: "Ressource"
-        }]
-      } : null,
-      packages: sections.packages ? {
-        ...sections.packages,
-        columns: [{
-          key: "name",
-          label: "Package"
-        }, {
-          key: "type",
-          label: "Type"
-        }, {
-          key: "os",
-          label: "OS"
-        }, {
-          key: "id",
-          label: "ID",
-          mono: true
-        }]
-      } : null,
-      maintenance: sections.maintenance ? {
-        ...sections.maintenance,
-        columns: [{
-          key: "name",
-          label: "Window"
-        }, {
-          key: "type",
-          label: "Type"
-        }, {
-          key: "schedule",
-          label: "Planification"
-        }, {
-          key: "enabled",
-          label: "Active",
-          render: r => r.enabled === true ? "Yes" : r.enabled === false ? "No" : "-"
-        }]
-      } : null,
-      blocklist: sections.blocklist ? {
-        ...sections.blocklist,
-        columns: [{
-          key: "fileName",
-          label: "File"
-        }, {
-          key: "hash",
-          label: "Hash",
-          mono: true
-        }, {
-          key: "source",
-          label: "Source"
+          key: "appliedCount",
+          label: "Applied",
+          render: row => {
+            const total = row.workstations ?? 0;
+            const applied = row.appliedCount ?? 0;
+            if (!total) return "0 / 0";
+            return <span className={applied > 0 ? styles.appliedOk : styles.appliedIdle}>
+                {applied} / {total}
+              </span>;
+          }
         }]
       } : null
     };
-  }, [sections]);
+  }, [sections, enrichedEndpoints]);
   const renderOverview = () => {
     const license = sections.license?.data;
-    const licenseExpiration = license?.expirationDate || antivirusItem?.expiration || antivirusItem?.syncData?.license?.expirationDate;
     const endpoints = sections.endpoints;
-    const apiRows = [{
-      name: "Companies & accounts",
-      exploited: true,
-      status: sections.company?.status
+    const licenseUsagePct = license?.used != null && license?.total ? Math.round(license.used / license.total * 100) : null;
+    const syncLabel = lastPersistedAt ? `Last backup: ${formatDate(lastPersistedAt)}` : "Not saved locally";
+    const endpointTypeDistribution = buildDistributionItems([{
+      name: "Physiques",
+      count: statistics?.endpoints?.byType?.physical || 0
     }, {
-      name: "Network (workstations)",
-      exploited: true,
-      status: endpoints?.status
+      name: "Virtuels",
+      count: statistics?.endpoints?.byType?.virtual || 0
     }, {
-      name: "Licenses",
-      exploited: true,
-      status: sections.license?.status
-    }, {
-      name: "Politiques",
-      exploited: true,
-      status: sections.policies?.status
-    }, {
-      name: "Reports",
-      exploited: true,
-      status: sections.reports?.status
-    }, {
-      name: "Incidents",
-      exploited: false,
-      status: sections.incidents?.status
-    }, {
-      name: "Quarantaine",
-      exploited: false,
-      status: sections.quarantine?.status
-    }, {
-      name: "Patch Management",
-      exploited: false,
-      status: sections.patchManagement?.missing?.status
-    }, {
-      name: "PHASR",
-      exploited: false,
-      status: sections.phasr?.status
-    }, {
-      name: "Investigation",
-      exploited: false,
-      status: sections.investigation?.status || "info"
-    }, {
-      name: "Event Push Service",
-      exploited: false,
-      status: sections.push?.settings?.status
-    }, {
-      name: "Packages",
-      exploited: false,
-      status: sections.packages?.status
-    }, {
-      name: "Integrations",
-      exploited: false,
-      status: sections.integrations?.status
-    }, {
-      name: "Maintenance windows",
-      exploited: false,
-      status: sections.maintenance?.status
-    }, {
-      name: "Blocklist EDR",
-      exploited: false,
-      status: sections.blocklist?.status
-    }];
-    const exploitedRows = apiRows.filter(row => row.exploited);
-    const previewRows = apiRows.filter(row => !row.exploited);
-    const renderApiGroup = (title, rows) => <>
-        <h5 className={styles.apiMatrixGroupTitle}>{title}</h5>
-        <div className={styles.apiMatrix}>
-          {rows.map(row => <div key={row.name} className={styles.apiMatrixRow} title={row.status === "permission_denied" ? "Enable the API on the GravityZone key" : row.status === "empty" ? "No data" : row.status === "error" && !row.exploited ? "API not enabled on this key or not available on this tenant" : undefined}>
-              <span className={styles.apiMatrixName}>{row.name}</span>
-              <StatusPill status={row.status} preview={!row.exploited} compact />
-            </div>)}
-        </div>
-      </>;
+      name: "Autres",
+      count: statistics?.endpoints?.byType?.other || 0
+    }]);
     if (asPage || embedded) {
-      const okApis = apiRows.filter(row => row.status === "ok").length;
-      const licenseUsagePct = license?.used != null && license?.total ? Math.round(license.used / license.total * 100) : null;
-      const syncLabel = lastPersistedAt ? `Last backup: ${formatDate(lastPersistedAt)}` : "Not saved locally";
-      const endpointTypeDistribution = buildDistributionItems([{
-        name: "Physiques",
-        count: statistics?.endpoints?.byType?.physical || 0
-      }, {
-        name: "Virtuels",
-        count: statistics?.endpoints?.byType?.virtual || 0
-      }, {
-        name: "Autres",
-        count: statistics?.endpoints?.byType?.other || 0
-      }]);
       return <StatsDashboardBody>
           <StatsPanel title={companyName} icon="simple-icons:bitdefender">
             <p className={dashStyles.panelDesc}>
@@ -543,37 +383,14 @@ export function AntivirusOverviewPanel({
             </p>
           </StatsPanel>
 
-          <LicenseExpirationNotice expirationDate={licenseExpiration} />
-
-          <section className={dashStyles.kpiGrid}>
+          <section className={styles.kpiGrid}>
             <KpiCard icon="mdi:desktop-classic" label="Inventoried workstations" value={endpoints?.total ?? "-"} sub={`${sections.policies?.total ?? 0} politique(s) actives`} />
             <KpiCard icon="mdi:license" label="Licenses" value={license?.used != null && license?.total != null ? `${license.used}/${license.total}` : "-"} sub={licenseUsagePct != null ? `${licenseUsagePct}% used` : "License consumption"} tone={licenseUsagePct == null ? "neutral" : licenseUsagePct >= 95 ? "bad" : licenseUsagePct >= 80 ? "warn" : "good"} />
-            <KpiCard icon="mdi:calendar-clock" label="License expiration" value={formatDateShort(licenseExpiration)} sub={mappingLabel} />
             <KpiCard icon="mdi:shield-alert-outline" label="Incidents" value={sections.incidents?.total ?? 0} sub="GravityZone overview" tone={(sections.incidents?.total ?? 0) > 0 ? "warn" : "good"} />
-            <KpiCard icon="mdi:api" label="Operational APIs" value={`${okApis}/${apiRows.length}`} sub={`${exploitedRows.length} integrated · ${previewRows.length} in preview`} tone={okApis >= exploitedRows.length ? "good" : "warn"} />
             <KpiCard icon="mdi:heart-pulse" label="Endpoint health" value={enrichedSummary?.total ? `${Math.max(0, enrichedSummary.total - (enrichedSummary.infected || 0))}/${enrichedSummary.total}` : "-"} sub={enrichedSummary?.infected ? `${enrichedSummary.infected} infected` : "Analyse malware"} tone={enrichedSummary?.infected ? "bad" : "good"} />
           </section>
 
           <AntivirusOverviewCharts variant="fleet" statistics={statistics} enrichedSummary={enrichedSummary} incidents={sections.incidents} />
-
-          <section className={dashStyles.columns}>
-            <StatsPanel title="APIs integrated in Veritas" icon="mdi:check-decagram-outline">
-              <ul className={dashStyles.metricList}>
-                {exploitedRows.map(row => <li key={row.name}>
-                    <span>{row.name}</span>
-                    <StatusPill status={row.status} compact />
-                  </li>)}
-              </ul>
-            </StatsPanel>
-            <StatsPanel title="APIs available in preview" icon="mdi:flask-outline">
-              <ul className={dashStyles.metricList}>
-                {previewRows.map(row => <li key={row.name}>
-                    <span>{row.name}</span>
-                    <StatusPill status={row.status} preview compact />
-                  </li>)}
-              </ul>
-            </StatsPanel>
-          </section>
 
           {endpointTypeDistribution.total > 0 ? <section className={dashStyles.chartBarGrid}>
               <StatsPanel title="Types de postes" icon="mdi:desktop-tower-monitor">
@@ -603,8 +420,6 @@ export function AntivirusOverviewPanel({
           </p>
         </div>
 
-        <LicenseExpirationNotice expirationDate={licenseExpiration} />
-
         <div className={styles.kpiGrid}>
           <div className={styles.kpiCard}>
             <div className={styles.kpiValue}>{endpoints?.total ?? "-"}</div>
@@ -617,26 +432,16 @@ export function AntivirusOverviewPanel({
             <div className={styles.kpiLabel}>Used licenses</div>
           </div>
           <div className={styles.kpiCard}>
-            <div className={`${styles.kpiValue} ${styles.kpiValueSmall}`}>
-              {formatDateShort(licenseExpiration)}
-            </div>
-            <div className={styles.kpiLabel}>License expiration</div>
-          </div>
-          <div className={styles.kpiCard}>
             <div className={styles.kpiValue}>{sections.policies?.total ?? "-"}</div>
             <div className={styles.kpiLabel}>Politiques</div>
           </div>
           <div className={styles.kpiCard}>
             <div className={styles.kpiValue}>{sections.incidents?.total ?? "-"}</div>
-            <div className={styles.kpiLabel}>Incidents (preview)</div>
+            <div className={styles.kpiLabel}>Incidents</div>
           </div>
         </div>
 
         <AntivirusOverviewCharts statistics={statistics} enrichedSummary={enrichedSummary} incidents={sections.incidents} />
-
-        <h4 className={styles.apiMatrixTitle}>GravityZone API status</h4>
-        {renderApiGroup("Integrated in Veritas", exploitedRows)}
-        {renderApiGroup("Available in preview", previewRows)}
       </>;
   };
   const renderLicense = () => {
@@ -648,16 +453,14 @@ export function AntivirusOverviewPanel({
         </>;
     }
     const data = license?.data;
-    const expirationDate = data?.expirationDate || antivirusItem?.expiration || antivirusItem?.syncData?.license?.expirationDate;
     if (!data) {
       return <>
           <SectionError error={license?.error} />
           <div className={styles.emptyState}>No license information</div>
         </>;
     }
-    return <>
-        <LicenseExpirationNotice expirationDate={expirationDate} />
-        <div className={styles.kpiGrid}>
+    const expirationDate = data.expirationDate || antivirusItem?.expiration || antivirusItem?.syncData?.license?.expirationDate;
+    return <div className={styles.kpiGridLicense}>
           <div className={styles.kpiCard}>
             <div className={styles.kpiValue}>{data.total ?? "-"}</div>
             <div className={styles.kpiLabel}>Total licenses</div>
@@ -667,119 +470,16 @@ export function AntivirusOverviewPanel({
             <div className={styles.kpiLabel}>Used licenses</div>
           </div>
           <div className={styles.kpiCard}>
-            <div className={`${styles.kpiValue} ${styles.kpiValueSmall}`}>
-              {formatDateShort(expirationDate)}
-            </div>
-            <div className={styles.kpiLabel}>Date d'expiration</div>
-          </div>
-          <div className={styles.kpiCard}>
             <div className={styles.kpiValue}>
               {data.total != null && data.used != null ? data.total - data.used : "-"}
             </div>
             <div className={styles.kpiLabel}>Available licenses</div>
           </div>
-        </div>
-      </>;
-  };
-  const renderPatch = () => {
-    const patch = sections.patchManagement;
-    const active = patchTab === "missing" ? patch?.missing : patch?.installed;
-    const columns = patchTab === "missing" ? [{
-      key: "name",
-      label: "Patch"
-    }, {
-      key: "severity",
-      label: "Severity"
-    }, {
-      key: "product",
-      label: "Produit"
-    }, {
-      key: "endpoint",
-      label: "Poste"
-    }] : [{
-      key: "name",
-      label: "Patch"
-    }, {
-      key: "installedAt",
-      label: "Installed on",
-      render: r => formatDate(r.installedAt)
-    }, {
-      key: "endpoint",
-      label: "Poste"
-    }];
-    return <>
-        <div className={styles.previewBanner}>
-          <Icon icon="mdi:flask-outline" aria-hidden />
-          <span>Patch Management · live preview (not persisted in Veritas).</span>
-        </div>
-        <div className={styles.subTabs}>
-          <button type="button" className={`${styles.subTab} ${patchTab === "missing" ? styles.subTabActive : ""}`} onClick={() => setPatchTab("missing")}>
-            Manquants ({patch?.missing?.total ?? 0})
-          </button>
-          <button type="button" className={`${styles.subTab} ${patchTab === "installed" ? styles.subTabActive : ""}`} onClick={() => setPatchTab("installed")}>
-            Installed ({patch?.installed?.total ?? 0})
-          </button>
-        </div>
-        {renderListSection({
-        ...active,
-        columns
-      }, {
-        preview: true
-      })}
-      </>;
-  };
-  const renderInvestigation = () => <>
-      <div className={styles.previewBanner}>
-        <Icon icon="mdi:flask-outline" aria-hidden />
-        <span>{sections.investigation?.message}</span>
-      </div>
-      <p className={formStyles.sectionDesc}>Available API methods:</p>
-      <ul className={styles.apiMatrix} style={{
-      listStyle: "none",
-      padding: 0
-    }}>
-        {(sections.investigation?.methods || []).map(method => <li key={method} className={styles.apiMatrixRow}>
-            <span className={styles.mono}>{method}</span>
-          </li>)}
-      </ul>
-    </>;
-  const renderPush = () => {
-    const push = sections.push;
-    return <>
-        <div className={styles.previewBanner}>
-          <Icon icon="mdi:flask-outline" aria-hidden />
-          <span>Event Push Service · configuration et statistiques de push.</span>
-        </div>
-        <h4 className={formStyles.sectionTitle} style={{
-        fontSize: "0.9rem"
-      }}>
-          Settings
-        </h4>
-        <StatusPill status={push?.settings?.status} />
-        {push?.settings?.error ? <SectionError error={push.settings.error} /> : null}
-        {push?.settings?.data ? <pre className={styles.jsonPreview}>{JSON.stringify(push.settings.data, null, 2)}</pre> : <div className={styles.emptyState}>No push settings</div>}
-        <h4 className={formStyles.sectionTitle} style={{
-        fontSize: "0.9rem",
-        marginTop: "1rem"
-      }}>
-          Statistics
-        </h4>
-        <StatusPill status={push?.stats?.status} />
-        {push?.stats?.data ? <pre className={styles.jsonPreview}>{JSON.stringify(push.stats.data, null, 2)}</pre> : <div className={styles.emptyState}>No statistics</div>}
-      </>;
-  };
-  const renderIntegrations = () => {
-    const integrations = sections.integrations;
-    return <>
-        <div className={styles.previewBanner}>
-          <Icon icon="mdi:flask-outline" aria-hidden />
-          <span>Third-party integrations (e.g. Amazon EC2) · API preview.</span>
-        </div>
-        <StatusPill status={integrations?.status} />
-        <SectionError error={integrations?.error} />
-        {integrations?.hint ? <p className={formStyles.sectionDesc}>{integrations.hint}</p> : null}
-        {integrations?.data ? <pre className={styles.jsonPreview}>{JSON.stringify(integrations.data, null, 2)}</pre> : <div className={styles.emptyState}>No configured or accessible integration</div>}
-      </>;
+          <div className={styles.kpiCard}>
+            <div className={styles.kpiValue}>{formatDateShort(expirationDate)}</div>
+            <div className={styles.kpiLabel}>Expiration date</div>
+          </div>
+        </div>;
   };
   const renderSectionContent = () => {
     if (!asPage && !embedded && loading) {
@@ -797,57 +497,16 @@ export function AntivirusOverviewPanel({
         content = renderOverview();
         break;
       case "endpoints":
-        content = renderListSection(sectionViews.endpoints);
+        content = renderListSection(sectionViews.endpoints, {
+          fillHeight: true
+        });
         break;
       case "license":
         content = renderLicense();
         break;
       case "policies":
-        content = renderListSection(sectionViews.policies);
-        break;
-      case "reports":
-        content = renderListSection(sectionViews.reports);
-        break;
-      case "incidents":
-        content = renderListSection(sectionViews.incidents, {
-          preview: true
-        });
-        break;
-      case "quarantine":
-        content = renderListSection(sectionViews.quarantine, {
-          preview: true
-        });
-        break;
-      case "patch":
-        content = renderPatch();
-        break;
-      case "phasr":
-        content = renderListSection(sectionViews.phasr, {
-          preview: true
-        });
-        break;
-      case "investigation":
-        content = renderInvestigation();
-        break;
-      case "push":
-        content = renderPush();
-        break;
-      case "packages":
-        content = renderListSection(sectionViews.packages, {
-          preview: true
-        });
-        break;
-      case "integrations":
-        content = renderIntegrations();
-        break;
-      case "maintenance":
-        content = renderListSection(sectionViews.maintenance, {
-          preview: true
-        });
-        break;
-      case "blocklist":
-        content = renderListSection(sectionViews.blocklist, {
-          preview: true
+        content = renderListSection(sectionViews.policies, {
+          fillHeight: true
         });
         break;
       default:
@@ -855,27 +514,11 @@ export function AntivirusOverviewPanel({
     }
     return content;
   };
-  const navEntries = useMemo(() => {
-    const entries = [];
-    let prevGroup = null;
-    ANTIVIRUS_OVERVIEW_SECTIONS.forEach(section => {
-      if (section.group !== prevGroup) {
-        const group = ANTIVIRUS_OVERVIEW_GROUPS.find(g => g.id === section.group);
-        entries.push({
-          type: "group",
-          key: `group-${section.group}`,
-          label: group?.label
-        });
-        prevGroup = section.group;
-      }
-      entries.push({
-        type: "section",
-        key: section.id,
-        section
-      });
-    });
-    return entries;
-  }, []);
+  const navEntries = useMemo(() => ANTIVIRUS_OVERVIEW_SECTIONS.map(section => ({
+    type: "section",
+    key: section.id,
+    section
+  })), []);
   if (!active || !antivirusItem?.companyId) return null;
   const mappingLabel = antivirusItem.mappingMode === "dedicated" ? "Dedicated tenant" : "Global tenant";
   const openEnterprise = () => {

@@ -1,5 +1,5 @@
 import { Icon } from "@iconify/react";
-import { ActionIcon, Avatar, Badge, Card, Group, Text, UnstyledButton } from "@mantine/core";
+import { Card, Text, UnstyledButton } from "@mantine/core";
 import TechNewsReactions from "./TechNewsReactions";
 import classes from "./TechNewsArticleCard.module.css";
 
@@ -9,16 +9,6 @@ const CATEGORY_META = {
   news: { icon: "mdi:newspaper-variant-outline", color: "blue" },
   tech: { icon: "mdi:chip", color: "teal" }
 };
-
-function sourceInitials(source) {
-  const words = String(source || "")
-    .trim()
-    .split(/\s+/)
-    .filter(Boolean);
-  if (words.length === 0) return "IT";
-  if (words.length === 1) return words[0].slice(0, 2).toUpperCase();
-  return `${words[0][0] || ""}${words[1][0] || ""}`.toUpperCase();
-}
 
 export default function TechNewsArticleCard({
   item,
@@ -50,12 +40,34 @@ export default function TechNewsArticleCard({
   return (
     <Card withBorder radius="md" padding="md" shadow="sm" className={classes.card}>
       <Card.Section className={classes.cover} data-category={cat} onClick={onOpen}>
-        <Icon icon={meta.icon} className={classes.coverIcon} aria-hidden />
+        <div className={classes.coverRow}>
+          <span className={classes.badge}>
+            <Icon icon={meta.icon} width={13} height={13} aria-hidden />
+            {categoryLabel}
+          </span>
+          {relativeTime ? (
+            <time className={classes.coverTime} dateTime={item.publishedAt} title={absoluteDate || undefined}>
+              {relativeTime}
+            </time>
+          ) : null}
+        </div>
+        <div className={classes.coverRow}>
+          {item.source ? <span className={classes.coverSource}>{item.source}</span> : <span />}
+          {item.link ? (
+            <a
+              className={classes.coverLink}
+              href={item.link}
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label={t.openSource}
+              title={t.openSource}
+              onClick={event => event.stopPropagation()}
+            >
+              <Icon icon="mdi:open-in-new" width={14} height={14} />
+            </a>
+          ) : null}
+        </div>
       </Card.Section>
-
-      <Badge className={classes.badge} variant="light" color={meta.color} size="sm" leftSection={<Icon icon={meta.icon} width={12} height={12} />}>
-        {categoryLabel}
-      </Badge>
 
       <UnstyledButton className={classes.body} onClick={onOpen} aria-label={t.openArticle}>
         <Text className={classes.title} fw={600} lineClamp={2}>
@@ -67,40 +79,6 @@ export default function TechNewsArticleCard({
           </Text>
         ) : null}
       </UnstyledButton>
-
-      <Group justify="space-between" wrap="nowrap" className={classes.footer}>
-        <Group gap={8} wrap="nowrap" className={classes.sourceGroup}>
-          <Avatar size={28} radius="xl" color={meta.color} variant="light">
-            {sourceInitials(item.source)}
-          </Avatar>
-          <div className={classes.sourceMeta}>
-            <Text fz="xs" fw={600} lineClamp={1}>
-              {item.source}
-            </Text>
-            {relativeTime ? (
-              <Text fz="xs" c="dimmed" component="time" dateTime={item.publishedAt} title={absoluteDate || undefined}>
-                {relativeTime}
-              </Text>
-            ) : null}
-          </div>
-        </Group>
-        {item.link ? (
-          <ActionIcon
-            className={classes.action}
-            variant="subtle"
-            color="gray"
-            component="a"
-            href={item.link}
-            target="_blank"
-            rel="noopener noreferrer"
-            aria-label={t.openSource}
-            title={t.openSource}
-            onClick={event => event.stopPropagation()}
-          >
-            <Icon icon="mdi:open-in-new" width={16} height={16} />
-          </ActionIcon>
-        ) : null}
-      </Group>
 
       <div className={classes.reactions}>
         <TechNewsReactions

@@ -5,7 +5,9 @@ import cyberStyles from "./ReportSummaryCybersecurity.module.css";
 import { REPORT_CYBER_MODULES, sumEquipmentCountsForModules } from "./reportCategoryCounts";
 import { ReportCategoryKpisBlock, ReportTableBlock } from "./ReportSummaryBlocks";
 import { buildAntivirusEndpointRowsForClient, buildAntivirusPolicyRowsForClient, getAntivirusSolutionName } from "./reportCyberTableUtils";
-import { formatServeurLieLabel } from "../../../EnterprisesPage/backupJobUtils";
+import { formatAntivirusEndpointType } from "../../../EnterprisesPage/antivirusSolutionUtils";
+import { formatServeurLieLabel, pickBackupJobType, pickBackupJobDestination } from "../../../EnterprisesPage/backupJobUtils";
+import { getBackupJobStatus, getBackupJobStatusTitle, normalizeBackupJobForStatus } from "../../../CybersecuritePage/backupJobStatusUtils";
 function scrollToReportComments() {
   if (typeof document === "undefined") return;
   const target = document.querySelector("[data-export-comments='true']");
@@ -96,12 +98,15 @@ function getProtectionStatusMeta(rawStatus) {
   };
 }
 function getBackupStatusLabel(status) {
-  const s = String(status || "").toUpperCase();
-  if (s === "SUCCESS") return "Succès";
-  if (s === "WARNING") return "Avertissement";
-  if (s === "FAIL" || s === "FAILED") return "Erreur";
-  if (s === "RUNNING") return "En cours";
-  return s || "-";
+  const s = String(status || "").toLowerCase();
+  if (s === "ok" || s === "success") return "OK";
+  if (s === "warning") return "Retard";
+  if (s === "critical" || s === "fail" || s === "failed" || s === "error") return "Erreur";
+  if (s === "hycu") return "HYCU";
+  if (s === "unmapped") return "Non mappé";
+  if (s === "inactive") return "Inactif";
+  if (s === "running") return "En cours";
+  return status ? String(status) : "-";
 }
 function formatAntispamExpiration(sol) {
   if (!sol) return "-";
@@ -168,11 +173,11 @@ function isEndpointInactive(endpoint) {
   return endpoint.endpointState !== 1 && !managed;
 }
 function getBackupStatusTone(status) {
-  const s = String(status || "").toUpperCase();
-  if (s === "SUCCESS") return "success";
-  if (s === "WARNING") return "warn";
-  if (s === "FAIL" || s === "FAILED") return "error";
-  if (s === "RUNNING") return "info";
+  const s = String(status || "").toLowerCase();
+  if (s === "ok" || s === "success") return "success";
+  if (s === "warning") return "warn";
+  if (s === "critical" || s === "fail" || s === "failed" || s === "error") return "error";
+  if (s === "running") return "info";
   return "neutral";
 }
 function BackupStatusBadge({
@@ -180,7 +185,7 @@ function BackupStatusBadge({
 }) {
   const tone = getBackupStatusTone(status);
   const toneClass = tone === "success" ? cyberStyles.statusSuccess : tone === "warn" ? cyberStyles.statusWarn : tone === "error" ? cyberStyles.statusError : tone === "info" ? cyberStyles.statusInfo : cyberStyles.statusNeutral;
-  return <span className={`${cyberStyles.statusBadge} ${toneClass}`}>
+  return <span className={`${cyberStyles.statusBadge} ${toneClass}`} title={getBackupJobStatusTitle(status) || undefined}>
       {getBackupStatusLabel(status)}
     </span>;
 }
@@ -516,22 +521,21 @@ export default function ReportSummaryCybersecurity({
     const instanceName = inst.nom || inst.logiciel || `Instance ${idx + 1}`;
     return jobs.map((job, jobIdx) => {
       const lastBackupStart = job.last_backup_start ?? job.lastBackupStart ?? job.last_backup_date ?? job.lastBackupDate ?? job.lastSyncDate;
-      const lastBackupDuration = job.last_backup_duration ?? job.lastBackupDuration ?? "";
       const lastBackupSync = job.last_backup_date ?? job.lastBackupDate ?? job.lastSyncDate ?? "";
+      const statusJob = normalizeBackupJobForStatus(job, inst);
       return {
         _rowKey: `${instanceName}-${job.nom || job.jobName || jobIdx}-${jobIdx}`,
         instanceName,
         name: job.nom || job.jobName || "",
-        type: job.type || job.typeBackup || "",
+        type: pickBackupJobType(job),
         serveurLie: formatServeurLieLabel(job.serveurLie || job.source, ""),
-        destination: inst.logiciel === "HYCU Backup" ? "DataCenter PSI" : job.destination || formatServeurLieLabel(job.serveurLie || job.source, "") || "",
+        destination: pickBackupJobDestination(job, inst, ""),
         regularite: job.regularite || "",
         horaire: job.horaire || "",
         retention: job.retention || "",
         lastBackupStart,
-        lastBackupDuration,
         lastBackupSync,
-        lastStatus: job.lastStatus || ""
+        lastStatus: getBackupJobStatus(statusJob)
       };
     });
   }), [sauvegardeInstances]);
@@ -769,10 +773,6 @@ export default function ReportSummaryCybersecurity({
           label: "Dernière sauvegarde",
           render: row => formatDateTimeBackup(row.lastBackupStart)
         }, {
-          id: "lastBackupDuration",
-          label: "Durée",
-          render: row => row.lastBackupDuration || "-"
-        }, {
           id: "lastBackupSync",
           label: "Dernière synchro",
           render: row => formatDateTimeBackup(row.lastBackupSync)
@@ -836,16 +836,6 @@ export default function ReportSummaryCybersecurity({
           const used = license.used || license.usedSeats || row.licencesUtilisees || null;
           return used != null ? formatInt(used) : "-";
         }
-      }, {
-        id: "expiration",
-        label: "Expiration",
-        render: row => {
-          const license = row.syncData?.license || {};
-          const expRaw = license.expirationDate || row.expiration || null;
-          if (!expRaw) return "-";
-          const d = new Date(expRaw);
-          return Number.isNaN(d.getTime()) ? String(expRaw) : d.toLocaleDateString("fr-FR");
-        }
       }]} />
 
         <CyberReportTable title="Security policies (client)" count={antivirusPolicyRows.length} rows={antivirusPolicyRows} columns={[{
@@ -892,6 +882,10 @@ export default function ReportSummaryCybersecurity({
                     {name}
                   </span>;
         }
+      }, {
+        id: "type",
+        label: "Type",
+        render: row => formatAntivirusEndpointType(row.type ?? row.machineType)
       }, {
         id: "fqdn",
         label: "FQDN",

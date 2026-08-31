@@ -43,6 +43,59 @@
   min-width: 0;
 }
 
+.tenantVarsFill {
+  flex: 1;
+  min-height: 0;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.tabFill {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  height: 100%;
+}
+
+.tableFill {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+}
+
+.metricsRow4 {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+  flex-shrink: 0;
+}
+
+.kpiSectionBlock {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  margin-bottom: 1rem;
+  flex-shrink: 0;
+}
+
+.kpiSectionBlockTitle {
+  margin: 0;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--msp-muted, #5c6b82);
+}
+
+@media (max-width: 1100px) {
+  .metricsRow4 {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
 .subtitleLink {
   border: none;
   background: transparent;

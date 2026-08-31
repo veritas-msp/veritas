@@ -4,6 +4,7 @@ import { getLicenseDisplayName, isFreeLicense } from "../../../ServicePage/Tenan
 import infraStyles from "./ReportSummaryInfrastructure.module.css";
 import { REPORT_SERVICES_MODULES, sumEquipmentCountsForModules } from "./reportCategoryCounts";
 import { getClientMfaDetails } from "../../../../api/clientOffice365";
+import { filterExchangeDataByPeriod, filterTeamsDataByPeriod } from "../../../ServicePage/TenantDetailTabs/office365Period";
 function formatDate(value) {
   if (!value) return "-";
   const d = new Date(value);
@@ -239,8 +240,14 @@ export default function ReportSummaryServices({
     const users = Array.isArray(data.users) ? data.users : [];
     const mfaDetailsFromSnapshot = Array.isArray(data.mfaDetails) ? data.mfaDetails : Array.isArray(data.userMfaDetails) ? data.userMfaDetails : [];
     const mfaDetails = Array.isArray(mfaDetailsFromApi) && mfaDetailsFromApi.length > 0 ? mfaDetailsFromApi : mfaDetailsFromSnapshot;
-    const exchangeData = data.exchangeData ?? data.exchange ?? null;
-    const teamsData = data.teamsData ?? data.teams ?? null;
+    const exchangeData = filterExchangeDataByPeriod(data.exchangeData ?? data.exchange ?? null, {
+      start: reportStartDate,
+      end: reportEndDate
+    });
+    const teamsData = filterTeamsDataByPeriod(data.teamsData ?? data.teams ?? null, {
+      start: reportStartDate,
+      end: reportEndDate
+    });
     const onedriveData = data.onedriveData ?? data.onedrive ?? null;
     const sharepointData = data.sharepointData ?? data.sharepoint ?? null;
     const securityData = data.securityData ?? data.security ?? null;
@@ -805,10 +812,41 @@ export default function ReportSummaryServices({
               total: typeof rawCalls === "number" ? rawCalls : 0
             };
             const dailyActivity = o365Data.teamsData.licensedActivity?.dailyActivity || activity.dailyActivity || o365Data.teamsData.dailyActivity || [];
+            const rawUsage = activity.usage;
+            const usageStats = rawUsage && typeof rawUsage === "object" && !Array.isArray(rawUsage) ? rawUsage : {};
+            const licensedUsers = usageStats.licensedUsers || 0;
+            const activeUsers = usageStats.activeUsers ?? o365Data.teamsData.teams?.activeUsers ?? 0;
+            const inactiveUsers = Math.max(0, licensedUsers - activeUsers);
+            const adoptionRate = licensedUsers > 0 ? `${(activeUsers / licensedUsers * 100).toFixed(1)} %` : "N/A";
+            const renderKpiCards = cards => <div className={`${infraStyles.globalStatsGrid} ${infraStyles.globalStatsGridStylized}`}>
+                      {cards.map((card, idx) => <div key={card.label || idx} className={infraStyles.globalStatsItem}>
+                          <KpiLabelWithIcon icon={card.icon} label={card.label} />
+                          <div className={infraStyles.globalStatsValue}>
+                            {typeof card.value === "number" ? card.value.toLocaleString("fr-FR") : card.value}
+                          </div>
+                        </div>)}
+                    </div>;
             return <>
-                      {}
-                      <div className={`${infraStyles.globalStatsGrid} ${infraStyles.globalStatsGridStylized}`}>
-                        {[{
+                      <h5 className={infraStyles.kpiSectionTitle}>Users</h5>
+                      {renderKpiCards([{
+                  label: "Number of users",
+                  icon: "mdi:account-group",
+                  value: licensedUsers
+                }, {
+                  label: "Active",
+                  icon: "mdi:account-check",
+                  value: activeUsers
+                }, {
+                  label: "Inactive",
+                  icon: "mdi:account-off",
+                  value: inactiveUsers
+                }, {
+                  label: "Taux d'adoption",
+                  icon: "mdi:percent",
+                  value: adoptionRate
+                }])}
+                      <h5 className={infraStyles.kpiSectionTitle}>Messages</h5>
+                      {renderKpiCards([{
                   label: "Messages au total",
                   icon: "mdi:message-text-outline",
                   value: messageStats.total || 0
@@ -820,35 +858,31 @@ export default function ReportSummaryServices({
                   label: "Messages de canal",
                   icon: "mdi:pound-box-outline",
                   value: messageStats.teamChat || 0
-                }].map((card, idx) => <div key={idx} className={infraStyles.globalStatsItem}>
-                            <KpiLabelWithIcon icon={card.icon} label={card.label} />
-                            <div className={infraStyles.globalStatsValue}>
-                              {typeof card.value === "number" ? card.value.toLocaleString("fr-FR") : card.value}
-                            </div>
-                          </div>)}
-                      </div>
-
-                      {}
-                      <div className={`${infraStyles.globalStatsGrid} ${infraStyles.globalStatsGridStylized}`}>
-                        {[{
+                }, {
+                  label: "Urgent",
+                  icon: "mdi:alert-decagram-outline",
+                  value: messageStats.urgent || 0
+                }])}
+                      <h5 className={infraStyles.kpiSectionTitle}>Meetings</h5>
+                      {renderKpiCards([{
                   label: "Réunions",
                   icon: "mdi:calendar-clock-outline",
                   value: meetingsStats.total || 0
                 }, {
+                  label: "Organized",
+                  icon: "mdi:calendar-plus",
+                  value: meetingsStats.organized || 0
+                }, {
                   label: "Total participations",
                   icon: "mdi:account-check-outline",
                   value: meetingsStats.attended || 0
-                }].map((card, idx) => <div key={idx} className={infraStyles.globalStatsItem}>
-                            <KpiLabelWithIcon icon={card.icon} label={card.label} />
-                            <div className={infraStyles.globalStatsValue}>
-                              {typeof card.value === "number" ? card.value.toLocaleString("fr-FR") : card.value}
-                            </div>
-                          </div>)}
-                      </div>
-
-                      {}
-                      <div className={`${infraStyles.globalStatsGrid} ${infraStyles.globalStatsGridStylized}`}>
-                        {[{
+                }, {
+                  label: "Ad hoc",
+                  icon: "mdi:calendar-blank-outline",
+                  value: meetingsStats.adHoc?.organized || 0
+                }])}
+                      <h5 className={infraStyles.kpiSectionTitle}>Calls</h5>
+                      {renderKpiCards([{
                   label: "Appels",
                   icon: "mdi:phone-outline",
                   value: callsStats.total || 0
@@ -860,13 +894,11 @@ export default function ReportSummaryServices({
                   label: "Durée moyenne",
                   icon: "mdi:clock-time-four-outline",
                   value: callsStats.averageDuration || "0h 0m"
-                }].map((card, idx) => <div key={idx} className={infraStyles.globalStatsItem}>
-                            <KpiLabelWithIcon icon={card.icon} label={card.label} />
-                            <div className={infraStyles.globalStatsValue}>
-                              {typeof card.value === "number" ? card.value.toLocaleString("fr-FR") : card.value}
-                            </div>
-                          </div>)}
-                      </div>
+                }, {
+                  label: "Video duration",
+                  icon: "mdi:video-outline",
+                  value: callsStats.videoDuration || "0h 0m"
+                }])}
 
                       {}
                       {Array.isArray(dailyActivity) && dailyActivity.length > 0 && <div style={{
@@ -1036,6 +1068,21 @@ export default function ReportSummaryServices({
               icon: "mdi:file-eye-outline",
               value: o365Data.onedriveData.sharing?.byActivityType?.viewedOrEdited != null ? o365Data.onedriveData.sharing.byActivityType.viewedOrEdited.toLocaleString("fr-FR") : "0",
               color: "#f59e0b"
+            }, {
+              label: "Fichiers synchronisés",
+              icon: "mdi:sync",
+              value: o365Data.onedriveData.sharing?.byActivityType?.synced != null ? o365Data.onedriveData.sharing.byActivityType.synced.toLocaleString("fr-FR") : "0",
+              color: "#14b8a6"
+            }, {
+              label: "Partages internes",
+              icon: "mdi:account-group",
+              value: o365Data.onedriveData.sharing?.byActivityType?.sharedInternally != null ? o365Data.onedriveData.sharing.byActivityType.sharedInternally.toLocaleString("fr-FR") : "0",
+              color: "#ec4899"
+            }, {
+              label: "Partages externes",
+              icon: "mdi:earth",
+              value: o365Data.onedriveData.sharing?.byActivityType?.sharedExternally != null ? o365Data.onedriveData.sharing.byActivityType.sharedExternally.toLocaleString("fr-FR") : "0",
+              color: "#ef4444"
             }].map((card, idx) => <div key={idx} className={infraStyles.globalStatsItem}>
                       <KpiLabelWithIcon icon={card.icon} label={card.label} />
                       <div className={infraStyles.globalStatsValue} style={card.color ? {
@@ -1057,42 +1104,41 @@ export default function ReportSummaryServices({
                     <div>
                       <h4 className={infraStyles.sectionTitle}>SharePoint</h4>
                       <div className={infraStyles.sectionSubtitle}>
-                        Sites, files and storage used
+                        Sites SharePoint
                       </div>
                     </div>
                   </div>
                 </div>
                 <div className={infraStyles.sectionTitleSeparator} />
 
-                <div className={`${infraStyles.globalStatsGrid} ${infraStyles.globalStatsGridStylized}`}>
-                  {(() => {
-              const sp = o365Data.sharepointData;
-              const totalSites = sp.stats?.totalSites !== undefined ? sp.stats.totalSites : Array.isArray(sp.sites) ? sp.sites.length : 0;
-              const activeSites = sp.stats?.activeSites !== undefined ? sp.stats.activeSites : Array.isArray(sp.sites) ? sp.sites.filter(s => s.isActive !== false).length : 0;
-              const cards = [{
-                label: "Sites totaux",
-                icon: "mdi:web",
-                value: totalSites
-              }, {
-                label: "Sites actifs",
-                icon: "mdi:web-check",
-                value: activeSites
-              }];
-              if (sp.storageUsed !== undefined) {
-                cards.push({
-                  label: "Stockage utilisé",
-                  icon: "mdi:database",
-                  value: typeof sp.storageUsed === "number" ? `${(sp.storageUsed / 1024 / 1024 / 1024).toFixed(2)} GB` : sp.storageUsed || "N/A"
-                });
+                {(() => {
+              const sites = Array.isArray(o365Data.sharepointData.sites) ? o365Data.sharepointData.sites : [];
+              if (!sites.length) {
+                return <div className={infraStyles.infraTableEmpty}>No SharePoint site available.</div>;
               }
-              return cards.map((card, idx) => <div key={idx} className={infraStyles.globalStatsItem}>
-                        <KpiLabelWithIcon icon={card.icon} label={card.label} />
-                        <div className={infraStyles.globalStatsValue}>
-                          {typeof card.value === "number" ? card.value.toLocaleString("fr-FR") : card.value}
-                        </div>
-                      </div>);
+              return <div className={infraStyles.infraTableWrapper}>
+                      <table className={infraStyles.infraTable}>
+                        <thead>
+                          <tr>
+                            <th className={infraStyles.infraTableHeaderCell}>Site name</th>
+                            <th className={infraStyles.infraTableHeaderCell}>URL</th>
+                            <th className={infraStyles.infraTableHeaderCell}>Created date</th>
+                            <th className={infraStyles.infraTableHeaderCell}>Last activity</th>
+                            <th className={infraStyles.infraTableHeaderCell}>Status</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {sites.map((site, idx) => <tr key={site.id || idx} className={infraStyles.infraTableRow}>
+                              <td className={infraStyles.infraTableCell}>{site.name || site.displayName || "-"}</td>
+                              <td className={infraStyles.infraTableCell}>{site.webUrl || site.url || "-"}</td>
+                              <td className={infraStyles.infraTableCell}>{formatDate(site.createdDateTime)}</td>
+                              <td className={infraStyles.infraTableCell}>{formatDate(site.lastActivityDate || site.lastModifiedDateTime)}</td>
+                              <td className={infraStyles.infraTableCell}>{site.isActive !== false ? "Active" : "Inactive"}</td>
+                            </tr>)}
+                        </tbody>
+                      </table>
+                    </div>;
             })()}
-                </div>
               </section>}
 
             {}
@@ -1112,182 +1158,76 @@ export default function ReportSummaryServices({
                 </div>
                 <div className={infraStyles.sectionTitleSeparator} />
 
-                {}
-                {!o365Data.secureScore && !o365Data.securityData?.kpiAdmins && !o365Data.securityData?.kpiNonAdmins && <div className={infraStyles.infraTableEmpty} style={{
-            marginTop: "0.5rem"
-          }}>
-                    No detailed security data available for this client.
-                  </div>}
-
-                {}
-                {o365Data.secureScore && o365Data.secureScore.currentScore != null && <div className={`${infraStyles.globalStatsGrid} ${infraStyles.globalStatsGridStylized}`}>
-                    <div className={infraStyles.globalStatsItem}>
-                      <KpiLabelWithIcon icon="mdi:shield-check" label="Secure Score" />
-                      <div className={infraStyles.globalStatsValue}>
-                        {Math.round(o365Data.secureScore.currentScore)}{" "}
-                        / {o365Data.secureScore.maxScore || 100}
-                      </div>
-                      {typeof o365Data.secureScore.percentage === "number" && <div className={infraStyles.globalStatsHint}>
-                          {Math.round(o365Data.secureScore.percentage)}
-                          % des points obtenus
-                        </div>}
-                    </div>
-                  </div>}
-
-                {}
-                {o365Data.securityUsersKpi && o365Data.securityUsersKpi.totalUsers > 0 && <div className={`${infraStyles.globalStatsGrid} ${infraStyles.globalStatsGridStylized}`}>
-                    {}
-                    <div className={infraStyles.globalStatsItem}>
-                      <div style={{
-                display: "flex",
-                alignItems: "center",
-                gap: "0.4rem"
-              }}>
-                        <IconifyIcon icon="mdi:account-group" width={18} height={18} />
-                        <span className={infraStyles.globalStatsLabel}>Utilisateurs</span>
-                      </div>
-                      <div className={infraStyles.globalStatsValue}>
-                        {formatInt(o365Data.securityUsersKpi.totalUsers)}
-                      </div>
-                      <div className={infraStyles.globalStatsHint}>
-                        Avec MFA :{" "}
-                        {formatInt(o365Data.securityUsersKpi.usersWithMFA)} • Sans MFA :{" "}
-                        {formatInt(o365Data.securityUsersKpi.usersWithoutMFA)}
-                      </div>
-                      <div className={infraStyles.globalStatsHint}>
-                        {(() => {
-                  const total = o365Data.securityUsersKpi.totalUsers || 0;
-                  const withMfa = o365Data.securityUsersKpi.usersWithMFA || 0;
-                  if (total <= 0) return "Taux d'adoption : -";
-                  const rate = Math.round(withMfa / total * 100);
-                  return `Taux d'adoption : ${rate} %`;
-                })()}
-                      </div>
-                    </div>
-
-                    {}
-                    <div className={infraStyles.globalStatsItem}>
-                      <div style={{
-                display: "flex",
-                alignItems: "center",
-                gap: "0.4rem"
-              }}>
-                        <IconifyIcon icon="mdi:shield-account" width={18} height={18} color="#3b82f6" />
-                        <span className={infraStyles.globalStatsLabel}>Administrateurs au total</span>
-                      </div>
-                      <div className={infraStyles.globalStatsValue}>
-                        {formatInt(o365Data.securityUsersKpi.adminsTotal)}
-                      </div>
-                      <div className={infraStyles.globalStatsHint}>
-                        Avec MFA :{" "}
-                        {formatInt(o365Data.securityUsersKpi.adminsWithMFA)} • Sans MFA :{" "}
-                        {formatInt(o365Data.securityUsersKpi.adminsWithoutMFA)}
-                      </div>
-                      <div className={infraStyles.globalStatsHint}>
-                        {(() => {
-                  const total = o365Data.securityUsersKpi.adminsTotal || 0;
-                  const withMfa = o365Data.securityUsersKpi.adminsWithMFA || 0;
-                  if (total <= 0) return "Taux d'adoption : -";
-                  const rate = Math.round(withMfa / total * 100);
-                  return `Taux d'adoption : ${rate} %`;
-                })()}
-                      </div>
-                    </div>
-
-                    {}
-                    <div className={infraStyles.globalStatsItem}>
-                      <div style={{
-                display: "flex",
-                alignItems: "center",
-                gap: "0.4rem"
-              }}>
-                        <IconifyIcon icon="mdi:account-outline" width={18} height={18} />
-                        <span className={infraStyles.globalStatsLabel}>Non-administrateurs au total</span>
-                      </div>
-                      <div className={infraStyles.globalStatsValue}>
-                        {formatInt((o365Data.securityUsersKpi.nonAdminWithMFA || 0) + (o365Data.securityUsersKpi.nonAdminWithoutMFA || 0))}
-                      </div>
-                      <div className={infraStyles.globalStatsHint}>
-                        Avec MFA :{" "}
-                        {formatInt(o365Data.securityUsersKpi.nonAdminWithMFA)} • Sans MFA :{" "}
-                        {formatInt(o365Data.securityUsersKpi.nonAdminWithoutMFA)}
-                      </div>
-                      <div className={infraStyles.globalStatsHint}>
-                        {(() => {
-                  const total = (o365Data.securityUsersKpi.nonAdminWithMFA || 0) + (o365Data.securityUsersKpi.nonAdminWithoutMFA || 0);
-                  const withMfa = o365Data.securityUsersKpi.nonAdminWithMFA || 0;
-                  if (total <= 0) return "Taux d'adoption : -";
-                  const rate = Math.round(withMfa / total * 100);
-                  return `Taux d'adoption : ${rate} %`;
-                })()}
-                      </div>
-                    </div>
-                  </div>}
-
-                {}
-                {o365Data.securityUsersKpi && <div style={{
-            marginTop: "1rem"
-          }}>
-                    <div style={{
-              display: "grid",
-              gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
-              gap: "0.75rem"
-            }}>
-                      {[{
-                title: "All users",
-                items: o365Data.securityUsersKpi.top3Total || []
-              }, {
-                title: "Administrateurs",
-                items: o365Data.securityUsersKpi.top3Admin || []
-              }, {
-                title: "Non-administrateurs",
-                items: o365Data.securityUsersKpi.top3NonAdmin || []
-              }].map((block, idx) => <div key={idx} style={{
-                border: "1px solid #e5e7eb",
-                borderRadius: 8,
-                padding: "0.6rem 0.75rem",
-                background: "#ffffff"
-              }}>
-                          <div style={{
-                  fontSize: "0.8rem",
-                  fontWeight: 600,
-                  color: "#111827",
-                  marginBottom: "0.25rem"
-                }}>
-                            {block.title}
+                {(() => {
+              const kpi = o365Data.securityUsersKpi || {};
+              const score = o365Data.secureScore;
+              const globalTotal = (kpi.usersWithMFA || 0) + (kpi.usersWithoutMFA || 0);
+              const adminTotal = kpi.adminsTotal || 0;
+              const nonAdminTotal = (kpi.nonAdminWithMFA || 0) + (kpi.nonAdminWithoutMFA || 0);
+              const rate = (withMfa, total) => total > 0 ? `${Math.round(withMfa / total * 100)} %` : "-";
+              const recs = Array.isArray(o365Data.securityData?.secureScoreRecommendations) ? o365Data.securityData.secureScoreRecommendations : [];
+              return <>
+                      <div className={`${infraStyles.globalStatsGrid} ${infraStyles.globalStatsGridStylized}`}>
+                        <div className={infraStyles.globalStatsItem}>
+                          <KpiLabelWithIcon icon="mdi:shield-check" label="Secure Score" />
+                          <div className={infraStyles.globalStatsValue}>
+                            {score?.currentScore != null ? `${Math.round(score.currentScore)} / ${score.maxScore || 100}` : "-"}
                           </div>
-                          {(!block.items || block.items.length === 0) && <div style={{
-                  fontSize: "0.75rem",
-                  color: "#9ca3af"
-                }}>
-                              No method recorded.
+                          {typeof score?.percentage === "number" && <div className={infraStyles.globalStatsHint}>
+                              {Math.round(score.percentage)}% des points obtenus
                             </div>}
-                          {block.items && block.items.length > 0 && <ul style={{
-                  listStyle: "none",
-                  margin: 0,
-                  padding: 0,
-                  fontSize: "0.78rem",
-                  color: "#374151"
-                }}>
-                              {block.items.map((m, i) => <li key={m.key || i} style={{
-                    display: "flex",
-                    justifyContent: "space-between",
-                    gap: "0.5rem",
-                    padding: "0.1rem 0"
-                  }}>
-                                  <span>{m.label || m.key}</span>
-                                  <span style={{
-                      fontWeight: 600,
-                      color: "#111827"
-                    }}>
-                                    {typeof m.count === "number" ? m.count.toLocaleString("fr-FR") : m.count}
-                                  </span>
-                                </li>)}
-                            </ul>}
-                        </div>)}
-                    </div>
-                  </div>}
+                        </div>
+                        <div className={infraStyles.globalStatsItem}>
+                          <KpiLabelWithIcon icon="mdi:earth" label="Global MFA" />
+                          <div className={infraStyles.globalStatsValue}>{rate(kpi.usersWithMFA || 0, globalTotal)}</div>
+                          <div className={infraStyles.globalStatsHint}>
+                            {formatInt(kpi.usersWithMFA)} with · {formatInt(kpi.usersWithoutMFA)} without
+                          </div>
+                        </div>
+                        <div className={infraStyles.globalStatsItem}>
+                          <KpiLabelWithIcon icon="mdi:account-supervisor" label="Admin MFA" />
+                          <div className={infraStyles.globalStatsValue}>{rate(kpi.adminsWithMFA || 0, adminTotal)}</div>
+                          <div className={infraStyles.globalStatsHint}>
+                            {formatInt(kpi.adminsWithMFA)} with · {formatInt(kpi.adminsWithoutMFA)} without
+                          </div>
+                        </div>
+                        <div className={infraStyles.globalStatsItem}>
+                          <KpiLabelWithIcon icon="mdi:account-group-outline" label="Non-admin MFA" />
+                          <div className={infraStyles.globalStatsValue}>{rate(kpi.nonAdminWithMFA || 0, nonAdminTotal)}</div>
+                          <div className={infraStyles.globalStatsHint}>
+                            {formatInt(kpi.nonAdminWithMFA)} with · {formatInt(kpi.nonAdminWithoutMFA)} without
+                          </div>
+                        </div>
+                      </div>
+                      <h5 className={infraStyles.kpiSectionTitle}>Recommendations</h5>
+                      <div className={infraStyles.infraTableWrapper}>
+                        <table className={infraStyles.infraTable}>
+                          <thead>
+                            <tr>
+                              <th className={infraStyles.infraTableHeaderCell}>Recommendation</th>
+                              <th className={infraStyles.infraTableHeaderCell}>Category</th>
+                              <th className={infraStyles.infraTableHeaderCell}>Priority</th>
+                              <th className={infraStyles.infraTableHeaderCell}>Points</th>
+                              <th className={infraStyles.infraTableHeaderCell}>Status</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {recs.length === 0 ? <tr className={infraStyles.infraTableRow}>
+                                <td className={infraStyles.infraTableCell} colSpan={5}>No recommendations returned for this tenant.</td>
+                              </tr> : recs.map((rec, idx) => <tr key={rec.id || idx} className={infraStyles.infraTableRow}>
+                                <td className={infraStyles.infraTableCell}>{rec.titleFr || rec.title || rec.displayName || "-"}</td>
+                                <td className={infraStyles.infraTableCell}>{rec.categoryFr || rec.category || "-"}</td>
+                                <td className={infraStyles.infraTableCell}>{rec.priorityLabel || rec.priority || "-"}</td>
+                                <td className={infraStyles.infraTableCell}>{rec.maxScore != null ? rec.maxScore : "-"}</td>
+                                <td className={infraStyles.infraTableCell}>{rec.stateLabel || rec.state || "-"}</td>
+                              </tr>)}
+                          </tbody>
+                        </table>
+                      </div>
+                    </>;
+            })()}
               </section>}
+
           </>}
       </section>}
 

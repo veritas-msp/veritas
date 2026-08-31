@@ -3,7 +3,6 @@ import { Icon } from "@iconify/react";
 import { AntivirusOverviewPanel } from "../EnterprisesPage/AntivirusOverviewModal";
 import { getAntivirusProvider } from "../EnterprisesPage/antivirusFormConfig";
 import { buildAntivirusDetailNavigationPayload, formatAntivirusSolutionSummary, getAntivirusSolutionModeLabel, isManualAntivirusSolution, normalizeAntivirusItem } from "../EnterprisesPage/antivirusSolutionUtils";
-import { useAppFormatters } from "../../hooks/useAppGeneralSettings";
 import { ANTIVIRUS_STATUS_META, computeAntivirusExpirationStatus } from "./antivirusMspUtils";
 import styles from "./AntivirusDetailPage.module.css";
 function ManualAntivirusSummary({
@@ -11,9 +10,6 @@ function ManualAntivirusSummary({
   client,
   onOpenClient
 }) {
-  const {
-    formatDate
-  } = useAppFormatters();
   const summary = formatAntivirusSolutionSummary(item);
   const provider = getAntivirusProvider(summary.providerId || "manual");
   const status = computeAntivirusExpirationStatus(item?.expiration);
@@ -70,15 +66,6 @@ function ManualAntivirusSummary({
               <div className={styles.statCardContent}>
                 <span className={styles.statCardValue}>{totalLicenses != null && totalLicenses !== "" ? totalLicenses : "-"}</span>
                 <span className={styles.statCardLabel}>Total licenses</span>
-              </div>
-            </div>
-            <div className={styles.statCard}>
-              <span className={styles.statCardIcon}>
-                <Icon icon="mdi:calendar-clock-outline" />
-              </span>
-              <div className={styles.statCardContent}>
-                <span className={styles.statCardValue}>{formatDate(item?.expiration) || "-"}</span>
-                <span className={styles.statCardLabel}>Expiration</span>
               </div>
             </div>
           </div>

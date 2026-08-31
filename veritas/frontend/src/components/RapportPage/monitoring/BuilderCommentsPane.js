@@ -14,6 +14,29 @@ function formatCommentDate(value) {
   });
 }
 
+function formatTicketDateTime(value) {
+  if (!value) return "";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+  return date.toLocaleString("fr-FR", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit"
+  });
+}
+
+function ticketCardDetails(comment) {
+  const firstLine = String(comment?.text || "").split("\n")[0].trim();
+  return {
+    title: comment?.ticketTitle || firstLine || "Ticket",
+    subject: comment?.ticketSubject || "",
+    category: comment?.ticketCategory || comment?.author || "Support",
+    when: formatTicketDateTime(comment?.createdAt)
+  };
+}
+
 function targetLabel(target, fallback) {
   if (!target) return fallback;
   return target.equipment?.nom || target.equipment?.name || target.equipment?.logiciel || fallback;
@@ -52,6 +75,7 @@ export default function BuilderCommentsPane({
   const otherCommentedItems = useMemo(() => {
     const seen = new Map();
     comments.forEach(comment => {
+      if (comment.isTicketComment) return;
       if (!comment.equipmentKey || comment.equipmentKey === stepKey) return;
       if (comment.moduleKey && comment.moduleKey !== stepKey) return;
       if (!seen.has(comment.equipmentKey)) {
@@ -165,48 +189,61 @@ export default function BuilderCommentsPane({
             && (isEquipment ? editingComment.equipmentKey === comment.equipmentKey : editingComment.scope === "general");
           const isActive = targetingItem && comment.equipmentKey === target?.equipmentKey;
           const canSelect = isEquipment && comment.equipmentKey && comment.equipmentKey !== stepKey && !isEditing;
+          const isTicket = Boolean(comment.isTicketComment);
+          const ticket = isTicket ? ticketCardDetails(comment) : null;
           return (
             <article
               key={isEquipment ? `eq-${comment.equipmentKey}-${comment.id}` : `gen-${comment.id}`}
               className={`${styles.commentsPaneCard} ${isActive ? styles.commentsPaneCardActive : ""} ${canSelect ? styles.commentsPaneCardClickable : ""}`.trim()}
               onClick={canSelect ? () => selectItem(comment) : undefined}
             >
-              <div className={styles.commentsPaneMeta}>
-                <span>{comment.isTicketComment ? "Support · Ticket" : comment.author || "Vous"}</span>
-                <time>{formatCommentDate(comment.createdAt)}</time>
-              </div>
-              {isEquipment && !targetingItem && comment.referenceLabel ? <p className={styles.commentsPaneRef}>{itemDisplayName(comment.referenceLabel)}</p> : null}
-              {isEditing ? (
+              {isTicket ? (
                 <>
-                  <textarea
-                    rows={3}
-                    className={styles.commentsPaneTextarea}
-                    value={editingComment.text ?? ""}
-                    onChange={event => onChangeEditingText?.(event.target.value)}
-                    onClick={event => event.stopPropagation()}
-                  />
-                  <div className={styles.commentsPaneActions} onClick={event => event.stopPropagation()}>
-                    <button type="button" className={styles.commentsPanePrimary} onClick={onSaveEdit} disabled={!(editingComment.text || "").trim()}>
-                      Enregistrer
-                    </button>
-                    <button type="button" className={styles.commentsPaneGhost} onClick={onCancelEdit}>
-                      Annuler
-                    </button>
+                  <p className={styles.commentsPaneTicketTitle}>{ticket.title}</p>
+                  {ticket.subject ? <p className={styles.commentsPaneTicketSubject}>{ticket.subject}</p> : null}
+                  <div className={styles.commentsPaneMeta}>
+                    <span>{ticket.category}</span>
+                    {ticket.when ? <time dateTime={comment.createdAt}>{ticket.when}</time> : null}
                   </div>
                 </>
               ) : (
                 <>
-                  <p className={styles.commentsPaneText}>{comment.text}</p>
-                  {!comment.isTicketComment ? (
-                    <div className={styles.commentsPaneActions} onClick={event => event.stopPropagation()}>
-                      <button type="button" className={styles.commentsPaneGhost} onClick={() => onStartEdit?.(comment)}>
-                        Modifier
-                      </button>
-                      <button type="button" className={styles.commentsPaneGhost} onClick={() => onDelete?.(comment)}>
-                        Supprimer
-                      </button>
-                    </div>
-                  ) : null}
+                  <div className={styles.commentsPaneMeta}>
+                    <span>{comment.author || "Vous"}</span>
+                    <time>{formatCommentDate(comment.createdAt)}</time>
+                  </div>
+                  {isEquipment && !targetingItem && comment.referenceLabel ? <p className={styles.commentsPaneRef}>{itemDisplayName(comment.referenceLabel)}</p> : null}
+                  {isEditing ? (
+                    <>
+                      <textarea
+                        rows={3}
+                        className={styles.commentsPaneTextarea}
+                        value={editingComment.text ?? ""}
+                        onChange={event => onChangeEditingText?.(event.target.value)}
+                        onClick={event => event.stopPropagation()}
+                      />
+                      <div className={styles.commentsPaneActions} onClick={event => event.stopPropagation()}>
+                        <button type="button" className={styles.commentsPanePrimary} onClick={onSaveEdit} disabled={!(editingComment.text || "").trim()}>
+                          Enregistrer
+                        </button>
+                        <button type="button" className={styles.commentsPaneGhost} onClick={onCancelEdit}>
+                          Annuler
+                        </button>
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <p className={styles.commentsPaneText}>{comment.text}</p>
+                      <div className={styles.commentsPaneActions} onClick={event => event.stopPropagation()}>
+                        <button type="button" className={styles.commentsPaneGhost} onClick={() => onStartEdit?.(comment)}>
+                          Modifier
+                        </button>
+                        <button type="button" className={styles.commentsPaneGhost} onClick={() => onDelete?.(comment)}>
+                          Supprimer
+                        </button>
+                      </div>
+                    </>
+                  )}
                 </>
               )}
             </article>

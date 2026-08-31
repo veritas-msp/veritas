@@ -4,7 +4,7 @@ import equipmentStyles from "../../../EquipementPage/EquipmentPage.module.css";
 import styles from "../RapportMonitoringBuilder.module.css";
 import { AntivirusOverviewPanel } from "../../../EnterprisesPage/AntivirusOverviewModal";
 import SolutionDetailPageLayout from "../../../EnterprisesPage/SolutionDetailPageLayout";
-import { normalizeAntivirusItem } from "../../../EnterprisesPage/antivirusSolutionUtils";
+import { formatAntivirusEndpointType, normalizeAntivirusItem } from "../../../EnterprisesPage/antivirusSolutionUtils";
 import { MonitoringStepShell, MonitoringStepSubsectionHeader } from "../MonitoringStepLayout";
 function normalizeAntivirus(sol) {
   if (!sol) return sol;
@@ -239,6 +239,8 @@ function SolutionDetailBlock({
             return (ep.ip ?? "").toLowerCase();
           case "fqdn":
             return (ep.fqdn ?? "").toLowerCase();
+          case "type":
+            return formatAntivirusEndpointType(ep.type ?? ep.machineType).toLowerCase();
           case "os":
             return (ep.operatingSystem ?? "").toLowerCase();
           default:
@@ -359,6 +361,9 @@ function SolutionDetailBlock({
                   key: "fqdn",
                   label: "FQDN"
                 }, {
+                  key: "type",
+                  label: "Type"
+                }, {
                   key: "status",
                   label: "Status"
                 }, {
@@ -414,11 +419,12 @@ function SolutionDetailBlock({
                       alignItems: "center",
                       gap: "0.35rem"
                     }}>
-                          {typeIcon && <Icon icon={typeIcon} width={18} height={18} title={ep.type ?? "Type"} />}
+                          {typeIcon && <Icon icon={typeIcon} width={18} height={18} title={formatAntivirusEndpointType(ep.type ?? ep.machineType)} />}
                           {ep.name ?? "-"}
                         </span>
                       </td>
                       <td>{ep.fqdn ?? "-"}</td>
+                      <td>{formatAntivirusEndpointType(ep.type ?? ep.machineType)}</td>
                       <td>
                         <span style={{
                       padding: "0.15rem 0.45rem",

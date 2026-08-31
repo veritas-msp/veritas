@@ -389,6 +389,30 @@
   color: var(--msp-accent, #2b5fab);
 }
 
+.commentsPaneTicketTitle {
+  margin: 0;
+  font-size: 0.88rem;
+  font-weight: 700;
+  line-height: 1.35;
+  color: var(--msp-text, #0f1c2e);
+}
+
+.commentsPaneTicketSubject {
+  margin: 0.3rem 0 0;
+  font-size: 0.78rem;
+  line-height: 1.4;
+  color: var(--msp-muted, #5c6b82);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.commentsPaneTicketTitle + .commentsPaneMeta,
+.commentsPaneTicketSubject + .commentsPaneMeta {
+  margin-top: 0.5rem;
+}
+
 .commentsPaneText {
   margin: 0.4rem 0 0;
   font-size: 0.84rem;

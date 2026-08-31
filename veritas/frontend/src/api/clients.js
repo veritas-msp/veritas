@@ -2,6 +2,7 @@ import API_BASE_URL from "../config";
 import { normalizeClientSites } from "../utils/clientSites";
 import { aggregateAntivirusEquipementFromRows } from "../utils/antivirusModuleRows";
 import { fetchEquipmentFamilies } from "./equipmentFamilies";
+import { pickBackupJobType } from "../components/EnterprisesPage/backupJobUtils";
 const BASE_URL = `${API_BASE_URL}/clients`;
 const MODULES_BASE_URL = `${API_BASE_URL}/clients/modules`;
 const CYBER_PAGE_DATA_CACHE_KEY = "cyber_page_data_cache_v1";
@@ -818,8 +819,13 @@ export async function fetchClientModules(clientId, options = {}) {
                 const jobData = {
                   ...jobItem.data
                 };
+                const backupType = pickBackupJobType(jobData);
                 if (jobData.type === "job") {
                   delete jobData.type;
+                }
+                if (backupType) {
+                  jobData.type = backupType;
+                  jobData.typeBackup = backupType;
                 }
                 const checkmkHost = jobItem.checkmk_host_name ?? jobData.checkmk_host_name ?? null;
                 const checkmkSite = jobItem.checkmk_site ?? jobData.checkmk_site ?? null;
@@ -1136,7 +1142,7 @@ export async function saveClientModules(clientId, data) {
       if (!family || family === 'module') continue;
       if (disabledFamilies.has(family)) continue;
       try {
-        if (Array.isArray(items) && items.length > 0) {
+        if (Array.isArray(items) && (items.length > 0 || category === 'NDD')) {
           const itemsToSync = items.map(item => {
             let cleanedItem = item;
             if (category === 'BorneWifi') {
@@ -1160,9 +1166,10 @@ export async function saveClientModules(clientId, data) {
                 if (cleanedItem.ssids.length === 0) delete cleanedItem.ssids;
               }
             }
+            const domainKey = category === 'NDD' ? cleanedItem.item_key || cleanedItem.nom || cleanedItem.name || cleanedItem.domain || cleanedItem.domaine || null : cleanedItem.item_key;
             return {
               id: cleanedItem.id,
-              item_key: cleanedItem.item_key,
+              item_key: domainKey,
               name: cleanedItem.nom || cleanedItem.name || 'Unnamed',
               data: cleanedItem,
               is_active: true,
@@ -1171,7 +1178,7 @@ export async function saveClientModules(clientId, data) {
               checkmk_service_name: cleanedItem.checkmk_service_name || cleanedItem.checkmkMapping?.checkmk_service_name || null
             };
           });
-          await fetch(`${MODULES_BASE_URL}/${clientId}/${family}/sync`, {
+          const syncRes = await fetch(`${MODULES_BASE_URL}/${clientId}/${family}/sync`, {
             method: 'POST',
             credentials: 'include',
             headers,
@@ -1179,8 +1186,12 @@ export async function saveClientModules(clientId, data) {
               items: itemsToSync
             })
           });
+          if (!syncRes.ok) {
+            const errorData = await syncRes.json().catch(() => ({}));
+            throw new Error(errorData.error || `Unable to save ${category}`);
+          }
         } else if (items && typeof items === 'object' && !Array.isArray(items)) {
-          if (category === 'Sauvegarde' && Array.isArray(items.instances)) {
+          if ((category === 'Sauvegarde' || category === 'Backup') && Array.isArray(items.instances)) {
             const instances = items.instances || [];
             if (instances.length > 0) {
               const itemsToSync = [];
@@ -1221,6 +1232,7 @@ export async function saveClientModules(clientId, data) {
                   delete jobData.checkmk_host_name;
                   delete jobData.checkmk_site;
                   delete jobData.checkmk_service_name;
+                  const backupType = pickBackupJobType(jobData);
                   const jobName = job.nom ? `${instance.logiciel || 'Backup'} - ${job.nom}` : `${instance.logiciel || 'Backup'} - Job ${jobIdx + 1}`;
                   const jobKey = `job-${instanceId}`;
                   itemsToSync.push({
@@ -1229,6 +1241,7 @@ export async function saveClientModules(clientId, data) {
                     item_key: jobKey,
                     data: {
                       ...jobData,
+                      typeBackup: backupType || jobData.typeBackup || "",
                       type: 'job',
                       instanceId
                     },
@@ -1418,6 +1431,7 @@ export async function saveClientModules(clientId, data) {
         }
       } catch (error) {
         console.error(`Error saving equipment ${category}:`, error);
+        throw error;
       }
     }
     if (data.equipements?.Antivirus != null || data.equipements?.Antispam != null || data.equipements?.Sauvegarde != null) {

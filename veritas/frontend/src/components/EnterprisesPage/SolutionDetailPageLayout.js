@@ -58,7 +58,7 @@ export default function SolutionDetailPageLayout({
                 aria-current={activeSection === entry.section.id ? "true" : undefined}
                 title={entry.section.description || entry.section.label}
               >
-                <Icon icon={entry.section.icon} className={styles.viewItemIcon} aria-hidden />
+                <Icon icon={entry.section.icon} className={styles.viewItemIcon} width={18} height={18} aria-hidden />
                 <span className={styles.viewItemMain}>
                   <span className={styles.viewItemLabel}>{entry.section.label}</span>
                 </span>

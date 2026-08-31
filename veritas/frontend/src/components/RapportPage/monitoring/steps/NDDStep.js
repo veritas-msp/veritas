@@ -39,10 +39,6 @@ export default function NDDStep({
           </span>;
     }
   }, {
-    id: "role",
-    label: "Rôle",
-    render: domaine => domaine.role || domaine.type || "-"
-  }, {
     id: "registrar",
     label: "Registrar",
     render: domaine => domaine.registrar || domaine.registrarName || domaine.provider || "-"

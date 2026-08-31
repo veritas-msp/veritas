@@ -309,6 +309,19 @@
   color: var(--text-primary, #111827);
 }
 
+.kpiSectionTitle {
+  margin: 0.85rem 0 0.45rem;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-muted, #6b7280);
+}
+
+.kpiSectionTitle:first-child {
+  margin-top: 0;
+}
+
 .globalStatsGrid {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));

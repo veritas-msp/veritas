@@ -42,7 +42,7 @@ import EnterpriseVaultPanel from "./EnterpriseVaultPanel";
 import { getEnterpriseVaultCopy } from "./enterpriseVaultI18n";
 import { splitClientAddress, buildClientAddress, emptyPrimaryContact, mapContactToPrimary, pickPrimaryContact, normalizePrimaryContact, buildAdditiveMembershipsForEnterprise, isPrimaryContactPoste, isContactPrimaryForClient, sortContactsPrimaryFirst, normalizeCompanyStatusKey, toCompanyStatusValue } from "./enterpriseFormUtils";
 import { buildSiteAddress, formatSitesForLog, getSiteDisplayName, getSiteId, getSiteLocationValue, normalizeClientSites, serializeSitesForCompare, siteMatchesQuery } from "../../utils/clientSites";
-import { normalizeServeurLieList } from "./backupJobUtils";
+import { normalizeServeurLieList, pickBackupJobType } from "./backupJobUtils";
 import SiteMapPreview from "./SiteMapPreview";
 import { normalizeLegalIdentifier, LEGAL_IDENTIFIER_LABEL } from "../../utils/siret";
 import { normalizeContactCommunications, getCommunicationTypeDef, buildContactApiPayload } from "../../utils/contactCommunications";
@@ -251,7 +251,7 @@ function parseBackupDataFromModules(modulesData, mappingsMap = {}) {
         instanceId: instance.id || instance.instanceId,
         instanceLogiciel: instance.logiciel || "",
         nom: job.nom || "",
-        typeBackup: job.type || "",
+        typeBackup: pickBackupJobType(job),
         regularite: job.regularite || "",
         horaire: job.horaire || "",
         retention: job.retention || "",

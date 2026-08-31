@@ -777,7 +777,7 @@ function mapSaveJobDetails(job, instanceName, index, parentId) {
   return {
     id: job.id || `${parentId || "job"}-${index}`,
     name: pickString(job.nom, job.name, job.type, "Job"),
-    jobType: pickString(job.type, job.jobType),
+    jobType: pickString(job.typeBackup, job.jobType, job.type !== "job" ? job.type : null),
     lastBackup: pickJobLastBackup(job),
     lastBackupDuration: pickJobLastBackupDuration(job)
   };
@@ -829,7 +829,7 @@ function mapSaveDetails(row, data) {
     return {
       kind: "saveJob",
       product: pickString(data.type, data.nom, "Backup job"),
-      jobType: pickString(data.type, data.jobType),
+      jobType: pickString(data.typeBackup, data.jobType, data.type !== "job" ? data.type : null),
       lastBackup: pickJobLastBackup(data),
       lastBackupDuration: pickJobLastBackupDuration(data),
       instanceName: pickString(data.instanceName, data.instance, data.instanceNom),
