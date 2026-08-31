@@ -1,6 +1,7 @@
 import React from "react";
 import { Icon } from "@iconify/react";
 import InfrastructureEquipmentTable from "../InfrastructureEquipmentTable";
+import { getCheckmkMapping } from "../checkmkReportCacheUtils";
 import equipmentStyles from "../../../EquipementPage/EquipmentPage.module.css";
 import { formatDateFr as formatMaintenanceDateFr, getExpirationStatus, getExpirationStatusColor, getMaintenanceLicenseExpiration } from "../../../EquipementPage/constants/firewallLicenceUtils";
 function formatDateFr(value) {
@@ -36,35 +37,29 @@ function ExpirationDateCell({
 }
 function normalizeFirewall(fw) {
   if (!fw) return fw;
-  if (fw.data && typeof fw.data === "object") {
-    const {
-      id: _dataId,
-      ...rest
-    } = fw.data;
-    return {
-      id: fw.id,
-      ...rest,
-      nom: fw.data.nom ?? fw.name ?? fw.item_key ?? "",
-      name: fw.data.nom ?? fw.name ?? fw.item_key ?? "",
-      location: fw.data.site ?? fw.data.location ?? "",
-      site: fw.data.site ?? fw.data.location ?? "",
-      manufacturer: fw.data.fabricant ?? fw.data.marque ?? "",
-      model: fw.data.modele ?? "",
-      serial: fw.data.numeroSerie ?? fw.data.sn ?? "",
-      is_active: fw.is_active,
-      checkmk_host_name: fw.checkmk_host_name ?? null,
-      checkmk_site: fw.checkmk_site ?? null,
-      checkmk_service_name: fw.checkmk_service_name ?? null
-    };
-  }
-  return {
+  const nested = fw.data && typeof fw.data === "object" ? fw.data : {};
+  const {
+    id: _dataId,
+    ...rest
+  } = nested;
+  const normalized = {
     ...fw,
-    name: fw.nom ?? fw.name ?? "",
-    location: fw.site ?? fw.location ?? "",
-    manufacturer: fw.fabricant ?? fw.marque ?? "",
-    model: fw.modele ?? "",
-    serial: fw.numeroSerie ?? fw.sn ?? ""
+    ...rest,
+    id: fw.id,
+    nom: nested.nom ?? fw.nom ?? fw.name ?? fw.item_key ?? "",
+    name: nested.nom ?? fw.name ?? fw.nom ?? fw.item_key ?? "",
+    location: nested.site ?? nested.location ?? fw.location ?? fw.site ?? "",
+    site: nested.site ?? nested.location ?? fw.site ?? fw.location ?? "",
+    manufacturer: nested.fabricant ?? nested.marque ?? fw.manufacturer ?? fw.fabricant ?? fw.marque ?? "",
+    model: nested.modele ?? fw.model ?? fw.modele ?? "",
+    serial: nested.numeroSerie ?? nested.sn ?? fw.serial ?? fw.numeroSerie ?? fw.sn ?? "",
+    is_active: fw.is_active,
+    checkmk_host_name: fw.checkmk_host_name ?? nested.checkmk_host_name ?? fw.checkmkMapping?.checkmk_host_name ?? null,
+    checkmk_site: fw.checkmk_site ?? nested.checkmk_site ?? fw.checkmkMapping?.checkmk_site ?? null,
+    checkmk_service_name: fw.checkmk_service_name ?? nested.checkmk_service_name ?? fw.checkmkMapping?.checkmk_service_name ?? null
   };
+  normalized.checkmkMapping = getCheckmkMapping(normalized);
+  return normalized;
 }
 export default function FirewallStep({
   client,

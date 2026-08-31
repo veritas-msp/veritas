@@ -1,3 +1,42 @@
+function firstCheckmkString(...values) {
+  for (const value of values) {
+    if (value == null || value === false) continue;
+    const text = String(value).trim();
+    if (text && text !== "null" && text !== "undefined") return text;
+  }
+  return null;
+}
+
+function pickCheckmkFields(row = {}, data = {}) {
+  const mapping = data.checkmkMapping && typeof data.checkmkMapping === "object"
+    ? data.checkmkMapping
+    : row.checkmkMapping && typeof row.checkmkMapping === "object"
+      ? row.checkmkMapping
+      : {};
+  const host = firstCheckmkString(
+    row.checkmk_host_name,
+    data.checkmk_host_name,
+    mapping.checkmk_host_name,
+    data.checkmkHostName,
+    row.checkmkHostName
+  );
+  const site = firstCheckmkString(row.checkmk_site, data.checkmk_site, mapping.checkmk_site);
+  const service = firstCheckmkString(row.checkmk_service_name, data.checkmk_service_name, mapping.checkmk_service_name);
+  return {
+    checkmk_host_name: host,
+    checkmk_site: site,
+    checkmk_service_name: service,
+    checkmkMapping: host
+      ? {
+          is_active: mapping.is_active !== false,
+          checkmk_host_name: host,
+          checkmk_site: site,
+          checkmk_service_name: service
+        }
+      : null
+  };
+}
+
 const MODULE_TABLES = {
   internet: "v_b_clients_m_internet",
   servers: "v_b_clients_m_servers",
@@ -168,18 +207,14 @@ export function transformClientModulesToFrontend(rawData, options = {}) {
               const lastBackupDate = jobItem.last_backup_date ?? jobData.last_backup_date ?? null;
               const lastBackupDuration = jobItem.last_backup_duration ?? jobData.last_backup_duration ?? null;
               const lastBackupStart = jobItem.last_backup_start ?? jobData.last_backup_start ?? null;
-              const checkmkHost = jobItem.checkmk_host_name ?? jobData.checkmk_host_name ?? null;
-              const checkmkSite = jobItem.checkmk_site ?? jobData.checkmk_site ?? null;
-              const checkmkService = jobItem.checkmk_service_name ?? jobData.checkmk_service_name ?? null;
+              const checkmk = pickCheckmkFields(jobItem, jobData);
               return {
                 id: jobItem.id,
                 ...jobData,
                 last_backup_date: lastBackupDate != null ? typeof lastBackupDate === 'string' ? lastBackupDate : lastBackupDate instanceof Date ? lastBackupDate.toISOString() : String(lastBackupDate) : null,
                 last_backup_duration: lastBackupDuration != null ? String(lastBackupDuration) : null,
                 last_backup_start: lastBackupStart != null ? typeof lastBackupStart === 'string' ? lastBackupStart : lastBackupStart instanceof Date ? lastBackupStart.toISOString() : String(lastBackupStart) : null,
-                checkmk_host_name: checkmkHost && String(checkmkHost).trim() ? String(checkmkHost).trim() : null,
-                checkmk_site: checkmkSite && String(checkmkSite).trim() ? String(checkmkSite).trim() : null,
-                checkmk_service_name: checkmkService && String(checkmkService).trim() ? String(checkmkService).trim() : null
+                ...checkmk
               };
             });
             return {
@@ -275,9 +310,7 @@ export function transformClientModulesToFrontend(rawData, options = {}) {
             solutions: sortedItems.map(item => ({
               id: item.id,
               ...item.data,
-              checkmk_host_name: item.checkmk_host_name ?? null,
-              checkmk_site: item.checkmk_site ?? null,
-              checkmk_service_name: item.checkmk_service_name ?? null,
+              ...pickCheckmkFields(item, item.data),
               is_active: item.is_active
             }))
           };
@@ -312,9 +345,7 @@ export function transformClientModulesToFrontend(rawData, options = {}) {
           is_active: item.is_active,
           created_at: item.created_at ?? item.createdAt ?? null,
           updated_at: item.updated_at ?? item.updatedAt ?? null,
-          checkmk_host_name: item.checkmk_host_name || itemData.checkmk_host_name || null,
-          checkmk_site: item.checkmk_site || itemData.checkmk_site || null,
-          checkmk_service_name: item.checkmk_service_name || itemData.checkmk_service_name || null
+          ...pickCheckmkFields(item, itemData)
         };
       });
     }

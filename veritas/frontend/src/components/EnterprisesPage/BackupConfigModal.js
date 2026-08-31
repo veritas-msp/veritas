@@ -307,10 +307,6 @@ function JobCard({
             </strong>
           </div>
           <div className={styles.cardBadges}>
-            {canMap ? <button type="button" className={`${styles.checkmkChip} ${mapped ? styles.checkmkChipActive : ""}`} onClick={onMap} disabled={!job?.id} aria-label={mapped ? copy.actions.editCheckmk : copy.actions.mapCheckmk} title={!job?.id ? copy.actions.mapCheckmkDisabled : mapped ? mappingLabel || copy.actions.editCheckmk : copy.actions.mapCheckmk}>
-                <Icon icon="simple-icons:checkmk" width={14} height={14} aria-hidden />
-                <span>{mapped ? mappingLabel || copy.meta.checkmk : copy.actions.mapCheckmk}</span>
-              </button> : null}
             {isDefault ? <span className={styles.cardBadge}>{copy.jobs.defaultJob}</span> : null}
             <span className={`${styles.cardBadge} ${jobActive ? styles.cardBadgeActive : styles.cardBadgeInactive}`}>
               {jobActive ? copy.form.jobActive : copy.form.jobInactive}

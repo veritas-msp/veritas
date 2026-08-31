@@ -982,9 +982,15 @@ export async function fetchClientModules(clientId, options = {}) {
               item_key: item.item_key || parsedData.item_key,
               nom: parsedData.nom || item.name || item.item_key || 'Sans nom',
               is_active: item.is_active,
-              checkmk_host_name: item.checkmk_host_name || parsedData.checkmk_host_name || null,
-              checkmk_site: item.checkmk_site || parsedData.checkmk_site || null,
-              checkmk_service_name: item.checkmk_service_name || parsedData.checkmk_service_name || null
+              checkmk_host_name: item.checkmk_host_name || parsedData.checkmk_host_name || parsedData.checkmkMapping?.checkmk_host_name || null,
+              checkmk_site: item.checkmk_site || parsedData.checkmk_site || parsedData.checkmkMapping?.checkmk_site || null,
+              checkmk_service_name: item.checkmk_service_name || parsedData.checkmk_service_name || parsedData.checkmkMapping?.checkmk_service_name || null,
+              checkmkMapping: item.checkmk_host_name || parsedData.checkmk_host_name || parsedData.checkmkMapping?.checkmk_host_name ? {
+                is_active: true,
+                checkmk_host_name: item.checkmk_host_name || parsedData.checkmk_host_name || parsedData.checkmkMapping?.checkmk_host_name || null,
+                checkmk_site: item.checkmk_site || parsedData.checkmk_site || parsedData.checkmkMapping?.checkmk_site || null,
+                checkmk_service_name: item.checkmk_service_name || parsedData.checkmk_service_name || parsedData.checkmkMapping?.checkmk_service_name || null
+              } : parsedData.checkmkMapping || null
             };
           });
         }

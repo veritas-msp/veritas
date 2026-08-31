@@ -24,40 +24,52 @@ export function buildCheckMKCacheEntry(services, events, availability, period = 
   };
 }
 
+function firstCheckmkString(...values) {
+  for (const value of values) {
+    if (value == null || value === false) continue;
+    const text = String(value).trim();
+    if (text && text !== "null" && text !== "undefined") return text;
+  }
+  return null;
+}
+
 export function getCheckmkHostName(item) {
-  const host = item?.checkmk_host_name
-    ?? item?.checkmkMapping?.checkmk_host_name
-    ?? item?.data?.checkmk_host_name
-    ?? item?.data?.checkmkMapping?.checkmk_host_name
-    ?? null;
-  if (typeof host !== "string") return null;
-  const trimmed = host.trim();
-  return trimmed || null;
+  return firstCheckmkString(
+    item?.checkmk_host_name,
+    item?.checkmkHostName,
+    item?.checkmkMapping?.checkmk_host_name,
+    item?.checkmkMapping?.checkmkHostName,
+    item?.data?.checkmk_host_name,
+    item?.data?.checkmkHostName,
+    item?.data?.checkmkMapping?.checkmk_host_name,
+    item?.rawData?.checkmk_host_name,
+    item?.rawData?.checkmkMapping?.checkmk_host_name
+  );
 }
 
 export function getCheckmkSite(item) {
-  const site = item?.checkmk_site
-    ?? item?.checkmkMapping?.checkmk_site
-    ?? item?.data?.checkmk_site
-    ?? null;
-  if (site == null || site === "") return null;
-  return String(site);
+  return firstCheckmkString(
+    item?.checkmk_site,
+    item?.checkmkMapping?.checkmk_site,
+    item?.data?.checkmk_site,
+    item?.rawData?.checkmk_site
+  );
 }
 
 export function getCheckmkServiceName(item) {
-  const service = item?.checkmk_service_name
-    ?? item?.checkmkMapping?.checkmk_service_name
-    ?? item?.data?.checkmk_service_name
-    ?? null;
-  if (service == null || service === "") return null;
-  return String(service);
+  return firstCheckmkString(
+    item?.checkmk_service_name,
+    item?.checkmkMapping?.checkmk_service_name,
+    item?.data?.checkmk_service_name,
+    item?.rawData?.checkmk_service_name
+  );
 }
 
 export function getCheckmkMapping(item) {
   const hostName = getCheckmkHostName(item);
   if (!hostName) return null;
   return {
-    is_active: true,
+    is_active: item?.checkmkMapping?.is_active !== false,
     checkmk_host_name: hostName,
     checkmk_site: getCheckmkSite(item),
     checkmk_service_name: getCheckmkServiceName(item)
@@ -65,7 +77,7 @@ export function getCheckmkMapping(item) {
 }
 
 export function isEquipmentMappedForCheckMK(item) {
-  if (!item || item.is_active === false) return false;
+  if (!item) return false;
   if (item.checkmkMapping?.is_active === false) return false;
   return Boolean(getCheckmkHostName(item));
 }
@@ -84,41 +96,70 @@ export function preserveCheckmkMappingsOnEquipements(previous = {}, next = {}) {
       if (!prior) return item;
       const hostName = getCheckmkHostName(item) || getCheckmkHostName(prior);
       if (!hostName) return item;
-      return {
+      const nextItem = {
         ...item,
         checkmk_host_name: getCheckmkHostName(item) || hostName,
         checkmk_site: getCheckmkSite(item) ?? getCheckmkSite(prior),
-        checkmk_service_name: getCheckmkServiceName(item) ?? getCheckmkServiceName(prior),
-        checkmkMapping: item.checkmkMapping || prior.checkmkMapping || getCheckmkMapping({ ...prior, ...item, checkmk_host_name: hostName })
+        checkmk_service_name: getCheckmkServiceName(item) ?? getCheckmkServiceName(prior)
+      };
+      return {
+        ...nextItem,
+        checkmkMapping: getCheckmkMapping(nextItem)
       };
     });
   });
   return merged;
 }
 
+const CHECKMK_REPORT_EQUIPMENT_KEYS = new Set([
+  "Internet",
+  "Serveurs",
+  "Servers",
+  "Firewalls",
+  "Firewall",
+  "NAS",
+  "SAN",
+  "Stockage",
+  "Storage",
+  "Switch",
+  "BorneWifi",
+  "Alimentation",
+  "Routeur",
+  "TOIP"
+]);
+
+function collectEquipmentLists(equipements = {}) {
+  const lists = [];
+  const visit = value => {
+    if (!value) return;
+    if (Array.isArray(value)) {
+      lists.push(value);
+      return;
+    }
+    if (typeof value !== "object") return;
+    if (Array.isArray(value.solutions)) lists.push(value.solutions);
+    if (Array.isArray(value.instances)) lists.push(value.instances);
+    if (Array.isArray(value.items)) lists.push(value.items);
+    if (Array.isArray(value.connections)) lists.push(value.connections);
+  };
+  Object.entries(equipements || {}).forEach(([key, value]) => {
+    if (!CHECKMK_REPORT_EQUIPMENT_KEYS.has(key)) return;
+    visit(value);
+  });
+  return lists;
+}
+
 /** Collect all hardware items with an active CheckMK host mapping. */
 export function collectCheckMKMappedEquipment(equipements = {}) {
   const eq = equipements && typeof equipements === "object" ? equipements : {};
-  const lists = [
-    eq.Internet,
-    eq.Serveurs,
-    eq.Servers,
-    eq.Firewalls,
-    eq.NAS,
-    eq.SAN,
-    eq.Switch,
-    eq.BorneWifi,
-    eq.TOIP?.solutions,
-    Array.isArray(eq.TOIP) ? eq.TOIP : null
-  ];
   const seen = new Set();
   const mappings = [];
-  lists.forEach(list => {
-    if (!Array.isArray(list)) return;
+  collectEquipmentLists(eq).forEach(list => {
     list.forEach(item => {
       if (!isEquipmentMappedForCheckMK(item)) return;
       const hostName = getCheckmkHostName(item);
-      const equipmentId = item?.id ?? item?.uuid ?? null;
+      if (!hostName) return;
+      const equipmentId = item?.id ?? item?.uuid ?? item?.dbId ?? null;
       const dedupeKey = equipmentId != null ? `id:${equipmentId}` : `host:${hostName}`;
       if (seen.has(dedupeKey)) return;
       seen.add(dedupeKey);

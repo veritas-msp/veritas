@@ -107,6 +107,70 @@ const enrichClientsListPayload = async clients => {
   return attachDeletionSummary(attachPrimaryContacts(attachClientTags(attachEquipmentCounts(clients, countsByClientId), tagsByClientId), primaryContactsByClientId), deletionByClientId);
 };
 const invalidateClientsListCache = () => {};
+function firstCheckmkString(...values) {
+  for (const value of values) {
+    if (value == null || value === false) continue;
+    const text = String(value).trim();
+    if (text && text !== "null" && text !== "undefined") return text;
+  }
+  return null;
+}
+
+function coalesceCheckmkFromRow(row, parsedData = {}) {
+  const data = parsedData && typeof parsedData === "object" ? parsedData : {};
+  const mapping = data.checkmkMapping && typeof data.checkmkMapping === "object" ? data.checkmkMapping : {};
+  return {
+    checkmk_host_name: firstCheckmkString(row?.checkmk_host_name, data.checkmk_host_name, mapping.checkmk_host_name, data.checkmkHostName),
+    checkmk_site: firstCheckmkString(row?.checkmk_site, data.checkmk_site, mapping.checkmk_site),
+    checkmk_service_name: firstCheckmkString(row?.checkmk_service_name, data.checkmk_service_name, mapping.checkmk_service_name)
+  };
+}
+
+function applyCheckmkCoalesce(row) {
+  const checkmk = coalesceCheckmkFromRow(row, row.data);
+  row.checkmk_host_name = checkmk.checkmk_host_name;
+  row.checkmk_site = checkmk.checkmk_site;
+  row.checkmk_service_name = checkmk.checkmk_service_name;
+  return row;
+}
+
+async function updateModuleRowPreservingCheckmk(db, table, {
+  item_key,
+  name,
+  data,
+  is_active,
+  itemId,
+  clientId,
+  item
+}) {
+  const checkmk = coalesceCheckmkFromRow(item || {}, data);
+  let payload = data;
+  if (data && typeof data === "object" && (checkmk.checkmk_host_name || data.checkmk_host_name)) {
+    payload = {
+      ...data,
+      checkmk_host_name: checkmk.checkmk_host_name || data.checkmk_host_name || null,
+      checkmk_site: checkmk.checkmk_site || data.checkmk_site || null,
+      checkmk_service_name: checkmk.checkmk_service_name || data.checkmk_service_name || null
+    };
+  }
+  const baseParams = [item_key || name || null, name || item_key || null, payload || null, is_active !== false, itemId, clientId];
+  try {
+    return await db.query(`UPDATE ${table}
+       SET item_key = $1, name = $2, data = $3, is_active = $4, updated_at = NOW(),
+           checkmk_host_name = COALESCE($7::varchar, checkmk_host_name),
+           checkmk_site = COALESCE($8::varchar, checkmk_site),
+           checkmk_service_name = COALESCE($9::varchar, checkmk_service_name)
+       WHERE id = $5 AND client_id = $6
+       RETURNING *`, [...baseParams, checkmk.checkmk_host_name, checkmk.checkmk_site, checkmk.checkmk_service_name]);
+  } catch (err) {
+    if (err.code !== "42703") throw err;
+    return db.query(`UPDATE ${table}
+       SET item_key = $1, name = $2, data = $3, is_active = $4, updated_at = NOW()
+       WHERE id = $5 AND client_id = $6
+       RETURNING *`, baseParams);
+  }
+}
+
 const MODULE_TABLES = {
   internet: "v_b_clients_m_internet",
   servers: "v_b_clients_m_servers",
@@ -253,6 +317,7 @@ function parseModuleRowForCyber(row, table) {
   } else if (!row.data) {
     parsedData = {};
   }
+  const checkmk = coalesceCheckmkFromRow(row, parsedData);
   const baseRow = {
     id: row.id,
     item_key: row.item_key,
@@ -261,9 +326,9 @@ function parseModuleRowForCyber(row, table) {
     data: parsedData,
     created_at: row.created_at,
     updated_at: row.updated_at,
-    checkmk_host_name: row.checkmk_host_name ?? null,
-    checkmk_site: row.checkmk_site ?? null,
-    checkmk_service_name: row.checkmk_service_name ?? null
+    checkmk_host_name: checkmk.checkmk_host_name,
+    checkmk_site: checkmk.checkmk_site,
+    checkmk_service_name: checkmk.checkmk_service_name
   };
   if (table === "v_b_clients_m_save") {
     const rawDate = row.last_backup_date;
@@ -878,7 +943,7 @@ router.get('/general', requirePermission('clients.view'), async (req, res) => {
                 } else if (!row.data) {
                   row.data = {};
                 }
-                return row;
+                return applyCheckmkCoalesce(row);
               });
               rawModulesData[family] = parsedRows;
             } catch (err) {
@@ -1014,6 +1079,7 @@ router.get('/:id/modules', async (req, res) => {
           } else if (!row.data) {
             parsedData = {};
           }
+          const checkmk = coalesceCheckmkFromRow(row, parsedData);
           const baseRow = {
             id: row.id,
             item_key: row.item_key,
@@ -1022,9 +1088,9 @@ router.get('/:id/modules', async (req, res) => {
             data: parsedData,
             created_at: row.created_at,
             updated_at: row.updated_at,
-            checkmk_host_name: row.checkmk_host_name ?? null,
-            checkmk_site: row.checkmk_site ?? null,
-            checkmk_service_name: row.checkmk_service_name ?? null
+            checkmk_host_name: checkmk.checkmk_host_name,
+            checkmk_site: checkmk.checkmk_site,
+            checkmk_service_name: checkmk.checkmk_service_name
           };
           if (table === 'v_b_clients_m_save') {
             const rawDate = row.last_backup_date;
@@ -2367,7 +2433,7 @@ router.get('/:id', async (req, res) => {
               } else if (!row.data) {
                 row.data = {};
               }
-              return row;
+              return applyCheckmkCoalesce(row);
             });
             rawModulesData[family] = parsedRows;
           } catch (err) {
@@ -3882,10 +3948,15 @@ modulesRouter.post('/:clientId/:family/sync', requireModulePermission("edit"), a
             if (dataName) newNames.add(dataName);
           }
           if (itemId && existingIds.has(itemId)) {
-            const result = await client.query(`UPDATE ${table}
-               SET item_key = $1, name = $2, data = $3, is_active = $4, updated_at = NOW()
-               WHERE id = $5 AND client_id = $6
-               RETURNING *`, [item_key || name || null, name || item_key || null, data || null, is_active !== false, itemId, clientId]);
+            const result = await updateModuleRowPreservingCheckmk(client, table, {
+              item_key,
+              name,
+              data,
+              is_active,
+              itemId,
+              clientId,
+              item
+            });
             if (result.rows.length > 0) {
               inserted.push(result.rows[0]);
               processedIds.add(itemId);
@@ -3930,10 +4001,15 @@ modulesRouter.post('/:clientId/:family/sync', requireModulePermission("edit"), a
             if (dataName) newNames.add(dataName);
           }
           if (itemId && existingIds.has(itemId)) {
-            const result = await client.query(`UPDATE ${table}
-               SET item_key = $1, name = $2, data = $3, is_active = $4, updated_at = NOW()
-               WHERE id = $5 AND client_id = $6
-               RETURNING *`, [item_key || name || null, name || item_key || null, data || null, is_active !== false, itemId, clientId]);
+            const result = await updateModuleRowPreservingCheckmk(client, table, {
+              item_key,
+              name,
+              data,
+              is_active,
+              itemId,
+              clientId,
+              item
+            });
             if (result.rows.length > 0) {
               inserted.push(result.rows[0]);
               processedIds.add(itemId);
