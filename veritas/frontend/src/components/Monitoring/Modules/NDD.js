@@ -6,6 +6,8 @@ import { toast } from "react-toastify";
 import styles from "./NDD.module.css";
 import commonStyles from "./ModuleCommon.module.css";
 import API_BASE_URL from "../../../config";
+import { fetchOvhDomainDetails } from "../../../api/clientOvh";
+import { isOvhManagedDomain, normalizeDomainItem } from "../../EnterprisesPage/domainSolutionUtils";
 const toastOptions = {
   position: "bottom-right",
   autoClose: 3000
@@ -289,37 +291,34 @@ const NDD = ({
       console.warn('setData function is not available');
     }
   };
-  const syncDomainExpiration = useCallback(async domainNom => {
+  const syncDomainExpiration = useCallback(async domaine => {
+    const normalized = normalizeDomainItem(domaine);
+    const domainNom = normalized?.nom || domaine?.nom;
+    if (!domainNom || !isOvhManagedDomain(normalized || domaine)) {
+      return;
+    }
     setLoadingSync(prev => ({
       ...prev,
       [domainNom]: true
     }));
     try {
-      const response = await fetch(`${API_BASE_URL}/ovh/domain/${encodeURIComponent(domainNom)}`, {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        credentials: 'include'
-      });
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        return;
+      const result = await fetchOvhDomainDetails(domainNom);
+      const ovhDomain = result?.domain || result;
+      if (ovhDomain?.expiration) {
+        setData(prev => ({
+          ...prev,
+          [domainNom]: {
+            ...(prev?.[domainNom] || {}),
+            expiration: ovhDomain.expiration
+          }
+        }));
       }
-      const result = await response.json();
-      if (result.success && result.domain) {
-        if (result.domain.expiration) {
-          setData(prev => ({
-            ...prev,
-            [domainNom]: {
-              ...(prev?.[domainNom] || {}),
-              expiration: result.domain.expiration
-            }
-          }));
-        }
-      } else {}
     } catch (err) {
-      console.error('Error syncing OVH domain:', err);
+      const message = String(err?.message || "").toLowerCase();
+      const notFound = message.includes("not found") || message.includes("introuvable") || message.includes("does not exist");
+      if (!notFound) {
+        console.error('Error syncing OVH domain:', err);
+      }
     } finally {
       setLoadingSync(prev => ({
         ...prev,
@@ -328,11 +327,12 @@ const NDD = ({
     }
   }, [setData]);
   const syncAllOvh = useCallback(async () => {
-    if (domaines.length === 0) {
+    const ovhDomaines = domaines.filter(domaine => isOvhManagedDomain(domaine));
+    if (ovhDomaines.length === 0) {
       toast.warning('No domain to sync', toastOptions);
       return;
     }
-    const syncPromises = domaines.map(domaine => syncDomainExpiration(domaine.nom));
+    const syncPromises = ovhDomaines.map(domaine => syncDomainExpiration(domaine));
     try {
       await Promise.all(syncPromises);
       toast.success(`Synchronization completed`, toastOptions);
@@ -526,9 +526,9 @@ const NDD = ({
               }}>
                   {}
                   {}
-                  <button type="button" className={`${commonStyles.syncButton} ${needsSyncWarning ? commonStyles.syncButtonWarning : ''}`} onClick={() => syncDomainExpiration(domaine.nom)} title="Sync expiration date from OVH" disabled={loadingSync[domaine.nom]}>
+                  {isOvhManagedDomain(domaine) ? <button type="button" className={`${commonStyles.syncButton} ${needsSyncWarning ? commonStyles.syncButtonWarning : ''}`} onClick={() => syncDomainExpiration(domaine)} title="Sync expiration date from OVH" disabled={loadingSync[domaine.nom]}>
                     <IconifyIcon icon="material-symbols:sync" width={14} height={14} className={loadingSync[domaine.nom] ? styles.loadingIcon : ''} />
-                  </button>
+                  </button> : null}
                   {}
                   <div style={{
                   flex: '0 0 auto'

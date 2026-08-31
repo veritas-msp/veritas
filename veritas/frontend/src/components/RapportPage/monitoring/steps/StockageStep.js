@@ -2,7 +2,20 @@ import React, { useEffect, useState } from "react";
 import { Icon } from "@iconify/react";
 import InfrastructureEquipmentTable from "../InfrastructureEquipmentTable";
 import equipmentStyles from "../../../EquipementPage/EquipmentPage.module.css";
+import styles from "../RapportMonitoringBuilder.module.css";
 import { getExpirationStatus, getExpirationStatusColor } from "../../../EquipementPage/constants/firewallLicenceUtils";
+import { formatCapacityHint, sanitizeDiskCapacity } from "../../../EquipementPage/storageDiskUtils";
+function parseCapacityGb(raw) {
+  const digits = sanitizeDiskCapacity(raw);
+  if (!digits) return null;
+  const n = Number(digits);
+  return Number.isFinite(n) ? n : null;
+}
+function formatGbLabel(raw) {
+  const n = parseCapacityGb(raw);
+  if (n == null) return raw ? String(raw) : "";
+  return formatCapacityHint(n) || `${n} Go`;
+}
 function formatDateFr(value) {
   if (!value) return "-";
   try {
@@ -136,46 +149,48 @@ export default function StorageStep({
     render: st => {
       const key = getKey(st);
       const totalRaw = st.capacite ?? st.capacity ?? "";
-      const totalNumeric = totalRaw !== "" && totalRaw != null ? Number(totalRaw) : null;
+      const totalNumeric = parseCapacityGb(totalRaw);
       const rawUsed = st.capaciteUtilisee ?? st.espaceUtilise ?? st.capacityUsed ?? "";
-      const value = localUsage[key] ?? rawUsed;
-      if (!totalRaw && !value) return "-";
-      return <div style={{
-        display: "flex",
-        alignItems: "center",
-        gap: 4
-      }}>
-            <input type="number" min={0} value={value} onChange={e => {
-          const input = e.target.value;
-          let next = input;
-          if (totalNumeric != null && !Number.isNaN(totalNumeric)) {
-            const n = Number(input);
-            if (!Number.isNaN(n) && n > totalNumeric) {
-              next = String(totalNumeric);
-            }
-          }
-          setLocalUsage(prev => ({
-            ...prev,
-            [key]: next
-          }));
-        }} style={{
-          width: 70,
-          padding: "0.15rem 0.25rem",
-          fontSize: "0.8rem"
-        }} max={totalNumeric != null && !Number.isNaN(totalNumeric) ? totalNumeric : undefined} />
-            {totalRaw && <span style={{
-          fontSize: "0.8rem",
-          color: "#6b7280"
-        }}>
-                / {totalRaw}
-              </span>}
-            {totalNumeric != null && !Number.isNaN(totalNumeric) && value !== "" && value != null && !Number.isNaN(Number(value)) ? <span style={{
-          fontSize: "0.75rem",
-          color: "#059669",
-          marginLeft: 4
-        }} title="Espace restant">
-                (reste {Math.max(0, totalNumeric - Number(value))})
-              </span> : null}
+      const value = localUsage[key] ?? sanitizeDiskCapacity(rawUsed);
+      const usedNumeric = parseCapacityGb(value);
+      if (!totalRaw && (value === "" || value == null)) return "-";
+      const remaining = totalNumeric != null && usedNumeric != null ? Math.max(0, totalNumeric - usedNumeric) : null;
+      const usagePercent = totalNumeric > 0 && usedNumeric != null ? Math.max(0, Math.min(100, usedNumeric / totalNumeric * 100)) : null;
+      const remainTone = usagePercent == null ? "" : usagePercent >= 90 ? styles.storageUsageRemainCrit : usagePercent >= 75 ? styles.storageUsageRemainWarn : "";
+      const fillColor = usagePercent == null ? "#16a34a" : usagePercent >= 90 ? "#dc2626" : usagePercent >= 75 ? "#d97706" : "#16a34a";
+      return <div className={styles.storageUsageCell} onClick={event => event.stopPropagation()}>
+            <div className={styles.storageUsageShell}>
+              <input
+                type="text"
+                inputMode="numeric"
+                pattern="[0-9]*"
+                className={styles.storageUsageInput}
+                value={value}
+                placeholder="0"
+                aria-label="Espace utilisé"
+                onChange={e => {
+                  let next = sanitizeDiskCapacity(e.target.value);
+                  if (totalNumeric != null && next) {
+                    const n = Number(next);
+                    if (!Number.isNaN(n) && n > totalNumeric) next = String(totalNumeric);
+                  }
+                  setLocalUsage(prev => ({
+                    ...prev,
+                    [key]: next
+                  }));
+                }}
+              />
+              <div className={styles.storageUsageSuffix}>Go</div>
+            </div>
+            <div className={styles.storageUsageMeta}>
+              <div className={styles.storageUsageTotal}>
+                {totalRaw ? `/ ${formatGbLabel(totalRaw)}` : ""}
+                {remaining != null ? <div className={`${styles.storageUsageRemain} ${remainTone}`}>reste {formatGbLabel(remaining)}</div> : null}
+              </div>
+              {usagePercent != null ? <div className={styles.storageUsageBar} aria-hidden>
+                  <div className={styles.storageUsageFill} style={{ width: `${usagePercent}%`, background: fillColor }} />
+                </div> : null}
+            </div>
           </div>;
     }
   }, {

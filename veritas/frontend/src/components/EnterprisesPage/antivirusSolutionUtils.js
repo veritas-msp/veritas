@@ -347,11 +347,9 @@ export async function syncAndPersistAntivirusSolution(clientId, solution, {
       Monitoring: true
     },
     modules_monitoring: {
-      ...(modulesData?.modules_monitoring || {}),
       Antivirus: finalSolutions.length > 0
     },
     equipements: {
-      ...existingEquipements,
       Antivirus: {
         ...antivirusEquipement,
         solutions: finalSolutions

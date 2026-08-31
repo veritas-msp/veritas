@@ -17,7 +17,7 @@ function formatEta(etaMs, copy) {
 }
 
 function itemIcon(state) {
-  if (state === "running") return "mdi:loading";
+  if (state === "running") return "mdi:sync";
   if (state === "ok") return "mdi:check";
   if (state === "error") return "mdi:alert-circle-outline";
   return "mdi:circle-outline";
@@ -82,7 +82,7 @@ export default function ReportSyncProgressModal({
             <span className={styles.loaderRing} />
             <span className={styles.loaderCore}>
               <Icon
-                icon={running ? "mdi:cloud-sync-outline" : phase === "cancelled" ? "mdi:pause-circle-outline" : "mdi:check"}
+                icon={running ? "mdi:sync" : phase === "cancelled" ? "mdi:pause-circle-outline" : "mdi:check"}
                 className={running ? styles.loaderIconSpin : undefined}
               />
             </span>

@@ -224,21 +224,54 @@ function formatRenewalMode(renew = {}) {
   if (renew.manualPayment) return 'manual';
   return 'unknown';
 }
-export async function fetchOvhDomainDetails(domainName, dnsZones = null) {
+function sanitizeOvhDomainName(raw) {
+  let name = String(raw || "").trim();
+  name = name.replace(/^https?:\/\//i, "");
+  name = name.split("/")[0].split("?")[0].split("#")[0];
+  name = name.replace(/\.+$/, "");
+  return name;
+}
+
+export async function fetchOvhDomainDetails(domainName, dnsZones = null, { resolveFromList = true } = {}) {
+  const requested = sanitizeOvhDomainName(domainName);
+  if (!requested) {
+    throw new Error("Nom de domaine manquant.");
+  }
+  let canonical = requested;
+  if (resolveFromList) {
+    try {
+      const domainList = await callOvhApi("/domain");
+      const list = Array.isArray(domainList) ? domainList.map(item => String(item || "").trim()).filter(Boolean) : [];
+      const match = list.find(item => item.toLowerCase() === requested.toLowerCase());
+      if (!match) {
+        const err = new Error(`Domaine introuvable chez OVH (${requested}).`);
+        err.code = "OVH_DOMAIN_NOT_FOUND";
+        throw err;
+      }
+      canonical = match;
+    } catch (err) {
+      if (err?.code === "OVH_DOMAIN_NOT_FOUND") throw err;
+    }
+  }
   const zones = dnsZones ?? (await listOvhDnsZones());
   const zoneSet = new Set(zones.map(zone => String(zone).toLowerCase()));
-  const [domainInfo, serviceInfosResult] = await Promise.allSettled([callOvhApi(`/domain/${encodeURIComponent(domainName)}`), callOvhApi(`/domain/${encodeURIComponent(domainName)}/serviceInfos`)]);
-  const domainData = domainInfo.status === 'fulfilled' ? domainInfo.value : {};
-  const serviceInfos = serviceInfosResult.status === 'fulfilled' ? serviceInfosResult.value : null;
+  const [domainInfo, serviceInfosResult] = await Promise.allSettled([callOvhApi(`/domain/${encodeURIComponent(canonical)}`), callOvhApi(`/domain/${encodeURIComponent(canonical)}/serviceInfos`)]);
+  const domainData = domainInfo.status === "fulfilled" ? domainInfo.value : {};
+  const serviceInfos = serviceInfosResult.status === "fulfilled" ? serviceInfosResult.value : null;
+  if (domainInfo.status === "rejected" && serviceInfosResult.status === "rejected") {
+    const err = new Error(`Domaine introuvable chez OVH (${canonical}).`);
+    err.code = "OVH_DOMAIN_NOT_FOUND";
+    throw err;
+  }
   const renew = serviceInfos?.renew || {};
   const expiration = serviceInfos?.expiration || serviceInfos?.expir || renew?.expiration || null;
   const normalizedExpiration = normalizeExpirationDate(expiration);
-  const domainLower = String(domainName).toLowerCase();
+  const domainLower = String(canonical).toLowerCase();
   const hasDnsZone = zoneSet.has(domainLower) || [...zoneSet].some(zone => domainLower === zone || domainLower.endsWith(`.${zone}`));
   return {
-    domain: domainName,
-    name: domainName,
-    nom: domainName,
+    domain: canonical,
+    name: canonical,
+    nom: canonical,
     registrar: 'OVH',
     providerId: 'ovh',
     expiration: normalizedExpiration,
@@ -251,7 +284,7 @@ export async function fetchOvhDomainDetails(domainName, dnsZones = null) {
     serviceId: serviceInfos?.serviceId ?? null,
     serviceStatus: serviceInfos?.status ?? null,
     creationDate: normalizeExpirationDate(serviceInfos?.creation),
-    dnsZone: hasDnsZone ? domainName : null,
+    dnsZone: hasDnsZone ? canonical : null,
     hasDnsZone,
     whoisOwner: domainData.whoisOwner || null,
     nameServers: Array.isArray(domainData.nameServers) ? domainData.nameServers : [],
@@ -277,7 +310,7 @@ async function fetchAllOvhDomainsWithDetails({
   const dnsZones = await listOvhDnsZones();
   const domainsWithDetails = await mapWithConcurrency(domainList, 6, async domainName => {
     try {
-      return await fetchOvhDomainDetails(domainName, dnsZones);
+      return await fetchOvhDomainDetails(domainName, dnsZones, { resolveFromList: false });
     } catch {
       return buildDomainFromServiceInfos(domainName, null, dnsZones);
     }
@@ -363,28 +396,62 @@ router.get('/domains', async (req, res) => {
     });
   }
 });
-router.get('/domain/:domainName', async (req, res) => {
+async function sendOvhDomainDetails(res, domainName) {
+  const settings = await getOvhSettings();
+  if (!settings || !settings.applicationKey || !settings.applicationSecret || !settings.consumerKey) {
+    return res.status(400).json({
+      success: false,
+      error: "OVH settings not configured",
+      details: "Please configure Application Key, Application Secret and Consumer Key in administration settings."
+    });
+  }
   try {
-    const {
-      domainName
-    } = req.params;
-    const settings = await getOvhSettings();
-    if (!settings || !settings.applicationKey || !settings.applicationSecret || !settings.consumerKey) {
-      return res.status(400).json({
-        success: false,
-        error: 'OVH settings not configured',
-        details: 'Please configure Application Key, Application Secret and Consumer Key in administration settings.'
-      });
-    }
     const domain = await fetchOvhDomainDetails(domainName);
-    res.json({
+    return res.json({
       success: true,
       domain
     });
   } catch (error) {
+    const notFound = error?.code === "OVH_DOMAIN_NOT_FOUND";
+    return res.status(notFound ? 404 : 500).json({
+      success: false,
+      error: error.message || `Unable to retrieve information for domain ${domainName}`,
+      details: error.message
+    });
+  }
+}
+router.get("/domain-details", async (req, res) => {
+  try {
+    const domainName = sanitizeOvhDomainName(req.query.name || req.query.domain || "");
+    if (!domainName) {
+      return res.status(400).json({
+        success: false,
+        error: "Nom de domaine manquant."
+      });
+    }
+    await sendOvhDomainDetails(res, domainName);
+  } catch (error) {
     res.status(500).json({
       success: false,
-      error: error.message || `Unable to retrieve information for domain ${req.params.domainName}`,
+      error: error.message || "Unable to retrieve OVH domain",
+      details: error.message
+    });
+  }
+});
+router.get(/^\/domain\/(.+)$/, async (req, res) => {
+  try {
+    const domainName = sanitizeOvhDomainName(decodeURIComponent(req.params[0] || ""));
+    if (!domainName) {
+      return res.status(400).json({
+        success: false,
+        error: "Nom de domaine manquant."
+      });
+    }
+    await sendOvhDomainDetails(res, domainName);
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: error.message || `Unable to retrieve information for domain ${req.params[0]}`,
       details: error.message
     });
   }

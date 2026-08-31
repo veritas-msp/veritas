@@ -16,7 +16,7 @@ import BuilderCommentsPane from "./monitoring/BuilderCommentsPane";
 import ReportSyncProgressModal from "./monitoring/ReportSyncProgressModal";
 import { buildSupervisionSyncJobs, runSupervisionSyncJobs, fillSyncCopy } from "./monitoring/supervisionReportSync";
 import { applyEquipmentPatchToEquipements } from "./monitoring/equipmentPatchUtils";
-import { buildCheckMKCacheEntry, buildCheckMKReportSnapshot, collectCheckMKMappedEquipment, computeCheckMKEquipmentStatus, deriveServicesFromPeriodEvents, filterCheckMKEventsForReportPeriod, getCheckmkHostName, getCheckmkSite, resolveCheckMKEquipmentKey } from "./monitoring/checkmkReportCacheUtils";
+import { buildCheckMKCacheEntry, buildCheckMKReportSnapshot, collectCheckMKMappedEquipment, computeCheckMKEquipmentStatus, deriveServicesFromPeriodEvents, filterCheckMKEventsForReportPeriod, getCheckmkHostName, getCheckmkSite, preserveCheckmkMappingsOnEquipements, resolveCheckMKEquipmentKey } from "./monitoring/checkmkReportCacheUtils";
 import { fetchTickets } from "../../api/tickets";
 import { fetchSupervisionAlertsHistory } from "../../api/supervisionAlerts";
 import { isSupervisionReportBuilderType } from "./monitoring/supervisionReportBuilder";
@@ -489,7 +489,7 @@ export default function ReportPage({
       if (modulesData?.equipements && typeof modulesData.equipements === "object") {
         setBuilderClient(prev => prev ? {
           ...prev,
-          equipements: modulesData.equipements
+          equipements: preserveCheckmkMappingsOnEquipements(prev.equipements, modulesData.equipements)
         } : prev);
       }
     } catch (err) {
@@ -1225,8 +1225,8 @@ export default function ReportPage({
                       disabled={isSyncingMonitoring || isSyncingOffice365Report || syncProgress.open}
                     >
                       <Icon
-                        icon={isSyncingMonitoring || isSyncingOffice365Report ? "mdi:loading" : "mdi:cloud-sync-outline"}
-                        className={isSyncingMonitoring || isSyncingOffice365Report ? shellStyles.heroSpin : undefined}
+                        icon="mdi:sync"
+                        className={isSyncingMonitoring || isSyncingOffice365Report || syncProgress.open ? shellStyles.heroSpin : undefined}
                         aria-hidden
                       />
                       {pageCopy.supervisionBuilder.builderSync}

@@ -1263,6 +1263,134 @@
   vertical-align: middle;
 }
 
+.storageUsageCell {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-width: 13.5rem;
+  max-width: 16.5rem;
+}
+
+.storageUsageShell {
+  display: inline-flex;
+  align-items: stretch;
+  height: 1.85rem;
+  flex: 0 0 auto;
+  border: 1px solid var(--eq-border, var(--msp-border, #e2e8f0));
+  border-radius: 8px;
+  overflow: hidden;
+  background: var(--eq-surface, var(--msp-surface, #ffffff));
+}
+
+.storageUsageShell:focus-within {
+  border-color: var(--msp-accent, #2b5fab);
+  box-shadow: 0 0 0 3px rgba(43, 95, 171, 0.12);
+}
+
+.storageUsageInput {
+  width: 4.1rem;
+  min-width: 0;
+  height: 100%;
+  border: none;
+  background: transparent;
+  padding: 0 0.45rem;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  font-family: inherit;
+  color: var(--eq-text, var(--msp-text, #0f1c2e));
+  -moz-appearance: textfield;
+}
+
+.storageUsageInput::-webkit-outer-spin-button,
+.storageUsageInput::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.storageUsageInput:focus {
+  outline: none;
+}
+
+.storageUsageSuffix {
+  display: inline-flex;
+  align-items: center;
+  padding: 0 0.5rem;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  color: var(--msp-accent, #2b5fab);
+  background: var(--msp-accent-soft, rgba(43, 95, 171, 0.08));
+  border-left: 1px solid var(--eq-border-light, var(--msp-border-light, #eef2f7));
+}
+
+.storageUsageMeta {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 0.18rem;
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.storageUsageTotal {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.35rem;
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--eq-muted, var(--msp-muted, #5c6b82));
+  line-height: 1.1;
+}
+
+.storageUsageRemain {
+  font-size: 0.68rem;
+  font-weight: 600;
+  color: #059669;
+  line-height: 1.1;
+}
+
+.storageUsageRemainWarn {
+  color: #d97706;
+}
+
+.storageUsageRemainCrit {
+  color: #dc2626;
+}
+
+.storageUsageBar {
+  width: 100%;
+  height: 4px;
+  border-radius: 999px;
+  background: var(--eq-border-light, var(--msp-border-light, #eef2f7));
+  overflow: hidden;
+}
+
+.storageUsageFill {
+  height: 100%;
+  border-radius: 999px;
+  background: #16a34a;
+}
+
+:global(html.dark) .storageUsageShell {
+  background: var(--msp-surface, #1a2540);
+  border-color: var(--msp-border, #2a3a55);
+}
+
+:global(html.dark) .storageUsageInput {
+  color: var(--msp-text, #e8edf5);
+}
+
+:global(html.dark) .storageUsageSuffix {
+  background: rgba(74, 143, 212, 0.16);
+  border-left-color: var(--msp-border, #2a3a55);
+  color: #8ec0ee;
+}
+
+:global(html.dark) .storageUsageBar {
+  background: var(--msp-border, #2a3a55);
+}
+
 .monitoringBtnActiveComment {
   border-color: var(--msp-accent, #2b5fab);
   background: var(--msp-accent-soft, rgba(43, 95, 171, 0.16));

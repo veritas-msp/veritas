@@ -100,9 +100,14 @@ export function isDomainConfigured(item) {
 export function isManualDomain(item) {
   const normalized = normalizeDomainItem(item);
   if (!normalized?.nom?.trim()) return false;
-  if (normalized.providerId === "ovh") return false;
-  if ((normalized.registrar || "").toLowerCase().includes("ovh")) return false;
+  if (isOvhManagedDomain(normalized)) return false;
   return Boolean(normalized.providerId === "manual" || normalized.isManual);
+}
+export function isOvhManagedDomain(item) {
+  const normalized = normalizeDomainItem(item);
+  if (!normalized?.nom?.trim()) return false;
+  if (normalized.providerId === "ovh") return true;
+  return (normalized.registrar || "").toLowerCase().includes("ovh");
 }
 export function extractDomainsFromModules(modulesData) {
   const list = modulesData?.equipements?.NDD;
@@ -137,17 +142,14 @@ function domainMatches(a, b) {
 export async function saveMonitoredDomains(clientId, domains) {
   const normalized = (domains || []).map(d => normalizeDomainItem(d)).filter(isDomainConfigured);
   const modulesData = await fetchClientModules(clientId);
-  const existingEquipements = modulesData?.equipements || {};
   await saveClientModules(clientId, {
     modules: modulesData?.modules || {
       Monitoring: true
     },
     modules_monitoring: {
-      ...(modulesData?.modules_monitoring || {}),
       NDD: normalized.length > 0
     },
     equipements: {
-      ...existingEquipements,
       NDD: normalized
     }
   });
@@ -205,7 +207,7 @@ export async function refreshSingleMonitoredDomainFromOvh(clientId, domain) {
   if (!clientId || !normalized?.nom) {
     throw new Error("Domaine introuvable.");
   }
-  if (normalized.providerId !== "ovh") {
+  if (!isOvhManagedDomain(normalized)) {
     return normalized;
   }
   const result = await fetchOvhDomainDetails(normalized.nom);

@@ -25,18 +25,75 @@ export function buildCheckMKCacheEntry(services, events, availability, period = 
 }
 
 export function getCheckmkHostName(item) {
-  const host = item?.checkmk_host_name ?? item?.data?.checkmk_host_name ?? null;
+  const host = item?.checkmk_host_name
+    ?? item?.checkmkMapping?.checkmk_host_name
+    ?? item?.data?.checkmk_host_name
+    ?? item?.data?.checkmkMapping?.checkmk_host_name
+    ?? null;
   if (typeof host !== "string") return null;
   const trimmed = host.trim();
   return trimmed || null;
 }
 
 export function getCheckmkSite(item) {
-  return item?.checkmk_site ?? item?.data?.checkmk_site ?? null;
+  const site = item?.checkmk_site
+    ?? item?.checkmkMapping?.checkmk_site
+    ?? item?.data?.checkmk_site
+    ?? null;
+  if (site == null || site === "") return null;
+  return String(site);
+}
+
+export function getCheckmkServiceName(item) {
+  const service = item?.checkmk_service_name
+    ?? item?.checkmkMapping?.checkmk_service_name
+    ?? item?.data?.checkmk_service_name
+    ?? null;
+  if (service == null || service === "") return null;
+  return String(service);
+}
+
+export function getCheckmkMapping(item) {
+  const hostName = getCheckmkHostName(item);
+  if (!hostName) return null;
+  return {
+    is_active: true,
+    checkmk_host_name: hostName,
+    checkmk_site: getCheckmkSite(item),
+    checkmk_service_name: getCheckmkServiceName(item)
+  };
 }
 
 export function isEquipmentMappedForCheckMK(item) {
-  return Boolean(getCheckmkHostName(item) && item?.is_active !== false);
+  if (!item || item.is_active === false) return false;
+  if (item.checkmkMapping?.is_active === false) return false;
+  return Boolean(getCheckmkHostName(item));
+}
+
+export function preserveCheckmkMappingsOnEquipements(previous = {}, next = {}) {
+  if (!next || typeof next !== "object") return next;
+  const prev = previous && typeof previous === "object" ? previous : {};
+  const merged = { ...next };
+  Object.keys(merged).forEach(key => {
+    if (!Array.isArray(merged[key]) || !Array.isArray(prev[key])) return;
+    const prevById = new Map(
+      prev[key].filter(item => item?.id != null).map(item => [String(item.id), item])
+    );
+    merged[key] = merged[key].map(item => {
+      const prior = item?.id != null ? prevById.get(String(item.id)) : null;
+      if (!prior) return item;
+      const hostName = getCheckmkHostName(item) || getCheckmkHostName(prior);
+      if (!hostName) return item;
+      return {
+        ...item,
+        checkmk_host_name: getCheckmkHostName(item) || hostName,
+        checkmk_site: getCheckmkSite(item) ?? getCheckmkSite(prior),
+        checkmk_service_name: getCheckmkServiceName(item) ?? getCheckmkServiceName(prior),
+        checkmkMapping: item.checkmkMapping || prior.checkmkMapping || getCheckmkMapping({ ...prior, ...item, checkmk_host_name: hostName })
+      };
+    });
+  });
+  return merged;
 }
 
 /** Collect all hardware items with an active CheckMK host mapping. */

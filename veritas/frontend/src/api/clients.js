@@ -977,9 +977,14 @@ export async function fetchClientModules(clientId, options = {}) {
               parsedData = {};
             }
             return {
-              id: item.id,
               ...parsedData,
-              nom: parsedData.nom || item.name || item.item_key || 'Sans nom'
+              id: item.id,
+              item_key: item.item_key || parsedData.item_key,
+              nom: parsedData.nom || item.name || item.item_key || 'Sans nom',
+              is_active: item.is_active,
+              checkmk_host_name: item.checkmk_host_name || parsedData.checkmk_host_name || null,
+              checkmk_site: item.checkmk_site || parsedData.checkmk_site || null,
+              checkmk_service_name: item.checkmk_service_name || parsedData.checkmk_service_name || null
             };
           });
         }
@@ -1150,9 +1155,14 @@ export async function saveClientModules(clientId, data) {
               }
             }
             return {
+              id: cleanedItem.id,
+              item_key: cleanedItem.item_key,
               name: cleanedItem.nom || cleanedItem.name || 'Unnamed',
               data: cleanedItem,
-              is_active: true
+              is_active: true,
+              checkmk_host_name: cleanedItem.checkmk_host_name || cleanedItem.checkmkMapping?.checkmk_host_name || null,
+              checkmk_site: cleanedItem.checkmk_site || cleanedItem.checkmkMapping?.checkmk_site || null,
+              checkmk_service_name: cleanedItem.checkmk_service_name || cleanedItem.checkmkMapping?.checkmk_service_name || null
             };
           });
           await fetch(`${MODULES_BASE_URL}/${clientId}/${family}/sync`, {

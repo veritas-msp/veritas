@@ -17,7 +17,6 @@ import { getBackupModalCopy, supportsJobs, ACTIVE_BACKUP_MODULE_KEYS } from "./b
 import { coerceStoredOption, formatServeurLieLabel, isBackupJobActive, normalizeServeurLieList } from "./backupJobUtils";
 import MultiSuggestPicker from "../AdminPage/MultiSuggestPicker";
 import EquipmentMappingModal from "../EquipementPage/EquipmentMappingModal";
-import { useCheckMKIntegrationEnabled } from "../../hooks/useCheckMKIntegrationEnabled";
 const EMPTY_JOB = {
   nom: "",
   regularite: "",
@@ -268,6 +267,9 @@ function InstanceCard({
       </div>
     </article>;
 }
+function isHycuLogiciel(logiciel) {
+  return /hycu/i.test(String(logiciel || "").trim());
+}
 function isJobCheckmkMapped(job) {
   return Boolean(String(job?.checkmk_host_name || job?.checkmkMapping?.checkmk_host_name || "").trim());
 }
@@ -305,6 +307,10 @@ function JobCard({
             </strong>
           </div>
           <div className={styles.cardBadges}>
+            {canMap ? <button type="button" className={`${styles.checkmkChip} ${mapped ? styles.checkmkChipActive : ""}`} onClick={onMap} disabled={!job?.id} aria-label={mapped ? copy.actions.editCheckmk : copy.actions.mapCheckmk} title={!job?.id ? copy.actions.mapCheckmkDisabled : mapped ? mappingLabel || copy.actions.editCheckmk : copy.actions.mapCheckmk}>
+                <Icon icon="simple-icons:checkmk" width={14} height={14} aria-hidden />
+                <span>{mapped ? mappingLabel || copy.meta.checkmk : copy.actions.mapCheckmk}</span>
+              </button> : null}
             {isDefault ? <span className={styles.cardBadge}>{copy.jobs.defaultJob}</span> : null}
             <span className={`${styles.cardBadge} ${jobActive ? styles.cardBadgeActive : styles.cardBadgeInactive}`}>
               {jobActive ? copy.form.jobActive : copy.form.jobInactive}
@@ -336,7 +342,7 @@ function JobCard({
       </div>
       <div className={styles.cardActions}>
         {canMap ? <button type="button" className={`${styles.iconBtn} ${mapped ? styles.iconBtnCheckmkActive : ""}`} onClick={onMap} disabled={!job?.id} aria-label={mapped ? copy.actions.editCheckmk : copy.actions.mapCheckmk} title={!job?.id ? copy.actions.mapCheckmkDisabled : mapped ? mappingLabel || copy.actions.editCheckmk : copy.actions.mapCheckmk}>
-            <Icon icon="simple-icons:checkmk" />
+            <Icon icon="simple-icons:checkmk" width={16} height={16} />
           </button> : null}
         <button type="button" className={styles.iconBtn} onClick={onEdit} aria-label={copy.actions.edit}>
           <Icon icon="mdi:pencil-outline" />
@@ -359,9 +365,6 @@ export default function BackupConfigModal({
   const copy = useMemo(() => getBackupModalCopy(locale), [locale]);
   const configCopy = useMemo(() => getEnterpriseConfigModalsCopy(locale), [locale]);
   const common = useCommonCopy();
-  const {
-    enabled: checkmkEnabled
-  } = useCheckMKIntegrationEnabled();
   const [activeSection, setActiveSection] = useState(initialSection);
   const [instances, setInstances] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -545,7 +548,7 @@ export default function BackupConfigModal({
     });
     setActiveSection("edit-job");
   };
-  const canMapJobs = Boolean(checkmkEnabled && selectedInstance && selectedInstance.logiciel !== "HYCU Backup");
+  const canMapJobs = Boolean(selectedInstance && !isHycuLogiciel(selectedInstance.logiciel));
   const openJobMapping = job => {
     if (!canMapJobs || !job?.id) return;
     setMappingJob(job);

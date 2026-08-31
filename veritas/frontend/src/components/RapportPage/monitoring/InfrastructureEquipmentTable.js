@@ -3,7 +3,7 @@ import { Icon } from "@iconify/react";
 import equipmentStyles from "../../EquipementPage/EquipmentPage.module.css";
 import styles from "./RapportMonitoringBuilder.module.css";
 import { MonitoringStepHeader } from "./MonitoringStepLayout";
-import { isEquipmentMappedForCheckMK } from "./checkmkReportCacheUtils";
+import { isEquipmentMappedForCheckMK, getCheckMKCachedData } from "./checkmkReportCacheUtils";
 import { getSupervisionColumnMeta } from "./supervisionReportInsights";
 
 function InsightCountCell({ count, tone = "neutral", emptyLabel = "—" }) {
@@ -146,7 +146,7 @@ export default function InfrastructureEquipmentTable({
               const equipmentKey = item.commentKey || item.id || item.uuid || item.glpi_id || `${moduleKey || "module"}:${nameForKey}`;
               const commentCount = commentCounts && commentCounts[equipmentKey] || 0;
               const isHighlighted = highlightedEquipmentKey != null && String(highlightedEquipmentKey) === String(equipmentKey);
-              const isMappedForMonitoring = isEquipmentMappedForCheckMK(item);
+              const isMappedForMonitoring = isEquipmentMappedForCheckMK(item) || Boolean(getCheckMKCachedData(equipmentCheckMKData, item, equipmentKey));
               const statusKey = String(item?.id ?? equipmentKey);
               const syncStatus = monitoringSyncStatus[statusKey];
               const hasMonitoringAction = typeof onOpenCheckMKDetail === "function";

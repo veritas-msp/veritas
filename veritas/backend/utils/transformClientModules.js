@@ -312,9 +312,9 @@ export function transformClientModulesToFrontend(rawData, options = {}) {
           is_active: item.is_active,
           created_at: item.created_at ?? item.createdAt ?? null,
           updated_at: item.updated_at ?? item.updatedAt ?? null,
-          checkmk_host_name: item.checkmk_host_name ?? null,
-          checkmk_site: item.checkmk_site ?? null,
-          checkmk_service_name: item.checkmk_service_name ?? null
+          checkmk_host_name: item.checkmk_host_name || itemData.checkmk_host_name || null,
+          checkmk_site: item.checkmk_site || itemData.checkmk_site || null,
+          checkmk_service_name: item.checkmk_service_name || itemData.checkmk_service_name || null
         };
       });
     }

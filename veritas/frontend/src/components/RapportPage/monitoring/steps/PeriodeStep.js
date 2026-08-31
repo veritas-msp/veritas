@@ -65,7 +65,7 @@ export default function PeriodeStep({
           title="Synchroniser CheckMK / Office 365 pour la période"
         >
           <Icon
-            icon={syncing ? "mdi:loading" : "mdi:cloud-sync-outline"}
+            icon="mdi:sync"
             width={18}
             height={18}
             className={syncing ? styles.periodSpin : undefined}

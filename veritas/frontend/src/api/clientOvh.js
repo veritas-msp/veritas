@@ -52,7 +52,8 @@ export async function syncOvhDomains() {
   };
 }
 export async function fetchOvhDomainDetails(domainName) {
-  const res = await fetch(`${OVH_URL}/domain/${encodeURIComponent(domainName)}`, {
+  const name = String(domainName || "").trim();
+  const res = await fetch(`${OVH_URL}/domain-details?name=${encodeURIComponent(name)}`, {
     credentials: "include"
   });
   if (!res.ok) {

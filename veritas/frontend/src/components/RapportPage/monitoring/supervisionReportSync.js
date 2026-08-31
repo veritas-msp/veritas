@@ -2,6 +2,7 @@ import API_BASE_URL from "../../../config";
 import { collectCheckMKMappedEquipment } from "./checkmkReportCacheUtils";
 import { syncAndPersistAntivirusSolution, normalizeAntivirusItem, formatAntivirusSolutionLabel } from "../../EnterprisesPage/antivirusSolutionUtils";
 import { syncAndPersistAntispamSolution, normalizeAntispamItem, formatAntispamSolutionLabel } from "../../EnterprisesPage/antispamSolutionUtils";
+import { isOvhManagedDomain, normalizeDomainItem, refreshSingleMonitoredDomainFromOvh } from "../../EnterprisesPage/domainSolutionUtils";
 
 function fill(template, vars = {}) {
   return String(template || "").replace(/\{(\w+)\}/g, (_, key) => (vars[key] != null ? String(vars[key]) : ""));
@@ -87,63 +88,14 @@ export async function syncBackupJobsForClient(clientId, { signal } = {}) {
   return data;
 }
 
-async function persistNddDomain(clientId, domaine, ovhDomain, { signal } = {}) {
-  if (!clientId) throw new Error("Client not found.");
-  if (!domaine?.id) throw new Error("Domain ID missing.");
-  const domainName = domaine?.nom || domaine?.name || domaine?.fqdn || "";
-  const expiration = ovhDomain.expiration || ovhDomain.expirationDate || null;
-  const nextData = {
-    ...(domaine.data && typeof domaine.data === "object" ? domaine.data : domaine),
-    nom: domainName,
-    name: domainName,
-    expiration,
-    expirationDate: expiration,
-    registrar: ovhDomain.registrar || domaine.registrar || "OVH",
-    ovhSyncedAt: new Date().toISOString()
-  };
-  delete nextData.id;
-  delete nextData.is_active;
-  delete nextData.checkmk_host_name;
-  delete nextData.checkmk_site;
-  delete nextData.checkmk_service_name;
-  const response = await fetch(`${API_BASE_URL}/clients/modules/${clientId}/ndd/${domaine.id}`, {
-    method: "PUT",
-    headers: { "Content-Type": "application/json" },
-    credentials: "include",
-    signal,
-    body: JSON.stringify({
-      item_key: domaine.item_key || domainName,
-      name: domaine.name || domainName,
-      data: nextData,
-      is_active: domaine.is_active !== false
-    })
-  });
-  if (!response.ok) {
-    const err = await response.json().catch(() => ({}));
-    throw new Error(err?.error || "Error saving the domain.");
-  }
-  return expiration;
-}
-
 export async function syncNddDomainForClient(clientId, domaine, { signal } = {}) {
-  const domainName = domaine?.nom || domaine?.name || domaine?.fqdn || "";
-  if (!domainName) throw new Error("Domain name missing.");
-  const response = await fetch(`${API_BASE_URL}/ovh/domain/${encodeURIComponent(domainName)}`, {
-    method: "GET",
-    headers: { "Content-Type": "application/json" },
-    credentials: "include",
-    signal
-  });
-  if (!response.ok) {
-    const errorData = await response.json().catch(() => ({}));
-    throw new Error(errorData.error || `Unable to fetch ${domainName} from OVH`);
+  const normalized = normalizeDomainItem(domaine);
+  const domainName = normalized?.nom || "";
+  if (!domainName) throw new Error("Nom de domaine manquant.");
+  if (!isOvhManagedDomain(normalized)) {
+    return normalized;
   }
-  const result = await response.json();
-  if (!result.success || !result.domain) {
-    throw new Error(`OVH data unavailable for ${domainName}`);
-  }
-  await persistNddDomain(clientId, domaine, result.domain, { signal });
-  return result.domain;
+  return refreshSingleMonitoredDomainFromOvh(clientId, normalized, { signal });
 }
 
 /**
@@ -246,14 +198,26 @@ export function buildSupervisionSyncJobs(client, {
 
   const domaines = Array.isArray(eq.NDD) ? eq.NDD : [];
   domaines.forEach((domaine, index) => {
-    const name = equipmentLabel(domaine, domaine?.fqdn || "");
+    const normalized = normalizeDomainItem(domaine);
+    const name = normalized?.nom || equipmentLabel(domaine, domaine?.fqdn || "");
     if (!name) return;
+    if (!isOvhManagedDomain(normalized)) return;
     jobs.push({
       id: `ndd-${domaine.id ?? name}-${index}`,
       group: "ndd",
       label: fill(copy.nddLabel, { name }),
       estimatedMs: 2500,
-      run: () => syncNddDomainForClient(clientId, domaine, { signal })
+      run: async () => {
+        try {
+          await syncNddDomainForClient(clientId, domaine, { signal });
+        } catch (err) {
+          const message = String(err?.message || "").toLowerCase();
+          const notFound = message.includes("not found") || message.includes("introuvable") || message.includes("does not exist");
+          // Domain is not on this OVH account (other registrar, transferred, typo).
+          if (notFound) return;
+          throw err;
+        }
+      }
     });
   });
 

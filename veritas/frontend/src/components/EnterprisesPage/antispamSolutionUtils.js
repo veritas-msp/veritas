@@ -520,11 +520,9 @@ export async function syncAndPersistAntispamSolution(clientId, solution, {
       Monitoring: true
     },
     modules_monitoring: {
-      ...(modulesData?.modules_monitoring || {}),
       Antispam: finalSolutions.length > 0
     },
     equipements: {
-      ...existingEquipements,
       Antispam: {
         ...antispamEquipement,
         solutions: finalSolutions

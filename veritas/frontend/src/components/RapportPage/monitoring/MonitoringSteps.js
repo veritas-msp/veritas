@@ -18,7 +18,6 @@ import SummaryStep from "./steps/SummaryStep";
 import RecapStep from "./steps/RecapStep";
 import EquipmentEditModal from "./EquipmentEditModal";
 import { findEquipmentLocation } from "./equipmentPatchUtils";
-import { getCheckMKCachedData, getCheckmkHostName } from "./checkmkReportCacheUtils";
 const AntivirusStepLazy = lazy(() => import("./steps/AntivirusStep"));
 
 export const MONITORING_MODULE_STEP_ORDER = [
@@ -263,24 +262,13 @@ export default function MonitoringSteps({
 
   const handleOpenCheckMKDetail = async (item, { moduleKey, equipmentKey }) => {
     const resolvedKey = item?.id != null ? String(item.id) : equipmentKey != null ? String(equipmentKey) : null;
-    let preLoadedData = getCheckMKCachedData(equipmentCheckMKData, item, equipmentKey);
     setCheckMKModal({
       isOpen: true,
       equipment: item,
       moduleKey,
       equipmentKey: resolvedKey,
-      preLoadedData
+      preLoadedData: null
     });
-    // If mapped but cache empty (or sync still running), fetch this host for the modal.
-    if (!preLoadedData && getCheckmkHostName(item) && typeof onSyncCheckMK === "function") {
-      const cacheEntry = await onSyncCheckMK(item, { moduleKey, equipmentKey: resolvedKey || equipmentKey });
-      if (cacheEntry) {
-        setCheckMKModal(prev => prev.isOpen && prev.equipmentKey === resolvedKey ? {
-          ...prev,
-          preLoadedData: cacheEntry
-        } : prev);
-      }
-    }
   };
 
   const handleCloseCheckMKModal = () => {
@@ -447,7 +435,7 @@ export default function MonitoringSteps({
         {commentsPane}
       </div>
 
-      <CheckMKMonitoringModal isOpen={checkMKModal.isOpen} onClose={handleCloseCheckMKModal} equipment={checkMKModal.equipment} reportPeriod={reportPeriod} preLoadedData={checkMKModal.equipment ? getCheckMKCachedData(equipmentCheckMKData, checkMKModal.equipment, checkMKModal.equipmentKey) : null} onRefresh={handleRefreshCheckMKModal} refreshing={syncingEquipmentKey === checkMKModal.equipmentKey} />
+      <CheckMKMonitoringModal isOpen={checkMKModal.isOpen} onClose={handleCloseCheckMKModal} equipment={checkMKModal.equipment} moduleKey={checkMKModal.moduleKey} clientId={client?.id ?? client?.uuid} onRefresh={handleRefreshCheckMKModal} refreshing={syncingEquipmentKey === checkMKModal.equipmentKey} />
       <EquipmentEditModal open={editEquipmentModal.open} onClose={handleCloseEditEquipmentModal} client={client} equipment={editEquipmentModal.equipment} moduleKey={editEquipmentModal.moduleKey} onSaved={handleEquipmentSaved} onDeleted={onRefreshClient} backgroundSave />
     </>
   );
