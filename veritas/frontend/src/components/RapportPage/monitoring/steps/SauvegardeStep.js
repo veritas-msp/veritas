@@ -74,8 +74,6 @@ export default function BackupStep({
   const rawBackup = client?.equipements?.Sauvegarde || client?.equipements?.Backup;
   const instances = Array.isArray(rawBackup?.instances) ? rawBackup.instances : [];
   const clientId = client?.id ?? client?.uuid;
-  const periodStart = reportPeriod.start || client?.reportStartDate;
-  const periodEnd = reportPeriod.end || client?.reportEndDate;
   const standardInstances = instances.filter(inst => inst.logiciel !== "Active Backup for Microsoft 365" && inst.logiciel !== "HyperBackup");
   const activeBackupInstances = instances.filter(inst => inst.logiciel === "Active Backup for Microsoft 365");
   const hyperBackupInstances = instances.filter(inst => inst.logiciel === "HyperBackup");
@@ -297,24 +295,13 @@ export default function BackupStep({
       </MonitoringStepSection>;
   };
   return <MonitoringStepShell>
-      {periodStart && periodEnd ? <p style={{
-    margin: "0 0 0.75rem",
-    fontSize: "0.9rem",
-    color: "#6b7280"
-  }}>
-          Plan de sauvegarde — période du rapport : {formatDate(periodStart)} → {formatDate(periodEnd)}
-        </p> : null}
-      {}
       {standardInstances.length > 0 && renderStandardInstanceTable(standardInstances, "Instances")}
       {instances.length === 0 && <MonitoringStepSection title="Instances" isEmpty emptyMessage="No backup instance." />}
 
-      {}
       {renderActiveBackupInstanceTable(activeBackupInstances, "Active Backup for Microsoft 365")}
 
-      {}
       {renderHyperBackupInstanceTable(hyperBackupInstances, "HyperBackup")}
 
-      {}
       <MonitoringStepSection title="Jobs" count={allJobs.length} isEmpty={allJobs.length === 0} emptyMessage="No backup jobs.">
         <MonitoringStepTableWrap scrollable>
           <table className={equipmentStyles.equipmentTableEmbedded}>

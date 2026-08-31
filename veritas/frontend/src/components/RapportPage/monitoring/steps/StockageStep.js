@@ -5,6 +5,7 @@ import equipmentStyles from "../../../EquipementPage/EquipmentPage.module.css";
 import styles from "../RapportMonitoringBuilder.module.css";
 import { getExpirationStatus, getExpirationStatusColor } from "../../../EquipementPage/constants/firewallLicenceUtils";
 import { formatCapacityHint, sanitizeDiskCapacity } from "../../../EquipementPage/storageDiskUtils";
+import { buildHaColumn } from "../reportHaColumn";
 function parseCapacityGb(raw) {
   const digits = sanitizeDiskCapacity(raw);
   if (!digits) return null;
@@ -107,7 +108,7 @@ export default function StorageStep({
   };
   const columns = [{
     id: "name",
-    label: "Name",
+    label: "Nom",
     render: st => <div className={equipmentStyles.nameCell}>
           <Icon icon="mdi:harddisk" className={equipmentStyles.typeIconSmall} width={16} height={16} />
           <span className={equipmentStyles.internetCellBold}>
@@ -120,13 +121,13 @@ export default function StorageStep({
     render: st => st.site || st.location || "-"
   }, {
     id: "ip",
-    label: "IP address",
+    label: "IP",
     render: st => st.ip || st.fqdn || "-"
   }, {
     id: "raid",
     label: "RAID",
     render: st => <span className={equipmentStyles.internetCellBold}>{st.raid || "-"}</span>
-  }, {
+  }, buildHaColumn(stockages, "Storage"), {
     id: "capacite",
     label: "Capacité",
     render: st => st.capacite ?? st.capacity ?? "-"
@@ -139,10 +140,6 @@ export default function StorageStep({
       if (used == null && max == null) return "-";
       return <span className={equipmentStyles.internetCellBold}>{used ?? "—"} / {max ?? "—"}</span>;
     }
-  }, {
-    id: "expirationGarantie",
-    label: "Garantie",
-    render: st => <ExpirationDateCell value={st.expirationGarantie || st.garantie} />
   }, {
     id: "espace",
     label: "Espace utilisé / restant",
@@ -195,7 +192,7 @@ export default function StorageStep({
     }
   }, {
     id: "etatDisques",
-    label: "Disk status",
+    label: "État disques",
     render: st => {
       const key = getKey(st);
       const baseStates = getDiskStates(st);
@@ -262,11 +259,15 @@ export default function StorageStep({
     }
   }, {
     id: "luns",
-    label: "Luns",
+    label: "LUNs",
     render: st => formatLuns(st.luns)
   }, {
+    id: "expirationGarantie",
+    label: "Garantie",
+    render: st => <ExpirationDateCell value={st.expirationGarantie || st.garantie} />
+  }, {
     id: "role",
-    label: "Role",
+    label: "Rôle",
     render: st => st.role || "-"
   }];
   return <InfrastructureEquipmentTable title="Storage (NAS / SAN)" moduleKey="Storage" equipments={stockages} columns={columns} onOpenComments={onOpenComments} onCreateTicket={onTicketCreatedForEquipment} onOpenCheckMKDetail={onOpenCheckMKDetail} clientId={client?.id ?? client?.uuid} onSyncCheckMK={onSyncCheckMK} syncingEquipmentKey={syncingEquipmentKey} commentCounts={commentCounts} ticketCounts={ticketCounts} alertCounts={alertCounts} highlightedEquipmentKey={highlightedEquipmentKey} reportPeriod={reportPeriod} monitoringSyncStatus={monitoringSyncStatus} equipmentCheckMKData={equipmentCheckMKData} onEditEquipment={onEditEquipment} />;

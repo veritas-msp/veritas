@@ -24,10 +24,10 @@ export default function TOIPStep({
   }
   const columns = [{
     id: "name",
-    label: "Solution",
+    label: "Nom",
     render: sol => sol.logiciel || sol.nom || "Solution TOIP"
   }, {
-    id: "site",
+    id: "location",
     label: "Site",
     render: sol => sol.site || "-"
   }];

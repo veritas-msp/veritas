@@ -115,6 +115,8 @@ export function buildExportPrintStyles() {
       padding: 1.5rem 2rem 2.5rem;
     }
 
+    [data-export-hide] { display: none !important; }
+
     [data-export-section] {
       display: block !important;
       max-width: 100% !important;
@@ -128,53 +130,64 @@ export function buildExportPrintStyles() {
       padding-right: 0 !important;
     }
 
-    /* Uniformisation titres / sections / KPI / tableaux */
-    [data-export-section] h4,
-    [data-export-section] [class*="sectionTitle"],
-    [data-export-section] [class*="stepTitle"],
-    [data-export-section] [class*="tableBlockTitle"] {
+    .vex-main [class*="summaryChapterTitle"] {
+      font-size: 1.35rem !important;
+      font-weight: 750 !important;
+      color: var(--vex-text) !important;
+    }
+    [class*="summaryToc"] {
+      margin-bottom: 1.5rem !important;
+    }
+    [class*="overviewContainer"] {
+      padding-left: 0 !important;
+      padding-right: 0 !important;
+    }
+    .vex-main h4,
+    .vex-main [class*="sectionTitle"],
+    .vex-main [class*="stepTitle"],
+    .vex-main [class*="tableBlockTitle"] {
       color: var(--vex-text) !important;
       font-size: 1rem !important;
       font-weight: 650 !important;
     }
 
-    [data-export-section] [class*="sectionSubtitle"],
-    [data-export-section] [class*="stepSubtitle"],
-    [data-export-section] [class*="globalStatsLabel"],
-    [data-export-section] [class*="tableBlockCount"] {
+    .vex-main [class*="sectionSubtitle"],
+    .vex-main [class*="stepSubtitle"],
+    .vex-main [class*="globalStatsLabel"],
+    .vex-main [class*="tableBlockCount"] {
       color: var(--vex-text-muted) !important;
     }
 
-    [data-export-section] [class*="globalStatsItem"],
-    [data-export-section] [class*="globalStatsGridStylized"] [class*="globalStatsItem"] {
+    .vex-main [class*="globalStatsItem"],
+    .vex-main [class*="globalStatsGridStylized"] [class*="globalStatsItem"] {
       background: var(--vex-bg-muted) !important;
       border: 1px solid var(--vex-border) !important;
       border-radius: 10px !important;
     }
 
-    [data-export-section] [class*="infraTableWrapper"],
-    [data-export-section] table {
+    .vex-main [class*="infraTableWrapper"],
+    .vex-main table {
       border-color: var(--vex-border) !important;
     }
 
-    [data-export-section] [class*="infraTableHeaderCell"],
-    [data-export-section] thead th {
+    .vex-main [class*="infraTableHeaderCell"],
+    .vex-main thead th {
       background: var(--vex-bg-muted) !important;
       color: var(--vex-text-muted) !important;
       font-size: 0.78rem !important;
     }
 
-    [data-export-section] [class*="infraTableCell"],
-    [data-export-section] tbody td {
+    .vex-main [class*="infraTableCell"],
+    .vex-main tbody td {
       color: var(--vex-text) !important;
       font-size: 0.84rem !important;
     }
 
-    [data-export-section] [class*="topologyStorageChip"],
-    [data-export-section] [class*="topologyServerChip"],
-    [data-export-section] [class*="topologyFirewallChip"],
-    [data-export-section] [class*="topologyLinkChip"],
-    [data-export-section] [class*="card"] {
+    .vex-main [class*="topologyStorageChip"],
+    .vex-main [class*="topologyServerChip"],
+    .vex-main [class*="topologyFirewallChip"],
+    .vex-main [class*="topologyLinkChip"],
+    .vex-main [class*="card"] {
       background: var(--vex-bg) !important;
       border-color: var(--vex-border) !important;
     }
@@ -321,7 +334,8 @@ export function buildExportPrintStyles() {
     @media print {
       body { background: white !important; color: black !important; }
       .vex-back-top { display: none !important; }
-      * { page-break-inside: avoid !important; }
+      .vex-header { break-after: avoid; }
+      section, article { break-inside: avoid; }
     }
   `;
 }
@@ -331,7 +345,7 @@ export function buildExportHeaderHtml({
   reportType
 }) {
   const meta = REPORT_META[reportType] || {
-    label: "Monitoring report"
+    label: "Rapport de supervision"
   };
   return `
   <header class="vex-header">
@@ -344,7 +358,7 @@ export function buildExportHeaderHtml({
   </header>`;
 }
 export function buildExportFooterHtml() {
-  const generatedAt = new Date().toLocaleString("en-US");
+  const generatedAt = new Date().toLocaleString("fr-FR");
   return `
   <footer class="vex-footer">
     <div class="vex-footer-inner">
@@ -367,7 +381,7 @@ export function buildExportFooterHtml() {
           <iconify-icon icon="simple-icons:x" width="20" height="20"></iconify-icon>
         </a>
       </div>
-      <p class="vex-footer-note">Document generated on ${escapeHtml(generatedAt)}</p>
+      <p class="vex-footer-note">Document généré le ${escapeHtml(generatedAt)}</p>
     </div>
   </footer>`;
 }
@@ -376,9 +390,9 @@ export function buildExportCommentsEmptyHtml() {
   <section class="vex-comments" data-export-comments="true">
     <div class="vex-comments-head">
       <iconify-icon icon="mdi:comment-text-multiple-outline" width="20" height="20"></iconify-icon>
-      <h2 class="vex-comments-title">Report comments</h2>
+      <h2 class="vex-comments-title">Notes du rapport</h2>
     </div>
-    <div class="vex-comments-empty">No comments were added for this period.</div>
+    <div class="vex-comments-empty">Aucune note ajoutée pour cette période.</div>
   </section>`;
 }
 export function buildReportDocumentHtml({
@@ -388,7 +402,7 @@ export function buildReportDocumentHtml({
   commentsHtml = ""
 }) {
   return `<!DOCTYPE html>
-<html lang="en">
+<html lang="fr">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />

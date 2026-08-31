@@ -3,8 +3,7 @@ import { Icon } from "@iconify/react";
 import InfrastructureEquipmentTable from "../InfrastructureEquipmentTable";
 import equipmentStyles from "../../../EquipementPage/EquipmentPage.module.css";
 import { getExpirationStatus, getExpirationStatusColor } from "../../../EquipementPage/constants/firewallLicenceUtils";
-import { getCheckMKCachedData } from "../checkmkReportCacheUtils";
-import { formatPercent } from "../supervisionReportBuilder";
+import { buildHaColumn } from "../reportHaColumn";
 
 function formatDateFr(value) {
   if (!value) return "-";
@@ -75,19 +74,6 @@ function getOsIconName(osLabel) {
   return null;
 }
 
-function resolveServerAvailability(srv, equipmentCheckMKData) {
-  const key = srv?.id != null ? String(srv.id) : null;
-  const cached = getCheckMKCachedData(equipmentCheckMKData, srv, key);
-  const availability = cached?.availability || null;
-  const hostUp = availability != null && typeof availability.up === "number" ? availability.up : null;
-  const eventsCount = Array.isArray(cached?.events) ? cached.events.length : 0;
-  const servicesCount = Array.isArray(cached?.services) ? cached.services.length : 0;
-  const criticalServices = Array.isArray(cached?.services)
-    ? cached.services.filter(s => Number(s?.state) >= 2).length
-    : 0;
-  return { hostUp, eventsCount, servicesCount, criticalServices, synced: Boolean(cached) };
-}
-
 export default function ServersStep({
   client,
   onOpenComments,
@@ -155,46 +141,7 @@ export default function ServersStep({
         );
       }
     },
-    {
-      id: "dispoHote",
-      label: "Dispo. hôte",
-      render: srv => {
-        const { hostUp, synced } = resolveServerAvailability(srv, equipmentCheckMKData);
-        if (!synced) return <span style={{ color: "#9ca3af" }}>Non sync.</span>;
-        if (hostUp == null) return "—";
-        const color = hostUp < 95 ? "#dc2626" : hostUp < 99 ? "#ea580c" : "#16a34a";
-        return (
-          <span style={{ color, fontWeight: 600 }} title="Disponibilité hôte sur la période">
-            {formatPercent(hostUp)}
-          </span>
-        );
-      }
-    },
-    {
-      id: "services",
-      label: "Services",
-      render: srv => {
-        const { servicesCount, criticalServices, synced } = resolveServerAvailability(srv, equipmentCheckMKData);
-        if (!synced) return "—";
-        if (servicesCount === 0) return "0";
-        const color = criticalServices > 0 ? "#dc2626" : "#16a34a";
-        return (
-          <span style={{ color, fontWeight: 500 }} title="Services dérivés des événements période">
-            {servicesCount - criticalServices}/{servicesCount} OK
-          </span>
-        );
-      }
-    },
-    {
-      id: "events",
-      label: "Événements",
-      render: srv => {
-        const { eventsCount, synced } = resolveServerAvailability(srv, equipmentCheckMKData);
-        if (!synced) return "—";
-        const color = eventsCount >= 5 ? "#dc2626" : eventsCount > 0 ? "#ea580c" : "#16a34a";
-        return <span style={{ color, fontWeight: 500 }}>{eventsCount}</span>;
-      }
-    },
+    buildHaColumn(serveurs, "Servers"),
     {
       id: "processeur",
       label: "Proc.",

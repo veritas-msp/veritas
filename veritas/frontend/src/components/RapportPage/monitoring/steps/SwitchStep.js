@@ -2,6 +2,7 @@ import React from "react";
 import { Icon } from "@iconify/react";
 import InfrastructureEquipmentTable from "../InfrastructureEquipmentTable";
 import equipmentStyles from "../../../EquipementPage/EquipmentPage.module.css";
+import { buildHaColumn } from "../reportHaColumn";
 export default function SwitchStep({
   client,
   onOpenComments,
@@ -21,7 +22,7 @@ export default function SwitchStep({
   const switches = Array.isArray(client?.equipements?.Switch) ? client.equipements.Switch : [];
   const columns = [{
     id: "name",
-    label: "Name",
+    label: "Nom",
     render: sw => <div className={equipmentStyles.nameCell}>
           <Icon icon="mdi:lan" className={equipmentStyles.typeIconSmall} width={16} height={16} />
           <span className={equipmentStyles.internetCellBold}>
@@ -34,7 +35,7 @@ export default function SwitchStep({
     render: sw => sw.site || sw.location || "-"
   }, {
     id: "ip",
-    label: "IP address",
+    label: "IP",
     render: sw => sw.ip || sw.fqdn || "-"
   }, {
     id: "vlan",
@@ -46,7 +47,7 @@ export default function SwitchStep({
     render: sw => sw.fabricant || sw.marque || "-"
   }, {
     id: "model",
-    label: "Model",
+    label: "Modèle",
     render: sw => <span className={equipmentStyles.internetCellBold}>{sw.modele || "-"}</span>
   }, {
     id: "serial",
@@ -58,8 +59,8 @@ export default function SwitchStep({
     render: sw => sw.firmware || "-"
   }, {
     id: "mac",
-    label: "Adresse Mac",
+    label: "MAC",
     render: sw => sw.adresseMac || sw.mac || "-"
-  }];
+  }, buildHaColumn(switches, "Switch")];
   return <InfrastructureEquipmentTable title="Switches" moduleKey="Switch" equipments={switches} columns={columns} onOpenComments={onOpenComments} onCreateTicket={onTicketCreatedForEquipment} onOpenCheckMKDetail={onOpenCheckMKDetail} clientId={client?.id ?? client?.uuid} onSyncCheckMK={onSyncCheckMK} syncingEquipmentKey={syncingEquipmentKey} onEditEquipment={onEditEquipment} commentCounts={commentCounts} ticketCounts={ticketCounts} alertCounts={alertCounts} highlightedEquipmentKey={highlightedEquipmentKey} reportPeriod={reportPeriod} monitoringSyncStatus={monitoringSyncStatus} equipmentCheckMKData={equipmentCheckMKData} />;
 }

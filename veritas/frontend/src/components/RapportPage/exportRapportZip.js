@@ -1,6 +1,7 @@
 import JSZip from "jszip";
 import { saveAs } from "file-saver";
-import { REPORT_META, buildExportCommentsEmptyHtml, buildExportHeaderHtml, buildReportDocumentHtml, buildReportPeriodLabel } from "./exportRapportHtmlTemplate";
+import { REPORT_META, buildExportHeaderHtml, buildReportDocumentHtml, buildReportPeriodLabel } from "./exportRapportHtmlTemplate";
+
 function collectDocumentCSS() {
   let css = "";
   try {
@@ -17,111 +18,72 @@ function collectDocumentCSS() {
   }
   return css;
 }
-function buildReportHTML(sectionClone, commentsHtml, config, reportType) {
-  const clientName = config?.client?.name || config?.client?.nom || "CLIENT";
-  const meta = REPORT_META[reportType] || {
-    label: "de monitoring"
-  };
-  const documentTitle = `${clientName} - ${meta.label}`;
-  const periodLabel = buildReportPeriodLabel(config?.client);
+
+function stripExportHidden(node) {
+  if (!node || typeof node.querySelectorAll !== "function") return node;
+  node.querySelectorAll("[data-export-hide]").forEach(el => el.remove());
+  return node;
+}
+
+function formatZipDate(d) {
+  try {
+    const date = new Date(d);
+    const day = String(date.getDate()).padStart(2, "0");
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    const year = String(date.getFullYear()).slice(-2);
+    return `${day}-${month}-${year}`;
+  } catch {
+    return "";
+  }
+}
+
+export async function buildReportZipBlob(ref, config) {
+  if (!ref?.current) {
+    throw new Error("Contenu de synthèse indisponible. Ouvrez l’étape Synthèse, puis réessayez.");
+  }
+  if (!config?.client) {
+    throw new Error("Configuration client manquante.");
+  }
+  const root = ref.current;
+  const clone = stripExportHidden(root.cloneNode(true));
+  if (clone.style) clone.style.display = "block";
+
+  const clientName = config.client.name || config.client.nom || "CLIENT";
+  const periodLabel = buildReportPeriodLabel(config.client);
   const headerHtml = buildExportHeaderHtml({
     clientName,
     periodLabel,
-    reportType
+    reportType: "supervision"
   });
-  const commentsBlock = commentsHtml || buildExportCommentsEmptyHtml();
   const bodyContent = `
   ${headerHtml}
   <main class="vex-main">
-    ${sectionClone.outerHTML}
-    ${commentsBlock}
+    ${clone.outerHTML}
   </main>`;
-  return buildReportDocumentHtml({
-    documentTitle,
+  const html = buildReportDocumentHtml({
+    documentTitle: `${clientName} - ${REPORT_META.supervision.label}`,
     collectedCss: collectDocumentCSS(),
     bodyContent
   });
-}
-export async function buildReportZipBlob(ref, config) {
-  if (!ref?.current) {
-    throw new Error("Summary content unavailable. Open the “Report summary” step, then try again.");
-  }
-  if (!config?.client) {
-    throw new Error("Client configuration missing.");
-  }
-  const root = ref.current;
-  const sections = [{
-    type: "supervision",
-    selector: '[data-export-section="supervision"]'
-  }, {
-    type: "infrastructure",
-    selector: '[data-export-section="infrastructure"]'
-  }, {
-    type: "cybersecurite",
-    selector: '[data-export-section="cybersecurite"]'
-  }, {
-    type: "services",
-    selector: '[data-export-section="services"]'
-  }, {
-    type: "support",
-    selector: '[data-export-section="support"]'
-  }];
+
   const zip = new JSZip();
-  const clientName = (config.client.name || config.client.nom || "CLIENT").toString().replace(/\s+/g, " ");
-  const fileNames = {
-    supervision: `${clientName} - Rapport de supervision.html`,
-    infrastructure: `${clientName} - Rapport infrastructure.html`,
-    cybersecurite: `${clientName} - Rapport cybersécurité.html`,
-    services: `${clientName} - Rapport services.html`,
-    support: `${clientName} - Rapport support.html`
-  };
-  const commentsEl = root.querySelector('[data-export-comments="true"]');
-  const commentsHtml = commentsEl ? commentsEl.outerHTML : "";
-  for (const {
-    type,
-    selector
-  } of sections) {
-    const el = root.querySelector(selector);
-    if (!el) continue;
-    const clone = el.cloneNode(true);
-    if (clone.style) {
-      clone.style.display = "block";
-    }
-    const html = buildReportHTML(clone, commentsHtml, config, type);
-    zip.file(fileNames[type], html);
-  }
-  if (Object.keys(zip.files).length === 0) {
-    throw new Error("No report to export. Open the “Report summary” step, then try again.");
-  }
+  const safeName = String(clientName).replace(/\s+/g, " ").trim() || "CLIENT";
+  zip.file(`${safeName} - Rapport de supervision.html`, html);
+
   const start = config.client.reportStartDate;
   const end = config.client.reportEndDate;
-  let zipFileName = "MONITORING REPORTS";
+  let zipFileName = "Rapport de supervision";
   if (start && end) {
-    const formatZipDate = d => {
-      try {
-        const date = new Date(d);
-        const day = String(date.getDate()).padStart(2, "0");
-        const month = String(date.getMonth() + 1).padStart(2, "0");
-        const year = String(date.getFullYear()).slice(-2);
-        return `${day}-${month}-${year}`;
-      } catch {
-        return "";
-      }
-    };
-    zipFileName = `RAPPORTS ${formatZipDate(start)} - ${formatZipDate(end)}`;
+    zipFileName = `Rapport supervision ${formatZipDate(start)} - ${formatZipDate(end)}`;
   }
-  const blob = await zip.generateAsync({
-    type: "blob"
-  });
+  const blob = await zip.generateAsync({ type: "blob" });
   return {
     blob,
     fileName: `${zipFileName}.zip`
   };
 }
+
 export async function exportReportAsZIP(ref, config) {
-  const {
-    blob,
-    fileName
-  } = await buildReportZipBlob(ref, config);
+  const { blob, fileName } = await buildReportZipBlob(ref, config);
   saveAs(blob, fileName);
 }

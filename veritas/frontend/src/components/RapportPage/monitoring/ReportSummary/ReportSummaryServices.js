@@ -8,11 +8,11 @@ function formatDate(value) {
   if (!value) return "-";
   const d = new Date(value);
   if (Number.isNaN(d.getTime())) return String(value);
-  return d.toLocaleDateString("en-US");
+  return d.toLocaleDateString("fr-FR");
 }
 function formatInt(value) {
   if (value == null || Number.isNaN(Number(value))) return "-";
-  return Number(value).toLocaleString("en-US");
+  return Number(value).toLocaleString("fr-FR");
 }
 function parsePeriodDate(value) {
   if (!value) return null;
@@ -157,19 +157,19 @@ function ServicesNotificationLegend({
 }) {
   return <div className={infraStyles.notificationLegend}>
       <span className={infraStyles.notificationLegendText}>
-        Notification badges:
+        Notification :
       </span>
       <span className={infraStyles.notificationLegendItem}>
         <span className={`${infraStyles.notificationDot} ${infraStyles.notificationDotComment}`}>
           {commentTotal}
         </span>
-        Comments
+        Commentaires
       </span>
       <span className={infraStyles.notificationLegendItem}>
         <span className={`${infraStyles.notificationDot} ${infraStyles.notificationDotTicket}`}>
           {ticketTotal}
         </span>
-        Tickets created
+        Tickets créés
       </span>
     </div>;
 }
@@ -422,7 +422,7 @@ export default function ReportSummaryServices({
             <div>
               <h4 className={infraStyles.sectionTitle}>Office 365</h4>
               <div className={infraStyles.sectionSubtitle}>
-                Microsoft 365 licenses and user statistics
+                Microsoft 365 — licences et statistiques utilisateurs
               </div>
             </div>
           </div>
@@ -430,7 +430,7 @@ export default function ReportSummaryServices({
         <div className={infraStyles.sectionTitleSeparator} />
 
         {!o365Data ? <div className={infraStyles.infraTableEmpty}>
-            No Office 365 data available for this client.
+            Aucune donnée Office 365 disponible pour ce client.
           </div> : <>
             {}
             {o365Data.usersKpi && o365Data.usersKpi.totalUsers > 0 && <div style={{
@@ -444,7 +444,7 @@ export default function ReportSummaryServices({
                 gap: "0.4rem"
               }}>
                       <IconifyIcon icon="mdi:account-multiple" width={18} height={18} />
-                      <span className={infraStyles.globalStatsLabel}>Total users</span>
+                      <span className={infraStyles.globalStatsLabel}>Utilisateurs</span>
                     </div>
                     <div className={infraStyles.globalStatsValue}>
                       {formatInt(o365Data.usersKpi.totalUsers)}
@@ -470,7 +470,7 @@ export default function ReportSummaryServices({
                 gap: "0.4rem"
               }}>
                       <IconifyIcon icon="mdi:account-outline" width={18} height={18} />
-                      <span className={infraStyles.globalStatsLabel}>Non-administrators</span>
+                      <span className={infraStyles.globalStatsLabel}>Non-administrateurs</span>
                     </div>
                     <div className={infraStyles.globalStatsValue}>
                       {formatInt(o365Data.usersKpi.nonAdminCount)}
@@ -483,7 +483,7 @@ export default function ReportSummaryServices({
                 gap: "0.4rem"
               }}>
                       <IconifyIcon icon="mdi:check-circle" width={18} height={18} color="#10b981" />
-                      <span className={infraStyles.globalStatsLabel}>Active (last 30 days)</span>
+                      <span className={infraStyles.globalStatsLabel}>Actifs (30 j)</span>
                     </div>
                     <div className={infraStyles.globalStatsValue}>
                       {formatInt(o365Data.usersKpi.activeCount)}
@@ -496,7 +496,7 @@ export default function ReportSummaryServices({
                 gap: "0.4rem"
               }}>
                       <IconifyIcon icon="mdi:clock-outline" width={18} height={18} color="#f59e0b" />
-                      <span className={infraStyles.globalStatsLabel}>Inactive (&gt;90d)</span>
+                      <span className={infraStyles.globalStatsLabel}>Inactifs (&gt;90 j)</span>
                     </div>
                     <div className={infraStyles.globalStatsValue}>
                       {formatInt(o365Data.usersKpi.inactiveCount)}
@@ -509,7 +509,7 @@ export default function ReportSummaryServices({
                 gap: "0.4rem"
               }}>
                       <IconifyIcon icon="mdi:account-cancel" width={18} height={18} color="#ef4444" />
-                      <span className={infraStyles.globalStatsLabel}>Blocked</span>
+                      <span className={infraStyles.globalStatsLabel}>Bloqués</span>
                     </div>
                     <div className={infraStyles.globalStatsValue}>
                       {formatInt(o365Data.usersKpi.blockedCount)}
@@ -622,14 +622,14 @@ export default function ReportSummaryServices({
                 gap: "0.4rem"
               }}>
                         <IconifyIcon icon="mdi:email-send" width={18} height={18} color="#3b82f6" />
-                        <span className={infraStyles.globalStatsLabel}>Emails sent</span>
+                        <span className={infraStyles.globalStatsLabel}>E-mails envoyés</span>
                       </div>
                       <div className={infraStyles.globalStatsValue}>
-                        {typeof o365Data.exchangeData.emailActivity.sent === "number" ? o365Data.exchangeData.emailActivity.sent.toLocaleString("en-US") : "N/A"}
+                        {typeof o365Data.exchangeData.emailActivity.sent === "number" ? o365Data.exchangeData.emailActivity.sent.toLocaleString("fr-FR") : "N/A"}
                       </div>
                       {typeof o365Data.exchangeData.emailActivity?.averages?.sent === "number" && <div className={infraStyles.globalStatsHint}>
                           Average&nbsp;:{" "}
-                          {o365Data.exchangeData.emailActivity.averages.sent.toLocaleString("en-US")}{" "}
+                          {o365Data.exchangeData.emailActivity.averages.sent.toLocaleString("fr-FR")}{" "}
                           / day
                         </div>}
                     </div>
@@ -642,14 +642,14 @@ export default function ReportSummaryServices({
                 gap: "0.4rem"
               }}>
                         <IconifyIcon icon="mdi:email-receive" width={18} height={18} color="#10b981" />
-                        <span className={infraStyles.globalStatsLabel}>Emails received</span>
+                        <span className={infraStyles.globalStatsLabel}>E-mails reçus</span>
                       </div>
                       <div className={infraStyles.globalStatsValue}>
-                        {typeof o365Data.exchangeData.emailActivity.received === "number" ? o365Data.exchangeData.emailActivity.received.toLocaleString("en-US") : "N/A"}
+                        {typeof o365Data.exchangeData.emailActivity.received === "number" ? o365Data.exchangeData.emailActivity.received.toLocaleString("fr-FR") : "N/A"}
                       </div>
                       {typeof o365Data.exchangeData.emailActivity?.averages?.received === "number" && <div className={infraStyles.globalStatsHint}>
                           Average&nbsp;:{" "}
-                          {o365Data.exchangeData.emailActivity.averages.received.toLocaleString("en-US")}{" "}
+                          {o365Data.exchangeData.emailActivity.averages.received.toLocaleString("fr-FR")}{" "}
                           / day
                         </div>}
                     </div>
@@ -662,14 +662,14 @@ export default function ReportSummaryServices({
                 gap: "0.4rem"
               }}>
                         <IconifyIcon icon="mdi:email-open" width={18} height={18} color="#8b5cf6" />
-                        <span className={infraStyles.globalStatsLabel}>Emails read</span>
+                        <span className={infraStyles.globalStatsLabel}>E-mails lus</span>
                       </div>
                       <div className={infraStyles.globalStatsValue}>
-                        {typeof o365Data.exchangeData.emailActivity.read === "number" ? o365Data.exchangeData.emailActivity.read.toLocaleString("en-US") : "N/A"}
+                        {typeof o365Data.exchangeData.emailActivity.read === "number" ? o365Data.exchangeData.emailActivity.read.toLocaleString("fr-FR") : "N/A"}
                       </div>
                       {typeof o365Data.exchangeData.emailActivity?.averages?.read === "number" && <div className={infraStyles.globalStatsHint}>
                           Average&nbsp;:{" "}
-                          {o365Data.exchangeData.emailActivity.averages.read.toLocaleString("en-US")}{" "}
+                          {o365Data.exchangeData.emailActivity.averages.read.toLocaleString("fr-FR")}{" "}
                           / day
                         </div>}
                     </div>
@@ -682,15 +682,15 @@ export default function ReportSummaryServices({
                 gap: "0.4rem"
               }}>
                         <IconifyIcon icon="mdi:percent" width={18} height={18} color="#f59e0b" />
-                        <span className={infraStyles.globalStatsLabel}>Read rate</span>
+                        <span className={infraStyles.globalStatsLabel}>Taux de lecture</span>
                       </div>
                       <div className={infraStyles.globalStatsValue}>
                         {typeof o365Data.exchangeData.emailActivity.readRate === "number" ? `${o365Data.exchangeData.emailActivity.readRate.toFixed(1)} %` : "N/A"}
                       </div>
                       {typeof o365Data.exchangeData.emailActivity.read === "number" && typeof o365Data.exchangeData.emailActivity.received === "number" && <div className={infraStyles.globalStatsHint}>
-                            {o365Data.exchangeData.emailActivity.read.toLocaleString("en-US")}{" "}
+                            {o365Data.exchangeData.emailActivity.read.toLocaleString("fr-FR")}{" "}
                             read /{" "}
-                            {o365Data.exchangeData.emailActivity.received.toLocaleString("en-US")}{" "}
+                            {o365Data.exchangeData.emailActivity.received.toLocaleString("fr-FR")}{" "}
                             received
                           </div>}
                     </div>
@@ -731,11 +731,11 @@ export default function ReportSummaryServices({
                         const read = Number(week.read || 0);
                         return <tr key={`${week.period || "week"}-${idx}`} className={infraStyles.infraTableRow}>
                                   <td className={infraStyles.infraTableCell}>{week.period || "-"}</td>
-                                  <td className={infraStyles.infraTableCell}>{sent.toLocaleString("en-US")}</td>
+                                  <td className={infraStyles.infraTableCell}>{sent.toLocaleString("fr-FR")}</td>
                                   <td className={infraStyles.infraTableCell}>
-                                    {received.toLocaleString("en-US")}
+                                    {received.toLocaleString("fr-FR")}
                                   </td>
-                                  <td className={infraStyles.infraTableCell}>{read.toLocaleString("en-US")}</td>
+                                  <td className={infraStyles.infraTableCell}>{read.toLocaleString("fr-FR")}</td>
                                 </tr>;
                       })}
                           </tbody>
@@ -750,11 +750,11 @@ export default function ReportSummaryServices({
           }}>
                     <div className={`${infraStyles.globalStatsGrid} ${infraStyles.globalStatsGridStylized}`}>
                       {[{
-                label: "Total mailboxes",
+                label: "Boîtes mail",
                 icon: "mdi:email-multiple-outline",
-                value: o365Data.exchangeData.mailboxes.total != null ? o365Data.exchangeData.mailboxes.total.toLocaleString("en-US") : "N/A"
+                value: o365Data.exchangeData.mailboxes.total != null ? o365Data.exchangeData.mailboxes.total.toLocaleString("fr-FR") : "N/A"
               }, {
-                label: "Total space used",
+                label: "Espace utilisé",
                 icon: "mdi:database",
                 value: o365Data.exchangeData.mailboxes.totalSize ?? "N/A"
               }, {
@@ -762,9 +762,9 @@ export default function ReportSummaryServices({
                 icon: "mdi:scale-balance",
                 value: o365Data.exchangeData.mailboxes.averageSize ?? "N/A"
               }, {
-                label: "Total emails",
+                label: "E-mails au total",
                 icon: "mdi:email-outline",
-                value: o365Data.exchangeData.mailboxes.totalItems != null ? o365Data.exchangeData.mailboxes.totalItems.toLocaleString("en-US") : "N/A"
+                value: o365Data.exchangeData.mailboxes.totalItems != null ? o365Data.exchangeData.mailboxes.totalItems.toLocaleString("fr-FR") : "N/A"
               }].map((card, idx) => <div key={idx} className={infraStyles.globalStatsItem}>
                           <KpiLabelWithIcon icon={card.icon} label={card.label} />
                           <div className={infraStyles.globalStatsValue}>{card.value}</div>
@@ -809,11 +809,11 @@ export default function ReportSummaryServices({
                       {}
                       <div className={`${infraStyles.globalStatsGrid} ${infraStyles.globalStatsGridStylized}`}>
                         {[{
-                  label: "Total messages",
+                  label: "Messages au total",
                   icon: "mdi:message-text-outline",
                   value: messageStats.total || 0
                 }, {
-                  label: "Private chat messages",
+                  label: "Messages de chat privés",
                   icon: "mdi:chat-processing-outline",
                   value: messageStats.privateChat || 0
                 }, {
@@ -823,7 +823,7 @@ export default function ReportSummaryServices({
                 }].map((card, idx) => <div key={idx} className={infraStyles.globalStatsItem}>
                             <KpiLabelWithIcon icon={card.icon} label={card.label} />
                             <div className={infraStyles.globalStatsValue}>
-                              {typeof card.value === "number" ? card.value.toLocaleString("en-US") : card.value}
+                              {typeof card.value === "number" ? card.value.toLocaleString("fr-FR") : card.value}
                             </div>
                           </div>)}
                       </div>
@@ -831,7 +831,7 @@ export default function ReportSummaryServices({
                       {}
                       <div className={`${infraStyles.globalStatsGrid} ${infraStyles.globalStatsGridStylized}`}>
                         {[{
-                  label: "Total meetings",
+                  label: "Réunions",
                   icon: "mdi:calendar-clock-outline",
                   value: meetingsStats.total || 0
                 }, {
@@ -841,7 +841,7 @@ export default function ReportSummaryServices({
                 }].map((card, idx) => <div key={idx} className={infraStyles.globalStatsItem}>
                             <KpiLabelWithIcon icon={card.icon} label={card.label} />
                             <div className={infraStyles.globalStatsValue}>
-                              {typeof card.value === "number" ? card.value.toLocaleString("en-US") : card.value}
+                              {typeof card.value === "number" ? card.value.toLocaleString("fr-FR") : card.value}
                             </div>
                           </div>)}
                       </div>
@@ -849,21 +849,21 @@ export default function ReportSummaryServices({
                       {}
                       <div className={`${infraStyles.globalStatsGrid} ${infraStyles.globalStatsGridStylized}`}>
                         {[{
-                  label: "Total calls",
+                  label: "Appels",
                   icon: "mdi:phone-outline",
                   value: callsStats.total || 0
                 }, {
-                  label: "Total duration",
+                  label: "Durée totale",
                   icon: "mdi:timer-outline",
                   value: callsStats.totalDuration || "0h 0m"
                 }, {
-                  label: "Average duration",
+                  label: "Durée moyenne",
                   icon: "mdi:clock-time-four-outline",
                   value: callsStats.averageDuration || "0h 0m"
                 }].map((card, idx) => <div key={idx} className={infraStyles.globalStatsItem}>
                             <KpiLabelWithIcon icon={card.icon} label={card.label} />
                             <div className={infraStyles.globalStatsValue}>
-                              {typeof card.value === "number" ? card.value.toLocaleString("en-US") : card.value}
+                              {typeof card.value === "number" ? card.value.toLocaleString("fr-FR") : card.value}
                             </div>
                           </div>)}
                       </div>
@@ -900,7 +900,7 @@ export default function ReportSummaryServices({
                                   </th>
                                   <th className={infraStyles.infraTableHeaderCell}>Appels 1:1</th>
                                   <th className={infraStyles.infraTableHeaderCell}>
-                                    Total meetings
+                                    Réunions
                                   </th>
                                 </tr>
                               </thead>
@@ -913,16 +913,16 @@ export default function ReportSummaryServices({
                             return <tr key={`${week.period || "teams-week"}-${idx}`} className={infraStyles.infraTableRow}>
                                       <td className={infraStyles.infraTableCell}>{week.period || "-"}</td>
                                       <td className={infraStyles.infraTableCell}>
-                                        {channelMessages.toLocaleString("en-US")}
+                                        {channelMessages.toLocaleString("fr-FR")}
                                       </td>
                                       <td className={infraStyles.infraTableCell}>
-                                        {chatMessages.toLocaleString("en-US")}
+                                        {chatMessages.toLocaleString("fr-FR")}
                                       </td>
                                       <td className={infraStyles.infraTableCell}>
-                                        {oneOnOneCalls.toLocaleString("en-US")}
+                                        {oneOnOneCalls.toLocaleString("fr-FR")}
                                       </td>
                                       <td className={infraStyles.infraTableCell}>
-                                        {totalMeetings.toLocaleString("en-US")}
+                                        {totalMeetings.toLocaleString("fr-FR")}
                                       </td>
                                     </tr>;
                           })}
@@ -984,10 +984,10 @@ export default function ReportSummaryServices({
                                     {isPrivate ? "Private" : "Public"}
                                   </td>
                                   <td className={infraStyles.infraTableCell}>
-                                    {Number(members || 0).toLocaleString("en-US")}
+                                    {Number(members || 0).toLocaleString("fr-FR")}
                                   </td>
                                   <td className={infraStyles.infraTableCell}>
-                                    {Number(channels || 0).toLocaleString("en-US")}
+                                    {Number(channels || 0).toLocaleString("fr-FR")}
                                   </td>
                                 </tr>;
                     })}
@@ -1017,24 +1017,24 @@ export default function ReportSummaryServices({
 
                 <div className={`${infraStyles.globalStatsGrid} ${infraStyles.globalStatsGridStylized}`}>
                   {[{
-              label: "Total space used",
+              label: "Espace utilisé",
               icon: "mdi:harddisk",
               value: o365Data.onedriveData.storage?.totalUsed || "0 B",
               color: "#3b82f6"
             }, {
-              label: "Number of files",
+              label: "Nombre de fichiers",
               icon: "mdi:file-multiple-outline",
-              value: o365Data.onedriveData.storage?.totalFiles != null ? o365Data.onedriveData.storage.totalFiles.toLocaleString("en-US") : "0",
+              value: o365Data.onedriveData.storage?.totalFiles != null ? o365Data.onedriveData.storage.totalFiles.toLocaleString("fr-FR") : "0",
               color: "#10b981"
             }, {
-              label: "Average per user",
+              label: "Moyenne par utilisateur",
               icon: "mdi:account-arrow-right-outline",
               value: o365Data.onedriveData.storage?.averagePerUser || "0 B",
               color: "#8b5cf6"
             }, {
-              label: "Files viewed / modified",
+              label: "Fichiers consultés / modifiés",
               icon: "mdi:file-eye-outline",
-              value: o365Data.onedriveData.sharing?.byActivityType?.viewedOrEdited != null ? o365Data.onedriveData.sharing.byActivityType.viewedOrEdited.toLocaleString("en-US") : "0",
+              value: o365Data.onedriveData.sharing?.byActivityType?.viewedOrEdited != null ? o365Data.onedriveData.sharing.byActivityType.viewedOrEdited.toLocaleString("fr-FR") : "0",
               color: "#f59e0b"
             }].map((card, idx) => <div key={idx} className={infraStyles.globalStatsItem}>
                       <KpiLabelWithIcon icon={card.icon} label={card.label} />
@@ -1080,7 +1080,7 @@ export default function ReportSummaryServices({
               }];
               if (sp.storageUsed !== undefined) {
                 cards.push({
-                  label: "Storage used",
+                  label: "Stockage utilisé",
                   icon: "mdi:database",
                   value: typeof sp.storageUsed === "number" ? `${(sp.storageUsed / 1024 / 1024 / 1024).toFixed(2)} GB` : sp.storageUsed || "N/A"
                 });
@@ -1088,7 +1088,7 @@ export default function ReportSummaryServices({
               return cards.map((card, idx) => <div key={idx} className={infraStyles.globalStatsItem}>
                         <KpiLabelWithIcon icon={card.icon} label={card.label} />
                         <div className={infraStyles.globalStatsValue}>
-                          {typeof card.value === "number" ? card.value.toLocaleString("en-US") : card.value}
+                          {typeof card.value === "number" ? card.value.toLocaleString("fr-FR") : card.value}
                         </div>
                       </div>);
             })()}
@@ -1103,7 +1103,7 @@ export default function ReportSummaryServices({
                       <IconifyIcon icon="mdi:shield-check" width={20} height={20} color="#10b981" />
                     </span>
                     <div>
-                      <h4 className={infraStyles.sectionTitle}>Security</h4>
+                      <h4 className={infraStyles.sectionTitle}>Sécurité</h4>
                       <div className={infraStyles.sectionSubtitle}>
                         Microsoft 365 security score and account protection
                       </div>
@@ -1144,7 +1144,7 @@ export default function ReportSummaryServices({
                 gap: "0.4rem"
               }}>
                         <IconifyIcon icon="mdi:account-group" width={18} height={18} />
-                        <span className={infraStyles.globalStatsLabel}>Total users</span>
+                        <span className={infraStyles.globalStatsLabel}>Utilisateurs</span>
                       </div>
                       <div className={infraStyles.globalStatsValue}>
                         {formatInt(o365Data.securityUsersKpi.totalUsers)}
@@ -1173,7 +1173,7 @@ export default function ReportSummaryServices({
                 gap: "0.4rem"
               }}>
                         <IconifyIcon icon="mdi:shield-account" width={18} height={18} color="#3b82f6" />
-                        <span className={infraStyles.globalStatsLabel}>Total administrators</span>
+                        <span className={infraStyles.globalStatsLabel}>Administrateurs au total</span>
                       </div>
                       <div className={infraStyles.globalStatsValue}>
                         {formatInt(o365Data.securityUsersKpi.adminsTotal)}
@@ -1202,7 +1202,7 @@ export default function ReportSummaryServices({
                 gap: "0.4rem"
               }}>
                         <IconifyIcon icon="mdi:account-outline" width={18} height={18} />
-                        <span className={infraStyles.globalStatsLabel}>Total non-administrators</span>
+                        <span className={infraStyles.globalStatsLabel}>Non-administrateurs au total</span>
                       </div>
                       <div className={infraStyles.globalStatsValue}>
                         {formatInt((o365Data.securityUsersKpi.nonAdminWithMFA || 0) + (o365Data.securityUsersKpi.nonAdminWithoutMFA || 0))}
@@ -1240,7 +1240,7 @@ export default function ReportSummaryServices({
                 title: "Administrateurs",
                 items: o365Data.securityUsersKpi.top3Admin || []
               }, {
-                title: "Non-administrators",
+                title: "Non-administrateurs",
                 items: o365Data.securityUsersKpi.top3NonAdmin || []
               }].map((block, idx) => <div key={idx} style={{
                 border: "1px solid #e5e7eb",
@@ -1280,7 +1280,7 @@ export default function ReportSummaryServices({
                       fontWeight: 600,
                       color: "#111827"
                     }}>
-                                    {typeof m.count === "number" ? m.count.toLocaleString("en-US") : m.count}
+                                    {typeof m.count === "number" ? m.count.toLocaleString("fr-FR") : m.count}
                                   </span>
                                 </li>)}
                             </ul>}
@@ -1299,7 +1299,7 @@ export default function ReportSummaryServices({
               <IconifyIcon icon="mdi:domain" width={34} height={34} color="#8b5cf6" />
             </span>
             <div>
-              <h4 className={infraStyles.sectionTitle}>Domain names</h4>
+              <h4 className={infraStyles.sectionTitle}>Noms de domaine</h4>
               <div className={infraStyles.sectionSubtitle}>
                 Inventaire des domaines et dates d&apos;expiration
               </div>
@@ -1309,12 +1309,12 @@ export default function ReportSummaryServices({
         <div className={infraStyles.sectionTitleSeparator} />
 
         {domains.length === 0 ? <div className={infraStyles.infraTableEmpty}>
-            No domain name recorded for this client.
+            Aucun nom de domaine enregistré pour ce client.
           </div> : (() => {
         const getStatusInfo = expiration => {
           if (!expiration) {
             return {
-              label: "Active",
+              label: "Actif",
               status: "actif",
               color: "#10b981"
             };
@@ -1326,20 +1326,20 @@ export default function ReportSummaryServices({
           const diffDays = Math.ceil((expDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
           if (diffDays < 0) {
             return {
-              label: "Expired",
+              label: "Expiré",
               status: "expiré",
               color: "#ef4444"
             };
           }
           if (diffDays <= 30) {
             return {
-              label: "Expiring soon",
+              label: "Expire bientôt",
               status: "expire_bientot",
               color: "#f59e0b"
             };
           }
           return {
-            label: "Active",
+            label: "Actif",
             status: "actif",
             color: "#10b981"
           };

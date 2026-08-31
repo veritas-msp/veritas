@@ -8,6 +8,58 @@ function fill(template, vars = {}) {
   return String(template || "").replace(/\{(\w+)\}/g, (_, key) => (vars[key] != null ? String(vars[key]) : ""));
 }
 
+const CHECKMK_SYNC_FAMILIES = {
+  Internet: { id: "internet", labelKey: "internet" },
+  Serveurs: { id: "servers", labelKey: "servers" },
+  Servers: { id: "servers", labelKey: "servers" },
+  Firewalls: { id: "firewalls", labelKey: "firewalls" },
+  Firewall: { id: "firewalls", labelKey: "firewalls" },
+  NAS: { id: "storage", labelKey: "storage" },
+  SAN: { id: "storage", labelKey: "storage" },
+  Stockage: { id: "storage", labelKey: "storage" },
+  Storage: { id: "storage", labelKey: "storage" },
+  Switch: { id: "switch", labelKey: "switch" },
+  BorneWifi: { id: "wifi", labelKey: "wifi" },
+  Alimentation: { id: "power", labelKey: "power" },
+  Routeur: { id: "router", labelKey: "router" },
+  TOIP: { id: "toip", labelKey: "toip" }
+};
+
+const CHECKMK_FAMILY_ORDER = ["internet", "servers", "firewalls", "storage", "switch", "wifi", "power", "router", "toip"];
+
+const DEFAULT_FAMILY_LABELS = {
+  internet: "Internet",
+  servers: "Serveurs",
+  firewalls: "Firewalls",
+  storage: "Stockage",
+  switch: "Switchs",
+  wifi: "Bornes Wi-Fi",
+  power: "Alimentation",
+  router: "Routeurs",
+  toip: "TOIP"
+};
+
+function resolveSyncFamily(familyKey) {
+  return CHECKMK_SYNC_FAMILIES[familyKey] || {
+    id: String(familyKey || "other").toLowerCase(),
+    labelKey: familyKey || "other"
+  };
+}
+
+function familyDisplayName(labelKey, copy = {}) {
+  const labels = copy.familyLabels || {};
+  return labels[labelKey] || DEFAULT_FAMILY_LABELS[labelKey] || labelKey;
+}
+
+function isAbortError(err) {
+  return err?.name === "AbortError";
+}
+
+function isDomainNotFoundError(err) {
+  const message = String(err?.message || "").toLowerCase();
+  return message.includes("not found") || message.includes("introuvable") || message.includes("does not exist");
+}
+
 function listSolutions(raw) {
   if (Array.isArray(raw)) return raw;
   if (raw && Array.isArray(raw.solutions)) return raw.solutions;
@@ -112,15 +164,28 @@ export function buildSupervisionSyncJobs(client, {
   const eq = client?.equipements || {};
 
   const mappings = collectCheckMKMappedEquipment(eq);
-  mappings.forEach((mapping, index) => {
-    const hostName = mapping.checkmk_host_name;
-    if (!hostName) return;
-    const name = equipmentLabel(mapping.item, hostName);
+  const familyGroups = new Map();
+  mappings.forEach(mapping => {
+    if (!mapping.checkmk_host_name) return;
+    const family = resolveSyncFamily(mapping.familyKey);
+    if (!familyGroups.has(family.id)) {
+      familyGroups.set(family.id, { id: family.id, labelKey: family.labelKey, mappings: [] });
+    }
+    familyGroups.get(family.id).mappings.push(mapping);
+  });
+  const orderedFamilyIds = [
+    ...CHECKMK_FAMILY_ORDER.filter(id => familyGroups.has(id)),
+    ...[...familyGroups.keys()].filter(id => !CHECKMK_FAMILY_ORDER.includes(id))
+  ];
+  orderedFamilyIds.forEach(familyId => {
+    const group = familyGroups.get(familyId);
+    const count = group.mappings.length;
+    const name = familyDisplayName(group.labelKey, copy);
     jobs.push({
-      id: `checkmk-${mapping.equipment_id ?? hostName}-${index}`,
+      id: `checkmk-family-${group.id}`,
       group: "supervision",
-      label: fill(copy.hostLabel, { name }),
-      estimatedMs: 4000,
+      label: fill(copy.hostFamilyLabel || copy.hostLabel, { name, count }),
+      estimatedMs: 4000 * count,
       run: async () => {
         if (typeof fetchCheckMKHost !== "function") {
           throw new Error("CheckMK fetch is unavailable.");
@@ -131,11 +196,29 @@ export function buildSupervisionSyncJobs(client, {
         const startDate = new Date(client.reportStartDate);
         const endDate = new Date(client.reportEndDate);
         endDate.setHours(23, 59, 59, 999);
-        const { cacheEntry, status } = await fetchCheckMKHost(hostName, mapping.checkmk_site || null, startDate.toISOString(), endDate.toISOString());
-        const key = mapping.equipment_id != null ? String(mapping.equipment_id) : null;
-        if (key && typeof onCheckMKHostDone === "function") {
-          onCheckMKHostDone(key, cacheEntry, status);
+        const startIso = startDate.toISOString();
+        const endIso = endDate.toISOString();
+        let success = 0;
+        let lastError = null;
+        for (const mapping of group.mappings) {
+          try {
+            const { cacheEntry, status } = await fetchCheckMKHost(
+              mapping.checkmk_host_name,
+              mapping.checkmk_site || null,
+              startIso,
+              endIso
+            );
+            const key = mapping.equipment_id != null ? String(mapping.equipment_id) : null;
+            if (key && typeof onCheckMKHostDone === "function") {
+              onCheckMKHostDone(key, cacheEntry, status);
+            }
+            success += 1;
+          } catch (err) {
+            if (isAbortError(err)) throw err;
+            lastError = err;
+          }
         }
+        if (success === 0 && lastError) throw lastError;
       }
     });
   });
@@ -197,29 +280,38 @@ export function buildSupervisionSyncJobs(client, {
   }
 
   const domaines = Array.isArray(eq.NDD) ? eq.NDD : [];
-  domaines.forEach((domaine, index) => {
+  const ovhDomains = domaines.filter(domaine => {
     const normalized = normalizeDomainItem(domaine);
     const name = normalized?.nom || equipmentLabel(domaine, domaine?.fqdn || "");
-    if (!name) return;
-    if (!isOvhManagedDomain(normalized)) return;
+    return Boolean(name) && isOvhManagedDomain(normalized);
+  });
+  if (ovhDomains.length > 0 && clientId) {
     jobs.push({
-      id: `ndd-${domaine.id ?? name}-${index}`,
+      id: "ndd-group",
       group: "ndd",
-      label: fill(copy.nddLabel, { name }),
-      estimatedMs: 2500,
+      label: fill(copy.nddGroupLabel || copy.nddLabel, { count: ovhDomains.length, name: copy.familyLabels?.ndd || "Noms de domaine" }),
+      estimatedMs: 2500 * ovhDomains.length,
       run: async () => {
-        try {
-          await syncNddDomainForClient(clientId, domaine, { signal });
-        } catch (err) {
-          const message = String(err?.message || "").toLowerCase();
-          const notFound = message.includes("not found") || message.includes("introuvable") || message.includes("does not exist");
-          // Domain is not on this OVH account (other registrar, transferred, typo).
-          if (notFound) return;
-          throw err;
+        let success = 0;
+        let lastError = null;
+        for (const domaine of ovhDomains) {
+          try {
+            await syncNddDomainForClient(clientId, domaine, { signal });
+            success += 1;
+          } catch (err) {
+            if (isAbortError(err)) throw err;
+            // Domain is not on this OVH account (other registrar, transferred, typo).
+            if (isDomainNotFoundError(err)) {
+              success += 1;
+              continue;
+            }
+            lastError = err;
+          }
         }
+        if (success === 0 && lastError) throw lastError;
       }
     });
-  });
+  }
 
   return jobs;
 }

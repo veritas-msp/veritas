@@ -130,21 +130,21 @@ const CHECKMK_REPORT_EQUIPMENT_KEYS = new Set([
 
 function collectEquipmentLists(equipements = {}) {
   const lists = [];
-  const visit = value => {
+  const visit = (familyKey, value) => {
     if (!value) return;
     if (Array.isArray(value)) {
-      lists.push(value);
+      lists.push({ familyKey, items: value });
       return;
     }
     if (typeof value !== "object") return;
-    if (Array.isArray(value.solutions)) lists.push(value.solutions);
-    if (Array.isArray(value.instances)) lists.push(value.instances);
-    if (Array.isArray(value.items)) lists.push(value.items);
-    if (Array.isArray(value.connections)) lists.push(value.connections);
+    if (Array.isArray(value.solutions)) lists.push({ familyKey, items: value.solutions });
+    if (Array.isArray(value.instances)) lists.push({ familyKey, items: value.instances });
+    if (Array.isArray(value.items)) lists.push({ familyKey, items: value.items });
+    if (Array.isArray(value.connections)) lists.push({ familyKey, items: value.connections });
   };
   Object.entries(equipements || {}).forEach(([key, value]) => {
     if (!CHECKMK_REPORT_EQUIPMENT_KEYS.has(key)) return;
-    visit(value);
+    visit(key, value);
   });
   return lists;
 }
@@ -154,8 +154,8 @@ export function collectCheckMKMappedEquipment(equipements = {}) {
   const eq = equipements && typeof equipements === "object" ? equipements : {};
   const seen = new Set();
   const mappings = [];
-  collectEquipmentLists(eq).forEach(list => {
-    list.forEach(item => {
+  collectEquipmentLists(eq).forEach(({ familyKey, items }) => {
+    items.forEach(item => {
       if (!isEquipmentMappedForCheckMK(item)) return;
       const hostName = getCheckmkHostName(item);
       if (!hostName) return;
@@ -167,6 +167,7 @@ export function collectCheckMKMappedEquipment(equipements = {}) {
         equipment_id: equipmentId,
         checkmk_host_name: hostName,
         checkmk_site: getCheckmkSite(item),
+        familyKey,
         item
       });
     });
@@ -198,6 +199,13 @@ export function getCheckMKCachedData(cache, item, equipmentKey) {
   if (primaryKey && cache[primaryKey]) return cache[primaryKey];
   if (equipmentKey != null && cache[String(equipmentKey)]) return cache[String(equipmentKey)];
   return null;
+}
+
+/** Number of CheckMK services monitored on the host, or null if not synced. */
+export function countCheckMKMonitoredServices(cached) {
+  if (!cached || typeof cached !== "object") return null;
+  if (!Array.isArray(cached.services)) return null;
+  return cached.services.length;
 }
 export function isCheckMKCacheValidForPeriod(cachedPeriod, reportStartDate, reportEndDate) {
   if (!cachedPeriod) return false;

@@ -21,7 +21,7 @@ export default function BorneWifiStep({
   const bornes = Array.isArray(client?.equipements?.BorneWifi) ? client.equipements.BorneWifi : [];
   const columns = [{
     id: "name",
-    label: "Name",
+    label: "Nom",
     render: ap => <div className={equipmentStyles.nameCell}>
           <Icon icon="mdi:wifi" className={equipmentStyles.typeIconSmall} width={16} height={16} />
           <span className={equipmentStyles.internetCellBold}>
@@ -34,7 +34,7 @@ export default function BorneWifiStep({
     render: ap => ap.site || ap.location || "-"
   }, {
     id: "ip",
-    label: "IP address",
+    label: "IP",
     render: ap => ap.ip || ap.fqdn || "-"
   }, {
     id: "vlan",
@@ -46,7 +46,7 @@ export default function BorneWifiStep({
     render: ap => ap.fabricant || ap.marque || "-"
   }, {
     id: "model",
-    label: "Model",
+    label: "Modèle",
     render: ap => <span className={equipmentStyles.internetCellBold}>{ap.modele || "-"}</span>
   }, {
     id: "serial",
@@ -58,7 +58,7 @@ export default function BorneWifiStep({
     render: ap => ap.firmware || "-"
   }, {
     id: "mac",
-    label: "Adresse MAC",
+    label: "MAC",
     render: ap => ap.adresseMac || ap.mac || "-"
   }];
   return <InfrastructureEquipmentTable title="Wi-Fi APs" moduleKey="BorneWifi" equipments={bornes} columns={columns} onOpenComments={onOpenComments} onCreateTicket={onTicketCreatedForEquipment} onOpenCheckMKDetail={onOpenCheckMKDetail} clientId={client?.id ?? client?.uuid} onSyncCheckMK={onSyncCheckMK} syncingEquipmentKey={syncingEquipmentKey} onEditEquipment={onEditEquipment} commentCounts={commentCounts} ticketCounts={ticketCounts} alertCounts={alertCounts} highlightedEquipmentKey={highlightedEquipmentKey} reportPeriod={reportPeriod} monitoringSyncStatus={monitoringSyncStatus} equipmentCheckMKData={equipmentCheckMKData} />;

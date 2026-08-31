@@ -22,13 +22,13 @@ function formatPercent(value) {
 }
 function formatInt(value) {
   if (value == null || Number.isNaN(Number(value))) return "-";
-  return Number(value).toLocaleString("en-US");
+  return Number(value).toLocaleString("fr-FR");
 }
 function formatDateBackup(raw) {
   if (!raw) return "-";
   try {
     const d = new Date(raw);
-    return Number.isNaN(d.getTime()) ? String(raw) : d.toLocaleDateString("en-US");
+    return Number.isNaN(d.getTime()) ? String(raw) : d.toLocaleDateString("fr-FR");
   } catch {
     return String(raw);
   }
@@ -53,7 +53,7 @@ function formatDateTimeBackup(raw) {
   if (!raw) return "-";
   try {
     const d = new Date(raw);
-    return Number.isNaN(d.getTime()) ? String(raw) : d.toLocaleString("en-US");
+    return Number.isNaN(d.getTime()) ? String(raw) : d.toLocaleString("fr-FR");
   } catch {
     return String(raw);
   }
@@ -62,7 +62,7 @@ function formatDate(value) {
   if (!value) return "-";
   const d = new Date(value);
   if (Number.isNaN(d.getTime())) return String(value);
-  return d.toLocaleDateString("en-US");
+  return d.toLocaleDateString("fr-FR");
 }
 function getProtectionStatusMeta(rawStatus) {
   const s = String(rawStatus || "").trim().toLowerCase();
@@ -97,10 +97,10 @@ function getProtectionStatusMeta(rawStatus) {
 }
 function getBackupStatusLabel(status) {
   const s = String(status || "").toUpperCase();
-  if (s === "SUCCESS") return "Success";
-  if (s === "WARNING") return "Warning";
-  if (s === "FAIL" || s === "FAILED") return "Error";
-  if (s === "RUNNING") return "In progress";
+  if (s === "SUCCESS") return "Succès";
+  if (s === "WARNING") return "Avertissement";
+  if (s === "FAIL" || s === "FAILED") return "Erreur";
+  if (s === "RUNNING") return "En cours";
   return s || "-";
 }
 function formatAntispamExpiration(sol) {
@@ -109,7 +109,7 @@ function formatAntispamExpiration(sol) {
   if (!raw) return "-";
   try {
     const d = new Date(raw);
-    return Number.isNaN(d.getTime()) ? String(raw) : d.toLocaleDateString("en-US");
+    return Number.isNaN(d.getTime()) ? String(raw) : d.toLocaleDateString("fr-FR");
   } catch {
     return String(raw);
   }
@@ -132,7 +132,7 @@ function getEndpointLastSeenSummary(endpoint) {
   const diffHours = (Date.now() - d.getTime()) / (1000 * 60 * 60);
   const isOver24h = diffHours > 24;
   return {
-    label: d.toLocaleString("en-US"),
+    label: d.toLocaleString("fr-FR"),
     isOver24h
   };
 }
@@ -185,7 +185,7 @@ function BackupStatusBadge({
     </span>;
 }
 function CyberReportTable(props) {
-  return <ReportTableBlock {...props} emptyMessage={props.emptyMessage ?? "No data."} />;
+  return <ReportTableBlock {...props} emptyMessage={props.emptyMessage ?? "Aucune donnée."} />;
 }
 function CyberCategoryKpisBlock(props) {
   return <ReportCategoryKpisBlock {...props} />;
@@ -196,19 +196,19 @@ function CyberNotificationLegend({
 }) {
   return <div className={infraStyles.notificationLegend}>
       <span className={infraStyles.notificationLegendText}>
-        Notification badges:
+        Notification :
       </span>
       <span className={infraStyles.notificationLegendItem}>
         <span className={`${infraStyles.notificationDot} ${infraStyles.notificationDotComment}`}>
           {commentTotal}
         </span>
-        Comments
+        Commentaires
       </span>
       <span className={infraStyles.notificationLegendItem}>
         <span className={`${infraStyles.notificationDot} ${infraStyles.notificationDotTicket}`}>
           {ticketTotal}
         </span>
-        Tickets created
+        Tickets créés
       </span>
     </div>;
 }
@@ -380,34 +380,34 @@ export default function ReportSummaryCybersecurity({
       value: sauvegardeHyperBackupInstances.length,
       icon: "mdi:nas"
     }, {
-      label: "Backup instances",
+      label: "Instances de sauvegarde",
       value: sauvegardeInstances.length,
       icon: "mdi:database-sync"
     }, {
-      label: "Backup jobs",
+      label: "Jobs de sauvegarde",
       value: totalJobs,
       icon: "mdi:briefcase-clock-outline"
     }];
   }, [sauvegardeInstances, sauvegardeActiveBackupInstances, sauvegardeHyperBackupInstances]);
   const antivirusKpis = useMemo(() => [{
-    label: "Inventoried endpoints",
+    label: "Postes inventoriés",
     value: antivirusStats.totalEndpoints || 0,
     icon: "mdi:laptop"
   }, {
-    label: "Managed endpoints",
+    label: "Postes gérés",
     value: antivirusStats.managed || 0,
     icon: "mdi:check-circle-outline"
   }, {
-    label: "Unmanaged endpoints",
+    label: "Postes non gérés",
     value: antivirusStats.unmanaged || 0,
     icon: "mdi:alert-circle-outline"
   }, {
-    label: "AV management rate",
+    label: "Taux de gestion AV",
     value: antivirusStats.managementRate != null ? `${Number(antivirusStats.managementRate).toFixed(1)} %` : "N/A",
     icon: "mdi:percent"
   }], [antivirusStats]);
   const antivirusConnectionKpis = useMemo(() => [{
-    label: "Disconnected > 24h",
+    label: "Déconnectés > 24h",
     value: antivirusStats.disconnected || 0,
     icon: "mdi:lan-disconnect"
   }, {
@@ -436,7 +436,7 @@ export default function ReportSummaryCybersecurity({
     value: antispamDetail.totals.spam || 0,
     icon: "mdi:email-alert"
   }, {
-    label: "Blocked",
+    label: "Bloqués",
     value: (antispamDetail.totals.infected || 0) + (antispamDetail.totals.banned || 0) + (antispamDetail.totals.spearphishing || 0),
     icon: "mdi:shield-lock"
   }, {
@@ -444,7 +444,7 @@ export default function ReportSummaryCybersecurity({
     value: antispamDetail.totals.spearphishing || 0,
     icon: "mdi:target-account"
   }, {
-    label: "Pending",
+    label: "En attente",
     value: antispamDetail.totals.pending || 0,
     icon: "mdi:timer-sand"
   }], [antispamDetail]);
@@ -554,14 +554,14 @@ export default function ReportSummaryCybersecurity({
                 Backup
               </h4>
               <div className={infraStyles.sectionSubtitle}>
-                Summary of identified backup solutions and jobs
+                Synthèse des solutions et jobs de sauvegarde
               </div>
             </div>
           </div>
         </div>
         <div className={infraStyles.sectionTitleSeparator} />
         {sauvegardeInstances.length === 0 ? <div className={infraStyles.sectionHelperMuted}>
-            No backup solution recorded for this client.
+            Aucune solution de sauvegarde enregistrée pour ce client.
           </div> : <>
             {}
             {(sauvegardeActiveBackupInstances.length > 0 || sauvegardeHyperBackupInstances.length > 0) && (() => {
@@ -690,7 +690,7 @@ export default function ReportSummaryCybersecurity({
             fontWeight: 600,
             color: "var(--text-primary, #111827)"
           }}>
-                  Backup instances
+                  Instances de sauvegarde
                 </h5>
                 <div className={infraStyles.topologyServersRow} style={{
             maxWidth: "none"
@@ -738,7 +738,7 @@ export default function ReportSummaryCybersecurity({
           render: row => <span className={cyberStyles.cellBold}>{row.instanceName || "-"}</span>
         }, {
           id: "name",
-          label: "Name",
+          label: "Nom",
           render: row => row.name || "-"
         }, {
           id: "type",
@@ -746,7 +746,7 @@ export default function ReportSummaryCybersecurity({
           render: row => row.type || "-"
         }, {
           id: "serveurLie",
-          label: "Server",
+          label: "Serveur",
           render: row => row.serveurLie || "-"
         }, {
           id: "destination",
@@ -754,7 +754,7 @@ export default function ReportSummaryCybersecurity({
           render: row => row.destination || "-"
         }, {
           id: "regularite",
-          label: "Frequency",
+          label: "Fréquence",
           render: row => row.regularite || "-"
         }, {
           id: "horaire",
@@ -766,19 +766,19 @@ export default function ReportSummaryCybersecurity({
           render: row => row.retention || "-"
         }, {
           id: "lastBackupStart",
-          label: "Last backup",
+          label: "Dernière sauvegarde",
           render: row => formatDateTimeBackup(row.lastBackupStart)
         }, {
           id: "lastBackupDuration",
-          label: "Duration",
+          label: "Durée",
           render: row => row.lastBackupDuration || "-"
         }, {
           id: "lastBackupSync",
-          label: "Last sync",
+          label: "Dernière synchro",
           render: row => formatDateTimeBackup(row.lastBackupSync)
         }, {
           id: "lastStatus",
-          label: "Last status",
+          label: "Dernier statut",
           render: row => <BackupStatusBadge status={row.lastStatus} />
         }]} />
           </>}
@@ -796,7 +796,7 @@ export default function ReportSummaryCybersecurity({
                 Antivirus
               </h4>
               <div className={infraStyles.sectionSubtitle}>
-                Deployed solutions and endpoint coverage
+                Solutions déployées et couverture des postes
               </div>
             </div>
           </div>
@@ -806,7 +806,7 @@ export default function ReportSummaryCybersecurity({
         <CyberCategoryKpisBlock items={antivirusConnectionKpis} />
         <CyberCategoryKpisBlock items={antivirusOsKpis} />
 
-        <CyberReportTable title="Antivirus licenses" count={antivirusSolutions.length} rows={antivirusSolutions.map((sol, idx) => ({
+        <CyberReportTable title="Licences antivirus" count={antivirusSolutions.length} rows={antivirusSolutions.map((sol, idx) => ({
         ...sol,
         _rowKey: sol.id || `av-lic-${idx}`,
         _displayName: getAntivirusSolutionName(sol, idx)
@@ -818,11 +818,11 @@ export default function ReportSummaryCybersecurity({
                 </span>
       }, {
         id: "company",
-        label: "Company",
+        label: "Société",
         render: row => row.companyName || row.syncData?.company?.name || client?.name || client?.nom || "-"
       }, {
         id: "totalLicenses",
-        label: "Total licenses",
+        label: "Licences totales",
         render: row => {
           const license = row.syncData?.license || {};
           const total = license.total || license.totalSeats || license.seats || row.licencesTotales || null;
@@ -830,7 +830,7 @@ export default function ReportSummaryCybersecurity({
         }
       }, {
         id: "usedLicenses",
-        label: "Licenses used",
+        label: "Licences utilisées",
         render: row => {
           const license = row.syncData?.license || {};
           const used = license.used || license.usedSeats || row.licencesUtilisees || null;
@@ -844,7 +844,7 @@ export default function ReportSummaryCybersecurity({
           const expRaw = license.expirationDate || row.expiration || null;
           if (!expRaw) return "-";
           const d = new Date(expRaw);
-          return Number.isNaN(d.getTime()) ? String(expRaw) : d.toLocaleDateString("en-US");
+          return Number.isNaN(d.getTime()) ? String(expRaw) : d.toLocaleDateString("fr-FR");
         }
       }]} />
 
@@ -883,7 +883,7 @@ export default function ReportSummaryCybersecurity({
         render: row => <span className={cyberStyles.cellBold}>{row._solutionName || "-"}</span>
       }, {
         id: "name",
-        label: "Name",
+        label: "Nom",
         render: row => {
           const name = row.name || row.deviceName || row.hostname || row.fqdn || "-";
           const typeIcon = getEndpointTypeIcon(row);
@@ -913,7 +913,7 @@ export default function ReportSummaryCybersecurity({
         }
       }, {
         id: "lastSeen",
-        label: "Last connection",
+        label: "Dernière connexion",
         render: row => {
           const lastSeenInfo = getEndpointLastSeenSummary(row);
           if (lastSeenInfo.label === "N/A") return "-";
@@ -930,7 +930,7 @@ export default function ReportSummaryCybersecurity({
         render: row => row.policyName || row.policy?.name || row.policy || row.securityPolicy || "-"
       }, {
         id: "infected",
-        label: "Infected",
+        label: "Infecté",
         render: row => {
           const infected = isEndpointInfected(row);
           return <span className={infected ? cyberStyles.infectedYes : cyberStyles.infectedNo}>
@@ -939,12 +939,12 @@ export default function ReportSummaryCybersecurity({
         }
       }, {
         id: "status",
-        label: "Status",
+        label: "Statut",
         render: row => {
           const inactive = isEndpointInactive(row);
           const endpointState = row.endpointState;
-          const statusLabel = endpointState === 1 || row.isManaged ? "Active" : inactive ? "Inactive" : "-";
-          const tone = statusLabel === "Active" ? cyberStyles.statusSuccess : statusLabel === "Inactive" ? cyberStyles.statusError : cyberStyles.statusNeutral;
+          const statusLabel = endpointState === 1 || row.isManaged ? "Actif" : inactive ? "Inactif" : "-";
+          const tone = statusLabel === "Actif" ? cyberStyles.statusSuccess : statusLabel === "Inactif" ? cyberStyles.statusError : cyberStyles.statusNeutral;
           return <span className={`${cyberStyles.statusBadge} ${tone}`}>{statusLabel}</span>;
         }
       }]} />
@@ -962,7 +962,7 @@ export default function ReportSummaryCybersecurity({
                 Antispam
               </h4>
               <div className={infraStyles.sectionSubtitle}>
-                Antispam solutions and filtered threat volume
+                Solutions antispam et volume de menaces filtrées
               </div>
             </div>
           </div>
@@ -970,7 +970,7 @@ export default function ReportSummaryCybersecurity({
         <div className={infraStyles.sectionTitleSeparator} />
         <CyberCategoryKpisBlock items={antispamKpis} />
 
-        <CyberReportTable title="Antispam licenses" count={antispamSolutions.length} rows={antispamSolutions.map((sol, idx) => ({
+        <CyberReportTable title="Licences antispam" count={antispamSolutions.length} rows={antispamSolutions.map((sol, idx) => ({
         ...sol,
         _rowKey: sol.id || `as-lic-${idx}`
       }))} columns={[{
@@ -981,18 +981,18 @@ export default function ReportSummaryCybersecurity({
                 </span>
       }, {
         id: "company",
-        label: "Company",
+        label: "Société",
         render: () => client?.name || client?.nom || "-"
       }, {
         id: "protectedUsers",
-        label: "Protected users",
+        label: "Utilisateurs protégés",
         render: row => {
           const protectedUsers = row.utilisateursProteges ?? row.utilisateurs ?? row.nombre_utilisateurs ?? null;
           return protectedUsers != null ? formatInt(protectedUsers) : "-";
         }
       }, {
         id: "domains",
-        label: "Domains / licenses",
+        label: "Domaines / licences",
         render: row => {
           const domaines = row.domainesSurveilles ?? row.domaines ?? row.licences ?? row.nombre_licences ?? null;
           return domaines != null ? String(domaines) : "-";
@@ -1012,19 +1012,19 @@ export default function ReportSummaryCybersecurity({
         render: row => <span className={cyberStyles.cellBold}>{row.solutionName || "-"}</span>
       }, {
         id: "period",
-        label: "Period",
+        label: "Période",
         render: row => row.period || "-"
       }, {
         id: "total",
         label: "Total",
-        render: row => Number(row.total || 0).toLocaleString("en-US")
+        render: row => Number(row.total || 0).toLocaleString("fr-FR")
       }, {
         id: "valid",
         label: "Valides",
         render: row => {
           const total = Number(row.total || 0) || 1;
           const valid = Number(row.valid || 0);
-          return `${valid.toLocaleString("en-US")} (${(valid / total * 100).toFixed(1)}%)`;
+          return `${valid.toLocaleString("fr-FR")} (${(valid / total * 100).toFixed(1)}%)`;
         }
       }, {
         id: "spam",
@@ -1032,15 +1032,15 @@ export default function ReportSummaryCybersecurity({
         render: row => {
           const total = Number(row.total || 0) || 1;
           const spam = Number(row.spam || 0);
-          return `${spam.toLocaleString("en-US")} (${(spam / total * 100).toFixed(1)}%)`;
+          return `${spam.toLocaleString("fr-FR")} (${(spam / total * 100).toFixed(1)}%)`;
         }
       }, {
         id: "infected",
-        label: "Infected",
+        label: "Infecté",
         render: row => {
           const total = Number(row.total || 0) || 1;
           const infected = Number(row.infected || 0);
-          return `${infected.toLocaleString("en-US")} (${(infected / total * 100).toFixed(1)}%)`;
+          return `${infected.toLocaleString("fr-FR")} (${(infected / total * 100).toFixed(1)}%)`;
         }
       }, {
         id: "banned",
@@ -1048,7 +1048,7 @@ export default function ReportSummaryCybersecurity({
         render: row => {
           const total = Number(row.total || 0) || 1;
           const banned = Number(row.banned || 0);
-          return `${banned.toLocaleString("en-US")} (${(banned / total * 100).toFixed(1)}%)`;
+          return `${banned.toLocaleString("fr-FR")} (${(banned / total * 100).toFixed(1)}%)`;
         }
       }, {
         id: "spearphishing",
@@ -1056,15 +1056,15 @@ export default function ReportSummaryCybersecurity({
         render: row => {
           const total = Number(row.total || 0) || 1;
           const spearphishing = Number(row.spearphishing || 0);
-          return `${spearphishing.toLocaleString("en-US")} (${(spearphishing / total * 100).toFixed(1)}%)`;
+          return `${spearphishing.toLocaleString("fr-FR")} (${(spearphishing / total * 100).toFixed(1)}%)`;
         }
       }, {
         id: "pending",
-        label: "Pending",
+        label: "En attente",
         render: row => {
           const total = Number(row.total || 0) || 1;
           const pending = Number(row.pending || 0);
-          return `${pending.toLocaleString("en-US")} (${(pending / total * 100).toFixed(1)}%)`;
+          return `${pending.toLocaleString("fr-FR")} (${(pending / total * 100).toFixed(1)}%)`;
         }
       }]} />
 
@@ -1077,7 +1077,7 @@ export default function ReportSummaryCybersecurity({
         render: row => <span className={cyberStyles.cellBold}>{row._solutionName || "-"}</span>
       }, {
         id: "name",
-        label: "Name",
+        label: "Nom",
         render: row => `${row.firstName || ""} ${row.lastName || ""}`.trim() || "-"
       }, {
         id: "email",
@@ -1085,7 +1085,7 @@ export default function ReportSummaryCybersecurity({
         render: row => row.mainEmail || "-"
       }, {
         id: "status",
-        label: "Status",
+        label: "Statut",
         render: row => {
           const meta = getProtectionStatusMeta(row.protectionStatus);
           return <span style={{

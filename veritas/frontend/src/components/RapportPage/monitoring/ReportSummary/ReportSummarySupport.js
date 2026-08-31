@@ -1,11 +1,12 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { Icon as IconifyIcon } from "@iconify/react";
-import { fetchTickets } from "../../../../api/tickets";
+import { fetchTickets, fetchTicketCategories } from "../../../../api/tickets";
 import { fetchClientSupportCredits } from "../../../../api/clients";
 import { isDateWithinPeriod } from "../supervisionReportBuilder";
 import { isSalesTicket } from "../../../../utils/salesTicketUtils";
 import { computeSupportCreditTotals } from "../../../TicketPage/ticketClientSummaryUtils";
 import { formatClientSlaRows, getTicketSlaDisplay, parseClientSla, SLA_PRIORITY_LABELS } from "../../../../utils/ticketSlaUtils";
+import { getLocalizedEquipmentTypeLabel } from "../../../TicketPage/ticketEquipmentUtils";
 import infraStyles from "./ReportSummaryInfrastructure.module.css";
 import { ReportCategoryKpisBlock, ReportTableBlock } from "./ReportSummaryBlocks";
 import styles from "./ReportSummarySupport.module.css";
@@ -18,6 +19,81 @@ const STATUS_LABELS = {
   resolved: "Résolu",
   closed: "Clôturé"
 };
+
+const TYPE_LABELS = {
+  incident: "Incident",
+  demande: "Demande",
+  request: "Demande",
+  probleme: "Problème",
+  changement: "Changement"
+};
+
+function percent(part, total) {
+  if (!total) return 0;
+  return Math.round((part / total) * 100);
+}
+
+function countMap(items, keyFn) {
+  const map = {};
+  items.forEach(item => {
+    const key = keyFn(item);
+    if (!key) return;
+    map[key] = (map[key] || 0) + 1;
+  });
+  return Object.entries(map)
+    .map(([key, count]) => ({ key, count }))
+    .sort((a, b) => b.count - a.count || a.key.localeCompare(b.key, "fr"));
+}
+
+function getTicketEquipmentInfo(ticket) {
+  const info = ticket?.equipment_info || ticket?.equipmentInfo || null;
+  if (!info || typeof info !== "object") return { concerned: false };
+  if (info.concerned === false || info.concerned === "false" || info.concerned === 0) {
+    return { concerned: false };
+  }
+  const equipmentId = String(info.equipmentId || info.equipment_id || "").trim();
+  const source = String(info.source || "").trim() === "external" ? "external" : "veritas";
+  const name = String(info.name || "").trim();
+  const type = String(info.type || "").trim();
+  const brand = String(info.brand || "").trim();
+  const model = String(info.model || "").trim();
+  const serial = String(info.serial || "").trim();
+  const concerned =
+    info.concerned === true ||
+    info.concerned === "true" ||
+    Boolean(equipmentId) ||
+    Boolean(brand || model || serial);
+  if (!concerned) return { concerned: false };
+  const displayName =
+    source === "external"
+      ? [brand, model].filter(Boolean).join(" ") || serial || name || "Matériel externe"
+      : name || (equipmentId ? `Matériel #${equipmentId}` : "Matériel");
+  return { concerned: true, source, equipmentId, name: displayName, type, brand, model, serial };
+}
+
+function BreakdownList({ title, items, total }) {
+  if (!items.length) return null;
+  const max = Math.max(...items.map(item => item.count), 1);
+  return (
+    <div className={styles.breakdownCard}>
+      <h5 className={styles.breakdownTitle}>{title}</h5>
+      <ul className={styles.breakdownList}>
+        {items.map(item => (
+          <li key={item.key} className={styles.breakdownRow}>
+            <span className={styles.breakdownLabel} title={item.key}>{item.key}</span>
+            <span className={styles.breakdownTrack}>
+              <span className={styles.breakdownFill} style={{ width: `${(item.count / max) * 100}%` }} />
+            </span>
+            <span className={styles.breakdownCount}>
+              {item.count}
+              {total > 0 ? <span className={styles.breakdownPct}> {percent(item.count, total)}%</span> : null}
+            </span>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
 
 function formatDateFr(value) {
   if (!value) return "—";
@@ -88,6 +164,7 @@ export default function ReportSummarySupport({ client }) {
   const start = client?.reportStartDate;
   const end = client?.reportEndDate;
   const [tickets, setTickets] = useState([]);
+  const [categoryNames, setCategoryNames] = useState({});
   const [credits, setCredits] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -104,13 +181,21 @@ export default function ReportSummarySupport({ client }) {
       setLoading(true);
       setError(null);
       try {
-        const [ticketRows, creditSummary] = await Promise.all([
+        const [ticketRows, creditSummary, categories] = await Promise.all([
           fetchClientTickets(clientId, controller.signal).catch(() => []),
-          fetchClientSupportCredits(clientId, { signal: controller.signal }).catch(() => null)
+          fetchClientSupportCredits(clientId, { signal: controller.signal }).catch(() => null),
+          fetchTicketCategories({ signal: controller.signal }).catch(() => [])
         ]);
         if (cancelled || controller.signal.aborted) return;
         setTickets(Array.isArray(ticketRows) ? ticketRows.filter(t => !isSalesTicket(t)) : []);
         setCredits(creditSummary);
+        const names = {};
+        (Array.isArray(categories) ? categories : []).forEach(cat => {
+          const id = String(cat?.id || "").trim();
+          const name = String(cat?.name || "").trim();
+          if (id && name) names[id] = name;
+        });
+        setCategoryNames(names);
       } catch (err) {
         if (cancelled || err?.name === "AbortError") return;
         setError(err?.message || "Impossible de charger les statistiques support.");
@@ -146,23 +231,62 @@ export default function ReportSummarySupport({ client }) {
     [tickets]
   );
 
-  const byStatus = useMemo(() => {
-    const map = {};
-    createdInPeriod.forEach(t => {
-      const key = normalizeStatus(t.status || t.etat || "autre");
-      map[key] = (map[key] || 0) + 1;
-    });
-    return map;
-  }, [createdInPeriod]);
+  const categoryLabel = category => {
+    const raw = String(category || "").trim();
+    if (!raw) return "Non catégorisé";
+    return categoryNames[raw] || raw;
+  };
 
-  const byPriority = useMemo(() => {
-    const map = {};
-    createdInPeriod.forEach(t => {
-      const key = String(t.priority || t.priorite || "normal").toLowerCase();
-      map[key] = (map[key] || 0) + 1;
-    });
-    return map;
-  }, [createdInPeriod]);
+  const treatedCount = createdInPeriod.filter(t => isClosedStatus(t.status || t.etat)).length;
+  const withEquipment = createdInPeriod.filter(t => getTicketEquipmentInfo(t).concerned);
+  const uniqueEquipment = new Set();
+  withEquipment.forEach(t => {
+    const eq = getTicketEquipmentInfo(t);
+    uniqueEquipment.add(eq.equipmentId || `${eq.source}:${eq.name}:${eq.serial || ""}`);
+  });
+  const highPriorityCount = createdInPeriod.filter(t => {
+    const p = String(t.priority || t.priorite || "").toLowerCase();
+    return p === "high" || p === "urgent";
+  }).length;
+
+  const byCategory = useMemo(
+    () => countMap(createdInPeriod, t => categoryLabel(t.category)),
+    [createdInPeriod, categoryNames]
+  );
+  const byType = useMemo(
+    () =>
+      countMap(createdInPeriod, t => {
+        const raw = String(t.type || "").trim().toLowerCase();
+        const key = raw === "request" ? "demande" : raw;
+        return TYPE_LABELS[key] || key || "Non renseigné";
+      }),
+    [createdInPeriod]
+  );
+  const byStatus = useMemo(
+    () =>
+      countMap(createdInPeriod, t => {
+        const key = normalizeStatus(t.status || t.etat || "autre");
+        return STATUS_LABELS[key] || key;
+      }),
+    [createdInPeriod]
+  );
+  const byPriority = useMemo(
+    () =>
+      countMap(createdInPeriod, t => {
+        const key = String(t.priority || t.priorite || "normal").toLowerCase();
+        return SLA_PRIORITY_LABELS[key] || key;
+      }),
+    [createdInPeriod]
+  );
+  const byEquipmentType = useMemo(
+    () =>
+      countMap(withEquipment, t => {
+        const eq = getTicketEquipmentInfo(t);
+        if (eq.source === "external") return "Matériel externe";
+        return getLocalizedEquipmentTypeLabel(eq.type, "fr") || eq.type || "Type inconnu";
+      }),
+    [createdInPeriod]
+  );
 
   const sla = parseClientSla(client?.contrat);
   const slaRows = sla.enabled ? formatClientSlaRows(client?.contrat) : [];
@@ -186,11 +310,28 @@ export default function ReportSummarySupport({ client }) {
   const contrat = client?.contrat && typeof client.contrat === "object" ? client.contrat : {};
   const validity = contractTone(contrat);
   const periodLabel = start && end ? `${formatDateFr(start)} → ${formatDateFr(end)}` : "Période non définie";
+  const total = createdInPeriod.length;
 
   const kpiItems = [
-    { label: "Créés", value: createdInPeriod.length, icon: "mdi:ticket-outline", iconColor: "#0f766e" },
-    { label: "Résolus", value: resolvedInPeriod.length, icon: "mdi:check-circle-outline", iconColor: "#047857" },
-    { label: "Ouverts", value: openNow.length, icon: "mdi:progress-clock", iconColor: "#b45309" },
+    { label: "Créés", value: total, icon: "mdi:ticket-outline", iconColor: "#0f766e" },
+    {
+      label: "Traités / total",
+      value: `${treatedCount} / ${total}`,
+      hint: total ? `${percent(treatedCount, total)} % clôturés` : "Aucun ticket",
+      icon: "mdi:check-circle-outline",
+      iconColor: "#047857"
+    },
+    { label: "Encore ouverts", value: createdInPeriod.length - treatedCount, icon: "mdi:progress-clock", iconColor: "#b45309" },
+    { label: "Clôturés sur la période", value: resolvedInPeriod.length, hint: "Y compris créés avant", icon: "mdi:archive-check-outline", iconColor: "#1d4ed8" },
+    {
+      label: "Liés à du matériel",
+      value: withEquipment.length,
+      hint: total ? `${percent(withEquipment.length, total)} % · ${uniqueEquipment.size} équipement${uniqueEquipment.size > 1 ? "s" : ""}` : "Aucun ticket",
+      icon: "mdi:server-network",
+      iconColor: "#2b5fab"
+    },
+    { label: "Sans matériel", value: total - withEquipment.length, icon: "mdi:server-off", iconColor: "#64748b" },
+    { label: "Priorité haute", value: highPriorityCount, icon: "mdi:alert-circle-outline", iconColor: "#b91c1c" },
     slaStats
       ? {
           label: "SLA respectés",
@@ -200,21 +341,32 @@ export default function ReportSummarySupport({ client }) {
           iconColor: slaStats.breached > 0 ? "#b91c1c" : "#047857"
         }
       : {
-          label: "Priorité haute",
-          value: (byPriority.urgent || 0) + (byPriority.high || 0),
-          icon: "mdi:alert-circle-outline",
-          iconColor: "#b91c1c"
+          label: "Ouverts (tous)",
+          value: openNow.length,
+          hint: "Hors période, encore ouverts",
+          icon: "mdi:folder-open-outline",
+          iconColor: "#b45309"
         }
   ];
 
-  const ticketRows = createdInPeriod.slice(0, 40).map(t => {
+  const ticketRows = createdInPeriod.map(t => {
     const slaView = sla.enabled ? getTicketSlaDisplay(t, { clientContrat: client?.contrat }) : null;
+    const eq = getTicketEquipmentInfo(t);
+    const typeKey = String(t.type || "").trim().toLowerCase();
+    const equipmentLabel = eq.concerned
+      ? [eq.source === "external" ? "Externe" : getLocalizedEquipmentTypeLabel(eq.type, "fr") || eq.type, eq.name]
+          .filter(Boolean)
+          .join(" · ")
+      : "—";
     return {
       _rowKey: t.id || t.uuid || ticketCreatedAt(t),
       ref: t.ticket_number || t.ticketNumber || t.reference || t.ref || "—",
       subject: t.title || t.subject || t.sujet || "—",
+      category: categoryLabel(t.category),
+      type: TYPE_LABELS[typeKey === "request" ? "demande" : typeKey] || t.type || "—",
       status: STATUS_LABELS[normalizeStatus(t.status || t.etat)] || t.status || "—",
       priority: SLA_PRIORITY_LABELS[String(t.priority || "").toLowerCase()] || t.priority || "—",
+      equipment: equipmentLabel,
       created: formatDateFr(ticketCreatedAt(t)),
       sla: slaView && slaView.label && slaView.label !== "-" ? slaView.label : "—"
     };
@@ -223,8 +375,11 @@ export default function ReportSummarySupport({ client }) {
   const ticketColumns = [
     { id: "ref", label: "Réf." },
     { id: "subject", label: "Sujet" },
+    { id: "category", label: "Catégorie" },
+    { id: "type", label: "Type" },
     { id: "priority", label: "Priorité" },
     { id: "status", label: "Statut" },
+    { id: "equipment", label: "Matériel" },
     { id: "created", label: "Créé" },
     ...(sla.enabled ? [{ id: "sla", label: "SLA" }] : [])
   ];
@@ -247,13 +402,13 @@ export default function ReportSummarySupport({ client }) {
         {loading ? <div className={styles.state}>Chargement des tickets…</div> : null}
         {error ? <div className={infraStyles.sectionHelperMuted}>{error}</div> : null}
         <ReportCategoryKpisBlock items={kpiItems} />
-        {Object.keys(byStatus).length > 0 ? (
-          <div className={infraStyles.sectionHelperMuted}>
-            {Object.entries(byStatus)
-              .map(([status, count]) => `${STATUS_LABELS[status] || status} : ${count}`)
-              .join(" · ")}
-          </div>
-        ) : null}
+        <div className={styles.breakdownGrid}>
+          <BreakdownList title="Catégories" items={byCategory} total={total} />
+          <BreakdownList title="Types" items={byType} total={total} />
+          <BreakdownList title="Statuts" items={byStatus} total={total} />
+          <BreakdownList title="Priorités" items={byPriority} total={total} />
+          <BreakdownList title="Matériel concerné" items={byEquipmentType} total={withEquipment.length} />
+        </div>
         <ReportTableBlock
           title="Tickets créés sur la période"
           count={createdInPeriod.length}

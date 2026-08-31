@@ -620,7 +620,7 @@ export default function TenantDetailPage({
         </div> : null}
     </div>;
 
-  return <SolutionDetailPageLayout embedded={embedded} accent="microsoft" eyebrow={copy.hero.eyebrow} title={pageTitle} titleIcon="mdi:microsoft" subtitle={embedded ? (clientName || null) : subtitle} loading={loading && !syncing} refreshing={syncing} loadingMessage={syncStatus || (syncing ? copy.hero.syncing : copy.loading)} onRefresh={handleSync} refreshLabel={copy.hero.sync} extraActions={extraActions} footerHint={footerHint} navEntries={navEntries} activeSection={viewMode} onSectionChange={setViewMode} navAriaLabel={copy.tabs.aria}>
+  return <SolutionDetailPageLayout embedded={embedded} accent="microsoft" eyebrow={copy.hero.eyebrow} title={pageTitle} titleIcon="mdi:microsoft" subtitle={embedded ? (clientName || null) : subtitle} loading={loading && !syncing} refreshing={syncing} loadingMessage={syncStatus || (syncing ? copy.hero.syncing : copy.loading)} onRefresh={embedded ? undefined : handleSync} refreshLabel={copy.hero.sync} extraActions={extraActions} footerHint={footerHint} navEntries={navEntries} activeSection={viewMode} onSectionChange={setViewMode} navAriaLabel={copy.tabs.aria}>
       <div className={styles.tenantVars} key={viewMode}>
         {viewMode === "rapport" && !embedded ? <TenantReportOverview report={report} copy={copy} onOpenTab={setViewMode} /> : null}
         {viewMode === "licences" ? <LicensesTab licences={licences} dashboardMetrics={dashboardMetrics} theme="light" getLicenseDisplayName={getLicenseDisplayName} /> : null}

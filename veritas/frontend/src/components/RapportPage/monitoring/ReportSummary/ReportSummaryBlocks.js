@@ -25,7 +25,7 @@ export function ReportTableBlock({
   count,
   columns,
   rows,
-  emptyMessage = "No data.",
+  emptyMessage = "Aucune donnée.",
   wrapperClassName = ""
 }) {
   if (!Array.isArray(rows) || rows.length === 0) {

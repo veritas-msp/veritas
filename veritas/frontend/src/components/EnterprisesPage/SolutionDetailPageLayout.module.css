@@ -240,6 +240,8 @@
   gap: 0.75rem;
   min-height: 0;
   width: 100%;
+  flex: 1;
+  height: 100%;
 }
 
 .embeddedToolbar {
@@ -250,5 +252,7 @@
 }
 
 .viewsLayoutEmbedded {
-  min-height: 640px;
+  flex: 1;
+  min-height: 0;
+  height: 100%;
 }

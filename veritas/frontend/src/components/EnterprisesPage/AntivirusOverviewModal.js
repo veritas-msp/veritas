@@ -900,7 +900,7 @@ export function AntivirusOverviewPanel({
     const subtitle = client?.id && onNavigate ? <button type="button" className={styles.subtitleLink} onClick={openEnterprise}>
         {clientName}
       </button> : clientName;
-    return <SolutionDetailPageLayout embedded={embedded} accent="gravityzone" eyebrow="Cybersecurity · GravityZone" title={`Antivirus · ${companyName}`} titleIcon="simple-icons:bitdefender" subtitle={subtitle} loading={loading} refreshing={refreshing} loadingMessage="Loading GravityZone data…" onRefresh={() => loadDashboard({
+    return <SolutionDetailPageLayout embedded={embedded} accent="gravityzone" eyebrow="Cybersecurity · GravityZone" title={`Antivirus · ${companyName}`} titleIcon="simple-icons:bitdefender" subtitle={subtitle} loading={loading} refreshing={refreshing} loadingMessage="Loading GravityZone data…" onRefresh={embedded ? undefined : () => loadDashboard({
       persist: true
     })} refreshLabel="Refresh and save" footerHint={mappingLabel} navEntries={navEntries} activeSection={activeSection} onSectionChange={setActiveSection} navAriaLabel="Sections">
         {renderSectionContent()}

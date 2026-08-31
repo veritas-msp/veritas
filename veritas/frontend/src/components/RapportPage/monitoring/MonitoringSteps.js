@@ -15,7 +15,7 @@ import AntispamStep from "./steps/AntispamStep";
 import Office365Step from "./steps/Office365Step";
 import NDDStep from "./steps/NDDStep";
 import SummaryStep from "./steps/SummaryStep";
-import RecapStep from "./steps/RecapStep";
+import SupportStep from "./steps/SupportStep";
 import EquipmentEditModal from "./EquipmentEditModal";
 import { findEquipmentLocation } from "./equipmentPatchUtils";
 const AntivirusStepLazy = lazy(() => import("./steps/AntivirusStep"));
@@ -51,7 +51,7 @@ export const MODULE_LABELS = {
   Antispam: "Antispam",
   Office365: "Office 365",
   NDD: "Noms de domaine",
-  recap: "Récapitulatif",
+  support: "Support technique",
   summary: "Synthèse"
 };
 
@@ -68,7 +68,7 @@ export const MODULE_ICONS = {
   Antispam: "mdi:email-lock-outline",
   Office365: "mdi:microsoft-office",
   NDD: "mdi:web",
-  recap: "mdi:clipboard-text-outline",
+  support: "mdi:headset",
   summary: "mdi:file-chart-outline"
 };
 
@@ -193,7 +193,7 @@ export function countMonitoringModuleItems(client, stepKey) {
 
 export function isMonitoringStepEnabled(client, stepKey) {
   if (!client) return false;
-  if (stepKey === "recap" || stepKey === "summary") return true;
+  if (stepKey === "support" || stepKey === "summary") return true;
   const selected = Array.isArray(client.reportSelectedModules) ? client.reportSelectedModules : null;
   if (selected && !selected.includes(stepKey)) return false;
   return isMonitoringModuleAvailable(client, stepKey);
@@ -206,7 +206,7 @@ export function getEnabledMonitoringSteps(client) {
     return isMonitoringModuleAvailable(client, stepKey);
   });
   if (moduleSteps.length === 0) return [];
-  return [...moduleSteps, "recap", "summary"];
+  return [...moduleSteps, "support", "summary"];
 }
 
 export default function MonitoringSteps({
@@ -233,9 +233,7 @@ export default function MonitoringSteps({
   summaryContentRef = null,
   stockageReportState = null,
   onSetStorageReportState,
-  recapSnapshot = null,
-  commentsPane = null,
-  onCommentClick = null
+  commentsPane = null
 }) {
   const [internalIndex, setInternalIndex] = useState(0);
   const [isSyncingAntivirus, setIsSyncingAntivirus] = useState(false);
@@ -374,8 +372,8 @@ export default function MonitoringSteps({
         return <Office365Step client={client} reportPeriod={reportPeriod} onRefreshClient={onRefreshClient} onOpenComments={onOpenComments} onTicketCreatedForEquipment={onTicketCreatedForEquipment} commentCounts={equipmentCommentCounts} ticketCounts={equipmentTicketCounts} alertCounts={equipmentAlertCounts} highlightedEquipmentKey={highlightedEquipmentKey} />;
       case "NDD":
         return <NDDStep client={client} onRefreshClient={onRefreshClient} onOpenComments={onOpenComments} onTicketCreatedForEquipment={onTicketCreatedForEquipment} commentCounts={equipmentCommentCounts} ticketCounts={equipmentTicketCounts} alertCounts={equipmentAlertCounts} highlightedEquipmentKey={highlightedEquipmentKey} />;
-      case "recap":
-        return <RecapStep client={client} reportPeriod={reportPeriod} allCommentsChronological={allCommentsChronological} recapSnapshot={recapSnapshot} onCommentClick={onCommentClick} />;
+      case "support":
+        return <SupportStep client={client} reportPeriod={reportPeriod} />;
       case "summary":
         return <SummaryStep client={client} equipmentCheckMKData={equipmentCheckMKData} allComments={allCommentsChronological} equipmentComments={equipmentComments} equipmentCommentCounts={equipmentCommentCounts} equipmentTicketCounts={equipmentTicketCounts} stockageReportState={stockageReportState} summaryContentRef={summaryContentRef} />;
       default:

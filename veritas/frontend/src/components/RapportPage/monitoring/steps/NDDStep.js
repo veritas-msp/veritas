@@ -26,7 +26,7 @@ export default function NDDStep({
   const domaines = Array.isArray(client?.equipements?.NDD) ? client.equipements.NDD : [];
   const columns = [{
     id: "name",
-    label: "Domain name",
+    label: "Nom",
     render: domaine => {
       const name = getDomainName(domaine) || "-";
       return <span style={{
@@ -40,16 +40,16 @@ export default function NDDStep({
     }
   }, {
     id: "role",
-    label: "Role",
+    label: "Rôle",
     render: domaine => domaine.role || domaine.type || "-"
+  }, {
+    id: "registrar",
+    label: "Registrar",
+    render: domaine => domaine.registrar || domaine.registrarName || domaine.provider || "-"
   }, {
     id: "expiration",
     label: "Expiration",
     render: domaine => formatExpiration(domaine.expiration || domaine.expirationDate)
-  }, {
-    id: "registrar",
-    label: "Registrar / fournisseur",
-    render: domaine => domaine.registrar || domaine.registrarName || domaine.provider || "-"
   }];
   return <InfrastructureEquipmentTable title="Domain names" moduleKey="NDD" equipments={domaines} columns={columns} onOpenComments={onOpenComments} onCreateTicket={onTicketCreatedForEquipment} clientId={clientId} commentCounts={commentCounts} ticketCounts={ticketCounts} alertCounts={alertCounts} highlightedEquipmentKey={highlightedEquipmentKey} showSearch={false} externalLink={{
     url: "https://www.ovh.com/manager/#/web/domain",

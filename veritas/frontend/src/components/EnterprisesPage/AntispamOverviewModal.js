@@ -690,7 +690,7 @@ export function AntispamOverviewPanel({
           </button> : clientName}
         {` · ${mappingLabel}`}
       </>;
-    return <SolutionDetailPageLayout embedded={embedded} accent="mailinblack" eyebrow="Cybersecurity · Mailinblack Protect" title={`Antispam · ${customerName}`} titleIcon="mdi:email-secure-outline" subtitle={subtitle} loading={loading} refreshing={refreshing} loadingMessage="Loading des data Mailinblack…" onRefresh={() => loadDashboard({
+    return <SolutionDetailPageLayout embedded={embedded} accent="mailinblack" eyebrow="Cybersecurity · Mailinblack Protect" title={`Antispam · ${customerName}`} titleIcon="mdi:email-secure-outline" subtitle={subtitle} loading={loading} refreshing={refreshing} loadingMessage="Loading des data Mailinblack…" onRefresh={embedded ? undefined : () => loadDashboard({
       persist: true
     })} refreshLabel="Refresh and save" footerHint={`${mappingLabel}${customerId ? ` · ID ${customerId}` : ""}`} navEntries={navEntries} activeSection={activeSection} onSectionChange={setActiveSection} navAriaLabel="Sections">
         {renderSectionContent()}

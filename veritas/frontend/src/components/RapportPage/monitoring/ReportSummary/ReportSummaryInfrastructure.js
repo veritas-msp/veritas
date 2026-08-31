@@ -15,8 +15,8 @@ const HEALTH_COLORS = {
 const HEALTH_LABELS = {
   ok: "Sain",
   warn: "A surveiller",
-  critical: "Critical",
-  unsynced: "Not synchronized"
+  critical: "Critique",
+  unsynced: "Non synchronisé"
 };
 function formatDateFr(value) {
   if (!value) return "-";
@@ -361,19 +361,19 @@ function NotificationLegend({
 }) {
   return <div className={styles.notificationLegend}>
       <span className={styles.notificationLegendText}>
-        Notification badges:
+        Notification :
       </span>
       <span className={styles.notificationLegendItem}>
         <span className={`${styles.notificationDot} ${styles.notificationDotComment}`}>
           {commentTotal}
         </span>
-        Comments
+        Commentaires
       </span>
       <span className={styles.notificationLegendItem}>
         <span className={`${styles.notificationDot} ${styles.notificationDotTicket}`}>
           {ticketTotal}
         </span>
-        Tickets created
+        Tickets créés
       </span>
     </div>;
 }
@@ -419,10 +419,10 @@ function InfraTopologySection({
           </span>
           <div>
             <h4 className={styles.sectionTitle}>
-              Login internet et protection des pare-feu physiques
+              Accès Internet et pare-feu
             </h4>
             <div className={styles.sectionSubtitle}>
-              Event listing and availability rate
+              Liaisons, sites et disponibilité
             </div>
           </div>
         </div>
@@ -667,10 +667,10 @@ function ServersTopologySection({
           </span>
           <div>
             <h4 className={styles.sectionTitle}>
-              Physical and virtual servers
+              Serveurs physiques et virtuels
             </h4>
             <div className={styles.sectionSubtitle}>
-              Event listing and availability rate
+              Inventaire par site et disponibilité
             </div>
           </div>
         </div>
@@ -898,7 +898,7 @@ function CardsSection({
           label: "Capacity",
           value: r.capacite || r.capacity || "-"
         }, {
-          label: "Number of disks",
+          label: "Nombre de disques",
           value: r.nbDisquesActuels != null ? String(r.nbDisquesActuels) : r.disques ? String(r.disques.length) : "-"
         }];
       case "Switch":
@@ -910,20 +910,20 @@ function CardsSection({
     }
   };
   let headerTitle = title;
-  let headerSubtitle = "Health detail per equipment";
+  let headerSubtitle = "Détail par équipement";
   let headerIconColor = undefined;
   let headerIconNode = null;
   if (kind === "Storage") {
-    headerTitle = "NAS and SAN storage space";
-    headerSubtitle = "Event listing and availability rate";
+    headerTitle = "Stockage NAS et SAN";
+    headerSubtitle = "Inventaire et disponibilité";
     headerIconNode = <IoServerSharp size={34} color="#22c55e" />;
   } else if (kind === "Switch") {
     headerTitle = "Switch";
-    headerSubtitle = "Event listing and availability rate";
+    headerSubtitle = "Inventaire et disponibilité";
     headerIconNode = <FaEthernet size={34} color="#f97316" />;
   } else if (kind === "BorneWifi") {
     headerTitle = "Borne Wi-Fi";
-    headerSubtitle = "Event listing and availability rate";
+    headerSubtitle = "Inventaire et disponibilité";
     headerIconNode = <Icon path={mdiWifiMarker} size={1.4} color="#eab308" />;
   }
   return <section className={styles.section}>
@@ -1555,12 +1555,12 @@ export default function ReportSummaryInfrastructure({
       {modules.Servers && equipmentsByType.Servers.length > 0 && <ServersTopologySection equipments={equipmentsByType.Servers} />}
 
       {}
-      {modules.Storage && equipmentsByType.Storage.length > 0 && <CardsSection title="Storage topology" icon="mdi:harddisk" equipments={equipmentsByType.Storage} stockageReportState={stockageReportState} />}
+      {modules.Storage && equipmentsByType.Storage.length > 0 && <CardsSection title="Topologie stockage" icon="mdi:harddisk" equipments={equipmentsByType.Storage} stockageReportState={stockageReportState} />}
 
       {}
-      {modules.Switch && equipmentsByType.Switch.length > 0 && <CardsSection title="Switch health" icon="mdi:switch" equipments={equipmentsByType.Switch} />}
+      {modules.Switch && equipmentsByType.Switch.length > 0 && <CardsSection title="État des switchs" icon="mdi:switch" equipments={equipmentsByType.Switch} />}
 
       {}
-      {modules.BorneWifi && equipmentsByType.BorneWifi.length > 0 && <CardsSection title="Wi-Fi AP health" icon="mdi:access-point" equipments={equipmentsByType.BorneWifi} />}
+      {modules.BorneWifi && equipmentsByType.BorneWifi.length > 0 && <CardsSection title="État des bornes Wi-Fi" icon="mdi:access-point" equipments={equipmentsByType.BorneWifi} />}
     </div>;
 }

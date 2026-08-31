@@ -4,6 +4,7 @@ import InfrastructureEquipmentTable from "../InfrastructureEquipmentTable";
 import equipmentStyles from "../../../EquipementPage/EquipmentPage.module.css";
 import { formatInternetIpDisplay } from "../internetIpUtils";
 import { formatInternetDebitDisplay } from "../../../EquipementPage/internetConnectionUtils";
+import { buildHaColumn } from "../reportHaColumn";
 function getInternetConnectionIcon(item) {
   const type = (item?.type || "").toLowerCase();
   const nom = (item?.nom || item?.name || "").toLowerCase();
@@ -84,10 +85,6 @@ export default function InternetStep({
     id: "debit",
     label: "Débit",
     render: item => formatInternetDebitDisplay(item) || item.debit || item.bandwidth || "-"
-  }, {
-    id: "categorie",
-    label: "Catégorie",
-    render: item => item.categorie || "-"
-  }];
+  }, buildHaColumn(connexions, "Internet")];
   return <InfrastructureEquipmentTable title="Connexions Internet" moduleKey="Internet" equipments={connexions} columns={columns} onOpenComments={onOpenComments} onCreateTicket={onTicketCreatedForEquipment} onOpenCheckMKDetail={onOpenCheckMKDetail} onSyncCheckMK={onSyncCheckMK} syncingEquipmentKey={syncingEquipmentKey} clientId={client?.id ?? client?.uuid} commentCounts={commentCounts} ticketCounts={ticketCounts} alertCounts={alertCounts} highlightedEquipmentKey={highlightedEquipmentKey} reportPeriod={reportPeriod} monitoringSyncStatus={monitoringSyncStatus} equipmentCheckMKData={equipmentCheckMKData} onEditEquipment={onEditEquipment} />;
 }

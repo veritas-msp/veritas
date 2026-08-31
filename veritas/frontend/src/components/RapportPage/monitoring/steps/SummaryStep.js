@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useMemo } from "react";
 import { Icon as IconifyIcon } from "@iconify/react";
 import ReportSummaryInfrastructure from "../ReportSummary/ReportSummaryInfrastructure";
 import ReportSummaryCybersecurity from "../ReportSummary/ReportSummaryCybersecurity";
@@ -6,6 +6,47 @@ import ReportSummaryServices from "../ReportSummary/ReportSummaryServices";
 import ReportSummarySupport from "../ReportSummary/ReportSummarySupport";
 import styles from "../RapportMonitoringBuilder.module.css";
 import { isMonitoringStepEnabled } from "../MonitoringSteps";
+
+function formatDate(value) {
+  if (!value) return "";
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return String(value);
+  return d.toLocaleDateString("fr-FR");
+}
+
+function renderTextWithLinks(value) {
+  const text = String(value || "");
+  if (!text) return "";
+  const urlRegex = /(https?:\/\/[^\s]+)/g;
+  const parts = text.split(urlRegex);
+  return parts.map((part, idx) => {
+    if (urlRegex.test(part)) {
+      urlRegex.lastIndex = 0;
+      return (
+        <a key={idx} href={part} target="_blank" rel="noopener noreferrer">
+          {part}
+        </a>
+      );
+    }
+    return <span key={idx}>{part}</span>;
+  });
+}
+
+function SummaryChapter({ id, kicker, title, subtitle, tone, children }) {
+  return (
+    <section id={id} className={`${styles.summaryChapter} ${tone || ""}`.trim()}>
+      <header className={styles.summaryChapterHead}>
+        <span className={styles.summaryChapterKicker}>{kicker}</span>
+        <div>
+          <h3 className={styles.summaryChapterTitle}>{title}</h3>
+          {subtitle ? <p className={styles.summaryChapterSubtitle}>{subtitle}</p> : null}
+        </div>
+      </header>
+      {children}
+    </section>
+  );
+}
+
 export default function SummaryStep({
   client,
   equipmentCheckMKData = {},
@@ -16,210 +57,238 @@ export default function SummaryStep({
   stockageReportState = null,
   summaryContentRef = null
 }) {
-  const [activeTab, setActiveTab] = useState("overview");
-  const renderTextWithLinks = value => {
-    const text = String(value || "");
-    if (!text) return "";
-    const urlRegex = /(https?:\/\/[^\s]+)/g;
-    const parts = text.split(urlRegex);
-    return parts.map((part, idx) => {
-      if (urlRegex.test(part)) {
-        urlRegex.lastIndex = 0;
-        return <a key={idx} href={part} target="_blank" rel="noopener noreferrer" style={{
-          textDecoration: "underline"
-        }}>
-            {part}
-          </a>;
-      }
-      return <span key={idx}>{part}</span>;
+  const chapters = useMemo(() => {
+    if (!client) return [];
+    const items = [];
+    if (["Internet", "Firewall", "Servers", "Storage", "Switch", "BorneWifi", "TOIP"].some(stepKey => isMonitoringStepEnabled(client, stepKey))) {
+      items.push({
+        id: "rapport-infrastructure",
+        kicker: "01",
+        title: "Infrastructure",
+        subtitle: "Liaisons, serveurs, stockage, switchs et Wi-Fi — état du parc sur la période.",
+        tone: styles.summaryChapterInfra,
+        tocIcon: "mdi:lan"
+      });
+    }
+    if (["Backup", "Antivirus", "Antispam"].some(stepKey => isMonitoringStepEnabled(client, stepKey))) {
+      items.push({
+        id: "rapport-cybersecurite",
+        kicker: String(items.length + 1).padStart(2, "0"),
+        title: "Cybersécurité",
+        subtitle: "Sauvegardes, antivirus et antispam — couverture et activité.",
+        tone: styles.summaryChapterCyber,
+        tocIcon: "mdi:shield-lock-outline"
+      });
+    }
+    if (["Office365", "NDD"].some(stepKey => isMonitoringStepEnabled(client, stepKey))) {
+      items.push({
+        id: "rapport-services",
+        kicker: String(items.length + 1).padStart(2, "0"),
+        title: "Services",
+        subtitle: "Microsoft 365 et noms de domaine — licences, usage et échéances.",
+        tone: styles.summaryChapterServices,
+        tocIcon: "mdi:cloud-outline"
+      });
+    }
+    items.push({
+      id: "rapport-support",
+      kicker: String(items.length + 1).padStart(2, "0"),
+      title: "Support technique",
+      subtitle: "Tickets de la période, catégories, matériel concerné, contrat et SLA.",
+      tone: styles.summaryChapterSupport,
+      tocIcon: "mdi:headset"
     });
-  };
+    items.push({
+      id: "rapport-notes",
+      kicker: String(items.length + 1).padStart(2, "0"),
+      title: "Notes du rapport",
+      subtitle: "Commentaires ajoutés pendant la construction du rapport.",
+      tone: styles.summaryChapterNotes,
+      tocIcon: "mdi:comment-text-multiple-outline"
+    });
+    return items;
+  }, [client]);
+
   if (!client) {
-    return <div style={{
-      marginTop: "1.5rem"
-    }}>
-        <p>Select a client to display the report summary.</p>
-      </div>;
+    return (
+      <div className={styles.summaryDocument}>
+        <p>Sélectionnez un client pour afficher le rapport.</p>
+      </div>
+    );
   }
-  const formatDate = value => {
-    if (!value) return "";
-    const d = new Date(value);
-    if (Number.isNaN(d.getTime())) return String(value);
-    return d.toLocaleDateString("fr-FR");
-  };
+
   const startLabel = formatDate(client.reportStartDate);
   const endLabel = formatDate(client.reportEndDate);
-  const periodLabel = startLabel && endLabel ? `Période du rapport : ${startLabel} → ${endLabel}` : "";
+  const periodLabel = startLabel && endLabel ? `Du ${startLabel} au ${endLabel}` : "";
   const clientNumber = client?.code || client?.numeroClient || client?.id;
   const rawLabel = client?.name || client?.nom || clientNumber || "";
   const match = rawLabel.match(/^(\d{2,})-\s*(.*)$/);
   const clientPrefix = match ? match[1] : "";
   const clientMainLabel = match ? match[2] || rawLabel : rawLabel;
-  const hasInfra = ["Internet", "Firewall", "Servers", "Storage", "Switch", "BorneWifi", "TOIP"].some(stepKey => isMonitoringStepEnabled(client, stepKey));
-  const hasCyber = ["Backup", "Antivirus", "Antispam"].some(stepKey => isMonitoringStepEnabled(client, stepKey));
-  const hasServices = ["Office365", "NDD"].some(stepKey => isMonitoringStepEnabled(client, stepKey));
-  const availableTabs = ["overview"];
-  if (hasInfra) availableTabs.push("infra");
-  if (hasCyber) availableTabs.push("cyber");
-  if (hasServices) availableTabs.push("services");
-  availableTabs.push("support");
-  const fallbackTab = availableTabs[0] || null;
-  const currentTab = availableTabs.includes(activeTab) ? activeTab : fallbackTab;
-  return <div style={{
-    marginTop: "1.5rem"
-  }}>
-      <div className={styles.summaryHeader}>
+  const comments = Array.isArray(allComments) ? allComments : [];
+
+  const hasInfra = chapters.some(c => c.id === "rapport-infrastructure");
+  const hasCyber = chapters.some(c => c.id === "rapport-cybersecurite");
+  const hasServices = chapters.some(c => c.id === "rapport-services");
+
+  const scrollToTop = () => {
+    if (typeof window === "undefined") return;
+    const root = summaryContentRef?.current || null;
+    window.scrollTo({ top: 0, behavior: "smooth" });
+    const scrollingElement = document.scrollingElement || document.documentElement || document.body;
+    if (scrollingElement && typeof scrollingElement.scrollTo === "function") {
+      scrollingElement.scrollTo({ top: 0, behavior: "smooth" });
+    }
+    if (root && root.parentElement) {
+      let parent = root.parentElement;
+      while (parent) {
+        const style = window.getComputedStyle(parent);
+        const overflowY = style?.overflowY || "";
+        const isScrollable = (overflowY === "auto" || overflowY === "scroll") && parent.scrollHeight > parent.clientHeight;
+        if (isScrollable) {
+          parent.scrollTo({ top: 0, behavior: "smooth" });
+          break;
+        }
+        parent = parent.parentElement;
+      }
+    }
+  };
+
+  return (
+    <div className={styles.summaryDocument}>
+      <header className={styles.summaryCover} data-export-hide="true">
+        <p className={styles.summaryCoverBrand}>Rapport de supervision</p>
         <h2 className={styles.summaryClientTitle}>
-          {clientPrefix && <span className={styles.summaryClientNumber}>{clientPrefix}&nbsp;</span>}
+          {clientPrefix ? <span className={styles.summaryClientNumber}>{clientPrefix}&nbsp;</span> : null}
           {clientMainLabel}
         </h2>
-        {periodLabel && <p className={styles.summaryPeriodSubtitle}>{periodLabel}</p>}
-      </div>
+        {periodLabel ? <p className={styles.summaryPeriodSubtitle}>{periodLabel}</p> : null}
+        <p className={styles.summaryCoverLead}>
+          Document unique destiné au client : infrastructure, cybersécurité, services cloud et activité support sur la période.
+        </p>
+      </header>
 
-      <div className={styles.summaryReportWrapper}>
-        <div className={styles.summaryReportSeparator} />
-        {availableTabs.length > 0 && <div className={styles.summaryTabs}>
-            <button type="button" className={`${styles.summaryTab} ${styles.summaryTabInfra} ${currentTab === "overview" ? styles.summaryTabActive : ""}`} onClick={() => setActiveTab("overview")}>
-                RAPPORT DE SUPERVISION
-              </button>
-            {hasInfra && <button type="button" className={`${styles.summaryTab} ${styles.summaryTabInfra} ${currentTab === "infra" ? styles.summaryTabActive : ""}`} onClick={() => setActiveTab("infra")}>
-                INFRASTRUCTURE
-              </button>}
-            {hasCyber && <button type="button" className={`${styles.summaryTab} ${styles.summaryTabCyber} ${currentTab === "cyber" ? styles.summaryTabActive : ""}`} onClick={() => setActiveTab("cyber")}>
-                CYBERSÉCURITÉ
-              </button>}
-            {hasServices && <button type="button" className={`${styles.summaryTab} ${styles.summaryTabServices} ${currentTab === "services" ? styles.summaryTabActive : ""}`} onClick={() => setActiveTab("services")}>
-                SERVICES
-              </button>}
-            <button type="button" className={`${styles.summaryTab} ${styles.summaryTabSupport} ${currentTab === "support" ? styles.summaryTabActive : ""}`} onClick={() => setActiveTab("support")}>
-                SUPPORT
-              </button>
-          </div>}
-        <div className={`${styles.summaryReportTitle} ${currentTab === "cyber" ? styles.summaryReportCyber : currentTab === "services" ? styles.summaryReportServices : currentTab === "support" ? styles.summaryReportSupport : styles.summaryReportInfra}`}>
-          {currentTab === "overview" && "RAPPORT DE SUPERVISION"}
-          {currentTab === "infra" && "RAPPORT INFRASTRUCTURE"}
-          {currentTab === "cyber" && "RAPPORT CYBERSÉCURITÉ"}
-          {currentTab === "services" && "RAPPORT SERVICES"}
-          {currentTab === "support" && "RAPPORT SUPPORT"}
-        </div>
-      </div>
+      <div ref={summaryContentRef} className={styles.summaryExportRoot}>
+        <nav className={styles.summaryToc} aria-label="Sommaire du rapport">
+          {chapters.map(chapter => (
+            <a key={chapter.id} className={styles.summaryTocLink} href={`#${chapter.id}`}>
+              <IconifyIcon icon={chapter.tocIcon} width={16} height={16} aria-hidden />
+              <span>{chapter.title}</span>
+            </a>
+          ))}
+        </nav>
 
-      <div style={{
-      marginTop: "1.5rem"
-    }} ref={summaryContentRef}>
-        <div data-export-section="supervision" style={{
-        display: currentTab === "overview" ? "block" : "none"
-      }}>
-          <p style={{
-          margin: "0 0 1rem",
-          color: "#4b5563",
-          fontSize: "0.95rem"
-        }}>
-            Synthèse unique couvrant l’infrastructure, la continuité, la cybersécurité, les services cloud,
-            les tickets support et les alertes de supervision sur la période sélectionnée.
-          </p>
-          {hasInfra && <ReportSummaryInfrastructure client={client} equipmentCheckMKData={equipmentCheckMKData} equipmentComments={equipmentComments} equipmentCommentCounts={equipmentCommentCounts} equipmentTicketCounts={equipmentTicketCounts} stockageReportState={stockageReportState} />}
-          {hasCyber && <div style={{
-          marginTop: "1.5rem"
-        }}>
-              <ReportSummaryCybersecurity client={client} equipmentCheckMKData={equipmentCheckMKData} equipmentComments={equipmentComments} equipmentCommentCounts={equipmentCommentCounts} equipmentTicketCounts={equipmentTicketCounts} />
-            </div>}
-          {hasServices && <div style={{
-          marginTop: "1.5rem"
-        }}>
-              <ReportSummaryServices client={client} equipmentComments={equipmentComments} equipmentCommentCounts={equipmentCommentCounts} equipmentTicketCounts={equipmentTicketCounts} />
-            </div>}
-        </div>
-        {hasInfra && <div data-export-section="infrastructure" style={{
-        display: currentTab === "infra" ? "block" : "none"
-      }}>
-            <ReportSummaryInfrastructure client={client} equipmentCheckMKData={equipmentCheckMKData} equipmentComments={equipmentComments} equipmentCommentCounts={equipmentCommentCounts} equipmentTicketCounts={equipmentTicketCounts} stockageReportState={stockageReportState} />
-          </div>}
-        {hasCyber && <div data-export-section="cybersecurite" style={{
-        display: currentTab === "cyber" ? "block" : "none"
-      }}>
-            <ReportSummaryCybersecurity client={client} equipmentCheckMKData={equipmentCheckMKData} equipmentComments={equipmentComments} equipmentCommentCounts={equipmentCommentCounts} equipmentTicketCounts={equipmentTicketCounts} />
-          </div>}
-        {hasServices && <div data-export-section="services" style={{
-        display: currentTab === "services" ? "block" : "none"
-      }}>
-            <ReportSummaryServices client={client} equipmentComments={equipmentComments} equipmentCommentCounts={equipmentCommentCounts} equipmentTicketCounts={equipmentTicketCounts} />
-          </div>}
-        <div data-export-section="support" style={{
-        display: currentTab === "support" ? "block" : "none"
-      }}>
-            <ReportSummarySupport client={client} />
-          </div>
+        {hasInfra ? (
+          <SummaryChapter
+            id="rapport-infrastructure"
+            kicker={chapters.find(c => c.id === "rapport-infrastructure")?.kicker}
+            title="Infrastructure"
+            subtitle="Liaisons, serveurs, stockage, switchs et Wi-Fi — état du parc sur la période."
+            tone={styles.summaryChapterInfra}
+          >
+            <ReportSummaryInfrastructure
+              client={client}
+              equipmentCheckMKData={equipmentCheckMKData}
+              equipmentComments={equipmentComments}
+              equipmentCommentCounts={equipmentCommentCounts}
+              equipmentTicketCounts={equipmentTicketCounts}
+              stockageReportState={stockageReportState}
+            />
+          </SummaryChapter>
+        ) : null}
 
-        <section className={styles.reportCommentsContainer} data-export-comments="true">
-          <div className={styles.reportCommentsHeader}>
-            <IconifyIcon icon="mdi:comment-text-multiple-outline" width={20} height={20} />
-            <h4 className={styles.reportCommentsTitle}>Commentaires du rapport</h4>
-          </div>
+        {hasCyber ? (
+          <SummaryChapter
+            id="rapport-cybersecurite"
+            kicker={chapters.find(c => c.id === "rapport-cybersecurite")?.kicker}
+            title="Cybersécurité"
+            subtitle="Sauvegardes, antivirus et antispam — couverture et activité."
+            tone={styles.summaryChapterCyber}
+          >
+            <ReportSummaryCybersecurity
+              client={client}
+              equipmentCheckMKData={equipmentCheckMKData}
+              equipmentComments={equipmentComments}
+              equipmentCommentCounts={equipmentCommentCounts}
+              equipmentTicketCounts={equipmentTicketCounts}
+            />
+          </SummaryChapter>
+        ) : null}
 
-          {Array.isArray(allComments) && allComments.length > 0 ? <div className={styles.reportCommentsList}>
-              {allComments.map(comment => {
-            const isEquipment = comment.scope === "equipment";
-            let moduleLabel = "";
-            let equipmentLabel = "";
-            if (isEquipment && comment.moduleKey) {
-              moduleLabel = `[${comment.moduleKey}]`;
-            }
-            if (isEquipment && comment.referenceLabel) {
-              const ref = String(comment.referenceLabel);
-              const parts = ref.split("·");
-              equipmentLabel = parts[parts.length - 1].trim();
-            }
-            const contextLabel = [moduleLabel, equipmentLabel].filter(Boolean).join(" ");
-            const linkedLabel = isEquipment ? contextLabel || "Périphérique" : "Commentaire général";
-            const dateLabel = comment.createdAt ? new Date(comment.createdAt).toLocaleString("fr-FR") : "";
-            return <article key={isEquipment ? `eq-${comment.equipmentKey}-${comment.id}` : `gen-${comment.id}`} className={styles.reportCommentCard}>
+        {hasServices ? (
+          <SummaryChapter
+            id="rapport-services"
+            kicker={chapters.find(c => c.id === "rapport-services")?.kicker}
+            title="Services"
+            subtitle="Microsoft 365 et noms de domaine — licences, usage et échéances."
+            tone={styles.summaryChapterServices}
+          >
+            <ReportSummaryServices
+              client={client}
+              equipmentComments={equipmentComments}
+              equipmentCommentCounts={equipmentCommentCounts}
+              equipmentTicketCounts={equipmentTicketCounts}
+            />
+          </SummaryChapter>
+        ) : null}
+
+        <SummaryChapter
+          id="rapport-support"
+          kicker={chapters.find(c => c.id === "rapport-support")?.kicker}
+          title="Support technique"
+          subtitle="Tickets de la période, catégories, matériel concerné, contrat et SLA."
+          tone={styles.summaryChapterSupport}
+        >
+          <ReportSummarySupport client={client} />
+        </SummaryChapter>
+
+        <section id="rapport-notes" className={`${styles.summaryChapter} ${styles.summaryChapterNotes}`} data-export-comments="true">
+          <header className={styles.summaryChapterHead}>
+            <span className={styles.summaryChapterKicker}>{chapters.find(c => c.id === "rapport-notes")?.kicker}</span>
+            <div>
+              <h3 className={styles.summaryChapterTitle}>Notes du rapport</h3>
+              <p className={styles.summaryChapterSubtitle}>Commentaires ajoutés pendant la construction du rapport.</p>
+            </div>
+          </header>
+          {comments.length > 0 ? (
+            <div className={styles.reportCommentsList}>
+              {comments.map(comment => {
+                const isEquipment = comment.scope === "equipment";
+                let moduleLabel = "";
+                let equipmentLabel = "";
+                if (isEquipment && comment.moduleKey) moduleLabel = `[${comment.moduleKey}]`;
+                if (isEquipment && comment.referenceLabel) {
+                  const parts = String(comment.referenceLabel).split("·");
+                  equipmentLabel = parts[parts.length - 1].trim();
+                }
+                const linkedLabel = isEquipment
+                  ? [moduleLabel, equipmentLabel].filter(Boolean).join(" ") || "Équipement"
+                  : "Note générale";
+                const dateLabel = comment.createdAt ? new Date(comment.createdAt).toLocaleString("fr-FR") : "";
+                return (
+                  <article
+                    key={isEquipment ? `eq-${comment.equipmentKey}-${comment.id}` : `gen-${comment.id}`}
+                    className={styles.reportCommentCard}
+                  >
                     <div className={styles.reportCommentMeta}>
-                      {dateLabel} - {linkedLabel}
+                      {dateLabel ? `${dateLabel} — ${linkedLabel}` : linkedLabel}
                     </div>
                     <div className={styles.reportCommentBody}>
                       {renderTextWithLinks(comment.text || comment.content || "")}
                     </div>
-                  </article>;
-          })}
-            </div> : <div className={styles.reportCommentsEmpty}>
-              Aucun commentaire ajouté pour cette période.
-            </div>}
+                  </article>
+                );
+              })}
+            </div>
+          ) : (
+            <div className={styles.reportCommentsEmpty}>Aucune note ajoutée pour cette période.</div>
+          )}
         </section>
       </div>
 
-      <button type="button" className={styles.scrollTopButton} onClick={() => {
-      if (typeof window === "undefined") return;
-      const root = summaryContentRef?.current || null;
-      window.scrollTo({
-        top: 0,
-        behavior: "smooth"
-      });
-      const scrollingElement = document.scrollingElement || document.documentElement || document.body;
-      if (scrollingElement && typeof scrollingElement.scrollTo === "function") {
-        scrollingElement.scrollTo({
-          top: 0,
-          behavior: "smooth"
-        });
-      }
-      if (root && root.parentElement) {
-        let parent = root.parentElement;
-        while (parent) {
-          const style = window.getComputedStyle(parent);
-          const overflowY = style?.overflowY || "";
-          const isScrollable = (overflowY === "auto" || overflowY === "scroll") && parent.scrollHeight > parent.clientHeight;
-          if (isScrollable) {
-            parent.scrollTo({
-              top: 0,
-              behavior: "smooth"
-            });
-            break;
-          }
-          parent = parent.parentElement;
-        }
-      }
-    }} aria-label="Back to top of report">
+      <button type="button" className={styles.scrollTopButton} data-export-hide="true" onClick={scrollToTop} aria-label="Haut du rapport">
         ↑
       </button>
-    </div>;
+    </div>
+  );
 }

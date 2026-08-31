@@ -17,6 +17,7 @@ import ReportSyncProgressModal from "./monitoring/ReportSyncProgressModal";
 import { buildSupervisionSyncJobs, runSupervisionSyncJobs, fillSyncCopy } from "./monitoring/supervisionReportSync";
 import { applyEquipmentPatchToEquipements } from "./monitoring/equipmentPatchUtils";
 import { buildCheckMKCacheEntry, buildCheckMKReportSnapshot, collectCheckMKMappedEquipment, computeCheckMKEquipmentStatus, deriveServicesFromPeriodEvents, filterCheckMKEventsForReportPeriod, getCheckmkHostName, getCheckmkSite, preserveCheckmkMappingsOnEquipements, resolveCheckMKEquipmentKey } from "./monitoring/checkmkReportCacheUtils";
+import { getCheckMKServices } from "../../api/equipment";
 import { fetchTickets } from "../../api/tickets";
 import { fetchSupervisionAlertsHistory } from "../../api/supervisionAlerts";
 import { isSupervisionReportBuilderType } from "./monitoring/supervisionReportBuilder";
@@ -432,7 +433,7 @@ export default function ReportPage({
   const builderSteps = useMemo(() => builderClient ? getEnabledMonitoringSteps(builderClient) : [], [builderClient]);
   const currentBuilderStepKey = builderSteps[builderStepIndex] || null;
   const currentBuilderStepLabel = MODULE_LABELS[currentBuilderStepKey] || currentBuilderStepKey || "Étape";
-  const showBuilderCommentsPane = Boolean(currentBuilderStepKey && currentBuilderStepKey !== "recap" && currentBuilderStepKey !== "summary");
+  const showBuilderCommentsPane = Boolean(currentBuilderStepKey && currentBuilderStepKey !== "support" && currentBuilderStepKey !== "summary");
   useEffect(() => {
     setActiveCommentsTarget(prev => {
       if (!prev) return prev;
@@ -461,24 +462,6 @@ export default function ReportPage({
     setHighlightedEquipmentKey(null);
     setPendingEquipmentComment("");
     setEditingComment(null);
-  };
-  const handleFocusEquipmentFromComment = (moduleKey, equipmentKey, comment) => {
-    if (!builderClient || !isSupervisionReportBuilderType(builderType)) return;
-    const stepsArray = getEnabledMonitoringSteps(builderClient);
-    const targetIndex = stepsArray.findIndex(k => k === moduleKey);
-    if (targetIndex >= 0) {
-      setBuilderStepIndex(targetIndex);
-    }
-    const label = comment?.referenceLabel || equipmentKey;
-    setActiveCommentsTarget({
-      moduleKey,
-      equipmentKey,
-      equipment: {
-        nom: label,
-        name: label
-      }
-    });
-    setHighlightedEquipmentKey(equipmentKey);
   };
   const handleRefreshBuilderClient = async (fromClient = null) => {
     const source = fromClient && (fromClient.id || fromClient.uuid) ? fromClient : builderClient;
@@ -516,13 +499,17 @@ export default function ReportPage({
       start: startIso,
       end: endIso
     };
-    const reportPeriodResp = await getCheckMKReportPeriodData(hostName, startIso, endIso, site).catch(() => null);
+    const [reportPeriodResp, servicesResp] = await Promise.all([
+      getCheckMKReportPeriodData(hostName, startIso, endIso, site).catch(() => null),
+      getCheckMKServices(hostName, startIso, endIso, site).catch(() => null)
+    ]);
     const rawEvents = reportPeriodResp?.events?.events ?? reportPeriodResp?.events ?? [];
     const eventsList = Array.isArray(rawEvents) ? rawEvents : [];
     const periodEvents = filterCheckMKEventsForReportPeriod(eventsList, reportPeriod);
     const criticalEvents = periodEvents.filter(event => Number(event?.state) === 2);
     const availability = reportPeriodResp?.availability?.availability ?? reportPeriodResp?.availability ?? null;
-    const periodServices = deriveServicesFromPeriodEvents(periodEvents);
+    const liveServices = Array.isArray(servicesResp?.services) ? servicesResp.services : null;
+    const periodServices = liveServices != null ? liveServices : deriveServicesFromPeriodEvents(periodEvents);
     const parsed = {
       services: periodServices,
       events: periodEvents,
@@ -1006,16 +993,16 @@ export default function ReportPage({
   };
   const handleDownloadZip = async () => {
     if (!builderClient) {
-      toast.error("No client selected.");
+      toast.error("Aucun client sélectionné.");
       return;
     }
     try {
       await exportReportAsZIP(summaryContentRef, {
         client: builderClient
       });
-      toast.success("ZIP download started.");
+      toast.success("Téléchargement du rapport lancé.");
     } catch (err) {
-      toast.error(err?.message || "Error during export.");
+      toast.error(err?.message || "Erreur pendant l’export.");
     }
   };
   const handleOverwriteConfirm = async () => {
@@ -1390,7 +1377,6 @@ export default function ReportPage({
                     activeStepIndex={builderStepIndex}
                     onStepChange={setBuilderStepIndex}
                     onOpenComments={handleOpenEquipmentComments}
-                    onCommentClick={handleFocusEquipmentFromComment}
                     onRefreshClient={handleRefreshBuilderClient}
                     onEquipmentSaved={handleReportEquipmentSaved}
                     equipmentCommentCounts={equipmentCommentCounts}

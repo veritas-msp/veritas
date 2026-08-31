@@ -2,6 +2,7 @@ import React from "react";
 import { Icon } from "@iconify/react";
 import InfrastructureEquipmentTable from "../InfrastructureEquipmentTable";
 import { getCheckmkMapping } from "../checkmkReportCacheUtils";
+import { buildHaColumn } from "../reportHaColumn";
 import equipmentStyles from "../../../EquipementPage/EquipmentPage.module.css";
 import { formatDateFr as formatMaintenanceDateFr, getExpirationStatus, getExpirationStatusColor, getMaintenanceLicenseExpiration } from "../../../EquipementPage/constants/firewallLicenceUtils";
 function formatDateFr(value) {
@@ -56,7 +57,10 @@ function normalizeFirewall(fw) {
     is_active: fw.is_active,
     checkmk_host_name: fw.checkmk_host_name ?? nested.checkmk_host_name ?? fw.checkmkMapping?.checkmk_host_name ?? null,
     checkmk_site: fw.checkmk_site ?? nested.checkmk_site ?? fw.checkmkMapping?.checkmk_site ?? null,
-    checkmk_service_name: fw.checkmk_service_name ?? nested.checkmk_service_name ?? fw.checkmkMapping?.checkmk_service_name ?? null
+    checkmk_service_name: fw.checkmk_service_name ?? nested.checkmk_service_name ?? fw.checkmkMapping?.checkmk_service_name ?? null,
+    modeHA: fw.modeHA ?? nested.modeHA,
+    roleHA: fw.roleHA ?? nested.roleHA,
+    firewallHAName: fw.firewallHAName ?? nested.firewallHAName
   };
   normalized.checkmkMapping = getCheckmkMapping(normalized);
   return normalized;
@@ -81,7 +85,7 @@ export default function FirewallStep({
   const firewalls = raw.map(normalizeFirewall);
   const columns = [{
     id: "name",
-    label: "Name",
+    label: "Nom",
     render: fw => <div className={equipmentStyles.nameCell}>
           <Icon icon="mdi:shield-outline" className={equipmentStyles.typeIconSmall} width={16} height={16} />
           <span className={equipmentStyles.internetCellBold}>
@@ -94,11 +98,11 @@ export default function FirewallStep({
     render: fw => fw.location || fw.site || "-"
   }, {
     id: "ip",
-    label: "IP address",
+    label: "IP",
     render: fw => fw.ip || "-"
-  }, {
+  }, buildHaColumn(firewalls, "Firewalls"), {
     id: "vlan",
-    label: "Vlan",
+    label: "VLAN",
     render: fw => fw.vlan || "-"
   }, {
     id: "manufacturer",
@@ -106,7 +110,7 @@ export default function FirewallStep({
     render: fw => fw.manufacturer || fw.fabricant || fw.marque || "-"
   }, {
     id: "model",
-    label: "Model",
+    label: "Modèle",
     render: fw => <span className={equipmentStyles.internetCellBold}>
           {fw.model || fw.modele || "-"}
         </span>
@@ -120,11 +124,11 @@ export default function FirewallStep({
     render: fw => fw.firmware || "-"
   }, {
     id: "expirationGarantie",
-    label: "Date de garantie",
+    label: "Garantie",
     render: fw => <ExpirationDateCell value={fw.expirationGarantie || fw.garantie} />
   }, {
     id: "maintenanceLicense",
-    label: "Maintenance license date",
+    label: "Licence de maintenance",
     render: fw => <ExpirationDateCell value={getMaintenanceLicenseExpiration(fw.licences)} formatFn={v => formatMaintenanceDateFr(v) || "-"} />
   }];
   return <InfrastructureEquipmentTable title="Firewalls" moduleKey="Firewall" equipments={firewalls} columns={columns} onOpenComments={onOpenComments} onCreateTicket={onTicketCreatedForEquipment} onOpenCheckMKDetail={onOpenCheckMKDetail} clientId={client?.id ?? client?.uuid} onSyncCheckMK={onSyncCheckMK} syncingEquipmentKey={syncingEquipmentKey} commentCounts={commentCounts} ticketCounts={ticketCounts} alertCounts={alertCounts} highlightedEquipmentKey={highlightedEquipmentKey} reportPeriod={reportPeriod} monitoringSyncStatus={monitoringSyncStatus} equipmentCheckMKData={equipmentCheckMKData} onEditEquipment={onEditEquipment} />;

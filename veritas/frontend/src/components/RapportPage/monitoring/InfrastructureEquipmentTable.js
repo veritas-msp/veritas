@@ -3,8 +3,7 @@ import { Icon } from "@iconify/react";
 import equipmentStyles from "../../EquipementPage/EquipmentPage.module.css";
 import styles from "./RapportMonitoringBuilder.module.css";
 import { MonitoringStepHeader } from "./MonitoringStepLayout";
-import { isEquipmentMappedForCheckMK, getCheckMKCachedData } from "./checkmkReportCacheUtils";
-import { getSupervisionColumnMeta } from "./supervisionReportInsights";
+import { isEquipmentMappedForCheckMK, getCheckMKCachedData, countCheckMKMonitoredServices } from "./checkmkReportCacheUtils";
 
 function InsightCountCell({ count, tone = "neutral", emptyLabel = "—" }) {
   const n = Number(count) || 0;
@@ -18,15 +17,14 @@ function InsightCountCell({ count, tone = "neutral", emptyLabel = "—" }) {
   );
 }
 
-function SupervisionStatusCell({ item, monitoringSyncStatus, equipmentCheckMKData }) {
-  const meta = getSupervisionColumnMeta(item, monitoringSyncStatus, equipmentCheckMKData);
-  if (!meta.mapped) {
+function MonitoredServicesCell({ item, equipmentKey, equipmentCheckMKData }) {
+  const count = countCheckMKMonitoredServices(getCheckMKCachedData(equipmentCheckMKData, item, equipmentKey));
+  if (count == null) {
     return <span className={styles.insightMuted}>—</span>;
   }
   return (
-    <span className={`${styles.insightSupervision} ${styles[`insightSupervision_${meta.tone}`] || ""}`} title={meta.hostName || undefined}>
-      {meta.label}
-      {meta.events > 0 ? ` · ${meta.events}` : ""}
+    <span className={`${styles.insightCount} ${styles.insightCount_service}`} title="Services monitorés">
+      {count}
     </span>
   );
 }
@@ -76,49 +74,38 @@ export default function InfrastructureEquipmentTable({
   const displayColumns = useMemo(() => {
     const base = Array.isArray(columns) ? columns : [];
     if (!showInsightColumns) return base;
-    const insightCols = [
-      {
-        id: "__insight_tickets",
-        label: "Tickets",
+    const showServicesColumn = typeof onOpenCheckMKDetail === "function";
+    const insightCols = [];
+    if (showServicesColumn) {
+      insightCols.push({
+        id: "__insight_services",
+        label: "Services",
         render: (item, ctx) => (
-          <InsightCountCell
-            count={ticketCounts?.[ctx.equipmentKey] || 0}
-            tone="ticket"
-          />
-        )
-      },
-      {
-        id: "__insight_alerts",
-        label: "Alertes",
-        render: (item, ctx) => (
-          <InsightCountCell
-            count={alertCounts?.[ctx.equipmentKey] || 0}
-            tone="alert"
-          />
-        )
-      },
-      {
-        id: "__insight_supervision",
-        label: "Supervision",
-        render: item => (
-          <SupervisionStatusCell
+          <MonitoredServicesCell
             item={item}
-            monitoringSyncStatus={monitoringSyncStatus}
+            equipmentKey={ctx.equipmentKey}
             equipmentCheckMKData={equipmentCheckMKData}
           />
         )
-      }
-    ];
+      });
+    }
+    insightCols.push({
+      id: "__insight_tickets",
+      label: "Tickets",
+      render: (item, ctx) => (
+        <InsightCountCell
+          count={ticketCounts?.[ctx.equipmentKey] || 0}
+          tone="ticket"
+        />
+      )
+    });
     return [...base, ...insightCols];
-  }, [columns, showInsightColumns, ticketCounts, alertCounts, monitoringSyncStatus, equipmentCheckMKData]);
+  }, [columns, showInsightColumns, ticketCounts, equipmentCheckMKData, onOpenCheckMKDetail]);
 
-  const getMonitoringButtonClass = (isMappedForMonitoring, syncStatus) => {
+  const getMonitoringButtonClass = (isMappedForMonitoring) => {
     const base = equipmentStyles.mappingActionButton;
     if (!isMappedForMonitoring) return base;
-    if (syncStatus === "ok") return `${base} ${equipmentStyles.mappingActionButtonActive}`;
-    if (syncStatus === "warn") return `${base} ${styles.monitoringBtnWarn}`;
-    if (syncStatus === "critical") return `${base} ${styles.monitoringBtnCritical}`;
-    return `${base} ${styles.monitoringBtnUnsynced}`;
+    return `${base} ${styles.monitoringBtnMapped}`;
   };
 
   const countLabel = safeEquipments.length === 0 ? emptyMessage || "No equipment found for this module." : totalCountLabel || `${safeEquipments.length} equipment item(s) in total`;
@@ -169,7 +156,7 @@ export default function InfrastructureEquipmentTable({
                       {showActions && <td className={styles.infraTableActions} onClick={e => e.stopPropagation()}>
                         <div className={equipmentStyles.mappingActions}>
                           <div className={equipmentStyles.mappingActionsGroup}>
-                            {hasMonitoringAction && <button type="button" className={getMonitoringButtonClass(isMappedForMonitoring, syncStatus)} title={isMappedForMonitoring ? (syncStatus ? "Voir le détail supervision" : "Synchronisation en cours ou à lancer — ouvrir le détail") : "Non mappé à une supervision"} disabled={!isMappedForMonitoring} onClick={() => onOpenCheckMKDetail(item, {
+                            {hasMonitoringAction && <button type="button" className={getMonitoringButtonClass(isMappedForMonitoring)} title={isMappedForMonitoring ? (syncStatus ? "Voir le détail supervision" : "Synchronisation en cours ou à lancer — ouvrir le détail") : "Non mappé à une supervision"} disabled={!isMappedForMonitoring} onClick={() => onOpenCheckMKDetail(item, {
                         moduleKey,
                         equipmentKey,
                         reportPeriod
