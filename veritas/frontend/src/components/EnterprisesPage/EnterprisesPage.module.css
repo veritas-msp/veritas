@@ -925,7 +925,29 @@
 
 .colCompany {
   min-width: 10rem;
-  max-width: 18rem;
+  max-width: 22rem;
+}
+
+.companyCell {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  min-width: 0;
+}
+
+.onboardingBadge {
+  display: inline-flex;
+  align-items: center;
+  flex-shrink: 0;
+  padding: 0.12rem 0.45rem;
+  border-radius: 999px;
+  background: rgba(180, 83, 9, 0.14);
+  color: #92400e;
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  white-space: nowrap;
 }
 
 .colCompanyStatus {
@@ -1647,5 +1669,10 @@
 
 :global(html.dark) .dataTable tbody td.expiryDate_suspended,
 :global(html.dark) .expiryDate.expiryDate_suspended {
+  color: #fbbf24;
+}
+
+:global(html.dark) .onboardingBadge {
+  background: rgba(251, 191, 36, 0.16);
   color: #fbbf24;
 }

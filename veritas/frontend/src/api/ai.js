@@ -37,6 +37,29 @@ export async function suggestTicketReplyAi({
   });
   return handleResponse(response);
 }
+export async function correctTicketTextAi({
+  text,
+  ticketId = null,
+  internal = false,
+  locale = "fr",
+  mode = "enrich"
+}) {
+  const response = await fetch(`${API_BASE_URL}/ai/correct-text`, {
+    method: "POST",
+    credentials: "include",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({
+      text,
+      ticketId,
+      internal,
+      locale,
+      mode
+    })
+  });
+  return handleResponse(response);
+}
 export async function suggestTicketResolveAi({
   ticketId,
   interventionType = null,
@@ -162,7 +185,8 @@ export async function generateTicketRunbookAi({
 export async function generateDashboardBriefingAi({
   stats,
   source = "home",
-  locale = "fr"
+  locale = "fr",
+  scopeKey = ""
 }) {
   const response = await fetch(`${API_BASE_URL}/ai/dashboard-briefing`, {
     method: "POST",
@@ -173,8 +197,27 @@ export async function generateDashboardBriefingAi({
     body: JSON.stringify({
       stats,
       source,
-      locale
+      locale,
+      scopeKey
     })
+  });
+  return handleResponse(response);
+}
+export async function fetchAiBriefings({
+  featureKey,
+  scopeKey = "",
+  limit = 50
+} = {}) {
+  const params = new URLSearchParams({
+    featureKey: String(featureKey || ""),
+    scopeKey: String(scopeKey || ""),
+    limit: String(limit)
+  });
+  const response = await fetch(`${API_BASE_URL}/ai/briefings?${params}`, {
+    credentials: "include",
+    headers: {
+      "Content-Type": "application/json"
+    }
   });
   return handleResponse(response);
 }

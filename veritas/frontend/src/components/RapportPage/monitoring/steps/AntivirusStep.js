@@ -5,6 +5,8 @@ import API_BASE_URL from "../../../../config";
 import InfrastructureEquipmentTable from "../InfrastructureEquipmentTable";
 import equipmentStyles from "../../../EquipementPage/EquipmentPage.module.css";
 import styles from "../RapportMonitoringBuilder.module.css";
+import { AntivirusOverviewPanel } from "../../../EnterprisesPage/AntivirusOverviewModal";
+import { normalizeAntivirusItem } from "../../../EnterprisesPage/antivirusSolutionUtils";
 import { MonitoringStepShell, MonitoringStepSubsectionHeader } from "../MonitoringStepLayout";
 function getAuthHeaders() {
   return {};
@@ -344,8 +346,8 @@ function SolutionDetailBlock({
       {endpointList.length > 0 && <section className={styles.antivirusEndpointsSection}>
           <MonitoringStepSubsectionHeader title={`Endpoints (${sortedEndpoints.length}${endpointList.length !== sortedEndpoints.length ? ` / ${endpointList.length}` : ""})`} searchValue={endpointSearch} onSearchChange={setEndpointSearch} onSearchClear={() => setEndpointSearch("")} searchPlaceholder="Search (name, FQDN, IP, OS, type)..." />
           <div className={equipmentStyles.hardwarePageEmbedded}>
-            <div className={`${equipmentStyles.tableWrapper} ${styles.antivirusEndpointsTableWrapper}`}>
-            <table className={equipmentStyles.equipmentTable}>
+            <div className={`${equipmentStyles.tableWrapperEmbedded} ${styles.antivirusEndpointsTableWrapper}`}>
+            <table className={equipmentStyles.equipmentTableEmbedded}>
               <thead>
                 <tr>
                   {[{
@@ -403,7 +405,7 @@ function SolutionDetailBlock({
                 const infected = isEndpointInfected(ep, enriched);
                 const endpointState = enriched?.endpointState ?? ep.endpointState;
                 const statusLabel = endpointState === 1 || ep.isManaged ? "Active" : "Inactive";
-                return <tr key={`${String(ep.id ?? "ep")}-${idx}-${ep.fqdn ?? ep.name ?? ""}`} className={equipmentStyles.equipmentRow}>
+                return <tr key={`${String(ep.id ?? "ep")}-${idx}-${ep.fqdn ?? ep.name ?? ""}`} className={`${equipmentStyles.equipmentRow} ${equipmentStyles.equipmentRowEmbedded}`}>
                       <td>
                         <span style={{
                       display: "inline-flex",
@@ -557,8 +559,8 @@ export default function AntivirusStep({
   } else if (rawAntivirus && Array.isArray(rawAntivirus.solutions)) {
     solutions = rawAntivirus.solutions;
   }
-  const antivirusList = solutions.map(normalizeAntivirus);
-  const solutionsWithCompany = useMemo(() => antivirusList.filter(s => s.companyId ?? s.syncData?.company?.id), [antivirusList]);
+  const antivirusList = solutions.map(sol => normalizeAntivirusItem(normalizeAntivirus(sol)) || normalizeAntivirus(sol));
+  const solutionsWithCompany = useMemo(() => antivirusList.filter(s => s.companyId), [antivirusList]);
   const columns = [{
     id: "solution",
     label: "Solution",
@@ -764,18 +766,27 @@ export default function AntivirusStep({
     }
   };
   return <MonitoringStepShell>
-      <InfrastructureEquipmentTable title="Antivirus" moduleKey="Antivirus" equipments={antivirusList} columns={columns} onOpenComments={onOpenComments} onCreateTicket={onTicketCreatedForEquipment} clientId={client?.id ?? client?.uuid} onSyncCheckMK={handleSyncCheckMK} commentCounts={commentCounts} ticketCounts={ticketCounts} alertCounts={alertCounts} highlightedEquipmentKey={highlightedEquipmentKey} reportPeriod={reportPeriod} syncingEquipmentKey={syncingKey} forceSyncButton={true} showSearch={false} externalLink={{
+      <InfrastructureEquipmentTable title="Antivirus" moduleKey="Antivirus" equipments={antivirusList} columns={columns} onOpenComments={onOpenComments} onCreateTicket={onTicketCreatedForEquipment} clientId={client?.id ?? client?.uuid} commentCounts={commentCounts} ticketCounts={ticketCounts} alertCounts={alertCounts} highlightedEquipmentKey={highlightedEquipmentKey} reportPeriod={reportPeriod} showSearch={false} externalLink={{
       url: "https://gravityzone.bitdefender.com/",
       title: "Open Bitdefender GravityZone"
     }} />
 
       {solutionsWithCompany.map(solution => {
-      const companyId = solution.companyId ?? solution.syncData?.company?.id;
+      const item = normalizeAntivirusItem(solution) || solution;
+      const companyId = item.companyId;
+      return <div key={companyId || getSolutionName(solution)} className={styles.solutionOverviewEmbed}>
+            <AntivirusOverviewPanel active embedded client={{
+          id: client?.id ?? client?.uuid,
+          name: client?.name || client?.nom
+        }} antivirusItem={item} onSynced={typeof onRefreshClient === "function" ? onRefreshClient : undefined} />
+          </div>;
+    })}
+      {antivirusList.filter(sol => !sol.companyId).map(solution => {
       const enrichedEndpointsSource = Array.isArray(solution.syncData?.endpoints?.list) && solution.syncData.endpoints.list || Array.isArray(solution.syncData?.endpoints) && solution.syncData.endpoints || Array.isArray(solution.endpoints) && solution.endpoints || [];
-      const enrichedEndpoints = enrichedEndpointsSource;
       const policiesList = solution.syncData?.policies || solution.data?.policies || solution.policies || [];
-      return <div key={companyId || getSolutionName(solution)}>
-            <SolutionDetailBlock solution={solution} enrichedEndpoints={enrichedEndpoints} policiesList={policiesList} endpointSearch={endpointSearch} setEndpointSearch={setEndpointSearch} endpointSort={endpointSort} setEndpointSort={setEndpointSort} />
+      if (!enrichedEndpointsSource.length && !extractPoliciesList(policiesList).length) return null;
+      return <div key={getSolutionName(solution)}>
+            <SolutionDetailBlock solution={solution} enrichedEndpoints={enrichedEndpointsSource} policiesList={policiesList} endpointSearch={endpointSearch} setEndpointSearch={setEndpointSearch} endpointSort={endpointSort} setEndpointSort={setEndpointSort} />
           </div>;
     })}
     </MonitoringStepShell>;

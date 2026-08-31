@@ -15,7 +15,7 @@ export function isBackupJobMapped(job) {
   const mapping = job.checkmkMapping;
   if (mapping?.checkmk_host_name || mapping?.checkmk_service_name) return true;
   const raw = job.rawData;
-  return !!(raw?.checkmk_host_name || raw?.checkmk_service_name);
+  return !!(job.checkmk_host_name || job.checkmk_service_name || raw?.checkmk_host_name || raw?.checkmk_service_name);
 }
 export function getBackupJobStatus(job) {
   if (!job || job.type !== 'job') return 'ok';

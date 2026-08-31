@@ -60,7 +60,7 @@
 .sectionTitle {
   margin: 0;
   font-size: 0.72rem;
-  font-weight: 700;
+  font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.06em;
   color: var(--msp-muted);

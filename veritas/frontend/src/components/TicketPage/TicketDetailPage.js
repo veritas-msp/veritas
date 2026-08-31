@@ -11,6 +11,7 @@ import heroStyles from "../EnterprisesPage/EnterpriseDetailPage.module.css";
 import styles from "./TicketDetailPage.module.css";
 import fs from "./TicketCreatePage.module.css";
 import SmartTooltip from "../SmartTooltip";
+import ClientOnboardingBadge from "../Misc/ClientOnboardingBadge/ClientOnboardingBadge";
 import UserAvatar from "../shared/UserAvatar/UserAvatar";
 import TicketExclusionModal from "./TicketExclusionModal";
 import TicketSplitModal from "./TicketSplitModal";
@@ -20,12 +21,15 @@ import TicketValidationBanner from "./TicketValidationBanner";
 import TicketResolveModal from "./TicketResolveModal";
 import TicketReopenModal from "./TicketReopenModal";
 import TicketConfirmModal from "./TicketConfirmModal";
+import TicketInsertLinkModal, { captureEditorSelection, insertLinkHtml, restoreEditorSelection } from "./TicketInsertLinkModal";
 import ProFeaturePromoModal from "../Misc/ProFeature/ProFeaturePromoModal";
 import TicketAiRunbookPanel from "./TicketAiRunbookPanel";
+import TicketEmojiPicker from "./TicketEmojiPicker";
+import TicketAiEnrichMenu from "./TicketAiEnrichMenu";
 import { createEvent, updateEvent, deleteEvent, fetchEvents } from "../../api/events";
 import { buildReminderEventPayload } from "../../utils/ticketReminderEvent";
 import { addTicketAssignee, addTicketComment, addTicketCommentWithAttachments, addLinkedTicket, addTicketTag, addTicketWatcher, createTicketValidationRequest, deleteTicket, fetchTicketCategories, fetchTicket, fetchTickets, fetchSalesForm, permanentlyDeleteTicket, removeTicketTag, removeTicketAssignee, removeTicketWatcher, respondTicketValidationRequest, restoreTicket, updateTicket, updateTicketComment, deleteTicketComment, updateTicketStatus, updateTicketValidationRequest, resolveTicketWithValidation } from "../../api/tickets";
-import { fetchAiStatus, suggestTicketReplyAi } from "../../api/ai";
+import { fetchAiStatus, suggestTicketReplyAi, correctTicketTextAi } from "../../api/ai";
 import API_BASE_URL from "../../config";
 import { sanitizeTicketCommentHtml } from "../../utils/sanitizeHtml";
 import { contentLooksLikeHtml } from "../../utils/incomingEmailContent";
@@ -843,7 +847,6 @@ function buildLinkedTicketsFromComments(comments = []) {
   });
   return Array.from(map.values());
 }
-const EMOJI_OPTIONS = ["😊", "👍", "🙏", "✅", "❗", "🔥", "🎉", "📌", "💡", "🚀", "😅", "😢"];
 const MAX_ATTACHMENT_SIZE_BYTES = 15 * 1024 * 1024;
 const ALLOWED_ATTACHMENT_EXTENSIONS = new Set([".pdf", ".jpg", ".jpeg", ".png", ".doc", ".docx", ".csv", ".xls", ".xlsx", ".mp4", ".3gp", ".mp3", ".mpeg", ".ogg", ".aac", ".amr", ".m4a"]);
 const ATTACHMENT_ACCEPT = ".pdf,.jpg,.jpeg,.png,.doc,.docx,.csv,.xls,.xlsx,.mp4,.3gp,.mp3,.mpeg,.ogg,.aac,.amr,.m4a";
@@ -1106,6 +1109,10 @@ export default function TicketDetailPage({
     ticketRunbook: false
   });
   const [aiSuggestLoading, setAiSuggestLoading] = useState(false);
+  const [aiCorrectLoading, setAiCorrectLoading] = useState(false);
+  const [linkModalOpen, setLinkModalOpen] = useState(false);
+  const [linkModalText, setLinkModalText] = useState("");
+  const linkSelectionRef = useRef({ range: null, text: "" });
   const titleInputRef = useRef(null);
   const descriptionTextareaRef = useRef(null);
   const [tagDraft, setTagDraft] = useState("");
@@ -1207,7 +1214,6 @@ export default function TicketDetailPage({
   const activeSideConversationPopupRef = useRef(null);
   const [newSideConversationPopupStyle, setNewSideConversationPopupStyle] = useState(null);
   const [activeSideConversationPopupStyle, setActiveSideConversationPopupStyle] = useState(null);
-  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [replyBoxExpanded, setReplyBoxExpanded] = useState(() => {
     try {
       const stored = localStorage.getItem(REPLY_BOX_EXPANDED_KEY);
@@ -1967,21 +1973,19 @@ export default function TicketDetailPage({
     runEditorCommand("insertUnorderedList");
   };
   const insertLink = () => {
-    const defaultUrl = copy.prompts.linkUrlDefault;
-    const urlInput = window.prompt(copy.prompts.linkUrl, copy.prompts.linkUrlDefault);
-    if (!urlInput) return;
-    const rawUrl = String(urlInput).trim();
-    if (!rawUrl) return;
-    const normalizedUrl = normalizeHttpUrl(rawUrl);
-    if (!normalizedUrl) {
-      toast.error(copy.toasts.invalidUrl);
-      return;
-    }
-    runEditorCommand("createLink", normalizedUrl);
+    const captured = captureEditorSelection(commentEditorRef.current);
+    linkSelectionRef.current = captured;
+    setLinkModalText(captured.text);
+    setLinkModalOpen(true);
+  };
+  const handleInsertLink = ({ url, text }) => {
+    restoreEditorSelection(commentEditorRef.current, linkSelectionRef.current.range);
+    insertLinkHtml(commentEditorRef.current, url, text || linkSelectionRef.current.text);
+    if (commentEditorRef.current) setCommentDraft(commentEditorRef.current.innerHTML || "");
+    setLinkModalOpen(false);
   };
   const insertEmoji = (emoji = "😊") => {
     runEditorCommand("insertText", `${emoji}`);
-    setShowEmojiPicker(false);
   };
   const applyCommentTemplate = templateId => {
     setCommentTemplateSelection(templateId);
@@ -3264,6 +3268,51 @@ export default function TicketDetailPage({
       setAiSuggestLoading(false);
     }
   }, [ticketId, aiSuggestLoading, isReadOnly, aiFeatures.suggestReply, canAiSuggest, expandReplyBox, commentInternal, locale, copy.toasts.aiSuggestError, copy.toasts.aiSuggestOk]);
+  const handleCorrectTextAi = useCallback(async (mode = "enrich") => {
+    if (aiCorrectLoading || aiSuggestLoading || isReadOnly || !aiFeatures.suggestReply || !canAiSuggest) return;
+    const html = String(commentEditorRef.current?.innerHTML || commentDraft || "").trim();
+    const plain = html
+      .replace(/<br\s*\/?>/gi, "\n")
+      .replace(/<\/(p|div|li|h[1-6])>/gi, "\n")
+      .replace(/<[^>]*>/g, " ")
+      .replace(/&nbsp;/gi, " ")
+      .replace(/\s+/g, " ")
+      .trim();
+    if (!plain) {
+      toast.error(copy.toasts.aiCorrectEmpty);
+      return;
+    }
+    setAiCorrectLoading(true);
+    try {
+      expandReplyBox();
+      const data = await correctTicketTextAi({
+        text: html,
+        ticketId,
+        internal: commentInternal,
+        locale,
+        mode
+      });
+      const corrected = String(data?.text || "").trim();
+      if (!corrected) {
+        toast.error(copy.toasts.aiCorrectError);
+        return;
+      }
+      const asHtml = /<[a-z][\s\S]*>/i.test(corrected) ? corrected : corrected.replace(/\n/g, "<br>");
+      const safeHtml = sanitizeTicketCommentHtml(asHtml) || asHtml;
+      setCommentDraft(safeHtml);
+      requestAnimationFrame(() => {
+        if (!commentEditorRef.current) return;
+        commentEditorRef.current.innerHTML = safeHtml;
+        commentEditorRef.current.focus();
+      });
+      const normalize = value => String(value || "").replace(/<[^>]*>/g, " ").replace(/&nbsp;/gi, " ").replace(/\s+/g, " ").trim().toLowerCase();
+      toast.success(normalize(safeHtml) === normalize(html) ? copy.toasts.aiCorrectUnchanged : copy.toasts.aiCorrectOk);
+    } catch (err) {
+      toast.error(err.message || copy.toasts.aiCorrectError);
+    } finally {
+      setAiCorrectLoading(false);
+    }
+  }, [aiCorrectLoading, aiSuggestLoading, isReadOnly, aiFeatures.suggestReply, canAiSuggest, commentDraft, commentInternal, ticketId, expandReplyBox, locale, copy.toasts.aiCorrectEmpty, copy.toasts.aiCorrectError, copy.toasts.aiCorrectOk, copy.toasts.aiCorrectUnchanged]);
   const knowledgeBaseUrl = String(generalSettings?.app_knowledge_base_url || "").trim();
   const hasKnowledgeBase = /^https?:\/\//i.test(knowledgeBaseUrl);
   const deleteConfirmConfig = useMemo(() => {
@@ -4227,6 +4276,7 @@ export default function TicketDetailPage({
             <Icon icon="mdi:office-building-outline" aria-hidden />
             {breadcrumbClientLabel}
           </span>}
+        {!isSalesTicketDetail ? <ClientOnboardingBadge client={ticketClient} label={copy.header.onboardingBadge} /> : null}
         {!isSalesTicketDetail && !isCommunity && ticket && ticketSlaView.label && ticketSlaView.label !== "-" ? <>
             <span className={styles.ticketHeroMetaDot} aria-hidden>
               ·
@@ -4829,22 +4879,41 @@ export default function TicketDetailPage({
                           <button type="button" className={styles.toolBtn} onClick={insertBulletList} title={copy.reply.toolList}>
                             <Icon icon="mdi:format-list-bulleted" />
                           </button>
-                          <button type="button" className={styles.toolBtn} onClick={insertLink} title={copy.reply.toolLink}>
+                          <button type="button" className={styles.toolBtn} onMouseDown={event => event.preventDefault()} onClick={insertLink} title={copy.reply.toolLink}>
                             <Icon icon="mdi:link-variant" />
                           </button>
-                          <button type="button" className={styles.toolBtn} onClick={() => setShowEmojiPicker(prev => !prev)} title={copy.reply.toolEmoji}>
-                            <Icon icon="mdi:emoticon-outline" />
-                          </button>
-                          {aiFeatures.suggestReply && canAiSuggest ? <SmartTooltip content={copy.reply.suggestAiTitle}>
-                              <button type="button" className={styles.toolBtn} onClick={handleSuggestReplyAi} disabled={aiSuggestLoading} title={copy.reply.suggestAiTitle} aria-label={copy.reply.suggestAiTitle}>
-                                <Icon icon={aiSuggestLoading ? "mdi:loading" : "mdi:creation"} className={aiSuggestLoading ? styles.aiToolSpin : undefined} aria-hidden />
-                              </button>
-                            </SmartTooltip> : null}
-                          {showEmojiPicker && <div className={styles.emojiMenu}>
-                              {EMOJI_OPTIONS.map(emoji => <button key={emoji} type="button" className={styles.emojiBtn} onClick={() => insertEmoji(emoji)} title={emoji}>
-                                  {emoji}
-                                </button>)}
-                            </div>}
+                          <TicketEmojiPicker
+                            onSelect={insertEmoji}
+                            title={copy.reply.toolEmoji}
+                            searchPlaceholder={copy.reply.emojiSearch}
+                            emptyLabel={copy.reply.emojiEmpty}
+                            recentLabel={copy.reply.emojiRecent}
+                            categoryLabels={{
+                              smileys: copy.reply.emojiSmileys,
+                              gestures: copy.reply.emojiGestures,
+                              people: copy.reply.emojiPeople,
+                              animals: copy.reply.emojiAnimals,
+                              food: copy.reply.emojiFood,
+                              travel: copy.reply.emojiTravel,
+                              objects: copy.reply.emojiObjects,
+                              symbols: copy.reply.emojiSymbols
+                            }}
+                          />
+                          {aiFeatures.suggestReply && canAiSuggest ? <>
+                              <span className={styles.aiToolSep} aria-hidden />
+                              <TicketAiEnrichMenu
+                                copy={copy.reply}
+                                loading={aiCorrectLoading}
+                                disabled={aiSuggestLoading}
+                                onSelect={handleCorrectTextAi}
+                              />
+                              <span className={styles.aiToolSep} aria-hidden />
+                              <SmartTooltip content={copy.reply.suggestAiTitle}>
+                                <button type="button" className={styles.toolBtn} onClick={handleSuggestReplyAi} disabled={aiSuggestLoading || aiCorrectLoading} title={copy.reply.suggestAiTitle} aria-label={copy.reply.suggestAiTitle}>
+                                  <Icon icon={aiSuggestLoading ? "mdi:loading" : "mdi:creation"} className={aiSuggestLoading ? styles.aiToolSpin : undefined} aria-hidden />
+                                </button>
+                              </SmartTooltip>
+                            </> : null}
                         </div>
                         <label className={styles.uploadBtn}>
                           <Icon icon="mdi:paperclip" />
@@ -5504,6 +5573,7 @@ export default function TicketDetailPage({
       <TicketReopenModal open={reopenModalOpen} ticket={ticket} copy={copy.reopenModal} saving={reopeningTicket} onClose={() => !reopeningTicket && setReopenModalOpen(false)} onConfirm={confirmReopenTicket} />
 
       <TicketConfirmModal open={Boolean(deleteConfirmConfig)} title={deleteConfirmConfig?.title} message={deleteConfirmConfig?.message} confirmLabel={deleteConfirmConfig?.confirmLabel} variant="danger" icon={deleteConfirmConfig?.icon} loading={deletingTicket} onClose={closeDeleteConfirm} onConfirm={confirmDeleteTicket} />
+      <TicketInsertLinkModal open={linkModalOpen} copy={copy.reply} initialText={linkModalText} onClose={() => setLinkModalOpen(false)} onInsert={handleInsertLink} />
 
       <ContactFormModal open={contactModalOpen} initialContact={contactModalInitial} clients={clients} defaultClientId={contactModalInitial?.client_id || ticket?.client_id || editForm.clientId || null} onClose={closeContactModal} onSuccess={handleQuickAddRequesterContactSaved} />
       <TicketLinkRequesterEmailModal open={linkRequesterEmailModalOpen} email={orphanRequesterEmail} contacts={contacts} copy={copy} onClose={() => setLinkRequesterEmailModalOpen(false)} onLinked={handleRequesterEmailLinked} />

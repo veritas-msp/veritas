@@ -62,11 +62,13 @@ const MonitoringRenderContent = ({
     }
     return !!editData;
   });
+  const onMonitoringReportGuardChangeRef = useRef(onMonitoringReportGuardChange);
+  onMonitoringReportGuardChangeRef.current = onMonitoringReportGuardChange;
   useEffect(() => {
     const active = gatePassed && !!monitoringConfig;
-    onMonitoringReportGuardChange?.(active);
-    return () => onMonitoringReportGuardChange?.(false);
-  }, [gatePassed, monitoringConfig, onMonitoringReportGuardChange]);
+    onMonitoringReportGuardChangeRef.current?.(active);
+    return () => onMonitoringReportGuardChangeRef.current?.(false);
+  }, [gatePassed, monitoringConfig]);
   useEffect(() => {
     const loadClients = async () => {
       try {

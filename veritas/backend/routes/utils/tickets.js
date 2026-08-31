@@ -3701,7 +3701,10 @@ router.post("/:id/resolve-with-validation", verifyJWT, requirePermission("ticket
     if (!result) return res.status(404).json({
       error: "Ticket not found"
     });
-    const ticket = await getTicketById(req.params.id);
+    const ticket = await getTicketById(req.params.id).catch(loadErr => {
+      console.error("POST /tickets/:id/resolve-with-validation reload:", loadErr);
+      return null;
+    });
     res.status(201).json(ticket || result);
   } catch (err) {
     if (err?.code === "INSUFFICIENT_SUPPORT_CREDITS") {

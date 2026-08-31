@@ -8,9 +8,13 @@ import { toast } from "react-toastify";
 import { useAppLocale } from "../../hooks/useAppGeneralSettings";
 import { useCan } from "../../contexts/PermissionsContext";
 import { interpolate } from "../../i18n/translate";
+import { formatPageInfo } from "../../i18n/commonI18n";
+import { useCommonCopy } from "../../hooks/useCommonCopy";
+import { useDefaultPageSize } from "../../hooks/useDefaultPageSize";
 import { createKnowledgeArticle, createKnowledgeFolder, deleteKnowledgeArticle, deleteKnowledgeArticles, deleteKnowledgeFolder, fetchKnowledgeArticles, fetchKnowledgeCategories, fetchKnowledgeFolders, moveKnowledgeArticles, updateKnowledgeFolder } from "../../api/knowledgeBase";
 import ConfirmModal from "../Misc/ConfirmModal/ConfirmModal";
 import MspPageHero from "../Misc/MspPageHero/MspPageHero";
+import SmartTooltip from "../SmartTooltip";
 import cyberStyles from "../CybersecuritePage/CybersecuritePage.module.css";
 import layout from "../EnterprisesPage/EnterprisesPage.module.css";
 import { getKnowledgeBaseCopy } from "./knowledgeBaseI18n";
@@ -52,6 +56,9 @@ export default function KnowledgeBasePage({ onNavigate }) {
   const articleMode = articleMatch?.mode || "read";
   const locale = useAppLocale();
   const copy = useMemo(() => getKnowledgeBaseCopy(locale), [locale]);
+  const common = useCommonCopy();
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useDefaultPageSize();
   const [pageGuideOpen, setPageGuideOpen] = useState(false);
   const openPageGuide = useCallback(() => setPageGuideOpen(true), []);
   useRegisterPageGuide(openPageGuide);
@@ -274,6 +281,19 @@ export default function KnowledgeBasePage({ onNavigate }) {
   const drafts = articles.filter(row => row.status === "draft").length;
   const published = articles.filter(row => row.status === "published").length;
   const selectedCount = selected.size;
+  const totalPages = Math.max(1, Math.ceil(articles.length / pageSize) || 1);
+  const paginatedArticles = useMemo(() => {
+    const start = (currentPage - 1) * pageSize;
+    return articles.slice(start, start + pageSize);
+  }, [articles, currentPage, pageSize]);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [search, status, currentFolder, categoryFilter, pageSize]);
+
+  useEffect(() => {
+    if (currentPage > totalPages) setCurrentPage(totalPages);
+  }, [currentPage, totalPages]);
 
   if (articleId) {
     return (
@@ -306,7 +326,7 @@ export default function KnowledgeBasePage({ onNavigate }) {
           </button>
         ) : null}
       />
-      <main className={cyberStyles.mspContent}>
+      <main className={`${cyberStyles.mspContent} ${cyberStyles.mspContentList}`}>
         <div className={styles.content}>
           <div className={styles.kpiRow} data-guide="kb-kpis">
             <div className={styles.kpiCard}>
@@ -332,7 +352,7 @@ export default function KnowledgeBasePage({ onNavigate }) {
             </div>
           </div>
           <div className={styles.contentSplit}>
-            <div data-guide="kb-folders">
+            <div className={styles.folderColumn} data-guide="kb-folders">
             <KnowledgeFolderTree
               copy={copy}
               tree={folderTree}
@@ -426,7 +446,7 @@ export default function KnowledgeBasePage({ onNavigate }) {
             </div>
           ) : (
             <div className={styles.list} data-guide="kb-list">
-              {articles.map(article => (
+              {paginatedArticles.map(article => (
                 <div key={article.id} className={`${styles.card} ${canDelete || canEdit ? styles.cardWithSelect : ""}`}>
                   {canDelete || canEdit ? (
                     <input
@@ -526,6 +546,51 @@ export default function KnowledgeBasePage({ onNavigate }) {
               ))}
             </div>
           )}
+          {!loading && articles.length > 0 ? (
+            <div className={styles.paginationBar}>
+              <div className={layout.paginationLeft}>
+                <span className={layout.paginationLabel}>{common.perPage}</span>
+                <select
+                  className={layout.paginationSelect}
+                  value={pageSize}
+                  onChange={event => setPageSize(Number(event.target.value))}
+                  aria-label={common.perPage}
+                >
+                  <option value={10}>10</option>
+                  <option value={25}>25</option>
+                  <option value={50}>50</option>
+                  <option value={100}>100</option>
+                </select>
+              </div>
+              <div className={layout.paginationRight}>
+                <SmartTooltip content={common.prevPage}>
+                  <button
+                    type="button"
+                    className={layout.pageBtn}
+                    onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                    disabled={currentPage <= 1}
+                    aria-label={common.prevPage}
+                  >
+                    <Icon icon="mdi:chevron-left" width={16} />
+                  </button>
+                </SmartTooltip>
+                <span className={layout.paginationInfo}>
+                  {formatPageInfo(locale, currentPage, totalPages)} · {articles.length}
+                </span>
+                <SmartTooltip content={common.nextPage}>
+                  <button
+                    type="button"
+                    className={layout.pageBtn}
+                    onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                    disabled={currentPage >= totalPages}
+                    aria-label={common.nextPage}
+                  >
+                    <Icon icon="mdi:chevron-right" width={16} />
+                  </button>
+                </SmartTooltip>
+              </div>
+            </div>
+          ) : null}
             </div>
           </div>
         </div>

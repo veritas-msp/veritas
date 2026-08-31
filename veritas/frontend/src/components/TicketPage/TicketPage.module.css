@@ -394,6 +394,14 @@
   color: var(--msp-accent-dark, #1a3d75);
 }
 
+.clientCell {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  min-width: 0;
+  flex-wrap: wrap;
+}
+
 .statusBadge {
   display: inline-flex;
   align-items: center;
@@ -688,8 +696,10 @@
   display: flex;
   flex-direction: column;
   gap: 0.35rem;
-  align-self: start;
-  max-height: calc(100vh - 12rem);
+  align-self: stretch;
+  height: 100%;
+  max-height: none;
+  min-height: 0;
   overflow: hidden;
 }
 
@@ -793,6 +803,7 @@
 }
 
 .viewsList {
+  flex: 1;
   min-height: 0;
   overflow-y: auto;
   display: flex;
@@ -1041,6 +1052,7 @@
   }
 
   .viewsPane {
+    height: auto;
     max-height: none;
   }
 }

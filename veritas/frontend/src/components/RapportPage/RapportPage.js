@@ -1,10 +1,9 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { Icon } from "@iconify/react";
 import { toast } from "react-toastify";
 import { fetchClientsList, fetchClientModules, fetchClientGeneral } from "../../api/clients";
 import { getCheckMKReportPeriodData } from "../../api/checkmkReportPeriod";
 import { fetchMonitoringDocuments, saveMonitoringDocument } from "../../api/monitoringDocuments";
-import API_BASE_URL from "../../config";
 import styles from "./RapportPage.module.css";
 import cyberStyles from "../CybersecuritePage/CybersecuritePage.module.css";
 import ReportCreateWizard from "./RapportCreateWizard";
@@ -12,16 +11,19 @@ import ReportBuilderPlaceholder from "./RapportBuilderPlaceholder";
 import SupervisionPeriodGate from "./SupervisionPeriodGate";
 import ReportInterventionBuilder from "./intervention/RapportInterventionBuilder";
 import { REPORT_TYPE_IDS } from "./reportTypeConstants";
-import MonitoringSteps, { getEnabledMonitoringSteps } from "./monitoring/MonitoringSteps";
+import MonitoringSteps, { getEnabledMonitoringSteps, MODULE_LABELS } from "./monitoring/MonitoringSteps";
+import BuilderCommentsPane from "./monitoring/BuilderCommentsPane";
+import ReportSyncProgressModal from "./monitoring/ReportSyncProgressModal";
+import { buildSupervisionSyncJobs, runSupervisionSyncJobs, fillSyncCopy } from "./monitoring/supervisionReportSync";
 import { applyEquipmentPatchToEquipements } from "./monitoring/equipmentPatchUtils";
 import { buildCheckMKCacheEntry, buildCheckMKReportSnapshot, collectCheckMKMappedEquipment, computeCheckMKEquipmentStatus, deriveServicesFromPeriodEvents, filterCheckMKEventsForReportPeriod, getCheckmkHostName, getCheckmkSite, resolveCheckMKEquipmentKey } from "./monitoring/checkmkReportCacheUtils";
 import { fetchTickets } from "../../api/tickets";
 import { fetchSupervisionAlertsHistory } from "../../api/supervisionAlerts";
 import { isSupervisionReportBuilderType } from "./monitoring/supervisionReportBuilder";
 import { buildPeriodInsights, mergeSeededTicketComments } from "./monitoring/supervisionReportInsights";
-import builderStyles from "./monitoring/RapportMonitoringBuilder.module.css";
 import shellStyles from "./RapportBuilderPlaceholder.module.css";
-import { confirmLeaveMonitoringReport, isMonitoringReportBuilderActive } from "../../utils/monitoringReportGuard";
+import ConfirmModal from "../Misc/ConfirmModal/ConfirmModal";
+import { isReportBuilderSessionActive } from "../../utils/monitoringReportGuard";
 import saveModalStyles from "../Monitoring/MonitoringSummary/MonitoringSummary.module.css";
 import { exportReportAsZIP, buildReportZipBlob } from "./exportRapportZip";
 import { uploadReportArchiveToClientVault } from "../../utils/uploadReportToClientVault";
@@ -32,6 +34,7 @@ import PageGuideTour from "../PageGuide/PageGuideTour";
 import { getRapportGuide } from "../PageGuide/rapportGuideSteps";
 import { useRegisterPageGuide } from "../../hooks/useRegisterPageGuide";
 import { getRapportPageCopy, getReportTypes } from "./rapportPageI18n";
+import MspPageHero from "../Misc/MspPageHero/MspPageHero";
 import { createTrackedAbortController } from "../../utils/pageLoadAbort";
 const RAPPORT_CLIENTS_CACHE_KEY = "rapport_clients_list_cache_v1";
 const RAPPORT_CLIENTS_CACHE_TTL_MS = 5 * 60 * 1000;
@@ -117,8 +120,6 @@ export default function ReportPage({
   const [activeCommentsTarget, setActiveCommentsTarget] = useState(null);
   const [generalComments, setGeneralComments] = useState([]);
   const [pendingEquipmentComment, setPendingEquipmentComment] = useState("");
-  const [pendingGeneralComment, setPendingGeneralComment] = useState("");
-  const [isCommentsDrawerOpen, setIsCommentsDrawerOpen] = useState(false);
   const [editingComment, setEditingComment] = useState(null);
   const [highlightedEquipmentKey, setHighlightedEquipmentKey] = useState(null);
   const [isSyncingMonitoring, setIsSyncingMonitoring] = useState(false);
@@ -126,6 +127,16 @@ export default function ReportPage({
   const [equipmentMonitoringStatus, setEquipmentMonitoringStatus] = useState({});
   const [equipmentCheckMKData, setEquipmentCheckMKData] = useState({});
   const [isSyncingOffice365Report, setIsSyncingOffice365Report] = useState(false);
+  const [syncProgress, setSyncProgress] = useState({
+    open: false,
+    phase: "running",
+    items: [],
+    currentIndex: 0,
+    etaMs: null
+  });
+  const syncProgressCancelRef = useRef(false);
+  const syncProgressAbortRef = useRef(null);
+  const syncInFlightRef = useRef(false);
   const [showSaveModal, setShowSaveModal] = useState(false);
   const [saveName, setSaveName] = useState("");
   const [saving, setSaving] = useState(false);
@@ -190,19 +201,43 @@ export default function ReportPage({
       return next;
     });
   }, [builderClient, builderType]);
-  const isBuilderActive = isMonitoringReportBuilderActive(builderType, builderClient);
+  const isBuilderActive = isReportBuilderSessionActive({
+    builderType,
+    builderClient,
+    draftReport
+  });
   const isOnSummaryStep = useMemo(() => {
     if (!builderClient || !isSupervisionReportBuilderType(builderType)) return false;
     const steps = getEnabledMonitoringSteps(builderClient);
     return steps[builderStepIndex] === "summary";
   }, [builderClient, builderType, builderStepIndex]);
-  useEffect(() => {
-    onMonitoringReportGuardChange?.(isBuilderActive);
-    return () => onMonitoringReportGuardChange?.(false);
-  }, [isBuilderActive, onMonitoringReportGuardChange]);
-  const confirmLeaveBuilder = () => {
-    if (!isBuilderActive) return true;
-    return confirmLeaveMonitoringReport();
+  const onMonitoringReportGuardChangeRef = useRef(onMonitoringReportGuardChange);
+  onMonitoringReportGuardChangeRef.current = onMonitoringReportGuardChange;
+  onMonitoringReportGuardChangeRef.current?.(isBuilderActive);
+  useLayoutEffect(() => {
+    onMonitoringReportGuardChangeRef.current?.(isBuilderActive);
+    return () => onMonitoringReportGuardChangeRef.current?.(false);
+  }, [isBuilderActive]);
+  const [builderLeaveModalOpen, setBuilderLeaveModalOpen] = useState(false);
+  const pendingBuilderLeaveRef = useRef(null);
+  const requestLeaveBuilder = action => {
+    if (typeof action !== "function") return;
+    if (!isBuilderActive) {
+      action();
+      return;
+    }
+    pendingBuilderLeaveRef.current = action;
+    setBuilderLeaveModalOpen(true);
+  };
+  const handleBuilderLeaveCancel = () => {
+    pendingBuilderLeaveRef.current = null;
+    setBuilderLeaveModalOpen(false);
+  };
+  const handleBuilderLeaveConfirm = () => {
+    const action = pendingBuilderLeaveRef.current;
+    pendingBuilderLeaveRef.current = null;
+    setBuilderLeaveModalOpen(false);
+    action?.();
   };
   const selectedClient = useMemo(() => clients.find(c => String(c.id) === selectedClientId) || null, [clients, selectedClientId]);
   const handleWizardSelectClient = clientId => {
@@ -214,7 +249,7 @@ export default function ReportPage({
     const resolvedTypeId = reportTypeId ?? selectedReportTypeId;
     if (!selectedClient || !resolvedTypeId || startingReportRef.current) return;
     const type = reportTypes.find(entry => entry.id === resolvedTypeId);
-    if (!type) return;
+    if (!type || type.comingSoon) return;
     startingReportRef.current = true;
     setSelectedReportTypeId(resolvedTypeId);
     try {
@@ -270,7 +305,7 @@ export default function ReportPage({
       console.warn("Unable to load period insights for supervision report:", err);
     }
   };
-  const handleConfirmSupervisionPeriod = async ({ startDate, endDate }) => {
+  const handleConfirmSupervisionPeriod = async ({ startDate, endDate, selectedModules }) => {
     if (!draftReport?.client || startingSupervisionBuilder) return;
     const client = draftReport.client;
     const clientId = client.id ?? client.uuid;
@@ -289,7 +324,8 @@ export default function ReportPage({
         equipements: modulesData?.equipements || enrichedClient.equipements || {},
         modules_monitoring: modulesData?.modules_monitoring || enrichedClient.modules_monitoring || {},
         reportStartDate: startDate,
-        reportEndDate: endDate
+        reportEndDate: endDate,
+        reportSelectedModules: Array.isArray(selectedModules) ? selectedModules : undefined
       };
       setBuilderClient(nextClient);
       setBuilderType(REPORT_TYPE_IDS.SUPERVISION_ETAT);
@@ -303,18 +339,7 @@ export default function ReportPage({
       setStepStorageState(null);
       setDraftReport(null);
       setCreateWizardStep("type");
-      // Sync CheckMK mappings immediately so detail modals have period data.
-      void (async () => {
-        try {
-          const result = await syncCheckMKForClient(nextClient, { silent: true });
-          if (result?.total > 0) {
-            toast.success(`Supervision synchronisée (${result.synced}/${result.total}).`);
-          }
-        } catch (syncErr) {
-          console.error("Auto CheckMK sync on report create:", syncErr);
-          toast.warn("Rapport ouvert, mais la synchronisation supervision a échoué.");
-        }
-      })();
+      void handleSyncAllMonitoring(nextClient);
       void loadPeriodInsights(nextClient, startDate, endDate);
     } catch (err) {
       console.error("Error starting supervision report builder:", err);
@@ -323,47 +348,31 @@ export default function ReportPage({
       setStartingSupervisionBuilder(false);
     }
   };
-  const handlePeriodChange = ({ reportStartDate, reportEndDate }) => {
-    setBuilderClient(prev => {
-      if (!prev) return prev;
-      const next = {
-        ...prev,
-        reportStartDate: reportStartDate || prev.reportStartDate,
-        reportEndDate: reportEndDate || prev.reportEndDate
-      };
-      const periodChanged =
-        next.reportStartDate !== prev.reportStartDate || next.reportEndDate !== prev.reportEndDate;
-      if (periodChanged && next.reportStartDate && next.reportEndDate) {
-        window.clearTimeout(handlePeriodChange._resyncTimer);
-        handlePeriodChange._resyncTimer = window.setTimeout(() => {
-          void syncCheckMKForClient(next, { silent: true }).then(result => {
-            if (result?.total > 0) {
-              toast.info(`Supervision resynchronisée pour la nouvelle période (${result.synced}/${result.total}).`);
-            }
-          });
-          void loadPeriodInsights(next, next.reportStartDate, next.reportEndDate);
-        }, 400);
-      }
-      return next;
-    });
-  };
   const handleBackFromDraftReport = () => {
-    setDraftReport(null);
-    setCreateWizardStep("type");
+    const leavingStartedBuilder = draftReport?.type?.id && draftReport.type.id !== REPORT_TYPE_IDS.SUPERVISION_ETAT;
+    const leaveDraft = () => {
+      setDraftReport(null);
+      setCreateWizardStep("type");
+    };
+    if (leavingStartedBuilder) {
+      requestLeaveBuilder(leaveDraft);
+      return;
+    }
+    leaveDraft();
   };
   const handleBackToSelection = () => {
-    if (!confirmLeaveBuilder()) return;
-    setBuilderType(null);
-    setBuilderClient(null);
-    setBuilderStepIndex(0);
-    setEquipmentComments({});
-    setActiveCommentsTarget(null);
-    setIsCommentsDrawerOpen(false);
-    setEquipmentMonitoringStatus({});
-    setEquipmentCheckMKData({});
-    setEquipmentAlertCounts({});
-    setEquipmentTicketInsightCounts({});
-    setStepStorageState(null);
+    requestLeaveBuilder(() => {
+      setBuilderType(null);
+      setBuilderClient(null);
+      setBuilderStepIndex(0);
+      setEquipmentComments({});
+      setActiveCommentsTarget(null);
+      setEquipmentMonitoringStatus({});
+      setEquipmentCheckMKData({});
+      setEquipmentAlertCounts({});
+      setEquipmentTicketInsightCounts({});
+      setStepStorageState(null);
+    });
   };
   const enrichBuilderClientWithSites = async client => {
     const clientId = client?.id ?? client?.uuid;
@@ -420,10 +429,22 @@ export default function ReportPage({
     all.sort((a, b) => getTime(a) - getTime(b));
     return all;
   }, [equipmentComments, generalComments]);
+  const builderSteps = useMemo(() => builderClient ? getEnabledMonitoringSteps(builderClient) : [], [builderClient]);
+  const currentBuilderStepKey = builderSteps[builderStepIndex] || null;
+  const currentBuilderStepLabel = MODULE_LABELS[currentBuilderStepKey] || currentBuilderStepKey || "Étape";
+  const showBuilderCommentsPane = Boolean(currentBuilderStepKey && currentBuilderStepKey !== "recap" && currentBuilderStepKey !== "summary");
+  useEffect(() => {
+    setActiveCommentsTarget(prev => {
+      if (!prev) return prev;
+      if (!showBuilderCommentsPane) return null;
+      if (prev.moduleKey && prev.moduleKey !== currentBuilderStepKey) return null;
+      return prev;
+    });
+  }, [currentBuilderStepKey, showBuilderCommentsPane]);
   const handleOpenEquipmentComments = (item, {
     moduleKey,
     equipmentKey
-  }) => {
+  } = {}) => {
     if (!item || !moduleKey) return;
     const key = equipmentKey || item.commentKey || item.id || item.uuid || `${moduleKey}:${item.nom || item.name || "unknown"}`;
     setActiveCommentsTarget({
@@ -431,28 +452,38 @@ export default function ReportPage({
       equipmentKey: key,
       equipment: item
     });
-    setIsCommentsDrawerOpen(true);
+    setHighlightedEquipmentKey(key);
+    setPendingEquipmentComment("");
+    setEditingComment(null);
   };
-  const handleFocusEquipmentFromComment = (moduleKey, equipmentKey) => {
+  const handleClearCommentsTarget = () => {
+    setActiveCommentsTarget(null);
+    setHighlightedEquipmentKey(null);
+    setPendingEquipmentComment("");
+    setEditingComment(null);
+  };
+  const handleFocusEquipmentFromComment = (moduleKey, equipmentKey, comment) => {
     if (!builderClient || !isSupervisionReportBuilderType(builderType)) return;
     const stepsArray = getEnabledMonitoringSteps(builderClient);
     const targetIndex = stepsArray.findIndex(k => k === moduleKey);
     if (targetIndex >= 0) {
       setBuilderStepIndex(targetIndex);
     }
+    const label = comment?.referenceLabel || equipmentKey;
+    setActiveCommentsTarget({
+      moduleKey,
+      equipmentKey,
+      equipment: {
+        nom: label,
+        name: label
+      }
+    });
     setHighlightedEquipmentKey(equipmentKey);
-    setIsCommentsDrawerOpen(true);
-    window.clearTimeout(handleFocusEquipmentFromComment._timeoutId);
-    handleFocusEquipmentFromComment._timeoutId = window.setTimeout(() => {
-      setHighlightedEquipmentKey(null);
-    }, 1500);
   };
-  const handleCloseEquipmentComments = () => {
-    setIsCommentsDrawerOpen(false);
-  };
-  const handleRefreshBuilderClient = async () => {
-    if (!builderClient?.id && !builderClient?.uuid) return;
-    const clientId = builderClient.id ?? builderClient.uuid;
+  const handleRefreshBuilderClient = async (fromClient = null) => {
+    const source = fromClient && (fromClient.id || fromClient.uuid) ? fromClient : builderClient;
+    if (!source?.id && !source?.uuid) return;
+    const clientId = source.id ?? source.uuid;
     try {
       const modulesData = await fetchClientModules(clientId);
       if (modulesData?.equipements && typeof modulesData.equipements === "object") {
@@ -594,64 +625,123 @@ export default function ReportPage({
     }
   };
 
-  const handleSyncAllMonitoring = async () => {
-    if (!builderClient || !isSupervisionReportBuilderType(builderType)) return;
-    const clientId = builderClient.id || builderClient.uuid;
+  const closeSyncProgressModal = () => {
+    setSyncProgress(prev => {
+      if (prev.phase === "running") return prev;
+      return { ...prev, open: false };
+    });
+  };
+  const cancelSyncProgress = () => {
+    syncProgressCancelRef.current = true;
+    try {
+      syncProgressAbortRef.current?.abort();
+    } catch {
+      // ignore
+    }
+  };
+  const handleSyncAllMonitoring = async (clientOverride = null) => {
+    const client = clientOverride && typeof clientOverride === "object" && !clientOverride.nativeEvent
+      ? clientOverride
+      : builderClient;
+    const autoStarted = Boolean(clientOverride && !clientOverride.nativeEvent);
+    if (!client || !(autoStarted || isSupervisionReportBuilderType(builderType))) return;
+    if (syncInFlightRef.current || isSyncingMonitoring || isSyncingOffice365Report) return;
+    const clientId = client.id || client.uuid;
+    const syncCopy = pageCopy.supervisionBuilder.syncProgress || {};
     if (!clientId) {
-      toast.error("Impossible d’identifier le client pour la synchronisation.");
+      toast.error(syncCopy.noClient || "Impossible d’identifier le client pour la synchronisation.");
       return;
     }
-    const steps = getEnabledMonitoringSteps(builderClient);
-    const currentStepKey = steps[builderStepIndex] || null;
-    if (currentStepKey === "Office365") {
+    const controller = createTrackedAbortController();
+    const jobs = buildSupervisionSyncJobs(client, {
+      copy: syncCopy,
+      fetchCheckMKHost: fetchCheckMKDataForHost,
+      onCheckMKHostDone: (key, cacheEntry, status) => {
+        setEquipmentMonitoringStatus(prev => ({ ...prev, [key]: status }));
+        setEquipmentCheckMKData(prev => ({ ...prev, [key]: cacheEntry }));
+      },
+      signal: controller.signal
+    });
+    if (jobs.length === 0) {
       try {
-        setIsSyncingOffice365Report(true);
-        if (typeof window !== "undefined" && typeof window.__office365SyncTrigger === "function") {
-          try {
-            window.__office365SyncTrigger();
-          } catch (e) {
-            console.error("Error synchronizing via the O365 module:", e);
+        controller.abort();
+      } catch {
+        // ignore
+      }
+      if (!autoStarted) toast.info(syncCopy.empty);
+      return;
+    }
+    syncInFlightRef.current = true;
+    syncProgressAbortRef.current = controller;
+    syncProgressCancelRef.current = false;
+    const hasOffice365Job = jobs.some(job => job.group === "office365");
+    const initialEta = jobs.reduce((sum, job) => sum + (job.estimatedMs || 5000), 0);
+    setIsSyncingMonitoring(true);
+    if (hasOffice365Job) setIsSyncingOffice365Report(true);
+    setSyncProgress({
+      open: true,
+      phase: "running",
+      items: jobs.map(job => ({ id: job.id, label: job.label, state: "pending", error: null })),
+      currentIndex: 0,
+      etaMs: initialEta
+    });
+    const patchItem = (index, patch) => {
+      setSyncProgress(prev => {
+        const items = prev.items.map((item, itemIndex) => itemIndex === index ? { ...item, ...patch } : item);
+        return { ...prev, items, currentIndex: index };
+      });
+    };
+    try {
+      const result = await runSupervisionSyncJobs(jobs, {
+        isCancelled: () => syncProgressCancelRef.current || controller.signal.aborted,
+        onProgress: event => {
+          if (event.type === "item") {
+            patchItem(event.index, { state: event.state, error: event.error || null });
+            return;
+          }
+          if (event.type === "tick" || event.type === "start") {
+            setSyncProgress(prev => ({
+              ...prev,
+              etaMs: event.etaMs,
+              currentIndex: event.completed != null ? Math.min(event.completed, jobs.length - 1) : prev.currentIndex
+            }));
           }
         }
-        const headers = {
-          "Content-Type": "application/json"
-        };
-        const startDate = new Date(builderClient.reportStartDate);
-        const endDate = new Date(builderClient.reportEndDate);
-        endDate.setHours(23, 59, 59, 999);
-        const diffMs = endDate.getTime() - startDate.getTime();
-        const diffDays = diffMs / (1000 * 60 * 60 * 24);
-        let period = "D30";
-        if (diffDays <= 10) {
-          period = "D7";
-        } else if (diffDays <= 45) {
-          period = "D30";
-        } else if (diffDays <= 120) {
-          period = "D90";
-        }
-        const response = await fetch(`${API_BASE_URL}/office365/sync-all?clientId=${clientId}&period=${period}&startDate=${startDate.toISOString()}&endDate=${endDate.toISOString()}`, {
-          method: "GET",
-          headers,
-          credentials: "include"
-        });
-        const result = await response.json().catch(() => ({}));
-        if (!response.ok || !result.success) {
-          console.error("Error synchronizing Office 365 for the report:", result);
-          toast.error(result.error || "Error during Office 365 synchronization");
-        } else {
-          toast.success("Microsoft 365 data synchronized successfully");
-        }
-      } catch (error) {
-        console.error("Error synchronizing Office 365 (monitoring report):", error);
-        toast.error(error.message || "Error during Office 365 synchronization");
-      } finally {
-        setIsSyncingOffice365Report(false);
+      });
+      await handleRefreshBuilderClient(client);
+      const cancelled = result.cancelled || syncProgressCancelRef.current;
+      setSyncProgress(prev => ({
+        ...prev,
+        phase: cancelled ? "cancelled" : "done",
+        etaMs: 0,
+        items: prev.items.map(item => item.state === "running" ? { ...item, state: "pending" } : item)
+      }));
+      if (cancelled) {
+        toast.info(syncCopy.cancelledToast || syncCopy.cancelled);
+      } else if (result.fail === 0) {
+        toast.success(fillSyncCopy(syncCopy.successToast, { ok: result.ok, total: jobs.length }));
+      } else if (result.ok > 0) {
+        toast.warning(fillSyncCopy(syncCopy.partialToast, { ok: result.ok, fail: result.fail }));
+      } else {
+        toast.error(syncCopy.failToast);
       }
-      return;
+    } catch (err) {
+      console.error("Error during full integration sync:", err);
+      setSyncProgress(prev => ({
+        ...prev,
+        phase: "done",
+        etaMs: 0,
+        items: prev.items.map(item => item.state === "running" ? { ...item, state: "error", error: err?.message || null } : item)
+      }));
+      toast.error(err?.message || syncCopy.failToast);
+    } finally {
+      if (syncProgressAbortRef.current === controller) {
+        syncProgressAbortRef.current = null;
+      }
+      syncInFlightRef.current = false;
+      setIsSyncingMonitoring(false);
+      setIsSyncingOffice365Report(false);
     }
-    await syncCheckMKForClient(builderClient, {
-      silent: false
-    });
   };
   const handleSyncSingleEquipment = async (item, {
     moduleKey,
@@ -739,13 +829,48 @@ export default function ReportPage({
       };
     });
     setPendingEquipmentComment("");
-    setActiveCommentsTarget(null);
     setEditingComment(null);
   };
-  const handleCancelEquipmentComment = () => {
+  const handlePublishFromCommentsPane = () => {
+    if (activeCommentsTarget) {
+      handlePublishEquipmentComment();
+      return;
+    }
+    const trimmed = String(pendingEquipmentComment || "").trim();
+    if (!trimmed) return;
+    if (!showBuilderCommentsPane || !currentBuilderStepKey) {
+      setGeneralComments(prev => [...prev, {
+        id: Date.now(),
+        author: "Vous",
+        createdAt: new Date().toISOString(),
+        text: trimmed
+      }]);
+      setPendingEquipmentComment("");
+      return;
+    }
+    const infraModules = ["Internet", "Firewall", "Servers", "Storage", "Switch", "BorneWifi", "TOIP"];
+    const cyberModules = ["Backup", "Antivirus", "Antispam"];
+    const servicesModules = ["Office365", "NDD"];
+    let category = null;
+    if (infraModules.includes(currentBuilderStepKey)) category = "infra";
+    else if (cyberModules.includes(currentBuilderStepKey)) category = "cyber";
+    else if (servicesModules.includes(currentBuilderStepKey)) category = "services";
+    setEquipmentComments(prev => {
+      const existing = prev[currentBuilderStepKey] || [];
+      return {
+        ...prev,
+        [currentBuilderStepKey]: [...existing, {
+          id: Date.now(),
+          author: "Vous",
+          createdAt: new Date().toISOString(),
+          text: trimmed,
+          referenceLabel: currentBuilderStepLabel,
+          category,
+          moduleKey: currentBuilderStepKey
+        }]
+      };
+    });
     setPendingEquipmentComment("");
-    setActiveCommentsTarget(null);
-    setEditingComment(null);
   };
   useEffect(() => {
     if (showSaveModal) {
@@ -949,21 +1074,6 @@ export default function ReportPage({
       setSaving(false);
     }
   };
-  const handlePublishGeneralComment = () => {
-    const trimmed = String(pendingGeneralComment || "").trim();
-    if (!trimmed) return;
-    const nextComment = {
-      id: Date.now(),
-      author: "Vous",
-      createdAt: new Date().toISOString(),
-      text: trimmed
-    };
-    setGeneralComments(prev => [...prev, nextComment]);
-    setPendingGeneralComment("");
-  };
-  const handleCancelGeneralComment = () => {
-    setPendingGeneralComment("");
-  };
   const handleStartEditEquipmentComment = (equipmentKey, comment) => {
     setEditingComment({
       scope: "equipment",
@@ -1042,6 +1152,20 @@ export default function ReportPage({
       setEditingComment(null);
     }
   };
+  const handleStartEditFromPane = comment => {
+    if (comment.scope === "general") {
+      handleStartEditGeneralComment(comment);
+    } else {
+      handleStartEditEquipmentComment(comment.equipmentKey, comment);
+    }
+  };
+  const handleDeleteFromPane = comment => {
+    if (comment.scope === "general") {
+      handleDeleteGeneralComment(comment.id);
+    } else {
+      handleDeleteEquipmentComment(comment.equipmentKey, comment.id);
+    }
+  };
   const formatReportDate = isoDate => {
     if (!isoDate) return "";
     const d = new Date(isoDate);
@@ -1052,69 +1176,83 @@ export default function ReportPage({
   const isDraftWizard = Boolean(draftReport);
   const isInterventionDraft = isDraftWizard && draftReport?.type?.id === REPORT_TYPE_IDS.INTERVENTION;
   const isSupervisionDraft = isDraftWizard && draftReport?.type?.id === REPORT_TYPE_IDS.SUPERVISION_ETAT;
+  const builderCommentsPane = showBuilderCommentsPane ? (
+    <BuilderCommentsPane
+      stepKey={currentBuilderStepKey}
+      stepLabel={currentBuilderStepLabel}
+      target={activeCommentsTarget}
+      comments={allCommentsChronological.filter(comment =>
+        !comment.moduleKey
+        || comment.moduleKey === currentBuilderStepKey
+        || comment.equipmentKey === currentBuilderStepKey
+      )}
+      pendingText={pendingEquipmentComment}
+      onPendingChange={setPendingEquipmentComment}
+      onPublish={handlePublishFromCommentsPane}
+      onSelectStep={next => handleOpenEquipmentComments(next.equipment, next)}
+      onClearTarget={handleClearCommentsTarget}
+      editingComment={editingComment}
+      onStartEdit={handleStartEditFromPane}
+      onChangeEditingText={handleChangeEditingText}
+      onSaveEdit={handleSaveEditingComment}
+      onCancelEdit={() => setEditingComment(null)}
+      onDelete={handleDeleteFromPane}
+    />
+  ) : null;
   return <>
       <div className={`${cyberStyles.mspPage} msp-page-insight`}>
-        {isSupervisionBuilder ? <div className={shellStyles.shell}>
-              <header className={shellStyles.header} data-guide="report-hero">
-                <button type="button" className={shellStyles.backBtn} onClick={handleBackToSelection}>
-                  <Icon icon="mdi:arrow-left" aria-hidden />
-                  Retour
-                </button>
-                <div className={shellStyles.headerRow}>
-                  <div className={shellStyles.headerMain}>
-                    <div className={shellStyles.headerIcon}>
-                      <Icon icon="mdi:radar" aria-hidden />
-                    </div>
-                    <div className={shellStyles.headerCopy}>
-                      <span className={shellStyles.headerEyebrow}>
-                        {builderClient?.name || builderClient?.nom || `Client #${builderClient?.id}`}
-                      </span>
-                      <h1 className={shellStyles.headerTitle}>État de supervision</h1>
-                      <p className={shellStyles.headerSubtitle}>
-                        {builderClient?.reportStartDate && builderClient?.reportEndDate
-                          ? `Du ${formatReportDate(builderClient.reportStartDate)} au ${formatReportDate(builderClient.reportEndDate)}`
-                          : "Définissez la période puis parcourez les modules."}
-                      </p>
-                    </div>
-                  </div>
-                  <div className={shellStyles.headerActions}>
-                    <button
-                      type="button"
-                      className={`${shellStyles.headerActionBtn} ${isCommentsDrawerOpen ? shellStyles.headerActionBtnActive : ""}`}
-                      title="Commentaires"
-                      onClick={() => setIsCommentsDrawerOpen(prev => !prev)}
-                    >
-                      <Icon icon="mdi:comment-text-outline" width={18} height={18} />
+        {isSupervisionBuilder ? <div className={cyberStyles.mspLayout}>
+            <div className={cyberStyles.mspMain}>
+            <div className={shellStyles.shell}>
+              <MspPageHero
+                guideId="report-hero"
+                eyebrow={pageCopy.eyebrow}
+                title={pageCopy.reportTypes.supervisionEtat.title}
+                subtitle={builderClient?.reportStartDate && builderClient?.reportEndDate
+                  ? `${builderClient?.name || builderClient?.nom || pageCopy.create.getClientLabel(builderClient?.id)} · Du ${formatReportDate(builderClient.reportStartDate)} au ${formatReportDate(builderClient.reportEndDate)}`
+                  : `${builderClient?.name || builderClient?.nom || ""} — ${pageCopy.supervisionBuilder.builderHint || ""}`}
+                icon="mdi:radar"
+                actions={
+                  <div className={shellStyles.heroActions}>
+                    <button type="button" className={shellStyles.heroBtn} onClick={handleBackToSelection}>
+                      <Icon icon="mdi:arrow-left" aria-hidden />
+                      {pageCopy.wizard.back}
                     </button>
                     <button
                       type="button"
-                      className={shellStyles.headerActionBtn}
-                      title="Synchroniser"
-                      onClick={handleSyncAllMonitoring}
-                      disabled={isSyncingMonitoring || isSyncingOffice365Report}
+                      className={shellStyles.heroBtn}
+                      onClick={() => { void handleSyncAllMonitoring(); }}
+                      disabled={isSyncingMonitoring || isSyncingOffice365Report || syncProgress.open}
                     >
                       <Icon
-                        icon="mdi:refresh"
-                        width={18}
-                        height={18}
-                        style={{ animation: isSyncingMonitoring || isSyncingOffice365Report ? "spin 1s linear infinite" : "none" }}
+                        icon={isSyncingMonitoring || isSyncingOffice365Report ? "mdi:loading" : "mdi:cloud-sync-outline"}
+                        className={isSyncingMonitoring || isSyncingOffice365Report ? shellStyles.heroSpin : undefined}
+                        aria-hidden
                       />
+                      {pageCopy.supervisionBuilder.builderSync}
                     </button>
                     {isOnSummaryStep ? (
-                      <>
-                        <button type="button" className={shellStyles.headerActionBtn} title="Télécharger ZIP" onClick={handleDownloadZip} disabled={!builderClient}>
-                          <Icon icon="mdi:download" width={18} height={18} />
-                        </button>
-                        <button type="button" className={shellStyles.headerActionBtn} title="Enregistrer" onClick={() => builderClient && setShowSaveModal(true)} disabled={!builderClient}>
-                          <Icon icon="mdi:content-save-outline" width={18} height={18} />
-                        </button>
-                      </>
+                      <button type="button" className={shellStyles.heroBtn} onClick={handleDownloadZip} disabled={!builderClient}>
+                        <Icon icon="mdi:download" aria-hidden />
+                        {pageCopy.supervisionBuilder.builderDownload}
+                      </button>
                     ) : null}
+                    <button
+                      type="button"
+                      className={shellStyles.heroBtnPrimary}
+                      onClick={() => builderClient && setShowSaveModal(true)}
+                      disabled={!builderClient}
+                    >
+                      <Icon icon="mdi:content-save-outline" aria-hidden />
+                      {pageCopy.supervisionBuilder.builderSave}
+                    </button>
                   </div>
-                </div>
-              </header>
+                }
+              >
+                <p className={shellStyles.heroHint}>{pageCopy.supervisionBuilder.builderHint}</p>
+              </MspPageHero>
 
-              <div ref={builderSectionRef} style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column", position: "relative" }}>
+              <div ref={builderSectionRef} className={shellStyles.builderBody}>
 
                 {showSaveModal && <div className={saveModalStyles.modalOverlay} onClick={e => {
             if (e.target === e.currentTarget) setShowSaveModal(false);
@@ -1246,121 +1384,42 @@ export default function ReportPage({
                     </div>
                   </div>}
 
-                {isSupervisionReportBuilderType(builderType) && builderClient && <MonitoringSteps client={builderClient} activeStepIndex={builderStepIndex} onStepChange={setBuilderStepIndex} onOpenComments={handleOpenEquipmentComments} onRefreshClient={handleRefreshBuilderClient} onEquipmentSaved={handleReportEquipmentSaved} onPeriodChange={handlePeriodChange} onSyncAllMonitoring={handleSyncAllMonitoring} equipmentCommentCounts={equipmentCommentCounts} equipmentTicketCounts={equipmentTicketCounts} equipmentAlertCounts={equipmentAlertCounts} equipmentComments={equipmentComments} highlightedEquipmentKey={highlightedEquipmentKey} monitoringSyncStatus={equipmentMonitoringStatus} equipmentCheckMKData={equipmentCheckMKData} isSyncingMonitoring={isSyncingMonitoring} onSyncCheckMK={handleSyncSingleEquipment} syncingEquipmentKey={syncingEquipmentKey} isSyncingOffice365Report={isSyncingOffice365Report} allCommentsChronological={allCommentsChronological} summaryContentRef={summaryContentRef} stockageReportState={stepStorageState} onSetStorageReportState={setStepStorageState} />}
+                {isSupervisionReportBuilderType(builderType) && builderClient && (
+                  <MonitoringSteps
+                    client={builderClient}
+                    activeStepIndex={builderStepIndex}
+                    onStepChange={setBuilderStepIndex}
+                    onOpenComments={handleOpenEquipmentComments}
+                    onCommentClick={handleFocusEquipmentFromComment}
+                    onRefreshClient={handleRefreshBuilderClient}
+                    onEquipmentSaved={handleReportEquipmentSaved}
+                    equipmentCommentCounts={equipmentCommentCounts}
+                    equipmentTicketCounts={equipmentTicketCounts}
+                    equipmentAlertCounts={equipmentAlertCounts}
+                    equipmentComments={equipmentComments}
+                    highlightedEquipmentKey={highlightedEquipmentKey}
+                    monitoringSyncStatus={equipmentMonitoringStatus}
+                    equipmentCheckMKData={equipmentCheckMKData}
+                    isSyncingMonitoring={isSyncingMonitoring}
+                    onSyncCheckMK={handleSyncSingleEquipment}
+                    syncingEquipmentKey={syncingEquipmentKey}
+                    isSyncingOffice365Report={isSyncingOffice365Report}
+                    allCommentsChronological={allCommentsChronological}
+                    summaryContentRef={summaryContentRef}
+                    stockageReportState={stepStorageState}
+                    onSetStorageReportState={setStepStorageState}
+                    commentsPane={builderCommentsPane}
+                  />
+                )}
 
-                {isCommentsDrawerOpen && <div className={`${builderStyles.commentsDrawerOverlay} ${hasTabsBar ? builderStyles.commentsDrawerOverlayWithTabs : ""}`}>
-                    <div className={builderStyles.commentsDrawer}>
-                      <div className={builderStyles.commentsDrawerHeader}>
-                        <div className={builderStyles.commentsDrawerTitleBlock}>
-                          <h3 className={builderStyles.commentsDrawerTitle}>
-                            Report comment
-                          </h3>
-                        </div>
-                      </div>
-
-                      <div className={builderStyles.commentsDrawerBody}>
-                        <div className={builderStyles.commentsScrollArea}>
-                          <div className={builderStyles.commentsList}>
-                              {allCommentsChronological.length === 0 ? <div className={builderStyles.commentsEmpty}>
-                                No comments for this report.
-                              </div> : allCommentsChronological.map(comment => {
-                      const isEquipment = comment.scope === "equipment";
-                      const isEditing = editingComment && editingComment.scope === comment.scope && (isEquipment ? editingComment.equipmentKey === comment.equipmentKey && editingComment.id === comment.id : editingComment.id === comment.id);
-                      const categoryClass = isEquipment ? comment.category === "infra" ? builderStyles.commentItemInfra : comment.category === "cyber" ? builderStyles.commentItemCyber : comment.category === "services" ? builderStyles.commentItemServices : "" : "";
-                      return <div key={isEquipment ? `eq-${comment.equipmentKey}-${comment.id}` : `gen-${comment.id}`} className={`${builderStyles.commentItem} ${categoryClass} ${isEquipment ? builderStyles.commentItemClickable : ""}`} onClick={isEquipment ? () => handleFocusEquipmentFromComment(comment.moduleKey, comment.equipmentKey) : undefined} role={isEquipment ? "button" : undefined} tabIndex={isEquipment ? 0 : undefined} onKeyDown={isEquipment ? e => {
-                        if (e.key === "Enter" || e.key === " ") {
-                          e.preventDefault();
-                          handleFocusEquipmentFromComment(comment.moduleKey, comment.equipmentKey);
-                        }
-                      } : undefined}>
-                                  <div className={builderStyles.commentMeta}>
-                                          <span className={builderStyles.commentAuthor}>
-                                            {comment.isTicketComment ? "Support · Ticket" : comment.author || "Unknown author"}
-                                          </span>
-                                          <span className={builderStyles.commentDate}>
-                                            {comment.createdAt ? new Date(comment.createdAt).toLocaleString("fr-FR") : ""}
-                                          </span>
-                                        </div>
-                                        {isEquipment && comment.referenceLabel && <div className={builderStyles.commentReference}>
-                                      {comment.referenceLabel}
-                                    </div>}
-                                        {isEditing ? <>
-                                            <textarea rows={2} className={builderStyles.commentTextarea} value={editingComment.text ?? ""} onChange={e => handleChangeEditingText(e.target.value)} />
-                                            <div className={builderStyles.commentComposerActions}>
-                                              <button type="button" className={builderStyles.commentPublishButton} onClick={handleSaveEditingComment} disabled={!(editingComment.text || "").trim()}>
-                                                Save
-                                              </button>
-                                              <button type="button" className={builderStyles.commentCancelButton} onClick={() => setEditingComment(null)}>
-                                                Cancel
-                                              </button>
-                                            </div>
-                                          </> : <>
-                                            <div className={builderStyles.commentText}>
-                                              {comment.text}
-                                            </div>
-                                            {comment.isTicketComment && comment.ticketId && typeof onNavigate === "function" ? <button type="button" className={builderStyles.commentTicketLink} onClick={e => {
-                              e.stopPropagation();
-                              onNavigate("TicketDetail", {
-                                ticketId: comment.ticketId
-                              });
-                            }} onMouseDown={e => e.stopPropagation()}>
-                                              Ouvrir le ticket
-                                            </button> : null}
-                                            {!comment.isTicketComment && <div className={builderStyles.commentActions}>
-                                              <button type="button" onClick={e => {
-                              e.stopPropagation();
-                              isEquipment ? handleStartEditEquipmentComment(comment.equipmentKey, comment) : handleStartEditGeneralComment(comment);
-                            }} onMouseDown={e => e.stopPropagation()}>
-                                          Edit
-                                        </button>
-                                        <button type="button" onClick={e => {
-                              e.stopPropagation();
-                              isEquipment ? handleDeleteEquipmentComment(comment.equipmentKey, comment.id) : handleDeleteGeneralComment(comment.id);
-                            }} onMouseDown={e => e.stopPropagation()}>
-                                          Delete
-                                        </button>
-                                      </div>}
-                                    </>}
-                                </div>;
-                    })}
-                          </div>
-                        </div>
-
-                        {}
-                        <div className={builderStyles.commentsFooter}>
-                          {activeCommentsTarget ? <div className={builderStyles.commentComposerCard}>
-                              <div className={builderStyles.commentHint}>
-                                {activeCommentsTarget.equipment?.nom || activeCommentsTarget.equipment?.name || "Equipment"}
-                              </div>
-                              <textarea rows={2} className={builderStyles.commentTextarea} placeholder="Add a comment..." value={pendingEquipmentComment} onChange={e => setPendingEquipmentComment(e.target.value)} />
-                              <div className={builderStyles.commentComposerActions}>
-                                <button type="button" className={builderStyles.commentPublishButton} onClick={handlePublishEquipmentComment} disabled={!pendingEquipmentComment.trim()}>
-                                  Publish
-                                </button>
-                                <button type="button" className={builderStyles.commentCancelButton} onClick={handleCancelEquipmentComment}>
-                                  Cancel
-                                </button>
-                              </div>
-                            </div> : <div className={builderStyles.commentComposerCard}>
-                              <div className={builderStyles.commentHint}>
-                                General comment
-                              </div>
-                              <textarea rows={2} className={builderStyles.commentTextarea} placeholder="Add a comment..." value={pendingGeneralComment} onChange={e => setPendingGeneralComment(e.target.value)} />
-                              <div className={builderStyles.commentComposerActions}>
-                                <button type="button" className={builderStyles.commentPublishButton} onClick={handlePublishGeneralComment} disabled={!pendingGeneralComment.trim()}>
-                                  Publish
-                                </button>
-                                <button type="button" className={builderStyles.commentCancelButton} onClick={handleCancelGeneralComment}>
-                                  Cancel
-                                </button>
-                              </div>
-                            </div>}
-                        </div>
-                      </div>
-                    </div>
-                  </div>}
               </div>
-          </div> : isInterventionDraft ? <ReportInterventionBuilder copy={pageCopy} reportType={draftReport.type} client={draftReport.client} initialData={draftReport.initialData} documentId={draftReport.documentId} documentName={draftReport.documentName} onBack={handleBackFromDraftReport} /> : isSupervisionDraft ? <SupervisionPeriodGate copy={pageCopy} reportType={draftReport.type} client={draftReport.client} onBack={handleBackFromDraftReport} onConfirm={handleConfirmSupervisionPeriod} confirming={startingSupervisionBuilder} /> : isDraftWizard ? <ReportBuilderPlaceholder copy={pageCopy} reportType={draftReport.type} client={draftReport.client} onBack={handleBackFromDraftReport} /> : <div className={cyberStyles.mspLayout}>
+            </div>
+            </div>
+          </div> : isInterventionDraft ? <ReportInterventionBuilder copy={pageCopy} reportType={draftReport.type} client={draftReport.client} initialData={draftReport.initialData} documentId={draftReport.documentId} documentName={draftReport.documentName} onBack={handleBackFromDraftReport} /> : isSupervisionDraft ? <div className={cyberStyles.mspLayout}>
+            <div className={cyberStyles.mspMain}>
+              <SupervisionPeriodGate copy={pageCopy} reportType={draftReport.type} client={draftReport.client} onBack={handleBackFromDraftReport} onConfirm={handleConfirmSupervisionPeriod} confirming={startingSupervisionBuilder} />
+            </div>
+          </div> : isDraftWizard ? <ReportBuilderPlaceholder copy={pageCopy} reportType={draftReport.type} client={draftReport.client} onBack={handleBackFromDraftReport} /> : <div className={cyberStyles.mspLayout}>
             <div className={cyberStyles.mspMain}>
               <header className={cyberStyles.mspHero} data-guide="report-hero">
                 <div className={cyberStyles.mspHeroMain}>
@@ -1375,16 +1434,37 @@ export default function ReportPage({
                 </div>
               </header>
 
-              <main className={cyberStyles.mspContent}>
+              <main className={`${cyberStyles.mspContent} ${cyberStyles.mspContentList}`}>
                 <div className={`${cyberStyles.tabContent} ${styles.wizardTabContent}`}>
-                  {error ? <div className={styles.alertError}>{error}</div> : null}
-
-                  <ReportCreateWizard copy={pageCopy} reportTypes={reportTypes} clients={clients} loading={loading} step={createWizardStep} onStepChange={setCreateWizardStep} selectedClientId={selectedClientId} onSelectClient={handleWizardSelectClient} onStartReport={handleStartDraftReport} />
+                  <div className={styles.wizardFill}>
+                    {error ? <div className={styles.alertError}>{error}</div> : null}
+                    <ReportCreateWizard copy={pageCopy} reportTypes={reportTypes} clients={clients} loading={loading} step={createWizardStep} onStepChange={setCreateWizardStep} selectedClientId={selectedClientId} onSelectClient={handleWizardSelectClient} onStartReport={handleStartDraftReport} />
+                  </div>
                 </div>
               </main>
             </div>
           </div>}
       </div>
       <PageGuideTour open={pageGuideOpen} steps={rapportGuide.steps} title={rapportGuide.tourTitle} locale={locale} onClose={() => setPageGuideOpen(false)} />
+      <ReportSyncProgressModal
+        open={syncProgress.open}
+        copy={pageCopy.supervisionBuilder.syncProgress || {}}
+        items={syncProgress.items}
+        currentIndex={syncProgress.currentIndex}
+        etaMs={syncProgress.etaMs}
+        phase={syncProgress.phase}
+        onCancel={cancelSyncProgress}
+        onClose={closeSyncProgressModal}
+      />
+      <ConfirmModal
+        open={builderLeaveModalOpen}
+        title={pageCopy.supervisionBuilder.unsavedTitle}
+        message={pageCopy.supervisionBuilder.unsavedMessage}
+        confirmLabel={pageCopy.supervisionBuilder.leaveConfirm}
+        cancelLabel={pageCopy.supervisionBuilder.leaveCancel}
+        icon="mdi:content-save-alert-outline"
+        onClose={handleBuilderLeaveCancel}
+        onConfirm={handleBuilderLeaveConfirm}
+      />
     </>;
 }

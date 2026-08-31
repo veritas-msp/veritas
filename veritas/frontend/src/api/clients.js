@@ -806,6 +806,9 @@ export async function fetchClientModules(clientId, options = {}) {
                 logiciel: instanceData.logiciel
               });
               const instanceJobs = jobItems.filter(jobItem => {
+                if (jobItem.data?.instanceId && String(jobItem.data.instanceId) === String(instanceFrontendId)) {
+                  return true;
+                }
                 const jobItemKey = jobItem.item_key || '';
                 const expectedJobKey = `job-${instanceFrontendId}`;
                 const isJobOfThisInstance = jobItemKey === expectedJobKey;
@@ -818,9 +821,15 @@ export async function fetchClientModules(clientId, options = {}) {
                 if (jobData.type === "job") {
                   delete jobData.type;
                 }
+                const checkmkHost = jobItem.checkmk_host_name ?? jobData.checkmk_host_name ?? null;
+                const checkmkSite = jobItem.checkmk_site ?? jobData.checkmk_site ?? null;
+                const checkmkService = jobItem.checkmk_service_name ?? jobData.checkmk_service_name ?? null;
                 return {
                   id: jobItem.id,
-                  ...jobData
+                  ...jobData,
+                  checkmk_host_name: checkmkHost && String(checkmkHost).trim() ? String(checkmkHost).trim() : null,
+                  checkmk_site: checkmkSite && String(checkmkSite).trim() ? String(checkmkSite).trim() : null,
+                  checkmk_service_name: checkmkService && String(checkmkService).trim() ? String(checkmkService).trim() : null
                 };
               });
               console.log(`✅ Instance ${instanceFrontendId} (${instanceData.logiciel}):`, {
@@ -1191,6 +1200,11 @@ export async function saveClientModules(clientId, data) {
                     ...job
                   };
                   delete jobData.id;
+                  delete jobData.checkmkMapping;
+                  delete jobData.isMapped;
+                  delete jobData.checkmk_host_name;
+                  delete jobData.checkmk_site;
+                  delete jobData.checkmk_service_name;
                   const jobName = job.nom ? `${instance.logiciel || 'Backup'} - ${job.nom}` : `${instance.logiciel || 'Backup'} - Job ${jobIdx + 1}`;
                   const jobKey = `job-${instanceId}`;
                   itemsToSync.push({
@@ -1198,7 +1212,9 @@ export async function saveClientModules(clientId, data) {
                     name: jobName,
                     item_key: jobKey,
                     data: {
-                      ...jobData
+                      ...jobData,
+                      type: 'job',
+                      instanceId
                     },
                     is_active: true
                   });

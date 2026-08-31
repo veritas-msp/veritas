@@ -473,7 +473,7 @@ export const getAllHardwareEquipment = async (options = {}) => {
   }
 };
 
-/** Supervision ops: only devices with active alert criteria (server-evaluated). */
+/** Supervision ops: monitoring-integration alerts on mapped devices only. */
 export const getEquipmentFleetIssues = async (options = {}) => {
   const response = await fetch(`${API_BASE_URL}/clients/equipment-fleet/issues`, {
     method: "GET",
@@ -1539,6 +1539,7 @@ export const updateEquipmentCheckMKMapping = async (clientId, equipmentType, equ
     },
     body: JSON.stringify({
       equipmentName,
+      equipment_id: mapping?.equipment_id || mapping?.equipmentId || undefined,
       ...mapping
     })
   });

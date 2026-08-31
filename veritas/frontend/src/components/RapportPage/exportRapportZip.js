@@ -62,6 +62,9 @@ export async function buildReportZipBlob(ref, config) {
   }, {
     type: "services",
     selector: '[data-export-section="services"]'
+  }, {
+    type: "support",
+    selector: '[data-export-section="support"]'
   }];
   const zip = new JSZip();
   const clientName = (config.client.name || config.client.nom || "CLIENT").toString().replace(/\s+/g, " ");
@@ -69,7 +72,8 @@ export async function buildReportZipBlob(ref, config) {
     supervision: `${clientName} - Rapport de supervision.html`,
     infrastructure: `${clientName} - Rapport infrastructure.html`,
     cybersecurite: `${clientName} - Rapport cybersécurité.html`,
-    services: `${clientName} - Rapport services.html`
+    services: `${clientName} - Rapport services.html`,
+    support: `${clientName} - Rapport support.html`
   };
   const commentsEl = root.querySelector('[data-export-comments="true"]');
   const commentsHtml = commentsEl ? commentsEl.outerHTML : "";

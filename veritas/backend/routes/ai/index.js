@@ -5,10 +5,24 @@ import { requireRole } from "../../middleware/roles.js";
 import { pool } from "../../database/db.js";
 import { getAiConfig, AI_FEATURE_LIMIT_KEYS } from "../../utils/aiSettings.js";
 import { getAiCallsUsedTodayTotal, getAiFeatureUsageToday, getAiUsageBreakdownToday, listAiUsage } from "../../services/aiUsageService.js";
-import { enrichAlertRunbook, generateDashboardBriefing, generateEnterpriseSummary, generateRunbookChecklist, generateSupervisionBriefing, generateSupportTicketRunbook, helpDiagnoseTicket, suggestTicketReply, suggestTicketResolve, testAiConnection } from "../../services/llmClient.js";
+import { correctTicketDraft, enrichAlertRunbook, generateDashboardBriefing, generateEnterpriseSummary, generateRunbookChecklist, generateSupervisionBriefing, generateSupportTicketRunbook, helpDiagnoseTicket, suggestTicketReply, suggestTicketResolve, testAiConnection, TICKET_ENRICH_MODE_IDS } from "../../services/llmClient.js";
 import { getCriterionLabel } from "../../services/monitoringTicketAssignment.js";
 import { encryptSettingValue } from "../../utils/settingsHelper.js";
+import { briefingPersistErrorIgnored, insertAiBriefing, listAiBriefings } from "../../services/aiBriefingStore.js";
 const router = express.Router();
+const AI_BRIEFING_FEATURES = new Set(["dashboardBriefing", "supervisionBriefing", "enterpriseSummary"]);
+async function persistBriefingSafe(params) {
+  try {
+    return await insertAiBriefing(params);
+  } catch (err) {
+    if (briefingPersistErrorIgnored(err)) {
+      console.warn("[ai] briefings table missing, analysis not persisted");
+      return null;
+    }
+    console.error("[ai] persist briefing:", err.message);
+    return null;
+  }
+}
 router.use(verifyJWT);
 function mapAiError(res, err) {
   const code = err?.code || "AI_ERROR";
@@ -203,6 +217,64 @@ router.post("/suggest-reply", requirePermission("tickets_detail.ai_suggest"), as
     });
   } catch (err) {
     console.error("[ai] suggest-reply:", err.message);
+    return mapAiError(res, err);
+  }
+});
+router.post("/correct-text", requirePermission("tickets_detail.ai_suggest"), async (req, res) => {
+  try {
+    const {
+      text,
+      ticketId,
+      internal = false,
+      locale,
+      mode = "enrich"
+    } = req.body || {};
+    const draft = String(text || "").trim();
+    if (!draft) return res.status(400).json({
+      error: "text required"
+    });
+    if (draft.length > 8000) return res.status(400).json({
+      error: "text too long"
+    });
+    const enrichMode = TICKET_ENRICH_MODE_IDS.includes(String(mode || "").trim()) ? String(mode).trim() : "enrich";
+    let title = "";
+    let description = "";
+    let comments = [];
+    if (ticketId) {
+      const ticketResult = await pool.query(`SELECT id, title, description FROM v_b_tickets WHERE id = $1::uuid LIMIT 1`, [ticketId]);
+      const ticket = ticketResult.rows[0];
+      if (ticket) {
+        title = ticket.title || "";
+        description = ticket.description || "";
+        const commentsResult = await pool.query(`SELECT c.content, c.is_internal,
+                  COALESCE(NULLIF(TRIM(u.username), ''), u.email) AS author_name
+           FROM v_b_ticket_comments c
+           LEFT JOIN v_b_users u ON u.id = c.author_user_id
+           WHERE c.ticket_id = $1::uuid
+           ORDER BY c.created_at DESC
+           LIMIT 12`, [ticketId]);
+        comments = commentsResult.rows.reverse();
+      }
+    }
+    const result = await correctTicketDraft({
+      text: draft,
+      locale: locale || "fr",
+      userId: req.user?.id || null,
+      internal: Boolean(internal),
+      title,
+      description,
+      comments,
+      mode: enrichMode
+    });
+    res.json({
+      text: result.text,
+      mode: result.mode,
+      usage: result.usage,
+      provider: result.provider,
+      model: result.model
+    });
+  } catch (err) {
+    console.error("[ai] correct-text:", err.message);
     return mapAiError(res, err);
   }
 });
@@ -417,12 +489,42 @@ router.post("/enrich-alert-runbook", requirePermission("supervision.manage"), as
     return mapAiError(res, err);
   }
 });
+router.get("/briefings", async (req, res) => {
+  try {
+    const featureKey = String(req.query.featureKey || "").trim();
+    const scopeKey = String(req.query.scopeKey || "").trim();
+    if (!AI_BRIEFING_FEATURES.has(featureKey)) {
+      return res.status(400).json({
+        error: "Invalid featureKey"
+      });
+    }
+    const items = await listAiBriefings({
+      featureKey,
+      scopeKey,
+      limit: req.query.limit
+    });
+    res.json({
+      items
+    });
+  } catch (err) {
+    if (briefingPersistErrorIgnored(err)) {
+      return res.json({
+        items: []
+      });
+    }
+    console.error("[ai] briefings list:", err.message);
+    res.status(500).json({
+      error: "Server error"
+    });
+  }
+});
 router.post("/dashboard-briefing", async (req, res) => {
   try {
     const {
       stats,
       source,
-      locale
+      locale,
+      scopeKey
     } = req.body || {};
     if (!stats || typeof stats !== "object") {
       return res.status(400).json({
@@ -435,6 +537,13 @@ router.post("/dashboard-briefing", async (req, res) => {
       locale: locale || "fr",
       userId: req.user?.id || null
     });
+    const saved = await persistBriefingSafe({
+      featureKey: "dashboardBriefing",
+      scopeKey: scopeKey || (source === "analytics" ? "dashboard_ai_analytics_briefing" : "home"),
+      userId: req.user?.id || null,
+      locale: locale || "fr",
+      payload: result
+    });
     res.json({
       summary: result.summary,
       insights: result.insights,
@@ -442,7 +551,8 @@ router.post("/dashboard-briefing", async (req, res) => {
       watchpoints: result.watchpoints,
       usage: result.usage,
       provider: result.provider,
-      model: result.model
+      model: result.model,
+      ...(saved || {})
     });
   } catch (err) {
     console.error("[ai] dashboard-briefing:", err.message);
@@ -465,6 +575,13 @@ router.post("/supervision-briefing", requireAnyPermission("supervision.view", "i
       locale: locale || "fr",
       userId: req.user?.id || null
     });
+    const saved = await persistBriefingSafe({
+      featureKey: "supervisionBriefing",
+      scopeKey: req.body?.scopeKey || "supervision",
+      userId: req.user?.id || null,
+      locale: locale || "fr",
+      payload: result
+    });
     res.json({
       summary: result.summary,
       critical: result.critical,
@@ -472,7 +589,8 @@ router.post("/supervision-briefing", requireAnyPermission("supervision.view", "i
       watchpoints: result.watchpoints,
       usage: result.usage,
       provider: result.provider,
-      model: result.model
+      model: result.model,
+      ...(saved || {})
     });
   } catch (err) {
     console.error("[ai] supervision-briefing:", err.message);
@@ -495,6 +613,13 @@ router.post("/enterprise-summary", requirePermission("clients.view"), async (req
       locale: locale || "fr",
       userId: req.user?.id || null
     });
+    const saved = await persistBriefingSafe({
+      featureKey: "enterpriseSummary",
+      scopeKey: req.body?.scopeKey || "enterprise",
+      userId: req.user?.id || null,
+      locale: locale || "fr",
+      payload: result
+    });
     res.json({
       summary: result.summary,
       strengths: result.strengths,
@@ -502,7 +627,8 @@ router.post("/enterprise-summary", requirePermission("clients.view"), async (req
       nextActions: result.nextActions,
       usage: result.usage,
       provider: result.provider,
-      model: result.model
+      model: result.model,
+      ...(saved || {})
     });
   } catch (err) {
     console.error("[ai] enterprise-summary:", err.message);

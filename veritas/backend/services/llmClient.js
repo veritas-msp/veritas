@@ -5,27 +5,27 @@ const AI_LOCALES = {
   fr: {
     code: "fr",
     name: "French",
-    outputInstruction: "Write ALL user-facing JSON text values (summary, insights, priorities, watchpoints, critical, strengths, risks, nextActions, reply, reason, title, checklist items, hypotheses, nextSteps, questionsToAsk, notes, etc.) in French. Keep JSON keys in English exactly as specified."
+    outputInstruction: "Write ALL user-facing JSON text values (summary, insights, priorities, watchpoints, critical, strengths, risks, nextActions, reply, reason, title, checklist items, hypotheses, nextSteps, questionsToAsk, notes, text, etc.) in French. Keep JSON keys in English exactly as specified."
   },
   en: {
     code: "en",
     name: "English",
-    outputInstruction: "Write ALL user-facing JSON text values (summary, insights, priorities, watchpoints, critical, strengths, risks, nextActions, reply, reason, title, checklist items, hypotheses, nextSteps, questionsToAsk, notes, etc.) in English. Keep JSON keys in English exactly as specified."
+    outputInstruction: "Write ALL user-facing JSON text values (summary, insights, priorities, watchpoints, critical, strengths, risks, nextActions, reply, reason, title, checklist items, hypotheses, nextSteps, questionsToAsk, notes, text, etc.) in English. Keep JSON keys in English exactly as specified."
   },
   de: {
     code: "de",
     name: "German",
-    outputInstruction: "Write ALL user-facing JSON text values (summary, insights, priorities, watchpoints, critical, strengths, risks, nextActions, reply, reason, title, checklist items, hypotheses, nextSteps, questionsToAsk, notes, etc.) in German. Keep JSON keys in English exactly as specified."
+    outputInstruction: "Write ALL user-facing JSON text values (summary, insights, priorities, watchpoints, critical, strengths, risks, nextActions, reply, reason, title, checklist items, hypotheses, nextSteps, questionsToAsk, notes, text, etc.) in German. Keep JSON keys in English exactly as specified."
   },
   it: {
     code: "it",
     name: "Italian",
-    outputInstruction: "Write ALL user-facing JSON text values (summary, insights, priorities, watchpoints, critical, strengths, risks, nextActions, reply, reason, title, checklist items, hypotheses, nextSteps, questionsToAsk, notes, etc.) in Italian. Keep JSON keys in English exactly as specified."
+    outputInstruction: "Write ALL user-facing JSON text values (summary, insights, priorities, watchpoints, critical, strengths, risks, nextActions, reply, reason, title, checklist items, hypotheses, nextSteps, questionsToAsk, notes, text, etc.) in Italian. Keep JSON keys in English exactly as specified."
   },
   es: {
     code: "es",
     name: "Spanish",
-    outputInstruction: "Write ALL user-facing JSON text values (summary, insights, priorities, watchpoints, critical, strengths, risks, nextActions, reply, reason, title, checklist items, hypotheses, nextSteps, questionsToAsk, notes, etc.) in Spanish. Keep JSON keys in English exactly as specified."
+    outputInstruction: "Write ALL user-facing JSON text values (summary, insights, priorities, watchpoints, critical, strengths, risks, nextActions, reply, reason, title, checklist items, hypotheses, nextSteps, questionsToAsk, notes, text, etc.) in Spanish. Keep JSON keys in English exactly as specified."
   }
 };
 function resolveAiLocale(locale) {
@@ -66,7 +66,8 @@ async function callOpenAiCompatible({
   system,
   user,
   temperature = 0.3,
-  jsonMode = true
+  jsonMode = true,
+  maxTokens = null
 }) {
   const root = String(baseUrl || "").replace(/\/$/, "");
   const body = {
@@ -80,6 +81,10 @@ async function callOpenAiCompatible({
       content: user
     }]
   };
+  const tokenLimit = Number(maxTokens);
+  if (Number.isFinite(tokenLimit) && tokenLimit >= 256) {
+    body.max_tokens = Math.min(8000, Math.round(tokenLimit));
+  }
   if (jsonMode) {
     body.response_format = {
       type: "json_object"
@@ -110,7 +115,8 @@ async function callAnthropic({
   model,
   system,
   user,
-  temperature = 0.3
+  temperature = 0.3,
+  maxTokens = 1200
 }) {
   const response = await fetch("https://api.anthropic.com/v1/messages", {
     method: "POST",
@@ -121,7 +127,7 @@ async function callAnthropic({
     },
     body: JSON.stringify({
       model,
-      max_tokens: 1200,
+      max_tokens: Math.max(256, Math.min(8000, Number(maxTokens) || 1200)),
       temperature,
       system,
       messages: [{
@@ -160,7 +166,8 @@ export async function completeAiJson(opts) {
         model: config.model,
         system: opts.system,
         user: opts.user,
-        temperature: opts.temperature
+        temperature: opts.temperature,
+        maxTokens: opts.maxTokens
       });
     } else {
       const baseUrl = AI_PROVIDER_BASE_URLS[config.provider] || AI_PROVIDER_BASE_URLS.openai;
@@ -171,7 +178,8 @@ export async function completeAiJson(opts) {
         system: opts.system,
         user: opts.user,
         temperature: opts.temperature,
-        jsonMode: config.provider === "openai"
+        jsonMode: config.provider === "openai",
+        maxTokens: opts.maxTokens
       });
     }
   } catch (err) {
@@ -212,6 +220,54 @@ export async function completeAiJson(opts) {
   };
 }
 export { truncate };
+const TICKET_ENRICH_MODES = {
+  enrich: {
+    temperature: 0.35,
+    maxTokens: 2200,
+    instruction: "Deeply enrich the agent's draft (not a light spellcheck). Rewrite for clarity, flow and a professional warm helpdesk register. Expand telegraphic notes into complete sentences. Add a fitting greeting and closing if missing on public replies. Structure with short paragraphs. Make implied next steps explicit."
+  },
+  professional: {
+    temperature: 0.3,
+    maxTokens: 2000,
+    instruction: "Rewrite in a more formal, precise corporate MSP register. Polished, confident, no slang or filler. Keep it human, not stiff."
+  },
+  friendly: {
+    temperature: 0.4,
+    maxTokens: 2200,
+    instruction: "Rewrite warmer and more empathetic while staying professional. Acknowledge the customer's situation. Use a natural, reassuring helpdesk voice."
+  },
+  shorten: {
+    temperature: 0.2,
+    maxTokens: 1400,
+    instruction: "Make the draft significantly more concise. Cut filler and repetition. Keep every fact, name, URL and commitment. Prefer short sentences."
+  },
+  expand: {
+    temperature: 0.4,
+    maxTokens: 2600,
+    instruction: "Develop the draft: complete the ideas already present, add a clear greeting/closing on public replies, explain next steps that are already implied, and improve readability. Do not add new technical claims."
+  },
+  rephrase: {
+    temperature: 0.45,
+    maxTokens: 2200,
+    instruction: "Rewrite with different wording and sentence structure while keeping the exact same meaning, facts and intent."
+  },
+  simplify: {
+    temperature: 0.25,
+    maxTokens: 2000,
+    instruction: "Rewrite in plain language. Short sentences, no jargon, easy for a non-technical customer. Keep all facts."
+  },
+  bullets: {
+    temperature: 0.25,
+    maxTokens: 2000,
+    instruction: "Restructure as a clear bullet list (HTML <ul><li> if HTML). Keep a one-line intro and a short closing on public replies. Each bullet is one action or fact."
+  },
+  steps: {
+    temperature: 0.3,
+    maxTokens: 2200,
+    instruction: "Turn the draft into a numbered action plan (HTML <ol><li> if HTML): what was done / what the customer should do / what happens next. Brief intro, then steps."
+  }
+};
+export const TICKET_ENRICH_MODE_IDS = Object.keys(TICKET_ENRICH_MODES);
 export async function suggestTicketReply({
   title,
   description,
@@ -243,6 +299,76 @@ export async function suggestTicketReply({
   }
   return {
     reply,
+    ...result
+  };
+}
+export async function correctTicketDraft({
+  text,
+  locale = "fr",
+  userId = null,
+  internal = false,
+  title = "",
+  description = "",
+  comments = [],
+  mode = "enrich"
+}) {
+  const aiLocale = resolveAiLocale(locale);
+  const draft = truncate(String(text || "").trim(), 6000);
+  if (!draft) {
+    const err = new Error("Empty draft");
+    err.code = "AI_EMPTY";
+    throw err;
+  }
+  const resolvedMode = TICKET_ENRICH_MODES[mode] ? mode : "enrich";
+  const modeSpec = TICKET_ENRICH_MODES[resolvedMode];
+  const thread = (Array.isArray(comments) ? comments : []).slice(-8).map(c => {
+    const who = c.is_internal || c.isInternal ? "interne" : "public";
+    const author = c.author_name || c.authorName || "agent";
+    return `[${who}] ${author}: ${truncate(c.content || c.body || "", 500)}`;
+  }).join("\n");
+  const system = withLocaleInstruction(`You are a senior MSP helpdesk editor for Veritas.
+
+Task: ${modeSpec.instruction}
+
+Always:
+- Fix spelling, grammar, punctuation and clumsy wording unless the mode is purely structural.
+- Keep the SAME language as the draft.
+- Preserve the agent's intent, decision, and who is asked to do what.
+
+Never:
+- Invent facts, diagnostics, root causes, credentials, SLAs, deadlines, prices or guarantees that are not in the draft or ticket context.
+- Drop names, URLs, ticket numbers, emails, phone numbers or technical identifiers.
+- Turn an internal note into a customer email or vice versa.
+
+HTML: if the draft contains HTML, preserve useful tags (p, br, ul, ol, li, b, strong, i, em, a) and return valid HTML in "text". Otherwise return plain text with line breaks.
+
+Return JSON: {"text": "..."}.`, locale);
+  const user = [
+    `Language UI: ${aiLocale.code} (${aiLocale.name})`,
+    `Mode: ${internal ? "internal agent note (colleagues only)" : "customer-facing public reply"}`,
+    `Rewrite style: ${resolvedMode}`,
+    title ? `Ticket title: ${truncate(title, 300)}` : null,
+    description ? `Ticket description: ${truncate(description, 1500)}` : null,
+    thread ? `Recent thread:\n${thread}` : null,
+    `Agent draft to transform:\n${draft}`
+  ].filter(Boolean).join("\n\n");
+  const result = await completeAiJson({
+    feature: "correct_text",
+    system,
+    user,
+    userId,
+    temperature: modeSpec.temperature,
+    maxTokens: modeSpec.maxTokens
+  });
+  const corrected = String(result.data.text || result.data.reply || result.data.corrected || "").trim();
+  if (!corrected) {
+    const err = new Error("Empty correction");
+    err.code = "AI_EMPTY";
+    throw err;
+  }
+  return {
+    text: corrected,
+    mode: resolvedMode,
     ...result
   };
 }

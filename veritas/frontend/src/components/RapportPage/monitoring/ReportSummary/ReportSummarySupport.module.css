@@ -1,0 +1,137 @@
+.factsGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 0.85rem;
+  margin-top: 0.35rem;
+}
+
+.factCard {
+  border: 1px solid var(--border-primary, #e5e7eb);
+  border-radius: 10px;
+  background: #fff;
+  padding: 0.85rem 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.factLabel {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--text-muted, #6b7280);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.factValue {
+  font-size: 1.05rem;
+  font-weight: 650;
+  color: var(--text-primary, #111827);
+}
+
+.factHint {
+  font-size: 0.8rem;
+  color: var(--text-muted, #6b7280);
+}
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  width: fit-content;
+  padding: 0.15rem 0.55rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 650;
+}
+
+.badgeOk {
+  background: #ecfdf5;
+  color: #047857;
+}
+
+.badgeWarn {
+  background: #fffbeb;
+  color: #b45309;
+}
+
+.badgeDanger {
+  background: #fef2f2;
+  color: #b91c1c;
+}
+
+.badgeMuted {
+  background: #f3f4f6;
+  color: #4b5563;
+}
+
+.creditList {
+  list-style: none;
+  margin: 0.35rem 0 0;
+  padding: 0;
+  display: grid;
+  gap: 0.6rem;
+}
+
+.creditItem {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  border: 1px solid var(--border-primary, #e5e7eb);
+  border-radius: 10px;
+  background: #fff;
+  padding: 0.7rem 0.9rem;
+}
+
+.creditLabel {
+  font-weight: 650;
+  color: var(--text-primary, #111827);
+}
+
+.creditMeta {
+  font-size: 0.8rem;
+  color: var(--text-muted, #6b7280);
+  margin-top: 0.15rem;
+}
+
+.creditValue {
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: #0f766e;
+  white-space: nowrap;
+}
+
+.creditValueEmpty {
+  color: #9ca3af;
+}
+
+.slaTable {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.84rem;
+  margin-top: 0.35rem;
+}
+
+.slaTable th,
+.slaTable td {
+  padding: 0.45rem 0.65rem;
+  text-align: left;
+  border-bottom: 1px solid var(--border-primary, #e5e7eb);
+}
+
+.slaTable th {
+  font-size: 0.75rem;
+  font-weight: 650;
+  color: var(--text-muted, #6b7280);
+  background: #f9fafb;
+}
+
+.slaTable td {
+  color: var(--text-primary, #111827);
+}
+
+.state {
+  padding: 1rem 0;
+  color: var(--text-muted, #6b7280);
+  font-size: 0.9rem;
+}

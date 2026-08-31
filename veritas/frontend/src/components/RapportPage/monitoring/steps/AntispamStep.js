@@ -6,6 +6,8 @@ import API_BASE_URL from "../../../../config";
 import { getIconPath } from "../../../../utils/assetHelper";
 import InfrastructureEquipmentTable from "../InfrastructureEquipmentTable";
 import AntispamSolutionModal from "../../../CybersecuritePage/AntispamSolutionModal";
+import { AntispamOverviewPanel } from "../../../EnterprisesPage/AntispamOverviewModal";
+import { isManualAntispamSolution, normalizeAntispamItem } from "../../../EnterprisesPage/antispamSolutionUtils";
 import styles from "../RapportMonitoringBuilder.module.css";
 import { MonitoringStepShell, MonitoringStepSubsectionHeader, MonitoringStepToolbarButton } from "../MonitoringStepLayout";
 function normalizeAntispam(sol) {
@@ -168,7 +170,7 @@ export default function AntispamStep(props) {
   } else if (rawAntispam && Array.isArray(rawAntispam.solutions)) {
     solutions = rawAntispam.solutions;
   }
-  const antispamList = solutions.map(normalizeAntispam);
+  const antispamList = solutions.map(sol => normalizeAntispamItem(normalizeAntispam(sol)) || normalizeAntispam(sol));
   useEffect(() => {
     if (!helpPopoverOpen) return;
     const onPointerDown = e => {
@@ -361,6 +363,19 @@ export default function AntispamStep(props) {
     }} />}
 
       {antispamList.map(solution => {
+      const item = normalizeAntispamItem(solution) || solution;
+      if (!item?.customerId) return null;
+      return <div key={String(item.customerId)} className={styles.solutionOverviewEmbed}>
+            <AntispamOverviewPanel active embedded client={{
+          id: client?.id ?? client?.uuid,
+          name: client?.name || client?.nom
+        }} antispamItem={item} onSynced={typeof onRefreshClient === "function" ? onRefreshClient : undefined} />
+          </div>;
+    })}
+
+      {antispamList.map(solution => {
+      const item = normalizeAntispamItem(solution) || solution;
+      if (item?.customerId && !isManualAntispamSolution(item)) return null;
       const solutionKey = String(solution.id || solution.item_key || solution.nom || "antispam");
       const solutionData = getSolutionData(solution);
       const usersData = Array.isArray(solutionData?.usersData) ? solutionData.usersData : [];

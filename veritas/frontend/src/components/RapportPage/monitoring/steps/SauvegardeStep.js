@@ -2,12 +2,11 @@ import React, { useState } from "react";
 import { Icon } from "@iconify/react";
 import { toast } from "react-toastify";
 import { getIconPath } from "../../../../utils/assetHelper";
-import InstanceBackupModal from "../../../CybersecuritePage/InstanceSauvegardeModal";
-import AddJobModal from "../../../CybersecuritePage/AddJobModal";
+import BackupConfigModal from "../../../EnterprisesPage/BackupConfigModal";
 import equipmentStyles from "../../../EquipementPage/EquipmentPage.module.css";
 import API_BASE_URL from "../../../../config";
 import styles from "../RapportMonitoringBuilder.module.css";
-import { MonitoringStepShell, MonitoringStepSection, MonitoringStepSyncButton, MonitoringStepTableWrap } from "../MonitoringStepLayout";
+import { MonitoringStepShell, MonitoringStepSection, MonitoringStepTableWrap } from "../MonitoringStepLayout";
 import { formatServeurLieLabel } from "../../../EnterprisesPage/backupJobUtils";
 function formatDate(raw) {
   if (!raw) return "-";
@@ -75,22 +74,31 @@ export default function BackupStep({
   const rawBackup = client?.equipements?.Sauvegarde || client?.equipements?.Backup;
   const instances = Array.isArray(rawBackup?.instances) ? rawBackup.instances : [];
   const clientId = client?.id ?? client?.uuid;
-  const clientName = client?.raison_sociale || client?.name || client?.nom || "";
   const periodStart = reportPeriod.start || client?.reportStartDate;
   const periodEnd = reportPeriod.end || client?.reportEndDate;
   const standardInstances = instances.filter(inst => inst.logiciel !== "Active Backup for Microsoft 365" && inst.logiciel !== "HyperBackup");
   const activeBackupInstances = instances.filter(inst => inst.logiciel === "Active Backup for Microsoft 365");
   const hyperBackupInstances = instances.filter(inst => inst.logiciel === "HyperBackup");
   const [jobsSyncLoading, setJobsSyncLoading] = useState(false);
-  const [editInstanceModal, setEditInstanceModal] = useState({
+  const [backupConfigModal, setBackupConfigModal] = useState({
     open: false,
-    instance: null
+    instance: null,
+    job: null
   });
-  const [editJobModal, setEditJobModal] = useState({
-    open: false,
-    job: null,
-    instance: null
-  });
+  const openBackupConfig = (instance = null, job = null) => {
+    setBackupConfigModal({
+      open: true,
+      instance: instance || job?._instance || null,
+      job: job || null
+    });
+  };
+  const closeBackupConfig = () => {
+    setBackupConfigModal({
+      open: false,
+      instance: null,
+      job: null
+    });
+  };
   const syncJobsFromCheckMK = async () => {
     try {
       setJobsSyncLoading(true);
@@ -160,7 +168,7 @@ export default function BackupStep({
     if (!list || list.length === 0) return null;
     return <MonitoringStepSection title={title} count={list.length}>
         <MonitoringStepTableWrap scrollable>
-          <table className={equipmentStyles.equipmentTable}>
+          <table className={equipmentStyles.equipmentTableEmbedded}>
             <thead>
               <tr>
                 {["Solution", "Name", "Server", "Expiration", "Number of jobs", "Actions"].map(label => <th key={label}>
@@ -173,7 +181,7 @@ export default function BackupStep({
               const jobs = Array.isArray(inst.jobs) ? inst.jobs : [];
               const instanceLabel = inst.nom || inst.logiciel || `Instance ${idx + 1}`;
               const server = inst.server || inst.serveur || inst.serveurLie || "-";
-              return <tr key={inst.id || idx} className={equipmentStyles.equipmentRow}>
+              return <tr key={inst.id || idx} className={`${equipmentStyles.equipmentRow} ${equipmentStyles.equipmentRowEmbedded}`}>
                     <td>
                       <span style={{
                     display: "inline-flex",
@@ -188,10 +196,7 @@ export default function BackupStep({
                     <td>{inst.expiration ? formatDate(inst.expiration) : "-"}</td>
                     <td>{jobs.length}</td>
                     <td onClick={e => e.stopPropagation()}>
-                      <button type="button" className={equipmentStyles.mappingActionButton} title="Edit instance" onClick={() => setEditInstanceModal({
-                    open: true,
-                    instance: inst
-                  })}>
+                      <button type="button" className={equipmentStyles.mappingActionButton} title="Modifier l’instance" onClick={() => openBackupConfig(inst)}>
                         <Icon icon="mdi:pencil" width={16} height={16} />
                       </button>
                     </td>
@@ -206,7 +211,7 @@ export default function BackupStep({
     if (!list || list.length === 0) return null;
     return <MonitoringStepSection title={title} count={list.length}>
         <MonitoringStepTableWrap scrollable>
-          <table className={equipmentStyles.equipmentTable}>
+          <table className={equipmentStyles.equipmentTableEmbedded}>
             <thead>
               <tr>
                 {["Name", "Enabled modules", "Destination storage", "Actions"].map(label => <th key={label}>
@@ -219,7 +224,7 @@ export default function BackupStep({
               const modules = inst.activeBackupModules || {};
               const storage = inst.activeBackupStorage || "-";
               const instanceLabel = inst.nom || inst.logiciel || `Instance ${idx + 1}`;
-              return <tr key={inst.id || idx} className={equipmentStyles.equipmentRow}>
+              return <tr key={inst.id || idx} className={`${equipmentStyles.equipmentRow} ${equipmentStyles.equipmentRowEmbedded}`}>
                     <td>{instanceLabel}</td>
                     <td>
                       <span style={{
@@ -241,10 +246,7 @@ export default function BackupStep({
                     </td>
                     <td>{storage}</td>
                     <td onClick={e => e.stopPropagation()}>
-                      <button type="button" className={equipmentStyles.mappingActionButton} title="Edit instance" onClick={() => setEditInstanceModal({
-                    open: true,
-                    instance: inst
-                  })}>
+                      <button type="button" className={equipmentStyles.mappingActionButton} title="Modifier l’instance" onClick={() => openBackupConfig(inst)}>
                         <Icon icon="mdi:pencil" width={16} height={16} />
                       </button>
                     </td>
@@ -263,7 +265,7 @@ export default function BackupStep({
     };
     return <MonitoringStepSection title={title} count={list.length}>
         <MonitoringStepTableWrap scrollable>
-          <table className={equipmentStyles.equipmentTable}>
+          <table className={equipmentStyles.equipmentTableEmbedded}>
             <thead>
               <tr>
                 {["Name", "Source NAS", "Destination NAS", "Number of jobs", "Actions"].map(label => <th key={label}>
@@ -277,16 +279,13 @@ export default function BackupStep({
               const instanceLabel = inst.nom || inst.logiciel || `Instance ${idx + 1}`;
               const source = formatNas(inst.hyperbackupSource);
               const dest = formatNas(inst.hyperbackupDestination);
-              return <tr key={inst.id || idx} className={equipmentStyles.equipmentRow}>
+              return <tr key={inst.id || idx} className={`${equipmentStyles.equipmentRow} ${equipmentStyles.equipmentRowEmbedded}`}>
                     <td>{instanceLabel}</td>
                     <td>{source}</td>
                     <td>{dest}</td>
                     <td>{jobs.length}</td>
                     <td onClick={e => e.stopPropagation()}>
-                      <button type="button" className={equipmentStyles.mappingActionButton} title="Edit instance" onClick={() => setEditInstanceModal({
-                    open: true,
-                    instance: inst
-                  })}>
+                      <button type="button" className={equipmentStyles.mappingActionButton} title="Modifier l’instance" onClick={() => openBackupConfig(inst)}>
                         <Icon icon="mdi:pencil" width={16} height={16} />
                       </button>
                     </td>
@@ -316,9 +315,9 @@ export default function BackupStep({
       {renderHyperBackupInstanceTable(hyperBackupInstances, "HyperBackup")}
 
       {}
-      <MonitoringStepSection title="Jobs" count={allJobs.length} isEmpty={allJobs.length === 0} emptyMessage="No backup jobs." headerActions={<MonitoringStepSyncButton onClick={syncJobsFromCheckMK} loading={jobsSyncLoading} title="Synchronize duration and last backup date from CheckMK" />}>
+      <MonitoringStepSection title="Jobs" count={allJobs.length} isEmpty={allJobs.length === 0} emptyMessage="No backup jobs.">
         <MonitoringStepTableWrap scrollable>
-          <table className={equipmentStyles.equipmentTable}>
+          <table className={equipmentStyles.equipmentTableEmbedded}>
             <thead>
               <tr>
                 {["Name", "Backup type", "Instance", "Server", "Destination", "Frequency", "Schedule", "Retention", "Last backup", "Duration", "Last sync", "Last status", "Actions"].map(label => <th key={label}>
@@ -363,7 +362,7 @@ export default function BackupStep({
               } : {
                 backgroundColor: "#dcfce7"
               };
-              return <tr key={`${instanceName}-${jobName}-${index}`} className={`${equipmentStyles.equipmentRow} ${isHighlighted ? styles.infraTableRowHighlight : ""}`} style={rowAlertStyle}>
+              return <tr key={`${instanceName}-${jobName}-${index}`} className={`${equipmentStyles.equipmentRow} ${equipmentStyles.equipmentRowEmbedded} ${isHighlighted ? styles.infraTableRowHighlight : ""}`} style={rowAlertStyle}>
                       <td>{jobName}</td>
                       <td>{typeLabel}</td>
                       <td>{job._instanceLabel}</td>
@@ -396,7 +395,7 @@ export default function BackupStep({
                         <div className={equipmentStyles.mappingActions}>
                           <div className={equipmentStyles.mappingActionsGroup}>
                         {typeof onOpenComments === "function" && <span className={styles.infraActionBadgeWrap}>
-                            <button type="button" className={equipmentStyles.mappingActionButton} title="Comments" onClick={() => onOpenComments(item, {
+                            <button type="button" className={equipmentStyles.mappingActionButton} title={commentCount > 0 ? "Voir / ajouter une note au rapport" : "Commenter dans le rapport"} onClick={() => onOpenComments(item, {
                           moduleKey: "Backup",
                           equipmentKey
                         })}>
@@ -412,11 +411,7 @@ export default function BackupStep({
                                 {ticketCount}
                               </span>}
                           </span>}
-                        <button type="button" className={equipmentStyles.mappingActionButton} title="Edit job" onClick={() => setEditJobModal({
-                        open: true,
-                        job,
-                        instance: job._instance
-                      })}>
+                        <button type="button" className={equipmentStyles.mappingActionButton} title="Modifier le job" onClick={() => openBackupConfig(job._instance, job)}>
                           <Icon icon="mdi:pencil" width={16} height={16} />
                         </button>
                           </div>
@@ -429,26 +424,14 @@ export default function BackupStep({
         </MonitoringStepTableWrap>
       </MonitoringStepSection>
 
-      {editInstanceModal.open && editInstanceModal.instance && clientId && <InstanceBackupModal open={editInstanceModal.open} onClose={() => setEditInstanceModal({
-      open: false,
-      instance: null
-    })} mode="edit" instanceType={null} clientId={clientId} clientName={clientName} instance={editInstanceModal.instance} clients={[]} onSaved={() => {
-      if (typeof onRefreshClient === "function") onRefreshClient();
-    }} />}
-
-      {editJobModal.open && editJobModal.job && editJobModal.instance && clientId && (() => {
-      const {
-        _instance,
-        _instanceKey,
-        _instanceLabel,
-        _instanceLogiciel,
-        ...initialJob
-      } = editJobModal.job;
-      return <AddJobModal open={editJobModal.open} onClose={() => setEditJobModal({
-        open: false,
-        job: null,
-        instance: null
-      })} mode="edit" clientId={clientId} instance={editJobModal.instance} initialJob={initialJob} clients={[]} onSaved={() => typeof onRefreshClient === "function" && onRefreshClient()} />;
-    })()}
+      {backupConfigModal.open && clientId ? <BackupConfigModal
+        client={client}
+        initialInstance={backupConfigModal.instance}
+        initialJob={backupConfigModal.job}
+        onClose={closeBackupConfig}
+        onSaved={() => {
+          if (typeof onRefreshClient === "function") onRefreshClient();
+        }}
+      /> : null}
     </MonitoringStepShell>;
 }

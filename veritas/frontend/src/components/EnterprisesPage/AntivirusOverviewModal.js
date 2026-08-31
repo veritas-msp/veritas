@@ -180,6 +180,7 @@ export function AntivirusOverviewPanel({
   onNavigate,
   cachedOnly = false,
   embed = false,
+  embedded = false,
   activeSection: controlledSection,
   onSectionChange
 }) {
@@ -520,7 +521,7 @@ export function AntivirusOverviewPanel({
             </div>)}
         </div>
       </>;
-    if (asPage) {
+    if (asPage || embedded) {
       const okApis = apiRows.filter(row => row.status === "ok").length;
       const licenseUsagePct = license?.used != null && license?.total ? Math.round(license.used / license.total * 100) : null;
       const syncLabel = lastPersistedAt ? `Last backup: ${formatDate(lastPersistedAt)}` : "Not saved locally";
@@ -781,7 +782,7 @@ export function AntivirusOverviewPanel({
       </>;
   };
   const renderSectionContent = () => {
-    if (!asPage && loading) {
+    if (!asPage && !embedded && loading) {
       return <div className={styles.loadingBlock}>
           <Icon icon="mdi:loading" className={formStyles.spinning} aria-hidden />
           Loading GravityZone data…
@@ -894,12 +895,12 @@ export function AntivirusOverviewPanel({
     if (loadError && !dashboard) return <SectionError error={loadError} />;
     return renderSectionContent();
   }
-  if (asPage) {
+  if (asPage || embedded) {
     const clientName = client?.name || "-";
     const subtitle = client?.id && onNavigate ? <button type="button" className={styles.subtitleLink} onClick={openEnterprise}>
         {clientName}
       </button> : clientName;
-    return <SolutionDetailPageLayout accent="gravityzone" eyebrow="Cybersecurity · GravityZone" title={`Antivirus · ${companyName}`} titleIcon="simple-icons:bitdefender" subtitle={subtitle} loading={loading} refreshing={refreshing} loadingMessage="Loading GravityZone data…" onRefresh={() => loadDashboard({
+    return <SolutionDetailPageLayout embedded={embedded} accent="gravityzone" eyebrow="Cybersecurity · GravityZone" title={`Antivirus · ${companyName}`} titleIcon="simple-icons:bitdefender" subtitle={subtitle} loading={loading} refreshing={refreshing} loadingMessage="Loading GravityZone data…" onRefresh={() => loadDashboard({
       persist: true
     })} refreshLabel="Refresh and save" footerHint={mappingLabel} navEntries={navEntries} activeSection={activeSection} onSectionChange={setActiveSection} navAriaLabel="Sections">
         {renderSectionContent()}

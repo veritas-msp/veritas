@@ -19,6 +19,35 @@ const SEVERITY_RANK = {
   info: 2
 };
 
+/** CheckMK is currently the only monitoring integration. */
+const MONITORING_INTEGRATION_ISSUE_KEYS = new Set(["monitor_critical", "monitor_warning", "no_data"]);
+
+export function isMonitoringIntegrationIssue(issue) {
+  return MONITORING_INTEGRATION_ISSUE_KEYS.has(String(issue?.key || ""));
+}
+
+export function isEquipmentMappedViaMonitoringIntegration(equipment, {
+  checkmkEnabled = true,
+  isMkMapped
+} = {}) {
+  if (checkmkEnabled === false) return false;
+  const mapping = equipment?.checkmkMapping;
+  const host = String(
+    mapping?.checkmk_host_name || mapping?.checkmkHostName || equipment?.checkmk_host_name || ""
+  ).trim();
+  if (host && mapping?.is_active !== false) return true;
+  if (typeof isMkMapped === "function" && isMkMapped(equipment)) return true;
+  return false;
+}
+
+function pickMonitoringIntegrationIssue(row) {
+  const issues = Array.isArray(row?.issues) ? row.issues : [];
+  const fromList = issues.find(isMonitoringIntegrationIssue);
+  if (fromList) return fromList;
+  if (isMonitoringIntegrationIssue(row?.primaryIssue)) return row.primaryIssue;
+  return null;
+}
+
 function severityFromTone(tone, status) {
   if (tone === "bad" || status === "critical" || status === "offline" || status === "expired") return "critical";
   if (tone === "warn" || status === "warning" || status === "expiring" || status === "suspended") return "warning";
@@ -27,9 +56,10 @@ function severityFromTone(tone, status) {
 
 /**
  * Unified actionable alert item for Monitoring Center Operations view.
+ * The ops queue only contains devices mapped via a monitoring integration (CheckMK).
  * @typedef {object} SupervisionQueueItem
  * @property {string} id
- * @property {"devices"|"backups"|"contracts"|"rmm"} domain
+ * @property {"devices"} domain
  * @property {"critical"|"warning"|"info"} severity
  * @property {string} tone
  * @property {string} title
@@ -53,13 +83,15 @@ export function buildDeviceQueueItems(statsItems, resolveMonitorStatus, options 
     checkmkEnabled: options.checkmkEnabled,
     isMkMapped: options.isMkMapped
   });
-  return actions.map(action => {
+  return actions.flatMap(action => {
     const {
       equipment,
       status,
       issue,
       priority
     } = action;
+    if (!isEquipmentMappedViaMonitoringIntegration(equipment, options)) return [];
+    if (!isMonitoringIntegrationIssue(issue)) return [];
     const severity = severityFromTone(issue?.tone, status);
     const reason = alertReason([issue?.label, issue?.detail].filter(Boolean).join(" — "), status);
     const clientName = equipment?.clientName || "";
@@ -87,15 +119,20 @@ export function buildDeviceQueueItems(statsItems, resolveMonitorStatus, options 
 
 /** Build device queue items from server-evaluated fleet issues (Step 2). */
 export function buildDeviceQueueItemsFromIssues(issueRows = [], options = {}) {
-  return (Array.isArray(issueRows) ? issueRows : []).map(row => {
+  return (Array.isArray(issueRows) ? issueRows : []).flatMap(row => {
     const equipment = row?.equipment || {};
-    const issue = row?.primaryIssue || row?.issues?.[0] || null;
-    const status = row?.monitorStatus || issue?.monitorStatus || "ok";
+    if (!isEquipmentMappedViaMonitoringIntegration(equipment, {
+      checkmkEnabled: options.checkmkEnabled !== false,
+      isMkMapped: options.isMkMapped
+    })) return [];
+    const issue = pickMonitoringIntegrationIssue(row);
+    if (!issue) return [];
+    const status = issue.monitorStatus || row?.monitorStatus || "ok";
     const severity = severityFromTone(issue?.tone, status);
     const reason = alertReason([issue?.label, issue?.detail].filter(Boolean).join(" — "), status);
     const clientName = equipment?.clientName || "";
     const assetName = equipment?.name || options.fallbackName || "—";
-    return {
+    return [{
       id: `device-${getEquipmentListKey(equipment)}`,
       domain: "devices",
       severity,
@@ -110,9 +147,9 @@ export function buildDeviceQueueItemsFromIssues(issueRows = [], options = {}) {
       contract: null,
       agent: null,
       ticketSubject: [assetName, reason].filter(Boolean).join(" — "),
-      priority: row?.priority ?? issue?.priority ?? SEVERITY_RANK[severity] ?? 9,
+      priority: issue?.priority ?? row?.priority ?? SEVERITY_RANK[severity] ?? 9,
       sortTime: null
-    };
+    }];
   });
 }
 
@@ -236,38 +273,23 @@ export function buildUnifiedSupervisionQueue({
   alertRules = null,
   checkmkEnabled = false,
   isMkMapped = () => false,
-  backupJobs = [],
-  contractAlerts = [],
-  licenseAlerts = [],
-  offlineAgents = [],
   labels = {}
 } = {}) {
+  const deviceOptions = {
+    fallbackName: labels.noName,
+    alertRules,
+    checkmkEnabled,
+    isMkMapped
+  };
   const devices = Array.isArray(deviceIssueItems)
     ? buildDeviceQueueItemsFromIssues(deviceIssueItems, {
-        fallbackName: labels.noName
+        ...deviceOptions,
+        checkmkEnabled: true
       })
     : resolveMonitorStatus
-      ? buildDeviceQueueItems(statsItems, resolveMonitorStatus, {
-          alertRules,
-          checkmkEnabled,
-          isMkMapped,
-          fallbackName: labels.noName
-        })
+      ? buildDeviceQueueItems(statsItems, resolveMonitorStatus, deviceOptions)
       : [];
-  const backups = buildBackupQueueItems(backupJobs, {
-    labels: labels.backup,
-    fallbackName: labels.noName
-  });
-  const contracts = buildContractQueueItems(contractAlerts, licenseAlerts, {
-    statusLabels: labels.contractStatus,
-    contractTypeLabel: labels.contractType,
-    fallbackName: labels.noName
-  });
-  const rmm = buildRmmQueueItems(offlineAgents, {
-    offlineLabel: labels.offline,
-    fallbackName: labels.noName
-  });
-  return [...devices, ...backups, ...contracts, ...rmm].sort((a, b) => {
+  return [...devices].sort((a, b) => {
     const sev = (SEVERITY_RANK[a.severity] ?? 9) - (SEVERITY_RANK[b.severity] ?? 9);
     if (sev !== 0) return sev;
     const ta = a.sortTime ?? Number.POSITIVE_INFINITY;

@@ -3,6 +3,7 @@ import { Icon as IconifyIcon } from "@iconify/react";
 import ReportSummaryInfrastructure from "../ReportSummary/ReportSummaryInfrastructure";
 import ReportSummaryCybersecurity from "../ReportSummary/ReportSummaryCybersecurity";
 import ReportSummaryServices from "../ReportSummary/ReportSummaryServices";
+import ReportSummarySupport from "../ReportSummary/ReportSummarySupport";
 import styles from "../RapportMonitoringBuilder.module.css";
 import { isMonitoringStepEnabled } from "../MonitoringSteps";
 export default function SummaryStep({
@@ -61,6 +62,7 @@ export default function SummaryStep({
   if (hasInfra) availableTabs.push("infra");
   if (hasCyber) availableTabs.push("cyber");
   if (hasServices) availableTabs.push("services");
+  availableTabs.push("support");
   const fallbackTab = availableTabs[0] || null;
   const currentTab = availableTabs.includes(activeTab) ? activeTab : fallbackTab;
   return <div style={{
@@ -89,12 +91,16 @@ export default function SummaryStep({
             {hasServices && <button type="button" className={`${styles.summaryTab} ${styles.summaryTabServices} ${currentTab === "services" ? styles.summaryTabActive : ""}`} onClick={() => setActiveTab("services")}>
                 SERVICES
               </button>}
+            <button type="button" className={`${styles.summaryTab} ${styles.summaryTabSupport} ${currentTab === "support" ? styles.summaryTabActive : ""}`} onClick={() => setActiveTab("support")}>
+                SUPPORT
+              </button>
           </div>}
-        <div className={`${styles.summaryReportTitle} ${currentTab === "cyber" ? styles.summaryReportCyber : currentTab === "services" ? styles.summaryReportServices : styles.summaryReportInfra}`}>
+        <div className={`${styles.summaryReportTitle} ${currentTab === "cyber" ? styles.summaryReportCyber : currentTab === "services" ? styles.summaryReportServices : currentTab === "support" ? styles.summaryReportSupport : styles.summaryReportInfra}`}>
           {currentTab === "overview" && "RAPPORT DE SUPERVISION"}
           {currentTab === "infra" && "RAPPORT INFRASTRUCTURE"}
           {currentTab === "cyber" && "RAPPORT CYBERSÉCURITÉ"}
           {currentTab === "services" && "RAPPORT SERVICES"}
+          {currentTab === "support" && "RAPPORT SUPPORT"}
         </div>
       </div>
 
@@ -139,6 +145,11 @@ export default function SummaryStep({
       }}>
             <ReportSummaryServices client={client} equipmentComments={equipmentComments} equipmentCommentCounts={equipmentCommentCounts} equipmentTicketCounts={equipmentTicketCounts} />
           </div>}
+        <div data-export-section="support" style={{
+        display: currentTab === "support" ? "block" : "none"
+      }}>
+            <ReportSummarySupport client={client} />
+          </div>
 
         <section className={styles.reportCommentsContainer} data-export-comments="true">
           <div className={styles.reportCommentsHeader}>

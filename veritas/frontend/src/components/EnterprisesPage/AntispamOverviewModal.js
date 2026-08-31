@@ -275,6 +275,7 @@ export function AntispamOverviewPanel({
   onNavigate,
   cachedOnly = false,
   embed = false,
+  embedded = false,
   activeSection: controlledSection,
   onSectionChange
 }) {
@@ -416,7 +417,7 @@ export function AntispamOverviewPanel({
     const sendersTotal = sections.senders?.total ?? 0;
     const spoolsTotal = sections.spools?.total ?? 0;
     const detectTotal = sections.detectSpools?.total ?? 0;
-    if (asPage) {
+    if (asPage || embedded) {
       const volumeDistribution = buildDistributionItems([{
         name: "Users",
         count: usersTotal
@@ -606,7 +607,7 @@ export function AntispamOverviewPanel({
       </>;
   };
   const renderSectionContent = () => {
-    if (!asPage && loading) {
+    if (!asPage && !embedded && loading) {
       return <div className={styles.loadingBlock}>
           <Icon icon="mdi:loading" className={formStyles.spinning} aria-hidden />
           Loading Mailinblack data…
@@ -681,7 +682,7 @@ export function AntispamOverviewPanel({
     if (loadError && !dashboard) return <SectionError error={loadError} />;
     return renderSectionContent();
   }
-  if (asPage) {
+  if (asPage || embedded) {
     const clientName = client?.name || "-";
     const subtitle = <>
         {client?.id && onNavigate ? <button type="button" className={styles.subtitleLink} onClick={openEnterprise}>
@@ -689,7 +690,7 @@ export function AntispamOverviewPanel({
           </button> : clientName}
         {` · ${mappingLabel}`}
       </>;
-    return <SolutionDetailPageLayout accent="mailinblack" eyebrow="Cybersecurity · Mailinblack Protect" title={`Antispam · ${customerName}`} titleIcon="mdi:email-secure-outline" subtitle={subtitle} loading={loading} refreshing={refreshing} loadingMessage="Loading des data Mailinblack…" onRefresh={() => loadDashboard({
+    return <SolutionDetailPageLayout embedded={embedded} accent="mailinblack" eyebrow="Cybersecurity · Mailinblack Protect" title={`Antispam · ${customerName}`} titleIcon="mdi:email-secure-outline" subtitle={subtitle} loading={loading} refreshing={refreshing} loadingMessage="Loading des data Mailinblack…" onRefresh={() => loadDashboard({
       persist: true
     })} refreshLabel="Refresh and save" footerHint={`${mappingLabel}${customerId ? ` · ID ${customerId}` : ""}`} navEntries={navEntries} activeSection={activeSection} onSectionChange={setActiveSection} navAriaLabel="Sections">
         {renderSectionContent()}

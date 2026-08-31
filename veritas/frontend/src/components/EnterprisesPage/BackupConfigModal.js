@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { FaTimes } from "react-icons/fa";
 import { Icon } from "@iconify/react";
@@ -16,6 +16,8 @@ import styles from "./BackupConfigModal.module.css";
 import { getBackupModalCopy, supportsJobs, ACTIVE_BACKUP_MODULE_KEYS } from "./backupConfigModalI18n";
 import { coerceStoredOption, formatServeurLieLabel, isBackupJobActive, normalizeServeurLieList } from "./backupJobUtils";
 import MultiSuggestPicker from "../AdminPage/MultiSuggestPicker";
+import EquipmentMappingModal from "../EquipementPage/EquipmentMappingModal";
+import { useCheckMKIntegrationEnabled } from "../../hooks/useCheckMKIntegrationEnabled";
 const EMPTY_JOB = {
   nom: "",
   regularite: "",
@@ -266,13 +268,23 @@ function InstanceCard({
       </div>
     </article>;
 }
+function isJobCheckmkMapped(job) {
+  return Boolean(String(job?.checkmk_host_name || job?.checkmkMapping?.checkmk_host_name || "").trim());
+}
+function jobCheckmkLabel(job) {
+  const host = String(job?.checkmk_host_name || job?.checkmkMapping?.checkmk_host_name || "").trim();
+  const service = String(job?.checkmk_service_name || job?.checkmkMapping?.checkmk_service_name || "").trim();
+  return [host, service].filter(Boolean).join(" · ");
+}
 function JobCard({
   job,
   onEdit,
   onDelete,
+  onMap,
   deleting,
   copy,
-  isDefault
+  isDefault,
+  canMap
 }) {
   const typeLabel = copy.resolveOptionLabel(copy.jobTypeOptions, job.type);
   const regularityLabel = copy.resolveOptionLabel(copy.regularityOptions, job.regularite, "");
@@ -281,6 +293,8 @@ function JobCard({
   const scheduleLabel = scheduleParts.length > 0 ? scheduleParts.join(" · ") : "—";
   const targetsLabel = formatServeurLieLabel(job.serveurLie, copy.form.jobTargetNone);
   const jobActive = isBackupJobActive(job);
+  const mapped = isJobCheckmkMapped(job);
+  const mappingLabel = jobCheckmkLabel(job);
   return <article className={`${styles.card} ${jobActive ? "" : styles.cardInactive}`}>
       <div className={styles.cardMain}>
         <div className={styles.cardHead}>
@@ -314,9 +328,16 @@ function JobCard({
             <span className={styles.metaLabel}>{copy.meta.retention}</span>
             <span className={styles.metaValue}>{retentionLabel}</span>
           </div>
+          {mapped ? <div>
+              <span className={styles.metaLabel}>{copy.meta.checkmk}</span>
+              <span className={styles.metaValue}>{mappingLabel || "—"}</span>
+            </div> : null}
         </div>
       </div>
       <div className={styles.cardActions}>
+        {canMap ? <button type="button" className={`${styles.iconBtn} ${mapped ? styles.iconBtnCheckmkActive : ""}`} onClick={onMap} disabled={!job?.id} aria-label={mapped ? copy.actions.editCheckmk : copy.actions.mapCheckmk} title={!job?.id ? copy.actions.mapCheckmkDisabled : mapped ? mappingLabel || copy.actions.editCheckmk : copy.actions.mapCheckmk}>
+            <Icon icon="simple-icons:checkmk" />
+          </button> : null}
         <button type="button" className={styles.iconBtn} onClick={onEdit} aria-label={copy.actions.edit}>
           <Icon icon="mdi:pencil-outline" />
         </button>
@@ -330,12 +351,17 @@ export default function BackupConfigModal({
   client,
   onClose,
   onSaved,
-  initialSection = "overview"
+  initialSection = "overview",
+  initialInstance = null,
+  initialJob = null
 }) {
   const locale = useAppLocale();
   const copy = useMemo(() => getBackupModalCopy(locale), [locale]);
   const configCopy = useMemo(() => getEnterpriseConfigModalsCopy(locale), [locale]);
   const common = useCommonCopy();
+  const {
+    enabled: checkmkEnabled
+  } = useCheckMKIntegrationEnabled();
   const [activeSection, setActiveSection] = useState(initialSection);
   const [instances, setInstances] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -349,6 +375,7 @@ export default function BackupConfigModal({
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [deletingId, setDeletingId] = useState(null);
   const [hardwareList, setHardwareList] = useState([]);
+  const [mappingJob, setMappingJob] = useState(null);
   const selectedInstance = useMemo(() => instances.find(i => i.id === selectedInstanceId) || null, [instances, selectedInstanceId]);
   const totalJobs = useMemo(() => instances.reduce((sum, i) => sum + (Array.isArray(i.jobs) ? i.jobs.length : 0), 0), [instances]);
   const showJobsNav = Boolean(selectedInstance && supportsJobs(selectedInstance.logiciel));
@@ -380,7 +407,12 @@ export default function BackupConfigModal({
         }
       }
     });
-    setInstances(normalizeInstances(nextInstances));
+    try {
+      const refreshed = await fetchClientModules(client.id);
+      setInstances(normalizeInstances(refreshed?.equipements?.Sauvegarde?.instances));
+    } catch {
+      setInstances(normalizeInstances(nextInstances));
+    }
     await onSaved?.();
   }, [client?.id, onSaved]);
   const loadData = useCallback(async () => {
@@ -402,6 +434,54 @@ export default function BackupConfigModal({
   useEffect(() => {
     loadData();
   }, [loadData]);
+  const initialFocusRef = useRef(false);
+  useEffect(() => {
+    if (loading || initialFocusRef.current || !instances.length) return;
+    const matchInstance = target => {
+      if (!target) return null;
+      if (target.id != null && target.id !== "") {
+        const byId = instances.find(item => String(item.id) === String(target.id));
+        if (byId) return byId;
+      }
+      return instances.find(item =>
+        String(item.logiciel || "") === String(target.logiciel || "")
+        && String(item.server || item.hyperbackupSource || item.activeBackupStorage || "") === String(target.server || target.hyperbackupSource || target.activeBackupStorage || "")
+      ) || null;
+    };
+    const instance = matchInstance(initialInstance) || matchInstance(initialJob?._instance);
+    if (!instance) return;
+    initialFocusRef.current = true;
+    setSelectedInstanceId(instance.id);
+    if (initialJob) {
+      const jobs = Array.isArray(instance.jobs) ? instance.jobs : [];
+      const job = jobs.find(item =>
+        initialJob.id != null && String(item.id) === String(initialJob.id)
+        || initialJob.nom && item.nom === initialJob.nom
+      );
+      if (job) {
+        setEditingJobId(job.id);
+        setJobDraft({
+          ...EMPTY_JOB,
+          ...job,
+          serveurLie: normalizeServeurLieList(job.serveurLie),
+          stockageLie: instance.logiciel === "HYCU Backup" ? "Datacenter PSI" : job.stockageLie || "",
+          actif: isBackupJobActive(job)
+        });
+        setActiveSection("edit-job");
+        return;
+      }
+    }
+    setEditingInstanceId(instance.id);
+    setInstanceDraft({
+      ...instance,
+      jobs: Array.isArray(instance.jobs) ? instance.jobs : [],
+      activeBackupModules: instance.activeBackupModules ? {
+        ...EMPTY_ACTIVE_MODULES,
+        ...instance.activeBackupModules
+      } : undefined
+    });
+    setActiveSection("edit-instance");
+  }, [loading, instances, initialInstance, initialJob]);
   useEffect(() => {
     if (!instances.length) {
       if (selectedInstanceId != null) setSelectedInstanceId(null);
@@ -464,6 +544,29 @@ export default function BackupConfigModal({
       actif: isBackupJobActive(job)
     });
     setActiveSection("edit-job");
+  };
+  const canMapJobs = Boolean(checkmkEnabled && selectedInstance && selectedInstance.logiciel !== "HYCU Backup");
+  const openJobMapping = job => {
+    if (!canMapJobs || !job?.id) return;
+    setMappingJob(job);
+  };
+  const handleMappingSaved = mapping => {
+    if (!mappingJob?.id) {
+      setMappingJob(null);
+      return;
+    }
+    const nextHost = mapping?.checkmk_host_name ? String(mapping.checkmk_host_name).trim() : "";
+    setInstances(prev => prev.map(inst => ({
+      ...inst,
+      jobs: (inst.jobs || []).map(j => String(j.id) === String(mappingJob.id) ? {
+        ...j,
+        checkmk_host_name: nextHost || null,
+        checkmk_site: mapping?.checkmk_site ?? null,
+        checkmk_service_name: mapping?.checkmk_service_name ?? null
+      } : j)
+    })));
+    setMappingJob(null);
+    onSaved?.();
   };
   const handleSubmitInstance = async () => {
     if (!instanceDraft?.logiciel) return;
@@ -851,7 +954,7 @@ export default function BackupConfigModal({
           </div> : <div className={styles.list}>
             {jobs.map((job, idx) => {
           const isDefault = selectedInstance.logiciel === "HYCU Backup" && (job.isDefault || jobs.length === 1 && idx === 0);
-          return <JobCard key={job.id || idx} job={job} copy={copy} isDefault={isDefault} deleting={deletingId === job.id} onEdit={() => openEditJob(job)} onDelete={() => requestDeleteJob(job)} />;
+          return <JobCard key={job.id || idx} job={job} copy={copy} isDefault={isDefault} deleting={deletingId === job.id} canMap={canMapJobs} onMap={() => openJobMapping(job)} onEdit={() => openEditJob(job)} onDelete={() => requestDeleteJob(job)} />;
         })}
           </div>}
       </>;
@@ -1061,5 +1164,20 @@ export default function BackupConfigModal({
     })} confirmLabel={common.delete} variant="danger" icon="mdi:delete-alert-outline" loading={Boolean(deletingId)} onClose={() => {
       if (!deletingId) setDeleteTarget(null);
     }} onConfirm={confirmDelete} />
+
+      {mappingJob ? <EquipmentMappingModal isOpen={Boolean(mappingJob)} onClose={() => setMappingJob(null)} stacked requireService equipment={{
+      id: mappingJob.id,
+      name: mappingJob.nom,
+      nom: mappingJob.nom,
+      type: "Sauvegarde",
+      clientId: client?.id,
+      clientName: client?.name || client?.nom || "",
+      checkmkMapping: mappingJob.checkmk_host_name || mappingJob.checkmkMapping ? {
+        checkmk_host_name: mappingJob.checkmk_host_name || mappingJob.checkmkMapping?.checkmk_host_name || null,
+        checkmk_site: mappingJob.checkmk_site || mappingJob.checkmkMapping?.checkmk_site || null,
+        checkmk_service_name: mappingJob.checkmk_service_name || mappingJob.checkmkMapping?.checkmk_service_name || null,
+        is_active: true
+      } : null
+    }} onMappingSaved={handleMappingSaved} /> : null}
     </>;
 }

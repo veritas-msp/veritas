@@ -1547,40 +1547,110 @@
   cursor: not-allowed;
 }
 
+.successShell {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  height: 100%;
+}
+
+.successCard {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--msp-border, #9aabc0);
+  border-radius: var(--msp-radius, 16px);
+  background: var(--msp-surface, #fff);
+  box-shadow: 0 1px 2px rgba(15, 28, 46, 0.06), 0 8px 24px -14px rgba(15, 28, 46, 0.18);
+  overflow: hidden;
+}
+
 .successPanel {
   display: flex;
   flex-direction: column;
   align-items: center;
   text-align: center;
-  gap: 0.75rem;
-  padding: 2.5rem 1.5rem;
+  gap: 1.15rem;
+  padding: 2.75rem 1.75rem;
+  width: min(100%, 36rem);
 }
 
-.successIcon {
-  font-size: 3rem;
-  color: var(--msp-accent, #2b5fab);
+.successMarkWrap {
+  position: relative;
+  width: 5.75rem;
+  height: 5.75rem;
+  display: grid;
+  place-items: center;
+}
+
+.successMark {
+  width: 4.75rem;
+  height: 4.75rem;
+  position: relative;
+  z-index: 1;
+  filter: drop-shadow(0 8px 16px rgba(43, 95, 171, 0.28));
+  animation: successMarkPop 0.55s cubic-bezier(0.22, 1.15, 0.36, 1) both;
+}
+
+.successMarkDisc {
+  fill: var(--msp-accent, #2b5fab);
+}
+
+.successMarkCheck {
+  fill: none;
+  stroke: #fff;
+  stroke-width: 5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-dasharray: 48;
+  stroke-dashoffset: 48;
+  animation: successCheckDraw 0.38s 0.32s ease-out forwards;
+}
+
+.successMarkRing {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  border: 2px solid rgba(43, 95, 171, 0.32);
+  animation: successRing 1.05s 0.12s ease-out both;
+  pointer-events: none;
+}
+
+.successMarkRingDelay {
+  animation-delay: 0.36s;
+}
+
+.successCopy {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.7rem;
+  animation: successFadeUp 0.45s 0.42s ease both;
 }
 
 .successTitle {
   margin: 0;
-  font-size: 1.15rem;
+  font-size: 1.35rem;
   font-weight: 700;
+  letter-spacing: -0.02em;
   color: var(--msp-text, #0f1c2e);
 }
 
 .successText {
   margin: 0;
-  font-size: 0.88rem;
+  font-size: 0.9rem;
   color: var(--msp-muted, #5c6b82);
   line-height: 1.5;
-  max-width: 420px;
+  max-width: 28rem;
 }
 
 .reference {
   display: inline-flex;
   align-items: center;
   gap: 0.35rem;
-  padding: 0.45rem 0.75rem;
+  padding: 0.45rem 0.8rem;
   border-radius: 999px;
   background: rgba(43, 95, 171, 0.1);
   color: var(--msp-accent, #2b5fab);
@@ -1594,7 +1664,73 @@
   gap: 0.65rem;
   flex-wrap: wrap;
   justify-content: center;
-  margin-top: 0.35rem;
+  margin-top: 0.15rem;
+  animation: successFadeUp 0.45s 0.58s ease both;
+}
+
+@keyframes successMarkPop {
+  0% {
+    transform: scale(0.2);
+    opacity: 0;
+  }
+  70% {
+    transform: scale(1.08);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+@keyframes successCheckDraw {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+@keyframes successRing {
+  0% {
+    transform: scale(0.82);
+    opacity: 0.5;
+  }
+  100% {
+    transform: scale(1.55);
+    opacity: 0;
+  }
+}
+
+@keyframes successFadeUp {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .successMark,
+  .successMarkCheck,
+  .successMarkRing,
+  .successCopy,
+  .successActions {
+    animation: none;
+  }
+
+  .successMarkCheck {
+    stroke-dashoffset: 0;
+  }
+
+  .successMarkRing {
+    display: none;
+  }
+}
+
+:global(html.dark) .successMarkRing,
+:global(body.dark) .successMarkRing {
+  border-color: rgba(90, 143, 212, 0.4);
 }
 
 .typeKpiRow {
@@ -1829,9 +1965,15 @@ button.switch:disabled {
   min-width: 0;
 }
 
+.slotField:has(input[type="date"]),
+.slotField:has(input[type="time"]) {
+  cursor: pointer;
+}
+
 .slotFieldNote {
   flex: 1 1 5.5rem;
   min-width: 4.5rem;
+  cursor: text;
 }
 
 .slotFieldTimeRange {
@@ -1859,12 +2001,30 @@ button.switch:disabled {
   appearance: none;
 }
 
+.slotField input[type="date"].slotInput,
+.slotField input[type="time"].slotInput {
+  position: relative;
+  cursor: pointer;
+}
+
 .slotField input[type="date"].slotInput {
   min-width: 6.75rem;
 }
 
 .slotField input[type="time"].slotInput {
   min-width: 4.1rem;
+}
+
+.slotField input[type="date"].slotInput::-webkit-calendar-picker-indicator,
+.slotField input[type="time"].slotInput::-webkit-calendar-picker-indicator {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  opacity: 0;
+  cursor: pointer;
 }
 
 .slotSep {
@@ -3021,10 +3181,60 @@ button.switch:disabled {
   display: flex;
   flex-direction: column;
   gap: 0.35rem;
-  padding: 0.55rem 0.65rem;
-  border-radius: 10px;
-  background: var(--msp-surface-2, #f8fafc);
-  border: 1px solid var(--msp-border-light, #eef2f7);
+  padding: 0.15rem 0.15rem 0.35rem;
+}
+
+.recapSubject {
+  margin: 0;
+  font-size: 1.02rem;
+  font-weight: 700;
+  color: var(--msp-text, #0f1c2e);
+  line-height: 1.35;
+  word-break: break-word;
+}
+
+.recapDescText {
+  margin: 0;
+  font-size: 0.82rem;
+  color: var(--msp-muted, #5c6b82);
+  line-height: 1.5;
+  white-space: pre-wrap;
+  max-height: 5.5rem;
+  overflow: auto;
+  word-break: break-word;
+}
+
+.recapTable {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.recapRow {
+  display: grid;
+  grid-template-columns: minmax(7.5rem, 38%) 1fr;
+  gap: 0.65rem;
+  align-items: baseline;
+  padding: 0.42rem 0;
+  font-size: 0.8rem;
+  border-bottom: 1px solid var(--msp-border-light, #eef2f7);
+}
+
+.recapRow:first-child {
+  border-top: 1px solid var(--msp-border-light, #eef2f7);
+}
+
+.recapRowLabel {
+  color: var(--msp-muted, #5c6b82);
+  font-weight: 500;
+}
+
+.recapRowValue {
+  color: var(--msp-text, #0f1c2e);
+  font-weight: 600;
+  text-align: left;
+  line-height: 1.4;
+  word-break: break-word;
 }
 
 .recapBadges {
@@ -3084,66 +3294,9 @@ button.switch:disabled {
   color: #c2410c;
 }
 
-.recapSubject {
-  margin: 0;
-  font-size: 0.92rem;
-  font-weight: 700;
-  color: var(--msp-text, #0f1c2e);
-  line-height: 1.3;
-  word-break: break-word;
-}
-
-.recapDescText {
-  margin: 0;
-  font-size: 0.78rem;
-  color: var(--msp-muted, #5c6b82);
-  line-height: 1.4;
-  white-space: pre-wrap;
-  max-height: 4.5rem;
-  overflow: auto;
-  word-break: break-word;
-}
-
-.recapTable {
-  display: flex;
-  flex-direction: column;
-  border: 1px solid var(--msp-border-light, #eef2f7);
-  border-radius: 10px;
-  overflow: hidden;
-  background: var(--msp-surface, #fff);
-}
-
-.recapRow {
-  display: grid;
-  grid-template-columns: minmax(88px, 34%) 1fr;
-  gap: 0.5rem;
-  align-items: baseline;
-  padding: 0.32rem 0.65rem;
-  font-size: 0.78rem;
-  border-bottom: 1px solid var(--msp-border-light, #eef2f7);
-}
-
-.recapRow:last-child {
-  border-bottom: none;
-}
-
-.recapRowLabel {
-  color: var(--msp-muted, #5c6b82);
-  font-weight: 500;
-}
-
-.recapRowValue {
-  color: var(--msp-text, #0f1c2e);
-  font-weight: 600;
-  text-align: right;
-  line-height: 1.35;
-  word-break: break-word;
-}
-
 .recapRowValueMuted {
   color: var(--msp-muted, #5c6b82);
   font-weight: 500;
-  font-style: italic;
 }
 
 .recapAvailList {
@@ -3584,8 +3737,8 @@ button.switch:disabled {
 }
 
 :global(html.dark) .recapHero {
-  background: var(--msp-surface-2, #152035);
-  border-color: #2a3a55;
+  background: transparent;
+  border-color: transparent;
 }
 
 :global(html.dark) .recapSubject {
@@ -3597,12 +3750,13 @@ button.switch:disabled {
 }
 
 :global(html.dark) .recapTable {
-  background: var(--msp-surface-2, #152035);
-  border-color: #2a3a55;
+  background: transparent;
+  border-color: transparent;
 }
 
-:global(html.dark) .recapRow {
-  border-bottom-color: #2a3a55;
+:global(html.dark) .recapRow,
+:global(html.dark) .recapRow:first-child {
+  border-color: #2a3a55;
 }
 
 :global(html.dark) .recapRowValue {

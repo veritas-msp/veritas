@@ -34,7 +34,7 @@
 
 .fieldLabel {
   font-size: 0.62rem;
-  font-weight: 700;
+  font-weight: 600;
   letter-spacing: 0.05em;
   text-transform: uppercase;
   color: var(--msp-muted);
@@ -76,7 +76,7 @@
   color: var(--msp-muted);
   font: inherit;
   font-size: 0.72rem;
-  font-weight: 700;
+  font-weight: 600;
   cursor: pointer;
 }
 

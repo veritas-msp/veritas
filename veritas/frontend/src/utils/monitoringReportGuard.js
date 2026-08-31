@@ -1,5 +1,5 @@
 export const MONITORING_REPORT_LEAVE_MESSAGE =
-  "Un rapport de supervision est en cours de préparation. Voulez-vous vraiment quitter ? Les modifications non enregistrées seront perdues.";
+  "Important : tant que vous n’enregistrez pas le rapport, quitter cette page, changer d’onglet ou recharger fera perdre toute la progression. Voulez-vous vraiment quitter ?";
 
 export function confirmLeaveMonitoringReport() {
   return window.confirm(MONITORING_REPORT_LEAVE_MESSAGE);
@@ -8,4 +8,14 @@ export function confirmLeaveMonitoringReport() {
 /** Active when Documents → État de supervision (or legacy monitoring) builder is open. */
 export function isMonitoringReportBuilderActive(builderType, builderClient) {
   return (builderType === "monitoring" || builderType === "supervision-etat") && !!builderClient;
+}
+
+/** Any in-progress report builder (period gate, intervention, placeholders, supervision). */
+export function isReportBuilderSessionActive({
+  builderType,
+  builderClient,
+  draftReport
+} = {}) {
+  if (isMonitoringReportBuilderActive(builderType, builderClient)) return true;
+  return Boolean(draftReport);
 }

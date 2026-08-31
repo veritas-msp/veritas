@@ -17,8 +17,8 @@
 }
 
 .shell {
-  width: min(640px, 100%);
-  max-height: min(72vh, 680px);
+  width: min(960px, 92vw);
+  max-height: min(80vh, 820px);
   display: flex;
   flex-direction: column;
   border-radius: 16px;
@@ -210,6 +210,7 @@
   }
 
   .shell {
-    max-height: min(82vh, 720px);
+    width: min(960px, calc(100vw - 1.5rem));
+    max-height: min(86vh, 860px);
   }
 }

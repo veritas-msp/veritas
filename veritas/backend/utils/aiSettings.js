@@ -16,6 +16,7 @@ export const AI_FEATURE_LIMIT_KEYS = {
 export const AI_USAGE_FEATURE_TO_LIMIT_KEY = {
   suggest_reply: "suggestReply",
   suggest_internal_note: "suggestReply",
+  correct_text: "suggestReply",
   suggest_resolve: "suggestResolve",
   generate_runbook: "generateRunbook",
   enrich_alert_runbook: "enrichMonitoringAlerts",
@@ -28,7 +29,7 @@ export const AI_USAGE_FEATURE_TO_LIMIT_KEY = {
 
 /** Usage feature codes that share the same daily limit bucket */
 export const AI_LIMIT_KEY_TO_USAGE_FEATURES = {
-  suggestReply: ["suggest_reply", "suggest_internal_note"],
+  suggestReply: ["suggest_reply", "suggest_internal_note", "correct_text"],
   suggestResolve: ["suggest_resolve"],
   generateRunbook: ["generate_runbook"],
   enrichMonitoringAlerts: ["enrich_alert_runbook"],
@@ -135,6 +136,7 @@ export function assertAiFeatureEnabled(config, featureKey) {
   const map = {
     suggest_reply: "suggestReply",
     suggest_internal_note: "suggestReply",
+    correct_text: "suggestReply",
     suggest_resolve: "suggestResolve",
     generate_runbook: "generateRunbook",
     enrich_alert_runbook: "enrichMonitoringAlerts",

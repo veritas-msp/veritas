@@ -44,7 +44,10 @@ const TENANT_SECTIONS = [
 
 export default function TenantDetailPage({
   onNavigate,
-  tenantData
+  tenantData,
+  embedded = false,
+  reportPeriod = null,
+  initialSection = null
 }) {
   const locale = useAppLocale();
   const copy = useMemo(() => getTenantDetailCopy(locale), [locale]);
@@ -56,7 +59,7 @@ export default function TenantDetailPage({
   const [syncStatus, setSyncStatus] = useState("");
   const [statistics, setStatistics] = useState(null);
   const [lastSync, setLastSync] = useState(null);
-  const [viewMode, setViewMode] = useState("rapport");
+  const [viewMode, setViewMode] = useState(() => initialSection || "rapport");
   const [exchangeData, setExchangeData] = useState(null);
   const [teamsData, setTeamsData] = useState(null);
   const [onedriveData, setOnedriveData] = useState(null);
@@ -84,7 +87,7 @@ export default function TenantDetailPage({
       setConnectionStatus(null);
       setMfaDetails([]);
       setLastSync(null);
-      setViewMode("rapport");
+      setViewMode(initialSection || "rapport");
       setLoading(true);
       currentClientIdRef.current = newDetailData?.clientId || null;
       if (abortControllerRef.current) {
@@ -94,6 +97,9 @@ export default function TenantDetailPage({
     }
   }, [tenantData?.clientId, detailData?.clientId]);
 
+  useEffect(() => {
+    if (initialSection) setViewMode(initialSection);
+  }, [initialSection]);
   useEffect(() => {
     currentClientIdRef.current = detailData?.clientId || null;
   }, [detailData?.clientId]);
@@ -108,13 +114,12 @@ export default function TenantDetailPage({
   }, [detailData?.clientId, tenantData?.clientId]);
 
   useEffect(() => {
-    if (window.updateTabTitle && detailData?.clientName) {
-      window.updateTabTitle("TenantDetail", {
-        clientId: detailData.clientId,
-        tenantId: detailData.tenantId
-      }, interpolate(copy.tabTitle, { client: detailData.clientName }));
-    }
-  }, [detailData, copy.tabTitle]);
+    if (embedded || !window.updateTabTitle || !detailData?.clientName) return;
+    window.updateTabTitle("TenantDetail", {
+      clientId: detailData.clientId,
+      tenantId: detailData.tenantId
+    }, interpolate(copy.tabTitle, { client: detailData.clientName }));
+  }, [detailData, copy.tabTitle, embedded]);
 
   useEffect(() => {
     if (!detailData?.clientId) return undefined;
@@ -392,20 +397,38 @@ export default function TenantDetailPage({
       const headers = {
         "Content-Type": "application/json"
       };
-      const endDate = new Date();
-      let startDate = new Date();
-      switch (selectedPeriod) {
-        case "D7":
-          startDate = new Date(endDate.getTime() - 7 * 24 * 60 * 60 * 1000);
-          break;
-        case "D90":
-          startDate = new Date(endDate.getTime() - 90 * 24 * 60 * 60 * 1000);
-          break;
-        case "D30":
-        default:
-          startDate = new Date(endDate.getTime() - 30 * 24 * 60 * 60 * 1000);
+      const periodStart = reportPeriod?.start || reportPeriod?.startDate || null;
+      const periodEnd = reportPeriod?.end || reportPeriod?.endDate || null;
+      let startDate;
+      let endDate;
+      let periodKey = selectedPeriod;
+      if (periodStart && periodEnd) {
+        startDate = new Date(periodStart);
+        endDate = new Date(periodEnd);
+        if (Number.isNaN(startDate.getTime()) || Number.isNaN(endDate.getTime())) {
+          throw new Error(copy.sync.error);
+        }
+        endDate.setHours(23, 59, 59, 999);
+        const diffDays = (endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24);
+        if (diffDays <= 10) periodKey = "D7";
+        else if (diffDays <= 45) periodKey = "D30";
+        else periodKey = "D90";
+      } else {
+        endDate = new Date();
+        startDate = new Date();
+        switch (selectedPeriod) {
+          case "D7":
+            startDate = new Date(endDate.getTime() - 7 * 24 * 60 * 60 * 1000);
+            break;
+          case "D90":
+            startDate = new Date(endDate.getTime() - 90 * 24 * 60 * 60 * 1000);
+            break;
+          case "D30":
+          default:
+            startDate = new Date(endDate.getTime() - 30 * 24 * 60 * 60 * 1000);
+        }
       }
-      const syncResponse = await fetch(`${API_BASE_URL}/office365/sync-all?clientId=${targetClientId}&period=${selectedPeriod}&startDate=${startDate.toISOString()}&endDate=${endDate.toISOString()}`, {
+      const syncResponse = await fetch(`${API_BASE_URL}/office365/sync-all?clientId=${targetClientId}&period=${periodKey}&startDate=${startDate.toISOString()}&endDate=${endDate.toISOString()}`, {
         method: "GET",
         headers,
         credentials: "include",
@@ -547,6 +570,13 @@ export default function TenantDetailPage({
     : clientName || null;
 
   if (!detailData) {
+    if (embedded) {
+      return <div className={styles.emptyState}>
+          <Icon icon="mdi:alert-circle" className={styles.emptyIcon} />
+          <h2>{copy.empty.title}</h2>
+          <p>{copy.empty.text}</p>
+        </div>;
+    }
     return <SolutionDetailPageLayout accent="microsoft" eyebrow={copy.hero.eyebrow} title={copy.empty.title} titleIcon="mdi:microsoft" subtitle={copy.empty.text} navEntries={[]} navAriaLabel={copy.tabs.aria}>
         <div className={styles.emptyState}>
           <Icon icon="mdi:alert-circle" className={styles.emptyIcon} />
@@ -559,7 +589,7 @@ export default function TenantDetailPage({
       </SolutionDetailPageLayout>;
   }
 
-  const extraActions = <div className={styles.headerMenuWrap} ref={heroActionsMenuRef}>
+  const extraActions = embedded ? null : <div className={styles.headerMenuWrap} ref={heroActionsMenuRef}>
       <SmartTooltip content={copy.hero.actions}>
         <button type="button" className={pageLayout.iconBtn} onClick={() => setHeroMenuOpen((open) => !open)} aria-expanded={heroMenuOpen} aria-haspopup="menu" aria-label={copy.hero.actions}>
           <Icon icon="mdi:dots-horizontal" />
@@ -573,7 +603,7 @@ export default function TenantDetailPage({
         </div> : null}
     </div>;
 
-  return <SolutionDetailPageLayout accent="microsoft" eyebrow={copy.hero.eyebrow} title={pageTitle} titleIcon="mdi:microsoft" subtitle={subtitle} loading={loading && !syncing} refreshing={syncing} loadingMessage={syncStatus || (syncing ? copy.hero.syncing : copy.loading)} onRefresh={handleSync} refreshLabel={copy.hero.sync} extraActions={extraActions} footerHint={footerHint} navEntries={navEntries} activeSection={viewMode} onSectionChange={setViewMode} navAriaLabel={copy.tabs.aria}>
+  return <SolutionDetailPageLayout embedded={embedded} accent="microsoft" eyebrow={copy.hero.eyebrow} title={pageTitle} titleIcon="mdi:microsoft" subtitle={embedded ? (clientName || null) : subtitle} loading={loading && !syncing} refreshing={syncing} loadingMessage={syncStatus || (syncing ? copy.hero.syncing : copy.loading)} onRefresh={handleSync} refreshLabel={copy.hero.sync} extraActions={extraActions} footerHint={footerHint} navEntries={navEntries} activeSection={viewMode} onSectionChange={setViewMode} navAriaLabel={copy.tabs.aria}>
       <div className={styles.tenantVars} key={viewMode}>
         {viewMode === "rapport" ? <TenantReportOverview report={report} copy={copy} onOpenTab={setViewMode} /> : null}
         {viewMode === "licences" ? <LicensesTab licences={licences} dashboardMetrics={dashboardMetrics} theme="light" getLicenseDisplayName={getLicenseDisplayName} /> : null}

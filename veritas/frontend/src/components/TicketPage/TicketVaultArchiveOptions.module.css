@@ -1,55 +1,220 @@
-.list {
+.panel {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 8px;
   margin-top: 10px;
+  border: 1px solid var(--msp-border, #dde3ed);
+  border-radius: 12px;
+  background: var(--msp-surface-2, #f7f9fc);
+  padding: 8px 8px 6px;
 }
 
-.wrap {
+.panelHead {
   display: flex;
   flex-direction: column;
-  gap: 10px;
-  padding: 10px 12px;
-  border-radius: 10px;
-  border: 1px solid var(--msp-border, #dde3ed);
-  background: var(--msp-surface-2, #f7f9fc);
+  gap: 2px;
+  padding: 2px 6px 0;
 }
 
-.fileRow {
+.panelTitle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--msp-text, #0f1c2e);
+}
+
+.panelTitle svg {
+  width: 16px;
+  height: 16px;
+  color: var(--msp-accent, #2b5fab);
+}
+
+.countBadge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: rgba(43, 95, 171, 0.12);
+  color: var(--msp-accent, #2b5fab);
+  font-size: 0.7rem;
+  font-weight: 700;
+}
+
+.panelHint {
+  margin: 0;
+  font-size: 0.72rem;
+  line-height: 1.35;
+  color: var(--msp-muted, #5c6b82);
+}
+
+.bulkBar {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  flex-wrap: wrap;
   gap: 8px;
+  padding: 6px 8px;
+  border-radius: 8px;
+  background: var(--msp-surface, #fff);
+  border: 1px solid var(--msp-border-light, #e8edf4);
+}
+
+.bulkEnable {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  cursor: pointer;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--msp-text, #0f1c2e);
   min-width: 0;
+  flex: 1 1 160px;
+}
+
+.bulkMeta {
+  font-weight: 500;
+  color: var(--msp-muted, #5c6b82);
+  font-size: 0.72rem;
+}
+
+.bulkSelect,
+.rowSelect {
+  height: 30px;
+  max-width: 150px;
+  min-width: 112px;
+  box-sizing: border-box;
+  padding: 0 8px;
+  border: 1px solid var(--msp-border, #ccd4e0);
+  border-radius: 8px;
+  background: var(--msp-surface, #fff);
+  color: var(--msp-text, #0f1c2e);
+  font-size: 0.78rem;
+  font-family: inherit;
+}
+
+.rowSelect {
+  flex: 0 1 130px;
+}
+
+.bulkSelect:focus,
+.rowSelect:focus,
+.input:focus {
+  outline: none;
+  border-color: var(--msp-accent, #2b5fab);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--msp-accent, #2b5fab) 14%, transparent);
+}
+
+.bulkSelect:disabled,
+.rowSelect:disabled,
+.input:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.fileList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-height: 220px;
+  overflow-y: auto;
+}
+
+.fileItem {
+  border-radius: 8px;
+  background: var(--msp-surface, #fff);
+  border: 1px solid var(--msp-border-light, #e8edf4);
+}
+
+.fileItemOn {
+  border-color: color-mix(in srgb, var(--msp-accent, #2b5fab) 28%, var(--msp-border-light, #e8edf4));
+}
+
+.fileMain {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  padding: 4px 6px 4px 8px;
+  min-height: 36px;
+}
+
+.vaultToggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin: 0;
+  cursor: pointer;
+  color: var(--msp-muted, #5c6b82);
+  flex-shrink: 0;
+}
+
+.vaultToggle svg {
+  width: 16px;
+  height: 16px;
+}
+
+.fileItemOn .vaultToggle {
+  color: var(--msp-accent, #2b5fab);
+}
+
+.vaultToggleMuted {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.checkbox {
+  margin: 0;
+  flex-shrink: 0;
+  width: 14px;
+  height: 14px;
+  accent-color: var(--msp-accent, #2b5fab);
 }
 
 .fileMeta {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
   min-width: 0;
+  flex: 1 1 120px;
 }
 
 .fileIcon {
-  width: 16px;
-  height: 16px;
+  width: 15px;
+  height: 15px;
   flex-shrink: 0;
   color: var(--msp-muted, #5c6b82);
 }
 
 .fileName {
-  font-size: 0.84rem;
+  font-size: 0.8rem;
   font-weight: 600;
   color: var(--msp-text, #0f1c2e);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  min-width: 0;
 }
 
+.fileSize {
+  flex-shrink: 0;
+  font-size: 0.68rem;
+  color: var(--msp-muted, #5c6b82);
+  white-space: nowrap;
+}
+
+.expandBtn,
 .fileRemove {
   flex-shrink: 0;
-  width: 28px;
-  height: 28px;
+  width: 26px;
+  height: 26px;
   border: none;
   border-radius: 6px;
   background: transparent;
@@ -58,6 +223,17 @@
   align-items: center;
   justify-content: center;
   cursor: pointer;
+}
+
+.expandBtn:hover,
+.fileRemove:hover:not(:disabled) {
+  background: var(--msp-surface-2, #eef3f9);
+  color: var(--msp-text, #0f1c2e);
+}
+
+.expandBtnOpen {
+  background: rgba(43, 95, 171, 0.1);
+  color: var(--msp-accent, #2b5fab);
 }
 
 .fileRemove:hover:not(:disabled) {
@@ -70,119 +246,101 @@
   cursor: not-allowed;
 }
 
-.enableRow {
-  display: flex;
-  align-items: flex-start;
-  gap: 10px;
-  cursor: pointer;
-  margin: 0;
-}
-
-.enableRowMuted {
-  cursor: not-allowed;
-}
-
-.checkbox {
-  margin-top: 3px;
-  flex-shrink: 0;
-  width: 15px;
-  height: 15px;
-  accent-color: var(--msp-accent, #2b5fab);
-}
-
-.enableCopy {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  min-width: 0;
-}
-
-.enableTitle {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 0.84rem;
-  font-weight: 600;
-  color: var(--msp-text, #0f1c2e);
-}
-
-.enableTitle svg {
-  width: 16px;
-  height: 16px;
-  color: var(--msp-accent, #2b5fab);
-  flex-shrink: 0;
-}
-
-.enableHint {
-  font-size: 0.75rem;
-  line-height: 1.35;
-  color: var(--msp-muted, #5c6b82);
-}
-
-.options {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  padding-top: 2px;
-}
-
-.field {
+.fileExtra {
   display: flex;
   flex-direction: column;
   gap: 4px;
+  padding: 0 8px 8px 34px;
 }
 
-.label {
-  font-size: 0.78rem;
+.extraLabel {
+  font-size: 0.72rem;
   font-weight: 600;
-  color: var(--msp-text, #374a5e);
+  color: var(--msp-muted, #5c6b82);
 }
 
-.select,
 .input {
   width: 100%;
   box-sizing: border-box;
-  padding: 8px 10px;
+  height: 32px;
+  padding: 0 10px;
   border: 1px solid var(--msp-border, #ccd4e0);
   border-radius: 8px;
   background: var(--msp-surface, #fff);
   color: var(--msp-text, #0f1c2e);
-  font-size: 0.86rem;
+  font-size: 0.82rem;
   font-family: inherit;
 }
 
-.select:focus,
-.input:focus {
-  outline: none;
-  border-color: var(--msp-accent, #2b5fab);
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--msp-accent, #2b5fab) 14%, transparent);
+@media (max-width: 720px) {
+  .fileMain {
+    flex-wrap: wrap;
+  }
+
+  .fileMeta {
+    flex: 1 1 calc(100% - 70px);
+  }
+
+  .rowSelect {
+    max-width: none;
+    flex: 1 1 140px;
+  }
 }
 
-.select:disabled,
-.input:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-
-:global(html.dark) .wrap {
+:global(html.dark) .panel {
   background: var(--msp-surface-2, #152035);
   border-color: var(--msp-border, #2a3a55);
 }
 
+:global(html.dark) .panelTitle,
 :global(html.dark) .fileName,
-:global(html.dark) .enableTitle {
+:global(html.dark) .bulkEnable {
   color: var(--msp-text, #e8eef8);
 }
 
-:global(html.dark) .enableHint,
-:global(html.dark) .label,
-:global(html.dark) .fileIcon {
+:global(html.dark) .panelHint,
+:global(html.dark) .bulkMeta,
+:global(html.dark) .fileSize,
+:global(html.dark) .fileIcon,
+:global(html.dark) .extraLabel,
+:global(html.dark) .vaultToggle {
   color: var(--msp-muted, #8fa8c4);
 }
 
-:global(html.dark) .select,
-:global(html.dark) .input {
+:global(html.dark) .fileItemOn .vaultToggle {
+  color: #7eb3e8;
+}
+
+:global(html.dark) .countBadge {
+  background: rgba(90, 143, 212, 0.16);
+  color: #7eb3e8;
+}
+
+:global(html.dark) .bulkBar,
+:global(html.dark) .fileItem {
   background: var(--msp-surface, #0f1c2e);
   border-color: var(--msp-border, #2a3a55);
+}
+
+:global(html.dark) .fileItemOn {
+  border-color: rgba(90, 143, 212, 0.4);
+}
+
+:global(html.dark) .bulkSelect,
+:global(html.dark) .rowSelect,
+:global(html.dark) .input {
+  background: var(--msp-surface-2, #152035);
+  border-color: var(--msp-border, #2a3a55);
   color: var(--msp-text, #e8eef8);
+}
+
+:global(html.dark) .expandBtn:hover,
+:global(html.dark) .fileRemove:hover:not(:disabled) {
+  background: rgba(90, 143, 212, 0.12);
+  color: var(--msp-text, #e8eef8);
+}
+
+:global(html.dark) .expandBtnOpen {
+  background: rgba(90, 143, 212, 0.18);
+  color: #7eb3e8;
 }

@@ -247,6 +247,11 @@
   cursor: not-allowed;
 }
 
+.iconBtnCheckmkActive {
+  color: #0d8a6a;
+  background: rgba(21, 209, 160, 0.14);
+}
+
 .emptyState {
   display: flex;
   flex-direction: column;
@@ -474,6 +479,11 @@
 :global(html.dark) .iconBtnDanger:hover {
   background: rgba(220, 38, 38, 0.18);
   color: #fca5a5;
+}
+
+:global(html.dark) .iconBtnCheckmkActive {
+  color: #5eead4;
+  background: rgba(21, 209, 160, 0.2);
 }
 
 :global(html.dark) .typeCard:hover {

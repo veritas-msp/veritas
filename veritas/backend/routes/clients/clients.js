@@ -3890,6 +3890,12 @@ modulesRouter.post('/:clientId/:family/sync', requireModulePermission("edit"), a
               inserted.push(result.rows[0]);
               processedIds.add(itemId);
             }
+          } else if (itemId) {
+            const result = await client.query(`INSERT INTO ${table} (id, client_id, item_key, name, data, is_active)
+               VALUES ($1::uuid, $2, $3, $4, $5, $6)
+               RETURNING *`, [itemId, clientId, item_key || name || null, name || item_key || null, data || null, is_active !== false]);
+            inserted.push(result.rows[0]);
+            processedIds.add(itemId);
           } else {
             const result = await client.query(`INSERT INTO ${table} (client_id, item_key, name, data, is_active)
                VALUES ($1, $2, $3, $4, $5)
@@ -3932,6 +3938,12 @@ modulesRouter.post('/:clientId/:family/sync', requireModulePermission("edit"), a
               inserted.push(result.rows[0]);
               processedIds.add(itemId);
             }
+          } else if (itemId) {
+            const result = await client.query(`INSERT INTO ${table} (id, client_id, item_key, name, data, is_active)
+               VALUES ($1::uuid, $2, $3, $4, $5, $6)
+               RETURNING *`, [itemId, clientId, item_key || name || null, name || item_key || null, data || null, is_active !== false]);
+            inserted.push(result.rows[0]);
+            processedIds.add(itemId);
           } else {
             const result = await client.query(`INSERT INTO ${table} (client_id, item_key, name, data, is_active)
                VALUES ($1, $2, $3, $4, $5)

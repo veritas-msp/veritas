@@ -273,8 +273,13 @@ const CREATE_COPY = {
     selectTicketFromList: "Sélectionnez un ticket dans la liste",
     untitled: "Sans titre",
     recapTitle: "Récapitulatif du ticket",
-    recapSubtitle: "Vérifiez les informations avant de confirmer la création.",
+    recapSubtitle: "Un dernier coup d’œil, puis on enregistre.",
     recapMajor: "Majeure",
+    recapType: "Type",
+    recapPriority: "Priorité",
+    recapMajorIncident: "Incident majeur",
+    recapMajorYes: "Oui",
+    recapCallbackSlot: "Créneau de rappel client",
     recapRequester: "Demandeur",
     recapClient: "Client",
     recapChannel: "Canal",
@@ -547,8 +552,13 @@ const CREATE_COPY = {
     selectTicketFromList: "Select a ticket from the list",
     untitled: "Untitled",
     recapTitle: "Ticket summary",
-    recapSubtitle: "Review the information before confirming creation.",
+    recapSubtitle: "A quick look, then we save it.",
     recapMajor: "Major",
+    recapType: "Type",
+    recapPriority: "Priority",
+    recapMajorIncident: "Major incident",
+    recapMajorYes: "Yes",
+    recapCallbackSlot: "Client callback slot",
     recapRequester: "Requester",
     recapClient: "Client",
     recapChannel: "Channel",
@@ -818,8 +828,13 @@ const CREATE_COPY = {
     selectTicketFromList: "Ticket aus der Liste wählen",
     untitled: "Ohne Titel",
     recapTitle: "Ticket-Zusammenfassung",
-    recapSubtitle: "Informationen vor der Erstellung prüfen.",
+    recapSubtitle: "Kurz prüfen, dann speichern.",
     recapMajor: "Schwer",
+    recapType: "Typ",
+    recapPriority: "Priorität",
+    recapMajorIncident: "Schwerer Vorfall",
+    recapMajorYes: "Ja",
+    recapCallbackSlot: "Kunden-Rückruftermin",
     recapRequester: "Anfragender",
     recapClient: "Kunde",
     recapChannel: "Kanal",
@@ -1089,8 +1104,13 @@ const CREATE_COPY = {
     selectTicketFromList: "Seleziona un ticket dall'elenco",
     untitled: "Senza titolo",
     recapTitle: "Riepilogo del ticket",
-    recapSubtitle: "Verifica le informazioni prima di confermare la creazione.",
+    recapSubtitle: "Un’occhiata veloce, poi si registra.",
     recapMajor: "Grave",
+    recapType: "Tipo",
+    recapPriority: "Priorità",
+    recapMajorIncident: "Incidente grave",
+    recapMajorYes: "Sì",
+    recapCallbackSlot: "Fascia di richiamo cliente",
     recapRequester: "Richiedente",
     recapClient: "Cliente",
     recapChannel: "Canale",
@@ -1360,8 +1380,13 @@ const CREATE_COPY = {
     selectTicketFromList: "Seleccione un ticket de la lista",
     untitled: "Sin título",
     recapTitle: "Resumen del ticket",
-    recapSubtitle: "Verifique la información antes de confirmar la creación.",
+    recapSubtitle: "Un último vistazo y lo guardamos.",
     recapMajor: "Grave",
+    recapType: "Tipo",
+    recapPriority: "Prioridad",
+    recapMajorIncident: "Incidente grave",
+    recapMajorYes: "Sí",
+    recapCallbackSlot: "Franja de llamada al cliente",
     recapRequester: "Solicitante",
     recapClient: "Cliente",
     recapChannel: "Canal",
@@ -1520,6 +1545,30 @@ export function getTicketCreateCopy(locale) {
       }
       return interpolate(t.slotRangeLabel, {
         date: slotDate,
+        start: slot.startTime || "-",
+        end: slot.endTime || "-",
+        note: noteSuffix
+      });
+    },
+    formatRecapCallbackSlot: slot => {
+      const rawDate = slot?.date || "";
+      const parsed = rawDate ? new Date(`${rawDate}T00:00:00`) : null;
+      const dateLabel = parsed && !Number.isNaN(parsed.getTime()) ? new Intl.DateTimeFormat(bcp47, {
+        weekday: "short",
+        day: "numeric",
+        month: "long",
+        year: "numeric"
+      }).format(parsed) : rawDate || "-";
+      const noteSuffix = slot?.note ? ` · ${slot.note}` : "";
+      if (slot?.mode === "from" || !slot?.endTime && slot?.startTime) {
+        return interpolate(t.slotFromLabel, {
+          date: dateLabel,
+          time: slot.startTime || "-",
+          note: noteSuffix
+        });
+      }
+      return interpolate(t.slotRangeLabel, {
+        date: dateLabel,
         start: slot.startTime || "-",
         end: slot.endTime || "-",
         note: noteSuffix

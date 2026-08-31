@@ -5,7 +5,7 @@ const SUPERVISION_COPY = {
   fr: {
     eyebrow: "Services managés",
     pageTitle: "Centre de supervision",
-    subtitle: "Alertes actives et historique · périphériques, sauvegardes, contrats et RMM.",
+    subtitle: "Alertes de monitoring · périphériques mappés via une intégration (CheckMK).",
     loading: "Balayage en cours…",
     tabSectionsAria: "Sections supervision",
     tabs: {
@@ -19,7 +19,7 @@ const SUPERVISION_COPY = {
       steps: {
         hero: {
           title: "Centre de notifications",
-          content: "Cette page regroupe toutes les alertes d'infrastructure : périphériques, sauvegardes, contrats et agents RMM. Consultez-les et agissez depuis une file unique."
+          content: "Cette page affiche uniquement les alertes des périphériques mappés à une intégration de monitoring (CheckMK). Consultez-les et agissez depuis une file unique."
         },
         tabs: {
           title: "Vues principales",
@@ -27,7 +27,7 @@ const SUPERVISION_COPY = {
         },
         kpis: {
           title: "Filtres",
-          content: "Une seule barre de filtres : domaine (Tout, Périphériques…), sévérité (Critiques, Warnings) et statut (Ouvertes, Prises en charge, Liées). Cliquez à nouveau pour retirer un filtre."
+          content: "Une seule barre de filtres : sévérité (Critiques, Warnings) et statut (Ouvertes, Prises en charge, Liées). Cliquez à nouveau pour retirer un filtre."
         },
         filters: {
           title: "Recherche",
@@ -35,7 +35,7 @@ const SUPERVISION_COPY = {
         },
         queue: {
           title: "Table d'alertes",
-          content: "Chaque ligne affiche l'alerte, l'entreprise, le domaine et le statut. Survolez les icônes d'actions pour voir ce qu'elles font : prise en charge, ticket, planning, résolution."
+          content: "Chaque ligne affiche l'alerte, l'entreprise et le statut. Survolez les icônes d'actions pour voir ce qu'elles font : prise en charge, ticket, planning, résolution."
         },
         history: {
           title: "Historique",
@@ -75,8 +75,8 @@ const SUPERVISION_COPY = {
         critical: "Dernière sauvegarde il y a plus de 48 h, ou inconnue",
         warning: "Dernière sauvegarde il y a plus de 24 h"
       },
-      emptyTitle: "Rien à traiter",
-      emptyText: "Aucune alerte active sur les périphériques, sauvegardes, contrats ou agents RMM.",
+      emptyTitle: "Zzz… tout est calme",
+      emptyText: "Aucune alerte pour le moment. On peut souffler un peu.",
       actionsAria: "Actions sur l'alerte",
       severityInfo: "Info",
       collab: {
@@ -359,7 +359,7 @@ const SUPERVISION_COPY = {
   en: {
     eyebrow: "Managed services",
     pageTitle: "Monitoring center",
-    subtitle: "Notification center · device, backup, contract, and RMM alerts.",
+    subtitle: "Monitoring alerts · devices mapped via an integration (CheckMK).",
     loading: "Scanning…",
     tabSectionsAria: "Monitoring sections",
     tabs: {
@@ -373,7 +373,7 @@ const SUPERVISION_COPY = {
       steps: {
         hero: {
           title: "Notification center",
-          content: "This page gathers all infrastructure alerts: devices, backups, contracts, and RMM agents. Review and act from a single queue."
+          content: "This page shows only alerts from devices mapped to a monitoring integration (CheckMK). Review and act from a single queue."
         },
         tabs: {
           title: "Main views",
@@ -381,7 +381,7 @@ const SUPERVISION_COPY = {
         },
         kpis: {
           title: "Filters",
-          content: "One filter bar: domain (All, Devices…), severity (Critical, Warnings), and status (Open, Acknowledged, Linked). Click again to clear a filter."
+          content: "One filter bar: severity (Critical, Warnings) and status (Open, Acknowledged, Linked). Click again to clear a filter."
         },
         filters: {
           title: "Search",
@@ -389,7 +389,7 @@ const SUPERVISION_COPY = {
         },
         queue: {
           title: "Alert queue",
-          content: "Every card shares the same format: title, domain, status. Acknowledge, open a Support or Service ticket, schedule, resolve, or dismiss."
+          content: "Every card shares the same format: title, company, status. Acknowledge, open a Support or Service ticket, schedule, resolve, or dismiss."
         },
         fleet: {
           title: "Fleet",
@@ -433,8 +433,8 @@ const SUPERVISION_COPY = {
         critical: "Last backup more than 48 h ago, or unknown",
         warning: "Last backup more than 24 h ago"
       },
-      emptyTitle: "Nothing to handle",
-      emptyText: "No active alerts on devices, backups, contracts or RMM agents.",
+      emptyTitle: "Zzz… all quiet",
+      emptyText: "No alerts right now. Time for a little break.",
       actionsAria: "Alert actions",
       severityInfo: "Info",
       collab: {
@@ -717,7 +717,7 @@ const SUPERVISION_COPY = {
   de: {
     eyebrow: "Managed Services",
     pageTitle: "Überwachungszentrum",
-    subtitle: "Benachrichtigungszentrum · Geräte-, Backup-, Vertrags- und RMM-Alarme.",
+    subtitle: "Monitoring-Alarme · Geräte, die über eine Integration gemappt sind (CheckMK).",
     loading: "Abtastung läuft…",
     tabSectionsAria: "Überwachungsbereiche",
     tabs: {
@@ -731,7 +731,7 @@ const SUPERVISION_COPY = {
       steps: {
         hero: {
           title: "Benachrichtigungszentrum",
-          content: "Diese Seite bündelt alle Infrastruktur-Alarme: Geräte, Backups, Verträge und RMM-Agenten. Prüfen und handeln Sie in einer gemeinsamen Warteschlange."
+          content: "Diese Seite zeigt nur Alarme von Geräten, die einer Monitoring-Integration (CheckMK) zugeordnet sind. Prüfen und handeln Sie in einer gemeinsamen Warteschlange."
         },
         tabs: {
           title: "Hauptansichten",
@@ -739,7 +739,7 @@ const SUPERVISION_COPY = {
         },
         kpis: {
           title: "Kennzahlen",
-          content: "Kritisch / Warnung filtern nach Schweregrad. Geräte, Backups, Verträge und RMM filtern dieselbe Warteschlange — ohne anderes Kartenlayout."
+          content: "Kritisch / Warnung filtern nach Schweregrad. Statusfilter (Offen, Bestätigt, Verknüpft) gelten für dieselbe Warteschlange."
         },
         filters: {
           title: "Suche und Bereiche",
@@ -791,8 +791,8 @@ const SUPERVISION_COPY = {
         critical: "Letztes Backup vor mehr als 48 h, oder unbekannt",
         warning: "Letztes Backup vor mehr als 24 h"
       },
-      emptyTitle: "Nichts zu erledigen",
-      emptyText: "Keine aktiven Alarme für Geräte, Backups, Verträge oder RMM-Agenten.",
+      emptyTitle: "Zzz… alles ruhig",
+      emptyText: "Keine Alarme im Moment. Zeit für eine kleine Pause.",
       actionsAria: "Alarmaktionen",
       severityInfo: "Info",
       collab: {
@@ -1075,7 +1075,7 @@ const SUPERVISION_COPY = {
   it: {
     eyebrow: "Servizi gestiti",
     pageTitle: "Centro di supervisione",
-    subtitle: "Centro notifiche · allarmi dispositivi, backup, contratti e RMM.",
+    subtitle: "Allarmi di monitoraggio · dispositivi mappati tramite un'integrazione (CheckMK).",
     loading: "Scansione in corso…",
     tabSectionsAria: "Sezioni supervisione",
     tabs: {
@@ -1089,7 +1089,7 @@ const SUPERVISION_COPY = {
       steps: {
         hero: {
           title: "Centro notifiche",
-          content: "Questa pagina raccoglie tutti gli allarmi infrastruttura: dispositivi, backup, contratti e agenti RMM. Consultali e agisci da una coda unica."
+          content: "Questa pagina mostra solo gli allarmi dei dispositivi mappati a un'integrazione di monitoraggio (CheckMK). Consultali e agisci da una coda unica."
         },
         tabs: {
           title: "Viste principali",
@@ -1097,7 +1097,7 @@ const SUPERVISION_COPY = {
         },
         kpis: {
           title: "Indicatori",
-          content: "Critici / Warning filtrano per severità. Dispositivi, Backup, Contratti e RMM filtrano la stessa coda — senza cambiare tipo di scheda."
+          content: "Critici / Warning filtrano per severità. I filtri di stato (Aperte, Prese in carico, Collegate) agiscono sulla stessa coda."
         },
         filters: {
           title: "Ricerca e domini",
@@ -1149,8 +1149,8 @@ const SUPERVISION_COPY = {
         critical: "Ultimo backup da più di 48 h, o sconosciuto",
         warning: "Ultimo backup da più di 24 h"
       },
-      emptyTitle: "Niente da trattare",
-      emptyText: "Nessun allarme attivo su dispositivi, backup, contratti o agenti RMM.",
+      emptyTitle: "Zzz… tutto calmo",
+      emptyText: "Nessun allarme al momento. Si può tirare il fiato.",
       actionsAria: "Azioni sull'allarme",
       severityInfo: "Info",
       collab: {
@@ -1432,7 +1432,7 @@ const SUPERVISION_COPY = {
   es: {
     eyebrow: "Servicios gestionados",
     pageTitle: "Centro de supervisión",
-    subtitle: "Centro de notificaciones · alertas de dispositivos, backups, contratos y RMM.",
+    subtitle: "Alertas de monitorización · dispositivos mapeados vía una integración (CheckMK).",
     loading: "Escaneo en curso…",
     tabSectionsAria: "Secciones de supervisión",
     tabs: {
@@ -1446,7 +1446,7 @@ const SUPERVISION_COPY = {
       steps: {
         hero: {
           title: "Centro de notificaciones",
-          content: "Esta página reúne todas las alertas de infraestructura: dispositivos, backups, contratos y agentes RMM. Consúltelas y actúe desde una cola única."
+          content: "Esta página muestra solo las alertas de dispositivos mapeados a una integración de monitorización (CheckMK). Consúltelas y actúe desde una cola única."
         },
         tabs: {
           title: "Vistas principales",
@@ -1454,7 +1454,7 @@ const SUPERVISION_COPY = {
         },
         kpis: {
           title: "Indicadores",
-          content: "Críticas / Warnings filtran por severidad. Dispositivos, Backups, Contratos y RMM filtran la misma cola — sin cambiar el tipo de tarjeta."
+          content: "Críticas / Warnings filtran por severidad. Los filtros de estado (Abiertas, Acusadas, Vinculadas) actúan sobre la misma cola."
         },
         filters: {
           title: "Búsqueda y dominios",
@@ -1506,8 +1506,8 @@ const SUPERVISION_COPY = {
         critical: "Última copia hace más de 48 h, o desconocida",
         warning: "Última copia hace más de 24 h"
       },
-      emptyTitle: "Nada que tratar",
-      emptyText: "No hay alertas activas en dispositivos, backups, contratos o agentes RMM.",
+      emptyTitle: "Zzz… todo en calma",
+      emptyText: "Ninguna alerta por ahora. Se puede descansar un poco.",
       actionsAria: "Acciones sobre la alerta",
       severityInfo: "Info",
       collab: {

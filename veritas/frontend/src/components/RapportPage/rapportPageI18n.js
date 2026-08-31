@@ -1,29 +1,44 @@
 import { interpolate, normalizeLocale, pickLocaleMessages } from "../../i18n/translate";
 import { REPORT_TYPE_DEFS } from "./reportTypeConstants";
 const WIZARD_STEPS = {
-  supervisionEtat: ["Période", "Cartographie", "Infrastructure", "Récapitulatif", "Synthèse"],
+  supervisionEtat: ["Solutions", "Récapitulatif", "Synthèse"],
   intervention: ["Contexte", "Interventions", "Compte-rendu", "Validation"],
-  cahierRecette: ["Périmètre projet", "Solutions & matériel", "Fonctionnement", "Recette"]
+  cahierRecette: ["Périmètre projet", "Solutions & matériel", "Fonctionnement", "Recette"],
+  activiteMensuelle: ["Période", "Tickets", "SLA", "Synthèse"],
+  inventaireParc: ["Sites", "Équipements", "Licences", "Export"],
+  auditSecurite: ["Périmètre", "Protections", "Vulnérabilités", "Recommandations"]
 };
 const WIZARD_STEPS_EN = {
-  supervisionEtat: ["Period", "Cartography", "Infrastructure", "Recap", "Summary"],
+  supervisionEtat: ["Solutions", "Recap", "Summary"],
   intervention: ["Context", "Interventions", "Report", "Sign-off"],
-  cahierRecette: ["Project scope", "Solutions & hardware", "Operation", "Acceptance"]
+  cahierRecette: ["Project scope", "Solutions & hardware", "Operation", "Acceptance"],
+  activiteMensuelle: ["Period", "Tickets", "SLA", "Summary"],
+  inventaireParc: ["Sites", "Assets", "Licences", "Export"],
+  auditSecurite: ["Scope", "Protections", "Vulnerabilities", "Recommendations"]
 };
 const WIZARD_STEPS_DE = {
-  supervisionEtat: ["Umfang", "Live-Status", "Zusammenfassung", "Freigabe"],
+  supervisionEtat: ["Lösungen", "Zusammenfassung", "Synthese"],
   intervention: ["Kontext", "Einsätze", "Bericht", "Freigabe"],
-  cahierRecette: ["Projektumfang", "Lösungen & Hardware", "Betrieb", "Abnahme"]
+  cahierRecette: ["Projektumfang", "Lösungen & Hardware", "Betrieb", "Abnahme"],
+  activiteMensuelle: ["Zeitraum", "Tickets", "SLA", "Zusammenfassung"],
+  inventaireParc: ["Standorte", "Geräte", "Lizenzen", "Export"],
+  auditSecurite: ["Umfang", "Schutz", "Schwachstellen", "Empfehlungen"]
 };
 const WIZARD_STEPS_IT = {
-  supervisionEtat: ["Perimetro", "Stato in tempo reale", "Sintesi", "Validazione"],
+  supervisionEtat: ["Soluzioni", "Riepilogo", "Sintesi"],
   intervention: ["Contesto", "Interventi", "Resoconto", "Validazione"],
-  cahierRecette: ["Perimetro progetto", "Soluzioni & hardware", "Funzionamento", "Collaudo"]
+  cahierRecette: ["Perimetro progetto", "Soluzioni & hardware", "Funzionamento", "Collaudo"],
+  activiteMensuelle: ["Periodo", "Ticket", "SLA", "Sintesi"],
+  inventaireParc: ["Sedi", "Dispositivi", "Licenze", "Export"],
+  auditSecurite: ["Perimetro", "Protezioni", "Vulnerabilità", "Raccomandazioni"]
 };
 const WIZARD_STEPS_ES = {
-  supervisionEtat: ["Alcance", "Estado en tiempo real", "Síntesis", "Validación"],
+  supervisionEtat: ["Soluciones", "Resumen", "Síntesis"],
   intervention: ["Contexto", "Intervenciones", "Informe", "Validación"],
-  cahierRecette: ["Alcance del proyecto", "Soluciones y hardware", "Funcionamiento", "Recette"]
+  cahierRecette: ["Alcance del proyecto", "Soluciones y hardware", "Funcionamiento", "Recette"],
+  activiteMensuelle: ["Periodo", "Tickets", "SLA", "Síntesis"],
+  inventaireParc: ["Sitios", "Equipos", "Licencias", "Exportar"],
+  auditSecurite: ["Alcance", "Protecciones", "Vulnerabilidades", "Recomendaciones"]
 };
 function buildWizard(localeCopy) {
   return {
@@ -94,7 +109,7 @@ const RAPPORT_PAGE = {
     bcp47: "fr-FR",
     eyebrow: "Documents",
     pageTitle: "Rapports",
-    subtitle: "Choisissez une entreprise, puis un type de rapport.",
+    subtitle: "Choisissez une entreprise, consultez son parc, puis lancez un rapport.",
     create: {
       enterpriseLabel: "Entreprise",
       enterpriseSearch: "Rechercher une entreprise…",
@@ -114,6 +129,18 @@ const RAPPORT_PAGE = {
       cahierRecette: {
         title: "Cahier de recette",
         description: "Solutions, produits et matériels installés : rôle, fonctionnement et validation client."
+      },
+      activiteMensuelle: {
+        title: "Rapport d'activité",
+        description: "Revue périodique : tickets, SLA, interventions et points d'attention pour le client."
+      },
+      inventaireParc: {
+        title: "Inventaire du parc",
+        description: "Photographie complète des équipements, sites et licences rattachés à l'entreprise."
+      },
+      auditSecurite: {
+        title: "Audit de sécurité",
+        description: "État antivirus, MFA, correctifs et recommandations de durcissement."
       }
     },
     wizardProgressAria: "Progression de création",
@@ -123,7 +150,7 @@ const RAPPORT_PAGE = {
     wizardStepBuild: "Étapes du rapport",
     wizardStepNavAria: "Étapes du rapport",
     wizardClientTitle: "Quelle entreprise ?",
-    wizardClientHint: "Recherchez puis sélectionnez le client concerné.",
+    wizardClientHint: "Recherchez puis sélectionnez le client. Son contrat, son parc et ses tickets s’affichent ensuite.",
     wizardRecapTitle: "Récapitulatif entreprise",
     wizardRecapHint: "Vérifiez le contrat, les options et le parc avant de continuer.",
     wizardRecapEmpty: "Cliquez sur une carte entreprise pour afficher son récapitulatif.",
@@ -154,12 +181,73 @@ const RAPPORT_PAGE = {
     wizardStepOf: "Étape {current} sur {total}",
     supervisionBuilder: {
       periodTitle: "Période du rapport",
-      periodGateSubtitle: "Définissez la fenêtre d’analyse avant de parcourir les modules client.",
+      periodGateSubtitle: "Paramétrez la période et les sujets traités avant d’ouvrir le builder.",
       periodHint: "Tickets, alertes de supervision et disponibilité seront calculés sur cette période.",
       startLabel: "Date de début",
       endLabel: "Date de fin",
       startBuilder: "Ouvrir le builder",
-      loading: "Chargement…"
+      loading: "Chargement…",
+      initTitle: "Initialisation du rapport",
+      initHint: "Choisissez la fenêtre d’analyse et les sujets à inclure. Seuls les modules cochés apparaîtront dans le builder.",
+      topicsTitle: "Sujets du rapport",
+      topicsHint: "Cochez les domaines à traiter. Les modules sans données sur ce client sont indisponibles.",
+      topicsLoading: "Chargement du parc client…",
+      topicsEmpty: "Aucun module n’est encore configuré pour cette entreprise.",
+      selectAll: "Tout sélectionner",
+      selectNone: "Tout désélectionner",
+      selectedCount: "{count} sujet(s) sélectionné(s)",
+      groupInfrastructure: "Périphériques & infrastructure",
+      groupCyber: "Cybersécurité",
+      groupCloud: "Services cloud & IT",
+      topicUnavailable: "Non configuré",
+      topicItems: "{count} élément(s)",
+      preset7d: "7 derniers jours",
+      preset30d: "30 derniers jours",
+      presetThisMonth: "Mois en cours",
+      presetLastMonth: "Mois précédent",
+      periodSummary: "Du {start} au {end} · {days} j",
+      needTopic: "Sélectionnez au moins un sujet disponible.",
+      unsavedTitle: "Progression non enregistrée",
+      unsavedMessage: "Important : tant que vous n’enregistrez pas le rapport, quitter cette page, changer d’onglet ou fermer le navigateur fera perdre toute la progression. Pensez à enregistrer dès que possible.",
+      unsavedConfirm: "J’ai compris, ouvrir le builder",
+      unsavedCancel: "Retour",
+      leaveConfirm: "Quitter quand même",
+      leaveCancel: "Rester",
+      builderComments: "Commentaires",
+      builderSync: "Synchroniser",
+      builderSave: "Enregistrer",
+      builderDownload: "Exporter",
+      builderHint: "Commentez les écarts, créez un ticket support et référencez-le pour montrer l’action prévue au client.",
+      syncProgress: {
+        title: "On récupère les données du client",
+        kicker: "Mise à jour",
+        preparing: "On prépare tout ça…",
+        running: "Petit moment, on synchronise les intégrations. Vous pouvez déjà parcourir le rapport derrière.",
+        done: "C’est bon, tout est à jour.",
+        cancelled: "OK, on s’est arrêté là.",
+        cancelledToast: "Synchronisation interrompue.",
+        empty: "Aucune intégration à synchroniser pour ce client.",
+        etaCalculating: "On estime le temps restant…",
+        etaSoon: "Plus que quelques secondes",
+        etaSeconds: "Encore environ {n} s",
+        etaMinutes: "Encore {m} min {s} s",
+        stepOf: "{current} sur {total}",
+        nowWorking: "En cours",
+        footerHint: "Rien à faire de votre côté — ça tourne tout seul.",
+        footerDone: "Vous pouvez continuer le rapport.",
+        close: "Parfait, on continue",
+        cancel: "Arrêter",
+        hostLabel: "Supervision · {name}",
+        backupJobs: "Sauvegarde · jobs CheckMK",
+        antivirusLabel: "Antivirus · {name}",
+        antispamLabel: "Antispam · {name}",
+        office365: "Tenant Microsoft 365",
+        nddLabel: "Domaine · {name}",
+        successToast: "Synchronisation terminée ({ok}/{total}).",
+        partialToast: "Synchronisation partielle : {ok} réussie(s), {fail} échec(s).",
+        failToast: "La synchronisation a échoué.",
+        noClient: "Impossible d’identifier le client pour la synchronisation."
+      }
     },
     recap: {
       contract: "Contrat",
@@ -167,9 +255,14 @@ const RAPPORT_PAGE = {
       contractOptions: "Options du contrat",
       services: "Services supervisés",
       equipment: "Périphériques",
+      equipmentTotal: "Équipements",
+      openTickets: "Tickets ouverts",
+      openTicketsLoading: "…",
       commercial: "Commercial",
       contact: "Contact principal",
-      sites: "Sites",
+      sites: "Lieux",
+      sitePrimary: "Principal",
+      noSites: "Aucun lieu renseigné.",
       clientNumber: "N° client",
       noOptions: "Aucune option active.",
       noServices: "Aucun service de supervision activé.",
@@ -179,13 +272,23 @@ const RAPPORT_PAGE = {
       contractExpired: "Expiré",
       contractSuspended: "Suspendu",
       contractUnknown: "Non renseigné"
+    },
+    recent: {
+      title: "Derniers rapports",
+      hint: "Les rapports déjà générés, du plus récent au plus ancien.",
+      hintClient: "Rapports déjà générés pour cette entreprise.",
+      empty: "Aucun rapport généré pour le moment.",
+      emptyClient: "Aucun rapport pour cette entreprise.",
+      created: "Créé le",
+      author: "par",
+      openAria: "Afficher l’entreprise de ce rapport"
     }
   },
   en: {
     bcp47: "en-GB",
     eyebrow: "Documents",
     pageTitle: "Reports",
-    subtitle: "Pick a company, then choose the report type.",
+    subtitle: "Pick a company, review its estate, then start a report.",
     create: {
       enterpriseLabel: "Company",
       enterpriseSearch: "Search for a company…",
@@ -205,6 +308,18 @@ const RAPPORT_PAGE = {
       cahierRecette: {
         title: "Acceptance workbook",
         description: "Installed solutions, products and hardware: role, operation and client sign-off."
+      },
+      activiteMensuelle: {
+        title: "Activity report",
+        description: "Periodic review: tickets, SLA, interventions and follow-up items for the client."
+      },
+      inventaireParc: {
+        title: "Fleet inventory",
+        description: "Complete snapshot of equipment, sites and licences attached to the company."
+      },
+      auditSecurite: {
+        title: "Security audit",
+        description: "Antivirus, MFA, patch status and hardening recommendations."
       }
     },
     wizardProgressAria: "Creation progress",
@@ -214,7 +329,7 @@ const RAPPORT_PAGE = {
     wizardStepBuild: "Report steps",
     wizardStepNavAria: "Report steps",
     wizardClientTitle: "Which company?",
-    wizardClientHint: "Search then select the client for this report.",
+    wizardClientHint: "Search then select the client. Contract, assets and open tickets appear next.",
     wizardRecapTitle: "Company summary",
     wizardRecapHint: "Review contract, options and assets before continuing.",
     wizardRecapEmpty: "Click a company card to display its summary.",
@@ -245,12 +360,73 @@ const RAPPORT_PAGE = {
     wizardStepOf: "Step {current} of {total}",
     supervisionBuilder: {
       periodTitle: "Report period",
-      periodGateSubtitle: "Set the analysis window before reviewing client modules.",
+      periodGateSubtitle: "Set the analysis window and topics before opening the builder.",
       periodHint: "Tickets, supervision alerts and availability are computed for this period.",
       startLabel: "Start date",
       endLabel: "End date",
       startBuilder: "Open builder",
-      loading: "Loading…"
+      loading: "Loading…",
+      initTitle: "Report setup",
+      initHint: "Choose the analysis window and the topics to include. Only checked modules will appear in the builder.",
+      topicsTitle: "Report topics",
+      topicsHint: "Select the areas to cover. Modules with no data on this client are unavailable.",
+      topicsLoading: "Loading client estate…",
+      topicsEmpty: "No module is configured for this company yet.",
+      selectAll: "Select all",
+      selectNone: "Clear all",
+      selectedCount: "{count} topic(s) selected",
+      groupInfrastructure: "Devices & infrastructure",
+      groupCyber: "Cybersecurity",
+      groupCloud: "Cloud & IT services",
+      topicUnavailable: "Not configured",
+      topicItems: "{count} item(s)",
+      preset7d: "Last 7 days",
+      preset30d: "Last 30 days",
+      presetThisMonth: "This month",
+      presetLastMonth: "Last month",
+      periodSummary: "{start} to {end} · {days} d",
+      needTopic: "Select at least one available topic.",
+      unsavedTitle: "Progress is not saved",
+      unsavedMessage: "Important: until you save the report, leaving this page, switching tabs or closing the browser will lose all progress. Save as soon as you can.",
+      unsavedConfirm: "I understand, open the builder",
+      unsavedCancel: "Back",
+      leaveConfirm: "Leave anyway",
+      leaveCancel: "Stay",
+      builderComments: "Comments",
+      builderSync: "Sync",
+      builderSave: "Save",
+      builderDownload: "Export",
+      builderHint: "Comment on gaps, create a support ticket and reference it to show the planned action to the client.",
+      syncProgress: {
+        title: "Fetching the latest client data",
+        kicker: "Catching up",
+        preparing: "Getting things ready…",
+        running: "Hang tight — we’re syncing the integrations. You can already browse the report behind this.",
+        done: "All set. Everything’s up to date.",
+        cancelled: "No worries, we stopped there.",
+        cancelledToast: "Synchronization was stopped.",
+        empty: "No integration to synchronize for this client.",
+        etaCalculating: "Figuring out the remaining time…",
+        etaSoon: "Just a few seconds left",
+        etaSeconds: "About {n} s left",
+        etaMinutes: "About {m} min {s} s left",
+        stepOf: "{current} of {total}",
+        nowWorking: "Working on",
+        footerHint: "Nothing to do on your side — this runs by itself.",
+        footerDone: "You can carry on with the report.",
+        close: "Nice, let’s continue",
+        cancel: "Stop",
+        hostLabel: "Monitoring · {name}",
+        backupJobs: "Backup · CheckMK jobs",
+        antivirusLabel: "Antivirus · {name}",
+        antispamLabel: "Antispam · {name}",
+        office365: "Microsoft 365 tenant",
+        nddLabel: "Domain · {name}",
+        successToast: "Synchronization complete ({ok}/{total}).",
+        partialToast: "Partial sync: {ok} succeeded, {fail} failed.",
+        failToast: "Synchronization failed.",
+        noClient: "Unable to identify the client for synchronization."
+      }
     },
     recap: {
       contract: "Contract",
@@ -258,9 +434,14 @@ const RAPPORT_PAGE = {
       contractOptions: "Contract options",
       services: "Supervised services",
       equipment: "Devices",
+      equipmentTotal: "Assets",
+      openTickets: "Open tickets",
+      openTicketsLoading: "…",
       commercial: "Account manager",
       contact: "Primary contact",
       sites: "Sites",
+      sitePrimary: "Primary",
+      noSites: "No sites recorded.",
       clientNumber: "Client no.",
       noOptions: "No active options.",
       noServices: "No supervision services enabled.",
@@ -270,13 +451,23 @@ const RAPPORT_PAGE = {
       contractExpired: "Expired",
       contractSuspended: "Suspended",
       contractUnknown: "Not set"
+    },
+    recent: {
+      title: "Recent reports",
+      hint: "Previously generated reports, newest first.",
+      hintClient: "Reports already generated for this company.",
+      empty: "No reports generated yet.",
+      emptyClient: "No reports for this company.",
+      created: "Created",
+      author: "by",
+      openAria: "Show this report’s company"
     }
   },
   de: {
     bcp47: "de-DE",
     eyebrow: "Dokumente",
     pageTitle: "Berichte",
-    subtitle: "Wählen Sie ein Unternehmen, dann einen Berichtstyp.",
+    subtitle: "Wählen Sie ein Unternehmen, prüfen Sie den Bestand, dann starten Sie den Bericht.",
     create: {
       enterpriseLabel: "Unternehmen",
       enterpriseSearch: "Unternehmen suchen…",
@@ -296,6 +487,18 @@ const RAPPORT_PAGE = {
       cahierRecette: {
         title: "Abnahmebuch",
         description: "Installierte Lösungen, Produkte und Hardware: Rolle, Betrieb und Kundenfreigabe."
+      },
+      activiteMensuelle: {
+        title: "Tätigkeitsbericht",
+        description: "Periodische Übersicht: Tickets, SLA, Einsätze und offene Punkte für den Kunden."
+      },
+      inventaireParc: {
+        title: "Bestandsinventar",
+        description: "Vollständige Aufnahme der Geräte, Standorte und Lizenzen des Unternehmens."
+      },
+      auditSecurite: {
+        title: "Sicherheitsaudit",
+        description: "Antivirus, MFA, Patch-Stand und Härtungsempfehlungen."
       }
     },
     wizardProgressAria: "Erstellungsfortschritt",
@@ -305,7 +508,7 @@ const RAPPORT_PAGE = {
     wizardStepBuild: "Berichtsschritte",
     wizardStepNavAria: "Berichtsschritte",
     wizardClientTitle: "Welches Unternehmen?",
-    wizardClientHint: "Suchen und wählen Sie den betreffenden Kunden.",
+    wizardClientHint: "Suchen und wählen Sie den betreffenden Kunden. Vertrag, Bestand und offene Tickets erscheinen danach.",
     wizardRecapTitle: "Unternehmensübersicht",
     wizardRecapHint: "Vertrag, Optionen und Assets prüfen, bevor Sie den Berichtstyp wählen.",
     wizardRecapEmpty: "Klicken Sie auf eine Unternehmenskarte, um die Übersicht anzuzeigen.",
@@ -334,15 +537,90 @@ const RAPPORT_PAGE = {
     wizardPlaceholderBadge: "In Entwicklung",
     wizardFinishSoon: "Abschließen · demnächst",
     wizardStepOf: "Schritt {current} von {total}",
+    supervisionBuilder: {
+      periodTitle: "Berichtszeitraum",
+      periodGateSubtitle: "Legen Sie Zeitraum und Themen fest, bevor Sie den Builder öffnen.",
+      periodHint: "Tickets, Überwachungsalarme und Verfügbarkeit werden für diesen Zeitraum berechnet.",
+      startLabel: "Startdatum",
+      endLabel: "Enddatum",
+      startBuilder: "Builder öffnen",
+      loading: "Laden…",
+      initTitle: "Berichtseinrichtung",
+      initHint: "Wählen Sie den Analysezeitraum und die Themen. Nur aktivierte Module erscheinen im Builder.",
+      topicsTitle: "Berichtsthemen",
+      topicsHint: "Wählen Sie die Bereiche. Module ohne Daten für diesen Kunden sind nicht verfügbar.",
+      topicsLoading: "Kundenbestand wird geladen…",
+      topicsEmpty: "Für dieses Unternehmen ist noch kein Modul konfiguriert.",
+      selectAll: "Alle auswählen",
+      selectNone: "Auswahl aufheben",
+      selectedCount: "{count} Thema/Themen ausgewählt",
+      groupInfrastructure: "Geräte & Infrastruktur",
+      groupCyber: "Cybersicherheit",
+      groupCloud: "Cloud- & IT-Dienste",
+      topicUnavailable: "Nicht konfiguriert",
+      topicItems: "{count} Element(e)",
+      preset7d: "Letzte 7 Tage",
+      preset30d: "Letzte 30 Tage",
+      presetThisMonth: "Dieser Monat",
+      presetLastMonth: "Letzter Monat",
+      periodSummary: "{start} bis {end} · {days} T",
+      needTopic: "Wählen Sie mindestens ein verfügbares Thema.",
+      unsavedTitle: "Fortschritt wird nicht gespeichert",
+      unsavedMessage: "Wichtig: Solange der Bericht nicht gespeichert ist, gehen beim Verlassen der Seite, Wechseln des Tabs oder Schließen des Browsers alle Fortschritte verloren. Speichern Sie so bald wie möglich.",
+      unsavedConfirm: "Verstanden, Builder öffnen",
+      unsavedCancel: "Zurück",
+      leaveConfirm: "Trotzdem verlassen",
+      leaveCancel: "Bleiben",
+      builderComments: "Kommentare",
+      builderSync: "Synchronisieren",
+      builderSave: "Speichern",
+      builderDownload: "Exportieren",
+      builderHint: "Kommentieren Sie Abweichungen, erstellen Sie ein Support-Ticket und referenzieren Sie es als geplante Maßnahme.",
+      syncProgress: {
+        title: "Wir holen die Kundendaten",
+        kicker: "Aktualisierung",
+        preparing: "Einen Moment, wir bereiten alles vor…",
+        running: "Wir synchronisieren die Integrationen. Den Bericht können Sie schon im Hintergrund ansehen.",
+        done: "Fertig, alles ist aktuell.",
+        cancelled: "Alles klar, wir haben hier aufgehört.",
+        cancelledToast: "Synchronisation wurde abgebrochen.",
+        empty: "Keine Integration für diesen Kunden zu synchronisieren.",
+        etaCalculating: "Restzeit wird geschätzt…",
+        etaSoon: "Nur noch ein paar Sekunden",
+        etaSeconds: "Noch etwa {n} s",
+        etaMinutes: "Noch {m} Min {s} s",
+        stepOf: "{current} von {total}",
+        nowWorking: "Gerade",
+        footerHint: "Sie müssen nichts tun — das läuft von allein.",
+        footerDone: "Sie können mit dem Bericht weitermachen.",
+        close: "Super, weiter geht’s",
+        cancel: "Stoppen",
+        hostLabel: "Überwachung · {name}",
+        backupJobs: "Backup · CheckMK-Jobs",
+        antivirusLabel: "Antivirus · {name}",
+        antispamLabel: "Antispam · {name}",
+        office365: "Microsoft-365-Mandant",
+        nddLabel: "Domain · {name}",
+        successToast: "Synchronisation abgeschlossen ({ok}/{total}).",
+        partialToast: "Teilweise synchronisiert: {ok} erfolgreich, {fail} fehlgeschlagen.",
+        failToast: "Synchronisation fehlgeschlagen.",
+        noClient: "Der Kunde für die Synchronisation konnte nicht ermittelt werden."
+      }
+    },
     recap: {
       contract: "Vertrag",
       contractExpires: "Ablauf",
       contractOptions: "Vertragsoptionen",
       services: "Überwachte Dienste",
       equipment: "Geräte",
+      equipmentTotal: "Geräte",
+      openTickets: "Offene Tickets",
+      openTicketsLoading: "…",
       commercial: "Vertrieb",
       contact: "Hauptkontakt",
       sites: "Standorte",
+      sitePrimary: "Hauptstandort",
+      noSites: "Keine Standorte erfasst.",
       clientNumber: "Kundennr.",
       noOptions: "Keine aktiven Optionen.",
       noServices: "Keine Überwachungsdienste aktiv.",
@@ -352,13 +630,23 @@ const RAPPORT_PAGE = {
       contractExpired: "Abgelaufen",
       contractSuspended: "Ausgesetzt",
       contractUnknown: "Nicht angegeben"
+    },
+    recent: {
+      title: "Letzte Berichte",
+      hint: "Bereits erzeugte Berichte, neueste zuerst.",
+      hintClient: "Bereits erzeugte Berichte für dieses Unternehmen.",
+      empty: "Noch keine Berichte erzeugt.",
+      emptyClient: "Keine Berichte für dieses Unternehmen.",
+      created: "Erstellt",
+      author: "von",
+      openAria: "Unternehmen dieses Berichts anzeigen"
     }
   },
   it: {
     bcp47: "it-IT",
     eyebrow: "Documenti",
     pageTitle: "Report",
-    subtitle: "Scegli un'azienda, poi un tipo di report.",
+    subtitle: "Scegli un'azienda, consulta il parco, poi avvia un report.",
     create: {
       enterpriseLabel: "Azienda",
       enterpriseSearch: "Cerca un'azienda…",
@@ -378,6 +666,18 @@ const RAPPORT_PAGE = {
       cahierRecette: {
         title: "Cahier de recette",
         description: "Soluzioni, prodotti e hardware installati: ruolo, funzionamento e validazione cliente."
+      },
+      activiteMensuelle: {
+        title: "Report di attività",
+        description: "Revisione periodica: ticket, SLA, interventi e punti di attenzione per il cliente."
+      },
+      inventaireParc: {
+        title: "Inventario del parco",
+        description: "Fotografia completa di dispositivi, sedi e licenze dell'azienda."
+      },
+      auditSecurite: {
+        title: "Audit di sicurezza",
+        description: "Antivirus, MFA, patch e raccomandazioni di hardening."
       }
     },
     wizardProgressAria: "Avanzamento creazione",
@@ -387,7 +687,7 @@ const RAPPORT_PAGE = {
     wizardStepBuild: "Fasi del report",
     wizardStepNavAria: "Fasi del report",
     wizardClientTitle: "Quale azienda?",
-    wizardClientHint: "Cerca e seleziona il cliente interessato.",
+    wizardClientHint: "Cerca e seleziona il cliente. Contratto, parco e ticket aperti appaiono subito dopo.",
     wizardRecapEmpty: "Clicca su una scheda azienda per visualizzare il riepilogo.",
     wizardRecapTitle: "Riepilogo azienda",
     wizardRecapHint: "Verifica contratto, opzioni e parco prima di scegliere il report.",
@@ -416,15 +716,90 @@ const RAPPORT_PAGE = {
     wizardPlaceholderBadge: "In sviluppo",
     wizardFinishSoon: "Finalizza · prossimamente",
     wizardStepOf: "Fase {current} di {total}",
+    supervisionBuilder: {
+      periodTitle: "Periodo del report",
+      periodGateSubtitle: "Imposta periodo e argomenti prima di aprire il builder.",
+      periodHint: "Ticket, alert di supervisione e disponibilità sono calcolati su questo periodo.",
+      startLabel: "Data di inizio",
+      endLabel: "Data di fine",
+      startBuilder: "Apri il builder",
+      loading: "Caricamento…",
+      initTitle: "Inizializzazione del report",
+      initHint: "Scegli la finestra di analisi e gli argomenti da includere. Solo i moduli selezionati compariranno nel builder.",
+      topicsTitle: "Argomenti del report",
+      topicsHint: "Seleziona le aree da trattare. I moduli senza dati su questo cliente non sono disponibili.",
+      topicsLoading: "Caricamento del parco cliente…",
+      topicsEmpty: "Nessun modulo è ancora configurato per questa azienda.",
+      selectAll: "Seleziona tutto",
+      selectNone: "Deseleziona tutto",
+      selectedCount: "{count} argomento/i selezionato/i",
+      groupInfrastructure: "Dispositivi e infrastruttura",
+      groupCyber: "Cybersecurity",
+      groupCloud: "Servizi cloud e IT",
+      topicUnavailable: "Non configurato",
+      topicItems: "{count} elemento/i",
+      preset7d: "Ultimi 7 giorni",
+      preset30d: "Ultimi 30 giorni",
+      presetThisMonth: "Mese in corso",
+      presetLastMonth: "Mese precedente",
+      periodSummary: "Dal {start} al {end} · {days} g",
+      needTopic: "Seleziona almeno un argomento disponibile.",
+      unsavedTitle: "Avanzamento non salvato",
+      unsavedMessage: "Importante: finché il report non viene salvato, uscire da questa pagina, cambiare scheda o chiudere il browser farà perdere tutti i progressi. Salva il prima possibile.",
+      unsavedConfirm: "Ho capito, apri il builder",
+      unsavedCancel: "Indietro",
+      leaveConfirm: "Esci comunque",
+      leaveCancel: "Resta",
+      builderComments: "Commenti",
+      builderSync: "Sincronizza",
+      builderSave: "Salva",
+      builderDownload: "Esporta",
+      builderHint: "Commenta gli scostamenti, crea un ticket di supporto e referenzialo per mostrare l’azione prevista al cliente.",
+      syncProgress: {
+        title: "Stiamo aggiornando i dati del cliente",
+        kicker: "Aggiornamento",
+        preparing: "Un attimo, stiamo preparando tutto…",
+        running: "Sincronizziamo le integrazioni. Puoi già sfogliare il report dietro.",
+        done: "Fatto, tutto è aggiornato.",
+        cancelled: "Ok, ci siamo fermati qui.",
+        cancelledToast: "Sincronizzazione interrotta.",
+        empty: "Nessuna integrazione da sincronizzare per questo cliente.",
+        etaCalculating: "Stima del tempo rimanente…",
+        etaSoon: "Ancora pochi secondi",
+        etaSeconds: "Ancora circa {n} s",
+        etaMinutes: "Ancora {m} min {s} s",
+        stepOf: "{current} di {total}",
+        nowWorking: "In corso",
+        footerHint: "Non devi fare nulla — gira da solo.",
+        footerDone: "Puoi continuare con il report.",
+        close: "Perfetto, andiamo avanti",
+        cancel: "Ferma",
+        hostLabel: "Supervisione · {name}",
+        backupJobs: "Backup · job CheckMK",
+        antivirusLabel: "Antivirus · {name}",
+        antispamLabel: "Antispam · {name}",
+        office365: "Tenant Microsoft 365",
+        nddLabel: "Dominio · {name}",
+        successToast: "Sincronizzazione completata ({ok}/{total}).",
+        partialToast: "Sincronizzazione parziale: {ok} riuscita/e, {fail} errore/i.",
+        failToast: "Sincronizzazione non riuscita.",
+        noClient: "Impossibile identificare il cliente per la sincronizzazione."
+      }
+    },
     recap: {
       contract: "Contratto",
       contractExpires: "Scadenza",
       contractOptions: "Opzioni contratto",
       services: "Servizi supervisionati",
       equipment: "Dispositivi",
+      equipmentTotal: "Dispositivi",
+      openTickets: "Ticket aperti",
+      openTicketsLoading: "…",
       commercial: "Commerciale",
       contact: "Contatto principale",
       sites: "Sedi",
+      sitePrimary: "Principale",
+      noSites: "Nessuna sede registrata.",
       clientNumber: "N° cliente",
       noOptions: "Nessuna opzione attiva.",
       noServices: "Nessun servizio di supervisione attivo.",
@@ -434,13 +809,23 @@ const RAPPORT_PAGE = {
       contractExpired: "Scaduto",
       contractSuspended: "Sospeso",
       contractUnknown: "Non indicato"
+    },
+    recent: {
+      title: "Ultimi report",
+      hint: "Report già generati, dal più recente.",
+      hintClient: "Report già generati per questa azienda.",
+      empty: "Nessun report generato al momento.",
+      emptyClient: "Nessun report per questa azienda.",
+      created: "Creato il",
+      author: "da",
+      openAria: "Mostra l’azienda di questo report"
     }
   },
   es: {
     bcp47: "es-ES",
     eyebrow: "Documentos",
     pageTitle: "Informes",
-    subtitle: "Elija una empresa, luego un tipo de informe.",
+    subtitle: "Elija una empresa, revise su parque, luego inicie un informe.",
     create: {
       enterpriseLabel: "Empresa",
       enterpriseSearch: "Buscar una empresa…",
@@ -460,6 +845,18 @@ const RAPPORT_PAGE = {
       cahierRecette: {
         title: "Cuaderno de recette",
         description: "Soluciones, productos y hardware instalados: rol, funcionamiento y validación del cliente."
+      },
+      activiteMensuelle: {
+        title: "Informe de actividad",
+        description: "Revisión periódica: tickets, SLA, intervenciones y puntos de atención para el cliente."
+      },
+      inventaireParc: {
+        title: "Inventario del parque",
+        description: "Instantánea completa de equipos, sitios y licencias de la empresa."
+      },
+      auditSecurite: {
+        title: "Auditoría de seguridad",
+        description: "Antivirus, MFA, parches y recomendaciones de endurecimiento."
       }
     },
     wizardProgressAria: "Progreso de creación",
@@ -469,7 +866,7 @@ const RAPPORT_PAGE = {
     wizardStepBuild: "Fases del informe",
     wizardStepNavAria: "Fases del informe",
     wizardClientTitle: "¿Qué empresa?",
-    wizardClientHint: "Busque y seleccione el cliente correspondiente.",
+    wizardClientHint: "Busque y seleccione el cliente. El contrato, el parque y los tickets abiertos aparecen a continuación.",
     wizardRecapEmpty: "Haga clic en una tarjeta de empresa para ver su resumen.",
     wizardRecapTitle: "Resumen de la empresa",
     wizardRecapHint: "Revise contrato, opciones y parque antes de elegir el informe.",
@@ -498,15 +895,90 @@ const RAPPORT_PAGE = {
     wizardPlaceholderBadge: "En desarrollo",
     wizardFinishSoon: "Finalizar · próximamente",
     wizardStepOf: "Fase {current} de {total}",
+    supervisionBuilder: {
+      periodTitle: "Periodo del informe",
+      periodGateSubtitle: "Defina el periodo y los temas antes de abrir el builder.",
+      periodHint: "Tickets, alertas de supervisión y disponibilidad se calculan en este periodo.",
+      startLabel: "Fecha de inicio",
+      endLabel: "Fecha de fin",
+      startBuilder: "Abrir el builder",
+      loading: "Cargando…",
+      initTitle: "Inicialización del informe",
+      initHint: "Elija la ventana de análisis y los temas a incluir. Solo los módulos marcados aparecerán en el builder.",
+      topicsTitle: "Temas del informe",
+      topicsHint: "Seleccione las áreas a tratar. Los módulos sin datos de este cliente no están disponibles.",
+      topicsLoading: "Cargando el parque del cliente…",
+      topicsEmpty: "Aún no hay ningún módulo configurado para esta empresa.",
+      selectAll: "Seleccionar todo",
+      selectNone: "Deseleccionar todo",
+      selectedCount: "{count} tema(s) seleccionado(s)",
+      groupInfrastructure: "Dispositivos e infraestructura",
+      groupCyber: "Ciberseguridad",
+      groupCloud: "Servicios cloud e IT",
+      topicUnavailable: "No configurado",
+      topicItems: "{count} elemento(s)",
+      preset7d: "Últimos 7 días",
+      preset30d: "Últimos 30 días",
+      presetThisMonth: "Mes en curso",
+      presetLastMonth: "Mes anterior",
+      periodSummary: "Del {start} al {end} · {days} d",
+      needTopic: "Seleccione al menos un tema disponible.",
+      unsavedTitle: "Progreso no guardado",
+      unsavedMessage: "Importante: mientras no guarde el informe, salir de esta página, cambiar de pestaña o cerrar el navegador hará perder todo el progreso. Guarde lo antes posible.",
+      unsavedConfirm: "Entendido, abrir el builder",
+      unsavedCancel: "Volver",
+      leaveConfirm: "Salir de todos modos",
+      leaveCancel: "Quedarse",
+      builderComments: "Comentarios",
+      builderSync: "Sincronizar",
+      builderSave: "Guardar",
+      builderDownload: "Exportar",
+      builderHint: "Comente las desviaciones, cree un ticket de soporte y refiéralo para mostrar la acción prevista al cliente.",
+      syncProgress: {
+        title: "Estamos trayendo los datos del cliente",
+        kicker: "Actualización",
+        preparing: "Un momento, lo preparamos todo…",
+        running: "Sincronizamos las integraciones. Ya puedes mirar el informe detrás.",
+        done: "Listo, todo está al día.",
+        cancelled: "Vale, nos hemos detenido aquí.",
+        cancelledToast: "Sincronización interrumpida.",
+        empty: "No hay integraciones que sincronizar para este cliente.",
+        etaCalculating: "Calculando el tiempo restante…",
+        etaSoon: "Quedan unos segundos",
+        etaSeconds: "Quedan unos {n} s",
+        etaMinutes: "Quedan {m} min {s} s",
+        stepOf: "{current} de {total}",
+        nowWorking: "En curso",
+        footerHint: "No tienes que hacer nada — va solo.",
+        footerDone: "Puedes seguir con el informe.",
+        close: "Perfecto, seguimos",
+        cancel: "Parar",
+        hostLabel: "Supervisión · {name}",
+        backupJobs: "Copia de seguridad · jobs CheckMK",
+        antivirusLabel: "Antivirus · {name}",
+        antispamLabel: "Antispam · {name}",
+        office365: "Inquilino Microsoft 365",
+        nddLabel: "Dominio · {name}",
+        successToast: "Sincronización terminada ({ok}/{total}).",
+        partialToast: "Sincronización parcial: {ok} correcta(s), {fail} error(es).",
+        failToast: "La sincronización ha fallado.",
+        noClient: "No se puede identificar el cliente para la sincronización."
+      }
+    },
     recap: {
       contract: "Contrato",
       contractExpires: "Vencimiento",
       contractOptions: "Opciones del contrato",
       services: "Servicios supervisados",
       equipment: "Dispositivos",
+      equipmentTotal: "Equipos",
+      openTickets: "Tickets abiertos",
+      openTicketsLoading: "…",
       commercial: "Comercial",
       contact: "Contacto principal",
       sites: "Sitios",
+      sitePrimary: "Principal",
+      noSites: "Ningún sitio registrado.",
       clientNumber: "N° cliente",
       noOptions: "Ninguna opción activa.",
       noServices: "Ningún servicio de supervisión activo.",
@@ -516,6 +988,16 @@ const RAPPORT_PAGE = {
       contractExpired: "Vencido",
       contractSuspended: "Suspendido",
       contractUnknown: "No indicado"
+    },
+    recent: {
+      title: "Últimos informes",
+      hint: "Informes ya generados, del más reciente.",
+      hintClient: "Informes ya generados para esta empresa.",
+      empty: "Ningún informe generado por ahora.",
+      emptyClient: "Ningún informe para esta empresa.",
+      created: "Creado el",
+      author: "por",
+      openAria: "Mostrar la empresa de este informe"
     }
   }
 };
@@ -534,24 +1016,36 @@ export function getRapportPageCopy(locale) {
     wizard: buildWizard(copy),
     supervisionBuilder: copy.supervisionBuilder || {},
     recap: copy.recap,
+    recent: copy.recent || {},
     localeCode: code
   };
 }
 export function getReportTypes(pageCopy, locale = "fr") {
   const stepMap = WIZARD_STEP_MAP_BY_LOCALE[locale] || WIZARD_STEPS;
-  return REPORT_TYPE_DEFS.map(def => ({
-    id: def.id,
-    icon: def.icon,
-    key: def.key,
-    title: pageCopy.reportTypes[def.key].title,
-    description: pageCopy.reportTypes[def.key].description,
-    steps: stepMap[def.key] || []
-  }));
+  return REPORT_TYPE_DEFS.map(def => {
+    const labels = pageCopy.reportTypes[def.key] || {};
+    return {
+      id: def.id,
+      icon: def.icon,
+      key: def.key,
+      comingSoon: Boolean(def.comingSoon),
+      title: labels.title || def.key,
+      description: labels.description || "",
+      steps: stepMap[def.key] || []
+    };
+  });
 }
 export function getReportTypeLabel(pageCopy, rawType) {
   const normalized = String(rawType || "").trim().toLowerCase();
   if (normalized.includes("intervention")) return pageCopy.reportTypes.intervention.title;
   if (normalized.includes("recette")) return pageCopy.reportTypes.cahierRecette.title;
+  if (normalized.includes("inventaire") || normalized.includes("inventory") || normalized.includes("fleet")) {
+    return pageCopy.reportTypes.inventaireParc?.title || rawType;
+  }
+  if (normalized.includes("audit")) return pageCopy.reportTypes.auditSecurite?.title || rawType;
+  if (normalized.includes("activite") || normalized.includes("activity")) {
+    return pageCopy.reportTypes.activiteMensuelle?.title || rawType;
+  }
   if (normalized.includes("monitoring") || normalized.includes("supervision")) {
     return pageCopy.reportTypes.supervisionEtat.title;
   }

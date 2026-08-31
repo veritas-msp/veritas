@@ -30,7 +30,8 @@ function alertAt(alert) {
 export default function RecapStep({
   client,
   reportPeriod = {},
-  allCommentsChronological = []
+  allCommentsChronological = [],
+  onCommentClick
 }) {
   const clientId = client?.id ?? client?.uuid;
   const start = reportPeriod.start || client?.reportStartDate;
@@ -200,17 +201,18 @@ export default function RecapStep({
           <section data-export-section="recap-comments">
             <h3 style={{ margin: "0 0 0.5rem", fontSize: "0.95rem", display: "flex", alignItems: "center", gap: 8 }}>
               <Icon icon="mdi:comment-text-multiple-outline" width={18} height={18} />
-              Commentaires du rapport ({comments.length})
+              Notes du rapport ({comments.length})
             </h3>
             {comments.length === 0 ? (
-              <p style={{ margin: 0, color: "#6b7280", fontSize: "0.9rem" }}>Aucun commentaire pour l’instant.</p>
+              <p style={{ margin: 0, color: "#6b7280", fontSize: "0.9rem" }}>Aucune note pour l’instant. Ajoutez-les depuis chaque étape du builder.</p>
             ) : (
               <ul style={{ listStyle: "none", margin: 0, padding: 0, display: "grid", gap: "0.5rem" }}>
                 {comments.map(c => {
                   const isEquipment = c.scope === "equipment";
                   const label = isEquipment
-                    ? [c.moduleKey, c.referenceLabel].filter(Boolean).join(" · ") || "Périphérique"
-                    : "Commentaire général";
+                    ? c.referenceLabel || "Périphérique / solution"
+                    : "Note générale";
+                  const clickable = typeof onCommentClick === "function" && isEquipment && c.moduleKey;
                   return (
                     <li
                       key={isEquipment ? `eq-${c.equipmentKey}-${c.id}` : `gen-${c.id}`}
@@ -218,8 +220,18 @@ export default function RecapStep({
                         padding: "0.55rem 0.7rem",
                         border: "1px solid #e5e7eb",
                         borderRadius: 8,
-                        background: "#fafafa"
+                        background: "#fafafa",
+                        cursor: clickable ? "pointer" : "default"
                       }}
+                      onClick={clickable ? () => onCommentClick(c.moduleKey, c.equipmentKey, c) : undefined}
+                      onKeyDown={clickable ? event => {
+                        if (event.key === "Enter" || event.key === " ") {
+                          event.preventDefault();
+                          onCommentClick(c.moduleKey, c.equipmentKey, c);
+                        }
+                      } : undefined}
+                      role={clickable ? "button" : undefined}
+                      tabIndex={clickable ? 0 : undefined}
                     >
                       <div style={{ fontSize: "0.75rem", color: "#6b7280", marginBottom: 4 }}>
                         {formatDateTime(c.createdAt)} — {label}

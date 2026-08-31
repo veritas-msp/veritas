@@ -44,7 +44,7 @@
   gap: 0.45rem;
   margin: 0;
   font-size: 0.92rem;
-  font-weight: 700;
+  font-weight: 600;
   color: var(--dash-text);
 }
 
@@ -56,7 +56,7 @@
 .cardHint {
   flex-shrink: 0;
   font-size: 0.68rem;
-  font-weight: 700;
+  font-weight: 600;
   letter-spacing: 0.03em;
   text-transform: uppercase;
   color: var(--dash-accent);
@@ -92,7 +92,7 @@
   background: var(--dash-accent-soft);
   color: var(--dash-accent);
   font-size: 0.68rem;
-  font-weight: 800;
+  font-weight: 600;
   margin-top: 0.08rem;
 }
 
@@ -121,7 +121,7 @@
 .rowCount {
   flex-shrink: 0;
   font-size: 0.72rem;
-  font-weight: 700;
+  font-weight: 600;
   color: var(--dash-muted);
 }
 

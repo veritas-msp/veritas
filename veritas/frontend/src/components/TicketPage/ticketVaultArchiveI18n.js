@@ -5,8 +5,15 @@ const CATEGORY_KEYS = ["Facture", "Notice / Guide", "Rapport", "Contrat", "Proc�
 const COPY = {
   fr: {
     enable: "Ajouter aussi au coffre-fort de l'entreprise",
-    enableHint: "Une copie de ce fichier compatible est classée dans le coffre documentaire.",
+    enableHint: "Les fichiers cochés sont classés dans le coffre documentaire de l'entreprise.",
     noClient: "Associez une entreprise au ticket pour archiver dans le coffre-fort.",
+    panelTitle: "Coffre-fort entreprise",
+    bulkEnable: "Tout mettre au coffre-fort",
+    enabledCount: "{enabled}/{total} dans le coffre",
+    mixedCategories: "Catégories mixtes",
+    bulkCategoryAria: "Catégorie pour tous les fichiers archivés",
+    vaultToggleAria: "Archiver {name} dans le coffre-fort",
+    descriptionToggleAria: "Ajouter une description",
     categoryLabel: "Catégorie",
     descriptionLabel: "Description (optionnel)",
     descriptionPlaceholder: "Ex. compte-rendu, facture, procédure…",
@@ -29,8 +36,15 @@ const COPY = {
   },
   en: {
     enable: "Also add to the company vault",
-    enableHint: "A copy of this compatible file is filed in the document vault.",
+    enableHint: "Checked files are filed in the company document vault.",
     noClient: "Link a company to the ticket to archive in the vault.",
+    panelTitle: "Company vault",
+    bulkEnable: "Add all to the vault",
+    enabledCount: "{enabled}/{total} in the vault",
+    mixedCategories: "Mixed categories",
+    bulkCategoryAria: "Category for all archived files",
+    vaultToggleAria: "Archive {name} in the vault",
+    descriptionToggleAria: "Add a description",
     categoryLabel: "Category",
     descriptionLabel: "Description (optional)",
     descriptionPlaceholder: "E.g. report, invoice, procedure…",
@@ -53,8 +67,15 @@ const COPY = {
   },
   de: {
     enable: "Auch im Unternehmens-Tresor ablegen",
-    enableHint: "Eine Kopie dieser kompatiblen Datei wird im Dokumententresor abgelegt.",
+    enableHint: "Aktivierte Dateien werden im Dokumententresor des Unternehmens abgelegt.",
     noClient: "Verknüpfen Sie ein Unternehmen mit dem Ticket, um im Tresor zu archivieren.",
+    panelTitle: "Unternehmens-Tresor",
+    bulkEnable: "Alle in den Tresor legen",
+    enabledCount: "{enabled}/{total} im Tresor",
+    mixedCategories: "Gemischte Kategorien",
+    bulkCategoryAria: "Kategorie für alle archivierten Dateien",
+    vaultToggleAria: "{name} im Tresor ablegen",
+    descriptionToggleAria: "Beschreibung hinzufügen",
     categoryLabel: "Kategorie",
     descriptionLabel: "Beschreibung (optional)",
     descriptionPlaceholder: "z. B. Bericht, Rechnung, Verfahren…",
@@ -77,8 +98,15 @@ const COPY = {
   },
   it: {
     enable: "Aggiungi anche alla cassaforte aziendale",
-    enableHint: "Una copia di questo file compatibile viene archiviata nella cassaforte documenti.",
+    enableHint: "I file selezionati vengono archiviati nella cassaforte documentale dell'azienda.",
     noClient: "Collega un'azienda al ticket per archiviare nella cassaforte.",
+    panelTitle: "Cassaforte aziendale",
+    bulkEnable: "Metti tutti in cassaforte",
+    enabledCount: "{enabled}/{total} in cassaforte",
+    mixedCategories: "Categorie miste",
+    bulkCategoryAria: "Categoria per tutti i file archiviati",
+    vaultToggleAria: "Archivia {name} nella cassaforte",
+    descriptionToggleAria: "Aggiungi una descrizione",
     categoryLabel: "Categoria",
     descriptionLabel: "Descrizione (opzionale)",
     descriptionPlaceholder: "Es. verbale, fattura, procedura…",
@@ -101,8 +129,15 @@ const COPY = {
   },
   es: {
     enable: "Añadir también a la caja fuerte de la empresa",
-    enableHint: "Una copia de este archivo compatible se archiva en la caja fuerte documental.",
+    enableHint: "Los archivos marcados se archivan en la caja fuerte documental de la empresa.",
     noClient: "Asocie una empresa al ticket para archivar en la caja fuerte.",
+    panelTitle: "Caja fuerte de la empresa",
+    bulkEnable: "Poner todos en la caja fuerte",
+    enabledCount: "{enabled}/{total} en la caja fuerte",
+    mixedCategories: "Categorías mixtas",
+    bulkCategoryAria: "Categoría para todos los archivos archivados",
+    vaultToggleAria: "Archivar {name} en la caja fuerte",
+    descriptionToggleAria: "Añadir una descripción",
     categoryLabel: "Categoría",
     descriptionLabel: "Descripción (opcional)",
     descriptionPlaceholder: "Ej. informe, factura, procedimiento…",
@@ -135,6 +170,15 @@ export function getTicketVaultArchiveCopy(locale) {
     ...t,
     categoryKeys: CATEGORY_KEYS,
     getCategoryLabel: category => t.categories[category] || category,
+    formatEnabledCount: (enabled, total) =>
+      interpolate(t.enabledCount, {
+        enabled: String(enabled),
+        total: String(total)
+      }),
+    formatVaultToggleAria: name =>
+      interpolate(t.vaultToggleAria, {
+        name: String(name || "")
+      }),
     formatPartial: (ok, failed) =>
       interpolate(t.toast.partial, {
         ok: String(ok),

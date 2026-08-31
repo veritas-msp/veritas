@@ -15,8 +15,6 @@ import AntispamStep from "./steps/AntispamStep";
 import Office365Step from "./steps/Office365Step";
 import NDDStep from "./steps/NDDStep";
 import SummaryStep from "./steps/SummaryStep";
-import PeriodeStep from "./steps/PeriodeStep";
-import CartographieStep from "./steps/CartographieStep";
 import RecapStep from "./steps/RecapStep";
 import EquipmentEditModal from "./EquipmentEditModal";
 import { findEquipmentLocation } from "./equipmentPatchUtils";
@@ -42,8 +40,6 @@ export const MONITORING_MODULE_STEP_ORDER = [
 export const MONITORING_STEP_ORDER = MONITORING_MODULE_STEP_ORDER;
 
 export const MODULE_LABELS = {
-  period: "Périmètre",
-  cartography: "Cartographie",
   Internet: "Internet",
   Firewall: "Firewall",
   Servers: "Serveurs",
@@ -59,6 +55,39 @@ export const MODULE_LABELS = {
   recap: "Récapitulatif",
   summary: "Synthèse"
 };
+
+export const MODULE_ICONS = {
+  Internet: "mdi:wan",
+  Firewall: "mdi:firewall",
+  Servers: "mdi:server",
+  Storage: "mdi:harddisk",
+  Switch: "mdi:switch",
+  BorneWifi: "mdi:wifi",
+  TOIP: "mdi:phone-voip",
+  Backup: "mdi:backup-restore",
+  Antivirus: "mdi:shield-bug-outline",
+  Antispam: "mdi:email-lock-outline",
+  Office365: "mdi:microsoft-office",
+  NDD: "mdi:web",
+  recap: "mdi:clipboard-text-outline",
+  summary: "mdi:file-chart-outline"
+};
+
+const INFRASTRUCTURE_TOPIC_KEYS = ["Internet", "Firewall", "Servers", "Storage", "Switch", "BorneWifi", "TOIP"];
+
+export const REPORT_TOPIC_GROUPS = [{
+  key: "infrastructure",
+  icon: "mdi:lan",
+  topics: INFRASTRUCTURE_TOPIC_KEYS
+}, {
+  key: "cyber",
+  icon: "mdi:shield-lock-outline",
+  topics: ["Antivirus", "Antispam", "Backup"]
+}, {
+  key: "cloud",
+  icon: "mdi:cloud-outline",
+  topics: ["Office365", "NDD"]
+}];
 
 export function getClientMonitoringModules(client) {
   if (!client) return {};
@@ -97,24 +126,8 @@ function hasOffice365Equipment(client) {
   return Boolean(client?.has_azure_credentials || client?.hasAzureCredentials || client?.azureHasCredentials);
 }
 
-function clientHasAnyEquipment(client) {
-  const eq = client?.equipements;
-  if (!eq || typeof eq !== "object") return false;
-  return Object.values(eq).some(value => {
-    if (Array.isArray(value)) return value.length > 0;
-    if (value && typeof value === "object") {
-      if (Array.isArray(value.instances)) return value.instances.length > 0;
-      if (Array.isArray(value.solutions)) return value.solutions.length > 0;
-      return Object.keys(value).length > 0;
-    }
-    return false;
-  });
-}
-
-export function isMonitoringStepEnabled(client, stepKey) {
+export function isMonitoringModuleAvailable(client, stepKey) {
   if (!client) return false;
-  if (stepKey === "period" || stepKey === "recap" || stepKey === "summary") return true;
-  if (stepKey === "cartography") return clientHasAnyEquipment(client) || MONITORING_MODULE_STEP_ORDER.some(k => isMonitoringStepEnabled(client, k));
   const eq = client.equipements || {};
   switch (stepKey) {
     case "Internet":
@@ -146,14 +159,55 @@ export function isMonitoringStepEnabled(client, stepKey) {
   }
 }
 
+export function countMonitoringModuleItems(client, stepKey) {
+  if (!client) return 0;
+  const eq = client.equipements || {};
+  switch (stepKey) {
+    case "Internet":
+      return getEquipementList(eq, "Internet").length;
+    case "Firewall":
+      return getEquipementList(eq, "Firewalls").length;
+    case "Servers":
+      return getEquipementList(eq, "Serveurs").length + getEquipementList(eq, "Servers").length;
+    case "Storage":
+      return getEquipementList(eq, "NAS").length + getEquipementList(eq, "SAN").length;
+    case "Switch":
+      return getEquipementList(eq, "Switch").length;
+    case "BorneWifi":
+      return getEquipementList(eq, "BorneWifi").length;
+    case "TOIP":
+      return getSolutionsList(eq.TOIP).length;
+    case "Backup":
+      return getBackupInstances(eq.Sauvegarde).length + getBackupInstances(eq.Backup).length;
+    case "Antivirus":
+      return getSolutionsList(eq.Antivirus).length;
+    case "Antispam":
+      return getSolutionsList(eq.Antispam).length;
+    case "Office365":
+      return hasOffice365Equipment(client) ? 1 : 0;
+    case "NDD":
+      return getEquipementList(eq, "NDD").length;
+    default:
+      return 0;
+  }
+}
+
+export function isMonitoringStepEnabled(client, stepKey) {
+  if (!client) return false;
+  if (stepKey === "recap" || stepKey === "summary") return true;
+  const selected = Array.isArray(client.reportSelectedModules) ? client.reportSelectedModules : null;
+  if (selected && !selected.includes(stepKey)) return false;
+  return isMonitoringModuleAvailable(client, stepKey);
+}
+
 export function getEnabledMonitoringSteps(client) {
-  const moduleSteps = MONITORING_MODULE_STEP_ORDER.filter(stepKey => isMonitoringStepEnabled(client, stepKey));
-  if (moduleSteps.length === 0 && !clientHasAnyEquipment(client)) return [];
-  const steps = ["period"];
-  if (isMonitoringStepEnabled(client, "cartography")) steps.push("cartography");
-  steps.push(...moduleSteps);
-  steps.push("recap", "summary");
-  return steps;
+  const selected = Array.isArray(client?.reportSelectedModules) ? client.reportSelectedModules : null;
+  const moduleSteps = MONITORING_MODULE_STEP_ORDER.filter(stepKey => {
+    if (selected && !selected.includes(stepKey)) return false;
+    return isMonitoringModuleAvailable(client, stepKey);
+  });
+  if (moduleSteps.length === 0) return [];
+  return [...moduleSteps, "recap", "summary"];
 }
 
 export default function MonitoringSteps({
@@ -165,8 +219,6 @@ export default function MonitoringSteps({
   onTicketCreatedForEquipment,
   onRefreshClient,
   onEquipmentSaved,
-  onPeriodChange,
-  onSyncAllMonitoring,
   equipmentCommentCounts,
   equipmentTicketCounts,
   equipmentAlertCounts = {},
@@ -182,7 +234,9 @@ export default function MonitoringSteps({
   summaryContentRef = null,
   stockageReportState = null,
   onSetStorageReportState,
-  recapSnapshot = null
+  recapSnapshot = null,
+  commentsPane = null,
+  onCommentClick = null
 }) {
   const [internalIndex, setInternalIndex] = useState(0);
   const [isSyncingAntivirus, setIsSyncingAntivirus] = useState(false);
@@ -308,10 +362,6 @@ export default function MonitoringSteps({
 
   const renderCurrentStep = () => {
     switch (currentStepKey) {
-      case "period":
-        return <PeriodeStep client={client} onPeriodChange={onPeriodChange} onSyncMonitoring={onSyncAllMonitoring} isSyncingMonitoring={isSyncingMonitoring} isSyncingOffice365Report={isSyncingOffice365Report} />;
-      case "cartography":
-        return <CartographieStep client={client} />;
       case "Internet":
         return <InternetStep client={client} {...infraStepProps} />;
       case "Firewall":
@@ -337,7 +387,7 @@ export default function MonitoringSteps({
       case "NDD":
         return <NDDStep client={client} onRefreshClient={onRefreshClient} onOpenComments={onOpenComments} onTicketCreatedForEquipment={onTicketCreatedForEquipment} commentCounts={equipmentCommentCounts} ticketCounts={equipmentTicketCounts} alertCounts={equipmentAlertCounts} highlightedEquipmentKey={highlightedEquipmentKey} />;
       case "recap":
-        return <RecapStep client={client} reportPeriod={reportPeriod} allCommentsChronological={allCommentsChronological} recapSnapshot={recapSnapshot} />;
+        return <RecapStep client={client} reportPeriod={reportPeriod} allCommentsChronological={allCommentsChronological} recapSnapshot={recapSnapshot} onCommentClick={onCommentClick} />;
       case "summary":
         return <SummaryStep client={client} equipmentCheckMKData={equipmentCheckMKData} allComments={allCommentsChronological} equipmentComments={equipmentComments} equipmentCommentCounts={equipmentCommentCounts} equipmentTicketCounts={equipmentTicketCounts} stockageReportState={stockageReportState} summaryContentRef={summaryContentRef} />;
       default:
@@ -347,14 +397,16 @@ export default function MonitoringSteps({
 
   return (
     <>
-      <div className={shellStyles.layout} style={{ flex: 1, minHeight: 0, paddingTop: 0 }}>
+      <div className={`${shellStyles.layout} ${commentsPane ? shellStyles.layoutWithComments : ""}`.trim()}>
         <aside className={shellStyles.stepNav} aria-label="Étapes du rapport">
+          <div className={shellStyles.stepNavTitle}>Parcours</div>
           {steps.map((stepKey, index) => {
             const isActive = index === safeIndex;
             const isDone = index < safeIndex;
             return (
               <button key={stepKey} type="button" className={`${shellStyles.stepNavItem} ${isActive ? shellStyles.stepNavItemActive : ""} ${isDone ? shellStyles.stepNavItemDone : ""}`} onClick={() => setCurrentIndex(index)}>
                 <span className={shellStyles.stepNavIndex}>{index + 1}</span>
+                <Icon icon={MODULE_ICONS[stepKey] || "mdi:checkbox-marked-outline"} className={shellStyles.stepNavIcon} width={18} height={18} aria-hidden />
                 <span className={shellStyles.stepNavLabel}>{getStepLabel(stepKey)}</span>
               </button>
             );
@@ -392,6 +444,7 @@ export default function MonitoringSteps({
             </button>
           </div>
         </section>
+        {commentsPane}
       </div>
 
       <CheckMKMonitoringModal isOpen={checkMKModal.isOpen} onClose={handleCloseCheckMKModal} equipment={checkMKModal.equipment} reportPeriod={reportPeriod} preLoadedData={checkMKModal.equipment ? getCheckMKCachedData(equipmentCheckMKData, checkMKModal.equipment, checkMKModal.equipmentKey) : null} onRefresh={handleRefreshCheckMKModal} refreshing={syncingEquipmentKey === checkMKModal.equipmentKey} />

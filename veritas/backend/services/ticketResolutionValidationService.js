@@ -2,6 +2,7 @@ import { pool } from "../database/db.js";
 import { handleTicketStatusCreditChange } from "./supportCredits.js";
 import { dispatchNotificationEvent } from "./notificationDispatcher.js";
 import { notifyInAppTicketStatusChanged } from "./userNotificationService.js";
+import { ensureTicketSolutionCatalogSchema } from "./ensureTicketSolutionCatalogSchema.js";
 export const RESOLUTION_COMMENT_PREFIX = "[Resolution]";
 export const RESOLUTION_AUTO_CLOSE_PREFIX = "[Resolution auto-close]";
 export const RESOLUTION_CLIENT_REJECTION_PREFIX = "[Resolution client]";
@@ -123,6 +124,7 @@ export async function resolveTicketWithClientValidation({
     const err = new Error("VALIDATION_UNAVAILABLE");
     throw err;
   }
+  await ensureTicketSolutionCatalogSchema().catch(() => {});
   const trimmedReason = String(reason || "").trim();
   const trimmedIntervention = String(interventionType || "").trim();
   const trimmedAction = String(actionType || "").trim();

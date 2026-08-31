@@ -17,6 +17,7 @@ import { fetchTickets } from "../../api/tickets";
 import { fetchEvents } from "../../api/events";
 import { filterRecentEvents, filterUpcomingEvents } from "../../utils/eventFilters";
 import { getClientInitials, getClientNumber, getClientNameWithoutCode } from "../../utils/clientDisplay";
+import { getClientOnboardingInfo } from "../../utils/clientOnboarding";
 import API_BASE_URL from "../../config";
 import SmartTooltip from "../SmartTooltip";
 import PlanningEventModalBridge from "../PlanningPage/PlanningEventModalBridge";
@@ -202,6 +203,22 @@ function extractLicensesFromModules(modulesData) {
     notes: item.notes || item.data?.notes || null
   }));
 }
+function buildJobCheckmkMapping(job, mappingRow = null) {
+  const host = mappingRow?.checkmk_host_name || job?.checkmk_host_name || job?.checkmkMapping?.checkmk_host_name || null;
+  const site = mappingRow?.checkmk_site || job?.checkmk_site || job?.checkmkMapping?.checkmk_site || null;
+  const service = mappingRow?.checkmk_service_name || job?.checkmk_service_name || job?.checkmkMapping?.checkmk_service_name || null;
+  if (!host && !service) return null;
+  return {
+    checkmk_host_name: host && String(host).trim() ? String(host).trim() : null,
+    checkmk_site: site && String(site).trim() ? String(site).trim() : null,
+    checkmk_service_name: service && String(service).trim() ? String(service).trim() : null,
+    is_active: mappingRow?.is_active !== false
+  };
+}
+function isBackupJobCheckmkMapped(job, mappingRow = null) {
+  const mapping = buildJobCheckmkMapping(job, mappingRow);
+  return Boolean(mapping?.checkmk_host_name);
+}
 function parseBackupDataFromModules(modulesData, mappingsMap = {}) {
   const sauvegarde = modulesData?.equipements?.Sauvegarde;
   if (!sauvegarde) return {
@@ -216,7 +233,7 @@ function parseBackupDataFromModules(modulesData, mappingsMap = {}) {
     const jobsCount = jobs.length;
     const mappedJobsCount = jobs.filter(job => {
       const jobId = job.id || `job-${instance.id}-${job.nom}`;
-      return mappingsMap[jobId];
+      return isBackupJobCheckmkMapped(job, mappingsMap[jobId]);
     }).length;
     allInstances.push({
       id: instance.id || instance.instanceId,
@@ -239,7 +256,8 @@ function parseBackupDataFromModules(modulesData, mappingsMap = {}) {
         horaire: job.horaire || "",
         retention: job.retention || "",
         serveurLie: normalizeServeurLieList(job.serveurLie),
-        isMapped: !!mappingsMap[jobId],
+        isMapped: isBackupJobCheckmkMapped(job, mappingsMap[jobId]),
+        checkmkMapping: buildJobCheckmkMapping(job, mappingsMap[jobId]),
         last_backup_date: job.last_backup_date ?? null,
         last_backup_start: job.last_backup_start ?? null,
         last_backup_duration: job.last_backup_duration ?? null
@@ -2460,7 +2478,7 @@ export default function ClientDetailPage({
       const mappingsMap = {};
       if (mappingsData && Array.isArray(mappingsData)) {
         mappingsData.forEach(m => {
-          if (m.equipment_type === 'Backup' && m.equipment_id && m.is_active !== false) {
+            if (m.equipment_id && m.is_active !== false && (m.equipment_type === "Backup" || m.equipment_type === "Sauvegarde")) {
             mappingsMap[m.equipment_id] = m;
           }
         });
@@ -2774,6 +2792,10 @@ export default function ClientDetailPage({
     return note.user_id === currentUser.id;
   };
   const visibleSupportPacks = useMemo(() => supportCreditPacks.filter(pack => ["active", "upcoming"].includes(pack.status)), [supportCreditPacks]);
+  const clientOnboarding = useMemo(
+    () => getClientOnboardingInfo(client, formData?.contrat?.debut),
+    [client, formData?.contrat?.debut]
+  );
   const activeContacts = useMemo(() => {
     const list = contacts.filter(c => String(c.statut || "").toLowerCase().includes("actif") && !String(c.statut || "").toLowerCase().includes("inactive"));
     return sortContactsPrimaryFirst(list, client?.id);
@@ -2921,6 +2943,10 @@ export default function ClientDetailPage({
                 <span>{clientNameWithoutCode}</span>
               </h1>
               <div className={styles.heroMeta} aria-label={copy.heroMetaAria}>
+                {clientOnboarding ? <span className={`${styles.contractBadge} ${styles.contractBadge_onboarding}`}>
+                    <Icon icon="mdi:account-clock-outline" aria-hidden />
+                    {copy.onboardingBadge}
+                  </span> : null}
                 <span className={`${styles.contractBadge} ${companyStatusKey === "inactive" ? styles.contractBadge_suspended : styles.contractBadge_active}`}>
                   {companyStatusLabel}
                 </span>
@@ -3215,6 +3241,7 @@ export default function ClientDetailPage({
                           <h3 className={styles.activityBlockTitle}>
                             <Icon icon="mdi:ticket-outline" aria-hidden />
                             {copy.supportTicketsTitle}
+                            {clientOnboarding ? <span className={styles.onboardingBadge}>{copy.onboardingBadge}</span> : null}
                           </h3>
                           <span className={styles.activityBlockCount}>
                             {interpolate(copy.openCount, {
@@ -3222,6 +3249,22 @@ export default function ClientDetailPage({
                         })}
                           </span>
                         </div>
+                        {clientOnboarding ? <div className={styles.onboardingBanner} role="status">
+                            <Icon icon="mdi:account-clock-outline" aria-hidden />
+                            <div className={styles.onboardingBannerText}>
+                              <strong>{copy.onboardingBannerTitle}</strong>
+                              <span>
+                                {clientOnboarding.ageDays < 1
+                              ? interpolate(copy.onboardingBannerHintToday, {
+                                remaining: clientOnboarding.remainingDays
+                              })
+                              : interpolate(copy.onboardingBannerHint, {
+                                days: clientOnboarding.ageDays,
+                                remaining: clientOnboarding.remainingDays
+                              })}
+                              </span>
+                            </div>
+                          </div> : null}
                         <div className={styles.dataTableWrapper}>
                           <table className={styles.dataTable}>
                             <thead>
@@ -3251,7 +3294,12 @@ export default function ClientDetailPage({
                               }
                             }}>
                                       <td>#{ticket.ticket_number || "-"}</td>
-                                      <td className={styles.activityTitleCell}>{ticket.title || "-"}</td>
+                                      <td className={styles.activityTitleCell}>
+                                        <span className={styles.ticketTitleWithBadge}>
+                                          {ticket.title || "-"}
+                                          {clientOnboarding ? <span className={styles.onboardingBadge}>{copy.onboardingBadge}</span> : null}
+                                        </span>
+                                      </td>
                                       <td>
                                         <span className={styles.ticketStatusBadge}>
                                           {getTicketStatusLabel(status, locale)}

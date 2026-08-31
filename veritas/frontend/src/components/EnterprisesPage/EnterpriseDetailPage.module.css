@@ -280,6 +280,15 @@
 .contractBadge_expired { background: rgba(220, 38, 38, 0.1); color: #dc2626; }
 .contractBadge_suspended { background: rgba(245, 158, 11, 0.12); color: #d97706; }
 .contractBadge_unknown { background: var(--msp-surface-2); color: var(--msp-muted-light); }
+.contractBadge_onboarding {
+  gap: 0.28rem;
+  background: rgba(180, 83, 9, 0.16);
+  color: #9a3412;
+  border: 1px solid rgba(180, 83, 9, 0.35);
+}
+.contractBadge_onboarding svg {
+  font-size: 0.9rem;
+}
 
 .heroMetaItem {
   display: inline-flex;
@@ -1326,6 +1335,59 @@
   white-space: nowrap;
 }
 
+.onboardingBadge {
+  display: inline-flex;
+  align-items: center;
+  margin-left: 0.15rem;
+  padding: 0.12rem 0.5rem;
+  border-radius: 999px;
+  background: rgba(180, 83, 9, 0.14);
+  color: #92400e;
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.onboardingBanner {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.6rem;
+  padding: 0.7rem 0.85rem;
+  border-radius: 10px;
+  background: rgba(180, 83, 9, 0.1);
+  border: 1px solid rgba(180, 83, 9, 0.32);
+  color: #7c2d12;
+}
+
+.onboardingBanner svg {
+  flex-shrink: 0;
+  margin-top: 0.05rem;
+  font-size: 1.2rem;
+  color: #b45309;
+}
+
+.onboardingBannerText {
+  display: flex;
+  flex-direction: column;
+  gap: 0.12rem;
+  min-width: 0;
+}
+
+.onboardingBannerText strong {
+  font-size: 0.82rem;
+  font-weight: 700;
+  line-height: 1.3;
+}
+
+.onboardingBannerText span {
+  font-size: 0.75rem;
+  font-weight: 500;
+  line-height: 1.35;
+  color: #9a3412;
+}
+
 .activityBlockProLock {
   border-radius: var(--msp-radius-sm);
 }
@@ -1482,10 +1544,16 @@
 }
 
 .activityTitleCell {
-  max-width: 12rem;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  min-width: 0;
+  max-width: 16rem;
+}
+
+.ticketTitleWithBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+  min-width: 0;
 }
 
 .activityHeaderButton,
@@ -3437,9 +3505,34 @@ button.sidebarOptionIcon:hover {
   color: #7eb8f0;
 }
 
+:global(html.dark) .contractBadge_onboarding {
+  background: rgba(251, 191, 36, 0.16);
+  color: #fbbf24;
+  border-color: rgba(251, 191, 36, 0.35);
+}
+
 :global(html.dark) .ticketStatusBadge {
   background: var(--msp-surface-3);
   color: var(--msp-muted);
+}
+
+:global(html.dark) .onboardingBadge {
+  background: rgba(251, 191, 36, 0.16);
+  color: #fbbf24;
+}
+
+:global(html.dark) .onboardingBanner {
+  background: rgba(251, 191, 36, 0.1);
+  border-color: rgba(251, 191, 36, 0.32);
+  color: #fde68a;
+}
+
+:global(html.dark) .onboardingBanner svg {
+  color: #fbbf24;
+}
+
+:global(html.dark) .onboardingBannerText span {
+  color: #fcd34d;
 }
 
 :global(html.dark) .activityHeaderButton {

@@ -129,7 +129,8 @@ export default function SupervisionOpsQueue({
   onDismiss,
   busyId = null,
   localeTag,
-  copy
+  copy,
+  showDomain = true
 }) {
   const columns = copy.columns || {};
   const [sortKey, setSortKey] = useState(null);
@@ -198,7 +199,7 @@ export default function SupervisionOpsQueue({
   const sortAriaFor = label => interpolate(copy.sortBy || "Trier par {label}", {
     label
   });
-  const domainChips = [{
+  const domainChips = showDomain ? [{
     id: "all",
     label: copy.domains.all,
     count: workflowCounts.total || 0
@@ -218,7 +219,7 @@ export default function SupervisionOpsQueue({
     id: "rmm",
     label: copy.domains.rmm,
     count: domainCounts.rmm || 0
-  }];
+  }] : [];
 
   const severityChips = [{
     id: "critical",
@@ -252,31 +253,32 @@ export default function SupervisionOpsQueue({
           <Icon icon="mdi:magnify" aria-hidden />
           <input type="search" value={searchQuery} onChange={e => onSearchChange?.(e.target.value)} placeholder={copy.searchPlaceholder} />
         </label>
-      </div>
-
-      <div className={styles.filtersBar} role="group" aria-label={copy.domainAria} data-guide="supervision-kpis">
-        <div className={styles.filterGroup}>
-          {domainChips.map(chip => <FilterChip key={chip.id} label={chip.label} count={chip.count} active={domainFilter === chip.id} onClick={() => onDomainFilter?.(chip.id)} />)}
-        </div>
-        <span className={styles.filterSep} aria-hidden />
-        <div className={styles.filterGroup}>
-          {severityChips.map(chip => <FilterChip key={chip.id} label={chip.label} count={chip.count} tone={chip.tone} active={severityFilter === chip.id} onClick={() => onSeverityFilter?.(severityFilter === chip.id ? "all" : chip.id)} />)}
-        </div>
-        <span className={styles.filterSep} aria-hidden />
-        <div className={styles.filterGroup} role="group" aria-label={copy.workflow?.aria || "Workflow"}>
-          {workflowChips.map(chip => <FilterChip key={chip.id} label={chip.label} count={chip.count} active={workflowFilter === chip.id} onClick={() => onWorkflowFilter?.(workflowFilter === chip.id ? "all" : chip.id)} />)}
+        <div className={styles.filtersBar} role="group" aria-label={copy.kpi?.aria || copy.domainAria} data-guide="supervision-kpis">
+          {domainChips.length ? <>
+              <div className={styles.filterGroup}>
+                {domainChips.map(chip => <FilterChip key={chip.id} label={chip.label} count={chip.count} active={domainFilter === chip.id} onClick={() => onDomainFilter?.(chip.id)} />)}
+              </div>
+              <span className={styles.filterSep} aria-hidden />
+            </> : null}
+          <div className={styles.filterGroup}>
+            {severityChips.map(chip => <FilterChip key={chip.id} label={chip.label} count={chip.count} tone={chip.tone} active={severityFilter === chip.id} onClick={() => onSeverityFilter?.(severityFilter === chip.id ? "all" : chip.id)} />)}
+          </div>
+          <span className={styles.filterSep} aria-hidden />
+          <div className={styles.filterGroup} role="group" aria-label={copy.workflow?.aria || "Workflow"}>
+            {workflowChips.map(chip => <FilterChip key={chip.id} label={chip.label} count={chip.count} active={workflowFilter === chip.id} onClick={() => onWorkflowFilter?.(workflowFilter === chip.id ? "all" : chip.id)} />)}
+          </div>
         </div>
       </div>
 
       {items.length === 0 ? <div className={styles.emptyWrap} data-guide="supervision-queue">
-          <MspEmptyState icon="mdi:bell-check-outline" title={copy.emptyTitle} text={copy.emptyText} />
+          <MspEmptyState className={styles.emptyStateFill} icon="mdi:sleep" title={copy.emptyTitle} text={copy.emptyText} />
         </div> : <div className={styles.tableWrap} data-guide="supervision-queue">
           <table className={styles.table}>
             <colgroup>
               <col className={styles.colSev} />
               <col className={styles.colAlert} />
               <col className={styles.colCompany} />
-              <col className={styles.colDomain} />
+              {showDomain ? <col className={styles.colDomain} /> : null}
               <col className={styles.colSeverity} />
               <col className={styles.colStatus} />
               <col className={styles.colWhen} />
@@ -287,7 +289,7 @@ export default function SupervisionOpsQueue({
                 <th className={styles.sevCol} aria-hidden />
                 <SortableHeader column="alert" label={columns.alert || "Alerte"} sortKey={sortKey} sortDir={sortDir} onSort={handleSort} sortAria={sortAriaFor(columns.alert || "Alerte")} />
                 <SortableHeader column="company" label={columns.company || "Entreprise"} sortKey={sortKey} sortDir={sortDir} onSort={handleSort} sortAria={sortAriaFor(columns.company || "Entreprise")} />
-                <SortableHeader column="domain" label={columns.domain || "Domaine"} sortKey={sortKey} sortDir={sortDir} onSort={handleSort} sortAria={sortAriaFor(columns.domain || "Domaine")} />
+                {showDomain ? <SortableHeader column="domain" label={columns.domain || "Domaine"} sortKey={sortKey} sortDir={sortDir} onSort={handleSort} sortAria={sortAriaFor(columns.domain || "Domaine")} /> : null}
                 <SortableHeader column="severity" label={columns.severity || "Sévérité"} sortKey={sortKey} sortDir={sortDir} onSort={handleSort} sortAria={sortAriaFor(columns.severity || "Sévérité")} />
                 <SortableHeader column="status" label={columns.status || "Statut"} sortKey={sortKey} sortDir={sortDir} onSort={handleSort} sortAria={sortAriaFor(columns.status || "Statut")} />
                 <SortableHeader column="when" label={columns.when || "Date"} sortKey={sortKey} sortDir={sortDir} onSort={handleSort} sortAria={sortAriaFor(columns.when || "Date")} />
@@ -298,7 +300,7 @@ export default function SupervisionOpsQueue({
               {sortedItems.map(item => {
               const wf = item.workflowStatus || "open";
               const busy = busyId === item.id;
-              const domainLabel = copy.domains?.[item.domain] || item.domain;
+              const domainLabel = showDomain ? copy.domains?.[item.domain] || item.domain : null;
               const severityLabel = item.severity === "critical" ? copy.kpi.critical : item.severity === "warning" ? copy.kpi.warning : copy.severityInfo || "Info";
               const when = formatWhen(item.notifiedAt || item.alertState?.createdAt, localeTag);
               const handler = item.handledByName || item.alertState?.ackedByName || null;
@@ -326,14 +328,14 @@ export default function SupervisionOpsQueue({
                       </div>
                     </td>
                     <td className={styles.companyCell}>{item.clientName || "—"}</td>
-                    <td className={styles.domainCol}>
+                    {showDomain ? <td className={styles.domainCol}>
                       <span className={styles.domainCell}>
                         <span className={`${styles.domainIcon} ${styles[`domain_${item.domain}`] || ""}`} aria-hidden>
                           <Icon icon={DOMAIN_ICONS[item.domain] || "mdi:bell-outline"} />
                         </span>
                         {domainLabel}
                       </span>
-                    </td>
+                    </td> : null}
                     <td>
                       <span className={`${styles.chipBadge} ${severityBadgeClass(item.severity)}`}>{severityLabel}</span>
                     </td>

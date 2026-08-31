@@ -1,8 +1,5 @@
-﻿import BackupMspPanel from "./BackupMspPanel";
-import MonitoringAlertRulesPanel from "./SupervisionAlertRulesPanel";
+﻿import MonitoringAlertRulesPanel from "./SupervisionAlertRulesPanel";
 import { useSupervisionAlertRules } from "../../hooks/useSupervisionAlertRules";
-import { isMonitoringCriterionEnabled } from "./supervisionAlertRulesConfig";
-import { mergeRmmAgentRows } from "./rmmMonitoringUtils";
 import MspEmptyState from "../Misc/MspEmptyState/MspEmptyState";
 import PageGuideTour from "../PageGuide/PageGuideTour";
 import { getSupervisionCenterGuideSteps } from "../PageGuide/supervisionCenterGuideSteps";
@@ -13,8 +10,7 @@ import { useAppLocale } from "../../hooks/useAppGeneralSettings";
 import { getLocaleTag } from "../../i18n/locales";
 import { isAdminOrSuperAdminProfile } from "../../utils/profileProtection";
 import { getSupervisionCenterCopy } from "./supervisionCenterPageI18n";
-import { getBackupMspPanelCopy } from "./backupMspPanelI18n";
-import { buildUnifiedSupervisionQueue, filterSupervisionQueue, countQueueBySeverity, countQueueByDomain, mergeQueueWithAlertState, countQueueByWorkflow } from "./supervisionQueueUtils";
+import { buildUnifiedSupervisionQueue, filterSupervisionQueue, countQueueBySeverity, mergeQueueWithAlertState, countQueueByWorkflow } from "./supervisionQueueUtils";
 import SupervisionOpsQueue from "./SupervisionOpsQueue";
 import SupervisionAlertHistory from "./SupervisionAlertHistory";
 import PlanningEventModalBridge from "../PlanningPage/PlanningEventModalBridge";
@@ -29,8 +25,6 @@ import {
   subscribeSupervisionAlertStream
 } from "../../api/supervisionAlerts";
 import { toast } from "react-toastify";
-import { fetchHomeDashboard } from "../../api/stats";
-import { fetchRmmAgents } from "../../api/rmm";
 import { getEquipmentFleetIssues } from "../../api/equipment";
 import { getEquipmentListKey } from "../../utils/equipmentIdentity";
 import { createTrackedAbortController } from "../../utils/pageLoadAbort";
@@ -48,22 +42,15 @@ export default function MonitoringCenterPage({
   statsItems = [],
   resolveMonitorStatus,
   onEquipmentOpen,
-  equipmentRmmAgents = [],
   onNavigate,
   checkmkIntegrationEnabled: checkmkProp,
   isMkMapped = () => false
 }) {
   const [activeTab, setActiveTab] = useState("operations");
-  const [dashboard, setDashboard] = useState(null);
-  const [dashboardLoading, setDashboardLoading] = useState(true);
   const [deviceIssues, setDeviceIssues] = useState([]);
   const [deviceIssuesLoading, setDeviceIssuesLoading] = useState(true);
   const [deviceIssuesError, setDeviceIssuesError] = useState(null);
-  const [rmmAgents, setRmmAgents] = useState([]);
-  const [rmmFromApi, setRmmFromApi] = useState(false);
-  const [backupIssueJobs, setBackupIssueJobs] = useState([]);
   const [opsSeverityFilter, setOpsSeverityFilter] = useState("all");
-  const [opsDomainFilter, setOpsDomainFilter] = useState("all");
   const [opsSearchQuery, setOpsSearchQuery] = useState("");
   const [opsWorkflowFilter, setOpsWorkflowFilter] = useState("all");
   const [alertStates, setAlertStates] = useState([]);
@@ -71,7 +58,6 @@ export default function MonitoringCenterPage({
   const [historyAlerts, setHistoryAlerts] = useState([]);
   const [historyLoading, setHistoryLoading] = useState(false);
   const [historySearch, setHistorySearch] = useState("");
-  const [historyDomain, setHistoryDomain] = useState("all");
   const [historyStatus, setHistoryStatus] = useState("all");
   const [eventModalOpen, setEventModalOpen] = useState(false);
   const [eventPrefill, setEventPrefill] = useState({
@@ -89,7 +75,6 @@ export default function MonitoringCenterPage({
   const locale = useAppLocale();
   const localeTag = getLocaleTag(locale);
   const pageCopy = useMemo(() => getSupervisionCenterCopy(locale), [locale]);
-  const backupCopy = useMemo(() => getBackupMspPanelCopy(locale), [locale]);
   const guideSteps = useMemo(() => getSupervisionCenterGuideSteps({
     showOperations: () => setActiveTab("operations"),
     showHistory: () => setActiveTab("history")
@@ -104,21 +89,8 @@ export default function MonitoringCenterPage({
   } = useCheckMKIntegrationEnabled();
   const checkmkIntegrationEnabled = checkmkProp ?? checkmkFromHook;
   const useServerDeviceIssues = typeof resolveMonitorStatus !== "function";
-  const loading = useServerDeviceIssues ? deviceIssuesLoading || dashboardLoading : parentLoading || dashboardLoading;
+  const loading = useServerDeviceIssues ? deviceIssuesLoading : parentLoading;
   const error = useServerDeviceIssues ? deviceIssuesError || parentError : parentError;
-  const effectiveRmmAgents = useMemo(() => {
-    const apiRows = Array.isArray(rmmAgents) ? rmmAgents : [];
-    const fromEquipment = Array.isArray(equipmentRmmAgents) ? equipmentRmmAgents : [];
-    return mergeRmmAgentRows(rmmFromApi ? apiRows : [], fromEquipment);
-  }, [rmmFromApi, rmmAgents, equipmentRmmAgents]);
-  const offlineAgents = useMemo(() => {
-    const rows = Array.isArray(effectiveRmmAgents) ? effectiveRmmAgents.filter(a => !a.online) : [];
-    if (!alertRules) return rows;
-    const showOffline = isMonitoringCriterionEnabled("ordinateurs", "agent_offline", alertRules);
-    return showOffline ? rows : [];
-  }, [effectiveRmmAgents, alertRules]);
-  const contractAlerts = dashboard?.contractAlerts || [];
-  const licenseAlerts = dashboard?.licenseAlerts || [];
   const unifiedQueue = useMemo(() => buildUnifiedSupervisionQueue({
     statsItems: useServerDeviceIssues ? [] : statsItems,
     resolveMonitorStatus: useServerDeviceIssues ? undefined : resolveMonitorStatus,
@@ -126,71 +98,22 @@ export default function MonitoringCenterPage({
     alertRules,
     checkmkEnabled: checkmkIntegrationEnabled,
     isMkMapped,
-    backupJobs: backupIssueJobs,
-    contractAlerts,
-    licenseAlerts,
-    offlineAgents,
     labels: {
-      noName: pageCopy.priority?.noName || "-",
-      offline: pageCopy.ops?.offline || "Offline",
-      contractStatus: pageCopy.contractStatus,
-      contractType: pageCopy.contractType?.msp,
-      backup: {
-        critical: pageCopy.ops?.backupReasons?.critical || "Critical",
-        warning: pageCopy.ops?.backupReasons?.warning || "Warning"
-      }
+      noName: pageCopy.priority?.noName || "-"
     }
-  }), [useServerDeviceIssues, statsItems, resolveMonitorStatus, deviceIssues, alertRules, checkmkIntegrationEnabled, isMkMapped, backupIssueJobs, contractAlerts, licenseAlerts, offlineAgents, pageCopy]);
+  }), [useServerDeviceIssues, statsItems, resolveMonitorStatus, deviceIssues, alertRules, checkmkIntegrationEnabled, isMkMapped, pageCopy]);
   const unifiedQueueIdsKey = useMemo(() => unifiedQueue.map(item => item.id).join("|"), [unifiedQueue]);
   const unifiedQueueRef = useRef(unifiedQueue);
   unifiedQueueRef.current = unifiedQueue;
   const enrichedQueue = useMemo(() => mergeQueueWithAlertState(unifiedQueue, alertStates), [unifiedQueue, alertStates]);
   const filteredQueue = useMemo(() => filterSupervisionQueue(enrichedQueue, {
     severity: opsSeverityFilter,
-    domain: opsDomainFilter,
     query: opsSearchQuery,
     workflowStatus: opsWorkflowFilter
-  }), [enrichedQueue, opsSeverityFilter, opsDomainFilter, opsSearchQuery, opsWorkflowFilter]);
+  }), [enrichedQueue, opsSeverityFilter, opsSearchQuery, opsWorkflowFilter]);
   const severityCounts = useMemo(() => countQueueBySeverity(enrichedQueue), [enrichedQueue]);
-  const domainCounts = useMemo(() => countQueueByDomain(enrichedQueue), [enrichedQueue]);
   const workflowCounts = useMemo(() => countQueueByWorkflow(enrichedQueue), [enrichedQueue]);
   const totalIssues = enrichedQueue.length;
-  const handleBackupIssueJobsChange = useCallback(jobs => {
-    setBackupIssueJobs(Array.isArray(jobs) ? jobs : []);
-  }, []);
-  const loadDashboard = useCallback(async signal => {
-    if (signal?.aborted) return;
-    setDashboardLoading(true);
-    try {
-      const data = await fetchHomeDashboard({
-        signal
-      });
-      if (signal?.aborted) return;
-      setDashboard(data);
-    } catch (err) {
-      if (err?.name !== "AbortError") {
-        console.error("Error chargement supervision dashboard:", err);
-      }
-    } finally {
-      if (!signal?.aborted) setDashboardLoading(false);
-    }
-  }, []);
-  const loadRmm = useCallback(async signal => {
-    try {
-      const data = await fetchRmmAgents(undefined, {
-        signal
-      });
-      if (signal?.aborted) return;
-      const rows = Array.isArray(data?.agents) ? data.agents : Array.isArray(data) ? data : [];
-      setRmmAgents(rows);
-      setRmmFromApi(true);
-    } catch (err) {
-      if (err?.name !== "AbortError") {
-        setRmmAgents([]);
-        setRmmFromApi(false);
-      }
-    }
-  }, []);
   const loadDeviceIssues = useCallback(async signal => {
     if (!useServerDeviceIssues) {
       setDeviceIssuesLoading(false);
@@ -217,21 +140,17 @@ export default function MonitoringCenterPage({
   }, [useServerDeviceIssues]);
   useEffect(() => {
     const controller = createTrackedAbortController();
-    loadDashboard(controller.signal);
-    loadRmm(controller.signal);
     loadDeviceIssues(controller.signal);
     const interval = setInterval(() => {
       if (document.visibilityState !== "visible") return;
       if (controller.signal.aborted) return;
-      loadDashboard(controller.signal);
-      loadRmm(controller.signal);
       loadDeviceIssues(controller.signal);
     }, 60000);
     return () => {
       controller.abort();
       clearInterval(interval);
     };
-  }, [loadDashboard, loadRmm, loadDeviceIssues]);
+  }, [loadDeviceIssues]);
   const refreshAlertStates = useCallback(async signal => {
     try {
       const items = unifiedQueueRef.current || [];
@@ -270,7 +189,7 @@ export default function MonitoringCenterPage({
     if (!signal?.aborted) setHistoryLoading(true);
     try {
       const alerts = await fetchSupervisionAlertsHistory({
-        domain: historyDomain === "all" ? undefined : historyDomain,
+        domain: "devices",
         status: historyStatus === "all" ? undefined : historyStatus,
         q: historySearch || undefined,
         limit: 150,
@@ -285,7 +204,7 @@ export default function MonitoringCenterPage({
     } finally {
       if (!signal?.aborted) setHistoryLoading(false);
     }
-  }, [historyDomain, historyStatus, historySearch]);
+  }, [historyStatus, historySearch]);
   useEffect(() => {
     const controller = createTrackedAbortController();
     refreshAlertStates(controller.signal);
@@ -406,35 +325,9 @@ export default function MonitoringCenterPage({
     });
   }, [openPlanningForContext]);
   const handleOpenQueueItem = useCallback(item => {
-    if (!item) return;
-    if (item.domain === "devices" && item.equipment) {
-      onEquipmentOpen?.(item.equipment);
-      return;
-    }
-    if (item.domain === "backups" && item.job) {
-      onNavigate?.("JobDetail", item.job);
-      return;
-    }
-    if (item.domain === "contracts") {
-      const clientId = item.clientId || item.contract?.clientId || item.contract?.id;
-      if (clientId) {
-        onNavigate?.("ContratDetail", {
-          clientId,
-          name: item.clientName || item.title
-        });
-      }
-      return;
-    }
-    if (item.domain === "rmm") {
-      if (item.equipment) {
-        onEquipmentOpen?.(item.equipment);
-        return;
-      }
-      if (item.agent?.equipment) {
-        onEquipmentOpen?.(item.agent.equipment);
-      }
-    }
-  }, [onEquipmentOpen, onNavigate]);
+    if (!item?.equipment) return;
+    onEquipmentOpen?.(item.equipment);
+  }, [onEquipmentOpen]);
   const visibleTabs = useMemo(() => {
     return (pageCopy.tabs || []).filter(tab => tab.id !== "settings" || canManageAlertRules);
   }, [pageCopy.tabs, canManageAlertRules]);
@@ -443,7 +336,7 @@ export default function MonitoringCenterPage({
     history: historyAlerts.length,
     settings: 0
   };
-  const showBootLoader = !dashboard && !statsItems.length && loading && dashboardLoading;
+  const showBootLoader = loading && !deviceIssues.length && !statsItems.length;
   if (showBootLoader) {
     return <div className={`${cyberStyles.mspPage} ${layout.page} msp-page-grid`}>
         <div className={styles.loadingScreen} role="status" aria-live="polite" aria-busy="true">
@@ -454,7 +347,7 @@ export default function MonitoringCenterPage({
   }
   return <div className={`${cyberStyles.mspPage} ${layout.page} msp-page-grid`}>
       <div className={cyberStyles.mspLayout}>
-        <div className={cyberStyles.mspMain}>
+        <div className={`${cyberStyles.mspMain} ${styles.pageColumn}`}>
           <header className={cyberStyles.mspHero} data-guide="supervision-hero">
             <div className={cyberStyles.mspHeroMain}>
               <div className={`${cyberStyles.mspBrandMark} ${styles.brandMarkSupervision}`} aria-hidden>
@@ -485,25 +378,19 @@ export default function MonitoringCenterPage({
           </header>
 
           <main className={cyberStyles.mspContent}>
-            <div className={`${layout.shell} ${layout.shellWide} ${layout.shellFull}`}>
+            <div className={`${layout.shell} ${layout.shellFull} ${styles.contentShell}`}>
               {activeTab === "operations" && !error ? <div className={`${dashStyles.dashboard} ${styles.dashboard}`} data-guide="supervision-ops">
                   <div className={`${cyberStyles.tabContent} ${styles.content}`}>
-                    <SupervisionOpsQueue items={filteredQueue} kpi={severityCounts} domainCounts={domainCounts} workflowCounts={workflowCounts} severityFilter={opsSeverityFilter} domainFilter={opsDomainFilter} workflowFilter={opsWorkflowFilter} searchQuery={opsSearchQuery} onSeverityFilter={setOpsSeverityFilter} onDomainFilter={setOpsDomainFilter} onWorkflowFilter={setOpsWorkflowFilter} onSearchChange={setOpsSearchQuery} onOpenItem={handleOpenQueueItem} onTicketSupport={handleTicketSupport} onTicketPresta={handleTicketPresta} onPlanEvent={handlePlanEvent} onAck={handleAckAlert} onResolve={handleResolveAlert} onDismiss={handleDismissAlert} busyId={alertActionBusyId} localeTag={localeTag} copy={pageCopy.ops} />
+                    <SupervisionOpsQueue items={filteredQueue} kpi={severityCounts} workflowCounts={workflowCounts} severityFilter={opsSeverityFilter} workflowFilter={opsWorkflowFilter} searchQuery={opsSearchQuery} onSeverityFilter={setOpsSeverityFilter} onWorkflowFilter={setOpsWorkflowFilter} onSearchChange={setOpsSearchQuery} onOpenItem={handleOpenQueueItem} onTicketSupport={handleTicketSupport} onTicketPresta={handleTicketPresta} onPlanEvent={handlePlanEvent} onAck={handleAckAlert} onResolve={handleResolveAlert} onDismiss={handleDismissAlert} busyId={alertActionBusyId} localeTag={localeTag} copy={pageCopy.ops} showDomain={false} />
                   </div>
-                </div> : null}
-
-              {!error ? <div hidden aria-hidden style={{
-              display: "none"
-            }}>
-                  <BackupMspPanel embedded onNavigate={onNavigate} onIssueJobsChange={handleBackupIssueJobsChange} copy={backupCopy} localeTag={localeTag} />
                 </div> : null}
 
               {activeTab === "history" && !error ? <div className={`${dashStyles.dashboard} ${styles.dashboard}`} data-guide="supervision-history">
                   <div className={`${cyberStyles.tabContent} ${styles.content}`}>
-                    <SupervisionAlertHistory alerts={historyAlerts} loading={historyLoading} searchQuery={historySearch} domainFilter={historyDomain} statusFilter={historyStatus} onSearchChange={setHistorySearch} onDomainFilter={setHistoryDomain} onStatusFilter={setHistoryStatus} onReopened={() => {
+                    <SupervisionAlertHistory alerts={historyAlerts} loading={historyLoading} searchQuery={historySearch} statusFilter={historyStatus} onSearchChange={setHistorySearch} onStatusFilter={setHistoryStatus} onReopened={() => {
                 refreshAlertStates();
                 refreshHistory();
-              }} localeTag={localeTag} copy={pageCopy.history} />
+              }} localeTag={localeTag} copy={pageCopy.history} showDomain={false} />
                   </div>
                 </div> : null}
 

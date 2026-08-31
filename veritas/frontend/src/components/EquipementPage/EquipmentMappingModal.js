@@ -91,7 +91,8 @@ export default function EquipmentMappingModal({
   onClose,
   equipment,
   onMappingSaved,
-  requireService = false
+  requireService = false,
+  stacked = false
 }) {
   const locale = useAppLocale();
   const copy = useMemo(() => getEquipmentMappingModalCopy(locale), [locale]);
@@ -111,6 +112,7 @@ export default function EquipmentMappingModal({
   const clientName = equipment?.clientName || "";
   const clientId = equipment?.clientId;
   const equipmentType = equipment?.type || "";
+  const equipmentId = equipment?.id || equipment?.rawData?.id || null;
   const currentMapping = equipment?.checkmkMapping;
   const initialHost = currentMapping?.checkmk_host_name || "";
   const initialService = currentMapping?.checkmk_service_name || "";
@@ -268,7 +270,7 @@ export default function EquipmentMappingModal({
       setActiveSection("host");
       return;
     }
-    if (!clientId || !equipmentName) {
+    if (!clientId || !equipmentName && !equipmentId) {
       showError(copy.saveErrorMissingEquipment);
       return;
     }
@@ -280,6 +282,7 @@ export default function EquipmentMappingModal({
     setSaving(true);
     try {
       const mapping = await updateEquipmentCheckMKMapping(clientId, equipmentType, equipmentName, {
+        equipment_id: equipmentId || undefined,
         checkmk_host_name: selectedHost.trim(),
         checkmk_site: currentMapping?.checkmk_site || null,
         checkmk_service_name: requireService ? selectedService.trim() : null
@@ -295,10 +298,11 @@ export default function EquipmentMappingModal({
   };
 
   const handleClearMapping = async () => {
-    if (!clientId || !equipmentName) return;
+    if (!clientId || !equipmentName && !equipmentId) return;
     setSaving(true);
     try {
       await updateEquipmentCheckMKMapping(clientId, equipmentType, equipmentName, {
+        equipment_id: equipmentId || undefined,
         checkmk_host_name: null,
         checkmk_site: null,
         checkmk_service_name: null
@@ -545,7 +549,7 @@ export default function EquipmentMappingModal({
   if (!isOpen) return null;
 
   return createPortal(<>
-      <div className={formStyles.overlay} onClick={saving ? undefined : requestClose} role="presentation">
+      <div className={`${formStyles.overlay} ${stacked ? formStyles.overlayStacked : ""}`} onClick={saving ? undefined : requestClose} role="presentation">
         <div className={`${formStyles.shell} ${styles.shell}`} onClick={e => e.stopPropagation()} role="dialog" aria-modal="true" aria-labelledby="checkmk-mapping-modal-title">
           <div className={checkmkStyles.accentBarCheckmk} aria-hidden />
           <header className={formStyles.header}>

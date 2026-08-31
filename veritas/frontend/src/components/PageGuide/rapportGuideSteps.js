@@ -28,15 +28,15 @@ const COPY = {
       },
       steps: {
         title: "Deux étapes",
-        content: "1) Choisissez l’entreprise. 2) Choisissez le type de rapport. La barre de progression indique où vous en êtes."
+        content: "1) Choisissez l’entreprise et vérifiez sa fiche. 2) Choisissez le type de rapport. La barre de progression indique où vous en êtes."
       },
       client: {
         title: "Entreprise",
-        content: "Recherchez et sélectionnez le client. Le rapport sera rattaché à cette fiche entreprise."
+        content: "Recherchez et sélectionnez le client. Le contrat, le parc d’équipements et les tickets ouverts s’affichent à gauche ; les derniers rapports générés à droite."
       },
       types: {
         title: "Type de rapport",
-        content: "État de supervision (période, cartographie, modules), rapport d’intervention ou cahier de recette. Un clic lance l’assistant."
+        content: "État de supervision (période, solutions sélectionnées), rapport d’intervention ou cahier de recette. Un clic lance l’assistant."
       }
     }
   },
@@ -53,11 +53,11 @@ const COPY = {
       },
       client: {
         title: "Company",
-        content: "Search and select the client. The report will be attached to that company record."
+        content: "Search and select the client. Contract, assets and open tickets appear on the left; recent reports on the right."
       },
       types: {
         title: "Report type",
-        content: "Supervision status (period, map, modules), intervention report or acceptance booklet. A click starts the wizard."
+        content: "Supervision status (period, selected solutions), intervention report or acceptance booklet. A click starts the wizard."
       }
     }
   },

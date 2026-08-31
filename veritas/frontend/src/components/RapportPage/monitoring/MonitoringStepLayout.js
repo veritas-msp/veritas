@@ -115,7 +115,7 @@ export function MonitoringStepTableWrap({
   className = ""
 }) {
   return <div className={equipmentStyles.hardwarePageEmbedded}>
-      <div className={`${equipmentStyles.tableWrapper} ${scrollable ? styles.stepTableScroll : ""} ${className}`.trim()}>
+      <div className={`${equipmentStyles.tableWrapperEmbedded} ${scrollable ? styles.stepTableScroll : ""} ${className}`.trim()}>
         {children}
       </div>
     </div>;

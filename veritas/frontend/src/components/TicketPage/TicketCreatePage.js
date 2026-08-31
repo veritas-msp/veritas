@@ -19,6 +19,8 @@ import SmartTooltip from "../SmartTooltip";
 import TicketKnowledgeSuggestions from "./TicketKnowledgeSuggestions";
 import layout from "../EnterprisesPage/EnterprisesPage.module.css";
 import account from "../Misc/AccountPage/AccountPage.module.css";
+import MspPageHero from "../Misc/MspPageHero/MspPageHero";
+import mspStyles from "../CybersecuritePage/CybersecuritePage.module.css";
 import s from "./TicketCreatePage.module.css";
 const MAX_ATTACHMENT_SIZE_BYTES = 15 * 1024 * 1024;
 const MAX_ATTACHMENT_FILES = 10;
@@ -281,8 +283,51 @@ function RequesterOpenTicketsStat({
       {popover}
     </>;
 }
+function useFixedAnchorRect(open, anchorRef) {
+  const [coords, setCoords] = useState(null);
+  const update = useCallback(() => {
+    const el = anchorRef.current;
+    if (!el) return;
+    const rect = el.getBoundingClientRect();
+    const spaceBelow = window.innerHeight - rect.bottom - 8;
+    const spaceAbove = rect.top - 8;
+    const openUp = spaceBelow < 140 && spaceAbove > spaceBelow;
+    const maxHeight = Math.min(260, Math.max(120, openUp ? spaceAbove : spaceBelow));
+    setCoords({
+      left: rect.left,
+      width: rect.width,
+      maxHeight,
+      top: openUp ? undefined : rect.bottom - 1,
+      bottom: openUp ? window.innerHeight - rect.top + 1 : undefined
+    });
+  }, []);
+  useLayoutEffect(() => {
+    if (!open) {
+      setCoords(null);
+      return undefined;
+    }
+    update();
+    window.addEventListener("resize", update);
+    window.addEventListener("scroll", update, true);
+    return () => {
+      window.removeEventListener("resize", update);
+      window.removeEventListener("scroll", update, true);
+    };
+  }, [open, update]);
+  return coords;
+}
 function getContactSearchText(contact) {
   return [contact?.prenom, contact?.nom, contact?.email, contact?.client_name, contact?.entreprise].filter(Boolean).join(" ").toLowerCase();
+}
+function openNativePickerFromEvent(event) {
+  const target = event.currentTarget;
+  const input = target instanceof HTMLInputElement ? target : target.querySelector?.("input[type='date'], input[type='time']");
+  if (!input || typeof input.showPicker !== "function") return;
+  try {
+    input.showPicker();
+  } catch (_) {
+    /* picker already open or not allowed */
+  }
 }
 function getTodayDateString() {
   const today = new Date();
@@ -291,12 +336,6 @@ function getTodayDateString() {
   const dd = String(today.getDate()).padStart(2, "0");
   return `${yyyy}-${mm}-${dd}`;
 }
-const RECAP_TYPE_BADGE = {
-  incident: s.recapTypeBadge_incident,
-  demande: s.recapTypeBadge_demande,
-  probleme: s.recapTypeBadge_probleme,
-  changement: s.recapTypeBadge_changement
-};
 function RecapRow({
   label,
   value,
@@ -336,7 +375,31 @@ function TicketCreateRecap({
   const channelLabel = channelMeta?.label || channel;
   const demandeurDisplay = selectedContact ? getContactLabel(selectedContact, copy) : null;
   const isEmptyValue = val => !val || val === "-" || val === copy.none;
-  const optionalRows = [{
+  const callbackSummary = filledContactSlots.length > 0 ? filledContactSlots.map(slot => copy.formatRecapCallbackSlot?.(slot) || copy.formatContactSlotLabel(slot)).join(" · ") : "";
+  const rows = [{
+    label: copy.recapType,
+    value: typeLabel
+  }, {
+    label: copy.recapPriority,
+    value: priorityLabel
+  }, type === "incident" && isMajorIncident ? {
+    label: copy.recapMajorIncident,
+    value: copy.recapMajorYes
+  } : null, {
+    label: copy.recapRequester,
+    value: demandeurDisplay,
+    muted: !demandeurDisplay
+  }, {
+    label: copy.recapClient,
+    value: clientLabel
+  }, {
+    label: copy.recapChannel,
+    value: channelLabel
+  }, {
+    label: copy.recapCategory,
+    value: category,
+    muted: isEmptyValue(category)
+  }, {
     label: copy.recapEquipment,
     value: equipmentSummary
   }, {
@@ -351,45 +414,25 @@ function TicketCreateRecap({
   }, {
     label: copy.recapDocuments,
     value: attachmentsSummary
-  }].filter(row => !isEmptyValue(row.value));
+  }, callbackSummary ? {
+    label: copy.recapCallbackSlot,
+    value: callbackSummary
+  } : null].filter(row => row && !isEmptyValue(row.value));
+  const createdParts = copy.recapCreatedBy.split("{agent}");
   return <div className={s.recapBody}>
       <div className={s.recapHero}>
-        <div className={s.recapBadges}>
-          <span className={`${s.recapBadge} ${RECAP_TYPE_BADGE[type] || ""}`}>
-            <Icon icon={typeMeta?.icon || "mdi:ticket-outline"} className={s.recapBadgeIcon} />
-            {typeLabel}
-          </span>
-          <span className={`${s.recapBadge} ${s.recapPriorityBadge}`}>
-            <Icon icon={priorityMeta?.icon || "mdi:minus"} className={s.recapBadgeIcon} />
-            {priorityLabel}
-          </span>
-          {type === "incident" && isMajorIncident ? <span className={`${s.recapBadge} ${s.recapMajorBadge}`}>
-              <Icon icon="mdi:alert-decagram" className={s.recapBadgeIcon} />
-              {copy.recapMajor}
-            </span> : null}
-        </div>
         <h3 className={s.recapSubject}>{title.trim() || "-"}</h3>
         {description.trim() ? <p className={s.recapDescText}>{description.trim()}</p> : null}
       </div>
 
       <div className={s.recapTable}>
-        <RecapRow label={copy.recapRequester} value={demandeurDisplay} muted={!demandeurDisplay} />
-        <RecapRow label={copy.recapClient} value={clientLabel} />
-        <RecapRow label={copy.recapChannel} value={channelLabel} />
-        <RecapRow label={copy.recapCategory} value={category} muted={isEmptyValue(category)} />
-        {optionalRows.map(row => <RecapRow key={row.label} label={row.label} value={row.value} />)}
+        {rows.map(row => <RecapRow key={row.label} label={row.label} value={row.value} muted={row.muted} />)}
       </div>
 
-      {filledContactSlots.length > 0 ? <ul className={s.recapAvailList}>
-          {filledContactSlots.map((slot, index) => <li key={`${slot.date}-${slot.startTime}-${index}`} className={s.recapAvailItem}>
-              {copy.formatContactSlotLabel(slot)}
-            </li>)}
-        </ul> : null}
-
       <p className={s.recapAgentNote}>
-        {copy.recapCreatedBy.split("{agent}")[0]}
+        {createdParts[0]}
         <strong>{agentLabel}</strong>
-        {copy.recapCreatedBy.split("{agent}")[1]}
+        {createdParts[1]}
       </p>
     </div>;
 }
@@ -406,10 +449,15 @@ export default function TicketCreatePage({
     modules: contractModuleDefs
   } = useContractModuleOptions();
   const contactDropdownRef = useRef(null);
+  const contactListRef = useRef(null);
   const categoryDropdownRef = useRef(null);
+  const categoryListRef = useRef(null);
   const assigneeDropdownRef = useRef(null);
+  const assigneeListRef = useRef(null);
   const followerDropdownRef = useRef(null);
+  const followerListRef = useRef(null);
   const equipmentDropdownRef = useRef(null);
+  const equipmentListRef = useRef(null);
   const [contacts, setContacts] = useState([]);
   const [clients, setClients] = useState([]);
   const [categories, setCategories] = useState([]);
@@ -447,6 +495,7 @@ export default function TicketCreatePage({
   const [showLinkedTicketDropdown, setShowLinkedTicketDropdown] = useState(false);
   const [linkedTicketHighlight, setLinkedTicketHighlight] = useState(0);
   const linkedTicketDropdownRef = useRef(null);
+  const linkedTicketListRef = useRef(null);
   const [clientTickets, setClientTickets] = useState([]);
   const [loadingClientTickets, setLoadingClientTickets] = useState(false);
   const [requesterContactId, setRequesterContactId] = useState(initialData?.contactId || "");
@@ -454,6 +503,10 @@ export default function TicketCreatePage({
   const [contactSearch, setContactSearch] = useState("");
   const [showContactDropdown, setShowContactDropdown] = useState(false);
   const [contactHighlight, setContactHighlight] = useState(0);
+  const contactDropdownCoords = useFixedAnchorRect(showContactDropdown, contactDropdownRef);
+  const categoryDropdownCoords = useFixedAnchorRect(showCategoryDropdown, categoryDropdownRef);
+  const equipmentDropdownCoords = useFixedAnchorRect(showEquipmentDropdown, equipmentDropdownRef);
+  const linkedTicketDropdownCoords = useFixedAnchorRect(showLinkedTicketDropdown, linkedTicketDropdownRef);
   const [preAssigneeUserIds, setPreAssigneeUserIds] = useState([]);
   const [preFollowerUserIds, setPreFollowerUserIds] = useState([]);
   const [assigneeSearch, setAssigneeSearch] = useState("");
@@ -462,6 +515,8 @@ export default function TicketCreatePage({
   const [showFollowerDropdown, setShowFollowerDropdown] = useState(false);
   const [assigneeHighlight, setAssigneeHighlight] = useState(0);
   const [followerHighlight, setFollowerHighlight] = useState(0);
+  const assigneeDropdownCoords = useFixedAnchorRect(showAssigneeDropdown, assigneeDropdownRef);
+  const followerDropdownCoords = useFixedAnchorRect(showFollowerDropdown, followerDropdownRef);
   const [contactModalOpen, setContactModalOpen] = useState(false);
   const [contactModalInitial, setContactModalInitial] = useState(null);
   const [attachmentFiles, setAttachmentFiles] = useState([]);
@@ -532,22 +587,22 @@ export default function TicketCreatePage({
   }, [initialData?.equipmentId, clientEquipments]);
   useEffect(() => {
     const handleClickOutside = e => {
-      if (contactDropdownRef.current && !contactDropdownRef.current.contains(e.target)) {
+      if (!contactDropdownRef.current?.contains(e.target) && !contactListRef.current?.contains(e.target)) {
         setShowContactDropdown(false);
       }
-      if (linkedTicketDropdownRef.current && !linkedTicketDropdownRef.current.contains(e.target)) {
+      if (!linkedTicketDropdownRef.current?.contains(e.target) && !linkedTicketListRef.current?.contains(e.target)) {
         setShowLinkedTicketDropdown(false);
       }
-      if (categoryDropdownRef.current && !categoryDropdownRef.current.contains(e.target)) {
+      if (!categoryDropdownRef.current?.contains(e.target) && !categoryListRef.current?.contains(e.target)) {
         setShowCategoryDropdown(false);
       }
-      if (assigneeDropdownRef.current && !assigneeDropdownRef.current.contains(e.target)) {
+      if (!assigneeDropdownRef.current?.contains(e.target) && !assigneeListRef.current?.contains(e.target)) {
         setShowAssigneeDropdown(false);
       }
-      if (followerDropdownRef.current && !followerDropdownRef.current.contains(e.target)) {
+      if (!followerDropdownRef.current?.contains(e.target) && !followerListRef.current?.contains(e.target)) {
         setShowFollowerDropdown(false);
       }
-      if (equipmentDropdownRef.current && !equipmentDropdownRef.current.contains(e.target)) {
+      if (!equipmentDropdownRef.current?.contains(e.target) && !equipmentListRef.current?.contains(e.target)) {
         setShowEquipmentDropdown(false);
       }
     };
@@ -1260,71 +1315,69 @@ export default function TicketCreatePage({
     setPreFollowerUserIds(prev => prev.filter(id => String(id) !== String(userId)));
   }, []);
   if (createdTicket) {
-    return <div className={`${layout.page} msp-page-grid`}>
-        <div className={layout.shell}>
-          <header className={layout.hero}>
-            <div className={layout.heroText}>
-              <p className={layout.eyebrow}>
-                <Icon icon="mingcute:ticket-fill" aria-hidden />
-                {copy.eyebrow}
-              </p>
-              <h1 className={layout.pageTitle}>{copy.successTitle}</h1>
-              <p className={layout.pageSubtitle}>{copy.formatSuccessSubtitle(clientLabel)}</p>
-            </div>
-          </header>
-          <SectionPanel>
-            <div className={s.successPanel}>
-              <Icon icon="mdi:check-decagram" className={s.successIcon} />
-              <h2 className={s.successTitle}>
-                {copy.formatSuccessRegistered(createdTicket.ticket_number || "-")}
-              </h2>
-              <p className={s.successText}>
-                {copy.formatSuccessCreatedFor(selectedContact ? getContactLabel(selectedContact, copy) : "-", clientLabel)}
-              </p>
-              {createdTicket.ticket_number && <span className={s.reference}>
-                  <Icon icon="mdi:pound" />
-                  {createdTicket.ticket_number}
-                </span>}
-              <div className={s.successActions}>
-                <button type="button" className={layout.primaryBtn} onClick={() => onNavigate?.("TicketDetail", {
-                ticketId: createdTicket.id,
-                ticketNumber: createdTicket.ticket_number,
-                title: createdTicket.title
-              })}>
-                  <Icon icon="mdi:eye-outline" />
-                  {copy.viewTicket}
-                </button>
-                <button type="button" className={s.btnSecondary} onClick={resetForm}>
-                  <Icon icon="mdi:plus" />
-                  {copy.createAnother}
-                </button>
-                <button type="button" className={s.btnSecondary} onClick={() => onNavigate?.("Ticket")}>
-                  <Icon icon="mdi:arrow-left" />
-                  {copy.ticketList}
-                </button>
+    return <div className={`${mspStyles.mspPage} ${layout.page} msp-page-grid`}>
+        <div className={mspStyles.mspLayout}>
+          <div className={mspStyles.mspMain}>
+            <MspPageHero eyebrow={copy.eyebrow} title={copy.successTitle} subtitle={copy.formatSuccessSubtitle(clientLabel)} icon="mdi:message-processing-outline" />
+            <div className={`${mspStyles.mspContent} ${mspStyles.mspContentList} mspContent`}>
+              <div className={`${layout.shell} ${s.successShell}`}>
+                <section className={s.successCard}>
+                  <div className={s.successPanel}>
+                    <div className={s.successMarkWrap} aria-hidden>
+                      <span className={s.successMarkRing} />
+                      <span className={`${s.successMarkRing} ${s.successMarkRingDelay}`} />
+                      <svg className={s.successMark} viewBox="0 0 72 72">
+                        <circle className={s.successMarkDisc} cx="36" cy="36" r="36" />
+                        <path className={s.successMarkCheck} d="M22 37.5 L31.5 47 L51 26.5" />
+                      </svg>
+                    </div>
+                    <div className={s.successCopy}>
+                      <h2 className={s.successTitle}>
+                        {copy.formatSuccessRegistered(createdTicket.ticket_number || "-")}
+                      </h2>
+                      <p className={s.successText}>
+                        {copy.formatSuccessCreatedFor(selectedContact ? getContactLabel(selectedContact, copy) : "-", clientLabel)}
+                      </p>
+                      {createdTicket.ticket_number ? <span className={s.reference}>
+                          <Icon icon="mdi:pound" />
+                          {createdTicket.ticket_number}
+                        </span> : null}
+                    </div>
+                    <div className={s.successActions}>
+                      <button type="button" className={layout.primaryBtn} onClick={() => onNavigate?.("TicketDetail", {
+                      ticketId: createdTicket.id,
+                      ticketNumber: createdTicket.ticket_number,
+                      title: createdTicket.title
+                    })}>
+                        <Icon icon="mdi:eye-outline" />
+                        {copy.viewTicket}
+                      </button>
+                      <button type="button" className={s.btnSecondary} onClick={resetForm}>
+                        <Icon icon="mdi:plus" />
+                        {copy.createAnother}
+                      </button>
+                      <button type="button" className={s.btnSecondary} onClick={() => onNavigate?.("Ticket")}>
+                        <Icon icon="mdi:arrow-left" />
+                        {copy.ticketList}
+                      </button>
+                    </div>
+                  </div>
+                </section>
               </div>
             </div>
-          </SectionPanel>
+          </div>
         </div>
       </div>;
   }
-  return <div className={`${layout.page} msp-page-grid`} onDragEnter={handlePageDragEnter} onDragLeave={handlePageDragLeave} onDragOver={handlePageDragOver} onDrop={handlePageDrop}>
+  return <div className={`${mspStyles.mspPage} ${layout.page} msp-page-grid`} onDragEnter={handlePageDragEnter} onDragLeave={handlePageDragLeave} onDragOver={handlePageDragOver} onDrop={handlePageDrop}>
       {isAttachmentDragOver && <div className={s.pageDropOverlay} aria-hidden>
           <Icon icon="mdi:upload-outline" className={s.pageDropOverlayIcon} />
           <p className={s.pageDropOverlayTitle}>{copy.dropOverlayTitle}</p>
           <p className={s.pageDropOverlayHint}>{copy.formatDropOverlayHint(MAX_ATTACHMENT_FILES)}</p>
         </div>}
-      <div className={layout.shell}>
-        <header className={layout.hero}>
-          <div className={layout.heroText}>
-            <p className={layout.eyebrow}>
-              <Icon icon="mingcute:ticket-fill" aria-hidden />
-              {copy.eyebrow}
-            </p>
-            <h1 className={layout.pageTitle}>{copy.pageTitle}</h1>
-            <p className={layout.pageSubtitle}>{copy.formatPageSubtitle(agentLabel)}</p>
-          </div>
-          <div className={layout.heroActions}>
+      <div className={mspStyles.mspLayout}>
+        <div className={mspStyles.mspMain}>
+          <MspPageHero eyebrow={copy.eyebrow} title={copy.pageTitle} subtitle={copy.formatPageSubtitle(agentLabel)} icon="mdi:message-processing-outline" actions={<>
             <button type="button" className={s.btnSecondary} onClick={() => onNavigate?.("Ticket")}>
               <Icon icon="mdi:arrow-left" />
               {copy.back}
@@ -1333,8 +1386,9 @@ export default function TicketCreatePage({
               <Icon icon="mdi:check" />
               {submitting ? copy.creating : copy.createTicket}
             </button>
-          </div>
-        </header>
+          </>} />
+          <div className={`${mspStyles.mspContent} ${mspStyles.mspContentList} mspContent`}>
+      <div className={layout.shell}>
 
         <div className={s.typeKpiRow}>
           {copy.ticketTypes.map(item => <button key={item.key} type="button" className={`${layout.kpiCard} ${type === item.key ? layout.kpiCardActive : ""}`} onClick={() => handleTypeChange(item.key)}>
@@ -1387,7 +1441,13 @@ export default function TicketCreatePage({
                         } else if (e.key === "Escape") setShowContactDropdown(false);
                       }} />
                   </div>
-                  {showContactDropdown && <div className={s.contactDropdown}>
+                  {showContactDropdown && contactDropdownCoords && typeof document !== "undefined" ? createPortal(<div ref={contactListRef} className={s.contactDropdownPortal} role="listbox" style={{
+                      top: contactDropdownCoords.top,
+                      bottom: contactDropdownCoords.bottom,
+                      left: contactDropdownCoords.left,
+                      width: contactDropdownCoords.width,
+                      maxHeight: contactDropdownCoords.maxHeight
+                    }}>
                       {filteredContacts.length === 0 ? <div className={s.contactEmpty}>
                           <span>{copy.noContactFound}</span>
                           <button type="button" className={s.contactEmptyAction} onClick={openContactCreateModal}>
@@ -1401,7 +1461,7 @@ export default function TicketCreatePage({
                               {company && <span className={s.contactOptionMeta}>{company}</span>}
                             </button>;
                       })}
-                    </div>}
+                    </div>, document.body) : null}
                 </div>
                   <button type="button" className={s.contactCreateBtn} onClick={openContactCreateModal} disabled={loadingData}>
                     <Icon icon="mdi:account-plus-outline" aria-hidden />
@@ -1506,9 +1566,9 @@ export default function TicketCreatePage({
                     </div>
 
                     {availabilityMode !== "none" && <div data-pulse={fieldErrors.contactSlots ? errorPulseTick : undefined} className={`${s.availabilitySlotBar} ${fieldErrors.contactSlots ? s.availabilitySlotBarError : ""} ${fieldErrors.contactSlots ? s.fieldErrorPulse : ""}`}>
-                        <label className={s.slotField}>
+                        <label className={s.slotField} onClick={openNativePickerFromEvent}>
                           <Icon icon="mdi:calendar-outline" className={s.slotFieldIcon} aria-hidden />
-                          <input type="date" className={s.slotInput} value={availabilityDate} onChange={e => {
+                          <input type="date" className={s.slotInput} value={availabilityDate} onClick={openNativePickerFromEvent} onChange={e => {
                         setAvailabilityDate(e.target.value);
                         setFieldErrors(prev => ({
                           ...prev,
@@ -1516,18 +1576,21 @@ export default function TicketCreatePage({
                         }));
                       }} aria-label={copy.dateAria} />
                         </label>
-                        {availabilityMode === "from" ? <label className={s.slotField}>
+                        {availabilityMode === "from" ? <label className={s.slotField} onClick={openNativePickerFromEvent}>
                             <Icon icon="mdi:clock-outline" className={s.slotFieldIcon} aria-hidden />
-                            <input type="time" className={s.slotInput} value={availabilityStart} onChange={e => {
+                            <input type="time" className={s.slotInput} value={availabilityStart} onClick={openNativePickerFromEvent} onChange={e => {
                         setAvailabilityStart(e.target.value);
                         setFieldErrors(prev => ({
                           ...prev,
                           contactSlots: undefined
                         }));
                       }} aria-label={copy.timeAria} />
-                          </label> : <div className={`${s.slotField} ${s.slotFieldTimeRange}`} role="group" aria-label={copy.timeRangeAria}>
+                          </label> : <div className={`${s.slotField} ${s.slotFieldTimeRange}`} role="group" aria-label={copy.timeRangeAria} onClick={e => {
+                            if (e.target.closest("input")) return;
+                            openNativePickerFromEvent(e);
+                          }}>
                             <Icon icon="mdi:clock-outline" className={s.slotFieldIcon} aria-hidden />
-                            <input type="time" className={s.slotInput} value={availabilityStart} onChange={e => {
+                            <input type="time" className={s.slotInput} value={availabilityStart} onClick={openNativePickerFromEvent} onChange={e => {
                         setAvailabilityStart(e.target.value);
                         setFieldErrors(prev => ({
                           ...prev,
@@ -1537,7 +1600,7 @@ export default function TicketCreatePage({
                             <span className={s.slotSep} aria-hidden>
                               →
                             </span>
-                            <input type="time" className={s.slotInput} value={availabilityEnd} onChange={e => {
+                            <input type="time" className={s.slotInput} value={availabilityEnd} onClick={openNativePickerFromEvent} onChange={e => {
                         setAvailabilityEnd(e.target.value);
                         setFieldErrors(prev => ({
                           ...prev,
@@ -1744,7 +1807,13 @@ export default function TicketCreatePage({
                           }
                         }} />
                         </div>
-                        {showCategoryDropdown && <div className={s.contactDropdown} role="listbox" aria-labelledby="ticket-create-category-label">
+                        {showCategoryDropdown && categoryDropdownCoords && typeof document !== "undefined" ? createPortal(<div ref={categoryListRef} className={s.contactDropdownPortal} role="listbox" aria-labelledby="ticket-create-category-label" style={{
+                            top: categoryDropdownCoords.top,
+                            bottom: categoryDropdownCoords.bottom,
+                            left: categoryDropdownCoords.left,
+                            width: categoryDropdownCoords.width,
+                            maxHeight: categoryDropdownCoords.maxHeight
+                          }}>
                             {filteredCategoryOptions.length === 0 ? <div className={s.contactEmpty}>{copy.noCategoryFound}</div> : (() => {
                           let optionIndex = -1;
                           return filteredCategoryGroups.map(([section, items]) => <div key={section}>
@@ -1758,7 +1827,7 @@ export default function TicketCreatePage({
                             })}
                                   </div>);
                         })()}
-                          </div>}
+                          </div>, document.body) : null}
                       </div>
                     </div>
 
@@ -1818,11 +1887,17 @@ export default function TicketCreatePage({
                           }
                         }} placeholder={copy.searchAgent} aria-label={copy.searchAgentAssignAria} aria-expanded={showAssigneeDropdown} aria-haspopup="listbox" disabled={loadingData} />
                         </div>
-                        {showAssigneeDropdown && <div className={s.contactDropdown} role="listbox" aria-label={copy.assignAgentsAria}>
+                        {showAssigneeDropdown && assigneeDropdownCoords && typeof document !== "undefined" ? createPortal(<div ref={assigneeListRef} className={s.contactDropdownPortal} role="listbox" aria-label={copy.assignAgentsAria} style={{
+                            top: assigneeDropdownCoords.top,
+                            bottom: assigneeDropdownCoords.bottom,
+                            left: assigneeDropdownCoords.left,
+                            width: assigneeDropdownCoords.width,
+                            maxHeight: assigneeDropdownCoords.maxHeight
+                          }}>
                             {filteredAssigneeOptions.length === 0 ? <div className={s.contactEmpty}>{copy.noAgentFound}</div> : filteredAssigneeOptions.map((opt, idx) => <button key={opt.id} type="button" role="option" aria-selected={false} className={`${s.contactOption} ${assigneeHighlight === idx ? s.contactOptionActive : ""}`} onMouseEnter={() => setAssigneeHighlight(idx)} onClick={() => addPreAssignee(opt.id)}>
                                   <span className={s.contactOptionName}>{opt.label}</span>
                                 </button>)}
-                          </div>}
+                          </div>, document.body) : null}
                       </div>
                       <div className={s.chipsWrap}>
                         {preAssigneeUserIds.length === 0 ? <span className={s.emptyChipHint}>{copy.noAssignee}</span> : preAssigneeUserIds.map(userId => <span key={userId} className={s.chip}>
@@ -1860,11 +1935,17 @@ export default function TicketCreatePage({
                           }
                         }} placeholder={copy.searchAgent} aria-label={copy.searchFollowerAria} aria-expanded={showFollowerDropdown} aria-haspopup="listbox" disabled={loadingData} />
                         </div>
-                        {showFollowerDropdown && <div className={s.contactDropdown} role="listbox" aria-label={copy.followerAgentsAria}>
+                        {showFollowerDropdown && followerDropdownCoords && typeof document !== "undefined" ? createPortal(<div ref={followerListRef} className={s.contactDropdownPortal} role="listbox" aria-label={copy.followerAgentsAria} style={{
+                            top: followerDropdownCoords.top,
+                            bottom: followerDropdownCoords.bottom,
+                            left: followerDropdownCoords.left,
+                            width: followerDropdownCoords.width,
+                            maxHeight: followerDropdownCoords.maxHeight
+                          }}>
                             {filteredFollowerOptions.length === 0 ? <div className={s.contactEmpty}>{copy.noAgentFound}</div> : filteredFollowerOptions.map((opt, idx) => <button key={opt.id} type="button" role="option" aria-selected={false} className={`${s.contactOption} ${followerHighlight === idx ? s.contactOptionActive : ""}`} onMouseEnter={() => setFollowerHighlight(idx)} onClick={() => addPreFollower(opt.id)}>
                                   <span className={s.contactOptionName}>{opt.label}</span>
                                 </button>)}
-                          </div>}
+                          </div>, document.body) : null}
                       </div>
                       <div className={s.chipsWrap}>
                         {preFollowerUserIds.length === 0 ? <span className={s.emptyChipHint}>{copy.noFollower}</span> : preFollowerUserIds.map(userId => <span key={userId} className={s.chip}>
@@ -1950,7 +2031,13 @@ export default function TicketCreatePage({
                           }
                         }} />
                               </div>
-                              {showEquipmentDropdown && <div className={s.contactDropdown} role="listbox" aria-label={copy.equipment}>
+                              {showEquipmentDropdown && equipmentDropdownCoords && typeof document !== "undefined" ? createPortal(<div ref={equipmentListRef} className={s.contactDropdownPortal} role="listbox" aria-label={copy.equipment} style={{
+                                  top: equipmentDropdownCoords.top,
+                                  bottom: equipmentDropdownCoords.bottom,
+                                  left: equipmentDropdownCoords.left,
+                                  width: equipmentDropdownCoords.width,
+                                  maxHeight: equipmentDropdownCoords.maxHeight
+                                }}>
                                   {filteredEquipments.length === 0 ? <div className={s.contactEmpty}>{copy.noEquipmentFound}</div> : filteredEquipments.map((eq, idx) => <button key={eq.id} type="button" role="option" aria-selected={idx === equipmentHighlight} className={`${s.contactOption} ${idx === equipmentHighlight ? s.contactOptionActive : ""}`} onMouseEnter={() => setEquipmentHighlight(idx)} onClick={() => selectEquipment(eq)}>
                                         <span className={s.contactOptionName}>
                                           {getEquipmentPickerLabel(eq, {
@@ -1959,7 +2046,7 @@ export default function TicketCreatePage({
                             })}
                                         </span>
                                       </button>)}
-                                </div>}
+                                </div>, document.body) : null}
                             </div>}
                         </div> : <div className={s.equipmentExternalGrid}>
                           <div className={s.equipmentField}>
@@ -2023,7 +2110,7 @@ export default function TicketCreatePage({
                               {copy.ticketToLink}<span className={s.requiredMark}>*</span>
                             </label>
                             <div className={s.linkTicketPicker} ref={linkedTicketDropdownRef}>
-                              <div data-pulse={fieldErrors.linkedTicketId ? errorPulseTick : undefined} className={`${s.contactInputWrap} ${fieldErrors.linkedTicketId ? s.contactInputWrapError : ""} ${fieldErrors.linkedTicketId ? s.fieldErrorPulse : ""}`}>
+                              <div data-pulse={fieldErrors.linkedTicketId ? errorPulseTick : undefined} className={`${s.contactInputWrap} ${showLinkedTicketDropdown ? s.contactInputWrapOpen : ""} ${fieldErrors.linkedTicketId ? s.contactInputWrapError : ""} ${fieldErrors.linkedTicketId ? s.fieldErrorPulse : ""}`}>
                                 <Icon icon="mdi:magnify" className={s.contactInputIcon} />
                                 <input id="ticket-create-linked-ticket" className={s.contactInput} type="text" value={linkedTicketSearch} onChange={e => handleLinkedTicketSearchChange(e.target.value)} onFocus={() => {
                             if (!linkedTicketId) setShowLinkedTicketDropdown(true);
@@ -2042,7 +2129,13 @@ export default function TicketCreatePage({
                             } else if (e.key === "Escape") setShowLinkedTicketDropdown(false);
                           }} placeholder={copy.searchTicketPlaceholder} disabled={loadingData} aria-expanded={showLinkedTicketDropdown} aria-haspopup="listbox" />
                               </div>
-                              {showLinkedTicketDropdown && <div className={s.contactDropdown} role="listbox">
+                              {showLinkedTicketDropdown && linkedTicketDropdownCoords && typeof document !== "undefined" ? createPortal(<div ref={linkedTicketListRef} className={s.contactDropdownPortal} role="listbox" style={{
+                                  top: linkedTicketDropdownCoords.top,
+                                  bottom: linkedTicketDropdownCoords.bottom,
+                                  left: linkedTicketDropdownCoords.left,
+                                  width: linkedTicketDropdownCoords.width,
+                                  maxHeight: linkedTicketDropdownCoords.maxHeight
+                                }}>
                                   {filteredLinkableTickets.length === 0 ? <div className={s.contactEmpty}>{copy.noTicketFound}</div> : filteredLinkableTickets.map((ticket, idx) => <button key={ticket.id} type="button" role="option" aria-selected={idx === linkedTicketHighlight} className={`${s.contactOption} ${idx === linkedTicketHighlight ? s.contactOptionActive : ""}`} onMouseEnter={() => setLinkedTicketHighlight(idx)} onClick={() => selectLinkedTicket(ticket)}>
                                         <span className={s.contactOptionName}>{getTicketLinkLabel(ticket)}</span>
                                         <span className={s.contactOptionMeta}>
@@ -2050,7 +2143,7 @@ export default function TicketCreatePage({
                                           {ticket.type ? ` · ${ticket.type}` : ""}
                                         </span>
                                       </button>)}
-                                </div>}
+                                </div>, document.body) : null}
                             </div>
                           </div>
 
@@ -2082,6 +2175,7 @@ export default function TicketCreatePage({
           </div>
         </div>
       </div>
+          </div>
 
       {confirmModalOpen && createPortal(<div className={s.confirmOverlay} onClick={handleCloseConfirm} role="presentation">
             <div className={s.confirmShell} onClick={e => e.stopPropagation()} role="dialog" aria-modal="true" aria-labelledby="ticket-create-recap-title">
@@ -2127,5 +2221,7 @@ export default function TicketCreatePage({
           </div>, document.body)}
 
       <ContactFormModal open={contactModalOpen} initialContact={contactModalInitial} clients={clients} defaultClientId={contactModalInitial ? null : contactCreateDefaultClientId} onClose={closeContactModal} onSuccess={handleContactSaved} />
+        </div>
+      </div>
     </div>;
 }

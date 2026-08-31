@@ -149,6 +149,9 @@ export function transformClientModulesToFrontend(rawData, options = {}) {
             delete instanceData.type;
             const instanceFrontendId = instanceData.instanceId || instanceItem.id;
             const instanceJobs = jobItems.filter(jobItem => {
+              if (jobItem.data?.instanceId && String(jobItem.data.instanceId) === String(instanceFrontendId)) {
+                return true;
+              }
               const jobItemKey = jobItem.item_key || '';
               if (jobItemKey.startsWith('job-')) {
                 const jobInstanceId = jobItemKey.substring(4);
@@ -165,12 +168,18 @@ export function transformClientModulesToFrontend(rawData, options = {}) {
               const lastBackupDate = jobItem.last_backup_date ?? jobData.last_backup_date ?? null;
               const lastBackupDuration = jobItem.last_backup_duration ?? jobData.last_backup_duration ?? null;
               const lastBackupStart = jobItem.last_backup_start ?? jobData.last_backup_start ?? null;
+              const checkmkHost = jobItem.checkmk_host_name ?? jobData.checkmk_host_name ?? null;
+              const checkmkSite = jobItem.checkmk_site ?? jobData.checkmk_site ?? null;
+              const checkmkService = jobItem.checkmk_service_name ?? jobData.checkmk_service_name ?? null;
               return {
                 id: jobItem.id,
                 ...jobData,
                 last_backup_date: lastBackupDate != null ? typeof lastBackupDate === 'string' ? lastBackupDate : lastBackupDate instanceof Date ? lastBackupDate.toISOString() : String(lastBackupDate) : null,
                 last_backup_duration: lastBackupDuration != null ? String(lastBackupDuration) : null,
-                last_backup_start: lastBackupStart != null ? typeof lastBackupStart === 'string' ? lastBackupStart : lastBackupStart instanceof Date ? lastBackupStart.toISOString() : String(lastBackupStart) : null
+                last_backup_start: lastBackupStart != null ? typeof lastBackupStart === 'string' ? lastBackupStart : lastBackupStart instanceof Date ? lastBackupStart.toISOString() : String(lastBackupStart) : null,
+                checkmk_host_name: checkmkHost && String(checkmkHost).trim() ? String(checkmkHost).trim() : null,
+                checkmk_site: checkmkSite && String(checkmkSite).trim() ? String(checkmkSite).trim() : null,
+                checkmk_service_name: checkmkService && String(checkmkService).trim() ? String(checkmkService).trim() : null
               };
             });
             return {

@@ -7,7 +7,6 @@ import { useAppFormatters, useAppLocale } from "../../hooks/useAppGeneralSetting
 import { getDashboardPageCopy } from "./dashboardPageI18n";
 import DashboardPeriodModal from "./DashboardPeriodModal";
 import DashboardDistributionModal from "./DashboardDistributionModal";
-import DashboardTopCard from "./DashboardTopCard";
 import DashboardScopeFilter from "./DashboardScopeFilter";
 import DashboardExportModal from "./DashboardExportModal";
 import DashboardScheduleModal from "./DashboardScheduleModal";
@@ -19,7 +18,10 @@ import mspStyles from "../CybersecuritePage/CybersecuritePage.module.css";
 import SmartTooltip from "../SmartTooltip";
 import { DEFAULT_PERIOD_FILTER, getPeriodFilterLabel } from "./dashboardPeriodUtils";
 import { DEFAULT_SCOPE_FILTER, getScopeFilterKey, isScopeFilterActive, isScopeFilterReady } from "./dashboardScopeUtils";
-import { DistributionPanel, formatHours, formatNumber, formatPercent, formatRating, KpiRow, MiniStat, Panel, PiePanel, SectionTitle, TrendBars, buildDistributionItems } from "./dashboardWidgets";
+import DashboardSupportCockpit from "./DashboardSupportCockpit";
+import DashboardDevicesCockpit from "./DashboardDevicesCockpit";
+import DashboardEnterpriseCockpit from "./DashboardEnterpriseCockpit";
+import DashboardKnowledgeCockpit from "./DashboardKnowledgeCockpit";
 import styles from "./DashboardPage.module.css";
 import { createTrackedAbortController } from "../../utils/pageLoadAbort";
 import PageGuideTour from "../PageGuide/PageGuideTour";
@@ -39,146 +41,6 @@ const DASHBOARD_TABS = [{
   key: "knowledge",
   icon: "mdi:book-open-page-variant-outline"
 }];
-
-function AgentRankingTable({
-  rows,
-  copy
-}) {
-  if (!rows?.length) return <p className={styles.emptyHint}>{copy.empty}</p>;
-  const cols = copy.support.agentColumns;
-  return <div className={styles.tableWrap}>
-      <table className={styles.dataTable}>
-        <thead>
-          <tr>
-            <th>{cols.agent}</th>
-            <th>{cols.assigned}</th>
-            <th>{cols.closed}</th>
-            <th>{cols.open}</th>
-            <th>{cols.resolution}</th>
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map((row, index) => <tr key={row.userId || row.label}>
-              <td>
-                <span className={styles.rankBadge}>{index + 1}</span>
-                {row.label}
-              </td>
-              <td>{formatNumber(row.assignedCount)}</td>
-              <td>{formatNumber(row.closedCount)}</td>
-              <td>{formatNumber(row.openCount)}</td>
-              <td>{formatHours(copy, row.avgResolutionHours)}</td>
-            </tr>)}
-        </tbody>
-      </table>
-    </div>;
-}
-
-function SatisfactionAgentTable({
-  rows,
-  copy
-}) {
-  if (!rows?.length) return <p className={styles.emptyHint}>{copy.empty}</p>;
-  const cols = copy.support.agentColumns;
-  return <div className={styles.tableWrap}>
-      <table className={styles.dataTable}>
-        <thead>
-          <tr>
-            <th>{cols.agent}</th>
-            <th>{cols.responses}</th>
-            <th>{cols.rating}</th>
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map(row => <tr key={row.userId || row.label}>
-              <td>{row.label}</td>
-              <td>{formatNumber(row.responses)}</td>
-              <td>{formatRating(copy, row.avgRating)}</td>
-            </tr>)}
-        </tbody>
-      </table>
-    </div>;
-}
-
-function FamilyTable({
-  rows,
-  copy
-}) {
-  if (!rows?.length) return <p className={styles.emptyHint}>{copy.empty}</p>;
-  const cols = copy.devices.familyColumns;
-  return <div className={styles.tableWrap}>
-      <table className={styles.dataTable}>
-        <thead>
-          <tr>
-            <th>{cols.family}</th>
-            <th>{cols.total}</th>
-            <th>{cols.monitored}</th>
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map(row => <tr key={row.key || row.label}>
-              <td>{row.label}</td>
-              <td>{formatNumber(row.count)}</td>
-              <td>{formatNumber(row.monitored)}</td>
-            </tr>)}
-        </tbody>
-      </table>
-    </div>;
-}
-
-function KnowledgeArticleTable({
-  rows,
-  copy
-}) {
-  if (!rows?.length) return <p className={styles.emptyHint}>{copy.empty}</p>;
-  const cols = copy.knowledge.articleColumns;
-  return <div className={styles.tableWrap}>
-      <table className={styles.dataTable}>
-        <thead>
-          <tr>
-            <th>{cols.article}</th>
-            <th>{cols.views}</th>
-            <th>{cols.comments}</th>
-            <th>{cols.rating}</th>
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map((row, index) => <tr key={row.id || row.title}>
-              <td>
-                <span className={styles.rankBadge}>{index + 1}</span>
-                {row.title}
-              </td>
-              <td>{formatNumber(row.views)}</td>
-              <td>{formatNumber(row.comments)}</td>
-              <td>{formatRating(copy, row.avgRating)}</td>
-            </tr>)}
-        </tbody>
-      </table>
-    </div>;
-}
-
-function KnowledgeMissTable({
-  rows,
-  copy
-}) {
-  if (!rows?.length) return <p className={styles.emptyHint}>{copy.empty}</p>;
-  const cols = copy.knowledge.missColumns;
-  return <div className={styles.tableWrap}>
-      <table className={styles.dataTable}>
-        <thead>
-          <tr>
-            <th>{cols.query}</th>
-            <th>{cols.hits}</th>
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map(row => <tr key={row.label}>
-              <td>{row.label}</td>
-              <td>{formatNumber(row.count)}</td>
-            </tr>)}
-        </tbody>
-      </table>
-    </div>;
-}
 
 export default function DashboardPage() {
   const locale = useAppLocale();
@@ -273,90 +135,9 @@ export default function DashboardPage() {
     if (data.filters?.active || scopeActive) return `${base} · ${copy.scopeFilter.filteredBadge}`;
     return base;
   }, [copy.generatedAt, copy.generatedAtRange, copy.scopeFilter.filteredBadge, data, formatters, scopeActive]);
-  const formatWeekdayLabel = useCallback(value => {
-    const dow = Number(value);
-    if (!Number.isFinite(dow) || dow < 1 || dow > 7) return "-";
-    const date = new Date(2024, 0, dow);
-    const localeTag = locale === "en" ? "en-GB" : locale || "fr-FR";
-    return date.toLocaleDateString(localeTag, {
-      weekday: "short"
-    });
-  }, [locale]);
-  const formatMonthLabel = useCallback(value => {
-    if (!value) return "-";
-    try {
-      const date = new Date(value);
-      return formatters.formatMonthYear?.(date) || formatters.formatDate(date);
-    } catch {
-      return String(value);
-    }
-  }, [formatters]);
-  const openDistributionModal = useCallback(({
-    title,
-    icon,
-    items
-  }) => {
-    const total = items.reduce((sum, item) => sum + (Number(item.count) || 0), 0);
-    setDistributionModal({
-      title,
-      icon,
-      items,
-      subtitle: copy.support.distributionModalSubtitle.replace("{total}", formatNumber(total)).replace("{count}", formatNumber(items.length))
-    });
-  }, [copy.support.distributionModalSubtitle]);
   const enterprise = data?.enterprise || data?.crm || {};
   const devices = data?.devices || data?.infrastructure || {};
   const knowledge = data?.knowledge || {};
-  const distributions = useMemo(() => {
-    if (!data) return {};
-    const solutionLabels = copy.enterprise.solutionLabels || {};
-    const statusLabels = copy.knowledge?.statusLabels || {};
-    return {
-      supportStatus: buildDistributionItems(data.support?.byStatus || []).items,
-      supportPriority: buildDistributionItems(data.support?.byPriority || []).items,
-      supportType: buildDistributionItems(data.support?.byType || []).items,
-      supportCategory: buildDistributionItems(data.support?.byCategory || []).items,
-      supportChannel: buildDistributionItems(data.support?.byChannel || []).items,
-      planningType: buildDistributionItems(data.planning?.byType || []).items,
-      planningAgent: buildDistributionItems((data.planning?.byAgent || []).map(row => ({
-        name: row.label,
-        count: row.count
-      }))).items,
-      reportsType: buildDistributionItems(data.reports?.byType || []).items,
-      deviceFamilies: buildDistributionItems((devices.families || []).map(row => ({
-        name: row.label,
-        count: row.count
-      }))).items,
-      modules: buildDistributionItems((enterprise.modules || []).map(row => ({
-        name: row.label,
-        count: row.count
-      }))).items,
-      solutions: buildDistributionItems((enterprise.solutions || []).map(row => ({
-        name: solutionLabels[row.key] || row.key,
-        count: row.count
-      }))).items,
-      topClients: buildDistributionItems((data.support?.topClients || []).map(row => ({
-        name: row.label,
-        count: row.count
-      }))).items,
-      topContacts: buildDistributionItems((data.support?.topContacts || []).map(row => ({
-        name: row.label,
-        count: row.count
-      }))).items,
-      knowledgeStatus: buildDistributionItems((data.knowledge?.byStatus || []).map(row => ({
-        name: statusLabels[row.key] || row.label,
-        count: row.count
-      }))).items,
-      knowledgeCategory: buildDistributionItems((data.knowledge?.byCategory || []).map(row => ({
-        name: row.key === "Uncategorized" ? copy.knowledge.uncategorized : row.label,
-        count: row.count
-      }))).items,
-      knowledgeConsumers: buildDistributionItems((data.knowledge?.topConsumers || []).map(row => ({
-        name: row.label,
-        count: row.count
-      }))).items
-    };
-  }, [copy.enterprise.solutionLabels, copy.knowledge, data, devices.families, enterprise.modules, enterprise.solutions]);
   const triggerPdfDownload = async categories => {
     const file = await downloadKpiReportPdf(periodFilter, scopeFilter, {
       categories,
@@ -392,360 +173,21 @@ export default function DashboardPage() {
   const renderTabContent = () => {
     if (!data) return null;
     if (activeTab === "support") {
-      return <>
-          <KpiRow items={[{
-          key: "created",
-          icon: "mdi:plus-circle-outline",
-          tone: "blue",
-          value: formatNumber(data.support?.overview?.created),
-          label: copy.support.created
-        }, {
-          key: "closed",
-          icon: "mdi:check-circle-outline",
-          tone: "green",
-          value: formatNumber(data.support?.overview?.closed),
-          label: copy.support.closed
-        }, {
-          key: "open",
-          icon: "mdi:ticket-outline",
-          tone: "amber",
-          value: formatNumber(data.support?.overview?.openNow),
-          label: copy.support.openNow
-        }, {
-          key: "closure",
-          icon: "mdi:percent-outline",
-          tone: "teal",
-          value: formatPercent(copy, data.support?.overview?.closureRate),
-          label: copy.support.closureRate
-        }, {
-          key: "response",
-          icon: "mdi:timer-outline",
-          tone: "purple",
-          value: formatHours(copy, data.support?.timing?.avgFirstResponseHours),
-          label: copy.support.firstResponse
-        }, {
-          key: "resolution",
-          icon: "mdi:clock-check-outline",
-          tone: "orange",
-          value: formatHours(copy, data.support?.timing?.avgResolutionHours),
-          label: copy.support.resolution
-        }]} />
-          <AiBriefingPanel featureKey="dashboardBriefing" cacheKey="dashboard_ai_analytics_briefing" buildPayload={() => ({
-          summary: data?.summary || {},
-          support: {
-            overview: data?.support?.overview,
-            timing: data?.support?.timing,
-            byStatus: data?.support?.byStatus
-          },
-          planning: {
-            overview: data?.planning?.overview
-          },
-          enterprise,
-          devices,
-          knowledge: {
-            overview: data?.knowledge?.overview
-          },
-          period: {
-            since: data?.since,
-            until: data?.until
-          }
-        })} onGenerate={(stats, loc) => generateDashboardBriefingAi({
-          stats,
-          source: "analytics",
-          locale: loc
-        })} />
-          <div className={styles.grid2}>
-            <Panel title={copy.support.weekdayTrend} icon="mdi:chart-bar" note={`${copy.support.withResponse.replace("{count}", formatNumber(data.support?.timing?.ticketsWithFirstResponse))} · ${copy.support.resolvedCount.replace("{count}", formatNumber(data.support?.timing?.resolvedCount))}`}>
-              <TrendBars items={data.support?.weekdayTrend} formatLabel={formatWeekdayLabel} emptyLabel={copy.empty} />
-            </Panel>
-            <Panel title={copy.support.monthlyTrend} icon="mdi:chart-timeline-variant">
-              <TrendBars items={data.support?.monthlyTrend} formatLabel={formatMonthLabel} emptyLabel={copy.empty} />
-            </Panel>
-          </div>
-          <div className={styles.grid2}>
-            <PiePanel title={copy.support.byStatus} icon="mdi:ticket-percent-outline" items={distributions.supportStatus} emptyLabel={copy.empty} />
-            <DistributionPanel title={copy.support.byChannel} icon="mdi:message-text-outline" items={distributions.supportChannel} emptyLabel={copy.empty} />
-          </div>
-          <div className={styles.grid2}>
-            <DistributionPanel title={copy.support.byPriority} icon="mdi:flag-outline" items={distributions.supportPriority} emptyLabel={copy.empty} />
-            <DistributionPanel title={copy.support.byType} icon="mdi:shape-outline" items={distributions.supportType} emptyLabel={copy.empty} />
-          </div>
-          <div className={styles.grid3}>
-            <DashboardTopCard title={copy.support.topCategories} icon="mdi:tag-outline" items={distributions.supportCategory} previewCount={5} emptyLabel={copy.empty} viewAllLabel={copy.support.viewAllStats} othersLabel={copy.support.othersCount.replace("{count}", String(Math.max(0, distributions.supportCategory.length - 5)))} onOpen={() => openDistributionModal({
-            title: copy.support.allCategories,
-            icon: "mdi:tag-outline",
-            items: distributions.supportCategory
-          })} />
-            <DashboardTopCard title={copy.support.topCompanies} icon="mdi:domain" items={distributions.topClients} previewCount={5} emptyLabel={copy.empty} viewAllLabel={copy.support.viewAllStats} othersLabel={copy.support.othersCount.replace("{count}", String(Math.max(0, distributions.topClients.length - 5)))} onOpen={() => openDistributionModal({
-            title: copy.support.allCompanies,
-            icon: "mdi:domain",
-            items: distributions.topClients
-          })} />
-            <DashboardTopCard title={copy.support.topContacts} icon="mdi:account-outline" items={distributions.topContacts} previewCount={5} emptyLabel={copy.empty} viewAllLabel={copy.support.viewAllStats} othersLabel={copy.support.othersCount.replace("{count}", String(Math.max(0, distributions.topContacts.length - 5)))} onOpen={() => openDistributionModal({
-            title: copy.support.allContacts,
-            icon: "mdi:account-outline",
-            items: distributions.topContacts
-          })} />
-          </div>
-          <Panel title={copy.support.topAgents} icon="mdi:account-star-outline">
-            <AgentRankingTable rows={data.support?.topAgents} copy={copy} />
-          </Panel>
-          {data.modules?.satisfaction && data.support?.satisfaction ? <div className={styles.grid2}>
-              <Panel title={copy.support.satisfaction} icon="mdi:emoticon-happy-outline">
-                <div className={styles.miniStats}>
-                  <MiniStat label={copy.support.satisfaction} value={formatRating(copy, data.support.satisfaction.avgRating)} />
-                  <MiniStat label={copy.support.csat} value={formatPercent(copy, data.support.satisfaction.csatPercent)} />
-                  <MiniStat label={copy.support.detractors} value={formatPercent(copy, data.support.satisfaction.detractorPercent)} />
-                  <MiniStat label={copy.support.agentColumns.responses} value={formatNumber(data.support.satisfaction.responses)} />
-                </div>
-              </Panel>
-              <Panel title={copy.support.satisfactionByAgent} icon="mdi:account-heart-outline">
-                <SatisfactionAgentTable rows={data.support.satisfaction.byAgent} copy={copy} />
-              </Panel>
-            </div> : null}
-          {data.modules?.planning ? <div className={styles.sectionBlock}>
-              <SectionTitle icon="mdi:calendar-clock-outline" title={copy.support.planningTitle} />
-              <KpiRow items={[{
-            key: "total",
-            icon: "mdi:calendar-multiselect",
-            tone: "blue",
-            value: formatNumber(data.planning?.overview?.total),
-            label: copy.planning.total
-          }, {
-            key: "maint",
-            icon: "mdi:cog-outline",
-            tone: "amber",
-            value: formatNumber(data.planning?.overview?.maintenanceInPeriod),
-            label: copy.planning.maintenancePeriod
-          }, {
-            key: "upcoming",
-            icon: "mdi:calendar-arrow-right",
-            tone: "teal",
-            value: formatNumber(data.planning?.overview?.upcoming),
-            label: copy.planning.upcoming
-          }]} />
-              <div className={styles.grid2}>
-                <PiePanel title={copy.planning.byType} icon="mdi:calendar-multiselect" items={distributions.planningType} emptyLabel={copy.empty} />
-                <DistributionPanel title={copy.planning.byAgent} icon="mdi:account-hard-hat" items={distributions.planningAgent} emptyLabel={copy.empty} />
-              </div>
-            </div> : null}
-        </>;
+      return <DashboardSupportCockpit data={data} copy={copy} locale={locale} />;
     }
     if (activeTab === "devices") {
-      return <>
-          {scopeActive ? <p className={styles.scopeHint}>
+      return <DashboardDevicesCockpit data={data} copy={copy} locale={locale} scopeHint={scopeActive ? <p className={styles.scopeHint}>
               <Icon icon="mdi:information-outline" aria-hidden />
               {copy.scopeFilter.infrastructureHint}
-            </p> : null}
-          <KpiRow items={[{
-          key: "fleet",
-          icon: "mdi:devices",
-          tone: "blue",
-          value: formatNumber(devices.equipTotal ?? devices.equipMonitoredTotal),
-          label: copy.devices.fleet
-        }, {
-          key: "supervised",
-          icon: "mdi:radar",
-          tone: "teal",
-          value: formatNumber(devices.equipUnderSurveillanceCount),
-          label: copy.devices.supervised
-        }, {
-          key: "rate",
-          icon: "mdi:percent-outline",
-          tone: "green",
-          value: formatPercent(copy, devices.equipSurveillancePercent),
-          label: copy.devices.surveillance
-        }, {
-          key: "rmm",
-          icon: "mdi:remote-desktop",
-          tone: "purple",
-          value: `${formatNumber(devices.rmmOnline)} / ${formatNumber(devices.rmmAgents)}`,
-          label: copy.devices.rmmOnline
-        }, {
-          key: "computers",
-          icon: "mdi:laptop",
-          tone: "amber",
-          value: formatNumber(devices.computersTotal),
-          label: copy.devices.computers
-        }, {
-          key: "computersActive",
-          icon: "mdi:laptop-check",
-          tone: "green",
-          value: formatNumber(devices.computersActive),
-          label: copy.devices.computersActive
-        }]} />
-          <div className={styles.grid2}>
-            <DistributionPanel title={copy.devices.families} icon="mdi:server-network" items={distributions.deviceFamilies} emptyLabel={copy.empty} />
-            <Panel title={copy.devices.familyTable} icon="mdi:table">
-              <FamilyTable rows={devices.families} copy={copy} />
-            </Panel>
-          </div>
-        </>;
+            </p> : null} />;
+    }
+    if (activeTab === "enterprise") {
+      return <DashboardEnterpriseCockpit data={data} copy={copy} locale={locale} />;
     }
     if (activeTab === "knowledge") {
-      const overview = knowledge.overview || {};
-      return <>
-          <KpiRow items={[{
-          key: "published",
-          icon: "mdi:book-check-outline",
-          tone: "blue",
-          value: formatNumber(overview.published),
-          label: copy.knowledge.published
-        }, {
-          key: "drafts",
-          icon: "mdi:file-edit-outline",
-          tone: "amber",
-          value: formatNumber(overview.drafts),
-          label: copy.knowledge.drafts
-        }, {
-          key: "created",
-          icon: "mdi:plus-circle-outline",
-          tone: "teal",
-          value: formatNumber(overview.createdInPeriod),
-          label: copy.knowledge.createdInPeriod
-        }, {
-          key: "views",
-          icon: "mdi:eye-outline",
-          tone: "purple",
-          value: formatNumber(overview.viewsTotal),
-          label: copy.knowledge.viewsTotal
-        }, {
-          key: "public",
-          icon: "mdi:link-variant",
-          tone: "green",
-          value: formatNumber(overview.publicEnabled),
-          label: copy.knowledge.publicLinks
-        }]} />
-          <p className={styles.scopeHint}>
-            <Icon icon="mdi:information-outline" aria-hidden />
-            {copy.knowledge.viewsHint}
-          </p>
-          <KpiRow items={[{
-          key: "comments",
-          icon: "mdi:comment-text-outline",
-          tone: "blue",
-          value: formatNumber(overview.commentsInPeriod),
-          label: copy.knowledge.comments
-        }, {
-          key: "rating",
-          icon: "mdi:star-outline",
-          tone: "amber",
-          value: formatRating(copy, overview.avgRating),
-          label: copy.knowledge.avgRating
-        }, {
-          key: "helpful",
-          icon: "mdi:thumb-up-outline",
-          tone: "green",
-          value: formatPercent(copy, overview.helpfulRate),
-          label: copy.knowledge.helpfulRate
-        }, {
-          key: "favorites",
-          icon: "mdi:bookmark-outline",
-          tone: "purple",
-          value: formatNumber(overview.favoritesInPeriod),
-          label: copy.knowledge.favorites
-        }, {
-          key: "misses",
-          icon: "mdi:magnify-close",
-          tone: "rose",
-          value: formatNumber(overview.searchMisses),
-          label: copy.knowledge.searchMissHits
-        }]} />
-          <div className={styles.grid2}>
-            <PiePanel title={copy.knowledge.byStatus} icon="mdi:file-document-outline" items={distributions.knowledgeStatus} emptyLabel={copy.empty} />
-            <DistributionPanel title={copy.knowledge.byCategory} icon="mdi:tag-outline" items={distributions.knowledgeCategory} emptyLabel={copy.empty} />
-          </div>
-          <div className={styles.grid2}>
-            <Panel title={copy.knowledge.topArticles} icon="mdi:chart-box-outline">
-              <KnowledgeArticleTable rows={knowledge.topArticles} copy={copy} />
-            </Panel>
-            <DashboardTopCard title={copy.knowledge.topConsumers} icon="mdi:domain" items={distributions.knowledgeConsumers} emptyLabel={copy.empty} viewAllLabel={copy.support.viewAllStats} othersLabel={copy.support.othersCount.replace("{count}", formatNumber(Math.max(0, (distributions.knowledgeConsumers || []).length - 5)))} onOpen={() => openDistributionModal({
-            title: copy.knowledge.topConsumers,
-            icon: "mdi:domain",
-            items: distributions.knowledgeConsumers
-          })} />
-          </div>
-          <div className={styles.grid2}>
-            <Panel title={copy.knowledge.searchMisses} icon="mdi:text-search">
-              <KnowledgeMissTable rows={knowledge.searchMisses} copy={copy} />
-            </Panel>
-            <Panel title={copy.knowledge.monthlyTrend} icon="mdi:chart-timeline-variant">
-              <TrendBars items={knowledge.monthlyTrend} formatLabel={formatMonthLabel} emptyLabel={copy.empty} />
-            </Panel>
-          </div>
-        </>;
+      return <DashboardKnowledgeCockpit data={data} copy={copy} />;
     }
-    return <>
-        <KpiRow items={[{
-        key: "clients",
-        icon: "mdi:domain",
-        tone: "blue",
-        value: formatNumber(enterprise.clientsPortfolio ?? enterprise.clientsTotal),
-        label: copy.enterprise.clients
-      }, {
-        key: "contacts",
-        icon: "mdi:account-group-outline",
-        tone: "teal",
-        value: formatNumber(enterprise.contactsTotal),
-        label: copy.enterprise.contacts
-      }, {
-        key: "new",
-        icon: "mdi:account-plus-outline",
-        tone: "green",
-        value: formatNumber(enterprise.contactsNew),
-        label: copy.enterprise.contactsNew
-      }, {
-        key: "active",
-        icon: "mdi:file-sign",
-        tone: "purple",
-        value: formatNumber(enterprise.contractsActive),
-        label: copy.enterprise.contractsActive
-      }, {
-        key: "expiring",
-        icon: "mdi:calendar-alert",
-        tone: "amber",
-        value: formatNumber(enterprise.contractsExpiring),
-        label: copy.enterprise.contractsExpiring
-      }, {
-        key: "expired",
-        icon: "mdi:calendar-remove",
-        tone: "rose",
-        value: formatNumber(enterprise.contractsExpired),
-        label: copy.enterprise.contractsExpired
-      }, {
-        key: "suspended",
-        icon: "mdi:pause-circle-outline",
-        tone: "orange",
-        value: formatNumber(enterprise.contractsSuspended),
-        label: copy.enterprise.contractsSuspended
-      }]} />
-        <div className={styles.grid2}>
-          <DistributionPanel title={copy.enterprise.modules} icon="mdi:puzzle-outline" items={distributions.modules} emptyLabel={copy.empty} />
-          <DistributionPanel title={copy.enterprise.solutions} icon="mdi:shield-check-outline" items={distributions.solutions} emptyLabel={copy.empty} />
-        </div>
-        {data.modules?.reports ? <div className={styles.sectionBlock}>
-            <SectionTitle icon="mdi:file-chart-outline" title={copy.enterprise.reportsTitle} />
-            <KpiRow items={[{
-          key: "total",
-          icon: "mdi:file-document-multiple-outline",
-          tone: "blue",
-          value: formatNumber(data.reports?.total),
-          label: copy.enterprise.reportsTotal
-        }, {
-          key: "period",
-          icon: "mdi:file-chart-outline",
-          tone: "teal",
-          value: formatNumber(data.reports?.inPeriod),
-          label: copy.enterprise.reportsPeriod
-        }]} />
-            <div className={styles.grid2}>
-              <DistributionPanel title={copy.enterprise.reportsByType} icon="mdi:file-chart-outline" items={distributions.reportsType} emptyLabel={copy.empty} />
-              <Panel title={copy.enterprise.reportsMonthly} icon="mdi:chart-line">
-                <TrendBars items={data.reports?.monthlyTrend} formatLabel={formatMonthLabel} emptyLabel={copy.empty} />
-              </Panel>
-            </div>
-          </div> : null}
-      </>;
+    return null;
   };
   return <div className={`${mspStyles.mspPage} ${styles.dashboardPage} msp-page-insight`}>
       <div className={mspStyles.mspLayout}>
@@ -792,7 +234,7 @@ export default function DashboardPage() {
                 </SmartTooltip>
               </>} />
 
-          <main className={mspStyles.mspContent}>
+          <main className={`${mspStyles.mspContent} ${mspStyles.mspContentList}`}>
             <div className={`${layout.shell} ${layout.shellWide} ${layout.shellFull}`}>
               <div className={styles.contentToolbar}>
                 <div className={`${mspStyles.mspTabBar} ${styles.toolbarTabs}`} role="tablist" aria-label={copy.tabsAria} data-guide="kpi-tabs">
@@ -822,7 +264,7 @@ export default function DashboardPage() {
                     <span>{error}</span>
                   </div> : null}
                 {!loading && !error && !proRequired && data && <AnimatePresence mode="wait">
-                    <motion.div key={`${activeTab}-${periodFilterKey}-${scopeFilterKey}`} className={styles.tabStack} initial={{
+                    <motion.div key={`${activeTab}-${periodFilterKey}-${scopeFilterKey}`} className={`${styles.tabStack} ${activeTab === "support" || activeTab === "devices" || activeTab === "enterprise" || activeTab === "knowledge" ? styles.tabStackFill : ""}`} initial={{
                   opacity: 0,
                   y: 6
                 }} animate={{
@@ -840,6 +282,31 @@ export default function DashboardPage() {
               </div>
             </div>
           </main>
+          {!loading && !proRequired && data ? <AiBriefingPanel variant="fab" featureKey="dashboardBriefing" cacheKey="dashboard_ai_analytics_briefing" buildPayload={() => ({
+            summary: data?.summary || {},
+            support: {
+              overview: data?.support?.overview,
+              timing: data?.support?.timing,
+              byStatus: data?.support?.byStatus
+            },
+            planning: {
+              overview: data?.planning?.overview
+            },
+            enterprise,
+            devices,
+            knowledge: {
+              overview: data?.knowledge?.overview
+            },
+            period: {
+              since: data?.since,
+              until: data?.until
+            }
+          })} onGenerate={(stats, loc) => generateDashboardBriefingAi({
+            stats,
+            source: "analytics",
+            locale: loc,
+            scopeKey: "dashboard_ai_analytics_briefing"
+          })} /> : null}
         </div>
       </div>
 

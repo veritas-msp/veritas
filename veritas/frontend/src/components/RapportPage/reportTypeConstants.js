@@ -1,7 +1,10 @@
 export const REPORT_TYPE_IDS = {
   SUPERVISION_ETAT: "supervision-etat",
   INTERVENTION: "intervention",
-  CAHIER_RECETTE: "cahier-recette"
+  CAHIER_RECETTE: "cahier-recette",
+  ACTIVITE_MENSUELLE: "activite-mensuelle",
+  INVENTAIRE_PARC: "inventaire-parc",
+  AUDIT_SECURITE: "audit-securite"
 };
 export const REPORT_TYPE_DEFS = [{
   id: REPORT_TYPE_IDS.SUPERVISION_ETAT,
@@ -10,11 +13,28 @@ export const REPORT_TYPE_DEFS = [{
 }, {
   id: REPORT_TYPE_IDS.INTERVENTION,
   icon: "mdi:toolbox-outline",
-  key: "intervention"
+  key: "intervention",
+  comingSoon: true
 }, {
   id: REPORT_TYPE_IDS.CAHIER_RECETTE,
   icon: "mdi:clipboard-check-outline",
-  key: "cahierRecette"
+  key: "cahierRecette",
+  comingSoon: true
+}, {
+  id: REPORT_TYPE_IDS.ACTIVITE_MENSUELLE,
+  icon: "mdi:calendar-month-outline",
+  key: "activiteMensuelle",
+  comingSoon: true
+}, {
+  id: REPORT_TYPE_IDS.INVENTAIRE_PARC,
+  icon: "mdi:desktop-classic",
+  key: "inventaireParc",
+  comingSoon: true
+}, {
+  id: REPORT_TYPE_IDS.AUDIT_SECURITE,
+  icon: "mdi:shield-check-outline",
+  key: "auditSecurite",
+  comingSoon: true
 }];
 export function normalizeReportTypeId(rawType) {
   const value = String(rawType || "").trim().toLowerCase();

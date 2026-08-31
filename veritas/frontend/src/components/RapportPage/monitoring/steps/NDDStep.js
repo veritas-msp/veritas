@@ -3,7 +3,6 @@ import { Icon } from "@iconify/react";
 import { toast } from "react-toastify";
 import InfrastructureEquipmentTable from "../InfrastructureEquipmentTable";
 import API_BASE_URL from "../../../../config";
-import { MonitoringStepSyncButton } from "../MonitoringStepLayout";
 function getAuthHeaders() {
   return {};
 }
@@ -189,8 +188,7 @@ export default function NDDStep({
     label: "Registrar / fournisseur",
     render: domaine => domaine.registrar || domaine.registrarName || domaine.provider || "-"
   }];
-  const isSyncing = syncingAll || syncingKey != null;
-  return <InfrastructureEquipmentTable title="Domain names" moduleKey="NDD" equipments={domaines} columns={columns} onOpenComments={onOpenComments} onCreateTicket={onTicketCreatedForEquipment} clientId={clientId} onSyncCheckMK={handleSyncCheckMK} commentCounts={commentCounts} ticketCounts={ticketCounts} alertCounts={alertCounts} highlightedEquipmentKey={highlightedEquipmentKey} syncingEquipmentKey={syncingKey} forceSyncButton={true} showSearch={false} headerActions={<MonitoringStepSyncButton onClick={handleSyncAll} disabled={domaines.length === 0} loading={syncingAll} label="Sync OVH" loadingLabel="Synchronizing..." title="Synchronize all domains from OVH" />} externalLink={{
+  return <InfrastructureEquipmentTable title="Domain names" moduleKey="NDD" equipments={domaines} columns={columns} onOpenComments={onOpenComments} onCreateTicket={onTicketCreatedForEquipment} clientId={clientId} commentCounts={commentCounts} ticketCounts={ticketCounts} alertCounts={alertCounts} highlightedEquipmentKey={highlightedEquipmentKey} showSearch={false} externalLink={{
     url: "https://www.ovh.com/manager/#/web/domain",
     title: "Open l'espace domaines OVH"
   }} />;

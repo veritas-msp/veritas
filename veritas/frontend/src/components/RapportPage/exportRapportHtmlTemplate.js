@@ -14,6 +14,10 @@ export const REPORT_META = {
   services: {
     label: "Rapport services",
     shortLabel: "Services"
+  },
+  support: {
+    label: "Rapport support",
+    shortLabel: "Support"
   }
 };
 function escapeHtml(value) {

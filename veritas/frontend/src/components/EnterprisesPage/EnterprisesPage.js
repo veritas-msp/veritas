@@ -17,6 +17,8 @@ import { getEnterprisesPageCopy } from "./enterprisesPageI18n";
 import { normalizeCompanyStatusKey } from "./enterpriseFormUtils";
 import { getEquipmentCountValue, localizeEquipmentCountColumns } from "../../i18n/equipmentFamilyLabels";
 import { getLocalizedModuleLabel } from "../../i18n/contractModuleLabels";
+import { getClientOnboardingInfo } from "../../utils/clientOnboarding";
+import { interpolate } from "../../i18n/translate";
 import { buildEmptyModulesMap, getAllActiveModuleKeys } from "../../constants/contractModules";
 import { formatClientTabLabel, getClientNumber, getClientNameWithoutCode } from "../../utils/clientDisplay";
 import { fetchEquipmentFamilies } from "../../api/equipmentFamilies";
@@ -764,10 +766,21 @@ export default function EnterprisesPage({
                                 </td>;
                             }
                             if (columnId === "company") {
+                              const onboarding = getClientOnboardingInfo(client);
                               return <td key={columnId} className={styles.colCompany}>
-                                  <SmartTooltip content={formatClientTabLabel(client)} as="span" className={styles.clientNameText}>
-                                    {getClientNameWithoutCode(client) || client.name || "-"}
-                                  </SmartTooltip>
+                                  <div className={styles.companyCell}>
+                                    <SmartTooltip content={formatClientTabLabel(client)} as="span" className={styles.clientNameText}>
+                                      {getClientNameWithoutCode(client) || client.name || "-"}
+                                    </SmartTooltip>
+                                    {onboarding ? <SmartTooltip content={onboarding.ageDays < 1 ? interpolate(copy.onboardingTooltipToday, {
+                                  remaining: onboarding.remainingDays
+                                }) : interpolate(copy.onboardingTooltip, {
+                                  days: onboarding.ageDays,
+                                  remaining: onboarding.remainingDays
+                                })} as="span" className={styles.onboardingBadge}>
+                                        {copy.onboardingBadge}
+                                      </SmartTooltip> : null}
+                                  </div>
                                 </td>;
                             }
                             if (columnId === "company_status") {

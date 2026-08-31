@@ -107,7 +107,8 @@ export default function SupervisionAlertHistory({
   onStatusFilter,
   onReopened,
   localeTag,
-  copy
+  copy,
+  showDomain = true
 }) {
   const [expandedId, setExpandedId] = useState(null);
   const [eventsByAlert, setEventsByAlert] = useState({});
@@ -218,7 +219,7 @@ export default function SupervisionAlertHistory({
     }
   };
 
-  const domainChips = [{
+  const domainChips = showDomain ? [{
     id: "all",
     label: copy.domains.all
   }, {
@@ -233,7 +234,7 @@ export default function SupervisionAlertHistory({
   }, {
     id: "rmm",
     label: copy.domains.rmm
-  }];
+  }] : [];
 
   const statusChips = [{
     id: "closed",
@@ -253,12 +254,14 @@ export default function SupervisionAlertHistory({
           <input type="search" value={searchQuery} onChange={e => onSearchChange?.(e.target.value)} placeholder={copy.searchPlaceholder} />
         </label>
         <div className={styles.filtersBar} role="group" aria-label={copy.filterAria || "Filters"}>
-          <div className={styles.filterGroup}>
-            {domainChips.map(chip => <button key={chip.id} type="button" className={`${styles.chip} ${domainFilter === chip.id ? styles.chipActive : ""}`} onClick={() => onDomainFilter?.(chip.id)}>
+          {domainChips.length ? <>
+            <div className={styles.filterGroup}>
+              {domainChips.map(chip => <button key={chip.id} type="button" className={`${styles.chip} ${domainFilter === chip.id ? styles.chipActive : ""}`} onClick={() => onDomainFilter?.(chip.id)}>
                 {chip.label}
               </button>)}
-          </div>
-          <span className={styles.filterSep} aria-hidden />
+            </div>
+            <span className={styles.filterSep} aria-hidden />
+          </> : null}
           <div className={styles.filterGroup}>
             {statusChips.map(chip => <button key={chip.id} type="button" className={`${styles.chip} ${statusFilter === chip.id ? styles.chipActive : ""}`} onClick={() => onStatusFilter?.(statusFilter === chip.id ? "all" : chip.id)}>
                 {chip.label}
@@ -267,12 +270,14 @@ export default function SupervisionAlertHistory({
         </div>
       </div>
 
-      {loading ? <div className={styles.loading}>{copy.loading}</div> : alerts.length === 0 ? <MspEmptyState icon="mdi:history" title={copy.emptyTitle} text={copy.emptyText} /> : <div className={styles.tableWrap}>
+      {loading ? <div className={styles.loading}>{copy.loading}</div> : alerts.length === 0 ? <div className={styles.emptyWrap}>
+          <MspEmptyState className={styles.emptyStateFill} icon="mdi:history" title={copy.emptyTitle} text={copy.emptyText} />
+        </div> : <div className={styles.tableWrap}>
           <table className={styles.table}>
             <colgroup>
               <col className={styles.colAlert} />
               <col className={styles.colCompany} />
-              <col className={styles.colDomain} />
+              {showDomain ? <col className={styles.colDomain} /> : null}
               <col className={styles.colStatus} />
               <col className={styles.colWhen} />
               <col className={styles.colActions} />
@@ -281,7 +286,7 @@ export default function SupervisionAlertHistory({
               <tr>
                 <SortableHeader column="alert" label={columns.alert || "Alerte"} sortKey={sortKey} sortDir={sortDir} onSort={handleSort} sortAria={sortAriaFor(columns.alert || "Alerte")} />
                 <SortableHeader column="company" label={columns.company || "Entreprise"} sortKey={sortKey} sortDir={sortDir} onSort={handleSort} sortAria={sortAriaFor(columns.company || "Entreprise")} />
-                <SortableHeader column="domain" label={columns.domain || "Domaine"} sortKey={sortKey} sortDir={sortDir} onSort={handleSort} sortAria={sortAriaFor(columns.domain || "Domaine")} />
+                {showDomain ? <SortableHeader column="domain" label={columns.domain || "Domaine"} sortKey={sortKey} sortDir={sortDir} onSort={handleSort} sortAria={sortAriaFor(columns.domain || "Domaine")} /> : null}
                 <SortableHeader column="status" label={columns.status || "Statut"} sortKey={sortKey} sortDir={sortDir} onSort={handleSort} sortAria={sortAriaFor(columns.status || "Statut")} />
                 <SortableHeader column="when" label={columns.when || "Date"} sortKey={sortKey} sortDir={sortDir} onSort={handleSort} sortAria={sortAriaFor(columns.when || "Date")} />
                 <th className={styles.actionsCol}>{columns.actions || "Actions"}</th>
@@ -291,7 +296,7 @@ export default function SupervisionAlertHistory({
               {sortedAlerts.map(alert => {
               const open = expandedId === alert.id;
               const events = eventsByAlert[alert.id] || [];
-              const domainLabel = copy.domains?.[alert.domain] || alert.domain;
+              const domainLabel = showDomain ? copy.domains?.[alert.domain] || alert.domain : null;
               const expandHint = open ? hints.collapse || copy.collapse || "Replier la timeline" : hints.expand || copy.expand || "Voir la timeline";
               const reopenHint = hints.reopen || copy.reopen;
               const display = historyAlertDisplay(alert);
@@ -305,14 +310,14 @@ export default function SupervisionAlertHistory({
                         </div>
                       </td>
                       <td className={styles.companyCell}>{alert.clientName || "—"}</td>
-                      <td className={styles.domainCol}>
+                      {showDomain ? <td className={styles.domainCol}>
                         <span className={styles.domainCell}>
                           <span className={styles.domainIcon} aria-hidden>
                             <Icon icon={DOMAIN_ICONS[alert.domain] || "mdi:alert"} />
                           </span>
                           {domainLabel}
                         </span>
-                      </td>
+                      </td> : null}
                       <td>
                         <span className={`${styles.statusBadge} ${statusBadgeClass(alert.status)}`}>
                           {copy.status[alert.status] || alert.status}
@@ -329,7 +334,7 @@ export default function SupervisionAlertHistory({
                       </td>
                     </tr>
                     {open ? <tr className={styles.detailRow}>
-                        <td colSpan={6}>
+                        <td colSpan={showDomain ? 6 : 5}>
                           <div className={styles.detail}>
                             <div className={styles.detailHeader}>
                               <span className={styles.timelineTitle}>{copy.timelineTitle || "Timeline"}</span>

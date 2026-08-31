@@ -120,6 +120,7 @@ export default function InfrastructureEquipmentTable({
     if (syncStatus === "critical") return `${base} ${styles.monitoringBtnCritical}`;
     return `${base} ${styles.monitoringBtnUnsynced}`;
   };
+
   const countLabel = safeEquipments.length === 0 ? emptyMessage || "No equipment found for this module." : totalCountLabel || `${safeEquipments.length} equipment item(s) in total`;
   return <section className={styles.infraTableSection}>
       <MonitoringStepHeader title={title} countLabel={countLabel} showSearch={showSearch && safeEquipments.length > 0} searchValue={search} onSearchChange={setSearch} onSearchClear={() => setSearch("")} headerActions={headerActions} />
@@ -127,14 +128,14 @@ export default function InfrastructureEquipmentTable({
       {safeEquipments.length === 0 ? <div className={styles.infraTableEmpty}>
           {emptyMessage || "No equipment recorded for this client on this module."}
         </div> : <div className={equipmentStyles.hardwarePageEmbedded}>
-          <div className={equipmentStyles.tableWrapper}>
-            <table className={equipmentStyles.equipmentTable}>
+          <div className={equipmentStyles.tableWrapperEmbedded}>
+            <table className={equipmentStyles.equipmentTableEmbedded}>
               <thead>
                 <tr>
                   {displayColumns.map(col => <th key={col.id || col.accessor}>
                       <span className={equipmentStyles.thContent}>{col.label}</span>
                     </th>)}
-                  {showActions && <th>
+                  {showActions && <th className={styles.infraTableActions}>
                       <span className={equipmentStyles.thContent}>Action</span>
                     </th>}
                 </tr>
@@ -144,20 +145,18 @@ export default function InfrastructureEquipmentTable({
               const nameForKey = item.nom || item.name || item.logiciel || `#${index}`;
               const equipmentKey = item.commentKey || item.id || item.uuid || item.glpi_id || `${moduleKey || "module"}:${nameForKey}`;
               const commentCount = commentCounts && commentCounts[equipmentKey] || 0;
-              const ticketCount = ticketCounts && ticketCounts[equipmentKey] || 0;
               const isHighlighted = highlightedEquipmentKey != null && String(highlightedEquipmentKey) === String(equipmentKey);
               const isMappedForMonitoring = isEquipmentMappedForCheckMK(item);
               const statusKey = String(item?.id ?? equipmentKey);
               const syncStatus = monitoringSyncStatus[statusKey];
               const hasMonitoringAction = typeof onOpenCheckMKDetail === "function";
-              const hasSyncAction = typeof onSyncCheckMK === "function" && (isMappedForMonitoring || forceSyncButton);
               const hasCommentsAction = typeof onOpenComments === "function";
               const hasTicketAction = typeof onCreateTicket === "function" && !!clientId;
               const hasExtraActions = typeof renderExtraActions === "function";
               const hasExternalLink = !!externalLink?.url;
               const hasEditAction = typeof onEditEquipment === "function";
-              const hasMainActions = hasMonitoringAction || hasSyncAction || hasCommentsAction || hasTicketAction || hasExtraActions || hasExternalLink;
-              return <tr key={equipmentKey} className={`${equipmentStyles.equipmentRow} ${isHighlighted ? styles.infraTableRowHighlight : ""}`}>
+              const hasMainActions = hasMonitoringAction || hasCommentsAction || hasTicketAction || hasExtraActions || hasExternalLink;
+              return <tr key={equipmentKey} className={`${equipmentStyles.equipmentRow} ${equipmentStyles.equipmentRowEmbedded} ${isHighlighted ? styles.infraTableRowHighlight : ""}`} data-report-highlight={isHighlighted ? "true" : undefined}>
                       {displayColumns.map(col => {
                   const value = typeof col.render === "function" ? col.render(item, {
                     moduleKey,
@@ -167,15 +166,9 @@ export default function InfrastructureEquipmentTable({
                             {value ?? "-"}
                           </td>;
                 })}
-                      {showActions && <td onClick={e => e.stopPropagation()}>
+                      {showActions && <td className={styles.infraTableActions} onClick={e => e.stopPropagation()}>
                         <div className={equipmentStyles.mappingActions}>
                           <div className={equipmentStyles.mappingActionsGroup}>
-                            {hasSyncAction && <button type="button" className={equipmentStyles.mappingActionButton} title={syncingEquipmentKey === equipmentKey ? "Synchronization in progress..." : "Synchronize data"} disabled={syncingEquipmentKey === equipmentKey} onClick={() => onSyncCheckMK(item, {
-                        moduleKey,
-                        equipmentKey
-                      })}>
-                                <Icon icon="mdi:refresh" width={16} height={16} />
-                              </button>}
                             {hasMonitoringAction && <button type="button" className={getMonitoringButtonClass(isMappedForMonitoring, syncStatus)} title={isMappedForMonitoring ? (syncStatus ? "Voir le détail supervision" : "Synchronisation en cours ou à lancer — ouvrir le détail") : "Non mappé à une supervision"} disabled={!isMappedForMonitoring} onClick={() => onOpenCheckMKDetail(item, {
                         moduleKey,
                         equipmentKey,
@@ -184,20 +177,18 @@ export default function InfrastructureEquipmentTable({
                                 <Icon icon="simple-icons:checkmk" width={16} height={16} />
                               </button>}
                             {hasCommentsAction && <span className={styles.infraActionBadgeWrap}>
-                                <button type="button" className={equipmentStyles.mappingActionButton} title="Comments" onClick={() => onOpenComments(item, {
-                          moduleKey,
-                          equipmentKey
-                        })}>
+                                <button type="button" className={`${equipmentStyles.mappingActionButton} ${isHighlighted ? styles.monitoringBtnActiveComment : ""}`.trim()} title={commentCount > 0 ? "Voir / ajouter une note au rapport" : "Commenter dans le rapport"} onClick={event => {
+                          event.preventDefault();
+                          event.stopPropagation();
+                          onOpenComments(item, {
+                            moduleKey,
+                            equipmentKey
+                          });
+                        }}>
                                   <Icon icon="mdi:comment-text-outline" width={16} height={16} />
                                 </button>
                                 {commentCount > 0 && <span className={styles.infraCommentBadge}>
                                     {commentCount}
-                                  </span>}
-                              </span>}
-                            {hasTicketAction && <span className={styles.infraActionBadgeWrap}>
-                                
-                                {ticketCount > 0 && <span className={styles.infraTicketBadge}>
-                                    {ticketCount}
                                   </span>}
                               </span>}
                             {hasExtraActions ? renderExtraActions(item, {

@@ -84,3 +84,22 @@
 .switchOn .state {
   color: var(--msp-accent-dark, #1a3d75);
 }
+
+.switchCompact {
+  flex-direction: row;
+  gap: 0.35rem;
+}
+
+.switchCompact .track {
+  width: 2.1rem;
+  height: 1.2rem;
+}
+
+.switchCompact .thumb {
+  width: 0.95rem;
+  height: 0.95rem;
+}
+
+.switchCompact.switchOn .thumb {
+  transform: translateX(0.9rem);
+}

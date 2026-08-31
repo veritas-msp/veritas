@@ -20,6 +20,7 @@ import { useCommonCopy } from "../../hooks/useCommonCopy";
 import { formatPageInfo } from "../../i18n/commonI18n";
 import { interpolate } from "../../i18n/translate";
 import { getBuiltinTicketViews, DEFAULT_TICKET_VIEW_ID, canUserEditTicketView } from "../../utils/ticketViewConstants";
+import { usePersistedTicketViewId } from "../../utils/ticketLastViewStorage";
 import TicketViewModal from "./TicketViewModal";
 import TicketColumnsModal from "./TicketColumnsModal";
 import { buildTicketSubjectTooltip } from "./ticketSubjectTooltip";
@@ -33,6 +34,7 @@ import TicketConfirmModal from "./TicketConfirmModal";
 import playModeStyles from "./ticketPlayMode.module.css";
 import { isTicketPlayModeEnabled, navigateToRandomTicket, setTicketPlayModeEnabled } from "./ticketPlayModeUtils";
 import { getTicketSlaDisplay } from "../../utils/ticketSlaUtils";
+import ClientOnboardingBadge from "../Misc/ClientOnboardingBadge/ClientOnboardingBadge";
 import { TICKET_SATISFACTION_VIEWS, TICKET_SATISFACTION_VIEW_IDS, isTicketSatisfactionViewId, resolveTicketSatisfactionScope, localizeTicketSatisfactionViews } from "../../utils/ticketSatisfactionViewConstants";
 import TicketSatisfactionsPanel from "./TicketSatisfactionsPanel";
 import { getTicketPageCopy } from "./ticketPageI18n";
@@ -40,6 +42,7 @@ import MspPageHero from "../Misc/MspPageHero/MspPageHero";
 import mspStyles from "../CybersecuritePage/CybersecuritePage.module.css";
 import { createTrackedAbortController } from "../../utils/pageLoadAbort";
 const VIEW_SECTION_KEYS = ["public", "assigned", "private"];
+const PAGE_SCOPE = "ticket";
 const VIEWS_PANE_COLLAPSED_KEY = "veritas_ticket_views_collapsed";
 function readViewsPaneCollapsed() {
   try {
@@ -204,7 +207,8 @@ export default function TicketPage({
   const [pageSize, setPageSize] = useDefaultPageSize();
   const [ticketViews, setTicketViews] = useState([]);
   const [viewsLoading, setViewsLoading] = useState(false);
-  const [activeViewId, setActiveViewId] = useState(DEFAULT_TICKET_VIEW_ID);
+  const [viewsLoaded, setViewsLoaded] = useState(false);
+  const [activeViewId, setActiveViewId] = usePersistedTicketViewId(PAGE_SCOPE, user?.id, DEFAULT_TICKET_VIEW_ID);
   const [viewModalOpen, setViewModalOpen] = useState(false);
   const [editingView, setEditingView] = useState(null);
   const [viewsReorderMode, setViewsReorderMode] = useState(false);
@@ -290,6 +294,7 @@ export default function TicketPage({
     return found || builtinTicketViews.find(view => view.id === DEFAULT_TICKET_VIEW_ID) || builtinTicketViews[builtinTicketViews.length - 1];
   }, [ticketViews, activeViewId, builtinTicketViews, visibleSatisfactionViews]);
   useEffect(() => {
+    if (!viewsLoaded) return;
     if (builtinTicketViews.some(view => String(view.id) === String(activeViewId))) return;
     if (isTicketSatisfactionViewId(activeViewId)) return;
     if (String(activeViewId) === "__all__") {
@@ -299,7 +304,7 @@ export default function TicketPage({
     if (!ticketViews.some(view => String(view.id) === String(activeViewId))) {
       setActiveViewId(DEFAULT_TICKET_VIEW_ID);
     }
-  }, [ticketViews, activeViewId, builtinTicketViews]);
+  }, [ticketViews, activeViewId, builtinTicketViews, viewsLoaded]);
   useEffect(() => {
     if (!canAllCustomerFeedback && activeViewId === TICKET_SATISFACTION_VIEW_IDS.ALL) {
       setActiveViewId(canCustomerFeedback ? TICKET_SATISFACTION_VIEW_IDS.MINE : DEFAULT_TICKET_VIEW_ID);
@@ -335,7 +340,10 @@ export default function TicketPage({
       toast.error(error.message || pageCopy.toasts.loadViews);
       setTicketViews([]);
     } finally {
-      if (!signal?.aborted) setViewsLoading(false);
+      if (!signal?.aborted) {
+        setViewsLoading(false);
+        setViewsLoaded(true);
+      }
     }
   };
   const loadSatisfactionCounts = useCallback(async (signal) => {
@@ -1307,14 +1315,19 @@ export default function TicketPage({
                           );
                         }
                         if (columnId === "client") {
+                          const clientRecord = clients.find(c => String(c.id) === String(resolveClientId(t))) || null;
+                          const clientLabel = resolveClientLabel(t);
                           return (
                             <td key={columnId}>
-                              {resolveClientId(t) ? <button type="button" className={styles.linkCellBtn} onClick={e => {
+                              <span className={styles.clientCell}>
+                                {resolveClientId(t) ? <button type="button" className={styles.linkCellBtn} onClick={e => {
                                 e.stopPropagation();
-                                onNavigate?.("ContratDetail", { clientId: resolveClientId(t), name: resolveClientLabel(t) });
+                                onNavigate?.("ContratDetail", { clientId: resolveClientId(t), name: clientLabel });
                               }}>
-                                {resolveClientLabel(t)}
-                              </button> : <span>{resolveClientLabel(t)}</span>}
+                                {clientLabel}
+                              </button> : <span>{clientLabel}</span>}
+                                <ClientOnboardingBadge client={clientRecord} label={pageCopy.onboardingBadge} />
+                              </span>
                             </td>
                           );
                         }

@@ -15,20 +15,20 @@ export default function PeriodeStep({
 
   return (
     <div>
-      <p style={{ margin: "0 0 1rem", color: "#6b7280", fontSize: "0.9rem" }}>
-        Ajustez la période d’analyse puis synchronisez les données si besoin.
+      <p className={styles.periodIntro}>
+        Ajustez si besoin la fenêtre d’analyse. Les tickets, alertes et disponibilités du rapport seront calculés sur cette période.
       </p>
-      <div
-        style={{
-          display: "grid",
-          gap: "1rem",
-          gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
-          maxWidth: 520
-        }}
-      >
-        <label style={{ display: "flex", flexDirection: "column", gap: 6, fontSize: "0.85rem", fontWeight: 600 }}>
+      <div className={styles.periodCallout}>
+        <Icon icon="mdi:comment-alert-outline" className={styles.periodCalloutIcon} aria-hidden />
+        <span>
+          Sur chaque module suivant, commentez les écarts de santé et créez un ticket support pour les actions à mener. Ces références apparaîtront dans la synthèse client.
+        </span>
+      </div>
+      <div className={styles.periodGrid}>
+        <label className={styles.periodField}>
           Date de début
           <input
+            className={styles.periodInput}
             type="date"
             value={startDate}
             max={endDate || undefined}
@@ -38,16 +38,12 @@ export default function PeriodeStep({
                 reportEndDate: endDate
               })
             }
-            style={{
-              padding: "0.5rem 0.6rem",
-              borderRadius: 8,
-              border: "1px solid var(--border-primary, #e5e7eb)"
-            }}
           />
         </label>
-        <label style={{ display: "flex", flexDirection: "column", gap: 6, fontSize: "0.85rem", fontWeight: 600 }}>
+        <label className={styles.periodField}>
           Date de fin
           <input
+            className={styles.periodInput}
             type="date"
             value={endDate}
             min={startDate || undefined}
@@ -57,19 +53,13 @@ export default function PeriodeStep({
                 reportEndDate: e.target.value
               })
             }
-            style={{
-              padding: "0.5rem 0.6rem",
-              borderRadius: 8,
-              border: "1px solid var(--border-primary, #e5e7eb)"
-            }}
           />
         </label>
       </div>
-
-      <div style={{ marginTop: "1.25rem", display: "flex", flexWrap: "wrap", gap: "0.75rem", alignItems: "center" }}>
+      <div className={styles.periodActions}>
         <button
           type="button"
-          className={styles.commentPublishButton}
+          className={styles.periodSyncBtn}
           onClick={onSyncMonitoring}
           disabled={syncing || !startDate || !endDate}
           title="Synchroniser CheckMK / Office 365 pour la période"
@@ -78,9 +68,10 @@ export default function PeriodeStep({
             icon={syncing ? "mdi:loading" : "mdi:cloud-sync-outline"}
             width={18}
             height={18}
-            style={{ animation: syncing ? "spin 1s linear infinite" : "none", marginRight: 6 }}
+            className={syncing ? styles.periodSpin : undefined}
+            aria-hidden
           />
-          {syncing ? "Synchronisation…" : "Synchroniser"}
+          {syncing ? "Synchronisation…" : "Synchroniser les données"}
         </button>
       </div>
     </div>

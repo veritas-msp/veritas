@@ -203,7 +203,8 @@ const BACKUP_MODAL_COPY = {
       server: "Serveur",
       type: "Type",
       schedule: "Planification",
-      retention: "Rétention"
+      retention: "Rétention",
+      checkmk: "CheckMK"
     },
     empty: {
       noInstances: "Aucune instance de sauvegarde",
@@ -224,7 +225,10 @@ const BACKUP_MODAL_COPY = {
     actions: {
       edit: "Modifier",
       delete: "Supprimer",
-      openJobs: "Jobs"
+      openJobs: "Jobs",
+      mapCheckmk: "Mapper vers CheckMK",
+      editCheckmk: "Modifier le mapping CheckMK",
+      mapCheckmkDisabled: "Enregistrez le job avant de le mapper"
     },
     deleteFallback: {
       instance: "cette instance",
@@ -404,7 +408,8 @@ const BACKUP_MODAL_COPY = {
       server: "Server",
       type: "Type",
       schedule: "Schedule",
-      retention: "Retention"
+      retention: "Retention",
+      checkmk: "CheckMK"
     },
     empty: {
       noInstances: "No backup instance",
@@ -425,7 +430,10 @@ const BACKUP_MODAL_COPY = {
     actions: {
       edit: "Edit",
       delete: "Delete",
-      openJobs: "Jobs"
+      openJobs: "Jobs",
+      mapCheckmk: "Map to CheckMK",
+      editCheckmk: "Edit CheckMK mapping",
+      mapCheckmkDisabled: "Save the job before mapping it"
     },
     deleteFallback: {
       instance: "this instance",
@@ -605,7 +613,8 @@ const BACKUP_MODAL_COPY = {
       server: "Server",
       type: "Typ",
       schedule: "Zeitplan",
-      retention: "Aufbewahrung"
+      retention: "Aufbewahrung",
+      checkmk: "CheckMK"
     },
     empty: {
       noInstances: "Keine Backup-Instanz",
@@ -626,7 +635,10 @@ const BACKUP_MODAL_COPY = {
     actions: {
       edit: "Bearbeiten",
       delete: "Löschen",
-      openJobs: "Jobs"
+      openJobs: "Jobs",
+      mapCheckmk: "Mit CheckMK verknüpfen",
+      editCheckmk: "CheckMK-Zuordnung bearbeiten",
+      mapCheckmkDisabled: "Job zuerst speichern, dann zuordnen"
     },
     deleteFallback: {
       instance: "diese Instanz",
@@ -806,7 +818,8 @@ const BACKUP_MODAL_COPY = {
       server: "Server",
       type: "Tipo",
       schedule: "Pianificazione",
-      retention: "Retention"
+      retention: "Retention",
+      checkmk: "CheckMK"
     },
     empty: {
       noInstances: "Nessuna istanza di backup",
@@ -827,7 +840,10 @@ const BACKUP_MODAL_COPY = {
     actions: {
       edit: "Modifica",
       delete: "Elimina",
-      openJobs: "Job"
+      openJobs: "Job",
+      mapCheckmk: "Associa a CheckMK",
+      editCheckmk: "Modifica mapping CheckMK",
+      mapCheckmkDisabled: "Salva il job prima di associarlo"
     },
     deleteFallback: {
       instance: "questa istanza",
@@ -1007,7 +1023,8 @@ const BACKUP_MODAL_COPY = {
       server: "Servidor",
       type: "Tipo",
       schedule: "Planificación",
-      retention: "Retención"
+      retention: "Retención",
+      checkmk: "CheckMK"
     },
     empty: {
       noInstances: "Ninguna instancia de copia",
@@ -1028,7 +1045,10 @@ const BACKUP_MODAL_COPY = {
     actions: {
       edit: "Editar",
       delete: "Eliminar",
-      openJobs: "Trabajos"
+      openJobs: "Trabajos",
+      mapCheckmk: "Asignar a CheckMK",
+      editCheckmk: "Editar mapping CheckMK",
+      mapCheckmkDisabled: "Guarde el trabajo antes de mapearlo"
     },
     deleteFallback: {
       instance: "esta instancia",

@@ -36,6 +36,7 @@ const TICKETS_COPY = {
   fr: {
     eyebrow: "Helpdesk",
     pageTitle: "Support",
+    onboardingBadge: "Onboarding",
     loadingTickets: "Chargement des tickets…",
     ticketCount: "{count} ticket",
     ticketCountPlural: "{count} tickets",
@@ -306,6 +307,7 @@ const TICKETS_COPY = {
   en: {
     eyebrow: "Helpdesk",
     pageTitle: "Support",
+    onboardingBadge: "Onboarding",
     loadingTickets: "Loading tickets…",
     ticketCount: "{count} ticket",
     ticketCountPlural: "{count} tickets",
@@ -576,6 +578,7 @@ const TICKETS_COPY = {
   de: {
     eyebrow: "Helpdesk",
     pageTitle: "Support",
+    onboardingBadge: "Onboarding",
     loadingTickets: "Tickets werden geladen…",
     ticketCount: "{count} Ticket",
     ticketCountPlural: "{count} Tickets",
@@ -846,6 +849,7 @@ const TICKETS_COPY = {
   it: {
     eyebrow: "Helpdesk",
     pageTitle: "Supporto",
+    onboardingBadge: "Onboarding",
     loadingTickets: "Caricamento ticket…",
     ticketCount: "{count} ticket",
     ticketCountPlural: "{count} ticket",
@@ -1116,6 +1120,7 @@ const TICKETS_COPY = {
   es: {
     eyebrow: "Helpdesk",
     pageTitle: "Soporte",
+    onboardingBadge: "Onboarding",
     loadingTickets: "Cargando tickets…",
     ticketCount: "{count} ticket",
     ticketCountPlural: "{count} tickets",

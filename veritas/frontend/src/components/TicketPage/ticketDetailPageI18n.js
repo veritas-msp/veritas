@@ -181,7 +181,8 @@ const DETAIL_COPY = {
       reminderScheduleAria: "Programmer une alerte planning",
       proBadge: "Pro",
       familySupport: "Support",
-      familyServices: "Services"
+      familyServices: "Services",
+      onboardingBadge: "Onboarding"
     },
     empty: {
       noTicketSelected: "Aucun ticket sélectionné.",
@@ -251,10 +252,53 @@ const DETAIL_COPY = {
       toolBold: "Gras",
       toolList: "Liste",
       toolLink: "Lien",
+      linkModalTitle: "Insérer un lien",
+      linkModalHint: "Collez l'adresse de la page à lier à votre texte.",
+      linkModalUrlLabel: "Adresse du lien",
+      linkModalUrlPlaceholder: "https://",
+      linkModalTextLabel: "Texte affiché",
+      linkModalTextPlaceholder: "Texte du lien (optionnel)",
+      linkModalInsert: "Insérer",
+      linkModalError: "URL invalide. Utilisez un lien web complet (https://…).",
       toolEmoji: "Emoji",
+      emojiSearch: "Rechercher un emoji…",
+      emojiEmpty: "Aucun emoji trouvé",
+      emojiRecent: "Récents",
+      emojiSmileys: "Smileys",
+      emojiGestures: "Gestes",
+      emojiPeople: "Personnes",
+      emojiAnimals: "Animaux & nature",
+      emojiFood: "Nourriture",
+      emojiTravel: "Voyages",
+      emojiObjects: "Objets",
+      emojiSymbols: "Symboles",
       suggestAi: "Suggérer",
       suggestAiTitle: "Suggérer une réponse avec l'IA",
       suggestAiLoading: "Suggestion…",
+      correctAiTitle: "Enrichir et corriger le texte",
+      correctAiLoading: "Enrichissement…",
+      correctAiMenuTitle: "Enrichir le texte",
+      correctAiGroup_improve: "Améliorer",
+      correctAiGroup_transform: "Transformer",
+      correctAiGroup_structure: "Structurer",
+      correctAiMode_enrich: "Enrichir & corriger",
+      correctAiModeHint_enrich: "Style, clarté, formules de politesse",
+      correctAiMode_professional: "Plus professionnel",
+      correctAiModeHint_professional: "Registre MSP plus formel et précis",
+      correctAiMode_friendly: "Plus chaleureux",
+      correctAiModeHint_friendly: "Empathique, rassurant, naturel",
+      correctAiMode_simplify: "Simplifier",
+      correctAiModeHint_simplify: "Langage clair, sans jargon",
+      correctAiMode_shorten: "Raccourcir",
+      correctAiModeHint_shorten: "Plus concis, sans perdre les faits",
+      correctAiMode_expand: "Développer",
+      correctAiModeHint_expand: "Compléter les idées déjà présentes",
+      correctAiMode_rephrase: "Reformuler",
+      correctAiModeHint_rephrase: "Même sens, autre formulation",
+      correctAiMode_bullets: "Mettre en liste",
+      correctAiModeHint_bullets: "Puces claires et scannables",
+      correctAiMode_steps: "Plan d'action",
+      correctAiModeHint_steps: "Étapes numérotées pour le client",
       addFiles: "Ajouter des fichiers",
       modePrivateTitle: "Réponse privée (visible uniquement en interne)",
       modePublicTitle: "Réponse publique (visible par le demandeur)",
@@ -516,7 +560,11 @@ const DETAIL_COPY = {
       reminderDeleted: "Alerte supprimée",
       reminderDeleteError: "Impossible de supprimer l'alerte",
       aiSuggestOk: "Suggestion IA appliquée",
-      aiSuggestError: "Impossible de suggérer une réponse"
+      aiSuggestError: "Impossible de suggérer une réponse",
+      aiCorrectEmpty: "Saisissez un texte à enrichir",
+      aiCorrectOk: "Texte enrichi et corrigé",
+      aiCorrectUnchanged: "Le texte est déjà optimal",
+      aiCorrectError: "Impossible d'enrichir le texte"
     },
     playMode: {
       banner: "Mode aléatoire",
@@ -694,7 +742,8 @@ const DETAIL_COPY = {
       reminderScheduleAria: "Schedule a planning alert",
       proBadge: "Pro",
       familySupport: "Support",
-      familyServices: "Services"
+      familyServices: "Services",
+      onboardingBadge: "Onboarding"
     },
     empty: {
       noTicketSelected: "No ticket selected.",
@@ -764,10 +813,53 @@ const DETAIL_COPY = {
       toolBold: "Bold",
       toolList: "List",
       toolLink: "Link",
+      linkModalTitle: "Insert a link",
+      linkModalHint: "Paste the page address to link from your text.",
+      linkModalUrlLabel: "Link address",
+      linkModalUrlPlaceholder: "https://",
+      linkModalTextLabel: "Displayed text",
+      linkModalTextPlaceholder: "Link text (optional)",
+      linkModalInsert: "Insert",
+      linkModalError: "Invalid URL. Use a full web link (https://…).",
       toolEmoji: "Emoji",
+      emojiSearch: "Search emoji…",
+      emojiEmpty: "No emoji found",
+      emojiRecent: "Recent",
+      emojiSmileys: "Smileys",
+      emojiGestures: "Gestures",
+      emojiPeople: "People",
+      emojiAnimals: "Animals & nature",
+      emojiFood: "Food",
+      emojiTravel: "Travel",
+      emojiObjects: "Objects",
+      emojiSymbols: "Symbols",
       suggestAi: "Suggest",
       suggestAiTitle: "Suggest a reply with AI",
       suggestAiLoading: "Suggesting…",
+      correctAiTitle: "Enrich and correct the text",
+      correctAiLoading: "Enriching…",
+      correctAiMenuTitle: "Enrich text",
+      correctAiGroup_improve: "Improve",
+      correctAiGroup_transform: "Transform",
+      correctAiGroup_structure: "Structure",
+      correctAiMode_enrich: "Enrich & correct",
+      correctAiModeHint_enrich: "Style, clarity, polite formulas",
+      correctAiMode_professional: "More professional",
+      correctAiModeHint_professional: "Formal, precise MSP register",
+      correctAiMode_friendly: "Warmer",
+      correctAiModeHint_friendly: "Empathetic, reassuring, natural",
+      correctAiMode_simplify: "Simplify",
+      correctAiModeHint_simplify: "Plain language, no jargon",
+      correctAiMode_shorten: "Shorten",
+      correctAiModeHint_shorten: "More concise, keep the facts",
+      correctAiMode_expand: "Expand",
+      correctAiModeHint_expand: "Develop ideas already present",
+      correctAiMode_rephrase: "Rephrase",
+      correctAiModeHint_rephrase: "Same meaning, different wording",
+      correctAiMode_bullets: "Turn into bullets",
+      correctAiModeHint_bullets: "Clear, scannable list",
+      correctAiMode_steps: "Action plan",
+      correctAiModeHint_steps: "Numbered steps for the customer",
       addFiles: "Add files",
       modePrivateTitle: "Private reply (internal only)",
       modePublicTitle: "Public reply (visible to requester)",
@@ -1029,7 +1121,11 @@ const DETAIL_COPY = {
       reminderDeleted: "Alert deleted",
       reminderDeleteError: "Unable to delete alert",
       aiSuggestOk: "AI suggestion applied",
-      aiSuggestError: "Unable to suggest a reply"
+      aiSuggestError: "Unable to suggest a reply",
+      aiCorrectEmpty: "Enter some text to enrich",
+      aiCorrectOk: "Text enriched and corrected",
+      aiCorrectUnchanged: "The text is already optimal",
+      aiCorrectError: "Unable to enrich the text"
     },
     playMode: {
       banner: "Random mode",
@@ -1173,6 +1269,54 @@ DETAIL_COPY.es.toasts.loadTicketError = "Error al cargar el ticket";
 DETAIL_COPY.es.toasts.updateError = "Error al actualizar";
 DETAIL_COPY.es.header.menuAddExclusion = "Añadir a exclusiones";
 DETAIL_COPY.es.header.menuSplit = "Dividir en otro ticket";
+DETAIL_COPY.de.reply.correctAiTitle = "Text anreichern und korrigieren";
+DETAIL_COPY.de.reply.emojiSearch = "Emoji suchen…";
+DETAIL_COPY.de.reply.emojiEmpty = "Kein Emoji gefunden";
+DETAIL_COPY.de.reply.emojiRecent = "Zuletzt verwendet";
+DETAIL_COPY.de.toasts.aiCorrectEmpty = "Geben Sie einen Text zum Anreichern ein";
+DETAIL_COPY.de.toasts.aiCorrectOk = "Text angereichert und korrigiert";
+DETAIL_COPY.de.toasts.aiCorrectUnchanged = "Der Text ist bereits optimal";
+DETAIL_COPY.de.toasts.aiCorrectError = "Text konnte nicht angereichert werden";
+DETAIL_COPY.it.reply.correctAiTitle = "Arricchisci e correggi il testo";
+DETAIL_COPY.it.reply.emojiSearch = "Cerca un emoji…";
+DETAIL_COPY.it.reply.emojiEmpty = "Nessun emoji trovato";
+DETAIL_COPY.it.reply.emojiRecent = "Recenti";
+DETAIL_COPY.it.toasts.aiCorrectEmpty = "Inserisci un testo da arricchire";
+DETAIL_COPY.it.toasts.aiCorrectOk = "Testo arricchito e corretto";
+DETAIL_COPY.it.toasts.aiCorrectUnchanged = "Il testo è già ottimale";
+DETAIL_COPY.it.toasts.aiCorrectError = "Impossibile arricchire il testo";
+DETAIL_COPY.es.reply.correctAiTitle = "Enriquecer y corregir el texto";
+DETAIL_COPY.es.reply.emojiSearch = "Buscar un emoji…";
+DETAIL_COPY.es.reply.emojiEmpty = "Ningún emoji encontrado";
+DETAIL_COPY.es.reply.emojiRecent = "Recientes";
+DETAIL_COPY.es.toasts.aiCorrectEmpty = "Escriba un texto para enriquecer";
+DETAIL_COPY.es.toasts.aiCorrectOk = "Texto enriquecido y corregido";
+DETAIL_COPY.es.toasts.aiCorrectUnchanged = "El texto ya es óptimo";
+DETAIL_COPY.es.toasts.aiCorrectError = "No se pudo enriquecer el texto";
+DETAIL_COPY.de.reply.linkModalTitle = "Link einfügen";
+DETAIL_COPY.de.reply.linkModalHint = "Fügen Sie die Seitenadresse ein, die mit dem Text verknüpft werden soll.";
+DETAIL_COPY.de.reply.linkModalUrlLabel = "Linkadresse";
+DETAIL_COPY.de.reply.linkModalUrlPlaceholder = "https://";
+DETAIL_COPY.de.reply.linkModalTextLabel = "Anzeigetext";
+DETAIL_COPY.de.reply.linkModalTextPlaceholder = "Linktext (optional)";
+DETAIL_COPY.de.reply.linkModalInsert = "Einfügen";
+DETAIL_COPY.de.reply.linkModalError = "Ungültige URL. Verwenden Sie einen vollständigen Weblink (https://…).";
+DETAIL_COPY.it.reply.linkModalTitle = "Inserisci un collegamento";
+DETAIL_COPY.it.reply.linkModalHint = "Incolla l’indirizzo della pagina da collegare al testo.";
+DETAIL_COPY.it.reply.linkModalUrlLabel = "Indirizzo del collegamento";
+DETAIL_COPY.it.reply.linkModalUrlPlaceholder = "https://";
+DETAIL_COPY.it.reply.linkModalTextLabel = "Testo visualizzato";
+DETAIL_COPY.it.reply.linkModalTextPlaceholder = "Testo del collegamento (facoltativo)";
+DETAIL_COPY.it.reply.linkModalInsert = "Inserisci";
+DETAIL_COPY.it.reply.linkModalError = "URL non valido. Usa un collegamento web completo (https://…).";
+DETAIL_COPY.es.reply.linkModalTitle = "Insertar un enlace";
+DETAIL_COPY.es.reply.linkModalHint = "Pegue la dirección de la página que desea vincular.";
+DETAIL_COPY.es.reply.linkModalUrlLabel = "Dirección del enlace";
+DETAIL_COPY.es.reply.linkModalUrlPlaceholder = "https://";
+DETAIL_COPY.es.reply.linkModalTextLabel = "Texto mostrado";
+DETAIL_COPY.es.reply.linkModalTextPlaceholder = "Texto del enlace (opcional)";
+DETAIL_COPY.es.reply.linkModalInsert = "Insertar";
+DETAIL_COPY.es.reply.linkModalError = "URL no válida. Use un enlace web completo (https://…).";
 function titleSuffix(title) {
   return title ? ` · ${title}` : "";
 }

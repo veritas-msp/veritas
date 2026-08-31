@@ -19,6 +19,7 @@ import TicketViewModal from "./TicketViewModal";
 import TicketColumnsModal from "./TicketColumnsModal";
 import { buildTicketSubjectTooltip } from "./ticketSubjectTooltip";
 import { getBuiltinTicketViews, DEFAULT_TICKET_VIEW_ID, canUserEditTicketView } from "../../utils/ticketViewConstants";
+import { usePersistedTicketViewId } from "../../utils/ticketLastViewStorage";
 import {
   DEFAULT_TICKET_SALES_TABLE_COLUMNS,
   TICKET_TABLE_COLUMN_SORT_KEYS,
@@ -257,7 +258,8 @@ export default function TicketSalesPage({
   const [viewMode, setViewMode] = useState("active");
   const [ticketViews, setTicketViews] = useState([]);
   const [viewsLoading, setViewsLoading] = useState(false);
-  const [activeViewId, setActiveViewId] = useState(DEFAULT_TICKET_VIEW_ID);
+  const [viewsLoaded, setViewsLoaded] = useState(false);
+  const [activeViewId, setActiveViewId] = usePersistedTicketViewId(SALES_PAGE_SCOPE, user?.id, DEFAULT_TICKET_VIEW_ID);
   const [viewModalOpen, setViewModalOpen] = useState(false);
   const [editingView, setEditingView] = useState(null);
   const [viewsReorderMode, setViewsReorderMode] = useState(false);
@@ -327,6 +329,7 @@ export default function TicketSalesPage({
     return found || builtinTicketViews.find(view => view.id === DEFAULT_TICKET_VIEW_ID) || builtinTicketViews[builtinTicketViews.length - 1];
   }, [ticketViews, activeViewId, builtinTicketViews]);
   useEffect(() => {
+    if (!viewsLoaded) return;
     if (builtinTicketViews.some(view => String(view.id) === String(activeViewId))) return;
     if (String(activeViewId) === "__all__") {
       setActiveViewId(DEFAULT_TICKET_VIEW_ID);
@@ -335,7 +338,7 @@ export default function TicketSalesPage({
     if (!ticketViews.some(view => String(view.id) === String(activeViewId))) {
       setActiveViewId(DEFAULT_TICKET_VIEW_ID);
     }
-  }, [ticketViews, activeViewId, builtinTicketViews]);
+  }, [ticketViews, activeViewId, builtinTicketViews, viewsLoaded]);
   useEffect(() => {
     const viewId = String(pageParams?.viewId || "").trim();
     const nextViewMode = String(pageParams?.viewMode || "").trim();
@@ -378,7 +381,10 @@ export default function TicketSalesPage({
       toast.error(error.message || supportCopy.toasts.loadViews);
       setTicketViews([]);
     } finally {
-      if (!signal?.aborted) setViewsLoading(false);
+      if (!signal?.aborted) {
+        setViewsLoading(false);
+        setViewsLoaded(true);
+      }
     }
   };
   useEffect(() => {

@@ -4,8 +4,10 @@ import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsToolti
 import { toast } from "react-toastify";
 import API_BASE_URL from "../../../../config";
 import { getClientMfaDetails } from "../../../../api/clientOffice365";
+import { buildMicrosoftTenantDetailNavigationPayload } from "../../../EnterprisesPage/microsoftTenantSolutionUtils";
+import TenantDetailPage from "../../../ServicePage/TenantDetailPage";
 import styles from "../RapportMonitoringBuilder.module.css";
-import { MonitoringStepShell, MonitoringStepHeader, MonitoringStepSyncButton } from "../MonitoringStepLayout";
+import { MonitoringStepShell, MonitoringStepHeader } from "../MonitoringStepLayout";
 const licenseNameMapping = {
   ENTERPRISEPACK: "Microsoft 365 E3",
   ENTERPRISEPREMIUM: "Microsoft 365 E5",
@@ -386,7 +388,105 @@ function filterTeamsDataByPeriod(teams, reportPeriod) {
 function getAuthHeaders() {
   return {};
 }
-export default function Office365Step({
+function mapHighlightedKeyToTenantSection(key) {
+  if (!key || typeof key !== "string") return "rapport";
+  if (key === "Office365:exchange") return "exchange";
+  if (key === "Office365:teams") return "teams";
+  if (key === "Office365:onedrive") return "onedrive";
+  if (key === "Office365:sharepoint") return "sharepoint";
+  if (key === "Office365:security") return "securite";
+  if (key.startsWith("Office365:licence:")) return "licences";
+  if (key.startsWith("Office365:user:")) return "utilisateurs";
+  return "rapport";
+}
+function Office365SectionComments({
+  onOpenComments,
+  onTicketCreatedForEquipment,
+  commentCounts = {},
+  ticketCounts = {}
+}) {
+  const sections = [{
+    key: "Office365",
+    label: "Tenant",
+    nom: "Office 365"
+  }, {
+    key: "Office365:exchange",
+    label: "Exchange",
+    nom: "Exchange"
+  }, {
+    key: "Office365:teams",
+    label: "Teams",
+    nom: "Teams"
+  }, {
+    key: "Office365:onedrive",
+    label: "OneDrive",
+    nom: "OneDrive"
+  }, {
+    key: "Office365:sharepoint",
+    label: "SharePoint",
+    nom: "SharePoint"
+  }, {
+    key: "Office365:security",
+    label: "Sécurité",
+    nom: "Sécurité"
+  }];
+  if (typeof onOpenComments !== "function" && typeof onTicketCreatedForEquipment !== "function") return null;
+  return <div className={styles.solutionCommentBar}>
+      {sections.map(section => {
+      const commentCount = commentCounts[section.key] || 0;
+      const ticketCount = ticketCounts[section.key] || 0;
+      const item = {
+        nom: section.nom,
+        name: section.nom
+      };
+      return <div key={section.key} className={styles.solutionCommentChip}>
+            <span>{section.label}</span>
+            {typeof onOpenComments === "function" ? <button type="button" className={styles.infraIconButton} title={`${section.label} — commentaires`} onClick={() => onOpenComments(item, {
+          moduleKey: "Office365",
+          equipmentKey: section.key
+        })}>
+                <Icon icon="mdi:comment-text-outline" />
+                {commentCount > 0 ? <span className={styles.infraCommentBadge}>{commentCount}</span> : null}
+              </button> : null}
+            {typeof onTicketCreatedForEquipment === "function" ? <button type="button" className={styles.infraIconButton} title={`${section.label} — ticket`} onClick={() => onTicketCreatedForEquipment(item, {
+          moduleKey: "Office365",
+          equipmentKey: section.key
+        })}>
+                <Icon icon="mdi:ticket-outline" />
+                {ticketCount > 0 ? <span className={styles.infraTicketBadge}>{ticketCount}</span> : null}
+              </button> : null}
+          </div>;
+    })}
+    </div>;
+}
+function Office365AttachedDetail({
+  client,
+  reportPeriod,
+  onOpenComments,
+  onTicketCreatedForEquipment,
+  commentCounts,
+  ticketCounts,
+  highlightedEquipmentKey
+}) {
+  const tenantData = buildMicrosoftTenantDetailNavigationPayload(client);
+  const initialSection = mapHighlightedKeyToTenantSection(highlightedEquipmentKey);
+  const period = reportPeriod || {
+    start: client?.reportStartDate,
+    end: client?.reportEndDate
+  };
+  return <MonitoringStepShell>
+      <Office365SectionComments onOpenComments={onOpenComments} onTicketCreatedForEquipment={onTicketCreatedForEquipment} commentCounts={commentCounts} ticketCounts={ticketCounts} />
+      <div className={styles.solutionOverviewEmbed}>
+        <TenantDetailPage tenantData={tenantData} embedded reportPeriod={period} initialSection={initialSection} />
+      </div>
+    </MonitoringStepShell>;
+}
+export default function Office365Step(props) {
+  const clientId = props.client?.id ?? props.client?.uuid ?? null;
+  if (clientId) return <Office365AttachedDetail {...props} />;
+  return <Office365LegacyStep {...props} />;
+}
+function Office365LegacyStep({
   client,
   reportPeriod,
   onRefreshClient,
@@ -949,7 +1049,7 @@ export default function Office365Step({
     icon: "mdi:shield-check"
   }];
   return <MonitoringStepShell>
-      <MonitoringStepHeader title="Office 365" countLabel={o365Subtitle} headerActions={<MonitoringStepSyncButton onClick={handleSyncOffice365} disabled={loading} loading={syncing} title="Synchronize Office 365 data" />} footer={<div className={styles.o365TabsContainer}>
+      <MonitoringStepHeader title="Office 365" countLabel={o365Subtitle} footer={<div className={styles.o365TabsContainer}>
             {tabs.map(tab => <button key={tab.id} type="button" className={`${styles.o365TabButton} ${activeTab === tab.id ? styles.o365TabButtonActive : ""}`} onClick={() => setActiveTab(tab.id)}>
                 {tab.icon && <Icon icon={tab.icon} width={16} height={16} />}
                 <span>{tab.label}</span>

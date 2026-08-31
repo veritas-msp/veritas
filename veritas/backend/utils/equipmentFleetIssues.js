@@ -10,7 +10,15 @@ import {
   isSupervisionCriterionEnabled
 } from "./supervisionAlertRules.js";
 
-const CHECKMK_CRITERIA = new Set(["monitor_critical", "monitor_warning", "unmapped", "no_data"]);
+/** Alerts from a monitoring integration (CheckMK is currently the only one). */
+const MONITORING_INTEGRATION_ALERT_KEYS = new Set(["monitor_critical", "monitor_warning", "no_data"]);
+
+function isMappedViaMonitoringIntegration(equipment) {
+  const mapping = equipment?.checkmkMapping;
+  const host = String(mapping?.checkmk_host_name || mapping?.checkmkHostName || "").trim();
+  if (!host) return false;
+  return mapping?.is_active !== false;
+}
 
 const ISSUE_META = {
   monitor_critical: { label: "Alert critical", tone: "bad", priority: 0, monitorStatus: "critical" },
@@ -156,8 +164,8 @@ function toLeanEquipment(equipment) {
 }
 
 /**
- * Supervision device issues only — evaluates lean fleet + CheckMK summaries + RMM last-seen
- * against the same criteria engine as the alert scanner.
+ * Supervision center alerts: only devices mapped via a monitoring integration
+ * (CheckMK today) and only that integration's statuses (critical / warning / no data).
  */
 export async function fetchEquipmentFleetIssues() {
   const [fleet, checkmkMap, agentMap, rules, checkmkEnabled] = await Promise.all([
@@ -171,11 +179,23 @@ export async function fetchEquipmentFleetIssues() {
   const offlineAlertThresholdMinutes = getOfflineAlertThresholdMinutesFromRules(rules);
   const items = [];
 
+  if (!checkmkEnabled) {
+    return {
+      items,
+      meta: {
+        scanned: fleet.length,
+        withIssues: 0,
+        checkmkEnabled
+      }
+    };
+  }
+
   for (const equipment of fleet) {
     const family = toSupervisionFamily(equipment);
     if (!family) continue;
+    if (!isMappedViaMonitoringIntegration(equipment)) continue;
 
-    const isMkMapped = Boolean(equipment.checkmkMapping?.checkmk_host_name);
+    const isMkMapped = true;
     const mkRow = lookupCheckmkRow(checkmkMap, equipment.clientId, equipment.dbId, family);
     const checkmkSummary = mkRow
       ? computeMonitoringSummary(mkRow.monitoring_data, mkRow.last_synced_at)
@@ -193,16 +213,13 @@ export async function fetchEquipmentFleetIssues() {
       ip: equipment.ip || null,
       agentId,
       lastSeenAt,
-      checkmkSummary: checkmkEnabled ? checkmkSummary : null,
-      isMkMapped: checkmkEnabled ? isMkMapped : false,
+      checkmkSummary,
+      isMkMapped,
       offlineAlertThresholdMinutes,
       thresholds
     });
 
-    if (!checkmkEnabled) {
-      criteria = criteria.filter(c => !CHECKMK_CRITERIA.has(c.key));
-    }
-
+    criteria = criteria.filter(c => MONITORING_INTEGRATION_ALERT_KEYS.has(c.key));
     criteria = criteria.filter(c => isSupervisionCriterionEnabled(family, c.key, rules));
     if (!criteria.length) continue;
 

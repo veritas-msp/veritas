@@ -26,9 +26,10 @@ import { getTicketVaultArchiveCopy } from "./ticketVaultArchiveI18n";
 import TicketValidationRequestModal from "./TicketValidationRequestModal";
 import TicketValidationBanner from "./TicketValidationBanner";
 import { getTicketValidationCopy } from "./ticketValidationI18n";
+import TicketEmojiPicker from "./TicketEmojiPicker";
+import TicketInsertLinkModal, { captureEditorSelection, insertLinkHtml, restoreEditorSelection } from "./TicketInsertLinkModal";
 import styles from "./TicketDetailPage.module.css";
 
-const EMOJI_OPTIONS = ["??","??","??","?","?","??","??","??","??","??","??","??"];
 const ATTACHMENT_ACCEPT = ".pdf,.jpg,.jpeg,.png,.doc,.docx,.csv,.xls,.xlsx,.mp4,.3gp,.mp3,.mpeg,.ogg,.aac,.amr,.m4a";
 const REPLY_BOX_EXPANDED_KEY = "ticket_sales_reply_box_expanded";
 
@@ -159,7 +160,9 @@ export default function TicketChatPanel({
   const [attachmentFiles, setAttachmentFiles] = useState([]);
   const [vaultOptionsByKey, setVaultOptionsByKey] = useState({});
   const [submitting, setSubmitting] = useState(false);
-  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+  const [linkModalOpen, setLinkModalOpen] = useState(false);
+  const [linkModalText, setLinkModalText] = useState("");
+  const linkSelectionRef = useRef({ range: null, text: "" });
   const [isDragOverReplyBox, setIsDragOverReplyBox] = useState(false);
   const [commentTemplateSelection, setCommentTemplateSelection] = useState("");
   const [editingCommentId, setEditingCommentId] = useState(null);
@@ -212,16 +215,23 @@ export default function TicketChatPanel({
   const insertBold = () => runEditorCommand("bold");
   const insertBulletList = () => runEditorCommand("insertUnorderedList");
   const insertLink = () => {
-    const url = window.prompt(copy.reply.toolLink || "URL");
-    if (!url) return;
-    runEditorCommand("createLink", url);
+    if (disabled) return;
+    const captured = captureEditorSelection(commentEditorRef.current);
+    linkSelectionRef.current = captured;
+    setLinkModalText(captured.text);
+    setLinkModalOpen(true);
   };
-  const insertEmoji = (emoji = EMOJI_OPTIONS[0]) => {
+  const handleInsertLink = ({ url, text }) => {
+    restoreEditorSelection(commentEditorRef.current, linkSelectionRef.current.range);
+    insertLinkHtml(commentEditorRef.current, url, text || linkSelectionRef.current.text);
+    if (commentEditorRef.current) setCommentDraft(commentEditorRef.current.innerHTML || "");
+    setLinkModalOpen(false);
+  };
+  const insertEmoji = (emoji = "😊") => {
     if (!commentEditorRef.current || disabled) return;
     commentEditorRef.current.focus();
     document.execCommand("insertText", false, emoji);
     setCommentDraft(commentEditorRef.current.innerHTML || "");
-    setShowEmojiPicker(false);
   };
 
   const applyCommentTemplate = templateId => {
@@ -783,21 +793,26 @@ export default function TicketChatPanel({
                         <button type="button" className={styles.toolBtn} onClick={insertBulletList} title={copy.reply.toolList}>
                           <Icon icon="mdi:format-list-bulleted" />
                         </button>
-                        <button type="button" className={styles.toolBtn} onClick={insertLink} title={copy.reply.toolLink}>
+                        <button type="button" className={styles.toolBtn} onMouseDown={event => event.preventDefault()} onClick={insertLink} title={copy.reply.toolLink}>
                           <Icon icon="mdi:link-variant" />
                         </button>
-                        <button type="button" className={styles.toolBtn} onClick={() => setShowEmojiPicker(prev => !prev)} title={copy.reply.toolEmoji}>
-                          <Icon icon="mdi:emoticon-outline" />
-                        </button>
-                        {showEmojiPicker ? (
-                          <div className={styles.emojiMenu}>
-                            {EMOJI_OPTIONS.map(emoji => (
-                              <button key={emoji} type="button" className={styles.emojiBtn} onClick={() => insertEmoji(emoji)} title={emoji}>
-                                {emoji}
-                              </button>
-                            ))}
-                          </div>
-                        ) : null}
+                        <TicketEmojiPicker
+                          onSelect={insertEmoji}
+                          title={copy.reply.toolEmoji}
+                          searchPlaceholder={copy.reply.emojiSearch}
+                          emptyLabel={copy.reply.emojiEmpty}
+                          recentLabel={copy.reply.emojiRecent}
+                          categoryLabels={{
+                            smileys: copy.reply.emojiSmileys,
+                            gestures: copy.reply.emojiGestures,
+                            people: copy.reply.emojiPeople,
+                            animals: copy.reply.emojiAnimals,
+                            food: copy.reply.emojiFood,
+                            travel: copy.reply.emojiTravel,
+                            objects: copy.reply.emojiObjects,
+                            symbols: copy.reply.emojiSymbols
+                          }}
+                        />
                       </div>
                       <label className={styles.uploadBtn}>
                         <Icon icon="mdi:paperclip" />
@@ -980,6 +995,7 @@ export default function TicketChatPanel({
         onClose={closeValidationModal}
         onSubmit={submitValidationRequest}
       />
+      <TicketInsertLinkModal open={linkModalOpen} copy={copy.reply} initialText={linkModalText} onClose={() => setLinkModalOpen(false)} onInsert={handleInsertLink} />
     </div>
   );
 }

@@ -51,7 +51,6 @@ import { useVeritasEdition } from "../hooks/useVeritasEdition";
 import { filterAccessForEdition, isProOnlyDocType } from "../config/edition";
 import { useAppLocale } from "../hooks/useAppGeneralSettings";
 import API_BASE_URL from "../config";
-import { confirmLeaveMonitoringReport } from "../utils/monitoringReportGuard";
 import { useOnboarding } from "../hooks/useOnboarding";
 import OnboardingWizard from "../components/Onboarding/OnboardingWizard";
 import OnboardingResumeFab from "../components/Onboarding/OnboardingResumeFab";
@@ -59,6 +58,8 @@ import { buildAgentPath, parseAgentPath, routeToMainAppState, isAgentPathAllowed
 import { getEquipmentListKey } from "../utils/equipmentIdentity";
 import { toast } from "react-toastify";
 import { getAdminInjectionCopy } from "./AdminPage/adminInjectionI18n";
+import ConfirmModal from "./Misc/ConfirmModal/ConfirmModal";
+import { getRapportPageCopy } from "./RapportPage/rapportPageI18n";
 import ProfilePreviewBanner from "./Misc/ProfilePreviewBanner/ProfilePreviewBanner";
 import AgentImpersonationBanner from "./Misc/AgentImpersonationBanner/AgentImpersonationBanner";
 import { isSuperAdminProtectedProfile } from "../utils/profileProtection";
@@ -112,6 +113,8 @@ export default function MainApp() {
     refreshDraftStatus
   } = useDrafts();
   const [currentDocType, setCurrentDocType] = useState("Home");
+  const currentDocTypeRef = useRef(currentDocType);
+  currentDocTypeRef.current = currentDocType;
   const [contratDetailData, setContratDetailData] = useState(null);
   const [contratPageParams, setContratPageParams] = useState(null);
   const [contactPageParams, setContactPageParams] = useState(null);
@@ -135,12 +138,15 @@ export default function MainApp() {
   const [ticketSalesPageParams, setTicketSalesPageParams] = useState(null);
   const [adminTab, setAdminTab] = useState(null);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(true);
-  const [monitoringReportGuardActive, setMonitoringReportGuardActive] = useState(false);
+  const monitoringReportGuardActiveRef = useRef(false);
+  const [reportLeaveModalOpen, setReportLeaveModalOpen] = useState(false);
+  const pendingReportLeaveRef = useRef(null);
   const [injectionNavLocked, setInjectionNavLocked] = useState(false);
   const injectionNavLockedRef = useRef(false);
   const injectionCopy = useMemo(() => getAdminInjectionCopy(appLocale), [appLocale]);
+  const reportLeaveCopy = useMemo(() => getRapportPageCopy(appLocale).supervisionBuilder || {}, [appLocale]);
   const handleMonitoringReportGuardChange = useCallback(active => {
-    setMonitoringReportGuardActive(Boolean(active));
+    monitoringReportGuardActiveRef.current = Boolean(active);
   }, []);
   const handleInjectionRunningChange = useCallback(active => {
     const next = Boolean(active);
@@ -151,26 +157,42 @@ export default function MainApp() {
     toast.warn(injectionCopy.navBlocked);
   }, [injectionCopy.navBlocked]);
   const shouldBlockMonitoringReportLeave = useCallback(nextDocType => {
-    if (!monitoringReportGuardActive) return false;
-    if (currentDocType === "Report" && nextDocType !== "Report") return true;
-    if (currentDocType === "MonitoringDetail" && nextDocType !== "MonitoringDetail") return true;
+    if (!monitoringReportGuardActiveRef.current) return false;
+    const current = currentDocTypeRef.current;
+    if (current === "Report" && nextDocType !== "Report") return true;
+    if (current === "MonitoringDetail" && nextDocType !== "MonitoringDetail") return true;
     return false;
-  }, [monitoringReportGuardActive, currentDocType]);
-  const confirmLeaveActiveMonitoringReport = useCallback(() => {
-    if (!monitoringReportGuardActive) return true;
-    const confirmed = confirmLeaveMonitoringReport();
-    if (confirmed) {
-      setMonitoringReportGuardActive(false);
+  }, []);
+  const clearReportLeaveGuard = useCallback(() => {
+    monitoringReportGuardActiveRef.current = false;
+  }, []);
+  const requestReportLeave = useCallback(action => {
+    if (typeof action !== "function") return;
+    if (!monitoringReportGuardActiveRef.current) {
+      action();
+      return;
     }
-    return confirmed;
-  }, [monitoringReportGuardActive]);
+    pendingReportLeaveRef.current = action;
+    setReportLeaveModalOpen(true);
+  }, []);
+  const handleReportLeaveCancel = useCallback(() => {
+    pendingReportLeaveRef.current = null;
+    setReportLeaveModalOpen(false);
+  }, []);
+  const handleReportLeaveConfirm = useCallback(() => {
+    const action = pendingReportLeaveRef.current;
+    pendingReportLeaveRef.current = null;
+    setReportLeaveModalOpen(false);
+    clearReportLeaveGuard();
+    action?.();
+  }, [clearReportLeaveGuard]);
   const handleLogoutGuarded = useCallback(() => {
     if (injectionNavLocked) {
       warnInjectionNavLocked();
       return;
     }
-    handleLogout();
-  }, [injectionNavLocked, warnInjectionNavLocked, handleLogout]);
+    requestReportLeave(handleLogout);
+  }, [injectionNavLocked, warnInjectionNavLocked, requestReportLeave, handleLogout]);
   const [tabs, setTabs] = useState(() => {
     try {
       const savedTabs = localStorage.getItem('veritas_tabs');
@@ -487,10 +509,12 @@ export default function MainApp() {
         return;
       }
     }
-    if (shouldBlockMonitoringReportLeave(type) && !options.background) {
-      if (!confirmLeaveActiveMonitoringReport()) {
-        return;
-      }
+    if (shouldBlockMonitoringReportLeave(type) && !options.background && !options.skipReportLeaveGuard) {
+      requestReportLeave(() => handleDocSelect(type, data, {
+        ...options,
+        skipReportLeaveGuard: true
+      }));
+      return;
     }
     if (!options.background) {
       if (type !== currentDocType) {
@@ -735,15 +759,14 @@ export default function MainApp() {
       warnInjectionNavLocked();
       return;
     }
-    if (monitoringReportGuardActive && currentDocType === "Report" && tab.type !== "Report") {
-      if (!confirmLeaveActiveMonitoringReport()) {
-        return;
-      }
-    }
-    if (monitoringReportGuardActive && currentDocType === "MonitoringDetail" && tab.id !== activeTabId) {
-      if (!confirmLeaveActiveMonitoringReport()) {
-        return;
-      }
+    const leavingReport = monitoringReportGuardActiveRef.current && currentDocTypeRef.current === "Report" && tab.type !== "Report";
+    const leavingMonitoring = monitoringReportGuardActiveRef.current && currentDocTypeRef.current === "MonitoringDetail" && tab.id !== activeTabId;
+    if ((leavingReport || leavingMonitoring) && !tab._skipReportLeaveGuard) {
+      requestReportLeave(() => handleTabClick({
+        ...tab,
+        _skipReportLeaveGuard: true
+      }));
+      return;
     }
     const resolvedTab = tabs.find(entry => entry.id === tab.id) || tab;
     if (!canOpenRestrictedTabs && !isAgentPathAllowed(resolvedTab.type, {
@@ -781,26 +804,28 @@ export default function MainApp() {
       warnInjectionNavLocked();
       return;
     }
+    const openLauncher = () => {
+      abortInFlightPageLoads();
+      setCurrentDocType("TabLauncher");
+      setActiveTabId(null);
+      pushAgentUrl("TabLauncher", null);
+    };
     if (shouldBlockMonitoringReportLeave("TabLauncher")) {
-      if (!confirmLeaveActiveMonitoringReport()) {
-        return;
-      }
+      requestReportLeave(openLauncher);
+      return;
     }
-    abortInFlightPageLoads();
-    setCurrentDocType("TabLauncher");
-    setActiveTabId(null);
-    pushAgentUrl("TabLauncher", null);
-  }, [injectionNavLocked, warnInjectionNavLocked, shouldBlockMonitoringReportLeave, confirmLeaveActiveMonitoringReport, pushAgentUrl]);
-  const handleTabClose = tabId => {
+    openLauncher();
+  }, [injectionNavLocked, warnInjectionNavLocked, shouldBlockMonitoringReportLeave, requestReportLeave, pushAgentUrl]);
+  const handleTabClose = (tabId, skipReportLeaveGuard = false) => {
     if (injectionNavLocked) {
       warnInjectionNavLocked();
       return;
     }
     const isClosingActiveTab = tabId === activeTabId;
-    if (monitoringReportGuardActive && isClosingActiveTab && (currentDocType === "Report" || currentDocType === "MonitoringDetail")) {
-      if (!confirmLeaveActiveMonitoringReport()) {
-        return;
-      }
+    const closingBuilderTab = monitoringReportGuardActiveRef.current && isClosingActiveTab && (currentDocTypeRef.current === "Report" || currentDocTypeRef.current === "MonitoringDetail");
+    if (closingBuilderTab && !skipReportLeaveGuard) {
+      requestReportLeave(() => handleTabClose(tabId, true));
+      return;
     }
     setTabs(prevTabs => {
       const newTabs = prevTabs.filter(t => t.id !== tabId);
@@ -862,14 +887,14 @@ export default function MainApp() {
     window.refreshDraftStatus = refreshDraftStatus;
   }, [refreshDraftStatus]);
   useEffect(() => {
-    if (!monitoringReportGuardActive && !injectionNavLocked) return undefined;
     const handleBeforeUnload = event => {
+      if (!monitoringReportGuardActiveRef.current && !injectionNavLockedRef.current) return;
       event.preventDefault();
       event.returnValue = "";
     };
     window.addEventListener("beforeunload", handleBeforeUnload);
     return () => window.removeEventListener("beforeunload", handleBeforeUnload);
-  }, [monitoringReportGuardActive, injectionNavLocked]);
+  }, []);
   useEffect(() => {
     const triggerRefresh = () => setRefreshTrigger(c => c + 1);
     window.addEventListener("refreshProfileAccess", triggerRefresh);
@@ -1144,6 +1169,8 @@ export default function MainApp() {
       <Sidebar current={sidebarCurrent} onSelect={handleDocSelect} onNavigate={handleDocSelect} onLogout={handleLogoutGuarded} user={user} userRole={userRole} profile={effectiveProfile} drafts={drafts} access={access} onCollapseChange={setSidebarCollapsed} updateAvailable={updateAvailable} updateLatestVersion={latestVersion} sidebarGuideAutoStart={sidebarGuideAutoStart} />
 
       <TabsBar tabs={tabs} activeTabId={activeTabId} onTabClick={handleTabClick} onTabClose={handleTabClose} onTabReorder={handleTabReorder} onSortTabs={tabs.length > 1 ? handleTabSort : undefined} onNewTab={showTabsBar ? handleOpenTabLauncher : undefined} launcherActive={currentDocType === "TabLauncher"} sidebarCollapsed={sidebarCollapsed} />
+
+      <ConfirmModal open={reportLeaveModalOpen} title={reportLeaveCopy.unsavedTitle} message={reportLeaveCopy.unsavedMessage} confirmLabel={reportLeaveCopy.leaveConfirm} cancelLabel={reportLeaveCopy.leaveCancel} icon="mdi:content-save-alert-outline" onClose={handleReportLeaveCancel} onConfirm={handleReportLeaveConfirm} />
 
       <div className={`contentWrapper ${showTabsBar ? 'withTabs' : ''} ${sidebarCollapsed ? 'sidebarCollapsed' : ''}`}>
         {currentDocType !== "Synth" && renderCurrentPage()}

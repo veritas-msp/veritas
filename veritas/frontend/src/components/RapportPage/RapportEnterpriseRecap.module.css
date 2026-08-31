@@ -13,6 +13,50 @@
   box-shadow: var(--msp-shadow-soft, 0 2px 12px rgba(11, 33, 56, 0.05));
 }
 
+.recapCardEmbedded {
+  padding: 0;
+  border: none;
+  background: transparent;
+  box-shadow: none;
+}
+
+.statStrip {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.65rem;
+}
+
+:global(html.dark) .stat,
+:global(html.dark) .recapSection {
+  background: var(--msp-surface, #12122a);
+}
+
+.stat {
+  padding: 0.75rem 0.85rem;
+  border-radius: 12px;
+  border: 1px solid var(--msp-border-light, #e2e8f0);
+  background: var(--msp-surface, #fff);
+}
+
+.statValue {
+  display: block;
+  font-size: 1.2rem;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  color: var(--msp-text, #0f1c2e);
+  line-height: 1.2;
+}
+
+.statLabel {
+  display: block;
+  margin-top: 0.2rem;
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--msp-muted, #5c6b82);
+}
+
 .recapHeader {
   display: flex;
   align-items: flex-start;
@@ -52,8 +96,15 @@
   color: var(--msp-muted, #5c6b82);
 }
 
-.contractBadge {
+.recapHeaderActions {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
   margin-left: auto;
+  flex-shrink: 0;
+}
+
+.contractBadge {
   padding: 0.3rem 0.65rem;
   border-radius: 999px;
   font-size: 0.68rem;
@@ -81,6 +132,22 @@
   background: var(--msp-surface-2, #f7f9fc);
   color: var(--msp-muted, #5c6b82);
   border: 1px solid var(--msp-border-light, #e2e8f0);
+}
+
+.changeBtn {
+  padding: 0.3rem 0.65rem;
+  border: none;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--msp-accent, #2b5fab);
+  font: inherit;
+  font-size: 0.78rem;
+  font-weight: 650;
+  cursor: pointer;
+}
+
+.changeBtn:hover {
+  color: var(--msp-accent-dark, #1a3d75);
 }
 
 .recapGrid {
@@ -160,12 +227,15 @@
 }
 
 .equipmentList {
-  display: flex;
-  flex-direction: column;
-  gap: 0.35rem;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.35rem 0.75rem;
   margin: 0;
   padding: 0;
   list-style: none;
+  max-height: 11rem;
+  overflow: auto;
+  scrollbar-width: thin;
 }
 
 .equipmentItem {
@@ -196,8 +266,64 @@
   color: var(--msp-muted, #5c6b82);
 }
 
+.recapSectionWide {
+  grid-column: 1 / -1;
+}
+
+.siteList {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  max-height: 11rem;
+  overflow: auto;
+  scrollbar-width: thin;
+}
+
+.siteItem {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  font-size: 0.8rem;
+  color: var(--msp-text, #0f1c2e);
+}
+
+.siteItem > svg {
+  flex-shrink: 0;
+  margin-top: 0.12rem;
+  font-size: 1rem;
+  color: var(--msp-accent, #2b5fab);
+}
+
+.siteCopy {
+  display: flex;
+  flex-direction: column;
+  gap: 0.12rem;
+  min-width: 0;
+}
+
+.siteName {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  font-weight: 650;
+}
+
+.siteAddress {
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--msp-muted, #5c6b82);
+}
+
 @media (max-width: 760px) {
   .recapGrid {
     grid-template-columns: 1fr;
+  }
+
+  .statStrip {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
