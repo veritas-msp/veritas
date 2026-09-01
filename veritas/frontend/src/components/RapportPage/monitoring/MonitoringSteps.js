@@ -211,7 +211,6 @@ export function getEnabledMonitoringSteps(client) {
 
 export default function MonitoringSteps({
   client,
-  onFinish,
   activeStepIndex,
   onStepChange,
   onOpenComments,
@@ -343,8 +342,6 @@ export default function MonitoringSteps({
   const safeIndex = Math.min(Math.max(0, currentIndex), steps.length - 1);
   const currentStepKey = steps[safeIndex];
   const getStepLabel = stepKey => MODULE_LABELS[stepKey] || stepKey;
-  const canGoPrev = safeIndex > 0;
-  const canGoNext = safeIndex < steps.length - 1;
 
   const renderCurrentStep = () => {
     switch (currentStepKey) {
@@ -375,7 +372,19 @@ export default function MonitoringSteps({
       case "support":
         return <SupportStep client={client} reportPeriod={reportPeriod} />;
       case "summary":
-        return <SummaryStep client={client} equipmentCheckMKData={equipmentCheckMKData} allComments={allCommentsChronological} equipmentComments={equipmentComments} equipmentCommentCounts={equipmentCommentCounts} equipmentTicketCounts={equipmentTicketCounts} stockageReportState={stockageReportState} summaryContentRef={summaryContentRef} />;
+        return (
+          <SummaryStep
+            client={client}
+            equipmentCheckMKData={equipmentCheckMKData}
+            monitoringSyncStatus={monitoringSyncStatus}
+            allComments={allCommentsChronological}
+            equipmentComments={equipmentComments}
+            equipmentCommentCounts={equipmentCommentCounts}
+            equipmentTicketCounts={equipmentTicketCounts}
+            equipmentAlertCounts={equipmentAlertCounts}
+            summaryContentRef={summaryContentRef}
+          />
+        );
       default:
         return null;
     }
@@ -412,22 +421,6 @@ export default function MonitoringSteps({
               </div>
             )}
             {renderCurrentStep()}
-          </div>
-          <div className={shellStyles.stepActions}>
-            <button type="button" className={shellStyles.secondaryBtn} disabled={!canGoPrev} onClick={() => setCurrentIndex(idx => Math.max(0, idx - 1))}>
-              <Icon icon="mdi:arrow-left" aria-hidden />
-              Retour
-            </button>
-            <button type="button" className={shellStyles.primaryBtn} onClick={() => {
-              if (!canGoNext) {
-                if (typeof onFinish === "function") onFinish({ client, steps });
-                return;
-              }
-              setCurrentIndex(idx => Math.min(steps.length - 1, idx + 1));
-            }}>
-              {canGoNext ? "Continuer" : "Terminer"}
-              <Icon icon="mdi:arrow-right" aria-hidden />
-            </button>
           </div>
         </section>
         {commentsPane}

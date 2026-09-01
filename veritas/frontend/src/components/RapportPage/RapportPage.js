@@ -1201,10 +1201,6 @@ export default function ReportPage({
                 icon="mdi:radar"
                 actions={
                   <div className={shellStyles.heroActions}>
-                    <button type="button" className={shellStyles.heroBtn} onClick={handleBackToSelection}>
-                      <Icon icon="mdi:arrow-left" aria-hidden />
-                      {pageCopy.wizard.back}
-                    </button>
                     <button
                       type="button"
                       className={shellStyles.heroBtn}

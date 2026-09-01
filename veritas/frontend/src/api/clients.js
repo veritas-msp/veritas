@@ -1167,11 +1167,17 @@ export async function saveClientModules(clientId, data) {
               }
             }
             const domainKey = category === 'NDD' ? cleanedItem.item_key || cleanedItem.nom || cleanedItem.name || cleanedItem.domain || cleanedItem.domaine || null : cleanedItem.item_key;
+            // Keep row id only at top-level; nested data.id is often a stale UUID
+            // from a previous sync and must not overwrite the real primary key.
+            const {
+              id: _nestedId,
+              ...domainData
+            } = cleanedItem || {};
             return {
               id: cleanedItem.id,
               item_key: domainKey,
               name: cleanedItem.nom || cleanedItem.name || 'Unnamed',
-              data: cleanedItem,
+              data: category === 'NDD' ? domainData : cleanedItem,
               is_active: true,
               checkmk_host_name: cleanedItem.checkmk_host_name || cleanedItem.checkmkMapping?.checkmk_host_name || null,
               checkmk_site: cleanedItem.checkmk_site || cleanedItem.checkmkMapping?.checkmk_site || null,

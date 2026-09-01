@@ -789,7 +789,7 @@ const EMBEDDED_TYPE_COLUMNS = {
   Internet: ["name", "activeStatus", "location", "fournisseur", "ip", "debit", "ha", "mapping"],
   Firewalls: ["name", "activeStatus", "location", "model", "serial", "ip", "ha", "monitoring", "mapping"],
   Routeur: ["name", "activeStatus", "location", "model", "serial", "ip", "monitoring", "mapping"],
-  Servers: ["name", "activeStatus", "location", "model", "serial", "ip", "systeme", "ha", "monitoring", "mapping"],
+  Servers: ["name", "activeStatus", "location", "role", "model", "serial", "ip", "systeme", "ha", "monitoring", "mapping"],
   Storage: ["name", "activeStatus", "location", "model", "serial", "ip", "disksUsage", "capacite", "raid", "ha", "monitoring", "mapping"],
   Ordinateurs: ["name", "activeStatus", "location", "model", "serial", "systeme", "agentStatus", "mapping"],
   Switch: ["name", "activeStatus", "location", "model", "serial", "mac", "ha", "monitoring", "mapping"],

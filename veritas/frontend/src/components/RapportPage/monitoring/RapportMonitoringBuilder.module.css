@@ -2585,6 +2585,10 @@
   color: var(--msp-muted, #5c6b82);
 }
 
+.supportStepShell {
+  padding-bottom: 1.75rem;
+}
+
 .supportState,
 .supportEmpty {
   margin: 0;
@@ -2598,60 +2602,90 @@
   color: #b91c1c;
 }
 
-.supportKpiGrid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(11.5rem, 1fr));
-  gap: 0.75rem;
+.supportContractCard {
   margin-bottom: 1.25rem;
-}
-
-.supportKpiCard {
-  display: flex;
-  align-items: flex-start;
-  gap: 0.7rem;
-  padding: 0.8rem 0.9rem;
+  padding: 0.9rem 1rem;
   border-radius: 12px;
   border: 1px solid var(--msp-border, #c5d0df);
   background: var(--msp-surface, #fff);
 }
 
-.supportKpiIcon {
+.supportContractHead {
   display: flex;
   align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 0.85rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid var(--msp-border, #e2e8f0);
+}
+
+.supportContractIcon {
+  display: inline-flex;
+  align-items: center;
   justify-content: center;
-  width: 36px;
-  height: 36px;
-  border-radius: 999px;
-  background: var(--msp-surface-2, #eef3f8);
+  width: 2.1rem;
+  height: 2.1rem;
+  border-radius: 10px;
+  background: var(--msp-accent-soft, rgba(43, 95, 171, 0.1));
+  color: var(--msp-accent, #2b5fab);
   flex-shrink: 0;
 }
 
-.supportKpiContent {
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 0.12rem;
-}
-
-.supportKpiValue {
-  font-size: 1.15rem;
+.supportContractTitle {
+  font-size: 0.92rem;
   font-weight: 700;
   color: var(--msp-text, #0f1c2e);
   line-height: 1.2;
 }
 
-.supportKpiLabel {
-  font-size: 0.72rem;
+.supportContractSubtitle {
+  margin-top: 0.15rem;
+  font-size: 0.75rem;
+  color: var(--msp-muted, #5c6b82);
+}
+
+.supportContractHead .supportBadge {
+  margin-left: auto;
+  margin-top: 0;
+}
+
+.supportContractGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(9.5rem, 1fr));
+  gap: 0.75rem 1rem;
+  margin: 0;
+}
+
+.supportContractItem {
+  min-width: 0;
+}
+
+.supportContractItem dt {
+  margin: 0 0 0.2rem;
+  font-size: 0.7rem;
   font-weight: 650;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.03em;
   text-transform: uppercase;
   color: var(--msp-muted, #5c6b82);
 }
 
-.supportKpiHint {
+.supportContractItem dd {
+  margin: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem 0.5rem;
+  font-size: 0.92rem;
+  font-weight: 700;
+  color: var(--msp-text, #0f1c2e);
+  line-height: 1.3;
+}
+
+.supportContractHint {
+  width: 100%;
   font-size: 0.72rem;
+  font-weight: 500;
   color: var(--msp-muted, #5c6b82);
-  line-height: 1.35;
 }
 
 .supportBadge {
@@ -2692,22 +2726,49 @@
   margin-bottom: 1.25rem;
 }
 
-.supportBarList {
+.supportChartBlock {
+  display: grid;
+  grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr);
+  gap: 0.75rem;
+  align-items: center;
+  min-height: 11.5rem;
+}
+
+.supportChartCanvas {
+  width: 100%;
+  height: 11rem;
+  min-width: 0;
+}
+
+.supportChartSolo {
+  width: 100%;
+  height: 12rem;
+  min-width: 0;
+}
+
+.supportChartLegend {
   list-style: none;
   margin: 0;
   padding: 0;
   display: grid;
+  gap: 0.4rem;
+}
+
+.supportChartLegend li {
+  display: grid;
+  grid-template-columns: 0.65rem minmax(0, 1fr) auto;
+  align-items: center;
   gap: 0.45rem;
 }
 
-.supportBarRow {
-  display: grid;
-  grid-template-columns: minmax(0, 7.5rem) minmax(0, 1fr) auto;
-  align-items: center;
-  gap: 0.5rem;
+.supportChartSwatch {
+  width: 0.65rem;
+  height: 0.65rem;
+  border-radius: 999px;
+  flex-shrink: 0;
 }
 
-.supportBarLabel {
+.supportChartLegendLabel {
   font-size: 0.78rem;
   color: var(--msp-text, #0f1c2e);
   white-space: nowrap;
@@ -2715,21 +2776,7 @@
   text-overflow: ellipsis;
 }
 
-.supportBarTrack {
-  height: 7px;
-  border-radius: 999px;
-  background: var(--msp-surface-2, #eef3f8);
-  overflow: hidden;
-}
-
-.supportBarFill {
-  display: block;
-  height: 100%;
-  border-radius: 999px;
-  min-width: 0;
-}
-
-.supportBarCount {
+.supportChartLegendValue {
   font-size: 0.78rem;
   font-weight: 650;
   color: var(--msp-text, #0f1c2e);
@@ -2782,5 +2829,13 @@
 @media (max-width: 980px) {
   .supportBreakdownGrid {
     grid-template-columns: 1fr;
+  }
+
+  .supportChartBlock {
+    grid-template-columns: 1fr;
+  }
+
+  .supportChartCanvas {
+    height: 10rem;
   }
 }

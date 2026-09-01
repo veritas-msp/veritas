@@ -14,6 +14,7 @@ import styles from "./CybersecuritePage.module.css";
 import layout from "../EnterprisesPage/EnterprisesPage.module.css";
 import AntivirusMspDashboard from "./AntivirusMspDashboard";
 import AntispamMspDashboard from "./AntispamMspDashboard";
+import BackupMspDashboard from "./BackupMspDashboard";
 import CampaignsMspDashboard from "./CampaignsMspDashboard";
 import CampaignFormModal from "./CampaignFormModal";
 import MspPageHero from "../Misc/MspPageHero/MspPageHero";
@@ -24,9 +25,10 @@ import ProFeatureBadge from "../Misc/ProFeature/ProFeatureBadge";
 import { buildAntivirusFleetFromClients } from "./antivirusMspUtils";
 import { buildAntispamFleetFromClients, buildAntispamDetailNavigationPayload, syncAndPersistAntispamSolution } from "../EnterprisesPage/antispamSolutionUtils";
 import { buildAntivirusDetailNavigationPayload, syncAndPersistAntivirusSolution } from "../EnterprisesPage/antivirusSolutionUtils";
+import { buildBackupFleetFromClients } from "../EquipementPage/backupMspUtils";
 import { getCybersecuritePageCopy } from "./cybersecuritePageI18n";
 import { createTrackedAbortController } from "../../utils/pageLoadAbort";
-const MODULE_TABS = ["antivirus", "antispam", "campaigns"];
+const MODULE_TABS = ["antivirus", "antispam", "backup", "campaigns"];
 export default function CybersecuritePage({
   onNavigate,
   cybersecuriteParams
@@ -87,8 +89,8 @@ export default function CybersecuritePage({
     setActiveTab(tabKey);
   };
   useEffect(() => {
-    if (!cybersecuriteParams?.activeTab) return;
-    const requested = cybersecuriteParams.activeTab;
+    if (!cybersecuriteParams?.activeTab && !cybersecuriteParams?.tab) return;
+    const requested = cybersecuriteParams.activeTab || cybersecuriteParams.tab;
     if (requested === "campaigns" && isCommunity) {
       if (editionLoaded) setCampaignProPromoOpen(true);
       setActiveTab("antivirus");
@@ -173,7 +175,7 @@ export default function CybersecuritePage({
         await Promise.all([loadCampaigns(), loadAllCampaignsForStats()]);
         return;
       }
-      if (!activeTab || ["antivirus", "antispam"].includes(activeTab)) {
+      if (!activeTab || ["antivirus", "antispam", "backup"].includes(activeTab)) {
         await loadClients({
           withModules: true
         });
@@ -346,6 +348,7 @@ export default function CybersecuritePage({
   };
   const antivirusData = useMemo(() => buildAntivirusFleetFromClients(clients), [clients]);
   const antispamData = useMemo(() => buildAntispamFleetFromClients(clients), [clients]);
+  const backupData = useMemo(() => buildBackupFleetFromClients(clients), [clients]);
   const antivirusSyncTargets = useMemo(() => antivirusData.filter(row => row.providerId === "bitdefender" && row.companyId && row.raw), [antivirusData]);
   const antispamSyncTargets = useMemo(() => antispamData.filter(row => row.providerId === "mailinblack" && row.customerId && row.raw), [antispamData]);
   const syncAllFleet = async () => {
@@ -707,8 +710,9 @@ export default function CybersecuritePage({
   };
   const avIssues = antivirusData.filter(row => row.status === "inactif" || row.status === "expire_bientot").length;
   const asIssues = antispamData.filter(row => row.status === "inactif" || row.status === "expire_bientot").length;
+  const backupIssues = backupData.filter(row => row.status === "critical" || row.status === "warning").length;
   const campaignIssues = isCommunity ? 0 : campaigns.filter(campaign => campaign.status === "suspendue").length;
-  const heroSubtitle = syncingFleet && syncStatus ? syncStatus : loadingCyberData && clients.length === 0 ? pageCopy.heroRefreshing : activeTab === "antivirus" ? avIssues > 0 ? pageCopy.formatHeroIssues("antivirus", avIssues) : pageCopy.msp?.antivirus?.heroDescOk : activeTab === "antispam" ? asIssues > 0 ? pageCopy.formatHeroIssues("antispam", asIssues) : pageCopy.msp?.antispam?.heroDescOk : activeTab === "campaigns" ? campaignIssues > 0 ? pageCopy.formatCampaignHeroIssues(campaignIssues) : pageCopy.campaigns?.heroDescOk : pageCopy.subtitle;
+  const heroSubtitle = syncingFleet && syncStatus ? syncStatus : loadingCyberData && clients.length === 0 ? pageCopy.heroRefreshing : activeTab === "antivirus" ? avIssues > 0 ? pageCopy.formatHeroIssues("antivirus", avIssues) : pageCopy.msp?.antivirus?.heroDescOk : activeTab === "antispam" ? asIssues > 0 ? pageCopy.formatHeroIssues("antispam", asIssues) : pageCopy.msp?.antispam?.heroDescOk : activeTab === "backup" ? backupIssues > 0 ? pageCopy.formatHeroIssues("backup", backupIssues) : pageCopy.msp?.backup?.heroDescOk : activeTab === "campaigns" ? campaignIssues > 0 ? pageCopy.formatCampaignHeroIssues(campaignIssues) : pageCopy.campaigns?.heroDescOk : pageCopy.subtitle;
   const heroActionsCopy = pageCopy.heroActions || {};
   const showFleetSync = activeTab === "antivirus" || activeTab === "antispam";
   const syncTooltip = syncingFleet && syncStatus ? syncStatus : activeTab === "antispam" ? heroActionsCopy.syncAntispam : heroActionsCopy.syncAntivirus;
@@ -749,6 +753,7 @@ export default function CybersecuritePage({
                   force: true,
                   skipCache: true
                 })} /> : null}
+                {activeTab === "backup" ? <BackupMspDashboard copy={pageCopy} clients={clients} loading={loadingCyberData} onOpenClient={handleOpenAntivirusClient} /> : null}
                 {activeTab === "campaigns" ? <CampaignsMspDashboard copy={pageCopy} campaigns={campaigns} loading={loadingCampaigns} onViewCampaign={handleViewCampaign} onOpenClient={handleOpenCampaignClient} onAddCampaign={openAddCampaign} onCampaignsChanged={async () => {
                   invalidateCampaignsCache();
                   await Promise.all([loadCampaigns({

@@ -134,6 +134,17 @@ function applyCheckmkCoalesce(row) {
   return row;
 }
 
+const MODULE_TABLES_WITHOUT_CHECKMK = new Set([
+  "v_b_clients_m_ndd",
+  "v_b_clients_m_ssl",
+  "v_b_clients_m_licences",
+  "v_b_clients_m_antivirus",
+  "v_b_clients_m_antispam",
+  "v_b_clients_m_o365",
+  "v_b_clients_m_internet",
+  "v_b_clients_m_ordinateurs",
+  "v_b_clients_m_custom_equipment"
+]);
 async function updateModuleRowPreservingCheckmk(db, table, {
   item_key,
   name,
@@ -154,20 +165,35 @@ async function updateModuleRowPreservingCheckmk(db, table, {
     };
   }
   const baseParams = [item_key || name || null, name || item_key || null, payload || null, is_active !== false, itemId, clientId];
+  const updateWithoutCheckmk = () => db.query(`UPDATE ${table}
+     SET item_key = $1, name = $2, data = $3, is_active = $4, updated_at = NOW()
+     WHERE id = $5 AND client_id = $6
+     RETURNING *`, baseParams);
+  // Tables without checkmk_* columns must skip that UPDATE: a failed query aborts
+  // the surrounding transaction, so a catch/retry without SAVEPOINT still fails.
+  if (MODULE_TABLES_WITHOUT_CHECKMK.has(table)) {
+    return updateWithoutCheckmk();
+  }
+  const savepoint = "sp_module_checkmk_update";
   try {
-    return await db.query(`UPDATE ${table}
+    await db.query(`SAVEPOINT ${savepoint}`);
+    const result = await db.query(`UPDATE ${table}
        SET item_key = $1, name = $2, data = $3, is_active = $4, updated_at = NOW(),
            checkmk_host_name = COALESCE($7::varchar, checkmk_host_name),
            checkmk_site = COALESCE($8::varchar, checkmk_site),
            checkmk_service_name = COALESCE($9::varchar, checkmk_service_name)
        WHERE id = $5 AND client_id = $6
        RETURNING *`, [...baseParams, checkmk.checkmk_host_name, checkmk.checkmk_site, checkmk.checkmk_service_name]);
+    await db.query(`RELEASE SAVEPOINT ${savepoint}`);
+    return result;
   } catch (err) {
+    try {
+      await db.query(`ROLLBACK TO SAVEPOINT ${savepoint}`);
+    } catch {
+      // ignore — transaction may already be unusable
+    }
     if (err.code !== "42703") throw err;
-    return db.query(`UPDATE ${table}
-       SET item_key = $1, name = $2, data = $3, is_active = $4, updated_at = NOW()
-       WHERE id = $5 AND client_id = $6
-       RETURNING *`, baseParams);
+    return updateWithoutCheckmk();
   }
 }
 
@@ -4048,8 +4074,10 @@ modulesRouter.post('/:clientId/:family/sync', requireModulePermission("edit"), a
       client.release();
     }
   } catch (err) {
+    console.error(`[POST modules/${req.params?.clientId}/${req.params?.family}/sync]`, err.message, err.code || "");
     res.status(500).json({
-      error: "Server error"
+      error: "Server error",
+      details: err.message
     });
   }
 });

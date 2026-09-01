@@ -1,5 +1,5 @@
 import { getBackupJobStatus, compareBackupJobsByStatus } from "../CybersecuritePage/backupJobStatusUtils";
-import { formatServeurLieLabel, pickBackupJobType, pickBackupJobDestination } from "../EnterprisesPage/backupJobUtils";
+import { formatServeurLieLabel, isBackupJobActive, normalizeServeurLieList, pickBackupJobType, pickBackupJobDestination } from "../EnterprisesPage/backupJobUtils";
 const BACKUP_PROVIDER_META = {
   "HYCU Backup": {
     id: "hycu",
@@ -53,6 +53,8 @@ export function buildBackupFleetRow(job) {
     jobType: pickBackupJobType(job),
     server: formatServeurLieLabel(job?.serveurLie, ""),
     destination: pickBackupJobDestination(job),
+    instanceId: job?.instanceId ?? null,
+    instanceName: job?.instanceName || job?.instanceLogiciel || "",
     instanceLogiciel: job?.instanceLogiciel || "",
     providerId: provider.id,
     providerName: provider.label,
@@ -140,6 +142,15 @@ export function sortBackupFleetRows(rows, sortBy, sortDirection = "asc") {
         return compareStrings(a.clientName, b.clientName);
       case "jobName":
         return compareStrings(a.jobName, b.jobName);
+      case "instanceName":
+        return compareStrings(a.instanceName, b.instanceName);
+      case "jobsCount": {
+        const left = Number(a.jobsCount) || 0;
+        const right = Number(b.jobsCount) || 0;
+        return mult * (left - right);
+      }
+      case "version":
+        return compareStrings(a.version, b.version);
       case "status":
         {
           const leftRank = BACKUP_STATUS_SORT_ORDER[a.status] ?? 99;
@@ -161,12 +172,17 @@ export function sortBackupFleetRows(rows, sortBy, sortDirection = "asc") {
 export function filterBackupFleetRows(rows, {
   search = "",
   statusFilter = "all",
-  providerFilter = "all"
+  providerFilter = "all",
+  instanceId = null,
+  clientId = null
 } = {}) {
   let filtered = Array.isArray(rows) ? [...rows] : [];
   const query = search.trim().toLowerCase();
   if (query) {
-    filtered = filtered.filter(row => row.clientName?.toLowerCase().includes(query) || row.jobName?.toLowerCase().includes(query) || row.jobType?.toLowerCase().includes(query) || row.server?.toLowerCase().includes(query) || row.destination?.toLowerCase().includes(query) || row.providerName?.toLowerCase().includes(query));
+    filtered = filtered.filter(row => row.clientName?.toLowerCase().includes(query) || row.jobName?.toLowerCase().includes(query) || row.jobType?.toLowerCase().includes(query) || row.instanceName?.toLowerCase().includes(query) || row.server?.toLowerCase().includes(query) || row.destination?.toLowerCase().includes(query) || row.providerName?.toLowerCase().includes(query) || row.version?.toLowerCase().includes(query));
+  }
+  if (instanceId != null && instanceId !== "") {
+    filtered = filtered.filter(row => String(row.instanceId) === String(instanceId) && (clientId == null || String(row.clientId) === String(clientId)));
   }
   if (statusFilter === "issues") {
     filtered = filtered.filter(row => row.status === "critical" || row.status === "warning");
@@ -177,4 +193,103 @@ export function filterBackupFleetRows(rows, {
     filtered = filtered.filter(row => row.providerId === providerFilter);
   }
   return filtered;
+}
+function listClientBackupInstances(client) {
+  const raw = client?.equipements?.Sauvegarde || client?.equipements?.Backup;
+  return Array.isArray(raw?.instances) ? raw.instances : [];
+}
+function resolveInstanceName(instance) {
+  return String(instance?.nom || instance?.name || instance?.logiciel || "").trim();
+}
+export function buildBackupJobFromInstance(client, instance, job) {
+  const clientId = client?.id;
+  const instanceId = instance?.id ?? instance?.instanceId;
+  const jobId = job?.id || `job-${clientId}-${instanceId}-${job?.nom || ""}`;
+  const checkmkMapping = job?.checkmkMapping && typeof job.checkmkMapping === "object" ? job.checkmkMapping : job?.checkmk_host_name || job?.checkmk_service_name ? {
+    checkmk_host_name: job.checkmk_host_name || null,
+    checkmk_site: job.checkmk_site || null,
+    checkmk_service_name: job.checkmk_service_name || null,
+    is_active: true
+  } : null;
+  return {
+    id: jobId,
+    clientId,
+    clientName: client?.name || client?.nom || "-",
+    type: "job",
+    instanceId,
+    instanceName: resolveInstanceName(instance) || instance?.logiciel || "",
+    instanceLogiciel: instance?.logiciel || "",
+    nom: job?.nom || "",
+    typeBackup: pickBackupJobType(job),
+    regularite: job?.regularite || "",
+    horaire: job?.horaire || "",
+    retention: job?.retention || "",
+    destination: pickBackupJobDestination(job, instance),
+    serveurLie: normalizeServeurLieList(job?.serveurLie),
+    stockageLie: job?.stockageLie || "",
+    replicationVers: job?.replicationVers || "",
+    isDefault: job?.isDefault || false,
+    actif: isBackupJobActive(job),
+    isMapped: Boolean(checkmkMapping || job?.isMapped),
+    checkmkMapping,
+    last_backup_date: job?.last_backup_date ?? null,
+    last_backup_start: job?.last_backup_start ?? null,
+    last_backup_duration: job?.last_backup_duration ?? null,
+    rawData: job
+  };
+}
+export function buildBackupFleetFromClients(clients = []) {
+  const jobs = [];
+  (Array.isArray(clients) ? clients : []).forEach(client => {
+    listClientBackupInstances(client).forEach(instance => {
+      (Array.isArray(instance?.jobs) ? instance.jobs : []).forEach(job => {
+        jobs.push(buildBackupJobFromInstance(client, instance, job));
+      });
+    });
+  });
+  return buildBackupFleetFromJobs(jobs);
+}
+export function buildBackupInstanceFleetFromClients(clients = []) {
+  const rows = [];
+  (Array.isArray(clients) ? clients : []).forEach(client => {
+    listClientBackupInstances(client).forEach((instance, index) => {
+      const provider = resolveProviderMeta(instance?.logiciel);
+      const jobs = Array.isArray(instance?.jobs) ? instance.jobs : [];
+      const instanceId = instance?.id ?? instance?.instanceId ?? `instance-${client?.id}-${instance?.logiciel || index}`;
+      rows.push({
+        id: instanceId,
+        clientId: client?.id,
+        clientName: client?.name || client?.nom || "-",
+        instanceName: resolveInstanceName(instance) || provider.label,
+        logiciel: instance?.logiciel || "",
+        server: instance?.server || "",
+        version: instance?.version || "",
+        expiration: instance?.expiration || "",
+        jobsCount: instance?.jobsCount ?? jobs.length,
+        providerId: provider.id,
+        providerName: provider.label,
+        providerIcon: provider.icon,
+        providerImage: provider.image,
+        raw: instance
+      });
+    });
+  });
+  return rows;
+}
+export function buildBackupInstanceFleetStats(rows = []) {
+  const list = Array.isArray(rows) ? rows : [];
+  const clientIds = new Set();
+  const providers = new Set();
+  let jobs = 0;
+  list.forEach(row => {
+    if (row.clientId != null) clientIds.add(row.clientId);
+    if (row.providerId) providers.add(row.providerId);
+    jobs += Number(row.jobsCount) || 0;
+  });
+  return {
+    total: list.length,
+    clients: clientIds.size,
+    providers: providers.size,
+    jobs
+  };
 }

@@ -23,11 +23,11 @@ const COPY = {
     steps: {
       hero: {
         title: "Pilotage cybersécurité",
-        content: "Suivez les solutions de sécurité de vos clients : antivirus, antispam et campagnes. Le bandeau résume l’état du module ouvert."
+        content: "Suivez les solutions de sécurité de vos clients : antivirus, antispam, sauvegarde et campagnes. Le bandeau résume l’état du module ouvert."
       },
       tabs: {
         title: "Modules",
-        content: "Basculez entre Antivirus, Antispam et Campagnes. Chaque onglet affiche la flotte correspondante. Les campagnes peuvent être réservées à Veritas Pro."
+        content: "Basculez entre Antivirus, Antispam, Sauvegarde et Campagnes. Chaque onglet affiche la flotte correspondante. Les campagnes peuvent être réservées à Veritas Pro."
       },
       dashboard: {
         title: "Flotte du module",
@@ -44,11 +44,11 @@ const COPY = {
     steps: {
       hero: {
         title: "Cybersecurity overview",
-        content: "Track your clients’ security solutions: antivirus, antispam and campaigns. The header summarises the open module."
+        content: "Track your clients’ security solutions: antivirus, antispam, backup and campaigns. The header summarises the open module."
       },
       tabs: {
         title: "Modules",
-        content: "Switch between Antivirus, Antispam and Campaigns. Each tab shows the matching fleet. Campaigns may be reserved for Veritas Pro."
+        content: "Switch between Antivirus, Antispam, Backup and Campaigns. Each tab shows the matching fleet. Campaigns may be reserved for Veritas Pro."
       },
       dashboard: {
         title: "Module fleet",
@@ -65,11 +65,11 @@ const COPY = {
     steps: {
       hero: {
         title: "Cybersicherheit im Überblick",
-        content: "Verfolgen Sie die Sicherheitslösungen Ihrer Kunden: Antivirus, Antispam und Kampagnen. Der Kopfbereich fasst das geöffnete Modul zusammen."
+        content: "Verfolgen Sie die Sicherheitslösungen Ihrer Kunden: Antivirus, Antispam, Backup und Kampagnen. Der Kopfbereich fasst das geöffnete Modul zusammen."
       },
       tabs: {
         title: "Module",
-        content: "Wechseln Sie zwischen Antivirus, Antispam und Kampagnen. Kampagnen können Veritas Pro vorbehalten sein."
+        content: "Wechseln Sie zwischen Antivirus, Antispam, Backup und Kampagnen. Kampagnen können Veritas Pro vorbehalten sein."
       },
       dashboard: {
         title: "Modulflotte",
@@ -86,11 +86,11 @@ const COPY = {
     steps: {
       hero: {
         title: "Panoramica cybersecurity",
-        content: "Seguite le soluzioni di sicurezza dei clienti: antivirus, antispam e campagne. L’intestazione riepiloga il modulo aperto."
+        content: "Seguite le soluzioni di sicurezza dei clienti: antivirus, antispam, backup e campagne. L’intestazione riepiloga il modulo aperto."
       },
       tabs: {
         title: "Moduli",
-        content: "Passate tra Antivirus, Antispam e Campagne. Le campagne possono essere riservate a Veritas Pro."
+        content: "Passate tra Antivirus, Antispam, Backup e Campagne. Le campagne possono essere riservate a Veritas Pro."
       },
       dashboard: {
         title: "Flotta del modulo",
@@ -107,11 +107,11 @@ const COPY = {
     steps: {
       hero: {
         title: "Visión de ciberseguridad",
-        content: "Siga las soluciones de seguridad de sus clientes: antivirus, antispam y campañas. El encabezado resume el módulo abierto."
+        content: "Siga las soluciones de seguridad de sus clientes: antivirus, antispam, copias de seguridad y campañas. El encabezado resume el módulo abierto."
       },
       tabs: {
         title: "Módulos",
-        content: "Cambie entre Antivirus, Antispam y Campañas. Las campañas pueden estar reservadas a Veritas Pro."
+        content: "Cambie entre Antivirus, Antispam, Copia de seguridad y Campañas. Las campañas pueden estar reservadas a Veritas Pro."
       },
       dashboard: {
         title: "Flota del módulo",

@@ -1,5 +1,17 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { Icon } from "@iconify/react";
+import {
+  ResponsiveContainer,
+  PieChart,
+  Pie,
+  Cell,
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  Tooltip as RechartsTooltip,
+  CartesianGrid
+} from "recharts";
 import { fetchTickets, fetchTicketCategories } from "../../../../api/tickets";
 import { fetchClientSupportCredits } from "../../../../api/clients";
 import { MonitoringStepShell, MonitoringStepSection } from "../MonitoringStepLayout";
@@ -8,6 +20,15 @@ import { isSalesTicket } from "../../../../utils/salesTicketUtils";
 import { getLocalizedEquipmentTypeLabel } from "../../../TicketPage/ticketEquipmentUtils";
 import { computeSupportCreditTotals } from "../../../TicketPage/ticketClientSummaryUtils";
 import styles from "../RapportMonitoringBuilder.module.css";
+
+const CHART_PALETTE = ["#2b5fab", "#0f766e", "#b45309", "#b91c1c", "#6366f1", "#0891b2", "#7c3aed", "#64748b"];
+
+const CHART_TOOLTIP_STYLE = {
+  background: "var(--msp-surface, #fff)",
+  border: "1px solid var(--msp-border, #c5d0df)",
+  borderRadius: 8,
+  fontSize: 12
+};
 
 const STATUS_LABELS = {
   new: "Nouveau",
@@ -66,19 +87,10 @@ function ticketCreatedAt(ticket) {
   return ticket?.created_at || ticket?.createdAt || ticket?.date_creation || null;
 }
 
-function ticketResolvedAt(ticket) {
-  return ticket?.resolved_at || ticket?.resolvedAt || ticket?.closed_at || ticket?.closedAt || null;
-}
-
 function normalizeStatus(status) {
   const value = String(status || "").toLowerCase();
   if (value === "open") return "new";
   return value;
-}
-
-function isClosedStatus(status) {
-  const key = normalizeStatus(status);
-  return key === "resolved" || key === "closed";
 }
 
 function parseTicketList(payload) {
@@ -188,29 +200,122 @@ function creditsConsumedInPeriod(ledger = [], start, end) {
   }, 0);
 }
 
-function BreakdownBars({ items, total, emptyLabel, color = "#2b5fab" }) {
-  if (!items.length) {
-    return <p className={styles.supportEmpty}>{emptyLabel}</p>;
-  }
-  const max = Math.max(...items.map(item => item.count), 1);
+function toChartData(items) {
+  return items.map(item => ({ name: item.key, value: item.count }));
+}
+
+function ChartEmpty({ label }) {
+  return <p className={styles.supportEmpty}>{label}</p>;
+}
+
+function ChartTooltip({ active, payload }) {
+  if (!active || !payload?.length) return null;
+  const row = payload[0];
+  const name = row?.name ?? row?.payload?.name ?? "";
+  const value = row?.value ?? 0;
   return (
-    <ul className={styles.supportBarList}>
-      {items.map(item => (
-        <li key={item.key} className={styles.supportBarRow}>
-          <span className={styles.supportBarLabel} title={item.key}>{item.key}</span>
-          <span className={styles.supportBarTrack}>
-            <span
-              className={styles.supportBarFill}
-              style={{ width: `${(item.count / max) * 100}%`, background: color }}
-            />
-          </span>
-          <span className={styles.supportBarCount}>
-            {item.count}
-            {total > 0 ? <span className={styles.supportBarPct}> {percent(item.count, total)}%</span> : null}
-          </span>
-        </li>
-      ))}
-    </ul>
+    <div style={CHART_TOOLTIP_STYLE}>
+      <div style={{ padding: "0.35rem 0.55rem" }}>
+        <strong>{name}</strong>
+        <div>{value}</div>
+      </div>
+    </div>
+  );
+}
+
+function DonutChart({ items, emptyLabel, colors = CHART_PALETTE }) {
+  if (!items.length) return <ChartEmpty label={emptyLabel} />;
+  const data = toChartData(items);
+  const total = data.reduce((sum, d) => sum + d.value, 0);
+  return (
+    <div className={styles.supportChartBlock}>
+      <div className={styles.supportChartCanvas}>
+        <ResponsiveContainer width="100%" height="100%">
+          <PieChart>
+            <Pie
+              data={data}
+              dataKey="value"
+              nameKey="name"
+              cx="50%"
+              cy="50%"
+              innerRadius="52%"
+              outerRadius="78%"
+              paddingAngle={data.length > 1 ? 2 : 0}
+              stroke="var(--msp-surface, #fff)"
+              strokeWidth={2}
+            >
+              {data.map((entry, index) => (
+                <Cell key={entry.name} fill={colors[index % colors.length]} />
+              ))}
+            </Pie>
+            <RechartsTooltip content={<ChartTooltip />} />
+          </PieChart>
+        </ResponsiveContainer>
+      </div>
+      <ul className={styles.supportChartLegend}>
+        {data.map((entry, index) => (
+          <li key={entry.name}>
+            <span className={styles.supportChartSwatch} style={{ background: colors[index % colors.length] }} />
+            <span className={styles.supportChartLegendLabel} title={entry.name}>{entry.name}</span>
+            <span className={styles.supportChartLegendValue}>
+              {entry.value}
+              {total > 0 ? <span className={styles.supportBarPct}> {percent(entry.value, total)}%</span> : null}
+            </span>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+function VerticalBarsChart({ items, emptyLabel, color = "#2b5fab" }) {
+  if (!items.length) return <ChartEmpty label={emptyLabel} />;
+  const data = toChartData(items).slice(0, 8);
+  return (
+    <div className={styles.supportChartSolo}>
+      <ResponsiveContainer width="100%" height="100%">
+        <BarChart data={data} margin={{ top: 8, right: 8, left: -8, bottom: 28 }}>
+          <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--msp-border, #e2e8f0)" />
+          <XAxis
+            dataKey="name"
+            tick={{ fontSize: 11, fill: "var(--msp-muted, #5c6b82)" }}
+            interval={0}
+            angle={-28}
+            textAnchor="end"
+            height={48}
+            tickFormatter={value => (String(value).length > 12 ? `${String(value).slice(0, 11)}…` : value)}
+          />
+          <YAxis allowDecimals={false} tick={{ fontSize: 11, fill: "var(--msp-muted, #5c6b82)" }} width={28} />
+          <RechartsTooltip content={<ChartTooltip />} />
+          <Bar dataKey="value" name="Tickets" fill={color} radius={[6, 6, 0, 0]} maxBarSize={36} />
+        </BarChart>
+      </ResponsiveContainer>
+    </div>
+  );
+}
+
+function HorizontalBarsChart({ items, emptyLabel, color = "#6366f1" }) {
+  if (!items.length) return <ChartEmpty label={emptyLabel} />;
+  const data = toChartData(items).slice(0, 8);
+  const height = Math.max(160, data.length * 36 + 24);
+  return (
+    <div className={styles.supportChartSolo} style={{ height }}>
+      <ResponsiveContainer width="100%" height="100%">
+        <BarChart data={data} layout="vertical" margin={{ top: 4, right: 16, left: 4, bottom: 4 }}>
+          <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="var(--msp-border, #e2e8f0)" />
+          <XAxis type="number" allowDecimals={false} tick={{ fontSize: 11, fill: "var(--msp-muted, #5c6b82)" }} />
+          <YAxis
+            type="category"
+            dataKey="name"
+            width={88}
+            tick={{ fontSize: 11, fill: "var(--msp-muted, #5c6b82)" }}
+            tickFormatter={value => (String(value).length > 14 ? `${String(value).slice(0, 13)}…` : value)}
+          />
+          <RechartsTooltip content={<ChartTooltip />} />
+          <Bar dataKey="value" name="Tickets" fill={color} radius={[0, 6, 6, 0]} maxBarSize={18} />
+        </BarChart>
+      </ResponsiveContainer>
+    </div>
   );
 }
 
@@ -270,46 +375,6 @@ export default function SupportStep({ client, reportPeriod = {} }) {
     () => tickets.filter(t => isDateWithinPeriod(ticketCreatedAt(t), start, end)),
     [tickets, start, end]
   );
-
-  const resolvedInPeriod = useMemo(
-    () =>
-      tickets.filter(t => {
-        if (!isClosedStatus(t.status || t.etat)) return false;
-        const at = ticketResolvedAt(t) || t.updated_at || t.updatedAt;
-        return isDateWithinPeriod(at, start, end);
-      }),
-    [tickets, start, end]
-  );
-
-  const stats = useMemo(() => {
-    const total = createdInPeriod.length;
-    const treated = createdInPeriod.filter(t => isClosedStatus(t.status || t.etat));
-    const open = createdInPeriod.filter(t => !isClosedStatus(t.status || t.etat));
-    const withEquipment = createdInPeriod.filter(t => getTicketEquipmentInfo(t).concerned);
-    const withoutEquipment = total - withEquipment.length;
-    const highPriority = createdInPeriod.filter(t => {
-      const p = String(t.priority || t.priorite || "").toLowerCase();
-      return p === "high" || p === "urgent";
-    });
-    const majors = createdInPeriod.filter(t => t.is_major_incident || t.isMajorIncident);
-    const uniqueEquipment = new Set();
-    withEquipment.forEach(t => {
-      const eq = getTicketEquipmentInfo(t);
-      uniqueEquipment.add(eq.equipmentId || `${eq.source}:${eq.name}:${eq.serial || ""}`);
-    });
-    return {
-      total,
-      treatedCount: treated.length,
-      treatedRate: percent(treated.length, total),
-      openCount: open.length,
-      withEquipmentCount: withEquipment.length,
-      withoutEquipmentCount: withoutEquipment,
-      equipmentRate: percent(withEquipment.length, total),
-      uniqueEquipmentCount: uniqueEquipment.size,
-      highPriorityCount: highPriority.length,
-      majorCount: majors.length
-    };
-  }, [createdInPeriod]);
 
   const categoryLabel = category => {
     const raw = String(category || "").trim();
@@ -383,185 +448,79 @@ export default function SupportStep({ client, reportPeriod = {} }) {
   const consumedAllTime = Math.max(0, (Number(creditTotals.total) || 0) - (Number(creditTotals.remaining) || 0));
   const hasCreditData = Boolean(credits) && (creditTotals.total > 0 || creditTotals.remaining > 0 || consumedOnPeriod > 0 || packs.length > 0);
 
-  const contractCards = [
+  const contractRows = [
+    contrat.type ? { label: "Type", value: contrat.type } : null,
+    contrat.debut ? { label: "Début", value: formatDateFr(contrat.debut) } : null,
+    { label: "Expiration", value: formatDateFr(contrat.expiration) },
     {
-      key: "expiration",
-      label: "Expiration du contrat",
-      value: formatDateFr(contrat.expiration),
-      hint: validity.label,
-      hintClass: validity.className,
-      icon: "mdi:calendar-end",
-      color: "#0f766e"
-    },
-    contrat.debut
-      ? {
-          key: "start",
-          label: "Début du contrat",
-          value: formatDateFr(contrat.debut),
-          icon: "mdi:calendar-start",
-          color: "#2b5fab"
-        }
-      : null,
-    contrat.type
-      ? {
-          key: "type",
-          label: "Type de contrat",
-          value: contrat.type,
-          icon: "mdi:file-document-outline",
-          color: "#6366f1"
-        }
-      : null,
-    {
-      key: "consumed-period",
       label: "Crédits consommés",
-      value: consumedOnPeriod,
-      hint: periodLabel,
-      icon: "mdi:ticket-confirmation-outline",
-      color: "#b45309"
+      value: hasCreditData ? String(consumedOnPeriod) : "—",
+      hint: periodLabel
     },
     {
-      key: "remaining",
       label: "Crédits restants",
-      value: hasCreditData ? creditTotals.remaining : "—",
-      hint: hasCreditData && creditTotals.total > 0 ? `sur ${creditTotals.total} au total` : "Aucun carnet",
-      icon: "mdi:ticket-percent-outline",
-      color: "#047857"
+      value: hasCreditData ? String(creditTotals.remaining) : "—",
+      hint: hasCreditData && creditTotals.total > 0 ? `sur ${creditTotals.total}` : null
     },
     {
-      key: "total",
-      label: "Total de crédits",
-      value: hasCreditData ? creditTotals.total : "—",
-      hint: hasCreditData && consumedAllTime > 0 ? `${consumedAllTime} consommés au global` : "Tous carnets",
-      icon: "mdi:ticket-outline",
-      color: "#1d4ed8"
+      label: "Total crédits",
+      value: hasCreditData ? String(creditTotals.total) : "—",
+      hint: hasCreditData && consumedAllTime > 0 ? `${consumedAllTime} consommés au global` : null
     }
   ].filter(Boolean);
 
-  const kpiCards = [
-    {
-      key: "created",
-      label: "Tickets créés",
-      value: stats.total,
-      hint: periodLabel,
-      icon: "mdi:ticket-outline",
-      color: "#0f766e"
-    },
-    {
-      key: "treated",
-      label: "Traités / total",
-      value: `${stats.treatedCount} / ${stats.total}`,
-      hint: stats.total ? `${stats.treatedRate} % clôturés` : "Aucun ticket",
-      icon: "mdi:check-circle-outline",
-      color: "#047857"
-    },
-    {
-      key: "open",
-      label: "Encore ouverts",
-      value: stats.openCount,
-      hint: "Créés sur la période, non clôturés",
-      icon: "mdi:progress-clock",
-      color: "#b45309"
-    },
-    {
-      key: "resolved",
-      label: "Clôturés sur la période",
-      value: resolvedInPeriod.length,
-      hint: "Y compris créés avant la période",
-      icon: "mdi:archive-check-outline",
-      color: "#1d4ed8"
-    },
-    {
-      key: "hardware",
-      label: "Liés à du matériel",
-      value: stats.withEquipmentCount,
-      hint: stats.total
-        ? `${stats.equipmentRate} % · ${stats.uniqueEquipmentCount} équipement${stats.uniqueEquipmentCount > 1 ? "s" : ""}`
-        : "Aucun ticket",
-      icon: "mdi:server-network",
-      color: "#2b5fab"
-    },
-    {
-      key: "no-hardware",
-      label: "Sans matériel",
-      value: stats.withoutEquipmentCount,
-      hint: "Aucun équipement rattaché",
-      icon: "mdi:server-off",
-      color: "#64748b"
-    },
-    {
-      key: "priority",
-      label: "Priorité haute",
-      value: stats.highPriorityCount,
-      hint: stats.majorCount > 0 ? `${stats.majorCount} incident${stats.majorCount > 1 ? "s" : ""} majeur${stats.majorCount > 1 ? "s" : ""}` : "Urgente ou haute",
-      icon: "mdi:alert-circle-outline",
-      color: "#b91c1c"
-    }
-  ];
-
   return (
-    <MonitoringStepShell>
+    <MonitoringStepShell className={styles.supportStepShell}>
       <MonitoringStepSection title="Contrat et crédits">
-        <div className={styles.supportKpiGrid}>
-          {contractCards.map(card => (
-            <article key={card.key} className={styles.supportKpiCard}>
-              <span className={styles.supportKpiIcon} style={{ color: card.color }}>
-                <Icon icon={card.icon} width={20} height={20} />
-              </span>
-              <div className={styles.supportKpiContent}>
-                <div className={styles.supportKpiValue}>{card.value}</div>
-                <div className={styles.supportKpiLabel}>{card.label}</div>
-                {card.hint ? (
-                  card.hintClass ? (
-                    <span className={`${styles.supportBadge} ${card.hintClass}`}>{card.hint}</span>
-                  ) : (
-                    <div className={styles.supportKpiHint}>{card.hint}</div>
-                  )
-                ) : null}
+        <article className={styles.supportContractCard}>
+          <div className={styles.supportContractHead}>
+            <span className={styles.supportContractIcon}>
+              <Icon icon="mdi:file-document-outline" width={18} height={18} />
+            </span>
+            <div>
+              <div className={styles.supportContractTitle}>Contrat support</div>
+              <div className={styles.supportContractSubtitle}>{periodLabel}</div>
+            </div>
+            <span className={`${styles.supportBadge} ${validity.className}`}>{validity.label}</span>
+          </div>
+          <dl className={styles.supportContractGrid}>
+            {contractRows.map(row => (
+              <div key={row.label} className={styles.supportContractItem}>
+                <dt>{row.label}</dt>
+                <dd>
+                  <span>{row.value}</span>
+                  {row.hint ? <span className={styles.supportContractHint}>{row.hint}</span> : null}
+                </dd>
               </div>
-            </article>
-          ))}
-        </div>
+            ))}
+          </dl>
+        </article>
       </MonitoringStepSection>
+
       {loading ? (
         <div className={styles.supportState}>Chargement des tickets support…</div>
       ) : null}
       {error ? <div className={styles.supportError}>{error}</div> : null}
 
-      <div className={styles.supportKpiGrid}>
-        {kpiCards.map(card => (
-          <article key={card.key} className={styles.supportKpiCard}>
-            <span className={styles.supportKpiIcon} style={{ color: card.color }}>
-              <Icon icon={card.icon} width={20} height={20} />
-            </span>
-            <div className={styles.supportKpiContent}>
-              <div className={styles.supportKpiValue}>{card.value}</div>
-              <div className={styles.supportKpiLabel}>{card.label}</div>
-              {card.hint ? <div className={styles.supportKpiHint}>{card.hint}</div> : null}
-            </div>
-          </article>
-        ))}
-      </div>
-
       <div className={styles.supportBreakdownGrid}>
         <MonitoringStepSection title="Catégories" count={byCategory.length}>
-          <BreakdownBars items={byCategory} total={stats.total} emptyLabel="Aucune catégorie sur cette période." />
+          <VerticalBarsChart items={byCategory} emptyLabel="Aucune catégorie sur cette période." color="#2b5fab" />
         </MonitoringStepSection>
         <MonitoringStepSection title="Types de tickets" count={byType.length}>
-          <BreakdownBars items={byType} total={stats.total} emptyLabel="Aucun type renseigné." color="#0f766e" />
+          <DonutChart items={byType} emptyLabel="Aucun type renseigné." colors={["#0f766e", "#2b5fab", "#6366f1", "#b45309"]} />
         </MonitoringStepSection>
         <MonitoringStepSection title="Statuts" count={byStatus.length}>
-          <BreakdownBars items={byStatus} total={stats.total} emptyLabel="Aucun statut." color="#b45309" />
+          <HorizontalBarsChart items={byStatus} emptyLabel="Aucun statut." color="#b45309" />
         </MonitoringStepSection>
         <MonitoringStepSection title="Priorités" count={byPriority.length}>
-          <BreakdownBars items={byPriority} total={stats.total} emptyLabel="Aucune priorité." color="#b91c1c" />
+          <DonutChart items={byPriority} emptyLabel="Aucune priorité." colors={["#64748b", "#b45309", "#b91c1c", "#0f766e"]} />
         </MonitoringStepSection>
         <MonitoringStepSection title="Canaux" count={byChannel.length}>
-          <BreakdownBars items={byChannel} total={stats.total} emptyLabel="Aucun canal renseigné." color="#6366f1" />
+          <VerticalBarsChart items={byChannel} emptyLabel="Aucun canal renseigné." color="#6366f1" />
         </MonitoringStepSection>
         <MonitoringStepSection title="Matériel concerné" count={byEquipmentType.length}>
-          <BreakdownBars
+          <HorizontalBarsChart
             items={byEquipmentType}
-            total={stats.withEquipmentCount}
             emptyLabel="Aucun ticket lié à du matériel sur cette période."
             color="#2b5fab"
           />

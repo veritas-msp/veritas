@@ -921,3 +921,52 @@
 :global(body.dark) .searchBox input::placeholder {
   color: #6a88a8;
 }
+
+.viewSwitch {
+  display: inline-flex;
+  align-items: stretch;
+  flex-shrink: 0;
+  padding: 0.12rem;
+  border-radius: 10px;
+  background: var(--msp-surface-2, #f7f9fc);
+  border: 1px solid var(--msp-border-light, #eef2f7);
+}
+
+.viewSwitchBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.38rem 0.7rem;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--msp-muted, #5c6b82);
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.viewSwitchBtn:hover {
+  color: var(--msp-text, #0f1c2e);
+}
+
+.viewSwitchBtnActive {
+  background: var(--msp-accent, #2b5fab);
+  color: #fff;
+}
+
+.viewSwitchBtnActive:hover {
+  color: #fff;
+}
+
+:global(html.dark) .viewSwitch,
+:global(body.dark) .viewSwitch {
+  background: #152033;
+  border-color: #2a3d5c;
+}
+
+:global(html.dark) .viewSwitchBtnActive,
+:global(body.dark) .viewSwitchBtnActive {
+  background: #5a8fd4;
+}

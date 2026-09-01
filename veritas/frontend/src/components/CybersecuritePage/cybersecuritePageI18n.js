@@ -1,8 +1,9 @@
 import { interpolate, pickLocaleMessages } from "../../i18n/translate";
-const TAB_KEYS = ["antivirus", "antispam", "campaigns"];
+const TAB_KEYS = ["antivirus", "antispam", "backup", "campaigns"];
 const TAB_ICONS = {
   antivirus: "mdi:shield-search",
   antispam: "mdi:email-secure",
+  backup: "mdi:backup-restore",
   campaigns: "mdi:bullhorn-outline"
 };
 const STATUS_FILTER_IDS = ["all", "actif", "expire_bientot", "inactif"];
@@ -34,6 +35,7 @@ const CYBERSECURITE_PAGE_COPY = {
       overview: "À traiter",
       antivirus: "Antivirus",
       antispam: "Antispam",
+      backup: "Sauvegarde",
       campaigns: "Campagnes"
     },
     hub: {
@@ -157,7 +159,13 @@ const CYBERSECURITE_PAGE_COPY = {
         coverage: "Couverture",
         licenses: "Licences",
         domains: "Domaines",
-        lastSync: "Dernière sync"
+        lastSync: "Dernière sync",
+        job: "Job",
+        instance: "Instance",
+        jobsCount: "Jobs",
+        lastBackup: "Dernière sauvegarde",
+        server: "Serveur",
+        version: "Version"
       },
       kpi: {
         solutions: "Solutions",
@@ -198,6 +206,41 @@ const CYBERSECURITE_PAGE_COPY = {
         noResultsTitle: "Aucun résultat",
         emptyText: "Configurez les solutions dans les fiches entreprises ou ajoutez-en une depuis ce tableau de bord.",
         noResultsText: "Ajustez les filtres ou la recherche pour afficher des solutions."
+      },
+      backup: {
+        eyebrow: "Sauvegarde",
+        healthLabel: "Santé jobs",
+        heroDescOk: "Jobs, instances et dernières exécutions de vos clients.",
+        heroDescIssues: "{count} job à traiter.",
+        heroDescIssuesPlural: "{count} jobs à traiter.",
+        viewAria: "Vue Instance ou Job",
+        viewInstance: "Instance",
+        viewJob: "Job",
+        searchPlaceholder: "Rechercher entreprise, job, instance…",
+        searchInstancesPlaceholder: "Rechercher entreprise, instance, serveur…",
+        loading: "Chargement des jobs de sauvegarde…",
+        loadingInstances: "Chargement des instances de sauvegarde…",
+        emptyTitle: "Aucun job de sauvegarde",
+        emptyInstancesTitle: "Aucune instance de sauvegarde",
+        noResultsTitle: "Aucun résultat",
+        emptyText: "Configurez les jobs de sauvegarde dans les fiches entreprises.",
+        emptyInstancesText: "Configurez les instances de sauvegarde dans les fiches entreprises.",
+        noResultsText: "Ajustez les filtres ou la recherche pour afficher des résultats.",
+        clearInstanceFilter: "Afficher tous les jobs",
+        kpi: {
+          jobs: "Jobs",
+          instances: "Instances",
+          ok: "OK",
+          toReview: "À traiter"
+        },
+        statusMeta: {
+          ok: "OK",
+          warning: "Retard",
+          critical: "En erreur",
+          unmapped: "Non mappé",
+          hycu: "HYCU",
+          inactive: "Inactif"
+        }
       }
     },
     campaigns: {
@@ -411,6 +454,7 @@ const CYBERSECURITE_PAGE_COPY = {
       overview: "To do",
       antivirus: "Antivirus",
       antispam: "Antispam",
+      backup: "Backup",
       campaigns: "Campaigns"
     },
     hub: {
@@ -534,7 +578,13 @@ const CYBERSECURITE_PAGE_COPY = {
         coverage: "Coverage",
         licenses: "Licenses",
         domains: "Domains",
-        lastSync: "Last sync"
+        lastSync: "Last sync",
+        job: "Job",
+        instance: "Instance",
+        jobsCount: "Jobs",
+        lastBackup: "Last backup",
+        server: "Server",
+        version: "Version"
       },
       kpi: {
         solutions: "Solutions",
@@ -575,6 +625,41 @@ const CYBERSECURITE_PAGE_COPY = {
         noResultsTitle: "No results",
         emptyText: "Configure solutions in company records or add one from this dashboard.",
         noResultsText: "Adjust filters or search to display solutions."
+      },
+      backup: {
+        eyebrow: "Backup",
+        healthLabel: "Job health",
+        heroDescOk: "Jobs, instances and last runs across your clients.",
+        heroDescIssues: "{count} job to review.",
+        heroDescIssuesPlural: "{count} jobs to review.",
+        viewAria: "Instance or Job view",
+        viewInstance: "Instance",
+        viewJob: "Job",
+        searchPlaceholder: "Search company, job, instance…",
+        searchInstancesPlaceholder: "Search company, instance, server…",
+        loading: "Loading backup jobs…",
+        loadingInstances: "Loading backup instances…",
+        emptyTitle: "No backup jobs",
+        emptyInstancesTitle: "No backup instances",
+        noResultsTitle: "No results",
+        emptyText: "Configure backup jobs from company records.",
+        emptyInstancesText: "Configure backup instances from company records.",
+        noResultsText: "Adjust filters or search to show results.",
+        clearInstanceFilter: "Show all jobs",
+        kpi: {
+          jobs: "Jobs",
+          instances: "Instances",
+          ok: "OK",
+          toReview: "To review"
+        },
+        statusMeta: {
+          ok: "OK",
+          warning: "Delayed",
+          critical: "Failed",
+          unmapped: "Unmapped",
+          hycu: "HYCU",
+          inactive: "Inactive"
+        }
       }
     },
     campaigns: {
@@ -788,6 +873,7 @@ const CYBERSECURITE_PAGE_COPY = {
       overview: "Zu erledigen",
       antivirus: "Antivirus",
       antispam: "Antispam",
+      backup: "Backup",
       campaigns: "Kampagnen"
     },
     hub: {
@@ -911,7 +997,13 @@ const CYBERSECURITE_PAGE_COPY = {
         coverage: "Abdeckung",
         licenses: "Lizenzen",
         domains: "Domains",
-        lastSync: "Letzte Sync"
+        lastSync: "Letzte Sync",
+        job: "Job",
+        instance: "Instanz",
+        jobsCount: "Jobs",
+        lastBackup: "Letztes Backup",
+        server: "Server",
+        version: "Version"
       },
       kpi: {
         solutions: "Lösungen",
@@ -952,6 +1044,41 @@ const CYBERSECURITE_PAGE_COPY = {
         noResultsTitle: "Keine Ergebnisse",
         emptyText: "Konfigurieren Sie Lösungen in den Unternehmensakten oder fügen Sie eine über dieses Dashboard hinzu.",
         noResultsText: "Passen Sie Filter oder Suche an, um Lösungen anzuzeigen."
+      },
+      backup: {
+        eyebrow: "Backup",
+        healthLabel: "Job-Gesundheit",
+        heroDescOk: "Jobs, Instanzen und letzte Ausführungen Ihrer Kunden.",
+        heroDescIssues: "{count} Job zu prüfen.",
+        heroDescIssuesPlural: "{count} Jobs zu prüfen.",
+        viewAria: "Ansicht Instanz oder Job",
+        viewInstance: "Instanz",
+        viewJob: "Job",
+        searchPlaceholder: "Unternehmen, Job, Instanz suchen…",
+        searchInstancesPlaceholder: "Unternehmen, Instanz, Server suchen…",
+        loading: "Backup-Jobs werden geladen…",
+        loadingInstances: "Backup-Instanzen werden geladen…",
+        emptyTitle: "Keine Backup-Jobs",
+        emptyInstancesTitle: "Keine Backup-Instanzen",
+        noResultsTitle: "Keine Ergebnisse",
+        emptyText: "Konfigurieren Sie Backup-Jobs in den Unternehmensakten.",
+        emptyInstancesText: "Konfigurieren Sie Backup-Instanzen in den Unternehmensakten.",
+        noResultsText: "Passen Sie Filter oder Suche an, um Ergebnisse anzuzeigen.",
+        clearInstanceFilter: "Alle Jobs anzeigen",
+        kpi: {
+          jobs: "Jobs",
+          instances: "Instanzen",
+          ok: "OK",
+          toReview: "Zu prüfen"
+        },
+        statusMeta: {
+          ok: "OK",
+          warning: "Verzögert",
+          critical: "Fehler",
+          unmapped: "Nicht zugeordnet",
+          hycu: "HYCU",
+          inactive: "Inaktiv"
+        }
       }
     },
     campaigns: {
@@ -1165,6 +1292,7 @@ const CYBERSECURITE_PAGE_COPY = {
       overview: "Da trattare",
       antivirus: "Antivirus",
       antispam: "Antispam",
+      backup: "Backup",
       campaigns: "Campagne"
     },
     hub: {
@@ -1288,7 +1416,13 @@ const CYBERSECURITE_PAGE_COPY = {
         coverage: "Copertura",
         licenses: "Licenze",
         domains: "Domini",
-        lastSync: "Ultima sync"
+        lastSync: "Ultima sync",
+        job: "Job",
+        instance: "Istanza",
+        jobsCount: "Job",
+        lastBackup: "Ultimo backup",
+        server: "Server",
+        version: "Versione"
       },
       kpi: {
         solutions: "Soluzioni",
@@ -1329,6 +1463,41 @@ const CYBERSECURITE_PAGE_COPY = {
         noResultsTitle: "Nessun risultato",
         emptyText: "Configurate le soluzioni nelle schede azienda o aggiungetene una da questa dashboard.",
         noResultsText: "Modificate filtri o ricerca per visualizzare le soluzioni."
+      },
+      backup: {
+        eyebrow: "Backup",
+        healthLabel: "Salute job",
+        heroDescOk: "Job, istanze e ultime esecuzioni dei clienti.",
+        heroDescIssues: "{count} job da trattare.",
+        heroDescIssuesPlural: "{count} job da trattare.",
+        viewAria: "Vista Istanza o Job",
+        viewInstance: "Istanza",
+        viewJob: "Job",
+        searchPlaceholder: "Cerca azienda, job, istanza…",
+        searchInstancesPlaceholder: "Cerca azienda, istanza, server…",
+        loading: "Caricamento job di backup…",
+        loadingInstances: "Caricamento istanze di backup…",
+        emptyTitle: "Nessun job di backup",
+        emptyInstancesTitle: "Nessuna istanza di backup",
+        noResultsTitle: "Nessun risultato",
+        emptyText: "Configurate i job di backup nelle schede azienda.",
+        emptyInstancesText: "Configurate le istanze di backup nelle schede azienda.",
+        noResultsText: "Modificate filtri o ricerca per visualizzare i risultati.",
+        clearInstanceFilter: "Mostra tutti i job",
+        kpi: {
+          jobs: "Job",
+          instances: "Istanze",
+          ok: "OK",
+          toReview: "Da trattare"
+        },
+        statusMeta: {
+          ok: "OK",
+          warning: "Ritardo",
+          critical: "Errore",
+          unmapped: "Non mappato",
+          hycu: "HYCU",
+          inactive: "Inattivo"
+        }
       }
     },
     campaigns: {
@@ -1542,6 +1711,7 @@ const CYBERSECURITE_PAGE_COPY = {
       overview: "Por tratar",
       antivirus: "Antivirus",
       antispam: "Antispam",
+      backup: "Copia de seguridad",
       campaigns: "Campañas"
     },
     hub: {
@@ -1665,7 +1835,13 @@ const CYBERSECURITE_PAGE_COPY = {
         coverage: "Cobertura",
         licenses: "Licencias",
         domains: "Dominios",
-        lastSync: "Última sync"
+        lastSync: "Última sync",
+        job: "Job",
+        instance: "Instancia",
+        jobsCount: "Jobs",
+        lastBackup: "Última copia",
+        server: "Servidor",
+        version: "Versión"
       },
       kpi: {
         solutions: "Soluciones",
@@ -1706,6 +1882,41 @@ const CYBERSECURITE_PAGE_COPY = {
         noResultsTitle: "Sin resultados",
         emptyText: "Configure las soluciones en las fichas de empresa o añada una desde este panel.",
         noResultsText: "Ajuste los filtros o la búsqueda para mostrar soluciones."
+      },
+      backup: {
+        eyebrow: "Copia de seguridad",
+        healthLabel: "Salud jobs",
+        heroDescOk: "Jobs, instancias y últimas ejecuciones de sus clientes.",
+        heroDescIssues: "{count} job por tratar.",
+        heroDescIssuesPlural: "{count} jobs por tratar.",
+        viewAria: "Vista Instancia o Job",
+        viewInstance: "Instancia",
+        viewJob: "Job",
+        searchPlaceholder: "Buscar empresa, job, instancia…",
+        searchInstancesPlaceholder: "Buscar empresa, instancia, servidor…",
+        loading: "Cargando jobs de copia de seguridad…",
+        loadingInstances: "Cargando instancias de copia de seguridad…",
+        emptyTitle: "Ningún job de copia de seguridad",
+        emptyInstancesTitle: "Ninguna instancia de copia de seguridad",
+        noResultsTitle: "Sin resultados",
+        emptyText: "Configure los jobs de copia de seguridad en las fichas de empresa.",
+        emptyInstancesText: "Configure las instancias de copia de seguridad en las fichas de empresa.",
+        noResultsText: "Ajuste los filtros o la búsqueda para mostrar resultados.",
+        clearInstanceFilter: "Mostrar todos los jobs",
+        kpi: {
+          jobs: "Jobs",
+          instances: "Instancias",
+          ok: "OK",
+          toReview: "Por tratar"
+        },
+        statusMeta: {
+          ok: "OK",
+          warning: "Retraso",
+          critical: "Error",
+          unmapped: "Sin mapear",
+          hycu: "HYCU",
+          inactive: "Inactivo"
+        }
       }
     },
     campaigns: {
@@ -2020,6 +2231,10 @@ export function getCybersecuritePageCopy(locale) {
     getCampaignTypeLabel: type => t.campaigns.types[type] || type,
     getCampaignStatusLabel: status => t.campaigns.statuses[status] || status,
     getStatusMeta: status => statusMeta[status] || statusMeta.inconnu,
+    getBackupStatusMeta: status => ({
+      label: t.msp.backup?.statusMeta?.[status] || status || "-",
+      tone: status === "critical" ? "bad" : status === "warning" ? "warn" : status === "ok" ? "good" : "neutral"
+    }),
     formatCampaignCount: count => interpolate(count === 1 ? t.campaigns.campaignCount : t.campaigns.campaignCountPlural, {
       count: String(count)
     }),
