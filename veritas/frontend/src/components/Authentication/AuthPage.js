@@ -255,7 +255,8 @@ export default function AuthPage() {
           "Content-Type": "application/json"
         },
         body: JSON.stringify({
-          email
+          email,
+          appOrigin: window.location.origin
         })
       });
       if (res.ok) {

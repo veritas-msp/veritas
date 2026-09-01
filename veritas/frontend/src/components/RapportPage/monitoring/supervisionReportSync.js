@@ -73,6 +73,11 @@ function listBackupInstances(raw) {
 }
 
 const BACKUP_SYNC_BATCH_SIZE = 6;
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+function isUuid(value) {
+  return UUID_RE.test(String(value || "").trim());
+}
 
 function chunkArray(items, size) {
   const chunks = [];
@@ -90,21 +95,27 @@ function collectMappedBackupJobGroups(eq) {
     jobs.forEach(job => {
       const hostName = String(job?.checkmk_host_name || "").trim();
       const serviceName = String(job?.checkmk_service_name || "").trim();
-      const jobId = job?.id;
-      if (!hostName || !serviceName || jobId == null) return;
+      if (!hostName || !serviceName) return;
       const site = String(job?.checkmk_site || "").trim();
       const key = `${hostName}\0${site}`;
       if (!byHost.has(key)) {
-        byHost.set(key, { hostName, site, jobIds: [] });
+        byHost.set(key, { hostName, site, jobIds: [], mappedCount: 0 });
       }
-      byHost.get(key).jobIds.push(jobId);
+      const group = byHost.get(key);
+      group.mappedCount += 1;
+      if (isUuid(job?.id)) {
+        group.jobIds.push(String(job.id));
+      }
     });
   });
   const groups = [];
   byHost.forEach(group => {
-    const batches = group.jobIds.length > BACKUP_SYNC_BATCH_SIZE
-      ? chunkArray(group.jobIds, BACKUP_SYNC_BATCH_SIZE)
-      : [group.jobIds];
+    const uniqueJobIds = [...new Set(group.jobIds)];
+    const canFilterByIds = uniqueJobIds.length > 0 && uniqueJobIds.length === group.mappedCount;
+    const idsForSync = canFilterByIds ? uniqueJobIds : [];
+    const batches = idsForSync.length > BACKUP_SYNC_BATCH_SIZE
+      ? chunkArray(idsForSync, BACKUP_SYNC_BATCH_SIZE)
+      : [idsForSync];
     batches.forEach((jobIds, batchIndex) => {
       groups.push({
         hostName: group.hostName,
@@ -112,7 +123,7 @@ function collectMappedBackupJobGroups(eq) {
         jobIds,
         batchIndex,
         batchCount: batches.length,
-        count: jobIds.length
+        count: group.mappedCount
       });
     });
   });

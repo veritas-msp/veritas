@@ -168,7 +168,100 @@ export function writeFrontendEnvFile(updates) {
     };
   }
 }
-export function getPrimaryFrontendBaseUrl() {
-  const raw = process.env.FRONTEND_BASE_URL || "http://localhost:3000";
-  return String(raw).split(",")[0].trim().replace(/\/+$/, "");
+export function getPrimaryFrontendBaseUrl(req = null) {
+  const configured = getConfiguredFrontendBaseUrls();
+  const allowed = getAllowedFrontendOrigins();
+
+  const configuredPublic = configured.find(url => !isLocalDevFrontendOrigin(url));
+  if (configuredPublic) return configuredPublic;
+
+  const allowedPublic = allowed.find(url => !isLocalDevFrontendOrigin(url));
+  if (allowedPublic) return allowedPublic;
+
+  const fromRequest = resolveFrontendBaseFromRequest(req);
+  if (fromRequest && isAllowedFrontendOrigin(fromRequest, allowed)) {
+    return fromRequest;
+  }
+
+  return configured[0] || allowed[0] || "http://localhost:3000";
+}
+
+function normalizeFrontendOrigin(url) {
+  if (!url) return "";
+  return String(url).trim().replace(/\/+$/, "");
+}
+
+function isLocalDevFrontendOrigin(origin) {
+  if (!origin) return false;
+  try {
+    const { hostname } = new URL(origin);
+    return hostname === "localhost" || hostname === "127.0.0.1" || hostname === "::1";
+  } catch {
+    return false;
+  }
+}
+
+function getConfiguredFrontendBaseUrls() {
+  const raw = process.env.FRONTEND_BASE_URL || "";
+  return raw.split(",").map(part => normalizeFrontendOrigin(part)).filter(Boolean);
+}
+
+function getAllowedFrontendOrigins() {
+  const fromEnv = (process.env.ALLOWED_ORIGINS || "")
+    .split(",")
+    .map(part => normalizeFrontendOrigin(part))
+    .filter(Boolean);
+  return [...new Set([...getConfiguredFrontendBaseUrls(), ...fromEnv])];
+}
+
+function isAllowedFrontendOrigin(origin, allowedOrigins) {
+  const normalized = normalizeFrontendOrigin(origin);
+  if (!normalized) return false;
+  if (allowedOrigins.includes(normalized)) return true;
+  if (process.env.NODE_ENV !== "production" && isLocalDevFrontendOrigin(normalized)) {
+    return true;
+  }
+  const allowedIsLocalOnly =
+    allowedOrigins.length === 0 || allowedOrigins.every(isLocalDevFrontendOrigin);
+  if (
+    process.env.NODE_ENV === "production" &&
+    allowedIsLocalOnly &&
+    !isLocalDevFrontendOrigin(normalized)
+  ) {
+    return true;
+  }
+  return false;
+}
+
+function resolveFrontendBaseFromRequest(req) {
+  if (!req) return "";
+
+  const explicit = normalizeFrontendOrigin(req.body?.appOrigin);
+  if (explicit) return explicit;
+
+  const origin = normalizeFrontendOrigin(req.headers?.origin);
+  if (origin) return origin;
+
+  const referer = String(req.headers?.referer || req.headers?.referrer || "").trim();
+  if (referer) {
+    try {
+      return normalizeFrontendOrigin(new URL(referer).origin);
+    } catch {
+      /* ignore */
+    }
+  }
+
+  const forwardedHost = String(req.headers?.["x-forwarded-host"] || "").split(",")[0].trim();
+  const host = forwardedHost || String(req.headers?.host || "").split(",")[0].trim();
+  if (!host || host.startsWith("localhost:") || host.startsWith("127.0.0.1:")) {
+    return "";
+  }
+
+  const forwardedProto = String(req.headers?.["x-forwarded-proto"] || "").split(",")[0].trim();
+  const protocol = forwardedProto || req.protocol || "https";
+  try {
+    return normalizeFrontendOrigin(`${protocol}://${host}`);
+  } catch {
+    return "";
+  }
 }

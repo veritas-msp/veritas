@@ -143,7 +143,7 @@ router.post("/forgot-password", forgotPasswordRateLimit, async (req, res) => {
       purpose: "password_reset",
       fp: passwordFingerprint(user.password)
     }, "15m");
-    const resetLink = `${getPrimaryFrontendBaseUrl()}/reset-password#token=${token}`;
+    const resetLink = `${getPrimaryFrontendBaseUrl(req)}/reset-password#token=${token}`;
     const mailResult = await sendMail({
       to: email,
       subject: "Reset your Veritas password",

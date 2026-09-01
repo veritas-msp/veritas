@@ -8,7 +8,20 @@ const SAVE_TABLE = 'v_b_clients_m_save';
 const SETTINGS_TABLE = 'v_b_settings';
 const LAST_SYNC_SECTION = 'checkmk';
 const LAST_SYNC_KEY = 'checkmk_save_jobs_last_sync';
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 let lastSaveJobsSyncAt = null;
+function isUuid(value) {
+  return UUID_RE.test(String(value || '').trim());
+}
+function normalizeJobIdsFilter(jobIds) {
+  if (!Array.isArray(jobIds) || jobIds.length === 0) return null;
+  const normalized = jobIds.map(id => String(id).trim()).filter(Boolean);
+  if (normalized.length === 0) return null;
+  if (!normalized.every(isUuid)) {
+    return null;
+  }
+  return normalized;
+}
 async function loadLastSyncFromDb() {
   try {
     const r = await pool.query(`SELECT value FROM ${SETTINGS_TABLE} WHERE section = $1 AND key = $2`, [LAST_SYNC_SECTION, LAST_SYNC_KEY]);
@@ -194,8 +207,9 @@ export async function runSaveJobsSync({
     queryParams.push(String(site).trim());
     clientFilter += ` AND COALESCE(checkmk_site, '') = $${queryParams.length}`;
   }
-  if (Array.isArray(jobIds) && jobIds.length > 0) {
-    queryParams.push(jobIds);
+  const jobIdsFilter = normalizeJobIdsFilter(jobIds);
+  if (jobIdsFilter?.length) {
+    queryParams.push(jobIdsFilter);
     clientFilter += ` AND id = ANY($${queryParams.length}::uuid[])`;
   }
   const jobsResult = await pool.query(`SELECT id, client_id, item_key, data, checkmk_host_name, checkmk_site, checkmk_service_name

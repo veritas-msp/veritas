@@ -4,6 +4,7 @@ import verifyJWT from "../../middleware/auth.js";
 import fetch from "node-fetch";
 import { getSettingsMap } from "../../utils/settingsHelper.js";
 import { createMicrosoftAuthError, isMicrosoftAuthError } from "../../utils/microsoftAuthErrors.js";
+import { ensureAzureMfaSchema } from "../../services/ensureAzureMfaSchema.js";
 const router = express.Router();
 let tokenCache = {};
 export async function getOffice365Settings() {
@@ -4097,6 +4098,7 @@ async function fetchOneDriveDataInternal(accessToken, startDate, endDate, period
   }
 }
 async function saveClientMfaDetailsWithAdminRoles(clientId, accessToken) {
+  await ensureAzureMfaSchema();
   const importantRoles = ['Global Administrator', 'Privileged Role Administrator', 'Exchange Administrator', 'SharePoint Administrator', 'User Administrator', 'Security Administrator', 'Billing Administrator', 'Application Administrator', 'Cloud Application Administrator', 'Helpdesk Administrator', 'Teams Administrator', 'Power Platform Administrator', 'Azure AD Joined Device Local Administrator', 'Intune Administrator', 'Windows 365 Administrator', 'Compliance Administrator', 'Conditional Access Administrator', 'Authentication Administrator', 'License Administrator', 'Groups Administrator', 'Password Administrator', 'Directory Readers', 'Guest Inviter', 'Message Center Reader', 'Reports Reader'];
   const directoryRoles = await callMicrosoftGraph("/directoryRoles", accessToken).catch(() => null);
   const administrators = [];
@@ -4168,8 +4170,12 @@ async function saveClientMfaDetailsWithAdminRoles(clientId, accessToken) {
   const usersData = await callMicrosoftGraph("/users?$select=id,displayName,mail,userPrincipalName,accountEnabled", accessToken, {
     getAllPages: true
   }).catch(() => null);
-  if (!usersData || !usersData.value || usersData.value.length === 0) return;
+  if (!usersData || !usersData.value || usersData.value.length === 0) {
+    console.warn(`[azure-mfa] No users returned from Graph for client ${clientId}`);
+    return { saved: 0 };
+  }
   const usersToCheck = usersData.value;
+  const accountEnabledByUserId = new Map(usersToCheck.map(user => [user.id, user.accountEnabled !== false]));
   const mfaDetailsPromises = usersToCheck.map(async user => {
     try {
       const methods = await callMicrosoftGraph(`/users/${user.id}/authentication/methods`, accessToken).catch(() => null);
@@ -4198,6 +4204,7 @@ async function saveClientMfaDetailsWithAdminRoles(clientId, accessToken) {
         id: user.id,
         displayName: user.displayName || user.userPrincipalName,
         userPrincipalName: user.userPrincipalName,
+        accountEnabled: accountEnabledByUserId.get(user.id) !== false,
         hasMFA,
         mfaMethods: uniqueMethodTypes,
         lastMfaEnrollmentDate
@@ -4207,6 +4214,7 @@ async function saveClientMfaDetailsWithAdminRoles(clientId, accessToken) {
         id: user.id,
         displayName: user.displayName || user.userPrincipalName,
         userPrincipalName: user.userPrincipalName,
+        accountEnabled: accountEnabledByUserId.get(user.id) !== false,
         hasMFA: false,
         mfaMethods: [],
         lastMfaEnrollmentDate: null
@@ -4215,6 +4223,7 @@ async function saveClientMfaDetailsWithAdminRoles(clientId, accessToken) {
   });
   const settled = await Promise.allSettled(mfaDetailsPromises);
   const userMfaDetails = settled.filter(r => r.status === 'fulfilled').map(r => r.value);
+  let saved = 0;
   try {
     for (const userDetail of userMfaDetails) {
       const adminRoles = [];
@@ -4245,11 +4254,13 @@ async function saveClientMfaDetailsWithAdminRoles(clientId, accessToken) {
           admin_role = EXCLUDED.admin_role,
           last_sync = CURRENT_TIMESTAMP,
           updated_at = CURRENT_TIMESTAMP
-      `, [clientId, userDetail.id, userDetail.displayName, userDetail.userPrincipalName, true, userDetail.hasMFA, JSON.stringify(userDetail.mfaMethods || []), userDetail.lastMfaEnrollmentDate, isAdmin, adminRoleText]);
+      `, [clientId, userDetail.id, userDetail.displayName, userDetail.userPrincipalName, userDetail.accountEnabled !== false, userDetail.hasMFA, JSON.stringify(userDetail.mfaMethods || []), userDetail.lastMfaEnrollmentDate, isAdmin, adminRoleText]);
+      saved += 1;
     }
   } catch (err) {
-    console.error('Failed to save MFA + admin roles (sync):', err);
+    console.error(`Failed to save MFA + admin roles (sync) for client ${clientId}:`, err);
   }
+  return { saved };
 }
 router.get("/sync-all", verifyJWT, async (req, res) => {
   try {
@@ -4392,6 +4403,15 @@ router.get("/sync-all", verifyJWT, async (req, res) => {
       success: false,
       error: securityData.reason?.message
     };
+    const mfaAdminSaveFinal = mfaAdminSave.status === 'fulfilled' ? mfaAdminSave.value : {
+      saved: 0,
+      error: mfaAdminSave.reason?.message || 'MFA save failed'
+    };
+    if (mfaAdminSave.status === 'rejected') {
+      console.error(`[sync-all] MFA save rejected for client ${clientId}:`, mfaAdminSave.reason?.message || mfaAdminSave.reason);
+    } else if ((mfaAdminSaveFinal?.saved ?? 0) === 0) {
+      console.warn(`[sync-all] MFA save completed with 0 rows for client ${clientId}`);
+    }
     const snapshotData = {
       tenantId: credentials.tenantId || null,
       licences: dataFinal.licences || [],
@@ -4420,6 +4440,7 @@ router.get("/sync-all", verifyJWT, async (req, res) => {
       success: true,
       message: "Full synchronization completed",
       data: snapshotData,
+      mfaSaved: mfaAdminSaveFinal?.saved ?? 0,
       lastUpdate: snapshotData.lastUpdate
     });
   } catch (error) {
