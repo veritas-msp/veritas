@@ -454,6 +454,90 @@
   color: var(--msp-muted-light, #94a3b8);
 }
 
+.numberStepper {
+  display: flex;
+  align-items: stretch;
+  width: 100%;
+  min-height: 2.5rem;
+  border: 1px solid var(--msp-border, #dde3ed);
+  border-radius: 10px;
+  background: var(--msp-surface, #fff);
+  overflow: hidden;
+  box-sizing: border-box;
+  transition: border-color 0.15s, box-shadow 0.15s, background-color 0.15s;
+}
+
+.shell .numberStepper:hover {
+  border-color: rgba(43, 95, 171, 0.35);
+}
+
+.shell .numberStepper:focus-within {
+  border-color: var(--msp-accent, #2b5fab);
+  box-shadow: 0 0 0 3px var(--msp-accent-soft, rgba(43, 95, 171, 0.12));
+}
+
+.numberStepperInput {
+  flex: 1;
+  min-width: 0;
+  width: 100%;
+  padding: 0.62rem 0.8rem;
+  border: none;
+  background: transparent;
+  color: var(--msp-text, #0f1c2e);
+  font-size: 0.875rem;
+  font-family: inherit;
+  box-sizing: border-box;
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
+
+.numberStepperInput:focus,
+.numberStepperInput:focus-visible {
+  outline: none;
+}
+
+.numberStepperInput::-webkit-outer-spin-button,
+.numberStepperInput::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.numberStepperActions {
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+  width: 1.85rem;
+  border-left: 1px solid var(--msp-border, #dde3ed);
+  background: var(--msp-surface-2, #f7f9fc);
+}
+
+.numberStepperBtn {
+  flex: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 1.15rem;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: var(--msp-muted, #5c6b82);
+  cursor: pointer;
+  transition: background 0.12s ease, color 0.12s ease;
+}
+
+.numberStepperBtn + .numberStepperBtn {
+  border-top: 1px solid var(--msp-border, #dde3ed);
+}
+
+.numberStepperBtn:hover {
+  background: var(--msp-accent-soft, rgba(43, 95, 171, 0.1));
+  color: var(--msp-accent, #2b5fab);
+}
+
+.numberStepperBtn:active {
+  background: var(--msp-accent-soft, rgba(43, 95, 171, 0.18));
+}
+
 .hint {
   margin: 0 0 1rem;
   font-size: 0.78rem;
@@ -1469,6 +1553,32 @@
   -webkit-text-fill-color: var(--msp-text, #e8edf5);
   border-color: var(--msp-accent, #4a8fd4);
   box-shadow: 0 0 0 1000px var(--msp-surface, #1a2540) inset;
+}
+
+:global(html.dark) .numberStepper {
+  background: var(--msp-surface, #1a2540);
+  border-color: var(--msp-border, #2a3a58);
+}
+
+:global(html.dark) .shell .numberStepper:hover {
+  border-color: rgba(74, 143, 212, 0.45);
+}
+
+:global(html.dark) .numberStepperInput {
+  color: var(--msp-text, #e8edf5);
+}
+
+:global(html.dark) .numberStepperActions {
+  background: var(--msp-surface-2, #152038);
+  border-left-color: var(--msp-border, #2a3a58);
+}
+
+:global(html.dark) .numberStepperBtn {
+  color: var(--msp-muted-light, #94a3b8);
+}
+
+:global(html.dark) .numberStepperBtn + .numberStepperBtn {
+  border-top-color: var(--msp-border, #2a3a58);
 }
 
 @media (max-width: 768px) {

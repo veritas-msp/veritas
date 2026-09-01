@@ -81,6 +81,7 @@ import { securityHeaders } from './middleware/securityHeaders.js';
 import { canRunAutoSchemaMigrations, isSetupMarkedComplete, markSetupComplete } from './utils/setupState.js';
 import { startMailCollectorPoller } from './services/mailCollectorPoller.js';
 import { startKpiReportPoller } from './services/kpiReportPoller.js';
+import { startNotificationSoonPoller } from './services/notificationSoonPoller.js';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 function resolveFrontendBuildDir() {
   const fromEnv = (process.env.FRONTEND_BUILD_DIR || '').trim();
@@ -148,7 +149,8 @@ const corsOptions = {
     console.warn('   Allowed origins:', allowedOrigins);
     callback(null, false);
   },
-  credentials: true
+  credentials: true,
+  exposedHeaders: ["Content-Disposition", "X-Veritas-Installer-Version"]
 };
 app.use(cors(corsOptions));
 app.use(securityHeaders);
@@ -386,5 +388,10 @@ app.listen(PORT, '0.0.0.0', () => {
     startKpiReportPoller();
   } catch (err) {
     console.error("[kpi-report-poller] Failed to start:", err?.message || err);
+  }
+  try {
+    startNotificationSoonPoller();
+  } catch (err) {
+    console.error("[notification-soon-poller] Failed to start:", err?.message || err);
   }
 });

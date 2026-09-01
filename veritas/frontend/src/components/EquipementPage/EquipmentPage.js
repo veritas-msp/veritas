@@ -17,7 +17,7 @@ import { getEquipmentFirewallBrandId } from "./constants/firewallBrandIconMap";
 import RouterBrandIcon, { getEquipmentRouterBrandId } from "./constants/routerBrandIconMap";
 import ServerBrandIcon, { getEquipmentServerBrandId } from "./constants/serverBrandIconMap";
 import EquipmentBrandIcon from "./constants/EquipmentBrandIcon";
-import { canonicalizeComputerType, normalizeServerType, storageTypeToLegacyType, getComputerTypeLabel } from "./equipmentFormConfig";
+import { canonicalizeComputerType, normalizeServerType, storageTypeToLegacyType, getComputerTypeLabel, readEquipmentIsActive } from "./equipmentFormConfig";
 import { getFormFields } from "./equipmentFormFieldsI18n";
 import { getServerRemoteAccessActionIcon, getServerRemoteAccessSolutionDef, hasServerRemoteAccessConfigured, openServerRemoteAccess, readServerRemoteAccess } from "./constants/serverRemoteAccessUtils";
 import { isSynologyStorage, hasQuickConnectConfigured as hasSynologyQuickConnectConfigured, getQuickConnectValue as getSynologyQuickConnectValue, openQuickConnectUrl } from "./synologyEquipmentUtils";
@@ -87,6 +87,77 @@ function formatCustomFamilyFieldValue(field, value, pageCopy) {
     }
   }
   return String(value);
+}
+const UNSORTABLE_COLUMN_KEYS = new Set(["brandIcon", "checkmkMapping", "mapping"]);
+const CUSTOM_FIELD_SORT_ALIASES = {
+  marque: ["marque", "manufacturer", "brand", "constructeur"],
+  manufacturer: ["manufacturer", "marque", "brand", "constructeur"],
+  modele: ["modele", "modèle", "model"],
+  model: ["model", "modele", "modèle"],
+  numeroSerie: ["numeroSerie", "numero_serie", "serial", "sn"],
+  numero_serie: ["numero_serie", "numeroSerie", "serial", "sn"],
+  serial: ["serial", "numeroSerie", "numero_serie", "sn"],
+  site: ["site", "location", "localisation"],
+  location: ["location", "site", "localisation"]
+};
+function readCustomFieldRaw(equipment, colKey) {
+  const keys = CUSTOM_FIELD_SORT_ALIASES[colKey] || [colKey];
+  const layers = [equipment, equipment?.fields, equipment?.data, equipment?.rawData, equipment?.rawData?.data];
+  for (const key of keys) {
+    for (const layer of layers) {
+      if (!layer || typeof layer !== "object") continue;
+      const value = layer[key];
+      if (value != null && String(value).trim() !== "") return value;
+    }
+  }
+  return "";
+}
+function coerceCustomSortValue(raw, fieldType) {
+  if (raw == null || raw === "") {
+    return fieldType === "number" || fieldType === "date" || fieldType === "boolean" ? 0 : "";
+  }
+  if (fieldType === "boolean" || typeof raw === "boolean") {
+    if (typeof raw === "boolean") return raw ? 1 : 0;
+    const parsed = String(raw).trim().toLowerCase();
+    if (["true", "1", "yes", "oui", "on", "actif", "active"].includes(parsed)) return 1;
+    if (["false", "0", "no", "non", "off", "inactif", "inactive"].includes(parsed)) return 0;
+  }
+  if (fieldType === "number") {
+    const n = Number(raw);
+    return Number.isFinite(n) ? n : 0;
+  }
+  if (fieldType === "date" || typeof raw === "string" && /^\d{4}-\d{2}-\d{2}/.test(raw)) {
+    const d = new Date(raw);
+    if (!Number.isNaN(d.getTime())) return d.getTime();
+  }
+  if (typeof raw === "number" && !Number.isNaN(raw)) return raw;
+  return toSortScalar(raw);
+}
+function toSortScalar(value) {
+  if (value == null || value === "") return "";
+  if (typeof value === "number" && !Number.isNaN(value)) return value;
+  if (typeof value === "boolean") return value ? 1 : 0;
+  if (Array.isArray(value)) {
+    return value.map(item => toSortScalar(item)).filter(item => item !== "").join(" ").toLowerCase();
+  }
+  if (typeof value === "object") {
+    const label = value.name || value.label || value.siteName || value.nom || value.title || value.id;
+    return label != null ? String(label).toLowerCase() : "";
+  }
+  return String(value).toLowerCase();
+}
+function getEquipmentLocationSortValue(equipment) {
+  return toSortScalar(
+    equipment?.location ??
+    equipment?.site ??
+    equipment?.emplacement ??
+    equipment?.rawData?.location ??
+    equipment?.rawData?.site ??
+    equipment?.rawData?.emplacement
+  );
+}
+function isColumnSortable(colKey) {
+  return !UNSORTABLE_COLUMN_KEYS.has(colKey);
 }
 function filterItemsBySearch(items, searchQuery, getSearchableText) {
   const query = searchQuery.trim().toLowerCase();
@@ -976,7 +1047,7 @@ const EquipmentPage = forwardRef(function EquipmentPage({
     }} aria-label={label} />
     </SmartTooltip>;
   };
-  const renderActiveStatusIcon = equipment => renderStateIcon(equipment?.is_active !== false);
+  const renderActiveStatusIcon = equipment => renderStateIcon(readEquipmentIsActive(equipment));
   const renderSupervisionDot = equipment => {
     if (!isCheckMKMappableType(equipment?.type)) return renderStateIcon(false, {
       onLabel: "Supervision active",
@@ -1755,7 +1826,7 @@ const EquipmentPage = forwardRef(function EquipmentPage({
   const activeFiltersCount = (searchQuery.trim() !== "" ? 1 : 0) + selectedClients.size + selectedTypes.size + (mkStatusFilter ? 1 : 0);
   const hasActiveFilters = activeFiltersCount > 0;
   const handleTableSort = (type, colKey) => {
-    if (colKey === "checkmkMapping") return;
+    if (!isColumnSortable(colKey)) return;
     setTableSort(prev => {
       const current = prev[type];
       const nextDir = current?.key === colKey && current?.direction === "asc" ? "desc" : "asc";
@@ -1768,16 +1839,33 @@ const EquipmentPage = forwardRef(function EquipmentPage({
       };
     });
   };
-  const getSortValue = (equipment, colKey) => {
+  const getSortValue = (equipment, colKey, type, fieldType) => {
     if (String(colKey).startsWith("ext:")) {
       const rawExt = readExtensionFieldValue(equipment, String(colKey).slice(4));
       if (rawExt == null) return "";
       if (typeof rawExt === "boolean") return rawExt ? 1 : 0;
-      return String(rawExt).toLowerCase();
+      return toSortScalar(rawExt);
     }
-    const raw = equipment[colKey];
+    if (String(type || "").startsWith("Custom:")) {
+      if (colKey === "name") {
+        return toSortScalar(equipment?.name || equipment?.fields?.name || equipment?.data?.name);
+      }
+      if (colKey === "activeStatus") {
+        return readEquipmentIsActive(equipment) ? 1 : 0;
+      }
+      if (colKey === "location" || colKey === "site") {
+        return getEquipmentLocationSortValue(equipment) || toSortScalar(readCustomFieldRaw(equipment, colKey));
+      }
+      if (["purchaseDate", "installDate", "expirationGarantie", "date_facturation", "dateFacturation"].includes(colKey)) {
+        const rawDate = readSharedEquipmentFieldValue(equipment, colKey) || readCustomFieldRaw(equipment, colKey);
+        return coerceCustomSortValue(rawDate, "date");
+      }
+      return coerceCustomSortValue(readCustomFieldRaw(equipment, colKey), fieldType);
+    }
+    const raw = equipment?.[colKey];
+    const rawData = equipment?.rawData || {};
     const stripClientCodePrefix = value => (value || "").toString().trim().replace(/^\d+\s*[-\s]*\s*/, "").toLowerCase();
-    if (colKey === "checkmkMapping") {
+    if (colKey === "checkmkMapping" || colKey === "mapping") {
       const mapping = equipment.checkmkMapping;
       const isMapped = mapping && mapping.checkmk_host_name && mapping.is_active !== false;
       return isMapped ? "Mapped" : "Not mapped";
@@ -1785,13 +1873,74 @@ const EquipmentPage = forwardRef(function EquipmentPage({
     if (colKey === "clientName") {
       return stripClientCodePrefix(raw);
     }
-    if (colKey === "nbDisques") {
+    if (colKey === "name") {
+      return toSortScalar(equipment?.name || rawData.name || raw);
+    }
+    if (colKey === "model") {
+      return toSortScalar(equipment?.model || rawData.model || raw);
+    }
+    if (colKey === "fournisseur") {
+      return toSortScalar(equipment?.fournisseur || rawData.fournisseur || raw);
+    }
+    if (colKey === "version") {
+      return toSortScalar(equipment?.version || equipment?.firmware || rawData.version || raw);
+    }
+    if (colKey === "server") {
+      return toSortScalar(equipment?.server || raw);
+    }
+    if (colKey === "jobsCount" || colKey === "mappedJobsCount") {
+      const count = Number(raw);
+      return Number.isFinite(count) ? count : 0;
+    }
+    if (colKey === "location") {
+      return getEquipmentLocationSortValue(equipment);
+    }
+    if (colKey === "activeStatus") {
+      return readEquipmentIsActive(equipment) ? 1 : 0;
+    }
+    if (colKey === "monitoring") {
+      if (!isCheckMKMappableType(equipment?.type)) return 0;
+      if (!isMkMappedEquipment(equipment)) return 1;
+      const status = normalizeMkAlertStatus(getEquipmentMkSummary(equipment)?.status);
+      if (status === "critical") return 4;
+      if (status === "warning") return 3;
+      return 2;
+    }
+    if (colKey === "agentStatus") {
+      return resolveRmmAgentOnline(equipment) ? 1 : 0;
+    }
+    if (colKey === "ssidCount") {
+      const ssids = Array.isArray(equipment?.ssids)
+        ? equipment.ssids
+        : Array.isArray(rawData.ssids)
+          ? rawData.ssids
+          : Array.isArray(equipment?.assignedSsids)
+            ? equipment.assignedSsids
+            : Array.isArray(rawData.assignedSsids)
+              ? rawData.assignedSsids
+              : [];
+      return ssids.length;
+    }
+    if (colKey === "disksUsage" || colKey === "nbDisques") {
       const eq = equipment;
       const type = eq?.rawData?.type || eq?.type || "";
       if (type === "Disque dur externe") return 1;
-      const total = eq?.nbDisquesTotal ?? eq?.rawData?.nb_disques_total ?? 0;
-      const current = eq?.nbDisques ?? eq?.rawData?.nb_disques ?? 0;
-      return total || 0;
+      const actuel = parseFloat(eq?.nbDisquesActuels ?? eq?.rawData?.nbDisquesActuels ?? eq?.nbDisques ?? eq?.rawData?.nb_disques);
+      return Number.isNaN(actuel) ? 0 : actuel;
+    }
+    if (colKey === "powerRating") {
+      const va = parseFloat(equipment?.capaciteVA ?? rawData.capaciteVA);
+      return Number.isNaN(va) ? 0 : va;
+    }
+    if (colKey === "ip") {
+      if (equipment?.type === "Internet" && (equipment?.ipNonFixe || rawData.ipNonFixe)) return "zzz-non-fixed";
+      return toSortScalar(equipment?.ip || rawData.ip || raw);
+    }
+    if (colKey === "mac" || colKey === "adresseMac") {
+      return toSortScalar(equipment?.adresseMac || equipment?.mac || rawData.adresseMac || rawData.mac || raw);
+    }
+    if (colKey === "debit") {
+      return toSortScalar(formatInternetDebitDisplay(rawData || equipment) || equipment?.debit || raw);
     }
     if (colKey === "nbDisquesActuels" || colKey === "nbDisquesMax") {
       const str = colKey === "nbDisquesActuels" ? getNbDisquesActuels(equipment) : getNbDisquesMax(equipment);
@@ -1805,7 +1954,7 @@ const EquipmentPage = forwardRef(function EquipmentPage({
       return getFirewallHaSortValue(equipment);
     }
     if (colKey === "capacite") {
-      const c = equipment.capacite;
+      const c = equipment.capacite || rawData.capacite;
       if (!c || c === "") return 0;
       const str = String(c).toUpperCase().replace(/GB|GO/gi, "").trim();
       const num = parseFloat(str);
@@ -1820,11 +1969,11 @@ const EquipmentPage = forwardRef(function EquipmentPage({
       return getFirewallMaintenanceLicenseDate(equipment).toLowerCase();
     }
     if (colKey === "firmware") {
-      const fw = equipment.firmware || equipment.version || raw;
+      const fw = equipment.firmware || equipment.version || rawData.firmware || raw;
       return fw != null ? String(fw).toLowerCase() : "";
     }
     if (colKey === "vlan") {
-      const vlan = equipment.vlan || equipment.rawData?.vlan || raw;
+      const vlan = equipment.vlan || rawData.vlan || raw;
       return vlan != null ? String(vlan).toLowerCase() : "";
     }
     if (colKey === "role") {
@@ -1832,19 +1981,21 @@ const EquipmentPage = forwardRef(function EquipmentPage({
       return Array.isArray(roles) ? roles.join(", ").toLowerCase() : String(roles).toLowerCase();
     }
     if (colKey === "systeme") {
-      const os = equipment.systeme || equipment.rawData?.systeme || raw;
+      const os = equipment.systeme || rawData.systeme || raw;
       return os != null ? String(os).toLowerCase() : "";
     }
     if (colKey === "computerType") {
-      return formatComputerTypeDisplay(equipment.computerType || equipment.rawData?.type || raw, locale).toLowerCase();
+      return formatComputerTypeDisplay(equipment.computerType || rawData.type || raw, locale).toLowerCase();
     }
     if (colKey === "serial") {
       return getEquipmentSerial(equipment).toLowerCase();
     }
     if (typeof raw === "number" && !Number.isNaN(raw)) return raw;
+    if (raw != null && typeof raw === "object") return toSortScalar(raw);
+    if ((raw == null || raw === "") && rawData[colKey] != null) return toSortScalar(rawData[colKey]);
     return raw != null ? String(raw).toLowerCase() : "";
   };
-  const getSortedEquipmentList = (type, list) => {
+  const getSortedEquipmentList = (type, list, fieldTypes = {}) => {
     const sortState = tableSort[type];
     if (!sortState?.key) {
       if (type === "Firewalls" || type === "Servers" || type === "Storage") {
@@ -1855,8 +2006,8 @@ const EquipmentPage = forwardRef(function EquipmentPage({
     const key = sortState.key;
     const dir = sortState.direction === "asc" ? 1 : -1;
     return [...list].sort((a, b) => {
-      const va = getSortValue(a, key);
-      const vb = getSortValue(b, key);
+      const va = getSortValue(a, key, type, fieldTypes[key]);
+      const vb = getSortValue(b, key, type, fieldTypes[key]);
       if (typeof va === "number" && typeof vb === "number") {
         return (va - vb) * dir;
       }
@@ -2089,7 +2240,12 @@ const EquipmentPage = forwardRef(function EquipmentPage({
       mac: "",
       ip: formData.ip || "",
       location: formData.location || "",
-      is_active: row.is_active !== false,
+      is_active: readEquipmentIsActive({
+        ...row,
+        ...formData,
+        data: row.data,
+        rawData: row.data
+      }),
       rawData: {
         ...(row.data || {}),
         id: row.id,
@@ -2100,10 +2256,18 @@ const EquipmentPage = forwardRef(function EquipmentPage({
   };
   const snapshotModalClient = client => {
     if (!client) return null;
+    const ssids = Array.isArray(client.ssids) && client.ssids.length
+      ? [...client.ssids]
+      : Array.isArray(client.ssid) && client.ssid.length
+        ? [...client.ssid]
+        : Array.isArray(client.ssids)
+          ? [...client.ssids]
+          : client.ssids || client.ssid;
     return {
       ...client,
       sites: Array.isArray(client.sites) ? [...client.sites] : client.sites,
-      ssids: Array.isArray(client.ssids) ? [...client.ssids] : client.ssids
+      ssid: ssids,
+      ssids
     };
   };
   const openEditEquipmentModal = (equipment, displayType) => {
@@ -2214,6 +2378,7 @@ const EquipmentPage = forwardRef(function EquipmentPage({
         ...prev,
         client: prev.client ? {
           ...prev.client,
+          ssid: nextSsids,
           ssids: nextSsids
         } : prev.client
       }));
@@ -2723,7 +2888,7 @@ const EquipmentPage = forwardRef(function EquipmentPage({
       } else if (col.key === 'agentStatus') {
         value = resolveRmmAgentOnline(equipment) ? "Online" : "Offline";
       } else if (col.key === 'activeStatus') {
-        value = equipment?.is_active !== false ? "Active" : "Inactive";
+        value = readEquipmentIsActive(equipment) ? "Active" : "Inactive";
       } else if (col.key === 'memoire' && value) {
         value = `${value} GB`;
       } else if (col.key === 'stockage' && value) {
@@ -2872,7 +3037,15 @@ const EquipmentPage = forwardRef(function EquipmentPage({
       toast.error('Select at least one field');
       return;
     }
-    const sortedList = isCustom ? equipmentList : getSortedEquipmentList(activeType, equipmentList);
+    const customFieldTypes = Object.fromEntries((customFields || []).map(field => [field.fieldKey || field.key, field.fieldType]));
+    const sortableCustomList = isCustom
+      ? equipmentList.map(item => {
+          const familyKey = activeType.slice("Custom:".length);
+          const family = customFamiliesForUi.find(entry => entry.familyKey === familyKey);
+          return family ? buildCustomEquipmentDetailItem(family, item) : item;
+        })
+      : equipmentList;
+    const sortedList = getSortedEquipmentList(activeType, sortableCustomList, customFieldTypes);
     const exportDate = new Date().toISOString().split('T')[0];
     const clientSlug = (embeddedClient?.name || '').trim().replace(/[^\w.-]+/g, '_');
     const typeSlug = String(activeType).replace(/^Custom:/, "Custom_").replace(/[^\w.-]+/g, "_");
@@ -3259,12 +3432,12 @@ const EquipmentPage = forwardRef(function EquipmentPage({
                           {columns.map(col => {
                           const sortState = tableSort[type];
                           const isSorted = sortState?.key === col.key;
-                          const isSortable = col.key !== "checkmkMapping" && col.key !== "monitoring" && col.key !== "brandIcon";
+                          const isSortable = isColumnSortable(col.key);
                           const embeddedCellClass = embedded ? getEmbeddedCellClassName(col.key, styles) : undefined;
-                          return <th key={col.key} className={[isSortable ? styles.sortableTh : undefined, embeddedCellClass].filter(Boolean).join(" ") || undefined} onClick={() => isSortable && handleTableSort(type, col.key)} title={col.key === "brandIcon" ? "Brand" : isSortable ? "Sort by " + col.label : undefined} aria-label={col.key === "brandIcon" ? "Brand" : undefined}>
+                          return <th key={col.key} className={[isSortable ? styles.sortableTh : undefined, embeddedCellClass].filter(Boolean).join(" ") || undefined} onClick={() => isSortable && handleTableSort(type, col.key)} title={col.key === "brandIcon" ? "Brand" : isSortable ? "Trier par " + col.label : undefined} aria-label={col.key === "brandIcon" ? "Brand" : undefined} aria-sort={isSortable ? isSorted ? sortState.direction === "asc" ? "ascending" : "descending" : "none" : undefined}>
                                 <span className={styles.thContent}>
                                   {col.label}
-                                  {isSortable && <span className={styles.sortIndicator}>
+                                  {isSortable && <span className={styles.sortIndicator} aria-hidden="true">
                                       {isSorted ? sortState.direction === "asc" ? " ↑" : " ↓" : " ↕"}
                                     </span>}
                                 </span>
@@ -3728,34 +3901,50 @@ const EquipmentPage = forwardRef(function EquipmentPage({
               const family = activeCustomFamily;
               const sectionKey = `Custom:${family.familyKey}`;
               const items = getCustomFamilyItems(family);
+              const fields = (family.fields || []).filter(field => !["actif", "active", "is_active", "isActive", "name", "nom"].includes(field.fieldKey));
+              const fieldTypes = Object.fromEntries(fields.map(field => [field.fieldKey, field.fieldType]));
+              const mappedItems = items.map(item => buildCustomEquipmentDetailItem(family, item));
+              const sortedItems = getSortedEquipmentList(sectionKey, mappedItems, fieldTypes);
               const {
                 pagedList,
                 total
-              } = getPagedSlice(items, sectionKey);
-              const fields = (family.fields || []).filter(field => !["actif", "active", "is_active", "isActive"].includes(field.fieldKey));
+              } = getPagedSlice(sortedItems, sectionKey);
+              const renderCustomSortableTh = (colKey, label, extraClass) => {
+                const sortState = tableSort[sectionKey];
+                const isSorted = sortState?.key === colKey;
+                const isSortable = isColumnSortable(colKey);
+                return <th key={colKey} className={[isSortable ? styles.sortableTh : undefined, extraClass].filter(Boolean).join(" ") || undefined} onClick={() => isSortable && handleTableSort(sectionKey, colKey)} title={isSortable ? "Trier par " + label : undefined} aria-sort={isSortable ? isSorted ? sortState.direction === "asc" ? "ascending" : "descending" : "none" : undefined}>
+                    <span className={styles.thContent}>
+                      {label}
+                      {isSortable && <span className={styles.sortIndicator} aria-hidden="true">
+                          {isSorted ? sortState.direction === "asc" ? " ↑" : " ↓" : " ↕"}
+                        </span>}
+                    </span>
+                  </th>;
+              };
               return <div key={sectionKey} className={`${styles.equipmentTableSection} ${styles.equipmentTableSectionEmbedded}`}>
                   <div className={`${styles.tableWrapper} ${styles.tableWrapperEmbedded}`}>
                     <table className={styles.equipmentTableEmbedded}>
                       <thead>
                         <tr>
-                          <th>Nom</th>
-                          <th>{pageCopy.columns?.activeStatus || "Actif"}</th>
-                          {fields.map(field => <th key={field.fieldKey}>{field.label}</th>)}
-                          <th className={styles.embeddedColActions}>{pageCopy.actionsColumn}</th>
+                          {renderCustomSortableTh("name", pageCopy.columns?.name || "Nom")}
+                          {renderCustomSortableTh("activeStatus", pageCopy.columns?.activeStatus || "Actif")}
+                          {fields.map(field => renderCustomSortableTh(field.fieldKey, field.label))}
+                          {renderCustomSortableTh("mapping", pageCopy.actionsColumn, styles.embeddedColActions)}
                         </tr>
                       </thead>
                       <tbody>
-                        {items.length === 0 ? <tr>
+                        {mappedItems.length === 0 ? <tr>
                             <td colSpan={fields.length + 3} className={styles.equipmentEmptyCell}>
                               No {family.label.toLowerCase()} for this client.
                             </td>
-                          </tr> : pagedList.map(item => <tr key={item.id} className={styles.equipmentRowEmbedded} onClick={() => handleEquipmentOpen(buildCustomEquipmentDetailItem(family, item))} style={{
+                          </tr> : pagedList.map(item => <tr key={item.id} className={styles.equipmentRowEmbedded} onClick={() => handleEquipmentOpen(item)} style={{
                       cursor: "pointer"
                     }}>
                               <td>{item.name || "-"}</td>
-                              <td>{renderActiveStatusIcon(buildCustomEquipmentDetailItem(family, item))}</td>
+                              <td>{renderActiveStatusIcon(item)}</td>
                               {fields.map(field => <td key={field.fieldKey}>
-                                  {formatCustomFamilyFieldValue(field, item.fields?.[field.fieldKey] ?? item.data?.[field.fieldKey], pageCopy)}
+                                  {formatCustomFamilyFieldValue(field, item.fields?.[field.fieldKey] ?? item.data?.[field.fieldKey] ?? readCustomFieldRaw(item, field.fieldKey), pageCopy)}
                                 </td>)}
                               <td className={styles.embeddedColActions} onClick={event => event.stopPropagation()}>
                                 <div className={styles.embeddedRowActions}>

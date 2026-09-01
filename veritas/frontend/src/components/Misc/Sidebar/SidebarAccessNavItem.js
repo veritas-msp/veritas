@@ -40,6 +40,7 @@ export default function SidebarAccessNavItem({
     exit: "exit",
     className,
     onClick,
+    title: tooltip || undefined,
     style: {
       listStyle: "none",
       transformOrigin: "center left"

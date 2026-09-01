@@ -1,7 +1,7 @@
 import express from 'express';
 import fetch from 'node-fetch';
 import verifyJWT from '../../../middleware/auth.js';
-import { getCheckMKSettings, authenticateCheckMK, computeCheckMKLogtimeFromDays, filterCheckMKEventsByPeriod, parseCheckMKEventTime } from './utils.js';
+import { getCheckMKSettings, authenticateCheckMK, computeCheckMKLogtimeFromDays, filterCheckMKEventsByPeriod, parseCheckMKEventTime, getCheckMkViewPyUrl } from './utils.js';
 const router = express.Router();
 router.get('/report-period/:hostName', verifyJWT, async (req, res) => {
   try {
@@ -24,17 +24,12 @@ router.get('/report-period/:hostName', verifyJWT, async (req, res) => {
         error: 'Check MK configuration incomplete. Please configure settings in Settings.'
       });
     }
-    let baseUrl = settings.apiUrl;
-    baseUrl = baseUrl.replace(/\/check_mk\/api\/1\.0\/?$/, '');
-    baseUrl = baseUrl.replace(/\/check_mk\/api\/?$/, '');
-    baseUrl = baseUrl.replace(/\/api\/?$/, '');
-    baseUrl = baseUrl.replace(/\/+$/, '');
     const checkmkSite = site || settings.site || '';
     const authData = await authenticateCheckMK(settings.apiUrl, settings.username, settings.password);
     const startDate = new Date(start_time);
     const endDate = new Date(end_time);
     const logtimeFromDays = computeCheckMKLogtimeFromDays(start_time, end_time);
-    const viewUrl = `${baseUrl}/check_mk/view.py`;
+    const viewUrl = getCheckMkViewPyUrl(settings.apiUrl);
     let eventsResult = {
       host_name: hostName,
       events_count: 0,

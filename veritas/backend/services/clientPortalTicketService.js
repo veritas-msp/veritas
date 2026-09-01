@@ -4,7 +4,8 @@ import multer from "multer";
 import { pool } from "../database/db.js";
 import { loadAuthorProfilesByUserIds } from "../utils/userAvatar.js";
 import { dispatchNotificationEvent } from "./notificationDispatcher.js";
-import { notifyInAppTicketCommented } from "./userNotificationService.js";
+import { notifyTicketCommented, notifyTicketCreatedAck, notifyTicketCreatedAgents } from "./systemNotificationService.js";
+import { notifyInAppTicketCommented, notifyInAppTicketCreated } from "./userNotificationService.js";
 import { getTicketSatisfaction, submitPortalTicketSatisfaction, updatePortalTicketSatisfaction, hasSatisfactionTable } from "./ticketSatisfactionService.js";
 import { ensureTicketStatusMatchesValidation, getTicketResolutionValidation, submitPortalResolutionValidation, hasResolutionValidationTable } from "./ticketResolutionValidationService.js";
 import { buildSlaInfoForTicket, loadClientContrat } from "../utils/ticketSla.js";
@@ -556,20 +557,22 @@ export async function getPortalTicketDetail(clientId, ticketId, scope = {}) {
      WHERE ticket_id = $1 AND is_internal = false
      ORDER BY created_at ASC`, [ticketId]);
   const publicComments = commentsResult.rows.filter(row => !isSystemComment(row.content));
-  const commentIds = publicComments.map(row => row.id);
-  let attachmentsByComment = new Map();
-  if (commentIds.length > 0) {
-    const attachmentsResult = await pool.query(`SELECT id, ticket_id, comment_id, file_name, file_path, mime_type, file_size, created_at
-       FROM v_b_ticket_attachments
-       WHERE ticket_id = $1 AND comment_id = ANY($2::uuid[])
-       ORDER BY created_at ASC`, [ticketId, commentIds]);
-    attachmentsResult.rows.forEach(file => {
-      const key = String(file.comment_id);
-      const bucket = attachmentsByComment.get(key) || [];
-      bucket.push(file);
-      attachmentsByComment.set(key, bucket);
-    });
-  }
+  const attachmentsResult = await pool.query(`SELECT id, ticket_id, comment_id, file_name, file_path, mime_type, file_size, created_at
+     FROM v_b_ticket_attachments
+     WHERE ticket_id = $1
+     ORDER BY created_at ASC`, [ticketId]);
+  const attachmentsByComment = new Map();
+  const descriptionAttachments = [];
+  attachmentsResult.rows.forEach(file => {
+    if (!file.comment_id) {
+      descriptionAttachments.push(file);
+      return;
+    }
+    const key = String(file.comment_id);
+    const bucket = attachmentsByComment.get(key) || [];
+    bucket.push(file);
+    attachmentsByComment.set(key, bucket);
+  });
   const authorMap = await resolveAuthorProfiles(publicComments.map(row => row.author_user_id));
   const satisfaction = await getTicketSatisfaction(ticketId);
   const resolutionValidation = await getTicketResolutionValidation(ticketId);
@@ -578,6 +581,7 @@ export async function getPortalTicketDetail(clientId, ticketId, scope = {}) {
     ticket_number: refreshedTicket.ticket_number,
     title: refreshedTicket.title,
     description: refreshedTicket.description,
+    attachments: descriptionAttachments,
     status: mapPortalStatus(refreshedTicket.status),
     priority: refreshedTicket.priority,
     type: refreshedTicket.type,
@@ -685,6 +689,16 @@ export async function createPortalTicket({
       }
     }
   }).catch(() => {});
+  await notifyTicketCreatedAck(created.id).catch(() => {});
+  await notifyTicketCreatedAgents(created.id, {
+    user: {
+      id: userId
+    }
+  }).catch(() => {});
+  await notifyInAppTicketCreated({
+    ticketId: created.id,
+    createdByUserId: userId || null
+  }).catch(() => {});
   return mapPortalListRow(created);
 }
 export async function addPortalTicketComment({
@@ -748,6 +762,17 @@ export async function addPortalTicketComment({
     authorUserId: userId || null,
     isInternal: false,
     contentPreview: trimmed
+  }).catch(() => {});
+  await notifyTicketCommented({
+    ticketId,
+    authorUserId: userId || null,
+    isInternal: false,
+    extraContext: {
+      comment: {
+        author: "Portail client",
+        preview: trimmed.replace(/\s+/g, " ").slice(0, 140)
+      }
+    }
   }).catch(() => {});
   const authorMap = await resolveAuthorProfiles([userId]);
   return mapPortalComment(createdComment, savedAttachments, authorMap.get(String(userId)) || {

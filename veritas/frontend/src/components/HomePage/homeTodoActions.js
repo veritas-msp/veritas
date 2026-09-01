@@ -2,7 +2,6 @@ import { getEquipmentFamilyLabel } from "../../i18n/equipmentFamilyLabels";
 import { interpolate } from "../../i18n/translate";
 import { getHomePageCopy } from "./homePageI18n";
 
-const HOME_TODO_LIMIT = 5;
 const PREVIEW_NAMES = 3;
 const CYBER_MODULES = new Set(["antivirus", "antispam"]);
 const SERVICE_MODULES = new Set(["o365", "domain", "licences", "ssl", "toip"]);
@@ -173,8 +172,7 @@ function buildLicenseGroup(module, status, alerts, locale, copy) {
 }
 
 export function buildHomeTodoActions(dashboard, {
-  locale = "fr",
-  limit = HOME_TODO_LIMIT
+  locale = "fr"
 } = {}) {
   const copy = getHomePageCopy(locale);
   const contractBuckets = new Map();
@@ -203,11 +201,9 @@ export function buildHomeTodoActions(dashboard, {
     bad: 0,
     warn: 1
   };
-  return items
-    .sort((a, b) => {
-      const byTone = (toneOrder[a.tone] ?? 9) - (toneOrder[b.tone] ?? 9);
-      if (byTone !== 0) return byTone;
-      return (b.count || 1) - (a.count || 1);
-    })
-    .slice(0, limit);
+  return items.sort((a, b) => {
+    const byTone = (toneOrder[a.tone] ?? 9) - (toneOrder[b.tone] ?? 9);
+    if (byTone !== 0) return byTone;
+    return (b.count || 1) - (a.count || 1);
+  });
 }

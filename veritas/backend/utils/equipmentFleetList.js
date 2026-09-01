@@ -1,5 +1,6 @@
 import { pool } from "../database/db.js";
 import { PURGE_HARDWARE_FAMILIES } from "./equipmentPurgeList.js";
+import { parseEquipmentActiveFlag } from "./equipmentFamilies.js";
 
 const MODULE_FLAG_LABELS = [
   "Internet",
@@ -125,6 +126,10 @@ function buildFleetSelect(table, { withCheckmk }) {
       e.data->>'hostname' AS rmm_hostname,
       e.data->'network' AS rmm_network,
       e.data->>'ipNonFixe' AS ip_non_fixe,
+      e.data->>'actif' AS data_actif,
+      e.data->>'is_active' AS data_is_active_flag,
+      e.data->>'active' AS data_active,
+      e.data->>'isActive' AS data_is_active_camel,
       e.created_at
       ${checkmkCols}
     FROM ${table} e
@@ -246,7 +251,13 @@ function mapFleetRow(row, familyMeta) {
     agentVersion: type === "Ordinateurs" || type === "Servers" ? row.rmm_agent_version || null : undefined,
     checkmkMapping,
     rawData,
-    is_active: row.is_active !== false,
+    is_active: parseEquipmentActiveFlag(
+      row.data_actif,
+      row.data_active,
+      row.data_is_active_camel,
+      row.data_is_active_flag,
+      row.is_active
+    ) !== false,
     createdAt: row.created_at || null,
     created_at: row.created_at || null,
     status: "unknown"

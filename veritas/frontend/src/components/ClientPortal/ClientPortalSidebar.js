@@ -7,6 +7,7 @@ import sidebarStyles from "../Misc/Sidebar/Sidebar.module.css";
 import SidebarTooltip from "../Misc/Sidebar/SidebarTooltip";
 import UserAvatar from "../shared/UserAvatar/UserAvatar";
 import { useTheme } from "../../hooks/useTheme";
+import { useBreakpoint } from "../../hooks/useBreakpoint";
 import { useAppLocale, setUserLocaleOverride } from "../../hooks/useAppGeneralSettings";
 import { APP_LOCALES } from "../../i18n/locales";
 import portalStyles from "./ClientPortalSidebar.module.css";
@@ -105,7 +106,7 @@ export default function ClientPortalSidebar({
     theme,
     toggleTheme
   } = useTheme();
-  const [isMobile, setIsMobile] = useState(false);
+  const { isMobile } = useBreakpoint();
   const [showMenu, setShowMenu] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const [langMenuOpen, setLangMenuOpen] = useState(false);
@@ -124,11 +125,21 @@ export default function ClientPortalSidebar({
   const currentLocale = useMemo(() => APP_LOCALES.find(entry => entry.code === locale) ?? APP_LOCALES[0], [locale]);
   const isProfileActive = location.pathname.startsWith("/client/profile");
   useEffect(() => {
-    const checkSize = () => setIsMobile(window.innerWidth < 1024);
-    checkSize();
-    window.addEventListener("resize", checkSize);
-    return () => window.removeEventListener("resize", checkSize);
-  }, []);
+    if (!isMobile) setShowMenu(false);
+  }, [isMobile]);
+  useEffect(() => {
+    if (!isMobile || !showMenu) return;
+    const onKeyDown = e => {
+      if (e.key === "Escape") setShowMenu(false);
+    };
+    document.addEventListener("keydown", onKeyDown);
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.removeEventListener("keydown", onKeyDown);
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [isMobile, showMenu]);
   const closeUserMenu = useCallback(() => setUserMenuOpen(false), []);
   const closeLangMenu = useCallback(() => setLangMenuOpen(false), []);
   useEffect(() => {
@@ -276,7 +287,7 @@ export default function ClientPortalSidebar({
       </div>;
   };
   return <>
-      {isMobile ? <button type="button" className={sidebarStyles.burgerButton} onClick={() => setShowMenu(prev => !prev)}>
+      {isMobile && !showMenu ? <button type="button" className={sidebarStyles.burgerButton} onClick={() => setShowMenu(true)} aria-expanded={false} aria-label={t.openMenu || "Ouvrir le menu"}>
           ☰
         </button> : null}
 
@@ -366,10 +377,6 @@ export default function ClientPortalSidebar({
                 </div>
               ) : null}
             </div>
-
-            {isMobile ? <button type="button" className={sidebarStyles.closeButton} onClick={() => setShowMenu(false)}>
-                ✖
-              </button> : null}
 
             <hr className={sidebarStyles.separator} />
 

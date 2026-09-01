@@ -104,6 +104,31 @@
   line-height: 1.4;
 }
 
+.presetRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin-top: 0.55rem;
+}
+
+.presetBtn {
+  padding: 0.28rem 0.7rem;
+  border: 1px solid var(--msp-border, #dde3ed);
+  border-radius: 999px;
+  background: var(--msp-surface, #fff);
+  color: var(--msp-text, #0f1c2e);
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s, color 0.15s;
+}
+
+.presetBtn:hover {
+  border-color: var(--msp-accent, #2b5fab);
+  background: var(--msp-accent-soft, rgba(43, 95, 171, 0.08));
+  color: var(--msp-accent, #2b5fab);
+}
+
 .proActionHint {
   display: flex;
   align-items: center;

@@ -494,14 +494,18 @@ export default function ReportPage({
       };
     });
   };
-  const fetchCheckMKDataForHost = async (hostName, site, startIso, endIso) => {
+  const fetchCheckMKDataForHost = async (hostName, site, startIso, endIso, { signal } = {}) => {
     const reportPeriod = {
       start: startIso,
       end: endIso
     };
+    const ignoreUnlessAborted = promise => promise.catch(err => {
+      if (err?.name === "AbortError") throw err;
+      return null;
+    });
     const [reportPeriodResp, servicesResp] = await Promise.all([
-      getCheckMKReportPeriodData(hostName, startIso, endIso, site).catch(() => null),
-      getCheckMKServices(hostName, startIso, endIso, site).catch(() => null)
+      ignoreUnlessAborted(getCheckMKReportPeriodData(hostName, startIso, endIso, site, { signal })),
+      ignoreUnlessAborted(getCheckMKServices(hostName, startIso, endIso, site, { signal }))
     ]);
     const rawEvents = reportPeriodResp?.events?.events ?? reportPeriodResp?.events ?? [];
     const eventsList = Array.isArray(rawEvents) ? rawEvents : [];
@@ -619,12 +623,24 @@ export default function ReportPage({
     });
   };
   const cancelSyncProgress = () => {
+    if (syncProgressCancelRef.current) return;
     syncProgressCancelRef.current = true;
     try {
       syncProgressAbortRef.current?.abort();
     } catch {
       // ignore
     }
+    setSyncProgress(prev => {
+      if (!prev.open || prev.phase !== "running") return prev;
+      return {
+        ...prev,
+        phase: "cancelled",
+        etaMs: 0,
+        items: prev.items.map(item => item.state === "running" ? { ...item, state: "pending" } : item)
+      };
+    });
+    const syncCopy = pageCopy.supervisionBuilder.syncProgress || {};
+    toast.info(syncCopy.cancelledToast || syncCopy.cancelled);
   };
   const handleSyncAllMonitoring = async (clientOverride = null) => {
     const client = clientOverride && typeof clientOverride === "object" && !clientOverride.nativeEvent
@@ -681,7 +697,9 @@ export default function ReportPage({
     try {
       const result = await runSupervisionSyncJobs(jobs, {
         isCancelled: () => syncProgressCancelRef.current || controller.signal.aborted,
+        signal: controller.signal,
         onProgress: event => {
+          if (syncProgressCancelRef.current || controller.signal.aborted) return;
           if (event.type === "item") {
             patchItem(event.index, { state: event.state, error: event.error || null });
             return;
@@ -695,16 +713,18 @@ export default function ReportPage({
           }
         }
       });
-      await handleRefreshBuilderClient(client);
       const cancelled = result.cancelled || syncProgressCancelRef.current;
+      if (!cancelled) {
+        await handleRefreshBuilderClient(client);
+      }
       setSyncProgress(prev => ({
         ...prev,
-        phase: cancelled ? "cancelled" : "done",
+        phase: cancelled || prev.phase === "cancelled" ? "cancelled" : "done",
         etaMs: 0,
         items: prev.items.map(item => item.state === "running" ? { ...item, state: "pending" } : item)
       }));
       if (cancelled) {
-        toast.info(syncCopy.cancelledToast || syncCopy.cancelled);
+        // toast already shown by cancelSyncProgress
       } else if (result.fail === 0) {
         toast.success(fillSyncCopy(syncCopy.successToast, { ok: result.ok, total: jobs.length }));
       } else if (result.ok > 0) {
@@ -713,6 +733,15 @@ export default function ReportPage({
         toast.error(syncCopy.failToast);
       }
     } catch (err) {
+      if (err?.name === "AbortError" || syncProgressCancelRef.current) {
+        setSyncProgress(prev => ({
+          ...prev,
+          phase: "cancelled",
+          etaMs: 0,
+          items: prev.items.map(item => item.state === "running" ? { ...item, state: "pending" } : item)
+        }));
+        return;
+      }
       console.error("Error during full integration sync:", err);
       setSyncProgress(prev => ({
         ...prev,

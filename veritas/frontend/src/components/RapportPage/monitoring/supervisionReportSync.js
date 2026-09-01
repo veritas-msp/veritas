@@ -1,5 +1,5 @@
 import API_BASE_URL from "../../../config";
-import { collectCheckMKMappedEquipment } from "./checkmkReportCacheUtils";
+import { collectCheckMKMappedEquipment, getCheckmkHostName, getCheckmkServiceName, getCheckmkSite } from "./checkmkReportCacheUtils";
 import { syncAndPersistAntivirusSolution, normalizeAntivirusItem, formatAntivirusSolutionLabel } from "../../EnterprisesPage/antivirusSolutionUtils";
 import { syncAndPersistAntispamSolution, normalizeAntispamItem, formatAntispamSolutionLabel } from "../../EnterprisesPage/antispamSolutionUtils";
 import { isOvhManagedDomain, normalizeDomainItem, refreshSingleMonitoredDomainFromOvh } from "../../EnterprisesPage/domainSolutionUtils";
@@ -51,8 +51,35 @@ function familyDisplayName(labelKey, copy = {}) {
   return labels[labelKey] || DEFAULT_FAMILY_LABELS[labelKey] || labelKey;
 }
 
+function abortError() {
+  const error = new Error("Aborted");
+  error.name = "AbortError";
+  return error;
+}
+
 function isAbortError(err) {
   return err?.name === "AbortError";
+}
+
+function throwIfAborted(signal) {
+  if (signal?.aborted) throw abortError();
+}
+
+async function runWithAbort(task, signal) {
+  if (!signal) return task();
+  throwIfAborted(signal);
+  let onAbort;
+  try {
+    return await Promise.race([
+      Promise.resolve().then(task),
+      new Promise((_, reject) => {
+        onAbort = () => reject(abortError());
+        signal.addEventListener("abort", onAbort, { once: true });
+      })
+    ]);
+  } finally {
+    if (onAbort) signal.removeEventListener("abort", onAbort);
+  }
 }
 
 function isDomainNotFoundError(err) {
@@ -93,10 +120,10 @@ function collectMappedBackupJobGroups(eq) {
   instances.forEach(instance => {
     const jobs = Array.isArray(instance?.jobs) ? instance.jobs : [];
     jobs.forEach(job => {
-      const hostName = String(job?.checkmk_host_name || "").trim();
-      const serviceName = String(job?.checkmk_service_name || "").trim();
+      const hostName = getCheckmkHostName(job);
+      const serviceName = getCheckmkServiceName(job);
       if (!hostName || !serviceName) return;
-      const site = String(job?.checkmk_site || "").trim();
+      const site = getCheckmkSite(job) || "";
       const key = `${hostName}\0${site}`;
       if (!byHost.has(key)) {
         byHost.set(key, { hostName, site, jobIds: [], mappedCount: 0 });
@@ -186,7 +213,7 @@ export async function syncOffice365ForClient(clientId, startDate, endDate, { sig
 export async function syncBackupJobsForClient(clientId, { signal, hostName = null, site = null, jobIds = null } = {}) {
   const payload = { clientId: clientId ?? null };
   if (hostName) payload.hostName = hostName;
-  if (site != null) payload.site = site;
+  if (site) payload.site = site;
   if (Array.isArray(jobIds) && jobIds.length > 0) payload.jobIds = jobIds;
   const res = await fetch(`${API_BASE_URL}/checkmk/save-jobs/sync`, {
     method: "POST",
@@ -214,6 +241,7 @@ export async function runMappedBackupJobsSyncForClient(clientId, equipements, { 
   let updated = 0;
   let total = 0;
   for (const group of groups) {
+    throwIfAborted(signal);
     const data = await syncBackupJobsForClient(clientId, {
       signal,
       hostName: group.hostName,
@@ -291,12 +319,14 @@ export function buildSupervisionSyncJobs(client, {
         let success = 0;
         let lastError = null;
         for (const mapping of group.mappings) {
+          throwIfAborted(signal);
           try {
             const { cacheEntry, status } = await fetchCheckMKHost(
               mapping.checkmk_host_name,
               mapping.checkmk_site || null,
               startIso,
-              endIso
+              endIso,
+              { signal }
             );
             const key = mapping.equipment_id != null ? String(mapping.equipment_id) : null;
             if (key && typeof onCheckMKHostDone === "function") {
@@ -401,6 +431,7 @@ export function buildSupervisionSyncJobs(client, {
         let success = 0;
         let lastError = null;
         for (const domaine of ovhDomains) {
+          throwIfAborted(signal);
           try {
             await syncNddDomainForClient(clientId, domaine, { signal });
             success += 1;
@@ -422,26 +453,30 @@ export function buildSupervisionSyncJobs(client, {
   return jobs;
 }
 
-export async function runSupervisionSyncJobs(jobs, { onProgress, isCancelled } = {}) {
+export async function runSupervisionSyncJobs(jobs, { onProgress, isCancelled, signal } = {}) {
   const durations = [];
   let ok = 0;
   let fail = 0;
   const initialEta = jobs.reduce((sum, job) => sum + (job.estimatedMs || 5000), 0);
   onProgress?.({ type: "start", total: jobs.length, etaMs: initialEta, ok: 0, fail: 0 });
+  const cancelled = () => Boolean(isCancelled?.() || signal?.aborted);
 
   for (let i = 0; i < jobs.length; i += 1) {
-    if (isCancelled?.()) {
+    if (cancelled()) {
       return { ok, fail, cancelled: true, completed: i };
     }
     onProgress?.({ type: "item", index: i, state: "running" });
     const started = Date.now();
     try {
-      await jobs[i].run();
+      await runWithAbort(() => jobs[i].run(), signal);
+      if (cancelled()) {
+        return { ok, fail, cancelled: true, completed: i };
+      }
       ok += 1;
       durations.push(Date.now() - started);
       onProgress?.({ type: "item", index: i, state: "ok" });
     } catch (err) {
-      if (err?.name === "AbortError") {
+      if (err?.name === "AbortError" || cancelled()) {
         return { ok, fail, cancelled: true, completed: i };
       }
       fail += 1;
@@ -451,6 +486,9 @@ export async function runSupervisionSyncJobs(jobs, { onProgress, isCancelled } =
         state: "error",
         error: err?.message || String(err)
       });
+    }
+    if (cancelled()) {
+      return { ok, fail, cancelled: true, completed: i + 1 };
     }
     const remainingJobs = jobs.slice(i + 1);
     const avg = durations.length ? durations.reduce((a, b) => a + b, 0) / durations.length : 0;

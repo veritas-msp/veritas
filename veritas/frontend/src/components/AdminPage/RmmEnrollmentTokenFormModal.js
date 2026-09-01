@@ -3,6 +3,7 @@ import { createPortal } from "react-dom";
 import { Icon } from "@iconify/react";
 import { FaTimes } from "react-icons/fa";
 import { getLocalizedTokenFormSections } from "./adminRmmI18n";
+import { RMM_TOKEN_EXPIRE_PRESETS, addDaysToDatetimeLocal, toDatetimeLocalValue } from "./rmmTokenConstants";
 import layout from "../EnterprisesPage/EnterpriseFormModal.module.css";
 import formStyles from "./IngestionRuleFormModal.module.css";
 export default function RmmEnrollmentTokenFormModal({
@@ -16,12 +17,13 @@ export default function RmmEnrollmentTokenFormModal({
   onSave
 }) {
   const tf = copy.tokenForm;
+  const isEdit = Boolean(draft?.id);
   const [activeSection, setActiveSection] = useState("enterprise");
   const formSections = useMemo(() => getLocalizedTokenFormSections(copy), [copy]);
   useEffect(() => {
     if (!open) return;
-    setActiveSection("enterprise");
-  }, [open]);
+    setActiveSection(isEdit ? "details" : "enterprise");
+  }, [open, isEdit]);
   const sectionMeta = useMemo(() => ({
     enterprise: Boolean(String(draft?.clientId || "").trim()),
     details: true
@@ -32,6 +34,7 @@ export default function RmmEnrollmentTokenFormModal({
     ...patch
   }));
   const selectedClient = clientOptions.find(opt => opt.value === String(draft.clientId || ""));
+  const minExpires = isEdit ? undefined : toDatetimeLocalValue(new Date());
   const renderSectionContent = () => {
     switch (activeSection) {
       case "enterprise":
@@ -47,12 +50,13 @@ export default function RmmEnrollmentTokenFormModal({
                 </label>
                 <select id="rmm-token-client" className={layout.input} value={draft.clientId || ""} onChange={e => patchDraft({
                 clientId: e.target.value
-              })} autoFocus>
+              })} disabled={isEdit} autoFocus={!isEdit}>
                   <option value="">{tf.selectCompany}</option>
                   {clientOptions.map(opt => <option key={opt.value} value={opt.value}>
                       {opt.label}
                     </option>)}
                 </select>
+                {isEdit ? <p className={formStyles.fieldHint}>{tf.companyLockedHint}</p> : null}
               </div>
             </div>
           </>;
@@ -69,21 +73,37 @@ export default function RmmEnrollmentTokenFormModal({
                 </label>
                 <input id="rmm-token-label" type="text" className={layout.input} value={draft.label || ""} onChange={e => patchDraft({
                 label: e.target.value
-              })} placeholder={tf.labelPlaceholder} />
+              })} placeholder={tf.labelPlaceholder} autoFocus={isEdit} />
+              </div>
+              <div className={`${layout.field} ${layout.fieldFull}`}>
+                <label className={layout.label} htmlFor="rmm-token-expires">
+                  {tf.expiresLabel}
+                </label>
+                <input id="rmm-token-expires" type="datetime-local" className={layout.input} value={draft.expiresAt || ""} min={minExpires} onChange={e => patchDraft({
+                expiresAt: e.target.value
+              })} />
+                <p className={formStyles.fieldHint}>{tf.expiresHint}</p>
+                <div className={formStyles.presetRow}>
+                  {RMM_TOKEN_EXPIRE_PRESETS.map(preset => <button key={preset.key} type="button" className={formStyles.presetBtn} onClick={() => patchDraft({
+                  expiresAt: preset.days == null ? "" : addDaysToDatetimeLocal(preset.days)
+                })}>
+                      {tf.expirePresets?.[preset.key] || preset.key}
+                    </button>)}
+                </div>
               </div>
             </div>
-            <div className={formStyles.statusRow} style={{
+            {isEdit ? null : <div className={formStyles.statusRow} style={{
             marginTop: "0.5rem"
           }}>
-              <div>
-                <div className={formStyles.statusLabel}>{tf.oneTimeTitle}</div>
-                <p className={formStyles.statusHint}>{tf.oneTimeHint}</p>
-              </div>
-              <Icon icon="mdi:shield-key-outline" style={{
+                <div>
+                  <div className={formStyles.statusLabel}>{tf.oneTimeTitle}</div>
+                  <p className={formStyles.statusHint}>{tf.oneTimeHint}</p>
+                </div>
+                <Icon icon="mdi:shield-key-outline" style={{
               fontSize: "1.5rem",
               color: "var(--msp-muted)"
             }} aria-hidden />
-            </div>
+              </div>}
           </>;
       default:
         return null;
@@ -97,14 +117,14 @@ export default function RmmEnrollmentTokenFormModal({
         <header className={layout.header}>
           <div className={layout.headerMain}>
             <div className={layout.headerIconWrap} aria-hidden>
-              <Icon icon="mdi:key-plus" />
+              <Icon icon={isEdit ? "mdi:key-outline" : "mdi:key-plus"} />
             </div>
             <div className={layout.headerText}>
               <p className={layout.eyebrow}>{tf.eyebrow}</p>
               <h2 className={layout.title} id="rmm-token-form-title">
-                {tf.title}
+                {isEdit ? tf.editTitle : tf.title}
               </h2>
-              <p className={layout.subtitle}>{tf.subtitle}</p>
+              <p className={layout.subtitle}>{isEdit ? tf.editSubtitle : tf.subtitle}</p>
             </div>
           </div>
           <button type="button" className={layout.closeBtn} onClick={onClose} disabled={saving} aria-label={copy.common.close}>
@@ -138,10 +158,10 @@ export default function RmmEnrollmentTokenFormModal({
             <button type="button" className={layout.primaryBtn} onClick={onSave} disabled={saving || !String(draft.clientId || "").trim()}>
               {saving ? <>
                   <Icon icon="mdi:loading" className={layout.spinning} aria-hidden />
-                  {tf.creating}
+                  {isEdit ? copy.common.saving : tf.creating}
                 </> : <>
                   <Icon icon="mdi:check" aria-hidden />
-                  {tf.create}
+                  {isEdit ? copy.common.save : tf.create}
                 </>}
             </button>
           </div>

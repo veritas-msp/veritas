@@ -1,7 +1,7 @@
 import express from 'express';
 import fetch from 'node-fetch';
 import verifyJWT from '../../../middleware/auth.js';
-import { getCheckMKSettings, authenticateCheckMK } from './utils.js';
+import { getCheckMKSettings, authenticateCheckMK, CHECKMK_HOST_COLUMNS, appendCheckmkColumns } from './utils.js';
 const router = express.Router();
 router.get('/host/:hostName', verifyJWT, async (req, res) => {
   try {
@@ -69,14 +69,14 @@ router.get('/host/:hostName', verifyJWT, async (req, res) => {
       }
     }
     try {
-      const columns = ['name', 'alias', 'address', 'state', 'state_type', 'plugin_output', 'long_plugin_output', 'perf_data', 'performance_data', 'last_check', 'last_state_change', 'last_time_up', 'last_time_down', 'last_time_unreachable', 'num_services', 'num_services_ok', 'num_services_warn', 'num_services_crit', 'num_services_unknown', 'worst_service_state', 'labels', 'label_sources', 'label_source_names', 'label_source_values', 'scheduled_downtime_depth', 'in_downtime', 'problem_has_been_acknowledged', 'acknowledged', 'check_interval', 'retry_interval', 'notification_period', 'check_command', 'custom_variables', 'groups', 'contact_groups', 'current_attempt', 'display_name'];
+      const columns = CHECKMK_HOST_COLUMNS;
       const queryExpression = JSON.stringify({
         op: '=',
         left: 'name',
         right: hostName
       });
       const statusUrl = new URL(`${settings.apiUrl}/domain-types/host/collections/all`);
-      statusUrl.searchParams.set('columns', columns.join(','));
+      appendCheckmkColumns(statusUrl, columns);
       statusUrl.searchParams.set('query', queryExpression);
       if (site) {
         statusUrl.searchParams.set('site', site);

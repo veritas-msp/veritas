@@ -419,6 +419,12 @@
   box-shadow: 0 0 0 3px var(--msp-accent-soft);
 }
 
+.toolbarWithFilters .searchWrap {
+  flex: 1 1 auto;
+  min-width: 0;
+  max-width: none;
+}
+
 .searchIcon {
   flex-shrink: 0;
   font-size: 1.05rem;
@@ -1034,14 +1040,6 @@
   min-width: 0;
 }
 
-.tableEquip {
-  display: flex;
-  flex-wrap: nowrap;
-  align-items: center;
-  gap: 0.2rem;
-  min-width: 0;
-}
-
 .tableTags {
   display: flex;
   flex-wrap: nowrap;
@@ -1421,27 +1419,6 @@
   border-radius: 4px;
 }
 
-.equipItem {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 0;
-  min-width: 1.3rem;
-  flex-shrink: 0;
-}
-
-.equipIcon {
-  font-size: 0.78rem;
-  color: var(--msp-muted-light);
-}
-
-.equipCount {
-  font-size: 0.58rem;
-  font-weight: 600;
-  font-variant-numeric: tabular-nums;
-  color: var(--msp-muted-light);
-}
-
 .cardChevron {
   font-size: 1rem;
   color: #cbd5e1;
@@ -1506,59 +1483,146 @@
 }
 
 
-@media (max-width: 1100px) {
-  .tableEquip {
-    display: none;
-  }
-
-  .dataTable thead th:nth-child(6),
-  .dataTable tbody td:nth-child(6) {
-    display: none;
-  }
-}
-
-@media (max-width: 768px) {
-  .shell {
-    padding: 1rem;
-  }
-
-  .heroActions .primaryBtn span {
-    display: none;
+@media (max-width: 1023px) {
+  :global(.mspContent) .shell.shellFull {
+    padding: 0.85rem 1rem 1rem;
+    gap: 0.75rem;
   }
 
   .toolbar {
-    flex-wrap: wrap;
-    row-gap: 0.4rem;
+    flex-wrap: nowrap;
+    padding: 0;
+    border: none;
+    background: transparent;
+    box-shadow: none;
   }
 
   .searchWrap {
-    flex: 1 1 100%;
+    flex: 1 1 auto;
+    width: 100%;
     min-width: 0;
     max-width: none;
   }
 
-  .statusChips {
-    flex: 1 1 100%;
-    margin-left: 0;
-    max-width: none;
-  }
-
-  .card {
-    grid-template-columns: 1fr auto;
-  }
-
-  .cardChevron {
-    align-self: center;
-  }
-}
-
-@media (max-width: 480px) {
-  .statusChipLabel {
+  .statusChips,
+  .toolbarMeta {
     display: none;
   }
 
-  .statusChip {
-    padding: 0 0.4rem 0 0.28rem;
+  .colModules,
+  .colCommercial,
+  .colExpiry,
+  .checkboxCell,
+  .favoriteCell {
+    display: none;
+  }
+
+  .colCompanyStatus {
+    width: 4rem;
+    min-width: 3.5rem;
+    max-width: 5rem;
+    white-space: nowrap;
+  }
+
+  .colContact {
+    max-width: 9rem;
+  }
+
+  .colTags .tableTags,
+  .colTags {
+    max-width: 8.5rem;
+  }
+
+  .colClientNumber {
+    width: 5rem;
+    min-width: 4.5rem;
+    max-width: 6rem;
+  }
+
+  .colCompany {
+    min-width: 0;
+    max-width: none;
+  }
+
+  .dataTable thead th,
+  .dataTable tbody td {
+    padding: 0.5rem 0.55rem;
+  }
+}
+
+@media (max-width: 767px) {
+  :global(.mspContent) .shell.shellFull {
+    padding: 0.65rem 0.75rem 0.75rem;
+    gap: 0.65rem;
+  }
+
+  .toolbar {
+    padding: 0;
+  }
+
+  .colContact,
+  .colTags {
+    display: none;
+  }
+
+  .colClientNumber {
+    width: 4.25rem;
+    min-width: 3.75rem;
+    max-width: 4.75rem;
+    font-size: 0.75rem;
+  }
+
+  .colCompanyStatus {
+    width: 4.5rem;
+    min-width: 4rem;
+    max-width: 5.5rem;
+  }
+
+  .dataTable thead th,
+  .dataTable tbody td {
+    padding: 0.48rem 0.45rem;
+  }
+
+  .pagination {
+    flex-direction: row;
+    flex-wrap: nowrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.35rem;
+    padding: 0.45rem 0 0;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .paginationLeft,
+  .paginationRight {
+    justify-content: flex-end;
+    gap: 0.35rem;
+    flex-shrink: 0;
+  }
+
+  .paginationLabel {
+    display: none;
+  }
+
+  .paginationSelect {
+    height: 30px;
+    max-width: 3.25rem;
+    padding: 0 1.1rem 0 0.35rem;
+    font-size: 0.72rem;
+  }
+
+  .paginationInfo {
+    font-size: 0.72rem;
+  }
+
+  .pageBtn {
+    width: 30px;
+    height: 30px;
+  }
+
+  .bulkBar {
+    padding: 0.55rem 0.65rem;
   }
 }
 

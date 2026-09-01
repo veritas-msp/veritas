@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "react-toastify";
 import { fetchClientsList } from "../../api/clients";
-import { createRmmEnrollmentToken, downloadRmmWindowsAgentSetupMsi, fetchRmmInstallerInfo, fetchRmmMetricsStorage, fetchRmmAgents, fetchRmmEnrollmentTokens, fetchRmmSettings, revokeRmmEnrollmentToken, restoreRmmEnrollmentToken, deleteRmmEnrollmentTokenPermanently, updateRmmAgentStatus, updateRmmSettings } from "../../api/rmm";
+import { createRmmEnrollmentToken, updateRmmEnrollmentToken, downloadRmmWindowsAgentSetupMsi, fetchRmmInstallerInfo, fetchRmmMetricsStorage, fetchRmmAgents, fetchRmmEnrollmentTokens, fetchRmmSettings, revokeRmmEnrollmentToken, restoreRmmEnrollmentToken, deleteRmmEnrollmentTokenPermanently, updateRmmAgentStatus, updateRmmSettings } from "../../api/rmm";
 import { Badge, Btn, Card, ConfirmModal, Page, SubTabs, Table, Pagination, BtnIcon } from "./AdminUi";
 import { useTablePagination } from "./useTablePagination";
 import adminUi from "./AdminUi.module.css";
@@ -9,7 +9,7 @@ import { Icon } from "@iconify/react";
 import RmmEnrollmentTokenValue from "../Rmm/RmmEnrollmentTokenValue";
 import RmmEnrollmentTokenFormModal from "./RmmEnrollmentTokenFormModal";
 import RmmEnrollmentTokenCreatedModal from "./RmmEnrollmentTokenCreatedModal";
-import { buildDefaultTokenDraft } from "./rmmTokenConstants";
+import { buildDefaultTokenDraft, buildEditTokenDraft, fromDatetimeLocalValue } from "./rmmTokenConstants";
 import ProFeaturePromoModal from "../Misc/ProFeature/ProFeaturePromoModal";
 import RmmTokenSettingsPanel from "./RmmTokenSettingsPanel";
 import { RmmCollectorsSection, RmmMetricsStorageSection, RmmTimingFields } from "./RmmSettingsBlocks";
@@ -78,13 +78,14 @@ function DeployPlatformInstructions({
     return <>
         <strong>{copy.deploy.windows.title}</strong>
         <div className={styles.instructionsDownloads}>
-          <Btn icon="mdi:download" onClick={() => onDownloadWindows()} disabled={!!downloading || installerInfo?.msiAvailable === false}>
+          <Btn icon="mdi:download" onClick={() => onDownloadWindows()} disabled={!!downloading} title={copy.deploy.windows.downloadMsi}>
             {downloading === "msi" ? copy.common.downloading : copy.deploy.windows.downloadMsi}
           </Btn>
           {installerInfo?.version ? <Badge variant="muted">
               {copy.common.build} {installerInfo.version}
             </Badge> : null}
         </div>
+        {installerInfo?.msiAvailable === false ? <p className={styles.msiUnavailable}>{installerInfo?.canBuild ? copy.deploy.windows.msiWillBuild : copy.deploy.windows.msiUnavailable}</p> : null}
         <p className={styles.msiArgsIntro}>{copy.deploy.windows.argsIntro}</p>
         <div className={styles.msiArgsTableWrap}>
           <table className={styles.msiArgsTable}>
@@ -263,29 +264,56 @@ export default function AdminRmm({
     setTokenDraft(buildDefaultTokenDraft());
     setTokenModalOpen(true);
   };
-  const closeCreateTokenModal = () => {
+  const openEditTokenModal = token => {
+    if (!token) return;
+    setTokenDraft(buildEditTokenDraft(token));
+    setTokenModalOpen(true);
+  };
+  const closeTokenModal = () => {
     if (creatingToken) return;
     setTokenModalOpen(false);
     setTokenDraft(buildDefaultTokenDraft());
   };
-  const handleCreateToken = async () => {
+  const handleSaveToken = async () => {
     if (!tokenDraft.clientId) {
       toast.warn(copy.toast.selectCompany);
       return;
     }
+    const isEdit = Boolean(tokenDraft.id);
+    const expiresAtIso = fromDatetimeLocalValue(tokenDraft.expiresAt);
+    if (String(tokenDraft.expiresAt || "").trim() && !expiresAtIso) {
+      toast.warn(copy.toast.invalidExpiresAt);
+      return;
+    }
+    if (!isEdit && expiresAtIso && new Date(expiresAtIso).getTime() <= Date.now()) {
+      toast.warn(copy.toast.expiresInPast);
+      return;
+    }
     setCreatingToken(true);
     try {
-      const created = await createRmmEnrollmentToken({
-        clientId: Number(tokenDraft.clientId),
-        label: String(tokenDraft.label || "").trim() || null
-      });
-      setCreatedToken(created.token);
-      setTokenModalOpen(false);
-      setTokenDraft(buildDefaultTokenDraft());
-      await loadAll();
-      toast.success(copy.toast.tokenCreated);
+      if (isEdit) {
+        await updateRmmEnrollmentToken(tokenDraft.id, {
+          label: String(tokenDraft.label || "").trim() || null,
+          expiresAt: expiresAtIso
+        });
+        setTokenModalOpen(false);
+        setTokenDraft(buildDefaultTokenDraft());
+        await loadAll();
+        toast.success(copy.toast.enrollmentTokenUpdated);
+      } else {
+        const created = await createRmmEnrollmentToken({
+          clientId: Number(tokenDraft.clientId),
+          label: String(tokenDraft.label || "").trim() || null,
+          expiresAt: expiresAtIso
+        });
+        setCreatedToken(created.token);
+        setTokenModalOpen(false);
+        setTokenDraft(buildDefaultTokenDraft());
+        await loadAll();
+        toast.success(copy.toast.tokenCreated);
+      }
     } catch (err) {
-      toast.error(err.message || copy.toast.tokenCreateError);
+      toast.error(err.message || (isEdit ? copy.toast.enrollmentTokenUpdateError : copy.toast.tokenCreateError));
     } finally {
       setCreatingToken(false);
     }
@@ -500,9 +528,12 @@ export default function AdminRmm({
         }, {
           key: "actions",
           label: "",
-          render: row => <Btn variant="ghost" icon="mdi:trash-can-outline" onClick={() => setConfirmRevoke(row.id)}>
-                              {copy.common.trash}
-                            </Btn>
+          render: row => <div className={styles.tokenRowActions}>
+                              <BtnIcon icon="mdi:pencil-outline" title={copy.common.edit} onClick={() => openEditTokenModal(displayedTokens.find(token => token.id === row.id))} />
+                              <Btn variant="ghost" icon="mdi:trash-can-outline" onClick={() => setConfirmRevoke(row.id)}>
+                                {copy.common.trash}
+                              </Btn>
+                            </div>
         }]} rows={tokensPagination.paginatedItems.map(t => mapTokenTableRow(t, locale))} emptyMessage={tokenListView === "trash" ? copy.tokens.emptyTrash : copy.tokens.emptyActive} />
               {displayedTokens.length > 0 && <Pagination page={tokensPagination.page} totalPages={tokensPagination.totalPages} onPageChange={tokensPagination.setPage} pageSize={tokensPagination.pageSize} onPageSizeChange={tokensPagination.setPageSize} rangeLabel={tokensPagination.rangeLabel} />}
             </>}
@@ -578,7 +609,7 @@ export default function AdminRmm({
           <RmmConsumptionsPanel copy={copy} locale={locale} settings={settings} agentCount={agents.length} metricsStorage={metricsStorage} />
         </Card>}
 
-      <RmmEnrollmentTokenFormModal open={tokenModalOpen} copy={copy} draft={tokenDraft} setDraft={setTokenDraft} saving={creatingToken} clientOptions={clientOptions} onClose={closeCreateTokenModal} onSave={handleCreateToken} />
+      <RmmEnrollmentTokenFormModal open={tokenModalOpen} copy={copy} draft={tokenDraft} setDraft={setTokenDraft} saving={creatingToken} clientOptions={clientOptions} onClose={closeTokenModal} onSave={handleSaveToken} />
 
       <RmmEnrollmentTokenCreatedModal open={Boolean(createdToken)} copy={copy} token={createdToken} onClose={() => setCreatedToken(null)} onCopy={handleCopyCreatedToken} />
 

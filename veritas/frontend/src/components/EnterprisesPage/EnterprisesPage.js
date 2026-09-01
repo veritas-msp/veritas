@@ -15,21 +15,20 @@ import { useEntityFavorites } from "../../hooks/useEntityFavorites";
 import { useAppFormatters, useAppLocale } from "../../hooks/useAppGeneralSettings";
 import { getEnterprisesPageCopy } from "./enterprisesPageI18n";
 import { normalizeCompanyStatusKey } from "./enterpriseFormUtils";
-import { getEquipmentCountValue, localizeEquipmentCountColumns } from "../../i18n/equipmentFamilyLabels";
 import { getLocalizedModuleLabel } from "../../i18n/contractModuleLabels";
 import { getClientOnboardingInfo } from "../../utils/clientOnboarding";
 import { interpolate } from "../../i18n/translate";
 import { buildEmptyModulesMap, getAllActiveModuleKeys } from "../../constants/contractModules";
 import { formatClientTabLabel, getClientNumber, getClientNameWithoutCode } from "../../utils/clientDisplay";
-import { fetchEquipmentFamilies } from "../../api/equipmentFamilies";
 import { fetchTicketTableColumns } from "../../api/tickets";
-import { buildActiveEquipmentCountColumns, getDefaultEquipmentFamilies } from "../AdminPage/equipmentFamilyConstants";
 import {
   DEFAULT_ENTERPRISES_TABLE_COLUMNS,
-  TICKET_TABLE_COLUMN_SORT_KEYS
+  TICKET_TABLE_COLUMN_SORT_KEYS,
+  normalizeTicketTableColumns
 } from "../../utils/ticketTableColumns";
 import MspPageHero from "../Misc/MspPageHero/MspPageHero";
 import mspStyles from "../CybersecuritePage/CybersecuritePage.module.css";
+import { useBreakpoint } from "../../hooks/useBreakpoint";
 import { usePermissions } from "../../contexts/PermissionsContext";
 import { createTrackedAbortController } from "../../utils/pageLoadAbort";
 
@@ -43,20 +42,35 @@ const ENTERPRISES_COLUMN_HEADERS = {
   commercial: "commercial",
   modules: "modules",
   expiration: "expiration",
-  equipment: "equipment",
   tags: "tags"
 };
 
-const LEGACY_ENTERPRISES_TABLE_COLUMNS = ["client_number", "company", "primary_contact", "commercial", "modules", "expiration", "equipment", "tags"];
+function enterprisesColumnClass(columnId) {
+  const map = {
+    client_number: styles.colClientNumber,
+    company: styles.colCompany,
+    company_status: styles.colCompanyStatus,
+    primary_contact: styles.colContact,
+    commercial: styles.colCommercial,
+    modules: styles.colModules,
+    expiration: styles.colExpiry,
+    tags: styles.colTags
+  };
+  return map[columnId] || "";
+}
 function withCompanyStatusColumn(columns) {
   const list = Array.isArray(columns) ? [...columns] : [];
   if (list.includes("company_status")) return list;
-  const isLegacyDefault = list.length === LEGACY_ENTERPRISES_TABLE_COLUMNS.length && LEGACY_ENTERPRISES_TABLE_COLUMNS.every((id, index) => list[index] === id);
-  if (!isLegacyDefault) return list;
   const companyIdx = list.indexOf("company");
   if (companyIdx >= 0) list.splice(companyIdx + 1, 0, "company_status");
   else list.push("company_status");
   return list;
+}
+function sanitizeEnterprisesTableColumns(columns) {
+  return withCompanyStatusColumn(normalizeTicketTableColumns(columns, {
+    fallback: DEFAULT_ENTERPRISES_TABLE_COLUMNS,
+    pageScope: ENTERPRISES_PAGE_SCOPE
+  }));
 }
 function getExpiryClass(status) {
   if (status === "expired") return styles.expiryDate_expired;
@@ -71,6 +85,7 @@ export default function EnterprisesPage({
 }) {
   const locale = useAppLocale();
   const formatters = useAppFormatters();
+  const { isPhone, isCompact } = useBreakpoint();
   const {
     can
   } = usePermissions();
@@ -78,6 +93,7 @@ export default function EnterprisesPage({
   const canExportEnterprises = can("clients.export");
   const canPublicViews = can("clients.public_views");
   const canBulkEdit = can("clients_detail.edit");
+  const showBulkSelection = canBulkEdit && !isCompact;
   const {
     isFavorite,
     toggleFavorite
@@ -103,11 +119,10 @@ export default function EnterprisesPage({
   const [clientModalInitial, setClientModalInitial] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useDefaultPageSize();
-  const [customFamilies, setCustomFamilies] = useState([]);
   const [columnsModalOpen, setColumnsModalOpen] = useState(false);
-  const [publicTableColumns, setPublicTableColumns] = useState(() => [...DEFAULT_ENTERPRISES_TABLE_COLUMNS]);
+  const [publicTableColumns, setPublicTableColumns] = useState(() => sanitizeEnterprisesTableColumns(DEFAULT_ENTERPRISES_TABLE_COLUMNS));
   const [privateTableColumns, setPrivateTableColumns] = useState(null);
-  const [visibleTableColumns, setVisibleTableColumns] = useState(() => [...DEFAULT_ENTERPRISES_TABLE_COLUMNS]);
+  const [visibleTableColumns, setVisibleTableColumns] = useState(() => sanitizeEnterprisesTableColumns(DEFAULT_ENTERPRISES_TABLE_COLUMNS));
   const tableColumns = visibleTableColumns;
   const listControllerRef = useRef(null);
   const isMountedRef = useRef(true);
@@ -123,9 +138,9 @@ export default function EnterprisesPage({
       try {
         const data = await fetchTicketTableColumns(ENTERPRISES_PAGE_SCOPE);
         if (cancelled) return;
-        setPublicTableColumns(withCompanyStatusColumn(Array.isArray(data?.public) ? data.public : [...DEFAULT_ENTERPRISES_TABLE_COLUMNS]));
-        setPrivateTableColumns(Array.isArray(data?.private) && data.private.length ? withCompanyStatusColumn(data.private) : null);
-        setVisibleTableColumns(withCompanyStatusColumn(Array.isArray(data?.effective) && data.effective.length ? data.effective : [...DEFAULT_ENTERPRISES_TABLE_COLUMNS]));
+        setPublicTableColumns(sanitizeEnterprisesTableColumns(Array.isArray(data?.public) ? data.public : DEFAULT_ENTERPRISES_TABLE_COLUMNS));
+        setPrivateTableColumns(Array.isArray(data?.private) && data.private.length ? sanitizeEnterprisesTableColumns(data.private) : null);
+        setVisibleTableColumns(sanitizeEnterprisesTableColumns(Array.isArray(data?.effective) && data.effective.length ? data.effective : DEFAULT_ENTERPRISES_TABLE_COLUMNS));
       } catch {
         if (!cancelled) toast.error(copyRef.current.toasts?.loadColumns || "Error loading columns");
       }
@@ -135,9 +150,9 @@ export default function EnterprisesPage({
     };
   }, []);
   const handleColumnsSaved = useCallback(result => {
-    if (Array.isArray(result?.public)) setPublicTableColumns(withCompanyStatusColumn(result.public));
-    setPrivateTableColumns(Array.isArray(result?.private) && result.private.length ? withCompanyStatusColumn(result.private) : null);
-    setVisibleTableColumns(withCompanyStatusColumn(Array.isArray(result?.effective) && result.effective.length ? result.effective : [...DEFAULT_ENTERPRISES_TABLE_COLUMNS]));
+    if (Array.isArray(result?.public)) setPublicTableColumns(sanitizeEnterprisesTableColumns(result.public));
+    setPrivateTableColumns(Array.isArray(result?.private) && result.private.length ? sanitizeEnterprisesTableColumns(result.private) : null);
+    setVisibleTableColumns(sanitizeEnterprisesTableColumns(Array.isArray(result?.effective) && result.effective.length ? result.effective : DEFAULT_ENTERPRISES_TABLE_COLUMNS));
   }, []);
   useEffect(() => {
     const raw = pageParams?.highlight;
@@ -151,19 +166,15 @@ export default function EnterprisesPage({
     setStatusFilters(new Set([key]));
     onPageParamsConsumed?.();
   }, [pageParams, onPageParamsConsumed]);
-  const defaultEquipmentFamilies = useMemo(() => getDefaultEquipmentFamilies(), []);
-  const equipmentCountColumns = useMemo(() => {
-    const columns = buildActiveEquipmentCountColumns(defaultEquipmentFamilies, customFamilies);
-    return localizeEquipmentCountColumns(columns, locale);
-  }, [defaultEquipmentFamilies, customFamilies, locale]);
+  useEffect(() => {
+    if (!isCompact) return;
+    setSelectedIds(new Set());
+  }, [isCompact]);
   const defaultModules = useMemo(() => buildEmptyModulesMap(contractModules), [contractModules]);
-  const getEquipmentCount = (client, key) => getEquipmentCountValue(client?.equipmentCounts, key);
   useEffect(() => {
     isMountedRef.current = true;
     loadClients();
-    loadEquipmentFamilies();
     const handleRefreshEnterprises = () => loadClients();
-    const handleFamiliesUpdated = () => loadEquipmentFamilies();
     const pollInterval = setInterval(() => {
       if (document.visibilityState !== "visible") return;
       loadClients({
@@ -171,25 +182,13 @@ export default function EnterprisesPage({
       });
     }, 30000);
     window.addEventListener("refreshEnterprises", handleRefreshEnterprises);
-    window.addEventListener("equipmentFamiliesUpdated", handleFamiliesUpdated);
     return () => {
       isMountedRef.current = false;
       listControllerRef.current?.abort();
       clearInterval(pollInterval);
       window.removeEventListener("refreshEnterprises", handleRefreshEnterprises);
-      window.removeEventListener("equipmentFamiliesUpdated", handleFamiliesUpdated);
     };
   }, []);
-  const loadEquipmentFamilies = async () => {
-    try {
-      const data = await fetchEquipmentFamilies();
-      if (!isMountedRef.current) return;
-      setCustomFamilies(Array.isArray(data) ? data : []);
-    } catch (err) {
-      console.error("Error chargement familles matériel:", err);
-      if (isMountedRef.current) setCustomFamilies([]);
-    }
-  };
   const loadClients = async (options = {}) => {
     const silent = options.silent === true;
     if (!silent) {
@@ -220,7 +219,6 @@ export default function EnterprisesPage({
         client_number: client.client_number ?? client.clientNumber ?? null,
         clientNumber: client.client_number ?? client.clientNumber ?? null,
         tags: Array.isArray(client.tags) ? client.tags : [],
-        equipmentCounts: client.equipmentCounts || {},
         options: (() => {
           if (client.options && typeof client.options === "object") {
             return {
@@ -376,12 +374,6 @@ export default function EnterprisesPage({
           bValue = normalizeCompanyStatusKey(b.statut);
           break;
         default:
-          if (sortBy.startsWith("equipment:")) {
-            const equipKey = sortBy.slice("equipment:".length);
-            aValue = getEquipmentCount(a, equipKey);
-            bValue = getEquipmentCount(b, equipKey);
-            break;
-          }
           return 0;
       }
       if (typeof aValue === "number" && typeof bValue === "number") {
@@ -495,10 +487,6 @@ export default function EnterprisesPage({
   const handleExportCsv = () => {
     const headers = [];
     tableColumns.forEach(columnId => {
-      if (columnId === "equipment") {
-        equipmentCountColumns.forEach(col => headers.push(col.label));
-        return;
-      }
       const labelKey = ENTERPRISES_COLUMN_HEADERS[columnId];
       headers.push(copy.table[labelKey] || columnId);
     });
@@ -536,10 +524,6 @@ export default function EnterprisesPage({
         }
         if (columnId === "expiration") {
           row.push(formatDate(client.contrat?.expiration));
-          return;
-        }
-        if (columnId === "equipment") {
-          equipmentCountColumns.forEach(col => row.push(getEquipmentCount(client, col.key)));
           return;
         }
         if (columnId === "tags") {
@@ -614,7 +598,7 @@ export default function EnterprisesPage({
   return <div className={`${mspStyles.mspPage} ${styles.page} msp-page-grid`}>
       <div className={mspStyles.mspLayout}>
         <div className={mspStyles.mspMain}>
-          <MspPageHero eyebrow={copy.eyebrow} title={copy.pageTitle} subtitle={loading ? copy.loadingPortfolio : copy.formatSubtitle(filteredAndSortedClients.length, portfolioTotal)} icon="mdi:briefcase-outline" actions={<>
+          <MspPageHero eyebrow={copy.eyebrow} title={copy.pageTitle} subtitle={isPhone ? null : loading ? copy.loadingPortfolio : copy.formatSubtitle(filteredAndSortedClients.length, portfolioTotal)} icon="mdi:briefcase-outline" stackOnMobile actions={<>
                 <SmartTooltip content={copy.columnsSettings}>
                   <button type="button" className={styles.iconBtn} onClick={() => setColumnsModalOpen(true)} aria-label={copy.columnsSettingsAria}>
                     <Icon icon="mdi:table-cog" />
@@ -637,7 +621,7 @@ export default function EnterprisesPage({
 
           <main className={`${mspStyles.mspContent} ${mspStyles.mspContentList}`}>
             <div className={`${styles.shell} ${styles.shellWide} ${styles.shellFull}`}>
-        <div className={styles.toolbar}>
+        <div className={`${styles.toolbar} ${styles.toolbarWithFilters}`}>
           <div className={styles.searchWrap}>
             <Icon icon="mdi:magnify" className={styles.searchIcon} aria-hidden />
             <input type="text" inputMode="search" enterKeyHint="search" placeholder={copy.searchPlaceholder} value={searchQuery} onChange={e => setSearchQuery(e.target.value)} className={styles.searchInput} aria-label={copy.searchAria} />
@@ -671,9 +655,6 @@ export default function EnterprisesPage({
                   </button>;
               })}
             </div>
-          <span className={styles.toolbarMeta}>
-            {filteredAndSortedClients.length}
-          </span>
         </div>
 
         {loading ? <div className={styles.stateBox}>
@@ -694,7 +675,7 @@ export default function EnterprisesPage({
               {copy.newEnterprise}
             </button> : null}
           </div> : <div className={styles.listBody}>
-            {selectedCount > 0 && canBulkEdit ? <div className={styles.bulkBar}>
+            {selectedCount > 0 && showBulkSelection ? <div className={styles.bulkBar}>
                 <div className={styles.bulkInfo}>
                   <strong>{selectedCount}</strong>
                   <span>{selectedCount > 1 ? copy.bulk.selectedPlural : copy.bulk.selected}</span>
@@ -714,17 +695,18 @@ export default function EnterprisesPage({
                 <table className={styles.dataTable}>
                   <thead>
                     <tr>
-                      {canBulkEdit ? <th className={styles.checkboxCell}>
+                      {showBulkSelection ? <th className={styles.checkboxCell}>
                           <input type="checkbox" className={styles.rowCheckbox} checked={allOnPageSelected} onChange={toggleSelectAllOnPage} onClick={e => e.stopPropagation()} aria-label={copy.bulk.selectAll} />
                         </th> : null}
                       {tableColumns.map(columnId => {
                         const sortKey = TICKET_TABLE_COLUMN_SORT_KEYS[columnId];
                         const labelKey = ENTERPRISES_COLUMN_HEADERS[columnId];
                         const label = copy.table[labelKey] || columnId;
+                        const columnClass = enterprisesColumnClass(columnId);
                         if (!sortKey) {
-                          return <th key={columnId}>{label}</th>;
+                          return <th key={columnId} className={columnClass || undefined}>{label}</th>;
                         }
-                        return <th key={columnId} aria-sort={sortBy === sortKey ? sortOrder === "asc" ? "ascending" : "descending" : "none"}>
+                        return <th key={columnId} className={columnClass || undefined} aria-sort={sortBy === sortKey ? sortOrder === "asc" ? "ascending" : "descending" : "none"}>
                             <ThSort label={label} col={sortKey} />
                           </th>;
                       })}
@@ -756,7 +738,7 @@ export default function EnterprisesPage({
                           openClient(client);
                         }
                       }} role="button" tabIndex={0}>
-                          {canBulkEdit ? <td className={styles.checkboxCell} onClick={e => e.stopPropagation()}>
+                          {showBulkSelection ? <td className={styles.checkboxCell} onClick={e => e.stopPropagation()}>
                               <input type="checkbox" className={styles.rowCheckbox} checked={isSelected} onChange={e => toggleClientSelection(client.id, e.target.checked)} aria-label={copy.formatBulkSelectRow(rowName)} />
                             </td> : null}
                           {tableColumns.map(columnId => {
@@ -789,10 +771,10 @@ export default function EnterprisesPage({
                                 </td>;
                             }
                             if (columnId === "primary_contact") {
-                              return <td key={columnId} className={styles.colMuted}>{client.primaryContactName || "-"}</td>;
+                              return <td key={columnId} className={`${styles.colMuted} ${styles.colContact}`}>{client.primaryContactName || "-"}</td>;
                             }
                             if (columnId === "commercial") {
-                              return <td key={columnId} className={styles.colMuted}>{client.commercial || "-"}</td>;
+                              return <td key={columnId} className={`${styles.colMuted} ${styles.colCommercial}`}>{client.commercial || "-"}</td>;
                             }
                             if (columnId === "modules") {
                               const moduleLabels = activeModules.map(key => resolveModuleLabel(key));
@@ -800,7 +782,7 @@ export default function EnterprisesPage({
                               const visibleLimit = 2;
                               const visibleModules = activeModules.slice(0, visibleLimit);
                               const hiddenCount = Math.max(0, activeModules.length - visibleLimit);
-                              return <td key={columnId}>
+                              return <td key={columnId} className={styles.colModules}>
                                   {activeModules.length > 0 ? <SmartTooltip content={modulesTooltip} as="div" className={styles.tableModulesClip}>
                                       <div className={styles.tableModules}>
                                         {visibleModules.map(key => <span key={key} className={styles.moduleTag}>
@@ -816,21 +798,8 @@ export default function EnterprisesPage({
                                   {formatDate(client.contrat?.expiration)}
                                 </td>;
                             }
-                            if (columnId === "equipment") {
-                              return <td key={columnId}>
-                                  <div className={styles.tableEquip}>
-                                    {equipmentCountColumns.map(col => {
-                                      const count = getEquipmentCount(client, col.key);
-                                      return <SmartTooltip key={col.key} content={col.label} as="span" className={styles.equipItem}>
-                                          <Icon icon={col.icon} className={styles.equipIcon} />
-                                          <span className={styles.equipCount}>{count}</span>
-                                        </SmartTooltip>;
-                                    })}
-                                  </div>
-                                </td>;
-                            }
                             if (columnId === "tags") {
-                              return <td key={columnId}>
+                              return <td key={columnId} className={styles.colTags}>
                                   {tags.length > 0 ? <div className={styles.tableTags} aria-label={copy.tagsAria}>
                                       {visibleTags.map(tag => <span key={tag.id} className={styles.clientTagChip} style={{
                                         backgroundColor: `${tag.color || "#2b5fab"}18`,
@@ -904,6 +873,7 @@ export default function EnterprisesPage({
         pageScope={ENTERPRISES_PAGE_SCOPE}
         initialPublic={publicTableColumns}
         initialPrivate={privateTableColumns}
+        initialEffective={visibleTableColumns}
         columnLabelKeys={ENTERPRISES_COLUMN_HEADERS}
         copy={copy}
       />

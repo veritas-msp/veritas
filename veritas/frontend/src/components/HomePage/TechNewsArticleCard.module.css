@@ -7,29 +7,29 @@
 .cover {
   display: flex;
   flex-direction: column;
-  gap: 0.4rem;
-  padding: 0.65rem 0.85rem;
+  gap: 0;
+  padding: 0.42rem 0.75rem;
   cursor: pointer;
 }
 
 .cover[data-category="cve"] {
-  background: #ef4444;
-  color: #fff;
+  background: #f8eaea;
+  color: #6b3a3a;
 }
 
 .cover[data-category="security"] {
-  background: #f97316;
-  color: #fff;
+  background: #f6eee6;
+  color: #6d4d35;
 }
 
 .cover[data-category="news"] {
-  background: #3b82f6;
-  color: #fff;
+  background: #e8eef6;
+  color: #3d4f68;
 }
 
 .cover[data-category="tech"] {
-  background: #14b8a6;
-  color: #fff;
+  background: #e7f1ef;
+  color: #3a5551;
 }
 
 .coverRow {
@@ -40,21 +40,31 @@
   min-width: 0;
 }
 
+.coverLead {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  min-width: 0;
+}
+
+.coverMeta {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  flex-shrink: 0;
+}
+
 .badge {
   display: inline-flex;
   align-items: center;
-  gap: 0.28rem;
-  max-width: 100%;
-  padding: 0.12rem 0.5rem;
+  justify-content: center;
+  width: 1.35rem;
+  height: 1.35rem;
+  padding: 0;
   border-radius: 999px;
-  background: #fff;
+  background: color-mix(in srgb, currentColor 12%, #fff);
   color: inherit;
-  font-size: 0.68rem;
-  font-weight: 750;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  line-height: 1.2;
-  white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .cover[data-category="cve"] .badge {
@@ -76,9 +86,9 @@
 .coverTime {
   flex-shrink: 0;
   font-size: 0.72rem;
-  font-weight: 650;
+  font-weight: 600;
   color: inherit;
-  opacity: 0.95;
+  opacity: 0.72;
 }
 
 .coverSource {
@@ -87,8 +97,8 @@
   text-overflow: ellipsis;
   white-space: nowrap;
   font-size: 0.72rem;
-  font-weight: 550;
-  opacity: 0.92;
+  font-weight: 600;
+  opacity: 0.88;
 }
 
 .coverLink {
@@ -131,19 +141,27 @@
 }
 
 :global(html.dark) .cover[data-category="cve"] {
-  background: #b91c1c;
+  background: #3a2428;
+  color: #e2b4b4;
 }
 
 :global(html.dark) .cover[data-category="security"] {
-  background: #c2410c;
+  background: #3a2d24;
+  color: #e0c4a8;
 }
 
 :global(html.dark) .cover[data-category="news"] {
-  background: #1d4ed8;
+  background: #243044;
+  color: #b7c6da;
 }
 
 :global(html.dark) .cover[data-category="tech"] {
-  background: #0f766e;
+  background: #223632;
+  color: #b4d0ca;
+}
+
+:global(html.dark) .badge {
+  background: color-mix(in srgb, currentColor 16%, #1a2434);
 }
 
 :global(html.dark) .body:hover .title {

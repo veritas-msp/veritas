@@ -29,6 +29,7 @@
   width: 100%;
   box-sizing: border-box;
   padding: 1.25rem 1.25rem 1.25rem;
+  --home-card-gap: 1rem;
 }
 
 .dashboardMain {
@@ -46,15 +47,26 @@
 }
 
 
+.homeHeroWrap {
+  position: relative;
+  margin: 0 0 1rem;
+}
+
 .homeHero {
-  margin: 0 0 1rem !important;
+  margin: 0 !important;
+  padding-right: 12.5rem !important;
 }
 
 .heroAside {
+  position: absolute;
+  top: 50%;
+  right: 1.1rem;
+  transform: translateY(-50%);
   display: flex;
   align-items: center;
   gap: 0.55rem;
   flex-shrink: 0;
+  z-index: 1;
 }
 
 .heroMeta {
@@ -455,14 +467,18 @@
 .opsStack {
   display: flex;
   flex-direction: column;
-  gap: 1rem;
+  gap: var(--home-card-gap, 1rem);
   margin-bottom: 1rem;
+}
+
+.mobileSectionTabs {
+  display: none;
 }
 
 .ticketPanelsRow {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 1rem;
+  gap: var(--home-card-gap, 1rem);
   min-width: 0;
 }
 
@@ -520,7 +536,7 @@
 
 .ticketKpiRow {
   display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 0.65rem;
 }
 
@@ -597,6 +613,38 @@
   white-space: nowrap;
 }
 
+.homeSortableTh {
+  cursor: pointer;
+  user-select: none;
+  transition: color 0.15s ease;
+}
+
+.homeSortableTh:hover,
+.homeSortableTh:focus-visible {
+  color: var(--msp-accent);
+  outline: none;
+}
+
+.homeThContent {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.2rem;
+  max-width: 100%;
+}
+
+.homeSortIcon {
+  font-size: 0.85rem;
+  flex-shrink: 0;
+  opacity: 0.55;
+}
+
+.homeSortableTh:hover .homeSortIcon,
+.homeSortableTh[aria-sort="ascending"] .homeSortIcon,
+.homeSortableTh[aria-sort="descending"] .homeSortIcon {
+  opacity: 1;
+  color: var(--msp-accent);
+}
+
 .homeTable tbody td {
   padding: 0.62rem 0.85rem;
   font-size: 0.8rem;
@@ -610,6 +658,51 @@
 
 .homeTable tbody tr:last-child td {
   border-bottom: none;
+}
+
+.homeListPager {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.65rem;
+  padding: 0.55rem 0.85rem;
+  border-top: 1px solid var(--msp-border-light);
+  background: var(--msp-surface-2);
+}
+
+.homeListPagerInfo {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--msp-muted);
+  min-width: 4.5rem;
+  text-align: center;
+}
+
+.homeListPagerBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.75rem;
+  height: 1.75rem;
+  padding: 0;
+  border: 1px solid var(--msp-border-light);
+  border-radius: 6px;
+  background: var(--msp-surface);
+  color: var(--msp-text);
+  cursor: pointer;
+  transition: border-color 0.15s ease, color 0.15s ease, background 0.15s ease;
+}
+
+.homeListPagerBtn:hover:not(:disabled),
+.homeListPagerBtn:focus-visible {
+  border-color: var(--msp-accent);
+  color: var(--msp-accent);
+  background: var(--msp-surface);
+}
+
+.homeListPagerBtn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
 }
 
 .homeTableRow {
@@ -857,85 +950,6 @@
   font-size: 1rem;
   font-weight: 700;
   color: var(--msp-text);
-}
-
-.panelAction {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.28rem;
-  flex-shrink: 0;
-  border: 1px solid var(--msp-border-light);
-  background: var(--msp-surface-2);
-  color: var(--msp-muted);
-  font-size: 0.72rem;
-  font-weight: 600;
-  cursor: pointer;
-  padding: 0.34rem 0.62rem;
-  border-radius: 999px;
-  white-space: nowrap;
-  transition: border-color 0.15s, color 0.15s, background 0.15s, box-shadow 0.15s;
-}
-
-.panelAction:hover {
-  border-color: var(--msp-border);
-  background: var(--msp-surface);
-  color: var(--msp-accent);
-  box-shadow: 0 1px 4px rgba(11, 33, 56, 0.06);
-}
-
-.panelActionIcon {
-  font-size: 0.88rem;
-  transition: transform 0.15s ease;
-}
-
-.panelAction:hover .panelActionIcon {
-  transform: translateX(2px);
-}
-
-.panelActions {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.35rem;
-  flex-shrink: 0;
-}
-
-.panelIconBtn {
-  width: 1.85rem;
-  height: 1.85rem;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  border: 1px solid var(--msp-border-light);
-  background: var(--msp-surface-2);
-  color: var(--msp-muted);
-  border-radius: 8px;
-  cursor: pointer;
-  font-size: 1rem;
-  transition: border-color 0.15s, color 0.15s, background 0.15s, box-shadow 0.15s;
-}
-
-.panelIconBtn:hover {
-  border-color: var(--msp-border);
-  background: var(--msp-surface);
-  color: var(--msp-accent);
-  box-shadow: 0 1px 4px rgba(11, 33, 56, 0.06);
-}
-
-.panelIconBtn:focus-visible {
-  outline: 2px solid var(--msp-accent);
-  outline-offset: 2px;
-}
-
-.panelIconBtnPrimary {
-  border-color: rgba(43, 95, 171, 0.35);
-  background: rgba(43, 95, 171, 0.1);
-  color: var(--msp-accent);
-}
-
-.panelIconBtnPrimary:hover {
-  border-color: var(--msp-accent);
-  background: rgba(43, 95, 171, 0.16);
-  color: var(--msp-accent);
 }
 
 .panelBody {
@@ -1485,7 +1499,24 @@
 }
 
 
-@media (max-width: 1100px) {
+@media (min-width: 1440px) {
+  .pageLayout {
+    grid-template-columns: minmax(0, 1fr) 380px;
+    padding: 1.35rem 1.5rem 1.5rem;
+  }
+}
+
+@media (max-width: 1439px) {
+  .ticketPanelsRow {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .pageLayout {
+    grid-template-columns: minmax(0, 1fr) 320px;
+  }
+}
+
+@media (max-width: 1023px) {
   .pageWrapper {
     overflow-x: hidden;
     overflow-y: auto;
@@ -1501,10 +1532,29 @@
     height: auto;
     min-height: min-content;
     align-items: start;
+    padding: 1.1rem 1rem 5.5rem;
+    gap: var(--home-card-gap);
   }
 
   .dashboardMain {
     overflow: visible;
+    display: flex;
+    flex-direction: column;
+    gap: var(--home-card-gap);
+  }
+
+  .homeHeroWrap {
+    margin-bottom: 0;
+  }
+
+  .opsStack {
+    margin-bottom: 0;
+    gap: var(--home-card-gap);
+  }
+
+  .errorBanner,
+  .skeleton {
+    margin-bottom: 0;
   }
 
   .newsAside {
@@ -1518,15 +1568,9 @@
   }
 
   .ticketKpiRow {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: repeat(4, minmax(0, 1fr));
   }
 
-  .ticketPanelsRow {
-    grid-template-columns: minmax(0, 1fr);
-  }
-}
-
-@media (max-width: 900px) {
   .homeTable thead th:nth-child(4),
   .homeTable tbody td:nth-child(4) {
     display: none;
@@ -1535,11 +1579,188 @@
   .surveyFamilyHead {
     gap: 0.32rem;
   }
+
 }
 
-@media (max-width: 640px) {
+@media (max-width: 767px) {
+  .pageWrapper,
+  :global(.contentWrapper) > .pageWrapper {
+    overflow: hidden;
+    height: 100%;
+  }
+
   .pageLayout {
-    padding: 1rem 0.85rem 2rem;
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    min-height: 0;
+    overflow: hidden;
+    align-items: stretch;
+    padding: 0.65rem 0.75rem 0.65rem;
+    gap: var(--home-card-gap);
+  }
+
+  .dashboardMain {
+    flex: 0 0 auto;
+    min-height: 0;
+    overflow: visible;
+    display: flex;
+    flex-direction: column;
+    gap: var(--home-card-gap);
+  }
+
+  .newsAside {
+    display: flex;
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  .homeHeroWrap {
+    margin: 0;
+    flex-shrink: 0;
+  }
+
+  .mobileSectionTabs {
+    display: flex;
+    justify-content: center;
+    align-items: stretch;
+    gap: 0.2rem;
+    flex-shrink: 0;
+    margin: 0;
+    padding: 0.18rem;
+    background: var(--msp-surface);
+    border: 1px solid var(--msp-border);
+    border-radius: 12px;
+  }
+
+  .mobileSectionTab {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.18rem;
+    padding: 0.42rem 0.15rem 0.38rem;
+    border: none;
+    background: transparent;
+    border-radius: 9px;
+    color: var(--msp-muted);
+    font: inherit;
+    font-size: 0.62rem;
+    font-weight: 700;
+    line-height: 1.15;
+    text-align: center;
+    cursor: pointer;
+  }
+
+  .mobileSectionTabIcon {
+    font-size: 1.05rem;
+  }
+
+  .mobileSectionTabActive {
+    background: var(--msp-accent-soft);
+    color: var(--msp-accent);
+  }
+
+  .ticketPanelsRow {
+    display: contents;
+  }
+
+  .opsStack [data-home-section] {
+    display: none;
+  }
+
+  .opsStack {
+    flex: 0 0 auto;
+    min-height: 0;
+    margin-bottom: 0;
+    overflow: visible;
+  }
+
+  .opsStack[data-mobile-section="support"] [data-home-section="support"],
+  .opsStack[data-mobile-section="sales"] [data-home-section="sales"],
+  .opsStack[data-mobile-section="events"] [data-home-section="events"],
+  .opsStack[data-mobile-section="todo"] [data-home-section="todo"] {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+  }
+
+  .homeHero {
+    padding: 0.55rem 0.7rem !important;
+  }
+
+  .panelHeader {
+    display: none;
+  }
+
+  .panelBody {
+    padding: 0.45rem 0.5rem 0.5rem;
+  }
+
+  .panelBodyFlush {
+    max-height: 9.5rem;
+    overflow: auto;
+  }
+
+  .ticketKpiRow {
+    gap: 0.4rem;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .ticketKpiCard {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    grid-template-rows: auto auto;
+    align-items: center;
+    column-gap: 0.45rem;
+    row-gap: 0.12rem;
+    min-height: 0;
+    padding: 0.45rem 0.5rem;
+  }
+
+  .ticketKpiCard .kpiIconWrap {
+    grid-column: 1;
+    grid-row: 1;
+    margin-bottom: 0;
+  }
+
+  .ticketKpiCard .kpiValue {
+    grid-column: 2;
+    grid-row: 1;
+    font-size: 1.25rem;
+    line-height: 1;
+  }
+
+  .ticketKpiCard .kpiLabel {
+    grid-column: 1 / -1;
+    grid-row: 2;
+    font-size: 0.78rem;
+    font-weight: 700;
+  }
+
+  .heroAside {
+    top: 0.75rem;
+    right: 0.75rem;
+    transform: none;
+  }
+
+  .heroMeta {
+    flex: none;
+    padding: 0.22rem 0.48rem;
+    gap: 0.28rem;
+    border-radius: 999px;
+  }
+
+  .heroMetaIcon {
+    font-size: 0.8rem;
+  }
+
+  .heroDate {
+    font-size: 0.68rem;
+    white-space: nowrap;
   }
 
   .kpiRow:not(:has(> :only-child)),
@@ -1547,16 +1768,14 @@
     grid-template-columns: 1fr;
   }
 
-  .ticketKpiRow {
-    grid-template-columns: 1fr 1fr;
-  }
-
   .kpiValue {
-    font-size: 1.45rem;
+    font-size: 1.25rem;
   }
 
-  .homeTable thead th:nth-child(n+3),
-  .homeTable tbody td:nth-child(n+3) {
+  .homeTable thead th:nth-child(2),
+  .homeTable tbody td:nth-child(2),
+  .homeTable thead th:nth-child(4),
+  .homeTable tbody td:nth-child(4) {
     display: none;
   }
 
@@ -1566,12 +1785,22 @@
     flex-wrap: wrap;
   }
 
+  .panelHeader {
+    align-items: flex-start;
+    padding: 0.8rem 0.9rem;
+  }
+
   .panelHeaderMain {
     flex-direction: column;
     align-items: flex-start;
   }
 
-  .heroDate {
+  .panelBody {
+    padding: 0.75rem 0.9rem 0.95rem;
+  }
+
+  .panelTitleMeta,
+  .ticketStatusNote {
     white-space: normal;
   }
 }

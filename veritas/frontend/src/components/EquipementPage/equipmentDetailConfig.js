@@ -7,7 +7,7 @@ import { formatRmmRam, getRmmChassisInfo, getRmmInventoryFromEquipment, getRmmNe
 import { repairOsLabel } from "./osIconUtils";
 import { isSynologyBrand } from "./synologyEquipmentUtils";
 import { getEquipmentDetailFieldLabel, getEquipmentDetailCopy, localizeEquipmentDetailSection } from "./equipmentDetailPageI18n";
-import { formatAssignedSsidsDisplay, buildBorneWifiSsidFormState, normalizeWifiSsidCatalog } from "./wifiApSsidUtils";
+import { formatAssignedSsidsDisplay, buildBorneWifiSsidFormState, collectEquipmentAssignedSsids, normalizeWifiSsidCatalog, resolveClientWifiSsidCatalog } from "./wifiApSsidUtils";
 import { shouldShowStorageDiskBays } from "./storageDiskUtils";
 import { getSharedEquipmentFieldLabel } from "./sharedEquipmentFields";
 import { parseCustomFamilyType } from "../../api/equipmentFamilies";
@@ -645,7 +645,11 @@ export function buildDetailFormData(equipment, options = {}) {
   const moduleKey = resolveModuleKey(equipment);
   const customFamily = options.customFamily ?? equipment?.customFamily ?? null;
   const clientSites = options.clientSites ?? equipment?.clientSites;
-  const clientSsids = options.clientSsids ?? equipment?.clientSsids ?? equipment?.client?.ssids ?? equipment?.client?.ssid;
+  const clientSsids = (Array.isArray(options.clientSsids) && options.clientSsids.length
+    ? options.clientSsids
+    : null) ?? (Array.isArray(equipment?.clientSsids) && equipment.clientSsids.length
+    ? equipment.clientSsids
+    : null) ?? resolveClientWifiSsidCatalog(equipment?.client);
   const base = buildInitialFormData(equipment, moduleKey, {
     client: equipment?.clientId ? {
       sites: clientSites,
@@ -700,8 +704,11 @@ export function buildDetailFormData(equipment, options = {}) {
     });
   }
   if (equipment?.type === "BorneWifi") {
-    const catalog = normalizeWifiSsidCatalog(Array.isArray(clientSsids) ? clientSsids : merged.clientSsids || []);
-    const rawSsids = equipment?.ssids ?? equipment?.rawData?.data?.ssids ?? equipment?.rawData?.ssids ?? merged.ssids ?? [];
+    const catalog = normalizeWifiSsidCatalog(Array.isArray(clientSsids) && clientSsids.length ? clientSsids : merged.clientSsids || []);
+    const rawSsids = collectEquipmentAssignedSsids({
+      ...equipment,
+      ssids: equipment?.ssids ?? merged.ssids
+    });
     const {
       clientSsids: mergedCatalog,
       assignedSsidIds

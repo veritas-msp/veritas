@@ -276,6 +276,9 @@ export default function MainApp() {
       }
     }
     if (type === "TenantDetail") {
+      if (data?.clientId && (data?.azureCredentialId || data?.tenantId)) {
+        return `tenant-${data.clientId}-${data.azureCredentialId || data.tenantId}`;
+      }
       if (data?.clientId) {
         return `tenant-${data.clientId}`;
       }

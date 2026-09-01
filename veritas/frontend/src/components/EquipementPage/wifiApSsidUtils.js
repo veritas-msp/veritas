@@ -29,9 +29,84 @@ export function createWifiSsidEntry(overrides = {}) {
     ...overrides
   };
 }
+export function isInternalSsidToken(value) {
+  const raw = String(value || "").trim();
+  return /^ssid-\d+/i.test(raw) || /^legacy-/i.test(raw);
+}
+function readSsidNom(entry) {
+  if (typeof entry === "string") return entry.trim();
+  if (!entry || typeof entry !== "object") return "";
+  return String(entry.nom || entry.name || entry.ssid || "").trim();
+}
+function isDisplayableSsidNom(nom) {
+  const trimmed = String(nom || "").trim();
+  return Boolean(trimmed) && !isInternalSsidToken(trimmed);
+}
+export function coerceWifiSsidList(value) {
+  if (Array.isArray(value)) return value;
+  if (typeof value === "string") {
+    const trimmed = value.trim();
+    if (!trimmed) return [];
+    try {
+      const parsed = JSON.parse(trimmed);
+      return Array.isArray(parsed) ? parsed : trimmed ? [trimmed] : [];
+    } catch {
+      return [trimmed];
+    }
+  }
+  return [];
+}
+function scoreSsidList(list) {
+  const items = coerceWifiSsidList(list);
+  if (!items.length) return 0;
+  let named = 0;
+  items.forEach(item => {
+    if (isDisplayableSsidNom(readSsidNom(item))) named += 1;
+  });
+  return items.length * 1000 + named;
+}
+function pickBestSsidList(candidates) {
+  let best = [];
+  let bestScore = 0;
+  candidates.forEach(candidate => {
+    const list = coerceWifiSsidList(candidate);
+    const score = scoreSsidList(list);
+    if (score > bestScore) {
+      best = list;
+      bestScore = score;
+    }
+  });
+  return best;
+}
+export function resolveClientWifiSsidCatalog(client) {
+  return pickBestSsidList([client?.ssids, client?.ssid]);
+}
+export function collectEquipmentAssignedSsids(source) {
+  if (!source || typeof source !== "object") return [];
+  return pickBestSsidList([
+    source.ssids,
+    source.assignedSsids,
+    source.assignedSsidIds,
+    source.data?.ssids,
+    source.data?.assignedSsids,
+    source.data?.assignedSsidIds,
+    source.rawData?.ssids,
+    source.rawData?.assignedSsids,
+    source.rawData?.assignedSsidIds,
+    source.rawData?.data?.ssids,
+    source.rawData?.data?.assignedSsids,
+    source.rawData?.data?.assignedSsidIds
+  ]);
+}
 export function normalizeWifiSsidEntry(entry, index = 0) {
   if (typeof entry === "string") {
     const nom = entry.trim();
+    if (isInternalSsidToken(nom)) {
+      return createWifiSsidEntry({
+        id: nom,
+        nom: ""
+      });
+    }
     return createWifiSsidEntry({
       id: `legacy-${index}-${nom || index}`,
       nom
@@ -42,10 +117,11 @@ export function normalizeWifiSsidEntry(entry, index = 0) {
       id: `ssid-empty-${index}`
     });
   }
-  const nom = entry.nom || entry.name || entry.ssid || "";
+  const nom = readSsidNom(entry);
+  const id = entry.id || (isInternalSsidToken(nom) ? nom : `ssid-${index}-${String(nom).slice(0, 12) || index}`);
   return {
-    id: entry.id || `ssid-${index}-${String(nom).slice(0, 12) || index}`,
-    nom: String(nom || "").trim(),
+    id,
+    nom: isInternalSsidToken(nom) ? "" : nom,
     vlan: entry.vlan != null ? String(entry.vlan) : "",
     bande: entry.bande || "dual",
     type: entry.type === "public" ? "public" : "prive",
@@ -53,8 +129,7 @@ export function normalizeWifiSsidEntry(entry, index = 0) {
   };
 }
 export function normalizeWifiSsidCatalog(ssids) {
-  if (!Array.isArray(ssids)) return [];
-  return ssids.map((entry, index) => normalizeWifiSsidEntry(entry, index));
+  return coerceWifiSsidList(ssids).map((entry, index) => normalizeWifiSsidEntry(entry, index));
 }
 export function normalizeWifiSsidList(ssids) {
   return normalizeWifiSsidCatalog(ssids).filter(entry => entry.nom || entry.vlan);
@@ -82,11 +157,12 @@ export function wifiSsidCatalogsEqual(a, b) {
   return JSON.stringify(serializeWifiSsidCatalogForPersistence(a || [])) === JSON.stringify(serializeWifiSsidCatalogForPersistence(b || []));
 }
 export function resolveAssignedSsidIds(rawAssigned, clientCatalog = []) {
-  if (!Array.isArray(rawAssigned)) return [];
+  const assigned = coerceWifiSsidList(rawAssigned);
+  if (!assigned.length) return [];
   const catalogById = new Map(normalizeWifiSsidCatalog(clientCatalog).map(entry => [entry.id, entry]));
   const catalogByNom = new Map(normalizeWifiSsidCatalog(clientCatalog).filter(entry => entry.nom).map(entry => [entry.nom.toLowerCase(), entry.id]));
   const resolved = [];
-  rawAssigned.forEach(item => {
+  assigned.forEach(item => {
     if (typeof item === "string") {
       const trimmed = item.trim();
       if (!trimmed) return;
@@ -107,8 +183,9 @@ export function resolveAssignedSsidIds(rawAssigned, clientCatalog = []) {
         resolved.push(item.id);
         return;
       }
-      if (item.nom) {
-        const byNom = catalogByNom.get(String(item.nom).toLowerCase());
+      const nom = readSsidNom(item);
+      if (nom) {
+        const byNom = catalogByNom.get(nom.toLowerCase());
         if (byNom) {
           resolved.push(byNom);
           return;
@@ -119,35 +196,58 @@ export function resolveAssignedSsidIds(rawAssigned, clientCatalog = []) {
   });
   return [...new Set(resolved)];
 }
-export function isInternalSsidToken(value) {
-  const raw = String(value || "").trim();
-  return /^ssid-\d+/i.test(raw) || /^legacy-/i.test(raw);
-}
 export function buildBorneWifiSsidFormState(equipment, client, {
   peerBorneWifi = []
 } = {}) {
-  const clientCatalog = client?.ssids || client?.ssid || [];
-  let clientSsids = normalizeWifiSsidCatalog(clientCatalog);
-  const mergeCatalogEntry = entry => {
-    if (!entry?.nom || isInternalSsidToken(entry.nom)) return;
-    const exists = clientSsids.some(ssid => ssid.id === entry.id || ssid.nom.toLowerCase() === entry.nom.toLowerCase());
-    if (!exists) {
-      clientSsids = [...clientSsids, entry];
-    }
-  };
-  const peerSources = [...(Array.isArray(client?.equipements?.BorneWifi) ? client.equipements.BorneWifi : []), ...(Array.isArray(peerBorneWifi) ? peerBorneWifi : [])];
-  peerSources.forEach(borne => {
-    if (!borne || typeof borne !== "object") return;
-    if (equipment && (borne === equipment || borne.id != null && equipment.id != null && String(borne.id) === String(equipment.id) || borne.rawData?.id != null && equipment.rawData?.id != null && String(borne.rawData.id) === String(equipment.rawData.id))) {
+  let clientSsids = normalizeWifiSsidCatalog(resolveClientWifiSsidCatalog(client));
+  const mergeCatalogEntry = (entry, {
+    allowUnnamed = false
+  } = {}) => {
+    if (!entry?.id) return;
+    const nom = String(entry.nom || "").trim();
+    if (nom && isInternalSsidToken(nom)) return;
+    if (!nom && !allowUnnamed) return;
+    const exists = clientSsids.some(ssid => ssid.id === entry.id || nom && ssid.nom.toLowerCase() === nom.toLowerCase());
+    if (exists) {
+      clientSsids = clientSsids.map(ssid => {
+        if (ssid.id !== entry.id && !(nom && ssid.nom.toLowerCase() === nom.toLowerCase())) return ssid;
+        if (isDisplayableSsidNom(ssid.nom)) return ssid;
+        return {
+          ...ssid,
+          ...entry,
+          nom: nom || ssid.nom
+        };
+      });
       return;
     }
-    const rawPeerSsids = borne.ssids ?? borne.data?.ssids ?? borne.rawData?.ssids ?? borne.rawData?.data?.ssids ?? [];
-    normalizeWifiSsidCatalog(rawPeerSsids).forEach(mergeCatalogEntry);
-  });
-  const raw = equipment?.rawData?.data || equipment?.rawData || equipment || {};
-  const rawAssigned = raw.ssids ?? equipment?.ssids ?? [];
-  normalizeWifiSsidCatalog(rawAssigned).forEach(mergeCatalogEntry);
+    clientSsids = [...clientSsids, entry];
+  };
+  const harvestFromBorne = borne => {
+    if (!borne || typeof borne !== "object") return;
+    normalizeWifiSsidCatalog(collectEquipmentAssignedSsids(borne)).forEach(entry => mergeCatalogEntry(entry));
+  };
+  const peerSources = [...(Array.isArray(client?.equipements?.BorneWifi) ? client.equipements.BorneWifi : []), ...(Array.isArray(peerBorneWifi) ? peerBorneWifi : [])];
+  peerSources.forEach(harvestFromBorne);
+  harvestFromBorne(equipment);
+  const rawAssigned = collectEquipmentAssignedSsids(equipment);
+  normalizeWifiSsidCatalog(rawAssigned).forEach(entry => mergeCatalogEntry(entry));
   const assignedSsidIds = resolveAssignedSsidIds(rawAssigned, clientSsids);
+  assignedSsidIds.forEach(id => {
+    if (!id || clientSsids.some(entry => entry.id === id)) return;
+    const rawItem = rawAssigned.find(item => {
+      if (typeof item === "string") return item.trim() === id;
+      return item && typeof item === "object" && String(item.id || "") === String(id);
+    });
+    mergeCatalogEntry(normalizeWifiSsidEntry(rawItem && typeof rawItem === "object" ? {
+      ...rawItem,
+      id
+    } : {
+      id,
+      nom: isDisplayableSsidNom(rawItem) ? String(rawItem).trim() : ""
+    }), {
+      allowUnnamed: true
+    });
+  });
   return {
     clientSsids,
     assignedSsidIds
@@ -158,18 +258,18 @@ export function getWifiSsidById(catalog, ssidId) {
 }
 function resolveSsidDisplayName(catalog, ssidId) {
   if (ssidId && typeof ssidId === "object") {
-    const embeddedNom = ssidId.nom || ssidId.name || ssidId.ssid;
-    if (embeddedNom && !isInternalSsidToken(embeddedNom)) {
-      return String(embeddedNom).trim();
+    const embeddedNom = readSsidNom(ssidId);
+    if (isDisplayableSsidNom(embeddedNom)) {
+      return embeddedNom;
     }
     return resolveSsidDisplayName(catalog, ssidId.id);
   }
   const entry = getWifiSsidById(catalog, ssidId);
-  if (entry?.nom && !isInternalSsidToken(entry.nom)) return entry.nom;
+  if (isDisplayableSsidNom(entry?.nom)) return entry.nom;
   const normalized = normalizeWifiSsidCatalog(catalog);
   const raw = String(ssidId || "").trim();
   if (!raw) return null;
-  const byObject = normalized.find(item => item.id === raw && item.nom && !isInternalSsidToken(item.nom));
+  const byObject = normalized.find(item => item.id === raw && isDisplayableSsidNom(item.nom));
   if (byObject?.nom) return byObject.nom;
   if (isInternalSsidToken(raw)) return null;
   return raw;
@@ -188,11 +288,11 @@ export function serializeAssignedSsidsForPersistence(assignedIds, catalog = []) 
   const ids = Array.isArray(assignedIds) ? assignedIds : [];
   return ids.map(item => {
     if (item && typeof item === "object" && item.id) {
-      const embeddedNom = item.nom || item.name || item.ssid;
-      if (embeddedNom && !isInternalSsidToken(embeddedNom)) {
+      const embeddedNom = readSsidNom(item);
+      if (isDisplayableSsidNom(embeddedNom)) {
         return {
           id: item.id,
-          nom: String(embeddedNom).trim()
+          nom: embeddedNom
         };
       }
       const entry = getWifiSsidById(normalizedCatalog, item.id);
@@ -214,11 +314,11 @@ export function formatAssignedSsidsDisplay(formData) {
   const catalog = formData?.clientSsids || [];
   const assignedIds = Array.isArray(formData?.assignedSsidIds) ? formData.assignedSsidIds : [];
   const rawAssigned = formData?.ssids;
-  let names = collectSsidDisplayNames(catalog, rawAssigned);
+  let names = collectSsidDisplayNames(catalog, coerceWifiSsidList(rawAssigned));
   if (!names.length && assignedIds.length) {
     names = collectSsidDisplayNames(catalog, assignedIds);
   }
-  if (!names.length && Array.isArray(rawAssigned) && rawAssigned.length) {
+  if (!names.length && coerceWifiSsidList(rawAssigned).length) {
     names = collectSsidDisplayNames(catalog, resolveAssignedSsidIds(rawAssigned, catalog));
   }
   return names.length ? names.join(", ") : null;

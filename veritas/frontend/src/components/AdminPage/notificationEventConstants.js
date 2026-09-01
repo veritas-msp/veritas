@@ -13,6 +13,18 @@ export const NOTIFICATION_SOURCE_OPTIONS = [{
   }, {
     key: "commented",
     label: "Comment added"
+  }, {
+    key: "assigned",
+    label: "Assignment"
+  }, {
+    key: "satisfaction",
+    label: "Customer satisfaction"
+  }, {
+    key: "validation_requested",
+    label: "Validation requested"
+  }, {
+    key: "validation_responded",
+    label: "Validation answered"
   }]
 }, {
   key: "entreprise",
@@ -121,21 +133,40 @@ export const NOTIFICATION_SOURCE_OPTIONS = [{
   }]
 }];
 export const NOTIFICATION_CHANNEL_OPTIONS = [{
+  key: "inapp",
+  label: "In-app"
+}, {
   key: "mail",
   label: "Email"
 }, {
   key: "webhook",
-  label: "Webhook"
-}, {
-  key: "browser",
-  label: "Browser (in-app)",
-  comingSoon: true
+  label: "Intégration (Teams, Slack, webhook)"
 }, {
   key: "sms",
   label: "SMS",
   comingSoon: true
 }];
 export const RUNTIME_NOTIFICATION_CHANNELS = new Set(["mail", "webhook"]);
+export const IN_APP_KEY_BY_EVENT = {
+  "tickets.created": "ticket_created",
+  "tickets.updated": "ticket_updated",
+  "tickets.resolved": "ticket_resolved",
+  "tickets.commented": "ticket_commented",
+  "tickets.assigned": "ticket_assigned",
+  "tickets.satisfaction": "ticket_satisfaction",
+  "tickets.validation_requested": "ticket_validation_requested",
+  "tickets.validation_responded": "ticket_validation_responded"
+};
+export const WIRED_DISPATCH_EVENTS = new Set(["tickets.created", "tickets.updated", "tickets.resolved", "tickets.commented", "entreprise.updated", "entreprise.contract_info_updated", "entreprise.contract_expiration_soon", "entreprise.contract_expired", "contact.created", "contact.updated", "cyber.campaign_updated", "cyber.campaign_start_date_soon", "cyber.campaign_end_date_soon", "cyber.campaign_end_date_reached", "services.tenant_updated", "rapport.generated", "rapport.updated"]);
+export function getInAppEventKey(source, element) {
+  return IN_APP_KEY_BY_EVENT[`${String(source || "").trim().toLowerCase()}.${String(element || "").trim().toLowerCase()}`] || "";
+}
+export function isDispatchWiredEvent(source, element) {
+  return WIRED_DISPATCH_EVENTS.has(`${String(source || "").trim().toLowerCase()}.${String(element || "").trim().toLowerCase()}`);
+}
+export function isInAppOnlyEvent(source, element) {
+  return Boolean(getInAppEventKey(source, element)) && !isDispatchWiredEvent(source, element);
+}
 export const WEBHOOK_CHANNEL_ICON_BY_KEY = {
   teams: "mdi:microsoft-teams",
   slack: "mdi:slack",
@@ -194,11 +225,12 @@ export function buildDefaultNotificationEvent() {
     scopeType: "all",
     enterpriseId: "",
     daysBefore: 30,
-    channels: ["webhook"],
-    channel: "webhook",
+    channels: ["mail"],
+    channel: "mail",
     webhookId: "",
     emailTo: "",
     emailCc: "",
+    emailSubject: "",
     useTemplate: false,
     templateId: "",
     customMessage: "",

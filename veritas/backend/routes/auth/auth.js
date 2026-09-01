@@ -2,8 +2,7 @@ import express from "express";
 import bcrypt from "bcrypt";
 import crypto from "crypto";
 import { pool } from "../../database/db.js";
-import { sendMail } from "../../utils/sendMail.js";
-import { forgotPasswordEmailContent } from "../../utils/authEmailTemplates.js";
+import { sendSystemNotification } from "../../services/systemNotificationService.js";
 import { getPrimaryFrontendBaseUrl } from "../../utils/envFile.js";
 import verifyJWT, { verifyToken } from "../../middleware/auth.js";
 import mfaRoutes from "./mfa.js";
@@ -144,20 +143,24 @@ router.post("/forgot-password", forgotPasswordRateLimit, async (req, res) => {
       fp: passwordFingerprint(user.password)
     }, "15m");
     const resetLink = `${getPrimaryFrontendBaseUrl(req)}/reset-password#token=${token}`;
-    const mailResult = await sendMail({
-      to: email,
-      subject: "Reset your Veritas password",
-      title: "Forgot password",
-      htmlContent: forgotPasswordEmailContent({
-        resetLink
-      })
+    const mailResult = await sendSystemNotification("auth.password_reset", {
+      emails: [email],
+      requireSend: true,
+      context: {
+        resetLink,
+        user: {
+          id: user.id,
+          email: user.email,
+          username: user.username || user.email
+        }
+      }
     });
     const payload = {
       success: true
     };
-    if (mailResult?.skipped && process.env.NODE_ENV !== "production") {
+    if (process.env.NODE_ENV !== "production") {
       payload.devResetLink = resetLink;
-      payload.mailSkipped = true;
+      payload.mailSkipped = Boolean(mailResult?.skipped);
     }
     res.json(payload);
   } catch (err) {
@@ -208,16 +211,16 @@ router.post("/reset-password", resetPasswordRateLimit, async (req, res) => {
     }
     const hashed = await bcrypt.hash(newPassword, 12);
     await pool.query("UPDATE v_b_users SET password_hash = $1, password_pending = false WHERE id = $2", [hashed, decoded.id]);
-    await sendMail({
-      to: decoded.email,
-      subject: "Your password has been changed",
-      title: "Password changed",
-      htmlContent: `
-        <p>Hello,</p>
-        <p>Your password has been updated successfully.</p>
-        <p>If you did not make this change, contact your administrator immediately.</p>
-      `
-    });
+    await sendSystemNotification("auth.password_changed", {
+      emails: [decoded.email],
+      context: {
+        user: {
+          id: decoded.id,
+          email: decoded.email,
+          username: decoded.email
+        }
+      }
+    }).catch(() => {});
     res.json({
       success: true
     });

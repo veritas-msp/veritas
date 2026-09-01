@@ -93,6 +93,7 @@ const CONTACT_LIST_SELECT = `
   cts.sexe,
   cts.email,
   cts.telephone,
+  COALESCE(cts.communications, '[]'::jsonb) AS communications,
   cts.poste,
   cts.statut,
   cts.created_at,

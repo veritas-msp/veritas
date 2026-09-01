@@ -199,7 +199,7 @@
   flex: 1;
   min-height: 0;
   overflow: auto;
-  border-top: 1px solid var(--msp-border-light, #e2e8f0);
+  border-top: none;
   scrollbar-width: thin;
 }
 
@@ -209,8 +209,8 @@
   align-items: center;
   gap: 0.75rem;
   width: 100%;
-  min-height: 3.15rem;
-  padding: 0.7rem 0.85rem;
+  min-height: 3rem;
+  padding: 0.65rem 0.15rem;
   border: none;
   border-bottom: 1px solid var(--msp-border-light, #e2e8f0);
   background: transparent;
@@ -246,8 +246,8 @@
 }
 
 .rowName {
-  font-size: 0.92rem;
-  font-weight: 600;
+  font-size: 0.98rem;
+  font-weight: 650;
   color: var(--msp-text, #0f1c2e);
 }
 
@@ -385,35 +385,35 @@
 }
 
 .stageTypes .stageHeader {
-  text-align: center;
-  align-items: center;
+  text-align: left;
+  align-items: flex-start;
 }
 
 .typeGrid {
   display: grid;
-  grid-template-columns: repeat(3, minmax(11.5rem, 14.5rem));
-  gap: 1.15rem;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 0.95rem;
   flex: 1;
   min-height: 0;
-  justify-content: center;
-  align-content: center;
+  justify-content: stretch;
+  align-content: start;
   overflow: auto;
   width: 100%;
-  margin: 0 auto;
-  padding: 0.5rem 0.75rem 0.85rem;
+  margin: 0;
+  padding: 0.35rem 0 0.65rem;
 }
 
 .typeCard {
   position: relative;
   display: flex;
   flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 0.55rem;
+  align-items: flex-start;
+  justify-content: flex-start;
+  gap: 0.65rem;
   width: 100%;
-  aspect-ratio: 1 / 1;
+  min-height: 15.5rem;
   height: auto;
-  padding: 1.35rem 1.1rem 1.2rem;
+  padding: 1.35rem 1.15rem 1.2rem;
   border-radius: 16px;
   border: 1px solid var(--msp-border, #c5d0df);
   background: linear-gradient(
@@ -422,7 +422,7 @@
     var(--msp-surface-2, #f7f9fc) 100%
   );
   box-shadow: var(--msp-shadow-soft, 0 2px 12px rgba(11, 33, 56, 0.05));
-  text-align: center;
+  text-align: left;
   font-family: inherit;
   color: inherit;
   cursor: pointer;
@@ -451,12 +451,12 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 3.35rem;
-  height: 3.35rem;
+  width: 3.75rem;
+  height: 3.75rem;
   border-radius: 14px;
   background: var(--msp-accent-soft, rgba(43, 95, 171, 0.1));
   color: var(--msp-accent, #2b5fab);
-  font-size: 1.55rem;
+  font-size: 1.8rem;
   flex-shrink: 0;
 }
 
@@ -481,7 +481,7 @@
 }
 
 .typeCardTitle {
-  font-size: 1.02rem;
+  font-size: 1.12rem;
   font-weight: 700;
   letter-spacing: -0.02em;
   line-height: 1.3;
@@ -490,10 +490,14 @@
 
 .typeCardDescription {
   margin: 0;
-  max-width: 16rem;
-  font-size: 0.8rem;
-  line-height: 1.4;
+  max-width: none;
+  font-size: 0.84rem;
+  line-height: 1.45;
   color: var(--msp-muted, #5c6b82);
+  display: -webkit-box;
+  -webkit-line-clamp: 4;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
 
 .recentHeader {
@@ -676,7 +680,7 @@
   }
 
   .typeGrid {
-    grid-template-columns: repeat(2, minmax(10.5rem, 13.5rem));
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     overflow: auto;
   }
 
@@ -687,12 +691,12 @@
 
 @media (max-width: 560px) {
   .typeGrid {
-    grid-template-columns: minmax(12rem, 16rem);
+    grid-template-columns: 1fr;
   }
 }
 
-@media (max-width: 1100px) and (min-width: 961px) {
+@media (max-width: 1280px) and (min-width: 961px) {
   .typeGrid {
-    grid-template-columns: repeat(3, minmax(10.5rem, 13rem));
+    grid-template-columns: repeat(6, minmax(0, 1fr));
   }
 }

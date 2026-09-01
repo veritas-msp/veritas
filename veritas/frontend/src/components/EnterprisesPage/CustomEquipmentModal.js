@@ -13,6 +13,8 @@ import { getEnterpriseConfigModalsCopy } from "./enterpriseConfigModalsI18n";
 import { interpolate } from "../../i18n/translate";
 import { getSharedEquipmentFieldDefs, getSharedEquipmentFieldLabel, mergeCustomEquipmentFamilyFields } from "../EquipementPage/sharedEquipmentFields";
 import { getFormFields } from "../EquipementPage/equipmentFormFieldsI18n";
+import FormNumberStepper from "../EquipementPage/FormNumberStepper";
+import { readEquipmentIsActive } from "../EquipementPage/equipmentFormConfig";
 const STATUS_FIELD_KEYS = new Set(["actif", "active", "is_active", "isActive"]);
 const SECTIONS = [{
   id: "identity",
@@ -32,20 +34,7 @@ const SECTIONS = [{
 }];
 const LOCATION_FIELD_KEYS = new Set(["location", "lieu", "site", "emplacement"]);
 function readItemIsActive(item) {
-  const layers = [item, item?.fields, item?.data];
-  const keys = ["is_active", "isActive", "actif", "active"];
-  for (const layer of layers) {
-    if (!layer || typeof layer !== "object") continue;
-    for (const key of keys) {
-      const value = layer[key];
-      if (value === undefined || value === null || value === "") continue;
-      if (typeof value === "boolean") return value;
-      const normalized = String(value).trim().toLowerCase();
-      if (["false", "0", "no", "non", "off", "inactif", "inactive", "disabled"].includes(normalized)) return false;
-      if (["true", "1", "yes", "oui", "on", "actif", "active", "enabled"].includes(normalized)) return true;
-    }
-  }
-  return true;
+  return readEquipmentIsActive(item);
 }
 function buildEmptyForm(fields = []) {
   const form = {
@@ -274,9 +263,17 @@ export default function CustomEquipmentModal({
           </label>
         </div>;
     }
+    if (field.fieldType === "number") {
+      return <div className={styles.field}>
+          <label className={labelClass} htmlFor={id}>{field.label}</label>
+          <FormNumberStepper id={id} value={value ?? ""} onChange={next => patchForm({
+          [field.fieldKey]: next
+        })} />
+        </div>;
+    }
     return <div className={styles.field}>
         <label className={labelClass} htmlFor={id}>{field.label}</label>
-        <input id={id} type={field.fieldType === "date" ? "date" : field.fieldType === "number" ? "number" : "text"} className={styles.input} value={value ?? ""} onChange={e => patchForm({
+        <input id={id} type={field.fieldType === "date" ? "date" : "text"} className={styles.input} value={value ?? ""} onChange={e => patchForm({
         [field.fieldKey]: e.target.value
       })} />
       </div>;

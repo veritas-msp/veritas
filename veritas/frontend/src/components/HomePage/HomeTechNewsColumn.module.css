@@ -92,6 +92,17 @@
   overflow-y: auto;
 }
 
+@media (min-width: 1024px) {
+  .feed {
+    scrollbar-width: none;
+  }
+
+  .feed::-webkit-scrollbar {
+    width: 0;
+    display: none;
+  }
+}
+
 .feedBody {
   position: relative;
   min-height: 12rem;
@@ -561,9 +572,39 @@
   font-weight: 600;
 }
 
-@media (max-width: 1100px) {
+@media (max-width: 1023px) {
+  .column {
+    height: auto;
+    max-height: none;
+  }
+
   .feed {
-    max-height: 420px;
+    max-height: min(420px, 55vh);
+  }
+}
+
+@media (max-width: 767px) {
+  .column {
+    height: 100%;
+    max-height: none;
+  }
+
+  .header {
+    padding: 0.55rem 0.7rem 0.5rem;
+  }
+
+  .title {
+    font-size: 0.85rem;
+  }
+
+  .subtitle {
+    display: none;
+  }
+
+  .feed {
+    max-height: none;
+    flex: 1;
+    min-height: 0;
   }
 }
 

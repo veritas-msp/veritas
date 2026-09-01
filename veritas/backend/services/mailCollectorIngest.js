@@ -1,3 +1,5 @@
+import fs from "fs";
+import path from "path";
 import { ImapFlow } from "imapflow";
 import { pool } from "../database/db.js";
 import { isPro } from "../utils/edition.js";
@@ -7,7 +9,12 @@ import { enrichMailContextWithThreadHeaders, isInboundEmailAlreadyProcessed, rec
 import { ensureTicketEmailThreadSchema } from "./ensureTicketEmailThreadSchema.js";
 import { ensureMailCollectSettingsSchema } from "./ensureMailCollectSettingsSchema.js";
 import { buildMailContextFromEnvelope, findMatchingExclusionRule, getAllMatchingExclusionRules, normalizeExclusionRule, normalizeIngestionAction } from "./mailIngestionRules.js";
+import { extractEmailContentFromRfc822, registerCidMapping, rewriteCidReferences } from "./mailCollectorMime.js";
+import { notifyTicketCommented, notifyTicketCreatedAck, notifyTicketCreatedAgents } from "./systemNotificationService.js";
+import { notifyInAppTicketCommented, notifyInAppTicketCreated } from "./userNotificationService.js";
 export { findMatchingExclusionRule, getAllMatchingExclusionRules, normalizeExclusionRule } from "./mailIngestionRules.js";
+const TICKET_UPLOAD_DIR = path.resolve(process.cwd(), "uploads", "tickets");
+fs.mkdirSync(TICKET_UPLOAD_DIR, { recursive: true });
 function normalizeCollectorStats(stats) {
   return {
     collected: Math.max(0, Number(stats?.collected) || 0),
@@ -190,123 +197,7 @@ export function extractTicketNumberFromSubject(subject = "") {
   return null;
 }
 export function extractEmailBodiesFromRfc822(sourceValue) {
-  // Keep a byte-preserving view of the RFC822 source so QP/base64 can be decoded with the part charset.
-  const rawBuffer = Buffer.isBuffer(sourceValue) ? sourceValue : Buffer.from(String(sourceValue || ""), "utf8");
-  const normalizedRaw = rawBuffer.toString("latin1").replace(/\r\n/g, "\n").replace(/\r/g, "\n");
-  const normalizeCharset = charset => {
-    const raw = String(charset || "utf-8").trim().toLowerCase().replace(/^["']|["']$/g, "");
-    const compact = raw.replace(/[_\s-]/g, "");
-    if (!compact || compact === "utf8" || compact === "unicode11utf8" || compact === "unicode") return "utf-8";
-    if (["iso88591", "latin1", "latin", "l1", "usascii", "ascii"].includes(compact)) return "iso-8859-1";
-    if (["windows1252", "cp1252", "winlatin1", "ansi"].includes(compact)) return "windows-1252";
-    return raw;
-  };
-  const decodeBytes = (buffer, charset) => {
-    const normalized = normalizeCharset(charset);
-    try {
-      return new TextDecoder(normalized, {
-        fatal: false
-      }).decode(buffer);
-    } catch (_error) {
-      try {
-        return new TextDecoder("utf-8", {
-          fatal: false
-        }).decode(buffer);
-      } catch (_error2) {
-        return Buffer.from(buffer).toString("utf8");
-      }
-    }
-  };
-  const countReplacementChars = text => {
-    let count = 0;
-    for (const ch of String(text || "")) {
-      if (ch === "\uFFFD") count += 1;
-    }
-    return count;
-  };
-  const decodeWithCharsetFallback = (buffer, charset) => {
-    let text = decodeBytes(buffer, charset);
-    const primary = normalizeCharset(charset);
-    if (primary === "utf-8" && countReplacementChars(text) > 0) {
-      for (const fallback of ["windows-1252", "iso-8859-1"]) {
-        const candidate = decodeBytes(buffer, fallback);
-        if (countReplacementChars(candidate) < countReplacementChars(text)) text = candidate;
-      }
-    }
-    return text;
-  };
-  const extractCharset = headers => {
-    const match = String(headers || "").match(/charset\s*=\s*["']?([^"'\s;]+)/i);
-    return normalizeCharset(match?.[1] || "utf-8");
-  };
-  const decodeQuotedPrintableToBuffer = value => {
-    const softUnwrapped = String(value || "").replace(/=\n/g, "");
-    const bytes = [];
-    for (let i = 0; i < softUnwrapped.length; i += 1) {
-      const ch = softUnwrapped[i];
-      if (ch === "=" && i + 2 < softUnwrapped.length && /^[0-9A-Fa-f]{2}$/.test(softUnwrapped.slice(i + 1, i + 3))) {
-        bytes.push(parseInt(softUnwrapped.slice(i + 1, i + 3), 16));
-        i += 2;
-        continue;
-      }
-      bytes.push(softUnwrapped.charCodeAt(i) & 0xff);
-    }
-    return Buffer.from(bytes);
-  };
-  const decodePartBody = (partHeaders, partBody) => {
-    const headers = String(partHeaders || "");
-    const headersLower = headers.toLowerCase();
-    const charset = extractCharset(headers);
-    // partBody is latin1-preserving (1 char = 1 byte).
-    const bodyLatin1 = String(partBody || "");
-    if (/content-transfer-encoding:\s*base64/i.test(headersLower)) {
-      const cleaned = bodyLatin1.replace(/[^A-Za-z0-9+/=]/g, "");
-      try {
-        return decodeWithCharsetFallback(Buffer.from(cleaned, "base64"), charset);
-      } catch (_error) {
-        return bodyLatin1;
-      }
-    }
-    if (/content-transfer-encoding:\s*quoted-printable/i.test(headersLower)) {
-      return decodeWithCharsetFallback(decodeQuotedPrintableToBuffer(bodyLatin1), charset);
-    }
-    // 7bit / 8bit / binary / missing CTE — decode raw bytes with the declared charset.
-    return decodeWithCharsetFallback(Buffer.from(bodyLatin1, "latin1"), charset);
-  };
-  const decodeHtmlEntities = value => String(value || "").replace(/&nbsp;/gi, " ").replace(/&amp;/gi, "&").replace(/&lt;/gi, "<").replace(/&gt;/gi, ">").replace(/&quot;/gi, "\"").replace(/&apos;/gi, "'").replace(/&#39;/g, "'").replace(/&eacute;/gi, "é").replace(/&egrave;/gi, "è").replace(/&agrave;/gi, "à").replace(/&aacute;/gi, "á").replace(/&ecirc;/gi, "ê").replace(/&ocirc;/gi, "ô").replace(/&ucirc;/gi, "û").replace(/&ccedil;/gi, "ç").replace(/&iuml;/gi, "ï").replace(/&uuml;/gi, "ü").replace(/&ouml;/gi, "ö").replace(/&euro;/gi, "€").replace(/&#(\d+);/g, (_m, n) => {
-    const code = Number(n);
-    return Number.isFinite(code) ? String.fromCodePoint(code) : "";
-  }).replace(/&#x([0-9a-f]+);/gi, (_m, h) => {
-    const code = parseInt(h, 16);
-    return Number.isFinite(code) ? String.fromCodePoint(code) : "";
-  });
-  const htmlToText = html => decodeHtmlEntities(String(html || "").replace(/<style[\s\S]*?<\/style>/gi, " ").replace(/<script[\s\S]*?<\/script>/gi, " ").replace(/<br\s*\/?>/gi, "\n").replace(/<\/(p|div|li|tr|h1|h2|h3|h4|h5|h6|table|blockquote)>/gi, "\n").replace(/<(p|div|li|tr|h1|h2|h3|h4|h5|h6|blockquote)(?:\s[^>]*)?>/gi, "\n").replace(/<[^>]+>/g, " ")).replace(/\n{3,}/g, "\n\n").replace(/[ \t]+\n/g, "\n").replace(/[ \t]{2,}/g, " ").trim();
-  const mimeParts = normalizedRaw.split(/\n--[^\n]+/g);
-  const readMimePart = typeRegex => {
-    for (const part of mimeParts) {
-      if (!typeRegex.test(part)) continue;
-      const idx = part.indexOf("\n\n");
-      if (idx < 0) continue;
-      const headers = part.slice(0, idx);
-      const body = part.slice(idx + 2);
-      return decodePartBody(headers, body);
-    }
-    return "";
-  };
-  const plainPart = String(readMimePart(/content-type:\s*text\/plain/i) || "").trim();
-  const htmlPart = String(readMimePart(/content-type:\s*text\/html/i) || "").trim();
-  if (plainPart || htmlPart) {
-    return {
-      text: (plainPart || htmlToText(htmlPart)).slice(0, 10000),
-      html: htmlPart ? htmlPart.slice(0, 200000) : ""
-    };
-  }
-  const sections = normalizedRaw.split(/\n\n/);
-  const fallbackBody = sections.length > 1 ? sections.slice(1).join("\n\n") : normalizedRaw;
-  return {
-    text: decodeWithCharsetFallback(Buffer.from(fallbackBody, "latin1"), "utf-8").trim().slice(0, 10000),
-    html: ""
-  };
+  return extractEmailContentFromRfc822(sourceValue);
 }
 export function extractBodyFromRfc822(sourceValue) {
   return extractEmailBodiesFromRfc822(sourceValue).text;
@@ -326,6 +217,71 @@ export function buildIncomingEmailTicketContent({
   const html = String(htmlBody || "").trim();
   if (!html) return header;
   return `${header}\n\n${INCOMING_EMAIL_HTML_MARKER}\n${html}`;
+}
+function resolveMaxMailAttachmentBytes(collector) {
+  const mb = Number(collector?.maxImportSizeMb);
+  const resolved = Number.isFinite(mb) && mb > 0 ? mb : 15;
+  return Math.min(Math.max(resolved, 1), 30) * 1024 * 1024;
+}
+function sanitizeMailAttachmentFilename(name, mimeType) {
+  const base = String(name || "email-file").replace(/[^\w.\-]+/g, "_").slice(0, 120) || "email-file";
+  const ext = path.extname(base).toLowerCase();
+  const mime = String(mimeType || "").split(";")[0].trim().toLowerCase();
+  const inferred = {
+    "image/jpeg": ".jpg",
+    "image/jpg": ".jpg",
+    "image/png": ".png",
+    "image/gif": ".gif",
+    "image/webp": ".webp",
+    "image/bmp": ".bmp",
+    "application/pdf": ".pdf"
+  }[mime] || "";
+  if (ext) return base;
+  return inferred ? `${base}${inferred}` : base;
+}
+async function persistInboundMailAttachments({
+  ticketId,
+  commentId = null,
+  htmlBody = "",
+  attachments = [],
+  maxBytes
+}) {
+  const list = Array.isArray(attachments) ? attachments : [];
+  if (!ticketId || list.length === 0) {
+    return String(htmlBody || "");
+  }
+  const cidMap = new Map();
+  const limit = Number.isFinite(maxBytes) && maxBytes > 0 ? maxBytes : 15 * 1024 * 1024;
+  for (let index = 0; index < list.length; index += 1) {
+    const item = list[index];
+    const buffer = item?.buffer;
+    if (!Buffer.isBuffer(buffer) || buffer.length === 0) continue;
+    if (buffer.length > limit) {
+      console.warn(`[mail-collector] skipped oversized attachment (${buffer.length} bytes)`);
+      continue;
+    }
+    const safeName = sanitizeMailAttachmentFilename(item.filename, item.mimeType);
+    const diskName = `${Date.now()}-${index}-mail-${safeName}`;
+    const absolutePath = path.join(TICKET_UPLOAD_DIR, diskName);
+    try {
+      fs.writeFileSync(absolutePath, buffer);
+      const relativePath = `/uploads/tickets/${diskName}`;
+      await pool.query(`INSERT INTO v_b_ticket_attachments
+          (ticket_id, comment_id, uploaded_by, file_name, file_path, mime_type, file_size, created_at)
+         VALUES ($1, $2, NULL, $3, $4, $5, $6, NOW())`, [
+        ticketId,
+        commentId || null,
+        item.filename || safeName,
+        relativePath,
+        item.mimeType || null,
+        buffer.length
+      ]);
+      if (item.contentId) registerCidMapping(cidMap, item.contentId, relativePath);
+    } catch (err) {
+      console.warn("[mail-collector] failed to save email attachment:", err?.message || err);
+    }
+  }
+  return rewriteCidReferences(htmlBody, cidMap);
 }
 async function resolveRequesterUserIdByEmail(email) {
   const normalizedEmail = String(email || "").trim().toLowerCase();
@@ -400,7 +356,9 @@ async function createTicketFromCollectorEmail({
   fromName,
   fromAddress,
   requesterAddress = null,
-  ticketKind = "support"
+  ticketKind = "support",
+  attachments = [],
+  maxAttachmentBytes
 }) {
   const safeSubject = String(subject || "").trim();
   const normalizedTitle = stripReplyPrefix(safeSubject) || safeSubject || "New ticket from email";
@@ -448,7 +406,27 @@ async function createTicketFromCollectorEmail({
      RETURNING id, ticket_number`,
     values
   );
-  return result.rows?.[0] || null;
+  const created = result.rows?.[0] || null;
+  if (created?.id && attachments.length > 0) {
+    const rewrittenHtml = await persistInboundMailAttachments({
+      ticketId: created.id,
+      commentId: null,
+      htmlBody,
+      attachments,
+      maxBytes: maxAttachmentBytes
+    });
+    if (rewrittenHtml !== String(htmlBody || "")) {
+      const nextDescription = buildIncomingEmailTicketContent({
+        subject: safeSubject,
+        body,
+        htmlBody: rewrittenHtml,
+        fromName,
+        fromAddress
+      });
+      await pool.query(`UPDATE v_b_tickets SET description = $1 WHERE id = $2`, [nextDescription, created.id]);
+    }
+  }
+  return created;
 }
 async function attachEmailToTicket({
   ticketId,
@@ -457,7 +435,9 @@ async function attachEmailToTicket({
   htmlBody = "",
   fromName,
   fromAddress,
-  ticketNumber
+  ticketNumber,
+  attachments = [],
+  maxAttachmentBytes
 }) {
   const content = buildIncomingEmailTicketContent({
     subject,
@@ -466,8 +446,48 @@ async function attachEmailToTicket({
     fromName,
     fromAddress
   });
-  await pool.query(`INSERT INTO v_b_ticket_comments (ticket_id, author_user_id, content, is_internal, created_at)
-     VALUES ($1, $2, $3, $4, NOW())`, [ticketId, null, content, false]);
+  const inserted = await pool.query(`INSERT INTO v_b_ticket_comments (ticket_id, author_user_id, content, is_internal, created_at)
+     VALUES ($1, $2, $3, $4, NOW())
+     RETURNING id`, [ticketId, null, content, false]);
+  const commentId = inserted.rows?.[0]?.id || null;
+  const preview = String(body || "").replace(/\s+/g, " ").trim().slice(0, 140);
+  await notifyInAppTicketCommented({
+    ticketId,
+    commentId,
+    authorUserId: null,
+    isInternal: false,
+    contentPreview: preview
+  }).catch(() => {});
+  await notifyTicketCommented({
+    ticketId,
+    authorUserId: null,
+    isInternal: false,
+    extraContext: {
+      comment: {
+        author: fromName || fromAddress || "Email",
+        preview
+      }
+    }
+  }).catch(() => {});
+  if (commentId && attachments.length > 0) {
+    const rewrittenHtml = await persistInboundMailAttachments({
+      ticketId,
+      commentId,
+      htmlBody,
+      attachments,
+      maxBytes: maxAttachmentBytes
+    });
+    if (rewrittenHtml !== String(htmlBody || "")) {
+      const nextContent = buildIncomingEmailTicketContent({
+        subject,
+        body,
+        htmlBody: rewrittenHtml,
+        fromName,
+        fromAddress
+      });
+      await pool.query(`UPDATE v_b_ticket_comments SET content = $1 WHERE id = $2`, [nextContent, commentId]);
+    }
+  }
   await pool.query(`UPDATE v_b_tickets SET updated_at = NOW() WHERE id = $1`, [ticketId]);
   return ticketNumber;
 }
@@ -554,7 +574,8 @@ async function attachInboundMailToTicket({
     body,
     htmlBody,
     fromName,
-    fromAddress
+    fromAddress,
+    attachments = []
   } = mailContext;
   await attachEmailToTicket({
     ticketId: ticketRow.id,
@@ -563,7 +584,9 @@ async function attachInboundMailToTicket({
     htmlBody,
     fromName,
     fromAddress,
-    ticketNumber: ticketRow.ticket_number
+    ticketNumber: ticketRow.ticket_number,
+    attachments,
+    maxAttachmentBytes: resolveMaxMailAttachmentBytes(collector)
   });
   await recordTicketEmailMessage({
     ticketId: ticketRow.id,
@@ -594,7 +617,8 @@ async function createInboundTicketAndRecord({
     body,
     htmlBody,
     fromName,
-    fromAddress
+    fromAddress,
+    attachments = []
   } = mailContext;
   const created = await createTicketFromCollectorEmail({
     subject,
@@ -603,7 +627,9 @@ async function createInboundTicketAndRecord({
     fromName,
     fromAddress,
     requesterAddress: resolveInboundRequesterAddress(mailContext, collector),
-    ticketKind
+    ticketKind,
+    attachments,
+    maxAttachmentBytes: resolveMaxMailAttachmentBytes(collector)
   });
   if (!created?.id) {
     stats.ignored += 1;
@@ -624,6 +650,12 @@ async function createInboundTicketAndRecord({
     mailContext,
     direction: "inbound"
   });
+  await notifyTicketCreatedAck(created.id).catch(() => {});
+  await notifyTicketCreatedAgents(created.id).catch(() => {});
+  await notifyInAppTicketCreated({
+    ticketId: created.id,
+    createdByUserId: null
+  }).catch(() => {});
   stats.attached += 1;
   await finalizeAcceptedMail(collector, client, message.uid, mailCollectSettings, matchingRule);
   await appendCollectorLogInConfig(collector.id, "success", `${successLogLabel} #${created.ticket_number || "?"} via rule "${actionLabel}" ("${subjectPreview}").`).catch(() => {});
@@ -948,6 +980,7 @@ async function processMessagesInMailbox(client, collector, exclusionRules, mailC
       const bodies = extractEmailBodiesFromRfc822(message?.source);
       mailContext.body = bodies.text;
       mailContext.htmlBody = bodies.html;
+      mailContext.attachments = Array.isArray(bodies.attachments) ? bodies.attachments : [];
       mailContext = enrichMailContextWithThreadHeaders(mailContext, message?.source, message?.envelope);
       if (stats.sampleRecipients.length < 5) {
         const recipients = [mailContext.toAddresses, mailContext.ccAddresses].filter(Boolean).join(" | ");

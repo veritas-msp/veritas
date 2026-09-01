@@ -147,6 +147,63 @@
   max-width: 42rem;
 }
 
+@media (max-width: 767px) {
+  .mspHeroStack {
+    flex-wrap: nowrap;
+    align-items: center;
+    position: relative;
+  }
+
+  .mspHeroStack .mspHeroMain {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    align-items: center;
+    width: 100%;
+    flex: 1;
+    min-width: 0;
+    column-gap: 0.75rem;
+    row-gap: 0.3rem;
+  }
+
+  .mspHeroStack .mspBrandMark {
+    grid-column: 1;
+    grid-row: 1;
+    width: 40px;
+    height: 40px;
+  }
+
+  .mspHeroStack .mspHeroCopy {
+    display: contents;
+  }
+
+  .mspHeroStack .mspEyebrow {
+    display: none;
+  }
+
+  .mspHeroStack .mspTitle {
+    grid-column: 2;
+    grid-row: 1;
+    padding-right: 8.75rem;
+    line-height: 1.2;
+  }
+
+  .mspHeroStack .mspSubtitle {
+    grid-column: 1 / -1;
+    grid-row: 2;
+    max-width: none;
+  }
+
+  .mspHeroStack .mspHeroActions {
+    position: absolute;
+    top: 50%;
+    right: 1rem;
+    transform: translateY(-50%);
+    flex-wrap: nowrap;
+    gap: 0.35rem;
+    z-index: 1;
+  }
+}
+
 .mspTabBar {
   display: flex;
   flex-wrap: wrap;

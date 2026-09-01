@@ -359,6 +359,7 @@ export function transformClientModulesToFrontend(rawData, options = {}) {
           agent_id: item.agent_id ?? itemData.agentId ?? null,
           agentId: item.agent_id ?? itemData.agentId ?? null,
           is_active: item.is_active,
+          data: itemData,
           created_at: item.created_at ?? item.createdAt ?? null,
           updated_at: item.updated_at ?? item.updatedAt ?? null,
           ...pickCheckmkFields(item, itemData)

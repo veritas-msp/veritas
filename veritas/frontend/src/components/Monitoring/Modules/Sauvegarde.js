@@ -5,7 +5,7 @@ import { mdiNas, mdiServerNetworkOutline, mdiHarddisk, mdiVhs } from "@mdi/js";
 import { Icon as IconifyIcon } from "@iconify/react";
 import styles from "./Sauvegarde.module.css";
 import { useTheme } from "../../../hooks/useTheme";
-import API_BASE_URL from "../../../config";
+import API_BASE_URL, { withApiQuery } from "../../../config";
 import { toast } from "react-toastify";
 import { scoreToLetter, scoreToColor, scoreToLabel, letterToScore } from "../../../utils/gradeUtils";
 import LetterScale from "../common/LetterScale";
@@ -929,15 +929,14 @@ const Backup = ({
       [jobName]: true
     }));
     try {
-      const url = new URL(`${API_BASE_URL}/checkmk/service-data/${encodeURIComponent(checkmkHostName)}/${encodeURIComponent(checkmkServiceName)}`);
       const job = instances.flatMap(inst => (inst.jobs || []).map(j => ({
         ...j,
         instance: inst
       }))).find(j => j.nom === jobName);
-      if (job?.id && checkmkMappings[job.id]?.checkmk_site) {
-        url.searchParams.append('site', checkmkMappings[job.id].checkmk_site);
-      }
-      const response = await fetch(url.toString(), {
+      const url = withApiQuery(`${API_BASE_URL}/checkmk/service-data/${encodeURIComponent(checkmkHostName)}/${encodeURIComponent(checkmkServiceName)}`, {
+        site: job?.id && checkmkMappings[job.id]?.checkmk_site || undefined
+      });
+      const response = await fetch(url, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json'

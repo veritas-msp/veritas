@@ -6,6 +6,7 @@ import { body, validationResult } from 'express-validator';
 import { normalizePlanningEventDateInput, comparePlanningEventDates } from './planningEventDateTime.js';
 import { ensureEventsSchema } from '../../services/ensureEventsSchema.js';
 import { isValidPlanningEventType } from '../../utils/planningEventTypes.js';
+import { notifyPlanningEventAssigned } from '../../services/systemNotificationService.js';
 const router = express.Router();
 router.use(verifyJWT);
 async function assertValidEventType(type, {
@@ -263,7 +264,25 @@ router.post('/', verifyJWT, requirePermission('planning.create'), [body('title')
     const result = await pool.query(`INSERT INTO v_b_events (${insertColumns.join(', ')})
          VALUES (${placeholders.join(', ')})
          RETURNING *`, insertValues);
-    res.status(201).json(formatEventRowForApi(result.rows[0]));
+    const createdEvent = result.rows[0];
+    if (createdEvent?.assigned_user_id) {
+      let enterpriseName = "";
+      if (createdEvent.client_id) {
+        try {
+          const clientResult = await pool.query(`SELECT name FROM v_b_clients WHERE id = $1 LIMIT 1`, [createdEvent.client_id]);
+          enterpriseName = String(clientResult.rows?.[0]?.name || "");
+        } catch (_err) {
+          enterpriseName = "";
+        }
+      }
+      await notifyPlanningEventAssigned({
+        eventRow: createdEvent,
+        assignedUserId: createdEvent.assigned_user_id,
+        actorUser: req.user,
+        enterpriseName
+      }).catch(() => {});
+    }
+    res.status(201).json(formatEventRowForApi(createdEvent));
   } catch (err) {
     console.error('Error creating event:', err);
     if (err?.code === '23505') {
@@ -411,7 +430,27 @@ router.put('/:id', verifyJWT, requirePermission('planning.edit'), [body('title')
         SET ${updates.join(', ')}
         WHERE id = $${paramIndex}
         RETURNING *`, values);
-    res.json(await redactEventForViewer(result.rows[0], req.user.id));
+    const updatedEvent = result.rows[0];
+    const previousAssignee = String(existingEvent.rows[0]?.assigned_user_id || "");
+    const nextAssignee = String(updatedEvent?.assigned_user_id || "");
+    if (nextAssignee && nextAssignee !== previousAssignee) {
+      let enterpriseName = "";
+      if (updatedEvent.client_id) {
+        try {
+          const clientResult = await pool.query(`SELECT name FROM v_b_clients WHERE id = $1 LIMIT 1`, [updatedEvent.client_id]);
+          enterpriseName = String(clientResult.rows?.[0]?.name || "");
+        } catch (_err) {
+          enterpriseName = "";
+        }
+      }
+      await notifyPlanningEventAssigned({
+        eventRow: updatedEvent,
+        assignedUserId: nextAssignee,
+        actorUser: req.user,
+        enterpriseName
+      }).catch(() => {});
+    }
+    res.json(await redactEventForViewer(updatedEvent, req.user.id));
   } catch (err) {
     console.error('Error updating event:', err);
     res.status(500).json({

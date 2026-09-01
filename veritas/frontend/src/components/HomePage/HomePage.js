@@ -1,7 +1,6 @@
 import { useMemo, useState, useEffect, useCallback, useRef, Fragment } from "react";
 import { Icon } from "@iconify/react";
 import { useAuthContext } from "../../contexts/AuthContext";
-import { usePermissions } from "../../contexts/PermissionsContext";
 import { useAppFormatters, useAppLocale } from "../../hooks/useAppGeneralSettings";
 import { useProfileAccess } from "../../hooks/useProfileAccess";
 import { fetchHomeDashboard } from "../../api/stats";
@@ -10,14 +9,76 @@ import { getHomePageCopy } from "./homePageI18n";
 import PageGuideTour from "../PageGuide/PageGuideTour";
 import { getHomePageGuideSteps } from "../PageGuide/homePageGuideSteps";
 import { useRegisterPageGuide } from "../../hooks/useRegisterPageGuide";
+import { useBreakpoint } from "../../hooks/useBreakpoint";
 import { buildHomeTodoActions } from "./homeTodoActions";
 import { getHomeEventTypeMeta } from "./homeEventTypes";
 import MspPageHero from "../Misc/MspPageHero/MspPageHero";
-import PlanningEventModalBridge from "../PlanningPage/PlanningEventModalBridge";
 import styles from "./HomePage.module.css";
 import { createTrackedAbortController } from "../../utils/pageLoadAbort";
+import { formatPageInfo, getCommonCopy } from "../../i18n/commonI18n";
+import { interpolate } from "../../i18n/translate";
 
 const HOME_LIST_LIMIT = 5;
+
+function compareHomeTableValues(left, right, direction) {
+  const dir = direction === "desc" ? -1 : 1;
+  if (left == null && right == null) return 0;
+  if (left == null) return 1;
+  if (right == null) return -1;
+  if (typeof left === "number" && typeof right === "number") {
+    return (left - right) * dir;
+  }
+  return String(left).localeCompare(String(right), undefined, {
+    numeric: true,
+    sensitivity: "base"
+  }) * dir;
+}
+
+function useHomeTableSort(items, resolveValue) {
+  const [sort, setSort] = useState({
+    key: null,
+    direction: "asc"
+  });
+  const toggleSort = useCallback(columnKey => {
+    setSort(prev => prev.key === columnKey ? {
+      key: columnKey,
+      direction: prev.direction === "asc" ? "desc" : "asc"
+    } : {
+      key: columnKey,
+      direction: "asc"
+    });
+  }, []);
+  const sortedItems = useMemo(() => {
+    if (!sort.key) return items;
+    return [...items].sort((a, b) => compareHomeTableValues(resolveValue(a, sort.key), resolveValue(b, sort.key), sort.direction));
+  }, [items, resolveValue, sort.direction, sort.key]);
+  return {
+    sortedItems,
+    sort,
+    toggleSort
+  };
+}
+
+function useHomeListPagination(items, pageSize = HOME_LIST_LIMIT, resetKey = "") {
+  const [page, setPage] = useState(1);
+  const list = Array.isArray(items) ? items : [];
+  useEffect(() => {
+    setPage(1);
+  }, [list.length, resetKey]);
+  const totalPages = Math.max(1, Math.ceil(list.length / pageSize));
+  const currentPage = Math.min(page, totalPages);
+  useEffect(() => {
+    if (page > totalPages) setPage(totalPages);
+  }, [page, totalPages]);
+  const paginatedItems = useMemo(() => list.slice((currentPage - 1) * pageSize, currentPage * pageSize), [list, currentPage, pageSize]);
+  return {
+    page: currentPage,
+    setPage,
+    totalPages,
+    paginatedItems,
+    showPager: list.length > pageSize
+  };
+}
 
 function formatDisplayNameFromEmailLocal(local) {
   if (!local) return "";
@@ -53,19 +114,12 @@ function getAssignedTicketKpis(stats) {
 function buildTicketKpiCards(stats, labels) {
   const kpis = getAssignedTicketKpis(stats);
   return [{
-    key: "new",
-    value: kpis.new,
-    label: labels.kpiNew,
-    icon: "mdi:ticket-confirmation-outline",
-    tone: "blue",
-    viewId: "__builtin_new__"
-  }, {
-    key: "pending",
-    value: kpis.pending,
-    label: labels.kpiPending,
-    icon: "mdi:timer-sand",
-    tone: "amber",
-    viewId: "__builtin_pending__"
+    key: "total",
+    value: kpis.total,
+    label: labels.kpiTotal,
+    icon: "mdi:ticket-account",
+    tone: "purple",
+    viewId: "__builtin_mine__"
   }, {
     key: "inProgress",
     value: kpis.inProgress,
@@ -74,19 +128,19 @@ function buildTicketKpiCards(stats, labels) {
     tone: "teal",
     viewId: "__builtin_in_progress__"
   }, {
+    key: "pending",
+    value: kpis.pending,
+    label: labels.kpiPending,
+    icon: "mdi:timer-sand",
+    tone: "amber",
+    viewId: "__builtin_pending__"
+  }, {
     key: "toValidate",
     value: kpis.toValidate,
     label: labels.kpiToValidate,
     icon: "mdi:clipboard-check-outline",
     tone: "orange",
     viewId: "__builtin_to_validate__"
-  }, {
-    key: "total",
-    value: kpis.total,
-    label: labels.kpiTotal,
-    icon: "mdi:ticket-account",
-    tone: "purple",
-    viewId: "__builtin_mine__"
   }];
 }
 
@@ -97,18 +151,16 @@ export default function HomePage({
   const {
     user
   } = useAuthContext();
-  const { can } = usePermissions();
   const access = useProfileAccess(user?.profile);
   const locale = useAppLocale();
   const formatters = useAppFormatters();
+  const { isPhone } = useBreakpoint();
   const [dashboard, setDashboard] = useState(null);
   const [loadError, setLoadError] = useState("");
   const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
   const [pageGuideOpen, setPageGuideOpen] = useState(false);
   const openPageGuide = useCallback(() => setPageGuideOpen(true), []);
   useRegisterPageGuide(openPageGuide);
-  const [eventModalOpen, setEventModalOpen] = useState(false);
   const abortRef = useRef(null);
   const userName = useMemo(() => {
     const pseudo = String(user?.username || "").trim();
@@ -117,7 +169,15 @@ export default function HomePage({
     const local = user.email.split("@")[0];
     return formatDisplayNameFromEmailLocal(local);
   }, [user]);
-  const todayLabel = useMemo(() => formatters.formatLongDate(new Date()), [formatters]);
+  const todayLabel = useMemo(() => {
+    if (isPhone) {
+      return new Date().toLocaleDateString(locale || "fr", {
+        day: "2-digit",
+        month: "2-digit"
+      });
+    }
+    return formatters.formatLongDate(new Date());
+  }, [formatters, isPhone, locale]);
   const copy = useMemo(() => getHomePageCopy(locale), [locale]);
   const loadDashboard = useCallback((options = {}) => {
     const {
@@ -126,9 +186,7 @@ export default function HomePage({
     if (abortRef.current) abortRef.current.abort();
     const controller = createTrackedAbortController();
     abortRef.current = controller;
-    if (soft) {
-      setRefreshing(true);
-    } else {
+    if (!soft) {
       setLoading(true);
     }
     setLoadError("");
@@ -143,7 +201,6 @@ export default function HomePage({
     }).finally(() => {
       if (abortRef.current !== controller) return;
       setLoading(false);
-      setRefreshing(false);
     });
   }, [copy.errorLoad]);
   useEffect(() => {
@@ -166,8 +223,7 @@ export default function HomePage({
   const upcomingEvents = dashboard?.upcomingEvents || [];
   const visibleEvents = upcomingEvents;
   const todoActions = useMemo(() => buildHomeTodoActions(dashboard, {
-    locale,
-    limit: HOME_LIST_LIMIT
+    locale
   }), [dashboard, locale]);
   const homeGuideSteps = useMemo(() => getHomePageGuideSteps({
     isCommunity,
@@ -179,26 +235,55 @@ export default function HomePage({
   const showSupportTickets = canAccessSupport;
   const showSalesTickets = !isCommunity && canAccessSales;
   const showEventsAndTodo = !isCommunity && canAccessPlanning;
-  const canCreateSupport = can("home.create_support") && canAccessSupport;
-  const canCreateSales = can("home.create_sales") && canAccessSales && !isCommunity;
-  const canCreateEvent = can("home.create_event") && showEventsAndTodo;
-  const orgName = dashboard?.organizationName || "Veritas";
-
+  const mobileTabs = useMemo(() => {
+    const tabs = [];
+    if (showSupportTickets) {
+      tabs.push({
+        id: "support",
+        label: copy.mobileTabs.support,
+        icon: "mdi:message-processing-outline"
+      });
+    }
+    if (showSalesTickets) {
+      tabs.push({
+        id: "sales",
+        label: copy.mobileTabs.services,
+        icon: "mdi:briefcase-edit-outline"
+      });
+    }
+    if (showEventsAndTodo) {
+      tabs.push({
+        id: "events",
+        label: copy.mobileTabs.events,
+        icon: "mdi:calendar-month-outline"
+      });
+      tabs.push({
+        id: "todo",
+        label: copy.mobileTabs.todo,
+        icon: "mdi:checkbox-marked-outline"
+      });
+    }
+    return tabs;
+  }, [copy.mobileTabs, showEventsAndTodo, showSalesTickets, showSupportTickets]);
+  const [mobileSection, setMobileSection] = useState("support");
+  useEffect(() => {
+    if (!mobileTabs.some(tab => tab.id === mobileSection)) {
+      setMobileSection(mobileTabs[0]?.id || "support");
+    }
+  }, [mobileSection, mobileTabs]);
   return <div className={`${styles.pageWrapper} ${styles.pageAlive}`}>
       <div className={styles.pageLayout}>
         <div className={styles.dashboardMain}>
           <div data-guide="home-hero" className={styles.reveal} style={{ "--reveal-delay": "0ms" }}>
-            <MspPageHero className={styles.homeHero} eyebrow={orgName} title={userName ? copy.heroGreeting(userName) : copy.heroTitle} subtitle={copy.heroSubtitle} icon="mdi:view-dashboard-outline" actions={<div className={styles.heroAside}>
-                  <div className={styles.heroMeta}>
-                    <Icon icon="mdi:calendar-today" className={styles.heroMetaIcon} />
-                    <span className={styles.heroDate}>{todayLabel}</span>
-                  </div>
-                  <button type="button" className={styles.refreshBtn} onClick={() => loadDashboard({
-                soft: true
-              })} disabled={loading || refreshing} title={copy.refresh} aria-label={copy.refresh}>
-                    <Icon icon="mdi:refresh" className={refreshing ? styles.spinning : ""} aria-hidden />
-                  </button>
-                </div>} />
+            <div className={styles.homeHeroWrap}>
+              <MspPageHero className={styles.homeHero} stackOnMobile title={userName ? copy.heroGreeting(userName) : copy.heroTitle} subtitle={isPhone ? null : copy.heroSubtitle} icon="mdi:view-dashboard-outline" />
+              <div className={styles.heroAside}>
+                <div className={styles.heroMeta}>
+                  <Icon icon="mdi:calendar-today" className={styles.heroMetaIcon} />
+                  <span className={styles.heroDate}>{todayLabel}</span>
+                </div>
+              </div>
+            </div>
           </div>
 
           {loading && !dashboard ? <HomeSkeleton showEventsAndTodo={showEventsAndTodo} /> : null}
@@ -211,10 +296,16 @@ export default function HomePage({
             </div> : null}
 
           {dashboard ? <>
-              <div className={styles.opsStack}>
+              {mobileTabs.length > 1 ? <div className={styles.mobileSectionTabs} role="tablist" aria-label={copy.mobileTabs.aria}>
+                  {mobileTabs.map(tab => <button key={tab.id} type="button" role="tab" aria-selected={mobileSection === tab.id} className={`${styles.mobileSectionTab} ${mobileSection === tab.id ? styles.mobileSectionTabActive : ""}`} onClick={() => setMobileSection(tab.id)}>
+                      <Icon icon={tab.icon} className={styles.mobileSectionTabIcon} aria-hidden />
+                      <span>{tab.label}</span>
+                    </button>)}
+                </div> : null}
+              <div className={styles.opsStack} data-mobile-section={mobileSection}>
                 {showSupportTickets || showSalesTickets ? <div className={`${styles.ticketPanelsRow} ${showSupportTickets && showSalesTickets ? "" : styles.ticketPanelsRowSingle} ${styles.reveal}`.trim()} style={{ "--reveal-delay": "60ms" }} data-guide="home-tickets">
-                  {showSupportTickets ? <section className={`${styles.panel} ${styles.panelFull}`}>
-                    <PanelHeader title={copy.panels.tickets.supportTitle} actionLabel={copy.panels.tickets.supportAction} onAction={() => navigate("Ticket")} addLabel={canCreateSupport ? copy.panels.tickets.supportAdd : null} onAdd={canCreateSupport ? () => navigate("TicketCreate") : null} eyebrow />
+                  {showSupportTickets ? <section className={`${styles.panel} ${styles.panelFull}`} data-home-section="support">
+                    <PanelHeader title={copy.panels.tickets.supportTitle} eyebrow />
                     <div className={styles.panelBody}>
                       <div className={styles.ticketKpiRow} role="list" aria-label={copy.panels.tickets.supportKpiAriaLabel}>
                         {supportTicketKpiCards.map((card, index) => <button key={card.key} type="button" role="listitem" className={`${styles.ticketKpiCard} ${styles[`kpiTone_${card.tone}`]} ${Number(card.value) > 0 ? styles.kpiLive : ""}`} style={{ "--kpi-delay": `${80 + index * 45}ms` }} onClick={() => navigate("Ticket", card.viewId ? { viewId: card.viewId } : null)} title={card.label} aria-label={`${card.label}: ${formatNumber(card.value)}`}>
@@ -228,8 +319,8 @@ export default function HomePage({
                     </div>
                   </section> : null}
 
-                  {showSalesTickets ? <section className={`${styles.panel} ${styles.panelFull}`}>
-                      <PanelHeader title={copy.panels.tickets.salesTitle} actionLabel={copy.panels.tickets.salesAction} onAction={() => navigate("TicketSales")} addLabel={canCreateSales ? copy.panels.tickets.salesAdd : null} onAdd={canCreateSales ? () => navigate("TicketSalesCreate") : null} eyebrow />
+                  {showSalesTickets ? <section className={`${styles.panel} ${styles.panelFull}`} data-home-section="sales">
+                      <PanelHeader title={copy.panels.tickets.salesTitle} eyebrow />
                       <div className={styles.panelBody}>
                         <div className={styles.ticketKpiRow} role="list" aria-label={copy.panels.tickets.salesKpiAriaLabel}>
                           {salesTicketKpiCards.map((card, index) => <button key={card.key} type="button" role="listitem" className={`${styles.ticketKpiCard} ${styles[`kpiTone_${card.tone}`]} ${Number(card.value) > 0 ? styles.kpiLive : ""}`} style={{ "--kpi-delay": `${120 + index * 45}ms` }} onClick={() => navigate("TicketSales", card.viewId ? { viewId: card.viewId } : null)} title={card.label} aria-label={`${card.label}: ${formatNumber(card.value)}`}>
@@ -244,17 +335,17 @@ export default function HomePage({
                     </section> : null}
                 </div> : null}
 
-                {showEventsAndTodo ? <section className={`${styles.panel} ${styles.panelFull} ${styles.reveal}`} style={{ "--reveal-delay": "140ms" }} data-guide="home-events">
-                    <PanelHeader title={copy.panels.events.title} titleMeta={<span className={styles.panelTitleMeta}>{copy.panels.events.weekHint}</span>} actionLabel={copy.panels.events.action} onAction={() => navigate("Planning")} addLabel={canCreateEvent ? copy.panels.events.add : null} onAdd={canCreateEvent ? () => setEventModalOpen(true) : null} eyebrow />
+                {showEventsAndTodo ? <section className={`${styles.panel} ${styles.panelFull} ${styles.reveal}`} style={{ "--reveal-delay": "140ms" }} data-guide="home-events" data-home-section="events">
+                    <PanelHeader title={copy.panels.events.title} titleMeta={<span className={styles.panelTitleMeta}>{copy.panels.events.weekHint}</span>} eyebrow />
                     <div className={`${styles.panelBody} ${styles.panelBodyFlush}`}>
                       {visibleEvents.length > 0 ? <HomeEventsList events={visibleEvents} locale={locale} copy={copy} formatEventRange={formatters.formatEventRange} onOpen={() => navigate("Planning")} /> : <EmptyState icon="mdi:calendar-blank-outline" text={copy.empty.events} />}
                     </div>
                   </section> : null}
 
-                {showEventsAndTodo ? <section className={`${styles.panel} ${styles.panelFull} ${styles.reveal}`} style={{ "--reveal-delay": "200ms" }} data-guide="home-todo">
-                    <PanelHeader title={copy.panels.todo.title} actionLabel={copy.panels.todo.action} onAction={() => navigate("Hardware")} eyebrow />
+                {showEventsAndTodo ? <section className={`${styles.panel} ${styles.panelFull} ${styles.reveal}`} style={{ "--reveal-delay": "200ms" }} data-guide="home-todo" data-home-section="todo">
+                    <PanelHeader title={copy.panels.todo.title} eyebrow />
                     <div className={`${styles.panelBody} ${styles.panelBodyFlush}`}>
-                      <HomeTodoList actions={todoActions} copy={copy} onNavigate={navigate} />
+                      <HomeTodoList actions={todoActions} copy={copy} locale={locale} onNavigate={navigate} />
                     </div>
                   </section> : null}
               </div>
@@ -265,13 +356,6 @@ export default function HomePage({
           <HomeTechNewsColumn locale={locale} />
         </div>
       </div>
-
-      {showEventsAndTodo ? <PlanningEventModalBridge open={eventModalOpen} editingEvent={null} onClose={() => setEventModalOpen(false)} onSaved={() => {
-      setEventModalOpen(false);
-      loadDashboard({
-        soft: true
-      });
-    }} /> : null}
 
       <PageGuideTour open={pageGuideOpen} steps={homeGuideSteps} title={copy.guide.tourTitle} locale={locale} onClose={() => setPageGuideOpen(false)} />
     </div>;
@@ -291,6 +375,51 @@ function HomeSkeleton({
     </div>;
 }
 
+function HomeListPager({
+  page,
+  totalPages,
+  onPageChange,
+  locale,
+  ariaLabel
+}) {
+  if (totalPages <= 1) return null;
+  const common = getCommonCopy(locale);
+  return <div className={styles.homeListPager} role="navigation" aria-label={ariaLabel}>
+      <button type="button" className={styles.homeListPagerBtn} onClick={() => onPageChange(page - 1)} disabled={page <= 1} aria-label={common.prevPage}>
+        <Icon icon="mdi:chevron-left" aria-hidden />
+      </button>
+      <span className={styles.homeListPagerInfo}>{formatPageInfo(locale, page, totalPages)}</span>
+      <button type="button" className={styles.homeListPagerBtn} onClick={() => onPageChange(page + 1)} disabled={page >= totalPages} aria-label={common.nextPage}>
+        <Icon icon="mdi:chevron-right" aria-hidden />
+      </button>
+    </div>;
+}
+
+function HomeSortableTh({
+  columnKey,
+  label,
+  sort,
+  onSort,
+  sortByTemplate
+}) {
+  const isSorted = sort.key === columnKey;
+  const handleActivate = () => onSort(columnKey);
+  const handleKeyDown = event => {
+    if (event.key === "Enter" || event.key === " ") {
+      event.preventDefault();
+      handleActivate();
+    }
+  };
+  return <th scope="col" className={styles.homeSortableTh} onClick={handleActivate} onKeyDown={handleKeyDown} tabIndex={0} aria-sort={isSorted ? sort.direction === "asc" ? "ascending" : "descending" : "none"} title={interpolate(sortByTemplate, {
+    column: label
+  })}>
+      <span className={styles.homeThContent}>
+        {label}
+        <Icon icon={isSorted ? sort.direction === "asc" ? "mdi:arrow-up" : "mdi:arrow-down" : "mdi:unfold-more-horizontal"} className={styles.homeSortIcon} aria-hidden />
+      </span>
+    </th>;
+}
+
 function HomeEventsList({
   events,
   locale,
@@ -298,19 +427,45 @@ function HomeEventsList({
   formatEventRange,
   onOpen
 }) {
+  const resolveEventSortValue = useCallback((event, key) => {
+    switch (key) {
+      case "when":
+        return event.start ? new Date(event.start).getTime() : null;
+      case "type":
+        return getHomeEventTypeMeta(event.type, event.typeLabel, locale).label;
+      case "title":
+        return String(event.title || "").trim() || copy.noTitle;
+      case "company":
+        return event.clientName || copy.noClient;
+      default:
+        return null;
+    }
+  }, [copy.noClient, copy.noTitle, locale]);
+  const {
+    sortedItems,
+    sort,
+    toggleSort
+  } = useHomeTableSort(events, resolveEventSortValue);
+  const {
+    page,
+    setPage,
+    totalPages,
+    paginatedItems,
+    showPager
+  } = useHomeListPagination(sortedItems, HOME_LIST_LIMIT, `${sort.key}:${sort.direction}`);
   const cols = copy.eventsTable;
   return <div className={styles.homeTableWrap}>
       <table className={styles.homeTable}>
         <thead>
           <tr>
-            <th scope="col">{cols.when}</th>
-            <th scope="col">{cols.type}</th>
-            <th scope="col">{cols.title}</th>
-            <th scope="col">{cols.company}</th>
+            <HomeSortableTh columnKey="when" label={cols.when} sort={sort} onSort={toggleSort} sortByTemplate={copy.tableSort.sortBy} />
+            <HomeSortableTh columnKey="type" label={cols.type} sort={sort} onSort={toggleSort} sortByTemplate={copy.tableSort.sortBy} />
+            <HomeSortableTh columnKey="title" label={cols.title} sort={sort} onSort={toggleSort} sortByTemplate={copy.tableSort.sortBy} />
+            <HomeSortableTh columnKey="company" label={cols.company} sort={sort} onSort={toggleSort} sortByTemplate={copy.tableSort.sortBy} />
           </tr>
         </thead>
         <tbody>
-          {events.map(event => {
+          {paginatedItems.map(event => {
           const typeMeta = getHomeEventTypeMeta(event.type, event.typeLabel, locale);
           const title = truncateText(String(event.title || "").trim() || copy.noTitle, 72);
           const fullTitle = String(event.title || "").trim() || copy.noTitle;
@@ -337,15 +492,50 @@ function HomeEventsList({
         })}
         </tbody>
       </table>
+      {showPager ? <HomeListPager page={page} totalPages={totalPages} onPageChange={setPage} locale={locale} ariaLabel={copy.panels.events.pagerAria} /> : null}
     </div>;
 }
 
 function HomeTodoList({
   actions,
   copy,
+  locale,
   onNavigate
 }) {
   const [expandedId, setExpandedId] = useState(null);
+  const resolveTodoSortValue = useCallback((action, key) => {
+    const toneOrder = {
+      bad: 0,
+      warn: 1
+    };
+    switch (key) {
+      case "source":
+        return action.sourceLabel || "";
+      case "label":
+        return `${toneOrder[action.tone] ?? 9}\u0000${action.label || ""}`;
+      case "title":
+        return action.title || "";
+      case "detail":
+        return action.meta || "";
+      default:
+        return null;
+    }
+  }, []);
+  const {
+    sortedItems,
+    sort,
+    toggleSort
+  } = useHomeTableSort(actions, resolveTodoSortValue);
+  const {
+    page,
+    setPage,
+    totalPages,
+    paginatedItems,
+    showPager
+  } = useHomeListPagination(sortedItems, HOME_LIST_LIMIT, `${sort.key}:${sort.direction}`);
+  useEffect(() => {
+    setExpandedId(null);
+  }, [page, sort.key, sort.direction]);
   if (!actions.length) {
     return <EmptyState icon="mdi:check-circle-outline" text={copy.empty.todo} />;
   }
@@ -358,14 +548,14 @@ function HomeTodoList({
       <table className={styles.homeTable}>
         <thead>
           <tr>
-            <th scope="col">{cols.source}</th>
-            <th scope="col">{cols.label}</th>
-            <th scope="col">{cols.title}</th>
-            <th scope="col">{cols.detail}</th>
+            <HomeSortableTh columnKey="source" label={cols.source} sort={sort} onSort={toggleSort} sortByTemplate={copy.tableSort.sortBy} />
+            <HomeSortableTh columnKey="label" label={cols.label} sort={sort} onSort={toggleSort} sortByTemplate={copy.tableSort.sortBy} />
+            <HomeSortableTh columnKey="title" label={cols.title} sort={sort} onSort={toggleSort} sortByTemplate={copy.tableSort.sortBy} />
+            <HomeSortableTh columnKey="detail" label={cols.detail} sort={sort} onSort={toggleSort} sortByTemplate={copy.tableSort.sortBy} />
           </tr>
         </thead>
         <tbody>
-          {actions.map(action => {
+          {paginatedItems.map(action => {
             const isBulk = Boolean(action.bulk && action.children?.length);
             const expanded = isBulk && expandedId === action.id;
             return <Fragment key={action.id}>
@@ -434,6 +624,7 @@ function HomeTodoList({
           })}
         </tbody>
       </table>
+      {showPager ? <HomeListPager page={page} totalPages={totalPages} onPageChange={setPage} locale={locale} ariaLabel={copy.panels.todo.pagerAria} /> : null}
     </div>;
 }
 
@@ -441,14 +632,9 @@ function PanelHeader({
   icon,
   title,
   titleMeta = null,
-  actionLabel,
-  onAction,
-  addLabel = null,
-  onAdd = null,
   eyebrow = false,
   headerMeta = null
 }) {
-  const hasActions = Boolean(onAction || onAdd);
   return <div className={styles.panelHeader}>
       <div className={styles.panelHeaderMain}>
         {eyebrow ? <div className={styles.panelEyebrowRow}>
@@ -460,14 +646,6 @@ function PanelHeader({
           </div>}
         {headerMeta}
       </div>
-      {hasActions ? <div className={styles.panelActions}>
-          {onAdd ? <button type="button" className={`${styles.panelIconBtn} ${styles.panelIconBtnPrimary}`} onClick={onAdd} title={addLabel || undefined} aria-label={addLabel || undefined}>
-              <Icon icon="mdi:plus" aria-hidden />
-            </button> : null}
-          {onAction ? <button type="button" className={styles.panelIconBtn} onClick={onAction} title={actionLabel || undefined} aria-label={actionLabel || undefined}>
-              <Icon icon="mdi:arrow-top-right" aria-hidden />
-            </button> : null}
-        </div> : null}
     </div>;
 }
 

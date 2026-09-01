@@ -37,6 +37,13 @@ const HOME_COPY = {
       nextEvent: "Prochain RDV",
       noEvent: "Aucun RDV à venir"
     },
+    mobileTabs: {
+      aria: "Sections de l'accueil",
+      support: "Support",
+      services: "Services",
+      events: "Événements",
+      todo: "À traiter"
+    },
     panels: {
       tickets: {
         supportTitle: "Mes tickets support",
@@ -57,7 +64,8 @@ const HOME_COPY = {
         title: "Mes événements",
         weekHint: "7 prochains jours",
         action: "Voir le planning",
-        add: "Nouvel événement"
+        add: "Nouvel événement",
+        pagerAria: "Pagination des événements"
       },
       surveillance: {
         title: "Surveillance",
@@ -66,7 +74,8 @@ const HOME_COPY = {
       },
       todo: {
         title: "À traiter",
-        action: "Centre de supervision"
+        action: "Centre de supervision",
+        pagerAria: "Pagination des éléments à traiter"
       }
     },
     ticketsTable: {
@@ -87,6 +96,9 @@ const HOME_COPY = {
       label: "Type",
       title: "Élément",
       detail: "Détail"
+    },
+    tableSort: {
+      sortBy: "Trier par {column}"
     },
     priorities: {
       majorIncident: "Incident majeur",
@@ -237,6 +249,13 @@ const HOME_COPY = {
       nextEvent: "Next appointment",
       noEvent: "No upcoming appointment"
     },
+    mobileTabs: {
+      aria: "Home sections",
+      support: "Support",
+      services: "Services",
+      events: "Events",
+      todo: "To do"
+    },
     panels: {
       tickets: {
         supportTitle: "My support tickets",
@@ -257,7 +276,8 @@ const HOME_COPY = {
         title: "My events",
         weekHint: "Next 7 days",
         action: "View schedule",
-        add: "New event"
+        add: "New event",
+        pagerAria: "Events pagination"
       },
       surveillance: {
         title: "Monitoring",
@@ -266,7 +286,8 @@ const HOME_COPY = {
       },
       todo: {
         title: "To do",
-        action: "Monitoring center"
+        action: "Monitoring center",
+        pagerAria: "To-do list pagination"
       }
     },
     ticketsTable: {
@@ -287,6 +308,9 @@ const HOME_COPY = {
       label: "Type",
       title: "Item",
       detail: "Detail"
+    },
+    tableSort: {
+      sortBy: "Sort by {column}"
     },
     priorities: {
       majorIncident: "Major incident",
@@ -437,6 +461,13 @@ const HOME_COPY = {
       nextEvent: "Nächster Termin",
       noEvent: "Kein bevorstehender Termin"
     },
+    mobileTabs: {
+      aria: "Startbereiche",
+      support: "Support",
+      services: "Services",
+      events: "Termine",
+      todo: "Aufgaben"
+    },
     panels: {
       tickets: {
         supportTitle: "Meine Support-Tickets",
@@ -457,7 +488,8 @@ const HOME_COPY = {
         title: "Meine Termine",
         weekHint: "Nächste 7 Tage",
         action: "Planung anzeigen",
-        add: "Neuer Termin"
+        add: "Neuer Termin",
+        pagerAria: "Termin-Seiten"
       },
       surveillance: {
         title: "Überwachung",
@@ -466,7 +498,8 @@ const HOME_COPY = {
       },
       todo: {
         title: "Zu erledigen",
-        action: "Supervisionszentrum"
+        action: "Supervisionszentrum",
+        pagerAria: "Aufgaben-Seiten"
       }
     },
     ticketsTable: {
@@ -487,6 +520,9 @@ const HOME_COPY = {
       label: "Typ",
       title: "Element",
       detail: "Detail"
+    },
+    tableSort: {
+      sortBy: "Sortieren nach {column}"
     },
     priorities: {
       majorIncident: "Schwerer Vorfall",
@@ -637,6 +673,13 @@ const HOME_COPY = {
       nextEvent: "Prossimo appuntamento",
       noEvent: "Nessun appuntamento in arrivo"
     },
+    mobileTabs: {
+      aria: "Sezioni home",
+      support: "Supporto",
+      services: "Servizi",
+      events: "Eventi",
+      todo: "Da fare"
+    },
     panels: {
       tickets: {
         supportTitle: "I miei ticket support",
@@ -657,7 +700,8 @@ const HOME_COPY = {
         title: "I miei eventi",
         weekHint: "Prossimi 7 giorni",
         action: "Vedi planning",
-        add: "Nuovo evento"
+        add: "Nuovo evento",
+        pagerAria: "Paginazione eventi"
       },
       surveillance: {
         title: "Monitoraggio",
@@ -666,7 +710,8 @@ const HOME_COPY = {
       },
       todo: {
         title: "Da trattare",
-        action: "Centro supervisione"
+        action: "Centro supervisione",
+        pagerAria: "Paginazione da trattare"
       }
     },
     ticketsTable: {
@@ -687,6 +732,9 @@ const HOME_COPY = {
       label: "Tipo",
       title: "Elemento",
       detail: "Dettaglio"
+    },
+    tableSort: {
+      sortBy: "Ordina per {column}"
     },
     priorities: {
       majorIncident: "Incidente grave",
@@ -837,6 +885,13 @@ const HOME_COPY = {
       nextEvent: "Próxima cita",
       noEvent: "Ninguna cita próxima"
     },
+    mobileTabs: {
+      aria: "Secciones de inicio",
+      support: "Soporte",
+      services: "Servicios",
+      events: "Eventos",
+      todo: "Por tratar"
+    },
     panels: {
       tickets: {
         supportTitle: "Mis tickets de soporte",
@@ -857,7 +912,8 @@ const HOME_COPY = {
         title: "Mis eventos",
         weekHint: "Próximos 7 días",
         action: "Ver planning",
-        add: "Nuevo evento"
+        add: "Nuevo evento",
+        pagerAria: "Paginación de eventos"
       },
       surveillance: {
         title: "Supervisión",
@@ -866,7 +922,8 @@ const HOME_COPY = {
       },
       todo: {
         title: "Por tratar",
-        action: "Centro de supervisión"
+        action: "Centro de supervisión",
+        pagerAria: "Paginación por tratar"
       }
     },
     ticketsTable: {
@@ -887,6 +944,9 @@ const HOME_COPY = {
       label: "Tipo",
       title: "Elemento",
       detail: "Detalle"
+    },
+    tableSort: {
+      sortBy: "Ordenar por {column}"
     },
     priorities: {
       majorIncident: "Incidente grave",

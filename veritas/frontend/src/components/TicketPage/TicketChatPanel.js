@@ -712,7 +712,7 @@ export default function TicketChatPanel({
                   </div>
                 ) : isIncomingEmailContent(comment.content || comment.body || "") ? (
                   <div className={styles.commentBody}>
-                    <IncomingEmailMessage content={comment.content || comment.body || ""} attachmentLinkClassName={styles.attachmentLink} />
+                    <IncomingEmailMessage content={comment.content || comment.body || ""} attachments={attachments} attachmentLinkClassName={styles.attachmentLink} />
                   </div>
                 ) : (
                   <div
@@ -723,7 +723,7 @@ export default function TicketChatPanel({
                   />
                 )}
 
-                {!isEditingComment && attachments.length > 0 ? (
+                {!isEditingComment && attachments.length > 0 && !isIncomingEmailContent(comment.content || comment.body || "") ? (
                   <div className={styles.attachmentsList}>
                     {attachments.map(attachment => {
                       const attachmentUrl = attachment.url || attachment.path;

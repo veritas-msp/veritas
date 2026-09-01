@@ -26,6 +26,7 @@ import ServerSpecFields from "./ServerSpecFields";
 import VlanChipsInput from "./VlanChipsInput";
 import { getSharedEquipmentFieldLabel } from "./sharedEquipmentFields";
 import styles from "../EnterprisesPage/EnterpriseFormModal.module.css";
+import FormNumberStepper from "./FormNumberStepper";
 const NETWORK_EDGE_API_TYPES = new Set(["Switch", "BorneWifi", "Alimentation", "TOIP"]);
 export default function EquipmentFormSectionContent({
   activeSection,
@@ -915,9 +916,15 @@ export default function EquipmentFormSectionContent({
                     </label>
                   </div>;
               }
+              if (field.fieldType === "number") {
+                return <div key={field.fieldKey} className={styles.field}>
+                    <label className={labelClass} htmlFor={id}>{field.label}</label>
+                    <FormNumberStepper id={id} value={value ?? ""} onChange={next => update(field.fieldKey, next)} />
+                  </div>;
+              }
               return <div key={field.fieldKey} className={styles.field}>
                   <label className={labelClass} htmlFor={id}>{field.label}</label>
-                  <input id={id} type={field.fieldType === "date" ? "date" : field.fieldType === "number" ? "number" : "text"} className={styles.input} value={value ?? ""} onChange={e => update(field.fieldKey, field.fieldType === "number" ? e.target.value : e.target.value)} />
+                  <input id={id} type={field.fieldType === "date" ? "date" : "text"} className={styles.input} value={value ?? ""} onChange={e => update(field.fieldKey, e.target.value)} />
                 </div>;
             })}
           </div>

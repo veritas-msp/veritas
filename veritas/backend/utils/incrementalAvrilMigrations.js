@@ -94,6 +94,39 @@ export async function buildIncrementalAvrilMigrationPlan(client = pool) {
       plan.push("20260829_custom_equipment_actif_backfill.sql");
     }
   }
+  const hardwareActifTables = [
+    "v_b_clients_m_internet",
+    "v_b_clients_m_servers",
+    "v_b_clients_m_stockage",
+    "v_b_clients_m_firewall",
+    "v_b_clients_m_switch",
+    "v_b_clients_m_wifi",
+    "v_b_clients_m_alimentation",
+    "v_b_clients_m_routeur",
+    "v_b_clients_m_toip",
+    "v_b_clients_m_ordinateurs"
+  ];
+  const hardwareInactivePredicate = `is_active IS NOT FALSE
+    AND (
+      (jsonb_typeof(data->'actif') = 'boolean' AND data->>'actif' = 'false')
+      OR lower(trim(COALESCE(data->>'actif', ''))) IN ('false', '0', 'no', 'non', 'off', 'inactif', 'inactive', 'disabled')
+      OR (jsonb_typeof(data->'is_active') = 'boolean' AND data->>'is_active' = 'false')
+      OR lower(trim(COALESCE(data->>'is_active', ''))) IN ('false', '0', 'no', 'non', 'off', 'inactif', 'inactive', 'disabled')
+      OR (jsonb_typeof(data->'active') = 'boolean' AND data->>'active' = 'false')
+      OR lower(trim(COALESCE(data->>'active', ''))) IN ('false', '0', 'no', 'non', 'off', 'inactif', 'inactive', 'disabled')
+      OR (jsonb_typeof(data->'isActive') = 'boolean' AND data->>'isActive' = 'false')
+      OR lower(trim(COALESCE(data->>'isActive', ''))) IN ('false', '0', 'no', 'non', 'off', 'inactif', 'inactive', 'disabled')
+    )`;
+  for (const table of hardwareActifTables) {
+    if (!(await tableExists(client, table))) continue;
+    const { rows: hardwareInactiveFlagRows } = await client.query(
+      `SELECT 1 FROM ${table} WHERE ${hardwareInactivePredicate} LIMIT 1`
+    );
+    if (hardwareInactiveFlagRows.length) {
+      plan.push("20260901_hardware_equipment_actif_backfill.sql");
+      break;
+    }
+  }
   if (!(await tableExists(client, "v_b_client_support_credits"))) {
     plan.push("20260620_client_support_credits.sql", "20260620_client_support_credits_grants.sql");
   }

@@ -53,9 +53,11 @@ function expiryClass(status) {
   return "";
 }
 
-function formatLicenseCount(value) {
-  if (value == null || value === "") return "-";
-  return String(value);
+function formatLicenseCount(row) {
+  if (row?.usedLicenses != null && row?.totalLicenses != null) return `${row.usedLicenses} / ${row.totalLicenses}`;
+  if (row?.totalLicenses != null && row.totalLicenses !== "") return String(row.totalLicenses);
+  if (row?.usedLicenses != null && row.usedLicenses !== "") return String(row.usedLicenses);
+  return "-";
 }
 
 function formatDomainCount(value) {
@@ -112,7 +114,7 @@ function FleetTableRow({
         <SolutionCell label={row.solutionLabel || row.providerName || "-"} subtitle={row.solutionSubtitle || null} image={row.providerImage} icon={row.providerIcon || "mdi:email-secure-outline"} />
       </td>
       <td>{statusMeta.label}</td>
-      <td className={styles.cellMuted}>{formatLicenseCount(row.totalLicenses)}</td>
+      <td className={styles.cellMuted}>{formatLicenseCount(row)}</td>
       <td className={styles.cellMuted}>{formatDomainCount(row.domainesSurveilles)}</td>
       <td className={`${styles.cellExpiry} ${expiryClass(row.status)}`.trim()}>{formatDate(row.expirationDate || row.expiration)}</td>
       <td className={styles.cellMuted}>{formatDateTime(row.lastSync)}</td>

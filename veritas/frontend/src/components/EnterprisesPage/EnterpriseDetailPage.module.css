@@ -572,6 +572,11 @@
 .contactDetailPage .heroActions {
   margin-top: 0;
   align-self: center;
+  gap: 0.55rem;
+}
+
+.enterpriseDetailPage .heroOnboardingCard {
+  max-width: 16.5rem;
 }
 
 .enterpriseDetailPage .heroMenuBtn,
@@ -1386,6 +1391,31 @@
   font-weight: 500;
   line-height: 1.35;
   color: #9a3412;
+}
+
+.heroOnboardingCard {
+  max-width: 17.5rem;
+  padding: 0.32rem 0.65rem 0.32rem 0.5rem;
+  align-items: center;
+  gap: 0.45rem;
+  flex-shrink: 0;
+}
+
+.heroOnboardingCard svg {
+  margin-top: 0;
+  font-size: 1.05rem;
+}
+
+.heroOnboardingCard .onboardingBannerText {
+  gap: 0.04rem;
+}
+
+.heroOnboardingCard .onboardingBannerText strong {
+  font-size: 0.72rem;
+}
+
+.heroOnboardingCard .onboardingBannerText span {
+  font-size: 0.65rem;
 }
 
 .activityBlockProLock {
@@ -3052,6 +3082,20 @@ button.sidebarOptionIcon:hover {
   border-bottom: 1px solid var(--msp-border);
 }
 
+.equipmentSection [class*="equipmentTableEmbedded"] th[class*="sortableTh"] {
+  cursor: pointer;
+  user-select: none;
+}
+
+.equipmentSection [class*="equipmentTableEmbedded"] th[class*="sortableTh"]:hover {
+  color: var(--msp-accent, #2b5fab);
+}
+
+.equipmentSection [class*="equipmentTableEmbedded"] th[class*="sortableTh"][aria-sort="ascending"],
+.equipmentSection [class*="equipmentTableEmbedded"] th[class*="sortableTh"][aria-sort="descending"] {
+  color: var(--msp-text);
+}
+
 .equipmentSection [class*="equipmentTableEmbedded"] td {
   font-weight: 400;
   font-family: inherit;
@@ -3211,7 +3255,14 @@ button.sidebarOptionIcon:hover {
 
   .heroActions {
     margin-left: 0;
-    align-self: flex-end;
+    align-self: stretch;
+    justify-content: flex-end;
+    flex-wrap: wrap;
+  }
+
+  .heroOnboardingCard {
+    max-width: none;
+    flex: 1 1 12rem;
   }
 
   .heroTagInputCompact {
@@ -3441,6 +3492,12 @@ button.sidebarOptionIcon:hover {
 :global(html.dark) .equipmentSection [class*="equipmentTableEmbedded"] th {
   color: var(--msp-muted-light);
   border-bottom-color: var(--msp-border);
+}
+
+:global(html.dark) .equipmentSection [class*="equipmentTableEmbedded"] th[class*="sortableTh"]:hover,
+:global(html.dark) .equipmentSection [class*="equipmentTableEmbedded"] th[class*="sortableTh"][aria-sort="ascending"],
+:global(html.dark) .equipmentSection [class*="equipmentTableEmbedded"] th[class*="sortableTh"][aria-sort="descending"] {
+  color: var(--msp-text);
 }
 
 :global(html.dark) .equipmentSection [class*="equipmentTableEmbedded"] td {

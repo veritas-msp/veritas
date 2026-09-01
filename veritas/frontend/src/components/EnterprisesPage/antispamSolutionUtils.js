@@ -90,7 +90,8 @@ function pickSoonestExpirationValue(values) {
 function collectAntispamLicenseItems(item) {
   const customer = item?.syncData?.customer || {};
   const raw = customer.raw && typeof customer.raw === "object" ? customer.raw : {};
-  const lists = [raw.licenses, raw.licences, raw.licenseList, raw.licenceList, customer.licenses];
+  const dashboardItems = item?.syncData?.dashboard?.sections?.licenses?.items;
+  const lists = [dashboardItems, raw.licenses, raw.licences, raw.licenseList, raw.licenceList, customer.licenses];
   const items = [];
   for (const list of lists) {
     if (Array.isArray(list)) items.push(...list);
@@ -117,16 +118,31 @@ function resolveAntispamDomainCount(item) {
 function resolveAntispamLicenseTotal(item) {
   const customer = item?.syncData?.customer || {};
   const raw = customer.raw && typeof customer.raw === "object" ? customer.raw : {};
-  const fromApi = toLicenseNumber(customer.licenseCount ?? (Array.isArray(raw.licenses) ? raw.licenses.length : raw.licenses) ?? raw.licenseCount ?? raw.nbLicences ?? raw.nbLicense ?? raw.totalLicenses ?? raw.licenceCount ?? raw.numberOfLicenses ?? raw.maxUsers ?? raw.maxMailboxes);
+  const licenseSummary = item?.syncData?.dashboard?.sections?.licenses?.summary;
+  const fromApi = toLicenseNumber(licenseSummary?.total ?? customer.licenseCount ?? (Array.isArray(raw.licenses) ? raw.licenses.length : raw.licenses) ?? raw.licenseCount ?? raw.nbLicences ?? raw.nbLicense ?? raw.totalLicenses ?? raw.licenceCount ?? raw.numberOfLicenses ?? raw.maxUsers ?? raw.maxMailboxes);
   const persisted = toLicenseNumber(item?.licencesTotales ?? item?.totalLicenses ?? item?.nombre_licences);
   if (fromApi != null && fromApi > 0) return fromApi;
   if (persisted != null && persisted > 0) return persisted;
   const licenseItems = collectAntispamLicenseItems(item);
-  if (licenseItems.length) return licenseItems.length;
+  if (licenseItems.length) {
+    const summed = licenseItems.reduce((acc, license) => acc + (toLicenseNumber(license?.total ?? license?.quantity ?? license?.count) || 0), 0);
+    return summed > 0 ? summed : licenseItems.length;
+  }
   const mappedUsersCount = toLicenseNumber(customer.usersCount);
   const usersListCount = toLicenseNumber(item?.utilisateursProteges ?? item?.syncData?.dashboard?.sections?.users?.total);
   if (mappedUsersCount != null && mappedUsersCount > 0 && mappedUsersCount !== usersListCount) return mappedUsersCount;
   return fromApi ?? persisted;
+}
+function resolveAntispamLicenseUsed(item) {
+  const licenseSummary = item?.syncData?.dashboard?.sections?.licenses?.summary;
+  const fromSummary = toLicenseNumber(licenseSummary?.used ?? item?.licencesUtilisees ?? item?.usedLicenses);
+  if (fromSummary != null) return fromSummary;
+  const users = item?.syncData?.dashboard?.sections?.users?.items;
+  if (Array.isArray(users) && users.length) {
+    const protectedCount = users.filter(user => user?.status === "Protected" || user?.protected === true).length;
+    if (protectedCount > 0) return protectedCount;
+  }
+  return null;
 }
 export function normalizeAntispamItem(item) {
   if (!item) return null;
@@ -151,7 +167,8 @@ export function normalizeAntispamItem(item) {
     expiration: resolveAntispamExpirationValue(item) || "",
     utilisateursProteges: item.utilisateursProteges ?? item.utilisateurs ?? item.nombre_utilisateurs ?? null,
     domainesSurveilles: resolveAntispamDomainCount(item),
-    licencesTotales: resolveAntispamLicenseTotal(item)
+    licencesTotales: resolveAntispamLicenseTotal(item),
+    licencesUtilisees: resolveAntispamLicenseUsed(item)
   };
 }
 export function formatAntispamSolutionLabel(solution) {
@@ -243,7 +260,7 @@ export function resolveAntispamPaymentPlan(solution) {
   return "-";
 }
 function resolveAntispamLicenses(normalized) {
-  const usedLicenses = toLicenseNumber(normalized?.licencesUtilisees ?? normalized?.usedLicenses);
+  const usedLicenses = toLicenseNumber(normalized?.licencesUtilisees ?? normalized?.usedLicenses ?? resolveAntispamLicenseUsed(normalized));
   const totalLicenses = toLicenseNumber(normalized?.licencesTotales ?? resolveAntispamLicenseTotal(normalized));
   const usagePercent = totalLicenses > 0 && usedLicenses != null ? Math.round(usedLicenses / totalLicenses * 100) : null;
   return {
@@ -551,7 +568,8 @@ export function formatAntispamSyncPayload(customer, mappingMode, mailinblackTena
     domain: customer?.domain || "",
     utilisateursProteges: customer?.usersCount != null ? Number(customer.usersCount) : 0,
     domainesSurveilles: customer?.domainsCount != null ? Number(customer.domainsCount) : 0,
-    licencesTotales: customer?.licenseCount ?? customer?.raw?.licenses ?? customer?.raw?.licenseCount ?? null,
+    licencesTotales: customer?.licenseCount ?? customer?.raw?.licenseCount ?? null,
+    licencesUtilisees: null,
     expiration: toValidExpirationDate(customer?.expiration)?.toISOString() || "",
     syncData: {
       customer,

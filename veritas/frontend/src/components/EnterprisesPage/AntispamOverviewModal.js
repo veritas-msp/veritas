@@ -187,6 +187,23 @@ const SECTION_COLUMNS = {
     label: "Last login",
     render: r => formatDate(r.lastLogin || r.lastAuthDate || r.lastConnectionDate)
   }],
+  licenses: [{
+    key: "product",
+    label: "Product"
+  }, {
+    key: "total",
+    label: "Seats"
+  }, {
+    key: "used",
+    label: "Used"
+  }, {
+    key: "status",
+    label: "Status"
+  }, {
+    key: "expiration",
+    label: "Expiration",
+    render: r => formatDate(r.expiration)
+  }],
   emails: [{
     key: "email",
     label: "E-mail"
@@ -418,6 +435,26 @@ export function AntispamOverviewPanel({
         };
       }
     }
+    const licenseSummary = sections.licenses?.summary;
+    if ((!views.licenses?.items || views.licenses.items.length === 0) && (licenseSummary?.total != null || licenseSummary?.used != null)) {
+      views.licenses = {
+        ...(views.licenses || {
+          status: "ok",
+          error: null,
+          columns: SECTION_COLUMNS.licenses
+        }),
+        status: "ok",
+        items: [{
+          id: "protect",
+          product: "Protect",
+          total: licenseSummary.total,
+          used: licenseSummary.used,
+          status: "Active"
+        }],
+        total: 1,
+        columns: SECTION_COLUMNS.licenses
+      };
+    }
     return views;
   }, [sections]);
   const renderOverview = () => {
@@ -425,6 +462,8 @@ export function AntispamOverviewPanel({
     const usersTotal = sections.users?.total ?? antispamItem?.utilisateursProteges ?? 0;
     const domainsTotal = sections.domains?.total ?? antispamItem?.domainesSurveilles ?? 0;
     const emailsTotal = sectionViews.emails?.total ?? sections.emails?.total ?? 0;
+    const licenseTotal = sections.licenses?.summary?.total ?? antispamItem?.licencesTotales ?? null;
+    const licenseUsed = sections.licenses?.summary?.used ?? antispamItem?.licencesUtilisees ?? null;
     const serversTotal = sections.servers?.total ?? 0;
     const sendersTotal = sections.senders?.total ?? 0;
     const spoolsTotal = sections.spools?.total ?? 0;
@@ -478,6 +517,7 @@ export function AntispamOverviewPanel({
 
           <section className={`${dashStyles.kpiGrid} ${dashStyles.kpiGrid5}`}>
             <KpiCard icon="mdi:account-group-outline" label="Users" value={usersTotal || "-"} sub="Protected accounts" />
+            <KpiCard icon="mdi:license" label="Licenses" value={licenseUsed != null && licenseTotal != null ? `${licenseUsed} / ${licenseTotal}` : licenseTotal ?? licenseUsed ?? "-"} sub="Assigned / purchased" />
             <KpiCard icon="mdi:web" label="Domains" value={domainsTotal || "-"} sub="Monitored domains" />
             <KpiCard icon="mdi:email-outline" label="E-mails" value={emailsTotal || "-"} sub="Admin addresses" />
             <KpiCard icon="mdi:email-arrow-right-outline" label="Senders" value={sendersTotal || "-"} sub="Protect list" />
@@ -501,6 +541,10 @@ export function AntispamOverviewPanel({
                   {customer.status ? <li>
                       <span>Status</span>
                       <strong>{customer.status}</strong>
+                    </li> : null}
+                  {licenseTotal != null || licenseUsed != null ? <li>
+                      <span>Licenses</span>
+                      <strong>{licenseUsed != null && licenseTotal != null ? `${licenseUsed} / ${licenseTotal}` : licenseTotal ?? licenseUsed}</strong>
                     </li> : null}
                 </ul>
               </StatsPanel> : <StatsPanel title="Information client" icon="mdi:card-account-details-outline">
@@ -527,6 +571,12 @@ export function AntispamOverviewPanel({
             <span className={styles.kpiLabel}>Users</span>
             <span className={styles.kpiValue}>
               {sections.users?.total ?? antispamItem?.utilisateursProteges ?? "-"}
+            </span>
+          </div>
+          <div className={styles.kpiCard}>
+            <span className={styles.kpiLabel}>Licenses</span>
+            <span className={styles.kpiValue}>
+              {licenseUsed != null && licenseTotal != null ? `${licenseUsed} / ${licenseTotal}` : licenseTotal ?? licenseUsed ?? "-"}
             </span>
           </div>
           <div className={styles.kpiCard}>
@@ -583,6 +633,11 @@ export function AntispamOverviewPanel({
         break;
       case "users":
         content = renderListSection(sectionViews.users, {
+          fillHeight: fillTables
+        });
+        break;
+      case "licenses":
+        content = renderListSection(sectionViews.licenses, {
           fillHeight: fillTables
         });
         break;

@@ -3,7 +3,7 @@ import { Icon } from "@iconify/react";
 import SiteMapPreview from "../EnterprisesPage/SiteMapPreview";
 import { buildSiteAddress, findClientSiteByLocation, getSiteDisplayName } from "../../utils/clientSites";
 import { buildEquipmentDetailSections } from "./equipmentDetailConfig";
-import { buildBorneWifiSsidFormState } from "./wifiApSsidUtils";
+import { buildBorneWifiSsidFormState, collectEquipmentAssignedSsids } from "./wifiApSsidUtils";
 import { getFirewallDisplayName, resolveFirewallHaPeer, getServerDisplayName, resolveHostServerPeer, resolveServerHaPeer, getStorageDisplayName, resolveStorageHaPeer, getStorageFormProfile } from "./equipmentFormConfig";
 import { shouldShowStorageDiskBays } from "./storageDiskUtils";
 import StorageDiskBayDisplay from "./StorageDiskBayDisplay";
@@ -142,7 +142,10 @@ export default function EquipmentDetailSpecsPanel({
   const displayFormData = useMemo(() => {
     if (equipment?.type !== "BorneWifi") return formData;
     const raw = equipment?.rawData?.data || equipment?.rawData || equipment || {};
-    const persistedSsids = formData?.ssids ?? raw.ssids ?? equipment?.ssids ?? [];
+    const persistedSsids = collectEquipmentAssignedSsids({
+      ...equipment,
+      ssids: formData?.ssids ?? equipment?.ssids
+    });
     const rebuilt = buildBorneWifiSsidFormState({
       ...equipment,
       ssids: persistedSsids,

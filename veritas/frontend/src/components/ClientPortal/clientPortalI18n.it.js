@@ -50,6 +50,8 @@ export default {
     accountMenu: "Account",
     accountMenuAria: "Menu account",
     navAria: "Navigazione portale",
+    openMenu: "Apri il menu",
+    closeMenu: "Chiudi il menu",
     statEquipment: "Dispositivi",
     statWorkstations: "Postazione",
     statWorkstationsPlural: "Postazioni",

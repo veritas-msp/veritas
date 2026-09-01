@@ -1,4 +1,5 @@
 import { pool } from "../database/db.js";
+import { notifyTicketSatisfaction } from "./systemNotificationService.js";
 import { notifyInAppTicketSatisfaction } from "./userNotificationService.js";
 import { getTicketResolutionValidation } from "./ticketResolutionValidationService.js";
 import { TICKET_SATISFACTION_CRITERIA, computeSatisfactionAverage, normalizeSatisfactionRatingsInput, resolveStoredRatings } from "./ticketSatisfactionCriteria.js";
@@ -152,6 +153,13 @@ export async function submitPortalTicketSatisfaction({
     authorUserId: userId || null,
     authorName: satisfaction.authorName
   }).catch(() => {});
+  await notifyTicketSatisfaction(ticketId, {
+    satisfaction: {
+      author: satisfaction.authorName,
+      rating: satisfaction.averageRating ?? overallRating,
+      message: trimmedMessage
+    }
+  }).catch(() => {});
   return satisfaction;
 }
 export async function updatePortalTicketSatisfaction({
@@ -221,9 +229,26 @@ export async function updatePortalTicketSatisfaction({
          FROM v_b_users WHERE id = $1 LIMIT 1`, [userId]) : {
     rows: []
   };
-  return mapSatisfactionRow(updated, {
+  const satisfaction = mapSatisfactionRow(updated, {
     display_name: authorResult.rows[0]?.display_name || "Client"
   });
+  await notifyInAppTicketSatisfaction({
+    ticketId,
+    rating: overallRating,
+    ratings: normalizedRatings,
+    averageRating: satisfaction.averageRating,
+    message: trimmedMessage,
+    authorUserId: userId || null,
+    authorName: satisfaction.authorName
+  }).catch(() => {});
+  await notifyTicketSatisfaction(ticketId, {
+    satisfaction: {
+      author: satisfaction.authorName,
+      rating: satisfaction.averageRating ?? overallRating,
+      message: trimmedMessage
+    }
+  }).catch(() => {});
+  return satisfaction;
 }
 export { TICKET_SATISFACTION_CRITERIA };
 let assigneesTableExistsCache = null;

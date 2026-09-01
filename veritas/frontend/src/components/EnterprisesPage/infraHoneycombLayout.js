@@ -651,9 +651,14 @@ function buildLicensesBrick(items = [], label = "Licenses & abonnements") {
   };
 }
 function buildTenantBrick(tenantInfo = {}, label = "Tenant Microsoft") {
-  const configured = Boolean(tenantInfo.configured);
+  const items = Array.isArray(tenantInfo.items) && tenantInfo.items.length > 0
+    ? tenantInfo.items
+    : tenantInfo.configured
+      ? [tenantInfo]
+      : [];
+  const count = items.length;
   let status = "unmonitored";
-  if (configured) {
+  if (count > 0) {
     status = tenantInfo.status === "inactive" ? "neutral" : "ok";
   }
   return {
@@ -662,8 +667,8 @@ function buildTenantBrick(tenantInfo = {}, label = "Tenant Microsoft") {
     label,
     name: label,
     status,
-    count: configured ? 1 : 0,
-    items: configured ? [tenantInfo] : [],
+    count,
+    items,
     meta: tenantInfo
   };
 }

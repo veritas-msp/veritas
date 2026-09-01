@@ -8,6 +8,7 @@ import fs from "fs";
 import path from "path";
 import multer from "multer";
 import { dispatchNotificationEvent } from "../../services/notificationDispatcher.js";
+import { notifyTicketAssignedUsers, notifyTicketChangeEmails, notifyTicketCommented, notifyTicketCreatedAck, notifyTicketCreatedAgents } from "../../services/systemNotificationService.js";
 import { notifyInAppTicketAssigned, notifyInAppTicketCommented, notifyInAppTicketCreated, notifyInAppTicketStatusChanged, normalizeInAppSettings } from "../../services/userNotificationService.js";
 import { getTicketSatisfaction, listTicketSatisfactions, countTicketSatisfactions, enrichTicketRowsWithSatisfaction } from "../../services/ticketSatisfactionService.js";
 import { ensureTicketStatusMatchesValidation, getTicketResolutionValidation, markResolutionValidationReopened, resolveTicketWithClientValidation } from "../../services/ticketResolutionValidationService.js";
@@ -115,6 +116,8 @@ const DEFAULT_TICKET_AUTOMATION_CONFIG = {
     },
     webhooks: [],
     notificationEvents: [],
+    templates: [],
+    systemNotifications: {},
     logs: []
   },
   mailCollectors: [],
@@ -293,6 +296,15 @@ const normalizeNotificationSettings = row => ({
     url: String(webhook?.url || "").trim(),
     enabled: webhook?.enabled !== false
   })) : [],
+  systemNotifications: row?.systemNotifications && typeof row.systemNotifications === "object" && !Array.isArray(row.systemNotifications) ? row.systemNotifications : {},
+  templates: Array.isArray(row?.templates) ? row.templates.map((tpl, idx) => ({
+    id: String(tpl?.id || `notif-tpl-${Date.now()}-${idx}`),
+    name: String(tpl?.name || "").trim() || `Template ${idx + 1}`,
+    subject: String(tpl?.subject || "").trim(),
+    content: String(tpl?.content || tpl?.body || ""),
+    source: String(tpl?.source || "").trim().toLowerCase(),
+    element: String(tpl?.element || "").trim().toLowerCase()
+  })) : [],
   notificationEvents: (Array.isArray(row?.notificationEvents) ? row.notificationEvents : []).map((eventItem, idx) => {
     const channelsFromArray = Array.isArray(eventItem?.channels) ? eventItem.channels.map(item => String(item || "").trim().toLowerCase()).filter(Boolean) : [];
     const legacyChannel = String(eventItem?.channel || "").trim().toLowerCase();
@@ -309,6 +321,7 @@ const normalizeNotificationSettings = row => ({
       webhookId: String(eventItem?.webhookId || "").trim(),
       emailTo: String(eventItem?.emailTo || "").trim(),
       emailCc: String(eventItem?.emailCc || "").trim(),
+      emailSubject: String(eventItem?.emailSubject || "").trim(),
       useTemplate: eventItem?.useTemplate === true,
       templateId: String(eventItem?.templateId || "").trim(),
       customMessage: String(eventItem?.customMessage || ""),
@@ -1737,6 +1750,22 @@ router.post("/", verifyJWT, requirePermission("tickets.create"), [body("title").
         ticketId: created.id,
         createdByUserId: req.user?.id || null
       }).catch(() => {});
+      await notifyTicketCreatedAck(created.id, {
+        user: req.user
+      }).catch(() => {});
+      await notifyTicketCreatedAgents(created.id, {
+        user: req.user
+      }).catch(() => {});
+      if (explicitAssigneeUserIds.length > 0) {
+        await notifyTicketAssignedUsers({
+          ticketId: created.id,
+          userIds: explicitAssigneeUserIds,
+          assignedByUserId: req.user?.id || null,
+          extraContext: {
+            agent: req.user
+          }
+        }).catch(() => {});
+      }
     }
     const primaryTicket = createdTickets[0];
     if (createdTickets.length === 1) {
@@ -1826,6 +1855,15 @@ async function applyBulkTicketFieldUpdates(ticketId, updates, req, helpers) {
     newStatus: result.rows[0]?.status,
     changedByUserId: req.user?.id || null
   }).catch(() => {});
+  await notifyTicketChangeEmails({
+    ticketId,
+    newStatus: result.rows[0]?.status,
+    changedByUserId: req.user?.id || null,
+    extraContext: {
+      changedFields: Object.keys(updates || {}).join(", "),
+      agent: req.user
+    }
+  }).catch(() => {});
   return {
     ticketId,
     success: true
@@ -1903,6 +1941,14 @@ async function applyBulkAssignees(ticketId, assigneesPayload, helpers, assignedB
       ticketId,
       assignedUserId: userId,
       assignedByUserId
+    }).catch(() => {});
+  }
+  if (usersToNotify.length > 0) {
+    await notifyTicketAssignedUsers({
+      ticketId,
+      userIds: usersToNotify,
+      assignedByUserId,
+      extraContext: {}
     }).catch(() => {});
   }
   return {
@@ -3165,6 +3211,14 @@ router.put("/:id", verifyJWT, requirePermission("tickets.edit"), [param("id").is
       newStatus: result.rows[0]?.status,
       changedByUserId: req.user?.id || null
     }).catch(() => {});
+    await notifyTicketChangeEmails({
+      ticketId: id,
+      newStatus: result.rows[0]?.status,
+      changedByUserId: req.user?.id || null,
+      extraContext: {
+        agent: req.user
+      }
+    }).catch(() => {});
     res.json(result.rows[0]);
   } catch (err) {
     console.error("Error updating ticket:", err);
@@ -3359,6 +3413,15 @@ router.patch("/:id/status", verifyJWT, requireTicketStatusPermission, [param("id
       newStatus: normalizedStatus,
       changedByUserId: req.user?.id || null
     }).catch(() => {});
+    await notifyTicketChangeEmails({
+      ticketId: id,
+      newStatus: normalizedStatus,
+      changedByUserId: req.user?.id || null,
+      extraContext: {
+        agent: req.user,
+        changedFields: "status"
+      }
+    }).catch(() => {});
     const ticket = await getTicketById(id);
     res.json({
       ...ticket,
@@ -3435,6 +3498,18 @@ router.post("/:id/comments", verifyJWT, attachmentUpload.array("attachments", 10
       authorUserId: req.user?.id || null,
       isInternal: Boolean(req.body.isInternal),
       contentPreview: content
+    }).catch(() => {});
+    await notifyTicketCommented({
+      ticketId: id,
+      authorUserId: req.user?.id || null,
+      isInternal: Boolean(req.body.isInternal),
+      extraContext: {
+        user: req.user,
+        comment: {
+          author: req.user?.username || req.user?.email || "",
+          preview: String(content || "").replace(/\s+/g, " ").trim().slice(0, 140)
+        }
+      }
     }).catch(() => {});
     let whatsappDelivery = null;
     if (!Boolean(req.body.isInternal)) {
@@ -3921,6 +3996,14 @@ router.post("/:id/assignees", verifyJWT, requireAnyPermission("tickets.view", "s
       ticketId: id,
       assignedUserId: userId,
       assignedByUserId: req.user?.id || null
+    }).catch(() => {});
+    await notifyTicketAssignedUsers({
+      ticketId: id,
+      userIds: [userId],
+      assignedByUserId: req.user?.id || null,
+      extraContext: {
+        agent: req.user
+      }
     }).catch(() => {});
     res.status(201).json({
       success: true

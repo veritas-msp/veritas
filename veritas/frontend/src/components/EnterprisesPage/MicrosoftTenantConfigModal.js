@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import { Icon } from "@iconify/react";
 import { FaTimes } from "react-icons/fa";
-import { deleteClientOffice365Credentials, getClientOffice365Credentials, getClientSecretExpiration, saveClientOffice365Credentials, testClientOffice365Connection, testOffice365ConnectionWithCredentials } from "../../api/clientOffice365";
+import { deleteClientOffice365Credentials, getClientOffice365Credentials, getClientSecretExpiration, saveClientOffice365Credentials, testClientOffice365Connection, testOffice365ConnectionWithCredentials, unwrapOffice365CredentialsList } from "../../api/clientOffice365";
 import { showError, showSuccess } from "../../utils/toast";
 import ConfirmModal from "../Misc/ConfirmModal/ConfirmModal";
 import { useAppLocale } from "../../hooks/useAppGeneralSettings";
@@ -10,41 +10,44 @@ import { useCommonCopy } from "../../hooks/useCommonCopy";
 import { getEnterpriseConfigModalsCopy } from "./enterpriseConfigModalsI18n";
 import { interpolate } from "../../i18n/translate";
 import { buildMicrosoftTenantNavSections } from "./microsoftTenantFormConfig";
-import { formatMicrosoftTenantSummary, isMicrosoftTenantConfigured, normalizeMicrosoftTenantCredentials } from "./microsoftTenantSolutionUtils";
+import { formatMicrosoftTenantSummary, normalizeMicrosoftTenantCredentials } from "./microsoftTenantSolutionUtils";
 import formStyles from "./EnterpriseFormModal.module.css";
 import avStyles from "./AntivirusConfigModal.module.css";
 import msStyles from "./MicrosoftTenantConfigModal.module.css";
 import integrationStyles from "../AdminPage/BitdefenderIntegrationModal.module.css";
 import EntraApiGuide from "./integrationGuides/EntraApiGuide";
 const STORED_SECRET_MASK = "••••••••••••••••";
+const EMPTY_FORM = {
+  tenantId: "",
+  clientIdAzure: "",
+  clientSecret: "",
+  secretKeyId: ""
+};
 export default function MicrosoftTenantConfigModal({
   client,
   onClose,
   onSaved,
   onViewTenant,
-  initialSection = "overview"
+  initialSection = "overview",
+  initialEditingTenant = null
 }) {
   const locale = useAppLocale();
   const configCopy = useMemo(() => getEnterpriseConfigModalsCopy(locale), [locale]);
   const common = useCommonCopy();
   const [activeSection, setActiveSection] = useState(initialSection);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(() => Boolean(initialEditingTenant?.id || initialEditingTenant?.tenantId));
   const [saving, setSaving] = useState(false);
   const [testingConnection, setTestingConnection] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [credentials, setCredentials] = useState(null);
   const [existingCredentials, setExistingCredentials] = useState(null);
-  const [form, setForm] = useState({
-    tenantId: "",
-    clientIdAzure: "",
-    clientSecret: "",
-    secretKeyId: ""
-  });
+  const [form, setForm] = useState(EMPTY_FORM);
   const [secretExpiration, setSecretExpiration] = useState(null);
   const [connectionStatus, setConnectionStatus] = useState(null);
   const [applicationDisplayName, setApplicationDisplayName] = useState(null);
-  const configured = useMemo(() => isMicrosoftTenantConfigured(client, credentials), [client, credentials]);
+  const [editingCredentialId, setEditingCredentialId] = useState(initialEditingTenant?.id || null);
+  const configured = useMemo(() => Boolean(existingCredentials?.tenantId && existingCredentials?.clientIdAzure), [existingCredentials]);
   const navSections = useMemo(() => buildMicrosoftTenantNavSections({
     configured
   }), [configured]);
@@ -53,47 +56,65 @@ export default function MicrosoftTenantConfigModal({
     overview: configured,
     configuration: configured
   }), [configured]);
+  const applyCredential = useCallback(async (normalized, clientId) => {
+    setCredentials(normalized);
+    setExistingCredentials(normalized);
+    setEditingCredentialId(normalized?.id || null);
+    setForm({
+      tenantId: normalized?.tenantId || "",
+      clientIdAzure: normalized?.clientIdAzure || "",
+      clientSecret: "",
+      secretKeyId: normalized?.secretKeyId || ""
+    });
+    if (!normalized?.id || !clientId) {
+      setSecretExpiration(null);
+      setConnectionStatus(null);
+      setApplicationDisplayName(null);
+      return;
+    }
+    try {
+      const expirationResult = await getClientSecretExpiration(clientId, normalized.id);
+      setSecretExpiration(expirationResult?.expirationDate || null);
+    } catch {
+      setSecretExpiration(null);
+    }
+    try {
+      const testResult = await testClientOffice365Connection(clientId, normalized.id);
+      setConnectionStatus("success");
+      setApplicationDisplayName(testResult.applicationDisplayName || null);
+    } catch {
+      setConnectionStatus("error");
+      setApplicationDisplayName(null);
+    }
+  }, []);
+  const resetForm = useCallback(() => {
+    setCredentials(null);
+    setExistingCredentials(null);
+    setEditingCredentialId(null);
+    setForm(EMPTY_FORM);
+    setSecretExpiration(null);
+    setConnectionStatus(null);
+    setApplicationDisplayName(null);
+  }, []);
   const loadCredentials = useCallback(async () => {
     if (!client?.id) return;
+    const targetId = initialEditingTenant?.id || editingCredentialId;
+    if (!targetId && !initialEditingTenant?.tenantId) {
+      resetForm();
+      setLoading(false);
+      return;
+    }
     setLoading(true);
     try {
       const result = await getClientOffice365Credentials(client.id);
-      if (result.success && result.credentials) {
-        const normalized = normalizeMicrosoftTenantCredentials(result.credentials);
-        setCredentials(normalized);
-        setExistingCredentials(normalized);
-        setForm({
-          tenantId: normalized.tenantId || "",
-          clientIdAzure: normalized.clientIdAzure || "",
-          clientSecret: "",
-          secretKeyId: normalized.secretKeyId || ""
-        });
-        try {
-          const expirationResult = await getClientSecretExpiration(client.id);
-          setSecretExpiration(expirationResult?.expirationDate || null);
-        } catch {
-          setSecretExpiration(null);
-        }
-        try {
-          const testResult = await testClientOffice365Connection(client.id);
-          setConnectionStatus("success");
-          setApplicationDisplayName(testResult.applicationDisplayName || null);
-        } catch {
-          setConnectionStatus("error");
-          setApplicationDisplayName(null);
-        }
+      const list = unwrapOffice365CredentialsList(result);
+      const match = list.find(item => targetId && String(item.id) === String(targetId))
+        || list.find(item => initialEditingTenant?.tenantId && item.tenantId === initialEditingTenant.tenantId)
+        || null;
+      if (match) {
+        await applyCredential(normalizeMicrosoftTenantCredentials(match), client.id);
       } else {
-        setCredentials(null);
-        setExistingCredentials(null);
-        setForm({
-          tenantId: "",
-          clientIdAzure: "",
-          clientSecret: "",
-          secretKeyId: ""
-        });
-        setSecretExpiration(null);
-        setConnectionStatus(null);
-        setApplicationDisplayName(null);
+        resetForm();
       }
     } catch (error) {
       console.error(error);
@@ -101,20 +122,20 @@ export default function MicrosoftTenantConfigModal({
     } finally {
       setLoading(false);
     }
-  }, [client?.id]);
+  }, [applyCredential, client?.id, editingCredentialId, initialEditingTenant?.id, initialEditingTenant?.tenantId, resetForm]);
   useEffect(() => {
     loadCredentials();
-  }, [loadCredentials]);
+  }, [client?.id, initialEditingTenant?.id, initialEditingTenant?.tenantId]);
   useEffect(() => {
     setActiveSection(initialSection);
-  }, [initialSection, client?.id]);
+  }, [initialSection, client?.id, initialEditingTenant?.id]);
   const handleTestConnection = async () => {
     if (!client?.id) return;
     setTestingConnection(true);
     try {
       let result;
-      if (existingCredentials) {
-        result = await testClientOffice365Connection(client.id);
+      if (existingCredentials?.id) {
+        result = await testClientOffice365Connection(client.id, existingCredentials.id);
       } else {
         const hasTenantId = form.tenantId?.trim();
         const hasClientIdAzure = form.clientIdAzure?.trim();
@@ -155,14 +176,24 @@ export default function MicrosoftTenantConfigModal({
     }
     setSaving(true);
     try {
-      await saveClientOffice365Credentials(client.id, {
+      const saved = await saveClientOffice365Credentials(client.id, {
+        id: existingCredentials?.id || editingCredentialId || undefined,
         tenantId: form.tenantId.trim(),
         clientIdAzure: form.clientIdAzure.trim(),
         clientSecret: form.clientSecret?.trim() || undefined,
         secretKeyId: form.secretKeyId?.trim() || null
       });
+      const savedCredential = normalizeMicrosoftTenantCredentials(saved?.credentials) || normalizeMicrosoftTenantCredentials({
+        id: saved?.credentials?.id,
+        tenantId: form.tenantId.trim(),
+        clientIdAzure: form.clientIdAzure.trim(),
+        secretKeyId: form.secretKeyId?.trim() || null,
+        hasSecret: true
+      });
+      if (savedCredential) {
+        await applyCredential(savedCredential, client.id);
+      }
       showSuccess("Microsoft tenant saved.");
-      await loadCredentials();
       if (typeof onSaved === "function") await onSaved();
       setActiveSection("overview");
     } catch (error) {
@@ -175,20 +206,10 @@ export default function MicrosoftTenantConfigModal({
     if (!client?.id) return;
     setDeleting(true);
     try {
-      await deleteClientOffice365Credentials(client.id);
+      await deleteClientOffice365Credentials(client.id, existingCredentials?.id || editingCredentialId || null);
       showSuccess("Microsoft tenant deleted.");
       setDeleteConfirmOpen(false);
-      setCredentials(null);
-      setExistingCredentials(null);
-      setForm({
-        tenantId: "",
-        clientIdAzure: "",
-        clientSecret: "",
-        secretKeyId: ""
-      });
-      setSecretExpiration(null);
-      setConnectionStatus(null);
-      setApplicationDisplayName(null);
+      resetForm();
       if (typeof onSaved === "function") await onSaved();
     } catch (error) {
       showError(error.message || "Unable to delete the tenant.");
@@ -200,7 +221,7 @@ export default function MicrosoftTenantConfigModal({
       <div className={formStyles.sectionHead}>
         <h3 className={formStyles.sectionTitle}>Tenant Microsoft 365</h3>
         <p className={formStyles.sectionDesc}>
-          Each client has a dedicated Entra ID tenant. Statistics (users,
+          A client can have several dedicated Entra ID tenants. Statistics (users,
           licenses, Exchange, Teams, security…) open in a new Veritas tab.
         </p>
       </div>

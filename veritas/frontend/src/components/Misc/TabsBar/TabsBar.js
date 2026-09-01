@@ -178,19 +178,29 @@ function TabFolderDropdownItem({
   const locale = useAppLocale();
   const commonCopy = useCommonCopy();
   const tooltip = getTabTooltip(tab.type, tab.title, locale);
-  return <div className={styles.folderTabItem} role="presentation">
+  const closeOnMiddleClick = event => {
+    if (event.button !== 1) return;
+    event.preventDefault();
+    event.stopPropagation();
+    onTabClose(tab.id);
+  };
+  return <div className={styles.folderTabItem} role="presentation" onMouseDown={closeOnMiddleClick} onAuxClick={closeOnMiddleClick}>
       <button type="button" className={styles.folderTabItemBtn} onMouseDown={event => {
+      if (event.button === 1) {
+        closeOnMiddleClick(event);
+        return;
+      }
       if (event.button !== 0) return;
       event.preventDefault();
       onTabClick(tab);
-    }} title={tooltip}>
+    }} onAuxClick={closeOnMiddleClick} title={tooltip}>
         <Icon icon={getTabIcon(tab.type, tab.data)} className={styles.folderTabItemIcon} width={14} height={14} />
         <span className={styles.folderTabItemLabel}>{tab.title}</span>
       </button>
       <button type="button" className={styles.folderTabItemClose} onClick={e => {
       e.stopPropagation();
       onTabClose(tab.id);
-    }} title={commonCopy.closeTab} aria-label={commonCopy.closeTab}>
+    }} onMouseDown={closeOnMiddleClick} onAuxClick={closeOnMiddleClick} title={commonCopy.closeTab} aria-label={commonCopy.closeTab}>
         <FaTimes size={10} />
       </button>
     </div>;

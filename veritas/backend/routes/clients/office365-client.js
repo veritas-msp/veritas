@@ -103,6 +103,22 @@ router.post("/test-credentials", async (req, res) => {
     });
   }
 });
+function mapAzureCredentialPublic(cred) {
+  if (!cred) return null;
+  return {
+    id: cred.id,
+    clientId: cred.client_id,
+    tenantId: cred.tenant_id,
+    clientIdAzure: cred.client_id_azure,
+    secretKeyId: cred.secret_key_id,
+    hasSecret: true,
+    createdAt: cred.created_at,
+    updatedAt: cred.updated_at
+  };
+}
+function resolveCredentialSelector(req) {
+  return req.query?.azureCredentialId || req.query?.credentialId || req.params?.credentialId || null;
+}
 router.get("/:clientId", async (req, res) => {
   try {
     const {
@@ -110,26 +126,13 @@ router.get("/:clientId", async (req, res) => {
     } = req.params;
     const result = await pool.query(`SELECT id, client_id, tenant_id, client_id_azure, secret_key_id, created_at, updated_at
        FROM v_b_clients_azure
-       WHERE client_id = $1`, [clientId]);
-    if (result.rows.length === 0) {
-      return res.json({
-        success: true,
-        credentials: null
-      });
-    }
-    const cred = result.rows[0];
+       WHERE client_id = $1
+       ORDER BY id ASC`, [clientId]);
+    const credentialsList = result.rows.map(mapAzureCredentialPublic);
     res.json({
       success: true,
-      credentials: {
-        id: cred.id,
-        clientId: cred.client_id,
-        tenantId: cred.tenant_id,
-        clientIdAzure: cred.client_id_azure,
-        secretKeyId: cred.secret_key_id,
-        hasSecret: true,
-        createdAt: cred.created_at,
-        updatedAt: cred.updated_at
-      }
+      credentials: credentialsList[0] || null,
+      credentialsList
     });
   } catch (error) {
     res.status(500).json({
@@ -144,18 +147,50 @@ router.post("/:clientId", async (req, res) => {
       clientId
     } = req.params;
     const {
+      id,
+      credentialId: credentialIdBody,
       tenantId,
       clientIdAzure,
       clientSecret,
       secretKeyId
     } = req.body;
+    const credentialId = id || credentialIdBody || null;
     if (!tenantId || !clientIdAzure) {
       return res.status(400).json({
         success: false,
         error: "Tenant ID et Client ID Azure are required"
       });
     }
-    const existingResult = await pool.query("SELECT id, client_secret_encrypted, iv, auth_tag FROM v_b_clients_azure WHERE client_id = $1", [clientId]);
+    const clientResult = await pool.query("SELECT id FROM v_b_clients WHERE id = $1", [clientId]);
+    if (clientResult.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        error: "Client not found"
+      });
+    }
+    let existingResult = {
+      rows: []
+    };
+    if (credentialId) {
+      existingResult = await pool.query("SELECT id, client_secret_encrypted, iv, auth_tag FROM v_b_clients_azure WHERE id = $1 AND client_id = $2", [credentialId, clientId]);
+      if (existingResult.rows.length === 0) {
+        return res.status(404).json({
+          success: false,
+          error: "Microsoft tenant not found"
+        });
+      }
+      const duplicate = await pool.query(`SELECT id FROM v_b_clients_azure
+         WHERE client_id = $1 AND tenant_id = $2 AND id <> $3
+         LIMIT 1`, [clientId, tenantId, credentialId]);
+      if (duplicate.rows.length > 0) {
+        return res.status(409).json({
+          success: false,
+          error: "This Microsoft tenant is already configured for this client"
+        });
+      }
+    } else {
+      existingResult = await pool.query("SELECT id, client_secret_encrypted, iv, auth_tag FROM v_b_clients_azure WHERE client_id = $1 AND tenant_id = $2 LIMIT 1", [clientId, tenantId]);
+    }
     let finalClientSecret = clientSecret;
     let needsEncryption = true;
     if (existingResult.rows.length > 0 && !clientSecret) {
@@ -170,13 +205,6 @@ router.post("/:clientId", async (req, res) => {
       return res.status(400).json({
         success: false,
         error: "Client Secret is required to configure Office365 for the first time. Please enter it in the 'Secret value (client secret)' field."
-      });
-    }
-    const clientResult = await pool.query("SELECT id FROM v_b_clients WHERE id = $1", [clientId]);
-    if (clientResult.rows.length === 0) {
-      return res.status(404).json({
-        success: false,
-        error: "Client not found"
       });
     }
     const normalizedSecretKeyId = secretKeyId && secretKeyId.trim() !== "" ? secretKeyId.trim() : null;
@@ -194,16 +222,22 @@ router.post("/:clientId", async (req, res) => {
     }
     if (existingResult.rows.length > 0) {
       await pool.query(`UPDATE v_b_clients_azure
-         SET tenant_id = $1, client_id_azure = $2, client_secret_encrypted = $3, iv = $4, auth_tag = $5, secret_key_id = $6
-         WHERE client_id = $7`, [tenantId, clientIdAzure, encryptedData.encrypted, encryptedData.iv, encryptedData.authTag, normalizedSecretKeyId, clientId]);
+         SET tenant_id = $1, client_id_azure = $2, client_secret_encrypted = $3, iv = $4, auth_tag = $5, secret_key_id = $6, updated_at = CURRENT_TIMESTAMP
+         WHERE id = $7 AND client_id = $8`, [tenantId, clientIdAzure, encryptedData.encrypted, encryptedData.iv, encryptedData.authTag, normalizedSecretKeyId, existingResult.rows[0].id, clientId]);
     } else {
       await pool.query(`INSERT INTO v_b_clients_azure
          (client_id, tenant_id, client_id_azure, client_secret_encrypted, iv, auth_tag, secret_key_id)
          VALUES ($1, $2, $3, $4, $5, $6, $7)`, [clientId, tenantId, clientIdAzure, encryptedData.encrypted, encryptedData.iv, encryptedData.authTag, normalizedSecretKeyId]);
     }
+    const savedResult = existingResult.rows.length > 0
+      ? await pool.query(`SELECT id, client_id, tenant_id, client_id_azure, secret_key_id, created_at, updated_at
+         FROM v_b_clients_azure WHERE id = $1`, [existingResult.rows[0].id])
+      : await pool.query(`SELECT id, client_id, tenant_id, client_id_azure, secret_key_id, created_at, updated_at
+         FROM v_b_clients_azure WHERE client_id = $1 AND tenant_id = $2 ORDER BY id DESC LIMIT 1`, [clientId, tenantId]);
     res.json({
       success: true,
-      message: "Office 365 credentials saved successfully"
+      message: "Office 365 credentials saved successfully",
+      credentials: mapAzureCredentialPublic(savedResult.rows[0] || null)
     });
     await dispatchNotificationEvent({
       source: "services",
@@ -222,6 +256,30 @@ router.post("/:clientId", async (req, res) => {
     res.status(500).json({
       success: false,
       error: error.message || "Error saving credentials"
+    });
+  }
+});
+router.delete("/:clientId/:credentialId", async (req, res) => {
+  try {
+    const {
+      clientId,
+      credentialId
+    } = req.params;
+    const result = await pool.query("DELETE FROM v_b_clients_azure WHERE id = $1 AND client_id = $2 RETURNING id", [credentialId, clientId]);
+    if (!result.rows.length) {
+      return res.status(404).json({
+        success: false,
+        error: "Microsoft tenant not found"
+      });
+    }
+    res.json({
+      success: true,
+      message: "Office 365 credentials deleted successfully"
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: error.message || "Error deleting credentials"
     });
   }
 });
@@ -252,9 +310,18 @@ router.get("/:clientId/test", async (req, res) => {
     const {
       clientId
     } = req.params;
+    const credentialId = resolveCredentialSelector(req);
+    const sqlParams = [clientId];
+    let where = "WHERE client_id = $1";
+    if (credentialId) {
+      sqlParams.push(credentialId);
+      where += ` AND id = $${sqlParams.length}`;
+    }
     const result = await pool.query(`SELECT tenant_id, client_id_azure, client_secret_encrypted, iv, auth_tag
        FROM v_b_clients_azure
-       WHERE client_id = $1`, [clientId]);
+       ${where}
+       ORDER BY id ASC
+       LIMIT 1`, sqlParams);
     if (result.rows.length === 0) {
       return res.status(404).json({
         success: false,
@@ -278,7 +345,7 @@ router.get("/:clientId/test", async (req, res) => {
       });
     }
     const tokenUrl = `https://login.microsoftonline.com/${cred.tenant_id}/oauth2/v2.0/token`;
-    const params = new URLSearchParams({
+    const tokenParams = new URLSearchParams({
       client_id: cred.client_id_azure,
       scope: "https://graph.microsoft.com/.default",
       client_secret: clientSecret,
@@ -290,7 +357,7 @@ router.get("/:clientId/test", async (req, res) => {
       headers: {
         "Content-Type": "application/x-www-form-urlencoded"
       },
-      body: params.toString()
+      body: tokenParams.toString()
     });
     if (!tokenResponse.ok) {
       let errorMessage = `Microsoft authentication error (${tokenResponse.status})`;
@@ -378,9 +445,18 @@ router.get("/:clientId/secret-expiration", async (req, res) => {
     const {
       clientId
     } = req.params;
+    const credentialId = resolveCredentialSelector(req);
+    const params = [clientId];
+    let where = "WHERE client_id = $1";
+    if (credentialId) {
+      params.push(credentialId);
+      where += ` AND id = $${params.length}`;
+    }
     const result = await pool.query(`SELECT tenant_id, client_id_azure, secret_key_id
        FROM v_b_clients_azure
-       WHERE client_id = $1`, [clientId]);
+       ${where}
+       ORDER BY id ASC
+       LIMIT 1`, params);
     if (result.rows.length === 0) {
       return res.status(404).json({
         success: false,
@@ -392,7 +468,9 @@ router.get("/:clientId/secret-expiration", async (req, res) => {
     const getClientOffice365Credentials = office365Module.getClientOffice365Credentials;
     const getOffice365Settings = office365Module.getOffice365Settings;
     const getMicrosoftGraphToken = office365Module.getMicrosoftGraphToken;
-    let clientCredentials = await getClientOffice365Credentials(clientId);
+    let clientCredentials = await getClientOffice365Credentials(clientId, {
+      tenantId: cred.tenant_id
+    });
     if (!clientCredentials) {
       const settings = await getOffice365Settings();
       if (settings && settings.tenant_id && settings.client_id && settings.client_secret) {

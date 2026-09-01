@@ -1,14 +1,14 @@
 export const DEFAULT_IN_APP_SETTINGS = {
-  enabled: true,
+  enabled: false,
   events: {
     ticket_commented: {
-      enabled: true,
+      enabled: false,
       notifyAssignees: true,
       notifyWatchers: true,
       excludeInternalComments: false
     },
     ticket_assigned: {
-      enabled: true
+      enabled: false
     },
     ticket_created: {
       enabled: false,
@@ -21,20 +21,20 @@ export const DEFAULT_IN_APP_SETTINGS = {
       notifyWatchers: false
     },
     ticket_resolved: {
-      enabled: true,
+      enabled: false,
       notifyAssignees: true,
       notifyWatchers: false
     },
     ticket_satisfaction: {
-      enabled: true,
+      enabled: false,
       notifyAssignees: true,
       notifyWatchers: false
     },
     ticket_validation_requested: {
-      enabled: true
+      enabled: false
     },
     ticket_validation_responded: {
-      enabled: true
+      enabled: false
     }
   }
 };
@@ -161,7 +161,7 @@ export function normalizeInAppSettings(raw = {}) {
     };
   };
   return {
-    enabled: raw?.enabled !== false,
+    enabled: typeof raw?.enabled === "boolean" ? raw.enabled : defaults.enabled,
     events: {
       ticket_commented: normalizeEvent("ticket_commented", defaults.events.ticket_commented),
       ticket_assigned: normalizeEvent("ticket_assigned", defaults.events.ticket_assigned),

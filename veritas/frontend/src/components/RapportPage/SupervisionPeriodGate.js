@@ -176,12 +176,6 @@ export default function SupervisionPeriodGate({
         title={periodCopy.initTitle || reportType?.title}
         subtitle={`${clientLabel} — ${periodCopy.initHint || periodCopy.periodGateSubtitle || reportType?.description || ""}`}
         icon={reportType?.icon || "mdi:radar"}
-        actions={
-          <button type="button" className={styles.secondaryBtn} onClick={onBack} disabled={confirming}>
-            <Icon icon="mdi:arrow-left" aria-hidden />
-            {copy.wizard.backToSelection}
-          </button>
-        }
       />
 
       <div className={styles.body}>
@@ -202,23 +196,6 @@ export default function SupervisionPeriodGate({
             ) : null}
           </div>
           <div className={styles.periodRow}>
-            <div className={styles.presets}>
-              {[
-                ["7d", periodCopy.preset7d],
-                ["30d", periodCopy.preset30d],
-                ["thisMonth", periodCopy.presetThisMonth],
-                ["lastMonth", periodCopy.presetLastMonth]
-              ].map(([key, label]) => (
-                <button
-                  key={key}
-                  type="button"
-                  className={`${styles.preset} ${activePreset === key ? styles.presetActive : ""}`}
-                  onClick={() => applyPreset(key)}
-                >
-                  {label}
-                </button>
-              ))}
-            </div>
             <div className={styles.dates}>
               <label className={styles.dateField}>
                 {periodCopy.startLabel}
@@ -240,6 +217,23 @@ export default function SupervisionPeriodGate({
                   onChange={event => setEndDate(event.target.value)}
                 />
               </label>
+            </div>
+            <div className={styles.presets}>
+              {[
+                ["7d", periodCopy.preset7d],
+                ["30d", periodCopy.preset30d],
+                ["thisMonth", periodCopy.presetThisMonth],
+                ["lastMonth", periodCopy.presetLastMonth]
+              ].map(([key, label]) => (
+                <button
+                  key={key}
+                  type="button"
+                  className={`${styles.preset} ${activePreset === key ? styles.presetActive : ""}`}
+                  onClick={() => applyPreset(key)}
+                >
+                  {label}
+                </button>
+              ))}
             </div>
           </div>
         </section>

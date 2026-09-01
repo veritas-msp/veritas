@@ -77,6 +77,8 @@ const ADMIN_RMM_COPY = {
       "windows": {
         "title": "Installation Windows",
         "downloadMsi": "Télécharger le MSI",
+        "msiUnavailable": "Le fichier MSI n'est pas sur ce serveur. Générez-le avec npm run build:rmm-agent (Windows, .NET SDK + WiX), ou copiez VeritasAgent-Windows-Setup.msi dans RMM/Agents/windows/dist.",
+        "msiWillBuild": "Le MSI n'est pas encore généré : le premier téléchargement le compile (Windows, .NET SDK + WiX).",
         "argsIntro": "Propriétés MSI pour l'installation silencieuse (GPO / Intune / scripts) :",
         "colProperty": "Propriété",
         "colDescription": "Description",
@@ -338,21 +340,32 @@ const ADMIN_RMM_COPY = {
         },
         "details": {
           "label": "Détails",
-          "description": "Libellé et usage"
+          "description": "Libellé et expiration"
         }
       },
       "enterpriseTitle": "Entreprise cible",
       "enterpriseDesc": "Les agents installés avec ce token seront rattachés à cette entreprise dans Veritas.",
       "companyLabel": "Entreprise",
       "selectCompany": "Sélectionner une entreprise",
+      "companyLockedHint": "L'entreprise d'un token existant ne peut pas être modifiée.",
       "detailsTitle": "Identification",
-      "detailsDesc": "Ajoutez un libellé pour retrouver ce token dans la liste (déploiement GPO, site, etc.).",
+      "detailsDesc": "Ajoutez un libellé pour retrouver ce token, et une date d'expiration si besoin.",
       "labelOptional": "Libellé (optionnel)",
       "labelPlaceholder": "Ex. Déploiement site Paris",
+      "expiresLabel": "Expiration",
+      "expiresHint": "Laissez vide pour qu'il n'expire jamais. Passée cette date, le token ne pourra plus enrôler de nouveaux agents.",
+      "expirePresets": {
+        "d7": "7 jours",
+        "d30": "30 jours",
+        "d90": "90 jours",
+        "never": "Jamais"
+      },
       "oneTimeTitle": "Usage unique à la création",
       "oneTimeHint": "Le token complet n'est affiché qu'une seule fois après la création. Copiez-le immédiatement pour l'installer sur les postes.",
       "creating": "Création…",
-      "create": "Créer le token"
+      "create": "Créer le token",
+      "editTitle": "Modifier le token d'enrôlement",
+      "editSubtitle": "Mettez à jour le libellé ou la date d'expiration. L'entreprise et le secret du token ne changent pas."
     },
     "tokenCreated": {
       "eyebrow": "RMM · Enrôlement",
@@ -372,6 +385,10 @@ const ADMIN_RMM_COPY = {
       "selectCompany": "Sélectionnez une entreprise",
       "tokenCreated": "Token d'enrôlement créé · copiez-le maintenant, il ne sera plus affiché",
       "tokenCreateError": "Erreur lors de la création du token",
+      "enrollmentTokenUpdated": "Token d'enrôlement mis à jour",
+      "enrollmentTokenUpdateError": "Erreur lors de la mise à jour du token",
+      "invalidExpiresAt": "Date d'expiration invalide",
+      "expiresInPast": "L'expiration doit être dans le futur",
       "tokenCopied": "Token copié",
       "tokenCopyError": "Impossible de copier le token",
       "tokenRevoked": "Token déplacé dans la corbeille",
@@ -553,6 +570,8 @@ const ADMIN_RMM_COPY = {
       "windows": {
         "title": "Windows installation",
         "downloadMsi": "Download MSI",
+        "msiUnavailable": "The MSI file is not on this server. Build it with npm run build:rmm-agent (Windows, .NET SDK + WiX), or copy VeritasAgent-Windows-Setup.msi into RMM/Agents/windows/dist.",
+        "msiWillBuild": "The MSI is not built yet: the first download compiles it (Windows, .NET SDK + WiX).",
         "argsIntro": "MSI properties for silent install (GPO / Intune / scripts):",
         "colProperty": "Property",
         "colDescription": "Description",
@@ -814,21 +833,32 @@ const ADMIN_RMM_COPY = {
         },
         "details": {
           "label": "Details",
-          "description": "Label and usage"
+          "description": "Label and expiration"
         }
       },
       "enterpriseTitle": "Target company",
       "enterpriseDesc": "Agents installed with this token will be bound to this company in Veritas.",
       "companyLabel": "Company",
       "selectCompany": "Select a company",
+      "companyLockedHint": "The company of an existing token cannot be changed.",
       "detailsTitle": "Identification",
-      "detailsDesc": "Add a label to find this token in the list (GPO deployment, site, etc.).",
+      "detailsDesc": "Add a label to find this token in the list, and an expiration date if needed.",
       "labelOptional": "Label (optional)",
       "labelPlaceholder": "E.g. Paris site deployment",
+      "expiresLabel": "Expiration",
+      "expiresHint": "Leave empty so it never expires. After this date, the token can no longer enroll new agents.",
+      "expirePresets": {
+        "d7": "7 days",
+        "d30": "30 days",
+        "d90": "90 days",
+        "never": "Never"
+      },
       "oneTimeTitle": "One-time display at creation",
       "oneTimeHint": "The full token is shown only once after creation. Copy it immediately to install on endpoints.",
       "creating": "Creating…",
-      "create": "Create token"
+      "create": "Create token",
+      "editTitle": "Edit enrollment token",
+      "editSubtitle": "Update the label or expiration date. The company and token secret stay unchanged."
     },
     "tokenCreated": {
       "eyebrow": "RMM · Enrollment",
@@ -848,6 +878,10 @@ const ADMIN_RMM_COPY = {
       "selectCompany": "Select a company",
       "tokenCreated": "Enrollment token created · copy it now, it will not be shown again",
       "tokenCreateError": "Error creating token",
+      "enrollmentTokenUpdated": "Enrollment token updated",
+      "enrollmentTokenUpdateError": "Error updating token",
+      "invalidExpiresAt": "Invalid expiration date",
+      "expiresInPast": "Expiration must be in the future",
       "tokenCopied": "Token copied",
       "tokenCopyError": "Unable to copy token",
       "tokenRevoked": "Token moved to trash",
@@ -1029,6 +1063,8 @@ const ADMIN_RMM_COPY = {
       "windows": {
         "title": "Windows-Installation",
         "downloadMsi": "MSI herunterladen",
+        "msiUnavailable": "Die MSI-Datei liegt nicht auf diesem Server. Erzeugen mit npm run build:rmm-agent (Windows, .NET SDK + WiX), oder VeritasAgent-Windows-Setup.msi nach RMM/Agents/windows/dist kopieren.",
+        "msiWillBuild": "Die MSI ist noch nicht gebaut: der erste Download kompiliert sie (Windows, .NET SDK + WiX).",
         "argsIntro": "MSI-Eigenschaften für die stille Installation (GPO / Intune / Skripte):",
         "colProperty": "Eigenschaft",
         "colDescription": "Beschreibung",
@@ -1290,21 +1326,32 @@ const ADMIN_RMM_COPY = {
         },
         "details": {
           "label": "Details",
-          "description": "Bezeichnung und Nutzung"
+          "description": "Bezeichnung und Ablauf"
         }
       },
       "enterpriseTitle": "Zielunternehmen",
       "enterpriseDesc": "Mit diesem Token installierte Agenten werden diesem Unternehmen in Veritas zugeordnet.",
       "companyLabel": "Unternehmen",
       "selectCompany": "Unternehmen auswählen",
+      "companyLockedHint": "Das Unternehmen eines vorhandenen Tokens kann nicht geändert werden.",
       "detailsTitle": "Identifikation",
-      "detailsDesc": "Bezeichnung hinzufügen, um dieses Token in der Liste wiederzufinden (GPO, Standort usw.).",
+      "detailsDesc": "Bezeichnung hinzufügen, um dieses Token wiederzufinden, und bei Bedarf ein Ablaufdatum.",
       "labelOptional": "Bezeichnung (optional)",
       "labelPlaceholder": "z. B. Bereitstellung Standort Paris",
+      "expiresLabel": "Ablauf",
+      "expiresHint": "Leer lassen, damit es nie abläuft. Nach diesem Datum können keine neuen Agenten mehr registriert werden.",
+      "expirePresets": {
+        "d7": "7 Tage",
+        "d30": "30 Tage",
+        "d90": "90 Tage",
+        "never": "Nie"
+      },
       "oneTimeTitle": "Einmalige Anzeige bei Erstellung",
       "oneTimeHint": "Das vollständige Token wird nur einmal nach der Erstellung angezeigt. Sofort kopieren für die Installation.",
       "creating": "Erstellung…",
-      "create": "Token erstellen"
+      "create": "Token erstellen",
+      "editTitle": "Registrierungstoken bearbeiten",
+      "editSubtitle": "Bezeichnung oder Ablaufdatum aktualisieren. Unternehmen und Token-Geheimnis bleiben unverändert."
     },
     "tokenCreated": {
       "eyebrow": "RMM · Registrierung",
@@ -1324,6 +1371,10 @@ const ADMIN_RMM_COPY = {
       "selectCompany": "Unternehmen auswählen",
       "tokenCreated": "Registrierungstoken erstellt · jetzt kopieren, es wird nicht erneut angezeigt",
       "tokenCreateError": "Fehler beim Erstellen des Tokens",
+      "enrollmentTokenUpdated": "Registrierungstoken aktualisiert",
+      "enrollmentTokenUpdateError": "Fehler beim Aktualisieren des Tokens",
+      "invalidExpiresAt": "Ungültiges Ablaufdatum",
+      "expiresInPast": "Das Ablaufdatum muss in der Zukunft liegen",
       "tokenCopied": "Token kopiert",
       "tokenCopyError": "Token konnte nicht kopiert werden",
       "tokenRevoked": "Token in Papierkorb verschoben",
@@ -1505,6 +1556,8 @@ const ADMIN_RMM_COPY = {
       "windows": {
         "title": "Installazione Windows",
         "downloadMsi": "Scarica MSI",
+        "msiUnavailable": "Il file MSI non e su questo server. Generalo con npm run build:rmm-agent (Windows, .NET SDK + WiX), oppure copia VeritasAgent-Windows-Setup.msi in RMM/Agents/windows/dist.",
+        "msiWillBuild": "Il MSI non e ancora generato: il primo download lo compila (Windows, .NET SDK + WiX).",
         "argsIntro": "Proprietà MSI per l'installazione silenziosa (GPO / Intune / script):",
         "colProperty": "Proprietà",
         "colDescription": "Descrizione",
@@ -1766,21 +1819,32 @@ const ADMIN_RMM_COPY = {
         },
         "details": {
           "label": "Dettagli",
-          "description": "Etichetta e utilizzo"
+          "description": "Etichetta e scadenza"
         }
       },
       "enterpriseTitle": "Azienda target",
       "enterpriseDesc": "Gli agenti installati con questo token saranno associati a questa azienda in Veritas.",
       "companyLabel": "Azienda",
       "selectCompany": "Selezionare un'azienda",
+      "companyLockedHint": "L'azienda di un token esistente non può essere modificata.",
       "detailsTitle": "Identificazione",
-      "detailsDesc": "Aggiungere un'etichetta per ritrovare questo token nell'elenco (GPO, sito, ecc.).",
+      "detailsDesc": "Aggiungere un'etichetta per ritrovare questo token e, se necessario, una data di scadenza.",
       "labelOptional": "Etichetta (opzionale)",
       "labelPlaceholder": "Es. Distribuzione sito Parigi",
+      "expiresLabel": "Scadenza",
+      "expiresHint": "Lasciare vuoto perché non scada mai. Dopo questa data il token non potrà più registrare nuovi agenti.",
+      "expirePresets": {
+        "d7": "7 giorni",
+        "d30": "30 giorni",
+        "d90": "90 giorni",
+        "never": "Mai"
+      },
       "oneTimeTitle": "Visualizzazione unica alla creazione",
       "oneTimeHint": "Il token completo è mostrato una sola volta dopo la creazione. Copiarlo subito per l'installazione.",
       "creating": "Creazione…",
-      "create": "Crea token"
+      "create": "Crea token",
+      "editTitle": "Modifica token di registrazione",
+      "editSubtitle": "Aggiornare l'etichetta o la data di scadenza. L'azienda e il segreto del token restano invariati."
     },
     "tokenCreated": {
       "eyebrow": "RMM · Registrazione",
@@ -1800,6 +1864,10 @@ const ADMIN_RMM_COPY = {
       "selectCompany": "Selezionare un'azienda",
       "tokenCreated": "Token di registrazione creato · copiarlo ora, non sarà più mostrato",
       "tokenCreateError": "Errore durante la creazione del token",
+      "enrollmentTokenUpdated": "Token di registrazione aggiornato",
+      "enrollmentTokenUpdateError": "Errore durante l'aggiornamento del token",
+      "invalidExpiresAt": "Data di scadenza non valida",
+      "expiresInPast": "La scadenza deve essere nel futuro",
       "tokenCopied": "Token copiato",
       "tokenCopyError": "Impossibile copiare il token",
       "tokenRevoked": "Token spostato nel cestino",
@@ -1981,6 +2049,8 @@ const ADMIN_RMM_COPY = {
       "windows": {
         "title": "Instalación Windows",
         "downloadMsi": "Descargar MSI",
+        "msiUnavailable": "El MSI no está en este servidor. Genéralo con npm run build:rmm-agent (Windows, .NET SDK + WiX), o copia VeritasAgent-Windows-Setup.msi en RMM/Agents/windows/dist.",
+        "msiWillBuild": "El MSI aún no está generado: la primera descarga lo compila (Windows, .NET SDK + WiX).",
         "argsIntro": "Propiedades MSI para instalación silenciosa (GPO / Intune / scripts):",
         "colProperty": "Propiedad",
         "colDescription": "Descripción",
@@ -2242,21 +2312,32 @@ const ADMIN_RMM_COPY = {
         },
         "details": {
           "label": "Detalles",
-          "description": "Etiqueta y uso"
+          "description": "Etiqueta y caducidad"
         }
       },
       "enterpriseTitle": "Empresa objetivo",
       "enterpriseDesc": "Los agentes instalados con este token se vincularán a esta empresa en Veritas.",
       "companyLabel": "Empresa",
       "selectCompany": "Seleccionar una empresa",
+      "companyLockedHint": "La empresa de un token existente no se puede cambiar.",
       "detailsTitle": "Identificación",
-      "detailsDesc": "Añada una etiqueta para encontrar este token en la lista (GPO, sitio, etc.).",
+      "detailsDesc": "Añada una etiqueta para encontrar este token y, si lo necesita, una fecha de caducidad.",
       "labelOptional": "Etiqueta (opcional)",
       "labelPlaceholder": "Ej. Despliegue sitio París",
+      "expiresLabel": "Caducidad",
+      "expiresHint": "Déjelo vacío para que no caduque nunca. Pasada esta fecha, el token ya no podrá registrar nuevos agentes.",
+      "expirePresets": {
+        "d7": "7 días",
+        "d30": "30 días",
+        "d90": "90 días",
+        "never": "Nunca"
+      },
       "oneTimeTitle": "Visualización única al crear",
       "oneTimeHint": "El token completo solo se muestra una vez tras la creación. Cópielo de inmediato para instalarlo.",
       "creating": "Creando…",
-      "create": "Crear token"
+      "create": "Crear token",
+      "editTitle": "Editar token de registro",
+      "editSubtitle": "Actualice la etiqueta o la fecha de caducidad. La empresa y el secreto del token no cambian."
     },
     "tokenCreated": {
       "eyebrow": "RMM · Registro",
@@ -2276,6 +2357,10 @@ const ADMIN_RMM_COPY = {
       "selectCompany": "Seleccione una empresa",
       "tokenCreated": "Token de registro creado · cópielo ahora, no se mostrará de nuevo",
       "tokenCreateError": "Error al crear el token",
+      "enrollmentTokenUpdated": "Token de registro actualizado",
+      "enrollmentTokenUpdateError": "Error al actualizar el token",
+      "invalidExpiresAt": "Fecha de caducidad no válida",
+      "expiresInPast": "La caducidad debe ser en el futuro",
       "tokenCopied": "Token copiado",
       "tokenCopyError": "No se pudo copiar el token",
       "tokenRevoked": "Token movido a la papelera",

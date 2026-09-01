@@ -31,6 +31,7 @@ function normalizeEventRules(settings = {}) {
       webhookId: String(rule?.webhookId || "").trim(),
       emailTo: String(rule?.emailTo || "").trim(),
       emailCc: String(rule?.emailCc || "").trim(),
+      emailSubject: String(rule?.emailSubject || "").trim(),
       useTemplate: rule?.useTemplate === true,
       templateId: String(rule?.templateId || "").trim(),
       customMessage: String(rule?.customMessage || ""),
@@ -548,6 +549,7 @@ function parseEmailList(value = "") {
 async function sendEmailMessage({
   toRaw,
   ccRaw,
+  subjectRaw,
   message,
   context = {}
 }) {
@@ -556,8 +558,9 @@ async function sendEmailMessage({
   if (toList.length === 0) {
     throw new Error("No email recipient configured");
   }
-  const title = `Veritas - Notification ${String(context?.source || "").toUpperCase()}.${String(context?.element || "").toUpperCase()}`;
-  const htmlContent = String(message || "").replace(/\n/g, "<br>");
+  const fallbackTitle = `Veritas - Notification ${String(context?.source || "").toUpperCase()}.${String(context?.element || "").toUpperCase()}`;
+  const title = String(subjectRaw || "").trim() || fallbackTitle;
+  const htmlContent = String(message || "").includes("<") ? String(message || "") : String(message || "").replace(/\n/g, "<br>");
   const to = toList.join(", ");
   const cc = ccList.length > 0 ? ccList.join(", ") : undefined;
   await sendMail({
@@ -586,7 +589,7 @@ export async function dispatchNotificationEvent(event = {}) {
   const settings = await loadNotificationSettingsRaw();
   const rules = normalizeEventRules(settings);
   const webhooks = Array.isArray(settings?.webhooks) ? settings.webhooks : [];
-  const templates = Array.isArray(settings?.templates) ? settings.templates : [];
+  const templates = [...(Array.isArray(settings?.templates) ? settings.templates : []), ...(Array.isArray(settings?.commentTemplates) ? settings.commentTemplates : [])];
   const matchingRules = rules.filter(rule => {
     if (rule.source !== source || rule.element !== element) return false;
     if (rule.scopeType === "enterprise") {
@@ -706,7 +709,11 @@ export async function dispatchNotificationEvent(event = {}) {
       source,
       element
     }, context);
+    const resolvedSubject = renderTemplate(String(rule.emailSubject || template?.subject || "").trim(), context);
     for (const channel of rule.channels) {
+      if (channel === "inapp" || channel === "browser") {
+        continue;
+      }
       if (channel !== "mail" && !WEBHOOK_CHANNELS.has(channel)) {
         logs.push({
           id: `notif-log-${Date.now()}-${Math.random().toString(16).slice(2, 8)}`,
@@ -725,6 +732,7 @@ export async function dispatchNotificationEvent(event = {}) {
           await sendEmailMessage({
             toRaw: rule.emailTo,
             ccRaw: rule.emailCc,
+            subjectRaw: resolvedSubject,
             message: resolvedMessage,
             context
           });
@@ -858,7 +866,7 @@ export async function runNotificationSoonScheduler() {
             }
           }).catch(() => {});
         }
-        if (rule.element === "contract_expired" && daysUntil <= 0) {
+        if (rule.element === "contract_expired" && daysUntil === 0) {
           await dispatchNotificationEvent({
             source: "entreprise",
             element: "contract_expired",
@@ -914,7 +922,7 @@ export async function runNotificationSoonScheduler() {
             }
           }).catch(() => {});
         }
-        if (rule.element === "campaign_end_date_reached" && endDaysUntil !== null && endDaysUntil <= 0) {
+        if (rule.element === "campaign_end_date_reached" && endDaysUntil !== null && endDaysUntil === 0) {
           await dispatchNotificationEvent({
             source: "cyber",
             element: "campaign_end_date_reached",

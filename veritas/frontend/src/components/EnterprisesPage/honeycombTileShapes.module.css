@@ -5,6 +5,13 @@
   clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
 }
 
+.shapeHexagon,
+.shapePentagon,
+.shapeOctagon {
+  --tile-stroke: 0px;
+  --tile-inner-inset: 1px;
+}
+
 .shapeHexagon {
   overflow: hidden;
 }
@@ -24,10 +31,10 @@
   border-radius: 22%;
 }
 
-/* Real CSS border — the old “outer fill + inner inset” ring is uneven on circles. */
+/* Real CSS border — clip-path rings look uneven on circles/rounded tiles. */
 .shapeRounded,
 .shapeCircle {
-  --tile-stroke: 2px;
+  --tile-stroke: 1px;
   --tile-ring-layer: none;
   --tile-inner-inset: 0px;
 }

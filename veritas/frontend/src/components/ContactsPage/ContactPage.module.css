@@ -200,6 +200,129 @@
   white-space: nowrap;
 }
 
+.colContactGender {
+  white-space: nowrap;
+}
+
+.colContactName {
+  min-width: 0;
+}
+
+.colContactEnterprise,
+.colContactRole {
+  max-width: 11rem;
+}
+
+.contactTags {
+  margin-top: 0.15rem;
+}
+
+@media (max-width: 1366px) {
+  .colContactGender {
+    display: none !important;
+  }
+
+  .colContactQuickAction {
+    display: inline-flex;
+  }
+
+  .colContactActions {
+    position: sticky;
+    right: 0;
+    z-index: 2;
+    width: auto;
+    min-width: 5.5rem;
+    white-space: nowrap;
+    padding-left: 0.35rem !important;
+    padding-right: 0.4rem !important;
+    background: var(--msp-surface, #fff);
+    box-shadow: -6px 0 10px rgba(15, 28, 46, 0.05);
+  }
+
+  :global(html.dark) .colContactActions {
+    background: var(--msp-surface, #1f2d4a);
+    box-shadow: -6px 0 10px rgba(0, 0, 0, 0.18);
+  }
+
+  .colContactActions .cardActions {
+    gap: 0.15rem;
+  }
+
+  .colContactActions .iconActionBtn {
+    width: 1.5rem;
+    height: 1.5rem;
+    font-size: 0.75rem;
+  }
+}
+
+@media (min-width: 1367px) {
+  .colContactQuickAction {
+    display: none !important;
+  }
+}
+
+@media (max-width: 1023px) {
+  .colContactName {
+    min-width: 0;
+    max-width: none;
+  }
+
+  .colContactEnterprise,
+  .colContactRole {
+    max-width: 9rem;
+  }
+}
+
+@media (min-width: 768px) and (max-width: 1366px) {
+  .colContactEmail,
+  .colContactPhone,
+  .colContactFavorite {
+    display: none !important;
+  }
+}
+
+@media (min-width: 768px) and (max-width: 1023px) {
+  .colContactRole {
+    display: none !important;
+  }
+
+  .colContactCheckbox {
+    display: table-cell !important;
+  }
+}
+
+@media (max-width: 767px) {
+  .colContactEnterprise,
+  .colContactRole,
+  .colContactEmail,
+  .colContactPhone,
+  .colContactPortal {
+    display: none;
+  }
+
+  .colContactActions {
+    min-width: 4.75rem;
+    padding-left: 0.25rem !important;
+    padding-right: 0.3rem !important;
+  }
+
+  .colContactActions .iconActionBtn {
+    width: 1.375rem;
+    height: 1.375rem;
+    font-size: 0.7rem;
+  }
+
+  .colContactStatus {
+    width: 4.5rem;
+    min-width: 4rem;
+    max-width: 5.5rem;
+  }
+
+  .contactTags {
+    display: none;
+  }
+}
+
 .cardActions {
   display: flex;
   align-items: center;
@@ -220,9 +343,12 @@
   cursor: pointer;
   font-size: 0.85rem;
   transition: border-color 0.12s, color 0.12s, background 0.12s;
+  text-decoration: none;
+  box-sizing: border-box;
 }
 
-.iconActionBtn:hover {
+.iconActionBtn:hover,
+a.iconActionBtn:hover {
   border-color: var(--msp-accent, #2b5fab);
   color: var(--msp-accent, #2b5fab);
   background: var(--msp-surface, #fff);

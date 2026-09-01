@@ -161,9 +161,7 @@
   inset: 0;
   background:
     linear-gradient(120deg, rgba(43, 95, 171, 0.08) 0%, transparent 45%),
-    radial-gradient(circle at 85% 20%, rgba(43, 95, 171, 0.14) 0%, transparent 35%),
-    repeating-linear-gradient(0deg, rgba(16, 35, 60, 0.035) 0 1px, transparent 1px 36px),
-    repeating-linear-gradient(90deg, rgba(16, 35, 60, 0.03) 0 1px, transparent 1px 36px);
+    radial-gradient(circle at 85% 20%, rgba(43, 95, 171, 0.14) 0%, transparent 35%);
   pointer-events: none;
 }
 
@@ -754,10 +752,9 @@
 
 .statusFab {
   border-radius: 999px;
-  border: 1px solid rgba(255, 255, 255, 0.15);
-  background: rgba(15, 28, 46, 0.82);
-  backdrop-filter: blur(8px);
-  color: #e8edf5;
+  border: 1px solid #dde3ed;
+  background: #fff;
+  color: #10233c;
   padding: 7px 14px;
   font-size: 0.78rem;
   font-weight: 600;
@@ -766,26 +763,26 @@
   align-items: center;
   gap: 7px;
   cursor: pointer;
+  box-shadow: 0 4px 16px rgba(11, 33, 56, 0.08);
 }
 
 .statusFabDot {
   width: 7px;
   height: 7px;
   border-radius: 50%;
-  background: currentColor;
+  background: #9aaab8;
 }
 
-.statusFabOk { color: #4ade80; }
-.statusFabError { color: #f87171; }
+.statusFabOk .statusFabDot { background: #16a34a; }
+.statusFabError .statusFabDot { background: #dc2626; }
 
 .statusPanel {
   width: min(260px, calc(100vw - 36px));
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border: 1px solid #dde3ed;
   border-radius: 10px;
-  background: rgba(15, 28, 46, 0.92);
-  backdrop-filter: blur(12px);
+  background: #fff;
   padding: 12px;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.35);
+  box-shadow: 0 8px 24px rgba(11, 33, 56, 0.1);
   animation: viewIn 0.18s ease-out;
 }
 
@@ -794,9 +791,9 @@
   align-items: center;
   justify-content: space-between;
   font-size: 0.82rem;
-  color: #c0d0e0;
+  color: #374a5e;
   padding: 6px 0;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+  border-bottom: 1px solid #e8edf3;
 }
 
 .statusRow:last-of-type { border-bottom: none; }
@@ -804,13 +801,13 @@
 .statusMeta {
   margin: 6px 0 0;
   font-size: 0.72rem;
-  color: #4a6278;
-  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  color: #9aaab8;
+  border-top: 1px solid #e8edf3;
   padding-top: 8px;
 }
 
-.dotOk { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: #4ade80; }
-.dotError { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: #f87171; }
+.dotOk { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: #16a34a; }
+.dotError { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: #dc2626; }
 
 
 @media (max-width: 1100px) {
@@ -931,6 +928,27 @@
 
 :global(html.dark) .wrapper .footer {
   color: #9aaab8 !important;
+}
+
+:global(html.dark) .wrapper .statusFab {
+  background: #fff !important;
+  border-color: #dde3ed !important;
+  color: #10233c !important;
+}
+
+:global(html.dark) .wrapper .statusPanel {
+  background: #fff !important;
+  border-color: #dde3ed !important;
+}
+
+:global(html.dark) .wrapper .statusRow {
+  color: #374a5e !important;
+  border-bottom-color: #e8edf3 !important;
+}
+
+:global(html.dark) .wrapper .statusMeta {
+  color: #9aaab8 !important;
+  border-top-color: #e8edf3 !important;
 }
 
 .statusBootScreen {

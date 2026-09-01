@@ -1,8 +1,7 @@
 import express from 'express';
-import fetch from 'node-fetch';
 import { pool } from '../../../database/db.js';
 import verifyJWT from '../../../middleware/auth.js';
-import { getCheckMKSettings, authenticateCheckMK, getHostServices, getServicePluginOutputViaViewPy } from './utils.js';
+import { getCheckMKSettings, authenticateCheckMK, getHostServices, getServicePluginOutputViaViewPy, fetchShowServiceDetails, serviceNameMatches, stripHostPrefixFromService } from './utils.js';
 const router = express.Router();
 const SAVE_TABLE = 'v_b_clients_m_save';
 const SETTINGS_TABLE = 'v_b_settings';
@@ -38,21 +37,22 @@ async function saveLastSyncToDb(isoDate) {
     console.warn('[checkmk save-jobs] Unable to save lastSync to database:', err.message);
   }
 }
-async function fetchShowService(apiUrl, authHeader, hostName, serviceDescription, site) {
-  const showUrl = new URL(`${apiUrl}/objects/host/${encodeURIComponent(hostName)}/actions/show_service/invoke`);
-  showUrl.searchParams.set('service_description', serviceDescription);
-  if (site) showUrl.searchParams.set('site', site);
-  const res = await fetch(showUrl.toString(), {
-    method: 'GET',
-    headers: {
-      Accept: 'application/json',
-      Authorization: authHeader
-    }
-  });
-  if (!res.ok) return null;
-  const data = await res.json();
-  const ext = data?.extensions || {};
-  return ext.plugin_output || ext.long_plugin_output || null;
+function firstNonEmpty(...values) {
+  for (const value of values) {
+    if (value == null || value === false) continue;
+    const text = String(value).trim();
+    if (text && text !== 'null' && text !== 'undefined') return text;
+  }
+  return '';
+}
+function resolveJobCheckmkMapping(job) {
+  const data = job?.data && typeof job.data === 'object' ? job.data : {};
+  const mapping = data.checkmkMapping && typeof data.checkmkMapping === 'object' ? data.checkmkMapping : {};
+  return {
+    host: firstNonEmpty(job?.checkmk_host_name, data.checkmk_host_name, mapping.checkmk_host_name),
+    site: firstNonEmpty(job?.checkmk_site, data.checkmk_site, mapping.checkmk_site),
+    service: firstNonEmpty(job?.checkmk_service_name, data.checkmk_service_name, mapping.checkmk_service_name, data.nom)
+  };
 }
 function formatDurationSeconds(seconds) {
   const s = Math.floor(Number(seconds));
@@ -140,29 +140,39 @@ function parseDurationFromPluginOutput(pluginOutput) {
   }
   return null;
 }
+function parseEuropeanOrIsoDate(dateStr) {
+  if (!dateStr) return null;
+  const str = String(dateStr).trim();
+  const euro = str.match(/^(\d{2})\.(\d{2})\.(\d{4})(?:\s+(\d{2}):(\d{2})(?::(\d{2}))?)?/);
+  if (euro) {
+    const [, day, month, year, hour = '0', minute = '0', second = '0'] = euro;
+    const d = new Date(Number(year), Number(month) - 1, Number(day), Number(hour), Number(minute), Number(second));
+    return Number.isNaN(d.getTime()) ? null : d.toISOString();
+  }
+  const iso = str.match(/^(\d{4})-(\d{2})-(\d{2})(?:[T\s](\d{2}):(\d{2})(?::(\d{2}))?)?/);
+  if (iso) {
+    const parsed = new Date(str.includes('T') ? str : str.replace(' ', 'T'));
+    return Number.isNaN(parsed.getTime()) ? null : parsed.toISOString();
+  }
+  const parsed = new Date(str);
+  return Number.isNaN(parsed.getTime()) ? null : parsed.toISOString();
+}
 function parseCreationTimeFromPluginOutput(pluginOutput) {
   if (!pluginOutput || typeof pluginOutput !== 'string') return null;
-  const creationMatch = pluginOutput.match(/Creation time:\s*([^,\n]+)/i);
-  if (!creationMatch) return null;
-  try {
-    const parts = creationMatch[1].trim().split(' ');
-    const datePart = parts[0] || '';
-    const timePart = parts[1] || '00:00:00';
-    const segs = datePart.split('.').map(x => parseInt(x, 10));
-    const t = timePart.split(':').map(x => parseInt(x, 10) || 0);
-    const hour = t[0] || 0,
-      minute = t[1] || 0,
-      second = t[2] || 0;
-    if (segs.length === 3 && segs[2] >= 2000 && segs[2] <= 2100) {
-      const day = segs[0],
-        month = segs[1],
-        year = segs[2];
-      if (month >= 1 && month <= 12 && day >= 1 && day <= 31) {
-        const d = new Date(year, month - 1, day, hour, minute, second);
-        if (!isNaN(d.getTime())) return d.toISOString();
-      }
-    }
-  } catch (e) {}
+  const patterns = [
+    /(?:creation|created|start|started)[\s_]*time[\s:]+([^\n,;]+)/i,
+    /erstellungszeit[\s:]+([^\n,;]+)/i,
+    /startzeit[\s:]+([^\n,;]+)/i,
+    /début[\s:]+([^\n,;]+)/i,
+    /start[\s:]+(\d{2}\.\d{2}\.\d{4}\s+\d{2}:\d{2}:\d{2})/i,
+    /start[\s:]+(\d{4}-\d{2}-\d{2}[\sT]\d{2}:\d{2}:\d{2})/i
+  ];
+  for (const pattern of patterns) {
+    const match = pluginOutput.match(pattern);
+    if (!match) continue;
+    const parsed = parseEuropeanOrIsoDate(match[1]);
+    if (parsed) return parsed;
+  }
   return null;
 }
 function toLastBackupDate(lastCheck) {
@@ -198,14 +208,18 @@ export async function runSaveJobsSync({
     queryParams.push(clientId);
     clientFilter = ` AND client_id = $${queryParams.length}`;
   }
+  const mappedHostExpr = `NULLIF(TRIM(COALESCE(checkmk_host_name, data::jsonb->>'checkmk_host_name', data::jsonb->'checkmkMapping'->>'checkmk_host_name', '')), '')`;
+  const mappedSiteExpr = `COALESCE(NULLIF(TRIM(COALESCE(checkmk_site, data::jsonb->>'checkmk_site', data::jsonb->'checkmkMapping'->>'checkmk_site', '')), ''), '')`;
+  const mappedServiceExpr = `NULLIF(TRIM(COALESCE(checkmk_service_name, data::jsonb->>'checkmk_service_name', data::jsonb->'checkmkMapping'->>'checkmk_service_name', '')), '')`;
   const normalizedHost = hostName != null ? String(hostName).trim() : '';
   if (normalizedHost) {
     queryParams.push(normalizedHost);
-    clientFilter += ` AND checkmk_host_name = $${queryParams.length}`;
+    clientFilter += ` AND ${mappedHostExpr} = $${queryParams.length}`;
   }
-  if (site != null) {
-    queryParams.push(String(site).trim());
-    clientFilter += ` AND COALESCE(checkmk_site, '') = $${queryParams.length}`;
+  const normalizedSite = site != null ? String(site).trim() : '';
+  if (normalizedSite) {
+    queryParams.push(normalizedSite);
+    clientFilter += ` AND ${mappedSiteExpr} = $${queryParams.length}`;
   }
   const jobIdsFilter = normalizeJobIdsFilter(jobIds);
   if (jobIdsFilter?.length) {
@@ -214,8 +228,8 @@ export async function runSaveJobsSync({
   }
   const jobsResult = await pool.query(`SELECT id, client_id, item_key, data, checkmk_host_name, checkmk_site, checkmk_service_name
      FROM ${SAVE_TABLE}
-     WHERE checkmk_host_name IS NOT NULL AND checkmk_host_name != ''
-       AND checkmk_service_name IS NOT NULL AND checkmk_service_name != ''
+     WHERE ${mappedHostExpr} IS NOT NULL
+       AND ${mappedServiceExpr} IS NOT NULL
        AND (
          (item_key IS NOT NULL AND item_key LIKE 'job-%')
          OR (data IS NOT NULL AND (data::jsonb->>'type') = 'job')
@@ -249,27 +263,25 @@ export async function runSaveJobsSync({
   }
   let updated = 0;
   for (const job of jobs) {
-    const host = job.checkmk_host_name;
-    const hostSite = job.checkmk_site ?? settings.site ?? '';
-    const serviceName = (job.checkmk_service_name || '').trim() || (job.data?.nom || '').trim();
-    if (!serviceName) continue;
+    const mapping = resolveJobCheckmkMapping(job);
+    const host = mapping.host;
+    const hostSite = mapping.site || settings.site || '';
+    const serviceName = mapping.service;
+    if (!host || !serviceName) continue;
     try {
       const services = await getCachedHostServices(host, hostSite);
-      const getServiceDesc = s => s.description || (s.id && s.id.includes(':') ? s.id.split(':').slice(1).join(':') : '') || s.title || s.id || '';
-      const svc = services.find(s => {
-        const desc = getServiceDesc(s);
-        return desc === serviceName || s.title && s.title === serviceName || s.id && s.id.endsWith(serviceName);
-      });
-      if (!svc) continue;
-      const lastBackupDate = toLastBackupDate(svc.lastCheck);
-      let pluginOutputForCreation = svc.longPluginOutput || svc.pluginOutput || null;
-      let lastBackupDuration = parseDurationFromPerfData(svc.performanceData) || parseDurationFromPerfData(svc.pluginOutput) || parseDurationFromPluginOutput(svc.pluginOutput) || parseDurationFromPluginOutput(svc.longPluginOutput);
-      const serviceNameForView = (serviceName || '').trim().startsWith(`${host}:`) ? (serviceName || '').trim().substring(host.length + 1).trim() : (serviceName || '').trim();
-      const serviceDescription = serviceName.includes(':') ? serviceName.split(':').slice(1).join(':').trim() : serviceName;
+      let svc = (services || []).find(s => serviceNameMatches(s, serviceName, host)) || null;
+      if (!svc) {
+        svc = await fetchShowServiceDetails(settings.apiUrl, authData.auth_header, host, serviceName, hostSite);
+      }
+      const serviceDescription = stripHostPrefixFromService(host, serviceName);
+      let lastBackupDate = toLastBackupDate(svc?.lastCheck);
+      let pluginOutputForCreation = svc?.longPluginOutput || svc?.pluginOutput || null;
+      let lastBackupDuration = parseDurationFromPerfData(svc?.performanceData) || parseDurationFromPerfData(svc?.pluginOutput) || parseDurationFromPluginOutput(svc?.pluginOutput) || parseDurationFromPluginOutput(svc?.longPluginOutput);
       let viewPyData = null;
       const needsViewPy = !lastBackupDuration || hasLastBackupStart && !pluginOutputForCreation;
       if (needsViewPy) {
-        viewPyData = await getServicePluginOutputViaViewPy(settings.apiUrl, authData.auth_header, host, serviceNameForView || serviceName, hostSite);
+        viewPyData = await getServicePluginOutputViaViewPy(settings.apiUrl, authData.auth_header, host, serviceDescription || serviceName, hostSite);
         if (viewPyData) {
           const out = viewPyData.longPluginOutput || viewPyData.pluginOutput;
           if (!pluginOutputForCreation) pluginOutputForCreation = out;
@@ -278,34 +290,38 @@ export async function runSaveJobsSync({
           }
         }
       }
-      if (!lastBackupDuration && !svc.pluginOutput && !svc.longPluginOutput) {
-        const showOutput = await fetchShowService(settings.apiUrl, authData.auth_header, host, serviceDescription, hostSite);
-        if (showOutput) {
-          if (!pluginOutputForCreation) pluginOutputForCreation = showOutput;
-          lastBackupDuration = parseDurationFromPluginOutput(showOutput) || parseDurationFromPerfData(showOutput);
+      if (!pluginOutputForCreation) {
+        const showDetails = svc?.pluginOutput || svc?.longPluginOutput
+          ? null
+          : await fetchShowServiceDetails(settings.apiUrl, authData.auth_header, host, serviceDescription, hostSite);
+        if (showDetails) {
+          if (!svc) svc = showDetails;
+          pluginOutputForCreation = showDetails.longPluginOutput || showDetails.pluginOutput || pluginOutputForCreation;
+          if (!lastBackupDate) lastBackupDate = toLastBackupDate(showDetails.lastCheck);
+          if (!lastBackupDuration) {
+            lastBackupDuration = parseDurationFromPluginOutput(pluginOutputForCreation) || parseDurationFromPerfData(showDetails.performanceData);
+          }
         }
       }
       if (!lastBackupDuration) {
-        const snippet = viewPyData ? (viewPyData.longPluginOutput || viewPyData.pluginOutput || viewPyData.performanceData || '').toString().slice(0, 200) : '(view.py with no data)';
+        const snippet = (pluginOutputForCreation || viewPyData?.performanceData || '(no plugin output)').toString().slice(0, 200);
         console.warn(`[checkmk save-jobs sync] Duration not found for job id=${job.id} (${serviceName}), host=${host}. Preview: ${snippet}`);
       }
-      if (!pluginOutputForCreation && hasLastBackupStart) {
-        if (viewPyData) {
-          pluginOutputForCreation = viewPyData.longPluginOutput || viewPyData.pluginOutput || null;
-        }
-        if (!pluginOutputForCreation) {
-          const showOutput = await fetchShowService(settings.apiUrl, authData.auth_header, host, serviceDescription, hostSite);
-          if (showOutput) pluginOutputForCreation = showOutput;
-        }
-      }
       const lastBackupStart = pluginOutputForCreation ? parseCreationTimeFromPluginOutput(pluginOutputForCreation) : null;
+      const startToStore = lastBackupStart || lastBackupDate || null;
+      if (!svc && !pluginOutputForCreation && !lastBackupDate) continue;
       if (hasLastBackupStart) {
         await pool.query(`UPDATE ${SAVE_TABLE}
-           SET last_backup_date = $1::timestamptz, last_backup_duration = $2::varchar, last_backup_start = $4::timestamptz, updated_at = NOW()
-           WHERE id = $3`, [lastBackupDate, lastBackupDuration || null, job.id, lastBackupStart || null]);
+           SET last_backup_date = COALESCE($1::timestamptz, last_backup_date),
+               last_backup_duration = COALESCE($2::varchar, last_backup_duration),
+               last_backup_start = COALESCE($4::timestamptz, last_backup_start),
+               updated_at = NOW()
+           WHERE id = $3`, [lastBackupDate, lastBackupDuration || null, job.id, startToStore]);
       } else {
         await pool.query(`UPDATE ${SAVE_TABLE}
-           SET last_backup_date = $1::timestamptz, last_backup_duration = $2::varchar, updated_at = NOW()
+           SET last_backup_date = COALESCE($1::timestamptz, last_backup_date),
+               last_backup_duration = COALESCE($2::varchar, last_backup_duration),
+               updated_at = NOW()
            WHERE id = $3`, [lastBackupDate, lastBackupDuration || null, job.id]);
       }
       updated += 1;
@@ -344,13 +360,13 @@ router.post('/save-jobs/sync', verifyJWT, async (req, res) => {
   } catch (err) {
     console.error('POST /checkmk/save-jobs/sync:', err);
     const msg = err.message || 'Error synchronizing jobs';
-    if (err.message?.includes('Colonnes')) return res.status(501).json({
+    if (/column/i.test(msg)) return res.status(501).json({
       error: msg
     });
-    if (err.message?.includes('Configuration')) return res.status(500).json({
+    if (/configuration incomplete/i.test(msg)) return res.status(500).json({
       error: msg
     });
-    if (err.message?.includes('authentifier')) return res.status(502).json({
+    if (/authentif|authenticate|credentials/i.test(msg)) return res.status(502).json({
       error: msg
     });
     res.status(500).json({

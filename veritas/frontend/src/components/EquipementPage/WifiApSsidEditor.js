@@ -17,7 +17,7 @@ export default function WifiApSsidEditor({
   const copy = useMemo(() => getWifiApSsidCopy(locale), [locale]);
   const catalog = normalizeWifiSsidCatalog(clientSsids);
   const assignedSet = new Set(assignedSsidIds);
-  const broadcastable = catalog.filter(entry => entry.nom.trim());
+  const broadcastable = catalog.filter(entry => entry.nom.trim() || assignedSet.has(entry.id));
   const updateCatalog = nextCatalog => {
     onClientSsidsChange?.(nextCatalog);
   };
@@ -60,7 +60,7 @@ export default function WifiApSsidEditor({
           return <label key={entry.id} className={`${styles.assignItem} ${checked ? styles.assignItemActive : ""}`}>
                   <input type="checkbox" className={styles.assignCheckbox} checked={checked} onChange={() => toggleAssigned(entry.id)} />
                   <span className={styles.assignContent}>
-                    <span className={styles.assignName}>{entry.nom}</span>
+                    <span className={styles.assignName}>{entry.nom || copy.unnamedSsid}</span>
                     <span className={styles.assignMeta}>
                       {[entry.vlan ? interpolate(copy.vlanMeta, {
                   vlan: entry.vlan

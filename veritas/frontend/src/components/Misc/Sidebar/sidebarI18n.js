@@ -42,6 +42,10 @@ const SIDEBAR_COPY = {
       tooltip: "Recherche",
       aria: "Recherche globale"
     },
+    chrome: {
+      openMenu: "Ouvrir le menu",
+      closeMenu: "Fermer le menu"
+    },
     account: {
       menu: "Compte",
       menuAria: "Menu compte",
@@ -93,6 +97,10 @@ const SIDEBAR_COPY = {
     search: {
       tooltip: "Search",
       aria: "Global search"
+    },
+    chrome: {
+      openMenu: "Open menu",
+      closeMenu: "Close menu"
     },
     account: {
       menu: "Account",
@@ -146,6 +154,10 @@ const SIDEBAR_COPY = {
       tooltip: "Suche",
       aria: "Globale Suche"
     },
+    chrome: {
+      openMenu: "Menü öffnen",
+      closeMenu: "Menü schließen"
+    },
     account: {
       menu: "Konto",
       menuAria: "Kontomenü",
@@ -198,6 +210,10 @@ const SIDEBAR_COPY = {
       tooltip: "Ricerca",
       aria: "Ricerca globale"
     },
+    chrome: {
+      openMenu: "Apri il menu",
+      closeMenu: "Chiudi il menu"
+    },
     account: {
       menu: "Account",
       menuAria: "Menu account",
@@ -249,6 +265,10 @@ const SIDEBAR_COPY = {
     search: {
       tooltip: "Buscar",
       aria: "Búsqueda global"
+    },
+    chrome: {
+      openMenu: "Abrir el menú",
+      closeMenu: "Cerrar el menú"
     },
     account: {
       menu: "Cuenta",

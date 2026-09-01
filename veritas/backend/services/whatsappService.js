@@ -5,6 +5,8 @@ import fetch from "node-fetch";
 import { pool } from "../database/db.js";
 import { getSettingsMap } from "../utils/settingsHelper.js";
 import { dispatchNotificationEvent } from "./notificationDispatcher.js";
+import { notifyTicketCommented, notifyTicketCreatedAck, notifyTicketCreatedAgents } from "./systemNotificationService.js";
+import { notifyInAppTicketCommented, notifyInAppTicketCreated } from "./userNotificationService.js";
 const SETTINGS_KEYS = ["INTEGRATION_WHATSAPP_ENABLED", "WHATSAPP_PHONE_NUMBER_ID", "WHATSAPP_ACCESS_TOKEN", "WHATSAPP_APP_SECRET", "WHATSAPP_VERIFY_TOKEN", "WHATSAPP_BUSINESS_ACCOUNT_ID", "WHATSAPP_API_VERSION"];
 const DEFAULT_API_VERSION = "v21.0";
 const MAX_WHATSAPP_TEXT_LENGTH = 4096;
@@ -286,6 +288,12 @@ async function createTicketFromWhatsApp({
       }
     }
   }).catch(() => {});
+  await notifyTicketCreatedAck(ticket.id).catch(() => {});
+  await notifyTicketCreatedAgents(ticket.id).catch(() => {});
+  await notifyInAppTicketCreated({
+    ticketId: ticket.id,
+    createdByUserId: null
+  }).catch(() => {});
   return {
     ...ticket,
     commentId
@@ -321,6 +329,25 @@ async function addWhatsAppCommentToTicket({
       },
       entreprise: {
         id: String(ticketRow.rows[0]?.client_id || "")
+      }
+    }
+  }).catch(() => {});
+  const preview = String(text || "").replace(/\s+/g, " ").trim().slice(0, 140);
+  await notifyInAppTicketCommented({
+    ticketId,
+    commentId: result.rows[0]?.id || null,
+    authorUserId: null,
+    isInternal: false,
+    contentPreview: preview
+  }).catch(() => {});
+  await notifyTicketCommented({
+    ticketId,
+    authorUserId: null,
+    isInternal: false,
+    extraContext: {
+      comment: {
+        author: contactName || waPhone || "WhatsApp",
+        preview
       }
     }
   }).catch(() => {});

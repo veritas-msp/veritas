@@ -1,5 +1,13 @@
 
-
+:root {
+  /* Keep numeric values in sync with src/layout/breakpoints.js */
+  --bp-phone: 768px;
+  --bp-tablet: 1024px;
+  --bp-wide: 1440px;
+  --sidebar-rail-width: 64px;
+  --sidebar-drawer-width: 200px;
+  --app-compact-chrome: 36px;
+}
 
 html.light {
   --bg-primary: #ffffff;

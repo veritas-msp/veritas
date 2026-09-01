@@ -1907,6 +1907,7 @@ export default function AdminTickets({
       webhookId: requiresWebhook ? String(notificationEventDraft.webhookId || "").trim() : "",
       emailTo: requiresEmailRecipients ? String(notificationEventDraft.emailTo || "").trim() : "",
       emailCc: requiresEmailRecipients ? String(notificationEventDraft.emailCc || "").trim() : "",
+      emailSubject: requiresEmailRecipients ? String(notificationEventDraft.emailSubject || "").trim() : "",
       useTemplate: notificationEventDraft.useTemplate === true,
       templateId: notificationEventDraft.useTemplate === true ? String(notificationEventDraft.templateId || "").trim() : "",
       customMessage: notificationEventDraft.useTemplate === true ? "" : String(customMessageFromEditor || "").replace(/\soutline:\s*[^;"']+;?/gi, ""),
@@ -3747,7 +3748,7 @@ export default function AdminTickets({
       name: solutionCatalogDeleteTarget?.label || deleteCopy.catalogEntryFallback
     })} confirmLabel={common.delete} confirmVariant="dangerSolid" confirmLoading={deletingSolutionCatalogEntry} onClose={() => !deletingSolutionCatalogEntry && setSolutionCatalogDeleteTarget(null)} onConfirm={confirmRemoveSolutionCatalogEntry} />
 
-      <NotificationEventFormModal open={showNotificationEventModal} mode={notificationEventModalMode} draft={notificationEventDraft} setDraft={setNotificationEventDraft} saving={savingNotificationEvent} availableClients={availableClients} webhooks={notificationSettings?.webhooks || []} commentTemplates={commentTemplates} editorRef={notificationEventEditorRef} onClose={closeNotificationEventModal} onSave={saveNotificationEventFromModal} onOpenVariables={() => openMessageVariablesModal("notification")} />
+      <NotificationEventFormModal open={showNotificationEventModal} mode={notificationEventModalMode} draft={notificationEventDraft} setDraft={setNotificationEventDraft} saving={savingNotificationEvent} availableClients={availableClients} webhooks={notificationSettings?.webhooks || []} commentTemplates={commentTemplates} notificationTemplates={notificationSettings?.templates || []} editorRef={notificationEventEditorRef} onClose={closeNotificationEventModal} onSave={saveNotificationEventFromModal} onOpenVariables={() => openMessageVariablesModal("notification")} />
 
       {showCustomNotificationModal && <div className={styles.modalOverlay} onClick={() => setShowCustomNotificationModal(false)}>
           <div className={styles.modalContent} onClick={event => event.stopPropagation()} style={{

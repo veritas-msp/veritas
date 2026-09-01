@@ -275,7 +275,11 @@ export default function BackupMspPanel({
       setJobsSyncLoading(true);
       const res = await fetch(`${API_BASE_URL}/checkmk/save-jobs/sync`, {
         method: "POST",
-        credentials: "include"
+        credentials: "include",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({})
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
@@ -523,8 +527,8 @@ export default function BackupMspPanel({
         return order * (va - vb);
       }
       if (key === "last_backup_start") {
-        va = va ?? a.rawData?.last_backup_start;
-        vb = vb ?? b.rawData?.last_backup_start;
+        va = va ?? a.rawData?.last_backup_start ?? a.last_backup_date ?? a.rawData?.last_backup_date;
+        vb = vb ?? b.rawData?.last_backup_start ?? b.last_backup_date ?? b.rawData?.last_backup_date;
         va = va ? new Date(va).getTime() : 0;
         vb = vb ? new Date(vb).getTime() : 0;
         return order * (va - vb);
@@ -802,14 +806,15 @@ export default function BackupMspPanel({
                             {item.instanceLogiciel === "HYCU Backup" ? "DataCenter PSI" : item.destination || item.stockageLie || "-"}
                           </td>
                           <td className={`${styles.dateCell} ${styles.boldCell}`}>
-                            {item.last_backup_start ?? item.rawData?.last_backup_start ? (() => {
+                            {item.last_backup_start ?? item.rawData?.last_backup_start ?? item.last_backup_date ?? item.rawData?.last_backup_date ? (() => {
+                    const lastBackup = item.last_backup_start ?? item.rawData?.last_backup_start ?? item.last_backup_date ?? item.rawData?.last_backup_date;
                     try {
-                      return new Date(item.last_backup_start ?? item.rawData?.last_backup_start).toLocaleString(localeTag, {
+                      return new Date(lastBackup).toLocaleString(localeTag, {
                         dateStyle: "short",
                         timeStyle: "short"
                       });
                     } catch {
-                      return String(item.last_backup_start ?? item.rawData?.last_backup_start ?? "-");
+                      return String(lastBackup ?? "-");
                     }
                   })() : "-"}
                           </td>

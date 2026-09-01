@@ -6,7 +6,7 @@ import { isInternetIpNonFixe } from "../RapportPage/monitoring/internetIpUtils";
 import { getSiteLocationValue, normalizeClientSites } from "../../utils/clientSites";
 import { getEquipmentDbId } from "../../utils/equipmentIdentity";
 import { readInternetConnectionFields, buildInternetSectionNavMeta } from "./internetConnectionUtils";
-import { buildBorneWifiSsidFormState } from "./wifiApSsidUtils";
+import { buildBorneWifiSsidFormState, collectEquipmentAssignedSsids } from "./wifiApSsidUtils";
 import { repairRmmTextEncoding } from "../../utils/rmmTextEncoding";
 import { buildSharedEquipmentFormData } from "./sharedEquipmentFields";
 export const ALIMENTATION_TYPE_OPTIONS = [{
@@ -1652,20 +1652,47 @@ function readEquipmentBool(equipment, key) {
   }
   return false;
 }
-export function readEquipmentIsActive(equipment) {
-  const layers = [equipment, equipment?.data, equipment?.rawData, equipment?.rawData?.data].filter(layer => layer && typeof layer === "object");
-  const keys = ["is_active", "isActive", "actif", "active"];
-  for (const layer of layers) {
-    for (const key of keys) {
-      if (layer[key] === undefined || layer[key] === null || layer[key] === "") continue;
-      const value = layer[key];
-      if (typeof value === "boolean") return value;
-      const normalized = String(value).trim().toLowerCase();
-      if (["false", "0", "no", "non", "off", "inactif", "inactive", "disabled"].includes(normalized)) return false;
-      if (["true", "1", "yes", "oui", "on", "actif", "active", "enabled"].includes(normalized)) return true;
-    }
+const EQUIPMENT_INACTIVE_FLAGS = new Set(["false", "0", "no", "non", "off", "inactif", "inactive", "disabled"]);
+const EQUIPMENT_ACTIVE_FLAGS = new Set(["true", "1", "yes", "oui", "on", "actif", "active", "enabled"]);
+export function parseEquipmentActiveFlag(...values) {
+  for (const value of values) {
+    if (value === undefined || value === null || value === "") continue;
+    if (typeof value === "boolean") return value;
+    if (typeof value === "number") return value !== 0;
+    const key = String(value).trim().toLowerCase();
+    if (EQUIPMENT_INACTIVE_FLAGS.has(key)) return false;
+    if (EQUIPMENT_ACTIVE_FLAGS.has(key)) return true;
   }
-  return true;
+  return undefined;
+}
+export function readEquipmentIsActive(equipment) {
+  const data = equipment?.data && typeof equipment.data === "object" ? equipment.data : null;
+  const raw = equipment?.rawData && typeof equipment.rawData === "object" ? equipment.rawData : null;
+  const nested = raw?.data && typeof raw.data === "object" ? raw.data : null;
+  const fields = equipment?.fields && typeof equipment.fields === "object" ? equipment.fields : null;
+  const parsed = parseEquipmentActiveFlag(
+    data?.actif,
+    nested?.actif,
+    raw?.actif,
+    fields?.actif,
+    equipment?.actif,
+    data?.active,
+    nested?.active,
+    raw?.active,
+    fields?.active,
+    equipment?.active,
+    data?.isActive,
+    nested?.isActive,
+    raw?.isActive,
+    fields?.isActive,
+    equipment?.isActive,
+    data?.is_active,
+    nested?.is_active,
+    raw?.is_active,
+    fields?.is_active,
+    equipment?.is_active
+  );
+  return parsed !== undefined ? parsed : true;
 }
 function readEquipmentText(equipment, key, fallback = "") {
   const layers = [equipment, equipment?.data, equipment?.rawData, equipment?.rawData?.data].filter(layer => layer && typeof layer === "object");
@@ -1987,7 +2014,7 @@ export function buildInitialFormData(equipment, moduleKey, {
     } = buildBorneWifiSsidFormState(equipment, client, {
       peerBorneWifi
     });
-    const rawSsids = d("ssids", []);
+    const rawSsids = collectEquipmentAssignedSsids(equipment);
     return {
       ...base,
       vlan: d("vlan", ""),
@@ -1999,7 +2026,7 @@ export function buildInitialFormData(equipment, moduleKey, {
       commentaire: d("commentaire", ""),
       clientSsids,
       assignedSsidIds,
-      ssids: Array.isArray(rawSsids) ? rawSsids : [],
+      ssids: rawSsids,
       alimentationPoE: Boolean(d("alimentationPoE", d("poe", false)))
     };
   }

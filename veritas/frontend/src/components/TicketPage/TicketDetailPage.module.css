@@ -2991,6 +2991,15 @@
 .incomingEmailHtml img {
   max-width: 100%;
   height: auto;
+  border-radius: 8px;
+}
+
+.incomingEmailAttachments {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem;
+  margin-top: 0.65rem;
 }
 
 .commentItem p {

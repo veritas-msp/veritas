@@ -1,19 +1,20 @@
 import { pool } from "../database/db.js";
 import { loadNotificationSettingsRaw } from "./ticketAutomationConfigStore.js";
+import { normalizeSystemNotifications, renderSystemTemplate } from "./systemNotificationCatalog.js";
 import { upsertUserSetting } from "../utils/userSettingsStore.js";
 import { getTestNotificationSample } from "../utils/inAppNotificationI18n.js";
 export const IN_APP_USER_SETTINGS_KEY = "in_app_notification_settings";
 export const DEFAULT_IN_APP_SETTINGS = {
-  enabled: true,
+  enabled: false,
   events: {
     ticket_commented: {
-      enabled: true,
+      enabled: false,
       notifyAssignees: true,
       notifyWatchers: true,
       excludeInternalComments: false
     },
     ticket_assigned: {
-      enabled: true
+      enabled: false
     },
     ticket_created: {
       enabled: false,
@@ -26,20 +27,20 @@ export const DEFAULT_IN_APP_SETTINGS = {
       notifyWatchers: false
     },
     ticket_resolved: {
-      enabled: true,
+      enabled: false,
       notifyAssignees: true,
       notifyWatchers: false
     },
     ticket_satisfaction: {
-      enabled: true,
+      enabled: false,
       notifyAssignees: true,
       notifyWatchers: false
     },
     ticket_validation_requested: {
-      enabled: true
+      enabled: false
     },
     ticket_validation_responded: {
-      enabled: true
+      enabled: false
     }
   }
 };
@@ -58,7 +59,7 @@ export function normalizeInAppSettings(raw = {}) {
     };
   };
   return {
-    enabled: raw?.enabled !== false,
+    enabled: typeof raw?.enabled === "boolean" ? raw.enabled : defaults.enabled,
     events: {
       ticket_commented: normalizeEvent("ticket_commented", events.ticket_commented),
       ticket_assigned: normalizeEvent("ticket_assigned", events.ticket_assigned),
@@ -222,7 +223,7 @@ async function resolveAuthorName(authorUserId) {
      LIMIT 1`, [authorUserId]);
   return result.rows[0]?.display_name || "Agent";
 }
-async function getTicketRecipientIds(ticketId, {
+export async function getTicketRecipientIds(ticketId, {
   notifyAssignees = true,
   notifyWatchers = true
 } = {}) {
@@ -254,10 +255,35 @@ async function insertUserNotifications(rows = []) {
        VALUES ($1, $2, $3, $4, $5, $6, $7::jsonb, NOW())`, [row.userId, row.type, row.title, row.body || null, row.ticketId || null, row.commentId || null, JSON.stringify(row.payload || {})]);
   }
 }
+async function resolveSystemInAppCopy(systemKey, context, fallbackTitle, fallbackBody) {
+  const settings = await loadNotificationSettingsRaw().catch(() => ({}));
+  const cfg = normalizeSystemNotifications(settings?.systemNotifications)[systemKey];
+  if (!cfg) return {
+    title: fallbackTitle,
+    body: fallbackBody
+  };
+  return {
+    title: renderSystemTemplate(cfg.inAppTitle || cfg.title, context) || fallbackTitle,
+    body: renderSystemTemplate(cfg.inAppBody, context) || fallbackBody
+  };
+}
 function buildTicketLabel(ticket = {}) {
   const number = ticket.ticket_number != null ? `#${ticket.ticket_number}` : "Ticket";
   const title = String(ticket.title || "").trim();
   return title ? `${number} · ${title}` : number;
+}
+function ticketSystemContext(ticket = {}, extra = {}) {
+  return {
+    ticket: {
+      ticket_number: ticket.ticket_number ?? "",
+      title: ticket.title || "",
+      status: ticket.status || ""
+    },
+    entreprise: {
+      nom: ticket.client_name || ""
+    },
+    ...extra
+  };
 }
 export async function notifyInAppTicketCommented({
   ticketId,
@@ -282,8 +308,16 @@ export async function notifyInAppTicketCommented({
   const authorName = await resolveAuthorName(authorUserId);
   const preview = String(contentPreview || "").replace(/\s+/g, " ").trim().slice(0, 140);
   const ticketLabel = buildTicketLabel(ticket);
-  const title = isInternal ? `Internal note on ${ticketLabel}` : `New comment on ${ticketLabel}`;
-  const body = preview ? `${authorName}: ${preview}` : `${authorName} commented on the ticket`;
+  const fallbackTitle = isInternal ? `Internal note on ${ticketLabel}` : `New comment on ${ticketLabel}`;
+  const fallbackBody = preview ? `${authorName}: ${preview}` : `${authorName} commented on the ticket`;
+  const copy = await resolveSystemInAppCopy("tickets.commented", ticketSystemContext(ticket, {
+    comment: {
+      author: authorName,
+      preview
+    }
+  }), fallbackTitle, fallbackBody);
+  const title = copy.title;
+  const body = copy.body;
   await insertUserNotifications(filteredRecipients.map(userId => ({
     userId,
     type: "ticket_commented",
@@ -315,11 +349,21 @@ export async function notifyInAppTicketAssigned({
   const ticket = await resolveTicketContext(ticketId);
   if (!ticket) return;
   const ticketLabel = buildTicketLabel(ticket);
+  const copy = await resolveSystemInAppCopy("tickets.assigned", {
+    ticket: {
+      ticket_number: ticket.ticket_number ?? "",
+      title: ticket.title || "",
+      status: ticket.status || ""
+    },
+    entreprise: {
+      nom: ticket.client_name || ""
+    }
+  }, `Assignment on ${ticketLabel}`, "You have been assigned to this ticket.");
   await insertUserNotifications([{
     userId: notifiableRecipients[0],
     type: "ticket_assigned",
-    title: `Assignment on ${ticketLabel}`,
-    body: "You have been assigned to this ticket.",
+    title: copy.title,
+    body: copy.body,
     ticketId,
     commentId: null,
     payload: {
@@ -346,11 +390,12 @@ export async function notifyInAppTicketCreated({
   const filteredRecipients = await filterNotifiableUserIds(recipientIds.filter(id => id !== String(createdByUserId || "")), "ticket_created");
   if (filteredRecipients.length === 0) return;
   const ticketLabel = buildTicketLabel(ticket);
+  const copy = await resolveSystemInAppCopy("tickets.created", ticketSystemContext(ticket), `New ticket ${ticketLabel}`, "A new ticket was created.");
   await insertUserNotifications(filteredRecipients.map(userId => ({
     userId,
     type: "ticket_created",
-    title: `New ticket ${ticketLabel}`,
-    body: "A new ticket was created.",
+    title: copy.title,
+    body: copy.body,
     ticketId,
     commentId: null,
     payload: {
@@ -381,13 +426,20 @@ export async function notifyInAppTicketStatusChanged({
   const filteredRecipients = await filterNotifiableUserIds(recipientIds.filter(id => id !== String(changedByUserId || "")), eventKey);
   if (filteredRecipients.length === 0) return;
   const ticketLabel = buildTicketLabel(ticket);
-  const title = isResolved ? `${ticketLabel} resolved` : `${ticketLabel} updated`;
-  const body = isResolved ? "The ticket was marked as resolved." : "The ticket was updated.";
+  const fallbackTitle = isResolved ? `${ticketLabel} resolved` : `${ticketLabel} updated`;
+  const fallbackBody = isResolved ? "The ticket was marked as resolved." : "The ticket was updated.";
+  const copy = await resolveSystemInAppCopy(isResolved ? "tickets.resolved" : "tickets.updated", ticketSystemContext(ticket, {
+    ticket: {
+      ticket_number: ticket.ticket_number ?? "",
+      title: ticket.title || "",
+      status: newStatus || ticket.status || ""
+    }
+  }), fallbackTitle, fallbackBody);
   await insertUserNotifications(filteredRecipients.map(userId => ({
     userId,
     type: eventKey,
-    title,
-    body,
+    title: copy.title,
+    body: copy.body,
     ticketId,
     commentId: null,
     payload: {
@@ -422,9 +474,18 @@ export async function notifyInAppTicketSatisfaction({
   const stars = Math.max(1, Math.min(5, Number(rating) || 0));
   const avg = averageRating != null && !Number.isNaN(Number(averageRating)) ? Number(averageRating) : stars;
   const ticketLabel = buildTicketLabel(ticket);
-  const title = `Customer feedback on ${ticketLabel}`;
   const preview = String(message || "").replace(/\s+/g, " ").trim().slice(0, 140);
-  const body = preview ? `${authorName} · avg. ${avg}/5 — ${preview}` : `${authorName} rated the ticket (avg. ${avg}/5)`;
+  const fallbackTitle = `Customer feedback on ${ticketLabel}`;
+  const fallbackBody = preview ? `${authorName} · avg. ${avg}/5 — ${preview}` : `${authorName} rated the ticket (avg. ${avg}/5)`;
+  const copy = await resolveSystemInAppCopy("tickets.satisfaction", ticketSystemContext(ticket, {
+    satisfaction: {
+      author: authorName,
+      rating: avg,
+      message: preview
+    }
+  }), fallbackTitle, fallbackBody);
+  const title = copy.title;
+  const body = copy.body;
   await insertUserNotifications(filteredRecipients.map(userId => ({
     userId,
     type: "ticket_satisfaction",
@@ -464,8 +525,18 @@ export async function notifyInAppTicketValidationRequested({
   const authorName = await resolveAuthorName(requestedByUserId);
   const ticketLabel = buildTicketLabel(ticket);
   const preview = String(message || "").replace(/\s+/g, " ").trim().slice(0, 140);
-  const title = `Validation requested on ${ticketLabel}`;
-  const body = preview ? `${authorName}: ${preview}` : `${authorName} asked you to validate this ticket`;
+  const fallbackTitle = `Validation requested on ${ticketLabel}`;
+  const fallbackBody = preview ? `${authorName}: ${preview}` : `${authorName} asked you to validate this ticket`;
+  const copy = await resolveSystemInAppCopy("tickets.validation_requested", ticketSystemContext(ticket, {
+    agent: {
+      username: authorName
+    },
+    validation: {
+      message: preview
+    }
+  }), fallbackTitle, fallbackBody);
+  const title = copy.title;
+  const body = copy.body;
   await insertUserNotifications([{
     userId: notifiableRecipients[0],
     type: "ticket_validation_requested",
@@ -506,8 +577,17 @@ export async function notifyInAppTicketValidationResponded({
   const ticketLabel = buildTicketLabel(ticket);
   const approved = decision === "approved";
   const preview = String(responseMessage || "").replace(/\s+/g, " ").trim().slice(0, 140);
-  const title = approved ? `Validation approved on ${ticketLabel}` : `Validation rejected on ${ticketLabel}`;
-  const body = preview ? `${validatorName}: ${preview}` : approved ? `${validatorName} approved the validation` : `${validatorName} rejected the validation`;
+  const fallbackTitle = approved ? `Validation approved on ${ticketLabel}` : `Validation rejected on ${ticketLabel}`;
+  const fallbackBody = preview ? `${validatorName}: ${preview}` : approved ? `${validatorName} approved the validation` : `${validatorName} rejected the validation`;
+  const copy = await resolveSystemInAppCopy("tickets.validation_responded", ticketSystemContext(ticket, {
+    validation: {
+      validator: validatorName,
+      decision: approved ? "approuvé" : "refusé",
+      message: preview
+    }
+  }), fallbackTitle, fallbackBody);
+  const title = copy.title;
+  const body = copy.body;
   await insertUserNotifications([{
     userId: notifiableRecipients[0],
     type: "ticket_validation_responded",

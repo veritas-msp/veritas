@@ -32,7 +32,7 @@ function InfraHexNode({
   const statusTooltip = isClear ? null : copy.getStatusLabel(node.status);
   const tooltipLines = [node.displayName || node.name, statusTooltip, node.subtitle, hasData ? copy.formatEquipmentCount(node.count) : null].filter(Boolean);
   return <SmartTooltip content={tooltipLines.join(" · ")} as="span">
-      <button type="button" className={[styles.hexNode, isCustomFamily ? styles.hexNodeCustom : "", isAttention ? styles.hexNodeAttention : "", isClear ? styles.hexNodeClear : ""].filter(Boolean).join(" ")} style={{
+      <button type="button" className={[styles.hexNode, isCustomFamily ? styles.hexNodeCustom : "", !hasData ? styles.hexNodeDisabled : "", isAttention ? styles.hexNodeAttention : "", isClear ? styles.hexNodeClear : ""].filter(Boolean).join(" ")} style={{
       "--hex-accent": meta.color,
       "--hex-soft": meta.soft
     }} onClick={() => onClick?.(node)} aria-label={`${node.displayName || node.name}${statusTooltip ? `, ${statusTooltip}` : ""}${node.count > 0 ? `, ${copy.formatEquipmentCount(node.count)}` : ""}`}>

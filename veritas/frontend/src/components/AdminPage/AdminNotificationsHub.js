@@ -2,32 +2,53 @@ import { useEffect, useMemo, useState } from "react";
 import ProFeaturePromoModal from "../Misc/ProFeature/ProFeaturePromoModal";
 import { useAppLocale } from "../../hooks/useAppGeneralSettings";
 import { Page, SubTabs } from "./AdminUi";
-import AdminNotificationsSettings from "./AdminNotificationsSettings";
+import AdminSystemNotifications from "./AdminSystemNotifications";
+import AdminNotificationCatalog from "./AdminNotificationCatalog";
+import AdminNotificationTemplates from "./AdminNotificationTemplates";
+import AdminNotificationLogs from "./AdminNotificationLogs";
 import AdminWebhooksSettings from "./AdminWebhooksSettings";
-import AdminInAppNotificationsSettings from "./AdminInAppNotificationsSettings";
-import { getAdminNotificationsHubCopy } from "./adminNotificationsHubI18n";
+import { getAdminNotificationCenterCopy } from "./adminNotificationCenterI18n";
+
 const HUB_VIEW_DEFS = [{
-  key: "inapp",
-  icon: "mdi:bell-badge-outline",
+  key: "system",
+  icon: "mdi:email-edit-outline",
   promoKey: "adminNotifications",
   proOnly: false
 }, {
-  key: "events",
-  icon: "mdi:flash-outline",
+  key: "catalog",
+  icon: "mdi:tune-variant",
   promoKey: "adminNotifications",
-  proOnly: true
+  proOnly: false
 }, {
-  key: "webhooks",
+  key: "templates",
+  icon: "mdi:file-document-edit-outline",
+  promoKey: "adminNotifications",
+  proOnly: false
+}, {
+  key: "connectors",
   icon: "mdi:link-variant",
   promoKey: "adminWebhooks",
   proOnly: true
+}, {
+  key: "logs",
+  icon: "mdi:clipboard-text-clock-outline",
+  promoKey: "adminNotifications",
+  proOnly: false
 }];
+
+function normalizeHubView(view) {
+  if (view === "webhooks") return "connectors";
+  if (view === "events" || view === "inapp") return "system";
+  if (view === "templates" || view === "connectors" || view === "logs" || view === "catalog" || view === "system") return view;
+  return "system";
+}
+
 export default function AdminNotificationsHub({
   isCommunity = false
 }) {
   const locale = useAppLocale();
-  const hubCopy = useMemo(() => getAdminNotificationsHubCopy(locale), [locale]);
-  const [activeView, setActiveView] = useState("inapp");
+  const hubCopy = useMemo(() => getAdminNotificationCenterCopy(locale), [locale]);
+  const [activeView, setActiveView] = useState("system");
   const [proPromoFeature, setProPromoFeature] = useState(null);
   const views = useMemo(() => HUB_VIEW_DEFS.map(view => ({
     ...view,
@@ -41,8 +62,7 @@ export default function AdminNotificationsHub({
       sessionStorage.removeItem("veritas_admin_hub_view");
       const parsed = JSON.parse(raw);
       if (parsed?.hub !== "notifications" || !parsed?.view) return;
-      const view = parsed.view === "webhooks" ? "webhooks" : parsed.view === "events" ? "events" : "inapp";
-      setActiveView(view);
+      setActiveView(normalizeHubView(parsed.view));
     } catch {}
   }, []);
   const handleViewChange = key => {
@@ -55,9 +75,11 @@ export default function AdminNotificationsHub({
   };
   return <Page>
       <SubTabs items={views} active={activeView} onChange={handleViewChange} fullWidth />
-      {activeView === "events" ? <AdminNotificationsSettings isCommunity={isCommunity} /> : null}
-      {activeView === "inapp" ? <AdminInAppNotificationsSettings /> : null}
-      {activeView === "webhooks" ? <AdminWebhooksSettings isCommunity={isCommunity} /> : null}
+      {activeView === "system" ? <AdminSystemNotifications /> : null}
+      {activeView === "catalog" ? <AdminNotificationCatalog /> : null}
+      {activeView === "templates" ? <AdminNotificationTemplates /> : null}
+      {activeView === "connectors" ? <AdminWebhooksSettings isCommunity={isCommunity} /> : null}
+      {activeView === "logs" ? <AdminNotificationLogs /> : null}
       <ProFeaturePromoModal open={Boolean(proPromoFeature)} featureKey={proPromoFeature} onClose={() => setProPromoFeature(null)} />
     </Page>;
 }

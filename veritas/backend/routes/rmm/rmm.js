@@ -19,6 +19,44 @@ const router = express.Router();
 function requireAdmin(req, res, next) {
   return requirePermission("rmm.manage")(req, res, next);
 }
+function parseEnrollmentExpiresAt(value, {
+  requireFuture = false
+} = {}) {
+  if (value === undefined) {
+    return {
+      provided: false
+    };
+  }
+  if (value === null || value === "") {
+    return {
+      provided: true,
+      value: null
+    };
+  }
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return {
+      provided: true,
+      error: "invalid_expires_at"
+    };
+  }
+  if (requireFuture && date.getTime() <= Date.now()) {
+    return {
+      provided: true,
+      error: "expires_at_past"
+    };
+  }
+  return {
+    provided: true,
+    value: date.toISOString()
+  };
+}
+function enrollmentExpiresAtError(code) {
+  if (code === "expires_at_past") {
+    return "Expiration must be in the future";
+  }
+  return "Invalid expiresAt";
+}
 async function resolveRmmActor(req) {
   const userId = req.user?.id || req.user?.user_id || null;
   if (!userId) {
@@ -833,18 +871,71 @@ router.post("/enrollment-tokens", verifyJWT, requireAdmin, async (req, res) => {
         error: "clientId required"
       });
     }
+    const expires = parseEnrollmentExpiresAt(expiresAt ?? null, {
+      requireFuture: true
+    });
+    if (expires.error) {
+      return res.status(400).json({
+        error: enrollmentExpiresAtError(expires.error)
+      });
+    }
     const plainToken = generateRmmToken(24);
     const tokenHash = hashRmmSecret(plainToken);
     const tokenEncrypted = encryptRmmToken(plainToken);
     const result = await pool.query(`INSERT INTO v_b_rmm_enrollment_tokens (client_id, token_hash, token_encrypted, label, expires_at, max_uses, created_by)
        VALUES ($1, $2, $3, $4, $5, $6, $7)
-       RETURNING id, client_id, label, expires_at, max_uses, uses_count, created_at, token_encrypted`, [clientId, tokenHash, tokenEncrypted, label || null, expiresAt || null, maxUses ?? null, req.user?.id || null]);
+       RETURNING id, client_id, label, expires_at, max_uses, uses_count, created_at, token_encrypted`, [clientId, tokenHash, tokenEncrypted, label || null, expires.value, maxUses ?? null, req.user?.id || null]);
     res.status(201).json({
       ...mapEnrollmentTokenRow(result.rows[0]),
       token: plainToken
     });
   } catch (err) {
     console.error("[rmm] create token:", err.message);
+    res.status(500).json({
+      error: "Server error"
+    });
+  }
+});
+router.patch("/enrollment-tokens/:id", verifyJWT, requireAdmin, async (req, res) => {
+  try {
+    const {
+      label,
+      expiresAt
+    } = req.body || {};
+    const updates = [];
+    const params = [];
+    if (label !== undefined) {
+      params.push(String(label || "").trim() || null);
+      updates.push(`label = $${params.length}`);
+    }
+    if (expiresAt !== undefined) {
+      const expires = parseEnrollmentExpiresAt(expiresAt);
+      if (expires.error) {
+        return res.status(400).json({
+          error: enrollmentExpiresAtError(expires.error)
+        });
+      }
+      params.push(expires.value);
+      updates.push(`expires_at = $${params.length}`);
+    }
+    if (!updates.length) {
+      return res.status(400).json({
+        error: "No fields to update"
+      });
+    }
+    params.push(req.params.id);
+    const result = await pool.query(`UPDATE v_b_rmm_enrollment_tokens
+       SET ${updates.join(", ")}
+       WHERE id = $${params.length} AND revoked_at IS NULL
+       RETURNING id, client_id, label, expires_at, max_uses, uses_count, created_at, revoked_at, token_encrypted`, params);
+    if (!result.rows.length) {
+      return res.status(404).json({
+        error: "Token not found or already revoked"
+      });
+    }
+    res.json(mapEnrollmentTokenRow(result.rows[0]));
+  } catch (err) {
+    console.error("[rmm] update token:", err.message);
     res.status(500).json({
       error: "Server error"
     });
@@ -1253,10 +1344,12 @@ router.patch("/agents/:id", verifyJWT, requireAdmin, async (req, res) => {
 router.get("/agent/installer-info", verifyJWT, requireAdmin, (_req, res) => {
   try {
     const names = getWindowsInstallerFilenames();
+    const available = agentMsiAvailable();
     res.json({
       version: WINDOWS_INSTALLER_VERSION,
       filenames: names,
-      msiAvailable: agentMsiAvailable() || process.platform === "win32",
+      msiAvailable: available,
+      canBuild: !available && process.platform === "win32",
       format: "msi"
     });
   } catch (err) {

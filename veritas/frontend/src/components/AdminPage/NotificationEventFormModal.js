@@ -48,11 +48,19 @@ export default function NotificationEventFormModal({
   availableClients = [],
   webhooks = [],
   commentTemplates = [],
+  notificationTemplates = null,
+  availableChannels = null,
+  inAppEventOption = null,
+  inAppEventSettings = null,
+  onInAppEventSettingsChange,
+  formCopy = {},
   editorRef,
   onClose,
   onSave,
   onOpenVariables
 }) {
+  const templates = Array.isArray(notificationTemplates) ? notificationTemplates : commentTemplates;
+  const channelOptions = availableChannels ? NOTIFICATION_CHANNEL_OPTIONS.filter(item => availableChannels.includes(item.key) || item.key === "sms" && availableChannels.includes("sms")) : NOTIFICATION_CHANNEL_OPTIONS;
   const isCreate = mode === "create";
   const [activeSection, setActiveSection] = useState("trigger");
   const [emailToInput, setEmailToInput] = useState("");
@@ -90,19 +98,21 @@ export default function NotificationEventFormModal({
   const selectedChannels = useMemo(() => normalizeNotificationEventChannels(draft), [draft]);
   const usesMail = selectedChannels.includes("mail");
   const usesWebhook = selectedChannels.includes("webhook");
+  const usesInApp = selectedChannels.includes("inapp") || selectedChannels.includes("browser");
+  const runtimeChannels = selectedChannels.filter(key => key !== "inapp" && key !== "browser" && key !== "sms");
   const isTeamsWebhook = usesWebhook && String(selectedWebhook?.channel || "").toLowerCase() === "teams";
   const sectionMeta = useMemo(() => {
     const mailOk = !usesMail || parseEmailTags(draft?.emailTo).length > 0;
     const webhookOk = !usesWebhook || Boolean(String(draft?.webhookId || "").trim());
-    const channelOk = selectedChannels.length > 0 && mailOk && webhookOk;
-    const contentOk = draft?.useTemplate ? Boolean(String(draft?.templateId || "").trim()) : Boolean(String(draft?.customMessage || "").trim());
+    const channelOk = (usesInApp || runtimeChannels.length > 0) && mailOk && webhookOk;
+    const contentOk = runtimeChannels.length === 0 || (draft?.useTemplate ? Boolean(String(draft?.templateId || "").trim()) : Boolean(String(draft?.customMessage || "").trim()));
     return {
       trigger: Boolean(draft?.source && draft?.element),
       target: draft?.scopeType !== "enterprise" || Boolean(String(draft?.enterpriseId || "").trim()),
       channel: channelOk,
       content: contentOk
     };
-  }, [draft, selectedChannels, usesMail, usesWebhook]);
+  }, [draft, selectedChannels, usesMail, usesWebhook, usesInApp, runtimeChannels]);
   if (!open || !draft) return null;
   const patchDraft = patch => setDraft(prev => ({
     ...prev,
@@ -293,21 +303,44 @@ export default function NotificationEventFormModal({
               </p>
             </div>
 
-            {NOTIFICATION_CHANNEL_OPTIONS.map(channelItem => {
+            {channelOptions.map(channelItem => {
           const checked = selectedChannels.includes(channelItem.key);
           const comingSoon = Boolean(channelItem.comingSoon);
+          const hint = comingSoon ? "Coming soon — not delivered at runtime yet." : channelItem.key === "inapp" ? formCopy.inAppHint || "Cloche sidebar et badges tickets." : channelItem.key === "mail" ? formCopy.mailHint || "Send to the configured email recipients." : formCopy.webhookHint || "Deliver through the selected webhook (Teams, Slack, or generic).";
           return <div key={channelItem.key} className={formStyles.statusRow}>
                   <div>
                     <div className={formStyles.statusLabel}>{channelItem.label}</div>
-                    <p className={formStyles.statusHint}>
-                      {comingSoon ? "Coming soon — not delivered at runtime yet." : channelItem.key === "mail" ? "Send to the configured email recipients." : "Deliver through the selected webhook (Teams, Slack, or generic)."}
-                    </p>
+                    <p className={formStyles.statusHint}>{hint}</p>
                   </div>
                   <Switch checked={checked} disabled={comingSoon} onChange={on => toggleChannel(channelItem.key, on)} label={checked ? "Enabled" : "Disabled"} />
                 </div>;
         })}
 
+            {usesInApp && inAppEventOption && Array.isArray(inAppEventOption.fields) && inAppEventOption.fields.length > 0 && inAppEventSettings ? <div style={{
+          marginTop: "0.75rem"
+        }}>
+                <div className={formStyles.statusLabel}>{formCopy.inAppOptions || "Destinataires in-app"}</div>
+                {inAppEventOption.fields.map(field => <div key={field.key} className={formStyles.statusRow}>
+                    <div>
+                      <div className={formStyles.statusLabel}>{field.label}</div>
+                      <p className={formStyles.statusHint}>{field.hint}</p>
+                    </div>
+                    <Switch checked={inAppEventSettings[field.key] === true} onChange={on => onInAppEventSettingsChange?.(prev => ({
+              ...(prev || {}),
+              [field.key]: on
+            }))} />
+                  </div>)}
+              </div> : null}
+
             {usesMail && <>
+                <div className={`${layout.field} ${layout.fieldFull}`} style={{
+            marginTop: "0.75rem"
+          }}>
+                  <label className={layout.label}>{formCopy.subjectLabel || "Sujet de l'email"}</label>
+                  <input className={layout.input} value={draft.emailSubject || ""} onChange={e => patchDraft({
+              emailSubject: e.target.value
+            })} placeholder={formCopy.subjectPlaceholder || ""} />
+                </div>
                 <div className={`${layout.field} ${layout.fieldFull}`} style={{
             marginTop: "0.75rem"
           }}>
@@ -342,7 +375,7 @@ export default function NotificationEventFormModal({
               <div>
                 <div className={formStyles.statusLabel}>Use a template</div>
                 <p className={formStyles.statusHint}>
-                  Reuses an already configured comment template.
+                  {formCopy.useTemplateHint || "Réutilise un template du catalogue Notifications."}
                 </p>
               </div>
               <Switch checked={Boolean(draft.useTemplate)} onChange={on => patchDraft({
@@ -357,7 +390,7 @@ export default function NotificationEventFormModal({
               templateId: e.target.value
             })}>
                   <option value="">Select a template</option>
-                  {commentTemplates.map(template => <option key={template.id} value={template.id}>
+                  {templates.map(template => <option key={template.id} value={template.id}>
                       {template.name || "Unnamed template"}
                     </option>)}
                 </select>

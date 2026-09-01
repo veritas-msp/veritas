@@ -71,7 +71,7 @@ function extractErrorMessage(body, status) {
 function parseList(payload, depth = 0) {
   if (!payload || depth > 4) return [];
   if (Array.isArray(payload)) return payload;
-  const directKeys = ['items', 'content', 'data', 'results', 'list', 'customers', 'clients', 'senders', 'spools', 'domains', 'users', 'emails', 'servers', 'mailboxes', 'elements', 'records', 'values', 'rows'];
+  const directKeys = ['items', 'content', 'data', 'results', 'list', 'customers', 'clients', 'senders', 'spools', 'domains', 'users', 'emails', 'servers', 'mailboxes', 'licenses', 'licences', 'offers', 'contracts', 'subscriptions', 'elements', 'records', 'values', 'rows'];
   for (const key of directKeys) {
     const candidate = payload[key];
     if (Array.isArray(candidate)) return candidate;
@@ -461,8 +461,8 @@ export function normalizeMailinblackCustomer(item, session = null) {
     id: String(id),
     name: item.name || item.companyName || item.company || item.label || item.customerName || 'Mailinblack customer',
     domain: item.domain || item.primaryDomain || item.mainDomain || null,
-    usersCount: item.usersCount ?? item.users ?? item.nbUsers ?? null,
-    licenseCount: item.licenseCount ?? item.licenses ?? item.nbLicences ?? item.nbLicense ?? item.totalLicenses ?? item.licenceCount ?? null,
+    usersCount: toNumericCount(item.usersCount ?? item.users ?? item.nbUsers),
+    licenseCount: toNumericCount(item.licenseCount ?? (typeof item.licenses === 'number' || typeof item.licenses === 'string' ? item.licenses : null) ?? item.nbLicences ?? item.nbLicense ?? item.totalLicenses ?? item.licenceCount ?? item.nbLicenceProtect ?? item.protectLicenses ?? item.seats),
     domainsCount: item.domainsCount ?? item.domains ?? item.domainCount ?? (item.domain ? 1 : null),
     status: item.status || item.installationStatus || item.state || null,
     expiration: pickSoonestExpirationIso([item.expirationDate, item.expiration, item.renewalDate, item.expiryDate, item.licenseExpiration]),
@@ -471,12 +471,103 @@ export function normalizeMailinblackCustomer(item, session = null) {
 }
 function collectRawLicenseItems(raw) {
   if (!raw || typeof raw !== 'object') return [];
-  const lists = [raw.licenses, raw.licences, raw.licenseList, raw.licenceList];
+  const lists = [raw.licenses, raw.licences, raw.licenseList, raw.licenceList, raw.offers, raw.contracts];
   const items = [];
   for (const list of lists) {
     if (Array.isArray(list)) items.push(...list);
   }
   return items;
+}
+function toNumericCount(value) {
+  if (value == null || value === '' || value === false) return null;
+  if (typeof value === 'boolean') return null;
+  if (Array.isArray(value)) {
+    const summed = value.reduce((acc, entry) => {
+      const qty = toNumericCount(entry?.quantity ?? entry?.count ?? entry?.total ?? entry?.nbLicences ?? entry?.licenseCount ?? entry);
+      return qty != null ? acc + qty : acc;
+    }, 0);
+    if (summed > 0) return summed;
+    return value.length > 0 ? value.length : null;
+  }
+  if (typeof value === 'object') {
+    return toNumericCount(value.quantity ?? value.count ?? value.total ?? value.nbLicences ?? value.licenseCount ?? value.value ?? value.seats);
+  }
+  const num = Number(value);
+  if (!Number.isFinite(num) || num < 0) return null;
+  return num;
+}
+function pickNumericCount(...values) {
+  for (const value of values) {
+    const num = toNumericCount(value);
+    if (num != null) return num;
+  }
+  return null;
+}
+function extractLicenseSummaryFromPayload(payload) {
+  if (!payload || typeof payload !== 'object') {
+    return {
+      total: null,
+      used: null
+    };
+  }
+  return {
+    total: pickNumericCount(payload.totalLicenses, payload.licenseCount, payload.nbLicences, payload.nbLicense, payload.licencesTotales, payload.numberOfLicenses, payload.maxLicenses, payload.purchasedLicenses, payload.protectLicenses, payload.nbLicenceProtect, payload.seats, payload.quantity, typeof payload.licenses === 'number' || typeof payload.licenses === 'string' ? payload.licenses : null, typeof payload.licences === 'number' || typeof payload.licences === 'string' ? payload.licences : null),
+    used: pickNumericCount(payload.usedLicenses, payload.assignedLicenses, payload.consumedLicenses, payload.nbLicencesUsed, payload.licencesUtilisees, payload.assigned, payload.used, payload.consumed)
+  };
+}
+function normalizeLicense(item) {
+  if (item == null) return null;
+  if (typeof item === 'string' || typeof item === 'number') {
+    const name = String(item).trim();
+    if (!name) return null;
+    return {
+      id: name,
+      product: name,
+      total: 1,
+      used: null,
+      expiration: null,
+      status: null
+    };
+  }
+  if (typeof item !== 'object') return null;
+  const product = pickFirst(item.product, item.productName, item.offer, item.offerName, item.name, item.label, item.type, item.code, item.sku);
+  const total = pickNumericCount(item.quantity, item.count, item.total, item.nbLicences, item.licenseCount, item.seats, item.maxUsers, item.licenses);
+  const used = pickNumericCount(item.used, item.assigned, item.consumed, item.usedCount, item.assignedCount, item.nbUsed);
+  const id = item.id ?? item.licenseId ?? item.uuid ?? product;
+  if (!id && total == null && used == null && !product) return null;
+  return {
+    id: String(id || product || 'license'),
+    product: product ? String(product) : 'Protect',
+    total,
+    used,
+    expiration: pickSoonestExpirationIso([item.expirationDate, item.expiration, item.expiryDate, item.renewalDate, item.endDate, item.validUntil]),
+    status: pickFirst(item.status, item.state, item.active === true ? 'Active' : null)
+  };
+}
+function summarizeLicenseItems(items = []) {
+  let total = 0;
+  let used = 0;
+  let hasTotal = false;
+  let hasUsed = false;
+  for (const item of items) {
+    if (item?.total != null) {
+      total += Number(item.total) || 0;
+      hasTotal = true;
+    }
+    if (item?.used != null) {
+      used += Number(item.used) || 0;
+      hasUsed = true;
+    }
+  }
+  return {
+    total: hasTotal ? total : items.length ? items.length : null,
+    used: hasUsed ? used : null
+  };
+}
+function countProtectedUsers(users = []) {
+  const list = Array.isArray(users) ? users : [];
+  const protectedCount = list.filter(user => user?.status === 'Protected' || user?.protected === true).length;
+  return protectedCount > 0 ? protectedCount : null;
 }
 function scalarFrom(value, depth = 0) {
   if (depth > 3 || value == null || value === '') return null;
@@ -760,6 +851,7 @@ function normalizeUser(item) {
     firstName: pickFirst(item.firstName, item.firstname, item.prenom),
     lastName: pickFirst(item.lastName, item.lastname, item.nom),
     status: formatUserStatus(item),
+    protected: isTruthyFlag(item.protected) || isTruthyFlag(item.isProtected) || isTruthyFlag(item.licenseProtect) || isTruthyFlag(item.licenceProtect) || isTruthyFlag(item.hasLicense) || isTruthyFlag(item.protect) || null,
     role: formatUserRole(item),
     lastLogin: pickDateValue(item.lastLogin, item.lastLoginDate, item.lastConnectionDate, item.lastConnection, item.lastAccessDate, item.lastAccess, item.lastAuthDate, item.lastAuthenticationDate, item.lastAuth, item.lastLogon, item.connectedAt, item.lastActivity, item.updatedAt, item.connectionDate, item.lastSeen) || findDateOnObject(item, /login|auth|connection|access|logon|lastseen/i)
   };
@@ -907,6 +999,67 @@ async function mailinblackFetchListSection(apiUrl, session, credentials, module,
     exploited
   });
 }
+async function mailinblackFetchLicenses(apiUrl, session) {
+  const queryVariants = [{
+    page: 0,
+    size: 200
+  }, {}];
+  const attempts = [['admin', 'licenses'], ['admin', 'licences'], ['admin', 'offers'], ['admin', 'contracts'], ['protect', 'licenses'], ['protect', 'licences']];
+  let lastResult = {
+    ok: false,
+    permissionDenied: false,
+    error: 'No data returned',
+    httpStatus: null
+  };
+  for (const [module, path] of attempts) {
+    for (const query of queryVariants) {
+      const result = await safeMailinblackCall(() => mailinblackV2Request(apiUrl, session, module, path, {
+        method: 'GET',
+        query
+      }));
+      lastResult = result;
+      if (!result.ok) {
+        if (result.permissionDenied) break;
+        continue;
+      }
+      const items = parseList(result.data).map(item => normalizeListItem(item, normalizeLicense)).filter(Boolean);
+      const payloadSummary = extractLicenseSummaryFromPayload(result.data);
+      const itemSummary = summarizeLicenseItems(items);
+      const summary = {
+        total: payloadSummary.total ?? itemSummary.total,
+        used: payloadSummary.used ?? itemSummary.used
+      };
+      if (items.length || summary.total != null || summary.used != null) {
+        return {
+          status: 'ok',
+          error: null,
+          items,
+          total: items.length || summary.total || 0,
+          summary,
+          exploited: true
+        };
+      }
+    }
+  }
+  if (isNotFoundResult(lastResult)) {
+    return {
+      ...emptyListSection(true),
+      summary: {
+        total: null,
+        used: null
+      }
+    };
+  }
+  return {
+    ...buildSectionFromResult(lastResult, normalizeLicense, {
+      exploited: true
+    }),
+    summary: {
+      total: null,
+      used: null
+    }
+  };
+}
 export async function mailinblackListCustomers(apiUrl, credentials) {
   const session = await mailinblackAuthenticate(credentials);
   const legacyAttempts = [() => mailinblackV2Request(apiUrl, session, 'protect', 'customers', {
@@ -970,7 +1123,7 @@ export async function mailinblackGetCustomer(apiUrl, credentials, customerId) {
 export async function mailinblackBuildDashboard(apiUrl, credentials, customerId = null) {
   const session = await mailinblackAuthenticate(credentials);
   const effectiveCustomerId = customerId || session.clientId || credentials?.authClientId || null;
-  const [senders, spools, domains, users, emailsRaw, servers, customerRes] = await Promise.all([mailinblackFetchListSection(apiUrl, session, credentials, 'protect', 'senders', normalizeSender, {
+  const [senders, spools, domains, users, emailsRaw, servers, licenses, customerRes] = await Promise.all([mailinblackFetchListSection(apiUrl, session, credentials, 'protect', 'senders', normalizeSender, {
     exploited: true
   }), mailinblackFetchListSection(apiUrl, session, credentials, 'protect', 'spools', normalizeSpool, {
     exploited: true
@@ -986,7 +1139,7 @@ export async function mailinblackBuildDashboard(apiUrl, credentials, customerId 
     exploited: true,
     alternatePaths: ['smtp-servers', 'smtpServers', 'mail-servers', 'relays'],
     modules: ['admin', 'protect']
-  }), effectiveCustomerId ? safeMailinblackCall(() => mailinblackGetCustomer(apiUrl, credentials, effectiveCustomerId)) : Promise.resolve({
+  }), mailinblackFetchLicenses(apiUrl, session), effectiveCustomerId ? safeMailinblackCall(() => mailinblackGetCustomer(apiUrl, credentials, effectiveCustomerId)) : Promise.resolve({
     ok: false,
     data: null,
     permissionDenied: false,
@@ -1030,6 +1183,20 @@ export async function mailinblackBuildDashboard(apiUrl, credentials, customerId 
     }, session) : null,
     error: customerRes.error
   };
+  const customerRaw = customer.data?.raw && typeof customer.data.raw === 'object' ? customer.data.raw : {};
+  const rawLicenseItems = collectRawLicenseItems(customerRaw).map(item => normalizeLicense(item)).filter(Boolean);
+  const licenseItems = licenses.items?.length ? licenses.items : rawLicenseItems;
+  const licenseSummary = {
+    total: pickNumericCount(licenses.summary?.total, customer.data?.licenseCount, extractLicenseSummaryFromPayload(customerRaw).total, summarizeLicenseItems(licenseItems).total),
+    used: pickNumericCount(licenses.summary?.used, extractLicenseSummaryFromPayload(customerRaw).used, summarizeLicenseItems(licenseItems).used, countProtectedUsers(users.items))
+  };
+  const licensesSection = {
+    ...licenses,
+    items: licenseItems,
+    total: licenseItems.length || licenseSummary.total || 0,
+    summary: licenseSummary,
+    status: licenseItems.length || licenseSummary.total != null || licenseSummary.used != null ? 'ok' : licenses.status
+  };
   return {
     fetchedAt: new Date().toISOString(),
     session: {
@@ -1044,7 +1211,8 @@ export async function mailinblackBuildDashboard(apiUrl, credentials, customerId 
       domains,
       users,
       emails,
-      servers
+      servers,
+      licenses: licensesSection
     }
   };
 }
@@ -1053,12 +1221,14 @@ export function formatMailinblackSyncPayload(customer, mappingMode, mailinblackT
   const dashboard = extra.dashboard || null;
   const domainsSection = dashboard?.sections?.domains;
   const usersSection = dashboard?.sections?.users;
+  const licensesSection = dashboard?.sections?.licenses;
   const raw = customer.raw && typeof customer.raw === 'object' ? customer.raw : {};
-  const licenseItems = collectRawLicenseItems(raw);
+  const licenseItems = licensesSection?.items?.length ? licensesSection.items : collectRawLicenseItems(raw);
   const domainExpirations = Array.isArray(domainsSection?.items) ? domainsSection.items.flatMap(item => [item?.expiration, item?.expirationDate, item?.license?.expirationDate, item?.license?.expiration]) : [];
   const licenseExpirations = licenseItems.flatMap(item => [item?.expirationDate, item?.expiration, item?.expiryDate, item?.renewalDate, item?.endDate, item?.validUntil]);
   const expiration = pickSoonestExpirationIso([customer.expiration, raw.expirationDate, raw.expiration, raw.expiryDate, raw.renewalDate, raw.licenseExpiration, raw.licenceExpiration, raw.endDate, raw.validUntil, ...licenseExpirations, ...domainExpirations]) || '';
-  const licencesTotales = pickFirst(customer.licenseCount, Array.isArray(raw.licenses) ? raw.licenses.length : raw.licenses, raw.licenseCount, raw.nbLicences, raw.nbLicense, raw.totalLicenses, raw.licenceCount, raw.numberOfLicenses, licenseItems.length || null, raw.maxUsers, raw.maxMailboxes);
+  const licencesTotales = pickNumericCount(licensesSection?.summary?.total, customer.licenseCount, extractLicenseSummaryFromPayload(raw).total, summarizeLicenseItems(licenseItems.map(item => item.total != null || item.used != null ? item : normalizeLicense(item)).filter(Boolean)).total, Array.isArray(raw.licenses) ? raw.licenses.length : raw.licenses, raw.licenseCount, raw.nbLicences, raw.nbLicense, raw.totalLicenses, raw.licenceCount, raw.numberOfLicenses);
+  const licencesUtilisees = pickNumericCount(licensesSection?.summary?.used, extractLicenseSummaryFromPayload(raw).used, countProtectedUsers(usersSection?.items));
   return {
     solution: 'Mailinblack Protect',
     providerId: 'mailinblack',
@@ -1073,6 +1243,7 @@ export function formatMailinblackSyncPayload(customer, mappingMode, mailinblackT
     utilisateursProteges: usersSection?.total ?? customer.usersCount ?? (usersSection?.items?.length != null ? usersSection.items.length : 0),
     domainesSurveilles: domainsSection?.total ?? customer.domainsCount ?? (domainsSection?.items?.length != null ? domainsSection.items.length : 0),
     licencesTotales: licencesTotales != null && licencesTotales !== '' ? licencesTotales : null,
+    licencesUtilisees: licencesUtilisees != null && licencesUtilisees !== '' ? licencesUtilisees : null,
     expiration,
     syncData: {
       customer,

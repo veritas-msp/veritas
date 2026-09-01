@@ -54,13 +54,13 @@ function isCommentEdited(comment) {
   const updatedAt = new Date(comment.updated_at).getTime();
   return Number.isFinite(updatedAt) && updatedAt > createdAt + 500;
 }
-function PortalRichContent({ content, className }) {
+function PortalRichContent({ content, className, attachments = [] }) {
   const raw = String(content || "");
   if (!raw.trim()) return null;
   if (isIncomingEmailContent(raw)) {
     return (
       <div className={className}>
-        <IncomingEmailMessage content={raw} />
+        <IncomingEmailMessage content={raw} attachments={attachments} />
       </div>
     );
   }
@@ -460,7 +460,7 @@ export default function ClientTicketDetailPage() {
                 <div className={tdStyles.commentMeta}>
                   <span>{td.initialDescription}</span>
                 </div>
-                <PortalRichContent content={ticket.description} className={`${tdStyles.commentBody} ${portalStyles.richHtml}`} />
+                <PortalRichContent content={ticket.description} attachments={ticket.attachments} className={`${tdStyles.commentBody} ${portalStyles.richHtml}`} />
               </article> : null}
 
             <div className={tdStyles.timelineWrap}>
@@ -503,8 +503,8 @@ export default function ClientTicketDetailPage() {
                                   </> : copy.common.save}
                               </button>
                             </div>
-                          </div> : comment.content ? <PortalRichContent content={comment.content} className={`${tdStyles.commentBody} ${portalStyles.richHtml}`} /> : null}
-                        {Array.isArray(comment.attachments) && comment.attachments.length > 0 ? <div className={tdStyles.attachmentsList}>
+                          </div> : comment.content ? <PortalRichContent content={comment.content} attachments={comment.attachments} className={`${tdStyles.commentBody} ${portalStyles.richHtml}`} /> : null}
+                        {Array.isArray(comment.attachments) && comment.attachments.length > 0 && !isIncomingEmailContent(comment.content) ? <div className={tdStyles.attachmentsList}>
                             {comment.attachments.map(file => {
                       const attachment = normalizePortalAttachment(file, copy.common.attachment);
                       if (!attachment) return null;

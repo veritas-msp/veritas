@@ -952,7 +952,7 @@ export default function UsersTab({
                           icon,
                           label
                         }, i) => <SmartTooltip key={i} content={label} placement="top">
-                                    <span className={styles.mfaMethodIcon} title={label}>
+                                    <span className={styles.adminRoleIcon} title={label}>
                                       <Icon icon={icon} />
                                     </span>
                                   </SmartTooltip>)}
@@ -960,7 +960,7 @@ export default function UsersTab({
                     }
                     if (mfaUser != null && isAdmin) {
                       return <SmartTooltip content="Administrateur" placement="top">
-                                <span className={styles.mfaMethodIcon} title="Administrateur">
+                                <span className={styles.adminRoleIcon} title="Administrateur">
                                   <Icon icon="mdi:shield-account-outline" />
                                 </span>
                               </SmartTooltip>;

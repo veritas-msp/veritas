@@ -21,19 +21,56 @@ import { getContactSexeLabelLocalized } from "./contactFormModalI18n";
 import { interpolate } from "../../i18n/translate";
 import { getPortalStatusFromContact } from "../../api/contactPortal";
 import { normalizeContactSexe } from "../../utils/contactSexe";
+import { getPrimaryCommunicationValue } from "../../utils/contactCommunications";
 import {
   CONTACTS_COLUMN_LABEL_KEYS,
   DEFAULT_CONTACTS_TABLE_COLUMNS,
-  TICKET_TABLE_COLUMN_SORT_KEYS
+  TICKET_TABLE_COLUMN_SORT_KEYS,
+  normalizeTicketTableColumns
 } from "../../utils/ticketTableColumns";
 import MspPageHero from "../Misc/MspPageHero/MspPageHero";
 import mspStyles from "../CybersecuritePage/CybersecuritePage.module.css";
+import { useBreakpoint } from "../../hooks/useBreakpoint";
 import { usePermissions } from "../../contexts/PermissionsContext";
 import { createTrackedAbortController } from "../../utils/pageLoadAbort";
 
 const CONTACTS_PAGE_SCOPE = "contacts";
 const CONTACTS_FAVORITES_SETTING = "contacts_favorites";
 const LEGACY_CONTACTS_CACHE_KEY = "contacts_list_cache_v3";
+
+function getContactPhoneValue(contact) {
+  const direct = (contact?.telephone || "").toString().trim();
+  if (direct) return direct;
+  return getPrimaryCommunicationValue(contact?.communications, "telephone").toString().trim();
+}
+
+function getContactEmailValue(contact) {
+  const direct = (contact?.email || "").toString().trim();
+  if (direct) return direct;
+  return getPrimaryCommunicationValue(contact?.communications, "email").toString().trim();
+}
+
+function contactsColumnClass(columnId) {
+  const map = {
+    contact: styles.colContactName,
+    gender: styles.colContactGender,
+    status: styles.colContactStatus,
+    enterprise: styles.colContactEnterprise,
+    role: styles.colContactRole,
+    email: styles.colContactEmail,
+    phone: styles.colContactPhone,
+    portal: styles.colContactPortal
+  };
+  return map[columnId] || "";
+}
+
+function sanitizeContactsTableColumns(columns) {
+  return normalizeTicketTableColumns(columns, {
+    fallback: DEFAULT_CONTACTS_TABLE_COLUMNS,
+    pageScope: CONTACTS_PAGE_SCOPE
+  });
+}
+
 function getContactDisplayName(contact) {
   const parts = [contact.nom, contact.prenom].filter(Boolean);
   return parts.join(" ") || "-";
@@ -75,6 +112,8 @@ export default function ContactPage({
   const canBulkEdit = can("contacts_detail.edit");
   const canBulkDelete = can("contacts_detail.delete");
   const canBulkSelect = canBulkEdit || canBulkDelete;
+  const { isPhone } = useBreakpoint();
+  const showBulkSelection = canBulkSelect && !isPhone;
   const {
     isFavorite,
     toggleFavorite
@@ -90,9 +129,9 @@ export default function ContactPage({
   const [showContactModal, setShowContactModal] = useState(false);
   const [contactModalInitial, setContactModalInitial] = useState(null);
   const [columnsModalOpen, setColumnsModalOpen] = useState(false);
-  const [publicTableColumns, setPublicTableColumns] = useState(() => [...DEFAULT_CONTACTS_TABLE_COLUMNS]);
+  const [publicTableColumns, setPublicTableColumns] = useState(() => sanitizeContactsTableColumns(DEFAULT_CONTACTS_TABLE_COLUMNS));
   const [privateTableColumns, setPrivateTableColumns] = useState(null);
-  const [visibleTableColumns, setVisibleTableColumns] = useState(() => [...DEFAULT_CONTACTS_TABLE_COLUMNS]);
+  const [visibleTableColumns, setVisibleTableColumns] = useState(() => sanitizeContactsTableColumns(DEFAULT_CONTACTS_TABLE_COLUMNS));
   const tableColumns = visibleTableColumns;
   const loadControllerRef = useRef(null);
   const clientsControllerRef = useRef(null);
@@ -216,9 +255,9 @@ export default function ContactPage({
       try {
         const data = await fetchTicketTableColumns(CONTACTS_PAGE_SCOPE);
         if (cancelled) return;
-        setPublicTableColumns(Array.isArray(data?.public) ? data.public : [...DEFAULT_CONTACTS_TABLE_COLUMNS]);
-        setPrivateTableColumns(Array.isArray(data?.private) && data.private.length ? data.private : null);
-        setVisibleTableColumns(Array.isArray(data?.effective) && data.effective.length ? data.effective : [...DEFAULT_CONTACTS_TABLE_COLUMNS]);
+        setPublicTableColumns(sanitizeContactsTableColumns(Array.isArray(data?.public) ? data.public : DEFAULT_CONTACTS_TABLE_COLUMNS));
+        setPrivateTableColumns(Array.isArray(data?.private) && data.private.length ? sanitizeContactsTableColumns(data.private) : null);
+        setVisibleTableColumns(sanitizeContactsTableColumns(Array.isArray(data?.effective) && data.effective.length ? data.effective : DEFAULT_CONTACTS_TABLE_COLUMNS));
       } catch {
         if (!cancelled) toast.error(pageCopyRef.current.toasts?.loadColumns || "Error loading columns");
       }
@@ -228,10 +267,14 @@ export default function ContactPage({
     };
   }, []);
   const handleColumnsSaved = useCallback(result => {
-    if (Array.isArray(result?.public)) setPublicTableColumns(result.public);
-    setPrivateTableColumns(Array.isArray(result?.private) && result.private.length ? result.private : null);
-    setVisibleTableColumns(Array.isArray(result?.effective) && result.effective.length ? result.effective : [...DEFAULT_CONTACTS_TABLE_COLUMNS]);
+    if (Array.isArray(result?.public)) setPublicTableColumns(sanitizeContactsTableColumns(result.public));
+    setPrivateTableColumns(Array.isArray(result?.private) && result.private.length ? sanitizeContactsTableColumns(result.private) : null);
+    setVisibleTableColumns(sanitizeContactsTableColumns(Array.isArray(result?.effective) && result.effective.length ? result.effective : DEFAULT_CONTACTS_TABLE_COLUMNS));
   }, []);
+  useEffect(() => {
+    if (!isPhone) return;
+    setSelectedIds(new Set());
+  }, [isPhone]);
   const ensureClientsLoaded = async () => {
     if (clients.length > 0) return true;
     try {
@@ -613,7 +656,7 @@ export default function ContactPage({
   return <div className={`${mspStyles.mspPage} ${layout.page} msp-page-grid`}>
       <div className={mspStyles.mspLayout}>
         <div className={mspStyles.mspMain}>
-          <MspPageHero eyebrow={pageCopy.eyebrow} title={pageCopy.pageTitle} subtitle={loading ? pageCopy.loadingPortfolio : pageCopy.formatSubtitle(filteredAndSortedContacts.length, portfolioTotal)} icon="mdi:account-group-outline" actions={<>
+          <MspPageHero eyebrow={pageCopy.eyebrow} title={pageCopy.pageTitle} subtitle={isPhone ? null : loading ? pageCopy.loadingPortfolio : pageCopy.formatSubtitle(filteredAndSortedContacts.length, portfolioTotal)} icon="mdi:account-group-outline" stackOnMobile actions={<>
                 <SmartTooltip content={pageCopy.columnsSettings}>
                   <button type="button" className={layout.iconBtn} onClick={() => setColumnsModalOpen(true)} aria-label={pageCopy.columnsSettingsAria}>
                     <Icon icon="mdi:table-cog" />
@@ -633,7 +676,7 @@ export default function ContactPage({
 
           <main className={`${mspStyles.mspContent} ${mspStyles.mspContentList}`}>
             <div className={`${layout.shell} ${layout.shellWide} ${layout.shellFull}`}>
-        <div className={layout.toolbar}>
+        <div className={`${layout.toolbar} ${layout.toolbarWithFilters}`}>
           <div className={layout.searchWrap}>
             <Icon icon="mdi:magnify" className={layout.searchIcon} aria-hidden />
             <input type="text" inputMode="search" enterKeyHint="search" placeholder={pageCopy.searchPlaceholder} value={searchQuery} onChange={e => setSearchQuery(e.target.value)} className={layout.searchInput} aria-label={pageCopy.searchAria} />
@@ -669,7 +712,6 @@ export default function ContactPage({
                 <span className={layout.statusChipCount}>{portalCount}</span>
               </button>
             </div>
-          <span className={layout.toolbarMeta}>{filteredAndSortedContacts.length}</span>
         </div>
 
         {loading ? <div className={layout.stateBox}>
@@ -687,7 +729,7 @@ export default function ContactPage({
               {pageCopy.newContact}
             </button> : null}
           </div> : <div className={layout.listBody}>
-            {selectedCount > 0 && canBulkSelect ? <div className={layout.bulkBar}>
+            {selectedCount > 0 && showBulkSelection ? <div className={layout.bulkBar}>
                 <div className={layout.bulkInfo}>
                   <strong>{selectedCount}</strong>
                   <span>{selectedCount > 1 ? pageCopy.bulk.selectedPlural : pageCopy.bulk.selected}</span>
@@ -711,24 +753,25 @@ export default function ContactPage({
                 <table className={layout.dataTable}>
                   <thead>
                     <tr>
-                      {canBulkSelect ? <th className={layout.checkboxCell}>
+                      {showBulkSelection ? <th className={`${layout.checkboxCell} ${styles.colContactCheckbox}`.trim()}>
                           <input type="checkbox" className={layout.rowCheckbox} checked={allOnPageSelected} onChange={toggleSelectAllOnPage} onClick={e => e.stopPropagation()} aria-label={pageCopy.bulk.selectAll} />
                         </th> : null}
                       {tableColumns.map(columnId => {
                         const sortKey = TICKET_TABLE_COLUMN_SORT_KEYS[columnId];
                         const labelKey = CONTACTS_COLUMN_LABEL_KEYS[columnId];
+                        const columnClass = contactsColumnClass(columnId);
                         const label = columnId === "gender"
                           ? pageCopy.table.gender || pageCopy.civility
                           : pageCopy.table[labelKey] || pageCopy.table[columnId] || columnId;
                         if (!sortKey) {
-                          return <th key={columnId}>{label}</th>;
+                          return <th key={columnId} className={columnClass}>{label}</th>;
                         }
-                        return <th key={columnId} aria-sort={sortBy === sortKey ? sortOrder === "asc" ? "ascending" : "descending" : "none"}>
+                        return <th key={columnId} className={columnClass} aria-sort={sortBy === sortKey ? sortOrder === "asc" ? "ascending" : "descending" : "none"}>
                             <ThSort label={label} col={sortKey} />
                           </th>;
                       })}
-                      <th>{pageCopy.table.actions}</th>
-                      <th className={layout.favoriteCell} aria-label={pageCopy.favorites.columnAria}>
+                      <th className={styles.colContactActions}>{pageCopy.table.actions}</th>
+                      <th className={`${layout.favoriteCell} ${styles.colContactFavorite}`.trim()} aria-label={pageCopy.favorites.columnAria}>
                         <Icon icon="mdi:star-outline" aria-hidden />
                       </th>
                     </tr>
@@ -745,6 +788,10 @@ export default function ContactPage({
                       const isSelected = selectedIds.has(contactIdStr);
                       const rowName = getContactDisplayName(contact);
                       const favorited = isFavorite(contact.id);
+                      const contactPhone = getContactPhoneValue(contact);
+                      const contactEmail = getContactEmailValue(contact);
+                      const contactTelHref = contactPhone ? toTelHref(contactPhone) : "";
+                      const contactMailHref = contactEmail ? toMailtoHref(contactEmail) : "";
                       return <tr key={contact.id} className={`${layout.dataTableRow} ${isSelected ? layout.selectedRow : ""}`} onClick={() => openContact(contact)} onAuxClick={e => {
                         if (e.button === 1) {
                           e.preventDefault();
@@ -756,18 +803,18 @@ export default function ContactPage({
                           openContact(contact);
                         }
                       }} role="button" tabIndex={0}>
-                          {canBulkSelect ? <td className={layout.checkboxCell} onClick={e => e.stopPropagation()}>
+                          {showBulkSelection ? <td className={`${layout.checkboxCell} ${styles.colContactCheckbox}`.trim()} onClick={e => e.stopPropagation()}>
                               <input type="checkbox" className={layout.rowCheckbox} checked={isSelected} onChange={e => toggleContactSelection(contact.id, e.target.checked)} aria-label={pageCopy.formatBulkSelectRow(rowName)} />
                             </td> : null}
                           {tableColumns.map(columnId => {
                             if (columnId === "contact") {
-                              return <td key={columnId} className={layout.colCompany}>
+                              return <td key={columnId} className={`${layout.colCompany} ${styles.colContactName}`.trim()}>
                                   <div className={layout.tableIdentity}>
                                     <div className={layout.tableIdentityText}>
                                       <SmartTooltip content={getContactDisplayName(contact)} as="span" className={layout.clientNameText}>
                                         {getContactDisplayName(contact)}
                                       </SmartTooltip>
-                                      {tags.length > 0 ? <div className={layout.tableTags} aria-label={pageCopy.tagsAria}>
+                                      {tags.length > 0 ? <div className={`${layout.tableTags} ${styles.contactTags}`.trim()} aria-label={pageCopy.tagsAria}>
                                           {visibleTags.map(tag => <span key={tag.id} className={layout.clientTagChip} style={{
                                             backgroundColor: `${tag.color || "#2b5fab"}18`,
                                             borderColor: `${tag.color || "#2b5fab"}55`,
@@ -782,27 +829,27 @@ export default function ContactPage({
                                 </td>;
                             }
                             if (columnId === "gender") {
-                              return <td key={columnId} className={`${styles.colGender} ${layout.colMuted}`.trim()}>
+                              return <td key={columnId} className={`${styles.colGender} ${styles.colContactGender} ${layout.colMuted}`.trim()}>
                                   {contactSexe ? getContactSexeLabelLocalized(contactSexe, locale) : <span className={layout.colEmpty}>-</span>}
                                 </td>;
                             }
                             if (columnId === "status") {
-                              return <td key={columnId} className={styles.portalCell}>
+                              return <td key={columnId} className={`${styles.portalCell} ${styles.colContactStatus}`.trim()}>
                                   {renderContactStatus(contact)}
                                 </td>;
                             }
                             if (columnId === "enterprise") {
-                              return <td key={columnId} className={layout.colMuted}>{clientDisplay}</td>;
+                              return <td key={columnId} className={`${layout.colMuted} ${styles.colContactEnterprise}`.trim()}>{clientDisplay}</td>;
                             }
                             if (columnId === "role") {
-                              return <td key={columnId} className={layout.colMuted}>
+                              return <td key={columnId} className={`${layout.colMuted} ${styles.colContactRole}`.trim()}>
                                   {contact.poste ? <SmartTooltip content={contact.poste} as="span" className={styles.cellEllipsis}>
                                       {contact.poste}
                                     </SmartTooltip> : <span className={layout.colEmpty}>-</span>}
                                 </td>;
                             }
                             if (columnId === "email") {
-                              return <td key={columnId} onClick={e => e.stopPropagation()}>
+                              return <td key={columnId} className={styles.colContactEmail} onClick={e => e.stopPropagation()}>
                                   {contact.email ? <div className={styles.cellWithActionAlign}>
                                       <SmartTooltip content={contact.email} as="span" className={styles.detailLinkWrap}>
                                         <a href={toMailtoHref(contact.email)} className={styles.detailLink}>
@@ -818,7 +865,7 @@ export default function ContactPage({
                                 </td>;
                             }
                             if (columnId === "phone") {
-                              return <td key={columnId} onClick={e => e.stopPropagation()}>
+                              return <td key={columnId} className={styles.colContactPhone} onClick={e => e.stopPropagation()}>
                                   {contact.telephone ? <div className={styles.cellWithAction}>
                                       <SmartTooltip content={contact.telephone} as="span" className={styles.detailLinkWrap}>
                                         <a href={toTelHref(contact.telephone)} className={styles.detailLink}>
@@ -834,14 +881,24 @@ export default function ContactPage({
                                 </td>;
                             }
                             if (columnId === "portal") {
-                              return <td key={columnId} className={styles.portalCell} onClick={e => e.stopPropagation()}>
+                              return <td key={columnId} className={`${styles.portalCell} ${styles.colContactPortal}`.trim()} onClick={e => e.stopPropagation()}>
                                   {renderPortalStatus(contact)}
                                 </td>;
                             }
-                            return <td key={columnId}>-</td>;
+                            return <td key={columnId} className={contactsColumnClass(columnId)}>-</td>;
                           })}
-                          <td className={styles.actionsCell} onClick={e => e.stopPropagation()}>
+                          <td className={`${styles.actionsCell} ${styles.colContactActions}`.trim()} onClick={e => e.stopPropagation()}>
                             <div className={styles.cardActions}>
+                              {contactTelHref ? <a href={contactTelHref} className={`${styles.iconActionBtn} ${styles.colContactQuickAction}`.trim()} aria-label={interpolate(pageCopy.actions.callPhoneAria, {
+                                    phone: contactPhone
+                                  })} title={pageCopy.actions.callPhone} onClick={e => e.stopPropagation()}>
+                                    <Icon icon="mdi:phone-outline" aria-hidden />
+                                  </a> : null}
+                              {contactMailHref ? <a href={contactMailHref} className={`${styles.iconActionBtn} ${styles.colContactQuickAction}`.trim()} aria-label={interpolate(pageCopy.actions.sendEmailAria, {
+                                    email: contactEmail
+                                  })} title={pageCopy.actions.sendEmail} onClick={e => e.stopPropagation()}>
+                                    <Icon icon="mdi:email-outline" aria-hidden />
+                                  </a> : null}
                               <SmartTooltip content={pageCopy.actions.copyCard}>
                                 <button type="button" className={styles.iconActionBtn} aria-label={pageCopy.actions.copyCardAria} onClick={() => {
                                   const payload = buildContactSharePayload(contact, clientDisplay);
@@ -857,7 +914,7 @@ export default function ContactPage({
                               </SmartTooltip>
                             </div>
                           </td>
-                          <td className={layout.favoriteCell} onClick={e => e.stopPropagation()}>
+                          <td className={`${layout.favoriteCell} ${styles.colContactFavorite}`.trim()} onClick={e => e.stopPropagation()}>
                             <SmartTooltip content={favorited ? pageCopy.favorites.remove : pageCopy.favorites.add}>
                               <button type="button" className={`${layout.favoriteBtn} ${favorited ? layout.favoriteBtnActive : ""}`} aria-label={favorited ? pageCopy.favorites.remove : pageCopy.favorites.add} aria-pressed={favorited} onClick={() => toggleFavorite(contact.id)}>
                                 <Icon icon={favorited ? "mdi:star" : "mdi:star-outline"} aria-hidden />

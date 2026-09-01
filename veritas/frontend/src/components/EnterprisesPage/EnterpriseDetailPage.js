@@ -4,6 +4,7 @@ import { Icon } from "@iconify/react";
 import { toast } from 'react-toastify';
 import { updateClient, saveClientModules, getClientLogs, getClientCheckMKStats, fetchClientAntivirus, fetchClientAntispam, fetchClientDomains, fetchClientSslCertificates, fetchClientLicences, fetchClientModules, fetchContacts, fetchClientTags, addClientTag, removeClientTag, fetchClientNotes, createClientNote, updateClientNote, deleteClientNote, addContact, updateContact, addContactMembership, setContactPrimaryForClient, deleteClient, fetchClientSupportCredits, fetchClientDeletionCheck, resolveClientCustomFamilyMap } from "../../api/clients";
 import { listClientMailinblackTenants } from "../../api/clientMailinblack";
+import { listClientOffice365Credentials } from "../../api/clientOffice365";
 import { getGlobalOvhStatus } from "../../api/clientOvh";
 import { mapCustomEquipmentItem, parseCustomFamilyType } from "../../api/equipmentFamilies";
 import { getClientEquipmentTotal, mapClientHardwareEquipment } from "../../api/equipment";
@@ -75,12 +76,13 @@ import AntivirusSolutionPickerModal from "./AntivirusSolutionPickerModal";
 import AntispamConfigModal from "./AntispamConfigModal";
 import AntispamSolutionPickerModal from "./AntispamSolutionPickerModal";
 import MicrosoftTenantConfigModal from "./MicrosoftTenantConfigModal";
+import MicrosoftTenantSolutionPickerModal from "./MicrosoftTenantSolutionPickerModal";
 import CampaignFormModal from "../CybersecuritePage/CampaignFormModal";
 import CampaignPickerModal from "./CampaignPickerModal";
 import { getCybersecuritePageCopy } from "../CybersecuritePage/cybersecuritePageI18n";
 import { listConfiguredAntivirusSolutions, listOverviewAntivirusSolutions, mergeAntivirusSources, normalizeAntivirusItem, removeAntivirusSolution, reorderAntivirusSolutions, buildAntivirusDetailNavigationPayload } from "./antivirusSolutionUtils";
 import { listConfiguredAntispamSolutions, listOverviewAntispamSolutions, mergeAntispamSources, normalizeAntispamItem, removeAntispamSolution, reorderAntispamSolutions, buildAntispamDetailNavigationPayload } from "./antispamSolutionUtils";
-import { buildMicrosoftTenantDetailNavigationPayload, isMicrosoftTenantConfigured } from "./microsoftTenantSolutionUtils";
+import { buildMicrosoftTenantDetailNavigationPayload, listConfiguredMicrosoftTenants, removeMicrosoftTenant } from "./microsoftTenantSolutionUtils";
 import { extractDomainsFromModules, listConfiguredDomains, removeMonitoredDomain, reorderMonitoredDomains } from "./domainSolutionUtils";
 import { buildBitdefenderQueryParams } from "../../api/clientBitdefender";
 import PageGuideTour from "../PageGuide/PageGuideTour";
@@ -452,6 +454,9 @@ export default function ClientDetailPage({
   const [antispamPickerSolutions, setAntispamPickerSolutions] = useState([]);
   const [microsoftTenantConfigModalOpen, setMicrosoftTenantConfigModalOpen] = useState(false);
   const [microsoftTenantConfigInitialSection, setMicrosoftTenantConfigInitialSection] = useState("overview");
+  const [microsoftTenantConfigEditingTenant, setMicrosoftTenantConfigEditingTenant] = useState(null);
+  const [microsoftTenantPickerOpen, setMicrosoftTenantPickerOpen] = useState(false);
+  const [microsoftTenantPickerTenants, setMicrosoftTenantPickerTenants] = useState([]);
   const openAntivirusConfigModal = useCallback((section = "overview", editingSolution = null) => {
     setAntivirusConfigInitialSection(section);
     setAntivirusConfigEditingSolution(editingSolution);
@@ -474,8 +479,9 @@ export default function ClientDetailPage({
     if (!payload) return;
     onNavigate("AntispamDetail", payload, options);
   }, [onNavigate, client]);
-  const openMicrosoftTenantConfigModal = useCallback((section = "overview") => {
+  const openMicrosoftTenantConfigModal = useCallback((section = "overview", editingTenant = null) => {
     setMicrosoftTenantConfigInitialSection(section);
+    setMicrosoftTenantConfigEditingTenant(editingTenant);
     setMicrosoftTenantConfigModalOpen(true);
   }, []);
   const navigateToMicrosoftTenantDetail = useCallback((credentials = null, options = {}) => {
@@ -565,6 +571,7 @@ export default function ClientDetailPage({
   const configuredAntispamSolutions = useMemo(() => listConfiguredAntispamSolutions(client, uniqueAntispamData, client?.equipements ? {
     equipements: client.equipements
   } : null, mailinblackTenants), [client, uniqueAntispamData, mailinblackTenants]);
+  const configuredMicrosoftTenants = useMemo(() => listConfiguredMicrosoftTenants(client), [client]);
   useEffect(() => {
     if (!client?.id) {
       setMailinblackTenants([]);
@@ -1154,42 +1161,40 @@ export default function ClientDetailPage({
     }
   }, [client?.id, openAntispamConfigModal, hydrateServicesFromModules]);
   const refreshMicrosoftTenantState = useCallback(async () => {
-    if (!client?.id) return;
+    if (!client?.id) return [];
     try {
-      const credRes = await fetch(`${API_BASE_URL}/client-office365/${client.id}`, {
-        credentials: "include"
-      });
-      if (!credRes.ok) {
-        setClient(prev => prev ? {
-          ...prev,
-          has_azure_credentials: false,
-          hasAzureCredentials: false,
-          azureHasCredentials: false
-        } : prev);
-        return;
-      }
-      const credPayload = await credRes.json();
-      const creds = credPayload?.credentials;
-      const hasCredentials = Boolean(creds && (creds.id || creds.tenantId || creds.clientIdAzure || creds.hasSecret));
+      const list = await listClientOffice365Credentials(client.id);
+      const tenants = listConfiguredMicrosoftTenants(null, list);
+      const hasCredentials = tenants.length > 0;
       setClient(prev => prev ? {
         ...prev,
         has_azure_credentials: hasCredentials,
         hasAzureCredentials: hasCredentials,
-        azureHasCredentials: hasCredentials
+        azureHasCredentials: hasCredentials,
+        azureCredentialsList: list
       } : prev);
       setEquipmentRevision(revision => revision + 1);
+      return tenants;
     } catch (error) {
       console.error(error);
+      return [];
     }
   }, [client?.id]);
   const handleMicrosoftTenantBrickClick = useCallback(async () => {
     if (!client?.id) return;
-    if (isMicrosoftTenantConfigured(client)) {
-      navigateToMicrosoftTenantDetail();
-      return;
+    try {
+      const tenants = await refreshMicrosoftTenantState();
+      if (tenants.length === 0) {
+        openMicrosoftTenantConfigModal("configuration", null);
+        return;
+      }
+      setMicrosoftTenantPickerTenants(tenants);
+      setMicrosoftTenantPickerOpen(true);
+    } catch (error) {
+      console.error(error);
+      openMicrosoftTenantConfigModal("configuration", null);
     }
-    openMicrosoftTenantConfigModal("configuration");
-  }, [client, navigateToMicrosoftTenantDetail, openMicrosoftTenantConfigModal]);
+  }, [client?.id, openMicrosoftTenantConfigModal, refreshMicrosoftTenantState]);
   const handleNddBrickClick = useCallback(async () => {
     if (!client?.id) return;
     try {
@@ -1245,8 +1250,7 @@ export default function ClientDetailPage({
     }
   }, [client?.id]);
   const enrichAzureCredentials = async (clientInfo, signal, isCurrentRequest) => {
-    let hasAzureCredentials = Boolean(clientInfo?.has_azure_credentials || clientInfo?.hasAzureCredentials || clientInfo?.azureHasCredentials);
-    if (hasAzureCredentials || !clientInfo?.id) return clientInfo;
+    if (!clientInfo?.id) return clientInfo;
     try {
       const credRes = await fetch(`${API_BASE_URL}/client-office365/${clientInfo.id}`, {
         credentials: "include",
@@ -1254,14 +1258,18 @@ export default function ClientDetailPage({
       });
       if (!credRes.ok) return clientInfo;
       const credPayload = await credRes.json();
-      const creds = credPayload?.credentials;
-      hasAzureCredentials = Boolean(creds && (creds.id || creds.tenantId || creds.clientIdAzure || creds.hasSecret));
-      if (!hasAzureCredentials) return clientInfo;
+      const list = Array.isArray(credPayload?.credentialsList)
+        ? credPayload.credentialsList
+        : credPayload?.credentials
+          ? [credPayload.credentials]
+          : [];
+      const hasAzureCredentials = list.length > 0;
       return {
         ...clientInfo,
-        has_azure_credentials: true,
-        hasAzureCredentials: true,
-        azureHasCredentials: true
+        has_azure_credentials: hasAzureCredentials,
+        hasAzureCredentials: hasAzureCredentials,
+        azureHasCredentials: hasAzureCredentials,
+        azureCredentialsList: list
       };
     } catch (e) {
       if (e?.name === "AbortError") throw e;
@@ -2943,16 +2951,11 @@ export default function ClientDetailPage({
                 <span>{clientNameWithoutCode}</span>
               </h1>
               <div className={styles.heroMeta} aria-label={copy.heroMetaAria}>
-                {clientOnboarding ? <span className={`${styles.contractBadge} ${styles.contractBadge_onboarding}`}>
-                    <Icon icon="mdi:account-clock-outline" aria-hidden />
-                    {copy.onboardingBadge}
-                  </span> : null}
-                <span className={`${styles.contractBadge} ${companyStatusKey === "inactive" ? styles.contractBadge_suspended : styles.contractBadge_active}`}>
-                  {companyStatusLabel}
-                </span>
-                <span className={`${styles.contractBadge} ${styles[`contractBadge_${contractStatus.status}`] || styles.contractBadge_unknown}`}>
-                  {contractStatus.label}
-                </span>
+                {companyStatusKey === "inactive" ? <span className={`${styles.contractBadge} ${styles.contractBadge_suspended}`}>
+                    {companyStatusLabel}
+                  </span> : <span className={`${styles.contractBadge} ${styles[`contractBadge_${contractStatus.status}`] || styles.contractBadge_unknown}`}>
+                    {contractStatus.label}
+                  </span>}
                 {commercialLabel && <span className={styles.heroMetaItem}>
                     <Icon icon="mdi:account-tie-outline" aria-hidden />
                     {commercialLabel}
@@ -2995,6 +2998,22 @@ export default function ClientDetailPage({
             </div>
           </div>
           <div className={styles.heroActions} ref={clientActionsMenuRef} data-guide="enterprise-hero-actions">
+            {clientOnboarding ? <div className={`${styles.onboardingBanner} ${styles.heroOnboardingCard}`} role="status">
+                <Icon icon="mdi:account-clock-outline" aria-hidden />
+                <div className={styles.onboardingBannerText}>
+                  <strong>{copy.onboardingBannerTitle}</strong>
+                  <span>
+                    {clientOnboarding.ageDays < 1
+                  ? interpolate(copy.onboardingBannerHintToday, {
+                    remaining: clientOnboarding.remainingDays
+                  })
+                  : interpolate(copy.onboardingBannerHint, {
+                    days: clientOnboarding.ageDays,
+                    remaining: clientOnboarding.remainingDays
+                  })}
+                  </span>
+                </div>
+              </div> : null}
             {canEditClient || canReversibility ? <>
                 <SmartTooltip content={copy.actionsMenuTooltip}>
                   <button type="button" className={styles.heroMenuBtn} onClick={() => setClientActionsMenuOpen(open => !open)} aria-expanded={clientActionsMenuOpen} aria-haspopup="menu" aria-label={copy.actionsMenu} disabled={deletingClient}>
@@ -3059,11 +3078,12 @@ export default function ClientDetailPage({
                 </div>
               </div>
               <div className={styles.panelBody}>
-                <InfrastructureMap clientId={client.id} clientSnapshot={client} equipmentRevision={equipmentRevision} isCommunity={isCommunity} backupInstances={backupInstances} antivirusItems={configuredAntivirusSolutions} antispamItems={configuredAntispamSolutions} domainItems={configuredDomains} domainIntegrationReady={globalOvhConfigured} sslItems={sslData} licenceItems={licencesData} customFamilyMap={customFamilyMap} siteFilter={activeSiteFilter} campaignItems={campaigns} tenantInfo={{
-                  configured: Boolean(client?.has_azure_credentials || client?.hasAzureCredentials || client?.azureHasCredentials),
-                  tenantId: client?.Office365?.tenantId || client?.microsoft?.tenantId || null,
+                <InfrastructureMap clientId={client.id} clientSnapshot={client} equipmentRevision={equipmentRevision} isCommunity={isCommunity} backupInstances={backupInstances} antivirusItems={configuredAntivirusSolutions} antispamItems={configuredAntispamSolutions} domainItems={configuredDomains} domainIntegrationReady={globalOvhConfigured} sslItems={sslData} licenceItems={licencesData} customFamilyMap={customFamilyMap} siteFilter={activeSiteFilter} campaignItems={campaigns}                 tenantInfo={{
+                  configured: configuredMicrosoftTenants.length > 0 || Boolean(client?.has_azure_credentials || client?.hasAzureCredentials || client?.azureHasCredentials),
+                  items: configuredMicrosoftTenants,
+                  tenantId: configuredMicrosoftTenants[0]?.tenantId || client?.Office365?.tenantId || client?.microsoft?.tenantId || null,
                   email: client?.Office365?.email || client?.microsoft?.email || null,
-                  displayName: client?.Office365?.tenantName || client?.microsoft?.tenantName || null,
+                  displayName: configuredMicrosoftTenants[0]?.tenantName || client?.Office365?.tenantName || client?.microsoft?.tenantName || null,
                   status: client?.Office365?.status || client?.microsoft?.status || "actif",
                   lastSync: client?.Office365?.lastSync || client?.microsoft?.lastSync || null,
                   clientId: client.id,
@@ -3191,10 +3211,13 @@ export default function ClientDetailPage({
                 <div className={styles.equipmentSection}>
                   <EquipmentPage ref={equipmentPageRef} embedded fixedClientId={client.id} embeddedClient={client ? {
                     ...client,
-                    sites: formData.sites ?? client.sites ?? []
+                    sites: formData.sites ?? client.sites ?? [],
+                    ssid: Array.isArray(client.ssids) && client.ssids.length ? client.ssids : client.ssid,
+                    ssids: Array.isArray(client.ssids) && client.ssids.length ? client.ssids : client.ssid
                   } : null} initialEmbeddedType={initialPeripheralsUi?.activeType || null} initialTablePageByType={initialPeripheralsUi?.tablePageByType || null} initialTableSort={initialPeripheralsUi?.tableSort || null} initialEmbeddedPageSize={initialPeripheralsUi?.pageSize || null} onNavigate={onNavigate} searchQuery={equipmentSearchQuery} onSearchQueryChange={setEquipmentSearchQuery} onFilteredCountChange={setEquipmentResultCount} onTotalCountChange={setHardwareEquipmentTotalCount} onEquipmentChanged={refreshClientEquipment} onClientSsidsUpdated={ssids => {
                     setClient(prev => prev ? {
                       ...prev,
+                      ssid: ssids,
                       ssids
                     } : prev);
                   }} customFamilyMap={filteredCustomFamilyMap} backupInstances={backupInstances} siteFilter={activeSiteFilter} onCustomFamilyManage={(family, item) => {
@@ -3241,7 +3264,6 @@ export default function ClientDetailPage({
                           <h3 className={styles.activityBlockTitle}>
                             <Icon icon="mdi:ticket-outline" aria-hidden />
                             {copy.supportTicketsTitle}
-                            {clientOnboarding ? <span className={styles.onboardingBadge}>{copy.onboardingBadge}</span> : null}
                           </h3>
                           <span className={styles.activityBlockCount}>
                             {interpolate(copy.openCount, {
@@ -3249,22 +3271,6 @@ export default function ClientDetailPage({
                         })}
                           </span>
                         </div>
-                        {clientOnboarding ? <div className={styles.onboardingBanner} role="status">
-                            <Icon icon="mdi:account-clock-outline" aria-hidden />
-                            <div className={styles.onboardingBannerText}>
-                              <strong>{copy.onboardingBannerTitle}</strong>
-                              <span>
-                                {clientOnboarding.ageDays < 1
-                              ? interpolate(copy.onboardingBannerHintToday, {
-                                remaining: clientOnboarding.remainingDays
-                              })
-                              : interpolate(copy.onboardingBannerHint, {
-                                days: clientOnboarding.ageDays,
-                                remaining: clientOnboarding.remainingDays
-                              })}
-                              </span>
-                            </div>
-                          </div> : null}
                         <div className={styles.dataTableWrapper}>
                           <table className={styles.dataTable}>
                             <thead>
@@ -3295,10 +3301,7 @@ export default function ClientDetailPage({
                             }}>
                                       <td>#{ticket.ticket_number || "-"}</td>
                                       <td className={styles.activityTitleCell}>
-                                        <span className={styles.ticketTitleWithBadge}>
-                                          {ticket.title || "-"}
-                                          {clientOnboarding ? <span className={styles.onboardingBadge}>{copy.onboardingBadge}</span> : null}
-                                        </span>
+                                        {ticket.title || "-"}
                                       </td>
                                       <td>
                                         <span className={styles.ticketStatusBadge}>
@@ -4030,10 +4033,42 @@ export default function ClientDetailPage({
       setAntivirusPickerSolutions(reordered);
     }} />}
 
-      {microsoftTenantConfigModalOpen && client?.id && <MicrosoftTenantConfigModal client={client} initialSection={microsoftTenantConfigInitialSection} onClose={() => setMicrosoftTenantConfigModalOpen(false)} onViewTenant={credentials => {
+      {microsoftTenantConfigModalOpen && client?.id && <MicrosoftTenantConfigModal client={client} initialSection={microsoftTenantConfigInitialSection} initialEditingTenant={microsoftTenantConfigEditingTenant} onClose={() => {
       setMicrosoftTenantConfigModalOpen(false);
+      setMicrosoftTenantConfigEditingTenant(null);
+    }} onViewTenant={credentials => {
+      setMicrosoftTenantConfigModalOpen(false);
+      setMicrosoftTenantConfigEditingTenant(null);
       navigateToMicrosoftTenantDetail(credentials);
     }} onSaved={refreshMicrosoftTenantState} />}
+
+      {microsoftTenantPickerOpen && client?.id && <MicrosoftTenantSolutionPickerModal open={microsoftTenantPickerOpen} client={client} tenants={microsoftTenantPickerTenants} onClose={() => {
+      setMicrosoftTenantPickerOpen(false);
+      setMicrosoftTenantPickerTenants([]);
+    }} onSelectTenant={tenant => {
+      setMicrosoftTenantPickerOpen(false);
+      setMicrosoftTenantPickerTenants([]);
+      navigateToMicrosoftTenantDetail(tenant);
+    }} onAddTenant={() => {
+      setMicrosoftTenantPickerOpen(false);
+      setMicrosoftTenantPickerTenants([]);
+      openMicrosoftTenantConfigModal("configuration", null);
+    }} onEditTenant={tenant => {
+      setMicrosoftTenantPickerOpen(false);
+      setMicrosoftTenantPickerTenants([]);
+      openMicrosoftTenantConfigModal("overview", tenant);
+    }} onDeleteTenant={async tenant => {
+      if (!client?.id) return;
+      await removeMicrosoftTenant(client.id, tenant);
+      const remaining = await refreshMicrosoftTenantState();
+      toast.success(copy.toast.microsoftTenantRemoved);
+      if (remaining.length === 0) {
+        setMicrosoftTenantPickerOpen(false);
+        setMicrosoftTenantPickerTenants([]);
+        return;
+      }
+      setMicrosoftTenantPickerTenants(remaining);
+    }} />}
 
       {antispamConfigModalOpen && client?.id && <AntispamConfigModal client={client} initialSection={antispamConfigInitialSection} initialEditingSolution={antispamConfigEditingSolution} isCommunity={isCommunity} onClose={() => {
       setAntispamConfigModalOpen(false);

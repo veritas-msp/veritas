@@ -26,6 +26,7 @@ function PickerRow({
   onSelect,
   onEdit,
   onDelete,
+  canReorder = false,
   draggedIndex,
   dragOverIndex,
   onDragStart,
@@ -36,8 +37,8 @@ function PickerRow({
   const isDeleting = deletingKey === itemKey;
   const isDragging = draggedIndex === index;
   const isDragOver = dragOverIndex === index && draggedIndex !== index;
-  return <div className={`${pickerStyles.solutionRow} ${isManaging ? pickerStyles.solutionRowManaging : ""} ${isDragOver ? pickerStyles.solutionRowDragOver : ""} ${isDragging ? pickerStyles.solutionRowDragging : ""}`} onDragOver={isManaging ? event => onDragOver(event, index) : undefined} onDrop={isManaging ? event => onDrop(event, index) : undefined}>
-      {isManaging ? <button type="button" className={pickerStyles.dragHandle} draggable={!busy} onDragStart={event => onDragStart(event, index)} onDragEnd={onDragEnd} disabled={busy} aria-label={`Reorder ${label}`} title="Drag to reorder">
+  return <div className={`${pickerStyles.solutionRow} ${isManaging ? pickerStyles.solutionRowManaging : ""} ${isDragOver ? pickerStyles.solutionRowDragOver : ""} ${isDragging ? pickerStyles.solutionRowDragging : ""}`} onDragOver={isManaging && canReorder ? event => onDragOver(event, index) : undefined} onDrop={isManaging && canReorder ? event => onDrop(event, index) : undefined}>
+      {isManaging && canReorder ? <button type="button" className={pickerStyles.dragHandle} draggable={!busy} onDragStart={event => onDragStart(event, index)} onDragEnd={onDragEnd} disabled={busy} aria-label={`Reorder ${label}`} title="Drag to reorder">
           <Icon icon="mdi:drag-vertical" aria-hidden />
         </button> : null}
 
@@ -386,7 +387,7 @@ export default function ManagedSolutionPickerModal({
                 meta,
                 trailingIcon
               } = getItemPresentation(item);
-              return <PickerRow key={itemKey} item={item} index={index} isManaging={isManaging} busy={busy} deletingKey={deletingKey} itemKey={itemKey} icon={icon} image={image} iconColor={iconColor} label={label} meta={meta} trailingIcon={trailingIcon} onSelect={onSelectItem} onEdit={onEditItem} onDelete={onDeleteItem ? requestDelete : null} draggedIndex={draggedIndex} dragOverIndex={dragOverIndex} onDragStart={handleDragStart} onDragOver={handleDragOver} onDrop={handleDrop} onDragEnd={handleDragEnd} />;
+              return <PickerRow key={itemKey} item={item} index={index} isManaging={isManaging} busy={busy} deletingKey={deletingKey} itemKey={itemKey} icon={icon} image={image} iconColor={iconColor} label={label} meta={meta} trailingIcon={trailingIcon} onSelect={onSelectItem} onEdit={onEditItem} onDelete={onDeleteItem ? requestDelete : null} canReorder={Boolean(onReorderItems)} draggedIndex={draggedIndex} dragOverIndex={dragOverIndex} onDragStart={handleDragStart} onDragOver={handleDragOver} onDrop={handleDrop} onDragEnd={handleDragEnd} />;
             })}
           </div>}
         </div>

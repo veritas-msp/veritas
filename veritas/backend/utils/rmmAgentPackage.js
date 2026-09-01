@@ -109,7 +109,9 @@ export function ensureWindowsMsiBuilt() {
 function streamMsiFile(res, { forAgentUpdate = false } = {}) {
   const filePath = ensureWindowsMsiBuilt();
   const names = getWindowsInstallerFilenames();
-  res.setHeader("Content-Type", "application/x-msi");
+  const size = fs.statSync(filePath).size;
+  res.setHeader("Content-Type", "application/octet-stream");
+  res.setHeader("Content-Length", String(size));
   res.setHeader("X-Veritas-Installer-Version", WINDOWS_INSTALLER_VERSION);
   res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate");
   res.setHeader("Pragma", "no-cache");
@@ -117,7 +119,17 @@ function streamMsiFile(res, { forAgentUpdate = false } = {}) {
     res.setHeader("X-Veritas-Agent-Update", "1");
   }
   res.setHeader("Content-Disposition", `attachment; filename="${names.msi}"`);
-  fs.createReadStream(filePath).pipe(res);
+  const stream = fs.createReadStream(filePath);
+  stream.on("error", err => {
+    if (!res.headersSent) {
+      res.status(500).json({
+        error: err.message || "Unable to read MSI"
+      });
+      return;
+    }
+    res.destroy(err);
+  });
+  stream.pipe(res);
 }
 
 export function streamWindowsSetupMsi(res) {

@@ -1,6 +1,7 @@
 import { pool } from "../database/db.js";
 import { handleTicketStatusCreditChange } from "./supportCredits.js";
 import { dispatchNotificationEvent } from "./notificationDispatcher.js";
+import { notifyTicketChangeEmails } from "./systemNotificationService.js";
 import { notifyInAppTicketStatusChanged } from "./userNotificationService.js";
 import { ensureTicketSolutionCatalogSchema } from "./ensureTicketSolutionCatalogSchema.js";
 export const RESOLUTION_COMMENT_PREFIX = "[Resolution]";
@@ -109,6 +110,11 @@ async function changeTicketStatus(ticketId, newStatus, userId, note) {
     newStatus: normalizedNewStatus,
     changedByUserId: userId || null
   }).catch(() => {});
+  await notifyTicketChangeEmails({
+    ticketId,
+    newStatus: normalizedNewStatus,
+    changedByUserId: userId || null
+  }).catch(() => {});
   return result.rows[0];
 }
 export async function resolveTicketWithClientValidation({
@@ -194,6 +200,11 @@ export async function resolveTicketWithClientValidation({
       }
     }).catch(() => {});
     await notifyInAppTicketStatusChanged({
+      ticketId,
+      newStatus: "resolved",
+      changedByUserId: userId || null
+    }).catch(() => {});
+    await notifyTicketChangeEmails({
       ticketId,
       newStatus: "resolved",
       changedByUserId: userId || null
@@ -316,6 +327,11 @@ export async function submitPortalResolutionValidation({
       }
     }).catch(() => {});
     await notifyInAppTicketStatusChanged({
+      ticketId,
+      newStatus: "closed",
+      changedByUserId: userId || null
+    }).catch(() => {});
+    await notifyTicketChangeEmails({
       ticketId,
       newStatus: "closed",
       changedByUserId: userId || null

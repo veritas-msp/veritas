@@ -119,7 +119,7 @@
 
 .hexInner {
   position: absolute;
-  inset: var(--tile-inner-inset, 3px);
+  inset: var(--tile-inner-inset, 1px);
   display: flex;
   flex-direction: column;
   align-items: center;

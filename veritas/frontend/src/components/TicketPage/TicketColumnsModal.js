@@ -117,6 +117,7 @@ export default function TicketColumnsModal({
   pageScope = "ticket",
   initialPublic = null,
   initialPrivate = null,
+  initialEffective = null,
   columnLabelKeys = null,
   copy
 }) {
@@ -136,6 +137,7 @@ export default function TicketColumnsModal({
   const [publicColumns, setPublicColumns] = useState(() => [...defaultColumns]);
   const [privateColumns, setPrivateColumns] = useState(null);
   const [columnOrder, setColumnOrder] = useState(() => [...defaultColumns]);
+  const [effectiveSeed, setEffectiveSeed] = useState(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
@@ -164,12 +166,18 @@ export default function TicketColumnsModal({
       Array.isArray(initialPrivate) && initialPrivate.length > 0
         ? [...initialPrivate]
         : null;
+    const nextEffective =
+      Array.isArray(initialEffective) && initialEffective.length > 0
+        ? [...initialEffective]
+        : null;
+    const visibleSeed = nextPrivate ?? nextEffective ?? nextPublic;
     setPublicColumns(nextPublic);
     setPrivateColumns(nextPrivate);
-    setColumnOrder(buildColumnEditorOrder(nextPrivate || nextPublic, availableColumns));
+    setEffectiveSeed(nextEffective);
+    setColumnOrder(buildColumnEditorOrder(visibleSeed, availableColumns));
     setError("");
     setSaving(false);
-  }, [open, initialPublic, initialPrivate, defaultColumns, availableColumns]);
+  }, [open, initialPublic, initialPrivate, initialEffective, defaultColumns, availableColumns]);
 
   useEffect(() => {
     if (!open) return undefined;
@@ -190,9 +198,7 @@ export default function TicketColumnsModal({
   const editingPublic = tab === "public";
   const enabledColumns = editingPublic
     ? publicColumns
-    : privateColumns == null
-      ? [...publicColumns]
-      : privateColumns;
+    : privateColumns ?? effectiveSeed ?? publicColumns;
   const draftColumns = visibleColumnsFromEditorOrder(columnOrder, enabledColumns);
   const hasPrivateView = Array.isArray(privateColumns) && privateColumns.length > 0;
   const canEditCurrent = editingPublic ? isAdmin : true;
@@ -216,9 +222,7 @@ export default function TicketColumnsModal({
     const nextEnabled =
       nextTab === "public"
         ? publicColumns
-        : privateColumns == null
-          ? publicColumns
-          : privateColumns;
+        : privateColumns ?? effectiveSeed ?? publicColumns;
     setColumnOrder(buildColumnEditorOrder(nextEnabled, availableColumns));
   };
 

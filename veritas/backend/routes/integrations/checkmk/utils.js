@@ -42,6 +42,136 @@ export function normalizeCheckMKApiUrl(apiUrl) {
   return url;
 }
 
+export const CHECKMK_SERVICE_COLUMNS = [
+  'host_name',
+  'description',
+  'display_name',
+  'state',
+  'state_type',
+  'plugin_output',
+  'long_plugin_output',
+  'perf_data',
+  'last_check',
+  'last_state_change',
+  'check_command',
+  'acknowledged',
+  'scheduled_downtime_depth',
+  'labels'
+];
+
+export const CHECKMK_HOST_COLUMNS = [
+  'name',
+  'alias',
+  'address',
+  'state',
+  'state_type',
+  'plugin_output',
+  'long_plugin_output',
+  'perf_data',
+  'last_check',
+  'last_state_change',
+  'last_time_up',
+  'last_time_down',
+  'last_time_unreachable',
+  'num_services',
+  'num_services_ok',
+  'num_services_warn',
+  'num_services_crit',
+  'num_services_unknown',
+  'worst_service_state',
+  'labels',
+  'scheduled_downtime_depth',
+  'acknowledged',
+  'display_name'
+];
+
+export function appendCheckmkColumns(url, columns) {
+  (Array.isArray(columns) ? columns : []).forEach(column => {
+    if (column) url.searchParams.append('columns', column);
+  });
+}
+
+export function getCheckMkGuiBaseUrl(apiUrl) {
+  let baseUrl = normalizeCheckMKApiUrl(apiUrl);
+  baseUrl = baseUrl.replace(/\/check_mk\/api\/1\.0$/i, '');
+  baseUrl = baseUrl.replace(/\/check_mk\/api$/i, '');
+  baseUrl = baseUrl.replace(/\/api\/1\.0$/i, '');
+  baseUrl = baseUrl.replace(/\/api$/i, '');
+  while (baseUrl.endsWith('/')) baseUrl = baseUrl.slice(0, -1);
+  return baseUrl;
+}
+
+export function getCheckMkViewPyUrl(apiUrl) {
+  const base = getCheckMkGuiBaseUrl(apiUrl);
+  if (/\/check_mk$/i.test(base)) return `${base}/view.py`;
+  return `${base}/check_mk/view.py`;
+}
+
+export function stripHostPrefixFromService(hostName, serviceName) {
+  const host = String(hostName || '').trim();
+  const service = String(serviceName || '').trim();
+  if (!service) return '';
+  if (host && service.toLowerCase().startsWith(`${host.toLowerCase()}:`)) {
+    return service.slice(host.length + 1).trim();
+  }
+  return service;
+}
+
+export function serviceNameMatches(service, wantedName, hostName = '') {
+  const wantedKey = String(stripHostPrefixFromService(hostName, wantedName) || '').trim().toLowerCase();
+  if (!wantedKey) return false;
+  const keys = [service?.description, service?.title, service?.id]
+    .filter(Boolean)
+    .flatMap(raw => {
+      const text = String(raw).trim();
+      const bare = stripHostPrefixFromService(hostName, text);
+      const afterColon = text.includes(':') ? text.split(':').slice(1).join(':').trim() : text;
+      return [text, bare, afterColon];
+    })
+    .map(value => value.toLowerCase())
+    .filter(Boolean);
+  return keys.some(key => key === wantedKey);
+}
+
+export async function fetchShowServiceDetails(apiUrl, authToken, hostName, serviceName, site = '') {
+  const description = stripHostPrefixFromService(hostName, serviceName);
+  if (!description) return null;
+  const showUrl = new URL(`${apiUrl}/objects/host/${encodeURIComponent(hostName)}/actions/show_service/invoke`);
+  showUrl.searchParams.set('service_description', description);
+  if (site) showUrl.searchParams.set('site', site);
+  try {
+    const response = await fetch(showUrl.toString(), {
+      method: 'GET',
+      headers: {
+        Accept: 'application/json',
+        Authorization: authToken
+      }
+    });
+    if (!response.ok) return null;
+    const data = await response.json();
+    const ext = data?.extensions || {};
+    const pluginOutput = ext.plugin_output || null;
+    const performanceData = ext.perf_data || ext.performance_data || null;
+    return {
+      id: data?.id || `${hostName}:${description}`,
+      title: data?.title || ext.display_name || ext.description || description,
+      description: ext.description || description,
+      state: ext.state,
+      stateType: ext.state_type,
+      pluginOutput,
+      longPluginOutput: ext.long_plugin_output || null,
+      performanceData,
+      lastCheck: ext.last_check ?? null,
+      lastStateChange: ext.last_state_change ?? null,
+      labels: ext.labels || {},
+      performanceValue: extractPerformanceValue(performanceData, pluginOutput),
+      raw: data
+    };
+  } catch {
+    return null;
+  }
+}
+
 export async function getCheckMKSettings() {
   try {
     const settings = await getSettingsMap(['CHECKMK_API_URL', 'CHECKMK_USERNAME', 'CHECKMK_PASSWORD', 'CHECKMK_SITE']);
@@ -120,7 +250,7 @@ export async function authenticateCheckMK(apiUrl, username, password) {
 }
 export async function getHostServices(apiUrl, authToken, hostName, site = '') {
   try {
-    const columns = ['host_name', 'description', 'display_name', 'state', 'state_type', 'plugin_output', 'long_plugin_output', 'perf_data', 'performance_data', 'last_check', 'last_state_change', 'check_command', 'check_command_expanded', 'acknowledged', 'scheduled_downtime_depth', 'labels', 'label_sources', 'label_source_names', 'label_source_values'];
+    const columns = CHECKMK_SERVICE_COLUMNS;
     const normalizeServices = items => {
       const statusItems = items || [];
       return statusItems.map(item => {
@@ -208,9 +338,9 @@ export async function getHostServices(apiUrl, authToken, hostName, site = '') {
     };
     const tryFetchServicesTable = async params => {
       const statusUrl = new URL(`${apiUrl}/domain-types/service/collections/all`);
-      statusUrl.searchParams.set('columns', columns.join(','));
+      appendCheckmkColumns(statusUrl, columns);
       Object.entries(params).forEach(([key, value]) => {
-        statusUrl.searchParams.set(key, value);
+        if (value != null && value !== '') statusUrl.searchParams.set(key, value);
       });
       if (site) {
         statusUrl.searchParams.set('site', site);
@@ -225,9 +355,15 @@ export async function getHostServices(apiUrl, authToken, hostName, site = '') {
       if (!response.ok) return [];
       const body = await response.json();
       const items = body.value || body.items || body || [];
-      const services = normalizeServices(items);
+      const services = normalizeServices(Array.isArray(items) ? items : []);
       return await enrichServices(services);
     };
+    try {
+      const services = await tryFetchServicesTable({
+        host_name: hostName
+      });
+      if (services.length > 0) return services;
+    } catch (statusError) {}
     try {
       const queryExpression = JSON.stringify({
         op: 'eq',
@@ -340,11 +476,8 @@ export async function getServicePluginOutputViaViewPy(apiUrl, authHeader, hostNa
   try {
     const rawServiceName = (serviceName || '').trim();
     if (!rawServiceName) return null;
-    const serviceForView = rawServiceName.includes(':') ? rawServiceName.replace(/^[^:]+:\s*/, '').trim() : rawServiceName;
-    let baseUrl = apiUrl;
-    if (baseUrl.includes('/api/1.0')) baseUrl = baseUrl.replace('/api/1.0', '');
-    baseUrl = baseUrl.replace(/\/+$/, '');
-    const viewPyUrl = `${baseUrl}/view.py`;
+    const serviceForView = stripHostPrefixFromService(hostName, rawServiceName) || rawServiceName;
+    const viewPyUrl = getCheckMkViewPyUrl(apiUrl);
     const viewParams = new URLSearchParams();
     viewParams.append('host', hostName);
     viewParams.append('service', serviceForView);

@@ -1,0 +1,105 @@
+.body {
+  display: grid;
+  grid-template-columns: 180px minmax(0, 1fr);
+  min-height: 0;
+  flex: 1;
+  overflow: hidden;
+}
+
+.nav {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 12px;
+  border-right: 1px solid var(--msp-border);
+  overflow-y: auto;
+}
+
+.navBtn {
+  text-align: left;
+  border: none;
+  background: transparent;
+  color: var(--msp-muted);
+  font: inherit;
+  font-size: 0.78rem;
+  font-weight: 600;
+  padding: 8px 10px;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.navBtn:hover {
+  background: var(--msp-surface-3);
+  color: var(--msp-text);
+}
+
+.navBtnActive {
+  background: var(--msp-accent-soft);
+  color: var(--msp-text);
+}
+
+.groups {
+  overflow-y: auto;
+  padding: 14px 16px 20px;
+}
+
+.group {
+  margin-bottom: 16px;
+}
+
+.groupTitle {
+  margin: 0 0 8px;
+  font-size: 0.72rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--msp-muted-light);
+}
+
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.varBtn {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  width: 100%;
+  border: 1px solid var(--msp-border);
+  background: var(--msp-surface);
+  border-radius: 8px;
+  padding: 8px 10px;
+  cursor: pointer;
+  text-align: left;
+  font: inherit;
+}
+
+.varBtn:hover {
+  border-color: var(--msp-accent);
+}
+
+.varKey {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.78rem;
+  color: var(--msp-text);
+}
+
+.varDesc {
+  font-size: 0.74rem;
+  color: var(--msp-muted);
+}
+
+@media (max-width: 720px) {
+  .body {
+    grid-template-columns: 1fr;
+  }
+
+  .nav {
+    flex-direction: row;
+    flex-wrap: wrap;
+    border-right: none;
+    border-bottom: 1px solid var(--msp-border);
+  }
+}

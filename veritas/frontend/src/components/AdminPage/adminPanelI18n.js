@@ -190,7 +190,7 @@ const ADMIN_PANEL_COPY = {
       },
       notifications: {
         label: "Notifications",
-        description: "In-app, événements automatiques et webhooks"
+        description: "In-app, email, intégrations, templates et journal d'envoi"
       },
       maintenance: {
         label: "Message de maintenance",
@@ -317,7 +317,7 @@ const ADMIN_PANEL_COPY = {
       },
       notifications: {
         label: "Notifications",
-        description: "In-app, automatic events and webhooks"
+        description: "In-app, email, integrations, templates and delivery log"
       },
       maintenance: {
         label: "Maintenance message",

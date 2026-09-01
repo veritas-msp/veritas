@@ -111,7 +111,7 @@
   justify-content: center;
   min-height: 1rem;
   font-size: 0.62rem;
-  font-weight: 800;
+  font-weight: 600;
   letter-spacing: 0.07em;
   text-transform: uppercase;
   color: var(--msp-muted, #5c6b82);
@@ -233,7 +233,7 @@ button.brickNode {
 .hexName,
 .brickName {
   font-size: 0.68rem;
-  font-weight: 650;
+  font-weight: 500;
   line-height: 1.15;
   text-align: center;
   color: var(--msp-text, #0f1c2e);
@@ -374,7 +374,7 @@ button.brickNode {
 
 .hexInner {
   position: absolute;
-  inset: var(--tile-inner-inset, 3px);
+  inset: var(--tile-inner-inset, 1px);
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -416,7 +416,7 @@ button.brickNode {
 
 .infraItemCount {
   font-size: 0.6875rem;
-  font-weight: 700;
+  font-weight: 600;
   font-variant-numeric: tabular-nums;
   color: var(--msp-text, #0f1c2e);
   line-height: 1;

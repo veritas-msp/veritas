@@ -3,6 +3,7 @@ import { normalizeClientSites } from "../utils/clientSites";
 import { aggregateAntivirusEquipementFromRows } from "../utils/antivirusModuleRows";
 import { fetchEquipmentFamilies } from "./equipmentFamilies";
 import { pickBackupJobType } from "../components/EnterprisesPage/backupJobUtils";
+import { resolveClientWifiSsidCatalog } from "../components/EquipementPage/wifiApSsidUtils";
 const BASE_URL = `${API_BASE_URL}/clients`;
 const MODULES_BASE_URL = `${API_BASE_URL}/clients/modules`;
 const CYBER_PAGE_DATA_CACHE_KEY = "cyber_page_data_cache_v1";
@@ -44,7 +45,9 @@ function mapModuleRowToEquipmentItem(item) {
     id: item.id,
     client_id: item.client_id,
     ...parsedData,
-    nom: parsedData.nom || item.name || item.item_key || "Sans nom"
+    nom: parsedData.nom || item.name || item.item_key || "Sans nom",
+    is_active: item.is_active,
+    data: parsedData
   };
 }
 async function fetchCommunityModuleFamilyRows(clientId, family, options = {}) {
@@ -61,7 +64,7 @@ async function fetchClientHardwareModulesCommunity(clientId, options = {}) {
   const hardwareTasks = Object.entries(COMMUNITY_HARDWARE_FAMILIES).map(async ([family, label]) => {
     try {
       const items = await fetchCommunityModuleFamilyRows(clientId, family, options);
-      equipements[label] = items.filter(item => item.is_active !== false).map(mapModuleRowToEquipmentItem);
+      equipements[label] = items.map(mapModuleRowToEquipmentItem);
     } catch (err) {
       if (err?.name === "AbortError") throw err;
       equipements[label] = [];
@@ -112,18 +115,7 @@ export async function fetchClients(options = {}) {
   const parsedClients = clients.map(client => ({
     ...client,
     sites: parseClientSites(client.sites),
-    ssids: (() => {
-      if (Array.isArray(client.ssids)) return client.ssids;
-      if (typeof client.ssids === 'string') {
-        try {
-          return JSON.parse(client.ssids);
-        } catch (e) {
-          console.warn(`Error parsing SSIDs for client ${client.id}:`, e);
-          return [];
-        }
-      }
-      return client.ssids || [];
-    })()
+    ssids: resolveClientWifiSsidCatalog(client)
   }));
   const clientsWithModules = await Promise.all(parsedClients.map(async client => {
     try {
@@ -178,10 +170,11 @@ export async function fetchClientGeneral(clientId, options = {}) {
   });
   if (!res.ok) throw new Error("Client not found");
   const client = await res.json();
-  const ssids = Array.isArray(client.ssids) ? client.ssids : Array.isArray(client.ssid) ? client.ssid : [];
+  const ssids = resolveClientWifiSsidCatalog(client);
   return {
     ...client,
     sites: parseClientSites(client.sites),
+    ssid: ssids,
     ssids
   };
 }

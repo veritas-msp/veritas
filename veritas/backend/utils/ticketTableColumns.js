@@ -38,11 +38,11 @@ export const TICKET_TABLE_COLUMN_IDS_BY_SCOPE = Object.freeze({
   enterprises: Object.freeze([
     "client_number",
     "company",
+    "company_status",
     "primary_contact",
     "commercial",
     "modules",
     "expiration",
-    "equipment",
     "tags"
   ]),
   contacts: Object.freeze([
@@ -119,6 +119,18 @@ function defaultsForScope(pageScope) {
   return [...(DEFAULT_TICKET_TABLE_COLUMNS_BY_SCOPE[scope] || DEFAULT_TICKET_TABLE_COLUMNS_BY_SCOPE.ticket)];
 }
 
+function withCompanyStatusColumn(columns, pageScope = "ticket") {
+  if (normalizeTicketTableColumnsPageScope(pageScope) !== "enterprises") {
+    return Array.isArray(columns) ? [...columns] : columns;
+  }
+  const list = Array.isArray(columns) ? [...columns] : [];
+  if (list.includes("company_status")) return list;
+  const companyIdx = list.indexOf("company");
+  if (companyIdx >= 0) list.splice(companyIdx + 1, 0, "company_status");
+  else list.push("company_status");
+  return list;
+}
+
 function sectionForScope(pageScope) {
   const scope = normalizeTicketTableColumnsPageScope(pageScope);
   return TABLE_COLUMNS_SECTION_BY_SCOPE[scope] || TICKET_TABLE_COLUMNS_SECTION;
@@ -162,7 +174,7 @@ export function normalizeTicketTableColumns(raw, {
   if (out.length === 0) {
     return allowEmpty ? [] : (resolvedFallback ? [...resolvedFallback] : null);
   }
-  return out;
+  return withCompanyStatusColumn(out, pageScope);
 }
 
 export function filterColumnsForEdition(columns, { isCommunityEdition = false, pageScope = "ticket" } = {}) {

@@ -18,6 +18,7 @@ import NotificationBell from "../../Notifications/NotificationBell";
 import PageGuideTour from "../../PageGuide/PageGuideTour";
 import { buildSidebarGuideSteps } from "../../PageGuide/sidebarGuideI18n";
 import { useSidebarGuide } from "../../../hooks/useSidebarGuide";
+import { useBreakpoint } from "../../../hooks/useBreakpoint";
 import { hasRegisteredPageGuide, openRegisteredPageGuide, subscribePageGuideRegistry } from "../../PageGuide/pageGuideRegistry";
 import { isSuperAdminProtectedProfile } from "../../../utils/profileProtection";
 import GlobalSearchPalette, { getSearchShortcutLabel, useGlobalSearchHotkey } from "../GlobalSearch/GlobalSearchPalette";
@@ -70,7 +71,7 @@ export default function Sidebar({
   /** When false, defer auto "Bienvenue" menu tour until premiers pas are done. */
   sidebarGuideAutoStart = true
 }) {
-  const [isMobile, setIsMobile] = useState(false);
+  const { isMobile } = useBreakpoint();
   const [showMenu, setShowMenu] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const [userMenuFixedStyle, setUserMenuFixedStyle] = useState(null);
@@ -109,19 +110,29 @@ export default function Sidebar({
   const isDarkTheme = theme === "dark";
   const themeTooltip = isDarkTheme ? copy.theme.lightMode : copy.theme.darkMode;
   const themeMenuIcon = isDarkTheme ? "mdi:weather-sunny" : "mdi:weather-night";
-  // Same collapsed icon rail on desktop and in the mobile drawer.
-  const isCollapsed = true;
+  // Desktop stays a 64px icon rail. Compact screens expand the drawer with labels.
+  const isCollapsed = !isMobile;
   useEffect(() => {
     if (onCollapseChange) {
-      onCollapseChange(isCollapsed);
+      onCollapseChange(true);
     }
-  }, [isCollapsed, onCollapseChange]);
+  }, [onCollapseChange]);
   useEffect(() => {
-    const checkSize = () => setIsMobile(window.innerWidth < 1024);
-    checkSize();
-    window.addEventListener("resize", checkSize);
-    return () => window.removeEventListener("resize", checkSize);
-  }, []);
+    if (!isMobile) setShowMenu(false);
+  }, [isMobile]);
+  useEffect(() => {
+    if (!isMobile || !showMenu) return;
+    const onKeyDown = e => {
+      if (e.key === "Escape") setShowMenu(false);
+    };
+    document.addEventListener("keydown", onKeyDown);
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.removeEventListener("keydown", onKeyDown);
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [isMobile, showMenu]);
   useEffect(() => {
     if (!userMenuOpen) return;
     const onDocMouseDown = e => {
@@ -140,7 +151,7 @@ export default function Sidebar({
       document.removeEventListener("keydown", onKeyDown);
     };
   }, [userMenuOpen]);
-  const showIconTooltip = isCollapsed;
+  const showIconTooltip = isCollapsed || isMobile;
   const userInitials = getUserInitials(user);
   const profileLabel = normalizeProfileLabel(profile);
   const openUserMenuToRight = isCollapsed;
@@ -215,12 +226,12 @@ export default function Sidebar({
   };
   return <>
       {}
-      {isMobile && <button className={styles.burgerButton} onClick={() => setShowMenu(prev => !prev)}>
+      {isMobile && !showMenu && <button type="button" className={styles.burgerButton} onClick={() => setShowMenu(true)} aria-expanded={false} aria-label={copy.chrome?.openMenu || "Ouvrir le menu"}>
           ☰
         </button>}
 
       {}
-      {(showMenu || !isMobile) && <motion.nav className={`${styles.sidebar} ${isMobile ? styles.mobileSidebar : ""} ${styles.sidebarCollapsed}`} data-sidebar-guide="sidebar-root" initial={{
+      {(showMenu || !isMobile) && <motion.nav className={`${styles.sidebar} ${isMobile ? styles.mobileSidebar : styles.sidebarCollapsed}`} data-sidebar-guide="sidebar-root" initial={{
       x: isMobile ? '-100%' : 0,
       opacity: 1
     }} animate={{
@@ -236,15 +247,20 @@ export default function Sidebar({
           <div className={styles.sidebarContent}>
             <div className={styles.logoHeader} data-sidebar-guide="brand">
               {showIconTooltip ? <SidebarTooltip as="span" content={copy.home} className={styles.sidebarTooltipHost}>
-                  <div className={styles.logoWrapper} onClick={() => onSelect("Home")}>
+                  <div className={styles.logoWrapper} onClick={() => {
+                onSelect("Home");
+                if (isMobile) setShowMenu(false);
+              }}>
                     <div className={styles.brandMark}>V</div>
                     {!isCollapsed && <span className={styles.logoText}>Veritas</span>}
                   </div>
-                </SidebarTooltip> : <div className={styles.logoWrapper} onClick={() => onSelect("Home")}>
+                </SidebarTooltip> : <div className={styles.logoWrapper} onClick={() => {
+                onSelect("Home");
+                if (isMobile) setShowMenu(false);
+              }}>
                   <div className={styles.brandMark}>V</div>
                   {!isCollapsed && <span className={styles.logoText}>Veritas</span>}
                 </div>}
-
             </div>
 
             <div className={styles.sidebarHeader}>

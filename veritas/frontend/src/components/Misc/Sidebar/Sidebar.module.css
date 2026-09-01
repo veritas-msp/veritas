@@ -76,6 +76,69 @@
   padding: 14px 6px 12px;
 }
 
+@media (max-height: 980px) {
+  .sidebarCollapsed {
+    padding: 8px 6px 8px;
+  }
+
+  .sidebarCollapsed .logoHeader {
+    margin-bottom: 2px;
+    gap: 2px;
+  }
+
+  .sidebarCollapsed .logoWrapper {
+    padding: 2px 0;
+  }
+
+  .sidebarCollapsed .separator,
+  .sidebarCollapsed .sectionDividerCollapsed {
+    margin: 3px 8px;
+  }
+
+  .sidebarCollapsed .navItem {
+    padding: 4px;
+    min-height: 30px;
+    margin-bottom: 0;
+  }
+
+  .sidebarCollapsed .sidebarNavScroll {
+    overflow: hidden;
+    padding-bottom: 0;
+    scrollbar-width: none;
+  }
+
+  .sidebarCollapsed .sidebarNavScroll::-webkit-scrollbar {
+    width: 0;
+    display: none;
+  }
+
+  .sidebarCollapsed .sidebarFooter {
+    margin-top: 2px;
+    padding-top: 6px;
+  }
+
+  .sidebarCollapsed .utilitiesBtnRow {
+    gap: 10px;
+    padding: 0 0 6px;
+  }
+
+  .sidebarCollapsed .squareBtn {
+    width: 30px;
+    height: 30px;
+    border-radius: 8px;
+  }
+
+  .sidebarCollapsed .userSection {
+    padding-top: 8px;
+    padding-bottom: 0;
+  }
+
+  .sidebarCollapsed .userAvatarButton {
+    width: 30px;
+    height: 30px;
+  }
+}
+
 .sidebarContent {
   display: flex;
   flex-direction: column;
@@ -747,9 +810,47 @@
 
 
 .mobileSidebar {
-  width: 64px;
-  padding: 20px 8px;
-  box-shadow: var(--sb-shadow);
+  width: min(var(--sidebar-drawer-width, 200px), 72vw);
+  padding: 16px 12px 14px 10px;
+  box-shadow: 8px 0 28px rgba(15, 28, 46, 0.22);
+  z-index: 1100;
+}
+
+.mobileSidebar .navList {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 6px;
+  margin: 0 0 4px;
+}
+
+.mobileSidebar .navItem {
+  justify-content: center;
+  padding: 8px 4px;
+  min-height: 44px;
+  margin-bottom: 0;
+}
+
+.mobileSidebar .accessNavLabel,
+.mobileSidebar .labelWithDot {
+  display: none;
+}
+
+.mobileSidebar .sectionTitle {
+  margin: 12px 0 6px;
+  padding-left: 2px;
+}
+
+.sidebar:not(.sidebarCollapsed) .logoWrapper {
+  justify-content: flex-start;
+  padding-left: 4px;
+}
+
+.sidebar:not(.sidebarCollapsed) .utilitiesBtnRow {
+  flex-direction: row;
+  flex-wrap: wrap;
+  justify-content: flex-start;
+  gap: 8px;
+  padding: 0 2px 8px;
 }
 
 .overlay {
@@ -759,7 +860,7 @@
   width: 100%;
   height: 100%;
   background-color: rgba(0, 0, 0, 0.5);
-  z-index: 999;
+  z-index: 1090;
   backdrop-filter: blur(2px);
   animation: fadeIn 0.3s ease;
 }
@@ -797,30 +898,6 @@
 .burgerButton:hover {
   background: var(--msp-accent, #2b5fab);
   color: #fff;
-}
-
-.closeButton {
-  position: absolute;
-  top: 20px;
-  right: 20px;
-  background: var(--sb-btn-bg);
-  border: 1px solid var(--sb-btn-border);
-  border-radius: 8px;
-  font-size: 16px;
-  cursor: pointer;
-  color: var(--sb-muted);
-  line-height: 1;
-  width: 32px;
-  height: 32px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: background 0.15s, color 0.15s;
-}
-
-.closeButton:hover {
-  background: rgba(239, 68, 68, 0.2);
-  color: #fca5a5;
 }
 
 
@@ -892,7 +969,7 @@
 }
 
 
-@media (max-width: 1024px) {
+@media (max-width: 1023px) {
   .sidebar:not(.mobileSidebar) {
     width: 0;
     overflow: hidden;
@@ -903,45 +980,30 @@
 
   .mobileSidebar,
   .mobileSidebar.sidebarCollapsed {
-    width: 64px;
-    padding: 20px 8px;
+    width: min(var(--sidebar-drawer-width, 200px), 72vw);
+    padding: 16px 12px 14px 10px;
   }
 
   .burgerButton {
     display: flex;
-  }
-}
-
-@media (max-width: 768px) {
-  .mobileSidebar,
-  .mobileSidebar.sidebarCollapsed {
-    width: 64px;
-    padding: 20px 8px;
-  }
-
-  .burgerButton {
-    width: 44px;
-    height: 44px;
-    font-size: 16px;
-    top: 16px;
-    left: 16px;
-  }
-}
-
-@media (max-width: 480px) {
-  .mobileSidebar,
-  .mobileSidebar.sidebarCollapsed {
-    width: 64px;
-    padding: 20px 8px;
+    top: auto;
+    right: auto;
+    bottom: max(16px, env(safe-area-inset-bottom, 0px));
+    left: max(12px, env(safe-area-inset-left, 0px));
+    width: 48px;
+    height: 48px;
+    padding: 0;
+    border-radius: 14px;
+    border: 1px solid var(--msp-border, #c5d0df);
+    box-shadow: 0 8px 22px rgba(15, 28, 46, 0.2);
+    background: var(--msp-surface, #ffffff);
+    font-size: 20px;
+    z-index: 1102;
   }
 
-  .burgerButton {
-    width: 40px;
-    height: 40px;
-    font-size: 14px;
-    top: 12px;
-    left: 12px;
-    padding: 10px;
+  .burgerButton:hover {
+    background: var(--msp-accent, #2b5fab);
+    color: #fff;
   }
 }
 
@@ -979,6 +1041,15 @@
   color: #e8edf5;
   border-color: rgba(255, 255, 255, 0.1);
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+}
+
+@media (max-width: 1023px) {
+  :global(html.dark) .burgerButton {
+    background: #162641;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    box-shadow: 0 8px 22px rgba(0, 0, 0, 0.4);
+    color: #e8edf5;
+  }
 }
 
 :global(html.dark) .userMenuDropdown {

@@ -14,7 +14,7 @@ import TeamsTab from "./TenantDetailTabs/TeamsTab";
 import OneDriveTab from "./TenantDetailTabs/OneDriveTab";
 import SharePointTab from "./TenantDetailTabs/SharePointTab";
 import SecuriteTab from "./TenantDetailTabs/SecuriteTab";
-import { getClientMfaDetails, deleteClientOffice365Credentials } from "../../api/clientOffice365";
+import { getClientMfaDetails, deleteClientOffice365Credentials, listClientOffice365Credentials, unwrapOffice365CredentialsList } from "../../api/clientOffice365";
 import { fetchClientModules, updateClient } from "../../api/clients";
 import { useAppLocale } from "../../hooks/useAppGeneralSettings";
 import { getEnterpriseConfigModalsCopy } from "../EnterprisesPage/enterpriseConfigModalsI18n";
@@ -23,7 +23,7 @@ import { getLicenseDisplayName } from "./TenantDetailTabs/utils";
 import { getTenantDetailCopy } from "./tenantDetailPageI18n";
 import { getConnectionOrganization, isConnectionOk } from "./tenantReportUtils";
 import { createTrackedAbortController } from "../../utils/pageLoadAbort";
-import { normalizeMfaList } from "./mfaDetailsUtils";
+import { normalizeMfaList, pickMfaDetailsFromSnapshot } from "./mfaDetailsUtils";
 import { filterExchangeDataByPeriod, filterTeamsDataByPeriod } from "./TenantDetailTabs/office365Period";
 
 const TENANT_GROUPS = [
@@ -44,6 +44,24 @@ const TENANT_SECTIONS = [
 function resolveTenantSection(_embedded, section) {
   if (!section || section === "rapport") return "licences";
   return section;
+}
+
+function tenantTargetKey(data) {
+  if (!data?.clientId) return null;
+  return `${data.clientId}:${data.azureCredentialId || data.tenantId || ""}`;
+}
+
+function pickCredentialFromList(list, detailData) {
+  if (!Array.isArray(list) || list.length === 0) return null;
+  if (detailData?.azureCredentialId) {
+    const byId = list.find(item => String(item.id) === String(detailData.azureCredentialId));
+    if (byId) return byId;
+  }
+  if (detailData?.tenantId) {
+    const byTenant = list.find(item => item.tenantId === detailData.tenantId);
+    if (byTenant) return byTenant;
+  }
+  return list[0] || null;
 }
 
 export default function TenantDetailPage({
@@ -74,32 +92,32 @@ export default function TenantDetailPage({
   const [selectedPeriod] = useState("D30");
   const [deletingTenant, setDeletingTenant] = useState(false);
   const [heroMenuOpen, setHeroMenuOpen] = useState(false);
-  const currentClientIdRef = useRef(null);
+  const currentTenantKeyRef = useRef(tenantTargetKey(tenantData));
   const abortControllerRef = useRef(null);
   const heroActionsMenuRef = useRef(null);
 
   useEffect(() => {
-    if (tenantData?.clientId !== detailData?.clientId) {
-      const newDetailData = tenantData ? { ...tenantData } : null;
-      setDetailData(newDetailData);
-      setStatistics(null);
-      setExchangeData(null);
-      setTeamsData(null);
-      setOnedriveData(null);
-      setSharepointData(null);
-      setSecurityData(null);
-      setConnectionStatus(null);
-      setMfaDetails([]);
-      setLastSync(null);
-      setViewMode(resolveTenantSection(embedded, initialSection));
-      setLoading(true);
-      currentClientIdRef.current = newDetailData?.clientId || null;
-      if (abortControllerRef.current) {
-        abortControllerRef.current.abort();
-      }
-      abortControllerRef.current = createTrackedAbortController();
+    const incomingKey = tenantTargetKey(tenantData);
+    if (incomingKey === currentTenantKeyRef.current) return;
+    const newDetailData = tenantData ? { ...tenantData } : null;
+    setDetailData(newDetailData);
+    setStatistics(null);
+    setExchangeData(null);
+    setTeamsData(null);
+    setOnedriveData(null);
+    setSharepointData(null);
+    setSecurityData(null);
+    setConnectionStatus(null);
+    setMfaDetails([]);
+    setLastSync(null);
+    setViewMode(resolveTenantSection(embedded, initialSection));
+    setLoading(Boolean(newDetailData?.clientId));
+    currentTenantKeyRef.current = incomingKey;
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
     }
-  }, [tenantData?.clientId, detailData?.clientId]);
+    abortControllerRef.current = createTrackedAbortController();
+  }, [tenantData?.clientId, tenantData?.azureCredentialId, tenantData?.tenantId]);
 
   useEffect(() => {
     if (initialSection) setViewMode(resolveTenantSection(embedded, initialSection));
@@ -107,34 +125,34 @@ export default function TenantDetailPage({
   useEffect(() => {
     if (viewMode === "rapport") setViewMode("licences");
   }, [viewMode]);
-  useEffect(() => {
-    currentClientIdRef.current = detailData?.clientId || null;
-  }, [detailData?.clientId]);
 
   useEffect(() => {
-    const targetClientId = detailData?.clientId;
-    if (targetClientId && targetClientId === tenantData?.clientId) {
-      if (currentClientIdRef.current === targetClientId || currentClientIdRef.current === null) {
-        loadStoredTenantData();
-      }
+    const targetKey = tenantTargetKey(detailData);
+    if (targetKey && targetKey === tenantTargetKey(tenantData)) {
+      loadStoredTenantData();
     }
-  }, [detailData?.clientId, tenantData?.clientId]);
+  }, [detailData?.clientId, detailData?.azureCredentialId, detailData?.tenantId, tenantData?.clientId, tenantData?.azureCredentialId, tenantData?.tenantId]);
 
   useEffect(() => {
     if (embedded || !window.updateTabTitle || !detailData?.clientName) return;
     window.updateTabTitle("TenantDetail", {
       clientId: detailData.clientId,
+      azureCredentialId: detailData.azureCredentialId,
       tenantId: detailData.tenantId
     }, interpolate(copy.tabTitle, { client: detailData.clientName }));
   }, [detailData, copy.tabTitle, embedded]);
 
-  const loadMfaDetails = async (clientId) => {
+  const loadMfaDetails = async (clientId, refresh = false) => {
     if (!clientId) {
       setMfaDetails([]);
       return;
     }
     try {
-      const result = await getClientMfaDetails(clientId);
+      const result = await getClientMfaDetails(clientId, {
+        refresh,
+        azureCredentialId: detailData?.azureCredentialId || null,
+        tenantId: detailData?.tenantId || null
+      });
       setMfaDetails(normalizeMfaList(result?.userMfaDetails));
     } catch {
       setMfaDetails([]);
@@ -144,7 +162,10 @@ export default function TenantDetailPage({
   useEffect(() => {
     if (!detailData?.clientId) return undefined;
     let cancelled = false;
-    getClientMfaDetails(detailData.clientId).then((result) => {
+    getClientMfaDetails(detailData.clientId, {
+      azureCredentialId: detailData.azureCredentialId || null,
+      tenantId: detailData.tenantId || null
+    }).then((result) => {
       if (cancelled) return;
       setMfaDetails(normalizeMfaList(result?.userMfaDetails));
     }).catch(() => {
@@ -153,7 +174,7 @@ export default function TenantDetailPage({
     return () => {
       cancelled = true;
     };
-  }, [detailData?.clientId]);
+  }, [detailData?.clientId, detailData?.azureCredentialId, detailData?.tenantId]);
 
   useEffect(() => {
     return () => {
@@ -180,6 +201,7 @@ export default function TenantDetailPage({
     const abortController = createTrackedAbortController();
     abortControllerRef.current = abortController;
     const targetClientId = detailData.clientId;
+    const requestKey = currentTenantKeyRef.current;
     try {
       const response = await fetch(`${API_BASE_URL}/clients/${targetClientId}/o365`, {
         credentials: "include",
@@ -187,39 +209,41 @@ export default function TenantDetailPage({
       });
       if (response.ok) {
         const result = await response.json();
-        if (currentClientIdRef.current !== targetClientId) {
+        if (currentTenantKeyRef.current !== requestKey) {
           return;
         }
         if (result.success && result.data?.length > 0) {
           let targetTenantId = detailData.tenantId;
-          if (!targetTenantId) {
-            try {
-              const credResponse = await fetch(`${API_BASE_URL}/client-office365/${targetClientId}`, {
-                credentials: "include",
-                signal: abortController.signal
-              });
-              if (currentClientIdRef.current !== targetClientId) {
-                return;
+          try {
+            const credResponse = await fetch(`${API_BASE_URL}/client-office365/${targetClientId}`, {
+              credentials: "include",
+              signal: abortController.signal
+            });
+            if (currentTenantKeyRef.current !== requestKey) {
+              return;
+            }
+            if (credResponse.ok) {
+              const credResult = await credResponse.json();
+              const matched = pickCredentialFromList(unwrapOffice365CredentialsList(credResult), detailData);
+              if (matched?.tenantId) {
+                targetTenantId = matched.tenantId;
               }
-              if (credResponse.ok) {
-                const credResult = await credResponse.json();
-                targetTenantId = credResult?.credentials?.tenantId || null;
-                if (targetTenantId && currentClientIdRef.current === targetClientId) {
-                  setDetailData((prev) => {
-                    if (prev?.clientId !== targetClientId) {
-                      return prev;
-                    }
-                    return {
-                      ...(prev || {}),
-                      tenantId: targetTenantId
-                    };
-                  });
-                }
+              if (matched && currentTenantKeyRef.current === requestKey) {
+                setDetailData((prev) => {
+                  if (prev?.clientId !== targetClientId) {
+                    return prev;
+                  }
+                  return {
+                    ...(prev || {}),
+                    azureCredentialId: matched.id || prev?.azureCredentialId || null,
+                    tenantId: matched.tenantId || prev?.tenantId || null
+                  };
+                });
               }
-            } catch (credErr) {
-              if (credErr.name === "AbortError") {
-                return;
-              }
+            }
+          } catch (credErr) {
+            if (credErr.name === "AbortError") {
+              return;
             }
           }
           let tenantRecord = null;
@@ -230,14 +254,14 @@ export default function TenantDetailPage({
             tenantRecord = result.data[0];
           }
           if (tenantRecord) {
-            if (currentClientIdRef.current !== targetClientId) {
+            if (currentTenantKeyRef.current !== requestKey) {
               return;
             }
             if (targetTenantId && tenantRecord.data?.tenantId && tenantRecord.data.tenantId !== targetTenantId) {
               return;
             }
             const snapshotLastUpdate = tenantRecord.data?.lastUpdate || null;
-            if (currentClientIdRef.current !== targetClientId) {
+            if (currentTenantKeyRef.current !== requestKey) {
               return;
             }
             setLastSync(snapshotLastUpdate || tenantRecord.updated_at);
@@ -279,7 +303,7 @@ export default function TenantDetailPage({
                 setSecurityData(null);
               }
               setConnectionStatus(tenantRecord.data.connectionStatus || null);
-              if (!detailData.tenantId && tenantRecord.data.tenantId && currentClientIdRef.current === targetClientId) {
+              if (!detailData.tenantId && tenantRecord.data.tenantId && currentTenantKeyRef.current === requestKey) {
                 setDetailData((prev) => {
                   if (prev?.clientId !== targetClientId) {
                     return prev;
@@ -291,11 +315,15 @@ export default function TenantDetailPage({
                 });
               }
               setStatistics(tenantRecord.data);
+              const snapshotMfa = pickMfaDetailsFromSnapshot(tenantRecord.data);
+              if (snapshotMfa.length) {
+                setMfaDetails(snapshotMfa);
+              }
             }
           }
         }
       }
-      if (currentClientIdRef.current === targetClientId) {
+      if (currentTenantKeyRef.current === requestKey) {
         await loadMfaDetails(targetClientId);
       }
     } catch (error) {
@@ -306,7 +334,7 @@ export default function TenantDetailPage({
       if (abortControllerRef.current === abortController) {
         abortControllerRef.current = null;
       }
-      if (currentClientIdRef.current === targetClientId) {
+      if (currentTenantKeyRef.current === requestKey) {
         setLoading(false);
       }
     }
@@ -386,6 +414,7 @@ export default function TenantDetailPage({
       return;
     }
     const targetClientId = detailData.clientId;
+    const requestKey = currentTenantKeyRef.current;
     if (abortControllerRef.current) {
       abortControllerRef.current.abort();
     }
@@ -402,7 +431,7 @@ export default function TenantDetailPage({
     }, 500);
     let aborted = false;
     try {
-      if (currentClientIdRef.current !== targetClientId) {
+      if (currentTenantKeyRef.current !== requestKey) {
         throw new Error(copy.sync.error);
       }
       if (typeof window !== "undefined" && typeof window.__office365SyncTrigger === "function") {
@@ -448,20 +477,28 @@ export default function TenantDetailPage({
             startDate = new Date(endDate.getTime() - 30 * 24 * 60 * 60 * 1000);
         }
       }
-      const syncResponse = await fetch(`${API_BASE_URL}/office365/sync-all?clientId=${targetClientId}&period=${periodKey}&startDate=${startDate.toISOString()}&endDate=${endDate.toISOString()}`, {
+      const syncParams = new URLSearchParams({
+        clientId: String(targetClientId),
+        period: periodKey,
+        startDate: startDate.toISOString(),
+        endDate: endDate.toISOString()
+      });
+      if (detailData.azureCredentialId) syncParams.set("azureCredentialId", String(detailData.azureCredentialId));
+      if (detailData.tenantId) syncParams.set("tenantId", String(detailData.tenantId));
+      const syncResponse = await fetch(`${API_BASE_URL}/office365/sync-all?${syncParams.toString()}`, {
         method: "GET",
         headers,
         credentials: "include",
         signal: abortController.signal
       });
-      if (currentClientIdRef.current !== targetClientId) {
+      if (currentTenantKeyRef.current !== requestKey) {
         throw new Error(copy.sync.error);
       }
       const syncResult = await syncResponse.json().catch(() => ({}));
       if (!syncResponse.ok || !syncResult.success) {
         throw new Error(syncResult.error || `HTTP error ${syncResponse.status}`);
       }
-      if (currentClientIdRef.current !== targetClientId) {
+      if (currentTenantKeyRef.current !== requestKey) {
         return;
       }
       let expectedTenantId = null;
@@ -471,12 +508,13 @@ export default function TenantDetailPage({
           credentials: "include",
           signal: abortController.signal
         });
-        if (currentClientIdRef.current !== targetClientId) {
+        if (currentTenantKeyRef.current !== requestKey) {
           throw new Error(copy.sync.error);
         }
         if (credResponse.ok) {
           const credResult = await credResponse.json();
-          expectedTenantId = credResult?.credentials?.tenantId || null;
+          const matched = pickCredentialFromList(unwrapOffice365CredentialsList(credResult), detailData);
+          expectedTenantId = matched?.tenantId || detailData.tenantId || null;
         }
       } catch (credErr) {
         if (credErr.name === "AbortError") {
@@ -488,12 +526,12 @@ export default function TenantDetailPage({
       }
       setSyncStatus(copy.sync.done);
       setSyncProgress(100);
-      if (syncResult.lastUpdate && currentClientIdRef.current === targetClientId) {
+      if (syncResult.lastUpdate && currentTenantKeyRef.current === requestKey) {
         setLastSync(syncResult.lastUpdate);
       }
       await loadStoredTenantData();
       await loadMfaDetails(targetClientId);
-      if (currentClientIdRef.current === targetClientId) {
+      if (currentTenantKeyRef.current === requestKey) {
         toast.success(copy.sync.success);
       }
     } catch (error) {
@@ -502,7 +540,7 @@ export default function TenantDetailPage({
         return;
       }
       console.error("Error during sync:", error);
-      if (currentClientIdRef.current === targetClientId) {
+      if (currentTenantKeyRef.current === requestKey) {
         toast.error(error.message || copy.sync.error);
       }
     } finally {
@@ -510,7 +548,7 @@ export default function TenantDetailPage({
       if (abortControllerRef.current === abortController) {
         abortControllerRef.current = null;
       }
-      if (!aborted && currentClientIdRef.current === targetClientId) {
+      if (!aborted && currentTenantKeyRef.current === requestKey) {
         setTimeout(() => {
           setSyncProgress(0);
           setSyncStatus("");
@@ -532,15 +570,23 @@ export default function TenantDetailPage({
     setHeroMenuOpen(false);
     setDeletingTenant(true);
     try {
-      await deleteClientOffice365Credentials(detailData.clientId);
-      const { modules_monitoring } = await fetchClientModules(detailData.clientId);
-      await updateClient(detailData.clientId, {
-        modules_monitoring: {
-          ...modules_monitoring,
-          Office365: false
-        },
-        office365_data: null
-      });
+      let credentialId = detailData.azureCredentialId || null;
+      if (!credentialId) {
+        const list = await listClientOffice365Credentials(detailData.clientId);
+        credentialId = pickCredentialFromList(list, detailData)?.id || null;
+      }
+      await deleteClientOffice365Credentials(detailData.clientId, credentialId);
+      const remaining = await listClientOffice365Credentials(detailData.clientId);
+      if (!remaining.length) {
+        const { modules_monitoring } = await fetchClientModules(detailData.clientId);
+        await updateClient(detailData.clientId, {
+          modules_monitoring: {
+            ...modules_monitoring,
+            Office365: false
+          },
+          office365_data: null
+        });
+      }
       toast.success(copy.delete.success);
       onNavigate("Service", {
         activeTab: "microsoft",

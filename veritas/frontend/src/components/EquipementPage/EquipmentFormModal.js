@@ -17,7 +17,7 @@ import { ConfirmModal } from "../AdminPage/AdminUi";
 import ModalDiscardConfirm from "../Misc/ModalDiscardConfirm";
 import { useModalCloseGuard } from "../../hooks/useModalCloseGuard";
 import styles from "../EnterprisesPage/EnterpriseFormModal.module.css";
-import { serializeAssignedSsidsForPersistence, serializeWifiSsidCatalogForPersistence, wifiSsidCatalogsEqual } from "./wifiApSsidUtils";
+import { serializeAssignedSsidsForPersistence, serializeWifiSsidCatalogForPersistence, wifiSsidCatalogsEqual, resolveClientWifiSsidCatalog } from "./wifiApSsidUtils";
 import useSystemFamilyExtensions from "../../hooks/useSystemFamilyExtensions";
 import { buildExtensionFormValues } from "../../utils/systemFamilyExtensions";
 export default function EquipmentFormModal({
@@ -121,7 +121,10 @@ export default function EquipmentFormModal({
     }
     const equipmentKey = isAddMode ? "new" : String(equipment?.id ?? equipment?.rawData?.id ?? equipment?.name ?? "");
     const extraKey = extensionFields.map(field => field.fieldKey).join(",");
-    const sessionKey = `${mode}:${moduleKey ?? ""}:${client?.id ?? ""}:${equipmentKey}:${extraKey}`;
+    const ssidKey = moduleKey === "BorneWifi"
+      ? `${Array.isArray(client?.ssids) ? client.ssids.length : Array.isArray(client?.ssid) ? client.ssid.length : 0}:${Array.isArray(equipment?.ssids) ? equipment.ssids.length : 0}`
+      : "";
+    const sessionKey = `${mode}:${moduleKey ?? ""}:${client?.id ?? ""}:${equipmentKey}:${extraKey}:${ssidKey}`;
     if (formSessionRef.current === sessionKey) return;
     formSessionRef.current = sessionKey;
     const nextForm = {
@@ -166,7 +169,7 @@ export default function EquipmentFormModal({
   const persistClientWifiCatalog = useCallback(async () => {
     if (moduleKey !== "BorneWifi" || !client?.id) return null;
     const nextCatalog = serializeWifiSsidCatalogForPersistence(formData.clientSsids || []);
-    if (wifiSsidCatalogsEqual(nextCatalog, client.ssids || [])) return null;
+    if (wifiSsidCatalogsEqual(nextCatalog, resolveClientWifiSsidCatalog(client))) return null;
     return updateClient(client.id, {
       name: client.name,
       ssid: nextCatalog,

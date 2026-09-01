@@ -69,6 +69,8 @@ const getDefaults = () => ({
     },
     webhooks: [],
     notificationEvents: [],
+    templates: [],
+    systemNotifications: {},
     logs: [],
     inAppSettings: normalizeInAppSettings()
   },
@@ -192,11 +194,23 @@ const normalizeNotificationSettings = row => ({
     url: String(webhook?.url || "").trim(),
     enabled: webhook?.enabled !== false
   })) : [],
+  systemNotifications: row?.systemNotifications && typeof row.systemNotifications === "object" && !Array.isArray(row.systemNotifications) ? row.systemNotifications : {},
+  templates: Array.isArray(row?.templates) ? row.templates.map((tpl, idx) => ({
+    id: String(tpl?.id || `notif-tpl-${Date.now()}-${idx}`),
+    name: String(tpl?.name || "").trim() || `Template ${idx + 1}`,
+    subject: String(tpl?.subject || "").trim(),
+    content: String(tpl?.content || tpl?.body || ""),
+    source: String(tpl?.source || "").trim().toLowerCase(),
+    element: String(tpl?.element || "").trim().toLowerCase()
+  })) : [],
   notificationEvents: (Array.isArray(row?.notificationEvents) ? row.notificationEvents : []).map((eventItem, idx) => {
     const sourceRaw = String(eventItem?.source || "").trim().toLowerCase();
     const legacyKey = String(eventItem?.key || "").trim().toLowerCase();
     const source = sourceRaw || (legacyKey.includes("ticket") ? "tickets" : legacyKey.includes("equipment") ? "infrastructure" : "tickets");
     const element = String(eventItem?.element || "").trim().toLowerCase() || (legacyKey.includes("created") ? "created" : legacyKey.includes("resolved") ? "resolved" : legacyKey.includes("comment") ? "commented" : "updated");
+    const channelsFromArray = Array.isArray(eventItem?.channels) ? eventItem.channels.map(item => String(item || "").trim().toLowerCase()).filter(Boolean) : [];
+    const legacyChannel = String(eventItem?.channel || "").trim().toLowerCase();
+    const channels = Array.from(new Set(channelsFromArray.length ? channelsFromArray : legacyChannel ? [legacyChannel] : ["webhook"]));
     return {
       id: String(eventItem?.id || `notif-event-${Date.now()}-${idx}`),
       source,
@@ -204,10 +218,12 @@ const normalizeNotificationSettings = row => ({
       scopeType: String(eventItem?.scopeType || "all").trim().toLowerCase() === "enterprise" ? "enterprise" : "all",
       enterpriseId: String(eventItem?.enterpriseId || "").trim(),
       daysBefore: Number.isFinite(Number(eventItem?.daysBefore)) ? Number(eventItem.daysBefore) : 30,
-      channel: String(eventItem?.channel || "webhook").trim().toLowerCase() || "webhook",
+      channels,
+      channel: channels[0] || "webhook",
       webhookId: String(eventItem?.webhookId || "").trim(),
       emailTo: String(eventItem?.emailTo || "").trim(),
       emailCc: String(eventItem?.emailCc || "").trim(),
+      emailSubject: String(eventItem?.emailSubject || "").trim(),
       useTemplate: eventItem?.useTemplate === true,
       templateId: String(eventItem?.templateId || "").trim(),
       customMessage: String(eventItem?.customMessage || ""),

@@ -110,7 +110,7 @@ function resolveLegacyNavigation(parsed) {
       tab: "notifications",
       hub: {
         hub: "notifications",
-        view: "events"
+        view: "system"
       }
     };
   }
@@ -119,7 +119,7 @@ function resolveLegacyNavigation(parsed) {
       tab: "notifications",
       hub: {
         hub: "notifications",
-        view: "webhooks"
+        view: "connectors"
       }
     };
   }
@@ -156,7 +156,7 @@ function resolveLegacyNavigation(parsed) {
       tab: "notifications",
       hub: {
         hub: "notifications",
-        view: "webhooks"
+        view: "connectors"
       }
     };
   }
@@ -187,21 +187,12 @@ function resolveLegacyNavigation(parsed) {
       }
     };
   }
-  if (tab === "notifications-inapp") {
+  if (tab === "notifications-inapp" || tab === "notifications") {
     return {
       tab: "notifications",
       hub: {
         hub: "notifications",
-        view: "inapp"
-      }
-    };
-  }
-  if (tab === "notifications") {
-    return {
-      tab: "notifications",
-      hub: {
-        hub: "notifications",
-        view: "inapp"
+        view: "system"
       }
     };
   }

@@ -1,8 +1,7 @@
 import crypto from "crypto";
 import { signSessionToken } from "./authSession.js";
 import { getPrimaryFrontendBaseUrl } from "./envFile.js";
-import { sendMail } from "./sendMail.js";
-import { portalInviteEmailContent } from "./authEmailTemplates.js";
+import { sendSystemNotification } from "../services/systemNotificationService.js";
 export function passwordFingerprint(passwordHash) {
   return crypto.createHash("sha256").update(String(passwordHash || "")).digest("hex").slice(0, 16);
 }
@@ -22,13 +21,17 @@ export async function sendPortalInviteEmail({
   passwordHash
 }) {
   const activateLink = buildPortalInviteLink(userId, email, passwordHash);
-  await sendMail({
-    to: email,
-    subject: "Activate your Veritas client portal access",
-    title: "Activate your account",
-    htmlContent: portalInviteEmailContent({
+  const [prenom, ...nomParts] = String(contactName || "").trim().split(/\s+/);
+  await sendSystemNotification("auth.portal_invite", {
+    emails: [email],
+    requireSend: true,
+    context: {
       activateLink,
-      contactName
-    })
+      contact: {
+        prenom: prenom || "",
+        nom: nomParts.join(" "),
+        email
+      }
+    }
   });
 }

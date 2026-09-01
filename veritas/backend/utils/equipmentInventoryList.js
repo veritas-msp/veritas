@@ -194,10 +194,10 @@ function mapInventoryRow(row, extras = {}) {
       ...(data ? { data } : {})
     },
     is_active: parseEquipmentActiveFlag(
-      extras.isCustom ? data?.actif : undefined,
-      extras.isCustom ? data?.is_active : undefined,
-      extras.isCustom ? data?.active : undefined,
-      extras.isCustom ? data?.isActive : undefined,
+      data?.actif,
+      data?.active,
+      data?.isActive,
+      data?.is_active,
       row.is_active
     ) !== false,
     createdAt: row.created_at || row.createdAt || null,

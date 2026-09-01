@@ -29,6 +29,13 @@ export const ANTISPAM_OVERVIEW_SECTIONS = [{
   icon: "mdi:account-group-outline",
   sectionKey: "users"
 }, {
+  id: "licenses",
+  group: "admin",
+  label: "Licenses",
+  description: "Protect seats",
+  icon: "mdi:license",
+  sectionKey: "licenses"
+}, {
   id: "emails",
   group: "admin",
   label: "E-mails",

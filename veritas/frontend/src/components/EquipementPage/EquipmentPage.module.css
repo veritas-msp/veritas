@@ -1415,6 +1415,10 @@
   color: var(--text-primary, #f9fafb);
 }
 
+.sortableTh:hover .sortIndicator {
+  opacity: 1;
+}
+
 .thContent {
   display: inline-flex;
   align-items: center;
@@ -1487,6 +1491,18 @@
 }
 
 .hardwarePageEmbedded .sortableTh:hover {
+  color: var(--eq-accent, var(--msp-accent, #2b5fab));
+}
+
+.hardwarePageEmbedded .sortIndicator {
+  opacity: 0.7;
+  font-size: 0.75rem;
+}
+
+.hardwarePageEmbedded .sortableTh:hover .sortIndicator,
+.hardwarePageEmbedded .sortableTh[aria-sort="ascending"] .sortIndicator,
+.hardwarePageEmbedded .sortableTh[aria-sort="descending"] .sortIndicator {
+  opacity: 1;
   color: var(--eq-accent, var(--msp-accent, #2b5fab));
 }
 

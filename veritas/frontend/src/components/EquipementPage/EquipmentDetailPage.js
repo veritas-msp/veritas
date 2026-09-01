@@ -33,6 +33,7 @@ import EquipmentStatsPanel from "./EquipmentStatsPanel";
 import { fetchEquipmentActivity } from "../../api/equipmentActivity";
 import { resolveEquipmentActivityRange, toDateInputValue } from "./equipmentActivityUtils";
 import { buildDetailFormData } from "./equipmentDetailConfig";
+import { resolveClientWifiSsidCatalog } from "./wifiApSsidUtils";
 import useSystemFamilyExtensions from "../../hooks/useSystemFamilyExtensions";
 import { patchEquipmentWithSharedFields } from "./sharedEquipmentFields";
 import { getEquipmentDetailTypeLabel, getEquipmentDetailCopy, formatEquipmentDetailRelative, formatAlertSettingsDateTime, getEquipmentCreatedAt } from "./equipmentDetailPageI18n";
@@ -514,7 +515,7 @@ export default function EquipmentDetailPage({
     fetchClientGeneral(equipment.clientId).then(client => {
       if (!mounted) return;
       setClientSites(normalizeClientSites(client?.sites));
-      setClientSsids(Array.isArray(client?.ssids) ? client.ssids : []);
+      setClientSsids(resolveClientWifiSsidCatalog(client));
     }).catch(() => {
       if (mounted) {
         setClientSites([]);
@@ -744,10 +745,12 @@ export default function EquipmentDetailPage({
     setEditModalOpening(true);
     try {
       const client = await fetchClientGeneral(clientId);
+      const ssids = resolveClientWifiSsidCatalog(client);
       const nextClient = {
         ...client,
         sites: Array.isArray(client.sites) ? [...client.sites] : client.sites,
-        ssids: Array.isArray(client.ssids) ? [...client.ssids] : client.ssids
+        ssid: Array.isArray(ssids) ? [...ssids] : ssids,
+        ssids: Array.isArray(ssids) ? [...ssids] : ssids
       };
       setModalClient(nextClient);
       const familyKey = parseCustomFamilyType(equipment?.type) || equipment?.familyKey || null;

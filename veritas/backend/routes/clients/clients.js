@@ -475,6 +475,25 @@ function resolveClientSsidColumn(hasClientColumn) {
   if (hasClientColumn("ssids")) return "ssids";
   return null;
 }
+function parseClientSsidColumnValue(value) {
+  if (Array.isArray(value)) return value;
+  if (typeof value === "string") {
+    const trimmed = value.trim();
+    if (!trimmed) return [];
+    try {
+      const parsed = JSON.parse(trimmed);
+      return Array.isArray(parsed) ? parsed : [];
+    } catch {
+      return [];
+    }
+  }
+  return [];
+}
+function resolveClientSsidCatalog(client) {
+  const fromSsids = parseClientSsidColumnValue(client?.ssids);
+  const fromSsid = parseClientSsidColumnValue(client?.ssid);
+  return fromSsids.length ? fromSsids : fromSsid;
+}
 function appendClientSsidUpdate({
   ssid,
   ssids,
@@ -484,12 +503,20 @@ function appendClientSsidUpdate({
   paramIndex
 }) {
   if (ssid === undefined && ssids === undefined) return paramIndex;
-  const column = resolveClientSsidColumn(hasClientColumn);
-  if (!column) return paramIndex;
   const payload = ssids !== undefined ? ssids : ssid;
-  updateFields.push(`${column} = $${paramIndex}`);
-  updateValues.push(JSON.stringify(Array.isArray(payload) ? payload : []));
-  return paramIndex + 1;
+  const serialized = JSON.stringify(Array.isArray(payload) ? payload : []);
+  const columns = ["ssid", "ssids"].filter(column => hasClientColumn(column));
+  if (!columns.length) {
+    const fallback = resolveClientSsidColumn(hasClientColumn);
+    if (!fallback) return paramIndex;
+    columns.push(fallback);
+  }
+  columns.forEach(column => {
+    updateFields.push(`${column} = $${paramIndex}`);
+    updateValues.push(serialized);
+    paramIndex += 1;
+  });
+  return paramIndex;
 }
 const CLIENTS_LIST_SELECT_COLUMNS = ["id", "name", "client_number", "address", "siret", "secteur", "statut", "contrat", "options", "modules", "commercial_id", "created_at", "updated_at"];
 async function queryClientsListBaseRows() {
@@ -1002,14 +1029,7 @@ router.get('/general', requirePermission('clients.view'), async (req, res) => {
             parsedSites = [];
           }
         }
-        let parsedSSID = client.ssid || client.ssids;
-        if (parsedSSID && typeof parsedSSID === 'string') {
-          try {
-            parsedSSID = JSON.parse(parsedSSID);
-          } catch (e) {
-            parsedSSID = [];
-          }
-        }
+        const parsedSSID = resolveClientSsidCatalog(client);
         let clientOptions = client.options || {};
         if (clientOptions && typeof clientOptions === 'string') {
           try {
@@ -1189,29 +1209,9 @@ router.get('/general/:id', async (req, res) => {
     } else {
       client.sites = [];
     }
-    if (client.ssids) {
-      if (typeof client.ssids === 'string') {
-        try {
-          client.ssids = JSON.parse(client.ssids);
-        } catch (e) {
-          client.ssids = [];
-        }
-      }
-    } else if (client.ssid) {
-      if (typeof client.ssid === 'string') {
-        try {
-          client.ssids = JSON.parse(client.ssid);
-        } catch (e) {
-          client.ssids = [];
-        }
-      } else if (Array.isArray(client.ssid)) {
-        client.ssids = client.ssid;
-      } else {
-        client.ssids = [];
-      }
-    } else {
-      client.ssids = [];
-    }
+    const ssidCatalog = resolveClientSsidCatalog(client);
+    client.ssid = ssidCatalog;
+    client.ssids = ssidCatalog;
     client.commercial = client.username || client.user_email || null;
     res.json(client);
   } catch (err) {
@@ -2519,16 +2519,9 @@ router.get('/:id', async (req, res) => {
     } else {
       client.sites = [];
     }
-    let clientSSID = client.ssid || client.ssids || [];
-    if (clientSSID && typeof clientSSID === 'string') {
-      try {
-        clientSSID = JSON.parse(clientSSID);
-      } catch (e) {
-        clientSSID = [];
-      }
-    }
-    client.ssid = clientSSID;
-    client.ssids = clientSSID;
+    const ssidCatalog = resolveClientSsidCatalog(client);
+    client.ssid = ssidCatalog;
+    client.ssids = ssidCatalog;
     client.commercial = client.username || client.user_email || null;
     res.json(client);
   } catch (err) {

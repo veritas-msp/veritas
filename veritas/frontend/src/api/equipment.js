@@ -1,7 +1,7 @@
 import API_BASE_URL, { withApiQuery } from "../config";
 import { fetchClientModules, deleteClientCustomEquipment } from "./clients";
 import { getEquipmentDbId, isDbEquipmentId, findEquipmentInApiList } from "../utils/equipmentIdentity";
-import { inferComputerTypeFromInventory, canonicalizeComputerType, resolveAlimentationDeploymentType, resolveToipDeploymentType } from "../components/EquipementPage/equipmentFormConfig";
+import { inferComputerTypeFromInventory, canonicalizeComputerType, resolveAlimentationDeploymentType, resolveToipDeploymentType, readEquipmentIsActive } from "../components/EquipementPage/equipmentFormConfig";
 import { repairRmmTextEncoding } from "../utils/rmmTextEncoding";
 import { resolveAssignedSsidIds, serializeAssignedSsidsForPersistence } from "../components/EquipementPage/wifiApSsidUtils";
 import { applySharedEquipmentFields, buildSharedEquipmentFormData } from "../components/EquipementPage/sharedEquipmentFields";
@@ -311,7 +311,7 @@ export function mapClientHardwareEquipment(client) {
       const nbDisquesActuels = equipment.nbDisquesActuels || equipment.nb_disques_actuels || "";
       const nbDisquesMax = equipment.nbDisquesMax || equipment.nbDisquesMax || equipment.nb_disques_max || "";
       const capacite = equipment.capacite || equipment.capacity || "";
-      const isActive = equipment.is_active !== false && equipment.is_active !== undefined && equipment.is_active !== null ? !!equipment.is_active : true;
+      const isActive = readEquipmentIsActive(equipment);
       const equipmentData = {
         id: stableId,
         dbId,

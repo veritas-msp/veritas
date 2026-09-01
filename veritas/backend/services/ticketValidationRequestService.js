@@ -1,6 +1,7 @@
 import { pool } from "../database/db.js";
 import { ensureTicketValidationRequestsSchema } from "./ensureTicketValidationRequestsSchema.js";
 import { logTicketActivity } from "./ticketActivityService.js";
+import { notifyTicketValidationRequested, notifyTicketValidationResponded } from "./systemNotificationService.js";
 import { notifyInAppTicketValidationRequested, notifyInAppTicketValidationResponded } from "./userNotificationService.js";
 import { isSalesTicket } from "./supportCredits.js";
 
@@ -128,6 +129,18 @@ export async function createTicketValidationRequest({
     message: note,
     ticketFamily
   });
+  await notifyTicketValidationRequested({
+    ticketId,
+    validatorUserId: validatorId,
+    extraContext: {
+      agent: {
+        username: requesterName || ""
+      },
+      validation: {
+        message: note || ""
+      }
+    }
+  }).catch(() => {});
 
   return mapValidationRow({
     ...row,
@@ -238,6 +251,18 @@ export async function updateTicketValidationRequest({
       message: note,
       ticketFamily
     });
+    await notifyTicketValidationRequested({
+      ticketId,
+      validatorUserId: validatorId,
+      extraContext: {
+        agent: {
+          username: requesterName || ""
+        },
+        validation: {
+          message: note || ""
+        }
+      }
+    }).catch(() => {});
   }
 
   return mapValidationRow({
@@ -329,6 +354,17 @@ export async function respondTicketValidationRequest({
       responseMessage: note,
       ticketFamily
     });
+    await notifyTicketValidationResponded({
+      ticketId,
+      requestedByUserId: row.requested_by_user_id,
+      extraContext: {
+        validation: {
+          validator: validatorName || "",
+          decision: status === "approved" ? "approuvé" : "refusé",
+          message: note || ""
+        }
+      }
+    }).catch(() => {});
   }
 
   return mapValidationRow({

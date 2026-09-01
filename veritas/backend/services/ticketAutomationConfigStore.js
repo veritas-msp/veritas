@@ -249,11 +249,12 @@ export async function saveMailCollectSettingsRaw(settings = {}) {
   await writeJsonTable(TABLES.mailCollectSettings, settings && typeof settings === "object" && !Array.isArray(settings) ? settings : {});
 }
 export async function loadNotificationSettingsRaw() {
-  const [eventConfig, webhooks, templates, logs] = await Promise.all([readJsonTable(TABLES.notificationEvents, {}), readJsonTable(TABLES.notificationWebhooks, []), readJsonTable(TABLES.notificationTemplates, []), readNotificationLogsRows([])]);
+  const [eventConfig, webhooks, templates, logs, commentTemplates] = await Promise.all([readJsonTable(TABLES.notificationEvents, {}), readJsonTable(TABLES.notificationWebhooks, []), readJsonTable(TABLES.notificationTemplates, []), readNotificationLogsRows([]), readJsonTable(TABLES.commentTemplates, [])]);
   return {
     ...(eventConfig && typeof eventConfig === "object" && !Array.isArray(eventConfig) ? eventConfig : {}),
     webhooks,
     templates,
+    commentTemplates,
     logs
   };
 }

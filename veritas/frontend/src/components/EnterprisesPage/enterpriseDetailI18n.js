@@ -247,7 +247,8 @@ const DETAIL_COPY = {
       domainRemovedMonitoring: "Domaine retiré de la surveillance.",
       domainRemoved: "Domaine retiré.",
       antivirusAssociationRemoved: "Association antivirus supprimée.",
-      antispamAssociationRemoved: "Association antispam supprimée."
+      antispamAssociationRemoved: "Association antispam supprimée.",
+      microsoftTenantRemoved: "Tenant Microsoft supprimé."
     },
     proFeatures: {
       reversibility: "Dossier de réversibilité",
@@ -640,7 +641,8 @@ const DETAIL_COPY = {
       domainRemovedMonitoring: "Domain removed from monitoring.",
       domainRemoved: "Domain removed.",
       antivirusAssociationRemoved: "Antivirus association removed.",
-      antispamAssociationRemoved: "Antispam association removed."
+      antispamAssociationRemoved: "Antispam association removed.",
+      microsoftTenantRemoved: "Microsoft tenant removed."
     },
     proFeatures: {
       reversibility: "Reversibility dossier",
@@ -1031,7 +1033,8 @@ const DETAIL_COPY = {
       domainRemovedMonitoring: "Domain aus der Überwachung entfernt.",
       domainRemoved: "Domain entfernt.",
       antivirusAssociationRemoved: "Antivirus-Zuordnung entfernt.",
-      antispamAssociationRemoved: "Antispam-Zuordnung entfernt."
+      antispamAssociationRemoved: "Antispam-Zuordnung entfernt.",
+      microsoftTenantRemoved: "Microsoft-Tenant entfernt."
     },
     proFeatures: {
       reversibility: "Reversibilitätsdossier",
@@ -1422,7 +1425,8 @@ const DETAIL_COPY = {
       domainRemovedMonitoring: "Dominio rimosso dal monitoraggio.",
       domainRemoved: "Dominio rimosso.",
       antivirusAssociationRemoved: "Associazione antivirus rimossa.",
-      antispamAssociationRemoved: "Associazione antispam rimossa."
+      antispamAssociationRemoved: "Associazione antispam rimossa.",
+      microsoftTenantRemoved: "Tenant Microsoft rimosso."
     },
     proFeatures: {
       reversibility: "Dossier di reversibilità",
@@ -1813,7 +1817,8 @@ const DETAIL_COPY = {
       domainRemovedMonitoring: "Dominio retirado de la supervisión.",
       domainRemoved: "Dominio retirado.",
       antivirusAssociationRemoved: "Asociación antivirus eliminada.",
-      antispamAssociationRemoved: "Asociación antispam eliminada."
+      antispamAssociationRemoved: "Asociación antispam eliminada.",
+      microsoftTenantRemoved: "Tenant Microsoft eliminado."
     },
     proFeatures: {
       reversibility: "Dossier de reversibilidad",

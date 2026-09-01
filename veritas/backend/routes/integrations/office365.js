@@ -7,6 +7,7 @@ import { createMicrosoftAuthError, isMicrosoftAuthError } from "../../utils/micr
 import { ensureAzureMfaSchema } from "../../services/ensureAzureMfaSchema.js";
 const router = express.Router();
 let tokenCache = {};
+const mfaRefreshInFlight = new Map();
 export async function getOffice365Settings() {
   try {
     const map = await getSettingsMap();
@@ -22,12 +23,25 @@ export async function getOffice365Settings() {
     return null;
   }
 }
-export async function getClientOffice365Credentials(clientId) {
+export async function getClientOffice365Credentials(clientId, selector = null) {
   if (!clientId) return null;
   try {
-    const result = await pool.query(`SELECT tenant_id, client_id_azure, client_secret_encrypted, iv, auth_tag
+    const credentialId = selector?.credentialId || selector?.azureCredentialId || null;
+    const tenantId = selector?.tenantId || null;
+    const params = [clientId];
+    let where = "WHERE client_id = $1";
+    if (credentialId) {
+      params.push(credentialId);
+      where += ` AND id = $${params.length}`;
+    } else if (tenantId) {
+      params.push(String(tenantId));
+      where += ` AND tenant_id = $${params.length}`;
+    }
+    const result = await pool.query(`SELECT id, tenant_id, client_id_azure, client_secret_encrypted, iv, auth_tag
        FROM v_b_clients_azure 
-       WHERE client_id = $1`, [clientId]);
+       ${where}
+       ORDER BY id ASC
+       LIMIT 1`, params);
     if (result.rows.length === 0) {
       return null;
     }
@@ -37,6 +51,7 @@ export async function getClientOffice365Credentials(clientId) {
     } = await import("../../utils/encryption.js");
     const clientSecret = decrypt(cred.client_secret_encrypted, cred.iv, cred.auth_tag);
     return {
+      id: cred.id,
       tenantId: cred.tenant_id,
       clientId: cred.client_id_azure,
       clientSecret: clientSecret
@@ -44,6 +59,12 @@ export async function getClientOffice365Credentials(clientId) {
   } catch (error) {
     return null;
   }
+}
+function office365CredentialSelector(req) {
+  return {
+    credentialId: req.query?.azureCredentialId || req.query?.credentialId || null,
+    tenantId: req.query?.tenantId || null
+  };
 }
 export async function getMicrosoftGraphToken(tenantId, clientId, clientSecret) {
   try {
@@ -454,7 +475,8 @@ async function callMicrosoftGraph(endpoint, accessToken, options = {}) {
         method: "GET",
         headers: {
           "Authorization": `Bearer ${accessToken}`,
-          "Content-Type": isReport ? "text/csv" : "application/json"
+          "Content-Type": isReport ? "text/csv" : "application/json",
+          "Accept": isReport ? "text/csv" : "application/json"
         }
       });
       if (!response.ok) {
@@ -516,12 +538,443 @@ async function callMicrosoftGraph(endpoint, accessToken, options = {}) {
     throw error;
   }
 }
+
+const GRAPH_MFA_METHOD_MAP = {
+  microsoftauthenticatorpush: "microsoftauthenticatorauthenticationmethod",
+  microsoftauthenticatorotp: "microsoftauthenticatorauthenticationmethod",
+  microsoftauthenticator: "microsoftauthenticatorauthenticationmethod",
+  softwareonetimepasscode: "softwareoathauthenticationmethod",
+  softwareoath: "softwareoathauthenticationmethod",
+  mobilephone: "phoneauthenticationmethod",
+  sms: "phoneauthenticationmethod",
+  voicemobile: "phoneauthenticationmethod",
+  voiceoffice: "phoneauthenticationmethod",
+  voicealternatemobile: "phoneauthenticationmethod",
+  officephone: "phoneauthenticationmethod",
+  alternatemobilephone: "phoneauthenticationmethod",
+  phoneauthentication: "phoneauthenticationmethod",
+  email: "emailauthenticationmethod",
+  fido2: "fido2authenticationmethod",
+  windowshelloforbusiness: "windowshelloforbusinessauthenticationmethod",
+  temporaryaccesspass: "temporaryaccesspassauthenticationmethod",
+  microsoftauthenticatorpasswordless: "microsoftauthenticatorauthenticationmethod",
+  passkeydevicebound: "fido2authenticationmethod",
+  passkeydeviceboundauthenticator: "fido2authenticationmethod",
+  passkeysynced: "fido2authenticationmethod",
+  macossecureenclavekey: "fido2authenticationmethod"
+};
+const REAL_MFA_METHOD_TYPES = new Set([
+  "emailauthenticationmethod",
+  "softwareoathauthenticationmethod",
+  "phoneauthenticationmethod",
+  "microsoftauthenticatorauthenticationmethod",
+  "fido2authenticationmethod",
+  "temporaryaccesspassauthenticationmethod"
+]);
+const ADMIN_ROLE_NAME_HINTS = [
+  "Global Administrator",
+  "Privileged Role Administrator",
+  "Exchange Administrator",
+  "SharePoint Administrator",
+  "User Administrator",
+  "Security Administrator",
+  "Billing Administrator",
+  "Application Administrator",
+  "Cloud Application Administrator",
+  "Helpdesk Administrator",
+  "Teams Administrator",
+  "Power Platform Administrator",
+  "Azure AD Joined Device Local Administrator",
+  "Intune Administrator",
+  "Windows 365 Administrator",
+  "Compliance Administrator",
+  "Conditional Access Administrator",
+  "Authentication Administrator",
+  "License Administrator",
+  "Groups Administrator",
+  "Password Administrator",
+  "Directory Readers",
+  "Guest Inviter",
+  "Message Center Reader",
+  "Reports Reader"
+];
+
+function isAdminRoleName(displayName) {
+  const name = String(displayName || "").trim();
+  if (!name) return false;
+  if (ADMIN_ROLE_NAME_HINTS.some(hint => name.includes(hint))) return true;
+  return /administrator|\badmin\b/i.test(name);
+}
+
+function mapGraphMethodToUiType(raw) {
+  const key = String(raw || "").replace(/^#microsoft\.graph\./i, "").toLowerCase().trim();
+  if (!key || key === "passwordauthenticationmethod" || key === "password") return null;
+  if (GRAPH_MFA_METHOD_MAP[key]) return GRAPH_MFA_METHOD_MAP[key];
+  if (key.endsWith("authenticationmethod")) return key;
+  return null;
+}
+
+function collectUiMfaMethods(rawList) {
+  const source = Array.isArray(rawList)
+    ? rawList
+    : typeof rawList === "string"
+      ? rawList.split(",").map(item => item.trim()).filter(Boolean)
+      : [];
+  const methods = [];
+  source.forEach(item => {
+    const mapped = mapGraphMethodToUiType(item);
+    if (mapped && !methods.includes(mapped)) methods.push(mapped);
+  });
+  return methods;
+}
+
+function userHasRealMfa(methods) {
+  return (methods || []).some(method => REAL_MFA_METHOD_TYPES.has(method));
+}
+
+async function mapInBatches(items, batchSize, mapper) {
+  const results = [];
+  for (let i = 0; i < items.length; i += batchSize) {
+    const batch = items.slice(i, i + batchSize);
+    results.push(...await Promise.all(batch.map(mapper)));
+  }
+  return results;
+}
+
+function upsertAdministrator(list, member, roleName) {
+  if (!member || !roleName) return;
+  const isUser = member["@odata.type"] === "#microsoft.graph.user"
+    || Boolean(member.userPrincipalName || member.mail);
+  if (!isUser) return;
+  const email = (member.mail || member.userPrincipalName || "").toLowerCase().trim();
+  const existing = list.find(entry => entry.id === member.id || entry.email && email && entry.email.toLowerCase().trim() === email);
+  if (!existing) {
+    list.push({
+      id: member.id,
+      name: member.displayName || member.userPrincipalName,
+      email: member.mail || member.userPrincipalName,
+      role: roleName,
+      hasMFA: false
+    });
+    return;
+  }
+  const roles = String(existing.role || "").split(",").map(part => part.trim()).filter(Boolean);
+  if (!roles.includes(roleName)) {
+    existing.role = [...roles, roleName].join(", ");
+  }
+}
+
+async function fetchUserRegistrationDetails(accessToken) {
+  const queries = [
+    { endpoint: "/reports/authenticationMethods/userRegistrationDetails?$select=id,userPrincipalName,userDisplayName,isAdmin,isMfaRegistered,isMfaCapable,methodsRegistered,userType&$top=999", options: { getAllPages: true } },
+    { endpoint: "/reports/authenticationMethods/userRegistrationDetails?$top=999", options: { getAllPages: true } },
+    { endpoint: "/reports/authenticationMethods/userRegistrationDetails?$select=id,userPrincipalName,userDisplayName,isAdmin,isMfaRegistered,isMfaCapable,methodsRegistered,userType&$top=999", options: { getAllPages: true, useBeta: true } },
+    { endpoint: "/reports/authenticationMethods/userRegistrationDetails?$top=999", options: { getAllPages: true, useBeta: true } }
+  ];
+  for (const query of queries) {
+    const result = await callMicrosoftGraph(query.endpoint, accessToken, query.options).catch(err => {
+      console.warn("[azure-mfa] userRegistrationDetails failed:", err?.message || err);
+      return null;
+    });
+    if (result?.value?.length) return result;
+  }
+  return null;
+}
+
+async function fetchDirectoryAdministrators(accessToken, users = []) {
+  const administrators = [];
+  const usersById = new Map((users || []).map(user => [user.id, user]));
+  const directoryRoles = await callMicrosoftGraph("/directoryRoles?$select=id,displayName", accessToken).catch(() => null);
+  for (const role of directoryRoles?.value || []) {
+    if (!isAdminRoleName(role.displayName)) continue;
+    const members = await callMicrosoftGraph(`/directoryRoles/${role.id}/members?$select=id,displayName,mail,userPrincipalName`, accessToken, {
+      getAllPages: true
+    }).catch(() => null);
+    (members?.value || []).forEach(member => upsertAdministrator(administrators, member, role.displayName));
+  }
+  const definitions = await callMicrosoftGraph("/roleManagement/directory/roleDefinitions?$select=id,displayName", accessToken, {
+    getAllPages: true
+  }).catch(() => null);
+  const definitionById = new Map((definitions?.value || []).map(def => [def.id, def.displayName]));
+  const assignments = await callMicrosoftGraph("/roleManagement/directory/roleAssignments?$select=principalId,roleDefinitionId", accessToken, {
+    getAllPages: true
+  }).catch(() => null);
+  for (const assignment of assignments?.value || []) {
+    const roleName = definitionById.get(assignment.roleDefinitionId);
+    if (!isAdminRoleName(roleName) || !assignment.principalId) continue;
+    const user = usersById.get(assignment.principalId);
+    if (user) upsertAdministrator(administrators, user, roleName);
+  }
+  return administrators;
+}
+
+async function fetchUserAuthenticationMethods(accessToken, userId) {
+  const methods = await callMicrosoftGraph(`/users/${userId}/authentication/methods`, accessToken).catch(() => null);
+  const types = [];
+  let lastMfaEnrollmentDate = null;
+  if (methods?.value && Array.isArray(methods.value)) {
+    methods.value.forEach(method => {
+      const mapped = mapGraphMethodToUiType(method["@odata.type"]);
+      if (mapped && !types.includes(mapped)) types.push(mapped);
+    });
+    const dated = methods.value
+      .map(method => ({
+        type: mapGraphMethodToUiType(method["@odata.type"]),
+        createdDateTime: method.createdDateTime
+      }))
+      .filter(entry => entry.type && REAL_MFA_METHOD_TYPES.has(entry.type) && entry.createdDateTime)
+      .sort((a, b) => new Date(b.createdDateTime) - new Date(a.createdDateTime));
+    if (dated[0]) lastMfaEnrollmentDate = dated[0].createdDateTime;
+  }
+  return { methods: types, lastMfaEnrollmentDate };
+}
+
+function asGraphBool(value) {
+  return value === true || value === "True" || value === "true" || value === "TRUE";
+}
+
+function collectAdminRolesForUser(userDetail, administrators) {
+  const roles = [];
+  const userUpn = String(userDetail?.userPrincipalName || userDetail?.email || "").toLowerCase().trim();
+  for (const admin of administrators || []) {
+    const adminEmail = String(admin.email || "").toLowerCase().trim();
+    const matchById = admin.id && userDetail?.id && String(admin.id) === String(userDetail.id);
+    const matchByUpn = Boolean(userUpn && adminEmail && userUpn === adminEmail);
+    if (!matchById && !matchByUpn) continue;
+    String(admin.role || "").split(",").map(part => part.trim()).filter(Boolean).forEach(role => {
+      if (!roles.includes(role)) roles.push(role);
+    });
+  }
+  return roles;
+}
+
+function enrichUserMfaWithAdminRoles(userDetail, administrators) {
+  const adminRoles = collectAdminRolesForUser(userDetail, administrators);
+  if (userDetail?.isAdminFromReport && adminRoles.length === 0) {
+    adminRoles.push("Administrator");
+  }
+  const isAdmin = adminRoles.length > 0 || Boolean(userDetail?.isAdminFromReport);
+  const adminRoleText = adminRoles.join(", ") || null;
+  return {
+    ...userDetail,
+    isAdmin,
+    is_admin: isAdmin,
+    adminRole: adminRoleText,
+    admin_role: adminRoleText,
+    hasMfa: Boolean(userDetail?.hasMFA),
+    has_mfa: Boolean(userDetail?.hasMFA),
+    mfa_methods: userDetail?.mfaMethods || []
+  };
+}
+
+async function buildUserMfaDetails(accessToken, users, registrationPayload = null) {
+  const list = Array.isArray(users) ? users : [];
+  const registration = registrationPayload || await fetchUserRegistrationDetails(accessToken);
+  const byId = new Map();
+  const byUpn = new Map();
+  for (const row of registration?.value || []) {
+    if (row?.id) byId.set(String(row.id), row);
+    const upn = String(row?.userPrincipalName || "").toLowerCase().trim();
+    if (upn) byUpn.set(upn, row);
+  }
+  if (!registration?.value?.length) {
+    console.warn("[azure-mfa] userRegistrationDetails unavailable, falling back to per-user authentication methods");
+  }
+  const details = list.map(user => {
+    const row = byId.get(String(user.id)) || byUpn.get(String(user.userPrincipalName || user.mail || "").toLowerCase().trim());
+    if (!row) {
+      return {
+        id: user.id,
+        displayName: user.displayName || user.userPrincipalName,
+        userPrincipalName: user.userPrincipalName,
+        accountEnabled: user.accountEnabled !== false,
+        hasMFA: false,
+        mfaMethods: [],
+        lastMfaEnrollmentDate: null,
+        isAdminFromReport: false,
+        _needsMethods: true
+      };
+    }
+    const methods = collectUiMfaMethods(row.methodsRegistered);
+    return {
+      id: user.id,
+      displayName: user.displayName || row.userDisplayName || user.userPrincipalName,
+      userPrincipalName: user.userPrincipalName || row.userPrincipalName,
+      accountEnabled: user.accountEnabled !== false,
+      hasMFA: asGraphBool(row.isMfaRegistered) || asGraphBool(row.isMfaCapable) || userHasRealMfa(methods),
+      mfaMethods: methods,
+      lastMfaEnrollmentDate: null,
+      isAdminFromReport: asGraphBool(row.isAdmin),
+      _needsMethods: false
+    };
+  });
+  const missing = details.filter(detail => detail._needsMethods);
+  if (missing.length) {
+    const fetched = await mapInBatches(missing, 8, async user => {
+      const extra = await fetchUserAuthenticationMethods(accessToken, user.id);
+      return {
+        id: user.id,
+        ...extra
+      };
+    });
+    const extraById = new Map(fetched.map(item => [String(item.id), item]));
+    details.forEach(detail => {
+      if (!detail._needsMethods) return;
+      const extra = extraById.get(String(detail.id));
+      if (extra) {
+        detail.mfaMethods = extra.methods || [];
+        detail.hasMFA = userHasRealMfa(detail.mfaMethods);
+        detail.lastMfaEnrollmentDate = extra.lastMfaEnrollmentDate;
+      }
+    });
+  }
+  return details.map(detail => {
+    const {
+      _needsMethods,
+      ...rest
+    } = detail;
+    return rest;
+  });
+}
+
+function buildMfaStatsFromUsers(userMfaDetails, fallbackUserCount = 0) {
+  const stats = {
+    totalUsers: userMfaDetails.length || fallbackUserCount || 0,
+    usersWithMFA: 0,
+    usersWithoutMFA: 0,
+    mfaRate: 0,
+    mfaMethods: {
+      authenticator: 0,
+      phone: 0,
+      sms: 0,
+      email: 0,
+      fido2: 0
+    }
+  };
+  userMfaDetails.forEach(user => {
+    if (user.hasMFA) stats.usersWithMFA += 1;
+    else stats.usersWithoutMFA += 1;
+    const methods = user.mfaMethods || [];
+    if (methods.includes("microsoftauthenticatorauthenticationmethod")) stats.mfaMethods.authenticator += 1;
+    if (methods.includes("phoneauthenticationmethod")) {
+      stats.mfaMethods.phone += 1;
+      stats.mfaMethods.sms += 1;
+    }
+    if (methods.includes("emailauthenticationmethod")) stats.mfaMethods.email += 1;
+    if (methods.includes("fido2authenticationmethod")) stats.mfaMethods.fido2 += 1;
+  });
+  if (!userMfaDetails.length) stats.usersWithoutMFA = stats.totalUsers;
+  stats.mfaRate = stats.totalUsers > 0 ? Math.round(stats.usersWithMFA / stats.totalUsers * 100) : 0;
+  return stats;
+}
+
+async function persistUserMfaDetails(clientId, userMfaDetails, administrators) {
+  await ensureAzureMfaSchema();
+  let saved = 0;
+  for (const userDetail of userMfaDetails) {
+    const enriched = enrichUserMfaWithAdminRoles(userDetail, administrators);
+    await pool.query(`
+      INSERT INTO v_b_clients_c_azure_mfa (
+        client_id, user_id, display_name, user_principal_name, account_enabled,
+        has_mfa, mfa_methods, latest_mfa_registration_date, is_admin, admin_role, last_sync
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, CURRENT_TIMESTAMP)
+      ON CONFLICT (client_id, user_id) DO UPDATE SET
+        display_name = EXCLUDED.display_name,
+        user_principal_name = EXCLUDED.user_principal_name,
+        account_enabled = EXCLUDED.account_enabled,
+        has_mfa = EXCLUDED.has_mfa,
+        mfa_methods = EXCLUDED.mfa_methods,
+        latest_mfa_registration_date = EXCLUDED.latest_mfa_registration_date,
+        is_admin = EXCLUDED.is_admin,
+        admin_role = EXCLUDED.admin_role,
+        last_sync = CURRENT_TIMESTAMP,
+        updated_at = CURRENT_TIMESTAMP
+    `, [clientId, enriched.id, enriched.displayName, enriched.userPrincipalName, enriched.accountEnabled !== false, Boolean(enriched.hasMFA), JSON.stringify(enriched.mfaMethods || []), enriched.lastMfaEnrollmentDate || null, Boolean(enriched.isAdmin), enriched.adminRole]);
+    saved += 1;
+  }
+  return saved;
+}
+
+function mapAzureMfaRows(rows) {
+  return (rows || []).map(row => {
+    const methods = (() => {
+      const raw = row.mfa_methods;
+      if (Array.isArray(raw)) return raw;
+      if (raw && typeof raw === "object") return Object.values(raw);
+      if (typeof raw === "string") {
+        try {
+          const parsed = JSON.parse(raw);
+          return Array.isArray(parsed) ? parsed : [];
+        } catch {
+          return [];
+        }
+      }
+      return [];
+    })();
+    const hasMfa = row.has_mfa === true || row.has_mfa === "t" || row.has_mfa === "true" || userHasRealMfa(methods);
+    const isAdmin = row.is_admin === true || row.is_admin === "t" || row.is_admin === "true";
+    return {
+      id: row.id,
+      displayName: row.display_name,
+      userPrincipalName: row.user_principal_name,
+      email: row.user_principal_name,
+      accountEnabled: row.account_enabled,
+      has_mfa: hasMfa,
+      hasMfa,
+      hasMFA: hasMfa,
+      mfa_methods: methods,
+      mfaMethods: methods,
+      latestMfaRegistrationDate: row.latest_mfa_registration_date,
+      is_admin: isAdmin,
+      isAdmin,
+      admin_role: row.admin_role || null,
+      adminRole: row.admin_role || null
+    };
+  });
+}
+
+async function queryAzureMfaRows(clientId) {
+  const result = await pool.query(`
+    SELECT
+      user_id as id,
+      display_name,
+      user_principal_name,
+      account_enabled,
+      has_mfa,
+      mfa_methods,
+      latest_mfa_registration_date,
+      is_admin,
+      admin_role,
+      last_sync
+    FROM v_b_clients_c_azure_mfa
+    WHERE client_id = $1
+    ORDER BY display_name ASC
+  `, [clientId]);
+  return result.rows;
+}
+
+function mfaRowsLookIncomplete(rows) {
+  if (!rows?.length) return true;
+  const newest = rows.reduce((max, row) => {
+    const stamp = row.last_sync ? new Date(row.last_sync).getTime() : 0;
+    return Number.isFinite(stamp) && stamp > max ? stamp : max;
+  }, 0);
+  const recent = newest > 0 && Date.now() - newest < 6 * 60 * 60 * 1000;
+  const allEmpty = rows.every(row => {
+    const methods = mapAzureMfaRows([row])[0]?.mfaMethods || [];
+    const hasMfa = row.has_mfa === true || row.has_mfa === "t" || row.has_mfa === "true";
+    const isAdmin = row.is_admin === true || row.is_admin === "t" || row.is_admin === "true";
+    return !hasMfa && !isAdmin && methods.length === 0;
+  });
+  return allEmpty && !recent;
+}
+
 router.get("/test", verifyJWT, async (req, res) => {
   try {
     const clientId = req.query.clientId ? parseInt(req.query.clientId) : null;
     let credentials = null;
     if (clientId) {
-      credentials = await getClientOffice365Credentials(clientId);
+      credentials = await getClientOffice365Credentials(clientId, office365CredentialSelector(req));
       if (!credentials) {
         return res.status(400).json({
           success: false,
@@ -563,7 +1016,7 @@ router.get("/licences", verifyJWT, async (req, res) => {
     const clientId = req.query.clientId ? parseInt(req.query.clientId) : null;
     let credentials = null;
     if (clientId) {
-      credentials = await getClientOffice365Credentials(clientId);
+      credentials = await getClientOffice365Credentials(clientId, office365CredentialSelector(req));
       if (!credentials) {
         return res.status(400).json({
           success: false,
@@ -620,7 +1073,7 @@ router.get("/users", verifyJWT, async (req, res) => {
     const clientId = req.query.clientId ? parseInt(req.query.clientId) : null;
     let credentials = null;
     if (clientId) {
-      credentials = await getClientOffice365Credentials(clientId);
+      credentials = await getClientOffice365Credentials(clientId, office365CredentialSelector(req));
     }
     if (!credentials) {
       const settings = await getOffice365Settings();
@@ -678,7 +1131,7 @@ router.get("/data", verifyJWT, async (req, res) => {
     const clientId = req.query.clientId ? parseInt(req.query.clientId) : null;
     let credentials = null;
     if (clientId) {
-      credentials = await getClientOffice365Credentials(clientId);
+      credentials = await getClientOffice365Credentials(clientId, office365CredentialSelector(req));
       if (!credentials) {
         return res.status(400).json({
           success: false,
@@ -850,7 +1303,7 @@ router.get("/exchange", verifyJWT, async (req, res) => {
     const clientId = req.query.clientId ? parseInt(req.query.clientId) : null;
     let credentials = null;
     if (clientId) {
-      credentials = await getClientOffice365Credentials(clientId);
+      credentials = await getClientOffice365Credentials(clientId, office365CredentialSelector(req));
       if (!credentials) {
         return res.status(400).json({
           success: false,
@@ -1211,7 +1664,7 @@ router.get("/teams", verifyJWT, async (req, res) => {
     const clientId = req.query.clientId ? parseInt(req.query.clientId) : null;
     let credentials = null;
     if (clientId) {
-      credentials = await getClientOffice365Credentials(clientId);
+      credentials = await getClientOffice365Credentials(clientId, office365CredentialSelector(req));
       if (!credentials) {
         return res.status(400).json({
           success: false,
@@ -1582,7 +2035,7 @@ router.get("/onedrive", verifyJWT, async (req, res) => {
     const clientId = req.query.clientId ? parseInt(req.query.clientId) : null;
     let credentials = null;
     if (clientId) {
-      credentials = await getClientOffice365Credentials(clientId);
+      credentials = await getClientOffice365Credentials(clientId, office365CredentialSelector(req));
       if (!credentials) {
         return res.status(400).json({
           success: false,
@@ -1737,7 +2190,7 @@ router.get("/sharepoint", verifyJWT, async (req, res) => {
     const clientId = req.query.clientId ? parseInt(req.query.clientId) : null;
     let credentials = null;
     if (clientId) {
-      credentials = await getClientOffice365Credentials(clientId);
+      credentials = await getClientOffice365Credentials(clientId, office365CredentialSelector(req));
       if (!credentials) {
         return res.status(400).json({
           success: false,
@@ -1932,7 +2385,7 @@ router.get("/stats", verifyJWT, async (req, res) => {
     const clientId = req.query.clientId ? parseInt(req.query.clientId) : null;
     let credentials = null;
     if (clientId) {
-      credentials = await getClientOffice365Credentials(clientId);
+      credentials = await getClientOffice365Credentials(clientId, office365CredentialSelector(req));
     }
     if (!credentials) {
       const settings = await getOffice365Settings();
@@ -1992,7 +2445,7 @@ router.get("/secure-score-recommendations", verifyJWT, async (req, res) => {
         error: "clientId is required"
       });
     }
-    const credentials = await getClientOffice365Credentials(clientId);
+    const credentials = await getClientOffice365Credentials(clientId, office365CredentialSelector(req));
     if (!credentials) {
       return res.status(400).json({
         success: false,
@@ -2048,7 +2501,7 @@ router.get("/security", verifyJWT, async (req, res) => {
     const clientId = req.query.clientId ? parseInt(req.query.clientId) : null;
     let credentials = null;
     if (clientId) {
-      credentials = await getClientOffice365Credentials(clientId);
+      credentials = await getClientOffice365Credentials(clientId, office365CredentialSelector(req));
       if (!credentials) {
         return res.status(400).json({
           success: false,
@@ -2072,11 +2525,7 @@ router.get("/security", verifyJWT, async (req, res) => {
       });
     }
     const accessToken = await getMicrosoftGraphToken(credentials.tenantId, credentials.clientId, credentials.clientSecret);
-    const [mfaReport, directoryRoles, usersData, signIns, riskDetections, servicePrincipalApps, secureScores, secureScoreProfiles, secureScoreHistory] = await Promise.all([callMicrosoftGraph("/reports/authenticationMethods/userRegistrationDetails", accessToken, {
-      isReport: true
-    }).catch(err => {
-      return null;
-    }), callMicrosoftGraph("/directoryRoles", accessToken).catch(() => null), callMicrosoftGraph("/users?$select=id,displayName,mail,userPrincipalName,accountEnabled", accessToken, {
+    const [mfaReport, usersData, signIns, riskDetections, servicePrincipalApps, secureScores, secureScoreProfiles, secureScoreHistory] = await Promise.all([fetchUserRegistrationDetails(accessToken).catch(() => null), callMicrosoftGraph("/users?$select=id,displayName,mail,userPrincipalName,accountEnabled", accessToken, {
       getAllPages: true
     }).catch(() => null), callMicrosoftGraph("/auditLogs/signIns?$top=500&$orderby=createdDateTime desc", accessToken).catch(() => null), callMicrosoftGraph("/identityProtection/riskDetections?$top=100&$orderby=detectedDateTime desc", accessToken).catch(() => null), callMicrosoftGraph("/servicePrincipals?$select=id,displayName,appId,servicePrincipalType", accessToken, {
       getAllPages: true
@@ -2100,161 +2549,13 @@ router.get("/security", verifyJWT, async (req, res) => {
         return null;
       }
     })(), callMicrosoftGraph("/security/secureScores?$orderby=createdDateTime desc&$top=30", accessToken).catch(() => null)]);
-    if (mfaReport && mfaReport.value && mfaReport.value.length > 0) {}
-    let mfaStats = {
-      totalUsers: 0,
-      usersWithMFA: 0,
-      usersWithoutMFA: 0,
-      mfaRate: 0,
-      mfaMethods: {
-        authenticator: 0,
-        phone: 0,
-        sms: 0,
-        email: 0
-      }
-    };
-    if (mfaReport && mfaReport.value && mfaReport.value.length > 0) {
-      mfaStats.totalUsers = mfaReport.value.length;
-      mfaReport.value.forEach(user => {
-        const isMfaRegistered = user['Is Mfa Registered'] === 'True' || user['IsMfaRegistered'] === 'True' || user.isMfaRegistered === true || user.isMfaRegistered === 'True';
-        const isMfaCapable = user['Is Mfa Capable'] === 'True' || user['IsMfaCapable'] === 'True' || user.isMfaCapable === true || user.isMfaCapable === 'True';
-        const hasMFA = isMfaRegistered || isMfaCapable;
-        if (hasMFA) {
-          mfaStats.usersWithMFA++;
-        } else {
-          mfaStats.usersWithoutMFA++;
-        }
-        const methodsRegistered = user['Methods Registered'] || user['MethodsRegistered'] || user.methodsRegistered || '';
-        const methodsArray = Array.isArray(methodsRegistered) ? methodsRegistered : typeof methodsRegistered === 'string' ? methodsRegistered.split(',').map(m => m.trim()) : [];
-        methodsArray.forEach(method => {
-          const methodLower = method.toLowerCase();
-          if (methodLower.includes('authenticator') || methodLower.includes('microsoftauthenticator')) {
-            mfaStats.mfaMethods.authenticator++;
-          }
-          if (methodLower.includes('phone') || methodLower.includes('phoneauthentication')) {
-            mfaStats.mfaMethods.phone++;
-          }
-          if (methodLower.includes('sms')) {
-            mfaStats.mfaMethods.sms++;
-          }
-          if (methodLower.includes('email')) {
-            mfaStats.mfaMethods.email++;
-          }
-        });
-      });
-      mfaStats.mfaRate = mfaStats.totalUsers > 0 ? Math.round(mfaStats.usersWithMFA / mfaStats.totalUsers * 100) : 0;
-    } else if (usersData && usersData.value && usersData.value.length > 0) {
-      mfaStats.totalUsers = usersData.value.length;
-      const usersToCheck = usersData.value;
-      const mfaChecks = await Promise.allSettled(usersToCheck.map(async user => {
-        try {
-          const methods = await callMicrosoftGraph(`/users/${user.id}/authentication/methods`, accessToken).catch(() => null);
-          const hasMFA = methods && methods.value && methods.value.length > 0;
-          return {
-            userId: user.id,
-            hasMFA
-          };
-        } catch {
-          return {
-            userId: user.id,
-            hasMFA: false
-          };
-        }
-      }));
-      mfaChecks.forEach(result => {
-        if (result.status === 'fulfilled') {
-          const check = result.value;
-          if (check.hasMFA) {
-            mfaStats.usersWithMFA++;
-          } else {
-            mfaStats.usersWithoutMFA++;
-          }
-        } else {
-          mfaStats.usersWithoutMFA++;
-        }
-      });
-      if (usersToCheck.length < usersData.value.length) {
-        const sampleRate = mfaStats.usersWithMFA / usersToCheck.length;
-        const estimatedWithMFA = Math.round(sampleRate * usersData.value.length);
-        mfaStats.usersWithMFA = estimatedWithMFA;
-        mfaStats.usersWithoutMFA = usersData.value.length - estimatedWithMFA;
-      }
-      mfaStats.mfaRate = mfaStats.totalUsers > 0 ? Math.round(mfaStats.usersWithMFA / mfaStats.totalUsers * 100) : 0;
-    }
-    const administrators = [];
-    if (directoryRoles && directoryRoles.value) {
-      const importantRoles = ['Global Administrator', 'Privileged Role Administrator', 'Exchange Administrator', 'SharePoint Administrator', 'User Administrator', 'Security Administrator', 'Billing Administrator', 'Application Administrator', 'Cloud Application Administrator', 'Helpdesk Administrator', 'Teams Administrator', 'Power Platform Administrator', 'Azure AD Joined Device Local Administrator', 'Intune Administrator', 'Windows 365 Administrator', 'Compliance Administrator', 'Conditional Access Administrator', 'Authentication Administrator', 'License Administrator', 'Groups Administrator', 'Password Administrator', 'Directory Readers', 'Guest Inviter', 'Message Center Reader', 'Reports Reader'];
-      for (const role of directoryRoles.value) {
-        if (importantRoles.some(importantRole => role.displayName && role.displayName.includes(importantRole))) {
-          try {
-            const members = await callMicrosoftGraph(`/directoryRoles/${role.id}/members`, accessToken, {
-              getAllPages: true
-            }).catch(() => null);
-            if (members && members.value) {
-              members.value.forEach(member => {
-                if (member['@odata.type'] === '#microsoft.graph.user') {
-                  const email = (member.mail || member.userPrincipalName || '').toLowerCase().trim();
-                  const alreadyExists = administrators.some(existing => existing.id === member.id || existing.email && existing.email.toLowerCase().trim() === email);
-                  let hasMFA = false;
-                  if (mfaReport && mfaReport.value) {
-                    const mfaUser = mfaReport.value.find(u => u.userPrincipalName === member.userPrincipalName);
-                    hasMFA = mfaUser && (mfaUser.isMfaRegistered === true || mfaUser.isMfaCapable === true);
-                  }
-                  if (!alreadyExists) {
-                    administrators.push({
-                      id: member.id,
-                      name: member.displayName || member.userPrincipalName,
-                      email: member.mail || member.userPrincipalName,
-                      role: role.displayName,
-                      hasMFA: hasMFA
-                    });
-                  } else {
-                    const existing = administrators.find(existing => existing.id === member.id || existing.email && existing.email.toLowerCase().trim() === email);
-                    if (existing && existing.role && !existing.role.includes(role.displayName)) {
-                      existing.role = [existing.role, role.displayName].filter(Boolean).join(', ');
-                    }
-                  }
-                }
-              });
-            }
-          } catch (error) {}
-        }
-      }
-    }
-    if (administrators.length < 5) {
-      try {
-        const roleAssignments = await callMicrosoftGraph('/roleManagement/directory/roleAssignments?$expand=principal&$top=200', accessToken).catch(() => null);
-        if (roleAssignments && roleAssignments.value) {
-          for (const assignment of roleAssignments.value) {
-            if (assignment.principal && assignment.principal['@odata.type'] === '#microsoft.graph.user') {
-              const user = assignment.principal;
-              const roleDefinition = assignment.roleDefinition;
-              if (roleDefinition && roleDefinition.displayName) {
-                const isAdminRole = ['Global Administrator', 'Privileged Role Administrator', 'User Administrator', 'Exchange Administrator', 'SharePoint Administrator', 'Security Administrator', 'Billing Administrator', 'Application Administrator', 'Cloud Application Administrator', 'Helpdesk Administrator', 'Teams Administrator', 'Intune Administrator'].some(role => roleDefinition.displayName.includes(role));
-                if (isAdminRole) {
-                  const upn = (user.userPrincipalName || '').toLowerCase().trim();
-                  const alreadyExists = administrators.some(existing => existing.id === user.id || existing.email && existing.email.toLowerCase().trim() === upn);
-                  if (!alreadyExists) {
-                    administrators.push({
-                      id: user.id,
-                      name: user.displayName || user.userPrincipalName,
-                      email: user.userPrincipalName,
-                      role: roleDefinition.displayName,
-                      hasMFA: false
-                    });
-                  } else {
-                    const existing = administrators.find(existing => existing.id === user.id || existing.email && existing.email.toLowerCase().trim() === upn);
-                    if (existing && existing.role && !existing.role.includes(roleDefinition.displayName)) {
-                      existing.role = [existing.role, roleDefinition.displayName].filter(Boolean).join(', ');
-                    }
-                  }
-                }
-              }
-            }
-          }
-        }
-      } catch (error) {}
-    }
+    const userMfaDetailsRaw = await buildUserMfaDetails(accessToken, usersData?.value || [], mfaReport);
+    const administrators = await fetchDirectoryAdministrators(accessToken, usersData?.value || []);
+    administrators.forEach(admin => {
+      const match = userMfaDetailsRaw.find(user => String(user.id) === String(admin.id) || String(user.userPrincipalName || '').toLowerCase() === String(admin.email || '').toLowerCase());
+      if (match) admin.hasMFA = Boolean(match.hasMFA);
+    });
+    let mfaStats = buildMfaStatsFromUsers(userMfaDetailsRaw, usersData?.value?.length || 0);
     const adminStats = {
       total: administrators.length,
       withMFA: administrators.filter(a => a.hasMFA).length,
@@ -2427,62 +2728,7 @@ router.get("/security", verifyJWT, async (req, res) => {
       }
     }
     const secureScoreRecommendations = mapSecureScoreProfilesToRecommendations(secureScoreProfiles);
-    let userMfaDetails = [];
-    if (usersData && usersData.value && usersData.value.length > 0) {
-      const usersToCheck = usersData.value;
-      const mfaDetailsPromises = usersToCheck.map(async user => {
-        try {
-          const methods = await callMicrosoftGraph(`/users/${user.id}/authentication/methods`, accessToken).catch(() => null);
-          const methodTypes = [];
-          const methodDetails = [];
-          if (methods && methods.value && Array.isArray(methods.value)) {
-            methods.value.forEach(method => {
-              if (method['@odata.type']) {
-                const type = method['@odata.type'].split('.').pop().toLowerCase();
-                methodTypes.push(type);
-                methodDetails.push({
-                  type: type,
-                  createdDateTime: method.createdDateTime,
-                  displayName: method.displayName || type
-                });
-              }
-            });
-          }
-          let lastMfaEnrollmentDate = null;
-          if (methodDetails.length > 0) {
-            const realMfaMethods = methodDetails.filter(method => method.type === 'emailauthenticationmethod' || method.type === 'softwareoathauthenticationmethod' || method.type === 'phoneauthenticationmethod' || method.type === 'microsoftauthenticatorauthenticationmethod');
-            if (realMfaMethods.length > 0) {
-              const sortedMethods = realMfaMethods.filter(method => method.createdDateTime).sort((a, b) => new Date(b.createdDateTime) - new Date(a.createdDateTime));
-              if (sortedMethods.length > 0) {
-                lastMfaEnrollmentDate = sortedMethods[0].createdDateTime;
-              }
-            }
-          }
-          const mfaMethods = [...new Set(methodTypes)].filter(type => type === 'emailauthenticationmethod' || type === 'softwareoathauthenticationmethod' || type === 'phoneauthenticationmethod' || type === 'microsoftauthenticatorauthenticationmethod');
-          const hasMFA = mfaMethods.length > 0;
-          return {
-            id: user.id,
-            displayName: user.displayName || user.userPrincipalName,
-            userPrincipalName: user.userPrincipalName,
-            hasMFA: hasMFA,
-            mfaMethods: [...new Set(methodTypes)],
-            lastMfaEnrollmentDate: lastMfaEnrollmentDate
-          };
-        } catch (error) {
-          return {
-            id: user.id,
-            displayName: user.displayName || user.userPrincipalName,
-            userPrincipalName: user.userPrincipalName,
-            hasMFA: false,
-            mfaMethods: [],
-            lastMfaEnrollmentDate: null,
-            error: true
-          };
-        }
-      });
-      userMfaDetails = await Promise.allSettled(mfaDetailsPromises);
-      userMfaDetails = userMfaDetails.filter(result => result.status === 'fulfilled').map(result => result.value);
-    }
+    let userMfaDetails = userMfaDetailsRaw.map(detail => enrichUserMfaWithAdminRoles(detail, administrators));
     if (clientId) {
       try {
         try {
@@ -2520,50 +2766,7 @@ router.get("/security", verifyJWT, async (req, res) => {
           console.error('Error saving MFA statistics:', mfaStatsError);
         }
         try {
-          let adminCount = 0;
-          for (const userDetail of userMfaDetails) {
-            const adminRoles = [];
-            for (const admin of administrators) {
-              const userUpn = (userDetail.userPrincipalName || '').toLowerCase().trim();
-              const adminEmail = (admin.email || '').toLowerCase().trim();
-              const matchById = admin.id && userDetail.id && String(admin.id) === String(userDetail.id);
-              const matchByUpn = userUpn && adminEmail && userUpn === adminEmail;
-              if (matchById || matchByUpn) {
-                if (admin.role && !adminRoles.includes(admin.role)) {
-                  adminRoles.push(admin.role);
-                }
-              }
-            }
-            const isAdmin = adminRoles.length > 0;
-            const adminRoleText = adminRoles.join(', ');
-            if (isAdmin) adminCount++;
-            await pool.query(`
-              INSERT INTO v_b_clients_c_azure_mfa (
-                client_id,
-                user_id,
-                display_name,
-                user_principal_name,
-                account_enabled,
-                has_mfa,
-                mfa_methods,
-                latest_mfa_registration_date,
-                is_admin,
-                admin_role,
-                last_sync
-              ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, CURRENT_TIMESTAMP)
-              ON CONFLICT (client_id, user_id) DO UPDATE SET
-                display_name = EXCLUDED.display_name,
-                user_principal_name = EXCLUDED.user_principal_name,
-                account_enabled = EXCLUDED.account_enabled,
-                has_mfa = EXCLUDED.has_mfa,
-                mfa_methods = EXCLUDED.mfa_methods,
-                latest_mfa_registration_date = EXCLUDED.latest_mfa_registration_date,
-                is_admin = EXCLUDED.is_admin,
-                admin_role = EXCLUDED.admin_role,
-                last_sync = CURRENT_TIMESTAMP,
-                updated_at = CURRENT_TIMESTAMP
-            `, [clientId, userDetail.id, userDetail.displayName, userDetail.userPrincipalName, true, userDetail.hasMFA, JSON.stringify(userDetail.mfaMethods || []), userDetail.lastMfaEnrollmentDate, isAdmin, adminRoleText || null]);
-          }
+          await persistUserMfaDetails(clientId, userMfaDetailsRaw, administrators);
         } catch (userDetailsError) {
           console.error('Error saving user details:', userDetailsError);
         }
@@ -2597,7 +2800,7 @@ router.get("/applications", verifyJWT, async (req, res) => {
     const clientId = req.query.clientId ? parseInt(req.query.clientId) : null;
     let credentials = null;
     if (clientId) {
-      credentials = await getClientOffice365Credentials(clientId);
+      credentials = await getClientOffice365Credentials(clientId, office365CredentialSelector(req));
     }
     if (!credentials) {
       const settings = await getOffice365Settings();
@@ -2901,7 +3104,7 @@ router.get("/alerts", verifyJWT, async (req, res) => {
     const clientId = req.query.clientId ? parseInt(req.query.clientId) : null;
     let credentials = null;
     if (clientId) {
-      credentials = await getClientOffice365Credentials(clientId);
+      credentials = await getClientOffice365Credentials(clientId, office365CredentialSelector(req));
     }
     if (!credentials) {
       const settings = await getOffice365Settings();
@@ -3085,70 +3288,37 @@ router.get("/stats/saved/:clientId", verifyJWT, async (req, res) => {
 });
 router.get("/mfa-details/:clientId", verifyJWT, async (req, res) => {
   try {
-    const {
-      clientId
-    } = req.params;
-    const result = await pool.query(`
-      SELECT
-        user_id as id,
-        display_name,
-        user_principal_name,
-        account_enabled,
-        has_mfa,
-        mfa_methods,
-        latest_mfa_registration_date,
-        is_admin,
-        admin_role,
-        last_sync
-      FROM v_b_clients_c_azure_mfa
-      WHERE client_id = $1
-      ORDER BY display_name ASC
-    `, [clientId]);
-    if (result.rows.length === 0) {
+    const clientId = parseInt(req.params.clientId, 10);
+    const refresh = req.query.refresh === "1" || req.query.refresh === "true";
+    if (!clientId) {
+      return res.status(400).json({
+        success: false,
+        error: "clientId is required"
+      });
+    }
+    let rows = await queryAzureMfaRows(clientId);
+    if (refresh || mfaRowsLookIncomplete(rows)) {
+      const credentials = await getClientOffice365Credentials(clientId, office365CredentialSelector(req));
+      if (credentials?.tenantId && credentials?.clientId && credentials?.clientSecret) {
+        try {
+          const accessToken = await getMicrosoftGraphToken(credentials.tenantId, credentials.clientId, credentials.clientSecret);
+          await saveClientMfaDetailsWithAdminRoles(clientId, accessToken);
+          rows = await queryAzureMfaRows(clientId);
+        } catch (syncError) {
+          console.error(`[azure-mfa] Live Graph refresh failed for client ${clientId}:`, syncError?.message || syncError);
+        }
+      }
+    }
+    if (!rows.length) {
       return res.json({
         success: true,
         userMfaDetails: [],
         message: "No MFA details saved for this client"
       });
     }
-    const userMfaDetails = result.rows.map(row => {
-      const methods = (() => {
-        const raw = row.mfa_methods;
-        if (Array.isArray(raw)) return raw;
-        if (raw && typeof raw === "object") return Object.values(raw);
-        if (typeof raw === "string") {
-          try {
-            const parsed = JSON.parse(raw);
-            return Array.isArray(parsed) ? parsed : [];
-          } catch {
-            return [];
-          }
-        }
-        return [];
-      })();
-      const hasMfa = row.has_mfa === true || row.has_mfa === "t" || row.has_mfa === "true" || methods.length > 0;
-      const isAdmin = row.is_admin === true || row.is_admin === "t" || row.is_admin === "true";
-      return {
-        id: row.id,
-        displayName: row.display_name,
-        userPrincipalName: row.user_principal_name,
-        email: row.user_principal_name,
-        accountEnabled: row.account_enabled,
-        has_mfa: hasMfa,
-        hasMfa: hasMfa,
-        hasMFA: hasMfa,
-        mfa_methods: methods,
-        mfaMethods: methods,
-        latestMfaRegistrationDate: row.latest_mfa_registration_date,
-        is_admin: isAdmin,
-        isAdmin: isAdmin,
-        admin_role: row.admin_role || null,
-        adminRole: row.admin_role || null
-      };
-    });
     res.json({
       success: true,
-      userMfaDetails: userMfaDetails
+      userMfaDetails: mapAzureMfaRows(rows)
     });
   } catch (error) {
     res.status(500).json({
@@ -4098,169 +4268,42 @@ async function fetchOneDriveDataInternal(accessToken, startDate, endDate, period
   }
 }
 async function saveClientMfaDetailsWithAdminRoles(clientId, accessToken) {
-  await ensureAzureMfaSchema();
-  const importantRoles = ['Global Administrator', 'Privileged Role Administrator', 'Exchange Administrator', 'SharePoint Administrator', 'User Administrator', 'Security Administrator', 'Billing Administrator', 'Application Administrator', 'Cloud Application Administrator', 'Helpdesk Administrator', 'Teams Administrator', 'Power Platform Administrator', 'Azure AD Joined Device Local Administrator', 'Intune Administrator', 'Windows 365 Administrator', 'Compliance Administrator', 'Conditional Access Administrator', 'Authentication Administrator', 'License Administrator', 'Groups Administrator', 'Password Administrator', 'Directory Readers', 'Guest Inviter', 'Message Center Reader', 'Reports Reader'];
-  const directoryRoles = await callMicrosoftGraph("/directoryRoles", accessToken).catch(() => null);
-  const administrators = [];
-  if (directoryRoles && directoryRoles.value) {
-    for (const role of directoryRoles.value) {
-      if (importantRoles.some(importantRole => role.displayName && role.displayName.includes(importantRole))) {
-        try {
-          const members = await callMicrosoftGraph(`/directoryRoles/${role.id}/members`, accessToken, {
-            getAllPages: true
-          }).catch(() => null);
-          if (members && members.value) {
-            members.value.forEach(member => {
-              if (member['@odata.type'] === '#microsoft.graph.user') {
-                const email = (member.mail || member.userPrincipalName || '').toLowerCase().trim();
-                const alreadyExists = administrators.some(existing => existing.id === member.id || existing.email && existing.email.toLowerCase().trim() === email);
-                if (!alreadyExists) {
-                  administrators.push({
-                    id: member.id,
-                    name: member.displayName || member.userPrincipalName,
-                    email: member.mail || member.userPrincipalName,
-                    role: role.displayName,
-                    hasMFA: false
-                  });
-                } else {
-                  const existing = administrators.find(existing => existing.id === member.id || existing.email && existing.email.toLowerCase().trim() === email);
-                  if (existing && existing.role && !existing.role.includes(role.displayName)) {
-                    existing.role = [existing.role, role.displayName].filter(Boolean).join(', ');
-                  }
-                }
-              }
-            });
-          }
-        } catch (err) {}
-      }
-    }
-  }
-  if (administrators.length < 5) {
-    try {
-      const roleAssignments = await callMicrosoftGraph('/roleManagement/directory/roleAssignments?$expand=principal&$top=200', accessToken).catch(() => null);
-      if (roleAssignments && roleAssignments.value) {
-        const adminRoleNames = ['Global Administrator', 'Privileged Role Administrator', 'User Administrator', 'Exchange Administrator', 'SharePoint Administrator', 'Security Administrator', 'Billing Administrator', 'Application Administrator', 'Cloud Application Administrator', 'Helpdesk Administrator', 'Teams Administrator', 'Intune Administrator'];
-        for (const assignment of roleAssignments.value) {
-          if (assignment.principal && assignment.principal['@odata.type'] === '#microsoft.graph.user') {
-            const user = assignment.principal;
-            const roleDefinition = assignment.roleDefinition;
-            if (roleDefinition && roleDefinition.displayName && adminRoleNames.some(r => roleDefinition.displayName.includes(r))) {
-              const upn = (user.userPrincipalName || '').toLowerCase().trim();
-              const alreadyExists = administrators.some(existing => existing.id === user.id || existing.email && existing.email.toLowerCase().trim() === upn);
-              if (!alreadyExists) {
-                administrators.push({
-                  id: user.id,
-                  name: user.displayName || user.userPrincipalName,
-                  email: user.userPrincipalName,
-                  role: roleDefinition.displayName,
-                  hasMFA: false
-                });
-              } else {
-                const existing = administrators.find(existing => existing.id === user.id || existing.email && existing.email.toLowerCase().trim() === upn);
-                if (existing && existing.role && !existing.role.includes(roleDefinition.displayName)) {
-                  existing.role = [existing.role, roleDefinition.displayName].filter(Boolean).join(', ');
-                }
-              }
-            }
-          }
-        }
-      }
-    } catch (err) {}
-  }
-  const usersData = await callMicrosoftGraph("/users?$select=id,displayName,mail,userPrincipalName,accountEnabled", accessToken, {
-    getAllPages: true
-  }).catch(() => null);
-  if (!usersData || !usersData.value || usersData.value.length === 0) {
-    console.warn(`[azure-mfa] No users returned from Graph for client ${clientId}`);
-    return { saved: 0 };
-  }
-  const usersToCheck = usersData.value;
-  const accountEnabledByUserId = new Map(usersToCheck.map(user => [user.id, user.accountEnabled !== false]));
-  const mfaDetailsPromises = usersToCheck.map(async user => {
-    try {
-      const methods = await callMicrosoftGraph(`/users/${user.id}/authentication/methods`, accessToken).catch(() => null);
-      const methodTypes = [];
-      let lastMfaEnrollmentDate = null;
-      if (methods && methods.value && Array.isArray(methods.value)) {
-        methods.value.forEach(method => {
-          if (method['@odata.type']) {
-            const type = method['@odata.type'].split('.').pop().toLowerCase();
-            methodTypes.push(type);
-          }
-        });
-        const realMfaMethods = (methods.value || []).filter(m => {
-          const t = (m['@odata.type'] || '').split('.').pop().toLowerCase();
-          return ['emailauthenticationmethod', 'softwareoathauthenticationmethod', 'phoneauthenticationmethod', 'microsoftauthenticatorauthenticationmethod'].includes(t);
-        });
-        if (realMfaMethods.length > 0) {
-          const sorted = realMfaMethods.filter(m => m.createdDateTime).sort((a, b) => new Date(b.createdDateTime) - new Date(a.createdDateTime));
-          if (sorted[0]) lastMfaEnrollmentDate = sorted[0].createdDateTime;
-        }
-      }
-      const uniqueMethodTypes = [...new Set(methodTypes)];
-      const mfaMethods = uniqueMethodTypes.filter(t => ['emailauthenticationmethod', 'softwareoathauthenticationmethod', 'phoneauthenticationmethod', 'microsoftauthenticatorauthenticationmethod'].includes(t));
-      const hasMFA = mfaMethods.length > 0;
+  const key = String(clientId);
+  const existing = mfaRefreshInFlight.get(key);
+  if (existing) return existing;
+  const promise = (async () => {
+    await ensureAzureMfaSchema();
+    const usersData = await callMicrosoftGraph("/users?$select=id,displayName,mail,userPrincipalName,accountEnabled", accessToken, {
+      getAllPages: true
+    }).catch(() => null);
+    if (!usersData?.value?.length) {
+      console.warn(`[azure-mfa] No users returned from Graph for client ${clientId}`);
       return {
-        id: user.id,
-        displayName: user.displayName || user.userPrincipalName,
-        userPrincipalName: user.userPrincipalName,
-        accountEnabled: accountEnabledByUserId.get(user.id) !== false,
-        hasMFA,
-        mfaMethods: uniqueMethodTypes,
-        lastMfaEnrollmentDate
+        saved: 0,
+        userMfaDetails: []
       };
+    }
+    const [userMfaDetails, administrators] = await Promise.all([
+      buildUserMfaDetails(accessToken, usersData.value),
+      fetchDirectoryAdministrators(accessToken, usersData.value)
+    ]);
+    const enriched = userMfaDetails.map(detail => enrichUserMfaWithAdminRoles(detail, administrators));
+    let saved = 0;
+    try {
+      saved = await persistUserMfaDetails(clientId, userMfaDetails, administrators);
     } catch (err) {
-      return {
-        id: user.id,
-        displayName: user.displayName || user.userPrincipalName,
-        userPrincipalName: user.userPrincipalName,
-        accountEnabled: accountEnabledByUserId.get(user.id) !== false,
-        hasMFA: false,
-        mfaMethods: [],
-        lastMfaEnrollmentDate: null
-      };
+      console.error(`Failed to save MFA + admin roles (sync) for client ${clientId}:`, err);
     }
+    return {
+      saved,
+      userMfaDetails: enriched,
+      administrators
+    };
+  })().finally(() => {
+    if (mfaRefreshInFlight.get(key) === promise) mfaRefreshInFlight.delete(key);
   });
-  const settled = await Promise.allSettled(mfaDetailsPromises);
-  const userMfaDetails = settled.filter(r => r.status === 'fulfilled').map(r => r.value);
-  let saved = 0;
-  try {
-    for (const userDetail of userMfaDetails) {
-      const adminRoles = [];
-      for (const admin of administrators) {
-        const userUpn = (userDetail.userPrincipalName || '').toLowerCase().trim();
-        const adminEmail = (admin.email || '').toLowerCase().trim();
-        const matchById = admin.id && userDetail.id && String(admin.id) === String(userDetail.id);
-        const matchByUpn = userUpn && adminEmail && userUpn === adminEmail;
-        if (matchById || matchByUpn) {
-          if (admin.role && !adminRoles.includes(admin.role)) adminRoles.push(admin.role);
-        }
-      }
-      const isAdmin = adminRoles.length > 0;
-      const adminRoleText = adminRoles.join(', ') || null;
-      await pool.query(`
-        INSERT INTO v_b_clients_c_azure_mfa (
-          client_id, user_id, display_name, user_principal_name, account_enabled,
-          has_mfa, mfa_methods, latest_mfa_registration_date, is_admin, admin_role, last_sync
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, CURRENT_TIMESTAMP)
-        ON CONFLICT (client_id, user_id) DO UPDATE SET
-          display_name = EXCLUDED.display_name,
-          user_principal_name = EXCLUDED.user_principal_name,
-          account_enabled = EXCLUDED.account_enabled,
-          has_mfa = EXCLUDED.has_mfa,
-          mfa_methods = EXCLUDED.mfa_methods,
-          latest_mfa_registration_date = EXCLUDED.latest_mfa_registration_date,
-          is_admin = EXCLUDED.is_admin,
-          admin_role = EXCLUDED.admin_role,
-          last_sync = CURRENT_TIMESTAMP,
-          updated_at = CURRENT_TIMESTAMP
-      `, [clientId, userDetail.id, userDetail.displayName, userDetail.userPrincipalName, userDetail.accountEnabled !== false, userDetail.hasMFA, JSON.stringify(userDetail.mfaMethods || []), userDetail.lastMfaEnrollmentDate, isAdmin, adminRoleText]);
-      saved += 1;
-    }
-  } catch (err) {
-    console.error(`Failed to save MFA + admin roles (sync) for client ${clientId}:`, err);
-  }
-  return { saved };
+  mfaRefreshInFlight.set(key, promise);
+  return promise;
 }
 router.get("/sync-all", verifyJWT, async (req, res) => {
   try {
@@ -4275,7 +4318,7 @@ router.get("/sync-all", verifyJWT, async (req, res) => {
         errorCode: "MS_SYNC_CLIENT_REQUIRED"
       });
     }
-    const credentials = await getClientOffice365Credentials(clientId);
+    const credentials = await getClientOffice365Credentials(clientId, office365CredentialSelector(req));
     if (!credentials) {
       return res.status(400).json({
         success: false,
@@ -4331,13 +4374,14 @@ router.get("/sync-all", verifyJWT, async (req, res) => {
     })();
     const securityPromise = (async () => {
       try {
-        const [mfaReport, directoryRoles, usersData, secureScores] = await Promise.all([callMicrosoftGraph("/reports/authenticationMethods/userRegistrationDetails", accessToken, {
-          isReport: true
-        }).catch(() => null), callMicrosoftGraph("/directoryRoles", accessToken).catch(() => null), callMicrosoftGraph("/users?$select=id,displayName,mail,userPrincipalName,accountEnabled", accessToken, {
+        const [mfaReport, usersData, secureScores] = await Promise.all([fetchUserRegistrationDetails(accessToken).catch(() => null), callMicrosoftGraph("/users?$select=id,displayName,mail,userPrincipalName,accountEnabled", accessToken, {
           getAllPages: true
         }).catch(() => null), callMicrosoftGraph("/security/secureScores?$orderby=createdDateTime desc", accessToken, {
           getAllPages: true
         }).catch(() => null)]);
+        const userMfaDetails = await buildUserMfaDetails(accessToken, usersData?.value || [], mfaReport);
+        const administrators = await fetchDirectoryAdministrators(accessToken, usersData?.value || []);
+        const mfaStats = buildMfaStatsFromUsers(userMfaDetails, usersData?.value?.length || 0);
         const identitySecureScore = secureScores?.value?.find(score => score.controlCategory === 'Identity' || !score.controlCategory) || secureScores?.value?.[0];
         const latestWithControls = getLatestSecureScoreWithControls(secureScores) || identitySecureScore;
         const controlScores = (latestWithControls?.controlScores || []).filter(control => {
@@ -4362,14 +4406,19 @@ router.get("/sync-all", verifyJWT, async (req, res) => {
           controlScores,
           secureScoreRecommendations: controlScores,
           mfa: {
-            usersWithMFA: 0,
-            usersWithoutMFA: usersData?.value?.length || 0
+            usersWithMFA: mfaStats.usersWithMFA,
+            usersWithoutMFA: mfaStats.usersWithoutMFA,
+            totalUsers: mfaStats.totalUsers,
+            mfaRate: mfaStats.mfaRate,
+            mfaMethods: mfaStats.mfaMethods
           },
           adminStats: {
-            total: directoryRoles?.value?.length || 0,
-            withMFA: 0,
-            withoutMFA: directoryRoles?.value?.length || 0
-          }
+            total: administrators.length,
+            withMFA: administrators.filter(admin => userMfaDetails.some(user => user.id === admin.id && user.hasMFA)).length,
+            withoutMFA: administrators.filter(admin => !userMfaDetails.some(user => user.id === admin.id && user.hasMFA)).length
+          },
+          userMfaDetails: userMfaDetails.map(detail => enrichUserMfaWithAdminRoles(detail, administrators)),
+          administrators
         };
       } catch (err) {
         return {
@@ -4422,6 +4471,7 @@ router.get("/sync-all", verifyJWT, async (req, res) => {
       onedriveData: onedriveFinal.success ? onedriveFinal : null,
       sharepointData: sharepointFinal.success ? sharepointFinal : null,
       securityData: securityFinal.success ? securityFinal : null,
+      userMfaDetails: mfaAdminSaveFinal?.userMfaDetails || securityFinal?.userMfaDetails || [],
       lastUpdate: new Date().toISOString()
     };
     try {

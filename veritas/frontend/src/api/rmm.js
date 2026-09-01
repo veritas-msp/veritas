@@ -99,6 +99,15 @@ export async function createRmmEnrollmentToken(payload) {
   });
   return handleResponse(response);
 }
+export async function updateRmmEnrollmentToken(tokenId, payload) {
+  const response = await fetch(`${API_BASE_URL}/rmm/enrollment-tokens/${tokenId}`, {
+    method: "PATCH",
+    credentials: "include",
+    headers: jsonHeaders,
+    body: JSON.stringify(payload)
+  });
+  return handleResponse(response);
+}
 export async function revokeRmmEnrollmentToken(tokenId) {
   const response = await fetch(`${API_BASE_URL}/rmm/enrollment-tokens/${tokenId}`, {
     method: "DELETE",
@@ -202,29 +211,20 @@ export async function fetchRmmMetricHistory(agentId, {
   return handleResponse(response);
 }
 async function downloadRmmFile(path, fallbackFilename) {
-  const response = await fetch(`${API_BASE_URL}${path}`, {
-    credentials: "include"
-  });
-  if (!response.ok) {
-    const data = await response.json().catch(() => ({}));
-    throw new Error(data.error || `Error ${response.status}`);
+  const url = `${API_BASE_URL}${path}`;
+  const popup = window.open(url, "_blank");
+  if (!popup) {
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = fallbackFilename;
+    link.rel = "noopener";
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
   }
-  const disposition = response.headers.get("Content-Disposition") || "";
-  const match = disposition.match(/filename=\"?([^\";]+)\"?/i);
-  const filename = match?.[1] || fallbackFilename;
-  const version = response.headers.get("X-Veritas-Installer-Version") || null;
-  const blob = await response.blob();
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement("a");
-  link.href = url;
-  link.download = filename;
-  document.body.appendChild(link);
-  link.click();
-  link.remove();
-  URL.revokeObjectURL(url);
   return {
-    filename,
-    version
+    filename: fallbackFilename,
+    version: null
   };
 }
 export async function fetchRmmInstallerInfo() {

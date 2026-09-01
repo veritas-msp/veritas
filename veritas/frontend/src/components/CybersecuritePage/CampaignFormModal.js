@@ -4,7 +4,7 @@ import { Icon } from "@iconify/react";
 import { FaTimes } from "react-icons/fa";
 import { toast } from "react-toastify";
 import { useCommonCopy } from "../../hooks/useCommonCopy";
-import { getClientOffice365Credentials } from "../../api/clientOffice365";
+import { getClientOffice365Credentials, unwrapOffice365CredentialsList } from "../../api/clientOffice365";
 import { formatMicrosoftTenantSummary, normalizeMicrosoftTenantCredentials } from "../EnterprisesPage/microsoftTenantSolutionUtils";
 import styles from "../EnterprisesPage/EnterpriseFormModal.module.css";
 import localStyles from "./CampaignFormModal.module.css";
@@ -133,12 +133,20 @@ export default function CampaignFormModal({
       try {
         const response = await getClientOffice365Credentials(clientId);
         if (cancelled || requestId !== credentialsRequestRef.current) return;
-        const raw = response?.credentials || null;
-        const normalized = normalizeMicrosoftTenantCredentials(raw);
-        const credentials = raw && normalized?.tenantId ? {
-          id: raw.id,
-          ...normalized
-        } : null;
+        const list = unwrapOffice365CredentialsList(response).map(raw => {
+          const normalized = normalizeMicrosoftTenantCredentials(raw);
+          if (!normalized?.tenantId) return null;
+          return {
+            id: raw.id || normalized.id,
+            ...normalized
+          };
+        }).filter(Boolean);
+        const preferredId = formData?.azure_credential_id;
+        const preferredTenant = formData?.tenant_id;
+        const credentials = list.find(item => preferredId && String(item.id) === String(preferredId))
+          || list.find(item => preferredTenant && item.tenantId === preferredTenant)
+          || list[0]
+          || null;
         setMsCredentials(credentials);
         if (!isEditing && credentials?.id && credentials?.tenantId) {
           onFormDataChange?.(prev => {
@@ -429,35 +437,37 @@ export default function CampaignFormModal({
                       {modalCopy.sections?.details?.desc || ""}
                     </p>
                   </div>
-                  {isEditing && statusOptions?.length ? <div className={styles.fieldGrid2}>
-                      <div className={styles.field}>
-                        <label className={styles.label} htmlFor="campaign-form-status">
-                          {modalCopy.status}
-                        </label>
-                        <select id="campaign-form-status" className={styles.input} value={formData.status || ""} onChange={e => patchForm({
-                    status: e.target.value
-                  })}>
-                          {statusOptions.map(opt => <option key={opt.value} value={opt.value}>
-                              {opt.label}
-                            </option>)}
-                        </select>
-                      </div>
-                      <div className={styles.field}>
-                        <label className={styles.label} htmlFor="campaign-form-goal">
-                          {modalCopy.adoptionGoal}
-                        </label>
-                        <input id="campaign-form-goal" type="number" min="0" max="100" className={styles.input} value={formData.objectif_adoption ?? ""} onChange={e => patchForm({
-                    objectif_adoption: e.target.value
-                  })} placeholder={modalCopy.adoptionGoalPlaceholder} />
-                      </div>
-                    </div> : null}
-                  <div className={`${styles.field} ${styles.fieldFull}`}>
-                    <label className={styles.label} htmlFor="campaign-form-description">
-                      {modalCopy.specificity}
-                    </label>
-                    <textarea id="campaign-form-description" className={styles.textarea} rows={6} value={formData.description || ""} onChange={e => patchForm({
-                  description: e.target.value
-                })} placeholder={modalCopy.specificityPlaceholder} />
+                  <div className={styles.fieldStack}>
+                    {isEditing && statusOptions?.length ? <div className={styles.fieldGrid2}>
+                        <div className={styles.field}>
+                          <label className={styles.label} htmlFor="campaign-form-status">
+                            {modalCopy.status}
+                          </label>
+                          <select id="campaign-form-status" className={styles.input} value={formData.status || ""} onChange={e => patchForm({
+                      status: e.target.value
+                    })}>
+                            {statusOptions.map(opt => <option key={opt.value} value={opt.value}>
+                                {opt.label}
+                              </option>)}
+                          </select>
+                        </div>
+                        <div className={styles.field}>
+                          <label className={styles.label} htmlFor="campaign-form-goal">
+                            {modalCopy.adoptionGoal}
+                          </label>
+                          <input id="campaign-form-goal" type="number" min="0" max="100" className={styles.input} value={formData.objectif_adoption ?? ""} onChange={e => patchForm({
+                      objectif_adoption: e.target.value
+                    })} placeholder={modalCopy.adoptionGoalPlaceholder} />
+                        </div>
+                      </div> : null}
+                    <div className={`${styles.field} ${styles.fieldFull}`}>
+                      <label className={styles.label} htmlFor="campaign-form-description">
+                        {modalCopy.specificity}
+                      </label>
+                      <textarea id="campaign-form-description" className={`${styles.input} ${localStyles.textarea}`} rows={5} value={formData.description || ""} onChange={e => patchForm({
+                    description: e.target.value
+                  })} placeholder={modalCopy.specificityPlaceholder} />
+                    </div>
                   </div>
                 </> : null}
             </div>

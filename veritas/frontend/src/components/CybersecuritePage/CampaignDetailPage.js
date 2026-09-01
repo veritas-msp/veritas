@@ -521,7 +521,9 @@ export default function CampaignDetailPage({
     try {
       const result = await runSupervisionSyncJobs(jobs, {
         isCancelled: () => syncProgressCancelRef.current || abortController.signal.aborted || currentSyncClientIdRef.current !== targetClientId,
+        signal: abortController.signal,
         onProgress: event => {
+          if (syncProgressCancelRef.current || abortController.signal.aborted) return;
           if (event.type === "item") {
             patchItem(event.index, {
               state: event.state,
@@ -544,7 +546,7 @@ export default function CampaignDetailPage({
       const cancelled = result.cancelled || syncProgressCancelRef.current;
       setSyncProgress(prev => ({
         ...prev,
-        phase: cancelled ? "cancelled" : "done",
+        phase: cancelled || prev.phase === "cancelled" ? "cancelled" : "done",
         etaMs: 0,
         items: prev.items.map(item => item.state === "running" ? {
           ...item,
@@ -552,7 +554,7 @@ export default function CampaignDetailPage({
         } : item)
       }));
       if (cancelled) {
-        toast.info(syncCopy.cancelledToast || syncCopy.cancelled);
+        return;
       } else if (result.fail === 0) {
         toast.success(fillSyncCopy(syncCopy.successToast, {
           ok: result.ok,
@@ -598,6 +600,7 @@ export default function CampaignDetailPage({
     }
   };
   const cancelSyncProgress = () => {
+    if (syncProgressCancelRef.current) return;
     syncProgressCancelRef.current = true;
     try {
       syncProgressAbortRef.current?.abort();
@@ -605,6 +608,20 @@ export default function CampaignDetailPage({
     } catch {
       // ignore
     }
+    setSyncProgress(prev => {
+      if (!prev.open || prev.phase !== "running") return prev;
+      return {
+        ...prev,
+        phase: "cancelled",
+        etaMs: 0,
+        items: prev.items.map(item => item.state === "running" ? {
+          ...item,
+          state: "pending"
+        } : item)
+      };
+    });
+    const syncCopy = detailCopy.syncProgress || {};
+    toast.info(syncCopy.cancelledToast || syncCopy.cancelled);
   };
   const closeSyncProgressModal = () => {
     setSyncProgress(prev => ({

@@ -432,10 +432,6 @@ export default function AuthPage() {
 
       {}
       <div className={styles.statusDock}>
-        <button type="button" className={`${styles.statusFab} ${allOk ? styles.statusFabOk : styles.statusFabError}`} onClick={() => setStatusOpen(p => !p)} aria-expanded={statusOpen}>
-          <span className={styles.statusFabDot} />
-          {copy.status.title}
-        </button>
         {statusOpen && <div className={styles.statusPanel}>
             <StatusRow label={copy.status.api} status={serverStatus} />
             <StatusRow label={copy.status.database} status={dbStatus} />
@@ -444,6 +440,10 @@ export default function AuthPage() {
             time: lastCheck || "--:--"
           })}</p>
           </div>}
+        <button type="button" className={`${styles.statusFab} ${allOk ? styles.statusFabOk : styles.statusFabError}`} onClick={() => setStatusOpen(p => !p)} aria-expanded={statusOpen}>
+          <span className={styles.statusFabDot} />
+          {copy.status.title}
+        </button>
       </div>
     </div>;
 }

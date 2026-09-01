@@ -32,7 +32,7 @@ import { addTicketAssignee, addTicketComment, addTicketCommentWithAttachments, a
 import { fetchAiStatus, suggestTicketReplyAi, correctTicketTextAi } from "../../api/ai";
 import API_BASE_URL from "../../config";
 import { sanitizeTicketCommentHtml } from "../../utils/sanitizeHtml";
-import { contentLooksLikeHtml } from "../../utils/incomingEmailContent";
+import { contentLooksLikeHtml, isIncomingEmailContent } from "../../utils/incomingEmailContent";
 import IncomingEmailMessage from "./IncomingEmailMessage";
 import ContactFormModal from "../ContactsPage/ContactFormModal";
 import TicketLinkRequesterEmailModal from "./TicketLinkRequesterEmailModal";
@@ -4180,12 +4180,12 @@ export default function TicketDetailPage({
             </>}
         </>;
     }
-    return renderCommentContent(resolveCommentDisplayContent(comment));
+    return renderCommentContent(resolveCommentDisplayContent(comment), comment.attachments);
   };
-  const renderCommentContent = content => {
+  const renderCommentContent = (content, attachments = []) => {
     const raw = String(content || "");
     if (/^\s*\[Incoming email\]/i.test(raw)) {
-      return <IncomingEmailMessage content={raw} attachmentLinkClassName={styles.attachmentLink} />;
+      return <IncomingEmailMessage content={raw} attachments={attachments} attachmentLinkClassName={styles.attachmentLink} />;
     }
     const looksLikeHtml = contentLooksLikeHtml(raw);
     if (looksLikeHtml) {
@@ -4234,6 +4234,10 @@ export default function TicketDetailPage({
     return /\.(png|jpe?g|gif|webp|bmp|svg)$/i.test(filename);
   };
   const sortedSideConversations = useMemo(() => [...sideConversations].sort((a, b) => new Date(a.createdAt || a.updatedAt || 0).getTime() - new Date(b.createdAt || b.updatedAt || 0).getTime()), [sideConversations]);
+  const descriptionAttachments = useMemo(() => {
+    const all = Array.isArray(ticket?.attachments) ? ticket.attachments : [];
+    return all.map(normalizeAttachment).filter(item => item && !item.comment_id);
+  }, [ticket?.attachments]);
   const ticketTopBar = <header className={`${styles.ticketChromeBar} ${styles.ticketHeaderBar}`}>
       <button type="button" className={styles.ticketHeaderIconBtn} onClick={() => onNavigate?.(ticketsListDocType)} aria-label={copy.header.backAria} title={copy.header.backTitle}>
         <Icon icon="mdi:arrow-left" aria-hidden />
@@ -4740,7 +4744,7 @@ export default function TicketDetailPage({
                       </h2>
                     </div>
                     {editForm.description || ticket?.description ? <div className={styles.commentBody}>
-                        {renderCommentContent(editForm.description || ticket?.description)}
+                        {renderCommentContent(editForm.description || ticket?.description, descriptionAttachments)}
                       </div> : <p className={styles.descriptionBodyPlaceholder}>{copy.description.empty}</p>}
                   </>}
               </article>
@@ -4830,7 +4834,7 @@ export default function TicketDetailPage({
                     </div> : isResolutionProposal ? <div className={`${styles.commentBody} ${styles.commentBodyResolution}`}>
                       {renderResolutionCommentCard(comment, resolutionValidation)}
                     </div> : <div className={styles.commentBody}>{renderCommentBody(comment)}</div>}
-                  {!isEditingComment && Array.isArray(comment.attachments) && comment.attachments.length > 0 && <div className={styles.attachmentsList}>
+                  {!isEditingComment && Array.isArray(comment.attachments) && comment.attachments.length > 0 && !isIncomingEmailContent(comment.content) && <div className={styles.attachmentsList}>
                       {comment.attachments.map(attachment => {
                         const attachmentUrl = attachment.url || attachment.path;
                         if (!attachmentUrl) return null;

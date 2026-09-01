@@ -1,22 +1,18 @@
 .recapCard {
   display: flex;
   flex-direction: column;
-  gap: 1.35rem;
+  gap: 1.1rem;
   height: 100%;
   min-height: 0;
-  padding: 1.1rem 1.2rem;
-  border-radius: 16px;
-  border: 1px solid var(--msp-border, #c5d0df);
-  background: linear-gradient(
-    145deg,
-    var(--msp-surface, #fff) 0%,
-    var(--msp-surface-2, #f7f9fc) 100%
-  );
-  box-shadow: var(--msp-shadow-soft, 0 2px 12px rgba(11, 33, 56, 0.05));
+  padding: 0;
+  border-radius: 0;
+  border: none;
+  background: transparent;
+  box-shadow: none;
 }
 
 .recapCardEmbedded {
-  padding: 0.15rem 0 0;
+  padding: 0;
   border: none;
   background: transparent;
   box-shadow: none;
@@ -57,8 +53,9 @@
 
 .recapTitle {
   margin: 0;
-  font-size: 1.08rem;
+  font-size: 1.28rem;
   font-weight: 700;
+  letter-spacing: -0.02em;
   color: var(--msp-text, #0f1c2e);
 }
 
@@ -120,23 +117,38 @@
 }
 
 .statStrip {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 0.85rem;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: stretch;
+  gap: 0.35rem 0;
   flex-shrink: 0;
+  padding: 0.15rem 0 0.85rem;
+  border-bottom: 1px solid var(--msp-border-light, #e2e8f0);
 }
 
 :global(html.dark) .stat,
 :global(html.dark) .recapRow,
 :global(html.dark) .changeBtn {
+  background: transparent;
+}
+
+:global(html.dark) .changeBtn {
   background: var(--msp-surface, #12122a);
 }
 
 .stat {
-  padding: 0.95rem 1rem;
-  border-radius: 12px;
-  border: 1px solid var(--msp-border-light, #e2e8f0);
-  background: var(--msp-surface, #fff);
+  flex: 1 1 0;
+  min-width: 6.5rem;
+  padding: 0.15rem 1.1rem 0.15rem 0;
+  border: none;
+  border-right: 1px solid var(--msp-border-light, #e2e8f0);
+  border-radius: 0;
+  background: transparent;
+}
+
+.stat:last-child {
+  border-right: none;
+  padding-right: 0;
 }
 
 .statValue {
@@ -163,19 +175,25 @@
   flex-direction: column;
   flex: 1;
   min-height: 0;
-  gap: 0.75rem;
+  gap: 0;
 }
 
 .recapRow {
   display: grid;
-  grid-template-columns: minmax(9.5rem, 11.5rem) minmax(0, 1fr);
-  align-items: center;
-  gap: 1.1rem 1.35rem;
-  min-height: 3.6rem;
-  padding: 0.95rem 1.1rem;
-  border-radius: 12px;
-  border: 1px solid var(--msp-border-light, #e2e8f0);
-  background: var(--msp-surface, #fff);
+  grid-template-columns: minmax(8.5rem, 10rem) minmax(0, 1fr);
+  align-items: start;
+  gap: 0.85rem 1.25rem;
+  min-height: 0;
+  padding: 0.85rem 0;
+  border-radius: 0;
+  border: none;
+  border-bottom: 1px solid var(--msp-border-light, #e2e8f0);
+  background: transparent;
+}
+
+.recapRow:last-child {
+  border-bottom: none;
+  padding-bottom: 0.15rem;
 }
 
 .recapRowLabel {
@@ -198,7 +216,7 @@
 
 .recapRowBody {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   flex-wrap: wrap;
   gap: 0.45rem 0.85rem;
   min-width: 0;
@@ -326,7 +344,13 @@
   }
 
   .statStrip {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.75rem 0;
+  }
+
+  .stat {
+    flex-basis: calc(50% - 0.5rem);
+    border-right: none;
+    padding-right: 0;
   }
 
   .recapRow {

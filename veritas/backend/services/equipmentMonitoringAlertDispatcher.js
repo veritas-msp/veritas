@@ -5,6 +5,8 @@ import { getClientMonitoringAlertPolicy, isClientMonitoringAlertsSuspended } fro
 import { getSupervisionAlertRules, getSupervisionCriterionSeverity, isSupervisionAlertAllowed, SUPERVISION_ALERT_CRITERIA } from "../utils/supervisionAlertRules.js";
 import { getMonitoringAutomationConfig } from "../utils/monitoringAutomationConfig.js";
 import { applyMonitoringTicketAssignment, getCriterionLabel } from "./monitoringTicketAssignment.js";
+import { notifyTicketAssignedUsers, notifyTicketCreatedAck, notifyTicketCreatedAgents } from "./systemNotificationService.js";
+import { notifyInAppTicketAssigned, notifyInAppTicketCreated } from "./userNotificationService.js";
 import { buildRunbookComment, resolveRunbookForCriterion, resolveRunbookTicketPriority, resolveRunbookTags } from "./monitoringRunbooks.js";
 import { enrichAlertRunbook } from "./llmClient.js";
 import { findOrCreateIncidentGroup, linkTicketToIncidentGroup } from "./monitoringIncidentCorrelation.js";
@@ -204,7 +206,7 @@ async function createCriterionAlertTicket({
     }
   }
   const config = await getMonitoringAutomationConfig();
-  await applyMonitoringTicketAssignment({
+  const assignment = await applyMonitoringTicketAssignment({
     ticketId: ticket.id,
     clientId,
     criterionKey,
@@ -221,6 +223,23 @@ async function createCriterionAlertTicket({
       }
     }
   }).catch(() => {});
+  await notifyTicketCreatedAck(ticket.id).catch(() => {});
+  await notifyTicketCreatedAgents(ticket.id).catch(() => {});
+  await notifyInAppTicketCreated({
+    ticketId: ticket.id,
+    createdByUserId: null
+  }).catch(() => {});
+  if (assignment?.assigned && assignment.assigneeUserIds?.length) {
+    await notifyTicketAssignedUsers({
+      ticketId: ticket.id,
+      userIds: assignment.assigneeUserIds
+    }).catch(() => {});
+    await Promise.all(assignment.assigneeUserIds.map(userId => notifyInAppTicketAssigned({
+      ticketId: ticket.id,
+      assignedUserId: userId,
+      assignedByUserId: null
+    }).catch(() => {})));
+  }
   return ticket;
 }
 export async function evaluateEquipmentCriteriaAlerts({

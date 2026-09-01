@@ -41,7 +41,6 @@ export const TICKET_TABLE_COLUMN_IDS_BY_SCOPE = Object.freeze({
     "commercial",
     "modules",
     "expiration",
-    "equipment",
     "tags"
   ]),
   contacts: Object.freeze([
@@ -113,7 +112,6 @@ export const TICKET_TABLE_COLUMN_SORT_KEYS = Object.freeze({
   commercial: "commercial",
   modules: null,
   expiration: "expiration",
-  equipment: null,
   tags: null,
   contact: "nom",
   gender: "sexe",
@@ -132,7 +130,6 @@ export const ENTERPRISES_COLUMN_LABEL_KEYS = Object.freeze({
   commercial: "commercial",
   modules: "modules",
   expiration: "expiration",
-  equipment: "equipment",
   tags: "tags"
 });
 

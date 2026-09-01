@@ -1,7 +1,7 @@
 import express from 'express';
 import fetch from 'node-fetch';
 import verifyJWT from '../../../middleware/auth.js';
-import { getCheckMKSettings, authenticateCheckMK, computeCheckMKLogtimeFromDays, filterCheckMKEventsByPeriod } from './utils.js';
+import { getCheckMKSettings, authenticateCheckMK, computeCheckMKLogtimeFromDays, filterCheckMKEventsByPeriod, appendCheckmkColumns } from './utils.js';
 const router = express.Router();
 router.get('/events/:hostName', verifyJWT, async (req, res) => {
   try {
@@ -137,7 +137,7 @@ router.get('/host-events/:hostName', verifyJWT, async (req, res) => {
       try {
         const url = new URL(endpoint);
         url.searchParams.set('query', queryExpression);
-        url.searchParams.set('columns', columns.join(','));
+        appendCheckmkColumns(url, columns);
         if (start_time) url.searchParams.set('start_time', start_time);
         if (end_time) url.searchParams.set('end_time', end_time);
         if (site || settings.site) url.searchParams.set('site', site || settings.site);

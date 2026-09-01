@@ -9,9 +9,10 @@ export default function MspPageHero({
   className = "",
   actions = null,
   children = null,
-  guideId
+  guideId,
+  stackOnMobile = false
 }) {
-  return <header className={`${cyberStyles.mspHero} ${className}`.trim()} data-guide={guideId || undefined}>
+  return <header className={`${cyberStyles.mspHero} ${stackOnMobile ? cyberStyles.mspHeroStack : ""} ${className}`.trim()} data-guide={guideId || undefined}>
       <div className={cyberStyles.mspHeroMain}>
         {icon ? <div className={`${cyberStyles.mspBrandMark} ${brandMarkClassName}`.trim()} aria-hidden>
             <Icon icon={icon} className={cyberStyles.mspBrandMarkIcon} />

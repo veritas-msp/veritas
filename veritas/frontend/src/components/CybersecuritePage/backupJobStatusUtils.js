@@ -31,12 +31,13 @@ export function normalizeBackupJobForStatus(job, instance = {}) {
           is_active: true
         }
       : null;
+  const mappedHost = mapping?.checkmk_host_name || mapping?.checkmk_service_name;
   return {
     ...job,
     type: "job",
     instanceLogiciel: instance.logiciel || job.instanceLogiciel || job._instanceLogiciel || "",
-    isMapped: Boolean(job.isMapped || mapping),
-    checkmkMapping: mapping,
+    isMapped: Boolean(job.isMapped || mappedHost),
+    checkmkMapping: mappedHost ? mapping : null,
     last_backup_start: job.last_backup_start ?? job.lastBackupStart ?? job.rawData?.last_backup_start ?? null,
     last_backup_date: job.last_backup_date ?? job.lastBackupDate ?? job.rawData?.last_backup_date ?? null,
     last_backup_duration: job.last_backup_duration ?? job.lastBackupDuration ?? job.rawData?.last_backup_duration ?? null,
@@ -48,7 +49,7 @@ export function getBackupJobStatus(job) {
   if (!isBackupJobActive(job)) return 'inactive';
   if (job.instanceLogiciel === 'HYCU Backup') return 'hycu';
   if (!isBackupJobMapped(job)) return 'unmapped';
-  const lastBackupStart = job.last_backup_start ?? job.rawData?.last_backup_start;
+  const lastBackupStart = job.last_backup_start ?? job.rawData?.last_backup_start ?? job.last_backup_date ?? job.rawData?.last_backup_date;
   const lastBackupMs = lastBackupStart ? new Date(lastBackupStart).getTime() : null;
   if (lastBackupMs == null || Number.isNaN(lastBackupMs)) return 'critical';
   const age = Date.now() - lastBackupMs;

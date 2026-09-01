@@ -61,7 +61,7 @@ export function buildBackupFleetRow(job) {
     providerIcon: provider.icon,
     providerImage: provider.image,
     status,
-    lastBackup: job?.last_backup_start ?? job?.rawData?.last_backup_start ?? null,
+    lastBackup: job?.last_backup_start ?? job?.rawData?.last_backup_start ?? job?.last_backup_date ?? job?.rawData?.last_backup_date ?? null,
     isMapped: Boolean(job?.isMapped),
     raw: job
   };
@@ -230,7 +230,7 @@ export function buildBackupJobFromInstance(client, instance, job) {
     replicationVers: job?.replicationVers || "",
     isDefault: job?.isDefault || false,
     actif: isBackupJobActive(job),
-    isMapped: Boolean(checkmkMapping || job?.isMapped),
+    isMapped: Boolean((checkmkMapping?.checkmk_host_name || checkmkMapping?.checkmk_service_name) || job?.isMapped),
     checkmkMapping,
     last_backup_date: job?.last_backup_date ?? null,
     last_backup_start: job?.last_backup_start ?? null,

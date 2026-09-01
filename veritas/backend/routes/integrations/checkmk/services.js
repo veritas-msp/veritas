@@ -1,7 +1,7 @@
 import express from 'express';
 import fetch from 'node-fetch';
 import verifyJWT from '../../../middleware/auth.js';
-import { getCheckMKSettings, authenticateCheckMK, getHostServices } from './utils.js';
+import { getCheckMKSettings, authenticateCheckMK, getHostServices, getCheckMkViewPyUrl, stripHostPrefixFromService } from './utils.js';
 const router = express.Router();
 router.get('/services/:hostName', verifyJWT, async (req, res) => {
   try {
@@ -176,15 +176,10 @@ router.get('/service-data/:hostName/:serviceName', verifyJWT, async (req, res) =
     let pluginOutput = null;
     let longPluginOutput = null;
     try {
-      let baseUrl = settings.apiUrl;
-      if (baseUrl.includes('/api/1.0')) {
-        baseUrl = baseUrl.replace('/api/1.0', '');
-      }
-      baseUrl = baseUrl.replace(/\/+$/, '');
-      const viewPyUrl = `${baseUrl}/view.py`;
+      const viewPyUrl = getCheckMkViewPyUrl(settings.apiUrl);
       const viewParams = new URLSearchParams();
       viewParams.append('host', hostName);
-      viewParams.append('service', serviceName);
+      viewParams.append('service', stripHostPrefixFromService(hostName, serviceName) || serviceName);
       viewParams.append('view_name', 'service');
       viewParams.append('output_format', 'json_export');
       if (apiSite) {

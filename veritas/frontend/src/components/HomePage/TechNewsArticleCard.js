@@ -41,31 +41,32 @@ export default function TechNewsArticleCard({
     <Card withBorder radius="md" padding="md" shadow="sm" className={classes.card}>
       <Card.Section className={classes.cover} data-category={cat} onClick={onOpen}>
         <div className={classes.coverRow}>
-          <span className={classes.badge}>
-            <Icon icon={meta.icon} width={13} height={13} aria-hidden />
-            {categoryLabel}
+          <span className={classes.coverLead}>
+            <span className={classes.badge} title={categoryLabel} aria-label={categoryLabel}>
+              <Icon icon={meta.icon} width={14} height={14} aria-hidden />
+            </span>
+            {item.source ? <span className={classes.coverSource}>{item.source}</span> : null}
           </span>
-          {relativeTime ? (
-            <time className={classes.coverTime} dateTime={item.publishedAt} title={absoluteDate || undefined}>
-              {relativeTime}
-            </time>
-          ) : null}
-        </div>
-        <div className={classes.coverRow}>
-          {item.source ? <span className={classes.coverSource}>{item.source}</span> : <span />}
-          {item.link ? (
-            <a
-              className={classes.coverLink}
-              href={item.link}
-              target="_blank"
-              rel="noopener noreferrer"
-              aria-label={t.openSource}
-              title={t.openSource}
-              onClick={event => event.stopPropagation()}
-            >
-              <Icon icon="mdi:open-in-new" width={14} height={14} />
-            </a>
-          ) : null}
+          <span className={classes.coverMeta}>
+            {relativeTime ? (
+              <time className={classes.coverTime} dateTime={item.publishedAt} title={absoluteDate || undefined}>
+                {relativeTime}
+              </time>
+            ) : null}
+            {item.link ? (
+              <a
+                className={classes.coverLink}
+                href={item.link}
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label={t.openSource}
+                title={t.openSource}
+                onClick={event => event.stopPropagation()}
+              >
+                <Icon icon="mdi:open-in-new" width={14} height={14} />
+              </a>
+            ) : null}
+          </span>
         </div>
       </Card.Section>
 
