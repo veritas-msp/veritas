@@ -1,23 +1,35 @@
 import { getLegacyTimezoneOptions } from "./timezoneOptions";
+export const LOCALE_FLAG_ICONS = {
+  en: "circle-flags:gb",
+  es: "circle-flags:es",
+  fr: "circle-flags:fr",
+  de: "circle-flags:de",
+  it: "circle-flags:it"
+};
 export const APP_LOCALES = [{
   code: "en",
   flag: "🇬🇧",
+  flagIcon: LOCALE_FLAG_ICONS.en,
   label: "English"
 }, {
   code: "es",
   flag: "🇪🇸",
+  flagIcon: LOCALE_FLAG_ICONS.es,
   label: "Español"
 }, {
   code: "fr",
   flag: "🇫🇷",
+  flagIcon: LOCALE_FLAG_ICONS.fr,
   label: "Français"
 }, {
   code: "de",
   flag: "🇩🇪",
+  flagIcon: LOCALE_FLAG_ICONS.de,
   label: "Deutsch"
 }, {
   code: "it",
   flag: "🇮🇹",
+  flagIcon: LOCALE_FLAG_ICONS.it,
   label: "Italiano"
 }];
 export const DATE_FORMAT_OPTIONS = [{

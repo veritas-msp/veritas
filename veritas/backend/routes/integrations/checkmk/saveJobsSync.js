@@ -165,7 +165,10 @@ function toLastBackupDate(lastCheck) {
   return null;
 }
 export async function runSaveJobsSync({
-  clientId
+  clientId,
+  hostName = null,
+  site = null,
+  jobIds = null
 } = {}) {
   const columnsResult = await pool.query(`SELECT column_name FROM information_schema.columns
      WHERE table_schema = 'public' AND table_name = $1`, [SAVE_TABLE]);
@@ -182,9 +185,23 @@ export async function runSaveJobsSync({
     queryParams.push(clientId);
     clientFilter = ` AND client_id = $${queryParams.length}`;
   }
+  const normalizedHost = hostName != null ? String(hostName).trim() : '';
+  if (normalizedHost) {
+    queryParams.push(normalizedHost);
+    clientFilter += ` AND checkmk_host_name = $${queryParams.length}`;
+  }
+  if (site != null) {
+    queryParams.push(String(site).trim());
+    clientFilter += ` AND COALESCE(checkmk_site, '') = $${queryParams.length}`;
+  }
+  if (Array.isArray(jobIds) && jobIds.length > 0) {
+    queryParams.push(jobIds);
+    clientFilter += ` AND id = ANY($${queryParams.length}::uuid[])`;
+  }
   const jobsResult = await pool.query(`SELECT id, client_id, item_key, data, checkmk_host_name, checkmk_site, checkmk_service_name
      FROM ${SAVE_TABLE}
      WHERE checkmk_host_name IS NOT NULL AND checkmk_host_name != ''
+       AND checkmk_service_name IS NOT NULL AND checkmk_service_name != ''
        AND (
          (item_key IS NOT NULL AND item_key LIKE 'job-%')
          OR (data IS NOT NULL AND (data::jsonb->>'type') = 'job')
@@ -208,14 +225,22 @@ export async function runSaveJobsSync({
   if (!authData?.auth_header) {
     throw new Error('Unable to authenticate to Check MK.');
   }
+  const hostServicesCache = new Map();
+  async function getCachedHostServices(host, hostSite) {
+    const cacheKey = `${host}\0${hostSite || ''}`;
+    if (!hostServicesCache.has(cacheKey)) {
+      hostServicesCache.set(cacheKey, await getHostServices(settings.apiUrl, authData.auth_header, host, hostSite));
+    }
+    return hostServicesCache.get(cacheKey);
+  }
   let updated = 0;
   for (const job of jobs) {
-    const hostName = job.checkmk_host_name;
-    const site = job.checkmk_site ?? settings.site ?? '';
+    const host = job.checkmk_host_name;
+    const hostSite = job.checkmk_site ?? settings.site ?? '';
     const serviceName = (job.checkmk_service_name || '').trim() || (job.data?.nom || '').trim();
     if (!serviceName) continue;
     try {
-      const services = await getHostServices(settings.apiUrl, authData.auth_header, hostName, site);
+      const services = await getCachedHostServices(host, hostSite);
       const getServiceDesc = s => s.description || (s.id && s.id.includes(':') ? s.id.split(':').slice(1).join(':') : '') || s.title || s.id || '';
       const svc = services.find(s => {
         const desc = getServiceDesc(s);
@@ -225,37 +250,37 @@ export async function runSaveJobsSync({
       const lastBackupDate = toLastBackupDate(svc.lastCheck);
       let pluginOutputForCreation = svc.longPluginOutput || svc.pluginOutput || null;
       let lastBackupDuration = parseDurationFromPerfData(svc.performanceData) || parseDurationFromPerfData(svc.pluginOutput) || parseDurationFromPluginOutput(svc.pluginOutput) || parseDurationFromPluginOutput(svc.longPluginOutput);
-      if (!lastBackupDuration && !svc.pluginOutput && !svc.longPluginOutput) {
-        const serviceDescription = serviceName.includes(':') ? serviceName.split(':').slice(1).join(':').trim() : serviceName;
-        const showOutput = await fetchShowService(settings.apiUrl, authData.auth_header, hostName, serviceDescription, site);
-        if (showOutput) {
-          pluginOutputForCreation = showOutput;
-          lastBackupDuration = parseDurationFromPluginOutput(showOutput) || parseDurationFromPerfData(showOutput);
-        }
-      }
+      const serviceNameForView = (serviceName || '').trim().startsWith(`${host}:`) ? (serviceName || '').trim().substring(host.length + 1).trim() : (serviceName || '').trim();
+      const serviceDescription = serviceName.includes(':') ? serviceName.split(':').slice(1).join(':').trim() : serviceName;
       let viewPyData = null;
-      if (!lastBackupDuration) {
-        const serviceNameForView = (serviceName || '').trim().startsWith(`${hostName}:`) ? (serviceName || '').trim().substring(hostName.length + 1).trim() : (serviceName || '').trim();
-        viewPyData = await getServicePluginOutputViaViewPy(settings.apiUrl, authData.auth_header, hostName, serviceNameForView || serviceName, site);
+      const needsViewPy = !lastBackupDuration || hasLastBackupStart && !pluginOutputForCreation;
+      if (needsViewPy) {
+        viewPyData = await getServicePluginOutputViaViewPy(settings.apiUrl, authData.auth_header, host, serviceNameForView || serviceName, hostSite);
         if (viewPyData) {
           const out = viewPyData.longPluginOutput || viewPyData.pluginOutput;
           if (!pluginOutputForCreation) pluginOutputForCreation = out;
-          lastBackupDuration = parseDurationFromPerfData(viewPyData.performanceData) || parseDurationFromPerfData(out) || parseDurationFromPluginOutput(viewPyData.longPluginOutput) || parseDurationFromPluginOutput(viewPyData.pluginOutput);
+          if (!lastBackupDuration) {
+            lastBackupDuration = parseDurationFromPerfData(viewPyData.performanceData) || parseDurationFromPerfData(out) || parseDurationFromPluginOutput(viewPyData.longPluginOutput) || parseDurationFromPluginOutput(viewPyData.pluginOutput);
+          }
+        }
+      }
+      if (!lastBackupDuration && !svc.pluginOutput && !svc.longPluginOutput) {
+        const showOutput = await fetchShowService(settings.apiUrl, authData.auth_header, host, serviceDescription, hostSite);
+        if (showOutput) {
+          if (!pluginOutputForCreation) pluginOutputForCreation = showOutput;
+          lastBackupDuration = parseDurationFromPluginOutput(showOutput) || parseDurationFromPerfData(showOutput);
         }
       }
       if (!lastBackupDuration) {
         const snippet = viewPyData ? (viewPyData.longPluginOutput || viewPyData.pluginOutput || viewPyData.performanceData || '').toString().slice(0, 200) : '(view.py with no data)';
-        console.warn(`[checkmk save-jobs sync] Duration not found for job id=${job.id} (${serviceName}), host=${hostName}. Preview: ${snippet}`);
+        console.warn(`[checkmk save-jobs sync] Duration not found for job id=${job.id} (${serviceName}), host=${host}. Preview: ${snippet}`);
       }
       if (!pluginOutputForCreation && hasLastBackupStart) {
-        const serviceNameForView = (serviceName || '').trim().startsWith(`${hostName}:`) ? (serviceName || '').trim().substring(hostName.length + 1).trim() : (serviceName || '').trim();
-        const viewPyForStart = await getServicePluginOutputViaViewPy(settings.apiUrl, authData.auth_header, hostName, serviceNameForView || serviceName, site);
-        if (viewPyForStart) {
-          pluginOutputForCreation = viewPyForStart.longPluginOutput || viewPyForStart.pluginOutput || null;
+        if (viewPyData) {
+          pluginOutputForCreation = viewPyData.longPluginOutput || viewPyData.pluginOutput || null;
         }
         if (!pluginOutputForCreation) {
-          const serviceDescription = serviceName.includes(':') ? serviceName.split(':').slice(1).join(':').trim() : serviceName;
-          const showOutput = await fetchShowService(settings.apiUrl, authData.auth_header, hostName, serviceDescription, site);
+          const showOutput = await fetchShowService(settings.apiUrl, authData.auth_header, host, serviceDescription, hostSite);
           if (showOutput) pluginOutputForCreation = showOutput;
         }
       }
@@ -292,8 +317,14 @@ router.get('/save-jobs/last-sync', verifyJWT, async (req, res) => {
 router.post('/save-jobs/sync', verifyJWT, async (req, res) => {
   try {
     const clientId = req.body?.clientId ?? null;
+    const hostName = req.body?.hostName ?? null;
+    const site = req.body?.site ?? null;
+    const jobIds = Array.isArray(req.body?.jobIds) ? req.body.jobIds.filter(Boolean) : null;
     const result = await runSaveJobsSync({
-      clientId
+      clientId,
+      hostName,
+      site,
+      jobIds: jobIds?.length ? jobIds : null
     });
     res.json(result);
   } catch (err) {

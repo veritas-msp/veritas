@@ -118,10 +118,12 @@ export default function AdminGeneralSettings() {
               <ChoiceGroup variant="locale" ariaLabel={copy.localeRegion.localeAria} value={form.app_default_locale} onChange={value => setField("app_default_locale", value)} options={APP_LOCALES.map(({
               code,
               label,
-              flag
+              flag,
+              flagIcon
             }) => ({
               value: code,
               flag,
+              flagIcon,
               label
             }))} />
             </Field>

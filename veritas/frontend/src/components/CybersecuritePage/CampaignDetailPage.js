@@ -7,12 +7,14 @@ import ReactDOM from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { getAllCampaigns, updateClientCampaign, deleteCampaign, launchCampaign, finishCampaign, resetCampaign, pauseCampaign, resumeCampaign, getCampaignStats, downloadCampaignReport, publishCampaignReport } from "../../api/campaigns";
 import { fetchClientsList } from "../../api/clients";
-import { getClientOffice365Credentials } from "../../api/clientOffice365";
+import { getClientOffice365Credentials, getClientMfaDetails } from "../../api/clientOffice365";
 import CampaignSteps from "./CampaignSteps";
 import CampaignFormModal from "./CampaignFormModal";
 import CampaignReportPublishModal from "./CampaignReportPublishModal";
 import MicrosoftSecurityStats from "./MicrosoftSecurityStats";
 import CampaignAdoptionStats from "./CampaignAdoptionStats";
+import ReportSyncProgressModal from "../RapportPage/monitoring/ReportSyncProgressModal";
+import { runSupervisionSyncJobs, syncOffice365ForClient, fillSyncCopy } from "../RapportPage/monitoring/supervisionReportSync";
 import API_BASE_URL from "../../config.js";
 import styles from "./CampaignDetailPage.module.css";
 import enterpriseStyles from "../EnterprisesPage/EnterpriseDetailPage.module.css";
@@ -96,7 +98,18 @@ export default function CampaignDetailPage({
   const [actionLoading, setActionLoading] = useState(false);
   const [syncLoading, setSyncLoading] = useState(false);
   const [syncTrigger, setSyncTrigger] = useState(0);
+  const [syncProgress, setSyncProgress] = useState({
+    open: false,
+    phase: "running",
+    items: [],
+    currentIndex: 0,
+    etaMs: null
+  });
   const syncAbortControllerRef = useRef(null);
+  const syncProgressCancelRef = useRef(false);
+  const syncProgressAbortRef = useRef(null);
+  const syncInFlightRef = useRef(false);
+  const autoSyncTriggeredRef = useRef(false);
   const clientsControllerRef = useRef(null);
   const campaignControllerRef = useRef(null);
   const statsControllerRef = useRef(null);
@@ -105,6 +118,7 @@ export default function CampaignDetailPage({
   const [lastSyncO365, setLastSyncO365] = useState(null);
   const [office365Credentials, setOffice365Credentials] = useState(null);
   const [checkingCredentials, setCheckingCredentials] = useState(false);
+  const [initialFetchDone, setInitialFetchDone] = useState(false);
   const [campaignStepsCount, setCampaignStepsCount] = useState(0);
   const [showHelpModal, setShowHelpModal] = useState(false);
   const openPageGuide = useCallback(() => setShowHelpModal(true), []);
@@ -151,9 +165,13 @@ export default function CampaignDetailPage({
       });
       loadClients();
       if (dataToUse.type === 'microsoft_security' && dataToUse.client_id) {
+        setInitialFetchDone(false);
         checkOffice365Credentials();
-        loadCampaignStats();
-        loadO365LastSync(dataToUse.client_id);
+        Promise.all([loadCampaignStats(), loadO365LastSync(dataToUse.client_id)]).finally(() => {
+          setInitialFetchDone(true);
+        });
+      } else {
+        setInitialFetchDone(true);
       }
     } else {
       setError(detailCopy.noCampaignData);
@@ -189,7 +207,8 @@ export default function CampaignDetailPage({
   };
   useEffect(() => {
     currentSyncClientIdRef.current = campaign?.client_id || null;
-  }, [campaign?.client_id]);
+    autoSyncTriggeredRef.current = false;
+  }, [campaign?.client_id, campaign?.id]);
   const loadCampaignDetails = async (options = {}) => {
     const refreshStats = options?.refreshStats !== false;
     const skipCache = options?.skipCache === true;
@@ -358,95 +377,254 @@ export default function CampaignDetailPage({
       setLastSyncO365(null);
     }
   };
-  const handleMicrosoftSync = async () => {
+  const handleMicrosoftSync = async (options = {}) => {
+    const autoStarted = options?.autoStarted === true;
     if (!campaign || !campaign.client_id || campaign.type !== 'microsoft_security') return;
+    if (syncInFlightRef.current || syncLoading || syncProgress.open) return;
+    if (!office365Credentials) {
+      if (!autoStarted) {
+        toast.error(detailCopy.actions.needEntra);
+      }
+      return;
+    }
     const targetClientId = campaign.client_id;
+    const syncCopy = detailCopy.syncProgress || {};
     if (syncAbortControllerRef.current) {
       syncAbortControllerRef.current.abort();
     }
     const abortController = createTrackedAbortController();
     syncAbortControllerRef.current = abortController;
-    try {
-      setSyncLoading(true);
-      if (typeof window !== 'undefined' && typeof window.__office365SyncTrigger === 'function') {
-        try {
-          window.__office365SyncTrigger();
-        } catch (e) {
-          console.error('Error syncing via the O365 module:', e);
+    syncProgressAbortRef.current = abortController;
+    syncProgressCancelRef.current = false;
+    syncInFlightRef.current = true;
+    if (autoStarted) {
+      autoSyncTriggeredRef.current = true;
+    }
+    const endDate = new Date();
+    const startDate = new Date(endDate.getTime() - 30 * 24 * 60 * 60 * 1000);
+    const jobs = [{
+      id: "office365",
+      group: "office365",
+      label: syncCopy.office365 || "Microsoft 365",
+      estimatedMs: 45000,
+      run: async () => {
+        if (typeof window !== 'undefined' && typeof window.__office365SyncTrigger === 'function') {
+          try {
+            window.__office365SyncTrigger();
+          } catch (e) {
+            console.error('Error syncing via the O365 module:', e);
+          }
         }
-      }
-      const headers = {
-        'Content-Type': 'application/json'
-      };
-      const endDate = new Date();
-      const startDate = new Date(endDate.getTime() - 30 * 24 * 60 * 60 * 1000);
-      const period = 'D30';
-      const response = await fetch(`${API_BASE_URL}/office365/sync-all?clientId=${targetClientId}&period=${period}&startDate=${startDate.toISOString()}&endDate=${endDate.toISOString()}`, {
-        method: 'GET',
-        headers,
-        credentials: 'include',
-        signal: abortController.signal
-      });
-      if (currentSyncClientIdRef.current !== targetClientId) {
-        return;
-      }
-      const result = await response.json().catch(() => ({}));
-      if (!response.ok || !result.success) {
-        throw new Error(formatMicrosoftSyncError({
-          ...result,
-          error: result.error || `HTTP ${response.status}`
-        }, detailCopy));
-      }
-      let expectedTenantId = null;
-      try {
-        const credResponse = await fetch(`${API_BASE_URL}/client-office365/${targetClientId}`, {
-          headers,
-          credentials: 'include',
+        const result = await syncOffice365ForClient(targetClientId, startDate, endDate, {
           signal: abortController.signal
+        }).catch(err => {
+          throw new Error(formatMicrosoftSyncError({
+            error: err?.message
+          }, detailCopy));
         });
         if (currentSyncClientIdRef.current !== targetClientId) {
           return;
         }
-        if (credResponse.ok) {
-          const credResult = await credResponse.json();
-          expectedTenantId = credResult?.credentials?.tenantId || null;
+        let expectedTenantId = null;
+        try {
+          const credResponse = await fetch(`${API_BASE_URL}/client-office365/${targetClientId}`, {
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            credentials: 'include',
+            signal: abortController.signal
+          });
+          if (credResponse.ok) {
+            const credResult = await credResponse.json();
+            expectedTenantId = credResult?.credentials?.tenantId || null;
+          }
+        } catch (credErr) {
+          if (credErr.name === 'AbortError') {
+            throw credErr;
+          }
         }
-      } catch (credErr) {
-        if (credErr.name === 'AbortError') {
+        if (expectedTenantId && result.data?.tenantId && result.data.tenantId !== expectedTenantId) {
+          throw new Error(`Synced data does not match client ${targetClientId}. Expected TenantId: ${expectedTenantId}, received: ${result.data.tenantId}`);
+        }
+        if (result.lastUpdate) {
+          setLastSyncO365(result.lastUpdate);
+        }
+        return result;
+      }
+    }, {
+      id: "refresh-stats",
+      group: "refresh",
+      label: syncCopy.refreshStats || "Actualisation des statistiques",
+      estimatedMs: 8000,
+      run: async () => {
+        if (currentSyncClientIdRef.current !== targetClientId) {
           return;
         }
+        await loadO365LastSync(targetClientId, {
+          skipCache: true
+        });
+        await loadCampaignStats({
+          skipCache: true
+        });
+        await loadCampaignDetails({
+          refreshStats: false,
+          skipCache: true
+        });
+        const campaignToUse = campaign || campaignData;
+        if (campaignToUse?.client_id && campaignToUse?.id) {
+          try {
+            sessionStorage.removeItem(`campaign_detail_stats_cache_v1:${campaignToUse.client_id}:${campaignToUse.id}`);
+          } catch {
+            // ignore
+          }
+        }
+        try {
+          sessionStorage.removeItem(`campaign_detail_o365_sync_cache_v1:${targetClientId}`);
+        } catch {
+          // ignore
+        }
+        try {
+          await getClientMfaDetails(targetClientId);
+        } catch (mfaErr) {
+          console.error('Error while loading MFA details after sync:', mfaErr);
+        }
+        setSyncTrigger(t => t + 1);
       }
-      if (expectedTenantId && result.data?.tenantId && result.data.tenantId !== expectedTenantId) {
-        throw new Error(`Synced data does not match client ${targetClientId}. Expected TenantId: ${expectedTenantId}, received: ${result.data.tenantId}`);
-      }
+    }];
+    const initialEta = jobs.reduce((sum, job) => sum + (job.estimatedMs || 5000), 0);
+    setSyncLoading(true);
+    setSyncProgress({
+      open: true,
+      phase: "running",
+      items: jobs.map(job => ({
+        id: job.id,
+        label: job.label,
+        state: "pending",
+        error: null
+      })),
+      currentIndex: 0,
+      etaMs: initialEta
+    });
+    const patchItem = (index, patch) => {
+      setSyncProgress(prev => {
+        const items = prev.items.map((item, itemIndex) => itemIndex === index ? {
+          ...item,
+          ...patch
+        } : item);
+        return {
+          ...prev,
+          items,
+          currentIndex: index
+        };
+      });
+    };
+    try {
+      const result = await runSupervisionSyncJobs(jobs, {
+        isCancelled: () => syncProgressCancelRef.current || abortController.signal.aborted || currentSyncClientIdRef.current !== targetClientId,
+        onProgress: event => {
+          if (event.type === "item") {
+            patchItem(event.index, {
+              state: event.state,
+              error: event.error || null
+            });
+            return;
+          }
+          if (event.type === "tick" || event.type === "start") {
+            setSyncProgress(prev => ({
+              ...prev,
+              etaMs: event.etaMs,
+              currentIndex: event.completed != null ? Math.min(event.completed, jobs.length - 1) : prev.currentIndex
+            }));
+          }
+        }
+      });
       if (currentSyncClientIdRef.current !== targetClientId) {
         return;
       }
-      if (result.lastUpdate) {
-        setLastSyncO365(result.lastUpdate);
+      const cancelled = result.cancelled || syncProgressCancelRef.current;
+      setSyncProgress(prev => ({
+        ...prev,
+        phase: cancelled ? "cancelled" : "done",
+        etaMs: 0,
+        items: prev.items.map(item => item.state === "running" ? {
+          ...item,
+          state: "pending"
+        } : item)
+      }));
+      if (cancelled) {
+        toast.info(syncCopy.cancelledToast || syncCopy.cancelled);
+      } else if (result.fail === 0) {
+        toast.success(fillSyncCopy(syncCopy.successToast, {
+          ok: result.ok,
+          total: jobs.length
+        }) || detailCopy.toasts.syncOk);
+      } else if (result.ok > 0) {
+        toast.warning(fillSyncCopy(syncCopy.partialToast, {
+          ok: result.ok,
+          fail: result.fail
+        }));
+      } else {
+        toast.error(syncCopy.failToast || detailCopy.toasts.syncError);
       }
-      await loadO365LastSync(targetClientId);
-      await loadCampaignDetails();
-      await loadCampaignStats();
-      setSyncTrigger(t => t + 1);
-      toast.success(detailCopy.toasts.syncOk);
     } catch (error) {
       if (error.name === 'AbortError') {
         return;
       }
       console.error('Error during sync:', error);
       if (currentSyncClientIdRef.current === targetClientId) {
+        setSyncProgress(prev => ({
+          ...prev,
+          phase: "done",
+          etaMs: 0,
+          items: prev.items.map(item => item.state === "running" ? {
+            ...item,
+            state: "error",
+            error: error?.message || null
+          } : item)
+        }));
         toast.error(error.message || detailCopy.toasts.syncError);
       }
     } finally {
       if (syncAbortControllerRef.current === abortController) {
         syncAbortControllerRef.current = null;
       }
+      if (syncProgressAbortRef.current === abortController) {
+        syncProgressAbortRef.current = null;
+      }
+      syncInFlightRef.current = false;
       if (currentSyncClientIdRef.current === targetClientId) {
         setSyncLoading(false);
       }
     }
   };
+  const cancelSyncProgress = () => {
+    syncProgressCancelRef.current = true;
+    try {
+      syncProgressAbortRef.current?.abort();
+      syncAbortControllerRef.current?.abort();
+    } catch {
+      // ignore
+    }
+  };
+  const closeSyncProgressModal = () => {
+    setSyncProgress(prev => ({
+      ...prev,
+      open: false
+    }));
+  };
+  useEffect(() => {
+    if (campaign?.type !== 'microsoft_security' || !campaign?.client_id) return;
+    if (!initialFetchDone || checkingCredentials) return;
+    if (office365Credentials === null) return;
+    if (autoSyncTriggeredRef.current || syncInFlightRef.current || syncLoading || syncProgress.open) return;
+    const lastSyncValue = campaignStats?.lastSync || lastSyncO365;
+    const needsSync = !lastSyncValue || Date.now() - new Date(lastSyncValue).getTime() > RECENT_SYNC_MAX_AGE_MS;
+    if (needsSync) {
+      void handleMicrosoftSync({
+        autoStarted: true
+      });
+    }
+  }, [campaign?.id, campaign?.type, campaign?.client_id, initialFetchDone, checkingCredentials, office365Credentials, campaignStats?.lastSync, lastSyncO365, syncLoading, syncProgress.open]);
   const handleLaunchCampaign = async () => {
     if (!campaign) return;
     try {
@@ -719,7 +897,7 @@ export default function CampaignDetailPage({
   const showReportActions = campaign.type === 'microsoft_security' && isFinished;
   const showResetButton = campaign.type === 'microsoft_security' && (isActive || isPaused || isFinished || campaignStats?.hasSnapshots);
   const displayLastSync = campaignStats?.lastSync || lastSyncO365;
-  const lastSync = campaignStats?.lastSync ? new Date(campaignStats.lastSync) : null;
+  const lastSync = displayLastSync ? new Date(displayLastSync) : null;
   const canLaunchBecauseOfSync = campaign.type !== 'microsoft_security' || lastSync && Date.now() - lastSync.getTime() <= RECENT_SYNC_MAX_AGE_MS;
   const canLaunchCampaign = campaignStepsCount > 0 && (campaign.type !== 'microsoft_security' || office365Credentials !== null) && canLaunchBecauseOfSync;
   const launchTooltipMessage = !canLaunchBecauseOfSync && campaign.type === 'microsoft_security' ? lastSync ? detailCopy.actions.syncTooOld : detailCopy.actions.syncMissing : !canLaunchCampaign ? campaignStepsCount === 0 ? detailCopy.actions.needSteps : detailCopy.actions.needEntra : detailCopy.actions.launchTooltip;
@@ -771,7 +949,7 @@ export default function CampaignDetailPage({
           <div className={enterpriseStyles.heroActions}>
             {campaign.type === 'microsoft_security' && <>
                 <SmartTooltip as="span" content={syncLoading ? detailCopy.actions.syncing : detailCopy.actions.sync}>
-                  <button type="button" className={styles.heroActionBtn} onClick={handleMicrosoftSync} disabled={syncLoading} aria-label={detailCopy.actions.sync}>
+                  <button type="button" className={styles.heroActionBtn} onClick={() => { void handleMicrosoftSync(); }} disabled={syncLoading || syncProgress.open} aria-label={detailCopy.actions.sync}>
                     {syncLoading ? <FaSpinner className={`${styles.heroActionIcon} ${styles.spinner}`} /> : <FaSync className={styles.heroActionIcon} />}
                   </button>
                 </SmartTooltip>
@@ -832,46 +1010,46 @@ export default function CampaignDetailPage({
       </header>
 
       <div className={`${enterpriseStyles.pageBody} ${styles.pageBodyFull}`}>
-        <div className={styles.pageGridFull}>
-          <main className={styles.mainStack}>
-            <div className={styles.topGrid}>
-              {campaign.type === 'microsoft_security' && <section className={enterpriseStyles.panel}>
-                  <div className={enterpriseStyles.panelHeader}>
-                    <h2 className={enterpriseStyles.panelTitle}>{detailCopy.microsoftSecurity}</h2>
-                    <span className={styles.lastSyncMeta}>
-                      {displayLastSync ? formatCampaignDetail(detailCopy.updatedAt, {
-                    date: new Date(displayLastSync).toLocaleDateString(locale),
-                    time: new Date(displayLastSync).toLocaleTimeString(locale, {
-                      hour: '2-digit',
-                      minute: '2-digit'
-                    })
-                  }) : detailCopy.updatedNever}
-                    </span>
-                  </div>
-                  <div className={enterpriseStyles.panelBody}>
-                    <MicrosoftSecurityStats campaign={campaign} clientId={campaign.client_id} stats={campaignStats} onCampaignUpdate={() => loadCampaignDetails({
-                  refreshStats: false,
-                  skipCache: true
-                })} onStatsUpdate={() => loadCampaignStats({
-                  skipCache: true
-                })} refreshTrigger={syncTrigger} isSyncing={syncLoading} copy={detailCopy} />
-                  </div>
-                </section>}
+        <div className={campaign.type === 'microsoft_security' ? styles.pageGridFull : styles.pageGridTwoCol}>
+          {campaign.type === 'microsoft_security' && <div className={styles.colMicrosoft}>
+              <section className={enterpriseStyles.panel}>
+                <div className={enterpriseStyles.panelHeader}>
+                  <h2 className={enterpriseStyles.panelTitle}>{detailCopy.microsoftSecurity}</h2>
+                  <span className={styles.lastSyncMeta}>
+                    {displayLastSync ? formatCampaignDetail(detailCopy.updatedAt, {
+                  date: new Date(displayLastSync).toLocaleDateString(locale),
+                  time: new Date(displayLastSync).toLocaleTimeString(locale, {
+                    hour: '2-digit',
+                    minute: '2-digit'
+                  })
+                }) : detailCopy.updatedNever}
+                  </span>
+                </div>
+                <div className={enterpriseStyles.panelBody}>
+                  <MicrosoftSecurityStats campaign={campaign} clientId={campaign.client_id} stats={campaignStats} onCampaignUpdate={() => loadCampaignDetails({
+                refreshStats: false,
+                skipCache: true
+              })} onStatsUpdate={() => loadCampaignStats({
+                skipCache: true
+              })} refreshTrigger={syncTrigger} isSyncing={syncLoading} copy={detailCopy} />
+                </div>
+              </section>
+            </div>}
 
-              {campaign.type === 'microsoft_security' && <section className={enterpriseStyles.panel}>
-                  <div className={enterpriseStyles.panelHeader}>
-                    <h2 className={enterpriseStyles.panelTitle}>{detailCopy.adoptionPanel}</h2>
-                  </div>
-                  <div className={enterpriseStyles.panelBody}>
-                    <CampaignAdoptionStats campaign={campaign} clientId={campaign.client_id} stats={campaignStats} onCampaignUpdate={() => loadCampaignDetails({
-                  refreshStats: false,
-                  skipCache: true
-                })} onStatsUpdate={() => loadCampaignStats({
-                  skipCache: true
-                })} hideTitle copy={detailCopy} />
-                  </div>
-                </section>}
-            </div>
+          <div className={campaign.type === 'microsoft_security' ? styles.colCenter : styles.colMain}>
+            {campaign.type === 'microsoft_security' && <section className={enterpriseStyles.panel}>
+                <div className={enterpriseStyles.panelHeader}>
+                  <h2 className={enterpriseStyles.panelTitle}>{detailCopy.adoptionPanel}</h2>
+                </div>
+                <div className={enterpriseStyles.panelBody}>
+                  <CampaignAdoptionStats campaign={campaign} clientId={campaign.client_id} stats={campaignStats} onCampaignUpdate={() => loadCampaignDetails({
+                refreshStats: false,
+                skipCache: true
+              })} onStatsUpdate={() => loadCampaignStats({
+                skipCache: true
+              })} hideTitle copy={detailCopy} />
+                </div>
+              </section>}
 
             <section className={enterpriseStyles.panel}>
               <div className={enterpriseStyles.panelBody}>
@@ -881,9 +1059,9 @@ export default function CampaignDetailPage({
               })} onStepsCountUpdate={handleStepsCountUpdate} embedded={false} copy={detailCopy} />
               </div>
             </section>
-          </main>
+          </div>
 
-          <aside className={`${enterpriseStyles.asidePanel} ${styles.asideFull}`}>
+          <aside className={`${enterpriseStyles.asidePanel} ${styles.asideFull} ${styles.colAside}`}>
             <div className={enterpriseStyles.rightSidebarContent}>
               <section className={enterpriseStyles.sidebarSection}>
                 <div className={enterpriseStyles.sidebarInfoHeader}>
@@ -1242,5 +1420,6 @@ export default function CampaignDetailPage({
     })} documentName={`Campaign_report_${String(campaign?.name || campaign?.id || "report").replace(/\s+/g, "_")}.pdf`} visibleToClient={publishVisibleToClient} onVisibleToClientChange={setPublishVisibleToClient} publishing={publishingReport} onClose={() => {
       if (!publishingReport) setShowPublishReportModal(false);
     }} onConfirm={handlePublishReport} />
+      <ReportSyncProgressModal open={syncProgress.open} copy={detailCopy.syncProgress || {}} items={syncProgress.items} currentIndex={syncProgress.currentIndex} etaMs={syncProgress.etaMs} phase={syncProgress.phase} onCancel={cancelSyncProgress} onClose={closeSyncProgressModal} />
     </div>;
 }

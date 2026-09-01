@@ -4,6 +4,8 @@ import equipmentStyles from "../../EquipementPage/EquipmentPage.module.css";
 import styles from "./RapportMonitoringBuilder.module.css";
 import { MonitoringStepHeader } from "./MonitoringStepLayout";
 import { isEquipmentMappedForCheckMK, getCheckMKCachedData, countCheckMKMonitoredServices } from "./checkmkReportCacheUtils";
+import ReportEquipmentRemoteAccessButton from "./ReportEquipmentRemoteAccessButton";
+import { hasReportRemoteAccessConfigured } from "./reportEquipmentRemoteAccess";
 
 function InsightCountCell({ count, tone = "neutral", emptyLabel = "—" }) {
   const n = Number(count) || 0;
@@ -142,7 +144,8 @@ export default function InfrastructureEquipmentTable({
               const hasExtraActions = typeof renderExtraActions === "function";
               const hasExternalLink = !!externalLink?.url;
               const hasEditAction = typeof onEditEquipment === "function";
-              const hasMainActions = hasMonitoringAction || hasCommentsAction || hasTicketAction || hasExtraActions || hasExternalLink;
+              const hasRemoteAccessAction = hasReportRemoteAccessConfigured(item, moduleKey);
+              const hasMainActions = hasMonitoringAction || hasCommentsAction || hasTicketAction || hasExtraActions || hasExternalLink || hasRemoteAccessAction;
               return <tr key={equipmentKey} className={`${equipmentStyles.equipmentRow} ${equipmentStyles.equipmentRowEmbedded} ${isHighlighted ? styles.infraTableRowHighlight : ""}`} data-report-highlight={isHighlighted ? "true" : undefined}>
                       {displayColumns.map(col => {
                   const value = typeof col.render === "function" ? col.render(item, {
@@ -182,6 +185,7 @@ export default function InfrastructureEquipmentTable({
                         moduleKey,
                         equipmentKey
                       }) : null}
+                            <ReportEquipmentRemoteAccessButton equipment={item} moduleKey={moduleKey} />
                             {hasExternalLink && <a href={externalLink.url} target="_blank" rel="noopener noreferrer" className={equipmentStyles.mappingActionButton} title={externalLink.title || "Open dans un nouvel onglet"} style={{
                         display: "inline-flex",
                         alignItems: "center",

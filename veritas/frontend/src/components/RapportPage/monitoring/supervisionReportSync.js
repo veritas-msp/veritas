@@ -72,6 +72,53 @@ function listBackupInstances(raw) {
   return [];
 }
 
+const BACKUP_SYNC_BATCH_SIZE = 6;
+
+function chunkArray(items, size) {
+  const chunks = [];
+  for (let i = 0; i < items.length; i += size) {
+    chunks.push(items.slice(i, i + size));
+  }
+  return chunks;
+}
+
+function collectMappedBackupJobGroups(eq) {
+  const instances = listBackupInstances(eq.Sauvegarde || eq.Backup);
+  const byHost = new Map();
+  instances.forEach(instance => {
+    const jobs = Array.isArray(instance?.jobs) ? instance.jobs : [];
+    jobs.forEach(job => {
+      const hostName = String(job?.checkmk_host_name || "").trim();
+      const serviceName = String(job?.checkmk_service_name || "").trim();
+      const jobId = job?.id;
+      if (!hostName || !serviceName || jobId == null) return;
+      const site = String(job?.checkmk_site || "").trim();
+      const key = `${hostName}\0${site}`;
+      if (!byHost.has(key)) {
+        byHost.set(key, { hostName, site, jobIds: [] });
+      }
+      byHost.get(key).jobIds.push(jobId);
+    });
+  });
+  const groups = [];
+  byHost.forEach(group => {
+    const batches = group.jobIds.length > BACKUP_SYNC_BATCH_SIZE
+      ? chunkArray(group.jobIds, BACKUP_SYNC_BATCH_SIZE)
+      : [group.jobIds];
+    batches.forEach((jobIds, batchIndex) => {
+      groups.push({
+        hostName: group.hostName,
+        site: group.site,
+        jobIds,
+        batchIndex,
+        batchCount: batches.length,
+        count: jobIds.length
+      });
+    });
+  });
+  return groups;
+}
+
 function equipmentLabel(item, fallback = "") {
   const name = item?.nom || item?.name || item?.logiciel || item?.fqdn || item?.checkmk_host_name || fallback;
   return String(name || fallback).trim() || fallback;
@@ -125,19 +172,51 @@ export async function syncOffice365ForClient(clientId, startDate, endDate, { sig
   return result;
 }
 
-export async function syncBackupJobsForClient(clientId, { signal } = {}) {
+export async function syncBackupJobsForClient(clientId, { signal, hostName = null, site = null, jobIds = null } = {}) {
+  const payload = { clientId: clientId ?? null };
+  if (hostName) payload.hostName = hostName;
+  if (site != null) payload.site = site;
+  if (Array.isArray(jobIds) && jobIds.length > 0) payload.jobIds = jobIds;
   const res = await fetch(`${API_BASE_URL}/checkmk/save-jobs/sync`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     credentials: "include",
     signal,
-    body: JSON.stringify({ clientId: clientId ?? null })
+    body: JSON.stringify(payload)
   });
   const data = await res.json().catch(() => ({}));
   if (!res.ok) {
     throw new Error(data.error || "Backup jobs sync failed");
   }
   return data;
+}
+
+export async function runMappedBackupJobsSyncForClient(clientId, equipements, { signal } = {}) {
+  const groups = collectMappedBackupJobGroups(equipements || {});
+  if (!groups.length) {
+    return {
+      message: "No mapped job to synchronize",
+      updated: 0,
+      total: 0
+    };
+  }
+  let updated = 0;
+  let total = 0;
+  for (const group of groups) {
+    const data = await syncBackupJobsForClient(clientId, {
+      signal,
+      hostName: group.hostName,
+      site: group.site,
+      jobIds: group.jobIds
+    });
+    updated += Number(data?.updated) || 0;
+    total += Number(data?.total) || 0;
+  }
+  return {
+    message: "Synchronization completed",
+    updated,
+    total
+  };
 }
 
 export async function syncNddDomainForClient(clientId, domaine, { signal } = {}) {
@@ -223,14 +302,30 @@ export function buildSupervisionSyncJobs(client, {
     });
   });
 
-  const backupInstances = listBackupInstances(eq.Sauvegarde || eq.Backup);
-  if (backupInstances.length > 0 && clientId) {
-    jobs.push({
-      id: "backup-jobs",
-      group: "backup",
-      label: copy.backupJobs || "Backup jobs",
-      estimatedMs: 8000,
-      run: () => syncBackupJobsForClient(clientId, { signal })
+  const backupJobGroups = collectMappedBackupJobGroups(eq);
+  if (backupJobGroups.length > 0 && clientId) {
+    backupJobGroups.forEach((group, index) => {
+      const batchSuffix = group.batchCount > 1
+        ? fill(copy.backupJobsBatch || " ({current}/{total})", {
+          current: group.batchIndex + 1,
+          total: group.batchCount
+        })
+        : "";
+      const hostSuffix = backupJobGroups.length > 1 || group.batchCount > 1
+        ? ` · ${group.hostName}`
+        : "";
+      jobs.push({
+        id: `backup-jobs-${group.hostName}-${group.batchIndex}-${index}`,
+        group: "backup",
+        label: `${copy.backupJobs || "Backup jobs"}${hostSuffix}${batchSuffix}`,
+        estimatedMs: 2500 + 2200 * group.count,
+        run: () => syncBackupJobsForClient(clientId, {
+          signal,
+          hostName: group.hostName,
+          site: group.site,
+          jobIds: group.jobIds
+        })
+      });
     });
   }
 

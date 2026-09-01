@@ -2586,7 +2586,13 @@
 }
 
 .supportStepShell {
-  padding-bottom: 1.75rem;
+  flex: 0 0 auto;
+  min-height: min-content;
+  padding-bottom: 2.5rem;
+}
+
+.supportTicketsSection {
+  margin-bottom: 0.25rem;
 }
 
 .supportState,

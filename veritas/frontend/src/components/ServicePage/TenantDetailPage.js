@@ -7,7 +7,6 @@ import enterpriseDetailStyles from "../EnterprisesPage/EnterpriseDetailPage.modu
 import pageLayout from "../EnterprisesPage/EnterprisesPage.module.css";
 import SolutionDetailPageLayout from "../EnterprisesPage/SolutionDetailPageLayout";
 import SmartTooltip from "../SmartTooltip";
-import TenantReportOverview from "./TenantReportOverview";
 import LicensesTab from "./TenantDetailTabs/LicencesTab";
 import UsersTab from "./TenantDetailTabs/UtilisateursTab";
 import ExchangeTab from "./TenantDetailTabs/ExchangeTab";
@@ -22,19 +21,17 @@ import { getEnterpriseConfigModalsCopy } from "../EnterprisesPage/enterpriseConf
 import { interpolate } from "../../i18n/translate";
 import { getLicenseDisplayName } from "./TenantDetailTabs/utils";
 import { getTenantDetailCopy } from "./tenantDetailPageI18n";
-import { buildTenantReport, getConnectionOrganization, isConnectionOk } from "./tenantReportUtils";
+import { getConnectionOrganization, isConnectionOk } from "./tenantReportUtils";
 import { createTrackedAbortController } from "../../utils/pageLoadAbort";
-import { normalizeMfaList, pickMfaDetailsFromSnapshot } from "./mfaDetailsUtils";
+import { normalizeMfaList } from "./mfaDetailsUtils";
 import { filterExchangeDataByPeriod, filterTeamsDataByPeriod } from "./TenantDetailTabs/office365Period";
 
 const TENANT_GROUPS = [
-  { id: "overview" },
   { id: "identity" },
   { id: "workloads" }
 ];
 
 const TENANT_SECTIONS = [
-  { id: "rapport", group: "overview", icon: "mdi:view-dashboard-outline" },
   { id: "licences", group: "identity", icon: "mdi:license" },
   { id: "utilisateurs", group: "identity", icon: "mdi:account-multiple" },
   { id: "securite", group: "identity", icon: "mdi:shield-check" },
@@ -44,9 +41,9 @@ const TENANT_SECTIONS = [
   { id: "teams", group: "workloads", icon: "simple-icons:microsoftteams" }
 ];
 
-function resolveTenantSection(embedded, section) {
-  if (embedded && (!section || section === "rapport")) return "licences";
-  return section || "rapport";
+function resolveTenantSection(_embedded, section) {
+  if (!section || section === "rapport") return "licences";
+  return section;
 }
 
 export default function TenantDetailPage({
@@ -108,8 +105,8 @@ export default function TenantDetailPage({
     if (initialSection) setViewMode(resolveTenantSection(embedded, initialSection));
   }, [embedded, initialSection]);
   useEffect(() => {
-    if (embedded && viewMode === "rapport") setViewMode("licences");
-  }, [embedded, viewMode]);
+    if (viewMode === "rapport") setViewMode("licences");
+  }, [viewMode]);
   useEffect(() => {
     currentClientIdRef.current = detailData?.clientId || null;
   }, [detailData?.clientId]);
@@ -131,15 +128,28 @@ export default function TenantDetailPage({
     }, interpolate(copy.tabTitle, { client: detailData.clientName }));
   }, [detailData, copy.tabTitle, embedded]);
 
+  const loadMfaDetails = async (clientId) => {
+    if (!clientId) {
+      setMfaDetails([]);
+      return;
+    }
+    try {
+      const result = await getClientMfaDetails(clientId);
+      setMfaDetails(normalizeMfaList(result?.userMfaDetails));
+    } catch {
+      setMfaDetails([]);
+    }
+  };
+
   useEffect(() => {
     if (!detailData?.clientId) return undefined;
     let cancelled = false;
     getClientMfaDetails(detailData.clientId).then((result) => {
-      const fromApi = normalizeMfaList(result?.userMfaDetails);
-      if (!cancelled && fromApi.length) {
-        setMfaDetails(fromApi);
-      }
-    }).catch(() => {});
+      if (cancelled) return;
+      setMfaDetails(normalizeMfaList(result?.userMfaDetails));
+    }).catch(() => {
+      if (!cancelled) setMfaDetails([]);
+    });
     return () => {
       cancelled = true;
     };
@@ -281,13 +291,12 @@ export default function TenantDetailPage({
                 });
               }
               setStatistics(tenantRecord.data);
-              const snapshotMfa = pickMfaDetailsFromSnapshot(tenantRecord.data);
-              if (snapshotMfa.length) {
-                setMfaDetails((prev) => (Array.isArray(prev) && prev.length ? prev : snapshotMfa));
-              }
             }
           }
         }
+      }
+      if (currentClientIdRef.current === targetClientId) {
+        await loadMfaDetails(targetClientId);
       }
     } catch (error) {
       if (error.name === "AbortError") {
@@ -305,7 +314,6 @@ export default function TenantDetailPage({
 
   const licences = statistics?.licences || statistics?.licenses || [];
   const users = statistics?.users || [];
-  const adoptionScore = statistics?.adoptionScore || null;
 
   const dashboardMetrics = useMemo(() => {
     if (!users || users.length === 0) return null;
@@ -346,25 +354,10 @@ export default function TenantDetailPage({
     [teamsData, reportPeriod]
   );
 
-  const report = useMemo(() => buildTenantReport({
-    users,
-    licences,
-    securityData,
-    mfaDetails,
-    exchangeData: periodExchangeData,
-    sharepointData,
-    onedriveData,
-    teamsData: periodTeamsData,
-    adoptionScore
-  }), [users, licences, securityData, mfaDetails, periodExchangeData, sharepointData, onedriveData, periodTeamsData, adoptionScore]);
-
   const navEntries = useMemo(() => {
     const entries = [];
-    const visibleSections = embedded
-      ? TENANT_SECTIONS.filter((section) => section.id !== "rapport")
-      : TENANT_SECTIONS;
     TENANT_GROUPS.forEach((group) => {
-      const groupSections = visibleSections.filter((section) => section.group === group.id);
+      const groupSections = TENANT_SECTIONS.filter((section) => section.group === group.id);
       if (groupSections.length === 0) return;
       entries.push({
         type: "group",
@@ -385,7 +378,7 @@ export default function TenantDetailPage({
       });
     });
     return entries;
-  }, [copy, embedded]);
+  }, [copy]);
 
   const handleSync = async () => {
     if (!detailData?.clientId) {
@@ -499,6 +492,7 @@ export default function TenantDetailPage({
         setLastSync(syncResult.lastUpdate);
       }
       await loadStoredTenantData();
+      await loadMfaDetails(targetClientId);
       if (currentClientIdRef.current === targetClientId) {
         toast.success(copy.sync.success);
       }
@@ -632,7 +626,6 @@ export default function TenantDetailPage({
 
   return <SolutionDetailPageLayout embedded={embedded} accent="microsoft" eyebrow={copy.hero.eyebrow} title={pageTitle} titleIcon="mdi:microsoft" subtitle={embedded ? (clientName || null) : subtitle} loading={loading && !syncing} refreshing={syncing} loadingMessage={syncStatus || (syncing ? copy.hero.syncing : copy.loading)} onRefresh={embedded ? undefined : handleSync} refreshLabel={copy.hero.sync} extraActions={extraActions} footerHint={footerHint} navEntries={navEntries} activeSection={viewMode} onSectionChange={setViewMode} navAriaLabel={copy.tabs.aria}>
       <div className={`${styles.tenantVars} ${embedded ? styles.tenantVarsFill : ""}`} key={viewMode}>
-        {viewMode === "rapport" && !embedded ? <TenantReportOverview report={report} copy={copy} onOpenTab={setViewMode} /> : null}
         {viewMode === "licences" ? <LicensesTab licences={licences} dashboardMetrics={dashboardMetrics} theme="light" getLicenseDisplayName={getLicenseDisplayName} /> : null}
         {viewMode === "utilisateurs" ? <UsersTab users={users} dashboardMetrics={dashboardMetrics} detailData={detailData} mfaDetails={mfaDetails} theme="light" embedded={embedded} /> : null}
         {viewMode === "exchange" ? <ExchangeTab exchangeData={periodExchangeData} theme="light" /> : null}

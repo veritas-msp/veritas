@@ -453,7 +453,7 @@ export function ChoiceGroup({
       const active = value === option.value;
       const btnClass = [s.choiceBtn, active ? s.choiceBtnActive : "", variant === "segment" ? s.choiceBtnSegment : "", variant === "pills" ? s.choiceBtnPill : "", variant === "locale" ? s.choiceBtnLocale : "", variant === "theme" ? s.choiceBtnTheme : ""].filter(Boolean).join(" ");
       return <button key={option.value} type="button" role="radio" aria-checked={active} className={btnClass} onClick={() => onChange(option.value)} title={option.title || option.label}>
-            {option.flag ? <span className={s.choiceBtnFlag} aria-hidden>{option.flag}</span> : null}
+            {option.flagIcon ? <Icon icon={option.flagIcon} className={s.choiceBtnFlagIcon} aria-hidden /> : option.flag ? <span className={s.choiceBtnFlag} aria-hidden>{option.flag}</span> : null}
             {option.icon ? <Icon icon={option.icon} className={s.choiceBtnIcon} aria-hidden /> : null}
             {option.label ? <span className={s.choiceBtnLabel}>{option.label}</span> : null}
             {option.subtitle ? <span className={s.choiceBtnSubtitle}>{option.subtitle}</span> : null}

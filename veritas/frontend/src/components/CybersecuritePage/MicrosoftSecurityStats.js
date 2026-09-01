@@ -383,50 +383,11 @@ export default function MicrosoftSecurityStats({
         <p>{mfaCopy.loading}</p>
       </div>;
   }
-  if (!stats) {
-    return null;
-  }
-  const canLaunch = campaign.status === 'en_preparation' && !stats.hasSnapshots;
-  const canFinish = campaign.status === 'active' && stats.start && !stats.end;
-  const isFinished = campaign.status === 'inactive' && stats.start && stats.end;
-  if (isSyncing) {
-    return <div className={styles.syncSkeleton}>
-        <div className={`${styles.skeletonStatsCards} ${styles.skeletonStatsCardsSegment}`}>
-          {[1, 2, 3].map(i => <div key={i} className={styles.skeletonStatCard}>
-              <div className={`${styles.skeletonShimmer} ${styles.skeletonStatCardIcon}`} />
-              <div className={styles.skeletonStatCardContent}>
-                <div className={`${styles.skeletonShimmer} ${styles.skeletonStatCardValue}`} />
-                <div className={`${styles.skeletonShimmer} ${styles.skeletonStatCardLabel}`} />
-              </div>
-            </div>)}
-        </div>
-        <div className={styles.skeletonStatsCards}>
-          {[1, 2, 3, 4].map(i => <div key={i} className={styles.skeletonStatCard}>
-              <div className={`${styles.skeletonShimmer} ${styles.skeletonStatCardIcon}`} />
-              <div className={styles.skeletonStatCardContent}>
-                <div className={`${styles.skeletonShimmer} ${styles.skeletonStatCardValue}`} />
-                <div className={`${styles.skeletonShimmer} ${styles.skeletonStatCardLabel}`} />
-              </div>
-            </div>)}
-        </div>
-        <div className={`${styles.skeletonShimmer} ${styles.skeletonTableTitle}`} />
-        <div className={styles.skeletonTable}>
-          <div className={styles.skeletonTableHeader}>
-            {[1, 2, 3, 4, 5].map(j => <div key={j} className={`${styles.skeletonShimmer} ${styles.skeletonTableHeaderCell}`} />)}
-          </div>
-          {[1, 2, 3, 4, 5, 6, 7, 8].map(row => <div key={row} className={styles.skeletonTableRow}>
-              {[1, 2, 3, 4, 5].map(j => <div key={j} className={`${styles.skeletonShimmer} ${styles.skeletonTableCell}`} />)}
-            </div>)}
-        </div>
-      </div>;
-  }
+  const canLaunch = campaign.status === 'en_preparation' && !stats?.hasSnapshots;
+  const canFinish = campaign.status === 'active' && stats?.start && !stats?.end;
+  const isFinished = campaign.status === 'inactive' && stats?.start && stats?.end;
   return <>
-      {}
-      {!stats || !stats.start && !stats.current ? <div className={styles.noSyncMessage}>
-          <Icon icon="mdi:sync" className={styles.noSyncIcon} />
-          <h4>{mfaCopy.syncEmptyTitle}</h4>
-          <p>{mfaCopy.syncEmptyText}</p>
-        </div> : <div className={styles.currentStatsSection}>
+      <div className={styles.currentStatsSection}>
           {}
           <div className={`${styles.statsCards} ${styles.statsCardsSegment}`} style={{
         marginBottom: '1rem'
@@ -528,9 +489,8 @@ export default function MicrosoftSecurityStats({
                     </SmartTooltip>;
         })}
             </div>}
-        </div>}
+        </div>
 
-      {}
       <MfaDetailsTable clientId={clientId} allowedUsers={snapshotUsers} showCard={false} userFilter={userFilter} methodFilter={methodFilter} onSyncComplete={handleSyncComplete} onUpdate={handleMfaUpdate} hideServiceAccounts={hideServiceAccounts} onHideServiceAccountsChange={setHideServiceAccounts} copy={detailCopy} />
     </>;
 }

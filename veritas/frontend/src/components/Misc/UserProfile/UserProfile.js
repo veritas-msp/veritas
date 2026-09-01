@@ -138,10 +138,12 @@ export default function UserProfile() {
   const localeOptions = useMemo(() => APP_LOCALES.map(({
     code,
     flag,
+    flagIcon,
     label
   }) => ({
     value: code,
     flag,
+    flagIcon,
     label
   })), []);
   const planningOptions = useMemo(() => [{

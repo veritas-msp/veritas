@@ -4,7 +4,7 @@ import { toast } from "react-toastify";
 import { getIconPath } from "../../../../utils/assetHelper";
 import BackupConfigModal from "../../../EnterprisesPage/BackupConfigModal";
 import equipmentStyles from "../../../EquipementPage/EquipmentPage.module.css";
-import API_BASE_URL from "../../../../config";
+import { runMappedBackupJobsSyncForClient } from "../supervisionReportSync";
 import styles from "../RapportMonitoringBuilder.module.css";
 import { MonitoringStepShell, MonitoringStepSection, MonitoringStepTableWrap } from "../MonitoringStepLayout";
 import { formatServeurLieLabel, pickBackupJobType, pickBackupJobDestination } from "../../../EnterprisesPage/backupJobUtils";
@@ -95,27 +95,12 @@ export default function BackupStep({
   const syncJobsFromCheckMK = async () => {
     try {
       setJobsSyncLoading(true);
-      const res = await fetch(`${API_BASE_URL}/checkmk/save-jobs/sync`, {
-        method: "POST",
-        headers: {
-          ...getAuthHeaders(),
-          "Content-Type": "application/json"
-        },
-        credentials: "include",
-        body: JSON.stringify({
-          clientId: clientId ?? null
-        })
-      });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) {
-        toast.error(data.error || "Error synchronizing jobs");
-        return;
-      }
+      const data = await runMappedBackupJobsSyncForClient(clientId, client?.equipements);
       toast.success(data.message && data.updated != null ? `${data.message} (${data.updated} updated)` : "Synchronization complete");
       if (typeof onRefreshClient === "function") await onRefreshClient();
     } catch (err) {
       console.error("Sync jobs CheckMK:", err);
-      toast.error("Error synchronizing jobs");
+      toast.error(err?.message || "Error synchronizing jobs");
     } finally {
       setJobsSyncLoading(false);
     }

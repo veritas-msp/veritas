@@ -476,7 +476,7 @@ export function AntispamOverviewPanel({
             </p>
           </StatsPanel>
 
-          <section className={dashStyles.kpiGrid}>
+          <section className={`${dashStyles.kpiGrid} ${dashStyles.kpiGrid5}`}>
             <KpiCard icon="mdi:account-group-outline" label="Users" value={usersTotal || "-"} sub="Protected accounts" />
             <KpiCard icon="mdi:web" label="Domains" value={domainsTotal || "-"} sub="Monitored domains" />
             <KpiCard icon="mdi:email-outline" label="E-mails" value={emailsTotal || "-"} sub="Admin addresses" />
@@ -484,7 +484,7 @@ export function AntispamOverviewPanel({
             <KpiCard icon="mdi:email-multiple-outline" label="Spools" value={spoolsTotal || "-"} sub="Queued messages" />
           </section>
 
-          <section className={dashStyles.chartGrid}>
+          <section className={dashStyles.chartGrid3}>
             <StatsPanel title="Fleet distribution" icon="mdi:chart-donut">
               <StatsPieChart items={volumeDistribution.items} total={volumeDistribution.total} emptyLabel="No volume reported" title="Fleet distribution" />
             </StatsPanel>
@@ -503,10 +503,9 @@ export function AntispamOverviewPanel({
                       <strong>{customer.status}</strong>
                     </li> : null}
                 </ul>
-              </StatsPanel> : null}
-          </section>
-
-          <section className={dashStyles.columns}>
+              </StatsPanel> : <StatsPanel title="Information client" icon="mdi:card-account-details-outline">
+                <p className={dashStyles.panelDesc}>Aucune information client disponible.</p>
+              </StatsPanel>}
             <StatsPanel title="Volumes par module" icon="mdi:chart-bar">
               <StatsDistributionBars items={moduleBars.items} emptyLabel="No volume available" />
             </StatsPanel>

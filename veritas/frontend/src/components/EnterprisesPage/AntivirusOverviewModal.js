@@ -10,7 +10,7 @@ import { showError, showSuccess } from "../../utils/toast";
 import formStyles from "./EnterpriseFormModal.module.css";
 import styles from "./AntivirusOverviewModal.module.css";
 import SolutionDetailPageLayout from "./SolutionDetailPageLayout";
-import { KpiCard, StatsDashboardBody, StatsPanel, buildDistributionItems, statsDashboardStyles as dashStyles } from "./StatsDashboardWidgets";
+import { KpiCard, StatsDashboardBody, StatsPanel, statsDashboardStyles as dashStyles } from "./StatsDashboardWidgets";
 function formatDate(value) {
   if (!value) return "-";
   try {
@@ -364,16 +364,6 @@ export function AntivirusOverviewPanel({
     const endpoints = sections.endpoints;
     const licenseUsagePct = license?.used != null && license?.total ? Math.round(license.used / license.total * 100) : null;
     const syncLabel = lastPersistedAt ? `Last backup: ${formatDate(lastPersistedAt)}` : "Not saved locally";
-    const endpointTypeDistribution = buildDistributionItems([{
-      name: "Physiques",
-      count: statistics?.endpoints?.byType?.physical || 0
-    }, {
-      name: "Virtuels",
-      count: statistics?.endpoints?.byType?.virtual || 0
-    }, {
-      name: "Autres",
-      count: statistics?.endpoints?.byType?.other || 0
-    }]);
     if (asPage || embedded) {
       return <StatsDashboardBody>
           <StatsPanel title={companyName} icon="simple-icons:bitdefender">
@@ -383,7 +373,7 @@ export function AntivirusOverviewPanel({
             </p>
           </StatsPanel>
 
-          <section className={styles.kpiGrid}>
+          <section className={`${dashStyles.kpiGrid} ${dashStyles.kpiGrid4}`}>
             <KpiCard icon="mdi:desktop-classic" label="Inventoried workstations" value={endpoints?.total ?? "-"} sub={`${sections.policies?.total ?? 0} politique(s) actives`} />
             <KpiCard icon="mdi:license" label="Licenses" value={license?.used != null && license?.total != null ? `${license.used}/${license.total}` : "-"} sub={licenseUsagePct != null ? `${licenseUsagePct}% used` : "License consumption"} tone={licenseUsagePct == null ? "neutral" : licenseUsagePct >= 95 ? "bad" : licenseUsagePct >= 80 ? "warn" : "good"} />
             <KpiCard icon="mdi:shield-alert-outline" label="Incidents" value={sections.incidents?.total ?? 0} sub="GravityZone overview" tone={(sections.incidents?.total ?? 0) > 0 ? "warn" : "good"} />
@@ -391,19 +381,6 @@ export function AntivirusOverviewPanel({
           </section>
 
           <AntivirusOverviewCharts variant="fleet" statistics={statistics} enrichedSummary={enrichedSummary} incidents={sections.incidents} />
-
-          {endpointTypeDistribution.total > 0 ? <section className={dashStyles.chartBarGrid}>
-              <StatsPanel title="Types de postes" icon="mdi:desktop-tower-monitor">
-                <ul className={dashStyles.metricList}>
-                  {endpointTypeDistribution.items.map(item => <li key={item.name}>
-                      <span>{item.name}</span>
-                      <strong>
-                        {item.count} ({item.pct}%)
-                      </strong>
-                    </li>)}
-                </ul>
-              </StatsPanel>
-            </section> : null}
         </StatsDashboardBody>;
     }
     return <>

@@ -31,6 +31,14 @@
   gap: 0.65rem;
 }
 
+.kpiGrid5 {
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+}
+
+.kpiGrid4 {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
 .kpiCard {
   display: flex;
   gap: 0.65rem;
@@ -899,6 +907,14 @@
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 
+  .kpiGrid5 {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .kpiGrid4 {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
   .chartGrid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
@@ -915,6 +931,14 @@
 
 @media (max-width: 720px) {
   .kpiGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .kpiGrid5 {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .kpiGrid4 {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 

@@ -1168,6 +1168,16 @@
   line-height: 1;
   pointer-events: none;
   user-select: none;
+  font-family: "Segoe UI Emoji", "Apple Color Emoji", "Noto Color Emoji", sans-serif;
+}
+
+.choiceBtnFlagIcon {
+  font-size: 1.65rem;
+  width: 1.65rem;
+  height: 1.65rem;
+  flex-shrink: 0;
+  border-radius: 999px;
+  overflow: hidden;
 }
 
 .choiceBtnIcon {

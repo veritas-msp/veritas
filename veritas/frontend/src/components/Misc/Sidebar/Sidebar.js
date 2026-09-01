@@ -42,25 +42,17 @@ function getUserInitials(user) {
   }
   return (local.slice(0, 2) || "?").toUpperCase();
 }
-function AnimatedSectionDivider({
+function SectionDivider({
   show,
   isCollapsed
 }) {
-  const className = isCollapsed ? styles.sectionDividerCollapsed : styles.separator;
-  return <AnimatePresence initial={false}>
-      {show && <motion.hr key={className} className={className} initial={{
-      opacity: 0,
-      scaleX: 0.55
-    }} animate={{
-      opacity: 1,
-      scaleX: 1
-    }} exit={{
-      opacity: 0,
-      scaleX: 0.55
-    }} transition={{
-      duration: 0.18
-    }} aria-hidden />}
-    </AnimatePresence>;
+  if (!show) return null;
+  return (
+    <hr
+      className={isCollapsed ? styles.sectionDividerCollapsed : styles.separator}
+      aria-hidden
+    />
+  );
 }
 export default function Sidebar({
   current,
@@ -255,8 +247,11 @@ export default function Sidebar({
 
             </div>
 
-            <hr className={styles.separator} />
+            <div className={styles.sidebarHeader}>
+              <hr className={styles.separator} />
+            </div>
 
+            <div className={styles.sidebarNavScroll}>
             {}
             <AnimatePresence initial={false}>
               {showCrmSection && <motion.div key="nav-section-crm" data-sidebar-guide="crm" initial={{
@@ -291,7 +286,7 @@ export default function Sidebar({
                   </ul>
                 </motion.div>}
             </AnimatePresence>
-            <AnimatedSectionDivider show={showCrmSection} isCollapsed={isCollapsed} />
+            <SectionDivider show={showCrmSection && (showExploitationSection || showManagedSection || showPilotageSection)} isCollapsed={isCollapsed} />
 
             <AnimatePresence initial={false}>
               {showExploitationSection && <motion.div key="nav-section-exploitation" data-sidebar-guide="exploitation" initial={{
@@ -330,7 +325,7 @@ export default function Sidebar({
                   </ul>
                 </motion.div>}
             </AnimatePresence>
-            <AnimatedSectionDivider show={showExploitationSection} isCollapsed={isCollapsed} />
+            <SectionDivider show={showExploitationSection && (showManagedSection || showPilotageSection)} isCollapsed={isCollapsed} />
 
             {}
             <AnimatePresence initial={false}>
@@ -374,7 +369,7 @@ export default function Sidebar({
                   </ul>
                 </motion.div>}
             </AnimatePresence>
-            <AnimatedSectionDivider show={showManagedSection} isCollapsed={isCollapsed} />
+            <SectionDivider show={showManagedSection && showPilotageSection} isCollapsed={isCollapsed} />
 
             {}
             <AnimatePresence initial={false}>
@@ -430,7 +425,7 @@ export default function Sidebar({
                   </ul>
                 </motion.div>}
             </AnimatePresence>
-            <AnimatedSectionDivider show={showPilotageSection} isCollapsed={isCollapsed} />
+            <SectionDivider show={showPilotageSection} isCollapsed={isCollapsed} />
 
             {isCommunity ? <div className={styles.upgradeSection}>
               {!isCollapsed && <div className={styles.sectionTitle}>{copy.sections.modules}</div>}
@@ -444,6 +439,9 @@ export default function Sidebar({
               </div>
             </div> : null}
 
+            </div>
+
+            <div className={styles.sidebarFooter}>
             <div className={styles.utilitiesSection} data-sidebar-guide="utilities">
               {!isCollapsed && <div className={styles.sectionTitle}>{copy.sections.appearance}</div>}
               <div className={styles.utilitiesBtnRow}>
@@ -528,6 +526,7 @@ export default function Sidebar({
                       {copy.account.logout}
                     </button>
                   </div>, document.body)}
+            </div>
             </div>
           </div>
         </motion.nav>}

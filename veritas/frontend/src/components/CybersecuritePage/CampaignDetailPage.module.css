@@ -16,29 +16,34 @@
 
 .pageGridFull {
   display: grid;
+  grid-template-columns: minmax(0, 1.4fr) minmax(280px, 1fr) 320px;
+  gap: 1.5rem;
+  align-items: start;
+  width: 100%;
+}
+
+.pageGridTwoCol {
+  display: grid;
   grid-template-columns: minmax(0, 1fr) 320px;
   gap: 1.5rem;
   align-items: start;
   width: 100%;
 }
 
-.mainStack {
+.colMicrosoft,
+.colCenter,
+.colMain {
+  min-width: 0;
+}
+
+.colCenter {
   display: flex;
   flex-direction: column;
   gap: 1.5rem;
-  min-width: 0;
 }
 
-.topGrid {
-  display: grid;
-  grid-template-columns: minmax(0, 1.65fr) minmax(300px, 1fr);
-  gap: 1.5rem;
-  align-items: stretch;
-}
-
-.topGrid > section {
+.colCenter > section {
   min-width: 0;
-  height: 100%;
 }
 
 .asideFull {
@@ -152,14 +157,23 @@
 }
 
 @media (max-width: 1280px) {
-  .topGrid {
-    grid-template-columns: 1fr;
+  .pageGridFull {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  }
+
+  .colAside {
+    grid-column: 1 / -1;
   }
 }
 
 @media (max-width: 1100px) {
-  .pageGridFull {
+  .pageGridFull,
+  .pageGridTwoCol {
     grid-template-columns: 1fr;
+  }
+
+  .colAside {
+    grid-column: auto;
   }
 
   .asideFull {

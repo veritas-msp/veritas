@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer } from "recharts";
 import modalStyles from "./AntivirusOverviewModal.module.css";
-import { StatsPanel, statsDashboardStyles as dashStyles } from "./StatsDashboardWidgets";
+import { StatsPanel, statsDashboardStyles as dashStyles, buildDistributionItems } from "./StatsDashboardWidgets";
 const PIE_COLORS = ["#22c55e", "#ef4444", "#f59e0b", "#3b82f6", "#8b5cf6", "#64748b", "#ec4899"];
 const BAR_COLOR = "#ed1c24";
 function ChartCard({
@@ -148,6 +148,16 @@ export default function AntivirusOverviewCharts({
       value: byType.other || 0
     }].filter(item => item.value > 0);
   }, [statistics]);
+  const endpointTypeDistribution = useMemo(() => buildDistributionItems([{
+    name: "Physiques",
+    count: statistics?.endpoints?.byType?.physical || 0
+  }, {
+    name: "Virtuels",
+    count: statistics?.endpoints?.byType?.virtual || 0
+  }, {
+    name: "Autres",
+    count: statistics?.endpoints?.byType?.other || 0
+  }]), [statistics]);
   const hasAnyChart = endpointStatusData.length > 0 || osDistributionData.length > 0 || threatHealthData.length > 0 || securityBarData?.length > 0 || incidentsSeverityData.length > 0 || endpointTypeData.length > 0;
   if (!hasAnyChart) {
     const empty = <div className={modalStyles.chartEmpty}>
@@ -166,7 +176,7 @@ export default function AntivirusOverviewCharts({
         {empty}
       </div>;
   }
-  const charts = <>
+  const primaryCharts = <>
       <ChartCard variant={variant} title="Workstation status" subtitle="Online / offline distribution" emptyLabel="Connectivity data unavailable">
         {renderPie(endpointStatusData)}
       </ChartCard>
@@ -182,7 +192,8 @@ export default function AntivirusOverviewCharts({
       <ChartCard variant={variant} title="Threats & attacks" subtitle="Infections, recent detections, offline workstations" emptyLabel="No threats detected">
         {securityBarData ? renderBar(securityBarData) : null}
       </ChartCard>
-
+    </>;
+  const secondaryCharts = <>
       <ChartCard variant={variant} title="Incidents by severity" subtitle={`${incidents?.total ?? 0} incident(s) in preview`} emptyLabel="No incidents">
         {incidentsSeverityData.length ? renderBar(incidentsSeverityData) : null}
       </ChartCard>
@@ -190,10 +201,30 @@ export default function AntivirusOverviewCharts({
       <ChartCard variant={variant} title="Workstation type" subtitle="Physical vs virtual" emptyLabel="Distribution by type unavailable">
         {endpointTypeData.length ? renderBar(endpointTypeData) : null}
       </ChartCard>
+
+      {isFleet ? endpointTypeDistribution.total > 0 ? <StatsPanel title="Types de postes" icon="mdi:desktop-tower-monitor">
+            <ul className={dashStyles.metricList}>
+              {endpointTypeDistribution.items.map(item => <li key={item.name}>
+                  <span>{item.name}</span>
+                  <strong>
+                    {item.count} ({item.pct}%)
+                  </strong>
+                </li>)}
+            </ul>
+          </StatsPanel> : <StatsPanel title="Types de postes" icon="mdi:desktop-tower-monitor">
+            <p className={dashStyles.panelDesc}>Distribution par type indisponible.</p>
+          </StatsPanel> : null}
     </>;
   if (isFleet) {
-    return <section className={dashStyles.chartGrid}>{charts}</section>;
+    return <>
+        <section className={dashStyles.chartGrid}>{primaryCharts}</section>
+        <section className={dashStyles.chartGrid3}>{secondaryCharts}</section>
+      </>;
   }
+  const charts = <>
+      {primaryCharts}
+      {secondaryCharts}
+    </>;
   return <div className={modalStyles.chartsSection}>
       <h4 className={modalStyles.chartsSectionTitle}>Security statistics</h4>
       <div className={modalStyles.chartsGrid}>{charts}</div>

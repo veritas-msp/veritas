@@ -527,7 +527,7 @@ export default function SupportStep({ client, reportPeriod = {} }) {
         </MonitoringStepSection>
       </div>
 
-      <MonitoringStepSection title="Tickets de la période" count={createdInPeriod.length}>
+      <MonitoringStepSection title="Tickets de la période" count={createdInPeriod.length} className={styles.supportTicketsSection}>
         {createdInPeriod.length === 0 && !loading ? (
           <p className={styles.supportEmpty}>Aucun ticket support créé sur cette période.</p>
         ) : (

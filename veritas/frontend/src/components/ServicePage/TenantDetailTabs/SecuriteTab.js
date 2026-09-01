@@ -1,10 +1,8 @@
-import React, { useMemo, useState, useEffect } from 'react';
-import { Icon } from '@iconify/react';
+﻿import React, { useMemo, useState, useEffect } from 'react';
 import { FaChevronLeft, FaChevronRight } from 'react-icons/fa6';
 import API_BASE_URL from '../../../config';
 import { sanitizeRemediationHtml } from '../../../utils/sanitizeHtml';
 import styles from '../TenantDetailPage.module.css';
-import enterpriseStyles from '../../EnterprisesPage/EnterprisesPage.module.css';
 import { getMfaUserForUser, getMfaMethods, userHasMfa, userIsAdmin } from '../mfaDetailsUtils';
 function isLikelyServiceAccountFromUser(user) {
   const name = (user.name || user.displayName || '').toString();
@@ -22,30 +20,6 @@ const MFA_METHOD_LABELS = {
   temporaryaccesspassauthenticationmethod: 'Temporary pass',
   emailauthenticationmethod: 'Email'
 };
-const MFA_METHOD_ICONS = {
-  microsoftauthenticatorauthenticationmethod: 'mdi:cellphone',
-  phoneauthenticationmethod: 'mdi:phone',
-  fido2authenticationmethod: 'mdi:usb',
-  softwareoathauthenticationmethod: 'mdi:shield-key',
-  temporaryaccesspassauthenticationmethod: 'mdi:clock-outline',
-  emailauthenticationmethod: 'mdi:email'
-};
-function getMfaMethodIconName(methodKey) {
-  return MFA_METHOD_ICONS[methodKey] || 'mdi:help-circle';
-}
-function getPreferredMethodLabel(methodCounts) {
-  if (!methodCounts || typeof methodCounts !== 'object') return null;
-  let maxCount = 0;
-  let preferredKey = null;
-  Object.entries(methodCounts).forEach(([key, count]) => {
-    if (count > maxCount) {
-      maxCount = count;
-      preferredKey = key;
-    }
-  });
-  if (!preferredKey) return null;
-  return MFA_METHOD_LABELS[preferredKey] || preferredKey.replace('authenticationmethod', '').replace(/([A-Z])/g, ' $1').trim();
-}
 function getTop3Methods(methodCounts) {
   if (!methodCounts || typeof methodCounts !== 'object') return [];
   return Object.entries(methodCounts).filter(([, count]) => count > 0).sort((a, b) => b[1] - a[1]).slice(0, 3).map(([key, count]) => ({
@@ -60,15 +34,6 @@ function priorityColor(label) {
   if (label === 'Medium') return '#f59e0b';
   if (label === 'Low') return '#10b981';
   return '#6b7280';
-}
-function formatRemainingPoints(value) {
-  const n = Number(value);
-  if (!Number.isFinite(n)) return '-';
-  const rounded = Math.round(n * 100) / 100;
-  return rounded.toLocaleString('en-GB', {
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 2
-  });
 }
 export default function SecuriteTab({
   securityData,
@@ -105,7 +70,7 @@ export default function SecuriteTab({
   };
   const RecSortIcon = ({
     column
-  }) => recSortColumn !== column ? null : <span>{recSortOrder === 'asc' ? ' ↑' : ' ↓'}</span>;
+  }) => recSortColumn !== column ? null : <span>{recSortOrder === 'asc' ? ' â†‘' : ' â†“'}</span>;
   useEffect(() => {
     if (!clientId) return undefined;
     let cancelled = false;
@@ -291,916 +256,127 @@ export default function SecuriteTab({
         <div className={styles.noDataMessage}>
           <p style={{
           color: '#ef4444'
-        }}>❌ Error loading security data</p>
+        }}>âŒ Error loading security data</p>
           <p className={styles.textSecondary}>
             {securityData.error || 'Unknown error'}
           </p>
         </div>
       </div>;
   }
-  if (embedded) {
-    const globalTotal = kpiStats.usersWithMFA + kpiStats.usersWithoutMFA;
-    const adminTotal = kpiStats.adminsTotal;
-    const nonAdminTotal = kpiStats.nonAdminWithMFA + kpiStats.nonAdminWithoutMFA;
-    const rate = (withMfa, total) => total > 0 ? `${Math.round(withMfa / total * 100)}%` : "-";
-    const recs = sortedSecureRecommendations;
-    return <div className={styles.tabFill}>
-        <h2 className={styles.sectionTitle}>Security</h2>
-        <div className={styles.metricsRow4}>
-          <div className={styles.metricItem}>
-            <div className={styles.metricLabel}>Secure Score</div>
-            <div className={styles.metricValue}>
-              {identityScoreCurrent != null ? `${Math.round(identityScoreCurrent)} / ${identityScoreMax || 100}` : "-"}
-            </div>
-            {identityScorePercentage != null ? <div className={styles.mutedHint}>{Math.round(identityScorePercentage)}% obtained</div> : null}
-          </div>
-          <div className={styles.metricItem}>
-            <div className={styles.metricLabel}>Global MFA</div>
-            <div className={styles.metricValue}>{rate(kpiStats.usersWithMFA, globalTotal)}</div>
-            <div className={styles.mutedHint}>{kpiStats.usersWithMFA} with · {kpiStats.usersWithoutMFA} without</div>
-          </div>
-          <div className={styles.metricItem}>
-            <div className={styles.metricLabel}>Admin MFA</div>
-            <div className={styles.metricValue}>{rate(kpiStats.adminsWithMFA, adminTotal)}</div>
-            <div className={styles.mutedHint}>{kpiStats.adminsWithMFA} with · {kpiStats.adminsWithoutMFA} without</div>
-          </div>
-          <div className={styles.metricItem}>
-            <div className={styles.metricLabel}>Non-admin MFA</div>
-            <div className={styles.metricValue}>{rate(kpiStats.nonAdminWithMFA, nonAdminTotal)}</div>
-            <div className={styles.mutedHint}>{kpiStats.nonAdminWithMFA} with · {kpiStats.nonAdminWithoutMFA} without</div>
-          </div>
-        </div>
-        <h3 className={styles.kpiSectionBlockTitle}>Recommendations</h3>
-        <div className={`${styles.licensesTableContainer} ${styles.tableFill}`}>
-          <table className={styles.licensesTable}>
-            <thead>
-              <tr>
-                <th>Recommendation</th>
-                <th>Category</th>
-                <th>Priority</th>
-                <th>Points</th>
-                <th>Status</th>
-              </tr>
-            </thead>
-            <tbody>
-              {recsLoading ? <tr>
-                  <td colSpan={5}>Loading Microsoft recommendations…</td>
-                </tr> : recs.length === 0 ? <tr>
-                  <td colSpan={5}>{recsError || "No recommendations returned for this tenant."}</td>
-                </tr> : recs.map((rec, idx) => <tr key={rec.id || idx}>
-                  <td>{rec.titleFr || rec.title || rec.displayName || "-"}</td>
-                  <td>{rec.categoryFr || rec.category || "-"}</td>
-                  <td>{rec.priorityLabel || rec.priority || "-"}</td>
-                  <td>{rec.maxScore != null ? rec.maxScore : "-"}</td>
-                  <td>{rec.stateLabel || rec.state || "-"}</td>
-                </tr>)}
-            </tbody>
-          </table>
-        </div>
-      </div>;
-  }
+  const globalTotal = kpiStats.usersWithMFA + kpiStats.usersWithoutMFA;
+  const adminTotal = kpiStats.adminsTotal;
+  const nonAdminTotal = kpiStats.nonAdminWithMFA + kpiStats.nonAdminWithoutMFA;
+  const rate = (withMfa, total) => total > 0 ? `${Math.round(withMfa / total * 100)}%` : "-";
+  const recs = paginatedSecureRecommendations;
 
-  return <div>
+  return <div className={embedded ? styles.tabFill : undefined}>
       <h2 className={styles.sectionTitle}>Security</h2>
-      
-      <div style={{
-      display: 'flex',
-      gap: '1.5rem',
-      marginBottom: '1.5rem',
-      flexWrap: 'wrap'
-    }}>
-        {}
-        {identityScoreCurrent !== null && <div style={{
-        flex: '1',
-        minWidth: '280px',
-        padding: '1.25rem',
-        borderRadius: '12px',
-        background: 'var(--tenant-panel)',
-        border: '1px solid var(--tenant-line)'
-      }}>
-            <div style={{
-          fontSize: '0.85rem',
-          fontWeight: '600',
-          color: 'var(--tenant-ink)',
-          marginBottom: '1rem'
-        }}>
-              Overall security score
-            </div>
-            <div style={{
-          display: 'flex',
-          alignItems: 'flex-end',
-          gap: '0.5rem',
-          marginBottom: '0.5rem'
-        }}>
-              <div style={{
-            fontSize: '2.5rem',
-            fontWeight: '700',
-            color: 'var(--tenant-ink)',
-            lineHeight: '1'
-          }}>
-                {identityScoreCurrent !== null ? Math.round(identityScoreCurrent) : '-'}
-              </div>
-              <div style={{
-            fontSize: '1rem',
-            color: 'var(--tenant-muted)',
-            fontWeight: '500',
-            marginBottom: '0.25rem'
-          }}>
-                / {identityScoreMax || 100}
-              </div>
-            </div>
-            {identityScorePercentage !== null ? <>
-                <div style={{
-            fontSize: '0.9rem',
-            fontWeight: '600',
-            color: 'var(--tenant-muted)',
-            marginTop: '0.5rem'
-          }}>
-                  {Math.round(identityScorePercentage)}% des points obtenus
-                </div>
-                <div style={{
-            marginTop: '0.75rem',
-            width: '100%',
-            height: '6px',
-            background: 'var(--tenant-line)',
-            borderRadius: '999px'
-          }}>
-                  <div style={{
-              width: `${Math.min(100, Math.max(0, identityScorePercentage))}%`,
-              height: '100%',
-              borderRadius: '999px',
-              background: '#10b981'
-            }} />
-                </div>
-              </> : <div style={{
-          fontSize: '0.8rem',
-          color: 'var(--tenant-muted)',
-          marginTop: '0.5rem'
-        }}>
-                Score en attente de synchronisation.
-              </div>}
-          </div>}
-
-        {}
-        <div style={{
-        flex: '1',
-        minWidth: '280px',
-        padding: '1.25rem',
-        borderRadius: '12px',
-        background: 'var(--tenant-panel)',
-        border: '1px solid var(--tenant-line)'
-      }}>
-          <div style={{
-          fontSize: '0.85rem',
-          fontWeight: '600',
-          color: 'var(--tenant-ink)',
-          marginBottom: '1rem'
-        }}>
-            Total users
+      <div className={styles.metricsRow4}>
+        <div className={styles.metricItem}>
+          <div className={styles.metricLabel}>Secure Score</div>
+          <div className={styles.metricValue}>
+            {identityScoreCurrent != null ? `${Math.round(identityScoreCurrent)} / ${identityScoreMax || 100}` : "-"}
           </div>
-          <div style={{
-          fontSize: '1.5rem',
-          fontWeight: '700',
-          color: 'var(--tenant-ink)',
-          marginBottom: '1rem'
-        }}>
-            {kpiStats.totalUsers.toLocaleString()}
-          </div>
-          <div style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(3, 1fr)',
-          gap: '1.5rem'
-        }}>
-            <div>
-              <div style={{
-              fontSize: '0.75rem',
-              color: 'var(--tenant-muted)',
-              marginBottom: '0.5rem'
-            }}>With MFA</div>
-              <div style={{
-              fontSize: '1.5rem',
-              fontWeight: '700',
-              color: '#10b981'
-            }}>{kpiStats.usersWithMFA.toLocaleString()}</div>
-            </div>
-            <div>
-              <div style={{
-              fontSize: '0.75rem',
-              color: 'var(--tenant-muted)',
-              marginBottom: '0.5rem'
-            }}>Without MFA</div>
-              <div style={{
-              fontSize: '1.5rem',
-              fontWeight: '700',
-              color: '#ef4444'
-            }}>{kpiStats.usersWithoutMFA.toLocaleString()}</div>
-            </div>
-            <div>
-              <div style={{
-              fontSize: '0.75rem',
-              color: 'var(--tenant-muted)',
-              marginBottom: '0.5rem'
-            }}>Adoption rate</div>
-              <div style={{
-              fontSize: '1.5rem',
-              fontWeight: '700',
-              color: 'var(--tenant-ink)'
-            }}>
-                {(() => {
-                const avec = kpiStats.usersWithMFA;
-                const sans = kpiStats.usersWithoutMFA;
-                return avec + sans > 0 ? Math.round(avec / (avec + sans) * 100) : 0;
-              })()}%
-              </div>
-            </div>
-          </div>
-          <div style={{
-          fontSize: '0.75rem',
-          color: 'var(--tenant-muted)',
-          marginTop: '1rem',
-          paddingTop: '0.75rem',
-          borderTop: '1px solid var(--tenant-line)'
-        }}>
-            <div style={{
-            marginBottom: '0.35rem'
-          }}>Top 3 preferred methods</div>
-            {kpiStats.top3Total.length > 0 ? <div style={{
-            display: 'flex',
-            flexWrap: 'wrap',
-            gap: '0.5rem',
-            alignItems: 'center'
-          }}>
-                {kpiStats.top3Total.map(({
-              key,
-              label,
-              count
-            }, i) => <span key={key} style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '0.35rem',
-              fontSize: '0.75rem',
-              color: 'var(--tenant-ink)'
-            }}>
-                    <Icon icon={getMfaMethodIconName(key)} style={{
-                fontSize: '1rem',
-                color: '#10b981'
-              }} />
-                    {label}
-                    <span style={{
-                color: 'var(--tenant-muted)',
-                fontWeight: 600
-              }}>({count})</span>
-                  </span>)}
-              </div> : <span style={{
-            color: '#9ca3af'
-          }}>-</span>}
-          </div>
+          {identityScorePercentage != null ? <div className={styles.mutedHint}>{Math.round(identityScorePercentage)}% obtained</div> : null}
         </div>
-
-        {}
-        <div style={{
-        flex: '1',
-        minWidth: '280px',
-        padding: '1.25rem',
-        borderRadius: '12px',
-        background: 'var(--tenant-panel)',
-        border: '1px solid var(--tenant-line)'
-      }}>
-          <div style={{
-          fontSize: '0.85rem',
-          fontWeight: '600',
-          color: 'var(--tenant-ink)',
-          marginBottom: '1rem'
-        }}>
-            Total admin users
-          </div>
-          <div style={{
-          fontSize: '1.5rem',
-          fontWeight: '700',
-          color: 'var(--tenant-ink)',
-          marginBottom: '1rem'
-        }}>
-            {kpiStats.adminsTotal.toLocaleString()}
-          </div>
-          <div style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(3, 1fr)',
-          gap: '1.5rem'
-        }}>
-            <div>
-              <div style={{
-              fontSize: '0.75rem',
-              color: 'var(--tenant-muted)',
-              marginBottom: '0.5rem'
-            }}>With MFA</div>
-              <div style={{
-              fontSize: '1.5rem',
-              fontWeight: '700',
-              color: '#10b981'
-            }}>{kpiStats.adminsWithMFA.toLocaleString()}</div>
-            </div>
-            <div>
-              <div style={{
-              fontSize: '0.75rem',
-              color: 'var(--tenant-muted)',
-              marginBottom: '0.5rem'
-            }}>Without MFA</div>
-              <div style={{
-              fontSize: '1.5rem',
-              fontWeight: '700',
-              color: '#ef4444'
-            }}>{kpiStats.adminsWithoutMFA.toLocaleString()}</div>
-            </div>
-            <div>
-              <div style={{
-              fontSize: '0.75rem',
-              color: 'var(--tenant-muted)',
-              marginBottom: '0.5rem'
-            }}>Adoption rate</div>
-              <div style={{
-              fontSize: '1.5rem',
-              fontWeight: '700',
-              color: 'var(--tenant-ink)'
-            }}>
-                {(() => {
-                const avec = kpiStats.adminsWithMFA;
-                const sans = kpiStats.adminsWithoutMFA;
-                return avec + sans > 0 ? Math.round(avec / (avec + sans) * 100) : 0;
-              })()}%
-              </div>
-            </div>
-          </div>
-          <div style={{
-          fontSize: '0.75rem',
-          color: 'var(--tenant-muted)',
-          marginTop: '1rem',
-          paddingTop: '0.75rem',
-          borderTop: '1px solid var(--tenant-line)'
-        }}>
-            <div style={{
-            marginBottom: '0.35rem'
-          }}>Top 3 preferred methods</div>
-            {kpiStats.top3Admin.length > 0 ? <div style={{
-            display: 'flex',
-            flexWrap: 'wrap',
-            gap: '0.5rem',
-            alignItems: 'center'
-          }}>
-                {kpiStats.top3Admin.map(({
-              key,
-              label,
-              count
-            }, i) => <span key={key} style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '0.35rem',
-              fontSize: '0.75rem',
-              color: 'var(--tenant-ink)'
-            }}>
-                    <Icon icon={getMfaMethodIconName(key)} style={{
-                fontSize: '1rem',
-                color: '#10b981'
-              }} />
-                    {label}
-                    <span style={{
-                color: 'var(--tenant-muted)',
-                fontWeight: 600
-              }}>({count})</span>
-                  </span>)}
-              </div> : <span style={{
-            color: '#9ca3af'
-          }}>-</span>}
-          </div>
+        <div className={styles.metricItem}>
+          <div className={styles.metricLabel}>Global MFA</div>
+          <div className={styles.metricValue}>{rate(kpiStats.usersWithMFA, globalTotal)}</div>
+          <div className={styles.mutedHint}>{kpiStats.usersWithMFA} with Â· {kpiStats.usersWithoutMFA} without</div>
         </div>
-
-        {}
-        <div style={{
-        flex: '1',
-        minWidth: '280px',
-        padding: '1.25rem',
-        borderRadius: '12px',
-        background: 'var(--tenant-panel)',
-        border: '1px solid var(--tenant-line)'
-      }}>
-          <div style={{
-          fontSize: '0.85rem',
-          fontWeight: '600',
-          color: 'var(--tenant-ink)',
-          marginBottom: '1rem'
-        }}>
-            Total non-admin users
-          </div>
-          <div style={{
-          fontSize: '1.5rem',
-          fontWeight: '700',
-          color: 'var(--tenant-ink)',
-          marginBottom: '1rem'
-        }}>
-            {(kpiStats.nonAdminWithMFA + kpiStats.nonAdminWithoutMFA).toLocaleString()}
-          </div>
-          <div style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(3, 1fr)',
-          gap: '1.5rem'
-        }}>
-            <div>
-              <div style={{
-              fontSize: '0.75rem',
-              color: 'var(--tenant-muted)',
-              marginBottom: '0.5rem'
-            }}>With MFA</div>
-              <div style={{
-              fontSize: '1.5rem',
-              fontWeight: '700',
-              color: '#10b981'
-            }}>{kpiStats.nonAdminWithMFA.toLocaleString()}</div>
-            </div>
-            <div>
-              <div style={{
-              fontSize: '0.75rem',
-              color: 'var(--tenant-muted)',
-              marginBottom: '0.5rem'
-            }}>Without MFA</div>
-              <div style={{
-              fontSize: '1.5rem',
-              fontWeight: '700',
-              color: '#ef4444'
-            }}>{kpiStats.nonAdminWithoutMFA.toLocaleString()}</div>
-            </div>
-            <div>
-              <div style={{
-              fontSize: '0.75rem',
-              color: 'var(--tenant-muted)',
-              marginBottom: '0.5rem'
-            }}>Adoption rate</div>
-              <div style={{
-              fontSize: '1.5rem',
-              fontWeight: '700',
-              color: 'var(--tenant-ink)'
-            }}>
-                {(() => {
-                const avec = kpiStats.nonAdminWithMFA;
-                const sans = kpiStats.nonAdminWithoutMFA;
-                return avec + sans > 0 ? Math.round(avec / (avec + sans) * 100) : 0;
-              })()}%
-              </div>
-            </div>
-          </div>
-          <div style={{
-          fontSize: '0.75rem',
-          color: 'var(--tenant-muted)',
-          marginTop: '1rem',
-          paddingTop: '0.75rem',
-          borderTop: '1px solid var(--tenant-line)'
-        }}>
-            <div style={{
-            marginBottom: '0.35rem'
-          }}>Top 3 preferred methods</div>
-            {kpiStats.top3NonAdmin.length > 0 ? <div style={{
-            display: 'flex',
-            flexWrap: 'wrap',
-            gap: '0.5rem',
-            alignItems: 'center'
-          }}>
-                {kpiStats.top3NonAdmin.map(({
-              key,
-              label,
-              count
-            }, i) => <span key={key} style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '0.35rem',
-              fontSize: '0.75rem',
-              color: 'var(--tenant-ink)'
-            }}>
-                    <Icon icon={getMfaMethodIconName(key)} style={{
-                fontSize: '1rem',
-                color: '#10b981'
-              }} />
-                    {label}
-                    <span style={{
-                color: 'var(--tenant-muted)',
-                fontWeight: 600
-              }}>({count})</span>
-                  </span>)}
-              </div> : <span style={{
-            color: '#9ca3af'
-          }}>-</span>}
-          </div>
+        <div className={styles.metricItem}>
+          <div className={styles.metricLabel}>Admin MFA</div>
+          <div className={styles.metricValue}>{rate(kpiStats.adminsWithMFA, adminTotal)}</div>
+          <div className={styles.mutedHint}>{kpiStats.adminsWithMFA} with Â· {kpiStats.adminsWithoutMFA} without</div>
+        </div>
+        <div className={styles.metricItem}>
+          <div className={styles.metricLabel}>Non-admin MFA</div>
+          <div className={styles.metricValue}>{rate(kpiStats.nonAdminWithMFA, nonAdminTotal)}</div>
+          <div className={styles.mutedHint}>{kpiStats.nonAdminWithMFA} with Â· {kpiStats.nonAdminWithoutMFA} without</div>
         </div>
       </div>
 
-      {}
-      <div style={{
-      marginBottom: '1.5rem'
-    }}>
-        <h3 className={styles.subsectionTitle} style={{
-        marginBottom: '0.75rem'
-      }}>
-          Recommendations to improve your score (Secure Score)
-        </h3>
-        {!clientId && <p style={{
-        fontSize: '0.875rem',
-        color: 'var(--tenant-muted)'
-      }}>
-            Client not identified · unable to load Graph recommendations.
-          </p>}
-        {clientId && recsLoading && <p style={{
-        fontSize: '0.875rem',
-        color: 'var(--tenant-muted)'
-      }}>Loading Microsoft recommendations…</p>}
-        {clientId && recsError && !recsLoading && <p style={{
-        fontSize: '0.875rem',
-        color: '#b45309'
-      }}>{recsError}</p>}
-        {clientId && !recsLoading && sortedSecureRecommendations.length > 0 && <div className={enterpriseStyles.equipmentTableSection}>
-            <div className={enterpriseStyles.tableWrapper}>
-              <div className={enterpriseStyles.tableScroll}>
-                <table className={enterpriseStyles.equipmentTable} style={{
-              minWidth: '720px'
-            }}>
-                  <thead>
-                    <tr>
-                      <th>
-                        <button type="button" className={enterpriseStyles.equipmentTableSortButton} onClick={() => handleRecSort('priority')}>
-                          Priority <RecSortIcon column="priority" />
-                        </button>
-                      </th>
-                      <th>
-                        <button type="button" className={enterpriseStyles.equipmentTableSortButton} onClick={() => handleRecSort('recommendation')}>
-                          Recommendation <RecSortIcon column="recommendation" />
-                        </button>
-                      </th>
-                      <th>
-                        <button type="button" className={enterpriseStyles.equipmentTableSortButton} onClick={() => handleRecSort('category')}>
-                          Category <RecSortIcon column="category" />
-                        </button>
-                      </th>
-                      <th>
-                        <button type="button" className={enterpriseStyles.equipmentTableSortButton} onClick={() => handleRecSort('state')}>
-                          State <RecSortIcon column="state" />
-                        </button>
-                      </th>
-                      <th>
-                        <button type="button" className={enterpriseStyles.equipmentTableSortButton} onClick={() => handleRecSort('score')}>
-                          Score actuel / max <RecSortIcon column="score" />
-                        </button>
-                      </th>
-                      <th>
-                        <button type="button" className={enterpriseStyles.equipmentTableSortButton} onClick={() => handleRecSort('remaining')}>
-                          Points restants <RecSortIcon column="remaining" />
-                        </button>
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {paginatedSecureRecommendations.map((rec, idx) => {
-                  const max = Number(rec.maxScore) || 0;
-                  const cur = Number(rec.currentScore) ?? 0;
-                  const remaining = Math.max(0, max - cur);
-                  const title = rec.titleFr || rec.title || '-';
-                  const remediation = rec.remediationFr || rec.remediation || '';
-                  const rowKey = rec.id ?? `rec-${(recPage - 1) * recPageSize + idx}`;
-                  return <tr key={rowKey}>
-                          <td>
-                            <span style={{
-                        fontWeight: 600,
-                        color: priorityColor(rec.priorityLabel),
-                        fontSize: '0.8125rem'
-                      }}>
-                              {rec.priorityLabel || '-'}
-                              {typeof rec.rank === 'number' ? <span className={enterpriseStyles.equipmentTableRank}>#{rec.rank}</span> : null}
-                            </span>
-                          </td>
-                          <td className={enterpriseStyles.equipmentTableRecommendationCell}>
-                            <div className={enterpriseStyles.equipmentTableCellTitle}>{title}</div>
-                            {remediation ? <div className={enterpriseStyles.equipmentTableRemediation} dangerouslySetInnerHTML={{
-                        __html: sanitizeRemediationHtml(remediation)
-                      }} /> : null}
-                          </td>
-                          <td>{rec.categoryFr || rec.category || '-'}</td>
-                          <td>{rec.stateLabel || '-'}</td>
-                          <td style={{
-                      whiteSpace: 'nowrap'
-                    }}>
-                            {Math.round(cur)} / {max}
-                          </td>
-                          <td style={{
-                      fontWeight: 600
-                    }}>{formatRemainingPoints(remaining)}</td>
-                        </tr>;
-                })}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-            <div className={enterpriseStyles.paginationBar}>
-              <div className={enterpriseStyles.paginationLeft}>
-                <span className={enterpriseStyles.paginationLabel}>Rows per page</span>
-                <select className={enterpriseStyles.paginationSelect} value={recPageSize} onChange={e => setRecPageSize(Number(e.target.value))}>
-                  <option value={10}>10</option>
-                  <option value={25}>25</option>
-                  <option value={50}>50</option>
-                  <option value={100}>100</option>
-                </select>
-              </div>
-              <div className={enterpriseStyles.paginationRight}>
-                <button type="button" className={enterpriseStyles.paginationButton} onClick={() => setRecPage(p => Math.max(1, p - 1))} disabled={recPage <= 1} aria-label="Previous page">
-                  <FaChevronLeft />
+      <h3 className={styles.kpiSectionBlockTitle}>Recommendations</h3>
+      {!clientId ? <p className={styles.mutedHint}>Client not identified Â· unable to load Graph recommendations.</p> : null}
+      {clientId && recsError && !recsLoading ? <p className={styles.mutedHint} style={{ color: '#b45309' }}>{recsError}</p> : null}
+      <div className={`${styles.licensesTableContainer} ${embedded ? styles.tableFill : ""}`}>
+        <table className={styles.licensesTable}>
+          <thead>
+            <tr>
+              <th>
+                <button type="button" className={styles.sortableTh} onClick={() => handleRecSort('priority')}>
+                  Priority <RecSortIcon column="priority" />
                 </button>
-                <span className={enterpriseStyles.paginationInfo}>
-                  Page {recPage} / {recTotalPages}
-                </span>
-                <button type="button" className={enterpriseStyles.paginationButton} onClick={() => setRecPage(p => Math.min(recTotalPages, p + 1))} disabled={recPage >= recTotalPages} aria-label="Next page">
-                  <FaChevronRight />
+              </th>
+              <th>
+                <button type="button" className={styles.sortableTh} onClick={() => handleRecSort('recommendation')}>
+                  Recommendation <RecSortIcon column="recommendation" />
                 </button>
-              </div>
-            </div>
-          </div>}
-        {clientId && !recsLoading && !recsError && sortedSecureRecommendations.length === 0 && <p style={{
-        fontSize: '0.875rem',
-        color: 'var(--tenant-muted)'
-      }}>
-            No recommendations returned by Microsoft for this tenant.
-          </p>}
-      </div>
-
-      {}
-      {(() => {
-      const calculateMfaMethodStats = () => {
-        if (!users || users.length === 0) return null;
-        const methodCounts = {
-          'phoneauthenticationmethod': 0,
-          'microsoftauthenticatorauthenticationmethod': 0,
-          'softwareoathauthenticationmethod': 0,
-          'emailauthenticationmethod': 0
-        };
-        users.forEach(user => {
-          if (user.mfaMethods && Array.isArray(user.mfaMethods)) {
-            user.mfaMethods.forEach(method => {
-              if (methodCounts.hasOwnProperty(method)) {
-                methodCounts[method]++;
-              }
-            });
-          }
-        });
-        return methodCounts;
-      };
-      const mfaMethodStats = calculateMfaMethodStats();
-      const totalUsers = users?.length || 0;
-      const getMethodDisplayInfo = methodType => {
-        switch (methodType) {
-          case 'microsoftauthenticatorauthenticationmethod':
-            return {
-              name: 'Authenticator',
-              icon: 'mdi:cellphone'
-            };
-          case 'phoneauthenticationmethod':
-            return {
-              name: 'SMS/Appel',
-              icon: 'mdi:phone'
-            };
-          case 'fido2authenticationmethod':
-            return {
-              name: 'FIDO2 key',
-              icon: 'mdi:usb'
-            };
-          case 'softwareoathauthenticationmethod':
-            return {
-              name: 'Software OAuth',
-              icon: 'mdi:shield-key'
-            };
-          case 'temporaryaccesspassauthenticationmethod':
-            return {
-              name: 'Passe Temp',
-              icon: 'mdi:timer-sand'
-            };
-          case 'emailauthenticationmethod':
-            return {
-              name: 'Email',
-              icon: 'mdi:email-outline'
-            };
-          default:
-            return {
-              name: methodType.replace('authenticationmethod', '').replace(/([A-Z])/g, ' $1').trim(),
-              icon: 'mdi:help-circle'
-            };
-        }
-      };
-      if (mfaMethodStats && Object.keys(mfaMethodStats).some(key => mfaMethodStats[key] > 0)) {
-        return <div style={{
-          marginBottom: '1.5rem'
-        }}>
-              <h3 className={styles.subsectionTitle} style={{
-            marginBottom: '0.75rem'
-          }}>
-                MFA authentication methods
-              </h3>
-              <div style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-            gap: '1rem'
-          }}>
-                {[['phoneauthenticationmethod', mfaMethodStats['phoneauthenticationmethod']], ['microsoftauthenticatorauthenticationmethod', mfaMethodStats['microsoftauthenticatorauthenticationmethod']], ['softwareoathauthenticationmethod', mfaMethodStats['softwareoathauthenticationmethod']], ['emailauthenticationmethod', mfaMethodStats['emailauthenticationmethod']]].filter(([methodType, count]) => count > 0).map(([methodType, count]) => {
-              const percentage = totalUsers > 0 ? Math.round(count / totalUsers * 100) : 0;
-              const methodInfo = getMethodDisplayInfo(methodType);
-              return <div key={methodType} style={{
-                padding: '1rem',
-                borderRadius: '12px',
-                background: 'var(--tenant-panel)',
-                border: '1px solid var(--tenant-line)',
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
-                gap: '0.5rem'
+              </th>
+              <th>
+                <button type="button" className={styles.sortableTh} onClick={() => handleRecSort('category')}>
+                  Category <RecSortIcon column="category" />
+                </button>
+              </th>
+              <th>
+                <button type="button" className={styles.sortableTh} onClick={() => handleRecSort('state')}>
+                  Status <RecSortIcon column="state" />
+                </button>
+              </th>
+              <th className={styles.textRight}>
+                <button type="button" className={styles.sortableTh} onClick={() => handleRecSort('score')}>
+                  Points <RecSortIcon column="score" />
+                </button>
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            {recsLoading ? <tr>
+                <td colSpan={5}>Loading Microsoft recommendationsâ€¦</td>
+              </tr> : recs.length === 0 ? <tr>
+                <td colSpan={5}>{recsError || "No recommendations returned for this tenant."}</td>
+              </tr> : recs.map((rec, idx) => {
+            const max = Number(rec.maxScore) || 0;
+            const cur = Number(rec.currentScore) ?? 0;
+            const title = rec.titleFr || rec.title || rec.displayName || "-";
+            const remediation = rec.remediationFr || rec.remediation || '';
+            const rowKey = rec.id ?? `rec-${(recPage - 1) * recPageSize + idx}`;
+            return <tr key={rowKey}>
+                    <td>
+                      <span style={{
+                fontWeight: 600,
+                color: priorityColor(rec.priorityLabel),
+                fontSize: '0.8125rem'
               }}>
-                        <div style={{
-                  fontSize: '0.85rem',
-                  fontWeight: '600',
-                  color: 'var(--tenant-ink)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '0.5rem'
-                }}>
-                          <Icon icon={methodInfo.icon} style={{
-                    fontSize: '1rem',
-                    color: '#10b981'
-                  }} />
-                          {methodInfo.name}
-                        </div>
-                        <div style={{
-                  fontSize: '2rem',
-                  fontWeight: '700',
-                  color: 'var(--tenant-ink)',
-                  display: 'flex',
-                  alignItems: 'baseline',
-                  gap: '0.35rem'
-                }}>
-                          <span>{count}</span>
-                          <span style={{
-                    fontSize: '1rem',
-                    fontWeight: '600',
-                    color: '#4b5563'
-                  }}>
-                            ({percentage}%)
-                          </span>
-                        </div>
-                      </div>;
-            })}
-              </div>
-            </div>;
-      }
-      return null;
-    })()}
-
-      {}
-      {securityData?.defenderSecureScore && <div style={{
-      marginBottom: '1.5rem',
-      padding: '1.25rem',
-      borderRadius: '12px',
-      background: 'var(--tenant-panel)',
-      border: '1px solid var(--tenant-line)',
-      display: 'flex',
-      flexDirection: 'column',
-      gap: '1rem'
-    }}>
-          <div style={{
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        flexWrap: 'wrap',
-        gap: '1rem'
-      }}>
-            <div style={{
-          minWidth: '160px',
-          flex: '1'
-        }}>
-              <div style={{
-            fontSize: '0.85rem',
-            fontWeight: '600',
-            color: 'var(--tenant-ink)',
-            marginBottom: '0.75rem'
-          }}>
-                Microsoft 365 Defender security score
-              </div>
-              <div style={{
-            display: 'flex',
-            alignItems: 'flex-end',
-            gap: '0.5rem'
-          }}>
-                <div style={{
-              fontSize: '3rem',
-              fontWeight: '700',
-              color: '#10b981',
-              lineHeight: '1'
-            }}>
-                  {Math.round(securityData.defenderSecureScore.currentScore || 0)}
-                </div>
-                <div style={{
-              fontSize: '0.9rem',
-              color: 'var(--tenant-muted)'
-            }}>
-                  / {securityData.defenderSecureScore.maxScore || 0}
-                </div>
-              </div>
-              {securityData.defenderSecureScore.percentage !== null && <div style={{
-            fontSize: '0.85rem',
-            color: 'var(--tenant-muted)',
-            marginTop: '0.25rem',
-            fontWeight: '600'
-          }}>
-                  {securityData.defenderSecureScore.percentage}% des points obtenus
-                </div>}
-              <div style={{
-            marginTop: '0.75rem',
-            width: '100%',
-            height: '6px',
-            background: 'var(--tenant-line)',
-            borderRadius: '999px'
-          }}>
-                <div style={{
-              width: `${Math.min(100, Math.max(0, securityData.defenderSecureScore.percentage || 0))}%`,
-              height: '100%',
-              borderRadius: '999px',
-              background: '#10b981'
-            }} />
-              </div>
-            </div>
-            
-            {}
-            {securityData.defenderSecureScore.averageComparativeScores && securityData.defenderSecureScore.averageComparativeScores.length > 0 && <div style={{
-          flex: '1',
-          minWidth: '200px',
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))',
-          gap: '1rem'
-        }}>
-                {securityData.defenderSecureScore.averageComparativeScores.map((comparison, idx) => <div key={idx} style={{
-            fontSize: '0.8rem',
-            color: 'var(--tenant-muted)'
-          }}>
-                    <div style={{
-              fontWeight: '600',
-              marginBottom: '0.25rem'
-            }}>
-                      {comparison.basis === 'AllTenants' ? 'All organizations' : comparison.basis === 'TotalSeats' ? 'Similar organizations' : comparison.basis || 'Comparison'}
-                    </div>
-                    <div style={{
-              fontSize: '1.25rem',
-              fontWeight: '700',
-              color: comparison.averageScore > (securityData.defenderSecureScore.currentScore || 0) ? '#ef4444' : '#10b981'
-            }}>
-                      {Math.round(comparison.averageScore || 0)}
-                    </div>
-                    <div style={{
-              fontSize: '0.7rem',
-              color: 'var(--tenant-muted)',
-              marginTop: '0.25rem'
-            }}>
-                      Average
-                    </div>
-                  </div>)}
-              </div>}
-          </div>
-          
-          {}
-          {securityData?.secureScoreHistory && securityData.secureScoreHistory.length > 0 && <div style={{
-        marginTop: '1rem'
-      }}>
-              <div style={{
-          fontSize: '0.8rem',
-          fontWeight: '600',
-          marginBottom: '0.5rem',
-          color: 'var(--tenant-muted)'
-        }}>
-                Score history (last 30 days)
-              </div>
-              <div style={{
-          height: '100px',
-          display: 'flex',
-          alignItems: 'flex-end',
-          gap: '2px',
-          padding: '0.5rem',
-          background: '#ffffff',
-          borderRadius: '8px',
-          border: '1px solid var(--tenant-line)'
-        }}>
-                {securityData.secureScoreHistory.map((entry, idx) => {
-            const maxPercentage = Math.max(...securityData.secureScoreHistory.map(e => e.percentage || 0));
-            const height = maxPercentage > 0 ? (entry.percentage || 0) / maxPercentage * 100 : 0;
-            return <div key={idx} style={{
-              flex: 1,
-              height: `${height}%`,
-              minHeight: '4px',
-              background: 'linear-gradient(180deg, #10b981, #059669)',
-              borderRadius: '2px 2px 0 0',
-              position: 'relative',
-              cursor: 'pointer'
-            }} title={`${new Date(entry.date).toLocaleDateString('en-GB')}: ${entry.percentage}% (${entry.score}/${entry.maxScore})`} />;
+                        {rec.priorityLabel || '-'}
+                        {typeof rec.rank === 'number' ? ` #${rec.rank}` : null}
+                      </span>
+                    </td>
+                    <td>
+                      <div style={{ fontWeight: 600, color: 'var(--msp-text)' }}>{title}</div>
+                      {remediation ? <div className={styles.mutedHint} style={{ marginTop: '0.35rem' }} dangerouslySetInnerHTML={{
+                __html: sanitizeRemediationHtml(remediation)
+              }} /> : null}
+                    </td>
+                    <td>{rec.categoryFr || rec.category || "-"}</td>
+                    <td>{rec.stateLabel || rec.state || "-"}</td>
+                    <td className={styles.textRight}>{max != null ? max : "-"}</td>
+                  </tr>;
           })}
-              </div>
-            </div>}
-        </div>}
+          </tbody>
+        </table>
+      </div>
 
+      {clientId && !recsLoading && sortedSecureRecommendations.length > recPageSize ? <div className={styles.pagination}>
+          <button type="button" className={styles.paginationButton} onClick={() => setRecPage(p => Math.max(1, p - 1))} disabled={recPage <= 1} aria-label="Previous page">
+            <FaChevronLeft />
+          </button>
+          <span className={styles.paginationInfo}>
+            Page {recPage} / {recTotalPages}
+          </span>
+          <button type="button" className={styles.paginationButton} onClick={() => setRecPage(p => Math.min(recTotalPages, p + 1))} disabled={recPage >= recTotalPages} aria-label="Next page">
+            <FaChevronRight />
+          </button>
+        </div> : null}
     </div>;
 }
