@@ -2,6 +2,9 @@ export const WIFI_SSID_BAND_OPTIONS = [{
   value: "dual",
   label: "Dual (2,4 + 5 GHz)"
 }, {
+  value: "tri",
+  label: "Tri (2,4 + 5 + 6 GHz)"
+}, {
   value: "2.4",
   label: "2,4 GHz"
 }, {

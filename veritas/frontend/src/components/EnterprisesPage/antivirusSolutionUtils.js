@@ -4,6 +4,17 @@ import { getAntivirusProvider, inferProviderIdFromSolution } from "./antivirusFo
 const DEFAULT_SOLUTION_NAME = "GravityZone BitDefender";
 const BITDEFENDER_BRAND_NAME = "BITDEFENDER";
 const GENERIC_BITDEFENDER_LABELS = new Set(["bitdefender", "bitdefender gravityzone", "gravityzone bitdefender", "gravityzone"]);
+
+export function createAntivirusSolutionId() {
+  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
+    return crypto.randomUUID();
+  }
+  return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, c => {
+    const r = (Math.random() * 16) | 0;
+    const v = c === "x" ? r : (r & 0x3) | 0x8;
+    return v.toString(16);
+  });
+}
 function normalizeLabelKey(value) {
   return String(value || "").toLowerCase().replace(/[-_]/g, " ").replace(/\s+/g, " ").trim();
 }
@@ -350,7 +361,7 @@ export async function syncAndPersistAntivirusSolution(clientId, solution, {
     ...updatedPayload,
     id: entry.id ?? normalized.id
   } : entry) : [...existingSolutions, {
-    id: normalized.id ?? Date.now(),
+    id: normalized.id ?? createAntivirusSolutionId(),
     ...updatedPayload
   }];
   await saveClientModules(clientId, {

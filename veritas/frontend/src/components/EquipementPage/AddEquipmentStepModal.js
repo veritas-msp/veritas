@@ -6,6 +6,7 @@ import styles from "./AddEquipmentStepModal.module.css";
 import { updateClient, fetchClientModules, saveClientModules } from "../../api/clients";
 import { showError, showSuccess } from "../../utils/toast";
 import { StepServers, StepInternet, StepFirewalls, StepStorage, StepSwitch, StepBorneWifi } from "./EquipmentSteps";
+import { hasStorageRoles } from "./constants/storageRoleOptions";
 const CATEGORY_TO_STEP = {
   Internet: {
     key: "internet",
@@ -186,8 +187,7 @@ export default function AddEquipmentStepModal({
             showError(`Storage device ${i + 1} must have a name.`);
             return false;
           }
-          const roleVal = typeof nas.role === 'string' ? nas.role.trim() : Array.isArray(nas.role) ? nas.role.join('') : '';
-          if (!roleVal) {
+          if (!hasStorageRoles(nas.role)) {
             showError(`Storage device ${nas.nom || i + 1} must have a role.`);
             return false;
           }

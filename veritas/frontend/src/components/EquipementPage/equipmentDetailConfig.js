@@ -9,6 +9,7 @@ import { isSynologyBrand } from "./synologyEquipmentUtils";
 import { getEquipmentDetailFieldLabel, getEquipmentDetailCopy, localizeEquipmentDetailSection } from "./equipmentDetailPageI18n";
 import { formatAssignedSsidsDisplay, buildBorneWifiSsidFormState, collectEquipmentAssignedSsids, normalizeWifiSsidCatalog, resolveClientWifiSsidCatalog } from "./wifiApSsidUtils";
 import { shouldShowStorageDiskBays } from "./storageDiskUtils";
+import { normalizeStorageRoles } from "./constants/storageRoleOptions";
 import { getSharedEquipmentFieldLabel } from "./sharedEquipmentFields";
 import { parseCustomFamilyType } from "../../api/equipmentFamilies";
 import { buildExtensionFormValues, formatExtensionFieldValue, readExtensionFieldValue } from "../../utils/systemFamilyExtensions";
@@ -668,7 +669,7 @@ export function buildDetailFormData(equipment, options = {}) {
     luns: base.luns || equipment?.luns || equipment?.rawData?.luns || [],
     disques: base.disques || equipment?.disques || equipment?.rawData?.disques || [],
     licences: base.licences || equipment?.licences || equipment?.rawData?.licences || [],
-    role: moduleKey === "Storage" ? base.role || equipment?.role || "" : base.role || equipment?.role || [],
+    role: moduleKey === "Storage" ? normalizeStorageRoles(base.role ?? equipment?.role) : base.role || equipment?.role || [],
     purchaseDate: base.purchaseDate || equipment?.purchaseDate || equipment?.rawData?.purchaseDate || "",
     invoiceNumber: base.invoiceNumber || equipment?.invoiceNumber || equipment?.rawData?.invoiceNumber || "",
     installDate: base.installDate || equipment?.installDate || equipment?.dateInstallation || equipment?.rawData?.installDate || equipment?.rawData?.dateInstallation || "",

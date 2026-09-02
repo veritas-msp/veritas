@@ -17,7 +17,7 @@ import { getEnterpriseConfigModalsCopy } from "./enterpriseConfigModalsI18n";
 import { getAntivirusModalCopy } from "./antivirusConfigModalI18n";
 import { interpolate } from "../../i18n/translate";
 import { getAntivirusProvider, getAntivirusProviderOptions, inferProviderIdFromSolution, resolveProviderGlobalConfigured } from "./antivirusFormConfig";
-import { removeAntivirusSolution, formatAntivirusSolutionSummary, formatAntivirusSyncPayload, fetchFullAntivirusSyncExtra } from "./antivirusSolutionUtils";
+import { removeAntivirusSolution, formatAntivirusSolutionSummary, formatAntivirusSyncPayload, fetchFullAntivirusSyncExtra, createAntivirusSolutionId } from "./antivirusSolutionUtils";
 import formStyles from "./EnterpriseFormModal.module.css";
 import avStyles from "./AntivirusConfigModal.module.css";
 import BitdefenderApiGuide from "./integrationGuides/BitdefenderApiGuide";
@@ -403,7 +403,7 @@ export default function AntivirusConfigModal({
           Antivirus: {
             ...antivirusEquipement,
             solutions: [...filtered, {
-              id: existingMatch?.id ?? editingSolution?.id ?? Date.now(),
+              id: existingMatch?.id ?? editingSolution?.id ?? createAntivirusSolutionId(),
               ...newSolution
             }]
           }
@@ -496,7 +496,7 @@ export default function AntivirusConfigModal({
         ...newSolution,
         id: entry.id
       } : entry) : [...existingSolutions, {
-        id: Date.now(),
+        id: createAntivirusSolutionId(),
         ...newSolution
       }];
       await saveClientModules(client.id, {

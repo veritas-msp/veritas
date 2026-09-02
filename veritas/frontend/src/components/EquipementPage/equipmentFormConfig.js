@@ -1,4 +1,5 @@
 import { normalizeServerRoles } from "./constants/serverRoleOptions";
+import { normalizeStorageRoles } from "./constants/storageRoleOptions";
 import { readServerRemoteAccess } from "./constants/serverRemoteAccessUtils";
 import { toDateInputValue } from "./constants/firewallLicenceUtils";
 import { applyFirewallDeploymentTypeChange, applyRouterTypeChange } from "./constants/equipmentCatalog";
@@ -2089,7 +2090,7 @@ export function buildInitialFormData(equipment, moduleKey, {
       numeroDisque: d("numeroDisque", ""),
       storageType,
       type: legacyType || storageTypeToLegacyType(storageType),
-      role: typeof raw.role === "string" ? raw.role : Array.isArray(raw.role) ? raw.role[0] : "",
+      role: normalizeStorageRoles(raw.role ?? equipment?.role),
       modeHA: readEquipmentBool(equipment, "modeHA") || !!d("modeHA", false),
       roleHA: readEquipmentText(equipment, "roleHA", d("roleHA", "")),
       storageHAName: readEquipmentText(equipment, "storageHAName", d("storageHAName", "")),
@@ -2254,7 +2255,7 @@ export function buildEquipmentSectionMeta(form, moduleKey, {
       meta.network = false;
     }
     if (!profile.showHa) meta.ha = false;
-    meta.storage = Boolean(profile.showRole && form?.role?.trim() || profile.showRaid && form?.raid?.trim() || profile.showCapacite && form?.capacite?.trim() || profile.showDisques && (form?.nbDisquesActuels?.trim() || form?.nbDisquesMax?.trim()) || profile.showQuickConnect && form?.quickConnect?.trim() || profile.showNumeroDisque && form?.numeroDisque?.trim());
+    meta.storage = Boolean(profile.showRole && (Array.isArray(form?.role) ? form.role.length > 0 : String(form?.role || "").trim()) || profile.showRaid && form?.raid?.trim() || profile.showCapacite && form?.capacite?.trim() || profile.showDisques && (form?.nbDisquesActuels?.trim() || form?.nbDisquesMax?.trim()) || profile.showQuickConnect && form?.quickConnect?.trim() || profile.showNumeroDisque && form?.numeroDisque?.trim());
     meta.maintenance = false;
     meta.notes = Boolean(form?.commentaire?.trim());
   }

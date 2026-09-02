@@ -222,7 +222,8 @@ export default function ReportSummaryCybersecurity({
   equipmentCheckMKData = {},
   equipmentComments = {},
   equipmentCommentCounts = {},
-  equipmentTicketCounts = {}
+  equipmentTicketCounts = {},
+  includeSections = null
 }) {
   const sauvegardeInstances = useMemo(() => {
     const raw = client?.equipements?.Sauvegarde;
@@ -355,9 +356,14 @@ export default function ReportSummaryCybersecurity({
     };
   }, [antispamSolutions]);
   const modules = client?.modules_monitoring || {};
-  const isAntivirusActive = !!modules.Antivirus;
-  const isAntispamActive = !!modules.Antispam;
-  const isBackupActive = !!modules.Backup;
+  const sectionSet = Array.isArray(includeSections) && includeSections.length
+    ? new Set(includeSections.map(s => String(s).toLowerCase()))
+    : null;
+  const showSection = key => !sectionSet || sectionSet.has(String(key).toLowerCase());
+  const isAntivirusActive = showSection("antivirus") && (!!modules.Antivirus || antivirusSolutions.length > 0);
+  const isAntispamActive = showSection("antispam") && (!!modules.Antispam || antispamSolutions.length > 0);
+  const isBackupActive = showSection("backup") && (!!modules.Backup || sauvegardeInstances.length > 0);
+  const showLegend = !sectionSet;
   const storageIpByName = useMemo(() => {
     const sources = [...(Array.isArray(client?.equipements?.NAS) ? client.equipements.NAS : []), ...(Array.isArray(client?.equipements?.SAN) ? client.equipements.SAN : []), ...(Array.isArray(client?.equipements?.Storage) ? client.equipements.Storage : [])];
     const map = {};
@@ -542,9 +548,9 @@ export default function ReportSummaryCybersecurity({
   const antivirusPolicyRows = useMemo(() => buildAntivirusPolicyRowsForClient(antivirusSolutions), [antivirusSolutions]);
   const antivirusEndpointRows = useMemo(() => buildAntivirusEndpointRowsForClient(antivirusSolutions), [antivirusSolutions]);
   return <div className={infraStyles.root}>
-      <div className={infraStyles.overviewContainer}>
+      {showLegend ? <div className={infraStyles.overviewContainer}>
         <CyberNotificationLegend commentTotal={cyberCommentTotal} ticketTotal={cyberTicketTotal} />
-      </div>
+      </div> : null}
 
       {}
       {isBackupActive && <section className={infraStyles.section}>

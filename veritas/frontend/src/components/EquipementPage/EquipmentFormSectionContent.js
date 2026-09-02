@@ -1,6 +1,7 @@
 import React from "react";
 import { Icon } from "@iconify/react";
 import RoleTagsSelect from "./RoleTagsSelect";
+import { normalizeStorageRoles } from "./constants/storageRoleOptions";
 import { SERVER_CATALOG } from "./constants/equipmentCatalog";
 import { SERVER_TYPE_OPTIONS, STORAGE_TYPE_OPTIONS, FIREWALL_TYPE_OPTIONS, ROUTEUR_TYPE_OPTIONS, ALIMENTATION_TYPE_OPTIONS, TOIP_TYPE_OPTIONS, getFirewallFormProfile, getRouterFormProfile, getServerFormProfile, getStorageFormProfile, applyFirewallTypeChange, applyRouteurTypeChange, applyServerTypeChange, applyStorageTypeChange, applyAlimentationTypeChange, getAlimentationFormProfile, applyToipTypeChange, applyComputerTypeChange, getToipFormProfile, isToipVoipSectionVisible, normalizeServerType, normalizeStorageType, normalizeFirewallType, normalizeRouteurType, resolveToipDeploymentType, EQUIPMENT_SERIAL_PLACEHOLDER } from "./equipmentFormConfig";
 import ComputerTypePicker from "./ComputerTypePicker";
@@ -27,6 +28,7 @@ import VlanChipsInput from "./VlanChipsInput";
 import { getSharedEquipmentFieldLabel } from "./sharedEquipmentFields";
 import styles from "../EnterprisesPage/EnterpriseFormModal.module.css";
 import FormNumberStepper from "./FormNumberStepper";
+import { getEquipmentFieldSelectOptions } from "../../utils/equipmentFamilyFieldUtils";
 const NETWORK_EDGE_API_TYPES = new Set(["Switch", "BorneWifi", "Alimentation", "TOIP"]);
 export default function EquipmentFormSectionContent({
   activeSection,
@@ -838,17 +840,9 @@ export default function EquipmentFormSectionContent({
       return <>
           {sectionHead}
           <div className={styles.fieldGrid2}>
-            {apiType === "NAS" && storageProfile?.showRole && <div className={styles.field}>
-                <label className={styles.label} htmlFor="storage-role">
-                  {f.storageRole}
-                </label>
-                <select id="storage-role" className={styles.input} value={formData.role ?? ""} onChange={e => update("role", e.target.value)}>
-                  <option value="">{f.dashOption}</option>
-                  {optionsCopy.storageRoleOptions?.map(opt => <option key={opt.value} value={opt.value}>
-                      {opt.label}
-                    </option>)}
-                  {formData.role && !(optionsCopy.storageRoleOptions || []).some(opt => opt.value === formData.role) && <option value={formData.role}>{formData.role} {f.currentValueSuffix}</option>}
-                </select>
+            {apiType === "NAS" && storageProfile?.showRole && <div className={`${styles.field} ${styles.fieldFull}`}>
+                <label className={styles.label}>{f.storageRole}</label>
+                <RoleTagsSelect groups={optionsCopy.storageRoleGroups} options={optionsCopy.storageRoleOptions} value={Array.isArray(formData.role) ? formData.role : normalizeStorageRoles(formData.role)} onChange={roles => update("role", roles)} placeholder={f.rolesPlaceholder} widgetsCopy={widgetsCopy.roleTagsSelect} />
               </div>}
             {apiType === "NAS" && isSynologyStorageForm && storageProfile?.showQuickConnect && <div className={`${styles.field} ${styles.fieldFull}`}>
                 <label className={styles.label} htmlFor="storage-quickconnect">
@@ -920,6 +914,16 @@ export default function EquipmentFormSectionContent({
                 return <div key={field.fieldKey} className={styles.field}>
                     <label className={labelClass} htmlFor={id}>{field.label}</label>
                     <FormNumberStepper id={id} value={value ?? ""} onChange={next => update(field.fieldKey, next)} />
+                  </div>;
+              }
+              if (field.fieldType === "select") {
+                const options = getEquipmentFieldSelectOptions(field);
+                return <div key={field.fieldKey} className={styles.field}>
+                    <label className={labelClass} htmlFor={id}>{field.label}</label>
+                    <select id={id} className={styles.input} value={value ?? ""} onChange={e => update(field.fieldKey, e.target.value)}>
+                      <option value="">-</option>
+                      {options.map(option => <option key={option} value={option}>{option}</option>)}
+                    </select>
                   </div>;
               }
               return <div key={field.fieldKey} className={styles.field}>

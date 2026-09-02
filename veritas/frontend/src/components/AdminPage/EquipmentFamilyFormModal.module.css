@@ -172,10 +172,31 @@
   gap: 0.4rem;
 }
 
+.orderHint {
+  margin: 0 0 0.55rem;
+  font-size: 0.76rem;
+  color: var(--msp-muted, #5c6b82);
+}
+
+.fieldBlock {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  padding: 0.45rem 0.65rem;
+  border: 1px solid var(--msp-border-light, #eef2f7);
+  border-radius: 10px;
+  background: var(--msp-surface-2, #f8fafc);
+}
+
+.fieldBlockDragging {
+  opacity: 0.82;
+  box-shadow: 0 8px 24px rgba(10, 22, 40, 0.12);
+}
+
 .fieldRowHead,
 .fieldRow {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 8.5rem 3.75rem 4.5rem;
+  grid-template-columns: 2rem minmax(0, 1fr) 8.5rem 3.75rem 2.5rem;
   gap: 0.5rem;
   align-items: center;
 }
@@ -189,15 +210,49 @@
   color: var(--msp-muted-light, #8b9bb5);
 }
 
-.fieldRowHead span:nth-child(3) {
+.fieldRowHead span:nth-child(4) {
   text-align: center;
 }
 
 .fieldRow {
-  padding: 0.4rem 0.65rem;
+  padding: 0;
+  border: none;
+  background: transparent;
+}
+
+.dragHandle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2.25rem;
   border: 1px solid var(--msp-border-light, #eef2f7);
-  border-radius: 10px;
-  background: var(--msp-surface-2, #f8fafc);
+  border-radius: 8px;
+  background: var(--msp-surface, #fff);
+  color: var(--msp-muted, #5c6b82);
+  cursor: grab;
+}
+
+.dragHandle:active {
+  cursor: grabbing;
+}
+
+.fieldOptionsWrap {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  padding-left: 2.5rem;
+}
+
+.fieldOptionsLabel {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--msp-muted, #5c6b82);
+}
+
+.fieldOptionsInput {
+  min-height: 4.5rem;
+  resize: vertical;
 }
 
 .fieldRow input,
@@ -371,6 +426,41 @@
       "label label"
       "type required"
       "action action";
+  }
+
+  .fieldBlock .fieldRow {
+    grid-template-columns: 2rem minmax(0, 1fr);
+    grid-template-areas:
+      "drag label"
+      "drag type"
+      "drag required"
+      "drag action";
+  }
+
+  .fieldBlock .dragHandle {
+    grid-area: drag;
+  }
+
+  .fieldBlock .fieldRow input:first-of-type {
+    grid-area: label;
+  }
+
+  .fieldBlock .fieldRow .typeSelect {
+    grid-area: type;
+  }
+
+  .fieldBlock .fieldRow .requiredToggle {
+    grid-area: required;
+    justify-content: flex-start;
+  }
+
+  .fieldBlock .fieldRow .removeFieldBtn {
+    grid-area: action;
+    justify-self: start;
+  }
+
+  .fieldOptionsWrap {
+    padding-left: 0;
   }
 
   .fieldRow input:first-child {

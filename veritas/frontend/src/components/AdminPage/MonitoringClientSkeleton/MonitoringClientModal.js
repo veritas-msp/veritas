@@ -19,6 +19,7 @@ import StepInternet from "./ClientSteps/StepInternet";
 import StepTOIP from "./ClientSteps/StepTOIP";
 import StepSwitch from "./ClientSteps/StepSwitch";
 import StepBorneWifi from "./ClientSteps/StepBorneWifi";
+import { hasStorageRoles } from "../../EquipementPage/constants/storageRoleOptions";
 import ConfirmationModal from "../../Misc/ConfirmationModal/ConfirmationModal";
 const MODULE_TO_MONITORING_KEY = {
   Internet: "Internet",
@@ -315,8 +316,7 @@ export default function MonitoringClientModal({
             showError(`Storage device ${i + 1} must have a name.`);
             return false;
           }
-          const roleValue = typeof nas.role === 'string' ? nas.role.trim() : Array.isArray(nas.role) ? nas.role.join('') : '';
-          if (!roleValue) {
+          if (!hasStorageRoles(nas.role)) {
             showError(`Storage device ${nas.nom || i + 1} must have a role.`);
             return false;
           }

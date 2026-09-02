@@ -21,4 +21,10 @@ export const ANTIVIRUS_OVERVIEW_SECTIONS = [{
   description: "Security policies",
   icon: "mdi:shield-account-outline",
   sectionKey: "policies"
+}, {
+  id: "quarantine",
+  label: "Quarantaine",
+  description: "Fichiers isolés GravityZone",
+  icon: "mdi:archive-lock-outline",
+  sectionKey: "quarantine"
 }];

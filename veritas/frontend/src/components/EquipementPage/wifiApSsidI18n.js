@@ -25,6 +25,7 @@ const FR = {
   selectedSummaryPlural: "{count} SSID sélectionnés",
   bands: {
     dual: "Dual (2,4 + 5 GHz)",
+    tri: "Tri (2,4 + 5 + 6 GHz)",
     "2.4": "2,4 GHz",
     "5": "5 GHz",
     "6": "6 GHz"
@@ -60,6 +61,7 @@ const EN = {
   selectedSummaryPlural: "{count} SSIDs selected",
   bands: {
     dual: "Dual (2.4 + 5 GHz)",
+    tri: "Tri (2.4 + 5 + 6 GHz)",
     "2.4": "2.4 GHz",
     "5": "5 GHz",
     "6": "6 GHz"

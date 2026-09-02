@@ -8,8 +8,8 @@ export const REPORT_META = {
     shortLabel: "Infrastructure"
   },
   cybersecurite: {
-    label: "Rapport cybersécurité",
-    shortLabel: "Cybersécurité"
+    label: "Rapport sauvegardes",
+    shortLabel: "Sauvegardes"
   },
   services: {
     label: "Rapport services",

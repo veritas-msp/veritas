@@ -14,6 +14,7 @@ import { interpolate } from "../../i18n/translate";
 import { getSharedEquipmentFieldDefs, getSharedEquipmentFieldLabel, mergeCustomEquipmentFamilyFields } from "../EquipementPage/sharedEquipmentFields";
 import { getFormFields } from "../EquipementPage/equipmentFormFieldsI18n";
 import FormNumberStepper from "../EquipementPage/FormNumberStepper";
+import { getEquipmentFieldSelectOptions } from "../../utils/equipmentFamilyFieldUtils";
 import { readEquipmentIsActive } from "../EquipementPage/equipmentFormConfig";
 const STATUS_FIELD_KEYS = new Set(["actif", "active", "is_active", "isActive"]);
 const SECTIONS = [{
@@ -269,6 +270,18 @@ export default function CustomEquipmentModal({
           <FormNumberStepper id={id} value={value ?? ""} onChange={next => patchForm({
           [field.fieldKey]: next
         })} />
+        </div>;
+    }
+    if (field.fieldType === "select") {
+      const options = getEquipmentFieldSelectOptions(field);
+      return <div className={styles.field}>
+          <label className={labelClass} htmlFor={id}>{field.label}</label>
+          <select id={id} className={styles.input} value={value ?? ""} onChange={e => patchForm({
+          [field.fieldKey]: e.target.value
+        })}>
+            <option value="">- Select -</option>
+            {options.map(option => <option key={option} value={option}>{option}</option>)}
+          </select>
         </div>;
     }
     return <div className={styles.field}>

@@ -1098,7 +1098,8 @@ const Storage = ({
     let warrantyInfo = null;
     if (storage.type === 'Disk dur externe' || storage.storageType === 'DISQUE') {
       if (storage.role) {
-        info.push(storage.role);
+        const roles = Array.isArray(storage.role) ? storage.role : [storage.role];
+        roles.filter(Boolean).forEach(role => info.push(role));
       }
       if (storage.capacite) {
         info.push(storage.capacite);
@@ -1113,7 +1114,8 @@ const Storage = ({
     }
     if (storage.type === 'Backup robot' || storage.storageType === 'RDX') {
       if (storage.role) {
-        info.push(storage.role);
+        const roles = Array.isArray(storage.role) ? storage.role : [storage.role];
+        roles.filter(Boolean).forEach(role => info.push(role));
       }
       const leftParts = [];
       if (storage.marque && storage.modele) {

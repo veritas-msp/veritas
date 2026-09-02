@@ -194,6 +194,8 @@ export function buildSummarySnapshot({
       modules: [],
       alerts: [],
       comments: [],
+      generalComments: [],
+      globalComments: [],
       groups: { infra: [], cyber: [], cloud: [] }
     };
   }
@@ -308,6 +310,7 @@ export function buildSummarySnapshot({
       if (needsWatch && watchReasons.length > 0) {
         const watchEntry = {
           id: `watch-${equipmentKey}`,
+          equipmentKey,
           severity: health === "critical" ? "critical" : health === "warn" || alertCount > 0 ? "warn" : "info",
           moduleKey,
           moduleLabel: MODULE_LABELS[moduleKey] || moduleKey,
@@ -378,9 +381,11 @@ export function buildSummarySnapshot({
 
   const comments = (Array.isArray(allComments) ? allComments : []).map(comment => {
     const isEquipment = comment.scope === "equipment";
+    const isGeneral = comment.scope === "general" || (!comment.scope && !comment.equipmentKey);
+    const equipmentKey = comment.equipmentKey ? String(comment.equipmentKey) : null;
     let linkedLabel = "Note générale";
     if (isEquipment) {
-      const moduleKey = comment.moduleKey || getModuleKeyForEquipment(comment.equipmentKey);
+      const moduleKey = comment.moduleKey || getModuleKeyForEquipment(equipmentKey);
       const moduleLabel = moduleKey ? MODULE_LABELS[moduleKey] || moduleKey : "";
       const ref = comment.referenceLabel || comment.ticketTitle || "";
       linkedLabel = [moduleLabel, ref].filter(Boolean).join(" · ") || "Équipement";
@@ -392,9 +397,29 @@ export function buildSummarySnapshot({
       dateLabel: formatDateTimeFr(comment.createdAt),
       linkedLabel,
       isTicket: comment.isTicketComment === true,
-      moduleKey: comment.moduleKey || null
+      moduleKey: comment.moduleKey || null,
+      equipmentKey,
+      isGeneral,
+      scope: comment.scope || (isGeneral ? "general" : "equipment")
     };
   });
+
+  const commentsByEquipment = comments.reduce((acc, comment) => {
+    if (!comment.equipmentKey) return acc;
+    if (!acc[comment.equipmentKey]) acc[comment.equipmentKey] = [];
+    acc[comment.equipmentKey].push(comment);
+    return acc;
+  }, {});
+
+  watchPoints.forEach(point => {
+    point.comments = commentsByEquipment[point.equipmentKey] || [];
+  });
+
+  const watchEquipmentKeys = new Set(watchPoints.map(point => point.equipmentKey).filter(Boolean));
+  const globalComments = comments.filter(comment => comment.isGeneral || comment.scope === "general" || !comment.equipmentKey);
+  const equipmentCommentsOutsideWatch = comments.filter(
+    comment => comment.equipmentKey && !watchEquipmentKeys.has(comment.equipmentKey) && !comment.isGeneral
+  );
 
   const contrat = parseClientContrat(client?.contrat);
   const groups = {
@@ -440,7 +465,10 @@ export function buildSummarySnapshot({
     groups,
     alerts: alerts.slice(0, 24),
     watchPoints,
-    comments
+    comments,
+    generalComments: globalComments,
+    globalComments,
+    equipmentCommentsOutsideWatch
   };
 }
 

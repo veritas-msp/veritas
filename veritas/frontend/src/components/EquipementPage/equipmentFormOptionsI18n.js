@@ -1,6 +1,6 @@
 import { createLocaleGetter } from "../../i18n/translate";
 import { SERVER_ROLE_GROUPS, canonicalizeServerRole } from "./constants/serverRoleOptions";
-import { STORAGE_RAID_OPTIONS, STORAGE_ROLE_OPTIONS } from "./constants/storageRoleOptions";
+import { STORAGE_ROLE_GROUPS, canonicalizeStorageRole } from "./constants/storageRoleOptions";
 import { OS_OPTION_GROUPS, SERVER_HYPERVISOR_OPTIONS } from "./equipmentFormConfig";
 const SERVER_ROLE_GROUP_LABELS_FR = {
   Infrastructure: "Infrastructure",
@@ -138,24 +138,34 @@ const SERVER_ROLE_OPTION_LABELS_EN = {
   Test: "Test",
   Autres: "Other"
 };
+const STORAGE_ROLE_GROUP_LABELS_FR = {
+  Usage: "Usage",
+  "Virtualisation & cloud": "Virtualisation & cloud",
+  Autre: "Autre"
+};
+const STORAGE_ROLE_GROUP_LABELS_EN = {
+  Usage: "Usage",
+  "Virtualisation & cloud": "Virtualization & cloud",
+  Autre: "Other"
+};
 const STORAGE_ROLE_LABELS_FR = {
-  "Stockage de sauvegarde": "Stockage de sauvegarde",
-  "Stockage de fichiers communs": "Stockage de fichiers communs",
-  "Stockage principal": "Stockage principal",
-  "Stockage d'archivage": "Stockage d'archivage",
-  "Stockage de réplication": "Stockage de réplication",
-  "Stockage VM / vSAN": "Stockage VM / vSAN",
-  "Stockage cloud / tiering": "Stockage cloud / tiering",
+  Sauvegarde: "Sauvegarde",
+  "Fichiers partagés": "Fichiers partagés",
+  Principal: "Principal",
+  Archivage: "Archivage",
+  Réplication: "Réplication",
+  "VM / vSAN": "VM / vSAN",
+  "Cloud / tiering": "Cloud / tiering",
   Autre: "Autre"
 };
 const STORAGE_ROLE_LABELS_EN = {
-  "Stockage de sauvegarde": "Backup storage",
-  "Stockage de fichiers communs": "Shared file storage",
-  "Stockage principal": "Primary storage",
-  "Stockage d'archivage": "Archive storage",
-  "Stockage de réplication": "Replication storage",
-  "Stockage VM / vSAN": "VM / vSAN storage",
-  "Stockage cloud / tiering": "Cloud / tiering storage",
+  Sauvegarde: "Backup",
+  "Fichiers partagés": "Shared files",
+  Principal: "Primary",
+  Archivage: "Archive",
+  Réplication: "Replication",
+  "VM / vSAN": "VM / vSAN",
+  "Cloud / tiering": "Cloud / tiering",
   Autre: "Other"
 };
 const RAID_LABELS_FR = {
@@ -350,6 +360,15 @@ function mapSelectOptions(values, labelsMap) {
     label: labelsMap?.[value] ?? value
   }));
 }
+function buildStorageRoleGroups(groupLabels, optionLabels) {
+  return STORAGE_ROLE_GROUPS.map(group => ({
+    label: groupLabels[group.label] ?? group.label,
+    options: group.options.map(value => ({
+      value,
+      label: optionLabels[value] ?? value
+    }))
+  }));
+}
 function buildServerRoleGroups(groupLabels, optionLabels) {
   return SERVER_ROLE_GROUPS.map(group => ({
     label: groupLabels[group.label] ?? group.label,
@@ -368,6 +387,7 @@ function buildOsOptionGroups(groupLabels) {
 function buildLocalePack({
   serverRoleGroupLabels,
   serverRoleOptionLabels,
+  storageRoleGroupLabels,
   storageRoleLabels,
   raidLabels,
   osGroupLabels,
@@ -375,10 +395,12 @@ function buildLocalePack({
   widgets
 }) {
   const serverRoleGroups = buildServerRoleGroups(serverRoleGroupLabels, serverRoleOptionLabels);
+  const storageRoleGroups = buildStorageRoleGroups(storageRoleGroupLabels, storageRoleLabels);
   return {
     serverRoleGroups,
     serverRoleOptions: serverRoleGroups.flatMap(group => group.options),
-    storageRoleOptions: mapSelectOptions(STORAGE_ROLE_OPTIONS, storageRoleLabels),
+    storageRoleGroups,
+    storageRoleOptions: storageRoleGroups.flatMap(group => group.options),
     storageRaidOptions: mapSelectOptions(STORAGE_RAID_OPTIONS, raidLabels),
     osOptionGroups: buildOsOptionGroups(osGroupLabels),
     hypervisorOptions: mapSelectOptions(SERVER_HYPERVISOR_OPTIONS, hypervisorLabels),
@@ -388,6 +410,7 @@ function buildLocalePack({
 const FR = buildLocalePack({
   serverRoleGroupLabels: SERVER_ROLE_GROUP_LABELS_FR,
   serverRoleOptionLabels: SERVER_ROLE_OPTION_LABELS_FR,
+  storageRoleGroupLabels: STORAGE_ROLE_GROUP_LABELS_FR,
   storageRoleLabels: STORAGE_ROLE_LABELS_FR,
   raidLabels: RAID_LABELS_FR,
   osGroupLabels: OS_GROUP_LABELS_FR,
@@ -397,6 +420,7 @@ const FR = buildLocalePack({
 const EN = buildLocalePack({
   serverRoleGroupLabels: SERVER_ROLE_GROUP_LABELS_EN,
   serverRoleOptionLabels: SERVER_ROLE_OPTION_LABELS_EN,
+  storageRoleGroupLabels: STORAGE_ROLE_GROUP_LABELS_EN,
   storageRoleLabels: STORAGE_ROLE_LABELS_EN,
   raidLabels: RAID_LABELS_EN,
   osGroupLabels: OS_GROUP_LABELS_EN,
@@ -431,15 +455,6 @@ const DE = {
     Archivage: "Archivierung",
     Messagerie: "Messaging",
     Autres: "Sonstige"
-  }),
-  storageRoleOptions: mapSelectOptions(STORAGE_ROLE_OPTIONS, {
-    ...STORAGE_ROLE_LABELS_EN,
-    "Stockage de sauvegarde": "Backup-Speicher",
-    "Stockage de fichiers communs": "Gemeinsamer Dateispeicher",
-    "Stockage principal": "Primärspeicher",
-    "Stockage d'archivage": "Archivspeicher",
-    "Stockage de réplication": "Replikationsspeicher",
-    Autre: "Sonstige"
   }),
   storageRaidOptions: mapSelectOptions(STORAGE_RAID_OPTIONS, {
     Aucun: "Keine",
@@ -497,6 +512,7 @@ const DE = {
   }
 };
 DE.serverRoleOptions = DE.serverRoleGroups.flatMap(group => group.options);
+DE.storageRoleOptions = DE.storageRoleGroups.flatMap(group => group.options);
 const IT = {
   ...EN,
   serverRoleGroups: buildServerRoleGroups({
@@ -525,15 +541,6 @@ const IT = {
     Archivage: "Archiviazione",
     Messagerie: "Messaggistica",
     Autres: "Altro"
-  }),
-  storageRoleOptions: mapSelectOptions(STORAGE_ROLE_OPTIONS, {
-    ...STORAGE_ROLE_LABELS_EN,
-    "Stockage de sauvegarde": "Storage di backup",
-    "Stockage de fichiers communs": "Storage file condivisi",
-    "Stockage principal": "Storage principale",
-    "Stockage d'archivage": "Storage di archivio",
-    "Stockage de réplication": "Storage di replica",
-    Autre: "Altro"
   }),
   storageRaidOptions: mapSelectOptions(STORAGE_RAID_OPTIONS, {
     Aucun: "Nessuno",
@@ -591,6 +598,7 @@ const IT = {
   }
 };
 IT.serverRoleOptions = IT.serverRoleGroups.flatMap(group => group.options);
+IT.storageRoleOptions = IT.storageRoleGroups.flatMap(group => group.options);
 const ES = {
   ...EN,
   serverRoleGroups: buildServerRoleGroups({
@@ -619,15 +627,6 @@ const ES = {
     Archivage: "Archivo",
     Messagerie: "Mensajería",
     Autres: "Otro"
-  }),
-  storageRoleOptions: mapSelectOptions(STORAGE_ROLE_OPTIONS, {
-    ...STORAGE_ROLE_LABELS_EN,
-    "Stockage de sauvegarde": "Almacenamiento de backup",
-    "Stockage de fichiers communs": "Almacenamiento de archivos compartidos",
-    "Stockage principal": "Almacenamiento principal",
-    "Stockage d'archivage": "Almacenamiento de archivo",
-    "Stockage de réplication": "Almacenamiento de replicación",
-    Autre: "Otro"
   }),
   storageRaidOptions: mapSelectOptions(STORAGE_RAID_OPTIONS, {
     Aucun: "Ninguno",
@@ -685,6 +684,7 @@ const ES = {
   }
 };
 ES.serverRoleOptions = ES.serverRoleGroups.flatMap(group => group.options);
+ES.storageRoleOptions = ES.storageRoleGroups.flatMap(group => group.options);
 const OPTIONS_COPY = {
   fr: FR,
   en: EN,
@@ -697,5 +697,11 @@ export function getRoleOptionLabel(locale, value, optionsCopy) {
   const copy = optionsCopy || getEquipmentFormOptionsCopy(locale);
   const canonical = canonicalizeServerRole(value);
   const match = copy.serverRoleOptions.find(entry => entry.value === canonical || entry.value === value);
+  return match?.label ?? canonical ?? value;
+}
+export function getStorageRoleOptionLabel(locale, value, optionsCopy) {
+  const copy = optionsCopy || getEquipmentFormOptionsCopy(locale);
+  const canonical = canonicalizeStorageRole(value);
+  const match = copy.storageRoleOptions.find(entry => entry.value === canonical || entry.value === value);
   return match?.label ?? canonical ?? value;
 }

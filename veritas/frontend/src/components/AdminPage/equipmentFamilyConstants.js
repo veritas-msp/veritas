@@ -1,6 +1,10 @@
 import { EQUIPMENT_MODULE_LABELS } from "../EquipementPage/equipmentFormConfig";
 import { HARDWARE_TYPE_ORDER } from "../EnterprisesPage/infraHoneycombLayout";
 import { INFRA_TYPE_ICONS } from "../EnterprisesPage/infraMapUtils";
+import {
+  buildEquipmentFieldOptionsText,
+  ensureEquipmentFieldClientIds
+} from "../../utils/equipmentFamilyFieldUtils";
 
 export function slugifyEquipmentFieldKey(value) {
   return String(value || "")
@@ -61,6 +65,9 @@ export const EQUIPMENT_FIELD_TYPES = [{
 }, {
   value: "boolean",
   label: "Yes / No"
+}, {
+  value: "select",
+  label: "Dropdown list"
 }];
 export const EQUIPMENT_DISPLAY_MODES = [{
   value: "hexagon",
@@ -110,7 +117,7 @@ export function buildDefaultEquipmentFamilyDraft() {
     honeycombQ: "",
     honeycombR: "",
     layoutTiles: [],
-    fields: [{
+    fields: ensureEquipmentFieldClientIds([{
       fieldKey: "marque",
       label: "Brand",
       fieldType: "text",
@@ -135,7 +142,11 @@ export function buildDefaultEquipmentFamilyDraft() {
       label: "Invoice number",
       fieldType: "text",
       required: false
-    }]
+    }].map(field => ({
+      ...field,
+      options: [],
+      optionsText: ""
+    })))
   };
 }
 export function buildEquipmentFamilyDraftFromFamily(family) {
@@ -149,13 +160,15 @@ export function buildEquipmentFamilyDraftFromFamily(family) {
     honeycombQ: family.honeycombQ == null ? "" : String(family.honeycombQ),
     honeycombR: family.honeycombR == null ? "" : String(family.honeycombR),
     layoutTiles: Array.isArray(family.layoutTiles) ? family.layoutTiles : [],
-    fields: (family.fields || []).map(field => ({
+    fields: ensureEquipmentFieldClientIds((family.fields || []).map(field => ({
       id: field.id,
       fieldKey: field.fieldKey || "",
       label: field.label || "",
       fieldType: field.fieldType || "text",
       required: Boolean(field.required),
-      displayOrder: field.displayOrder
-    }))
+      displayOrder: field.displayOrder,
+      options: Array.isArray(field.options) ? field.options : [],
+      optionsText: buildEquipmentFieldOptionsText(field.options)
+    })))
   };
 }

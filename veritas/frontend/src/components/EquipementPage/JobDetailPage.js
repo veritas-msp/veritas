@@ -211,6 +211,7 @@ export default function JobDetailPage({
     try {
       sessionStorage.removeItem("cyber_backups_cache_v1");
       sessionStorage.removeItem("cyber_page_data_cache_v1");
+      sessionStorage.removeItem("cyber_page_data_cache_v2");
     } catch {}
     window.dispatchEvent(new CustomEvent("veritas:backups-changed"));
   };

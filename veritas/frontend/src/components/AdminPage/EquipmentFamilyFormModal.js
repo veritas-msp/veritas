@@ -1,7 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import { Icon } from "@iconify/react";
-import { FaPlus, FaTimes } from "react-icons/fa";
+import { slugifyEquipmentFieldKey } from "./equipmentFamilyConstants";
+import { DndContext, KeyboardSensor, PointerSensor, closestCenter, useSensor, useSensors } from "@dnd-kit/core";
+import { SortableContext, sortableKeyboardCoordinates, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
+import { FaGripVertical } from "react-icons/fa6";
 import { Switch } from "./AdminUi";
 import { useCommonCopy } from "../../hooks/useCommonCopy";
 import { useAdminCommonCopy, useAdminModalCopy } from "../../hooks/useAdminCopy";
@@ -9,10 +13,84 @@ import { useAppLocale } from "../../hooks/useAppGeneralSettings";
 import { getEquipmentFamilyFormSections, getEquipmentFieldTypes } from "./adminFormModalsI18n";
 import { interpolate } from "../../i18n/translate";
 import IconPicker, { EQUIPMENT_FAMILY_ICON_CHOICES } from "./IconPicker";
-import { slugifyEquipmentFieldKey } from "./equipmentFamilyConstants";
+import {
+  buildEquipmentFieldOptionsText,
+  createEmptyEquipmentFieldDraft,
+  ensureEquipmentFieldClientIds,
+  normalizeEquipmentFieldOptions,
+  reorderEquipmentFields
+} from "../../utils/equipmentFamilyFieldUtils";
+import { FaPlus, FaTimes } from "react-icons/fa";
 import { getSystemFamilyBuiltinFields } from "./systemFamilyBuiltinFields";
 import layout from "../EnterprisesPage/EnterpriseFormModal.module.css";
 import styles from "./EquipmentFamilyFormModal.module.css";
+
+function SortableFieldRow({
+  field,
+  index,
+  fieldTypes,
+  adminCopy,
+  modalCopy,
+  onUpdate,
+  onRemove
+}) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging
+  } = useSortable({
+    id: field.clientId,
+    data: { index }
+  });
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition
+  };
+  const isSelect = field.fieldType === "select";
+  return <div ref={setNodeRef} style={style} className={`${styles.fieldBlock} ${isDragging ? styles.fieldBlockDragging : ""}`}>
+      <div className={styles.fieldRow}>
+        <button type="button" className={styles.dragHandle} aria-label={modalCopy.dragHandleAria} {...attributes} {...listeners}>
+          <FaGripVertical aria-hidden />
+        </button>
+        <input type="text" className={layout.input} value={field.label || ""} onChange={e => onUpdate(index, {
+        label: e.target.value
+      })} placeholder={modalCopy.fieldLabelPlaceholder} />
+        <select className={`${layout.input} ${styles.typeSelect}`} value={field.fieldType || "text"} onChange={e => {
+        const nextType = e.target.value;
+        onUpdate(index, {
+          fieldType: nextType,
+          options: nextType === "select" ? normalizeEquipmentFieldOptions(field) : [],
+          optionsText: nextType === "select" ? field.optionsText || buildEquipmentFieldOptionsText(field.options) : ""
+        });
+      }}>
+          {fieldTypes.map(type => <option key={type.value} value={type.value}>
+              {type.label}
+            </option>)}
+        </select>
+        <label className={styles.requiredToggle}>
+          <input type="checkbox" checked={Boolean(field.required)} onChange={e => onUpdate(index, {
+          required: e.target.checked
+        })} />
+          <span>{adminCopy.required}</span>
+        </label>
+        <button type="button" className={styles.removeFieldBtn} onClick={() => onRemove(index)} aria-label={adminCopy.removeField}>
+          <FaTimes />
+        </button>
+      </div>
+      {isSelect ? <div className={styles.fieldOptionsWrap}>
+          <label className={styles.fieldOptionsLabel} htmlFor={`field-options-${field.clientId}`}>
+            {modalCopy.fieldOptionsLabel}
+          </label>
+          <textarea id={`field-options-${field.clientId}`} className={`${layout.input} ${styles.fieldOptionsInput}`} rows={3} value={field.optionsText ?? buildEquipmentFieldOptionsText(field.options)} onChange={e => onUpdate(index, {
+        optionsText: e.target.value
+      })} placeholder={modalCopy.fieldOptionsPlaceholder} />
+        </div> : null}
+    </div>;
+}
+
 export default function EquipmentFamilyFormModal({
   open,
   mode = "create",
@@ -40,6 +118,15 @@ export default function EquipmentFamilyFormModal({
     [isSystem, draft?.familyKey, locale]
   );
   const [activeSection, setActiveSection] = useState("identity");
+  const sensors = useSensors(useSensor(PointerSensor, {
+    activationConstraint: {
+      distance: 6
+    }
+  }), useSensor(KeyboardSensor, {
+    coordinateGetter: sortableKeyboardCoordinates
+  }));
+  const sortableFields = useMemo(() => ensureEquipmentFieldClientIds(draft?.fields || []), [draft?.fields]);
+  const sortableFieldIds = useMemo(() => sortableFields.map(field => field.clientId), [sortableFields]);
   useEffect(() => {
     if (!open) return;
     setActiveSection(isSystem ? "fields" : "identity");
@@ -74,18 +161,24 @@ export default function EquipmentFamilyFormModal({
   const addField = () => {
     setDraft(prev => ({
       ...prev,
-      fields: [...(prev.fields || []), {
-        fieldKey: "",
-        label: "",
-        fieldType: "text",
-        required: false
-      }]
+      fields: [...(prev.fields || []), createEmptyEquipmentFieldDraft()]
     }));
   };
   const removeField = index => {
     setDraft(prev => ({
       ...prev,
       fields: (prev.fields || []).filter((_, i) => i !== index)
+    }));
+  };
+  const handleFieldDragEnd = event => {
+    const {
+      active,
+      over
+    } = event;
+    if (!over || active.id === over.id) return;
+    setDraft(prev => ({
+      ...prev,
+      fields: reorderEquipmentFields(ensureEquipmentFieldClientIds(prev.fields || []), active.id, over.id)
     }));
   };
   const renderSectionContent = () => {
@@ -145,12 +238,14 @@ export default function EquipmentFamilyFormModal({
                 <p className={layout.sectionDesc}>{modalCopy.builtinFieldsDesc}</p>
                 <div className={styles.fieldsList}>
                   <div className={styles.fieldRowHead} aria-hidden>
+                    <span />
                     <span>{adminCopy.label}</span>
                     <span>{modalCopy.fieldTypeCol}</span>
                     <span>{adminCopy.required}</span>
                     <span />
                   </div>
                   {builtinFields.map(field => <div key={`builtin-${field.fieldKey}`} className={`${styles.fieldRow} ${styles.fieldRowReadonly}`}>
+                      <span aria-hidden />
                       <input type="text" className={layout.input} value={field.label || ""} disabled />
                       <input type="text" className={`${layout.input} ${styles.typeSelect}`} value={fieldTypes.find(type => type.value === field.fieldType)?.label || field.fieldType} disabled />
                       <label className={styles.requiredToggle}>
@@ -162,36 +257,20 @@ export default function EquipmentFamilyFormModal({
                 </div>
                 <h4 className={styles.subTitle}>{modalCopy.extraFieldsTitle}</h4>
               </> : null}
+            <p className={styles.orderHint}>{modalCopy.fieldOrderHint}</p>
             <div className={styles.fieldsList}>
-              {(draft.fields || []).length === 0 ? <p className={styles.emptyFields}>{modalCopy.noFields}</p> : <>
+              {sortableFields.length === 0 ? <p className={styles.emptyFields}>{modalCopy.noFields}</p> : <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleFieldDragEnd}>
                   <div className={styles.fieldRowHead} aria-hidden>
+                    <span />
                     <span>{adminCopy.label}</span>
                     <span>{modalCopy.fieldTypeCol}</span>
                     <span>{adminCopy.required}</span>
                     <span />
                   </div>
-                  {(draft.fields || []).map((field, index) => <div key={`field-${index}`} className={styles.fieldRow}>
-                    <input type="text" className={layout.input} value={field.label || ""} onChange={e => updateField(index, {
-                label: e.target.value
-              })} placeholder={modalCopy.fieldLabelPlaceholder} />
-                    <select className={`${layout.input} ${styles.typeSelect}`} value={field.fieldType || "text"} onChange={e => updateField(index, {
-                fieldType: e.target.value
-              })}>
-                      {fieldTypes.map(type => <option key={type.value} value={type.value}>
-                          {type.label}
-                        </option>)}
-                    </select>
-                    <label className={styles.requiredToggle}>
-                      <input type="checkbox" checked={Boolean(field.required)} onChange={e => updateField(index, {
-                  required: e.target.checked
-                })} />
-                      <span>{adminCopy.required}</span>
-                    </label>
-                    <button type="button" className={styles.removeFieldBtn} onClick={() => removeField(index)} aria-label={adminCopy.removeField}>
-                      <FaTimes />
-                    </button>
-                  </div>)}
-                </>}
+                  <SortableContext items={sortableFieldIds} strategy={verticalListSortingStrategy}>
+                    {sortableFields.map((field, index) => <SortableFieldRow key={field.clientId} field={field} index={index} fieldTypes={fieldTypes} adminCopy={adminCopy} modalCopy={modalCopy} onUpdate={updateField} onRemove={removeField} />)}
+                  </SortableContext>
+                </DndContext>}
             </div>
             <button type="button" className={styles.addFieldBtn} onClick={addField}>
               <FaPlus /> {adminCopy.addField}

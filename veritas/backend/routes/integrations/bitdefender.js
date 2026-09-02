@@ -1269,6 +1269,7 @@ router.get('/gravityzone/:companyId/dashboard', async (req, res) => {
       quarantine: buildApiSection("quarantine", "Quarantaine", false, quarantineRes, item => ({
         id: item.id,
         fileName: item.fileName || item.name || "File",
+        filePath: item.filePath || item.path || null,
         threat: item.threatName || item.detectionName || null,
         endpoint: item.endpointName || item.computerName || null,
         quarantinedAt: item.quarantineDate || item.date || null

@@ -356,6 +356,27 @@ export function AntivirusOverviewPanel({
               </span>;
           }
         }]
+      } : null,
+      quarantine: sections.quarantine ? {
+        ...sections.quarantine,
+        columns: [{
+          key: "fileName",
+          label: "Fichier"
+        }, {
+          key: "filePath",
+          label: "Chemin",
+          render: row => row.filePath || "-"
+        }, {
+          key: "threat",
+          label: "Menace"
+        }, {
+          key: "endpoint",
+          label: "Poste"
+        }, {
+          key: "quarantinedAt",
+          label: "Date de quarantaine",
+          render: row => formatDate(row.quarantinedAt)
+        }]
       } : null
     };
   }, [sections, enrichedEndpoints]);
@@ -373,11 +394,12 @@ export function AntivirusOverviewPanel({
             </p>
           </StatsPanel>
 
-          <section className={`${dashStyles.kpiGrid} ${dashStyles.kpiGrid4}`}>
-            <KpiCard icon="mdi:desktop-classic" label="Inventoried workstations" value={endpoints?.total ?? "-"} sub={`${sections.policies?.total ?? 0} politique(s) actives`} />
-            <KpiCard icon="mdi:license" label="Licenses" value={license?.used != null && license?.total != null ? `${license.used}/${license.total}` : "-"} sub={licenseUsagePct != null ? `${licenseUsagePct}% used` : "License consumption"} tone={licenseUsagePct == null ? "neutral" : licenseUsagePct >= 95 ? "bad" : licenseUsagePct >= 80 ? "warn" : "good"} />
-            <KpiCard icon="mdi:shield-alert-outline" label="Incidents" value={sections.incidents?.total ?? 0} sub="GravityZone overview" tone={(sections.incidents?.total ?? 0) > 0 ? "warn" : "good"} />
-            <KpiCard icon="mdi:heart-pulse" label="Endpoint health" value={enrichedSummary?.total ? `${Math.max(0, enrichedSummary.total - (enrichedSummary.infected || 0))}/${enrichedSummary.total}` : "-"} sub={enrichedSummary?.infected ? `${enrichedSummary.infected} infected` : "Analyse malware"} tone={enrichedSummary?.infected ? "bad" : "good"} />
+          <section className={`${dashStyles.kpiGrid} ${dashStyles.kpiGrid5}`}>
+            <KpiCard icon="mdi:desktop-classic" label="Postes inventoriés" value={endpoints?.total ?? "-"} sub={`${sections.policies?.total ?? 0} politique(s) active(s)`} />
+            <KpiCard icon="mdi:license" label="Licences" value={license?.used != null && license?.total != null ? `${license.used}/${license.total}` : "-"} sub={licenseUsagePct != null ? `${licenseUsagePct} % utilisées` : "Consommation des licences"} tone={licenseUsagePct == null ? "neutral" : licenseUsagePct >= 95 ? "bad" : licenseUsagePct >= 80 ? "warn" : "good"} />
+            <KpiCard icon="mdi:shield-alert-outline" label="Incidents" value={sections.incidents?.total ?? 0} sub="Vue GravityZone" tone={(sections.incidents?.total ?? 0) > 0 ? "warn" : "good"} />
+            <KpiCard icon="mdi:archive-lock-outline" label="Quarantaine" value={sections.quarantine?.total ?? 0} sub="Fichiers isolés" tone={(sections.quarantine?.total ?? 0) > 0 ? "warn" : "good"} />
+            <KpiCard icon="mdi:heart-pulse" label="Santé des postes" value={enrichedSummary?.total ? `${Math.max(0, enrichedSummary.total - (enrichedSummary.infected || 0))}/${enrichedSummary.total}` : "-"} sub={enrichedSummary?.infected ? `${enrichedSummary.infected} infecté(s)` : "Analyse malware"} tone={enrichedSummary?.infected ? "bad" : "good"} />
           </section>
 
           <AntivirusOverviewCharts variant="fleet" statistics={statistics} enrichedSummary={enrichedSummary} incidents={sections.incidents} />
@@ -415,6 +437,10 @@ export function AntivirusOverviewPanel({
           <div className={styles.kpiCard}>
             <div className={styles.kpiValue}>{sections.incidents?.total ?? "-"}</div>
             <div className={styles.kpiLabel}>Incidents</div>
+          </div>
+          <div className={styles.kpiCard}>
+            <div className={styles.kpiValue}>{sections.quarantine?.total ?? "-"}</div>
+            <div className={styles.kpiLabel}>Quarantaine</div>
           </div>
         </div>
 
@@ -483,6 +509,11 @@ export function AntivirusOverviewPanel({
         break;
       case "policies":
         content = renderListSection(sectionViews.policies, {
+          fillHeight: true
+        });
+        break;
+      case "quarantine":
+        content = renderListSection(sectionViews.quarantine, {
           fillHeight: true
         });
         break;

@@ -1,11 +1,18 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { Icon } from "@iconify/react";
+import { fetchClientSupportCredits } from "../../../../api/clients";
+import { computeSupportCreditTotals } from "../../../TicketPage/ticketClientSummaryUtils";
+import { isDateWithinPeriod } from "../supervisionReportBuilder";
 import {
   buildSummarySnapshot,
   SUMMARY_HEALTH_META
 } from "./summaryData";
 import { fetchSupportSummary } from "./summarySupport";
+import ReportSummaryCybersecurity from "../ReportSummary/ReportSummaryCybersecurity";
+import ReportSummaryServices from "../ReportSummary/ReportSummaryServices";
 import styles from "./SummaryStep.module.css";
+
+const COMPACT_LIST_THRESHOLD = 10;
 
 function renderTextWithLinks(value) {
   const text = String(value || "");
@@ -25,138 +32,221 @@ function renderTextWithLinks(value) {
   });
 }
 
-function HealthBadge({ health }) {
+function formatDateFr(value) {
+  if (!value) return "—";
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return String(value);
+  return d.toLocaleDateString("fr-FR");
+}
+
+function creditsConsumedInPeriod(ledger = [], start, end) {
+  if (!Array.isArray(ledger) || !ledger.length) return 0;
+  return ledger.reduce((sum, entry) => {
+    const kind = String(entry?.kind || "").toLowerCase();
+    if (kind !== "debit") return sum;
+    if (!isDateWithinPeriod(entry?.created_at || entry?.createdAt, start, end)) return sum;
+    const delta = Number(entry?.delta);
+    if (!Number.isFinite(delta)) return sum;
+    return sum + Math.abs(delta);
+  }, 0);
+}
+
+function HealthDot({ health }) {
   const meta = SUMMARY_HEALTH_META[health] || SUMMARY_HEALTH_META.unmapped;
   return (
-    <span className={styles.healthBadge} style={{ background: meta.bg, color: meta.color }}>
-      <Icon icon={meta.icon} width={12} height={12} aria-hidden />
-      {meta.label}
-    </span>
+    <span
+      className={styles.healthDot}
+      style={{ background: meta.color }}
+      title={meta.label}
+      aria-label={meta.label}
+    />
+  );
+}
+
+function DocSection({ id, title, subtitle, exportComments, children }) {
+  return (
+    <section
+      className={styles.docSection}
+      id={id}
+      data-export-comments={exportComments ? "true" : undefined}
+    >
+      <div className={styles.docSectionHead}>
+        <h3 className={styles.docSectionTitle}>{title}</h3>
+        {subtitle ? <p className={styles.docSectionSubtitle}>{subtitle}</p> : null}
+      </div>
+      <div className={styles.docSectionBody}>{children}</div>
+    </section>
+  );
+}
+
+function DataLine({ label, value, hint, tone }) {
+  const toneClass =
+    tone === "warn" ? styles.dataValueWarn : tone === "danger" ? styles.dataValueDanger : "";
+  return (
+    <div className={styles.dataLine}>
+      <span className={styles.dataLabel}>{label}</span>
+      <span className={`${styles.dataValue} ${toneClass}`.trim()}>
+        {value ?? "—"}
+        {hint ? <span className={styles.dataHint}>{hint}</span> : null}
+      </span>
+    </div>
   );
 }
 
 function EquipmentQuantified({ quantified }) {
-  const items = [];
-  if (quantified.availabilityLabel) items.push({ icon: "mdi:chart-line", label: "Dispo.", value: quantified.availabilityLabel });
-  if (quantified.services > 0) items.push({ icon: "mdi:cog-outline", label: "Services", value: quantified.services });
-  if (quantified.events > 0) items.push({ icon: "mdi:radar", label: "Évén.", value: quantified.events });
-  if (quantified.tickets > 0) items.push({ icon: "mdi:ticket-outline", label: "Tickets", value: quantified.tickets });
-  if (quantified.alerts > 0) items.push({ icon: "mdi:bell-alert-outline", label: "Alertes", value: quantified.alerts });
-  if (quantified.comments > 0) items.push({ icon: "mdi:comment-text-outline", label: "Notes", value: quantified.comments });
-  if (!items.length) return <span className={styles.equipmentMetricMuted}>Aucune métrique</span>;
+  const parts = [];
+  if (quantified?.availabilityLabel) parts.push(`Dispo. ${quantified.availabilityLabel}`);
+  if (quantified?.services > 0) parts.push(`${quantified.services} service(s)`);
+  if (quantified?.events > 0) parts.push(`${quantified.events} évén.`);
+  if (quantified?.tickets > 0) parts.push(`${quantified.tickets} ticket(s)`);
+  if (quantified?.alerts > 0) parts.push(`${quantified.alerts} alerte(s)`);
+  if (quantified?.comments > 0) parts.push(`${quantified.comments} note(s)`);
+  if (!parts.length) return null;
+  return <span className={styles.itemMetrics}>{parts.join(" · ")}</span>;
+}
+
+function splitEquipments(equipments = []) {
+  const attention = [];
+  const healthy = [];
+  equipments.forEach(eq => {
+    const needsAttention =
+      eq.health === "critical" ||
+      eq.health === "warn" ||
+      (eq.tickets || 0) > 0 ||
+      (eq.alerts || 0) > 0 ||
+      (eq.comments || 0) > 0;
+    if (needsAttention) attention.push(eq);
+    else healthy.push(eq);
+  });
+  return { attention, healthy };
+}
+
+function EquipmentLine({ eq, dense = false }) {
+  const meta = SUMMARY_HEALTH_META[eq.health] || SUMMARY_HEALTH_META.unmapped;
   return (
-    <div className={styles.equipmentMetrics}>
-      {items.map(item => (
-        <span key={item.label} className={styles.equipmentMetric} title={item.label}>
-          <Icon icon={item.icon} width={11} height={11} aria-hidden />
-          {item.value}
+    <li className={styles.equipLine}>
+      <HealthDot health={eq.health} />
+      <div className={styles.equipLineMain}>
+        <span className={styles.equipLineName}>{eq.label}</span>
+        <span className={styles.equipLineMeta}>
+          {[eq.site, meta.label].filter(Boolean).join(" · ")}
+          {!dense ? <EquipmentQuantified quantified={eq.quantified} /> : null}
         </span>
+      </div>
+    </li>
+  );
+}
+
+function FamilyInventoryBlock({ module }) {
+  const { attention, healthy } = splitEquipments(module.equipments);
+  const compact = module.count >= COMPACT_LIST_THRESHOLD;
+  const okCount = Math.max(0, module.count - module.critical - module.warn);
+  const meta = SUMMARY_HEALTH_META[module.health] || SUMMARY_HEALTH_META.unmapped;
+
+  return (
+    <div className={styles.subBlock}>
+      <h4 className={styles.subTitle}>
+        <Icon icon={module.icon} width={15} height={15} aria-hidden />
+        {module.label}
+        <span className={styles.subTitleMeta}>— {meta.label}</span>
+      </h4>
+
+      <div className={styles.dataStack}>
+        <DataLine
+          label="Volume"
+          value={`${module.count} élément${module.count > 1 ? "s" : ""}`}
+          hint={module.monitored > 0 ? `${module.monitored} supervisé${module.monitored > 1 ? "s" : ""}` : null}
+        />
+        <DataLine label="Sains" value={okCount} />
+        {module.warn > 0 ? <DataLine label="À surveiller" value={module.warn} tone="warn" /> : null}
+        {module.critical > 0 ? <DataLine label="Critiques" value={module.critical} tone="danger" /> : null}
+        {module.tickets > 0 ? <DataLine label="Tickets" value={module.tickets} /> : null}
+        {module.comments > 0 ? <DataLine label="Notes" value={module.comments} /> : null}
+      </div>
+
+      {attention.length > 0 ? (
+        <div className={styles.subListWrap}>
+          <p className={styles.subLabel}>À retenir</p>
+          <ul className={styles.equipList}>
+            {attention.map(eq => (
+              <EquipmentLine key={eq.key} eq={eq} />
+            ))}
+          </ul>
+        </div>
+      ) : null}
+
+      {compact && healthy.length > 0 ? (
+        <p className={styles.mutedNote}>
+          {healthy.length} élément{healthy.length > 1 ? "s" : ""} en état sain — listing condensé
+        </p>
+      ) : null}
+
+      {!compact && healthy.length > 0 ? (
+        <div className={styles.subListWrap}>
+          {attention.length > 0 ? <p className={styles.subLabel}>Autres</p> : null}
+          <ul className={styles.equipList}>
+            {healthy.map(eq => (
+              <EquipmentLine key={eq.key} eq={eq} dense />
+            ))}
+          </ul>
+        </div>
+      ) : null}
+
+      {!module.equipments.length ? <p className={styles.mutedNote}>Aucun élément listé.</p> : null}
+    </div>
+  );
+}
+
+function InventoryGroup({ title, modules }) {
+  if (!modules.length) return null;
+  return (
+    <div className={styles.groupBlock}>
+      <h4 className={styles.groupTitle}>{title}</h4>
+      {modules.map(module => (
+        <FamilyInventoryBlock key={module.key} module={module} />
       ))}
     </div>
   );
 }
 
-function ModuleCard({ module }) {
-  return (
-    <article className={styles.moduleCard}>
-      <div className={styles.moduleCardHead}>
-        <div className={styles.moduleCardIntro}>
-          <span className={styles.moduleCardIconWrap}>
-            <Icon icon={module.icon} width={18} height={18} aria-hidden />
-          </span>
-          <div>
-            <h4 className={styles.moduleCardTitle}>{module.label}</h4>
-            <p className={styles.moduleCardCount}>
-              {module.count} élément{module.count > 1 ? "s" : ""}
-              {module.monitored > 0 ? ` · ${module.monitored} supervisé${module.monitored > 1 ? "s" : ""}` : ""}
-            </p>
-          </div>
-        </div>
-        <HealthBadge health={module.health} />
-      </div>
-
-      <div className={styles.moduleSignals}>
-        {module.critical > 0 ? (
-          <span className={`${styles.signal} ${styles.signalActive}`} style={{ color: "#b91c1c", background: "#fef2f2" }}>
-            <Icon icon="mdi:alert-octagon" width={12} height={12} />
-            {module.critical} critique{module.critical > 1 ? "s" : ""}
-          </span>
-        ) : null}
-        {module.warn > 0 ? (
-          <span className={`${styles.signal} ${styles.signalActive}`} style={{ color: "#b45309", background: "#fffbeb" }}>
-            <Icon icon="mdi:alert" width={12} height={12} />
-            {module.warn} alerte{module.warn > 1 ? "s" : ""}
-          </span>
-        ) : null}
-        {module.tickets > 0 ? (
-          <span className={`${styles.signal} ${styles.signalActive}`}>
-            <Icon icon="mdi:ticket-outline" width={12} height={12} />
-            {module.tickets} ticket{module.tickets > 1 ? "s" : ""}
-          </span>
-        ) : null}
-        {module.comments > 0 ? (
-          <span className={`${styles.signal} ${styles.signalActive}`}>
-            <Icon icon="mdi:comment-text-outline" width={12} height={12} />
-            {module.comments} note{module.comments > 1 ? "s" : ""}
-          </span>
-        ) : null}
-      </div>
-
-      {module.equipments.length > 0 ? (
-        <ul className={styles.equipmentList}>
-          {module.equipments.map(eq => (
-            <li key={eq.key} className={styles.equipmentRow}>
-              <div className={styles.equipmentMain}>
-                <div className={styles.equipmentName} title={eq.label}>
-                  {eq.label}
-                  {eq.site ? <span className={styles.equipmentSite}>{eq.site}</span> : null}
-                </div>
-                <EquipmentQuantified quantified={eq.quantified} />
-              </div>
-              <HealthBadge health={eq.health} />
-            </li>
-          ))}
-        </ul>
-      ) : null}
-    </article>
-  );
-}
-
-function ModuleGroup({ title, modules }) {
-  if (!modules.length) return null;
-  return (
-    <div className={styles.groupBlock}>
-      <p className={styles.groupLabel}>{title}</p>
-      <div className={styles.moduleGrid}>
-        {modules.map(module => (
-          <ModuleCard key={module.key} module={module} />
-        ))}
-      </div>
-    </div>
-  );
-}
-
-function WatchPointRow({ point }) {
+function WatchPointBlock({ point }) {
   const severityMeta = SUMMARY_HEALTH_META[point.severity] || SUMMARY_HEALTH_META.warn;
   return (
-    <article className={styles.watchItem}>
-      <span className={styles.watchSeverity} style={{ background: severityMeta.bg, color: severityMeta.color }}>
-        <Icon icon={severityMeta.icon} width={16} height={16} aria-hidden />
-      </span>
-      <div className={styles.watchBody}>
-        <div className={styles.watchTitle}>{point.label}</div>
-        <div className={styles.watchMeta}>
-          {point.moduleLabel}
-          {point.site ? ` · ${point.site}` : ""}
-        </div>
-        <ul className={styles.watchReasons}>
+    <div className={styles.subBlock}>
+      <h4 className={styles.subTitle}>
+        <span
+          className={styles.severityDot}
+          style={{ background: severityMeta.color }}
+          aria-hidden
+        />
+        {point.label}
+      </h4>
+      <p className={styles.subMeta}>
+        {point.moduleLabel}
+        {point.site ? ` · ${point.site}` : ""}
+      </p>
+      {point.reasons?.length > 0 ? (
+        <ul className={styles.reasonList}>
           {point.reasons.map(reason => (
             <li key={reason}>{reason}</li>
           ))}
         </ul>
-        <EquipmentQuantified quantified={point.quantified} />
-      </div>
-    </article>
+      ) : null}
+      <EquipmentQuantified quantified={point.quantified} />
+      {point.comments?.length > 0 ? (
+        <div className={styles.notesStack}>
+          {point.comments.map(comment => (
+            <div key={comment.id} className={styles.noteItem}>
+              <p className={styles.noteMeta}>
+                {comment.dateLabel ? `${comment.dateLabel} · ` : ""}
+                Commentaire
+              </p>
+              <div className={styles.noteBody}>{renderTextWithLinks(comment.text)}</div>
+            </div>
+          ))}
+        </div>
+      ) : null}
+    </div>
   );
 }
 
@@ -165,20 +255,29 @@ export default function SummaryStep({
   equipmentCheckMKData = {},
   monitoringSyncStatus = {},
   allComments = [],
+  equipmentComments = {},
   equipmentCommentCounts = {},
   equipmentTicketCounts = {},
   equipmentAlertCounts = {},
   summaryContentRef = null
 }) {
   const [supportStats, setSupportStats] = useState(null);
+  const [credits, setCredits] = useState(null);
 
   useEffect(() => {
     if (!client) {
       setSupportStats(null);
+      setCredits(null);
       return undefined;
     }
     const controller = new AbortController();
+    const clientId = client?.id ?? client?.uuid;
     fetchSupportSummary(client, controller.signal).then(setSupportStats);
+    if (clientId) {
+      fetchClientSupportCredits(clientId, { signal: controller.signal })
+        .then(setCredits)
+        .catch(() => setCredits(null));
+    }
     return () => controller.abort();
   }, [client]);
 
@@ -212,234 +311,203 @@ export default function SummaryStep({
     );
   }
 
-  const { stats, groups, watchPoints, comments, contrat, periodLabel, clientPrefix, clientMainLabel } = snapshot;
+  const {
+    stats,
+    groups,
+    modules,
+    watchPoints,
+    generalComments = [],
+    globalComments = [],
+    comments,
+    contrat,
+    periodLabel,
+    clientPrefix,
+    clientMainLabel
+  } = snapshot;
+
+  const notes = (globalComments.length ? globalComments : generalComments).filter(Boolean);
+
+  const packs = Array.isArray(credits?.packs) ? credits.packs : [];
+  const creditTotals = computeSupportCreditTotals(credits?.balance, packs);
+  const consumedOnPeriod = creditsConsumedInPeriod(credits?.ledger, client?.reportStartDate, client?.reportEndDate);
+  const hasCreditData =
+    Boolean(credits) &&
+    (creditTotals.total > 0 || creditTotals.remaining > 0 || consumedOnPeriod > 0 || packs.length > 0);
+  const ticketCount = supportStats?.total ?? stats.tickets ?? 0;
+  const commentCount = comments?.length ?? stats.comments ?? 0;
+  const hasContractInfo = Boolean(contrat?.type || contrat?.debut || contrat?.expiration || hasCreditData);
 
   return (
-    <div className={styles.root}>
-      <header className={styles.hero} data-export-hide="true">
-        <p className={styles.heroBrand}>Synthèse de supervision</p>
-        <h2 className={styles.heroTitle}>
-          {clientPrefix ? <span className={styles.heroPrefix}>{clientPrefix} — </span> : null}
-          {clientMainLabel}
-        </h2>
-        <p className={styles.heroPeriod}>{periodLabel}</p>
-        <p className={styles.heroLead}>
-          État des lieux consolidé : infrastructure, cybersécurité, services cloud, surveillance, tickets et notes du rapport.
-        </p>
+    <div className={styles.root} ref={summaryContentRef}>
+      <div className={styles.reportStack}>
+        <article className={styles.reportDoc} data-report-export="supervision" data-report-title="Rapport de supervision">
+          <header className={styles.reportDocHead} data-export-hide="true">
+            <span className={styles.reportDocBadge}>Rapport 1</span>
+            <h2 className={styles.reportDocTitle}>Supervision</h2>
+            <p className={styles.reportDocDesc}>Synthèse globale, vigilance, contrat, inventaire condensé et support.</p>
+          </header>
 
-        <div className={styles.statsRow}>
-          <div className={styles.statCard}>
-            <span className={styles.statValue}>{stats.modules}</span>
-            <span className={styles.statLabel}>Domaines</span>
-          </div>
-          <div className={styles.statCard}>
-            <span className={styles.statValue}>{stats.equipments}</span>
-            <span className={styles.statLabel}>Éléments</span>
-          </div>
-          <div className={`${styles.statCard} ${stats.critical > 0 ? styles.statDanger : ""}`}>
-            <span className={styles.statValue}>{stats.critical}</span>
-            <span className={styles.statLabel}>Critiques</span>
-          </div>
-          <div className={`${styles.statCard} ${stats.warn > 0 ? styles.statWarn : ""}`}>
-            <span className={styles.statValue}>{stats.warn}</span>
-            <span className={styles.statLabel}>À surveiller</span>
-          </div>
-          <div className={styles.statCard}>
-            <span className={styles.statValue}>{stats.tickets}</span>
-            <span className={styles.statLabel}>Tickets</span>
-          </div>
-          <div className={styles.statCard}>
-            <span className={styles.statValue}>{comments.length}</span>
-            <span className={styles.statLabel}>Notes</span>
-          </div>
-        </div>
-      </header>
-
-      <div ref={summaryContentRef} className={styles.exportRoot}>
-        <section className={styles.section} id="synthese-vigilance">
-          <div className={styles.sectionHead}>
-            <span className={styles.sectionIcon}>
-              <Icon icon="mdi:eye-alert-outline" width={18} height={18} aria-hidden />
-            </span>
-            <div>
-              <h3 className={styles.sectionTitle}>Points à surveiller</h3>
-              <p className={styles.sectionSubtitle}>
-                Périphériques nécessitant une attention : surveillance dégradée, alertes ou tickets sur la période.
-              </p>
-            </div>
-          </div>
-          <div className={styles.panel}>
-            {watchPoints.length > 0 ? (
-              <div className={styles.watchList}>
-                {watchPoints.map(point => (
-                  <WatchPointRow key={point.id} point={point} />
-                ))}
+          <div className={styles.exportRoot}>
+            <header className={styles.docHeader}>
+              <p className={styles.docBrand}>Synthèse de supervision</p>
+              <h2 className={styles.docTitle}>
+                {clientPrefix ? <span className={styles.docTitlePrefix}>{clientPrefix} — </span> : null}
+                {clientMainLabel}
+              </h2>
+              <p className={styles.docPeriod}>{periodLabel}</p>
+              <div className={styles.dataStack}>
+                <DataLine label="Périphériques" value={stats.equipments} />
+                <DataLine label="Tickets" value={ticketCount} />
+                <DataLine label="Commentaires" value={commentCount} />
               </div>
-            ) : (
-              <div className={styles.okBanner}>
-                <Icon icon="mdi:check-circle" width={20} height={20} aria-hidden />
-                Aucun point à surveiller identifié sur la période.
-              </div>
-            )}
-          </div>
-        </section>
+            </header>
 
-        <section className={styles.section} id="synthese-contrat">
-          <div className={styles.sectionHead}>
-            <span className={styles.sectionIcon}>
-              <Icon icon="mdi:file-document-outline" width={18} height={18} aria-hidden />
-            </span>
-            <div>
-              <h3 className={styles.sectionTitle}>Contrat & crédits</h3>
-              <p className={styles.sectionSubtitle}>Informations contractuelles du client.</p>
-            </div>
-          </div>
-          <div className={styles.panel}>
-            {contrat?.type || contrat?.debut || contrat?.expiration ? (
-              <dl className={styles.contractGrid}>
-                {contrat.type ? (
-                  <div className={styles.contractItem}>
-                    <dt>Type</dt>
-                    <dd>{contrat.type}</dd>
-                  </div>
-                ) : null}
-                {contrat.debut ? (
-                  <div className={styles.contractItem}>
-                    <dt>Début</dt>
-                    <dd>{new Date(contrat.debut).toLocaleDateString("fr-FR")}</dd>
-                  </div>
-                ) : null}
-                {contrat.expiration ? (
-                  <div className={styles.contractItem}>
-                    <dt>Expiration</dt>
-                    <dd>{new Date(contrat.expiration).toLocaleDateString("fr-FR")}</dd>
-                  </div>
-                ) : null}
-              </dl>
-            ) : (
-              <p className={styles.empty}>Aucune information contractuelle renseignée.</p>
-            )}
-          </div>
-        </section>
+            <DocSection
+              id="synthese-vigilance"
+              title="Points à surveiller"
+              subtitle="Périphériques à attention et commentaires associés."
+            >
+              {watchPoints.length > 0 ? (
+                watchPoints.map(point => <WatchPointBlock key={point.id} point={point} />)
+              ) : (
+                <p className={styles.okText}>Aucun point à surveiller identifié sur la période.</p>
+              )}
+            </DocSection>
 
-        <section className={styles.section} id="synthese-etat-lieux">
-          <div className={styles.sectionHead}>
-            <span className={styles.sectionIcon}>
-              <Icon icon="mdi:view-dashboard-outline" width={18} height={18} aria-hidden />
-            </span>
-            <div>
-              <h3 className={styles.sectionTitle}>État des lieux</h3>
-              <p className={styles.sectionSubtitle}>Quantitatif par périphérique pour chaque domaine du rapport.</p>
-            </div>
-          </div>
-          <div className={styles.panel}>
-            <ModuleGroup title="Infrastructure" modules={groups.infra} />
-            <ModuleGroup title="Cybersécurité" modules={groups.cyber} />
-            <ModuleGroup title="Services & cloud" modules={groups.cloud} />
-            {!groups.infra.length && !groups.cyber.length && !groups.cloud.length ? (
-              <p className={styles.empty}>Aucun module activé pour ce rapport.</p>
-            ) : null}
-          </div>
-        </section>
-
-        <section className={styles.section} id="synthese-support">
-          <div className={styles.sectionHead}>
-            <span className={styles.sectionIcon}>
-              <Icon icon="mdi:headset" width={18} height={18} aria-hidden />
-            </span>
-            <div>
-              <h3 className={styles.sectionTitle}>Activité support</h3>
-              <p className={styles.sectionSubtitle}>Tickets créés sur la période du rapport.</p>
-            </div>
-          </div>
-          <div className={styles.panel}>
-            <article className={styles.moduleCard}>
-              <div className={styles.moduleCardHead}>
-                <div className={styles.moduleCardIntro}>
-                  <span className={styles.moduleCardIconWrap}>
-                    <Icon icon="mdi:ticket-outline" width={18} height={18} aria-hidden />
-                  </span>
-                  <div>
-                    <h4 className={styles.moduleCardTitle}>Support technique</h4>
-                    <p className={styles.moduleCardCount}>Synthèse de l'activité ticket sur {periodLabel}</p>
-                  </div>
+            <DocSection
+              id="synthese-contrat"
+              title="Contrat et crédits"
+              subtitle="Informations contractuelles et consommation de crédits."
+            >
+              {hasContractInfo ? (
+                <div className={styles.dataStack}>
+                  {contrat?.type ? <DataLine label="Type" value={contrat.type} /> : null}
+                  {contrat?.debut ? <DataLine label="Début" value={formatDateFr(contrat.debut)} /> : null}
+                  <DataLine label="Expiration" value={formatDateFr(contrat?.expiration)} />
+                  <DataLine
+                    label="Crédits consommés"
+                    value={hasCreditData ? consumedOnPeriod : "—"}
+                    hint={periodLabel}
+                  />
+                  <DataLine
+                    label="Crédits restants"
+                    value={hasCreditData ? creditTotals.remaining : "—"}
+                    hint={hasCreditData && creditTotals.total > 0 ? `sur ${creditTotals.total}` : null}
+                  />
+                  <DataLine label="Total crédits" value={hasCreditData ? creditTotals.total : "—"} />
                 </div>
-                <HealthBadge
-                  health={
-                    supportStats == null
-                      ? "unsynced"
-                      : supportStats.highPriority > 0
-                        ? "warn"
-                        : supportStats.open > 0
-                          ? "warn"
-                          : "ok"
-                  }
+              ) : (
+                <p className={styles.mutedNote}>Aucune information contractuelle ou crédit renseignée.</p>
+              )}
+            </DocSection>
+
+            <DocSection
+              id="synthese-etat-lieux"
+              title="État des lieux"
+              subtitle="Quantitatif par famille, avec listing condensé pour les volumes importants."
+            >
+              {modules.length > 0 ? (
+                <div className={styles.dataStack}>
+                  {modules.map(module => (
+                    <DataLine key={module.key} label={module.label} value={module.count} />
+                  ))}
+                </div>
+              ) : null}
+              <InventoryGroup title="Infrastructure" modules={groups.infra} />
+              <InventoryGroup title="Cybersécurité" modules={groups.cyber} />
+              <InventoryGroup title="Services & cloud" modules={groups.cloud} />
+              {!groups.infra.length && !groups.cyber.length && !groups.cloud.length ? (
+                <p className={styles.mutedNote}>Aucun module activé pour ce rapport.</p>
+              ) : null}
+            </DocSection>
+
+            <DocSection
+              id="synthese-support"
+              title="Activité support"
+              subtitle="Tickets créés sur la période du rapport."
+            >
+              <div className={styles.dataStack}>
+                <DataLine label="Créés" value={supportStats?.total ?? "…"} />
+                <DataLine label="Clôturés" value={supportStats?.closed ?? "…"} />
+                <DataLine
+                  label="Ouverts"
+                  value={supportStats?.open ?? "…"}
+                  tone={(supportStats?.open || 0) > 0 ? "warn" : undefined}
+                />
+                <DataLine
+                  label="Priorité haute"
+                  value={supportStats?.highPriority ?? "…"}
+                  tone={(supportStats?.highPriority || 0) > 0 ? "danger" : undefined}
                 />
               </div>
-              <div className={styles.moduleSignals}>
-                <span className={`${styles.signal} ${styles.signalActive}`}>
-                  <Icon icon="mdi:ticket-outline" width={12} height={12} />
-                  {supportStats?.total ?? "…"} créé{(supportStats?.total ?? 0) > 1 ? "s" : ""}
-                </span>
-                {supportStats?.closed > 0 ? (
-                  <span className={styles.signal}>
-                    <Icon icon="mdi:check-circle-outline" width={12} height={12} />
-                    {supportStats.closed} clôturé{supportStats.closed > 1 ? "s" : ""}
-                  </span>
-                ) : null}
-                {supportStats?.open > 0 ? (
-                  <span className={`${styles.signal} ${styles.signalActive}`} style={{ color: "#b45309", background: "#fffbeb" }}>
-                    <Icon icon="mdi:progress-clock" width={12} height={12} />
-                    {supportStats.open} ouvert{supportStats.open > 1 ? "s" : ""}
-                  </span>
-                ) : null}
-                {supportStats?.highPriority > 0 ? (
-                  <span className={`${styles.signal} ${styles.signalActive}`} style={{ color: "#b91c1c", background: "#fef2f2" }}>
-                    <Icon icon="mdi:alert-circle-outline" width={12} height={12} />
-                    {supportStats.highPriority} priorité haute
-                  </span>
-                ) : null}
-              </div>
-            </article>
-          </div>
-        </section>
+            </DocSection>
 
-        <section className={styles.section} id="synthese-notes" data-export-comments="true">
-          <div className={styles.sectionHead}>
-            <span className={styles.sectionIcon}>
-              <Icon icon="mdi:comment-text-multiple-outline" width={18} height={18} aria-hidden />
-            </span>
-            <div>
-              <h3 className={styles.sectionTitle}>Notes du rapport</h3>
-              <p className={styles.sectionSubtitle}>Commentaires ajoutés pendant la construction du rapport.</p>
-            </div>
-          </div>
-          <div className={styles.panel}>
-            {comments.length > 0 ? (
-              <div className={styles.commentsList}>
-                {comments.map(comment => (
-                  <article key={comment.id} className={styles.commentCard}>
-                    <div className={styles.commentMeta}>
-                      {comment.dateLabel ? <span>{comment.dateLabel}</span> : null}
-                      <span className={styles.commentTag}>
-                        <Icon
-                          icon={comment.isTicket ? "mdi:ticket-outline" : "mdi:comment-text-outline"}
-                          width={12}
-                          height={12}
-                          aria-hidden
-                        />
-                        {comment.linkedLabel}
-                      </span>
+            <DocSection
+              id="synthese-notes"
+              title="Notes du rapport"
+              subtitle="Commentaires globaux ajoutés pendant la construction du rapport."
+              exportComments
+            >
+              {notes.length > 0 ? (
+                <div className={styles.notesStack}>
+                  {notes.map(comment => (
+                    <div key={comment.id} className={styles.noteItem}>
+                      <p className={styles.noteMeta}>
+                        {comment.dateLabel ? `${comment.dateLabel} · ` : ""}
+                        Note globale
+                      </p>
+                      <div className={styles.noteBody}>{renderTextWithLinks(comment.text)}</div>
                     </div>
-                    <div className={styles.commentBody}>{renderTextWithLinks(comment.text)}</div>
-                  </article>
-                ))}
-              </div>
-            ) : (
-              <p className={styles.empty}>Aucune note ajoutée pour ce rapport.</p>
-            )}
+                  ))}
+                </div>
+              ) : (
+                <p className={styles.mutedNote}>Aucune note globale pour ce rapport.</p>
+              )}
+            </DocSection>
           </div>
-        </section>
+        </article>
+
+        <article className={styles.reportDoc} data-report-export="sauvegarde" data-report-title="Rapport sauvegardes">
+          <header className={styles.reportDocHead}>
+            <span className={styles.reportDocBadge}>Rapport 2</span>
+            <h2 className={styles.reportDocTitle}>Sauvegardes</h2>
+            <p className={styles.reportDocDesc}>Instances, flux et jobs de sauvegarde uniquement.</p>
+          </header>
+          <div className={styles.exportRoot}>
+            <ReportSummaryCybersecurity
+              client={client}
+              equipmentCheckMKData={equipmentCheckMKData}
+              equipmentComments={equipmentComments}
+              equipmentCommentCounts={equipmentCommentCounts}
+              equipmentTicketCounts={equipmentTicketCounts}
+              includeSections={["backup"]}
+            />
+          </div>
+        </article>
+
+        <article className={styles.reportDoc} data-report-export="services" data-report-title="Rapport services">
+          <header className={styles.reportDocHead}>
+            <span className={styles.reportDocBadge}>Rapport 3</span>
+            <h2 className={styles.reportDocTitle}>Services</h2>
+            <p className={styles.reportDocDesc}>Antivirus, antispam, Microsoft 365 et noms de domaine.</p>
+          </header>
+          <div className={styles.exportRoot}>
+            <ReportSummaryCybersecurity
+              client={client}
+              equipmentCheckMKData={equipmentCheckMKData}
+              equipmentComments={equipmentComments}
+              equipmentCommentCounts={equipmentCommentCounts}
+              equipmentTicketCounts={equipmentTicketCounts}
+              includeSections={["antivirus", "antispam"]}
+            />
+            <ReportSummaryServices
+              client={client}
+              equipmentComments={equipmentComments}
+              equipmentCommentCounts={equipmentCommentCounts}
+              equipmentTicketCounts={equipmentTicketCounts}
+            />
+          </div>
+        </article>
       </div>
     </div>
   );

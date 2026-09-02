@@ -6,11 +6,17 @@ import { pickBackupJobType } from "../components/EnterprisesPage/backupJobUtils"
 import { resolveClientWifiSsidCatalog } from "../components/EquipementPage/wifiApSsidUtils";
 const BASE_URL = `${API_BASE_URL}/clients`;
 const MODULES_BASE_URL = `${API_BASE_URL}/clients/modules`;
-const CYBER_PAGE_DATA_CACHE_KEY = "cyber_page_data_cache_v1";
+const CYBER_PAGE_DATA_CACHE_KEYS = ["cyber_page_data_cache_v1", "cyber_page_data_cache_v2"];
 const SERVICE_DOMAINS_CACHE_KEY = "service_domains_all_cache_v1";
+
+function isValidUuid(value) {
+  if (value == null || value === "") return false;
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(String(value));
+}
+
 function invalidateCyberPageDataCache() {
   try {
-    sessionStorage.removeItem(CYBER_PAGE_DATA_CACHE_KEY);
+    CYBER_PAGE_DATA_CACHE_KEYS.forEach(key => sessionStorage.removeItem(key));
   } catch {}
 }
 function invalidateServiceDomainsCache() {
@@ -1281,7 +1287,7 @@ export async function saveClientModules(clientId, data) {
             const solutions = items.solutions || [];
             if (solutions.length > 0) {
               const itemsToSync = solutions.map(solution => {
-                const solutionId = solution.id;
+                const solutionId = isValidUuid(solution.id) ? solution.id : undefined;
                 const solutionData = {
                   ...solution
                 };
@@ -1298,7 +1304,7 @@ export async function saveClientModules(clientId, data) {
                   is_active: true
                 };
               });
-              await fetch(`${MODULES_BASE_URL}/${clientId}/${family}/sync`, {
+              const syncRes = await fetch(`${MODULES_BASE_URL}/${clientId}/${family}/sync`, {
                 method: 'POST',
                 credentials: 'include',
                 headers,
@@ -1306,6 +1312,10 @@ export async function saveClientModules(clientId, data) {
                   items: itemsToSync
                 })
               });
+              if (!syncRes.ok) {
+                const errorData = await syncRes.json().catch(() => ({}));
+                throw new Error(errorData.error || `Unable to save ${category}`);
+              }
             } else {
               const existingItemsRes = await fetch(`${MODULES_BASE_URL}/${clientId}/${family}`, {
                 credentials: 'include'
@@ -1329,7 +1339,7 @@ export async function saveClientModules(clientId, data) {
             const solutions = items.solutions || [];
             if (solutions.length > 0) {
               const itemsToSync = solutions.map(solution => {
-                const solutionId = solution.id;
+                const solutionId = isValidUuid(solution.id) ? solution.id : undefined;
                 const solutionData = {
                   ...solution
                 };
@@ -1346,7 +1356,7 @@ export async function saveClientModules(clientId, data) {
                   is_active: true
                 };
               });
-              await fetch(`${MODULES_BASE_URL}/${clientId}/${family}/sync`, {
+              const syncRes = await fetch(`${MODULES_BASE_URL}/${clientId}/${family}/sync`, {
                 method: 'POST',
                 credentials: 'include',
                 headers,
@@ -1354,6 +1364,10 @@ export async function saveClientModules(clientId, data) {
                   items: itemsToSync
                 })
               });
+              if (!syncRes.ok) {
+                const errorData = await syncRes.json().catch(() => ({}));
+                throw new Error(errorData.error || `Unable to save ${category}`);
+              }
             } else {
               const existingItemsRes = await fetch(`${MODULES_BASE_URL}/${clientId}/${family}`, {
                 credentials: 'include'

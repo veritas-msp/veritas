@@ -1,4 +1,4 @@
-import React, { useRef, useState } from "react";
+import React, { useRef, useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { GripVertical } from "lucide-react";
 import { createPortal } from "react-dom";
@@ -8,6 +8,8 @@ import styles from "./Form.module.css";
 import adminStyles from "../../AdminPanel.module.css";
 import CheckMKMappingModal from "./CheckMKMappingModal";
 import API_BASE_URL from "../../../../config";
+import RoleTagsSelect from "../../../EquipementPage/RoleTagsSelect";
+import { STORAGE_ROLE_GROUPS, STORAGE_ROLE_OPTIONS, hasStorageRoles, normalizeStorageRoles } from "../../../EquipementPage/constants/storageRoleOptions";
 const StepStockage = ({
   form,
   setForm,
@@ -29,7 +31,23 @@ const StepStockage = ({
     itemIndex: null
   });
   const [checkmkMappings, setCheckmkMappings] = useState({});
-  const roleOptions = ["Backup storage", "Shared file storage", "Primary storage", "Archive storage", "Replication storage", "Other"];
+  useEffect(() => {
+    const needsMigration = NAS.some(item => typeof item.role === "string");
+    if (!needsMigration) return;
+    setForm(prev => ({
+      ...prev,
+      equipements: {
+        ...prev.equipements,
+        NAS: (prev.equipements?.NAS || []).map(item => typeof item.role === "string" ? {
+          ...item,
+          role: item.role.trim() ? normalizeStorageRoles(item.role) : []
+        } : {
+          ...item,
+          role: normalizeStorageRoles(item.role)
+        })
+      }
+    }));
+  }, []);
   const raidOptions = ["RAID 0", "RAID 1", "RAID 5", "RAID 6", "RAID 10", "RAID 50", "RAID 60", "SHR (Synology)", "SHR-2 (Synology)", "RAID F1", "Qtier (QNAP)", "RAID-TP (QNAP)", "RAID-Z (ZFS)", "RAID-Z2 (ZFS)", "RAID-Z3 (ZFS)", "Other"];
   const capaciteOptions = ["1 TB", "2 TB", "4 TB", "6 TB", "8 TB", "10 TB", "12 TB", "16 TB", "20 TB", "24 TB", "32 TB", "40 TB", "48 TB", "64 TB", "80 TB", "100 TB", "Other"];
   const disqueOptions = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15", "16", "17", "18", "19", "20", "21", "22", "23", "24", "25", "26", "27", "28", "29", "30", "31", "32", "33", "34", "35", "36", "37", "38", "39", "40", "41", "42", "43", "44", "45", "46", "47", "48", "49", "50"];
@@ -311,7 +329,7 @@ const StepStockage = ({
     const newNAS = {
       id: `nas-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
       nom: "",
-      role: "",
+      role: [],
       nbDisquesActuels: "",
       nbDisquesMax: "",
       raid: "",
@@ -661,16 +679,20 @@ const StepStockage = ({
                           ⚠️ This name already exists!
                         </div>}
                     </div>
-                    <div className={styles.formField}>
+                    <div className={styles.formField} style={{
+                      gridColumn: "1 / -1"
+                    }}>
                       <label htmlFor={`nas-role-${i}`}>Role <span style={{
                             color: 'red'
                           }}>*</span></label>
-                      <select id={`nas-role-${i}`} value={equipment.role} onChange={e => update(i, "role", e.target.value)} required style={{
-                          borderColor: !equipment.role || typeof equipment.role === 'string' && !equipment.role.trim() ? 'red' : undefined
+                      <RoleTagsSelect groups={STORAGE_ROLE_GROUPS} options={STORAGE_ROLE_OPTIONS} value={Array.isArray(equipment.role) ? equipment.role : normalizeStorageRoles(equipment.role)} onChange={selected => update(i, "role", selected)} placeholder="Select roles" />
+                      {!hasStorageRoles(equipment.role) ? <div style={{
+                          color: '#ef4444',
+                          fontSize: '0.75rem',
+                          marginTop: '0.25rem'
                         }}>
-                        <option value="">Select a role</option>
-                        {roleOptions.map(role => <option key={role} value={role}>{role}</option>)}
-                      </select>
+                          At least one role is required
+                        </div> : null}
                     </div>
                   </div>
 

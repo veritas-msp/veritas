@@ -1,6 +1,6 @@
 import { pool } from "../database/db.js";
 let tablesReady = false;
-const FIELD_TYPES = new Set(["text", "textarea", "date", "number", "boolean"]);
+const FIELD_TYPES = new Set(["text", "textarea", "date", "number", "boolean", "select"]);
 const DISPLAY_MODES = new Set(["hexagon", "brick"]);
 const TILE_SHAPES = new Set(["hexagon", "rounded", "circle", "pentagon", "octagon"]);
 function normalizeTileShape(value) {
@@ -9,6 +9,62 @@ function normalizeTileShape(value) {
 }
 function slugifyFamilyKey(value) {
   return String(value || "famille").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 72) || "famille";
+}
+function normalizeFieldOptions(raw, fieldType) {
+  if (fieldType !== "select") return [];
+  if (!Array.isArray(raw)) return [];
+  return raw
+    .map(option => {
+      if (typeof option === "string") return option.trim();
+      if (option && typeof option === "object") {
+        return String(option.label ?? option.value ?? "").trim();
+      }
+      return "";
+    })
+    .filter(Boolean)
+    .slice(0, 100);
+}
+function parseStoredFieldOptions(raw) {
+  if (Array.isArray(raw)) return raw;
+  if (raw && typeof raw === "object") return Object.values(raw);
+  if (typeof raw === "string") {
+    try {
+      const parsed = JSON.parse(raw);
+      return Array.isArray(parsed) ? parsed : [];
+    } catch {
+      return [];
+    }
+  }
+  return [];
+}
+async function applyEquipmentFieldOptionsMigration() {
+  await pool.query(`
+    ALTER TABLE v_b_equipment_family_fields
+      ADD COLUMN IF NOT EXISTS options JSONB NOT NULL DEFAULT '[]'::jsonb
+  `);
+  await pool.query(`
+    ALTER TABLE v_b_equipment_family_extension_fields
+      ADD COLUMN IF NOT EXISTS options JSONB NOT NULL DEFAULT '[]'::jsonb
+  `);
+  await pool.query(`
+    DO $$
+    BEGIN
+      IF EXISTS (
+        SELECT 1
+        FROM pg_constraint
+        WHERE conname = 'v_b_equipment_family_fields_field_type_check'
+          AND conrelid = 'public.v_b_equipment_family_fields'::regclass
+      ) THEN
+        ALTER TABLE v_b_equipment_family_fields
+          DROP CONSTRAINT v_b_equipment_family_fields_field_type_check;
+      END IF;
+      ALTER TABLE v_b_equipment_family_fields
+        ADD CONSTRAINT v_b_equipment_family_fields_field_type_check
+          CHECK (field_type IN ('text', 'textarea', 'date', 'number', 'boolean', 'select'));
+    EXCEPTION
+      WHEN duplicate_object THEN NULL;
+    END $$;
+  `);
 }
 function slugifyFieldKey(value) {
   return String(value || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim().replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "").slice(0, 72);
@@ -45,18 +101,21 @@ function normalizeFamilyFields(fields = []) {
       label,
       fieldType,
       required: Boolean(field.required),
+      options: normalizeFieldOptions(field.options, fieldType),
       displayOrder: Number.isFinite(Number(field.displayOrder ?? field.display_order)) ? Number(field.displayOrder ?? field.display_order) : (index + 1) * 10
     };
   }).filter(Boolean);
 }
 function mapFieldRow(row) {
+  const fieldType = row.field_type;
   return {
     id: row.id,
     familyId: row.family_id,
     fieldKey: row.field_key,
     label: row.label,
-    fieldType: row.field_type,
+    fieldType,
     required: Boolean(row.required),
+    options: normalizeFieldOptions(parseStoredFieldOptions(row.options), fieldType),
     displayOrder: Number(row.display_order) || 0,
     createdAt: row.created_at
   };
@@ -80,6 +139,7 @@ function mapFamilyRow(row, fields = []) {
 }
 export async function ensureEquipmentFamilyTables() {
   if (tablesReady) return;
+  await applyEquipmentFieldOptionsMigration();
   await pool.query(`
     CREATE TABLE IF NOT EXISTS v_b_equipment_family_definitions (
       id SERIAL PRIMARY KEY,
@@ -246,8 +306,16 @@ async function replaceFamilyFields(client, familyId, fields = [], familyKey = nu
   await client.query(`DELETE FROM v_b_equipment_family_fields WHERE family_id = $1`, [familyId]);
   for (const field of normalized) {
     await client.query(`INSERT INTO v_b_equipment_family_fields
-         (family_id, field_key, label, field_type, required, display_order)
-       VALUES ($1, $2, $3, $4, $5, $6)`, [familyId, field.fieldKey, field.label, field.fieldType, field.required, field.displayOrder]);
+         (family_id, field_key, label, field_type, required, display_order, options)
+       VALUES ($1, $2, $3, $4, $5, $6, $7::jsonb)`, [
+      familyId,
+      field.fieldKey,
+      field.label,
+      field.fieldType,
+      field.required,
+      field.displayOrder,
+      JSON.stringify(field.options || [])
+    ]);
   }
   await remapCustomEquipmentDataKeys(client, familyKey, keyMap);
   return normalized;
@@ -528,19 +596,22 @@ export function canonicalizeSystemFamilyKey(value) {
 }
 
 function mapExtensionFieldRow(row) {
+  const fieldType = row.field_type;
   return {
     id: row.id,
     familyKey: row.family_key,
     fieldKey: row.field_key,
     label: row.label,
-    fieldType: row.field_type,
+    fieldType,
     required: Boolean(row.required),
+    options: normalizeFieldOptions(parseStoredFieldOptions(row.options), fieldType),
     displayOrder: Number(row.display_order) || 0,
     createdAt: row.created_at
   };
 }
 
 export async function ensureSystemFamilyExtensionTable() {
+  await applyEquipmentFieldOptionsMigration();
   await pool.query(`
     CREATE TABLE IF NOT EXISTS v_b_equipment_family_extension_fields (
       id SERIAL PRIMARY KEY,
@@ -738,9 +809,17 @@ export async function replaceSystemFamilyExtensions(familyKey, fields, layout = 
       for (const field of normalized) {
         await client.query(
           `INSERT INTO v_b_equipment_family_extension_fields
-             (family_key, field_key, label, field_type, required, display_order)
-           VALUES ($1, $2, $3, $4, $5, $6)`,
-          [canonical, field.fieldKey, field.label, field.fieldType, field.required, field.displayOrder]
+             (family_key, field_key, label, field_type, required, display_order, options)
+           VALUES ($1, $2, $3, $4, $5, $6, $7::jsonb)`,
+          [
+            canonical,
+            field.fieldKey,
+            field.label,
+            field.fieldType,
+            field.required,
+            field.displayOrder,
+            JSON.stringify(field.options || [])
+          ]
         );
       }
       await client.query("COMMIT");

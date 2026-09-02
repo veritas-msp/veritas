@@ -6,6 +6,7 @@ import { repairRmmTextEncoding } from "../utils/rmmTextEncoding";
 import { resolveAssignedSsidIds, serializeAssignedSsidsForPersistence } from "../components/EquipementPage/wifiApSsidUtils";
 import { applySharedEquipmentFields, buildSharedEquipmentFormData } from "../components/EquipementPage/sharedEquipmentFields";
 import { applySystemExtensionFields } from "../utils/systemFamilyExtensions";
+import { normalizeStorageRoles } from "../components/EquipementPage/constants/storageRoleOptions";
 export const getClientEquipment = async clientId => {
   try {
     const response = await fetch(`${API_BASE_URL}/maintenance/equipment/${clientId}`, {
@@ -749,7 +750,7 @@ function buildEquipmentDataPayload(type, formData, existingData = {}, equipment 
     systeme: formData.systeme || existingData.systeme || existingData.os,
     vlan: formData.vlan || existingData.vlan,
     type: type === 'NAS' ? formData.type || existingData.type || 'NAS' : type === 'Routeur' ? formData.routeurType || existingData.routeurType || existingData.type || 'Routeur' : type === 'Alimentation' ? resolveAlimentationDeploymentType(formData.alimentationType, existingData.alimentationType, existingData.type) || 'Onduleur' : type === 'TOIP' ? resolveToipDeploymentType(formData.toipType, existingData.toipType, existingData.type) || 'IP-PBX' : type === 'Firewalls' ? formData.firewallType || existingData.firewallType || existingData.type || 'materiel' : type === 'Ordinateurs' ? canonicalizeComputerType(formData.computerType || existingData.type) || '' : formData.typeServer || existingData.type,
-    role: type === 'NAS' ? formData.role || existingData.role || '' : Array.isArray(formData.role) ? formData.role : formData.role ? [formData.role] : existingData.role || [],
+    role: type === 'NAS' ? normalizeStorageRoles(formData.role !== undefined ? formData.role : existingData.role) : Array.isArray(formData.role) ? formData.role : formData.role ? [formData.role] : existingData.role || [],
     expirationGarantie: formData.expirationGarantie !== undefined ? formData.expirationGarantie : existingData.expirationGarantie || existingData.garantie,
     nbDisquesActuels: formData.nbDisquesActuels !== undefined ? formData.nbDisquesActuels : existingData.nbDisquesActuels || '',
     nbDisquesMax: formData.nbDisquesMax !== undefined ? formData.nbDisquesMax : existingData.nbDisquesMax || '',

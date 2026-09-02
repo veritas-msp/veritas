@@ -6,6 +6,7 @@ import { Icon } from "@iconify/react";
 import { createEquipmentFamily, deleteEquipmentFamily, fetchEquipmentFamilies, fetchSystemFamilyExtensions, updateEquipmentFamily, updateSystemFamilyExtensions } from "../../api/equipmentFamilies";
 import EquipmentFamilyFormModal from "./EquipmentFamilyFormModal";
 import { buildDefaultEquipmentFamilyDraft, buildEquipmentFamilyDraftFromFamily, getDefaultEquipmentFamilies, uniqueEquipmentFieldKeys } from "./equipmentFamilyConstants";
+import { normalizeEquipmentFieldOptions } from "../../utils/equipmentFamilyFieldUtils";
 import { getDefaultHoneycombSlot } from "../EnterprisesPage/infraHoneycombLayout";
 import { Btn, Card, ConfirmModal, Page, Switch, Table, Toolbar } from "./AdminUi";
 import adminUi from "./AdminUi.module.css";
@@ -102,6 +103,7 @@ export default function AdminEquipmentFamilies() {
           label: String(field.label || "").trim(),
           fieldType: field.fieldType || "text",
           required: Boolean(field.required),
+          options: field.fieldType === "select" ? normalizeEquipmentFieldOptions(field) : [],
           displayOrder: (index + 1) * 10
         })).filter(field => field.label))
       };
