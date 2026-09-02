@@ -1,7 +1,7 @@
 import { createLocaleGetter } from "../../i18n/translate";
 import { SERVER_ROLE_GROUPS, canonicalizeServerRole } from "./constants/serverRoleOptions";
 import { STORAGE_ROLE_GROUPS, canonicalizeStorageRole } from "./constants/storageRoleOptions";
-import { OS_OPTION_GROUPS, SERVER_HYPERVISOR_OPTIONS } from "./equipmentFormConfig";
+import { OS_OPTION_GROUPS, RAID_OPTIONS, SERVER_HYPERVISOR_OPTIONS } from "./equipmentFormConfig";
 const SERVER_ROLE_GROUP_LABELS_FR = {
   Infrastructure: "Infrastructure",
   "Annuaire & réseau": "Annuaire & réseau",
@@ -401,7 +401,7 @@ function buildLocalePack({
     serverRoleOptions: serverRoleGroups.flatMap(group => group.options),
     storageRoleGroups,
     storageRoleOptions: storageRoleGroups.flatMap(group => group.options),
-    storageRaidOptions: mapSelectOptions(STORAGE_RAID_OPTIONS, raidLabels),
+    storageRaidOptions: mapSelectOptions(RAID_OPTIONS, raidLabels),
     osOptionGroups: buildOsOptionGroups(osGroupLabels),
     hypervisorOptions: mapSelectOptions(SERVER_HYPERVISOR_OPTIONS, hypervisorLabels),
     widgets
@@ -456,7 +456,7 @@ const DE = {
     Messagerie: "Messaging",
     Autres: "Sonstige"
   }),
-  storageRaidOptions: mapSelectOptions(STORAGE_RAID_OPTIONS, {
+  storageRaidOptions: mapSelectOptions(RAID_OPTIONS, {
     Aucun: "Keine",
     Autre: "Sonstige"
   }),
@@ -542,7 +542,7 @@ const IT = {
     Messagerie: "Messaggistica",
     Autres: "Altro"
   }),
-  storageRaidOptions: mapSelectOptions(STORAGE_RAID_OPTIONS, {
+  storageRaidOptions: mapSelectOptions(RAID_OPTIONS, {
     Aucun: "Nessuno",
     Autre: "Altro"
   }),
@@ -628,7 +628,7 @@ const ES = {
     Messagerie: "Mensajería",
     Autres: "Otro"
   }),
-  storageRaidOptions: mapSelectOptions(STORAGE_RAID_OPTIONS, {
+  storageRaidOptions: mapSelectOptions(RAID_OPTIONS, {
     Aucun: "Ninguno",
     Autre: "Otro"
   }),
