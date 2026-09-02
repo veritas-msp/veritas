@@ -38,7 +38,7 @@ import DocumentsHubPage from "../components/DocumentsHubPage/DocumentsHubPage";
 import KnowledgeBasePage from "../components/KnowledgeBasePage/KnowledgeBasePage";
 import EquipmentInventoryPage from "../components/EquipmentInventoryPage/EquipmentInventoryPage";
 import TabLauncherPage from "../components/TabLauncher/TabLauncherPage";
-import { createListTabData, isListTabDocType } from "../navigation/tabTypes";
+import { createListTabData, findTenantDetailTab, generateTenantDetailTabId, isListTabDocType } from "../navigation/tabTypes";
 import { abortInFlightPageLoads } from "../utils/pageLoadAbort";
 import MonitoringRenderContent from "../components/Monitoring/MonitoringRenderContent";
 import { EphemeralMonitoringProvider } from "../contexts/MonitoringContext";
@@ -276,16 +276,7 @@ export default function MainApp() {
       }
     }
     if (type === "TenantDetail") {
-      if (data?.clientId && (data?.azureCredentialId || data?.tenantId)) {
-        return `tenant-${data.clientId}-${data.azureCredentialId || data.tenantId}`;
-      }
-      if (data?.clientId) {
-        return `tenant-${data.clientId}`;
-      }
-      if (data?.tenantId) {
-        return `tenant-${data.tenantId}`;
-      }
-      return "tenant-unknown";
+      return generateTenantDetailTabId(data);
     }
     if (type === "EquipmentDetail" && data) {
       if (data.id) return `equipment-detail-${data.id}`;
@@ -438,11 +429,26 @@ export default function MainApp() {
     if (tabTypes.includes(routeState.docType) && parsed.data) {
       const tabId = nextTabId || generateTabId(routeState.docType, parsed.data);
       setTabs(prevTabs => {
-        const existing = prevTabs.find(t => t.id === tabId);
+        let existing = prevTabs.find(t => t.id === tabId);
+        if (!existing && routeState.docType === "TenantDetail") {
+          existing = findTenantDetailTab(prevTabs, parsed.data);
+        }
         if (existing) {
-          setActiveTabId(tabId);
-          hydrateDetailStateFromTab(existing);
-          return prevTabs;
+          setActiveTabId(existing.id);
+          hydrateDetailStateFromTab({
+            ...existing,
+            data: {
+              ...existing.data,
+              ...parsed.data
+            }
+          });
+          return prevTabs.map(t => t.id === existing.id ? {
+            ...t,
+            data: {
+              ...t.data,
+              ...parsed.data
+            }
+          } : t);
         }
         const newTab = {
           id: tabId,
@@ -610,7 +616,13 @@ export default function MainApp() {
       const tabTitle = generateTabTitle(type, normalizedData, appLocale);
       const inBackground = options.background;
       setTabs(prevTabs => {
-        const existingTab = prevTabs.find(t => t.id === tabId);
+        let existingTab = prevTabs.find(t => t.id === tabId);
+        if (!existingTab && type === "TenantDetail") {
+          existingTab = findTenantDetailTab(prevTabs, normalizedData);
+          if (existingTab) {
+            tabId = existingTab.id;
+          }
+        }
         let newTabs;
         if (existingTab) {
           if (!inBackground) {
@@ -618,6 +630,7 @@ export default function MainApp() {
           }
           newTabs = prevTabs.map(t => t.id === tabId ? {
             ...t,
+            title: tabTitle || t.title,
             data: {
               ...t.data,
               ...normalizedData
@@ -946,17 +959,24 @@ export default function MainApp() {
   }, [user]);
   useEffect(() => {
     window.updateTabTitle = (type, data, title) => {
-      const tabId = generateTabId(type, data);
-      const mergedData = title ? {
-        ...data,
-        name: title
-      } : data;
-      updateTabTitle(tabId, generateTabTitle(type, mergedData || {}, appLocale));
+      setTabs(prevTabs => {
+        const tabId = generateTabId(type, data);
+        let targetTab = prevTabs.find(tab => tab.id === tabId);
+        if (!targetTab && type === "TenantDetail") {
+          targetTab = findTenantDetailTab(prevTabs, data);
+        }
+        if (!targetTab) return prevTabs;
+        const newTitle = title || generateTabTitle(type, data || {}, appLocale);
+        return prevTabs.map(tab => tab.id === targetTab.id ? {
+          ...tab,
+          title: newTitle
+        } : tab);
+      });
     };
     return () => {
       delete window.updateTabTitle;
     };
-  }, []);
+  }, [generateTabId, appLocale]);
   useEffect(() => {
     if (currentDocType === "ContratDetail" && contratDetailData?.name) {
       const tabId = generateTabId("ContratDetail", contratDetailData);

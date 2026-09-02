@@ -22,6 +22,7 @@ import { buildMicrosoftTenantFleetStats } from "./microsoftTenantMspUtils";
 import { buildDomainFleetFromList, buildDomainFleetStats } from "./domainMspUtils";
 import { buildSslFleetFromList, buildSslFleetStats } from "./sslMspUtils";
 import ConfirmModal from "../Misc/ConfirmModal/ConfirmModal";
+import { buildMicrosoftTenantDetailNavigationPayload } from "../EnterprisesPage/microsoftTenantSolutionUtils";
 import { createTrackedAbortController } from "../../utils/pageLoadAbort";
 const MODULE_TABS = ["microsoft", "domain", "ssl"];
 const SERVICE_CLIENTS_CACHE_KEY = "service_clients_list_cache_v2";
@@ -573,11 +574,16 @@ export default function ServicePage({
   };
   const handleOpenTenant = (item, options) => {
     if (!onNavigate) return;
-    onNavigate("TenantDetail", {
-      ...item,
-      clientId: item.clientId,
-      clientName: item.clientName
-    }, options);
+    const client = clients.find(entry => entry.id === item.clientId);
+    const payload = client
+      ? buildMicrosoftTenantDetailNavigationPayload(client)
+      : {
+          clientId: item.clientId,
+          clientName: item.clientName,
+          tenantId: item.tenantId && item.tenantId !== "-" ? item.tenantId : null
+        };
+    if (!payload?.clientId) return;
+    onNavigate("TenantDetail", payload, options);
   };
   const selectTab = tabKey => {
     if (!MODULE_TABS.includes(tabKey)) return;
