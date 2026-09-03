@@ -6,7 +6,7 @@ import { body, param, validationResult } from "express-validator";
 import multer from "multer";
 import path from "path";
 import verifyJWT from "../../middleware/auth.js";
-import { requireRole } from "../../middleware/roles.js";
+import { requirePermission } from "../../middleware/permissions.js";
 import { assertCommunityClientPortalLimit, assertMspAgentLimit, sendCommunityLimitError } from "../../utils/communityLimits.js";
 import { USER_AVATAR_SETTING_KEY, attachUserAvatar, buildAvatarPublicPath, ensureAvatarUploadDir, upsertUserAvatarSetting, validatePresetAvatarId } from "../../utils/userAvatar.js";
 import { findPortalUserByEmail } from "../../utils/contactPortal.js";
@@ -269,7 +269,7 @@ router.get("/active", verifyJWT, async (req, res) => {
     });
   }
 });
-router.get("/", verifyJWT, requireRole("admin"), async (req, res) => {
+router.get("/", verifyJWT, requirePermission("admin_panel.users"), async (req, res) => {
   try {
     const result = await pool.query(`SELECT u.id, u.username, u.email, u.role, u.profile, u.is_active,
               COALESCE(u.mfa_enabled, false) AS mfa_enabled,
@@ -385,7 +385,7 @@ router.patch("/:id/password", verifyJWT, [param("id").isUUID(), body("newPasswor
     });
   }
 });
-router.post("/", verifyJWT, requireRole("admin"), [body("email").isEmail(), body("profile").optional(OPTIONAL_BODY).isString().isLength({
+router.post("/", verifyJWT, requirePermission("admin_panel.users"), [body("email").isEmail(), body("profile").optional(OPTIONAL_BODY).isString().isLength({
   min: 2
 }), body("password").isString().isLength({
   min: 6
@@ -426,7 +426,7 @@ router.post("/", verifyJWT, requireRole("admin"), [body("email").isEmail(), body
     });
   }
 });
-router.delete("/:id", verifyJWT, requireRole("admin"), async (req, res) => {
+router.delete("/:id", verifyJWT, requirePermission("admin_panel.users"), async (req, res) => {
   const {
     id
   } = req.params;
@@ -456,7 +456,7 @@ router.delete("/:id", verifyJWT, requireRole("admin"), async (req, res) => {
     });
   }
 });
-router.get("/:id", verifyJWT, requireRole("admin"), async (req, res) => {
+router.get("/:id", verifyJWT, requirePermission("admin_panel.users"), async (req, res) => {
   const {
     id
   } = req.params;
@@ -509,7 +509,7 @@ router.patch("/:id/username", verifyJWT, [param("id").isUUID(), body("username")
     });
   }
 });
-router.delete("/:id/mfa", verifyJWT, requireRole("admin"), [param("id").isUUID()], async (req, res) => {
+router.delete("/:id/mfa", verifyJWT, requirePermission("admin_panel.users"), [param("id").isUUID()], async (req, res) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) return res.status(400).json({
     errors: errors.array()

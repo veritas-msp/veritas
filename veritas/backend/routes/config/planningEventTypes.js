@@ -1,7 +1,7 @@
 import express from "express";
 import { body, param, validationResult } from "express-validator";
 import verifyJWT from "../../middleware/auth.js";
-import { requireRole } from "../../middleware/roles.js";
+import { requirePermission } from "../../middleware/permissions.js";
 import { createPlanningEventType, deletePlanningEventType, listPlanningEventTypes, resetPlanningEventTypes, updatePlanningEventType } from "../../utils/planningEventTypes.js";
 
 const router = express.Router();
@@ -28,7 +28,7 @@ router.get("/", async (req, res) => {
   }
 });
 
-router.get("/admin", verifyJWT, requireRole("admin"), async (_req, res) => {
+router.get("/admin", verifyJWT, requirePermission("admin_panel.planning"), async (_req, res) => {
   try {
     const types = await listPlanningEventTypes({
       includeDisabled: true,
@@ -42,7 +42,7 @@ router.get("/admin", verifyJWT, requireRole("admin"), async (_req, res) => {
   }
 });
 
-router.post("/", verifyJWT, requireRole("admin"), [body("label").isString().trim().notEmpty(), body("typeKey").optional().isString().trim(), body("icon").optional().isString().trim(), body("kpiTone").optional().isString().trim(), body("enabled").optional().isBoolean(), body("formSelectable").optional().isBoolean(), body("sortOrder").optional().isInt()], async (req, res) => {
+router.post("/", verifyJWT, requirePermission("admin_panel.planning"), [body("label").isString().trim().notEmpty(), body("typeKey").optional().isString().trim(), body("icon").optional().isString().trim(), body("kpiTone").optional().isString().trim(), body("enabled").optional().isBoolean(), body("formSelectable").optional().isBoolean(), body("sortOrder").optional().isInt()], async (req, res) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
     return res.status(400).json({
@@ -60,7 +60,7 @@ router.post("/", verifyJWT, requireRole("admin"), [body("label").isString().trim
   }
 });
 
-router.post("/reset", verifyJWT, requireRole("admin"), async (_req, res) => {
+router.post("/reset", verifyJWT, requirePermission("admin_panel.planning"), async (_req, res) => {
   try {
     const types = await resetPlanningEventTypes();
     res.json({
@@ -71,7 +71,7 @@ router.post("/reset", verifyJWT, requireRole("admin"), async (_req, res) => {
   }
 });
 
-router.patch("/:id", verifyJWT, requireRole("admin"), [param("id").isInt({
+router.patch("/:id", verifyJWT, requirePermission("admin_panel.planning"), [param("id").isInt({
   min: 1
 }), body("label").optional().isString().trim().notEmpty(), body("icon").optional().isString().trim(), body("kpiTone").optional().isString().trim(), body("enabled").optional().isBoolean(), body("formSelectable").optional().isBoolean(), body("sortOrder").optional().isInt()], async (req, res) => {
   const errors = validationResult(req);
@@ -91,7 +91,7 @@ router.patch("/:id", verifyJWT, requireRole("admin"), [param("id").isInt({
   }
 });
 
-router.delete("/:id", verifyJWT, requireRole("admin"), [param("id").isInt({
+router.delete("/:id", verifyJWT, requirePermission("admin_panel.planning"), [param("id").isInt({
   min: 1
 })], async (req, res) => {
   const errors = validationResult(req);

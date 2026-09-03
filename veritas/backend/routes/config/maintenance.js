@@ -1,7 +1,7 @@
 ﻿import express from 'express';
 import { pool } from '../../database/db.js';
 import verifyJWT from '../../middleware/auth.js';
-import { requireRole } from '../../middleware/roles.js';
+import { requirePermission } from '../../middleware/permissions.js';
 import { decryptSetting, encryptSettingValue } from '../../utils/settingsHelper.js';
 import fs from 'fs/promises';
 import path from 'path';
@@ -233,7 +233,7 @@ router.get('/status', async (req, res) => {
     res.json(DEFAULT_MAINTENANCE_STATUS);
   }
 });
-router.post('/toggle', verifyJWT, requireRole('admin'), async (req, res) => {
+router.post('/toggle', verifyJWT, requirePermission('admin_panel.maintenance'), async (req, res) => {
   try {
     const enable = req.body.enable !== undefined ? req.body.enable : req.body.enabled;
     const maintenanceMessage = req.body.maintenanceMessage || req.body.message;
@@ -333,7 +333,7 @@ router.post('/toggle', verifyJWT, requireRole('admin'), async (req, res) => {
     });
   }
 });
-router.get('/backups', verifyJWT, requireRole('admin'), async (req, res) => {
+router.get('/backups', verifyJWT, requirePermission('admin_panel.maintenance'), async (req, res) => {
   try {
     try {
       await fs.access(backupsDir);
@@ -364,7 +364,7 @@ router.get('/backups', verifyJWT, requireRole('admin'), async (req, res) => {
     });
   }
 });
-router.post('/backup/upload', verifyJWT, requireRole('admin'), upload.single('backup'), async (req, res) => {
+router.post('/backup/upload', verifyJWT, requirePermission('admin_panel.maintenance'), upload.single('backup'), async (req, res) => {
   try {
     if (!req.file) {
       return res.status(400).json({
@@ -390,7 +390,7 @@ router.post('/backup/upload', verifyJWT, requireRole('admin'), upload.single('ba
     });
   }
 });
-router.post('/backup', verifyJWT, requireRole('admin'), async (req, res) => {
+router.post('/backup', verifyJWT, requirePermission('admin_panel.maintenance'), async (req, res) => {
   try {
     try {
       await fs.access(backupsDir);
@@ -448,7 +448,7 @@ router.post('/backup', verifyJWT, requireRole('admin'), async (req, res) => {
     });
   }
 });
-router.delete('/backup/:filename', verifyJWT, requireRole('admin'), async (req, res) => {
+router.delete('/backup/:filename', verifyJWT, requirePermission('admin_panel.maintenance'), async (req, res) => {
   try {
     const {
       filename
@@ -488,7 +488,7 @@ router.delete('/backup/:filename', verifyJWT, requireRole('admin'), async (req, 
     });
   }
 });
-router.post('/restore', verifyJWT, requireRole('admin'), async (req, res) => {
+router.post('/restore', verifyJWT, requirePermission('admin_panel.maintenance'), async (req, res) => {
   try {
     const {
       filename
@@ -582,7 +582,7 @@ router.post('/restore', verifyJWT, requireRole('admin'), async (req, res) => {
     });
   }
 });
-router.get('/backup/plan', verifyJWT, requireRole('admin'), async (req, res) => {
+router.get('/backup/plan', verifyJWT, requirePermission('admin_panel.maintenance'), async (req, res) => {
   try {
     const scheduleResult = await pool.query(`SELECT value, value_encrypted, value_iv, value_auth_tag FROM v_b_settings WHERE key = 'backup_schedule'`);
     const retentionResult = await pool.query(`SELECT value, value_encrypted, value_iv, value_auth_tag FROM v_b_settings WHERE key = 'backup_retention_days'`);
@@ -598,7 +598,7 @@ router.get('/backup/plan', verifyJWT, requireRole('admin'), async (req, res) => 
     });
   }
 });
-router.post('/backup/plan', verifyJWT, requireRole('admin'), async (req, res) => {
+router.post('/backup/plan', verifyJWT, requirePermission('admin_panel.maintenance'), async (req, res) => {
   try {
     const {
       schedule,
@@ -619,7 +619,7 @@ router.post('/backup/plan', verifyJWT, requireRole('admin'), async (req, res) =>
     });
   }
 });
-router.post('/deploy', verifyJWT, requireRole('admin'), async (req, res) => {
+router.post('/deploy', verifyJWT, requirePermission('admin_panel.maintenance'), async (req, res) => {
   try {
     const deployScript = String(process.env.DEPLOY_SCRIPT_PATH || '').trim();
     if (!deployScript) {

@@ -21,8 +21,8 @@ function isMappedViaMonitoringIntegration(equipment) {
 }
 
 const ISSUE_META = {
-  monitor_critical: { label: "Alert critical", tone: "bad", priority: 0, monitorStatus: "critical" },
-  monitor_warning: { label: "Warning supervision", tone: "warn", priority: 1, monitorStatus: "warning" },
+  monitor_critical: { label: "Critical", tone: "bad", priority: 0, monitorStatus: "critical" },
+  monitor_warning: { label: "Warning", tone: "warn", priority: 1, monitorStatus: "warning" },
   agent_offline: { label: "Agent hors ligne", tone: "bad", priority: 0, monitorStatus: "offline" },
   unmapped: { label: "Not mapped to supervision", tone: "warn", priority: 2, monitorStatus: "unmapped" },
   no_data: { label: "No monitoring data", tone: "warn", priority: 3, monitorStatus: "no_data" },
@@ -37,6 +37,16 @@ const ISSUE_META = {
   disk_warn: { label: "Disk warning", tone: "warn", priority: 2, monitorStatus: "ok" },
   missing_ip: { label: "Missing IP", tone: "warn", priority: 3, monitorStatus: "ok" }
 };
+
+function formatMonitorIssueLabel(severityLabel, detail) {
+  const fromPrimary = String(detail?.primaryService || detail?.serviceName || "").trim();
+  if (fromPrimary) return `${severityLabel} - ${fromPrimary}`;
+  const fromList = Array.isArray(detail?.failingServices)
+    ? detail.failingServices.map(name => String(name || "").trim()).filter(Boolean)
+    : [];
+  if (fromList.length) return `${severityLabel} - ${fromList.slice(0, 2).join(" / ")}`;
+  return severityLabel;
+}
 
 function toSupervisionFamily(equipment) {
   const type = String(equipment?.type || "").trim();
@@ -114,7 +124,9 @@ function mapCriterionToIssue(criterion) {
   let label = meta.label;
   let detail;
   const d = criterion?.detail;
-  if (key === "updates_pending" && d?.pendingCount != null) {
+  if (key === "monitor_critical" || key === "monitor_warning") {
+    label = formatMonitorIssueLabel(meta.label, d);
+  } else if (key === "updates_pending" && d?.pendingCount != null) {
     label = `${d.pendingCount} pending update${d.pendingCount > 1 ? "s" : ""}`;
   } else if ((key === "disk_critical" || key === "disk_warn") && d?.pct != null) {
     label = `Disk ${d.pct}% used`;

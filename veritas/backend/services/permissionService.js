@@ -130,7 +130,7 @@ export async function syncPermissionsFromModuleFlag(profileName, flagKey, enable
     for (const action of group.actions) {
       const key = permissionKey(group.group, action.action);
       allKeys.push(key);
-      if (action.action === "view") viewKeys.push(key);
+      if (action.action === "view" || group.group === "admin_panel") viewKeys.push(key);
     }
   }
   if (allKeys.length === 0) return;

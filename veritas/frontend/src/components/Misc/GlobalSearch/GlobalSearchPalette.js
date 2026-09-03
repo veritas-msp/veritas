@@ -8,6 +8,8 @@ import { useVeritasEdition } from "../../../hooks/useVeritasEdition";
 import { isProOnlyDocType } from "../../../config/edition";
 import { TAB_LAUNCHER_SECTIONS, getTabLauncherCopy } from "../../TabLauncher/tabLauncherI18n";
 import { buildAdminNavSections, flattenNavItems } from "../../AdminPage/adminPanelI18n";
+import { usePermissions } from "../../../contexts/PermissionsContext";
+import { canAccessAdminNavKey, canAccessAdminPanel } from "../../../utils/adminPanelPermissions";
 import { RESULT_TYPE_ICONS, RESULT_TYPE_ORDER, getGlobalSearchCopy } from "./globalSearchI18n";
 import styles from "./GlobalSearchPalette.module.css";
 
@@ -29,8 +31,8 @@ function matchesQuery(haystack, query) {
   return q.split(/\s+/).filter(Boolean).every(token => hay.includes(token));
 }
 
-function isPageVisible(item, { access, isCommunity, userRole }) {
-  if (item.adminOnly && userRole !== "admin") return false;
+function isPageVisible(item, { access, isCommunity, userRole, canAccessAdmin }) {
+  if (item.adminOnly && !canAccessAdmin) return false;
   if (item.accessKey && access?.[item.accessKey] === false) return false;
   if (item.proOnly && isCommunity && isProOnlyDocType(item.docType)) return false;
   return true;
@@ -83,6 +85,12 @@ export default function GlobalSearchPalette({
 }) {
   const locale = useAppLocale();
   const { isCommunity } = useVeritasEdition();
+  const {
+    can,
+    canAny,
+    isAdmin
+  } = usePermissions();
+  const canAccessAdmin = canAccessAdminPanel(canAny, isAdmin);
   const copy = useMemo(() => getGlobalSearchCopy(locale), [locale]);
   const launcherCopy = useMemo(() => getTabLauncherCopy(locale), [locale]);
   const inputRef = useRef(null);
@@ -95,7 +103,7 @@ export default function GlobalSearchPalette({
   const pageResults = useMemo(() => {
     const items = TAB_LAUNCHER_SECTIONS.flatMap(section =>
       section.items
-        .filter(item => isPageVisible(item, { access, isCommunity, userRole }))
+        .filter(item => isPageVisible(item, { access, isCommunity, userRole, canAccessAdmin }))
         .map(item => ({
           id: `page:${item.docType}`,
           type: "page",
@@ -106,13 +114,15 @@ export default function GlobalSearchPalette({
         }))
     );
     return items.filter(item => matchesQuery(`${item.title} ${item.subtitle} ${item.navigate.docType}`, query));
-  }, [access, isCommunity, userRole, launcherCopy, query]);
+  }, [access, isCommunity, userRole, canAccessAdmin, launcherCopy, query]);
 
   const adminResults = useMemo(() => {
-    if (userRole !== "admin" || access?.Admin === false) return [];
+    if (!canAccessAdmin) return [];
     return buildAdminNavSections(locale)
       .flatMap(section =>
-        flattenNavItems(section.items).map(item => ({
+        flattenNavItems(section.items)
+          .filter(item => canAccessAdminNavKey(can, item.key, isAdmin))
+          .map(item => ({
           id: `admin:${item.key}`,
           type: "admin",
           title: item.label,
@@ -126,7 +136,7 @@ export default function GlobalSearchPalette({
         }))
       )
       .filter(item => matchesQuery(`${item.title} ${item.subtitle} ${item.id}`, query));
-  }, [access, locale, query, userRole]);
+  }, [can, canAccessAdmin, isAdmin, locale, query]);
 
   const localResults = useMemo(() => {
     const maxLocal = query.trim() ? 8 : 12;

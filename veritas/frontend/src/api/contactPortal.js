@@ -13,15 +13,23 @@ export async function fetchContactPortal(contactId) {
   if (!res.ok) await parseError(res);
   return res.json();
 }
-export async function createContactPortal(contactId, password, portalRole = "user") {
+export async function createContactPortal(contactId, portalRole = "user") {
   const res = await fetch(`${API_BASE_URL}/contacts/${contactId}/portal`, {
     method: "POST",
     credentials: "include",
     headers: jsonHeaders,
     body: JSON.stringify({
-      password,
       portal_role: portalRole
     })
+  });
+  if (!res.ok) await parseError(res);
+  return res.json();
+}
+export async function resendContactPortalInvite(contactId) {
+  const res = await fetch(`${API_BASE_URL}/contacts/${contactId}/portal/invite`, {
+    method: "POST",
+    credentials: "include",
+    headers: jsonHeaders
   });
   if (!res.ok) await parseError(res);
   return res.json();
@@ -137,5 +145,6 @@ export async function deleteClientPortalUser(userId) {
 }
 export function getPortalStatusFromContact(contact) {
   if (!contact?.portal_user_id) return "none";
+  if (contact.portal_pending) return "pending";
   return contact.portal_active ? "active" : "inactive";
 }

@@ -8,6 +8,7 @@ import AdminNotificationTemplates from "./AdminNotificationTemplates";
 import AdminNotificationLogs from "./AdminNotificationLogs";
 import AdminWebhooksSettings from "./AdminWebhooksSettings";
 import { getAdminNotificationCenterCopy } from "./adminNotificationCenterI18n";
+import hubStyles from "./AdminNotificationsHub.module.css";
 
 const HUB_VIEW_DEFS = [{
   key: "system",
@@ -75,11 +76,13 @@ export default function AdminNotificationsHub({
   };
   return <Page>
       <SubTabs items={views} active={activeView} onChange={handleViewChange} fullWidth />
-      {activeView === "system" ? <AdminSystemNotifications /> : null}
-      {activeView === "catalog" ? <AdminNotificationCatalog /> : null}
-      {activeView === "templates" ? <AdminNotificationTemplates /> : null}
-      {activeView === "connectors" ? <AdminWebhooksSettings isCommunity={isCommunity} /> : null}
-      {activeView === "logs" ? <AdminNotificationLogs /> : null}
+      <div className={hubStyles.panel} data-page-fill>
+        {activeView === "system" ? <AdminSystemNotifications /> : null}
+        {activeView === "catalog" ? <AdminNotificationCatalog /> : null}
+        {activeView === "templates" ? <AdminNotificationTemplates /> : null}
+        {activeView === "connectors" ? <AdminWebhooksSettings isCommunity={isCommunity} /> : null}
+        {activeView === "logs" ? <AdminNotificationLogs /> : null}
+      </div>
       <ProFeaturePromoModal open={Boolean(proPromoFeature)} featureKey={proPromoFeature} onClose={() => setProPromoFeature(null)} />
     </Page>;
 }

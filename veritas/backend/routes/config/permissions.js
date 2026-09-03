@@ -1,7 +1,7 @@
 import express from "express";
 import { pool } from "../../database/db.js";
 import verifyJWT from "../../middleware/auth.js";
-import { requireRole } from "../../middleware/roles.js";
+import { requirePermission } from "../../middleware/permissions.js";
 import { PERMISSION_CATALOG_NORMALIZED, PERMISSION_ACTION_LABELS, ALL_PERMISSION_KEYS, VIEW_PERMISSION_TO_MODULE_FLAG, permissionKey, getMatrixCatalog } from "../../config/permissionCatalog.js";
 import { isSuperAdminPresetProfile, SUPER_ADMIN_PROFILE_NAME, getPresetForProfile } from "../../config/permissionPresets.js";
 import { getUserPermissions, getProfilePermissions, invalidateProfilePermissions, sanitizeGrantedPermissions } from "../../services/permissionService.js";
@@ -51,7 +51,7 @@ function permissionsObjectFromSet(granted) {
   return permissions;
 }
 
-router.get("/catalog", requireRole("admin"), (req, res) => {
+router.get("/catalog", requirePermission("admin_panel.permissions"), (req, res) => {
   const catalog = PERMISSION_CATALOG_NORMALIZED.map(group => ({
     group: group.group,
     label: group.label,
@@ -91,7 +91,7 @@ router.get("/me", async (req, res) => {
   }
 });
 
-router.get("/matrix", requireRole("admin"), async (req, res) => {
+router.get("/matrix", requirePermission("admin_panel.permissions"), async (req, res) => {
   try {
     await ensurePermissionsSchema();
     const {
@@ -127,7 +127,7 @@ router.get("/matrix", requireRole("admin"), async (req, res) => {
   }
 });
 
-router.put("/matrix", requireRole("admin"), async (req, res) => {
+router.put("/matrix", requirePermission("admin_panel.permissions"), async (req, res) => {
   if (isCommunity()) {
     return res.status(403).json({
       error: "Custom permissions require Pro edition.",
@@ -189,7 +189,7 @@ router.put("/matrix", requireRole("admin"), async (req, res) => {
   }
 });
 
-router.get("/profiles/:name", requireRole("admin"), async (req, res) => {
+router.get("/profiles/:name", requirePermission("admin_panel.permissions"), async (req, res) => {
   const name = String(req.params.name || "").trim();
   if (!name) return res.status(400).json({
     error: "Nom de profil required."
@@ -209,7 +209,7 @@ router.get("/profiles/:name", requireRole("admin"), async (req, res) => {
   }
 });
 
-router.put("/profiles/:name", requireRole("admin"), async (req, res) => {
+router.put("/profiles/:name", requirePermission("admin_panel.permissions"), async (req, res) => {
   const name = String(req.params.name || "").trim();
   if (!name) return res.status(400).json({
     error: "Nom de profil required."

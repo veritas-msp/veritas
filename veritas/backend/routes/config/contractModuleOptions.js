@@ -1,7 +1,7 @@
 import express from "express";
 import { body, param, validationResult } from "express-validator";
 import verifyJWT from "../../middleware/auth.js";
-import { requireRole } from "../../middleware/roles.js";
+import { requirePermission } from "../../middleware/permissions.js";
 import { createContractModuleOption, deleteContractModuleOption, listContractModuleOptions, resetContractModuleOptions, updateContractModuleOption } from "../../utils/contractModuleOptions.js";
 const router = express.Router();
 router.use(verifyJWT);
@@ -24,7 +24,7 @@ router.get("/", async (req, res) => {
     handleError(res, err, "GET /contract-module-options");
   }
 });
-router.get("/admin", verifyJWT, requireRole("admin"), async (_req, res) => {
+router.get("/admin", verifyJWT, requirePermission("admin_panel.contract_modules"), async (_req, res) => {
   try {
     const modules = await listContractModuleOptions({
       includeDisabled: true,
@@ -37,7 +37,7 @@ router.get("/admin", verifyJWT, requireRole("admin"), async (_req, res) => {
     handleError(res, err, "GET /contract-module-options/admin");
   }
 });
-router.post("/", verifyJWT, requireRole("admin"), [body("label").isString().trim().notEmpty(), body("moduleKey").optional().isString().trim(), body("icon").optional().isString().trim(), body("enabled").optional().isBoolean(), body("sortOrder").optional().isInt()], async (req, res) => {
+router.post("/", verifyJWT, requirePermission("admin_panel.contract_modules"), [body("label").isString().trim().notEmpty(), body("moduleKey").optional().isString().trim(), body("icon").optional().isString().trim(), body("enabled").optional().isBoolean(), body("sortOrder").optional().isInt()], async (req, res) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
     return res.status(400).json({
@@ -54,7 +54,7 @@ router.post("/", verifyJWT, requireRole("admin"), [body("label").isString().trim
     handleError(res, err, "POST /contract-module-options");
   }
 });
-router.post("/reset", verifyJWT, requireRole("admin"), async (_req, res) => {
+router.post("/reset", verifyJWT, requirePermission("admin_panel.contract_modules"), async (_req, res) => {
   try {
     const modules = await resetContractModuleOptions();
     res.json({
@@ -64,7 +64,7 @@ router.post("/reset", verifyJWT, requireRole("admin"), async (_req, res) => {
     handleError(res, err, "POST /contract-module-options/reset");
   }
 });
-router.patch("/:id", verifyJWT, requireRole("admin"), [param("id").isInt({
+router.patch("/:id", verifyJWT, requirePermission("admin_panel.contract_modules"), [param("id").isInt({
   min: 1
 }), body("label").optional().isString().trim().notEmpty(), body("icon").optional().isString().trim(), body("enabled").optional().isBoolean(), body("sortOrder").optional().isInt()], async (req, res) => {
   const errors = validationResult(req);
@@ -83,7 +83,7 @@ router.patch("/:id", verifyJWT, requireRole("admin"), [param("id").isInt({
     handleError(res, err, "PATCH /contract-module-options/:id");
   }
 });
-router.delete("/:id", verifyJWT, requireRole("admin"), [param("id").isInt({
+router.delete("/:id", verifyJWT, requirePermission("admin_panel.contract_modules"), [param("id").isInt({
   min: 1
 })], async (req, res) => {
   const errors = validationResult(req);

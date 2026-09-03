@@ -260,7 +260,7 @@ export default function AdminNotificationCatalog() {
   };
   const inAppEventOption = draft ? IN_APP_EVENT_OPTIONS.find(item => item.key === getInAppEventKey(draft.source, draft.element)) : null;
   return <div className={styles.layout}>
-      <Card title={copy.catalog.title} description={copy.catalog.description}>
+      <Card title={copy.catalog.title} description={copy.catalog.description} fill>
         <div className={styles.searchRow}>
           <input className={styles.search} type="search" value={query} onChange={event => setQuery(event.target.value)} placeholder={copy.catalog.searchPlaceholder} />
         </div>

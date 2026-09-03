@@ -50,8 +50,8 @@ const SIDEBAR_COPY = {
       menu: "Compte",
       menuAria: "Menu compte",
       myAccount: "Mon compte",
+      patchNotes: "Patch notes",
       admin: "Administration",
-      updates: "Mises à jour",
       support: "Support",
       logout: "Se déconnecter"
     }
@@ -106,8 +106,8 @@ const SIDEBAR_COPY = {
       menu: "Account",
       menuAria: "Account menu",
       myAccount: "My account",
+      patchNotes: "Patch notes",
       admin: "Administration",
-      updates: "Updates",
       support: "Support",
       logout: "Sign out"
     }
@@ -162,8 +162,8 @@ const SIDEBAR_COPY = {
       menu: "Konto",
       menuAria: "Kontomenü",
       myAccount: "Mein Konto",
+      patchNotes: "Patch notes",
       admin: "Administration",
-      updates: "Updates",
       support: "Support",
       logout: "Abmelden"
     }
@@ -218,8 +218,8 @@ const SIDEBAR_COPY = {
       menu: "Account",
       menuAria: "Menu account",
       myAccount: "Il mio account",
+      patchNotes: "Patch notes",
       admin: "Amministrazione",
-      updates: "Aggiornamenti",
       support: "Supporto",
       logout: "Disconnetti"
     }
@@ -274,8 +274,8 @@ const SIDEBAR_COPY = {
       menu: "Cuenta",
       menuAria: "Menú de cuenta",
       myAccount: "Mi cuenta",
+      patchNotes: "Patch notes",
       admin: "Administración",
-      updates: "Actualizaciones",
       support: "Soporte",
       logout: "Cerrar sesión"
     }

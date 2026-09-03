@@ -4,7 +4,7 @@ import path from "path";
 import multer from "multer";
 import { fileURLToPath } from "url";
 import verifyJWT from "../../middleware/auth.js";
-import { requireRole } from "../../middleware/roles.js";
+import { requirePermission } from "../../middleware/permissions.js";
 import { requirePro } from "../../middleware/edition.js";
 import { pool, isDatabaseConfigured } from "../../database/db.js";
 import { decryptSetting } from "../../utils/settingsHelper.js";
@@ -103,7 +103,7 @@ router.get("/", async (_req, res) => {
     });
   }
 });
-router.get("/admin", verifyJWT, requireRole("admin"), requirePro, async (_req, res) => {
+router.get("/admin", verifyJWT, requirePermission("admin_panel.login_branding"), requirePro, async (_req, res) => {
   try {
     const settings = await readLoginBrandingFromDb();
     res.json({
@@ -116,7 +116,7 @@ router.get("/admin", verifyJWT, requireRole("admin"), requirePro, async (_req, r
     });
   }
 });
-router.patch("/", verifyJWT, requireRole("admin"), requirePro, async (req, res) => {
+router.patch("/", verifyJWT, requirePermission("admin_panel.login_branding"), requirePro, async (req, res) => {
   const existing = await readLoginBrandingFromDb();
   const normalized = normalizeLoginBrandingFlat({
     ...existing,
@@ -143,7 +143,7 @@ router.patch("/", verifyJWT, requireRole("admin"), requirePro, async (req, res) 
     client.release();
   }
 });
-router.post("/:side/:kind", verifyJWT, requireRole("admin"), requirePro, (req, res) => {
+router.post("/:side/:kind", verifyJWT, requirePermission("admin_panel.login_branding"), requirePro, (req, res) => {
   upload.single("file")(req, res, async err => {
     if (err) {
       let message = err.message || "Error during upload.";
@@ -189,7 +189,7 @@ router.post("/:side/:kind", verifyJWT, requireRole("admin"), requirePro, (req, r
     }
   });
 });
-router.delete("/:side/:kind", verifyJWT, requireRole("admin"), requirePro, async (req, res) => {
+router.delete("/:side/:kind", verifyJWT, requirePermission("admin_panel.login_branding"), requirePro, async (req, res) => {
   const side = String(req.params.side || "");
   const kind = String(req.params.kind || "");
   if (!LOGIN_SIDES.includes(side) || !["logo", "background"].includes(kind)) {

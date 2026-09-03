@@ -1,7 +1,8 @@
 import { useState, useEffect, useMemo, useCallback } from "react";
 import { Icon } from "@iconify/react";
 import { toast } from "react-toastify";
-import { useAuthContext } from "../../contexts/AuthContext";
+import { usePermissions } from "../../contexts/PermissionsContext";
+import { canAccessAdminPanel, canAccessAdminNavKey } from "../../utils/adminPanelPermissions";
 import { COMMUNITY_ADMIN_KEYS } from "../../config/edition";
 import ProFeatureBadge from "../Misc/ProFeature/ProFeatureBadge";
 import ProFeaturePromoModal from "../Misc/ProFeature/ProFeaturePromoModal";
@@ -208,8 +209,11 @@ export default function AdminPanel({
   onOpenPage
 }) {
   const {
-    userRole
-  } = useAuthContext();
+    can,
+    canAny,
+    isAdmin
+  } = usePermissions();
+  const hasAdminAccess = canAccessAdminPanel(canAny, isAdmin);
   const locale = useAppLocale();
   const panelCopy = useMemo(() => getAdminPanelCopy(locale), [locale]);
   const injectionCopy = useMemo(() => getAdminInjectionCopy(locale), [locale]);
@@ -248,12 +252,27 @@ export default function AdminPanel({
         proOnly: !COMMUNITY_ADMIN_KEYS.has(item.key)
       };
     };
-    if (!isCommunity) return buildAdminNavSections(locale);
-    return buildAdminNavSections(locale).map(section => ({
+    const filterByPermission = item => {
+      if (item.children) {
+        const children = item.children.filter(child => canAccessAdminNavKey(can, child.key, isAdmin));
+        if (children.length === 0) return null;
+        return {
+          ...item,
+          children
+        };
+      }
+      if (!canAccessAdminNavKey(can, item.key, isAdmin)) return null;
+      return item;
+    };
+    const base = !isCommunity ? buildAdminNavSections(locale) : buildAdminNavSections(locale).map(section => ({
       ...section,
       items: section.items.map(applyProOnly)
     }));
-  }, [isCommunity, locale]);
+    return base.map(section => ({
+      ...section,
+      items: section.items.map(filterByPermission).filter(Boolean)
+    })).filter(section => section.items.length > 0);
+  }, [isCommunity, locale, can, isAdmin]);
   const visibleItems = useMemo(() => navSections.flatMap(section => flattenNavItems(section.items)), [navSections]);
   const allowedNavKeys = useMemo(() => visibleItems.filter(item => !item.proOnly).map(item => item.key), [visibleItems]);
   const navSearchTokens = useMemo(() => {
@@ -360,7 +379,7 @@ export default function AdminPanel({
       return routeTab;
     });
   }, [routeTab, allowedNavKeys, injectionRunning]);
-  if (userRole !== "admin") {
+  if (!hasAdminAccess) {
     return <AdminAccessDenied />;
   }
   const ActiveComponent = TAB_COMPONENTS[activeTab];

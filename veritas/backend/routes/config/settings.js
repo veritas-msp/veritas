@@ -2,9 +2,9 @@ import express from 'express';
 import { pool } from '../../database/db.js';
 import { decryptSetting, encryptSettingValue } from '../../utils/settingsHelper.js';
 import verifyJWT from '../../middleware/auth.js';
-import { requireRole } from '../../middleware/roles.js';
+import { requirePermission } from '../../middleware/permissions.js';
 const router = express.Router();
-router.use(verifyJWT, requireRole('admin'));
+router.use(verifyJWT, requirePermission('admin_panel.general'));
 router.get('/', async (req, res) => {
   try {
     const result = await pool.query('SELECT key, value, value_encrypted, value_iv, value_auth_tag, section FROM v_b_settings');

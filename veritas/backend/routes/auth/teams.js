@@ -2,7 +2,7 @@ import express from "express";
 import { body, param, validationResult } from "express-validator";
 import { pool } from "../../database/db.js";
 import verifyJWT from "../../middleware/auth.js";
-import { requireRole } from "../../middleware/roles.js";
+import { requirePermission } from "../../middleware/permissions.js";
 import { ensureTeamsSchema } from "../../services/ensureTeamsSchema.js";
 const router = express.Router();
 const AGENTS_WHERE = `COALESCE(u.role, '') <> 'client'`;
@@ -103,7 +103,7 @@ router.get("/planning", async (_req, res) => {
     });
   }
 });
-const adminOnly = requireRole("admin");
+const adminOnly = requirePermission("admin_panel.teams");
 router.get("/", adminOnly, async (_req, res) => {
   try {
     await ensureTeamsSchema();

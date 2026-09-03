@@ -186,8 +186,8 @@ export function buildAgentPath(docType, data = null, options = {}) {
       return "/support";
     case "User":
       return "/account";
-    case "Updates":
-      return "/updates";
+    case "PatchNotes":
+      return "/patch-notes";
     case "TabLauncher":
       return "/open";
     default:
@@ -478,9 +478,9 @@ export function parseAgentPath(pathname, search = "") {
       adminTab: null
     })
   }, {
-    re: /^\/updates$/,
+    re: /^\/patch-notes$/,
     run: () => ({
-      docType: "Updates",
+      docType: "PatchNotes",
       data: null,
       adminTab: null
     })
@@ -526,11 +526,16 @@ export function getSafeReturnPath(pathname, search = "") {
 export function isAgentPathAllowed(docType, {
   userRole,
   access,
-  isCommunity
+  isCommunity,
+  canAccessAdmin
 }) {
   if (!docType) return false;
-  if (docType === "Admin" && userRole !== "admin") return false;
-  if (docType === "Admin" && access && access.Admin === false) return false;
+  if (docType === "Admin") {
+    if (canAccessAdmin === true) return true;
+    if (userRole === "admin") return true;
+    if (access && access.Admin === false) return false;
+    return false;
+  }
   if (isCommunity && isProOnlyDocType(docType)) return false;
   const accessKey = DOC_TYPE_ACCESS_KEY[docType];
   if (accessKey && access && access[accessKey] === false) return false;

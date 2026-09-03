@@ -1,11 +1,11 @@
 import express from "express";
 import { pool } from "../../database/db.js";
 import verifyJWT from "../../middleware/auth.js";
-import { requireRole } from "../../middleware/roles.js";
+import { requirePermission } from "../../middleware/permissions.js";
 import { deletePortalUserForContact, resetPortalPassword } from "../../utils/contactPortal.js";
 import { assertCommunityClientPortalLimit, sendCommunityLimitError } from "../../utils/communityLimits.js";
 const router = express.Router();
-router.get("/", verifyJWT, requireRole("admin"), async (_req, res) => {
+router.get("/", verifyJWT, requirePermission("admin_panel.client_portal"), async (_req, res) => {
   try {
     const {
       rows
@@ -34,7 +34,7 @@ router.get("/", verifyJWT, requireRole("admin"), async (_req, res) => {
     });
   }
 });
-router.patch("/:id", verifyJWT, requireRole("admin"), async (req, res) => {
+router.patch("/:id", verifyJWT, requirePermission("admin_panel.client_portal"), async (req, res) => {
   const {
     id
   } = req.params;
@@ -73,7 +73,7 @@ router.patch("/:id", verifyJWT, requireRole("admin"), async (req, res) => {
     });
   }
 });
-router.patch("/:id/password", verifyJWT, requireRole("admin"), async (req, res) => {
+router.patch("/:id/password", verifyJWT, requirePermission("admin_panel.client_portal"), async (req, res) => {
   const {
     id
   } = req.params;
@@ -102,7 +102,7 @@ router.patch("/:id/password", verifyJWT, requireRole("admin"), async (req, res) 
     });
   }
 });
-router.delete("/:id", verifyJWT, requireRole("admin"), async (req, res) => {
+router.delete("/:id", verifyJWT, requirePermission("admin_panel.client_portal"), async (req, res) => {
   const {
     id
   } = req.params;

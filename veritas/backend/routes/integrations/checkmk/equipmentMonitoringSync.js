@@ -43,6 +43,32 @@ function isAlertEvent(event) {
   const state = getEventStateNum(event);
   return state === 1 || state === 2;
 }
+function serviceDisplayName(service) {
+  return String(service?.title || service?.description || service?.id || service?.name || "").trim();
+}
+function eventServiceName(event) {
+  return String(
+    event?.service ||
+      event?.log_service_description ||
+      event?.service_description ||
+      event?.serviceDescription ||
+      ""
+  ).trim();
+}
+function uniqueNonEmpty(values, limit = 3) {
+  const out = [];
+  const seen = new Set();
+  for (const value of values) {
+    const key = String(value || "").trim();
+    if (!key) continue;
+    const normalized = key.toLowerCase();
+    if (seen.has(normalized)) continue;
+    seen.add(normalized);
+    out.push(key);
+    if (out.length >= limit) break;
+  }
+  return out;
+}
 export function computeMonitoringSummary(monitoringData, lastSyncedAt) {
   if (!monitoringData || typeof monitoringData !== 'object') {
     return {
@@ -52,13 +78,19 @@ export function computeMonitoringSummary(monitoringData, lastSyncedAt) {
       recentAlerts: 0,
       recentCritAlerts: 0,
       recentWarnAlerts: 0,
+      primaryService: null,
+      failingServices: [],
       lastSyncedAt: lastSyncedAt || null
     };
   }
-  const services = monitoringData?.services?.services || [];
-  const events = monitoringData?.events?.events || [];
-  const critServices = services.filter(s => (s.state ?? 3) === 2).length;
-  const warnServices = services.filter(s => (s.state ?? 3) === 1).length;
+  const servicesRaw = monitoringData?.services?.services ?? monitoringData?.services;
+  const services = Array.isArray(servicesRaw) ? servicesRaw : [];
+  const eventsRaw = monitoringData?.events?.events ?? monitoringData?.events;
+  const events = Array.isArray(eventsRaw) ? eventsRaw : [];
+  const critServiceRows = services.filter(s => (s.state ?? 3) === 2);
+  const warnServiceRows = services.filter(s => (s.state ?? 3) === 1);
+  const critServices = critServiceRows.length;
+  const warnServices = warnServiceRows.length;
   const cutoff = Date.now() - RECENT_ALERT_DAYS * 24 * 60 * 60 * 1000;
   const recentAlertEvents = events.filter(e => {
     if (!isAlertEvent(e)) return false;
@@ -69,6 +101,20 @@ export function computeMonitoringSummary(monitoringData, lastSyncedAt) {
   const recentWarnAlerts = recentAlertEvents.filter(e => getEventStateNum(e) === 1).length;
   let status = 'ok';
   if (critServices > 0 || recentCritAlerts > 0) status = 'critical';else if (warnServices > 0 || recentWarnAlerts > 0) status = 'warning';
+  let failingServices = uniqueNonEmpty(
+    (critServiceRows.length ? critServiceRows : warnServiceRows).map(serviceDisplayName)
+  );
+  if (!failingServices.length && recentAlertEvents.length) {
+    const preferredEvents = status === 'critical'
+      ? recentAlertEvents.filter(e => getEventStateNum(e) === 2)
+      : recentAlertEvents.filter(e => getEventStateNum(e) === 1);
+    const sourceEvents = preferredEvents.length ? preferredEvents : recentAlertEvents;
+    failingServices = uniqueNonEmpty(
+      [...sourceEvents]
+        .sort((a, b) => (getEventTimeMs(b) || 0) - (getEventTimeMs(a) || 0))
+        .map(eventServiceName)
+    );
+  }
   return {
     status,
     critServices,
@@ -76,6 +122,8 @@ export function computeMonitoringSummary(monitoringData, lastSyncedAt) {
     recentAlerts: recentAlertEvents.length,
     recentCritAlerts,
     recentWarnAlerts,
+    primaryService: failingServices[0] || null,
+    failingServices,
     lastSyncedAt: lastSyncedAt || null
   };
 }

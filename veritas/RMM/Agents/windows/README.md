@@ -52,6 +52,14 @@ npm run build:rmm-agent
 
 Output: `dist/VeritasAgent-Windows-Setup.msi` — served by Administration → RMM → Deployment.
 
+**Important:** `RMM/` is the agent *source*. The downloadable installer is the MSI binary in `dist/`, which is not committed to git. On a Linux Docker host you cannot build it; build once on Windows, then copy the MSI onto **the same Veritas server**:
+
+```text
+veritas/RMM/Agents/windows/dist/VeritasAgent-Windows-Setup.msi
+```
+
+`docker-compose` mounts `./veritas/RMM` → `/RMM` so the backend can serve that file. After copying the MSI, restart the backend container (`docker compose up -d`).
+
 ## Migration from legacy PowerShell agent
 
 On first start, the service migrates `%ProgramData%\VeritasAgent\config.json` into DPAPI storage and removes scheduled task `VeritasAgentHeartbeat`.

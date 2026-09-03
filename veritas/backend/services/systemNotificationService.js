@@ -1,5 +1,6 @@
 import { pool } from "../database/db.js";
 import { sendMail } from "../utils/sendMail.js";
+import { getPrimaryFrontendBaseUrl } from "../utils/envFile.js";
 import { loadNotificationSettingsRaw, saveNotificationLogsRaw } from "./ticketAutomationConfigStore.js";
 import { TICKET_REQUESTER_EMAIL_SQL } from "./ticketEmailThread.js";
 import { getTicketRecipientIds, loadInAppSettings } from "./userNotificationService.js";
@@ -475,6 +476,128 @@ export async function notifyPlanningEventAssigned({
         username: actorUser?.username || actorUser?.email || "",
         email: actorUser?.email || ""
       }
+    }
+  });
+}
+
+async function loadClientPortalUsers(clientId) {
+  const id = Number(clientId);
+  if (!Number.isInteger(id) || id <= 0) return [];
+  const {
+    rows
+  } = await pool.query(`SELECT id, email, username
+     FROM v_b_users
+     WHERE role = 'client'
+       AND client_id = $1
+       AND COALESCE(is_active, true) = true
+       AND COALESCE(password_pending, false) = false
+       AND email IS NOT NULL
+       AND TRIM(email) <> ''`, [id]);
+  return rows || [];
+}
+
+async function loadClientName(clientId) {
+  const id = Number(clientId);
+  if (!Number.isInteger(id) || id <= 0) return "";
+  const {
+    rows
+  } = await pool.query(`SELECT name FROM v_b_clients WHERE id = $1 LIMIT 1`, [id]);
+  return rows[0]?.name || "";
+}
+
+function portalDocumentsLink() {
+  return `${String(getPrimaryFrontendBaseUrl() || "").replace(/\/+$/, "")}/client/documents`;
+}
+
+export async function notifyVaultDocumentShared({
+  clientId,
+  file = {}
+} = {}) {
+  const id = Number(clientId || file?.client_id);
+  if (!Number.isInteger(id) || id <= 0) return {
+    skipped: true,
+    reason: "no_client"
+  };
+  const users = await loadClientPortalUsers(id);
+  if (!users.length) return {
+    skipped: true,
+    reason: "no_recipients"
+  };
+  const portalLink = portalDocumentsLink();
+  const entrepriseName = file?.client_name || (await loadClientName(id));
+  return sendSystemNotification("documents.vault_shared", {
+    emails: users.map(user => user.email),
+    userIds: users.map(user => user.id),
+    context: {
+      document: {
+        file_name: file?.file_name || file?.fileName || "",
+        category: file?.category || "",
+        description: file?.description || ""
+      },
+      entreprise: {
+        id,
+        nom: entrepriseName || ""
+      },
+      portalLink,
+      enterpriseId: id
+    }
+  });
+}
+
+export async function notifyVaultAccessShared({
+  clientId,
+  contactId,
+  secret = {}
+} = {}) {
+  const contactKey = Number(contactId || secret?.contact_id);
+  if (!Number.isInteger(contactKey) || contactKey <= 0) return {
+    skipped: true,
+    reason: "no_contact"
+  };
+  const {
+    rows
+  } = await pool.query(`SELECT c.id, c.prenom, c.nom, c.email AS contact_email, c.client_id,
+            u.id AS portal_user_id, u.email AS portal_email,
+            cl.name AS client_name
+     FROM v_b_contacts c
+     LEFT JOIN v_b_users u ON u.contact_id = c.id AND u.role = 'client'
+     LEFT JOIN v_b_clients cl ON cl.id = COALESCE($2::int, c.client_id)
+     WHERE c.id = $1
+     LIMIT 1`, [contactKey, Number(clientId) || null]);
+  const row = rows[0];
+  if (!row) return {
+    skipped: true,
+    reason: "contact_not_found"
+  };
+  const email = String(row.portal_email || row.contact_email || "").trim();
+  if (!email) return {
+    skipped: true,
+    reason: "no_email"
+  };
+  const portalLink = portalDocumentsLink();
+  const expiresAt = secret?.expires_at || secret?.expiresAt;
+  const expiresLabel = expiresAt ? new Date(expiresAt).toLocaleString("fr-FR") : "";
+  return sendSystemNotification("vault.access_shared", {
+    emails: [email],
+    userIds: row.portal_user_id ? [row.portal_user_id] : [],
+    context: {
+      secret: {
+        title: secret?.title || "",
+        description: secret?.description || "",
+        expires_at: expiresLabel,
+        max_views: secret?.max_views ?? secret?.maxViews ?? ""
+      },
+      contact: {
+        prenom: row.prenom || "",
+        nom: row.nom || "",
+        email
+      },
+      entreprise: {
+        id: Number(clientId) || row.client_id || "",
+        nom: row.client_name || ""
+      },
+      portalLink,
+      enterpriseId: Number(clientId) || row.client_id || ""
     }
   });
 }

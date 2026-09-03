@@ -11,6 +11,7 @@ import { getAdminNotificationCenterCopy } from "./adminNotificationCenterI18n";
 import { NOTIFICATION_SOURCE_OPTIONS, getElementOption, getSourceOption } from "./notificationEventConstants";
 import layout from "../EnterprisesPage/EnterpriseFormModal.module.css";
 import formStyles from "./NotificationEventFormModal.module.css";
+import catalogStyles from "./AdminNotificationCatalog.module.css";
 
 function buildTemplateDraft() {
   return {
@@ -123,60 +124,24 @@ export default function AdminNotificationTemplates() {
     if (!template.source || !template.element) return copy.templates.anyEvent;
     return `${getSourceOption(template.source).label} · ${getElementOption(template.source, template.element).label}`;
   };
-  return <Card title={copy.templates.title} description={copy.templates.description} action={<Btn icon="mdi:plus" onClick={openCreate}>{copy.templates.add}</Btn>}>
-      {templates.length === 0 ? <p style={{
-      margin: 0,
-      color: "var(--msp-muted)",
-      fontSize: "0.84rem"
-    }}>{copy.templates.empty}</p> : <div className="admin-table-wrap">
-          <table style={{
-        width: "100%",
-        borderCollapse: "collapse"
-      }}>
+  return <div className={catalogStyles.layout}>
+      <Card title={copy.templates.title} description={copy.templates.description} fill action={<Btn icon="mdi:plus" onClick={openCreate}>{copy.templates.add}</Btn>}>
+      {templates.length === 0 ? <p className={catalogStyles.empty}>{copy.templates.empty}</p> : <div className={catalogStyles.tableShell}>
+          <table className={catalogStyles.table}>
             <thead>
               <tr>
-                <th style={{
-              textAlign: "left",
-              padding: "8px 6px",
-              fontSize: "0.72rem",
-              color: "var(--msp-muted)"
-            }}>{copy.templates.columns.name}</th>
-                <th style={{
-              textAlign: "left",
-              padding: "8px 6px",
-              fontSize: "0.72rem",
-              color: "var(--msp-muted)"
-            }}>{copy.templates.columns.subject}</th>
-                <th style={{
-              textAlign: "left",
-              padding: "8px 6px",
-              fontSize: "0.72rem",
-              color: "var(--msp-muted)"
-            }}>{copy.templates.columns.event}</th>
-                <th style={{
-              textAlign: "right",
-              padding: "8px 6px",
-              fontSize: "0.72rem",
-              color: "var(--msp-muted)"
-            }}>{copy.templates.columns.actions}</th>
+                <th>{copy.templates.columns.name}</th>
+                <th>{copy.templates.columns.subject}</th>
+                <th>{copy.templates.columns.event}</th>
+                <th className={catalogStyles.tableActions}>{copy.templates.columns.actions}</th>
               </tr>
             </thead>
             <tbody>
               {templates.map(template => <tr key={template.id}>
-                  <td style={{
-              padding: "10px 6px"
-            }}>{template.name}</td>
-                  <td style={{
-              padding: "10px 6px",
-              color: "var(--msp-muted)"
-            }}>{template.subject || "—"}</td>
-                  <td style={{
-              padding: "10px 6px"
-            }}>{eventLabel(template)}</td>
-                  <td style={{
-              padding: "10px 6px",
-              textAlign: "right"
-            }}>
+                  <td>{template.name}</td>
+                  <td className={catalogStyles.tableMuted}>{template.subject || "—"}</td>
+                  <td>{eventLabel(template)}</td>
+                  <td className={catalogStyles.tableActions}>
                     <BtnIcon icon="mdi:pencil-outline" title={copy.templates.edit} onClick={() => openEdit(template)} />
                     <BtnIcon icon="mdi:delete-outline" title={copy.templates.delete} variant="ghost" onClick={() => remove(template)} />
                   </td>
@@ -184,7 +149,7 @@ export default function AdminNotificationTemplates() {
             </tbody>
           </table>
         </div>}
-
+      </Card>
       {draft ? createPortal(<div className={layout.overlay} onClick={close} role="presentation">
           <div className={layout.shell} style={{
         maxWidth: "min(860px, 100%)"
@@ -311,5 +276,5 @@ export default function AdminNotificationTemplates() {
       }));
       setVariablesOpen(false);
     }} />
-    </Card>;
+    </div>;
 }

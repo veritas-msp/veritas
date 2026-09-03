@@ -2,6 +2,7 @@ import express from "express";
 import verifyJWT from "../../middleware/auth.js";
 import { requireAnyPermission } from "../../middleware/permissions.js";
 import { createAgentVaultSecret, listAgentVaultSecrets, revokeAgentVaultSecret } from "../../services/clientVaultSecretService.js";
+import { notifyVaultAccessShared } from "../../services/systemNotificationService.js";
 const router = express.Router();
 function requireAgent(req, res, next) {
   const role = String(req.user?.role || "").toLowerCase();
@@ -49,6 +50,11 @@ router.post("/", requireAnyPermission("vault.manage", "clients_detail.vault"), a
       maxViews: req.body?.maxViews,
       createdBy: req.user
     });
+    notifyVaultAccessShared({
+      clientId,
+      contactId,
+      secret
+    }).catch(err => console.warn("[POST /vault-secrets] notifyVaultAccessShared:", err?.message || err));
     res.status(201).json(secret);
   } catch (err) {
     console.error("[POST /vault-secrets]", err.message);

@@ -1,7 +1,7 @@
 import express from "express";
 import { body, param, validationResult } from "express-validator";
 import verifyJWT from "../../middleware/auth.js";
-import { requireRole } from "../../middleware/roles.js";
+import { requirePermission } from "../../middleware/permissions.js";
 import { requirePro } from "../../middleware/edition.js";
 import { getTechNewsFeed, clearTechNewsCache } from "../../utils/techNewsFeed.js";
 import { ALLOWED_REACTION_EMOJIS, addReactionStreamClient, broadcastReactionHeartbeat, ensureTechNewsReactionsTable, getReactionsForArticles, removeReactionStreamClient, toggleTechNewsReaction } from "../../utils/techNewsReactions.js";
@@ -13,10 +13,10 @@ function handleFeedError(res, err, context) {
     error: err.message || "Server error."
   });
 }
-router.get("/feeds/meta", verifyJWT, requireRole("admin"), requirePro, (_req, res) => {
+router.get("/feeds/meta", verifyJWT, requirePermission("admin_panel.tech_news"), requirePro, (_req, res) => {
   res.json(getTechNewsFeedsMeta());
 });
-router.get("/feeds", verifyJWT, requireRole("admin"), requirePro, async (_req, res) => {
+router.get("/feeds", verifyJWT, requirePermission("admin_panel.tech_news"), requirePro, async (_req, res) => {
   try {
     const feeds = await listTechNewsFeeds();
     res.json({
@@ -26,7 +26,7 @@ router.get("/feeds", verifyJWT, requireRole("admin"), requirePro, async (_req, r
     handleFeedError(res, err, "GET /tech-news/feeds");
   }
 });
-router.post("/feeds", verifyJWT, requireRole("admin"), requirePro, [body("locale").optional().isString().isIn(ALLOWED_FEED_LOCALES), body("source").isString().trim().notEmpty(), body("url").isString().trim().notEmpty(), body("category").optional().isIn(ALLOWED_FEED_CATEGORIES), body("enabled").optional().isBoolean(), body("sortOrder").optional().isInt()], async (req, res) => {
+router.post("/feeds", verifyJWT, requirePermission("admin_panel.tech_news"), requirePro, [body("locale").optional().isString().isIn(ALLOWED_FEED_LOCALES), body("source").isString().trim().notEmpty(), body("url").isString().trim().notEmpty(), body("category").optional().isIn(ALLOWED_FEED_CATEGORIES), body("enabled").optional().isBoolean(), body("sortOrder").optional().isInt()], async (req, res) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
     return res.status(400).json({
@@ -44,7 +44,7 @@ router.post("/feeds", verifyJWT, requireRole("admin"), requirePro, [body("locale
     handleFeedError(res, err, "POST /tech-news/feeds");
   }
 });
-router.post("/feeds/reset", verifyJWT, requireRole("admin"), requirePro, async (_req, res) => {
+router.post("/feeds/reset", verifyJWT, requirePermission("admin_panel.tech_news"), requirePro, async (_req, res) => {
   try {
     const feeds = await resetTechNewsFeeds();
     clearTechNewsCache();
@@ -55,7 +55,7 @@ router.post("/feeds/reset", verifyJWT, requireRole("admin"), requirePro, async (
     handleFeedError(res, err, "POST /tech-news/feeds/reset");
   }
 });
-router.patch("/feeds/:id", verifyJWT, requireRole("admin"), requirePro, [param("id").isInt({
+router.patch("/feeds/:id", verifyJWT, requirePermission("admin_panel.tech_news"), requirePro, [param("id").isInt({
   min: 1
 }), body("locale").optional().isString().isIn(ALLOWED_FEED_LOCALES), body("source").optional().isString().trim().notEmpty(), body("url").optional().isString().trim().notEmpty(), body("category").optional().isIn(ALLOWED_FEED_CATEGORIES), body("enabled").optional().isBoolean(), body("sortOrder").optional().isInt()], async (req, res) => {
   const errors = validationResult(req);
@@ -75,7 +75,7 @@ router.patch("/feeds/:id", verifyJWT, requireRole("admin"), requirePro, [param("
     handleFeedError(res, err, "PATCH /tech-news/feeds/:id");
   }
 });
-router.delete("/feeds/:id", verifyJWT, requireRole("admin"), requirePro, [param("id").isInt({
+router.delete("/feeds/:id", verifyJWT, requirePermission("admin_panel.tech_news"), requirePro, [param("id").isInt({
   min: 1
 })], async (req, res) => {
   const errors = validationResult(req);

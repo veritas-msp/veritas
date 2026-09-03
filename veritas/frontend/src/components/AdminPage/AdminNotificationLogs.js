@@ -9,6 +9,7 @@ import { useAppLocale } from "../../hooks/useAppGeneralSettings";
 import { fetchTicketAutomationConfig, getTicketAutomationConfig } from "../../utils/ticketAutomationStorage";
 import { getAdminNotificationCenterCopy } from "./adminNotificationCenterI18n";
 import { getElementOption, getSourceOption } from "./notificationEventConstants";
+import catalogStyles from "./AdminNotificationCatalog.module.css";
 
 export default function AdminNotificationLogs() {
   const locale = useAppLocale();
@@ -53,66 +54,40 @@ export default function AdminNotificationLogs() {
       setRetryingId("");
     }
   };
-  return <Card title={copy.logs.title} description={copy.logs.description} fill>
-      <div style={{
-      overflowX: "auto"
-    }}>
-        <table style={{
-        width: "100%",
-        borderCollapse: "collapse"
-      }}>
+  return <div className={catalogStyles.layout}>
+      <Card title={copy.logs.title} description={copy.logs.description} fill>
+      <div className={catalogStyles.tableShell}>
+        <table className={catalogStyles.table}>
           <thead>
             <tr>
-              {["date", "source", "element", "company", "channel", "status", "message", "actions"].map(key => <th key={key} style={{
-              textAlign: key === "actions" ? "right" : "left",
-              padding: "8px 6px",
-              fontSize: "0.72rem",
-              color: "var(--msp-muted)"
-            }}>{copy.logs.columns[key]}</th>)}
+              {["date", "source", "element", "company", "channel", "status", "message", "actions"].map(key => <th key={key} className={key === "actions" ? catalogStyles.tableActions : undefined}>{copy.logs.columns[key]}</th>)}
             </tr>
           </thead>
           <tbody>
             {pagination.paginatedItems.length === 0 ? <tr>
-                <td colSpan={8} style={{
-              padding: "1.25rem",
-              textAlign: "center",
-              color: "var(--msp-muted)"
-            }}>{copy.logs.empty}</td>
+                <td colSpan={8} className={catalogStyles.empty}>{copy.logs.empty}</td>
               </tr> : pagination.paginatedItems.map(logItem => <tr key={logItem.id}>
                 <td style={{
-              padding: "10px 6px",
               whiteSpace: "nowrap"
             }}>{logItem.createdAt ? new Date(logItem.createdAt).toLocaleString(locale || "fr-FR") : "—"}</td>
-                <td style={{
-              padding: "10px 6px"
-            }}>{getSourceOption(logItem.source || "tickets").label}</td>
-                <td style={{
-              padding: "10px 6px"
-            }}>{getElementOption(logItem.source || "tickets", logItem.element || "updated").label}</td>
-                <td style={{
-              padding: "10px 6px"
-            }}>{companyName(logItem.enterpriseId)}</td>
-                <td style={{
-              padding: "10px 6px"
-            }}>{logItem.channel || "—"}</td>
-                <td style={{
-              padding: "10px 6px"
-            }}>{logItem.status || "—"}</td>
-                <td style={{
-              padding: "10px 6px",
+                <td>{getSourceOption(logItem.source || "tickets").label}</td>
+                <td>{getElementOption(logItem.source || "tickets", logItem.element || "updated").label}</td>
+                <td>{companyName(logItem.enterpriseId)}</td>
+                <td>{logItem.channel || "—"}</td>
+                <td>{logItem.status || "—"}</td>
+                <td className={catalogStyles.tableMuted} style={{
               maxWidth: 280,
               overflow: "hidden",
               textOverflow: "ellipsis"
             }}>{logItem.message || "—"}</td>
-                <td style={{
-              padding: "10px 6px",
-              textAlign: "right"
-            }}>
+                <td className={catalogStyles.tableActions}>
                   <button type="button" title={copy.logs.retry} onClick={() => retry(logItem)} disabled={retryingId === String(logItem.id || "")} style={{
                 border: "none",
                 background: "transparent",
                 cursor: "pointer",
-                color: "var(--msp-text)"
+                color: "var(--msp-text)",
+                display: "inline-flex",
+                alignItems: "center"
               }}>
                     <Icon icon={retryingId === String(logItem.id || "") ? "mdi:loading" : "mdi:send-outline"} />
                   </button>
@@ -122,5 +97,6 @@ export default function AdminNotificationLogs() {
         </table>
       </div>
       {logs.length > 0 ? <Pagination page={pagination.page} totalPages={pagination.totalPages} onPageChange={pagination.setPage} pageSize={pagination.pageSize} onPageSizeChange={pagination.setPageSize} rangeLabel={pagination.rangeLabel} /> : null}
-    </Card>;
+    </Card>
+    </div>;
 }

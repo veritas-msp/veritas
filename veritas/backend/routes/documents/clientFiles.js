@@ -8,6 +8,7 @@ import verifyJWT from "../../middleware/auth.js";
 import { requirePermission, requireAnyPermission } from "../../middleware/permissions.js";
 import { resolveFileUploadedBy } from "../../utils/fileUploadedBy.js";
 import { ensureVisibleToClientColumn, hasVisibleToClientColumn, parseVisibleToClient, visibilitySelectSql } from "../../utils/clientFilesVisibility.js";
+import { notifyVaultDocumentShared } from "../../services/systemNotificationService.js";
 const router = express.Router();
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const UPLOADS_DIR = path.join(__dirname, "..", "..", "uploads", "client-files");
@@ -107,7 +108,14 @@ router.post("/", verifyJWT, requireAnyPermission("documents.create", "clients_de
     const result = await pool.query(`INSERT INTO v_b_client_files (${columns.join(", ")})
        VALUES (${placeholders.join(", ")})
        RETURNING id, client_id, client_name, file_name, mime_type, size_bytes, category, description, created_at${returningVisibility}`, values);
-    res.status(201).json(result.rows[0]);
+    const row = result.rows[0];
+    if (shareWithClient) {
+      notifyVaultDocumentShared({
+        clientId: Number(clientId),
+        file: row
+      }).catch(err => console.warn("[POST /client-files] notifyVaultDocumentShared:", err?.message || err));
+    }
+    res.status(201).json(row);
   } catch (err) {
     if (req.file?.path && fs.existsSync(req.file.path)) {
       fs.unlinkSync(req.file.path);
@@ -217,6 +225,11 @@ router.patch("/:id", verifyJWT, requireAnyPermission("documents.edit", "clients_
       values.push(visibleToClient);
       sets.push(`visible_to_client = $${values.length}`);
     }
+    let previouslyVisible = null;
+    if (hasVisibility) {
+      const before = await pool.query(`SELECT visible_to_client FROM v_b_client_files WHERE id = $1 AND is_deleted = FALSE`, [req.params.id]);
+      previouslyVisible = before.rows[0]?.visible_to_client === true;
+    }
     values.push(req.params.id);
     const visibilitySelect = await resolveVisibilitySelect();
     const result = await pool.query(`UPDATE v_b_client_files
@@ -229,7 +242,14 @@ router.patch("/:id", verifyJWT, requireAnyPermission("documents.edit", "clients_
         error: "File not found."
       });
     }
-    res.json(result.rows[0]);
+    const row = result.rows[0];
+    if (hasVisibility && row.visible_to_client === true && previouslyVisible === false) {
+      notifyVaultDocumentShared({
+        clientId: row.client_id,
+        file: row
+      }).catch(err => console.warn("[PATCH /client-files] notifyVaultDocumentShared:", err?.message || err));
+    }
+    res.json(row);
   } catch (err) {
     console.error("[PATCH /client-files/:id]", err.message);
     res.status(500).json({

@@ -1,29 +1,30 @@
 .layout {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 14px;
   min-height: 0;
   flex: 1;
-  overflow-y: auto;
+  overflow: hidden;
 }
 
 .searchRow {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 12px;
+  margin-bottom: 4px;
 }
 
 .search {
   flex: 1;
   min-width: 0;
-  height: 38px;
-  padding: 0 12px;
+  height: 40px;
+  padding: 0 14px;
   border: 1px solid var(--msp-border);
-  border-radius: 8px;
+  border-radius: 9px;
   background: var(--msp-surface-2);
   color: var(--msp-text);
   font: inherit;
-  font-size: 0.84rem;
+  font-size: 0.86rem;
 }
 
 .search:focus {
@@ -35,22 +36,23 @@
 .groups {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 22px;
 }
 
 .groupHeader {
   display: flex;
   align-items: baseline;
-  gap: 8px;
-  padding-bottom: 6px;
-  border-bottom: 1px solid var(--msp-border);
+  gap: 10px;
+  padding-bottom: 8px;
+  margin-bottom: 2px;
+  border-bottom: 1px solid var(--msp-border-light);
 }
 
 .groupTitle {
   margin: 0;
   font-size: 0.72rem;
   font-weight: 700;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.05em;
   text-transform: uppercase;
   color: var(--msp-muted-light);
 }
@@ -64,18 +66,42 @@
 .rows {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 8px;
+}
+
+.rowsGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 12px;
 }
 
 .row {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto auto;
-  gap: 12px;
+  gap: 14px;
   align-items: center;
-  padding: 10px 12px;
+  padding: 12px 14px;
   border: 1px solid var(--msp-border);
-  border-radius: 10px;
+  border-radius: 11px;
   background: var(--msp-surface);
+}
+
+.rowCard {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-height: 100%;
+  padding: 14px;
+  border: 1px solid var(--msp-border);
+  border-radius: 12px;
+  background: var(--msp-surface-2);
+  box-sizing: border-box;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.rowCard:hover {
+  border-color: color-mix(in srgb, var(--msp-accent) 40%, var(--msp-border));
+  box-shadow: 0 4px 14px rgba(11, 33, 56, 0.06);
 }
 
 .rowOff {
@@ -88,30 +114,41 @@
 
 .rowTitle {
   margin: 0;
-  font-size: 0.86rem;
+  font-size: 0.88rem;
   font-weight: 650;
   color: var(--msp-text);
+  line-height: 1.35;
 }
 
 .rowMeta {
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
-  margin-top: 6px;
+  margin-top: 8px;
   align-items: center;
+}
+
+.rowCardFooter {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-top: auto;
+  padding-top: 12px;
+  border-top: 1px solid var(--msp-border-light);
 }
 
 .chip {
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  padding: 2px 8px;
+  padding: 3px 9px;
   border-radius: 999px;
   font-size: 0.7rem;
   font-weight: 650;
   border: 1px solid var(--msp-border);
   color: var(--msp-muted);
-  background: var(--msp-surface-2);
+  background: var(--msp-surface);
 }
 
 .chipOn {
@@ -129,13 +166,75 @@
   display: inline-flex;
   align-items: center;
   gap: 6px;
+  flex-shrink: 0;
 }
 
 .empty {
-  padding: 18px 8px;
+  padding: 28px 12px;
   text-align: center;
   color: var(--msp-muted);
   font-size: 0.84rem;
+}
+
+.tableShell {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  border: 1px solid var(--msp-border);
+  border-radius: 10px;
+  background: var(--msp-surface);
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.84rem;
+}
+
+.table th {
+  text-align: left;
+  padding: 12px 14px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--msp-muted);
+  background: var(--msp-surface-2);
+  border-bottom: 1px solid var(--msp-border);
+  white-space: nowrap;
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+
+.table th.tableActions,
+.table thRight {
+  text-align: right;
+}
+
+.table td {
+  padding: 12px 14px;
+  color: var(--msp-text);
+  border-bottom: 1px solid var(--msp-border-light);
+  background: var(--msp-surface);
+  vertical-align: middle;
+}
+
+.table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.table tbody tr:hover td {
+  background: var(--msp-surface-3);
+}
+
+.tableMuted {
+  color: var(--msp-muted);
+}
+
+.tableActions {
+  text-align: right;
+  white-space: nowrap;
 }
 
 @media (max-width: 820px) {
@@ -145,5 +244,9 @@
 
   .rowActions {
     justify-content: flex-end;
+  }
+
+  .rowsGrid {
+    grid-template-columns: 1fr;
   }
 }

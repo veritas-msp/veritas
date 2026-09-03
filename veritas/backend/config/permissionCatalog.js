@@ -353,6 +353,90 @@ export const PERMISSION_CATALOG = [{
   matrix: false,
   actions: ["view", "edit"]
 }, {
+  group: "admin_panel",
+  label: "Administration menu",
+  section: "administration",
+  moduleFlag: "administration_enabled",
+  actions: [{
+    action: "general",
+    label: "General settings"
+  }, {
+    action: "login_branding",
+    label: "Login page"
+  }, {
+    action: "tech_news",
+    label: "News feeds"
+  }, {
+    action: "users",
+    label: "Agents"
+  }, {
+    action: "permissions",
+    label: "Permissions"
+  }, {
+    action: "teams",
+    label: "Teams"
+  }, {
+    action: "planning",
+    label: "Planning types"
+  }, {
+    action: "clients",
+    label: "Company records"
+  }, {
+    action: "client_portal",
+    label: "Client portal access"
+  }, {
+    action: "support_credits",
+    label: "Support credit packs"
+  }, {
+    action: "sla",
+    label: "SLA"
+  }, {
+    action: "contract_modules",
+    label: "Contract options"
+  }, {
+    action: "equipment_families",
+    label: "Equipment families"
+  }, {
+    action: "infrastructure_map",
+    label: "Infrastructure map"
+  }, {
+    action: "tickets",
+    label: "Support settings"
+  }, {
+    action: "mail_collect",
+    label: "Mail collection"
+  }, {
+    action: "service_settings",
+    label: "Services settings"
+  }, {
+    action: "notifications",
+    label: "Notifications"
+  }, {
+    action: "injection",
+    label: "Data injection"
+  }, {
+    action: "equipment_purge",
+    label: "Equipment purge"
+  }, {
+    action: "maintenance",
+    label: "Maintenance message"
+  }, {
+    action: "rmm",
+    label: "RMM · Agents"
+  }, {
+    action: "supervision_alerts",
+    label: "Alert rules"
+  }, {
+    action: "integrations",
+    label: "Integrations"
+  }, {
+    action: "ai",
+    label: "AI · Copilot"
+  }, {
+    action: "license",
+    label: "Pro license"
+  }]
+}, {
   group: "rmm",
   label: "RMM",
   section: "administration",
@@ -550,7 +634,8 @@ export const VIEW_PERMISSION_TO_MODULE_FLAG = {
   "vault.view": "documents_enabled",
   "knowledge_base.view": "knowledge_base_enabled",
   "configurateur.view": "configurateur_enabled",
-  "config.view": "administration_enabled"
+  "config.view": "administration_enabled",
+  ...Object.fromEntries((PERMISSION_CATALOG_NORMALIZED.find(group => group.group === "admin_panel")?.actions || []).map(action => [permissionKey("admin_panel", action.action), "administration_enabled"]))
 };
 
 export const ACCESS_KEY_TO_VIEW_PERMISSIONS = {
@@ -585,7 +670,7 @@ export const MODULE_FLAG_TO_GROUPS = {
   documents_enabled: ["documents", "vault"],
   knowledge_base_enabled: ["knowledge_base"],
   configurateur_enabled: ["configurateur"],
-  administration_enabled: ["config", "users"]
+  administration_enabled: ["admin_panel"]
 };
 
 export function defaultPermissionsForProfile(profileRow = {}) {

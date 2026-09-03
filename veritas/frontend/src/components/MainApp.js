@@ -31,7 +31,7 @@ import RapportPage from "../components/RapportPage/RapportPage";
 import AdminPanel from "../components/AdminPage/AdminPanel";
 import ReportBugForm from "../components/Misc/ReportBugForm/ReportBugForm";
 import UserProfile from "../components/Misc/UserProfile/UserProfile";
-import UpdatesPage from "../components/UpdatesPage/UpdatesPage";
+import PatchNotesPage from "../components/PatchNotesPage/PatchNotesPage";
 import ComingSoonPage from "../components/Misc/ComingSoonPage/ComingSoonPage";
 import DashboardPage from "../components/DashboardPage/DashboardPage";
 import DocumentsHubPage from "../components/DocumentsHubPage/DocumentsHubPage";
@@ -55,6 +55,7 @@ import { useOnboarding } from "../hooks/useOnboarding";
 import OnboardingWizard from "../components/Onboarding/OnboardingWizard";
 import OnboardingResumeFab from "../components/Onboarding/OnboardingResumeFab";
 import { buildAgentPath, parseAgentPath, routeToMainAppState, isAgentPathAllowed } from "../navigation/agentRoutes";
+import { canAccessAdminPanel } from "../utils/adminPanelPermissions";
 import { getEquipmentListKey } from "../utils/equipmentIdentity";
 import { toast } from "react-toastify";
 import { getAdminInjectionCopy } from "./AdminPage/adminInjectionI18n";
@@ -62,8 +63,6 @@ import ConfirmModal from "./Misc/ConfirmModal/ConfirmModal";
 import { getRapportPageCopy } from "./RapportPage/rapportPageI18n";
 import ProfilePreviewBanner from "./Misc/ProfilePreviewBanner/ProfilePreviewBanner";
 import AgentImpersonationBanner from "./Misc/AgentImpersonationBanner/AgentImpersonationBanner";
-import { isSuperAdminProtectedProfile } from "../utils/profileProtection";
-import { usePlatformUpdateAlert } from "../hooks/usePlatformUpdateAlert";
 export default function MainApp() {
   const {
     user,
@@ -74,11 +73,14 @@ export default function MainApp() {
   } = useAuthContext();
   const {
     can,
+    canAny,
+    isAdmin,
     isPreviewing,
     previewProfile,
     stopProfilePreview
   } = usePermissions();
   const canOpenRestrictedTabs = can("tabs.open_restricted");
+  const canAccessAdmin = canAccessAdminPanel(canAny, isAdmin);
   const {
     theme
   } = useTheme();
@@ -393,7 +395,8 @@ export default function MainApp() {
     if (accessLoaded && !isAgentPathAllowed(parsed.docType, {
       userRole,
       access,
-      isCommunity
+      isCommunity,
+      canAccessAdmin
     })) {
       navigate("/", {
         replace: true
@@ -495,10 +498,7 @@ export default function MainApp() {
     });
   }, [stopProfilePreview, pushAgentUrl]);
   const handleDocSelect = (type, data, options = {}) => {
-    if (type === "Admin" && userRole !== "admin") {
-      return;
-    }
-    if (type === "Updates" && !isSuperAdminProtectedProfile(effectiveProfile)) {
+    if (type === "Admin" && !canAccessAdmin) {
       return;
     }
     if (type === "Mon" || type === "Rapport") {
@@ -507,7 +507,8 @@ export default function MainApp() {
     if (!canOpenRestrictedTabs && !isAgentPathAllowed(type, {
       userRole,
       access,
-      isCommunity
+      isCommunity,
+      canAccessAdmin
     })) {
       return;
     }
@@ -788,7 +789,8 @@ export default function MainApp() {
     if (!canOpenRestrictedTabs && !isAgentPathAllowed(resolvedTab.type, {
       userRole,
       access,
-      isCommunity
+      isCommunity,
+      canAccessAdmin
     })) {
       return;
     }
@@ -1157,8 +1159,8 @@ export default function MainApp() {
         return <ReportBugForm />;
       case "User":
         return <UserProfile user={user} />;
-      case "Updates":
-        return <UpdatesPage profile={effectiveProfile} />;
+      case "PatchNotes":
+        return <PatchNotesPage />;
       case "TabLauncher":
         return <TabLauncherPage onNavigate={handleDocSelect} access={access} isCommunity={isCommunity} userRole={userRole} />;
       default:
@@ -1166,10 +1168,6 @@ export default function MainApp() {
     }
   };
   const showTabsBar = tabs.length > 0 || currentDocType === "TabLauncher";
-  const {
-    updateAvailable,
-    latestVersion
-  } = usePlatformUpdateAlert(effectiveProfile);
 
   const sidebarCurrent = useMemo(() => {
     if (currentDocType === "KnowledgeBaseArticle") return "KnowledgeBase";
@@ -1189,7 +1187,7 @@ export default function MainApp() {
       <ProfilePreviewBanner onReturnToPermissions={handleReturnToPermissions} />
       <AgentImpersonationBanner />
 
-      <Sidebar current={sidebarCurrent} onSelect={handleDocSelect} onNavigate={handleDocSelect} onLogout={handleLogoutGuarded} user={user} userRole={userRole} profile={effectiveProfile} drafts={drafts} access={access} onCollapseChange={setSidebarCollapsed} updateAvailable={updateAvailable} updateLatestVersion={latestVersion} sidebarGuideAutoStart={sidebarGuideAutoStart} />
+      <Sidebar current={sidebarCurrent} onSelect={handleDocSelect} onNavigate={handleDocSelect} onLogout={handleLogoutGuarded} user={user} userRole={userRole} profile={effectiveProfile} drafts={drafts} access={access} onCollapseChange={setSidebarCollapsed} sidebarGuideAutoStart={sidebarGuideAutoStart} />
 
       <TabsBar tabs={tabs} activeTabId={activeTabId} onTabClick={handleTabClick} onTabClose={handleTabClose} onTabReorder={handleTabReorder} onSortTabs={tabs.length > 1 ? handleTabSort : undefined} onNewTab={showTabsBar ? handleOpenTabLauncher : undefined} launcherActive={currentDocType === "TabLauncher"} sidebarCollapsed={sidebarCollapsed} />
 

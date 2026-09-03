@@ -90,6 +90,18 @@ export const SYSTEM_NOTIFICATION_DEFS = [{
   channels: ["email", "inapp"],
   recipients: "L'utilisateur attribué à l'événement",
   variables: ["event.title", "event.type", "event.start", "event.end", "event.description", "entreprise.nom", "user.username", "user.email", "agent.username"]
+}, {
+  key: "documents.vault_shared",
+  group: "documents",
+  channels: ["email", "inapp"],
+  recipients: "Les comptes portail actifs de l'entreprise",
+  variables: ["document.file_name", "document.category", "document.description", "entreprise.nom", "portalLink"]
+}, {
+  key: "vault.access_shared",
+  group: "documents",
+  channels: ["email", "inapp"],
+  recipients: "Le contact destinataire du partage",
+  variables: ["secret.title", "secret.description", "secret.expires_at", "secret.max_views", "contact.prenom", "contact.nom", "contact.email", "entreprise.nom", "portalLink"]
 }];
 
 export const SYSTEM_NOTIFICATION_GROUPS = [{
@@ -101,6 +113,9 @@ export const SYSTEM_NOTIFICATION_GROUPS = [{
 }, {
   id: "planning",
   title: "Planning"
+}, {
+  id: "documents",
+  title: "Documents et coffre-fort"
 }];
 
 export const SYSTEM_NOTIFICATION_DEFAULTS = {
@@ -233,6 +248,26 @@ export const SYSTEM_NOTIFICATION_DEFAULTS = {
     body: "<p>Bonjour {{user.username}},</p><p>Un événement vous a été attribué.</p><p><strong>{{event.title}}</strong></p><p>Type : {{event.type}}</p><p>Début : {{event.start}}</p><p>Fin : {{event.end}}</p><p>Entreprise : {{entreprise.nom}}</p>",
     inAppTitle: "Événement · {{event.title}}",
     inAppBody: "Un événement vous a été attribué le {{event.start}}."
+  },
+  "documents.vault_shared": {
+    enabled: false,
+    emailEnabled: false,
+    inAppEnabled: false,
+    subject: "Nouveau document dans votre coffre-fort — {{document.file_name}}",
+    title: "Document ajouté au coffre-fort",
+    body: "<p>Bonjour,</p><p>Un nouveau document a été partagé avec votre entreprise sur le portail client.</p><p><strong>{{document.file_name}}</strong></p><p>Catégorie : {{document.category}}</p><p>Entreprise : {{entreprise.nom}}</p><p><a href=\"{{portalLink}}\">Ouvrir mon coffre-fort</a></p>",
+    inAppTitle: "Document · {{document.file_name}}",
+    inAppBody: "Un document a été ajouté au coffre-fort de {{entreprise.nom}}."
+  },
+  "vault.access_shared": {
+    enabled: false,
+    emailEnabled: false,
+    inAppEnabled: false,
+    subject: "Un accès vous a été partagé — {{secret.title}}",
+    title: "Partage d'accès portail",
+    body: "<p>Bonjour{{#contact.prenom}} {{contact.prenom}}{{/contact.prenom}},</p><p>Un accès sécurisé vient d'être partagé avec vous sur le portail client.</p><p><strong>{{secret.title}}</strong></p><p>{{secret.description}}</p><p>Entreprise : {{entreprise.nom}}</p><p><a href=\"{{portalLink}}\">Consulter mon coffre-fort</a></p>",
+    inAppTitle: "Accès partagé · {{secret.title}}",
+    inAppBody: "Un accès sécurisé vous a été partagé."
   }
 };
 

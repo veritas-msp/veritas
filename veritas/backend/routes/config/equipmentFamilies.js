@@ -1,7 +1,7 @@
 import express from "express";
 import { body, param, validationResult } from "express-validator";
 import verifyJWT from "../../middleware/auth.js";
-import { requireRole } from "../../middleware/roles.js";
+import { requirePermission } from "../../middleware/permissions.js";
 import { createEquipmentFamily, deleteEquipmentFamily, getEquipmentMapStyle, listEquipmentFamilies, listSystemFamilyExtensions, listSystemFamilyExtensionsByKey, listSystemFamilyLayouts, replaceSystemFamilyExtensions, updateEquipmentFamily, upsertEquipmentMapStyle, upsertSystemFamilyLayouts } from "../../utils/equipmentFamilies.js";
 const router = express.Router();
 router.use(verifyJWT);
@@ -55,7 +55,7 @@ router.get("/map-style", async (_req, res) => {
     handleError(res, err, "GET /equipment-families/map-style");
   }
 });
-router.put("/layouts", verifyJWT, requireRole("admin"), [body("layouts").isArray(), body("tileShape").optional().isIn(["hexagon", "rounded", "circle", "pentagon", "octagon"])], async (req, res) => {
+router.put("/layouts", verifyJWT, requirePermission("admin_panel.equipment_families"), [body("layouts").isArray(), body("tileShape").optional().isIn(["hexagon", "rounded", "circle", "pentagon", "octagon"])], async (req, res) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
     return res.status(400).json({
@@ -76,7 +76,7 @@ router.put("/layouts", verifyJWT, requireRole("admin"), [body("layouts").isArray
     handleError(res, err, "PUT /equipment-families/layouts");
   }
 });
-router.put("/extensions/:familyKey", verifyJWT, requireRole("admin"), [param("familyKey").isString().trim().notEmpty(), body("fields").optional().isArray(), body("layout").optional().isObject()], async (req, res) => {
+router.put("/extensions/:familyKey", verifyJWT, requirePermission("admin_panel.equipment_families"), [param("familyKey").isString().trim().notEmpty(), body("fields").optional().isArray(), body("layout").optional().isObject()], async (req, res) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
     return res.status(400).json({
@@ -99,7 +99,7 @@ router.put("/extensions/:familyKey", verifyJWT, requireRole("admin"), [param("fa
     handleError(res, err, "PUT /equipment-families/extensions/:familyKey");
   }
 });
-router.get("/admin", verifyJWT, requireRole("admin"), async (_req, res) => {
+router.get("/admin", verifyJWT, requirePermission("admin_panel.equipment_families"), async (_req, res) => {
   try {
     const families = await listEquipmentFamilies({
       includeDisabled: true,
@@ -112,7 +112,7 @@ router.get("/admin", verifyJWT, requireRole("admin"), async (_req, res) => {
     handleError(res, err, "GET /equipment-families/admin");
   }
 });
-router.post("/", verifyJWT, requireRole("admin"), [body("label").isString().trim().notEmpty(), body("familyKey").optional().isString().trim(), body("icon").optional().isString().trim(), body("displayMode").optional().isIn(["hexagon", "brick"]), body("enabled").optional().isBoolean(), body("sortOrder").optional().isInt(), body("honeycombQ").optional({ nullable: true }), body("honeycombR").optional({ nullable: true }), body("fields").optional().isArray()], async (req, res) => {
+router.post("/", verifyJWT, requirePermission("admin_panel.equipment_families"), [body("label").isString().trim().notEmpty(), body("familyKey").optional().isString().trim(), body("icon").optional().isString().trim(), body("displayMode").optional().isIn(["hexagon", "brick"]), body("enabled").optional().isBoolean(), body("sortOrder").optional().isInt(), body("honeycombQ").optional({ nullable: true }), body("honeycombR").optional({ nullable: true }), body("fields").optional().isArray()], async (req, res) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
     return res.status(400).json({
@@ -129,7 +129,7 @@ router.post("/", verifyJWT, requireRole("admin"), [body("label").isString().trim
     handleError(res, err, "POST /equipment-families");
   }
 });
-router.patch("/:id", verifyJWT, requireRole("admin"), [param("id").isInt({
+router.patch("/:id", verifyJWT, requirePermission("admin_panel.equipment_families"), [param("id").isInt({
   min: 1
 }), body("label").optional().isString().trim().notEmpty(), body("familyKey").optional().isString().trim(), body("icon").optional().isString().trim(), body("displayMode").optional().isIn(["hexagon", "brick"]), body("enabled").optional().isBoolean(), body("sortOrder").optional().isInt(), body("honeycombQ").optional({ nullable: true }), body("honeycombR").optional({ nullable: true }), body("fields").optional().isArray()], async (req, res) => {
   const errors = validationResult(req);
@@ -148,7 +148,7 @@ router.patch("/:id", verifyJWT, requireRole("admin"), [param("id").isInt({
     handleError(res, err, "PATCH /equipment-families/:id");
   }
 });
-router.delete("/:id", verifyJWT, requireRole("admin"), [param("id").isInt({
+router.delete("/:id", verifyJWT, requirePermission("admin_panel.equipment_families"), [param("id").isInt({
   min: 1
 })], async (req, res) => {
   const errors = validationResult(req);

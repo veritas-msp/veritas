@@ -6,12 +6,23 @@ import { fileURLToPath } from "url";
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const BACKEND_DIR = path.resolve(__dirname, "..");
 const VERITAS_ROOT = path.resolve(BACKEND_DIR, "..");
-const AGENT_ROOT = path.resolve(VERITAS_ROOT, "RMM/Agents/windows");
-const AGENT_DIST = path.join(AGENT_ROOT, "dist");
-const AGENT_PUBLISH = path.join(AGENT_ROOT, "build/publish");
 
 export const WINDOWS_INSTALLER_VERSION = "1.0.13";
 const WINDOWS_MSI_FILE = "VeritasAgent-Windows-Setup.msi";
+
+function resolveAgentRoot() {
+  const fromEnv = String(process.env.VERITAS_RMM_AGENT_ROOT || "").trim();
+  if (fromEnv) return path.resolve(fromEnv);
+  const candidates = [
+    path.resolve(VERITAS_ROOT, "RMM/Agents/windows"),
+    // Docker: backend lives in /app ; compose mounts host RMM at /RMM
+    "/RMM/Agents/windows"
+  ];
+  for (const candidate of candidates) {
+    if (fs.existsSync(candidate)) return candidate;
+  }
+  return candidates[0];
+}
 
 function parseVersionParts(version) {
   return String(version || "")
@@ -43,10 +54,14 @@ export function getWindowsInstallerFilenames() {
 }
 
 function candidateMsiPaths() {
+  const root = resolveAgentRoot();
   return [
-    path.join(AGENT_DIST, WINDOWS_MSI_FILE),
-    path.join(AGENT_PUBLISH, WINDOWS_MSI_FILE),
-    path.join(AGENT_ROOT, WINDOWS_MSI_FILE)
+    path.join(root, "dist", WINDOWS_MSI_FILE),
+    path.join(root, "build/publish", WINDOWS_MSI_FILE),
+    path.join(root, WINDOWS_MSI_FILE),
+    // Flat drop folder: backend/assets/rmm/VeritasAgent-Windows-Setup.msi
+    path.join(BACKEND_DIR, "assets/rmm", WINDOWS_MSI_FILE),
+    path.join("/RMM/Agents/windows/dist", WINDOWS_MSI_FILE)
   ];
 }
 
@@ -54,7 +69,7 @@ export function getWindowsMsiPath() {
   for (const filePath of candidateMsiPaths()) {
     if (fs.existsSync(filePath)) return filePath;
   }
-  throw new Error(`Agent MSI not found under ${AGENT_ROOT}/dist`);
+  throw new Error(`Agent MSI not found under ${resolveAgentRoot()}/dist`);
 }
 
 export function agentMsiAvailable() {
@@ -78,7 +93,8 @@ export function ensureWindowsMsiBuilt() {
   if (process.platform !== "win32") {
     throw new Error("MSI installer unavailable on this server (build on Windows with .NET SDK + WiX, or ship a prebuilt MSI in RMM/Agents/windows/dist)");
   }
-  const buildScript = path.join(AGENT_ROOT, "build.ps1");
+  const agentRoot = resolveAgentRoot();
+  const buildScript = path.join(agentRoot, "build.ps1");
   if (!fs.existsSync(buildScript)) {
     throw new Error(`Agent build script missing: ${buildScript}`);
   }
@@ -91,7 +107,7 @@ export function ensureWindowsMsiBuilt() {
     "-Version",
     WINDOWS_INSTALLER_VERSION
   ], {
-    cwd: AGENT_ROOT,
+    cwd: agentRoot,
     stdio: "pipe",
     encoding: "utf8",
     env: {
@@ -151,5 +167,5 @@ export function streamWindowsSetupZip() {
 }
 
 export function getAgentSourceRoot() {
-  return AGENT_ROOT;
+  return resolveAgentRoot();
 }

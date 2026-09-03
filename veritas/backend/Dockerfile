@@ -5,12 +5,17 @@ WORKDIR /app
 # bcrypt ships native bindings; keep build tools available for Alpine musl installs
 RUN apk add --no-cache python3 make g++
 
-COPY package.json package-lock.json ./
+# Build context is the `veritas/` folder (see docker-compose.yml).
+COPY backend/package.json backend/package-lock.json ./
 RUN npm ci --omit=dev && apk del python3 make g++
 
-COPY . .
-RUN mkdir -p uploads/tickets \
+COPY backend/ .
+RUN mkdir -p uploads/tickets /RMM/Agents/windows/dist \
   && chmod +x docker-entrypoint.sh
+
+# Optional prebuilt MSI (place VeritasAgent-Windows-Setup.msi under RMM/Agents/windows/dist before build).
+# Runtime docker-compose also bind-mounts ./veritas/RMM → /RMM so updating the MSI does not require a rebuild.
+COPY RMM/Agents/windows/dist/ /RMM/Agents/windows/dist/
 
 ENV NODE_ENV=production
 EXPOSE 3001

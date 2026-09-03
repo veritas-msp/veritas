@@ -21,12 +21,12 @@ function isViewAction(action) {
 }
 
 function readerKeys() {
-  return keysWhere((g, a) => !g.adminOnly && isViewAction(a) && g.group !== "vault" && g.group !== "tabs" && g.group !== "knowledge_base");
+  return keysWhere((g, a) => !g.adminOnly && g.group !== "admin_panel" && isViewAction(a) && g.group !== "vault" && g.group !== "tabs" && g.group !== "knowledge_base");
 }
 
 function collaboratorKeys() {
   const set = keysWhere((g, a) => {
-    if (g.adminOnly) return false;
+    if (g.adminOnly || g.group === "admin_panel") return false;
     if (g.group === "vault" || g.group === "tabs" || g.group === "knowledge_base") return false;
     if (["view", "create", "edit", "export"].includes(a.action)) return true;
     if (DETAIL_WORK_GROUPS.has(g.group) && !["delete", "credits", "all_customer_feedback"].includes(a.action)) {
@@ -45,7 +45,7 @@ function collaboratorKeys() {
 
 function agentKeys() {
   const set = keysWhere((g, a) => {
-    if (g.adminOnly) return false;
+    if (g.adminOnly || g.group === "admin_panel") return false;
     if (g.group === "tabs" || g.group === "knowledge_base") return false;
     if (a.action === "manage" && g.group === "tickets") return false;
     if (["all_customer_feedback", "random_mode"].includes(a.action)) return false;

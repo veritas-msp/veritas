@@ -1,7 +1,7 @@
 import express from "express";
 import { pool } from "../../database/db.js";
 import verifyJWT from "../../middleware/auth.js";
-import { requireRole } from "../../middleware/roles.js";
+import { requirePermission } from "../../middleware/permissions.js";
 import { decryptSetting } from "../../utils/settingsHelper.js";
 import { DEFAULT_SLA_SETTINGS, SLA_SETTINGS_KEY, SLA_SETTINGS_SECTION, normalizeSlaSettings } from "../../utils/slaSettings.js";
 import { invalidateSlaSettingsCache } from "../../utils/slaSettingsStore.js";
@@ -54,7 +54,7 @@ router.get("/", verifyJWT, async (_req, res) => {
     });
   }
 });
-router.patch("/", verifyJWT, requireRole("admin"), async (req, res) => {
+router.patch("/", verifyJWT, requirePermission("admin_panel.sla"), async (req, res) => {
   const existing = await readSlaSettingsFromDb();
   const normalized = normalizeSlaSettings({
     ...existing,

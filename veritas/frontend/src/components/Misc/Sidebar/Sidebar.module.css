@@ -772,21 +772,6 @@
   min-width: 0;
 }
 
-.userMenuBadge {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 1.35rem;
-  height: 1.15rem;
-  padding: 0 0.35rem;
-  border-radius: 999px;
-  background: #f59e0b;
-  color: #111827;
-  font-size: 0.65rem;
-  font-weight: 700;
-  line-height: 1;
-}
-
 .userMenuItem:hover .userMenuItemIcon,
 .userMenuItemActive .userMenuItemIcon {
   color: inherit;

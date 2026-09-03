@@ -148,17 +148,17 @@ export default function AdminSystemNotifications() {
   };
   const def = SYSTEM_NOTIFICATION_DEFS.find(item => item.key === draftKey);
   return <div className={catalogStyles.layout}>
-      <Card title={copy.system.title} description={copy.system.description}>
+      <Card title={copy.system.title} description={copy.system.description} fill>
         <div className={catalogStyles.groups}>
           {SYSTEM_NOTIFICATION_GROUPS.map(group => <section key={group.id}>
               <header className={catalogStyles.groupHeader}>
                 <h3 className={catalogStyles.groupTitle}>{copy.system.groups[group.id] || group.title}</h3>
               </header>
-              <div className={catalogStyles.rows}>
+              <div className={catalogStyles.rowsGrid}>
                 {SYSTEM_NOTIFICATION_DEFS.filter(item => item.group === group.id).map(item => {
             const state = system[item.key];
             const active = state.enabled !== false;
-            return <article key={item.key} className={`${catalogStyles.row} ${active ? "" : catalogStyles.rowOff}`}>
+            return <article key={item.key} className={`${catalogStyles.rowCard} ${active ? "" : catalogStyles.rowOff}`}>
                     <div className={catalogStyles.rowMain}>
                       <p className={catalogStyles.rowTitle}>{copy.system.items[item.key]?.label || item.key}</p>
                       <div className={catalogStyles.rowMeta}>
@@ -167,11 +167,13 @@ export default function AdminSystemNotifications() {
                         <span className={catalogStyles.badge}>{copy.system.items[item.key]?.recipients || item.recipients}</span>
                       </div>
                     </div>
-                    <Switch checked={active} onChange={value => toggleEnabled(item.key, value)} label={active ? copy.catalog.masterOn : copy.catalog.masterOff} />
-                    <div className={catalogStyles.rowActions}>
-                      <Btn size="sm" variant="secondary" icon="mdi:pencil-outline" onClick={() => openEdit(item.key)}>
-                        {copy.catalog.edit}
-                      </Btn>
+                    <div className={catalogStyles.rowCardFooter}>
+                      <Switch checked={active} onChange={value => toggleEnabled(item.key, value)} label={active ? copy.catalog.masterOn : copy.catalog.masterOff} />
+                      <div className={catalogStyles.rowActions}>
+                        <Btn size="sm" variant="secondary" icon="mdi:pencil-outline" onClick={() => openEdit(item.key)}>
+                          {copy.catalog.edit}
+                        </Btn>
+                      </div>
                     </div>
                   </article>;
           })}

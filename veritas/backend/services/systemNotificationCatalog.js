@@ -186,6 +186,34 @@ export const SYSTEM_NOTIFICATION_DEFS = [{
   defaultInAppTitle: "Événement · {{event.title}}",
   defaultInAppBody: "Un événement vous a été attribué le {{event.start}}.",
   variables: ["event.title", "event.type", "event.start", "event.end", "event.description", "entreprise.nom", "user.username", "user.email", "agent.username"]
+}, {
+  key: "documents.vault_shared",
+  group: "documents",
+  channels: ["email", "inapp"],
+  recipients: "portal_users",
+  defaultEnabled: false,
+  defaultEmail: false,
+  defaultInApp: false,
+  defaultSubject: "Nouveau document dans votre coffre-fort — {{document.file_name}}",
+  defaultTitle: "Document ajouté au coffre-fort",
+  defaultBody: "<p>Bonjour,</p><p>Un nouveau document a été partagé avec votre entreprise sur le portail client.</p><p><strong>{{document.file_name}}</strong></p><p>Catégorie : {{document.category}}</p><p>Entreprise : {{entreprise.nom}}</p><p><a href=\"{{portalLink}}\">Ouvrir mon coffre-fort</a></p>",
+  defaultInAppTitle: "Document · {{document.file_name}}",
+  defaultInAppBody: "Un document a été ajouté au coffre-fort de {{entreprise.nom}}.",
+  variables: ["document.file_name", "document.category", "document.description", "entreprise.nom", "portalLink"]
+}, {
+  key: "vault.access_shared",
+  group: "documents",
+  channels: ["email", "inapp"],
+  recipients: "contact",
+  defaultEnabled: false,
+  defaultEmail: false,
+  defaultInApp: false,
+  defaultSubject: "Un accès vous a été partagé — {{secret.title}}",
+  defaultTitle: "Partage d'accès portail",
+  defaultBody: "<p>Bonjour{{#contact.prenom}} {{contact.prenom}}{{/contact.prenom}},</p><p>Un accès sécurisé vient d'être partagé avec vous sur le portail client.</p><p><strong>{{secret.title}}</strong></p><p>{{secret.description}}</p><p>Entreprise : {{entreprise.nom}}</p><p><a href=\"{{portalLink}}\">Consulter mon coffre-fort</a></p>",
+  defaultInAppTitle: "Accès partagé · {{secret.title}}",
+  defaultInAppBody: "Un accès sécurisé vous a été partagé.",
+  variables: ["secret.title", "secret.description", "secret.expires_at", "secret.max_views", "contact.prenom", "contact.nom", "contact.email", "entreprise.nom", "portalLink"]
 }];
 
 export function getSystemNotificationDef(key) {

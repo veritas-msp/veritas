@@ -220,7 +220,7 @@
 }
 
 .colActions {
-  width: 13.2rem;
+  width: 15rem;
 }
 
 .table thead th {
@@ -272,6 +272,10 @@
   vertical-align: middle;
   color: var(--msp-text, #e8edf5);
   overflow: hidden;
+}
+
+.table tbody td.actionsCol {
+  overflow: visible;
 }
 
 .table tbody tr:last-child td {
@@ -334,9 +338,12 @@
   position: sticky;
   right: 0;
   z-index: 2;
-  width: 13.2rem;
+  width: 15rem;
+  min-width: 15rem;
   white-space: nowrap;
   text-align: right;
+  padding-left: 0.85rem;
+  padding-right: 0.85rem;
   background: var(--msp-surface, #1a2540);
   box-shadow: -8px 0 10px -8px rgba(0, 0, 0, 0.25);
 }
@@ -436,11 +443,18 @@ th.actionsCol {
 }
 
 .rowActions {
-  display: flex;
+  display: inline-flex;
   align-items: center;
   justify-content: flex-end;
-  gap: 0.1rem;
-  min-width: 12.4rem;
+  gap: 0.35rem;
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+}
+
+.rowActions > * {
+  display: inline-flex;
+  flex-shrink: 0;
 }
 
 .chipBadge {
@@ -482,8 +496,8 @@ th.actionsCol {
 }
 
 .actionBtn {
-  width: 1.7rem;
-  height: 1.7rem;
+  width: 1.85rem;
+  height: 1.85rem;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -492,7 +506,8 @@ th.actionsCol {
   background: transparent;
   color: var(--msp-muted, #8fa8c4);
   cursor: pointer;
-  font-size: 1rem;
+  font-size: 1.05rem;
+  flex-shrink: 0;
 }
 
 .actionBtn:hover {

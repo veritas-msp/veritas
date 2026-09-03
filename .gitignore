@@ -25,7 +25,11 @@ pids/
 
 # Builds & caches
 **/build/
+# Ignore most dist outputs, but keep RMM agent dist README (MSI stays ignored below)
 **/dist/
+!veritas/RMM/Agents/windows/dist/
+veritas/RMM/Agents/windows/dist/*
+!veritas/RMM/Agents/windows/dist/README.md
 .cache/
 .eslintcache
 *.tsbuildinfo
@@ -36,9 +40,8 @@ veritas/backend/uploads/*
 veritas/backend/reports/
 veritas/backend/.setup-complete
 
-# Native Windows agent build outputs
+# Native Windows agent build intermediates (MSI remains gitignored via dist/* above)
 veritas/RMM/Agents/windows/build/
-veritas/RMM/Agents/windows/dist/
 veritas/RMM/Agents/windows/src/**/bin/
 veritas/RMM/Agents/windows/src/**/obj/
 

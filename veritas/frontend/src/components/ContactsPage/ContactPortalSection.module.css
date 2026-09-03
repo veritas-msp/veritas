@@ -1,12 +1,12 @@
 .portalSection {
   display: flex;
   flex-direction: column;
-  gap: 0.85rem;
+  gap: 0.65rem;
 }
 
 .usageHint {
   margin: 0;
-  font-size: 0.76rem;
+  font-size: 0.74rem;
   color: var(--msp-muted, #5c6b82);
   display: flex;
   align-items: center;
@@ -20,21 +20,21 @@
 
 .portalHero {
   display: flex;
-  align-items: flex-start;
-  gap: 0.75rem;
+  align-items: center;
+  gap: 0.65rem;
 }
 
 .portalHeroIcon {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 2.5rem;
-  height: 2.5rem;
-  border-radius: 12px;
+  width: 2.1rem;
+  height: 2.1rem;
+  border-radius: 10px;
   flex-shrink: 0;
   background: var(--msp-accent-soft, rgba(43, 95, 171, 0.1));
   color: var(--msp-accent, #2b5fab);
-  font-size: 1.25rem;
+  font-size: 1.1rem;
 }
 
 .portalHeroBody {
@@ -43,27 +43,45 @@
 }
 
 .portalHeroTitle {
-  margin: 0 0 0.2rem;
-  font-size: 0.875rem;
+  margin: 0;
+  font-size: 0.86rem;
   font-weight: 700;
   color: var(--msp-text, #0f1c2e);
+  line-height: 1.25;
+}
+
+.portalHeroMeta {
+  margin: 0.15rem 0 0;
+  font-size: 0.74rem;
+  line-height: 1.35;
+  color: var(--msp-muted, #5c6b82);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .portalHeroDesc {
-  margin: 0;
-  font-size: 0.78rem;
-  line-height: 1.45;
+  margin: 0.15rem 0 0;
+  font-size: 0.74rem;
+  line-height: 1.4;
   color: var(--msp-muted, #5c6b82);
+}
+
+.heroRight {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  flex-shrink: 0;
 }
 
 .badge {
   display: inline-flex;
   align-items: center;
-  gap: 0.3rem;
+  gap: 0.25rem;
   flex-shrink: 0;
-  padding: 0.25rem 0.55rem;
+  padding: 0.2rem 0.5rem;
   border-radius: 999px;
-  font-size: 0.68rem;
+  font-size: 0.66rem;
   font-weight: 700;
   white-space: nowrap;
 }
@@ -86,71 +104,53 @@
   border: 1px solid rgba(217, 119, 6, 0.28);
 }
 
-.statsGrid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-  gap: 0.55rem;
+.badgePending {
+  background: rgba(43, 95, 171, 0.12);
+  color: #2b5fab;
+  border: 1px solid rgba(43, 95, 171, 0.28);
 }
 
-.statCard {
-  display: flex;
-  flex-direction: column;
-  gap: 0.25rem;
-  padding: 0.65rem 0.75rem;
-  border-radius: 10px;
-  border: 1px solid var(--msp-border, #e2e8f0);
-  background: var(--msp-surface-2, #f8fafc);
-}
-
-.statLabel {
-  font-size: 0.65rem;
-  font-weight: 700;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
-  color: var(--msp-muted-light, #8b9bb5);
-}
-
-.statValue {
-  font-size: 0.8125rem;
-  font-weight: 600;
-  color: var(--msp-text, #0f1c2e);
-  word-break: break-word;
-}
-
-.toggleCard {
+.roleCard {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 0.85rem;
-  padding: 0.75rem 0.85rem;
-  border-radius: 12px;
+  gap: 0.65rem;
+  padding: 0.55rem 0.7rem;
+  border-radius: 10px;
   border: 1px solid var(--msp-border, #e2e8f0);
   background: var(--msp-surface-2, #f8fafc);
-}
-
-.toggleText {
-  display: flex;
-  flex-direction: column;
-  gap: 0.15rem;
   min-width: 0;
 }
 
-.toggleTitle {
-  font-size: 0.8125rem;
+.toggleText,
+.roleText {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  min-width: 0;
+}
+
+.toggleTitle,
+.roleTitle {
+  font-size: 0.78rem;
   font-weight: 700;
   color: var(--msp-text, #0f1c2e);
 }
 
-.toggleHint {
-  font-size: 0.72rem;
-  line-height: 1.4;
+.toggleHint,
+.roleHint {
+  font-size: 0.68rem;
+  line-height: 1.3;
   color: var(--msp-muted, #5c6b82);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .switch {
   position: relative;
-  width: 44px;
-  height: 26px;
+  width: 40px;
+  height: 22px;
   flex-shrink: 0;
 }
 
@@ -173,10 +173,10 @@
 .switchTrack::after {
   content: "";
   position: absolute;
-  top: 3px;
-  left: 3px;
-  width: 20px;
-  height: 20px;
+  top: 2px;
+  left: 2px;
+  width: 18px;
+  height: 18px;
   background: var(--msp-surface, #fff);
   border-radius: 50%;
   transition: transform 0.2s;
@@ -196,37 +196,28 @@
   cursor: not-allowed;
 }
 
-.roleCard {
-  display: flex;
-  flex-direction: column;
-  gap: 0.65rem;
-  padding: 0.75rem 0.85rem;
-  border-radius: 12px;
-  border: 1px solid var(--msp-border, #e2e8f0);
-  background: var(--msp-surface-2, #f8fafc);
-}
-
 .roleSeg {
-  display: flex;
-  gap: 0.3rem;
-  padding: 3px;
-  border-radius: 10px;
+  display: inline-flex;
+  gap: 2px;
+  padding: 2px;
+  border-radius: 8px;
   background: var(--msp-surface, #fff);
   border: 1px solid var(--msp-border, #e2e8f0);
+  flex-shrink: 0;
 }
 
 .roleBtn {
-  flex: 1;
   border: none;
   background: transparent;
-  border-radius: 8px;
-  padding: 0.45rem 0.6rem;
-  font-size: 0.75rem;
+  border-radius: 6px;
+  padding: 0.32rem 0.55rem;
+  font-size: 0.7rem;
   font-weight: 600;
   font-family: inherit;
   color: var(--msp-muted, #5c6b82);
   cursor: pointer;
   transition: background 0.15s, color 0.15s;
+  white-space: nowrap;
 }
 
 .roleBtnActive {
@@ -242,25 +233,35 @@
 .emptyState .roleCard {
   width: 100%;
   text-align: left;
-  margin: 0.2rem 0 0.15rem;
+  margin: 0.15rem 0;
+  flex-direction: column;
+  align-items: stretch;
+}
+
+.emptyState .roleSeg {
+  width: 100%;
+}
+
+.emptyState .roleBtn {
+  flex: 1;
 }
 
 .actions {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.45rem;
+  gap: 0.35rem;
 }
 
 .actionBtn {
   display: inline-flex;
   align-items: center;
-  gap: 0.4rem;
-  padding: 0.45rem 0.75rem;
-  border-radius: 10px;
+  gap: 0.35rem;
+  padding: 0.38rem 0.65rem;
+  border-radius: 8px;
   border: 1px solid var(--msp-border, #dde3ed);
   background: var(--msp-surface, #fff);
   color: var(--msp-muted, #5c6b82);
-  font-size: 0.75rem;
+  font-size: 0.72rem;
   font-weight: 600;
   font-family: inherit;
   cursor: pointer;
@@ -284,6 +285,17 @@
   color: var(--msp-accent, #2b5fab);
 }
 
+.actionBtnInvite {
+  border-color: rgba(43, 95, 171, 0.4);
+  color: var(--msp-accent, #2b5fab);
+  background: var(--msp-accent-soft, rgba(43, 95, 171, 0.12));
+}
+
+.actionBtnInvite:hover:not(:disabled) {
+  border-color: var(--msp-accent, #2b5fab);
+  background: rgba(43, 95, 171, 0.18);
+}
+
 .actionBtnImpersonate:hover:not(:disabled) {
   border-color: var(--msp-accent, #2b5fab);
   color: var(--msp-accent-dark, #1a3d75);
@@ -301,17 +313,17 @@
   align-items: center;
   justify-content: center;
   gap: 0.4rem;
-  margin-top: 0.35rem;
-  padding: 0.55rem 1rem;
+  margin-top: 0.2rem;
+  padding: 0.5rem 0.9rem;
   border: none;
-  border-radius: 10px;
+  border-radius: 9px;
   background: linear-gradient(135deg, var(--msp-accent, #2b5fab) 0%, var(--msp-accent-dark, #1a3d75) 100%);
   color: #fff;
-  font-size: 0.8125rem;
+  font-size: 0.8rem;
   font-weight: 600;
   font-family: inherit;
   cursor: pointer;
-  box-shadow: 0 4px 14px rgba(43, 95, 171, 0.25);
+  box-shadow: 0 4px 12px rgba(43, 95, 171, 0.22);
   transition: filter 0.15s;
 }
 
@@ -322,45 +334,52 @@
 .emptyState {
   display: flex;
   flex-direction: column;
-  align-items: center;
-  text-align: center;
-  padding: 1.25rem 1rem;
-  border-radius: 12px;
+  align-items: stretch;
+  text-align: left;
+  gap: 0.55rem;
+  padding: 0.85rem 0.9rem;
+  border-radius: 11px;
   border: 1px dashed var(--msp-border, #dde3ed);
   background: var(--msp-surface-2, #f8fafc);
 }
 
+.emptyHeader {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.55rem;
+}
+
 .emptyIcon {
-  font-size: 2rem;
+  font-size: 1.35rem;
   color: var(--msp-muted-light, #8b9bb5);
-  margin-bottom: 0.35rem;
+  flex-shrink: 0;
+  margin-top: 0.1rem;
 }
 
 .emptyTitle {
-  margin: 0 0 0.25rem;
-  font-size: 0.875rem;
+  margin: 0 0 0.15rem;
+  font-size: 0.84rem;
   font-weight: 700;
   color: var(--msp-text, #0f1c2e);
 }
 
 .emptyDesc {
-  margin: 0 0 0.5rem;
-  font-size: 0.78rem;
-  line-height: 1.45;
+  margin: 0;
+  font-size: 0.74rem;
+  line-height: 1.4;
   color: var(--msp-muted, #5c6b82);
-  max-width: 28rem;
 }
 
 .alert {
   display: flex;
   align-items: flex-start;
-  gap: 0.5rem;
-  padding: 0.65rem 0.75rem;
-  border-radius: 10px;
+  gap: 0.45rem;
+  padding: 0.5rem 0.65rem;
+  border-radius: 9px;
   border: 1px solid var(--msp-border, #e2e8f0);
   background: var(--msp-surface-2, #f8fafc);
-  font-size: 0.76rem;
-  line-height: 1.45;
+  font-size: 0.74rem;
+  line-height: 1.4;
   color: var(--msp-muted, #5c6b82);
 }
 
@@ -372,8 +391,26 @@
 
 .alertIcon {
   flex-shrink: 0;
-  font-size: 1rem;
+  font-size: 0.95rem;
   margin-top: 0.05rem;
+}
+
+@media (max-width: 720px) {
+  .portalHero {
+    flex-wrap: wrap;
+  }
+
+  .heroRight {
+    margin-left: auto;
+  }
+
+  .portalHeroMeta {
+    white-space: normal;
+  }
+
+  .roleHint {
+    white-space: normal;
+  }
 }
 
 :global(html.dark) .badgeActive {

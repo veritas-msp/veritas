@@ -57,14 +57,14 @@ export function buildEquipmentMonitoringSummary(equipment, {
   if (monitorStatus === "critical") {
     pushIssue(issues, {
       key: "monitor_critical",
-      label: "Alert critical",
+      label: "Critical",
       tone: "bad",
       priority: 0
     });
   } else if (monitorStatus === "warning") {
     pushIssue(issues, {
       key: "monitor_warning",
-      label: "Warning supervision",
+      label: "Warning",
       tone: "warn",
       priority: 1
     });

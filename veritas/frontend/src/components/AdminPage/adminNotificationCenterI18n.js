@@ -15,7 +15,8 @@ const ADMIN_NOTIFICATION_CENTER_COPY = {
       groups: {
         auth: "Compte et accès",
         tickets: "Tickets",
-        planning: "Planning"
+        planning: "Planning",
+        documents: "Documents et coffre-fort"
       },
       items: {
         "auth.password_reset": {
@@ -30,7 +31,7 @@ const ADMIN_NOTIFICATION_CENTER_COPY = {
         },
         "auth.portal_invite": {
           label: "Invitation portail client",
-          hint: "Lien d'activation envoyé au contact.",
+          hint: "Lien d'activation envoyé au contact (création ou renvoi depuis la fiche contact).",
           recipients: "Le contact invité"
         },
         "tickets.created_ack": {
@@ -82,6 +83,16 @@ const ADMIN_NOTIFICATION_CENTER_COPY = {
           label: "Événement planning créé",
           hint: "Prévenir l'utilisateur attribué à l'événement.",
           recipients: "L'utilisateur attribué"
+        },
+        "documents.vault_shared": {
+          label: "Ajout d'un document au coffre-fort",
+          hint: "Prévenir les comptes portail actifs quand un document est rendu visible côté client.",
+          recipients: "Comptes portail de l'entreprise"
+        },
+        "vault.access_shared": {
+          label: "Partage d'accès via le portail client",
+          hint: "Prévenir le contact lorsqu'un secret / accès est partagé depuis sa fiche.",
+          recipients: "Le contact destinataire"
         }
       },
       fields: {
@@ -218,7 +229,8 @@ const ADMIN_NOTIFICATION_CENTER_COPY = {
       groups: {
         auth: "Account and access",
         tickets: "Tickets",
-        planning: "Planning"
+        planning: "Planning",
+        documents: "Documents and vault"
       },
       items: {
         "auth.password_reset": {
@@ -233,7 +245,7 @@ const ADMIN_NOTIFICATION_CENTER_COPY = {
         },
         "auth.portal_invite": {
           label: "Client portal invite",
-          hint: "Activation link sent to the contact.",
+          hint: "Activation link sent to the contact (create or resend from the contact page).",
           recipients: "The invited contact"
         },
         "tickets.created_ack": {
@@ -285,6 +297,16 @@ const ADMIN_NOTIFICATION_CENTER_COPY = {
           label: "Planning event created",
           hint: "Notify the user assigned to the event.",
           recipients: "The assigned user"
+        },
+        "documents.vault_shared": {
+          label: "Document added to vault",
+          hint: "Notify active portal accounts when a document is made visible to the client.",
+          recipients: "Company portal accounts"
+        },
+        "vault.access_shared": {
+          label: "Access shared via client portal",
+          hint: "Notify the contact when a secret / access is shared from their contact page.",
+          recipients: "The recipient contact"
         }
       },
       fields: {

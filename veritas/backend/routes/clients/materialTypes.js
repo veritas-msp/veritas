@@ -1,7 +1,7 @@
 import express from 'express';
 import { pool } from '../../database/db.js';
 import verifyJWT from '../../middleware/auth.js';
-import { requireRole } from '../../middleware/roles.js';
+import { requirePermission } from '../../middleware/permissions.js';
 const router = express.Router();
 router.use(verifyJWT);
 router.get('/', async (req, res) => {
@@ -24,7 +24,7 @@ router.get('/', async (req, res) => {
     });
   }
 });
-router.post('/', requireRole('admin'), async (req, res) => {
+router.post('/', requirePermission('admin_panel.equipment_families'), async (req, res) => {
   try {
     const {
       id,
@@ -42,7 +42,7 @@ router.post('/', requireRole('admin'), async (req, res) => {
     });
   }
 });
-router.put('/:id', requireRole('admin'), async (req, res) => {
+router.put('/:id', requirePermission('admin_panel.equipment_families'), async (req, res) => {
   try {
     const {
       id
@@ -63,7 +63,7 @@ router.put('/:id', requireRole('admin'), async (req, res) => {
     });
   }
 });
-router.delete('/:id', requireRole('admin'), async (req, res) => {
+router.delete('/:id', requirePermission('admin_panel.equipment_families'), async (req, res) => {
   try {
     const {
       id

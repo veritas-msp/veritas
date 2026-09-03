@@ -1,7 +1,7 @@
 ﻿import express from "express";
 import { pool } from "../../database/db.js";
 import verifyJWT from "../../middleware/auth.js";
-import { requireRole } from "../../middleware/roles.js";
+import { requirePermission } from "../../middleware/permissions.js";
 import { isCommunity } from "../../utils/edition.js";
 import { getProfileRow, resolveEffectiveProfile, profileHasChildren, PROFILE_PERMISSION_FLAGS } from "../../services/profilePermissions.js";
 import { ensureProfilesSchema } from "../../services/ensureProfilesSchema.js";
@@ -60,7 +60,7 @@ router.get("/:name", async (req, res) => {
   }
 });
 
-router.patch("/:name", requireRole("admin"), async (req, res) => {
+router.patch("/:name", requirePermission("admin_panel.users"), async (req, res) => {
   const {
     name
   } = req.params;
@@ -130,7 +130,7 @@ router.patch("/:name", requireRole("admin"), async (req, res) => {
   }
 });
 
-router.post("/", requireRole("admin"), async (req, res) => {
+router.post("/", requirePermission("admin_panel.users"), async (req, res) => {
   if (isCommunity()) {
     return res.status(403).json({
       error: "Creating additional profiles — available with Veritas Pro.",
@@ -211,7 +211,7 @@ router.post("/", requireRole("admin"), async (req, res) => {
   }
 });
 
-router.delete("/:name", requireRole("admin"), async (req, res) => {
+router.delete("/:name", requirePermission("admin_panel.users"), async (req, res) => {
   const {
     name
   } = req.params;

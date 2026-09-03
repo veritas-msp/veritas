@@ -5,13 +5,16 @@ import { isProOnlyDocType } from "../../config/edition";
 import ProFeatureBadge from "../Misc/ProFeature/ProFeatureBadge";
 import { createListTabData } from "../../navigation/tabTypes";
 import { getTabLauncherCopy, TAB_LAUNCHER_SECTIONS } from "./tabLauncherI18n";
+import { usePermissions } from "../../contexts/PermissionsContext";
+import { canAccessAdminPanel } from "../../utils/adminPanelPermissions";
 import styles from "./TabLauncherPage.module.css";
 function isItemVisible(item, {
   access,
   isCommunity,
-  userRole
+  userRole,
+  canAccessAdmin
 }) {
-  if (item.adminOnly && userRole !== "admin") return false;
+  if (item.adminOnly && !canAccessAdmin) return false;
   if (item.accessKey && access[item.accessKey] === false) return false;
   if (item.proOnly && isCommunity && isProOnlyDocType(item.docType)) return false;
   return true;
@@ -23,6 +26,11 @@ export default function TabLauncherPage({
   userRole
 }) {
   const locale = useAppLocale();
+  const {
+    canAny,
+    isAdmin
+  } = usePermissions();
+  const canAccessAdmin = canAccessAdminPanel(canAny, isAdmin);
   const copy = useMemo(() => getTabLauncherCopy(locale), [locale]);
   const sections = useMemo(() => TAB_LAUNCHER_SECTIONS.map(section => ({
     ...section,
@@ -30,9 +38,10 @@ export default function TabLauncherPage({
     items: section.items.filter(item => isItemVisible(item, {
       access,
       isCommunity,
-      userRole
+      userRole,
+      canAccessAdmin
     }))
-  })).filter(section => section.items.length > 0), [access, isCommunity, userRole, copy]);
+  })).filter(section => section.items.length > 0), [access, isCommunity, userRole, canAccessAdmin, copy]);
   const handleSelect = item => {
     if (item.opensTab) {
       onNavigate(item.docType, createListTabData(item.docType), {

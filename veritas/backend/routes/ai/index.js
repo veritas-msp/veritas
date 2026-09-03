@@ -1,7 +1,6 @@
 import express from "express";
 import verifyJWT from "../../middleware/auth.js";
 import { requireAnyPermission, requirePermission } from "../../middleware/permissions.js";
-import { requireRole } from "../../middleware/roles.js";
 import { pool } from "../../database/db.js";
 import { getAiConfig, AI_FEATURE_LIMIT_KEYS } from "../../utils/aiSettings.js";
 import { getAiCallsUsedTodayTotal, getAiFeatureUsageToday, getAiUsageBreakdownToday, listAiUsage } from "../../services/aiUsageService.js";
@@ -74,7 +73,7 @@ router.get("/status", async (req, res) => {
     });
   }
 });
-router.post("/test", requireRole("admin"), async (req, res) => {
+router.post("/test", requirePermission("admin_panel.ai"), async (req, res) => {
   try {
     const body = req.body || {};
     const saved = await getAiConfig();
@@ -98,7 +97,7 @@ router.post("/test", requireRole("admin"), async (req, res) => {
     return mapAiError(res, err);
   }
 });
-router.get("/usage", requireRole("admin"), async (req, res) => {
+router.get("/usage", requirePermission("admin_panel.ai"), async (req, res) => {
   try {
     const limit = Number(req.query.limit) || 50;
     const offset = Number(req.query.offset) || 0;
@@ -114,7 +113,7 @@ router.get("/usage", requireRole("admin"), async (req, res) => {
     });
   }
 });
-router.put("/policy", requireRole("admin"), async (req, res) => {
+router.put("/policy", requirePermission("admin_panel.ai"), async (req, res) => {
   try {
     const body = req.body || {};
     if (body.features && typeof body.features === "object") {

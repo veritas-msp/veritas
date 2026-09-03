@@ -1,6 +1,6 @@
 import express from "express";
 import verifyJWT from "../../middleware/auth.js";
-import { requireRole } from "../../middleware/roles.js";
+import { requirePermission } from "../../middleware/permissions.js";
 import { writeEnvFile, writeFrontendEnvFile } from "../../utils/envFile.js";
 import { getEditionPayload } from "../../utils/edition.js";
 import {
@@ -14,16 +14,16 @@ import {
 
 const router = express.Router();
 
-router.get("/", verifyJWT, requireRole("admin"), (_req, res) => {
+router.get("/", verifyJWT, requirePermission("admin_panel.license"), (_req, res) => {
   res.json(getLicenseAdminSummary());
 });
 
-router.post("/refresh", verifyJWT, requireRole("admin"), async (_req, res) => {
+router.post("/refresh", verifyJWT, requirePermission("admin_panel.license"), async (_req, res) => {
   await refreshProLicenseState();
   res.json(getLicenseAdminSummary());
 });
 
-router.post("/offline-activate", verifyJWT, requireRole("admin"), async (req, res) => {
+router.post("/offline-activate", verifyJWT, requirePermission("admin_panel.license"), async (req, res) => {
   try {
     const document = req.body?.document ?? req.body?.lease ?? req.body;
     const offline = applyOfflineActivation(document);
@@ -67,7 +67,7 @@ router.post("/offline-activate", verifyJWT, requireRole("admin"), async (req, re
   }
 });
 
-router.post("/", verifyJWT, requireRole("admin"), async (req, res) => {
+router.post("/", verifyJWT, requirePermission("admin_panel.license"), async (req, res) => {
   const key = normalizeLicenseKey(req.body?.licenseKey || "");
   if (!key || !isValidLicenseKeyFormat(key)) {
     return res.status(400).json({

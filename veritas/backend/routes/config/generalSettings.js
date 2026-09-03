@@ -1,7 +1,7 @@
 import express from "express";
 import { pool, isDatabaseConfigured } from "../../database/db.js";
 import verifyJWT from "../../middleware/auth.js";
-import { requireRole } from "../../middleware/roles.js";
+import { requirePermission } from "../../middleware/permissions.js";
 import { decryptSetting } from "../../utils/settingsHelper.js";
 import { DEFAULT_GENERAL_SETTINGS, GENERAL_SETTINGS_LABELS, GENERAL_SETTING_KEYS, GENERAL_SETTINGS_SECTION, normalizeGeneralSettings } from "../../utils/generalSettings.js";
 import { seedSolutionCatalogIfEmpty } from "../../services/ensureTicketSolutionCatalogSchema.js";
@@ -70,7 +70,7 @@ router.get("/", async (_req, res) => {
     });
   }
 });
-router.patch("/", verifyJWT, requireRole("admin"), async (req, res) => {
+router.patch("/", verifyJWT, requirePermission("admin_panel.general"), async (req, res) => {
   const existing = await readGeneralSettingsFromDb();
   const normalized = normalizeGeneralSettings({
     ...existing,

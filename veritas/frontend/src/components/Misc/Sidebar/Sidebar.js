@@ -20,8 +20,9 @@ import { buildSidebarGuideSteps } from "../../PageGuide/sidebarGuideI18n";
 import { useSidebarGuide } from "../../../hooks/useSidebarGuide";
 import { useBreakpoint } from "../../../hooks/useBreakpoint";
 import { hasRegisteredPageGuide, openRegisteredPageGuide, subscribePageGuideRegistry } from "../../PageGuide/pageGuideRegistry";
-import { isSuperAdminProtectedProfile } from "../../../utils/profileProtection";
 import GlobalSearchPalette, { getSearchShortcutLabel, useGlobalSearchHotkey } from "../GlobalSearch/GlobalSearchPalette";
+import { usePermissions } from "../../../contexts/PermissionsContext";
+import { canAccessAdminPanel } from "../../../utils/adminPanelPermissions";
 function normalizeProfileLabel(profile) {
   if (profile == null) return "";
   return String(profile).replace(/\s+$/, "").trim();
@@ -66,12 +67,15 @@ export default function Sidebar({
   drafts,
   access,
   onCollapseChange,
-  updateAvailable = false,
-  updateLatestVersion = null,
   /** When false, defer auto "Bienvenue" menu tour until premiers pas are done. */
   sidebarGuideAutoStart = true
 }) {
   const { isMobile } = useBreakpoint();
+  const {
+    canAny,
+    isAdmin
+  } = usePermissions();
+  const showAdminMenu = canAccessAdminPanel(canAny, isAdmin);
   const [showMenu, setShowMenu] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const [userMenuFixedStyle, setUserMenuFixedStyle] = useState(null);
@@ -497,10 +501,10 @@ export default function Sidebar({
             <div className={styles.userSection} ref={userMenuRef} data-sidebar-guide="account">
 <div className={`${styles.userMenuTriggerRow} ${isCollapsed ? styles.userMenuTriggerRowCollapsed : ""}`}>
                 {showIconTooltip ? <SidebarTooltip as="span" content={copy.account.menu} className={styles.userAvatarTooltipHost}>
-                    <button type="button" className={`${styles.userAvatarButton} ${userMenuOpen ? styles.userAvatarButtonOpen : ""} ${["MyDocs", "ReportBug", "Admin", "User", "Updates"].includes(current) ? styles.userAvatarButtonActive : ""}`} onClick={() => setUserMenuOpen(o => !o)} aria-expanded={userMenuOpen} aria-haspopup="menu" aria-label={copy.account.menuAria}>
+                    <button type="button" className={`${styles.userAvatarButton} ${userMenuOpen ? styles.userAvatarButtonOpen : ""} ${["MyDocs", "ReportBug", "Admin", "User", "PatchNotes"].includes(current) ? styles.userAvatarButtonActive : ""}`} onClick={() => setUserMenuOpen(o => !o)} aria-expanded={userMenuOpen} aria-haspopup="menu" aria-label={copy.account.menuAria}>
                       {user ? <UserAvatar user={user} name={user.username || user.email} size={32} variant="agent" /> : userInitials}
                     </button>
-                  </SidebarTooltip> : <button type="button" className={`${styles.userAvatarButton} ${userMenuOpen ? styles.userAvatarButtonOpen : ""} ${["MyDocs", "ReportBug", "Admin", "User", "Updates"].includes(current) ? styles.userAvatarButtonActive : ""}`} onClick={() => setUserMenuOpen(o => !o)} aria-expanded={userMenuOpen} aria-haspopup="menu" aria-label={copy.account.menuAria}>
+                  </SidebarTooltip> : <button type="button" className={`${styles.userAvatarButton} ${userMenuOpen ? styles.userAvatarButtonOpen : ""} ${["MyDocs", "ReportBug", "Admin", "User", "PatchNotes"].includes(current) ? styles.userAvatarButtonActive : ""}`} onClick={() => setUserMenuOpen(o => !o)} aria-expanded={userMenuOpen} aria-haspopup="menu" aria-label={copy.account.menuAria}>
                     {user ? <UserAvatar user={user} name={user.username || user.email} size={32} variant="agent" /> : userInitials}
                   </button>}
                 {!isCollapsed && <button type="button" className={styles.userMenuLabelButton} onClick={() => setUserMenuOpen(o => !o)} aria-expanded={userMenuOpen} aria-haspopup="menu">
@@ -519,16 +523,11 @@ export default function Sidebar({
                       <Icon icon="mingcute:contacts-4-fill" className={styles.userMenuItemIcon} />
                       {copy.account.myAccount}
                     </button>
-                    {isSuperAdminProtectedProfile(profile) && <button type="button" role="menuitem" className={`${styles.userMenuItem} ${current === "Updates" ? styles.userMenuItemActive : ""}`} onClick={() => runUserMenuAction(() => onSelect("Updates"))}>
-                        <Icon icon="mdi:update" className={styles.userMenuItemIcon} />
-                        <span className={styles.userMenuItemLabel}>
-                          {copy.account.updates}
-                          {updateAvailable ? <span className={styles.userMenuBadge} title={updateLatestVersion ? `v${updateLatestVersion}` : undefined}>
-                              {updateLatestVersion ? `v${updateLatestVersion}` : "!"}
-                            </span> : null}
-                        </span>
-                      </button>}
-                    {userRole === "admin" && access?.Admin !== false && <button type="button" role="menuitem" className={`${styles.userMenuItem} ${current === "Admin" ? styles.userMenuItemActive : ""}`} onClick={() => runUserMenuAction(() => onSelect("Admin"))}>
+                    <button type="button" role="menuitem" className={`${styles.userMenuItem} ${current === "PatchNotes" ? styles.userMenuItemActive : ""}`} onClick={() => runUserMenuAction(() => onSelect("PatchNotes"))}>
+                      <Icon icon="mdi:notebook-outline" className={styles.userMenuItemIcon} />
+                      {copy.account.patchNotes}
+                    </button>
+                    {showAdminMenu && <button type="button" role="menuitem" className={`${styles.userMenuItem} ${current === "Admin" ? styles.userMenuItemActive : ""}`} onClick={() => runUserMenuAction(() => onSelect("Admin"))}>
                         <Icon icon="mingcute:settings-6-fill" className={styles.userMenuItemIcon} />
                         {copy.account.admin}
                       </button>}
