@@ -7,6 +7,8 @@ import multer from "multer";
 import path from "path";
 import verifyJWT from "../../middleware/auth.js";
 import { requirePermission } from "../../middleware/permissions.js";
+import { userHasAllPermissions } from "../../services/permissionService.js";
+import { isAdminLevelProfile } from "../../config/permissionPresets.js";
 import { assertCommunityClientPortalLimit, assertMspAgentLimit, sendCommunityLimitError } from "../../utils/communityLimits.js";
 import { USER_AVATAR_SETTING_KEY, attachUserAvatar, buildAvatarPublicPath, ensureAvatarUploadDir, upsertUserAvatarSetting, validatePresetAvatarId } from "../../utils/userAvatar.js";
 import { findPortalUserByEmail } from "../../utils/contactPortal.js";
@@ -17,6 +19,25 @@ const OPTIONAL_BODY = {
   values: "falsy"
 };
 const ALLOWED_USER_ROLES = ["admin", "superviseur", "utilisateur"];
+const MANAGE_USERS_PERMISSION = "admin_panel.users";
+function canManageUsers(actor) {
+  return userHasAllPermissions(actor, [MANAGE_USERS_PERMISSION]);
+}
+
+/** Admin-level access (role admin, profile Administrator / Super Admin) can only be granted by an admin-level actor. */
+async function isAdminLevelActor(actor) {
+  if (String(actor?.role || "").toLowerCase() === "admin") return true;
+  let profile = actor?.profile || null;
+  if (actor?.id) {
+    try {
+      const {
+        rows
+      } = await pool.query("SELECT profile FROM v_b_users WHERE id = $1", [actor.id]);
+      if (rows[0]?.profile) profile = rows[0].profile;
+    } catch {}
+  }
+  return isAdminLevelProfile(profile);
+}
 const TICKET_HELPDESK_DISPLAY_NAME_KEY = "ticket_helpdesk_display_name";
 const TICKET_CHAT_UI_SETTINGS_KEY = "ticket_chat_ui_settings";
 const APP_LOCALE_KEY = "app_locale";
@@ -310,9 +331,15 @@ router.patch("/:id", verifyJWT, [param("id").isUUID(), body("role").optional(OPT
     username,
     email
   } = req.body;
-  if (req.user.id !== id && req.user.role !== "admin") {
+  if (req.user.id !== id && !(await canManageUsers(req.user))) {
     return res.status(403).json({
       error: "Not allowed to modify this user."
+    });
+  }
+  const grantsAdminLevel = String(role || "").toLowerCase() === "admin" || isAdminLevelProfile(profile);
+  if (grantsAdminLevel && !(await isAdminLevelActor(req.user))) {
+    return res.status(403).json({
+      error: "Only an administrator can grant administrator access."
     });
   }
   try {
@@ -368,7 +395,7 @@ router.patch("/:id/password", verifyJWT, [param("id").isUUID(), body("newPasswor
   const {
     newPassword
   } = req.body;
-  if (req.user.role !== "admin" && req.user.id !== id) {
+  if (req.user.id !== id && !(await canManageUsers(req.user))) {
     return res.status(403).json({
       error: "Not allowed to change this password."
     });
@@ -404,6 +431,11 @@ router.post("/", verifyJWT, requirePermission("admin_panel.users"), [body("email
     is_active,
     profile
   } = req.body;
+  if (isAdminLevelProfile(profile) && !(await isAdminLevelActor(req.user))) {
+    return res.status(403).json({
+      error: "Only an administrator can grant administrator access."
+    });
+  }
   try {
     const willBeActive = is_active === undefined ? true : is_active;
     if (willBeActive) {
@@ -493,7 +525,7 @@ router.patch("/:id/username", verifyJWT, [param("id").isUUID(), body("username")
   const {
     username
   } = req.body;
-  if (req.user.id !== id && req.user.role !== "admin") {
+  if (req.user.id !== id && !(await canManageUsers(req.user))) {
     return res.status(403).json({
       error: "Not allowed to modify this username."
     });
@@ -556,7 +588,7 @@ router.patch("/:id/email", verifyJWT, [param("id").isUUID(), body("email").isEma
   const {
     email
   } = req.body;
-  if (req.user.id !== id && req.user.role !== "admin") {
+  if (req.user.id !== id && !(await canManageUsers(req.user))) {
     return res.status(403).json({
       error: "Not allowed to modify this email."
     });

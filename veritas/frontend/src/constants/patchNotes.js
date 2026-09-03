@@ -5,6 +5,14 @@
  */
 export const PATCH_NOTES = [
   {
+    version: "1.0.2",
+    date: "2026-09-03",
+    highlights: [
+      "Administration > Agents : les profils Administrateur et Super Admin peuvent désormais modifier un agent et lui attribuer un profil Administrateur ou Super Admin.",
+      "L'attribution d'un accès administrateur reste réservée aux profils administrateurs, pour éviter toute élévation de privilèges."
+    ]
+  },
+  {
     version: "1.0.1",
     date: "2026-09-03",
     highlights: [

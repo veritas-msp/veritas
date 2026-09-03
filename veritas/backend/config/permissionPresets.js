@@ -114,6 +114,12 @@ export function isSuperAdminPresetProfile(profileName) {
   return key === "super admin" || key === "superadmin" || key === "super administrateur";
 }
 
+/** Admin-level profiles (Super Admin / Administrator): the only ones allowed to grant admin-level access. */
+export function isAdminLevelProfile(profileName) {
+  const key = normalizeProfileName(profileName);
+  return isSuperAdminPresetProfile(profileName) || key === "admin" || key === "administrateur" || key === "administrator";
+}
+
 /** @deprecated Use isSuperAdminPresetProfile — kept for call sites that locked "admin" before. */
 export function isAdminPresetProfile(profileName) {
   return isSuperAdminPresetProfile(profileName);
