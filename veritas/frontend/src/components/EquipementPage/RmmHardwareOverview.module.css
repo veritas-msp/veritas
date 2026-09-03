@@ -1,12 +1,12 @@
 .scoreHero {
   display: grid;
-  grid-template-columns: minmax(140px, 22%) minmax(0, 1fr);
-  min-height: 180px;
+  grid-template-columns: minmax(90px, 18%) minmax(0, 1fr);
+  min-height: 120px;
   border: 1px solid var(--msp-border);
-  border-radius: 20px;
+  border-radius: 14px;
   background: var(--msp-surface);
   overflow: hidden;
-  box-shadow: var(--msp-shadow);
+  box-shadow: var(--msp-shadow-soft, 0 2px 12px rgba(11, 33, 56, 0.05));
 }
 
 .scoreHero_good .scoreVisual {
@@ -29,7 +29,7 @@
 }
 
 .scoreGrade {
-  font-size: clamp(3.5rem, 6vw, 5rem);
+  font-size: clamp(2.2rem, 4vw, 3.2rem);
   font-weight: 900;
   line-height: 1;
   letter-spacing: -0.04em;
@@ -44,23 +44,23 @@
   display: flex;
   flex-direction: column;
   justify-content: center;
-  gap: 0.4rem;
-  padding: 1.25rem 1.5rem;
+  gap: 0.25rem;
+  padding: 0.75rem 1rem;
   min-width: 0;
 }
 
 .scoreEyebrow {
   margin: 0;
-  font-size: 0.78rem;
+  font-size: 0.62rem;
   font-weight: 700;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.06em;
   text-transform: uppercase;
   color: var(--msp-muted);
 }
 
 .scoreHeadline {
   margin: 0;
-  font-size: clamp(2rem, 3vw, 2.6rem);
+  font-size: clamp(1.25rem, 2vw, 1.65rem);
   font-weight: 850;
   line-height: 1;
   color: var(--msp-text);
@@ -75,18 +75,18 @@
 
 .scoreHint {
   margin: 0;
-  font-size: 0.95rem;
+  font-size: 0.78rem;
   color: var(--msp-muted);
 }
 
 .scoreMeters {
-  max-width: 320px;
-  margin-top: 0.2rem;
+  max-width: 280px;
+  margin-top: 0.1rem;
 }
 
 .scoreMeta {
-  margin: 0.15rem 0 0;
-  font-size: 0.82rem;
+  margin: 0.1rem 0 0;
+  font-size: 0.72rem;
   color: var(--msp-muted);
 }
 
@@ -216,7 +216,7 @@
 .root {
   display: flex;
   flex-direction: column;
-  gap: 1rem;
+  gap: 0.7rem;
   min-width: 0;
   width: 100%;
 }
@@ -224,13 +224,13 @@
 .sectionHeader {
   display: flex;
   flex-direction: column;
-  gap: 0.25rem;
+  gap: 0.15rem;
   min-width: 0;
 }
 
 .sectionTitle {
   margin: 0;
-  font-size: 1.15rem;
+  font-size: 0.98rem;
   font-weight: 750;
   letter-spacing: -0.01em;
   color: var(--msp-text);
@@ -239,28 +239,28 @@
 
 .sectionSubtitle {
   margin: 0;
-  font-size: 0.9rem;
+  font-size: 0.78rem;
   color: var(--msp-muted);
 }
 
 .grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 1rem;
+  gap: 0.7rem;
   align-items: stretch;
 }
 
 .inventoryStack {
   display: flex;
   flex-direction: column;
-  gap: 1rem;
+  gap: 0.7rem;
   min-width: 0;
 }
 
 .inventorySplit {
   display: grid;
   grid-template-columns: minmax(0, 1.15fr) minmax(0, 0.85fr);
-  gap: 1rem;
+  gap: 0.7rem;
   align-items: stretch;
   min-width: 0;
 }
@@ -268,20 +268,20 @@
 .inventorySide {
   display: flex;
   flex-direction: column;
-  gap: 1rem;
+  gap: 0.7rem;
   min-width: 0;
 }
 
 .cardScrollable {
-  min-height: 320px;
-  max-height: min(70vh, 640px);
+  min-height: 240px;
+  max-height: min(55vh, 480px);
   align-items: stretch;
 }
 
 .inventorySoftwareCard {
   min-height: 100%;
   height: 100%;
-  max-height: min(75vh, 720px);
+  max-height: min(60vh, 520px);
 }
 
 .cardScrollable .cardVisual {
@@ -297,33 +297,33 @@
 
 .factListScroll {
   flex: 1 1 auto;
-  min-height: 12rem;
+  min-height: 8rem;
   max-height: none;
   overflow-y: auto;
   overscroll-behavior: contain;
-  padding-right: 1rem;
-  margin: 0.15rem 0 0;
+  padding-right: 0.65rem;
+  margin: 0.1rem 0 0;
   scrollbar-gutter: stable;
 }
 
 .factListScroll li {
-  padding-right: 0.35rem;
+  padding-right: 0.25rem;
 }
 
 .factListScroll .factValue {
-  padding-right: 0.15rem;
+  padding-right: 0.1rem;
 }
 
 .card {
   display: grid;
-  grid-template-columns: minmax(140px, 28%) minmax(0, 1fr);
-  min-height: 220px;
+  grid-template-columns: minmax(72px, 18%) minmax(0, 1fr);
+  min-height: 0;
   min-width: 0;
   border: 1px solid var(--msp-border);
-  border-radius: 20px;
+  border-radius: 14px;
   background: var(--msp-surface);
   overflow: hidden;
-  box-shadow: var(--msp-shadow);
+  box-shadow: var(--msp-shadow-soft, 0 2px 12px rgba(11, 33, 56, 0.05));
 }
 
 .cardVisual {
@@ -332,10 +332,11 @@
   justify-content: center;
   background: transparent;
   border-right: 1px solid var(--msp-border);
+  padding: 0.55rem 0.35rem;
 }
 
 .cardIcon {
-  font-size: 5.5rem;
+  font-size: 2.35rem;
   color: var(--msp-accent);
   opacity: 0.88;
   filter: none;
@@ -351,25 +352,25 @@
   display: flex;
   flex-direction: column;
   justify-content: center;
-  gap: 0.55rem;
-  padding: 1.35rem 1.5rem 1.4rem;
+  gap: 0.28rem;
+  padding: 0.75rem 0.9rem 0.8rem;
   min-width: 0;
 }
 
 .cardEyebrow {
   margin: 0;
-  font-size: 0.78rem;
+  font-size: 0.62rem;
   font-weight: 700;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.06em;
   text-transform: uppercase;
   color: var(--msp-muted);
 }
 
 .cardHeadline {
   margin: 0;
-  font-size: clamp(1.55rem, 2.4vw, 2.15rem);
+  font-size: clamp(1.05rem, 1.6vw, 1.35rem);
   font-weight: 800;
-  line-height: 1.1;
+  line-height: 1.15;
   letter-spacing: -0.02em;
   color: var(--msp-text);
   overflow: hidden;
@@ -380,17 +381,17 @@
 
 .cardHint {
   margin: 0;
-  font-size: 0.95rem;
-  line-height: 1.35;
+  font-size: 0.78rem;
+  line-height: 1.3;
   color: var(--msp-muted);
 }
 
 .meter {
-  height: 10px;
+  height: 6px;
   border-radius: 999px;
   background: color-mix(in srgb, var(--msp-border) 75%, transparent);
   overflow: hidden;
-  margin-top: 0.15rem;
+  margin-top: 0.05rem;
   max-width: 100%;
 }
 
@@ -417,30 +418,30 @@
 
 .factList {
   list-style: none;
-  margin: 0.35rem 0 0;
-  padding: 0.55rem 0 0;
+  margin: 0.2rem 0 0;
+  padding: 0.35rem 0 0;
   border-top: 1px solid color-mix(in srgb, var(--msp-border) 80%, transparent);
   display: flex;
   flex-direction: column;
-  gap: 0.45rem;
+  gap: 0.22rem;
   min-width: 0;
 }
 
 .factList li {
   display: grid;
-  grid-template-columns: minmax(0, 0.85fr) minmax(0, 1.15fr);
-  gap: 0.75rem;
+  grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
+  gap: 0.5rem;
   align-items: baseline;
   min-width: 0;
 }
 
 .factLabel {
-  font-size: 0.82rem;
+  font-size: 0.72rem;
   color: var(--msp-muted);
 }
 
 .factValue {
-  font-size: 0.92rem;
+  font-size: 0.78rem;
   font-weight: 700;
   color: var(--msp-text);
   text-align: right;
@@ -452,28 +453,28 @@
 .ramBoard {
   display: flex;
   flex-direction: column;
-  gap: 0.55rem;
-  margin-top: 0.35rem;
+  gap: 0.35rem;
+  margin-top: 0.2rem;
   min-width: 0;
 }
 
 .ramSlots {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.55rem;
+  gap: 0.35rem;
   align-items: flex-end;
 }
 
 .ramSlot {
-  width: 46px;
-  height: 92px;
-  border-radius: 8px;
+  width: 32px;
+  height: 58px;
+  border-radius: 6px;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: flex-end;
-  gap: 0.35rem;
-  padding: 0.45rem 0.25rem 0.4rem;
+  gap: 0.2rem;
+  padding: 0.3rem 0.15rem 0.25rem;
   position: relative;
   transition: transform 0.15s ease, box-shadow 0.15s ease;
 }
@@ -481,11 +482,11 @@
 .ramSlot::before {
   content: "";
   position: absolute;
-  top: 10px;
+  top: 7px;
   left: 50%;
   transform: translateX(-50%);
-  width: 18px;
-  height: 8px;
+  width: 12px;
+  height: 5px;
   border-radius: 2px;
   background: currentColor;
   opacity: 0.35;
@@ -495,7 +496,7 @@
   color: #fff;
   background: linear-gradient(180deg, color-mix(in srgb, var(--msp-accent) 88%, #fff) 0%, var(--msp-accent) 100%);
   border: 1px solid color-mix(in srgb, var(--msp-accent) 80%, var(--msp-text));
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.18), 0 6px 14px color-mix(in srgb, var(--msp-accent) 28%, transparent);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.18), 0 4px 10px color-mix(in srgb, var(--msp-accent) 22%, transparent);
 }
 
 .ramSlotEmpty {
@@ -507,7 +508,7 @@
 
 .ramSlotChip {
   width: 70%;
-  height: 4px;
+  height: 3px;
   border-radius: 999px;
   background: rgba(255, 255, 255, 0.35);
 }
@@ -517,7 +518,7 @@
 }
 
 .ramSlotLabel {
-  font-size: 0.68rem;
+  font-size: 0.58rem;
   font-weight: 800;
   color: #fff;
   line-height: 1;
@@ -530,12 +531,12 @@
 
 .ramSlotsCaption {
   margin: 0;
-  font-size: 0.9rem;
+  font-size: 0.76rem;
   color: var(--msp-text);
 }
 
 .ramSlotsCaption strong {
-  font-size: 1.05rem;
+  font-size: 0.88rem;
   font-weight: 800;
 }
 
@@ -545,28 +546,27 @@
 }
 
 .ramSlotsMissing {
-  margin: 0.35rem 0 0;
-  font-size: 0.82rem;
+  margin: 0.2rem 0 0;
+  font-size: 0.72rem;
   color: var(--msp-muted);
 }
 
 @media (max-width: 1100px) {
   .scoreHero {
-    grid-template-columns: minmax(110px, 26%) minmax(0, 1fr);
-    min-height: 160px;
+    grid-template-columns: minmax(90px, 22%) minmax(0, 1fr);
+    min-height: 130px;
   }
 
   .card {
-    grid-template-columns: minmax(110px, 26%) minmax(0, 1fr);
-    min-height: 190px;
+    grid-template-columns: minmax(64px, 16%) minmax(0, 1fr);
   }
 
   .cardIcon {
-    font-size: 4.2rem;
+    font-size: 2rem;
   }
 
   .cardBody {
-    padding: 1.1rem 1.15rem;
+    padding: 0.65rem 0.75rem;
   }
 }
 
@@ -576,7 +576,7 @@
   }
 
   .inventorySoftwareCard {
-    max-height: min(55vh, 480px);
+    max-height: min(45vh, 360px);
   }
 
   .grid {
@@ -591,10 +591,10 @@
   .scoreVisual {
     border-right: none;
     border-bottom: 1px solid var(--msp-border);
-    padding: 1rem 0;
+    padding: 0.75rem 0;
   }
 
   .card {
-    min-height: 180px;
+    min-height: 0;
   }
 }

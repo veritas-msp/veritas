@@ -420,10 +420,10 @@ export default function SupervisionOpsQueue({
                         {domainLabel}
                       </span>
                     </td> : null}
-                    <td>
+                    <td className={styles.severityCell}>
                       <span className={`${styles.chipBadge} ${severityBadgeClass(item.severity)}`}>{severityLabel}</span>
                     </td>
-                    <td>
+                    <td className={styles.statusCell}>
                       <span className={`${styles.wfBadge} ${workflowBadgeClass(wf)}`}>{copy.workflow?.[wf] || wf}</span>
                     </td>
                     <td className={styles.whenCell}>

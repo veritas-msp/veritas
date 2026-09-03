@@ -187,7 +187,7 @@
 
 .table {
   width: 100%;
-  min-width: 960px;
+  min-width: 880px;
   table-layout: fixed;
   border-collapse: separate;
   border-spacing: 0;
@@ -212,15 +212,15 @@
 
 .colSeverity,
 .colStatus {
-  width: 7.5rem;
-}
-
-.colWhen {
   width: 8.5rem;
 }
 
+.colWhen {
+  width: 9rem;
+}
+
 .colActions {
-  width: 15rem;
+  width: 12.5rem;
 }
 
 .table thead th {
@@ -272,10 +272,6 @@
   vertical-align: middle;
   color: var(--msp-text, #e8edf5);
   overflow: hidden;
-}
-
-.table tbody td.actionsCol {
-  overflow: visible;
 }
 
 .table tbody tr:last-child td {
@@ -334,27 +330,16 @@
   white-space: nowrap;
 }
 
+.severityCell,
+.statusCell,
+.whenCell {
+  vertical-align: middle;
+}
+
 .actionsCol {
-  position: sticky;
-  right: 0;
-  z-index: 2;
-  width: 15rem;
-  min-width: 15rem;
-  white-space: nowrap;
   text-align: right;
-  padding-left: 0.85rem;
-  padding-right: 0.85rem;
-  background: var(--msp-surface, #1a2540);
-  box-shadow: -8px 0 10px -8px rgba(0, 0, 0, 0.25);
-}
-
-th.actionsCol {
-  z-index: 3;
-  background: var(--msp-surface-2, #152035);
-}
-
-.dataRow:hover .actionsCol {
-  background: #18253f;
+  white-space: nowrap;
+  vertical-align: middle;
 }
 
 .sevDot {
@@ -446,10 +431,12 @@ th.actionsCol {
   display: inline-flex;
   align-items: center;
   justify-content: flex-end;
-  gap: 0.35rem;
-  width: 100%;
+  gap: 0.3rem;
+  width: auto;
+  max-width: 100%;
   min-width: 0;
   box-sizing: border-box;
+  margin-left: auto;
 }
 
 .rowActions > * {
@@ -731,22 +718,16 @@ th.actionsCol {
   color: var(--msp-text, #0f1c2e);
 }
 
-:global(html:not(.dark)) .table thead th,
-:global(html:not(.dark)) th.actionsCol {
+:global(html:not(.dark)) .table thead th {
   background: var(--msp-surface-2, #f7f9fc);
   border-color: var(--msp-border, #c5d0df);
   color: var(--msp-muted, #5c6b82);
 }
 
-:global(html:not(.dark)) .table tbody td,
-:global(html:not(.dark)) .actionsCol {
+:global(html:not(.dark)) .table tbody td {
   color: var(--msp-text, #0f1c2e);
   border-color: var(--msp-border-light, #eef2f7);
-  background: var(--msp-surface, #fff);
-}
-
-:global(html:not(.dark)) .dataRow:hover .actionsCol {
-  background: var(--msp-surface-2, #f7f9fc);
+  background: transparent;
 }
 
 :global(html:not(.dark)) .filterChip {

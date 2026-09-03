@@ -176,10 +176,10 @@
 }
 
 .panelBody {
-  padding: 0.65rem 0.85rem 0.85rem;
+  padding: 0.45rem 0.55rem 0.55rem;
   display: flex;
   flex-direction: column;
-  gap: 0.55rem;
+  gap: 0.45rem;
 }
 
 .operationsLayout {

@@ -10,7 +10,7 @@ import { useAppLocale } from "../../hooks/useAppGeneralSettings";
 import { getLocaleTag } from "../../i18n/locales";
 import { isAdminOrSuperAdminProfile } from "../../utils/profileProtection";
 import { getSupervisionCenterCopy } from "./supervisionCenterPageI18n";
-import { buildUnifiedSupervisionQueue, filterSupervisionQueue, countQueueBySeverity, mergeQueueWithAlertState, countQueueByWorkflow } from "./supervisionQueueUtils";
+import { buildUnifiedSupervisionQueue, filterSupervisionQueue, countQueueBySeverity, mergeQueueWithAlertState, countQueueByWorkflow, buildSupervisionSupportTicketPrefill } from "./supervisionQueueUtils";
 import SupervisionOpsQueue from "./SupervisionOpsQueue";
 import SupervisionAlertHistory from "./SupervisionAlertHistory";
 import PlanningEventModalBridge from "../PlanningPage/PlanningEventModalBridge";
@@ -220,11 +220,10 @@ export default function MonitoringCenterPage({
     };
   }, [refreshAlertStates]);
   useEffect(() => {
-    if (activeTab !== "history") return undefined;
     const controller = createTrackedAbortController();
     refreshHistory(controller.signal);
     return () => controller.abort();
-  }, [activeTab, refreshHistory]);
+  }, [refreshHistory]);
   const applyAlertResult = useCallback(result => {
     const alert = result?.alert;
     if (!alert?.queueItemId) {
@@ -298,15 +297,10 @@ export default function MonitoringCenterPage({
     setEventModalOpen(true);
   }, []);
   const handleTicketSupport = useCallback(item => {
-    const equipment = item?.equipment || item?.agent?.equipment || null;
     linkRemediation(item, {
       linkedTicketKind: "support"
     });
-    onNavigate?.("TicketCreate", {
-      clientId: item?.clientId || equipment?.clientId || null,
-      equipmentId: equipment?.id || null,
-      title: item?.ticketSubject || ""
-    });
+    onNavigate?.("TicketCreate", buildSupervisionSupportTicketPrefill(item));
   }, [onNavigate, linkRemediation]);
   const handleTicketPresta = useCallback(item => {
     linkRemediation(item, {

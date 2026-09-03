@@ -2,6 +2,10 @@
   align-items: center;
 }
 
+.heroWithUser :global(.veritas-account-userinfo) {
+  max-width: min(100%, 22rem);
+}
+
 .settingRow {
   display: flex;
   align-items: center;

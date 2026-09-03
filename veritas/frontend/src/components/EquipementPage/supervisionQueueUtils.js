@@ -1,5 +1,5 @@
 import { buildMonitoringTodoActions } from "./equipmentMspUtils";
-import { getEquipmentListKey } from "../../utils/equipmentIdentity";
+import { getEquipmentDbId, getEquipmentListKey } from "../../utils/equipmentIdentity";
 import { getBackupJobStatus, getBackupJobStatusTitle } from "../CybersecuritePage/backupJobStatusUtils";
 import { formatServeurLieLabel } from "../EnterprisesPage/backupJobUtils";
 
@@ -398,4 +398,39 @@ export function countQueueByDomain(items = []) {
     contracts: 0,
     rmm: 0
   });
+}
+
+/**
+ * Prefill payload for TicketCreate when opening a Support ticket from the supervision queue.
+ * Category hint matches seeded "Supervision / alerting" (monitoring) or a custom "Monitoring" name.
+ */
+export function buildSupervisionSupportTicketPrefill(item) {
+  const equipment = item?.equipment || item?.agent?.equipment || null;
+  const clientId = item?.clientId || equipment?.clientId || null;
+  const equipmentId = getEquipmentDbId(equipment) || equipment?.id || null;
+  const checkmkHost = equipment?.checkmkMapping?.checkmk_host_name
+    || equipment?.checkmkMapping?.checkmkHostName
+    || equipment?.checkmk_host_name
+    || null;
+
+  const lines = [];
+  if (item?.title) lines.push(`Alerte : ${item.title}`);
+  if (item?.severity) lines.push(`Sévérité : ${String(item.severity)}`);
+  if (item?.clientName) lines.push(`Entreprise : ${item.clientName}`);
+  if (equipment?.name) lines.push(`Périphérique : ${equipment.name}`);
+  if (equipment?.type) lines.push(`Type : ${equipment.type}`);
+  if (equipment?.ip) lines.push(`IP : ${equipment.ip}`);
+  if (checkmkHost) lines.push(`Hôte CheckMK : ${checkmkHost}`);
+  if (item?.subtitle) lines.push(`Contexte : ${item.subtitle}`);
+  if (item?.label && item.label !== item.title) lines.push(`Détail : ${item.label}`);
+  lines.push("", "Ticket créé depuis le centre de supervision.");
+
+  return {
+    clientId,
+    equipmentId,
+    title: item?.ticketSubject || [equipment?.name, item?.title].filter(Boolean).join(" — ") || "",
+    description: lines.filter((line, index, arr) => line !== "" || (index > 0 && arr[index - 1] !== "")).join("\n").slice(0, 5000),
+    category: "monitoring",
+    preferPrimaryContact: true
+  };
 }

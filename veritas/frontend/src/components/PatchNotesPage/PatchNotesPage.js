@@ -5,6 +5,8 @@ import { PATCH_NOTES } from "../../constants/patchNotes";
 import { useAppLocale } from "../../hooks/useAppGeneralSettings";
 import layout from "../EnterprisesPage/EnterprisesPage.module.css";
 import account from "../Misc/AccountPage/AccountPage.module.css";
+import MspPageHero from "../Misc/MspPageHero/MspPageHero";
+import mspStyles from "../CybersecuritePage/CybersecuritePage.module.css";
 import { getPatchNotesPageCopy } from "./patchNotesPageI18n";
 import styles from "./PatchNotesPage.module.css";
 
@@ -28,59 +30,61 @@ export default function PatchNotesPage() {
   );
 
   return (
-    <div className={`${layout.page} ${styles.page}`}>
-      <div className={`${layout.shell} ${layout.shellFluid}`}>
-        <header className={layout.hero}>
-          <div className={layout.heroText}>
-            <p className={layout.eyebrow}>
-              <Icon icon="mdi:notebook-outline" aria-hidden />
-              {t.eyebrow}
-            </p>
-            <h1 className={layout.pageTitle}>{t.title}</h1>
-            <p className={layout.pageSubtitle}>{t.subtitle}</p>
-          </div>
-          <div className={layout.heroActions}>
-            <span className={styles.versionBadge} title={`${t.currentVersion} v${VERITAS_VERSION}`}>
-              <Icon icon="mdi:tag-outline" aria-hidden />
-              v{VERITAS_VERSION}
-            </span>
-          </div>
-        </header>
+    <div className={`${mspStyles.mspPage} ${layout.page}`}>
+      <div className={mspStyles.mspLayout}>
+        <div className={mspStyles.mspMain}>
+          <MspPageHero
+            eyebrow={t.eyebrow}
+            title={t.title}
+            subtitle={t.subtitle}
+            icon="mdi:notebook-outline"
+            actions={
+              <span className={styles.versionBadge} title={`${t.currentVersion} v${VERITAS_VERSION}`}>
+                <Icon icon="mdi:tag-outline" aria-hidden />
+                v{VERITAS_VERSION}
+              </span>
+            }
+          />
 
-        <div className={`${account.contentScroll} ${styles.scroll}`}>
-          {notes.length === 0 ? (
-            <section className={account.sectionPanel}>
-              <div className={account.sectionBody}>
-                <p className={styles.empty}>{t.empty}</p>
-              </div>
-            </section>
-          ) : (
-            <div className={styles.timeline} aria-label={t.itemsLabel}>
-              {notes.map(entry => (
-                <article key={entry.version} className={styles.entry}>
-                  <header className={styles.entryHeader}>
-                    <h2 className={styles.entryVersion}>v{entry.version}</h2>
-                    {entry.date ? (
-                      <time className={styles.entryDate} dateTime={entry.date}>
-                        {formatDisplayDate(entry.date, locale)}
-                      </time>
-                    ) : null}
-                  </header>
-                  <div className={styles.entryBody}>
-                    {Array.isArray(entry.highlights) && entry.highlights.length > 0 ? (
-                      <ul className={styles.highlights}>
-                        {entry.highlights.map((item, index) => (
-                          <li key={`${entry.version}-${index}`}>{item}</li>
-                        ))}
-                      </ul>
-                    ) : (
+          <main className={mspStyles.mspContent}>
+            <div className={`${layout.shell} ${layout.shellFluid}`}>
+              <div className={`${account.contentScroll} ${styles.scroll}`}>
+                {notes.length === 0 ? (
+                  <section className={account.sectionPanel}>
+                    <div className={account.sectionBody}>
                       <p className={styles.empty}>{t.empty}</p>
-                    )}
+                    </div>
+                  </section>
+                ) : (
+                  <div className={styles.timeline} aria-label={t.itemsLabel}>
+                    {notes.map(entry => (
+                      <article key={entry.version} className={styles.entry}>
+                        <header className={styles.entryHeader}>
+                          <h2 className={styles.entryVersion}>v{entry.version}</h2>
+                          {entry.date ? (
+                            <time className={styles.entryDate} dateTime={entry.date}>
+                              {formatDisplayDate(entry.date, locale)}
+                            </time>
+                          ) : null}
+                        </header>
+                        <div className={styles.entryBody}>
+                          {Array.isArray(entry.highlights) && entry.highlights.length > 0 ? (
+                            <ul className={styles.highlights}>
+                              {entry.highlights.map((item, index) => (
+                                <li key={`${entry.version}-${index}`}>{item}</li>
+                              ))}
+                            </ul>
+                          ) : (
+                            <p className={styles.empty}>{t.empty}</p>
+                          )}
+                        </div>
+                      </article>
+                    ))}
                   </div>
-                </article>
-              ))}
+                )}
+              </div>
             </div>
-          )}
+          </main>
         </div>
       </div>
     </div>

@@ -111,6 +111,54 @@ function getContactClientOptions(contact, clients = []) {
   }
   return [];
 }
+function contactBelongsToClient(contact, clientId) {
+  if (!contact || clientId == null || clientId === "") return false;
+  const cid = String(clientId);
+  if (String(contact.client_id) === cid) return true;
+  const memberships = Array.isArray(contact.clients) ? contact.clients : [];
+  return memberships.some(m => String(m.client_id ?? m.id) === cid);
+}
+function findPrimaryContactForClient(contacts = [], clientId) {
+  if (clientId == null || clientId === "") return null;
+  const cid = String(clientId);
+  const forClient = (Array.isArray(contacts) ? contacts : []).filter(c => contactBelongsToClient(c, cid));
+  if (forClient.length === 0) return null;
+  const byMembershipPrimary = forClient.find(c => (Array.isArray(c.clients) ? c.clients : []).some(m => String(m.client_id ?? m.id) === cid && m.is_primary === true));
+  if (byMembershipPrimary) return byMembershipPrimary;
+  const byPoste = forClient.find(c => String(c.poste || "").toLowerCase().includes("principal"));
+  if (byPoste) return byPoste;
+  const byActive = forClient.find(c => {
+    const status = String(c.statut || "").toLowerCase();
+    return status.includes("actif") && !status.includes("inactif");
+  });
+  if (byActive) return byActive;
+  return forClient[0];
+}
+function findCategoryByHint(categories = [], hint) {
+  const needle = String(hint || "").trim().toLowerCase();
+  if (!needle) return null;
+  const enabled = (Array.isArray(categories) ? categories : []).filter(item => item?.enabled !== false);
+  const exact = enabled.find(item => {
+    const name = String(item?.name || "").trim().toLowerCase();
+    const id = String(item?.id || "").trim().toLowerCase();
+    return name === needle || id === needle;
+  });
+  if (exact) return exact;
+  const partial = enabled.find(item => {
+    const name = String(item?.name || "").trim().toLowerCase();
+    const id = String(item?.id || "").trim().toLowerCase();
+    return id.includes(needle) || name.includes(needle);
+  });
+  if (partial) return partial;
+  if (needle === "monitoring" || needle.includes("monitor") || needle.includes("supervision")) {
+    return enabled.find(item => {
+      const name = String(item?.name || "").toLowerCase();
+      const id = String(item?.id || "").toLowerCase();
+      return id.includes("monitoring") || name.includes("monitoring") || name.includes("supervision") || name.includes("alerting");
+    }) || null;
+  }
+  return null;
+}
 function normalizeTicketStatus(status) {
   const normalized = String(status || "").trim().toLowerCase();
   return normalized === "open" ? "new" : normalized;
@@ -568,19 +616,28 @@ export default function TicketCreatePage({
   }, [initialData?.contactId, contacts, copy]);
   useEffect(() => {
     if (initialData?.contactId || !initialData?.clientId || contacts.length === 0) return;
-    const forClient = contacts.filter(c => String(c.client_id) === String(initialData.clientId));
-    if (forClient.length === 1) {
-      setRequesterContactId(String(forClient[0].id));
-      setContactSearch(getContactLabel(forClient[0], copy));
-    }
-  }, [initialData?.contactId, initialData?.clientId, contacts, copy]);
+    if (requesterContactId) return;
+    const primary = findPrimaryContactForClient(contacts, initialData.clientId);
+    if (!primary) return;
+    setRequesterContactId(String(primary.id));
+    setContactSearch(getContactLabel(primary, copy));
+  }, [initialData?.contactId, initialData?.clientId, contacts, copy, requesterContactId]);
   useEffect(() => {
     if (initialData?.title) setTitle(String(initialData.title));
     if (initialData?.description) setDescription(String(initialData.description));
   }, [initialData?.title, initialData?.description]);
   useEffect(() => {
+    if (!initialData?.category || categories.length === 0) return;
+    if (category) return;
+    const match = findCategoryByHint(categories, initialData.category);
+    if (!match?.name) return;
+    setCategory(String(match.name));
+    setCategorySearch(String(match.name));
+  }, [initialData?.category, categories, category]);
+  useEffect(() => {
     if (!initialData?.equipmentId || clientEquipments.length === 0) return;
-    const match = clientEquipments.find(eq => String(eq.id) === String(initialData.equipmentId) || String(eq.name) === String(initialData.equipmentId));
+    const wanted = String(initialData.equipmentId);
+    const match = clientEquipments.find(eq => String(eq.id) === wanted || String(eq.dbId || "") === wanted || String(eq.name) === wanted);
     if (!match) return;
     setEquipmentConcerned(true);
     setEquipmentId(String(match.id));

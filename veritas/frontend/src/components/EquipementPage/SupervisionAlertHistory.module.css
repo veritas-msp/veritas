@@ -220,10 +220,6 @@
   overflow: hidden;
 }
 
-.table tbody td.actionsCol {
-  overflow: visible;
-}
-
 .dataRow {
   cursor: pointer;
   transition: background 0.12s;
@@ -268,27 +264,9 @@
 }
 
 .actionsCol {
-  position: sticky;
-  right: 0;
-  z-index: 2;
-  width: 6.2rem;
-  min-width: 6.2rem;
-  white-space: nowrap;
   text-align: right;
-  padding-left: 0.75rem;
-  padding-right: 0.75rem;
-  background: var(--msp-surface, #1a2540);
-  box-shadow: -8px 0 10px -8px rgba(0, 0, 0, 0.25);
-}
-
-th.actionsCol {
-  z-index: 3;
-  background: var(--msp-surface-2, #152035);
-}
-
-.dataRow:hover .actionsCol,
-.dataRowOpen .actionsCol {
-  background: #18253f;
+  white-space: nowrap;
+  vertical-align: middle;
 }
 
 .rowActions {
@@ -567,23 +545,16 @@ th.actionsCol {
   color: var(--msp-text, #0f1c2e);
 }
 
-:global(html:not(.dark)) .table thead th,
-:global(html:not(.dark)) th.actionsCol {
+:global(html:not(.dark)) .table thead th {
   background: var(--msp-surface-2, #f7f9fc);
   border-color: var(--msp-border, #c5d0df);
   color: var(--msp-muted, #5c6b82);
 }
 
-:global(html:not(.dark)) .table tbody td,
-:global(html:not(.dark)) .actionsCol {
+:global(html:not(.dark)) .table tbody td {
   color: var(--msp-text, #0f1c2e);
   border-color: var(--msp-border-light, #eef2f7);
-  background: var(--msp-surface, #fff);
-}
-
-:global(html:not(.dark)) .dataRow:hover .actionsCol,
-:global(html:not(.dark)) .dataRowOpen .actionsCol {
-  background: var(--msp-surface-2, #f7f9fc);
+  background: transparent;
 }
 
 :global(html:not(.dark)) .detailRow td {

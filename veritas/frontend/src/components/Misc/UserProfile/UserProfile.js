@@ -16,6 +16,8 @@ import { DEFAULT_USER_IN_APP_PREFERENCES, normalizeUserInAppPreferences } from "
 import { Modal, ModalFooter, ModalForm, IconField, Input, Btn, BtnIcon, FieldRow, Switch, ChoiceGroup } from "../../AdminPage/AdminUi";
 import layout from "../../EnterprisesPage/EnterprisesPage.module.css";
 import account from "../AccountPage/AccountPage.module.css";
+import MspPageHero from "../MspPageHero/MspPageHero";
+import mspStyles from "../../CybersecuritePage/CybersecuritePage.module.css";
 import s from "./UserProfile.module.css";
 import { formatProfileDate, getLocalizedNotifEventOptions, getMfaStatus, getNotificationsSectionDescription, getUserProfileCopy } from "./userProfileI18n";
 
@@ -386,22 +388,30 @@ export default function UserProfile() {
   };
 
   if (loading) {
-    return <div className={layout.page}>
-        <div className={`${layout.shell} ${layout.shellFluid}`}>
-          <div className={layout.stateBox}>
-            <Icon icon="mdi:loading" className={layout.spinning} />
-            <span>{t.loading}</span>
+    return <div className={`${mspStyles.mspPage} ${layout.page}`}>
+        <div className={mspStyles.mspLayout}>
+          <div className={mspStyles.mspMain}>
+            <div className={`${layout.shell} ${layout.shellFluid}`}>
+              <div className={layout.stateBox}>
+                <Icon icon="mdi:loading" className={layout.spinning} />
+                <span>{t.loading}</span>
+              </div>
+            </div>
           </div>
         </div>
       </div>;
   }
 
   if (!user) {
-    return <div className={layout.page}>
-        <div className={`${layout.shell} ${layout.shellFluid}`}>
-          <div className={`${layout.stateBox} ${layout.stateBoxError}`}>
-            <Icon icon="mdi:alert-circle-outline" />
-            <span>{t.loadProfileError}</span>
+    return <div className={`${mspStyles.mspPage} ${layout.page}`}>
+        <div className={mspStyles.mspLayout}>
+          <div className={mspStyles.mspMain}>
+            <div className={`${layout.shell} ${layout.shellFluid}`}>
+              <div className={`${layout.stateBox} ${layout.stateBoxError}`}>
+                <Icon icon="mdi:alert-circle-outline" />
+                <span>{t.loadProfileError}</span>
+              </div>
+            </div>
           </div>
         </div>
       </div>;
@@ -416,34 +426,37 @@ export default function UserProfile() {
     return notifPreferences.events?.[option.key]?.enabled !== false;
   }).length;
 
-  return <div className={layout.page}>
-      <div className={`${layout.shell} ${layout.shellFluid}`}>
-        {user.is_active === false && <div className={account.alertBanner}>
-            <Icon icon="mdi:alert-circle-outline" className={account.alertIcon} />
-            {t.accountDisabled}
-          </div>}
+  return <div className={`${mspStyles.mspPage} ${layout.page}`}>
+      <div className={mspStyles.mspLayout}>
+        <div className={mspStyles.mspMain}>
+          {user.is_active === false && <div className={`${layout.shell} ${layout.shellFluid}`}>
+              <div className={account.alertBanner}>
+                <Icon icon="mdi:alert-circle-outline" className={account.alertIcon} />
+                {t.accountDisabled}
+              </div>
+            </div>}
 
-        <header className={`${layout.hero} ${s.heroWithUser}`}>
-          <div className={layout.heroText}>
-            <p className={layout.eyebrow}>
-              <Icon icon="mdi:account-circle-outline" aria-hidden />
-              {t.eyebrow}
-            </p>
-            <h1 className={layout.pageTitle}>{t.pageTitle}</h1>
-          </div>
-          <div className={layout.heroActions}>
-            <UserInfoIcons
-              user={user}
-              name={displayName}
-              job={user.profile_label || t.roles[user.role] || user.profile || ""}
-              email={user.email}
-              detail={formatProfileDate(user.last_login_at, locale)}
-              detailIcon="tabler:clock"
-            />
-          </div>
-        </header>
+          <MspPageHero
+            eyebrow={t.eyebrow}
+            title={t.pageTitle}
+            subtitle={t.nav?.account?.desc || null}
+            icon="mdi:account-circle-outline"
+            className={s.heroWithUser}
+            actions={
+              <UserInfoIcons
+                user={user}
+                name={displayName}
+                job={user.profile_label || t.roles[user.role] || user.profile || ""}
+                email={user.email}
+                detail={formatProfileDate(user.last_login_at, locale)}
+                detailIcon="tabler:clock"
+              />
+            }
+          />
 
-        <div className={s.accountShell}>
+          <main className={mspStyles.mspContent}>
+            <div className={`${layout.shell} ${layout.shellFluid}`}>
+              <div className={s.accountShell}>
           <nav className={s.nav} aria-label={t.pageTitle}>
             {NAV_ITEMS.map(item => {
             const copy = t.nav[item.id];
@@ -679,6 +692,9 @@ export default function UserProfile() {
                 </SectionPanel>
               </div>}
           </div>
+              </div>
+            </div>
+          </main>
         </div>
       </div>
 
