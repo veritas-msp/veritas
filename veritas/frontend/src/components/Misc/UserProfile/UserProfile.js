@@ -429,7 +429,7 @@ export default function UserProfile() {
   return <div className={`${mspStyles.mspPage} ${layout.page}`}>
       <div className={mspStyles.mspLayout}>
         <div className={mspStyles.mspMain}>
-          {user.is_active === false && <div className={`${layout.shell} ${layout.shellFluid}`}>
+          {user.is_active === false && <div className={s.alertBannerWrap}>
               <div className={account.alertBanner}>
                 <Icon icon="mdi:alert-circle-outline" className={account.alertIcon} />
                 {t.accountDisabled}
@@ -455,7 +455,6 @@ export default function UserProfile() {
           />
 
           <main className={mspStyles.mspContent}>
-            <div className={`${layout.shell} ${layout.shellFluid}`}>
               <div className={s.accountShell}>
           <nav className={s.nav} aria-label={t.pageTitle}>
             {NAV_ITEMS.map(item => {
@@ -693,7 +692,6 @@ export default function UserProfile() {
               </div>}
           </div>
               </div>
-            </div>
           </main>
         </div>
       </div>

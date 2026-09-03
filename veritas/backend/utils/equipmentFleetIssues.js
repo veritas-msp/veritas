@@ -1,5 +1,5 @@
 import { computeMonitoringSummary } from "../routes/integrations/checkmk/equipmentMonitoringSync.js";
-import { getSettingsMap } from "./settingsHelper.js";
+import { isCheckmkIntegrationEnabled } from "./checkmkIntegrationStatus.js";
 import { fetchEquipmentFleetList } from "./equipmentFleetList.js";
 import { loadAgentLastSeenMap, loadCheckmkMonitoringMap } from "./equipmentInventoryScan.js";
 import { evaluateEquipmentSupervisionCriteria } from "./equipmentSupervisionEvaluator.js";
@@ -72,26 +72,6 @@ function lookupCheckmkRow(checkmkMap, clientId, equipmentId, family) {
     if (row) return row;
   }
   return null;
-}
-
-async function isCheckmkIntegrationEnabled() {
-  try {
-    const map = await getSettingsMap([
-      "INTEGRATION_CHECKMK_ENABLED",
-      "CHECKMK_API_URL",
-      "CHECKMK_USERNAME",
-      "CHECKMK_PASSWORD",
-      "CHECKMK_SITE"
-    ]);
-    const raw = `${map.INTEGRATION_CHECKMK_ENABLED ?? ""}`.toLowerCase();
-    if (raw === "true") return true;
-    if (raw === "false") return false;
-    return ["CHECKMK_API_URL", "CHECKMK_USERNAME", "CHECKMK_PASSWORD", "CHECKMK_SITE"].some(
-      key => `${map[key] ?? ""}`.trim().length > 0
-    );
-  } catch {
-    return false;
-  }
 }
 
 function buildEvaluationData(equipment) {

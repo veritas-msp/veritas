@@ -47,7 +47,6 @@ export default function PatchNotesPage() {
           />
 
           <main className={mspStyles.mspContent}>
-            <div className={`${layout.shell} ${layout.shellFluid}`}>
               <div className={`${account.contentScroll} ${styles.scroll}`}>
                 {notes.length === 0 ? (
                   <section className={account.sectionPanel}>
@@ -83,7 +82,6 @@ export default function PatchNotesPage() {
                   </div>
                 )}
               </div>
-            </div>
           </main>
         </div>
       </div>
