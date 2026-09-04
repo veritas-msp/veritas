@@ -10,6 +10,7 @@ import { useAppLocale } from "../../hooks/useAppGeneralSettings";
 import { usePlanningEventTypes } from "../PlanningPage/usePlanningEventTypes";
 import { getPlanningEventFormCopy } from "../PlanningPage/planningEventFormI18n";
 import { PLANNING_EVENT_TYPES } from "../PlanningPage/planningEventTypes";
+import { getEquipmentPickerLabel } from "./ticketEquipmentUtils";
 
 function toDatetimeLocalValue(value) {
   if (!value) return "";
@@ -45,12 +46,15 @@ function resolveDefaultEventType(types, preferred) {
 const TASK_FORM_SECTIONS = [
   { id: "general", icon: "mdi:text-box-outline" },
   { id: "schedule", icon: "mdi:calendar-clock" },
-  { id: "assignee", icon: "mdi:account-outline" }
+  { id: "assignee", icon: "mdi:account-outline" },
+  { id: "equipment", icon: "mdi:desktop-classic" }
 ];
 
 export default function SalesTasksPanel({
   tasks = [],
   users = [],
+  equipments = [],
+  defaultEquipmentId = null,
   copy,
   formatDateTime,
   saving = false,
@@ -84,7 +88,8 @@ export default function SalesTasksPanel({
   const [activeSection, setActiveSection] = useState("general");
   const [label, setLabel] = useState("");
   const [eventType, setEventType] = useState("");
-  const [assigneeId, setAssigneeId] = useState("");
+  const [assigneeIds, setAssigneeIds] = useState([]);
+  const [equipmentId, setEquipmentId] = useState("");
   const [startLocal, setStartLocal] = useState("");
   const [endLocal, setEndLocal] = useState("");
   const [rangeMode, setRangeMode] = useState(false);
@@ -95,10 +100,21 @@ export default function SalesTasksPanel({
         .filter(u => u?.id)
         .map(u => ({
           id: String(u.id),
-          label: u.ticket_helpdesk_display_name || u.username || u.name || u.nom || u.email || String(u.id)
+          label: u.ticket_helpdesk_display_name || u.username || u.name || u.nom || u.email || ""
         }))
-        .filter(u => u.label),
+        .filter(u => u.id && u.label),
     [users]
+  );
+
+  const equipmentOptions = useMemo(
+    () =>
+      (Array.isArray(equipments) ? equipments : [])
+        .filter(eq => eq?.id)
+        .map(eq => ({
+          id: String(eq.id),
+          label: getEquipmentPickerLabel(eq, { locale }) || String(eq.name || eq.id)
+        })),
+    [equipments, locale]
   );
 
   const isEditing = Boolean(editingTask?.id);
@@ -109,7 +125,8 @@ export default function SalesTasksPanel({
     setActiveSection("general");
     setLabel("");
     setEventType(resolveDefaultEventType(selectableTypes));
-    setAssigneeId("");
+    setAssigneeIds([]);
+    setEquipmentId(defaultEquipmentId ? String(defaultEquipmentId) : "");
     setStartLocal("");
     setEndLocal("");
     setRangeMode(false);
@@ -124,6 +141,7 @@ export default function SalesTasksPanel({
   const openCreateModal = () => {
     resetForm();
     setEventType(resolveDefaultEventType(selectableTypes));
+    setEquipmentId(defaultEquipmentId ? String(defaultEquipmentId) : "");
     setOpen(true);
   };
 
@@ -133,7 +151,18 @@ export default function SalesTasksPanel({
     setActiveSection("general");
     setLabel(String(task.label || ""));
     setEventType(resolveDefaultEventType(selectableTypes, task.eventType || task.type));
-    setAssigneeId(task.assigneeId ? String(task.assigneeId) : "");
+    const fromAssignees = Array.isArray(task.assignees)
+      ? task.assignees.map(entry => String(entry?.id || "")).filter(Boolean)
+      : [];
+    const legacyId = task.assigneeId ? String(task.assigneeId) : "";
+    setAssigneeIds(fromAssignees.length > 0 ? fromAssignees : legacyId ? [legacyId] : []);
+    setEquipmentId(
+      task.equipmentId
+        ? String(task.equipmentId)
+        : defaultEquipmentId
+          ? String(defaultEquipmentId)
+          : ""
+    );
     setStartLocal(toDatetimeLocalValue(task.startAt));
     setEndLocal(toDatetimeLocalValue(task.endAt));
     setRangeMode(Boolean(task.startAt && task.endAt));
@@ -165,10 +194,11 @@ export default function SalesTasksPanel({
   const sectionMeta = useMemo(
     () => ({
       general: Boolean(label.trim() && eventType),
-      schedule: Boolean(startLocal),
-      assignee: true
+      schedule: true,
+      assignee: true,
+      equipment: true
     }),
-    [label, eventType, startLocal]
+    [label, eventType]
   );
 
   const formSections = useMemo(
@@ -181,15 +211,44 @@ export default function SalesTasksPanel({
     [modalCopy]
   );
 
+  const selectedAssignees = useMemo(
+    () =>
+      assigneeIds
+        .map(id => userOptions.find(user => user.id === String(id)))
+        .filter(Boolean),
+    [assigneeIds, userOptions]
+  );
+
+  const availableAssigneeOptions = useMemo(
+    () => userOptions.filter(user => !assigneeIds.includes(String(user.id))),
+    [userOptions, assigneeIds]
+  );
+
   const footerSummary = useMemo(() => {
     const titlePart = label.trim() || modalCopy.footerUntitled || "—";
     const typePart = typeLabels[eventType] || eventType || copy.eventTypeRequiredShort || "—";
-    const assignee = userOptions.find(u => u.id === String(assigneeId));
-    const assigneePart = assignee?.label || copy.assigneeNone;
-    return `${titlePart} · ${typePart} · ${assigneePart}`;
-  }, [label, eventType, typeLabels, assigneeId, userOptions, copy.assigneeNone, copy.eventTypeRequiredShort, modalCopy.footerUntitled]);
+    const assigneePart =
+      selectedAssignees.length > 0
+        ? selectedAssignees.map(user => user.label).join(", ")
+        : copy.assigneeNone;
+    const equipment = equipmentOptions.find(eq => eq.id === String(equipmentId));
+    const equipmentPart = equipment?.label || copy.equipmentNone || "—";
+    const schedulePart = startLocal ? copy.scheduled || "Planifié" : copy.unscheduled || "Sans date";
+    return `${titlePart} · ${typePart} · ${assigneePart} · ${equipmentPart} · ${schedulePart}`;
+  }, [label, eventType, typeLabels, selectedAssignees, equipmentId, equipmentOptions, startLocal, copy.assigneeNone, copy.equipmentNone, copy.eventTypeRequiredShort, copy.scheduled, copy.unscheduled, modalCopy.footerUntitled]);
 
-  const canSubmit = Boolean(label.trim() && eventType && startLocal && !saving);
+  const canSubmit = Boolean(label.trim() && eventType && !saving);
+
+  const addAssignee = userId => {
+    const id = String(userId || "").trim();
+    if (!id || assigneeIds.includes(id)) return;
+    setAssigneeIds(prev => [...prev, id]);
+  };
+
+  const removeAssignee = userId => {
+    const id = String(userId || "").trim();
+    setAssigneeIds(prev => prev.filter(entry => entry !== id));
+  };
 
   const handleSubmit = async event => {
     event.preventDefault();
@@ -200,41 +259,44 @@ export default function SalesTasksPanel({
       setActiveSection("general");
       return;
     }
-    if (!startLocal) {
+    const assignees = selectedAssignees.map(user => ({
+      id: user.id,
+      label: user.label
+    }));
+    const primary = assignees[0] || null;
+    const equipment = equipmentOptions.find(eq => eq.id === String(equipmentId));
+    const startAt = startLocal ? fromDatetimeLocalValue(startLocal) : null;
+    if (startLocal && !startAt) {
       setActiveSection("schedule");
       return;
     }
-    const assignee = userOptions.find(u => u.id === String(assigneeId));
-    const startAt = fromDatetimeLocalValue(startLocal);
-    if (!startAt) {
-      setActiveSection("schedule");
-      return;
-    }
-    const endAt = rangeMode ? fromDatetimeLocalValue(endLocal) : null;
+    const endAt = startAt && rangeMode ? fromDatetimeLocalValue(endLocal) : null;
     const scheduleEnd = endAt && startAt && new Date(endAt) < new Date(startAt) ? startAt : endAt;
+
+    const payload = {
+      label: trimmed,
+      eventType: selectedType,
+      assignees,
+      assigneeId: primary?.id || null,
+      assigneeLabel: primary?.label || null,
+      equipmentId: equipment?.id || null,
+      equipmentLabel: equipment?.label || null,
+      startAt,
+      endAt: scheduleEnd
+    };
 
     if (isEditing) {
       const ok = await onUpdateTask?.({
         ...editingTask,
-        label: trimmed,
-        eventType: selectedType,
-        assigneeId: assignee?.id || null,
-        assigneeLabel: assignee?.label || null,
-        startAt,
-        endAt: scheduleEnd,
+        ...payload,
         updatedAt: new Date().toISOString()
       });
       if (ok === false) return;
     } else {
       const ok = await onAddTask?.({
         id: `task-${Date.now()}`,
-        label: trimmed,
-        eventType: selectedType,
+        ...payload,
         done: false,
-        assigneeId: assignee?.id || null,
-        assigneeLabel: assignee?.label || null,
-        startAt,
-        endAt: scheduleEnd,
         createdAt: new Date().toISOString()
       });
       if (ok === false) return;
@@ -309,7 +371,7 @@ export default function SalesTasksPanel({
             </div>
             <div className={layout.fieldGrid2}>
               <div className={layout.field}>
-                <label className={`${layout.label} ${layout.labelRequired}`} htmlFor="sales-task-start">
+                <label className={layout.label} htmlFor="sales-task-start">
                   {copy.start}
                 </label>
                 <input
@@ -317,15 +379,26 @@ export default function SalesTasksPanel({
                   type="datetime-local"
                   className={layout.input}
                   value={startLocal}
-                  onChange={e => setStartLocal(e.target.value)}
+                  onChange={e => {
+                    const next = e.target.value;
+                    setStartLocal(next);
+                    if (!next) {
+                      setEndLocal("");
+                      setRangeMode(false);
+                    }
+                  }}
                   disabled={saving}
-                  required
                 />
               </div>
               <div className={layout.field}>
                 <label className={layout.label} htmlFor="sales-task-end">
                   <span className={styles.taskRangeToggle}>
-                    <input type="checkbox" checked={rangeMode} onChange={e => setRangeMode(e.target.checked)} disabled={saving} />
+                    <input
+                      type="checkbox"
+                      checked={rangeMode}
+                      onChange={e => setRangeMode(e.target.checked)}
+                      disabled={saving || !startLocal}
+                    />
                     {copy.range}
                   </span>
                 </label>
@@ -335,12 +408,12 @@ export default function SalesTasksPanel({
                   className={layout.input}
                   value={endLocal}
                   onChange={e => setEndLocal(e.target.value)}
-                  disabled={saving || !rangeMode}
+                  disabled={saving || !rangeMode || !startLocal}
                   min={startLocal || undefined}
                 />
               </div>
             </div>
-            {copy.planningLinkedHint ? <p className={styles.taskPlanningHint}>{copy.planningLinkedHint}</p> : null}
+            {copy.planningOptionalHint ? <p className={styles.taskPlanningHint}>{copy.planningOptionalHint}</p> : null}
           </>
         );
       case "assignee":
@@ -350,25 +423,82 @@ export default function SalesTasksPanel({
               <h3 className={layout.sectionTitle}>{modalCopy.assigneeTitle || copy.assignee}</h3>
               <p className={layout.sectionDesc}>{modalCopy.assigneeDesc || ""}</p>
             </div>
-            <div className={layout.fieldGrid2}>
+            <div className={layout.fieldStack}>
               <div className={`${layout.field} ${layout.fieldFull}`}>
-                <label className={layout.label} htmlFor="sales-task-assignee">
+                <label className={layout.label} htmlFor="sales-task-assignee-add">
                   {copy.assignee}
                 </label>
                 <select
-                  id="sales-task-assignee"
+                  id="sales-task-assignee-add"
                   className={layout.input}
-                  value={assigneeId}
-                  onChange={e => setAssigneeId(e.target.value)}
-                  disabled={saving}
+                  value=""
+                  onChange={e => {
+                    addAssignee(e.target.value);
+                    e.target.value = "";
+                  }}
+                  disabled={saving || availableAssigneeOptions.length === 0}
                 >
-                  <option value="">{copy.assigneeNone}</option>
-                  {userOptions.map(user => (
+                  <option value="">{copy.addAssignee || "Ajouter un assigné…"}</option>
+                  {availableAssigneeOptions.map(user => (
                     <option key={user.id} value={user.id}>
                       {user.label}
                     </option>
                   ))}
                 </select>
+              </div>
+              {selectedAssignees.length > 0 ? (
+                <div className={styles.chipList}>
+                  {selectedAssignees.map(user => (
+                    <span key={user.id} className={styles.chip}>
+                      {user.label}
+                      <button
+                        type="button"
+                        className={styles.chipRemove}
+                        onClick={() => removeAssignee(user.id)}
+                        disabled={saving}
+                        aria-label={copy.removeAssignee || copy.remove}
+                        title={copy.removeAssignee || copy.remove}
+                      >
+                        <Icon icon="mdi:close" />
+                      </button>
+                    </span>
+                  ))}
+                </div>
+              ) : (
+                <p className={styles.taskPlanningHint}>{copy.assigneeNone}</p>
+              )}
+            </div>
+          </>
+        );
+      case "equipment":
+        return (
+          <>
+            <div className={layout.sectionHead}>
+              <h3 className={layout.sectionTitle}>{modalCopy.equipmentTitle || copy.equipment}</h3>
+              <p className={layout.sectionDesc}>{modalCopy.equipmentDesc || copy.equipmentHint || ""}</p>
+            </div>
+            <div className={layout.fieldGrid2}>
+              <div className={`${layout.field} ${layout.fieldFull}`}>
+                <label className={layout.label} htmlFor="sales-task-equipment">
+                  {copy.equipment}
+                </label>
+                <select
+                  id="sales-task-equipment"
+                  className={layout.input}
+                  value={equipmentId}
+                  onChange={e => setEquipmentId(e.target.value)}
+                  disabled={saving || equipmentOptions.length === 0}
+                >
+                  <option value="">{copy.equipmentNone}</option>
+                  {equipmentOptions.map(eq => (
+                    <option key={eq.id} value={eq.id}>
+                      {eq.label}
+                    </option>
+                  ))}
+                </select>
+                {equipmentOptions.length === 0 ? (
+                  <p className={styles.taskPlanningHint}>{copy.equipmentEmpty || copy.equipmentHint}</p>
+                ) : null}
               </div>
             </div>
           </>
@@ -512,8 +642,29 @@ export default function SalesTasksPanel({
                   ) : null}
                   <span>
                     <Icon icon="mdi:account-outline" aria-hidden />
-                    {(task.assigneeId && userOptions.find(u => u.id === String(task.assigneeId))?.label) || task.assigneeLabel || copy.assigneeNone}
+                    {(() => {
+                      const list = Array.isArray(task.assignees) && task.assignees.length > 0
+                        ? task.assignees
+                        : task.assigneeId
+                          ? [{ id: task.assigneeId, label: task.assigneeLabel }]
+                          : [];
+                      if (list.length === 0) return copy.assigneeNone;
+                      return list
+                        .map(entry =>
+                          (entry.id && userOptions.find(u => u.id === String(entry.id))?.label) ||
+                          entry.label ||
+                          entry.id
+                        )
+                        .filter(Boolean)
+                        .join(", ");
+                    })()}
                   </span>
+                  {(task.equipmentId || task.equipmentLabel) ? (
+                    <span>
+                      <Icon icon="mdi:desktop-classic" aria-hidden />
+                      {(task.equipmentId && equipmentOptions.find(eq => eq.id === String(task.equipmentId))?.label) || task.equipmentLabel || copy.equipment}
+                    </span>
+                  ) : null}
                   {schedule ? (
                     <span>
                       <Icon icon="mdi:calendar-clock" aria-hidden />

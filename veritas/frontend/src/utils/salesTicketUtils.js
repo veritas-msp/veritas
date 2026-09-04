@@ -134,11 +134,21 @@ export function computeSalesTaskStats(tasks = [], nowMs = Date.now()) {
   for (const task of list) {
     const duration = taskDurationMs(task);
     const isDone = Boolean(task?.done);
-    const assigneeKey = task?.assigneeId ? String(task.assigneeId) : "__none__";
-    const assigneeLabel = String(task?.assigneeLabel || "").trim() || null;
+    const assigneesRaw = Array.isArray(task?.assignees) ? task.assignees : [];
+    const assigneeEntries =
+      assigneesRaw.length > 0
+        ? assigneesRaw
+            .map(entry => ({
+              id: String(entry?.id || entry?.userId || entry?.user_id || "").trim(),
+              label: String(entry?.label || entry?.name || "").trim() || null
+            }))
+            .filter(entry => entry.id)
+        : task?.assigneeId
+          ? [{ id: String(task.assigneeId), label: String(task?.assigneeLabel || "").trim() || null }]
+          : [];
 
     if (isDone) done += 1;
-    if (!task?.assigneeId) unassigned += 1;
+    if (assigneeEntries.length === 0) unassigned += 1;
     if (!task?.startAt && !task?.endAt) unscheduled += 1;
 
     plannedMs += duration;
@@ -148,20 +158,24 @@ export function computeSalesTaskStats(tasks = [], nowMs = Date.now()) {
     const deadline = taskDeadlineMs(task);
     if (!isDone && deadline != null && deadline < nowMs) overdue += 1;
 
-    const bucket = byAssigneeMap.get(assigneeKey) || {
-      key: assigneeKey,
-      label: assigneeLabel,
-      total: 0,
-      done: 0,
-      plannedMs: 0,
-      doneMs: 0
-    };
-    bucket.total += 1;
-    if (isDone) bucket.done += 1;
-    bucket.plannedMs += duration;
-    if (isDone) bucket.doneMs += duration;
-    if (!bucket.label && assigneeLabel) bucket.label = assigneeLabel;
-    byAssigneeMap.set(assigneeKey, bucket);
+    const buckets = assigneeEntries.length > 0 ? assigneeEntries : [{ id: "__none__", label: null }];
+    for (const entry of buckets) {
+      const assigneeKey = entry.id;
+      const bucket = byAssigneeMap.get(assigneeKey) || {
+        key: assigneeKey,
+        label: entry.label,
+        total: 0,
+        done: 0,
+        plannedMs: 0,
+        doneMs: 0
+      };
+      bucket.total += 1;
+      if (isDone) bucket.done += 1;
+      bucket.plannedMs += duration;
+      if (isDone) bucket.doneMs += duration;
+      if (!bucket.label && entry.label) bucket.label = entry.label;
+      byAssigneeMap.set(assigneeKey, bucket);
+    }
   }
 
   const total = list.length;

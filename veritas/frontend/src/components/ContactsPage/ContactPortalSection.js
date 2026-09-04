@@ -305,23 +305,23 @@ export default function ContactPortalSection({
       {hasPortal ? <>
           <PortalRolePicker value={contact.portal_role} onChange={handleRoleChange} disabled={busy || !canManage} copy={portalCopy} compact />
 
-          {canManage ? <div className={s.actions}>
-            {status === "pending" || contact.portal_pending ? <button type="button" className={`${s.actionBtn} ${s.actionBtnInvite || ""}`.trim()} onClick={handleSendInvite} disabled={busy}>
+          {(canManage || (contact.portal_active && !contactInactive)) ? <div className={s.actions}>
+            {canManage && (status === "pending" || contact.portal_pending) ? <button type="button" className={`${s.actionBtn} ${s.actionBtnInvite || ""}`.trim()} onClick={handleSendInvite} disabled={busy}>
                 <Icon icon="mdi:email-fast-outline" aria-hidden />
                 {portalCopy.sendInvite || "Envoyer une invitation"}
               </button> : null}
-            <button type="button" className={s.actionBtn} onClick={() => setPasswordModal("reset")} disabled={busy}>
+            {canManage ? <button type="button" className={s.actionBtn} onClick={() => setPasswordModal("reset")} disabled={busy}>
               <Icon icon="mdi:key-outline" aria-hidden />
               {portalCopy.resetPassword}
-            </button>
-            {contact.portal_active && !contactInactive && status !== "pending" ? <button type="button" className={`${s.actionBtn} ${s.actionBtnImpersonate}`} onClick={handleImpersonate} disabled={busy} title={portalCopy.impersonateTitle}>
+            </button> : null}
+            {contact.portal_active && !contactInactive ? <button type="button" className={`${s.actionBtn} ${s.actionBtnImpersonate}`} onClick={handleImpersonate} disabled={busy} title={portalCopy.impersonateTitle}>
                 <Icon icon="mdi:incognito" aria-hidden />
                 {portalCopy.impersonate}
               </button> : null}
-            <button type="button" className={`${s.actionBtn} ${s.actionBtnDanger}`} onClick={() => setShowRevoke(true)} disabled={busy}>
+            {canManage ? <button type="button" className={`${s.actionBtn} ${s.actionBtnDanger}`} onClick={() => setShowRevoke(true)} disabled={busy}>
               <Icon icon="mdi:link-off" aria-hidden />
               {portalCopy.revoke}
-            </button>
+            </button> : null}
           </div> : null}
         </> : canManage && canCreate && <div className={s.emptyState}>
             <div className={s.emptyHeader}>

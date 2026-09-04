@@ -38,8 +38,9 @@ export default function PlanningMultiMonthView({
           {monthsShown > 1 ? <div className={pageStyles.calendarMonthTitle}>
               {moment(monthDate).format("MMMM YYYY").replace(/^./, c => c.toUpperCase())}
             </div> : null}
-          <Calendar localizer={localizer} events={monthEvents} startAccessor="start" endAccessor="end" view="month" date={monthDate} toolbar={false} selectable={Boolean(onSelectSlot)} drilldownView={null} onNavigate={onNavigate} onSelectSlot={onSelectSlot} tooltipAccessor={() => ""} style={{
-        height: monthsShown === 1 ? "100%" : calendarHeight
+          <Calendar localizer={localizer} events={monthEvents} startAccessor="start" endAccessor="end" view="month" date={monthDate} toolbar={false} selectable={Boolean(onSelectSlot)} drilldownView={null} popup onNavigate={onNavigate} onSelectSlot={onSelectSlot} tooltipAccessor={() => ""} style={{
+        height: monthsShown === 1 ? "100%" : calendarHeight,
+        minHeight: monthsShown === 1 ? undefined : calendarHeight
       }} eventPropGetter={eventPropGetter} components={{
         event: props => <EventComponent {...props} nativeMonthDrag onMonthEventResize={onMonthEventResize} />,
         toolbar: () => null,

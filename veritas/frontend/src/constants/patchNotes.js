@@ -5,6 +5,17 @@
  */
 export const PATCH_NOTES = [
   {
+    version: "1.0.3",
+    date: "2026-09-04",
+    highlights: [
+      "Création d'une demande prestation/installation : header aligné sur les autres pages et champ Sujet optionnel (sinon titre généré automatiquement).",
+      "Tickets prestation : les assignés et suiveurs affichent désormais les noms pour tous les profils ; les agents peuvent assigner des collaborateurs sur les todos.",
+      "Todos prestation : assignation multi-agents, date de planning optionnelle, liaison périphérique synchronisée avec le planning.",
+      "Portail client : bouton « Prendre le contrôle » (impersonation) rétabli et accessible à tous les agents.",
+      "Planning : défilement de la colonne principale et vues multi-mois corrigés."
+    ]
+  },
+  {
     version: "1.0.2",
     date: "2026-09-03",
     highlights: [

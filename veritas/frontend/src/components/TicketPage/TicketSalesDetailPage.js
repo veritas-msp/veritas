@@ -17,7 +17,7 @@ import {
   updateTicket
 } from "../../api/tickets";
 import { fetchClientsList, fetchContactsList } from "../../api/clients";
-import { fetchUsers } from "../../api/users";
+import { fetchActiveUsers } from "../../api/users";
 import { useAppLocale } from "../../hooks/useAppGeneralSettings";
 import { usePermissions } from "../../contexts/PermissionsContext";
 import { useAuthContext } from "../../contexts/AuthContext";
@@ -27,6 +27,7 @@ import { interpolate } from "../../i18n/translate";
 import SmartTooltip from "../SmartTooltip";
 import { getTicketDetailCopy } from "./ticketDetailPageI18n";
 import { getTicketSalesDetailCopy } from "./ticketSalesDetailI18n";
+import { getEquipmentPickerLabel, getEquipmentSearchText, loadClientEquipments, serializeEquipmentInfo } from "./ticketEquipmentUtils";
 import TicketChatPanel from "./TicketChatPanel";
 import SalesTasksPanel from "./SalesTasksPanel";
 import TicketConfirmModal from "./TicketConfirmModal";
@@ -52,18 +53,40 @@ function resolveFormData(ticket) {
 function normalizePmTasks(formData) {
   const raw = Array.isArray(formData?.pmTasks) ? formData.pmTasks : [];
   return raw
-    .map((task, index) => ({
-      id: String(task?.id || `task-${index + 1}`),
-      label: String(task?.label || "").trim(),
-      done: Boolean(task?.done),
-      assigneeId: task?.assigneeId || task?.assignee_id || null,
-      assigneeLabel: String(task?.assigneeLabel || task?.assignee_label || "").trim() || null,
-      startAt: task?.startAt || task?.start_at || null,
-      endAt: task?.endAt || task?.end_at || null,
-      eventType: String(task?.eventType || task?.event_type || task?.type || "").trim() || null,
-      planningEventId: task?.planningEventId || task?.planning_event_id || null,
-      createdAt: task?.createdAt || task?.created_at || null
-    }))
+    .map((task, index) => {
+      const assigneesRaw = Array.isArray(task?.assignees) ? task.assignees : [];
+      let assignees = assigneesRaw
+        .map(entry => ({
+          id: String(entry?.id || entry?.userId || entry?.user_id || "").trim(),
+          label: String(entry?.label || entry?.name || entry?.username || "").trim() || null
+        }))
+        .filter(entry => entry.id);
+      const legacyId = task?.assigneeId || task?.assignee_id || null;
+      if (assignees.length === 0 && legacyId) {
+        assignees = [
+          {
+            id: String(legacyId),
+            label: String(task?.assigneeLabel || task?.assignee_label || "").trim() || null
+          }
+        ];
+      }
+      const primary = assignees[0] || null;
+      return {
+        id: String(task?.id || `task-${index + 1}`),
+        label: String(task?.label || "").trim(),
+        done: Boolean(task?.done),
+        assignees,
+        assigneeId: primary?.id || null,
+        assigneeLabel: primary?.label || null,
+        startAt: task?.startAt || task?.start_at || null,
+        endAt: task?.endAt || task?.end_at || null,
+        eventType: String(task?.eventType || task?.event_type || task?.type || "").trim() || null,
+        planningEventId: task?.planningEventId || task?.planning_event_id || null,
+        equipmentId: task?.equipmentId || task?.equipment_id || null,
+        equipmentLabel: String(task?.equipmentLabel || task?.equipment_label || "").trim() || null,
+        createdAt: task?.createdAt || task?.created_at || null
+      };
+    })
     .filter(task => task.label);
 }
 
@@ -76,8 +99,16 @@ function formatTaskSchedule(task, formatDateTime, rangeJoiner) {
 }
 
 function userLabel(user) {
-  if (!user) return "";
-  return user.ticket_helpdesk_display_name || user.username || user.name || user.nom || user.email || String(user.id || "");
+  if (!user || typeof user !== "object") return "";
+  return (
+    user.ticket_helpdesk_display_name ||
+    user.display_name ||
+    user.username ||
+    user.name ||
+    user.nom ||
+    user.email ||
+    ""
+  );
 }
 
 function getContactLabel(contact) {
@@ -331,28 +362,37 @@ export default function TicketSalesDetailPage({ onNavigate, ticketData }) {
   const [ticketDeleteConfirm, setTicketDeleteConfirm] = useState(null);
   const [deletingTicket, setDeletingTicket] = useState(false);
   const [formFieldLabelMap, setFormFieldLabelMap] = useState({});
+  const [titleDraft, setTitleDraft] = useState("");
+  const [titleEditing, setTitleEditing] = useState(false);
+  const [clientEquipments, setClientEquipments] = useState([]);
+  const [loadingEquipments, setLoadingEquipments] = useState(false);
 
   const [requesterSearch, setRequesterSearch] = useState("");
   const [clientSearch, setClientSearch] = useState("");
   const [assigneeSearch, setAssigneeSearch] = useState("");
   const [followerSearch, setFollowerSearch] = useState("");
   const [categorySearch, setCategorySearch] = useState("");
+  const [equipmentSearch, setEquipmentSearch] = useState("");
   const [showRequesterDropdown, setShowRequesterDropdown] = useState(false);
   const [showClientDropdown, setShowClientDropdown] = useState(false);
   const [showAssigneeDropdown, setShowAssigneeDropdown] = useState(false);
   const [showFollowerDropdown, setShowFollowerDropdown] = useState(false);
   const [showCategoryDropdown, setShowCategoryDropdown] = useState(false);
+  const [showEquipmentDropdown, setShowEquipmentDropdown] = useState(false);
   const [requesterHighlight, setRequesterHighlight] = useState(0);
   const [clientHighlight, setClientHighlight] = useState(0);
   const [assigneeHighlight, setAssigneeHighlight] = useState(0);
   const [followerHighlight, setFollowerHighlight] = useState(0);
   const [categoryHighlight, setCategoryHighlight] = useState(0);
+  const [equipmentHighlight, setEquipmentHighlight] = useState(0);
 
+  const titleInputRef = useRef(null);
   const requesterDropdownRef = useRef(null);
   const clientDropdownRef = useRef(null);
   const assigneeDropdownRef = useRef(null);
   const followerDropdownRef = useRef(null);
   const categoryDropdownRef = useRef(null);
+  const equipmentDropdownRef = useRef(null);
   const taskPlanningBackfillRef = useRef(null);
 
   useEffect(() => {
@@ -364,6 +404,14 @@ export default function TicketSalesDetailPage({ onNavigate, ticketData }) {
     }
   }, [canTasks, centerTab, rightPaneView]);
 
+  useEffect(() => {
+    if (!titleEditing) return;
+    const input = titleInputRef.current;
+    if (!input) return;
+    input.focus();
+    input.select();
+  }, [titleEditing]);
+
   const loadTicket = useCallback(async () => {
     if (!ticketId) {
       setTicket(null);
@@ -374,12 +422,14 @@ export default function TicketSalesDetailPage({ onNavigate, ticketData }) {
     try {
       const [row, usersRes, contactsRes, clientsRes, categoriesRes] = await Promise.all([
         fetchTicket(ticketId),
-        fetchUsers().catch(() => []),
+        fetchActiveUsers().catch(() => []),
         fetchContactsList().catch(() => []),
         fetchClientsList().catch(() => []),
         fetchSalesTicketCategories().catch(() => [])
       ]);
       setTicket(row);
+      setTitleDraft(String(row?.title || ""));
+      setTitleEditing(false);
       setUsers(Array.isArray(usersRes) ? usersRes : []);
       setContacts(Array.isArray(contactsRes) ? contactsRes : []);
       setClients(Array.isArray(clientsRes) ? clientsRes : []);
@@ -470,7 +520,7 @@ export default function TicketSalesDetailPage({ onNavigate, ticketData }) {
 
   const resolvePerson = useCallback(
     person => {
-      const id = String(person?.id || person?.user_id || person || "");
+      const id = String(person?.id || person?.user_id || (typeof person === "string" ? person : "") || "").trim();
       const fromUsers = users.find(u => String(u.id) === id);
       return {
         id,
@@ -586,6 +636,74 @@ export default function TicketSalesDetailPage({ onNavigate, ticketData }) {
     );
   }, [filteredCategoryOptions, detailCopy.uncategorized]);
 
+  const ticketEquipmentInfo = useMemo(() => {
+    const info = ticket?.equipment_info || ticket?.equipmentInfo || null;
+    if (!info || typeof info !== "object" || !info.concerned) return null;
+    return info;
+  }, [ticket?.equipment_info, ticket?.equipmentInfo]);
+
+  const ticketEquipmentId = useMemo(() => {
+    const id = ticketEquipmentInfo?.equipmentId || ticketEquipmentInfo?.equipment_id || null;
+    return id ? String(id) : null;
+  }, [ticketEquipmentInfo]);
+
+  const selectedTicketEquipment = useMemo(() => {
+    if (!ticketEquipmentId) return null;
+    return clientEquipments.find(eq => String(eq.id) === String(ticketEquipmentId)) || null;
+  }, [clientEquipments, ticketEquipmentId]);
+
+  const ticketEquipmentDisplayName = useMemo(() => {
+    if (selectedTicketEquipment) {
+      return getEquipmentPickerLabel(selectedTicketEquipment, { locale });
+    }
+    if (!ticketEquipmentInfo?.concerned) return "";
+    const name = String(ticketEquipmentInfo.name || "").trim();
+    const type = String(ticketEquipmentInfo.type || "").trim();
+    return [type, name].filter(Boolean).join(" · ") || copy.meta?.equipment || "";
+  }, [selectedTicketEquipment, ticketEquipmentInfo, locale, copy.meta?.equipment]);
+
+  const filteredEquipmentOptions = useMemo(() => {
+    const q = equipmentSearch.trim().toLowerCase();
+    const list = clientEquipments.filter(eq => {
+      if (ticketEquipmentId && String(eq.id) === String(ticketEquipmentId) && !showEquipmentDropdown) return true;
+      return true;
+    });
+    if (!q || (ticketEquipmentId && q === String(ticketEquipmentDisplayName || "").toLowerCase())) {
+      return list.slice(0, 40);
+    }
+    return list
+      .filter(eq => getEquipmentSearchText(eq, locale).includes(q))
+      .slice(0, 40);
+  }, [clientEquipments, equipmentSearch, locale, ticketEquipmentId, ticketEquipmentDisplayName, showEquipmentDropdown]);
+
+  useEffect(() => {
+    let cancelled = false;
+    if (!clientId) {
+      setClientEquipments([]);
+      setLoadingEquipments(false);
+      return undefined;
+    }
+    setLoadingEquipments(true);
+    loadClientEquipments(clientId)
+      .then(rows => {
+        if (!cancelled) setClientEquipments(Array.isArray(rows) ? rows : []);
+      })
+      .catch(() => {
+        if (!cancelled) setClientEquipments([]);
+      })
+      .finally(() => {
+        if (!cancelled) setLoadingEquipments(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [clientId]);
+
+  useEffect(() => {
+    if (showEquipmentDropdown) return;
+    setEquipmentSearch(ticketEquipmentDisplayName || "");
+  }, [ticketEquipmentDisplayName, showEquipmentDropdown]);
+
   const resolveCategorySearchDisplay = useCallback(() => {
     const current = String(ticket?.category || "");
     if (!current) return "";
@@ -608,10 +726,14 @@ export default function TicketSalesDetailPage({ onNavigate, ticketData }) {
         setShowCategoryDropdown(false);
         setCategorySearch(resolveCategorySearchDisplay());
       }
+      if (equipmentDropdownRef.current && !equipmentDropdownRef.current.contains(event.target)) {
+        setShowEquipmentDropdown(false);
+        setEquipmentSearch(ticketEquipmentDisplayName || "");
+      }
     };
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, [resolveCategorySearchDisplay, clientDisplayName]);
+  }, [resolveCategorySearchDisplay, clientDisplayName, ticketEquipmentDisplayName]);
 
   const tasksDone = pmTasks.filter(t => t.done).length;
   const tasksTotal = pmTasks.length;
@@ -652,6 +774,11 @@ export default function TicketSalesDetailPage({ onNavigate, ticketData }) {
         if (Object.prototype.hasOwnProperty.call(patch, "category")) next.category = patch.category;
         if (Object.prototype.hasOwnProperty.call(patch, "priority")) next.priority = patch.priority;
         if (Object.prototype.hasOwnProperty.call(patch, "status")) next.status = patch.status === "new" ? "open" : patch.status;
+        if (Object.prototype.hasOwnProperty.call(patch, "title")) next.title = patch.title;
+        if (Object.prototype.hasOwnProperty.call(patch, "equipmentInfo")) {
+          next.equipment_info = patch.equipmentInfo;
+          next.equipmentInfo = patch.equipmentInfo;
+        }
         return next;
       });
       if (successMessage) toast.success(successMessage);
@@ -661,6 +788,35 @@ export default function TicketSalesDetailPage({ onNavigate, ticketData }) {
       return false;
     } finally {
       setSavingMeta(false);
+    }
+  };
+
+  const startTitleEdit = () => {
+    if (savingMeta) return;
+    setTitleDraft(String(ticket?.title || ""));
+    setTitleEditing(true);
+  };
+
+  const cancelTitleEdit = () => {
+    setTitleDraft(String(ticket?.title || ""));
+    setTitleEditing(false);
+  };
+
+  const commitTitleEdit = async () => {
+    const nextTitle = String(titleDraft || "").trim();
+    if (!nextTitle) {
+      setTitleDraft(String(ticket?.title || ""));
+      toast.error(detailCopy.toasts?.titleRequired || "Le titre est requis");
+      return;
+    }
+    if (nextTitle === String(ticket?.title || "").trim()) {
+      setTitleEditing(false);
+      return;
+    }
+    const ok = await updateTicketLive({ title: nextTitle }, detailCopy.toasts?.titleUpdated);
+    if (ok) {
+      setTitleDraft(nextTitle);
+      setTitleEditing(false);
     }
   };
 
@@ -707,8 +863,79 @@ export default function TicketSalesDetailPage({ onNavigate, ticketData }) {
     );
     setClientSearch(label);
     setShowClientDropdown(false);
-    const ok = await updateTicketLive({ clientId: nextClientId }, copy.meta.clientSaved);
+    // Changing company invalidates the previous fleet link.
+    if (ticketEquipmentId) {
+      setTicket(prev =>
+        prev
+          ? {
+              ...prev,
+              equipment_info: { concerned: false },
+              equipmentInfo: { concerned: false }
+            }
+          : prev
+      );
+      setEquipmentSearch("");
+    }
+    const ok = await updateTicketLive(
+      {
+        clientId: nextClientId,
+        ...(ticketEquipmentId ? { equipmentInfo: serializeEquipmentInfo({ concerned: false }) } : {})
+      },
+      copy.meta.clientSaved
+    );
     if (!ok) await loadTicket();
+  };
+
+  const selectTicketEquipment = async equipment => {
+    if (!equipment?.id) return;
+    const equipmentInfo = serializeEquipmentInfo({
+      concerned: true,
+      source: "veritas",
+      equipmentId: equipment.id,
+      name: equipment.name || equipment.model || "",
+      type: equipment.type || "",
+      clientId: clientId || equipment.clientId || ""
+    });
+    setShowEquipmentDropdown(false);
+    setEquipmentSearch(getEquipmentPickerLabel(equipment, { locale }));
+    const ok = await updateTicketLive({ equipmentInfo }, copy.meta.equipmentSaved);
+    if (!ok) {
+      await loadTicket();
+      return;
+    }
+    const nextTicket = {
+      ...(ticket || {}),
+      equipment_info: equipmentInfo,
+      equipmentInfo
+    };
+    const inherited = pmTasks.filter(task => task.startAt && !task.equipmentId);
+    await Promise.all(
+      inherited.map(task =>
+        reconcileSalesTaskPlanningEvent({ task, ticket: nextTicket, kind }).catch(() => null)
+      )
+    );
+  };
+
+  const clearTicketEquipment = async () => {
+    const equipmentInfo = serializeEquipmentInfo({ concerned: false });
+    setShowEquipmentDropdown(false);
+    setEquipmentSearch("");
+    const ok = await updateTicketLive({ equipmentInfo }, copy.meta.equipmentCleared);
+    if (!ok) {
+      await loadTicket();
+      return;
+    }
+    const nextTicket = {
+      ...(ticket || {}),
+      equipment_info: equipmentInfo,
+      equipmentInfo
+    };
+    const inherited = pmTasks.filter(task => task.startAt && !task.equipmentId);
+    await Promise.all(
+      inherited.map(task =>
+        reconcileSalesTaskPlanningEvent({ task, ticket: nextTicket, kind }).catch(() => null)
+      )
+    );
   };
 
   const selectCategory = async item => {
@@ -794,17 +1021,23 @@ export default function TicketSalesDetailPage({ onNavigate, ticketData }) {
 
   const syncTaskPlanningEvent = useCallback(
     async task => {
+      if (!task?.startAt) {
+        if (task?.planningEventId || task?.id) {
+          await deleteSalesTaskPlanningEvents({ task, ticket }).catch(() => null);
+        }
+        return null;
+      }
       const planningEventId = await reconcileSalesTaskPlanningEvent({
         task,
         ticket,
         kind
       });
       if (!planningEventId) {
-        throw new Error(copy.tasks.startRequired);
+        throw new Error(copy.tasks.planningSyncError);
       }
       return planningEventId;
     },
-    [ticket, kind, copy.tasks.startRequired]
+    [ticket, kind, copy.tasks.planningSyncError]
   );
 
   useEffect(() => {
@@ -877,13 +1110,9 @@ export default function TicketSalesDetailPage({ onNavigate, ticketData }) {
 
   const handleAddTask = async task => {
     if (!task?.label) return false;
-    if (!task?.startAt) {
-      toast.error(copy.tasks.startRequired);
-      return false;
-    }
     setSavingTasks(true);
     try {
-      const planningEventId = await syncTaskPlanningEvent(task);
+      const planningEventId = task.startAt ? await syncTaskPlanningEvent(task) : null;
       const withEvent = { ...task, planningEventId };
       const next = [...pmTasks, withEvent];
       setPmTasks(next);
@@ -903,14 +1132,10 @@ export default function TicketSalesDetailPage({ onNavigate, ticketData }) {
 
   const handleUpdateTask = async task => {
     if (!task?.id || !task?.label) return false;
-    if (!task?.startAt) {
-      toast.error(copy.tasks.startRequired);
-      return false;
-    }
     setSavingTasks(true);
     try {
       const planningEventId = await syncTaskPlanningEvent(task);
-      const withEvent = { ...task, planningEventId };
+      const withEvent = { ...task, planningEventId: planningEventId || null };
       const next = pmTasks.map(row => (String(row.id) === String(task.id) ? { ...row, ...withEvent } : row));
       setPmTasks(next);
       return await persistTasks(next);
@@ -1122,7 +1347,41 @@ export default function TicketSalesDetailPage({ onNavigate, ticketData }) {
             <span className={td.ticketHeroMetaDot} aria-hidden>
               ·
             </span>
-            <span className={td.ticketHeroMetaItem}>{ticket.title}</span>
+            {titleEditing ? (
+              <input
+                ref={titleInputRef}
+                className={td.ticketHeroSubjectInput}
+                type="text"
+                value={titleDraft}
+                disabled={savingMeta}
+                aria-label={detailCopy.header?.titleAria || copy.tasks.label}
+                placeholder={detailCopy.header?.titlePlaceholder || copy.tasks.placeholder}
+                onChange={e => setTitleDraft(e.target.value)}
+                onBlur={() => void commitTitleEdit()}
+                onKeyDown={e => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    void commitTitleEdit();
+                  } else if (e.key === "Escape") {
+                    e.preventDefault();
+                    cancelTitleEdit();
+                  }
+                }}
+              />
+            ) : (
+              <button
+                type="button"
+                className={`${td.ticketHeroSubjectBtn} ${td.ticketHeroMetaItem}`}
+                onClick={startTitleEdit}
+                disabled={savingMeta}
+                title={detailCopy.header?.editTitleTitle || detailCopy.description?.editTitle}
+                aria-label={detailCopy.header?.editTitleAria || detailCopy.header?.titleAria}
+              >
+                <span className={`${td.ticketHeroMetaText} ${!ticket.title ? td.ticketHeroSubjectPlaceholder : ""}`.trim()}>
+                  {ticket.title || detailCopy.header?.titlePlaceholder || "—"}
+                </span>
+              </button>
+            )}
             <span className={td.ticketHeroMetaDot} aria-hidden>
               ·
             </span>
@@ -1254,6 +1513,88 @@ export default function TicketSalesDetailPage({ onNavigate, ticketData }) {
                               onClick={() => void selectClient(option.raw)}
                             >
                               <span className={fs.contactOptionName}>{option.label}</span>
+                            </button>
+                          ))
+                        )}
+                      </div>
+                    ) : null}
+                  </div>
+                </div>
+
+                <div className={fs.equipmentField}>
+                  <label className={fs.equipmentFieldLabel}>{copy.meta.equipment}</label>
+                  <div className={fs.contactPicker} ref={equipmentDropdownRef}>
+                    <div className={`${fs.contactInputWrap} ${showEquipmentDropdown ? fs.contactInputWrapOpen : ""}`}>
+                      <Icon icon="mdi:magnify" className={fs.contactInputIcon} aria-hidden />
+                      <input
+                        type="text"
+                        className={fs.contactInput}
+                        value={equipmentSearch}
+                        placeholder={copy.meta.searchEquipment}
+                        disabled={savingMeta || !clientId || loadingEquipments}
+                        aria-expanded={showEquipmentDropdown}
+                        aria-haspopup="listbox"
+                        onChange={e => {
+                          setEquipmentSearch(e.target.value);
+                          setShowEquipmentDropdown(true);
+                          setEquipmentHighlight(0);
+                        }}
+                        onFocus={() => {
+                          if (clientId) setShowEquipmentDropdown(true);
+                        }}
+                        onKeyDown={e => {
+                          if (!showEquipmentDropdown || filteredEquipmentOptions.length === 0) return;
+                          if (e.key === "ArrowDown") {
+                            e.preventDefault();
+                            setEquipmentHighlight(h => Math.min(h + 1, filteredEquipmentOptions.length - 1));
+                          } else if (e.key === "ArrowUp") {
+                            e.preventDefault();
+                            setEquipmentHighlight(h => Math.max(h - 1, 0));
+                          } else if (e.key === "Enter") {
+                            e.preventDefault();
+                            const picked = filteredEquipmentOptions[equipmentHighlight];
+                            if (picked) void selectTicketEquipment(picked);
+                          } else if (e.key === "Escape") {
+                            setShowEquipmentDropdown(false);
+                            setEquipmentSearch(ticketEquipmentDisplayName || "");
+                          }
+                        }}
+                      />
+                      {ticketEquipmentId ? (
+                        <button
+                          type="button"
+                          className={fs.clearButton || fs.contactClearBtn}
+                          onClick={() => void clearTicketEquipment()}
+                          disabled={savingMeta}
+                          aria-label={copy.meta.clearEquipment}
+                          title={copy.meta.clearEquipment}
+                          style={{ marginRight: "0.35rem", border: "none", background: "transparent", cursor: "pointer", color: "inherit" }}
+                        >
+                          <FaTimes />
+                        </button>
+                      ) : null}
+                    </div>
+                    {showEquipmentDropdown ? (
+                      <div className={fs.contactDropdown} role="listbox">
+                        {!clientId ? (
+                          <div className={fs.contactEmpty}>{copy.meta.selectClientFirst}</div>
+                        ) : loadingEquipments ? (
+                          <div className={fs.contactEmpty}>{copy.meta.loadingEquipment}</div>
+                        ) : filteredEquipmentOptions.length === 0 ? (
+                          <div className={fs.contactEmpty}>{copy.meta.noEquipmentFound}</div>
+                        ) : (
+                          filteredEquipmentOptions.map((eq, idx) => (
+                            <button
+                              key={eq.id}
+                              type="button"
+                              role="option"
+                              className={`${fs.contactOption} ${equipmentHighlight === idx ? fs.contactOptionActive : ""}`}
+                              onMouseEnter={() => setEquipmentHighlight(idx)}
+                              onClick={() => void selectTicketEquipment(eq)}
+                            >
+                              <span className={fs.contactOptionName}>
+                                {getEquipmentPickerLabel(eq, { locale })}
+                              </span>
                             </button>
                           ))
                         )}
@@ -1712,7 +2053,7 @@ export default function TicketSalesDetailPage({ onNavigate, ticketData }) {
 
                   {centerTab === "tasks" && canTasks ? (
                     <div
-                      className={`${styles.centerTabPanel} ${styles.centerTabPanelScroll}`}
+                      className={`${styles.centerTabPanel} ${styles.centerTabPanelTasks}`}
                       role="tabpanel"
                       id="sales-center-panel-tasks"
                       aria-labelledby="sales-center-tab-tasks"
@@ -1720,6 +2061,8 @@ export default function TicketSalesDetailPage({ onNavigate, ticketData }) {
                       <SalesTasksPanel
                         tasks={pmTasks}
                         users={users}
+                        equipments={clientEquipments}
+                        defaultEquipmentId={ticketEquipmentId}
                         copy={copy.tasks}
                         formatDateTime={copy.formatDateTime}
                         saving={savingTasks}
@@ -1899,7 +2242,9 @@ export default function TicketSalesDetailPage({ onNavigate, ticketData }) {
                               <li key={row.key} className={styles.taskStatsAssigneeItem}>
                                 <div>
                                   <div className={styles.taskStatsAssigneeName}>
-                                    {row.key === "__none__" ? copy.taskStats.noAssignee : row.label || copy.taskStats.noAssignee}
+                                    {row.key === "__none__"
+                                      ? copy.taskStats.noAssignee
+                                      : row.label || userLabel(users.find(u => String(u.id) === String(row.key))) || copy.taskStats.noAssignee}
                                   </div>
                                   <div className={styles.taskStatsAssigneeMeta}>
                                     {interpolate(copy.taskStats.tasksCount, {
@@ -1923,10 +2268,23 @@ export default function TicketSalesDetailPage({ onNavigate, ticketData }) {
                     {scheduledTasks.length > 0 ? (
                       <ul className={styles.planningRecapList}>
                         {scheduledTasks.map(task => {
+                          const assigneeList =
+                            Array.isArray(task.assignees) && task.assignees.length > 0
+                              ? task.assignees
+                              : task.assigneeId
+                                ? [{ id: task.assigneeId, label: task.assigneeLabel }]
+                                : [];
                           const assignee =
-                            (task.assigneeId && users.find(u => String(u.id) === String(task.assigneeId)))
-                              ? userLabel(users.find(u => String(u.id) === String(task.assigneeId)))
-                              : task.assigneeLabel || copy.tasks.assigneeNone;
+                            assigneeList.length === 0
+                              ? copy.tasks.assigneeNone
+                              : assigneeList
+                                  .map(entry =>
+                                    (entry.id && users.find(u => String(u.id) === String(entry.id))
+                                      ? userLabel(users.find(u => String(u.id) === String(entry.id)))
+                                      : entry.label) || entry.id
+                                  )
+                                  .filter(Boolean)
+                                  .join(", ");
                           const schedule = formatTaskSchedule(task, copy.formatDateTime, copy.tasks.rangeJoiner);
                           return (
                             <li key={String(task.id)} className={`${styles.planningRecapItem} ${task.done ? styles.planningRecapDone : ""}`}>

@@ -6,11 +6,14 @@ import { toast } from "react-toastify";
 import { createTicket, fetchSalesForms, addTicketCommentWithAttachments, updateTicket } from "../../api/tickets";
 import { resolveMatchingRules, describeMatchingRulesSummary } from "../../utils/salesFormTargetRules";
 import { fetchClientsList, fetchContactsList } from "../../api/clients";
-import { fetchUsers } from "../../api/users";
+import { fetchActiveUsers } from "../../api/users";
 import { useAuthContext } from "../../contexts/AuthContext";
 import { useAppLocale } from "../../hooks/useAppGeneralSettings";
 import { getTicketSalesCreatePageCopy } from "./ticketSalesCreatePageI18n";
+import { getEquipmentPickerLabel, getEquipmentSearchText, loadClientEquipments, serializeEquipmentInfo } from "./ticketEquipmentUtils";
 import { isFileField } from "../../utils/salesFormFieldTypes";
+import MspPageHero from "../Misc/MspPageHero/MspPageHero";
+import mspStyles from "../CybersecuritePage/CybersecuritePage.module.css";
 import layout from "../EnterprisesPage/EnterprisesPage.module.css";
 import account from "../Misc/AccountPage/AccountPage.module.css";
 import s from "./TicketCreatePage.module.css";
@@ -44,6 +47,7 @@ function getClientSearchText(client) {
 function SalesCreateRecap({
   kind,
   formLabel,
+  subjectLabel,
   contactLabel,
   clientLabel,
   priority,
@@ -58,7 +62,7 @@ function SalesCreateRecap({
           <span className={`${s.recapBadge} ${s.recapTypeBadge_demande}`}>{kindLabel}</span>
           <span className={`${s.recapBadge} ${s.recapPriorityBadge}`}>{priorityLabel}</span>
         </div>
-        <h3 className={s.recapSubject}>{formLabel}</h3>
+        <h3 className={s.recapSubject}>{subjectLabel || formLabel}</h3>
       </div>
       <div className={s.recapTable}>
         <div className={s.recapRow}>
@@ -87,10 +91,13 @@ export default function TicketSalesCreatePage({
   const copy = useMemo(() => getTicketSalesCreatePageCopy(locale), [locale]);
   const contactDropdownRef = useRef(null);
   const clientDropdownRef = useRef(null);
+  const equipmentDropdownRef = useRef(null);
   const [contacts, setContacts] = useState([]);
   const [clients, setClients] = useState([]);
   const [users, setUsers] = useState([]);
   const [salesForms, setSalesForms] = useState([]);
+  const [clientEquipments, setClientEquipments] = useState([]);
+  const [loadingEquipments, setLoadingEquipments] = useState(false);
   const [loadingData, setLoadingData] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
@@ -100,15 +107,20 @@ export default function TicketSalesCreatePage({
   const [dynamicValues, setDynamicValues] = useState({});
   const [requesterUserId, setRequesterUserId] = useState("");
   const [selectedClientId, setSelectedClientId] = useState("");
+  const [selectedEquipmentId, setSelectedEquipmentId] = useState("");
   const [contactSearch, setContactSearch] = useState("");
   const [clientSearch, setClientSearch] = useState("");
+  const [equipmentSearch, setEquipmentSearch] = useState("");
   const [showContactDropdown, setShowContactDropdown] = useState(false);
   const [showClientDropdown, setShowClientDropdown] = useState(false);
+  const [showEquipmentDropdown, setShowEquipmentDropdown] = useState(false);
   const [contactHighlight, setContactHighlight] = useState(0);
   const [clientHighlight, setClientHighlight] = useState(0);
+  const [equipmentHighlight, setEquipmentHighlight] = useState(0);
   const defaultedRequesterRef = useRef(false);
   const [priority, setPriority] = useState("normal");
   const [purchaseOrder, setPurchaseOrder] = useState("");
+  const [customTitle, setCustomTitle] = useState("");
   const [commercialUserId, setCommercialUserId] = useState("");
   const [hasProjectManager, setHasProjectManager] = useState(false);
   const [projectManagerUserId, setProjectManagerUserId] = useState("");
@@ -134,7 +146,7 @@ export default function TicketSalesCreatePage({
     (async () => {
       setLoadingData(true);
       try {
-        const [contactRows, clientRows, userRows, formRows] = await Promise.all([fetchContactsList().catch(() => []), fetchClientsList().catch(() => []), fetchUsers().catch(() => []), fetchSalesForms().catch(() => [])]);
+        const [contactRows, clientRows, userRows, formRows] = await Promise.all([fetchContactsList().catch(() => []), fetchClientsList().catch(() => []), fetchActiveUsers().catch(() => []), fetchSalesForms().catch(() => [])]);
         if (!cancelled) {
           setContacts(Array.isArray(contactRows) ? contactRows : []);
           setClients(Array.isArray(clientRows) ? clientRows : []);
@@ -182,10 +194,38 @@ export default function TicketSalesCreatePage({
       if (clientDropdownRef.current && !clientDropdownRef.current.contains(e.target)) {
         setShowClientDropdown(false);
       }
+      if (equipmentDropdownRef.current && !equipmentDropdownRef.current.contains(e.target)) {
+        setShowEquipmentDropdown(false);
+      }
     };
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    if (!selectedClientId) {
+      setClientEquipments([]);
+      setSelectedEquipmentId("");
+      setEquipmentSearch("");
+      setLoadingEquipments(false);
+      return undefined;
+    }
+    setLoadingEquipments(true);
+    loadClientEquipments(selectedClientId)
+      .then(rows => {
+        if (!cancelled) setClientEquipments(Array.isArray(rows) ? rows : []);
+      })
+      .catch(() => {
+        if (!cancelled) setClientEquipments([]);
+      })
+      .finally(() => {
+        if (!cancelled) setLoadingEquipments(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedClientId]);
   useEffect(() => {
     if (!confirmOpen) return undefined;
     const previousOverflow = document.body.style.overflow;
@@ -231,6 +271,21 @@ export default function TicketSalesCreatePage({
     if (!q) return agentOpts.slice(0, 50);
     return agentOpts.filter(opt => opt.searchText.includes(q) || opt.label.toLowerCase().includes(q)).slice(0, 50);
   }, [users, contactSearch, copy]);
+  const selectedEquipment = useMemo(
+    () => clientEquipments.find(eq => String(eq.id) === String(selectedEquipmentId)) || null,
+    [clientEquipments, selectedEquipmentId]
+  );
+  const filteredEquipmentOptions = useMemo(() => {
+    const q = equipmentSearch.trim().toLowerCase();
+    const list = clientEquipments.filter(eq => {
+      if (!q) return true;
+      return getEquipmentSearchText(eq, locale).includes(q);
+    });
+    if (selectedEquipment && !list.some(eq => String(eq.id) === String(selectedEquipment.id))) {
+      return [selectedEquipment, ...list].slice(0, 50);
+    }
+    return list.slice(0, 50);
+  }, [clientEquipments, equipmentSearch, locale, selectedEquipment]);
   const commercialLabel = useMemo(() => {
     if (!commercialUserId) return "";
     const user = users.find(row => String(row.id) === String(commercialUserId));
@@ -250,6 +305,9 @@ export default function TicketSalesCreatePage({
     setSelectedClientId(String(client.id));
     setClientSearch(getClientLabel(client));
     setShowClientDropdown(false);
+    setSelectedEquipmentId("");
+    setEquipmentSearch("");
+    setShowEquipmentDropdown(false);
     setFieldErrors(prev => ({
       ...prev,
       client: undefined
@@ -273,11 +331,29 @@ export default function TicketSalesCreatePage({
     if (!option?.raw) return;
     selectRequesterAgent(option.raw);
   }, [selectRequesterAgent]);
+  const selectEquipment = useCallback(equipment => {
+    if (!equipment?.id) return;
+    setSelectedEquipmentId(String(equipment.id));
+    setEquipmentSearch(getEquipmentPickerLabel(equipment, { locale }));
+    setShowEquipmentDropdown(false);
+  }, [locale]);
+  const clearEquipment = useCallback(() => {
+    setSelectedEquipmentId("");
+    setEquipmentSearch("");
+    setShowEquipmentDropdown(false);
+  }, []);
   const handleKindChange = kind => {
     setTicketKind(kind);
     setSelectedFormId("");
     setDynamicValues({});
   };
+  const generatedTitle = useMemo(() => {
+    const formLabel = selectedForm?.label || "";
+    const company = clientLabel || copy.defaultClientLabel || "Client";
+    if (!formLabel) return company;
+    return `${formLabel} - ${company}`;
+  }, [selectedForm?.label, clientLabel, copy.defaultClientLabel]);
+  const effectiveTitle = customTitle.trim() || generatedTitle;
   const validateForm = () => {
     const errors = {};
     if (!requesterUserId) errors.requester = true;
@@ -301,7 +377,7 @@ export default function TicketSalesCreatePage({
     const clientIdNum = Number(selectedClientId);
     const clientId = Number.isFinite(clientIdNum) ? clientIdNum : selectedClientId || null;
     const clientName = clientLabel || "Client";
-    const title = `${selectedForm.label} - ${clientName}`;
+    const title = effectiveTitle || `${selectedForm.label} - ${clientName}`;
     const kindLabel = copy.getKindShortLabel(selectedForm.kind);
     const salesMetaLines = [`${copy.body.purchaseOrder}: ${purchaseOrder.trim() || "-"}`, `${copy.body.commercial}: ${commercialLabel || "-"}`, `${copy.body.projectManager}: ${projectManagerDisplay}`];
     const dynamicLines = buildDynamicFieldLines(selectedForm.fields || [], dynamicValues, fieldLookups);
@@ -369,6 +445,16 @@ export default function TicketSalesCreatePage({
         displayValues,
         fieldLabels
       };
+      const equipmentInfo = selectedEquipment
+        ? serializeEquipmentInfo({
+            concerned: true,
+            source: "veritas",
+            equipmentId: selectedEquipment.id,
+            name: selectedEquipment.name || selectedEquipment.model || "",
+            type: selectedEquipment.type || "",
+            clientId: clientId || selectedEquipment.clientId || ""
+          })
+        : undefined;
       const created = await createTicket({
         title,
         description: bodyLines.join("\n"),
@@ -381,6 +467,7 @@ export default function TicketSalesCreatePage({
         assignedUserId: null,
         requesterUserId: requesterUserId || null,
         requesterContactId: null,
+        ...(equipmentInfo ? { equipmentInfo } : {}),
         salesFormData: salesFormDataBase
       });
       const createdTickets = created?.multiple ? Array.isArray(created.tickets) ? created.tickets : [] : created?.id ? [created] : [];
@@ -468,28 +555,27 @@ export default function TicketSalesCreatePage({
     label: field.label,
     value: buildDynamicFieldLines([field], dynamicValues, fieldLookups)[0]?.split(": ").slice(1).join(": ") || "-"
   }))];
-  return <div className={`${layout.page} msp-page-grid`}>
+  return <div className={`${mspStyles.mspPage} ${layout.page} msp-page-grid`}>
+      <div className={mspStyles.mspLayout}>
+        <div className={mspStyles.mspMain}>
+          <MspPageHero
+            eyebrow={copy.eyebrow}
+            title={copy.pageTitle}
+            subtitle={copy.formatPageSubtitle(agentLabel)}
+            icon="mdi:briefcase-edit-outline"
+            actions={<>
+              <button type="button" className={s.btnSecondary} onClick={() => onNavigate?.("TicketSales")}>
+                <Icon icon="mdi:arrow-left" />
+                {copy.back}
+              </button>
+              <button type="button" className={layout.primaryBtn} onClick={handleOpenConfirm} disabled={submitting || loadingData}>
+                <Icon icon="mdi:check" />
+                {submitting ? copy.creating : copy.createRequest}
+              </button>
+            </>}
+          />
+          <div className={`${mspStyles.mspContent} ${mspStyles.mspContentList} mspContent`}>
       <div className={layout.shell}>
-        <header className={layout.hero}>
-          <div className={layout.heroText}>
-            <p className={layout.eyebrow}>
-              <Icon icon="mdi:briefcase-edit-outline" aria-hidden />
-              {copy.eyebrow}
-            </p>
-            <h1 className={layout.pageTitle}>{copy.pageTitle}</h1>
-            <p className={layout.pageSubtitle}>{copy.formatPageSubtitle(agentLabel)}</p>
-          </div>
-          <div className={layout.heroActions}>
-            <button type="button" className={s.btnSecondary} onClick={() => onNavigate?.("TicketSales")}>
-              <Icon icon="mdi:arrow-left" />
-              {copy.back}
-            </button>
-            <button type="button" className={layout.primaryBtn} onClick={handleOpenConfirm} disabled={submitting || loadingData}>
-              <Icon icon="mdi:check" />
-              {submitting ? copy.creating : copy.createRequest}
-            </button>
-          </div>
-        </header>
 
         <div className={`${s.typeKpiRow} ${salesStyles.kindKpiRow}`}>
           {copy.salesKinds.map(item => <button key={item.key} type="button" className={`${layout.kpiCard} ${ticketKind === item.key ? layout.kpiCardActive : ""}`} onClick={() => handleKindChange(item.key)}>
@@ -591,6 +677,8 @@ export default function TicketSalesCreatePage({
                         <input type="text" className={s.contactInput} value={clientSearch} placeholder={copy.searchCompany} disabled={loadingData} aria-expanded={showClientDropdown} aria-haspopup="listbox" onChange={e => {
                         setClientSearch(e.target.value);
                         setSelectedClientId("");
+                        setSelectedEquipmentId("");
+                        setEquipmentSearch("");
                         setShowClientDropdown(true);
                         setClientHighlight(0);
                         setFieldErrors(prev => ({
@@ -619,10 +707,113 @@ export default function TicketSalesCreatePage({
                         </div>}
                     </div>
                   </div>
+
+                  <p className={s.detailsAvailabilityTitle} style={{ marginTop: "1rem" }}>{copy.equipmentLabel}</p>
+                  <div className={s.contactSearchRow}>
+                    <div className={s.contactPicker} ref={equipmentDropdownRef}>
+                      <div className={`${s.contactInputWrap} ${showEquipmentDropdown ? s.contactInputWrapOpen : ""}`}>
+                        <Icon icon="mdi:magnify" className={s.contactInputIcon} aria-hidden />
+                        <input
+                          type="text"
+                          className={s.contactInput}
+                          value={equipmentSearch}
+                          placeholder={copy.searchEquipment}
+                          disabled={loadingData || !selectedClientId || loadingEquipments}
+                          aria-expanded={showEquipmentDropdown}
+                          aria-haspopup="listbox"
+                          onChange={e => {
+                            setEquipmentSearch(e.target.value);
+                            setSelectedEquipmentId("");
+                            setShowEquipmentDropdown(true);
+                            setEquipmentHighlight(0);
+                          }}
+                          onFocus={() => {
+                            if (selectedClientId) setShowEquipmentDropdown(true);
+                          }}
+                          onKeyDown={e => {
+                            if (!showEquipmentDropdown || filteredEquipmentOptions.length === 0) return;
+                            if (e.key === "ArrowDown") {
+                              e.preventDefault();
+                              setEquipmentHighlight(h => Math.min(h + 1, filteredEquipmentOptions.length - 1));
+                            } else if (e.key === "ArrowUp") {
+                              e.preventDefault();
+                              setEquipmentHighlight(h => Math.max(h - 1, 0));
+                            } else if (e.key === "Enter") {
+                              e.preventDefault();
+                              const picked = filteredEquipmentOptions[equipmentHighlight];
+                              if (picked) selectEquipment(picked);
+                            } else if (e.key === "Escape") {
+                              setShowEquipmentDropdown(false);
+                              setEquipmentSearch(selectedEquipment ? getEquipmentPickerLabel(selectedEquipment, { locale }) : "");
+                            }
+                          }}
+                        />
+                        {selectedEquipmentId ? (
+                          <button
+                            type="button"
+                            onClick={clearEquipment}
+                            aria-label={copy.clearEquipment}
+                            title={copy.clearEquipment}
+                            style={{ marginRight: "0.35rem", border: "none", background: "transparent", cursor: "pointer", color: "inherit" }}
+                          >
+                            <FaTimes />
+                          </button>
+                        ) : null}
+                      </div>
+                      {showEquipmentDropdown ? (
+                        <div className={s.contactDropdown} role="listbox">
+                          {!selectedClientId ? (
+                            <div className={s.contactEmpty}>{copy.selectCompanyFirst}</div>
+                          ) : loadingEquipments ? (
+                            <div className={s.contactEmpty}>{copy.loadingEquipment}</div>
+                          ) : filteredEquipmentOptions.length === 0 ? (
+                            <div className={s.contactEmpty}>{copy.noEquipmentFound}</div>
+                          ) : (
+                            filteredEquipmentOptions.map((eq, idx) => (
+                              <button
+                                key={eq.id}
+                                type="button"
+                                className={`${s.contactOption} ${idx === equipmentHighlight ? s.contactOptionActive : ""}`}
+                                onMouseEnter={() => setEquipmentHighlight(idx)}
+                                onClick={() => selectEquipment(eq)}
+                              >
+                                <span className={s.contactOptionName}>{getEquipmentPickerLabel(eq, { locale })}</span>
+                              </button>
+                            ))
+                          )}
+                        </div>
+                      ) : null}
+                    </div>
+                  </div>
                 </div>
               </SectionPanel>
 
               <SectionPanel title={copy.sections.details}>
+                <div className={s.fieldBlock} style={{ marginBottom: "1rem" }}>
+                  <label className={s.fieldLabel} htmlFor="sales-create-subject">
+                    {copy.subjectLabel}
+                    <span style={{ marginLeft: "0.35rem", fontWeight: 500, opacity: 0.75 }}>
+                      ({copy.subjectOptional})
+                    </span>
+                  </label>
+                  <div className={s.fieldShell}>
+                    <input
+                      id="sales-create-subject"
+                      type="text"
+                      className={s.fieldShellControl}
+                      value={customTitle}
+                      onChange={e => setCustomTitle(e.target.value.slice(0, 200))}
+                      placeholder={generatedTitle || copy.subjectPlaceholder}
+                      maxLength={200}
+                    />
+                  </div>
+                  <span className={s.charCount}>{customTitle.length}/200</span>
+                  {!customTitle.trim() ? (
+                    <p className={s.detailsAvailabilityTitle} style={{ margin: "0.35rem 0 0", fontWeight: 400 }}>
+                      {copy.formatSubjectFallbackHint(generatedTitle)}
+                    </p>
+                  ) : null}
+                </div>
                 <div data-pulse={fieldErrors.details ? errorPulseTick : undefined} className={fieldErrors.details ? s.fieldErrorPulse : undefined}>
                   <SalesFormFieldsRenderer fields={activeFields} values={dynamicValues} users={users} contacts={contacts} clients={clients} fieldErrors={fieldErrors.details} errorPulseTick={errorPulseTick} onChange={nextValues => {
                   setDynamicValues(nextValues);
@@ -638,6 +829,15 @@ export default function TicketSalesCreatePage({
             <aside className={`${s.formStack} ${s.sideColumn}`}>
               <SectionPanel title={copy.sections.context}>
                 <dl className={s.contractFacts}>
+                  <div className={s.contractFactRow}>
+                    <dt className={s.contractFactLabel}>
+                      <Icon icon="mdi:text-short" className={s.contractFactIcon} aria-hidden />
+                      {copy.context.subject}
+                    </dt>
+                    <dd className={s.contractFactCompany} title={effectiveTitle}>
+                      {effectiveTitle || "-"}
+                    </dd>
+                  </div>
                   <div className={s.contractFactRow}>
                     <dt className={s.contractFactLabel}>
                       <Icon icon="mdi:shape-outline" className={s.contractFactIcon} aria-hidden />
@@ -672,6 +872,15 @@ export default function TicketSalesCreatePage({
                     </dt>
                     <dd className={requesterLabel ? s.contractFactCompany : s.contractFactEmpty}>
                       {requesterLabel || "-"}
+                    </dd>
+                  </div>
+                  <div className={s.contractFactRow}>
+                    <dt className={s.contractFactLabel}>
+                      <Icon icon="mdi:desktop-classic" className={s.contractFactIcon} aria-hidden />
+                      {copy.context.equipment}
+                    </dt>
+                    <dd className={selectedEquipment ? s.contractFactCompany : s.contractFactEmpty}>
+                      {selectedEquipment ? getEquipmentPickerLabel(selectedEquipment, { locale }) : "-"}
                     </dd>
                   </div>
                   <div className={s.contractFactRow}>
@@ -811,8 +1020,11 @@ export default function TicketSalesCreatePage({
           </div>
         </div>
       </div>
+          </div>
+        </div>
+      </div>
 
-      {confirmOpen && createPortal(<div className={s.confirmOverlay} onClick={() => !submitting && setConfirmOpen(false)} role="presentation">
+      {confirmOpen && selectedForm && createPortal(<div className={s.confirmOverlay} onClick={() => !submitting && setConfirmOpen(false)} role="presentation">
             <div className={s.confirmShell} onClick={e => e.stopPropagation()} role="dialog" aria-modal="true" aria-labelledby="sales-create-recap-title">
               <div className={s.confirmAccentBar} aria-hidden />
               <div className={s.confirmHeader}>
@@ -832,7 +1044,7 @@ export default function TicketSalesCreatePage({
                 </button>
               </div>
               <div className={s.confirmBody}>
-                <SalesCreateRecap kind={ticketKind} formLabel={selectedForm.label} contactLabel={requesterLabel || null} clientLabel={clientLabel} priority={priority} fields={recapFields} copy={copy} />
+                <SalesCreateRecap kind={ticketKind} formLabel={selectedForm.label} subjectLabel={effectiveTitle} contactLabel={requesterLabel || null} clientLabel={clientLabel} priority={priority} fields={recapFields} copy={copy} />
               </div>
               <div className={s.confirmFooter}>
                 <button type="button" className={s.recapCancelBtn} onClick={() => setConfirmOpen(false)} disabled={submitting}>

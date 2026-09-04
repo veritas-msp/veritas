@@ -590,12 +590,31 @@
   display: flex;
   flex-direction: column;
   gap: 0.65rem;
+  overflow-x: hidden;
+  overflow-y: auto;
+}
+
+.mainColumn > .toolbarGrow {
+  flex-shrink: 0;
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: var(--msp-bg, var(--msp-page-bg, #b7c3d4));
+}
+
+/* Week / day / agenda / single month: fill the column and scroll inside the view. */
+.mainColumnFill {
   overflow: hidden;
 }
 
-.calendarPanel {
-  flex: 1;
+.mainColumnFill .calendarPanel {
+  flex: 1 1 0;
   min-height: 0;
+}
+
+.calendarPanel {
+  flex: 1 0 auto;
+  min-height: min(100%, 28rem);
   display: flex;
   flex-direction: column;
   border: 1px solid var(--msp-border, #e2e8f0);
@@ -610,6 +629,12 @@
   min-height: 0;
   padding: 1rem 1.1rem 0.75rem;
   overflow: auto;
+}
+
+/* Multi-month: content can grow (wrapped months / dense events); column scrolls. */
+.calendarBodyMonth:not(.calendarBodyMonthSingle) {
+  flex: 0 0 auto;
+  overflow: visible;
 }
 
 .calendarBodyWeek,

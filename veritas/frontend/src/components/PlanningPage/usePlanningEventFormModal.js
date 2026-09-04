@@ -4,6 +4,7 @@ import { toast } from "react-toastify";
 import { createEvent, updateEvent, deleteEvent } from "../../api/events";
 import { fetchUsers } from "../../api/users";
 import { formatPlanningDateTime, planningMoment } from "../../utils/planningDateTime";
+import { syncSalesPmTaskFromPlanningEvent } from "../../utils/salesTaskPlanningEvent";
 import API_BASE_URL from "../../config";
 import { parseEventDescription, serializeEventDescription, getBusinessEndDate, getCalendarEndDate, getBusinessDaysCountInclusive, getCalendarDaysCountInclusive, getSlotDefaultTimes, loadPlanningClientsListCached, loadClientModulesCached, buildClientEquipmentLists, buildLinkableItems, buildLinkableItemsByGroup, getLinkedTypeOptions } from "./planningEventFormShared";
 function createDefaultEventForm(userId) {
@@ -503,6 +504,23 @@ export function usePlanningEventFormModal({
       };
       if (editingEvent) {
         await updateEvent(editingEvent.id, eventData);
+        if (existingMeta.salesPmTask && existingMeta.ticketId && existingMeta.pmTaskId) {
+          const equipmentLabel =
+            linkedItemsPayload.find(item => String(item.id) === String(primaryEquipmentId))?.name ||
+            linkedItemsPayload.find(item => String(item.id) === String(primaryEquipmentId))?.label ||
+            null;
+          await syncSalesPmTaskFromPlanningEvent({
+            ticketId: existingMeta.ticketId,
+            pmTaskId: existingMeta.pmTaskId,
+            equipmentId: primaryEquipmentId,
+            equipmentLabel,
+            title: eventData.title,
+            assignedUserId: eventData.assignedUserId,
+            assignedUserIds: selectedAssignedUsers,
+            start: eventData.start,
+            end: eventData.end
+          }).catch(() => null);
+        }
         toast.success(copy.toasts.updated);
       } else {
         await createEvent(eventData);

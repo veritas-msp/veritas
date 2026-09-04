@@ -26,6 +26,7 @@ import { getPlanningEventTypeIcon } from "./planningEventTypes";
 import { applyLocalEventMove, buildEventMovePayload, computeMovedAllDayRange, computeMovedTimedRange, computeMonthDropRange, getPlanningEventId, isPlanningEventDraggable } from "./planningEventMove";
 import { resolvePlanningEventClientId } from "../../utils/ticketReminderEvent";
 import { formatPlanningDateTime, parsePlanningDateTime, planningMoment } from "../../utils/planningDateTime";
+import { syncSalesPmTaskFromPlanningEvent } from "../../utils/salesTaskPlanningEvent";
 import SmartTooltip from "../SmartTooltip";
 import { createEvent, fetchEvents, updateEvent, deleteEvent } from "../../api/events";
 import { getAllCampaigns } from "../../api/campaigns";
@@ -53,8 +54,8 @@ const PLANNING_PREFERENCES_SETTING = "planning_pinned_agents";
 const PLANNING_VIEWS = new Set(["month", "week", "day", "agenda"]);
 const MONTH_VIEW_HEIGHTS = {
   1: 820,
-  2: 700,
-  3: 640
+  2: 760,
+  3: 720
 };
 function getMonthViewHeight(monthsShown) {
   return MONTH_VIEW_HEIGHTS[monthsShown] || MONTH_VIEW_HEIGHTS[1];
@@ -1732,6 +1733,23 @@ export default function PlanningPage({
       };
       if (editingEvent) {
         await updateEvent(editingEvent.id, eventData);
+        if (existingMeta.salesPmTask && existingMeta.ticketId && existingMeta.pmTaskId) {
+          const equipmentLabel =
+            linkedItemsPayload.find(item => String(item.id) === String(primaryEquipmentId))?.name ||
+            linkedItemsPayload.find(item => String(item.id) === String(primaryEquipmentId))?.label ||
+            null;
+          await syncSalesPmTaskFromPlanningEvent({
+            ticketId: existingMeta.ticketId,
+            pmTaskId: existingMeta.pmTaskId,
+            equipmentId: primaryEquipmentId,
+            equipmentLabel,
+            title: eventData.title,
+            assignedUserId: eventData.assignedUserId,
+            assignedUserIds: selectedAssignedUsers,
+            start: eventData.start,
+            end: eventData.end
+          }).catch(() => null);
+        }
         const eventsList = await fetchEvents();
         const usersList = await fetchUsers().catch(() => []);
         const clientsList = await loadPlanningClientsListCached({
@@ -2165,7 +2183,7 @@ export default function PlanningPage({
             </div>
           </aside>
 
-          <div className={styles.mainColumn}>
+          <div className={`${styles.mainColumn} ${view === "week" || view === "day" || view === "agenda" || (view === "month" && monthsShown === 1) ? styles.mainColumnFill : ""}`.trim()}>
             <div className={`${layout.toolbar} ${styles.toolbarGrow}`}>
               <div className={`${layout.searchWrap} ${styles.searchWrapFull}`}>
                 <Icon icon="mdi:magnify" className={layout.searchIcon} aria-hidden />

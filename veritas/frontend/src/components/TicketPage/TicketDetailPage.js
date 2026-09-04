@@ -36,7 +36,7 @@ import { contentLooksLikeHtml, isIncomingEmailContent } from "../../utils/incomi
 import IncomingEmailMessage from "./IncomingEmailMessage";
 import ContactFormModal from "../ContactsPage/ContactFormModal";
 import TicketLinkRequesterEmailModal from "./TicketLinkRequesterEmailModal";
-import { fetchUsers, fetchCurrentUser } from "../../api/users";
+import { fetchActiveUsers, fetchCurrentUser } from "../../api/users";
 import { fetchClients, fetchClientsList, fetchContactsList, fetchClientModules, fetchClientSupportCredits } from "../../api/clients";
 import { useAuthContext } from "../../contexts/AuthContext";
 import { usePermissions } from "../../contexts/PermissionsContext";
@@ -1331,7 +1331,7 @@ export default function TicketDetailPage({
     try {
       const [ticketRes, usersRes, clientsRes, contactsRes, categoriesRes] = await Promise.all([fetchTicket(ticketId, {
         signal: controller.signal
-      }), fetchUsers({
+      }), fetchActiveUsers({
         signal: controller.signal
       }).catch(error => error?.name === "AbortError" ? Promise.reject(error) : []), fetchClientsList({
         signal: controller.signal
@@ -2889,7 +2889,18 @@ export default function TicketDetailPage({
   };
   const resolveUserLabel = userId => {
     const found = users.find(u => String(u.id) === String(userId) || String(u.uuid) === String(userId) || String(u.user_id) === String(userId));
-    return found?.ticket_helpdesk_display_name || found?.name || found?.nom || found?.username || found?.email || String(userId);
+    if (found) {
+      return found.ticket_helpdesk_display_name || found.name || found.nom || found.username || found.email || String(userId);
+    }
+    const fromAssignees = (ticket?.assignees || []).find(a => String(a.user_id || a.id) === String(userId));
+    if (fromAssignees) {
+      return fromAssignees.ticket_helpdesk_display_name || fromAssignees.name || fromAssignees.username || fromAssignees.email || String(userId);
+    }
+    const fromWatchers = (ticket?.watchers || []).find(w => String(w.user_id || w.id) === String(userId));
+    if (fromWatchers) {
+      return fromWatchers.ticket_helpdesk_display_name || fromWatchers.name || fromWatchers.username || fromWatchers.email || String(userId);
+    }
+    return String(userId);
   };
   const resolveContactLabel = contactId => {
     const found = contacts.find(c => String(c.id) === String(contactId));

@@ -10,7 +10,6 @@ import { normalizeContactCommunications, syncLegacyContactFields, validateContac
 import { isCommunity, COMMUNITY_LIMITS } from '../../utils/edition.js';
 import { assertCommunityClientPortalLimit, assertCommunityContactsLimit, getActiveClientPortalCount, sendCommunityLimitError } from '../../utils/communityLimits.js';
 import { buildImpersonationClientPayload, IMPERSONATOR_COOKIE, setImpersonatorCookie, setSessionCookie, signSessionToken } from '../../utils/authSession.js';
-import { requireRole } from '../../middleware/roles.js';
 import { validatePortalPassword, PORTAL_PASSWORD_MIN_LENGTH } from '../../utils/passwordPolicy.js';
 import { userHasAllPermissions } from '../../services/permissionService.js';
 import {
@@ -408,7 +407,7 @@ router.delete('/:id/portal', verifyJWT, requireAgent, requirePermission('contact
     });
   }
 });
-router.post('/:id/portal/impersonate', verifyJWT, requireRole('admin'), async (req, res) => {
+router.post('/:id/portal/impersonate', verifyJWT, requireAgent, async (req, res) => {
   const contactId = parseContactId(req.params.id);
   if (!contactId) return res.status(400).json({
     error: "Invalid ID contact"

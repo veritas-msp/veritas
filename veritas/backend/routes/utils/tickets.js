@@ -523,15 +523,19 @@ async function getTicketById(ticketId) {
        ORDER BY created_at DESC`, [ticketId]), assigneesPromise, listTicketActivity(ticketId)]);
   const satisfaction = await getTicketSatisfaction(ticketId).catch(() => null);
   const resolutionValidation = await getTicketResolutionValidation(ticketId).catch(() => null);
+  const [watchers, assignees] = await Promise.all([
+    enrichTicketPeopleRows(watchersResult.rows),
+    enrichTicketPeopleRows(assigneesResult.rows)
+  ]);
   return enrichSingleTicketWithSla({
     ...ticketResult.rows[0],
     comments: await enrichCommentsWithAuthors(commentsResult.rows),
     statusHistory: historyResult.rows,
     activityHistory,
     tags: tagsResult.rows,
-    watchers: watchersResult.rows,
+    watchers,
     attachments: attachmentsResult.rows,
-    assignees: assigneesResult.rows,
+    assignees,
     supportCredit: await getTicketCreditStatus(ticketResult.rows[0]).catch(() => null),
     satisfaction,
     resolutionValidation
@@ -551,6 +555,32 @@ async function enrichCommentsWithAuthors(comments = []) {
       author_name: profile.display_name,
       author_avatar: profile.avatar,
       author_role: profile.role
+    };
+  });
+}
+async function enrichTicketPeopleRows(rows = []) {
+  if (!Array.isArray(rows) || rows.length === 0) return [];
+  const userIds = rows.map(row => row?.user_id || row?.id).filter(Boolean);
+  const profiles = await loadAuthorProfilesByUserIds(userIds);
+  return rows.map(row => {
+    const userId = row?.user_id || row?.id;
+    const profile = profiles.get(String(userId || ""));
+    if (!profile) {
+      return {
+        ...row,
+        id: userId,
+        user_id: userId
+      };
+    }
+    return {
+      ...row,
+      id: userId,
+      user_id: userId,
+      username: profile.username,
+      email: profile.email,
+      name: profile.display_name,
+      ticket_helpdesk_display_name: profile.display_name,
+      avatar: profile.avatar
     };
   });
 }
@@ -3112,16 +3142,38 @@ router.put("/:id", verifyJWT, requirePermission("tickets.edit"), [param("id").is
           const endAt = task?.endAt || task?.end_at || null;
           const planningEventId = task?.planningEventId || task?.planning_event_id || null;
           const eventType = String(task?.eventType || task?.event_type || task?.type || "").trim() || null;
+          const equipmentId = task?.equipmentId || task?.equipment_id || null;
+          const equipmentLabel = String(task?.equipmentLabel || task?.equipment_label || "").trim() || null;
+          const assigneesRaw = Array.isArray(task?.assignees) ? task.assignees : [];
+          let assignees = assigneesRaw
+            .map(entry => ({
+              id: String(entry?.id || entry?.userId || entry?.user_id || "").trim(),
+              label: String(entry?.label || entry?.name || entry?.username || "").trim() || null
+            }))
+            .filter(entry => entry.id);
+          const legacyId = task?.assigneeId || task?.assignee_id || null;
+          if (assignees.length === 0 && legacyId) {
+            assignees = [
+              {
+                id: String(legacyId),
+                label: String(task?.assigneeLabel || task?.assignee_label || "").trim() || null
+              }
+            ];
+          }
+          const primary = assignees[0] || null;
           return {
             id: String(task?.id || `task-${index + 1}`).trim() || `task-${index + 1}`,
             label,
             done: Boolean(task?.done),
-            assigneeId: task?.assigneeId || task?.assignee_id || null,
-            assigneeLabel: String(task?.assigneeLabel || task?.assignee_label || "").trim() || null,
+            assignees,
+            assigneeId: primary?.id || null,
+            assigneeLabel: primary?.label || null,
             startAt: startAt ? String(startAt) : null,
             endAt: endAt ? String(endAt) : null,
             eventType,
             planningEventId: planningEventId ? String(planningEventId) : null,
+            equipmentId: equipmentId ? String(equipmentId) : null,
+            equipmentLabel,
             createdAt: task?.createdAt || task?.created_at || new Date().toISOString()
           };
         }).filter(Boolean);

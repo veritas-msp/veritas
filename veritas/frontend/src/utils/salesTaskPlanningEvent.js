@@ -15,14 +15,18 @@ function encodeMeta(obj) {
   }
 }
 
-export function serializeSalesTaskEventDescription(note, { ticketId, ticketNumber, pmTaskId, kind } = {}) {
+export function serializeSalesTaskEventDescription(note, { ticketId, ticketNumber, pmTaskId, kind, assignedUserIds } = {}) {
   const cleanNote = String(note || "").trim();
+  const assigneeIds = Array.isArray(assignedUserIds)
+    ? assignedUserIds.map(id => String(id || "").trim()).filter(Boolean)
+    : [];
   const meta = {
     salesPmTask: true,
     pmTaskId: pmTaskId ? String(pmTaskId) : null,
     ticketId: ticketId ? String(ticketId) : null,
     ticketNumber: ticketNumber != null && ticketNumber !== "" ? String(ticketNumber) : null,
-    kind: kind ? String(kind) : null
+    kind: kind ? String(kind) : null,
+    ...(assigneeIds.length > 0 ? { assignedUserIds: assigneeIds } : {})
   };
   // Keep human note only in visible text; ticket link lives in HTML meta (and optional hidden sentinel after).
   const encoded = encodeMeta(meta);
@@ -101,6 +105,21 @@ export function buildSalesTaskEventPayload({ task, ticket, kind }) {
   const window = resolveSalesTaskEventWindow(task);
   if (!label || !window) return null;
   const ticketId = ticket?.id || ticket?.ticketId || null;
+  const ticketEquipmentId =
+    ticket?.equipment_info?.equipmentId ||
+    ticket?.equipment_info?.equipment_id ||
+    ticket?.equipmentInfo?.equipmentId ||
+    ticket?.equipmentInfo?.equipment_id ||
+    null;
+  const equipmentId = task?.equipmentId || task?.equipment_id || ticketEquipmentId || null;
+  const assigneesRaw = Array.isArray(task?.assignees) ? task.assignees : [];
+  const assigneeIds = assigneesRaw
+    .map(entry => String(entry?.id || entry?.userId || entry?.user_id || "").trim())
+    .filter(Boolean);
+  if (assigneeIds.length === 0 && (task?.assigneeId || task?.assignee_id)) {
+    assigneeIds.push(String(task.assigneeId || task.assignee_id));
+  }
+  const primaryAssigneeId = assigneeIds[0] || null;
   return {
     title: label,
     type: String(task?.eventType || task?.event_type || task?.type || "intervention").trim() || "intervention",
@@ -110,10 +129,12 @@ export function buildSalesTaskEventPayload({ task, ticket, kind }) {
       ticketId,
       ticketNumber: ticket?.ticket_number ?? ticket?.ticketNumber ?? null,
       pmTaskId: task?.id || null,
-      kind: kind || null
+      kind: kind || null,
+      assignedUserIds: assigneeIds
     }),
     clientId: ticket?.client_id || ticket?.clientId || null,
-    assignedUserId: task?.assigneeId || null
+    assignedUserId: primaryAssigneeId,
+    equipmentId: equipmentId ? String(equipmentId) : null
   };
 }
 
@@ -184,4 +205,71 @@ export async function deleteSalesTaskPlanningEvents({ task, ticket }) {
   const ids = new Set(matches.map(event => String(event.id)));
   if (task?.planningEventId) ids.add(String(task.planningEventId));
   await Promise.all([...ids].map(id => deleteEvent(id).catch(() => null)));
+}
+
+/**
+ * When a planning event linked to a sales PM task is edited, push equipment (and key fields)
+ * back onto the ticket todo so both sides stay aligned.
+ */
+export async function syncSalesPmTaskFromPlanningEvent({
+  ticketId,
+  pmTaskId,
+  equipmentId = null,
+  equipmentLabel = null,
+  title = null,
+  assignedUserId = null,
+  assignedUserIds = null,
+  start = null,
+  end = null
+}) {
+  if (!ticketId || !pmTaskId) return false;
+  const { fetchTicket, updateTicket } = await import("../api/tickets");
+  const { parsePlanningDateTime } = await import("./planningDateTime");
+  const ticket = await fetchTicket(ticketId);
+  if (!ticket) return false;
+  const formData = ticket.sales_form_data || ticket.salesFormData || {};
+  const tasks = Array.isArray(formData.pmTasks) ? formData.pmTasks : [];
+  if (tasks.length === 0) return false;
+
+  let changed = false;
+  const nextTasks = tasks.map(task => {
+    if (String(task?.id || "") !== String(pmTaskId)) return task;
+    const next = { ...task };
+    if (equipmentId !== undefined) {
+      next.equipmentId = equipmentId ? String(equipmentId) : null;
+      next.equipmentLabel = equipmentId ? equipmentLabel || next.equipmentLabel || null : null;
+    }
+    if (title != null && String(title).trim()) {
+      next.label = String(title).trim();
+    }
+    if (assignedUserIds !== undefined || assignedUserId !== undefined) {
+      const ids = Array.isArray(assignedUserIds)
+        ? assignedUserIds.map(id => String(id || "").trim()).filter(Boolean)
+        : assignedUserId
+          ? [String(assignedUserId)]
+          : [];
+      next.assignees = ids.map(id => ({ id, label: null }));
+      next.assigneeId = ids[0] || null;
+      if (!ids[0]) next.assigneeLabel = null;
+    }
+    if (start) {
+      const parsed = parsePlanningDateTime(start);
+      next.startAt = parsed ? parsed.toISOString() : start;
+    }
+    if (end) {
+      const parsed = parsePlanningDateTime(end);
+      next.endAt = parsed ? parsed.toISOString() : end;
+    }
+    changed = true;
+    return next;
+  });
+  if (!changed) return false;
+
+  await updateTicket(ticketId, {
+    salesFormData: {
+      ...formData,
+      pmTasks: nextTasks
+    }
+  });
+  return true;
 }
