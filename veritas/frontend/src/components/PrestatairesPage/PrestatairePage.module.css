@@ -1,0 +1,135 @@
+.portalStatusIcon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.5rem;
+  height: 1.5rem;
+  border-radius: 999px;
+  font-size: 1rem;
+}
+
+.portalStatusActive {
+  color: #15803d;
+  background: rgba(22, 163, 74, 0.12);
+}
+
+.portalStatusNone {
+  color: #6b7280;
+  background: rgba(107, 114, 128, 0.12);
+}
+
+:global(html.dark) .portalStatusActive {
+  color: #86efac;
+  background: rgba(74, 222, 128, 0.18);
+}
+
+:global(html.dark) .portalStatusNone {
+  color: #d1d5db;
+  background: rgba(156, 163, 175, 0.18);
+}
+
+.colName {
+  min-width: 10rem;
+}
+
+.colType,
+.colContact,
+.colEmail,
+.colPhone,
+.colEnterprises {
+  max-width: 12rem;
+}
+
+.colStatus {
+  width: 3.5rem;
+  text-align: center;
+}
+
+.colActions {
+  width: 9.5rem;
+}
+
+.colFavorite {
+  width: 2.75rem;
+  text-align: center;
+}
+
+.actionsCell {
+  white-space: nowrap;
+}
+
+.cardActions {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.iconActionBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.85rem;
+  height: 1.85rem;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--msp-text-muted, #64748b);
+  cursor: pointer;
+  text-decoration: none;
+}
+
+.iconActionBtn:hover {
+  background: rgba(43, 95, 171, 0.1);
+  color: var(--msp-primary, #2b5fab);
+}
+
+.cellWithAction,
+.cellWithActionAlign {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  max-width: 100%;
+}
+
+.detailLinkWrap {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.detailLink {
+  color: inherit;
+  text-decoration: none;
+}
+
+.detailLink:hover {
+  text-decoration: underline;
+}
+
+.inlineCopyBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.5rem;
+  height: 1.5rem;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--msp-text-muted, #64748b);
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.inlineCopyBtn:hover {
+  background: rgba(43, 95, 171, 0.1);
+  color: var(--msp-primary, #2b5fab);
+}
+
+.cellEllipsis {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 12rem;
+}

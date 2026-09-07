@@ -29,7 +29,7 @@ import TicketAiEnrichMenu from "./TicketAiEnrichMenu";
 import { createEvent, updateEvent, deleteEvent, fetchEvents } from "../../api/events";
 import { buildReminderEventPayload } from "../../utils/ticketReminderEvent";
 import { addTicketAssignee, addTicketComment, addTicketCommentWithAttachments, addLinkedTicket, addTicketTag, addTicketWatcher, createTicketValidationRequest, deleteTicket, fetchTicketCategories, fetchTicket, fetchTickets, fetchSalesForm, fetchSupportForm, permanentlyDeleteTicket, removeTicketTag, removeTicketAssignee, removeTicketWatcher, respondTicketValidationRequest, restoreTicket, updateTicket, updateTicketComment, deleteTicketComment, updateTicketStatus, updateTicketValidationRequest, resolveTicketWithValidation } from "../../api/tickets";
-import { fetchAiStatus, suggestTicketReplyAi, correctTicketTextAi } from "../../api/ai";
+import { fetchAiStatus, suggestTicketReplyAi, correctTicketTextAi, suggestTicketPriorityAi } from "../../api/ai";
 import API_BASE_URL from "../../config";
 import { sanitizeTicketCommentHtml } from "../../utils/sanitizeHtml";
 import { contentLooksLikeHtml, isIncomingEmailContent } from "../../utils/incomingEmailContent";
@@ -38,6 +38,7 @@ import ContactFormModal from "../ContactsPage/ContactFormModal";
 import TicketLinkRequesterEmailModal from "./TicketLinkRequesterEmailModal";
 import { fetchActiveUsers, fetchCurrentUser } from "../../api/users";
 import { fetchClients, fetchClientsList, fetchContactsList, fetchClientModules, fetchClientSupportCredits } from "../../api/clients";
+import { fetchPrestataires } from "../../api/prestataires";
 import { useAuthContext } from "../../contexts/AuthContext";
 import { usePermissions } from "../../contexts/PermissionsContext";
 import { useNotifications, emitNotificationsUpdated } from "../../hooks/useNotifications";
@@ -183,6 +184,34 @@ function getContactLabel(contact) {
   const base = fullName || contact?.email || `Contact #${contact?.id}`;
   if (contact?.email && fullName) return `${fullName} · ${contact.email}`;
   return base;
+}
+function getPrestataireContactsList(prestataire) {
+  if (Array.isArray(prestataire?.contacts) && prestataire.contacts.length > 0) {
+    return prestataire.contacts.map((contact, index) => ({
+      key: `${prestataire.id}-${contact.id ?? index}`,
+      nom: contact.nom || "",
+      prenom: contact.prenom || "",
+      email: (contact.email || "").toString().trim(),
+      telephone: (contact.telephone || "").toString().trim()
+    }));
+  }
+  const legacyEmail = (prestataire?.email || "").toString().trim();
+  const legacyPhone = (prestataire?.telephone || "").toString().trim();
+  const legacyNom = prestataire?.contact_nom || "";
+  const legacyPrenom = prestataire?.contact_prenom || "";
+  if (!legacyEmail && !legacyPhone && !legacyNom && !legacyPrenom) return [];
+  return [{
+    key: `${prestataire.id}-legacy`,
+    nom: legacyNom,
+    prenom: legacyPrenom,
+    email: legacyEmail,
+    telephone: legacyPhone
+  }];
+}
+function formatPrestataireContactLabel(contact) {
+  const name = `${contact?.prenom || ""} ${contact?.nom || ""}`.trim();
+  if (name && contact?.email) return `${name} · ${contact.email}`;
+  return name || contact?.email || contact?.telephone || "Contact";
 }
 function htmlToPlainText(rawHtml) {
   const source = String(rawHtml || "");
@@ -1043,6 +1072,7 @@ export default function TicketDetailPage({
   const canHardPurge = isAdmin || can("tickets.manage");
   const canCreateContact = can("contacts.create");
   const canLinkRequesterEmail = can("contacts_detail.edit") || canCreateContact;
+  const canViewPrestataires = can("prestataires.view");
   const ticketId = ticketData?.ticketId || ticketData?.id || urlTicketId;
   const [ticket, setTicket] = useState(null);
   const isSalesTicketDetail = useMemo(() => {
@@ -1136,8 +1166,11 @@ export default function TicketDetailPage({
   const [rightPaneView, setRightPaneView] = useState("context");
   const [aiFeatures, setAiFeatures] = useState({
     suggestReply: false,
-    ticketRunbook: false
+    ticketRunbook: false,
+    autoPriority: false
   });
+  const [aiPriorityLoading, setAiPriorityLoading] = useState(false);
+  const [aiPriorityHint, setAiPriorityHint] = useState("");
   const [aiSuggestLoading, setAiSuggestLoading] = useState(false);
   const [aiCorrectLoading, setAiCorrectLoading] = useState(false);
   const [linkModalOpen, setLinkModalOpen] = useState(false);
@@ -1225,6 +1258,10 @@ export default function TicketDetailPage({
     cc: "",
     message: ""
   });
+  const [sideConversationPrestataires, setSideConversationPrestataires] = useState([]);
+  const [loadingSideConversationPrestataires, setLoadingSideConversationPrestataires] = useState(false);
+  const [sideConversationPrestataireId, setSideConversationPrestataireId] = useState("");
+  const [sideConversationContactKey, setSideConversationContactKey] = useState("");
   const [sideConversations, setSideConversations] = useState([]);
   const [activeSideConversationId, setActiveSideConversationId] = useState(null);
   const [sideReplyDraft, setSideReplyDraft] = useState("");
@@ -1970,13 +2007,15 @@ export default function TicketDetailPage({
         const configured = Boolean(status?.configured);
         setAiFeatures({
           suggestReply: configured && status?.features?.suggestReply !== false,
-          ticketRunbook: configured && status?.features?.ticketRunbook !== false
+          ticketRunbook: configured && status?.features?.ticketRunbook !== false,
+          autoPriority: configured && status?.features?.autoPriority !== false
         });
       } catch {
         if (!cancelled) {
           setAiFeatures({
             suggestReply: false,
-            ticketRunbook: false
+            ticketRunbook: false,
+            autoPriority: false
           });
         }
       }
@@ -2674,6 +2713,57 @@ export default function TicketDetailPage({
     closeMacroAttachmentModal();
     await executeMacro(macroToRun, filesToUpload);
   };
+
+  const resetSideConversationForm = useCallback(() => {
+    setSideConversation({
+      team: "commercial",
+      subject: "",
+      to: "",
+      cc: "",
+      message: ""
+    });
+    setSideConversationPrestataireId("");
+    setSideConversationContactKey("");
+  }, []);
+
+  const selectedSideConversationPrestataire = useMemo(
+    () => sideConversationPrestataires.find(row => String(row.id) === String(sideConversationPrestataireId)) || null,
+    [sideConversationPrestataires, sideConversationPrestataireId]
+  );
+
+  const sideConversationPrestataireContacts = useMemo(
+    () => (selectedSideConversationPrestataire ? getPrestataireContactsList(selectedSideConversationPrestataire) : []),
+    [selectedSideConversationPrestataire]
+  );
+
+  const applySideConversationPrestataire = useCallback((prestataire, contactKey = "") => {
+    if (!prestataire) {
+      setSideConversationPrestataireId("");
+      setSideConversationContactKey("");
+      return;
+    }
+    const contacts = getPrestataireContactsList(prestataire);
+    const primary = contacts.find(contact => contact.key === contactKey) || contacts[0] || null;
+    const otherEmails = contacts
+      .filter(contact => contact.key !== primary?.key && contact.email)
+      .map(contact => contact.email);
+    const ticketNumber = ticket?.ticket_number || ticket?.id || "";
+    const providerName = (prestataire.nom || "").trim();
+    const suggestedSubject = interpolate(copy.sideModal.prestataireSubject, {
+      number: String(ticketNumber || "—"),
+      provider: providerName || "—"
+    });
+    setSideConversationPrestataireId(String(prestataire.id));
+    setSideConversationContactKey(primary?.key || "");
+    setSideConversation(prev => ({
+      ...prev,
+      team: "external",
+      to: primary?.email || "",
+      cc: otherEmails.join(", "),
+      subject: prev.subject.trim() ? prev.subject : suggestedSubject
+    }));
+  }, [copy.sideModal.prestataireSubject, ticket]);
+
   const submitSideConversation = async () => {
     if (!ticketId) return;
     if (!sideConversation.message.trim()) {
@@ -2709,13 +2799,7 @@ export default function TicketDetailPage({
       setActiveSideConversationId(createdConversation.id);
       toast.success(copy.formatSideConversationSent(teamLabel));
       setShowSideConversationModal(false);
-      setSideConversation({
-        team: "commercial",
-        subject: "",
-        to: "",
-        cc: "",
-        message: ""
-      });
+      resetSideConversationForm();
       await loadDetail();
     } catch (error) {
       toast.error(error.message || copy.toasts.sideConversationSendError);
@@ -2948,6 +3032,33 @@ export default function TicketDetailPage({
     return ticket?.client_id || null;
   }, [requesterContact, ticket]);
   const effectiveTicketClientId = useMemo(() => breadcrumbClientId || ticket?.client_id || requesterContact?.client_id || null, [breadcrumbClientId, ticket, requesterContact]);
+
+  useEffect(() => {
+    if (!showSideConversationModal) return undefined;
+    if (!canViewPrestataires || sideConversation.team !== "external" || !effectiveTicketClientId) {
+      setSideConversationPrestataires([]);
+      setLoadingSideConversationPrestataires(false);
+      return undefined;
+    }
+    let cancelled = false;
+    setLoadingSideConversationPrestataires(true);
+    fetchPrestataires(effectiveTicketClientId)
+      .then(data => {
+        if (cancelled) return;
+        setSideConversationPrestataires(Array.isArray(data) ? data : []);
+      })
+      .catch(err => {
+        console.error("Error loading prestataires for side conversation:", err);
+        if (!cancelled) setSideConversationPrestataires([]);
+      })
+      .finally(() => {
+        if (!cancelled) setLoadingSideConversationPrestataires(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [showSideConversationModal, canViewPrestataires, sideConversation.team, effectiveTicketClientId]);
+
   const breadcrumbClientLabel = useMemo(() => {
     if (requesterContact?.client_name) return requesterContact.client_name;
     if (requesterContact?.client_id) {
@@ -3309,6 +3420,33 @@ export default function TicketDetailPage({
       setAiSuggestLoading(false);
     }
   }, [ticketId, aiSuggestLoading, isReadOnly, aiFeatures.suggestReply, canAiSuggest, expandReplyBox, commentInternal, locale, copy.toasts.aiSuggestError, copy.toasts.aiSuggestOk]);
+  const handleSuggestPriorityAi = useCallback(async () => {
+    if (!ticketId || aiPriorityLoading || isReadOnly || isMajorIncident || !aiFeatures.autoPriority) return;
+    setAiPriorityLoading(true);
+    try {
+      const result = await suggestTicketPriorityAi({
+        ticketId,
+        locale
+      });
+      const nextPriority = result?.priority || "normal";
+      setEditForm(p => ({
+        ...p,
+        priority: nextPriority
+      }));
+      await updateTicketLive({
+        priority: nextPriority
+      }, {
+        successMessage: copy.toasts.aiPriorityOk || copy.toasts.priorityUpdated
+      });
+      const score = result?.score;
+      const rationale = String(result?.rationale || "").trim();
+      setAiPriorityHint(score ? `P${score}${rationale ? ` · ${rationale}` : ""}` : rationale);
+    } catch (err) {
+      toast.error(err.message || copy.toasts.aiPriorityError || copy.toasts.aiSuggestError);
+    } finally {
+      setAiPriorityLoading(false);
+    }
+  }, [ticketId, aiPriorityLoading, isReadOnly, isMajorIncident, aiFeatures.autoPriority, locale, copy.toasts.aiPriorityOk, copy.toasts.priorityUpdated, copy.toasts.aiPriorityError, copy.toasts.aiSuggestError, updateTicketLive]);
   const handleCorrectTextAi = useCallback(async (mode = "enrich") => {
     if (aiCorrectLoading || aiSuggestLoading || isReadOnly || !aiFeatures.suggestReply || !canAiSuggest) return;
     const html = String(commentEditorRef.current?.innerHTML || commentDraft || "").trim();
@@ -3790,6 +3928,7 @@ export default function TicketDetailPage({
         const insideNewPopup = newSideConversationPopupRef.current?.contains(target);
         if (!insideNewPopup) {
           setShowSideConversationModal(false);
+          resetSideConversationForm();
         }
       }
       if (activeSideConversationId) {
@@ -3801,7 +3940,7 @@ export default function TicketDetailPage({
     };
     document.addEventListener("mousedown", handleClickOutsideSideConversation);
     return () => document.removeEventListener("mousedown", handleClickOutsideSideConversation);
-  }, [showSideConversationModal, activeSideConversationId]);
+  }, [showSideConversationModal, activeSideConversationId, resetSideConversationForm]);
   useEffect(() => {
     if (!ticketOptionsMenuOpen) return undefined;
     const handleClickOutsideTicketOptions = event => {
@@ -4334,6 +4473,7 @@ export default function TicketDetailPage({
         {ticket ? <div className={styles.ticketHeaderTools} aria-label={copy.header.sideConversationsAria}>
             <button ref={newSideConversationBtnRef} type="button" className={styles.ticketHeaderIconBtn} onClick={() => {
           setActiveSideConversationId(null);
+          resetSideConversationForm();
           setShowSideConversationModal(true);
         }} title={copy.header.newSideConversationTitle} aria-label={copy.header.newSideConversationAria} disabled={isReadOnly}>
               <Icon icon="mdi:plus" aria-hidden />
@@ -4637,8 +4777,10 @@ export default function TicketDetailPage({
                   <label className={fs.equipmentFieldLabel} htmlFor="ticket-detail-priority">
                     {copy.priorityLabel}
                   </label>
-                  <select id="ticket-detail-priority" className={fs.select} value={editForm.priority} disabled={isReadOnly || isMajorIncident} onChange={async e => {
+                  <div className={styles.priorityAiRow}>
+                    <select id="ticket-detail-priority" className={fs.select} value={editForm.priority} disabled={isReadOnly || isMajorIncident} onChange={async e => {
                   const nextValue = e.target.value;
+                  setAiPriorityHint("");
                   setEditForm(p => ({
                     ...p,
                     priority: nextValue
@@ -4649,10 +4791,19 @@ export default function TicketDetailPage({
                     successMessage: copy.toasts.priorityUpdated
                   });
                 }}>
-                    {copy.priorityOptions.map(item => <option key={item.key} value={item.key}>
-                        {item.label}
-                      </option>)}
-                  </select>
+                      {copy.priorityOptions.map(item => <option key={item.key} value={item.key}>
+                          {item.label}
+                        </option>)}
+                    </select>
+                    {aiFeatures.autoPriority && !isReadOnly && !isMajorIncident ? <SmartTooltip content={copy.aiPriorityTitle || "Priorité automatique IA"}>
+                        <button type="button" className={styles.priorityAiBtn} onClick={() => {
+                    void handleSuggestPriorityAi();
+                  }} disabled={aiPriorityLoading} aria-label={copy.aiPriorityTitle || "Priorité automatique IA"}>
+                          <Icon icon={aiPriorityLoading ? "mdi:loading" : "mdi:robot-outline"} className={aiPriorityLoading ? styles.spinning : undefined} aria-hidden />
+                        </button>
+                      </SmartTooltip> : null}
+                  </div>
+                  {aiPriorityHint ? <p className={styles.priorityAiHint}>{aiPriorityHint}</p> : null}
                 </div>
 
                 {editForm.type === "incident" ? <>
@@ -5665,18 +5816,62 @@ export default function TicketDetailPage({
               <div className={styles.sideChatTitle}>{copy.sideModal.newTitle}</div>
               <div className={styles.sideChatSubtitle}>{copy.sideModal.newSubtitle}</div>
             </div>
-            <button type="button" className={styles.closeModalBtn} onClick={() => setShowSideConversationModal(false)}>
+            <button type="button" className={styles.closeModalBtn} onClick={() => {
+            setShowSideConversationModal(false);
+            resetSideConversationForm();
+          }}>
               <Icon icon="mdi:close" />
             </button>
           </div>
           <div className={styles.sideConversationBody}>
             <label className={styles.fieldLabel}>{copy.sideModal.target}</label>
-            <select className={styles.input} value={sideConversation.team} onChange={e => setSideConversation(prev => ({
-            ...prev,
-            team: e.target.value
-          }))}>
+            <select className={styles.input} value={sideConversation.team} onChange={e => {
+            const nextTeam = e.target.value;
+            setSideConversation(prev => ({
+              ...prev,
+              team: nextTeam
+            }));
+            if (nextTeam !== "external") {
+              setSideConversationPrestataireId("");
+              setSideConversationContactKey("");
+            }
+          }}>
               {copy.sideConversationTeamOptions.map(opt => <option key={opt.key} value={opt.key}>{opt.label}</option>)}
             </select>
+
+            {canViewPrestataires && sideConversation.team === "external" ? <>
+                <label className={styles.fieldLabel}>{copy.sideModal.prestataire}</label>
+                {!effectiveTicketClientId ? <p className={styles.sideConversationHint}>{copy.sideModal.prestataireNoClient}</p> : loadingSideConversationPrestataires ? <p className={styles.sideConversationHint}>{copy.sideModal.prestataireLoading}</p> : sideConversationPrestataires.length === 0 ? <p className={styles.sideConversationHint}>{copy.sideModal.prestataireEmpty}</p> : <select className={styles.input} value={sideConversationPrestataireId} onChange={e => {
+                const nextId = e.target.value;
+                if (!nextId) {
+                  setSideConversationPrestataireId("");
+                  setSideConversationContactKey("");
+                  return;
+                }
+                const picked = sideConversationPrestataires.find(row => String(row.id) === String(nextId));
+                if (picked) applySideConversationPrestataire(picked);
+              }}>
+                    <option value="">{copy.sideModal.prestatairePlaceholder}</option>
+                    {sideConversationPrestataires.map(row => <option key={row.id} value={row.id}>
+                        {row.nom || `Prestataire #${row.id}`}
+                        {row.type ? ` · ${row.type}` : ""}
+                      </option>)}
+                  </select>}
+
+                {selectedSideConversationPrestataire && sideConversationPrestataireContacts.length > 1 ? <>
+                    <label className={styles.fieldLabel}>{copy.sideModal.prestataireContact}</label>
+                    <select className={styles.input} value={sideConversationContactKey} onChange={e => {
+                applySideConversationPrestataire(selectedSideConversationPrestataire, e.target.value);
+              }}>
+                      <option value="">{copy.sideModal.prestataireContactPlaceholder}</option>
+                      {sideConversationPrestataireContacts.map(contact => <option key={contact.key} value={contact.key}>
+                          {formatPrestataireContactLabel(contact)}
+                        </option>)}
+                    </select>
+                  </> : null}
+
+                {sideConversationPrestataireId ? <p className={styles.sideConversationHint}>{copy.sideModal.prestataireAppliedHint}</p> : null}
+              </> : null}
 
             <label className={styles.fieldLabel}>{copy.sideModal.subject}</label>
             <input className={styles.input} type="text" placeholder={copy.sideModal.subjectPlaceholder} value={sideConversation.subject} onChange={e => setSideConversation(prev => ({
@@ -5706,7 +5901,10 @@ export default function TicketDetailPage({
           }))} />
           </div>
           <div className={styles.sideConversationFooter}>
-            <button type="button" className={styles.secondaryBtn} onClick={() => setShowSideConversationModal(false)}>
+            <button type="button" className={styles.secondaryBtn} onClick={() => {
+            setShowSideConversationModal(false);
+            resetSideConversationForm();
+          }}>
               {copy.sideModal.cancel}
             </button>
             <button type="button" className={styles.primaryBtn} onClick={submitSideConversation}>

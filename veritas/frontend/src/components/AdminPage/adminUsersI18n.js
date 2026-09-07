@@ -9,6 +9,7 @@ const USERS_COPY = {
     accessColumns: {
       entreprise: "Entreprise",
       contact: "Contact",
+      prestataire: "Prestataires",
       tickets: "Support",
       ticketSales: "Prestations et installations",
       planning: "Planning",
@@ -176,6 +177,7 @@ const USERS_COPY = {
     accessColumns: {
       entreprise: "Enterprise",
       contact: "Contact",
+      prestataire: "Providers",
       tickets: "Support",
       ticketSales: "Services and installations",
       planning: "Planning",
@@ -343,6 +345,7 @@ const USERS_COPY = {
     accessColumns: {
       entreprise: "Unternehmen",
       contact: "Kontakt",
+      prestataire: "Dienstleister",
       tickets: "Support",
       ticketSales: "Dienstleistungen & Installationen",
       planning: "Planung",
@@ -510,6 +513,7 @@ const USERS_COPY = {
     accessColumns: {
       entreprise: "Azienda",
       contact: "Contatto",
+      prestataire: "Fornitori",
       tickets: "Supporto",
       ticketSales: "Servizi e installazioni",
       planning: "Pianificazione",
@@ -677,6 +681,7 @@ const USERS_COPY = {
     accessColumns: {
       entreprise: "Empresa",
       contact: "Contacto",
+      prestataire: "Proveedores",
       tickets: "Soporte",
       ticketSales: "Servicios e instalaciones",
       planning: "Planificación",
@@ -844,6 +849,9 @@ const ACCESS_COLUMN_KEYS = [{
   key: "contact",
   accessKey: "contact_enabled",
   locked: true
+}, {
+  key: "prestataire",
+  accessKey: "prestataire_enabled"
 }, {
   key: "tickets",
   accessKey: "tickets_enabled"

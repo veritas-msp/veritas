@@ -57,11 +57,11 @@ export const ADMIN_NAV_STRUCTURE = [{
     key: "tickets",
     icon: "mdi:ticket-outline"
   }, {
-    key: "mail-collect",
-    icon: "mdi:email-outline"
-  }, {
     key: "service-settings",
     icon: "mdi:briefcase-edit-outline"
+  }, {
+    key: "mail-collect",
+    icon: "mdi:email-outline"
   }]
 }, {
   id: "notifications",
@@ -178,15 +178,15 @@ const ADMIN_PANEL_COPY = {
       },
       tickets: {
         label: "Paramètres support",
-        description: "Templates, macros, catégories et vues"
-      },
-      "mail-collect": {
-        label: "Collecte mail",
-        description: "Boîtes mail et tri des emails entrants"
+        description: "Templates, macros, solutions, formulaires, catégories et vues"
       },
       "service-settings": {
         label: "Paramètres services",
         description: "Formulaires ventes et vues Services & installations"
+      },
+      "mail-collect": {
+        label: "Collecte mail",
+        description: "Boîtes mail et tri des emails entrants"
       },
       notifications: {
         label: "Notifications",
@@ -305,15 +305,15 @@ const ADMIN_PANEL_COPY = {
       },
       tickets: {
         label: "Support settings",
-        description: "Templates, macros, categories, and views"
-      },
-      "mail-collect": {
-        label: "Mail collection",
-        description: "Mailboxes and inbound email routing"
+        description: "Templates, macros, solutions, forms, categories, and views"
       },
       "service-settings": {
         label: "Service settings",
         description: "Sales forms and Services & installations views"
+      },
+      "mail-collect": {
+        label: "Mail collection",
+        description: "Mailboxes and inbound email routing"
       },
       notifications: {
         label: "Notifications",
@@ -432,15 +432,15 @@ const ADMIN_PANEL_COPY = {
       },
       tickets: {
         label: "Support-Einstellungen",
-        description: "Vorlagen, Makros, Kategorien und Ansichten"
-      },
-      "mail-collect": {
-        label: "Mail-Sammlung",
-        description: "Postfächer und eingehende E-Mails"
+        description: "Vorlagen, Makros, Lösungen, Formulare, Kategorien und Ansichten"
       },
       "service-settings": {
         label: "Service-Einstellungen",
         description: "Vertriebsformulare und Ansichten für Leistungen & Installationen"
+      },
+      "mail-collect": {
+        label: "Mail-Sammlung",
+        description: "Postfächer und eingehende E-Mails"
       },
       "notifications-inapp": {
         label: "In-App-Benachrichtigungen",
@@ -563,15 +563,15 @@ const ADMIN_PANEL_COPY = {
       },
       tickets: {
         label: "Impostazioni supporto",
-        description: "Template, macro, categorie e viste"
-      },
-      "mail-collect": {
-        label: "Raccolta mail",
-        description: "Caselle e smistamento email in entrata"
+        description: "Template, macro, soluzioni, moduli, categorie e viste"
       },
       "service-settings": {
         label: "Impostazioni servizi",
         description: "Moduli vendite e viste Servizi e installazioni"
+      },
+      "mail-collect": {
+        label: "Raccolta mail",
+        description: "Caselle e smistamento email in entrata"
       },
       "notifications-inapp": {
         label: "Notifiche in-app",
@@ -694,15 +694,15 @@ const ADMIN_PANEL_COPY = {
       },
       tickets: {
         label: "Ajustes de soporte",
-        description: "Plantillas, macros, categorías y vistas"
-      },
-      "mail-collect": {
-        label: "Recogida de correo",
-        description: "Buzones y clasificación de emails entrantes"
+        description: "Plantillas, macros, soluciones, formularios, categorías y vistas"
       },
       "service-settings": {
         label: "Ajustes de servicios",
         description: "Formularios de ventas y vistas Servicios e instalaciones"
+      },
+      "mail-collect": {
+        label: "Recogida de correo",
+        description: "Buzones y clasificación de emails entrantes"
       },
       "notifications-inapp": {
         label: "Notificaciones in-app",

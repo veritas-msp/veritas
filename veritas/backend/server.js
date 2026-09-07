@@ -23,6 +23,7 @@ import clientsRoutes, { modulesRouterExport } from './routes/clients/clients.js'
 import campaignRoutes from './routes/clients/campaign.js';
 import materialTypesRoutes from './routes/clients/materialTypes.js';
 import contactsRoutes from './routes/clients/contacts.js';
+import prestatairesRoutes from './routes/clients/prestataires.js';
 import monitoringDocumentsRouter from "./routes/documents/monitoringDocuments.js";
 import clientFilesRouter from "./routes/documents/clientFiles.js";
 import vaultSecretsRouter from "./routes/documents/vaultSecrets.js";
@@ -223,6 +224,7 @@ app.use('/api/clients-general', clientsRoutes);
 app.use('/api/clients/modules', modulesRouterExport);
 app.use('/api/material-types', materialTypesRoutes);
 app.use('/api/contacts', contactsRoutes);
+app.use('/api/prestataires', prestatairesRoutes);
 app.use("/api/monitoring-documents", requireProAuth, monitoringDocumentsRouter);
 app.use("/api/client-files", requireProAuth, clientFilesRouter);
 app.use("/api/vault-secrets", requireProAuth, vaultSecretsRouter);

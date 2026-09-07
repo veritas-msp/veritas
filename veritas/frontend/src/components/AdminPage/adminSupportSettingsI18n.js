@@ -1,7 +1,7 @@
 import { createLocaleGetter, interpolate } from "../../i18n/translate";
 import { SUPPORT_SETTINGS_MODALS } from "./adminSupportSettingsModalsI18n";
-const TAB_KEYS = ["templates", "macros", "categories", "solution-catalog", "support-forms", "ticket-views"];
-const VIEW_META_KEYS = ["templates", "macros", "categories", "solution-catalog", "support-forms", "ticket-views", "sales-ticket-views"];
+const TAB_KEYS = ["templates", "macros", "solution-catalog", "support-forms", "categories", "ticket-views"];
+const VIEW_META_KEYS = ["templates", "macros", "solution-catalog", "support-forms", "categories", "ticket-views", "sales-ticket-views"];
 const TEMPLATE_FORM_SECTION_ICONS = {
   general: "mdi:information-outline",
   content: "mdi:text-box-outline"

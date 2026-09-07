@@ -14,7 +14,7 @@ function allKeys() {
   return keysWhere(() => true);
 }
 
-const DETAIL_WORK_GROUPS = new Set(["clients_detail", "contacts_detail", "tickets_detail", "sales_detail"]);
+const DETAIL_WORK_GROUPS = new Set(["clients_detail", "contacts_detail", "prestataires_detail", "tickets_detail", "sales_detail"]);
 
 function isViewAction(action) {
   return action.action === "view";
@@ -34,7 +34,7 @@ function collaboratorKeys() {
     }
     if (g.group === "home") return true;
     if (g.group === "planning" && a.action !== "open_ticket") return true;
-    if (["public_views", "manage_views", "customer_feedback", "notes", "tags", "sites", "solutions", "devices", "add_contact", "schedule_event", "portal", "tasks", "report", "public_reply", "edit_messages", "request_validation", "macro", "resolve"].includes(a.action)) {
+    if (["public_views", "manage_views", "customer_feedback", "notes", "tags", "sites", "solutions", "devices", "add_contact", "add_prestataire", "schedule_event", "portal", "tasks", "report", "public_reply", "edit_messages", "request_validation", "macro", "resolve"].includes(a.action)) {
       return true;
     }
     return false;

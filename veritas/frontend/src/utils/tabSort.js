@@ -8,6 +8,10 @@ export const TAB_FOLDER_GROUPS = [{
   types: ["ContactDetail", "Contact"],
   icon: "mdi:account-group"
 }, {
+  key: "prestataire",
+  types: ["PrestataireDetail", "Prestataire"],
+  icon: "mdi:handshake-outline"
+}, {
   key: "ticket",
   types: ["TicketDetail", "TicketCreate", "Ticket"],
   icon: "mdi:message-processing-outline"

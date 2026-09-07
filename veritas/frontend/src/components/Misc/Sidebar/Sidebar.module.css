@@ -1077,3 +1077,260 @@
   background: rgba(185, 28, 28, 0.18);
   color: #fecaca;
 }
+
+/* Horizontal top navigation (desktop) */
+.sidebarHorizontal,
+.sidebarTop {
+  top: 0;
+  left: 0;
+  right: 0;
+  width: 100%;
+  height: var(--sidebar-top-height, 56px);
+  max-height: var(--sidebar-top-height, 56px);
+  padding: 0 0.75rem 0 0.65rem;
+  border-right: none;
+  border-bottom: 1px solid var(--sb-border);
+  box-shadow: 0 1px 14px rgba(15, 28, 46, 0.08);
+  flex-direction: row;
+  align-items: center;
+  overflow: hidden;
+}
+
+:global(html[data-profile-preview="1"]) .sidebarHorizontal,
+:global(html[data-agent-impersonation="1"]) .sidebarHorizontal,
+:global(html[data-profile-preview="1"]) .sidebarTop,
+:global(html[data-agent-impersonation="1"]) .sidebarTop {
+  top: var(--profile-preview-banner-height, 40px);
+  height: var(--sidebar-top-height, 56px);
+  max-height: var(--sidebar-top-height, 56px);
+}
+
+.sidebarHorizontal .sidebarContent {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 0.55rem;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.sidebarHorizontal .logoHeader {
+  flex-shrink: 0;
+  margin: 0 0.2rem 0 0;
+  position: relative;
+}
+
+.sidebarHorizontal .logoWrapper {
+  padding: 0;
+  gap: 0;
+}
+
+.sidebarHorizontal .sidebarTooltipHost {
+  display: inline-flex;
+  width: auto;
+}
+
+.sidebarHorizontal .sidebarHeader,
+.sidebarHorizontal .sectionTitle {
+  display: none !important;
+}
+
+.sidebarHorizontal .separator,
+.sidebarHorizontal .sectionDividerCollapsed {
+  display: block !important;
+  width: 0;
+  height: 1.35rem;
+  margin: 0 0.35rem;
+  border: none;
+  border-left: 1px solid var(--sb-separator);
+  border-top: none;
+  align-self: center;
+  flex-shrink: 0;
+}
+
+.sidebarHorizontal .logoHeader::after {
+  content: "";
+  position: absolute;
+  right: -0.45rem;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 0;
+  height: 1.35rem;
+  border-left: 1px solid var(--sb-separator);
+}
+
+.sidebarHorizontal .sidebarNavScroll {
+  flex: 1;
+  min-width: 0;
+  height: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 0.15rem;
+  padding: 0 0.15rem;
+  scrollbar-width: thin;
+}
+
+.sidebarHorizontal .sidebarNavScroll > * {
+  flex-shrink: 0;
+}
+
+.sidebarHorizontal .navList {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 0.15rem;
+  margin: 0;
+  padding: 0;
+}
+
+.sidebarHorizontal .navItem {
+  width: 40px;
+  height: 40px;
+  min-height: 40px;
+  margin: 0;
+  padding: 0;
+  gap: 0;
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+  overflow: hidden;
+}
+
+.sidebarHorizontal .navItem .accessNavLabel {
+  display: none;
+}
+
+.sidebarHorizontal .navItem .accessNavIcon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  margin: 0;
+  line-height: 0;
+}
+
+.sidebarHorizontal .navItem .itemIcon {
+  display: block;
+  width: 22px;
+  height: 22px;
+  min-width: 22px;
+  margin: 0;
+  font-size: 22px;
+  line-height: 1;
+}
+
+.sidebarHorizontal .upgradeSection {
+  display: none;
+}
+
+.sidebar.sidebarHorizontal .sidebarFooter {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.45rem;
+  margin-top: 0;
+  margin-left: 0.25rem;
+  padding-top: 0;
+  padding-bottom: 0;
+  padding-left: 0.65rem;
+  border-top: none;
+  border-left: 1px solid var(--sb-separator);
+  flex-shrink: 0;
+  height: 100%;
+  max-height: 100%;
+  overflow: visible;
+}
+
+.sidebar.sidebarHorizontal .utilitiesSection {
+  display: flex;
+  align-items: center;
+  margin: 0;
+  padding: 0;
+  height: 100%;
+}
+
+.sidebar.sidebarHorizontal .utilitiesBtnRow {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: nowrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.25rem;
+  padding: 0;
+  height: 100%;
+}
+
+.sidebar.sidebarHorizontal .notificationBellRoot {
+  display: inline-flex;
+  align-items: center;
+  flex-shrink: 0;
+  width: auto;
+  margin: 0;
+}
+
+.sidebar.sidebarHorizontal .notificationBellRoot > * {
+  display: inline-flex;
+  align-items: center;
+  width: auto;
+  max-width: none;
+}
+
+.sidebar.sidebarHorizontal .userSection {
+  display: flex;
+  align-items: center;
+  margin: 0;
+  padding: 0;
+  height: 100%;
+}
+
+.sidebar.sidebarHorizontal .userMenuTriggerRow {
+  margin: 0;
+  width: auto;
+  height: 100%;
+}
+
+.sidebar.sidebarHorizontal .userAvatarTooltipHost {
+  display: inline-flex;
+  align-items: center;
+  height: 100%;
+}
+
+.sidebar.sidebarHorizontal .squareBtn,
+.sidebar.sidebarHorizontal .userAvatarButton {
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  margin: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 0;
+}
+
+.sidebar.sidebarHorizontal .squareBtnIcon {
+  display: block;
+  margin: 0;
+  line-height: 1;
+}
+
+.sidebar.sidebarHorizontal .userAvatarButton :global(img) {
+  display: block;
+}
+
+.sidebar.sidebarHorizontal .userAvatarButton :global(span) {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+}
+
+.sidebarHorizontal .sidebarNavScroll > div {
+  display: contents;
+}

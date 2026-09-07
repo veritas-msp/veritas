@@ -1,5 +1,5 @@
 import fetch from "node-fetch";
-import { getAiConfig, assertAiFeatureEnabled, normalizeAiProvider, getDefaultModelForProvider, AI_PROVIDER_BASE_URLS } from "../utils/aiSettings.js";
+import { getAiConfig, assertAiFeatureEnabled, normalizeAiProvider, getDefaultModelForProvider, AI_PROVIDER_BASE_URLS, mapPriorityScoreToTicketPriority } from "../utils/aiSettings.js";
 import { assertAiQuotaAvailable, recordAiUsage } from "./aiUsageService.js";
 const AI_LOCALES = {
   fr: {
@@ -282,8 +282,10 @@ export async function suggestTicketReply({
     const author = c.author_name || c.authorName || "agent";
     return `[${who}] ${author}: ${truncate(c.content || c.body || "", 800)}`;
   }).join("\n");
-  const system = withLocaleInstruction('You are an MSP helpdesk copilot for Veritas. Draft a concise professional reply. Never invent credentials or guarantees. Return JSON: {"reply": "..."}.', locale);
-  const user = [`Language: ${aiLocale.code} (${aiLocale.name})`, `Mode: ${internal ? "internal agent note" : "customer-facing reply"}`, `Title: ${truncate(title, 300)}`, `Description: ${truncate(description, 2500)}`, thread ? `Thread:\n${thread}` : "Thread: (empty)"].join("\n\n");
+  const system = withLocaleInstruction(internal
+    ? 'You are an MSP helpdesk copilot for Veritas. Draft a concise internal note for agents. Never invent credentials or guarantees. Return JSON: {"reply": "..."}.'
+    : 'You are an MSP helpdesk copilot for Veritas. Draft the FIRST customer-facing reply: technical, courteous, and clear. Acknowledge the issue, give 2–4 simple immediate troubleshooting tips the user can try now, and say what the team will check next. Never invent credentials, root causes as facts, SLAs or guarantees. Return JSON: {"reply": "..."}.', locale);
+  const user = [`Language: ${aiLocale.code} (${aiLocale.name})`, `Mode: ${internal ? "internal agent note" : "automatic first customer reply"}`, `Title: ${truncate(title, 300)}`, `Description: ${truncate(description, 2500)}`, thread ? `Thread:\n${thread}` : "Thread: (empty)"].join("\n\n");
   const result = await completeAiJson({
     feature: internal ? "suggest_internal_note" : "suggest_reply",
     system,
@@ -435,6 +437,42 @@ export async function generateRunbookChecklist({
     ...result
   };
 }
+export async function suggestTicketPriority({
+  title,
+  description,
+  type = null,
+  category = null,
+  locale = "fr",
+  userId = null
+}) {
+  const aiLocale = resolveAiLocale(locale);
+  const system = withLocaleInstruction('You are an MSP triage assistant. Score ticket priority from 1 (most critical) to 5 (least critical) using impact and urgency. Return JSON: {"score":1,"impact":"low|medium|high","urgency":"low|medium|high","rationale":"one short sentence"}. score must be an integer 1-5. Do not invent facts not present in the ticket.', locale);
+  const user = [`Language: ${aiLocale.code} (${aiLocale.name})`, type ? `Type: ${type}` : null, category ? `Category: ${category}` : null, `Title: ${truncate(title, 300)}`, `Description: ${truncate(description, 2500) || "(empty)"}`].filter(Boolean).join("\n\n");
+  const result = await completeAiJson({
+    feature: "auto_priority",
+    system,
+    user,
+    userId,
+    temperature: 0.2,
+    maxTokens: 400
+  });
+  let score = Number.parseInt(String(result.data.score ?? result.data.priority ?? ""), 10);
+  if (!Number.isFinite(score) || score < 1 || score > 5) score = 3;
+  const normalizeLevel = value => {
+    const v = String(value || "").toLowerCase().trim();
+    if (["low", "bas", "faible"].includes(v)) return "low";
+    if (["high", "élevé", "eleve", "critique", "critical"].includes(v)) return "high";
+    return "medium";
+  };
+  return {
+    score,
+    priority: mapPriorityScoreToTicketPriority(score),
+    impact: normalizeLevel(result.data.impact),
+    urgency: normalizeLevel(result.data.urgency),
+    rationale: String(result.data.rationale || result.data.reason || "").trim(),
+    ...result
+  };
+}
 export async function helpDiagnoseTicket({
   title,
   description,
@@ -479,7 +517,7 @@ export async function generateSupportTicketRunbook({
 }) {
   const aiLocale = resolveAiLocale(locale);
   const thread = (Array.isArray(comments) ? comments : []).slice(-10).map(c => truncate(c.content || c.body || "", 500)).join("\n---\n");
-  const system = withLocaleInstruction('You write an actionable MSP support runbook for ONE ticket. Return JSON: {"title":"...","checklist":["step1",...]}. 4 to 8 concrete steps. No credentials invented.', locale);
+  const system = withLocaleInstruction('You are a senior MSP engineer writing technician assistance for ONE support ticket. Return JSON: {"title":"...","summary":"short diagnosis","hypotheses":["probable cause 1",...],"tools":["tool or command 1",...],"checklist":["actionable step 1",...]}. Provide 2–5 hypotheses, 2–6 tools/commands, and 4–8 concrete checklist steps. Do not invent credentials or claim the root cause is proven.', locale);
   const user = [`Language: ${aiLocale.code} (${aiLocale.name})`, `Title: ${truncate(title, 300)}`, priority ? `Priority: ${priority}` : null, category ? `Category: ${category}` : null, `Description: ${truncate(description, 2500)}`, thread ? `Context:\n${thread}` : null].filter(Boolean).join("\n\n");
   const result = await completeAiJson({
     feature: "ticket_runbook",
@@ -488,7 +526,8 @@ export async function generateSupportTicketRunbook({
     userId,
     temperature: 0.35
   });
-  const checklist = Array.isArray(result.data.checklist) ? result.data.checklist.map(s => String(s || "").trim()).filter(Boolean) : [];
+  const asList = value => (Array.isArray(value) ? value : []).map(item => String(item || "").trim()).filter(Boolean).slice(0, 8);
+  const checklist = asList(result.data.checklist);
   if (!checklist.length) {
     const err = new Error("Generated checklist is empty");
     err.code = "AI_EMPTY";
@@ -496,6 +535,9 @@ export async function generateSupportTicketRunbook({
   }
   return {
     title: String(result.data.title || title || "Runbook").trim(),
+    summary: String(result.data.summary || result.data.diagnosis || "").trim(),
+    hypotheses: asList(result.data.hypotheses || result.data.causes || result.data.probableCauses),
+    tools: asList(result.data.tools || result.data.commands),
     checklist,
     ...result
   };

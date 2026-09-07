@@ -18,6 +18,31 @@ export async function fetchAiStatus() {
   });
   return handleResponse(response);
 }
+export async function suggestTicketPriorityAi({
+  ticketId = null,
+  title = "",
+  description = "",
+  type = null,
+  category = null,
+  locale = "fr"
+}) {
+  const response = await fetch(`${API_BASE_URL}/ai/suggest-priority`, {
+    method: "POST",
+    credentials: "include",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({
+      ticketId,
+      title,
+      description,
+      type,
+      category,
+      locale
+    })
+  });
+  return handleResponse(response);
+}
 export async function suggestTicketReplyAi({
   ticketId,
   internal = false,

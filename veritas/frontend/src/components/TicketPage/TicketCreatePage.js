@@ -6,7 +6,9 @@ import { toast } from "react-toastify";
 import { createTicket, fetchTicketCategories, fetchSupportForms, addTicketComment, fetchTickets, addTicketAssignee, addTicketWatcher, addTicketCommentWithAttachments } from "../../api/tickets";
 import { fetchClientsList, fetchContactsList, fetchClientSupportCredits } from "../../api/clients";
 import { fetchUsers } from "../../api/users";
+import { fetchAiStatus, suggestTicketPriorityAi } from "../../api/ai";
 import { useAuthContext } from "../../contexts/AuthContext";
+import { usePermissions } from "../../contexts/PermissionsContext";
 import { useAppLocale } from "../../hooks/useAppGeneralSettings";
 import { useContractModuleOptions } from "../../hooks/useContractModuleOptions";
 import { getTicketCreateCopy } from "./ticketCreatePageI18n";
@@ -499,6 +501,10 @@ export default function TicketCreatePage({
     user: authUser
   } = useAuthContext();
   const {
+    can
+  } = usePermissions();
+  const canSuggestPriority = can("tickets.create") || can("tickets.edit") || can("tickets.manage") || can("tickets_detail.ai_suggest");
+  const {
     modules: contractModuleDefs
   } = useContractModuleOptions();
   const contactDropdownRef = useRef(null);
@@ -521,6 +527,9 @@ export default function TicketCreatePage({
   const [title, setTitle] = useState(initialData?.title || "");
   const [description, setDescription] = useState(initialData?.description || "");
   const [priority, setPriority] = useState("normal");
+  const [aiAutoPriority, setAiAutoPriority] = useState(false);
+  const [aiPriorityLoading, setAiPriorityLoading] = useState(false);
+  const [aiPriorityHint, setAiPriorityHint] = useState("");
   const [channel, setChannel] = useState("phone");
   const [category, setCategory] = useState("");
   const [categorySearch, setCategorySearch] = useState("");
@@ -1088,7 +1097,50 @@ export default function TicketCreatePage({
   const handlePriorityChange = useCallback(nextPriority => {
     if (isMajorIncident && nextPriority !== "urgent") return;
     setPriority(nextPriority);
+    setAiPriorityHint("");
   }, [isMajorIncident]);
+  useEffect(() => {
+    let cancelled = false;
+    fetchAiStatus().then(status => {
+      if (cancelled) return;
+      const configured = Boolean(status?.configured);
+      setAiAutoPriority(configured && status?.features?.autoPriority !== false);
+    }).catch(() => {
+      if (!cancelled) setAiAutoPriority(false);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+  const handleSuggestPriority = useCallback(async () => {
+    if (aiPriorityLoading || isMajorIncident || !aiAutoPriority || !canSuggestPriority) return;
+    const trimmedTitle = String(title || "").trim();
+    const trimmedDescription = String(description || "").trim();
+    if (!trimmedTitle && !trimmedDescription) {
+      toast.warn(copy.aiPriorityNeedContent || "Renseignez un titre ou une description.");
+      return;
+    }
+    setAiPriorityLoading(true);
+    try {
+      const result = await suggestTicketPriorityAi({
+        title: trimmedTitle,
+        description: trimmedDescription,
+        type,
+        category: category || null,
+        locale
+      });
+      const nextPriority = result?.priority || "normal";
+      if (!isMajorIncident) setPriority(nextPriority);
+      const score = result?.score;
+      const rationale = String(result?.rationale || "").trim();
+      setAiPriorityHint(score ? `P${score}${rationale ? ` · ${rationale}` : ""}` : rationale);
+      toast.success(copy.aiPriorityOk || "Priorité IA appliquée");
+    } catch (err) {
+      toast.error(err.message || copy.aiPriorityError || "Impossible de suggérer la priorité");
+    } finally {
+      setAiPriorityLoading(false);
+    }
+  }, [aiPriorityLoading, isMajorIncident, aiAutoPriority, canSuggestPriority, title, description, type, category, locale, copy]);
   const handleEquipmentConcernedChange = useCallback(concerned => {
     setEquipmentConcerned(concerned);
     setFieldErrors(prev => ({
@@ -2015,11 +2067,19 @@ export default function TicketCreatePage({
                       <label className={s.equipmentFieldLabel} htmlFor="ticket-create-priority">
                         {copy.priorityLabel}<span className={s.requiredMark}>*</span>
                       </label>
-                      <select data-pulse={fieldErrors.priority ? errorPulseTick : undefined} id="ticket-create-priority" className={`${s.select} ${fieldErrors.priority ? s.inputError : ""} ${fieldErrors.priority ? s.fieldErrorPulse : ""}`} value={priority} disabled={isMajorIncident} onChange={e => handlePriorityChange(e.target.value)}>
-                        {copy.priorityOptions.map(item => <option key={item.key} value={item.key}>
-                            {item.label}
-                          </option>)}
-                      </select>
+                      <div className={s.priorityAiRow}>
+                        <select data-pulse={fieldErrors.priority ? errorPulseTick : undefined} id="ticket-create-priority" className={`${s.select} ${fieldErrors.priority ? s.inputError : ""} ${fieldErrors.priority ? s.fieldErrorPulse : ""}`} value={priority} disabled={isMajorIncident} onChange={e => handlePriorityChange(e.target.value)}>
+                          {copy.priorityOptions.map(item => <option key={item.key} value={item.key}>
+                              {item.label}
+                            </option>)}
+                        </select>
+                        {aiAutoPriority && canSuggestPriority && !isMajorIncident ? <SmartTooltip content={copy.aiPriorityTitle || "Priorité automatique IA"}>
+                            <button type="button" className={s.priorityAiBtn} onClick={handleSuggestPriority} disabled={aiPriorityLoading} aria-label={copy.aiPriorityTitle || "Priorité automatique IA"}>
+                              <Icon icon={aiPriorityLoading ? "mdi:loading" : "mdi:robot-outline"} className={aiPriorityLoading ? s.spinning : undefined} aria-hidden />
+                            </button>
+                          </SmartTooltip> : null}
+                      </div>
+                      {aiPriorityHint ? <p className={s.priorityAiHint}>{aiPriorityHint}</p> : null}
                     </div>
                   </div>
 

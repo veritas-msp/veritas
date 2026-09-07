@@ -87,6 +87,14 @@
   color: var(--msp-muted, #5c6b82);
 }
 
+.companyMeta {
+  font-size: 0.72rem;
+  color: var(--msp-muted, #5c6b82);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 .state {
   display: flex;
   flex-direction: column;

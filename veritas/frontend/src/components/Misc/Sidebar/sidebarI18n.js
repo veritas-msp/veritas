@@ -14,6 +14,7 @@ const SIDEBAR_COPY = {
     nav: {
       enterprises: "Entreprises",
       contact: "Contact",
+      prestataire: "Prestataires",
       support: "Support",
       sales: "Prestations et installations",
       planning: "Planning",
@@ -70,6 +71,7 @@ const SIDEBAR_COPY = {
     nav: {
       enterprises: "Companies",
       contact: "Contacts",
+      prestataire: "Providers",
       support: "Support",
       sales: "Services & installations",
       planning: "Scheduling",
@@ -126,6 +128,7 @@ const SIDEBAR_COPY = {
     nav: {
       enterprises: "Unternehmen",
       contact: "Kontakte",
+      prestataire: "Dienstleister",
       support: "Support",
       sales: "Leistungen & Installationen",
       planning: "Planung",
@@ -182,6 +185,7 @@ const SIDEBAR_COPY = {
     nav: {
       enterprises: "Aziende",
       contact: "Contatti",
+      prestataire: "Fornitori",
       support: "Supporto",
       sales: "Prestazioni e installazioni",
       planning: "Pianificazione",
@@ -238,6 +242,7 @@ const SIDEBAR_COPY = {
     nav: {
       enterprises: "Empresas",
       contact: "Contactos",
+      prestataire: "Proveedores",
       support: "Soporte",
       sales: "Prestaciones e instalaciones",
       planning: "Planificación",

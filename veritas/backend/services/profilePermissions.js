@@ -8,6 +8,7 @@ export const PROFILE_PERMISSION_FLAGS = [
   "service_enabled",
   "contrat_enabled",
   "contact_enabled",
+  "prestataire_enabled",
   "configurateur_enabled",
   "tickets_enabled",
   "sales_enabled",

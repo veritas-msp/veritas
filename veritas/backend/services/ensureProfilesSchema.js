@@ -61,6 +61,8 @@ export async function ensureSuperAdminProfile(client = null) {
       ADD COLUMN IF NOT EXISTS sales_enabled BOOLEAN NOT NULL DEFAULT FALSE`);
     await db.query(`ALTER TABLE v_b_users_profiles
       ADD COLUMN IF NOT EXISTS administration_enabled BOOLEAN NOT NULL DEFAULT FALSE`);
+    await db.query(`ALTER TABLE v_b_users_profiles
+      ADD COLUMN IF NOT EXISTS prestataire_enabled BOOLEAN NOT NULL DEFAULT FALSE`);
     if (!hadSales) {
       await db.query(`UPDATE v_b_users_profiles SET sales_enabled = tickets_enabled`);
     }
@@ -72,16 +74,22 @@ export async function ensureSuperAdminProfile(client = null) {
           'administrateur', 'administrator', 'admin'
         )`);
     }
+    await db.query(`UPDATE v_b_users_profiles
+      SET prestataire_enabled = TRUE
+      WHERE LOWER(REPLACE(REPLACE(name, '-', ' '), '_', ' ')) IN (
+        'super admin', 'superadmin', 'super administrateur',
+        'administrateur', 'administrator', 'admin'
+      )`);
     const result = await db.query(`INSERT INTO v_b_users_profiles (
         name, label,
         monitoring_enabled, infrastructure_enabled, cybersecurite_enabled,
-        planning_enabled, service_enabled, contrat_enabled, contact_enabled,
+        planning_enabled, service_enabled, contrat_enabled, contact_enabled, prestataire_enabled,
         configurateur_enabled, tickets_enabled, sales_enabled, dashboard_enabled,
         documents_enabled, equipment_inventory_enabled, knowledge_base_enabled, administration_enabled, display_order
       ) VALUES (
         $1,
         'Accès total non modifiable — propriétaire de l''instance.',
-        true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, 1
+        true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, 1
       )
       ON CONFLICT (name) DO NOTHING
       RETURNING name`, [SUPER_ADMIN_PROFILE_NAME]);
@@ -93,6 +101,7 @@ export async function ensureSuperAdminProfile(client = null) {
         service_enabled = TRUE,
         contrat_enabled = TRUE,
         contact_enabled = TRUE,
+        prestataire_enabled = TRUE,
         configurateur_enabled = TRUE,
         tickets_enabled = TRUE,
         sales_enabled = TRUE,

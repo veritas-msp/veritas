@@ -202,26 +202,16 @@ export default function AdminGeneralSettings() {
         </FormGrid>
       </Card>
 
-      <FormGrid cols={2} className={s.cardRow}>
-        <Card title={copy.support.title} description={copy.support.description}>
-          <FormGrid cols={1}>
-            <Field label={copy.support.knowledgeBaseLabel} hint={copy.support.knowledgeBaseHint}>
-              <Input type="url" value={form.app_knowledge_base_url} onChange={e => setField("app_knowledge_base_url", e.target.value)} placeholder="https://kb.votre-msp.fr" maxLength={500} />
-            </Field>
-          </FormGrid>
-        </Card>
-
-        <Card title={copy.onboarding.title} description={copy.onboarding.description}>
-          <p className={adminUi.adminMutedText} style={{
-          margin: "0 0 16px"
-        }}>
-            {copy.onboarding.body}
-          </p>
-          <Btn variant="secondary" icon="mdi:book-open-page-variant-outline" onClick={relaunchOnboarding}>
-            {copy.onboarding.relaunch}
-          </Btn>
-        </Card>
-      </FormGrid>
+      <Card title={copy.onboarding.title} description={copy.onboarding.description}>
+        <p className={adminUi.adminMutedText} style={{
+        margin: "0 0 16px"
+      }}>
+          {copy.onboarding.body}
+        </p>
+        <Btn variant="secondary" icon="mdi:book-open-page-variant-outline" onClick={relaunchOnboarding}>
+          {copy.onboarding.relaunch}
+        </Btn>
+      </Card>
 
       <div className={s.footerBar}>
         <Btn icon="mdi:content-save-outline" onClick={save} disabled={saving}>

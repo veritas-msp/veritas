@@ -811,10 +811,23 @@ export default function SalesFormModal({
 
         <div className={modalStyles.iconSection}>
           <span className={layout.label}>{locale === "fr" ? "Icône" : "Icon"}</span>
-          <IconPicker variant="simple" value={formDraft.icon || "mdi:file-document-outline"} onChange={icon => setFormDraft(prev => ({
-          ...prev,
-          icon
-        }))} choices={SALES_FORM_ICON_CHOICES} />
+          <IconPicker
+            value={formDraft.icon || "mdi:file-document-outline"}
+            onChange={icon => setFormDraft(prev => ({
+              ...prev,
+              icon
+            }))}
+            choices={SALES_FORM_ICON_CHOICES}
+            variant="equipment"
+            searchable
+            popover
+            triggerLabel={locale === "fr" ? "Icône" : "Icon"}
+            searchPlaceholder={locale === "fr" ? "Rechercher une icône…" : "Search for an icon…"}
+            searchAria={locale === "fr" ? "Rechercher une icône" : "Search for an icon"}
+            clearSearchLabel={locale === "fr" ? "Effacer la recherche" : "Clear search"}
+            changeLabel={locale === "fr" ? "Changer l'icône" : "Change icon"}
+            pickerAria={locale === "fr" ? "Choisir une icône" : "Choose an icon"}
+          />
         </div>
 
         <div className={layout.field}>

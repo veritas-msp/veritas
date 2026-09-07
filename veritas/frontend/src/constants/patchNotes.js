@@ -5,6 +5,17 @@
  */
 export const PATCH_NOTES = [
   {
+    version: "1.0.6",
+    date: "2026-09-07",
+    highlights: [
+      "Module Prestataires : liste, fiche, multi-contacts, favoris, rattachement depuis une entreprise, et permissions Agents → Permissions.",
+      "Side conversation ticket : cible « Prestataire externe » avec sélection du prestataire/contact et préremplissage destinataire/copie.",
+      "Menu : disposition horizontale (barre du haut) configurable dans Mon compte, avec tooltips, séparateurs et avatar corrigés.",
+      "IA : suggestion de priorité automatique à la création/édition de ticket, et libellés admin des fonctions IA clarifiés.",
+      "Administration générale : carte Support/Knowledge Base retirée ; guide Premiers pas en pleine largeur."
+    ]
+  },
+  {
     version: "1.0.5",
     date: "2026-09-07",
     highlights: [

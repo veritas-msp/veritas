@@ -12,7 +12,7 @@ import { equipmentMatchesFleetFamily } from "../../utils/equipmentFamilyStats";
 import { filterCustomFamilyMap, filterBySite } from "../../utils/siteFilterUtils";
 import { readEnterprisePeripheralsUi, writeEnterprisePeripheralsUi } from "../../utils/enterprisePeripheralsUiState";
 import { repairRmmTextEncoding } from "../../utils/rmmTextEncoding";
-import { fetchUsers } from "../../api/users";
+import { fetchUsers, fetchActiveUsers } from "../../api/users";
 import { getClientCampaigns, createClientCampaign } from "../../api/campaigns";
 import { fetchTickets } from "../../api/tickets";
 import { fetchEvents } from "../../api/events";
@@ -40,6 +40,8 @@ import { getLinkedElementsSummary, getModalBlockerRows } from "../AdminPage/clie
 import ClientNoteModal from "./ClientNoteModal";
 import ClientTagModal from "./ClientTagModal";
 import ContactFormModal from "../ContactsPage/ContactFormModal";
+import PrestataireAttachModal from "../PrestatairesPage/PrestataireAttachModal";
+import { addPrestataireMembership, fetchPrestataires, fetchPrestatairesList } from "../../api/prestataires";
 import { exportReversibilityFolder } from "./exportReversibilityDossier";
 import EnterpriseVaultPanel from "./EnterpriseVaultPanel";
 import { getEnterpriseVaultCopy } from "./enterpriseVaultI18n";
@@ -319,6 +321,7 @@ export default function ClientDetailPage({
   const canManageTags = can("clients_detail.tags");
   const canAddCredits = can("clients_detail.credits");
   const canAddContact = can("clients_detail.add_contact") && can("contacts.create");
+  const canAddPrestataire = can("clients_detail.add_prestataire") && can("prestataires_detail.edit");
   const canManageSites = can("clients_detail.sites");
   const canScheduleEvent = can("clients_detail.schedule_event") && can("planning.create");
   const canManageNotes = can("clients_detail.notes");
@@ -378,13 +381,17 @@ export default function ClientDetailPage({
   const vaultPanelRef = useRef(null);
   const [contacts, setContacts] = useState([]);
   const [loadingContacts, setLoadingContacts] = useState(false);
+  const [prestataires, setPrestataires] = useState([]);
+  const [loadingPrestataires, setLoadingPrestataires] = useState(false);
   const [slaExpanded, setSlaExpanded] = useState(false);
   const [creditsExpanded, setCreditsExpanded] = useState(false);
   const [slaNow, setSlaNow] = useState(() => Date.now());
   const [contactsExpanded, setContactsExpanded] = useState(false);
+  const [prestatairesExpanded, setPrestatairesExpanded] = useState(false);
   const [sitesSearch, setSitesSearch] = useState("");
   const [sitesPage, setSitesPage] = useState(1);
   const [contactsSectionExpanded, setContactsSectionExpanded] = useState(false);
+  const [prestatairesSectionExpanded, setPrestatairesSectionExpanded] = useState(false);
   const [sitesSectionExpanded, setSitesSectionExpanded] = useState(false);
   const [notesSectionExpanded, setNotesSectionExpanded] = useState(false);
   const [proPromoFeature, setProPromoFeature] = useState(null);
@@ -392,6 +399,10 @@ export default function ClientDetailPage({
   const [infoExpanded, setInfoExpanded] = useState(false);
   const [contactModalOpen, setContactModalOpen] = useState(false);
   const [editingContact, setEditingContact] = useState(null);
+  const [showPrestataireModal, setShowPrestataireModal] = useState(false);
+  const [availablePrestataires, setAvailablePrestataires] = useState([]);
+  const [loadingAvailablePrestataires, setLoadingAvailablePrestataires] = useState(false);
+  const [attachingPrestataire, setAttachingPrestataire] = useState(false);
   const [pageGuideOpen, setPageGuideOpen] = useState(false);
   const openPageGuide = useCallback(() => setPageGuideOpen(true), []);
   useRegisterPageGuide(openPageGuide);
@@ -526,6 +537,7 @@ export default function ClientDetailPage({
   const headerRef = useRef(null);
   const loadControllerRef = useRef(null);
   const contactsControllerRef = useRef(null);
+  const prestatairesControllerRef = useRef(null);
   const logsControllerRef = useRef(null);
   const isMountedRef = useRef(true);
   const loadRequestIdRef = useRef(0);
@@ -794,6 +806,7 @@ export default function ClientDetailPage({
       isMountedRef.current = false;
       controller.abort();
       contactsControllerRef.current?.abort();
+      prestatairesControllerRef.current?.abort();
       logsControllerRef.current?.abort();
     };
   }, [urlClientId, clientData?.clientId, clientData?.client?.id]);
@@ -807,6 +820,8 @@ export default function ClientDetailPage({
       setSlaExpanded(false);
       setContactsExpanded(false);
       setContactsSectionExpanded(false);
+      setPrestatairesExpanded(false);
+      setPrestatairesSectionExpanded(false);
       setSitesSectionExpanded(false);
       setNotesSectionExpanded(false);
       setInfoExpanded(isCommunity);
@@ -923,10 +938,13 @@ export default function ClientDetailPage({
   useEffect(() => {
     if (client?.id) {
       loadContacts(client.id);
+      loadPrestataires(client.id);
       return;
     }
     contactsControllerRef.current?.abort();
     setLoadingContacts(false);
+    prestatairesControllerRef.current?.abort();
+    setLoadingPrestataires(false);
   }, [client?.id]);
   useEffect(() => {
     setEquipmentSearchQuery("");
@@ -1328,6 +1346,7 @@ export default function ClientDetailPage({
     setBackupJobs([]);
     setDocuments([]);
     setContacts([]);
+    setPrestataires([]);
     setLogs([]);
     setLogsTotal(0);
     setLogsPage(1);
@@ -1347,6 +1366,7 @@ export default function ClientDetailPage({
     setUsers([]);
     setLoadingUsers(true);
     setLoadingContacts(false);
+    setLoadingPrestataires(false);
     setLoadingLogs(false);
     if (optimisticClient && isMountedRef.current) {
       applyClientSnapshot(optimisticClient);
@@ -1409,10 +1429,20 @@ export default function ClientDetailPage({
         signal
       }).then(usersData => {
         if (!signal?.aborted && isCurrentRequest() && isMountedRef.current) {
-          setUsers(usersData);
+          setUsers(Array.isArray(usersData) ? usersData : []);
         }
-      }).catch(err => {
-        if (err?.name !== "AbortError") console.error("Error chargement utilisateurs:", err);
+      }).catch(async err => {
+        if (err?.name === "AbortError") return;
+        try {
+          const activeUsers = await fetchActiveUsers({
+            signal
+          });
+          if (!signal?.aborted && isCurrentRequest() && isMountedRef.current) {
+            setUsers(Array.isArray(activeUsers) ? activeUsers : []);
+          }
+        } catch (fallbackErr) {
+          if (fallbackErr?.name !== "AbortError") console.error("Error chargement utilisateurs:", fallbackErr);
+        }
       }).finally(() => {
         if (isCurrentRequest() && isMountedRef.current) setLoadingUsers(false);
       });
@@ -1479,6 +1509,65 @@ export default function ClientDetailPage({
       }
     } finally {
       if (isMountedRef.current) setLoadingContacts(false);
+    }
+  };
+  const loadPrestataires = async (clientId = null, signal) => {
+    const targetClientId = clientId || client?.id;
+    if (!targetClientId) return;
+    let requestSignal = signal;
+    if (!requestSignal) {
+      prestatairesControllerRef.current?.abort();
+      const controller = createTrackedAbortController();
+      prestatairesControllerRef.current = controller;
+      requestSignal = controller.signal;
+    }
+    setLoadingPrestataires(true);
+    try {
+      const data = await fetchPrestataires(targetClientId, {
+        signal: requestSignal
+      });
+      if (requestSignal?.aborted || !isMountedRef.current) return;
+      setPrestataires(Array.isArray(data) ? data : []);
+    } catch (err) {
+      if (err?.name !== "AbortError") {
+        console.error("Error chargement prestataires:", err);
+      }
+    } finally {
+      if (isMountedRef.current) setLoadingPrestataires(false);
+    }
+  };
+
+  const openPrestataireAttachModal = async () => {
+    if (!client?.id) return;
+    setShowPrestataireModal(true);
+    setLoadingAvailablePrestataires(true);
+    try {
+      const all = await fetchPrestatairesList();
+      const linkedIds = new Set((Array.isArray(prestataires) ? prestataires : []).map(row => String(row.id)));
+      const available = (Array.isArray(all) ? all : []).filter(row => !linkedIds.has(String(row.id)));
+      if (!isMountedRef.current) return;
+      setAvailablePrestataires(available);
+    } catch (err) {
+      console.error("Error chargement prestataires disponibles:", err);
+      if (isMountedRef.current) setAvailablePrestataires([]);
+      toast.error(err.message || copy.loadProvidersError || "Impossible de charger les prestataires");
+    } finally {
+      if (isMountedRef.current) setLoadingAvailablePrestataires(false);
+    }
+  };
+
+  const handleAttachPrestataire = async row => {
+    if (!client?.id || !row?.id || attachingPrestataire) return;
+    setAttachingPrestataire(true);
+    try {
+      await addPrestataireMembership(row.id, { client_id: client.id });
+      toast.success(copy.providerLinked || "Prestataire rattaché");
+      setShowPrestataireModal(false);
+      await loadPrestataires(client.id);
+    } catch (err) {
+      toast.error(err.message || copy.providerLinkError || "Impossible de rattacher le prestataire");
+    } finally {
+      setAttachingPrestataire(false);
     }
   };
   const loadLogs = async (page = 1, clientId = null, signal) => {
@@ -2397,7 +2486,7 @@ export default function ClientDetailPage({
         campaigns,
         notes,
         clientTags,
-        commercialLabel: users.find(u => u.id === formData.commercialId)?.username || users.find(u => u.id === formData.commercialId)?.email || "",
+        commercialLabel: client?.commercial || users.find(u => String(u.id) === String(formData.commercialId))?.username || users.find(u => String(u.id) === String(formData.commercialId))?.email || "",
         contractModules: getContractModules({
           modules: formData.modules
         }),
@@ -2880,6 +2969,8 @@ export default function ClientDetailPage({
   const activeContactCount = activeContacts.length;
   const visibleContacts = contactsExpanded ? activeContacts : activeContacts.slice(0, 1);
   const hasMoreContacts = activeContacts.length > 1;
+  const visiblePrestataires = prestatairesExpanded ? prestataires : prestataires.slice(0, 1);
+  const hasMorePrestataires = prestataires.length > 1;
   const clientSites = useMemo(() => normalizeClientSites(formData.sites), [formData.sites]);
   const filteredSites = useMemo(() => {
     const query = sitesSearch.trim();
@@ -3005,8 +3096,8 @@ export default function ClientDetailPage({
   const companyStatusLabel = companyStatusKey === "inactive" ? copy.companyStatusInactive : copy.companyStatusActive;
   const clientCode = getClientNumber(client);
   const clientNameWithoutCode = getClientNameWithoutCode(client) || "-";
-  const commercialUser = users.find(u => u.id === formData.commercialId);
-  const commercialLabel = commercialUser?.username || commercialUser?.email || null;
+  const commercialUser = users.find(u => String(u.id) === String(formData.commercialId));
+  const commercialLabel = client?.commercial || commercialUser?.username || commercialUser?.email || null;
   return <div ref={pageRootRef} className={`${styles.contratDetailPage} ${styles.enterpriseDetailPage} msp-page-grid`}>
       <header className={`${styles.pageHero} ${isCommunity ? styles.pageHeroProTeaser : ""}`} ref={headerRef} data-guide="enterprise-hero">
         <div className={styles.heroRow}>
@@ -3777,6 +3868,79 @@ export default function ClientDetailPage({
               </div>}
             </section>
 
+            <section className={styles.sidebarSection} data-guide="enterprise-sidebar-prestataires">
+              <button type="button" className={styles.sidebarCollapseHeader} onClick={() => setPrestatairesSectionExpanded(prev => !prev)} aria-expanded={prestatairesSectionExpanded} aria-controls="enterprise-sidebar-prestataires">
+                <span className={styles.sidebarInfoTitle}>
+                  {copy.providersTitle}
+                  {!loadingPrestataires && prestataires.length > 0 ? <span className={styles.sidebarSectionCount}>{prestataires.length}</span> : null}
+                </span>
+                <Icon icon={prestatairesSectionExpanded ? "mdi:chevron-up" : "mdi:chevron-down"} className={styles.sidebarCollapseChevron} aria-hidden />
+              </button>
+              {prestatairesSectionExpanded && <div className={styles.sidebarBody} id="enterprise-sidebar-prestataires">
+                <div className={styles.sidebarBodyActions}>
+                  {canAddPrestataire ? <SmartTooltip content={copy.addProvider}>
+                    <button type="button" className={styles.editInfoButton} onClick={openPrestataireAttachModal} aria-label={copy.addProvider}>
+                      <FaPlus />
+                    </button>
+                  </SmartTooltip> : null}
+                </div>
+              {loadingPrestataires ? <div className={styles.loadingState}>{copy.loadingProviders}</div> : !prestataires || prestataires.length === 0 ? <div className={styles.emptyState}>
+                  <Icon icon="mdi:handshake-outline" className={styles.emptyIcon} />
+                  <h5>{copy.noProviders}</h5>
+                </div> : <>
+                <ul className={styles.sidebarContactsList}>
+                  {visiblePrestataires.map(prestataire => <SmartTooltip as="li" key={prestataire.id} className={styles.sidebarContactItem} onClick={() => {
+                      if (onNavigate) {
+                        onNavigate("PrestataireDetail", {
+                          prestataireId: prestataire.id,
+                          nom: prestataire.nom
+                        });
+                      }
+                    }} content={copy.viewProviderDetails}>
+                      <div className={styles.sidebarContactAvatar} aria-hidden>
+                        {(prestataire.nom || "PR").slice(0, 2).toUpperCase()}
+                      </div>
+                      <div className={styles.sidebarContactBody}>
+                        <div className={styles.sidebarContactTop}>
+                          <div className={styles.sidebarContactIdentity}>
+                            <span className={styles.sidebarContactName}>{prestataire.nom || "-"}</span>
+                            {prestataire.type ? <span className={styles.sidebarContactRole}>{prestataire.type}</span> : null}
+                          </div>
+                        </div>
+                        {(prestataire.email || prestataire.telephone || (Array.isArray(prestataire.contacts) && prestataire.contacts[0])) ? <div className={styles.sidebarContactMeta}>
+                            {(() => {
+                        const primary = Array.isArray(prestataire.contacts) && prestataire.contacts[0]
+                          ? prestataire.contacts[0]
+                          : null;
+                        const email = primary?.email || prestataire.email;
+                        const telephone = primary?.telephone || prestataire.telephone;
+                        const person = primary
+                          ? [primary.prenom, primary.nom].filter(Boolean).join(" ")
+                          : [prestataire.contact_prenom, prestataire.contact_nom].filter(Boolean).join(" ");
+                        return <>
+                              {person ? <span className={styles.sidebarContactMetaRow}>
+                                  <Icon icon="mdi:account-outline" className={styles.sidebarContactMetaIcon} aria-hidden />
+                                  <span>{person}</span>
+                                </span> : null}
+                              {email ? <a href={`mailto:${encodeURIComponent(email)}`} className={styles.sidebarContactMetaRow} onClick={e => e.stopPropagation()}>
+                                <Icon icon="mdi:email-outline" className={styles.sidebarContactMetaIcon} aria-hidden />
+                                <span>{email}</span>
+                              </a> : null}
+                              {telephone ? <a href={`tel:${String(telephone).replace(/[^\d+]/g, "")}`} className={styles.sidebarContactMetaRow} onClick={e => e.stopPropagation()}>
+                                <Icon icon="mdi:phone-outline" className={styles.sidebarContactMetaIcon} aria-hidden />
+                                <span>{telephone}</span>
+                              </a> : null}
+                            </>;
+                      })()}
+                          </div> : null}
+                      </div>
+                    </SmartTooltip>)}
+                </ul>
+                {hasMorePrestataires && <SidebarExpandToggle expanded={prestatairesExpanded} onClick={() => setPrestatairesExpanded(prev => !prev)} panelStyles={styles} copy={copy} />}
+                </>}
+              </div>}
+            </section>
+
             <section className={styles.sidebarSection}>
               <button type="button" className={styles.sidebarCollapseHeader} onClick={() => setSitesSectionExpanded(prev => !prev)} aria-expanded={sitesSectionExpanded} aria-controls="enterprise-sidebar-sites">
                 <span className={styles.sidebarInfoTitle}>
@@ -3957,6 +4121,19 @@ export default function ClientDetailPage({
     }] : []} fixedClientId={client?.id ?? null} stacked onClose={handleContactModalClose} onSuccess={() => {
       if (client?.id) loadContacts(client.id);
     }} />
+
+      <PrestataireAttachModal
+        open={showPrestataireModal}
+        companyName={formData?.name || client?.name || ""}
+        providers={availablePrestataires}
+        loading={loadingAvailablePrestataires}
+        saving={attachingPrestataire}
+        onClose={() => {
+          if (attachingPrestataire) return;
+          setShowPrestataireModal(false);
+        }}
+        onSelect={handleAttachPrestataire}
+      />
 
       <ClientNoteModal open={noteModalOpen} mode={noteModalMode} initialContent={noteModalInitialContent} clientName={formData?.name || client?.name || ""} copy={copy} saving={savingNote} onClose={closeNoteModal} onSubmit={handleNoteModalSubmit} />
 

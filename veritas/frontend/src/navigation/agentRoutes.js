@@ -24,6 +24,8 @@ export const DOC_TYPE_ACCESS_KEY = {
   ContratDetail: "Contrat",
   Contact: "Contact",
   ContactDetail: "Contact",
+  Prestataire: "Prestataire",
+  PrestataireDetail: "Prestataire",
   Mon: "Mon",
   MonitoringDetail: "Mon",
   Rapport: "Mon",
@@ -44,6 +46,7 @@ const QUERY_KEYS = {
   Service: ["tab", "clientId"],
   Contrat: ["openClientId", "highlight"],
   Contact: ["openContactId", "highlight"],
+  Prestataire: ["openPrestataireId", "highlight"],
   TicketCreate: ["clientId", "contactId"],
   TicketSalesCreate: ["kind", "category"]
 };
@@ -153,6 +156,13 @@ export function buildAgentPath(docType, data = null, options = {}) {
       {
         const contactId = d.contactId || d.id;
         return contactId ? `/contacts/${encodeSeg(contactId)}` : "/contacts";
+      }
+    case "Prestataire":
+      return appendQuery("/prestataires", d, docType);
+    case "PrestataireDetail":
+      {
+        const prestataireId = d.prestataireId || d.id;
+        return prestataireId ? `/prestataires/${encodeSeg(prestataireId)}` : "/prestataires";
       }
     case "Rapport":
     case "Report":
@@ -350,6 +360,22 @@ export function parseAgentPath(pathname, search = "") {
     re: /^\/contacts$/,
     run: () => ({
       docType: "Contact",
+      data: Object.keys(query).length ? query : null,
+      adminTab: null
+    })
+  }, {
+    re: /^\/prestataires\/([^/]+)$/,
+    run: ([, prestataireId]) => ({
+      docType: "PrestataireDetail",
+      data: {
+        prestataireId: decodeURIComponent(prestataireId)
+      },
+      adminTab: null
+    })
+  }, {
+    re: /^\/prestataires$/,
+    run: () => ({
+      docType: "Prestataire",
       data: Object.keys(query).length ? query : null,
       adminTab: null
     })
@@ -560,6 +586,7 @@ export function routeToMainAppState(parsed) {
     contratDetailData: null,
     contratPageParams: null,
     contactPageParams: null,
+    prestatairePageParams: null,
     campaignDetailData: null,
     antivirusDetailData: null,
     antispamDetailData: null,
@@ -568,6 +595,7 @@ export function routeToMainAppState(parsed) {
     ticketCreateData: null,
     ticketSalesCreateData: null,
     contactDetailData: null,
+    prestataireDetailData: null,
     equipmentFilterParams: null,
     equipmentDetailData: null,
     jobDetailData: null,
@@ -588,6 +616,12 @@ export function routeToMainAppState(parsed) {
       break;
     case "Contact":
       state.contactPageParams = data;
+      break;
+    case "PrestataireDetail":
+      state.prestataireDetailData = data;
+      break;
+    case "Prestataire":
+      state.prestatairePageParams = data;
       break;
     case "CampaignDetail":
       state.campaignDetailData = data?.campaign ? data.campaign : data;

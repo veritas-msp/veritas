@@ -1,41 +1,83 @@
 import React, { useRef, useState, useLayoutEffect, useCallback, useEffect } from "react";
 import { createPortal } from "react-dom";
 import styles from "./SidebarTooltip.module.css";
+
 const GAP = 10;
 const EST_WIDTH = 200;
 const DEFAULT_SHOW_DELAY_MS = 400;
+
+function resolvePlacement(explicit) {
+  if (explicit === "right" || explicit === "bottom" || explicit === "top") return explicit;
+  if (typeof document !== "undefined" && document.documentElement?.dataset?.sidebarLayout === "horizontal") {
+    return "bottom";
+  }
+  return "right";
+}
+
 export default function SidebarTooltip({
   as: Component = "span",
   content,
   className = "",
   showDelayMs = DEFAULT_SHOW_DELAY_MS,
+  placement: placementProp,
   children,
   ...rest
 }) {
   const triggerRef = useRef(null);
   const showTimerRef = useRef(null);
   const [visible, setVisible] = useState(false);
+  const [placement, setPlacement] = useState(() => resolvePlacement(placementProp));
   const [pos, setPos] = useState({
     top: 0,
     left: 0
   });
+
   const updatePosition = useCallback(() => {
     const el = triggerRef.current;
     if (!el || typeof window === "undefined") return;
+    const nextPlacement = resolvePlacement(placementProp);
     const rect = el.getBoundingClientRect();
+    setPlacement(nextPlacement);
+
+    if (nextPlacement === "bottom") {
+      const left = Math.min(
+        Math.max(12 + EST_WIDTH / 2, rect.left + rect.width / 2),
+        window.innerWidth - 12 - EST_WIDTH / 2
+      );
+      setPos({
+        top: rect.bottom + GAP,
+        left
+      });
+      return;
+    }
+
+    if (nextPlacement === "top") {
+      const left = Math.min(
+        Math.max(12 + EST_WIDTH / 2, rect.left + rect.width / 2),
+        window.innerWidth - 12 - EST_WIDTH / 2
+      );
+      setPos({
+        top: rect.top - GAP,
+        left
+      });
+      return;
+    }
+
     let left = rect.right + GAP;
     left = Math.min(left, window.innerWidth - EST_WIDTH - 12);
     setPos({
       top: rect.top + rect.height / 2,
       left: Math.max(12, left)
     });
-  }, []);
+  }, [placementProp]);
+
   const clearShowTimer = useCallback(() => {
     if (showTimerRef.current != null) {
       window.clearTimeout(showTimerRef.current);
       showTimerRef.current = null;
     }
   }, []);
+
   const onShow = useCallback(() => {
     if (!content) return;
     clearShowTimer();
@@ -45,11 +87,14 @@ export default function SidebarTooltip({
       setVisible(true);
     }, showDelayMs);
   }, [content, updatePosition, showDelayMs, clearShowTimer]);
+
   const onHide = useCallback(() => {
     clearShowTimer();
     setVisible(false);
   }, [clearShowTimer]);
+
   useEffect(() => () => clearShowTimer(), [clearShowTimer]);
+
   useLayoutEffect(() => {
     if (!visible) return;
     updatePosition();
@@ -63,11 +108,13 @@ export default function SidebarTooltip({
       window.removeEventListener("resize", onScrollOrResize);
     };
   }, [visible, updatePosition]);
+
   if (!content) {
     return <Component ref={triggerRef} className={className} {...rest}>
         {children}
       </Component>;
   }
+
   const {
     onMouseEnter: userMouseEnter,
     onMouseLeave: userMouseLeave,
@@ -75,6 +122,31 @@ export default function SidebarTooltip({
     onBlur: userBlur,
     ...domRest
   } = rest;
+
+  const portalStyle = placement === "bottom"
+    ? {
+        position: "fixed",
+        top: pos.top,
+        left: pos.left,
+        transform: "translateX(-50%)",
+        zIndex: 200000
+      }
+    : placement === "top"
+      ? {
+          position: "fixed",
+          top: pos.top,
+          left: pos.left,
+          transform: "translate(-50%, -100%)",
+          zIndex: 200000
+        }
+      : {
+          position: "fixed",
+          top: pos.top,
+          left: pos.left,
+          transform: "translateY(-50%)",
+          zIndex: 200000
+        };
+
   return <>
       <Component ref={triggerRef} className={className} {...domRest} onMouseEnter={e => {
       userMouseEnter?.(e);
@@ -91,13 +163,7 @@ export default function SidebarTooltip({
     }}>
         {children}
       </Component>
-      {visible && createPortal(<div className={styles.root} style={{
-      position: "fixed",
-      top: pos.top,
-      left: pos.left,
-      transform: "translateY(-50%)",
-      zIndex: 200000
-    }} role="tooltip">
+      {visible && createPortal(<div className={`${styles.root} ${placement === "bottom" ? styles.placementBottom : placement === "top" ? styles.placementTop : styles.placementRight}`} style={portalStyle} role="tooltip">
             <div className={styles.bubble}>{content}</div>
           </div>, document.body)}
     </>;

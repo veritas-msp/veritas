@@ -1,6 +1,7 @@
 import { getSettingsMap } from "./settingsHelper.js";
 
 export const AI_FEATURE_LIMIT_KEYS = {
+  autoPriority: "AI_LIMIT_AUTO_PRIORITY",
   suggestReply: "AI_LIMIT_SUGGEST_REPLY",
   suggestResolve: "AI_LIMIT_SUGGEST_RESOLVE",
   generateRunbook: "AI_LIMIT_GENERATE_RUNBOOK",
@@ -14,6 +15,7 @@ export const AI_FEATURE_LIMIT_KEYS = {
 
 /** Maps recorded usage feature → policy/limit key */
 export const AI_USAGE_FEATURE_TO_LIMIT_KEY = {
+  auto_priority: "autoPriority",
   suggest_reply: "suggestReply",
   suggest_internal_note: "suggestReply",
   correct_text: "suggestReply",
@@ -29,6 +31,7 @@ export const AI_USAGE_FEATURE_TO_LIMIT_KEY = {
 
 /** Usage feature codes that share the same daily limit bucket */
 export const AI_LIMIT_KEY_TO_USAGE_FEATURES = {
+  autoPriority: ["auto_priority"],
   suggestReply: ["suggest_reply", "suggest_internal_note", "correct_text"],
   suggestResolve: ["suggest_resolve"],
   generateRunbook: ["generate_runbook"],
@@ -40,7 +43,7 @@ export const AI_LIMIT_KEY_TO_USAGE_FEATURES = {
   enterpriseSummary: ["enterprise_summary"]
 };
 
-export const AI_SETTING_KEYS = ["INTEGRATION_AI_ENABLED", "AI_PROVIDER", "AI_API_KEY", "AI_MODEL", "AI_ENRICH_MONITORING_ALERTS", "AI_FEATURE_SUGGEST_REPLY", "AI_FEATURE_SUGGEST_RESOLVE", "AI_FEATURE_GENERATE_RUNBOOK", "AI_FEATURE_HELP_ME", "AI_FEATURE_TICKET_RUNBOOK", "AI_FEATURE_DASHBOARD_BRIEFING", "AI_FEATURE_SUPERVISION_BRIEFING", "AI_FEATURE_ENTERPRISE_SUMMARY", ...Object.values(AI_FEATURE_LIMIT_KEYS)];
+export const AI_SETTING_KEYS = ["INTEGRATION_AI_ENABLED", "AI_PROVIDER", "AI_API_KEY", "AI_MODEL", "AI_ENRICH_MONITORING_ALERTS", "AI_FEATURE_AUTO_PRIORITY", "AI_FEATURE_SUGGEST_REPLY", "AI_FEATURE_SUGGEST_RESOLVE", "AI_FEATURE_GENERATE_RUNBOOK", "AI_FEATURE_HELP_ME", "AI_FEATURE_TICKET_RUNBOOK", "AI_FEATURE_DASHBOARD_BRIEFING", "AI_FEATURE_SUPERVISION_BRIEFING", "AI_FEATURE_ENTERPRISE_SUMMARY", ...Object.values(AI_FEATURE_LIMIT_KEYS)];
 
 export const AI_PROVIDERS = ["openai", "anthropic", "mammouth"];
 
@@ -52,6 +55,7 @@ const DEFAULTS = {
     mammouth: "mammouth-recommended"
   },
   featureLimits: {
+    autoPriority: 100,
     suggestReply: 100,
     suggestResolve: 50,
     generateRunbook: 30,
@@ -117,6 +121,7 @@ export async function getAiConfig() {
     model,
     featureLimits,
     features: {
+      autoPriority: parseBool(map.AI_FEATURE_AUTO_PRIORITY, true),
       suggestReply: parseBool(map.AI_FEATURE_SUGGEST_REPLY, true),
       suggestResolve: parseBool(map.AI_FEATURE_SUGGEST_RESOLVE, true),
       generateRunbook: parseBool(map.AI_FEATURE_GENERATE_RUNBOOK, true),
@@ -132,8 +137,18 @@ export async function getAiConfig() {
   };
 }
 
+export function mapPriorityScoreToTicketPriority(score) {
+  const n = Number.parseInt(String(score), 10);
+  if (n <= 1) return "urgent";
+  if (n === 2) return "high";
+  if (n === 3) return "normal";
+  if (n === 4) return "normal";
+  return "low";
+}
+
 export function assertAiFeatureEnabled(config, featureKey) {
   const map = {
+    auto_priority: "autoPriority",
     suggest_reply: "suggestReply",
     suggest_internal_note: "suggestReply",
     correct_text: "suggestReply",

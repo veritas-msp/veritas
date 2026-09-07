@@ -47,6 +47,10 @@ const PAGES_ACCESS_CONFIG = [{
   label: "Contact",
   accessKey: "contact_enabled"
 }, {
+  key: "Prestataire",
+  label: "Prestataire",
+  accessKey: "prestataire_enabled"
+}, {
   key: "Admin",
   label: "Administration",
   accessKey: "administration_enabled"

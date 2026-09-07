@@ -23,9 +23,20 @@
   left: 64px;
 }
 
+.tabsBar.sidebarTop {
+  left: 0;
+  top: var(--sidebar-top-height, 56px);
+}
+
+:global(html[data-profile-preview="1"]) .tabsBar.sidebarTop,
+:global(html[data-agent-impersonation="1"]) .tabsBar.sidebarTop {
+  top: calc(var(--profile-preview-banner-height, 40px) + var(--sidebar-top-height, 56px));
+}
+
 @media screen and (max-width: 1023px) {
   .tabsBar,
-  .tabsBar.sidebarCollapsed {
+  .tabsBar.sidebarCollapsed,
+  .tabsBar.sidebarTop {
     display: none;
   }
 }

@@ -3,9 +3,9 @@ import { createPortal } from "react-dom";
 import { Icon } from "@iconify/react";
 import styles from "./IconPicker.module.css";
 import { EQUIPMENT_FAMILY_ICON_CHOICES } from "./equipmentFamilyIconChoices";
-export { EQUIPMENT_FAMILY_ICON_CHOICES };
+import { SALES_FORM_ICON_CHOICES } from "./salesFormIconChoices";
+export { EQUIPMENT_FAMILY_ICON_CHOICES, SALES_FORM_ICON_CHOICES };
 export const CONTRACT_MODULE_ICON_CHOICES = ["mdi:headset", "tabler:truck-filled", "fluent-mdl2:documentation", "eos-icons:monitoring", "carbon:data-center", "mdi:puzzle-outline", "mdi:lifebuoy", "mdi:handshake-outline", "mdi:shield-check", "mdi:shield-outline", "mdi:security", "mdi:antivirus", "mdi:firewall", "mdi:server", "mdi:server-network", "mdi:database", "mdi:harddisk", "mdi:backup-restore", "mdi:cloud-outline", "mdi:cloud-check", "mdi:web", "mdi:lan", "mdi:router-network", "mdi:wifi", "mdi:monitor-dashboard", "mdi:chart-line", "mdi:eye-outline", "mdi:bell-outline", "mdi:tools", "mdi:wrench", "mdi:cog", "mdi:desktop-classic", "mdi:laptop", "mdi:office-building-outline", "mdi:account-group", "mdi:email-outline", "mdi:phone", "mdi:file-document-edit-outline", "mdi:clock-outline", "mdi:calendar-check", "mdi:check-circle-outline", "mdi:alert-circle-outline", "mdi:currency-eur", "mdi:credit-card-outline", "mdi:lock-outline", "mdi:key", "mdi:bug-outline"];
-export const SALES_FORM_ICON_CHOICES = ["mdi:briefcase-edit-outline", "mdi:tools", "mdi:hammer-wrench", "mdi:clipboard-search-outline", "mdi:truck-remove-outline", "mdi:truck-delivery-outline", "mdi:school-outline", "mdi:remote-desktop", "mdi:map-marker-radius", "mdi:cog-play-outline", "mdi:file-document-edit-outline", "mdi:cloud-sync-outline", "mdi:devices", "mdi:application-outline", "mdi:lan", "mdi:rocket-launch-outline", "mdi:file-document-outline", "mdi:wrench", "mdi:server", "mdi:desktop-classic", "mdi:account-wrench-outline", "mdi:package-variant-closed", "mdi:factory", "mdi:chart-timeline-variant"];
 export default function IconPicker({
   value,
   onChange,
@@ -17,7 +17,8 @@ export default function IconPicker({
   searchAria = "Search for an icon",
   clearSearchLabel = "Clear search",
   changeLabel = "Change icon",
-  pickerAria = "Choose an icon"
+  pickerAria = "Choose an icon",
+  triggerLabel = ""
 }) {
   const rootRef = useRef(null);
   const panelRef = useRef(null);
@@ -44,10 +45,15 @@ export default function IconPicker({
     const updatePosition = () => {
       const rect = rootRef.current?.getBoundingClientRect();
       if (!rect) return;
-      const width = Math.min(448, window.innerWidth - 24);
+      const width = Math.min(480, window.innerWidth - 24);
       const left = Math.min(Math.max(12, rect.left), window.innerWidth - width - 12);
+      const preferredTop = rect.bottom + 8;
+      const panelHeight = 360;
+      const top = preferredTop + panelHeight > window.innerHeight - 12
+        ? Math.max(12, rect.top - panelHeight - 8)
+        : preferredTop;
       setPanelPos({
-        top: rect.bottom + 8,
+        top,
         left
       });
     };
@@ -95,7 +101,7 @@ export default function IconPicker({
       <div className={gridClassName} role="listbox" aria-label={pickerAria}>
         {tiles.length > 0 ? tiles : <p className={styles.emptySearch}>{searchPlaceholder}</p>}
       </div>
-      {isEquipment ? <p className={styles.iconCount}>{icons.length} icon{icons.length > 1 ? "s" : ""}</p> : null}
+      {searchable || isEquipment ? <p className={styles.iconCount}>{icons.length} icon{icons.length > 1 ? "s" : ""}</p> : null}
     </>;
 
   if (isSimple) {
@@ -105,11 +111,13 @@ export default function IconPicker({
   }
 
   if (popover) {
+    const hasTriggerLabel = Boolean(String(triggerLabel || "").trim());
     return <div ref={rootRef} className={styles.popoverWrap}>
-        <button type="button" className={`${styles.trigger} ${open ? styles.triggerOpen : ""}`} onClick={() => setOpen(current => !current)} aria-expanded={open} aria-haspopup="dialog" title={changeLabel} aria-label={changeLabel}>
+        <button type="button" className={`${styles.trigger} ${hasTriggerLabel ? styles.triggerLabeled : ""} ${open ? styles.triggerOpen : ""}`} onClick={() => setOpen(current => !current)} aria-expanded={open} aria-haspopup="dialog" title={changeLabel} aria-label={changeLabel}>
           <Icon icon={selected} className={styles.triggerIcon} />
+          {hasTriggerLabel ? <span className={styles.triggerLabel}>{triggerLabel}</span> : null}
           <span className={styles.triggerHint}>
-            <Icon icon="mdi:pencil-outline" aria-hidden />
+            <Icon icon={hasTriggerLabel ? "mdi:chevron-down" : "mdi:pencil-outline"} aria-hidden />
           </span>
         </button>
         {open && typeof document !== "undefined" ? createPortal(<div ref={panelRef} className={`${styles.popover} ${styles.popoverFixed}`} style={{

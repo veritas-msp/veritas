@@ -19,6 +19,8 @@ import account from "../AccountPage/AccountPage.module.css";
 import MspPageHero from "../MspPageHero/MspPageHero";
 import mspStyles from "../../CybersecuritePage/CybersecuritePage.module.css";
 import s from "./UserProfile.module.css";
+import { useSidebarLayout } from "../../../hooks/useSidebarLayout";
+import { SIDEBAR_LAYOUTS } from "../../../utils/sidebarLayoutPreferences";
 import { formatProfileDate, getLocalizedNotifEventOptions, getMfaStatus, getNotificationsSectionDescription, getUserProfileCopy } from "./userProfileI18n";
 
 const APP_LOCALE_KEY = "app_locale";
@@ -27,6 +29,9 @@ const PLANNING_VISIBILITY_KEY = "planning_visibility";
 const NAV_ITEMS = [{
   id: "account",
   icon: "mdi:account-cog-outline"
+}, {
+  id: "interface",
+  icon: "mdi:view-dashboard-outline"
 }, {
   id: "support",
   icon: "mdi:headset"
@@ -64,6 +69,11 @@ export default function UserProfile() {
     patchUser,
     setMfaEnabledFlag
   } = useAuthContext();
+  const {
+    layout: sidebarLayout,
+    setLayout: setSidebarLayout,
+    saving: savingSidebarLayout
+  } = useSidebarLayout();
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [activeSection, setActiveSection] = useState("account");
@@ -306,6 +316,28 @@ export default function UserProfile() {
       setSavingLocale(false);
     }
   };
+
+  const handleSidebarLayoutChange = async value => {
+    if (!value || value === sidebarLayout) return;
+    try {
+      await setSidebarLayout(value);
+      toast.success(t.toast.sidebarLayoutSaved);
+    } catch {
+      toast.error(t.toast.sidebarLayoutError);
+    }
+  };
+
+  const sidebarLayoutOptions = useMemo(() => [{
+    value: SIDEBAR_LAYOUTS.vertical,
+    label: t.sidebarLayout.verticalLabel,
+    description: t.sidebarLayout.verticalDesc,
+    icon: "mdi:view-dashboard-outline"
+  }, {
+    value: SIDEBAR_LAYOUTS.horizontal,
+    label: t.sidebarLayout.horizontalLabel,
+    description: t.sidebarLayout.horizontalDesc,
+    icon: "mdi:view-sequential-outline"
+  }], [t.sidebarLayout]);
 
   const handlePlanningVisibilityChange = async value => {
     if (!value || value === planningVisibility) return;
@@ -552,6 +584,28 @@ export default function UserProfile() {
                       <span className={s.settingLabel}>{t.activity.lastLogin}</span>
                       <span className={s.settingValue}>{formatProfileDate(user.last_login_at, locale)}</span>
                     </div>
+                  </div>
+                </SectionPanel>
+              </div>}
+
+            {activeSection === "interface" && <div className={account.contentGrid}>
+                <SectionPanel title={t.sections.interface.title} description={t.sections.interface.description} full>
+                  <div className={s.localeBlock}>
+                    <span className={s.settingLabel}>{t.sidebarLayout.label}</span>
+                    <span className={s.settingHint}>{t.sidebarLayout.hint}</span>
+                    <div className={s.layoutChoiceGrid} role="radiogroup" aria-label={t.sidebarLayout.label}>
+                      {sidebarLayoutOptions.map(option => {
+                  const active = sidebarLayout === option.value;
+                  return <button key={option.value} type="button" role="radio" aria-checked={active} className={`${s.layoutChoiceCard} ${active ? s.layoutChoiceCardActive : ""}`} onClick={() => handleSidebarLayoutChange(option.value)} disabled={savingSidebarLayout}>
+                            <Icon icon={option.icon} className={s.layoutChoiceIcon} aria-hidden />
+                            <span className={s.layoutChoiceText}>
+                              <span className={s.layoutChoiceTitle}>{option.label}</span>
+                              <span className={s.layoutChoiceDesc}>{option.description}</span>
+                            </span>
+                          </button>;
+                })}
+                    </div>
+                    {savingSidebarLayout ? <span className={s.inlineStatus}>{t.sidebarLayout.saving}</span> : null}
                   </div>
                 </SectionPanel>
               </div>}

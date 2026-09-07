@@ -170,6 +170,7 @@ router.get("/me", verifyJWT, async (req, res) => {
               p.service_enabled,
               p.contrat_enabled,
               p.contact_enabled,
+              p.prestataire_enabled,
               p.tickets_enabled,
               p.configurateur_enabled,
               p.dashboard_enabled,

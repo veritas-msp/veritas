@@ -18,6 +18,8 @@ function getTabIcon(type, tabData) {
       return "mdi:office-building-outline";
     case "Contact":
       return "mdi:account-group-outline";
+    case "Prestataire":
+      return "mdi:handshake-outline";
     case "Ticket":
     case "TicketCreate":
     case "TicketDetail":
@@ -34,6 +36,8 @@ function getTabIcon(type, tabData) {
       return "mdi:office-building";
     case "ContactDetail":
       return "mdi:phone";
+    case "PrestataireDetail":
+      return "mdi:handshake";
     case "Equipment":
       return "material-symbols:devices";
     case "MonitoringDetail":
@@ -305,7 +309,8 @@ export default function TabsBar({
   onSortTabs,
   onNewTab,
   launcherActive = false,
-  sidebarCollapsed = false
+  sidebarCollapsed = false,
+  sidebarLayout = "vertical"
 }) {
   const sensors = useSensors(useSensor(PointerSensor, {
     activationConstraint: {
@@ -354,7 +359,7 @@ export default function TabsBar({
       return <SortableTab key={tab.id} tab={tab} isActive={isActive} onTabClick={onTabClick} onTabClose={onTabClose} />;
     });
   };
-  return <div className={`${styles.tabsBar} ${sidebarCollapsed ? styles.sidebarCollapsed : ""} ${folderMode ? styles.tabsBarFolderMode : ""}`.trim()}>
+  return <div className={`${styles.tabsBar} ${sidebarLayout === "horizontal" ? styles.sidebarTop : sidebarCollapsed ? styles.sidebarCollapsed : ""} ${folderMode ? styles.tabsBarFolderMode : ""}`.trim()}>
       <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
         <SortableContext items={(tabs || []).map(tab => tab.id)} strategy={horizontalListSortingStrategy}>
           <div className={styles.tabsContainer}>

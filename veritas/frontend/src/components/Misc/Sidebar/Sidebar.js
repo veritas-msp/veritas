@@ -68,9 +68,12 @@ export default function Sidebar({
   access,
   onCollapseChange,
   /** When false, defer auto "Bienvenue" menu tour until premiers pas are done. */
-  sidebarGuideAutoStart = true
+  sidebarGuideAutoStart = true,
+  /** "vertical" (rail) | "horizontal" (top bar). Mobile always uses the drawer. */
+  layout = "vertical"
 }) {
   const { isMobile } = useBreakpoint();
+  const isHorizontalDesktop = !isMobile && layout === "horizontal";
   const {
     canAny,
     isAdmin
@@ -114,13 +117,14 @@ export default function Sidebar({
   const isDarkTheme = theme === "dark";
   const themeTooltip = isDarkTheme ? copy.theme.lightMode : copy.theme.darkMode;
   const themeMenuIcon = isDarkTheme ? "mdi:weather-sunny" : "mdi:weather-night";
-  // Desktop stays a 64px icon rail. Compact screens expand the drawer with labels.
+  // Desktop vertical stays a 64px icon rail. Horizontal top bar also uses icons + tooltips.
+  // Compact screens expand the drawer with labels.
   const isCollapsed = !isMobile;
   useEffect(() => {
     if (onCollapseChange) {
-      onCollapseChange(true);
+      onCollapseChange(!isHorizontalDesktop);
     }
-  }, [onCollapseChange]);
+  }, [onCollapseChange, isHorizontalDesktop]);
   useEffect(() => {
     if (!isMobile) setShowMenu(false);
   }, [isMobile]);
@@ -155,11 +159,11 @@ export default function Sidebar({
       document.removeEventListener("keydown", onKeyDown);
     };
   }, [userMenuOpen]);
-  const showIconTooltip = isCollapsed || isMobile;
+  const showIconTooltip = isCollapsed || isMobile || isHorizontalDesktop;
   const userInitials = getUserInitials(user);
   const profileLabel = normalizeProfileLabel(profile);
-  const openUserMenuToRight = isCollapsed;
-  const showCrmSection = !!(access["Contrat"] || access["Contact"]);
+  const openUserMenuToRight = isCollapsed && !isHorizontalDesktop;
+  const showCrmSection = !!(access["Contrat"] || access["Contact"] || access["Prestataire"]);
   const showExploitationSection = !!(access["Ticket"] || access["TicketSales"] || access["Planning"]);
   const showManagedSection = !!(access["Hardware"] || access["EquipmentInventory"] || access["Cybersecurite"] || access["Service"]);
   const showPilotageSection = !!(access["Dashboard"] || access["KnowledgeBase"] || DOCUMENTS_CONFIG.some(doc => access[doc.key] && doc.key !== "Mon" && !(doc.key === "DocumentsHub" && isCommunity)) || !!access["Mon"] && !isCommunity);
@@ -192,6 +196,15 @@ export default function Sidebar({
         left: rect.right + gap,
         transform: "translateY(-50%)"
       });
+    } else if (isHorizontalDesktop) {
+      const menuEl = userMenuDropdownRef.current;
+      const menuW = menuEl?.offsetWidth || 220;
+      setUserMenuFixedStyle({
+        position: "fixed",
+        top: rect.bottom + gap,
+        left: Math.min(Math.max(8, rect.right - menuW), window.innerWidth - menuW - 8),
+        transform: "none"
+      });
     } else {
       const estH = userMenuDropdownRef.current?.offsetHeight ?? 280;
       const top = Math.min(rect.top - gap - estH, window.innerHeight - estH - 8);
@@ -202,7 +215,7 @@ export default function Sidebar({
         transform: "none"
       });
     }
-  }, [userMenuOpen, openUserMenuToRight]);
+  }, [userMenuOpen, openUserMenuToRight, isHorizontalDesktop]);
   useLayoutEffect(() => {
     if (!userMenuOpen) {
       setUserMenuFixedStyle(null);
@@ -218,7 +231,7 @@ export default function Sidebar({
       window.removeEventListener("resize", onResize);
       window.removeEventListener("scroll", onResize, true);
     };
-  }, [userMenuOpen, updateUserMenuPosition, isCollapsed, isMobile]);
+  }, [userMenuOpen, updateUserMenuPosition, isCollapsed, isMobile, isHorizontalDesktop]);
   const runUserMenuAction = fn => {
     fn();
     closeUserMenu();
@@ -228,6 +241,11 @@ export default function Sidebar({
     setProPromoFeature("sidebarModules");
     if (isMobile) setShowMenu(false);
   };
+  const sidebarClassName = [
+    styles.sidebar,
+    isMobile ? styles.mobileSidebar : isHorizontalDesktop ? styles.sidebarHorizontal : styles.sidebarCollapsed,
+    isHorizontalDesktop ? styles.sidebarTop : ""
+  ].filter(Boolean).join(" ");
   return <>
       {}
       {isMobile && !showMenu && <button type="button" className={styles.burgerButton} onClick={() => setShowMenu(true)} aria-expanded={false} aria-label={copy.chrome?.openMenu || "Ouvrir le menu"}>
@@ -235,17 +253,20 @@ export default function Sidebar({
         </button>}
 
       {}
-      {(showMenu || !isMobile) && <motion.nav className={`${styles.sidebar} ${isMobile ? styles.mobileSidebar : styles.sidebarCollapsed}`} data-sidebar-guide="sidebar-root" initial={{
+      {(showMenu || !isMobile) && <motion.nav className={sidebarClassName} data-sidebar-guide="sidebar-root" initial={{
       x: isMobile ? '-100%' : 0,
-      opacity: 1
+      y: isHorizontalDesktop ? -12 : 0,
+      opacity: isHorizontalDesktop ? 0.96 : 1
     }} animate={{
       x: 0,
+      y: 0,
       opacity: 1
     }} exit={{
-      x: isMobile ? '-100%' : -50,
+      x: isMobile ? '-100%' : isHorizontalDesktop ? 0 : -50,
+      y: isHorizontalDesktop ? -8 : 0,
       opacity: isMobile ? 1 : 0
     }} transition={{
-      duration: 0.4,
+      duration: 0.35,
       ease: "easeOut"
     }}>
           <div className={styles.sidebarContent}>
@@ -301,6 +322,10 @@ export default function Sidebar({
                     onSelect("Contact");
                     if (isMobile) setShowMenu(false);
                   }} icon={<Icon icon="mingcute:contacts-3-fill" className={styles.itemIcon} />} label={!isCollapsed ? copy.nav.contact : null} />}
+                      {!!access["Prestataire"] && <SidebarAccessNavItem key="Prestataire" itemKey="Prestataire" showTooltip={showIconTooltip} tooltip={copy.nav.prestataire} className={`${styles.navItem} ${current === "Prestataire" || current === "PrestataireDetail" ? styles.active : ""}`} onClick={() => {
+                    onSelect("Prestataire");
+                    if (isMobile) setShowMenu(false);
+                  }} icon={<Icon icon="mdi:handshake-outline" className={styles.itemIcon} />} label={!isCollapsed ? copy.nav.prestataire : null} />}
                     </AnimatePresence>
                     </LayoutGroup>
                   </ul>
@@ -445,7 +470,7 @@ export default function Sidebar({
                   </ul>
                 </motion.div>}
             </AnimatePresence>
-            <SectionDivider show={showPilotageSection} isCollapsed={isCollapsed} />
+            <SectionDivider show={showPilotageSection && (isCommunity || !isHorizontalDesktop)} isCollapsed={isCollapsed} />
 
             {isCommunity ? <div className={styles.upgradeSection}>
               {!isCollapsed && <div className={styles.sectionTitle}>{copy.sections.modules}</div>}

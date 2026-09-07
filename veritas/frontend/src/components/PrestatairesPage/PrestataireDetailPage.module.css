@@ -1,0 +1,138 @@
+.pageGridSingle {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.coordGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 0.65rem;
+}
+
+.coordCard {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.65rem;
+  padding: 0.85rem 1rem;
+  border: 1px solid var(--msp-border, #e2e8f0);
+  border-radius: var(--msp-radius-sm, 10px);
+  background: var(--msp-surface-2, #f7f9fc);
+  color: inherit;
+  transition: border-color 0.15s, background 0.15s, box-shadow 0.15s;
+}
+
+.coordCard:hover {
+  border-color: var(--msp-accent, #2b5fab);
+  background: var(--msp-surface, #fff);
+  box-shadow: 0 0 0 3px var(--msp-accent-soft, rgba(43, 95, 171, 0.1));
+}
+
+.coordIconWrap {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.25rem;
+  height: 2.25rem;
+  border-radius: 10px;
+  background: var(--msp-accent-soft, rgba(43, 95, 171, 0.1));
+  color: var(--msp-accent, #2b5fab);
+  font-size: 1.1rem;
+  flex-shrink: 0;
+}
+
+.coordText {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  min-width: 0;
+  flex: 1;
+}
+
+.coordLabel {
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--msp-muted-light, #8b9bb5);
+}
+
+.coordValue {
+  font-size: 0.875rem;
+  font-weight: 500;
+  word-break: break-word;
+}
+
+.coordValueLink {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--msp-accent, #2b5fab);
+  text-decoration: none;
+  word-break: break-word;
+}
+
+.coordValueLink:hover {
+  text-decoration: underline;
+}
+
+.contactCard {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+  padding: 0.95rem 1rem;
+  border: 1px solid var(--msp-border, #e2e8f0);
+  border-radius: var(--msp-radius-sm, 10px);
+  background: var(--msp-surface-2, #f7f9fc);
+}
+
+.contactName {
+  font-size: 0.92rem;
+  font-weight: 700;
+  color: var(--msp-text, #0f1c2e);
+}
+
+.contactMeta {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.contactMetaRow {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.82rem;
+  color: var(--msp-muted, #5c6b82);
+  text-decoration: none;
+}
+
+a.contactMetaRow:hover {
+  color: var(--msp-accent, #2b5fab);
+}
+
+.contactMetaIcon {
+  font-size: 1rem;
+  flex-shrink: 0;
+}
+
+.coordEmpty {
+  font-size: 0.86rem;
+  color: var(--msp-muted, #5c6b82);
+}
+
+:global(html.dark) .coordCard,
+:global(html.dark) .contactCard {
+  background: rgba(255, 255, 255, 0.04);
+  border-color: rgba(148, 163, 184, 0.22);
+}
+
+:global(html.dark) .coordCard:hover {
+  background: rgba(43, 95, 171, 0.12);
+  border-color: rgba(74, 127, 212, 0.45);
+}
+
+:global(html.dark) .contactName {
+  color: #e8eef8;
+}
+
+:global(html.dark) .contactMetaRow {
+  color: #9aa8bc;
+}

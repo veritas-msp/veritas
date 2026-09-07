@@ -87,6 +87,10 @@ export const PERMISSION_CATALOG = [{
     label: "Add contact",
     dependsOn: ["contacts.create"]
   }, {
+    action: "add_prestataire",
+    label: "Add provider",
+    dependsOn: ["prestataires.create"]
+  }, {
     action: "sites",
     label: "Manage sites"
   }, {
@@ -132,6 +136,20 @@ export const PERMISSION_CATALOG = [{
     action: "access_sharing",
     label: "Access sharing"
   }]
+}, {
+  group: "prestataires",
+  label: "Providers",
+  section: "crm",
+  moduleFlag: "prestataire_enabled",
+  coreDefault: true,
+  actions: ["view", "create", "export"]
+}, {
+  group: "prestataires_detail",
+  label: "Provider detail",
+  section: "crm",
+  moduleFlag: "prestataire_enabled",
+  coreDefault: true,
+  actions: ["edit", "delete"]
 }, {
   group: "tickets",
   label: "Support",
@@ -621,6 +639,7 @@ export const VIEW_PERMISSION_TO_MODULE_FLAG = {
   "home.view": "dashboard_enabled",
   "planning.view": "planning_enabled",
   "contacts.view": "contact_enabled",
+  "prestataires.view": "prestataire_enabled",
   "contracts.view": "contrat_enabled",
   "services.view": "service_enabled",
   "tickets.view": "tickets_enabled",
@@ -646,6 +665,7 @@ export const ACCESS_KEY_TO_VIEW_PERMISSIONS = {
   Service: ["services.view"],
   Contrat: ["contracts.view"],
   Contact: ["contacts.view"],
+  Prestataire: ["prestataires.view"],
   Hardware: ["infrastructure.view", "supervision.view"],
   EquipmentInventory: ["equipment_inventory.view"],
   Cybersecurite: ["cybersecurite.view"],
@@ -659,6 +679,7 @@ export const MODULE_FLAG_TO_GROUPS = {
   dashboard_enabled: ["dashboard", "home"],
   planning_enabled: ["planning"],
   contact_enabled: ["contacts", "contacts_detail"],
+  prestataire_enabled: ["prestataires", "prestataires_detail"],
   contrat_enabled: ["contracts"],
   service_enabled: ["services"],
   tickets_enabled: ["tickets", "tickets_detail"],

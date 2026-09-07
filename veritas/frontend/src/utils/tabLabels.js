@@ -50,6 +50,12 @@ export function generateTabTitle(type, data = {}, locale = "fr") {
     const contactId = data?.contactId || data?.id;
     return contactId ? `${d.contactPrefix}${contactId}` : d.contact;
   }
+  if (type === "PrestataireDetail") {
+    const name = (data?.nom || "").trim();
+    if (name) return name;
+    const prestataireId = data?.prestataireId || data?.id;
+    return prestataireId ? `${d.prestatairePrefix}${prestataireId}` : d.prestataire;
+  }
   if (type === "Equipment" && data?.equipmentType) {
     const clientLabel = formatClientShortLabel({
       name: data.clientName,
@@ -146,6 +152,7 @@ export function generateTabTitle(type, data = {}, locale = "fr") {
   }
   if (type === "Contrat") return d.enterprisesList;
   if (type === "Contact") return d.contactsList;
+  if (type === "Prestataire") return d.prestatairesList;
   if (type === "Hardware") return d.supervisionCenter;
   if (type === "Mon") return d.monitoringList;
   if (type === "Ticket") return d.support;

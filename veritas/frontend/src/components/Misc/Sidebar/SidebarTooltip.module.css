@@ -18,7 +18,7 @@
   white-space: normal;
 }
 
-.bubble::before {
+.placementRight .bubble::before {
   content: "";
   position: absolute;
   left: -5px;
@@ -27,4 +27,44 @@
   border-top: 5px solid transparent;
   border-bottom: 5px solid transparent;
   border-right: 5px solid #ffffff;
+}
+
+.placementBottom .bubble::before {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: -5px;
+  transform: translateX(-50%);
+  border-left: 5px solid transparent;
+  border-right: 5px solid transparent;
+  border-bottom: 5px solid #ffffff;
+}
+
+.placementTop .bubble::before {
+  content: "";
+  position: absolute;
+  left: 50%;
+  bottom: -5px;
+  transform: translateX(-50%);
+  border-left: 5px solid transparent;
+  border-right: 5px solid transparent;
+  border-top: 5px solid #ffffff;
+}
+
+:global(html.dark) .bubble {
+  background-color: #1e293b;
+  color: #e8eef8;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.45);
+}
+
+:global(html.dark) .placementRight .bubble::before {
+  border-right-color: #1e293b;
+}
+
+:global(html.dark) .placementBottom .bubble::before {
+  border-bottom-color: #1e293b;
+}
+
+:global(html.dark) .placementTop .bubble::before {
+  border-top-color: #1e293b;
 }

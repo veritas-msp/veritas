@@ -14,6 +14,10 @@ const USER_PROFILE_COPY = {
         label: "Gestion du compte",
         desc: "Identité, sécurité et langue"
       },
+      interface: {
+        label: "Interface",
+        desc: "Position de la navigation"
+      },
       support: {
         label: "Support",
         desc: "Pseudo helpdesk tickets"
@@ -71,6 +75,10 @@ const USER_PROFILE_COPY = {
         title: "Langue",
         description: "Langue personnelle de l'interface (prioritaire sur le défaut organisation)"
       },
+      interface: {
+        title: "Navigation",
+        description: "Choisissez la disposition du menu principal. Les onglets restent disponibles dans les deux modes."
+      },
       helpdesk: {
         title: "Helpdesk · pseudo tickets",
         description: "Nom affiché aux clients dans les échanges de tickets"
@@ -101,6 +109,15 @@ const USER_PROFILE_COPY = {
     locale: {
       label: "Langue de l'interface",
       hint: "Ce choix est enregistré sur votre compte et s'applique sur tous vos appareils.",
+      saving: "Enregistrement…"
+    },
+    sidebarLayout: {
+      label: "Position du menu",
+      hint: "Sur mobile, le menu reste un tiroir latéral. Les onglets restent disponibles.",
+      verticalLabel: "Sidebar verticale",
+      verticalDesc: "Rail d’icônes à gauche (disposition classique).",
+      horizontalLabel: "Barre horizontale",
+      horizontalDesc: "Navigation en haut de l’écran, onglets juste en dessous.",
       saving: "Enregistrement…"
     },
     planning: {
@@ -187,6 +204,7 @@ const USER_PROFILE_COPY = {
     mspModules: {
       contrat_enabled: "Entreprise",
       contact_enabled: "Contacts",
+      prestataire_enabled: "Prestataires",
       infrastructure_enabled: "Infrastructure",
       cybersecurite_enabled: "Cybersécurité",
       service_enabled: "Services",
@@ -258,7 +276,9 @@ const USER_PROFILE_COPY = {
       notifSaved: "Préférences de notifications enregistrées",
       notifError: "Erreur lors de l'enregistrement des notifications",
       localeSaved: "Langue enregistrée",
-      localeError: "Erreur lors de l'enregistrement de la langue",
+      localeError: "Impossible d’enregistrer la langue",
+      sidebarLayoutSaved: "Disposition du menu enregistrée",
+      sidebarLayoutError: "Impossible d’enregistrer la disposition",
       planningSaved: "Visibilité du planning enregistrée",
       planningError: "Erreur lors de l'enregistrement de la visibilité",
       mfaSetupError: "Erreur configuration MFA",
@@ -281,6 +301,10 @@ const USER_PROFILE_COPY = {
       account: {
         label: "Account management",
         desc: "Identity, security and language"
+      },
+      interface: {
+        label: "Interface",
+        desc: "Navigation position"
       },
       support: {
         label: "Support",
@@ -339,6 +363,10 @@ const USER_PROFILE_COPY = {
         title: "Language",
         description: "Personal interface language (overrides the organisation default)"
       },
+      interface: {
+        title: "Navigation",
+        description: "Choose the main menu layout. Tabs remain available in both modes."
+      },
       helpdesk: {
         title: "Helpdesk · ticket nickname",
         description: "Name shown to customers in ticket exchanges"
@@ -369,6 +397,15 @@ const USER_PROFILE_COPY = {
     locale: {
       label: "Interface language",
       hint: "This choice is saved on your account and applies across your devices.",
+      saving: "Saving…"
+    },
+    sidebarLayout: {
+      label: "Menu position",
+      hint: "On mobile, the menu stays a side drawer. Tabs remain available.",
+      verticalLabel: "Vertical sidebar",
+      verticalDesc: "Icon rail on the left (classic layout).",
+      horizontalLabel: "Horizontal bar",
+      horizontalDesc: "Top navigation with tabs just underneath.",
       saving: "Saving…"
     },
     planning: {
@@ -455,6 +492,7 @@ const USER_PROFILE_COPY = {
     mspModules: {
       contrat_enabled: "Company",
       contact_enabled: "Contacts",
+      prestataire_enabled: "Providers",
       infrastructure_enabled: "Infrastructure",
       cybersecurite_enabled: "Cybersecurity",
       service_enabled: "Services",
@@ -527,6 +565,8 @@ const USER_PROFILE_COPY = {
       notifError: "Error saving notifications",
       localeSaved: "Language saved",
       localeError: "Error saving language",
+      sidebarLayoutSaved: "Menu layout saved",
+      sidebarLayoutError: "Unable to save menu layout",
       planningSaved: "Planning visibility saved",
       planningError: "Error saving visibility",
       mfaSetupError: "MFA setup error",
@@ -549,6 +589,10 @@ const USER_PROFILE_COPY = {
       account: {
         label: "Kontoverwaltung",
         desc: "Identität, Sicherheit und Sprache"
+      },
+      interface: {
+        label: "Oberfläche",
+        desc: "Navigation positionieren"
       },
       support: {
         label: "Support",
@@ -607,6 +651,10 @@ const USER_PROFILE_COPY = {
         title: "Sprache",
         description: "Persönliche Oberflächensprache (hat Vorrang vor dem Organisationsstandard)"
       },
+      interface: {
+        title: "Navigation",
+        description: "Wählen Sie das Layout des Hauptmenüs. Tabs bleiben in beiden Modi verfügbar."
+      },
       helpdesk: {
         title: "Helpdesk · Ticket-Pseudonym",
         description: "Name, der Kunden in Ticket-Austauschen angezeigt wird"
@@ -637,6 +685,15 @@ const USER_PROFILE_COPY = {
     locale: {
       label: "Oberflächensprache",
       hint: "Diese Wahl wird in Ihrem Konto gespeichert und gilt auf allen Geräten.",
+      saving: "Speichern…"
+    },
+    sidebarLayout: {
+      label: "Menüposition",
+      hint: "Auf dem Handy bleibt das Menü eine seitliche Schublade. Tabs bleiben verfügbar.",
+      verticalLabel: "Vertikale Sidebar",
+      verticalDesc: "Icon-Leiste links (klassisches Layout).",
+      horizontalLabel: "Horizontale Leiste",
+      horizontalDesc: "Navigation oben, Tabs direkt darunter.",
       saving: "Speichern…"
     },
     planning: {
@@ -723,6 +780,7 @@ const USER_PROFILE_COPY = {
     mspModules: {
       contrat_enabled: "Unternehmen",
       contact_enabled: "Kontakte",
+      prestataire_enabled: "Dienstleister",
       infrastructure_enabled: "Infrastruktur",
       cybersecurite_enabled: "Cybersicherheit",
       service_enabled: "Services",
@@ -795,6 +853,8 @@ const USER_PROFILE_COPY = {
       notifError: "Fehler beim Speichern der Benachrichtigungen",
       localeSaved: "Sprache gespeichert",
       localeError: "Fehler beim Speichern der Sprache",
+      sidebarLayoutSaved: "Menülayout gespeichert",
+      sidebarLayoutError: "Menülayout konnte nicht gespeichert werden",
       planningSaved: "Planungssichtbarkeit gespeichert",
       planningError: "Fehler beim Speichern der Sichtbarkeit",
       mfaSetupError: "Fehler bei der MFA-Einrichtung",
@@ -817,6 +877,10 @@ const USER_PROFILE_COPY = {
       account: {
         label: "Gestione account",
         desc: "Identità, sicurezza e lingua"
+      },
+      interface: {
+        label: "Interfaccia",
+        desc: "Posizione navigazione"
       },
       support: {
         label: "Supporto",
@@ -875,6 +939,10 @@ const USER_PROFILE_COPY = {
         title: "Lingua",
         description: "Lingua personale dell'interfaccia (prioritaria sul default organizzazione)"
       },
+      interface: {
+        title: "Navigazione",
+        description: "Scegliete la disposizione del menu principale. Le schede restano disponibili in entrambi i modi."
+      },
       helpdesk: {
         title: "Helpdesk · nickname ticket",
         description: "Nome mostrato ai clienti negli scambi dei ticket"
@@ -905,6 +973,15 @@ const USER_PROFILE_COPY = {
     locale: {
       label: "Lingua dell'interfaccia",
       hint: "Questa scelta è salvata sul tuo account e si applica su tutti i dispositivi.",
+      saving: "Salvataggio…"
+    },
+    sidebarLayout: {
+      label: "Posizione menu",
+      hint: "Su mobile il menu resta un cassetto laterale. Le schede restano disponibili.",
+      verticalLabel: "Sidebar verticale",
+      verticalDesc: "Rail di icone a sinistra (layout classico).",
+      horizontalLabel: "Barra orizzontale",
+      horizontalDesc: "Navigazione in alto con schede subito sotto.",
       saving: "Salvataggio…"
     },
     planning: {
@@ -991,6 +1068,7 @@ const USER_PROFILE_COPY = {
     mspModules: {
       contrat_enabled: "Azienda",
       contact_enabled: "Contatti",
+      prestataire_enabled: "Fornitori",
       infrastructure_enabled: "Infrastruttura",
       cybersecurite_enabled: "Cybersicurezza",
       service_enabled: "Servizi",
@@ -1063,6 +1141,8 @@ const USER_PROFILE_COPY = {
       notifError: "Errore durante il salvataggio delle notifiche",
       localeSaved: "Lingua salvata",
       localeError: "Errore durante il salvataggio della lingua",
+      sidebarLayoutSaved: "Layout menu salvato",
+      sidebarLayoutError: "Impossibile salvare il layout del menu",
       planningSaved: "Visibilità planning salvata",
       planningError: "Errore durante il salvataggio della visibilità",
       mfaSetupError: "Errore configurazione MFA",
@@ -1085,6 +1165,10 @@ const USER_PROFILE_COPY = {
       account: {
         label: "Gestión de la cuenta",
         desc: "Identidad, seguridad e idioma"
+      },
+      interface: {
+        label: "Interfaz",
+        desc: "Posición de la navegación"
       },
       support: {
         label: "Soporte",
@@ -1143,6 +1227,10 @@ const USER_PROFILE_COPY = {
         title: "Idioma",
         description: "Idioma personal de la interfaz (prioridad sobre el valor por defecto de la organización)"
       },
+      interface: {
+        title: "Navegación",
+        description: "Elija la disposición del menú principal. Las pestañas siguen disponibles en ambos modos."
+      },
       helpdesk: {
         title: "Helpdesk · apodo de tickets",
         description: "Nombre mostrado a los clientes en los intercambios de tickets"
@@ -1173,6 +1261,15 @@ const USER_PROFILE_COPY = {
     locale: {
       label: "Idioma de la interfaz",
       hint: "Esta elección se guarda en su cuenta y se aplica en todos sus dispositivos.",
+      saving: "Guardando…"
+    },
+    sidebarLayout: {
+      label: "Posición del menú",
+      hint: "En móvil, el menú sigue siendo un cajón lateral. Las pestañas siguen disponibles.",
+      verticalLabel: "Barra lateral vertical",
+      verticalDesc: "Rail de iconos a la izquierda (diseño clásico).",
+      horizontalLabel: "Barra horizontal",
+      horizontalDesc: "Navegación superior con pestañas justo debajo.",
       saving: "Guardando…"
     },
     planning: {
@@ -1259,6 +1356,7 @@ const USER_PROFILE_COPY = {
     mspModules: {
       contrat_enabled: "Empresa",
       contact_enabled: "Contactos",
+      prestataire_enabled: "Proveedores",
       infrastructure_enabled: "Infraestructura",
       cybersecurite_enabled: "Ciberseguridad",
       service_enabled: "Servicios",
@@ -1331,6 +1429,8 @@ const USER_PROFILE_COPY = {
       notifError: "Error al guardar las notificaciones",
       localeSaved: "Idioma guardado",
       localeError: "Error al guardar el idioma",
+      sidebarLayoutSaved: "Diseño del menú guardado",
+      sidebarLayoutError: "No se pudo guardar el diseño del menú",
       planningSaved: "Visibilidad de planificación guardada",
       planningError: "Error al guardar la visibilidad",
       mfaSetupError: "Error de configuración MFA",
@@ -1349,6 +1449,9 @@ const MSP_MODULE_KEYS = [{
 }, {
   key: "contact_enabled",
   icon: "mdi:account-group-outline"
+}, {
+  key: "prestataire_enabled",
+  icon: "mdi:handshake-outline"
 }, {
   key: "infrastructure_enabled",
   icon: "mdi:server-network"

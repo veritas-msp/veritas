@@ -9,6 +9,7 @@ import ui from "./AdminUi.module.css";
 import styles from "./AdminAi.module.css";
 
 const DEFAULT_LIMITS = {
+  autoPriority: 100,
   suggestReply: 100,
   suggestResolve: 50,
   generateRunbook: 30,
@@ -43,13 +44,17 @@ const ADMIN_AI_COPY = {
     featuresHint: "Chaque action compte pour 1. Ex. 50 = 50 rédactions de réponse max par jour.",
     limitPerDay: "max / jour",
     usedToday: "{used} / {limit} aujourd’hui",
-    featureSuggestReply: "Rédaction de réponses tickets",
+    featureAutoPriority: "Priorité automatique",
+    featureAutoPriorityHint: "Analyse titre et contenu pour proposer une priorité (score 1–5 → urgence ticket).",
+    featureSuggestReply: "Réponse automatique",
+    featureSuggestReplyHint: "Première réponse technique et courtoise avec pistes de résolution simples.",
     featureCorrectText: "Enrichissement de texte tickets",
     featureSuggestResolve: "Brouillons de résolution",
-    featureGenerateRunbook: "Génération de runbooks",
+    featureGenerateRunbook: "Génération de runbooks monitoring",
     featureEnrichAlerts: "Enrichissement des alertes",
     featureHelpMe: "Help Me (diagnostic)",
-    featureTicketRunbook: "Runbooks tickets support",
+    featureTicketRunbook: "Aide technicien",
+    featureTicketRunbookHint: "Analyse technique approfondie dans le runbook du ticket support (diagnostic, causes, outils).",
     featureDashboardBriefing: "Briefing dashboard",
     featureSupervisionBriefing: "Briefing supervision",
     featureEnterpriseSummary: "Résumé entreprise",
@@ -87,13 +92,17 @@ const ADMIN_AI_COPY = {
     featuresHint: "Each use counts as 1. E.g. 50 = up to 50 reply drafts per day.",
     limitPerDay: "max / day",
     usedToday: "{used} / {limit} today",
-    featureSuggestReply: "Ticket reply drafts",
+    featureAutoPriority: "Automatic priority",
+    featureAutoPriorityHint: "Analyze title and body to suggest a priority (score 1–5 → ticket urgency).",
+    featureSuggestReply: "Automatic reply",
+    featureSuggestReplyHint: "First technical, courteous reply with simple immediate troubleshooting tips.",
     featureCorrectText: "Ticket text enrichment",
     featureSuggestResolve: "Resolution drafts",
-    featureGenerateRunbook: "Runbook generation",
+    featureGenerateRunbook: "Monitoring runbook generation",
     featureEnrichAlerts: "Alert enrichment",
     featureHelpMe: "Help Me (diagnosis)",
-    featureTicketRunbook: "Support ticket runbooks",
+    featureTicketRunbook: "Technician assist",
+    featureTicketRunbookHint: "In-depth technical analysis in the support ticket runbook (diagnosis, causes, tools).",
     featureDashboardBriefing: "Dashboard briefing",
     featureSupervisionBriefing: "Supervision briefing",
     featureEnterpriseSummary: "Enterprise summary",
@@ -131,13 +140,17 @@ const ADMIN_AI_COPY = {
     featuresHint: "Jede Nutzung zählt als 1. z. B. 50 = max. 50 Antwortentwürfe pro Tag.",
     limitPerDay: "max / Tag",
     usedToday: "{used} / {limit} heute",
-    featureSuggestReply: "Ticket-Antwortentwürfe",
+    featureAutoPriority: "Automatische Priorität",
+    featureAutoPriorityHint: "Titel und Inhalt analysieren und Priorität vorschlagen (Score 1–5).",
+    featureSuggestReply: "Automatische Antwort",
+    featureSuggestReplyHint: "Erste technische, höfliche Antwort mit einfachen Soforttipps.",
     featureCorrectText: "Ticket-Textanreicherung",
     featureSuggestResolve: "Abschlussentwürfe",
-    featureGenerateRunbook: "Runbook-Erstellung",
+    featureGenerateRunbook: "Monitoring-Runbook-Erstellung",
     featureEnrichAlerts: "Alarm-Anreicherung",
     featureHelpMe: "Help Me (Diagnose)",
-    featureTicketRunbook: "Support-Ticket-Runbooks",
+    featureTicketRunbook: "Technikerhilfe",
+    featureTicketRunbookHint: "Technische Analyse im Support-Ticket-Runbook (Diagnose, Ursachen, Tools).",
     featureDashboardBriefing: "Dashboard-Briefing",
     featureSupervisionBriefing: "Supervision-Briefing",
     featureEnterpriseSummary: "Unternehmensübersicht",
@@ -175,13 +188,17 @@ const ADMIN_AI_COPY = {
     featuresHint: "Ogni uso conta 1. Es. 50 = max 50 bozze di risposta al giorno.",
     limitPerDay: "max / giorno",
     usedToday: "{used} / {limit} oggi",
-    featureSuggestReply: "Bozze di risposta ticket",
+    featureAutoPriority: "Priorità automatica",
+    featureAutoPriorityHint: "Analizza titolo e contenuto per suggerire una priorità (punteggio 1–5).",
+    featureSuggestReply: "Risposta automatica",
+    featureSuggestReplyHint: "Prima risposta tecnica e cortese con semplici piste di risoluzione.",
     featureCorrectText: "Arricchimento testo ticket",
     featureSuggestResolve: "Bozze di risoluzione",
-    featureGenerateRunbook: "Generazione runbook",
+    featureGenerateRunbook: "Generazione runbook monitoring",
     featureEnrichAlerts: "Arricchimento alert",
     featureHelpMe: "Help Me (diagnosi)",
-    featureTicketRunbook: "Runbook ticket support",
+    featureTicketRunbook: "Aiuto tecnico",
+    featureTicketRunbookHint: "Analisi tecnica approfondita nel runbook del ticket (diagnosi, cause, strumenti).",
     featureDashboardBriefing: "Briefing dashboard",
     featureSupervisionBriefing: "Briefing supervisione",
     featureEnterpriseSummary: "Riepilogo azienda",
@@ -219,13 +236,17 @@ const ADMIN_AI_COPY = {
     featuresHint: "Cada uso cuenta como 1. Ej. 50 = máximo 50 borradores de respuesta al día.",
     limitPerDay: "máx / día",
     usedToday: "{used} / {limit} hoy",
-    featureSuggestReply: "Borradores de respuesta",
+    featureAutoPriority: "Prioridad automática",
+    featureAutoPriorityHint: "Analiza título y contenido para sugerir una prioridad (puntuación 1–5).",
+    featureSuggestReply: "Respuesta automática",
+    featureSuggestReplyHint: "Primera respuesta técnica y cortés con pistas de resolución simples.",
     featureCorrectText: "Enriquecimiento de texto de tickets",
     featureSuggestResolve: "Borradores de resolución",
-    featureGenerateRunbook: "Generación de runbooks",
+    featureGenerateRunbook: "Generación de runbooks de monitoring",
     featureEnrichAlerts: "Enriquecer alertas",
     featureHelpMe: "Help Me (diagnóstico)",
-    featureTicketRunbook: "Runbooks de tickets",
+    featureTicketRunbook: "Ayuda al técnico",
+    featureTicketRunbookHint: "Análisis técnico profundo en el runbook del ticket (diagnóstico, causas, herramientas).",
     featureDashboardBriefing: "Briefing dashboard",
     featureSupervisionBriefing: "Briefing supervisión",
     featureEnterpriseSummary: "Resumen empresa",
@@ -262,6 +283,7 @@ function formatWhen(iso, locale = "fr") {
 
 function featureLabel(feature, copy) {
   const map = {
+    auto_priority: copy.featureAutoPriority,
     suggest_reply: copy.featureSuggestReply,
     suggest_internal_note: copy.featureSuggestReply,
     correct_text: copy.featureCorrectText || copy.featureSuggestReply,
@@ -340,7 +362,18 @@ export default function AdminAi({
     if (typeof onNavigate === "function") onNavigate("integrations");
   };
 
-  const featureItems = [["suggestReply", copy.featureSuggestReply], ["suggestResolve", copy.featureSuggestResolve], ["generateRunbook", copy.featureGenerateRunbook], ["enrichMonitoringAlerts", copy.featureEnrichAlerts], ["helpMe", copy.featureHelpMe], ["ticketRunbook", copy.featureTicketRunbook], ["dashboardBriefing", copy.featureDashboardBriefing], ["supervisionBriefing", copy.featureSupervisionBriefing], ["enterpriseSummary", copy.featureEnterpriseSummary]];
+  const featureItems = [
+    ["autoPriority", copy.featureAutoPriority, copy.featureAutoPriorityHint],
+    ["suggestReply", copy.featureSuggestReply, copy.featureSuggestReplyHint],
+    ["ticketRunbook", copy.featureTicketRunbook, copy.featureTicketRunbookHint],
+    ["suggestResolve", copy.featureSuggestResolve],
+    ["generateRunbook", copy.featureGenerateRunbook],
+    ["enrichMonitoringAlerts", copy.featureEnrichAlerts],
+    ["helpMe", copy.featureHelpMe],
+    ["dashboardBriefing", copy.featureDashboardBriefing],
+    ["supervisionBriefing", copy.featureSupervisionBriefing],
+    ["enterpriseSummary", copy.featureEnterpriseSummary]
+  ];
 
   return <Page>
       <div className={styles.toolbar}>
@@ -399,12 +432,13 @@ export default function AdminAi({
                     {saving ? copy.saving : copy.savePolicy}
                   </Btn>}>
                 <div className={styles.featureList}>
-                  {featureItems.map(([key, label]) => {
+                  {featureItems.map(([key, label, hint]) => {
                 const used = Number(featureUsage?.[key]?.used) || 0;
                 const limit = Number(featureLimits[key]) || DEFAULT_LIMITS[key];
                 return <div key={key} className={styles.featureRow}>
                         <div className={styles.featureMain}>
                           <span className={styles.featureLabel}>{label}</span>
+                          {hint ? <span className={styles.featureHint}>{hint}</span> : null}
                           <span className={styles.featureUsage}>
                             {copy.usedToday.replace("{used}", String(used)).replace("{limit}", String(limit))}
                           </span>

@@ -356,7 +356,7 @@ export default function AdminPanel({
       }
       if (parsed?.ticketView && parsed?.tab === "tickets") {
         const migrated = resolveLegacyNavigation(parsed);
-        const ticketSubViews = new Set(["templates", "macros", "categories", "ticket-views"]);
+        const ticketSubViews = new Set(["templates", "macros", "solution-catalog", "support-forms", "categories", "ticket-views"]);
         if (ticketSubViews.has(parsed.ticketView)) {
           sessionStorage.setItem("veritas_admin_ticket_view", parsed.ticketView);
         } else if (!migrated.hub && migrated.tab === "tickets") {

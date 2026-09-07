@@ -4,7 +4,7 @@ import { requireAnyPermission, requirePermission } from "../../middleware/permis
 import { pool } from "../../database/db.js";
 import { getAiConfig, AI_FEATURE_LIMIT_KEYS } from "../../utils/aiSettings.js";
 import { getAiCallsUsedTodayTotal, getAiFeatureUsageToday, getAiUsageBreakdownToday, listAiUsage } from "../../services/aiUsageService.js";
-import { correctTicketDraft, enrichAlertRunbook, generateDashboardBriefing, generateEnterpriseSummary, generateRunbookChecklist, generateSupervisionBriefing, generateSupportTicketRunbook, helpDiagnoseTicket, suggestTicketReply, suggestTicketResolve, testAiConnection, TICKET_ENRICH_MODE_IDS } from "../../services/llmClient.js";
+import { correctTicketDraft, enrichAlertRunbook, generateDashboardBriefing, generateEnterpriseSummary, generateRunbookChecklist, generateSupervisionBriefing, generateSupportTicketRunbook, helpDiagnoseTicket, suggestTicketPriority, suggestTicketReply, suggestTicketResolve, testAiConnection, TICKET_ENRICH_MODE_IDS } from "../../services/llmClient.js";
 import { getCriterionLabel } from "../../services/monitoringTicketAssignment.js";
 import { encryptSettingValue } from "../../utils/settingsHelper.js";
 import { briefingPersistErrorIgnored, insertAiBriefing, listAiBriefings } from "../../services/aiBriefingStore.js";
@@ -118,12 +118,13 @@ router.put("/policy", requirePermission("admin_panel.ai"), async (req, res) => {
     const body = req.body || {};
     if (body.features && typeof body.features === "object") {
       const mapping = {
-        suggestReply: ["AI_FEATURE_SUGGEST_REPLY", "AI · reply suggestion"],
+        autoPriority: ["AI_FEATURE_AUTO_PRIORITY", "IA · priorité automatique"],
+        suggestReply: ["AI_FEATURE_SUGGEST_REPLY", "IA · réponse automatique"],
         suggestResolve: ["AI_FEATURE_SUGGEST_RESOLVE", "AI · closure draft"],
         generateRunbook: ["AI_FEATURE_GENERATE_RUNBOOK", "AI · runbook generation"],
         enrichMonitoringAlerts: ["AI_ENRICH_MONITORING_ALERTS", "IA · enrichir alertes"],
         helpMe: ["AI_FEATURE_HELP_ME", "IA · Help Me diagnostic"],
-        ticketRunbook: ["AI_FEATURE_TICKET_RUNBOOK", "AI · support ticket runbook"],
+        ticketRunbook: ["AI_FEATURE_TICKET_RUNBOOK", "IA · aide technicien (runbook)"],
         dashboardBriefing: ["AI_FEATURE_DASHBOARD_BRIEFING", "IA · briefing dashboard KPI"],
         supervisionBriefing: ["AI_FEATURE_SUPERVISION_BRIEFING", "AI · monitoring summary"],
         enterpriseSummary: ["AI_FEATURE_ENTERPRISE_SUMMARY", "AI · company profile summary"]
@@ -136,12 +137,13 @@ router.put("/policy", requirePermission("admin_panel.ai"), async (req, res) => {
     }
     if (body.featureLimits && typeof body.featureLimits === "object") {
       const labels = {
-        suggestReply: "IA · limite / jour · réponses tickets",
+        autoPriority: "IA · limite / jour · priorité automatique",
+        suggestReply: "IA · limite / jour · réponse automatique",
         suggestResolve: "IA · limite / jour · résolutions",
         generateRunbook: "IA · limite / jour · runbooks",
         enrichMonitoringAlerts: "IA · limite / jour · alertes",
         helpMe: "IA · limite / jour · Help Me",
-        ticketRunbook: "IA · limite / jour · runbooks tickets",
+        ticketRunbook: "IA · limite / jour · aide technicien",
         dashboardBriefing: "IA · limite / jour · briefing dashboard",
         supervisionBriefing: "IA · limite / jour · briefing supervision",
         enterpriseSummary: "IA · limite / jour · résumé entreprise"
@@ -176,6 +178,64 @@ router.put("/policy", requirePermission("admin_panel.ai"), async (req, res) => {
     res.status(500).json({
       error: "Server error"
     });
+  }
+});
+router.post("/suggest-priority", requireAnyPermission("tickets.create", "tickets.edit", "tickets.manage", "tickets_detail.ai_suggest"), async (req, res) => {
+  try {
+    const {
+      ticketId = null,
+      title = "",
+      description = "",
+      type = null,
+      category = null,
+      locale
+    } = req.body || {};
+    let resolvedTitle = String(title || "").trim();
+    let resolvedDescription = String(description || "").trim();
+    let resolvedType = type ? String(type).trim() : null;
+    let resolvedCategory = category ? String(category).trim() : null;
+    if (ticketId) {
+      const ticketResult = await pool.query(`SELECT t.id, t.title, t.description, t.type, t.priority, t.category,
+                  cat.name AS category_name
+           FROM v_b_tickets t
+           LEFT JOIN v_b_ticket_categories cat ON cat.id = t.category
+           WHERE t.id = $1::uuid
+           LIMIT 1`, [ticketId]);
+      const ticket = ticketResult.rows[0];
+      if (!ticket) return res.status(404).json({
+        error: "Ticket not found"
+      });
+      resolvedTitle = resolvedTitle || ticket.title || "";
+      resolvedDescription = resolvedDescription || ticket.description || "";
+      resolvedType = resolvedType || ticket.type || null;
+      resolvedCategory = resolvedCategory || ticket.category_name || ticket.category || null;
+    }
+    if (!resolvedTitle && !resolvedDescription) {
+      return res.status(400).json({
+        error: "title or description required"
+      });
+    }
+    const result = await suggestTicketPriority({
+      title: resolvedTitle,
+      description: resolvedDescription,
+      type: resolvedType,
+      category: resolvedCategory,
+      locale: locale || "fr",
+      userId: req.user?.id || null
+    });
+    res.json({
+      score: result.score,
+      priority: result.priority,
+      impact: result.impact,
+      urgency: result.urgency,
+      rationale: result.rationale,
+      usage: result.usage,
+      provider: result.provider,
+      model: result.model
+    });
+  } catch (err) {
+    console.error("[ai] suggest-priority:", err.message);
+    return mapAiError(res, err);
   }
 });
 router.post("/suggest-reply", requirePermission("tickets_detail.ai_suggest"), async (req, res) => {
@@ -431,8 +491,14 @@ router.post("/generate-ticket-runbook", requirePermission("tickets_detail.ai_run
       userId: req.user?.id || null
     });
     const checklist = Array.isArray(result.checklist) ? result.checklist : [];
+    const hypotheses = Array.isArray(result.hypotheses) ? result.hypotheses : [];
+    const tools = Array.isArray(result.tools) ? result.tools : [];
+    const summary = String(result.summary || "").trim();
     const aiRunbook = {
       title: String(result.title || "").trim() || "Runbook",
+      summary,
+      hypotheses,
+      tools,
       checklist,
       checked: Object.fromEntries(checklist.map((_, idx) => [`step-${idx}`, false])),
       generatedAt: new Date().toISOString(),
@@ -449,6 +515,9 @@ router.post("/generate-ticket-runbook", requirePermission("tickets_detail.ai_run
     }
     res.json({
       title: aiRunbook.title,
+      summary: aiRunbook.summary,
+      hypotheses: aiRunbook.hypotheses,
+      tools: aiRunbook.tools,
       checklist: aiRunbook.checklist,
       checked: aiRunbook.checked,
       ai_runbook: aiRunbook,

@@ -507,3 +507,108 @@
   }
 }
 
+
+.layoutChoiceGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.75rem;
+  margin-top: 0.65rem;
+  width: 100%;
+}
+
+@media (max-width: 720px) {
+  .layoutChoiceGrid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.layoutChoiceCard {
+  display: flex;
+  flex-direction: row;
+  align-items: flex-start;
+  gap: 0.75rem;
+  width: 100%;
+  min-height: 5.25rem;
+  margin: 0;
+  padding: 0.95rem 1rem;
+  border: 1px solid var(--msp-border, #dde3ed);
+  border-radius: 12px;
+  background: var(--msp-surface-2, #f7f9fc);
+  color: var(--msp-text, #0f1c2e);
+  text-align: left;
+  cursor: pointer;
+  font: inherit;
+  appearance: none;
+  -webkit-appearance: none;
+  box-sizing: border-box;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
+}
+
+.layoutChoiceCard:hover:not(:disabled) {
+  border-color: var(--msp-accent, #2b5fab);
+  background: rgba(43, 95, 171, 0.06);
+}
+
+.layoutChoiceCardActive {
+  border-color: var(--msp-accent, #2b5fab);
+  box-shadow: 0 0 0 2px rgba(43, 95, 171, 0.16);
+  background: rgba(43, 95, 171, 0.08);
+}
+
+.layoutChoiceCard:disabled {
+  opacity: 0.7;
+  cursor: wait;
+}
+
+.layoutChoiceIcon {
+  flex-shrink: 0;
+  margin-top: 0.1rem;
+  font-size: 1.35rem;
+  color: var(--msp-accent, #2b5fab);
+}
+
+.layoutChoiceText {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.3rem;
+  min-width: 0;
+  flex: 1;
+}
+
+.layoutChoiceTitle {
+  display: block;
+  font-size: 0.88rem;
+  font-weight: 700;
+  line-height: 1.3;
+  color: inherit;
+}
+
+.layoutChoiceDesc {
+  display: block;
+  font-size: 0.75rem;
+  font-weight: 400;
+  line-height: 1.4;
+  color: var(--msp-muted, #5c6b82);
+}
+
+:global(html.dark) .layoutChoiceCard {
+  background: rgba(255, 255, 255, 0.04);
+  border-color: rgba(148, 163, 184, 0.28);
+  color: #e8eef8;
+}
+
+:global(html.dark) .layoutChoiceCard:hover:not(:disabled) {
+  background: rgba(43, 95, 171, 0.16);
+  border-color: rgba(74, 127, 212, 0.55);
+}
+
+:global(html.dark) .layoutChoiceCardActive {
+  background: rgba(43, 95, 171, 0.22);
+  border-color: #4a7fd4;
+  box-shadow: 0 0 0 2px rgba(74, 127, 212, 0.22);
+}
+
+:global(html.dark) .layoutChoiceDesc {
+  color: #9aa8bc;
+}

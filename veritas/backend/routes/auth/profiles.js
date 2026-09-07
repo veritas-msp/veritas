@@ -168,13 +168,13 @@ router.post("/", requirePermission("admin_panel.users"), async (req, res) => {
       await pool.query(`INSERT INTO v_b_users_profiles
           (name, label, parent_profile,
            monitoring_enabled, infrastructure_enabled, cybersecurite_enabled,
-           planning_enabled, service_enabled, contrat_enabled, contact_enabled,
+           planning_enabled, service_enabled, contrat_enabled, contact_enabled, prestataire_enabled,
            configurateur_enabled, tickets_enabled, sales_enabled, dashboard_enabled,
            documents_enabled, equipment_inventory_enabled, knowledge_base_enabled, administration_enabled, display_order)
          SELECT
            $1, $2, $3,
            monitoring_enabled, infrastructure_enabled, cybersecurite_enabled,
-           planning_enabled, service_enabled, TRUE, TRUE,
+           planning_enabled, service_enabled, TRUE, TRUE, prestataire_enabled,
            configurateur_enabled, tickets_enabled, sales_enabled, dashboard_enabled,
            documents_enabled, equipment_inventory_enabled, knowledge_base_enabled, administration_enabled,
            COALESCE($4, display_order)
@@ -185,14 +185,14 @@ router.post("/", requirePermission("admin_panel.users"), async (req, res) => {
       await pool.query(`INSERT INTO v_b_users_profiles
          (name, label,
           monitoring_enabled, infrastructure_enabled, cybersecurite_enabled,
-          planning_enabled, service_enabled, contrat_enabled, contact_enabled,
+          planning_enabled, service_enabled, contrat_enabled, contact_enabled, prestataire_enabled,
           configurateur_enabled, tickets_enabled, sales_enabled, dashboard_enabled,
           documents_enabled, equipment_inventory_enabled, knowledge_base_enabled, administration_enabled, display_order)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, TRUE, TRUE, $8, $9, $10, $11, $12, $13, $14, $15, $16)`, [String(name).trim(), String(label).trim(),
+         VALUES ($1, $2, $3, $4, $5, $6, $7, TRUE, TRUE, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)`, [String(name).trim(), String(label).trim(),
       // monitoring, infrastructure, cyber, planning, service
       Boolean(body.monitoring_enabled), Boolean(body.infrastructure_enabled), Boolean(body.cybersecurite_enabled), Boolean(body.planning_enabled), Boolean(body.service_enabled),
-      // configurateur, tickets, sales, dashboard, documents, inventory, knowledge base, administration
-      Boolean(body.configurateur_enabled), Boolean(body.tickets_enabled), Boolean(body.sales_enabled), Boolean(body.dashboard_enabled), Boolean(body.documents_enabled), Boolean(body.equipment_inventory_enabled), Boolean(body.knowledge_base_enabled), Boolean(body.administration_enabled), Number.isFinite(Number(display_order)) ? Number(display_order) : 999]);
+      // prestataire, configurateur, tickets, sales, dashboard, documents, inventory, knowledge base, administration
+      Boolean(body.prestataire_enabled), Boolean(body.configurateur_enabled), Boolean(body.tickets_enabled), Boolean(body.sales_enabled), Boolean(body.dashboard_enabled), Boolean(body.documents_enabled), Boolean(body.equipment_inventory_enabled), Boolean(body.knowledge_base_enabled), Boolean(body.administration_enabled), Number.isFinite(Number(display_order)) ? Number(display_order) : 999]);
       void flagValues;
     }
     res.status(201).json({

@@ -7,64 +7,84 @@ import styles from "./TicketAiRunbookPanel.module.css";
 
 const PANEL_COPY = {
   fr: {
-    title: "Runbook IA",
-    subtitle: "Troubleshooting checklist for this ticket",
-    generate: "Generate",
-    regenerate: "Regenerate",
-    generating: "Generating…",
-    empty: "Generate a troubleshooting runbook from the ticket and conversation.",
-    error: "Unable to generate the runbook",
-    steps: "{count} step",
-    stepsPlural: "{count} steps",
-    generatedAt: "Generated on {date}"
+    title: "Aide technicien",
+    subtitle: "Diagnostic, causes probables et plan d’action pour ce ticket",
+    generate: "Générer",
+    regenerate: "Régénérer",
+    generating: "Génération…",
+    empty: "Générez une analyse technique approfondie à partir du ticket et de la conversation.",
+    error: "Impossible de générer l’aide technicien",
+    steps: "{count} étape",
+    stepsPlural: "{count} étapes",
+    generatedAt: "Généré le {date}",
+    diagnosis: "Diagnostic",
+    causes: "Causes probables",
+    tools: "Outils & commandes",
+    checklist: "Plan d’action"
   },
   en: {
-    title: "AI runbook",
-    subtitle: "Troubleshooting checklist for this ticket",
+    title: "Technician assist",
+    subtitle: "Diagnosis, likely causes and action plan for this ticket",
     generate: "Generate",
     regenerate: "Regenerate",
     generating: "Generating…",
-    empty: "Generate a troubleshooting runbook from the ticket and conversation.",
-    error: "Unable to generate the runbook",
+    empty: "Generate an in-depth technical analysis from the ticket and conversation.",
+    error: "Unable to generate technician assist",
     steps: "{count} step",
     stepsPlural: "{count} steps",
-    generatedAt: "Generated on {date}"
+    generatedAt: "Generated on {date}",
+    diagnosis: "Diagnosis",
+    causes: "Likely causes",
+    tools: "Tools & commands",
+    checklist: "Action plan"
   },
   de: {
-    title: "KI-Runbook",
-    subtitle: "Fehlerbehebungs-Checkliste für dieses Ticket",
+    title: "Technikerhilfe",
+    subtitle: "Diagnose, wahrscheinliche Ursachen und Aktionsplan",
     generate: "Erzeugen",
     regenerate: "Neu erzeugen",
     generating: "Wird erzeugt…",
-    empty: "Erzeugen Sie ein Runbook aus Ticket und Konversation.",
-    error: "Runbook konnte nicht erzeugt werden",
+    empty: "Erzeugen Sie eine technische Analyse aus Ticket und Konversation.",
+    error: "Technikerhilfe konnte nicht erzeugt werden",
     steps: "{count} Schritt",
     stepsPlural: "{count} Schritte",
-    generatedAt: "Erzeugt am {date}"
+    generatedAt: "Erzeugt am {date}",
+    diagnosis: "Diagnose",
+    causes: "Wahrscheinliche Ursachen",
+    tools: "Tools & Befehle",
+    checklist: "Aktionsplan"
   },
   it: {
-    title: "Runbook IA",
-    subtitle: "Checklist di risoluzione per questo ticket",
+    title: "Aiuto tecnico",
+    subtitle: "Diagnosi, cause probabili e piano d’azione",
     generate: "Genera",
     regenerate: "Rigenera",
     generating: "Generazione…",
-    empty: "Genera un runbook di risoluzione dal ticket e dalla conversazione.",
-    error: "Impossibile generare il runbook",
+    empty: "Genera un’analisi tecnica approfondita dal ticket e dalla conversazione.",
+    error: "Impossibile generare l’aiuto tecnico",
     steps: "{count} passo",
     stepsPlural: "{count} passi",
-    generatedAt: "Generato il {date}"
+    generatedAt: "Generato il {date}",
+    diagnosis: "Diagnosi",
+    causes: "Cause probabili",
+    tools: "Strumenti e comandi",
+    checklist: "Piano d’azione"
   },
   es: {
-    title: "Runbook IA",
-    subtitle: "Lista de comprobación de resolución para este ticket",
+    title: "Ayuda al técnico",
+    subtitle: "Diagnóstico, causas probables y plan de acción",
     generate: "Generar",
     regenerate: "Regenerar",
     generating: "Generando…",
-    empty: "Genere un runbook de resolución a partir del ticket y la conversación.",
-    error: "No se pudo generar el runbook",
+    empty: "Genere un análisis técnico profundo a partir del ticket y la conversación.",
+    error: "No se pudo generar la ayuda al técnico",
     steps: "{count} paso",
     stepsPlural: "{count} pasos",
-    generatedAt: "Generado el {date}"
+    generatedAt: "Generado el {date}",
+    diagnosis: "Diagnóstico",
+    causes: "Causas probables",
+    tools: "Herramientas y comandos",
+    checklist: "Plan de acción"
   }
 };
 
@@ -73,11 +93,18 @@ function getCopy(locale) {
   return PANEL_COPY[code] || PANEL_COPY.fr;
 }
 
+function normalizeList(value) {
+  return (Array.isArray(value) ? value : []).map(item => String(item || "").trim()).filter(Boolean);
+}
+
 function normalizeRunbook(raw) {
   if (!raw || typeof raw !== "object") return null;
   const source = raw.ai_runbook && typeof raw.ai_runbook === "object" ? raw.ai_runbook : raw;
-  const checklist = Array.isArray(source.checklist) ? source.checklist.map(item => String(item || "").trim()).filter(Boolean) : [];
-  if (checklist.length === 0 && !source.title) return null;
+  const checklist = normalizeList(source.checklist);
+  const summary = String(source.summary || source.diagnosis || "").trim();
+  const hypotheses = normalizeList(source.hypotheses || source.causes || source.probableCauses);
+  const tools = normalizeList(source.tools || source.commands);
+  if (checklist.length === 0 && !source.title && !summary && hypotheses.length === 0 && tools.length === 0) return null;
   const checked = source.checked && typeof source.checked === "object" ? {
     ...source.checked
   } : {};
@@ -87,6 +114,9 @@ function normalizeRunbook(raw) {
   });
   return {
     title: String(source.title || "").trim() || "Runbook",
+    summary,
+    hypotheses,
+    tools,
     checklist,
     checked,
     generatedAt: source.generatedAt || null
@@ -167,19 +197,37 @@ export default function TicketAiRunbookPanel({
       </header>
 
       {!runbook ? <p className={styles.empty}>{copy.empty}</p> : <div className={styles.body}>
-          <div className={styles.stepsMeta}>{stepsLabel}</div>
-          <ul className={styles.checklist}>
-            {runbook.checklist.map((step, idx) => {
-            const key = `step-${idx}`;
-            const done = Boolean(runbook.checked?.[key]);
-            return <li key={key} className={`${styles.step} ${done ? styles.stepDone : ""}`.trim()}>
-                  <label className={styles.stepLabel}>
-                    <input type="checkbox" className={styles.checkbox} checked={done} onChange={() => toggleStep(key)} />
-                    <span className={styles.stepText}>{step}</span>
-                  </label>
-                </li>;
-          })}
-          </ul>
+          {runbook.summary ? <div className={styles.section}>
+              <h4 className={styles.sectionTitle}>{copy.diagnosis}</h4>
+              <p className={styles.sectionText}>{runbook.summary}</p>
+            </div> : null}
+          {runbook.hypotheses?.length ? <div className={styles.section}>
+              <h4 className={styles.sectionTitle}>{copy.causes}</h4>
+              <ul className={styles.bulletList}>
+                {runbook.hypotheses.map((item, idx) => <li key={`cause-${idx}`}>{item}</li>)}
+              </ul>
+            </div> : null}
+          {runbook.tools?.length ? <div className={styles.section}>
+              <h4 className={styles.sectionTitle}>{copy.tools}</h4>
+              <ul className={styles.bulletList}>
+                {runbook.tools.map((item, idx) => <li key={`tool-${idx}`}><code className={styles.toolCode}>{item}</code></li>)}
+              </ul>
+            </div> : null}
+          {stepCount > 0 ? <>
+              <div className={styles.stepsMeta}>{copy.checklist} · {stepsLabel}</div>
+              <ul className={styles.checklist}>
+                {runbook.checklist.map((step, idx) => {
+              const key = `step-${idx}`;
+              const done = Boolean(runbook.checked?.[key]);
+              return <li key={key} className={`${styles.step} ${done ? styles.stepDone : ""}`.trim()}>
+                    <label className={styles.stepLabel}>
+                      <input type="checkbox" className={styles.checkbox} checked={done} onChange={() => toggleStep(key)} />
+                      <span className={styles.stepText}>{step}</span>
+                    </label>
+                  </li>;
+            })}
+              </ul>
+            </> : null}
         </div>}
     </section>;
 }
