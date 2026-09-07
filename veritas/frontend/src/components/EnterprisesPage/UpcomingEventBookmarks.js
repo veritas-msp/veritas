@@ -62,6 +62,8 @@ const EVENT_TYPE_ACCENTS = {
   maintenance_preventive: "#ca8a04",
   mise_a_jour: "#2563eb",
   integration_monitoring: "#0891b2",
+  campagne: "#7c3aed",
+  conge: "#0d9488",
   other: "#64748b"
 };
 function getLocaleTag(locale) {

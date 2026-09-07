@@ -881,7 +881,97 @@ export async function deleteSalesFormField(formId, fieldId) {
   });
   return handleJsonResponse(response, "Error deleting field");
 }
-export async function fetchTicketSatisfactions(filters = {}, options = {}) {
+export async function fetchSupportForms(options = {}) {
+  const params = new URLSearchParams();
+  if (options.kind) params.set("kind", options.kind);
+  if (options.includeDisabled) params.set("includeDisabled", "true");
+  const query = params.toString() ? `?${params.toString()}` : "";
+  const response = await fetch(`${API_BASE_URL}/tickets/support-forms${query}`, {
+    method: "GET",
+    credentials: "include",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    signal: options.signal
+  });
+  return handleJsonResponse(response, "Error fetching support forms");
+}
+export async function createSupportForm(payload) {
+  const response = await fetch(`${API_BASE_URL}/tickets/support-forms`, {
+    method: "POST",
+    credentials: "include",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify(payload || {})
+  });
+  return handleJsonResponse(response, "Error creating support form");
+}
+export async function fetchSupportForm(formId, options = {}) {
+  const response = await fetch(`${API_BASE_URL}/tickets/support-forms/${encodeURIComponent(String(formId || ""))}`, {
+    method: "GET",
+    credentials: "include",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    signal: options.signal
+  });
+  return handleJsonResponse(response, "Error fetching support form");
+}
+export async function updateSupportForm(formId, payload) {
+  const response = await fetch(`${API_BASE_URL}/tickets/support-forms/${encodeURIComponent(String(formId))}`, {
+    method: "PUT",
+    credentials: "include",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify(payload || {})
+  });
+  return handleJsonResponse(response, "Error updating support form");
+}
+export async function deleteSupportForm(formId) {
+  const response = await fetch(`${API_BASE_URL}/tickets/support-forms/${encodeURIComponent(String(formId))}`, {
+    method: "DELETE",
+    credentials: "include",
+    headers: {
+      "Content-Type": "application/json"
+    }
+  });
+  return handleJsonResponse(response, "Error deleting support form");
+}
+export async function createSupportFormField(formId, payload) {
+  const response = await fetch(`${API_BASE_URL}/tickets/support-forms/${encodeURIComponent(String(formId))}/fields`, {
+    method: "POST",
+    credentials: "include",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify(payload || {})
+  });
+  return handleJsonResponse(response, "Error creating support form field");
+}
+export async function updateSupportFormField(formId, fieldId, payload) {
+  const response = await fetch(`${API_BASE_URL}/tickets/support-forms/${encodeURIComponent(String(formId))}/fields/${encodeURIComponent(String(fieldId))}`, {
+    method: "PUT",
+    credentials: "include",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify(payload || {})
+  });
+  return handleJsonResponse(response, "Error updating support form field");
+}
+export async function deleteSupportFormField(formId, fieldId) {
+  const response = await fetch(`${API_BASE_URL}/tickets/support-forms/${encodeURIComponent(String(formId))}/fields/${encodeURIComponent(String(fieldId))}`, {
+    method: "DELETE",
+    credentials: "include",
+    headers: {
+      "Content-Type": "application/json"
+    }
+  });
+  return handleJsonResponse(response, "Error deleting support form field");
+}
+export async function fetchTicketSatisfied(filters = {}, options = {}) {
   const response = await fetch(`${API_BASE_URL}/tickets/satisfactions${buildQuery(filters)}`, {
     method: "GET",
     credentials: "include",

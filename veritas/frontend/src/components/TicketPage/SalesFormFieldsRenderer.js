@@ -1,8 +1,12 @@
-import { useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { Icon } from "@iconify/react";
 import s from "./TicketCreatePage.module.css";
 import { fieldIsVisible, filterVisibleFields } from "../../utils/salesFormConditions";
 import { SHELL_FIELD_TYPES, formatFileFieldAccept, getFileFieldConfig, groupFieldsBySection, isLayoutField, validateSalesFormFile } from "../../utils/salesFormFieldTypes";
+import { getModalDropdownZIndex } from "../../utils/dropdownPortal";
+
+const SEARCHABLE_DROPDOWN_MAX_HEIGHT = 260;
 
 function getUserDisplayName(user) {
   return user?.ticket_helpdesk_display_name || user?.name || user?.nom || user?.username || user?.email || "";
@@ -26,6 +30,157 @@ function normalizeOptions(options = []) {
       label: String(label || value)
     };
   }).filter(opt => opt.value);
+}
+
+function SearchableSelectField({
+  value = "",
+  options = [],
+  onChange,
+  placeholder = "Search…",
+  emptyResultsHint = "No results",
+  maxResults = 50
+}) {
+  const rootRef = useRef(null);
+  const anchorRef = useRef(null);
+  const menuRef = useRef(null);
+  const [open, setOpen] = useState(false);
+  const [search, setSearch] = useState("");
+  const [highlight, setHighlight] = useState(0);
+  const [menuStyle, setMenuStyle] = useState(null);
+  const selected = useMemo(() => (Array.isArray(options) ? options : []).find(opt => String(opt.id) === String(value)) || null, [options, value]);
+  const filteredOptions = useMemo(() => {
+    const query = search.trim().toLowerCase();
+    const limit = Math.max(1, Number(maxResults) || 50);
+    const list = Array.isArray(options) ? options : [];
+    const matched = !query ? list : list.filter(opt => {
+      const haystack = `${opt.label || ""} ${opt.hint || ""} ${opt.id}`.toLowerCase();
+      return haystack.includes(query);
+    });
+    return matched.slice(0, limit);
+  }, [options, search, maxResults]);
+  const updateMenuPosition = useCallback(() => {
+    const anchor = anchorRef.current;
+    if (!anchor) return;
+    const rect = anchor.getBoundingClientRect();
+    const spaceBelow = window.innerHeight - rect.bottom - 8;
+    const spaceAbove = rect.top - 8;
+    const openUp = spaceBelow < 160 && spaceAbove > spaceBelow;
+    const maxHeight = Math.max(120, Math.min(SEARCHABLE_DROPDOWN_MAX_HEIGHT, openUp ? spaceAbove : spaceBelow));
+    setMenuStyle({
+      position: "fixed",
+      left: rect.left,
+      width: rect.width,
+      zIndex: getModalDropdownZIndex(),
+      maxHeight,
+      pointerEvents: "auto",
+      ...(openUp ? {
+        top: rect.top - 4,
+        transform: "translateY(-100%)"
+      } : {
+        top: rect.bottom - 1
+      })
+    });
+  }, []);
+  useLayoutEffect(() => {
+    if (!open) {
+      setMenuStyle(null);
+      return undefined;
+    }
+    updateMenuPosition();
+    return undefined;
+  }, [open, filteredOptions.length, updateMenuPosition]);
+  useEffect(() => {
+    if (!open) return undefined;
+    const handleClickOutside = event => {
+      const target = event.target;
+      if (rootRef.current?.contains(target) || menuRef.current?.contains(target)) return;
+      setOpen(false);
+      setSearch("");
+    };
+    const onReposition = () => updateMenuPosition();
+    document.addEventListener("pointerdown", handleClickOutside);
+    window.addEventListener("resize", onReposition);
+    window.addEventListener("scroll", onReposition, true);
+    return () => {
+      document.removeEventListener("pointerdown", handleClickOutside);
+      window.removeEventListener("resize", onReposition);
+      window.removeEventListener("scroll", onReposition, true);
+    };
+  }, [open, updateMenuPosition]);
+  useEffect(() => {
+    setHighlight(0);
+  }, [search, open]);
+  const pickOption = useCallback(option => {
+    if (!option) return;
+    onChange?.(String(option.id));
+    setSearch("");
+    setOpen(false);
+  }, [onChange]);
+  const clearValue = useCallback(() => {
+    onChange?.("");
+    setSearch("");
+    setOpen(true);
+  }, [onChange]);
+  const inputValue = open ? search : selected?.label || "";
+  const dropdownNode = open ? <div ref={menuRef} className={s.contactDropdownPortal} style={menuStyle || {
+    position: "fixed",
+    top: 0,
+    left: 0,
+    width: 280,
+    visibility: "hidden",
+    pointerEvents: "none",
+    zIndex: getModalDropdownZIndex()
+  }} role="listbox">
+      {filteredOptions.length === 0 ? <div className={s.contactEmpty}>{emptyResultsHint}</div> : filteredOptions.map((option, index) => <button key={String(option.id)} type="button" role="option" aria-selected={String(option.id) === String(value)} className={`${s.contactOption} ${highlight === index ? s.contactOptionActive : ""}`} onMouseEnter={() => setHighlight(index)} onClick={() => pickOption(option)}>
+            <span className={s.contactOptionName}>{option.label}</span>
+            {option.hint ? <span className={s.contactOptionMeta}>{option.hint}</span> : null}
+          </button>)}
+    </div> : null;
+  return <div className={s.contactPicker} ref={rootRef} style={{
+    width: "100%",
+    maxWidth: "none"
+  }}>
+      <div ref={anchorRef} className={`${s.contactInputWrap} ${open ? s.contactInputWrapOpen : ""}`}>
+        <Icon icon="mdi:magnify" className={s.contactInputIcon} aria-hidden />
+        <input type="text" className={s.contactInput} value={inputValue} placeholder={placeholder} autoComplete="off" aria-expanded={open} aria-haspopup="listbox" aria-autocomplete="list" onChange={e => {
+        setSearch(e.target.value);
+        setOpen(true);
+        if (value) onChange?.("");
+      }} onFocus={() => {
+        setOpen(true);
+        setSearch("");
+      }} onKeyDown={e => {
+        if (e.key === "Escape") {
+          setOpen(false);
+          setSearch("");
+          return;
+        }
+        if (!open || filteredOptions.length === 0) return;
+        if (e.key === "ArrowDown") {
+          e.preventDefault();
+          setHighlight(current => Math.min(current + 1, filteredOptions.length - 1));
+        } else if (e.key === "ArrowUp") {
+          e.preventDefault();
+          setHighlight(current => Math.max(current - 1, 0));
+        } else if (e.key === "Enter") {
+          e.preventDefault();
+          pickOption(filteredOptions[highlight]);
+        }
+      }} />
+        {value ? <button type="button" className={s.contactClearBtn || undefined} onClick={clearValue} aria-label="Clear" title="Clear" style={{
+        marginRight: "0.35rem",
+        border: "none",
+        background: "transparent",
+        cursor: "pointer",
+        color: "inherit",
+        display: "inline-flex",
+        alignItems: "center"
+      }}>
+            <Icon icon="mdi:close" aria-hidden />
+          </button> : null}
+      </div>
+      {dropdownNode ? createPortal(dropdownNode, document.body) : null}
+    </div>;
 }
 
 function isEmptyFieldValue(field, raw) {
@@ -322,13 +477,11 @@ export default function SalesFormFieldsRenderer({
       return <textarea className={`${s.fieldShellControl} ${s.textarea}`} rows={4} value={value} placeholder={field.placeholder || ""} onChange={e => patchValue(field.fieldKey, e.target.value)} />;
     }
     if (field.fieldType === "select") {
-      const options = normalizeOptions(field.options);
-      return <select className={s.select} value={value} onChange={e => patchValue(field.fieldKey, e.target.value)}>
-          <option value="">Select…</option>
-          {options.map(opt => <option key={opt.value} value={opt.value}>
-              {opt.label}
-            </option>)}
-        </select>;
+      const options = normalizeOptions(field.options).map(opt => ({
+        id: opt.value,
+        label: opt.label
+      }));
+      return <SearchableSelectField value={value} options={options} placeholder={field.placeholder || "Search…"} emptyResultsHint="No results" onChange={next => patchValue(field.fieldKey, next)} />;
     }
     if (field.fieldType === "radio") {
       return <OptionChoiceList field={field} value={value} onChange={next => patchValue(field.fieldKey, next)} />;
@@ -355,28 +508,28 @@ export default function SalesFormFieldsRenderer({
       return <FileUploadInput field={field} value={value} onChange={next => patchValue(field.fieldKey, next)} />;
     }
     if (field.fieldType === "user") {
-      return <select className={s.select} value={value} onChange={e => patchValue(field.fieldKey, e.target.value)}>
-          <option value="">Select a user…</option>
-          {users.map(user => <option key={user.id} value={user.id}>
-              {getUserDisplayName(user) || `#${user.id}`}
-            </option>)}
-        </select>;
+      const options = users.map(user => ({
+        id: user.id,
+        label: getUserDisplayName(user) || `#${user.id}`,
+        hint: user.email || ""
+      }));
+      return <SearchableSelectField value={value} options={options} placeholder={field.placeholder || "Search a user…"} emptyResultsHint="No user found" onChange={next => patchValue(field.fieldKey, next)} />;
     }
     if (field.fieldType === "client") {
-      return <select className={s.select} value={value} onChange={e => patchValue(field.fieldKey, e.target.value)}>
-          <option value="">Select a company…</option>
-          {clients.map(client => <option key={client.id} value={client.id}>
-              {getClientDisplayName(client) || `#${client.id}`}
-            </option>)}
-        </select>;
+      const options = clients.map(client => ({
+        id: client.id,
+        label: getClientDisplayName(client) || `#${client.id}`,
+        hint: client.code || client.ville || ""
+      }));
+      return <SearchableSelectField value={value} options={options} placeholder={field.placeholder || "Search a company…"} emptyResultsHint="No company found" onChange={next => patchValue(field.fieldKey, next)} />;
     }
     if (field.fieldType === "contact") {
-      return <select className={s.select} value={value} onChange={e => patchValue(field.fieldKey, e.target.value)}>
-          <option value="">Select a contact…</option>
-          {contacts.map(contact => <option key={contact.id} value={contact.id}>
-              {getContactDisplayName(contact) || `#${contact.id}`}
-            </option>)}
-        </select>;
+      const options = contacts.map(contact => ({
+        id: contact.id,
+        label: getContactDisplayName(contact) || `#${contact.id}`,
+        hint: contact.email || contact.client_name || contact.entreprise || ""
+      }));
+      return <SearchableSelectField value={value} options={options} placeholder={field.placeholder || "Search a contact…"} emptyResultsHint="No contact found" onChange={next => patchValue(field.fieldKey, next)} />;
     }
     if (field.fieldType === "currency") {
       return <div style={{
@@ -395,22 +548,12 @@ export default function SalesFormFieldsRenderer({
     const inputType = field.fieldType === "number" ? "number" : field.fieldType === "date" ? "date" : field.fieldType === "time" ? "time" : field.fieldType === "datetime" ? "datetime-local" : field.fieldType === "email" ? "email" : field.fieldType === "phone" ? "tel" : field.fieldType === "url" ? "url" : "text";
     return <input type={inputType} className={s.fieldShellControl} value={value} placeholder={field.placeholder || ""} onChange={e => patchValue(field.fieldKey, e.target.value)} />;
   };
-  const renderFieldList = list => {
-    const textareas = list.filter(field => field.fieldType === "textarea");
-    const others = list.filter(field => field.fieldType !== "textarea");
-    return <>
-        {textareas.length > 0 && <div className={s.condensedRow} style={{
-        gridTemplateColumns: "repeat(2, minmax(0, 1fr))"
-      }}>
-            {textareas.map(field => <FieldBlock key={field.id || field.fieldKey} field={field} fieldErrors={fieldErrors} errorPulseTick={errorPulseTick} multiline>
-                {renderField(field)}
-              </FieldBlock>)}
-          </div>}
-        {others.map(field => <FieldBlock key={field.id || field.fieldKey} field={field} fieldErrors={fieldErrors} errorPulseTick={errorPulseTick}>
-            {renderField(field)}
-          </FieldBlock>)}
-      </>;
-  };
+  const renderFieldList = list => list.map(field => {
+    const multiline = field.fieldType === "textarea";
+    return <FieldBlock key={field.id || field.fieldKey} field={field} fieldErrors={fieldErrors} errorPulseTick={errorPulseTick} multiline={multiline}>
+        {renderField(field)}
+      </FieldBlock>;
+  });
   if (visibleGroups.length === 0) {
     return <p className={s.detailsAvailabilityTitle} style={{
       margin: 0

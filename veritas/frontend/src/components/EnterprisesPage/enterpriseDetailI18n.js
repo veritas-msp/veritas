@@ -328,6 +328,8 @@ const DETAIL_COPY = {
       maintenance_preventive: "Maintenance préventive",
       mise_a_jour: "Mise à jour",
       integration_monitoring: "Intégration monitoring",
+      conge: "Congé",
+      campagne: "Campagne",
       other: "Autre"
     },
     campaignTypes: {
@@ -722,6 +724,8 @@ const DETAIL_COPY = {
       maintenance_preventive: "Preventive maintenance",
       mise_a_jour: "Update",
       integration_monitoring: "Monitoring integration",
+      conge: "Leave",
+      campagne: "Campaign",
       other: "Other"
     },
     campaignTypes: {
@@ -1114,6 +1118,8 @@ const DETAIL_COPY = {
       maintenance_preventive: "Präventive Wartung",
       mise_a_jour: "Update",
       integration_monitoring: "Monitoring-Integration",
+      conge: "Urlaub",
+      campagne: "Kampagne",
       other: "Sonstiges"
     },
     campaignTypes: {
@@ -1506,6 +1512,8 @@ const DETAIL_COPY = {
       maintenance_preventive: "Manutenzione preventiva",
       mise_a_jour: "Aggiornamento",
       integration_monitoring: "Integrazione monitoring",
+      conge: "Ferie",
+      campagne: "Campagna",
       other: "Altro"
     },
     campaignTypes: {
@@ -1898,6 +1906,8 @@ const DETAIL_COPY = {
       maintenance_preventive: "Mantenimiento preventivo",
       mise_a_jour: "Actualización",
       integration_monitoring: "Integración monitoring",
+      conge: "Vacaciones",
+      campagne: "Campaña",
       other: "Otro"
     },
     campaignTypes: {

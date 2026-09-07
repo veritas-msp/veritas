@@ -684,6 +684,103 @@
   flex: 1;
 }
 
+.taskAssigneePicker {
+  position: relative;
+  z-index: 5;
+}
+
+.taskAssigneeInputWrap {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  min-height: 2.4rem;
+  padding: 0 0.7rem;
+  border: 1px solid var(--msp-border, #dde3ed);
+  border-radius: 10px;
+  background: var(--msp-surface, #fff);
+}
+
+.taskAssigneeInputWrap:focus-within {
+  border-color: var(--msp-accent, #2b5fab);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--msp-accent, #2b5fab) 16%, transparent);
+}
+
+.taskAssigneeInputWrapOpen {
+  border-bottom-left-radius: 0;
+  border-bottom-right-radius: 0;
+  border-bottom-color: transparent;
+  box-shadow: none;
+}
+
+.taskAssigneeInputIcon {
+  width: 1rem;
+  height: 1rem;
+  flex-shrink: 0;
+  color: var(--msp-muted, #5c6b82);
+}
+
+.taskAssigneeInput {
+  flex: 1;
+  min-width: 0;
+  border: none;
+  outline: none;
+  background: transparent;
+  color: var(--msp-text, #1a2332);
+  font-size: 0.88rem;
+  padding: 0.45rem 0;
+}
+
+.taskAssigneeInput::placeholder {
+  color: var(--msp-muted-light, #8b9bb5);
+}
+
+.taskAssigneeInput:disabled {
+  cursor: not-allowed;
+  opacity: 0.65;
+}
+
+.taskAssigneeDropdown {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  z-index: 20;
+  max-height: 220px;
+  overflow: auto;
+  margin: 0;
+  padding: 0.3rem;
+  border: 1px solid var(--msp-accent, #2b5fab);
+  border-top: 1px solid var(--msp-border-light, #eef2f7);
+  border-radius: 0 0 10px 10px;
+  background: var(--msp-surface, #fff);
+  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.12);
+}
+
+.taskAssigneeEmpty {
+  padding: 0.65rem 0.7rem;
+  font-size: 0.8rem;
+  color: var(--msp-muted, #5c6b82);
+}
+
+.taskAssigneeOption {
+  display: block;
+  width: 100%;
+  text-align: left;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  padding: 0.55rem 0.65rem;
+  font-size: 0.84rem;
+  font-weight: 600;
+  color: var(--msp-text, #1a2332);
+  cursor: pointer;
+}
+
+.taskAssigneeOption:hover,
+.taskAssigneeOptionActive {
+  background: color-mix(in srgb, var(--msp-accent, #2b5fab) 10%, transparent);
+}
+
 .taskPlanningHint {
   margin: 0.75rem 0 0;
   font-size: 0.74rem;
@@ -995,6 +1092,30 @@
 :global(html.dark) .chip {
   background: rgba(90, 143, 212, 0.16);
   color: #9ec4f5;
+}
+
+:global(html.dark) .taskAssigneeInputWrap {
+  background: var(--msp-surface-2, #152035);
+  border-color: #3d5278;
+}
+
+:global(html.dark) .taskAssigneeInputWrap:focus-within {
+  border-color: var(--msp-accent, #4a8fd4);
+}
+
+:global(html.dark) .taskAssigneeInput {
+  color: inherit;
+}
+
+:global(html.dark) .taskAssigneeDropdown {
+  background: var(--msp-surface, #1a2740);
+  border-color: #5a8fd4;
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.35);
+}
+
+:global(html.dark) .taskAssigneeOption:hover,
+:global(html.dark) .taskAssigneeOptionActive {
+  background: rgba(90, 143, 212, 0.16);
 }
 
 :global(html.dark) .taskRow {

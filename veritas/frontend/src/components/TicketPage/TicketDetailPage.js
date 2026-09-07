@@ -28,7 +28,7 @@ import TicketEmojiPicker from "./TicketEmojiPicker";
 import TicketAiEnrichMenu from "./TicketAiEnrichMenu";
 import { createEvent, updateEvent, deleteEvent, fetchEvents } from "../../api/events";
 import { buildReminderEventPayload } from "../../utils/ticketReminderEvent";
-import { addTicketAssignee, addTicketComment, addTicketCommentWithAttachments, addLinkedTicket, addTicketTag, addTicketWatcher, createTicketValidationRequest, deleteTicket, fetchTicketCategories, fetchTicket, fetchTickets, fetchSalesForm, permanentlyDeleteTicket, removeTicketTag, removeTicketAssignee, removeTicketWatcher, respondTicketValidationRequest, restoreTicket, updateTicket, updateTicketComment, deleteTicketComment, updateTicketStatus, updateTicketValidationRequest, resolveTicketWithValidation } from "../../api/tickets";
+import { addTicketAssignee, addTicketComment, addTicketCommentWithAttachments, addLinkedTicket, addTicketTag, addTicketWatcher, createTicketValidationRequest, deleteTicket, fetchTicketCategories, fetchTicket, fetchTickets, fetchSalesForm, fetchSupportForm, permanentlyDeleteTicket, removeTicketTag, removeTicketAssignee, removeTicketWatcher, respondTicketValidationRequest, restoreTicket, updateTicket, updateTicketComment, deleteTicketComment, updateTicketStatus, updateTicketValidationRequest, resolveTicketWithValidation } from "../../api/tickets";
 import { fetchAiStatus, suggestTicketReplyAi, correctTicketTextAi } from "../../api/ai";
 import API_BASE_URL from "../../config";
 import { sanitizeTicketCommentHtml } from "../../utils/sanitizeHtml";
@@ -1053,9 +1053,12 @@ export default function TicketDetailPage({
   }, [ticket, ticketData?.fromPage, ticketData?.ticketFamily]);
   const ticketsListDocType = isSalesTicketDetail ? "TicketSales" : "Ticket";
   const salesFormData = useMemo(() => ticket?.sales_form_data || ticket?.salesFormData || null, [ticket]);
+  const supportFormData = useMemo(() => ticket?.support_form_data || ticket?.supportFormData || null, [ticket]);
   const [salesFormFieldLabelMap, setSalesFormFieldLabelMap] = useState({});
+  const [supportFormFieldLabelMap, setSupportFormFieldLabelMap] = useState({});
   const salesPlanningEvent = useMemo(() => ticket?.planningEvent || ticket?.planning_event || null, [ticket]);
   const salesFormEntries = useMemo(() => buildSalesFormFieldEntries(salesFormData, salesFormFieldLabelMap), [salesFormData, salesFormFieldLabelMap]);
+  const supportFormEntries = useMemo(() => buildSalesFormFieldEntries(supportFormData, supportFormFieldLabelMap), [supportFormData, supportFormFieldLabelMap]);
   useEffect(() => {
     if (!isSalesTicketDetail) {
       setSalesFormFieldLabelMap({});
@@ -1083,6 +1086,33 @@ export default function TicketDetailPage({
       controller.abort();
     };
   }, [isSalesTicketDetail, salesFormData?.formId]);
+  useEffect(() => {
+    if (isSalesTicketDetail) {
+      setSupportFormFieldLabelMap({});
+      return undefined;
+    }
+    const formId = supportFormData?.formId;
+    if (!formId) {
+      setSupportFormFieldLabelMap({});
+      return undefined;
+    }
+    let cancelled = false;
+    const controller = createTrackedAbortController();
+    fetchSupportForm(formId, {
+      signal: controller.signal
+    })
+      .then(form => {
+        if (!cancelled) setSupportFormFieldLabelMap(buildSalesFormFieldLabelMap(form));
+      })
+      .catch(error => {
+        if (error?.name === "AbortError" || cancelled) return;
+        setSupportFormFieldLabelMap({});
+      });
+    return () => {
+      cancelled = true;
+      controller.abort();
+    };
+  }, [isSalesTicketDetail, supportFormData?.formId]);
   const [users, setUsers] = useState([]);
   const [clients, setClients] = useState([]);
   const [contacts, setContacts] = useState([]);
@@ -5130,6 +5160,21 @@ export default function TicketDetailPage({
                     </dl>}
                 </RightPaneStaticSection>
               </> : null}
+
+            {!isSalesTicketDetail && supportFormData ? <RightPaneStaticSection title={locale === "fr" ? "Formulaire" : "Form"} titleId="ticket-support-form-title">
+                {supportFormData.formLabel ? <p className={styles.emptyText} style={{ marginBottom: "0.55rem" }}>{supportFormData.formLabel}</p> : null}
+                {supportFormEntries.length === 0 ? <p className={styles.emptyText}>{locale === "fr" ? "Aucun champ renseigné" : "No fields filled"}</p> : <dl className={styles.salesFormFacts}>
+                    {supportFormEntries.map(row => <div key={row.key} className={styles.salesFormFact}>
+                        <dt>{row.label}</dt>
+                        <dd>
+                          {Array.isArray(row.links) && row.links.length > 0 ? row.links.map((link, index) => <span key={link.id || `${row.key}-${index}`}>
+                                {index > 0 ? ", " : null}
+                                {link.href ? <a href={link.href} target="_blank" rel="noopener noreferrer" className={styles.contextLink}>{link.label}</a> : link.label}
+                              </span>) : row.value}
+                        </dd>
+                      </div>)}
+                  </dl>}
+              </RightPaneStaticSection> : null}
 
             <TicketKnowledgeSuggestions
               query={editForm.title || ticket?.title || titleDraft}

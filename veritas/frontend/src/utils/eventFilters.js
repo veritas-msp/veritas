@@ -47,3 +47,37 @@ export function partitionClientEvents(events, now = Date.now()) {
     recent
   };
 }
+
+/** Map cybersecurity campaigns to planning-like events for client header bookmarks. */
+export function mapCampaignsToBookmarkEvents(campaigns = [], clientId = null) {
+  const pad = n => String(n).padStart(2, "0");
+  const toLocalIso = date =>
+    `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`;
+
+  return (Array.isArray(campaigns) ? campaigns : [])
+    .filter(campaign => campaign?.start_date || campaign?.end_date)
+    .map(campaign => {
+      const startSource = campaign.start_date || campaign.end_date;
+      const endSource = campaign.end_date || campaign.start_date;
+      const start = new Date(startSource);
+      const end = new Date(endSource);
+      if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) return null;
+      start.setHours(9, 0, 0, 0);
+      end.setHours(23, 59, 59, 0);
+      const startIso = toLocalIso(start);
+      const endIso = toLocalIso(end);
+      return {
+        id: `campaign-${campaign.id}`,
+        title: campaign.name || "Campagne",
+        type: "campagne",
+        start: startIso,
+        end: endIso,
+        event_end: endIso,
+        description: campaign.description || null,
+        client_id: campaign.client_id || clientId || null,
+        _isCampaign: true,
+        _campaignData: campaign
+      };
+    })
+    .filter(Boolean);
+}

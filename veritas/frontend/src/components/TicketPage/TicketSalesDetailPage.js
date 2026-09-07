@@ -1233,6 +1233,47 @@ export default function TicketSalesDetailPage({ onNavigate, ticketData }) {
     }
   };
 
+  const handleConsumeTaskCreditsFromForm = async ({ taskId, taskLabel, debits } = {}) => {
+    if (!ticketId || !taskId) return false;
+    const list = Array.isArray(debits) ? debits : [];
+    const total = list.reduce((sum, row) => sum + (Number(row?.amount) || 0), 0);
+    if (total <= 0) return true;
+    const sourceKey = `task:${taskId}`;
+    if (creditDebitedSources.has(sourceKey)) {
+      toast.info(copy.credits.toast.already);
+      return true;
+    }
+    setSavingCredits(true);
+    try {
+      const result = await consumeTicketSupportCredits(ticketId, {
+        debits: list,
+        note: `Tâche · ${taskLabel || taskId}`,
+        sourceKey
+      });
+      if (result?.skipped && result?.reason === "already_debited_source") {
+        toast.info(copy.credits.toast.already);
+      } else if (result?.skipped) {
+        toast.info(copy.credits.toast.skipped);
+      } else {
+        toast.success(interpolate(copy.credits.toast.success, { count: String(total) }));
+      }
+      if (result?.ticket) {
+        setTicket(result.ticket);
+      } else if (result?.supportCredit) {
+        setTicket(prev => (prev ? { ...prev, supportCredit: result.supportCredit } : prev));
+      } else {
+        await loadTicket();
+      }
+      return true;
+    } catch (error) {
+      const insufficient = /insufficient|insuffisant|402/i.test(String(error?.message || ""));
+      toast.error(insufficient ? copy.credits.toast.insufficient : error.message || copy.credits.toast.error);
+      return false;
+    } finally {
+      setSavingCredits(false);
+    }
+  };
+
   const handleSkipCreditModal = async () => {
     if (!creditModal) return;
     if (creditModal.mode === "task" && creditModal.taskId) {
@@ -2202,12 +2243,15 @@ export default function TicketSalesDetailPage({ onNavigate, ticketData }) {
                         saving={savingTasks}
                         variant="pane"
                         canManageTasks={canTasks}
+                        supportCredit={canDebitCredits ? supportCredit : null}
+                        creditCopy={copy.credits.modal}
                         creditDebitedSources={creditDebitedSources}
                         creditAlreadyLabel={copy.credits.alreadyTask}
                         onAddTask={handleAddTask}
                         onUpdateTask={handleUpdateTask}
                         onToggleTask={handleToggleTask}
                         onRemoveTask={handleRemoveTask}
+                        onConsumeTaskCredits={handleConsumeTaskCreditsFromForm}
                       />
                     </div>
                   ) : null}

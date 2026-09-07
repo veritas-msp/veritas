@@ -16,7 +16,9 @@ import { fetchUsers } from "../../api/users";
 import { getClientCampaigns, createClientCampaign } from "../../api/campaigns";
 import { fetchTickets } from "../../api/tickets";
 import { fetchEvents } from "../../api/events";
-import { filterRecentEvents, filterUpcomingEvents } from "../../utils/eventFilters";
+import { filterRecentEvents, filterUpcomingEvents, mapCampaignsToBookmarkEvents } from "../../utils/eventFilters";
+import { usePlanningEventTypes } from "../PlanningPage/usePlanningEventTypes";
+import { getPlanningEventTypesList } from "../PlanningPage/planningEventTypes";
 import { getClientInitials, getClientNumber, getClientNameWithoutCode } from "../../utils/clientDisplay";
 import { getClientOnboardingInfo } from "../../utils/clientOnboarding";
 import API_BASE_URL from "../../config";
@@ -284,7 +286,19 @@ export default function ClientDetailPage({
   const copy = useMemo(() => getEnterpriseDetailCopy(locale), [locale]);
   const vaultCopy = useMemo(() => getEnterpriseVaultCopy(locale), [locale]);
   const campaignsCopy = useMemo(() => getCybersecuritePageCopy(locale).campaigns, [locale]);
-  const eventTypeLabels = useMemo(() => getEventTypeLabels(locale), [locale]);
+  const catalogTypes = usePlanningEventTypes();
+  const eventTypeLabels = useMemo(() => {
+    const base = getEventTypeLabels(locale) || {};
+    const fromCatalog = {};
+    const list = Array.isArray(catalogTypes) && catalogTypes.length > 0 ? catalogTypes : getPlanningEventTypesList();
+    list.forEach(type => {
+      if (type?.value) fromCatalog[type.value] = type.label || type.value;
+    });
+    return {
+      ...base,
+      ...fromCatalog
+    };
+  }, [locale, catalogTypes]);
   const {
     modules: contractModules,
     enabledModules
@@ -1579,10 +1593,27 @@ export default function ClientDetailPage({
       }).catch(() => []);
       let upcomingRows = [];
       let recentRows = [];
-      let creditSummary = null;
+      // Credits are loaded independently so edition/community flags and event aborts
+      // cannot wipe a successful pack list after F5.
       const creditsGenAtStart = supportCreditsLoadGenRef.current;
+      const creditsPromise = fetchClientSupportCredits(targetClientId, {
+        signal
+      }).then(summary => ({
+        ok: true,
+        summary
+      })).catch(error => {
+        if (error?.name === "AbortError") return {
+          ok: false,
+          aborted: true
+        };
+        console.error("Error loading support credits:", error);
+        return {
+          ok: false,
+          aborted: false
+        };
+      });
       if (!isCommunity) {
-        [upcomingRows, recentRows, creditSummary] = await Promise.all([fetchEvents({
+        [upcomingRows, recentRows] = await Promise.all([fetchEvents({
           clientId: targetClientId,
           upcoming: true,
           limit: 50,
@@ -1592,15 +1623,16 @@ export default function ClientDetailPage({
           recent: true,
           limit: 50,
           signal
-        }).catch(() => []), fetchClientSupportCredits(targetClientId, {
-          signal
-        }).catch(() => null)]);
+        }).catch(() => [])]);
       }
+      const creditsResult = await creditsPromise;
       if (signal?.aborted || !isMountedRef.current) return;
-      // Don't overwrite a fresher reloadSupportCredits() result.
-      if (creditsGenAtStart === supportCreditsLoadGenRef.current) {
+      if (creditsResult?.ok && creditsGenAtStart === supportCreditsLoadGenRef.current) {
+        const creditSummary = creditsResult.summary;
+        const packs = Array.isArray(creditSummary?.packs) ? creditSummary.packs : [];
         setSupportCreditBalance(Number(creditSummary?.balance ?? 0));
-        setSupportCreditPacks(Array.isArray(creditSummary?.packs) ? creditSummary.packs : []);
+        setSupportCreditPacks(packs);
+        if (packs.length > 0) setCreditsExpanded(true);
       }
       const tickets = Array.isArray(ticketRows) ? ticketRows : [];
       const upcomingList = Array.isArray(upcomingRows) ? upcomingRows : [];
@@ -1619,7 +1651,6 @@ export default function ClientDetailPage({
         setPrestationTickets([]);
         setUpcomingEvents([]);
         setRecentEvents([]);
-        // Ne pas écraser les crédits si un reload dédié plus récent a déjà abouti.
       }
     } finally {
       if (isMountedRef.current) setLoadingClientActivity(false);
@@ -1727,24 +1758,45 @@ export default function ClientDetailPage({
     const source = isCommunity ? DEMO_CAMPAIGNS : campaigns;
     return source.filter(isOngoingCampaign);
   }, [campaigns, isCommunity]);
+
+  const campaignBookmarkEvents = useMemo(
+    () => (isCommunity ? [] : mapCampaignsToBookmarkEvents(campaigns, client?.id)),
+    [campaigns, client?.id, isCommunity]
+  );
+
+  const upcomingEventsForBookmarks = useMemo(
+    () => filterUpcomingEvents([...(Array.isArray(upcomingEvents) ? upcomingEvents : []), ...campaignBookmarkEvents]),
+    [upcomingEvents, campaignBookmarkEvents]
+  );
+
+  const recentEventsForBookmarks = useMemo(
+    () => filterRecentEvents([...(Array.isArray(recentEvents) ? recentEvents : []), ...campaignBookmarkEvents]),
+    [recentEvents, campaignBookmarkEvents]
+  );
   const handleReloadClientActivity = () => {
     if (client?.id) loadClientActivity(client.id);
   };
   const reloadSupportCredits = useCallback(async () => {
-    if (!client?.id || isCommunity) return;
+    if (!client?.id) return;
     const gen = ++supportCreditsLoadGenRef.current;
     try {
       const creditSummary = await fetchClientSupportCredits(client.id);
       if (gen !== supportCreditsLoadGenRef.current || !isMountedRef.current) return;
+      const packs = Array.isArray(creditSummary?.packs) ? creditSummary.packs : [];
       setSupportCreditBalance(Number(creditSummary?.balance ?? 0));
-      setSupportCreditPacks(Array.isArray(creditSummary?.packs) ? creditSummary.packs : []);
-      setCreditsExpanded(true);
+      setSupportCreditPacks(packs);
+      if (packs.length > 0) setCreditsExpanded(true);
     } catch (error) {
       console.error("Error reloading support credits:", error);
     }
-  }, [client?.id, isCommunity]);
+  }, [client?.id]);
   const supportCreditPackSeed = useMemo(() => (client?.id ? { client_id: client.id } : null), [client?.id]);
   const supportCreditModalClients = useMemo(() => (client ? [client] : []), [client]);
+  // If edition resolves to Pro after the first page load, credits must be (re)fetched.
+  useEffect(() => {
+    if (!client?.id || isCommunity) return;
+    void reloadSupportCredits();
+  }, [client?.id, isCommunity, reloadSupportCredits]);
   const handleOpenSupportCreditsAdmin = () => {
     try {
       sessionStorage.setItem("veritas_admin_nav", JSON.stringify({
@@ -2808,7 +2860,15 @@ export default function ClientDetailPage({
     if (userRole === "admin") return true;
     return note.user_id === currentUser.id;
   };
-  const visibleSupportPacks = useMemo(() => supportCreditPacks.filter(pack => ["active", "upcoming"].includes(pack.status)), [supportCreditPacks]);
+  const visibleSupportPacks = useMemo(
+    () =>
+      supportCreditPacks.filter(pack => {
+        const status = String(pack?.status || "active");
+        // Keep depleted/expired visible after reload so created packs never "vanish".
+        return ["active", "upcoming", "depleted", "expired"].includes(status);
+      }),
+    [supportCreditPacks]
+  );
   const clientOnboarding = useMemo(
     () => getClientOnboardingInfo(client, formData?.contrat?.debut),
     [client, formData?.contrat?.debut]
@@ -3056,13 +3116,21 @@ export default function ClientDetailPage({
           </div>
         </div>
         <div className={styles.pageHeroBookmarks}>
-        <UpcomingEventBookmarks upcomingEvents={upcomingEvents} recentEvents={recentEvents} loading={loadingClientActivity} typeLabels={eventTypeLabels} labels={copy.eventBookmarks} menuLabels={copy.eventActionMenu} locale={locale} users={users} proFeatureLabel={copy.proFeatures.planning} proFeatureKey="planning" proLocked={isCommunity} inPageHero defaultCollapsed onEditEvent={canScheduleEvent ? event => {
+        <UpcomingEventBookmarks upcomingEvents={upcomingEventsForBookmarks} recentEvents={recentEventsForBookmarks} loading={loadingClientActivity} typeLabels={eventTypeLabels} labels={copy.eventBookmarks} menuLabels={copy.eventActionMenu} locale={locale} users={users} proFeatureLabel={copy.proFeatures.planning} proFeatureKey="planning" proLocked={isCommunity} inPageHero defaultCollapsed onEditEvent={canScheduleEvent ? event => {
+          if (event?._isCampaign && event._campaignData) {
+            handleOpenCampaign(event._campaignData);
+            return;
+          }
           setEditingEvent(event);
           setEventModalOpen(true);
-        } : undefined} onGoToPlanning={event => {
+        } : event => {
+          if (event?._isCampaign && event._campaignData) {
+            handleOpenCampaign(event._campaignData);
+          }
+        }} onGoToPlanning={event => {
           const start = event?.event_start ?? event?.start ?? event?.["start"];
           onNavigate?.("Planning", {
-            focusEventId: event?.id,
+            focusEventId: event?._isCampaign ? undefined : event?.id,
             focusDate: start,
             clientId: event?.client_id ?? client?.id ?? null
           });
@@ -3526,12 +3594,17 @@ export default function ClientDetailPage({
               }} aria-expanded={isCommunity ? false : creditsExpanded} aria-controls="enterprise-sidebar-credits">
                   <span className={styles.sidebarInfoTitle}>
                     {copy.creditsTitle}
+                    {!isCommunity && supportCreditBalance != null ? (
+                      <span className={styles.sidebarCreditsBadge} title={copy.creditsTitle}>
+                        {Number(supportCreditBalance) || 0}
+                      </span>
+                    ) : null}
                     {isCommunity ? <ProFeatureBadge variant="inline" className={styles.proBadgeInline} /> : null}
                   </span>
                   <Icon icon={!isCommunity && creditsExpanded ? "mdi:chevron-up" : "mdi:chevron-down"} className={styles.sidebarCollapseChevron} aria-hidden />
                 </button>
                 {!isCommunity && creditsExpanded && <div className={styles.sidebarBody} id="enterprise-sidebar-credits">
-                    {canAddCredits && visibleSupportPacks.length > 0 && <div className={styles.sidebarBodyActions}>
+                    {canAddCredits && <div className={styles.sidebarBodyActions}>
                         <SmartTooltip content={copy.addCreditPack}>
                           <button type="button" className={styles.editInfoButton} onClick={() => setSupportCreditModalOpen(true)} aria-label={copy.addCreditPack}>
                             <FaPlus />
@@ -3549,7 +3622,8 @@ export default function ClientDetailPage({
                       const remaining = Number(pack.remaining_amount) || 0;
                       const initial = Number(pack.initial_amount) || 0;
                       const until = pack.valid_until ? new Date(pack.valid_until).toLocaleDateString("en-GB") : null;
-                      return <li key={pack.id} className={styles.activityCreditCard}>
+                      const status = String(pack.status || "active");
+                      return <li key={pack.id} className={`${styles.activityCreditCard} ${status === "depleted" || status === "expired" ? styles.activityCreditCardMuted : ""}`.trim()}>
                                 <div className={styles.activityCreditIcon} aria-hidden>
                                   <Icon icon="mdi:ticket-confirmation-outline" />
                                 </div>

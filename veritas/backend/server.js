@@ -33,6 +33,7 @@ import knowledgeArticlesRouter from "./routes/knowledgeBase/knowledgeArticles.js
 import knowledgeFoldersRouter from "./routes/knowledgeBase/knowledgeFolders.js";
 import knowledgeCategoriesRouter from "./routes/knowledgeBase/knowledgeCategories.js";
 import publicKnowledgeRouter from "./routes/knowledgeBase/publicKnowledge.js";
+import publicSupportFormsRouter from "./routes/publicSupportForms.js";
 import settingsRoutes from './routes/config/settings.js';
 import generalSettingsRoutes from './routes/config/generalSettings.js';
 import loginBrandingRoutes from './routes/config/loginBranding.js';
@@ -229,6 +230,7 @@ app.use("/api/equipment-files", equipmentFilesRouter);
 app.use("/api/client-portal", clientPortalRouter);
 app.use("/api/client-portal-users", clientPortalUsersRouter);
 app.use("/api/public/knowledge", publicKnowledgeRouter);
+app.use("/api/public/support-forms", publicSupportFormsRouter);
 app.use("/api/knowledge-articles", knowledgeArticlesRouter);
 app.use("/api/knowledge-folders", knowledgeFoldersRouter);
 app.use("/api/knowledge-categories", knowledgeCategoriesRouter);

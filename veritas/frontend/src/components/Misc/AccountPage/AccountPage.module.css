@@ -41,6 +41,10 @@
   overflow: hidden;
 }
 
+.sectionPanelOverflow {
+  overflow: visible;
+}
+
 .sectionPanelFull {
   grid-column: 1 / -1;
 }

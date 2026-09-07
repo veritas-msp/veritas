@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { Icon } from "@iconify/react";
 import { FaTimes } from "react-icons/fa";
@@ -12,6 +12,7 @@ import { useAppLocale } from "../../hooks/useAppGeneralSettings";
 import { getTicketSalesCreatePageCopy } from "./ticketSalesCreatePageI18n";
 import { getEquipmentPickerLabel, getEquipmentSearchText, loadClientEquipments, serializeEquipmentInfo } from "./ticketEquipmentUtils";
 import { isFileField } from "../../utils/salesFormFieldTypes";
+import { getModalDropdownZIndex } from "../../utils/dropdownPortal";
 import MspPageHero from "../Misc/MspPageHero/MspPageHero";
 import mspStyles from "../CybersecuritePage/CybersecuritePage.module.css";
 import layout from "../EnterprisesPage/EnterprisesPage.module.css";
@@ -23,17 +24,66 @@ function SectionPanel({
   title,
   description,
   children,
-  className
+  className,
+  allowOverflow = false
 }) {
-  return <section className={`${account.sectionPanel} ${className || ""}`.trim()}>
+  return <section className={`${account.sectionPanel} ${allowOverflow ? account.sectionPanelOverflow : ""} ${allowOverflow ? s.panelAllowOverflow : ""} ${className || ""}`.trim()} style={allowOverflow ? {
+    overflow: "visible"
+  } : undefined}>
       {(title || description) && <header className={account.sectionHeader}>
           <div className={s.sectionHeaderMain}>
             {title && <h2 className={account.sectionTitle}>{title}</h2>}
             {description && <p className={account.sectionDesc}>{description}</p>}
           </div>
         </header>}
-      <div className={account.sectionBody}>{children}</div>
+      <div className={`${account.sectionBody} ${allowOverflow ? s.panelBodyAllowOverflow : ""}`.trim()}>{children}</div>
     </section>;
+}
+function useFixedAnchorRect(open, anchorRef) {
+  const [coords, setCoords] = useState(null);
+  const update = useCallback(() => {
+    const el = anchorRef.current;
+    if (!el) return;
+    const rect = el.getBoundingClientRect();
+    const spaceBelow = window.innerHeight - rect.bottom - 8;
+    const spaceAbove = rect.top - 8;
+    const openUp = spaceBelow < 140 && spaceAbove > spaceBelow;
+    const maxHeight = Math.min(260, Math.max(120, openUp ? spaceAbove : spaceBelow));
+    setCoords({
+      left: rect.left,
+      width: rect.width,
+      maxHeight,
+      top: openUp ? undefined : rect.bottom - 1,
+      bottom: openUp ? window.innerHeight - rect.top + 1 : undefined
+    });
+  }, [anchorRef]);
+  useLayoutEffect(() => {
+    if (!open) {
+      setCoords(null);
+      return undefined;
+    }
+    update();
+    window.addEventListener("resize", update);
+    window.addEventListener("scroll", update, true);
+    return () => {
+      window.removeEventListener("resize", update);
+      window.removeEventListener("scroll", update, true);
+    };
+  }, [open, update]);
+  return coords;
+}
+function portalMenuStyle(coords) {
+  if (!coords) return null;
+  return {
+    position: "fixed",
+    top: coords.top,
+    bottom: coords.bottom,
+    left: coords.left,
+    width: coords.width,
+    maxHeight: coords.maxHeight,
+    zIndex: getModalDropdownZIndex(),
+    pointerEvents: "auto"
+  };
 }
 function getUserLabel(user, copy) {
   return user?.ticket_helpdesk_display_name || user?.name || user?.nom || user?.username || user?.email || (user?.id ? copy.formatUserFallback(user.id) : "");
@@ -90,8 +140,11 @@ export default function TicketSalesCreatePage({
   const locale = useAppLocale();
   const copy = useMemo(() => getTicketSalesCreatePageCopy(locale), [locale]);
   const contactDropdownRef = useRef(null);
+  const contactListRef = useRef(null);
   const clientDropdownRef = useRef(null);
+  const clientListRef = useRef(null);
   const equipmentDropdownRef = useRef(null);
+  const equipmentListRef = useRef(null);
   const [contacts, setContacts] = useState([]);
   const [clients, setClients] = useState([]);
   const [users, setUsers] = useState([]);
@@ -119,11 +172,7 @@ export default function TicketSalesCreatePage({
   const [equipmentHighlight, setEquipmentHighlight] = useState(0);
   const defaultedRequesterRef = useRef(false);
   const [priority, setPriority] = useState("normal");
-  const [purchaseOrder, setPurchaseOrder] = useState("");
   const [customTitle, setCustomTitle] = useState("");
-  const [commercialUserId, setCommercialUserId] = useState("");
-  const [hasProjectManager, setHasProjectManager] = useState(false);
-  const [projectManagerUserId, setProjectManagerUserId] = useState("");
   const [fieldErrors, setFieldErrors] = useState({});
   const agentLabel = authUser?.username?.trim() || authUser?.email || copy.agentFallback;
   const formsForKind = useMemo(() => salesForms.filter(form => form.kind === ticketKind && form.enabled !== false), [salesForms, ticketKind]);
@@ -186,15 +235,18 @@ export default function TicketSalesCreatePage({
     setSelectedClientId(String(match.id));
     setClientSearch(match.name || match.client_name || "");
   }, [initialData?.clientId, clients]);
+  const contactDropdownCoords = useFixedAnchorRect(showContactDropdown, contactDropdownRef);
+  const clientDropdownCoords = useFixedAnchorRect(showClientDropdown, clientDropdownRef);
+  const equipmentDropdownCoords = useFixedAnchorRect(showEquipmentDropdown, equipmentDropdownRef);
   useEffect(() => {
     const handleClickOutside = e => {
-      if (contactDropdownRef.current && !contactDropdownRef.current.contains(e.target)) {
+      if (!contactDropdownRef.current?.contains(e.target) && !contactListRef.current?.contains(e.target)) {
         setShowContactDropdown(false);
       }
-      if (clientDropdownRef.current && !clientDropdownRef.current.contains(e.target)) {
+      if (!clientDropdownRef.current?.contains(e.target) && !clientListRef.current?.contains(e.target)) {
         setShowClientDropdown(false);
       }
-      if (equipmentDropdownRef.current && !equipmentDropdownRef.current.contains(e.target)) {
+      if (!equipmentDropdownRef.current?.contains(e.target) && !equipmentListRef.current?.contains(e.target)) {
         setShowEquipmentDropdown(false);
       }
     };
@@ -286,20 +338,6 @@ export default function TicketSalesCreatePage({
     }
     return list.slice(0, 50);
   }, [clientEquipments, equipmentSearch, locale, selectedEquipment]);
-  const commercialLabel = useMemo(() => {
-    if (!commercialUserId) return "";
-    const user = users.find(row => String(row.id) === String(commercialUserId));
-    return getUserLabel(user, copy);
-  }, [users, commercialUserId, copy]);
-  const projectManagerLabel = useMemo(() => {
-    if (!projectManagerUserId) return "";
-    const user = users.find(row => String(row.id) === String(projectManagerUserId));
-    return getUserLabel(user, copy);
-  }, [users, projectManagerUserId, copy]);
-  const projectManagerDisplay = hasProjectManager ? projectManagerLabel || "-" : copy.noValue;
-  const sortedUsers = useMemo(() => [...users].sort((a, b) => getUserLabel(a, copy).localeCompare(getUserLabel(b, copy), copy.localeTag, {
-    sensitivity: "base"
-  })), [users, copy]);
   const selectClient = useCallback(client => {
     if (!client?.id) return;
     setSelectedClientId(String(client.id));
@@ -312,10 +350,6 @@ export default function TicketSalesCreatePage({
       ...prev,
       client: undefined
     }));
-    const commercialId = client?.commercial_id || client?.commercialId || "";
-    if (commercialId) {
-      setCommercialUserId(String(commercialId));
-    }
   }, []);
   const selectRequesterAgent = useCallback(user => {
     if (!user?.id) return;
@@ -360,7 +394,6 @@ export default function TicketSalesCreatePage({
     if (!selectedClientId) errors.client = true;
     if (!selectedForm) errors.form = true;
     if (selectedForm && !validateDynamicFields(selectedForm.fields || [], dynamicValues)) errors.details = true;
-    if (hasProjectManager && !projectManagerUserId) errors.projectManager = true;
     setFieldErrors(errors);
     if (Object.keys(errors).length > 0) {
       setErrorPulseTick(t => t + 1);
@@ -379,9 +412,8 @@ export default function TicketSalesCreatePage({
     const clientName = clientLabel || "Client";
     const title = effectiveTitle || `${selectedForm.label} - ${clientName}`;
     const kindLabel = copy.getKindShortLabel(selectedForm.kind);
-    const salesMetaLines = [`${copy.body.purchaseOrder}: ${purchaseOrder.trim() || "-"}`, `${copy.body.commercial}: ${commercialLabel || "-"}`, `${copy.body.projectManager}: ${projectManagerDisplay}`];
     const dynamicLines = buildDynamicFieldLines(selectedForm.fields || [], dynamicValues, fieldLookups);
-    const bodyLines = [`${copy.body.type}: ${kindLabel}`, `${copy.body.form}: ${selectedForm.label}`, `${copy.body.requester}: ${requesterLabel || "-"}`, `${copy.body.company}: ${clientName}`, ...salesMetaLines, ...dynamicLines];
+    const bodyLines = [`${copy.body.type}: ${kindLabel}`, `${copy.body.form}: ${selectedForm.label}`, `${copy.body.requester}: ${requesterLabel || "-"}`, `${copy.body.company}: ${clientName}`, ...dynamicLines];
     const visibleFields = filterVisibleFields(selectedForm.fields || [], dynamicValues);
     const visibleValues = Object.fromEntries(visibleFields.map(field => {
       const raw = dynamicValues[field.fieldKey];
@@ -432,12 +464,6 @@ export default function TicketSalesCreatePage({
         formLabel: selectedForm.label,
         kind: selectedForm.kind,
         categorySlug: selectedForm.categorySlug,
-        purchaseOrder: purchaseOrder.trim() || null,
-        commercialUserId: commercialUserId || null,
-        commercialLabel: commercialLabel || null,
-        hasProjectManager,
-        projectManagerUserId: hasProjectManager ? projectManagerUserId || null : null,
-        projectManagerLabel: projectManagerDisplay || null,
         clientName: clientName || null,
         contactName: requesterLabel || null,
         contactEmail: selectedRequesterAgent?.email || null,
@@ -542,19 +568,10 @@ export default function TicketSalesCreatePage({
       setSubmitting(false);
     }
   };
-  const recapFields = [{
-    label: copy.recap.purchaseOrder,
-    value: purchaseOrder.trim() || "-"
-  }, {
-    label: copy.recap.commercial,
-    value: commercialLabel || "-"
-  }, {
-    label: copy.recap.projectManager,
-    value: projectManagerDisplay
-  }, ...activeFields.map(field => ({
+  const recapFields = activeFields.map(field => ({
     label: field.label,
     value: buildDynamicFieldLines([field], dynamicValues, fieldLookups)[0]?.split(": ").slice(1).join(": ") || "-"
-  }))];
+  }));
   return <div className={`${mspStyles.mspPage} ${layout.page} msp-page-grid`}>
       <div className={mspStyles.mspLayout}>
         <div className={mspStyles.mspMain}>
@@ -574,7 +591,7 @@ export default function TicketSalesCreatePage({
               </button>
             </>}
           />
-          <div className={`${mspStyles.mspContent} ${mspStyles.mspContentList} mspContent`}>
+          <div className={`${mspStyles.mspContent} ${mspStyles.mspContentList} ${salesStyles.salesCreateContent} mspContent`}>
       <div className={layout.shell}>
 
         <div className={`${s.typeKpiRow} ${salesStyles.kindKpiRow}`}>
@@ -605,7 +622,7 @@ export default function TicketSalesCreatePage({
                   </div>}
               </SectionPanel>
 
-              <SectionPanel title={copy.sections.requester} className={s.panelAllowOverflow}>
+              <SectionPanel title={copy.sections.requester} allowOverflow>
                 <div className={s.demandeurBlock}>
                   <p className={s.detailsAvailabilityTitle}>{copy.requesterContact}</p>
                   <div className={s.contactSearchRow}>
@@ -638,14 +655,14 @@ export default function TicketSalesCreatePage({
                         } else if (e.key === "Escape") setShowContactDropdown(false);
                       }} />
                       </div>
-                      {showContactDropdown && <div className={s.contactDropdown} role="listbox">
+                      {showContactDropdown && contactDropdownCoords && typeof document !== "undefined" ? createPortal(<div ref={contactListRef} className={s.contactDropdownPortal} role="listbox" style={portalMenuStyle(contactDropdownCoords)}>
                           {filteredRequesterOptions.length === 0 ? <div className={s.contactEmpty}>{copy.noContactFound}</div> : filteredRequesterOptions.map((opt, idx) => {
                         return <button key={`${opt.kind}-${opt.id}`} type="button" className={`${s.contactOption} ${idx === contactHighlight ? s.contactOptionActive : ""}`} onMouseEnter={() => setContactHighlight(idx)} onClick={() => selectRequesterOption(opt)}>
                                   <span className={s.contactOptionName}>{opt.label}</span>
                                   {opt.meta && <span className={s.contactOptionMeta}>{opt.meta}</span>}
                                 </button>;
                       })}
-                        </div>}
+                        </div>, document.body) : null}
                     </div>
                   </div>
 
@@ -700,11 +717,11 @@ export default function TicketSalesCreatePage({
                         } else if (e.key === "Escape") setShowClientDropdown(false);
                       }} />
                       </div>
-                      {showClientDropdown && <div className={s.contactDropdown} role="listbox">
+                      {showClientDropdown && clientDropdownCoords && typeof document !== "undefined" ? createPortal(<div ref={clientListRef} className={s.contactDropdownPortal} role="listbox" style={portalMenuStyle(clientDropdownCoords)}>
                           {filteredClientOptions.length === 0 ? <div className={s.contactEmpty}>{copy.noCompanyFound}</div> : filteredClientOptions.map((opt, idx) => <button key={opt.id} type="button" className={`${s.contactOption} ${idx === clientHighlight ? s.contactOptionActive : ""}`} onMouseEnter={() => setClientHighlight(idx)} onClick={() => selectClient(opt.raw)}>
                                   <span className={s.contactOptionName}>{opt.label}</span>
                                 </button>)}
-                        </div>}
+                        </div>, document.body) : null}
                     </div>
                   </div>
 
@@ -760,8 +777,13 @@ export default function TicketSalesCreatePage({
                           </button>
                         ) : null}
                       </div>
-                      {showEquipmentDropdown ? (
-                        <div className={s.contactDropdown} role="listbox">
+                      {showEquipmentDropdown && equipmentDropdownCoords && typeof document !== "undefined" ? createPortal(
+                        <div
+                          ref={equipmentListRef}
+                          className={s.contactDropdownPortal}
+                          role="listbox"
+                          style={portalMenuStyle(equipmentDropdownCoords)}
+                        >
                           {!selectedClientId ? (
                             <div className={s.contactEmpty}>{copy.selectCompanyFirst}</div>
                           ) : loadingEquipments ? (
@@ -781,14 +803,15 @@ export default function TicketSalesCreatePage({
                               </button>
                             ))
                           )}
-                        </div>
+                        </div>,
+                        document.body
                       ) : null}
                     </div>
                   </div>
                 </div>
               </SectionPanel>
 
-              <SectionPanel title={copy.sections.details}>
+              <SectionPanel title={copy.sections.details} allowOverflow>
                 <div className={s.fieldBlock} style={{ marginBottom: "1rem" }}>
                   <label className={s.fieldLabel} htmlFor="sales-create-subject">
                     {copy.subjectLabel}
@@ -883,99 +906,7 @@ export default function TicketSalesCreatePage({
                       {selectedEquipment ? getEquipmentPickerLabel(selectedEquipment, { locale }) : "-"}
                     </dd>
                   </div>
-                  <div className={s.contractFactRow}>
-                    <dt className={s.contractFactLabel}>
-                      <Icon icon="mdi:file-document-outline" className={s.contractFactIcon} aria-hidden />
-                      {copy.context.purchaseOrder}
-                    </dt>
-                    <dd className={purchaseOrder.trim() ? s.contractFactCompany : s.contractFactEmpty}>
-                      {purchaseOrder.trim() || "-"}
-                    </dd>
-                  </div>
-                  <div className={s.contractFactRow}>
-                    <dt className={s.contractFactLabel}>
-                      <Icon icon="mdi:account-tie-outline" className={s.contractFactIcon} aria-hidden />
-                      {copy.context.commercial}
-                    </dt>
-                    <dd className={commercialLabel ? s.contractFactCompany : s.contractFactEmpty}>
-                      {commercialLabel || "-"}
-                    </dd>
-                  </div>
-                  <div className={s.contractFactRow}>
-                    <dt className={s.contractFactLabel}>
-                      <Icon icon="mdi:briefcase-account-outline" className={s.contractFactIcon} aria-hidden />
-                      {copy.context.projectManager}
-                    </dt>
-                    <dd className={hasProjectManager && projectManagerLabel ? s.contractFactCompany : s.contractFactEmpty}>
-                      {projectManagerDisplay}
-                    </dd>
-                  </div>
                 </dl>
-              </SectionPanel>
-
-              <SectionPanel title={copy.sections.commercial}>
-                <div className={salesStyles.salesFields}>
-                  <div className={s.equipmentField}>
-                    <label className={s.equipmentFieldLabel} htmlFor="sales-create-purchase-order">
-                      {copy.purchaseOrder}
-                    </label>
-                    <div className={s.fieldShell}>
-                      <input id="sales-create-purchase-order" type="text" className={s.fieldShellControl} value={purchaseOrder} placeholder={copy.purchaseOrderPlaceholder} onChange={e => setPurchaseOrder(e.target.value)} />
-                    </div>
-                  </div>
-
-                  <div className={s.equipmentField}>
-                    <label className={s.equipmentFieldLabel} htmlFor="sales-create-commercial">
-                      {copy.commercial}
-                    </label>
-                    <select id="sales-create-commercial" className={s.select} value={commercialUserId} onChange={e => setCommercialUserId(e.target.value)}>
-                      <option value="">{copy.selectCommercial}</option>
-                      {sortedUsers.map(user => <option key={user.id} value={user.id}>
-                          {getUserLabel(user, copy)}
-                        </option>)}
-                    </select>
-                  </div>
-
-                  <div className={s.equipmentField}>
-                    <span className={s.equipmentFieldLabel} id="sales-create-project-manager-label">
-                      {copy.projectManager}
-                    </span>
-                    <div className={s.segmentedGroup} role="radiogroup" aria-labelledby="sales-create-project-manager-label">
-                      <button type="button" role="radio" aria-checked={!hasProjectManager} className={`${s.segmentedBtn} ${!hasProjectManager ? s.segmentedBtnActive : ""}`} onClick={() => {
-                      setHasProjectManager(false);
-                      setProjectManagerUserId("");
-                      setFieldErrors(prev => ({
-                        ...prev,
-                        projectManager: undefined
-                      }));
-                    }}>
-                        <Icon icon="mdi:close-circle-outline" aria-hidden />
-                        {copy.no}
-                      </button>
-                      <button type="button" role="radio" aria-checked={hasProjectManager} className={`${s.segmentedBtn} ${hasProjectManager ? s.segmentedBtnActive : ""}`} onClick={() => setHasProjectManager(true)}>
-                        <Icon icon="mdi:account-tie-outline" aria-hidden />
-                        {copy.yes}
-                      </button>
-                    </div>
-                    {hasProjectManager && <div data-pulse={fieldErrors.projectManager ? errorPulseTick : undefined} className={`${salesStyles.projectManagerField} ${fieldErrors.projectManager ? s.fieldErrorPulse : ""}`}>
-                        <label className={s.equipmentFieldLabel} htmlFor="sales-create-project-manager">
-                          {copy.projectManagerResponsible}
-                        </label>
-                        <select id="sales-create-project-manager" className={s.select} value={projectManagerUserId} onChange={e => {
-                      setProjectManagerUserId(e.target.value);
-                      setFieldErrors(prev => ({
-                        ...prev,
-                        projectManager: undefined
-                      }));
-                    }}>
-                          <option value="">{copy.selectProjectManager}</option>
-                          {sortedUsers.map(user => <option key={user.id} value={user.id}>
-                              {getUserLabel(user, copy)}
-                            </option>)}
-                        </select>
-                      </div>}
-                  </div>
-                </div>
               </SectionPanel>
 
               <SectionPanel title={copy.sections.settings}>

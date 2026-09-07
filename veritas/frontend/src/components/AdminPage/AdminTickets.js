@@ -54,6 +54,7 @@ import { useAdminSupportSettingsCopy } from "../../hooks/useAdminCopy";
 import { useCommonCopy } from "../../hooks/useCommonCopy";
 import { interpolate } from "../../i18n/translate";
 import { describeLocalizedExclusionRuleFilters, describeLocalizedRuleCollector, getAdminMailCollectCopy, getRuleActionLabel } from "./adminMailCollectI18n";
+import SupportFormsAdmin from "./SupportFormsAdmin";
 const TICKET_ADMIN_VIEWS_EXCLUDED = new Set(["notifications", "webhooks", "support-credits", "collectors", "email-ingestion", "sales-forms"]);
 const TICKET_VIEW_META = {
   collectors: {
@@ -2941,124 +2942,132 @@ export default function AdminTickets({
             </div>
           </Card>}
 
-        {activeView === "categories" && <Card title={supportViewMeta.categories.title} description={supportViewMeta.categories.description} fill action={<Btn icon="mdi:plus" onClick={openCreateCategorySectionModal}>
-                {ss.categories.newSectionBtn}
-              </Btn>}>
-            <div className={s.tableSplitLayout}>
-            <div className={ui.toolRow}>
-              <div className={ui.toolLeft}>
-                <input type="search" className={ui.fieldSearch} placeholder={ss.categories.searchSection} value={sectionSearch} onChange={e => setSectionSearch(e.target.value)} />
-                <span className={ui.count}>
-                  {formatSupportSettingsCount(locale, "section", filteredCategorySections.length)}
-                </span>
-              </div>
-            </div>
+        {activeView === "categories" && <Card title={supportViewMeta.categories.title} description={supportViewMeta.categories.description} fill>
+            <div className={s.tableSplitColumns}>
+              <div className={s.tableSplitColumn}>
+                <div className={s.tableSplitColumnHead}>
+                  <h4 className={s.tableSplitColumnTitle}>{ss.categories.sectionsTitle}</h4>
+                  <Btn icon="mdi:plus" size="sm" onClick={openCreateCategorySectionModal}>
+                    {ss.categories.newSectionBtn}
+                  </Btn>
+                </div>
+                <div className={ui.toolRow}>
+                  <div className={ui.toolLeft}>
+                    <input type="search" className={ui.fieldSearch} placeholder={ss.categories.searchSection} value={sectionSearch} onChange={e => setSectionSearch(e.target.value)} />
+                    <span className={ui.count}>
+                      {formatSupportSettingsCount(locale, "section", filteredCategorySections.length)}
+                    </span>
+                  </div>
+                </div>
 
-            <div className={s.tableSectionPinned}>
-              <div className={s.tableWrap}>
-                <table className={s.table}>
-                  <thead>
-                    <tr>
-                      <th>{ss.common.columns.name}</th>
-                      <th>{ss.common.columns.description}</th>
-                      <th>{ss.common.columns.status}</th>
-                      <th style={{
+                <div className={s.tableSectionPinned}>
+                  <div className={s.tableWrap}>
+                    <table className={s.table}>
+                      <thead>
+                        <tr>
+                          <th>{ss.common.columns.name}</th>
+                          <th>{ss.common.columns.description}</th>
+                          <th>{ss.common.columns.status}</th>
+                          <th style={{
                       width: 88
                     }} aria-label={ss.common.actions.actionsAria} />
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {filteredCategorySections.length === 0 ? <tr>
-                        <td colSpan={4} className={s.empty}>
-                          {ticketCategorySections.length === 0 ? ss.categories.emptySections : ss.categories.emptySectionsSearch}
-                        </td>
-                      </tr> : categorySectionsPagination.paginatedItems.map(section => {
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {filteredCategorySections.length === 0 ? <tr>
+                            <td colSpan={4} className={s.empty}>
+                              {ticketCategorySections.length === 0 ? ss.categories.emptySections : ss.categories.emptySectionsSearch}
+                            </td>
+                          </tr> : categorySectionsPagination.paginatedItems.map(section => {
                     const linkedCategoryCount = countCategoriesForSection(section);
                     const sectionDeleteBlocked = linkedCategoryCount > 0;
                     return <tr key={String(section.id)}>
-                            <td>{section.name || ss.common.emptyDash}</td>
-                            <td>{section.description || ss.common.emptyDash}</td>
-                            <td>
-                              <EntityStatus active={section.enabled !== false} {...entityStatusLabels} />
-                            </td>
-                            <td>
-                              <div className={s.actions}>
-                                <button type="button" className={s.actionBtn} title={ss.common.actions.edit} onClick={() => openEditCategorySectionModal(section)}>
-                                  <Icon icon="mdi:pencil-outline" aria-hidden />
-                                </button>
-                                <button type="button" className={`${s.actionBtn} ${s.actionBtnDanger}`} title={sectionDeleteBlocked ? linkedCategoryCount === 1 ? ss.categories.sectionDeleteBlockedOne : interpolate(ss.categories.sectionDeleteBlockedMany, {
+                              <td>{section.name || ss.common.emptyDash}</td>
+                              <td>{section.description || ss.common.emptyDash}</td>
+                              <td>
+                                <EntityStatus active={section.enabled !== false} {...entityStatusLabels} />
+                              </td>
+                              <td>
+                                <div className={s.actions}>
+                                  <button type="button" className={s.actionBtn} title={ss.common.actions.edit} onClick={() => openEditCategorySectionModal(section)}>
+                                    <Icon icon="mdi:pencil-outline" aria-hidden />
+                                  </button>
+                                  <button type="button" className={`${s.actionBtn} ${s.actionBtnDanger}`} title={sectionDeleteBlocked ? linkedCategoryCount === 1 ? ss.categories.sectionDeleteBlockedOne : interpolate(ss.categories.sectionDeleteBlockedMany, {
                             count: linkedCategoryCount
                           }) : ss.common.actions.delete} disabled={sectionDeleteBlocked} onClick={() => requestRemoveCategorySection(section)}>
-                                  <Icon icon="mdi:delete-outline" aria-hidden />
-                                </button>
-                              </div>
-                            </td>
-                          </tr>;
+                                    <Icon icon="mdi:delete-outline" aria-hidden />
+                                  </button>
+                                </div>
+                              </td>
+                            </tr>;
                   })}
-                  </tbody>
-                </table>
+                      </tbody>
+                    </table>
+                  </div>
+                  {filteredCategorySections.length > 0 && <Pagination page={categorySectionsPagination.page} totalPages={categorySectionsPagination.totalPages} onPageChange={categorySectionsPagination.setPage} pageSize={categorySectionsPagination.pageSize} onPageSizeChange={categorySectionsPagination.setPageSize} rangeLabel={categorySectionsPagination.rangeLabel} />}
+                </div>
               </div>
-              {filteredCategorySections.length > 0 && <Pagination page={categorySectionsPagination.page} totalPages={categorySectionsPagination.totalPages} onPageChange={categorySectionsPagination.setPage} pageSize={categorySectionsPagination.pageSize} onPageSizeChange={categorySectionsPagination.setPageSize} rangeLabel={categorySectionsPagination.rangeLabel} />}
-            </div>
 
-            <div className={styles.subSectionHead}>
-              <h4 className={styles.subSectionTitle}>{ss.categories.categoriesTitle}</h4>
-              <Btn icon="mdi:plus" size="sm" onClick={openCreateCategoryModal}>
-                {ss.common.actions.add}
-              </Btn>
-            </div>
+              <div className={s.tableSplitColumn}>
+                <div className={s.tableSplitColumnHead}>
+                  <h4 className={s.tableSplitColumnTitle}>{ss.categories.categoriesTitle}</h4>
+                  <Btn icon="mdi:plus" size="sm" onClick={openCreateCategoryModal}>
+                    {ss.common.actions.add}
+                  </Btn>
+                </div>
 
-            <div className={ui.toolRow}>
-              <div className={ui.toolLeft}>
-                <input type="search" className={ui.fieldSearch} placeholder={ss.categories.searchCategory} value={categorySearch} onChange={e => setCategorySearch(e.target.value)} />
-                <span className={ui.count}>
-                  {formatSupportSettingsCount(locale, "category", filteredTicketCategories.length)}
-                </span>
-              </div>
-            </div>
+                <div className={ui.toolRow}>
+                  <div className={ui.toolLeft}>
+                    <input type="search" className={ui.fieldSearch} placeholder={ss.categories.searchCategory} value={categorySearch} onChange={e => setCategorySearch(e.target.value)} />
+                    <span className={ui.count}>
+                      {formatSupportSettingsCount(locale, "category", filteredTicketCategories.length)}
+                    </span>
+                  </div>
+                </div>
 
-            <div className={s.tableSection}>
-              <div className={s.tableWrap}>
-                <table className={s.table}>
-                  <thead>
-                    <tr>
-                      <th>{ss.common.columns.section}</th>
-                      <th>{ss.common.columns.name}</th>
-                      <th>{ss.common.columns.description}</th>
-                      <th>{ss.common.columns.status}</th>
-                      <th style={{
+                <div className={s.tableSection}>
+                  <div className={s.tableWrap}>
+                    <table className={s.table}>
+                      <thead>
+                        <tr>
+                          <th>{ss.common.columns.section}</th>
+                          <th>{ss.common.columns.name}</th>
+                          <th>{ss.common.columns.description}</th>
+                          <th>{ss.common.columns.status}</th>
+                          <th style={{
                       width: 88
                     }} aria-label={ss.common.actions.actionsAria} />
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {filteredTicketCategories.length === 0 ? <tr>
-                        <td colSpan={5} className={s.empty}>
-                          {ticketCategories.length === 0 ? ss.categories.emptyCategories : ss.categories.emptyCategoriesSearch}
-                        </td>
-                      </tr> : categoriesPagination.paginatedItems.map(category => <tr key={String(category.id)}>
-                          <td>{category.section || ss.categories.uncategorized}</td>
-                          <td>{category.name || ss.common.emptyDash}</td>
-                          <td>{category.description || ss.common.emptyDash}</td>
-                          <td>
-                            <EntityStatus active={category.enabled !== false} {...entityStatusLabels} />
-                          </td>
-                          <td>
-                            <div className={s.actions}>
-                              <button type="button" className={s.actionBtn} title={ss.common.actions.edit} onClick={() => openEditCategoryModal(category)}>
-                                <Icon icon="mdi:pencil-outline" aria-hidden />
-                              </button>
-                              <button type="button" className={`${s.actionBtn} ${s.actionBtnDanger}`} title={ss.common.actions.delete} onClick={() => setCategoryDeleteTarget(category)}>
-                                <Icon icon="mdi:delete-outline" aria-hidden />
-                              </button>
-                            </div>
-                          </td>
-                        </tr>)}
-                  </tbody>
-                </table>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {filteredTicketCategories.length === 0 ? <tr>
+                            <td colSpan={5} className={s.empty}>
+                              {ticketCategories.length === 0 ? ss.categories.emptyCategories : ss.categories.emptyCategoriesSearch}
+                            </td>
+                          </tr> : categoriesPagination.paginatedItems.map(category => <tr key={String(category.id)}>
+                              <td>{category.section || ss.categories.uncategorized}</td>
+                              <td>{category.name || ss.common.emptyDash}</td>
+                              <td>{category.description || ss.common.emptyDash}</td>
+                              <td>
+                                <EntityStatus active={category.enabled !== false} {...entityStatusLabels} />
+                              </td>
+                              <td>
+                                <div className={s.actions}>
+                                  <button type="button" className={s.actionBtn} title={ss.common.actions.edit} onClick={() => openEditCategoryModal(category)}>
+                                    <Icon icon="mdi:pencil-outline" aria-hidden />
+                                  </button>
+                                  <button type="button" className={`${s.actionBtn} ${s.actionBtnDanger}`} title={ss.common.actions.delete} onClick={() => setCategoryDeleteTarget(category)}>
+                                    <Icon icon="mdi:delete-outline" aria-hidden />
+                                  </button>
+                                </div>
+                              </td>
+                            </tr>)}
+                      </tbody>
+                    </table>
+                  </div>
+                  {filteredTicketCategories.length > 0 && <Pagination page={categoriesPagination.page} totalPages={categoriesPagination.totalPages} onPageChange={categoriesPagination.setPage} pageSize={categoriesPagination.pageSize} onPageSizeChange={categoriesPagination.setPageSize} rangeLabel={categoriesPagination.rangeLabel} />}
+                </div>
               </div>
-              {filteredTicketCategories.length > 0 && <Pagination page={categoriesPagination.page} totalPages={categoriesPagination.totalPages} onPageChange={categoriesPagination.setPage} pageSize={categoriesPagination.pageSize} onPageSizeChange={categoriesPagination.setPageSize} rangeLabel={categoriesPagination.rangeLabel} />}
-            </div>
             </div>
           </Card>}
 
@@ -3189,6 +3198,8 @@ export default function AdminTickets({
           </Card>}
 
         {activeView === "ticket-views" && <AdminTicketViews profiles={ticketViewProfiles} users={ticketViewUsers} teams={ticketViewTeams} />}
+
+        {activeView === "support-forms" && <SupportFormsAdmin />}
 
         {activeView === "macros" && <Card title={supportViewMeta.macros.title} description={supportViewMeta.macros.description} fill action={<Btn icon="mdi:plus" onClick={openCreateMacroModal} disabled={macrosAtLimit} title={macrosAtLimit ? interpolate(ss.macros.limitTitle, {
         max: maxMacros

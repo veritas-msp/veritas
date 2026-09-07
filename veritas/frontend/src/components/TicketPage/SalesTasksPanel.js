@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { Icon } from "@iconify/react";
 import { FaTimes } from "react-icons/fa";
@@ -6,6 +6,11 @@ import TicketConfirmModal from "./TicketConfirmModal";
 import layout from "../EnterprisesPage/EnterpriseFormModal.module.css";
 import eventStyles from "../PlanningPage/PlanningEventFormModal.module.css";
 import styles from "./TicketSalesDetailPage.module.css";
+import {
+  SalesCreditDebitFields,
+  buildSalesCreditDefaultAmounts,
+  getSalesCreditDebitsFromState
+} from "./SalesCreditDebitFields";
 import { useAppLocale } from "../../hooks/useAppGeneralSettings";
 import { usePlanningEventTypes } from "../PlanningPage/usePlanningEventTypes";
 import { getPlanningEventFormCopy } from "../PlanningPage/planningEventFormI18n";
@@ -43,11 +48,12 @@ function resolveDefaultEventType(types, preferred) {
   return list[0]?.value || "";
 }
 
-const TASK_FORM_SECTIONS = [
+const TASK_FORM_SECTIONS_BASE = [
   { id: "general", icon: "mdi:text-box-outline" },
   { id: "schedule", icon: "mdi:calendar-clock" },
   { id: "assignee", icon: "mdi:account-outline" },
-  { id: "equipment", icon: "mdi:desktop-classic" }
+  { id: "equipment", icon: "mdi:desktop-classic" },
+  { id: "credits", icon: "mdi:ticket-percent-outline" }
 ];
 
 export default function SalesTasksPanel({
@@ -60,12 +66,15 @@ export default function SalesTasksPanel({
   saving = false,
   variant = "card",
   canManageTasks = true,
+  supportCredit = null,
+  creditCopy = null,
   creditDebitedSources = null,
   creditAlreadyLabel = "",
   onAddTask,
   onUpdateTask,
   onToggleTask,
-  onRemoveTask
+  onRemoveTask,
+  onConsumeTaskCredits
 }) {
   const locale = useAppLocale();
   const catalogTypes = usePlanningEventTypes();
@@ -95,6 +104,15 @@ export default function SalesTasksPanel({
   const [startLocal, setStartLocal] = useState("");
   const [endLocal, setEndLocal] = useState("");
   const [rangeMode, setRangeMode] = useState(false);
+  const [assigneeSearch, setAssigneeSearch] = useState("");
+  const [showAssigneeDropdown, setShowAssigneeDropdown] = useState(false);
+  const [assigneeHighlight, setAssigneeHighlight] = useState(0);
+  const [creditEnabled, setCreditEnabled] = useState(false);
+  const [creditAmounts, setCreditAmounts] = useState({});
+  const assigneePickerRef = useRef(null);
+
+  const canManageCredits = Boolean(supportCredit?.eligible && creditCopy);
+  const fieldsCopy = creditCopy || {};
 
   const userOptions = useMemo(
     () =>
@@ -122,16 +140,27 @@ export default function SalesTasksPanel({
   const isEditing = Boolean(editingTask?.id);
   const modalCopy = copy.modal || {};
 
+  const resetCreditForm = (alreadyDebited = false) => {
+    setCreditEnabled(false);
+    setCreditAmounts(
+      alreadyDebited ? {} : buildSalesCreditDefaultAmounts(supportCredit?.packs || [], supportCredit?.balance ?? 0)
+    );
+  };
+
   const resetForm = () => {
     setEditingTask(null);
     setActiveSection("general");
     setLabel("");
     setEventType(resolveDefaultEventType(selectableTypes));
     setAssigneeIds([]);
+    setAssigneeSearch("");
+    setShowAssigneeDropdown(false);
+    setAssigneeHighlight(0);
     setEquipmentId(defaultEquipmentId ? String(defaultEquipmentId) : "");
     setStartLocal("");
     setEndLocal("");
     setRangeMode(false);
+    resetCreditForm(false);
   };
 
   const closeModal = () => {
@@ -158,6 +187,9 @@ export default function SalesTasksPanel({
       : [];
     const legacyId = task.assigneeId ? String(task.assigneeId) : "";
     setAssigneeIds(fromAssignees.length > 0 ? fromAssignees : legacyId ? [legacyId] : []);
+    setAssigneeSearch("");
+    setShowAssigneeDropdown(false);
+    setAssigneeHighlight(0);
     setEquipmentId(
       task.equipmentId
         ? String(task.equipmentId)
@@ -168,6 +200,8 @@ export default function SalesTasksPanel({
     setStartLocal(toDatetimeLocalValue(task.startAt));
     setEndLocal(toDatetimeLocalValue(task.endAt));
     setRangeMode(Boolean(task.startAt && task.endAt));
+    const alreadyDebited = Boolean(creditDebitedSources?.has?.(`task:${task.id}`));
+    resetCreditForm(alreadyDebited);
     setOpen(true);
   };
 
@@ -193,24 +227,58 @@ export default function SalesTasksPanel({
     setEventType(resolveDefaultEventType(selectableTypes));
   }, [open, eventType, selectableTypes]);
 
+  useEffect(() => {
+    if (!showAssigneeDropdown) return undefined;
+    const onPointerDown = event => {
+      if (!assigneePickerRef.current?.contains(event.target)) {
+        setShowAssigneeDropdown(false);
+      }
+    };
+    document.addEventListener("mousedown", onPointerDown);
+    return () => document.removeEventListener("mousedown", onPointerDown);
+  }, [showAssigneeDropdown]);
+
+  const taskSections = useMemo(() => {
+    const list = TASK_FORM_SECTIONS_BASE.filter(section => section.id !== "credits" || canManageCredits);
+    return list;
+  }, [canManageCredits]);
+
   const sectionMeta = useMemo(
     () => ({
       general: Boolean(label.trim() && eventType),
       schedule: true,
       assignee: true,
-      equipment: true
+      equipment: true,
+      credits: canManageCredits
+        ? Boolean(
+            creditDebitedSources?.has?.(`task:${editingTask?.id}`) ||
+              !creditEnabled ||
+              getSalesCreditDebitsFromState(creditEnabled, creditAmounts, supportCredit?.packs).length > 0 ||
+              Number(supportCredit?.balance || 0) <= 0
+          )
+        : true
     }),
-    [label, eventType]
+    [
+      label,
+      eventType,
+      canManageCredits,
+      creditDebitedSources,
+      editingTask?.id,
+      creditEnabled,
+      creditAmounts,
+      supportCredit?.packs,
+      supportCredit?.balance
+    ]
   );
 
   const formSections = useMemo(
     () =>
-      TASK_FORM_SECTIONS.map(section => ({
+      taskSections.map(section => ({
         ...section,
         label: modalCopy.sections?.[section.id]?.label || section.id,
         description: modalCopy.sections?.[section.id]?.description || ""
       })),
-    [modalCopy]
+    [modalCopy, taskSections]
   );
 
   const selectedAssignees = useMemo(
@@ -224,6 +292,16 @@ export default function SalesTasksPanel({
   const availableAssigneeOptions = useMemo(
     () => userOptions.filter(user => !assigneeIds.includes(String(user.id))),
     [userOptions, assigneeIds]
+  );
+
+  const filteredAssigneeOptions = useMemo(() => {
+    const q = assigneeSearch.trim().toLowerCase();
+    if (!q) return [];
+    return availableAssigneeOptions.filter(user => user.label.toLowerCase().includes(q)).slice(0, 12);
+  }, [availableAssigneeOptions, assigneeSearch]);
+
+  const editingCreditsAlreadyDebited = Boolean(
+    isEditing && editingTask?.id && creditDebitedSources?.has?.(`task:${editingTask.id}`)
   );
 
   const footerSummary = useMemo(() => {
@@ -245,6 +323,9 @@ export default function SalesTasksPanel({
     const id = String(userId || "").trim();
     if (!id || assigneeIds.includes(id)) return;
     setAssigneeIds(prev => [...prev, id]);
+    setAssigneeSearch("");
+    setShowAssigneeDropdown(false);
+    setAssigneeHighlight(0);
   };
 
   const removeAssignee = userId => {
@@ -275,6 +356,7 @@ export default function SalesTasksPanel({
     const endAt = startAt && rangeMode ? fromDatetimeLocalValue(endLocal) : null;
     const scheduleEnd = endAt && startAt && new Date(endAt) < new Date(startAt) ? startAt : endAt;
 
+    const taskId = isEditing ? String(editingTask.id) : `task-${Date.now()}`;
     const payload = {
       label: trimmed,
       eventType: selectedType,
@@ -296,13 +378,25 @@ export default function SalesTasksPanel({
       if (ok === false) return;
     } else {
       const ok = await onAddTask?.({
-        id: `task-${Date.now()}`,
+        id: taskId,
         ...payload,
         done: false,
         createdAt: new Date().toISOString()
       });
       if (ok === false) return;
     }
+
+    if (canManageCredits && creditEnabled && !editingCreditsAlreadyDebited) {
+      const debits = getSalesCreditDebitsFromState(creditEnabled, creditAmounts, supportCredit?.packs);
+      if (debits.length > 0) {
+        await onConsumeTaskCredits?.({
+          taskId,
+          taskLabel: trimmed,
+          debits
+        });
+      }
+    }
+
     resetForm();
     setOpen(false);
   };
@@ -427,26 +521,74 @@ export default function SalesTasksPanel({
             </div>
             <div className={layout.fieldStack}>
               <div className={`${layout.field} ${layout.fieldFull}`}>
-                <label className={layout.label} htmlFor="sales-task-assignee-add">
+                <label className={layout.label} htmlFor="sales-task-assignee-search">
                   {copy.assignee}
                 </label>
-                <select
-                  id="sales-task-assignee-add"
-                  className={layout.input}
-                  value=""
-                  onChange={e => {
-                    addAssignee(e.target.value);
-                    e.target.value = "";
-                  }}
-                  disabled={saving || availableAssigneeOptions.length === 0}
-                >
-                  <option value="">{copy.addAssignee || "Ajouter un assigné…"}</option>
-                  {availableAssigneeOptions.map(user => (
-                    <option key={user.id} value={user.id}>
-                      {user.label}
-                    </option>
-                  ))}
-                </select>
+                <div className={styles.taskAssigneePicker} ref={assigneePickerRef}>
+                  <div className={`${styles.taskAssigneeInputWrap} ${showAssigneeDropdown ? styles.taskAssigneeInputWrapOpen : ""}`}>
+                    <Icon icon="mdi:magnify" className={styles.taskAssigneeInputIcon} aria-hidden />
+                    <input
+                      id="sales-task-assignee-search"
+                      type="text"
+                      className={styles.taskAssigneeInput}
+                      value={assigneeSearch}
+                      autoComplete="off"
+                      placeholder={copy.searchAssignee || copy.addAssignee || "Rechercher un agent…"}
+                      disabled={saving || availableAssigneeOptions.length === 0}
+                      aria-expanded={showAssigneeDropdown}
+                      aria-haspopup="listbox"
+                      onChange={e => {
+                        setAssigneeSearch(e.target.value);
+                        setShowAssigneeDropdown(true);
+                        setAssigneeHighlight(0);
+                      }}
+                      onFocus={() => setShowAssigneeDropdown(true)}
+                      onKeyDown={e => {
+                        if (!showAssigneeDropdown || filteredAssigneeOptions.length === 0) {
+                          if (e.key === "Escape") setShowAssigneeDropdown(false);
+                          return;
+                        }
+                        if (e.key === "ArrowDown") {
+                          e.preventDefault();
+                          setAssigneeHighlight(h => Math.min(h + 1, filteredAssigneeOptions.length - 1));
+                        } else if (e.key === "ArrowUp") {
+                          e.preventDefault();
+                          setAssigneeHighlight(h => Math.max(h - 1, 0));
+                        } else if (e.key === "Enter") {
+                          e.preventDefault();
+                          const picked = filteredAssigneeOptions[assigneeHighlight];
+                          if (picked) addAssignee(picked.id);
+                        } else if (e.key === "Escape") {
+                          setShowAssigneeDropdown(false);
+                        }
+                      }}
+                    />
+                  </div>
+                  {showAssigneeDropdown ? (
+                    <div className={styles.taskAssigneeDropdown} role="listbox">
+                      {filteredAssigneeOptions.length === 0 ? (
+                        <div className={styles.taskAssigneeEmpty}>
+                          {assigneeSearch.trim()
+                            ? copy.noAssigneeFound || "Aucun agent trouvé"
+                            : copy.searchAssigneeHint || "Tapez pour rechercher un agent…"}
+                        </div>
+                      ) : (
+                        filteredAssigneeOptions.map((user, idx) => (
+                          <button
+                            key={user.id}
+                            type="button"
+                            role="option"
+                            className={`${styles.taskAssigneeOption} ${assigneeHighlight === idx ? styles.taskAssigneeOptionActive : ""}`}
+                            onMouseEnter={() => setAssigneeHighlight(idx)}
+                            onClick={() => addAssignee(user.id)}
+                          >
+                            <span>{user.label}</span>
+                          </button>
+                        ))
+                      )}
+                    </div>
+                  ) : null}
+                </div>
               </div>
               {selectedAssignees.length > 0 ? (
                 <div className={styles.chipList}>
@@ -503,6 +645,30 @@ export default function SalesTasksPanel({
                 ) : null}
               </div>
             </div>
+          </>
+        );
+      case "credits":
+        return (
+          <>
+            <div className={layout.sectionHead}>
+              <h3 className={layout.sectionTitle}>{modalCopy.creditsTitle || fieldsCopy.title}</h3>
+              <p className={layout.sectionDesc}>{modalCopy.creditsDesc || fieldsCopy.subtitle || ""}</p>
+            </div>
+            <SalesCreditDebitFields
+              copy={{
+                ...fieldsCopy,
+                alreadyDebited: creditAlreadyLabel || fieldsCopy.alreadyDebited,
+                alreadyTask: creditAlreadyLabel || fieldsCopy.alreadyTask
+              }}
+              supportCredit={supportCredit}
+              enabled={creditEnabled}
+              onEnabledChange={setCreditEnabled}
+              amounts={creditAmounts}
+              onAmountsChange={setCreditAmounts}
+              disabled={saving || editingCreditsAlreadyDebited}
+              alreadyDebited={editingCreditsAlreadyDebited}
+              compact
+            />
           </>
         );
       default:

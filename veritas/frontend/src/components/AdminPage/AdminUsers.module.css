@@ -36,6 +36,70 @@
   overflow: hidden;
 }
 
+.tableSplitColumns {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr);
+  gap: 1.25rem;
+  align-items: stretch;
+  overflow: hidden;
+}
+
+.tableSplitColumn {
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  padding: 0.85rem 0.9rem 0.75rem;
+  border: 1px solid var(--msp-border-light, #eef2f7);
+  border-radius: 12px;
+  background: var(--msp-surface-2, #f8fafc);
+}
+
+.tableSplitColumn .tableSection,
+.tableSplitColumn .tableSectionPinned {
+  flex: 1;
+  min-height: 0;
+  margin-bottom: 0;
+  overflow: hidden;
+}
+
+.tableSplitColumn .tableSectionPinned .tableWrap,
+.tableSplitColumn .tableSection .tableWrap {
+  flex: 1;
+  max-height: none;
+  overflow: auto;
+}
+
+.tableSplitColumnHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 0.65rem;
+  flex-shrink: 0;
+}
+
+.tableSplitColumnTitle {
+  margin: 0;
+  font-size: 0.86rem;
+  font-weight: 700;
+  color: var(--msp-text, #0f1c2e);
+}
+
+@media (max-width: 1100px) {
+  .tableSplitColumns {
+    grid-template-columns: 1fr;
+    overflow: auto;
+  }
+
+  .tableSplitColumn {
+    min-height: 280px;
+  }
+}
+
 .tableSectionPinned {
   flex: 0 0 auto;
   display: flex;

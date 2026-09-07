@@ -5,7 +5,20 @@ import { FaTimes } from "react-icons/fa";
 import { toast } from "react-toastify";
 import { DndContext, DragOverlay, KeyboardSensor, PointerSensor, closestCenter, pointerWithin, rectIntersection, useSensor, useSensors } from "@dnd-kit/core";
 import { sortableKeyboardCoordinates } from "@dnd-kit/sortable";
-import { createSalesForm, createSalesFormField, deleteSalesFormField, fetchSalesTicketCategories, updateSalesForm, updateSalesFormField } from "../../api/tickets";
+import {
+  createSalesForm,
+  createSalesFormField,
+  createSupportForm,
+  createSupportFormField,
+  deleteSalesFormField,
+  deleteSupportFormField,
+  fetchSalesTicketCategories,
+  fetchTicketCategories,
+  updateSalesForm,
+  updateSalesFormField,
+  updateSupportForm,
+  updateSupportFormField
+} from "../../api/tickets";
 import { fetchClientsList, fetchContactsList } from "../../api/clients";
 import { fetchUsers } from "../../api/users";
 import { fetchTeams } from "../../api/teams";
@@ -58,6 +71,30 @@ const EMPTY_TICKET_TARGETS = {
   version: 2,
   rules: []
 };
+const SALES_KIND_OPTIONS = [
+  { value: "prestation", label: "Prestation", labelEn: "Professional service" },
+  { value: "installation", label: "Installation", labelEn: "Installation" }
+];
+const SUPPORT_KIND_OPTIONS = [
+  { value: "incident", label: "Incident", labelEn: "Incident" },
+  { value: "demande", label: "Demande", labelEn: "Request" },
+  { value: "probleme", label: "Problème", labelEn: "Problem" },
+  { value: "changement", label: "Changement", labelEn: "Change" }
+];
+function getKindOptions(family) {
+  return family === "support" ? SUPPORT_KIND_OPTIONS : SALES_KIND_OPTIONS;
+}
+function defaultKindForFamily(family) {
+  return family === "support" ? "incident" : "prestation";
+}
+function slugifyPublicSlug(value, fallbackKey = "") {
+  const safe = String(value || fallbackKey || "")
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+  return safe || `form-${Date.now().toString(36)}`;
+}
 const EMPTY_FORM = {
   kind: "prestation",
   key: "",
@@ -68,6 +105,8 @@ const EMPTY_FORM = {
   displayOrder: 0,
   enabled: true,
   visibility: "public",
+  publicEnabled: false,
+  publicSlug: "",
   profileNames: [],
   userIds: [],
   teamIds: [],
@@ -212,18 +251,21 @@ function FieldHint({
 function ticketTargetsFromInitial(form) {
   return normalizeTicketTargetsDraft(form?.ticketTargets || {});
 }
-function formFromInitial(initialForm, kindDefault = "prestation") {
+function formFromInitial(initialForm, kindDefault = "prestation", family = "sales") {
+  const fallbackKind = kindDefault || defaultKindForFamily(family);
   if (!initialForm) {
     return {
       ...EMPTY_FORM,
-      kind: kindDefault || "prestation",
+      kind: fallbackKind,
+      publicEnabled: false,
+      publicSlug: "",
       ticketTargets: {
         ...EMPTY_TICKET_TARGETS
       }
     };
   }
   return {
-    kind: initialForm.kind,
+    kind: initialForm.kind || fallbackKind,
     key: initialForm.key,
     label: initialForm.label,
     icon: initialForm.icon || "mdi:file-document-outline",
@@ -232,6 +274,8 @@ function formFromInitial(initialForm, kindDefault = "prestation") {
     displayOrder: initialForm.displayOrder || 0,
     enabled: initialForm.enabled !== false,
     visibility: initialForm.visibility === "assigned" ? "assigned" : "public",
+    publicEnabled: initialForm.publicEnabled === true,
+    publicSlug: initialForm.publicSlug || "",
     profileNames: Array.isArray(initialForm.profileNames) ? [...initialForm.profileNames] : [],
     userIds: Array.isArray(initialForm.userIds) ? initialForm.userIds.map(String) : [],
     teamIds: Array.isArray(initialForm.teamIds) ? initialForm.teamIds.map(String) : [],
@@ -242,14 +286,23 @@ export default function SalesFormModal({
   open,
   mode = "create",
   initialForm = null,
-  kindDefault = "prestation",
+  kindDefault,
+  family = "sales",
   onClose,
   onSaved
 }) {
   const locale = useAppLocale();
   const common = useCommonCopy();
   const deleteCopy = useMemo(() => getAdminDeleteConfirmsCopy(locale), [locale]);
+  const isSupport = family === "support";
+  const resolvedKindDefault = kindDefault || defaultKindForFamily(family);
+  const kindOptions = useMemo(() => getKindOptions(family), [family]);
   const isCreate = mode === "create";
+  const kindLabel = useCallback((kind, preferEn = locale === "en") => {
+    const opt = kindOptions.find(item => item.value === kind);
+    if (!opt) return kind || "";
+    return preferEn ? opt.labelEn : opt.label;
+  }, [kindOptions, locale]);
   const [builderMode, setBuilderMode] = useState("settings");
   const [formId, setFormId] = useState("");
   const [formDraft, setFormDraft] = useState(EMPTY_FORM);
@@ -266,7 +319,7 @@ export default function SalesFormModal({
   const [profiles, setProfiles] = useState([]);
   const [users, setUsers] = useState([]);
   const [teams, setTeams] = useState([]);
-  const [salesCategories, setSalesCategories] = useState([]);
+  const [categoryRows, setCategoryRows] = useState([]);
   const [previewValues, setPreviewValues] = useState({});
   const [previewClients, setPreviewClients] = useState([]);
   const [previewContacts, setPreviewContacts] = useState([]);
@@ -287,13 +340,13 @@ export default function SalesFormModal({
     if (!open) return;
     setBuilderMode("settings");
     setFormId(initialForm?.id ? String(initialForm.id) : "");
-    setFormDraft(formFromInitial(initialForm, kindDefault));
+    setFormDraft(formFromInitial(initialForm, resolvedKindDefault, family));
     setFields(Array.isArray(initialForm?.fields) ? initialForm.fields : []);
     setPreviewValues({});
     previewLookupsLoadedRef.current = false;
     setFieldDeleteTarget(null);
     resetFieldSelection();
-  }, [open, initialForm, kindDefault, resetFieldSelection]);
+  }, [open, initialForm, resolvedKindDefault, family, resetFieldSelection]);
   useEffect(() => {
     if (!open) return undefined;
     const previousOverflow = document.body.style.overflow;
@@ -307,33 +360,34 @@ export default function SalesFormModal({
     let cancelled = false;
     (async () => {
       try {
-        const [profileRows, userRows, teamRows, categoryRows] = await Promise.all([fetch(`${API_BASE_URL}/profiles`, {
+        const loadCategories = isSupport ? fetchTicketCategories : fetchSalesTicketCategories;
+        const [profileRows, userRows, teamRows, nextCategories] = await Promise.all([fetch(`${API_BASE_URL}/profiles`, {
           credentials: "include"
-        }).then(r => r.ok ? r.json() : []).catch(() => []), fetchUsers().catch(() => []), fetchTeams().catch(() => []), fetchSalesTicketCategories().catch(() => [])]);
+        }).then(r => r.ok ? r.json() : []).catch(() => []), fetchUsers().catch(() => []), fetchTeams().catch(() => []), loadCategories().catch(() => [])]);
         if (!cancelled) {
           setProfiles(Array.isArray(profileRows) ? profileRows : []);
           setUsers(Array.isArray(userRows) ? userRows : []);
           setTeams(Array.isArray(teamRows) ? teamRows : []);
-          setSalesCategories(Array.isArray(categoryRows) ? categoryRows : []);
+          setCategoryRows(Array.isArray(nextCategories) ? nextCategories : []);
         }
       } catch {
         if (!cancelled) {
           setProfiles([]);
           setUsers([]);
           setTeams([]);
-          setSalesCategories([]);
+          setCategoryRows([]);
         }
       }
     })();
     return () => {
       cancelled = true;
     };
-  }, [open]);
-  const categoryOptions = useMemo(() => (Array.isArray(salesCategories) ? salesCategories : []).filter(item => item?.enabled !== false && String(item?.name || "").trim()).slice().sort((a, b) => String(a.section || "").localeCompare(String(b.section || ""), undefined, {
+  }, [open, isSupport]);
+  const categoryOptions = useMemo(() => (Array.isArray(categoryRows) ? categoryRows : []).filter(item => item?.enabled !== false && String(item?.name || "").trim()).slice().sort((a, b) => String(a.section || "").localeCompare(String(b.section || ""), undefined, {
     sensitivity: "base"
   }) || String(a.name || "").localeCompare(String(b.name || ""), undefined, {
     sensitivity: "base"
-  })), [salesCategories]);
+  })), [categoryRows]);
   const userOptions = useMemo(() => users.filter(user => user?.id).map(user => ({
     id: String(user.id),
     label: getUserLabel(user),
@@ -380,21 +434,28 @@ export default function SalesFormModal({
   };
   const buildFormPayload = () => {
     const key = String(formDraft.key || "").trim() || slugifyKey(formDraft.label);
-    return {
-    kind: formDraft.kind,
-    key,
-    label: String(formDraft.label).trim(),
-    icon: String(formDraft.icon || "mdi:file-document-outline").trim(),
-    categorySlug: String(formDraft.categorySlug || slugifyCategory(formDraft.kind, key)).trim(),
-    description: String(formDraft.description || "").trim(),
-    displayOrder: Number(formDraft.displayOrder || 0),
-    enabled: formDraft.enabled !== false,
-    visibility: formDraft.visibility === "assigned" ? "assigned" : "public",
-    profileNames: formDraft.visibility === "assigned" ? formDraft.profileNames : [],
-    userIds: formDraft.visibility === "assigned" ? formDraft.userIds : [],
-    teamIds: formDraft.visibility === "assigned" ? formDraft.teamIds : [],
-    ticketTargets: serializeTicketTargetsDraft(formDraft.ticketTargets)
-  };
+    const payload = {
+      kind: formDraft.kind,
+      key,
+      label: String(formDraft.label).trim(),
+      icon: String(formDraft.icon || "mdi:file-document-outline").trim(),
+      categorySlug: String(formDraft.categorySlug || slugifyCategory(formDraft.kind, key)).trim(),
+      description: String(formDraft.description || "").trim(),
+      displayOrder: Number(formDraft.displayOrder || 0),
+      enabled: formDraft.enabled !== false,
+      visibility: formDraft.visibility === "assigned" ? "assigned" : "public",
+      profileNames: formDraft.visibility === "assigned" ? formDraft.profileNames : [],
+      userIds: formDraft.visibility === "assigned" ? formDraft.userIds : [],
+      teamIds: formDraft.visibility === "assigned" ? formDraft.teamIds : [],
+      ticketTargets: serializeTicketTargetsDraft(formDraft.ticketTargets)
+    };
+    if (isSupport) {
+      payload.publicEnabled = formDraft.publicEnabled === true;
+      payload.publicSlug = formDraft.publicEnabled === true
+        ? slugifyPublicSlug(formDraft.publicSlug, key)
+        : null;
+    }
+    return payload;
   };
   const validateForm = ({ notify = true } = {}) => {
     if (!String(formDraft.label || "").trim()) {
@@ -422,11 +483,11 @@ export default function SalesFormModal({
       const payload = buildFormPayload();
       let saved;
       if (formId) {
-        saved = await updateSalesForm(formId, payload);
-        toast.success("Form updated");
+        saved = isSupport ? await updateSupportForm(formId, payload) : await updateSalesForm(formId, payload);
+        toast.success(locale === "fr" ? "Formulaire mis à jour" : "Form updated");
       } else {
-        saved = await createSalesForm(payload);
-        toast.success("Form created");
+        saved = isSupport ? await createSupportForm(payload) : await createSalesForm(payload);
+        toast.success(locale === "fr" ? "Formulaire créé" : "Form created");
         if (saved?.id) setFormId(String(saved.id));
       }
       const persistedId = saved?.id ? String(saved.id) : formId;
@@ -435,7 +496,9 @@ export default function SalesFormModal({
         if (pendingTemps.length > 0) {
           const createdFields = [];
           for (const field of pendingTemps) {
-            const savedField = await createSalesFormField(persistedId, buildFieldApiPayload(field));
+            const savedField = isSupport
+              ? await createSupportFormField(persistedId, buildFieldApiPayload(field))
+              : await createSalesFormField(persistedId, buildFieldApiPayload(field));
             createdFields.push({
               tempId: String(field.id),
               savedField
@@ -554,9 +617,12 @@ export default function SalesFormModal({
           }
         }
         if (formId) {
-          await Promise.all(reordered.filter(field => !String(field.id).startsWith("temp-")).map(field => updateSalesFormField(formId, field.id, {
-            displayOrder: field.displayOrder
-          }))).catch(() => {});
+          await Promise.all(reordered.filter(field => !String(field.id).startsWith("temp-")).map(field => {
+            const updater = isSupport ? updateSupportFormField : updateSalesFormField;
+            return updater(formId, field.id, {
+              displayOrder: field.displayOrder
+            });
+          })).catch(() => {});
         }
       }
     } finally {
@@ -611,11 +677,15 @@ export default function SalesFormModal({
     try {
       let savedField;
       if (editingFieldId) {
-        savedField = await updateSalesFormField(formId, editingFieldId, payload);
-        toast.success("Field updated");
+        savedField = isSupport
+          ? await updateSupportFormField(formId, editingFieldId, payload)
+          : await updateSalesFormField(formId, editingFieldId, payload);
+        toast.success(locale === "fr" ? "Champ mis à jour" : "Field updated");
       } else {
-        savedField = await createSalesFormField(formId, payload);
-        toast.success("Field added");
+        savedField = isSupport
+          ? await createSupportFormField(formId, payload)
+          : await createSalesFormField(formId, payload);
+        toast.success(locale === "fr" ? "Champ ajouté" : "Field added");
       }
       setFields(prev => {
         const withoutTemp = prev.filter(field => String(field.id) !== String(selectedFieldId));
@@ -655,8 +725,9 @@ export default function SalesFormModal({
     }
     setDeletingField(true);
     try {
-      await deleteSalesFormField(formId, field.id);
-      toast.success("Field deleted");
+      if (isSupport) await deleteSupportFormField(formId, field.id);
+      else await deleteSalesFormField(formId, field.id);
+      toast.success(locale === "fr" ? "Champ supprimé" : "Field deleted");
       if (String(selectedFieldId) === String(field.id)) resetFieldSelection();
       setFields(prev => prev.filter(item => String(item.id) !== String(field.id)));
       setFieldDeleteTarget(null);
@@ -668,16 +739,40 @@ export default function SalesFormModal({
     }
   };
   if (!open) return null;
-  const modalTitle = formId ? `Edit ${formDraft.label || "form"}` : "New form";
-  const modalSubtitle = formId ? "Configure the request type, its visibility and fields." : "Create a professional service or installation request type.";
+  const modalTitle = formId
+    ? (locale === "fr" ? `Modifier ${formDraft.label || "formulaire"}` : `Edit ${formDraft.label || "form"}`)
+    : (locale === "fr" ? "Nouveau formulaire" : "New form");
+  const modalSubtitle = formId
+    ? (isSupport
+      ? (locale === "fr" ? "Configurez le type de ticket support, l’accès public et les champs." : "Configure the support request type, public access and fields.")
+      : (locale === "fr" ? "Configurez le type de demande, sa visibilité et ses champs." : "Configure the request type, its visibility and fields."))
+    : (isSupport
+      ? (locale === "fr" ? "Créez un formulaire support (incident, demande, problème, changement)." : "Create a support form (incident, request, problem, change).")
+      : (locale === "fr" ? "Créez un type de demande prestation ou installation." : "Create a professional service or installation request type."));
+  const publicUrl = formDraft.publicEnabled && formDraft.publicSlug
+    ? `${typeof window !== "undefined" ? window.location.origin : ""}/public/support/${slugifyPublicSlug(formDraft.publicSlug, formDraft.key || formDraft.label)}`
+    : "";
+  const copyPublicUrl = async () => {
+    if (!publicUrl) return;
+    try {
+      await navigator.clipboard.writeText(publicUrl);
+      toast.success(locale === "fr" ? "URL copiée" : "URL copied");
+    } catch {
+      toast.error(locale === "fr" ? "Impossible de copier l’URL" : "Unable to copy URL");
+    }
+  };
   const renderGeneralSection = () => <section className={modalStyles.settingsBlock}>
       <header className={modalStyles.settingsBlockHead}>
-        <h3 className={modalStyles.settingsBlockTitle}>Nom du formulaire</h3>
-        <p className={modalStyles.settingsBlockDesc}>Nom et type affichés aux agents à la création d’une demande.</p>
+        <h3 className={modalStyles.settingsBlockTitle}>{locale === "fr" ? "Nom du formulaire" : "Form name"}</h3>
+        <p className={modalStyles.settingsBlockDesc}>
+          {isSupport
+            ? (locale === "fr" ? "Nom et type affichés aux agents à la création d’un ticket support." : "Name and type shown to agents when creating a support ticket.")
+            : (locale === "fr" ? "Nom et type affichés aux agents à la création d’une demande." : "Name and type shown to agents when creating a request.")}
+        </p>
       </header>
       <div className={modalStyles.formBlocks}>
         <div className={layout.field}>
-          <label className={`${layout.label} ${layout.labelRequired}`}>Libellé</label>
+          <label className={`${layout.label} ${layout.labelRequired}`}>{locale === "fr" ? "Libellé" : "Label"}</label>
           <input className={layout.input} value={formDraft.label} onChange={e => {
           const nextLabel = e.target.value;
           setFormDraft(prev => {
@@ -686,27 +781,27 @@ export default function SalesFormModal({
               ...prev,
               label: nextLabel,
               key: nextKey,
-              categorySlug: slugifyCategory(prev.kind, nextKey)
+              categorySlug: slugifyCategory(prev.kind, nextKey),
+              publicSlug: prev.publicEnabled && (!prev.publicSlug || isCreate) ? slugifyPublicSlug(nextKey) : prev.publicSlug
             };
           });
-        }} autoFocus={isCreate} placeholder="Ex. Installation sur site" />
-          <FieldHint>Nom visible lors de la création d’une demande.</FieldHint>
+        }} autoFocus={isCreate} placeholder={isSupport ? (locale === "fr" ? "Ex. Incident réseau" : "E.g. Network incident") : (locale === "fr" ? "Ex. Installation sur site" : "E.g. On-site installation")} />
+          <FieldHint>{locale === "fr" ? "Nom visible lors de la création." : "Name shown during creation."}</FieldHint>
         </div>
 
         <div className={modalStyles.typeOrderRow}>
           <div className={layout.field}>
-            <label className={layout.label}>Type</label>
+            <label className={layout.label}>{locale === "fr" ? "Type" : "Type"}</label>
             <select className={layout.input} value={formDraft.kind} onChange={e => setFormDraft(prev => ({
             ...prev,
             kind: e.target.value,
             categorySlug: slugifyCategory(e.target.value, prev.key)
           }))}>
-              <option value="prestation">Prestation</option>
-              <option value="installation">Installation</option>
+              {kindOptions.map(opt => <option key={opt.value} value={opt.value}>{locale === "en" ? opt.labelEn : opt.label}</option>)}
             </select>
           </div>
           <div className={`${layout.field} ${modalStyles.orderField}`}>
-            <label className={layout.label}>Ordre</label>
+            <label className={layout.label}>{locale === "fr" ? "Ordre" : "Order"}</label>
             <input type="number" className={layout.input} value={formDraft.displayOrder} onChange={e => setFormDraft(prev => ({
             ...prev,
             displayOrder: Number(e.target.value || 0)
@@ -715,7 +810,7 @@ export default function SalesFormModal({
         </div>
 
         <div className={modalStyles.iconSection}>
-          <span className={layout.label}>Icône</span>
+          <span className={layout.label}>{locale === "fr" ? "Icône" : "Icon"}</span>
           <IconPicker variant="simple" value={formDraft.icon || "mdi:file-document-outline"} onChange={icon => setFormDraft(prev => ({
           ...prev,
           icon
@@ -727,7 +822,7 @@ export default function SalesFormModal({
           <textarea className={layout.input} rows={3} value={formDraft.description} onChange={e => setFormDraft(prev => ({
           ...prev,
           description: e.target.value
-        }))} placeholder="Courte description affichée aux agents" />
+        }))} placeholder={locale === "fr" ? "Courte description affichée aux agents" : "Short description shown to agents"} />
         </div>
 
         <label className={modalStyles.inlineActive}>
@@ -735,10 +830,62 @@ export default function SalesFormModal({
           ...prev,
           enabled: e.target.checked
         }))} />
-          Formulaire actif
+          {locale === "fr" ? "Formulaire actif" : "Form active"}
         </label>
       </div>
     </section>;
+  const renderPublicAccessSection = () => {
+    if (!isSupport) return null;
+    return <section className={modalStyles.settingsBlock}>
+        <header className={modalStyles.settingsBlockHead}>
+          <h3 className={modalStyles.settingsBlockTitle}>{locale === "fr" ? "Accès public" : "Public access"}</h3>
+          <p className={modalStyles.settingsBlockDesc}>
+            {locale === "fr"
+              ? "Autorisez la soumission sans authentification via une URL dédiée (captcha obligatoire)."
+              : "Allow unauthenticated submissions via a dedicated URL (captcha required)."}
+          </p>
+        </header>
+        <div className={modalStyles.formBlocks}>
+          <label className={modalStyles.inlineActive}>
+            <input type="checkbox" checked={formDraft.publicEnabled === true} onChange={e => setFormDraft(prev => {
+              const enabled = e.target.checked;
+              return {
+                ...prev,
+                publicEnabled: enabled,
+                publicSlug: enabled
+                  ? slugifyPublicSlug(prev.publicSlug || prev.key || prev.label)
+                  : prev.publicSlug
+              };
+            })} />
+            {locale === "fr" ? "Formulaire public activé" : "Public form enabled"}
+          </label>
+          {formDraft.publicEnabled ? <>
+              <div className={layout.field}>
+                <label className={layout.label}>{locale === "fr" ? "Slug public" : "Public slug"}</label>
+                <input className={layout.input} value={formDraft.publicSlug || ""} onChange={e => setFormDraft(prev => ({
+                ...prev,
+                publicSlug: slugifyPublicSlug(e.target.value, prev.key || prev.label)
+              }))} placeholder="incident-reseau" />
+                <FieldHint>{locale === "fr" ? "Utilisé dans l’URL publique." : "Used in the public URL."}</FieldHint>
+              </div>
+              {publicUrl ? <div className={layout.field}>
+                  <label className={layout.label}>{locale === "fr" ? "URL publique" : "Public URL"}</label>
+                  <div style={{
+                display: "flex",
+                gap: "0.5rem",
+                alignItems: "center"
+              }}>
+                    <input className={layout.input} value={publicUrl} readOnly />
+                    <button type="button" className={layout.ghostBtn} onClick={copyPublicUrl}>
+                      <Icon icon="mdi:content-copy" aria-hidden />
+                      {locale === "fr" ? "Copier" : "Copy"}
+                    </button>
+                  </div>
+                </div> : null}
+            </> : null}
+        </div>
+      </section>;
+  };
   const renderVisibilitySection = () => <section className={modalStyles.settingsBlock}>
       <header className={modalStyles.settingsBlockHead}>
         <h3 className={modalStyles.settingsBlockTitle}>Visibilité</h3>
@@ -799,6 +946,10 @@ export default function SalesFormModal({
           {renderGeneralSection()}
           <hr className={modalStyles.sectionDivider} />
           {renderVisibilitySection()}
+          {isSupport ? <>
+              <hr className={modalStyles.sectionDivider} />
+              {renderPublicAccessSection()}
+            </> : null}
         </div>
       </div>
     </div>;
@@ -863,7 +1014,7 @@ export default function SalesFormModal({
               <Icon icon={formDraft.icon || "mdi:file-document-outline"} />
             </div>
             <div className={layout.headerText}>
-              <p className={layout.eyebrow}>Sales forms</p>
+              <p className={layout.eyebrow}>{isSupport ? (locale === "fr" ? "Formulaires support" : "Support forms") : (locale === "fr" ? "Formulaires prestations" : "Sales forms")}</p>
               <h2 className={layout.title} id="sales-form-modal-title">
                 {modalTitle}
               </h2>
@@ -886,8 +1037,9 @@ export default function SalesFormModal({
 
         <footer className={layout.footer}>
           <span className={layout.footerHint}>
-            {formDraft.kind === "installation" ? "Installation" : "Professional service"} · {fields.length} field(s) ·{" "}
-            {formDraft.enabled !== false ? "Active" : "Inactive"}
+            {kindLabel(formDraft.kind)} · {fields.length} {locale === "fr" ? "champ(s)" : "field(s)"} ·{" "}
+            {formDraft.enabled !== false ? (locale === "fr" ? "Actif" : "Active") : (locale === "fr" ? "Inactif" : "Inactive")}
+            {isSupport && formDraft.publicEnabled ? ` · ${locale === "fr" ? "Public" : "Public"}` : ""}
           </span>
           <div className={layout.footerActions}>
             <button type="button" className={layout.ghostBtn} onClick={onClose} disabled={savingForm || savingField}>

@@ -3,7 +3,7 @@ import { createPortal } from "react-dom";
 import { Icon } from "@iconify/react";
 import { FaTimes } from "react-icons/fa";
 import { toast } from "react-toastify";
-import { createTicket, fetchTicketCategories, addTicketComment, fetchTickets, addTicketAssignee, addTicketWatcher, addTicketCommentWithAttachments } from "../../api/tickets";
+import { createTicket, fetchTicketCategories, fetchSupportForms, addTicketComment, fetchTickets, addTicketAssignee, addTicketWatcher, addTicketCommentWithAttachments } from "../../api/tickets";
 import { fetchClientsList, fetchContactsList, fetchClientSupportCredits } from "../../api/clients";
 import { fetchUsers } from "../../api/users";
 import { useAuthContext } from "../../contexts/AuthContext";
@@ -14,9 +14,11 @@ import { buildLinkedEquipmentComment, getEquipmentPickerLabel, getEquipmentSearc
 import { buildClientContractSummary, computeSupportCreditTotals } from "./ticketClientSummaryUtils";
 import { buildLinkedTicketComment, getTicketLinkLabel, getTicketLinkSearchText } from "./ticketLinkUtils";
 import { formatClientSlaRows, parseClientSla } from "../../utils/ticketSlaUtils";
+import { isFileField } from "../../utils/salesFormFieldTypes";
 import ContactFormModal from "../ContactsPage/ContactFormModal";
 import SmartTooltip from "../SmartTooltip";
 import TicketKnowledgeSuggestions from "./TicketKnowledgeSuggestions";
+import SalesFormFieldsRenderer, { buildDynamicFieldLines, filterVisibleFields, validateDynamicFields } from "./SalesFormFieldsRenderer";
 import layout from "../EnterprisesPage/EnterprisesPage.module.css";
 import account from "../Misc/AccountPage/AccountPage.module.css";
 import MspPageHero from "../Misc/MspPageHero/MspPageHero";
@@ -58,7 +60,10 @@ function SectionPanel({
   className,
   headerExtra
 }) {
-  return <section className={`${account.sectionPanel} ${className || ""}`.trim()}>
+  const allowOverflow = Boolean(className && String(className).includes("panelAllowOverflow"));
+  return <section className={`${account.sectionPanel} ${allowOverflow ? account.sectionPanelOverflow : ""} ${className || ""}`.trim()} style={allowOverflow ? {
+    overflow: "visible"
+  } : undefined}>
       {(title || description || headerExtra) && <header className={`${account.sectionHeader} ${headerExtra ? s.sectionHeaderInline : ""}`.trim()}>
           <div className={s.sectionHeaderMain}>
             {title && <h2 className={account.sectionTitle}>{title}</h2>}
@@ -66,7 +71,7 @@ function SectionPanel({
           </div>
           {headerExtra}
         </header>}
-      <div className={account.sectionBody}>{children}</div>
+      <div className={`${account.sectionBody} ${allowOverflow ? s.panelBodyAllowOverflow : ""}`.trim()}>{children}</div>
     </section>;
 }
 function getUserLabel(user, fallback = "") {
@@ -521,6 +526,9 @@ export default function TicketCreatePage({
   const [categorySearch, setCategorySearch] = useState("");
   const [showCategoryDropdown, setShowCategoryDropdown] = useState(false);
   const [categoryHighlight, setCategoryHighlight] = useState(0);
+  const [supportForms, setSupportForms] = useState([]);
+  const [selectedSupportFormId, setSelectedSupportFormId] = useState("");
+  const [supportFormValues, setSupportFormValues] = useState({});
   const [availabilityMode, setAvailabilityMode] = useState("none");
   const [availabilityDate, setAvailabilityDate] = useState("");
   const [availabilityStart, setAvailabilityStart] = useState("09:00");
@@ -592,12 +600,13 @@ export default function TicketCreatePage({
     (async () => {
       setLoadingData(true);
       try {
-        const [contactRows, clientRows, categoryRows, userRows] = await Promise.all([fetchContactsList().catch(() => []), fetchClientsList().catch(() => []), fetchTicketCategories().catch(() => []), fetchUsers().catch(() => [])]);
+        const [contactRows, clientRows, categoryRows, userRows, supportFormRows] = await Promise.all([fetchContactsList().catch(() => []), fetchClientsList().catch(() => []), fetchTicketCategories().catch(() => []), fetchUsers().catch(() => []), fetchSupportForms().catch(() => [])]);
         if (cancelled) return;
         setContacts(Array.isArray(contactRows) ? contactRows : []);
         setClients(Array.isArray(clientRows) ? clientRows : []);
         setCategories(Array.isArray(categoryRows) ? categoryRows : []);
         setUsers(Array.isArray(userRows) ? userRows : []);
+        setSupportForms(Array.isArray(supportFormRows) ? supportFormRows : []);
       } finally {
         if (!cancelled) setLoadingData(false);
       }
@@ -817,6 +826,38 @@ export default function TicketCreatePage({
     return contacts.filter(c => getContactSearchText(c).includes(q)).slice(0, 50);
   }, [contacts, contactSearch]);
   const enabledCategories = useMemo(() => (Array.isArray(categories) ? categories : []).filter(item => item?.enabled !== false), [categories]);
+  const supportFormsForType = useMemo(
+    () => (Array.isArray(supportForms) ? supportForms : []).filter(form => form?.kind === type && form?.enabled !== false),
+    [supportForms, type]
+  );
+  const hasSupportFormsForType = supportFormsForType.length > 0;
+  const selectedSupportForm = useMemo(
+    () => supportFormsForType.find(form => String(form.id) === String(selectedSupportFormId)) || supportFormsForType[0] || null,
+    [supportFormsForType, selectedSupportFormId]
+  );
+  const activeSupportFields = useMemo(
+    () => filterVisibleFields((selectedSupportForm?.fields || []).filter(field => field.enabled !== false && !isFileField(field)), supportFormValues),
+    [selectedSupportForm, supportFormValues]
+  );
+  useEffect(() => {
+    if (!hasSupportFormsForType) {
+      setSelectedSupportFormId("");
+      return;
+    }
+    if (!supportFormsForType.some(form => String(form.id) === String(selectedSupportFormId))) {
+      setSelectedSupportFormId(String(supportFormsForType[0].id));
+    }
+  }, [hasSupportFormsForType, supportFormsForType, selectedSupportFormId]);
+  useEffect(() => {
+    setSupportFormValues({});
+  }, [selectedSupportFormId]);
+  useEffect(() => {
+    if (!hasSupportFormsForType || !selectedSupportForm?.categorySlug) return;
+    const slug = String(selectedSupportForm.categorySlug).trim();
+    if (!slug) return;
+    setCategory(slug);
+    setCategorySearch(slug);
+  }, [hasSupportFormsForType, selectedSupportForm?.categorySlug]);
   const filteredCategoryOptions = useMemo(() => {
     const q = categorySearch.trim().toLowerCase();
     const rows = !q ? enabledCategories : enabledCategories.filter(item => {
@@ -1032,6 +1073,13 @@ export default function TicketCreatePage({
   const handleTypeChange = useCallback(nextType => {
     setType(nextType);
     if (nextType !== "incident") setIsMajorIncident(false);
+    setSelectedSupportFormId("");
+    setSupportFormValues({});
+    setFieldErrors(prev => ({
+      ...prev,
+      supportForm: undefined,
+      supportFormDetails: undefined
+    }));
   }, []);
   const handleMajorIncidentChange = useCallback(checked => {
     setIsMajorIncident(checked);
@@ -1117,7 +1165,12 @@ export default function TicketCreatePage({
     const errors = {};
     if (!requesterContactId) errors.requester = true;
     if (requiresCompanySelect && !ticketClientId) errors.company = true;
-    if (!category.trim()) errors.category = true;
+    if (hasSupportFormsForType) {
+      if (!selectedSupportForm) errors.supportForm = true;
+      else if (!validateDynamicFields(activeSupportFields, supportFormValues)) errors.supportFormDetails = true;
+    } else if (!category.trim()) {
+      errors.category = true;
+    }
     if (title.trim().length < 3) errors.title = true;
     if (description.trim().length < 10) errors.description = true;
     if (availabilityMode === "from") {
@@ -1201,13 +1254,45 @@ export default function TicketCreatePage({
         model: equipmentModel,
         serial: equipmentSerial
       });
+      const resolvedCategory = hasSupportFormsForType
+        ? String(selectedSupportForm?.categorySlug || category || "").trim()
+        : category.trim();
+      let supportFormData;
+      if (hasSupportFormsForType && selectedSupportForm) {
+        const visibleFields = filterVisibleFields((selectedSupportForm.fields || []).filter(field => field.enabled !== false && !isFileField(field)), supportFormValues);
+        const visibleValues = Object.fromEntries(visibleFields.map(field => [field.fieldKey, supportFormValues[field.fieldKey]]));
+        const displayValues = Object.fromEntries(visibleFields.map(field => {
+          const line = buildDynamicFieldLines([field], supportFormValues, {
+            users,
+            clients,
+            contacts
+          })[0] || "";
+          const display = line.includes(": ") ? line.split(": ").slice(1).join(": ") : "";
+          return [field.fieldKey, display === "-" ? "" : display];
+        }));
+        const fieldLabels = Object.fromEntries(
+          (selectedSupportForm.fields || [])
+            .filter(field => field?.fieldKey)
+            .map(field => [field.fieldKey, String(field.label || "").trim() || field.fieldKey])
+        );
+        supportFormData = {
+          formId: selectedSupportForm.id,
+          formKey: selectedSupportForm.key,
+          formLabel: selectedSupportForm.label,
+          kind: selectedSupportForm.kind,
+          categorySlug: selectedSupportForm.categorySlug,
+          values: visibleValues,
+          displayValues,
+          fieldLabels
+        };
+      }
       const created = await createTicket({
         title: title.trim(),
         description: description.trim(),
         priority: type === "incident" && isMajorIncident ? "urgent" : priority,
         status: "new",
-        type,
-        category: category.trim(),
+        type: supportFormData?.kind || type,
+        category: resolvedCategory,
         channel,
         clientId: resolvedTicketClientId || null,
         assignedUserId: preAssigneeUserIds[0] || null,
@@ -1217,7 +1302,8 @@ export default function TicketCreatePage({
         contactSlots: serializeContactSlots(availabilitySlots),
         equipmentInfo,
         assigneeUserIds: preAssigneeUserIds,
-        watcherUserIds: preFollowerUserIds
+        watcherUserIds: preFollowerUserIds,
+        ...(supportFormData ? { supportFormData } : {})
       });
       for (const userId of preAssigneeUserIds) {
         try {
@@ -1271,6 +1357,8 @@ export default function TicketCreatePage({
     setCategory("");
     setCategorySearch("");
     setShowCategoryDropdown(false);
+    setSelectedSupportFormId("");
+    setSupportFormValues({});
     setAvailabilityMode("none");
     setAvailabilityDate("");
     setAvailabilityStart("09:00");
@@ -1683,6 +1771,41 @@ export default function TicketCreatePage({
               <SectionPanel title={copy.sections.ticketDetails} headerExtra={<SmartTooltip content={<TicketCreateTipsTooltip copy={copy} />} tooltipClassName={s.tipsPortalTooltip} trigger="click" as="button" type="button" className={s.tipsHelpBtn} aria-label={copy.showTipsAria}>
                     <Icon icon="mdi:lightbulb-outline" aria-hidden />
                   </SmartTooltip>}>
+                {hasSupportFormsForType ? <div className={s.fieldBlock} style={{ marginBottom: "1rem" }}>
+                    <label className={s.fieldLabel}>{locale === "fr" ? "Formulaire" : "Form"}<span className={s.requiredMark}>*</span></label>
+                    <div className={s.typeGrid} data-pulse={fieldErrors.supportForm ? errorPulseTick : undefined}>
+                      {supportFormsForType.map(form => <button key={form.id} type="button" className={`${s.typeCard} ${String(selectedSupportForm?.id) === String(form.id) ? s.typeCardActive : ""} ${fieldErrors.supportForm ? s.fieldErrorPulse : ""}`} onClick={() => {
+                    setSelectedSupportFormId(String(form.id));
+                    setFieldErrors(prev => ({
+                      ...prev,
+                      supportForm: undefined,
+                      supportFormDetails: undefined
+                    }));
+                  }}>
+                          <Icon icon={form.icon || "mdi:file-document-outline"} className={s.typeIcon} aria-hidden />
+                          <span className={s.typeLabel}>{form.label}</span>
+                        </button>)}
+                    </div>
+                    {selectedSupportForm?.description ? <p className={s.detailsAvailabilityTitle} style={{ marginTop: "0.65rem" }}>{selectedSupportForm.description}</p> : null}
+                    {activeSupportFields.length > 0 ? <div style={{ marginTop: "0.85rem" }} data-pulse={fieldErrors.supportFormDetails ? errorPulseTick : undefined} className={fieldErrors.supportFormDetails ? s.fieldErrorPulse : ""}>
+                        <SalesFormFieldsRenderer
+                          fields={activeSupportFields}
+                          values={supportFormValues}
+                          users={users}
+                          contacts={contacts}
+                          clients={clients}
+                          fieldErrors={fieldErrors.supportFormDetails}
+                          errorPulseTick={errorPulseTick}
+                          onChange={nextValues => {
+                            setSupportFormValues(nextValues);
+                            setFieldErrors(prev => ({
+                              ...prev,
+                              supportFormDetails: undefined
+                            }));
+                          }}
+                        />
+                      </div> : null}
+                  </div> : null}
                 <div className={s.fieldBlock}>
                   <label className={s.fieldLabel}>{copy.subject}<span className={s.requiredMark}>*</span></label>
                   <div data-pulse={fieldErrors.title ? errorPulseTick : undefined} className={`${s.fieldShell} ${fieldErrors.title ? s.fieldShellError : ""} ${fieldErrors.title ? s.fieldErrorPulse : ""}`}>
@@ -1830,7 +1953,7 @@ export default function TicketCreatePage({
                     </div>}
 
                   <div className={s.settingsFieldRow}>
-                    <div className={s.equipmentField}>
+                    {!hasSupportFormsForType ? <div className={s.equipmentField}>
                       <label className={s.equipmentFieldLabel} id="ticket-create-category-label">
                         {copy.itilCategory}<span className={s.requiredMark}>*</span>
                       </label>
@@ -1886,7 +2009,7 @@ export default function TicketCreatePage({
                         })()}
                           </div>, document.body) : null}
                       </div>
-                    </div>
+                    </div> : null}
 
                     <div className={s.equipmentField}>
                       <label className={s.equipmentFieldLabel} htmlFor="ticket-create-priority">

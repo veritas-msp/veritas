@@ -1501,6 +1501,27 @@
   background: var(--msp-surface, #fff);
 }
 
+.activityCreditCardMuted {
+  opacity: 0.72;
+}
+
+.sidebarCreditsBadge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.35rem;
+  height: 1.35rem;
+  margin-left: 0.45rem;
+  padding: 0 0.4rem;
+  border-radius: 999px;
+  background: var(--msp-accent-soft, rgba(43, 95, 171, 0.14));
+  color: var(--msp-accent, #2b5fab);
+  font-size: 0.72rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  vertical-align: middle;
+}
+
 .activityCreditIcon {
   width: 36px;
   height: 36px;

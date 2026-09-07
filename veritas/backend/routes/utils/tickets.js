@@ -29,6 +29,7 @@ import {
   DEFAULT_TICKET_TABLE_COLUMNS_BY_SCOPE
 } from "../../utils/ticketTableColumns.js";
 import salesFormsRoutes from "./salesFormsRoutes.js";
+import supportFormsRoutes from "./supportFormsRoutes.js";
 import salesTicketCategoriesRoutes from "./salesTicketCategoriesRoutes.js";
 import { applyFormTicketTargets, buildTicketDescription, buildTicketTitle, loadFormFieldMetaByKey, loadFormTicketTargetsConfig, mergeCreateOptionsFromTargets, normalizeTicketTargets, resolveAssigneeUserIds, resolveMatchingRules } from "../../services/salesFormTicketTargets.js";
 import { resolveClientIdFromRequesterContact, shouldSyncTicketPlanningEvents, syncTicketPlanningEventClient } from "./ticketPlanningSync.js";
@@ -1576,7 +1577,7 @@ router.post("/", verifyJWT, requirePermission("tickets.create"), [body("title").
 }).isUUID(), body("assignedUserId").optional({
   nullable: true,
   checkFalsy: true
-}).isUUID(), body("isMajorIncident").optional().isBoolean(), body("contactSlots").optional().isArray(), body("equipmentInfo").optional().isObject(), body("salesFormData").optional().isObject(), body("assigneeUserIds").optional().isArray(), body("assigneeUserIds.*").optional().isUUID(), body("watcherUserIds").optional().isArray(), body("watcherUserIds.*").optional().isUUID()], async (req, res) => {
+}).isUUID(), body("isMajorIncident").optional().isBoolean(), body("contactSlots").optional().isArray(), body("equipmentInfo").optional().isObject(), body("salesFormData").optional().isObject(), body("supportFormData").optional().isObject(), body("assigneeUserIds").optional().isArray(), body("assigneeUserIds.*").optional().isUUID(), body("watcherUserIds").optional().isArray(), body("watcherUserIds.*").optional().isUUID()], async (req, res) => {
   const validationResponse = validationErrorOrNull(req, res);
   if (validationResponse) return;
   if (rejectCommunitySalesTicketCreate(req, res)) return;
@@ -1587,6 +1588,7 @@ router.post("/", verifyJWT, requirePermission("tickets.create"), [body("title").
     const hasEquipmentInfo = await hasTicketColumn("equipment_info");
     const hasSlaInfo = await hasTicketColumn("sla_info");
     const hasSalesFormData = await hasTicketColumn("sales_form_data");
+    const hasSupportFormData = await hasTicketColumn("support_form_data");
     const {
       title,
       description = null,
@@ -1605,19 +1607,27 @@ router.post("/", verifyJWT, requirePermission("tickets.create"), [body("title").
         concerned: false
       },
       salesFormData = null,
+      supportFormData = null,
       assigneeUserIds = [],
       watcherUserIds = []
     } = req.body;
     const explicitAssigneeUserIds = Array.isArray(assigneeUserIds) ? assigneeUserIds.map(id => String(id || "").trim()).filter(Boolean) : [];
     const explicitWatcherUserIds = Array.isArray(watcherUserIds) ? watcherUserIds.map(id => String(id || "").trim()).filter(Boolean) : [];
-    const formId = salesFormData && typeof salesFormData === "object" && salesFormData.formId ? String(salesFormData.formId) : null;
-    const formFieldValues = salesFormData && typeof salesFormData === "object" && salesFormData.values && typeof salesFormData.values === "object" ? salesFormData.values : {};
-    const formFieldsByKey = formId ? await loadFormFieldMetaByKey(formId).catch(() => ({})) : {};
+    const activeFormData = salesFormData && typeof salesFormData === "object" && salesFormData.formId
+      ? salesFormData
+      : supportFormData && typeof supportFormData === "object" && supportFormData.formId
+        ? supportFormData
+        : null;
+    const isSupportForm = Boolean(supportFormData && typeof supportFormData === "object" && supportFormData.formId);
+    const formId = activeFormData?.formId ? String(activeFormData.formId) : null;
+    const formFieldValues = activeFormData?.values && typeof activeFormData.values === "object" ? activeFormData.values : {};
+    const formFamily = isSupportForm ? "support" : "sales";
+    const formFieldsByKey = formId ? await loadFormFieldMetaByKey(formId, { family: formFamily }).catch(() => ({})) : {};
     const formTargetContext = {
       values: formFieldValues,
       fieldsByKey: formFieldsByKey
     };
-    const formTargetsConfig = formId ? await loadFormTicketTargetsConfig(formId) : {
+    const formTargetsConfig = formId ? await loadFormTicketTargetsConfig(formId, { family: formFamily }) : {
       version: 2,
       rules: []
     };
@@ -1646,7 +1656,7 @@ router.post("/", verifyJWT, requirePermission("tickets.create"), [body("title").
     const normalizedEquipmentInfo = normalizeEquipmentInfo(equipmentInfo);
     const majorIncidentValue = type === "incident" && Boolean(isMajorIncident);
     const resolvedSalesType = salesFormData ? resolveSalesTicketType(type, category, salesFormData?.kind) : null;
-    const resolvedTicketType = resolvedSalesType || String(type || "incident").trim() || "incident";
+    const resolvedTicketType = resolvedSalesType || (isSupportForm ? String(supportFormData?.kind || type || "incident").trim() : null) || String(type || "incident").trim() || "incident";
     const clientContrat = resolvedClientId ? await loadClientContrat(resolvedClientId) : null;
     const insertTicket = async (dbClient, rule = null) => {
       const executor = dbClient || pool;
@@ -1670,27 +1680,33 @@ router.post("/", verifyJWT, requirePermission("tickets.create"), [body("title").
         if (targetAssigneeIds.length > 0) resolvedAssignedUserId = targetAssigneeIds[0];
       }
       const templateContext = {
-        formLabel: salesFormData?.formLabel || salesFormData?.label || "",
-        formKind: salesFormData?.kind || "",
-        formKey: salesFormData?.formKey || "",
-        categorySlug: salesFormData?.categorySlug || String(category || "").trim(),
-        clientName: salesFormData?.clientName || "",
-        contactName: salesFormData?.contactName || "",
-        contactEmail: salesFormData?.contactEmail || "",
-        purchaseOrder: salesFormData?.purchaseOrder || "",
-        commercial: salesFormData?.commercialLabel || "",
-        projectManager: salesFormData?.projectManagerLabel || "",
+        formLabel: activeFormData?.formLabel || activeFormData?.label || "",
+        formKind: activeFormData?.kind || "",
+        formKey: activeFormData?.formKey || "",
+        categorySlug: activeFormData?.categorySlug || String(category || "").trim(),
+        clientName: activeFormData?.clientName || "",
+        contactName: activeFormData?.contactName || "",
+        contactEmail: activeFormData?.contactEmail || "",
+        purchaseOrder: activeFormData?.purchaseOrder || "",
+        commercial: activeFormData?.commercialLabel || "",
+        projectManager: activeFormData?.projectManagerLabel || "",
         ruleLabel: rule?.label || "",
         values: formFieldValues,
-        displayValues: salesFormData?.displayValues && typeof salesFormData.displayValues === "object" ? salesFormData.displayValues : {}
+        displayValues: activeFormData?.displayValues && typeof activeFormData.displayValues === "object" ? activeFormData.displayValues : {}
       };
       const ticketTitle = rule ? buildTicketTitle(String(title).trim(), rule, templateContext) : String(title).trim();
       const ticketDescription = rule ? buildTicketDescription(String(description || ""), rule, templateContext) : String(description || "");
       const ticketCategory = ruleTargets.categorySlug || String(category || "").trim();
-      const ticketType = resolvedSalesType || resolveSalesTicketType(resolvedTicketType, ticketCategory, salesFormData?.kind) || resolvedTicketType;
+      const ticketType = resolvedSalesType || (isSupportForm ? String(ruleTargets.type || supportFormData?.kind || resolvedTicketType).trim() : null) || resolveSalesTicketType(resolvedTicketType, ticketCategory, salesFormData?.kind) || resolvedTicketType;
       const ticketSalesFormData = salesFormData && typeof salesFormData === "object" ? {
         ...salesFormData,
         kind: salesFormData.kind || ticketType,
+        targetRuleId: rule?.id || null,
+        targetRuleLabel: rule?.label || null
+      } : null;
+      const ticketSupportFormData = supportFormData && typeof supportFormData === "object" ? {
+        ...supportFormData,
+        kind: supportFormData.kind || ticketType,
         targetRuleId: rule?.id || null,
         targetRuleLabel: rule?.label || null
       } : null;
@@ -1721,6 +1737,10 @@ router.post("/", verifyJWT, requirePermission("tickets.create"), [body("title").
       if (hasSalesFormData && ticketSalesFormData) {
         columns.push("sales_form_data");
         values.push(JSON.stringify(ticketSalesFormData));
+      }
+      if (hasSupportFormData && ticketSupportFormData) {
+        columns.push("support_form_data");
+        values.push(JSON.stringify(ticketSupportFormData));
       }
       columns.push("created_at", "updated_at");
       const placeholders = values.map((_, idx) => `$${idx + 1}`);
@@ -2781,6 +2801,7 @@ router.delete("/table-columns/private", verifyJWT, async (req, res) => {
 });
 router.use("/views", ticketViewsRoutes);
 router.use("/sales-forms", requirePro, salesFormsRoutes);
+router.use("/support-forms", supportFormsRoutes);
 router.use("/sales-categories", requirePro, salesTicketCategoriesRoutes);
 router.get("/random", verifyJWT, requirePermission("tickets.random_mode"), [query("excludeId").optional().isUUID()], async (req, res) => {
   const validationResponse = validationErrorOrNull(req, res);

@@ -124,6 +124,9 @@ const COPY = {
       assignee: "Assigné",
       assigneeNone: "Non assigné",
       addAssignee: "Ajouter un assigné…",
+      searchAssignee: "Rechercher un agent…",
+      searchAssigneeHint: "Tapez pour rechercher un agent…",
+      noAssigneeFound: "Aucun agent trouvé",
       removeAssignee: "Retirer l'assigné",
       start: "Début",
       end: "Fin",
@@ -158,11 +161,14 @@ const COPY = {
         assigneeDesc: "Un ou plusieurs agents responsables de la tâche.",
         equipmentTitle: "Périphérique",
         equipmentDesc: "Matériel concerné par cette tâche (propagé à l’événement planning).",
+        creditsTitle: "Crédits",
+        creditsDesc: "Décomptez des crédits entreprise liés à cette tâche.",
         sections: {
           general: { label: "Général", description: "Type et titre" },
           schedule: { label: "Planning", description: "Dates (optionnel)" },
           assignee: { label: "Assignés", description: "Responsables" },
-          equipment: { label: "Périphérique", description: "Matériel" }
+          equipment: { label: "Périphérique", description: "Matériel" },
+          credits: { label: "Crédits", description: "Décompte" }
         }
       }
     },
@@ -381,6 +387,9 @@ const COPY = {
       assignee: "Assignee",
       assigneeNone: "Unassigned",
       addAssignee: "Add an assignee…",
+      searchAssignee: "Search for an agent…",
+      searchAssigneeHint: "Type to search for an agent…",
+      noAssigneeFound: "No agent found",
       removeAssignee: "Remove assignee",
       start: "Start",
       end: "End",
@@ -415,11 +424,14 @@ const COPY = {
         assigneeDesc: "One or more agents responsible for the task.",
         equipmentTitle: "Device",
         equipmentDesc: "Hardware related to this task (propagated to the planning event).",
+        creditsTitle: "Credits",
+        creditsDesc: "Deduct company credits linked to this task.",
         sections: {
           general: { label: "General", description: "Type and title" },
           schedule: { label: "Schedule", description: "Dates (optional)" },
           assignee: { label: "Assignees", description: "Owners" },
-          equipment: { label: "Device", description: "Hardware" }
+          equipment: { label: "Device", description: "Hardware" },
+          credits: { label: "Credits", description: "Deduction" }
         }
       }
     },
@@ -635,6 +647,11 @@ const COPY = {
       saveError: "Fehler beim Speichern der Aufgaben",
       assignee: "Bearbeiter",
       assigneeNone: "Nicht zugewiesen",
+      addAssignee: "Bearbeiter hinzufügen…",
+      searchAssignee: "Agent suchen…",
+      searchAssigneeHint: "Tippen Sie, um einen Agenten zu suchen…",
+      noAssigneeFound: "Kein Agent gefunden",
+      removeAssignee: "Bearbeiter entfernen",
       start: "Beginn",
       end: "Ende",
       range: "Zeitraum",
@@ -665,11 +682,14 @@ const COPY = {
         assigneeDesc: "Verantwortlicher Agent.",
         equipmentTitle: "Gerät",
         equipmentDesc: "Hardware für diese Aufgabe (wird an das Planungsereignis übernommen).",
+        creditsTitle: "Kredite",
+        creditsDesc: "Unternehmenskredite für diese Aufgabe abziehen.",
         sections: {
           general: { label: "Allgemein", description: "Typ und Titel" },
           schedule: { label: "Planung", description: "Daten" },
           assignee: { label: "Bearbeiter", description: "Verantwortlich" },
-          equipment: { label: "Gerät", description: "Hardware" }
+          equipment: { label: "Gerät", description: "Hardware" },
+          credits: { label: "Kredite", description: "Abzug" }
         }
       }
     },
@@ -885,6 +905,11 @@ const COPY = {
       saveError: "Errore nel salvataggio delle attività",
       assignee: "Assegnatario",
       assigneeNone: "Non assegnato",
+      addAssignee: "Aggiungi assegnatario…",
+      searchAssignee: "Cerca un agente…",
+      searchAssigneeHint: "Digita per cercare un agente…",
+      noAssigneeFound: "Nessun agente trovato",
+      removeAssignee: "Rimuovi assegnatario",
       start: "Inizio",
       end: "Fine",
       range: "Intervallo date",
@@ -915,11 +940,14 @@ const COPY = {
         assigneeDesc: "Agente responsabile dell'attività.",
         equipmentTitle: "Dispositivo",
         equipmentDesc: "Hardware interessato da questa attività (propagato all'evento planning).",
+        creditsTitle: "Crediti",
+        creditsDesc: "Scala i crediti aziendali collegati a questa attività.",
         sections: {
           general: { label: "Generale", description: "Tipo e titolo" },
           schedule: { label: "Planning", description: "Date" },
           assignee: { label: "Assegnatario", description: "Responsabile" },
-          equipment: { label: "Dispositivo", description: "Hardware" }
+          equipment: { label: "Dispositivo", description: "Hardware" },
+          credits: { label: "Crediti", description: "Addebito" }
         }
       }
     },
@@ -1135,6 +1163,11 @@ const COPY = {
       saveError: "Error al guardar las tareas",
       assignee: "Asignado",
       assigneeNone: "Sin asignar",
+      addAssignee: "Añadir asignado…",
+      searchAssignee: "Buscar un agente…",
+      searchAssigneeHint: "Escriba para buscar un agente…",
+      noAssigneeFound: "Ningún agente encontrado",
+      removeAssignee: "Quitar asignado",
       start: "Inicio",
       end: "Fin",
       range: "Rango de fechas",
@@ -1165,11 +1198,14 @@ const COPY = {
         assigneeDesc: "Agente responsable de la tarea.",
         equipmentTitle: "Dispositivo",
         equipmentDesc: "Hardware relacionado con esta tarea (propagado al evento de planning).",
+        creditsTitle: "Créditos",
+        creditsDesc: "Descuente créditos de empresa vinculados a esta tarea.",
         sections: {
           general: { label: "General", description: "Tipo y título" },
           schedule: { label: "Planning", description: "Fechas" },
           assignee: { label: "Asignado", description: "Responsable" },
-          equipment: { label: "Dispositivo", description: "Hardware" }
+          equipment: { label: "Dispositivo", description: "Hardware" },
+          credits: { label: "Créditos", description: "Descuento" }
         }
       }
     },

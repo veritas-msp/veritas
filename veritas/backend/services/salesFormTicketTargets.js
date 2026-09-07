@@ -133,39 +133,57 @@ export function resolveMatchingRules(config = {}, fieldValues = {}) {
   const normalized = normalizeTicketTargetsConfig(config);
   return normalized.rules.filter(rule => ruleMatches(rule, fieldValues));
 }
-export async function loadFormTicketTargetsConfig(formId) {
+export async function loadFormTicketTargetsConfig(formId, { family = "auto" } = {}) {
   if (!formId) return normalizeTicketTargetsConfig({});
+  const tables =
+    family === "support"
+      ? ["v_b_support_form_definitions"]
+      : family === "sales"
+        ? ["v_b_sales_form_definitions"]
+        : ["v_b_sales_form_definitions", "v_b_support_form_definitions"];
   try {
-    const result = await pool.query(`SELECT ticket_targets FROM v_b_sales_form_definitions WHERE id = $1 AND enabled = TRUE`, [String(formId)]);
-    if (!result.rows.length) return normalizeTicketTargetsConfig({});
-    return parseTicketTargetsFromRow(result.rows[0]);
+    for (const table of tables) {
+      const result = await pool.query(`SELECT ticket_targets FROM ${table} WHERE id = $1 AND enabled = TRUE`, [String(formId)]);
+      if (result.rows.length) return parseTicketTargetsFromRow(result.rows[0]);
+    }
+    return normalizeTicketTargetsConfig({});
   } catch (err) {
-    if (String(err?.code) === "42703") return normalizeTicketTargetsConfig({});
+    if (String(err?.code) === "42703" || String(err?.code) === "42P01") return normalizeTicketTargetsConfig({});
     throw err;
   }
 }
-export async function loadFormTicketTargets(formId) {
-  const config = await loadFormTicketTargetsConfig(formId);
+export async function loadFormTicketTargets(formId, options = {}) {
+  const config = await loadFormTicketTargetsConfig(formId, options);
   const firstRule = config.rules.find(rule => rule.enabled) || config.rules[0];
   return firstRule?.targets || normalizeTicketTargets({});
 }
-export async function loadFormFieldMetaByKey(formId) {
+export async function loadFormFieldMetaByKey(formId, { family = "auto" } = {}) {
   if (!formId) return {};
+  const tables =
+    family === "support"
+      ? ["v_b_support_form_fields"]
+      : family === "sales"
+        ? ["v_b_sales_form_fields"]
+        : ["v_b_sales_form_fields", "v_b_support_form_fields"];
   try {
-    const result = await pool.query(`SELECT field_key, field_type
-       FROM v_b_sales_form_fields
+    for (const table of tables) {
+      const result = await pool.query(`SELECT field_key, field_type
+       FROM ${table}
        WHERE form_id = $1
          AND enabled = TRUE`, [String(formId)]);
-    const map = {};
-    for (const row of result.rows || []) {
-      const fieldKey = String(row.field_key || "").trim();
-      if (!fieldKey) continue;
-      map[fieldKey] = {
-        fieldKey,
-        fieldType: String(row.field_type || "").trim().toLowerCase()
-      };
+      if (!result.rows?.length) continue;
+      const map = {};
+      for (const row of result.rows || []) {
+        const fieldKey = String(row.field_key || "").trim();
+        if (!fieldKey) continue;
+        map[fieldKey] = {
+          fieldKey,
+          fieldType: String(row.field_type || "").trim().toLowerCase()
+        };
+      }
+      return map;
     }
-    return map;
+    return {};
   } catch (err) {
     if (String(err?.code) === "42P01" || String(err?.code) === "42703") return {};
     throw err;

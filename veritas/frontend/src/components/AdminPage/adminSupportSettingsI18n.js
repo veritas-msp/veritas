@@ -1,7 +1,7 @@
 import { createLocaleGetter, interpolate } from "../../i18n/translate";
 import { SUPPORT_SETTINGS_MODALS } from "./adminSupportSettingsModalsI18n";
-const TAB_KEYS = ["templates", "macros", "categories", "solution-catalog", "ticket-views"];
-const VIEW_META_KEYS = ["templates", "macros", "categories", "solution-catalog", "ticket-views", "sales-ticket-views"];
+const TAB_KEYS = ["templates", "macros", "categories", "solution-catalog", "support-forms", "ticket-views"];
+const VIEW_META_KEYS = ["templates", "macros", "categories", "solution-catalog", "support-forms", "ticket-views", "sales-ticket-views"];
 const TEMPLATE_FORM_SECTION_ICONS = {
   general: "mdi:information-outline",
   content: "mdi:text-box-outline"
@@ -25,6 +25,7 @@ const SUPPORT_SETTINGS_COPY = {
       macros: "Macros",
       categories: "Catégories",
       "solution-catalog": "Solutions",
+      "support-forms": "Formulaires",
       "ticket-views": "Vues support"
     },
     viewMeta: {
@@ -43,6 +44,10 @@ const SUPPORT_SETTINGS_COPY = {
       "solution-catalog": {
         title: "Catégories de résolution",
         description: "Types d'intervention et d'action proposés lors de la résolution d'un ticket."
+      },
+      "support-forms": {
+        title: "Formulaires support",
+        description: "Types de ticket support et champs affichés à la création, avec accès public optionnel."
       },
       "ticket-views": {
         title: "Vues support",
@@ -172,6 +177,7 @@ const SUPPORT_SETTINGS_COPY = {
     },
     categories: {
       newSectionBtn: "Nouvelle section",
+      sectionsTitle: "Sections",
       categoriesTitle: "Catégories ITIL",
       uncategorized: "Non classée",
       searchSection: "Rechercher une section…",
@@ -447,6 +453,7 @@ const SUPPORT_SETTINGS_COPY = {
       macros: "Macros",
       categories: "Categories",
       "solution-catalog": "Solutions",
+      "support-forms": "Forms",
       "ticket-views": "Support views"
     },
     viewMeta: {
@@ -465,6 +472,10 @@ const SUPPORT_SETTINGS_COPY = {
       "solution-catalog": {
         title: "Resolution categories",
         description: "Intervention and action types offered when resolving a ticket."
+      },
+      "support-forms": {
+        title: "Support forms",
+        description: "Support ticket types and fields shown at creation, with optional public access."
       },
       "ticket-views": {
         title: "Support views",
@@ -594,6 +605,7 @@ const SUPPORT_SETTINGS_COPY = {
     },
     categories: {
       newSectionBtn: "New section",
+      sectionsTitle: "Sections",
       categoriesTitle: "ITIL categories",
       uncategorized: "Uncategorized",
       searchSection: "Search for a section…",
@@ -869,6 +881,7 @@ const SUPPORT_SETTINGS_COPY = {
       macros: "Makros",
       categories: "Kategorien",
       "solution-catalog": "Lösungen",
+      "support-forms": "Formulare",
       "ticket-views": "Support-Ansichten"
     },
     viewMeta: {
@@ -887,6 +900,10 @@ const SUPPORT_SETTINGS_COPY = {
       "solution-catalog": {
         title: "Lösungskategorien",
         description: "Interventions- und Aktionstypen bei Ticket-Lösung."
+      },
+      "support-forms": {
+        title: "Support-Formulare",
+        description: "Support-Tickettypen und Felder bei der Erstellung, optional mit öffentlichem Zugriff."
       },
       "ticket-views": {
         title: "Support-Ansichten",
@@ -1016,6 +1033,7 @@ const SUPPORT_SETTINGS_COPY = {
     },
     categories: {
       newSectionBtn: "Neuer Abschnitt",
+      sectionsTitle: "Abschnitte",
       categoriesTitle: "ITIL-Kategorien",
       uncategorized: "Nicht klassifiziert",
       searchSection: "Abschnitt suchen…",
@@ -1291,6 +1309,7 @@ const SUPPORT_SETTINGS_COPY = {
       macros: "Macro",
       categories: "Categorie",
       "solution-catalog": "Soluzioni",
+      "support-forms": "Moduli",
       "ticket-views": "Viste supporto"
     },
     viewMeta: {
@@ -1309,6 +1328,10 @@ const SUPPORT_SETTINGS_COPY = {
       "solution-catalog": {
         title: "Categorie di risoluzione",
         description: "Tipi di intervento e azione proposti alla risoluzione di un ticket."
+      },
+      "support-forms": {
+        title: "Moduli supporto",
+        description: "Tipi di ticket di supporto e campi alla creazione, con accesso pubblico opzionale."
       },
       "ticket-views": {
         title: "Viste supporto",
@@ -1438,6 +1461,7 @@ const SUPPORT_SETTINGS_COPY = {
     },
     categories: {
       newSectionBtn: "Nuova sezione",
+      sectionsTitle: "Sezioni",
       categoriesTitle: "Categorie ITIL",
       uncategorized: "Non classificata",
       searchSection: "Cerca una sezione…",
@@ -1713,6 +1737,7 @@ const SUPPORT_SETTINGS_COPY = {
       macros: "Macros",
       categories: "Categorías",
       "solution-catalog": "Soluciones",
+      "support-forms": "Formularios",
       "ticket-views": "Vistas de soporte"
     },
     viewMeta: {
@@ -1731,6 +1756,10 @@ const SUPPORT_SETTINGS_COPY = {
       "solution-catalog": {
         title: "Categorías de resolución",
         description: "Tipos de intervención y acción propuestos al resolver un ticket."
+      },
+      "support-forms": {
+        title: "Formularios de soporte",
+        description: "Tipos de ticket de soporte y campos al crear, con acceso público opcional."
       },
       "ticket-views": {
         title: "Vistas de soporte",
@@ -1860,6 +1889,7 @@ const SUPPORT_SETTINGS_COPY = {
     },
     categories: {
       newSectionBtn: "Nueva sección",
+      sectionsTitle: "Secciones",
       categoriesTitle: "Categorías ITIL",
       uncategorized: "Sin clasificar",
       searchSection: "Buscar una sección…",

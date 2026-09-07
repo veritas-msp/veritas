@@ -1,0 +1,213 @@
+.panel {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+}
+
+.panelCompact {
+  gap: 0.7rem;
+}
+
+.balanceRow {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  padding: 0.7rem 0.85rem;
+  border-radius: 12px;
+  border: 1px solid color-mix(in srgb, var(--msp-accent, #2b5fab) 22%, var(--msp-border, #dde3ed));
+  background: linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--msp-accent, #2b5fab) 10%, #fff) 0%,
+    var(--msp-surface-2, #f3f6fb) 100%
+  );
+  color: var(--msp-text, #1a2332);
+  font-size: 0.9rem;
+  font-weight: 650;
+}
+
+.balanceRow svg {
+  width: 1.2rem;
+  height: 1.2rem;
+  flex-shrink: 0;
+  color: var(--msp-accent, #2b5fab);
+}
+
+.enableRow {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+  font-size: 0.88rem;
+  font-weight: 550;
+  color: var(--msp-text, #1a2332);
+  cursor: pointer;
+  user-select: none;
+}
+
+.enableRow input {
+  width: 1rem;
+  height: 1rem;
+  accent-color: var(--msp-accent, #2b5fab);
+}
+
+.packPanel {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 0.85rem;
+  border: 1px solid var(--msp-border, #dde3ed);
+  border-radius: 14px;
+  background: var(--msp-surface, #fff);
+}
+
+.bulkRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.85rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid var(--msp-border-light, #eef2f7);
+}
+
+.bulkText {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  min-width: 0;
+}
+
+.bulkLabel {
+  font-size: 0.84rem;
+  font-weight: 650;
+  color: var(--msp-text, #1a2332);
+}
+
+.bulkHint {
+  font-size: 0.74rem;
+  color: var(--msp-muted, #5c6b82);
+  line-height: 1.35;
+}
+
+.packList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+}
+
+.packRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.55rem 0.65rem;
+  border-radius: 10px;
+  background: var(--msp-surface-2, #f8fafc);
+}
+
+.packMeta {
+  display: flex;
+  flex-direction: column;
+  gap: 0.12rem;
+  min-width: 0;
+}
+
+.packLabel {
+  font-size: 0.84rem;
+  font-weight: 650;
+  color: var(--msp-text, #1a2332);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.packRemaining {
+  font-size: 0.73rem;
+  color: var(--msp-muted, #5c6b82);
+}
+
+.amountInput {
+  width: 4.25rem;
+  flex-shrink: 0;
+  box-sizing: border-box;
+  padding: 0.42rem 0.45rem;
+  border: 1px solid var(--msp-border, #dde3ed);
+  border-radius: 9px;
+  background: var(--msp-surface, #fff);
+  color: var(--msp-text, #1a2332);
+  font-size: 0.9rem;
+  font-weight: 600;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+  appearance: textfield;
+  -moz-appearance: textfield;
+}
+
+.amountInput::-webkit-outer-spin-button,
+.amountInput::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.amountInput:focus {
+  outline: none;
+  border-color: var(--msp-accent, #2b5fab);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--msp-accent, #2b5fab) 18%, transparent);
+}
+
+.totalRow {
+  margin-top: 0.15rem;
+  padding-top: 0.65rem;
+  border-top: 1px solid var(--msp-border-light, #eef2f7);
+  font-size: 0.86rem;
+  font-weight: 700;
+  color: var(--msp-accent, #2b5fab);
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.alreadyRow {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 0.85rem;
+  border-radius: 12px;
+  background: color-mix(in srgb, #16a34a 10%, #fff);
+  border: 1px solid color-mix(in srgb, #16a34a 25%, var(--msp-border, #dde3ed));
+  color: #166534;
+  font-size: 0.88rem;
+  font-weight: 600;
+}
+
+.alreadyRow svg {
+  width: 1.15rem;
+  height: 1.15rem;
+  flex-shrink: 0;
+}
+
+:global(html.dark) .balanceRow {
+  background: linear-gradient(135deg, rgba(59, 130, 246, 0.16), rgba(255, 255, 255, 0.04));
+  border-color: rgba(59, 130, 246, 0.28);
+}
+
+:global(html.dark) .packPanel {
+  background: rgba(255, 255, 255, 0.03);
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+:global(html.dark) .packRow {
+  background: rgba(255, 255, 255, 0.04);
+}
+
+:global(html.dark) .amountInput {
+  background: rgba(0, 0, 0, 0.25);
+  border-color: rgba(255, 255, 255, 0.12);
+  color: inherit;
+}
+
+:global(html.dark) .alreadyRow {
+  background: rgba(22, 163, 74, 0.14);
+  border-color: rgba(22, 163, 74, 0.3);
+  color: #86efac;
+}

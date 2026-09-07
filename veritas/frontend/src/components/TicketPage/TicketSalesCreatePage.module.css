@@ -5,6 +5,11 @@
   width: 100%;
 }
 
+.salesCreateContent,
+.salesCreateContent > * {
+  overflow: visible !important;
+}
+
 .formTypeGrid {
   grid-template-columns: repeat(3, minmax(0, 1fr));
 }

@@ -135,8 +135,16 @@ router.get('/', verifyJWT, requirePermission('planning.view'), async (req, res) 
     const isUpcoming = upcoming === "true" || upcoming === "1";
     const isRecent = recent === "true" || recent === "1";
     if (clientId !== undefined && clientId !== "") {
-      where.push(`e.client_id = $${i++}`);
-      values.push(Number(clientId));
+      // Include events linked to the client directly OR via a ticket on that client
+      // (planning UI resolves client the same way via ticket_client_id).
+      if (schema.hasTicketId) {
+        where.push(`(e.client_id = $${i} OR t.client_id = $${i})`);
+        values.push(Number(clientId));
+        i += 1;
+      } else {
+        where.push(`e.client_id = $${i++}`);
+        values.push(Number(clientId));
+      }
     }
     if (req.query.ticketId !== undefined && req.query.ticketId !== "") {
       if (!schema.hasTicketId) {

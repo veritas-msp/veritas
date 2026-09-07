@@ -496,7 +496,18 @@
 }
 
 .panelAllowOverflow {
-  overflow: visible;
+  overflow: visible !important;
+  position: relative;
+  z-index: 2;
+}
+
+.panelAllowOverflow:has(.contactInputWrapOpen),
+.panelAllowOverflow:has(.contactPicker:focus-within) {
+  z-index: 80;
+}
+
+.panelBodyAllowOverflow {
+  overflow: visible !important;
 }
 
 .sectionHeaderInline {
@@ -751,7 +762,7 @@
 }
 
 .contactDropdownPortal {
-  position: fixed;
+  position: fixed !important;
   margin-top: 0;
   max-height: 260px;
   overflow-y: auto;
@@ -760,6 +771,7 @@
   border-radius: var(--msp-radius-sm, 10px);
   box-shadow: 0 12px 24px rgba(15, 28, 46, 0.14);
   z-index: var(--modal-dropdown-z-index, 11250);
+  pointer-events: auto;
 }
 
 .contactDropdown {
