@@ -68,13 +68,24 @@ export default function SupportCreditPackModal({
   const clientAutocompleteRef = useRef(null);
   const clientInputRef = useRef(null);
   const clientDropdownRef = useRef(null);
+  const wasOpenRef = useRef(false);
+  const initKeyRef = useRef("");
+  const packId = pack?.id != null ? String(pack.id) : "";
+  const packClientId = pack?.client_id != null ? String(pack.client_id) : "";
   useEffect(() => {
     if (!open) {
+      wasOpenRef.current = false;
+      initKeyRef.current = "";
       setClientSearch("");
       setClientDropdownOpen(false);
       setClientDropdownCoords(null);
       return;
     }
+    const initKey = isEdit ? `edit:${packId}` : `create:${packClientId || "none"}:${lockClient ? "locked" : "free"}`;
+    const justOpened = !wasOpenRef.current;
+    wasOpenRef.current = true;
+    if (!justOpened && initKeyRef.current === initKey) return;
+    initKeyRef.current = initKey;
     setActiveSection(isEdit ? "client" : lockClient ? "pack" : "client");
     if (isEdit && pack) {
       setForm({
@@ -91,12 +102,12 @@ export default function SupportCreditPackModal({
     }
     setForm({
       ...EMPTY_FORM,
-      clientId: pack?.client_id ? String(pack.client_id) : ""
+      clientId: packClientId
     });
-    if (!pack?.client_id) {
+    if (!packClientId) {
       setClientSearch("");
     }
-  }, [open, isEdit, lockClient, pack]);
+  }, [open, isEdit, lockClient, pack, packId, packClientId]);
   const sortedClients = useMemo(() => [...(Array.isArray(clients) ? clients : [])].sort((a, b) => getClientLabel(a).localeCompare(getClientLabel(b), copy.bcp47, {
     numeric: true
   })), [clients, copy.bcp47]);
@@ -105,7 +116,8 @@ export default function SupportCreditPackModal({
     if (!open || !form.clientId) return;
     const client = sortedClients.find(item => String(item.id) === String(form.clientId));
     if (client) {
-      setClientSearch(getClientLabel(client));
+      const label = getClientLabel(client);
+      setClientSearch(prev => (prev === label ? prev : label));
     }
   }, [open, form.clientId, sortedClients]);
   useEffect(() => {

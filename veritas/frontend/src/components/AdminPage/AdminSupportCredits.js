@@ -60,6 +60,7 @@ export default function AdminSupportCredits() {
   const [selectedPack, setSelectedPack] = useState(null);
   const [deletePack, setDeletePack] = useState(null);
   const [deleting, setDeleting] = useState(false);
+  const loadErrorMessage = copy.toast.loadError;
   const loadPacks = useCallback(async () => {
     setLoading(true);
     try {
@@ -67,12 +68,12 @@ export default function AdminSupportCredits() {
       setPacks(Array.isArray(packRows) ? packRows : []);
       setClients(Array.isArray(clientRows) ? clientRows : []);
     } catch (error) {
-      toast.error(error.message || copy.toast.loadError);
+      toast.error(error.message || loadErrorMessage);
       setPacks([]);
     } finally {
       setLoading(false);
     }
-  }, [copy.toast.loadError]);
+  }, [loadErrorMessage]);
   useEffect(() => {
     loadPacks();
   }, [loadPacks]);

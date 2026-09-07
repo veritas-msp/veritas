@@ -278,6 +278,7 @@ export function registerClientMetaRoutes(router) {
       if (isMissingTableError(err)) {
         return res.json({
           balance: 0,
+          packs: [],
           ledger: []
         });
       }

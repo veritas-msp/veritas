@@ -14,13 +14,16 @@ import {
   removeTicketAssignee,
   removeTicketTag,
   removeTicketWatcher,
-  updateTicket
+  updateTicket,
+  consumeTicketSupportCredits
 } from "../../api/tickets";
 import { fetchClientsList, fetchContactsList } from "../../api/clients";
 import { fetchActiveUsers } from "../../api/users";
 import { useAppLocale } from "../../hooks/useAppGeneralSettings";
 import { usePermissions } from "../../contexts/PermissionsContext";
 import { useAuthContext } from "../../contexts/AuthContext";
+import { useVeritasEdition } from "../../hooks/useVeritasEdition";
+import ProFeatureBadge from "../Misc/ProFeature/ProFeatureBadge";
 import { resolveSalesKind, buildSalesFormFieldEntries, buildSalesFormFieldLabelMap, computeSalesTaskStats } from "../../utils/salesTicketUtils";
 import { reconcileSalesTaskPlanningEvent, deleteSalesTaskPlanningEvents } from "../../utils/salesTaskPlanningEvent";
 import { interpolate } from "../../i18n/translate";
@@ -30,6 +33,7 @@ import { getTicketSalesDetailCopy } from "./ticketSalesDetailI18n";
 import { getEquipmentPickerLabel, getEquipmentSearchText, loadClientEquipments, serializeEquipmentInfo } from "./ticketEquipmentUtils";
 import TicketChatPanel from "./TicketChatPanel";
 import SalesTasksPanel from "./SalesTasksPanel";
+import SalesCreditDebitModal from "./SalesCreditDebitModal";
 import TicketConfirmModal from "./TicketConfirmModal";
 import td from "./TicketDetailPage.module.css";
 import fs from "./TicketCreatePage.module.css";
@@ -330,6 +334,7 @@ export default function TicketSalesDetailPage({ onNavigate, ticketData }) {
   const locale = useAppLocale();
   const { can } = usePermissions();
   const { user } = useAuthContext();
+  const { isCommunity } = useVeritasEdition();
   const copy = useMemo(() => getTicketSalesDetailCopy(locale), [locale]);
   const detailCopy = useMemo(() => getTicketDetailCopy(locale), [locale]);
   const currentUserId = useMemo(() => user?.id || user?.uuid || user?.user_id || null, [user]);
@@ -361,6 +366,8 @@ export default function TicketSalesDetailPage({ onNavigate, ticketData }) {
   const [refreshingHistory, setRefreshingHistory] = useState(false);
   const [ticketDeleteConfirm, setTicketDeleteConfirm] = useState(null);
   const [deletingTicket, setDeletingTicket] = useState(false);
+  const [creditModal, setCreditModal] = useState(null);
+  const [savingCredits, setSavingCredits] = useState(false);
   const [formFieldLabelMap, setFormFieldLabelMap] = useState({});
   const [titleDraft, setTitleDraft] = useState("");
   const [titleEditing, setTitleEditing] = useState(false);
@@ -459,6 +466,14 @@ export default function TicketSalesDetailPage({ onNavigate, ticketData }) {
   const formEntries = useMemo(() => buildSalesFormFieldEntries(formData, formFieldLabelMap), [formData, formFieldLabelMap]);
   const comments = useMemo(() => hydrateComments(ticket), [ticket]);
   const clientId = ticket?.client_id || ticket?.clientId || null;
+  const supportCredit = ticket?.supportCredit || null;
+  const creditDebitedSources = useMemo(
+    () => new Set(Array.isArray(supportCredit?.debitedSources) ? supportCredit.debitedSources : []),
+    [supportCredit?.debitedSources]
+  );
+  const canDebitCredits = Boolean(!isCommunity && supportCredit?.eligible && clientId);
+  const creditBalance = Number(supportCredit?.balance || 0);
+  const creditTotalDebited = Number(supportCredit?.totalDebited || 0);
 
   const requesterContact = useMemo(() => {
     const targetContactId = ticket?.requester_contact_id || ticket?.requesterContactId;
@@ -1147,9 +1162,90 @@ export default function TicketSalesDetailPage({ onNavigate, ticketData }) {
   };
 
   const handleToggleTask = async taskId => {
-    const next = pmTasks.map(task => (task.id === taskId ? { ...task, done: !task.done } : task));
+    const task = pmTasks.find(row => String(row.id) === String(taskId));
+    if (!task) return;
+    const markingDone = !task.done;
+    if (markingDone && canDebitCredits && creditBalance > 0) {
+      const sourceKey = `task:${taskId}`;
+      if (!creditDebitedSources.has(sourceKey)) {
+        setCreditModal({
+          mode: "task",
+          taskId: String(taskId),
+          contextLabel: task.label || "",
+          sourceKey,
+          allowSkip: true
+        });
+        return;
+      }
+    }
+    const next = pmTasks.map(row => (row.id === taskId ? { ...row, done: !row.done } : row));
     setPmTasks(next);
     await persistTasks(next);
+  };
+
+  const applyTaskDone = async taskId => {
+    const next = pmTasks.map(row => (String(row.id) === String(taskId) ? { ...row, done: true } : row));
+    setPmTasks(next);
+    return persistTasks(next);
+  };
+
+  const handleConsumeCredits = async (debits = []) => {
+    if (!ticketId || !creditModal) return;
+    const total = (Array.isArray(debits) ? debits : []).reduce((sum, row) => sum + (Number(row?.amount) || 0), 0);
+    const isTask = creditModal.mode === "task";
+    setSavingCredits(true);
+    try {
+      if (isTask) {
+        await applyTaskDone(creditModal.taskId);
+      }
+      if (total > 0) {
+        const result = await consumeTicketSupportCredits(ticketId, {
+          debits,
+          note: isTask
+            ? `Tâche · ${creditModal.contextLabel || creditModal.taskId}`
+            : "Décompte ticket prestation/installation",
+          sourceKey: creditModal.sourceKey || (isTask ? `task:${creditModal.taskId}` : "ticket")
+        });
+        if (result?.skipped && result?.reason === "already_debited_source") {
+          toast.info(copy.credits.toast.already);
+        } else if (result?.skipped) {
+          toast.info(copy.credits.toast.skipped);
+        } else {
+          toast.success(interpolate(copy.credits.toast.success, { count: String(total) }));
+        }
+        if (result?.ticket) {
+          setTicket(result.ticket);
+        } else if (result?.supportCredit) {
+          setTicket(prev => (prev ? { ...prev, supportCredit: result.supportCredit } : prev));
+        } else {
+          await loadTicket();
+        }
+      } else if (!isTask) {
+        toast.info(copy.credits.toast.skipped);
+      }
+      setCreditModal(null);
+    } catch (error) {
+      const insufficient = /insufficient|insuffisant|402/i.test(String(error?.message || ""));
+      toast.error(insufficient ? copy.credits.toast.insufficient : error.message || copy.credits.toast.error);
+      if (isTask) await loadTicket();
+    } finally {
+      setSavingCredits(false);
+    }
+  };
+
+  const handleSkipCreditModal = async () => {
+    if (!creditModal) return;
+    if (creditModal.mode === "task" && creditModal.taskId) {
+      setSavingCredits(true);
+      try {
+        await applyTaskDone(creditModal.taskId);
+        setCreditModal(null);
+      } finally {
+        setSavingCredits(false);
+      }
+      return;
+    }
+    setCreditModal(null);
   };
 
   const handleRemoveTask = async taskId => {
@@ -1924,6 +2020,44 @@ export default function TicketSalesDetailPage({ onNavigate, ticketData }) {
 
                 <hr className={td.paneSectionDivider} aria-hidden />
 
+                {supportCredit?.eligible && clientId ? (
+                  <div className={fs.equipmentField}>
+                    <label className={fs.equipmentFieldLabel}>
+                      {copy.credits.title}
+                      {isCommunity ? <ProFeatureBadge variant="inline" className={styles.creditProBadge} /> : null}
+                    </label>
+                    <div className={styles.creditSummary}>
+                      <div className={styles.creditSummaryRow}>
+                        <Icon icon="mdi:wallet-outline" aria-hidden />
+                        <span>{interpolate(copy.credits.balance, { count: String(creditBalance) })}</span>
+                      </div>
+                      <div className={styles.creditSummaryRowMuted}>
+                        {creditTotalDebited > 0
+                          ? interpolate(copy.credits.debited, { count: String(creditTotalDebited) })
+                          : copy.credits.noneDebited}
+                      </div>
+                      <button
+                        type="button"
+                        className={styles.creditDebitBtn}
+                        disabled={savingCredits || isCommunity || creditBalance <= 0}
+                        onClick={() =>
+                          setCreditModal({
+                            mode: "ticket",
+                            sourceKey: `ticket:${Date.now()}`,
+                            contextLabel: ticket?.title || "",
+                            allowSkip: false
+                          })
+                        }
+                      >
+                        <Icon icon="mdi:ticket-percent-outline" aria-hidden />
+                        {copy.credits.debitTicket}
+                      </button>
+                    </div>
+                  </div>
+                ) : null}
+
+                {supportCredit?.eligible && clientId ? <hr className={td.paneSectionDivider} aria-hidden /> : null}
+
                 <div className={fs.equipmentField}>
                   <label className={fs.equipmentFieldLabel}>{detailCopy.leftPane.tags}</label>
                   <div className={`${heroStyles.heroTags} ${td.leftPaneTags}`} aria-label={detailCopy.leftPane.tagsAria}>
@@ -2068,6 +2202,8 @@ export default function TicketSalesDetailPage({ onNavigate, ticketData }) {
                         saving={savingTasks}
                         variant="pane"
                         canManageTasks={canTasks}
+                        creditDebitedSources={creditDebitedSources}
+                        creditAlreadyLabel={copy.credits.alreadyTask}
                         onAddTask={handleAddTask}
                         onUpdateTask={handleUpdateTask}
                         onToggleTask={handleToggleTask}
@@ -2391,6 +2527,18 @@ export default function TicketSalesDetailPage({ onNavigate, ticketData }) {
         loading={deletingTicket}
         onClose={closeDeleteConfirm}
         onConfirm={confirmDeleteTicket}
+      />
+
+      <SalesCreditDebitModal
+        open={Boolean(creditModal)}
+        copy={copy.credits.modal}
+        supportCredit={supportCredit}
+        contextLabel={creditModal?.contextLabel || ""}
+        allowSkip={Boolean(creditModal?.allowSkip)}
+        saving={savingCredits || savingTasks}
+        onClose={() => !savingCredits && setCreditModal(null)}
+        onConfirm={handleConsumeCredits}
+        onSkip={handleSkipCreditModal}
       />
     </div>
   );

@@ -57,3 +57,5 @@ Thumbs.db
 *.tar.gz
 *.bak
 export.pdf
+cookies.txt
+.cursor/rules/commit-push-version-patchnotes.mdc

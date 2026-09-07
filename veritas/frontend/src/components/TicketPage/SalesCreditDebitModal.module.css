@@ -1,0 +1,126 @@
+.body {
+  padding: 0 1.25rem 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+}
+
+.balanceRow {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.65rem 0.8rem;
+  border-radius: 10px;
+  background: var(--msp-surface-2, #f3f6fb);
+  color: var(--msp-text, #1a2332);
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.balanceRow svg {
+  width: 1.15rem;
+  height: 1.15rem;
+  color: var(--msp-accent, #2b5fab);
+}
+
+.enableRow {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  font-size: 0.9rem;
+  color: var(--msp-text, #1a2332);
+  cursor: pointer;
+}
+
+.packPanel {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 0.75rem;
+  border: 1px solid var(--msp-border, #dde3ed);
+  border-radius: 12px;
+  background: var(--msp-surface, #fff);
+}
+
+.bulkRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.bulkLabel {
+  font-size: 0.85rem;
+  font-weight: 650;
+  color: var(--msp-text, #1a2332);
+}
+
+.bulkHint {
+  font-size: 0.75rem;
+  color: var(--msp-muted, #5c6b82);
+  margin-top: 0.15rem;
+}
+
+.packList {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+}
+
+.packRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.packMeta {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  min-width: 0;
+}
+
+.packLabel {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--msp-text, #1a2332);
+}
+
+.packRemaining {
+  font-size: 0.75rem;
+  color: var(--msp-muted, #5c6b82);
+}
+
+.amountInput {
+  width: 4.5rem;
+  padding: 0.4rem 0.5rem;
+  border: 1px solid var(--msp-border, #dde3ed);
+  border-radius: 8px;
+  background: var(--msp-surface, #fff);
+  color: var(--msp-text, #1a2332);
+  font-size: 0.9rem;
+  text-align: center;
+}
+
+.totalRow {
+  font-size: 0.85rem;
+  font-weight: 650;
+  color: var(--msp-accent, #2b5fab);
+  text-align: right;
+}
+
+:global(html.dark) .balanceRow {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+:global(html.dark) .packPanel {
+  background: rgba(255, 255, 255, 0.03);
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+:global(html.dark) .amountInput {
+  background: rgba(0, 0, 0, 0.25);
+  border-color: rgba(255, 255, 255, 0.12);
+  color: inherit;
+}

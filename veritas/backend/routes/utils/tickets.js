@@ -15,7 +15,7 @@ import { ensureTicketStatusMatchesValidation, getTicketResolutionValidation, mar
 import { createTicketValidationRequest, listTicketValidationRequests, respondTicketValidationRequest, updateTicketValidationRequest } from "../../services/ticketValidationRequestService.js";
 import { listSolutionCatalog, createSolutionCatalogEntry, updateSolutionCatalogEntry, deleteSolutionCatalogEntry } from "../../services/ticketSolutionCatalogService.js";
 import { loadExclusionRulesRaw, loadMailCollectorsRaw, loadNotificationSettingsRaw, loadTicketAutomationRawConfig, saveMailCollectorsRaw, saveNotificationLogsRaw, saveTicketAutomationRawConfig } from "../../services/ticketAutomationConfigStore.js";
-import { resolveClientIdForTicket, getTicketCreditStatus, handleTicketStatusCreditChange, resolveSalesTicketType } from "../../services/supportCredits.js";
+import { resolveClientIdForTicket, getTicketCreditStatus, handleTicketStatusCreditChange, resolveSalesTicketType, consumeCreditsOnTicket } from "../../services/supportCredits.js";
 import ticketViewsRoutes from "./ticketViewsRoutes.js";
 import { upsertUserSetting } from "../../utils/userSettingsStore.js";
 import {
@@ -3368,6 +3368,66 @@ router.delete("/:id/purge", verifyJWT, requirePermission("tickets.manage"), [par
     console.error("Error purge ticket:", err);
     res.status(500).json({
       error: "Error purging ticket"
+    });
+  }
+});
+router.post("/:id/support-credits/consume", verifyJWT, [param("id").isUUID(), body("debits").isArray({
+  min: 1
+}), body("debits.*.packId").optional({
+  nullable: true
+}).isUUID(), body("debits.*.amount").isInt({
+  min: 1
+}), body("note").optional({
+  nullable: true
+}).isString().isLength({
+  max: 500
+}), body("sourceKey").optional({
+  nullable: true
+}).isString().isLength({
+  max: 120
+})], async (req, res, next) => {
+  try {
+    const ticketResult = await pool.query("SELECT id, type, category FROM v_b_tickets WHERE id = $1", [req.params.id]);
+    if (!ticketResult.rows[0]) {
+      return res.status(404).json({
+        error: "Ticket not found"
+      });
+    }
+    const isSales = isSalesTicketRow(ticketResult.rows[0]);
+    return requireAnyPermission(isSales ? "sales.edit" : "tickets.edit", isSales ? "sales_detail.tasks" : "tickets_detail.resolve")(req, res, next);
+  } catch (err) {
+    console.error("[permissions] Ticket credit consume check failed:", err.message);
+    return res.status(500).json({
+      error: "Permission check failed."
+    });
+  }
+}, async (req, res) => {
+  const validationResponse = validationErrorOrNull(req, res);
+  if (validationResponse) return;
+  try {
+    const ticketId = req.params.id;
+    const result = await consumeCreditsOnTicket(ticketId, req.user?.id || null, {
+      debits: Array.isArray(req.body?.debits) ? req.body.debits : [],
+      note: req.body?.note || null,
+      sourceKey: req.body?.sourceKey || null
+    });
+    const ticket = await getTicketById(ticketId);
+    res.json({
+      ...result,
+      supportCredit: ticket?.supportCredit || null,
+      ticket
+    });
+  } catch (err) {
+    if (err?.code === "INSUFFICIENT_SUPPORT_CREDITS") {
+      return res.status(402).json({
+        error: err.message || "Insufficient support credits",
+        code: err.code,
+        balance: err.balance
+      });
+    }
+    console.error("POST /tickets/:id/support-credits/consume:", err);
+    res.status(err.status || 500).json({
+      error: err.message || "Unable to consume support credits"
     });
   }
 });

@@ -5,6 +5,15 @@
  */
 export const PATCH_NOTES = [
   {
+    version: "1.0.4",
+    date: "2026-09-07",
+    highlights: [
+      "Tickets prestation/installation : décompte des crédits entreprise au niveau du ticket ou à la clôture d'une tâche.",
+      "Fiche entreprise / Administration : correction du modal de création de carnets qui se réinitialisait, et affichage fiable des carnets après création.",
+      "Statut des carnets (dates) corrigé pour le listing et le décompte depuis les tickets support et prestation."
+    ]
+  },
+  {
     version: "1.0.3",
     date: "2026-09-04",
     highlights: [

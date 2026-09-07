@@ -1243,3 +1243,76 @@
 :global(html.dark) .taskStatsCardWarn .taskStatsCardValue {
   color: #fb923c;
 }
+
+.creditSummary {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+
+.creditSummaryRow {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.86rem;
+  font-weight: 650;
+  color: var(--msp-text, #0f1c2e);
+}
+
+.creditSummaryRow svg {
+  width: 1rem;
+  height: 1rem;
+  color: var(--msp-accent, #2b5fab);
+}
+
+.creditSummaryRowMuted {
+  font-size: 0.78rem;
+  color: var(--msp-muted, #5c6b82);
+}
+
+.creditDebitBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  margin-top: 0.2rem;
+  padding: 0.45rem 0.7rem;
+  border-radius: 9px;
+  border: 1px solid color-mix(in srgb, var(--msp-accent, #2b5fab) 35%, var(--msp-border, #dde3ed));
+  background: var(--msp-accent-soft, rgba(43, 95, 171, 0.1));
+  color: var(--msp-accent, #2b5fab);
+  font-size: 0.82rem;
+  font-weight: 650;
+  cursor: pointer;
+}
+
+.creditDebitBtn svg {
+  width: 1rem;
+  height: 1rem;
+}
+
+.creditDebitBtn:hover:not(:disabled) {
+  border-color: var(--msp-accent, #2b5fab);
+  background: color-mix(in srgb, var(--msp-accent-soft, rgba(43, 95, 171, 0.12)) 85%, #fff);
+}
+
+.creditDebitBtn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.creditProBadge {
+  margin-left: 0.4rem;
+  vertical-align: middle;
+}
+
+:global(html.dark) .creditSummaryRowMuted {
+  color: var(--msp-muted, #8fa8c4);
+}
+
+:global(html.dark) .creditDebitBtn {
+  background: rgba(59, 130, 246, 0.12);
+  border-color: rgba(59, 130, 246, 0.35);
+  color: #93c5fd;
+}
+

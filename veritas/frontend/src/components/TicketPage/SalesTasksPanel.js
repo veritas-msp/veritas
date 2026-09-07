@@ -60,6 +60,8 @@ export default function SalesTasksPanel({
   saving = false,
   variant = "card",
   canManageTasks = true,
+  creditDebitedSources = null,
+  creditAlreadyLabel = "",
   onAddTask,
   onUpdateTask,
   onToggleTask,
@@ -620,6 +622,7 @@ export default function SalesTasksPanel({
         {tasks.map(task => {
           const schedule = formatTaskSchedule(task, formatDateTime, copy.rangeJoiner);
           const typeLabel = typeLabels[task.eventType] || typeLabels[task.type] || null;
+          const creditDebited = creditDebitedSources?.has?.(`task:${task.id}`);
           return (
             <li key={task.id} className={`${styles.taskChatItem} ${task.done ? styles.taskChatItemDone : ""}`}>
               <button type="button" className={styles.taskCheck} onClick={() => canManageTasks && onToggleTask?.(task.id)} aria-pressed={task.done} title={task.done ? copy.markTodo : copy.markDone} disabled={!canManageTasks || saving}>
@@ -638,6 +641,12 @@ export default function SalesTasksPanel({
                     <span>
                       <Icon icon="mdi:shape-outline" aria-hidden />
                       {typeLabel}
+                    </span>
+                  ) : null}
+                  {creditDebited ? (
+                    <span title={creditAlreadyLabel || undefined}>
+                      <Icon icon="mdi:ticket-percent-outline" aria-hidden />
+                      {creditAlreadyLabel || "Credits"}
                     </span>
                   ) : null}
                   <span>

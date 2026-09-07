@@ -84,6 +84,25 @@ export async function updateTicket(ticketId, ticketData) {
   });
   return handleJsonResponse(response, "Error updating ticket");
 }
+export async function consumeTicketSupportCredits(ticketId, {
+  debits = [],
+  note = null,
+  sourceKey = null
+} = {}) {
+  const response = await fetch(`${API_BASE_URL}/tickets/${ticketId}/support-credits/consume`, {
+    method: "POST",
+    credentials: "include",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({
+      debits,
+      note,
+      sourceKey
+    })
+  });
+  return handleJsonResponse(response, "Error consuming support credits");
+}
 export async function updateTicketStatus(ticketId, status, note = "", options = {}) {
   const {
     consumeSupportCredit,

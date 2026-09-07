@@ -230,6 +230,42 @@ const COPY = {
       added: "Message ajouté",
       error: "Erreur lors de l'ajout du message",
       internal: "Privé"
+    },
+    credits: {
+      title: "Crédits entreprise",
+      balance: "{count} crédit(s) disponible(s)",
+      debited: "{count} crédit(s) déjà décomptés",
+      noneDebited: "Aucun crédit décompté sur cette demande",
+      debitTicket: "Décompter des crédits",
+      debitTask: "Décompter à la clôture de la tâche",
+      alreadyTask: "Crédits déjà décomptés pour cette tâche",
+      modal: {
+        title: "Décompter des crédits",
+        subtitle: "Choisissez le nombre de crédits à déduire du solde entreprise.",
+        subtitleWithContext: "Pour : {context}",
+        available: "{count} crédit disponible",
+        availablePlural: "{count} crédits disponibles",
+        noneAvailable: "Aucun crédit disponible pour cette entreprise.",
+        enable: "Décompter des crédits",
+        perPackLabel: "Quantité par carnet",
+        perPackHint: "Appliquée à tous les carnets actifs",
+        packRemaining: "{count} restant(s)",
+        legacyLabel: "Solde global",
+        totalDebit: "Total à décompter : {count}",
+        confirm: "Décompter",
+        confirmWithout: "Continuer sans décompter",
+        skip: "Ne pas décompter",
+        cancel: "Annuler",
+        close: "Fermer",
+        saving: "Décompte…"
+      },
+      toast: {
+        success: "{count} crédit(s) décompté(s)",
+        skipped: "Aucun crédit décompté",
+        already: "Des crédits ont déjà été décomptés pour cette source",
+        error: "Impossible de décompter les crédits",
+        insufficient: "Solde de crédits insuffisant"
+      }
     }
   },
   en: {
@@ -451,6 +487,42 @@ const COPY = {
       added: "Message added",
       error: "Error adding message",
       internal: "Private"
+    },
+    credits: {
+      title: "Company credits",
+      balance: "{count} credit(s) available",
+      debited: "{count} credit(s) already deducted",
+      noneDebited: "No credits deducted on this request",
+      debitTicket: "Deduct credits",
+      debitTask: "Deduct when completing the task",
+      alreadyTask: "Credits already deducted for this task",
+      modal: {
+        title: "Deduct credits",
+        subtitle: "Choose how many credits to deduct from the company balance.",
+        subtitleWithContext: "For: {context}",
+        available: "{count} credit available",
+        availablePlural: "{count} credits available",
+        noneAvailable: "No credits available for this company.",
+        enable: "Deduct credits",
+        perPackLabel: "Amount per pack",
+        perPackHint: "Applied to all active packs",
+        packRemaining: "{count} remaining",
+        legacyLabel: "Overall balance",
+        totalDebit: "Total to deduct: {count}",
+        confirm: "Deduct",
+        confirmWithout: "Continue without deducting",
+        skip: "Do not deduct",
+        cancel: "Cancel",
+        close: "Close",
+        saving: "Deducting…"
+      },
+      toast: {
+        success: "{count} credit(s) deducted",
+        skipped: "No credits deducted",
+        already: "Credits were already deducted for this source",
+        error: "Unable to deduct credits",
+        insufficient: "Insufficient credit balance"
+      }
     }
   },
   de: {
@@ -665,6 +737,42 @@ const COPY = {
       added: "Nachricht hinzugefügt",
       error: "Fehler beim Hinzufügen der Nachricht",
       internal: "Privat"
+    },
+    credits: {
+      title: "Unternehmenskredite",
+      balance: "{count} Kredit(e) verfügbar",
+      debited: "{count} Kredit(e) bereits abgezogen",
+      noneDebited: "Keine Kredite für diese Anfrage abgezogen",
+      debitTicket: "Kredite abziehen",
+      debitTask: "Bei Aufgabenabschluss abziehen",
+      alreadyTask: "Kredite für diese Aufgabe bereits abgezogen",
+      modal: {
+        title: "Kredite abziehen",
+        subtitle: "Wählen Sie, wie viele Kredite vom Unternehmenssaldo abgezogen werden.",
+        subtitleWithContext: "Für: {context}",
+        available: "{count} Kredit verfügbar",
+        availablePlural: "{count} Kredite verfügbar",
+        noneAvailable: "Keine Kredite für dieses Unternehmen verfügbar.",
+        enable: "Kredite abziehen",
+        perPackLabel: "Menge pro Paket",
+        perPackHint: "Für alle aktiven Pakete",
+        packRemaining: "{count} übrig",
+        legacyLabel: "Gesamtsaldo",
+        totalDebit: "Abzuziehen: {count}",
+        confirm: "Abziehen",
+        confirmWithout: "Ohne Abzug fortfahren",
+        skip: "Nicht abziehen",
+        cancel: "Abbrechen",
+        close: "Schließen",
+        saving: "Wird abgezogen…"
+      },
+      toast: {
+        success: "{count} Kredit(e) abgezogen",
+        skipped: "Keine Kredite abgezogen",
+        already: "Kredite für diese Quelle bereits abgezogen",
+        error: "Kredite konnten nicht abgezogen werden",
+        insufficient: "Unzureichender Kreditsaldo"
+      }
     }
   },
   it: {
@@ -879,6 +987,42 @@ const COPY = {
       added: "Messaggio aggiunto",
       error: "Errore durante l'aggiunta del messaggio",
       internal: "Privato"
+    },
+    credits: {
+      title: "Crediti azienda",
+      balance: "{count} credito/i disponibili",
+      debited: "{count} credito/i già scalati",
+      noneDebited: "Nessun credito scalato su questa richiesta",
+      debitTicket: "Scalare crediti",
+      debitTask: "Scalare al completamento del task",
+      alreadyTask: "Crediti già scalati per questo task",
+      modal: {
+        title: "Scalare crediti",
+        subtitle: "Scegli quanti crediti detrarre dal saldo aziendale.",
+        subtitleWithContext: "Per: {context}",
+        available: "{count} credito disponibile",
+        availablePlural: "{count} crediti disponibili",
+        noneAvailable: "Nessun credito disponibile per questa azienda.",
+        enable: "Scalare crediti",
+        perPackLabel: "Quantità per pacchetto",
+        perPackHint: "Applicata a tutti i pacchetti attivi",
+        packRemaining: "{count} rimanenti",
+        legacyLabel: "Saldo globale",
+        totalDebit: "Totale da scalare: {count}",
+        confirm: "Scalare",
+        confirmWithout: "Continua senza scalare",
+        skip: "Non scalare",
+        cancel: "Annulla",
+        close: "Chiudi",
+        saving: "Addebito…"
+      },
+      toast: {
+        success: "{count} credito/i scalati",
+        skipped: "Nessun credito scalato",
+        already: "Crediti già scalati per questa fonte",
+        error: "Impossibile scalare i crediti",
+        insufficient: "Saldo crediti insufficiente"
+      }
     }
   },
   es: {
@@ -1093,6 +1237,42 @@ const COPY = {
       added: "Mensaje añadido",
       error: "Error al añadir el mensaje",
       internal: "Privado"
+    },
+    credits: {
+      title: "Créditos de empresa",
+      balance: "{count} crédito(s) disponible(s)",
+      debited: "{count} crédito(s) ya descontados",
+      noneDebited: "Ningún crédito descontado en esta solicitud",
+      debitTicket: "Descontar créditos",
+      debitTask: "Descontar al completar la tarea",
+      alreadyTask: "Créditos ya descontados para esta tarea",
+      modal: {
+        title: "Descontar créditos",
+        subtitle: "Elija cuántos créditos deducir del saldo de la empresa.",
+        subtitleWithContext: "Para: {context}",
+        available: "{count} crédito disponible",
+        availablePlural: "{count} créditos disponibles",
+        noneAvailable: "No hay créditos disponibles para esta empresa.",
+        enable: "Descontar créditos",
+        perPackLabel: "Cantidad por carnet",
+        perPackHint: "Aplicada a todos los carnets activos",
+        packRemaining: "{count} restante(s)",
+        legacyLabel: "Saldo global",
+        totalDebit: "Total a descontar: {count}",
+        confirm: "Descontar",
+        confirmWithout: "Continuar sin descontar",
+        skip: "No descontar",
+        cancel: "Cancelar",
+        close: "Cerrar",
+        saving: "Descontando…"
+      },
+      toast: {
+        success: "{count} crédito(s) descontado(s)",
+        skipped: "Ningún crédito descontado",
+        already: "Ya se descontaron créditos para esta fuente",
+        error: "No se pudieron descontar los créditos",
+        insufficient: "Saldo de créditos insuficiente"
+      }
     }
   }
 };

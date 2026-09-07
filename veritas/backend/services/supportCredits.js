@@ -24,7 +24,8 @@ export function shouldConsumeSupportCredit({
   clientId
 }) {
   if (!clientId) return false;
-  return !isSalesTicket(type, category);
+  // Support et sales (prestation / installation) peuvent décompter les crédits entreprise.
+  return true;
 }
 export async function resolveClientIdForTicket({
   clientId,
@@ -44,8 +45,20 @@ async function hasPacksTable() {
 function packStatus(row) {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
-  const validFrom = row?.valid_from ? new Date(row.valid_from) : null;
-  const validUntil = row?.valid_until ? new Date(row.valid_until) : null;
+  const parseDateOnly = value => {
+    if (!value) return null;
+    const raw = String(value).slice(0, 10);
+    const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(raw);
+    if (match) {
+      return new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3]));
+    }
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return null;
+    date.setHours(0, 0, 0, 0);
+    return date;
+  };
+  const validFrom = parseDateOnly(row?.valid_from);
+  const validUntil = parseDateOnly(row?.valid_until);
   if (validFrom && validFrom > today) return "upcoming";
   if (validUntil && validUntil < today) return "expired";
   if (Number(row?.remaining_amount ?? 0) <= 0) return "depleted";
@@ -393,6 +406,7 @@ export async function isTicketCreditRefunded(ticketId) {
 export async function getTicketCreditStatus(ticket) {
   if (!ticket?.id) return null;
   const clientId = ticket.client_id ? Number(ticket.client_id) : null;
+  const salesTicket = isSalesTicket(ticket.type, ticket.category);
   const eligible = shouldConsumeSupportCredit({
     type: ticket.type,
     category: ticket.category,
@@ -401,24 +415,195 @@ export async function getTicketCreditStatus(ticket) {
   if (!eligible || !clientId) {
     return {
       eligible: false,
+      salesTicket,
+      canDebitMore: false,
       consumed: false,
       refunded: false,
       balance: 0,
-      packs: []
+      packs: [],
+      debitEntries: [],
+      totalDebited: 0
     };
   }
   const [balance, packs, consumed, refunded, debitEntries] = await Promise.all([getSupportCreditBalance(clientId), listCreditPacks(clientId), isTicketCreditDebited(ticket.id), isTicketCreditRefunded(ticket.id), listTicketDebitEntries(ticket.id)]);
   const totalDebited = debitEntries.reduce((sum, row) => sum + Math.abs(Number(row?.delta) || 0), 0);
+  const hasActiveDebit = consumed && !refunded;
   return {
     eligible: true,
-    consumed: consumed && !refunded,
+    salesTicket,
+    // Sales: plusieurs débits possibles (ticket + tâches). Support: un seul cycle résolution.
+    canDebitMore: salesTicket ? balance > 0 : !hasActiveDebit && balance > 0,
+    consumed: hasActiveDebit,
     refunded,
     balance,
     packs: packs.filter(pack => isPackUsable(pack) || pack.status === "upcoming"),
     debitEntries,
     debitEntry: debitEntries[debitEntries.length - 1] || null,
-    totalDebited
+    totalDebited,
+    debitedSources: debitEntries
+      .map(row => {
+        const match = String(row?.note || "").match(/\[source:([^\]]+)\]/);
+        return match?.[1] || null;
+      })
+      .filter(Boolean)
   };
+}
+async function hasDebitForSource(ticketId, sourceKey, dbClient = pool) {
+  const key = String(sourceKey || "").trim();
+  if (!key) return false;
+  const marker = `[source:${key}]`;
+  const result = await dbClient.query(`SELECT id
+     FROM v_b_client_support_credit_ledger
+     WHERE ticket_id = $1 AND kind = 'debit' AND COALESCE(note, '') LIKE $2
+     LIMIT 1`, [ticketId, `%${marker}%`]);
+  return result.rows.length > 0;
+}
+/**
+ * Débite des crédits sur un ticket (support ou sales), avec débits multiples autorisés.
+ * sourceKey (ex: "ticket", "task:<id>") permet l'idempotence par source.
+ */
+export async function consumeCreditsOnTicket(ticketId, userId, {
+  debits = [],
+  note = null,
+  sourceKey = null
+} = {}) {
+  const normalizedDebits = normalizeSupportCreditDebits(debits);
+  if (normalizedDebits.length === 0) {
+    return {
+      skipped: true,
+      reason: "no_debits"
+    };
+  }
+  const ticketResult = await pool.query("SELECT id, client_id, type, category, ticket_number FROM v_b_tickets WHERE id = $1", [ticketId]);
+  const ticket = ticketResult.rows[0];
+  if (!ticket) {
+    const err = new Error("Ticket not found");
+    err.status = 404;
+    throw err;
+  }
+  const clientId = ticket.client_id ? Number(ticket.client_id) : null;
+  if (!shouldConsumeSupportCredit({
+    type: ticket.type,
+    category: ticket.category,
+    clientId
+  })) {
+    return {
+      skipped: true,
+      reason: "not_eligible"
+    };
+  }
+  const normalizedSource = String(sourceKey || "").trim() || null;
+  if (normalizedSource && (await hasDebitForSource(ticketId, normalizedSource))) {
+    return {
+      skipped: true,
+      reason: "already_debited_source",
+      sourceKey: normalizedSource
+    };
+  }
+  const hasPacks = await hasPacksTable();
+  const sourceMarker = normalizedSource ? `[source:${normalizedSource}] ` : "";
+  const defaultNote = ticket.ticket_number ? `Ticket #${ticket.ticket_number}` : "Ticket credit debit";
+  const noteBase = `${sourceMarker}${String(note || "").trim() || defaultNote}`.trim();
+  const dbClient = await pool.connect();
+  try {
+    await dbClient.query("BEGIN");
+    const applied = [];
+    for (const debit of normalizedDebits) {
+      const amount = Number(debit.amount) || 0;
+      if (amount <= 0) continue;
+      if (hasPacks && debit.packId) {
+        const packResult = await dbClient.query(`UPDATE v_b_client_support_credit_packs
+           SET remaining_amount = remaining_amount - $2
+           WHERE id = $1
+             AND client_id = $3
+             AND archived_at IS NULL
+             AND remaining_amount >= $2
+             AND (valid_from IS NULL OR valid_from <= CURRENT_DATE)
+             AND (valid_until IS NULL OR valid_until >= CURRENT_DATE)
+           RETURNING id, label`, [debit.packId, amount, clientId]);
+        if (!packResult.rows[0]) {
+          const balance = await syncClientBalance(dbClient, clientId);
+          throw createInsufficientCreditsError(balance);
+        }
+        const packLabel = packResult.rows[0].label;
+        const result = await applyCreditDelta(dbClient, clientId, -amount, {
+          ticketId,
+          note: packLabel ? `${noteBase} · ${packLabel}` : noteBase,
+          userId,
+          kind: "debit",
+          packId: debit.packId
+        });
+        applied.push({
+          packId: debit.packId,
+          amount,
+          balance: result.balance,
+          entry: result.entry
+        });
+        continue;
+      }
+      if (hasPacks && !debit.packId) {
+        let remainingToDebit = amount;
+        while (remainingToDebit > 0) {
+          const pack = await pickPackForDebit(dbClient, clientId);
+          if (!pack) {
+            const balance = await syncClientBalance(dbClient, clientId);
+            throw createInsufficientCreditsError(balance);
+          }
+          const packDebit = Math.min(remainingToDebit, Number(pack.remaining_amount) || 0);
+          if (packDebit <= 0) break;
+          await dbClient.query(`UPDATE v_b_client_support_credit_packs
+             SET remaining_amount = remaining_amount - $2
+             WHERE id = $1`, [pack.id, packDebit]);
+          const result = await applyCreditDelta(dbClient, clientId, -packDebit, {
+            ticketId,
+            note: noteBase,
+            userId,
+            kind: "debit",
+            packId: pack.id
+          });
+          applied.push({
+            packId: pack.id,
+            amount: packDebit,
+            balance: result.balance,
+            entry: result.entry
+          });
+          remainingToDebit -= packDebit;
+        }
+        if (remainingToDebit > 0) {
+          const balance = await syncClientBalance(dbClient, clientId);
+          throw createInsufficientCreditsError(balance);
+        }
+        continue;
+      }
+      const result = await applyCreditDelta(dbClient, clientId, -amount, {
+        ticketId,
+        note: noteBase,
+        userId,
+        kind: "debit",
+        packId: null
+      });
+      applied.push({
+        packId: null,
+        amount,
+        balance: result.balance,
+        entry: result.entry
+      });
+    }
+    await dbClient.query("COMMIT");
+    const last = applied[applied.length - 1];
+    return {
+      skipped: false,
+      balance: last?.balance ?? (await getSupportCreditBalance(clientId)),
+      entries: applied.map(row => row.entry).filter(Boolean),
+      debits: applied,
+      sourceKey: normalizedSource
+    };
+  } catch (err) {
+    await dbClient.query("ROLLBACK");
+    throw err;
+  } finally {
+    dbClient.release();
+  }
 }
 export async function consumeCreditsForTicket(ticketId, userId, debits = []) {
   const normalizedDebits = normalizeSupportCreditDebits(debits);

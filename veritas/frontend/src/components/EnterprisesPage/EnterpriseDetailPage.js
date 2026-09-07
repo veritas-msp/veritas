@@ -515,6 +515,7 @@ export default function ClientDetailPage({
   const logsControllerRef = useRef(null);
   const isMountedRef = useRef(true);
   const loadRequestIdRef = useRef(0);
+  const supportCreditsLoadGenRef = useRef(0);
   const modulesRequestRef = useRef({
     clientId: null,
     promise: null,
@@ -1579,6 +1580,7 @@ export default function ClientDetailPage({
       let upcomingRows = [];
       let recentRows = [];
       let creditSummary = null;
+      const creditsGenAtStart = supportCreditsLoadGenRef.current;
       if (!isCommunity) {
         [upcomingRows, recentRows, creditSummary] = await Promise.all([fetchEvents({
           clientId: targetClientId,
@@ -1595,8 +1597,11 @@ export default function ClientDetailPage({
         }).catch(() => null)]);
       }
       if (signal?.aborted || !isMountedRef.current) return;
-      setSupportCreditBalance(Number(creditSummary?.balance ?? 0));
-      setSupportCreditPacks(Array.isArray(creditSummary?.packs) ? creditSummary.packs : []);
+      // Don't overwrite a fresher reloadSupportCredits() result.
+      if (creditsGenAtStart === supportCreditsLoadGenRef.current) {
+        setSupportCreditBalance(Number(creditSummary?.balance ?? 0));
+        setSupportCreditPacks(Array.isArray(creditSummary?.packs) ? creditSummary.packs : []);
+      }
       const tickets = Array.isArray(ticketRows) ? ticketRows : [];
       const upcomingList = Array.isArray(upcomingRows) ? upcomingRows : [];
       const recentList = Array.isArray(recentRows) ? recentRows : [];
@@ -1614,8 +1619,7 @@ export default function ClientDetailPage({
         setPrestationTickets([]);
         setUpcomingEvents([]);
         setRecentEvents([]);
-        setSupportCreditBalance(0);
-        setSupportCreditPacks([]);
+        // Ne pas écraser les crédits si un reload dédié plus récent a déjà abouti.
       }
     } finally {
       if (isMountedRef.current) setLoadingClientActivity(false);
@@ -1728,14 +1732,19 @@ export default function ClientDetailPage({
   };
   const reloadSupportCredits = useCallback(async () => {
     if (!client?.id || isCommunity) return;
+    const gen = ++supportCreditsLoadGenRef.current;
     try {
       const creditSummary = await fetchClientSupportCredits(client.id);
+      if (gen !== supportCreditsLoadGenRef.current || !isMountedRef.current) return;
       setSupportCreditBalance(Number(creditSummary?.balance ?? 0));
       setSupportCreditPacks(Array.isArray(creditSummary?.packs) ? creditSummary.packs : []);
+      setCreditsExpanded(true);
     } catch (error) {
       console.error("Error reloading support credits:", error);
     }
   }, [client?.id, isCommunity]);
+  const supportCreditPackSeed = useMemo(() => (client?.id ? { client_id: client.id } : null), [client?.id]);
+  const supportCreditModalClients = useMemo(() => (client ? [client] : []), [client]);
   const handleOpenSupportCreditsAdmin = () => {
     try {
       sessionStorage.setItem("veritas_admin_nav", JSON.stringify({
@@ -3835,9 +3844,7 @@ export default function ClientDetailPage({
 
       <ProFeaturePromoModal open={Boolean(proPromoFeature)} featureKey={proPromoFeature} onClose={() => setProPromoFeature(null)} />
 
-      <SupportCreditPackModal open={supportCreditModalOpen} mode="create" pack={client?.id ? {
-      client_id: client.id
-    } : null} clients={client ? [client] : []} lockClient onClose={() => setSupportCreditModalOpen(false)} onSaved={reloadSupportCredits} />
+      <SupportCreditPackModal open={supportCreditModalOpen} mode="create" pack={supportCreditPackSeed} clients={supportCreditModalClients} lockClient onClose={() => setSupportCreditModalOpen(false)} onSaved={reloadSupportCredits} />
 
       {}
       {photoModalOpen && <div className={styles.modalOverlay} onClick={() => setPhotoModalOpen(false)}>
