@@ -1,10 +1,10 @@
 import crypto from "crypto";
 import express from "express";
 import { body, param, validationResult } from "express-validator";
-import { pool } from "../../database/db.js";
-import { publicKnowledgeRateLimit } from "../../middleware/rateLimit.js";
-import { normalizeVisibilityRules } from "../../services/salesFormConditions.js";
-import { applyFormTicketTargets, normalizeTicketTargetsConfig, parseTicketTargetsFromRow, resolveMatchingRules } from "../../services/salesFormTicketTargets.js";
+import { pool } from "../database/db.js";
+import { publicKnowledgeRateLimit } from "../middleware/rateLimit.js";
+import { normalizeVisibilityRules } from "../services/salesFormConditions.js";
+import { applyFormTicketTargets, normalizeTicketTargetsConfig, parseTicketTargetsFromRow, resolveMatchingRules } from "../services/salesFormTicketTargets.js";
 
 const router = express.Router();
 router.use(publicKnowledgeRateLimit);
