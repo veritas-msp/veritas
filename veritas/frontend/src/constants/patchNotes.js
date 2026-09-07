@@ -5,6 +5,16 @@
  */
 export const PATCH_NOTES = [
   {
+    version: "1.0.5",
+    date: "2026-09-07",
+    highlights: [
+      "Formulaires support : création/édition en admin, utilisation à la création de ticket et page publique avec captcha.",
+      "Création presta : ordre des champs respecté (dont texte long), listes agents/entreprises/contacts en mode recherche, infos commerciales retirées du formulaire fixe.",
+      "Administration : onglets Catégories (support et services) en deux colonnes pour voir sections et catégories ensemble.",
+      "Correctif build frontend : import du panneau de satisfaction clients aligné sur l'API."
+    ]
+  },
+  {
     version: "1.0.4",
     date: "2026-09-07",
     highlights: [

@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Icon } from "@iconify/react";
 import { FaChevronLeft, FaChevronRight, FaTimes } from "react-icons/fa";
 import { toast } from "react-toastify";
-import { fetchTicketSatisfactions } from "../../api/tickets";
+import { fetchTicketSatisfied } from "../../api/tickets";
 import layout from "../EnterprisesPage/EnterprisesPage.module.css";
 import styles from "./TicketPage.module.css";
 import { useAppLocale } from "../../hooks/useAppGeneralSettings";
@@ -48,7 +48,7 @@ export default function TicketSatisfactionsPanel({
     searchAbortRef.current = controller;
     setLoading(true);
     try {
-      const result = await fetchTicketSatisfactions({
+      const result = await fetchTicketSatisfied({
         scope,
         search,
         sentiment,
