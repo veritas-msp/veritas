@@ -468,7 +468,13 @@ export default function EnterpriseFormModal({
       support: Boolean(form?.contrat?.sla?.enabled)
     };
   }, [form, activeModulesCount]);
-  const isRequiredSectionIncomplete = sectionId => (sectionId === "identity" || sectionId === "contact") && !sectionMeta[sectionId];
+  // Contact principal obligatoire uniquement à la création : en édition, on peut
+  // enregistrer contrat / commercial / identité même si aucun contact n'est lié.
+  const isRequiredSectionIncomplete = sectionId => {
+    if (sectionId === "identity") return !sectionMeta.identity;
+    if (sectionId === "contact") return isCreate && !sectionMeta.contact;
+    return false;
+  };
   const patchSlaField = useCallback(updater => {
     const apply = prev => {
       const baseSla = prev.contrat?.sla || createDefaultClientSla();
@@ -494,7 +500,7 @@ export default function EnterpriseFormModal({
   const contact = form.primaryContact || {};
   const commercialId = getCommercialId(form);
   const handlePrimaryAction = onSubmit || onSave;
-  const requiredFieldsValid = Boolean(form.name?.trim()) && Boolean(form.primaryContact?.nom?.trim());
+  const requiredFieldsValid = Boolean(form.name?.trim()) && (!isCreate || Boolean(form.primaryContact?.nom?.trim()));
   const submitDisabled = saving || !requiredFieldsValid || !isCreate && !hasChanges;
   const deleteButtonDisabled = deleteDisabled || deleteLoading || loadingDeletionCheck || deletionBlocked;
   const deleteTooltip = loadingDeletionCheck ? copy.checkingLinked : deletionBlocked && deleteBlockedTooltip ? deleteBlockedTooltip : null;
@@ -502,7 +508,8 @@ export default function EnterpriseFormModal({
       <Icon icon="mdi:delete-outline" aria-hidden />
       {deleteLoading ? copy.deleting : loadingDeletionCheck ? copy.checking : copy.delete}
     </button>;
-  const footerHint = !requiredFieldsValid ? copy.footer.requiredHint : activeSection === "contact" && isCreate ? copy.footer.contactAttachHint : activeSection === "support" && isSlaCommunityLocked ? copy.footer.proSlaHint : !isCreate ? hasChanges ? copy.footer.unsavedChanges : copy.footer.noChanges : "";
+  const requiredHint = isCreate ? copy.footer.requiredHint : copy.footer.requiredHintEdit;
+  const footerHint = !requiredFieldsValid ? requiredHint : activeSection === "contact" && isCreate ? copy.footer.contactAttachHint : activeSection === "support" && isSlaCommunityLocked ? copy.footer.proSlaHint : !isCreate ? hasChanges ? copy.footer.unsavedChanges : copy.footer.noChanges : "";
   const modalTitle = title || copy.formatTitle(isCreate, form.name);
   const modalSubtitle = subtitle || (isCreate ? copy.subtitleCreate : copy.subtitleEdit);
   const f = copy.fields;

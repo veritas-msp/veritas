@@ -19,6 +19,7 @@ import { deleteClientFile, uploadClientFile } from "../../api/clientFiles";
 import { createTicket, permanentlyDeleteTicket } from "../../api/tickets";
 import { interpolate } from "../../i18n/translate";
 import { canonicalizeComputerType } from "../EquipementPage/equipmentFormConfig";
+import { toDateInputValue } from "../EquipementPage/constants/firewallLicenceUtils";
 import { slugifyEquipmentFieldKey } from "./equipmentFamilyConstants";
 import { EQUIPMENT_MATCH_KEY_DEFAULT, INJECTION_ID_TO_SYSTEM_KEY, resolveEquipmentMatchKeys } from "./adminInjectionEquipmentFields";
 
@@ -255,10 +256,19 @@ const EQUIPMENT_DATA_FIELD_ALIASES = {
   debitupload: "debitUpload",
   purchase_date: "purchaseDate",
   purchasedate: "purchaseDate",
+  date_achat: "purchaseDate",
+  dateachat: "purchaseDate",
   invoice_number: "invoiceNumber",
   invoicenumber: "invoiceNumber",
+  numero_de_facture: "invoiceNumber",
+  numerodefacture: "invoiceNumber",
+  n_facture: "invoiceNumber",
+  nfacture: "invoiceNumber",
   install_date: "installDate",
   installdate: "installDate",
+  date_d_installation: "installDate",
+  date_installation: "installDate",
+  dateinstallation: "installDate",
   comment: "commentaire",
   commentaire: "commentaire",
   warranty_end: "expirationGarantie",
@@ -607,6 +617,10 @@ function coerceValue(raw, fieldType = null) {
   const type = String(fieldType || "").trim().toLowerCase();
   if (typeof raw === "number" && Number.isFinite(raw)) {
     if (type === "boolean") return raw !== 0;
+    if (type === "date") {
+      const iso = toDateInputValue(raw);
+      return iso || undefined;
+    }
     return raw;
   }
   if (typeof raw === "boolean") {
@@ -617,7 +631,12 @@ function coerceValue(raw, fieldType = null) {
   if (!text) return undefined;
   if (type === "number") return parseNumber(text);
   if (type === "boolean") return parseBool(text);
-  if (type === "date" || type === "text" || type === "textarea") return text;
+  if (type === "date") {
+    const iso = toDateInputValue(text);
+    // Keep original text only if it is already a usable ISO date; otherwise drop junk.
+    return iso || undefined;
+  }
+  if (type === "text" || type === "textarea") return text;
   const boolTokens = ["true", "false", "yes", "no", "oui", "non", "y", "n", "on", "off"];
   if (boolTokens.includes(text.toLowerCase())) {
     const asBool = parseBool(text);
@@ -1226,9 +1245,22 @@ export async function runInjection({
           const rawField = String(rawKey).slice(String(rawKey).toLowerCase().indexOf("data_") + 5);
           let field = resolveCustomEquipmentFieldKey(rawField, customFields) || canonicalizeEquipmentDataField(rawField);
           const fieldDef = customFields.find(entry => String(entry?.fieldKey || entry?.key || "").trim() === String(field || "").trim());
-          const fieldType = fieldDef?.fieldType || null;
+          const sharedField = canonicalizeEquipmentDataField(rawField);
+          // Prefer date coercion when the family field is typed date, or the shared alias is a known date key.
+          const sharedDateKeys = new Set(["purchaseDate", "installDate", "expirationGarantie"]);
+          const looksLikeBillingDate = /date.*factur|factur.*date|billing.?date|invoice.?date/i.test(String(field || ""))
+            || /date.*factur|factur.*date/i.test(String(rawField || ""));
+          const fieldType = fieldDef?.fieldType
+            || (sharedDateKeys.has(sharedField) || sharedDateKeys.has(field) || looksLikeBillingDate ? "date" : null);
           const value = coerceValue(rawValue, fieldType);
-          if (value !== undefined) data[field] = value;
+          if (value !== undefined) {
+            data[field] = value;
+            // Dual-write shared keys so CSV headers like data_numero_de_facture
+            // also fill invoiceNumber (shown by the shared billing columns).
+            if (sharedField && sharedField !== field) {
+              data[sharedField] = value;
+            }
+          }
         }
         if (!familyEntry.isCustom && family === "ordinateurs") {
           const rawType =

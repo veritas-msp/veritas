@@ -10,8 +10,11 @@ const SHARED_EQUIPMENT_FIELD_DEFS = [
 const HIDDEN_LEGACY_FIELD_KEYS = new Set(["supportReference", "supportContract"]);
 
 const FIELD_ALIASES = {
-  installDate: ["dateInstallation"],
-  expirationGarantie: ["garantie"]
+  installDate: ["dateInstallation", "date_d_installation", "date_installation"],
+  expirationGarantie: ["garantie", "warranty_end"],
+  invoiceNumber: ["numero_de_facture", "numeroDeFacture", "n_facture"],
+  purchaseDate: ["date_achat", "dateAchat"],
+  commentaire: ["comment", "notes"]
 };
 
 export const SHARED_EQUIPMENT_FIELD_KEYS = SHARED_EQUIPMENT_FIELD_DEFS.map(field => field.key);

@@ -298,7 +298,7 @@ function mapInjectionField(field, locale) {
 const FIELD_TYPE_VALUES = {
   text: L("Texte libre", "Free text"),
   textarea: L("Texte long", "Long text"),
-  date: L("Date, ex. 2026-12-31", "Date, e.g. 2026-12-31"),
+  date: L("Date, ex. 31/12/2026 ou 2026-12-31", "Date, e.g. 2026-12-31 or 31/12/2026"),
   number: L("Nombre", "Number"),
   boolean: L("true | false", "true | false")
 };

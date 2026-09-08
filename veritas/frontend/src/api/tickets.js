@@ -278,6 +278,21 @@ export async function addTicketTag(ticketId, label, color) {
   });
   return handleJsonResponse(response, "Error adding tag");
 }
+export async function fetchTicketTags(options = {}) {
+  const params = new URLSearchParams();
+  if (options.search) params.set("search", String(options.search));
+  if (options.limit != null) params.set("limit", String(options.limit));
+  const qs = params.toString();
+  const response = await fetch(`${API_BASE_URL}/tickets/tags${qs ? `?${qs}` : ""}`, {
+    method: "GET",
+    credentials: "include",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    signal: options.signal
+  });
+  return handleJsonResponse(response, "Error loading ticket tags");
+}
 export async function removeTicketTag(ticketId, tagId) {
   const response = await fetch(`${API_BASE_URL}/tickets/${ticketId}/tags/${tagId}`, {
     method: "DELETE",

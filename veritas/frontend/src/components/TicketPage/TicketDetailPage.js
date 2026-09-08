@@ -26,6 +26,7 @@ import ProFeaturePromoModal from "../Misc/ProFeature/ProFeaturePromoModal";
 import TicketAiRunbookPanel from "./TicketAiRunbookPanel";
 import TicketEmojiPicker from "./TicketEmojiPicker";
 import TicketAiEnrichMenu from "./TicketAiEnrichMenu";
+import TicketTagSuggestField from "./TicketTagSuggestField";
 import { createEvent, updateEvent, deleteEvent, fetchEvents } from "../../api/events";
 import { buildReminderEventPayload } from "../../utils/ticketReminderEvent";
 import { addTicketAssignee, addTicketComment, addTicketCommentWithAttachments, addLinkedTicket, addTicketTag, addTicketWatcher, createTicketValidationRequest, deleteTicket, fetchTicketCategories, fetchTicket, fetchTickets, fetchSalesForm, fetchSupportForm, permanentlyDeleteTicket, removeTicketTag, removeTicketAssignee, removeTicketWatcher, respondTicketValidationRequest, restoreTicket, updateTicket, updateTicketComment, deleteTicketComment, updateTicketStatus, updateTicketValidationRequest, resolveTicketWithValidation } from "../../api/tickets";
@@ -2070,10 +2071,11 @@ export default function TicketDetailPage({
     });
     toast.success(copy.formatTemplateApplied(template.name));
   };
-  const addTag = async () => {
-    if (!ticketId || !tagDraft.trim()) return;
+  const addTag = async (labelOverride, colorOverride) => {
+    const label = String(labelOverride ?? tagDraft).trim();
+    if (!ticketId || !label) return;
     try {
-      const createdTag = await addTicketTag(ticketId, tagDraft.trim());
+      const createdTag = await addTicketTag(ticketId, label, colorOverride || undefined);
       setTicket(prev => {
         if (!prev) return prev;
         const existing = prev.tags || [];
@@ -4844,12 +4846,14 @@ export default function TicketDetailPage({
                         </span>;
                   })}
                     {!isReadOnly ? <div className={heroStyles.heroTagAddWrap}>
-                        {tagAddOpen ? <form className={heroStyles.heroTagFormCompact} onSubmit={handleAddTagSubmit}>
-                            <input ref={tagInputRef} type="text" className={heroStyles.heroTagInputCompact} placeholder={copy.leftPane.tagPlaceholder} value={tagDraft} onChange={e => setTagDraft(e.target.value)} maxLength={64} aria-label={copy.leftPane.tagAddAria} />
-                            <button type="submit" className={heroStyles.heroTagConfirmBtn} disabled={!tagDraft.trim()} aria-label={copy.leftPane.tagConfirmAria}>
-                              <FaPlus />
-                            </button>
-                          </form> : <SmartTooltip content={copy.leftPane.tagAddTooltip}>
+                        {tagAddOpen ? <TicketTagSuggestField assignedTags={ticket.tags || []} placeholder={copy.leftPane.tagPlaceholder} addAria={copy.leftPane.tagAddAria} confirmAria={copy.leftPane.tagConfirmAria} createLabel={label => interpolate(copy.leftPane.tagCreate || "Create “{label}”", {
+                      label
+                    })} emptyHint={copy.leftPane.tagEmpty || "No matching tag"} onSubmit={(label, color) => {
+                      void addTag(label, color);
+                    }} onCancel={() => {
+                      setTagDraft("");
+                      setTagAddOpen(false);
+                    }} /> : <SmartTooltip content={copy.leftPane.tagAddTooltip}>
                             <button type="button" className={heroStyles.heroTagAddTrigger} onClick={() => setTagAddOpen(true)} aria-label={copy.leftPane.tagAddAria}>
                               <FaPlus />
                             </button>

@@ -116,6 +116,7 @@ const COPY = {
     },
     footer: {
       requiredHint: "Le nom de l'entreprise et le nom du contact principal sont obligatoires.",
+      requiredHintEdit: "Le nom de l'entreprise est obligatoire.",
       contactAttachHint: "Ce contact sera automatiquement rattaché à la fiche créée.",
       proSlaHint: "Disponible avec Veritas Pro.",
       unsavedChanges: "Modifications non enregistrées",
@@ -252,6 +253,7 @@ const COPY = {
     },
     footer: {
       requiredHint: "Company name and primary contact last name are required.",
+      requiredHintEdit: "Company name is required.",
       contactAttachHint: "This contact will be automatically linked to the new record.",
       proSlaHint: "Available with Veritas Pro.",
       unsavedChanges: "Unsaved changes",
@@ -388,6 +390,7 @@ const COPY = {
     },
     footer: {
       requiredHint: "Unternehmensname und Nachname des Hauptkontakts sind Pflichtfelder.",
+      requiredHintEdit: "Unternehmensname ist ein Pflichtfeld.",
       contactAttachHint: "Dieser Kontakt wird automatisch mit der neuen Akte verknüpft.",
       proSlaHint: "Verfügbar mit Veritas Pro.",
       unsavedChanges: "Nicht gespeicherte Änderungen",
@@ -524,6 +527,7 @@ const COPY = {
     },
     footer: {
       requiredHint: "Nome azienda e cognome del contatto principale sono obbligatori.",
+      requiredHintEdit: "Il nome dell'azienda è obbligatorio.",
       contactAttachHint: "Questo contatto sarà collegato automaticamente alla scheda creata.",
       proSlaHint: "Disponibile con Veritas Pro.",
       unsavedChanges: "Modifiche non salvate",
@@ -660,6 +664,7 @@ const COPY = {
     },
     footer: {
       requiredHint: "El nombre de la empresa y el apellido del contacto principal son obligatorios.",
+      requiredHintEdit: "El nombre de la empresa es obligatorio.",
       contactAttachHint: "Este contacto se vinculará automáticamente a la ficha creada.",
       proSlaHint: "Disponible con Veritas Pro.",
       unsavedChanges: "Cambios sin guardar",

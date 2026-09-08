@@ -211,6 +211,8 @@ const DETAIL_COPY = {
       tagAddAria: "Ajouter une étiquette",
       tagConfirmAria: "Confirmer l'étiquette",
       tagAddTooltip: "Ajouter une étiquette",
+      tagCreate: "Créer « {label} »",
+      tagEmpty: "Aucune étiquette correspondante",
       removeTagAria: "Retirer l'étiquette {label}"
     },
     description: {
@@ -783,6 +785,8 @@ const DETAIL_COPY = {
       tagAddAria: "Add a tag",
       tagConfirmAria: "Confirm tag",
       tagAddTooltip: "Add a tag",
+      tagCreate: "Create “{label}”",
+      tagEmpty: "No matching tag",
       removeTagAria: "Remove tag {label}"
     },
     description: {

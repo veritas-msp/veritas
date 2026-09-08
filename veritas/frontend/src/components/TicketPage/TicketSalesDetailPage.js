@@ -33,6 +33,7 @@ import { getTicketSalesDetailCopy } from "./ticketSalesDetailI18n";
 import { getEquipmentPickerLabel, getEquipmentSearchText, loadClientEquipments, serializeEquipmentInfo } from "./ticketEquipmentUtils";
 import TicketChatPanel from "./TicketChatPanel";
 import SalesTasksPanel from "./SalesTasksPanel";
+import TicketTagSuggestField from "./TicketTagSuggestField";
 import SalesCreditDebitModal from "./SalesCreditDebitModal";
 import TicketConfirmModal from "./TicketConfirmModal";
 import td from "./TicketDetailPage.module.css";
@@ -960,13 +961,12 @@ export default function TicketSalesDetailPage({ onNavigate, ticketData }) {
     await updateTicketLive({ category: name }, copy.meta.categorySaved);
   };
 
-  const handleAddTag = async event => {
-    event?.preventDefault?.();
-    const label = tagDraft.trim();
+  const handleAddTag = async (labelOverride, colorOverride) => {
+    const label = String(labelOverride ?? tagDraft).trim();
     if (!ticketId || !label || tagBusy) return;
     setTagBusy(true);
     try {
-      const createdTag = await addTicketTag(ticketId, label);
+      const createdTag = await addTicketTag(ticketId, label, colorOverride || undefined);
       setTicket(prev => {
         if (!prev) return prev;
         const existing = prev.tags || [];
@@ -2128,22 +2128,24 @@ export default function TicketSalesDetailPage({ onNavigate, ticketData }) {
                         </button>
                       </div>
                     ) : (
-                      <form className={heroStyles.heroTagFormCompact} onSubmit={handleAddTag}>
-                        <input
-                          type="text"
-                          className={heroStyles.heroTagInputCompact}
+                      <div className={heroStyles.heroTagAddWrap}>
+                        <TicketTagSuggestField
+                          assignedTags={tags}
                           placeholder={copy.tags.placeholder}
-                          value={tagDraft}
-                          onChange={e => setTagDraft(e.target.value)}
-                          maxLength={64}
+                          addAria={copy.tags.add}
+                          confirmAria={copy.tags.add}
+                          createLabel={label => interpolate(copy.tags.create || "Create “{label}”", { label })}
+                          emptyHint={copy.tags.empty || "No matching tag"}
                           disabled={tagBusy}
-                          autoFocus
-                          aria-label={copy.tags.add}
+                          onSubmit={(label, color) => {
+                            void handleAddTag(label, color);
+                          }}
+                          onCancel={() => {
+                            setTagDraft("");
+                            setTagAddOpen(false);
+                          }}
                         />
-                        <button type="submit" className={heroStyles.heroTagConfirmBtn} disabled={!tagDraft.trim() || tagBusy} aria-label={copy.tags.add}>
-                          <FaPlus />
-                        </button>
-                      </form>
+                      </div>
                     )}
                   </div>
                 </div>

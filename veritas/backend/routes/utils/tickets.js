@@ -2252,6 +2252,37 @@ router.get("/categories", verifyJWT, async (_req, res) => {
     });
   }
 });
+router.get("/tags", verifyJWT, requireAnyPermission("tickets.view", "sales.view"), [query("search").optional().isString(), query("limit").optional().isInt({
+  min: 1,
+  max: 200
+})], async (req, res) => {
+  try {
+    const search = String(req.query?.search || "").trim().toLowerCase();
+    const limitRaw = Number.parseInt(String(req.query?.limit || "80"), 10);
+    const limit = Number.isFinite(limitRaw) ? Math.min(200, Math.max(1, limitRaw)) : 80;
+    const params = [];
+    let whereSql = "";
+    if (search) {
+      params.push(`%${search}%`);
+      whereSql = `WHERE lower(label) LIKE $${params.length}`;
+    }
+    params.push(limit);
+    const result = await pool.query(`SELECT id, label, color, created_at
+       FROM v_b_ticket_tags
+       ${whereSql}
+       ORDER BY label ASC
+       LIMIT $${params.length}`, params);
+    return res.json(Array.isArray(result.rows) ? result.rows : []);
+  } catch (err) {
+    if (err?.code === "42P01") {
+      return res.json([]);
+    }
+    console.error("Error loading ticket tags catalog:", err);
+    return res.status(500).json({
+      error: "Error loading ticket tags"
+    });
+  }
+});
 router.post("/categories", verifyJWT, [body("name").isString().notEmpty(), body("section").optional().isString(), body("description").optional().isString(), body("enabled").optional().isBoolean()], async (req, res) => {
   const validationResponse = validationErrorOrNull(req, res);
   if (validationResponse) return;

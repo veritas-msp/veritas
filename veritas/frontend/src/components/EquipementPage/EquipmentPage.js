@@ -23,6 +23,7 @@ import { getServerRemoteAccessActionIcon, getServerRemoteAccessSolutionDef, hasS
 import { isSynologyStorage, hasQuickConnectConfigured as hasSynologyQuickConnectConfigured, getQuickConnectValue as getSynologyQuickConnectValue, openQuickConnectUrl } from "./synologyEquipmentUtils";
 import EquipmentFormModal from "./EquipmentFormModal";
 import { formatInternetDebitDisplay } from "./internetConnectionUtils";
+import { formatDateFr, toDateInputValue } from "./constants/firewallLicenceUtils";
 import EmbeddedEquipmentActionsMenu from "./EmbeddedEquipmentActionsMenu";
 import SupervisionCenterPage from "./SupervisionCenterPage";
 import { serializeAssignedSsidsForPersistence, serializeWifiSsidCatalogForPersistence } from "./wifiApSsidUtils";
@@ -80,11 +81,8 @@ function formatCustomFamilyFieldValue(field, value, pageCopy) {
   if (value == null || value === "") return "-";
   if (field?.fieldType === "boolean") return value ? pageCopy.yes : pageCopy.no;
   if (field?.fieldType === "date") {
-    try {
-      return new Date(value).toLocaleDateString("en-GB");
-    } catch {
-      return String(value);
-    }
+    const formatted = formatDateFr(value);
+    return formatted || String(value);
   }
   return String(value);
 }
@@ -126,9 +124,12 @@ function coerceCustomSortValue(raw, fieldType) {
     const n = Number(raw);
     return Number.isFinite(n) ? n : 0;
   }
-  if (fieldType === "date" || typeof raw === "string" && /^\d{4}-\d{2}-\d{2}/.test(raw)) {
-    const d = new Date(raw);
-    if (!Number.isNaN(d.getTime())) return d.getTime();
+  if (fieldType === "date" || typeof raw === "string" && (/^\d{4}-\d{2}-\d{2}/.test(raw) || /^\d{1,2}\/\d{1,2}\/\d{4}/.test(raw))) {
+    const iso = toDateInputValue(raw);
+    if (iso) {
+      const d = new Date(`${iso}T00:00:00`);
+      if (!Number.isNaN(d.getTime())) return d.getTime();
+    }
   }
   if (typeof raw === "number" && !Number.isNaN(raw)) return raw;
   return toSortScalar(raw);

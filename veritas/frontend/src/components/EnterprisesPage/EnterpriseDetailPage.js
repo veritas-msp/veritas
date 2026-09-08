@@ -2257,11 +2257,8 @@ export default function ClientDetailPage({
         setSaving(false);
         return;
       }
-      if (!formData.primaryContact?.nom?.trim()) {
-        toast.error(copy.toast.primaryContactRequired);
-        setSaving(false);
-        return;
-      }
+      // En édition, le contact principal n'est pas bloquant : on met à jour
+      // l'entreprise même sans contact lié (création / rattachement optionnel).
       const existingContrat = getContratData(client);
       const contratPayload = {
         ...existingContrat,

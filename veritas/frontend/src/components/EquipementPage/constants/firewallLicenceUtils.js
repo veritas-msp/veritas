@@ -21,15 +21,42 @@ export function getExpirationStatus(value) {
 export function getExpirationStatusColor(status) {
   return EXPIRATION_STATUS_COLORS[status] || undefined;
 }
+function excelSerialToIso(serial) {
+  if (!Number.isFinite(serial) || serial < 1 || serial > 100000) return "";
+  // Excel / LibreOffice serial day count (epoch 1899-12-30, with legacy leap quirk).
+  const utc = Date.UTC(1899, 11, 30) + Math.round(serial) * 86400000;
+  const parsed = new Date(utc);
+  if (Number.isNaN(parsed.getTime())) return "";
+  return parsed.toISOString().slice(0, 10);
+}
+
 export const toDateInputValue = value => {
-  if (!value) return "";
+  if (value == null || value === "") return "";
+  if (value instanceof Date && !Number.isNaN(value.getTime())) {
+    return value.toISOString().slice(0, 10);
+  }
+  if (typeof value === "number" && Number.isFinite(value)) {
+    return excelSerialToIso(value);
+  }
   const str = String(value).trim();
   if (!str) return "";
   if (/^\d{4}-\d{2}-\d{2}$/.test(str)) return str;
-  const frMatch = str.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  const isoDateTime = str.match(/^(\d{4}-\d{2}-\d{2})[T\s]/);
+  if (isoDateTime) return isoDateTime[1];
+  // FR / EU: DD/MM/YYYY[+ time] — preferred over ambiguous US MM/DD parsing.
+  const frMatch = str.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})(?:\s+\d{1,2}:\d{2}(?::\d{2})?)?$/);
   if (frMatch) {
     const [, day, month, year] = frMatch;
-    return `${year}-${month.padStart(2, "0")}-${day.padStart(2, "0")}`;
+    const d = Number(day);
+    const m = Number(month);
+    if (m >= 1 && m <= 12 && d >= 1 && d <= 31) {
+      return `${year}-${String(m).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+    }
+  }
+  if (/^\d{4,5}([.,]\d+)?$/.test(str)) {
+    const serial = Number(str.replace(",", "."));
+    const fromSerial = excelSerialToIso(serial);
+    if (fromSerial) return fromSerial;
   }
   const parsed = new Date(str);
   if (!Number.isNaN(parsed.getTime())) {

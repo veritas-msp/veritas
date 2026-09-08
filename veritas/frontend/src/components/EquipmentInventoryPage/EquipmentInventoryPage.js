@@ -12,6 +12,7 @@ import { useTablePagination } from "../AdminPage/useTablePagination";
 import MspPageHero from "../Misc/MspPageHero/MspPageHero";
 import SmartTooltip from "../SmartTooltip";
 import EquipmentBrandIcon from "../EquipementPage/constants/EquipmentBrandIcon";
+import { toDateInputValue } from "../EquipementPage/constants/firewallLicenceUtils";
 import cyberStyles from "../CybersecuritePage/CybersecuritePage.module.css";
 import layout from "../EnterprisesPage/EnterprisesPage.module.css";
 import { getEquipmentInventoryPageCopy } from "./equipmentInventoryPageI18n";
@@ -213,8 +214,12 @@ function formatInventoryFieldValue(field, value, locale) {
   }
   if (value == null || String(value).trim() === "") return "—";
   if (field?.fieldType === "date") {
-    const parsed = new Date(value);
-    if (!Number.isNaN(parsed.getTime())) return parsed.toLocaleDateString(locale || "fr-FR");
+    const iso = toDateInputValue(value);
+    if (iso) {
+      const [year, month, day] = iso.split("-");
+      return `${day}/${month}/${year}`;
+    }
+    return String(value);
   }
   if (field?.fieldType === "number" && (value === false || value === true)) return value ? "1" : "0";
   return String(value);
