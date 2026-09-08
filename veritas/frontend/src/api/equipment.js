@@ -1550,6 +1550,27 @@ export const updateEquipmentCheckMKMapping = async (clientId, equipmentType, equ
   }
   return response.json();
 };
+
+export const updateEquipmentHycuMapping = async (clientId, equipmentId, equipmentName, mapping = {}) => {
+  const response = await fetch(`${API_BASE_URL}/clients/modules/${clientId}/save/hycu-mapping`, {
+    method: 'PATCH',
+    credentials: 'include',
+    headers: {
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({
+      equipmentName,
+      equipment_id: equipmentId || mapping?.equipment_id || mapping?.equipmentId || undefined,
+      hycu_job_uuid: mapping?.hycu_job_uuid ?? null,
+      hycu_job_name: mapping?.hycu_job_name ?? null
+    })
+  });
+  if (!response.ok) {
+    const err = await response.json().catch(() => ({}));
+    throw new Error(err.error || `Error ${response.status}`);
+  }
+  return response.json();
+};
 export const categorizeHost = host => {
   const name = (host.id || host.name || '').toLowerCase();
   const alias = (host.alias || '').toLowerCase();

@@ -33,6 +33,30 @@ export async function testCheckmkConnection({
   return handleTestResponse(res);
 }
 
+export async function testHycuConnection({
+  apiUrl,
+  apiKey,
+  username,
+  password,
+  verifyTls
+} = {}) {
+  const res = await fetch(`${API_BASE_URL}/hycu/test`, {
+    method: "POST",
+    credentials: "include",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({
+      HYCU_API_URL: apiUrl,
+      HYCU_API_KEY: apiKey,
+      HYCU_USERNAME: username,
+      HYCU_PASSWORD: password,
+      HYCU_VERIFY_TLS: verifyTls
+    })
+  });
+  return handleTestResponse(res);
+}
+
 export async function testWhatsappConnection() {
   const res = await fetch(`${API_BASE_URL}/whatsapp/test`, {
     method: "POST",

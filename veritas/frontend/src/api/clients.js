@@ -1233,10 +1233,13 @@ export async function saveClientModules(clientId, data) {
                   };
                   delete jobData.id;
                   delete jobData.checkmkMapping;
+                  delete jobData.hycuMapping;
                   delete jobData.isMapped;
                   delete jobData.checkmk_host_name;
                   delete jobData.checkmk_site;
                   delete jobData.checkmk_service_name;
+                  delete jobData.hycu_job_uuid;
+                  delete jobData.hycu_job_name;
                   const backupType = pickBackupJobType(jobData);
                   const jobName = job.nom ? `${instance.logiciel || 'Backup'} - ${job.nom}` : `${instance.logiciel || 'Backup'} - Job ${jobIdx + 1}`;
                   const jobKey = `job-${instanceId}`;

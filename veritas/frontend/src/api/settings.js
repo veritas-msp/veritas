@@ -80,6 +80,30 @@ const settingsMapping = {
     section: 'checkmk',
     label: 'Check MK site (optional)'
   },
+  'INTEGRATION_HYCU_ENABLED': {
+    section: 'hycu',
+    label: 'HYCU integration enabled'
+  },
+  'HYCU_API_URL': {
+    section: 'hycu',
+    label: 'HYCU controller URL'
+  },
+  'HYCU_API_KEY': {
+    section: 'hycu',
+    label: 'HYCU API key'
+  },
+  'HYCU_USERNAME': {
+    section: 'hycu',
+    label: 'HYCU username'
+  },
+  'HYCU_PASSWORD': {
+    section: 'hycu',
+    label: 'HYCU password'
+  },
+  'HYCU_VERIFY_TLS': {
+    section: 'hycu',
+    label: 'HYCU verify TLS'
+  },
   'WHATSAPP_PHONE_NUMBER_ID': {
     section: 'whatsapp',
     label: 'Phone Number ID WhatsApp'

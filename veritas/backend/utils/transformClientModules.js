@@ -48,6 +48,39 @@ function pickCheckmkFields(row = {}, data = {}) {
   };
 }
 
+function pickHycuFields(row = {}, data = {}) {
+  const mapping = data.hycuMapping && typeof data.hycuMapping === "object"
+    ? data.hycuMapping
+    : row.hycuMapping && typeof row.hycuMapping === "object"
+      ? row.hycuMapping
+      : {};
+  const uuid = firstCheckmkString(
+    row.hycu_job_uuid,
+    data.hycu_job_uuid,
+    mapping.hycu_job_uuid,
+    mapping.uuid,
+    data.hycuJobUuid
+  );
+  const name = firstCheckmkString(
+    row.hycu_job_name,
+    data.hycu_job_name,
+    mapping.hycu_job_name,
+    mapping.name,
+    data.hycuJobName
+  );
+  return {
+    hycu_job_uuid: uuid,
+    hycu_job_name: name,
+    hycuMapping: uuid
+      ? {
+          is_active: mapping.is_active !== false,
+          hycu_job_uuid: uuid,
+          hycu_job_name: name || null
+        }
+      : null
+  };
+}
+
 const MODULE_TABLES = {
   internet: "v_b_clients_m_internet",
   servers: "v_b_clients_m_servers",
@@ -224,13 +257,15 @@ export function transformClientModulesToFrontend(rawData, options = {}) {
               const lastBackupDuration = jobItem.last_backup_duration ?? jobData.last_backup_duration ?? null;
               const lastBackupStart = jobItem.last_backup_start ?? jobData.last_backup_start ?? null;
               const checkmk = pickCheckmkFields(jobItem, jobData);
+              const hycu = pickHycuFields(jobItem, jobData);
               return {
                 id: jobItem.id,
                 ...jobData,
                 last_backup_date: lastBackupDate != null ? typeof lastBackupDate === 'string' ? lastBackupDate : lastBackupDate instanceof Date ? lastBackupDate.toISOString() : String(lastBackupDate) : null,
                 last_backup_duration: lastBackupDuration != null ? String(lastBackupDuration) : null,
                 last_backup_start: lastBackupStart != null ? typeof lastBackupStart === 'string' ? lastBackupStart : lastBackupStart instanceof Date ? lastBackupStart.toISOString() : String(lastBackupStart) : null,
-                ...checkmk
+                ...checkmk,
+                ...hycu
               };
             });
             return {

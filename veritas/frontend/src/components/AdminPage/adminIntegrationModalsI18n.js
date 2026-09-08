@@ -1764,6 +1764,89 @@ export function getAiIntegrationModalCopy(locale) {
 export function getCheckmkIntegrationModalCopy(locale) {
   return mergeModalCopy(locale, CHECKMK);
 }
+const HYCU = {
+  fr: {
+    title: "HYCU Backup",
+    subtitle: "R-Cloud Hybrid Cloud Edition",
+    configNavAria: "Sections de configuration HYCU",
+    sections: {
+      connection: { description: "URL contrôleur et identifiants" },
+      guide: { description: "Obtenir une clé API" },
+      info: { description: "Usage sauvegarde" }
+    },
+    apiCredentials: "Identifiants HYCU",
+    connectionDesc: "Renseignez l’URL du contrôleur HYCU Hybrid et une clé API (recommandé). User/mot de passe servent de secours via requestToken.",
+    apiUrl: "URL du contrôleur",
+    apiKey: "Clé API",
+    username: "Nom d’utilisateur (secours)",
+    password: "Mot de passe (secours)",
+    verifyTls: "Vérifier le certificat TLS",
+    verifyTlsYes: "Oui (recommandé en prod)",
+    verifyTlsNo: "Non (lab / certificat auto-signé)",
+    fillCredentialsBeforeTest: "Renseignez l’URL et une clé API (ou user/mot de passe) avant de tester.",
+    testUsesFormHint: "Le test utilise les valeurs saisies, sans sauvegarde préalable.",
+    footerActive: "HYCU actif",
+    footerInactive: "HYCU inactif",
+    testSubtitleSuccess: "Connexion HYCU établie",
+    testSubtitleFail: "Échec de la connexion",
+    testApiSuccess: "L’API HYCU a répondu correctement.",
+    checkCredentials: "Vérifiez l’URL et les identifiants.",
+    jobs: "Jobs / backups",
+    guideTitle: "Obtenir vos identifiants",
+    guideDesc: "Générez une clé API depuis le contrôleur HYCU R-Cloud Hybrid, ou utilisez un compte avec requestToken.",
+    guideSteps: [
+      { title: "Ouvrez le contrôleur HYCU", desc: "Connectez-vous à l’interface web du contrôleur (souvent https://hôte:8443)." },
+      { title: "Créez une clé API", desc: "Dans le menu utilisateur, générez une API key dédiée MSP (expiration selon votre politique)." },
+      { title: "Renseignez et testez", desc: "Collez l’URL du contrôleur et la clé ici, testez, puis enregistrez. Mappez ensuite les jobs sur les instances HYCU Backup." }
+    ],
+    infoTitle: "À propos de cette intégration",
+    infoDesc: "HYCU alimente le statut des jobs de sauvegarde des instances « HYCU Backup » (last backup).",
+    infoApis: ["Inventaire jobs / backup sets", "Mapping job Veritas ↔ job HYCU", "Sync last_backup_*"],
+    infoFooter: "Un job ne peut avoir qu’une source de sync : mapper HYCU remplace un mapping CheckMK existant (alerte côté UI)."
+  },
+  en: {
+    title: "HYCU Backup",
+    subtitle: "R-Cloud Hybrid Cloud Edition",
+    configNavAria: "HYCU configuration sections",
+    sections: {
+      connection: { description: "Controller URL and credentials" },
+      guide: { description: "Get an API key" },
+      info: { description: "Backup usage" }
+    },
+    apiCredentials: "HYCU credentials",
+    connectionDesc: "Enter the HYCU Hybrid controller URL and an API key (recommended). Username/password are a fallback via requestToken.",
+    apiUrl: "Controller URL",
+    apiKey: "API key",
+    username: "Username (fallback)",
+    password: "Password (fallback)",
+    verifyTls: "Verify TLS certificate",
+    verifyTlsYes: "Yes (recommended in prod)",
+    verifyTlsNo: "No (lab / self-signed)",
+    fillCredentialsBeforeTest: "Enter the URL and an API key (or username/password) before testing.",
+    testUsesFormHint: "The test uses the form values, without saving first.",
+    footerActive: "HYCU active",
+    footerInactive: "HYCU inactive",
+    testSubtitleSuccess: "HYCU connection established",
+    testSubtitleFail: "Connection failed",
+    testApiSuccess: "The HYCU API responded successfully.",
+    checkCredentials: "Check the URL and credentials.",
+    jobs: "Jobs / backups",
+    guideTitle: "Get your credentials",
+    guideDesc: "Generate an API key from the HYCU R-Cloud Hybrid controller, or use an account with requestToken.",
+    guideSteps: [
+      { title: "Open the HYCU controller", desc: "Sign in to the controller web UI (often https://host:8443)." },
+      { title: "Create an API key", desc: "From the user menu, generate a dedicated MSP API key." },
+      { title: "Enter and test", desc: "Paste the controller URL and key here, test, then save. Map jobs on HYCU Backup instances afterwards." }
+    ],
+    infoTitle: "About this integration",
+    infoDesc: "HYCU powers backup job status for « HYCU Backup » instances (last backup).",
+    infoApis: ["Jobs / backup sets inventory", "Veritas job ↔ HYCU job mapping", "Sync last_backup_*"],
+    infoFooter: "A job can have only one sync source: mapping HYCU replaces an existing CheckMK mapping (UI warning)."
+  }
+};
+export function getHycuIntegrationModalCopy(locale) {
+  return mergeModalCopy(locale, HYCU);
+}
 export function getWhatsappIntegrationModalCopy(locale) {
   return mergeModalCopy(locale, WHATSAPP);
 }

@@ -204,7 +204,8 @@ const BACKUP_MODAL_COPY = {
       type: "Type",
       schedule: "Planification",
       retention: "Rétention",
-      checkmk: "CheckMK"
+      checkmk: "CheckMK",
+      hycu: "HYCU"
     },
     empty: {
       noInstances: "Aucune instance de sauvegarde",
@@ -228,7 +229,9 @@ const BACKUP_MODAL_COPY = {
       openJobs: "Jobs",
       mapCheckmk: "Mapper vers CheckMK",
       editCheckmk: "Modifier le mapping CheckMK",
-      mapCheckmkDisabled: "Enregistrez le job avant de le mapper"
+      mapCheckmkDisabled: "Enregistrez le job avant de le mapper",
+      mapHycu: "Mapper vers HYCU",
+      editHycu: "Modifier le mapping HYCU"
     },
     deleteFallback: {
       instance: "cette instance",
@@ -409,7 +412,8 @@ const BACKUP_MODAL_COPY = {
       type: "Type",
       schedule: "Schedule",
       retention: "Retention",
-      checkmk: "CheckMK"
+      checkmk: "CheckMK",
+      hycu: "HYCU"
     },
     empty: {
       noInstances: "No backup instance",
@@ -433,7 +437,9 @@ const BACKUP_MODAL_COPY = {
       openJobs: "Jobs",
       mapCheckmk: "Map to CheckMK",
       editCheckmk: "Edit CheckMK mapping",
-      mapCheckmkDisabled: "Save the job before mapping it"
+      mapCheckmkDisabled: "Save the job before mapping it",
+      mapHycu: "Map to HYCU",
+      editHycu: "Edit HYCU mapping"
     },
     deleteFallback: {
       instance: "this instance",
@@ -614,7 +620,8 @@ const BACKUP_MODAL_COPY = {
       type: "Typ",
       schedule: "Zeitplan",
       retention: "Aufbewahrung",
-      checkmk: "CheckMK"
+      checkmk: "CheckMK",
+      hycu: "HYCU"
     },
     empty: {
       noInstances: "Keine Backup-Instanz",
@@ -819,7 +826,8 @@ const BACKUP_MODAL_COPY = {
       type: "Tipo",
       schedule: "Pianificazione",
       retention: "Retention",
-      checkmk: "CheckMK"
+      checkmk: "CheckMK",
+      hycu: "HYCU"
     },
     empty: {
       noInstances: "Nessuna istanza di backup",
@@ -1024,7 +1032,8 @@ const BACKUP_MODAL_COPY = {
       type: "Tipo",
       schedule: "Planificación",
       retention: "Retención",
-      checkmk: "CheckMK"
+      checkmk: "CheckMK",
+      hycu: "HYCU"
     },
     empty: {
       noInstances: "Ninguna instancia de copia",

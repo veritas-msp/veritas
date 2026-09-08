@@ -126,11 +126,23 @@ function coalesceCheckmkFromRow(row, parsedData = {}) {
   };
 }
 
+function coalesceHycuFromRow(row, parsedData = {}) {
+  const data = parsedData && typeof parsedData === "object" ? parsedData : {};
+  const mapping = data.hycuMapping && typeof data.hycuMapping === "object" ? data.hycuMapping : {};
+  return {
+    hycu_job_uuid: firstCheckmkString(row?.hycu_job_uuid, data.hycu_job_uuid, mapping.hycu_job_uuid, mapping.uuid, data.hycuJobUuid),
+    hycu_job_name: firstCheckmkString(row?.hycu_job_name, data.hycu_job_name, mapping.hycu_job_name, mapping.name, data.hycuJobName)
+  };
+}
+
 function applyCheckmkCoalesce(row) {
   const checkmk = coalesceCheckmkFromRow(row, row.data);
   row.checkmk_host_name = checkmk.checkmk_host_name;
   row.checkmk_site = checkmk.checkmk_site;
   row.checkmk_service_name = checkmk.checkmk_service_name;
+  const hycu = coalesceHycuFromRow(row, row.data);
+  row.hycu_job_uuid = hycu.hycu_job_uuid;
+  row.hycu_job_name = hycu.hycu_job_name;
   return row;
 }
 
@@ -155,13 +167,16 @@ async function updateModuleRowPreservingCheckmk(db, table, {
   item
 }) {
   const checkmk = coalesceCheckmkFromRow(item || {}, data);
+  const hycu = coalesceHycuFromRow(item || {}, data);
   let payload = data;
-  if (data && typeof data === "object" && (checkmk.checkmk_host_name || data.checkmk_host_name)) {
+  if (data && typeof data === "object" && (checkmk.checkmk_host_name || data.checkmk_host_name || hycu.hycu_job_uuid || data.hycu_job_uuid)) {
     payload = {
       ...data,
       checkmk_host_name: checkmk.checkmk_host_name || data.checkmk_host_name || null,
       checkmk_site: checkmk.checkmk_site || data.checkmk_site || null,
-      checkmk_service_name: checkmk.checkmk_service_name || data.checkmk_service_name || null
+      checkmk_service_name: checkmk.checkmk_service_name || data.checkmk_service_name || null,
+      hycu_job_uuid: hycu.hycu_job_uuid || data.hycu_job_uuid || null,
+      hycu_job_name: hycu.hycu_job_name || data.hycu_job_name || null
     };
   }
   const baseParams = [item_key || name || null, name || item_key || null, payload || null, is_active !== false, itemId, clientId];
@@ -175,9 +190,20 @@ async function updateModuleRowPreservingCheckmk(db, table, {
     return updateWithoutCheckmk();
   }
   const savepoint = "sp_module_checkmk_update";
+  const isSaveTable = table === "v_b_clients_m_save";
   try {
     await db.query(`SAVEPOINT ${savepoint}`);
-    const result = await db.query(`UPDATE ${table}
+    const result = isSaveTable
+      ? await db.query(`UPDATE ${table}
+       SET item_key = $1, name = $2, data = $3, is_active = $4, updated_at = NOW(),
+           checkmk_host_name = COALESCE($7::varchar, checkmk_host_name),
+           checkmk_site = COALESCE($8::varchar, checkmk_site),
+           checkmk_service_name = COALESCE($9::varchar, checkmk_service_name),
+           hycu_job_uuid = COALESCE($10::text, hycu_job_uuid),
+           hycu_job_name = COALESCE($11::text, hycu_job_name)
+       WHERE id = $5 AND client_id = $6
+       RETURNING *`, [...baseParams, checkmk.checkmk_host_name, checkmk.checkmk_site, checkmk.checkmk_service_name, hycu.hycu_job_uuid, hycu.hycu_job_name])
+      : await db.query(`UPDATE ${table}
        SET item_key = $1, name = $2, data = $3, is_active = $4, updated_at = NOW(),
            checkmk_host_name = COALESCE($7::varchar, checkmk_host_name),
            checkmk_site = COALESCE($8::varchar, checkmk_site),
@@ -193,6 +219,28 @@ async function updateModuleRowPreservingCheckmk(db, table, {
       // ignore — transaction may already be unusable
     }
     if (err.code !== "42703") throw err;
+    // Fallback without HYCU columns if migration not applied yet.
+    if (isSaveTable) {
+      try {
+        await db.query(`SAVEPOINT ${savepoint}`);
+        const result = await db.query(`UPDATE ${table}
+       SET item_key = $1, name = $2, data = $3, is_active = $4, updated_at = NOW(),
+           checkmk_host_name = COALESCE($7::varchar, checkmk_host_name),
+           checkmk_site = COALESCE($8::varchar, checkmk_site),
+           checkmk_service_name = COALESCE($9::varchar, checkmk_service_name)
+       WHERE id = $5 AND client_id = $6
+       RETURNING *`, [...baseParams, checkmk.checkmk_host_name, checkmk.checkmk_site, checkmk.checkmk_service_name]);
+        await db.query(`RELEASE SAVEPOINT ${savepoint}`);
+        return result;
+      } catch (inner) {
+        try {
+          await db.query(`ROLLBACK TO SAVEPOINT ${savepoint}`);
+        } catch {
+          // ignore
+        }
+        if (inner.code !== "42703") throw inner;
+      }
+    }
     return updateWithoutCheckmk();
   }
 }
@@ -344,6 +392,7 @@ function parseModuleRowForCyber(row, table) {
     parsedData = {};
   }
   const checkmk = coalesceCheckmkFromRow(row, parsedData);
+  const hycu = coalesceHycuFromRow(row, parsedData);
   const baseRow = {
     id: row.id,
     item_key: row.item_key,
@@ -354,7 +403,9 @@ function parseModuleRowForCyber(row, table) {
     updated_at: row.updated_at,
     checkmk_host_name: checkmk.checkmk_host_name,
     checkmk_site: checkmk.checkmk_site,
-    checkmk_service_name: checkmk.checkmk_service_name
+    checkmk_service_name: checkmk.checkmk_service_name,
+    hycu_job_uuid: hycu.hycu_job_uuid,
+    hycu_job_name: hycu.hycu_job_name
   };
   if (table === "v_b_clients_m_save") {
     const rawDate = row.last_backup_date;
@@ -368,7 +419,7 @@ function parseModuleRowForCyber(row, table) {
 async function queryCyberFamilyRows(pool, table, clientIds) {
   if (!clientIds.length) return [];
   const baseSelect = `SELECT client_id, id, item_key, name, data, is_active, created_at, updated_at, checkmk_host_name, checkmk_site, checkmk_service_name`;
-  const saveExtraSelect = table === "v_b_clients_m_save" ? ", last_backup_date, last_backup_duration, last_backup_start" : "";
+  const saveExtraSelect = table === "v_b_clients_m_save" ? ", last_backup_date, last_backup_duration, last_backup_start, hycu_job_uuid, hycu_job_name" : "";
   try {
     const result = await pool.query(`${baseSelect}${saveExtraSelect}
        FROM ${table}
@@ -389,6 +440,8 @@ async function queryCyberFamilyRows(pool, table, clientIds) {
           r.last_backup_date = null;
           r.last_backup_duration = null;
           r.last_backup_start = null;
+          r.hycu_job_uuid = null;
+          r.hycu_job_name = null;
         }
       });
       return result.rows;
@@ -962,7 +1015,7 @@ router.get('/general', requirePermission('clients.view'), async (req, res) => {
             try {
               let result;
               const baseSelect = `SELECT id, item_key, name, data, is_active, created_at, updated_at, checkmk_host_name, checkmk_site, checkmk_service_name`;
-              const saveExtraSelect = table === 'v_b_clients_m_save' ? ', last_backup_date, last_backup_duration, last_backup_start' : '';
+              const saveExtraSelect = table === 'v_b_clients_m_save' ? ', last_backup_date, last_backup_duration, last_backup_start, hycu_job_uuid, hycu_job_name' : '';
               try {
                 result = await pool.query(`${baseSelect}${saveExtraSelect}
                      FROM ${table}
@@ -982,6 +1035,8 @@ router.get('/general', requirePermission('clients.view'), async (req, res) => {
                       r.last_backup_date = null;
                       r.last_backup_duration = null;
                       r.last_backup_start = null;
+                      r.hycu_job_uuid = null;
+                      r.hycu_job_name = null;
                     }
                   });
                 } else throw colErr;
@@ -1090,7 +1145,7 @@ router.get('/:id/modules', async (req, res) => {
       try {
         let result;
         const baseSelect = `SELECT id, item_key, name, data, is_active, created_at, updated_at, checkmk_host_name, checkmk_site, checkmk_service_name`;
-        const saveExtraSelect = table === 'v_b_clients_m_save' ? ', last_backup_date, last_backup_duration, last_backup_start' : '';
+        const saveExtraSelect = table === 'v_b_clients_m_save' ? ', last_backup_date, last_backup_duration, last_backup_start, hycu_job_uuid, hycu_job_name' : '';
         try {
           result = await pool.query(`${baseSelect}${saveExtraSelect}
              FROM ${table}
@@ -1110,6 +1165,8 @@ router.get('/:id/modules', async (req, res) => {
                 r.last_backup_date = null;
                 r.last_backup_duration = null;
                 r.last_backup_start = null;
+                r.hycu_job_uuid = null;
+                r.hycu_job_name = null;
               }
             });
           } else throw colErr;
@@ -2426,7 +2483,7 @@ router.get('/:id', async (req, res) => {
           try {
             let moduleResult;
             const baseSelect = `SELECT id, item_key, name, data, is_active, created_at, updated_at, checkmk_host_name, checkmk_site, checkmk_service_name`;
-            const saveExtraSelect = table === 'v_b_clients_m_save' ? ', last_backup_date, last_backup_duration, last_backup_start' : '';
+            const saveExtraSelect = table === 'v_b_clients_m_save' ? ', last_backup_date, last_backup_duration, last_backup_start, hycu_job_uuid, hycu_job_name' : '';
             try {
               moduleResult = await pool.query(`${baseSelect}${saveExtraSelect}
                FROM ${table}
@@ -2445,6 +2502,8 @@ router.get('/:id', async (req, res) => {
                   if (table === 'v_b_clients_m_save') {
                     r.last_backup_date = null;
                     r.last_backup_duration = null;
+                    r.hycu_job_uuid = null;
+                    r.hycu_job_name = null;
                   }
                 });
               } else throw colErr;
@@ -3731,37 +3790,47 @@ modulesRouter.patch('/:clientId/:family/checkmk-mapping', requireModulePermissio
        WHERE table_schema = 'public' AND table_name = $1`, [table]);
     const availableColumns = new Set(columnsResult.rows.map(r => r.column_name));
     const hasCheckmkColumns = availableColumns.has('checkmk_host_name') && availableColumns.has('checkmk_site') && availableColumns.has('checkmk_service_name');
+    const hasHycuColumns = availableColumns.has('hycu_job_uuid') && availableColumns.has('hycu_job_name');
     const whereClause = equipmentIdVal ? `client_id::text = $4::text AND id::text = $5::text` : `client_id::text = $4::text AND (name = $5 OR item_key = $5 OR (data IS NOT NULL AND data::jsonb->>'nom' = $5))`;
     const whereParams = equipmentIdVal ? [clientId, equipmentIdVal] : [clientId, nameVal];
     const previousResult = await pool.query(
       `SELECT id, name, item_key, data,
-              ${hasCheckmkColumns ? "checkmk_host_name, checkmk_site, checkmk_service_name" : "NULL::varchar AS checkmk_host_name, NULL::varchar AS checkmk_site, NULL::varchar AS checkmk_service_name"}
+              ${hasCheckmkColumns ? "checkmk_host_name, checkmk_site, checkmk_service_name" : "NULL::varchar AS checkmk_host_name, NULL::varchar AS checkmk_site, NULL::varchar AS checkmk_service_name"},
+              ${hasHycuColumns ? "hycu_job_uuid, hycu_job_name" : "NULL::text AS hycu_job_uuid, NULL::text AS hycu_job_name"}
          FROM ${table}
         WHERE ${equipmentIdVal ? "client_id::text = $1::text AND id::text = $2::text" : "client_id::text = $1::text AND (name = $2 OR item_key = $2 OR (data IS NOT NULL AND data::jsonb->>'nom' = $2))"}
         LIMIT 1`,
       whereParams
     );
     let result;
+    // Setting CheckMK mapping replaces HYCU mapping on the same job (single sync source).
+    const clearHycuSql = hasHycuColumns
+      ? `, hycu_job_uuid = NULL, hycu_job_name = NULL`
+      : "";
+    const clearHycuJson = `,
+               'hycu_job_uuid', 'null'::jsonb,
+               'hycu_job_name', 'null'::jsonb,
+               'hycuMapping', 'null'::jsonb`;
     if (hasCheckmkColumns) {
       result = await pool.query(`UPDATE ${table}
          SET checkmk_host_name = $1::varchar,
              checkmk_site = $2::varchar,
-             checkmk_service_name = $3::varchar,
-             data = COALESCE(data::jsonb, '{}'::jsonb) || jsonb_build_object(
+             checkmk_service_name = $3::varchar${clearHycuSql},
+             data = (COALESCE(data::jsonb, '{}'::jsonb) || jsonb_build_object(
                'checkmk_host_name', to_jsonb($1::varchar),
                'checkmk_site', to_jsonb($2::varchar),
-               'checkmk_service_name', to_jsonb($3::varchar)
-             ),
+               'checkmk_service_name', to_jsonb($3::varchar)${clearHycuJson}
+             )) - 'hycuMapping',
              updated_at = NOW()
          WHERE ${whereClause}
          RETURNING id, name, item_key, checkmk_host_name, checkmk_site, checkmk_service_name`, [hostName, siteVal, serviceVal, ...whereParams]);
     } else {
       result = await pool.query(`UPDATE ${table}
-         SET data = COALESCE(data::jsonb, '{}'::jsonb) || jsonb_build_object(
+         SET data = (COALESCE(data::jsonb, '{}'::jsonb) || jsonb_build_object(
                'checkmk_host_name', to_jsonb($1::varchar),
                'checkmk_site', to_jsonb($2::varchar),
-               'checkmk_service_name', to_jsonb($3::varchar)
-             ),
+               'checkmk_service_name', to_jsonb($3::varchar)${clearHycuJson}
+             )) - 'hycuMapping',
              updated_at = NOW()
          WHERE ${whereClause}
          RETURNING id, name, item_key,
@@ -3822,12 +3891,113 @@ modulesRouter.patch('/:clientId/:family/checkmk-mapping', requireModulePermissio
       checkmk_host_name: mapping.checkmk_host_name,
       checkmk_site: mapping.checkmk_site,
       checkmk_service_name: mapping.checkmk_service_name,
-      is_active: true
+      is_active: true,
+      replacedHycu: true
     });
   } catch (err) {
     console.error("Error PATCH checkmk-mapping:", err);
     res.status(500).json({
       error: "Error updating CheckMK mapping"
+    });
+  }
+});
+modulesRouter.patch('/:clientId/:family/hycu-mapping', requireModulePermission("edit"), async (req, res) => {
+  try {
+    const {
+      clientId,
+      family
+    } = req.params;
+    const {
+      equipmentName,
+      equipment_id,
+      hycu_job_uuid,
+      hycu_job_name
+    } = req.body || {};
+    const table = resolveTable(family);
+    if (!table) return res.status(400).json({
+      error: "Famille inconnue"
+    });
+    if (family !== "save" && table !== "v_b_clients_m_save") {
+      return res.status(400).json({
+        error: "HYCU mapping is only supported on save jobs"
+      });
+    }
+    if ((!equipmentName || !String(equipmentName).trim()) && !equipment_id) {
+      return res.status(400).json({
+        error: "equipmentName ou equipment_id required"
+      });
+    }
+    const jobUuid = hycu_job_uuid && String(hycu_job_uuid).trim() ? String(hycu_job_uuid).trim() : null;
+    const jobName = hycu_job_name && String(hycu_job_name).trim() ? String(hycu_job_name).trim() : null;
+    const nameVal = equipmentName ? String(equipmentName).trim() : null;
+    const equipmentIdVal = equipment_id ? String(equipment_id).trim() : null;
+    const columnsResult = await pool.query(`SELECT column_name
+       FROM information_schema.columns
+       WHERE table_schema = 'public' AND table_name = $1`, [table]);
+    const availableColumns = new Set(columnsResult.rows.map(r => r.column_name));
+    const hasHycuColumns = availableColumns.has('hycu_job_uuid') && availableColumns.has('hycu_job_name');
+    const hasCheckmkColumns = availableColumns.has('checkmk_host_name') && availableColumns.has('checkmk_site') && availableColumns.has('checkmk_service_name');
+    if (!hasHycuColumns) {
+      return res.status(501).json({
+        error: "HYCU columns missing. Run migration 20260908_hycu_save_job_mapping.sql."
+      });
+    }
+    const whereClause = equipmentIdVal ? `client_id::text = $3::text AND id::text = $4::text` : `client_id::text = $3::text AND (name = $4 OR item_key = $4 OR (data IS NOT NULL AND data::jsonb->>'nom' = $4))`;
+    const whereParams = equipmentIdVal ? [clientId, equipmentIdVal] : [clientId, nameVal];
+    const replaceCheckmk = Boolean(jobUuid);
+    const clearCheckmkSql = replaceCheckmk && hasCheckmkColumns
+      ? `, checkmk_host_name = NULL, checkmk_site = NULL, checkmk_service_name = NULL`
+      : "";
+    const clearCheckmkJson = replaceCheckmk
+      ? `,
+               'checkmk_host_name', 'null'::jsonb,
+               'checkmk_site', 'null'::jsonb,
+               'checkmk_service_name', 'null'::jsonb,
+               'checkmkMapping', 'null'::jsonb`
+      : "";
+    const hycuMappingJson = jobUuid
+      ? `jsonb_build_object('is_active', true, 'hycu_job_uuid', to_jsonb($1::text), 'hycu_job_name', to_jsonb($2::text))`
+      : `'null'::jsonb`;
+    const stripCheckmk = replaceCheckmk ? ` - 'checkmkMapping'` : "";
+    const result = await pool.query(`UPDATE ${table}
+       SET hycu_job_uuid = $1::text,
+           hycu_job_name = $2::text${clearCheckmkSql},
+           data = ((COALESCE(data::jsonb, '{}'::jsonb) || jsonb_build_object(
+             'hycu_job_uuid', to_jsonb($1::text),
+             'hycu_job_name', to_jsonb($2::text),
+             'hycuMapping', ${hycuMappingJson}${clearCheckmkJson}
+           ))${stripCheckmk}),
+           updated_at = NOW()
+       WHERE ${whereClause}
+       RETURNING id, name, item_key, hycu_job_uuid, hycu_job_name`, [jobUuid, jobName, ...whereParams]);
+    if (result.rows.length === 0) {
+      if (equipmentIdVal) {
+        return res.status(404).json({
+          error: "Equipment not found",
+          details: `No row with client_id=${clientId} and id=${equipmentIdVal} in ${table}`
+        });
+      }
+      return res.status(404).json({
+        error: "Equipment not found",
+        details: `No row with client_id=${clientId} and name="${nameVal}" in ${table}`
+      });
+    }
+    const mapping = result.rows[0];
+    res.json({
+      hycu_job_uuid: mapping.hycu_job_uuid,
+      hycu_job_name: mapping.hycu_job_name,
+      hycuMapping: mapping.hycu_job_uuid ? {
+        is_active: true,
+        hycu_job_uuid: mapping.hycu_job_uuid,
+        hycu_job_name: mapping.hycu_job_name
+      } : null,
+      is_active: true,
+      replacedCheckmk: replaceCheckmk
+    });
+  } catch (err) {
+    console.error("Error PATCH hycu-mapping:", err);
+    res.status(500).json({
+      error: "Error updating HYCU mapping"
     });
   }
 });

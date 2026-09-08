@@ -4,6 +4,7 @@ import { fetchCyberPageData } from "../../api/clients";
 import { useAppFormatters, useAppLocale } from "../../hooks/useAppGeneralSettings";
 import { getBackupJobStatus, getBackupJobStatusLabel, getBackupJobStatusTitle, isBackupJobMapped } from "../CybersecuritePage/backupJobStatusUtils";
 import EquipmentMappingModal from "./EquipmentMappingModal";
+import HycuJobMappingModal from "../EnterprisesPage/HycuJobMappingModal";
 import { buildBackupFleetRow } from "./backupMspUtils";
 import { getJobDetailCopy } from "./jobDetailPageI18n";
 import { formatServeurLieLabel, isBackupJobActive, normalizeServeurLieList, pickBackupJobType, pickBackupJobDestination } from "../EnterprisesPage/backupJobUtils";
@@ -185,7 +186,8 @@ export default function JobDetailPage({
   const status = job ? getBackupJobStatus(job) : null;
   const jobActive = job ? isBackupJobActive(job) : true;
   const mapped = job ? isBackupJobMapped(job) : false;
-  const canMap = status !== "hycu";
+  const isHycuInstance = /hycu/i.test(String(job?.instanceLogiciel || ""));
+  const canMap = Boolean(job?.id);
   const handleBack = () => {
     onNavigate?.("Hardware");
   };
@@ -199,11 +201,34 @@ export default function JobDetailPage({
   const handleMappingSaved = mapping => {
     setJob(prev => {
       if (!prev) return prev;
-      const next = {
-        ...prev,
-        checkmkMapping: mapping || null,
-        isMapped: !!(mapping && mapping.checkmk_host_name && mapping.is_active !== false)
-      };
+      const isHycuSave = Boolean(mapping && ("hycu_job_uuid" in mapping || mapping.hycuMapping));
+      const next = isHycuSave
+        ? {
+            ...prev,
+            checkmkMapping: null,
+            checkmk_host_name: null,
+            checkmk_site: null,
+            checkmk_service_name: null,
+            hycu_job_uuid: mapping?.hycu_job_uuid || null,
+            hycu_job_name: mapping?.hycu_job_name || null,
+            hycuMapping: mapping?.hycuMapping || (mapping?.hycu_job_uuid ? {
+              is_active: true,
+              hycu_job_uuid: mapping.hycu_job_uuid,
+              hycu_job_name: mapping.hycu_job_name || null
+            } : null),
+            isMapped: !!(mapping && mapping.hycu_job_uuid)
+          }
+        : {
+            ...prev,
+            checkmkMapping: mapping || null,
+            checkmk_host_name: mapping?.checkmk_host_name || null,
+            checkmk_site: mapping?.checkmk_site || null,
+            checkmk_service_name: mapping?.checkmk_service_name || null,
+            hycu_job_uuid: null,
+            hycu_job_name: null,
+            hycuMapping: null,
+            isMapped: !!(mapping && mapping.checkmk_host_name && mapping.is_active !== false)
+          };
       onUpdate?.(next);
       return next;
     });
@@ -236,6 +261,7 @@ export default function JobDetailPage({
       </div>;
   }
   const mapping = job.checkmkMapping || {};
+  const hycuMapping = job.hycuMapping || {};
   const lastBackup = job.last_backup_start ?? job.rawData?.last_backup_start;
   const duration = formatDuration(job.last_backup_duration ?? job.rawData?.last_backup_duration);
   return <div className={styles.detailPage}>
@@ -297,9 +323,9 @@ export default function JobDetailPage({
           <div className={styles.mappingBanner}>
             <div className={styles.mappingCopy}>
               <p className={styles.mappingTitle}>
-                {status === "hycu" ? copy.mapping.hycuHint : mapped ? copy.mapping.mapped : copy.mapping.unmapped}
+                {mapped ? copy.mapping.mapped : copy.mapping.unmapped}
               </p>
-              {status !== "hycu" && !mapped ? <p className={styles.mappingHint}>{copy.mapping.unmappedHint}</p> : null}
+              {!mapped ? <p className={styles.mappingHint}>{isHycuInstance ? copy.mapping.hycuHint || copy.mapping.unmappedHint : copy.mapping.unmappedHint}</p> : null}
             </div>
             {canMap ? <button type="button" className={`${styles.mapButton} ${mapped ? styles.mapButtonSecondary : ""}`} onClick={() => setMappingOpen(true)}>
                 <Icon icon={mapped ? "mdi:link-variant" : "mdi:link-variant-plus"} />
@@ -307,15 +333,19 @@ export default function JobDetailPage({
               </button> : null}
           </div>
 
-          {mapped ? <div className={styles.mappingGrid}>
+          {mapped && !isHycuInstance ? <div className={styles.mappingGrid}>
               <StatCard icon="mdi:server-network" label={copy.fields.host} value={mapping.checkmk_host_name} />
               <StatCard icon="mdi:earth" label={copy.fields.site} value={mapping.checkmk_site} />
               <StatCard icon="mdi:playlist-check" label={copy.fields.service} value={mapping.checkmk_service_name} />
-            </div> : canMap ? <p className={styles.mappingHint}>{copy.mapping.none}</p> : null}
+            </div> : null}
+          {mapped && isHycuInstance ? <div className={styles.mappingGrid}>
+              <StatCard icon="mdi:cloud-sync-outline" label="HYCU" value={job.hycu_job_name || hycuMapping.hycu_job_name || job.hycu_job_uuid || hycuMapping.hycu_job_uuid} />
+            </div> : null}
+          {!mapped && canMap ? <p className={styles.mappingHint}>{copy.mapping.none}</p> : null}
         </section>
       </div>
 
-      {mappingOpen ? <EquipmentMappingModal isOpen={mappingOpen} onClose={() => setMappingOpen(false)} equipment={{
+      {mappingOpen && !isHycuInstance ? <EquipmentMappingModal isOpen={mappingOpen} onClose={() => setMappingOpen(false)} equipment={{
       id: job.id,
       name: job.nom,
       nom: job.nom,
@@ -324,5 +354,6 @@ export default function JobDetailPage({
       clientName: job.clientName,
       checkmkMapping: job.checkmkMapping || null
     }} requireService={true} onMappingSaved={handleMappingSaved} /> : null}
+      {mappingOpen && isHycuInstance ? <HycuJobMappingModal open={mappingOpen} onClose={() => setMappingOpen(false)} clientId={job.clientId} job={job} hasCheckmkMapping={Boolean(job.checkmkMapping?.checkmk_host_name || job.checkmk_host_name)} onMappingSaved={handleMappingSaved} /> : null}
     </div>;
 }

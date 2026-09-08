@@ -12,10 +12,19 @@ const STATUS_ORDER = {
 export function isBackupJobMapped(job) {
   if (!job) return false;
   if (job.isMapped) return true;
+  const hycu = job.hycuMapping;
+  if (hycu?.hycu_job_uuid || job.hycu_job_uuid) return true;
   const mapping = job.checkmkMapping;
   if (mapping?.checkmk_host_name || mapping?.checkmk_service_name) return true;
   const raw = job.rawData;
-  return !!(job.checkmk_host_name || job.checkmk_service_name || raw?.checkmk_host_name || raw?.checkmk_service_name);
+  return !!(
+    job.checkmk_host_name ||
+    job.checkmk_service_name ||
+    job.hycu_job_uuid ||
+    raw?.checkmk_host_name ||
+    raw?.checkmk_service_name ||
+    raw?.hycu_job_uuid
+  );
 }
 
 /** Shape a raw instance job so getBackupJobStatus can evaluate it. */
@@ -31,13 +40,25 @@ export function normalizeBackupJobForStatus(job, instance = {}) {
           is_active: true
         }
       : null;
-  const mappedHost = mapping?.checkmk_host_name || mapping?.checkmk_service_name;
+  const hycuMapping = job.hycuMapping && typeof job.hycuMapping === "object"
+    ? job.hycuMapping
+    : job.hycu_job_uuid
+      ? {
+          hycu_job_uuid: job.hycu_job_uuid || null,
+          hycu_job_name: job.hycu_job_name || null,
+          is_active: true
+        }
+      : null;
+  const mappedHost = mapping?.checkmk_host_name || mapping?.checkmk_service_name || hycuMapping?.hycu_job_uuid;
   return {
     ...job,
     type: "job",
     instanceLogiciel: instance.logiciel || job.instanceLogiciel || job._instanceLogiciel || "",
     isMapped: Boolean(job.isMapped || mappedHost),
-    checkmkMapping: mappedHost ? mapping : null,
+    checkmkMapping: mapping?.checkmk_host_name || mapping?.checkmk_service_name ? mapping : null,
+    hycuMapping: hycuMapping?.hycu_job_uuid ? hycuMapping : null,
+    hycu_job_uuid: job.hycu_job_uuid ?? hycuMapping?.hycu_job_uuid ?? null,
+    hycu_job_name: job.hycu_job_name ?? hycuMapping?.hycu_job_name ?? null,
     last_backup_start: job.last_backup_start ?? job.lastBackupStart ?? job.rawData?.last_backup_start ?? null,
     last_backup_date: job.last_backup_date ?? job.lastBackupDate ?? job.rawData?.last_backup_date ?? null,
     last_backup_duration: job.last_backup_duration ?? job.lastBackupDuration ?? job.rawData?.last_backup_duration ?? null,
@@ -47,7 +68,7 @@ export function normalizeBackupJobForStatus(job, instance = {}) {
 export function getBackupJobStatus(job) {
   if (!job || job.type !== 'job') return 'ok';
   if (!isBackupJobActive(job)) return 'inactive';
-  if (job.instanceLogiciel === 'HYCU Backup') return 'hycu';
+  // HYCU instances without a HYCU (or other) mapping stay unmapped — no frozen "hycu" status.
   if (!isBackupJobMapped(job)) return 'unmapped';
   const lastBackupStart = job.last_backup_start ?? job.rawData?.last_backup_start ?? job.last_backup_date ?? job.rawData?.last_backup_date;
   const lastBackupMs = lastBackupStart ? new Date(lastBackupStart).getTime() : null;
@@ -84,9 +105,9 @@ export function getBackupJobStatusTitle(status) {
     case 'ok':
       return 'Last backup less than 24 h ago';
     case 'hycu':
-      return 'HYCU job · cannot sync with CheckMK';
+      return 'HYCU job · map to HYCU to sync status';
     case 'unmapped':
-      return 'Job not mapped to CheckMK · no alerts until mapping is configured';
+      return 'Job not mapped · no alerts until mapping is configured';
     case 'inactive':
       return 'Inactive job · excluded from backup alerts';
     default:

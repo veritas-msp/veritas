@@ -32,7 +32,7 @@ const JOB_DETAIL_COPY = {
       mapped: "Job mappé",
       unmapped: "Job non mappé",
       unmappedHint: "Sans mapping CheckMK, aucune alerte de sauvegarde n'est remontée pour ce job.",
-      hycuHint: "Les jobs HYCU ne sont pas synchronisables avec CheckMK.",
+      hycuHint: "Mappez ce job vers HYCU pour synchroniser le statut de sauvegarde.",
       mapAction: "Mapper à CheckMK",
       editAction: "Modifier le mapping",
       none: "Aucun mapping configuré"
@@ -75,7 +75,7 @@ const JOB_DETAIL_COPY = {
       mapped: "Mapped job",
       unmapped: "Unmapped job",
       unmappedHint: "Without a CheckMK mapping, no backup alerts are raised for this job.",
-      hycuHint: "HYCU jobs cannot be synced with CheckMK.",
+      hycuHint: "Map this job to HYCU to sync backup status.",
       mapAction: "Map to CheckMK",
       editAction: "Edit mapping",
       none: "No mapping configured"

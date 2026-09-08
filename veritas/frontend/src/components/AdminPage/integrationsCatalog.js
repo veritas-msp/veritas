@@ -471,6 +471,36 @@ export const INTEGRATIONS_CATALOG = [{
   description: "Namecheap registrar and DNS zones.",
   proOnly: true
 }, {
+  id: "hycu",
+  name: "HYCU Backup",
+  category: "backup",
+  status: AVAILABLE,
+  icon: "mdi:cloud-sync-outline",
+  iconColor: "#e11d48",
+  description: "HYCU R-Cloud Hybrid Cloud Edition — backup jobs and statuses.",
+  enabledKey: "INTEGRATION_HYCU_ENABLED",
+  fields: [{
+    key: "HYCU_API_URL",
+    label: "Controller URL",
+    type: "url"
+  }, {
+    key: "HYCU_API_KEY",
+    label: "API key",
+    type: "password"
+  }, {
+    key: "HYCU_USERNAME",
+    label: "Username (fallback)",
+    type: "text"
+  }, {
+    key: "HYCU_PASSWORD",
+    label: "Password (fallback)",
+    type: "password"
+  }, {
+    key: "HYCU_VERIFY_TLS",
+    label: "Verify TLS (true/false)",
+    type: "text"
+  }]
+}, {
   id: "veeam",
   name: "Veeam",
   category: "backup",

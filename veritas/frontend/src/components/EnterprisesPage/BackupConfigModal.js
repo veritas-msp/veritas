@@ -17,6 +17,7 @@ import { getBackupModalCopy, supportsJobs, ACTIVE_BACKUP_MODULE_KEYS } from "./b
 import { coerceStoredOption, formatServeurLieLabel, isBackupJobActive, normalizeServeurLieList, pickBackupJobType } from "./backupJobUtils";
 import MultiSuggestPicker from "../AdminPage/MultiSuggestPicker";
 import EquipmentMappingModal from "../EquipementPage/EquipmentMappingModal";
+import HycuJobMappingModal from "./HycuJobMappingModal";
 const EMPTY_JOB = {
   nom: "",
   regularite: "",
@@ -274,10 +275,18 @@ function isHycuLogiciel(logiciel) {
 function isJobCheckmkMapped(job) {
   return Boolean(String(job?.checkmk_host_name || job?.checkmkMapping?.checkmk_host_name || "").trim());
 }
+function isJobHycuMapped(job) {
+  return Boolean(String(job?.hycu_job_uuid || job?.hycuMapping?.hycu_job_uuid || "").trim());
+}
 function jobCheckmkLabel(job) {
   const host = String(job?.checkmk_host_name || job?.checkmkMapping?.checkmk_host_name || "").trim();
   const service = String(job?.checkmk_service_name || job?.checkmkMapping?.checkmk_service_name || "").trim();
   return [host, service].filter(Boolean).join(" · ");
+}
+function jobHycuLabel(job) {
+  const name = String(job?.hycu_job_name || job?.hycuMapping?.hycu_job_name || "").trim();
+  const uuid = String(job?.hycu_job_uuid || job?.hycuMapping?.hycu_job_uuid || "").trim();
+  return name || uuid;
 }
 function JobCard({
   job,
@@ -287,7 +296,8 @@ function JobCard({
   deleting,
   copy,
   isDefault,
-  canMap
+  canMapCheckmk,
+  canMapHycu
 }) {
   const typeLabel = copy.resolveOptionLabel(copy.jobTypeOptions, pickBackupJobType(job));
   const regularityLabel = copy.resolveOptionLabel(copy.regularityOptions, job.regularite, "");
@@ -296,8 +306,11 @@ function JobCard({
   const scheduleLabel = scheduleParts.length > 0 ? scheduleParts.join(" · ") : "—";
   const targetsLabel = formatServeurLieLabel(job.serveurLie, copy.form.jobTargetNone);
   const jobActive = isBackupJobActive(job);
-  const mapped = isJobCheckmkMapped(job);
-  const mappingLabel = jobCheckmkLabel(job);
+  const mappedCheckmk = isJobCheckmkMapped(job);
+  const mappedHycu = isJobHycuMapped(job);
+  const checkmkLabel = jobCheckmkLabel(job);
+  const hycuLabel = jobHycuLabel(job);
+  const canMap = canMapCheckmk || canMapHycu;
   return <article className={`${styles.card} ${jobActive ? "" : styles.cardInactive}`}>
       <div className={styles.cardMain}>
         <div className={styles.cardHead}>
@@ -331,15 +344,19 @@ function JobCard({
             <span className={styles.metaLabel}>{copy.meta.retention}</span>
             <span className={styles.metaValue}>{retentionLabel}</span>
           </div>
-          {mapped ? <div>
+          {mappedCheckmk ? <div>
               <span className={styles.metaLabel}>{copy.meta.checkmk}</span>
-              <span className={styles.metaValue}>{mappingLabel || "—"}</span>
+              <span className={styles.metaValue}>{checkmkLabel || "—"}</span>
+            </div> : null}
+          {mappedHycu ? <div>
+              <span className={styles.metaLabel}>{copy.meta.hycu || "HYCU"}</span>
+              <span className={styles.metaValue}>{hycuLabel || "—"}</span>
             </div> : null}
         </div>
       </div>
       <div className={styles.cardActions}>
-        {canMap ? <button type="button" className={`${styles.iconBtn} ${mapped ? styles.iconBtnCheckmkActive : ""}`} onClick={onMap} disabled={!job?.id} aria-label={mapped ? copy.actions.editCheckmk : copy.actions.mapCheckmk} title={!job?.id ? copy.actions.mapCheckmkDisabled : mapped ? mappingLabel || copy.actions.editCheckmk : copy.actions.mapCheckmk}>
-            <Icon icon="simple-icons:checkmk" width={16} height={16} />
+        {canMap ? <button type="button" className={`${styles.iconBtn} ${mappedCheckmk || mappedHycu ? styles.iconBtnCheckmkActive : ""}`} onClick={onMap} disabled={!job?.id} aria-label={canMapHycu ? mappedHycu ? copy.actions.editHycu || copy.actions.editCheckmk : copy.actions.mapHycu || copy.actions.mapCheckmk : mappedCheckmk ? copy.actions.editCheckmk : copy.actions.mapCheckmk} title={!job?.id ? copy.actions.mapCheckmkDisabled : canMapHycu ? hycuLabel || (mappedHycu ? copy.actions.editHycu : copy.actions.mapHycu) : checkmkLabel || (mappedCheckmk ? copy.actions.editCheckmk : copy.actions.mapCheckmk)}>
+            <Icon icon={canMapHycu ? "mdi:cloud-sync-outline" : "simple-icons:checkmk"} width={16} height={16} />
           </button> : null}
         <button type="button" className={styles.iconBtn} onClick={onEdit} aria-label={copy.actions.edit}>
           <Icon icon="mdi:pencil-outline" />
@@ -549,9 +566,11 @@ export default function BackupConfigModal({
     });
     setActiveSection("edit-job");
   };
-  const canMapJobs = Boolean(selectedInstance && !isHycuLogiciel(selectedInstance.logiciel));
+  const isSelectedHycu = Boolean(selectedInstance && isHycuLogiciel(selectedInstance.logiciel));
+  const canMapCheckmkJobs = Boolean(selectedInstance && !isSelectedHycu);
+  const canMapHycuJobs = Boolean(selectedInstance && isSelectedHycu);
   const openJobMapping = job => {
-    if (!canMapJobs || !job?.id) return;
+    if ((!canMapCheckmkJobs && !canMapHycuJobs) || !job?.id) return;
     setMappingJob(job);
   };
   const handleMappingSaved = mapping => {
@@ -559,15 +578,45 @@ export default function BackupConfigModal({
       setMappingJob(null);
       return;
     }
+    const isHycuSave = Boolean(mapping && ("hycu_job_uuid" in mapping || mapping.hycuMapping));
     const nextHost = mapping?.checkmk_host_name ? String(mapping.checkmk_host_name).trim() : "";
+    const nextHycuUuid = mapping?.hycu_job_uuid ? String(mapping.hycu_job_uuid).trim() : "";
     setInstances(prev => prev.map(inst => ({
       ...inst,
-      jobs: (inst.jobs || []).map(j => String(j.id) === String(mappingJob.id) ? {
-        ...j,
-        checkmk_host_name: nextHost || null,
-        checkmk_site: mapping?.checkmk_site ?? null,
-        checkmk_service_name: mapping?.checkmk_service_name ?? null
-      } : j)
+      jobs: (inst.jobs || []).map(j => {
+        if (String(j.id) !== String(mappingJob.id)) return j;
+        if (isHycuSave) {
+          return {
+            ...j,
+            checkmk_host_name: null,
+            checkmk_site: null,
+            checkmk_service_name: null,
+            checkmkMapping: null,
+            hycu_job_uuid: nextHycuUuid || null,
+            hycu_job_name: mapping?.hycu_job_name || null,
+            hycuMapping: mapping?.hycuMapping || (nextHycuUuid ? {
+              is_active: true,
+              hycu_job_uuid: nextHycuUuid,
+              hycu_job_name: mapping?.hycu_job_name || null
+            } : null)
+          };
+        }
+        return {
+          ...j,
+          checkmk_host_name: nextHost || null,
+          checkmk_site: mapping?.checkmk_site ?? null,
+          checkmk_service_name: mapping?.checkmk_service_name ?? null,
+          checkmkMapping: nextHost ? {
+            is_active: true,
+            checkmk_host_name: nextHost,
+            checkmk_site: mapping?.checkmk_site ?? null,
+            checkmk_service_name: mapping?.checkmk_service_name ?? null
+          } : null,
+          hycu_job_uuid: null,
+          hycu_job_name: null,
+          hycuMapping: null
+        };
+      })
     })));
     setMappingJob(null);
     onSaved?.();
@@ -964,7 +1013,7 @@ export default function BackupConfigModal({
           </div> : <div className={styles.list}>
             {jobs.map((job, idx) => {
           const isDefault = selectedInstance.logiciel === "HYCU Backup" && (job.isDefault || jobs.length === 1 && idx === 0);
-          return <JobCard key={job.id || idx} job={job} copy={copy} isDefault={isDefault} deleting={deletingId === job.id} canMap={canMapJobs} onMap={() => openJobMapping(job)} onEdit={() => openEditJob(job)} onDelete={() => requestDeleteJob(job)} />;
+          return <JobCard key={job.id || idx} job={job} copy={copy} isDefault={isDefault} deleting={deletingId === job.id} canMapCheckmk={canMapCheckmkJobs} canMapHycu={canMapHycuJobs} onMap={() => openJobMapping(job)} onEdit={() => openEditJob(job)} onDelete={() => requestDeleteJob(job)} />;
         })}
           </div>}
       </>;
@@ -1175,7 +1224,7 @@ export default function BackupConfigModal({
       if (!deletingId) setDeleteTarget(null);
     }} onConfirm={confirmDelete} />
 
-      {mappingJob ? <EquipmentMappingModal isOpen={Boolean(mappingJob)} onClose={() => setMappingJob(null)} stacked requireService equipment={{
+      {mappingJob && canMapCheckmkJobs ? <EquipmentMappingModal isOpen={Boolean(mappingJob)} onClose={() => setMappingJob(null)} stacked requireService equipment={{
       id: mappingJob.id,
       name: mappingJob.nom,
       nom: mappingJob.nom,
@@ -1189,5 +1238,6 @@ export default function BackupConfigModal({
         is_active: true
       } : null
     }} onMappingSaved={handleMappingSaved} /> : null}
+      {mappingJob && canMapHycuJobs ? <HycuJobMappingModal open={Boolean(mappingJob)} onClose={() => setMappingJob(null)} stacked clientId={client?.id} job={mappingJob} hasCheckmkMapping={isJobCheckmkMapped(mappingJob)} onMappingSaved={handleMappingSaved} /> : null}
     </>;
 }

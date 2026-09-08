@@ -8,6 +8,7 @@ import styles from "../CybersecuritePage/CybersecuritePage.module.css";
 import InstanceBackupModal from "../CybersecuritePage/InstanceSauvegardeModal";
 import AddJobModal from "../CybersecuritePage/AddJobModal";
 import EquipmentMappingModal from "./EquipmentMappingModal";
+import HycuJobMappingModal from "../EnterprisesPage/HycuJobMappingModal";
 import SmartTooltip from "../SmartTooltip";
 import { getBackupJobStatus, getBackupJobStatusLabel, getBackupJobStatusTitle, getBackupJobRowStyle, compareBackupJobsByStatus, computeBackupJobStats } from "../CybersecuritePage/backupJobStatusUtils";
 import { useAppLocale } from "../../hooks/useAppGeneralSettings";
@@ -68,6 +69,7 @@ export default function BackupMspPanel({
   const [backupData, setBackupData] = useState([]);
   const [loadingBackups, setLoadingBackups] = useState(false);
   const [mappingModalEquipment, setMappingModalEquipment] = useState(null);
+  const [hycuMappingJob, setHycuMappingJob] = useState(null);
   const [instanceBackupModal, setInstanceBackupModal] = useState({
     open: false,
     mode: "add",
@@ -216,6 +218,11 @@ export default function BackupMspPanel({
               checkmk_service_name: job.checkmk_service_name || null,
               is_active: true
             } : null;
+            const hycuMapping = job.hycu_job_uuid ? {
+              hycu_job_uuid: job.hycu_job_uuid || null,
+              hycu_job_name: job.hycu_job_name || null,
+              is_active: true
+            } : null;
             allBackups.push({
               id: jobId,
               clientId: client.id,
@@ -234,8 +241,11 @@ export default function BackupMspPanel({
               replicationVers: job.replicationVers || "",
               isDefault: job.isDefault || false,
               actif: isBackupJobActive(job),
-              isMapped: !!checkmkMapping,
+              isMapped: !!(checkmkMapping || hycuMapping),
               checkmkMapping,
+              hycuMapping,
+              hycu_job_uuid: job.hycu_job_uuid || null,
+              hycu_job_name: job.hycu_job_name || null,
               last_backup_date: job.last_backup_date ?? null,
               last_backup_start: job.last_backup_start ?? null,
               last_backup_duration: job.last_backup_duration ?? null,
@@ -597,6 +607,11 @@ export default function BackupMspPanel({
     column
   }) => hyperBackupSortBy !== column ? null : <span>{hyperBackupSortOrder === "asc" ? " ↑" : " ↓"}</span>;
   const openMappingModal = item => {
+    const isHycu = /hycu/i.test(String(item?.instanceLogiciel || ""));
+    if (isHycu) {
+      setHycuMappingJob(item);
+      return;
+    }
     setMappingModalEquipment({
       id: item.id,
       name: item.nom,
@@ -820,28 +835,24 @@ export default function BackupMspPanel({
                           </td>
                           <td className={styles.boldCell}>{item.last_backup_duration || "-"}</td>
                           <td>
-                            {jobStatus === "hycu" ? <span className={styles.unmappedBadge} style={{
-                    opacity: 0.6
-                  }} title={copy.table.hycuNoSync}>
-                                -
-                              </span> : <div className={styles.mappingCell} role="button" tabIndex={0} onClick={() => openMappingModal(item)} onKeyDown={e => {
+                            <div className={styles.mappingCell} role="button" tabIndex={0} onClick={() => openMappingModal(item)} onKeyDown={e => {
                     if (e.key === "Enter") openMappingModal(item);
                   }} style={{
                     cursor: "pointer"
                   }}>
-                                {item.isMapped ? <span className={styles.mappedBadge} title={`Mapped: ${item.checkmkMapping?.checkmk_host_name || "CheckMK"}`}>
-                                    <Icon icon="simple-icons:checkmk" style={{
+                                {item.isMapped ? <span className={styles.mappedBadge} title={item.hycuMapping?.hycu_job_uuid || item.hycu_job_uuid ? `HYCU: ${item.hycu_job_name || item.hycuMapping?.hycu_job_name || item.hycu_job_uuid || item.hycuMapping?.hycu_job_uuid}` : `Mapped: ${item.checkmkMapping?.checkmk_host_name || "CheckMK"}`}>
+                                    <Icon icon={/hycu/i.test(String(item.instanceLogiciel || "")) ? "mdi:cloud-sync-outline" : "simple-icons:checkmk"} style={{
                         width: "18px",
                         height: "18px"
                       }} />
-                                  </span> : <span className={styles.unmappedBadge} title={copy.table.mapCheckmk}>
-                                    <Icon icon="simple-icons:checkmk" style={{
+                                  </span> : <span className={styles.unmappedBadge} title={/hycu/i.test(String(item.instanceLogiciel || "")) ? copy.table.mapHycu || "Map HYCU" : copy.table.mapCheckmk}>
+                                    <Icon icon={/hycu/i.test(String(item.instanceLogiciel || "")) ? "mdi:cloud-sync-outline" : "simple-icons:checkmk"} style={{
                         width: "18px",
                         height: "18px",
                         opacity: 0.5
                       }} />
                                   </span>}
-                              </div>}
+                              </div>
                           </td>
                           <td>
                             <button type="button" className={styles.deleteJobButton} onClick={e => {
@@ -1265,11 +1276,30 @@ export default function BackupMspPanel({
         setBackupData(prev => prev.map(item => item.id === mappingModalEquipment.id && item.clientId === mappingModalEquipment.clientId ? {
           ...item,
           checkmkMapping: mapping || null,
+          hycuMapping: null,
+          hycu_job_uuid: null,
+          hycu_job_name: null,
           isMapped: !!(mapping && mapping.checkmk_host_name && mapping.is_active !== false)
         } : item));
       }
       setMappingModalEquipment(null);
     }} />}
+
+      {hycuMappingJob ? <HycuJobMappingModal open={Boolean(hycuMappingJob)} onClose={() => setHycuMappingJob(null)} clientId={hycuMappingJob.clientId} job={hycuMappingJob} hasCheckmkMapping={Boolean(hycuMappingJob.checkmkMapping?.checkmk_host_name)} onMappingSaved={mapping => {
+      setBackupData(prev => prev.map(item => item.id === hycuMappingJob.id && item.clientId === hycuMappingJob.clientId ? {
+        ...item,
+        checkmkMapping: null,
+        hycu_job_uuid: mapping?.hycu_job_uuid || null,
+        hycu_job_name: mapping?.hycu_job_name || null,
+        hycuMapping: mapping?.hycu_job_uuid ? {
+          hycu_job_uuid: mapping.hycu_job_uuid,
+          hycu_job_name: mapping.hycu_job_name || null,
+          is_active: true
+        } : null,
+        isMapped: !!(mapping && mapping.hycu_job_uuid)
+      } : item));
+      setHycuMappingJob(null);
+    }} /> : null}
 
       {addJobModalOpen && <AddJobModal open={addJobModalOpen} onClose={() => setAddJobModalOpen(false)} clients={clients} onSaved={handleRefreshAfterSave} />}
 

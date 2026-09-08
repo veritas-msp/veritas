@@ -131,6 +131,9 @@ export const INTEGRATIONS_CATALOG_I18N = {
       "veeam": {
         "description": "Jobs de sauvegarde et statuts Veeam."
       },
+      "hycu": {
+        "description": "HYCU R-Cloud Hybrid — jobs de sauvegarde et statuts."
+      },
       "acronis": {
         "description": "Plans de protection et alertes Acronis."
       }
@@ -146,6 +149,13 @@ export const INTEGRATIONS_CATALOG_I18N = {
         "CHECKMK_USERNAME": "Nom d'utilisateur",
         "CHECKMK_PASSWORD": "Mot de passe",
         "CHECKMK_SITE": "Site par défaut (optionnel)"
+      },
+      "hycu": {
+        "HYCU_API_URL": "URL du contrôleur",
+        "HYCU_API_KEY": "Clé API",
+        "HYCU_USERNAME": "Nom d'utilisateur (secours)",
+        "HYCU_PASSWORD": "Mot de passe (secours)",
+        "HYCU_VERIFY_TLS": "Vérifier TLS"
       },
       "bitdefender": {
         "BITDEFENDER_API_URL": "URL API",
@@ -303,6 +313,9 @@ export const INTEGRATIONS_CATALOG_I18N = {
       "veeam": {
         "description": "Veeam backup jobs and status."
       },
+      "hycu": {
+        "description": "HYCU R-Cloud Hybrid — backup jobs and statuses."
+      },
       "acronis": {
         "description": "Acronis protection plans and alerts."
       }
@@ -318,6 +331,13 @@ export const INTEGRATIONS_CATALOG_I18N = {
         "CHECKMK_USERNAME": "Username",
         "CHECKMK_PASSWORD": "Password",
         "CHECKMK_SITE": "Default site (optional)"
+      },
+      "hycu": {
+        "HYCU_API_URL": "Controller URL",
+        "HYCU_API_KEY": "API key",
+        "HYCU_USERNAME": "Username (fallback)",
+        "HYCU_PASSWORD": "Password (fallback)",
+        "HYCU_VERIFY_TLS": "Verify TLS"
       },
       "bitdefender": {
         "BITDEFENDER_API_URL": "API URL",
@@ -475,6 +495,9 @@ export const INTEGRATIONS_CATALOG_I18N = {
       "veeam": {
         "description": "Jobs de sauvegarde et statuts Veeam."
       },
+      "hycu": {
+        "description": "HYCU R-Cloud Hybrid — jobs de sauvegarde et statuts."
+      },
       "acronis": {
         "description": "Plans de protection et alertes Acronis."
       }
@@ -490,6 +513,13 @@ export const INTEGRATIONS_CATALOG_I18N = {
         "CHECKMK_USERNAME": "Username",
         "CHECKMK_PASSWORD": "Password",
         "CHECKMK_SITE": "Default site (optional)"
+      },
+      "hycu": {
+        "HYCU_API_URL": "Controller URL",
+        "HYCU_API_KEY": "API key",
+        "HYCU_USERNAME": "Username (fallback)",
+        "HYCU_PASSWORD": "Password (fallback)",
+        "HYCU_VERIFY_TLS": "Verify TLS"
       },
       "bitdefender": {
         "BITDEFENDER_API_URL": "API URL",
@@ -647,6 +677,9 @@ export const INTEGRATIONS_CATALOG_I18N = {
       "veeam": {
         "description": "Jobs de sauvegarde et statuts Veeam."
       },
+      "hycu": {
+        "description": "HYCU R-Cloud Hybrid — jobs de sauvegarde et statuts."
+      },
       "acronis": {
         "description": "Plans de protection et alertes Acronis."
       }
@@ -662,6 +695,13 @@ export const INTEGRATIONS_CATALOG_I18N = {
         "CHECKMK_USERNAME": "Username",
         "CHECKMK_PASSWORD": "Password",
         "CHECKMK_SITE": "Default site (optional)"
+      },
+      "hycu": {
+        "HYCU_API_URL": "Controller URL",
+        "HYCU_API_KEY": "API key",
+        "HYCU_USERNAME": "Username (fallback)",
+        "HYCU_PASSWORD": "Password (fallback)",
+        "HYCU_VERIFY_TLS": "Verify TLS"
       },
       "bitdefender": {
         "BITDEFENDER_API_URL": "API URL",
@@ -819,6 +859,9 @@ export const INTEGRATIONS_CATALOG_I18N = {
       "veeam": {
         "description": "Jobs de sauvegarde et statuts Veeam."
       },
+      "hycu": {
+        "description": "HYCU R-Cloud Hybrid — jobs de sauvegarde et statuts."
+      },
       "acronis": {
         "description": "Plans de protection et alertes Acronis."
       }
@@ -834,6 +877,13 @@ export const INTEGRATIONS_CATALOG_I18N = {
         "CHECKMK_USERNAME": "Username",
         "CHECKMK_PASSWORD": "Password",
         "CHECKMK_SITE": "Default site (optional)"
+      },
+      "hycu": {
+        "HYCU_API_URL": "Controller URL",
+        "HYCU_API_KEY": "API key",
+        "HYCU_USERNAME": "Username (fallback)",
+        "HYCU_PASSWORD": "Password (fallback)",
+        "HYCU_VERIFY_TLS": "Verify TLS"
       },
       "bitdefender": {
         "BITDEFENDER_API_URL": "API URL",
