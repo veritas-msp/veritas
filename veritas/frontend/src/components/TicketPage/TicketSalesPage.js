@@ -106,6 +106,24 @@ function withCategoryFilter(viewRules, category) {
   }
   return next;
 }
+function resolveTicketTags(ticket) {
+  const raw = ticket?.tags;
+  if (!Array.isArray(raw)) return [];
+  return raw
+    .map(tag => ({
+      id: tag?.id || tag?.tag_id || tag?.label,
+      label: String(tag?.label || tag?.name || "").trim(),
+      color: tag?.color || "#2b5fab"
+    }))
+    .filter(tag => tag.label);
+}
+
+function formatTicketTagsLabel(ticket) {
+  return resolveTicketTags(ticket)
+    .map(tag => tag.label)
+    .join(", ");
+}
+
 function SortableViewRow({
   view,
   isActive,
@@ -971,6 +989,7 @@ export default function TicketSalesPage({
         client: pageCopy.table.client,
         requester: pageCopy.table.requester,
         assigned: pageCopy.table.assigned,
+        tags: pageCopy.table.tags,
         status: pageCopy.table.status,
         tasks: pageCopy.table.tasks,
         progress: pageCopy.table.progress,
@@ -988,6 +1007,7 @@ export default function TicketSalesPage({
           if (columnId === "client") return resolveClientLabel(t);
           if (columnId === "requester") return resolveContactLabel(resolveRequesterContactId(t), resolveRequesterFallback(t));
           if (columnId === "assigned") return resolveAssigneesLabel(t);
+          if (columnId === "tags") return formatTicketTagsLabel(t) || "-";
           if (columnId === "status") return pageCopy.getStatusBadge(ticketStatus) || t.status || "-";
           if (columnId === "tasks") return formatTasksRecap(t);
           if (columnId === "progress") return formatProgressLabel(t);
@@ -1254,6 +1274,35 @@ export default function TicketSalesPage({
                                 }
                                 if (columnId === "assigned") {
                                   return <td key={columnId}>{resolveAssigneesLabel(t)}</td>;
+                                }
+                                if (columnId === "tags") {
+                                  const tags = resolveTicketTags(t);
+                                  const visibleTags = tags.slice(0, 3);
+                                  const hiddenTagCount = Math.max(0, tags.length - visibleTags.length);
+                                  return (
+                                    <td key={columnId} className={styles.colTags}>
+                                      {tags.length > 0 ? (
+                                        <div className={styles.tableTags} aria-label={pageCopy.table.tags}>
+                                          {visibleTags.map(tag => (
+                                            <span
+                                              key={tag.id}
+                                              className={styles.ticketTagChip}
+                                              style={{
+                                                backgroundColor: `${tag.color}18`,
+                                                borderColor: `${tag.color}55`,
+                                                color: tag.color
+                                              }}
+                                            >
+                                              {tag.label}
+                                            </span>
+                                          ))}
+                                          {hiddenTagCount > 0 ? <span className={styles.tagMore}>+{hiddenTagCount}</span> : null}
+                                        </div>
+                                      ) : (
+                                        <span className={styles.colEmpty}>-</span>
+                                      )}
+                                    </td>
+                                  );
                                 }
                                 if (columnId === "status") {
                                   return (

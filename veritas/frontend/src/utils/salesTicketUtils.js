@@ -61,6 +61,116 @@ export function buildSalesFormFieldLabelMap(formOrFields) {
   );
 }
 
+export function buildSalesFormFieldTypeMap(formOrFields) {
+  const fields = Array.isArray(formOrFields) ? formOrFields : Array.isArray(formOrFields?.fields) ? formOrFields.fields : [];
+  return Object.fromEntries(
+    fields
+      .filter(field => field?.fieldKey && field?.fieldType)
+      .map(field => [String(field.fieldKey), String(field.fieldType).trim().toLowerCase()])
+  );
+}
+
+const LINKED_FIELD_TYPES = new Set(["contact", "client", "user"]);
+
+function inferLinkedFieldType(key, typeMap = {}) {
+  const fromMap = String(typeMap?.[key] || "").trim().toLowerCase();
+  if (LINKED_FIELD_TYPES.has(fromMap)) return fromMap;
+  const raw = String(key || "").trim().toLowerCase();
+  if (raw.startsWith("contact_")) return "contact";
+  if (raw.startsWith("client_")) return "client";
+  if (raw.startsWith("user_")) return "user";
+  return fromMap || null;
+}
+
+function firstContactPhone(contact) {
+  if (!contact || typeof contact !== "object") return null;
+  const phone = contact.telephone || contact.phone || contact.mobile || contact.tel || contact.phoneNumber || null;
+  const text = String(phone || "").trim();
+  return text || null;
+}
+
+function firstContactEmail(contact) {
+  if (!contact || typeof contact !== "object") return null;
+  const email = contact.email || contact.mail || null;
+  const text = String(email || "").trim();
+  return text || null;
+}
+
+function contactDisplayName(contact) {
+  if (!contact || typeof contact !== "object") return "";
+  const fullName = [contact.prenom || contact.first_name, contact.nom || contact.last_name].filter(Boolean).join(" ").trim();
+  return fullName || contact.name || contact.email || contact.label || "";
+}
+
+/**
+ * Enrich form fact rows so linked fields (contact / client / user) carry entity ids
+ * and contact phone/email for clickable UI.
+ */
+export function enrichSalesFormLinkedEntries(entries, {
+  formData = null,
+  typeMap = {},
+  contacts = [],
+  clients = [],
+  users = []
+} = {}) {
+  if (!Array.isArray(entries) || entries.length === 0) return [];
+  const values = formData?.values && typeof formData.values === "object" ? formData.values : {};
+  return entries.map(row => {
+    const fieldType = inferLinkedFieldType(row.key, typeMap);
+    const entityIdRaw = values?.[row.key];
+    const entityId = entityIdRaw != null && entityIdRaw !== "" ? String(entityIdRaw).trim() : "";
+    if (!fieldType || !LINKED_FIELD_TYPES.has(fieldType) || !entityId) {
+      return {
+        ...row,
+        fieldType: fieldType || null,
+        entityId: null,
+        phone: null,
+        email: null
+      };
+    }
+    if (fieldType === "contact") {
+      const contact = (Array.isArray(contacts) ? contacts : []).find(c => String(c?.id) === entityId) || null;
+      const label = contactDisplayName(contact) || row.value;
+      return {
+        ...row,
+        value: label || row.value,
+        fieldType,
+        entityId,
+        phone: firstContactPhone(contact),
+        email: firstContactEmail(contact)
+      };
+    }
+    if (fieldType === "client") {
+      const client = (Array.isArray(clients) ? clients : []).find(c => String(c?.id) === entityId) || null;
+      const label = client?.name || client?.nom || row.value;
+      return {
+        ...row,
+        value: label || row.value,
+        fieldType,
+        entityId,
+        phone: null,
+        email: null
+      };
+    }
+    const user = (Array.isArray(users) ? users : []).find(u => String(u?.id) === entityId) || null;
+    const label =
+      user?.ticket_helpdesk_display_name ||
+      user?.name ||
+      user?.nom ||
+      user?.username ||
+      user?.email ||
+      row.value;
+    return {
+      ...row,
+      value: label || row.value,
+      fieldType,
+      entityId,
+      phone: null,
+      email: user?.email || null
+    };
+  });
+}
+
 export function buildSalesFormFieldEntries(formData, extraLabelMap = {}) {
   if (!formData || typeof formData !== "object") return [];
   const display = formData.displayValues && typeof formData.displayValues === "object" ? formData.displayValues : null;

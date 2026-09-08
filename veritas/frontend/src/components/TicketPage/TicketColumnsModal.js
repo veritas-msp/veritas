@@ -51,6 +51,7 @@ const COLUMN_LABEL_KEYS = {
   sla: "sla",
   tasks: "tasks",
   progress: "progress",
+  tags: "tags",
   created_at: "created",
   updated_at: "updated"
 };

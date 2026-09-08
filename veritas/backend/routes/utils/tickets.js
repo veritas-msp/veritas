@@ -3233,6 +3233,33 @@ router.put("/:id", verifyJWT, requirePermission("tickets.edit"), [param("id").is
       if (Object.prototype.hasOwnProperty.call(incoming, "interventionNotes")) {
         next.interventionNotes = String(incoming.interventionNotes || "").trim();
       }
+      if (
+        Object.prototype.hasOwnProperty.call(incoming, "values") &&
+        incoming.values &&
+        typeof incoming.values === "object" &&
+        !Array.isArray(incoming.values)
+      ) {
+        next.values = incoming.values;
+      }
+      if (
+        Object.prototype.hasOwnProperty.call(incoming, "displayValues") &&
+        incoming.displayValues &&
+        typeof incoming.displayValues === "object" &&
+        !Array.isArray(incoming.displayValues)
+      ) {
+        next.displayValues = incoming.displayValues;
+      }
+      if (
+        Object.prototype.hasOwnProperty.call(incoming, "fieldLabels") &&
+        incoming.fieldLabels &&
+        typeof incoming.fieldLabels === "object" &&
+        !Array.isArray(incoming.fieldLabels)
+      ) {
+        next.fieldLabels = {
+          ...(current.fieldLabels && typeof current.fieldLabels === "object" ? current.fieldLabels : {}),
+          ...incoming.fieldLabels
+        };
+      }
       updates.push(`sales_form_data = $${p++}`);
       values.push(JSON.stringify(next));
       if (hasProgressPercent && Object.prototype.hasOwnProperty.call(incoming, "pmTasks")) {

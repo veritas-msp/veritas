@@ -31,6 +31,29 @@
   gap: 0.5rem;
 }
 
+.formEditActions {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  flex-shrink: 0;
+}
+
+.formEditBody {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.formFilesHint {
+  margin: 0;
+  font-size: 0.78rem;
+  color: var(--msp-muted, #5c6b82);
+}
+
+.formEditFields {
+  margin: 0;
+}
+
 .formInChatTitle {
   display: inline-flex;
   align-items: center;
@@ -938,6 +961,27 @@
   margin: 0.12rem 0 0;
   word-break: break-word;
   font-size: 0.88rem;
+}
+
+.formLinkedStack {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.28rem;
+  max-width: 100%;
+}
+
+.formLinkedMeta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.55rem 0.85rem;
+  font-size: 0.8rem;
+}
+
+.formLinkedMeta a {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.28rem;
 }
 
 .milestoneList {

@@ -137,6 +137,22 @@ function SortableViewsSection({
 function normalizeStatus(status) {
   return status === "open" ? "new" : status;
 }
+function resolveTicketTags(ticket) {
+  const raw = ticket?.tags;
+  if (!Array.isArray(raw)) return [];
+  return raw
+    .map(tag => ({
+      id: tag?.id || tag?.tag_id || tag?.label,
+      label: String(tag?.label || tag?.name || "").trim(),
+      color: tag?.color || "#2b5fab"
+    }))
+    .filter(tag => tag.label);
+}
+function formatTicketTagsLabel(ticket) {
+  return resolveTicketTags(ticket)
+    .map(tag => tag.label)
+    .join(", ");
+}
 function isMajorIncidentTicket(ticket) {
   return Boolean(ticket?.is_major_incident);
 }
@@ -619,6 +635,7 @@ export default function TicketPage({
         client: pageCopy.table.client,
         assigned: pageCopy.table.assigned,
         followers: pageCopy.table.followers,
+        tags: pageCopy.table.tags,
         status: pageCopy.table.status,
         priority: pageCopy.table.priority,
         sla: pageCopy.table.sla,
@@ -637,6 +654,7 @@ export default function TicketPage({
           if (columnId === "client") return resolveClientLabel(t);
           if (columnId === "assigned") return resolveAssigneesLabel(t);
           if (columnId === "followers") return resolveFollowersLabel(t);
+          if (columnId === "tags") return formatTicketTagsLabel(t) || "-";
           if (columnId === "status") return pageCopy.getStatusBadge(ticketStatus) || t.status || "-";
           if (columnId === "priority") return pageCopy.getPriorityLabel(t.priority);
           if (columnId === "sla") {
@@ -1336,6 +1354,35 @@ export default function TicketPage({
                         }
                         if (columnId === "followers") {
                           return <td key={columnId}>{resolveFollowersLabel(t)}</td>;
+                        }
+                        if (columnId === "tags") {
+                          const tags = resolveTicketTags(t);
+                          const visibleTags = tags.slice(0, 3);
+                          const hiddenTagCount = Math.max(0, tags.length - visibleTags.length);
+                          return (
+                            <td key={columnId} className={styles.colTags}>
+                              {tags.length > 0 ? (
+                                <div className={styles.tableTags} aria-label={pageCopy.table.tags}>
+                                  {visibleTags.map(tag => (
+                                    <span
+                                      key={tag.id}
+                                      className={styles.ticketTagChip}
+                                      style={{
+                                        backgroundColor: `${tag.color}18`,
+                                        borderColor: `${tag.color}55`,
+                                        color: tag.color
+                                      }}
+                                    >
+                                      {tag.label}
+                                    </span>
+                                  ))}
+                                  {hiddenTagCount > 0 ? <span className={styles.tagMore}>+{hiddenTagCount}</span> : null}
+                                </div>
+                              ) : (
+                                <span className={styles.colEmpty}>-</span>
+                              )}
+                            </td>
+                          );
                         }
                         if (columnId === "status") {
                           return <td key={columnId}><span className={styles.statusBadge}>{pageCopy.getStatusBadge(ticketStatus) || t.status}</span></td>;

@@ -4713,6 +4713,27 @@
   word-break: break-word;
 }
 
+.formLinkedStack {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.28rem;
+  max-width: 100%;
+}
+
+.formLinkedMeta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.55rem 0.85rem;
+  font-size: 0.8rem;
+}
+
+.formLinkedMeta a {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.28rem;
+}
+
 .priorityAiRow {
   display: flex;
   align-items: center;

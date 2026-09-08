@@ -5,6 +5,15 @@
  */
 export const PATCH_NOTES = [
   {
+    version: "1.0.7",
+    date: "2026-09-08",
+    highlights: [
+      "Tickets prestation : champs liés du formulaire (entreprise, contact) cliquables ; téléphone et e-mail du contact pour appeler ou écrire depuis le ticket.",
+      "Onglet Formulaire : édition des champs renseignés avec enregistrement (fichiers joints en lecture seule).",
+      "Listes tickets (services et support) : nouvelle colonne Étiquettes avec pastilles colorées, export CSV et sélecteur de colonnes."
+    ]
+  },
+  {
     version: "1.0.6",
     date: "2026-09-07",
     highlights: [

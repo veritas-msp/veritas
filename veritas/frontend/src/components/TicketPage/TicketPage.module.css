@@ -447,6 +447,44 @@
   text-align: right;
 }
 
+.colTags {
+  min-width: 8rem;
+  max-width: 14rem;
+}
+
+.tableTags {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.25rem;
+  min-width: 0;
+}
+
+.ticketTagChip {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.15rem 0.45rem;
+  border-radius: 999px;
+  border: 1px solid;
+  font-size: 0.65rem;
+  font-weight: 600;
+  line-height: 1.25;
+  white-space: nowrap;
+  max-width: 9rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.tagMore {
+  font-size: 0.68rem;
+  font-weight: 600;
+  color: var(--msp-muted, #64748b);
+}
+
+.colEmpty {
+  color: var(--msp-muted, #94a3b8);
+}
+
 .priorityIndicator {
   display: inline-flex;
   align-items: center;

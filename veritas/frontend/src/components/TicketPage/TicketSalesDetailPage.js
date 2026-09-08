@@ -24,7 +24,7 @@ import { usePermissions } from "../../contexts/PermissionsContext";
 import { useAuthContext } from "../../contexts/AuthContext";
 import { useVeritasEdition } from "../../hooks/useVeritasEdition";
 import ProFeatureBadge from "../Misc/ProFeature/ProFeatureBadge";
-import { resolveSalesKind, buildSalesFormFieldEntries, buildSalesFormFieldLabelMap, computeSalesTaskStats } from "../../utils/salesTicketUtils";
+import { resolveSalesKind, buildSalesFormFieldEntries, buildSalesFormFieldLabelMap, buildSalesFormFieldTypeMap, enrichSalesFormLinkedEntries, computeSalesTaskStats } from "../../utils/salesTicketUtils";
 import { reconcileSalesTaskPlanningEvent, deleteSalesTaskPlanningEvents } from "../../utils/salesTaskPlanningEvent";
 import { interpolate } from "../../i18n/translate";
 import SmartTooltip from "../SmartTooltip";
@@ -36,6 +36,9 @@ import SalesTasksPanel from "./SalesTasksPanel";
 import TicketTagSuggestField from "./TicketTagSuggestField";
 import SalesCreditDebitModal from "./SalesCreditDebitModal";
 import TicketConfirmModal from "./TicketConfirmModal";
+import SalesFormFieldValue from "./SalesFormFieldValue";
+import SalesFormFieldsRenderer, { buildDynamicFieldLines, filterVisibleFields, validateDynamicFields } from "./SalesFormFieldsRenderer";
+import { isFileField, isLayoutField } from "../../utils/salesFormFieldTypes";
 import td from "./TicketDetailPage.module.css";
 import fs from "./TicketCreatePage.module.css";
 import heroStyles from "../EnterprisesPage/EnterpriseDetailPage.module.css";
@@ -346,6 +349,7 @@ export default function TicketSalesDetailPage({ onNavigate, ticketData }) {
   const canDeleteAttachments = can("sales_detail.delete_attachments");
   const canRequestValidation = can("sales_detail.request_validation");
   const canTasks = can("sales_detail.tasks");
+  const canEditForm = can("sales.edit") || can("sales_detail.tasks") || can("tickets.edit");
   const ticketId = ticketData?.ticketId || ticketData?.id || null;
 
   const [ticket, setTicket] = useState(null);
@@ -370,6 +374,12 @@ export default function TicketSalesDetailPage({ onNavigate, ticketData }) {
   const [creditModal, setCreditModal] = useState(null);
   const [savingCredits, setSavingCredits] = useState(false);
   const [formFieldLabelMap, setFormFieldLabelMap] = useState({});
+  const [formFieldTypeMap, setFormFieldTypeMap] = useState({});
+  const [salesFormDefinition, setSalesFormDefinition] = useState(null);
+  const [formEditing, setFormEditing] = useState(false);
+  const [formDraftValues, setFormDraftValues] = useState({});
+  const [savingForm, setSavingForm] = useState(false);
+  const [formFieldErrors, setFormFieldErrors] = useState(false);
   const [titleDraft, setTitleDraft] = useState("");
   const [titleEditing, setTitleEditing] = useState(false);
   const [clientEquipments, setClientEquipments] = useState([]);
@@ -464,7 +474,17 @@ export default function TicketSalesDetailPage({ onNavigate, ticketData }) {
   const priority = ticket?.priority || "normal";
   const ticketType = kind || ticket?.type || "prestation";
   const planningEvent = ticket?.planningEvent || ticket?.planning_event || null;
-  const formEntries = useMemo(() => buildSalesFormFieldEntries(formData, formFieldLabelMap), [formData, formFieldLabelMap]);
+  const formEntries = useMemo(
+    () =>
+      enrichSalesFormLinkedEntries(buildSalesFormFieldEntries(formData, formFieldLabelMap), {
+        formData,
+        typeMap: formFieldTypeMap,
+        contacts,
+        clients,
+        users
+      }),
+    [formData, formFieldLabelMap, formFieldTypeMap, contacts, clients, users]
+  );
   const comments = useMemo(() => hydrateComments(ticket), [ticket]);
   const clientId = ticket?.client_id || ticket?.clientId || null;
   const supportCredit = ticket?.supportCredit || null;
@@ -518,6 +538,8 @@ export default function TicketSalesDetailPage({ onNavigate, ticketData }) {
     const formId = formData?.formId;
     if (!formId) {
       setFormFieldLabelMap({});
+      setFormFieldTypeMap({});
+      setSalesFormDefinition(null);
       return undefined;
     }
     let cancelled = false;
@@ -525,9 +547,15 @@ export default function TicketSalesDetailPage({ onNavigate, ticketData }) {
       .then(form => {
         if (cancelled) return;
         setFormFieldLabelMap(buildSalesFormFieldLabelMap(form));
+        setFormFieldTypeMap(buildSalesFormFieldTypeMap(form));
+        setSalesFormDefinition(form || null);
       })
       .catch(() => {
-        if (!cancelled) setFormFieldLabelMap({});
+        if (!cancelled) {
+          setFormFieldLabelMap({});
+          setFormFieldTypeMap({});
+          setSalesFormDefinition(null);
+        }
       });
     return () => {
       cancelled = true;
@@ -795,6 +823,12 @@ export default function TicketSalesDetailPage({ onNavigate, ticketData }) {
           next.equipment_info = patch.equipmentInfo;
           next.equipmentInfo = patch.equipmentInfo;
         }
+        if (updated?.sales_form_data || updated?.salesFormData || patch?.salesFormData) {
+          next.sales_form_data = updated?.sales_form_data || updated?.salesFormData || {
+            ...(prev.sales_form_data || {}),
+            ...(patch.salesFormData || {})
+          };
+        }
         return next;
       });
       if (successMessage) toast.success(successMessage);
@@ -804,6 +838,101 @@ export default function TicketSalesDetailPage({ onNavigate, ticketData }) {
       return false;
     } finally {
       setSavingMeta(false);
+    }
+  };
+
+  const editableFormFields = useMemo(() => {
+    const fields = Array.isArray(salesFormDefinition?.fields) ? salesFormDefinition.fields : [];
+    return fields.filter(field => field && field.enabled !== false && !isLayoutField(field) && !isFileField(field));
+  }, [salesFormDefinition]);
+
+  const hasEditableFormFields = editableFormFields.length > 0;
+
+  const startFormEdit = () => {
+    if (!canEditForm || savingForm || savingMeta) return;
+    if (!salesFormDefinition?.fields?.length) {
+      toast.error(copy.form.loadDefinitionError);
+      return;
+    }
+    setFormDraftValues({ ...(formData?.values && typeof formData.values === "object" ? formData.values : {}) });
+    setFormFieldErrors(false);
+    setFormEditing(true);
+  };
+
+  const cancelFormEdit = () => {
+    if (savingForm) return;
+    setFormEditing(false);
+    setFormDraftValues({});
+    setFormFieldErrors(false);
+  };
+
+  const saveFormEdit = async () => {
+    if (!ticketId || !salesFormDefinition) return;
+    const allFields = Array.isArray(salesFormDefinition.fields) ? salesFormDefinition.fields.filter(field => field?.enabled !== false) : [];
+    if (!validateDynamicFields(allFields, formDraftValues)) {
+      setFormFieldErrors(true);
+      toast.error(copy.form.validationError);
+      return;
+    }
+    const fieldLookups = { users, clients, contacts };
+    const visibleFields = filterVisibleFields(allFields, formDraftValues);
+    const nextValues = Object.fromEntries(
+      visibleFields.map(field => {
+        if (isFileField(field)) {
+          const existing = formData?.values?.[field.fieldKey];
+          return [field.fieldKey, Array.isArray(existing) ? existing : []];
+        }
+        return [field.fieldKey, formDraftValues[field.fieldKey]];
+      })
+    );
+    const displayValues = Object.fromEntries(
+      visibleFields.map(field => {
+        if (isFileField(field)) {
+          const existing = formData?.displayValues?.[field.fieldKey];
+          if (existing) return [field.fieldKey, existing];
+        }
+        const line = buildDynamicFieldLines([field], nextValues, fieldLookups)[0] || "";
+        const display = line.includes(": ") ? line.split(": ").slice(1).join(": ") : "";
+        return [field.fieldKey, display === "-" ? "" : display];
+      })
+    );
+    const fieldLabels = Object.fromEntries(
+      allFields
+        .filter(field => field?.fieldKey)
+        .map(field => [field.fieldKey, String(field.label || "").trim() || field.fieldKey])
+    );
+    setSavingForm(true);
+    try {
+      const updated = await updateTicket(ticketId, {
+        salesFormData: {
+          values: nextValues,
+          displayValues,
+          fieldLabels
+        }
+      });
+      const nextForm = updated?.sales_form_data || updated?.salesFormData || {
+        ...(formData || {}),
+        values: nextValues,
+        displayValues,
+        fieldLabels
+      };
+      setTicket(prev =>
+        prev
+          ? {
+              ...prev,
+              ...(updated || {}),
+              sales_form_data: nextForm
+            }
+          : prev
+      );
+      setFormEditing(false);
+      setFormDraftValues({});
+      setFormFieldErrors(false);
+      toast.success(copy.form.saved);
+    } catch (error) {
+      toast.error(error.message || copy.form.saveError);
+    } finally {
+      setSavingForm(false);
     }
   };
 
@@ -2271,8 +2400,63 @@ export default function TicketSalesDetailPage({ onNavigate, ticketData }) {
                             <Icon icon="mdi:form-select" aria-hidden />
                             <span>{copy.form.title}</span>
                           </div>
+                          {canEditForm && hasEditableFormFields && !formEditing ? (
+                            <SmartTooltip content={copy.form.edit}>
+                              <button
+                                type="button"
+                                className={td.commentEditBtn}
+                                onClick={startFormEdit}
+                                disabled={savingForm || savingMeta || loading}
+                                aria-label={copy.form.editAria}
+                              >
+                                <Icon icon="mdi:pencil-outline" aria-hidden />
+                              </button>
+                            </SmartTooltip>
+                          ) : null}
+                          {formEditing ? (
+                            <div className={styles.formEditActions}>
+                              <button
+                                type="button"
+                                className={td.commentEditCancelBtn}
+                                onClick={cancelFormEdit}
+                                disabled={savingForm}
+                              >
+                                {copy.form.cancel}
+                              </button>
+                              <button
+                                type="button"
+                                className={td.commentEditSaveBtn}
+                                onClick={() => void saveFormEdit()}
+                                disabled={savingForm}
+                              >
+                                {savingForm ? copy.form.saving : copy.form.save}
+                              </button>
+                            </div>
+                          ) : null}
                         </div>
-                        {formEntries.length === 0 && !(formData?.purchaseOrder || formData?.purchase_order) && !creatorDisplayName ? (
+                        {formEditing ? (
+                          <div className={styles.formEditBody}>
+                            {(formData?.values && Object.keys(formData.values).some(key => {
+                              const field = (salesFormDefinition?.fields || []).find(f => f.fieldKey === key);
+                              return field && isFileField(field);
+                            })) ? (
+                              <p className={styles.formFilesHint}>{copy.form.filesReadOnly}</p>
+                            ) : null}
+                            <SalesFormFieldsRenderer
+                              fields={editableFormFields}
+                              values={formDraftValues}
+                              users={users}
+                              contacts={contacts}
+                              clients={clients}
+                              onChange={next => {
+                                setFormDraftValues(next);
+                                if (formFieldErrors) setFormFieldErrors(false);
+                              }}
+                              fieldErrors={formFieldErrors}
+                              className={styles.formEditFields}
+                            />
+                          </div>
+                        ) : formEntries.length === 0 && !(formData?.purchaseOrder || formData?.purchase_order) && !creatorDisplayName ? (
                           <p className={td.emptyText}>{copy.form.empty}</p>
                         ) : (
                           <dl className={styles.formFacts}>
@@ -2304,12 +2488,14 @@ export default function TicketSalesDetailPage({ onNavigate, ticketData }) {
                               <div key={row.key}>
                                 <dt>{row.label}</dt>
                                 <dd>
-                                  {Array.isArray(row.links) && row.links.length > 0 ? row.links.map((link, index) => (
-                                    <span key={link.id || `${row.key}-${index}`}>
-                                      {index > 0 ? ", " : null}
-                                      {link.href ? <a href={link.href} target="_blank" rel="noopener noreferrer">{link.label}</a> : link.label}
-                                    </span>
-                                  )) : row.value}
+                                  <SalesFormFieldValue
+                                    row={row}
+                                    onNavigate={onNavigate}
+                                    linkClassName={td.contextLink}
+                                    linkButtonClassName={td.linkLikeBtn}
+                                    stackClassName={styles.formLinkedStack}
+                                    metaClassName={styles.formLinkedMeta}
+                                  />
                                 </dd>
                               </div>
                             ))}

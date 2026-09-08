@@ -37,7 +37,7 @@ export async function resolveTicketListSchema(pool, {
     return schemaCache;
   }
   await ensureTicketValidationRequestsSchema().catch(() => false);
-  const [hasRequesterContact, hasTicketAssignees, hasSlaInfo, hasMajorIncident, hasDeletedAt, hasIsDeleted, hasProgressPercent, hasSalesFormData, hasEventsTicketId, hasValidationRequests] = await Promise.all([columnExists(pool, "v_b_tickets", "requester_contact_id"), tableExists(pool, "v_b_ticket_assignees"), columnExists(pool, "v_b_tickets", "sla_info"), columnExists(pool, "v_b_tickets", "is_major_incident"), columnExists(pool, "v_b_tickets", "deleted_at"), columnExists(pool, "v_b_tickets", "is_deleted"), columnExists(pool, "v_b_tickets", "progress_percent"), columnExists(pool, "v_b_tickets", "sales_form_data"), columnExists(pool, "v_b_events", "ticket_id"), tableExists(pool, "v_b_ticket_validation_requests")]);
+  const [hasRequesterContact, hasTicketAssignees, hasSlaInfo, hasMajorIncident, hasDeletedAt, hasIsDeleted, hasProgressPercent, hasSalesFormData, hasEventsTicketId, hasValidationRequests, hasTicketTags] = await Promise.all([columnExists(pool, "v_b_tickets", "requester_contact_id"), tableExists(pool, "v_b_ticket_assignees"), columnExists(pool, "v_b_tickets", "sla_info"), columnExists(pool, "v_b_tickets", "is_major_incident"), columnExists(pool, "v_b_tickets", "deleted_at"), columnExists(pool, "v_b_tickets", "is_deleted"), columnExists(pool, "v_b_tickets", "progress_percent"), columnExists(pool, "v_b_tickets", "sales_form_data"), columnExists(pool, "v_b_events", "ticket_id"), tableExists(pool, "v_b_ticket_validation_requests"), tableExists(pool, "v_b_ticket_tag_links")]);
   schemaCache = {
     hasRequesterContact,
     hasTicketAssignees,
@@ -49,6 +49,7 @@ export async function resolveTicketListSchema(pool, {
     hasSalesFormData,
     hasEventsTicketId,
     hasValidationRequests,
+    hasTicketTags,
     isCommunity: Boolean(isCommunityEdition())
   };
   schemaCacheExpiresAt = now + SCHEMA_CACHE_TTL_MS;
@@ -126,7 +127,8 @@ function buildTicketListSelectSql(schema) {
     hasMajorIncident,
     hasProgressPercent,
     hasSalesFormData,
-    hasEventsTicketId
+    hasEventsTicketId,
+    hasTicketTags
   } = schema;
   const planningSelect = hasEventsTicketId ? `pe.id AS planning_event_id,
           pe.title AS planning_event_title,
@@ -228,6 +230,22 @@ function buildTicketListSelectSql(schema) {
             ),
             '[]'::json
           ) AS assignees,` : "'[]'::json AS assignees,"}
+          ${hasTicketTags ? `COALESCE(
+            (
+              SELECT json_agg(
+                json_build_object(
+                  'id', tg.id,
+                  'label', tg.label,
+                  'color', tg.color
+                )
+                ORDER BY tg.label ASC
+              )
+              FROM v_b_ticket_tag_links tl
+              JOIN v_b_ticket_tags tg ON tg.id = tl.tag_id
+              WHERE tl.ticket_id = t.id
+            ),
+            '[]'::json
+          ) AS tags,` : "'[]'::json AS tags,"}
           COALESCE((SELECT COUNT(*) FROM v_b_ticket_watchers w2 WHERE w2.ticket_id = t.id), 0) AS followers_count,
           ${hasTicketAssignees ? "COALESCE((SELECT COUNT(*) FROM v_b_ticket_assignees a2 WHERE a2.ticket_id = t.id), 0) AS assignees_count," : "0 AS assignees_count,"}
           (SELECT COUNT(*) FROM v_b_ticket_comments cm WHERE cm.ticket_id = t.id) AS comments_count

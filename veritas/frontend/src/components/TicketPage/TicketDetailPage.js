@@ -60,7 +60,7 @@ import TicketVaultArchiveOptions, {
 } from "./TicketVaultArchiveOptions";
 import { getTicketVaultArchiveCopy } from "./ticketVaultArchiveI18n";
 import { archiveTicketFilesToVault } from "../../utils/archiveTicketFilesToVault";
-import { isSalesTicket, buildSalesFormFieldEntries, buildSalesFormFieldLabelMap } from "../../utils/salesTicketUtils";
+import { isSalesTicket, buildSalesFormFieldEntries, buildSalesFormFieldLabelMap, buildSalesFormFieldTypeMap, enrichSalesFormLinkedEntries } from "../../utils/salesTicketUtils";
 import { formatLinkedEquipmentEventLabel, getEquipmentPickerLabel, getEquipmentSearchText, mapClientEquipmentsForTicketLink } from "./ticketEquipmentUtils";
 import { getLocalizedSolutionCatalogLabel } from "./solutionCatalogI18n";
 import { interpolate } from "../../i18n/translate";
@@ -69,6 +69,7 @@ import { computeSatisfactionAverage, resolveDisplayRatings } from "../../utils/t
 import { getTicketSatisfactionCriteria } from "../../i18n/ticketSatisfactionCriteriaI18n";
 import { createTrackedAbortController } from "../../utils/pageLoadAbort";
 import TicketKnowledgeSuggestions from "./TicketKnowledgeSuggestions";
+import SalesFormFieldValue from "./SalesFormFieldValue";
 const CONTRACT_FACT_STATUS_CLASS = {
   active: fs.contractFact_active,
   expiring: fs.contractFact_expiring,
@@ -1086,18 +1087,22 @@ export default function TicketDetailPage({
   const salesFormData = useMemo(() => ticket?.sales_form_data || ticket?.salesFormData || null, [ticket]);
   const supportFormData = useMemo(() => ticket?.support_form_data || ticket?.supportFormData || null, [ticket]);
   const [salesFormFieldLabelMap, setSalesFormFieldLabelMap] = useState({});
+  const [salesFormFieldTypeMap, setSalesFormFieldTypeMap] = useState({});
   const [supportFormFieldLabelMap, setSupportFormFieldLabelMap] = useState({});
+  const [supportFormFieldTypeMap, setSupportFormFieldTypeMap] = useState({});
   const salesPlanningEvent = useMemo(() => ticket?.planningEvent || ticket?.planning_event || null, [ticket]);
-  const salesFormEntries = useMemo(() => buildSalesFormFieldEntries(salesFormData, salesFormFieldLabelMap), [salesFormData, salesFormFieldLabelMap]);
-  const supportFormEntries = useMemo(() => buildSalesFormFieldEntries(supportFormData, supportFormFieldLabelMap), [supportFormData, supportFormFieldLabelMap]);
+  const salesFormEntriesRaw = useMemo(() => buildSalesFormFieldEntries(salesFormData, salesFormFieldLabelMap), [salesFormData, salesFormFieldLabelMap]);
+  const supportFormEntriesRaw = useMemo(() => buildSalesFormFieldEntries(supportFormData, supportFormFieldLabelMap), [supportFormData, supportFormFieldLabelMap]);
   useEffect(() => {
     if (!isSalesTicketDetail) {
       setSalesFormFieldLabelMap({});
+      setSalesFormFieldTypeMap({});
       return undefined;
     }
     const formId = salesFormData?.formId;
     if (!formId) {
       setSalesFormFieldLabelMap({});
+      setSalesFormFieldTypeMap({});
       return undefined;
     }
     let cancelled = false;
@@ -1106,11 +1111,15 @@ export default function TicketDetailPage({
       signal: controller.signal
     })
       .then(form => {
-        if (!cancelled) setSalesFormFieldLabelMap(buildSalesFormFieldLabelMap(form));
+        if (!cancelled) {
+          setSalesFormFieldLabelMap(buildSalesFormFieldLabelMap(form));
+          setSalesFormFieldTypeMap(buildSalesFormFieldTypeMap(form));
+        }
       })
       .catch(error => {
         if (error?.name === "AbortError" || cancelled) return;
         setSalesFormFieldLabelMap({});
+        setSalesFormFieldTypeMap({});
       });
     return () => {
       cancelled = true;
@@ -1120,11 +1129,13 @@ export default function TicketDetailPage({
   useEffect(() => {
     if (isSalesTicketDetail) {
       setSupportFormFieldLabelMap({});
+      setSupportFormFieldTypeMap({});
       return undefined;
     }
     const formId = supportFormData?.formId;
     if (!formId) {
       setSupportFormFieldLabelMap({});
+      setSupportFormFieldTypeMap({});
       return undefined;
     }
     let cancelled = false;
@@ -1133,11 +1144,15 @@ export default function TicketDetailPage({
       signal: controller.signal
     })
       .then(form => {
-        if (!cancelled) setSupportFormFieldLabelMap(buildSalesFormFieldLabelMap(form));
+        if (!cancelled) {
+          setSupportFormFieldLabelMap(buildSalesFormFieldLabelMap(form));
+          setSupportFormFieldTypeMap(buildSalesFormFieldTypeMap(form));
+        }
       })
       .catch(error => {
         if (error?.name === "AbortError" || cancelled) return;
         setSupportFormFieldLabelMap({});
+        setSupportFormFieldTypeMap({});
       });
     return () => {
       cancelled = true;
@@ -1147,6 +1162,28 @@ export default function TicketDetailPage({
   const [users, setUsers] = useState([]);
   const [clients, setClients] = useState([]);
   const [contacts, setContacts] = useState([]);
+  const salesFormEntries = useMemo(
+    () =>
+      enrichSalesFormLinkedEntries(salesFormEntriesRaw, {
+        formData: salesFormData,
+        typeMap: salesFormFieldTypeMap,
+        contacts,
+        clients,
+        users
+      }),
+    [salesFormEntriesRaw, salesFormData, salesFormFieldTypeMap, contacts, clients, users]
+  );
+  const supportFormEntries = useMemo(
+    () =>
+      enrichSalesFormLinkedEntries(supportFormEntriesRaw, {
+        formData: supportFormData,
+        typeMap: supportFormFieldTypeMap,
+        contacts,
+        clients,
+        users
+      }),
+    [supportFormEntriesRaw, supportFormData, supportFormFieldTypeMap, contacts, clients, users]
+  );
   const [allTickets, setAllTickets] = useState([]);
   const [loading, setLoading] = useState(false);
   const [commentDraft, setCommentDraft] = useState("");
@@ -5306,10 +5343,14 @@ export default function TicketDetailPage({
                       {salesFormEntries.map(row => <div key={row.key} className={styles.salesFormFact}>
                           <dt>{row.label}</dt>
                           <dd>
-                            {Array.isArray(row.links) && row.links.length > 0 ? row.links.map((link, index) => <span key={link.id || `${row.key}-${index}`}>
-                                  {index > 0 ? ", " : null}
-                                  {link.href ? <a href={link.href} target="_blank" rel="noopener noreferrer" className={styles.contextLink}>{link.label}</a> : link.label}
-                                </span>) : row.value}
+                            <SalesFormFieldValue
+                              row={row}
+                              onNavigate={onNavigate}
+                              linkClassName={styles.contextLink}
+                              linkButtonClassName={styles.linkLikeBtn}
+                              stackClassName={styles.formLinkedStack}
+                              metaClassName={styles.formLinkedMeta}
+                            />
                           </dd>
                         </div>)}
                     </dl>}
@@ -5322,10 +5363,14 @@ export default function TicketDetailPage({
                     {supportFormEntries.map(row => <div key={row.key} className={styles.salesFormFact}>
                         <dt>{row.label}</dt>
                         <dd>
-                          {Array.isArray(row.links) && row.links.length > 0 ? row.links.map((link, index) => <span key={link.id || `${row.key}-${index}`}>
-                                {index > 0 ? ", " : null}
-                                {link.href ? <a href={link.href} target="_blank" rel="noopener noreferrer" className={styles.contextLink}>{link.label}</a> : link.label}
-                              </span>) : row.value}
+                          <SalesFormFieldValue
+                            row={row}
+                            onNavigate={onNavigate}
+                            linkClassName={styles.contextLink}
+                            linkButtonClassName={styles.linkLikeBtn}
+                            stackClassName={styles.formLinkedStack}
+                            metaClassName={styles.formLinkedMeta}
+                          />
                         </dd>
                       </div>)}
                   </dl>}
