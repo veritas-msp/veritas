@@ -16,7 +16,10 @@ async function testBitdefenderConnection(apiUrl, apiKey) {
     id: `test_${Date.now()}`,
     jsonrpc: '2.0',
     method: 'getAccountsList',
-    params: {}
+    params: {
+      page: 1,
+      perPage: 100
+    }
   };
   const response = await fetch(url, {
     method: 'POST',

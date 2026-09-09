@@ -5,6 +5,13 @@
  */
 export const PATCH_NOTES = [
   {
+    version: "1.0.14",
+    date: "2026-09-09",
+    highlights: [
+      "Bitdefender GravityZone : pagination complète de getAccountsList (au-delà des 30 premiers comptes) pour lister toutes les sociétés."
+    ]
+  },
+  {
     version: "1.0.13",
     date: "2026-09-09",
     highlights: [

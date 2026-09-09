@@ -29,11 +29,44 @@ function parseAccountsList(accountsResult) {
   if (accountsResult?.data && Array.isArray(accountsResult.data)) return accountsResult.data;
   return [];
 }
+/** GravityZone getAccountsList: perPage max 100, default 30 — paginate until all accounts are fetched. */
+async function fetchAllAccountsList(apiUrl, apiKey) {
+  const perPage = 100;
+  const allAccounts = [];
+  let currentPage = 1;
+  let hasMorePages = true;
+  while (hasMorePages) {
+    const pageResult = await bitdefenderRpcCall(apiUrl, apiKey, "accounts", "getAccountsList", {
+      page: currentPage,
+      perPage
+    });
+    const items = parseAccountsList(pageResult);
+    if (items.length === 0) {
+      hasMorePages = false;
+      break;
+    }
+    allAccounts.push(...items);
+    const total = pageResult?.total || 0;
+    const pagesCount = pageResult?.pagesCount || 0;
+    if (items.length < perPage) {
+      hasMorePages = false;
+    } else if (total > 0 && allAccounts.length >= total) {
+      hasMorePages = false;
+    } else if (pagesCount > 0 && currentPage >= pagesCount) {
+      hasMorePages = false;
+    } else {
+      currentPage++;
+    }
+    if (currentPage > 100) {
+      hasMorePages = false;
+    }
+  }
+  return allAccounts;
+}
 async function fetchGravityZoneCompanies(apiUrl, apiKey, {
   includeDetails = false
 } = {}) {
-  const accountsResult = await bitdefenderRpcCall(apiUrl, apiKey, "accounts", "getAccountsList", {});
-  const accounts = parseAccountsList(accountsResult);
+  const accounts = await fetchAllAccountsList(apiUrl, apiKey);
   const companyById = new Map();
   for (const acc of accounts) {
     if (!acc.companyId || companyById.has(acc.companyId)) continue;
