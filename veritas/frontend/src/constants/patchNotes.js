@@ -5,6 +5,13 @@
  */
 export const PATCH_NOTES = [
   {
+    version: "1.0.11",
+    date: "2026-09-09",
+    highlights: [
+      "Injection CSV : détection d'encodage (UTF-8 / Windows-1252) pour afficher correctement les accents dans l'aperçu et à l'import."
+    ]
+  },
+  {
     version: "1.0.10",
     date: "2026-09-09",
     highlights: [

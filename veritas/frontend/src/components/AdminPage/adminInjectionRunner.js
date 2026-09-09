@@ -22,6 +22,7 @@ import { canonicalizeComputerType } from "../EquipementPage/equipmentFormConfig"
 import { toDateInputValue } from "../EquipementPage/constants/firewallLicenceUtils";
 import { slugifyEquipmentFieldKey } from "./equipmentFamilyConstants";
 import { EQUIPMENT_MATCH_KEY_DEFAULT, INJECTION_ID_TO_SYSTEM_KEY, resolveEquipmentMatchKeys } from "./adminInjectionEquipmentFields";
+import { readCsvFileAsText } from "../../utils/csvTextEncoding";
 
 const DEFAULT_INJECTION_ERRORS = {
   missingName: "Missing name",
@@ -881,12 +882,13 @@ function buildCompanyUpdateExtras(row) {
   return extras;
 }
 
-export function parseInjectionCsv(file) {
+export async function parseInjectionCsv(file) {
+  const text = await readCsvFileAsText(file);
   return new Promise((resolve, reject) => {
-    Papa.parse(file, {
+    Papa.parse(text, {
       header: true,
       skipEmptyLines: "greedy",
-      transformHeader: h => String(h || "").trim(),
+      transformHeader: h => String(h || "").replace(/^\uFEFF/, "").trim(),
       complete: result => {
         const rows = (result.data || []).filter(row => Object.values(row || {}).some(v => String(v || "").trim() !== ""));
         resolve({
@@ -903,7 +905,7 @@ export function parseInjectionCsv(file) {
 export function downloadCsvTemplate(entity, options = {}) {
   const content = options.content != null ? String(options.content) : CSV_TEMPLATES[entity] || "";
   const suffix = options.suffix ? `-${options.suffix}` : "";
-  const blob = new Blob([content], {
+  const blob = new Blob([`\uFEFF${content}`], {
     type: "text/csv;charset=utf-8"
   });
   const url = URL.createObjectURL(blob);

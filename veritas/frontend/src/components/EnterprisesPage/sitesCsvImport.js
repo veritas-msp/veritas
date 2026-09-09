@@ -1,5 +1,6 @@
 import Papa from "papaparse";
 import { createEmptySite, getSiteLocationValue } from "../../utils/clientSites";
+import { readCsvFileAsText } from "../../utils/csvTextEncoding";
 
 const HEADER_ALIASES = {
   name: ["nom", "name", "lieu", "site", "location", "intitule"],
@@ -85,9 +86,10 @@ export function downloadSitesCsvTemplate(locale = "fr") {
   URL.revokeObjectURL(url);
 }
 
-export function parseSitesCsvFile(file) {
+export async function parseSitesCsvFile(file) {
+  const text = await readCsvFileAsText(file);
   return new Promise((resolve, reject) => {
-    Papa.parse(file, {
+    Papa.parse(text, {
       header: true,
       skipEmptyLines: "greedy",
       transformHeader: header => String(header || "").replace(/^\uFEFF/, "").trim(),
