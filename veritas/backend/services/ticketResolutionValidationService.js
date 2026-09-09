@@ -11,11 +11,122 @@ export const RESOLUTION_CLIENT_ACCEPT_PREFIX = "[Resolution client accepted]";
 export const LEGACY_RESOLUTION_PREFIXES = ["[Resolution auto-clôture]", "[Resolution client acceptée]"];
 export const VALIDATION_AUTO_CLOSE_HOURS = 48;
 let validationTableExistsCache = null;
+let validationSchemaEnsured = false;
 export async function hasResolutionValidationTable() {
   if (validationTableExistsCache !== null) return validationTableExistsCache;
   const result = await pool.query(`SELECT to_regclass('v_b_ticket_resolution_validations') IS NOT NULL AS has_table`);
   validationTableExistsCache = Boolean(result.rows?.[0]?.has_table);
   return validationTableExistsCache;
+}
+async function hasTicketIdUniqueConstraint() {
+  const result = await pool.query(`SELECT 1
+     FROM pg_constraint c
+     JOIN pg_class t ON t.oid = c.conrelid
+     JOIN pg_namespace n ON n.oid = t.relnamespace
+    WHERE n.nspname = 'public'
+      AND t.relname = 'v_b_ticket_resolution_validations'
+      AND c.contype IN ('u', 'p')
+      AND pg_get_constraintdef(c.oid) ILIKE '%(ticket_id)%'
+    LIMIT 1`);
+  if (result.rows.length > 0) return true;
+  const indexResult = await pool.query(`SELECT 1
+     FROM pg_indexes
+    WHERE schemaname = 'public'
+      AND tablename = 'v_b_ticket_resolution_validations'
+      AND (
+        indexname = 'v_b_ticket_resolution_validations_ticket_id_key'
+        OR indexdef ILIKE '%UNIQUE%(%ticket_id%)%'
+      )
+    LIMIT 1`);
+  return indexResult.rows.length > 0;
+}
+/** Ensures columns + UNIQUE(ticket_id) required by resolve upserts. */
+export async function ensureResolutionValidationSchema() {
+  if (validationSchemaEnsured) return true;
+  if (!(await hasResolutionValidationTable())) return false;
+  await pool.query(`ALTER TABLE v_b_ticket_resolution_validations
+     ADD COLUMN IF NOT EXISTS intervention_type TEXT NULL`);
+  await pool.query(`ALTER TABLE v_b_ticket_resolution_validations
+     ADD COLUMN IF NOT EXISTS action_type TEXT NULL`);
+  if (!(await hasTicketIdUniqueConstraint())) {
+    await pool.query(`WITH ranked AS (
+         SELECT id,
+                ROW_NUMBER() OVER (
+                  PARTITION BY ticket_id
+                  ORDER BY COALESCE(updated_at, created_at, requested_at) DESC NULLS LAST, id DESC
+                ) AS rn
+         FROM v_b_ticket_resolution_validations
+       )
+       DELETE FROM v_b_ticket_resolution_validations v
+       USING ranked r
+       WHERE v.id = r.id
+         AND r.rn > 1`);
+    await pool.query(`ALTER TABLE v_b_ticket_resolution_validations
+       ADD CONSTRAINT v_b_ticket_resolution_validations_ticket_id_key UNIQUE (ticket_id)`);
+  }
+  validationSchemaEnsured = true;
+  return true;
+}
+async function upsertResolutionValidation({
+  ticketId,
+  reason,
+  interventionType,
+  actionType,
+  resolutionCommentId,
+  autoCloseAt,
+  resolvedByUserId
+}) {
+  const params = [ticketId, reason, interventionType, actionType, resolutionCommentId, autoCloseAt, resolvedByUserId];
+  const returning = `RETURNING id, ticket_id, resolution_reason, intervention_type, action_type,
+            resolution_comment_id, requested_at, auto_close_at, responded_at, outcome,
+            rejection_message, responded_by_user_id, resolved_by_user_id`;
+  const updateSql = `UPDATE v_b_ticket_resolution_validations
+     SET resolution_reason = $2,
+         intervention_type = $3,
+         action_type = $4,
+         resolution_comment_id = $5,
+         requested_at = NOW(),
+         auto_close_at = $6,
+         responded_at = NULL,
+         outcome = 'pending',
+         rejection_message = NULL,
+         responded_by_user_id = NULL,
+         resolved_by_user_id = $7,
+         updated_at = NOW()
+     WHERE ticket_id = $1
+     ${returning}`;
+  const insertSql = `INSERT INTO v_b_ticket_resolution_validations
+      (ticket_id, resolution_reason, intervention_type, action_type, resolution_comment_id,
+       requested_at, auto_close_at, outcome, resolved_by_user_id, created_at, updated_at)
+     VALUES ($1, $2, $3, $4, $5, NOW(), $6, 'pending', $7, NOW(), NOW())
+     ${returning}`;
+
+  // Prefer classical upsert when UNIQUE(ticket_id) exists; otherwise SELECT then INSERT/UPDATE.
+  if (await hasTicketIdUniqueConstraint()) {
+    return pool.query(`INSERT INTO v_b_ticket_resolution_validations
+        (ticket_id, resolution_reason, intervention_type, action_type, resolution_comment_id,
+         requested_at, auto_close_at, outcome, resolved_by_user_id, created_at, updated_at)
+       VALUES ($1, $2, $3, $4, $5, NOW(), $6, 'pending', $7, NOW(), NOW())
+       ON CONFLICT (ticket_id) DO UPDATE SET
+         resolution_reason = EXCLUDED.resolution_reason,
+         intervention_type = EXCLUDED.intervention_type,
+         action_type = EXCLUDED.action_type,
+         resolution_comment_id = EXCLUDED.resolution_comment_id,
+         requested_at = NOW(),
+         auto_close_at = EXCLUDED.auto_close_at,
+         responded_at = NULL,
+         outcome = 'pending',
+         rejection_message = NULL,
+         responded_by_user_id = NULL,
+         resolved_by_user_id = EXCLUDED.resolved_by_user_id,
+         updated_at = NOW()
+       ${returning}`, params);
+  }
+  const existing = await pool.query(`SELECT id FROM v_b_ticket_resolution_validations WHERE ticket_id = $1 LIMIT 1`, [ticketId]);
+  if (existing.rows[0]) {
+    return pool.query(updateSql, params);
+  }
+  return pool.query(insertSql, params);
 }
 function mapValidationRow(row) {
   if (!row) return null;
@@ -130,6 +241,9 @@ export async function resolveTicketWithClientValidation({
     const err = new Error("VALIDATION_UNAVAILABLE");
     throw err;
   }
+  await ensureResolutionValidationSchema().catch(err => {
+    console.error("[resolution-validation] Schema ensure failed:", err.message);
+  });
   await ensureTicketSolutionCatalogSchema().catch(() => {});
   const trimmedReason = String(reason || "").trim();
   const trimmedIntervention = String(interventionType || "").trim();
@@ -211,26 +325,15 @@ export async function resolveTicketWithClientValidation({
     }).catch(() => {});
   }
   const autoCloseAt = new Date(Date.now() + VALIDATION_AUTO_CLOSE_HOURS * 60 * 60 * 1000);
-  const validationResult = await pool.query(`INSERT INTO v_b_ticket_resolution_validations
-      (ticket_id, resolution_reason, intervention_type, action_type, resolution_comment_id,
-       requested_at, auto_close_at, outcome, resolved_by_user_id, created_at, updated_at)
-     VALUES ($1, $2, $3, $4, $5, NOW(), $6, 'pending', $7, NOW(), NOW())
-     ON CONFLICT (ticket_id) DO UPDATE SET
-       resolution_reason = EXCLUDED.resolution_reason,
-       intervention_type = EXCLUDED.intervention_type,
-       action_type = EXCLUDED.action_type,
-       resolution_comment_id = EXCLUDED.resolution_comment_id,
-       requested_at = NOW(),
-       auto_close_at = EXCLUDED.auto_close_at,
-       responded_at = NULL,
-       outcome = 'pending',
-       rejection_message = NULL,
-       responded_by_user_id = NULL,
-       resolved_by_user_id = EXCLUDED.resolved_by_user_id,
-       updated_at = NOW()
-     RETURNING id, ticket_id, resolution_reason, intervention_type, action_type,
-               resolution_comment_id, requested_at, auto_close_at, responded_at, outcome,
-               rejection_message, responded_by_user_id, resolved_by_user_id`, [ticketId, trimmedReason, trimmedIntervention, trimmedAction, comment?.id || null, autoCloseAt.toISOString(), userId || null]);
+  const validationResult = await upsertResolutionValidation({
+    ticketId,
+    reason: trimmedReason,
+    interventionType: trimmedIntervention,
+    actionType: trimmedAction,
+    resolutionCommentId: comment?.id || null,
+    autoCloseAt: autoCloseAt.toISOString(),
+    resolvedByUserId: userId || null
+  });
   return {
     ticket: {
       ...ticket,

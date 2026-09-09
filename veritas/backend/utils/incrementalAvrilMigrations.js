@@ -330,6 +330,26 @@ export async function buildIncrementalAvrilMigrationPlan(client = pool) {
   ) {
     plan.push("20260709_ticket_solution_catalog.sql");
   }
+  if (
+    (await tableExists(client, "v_b_ticket_resolution_validations"))
+    && !(await indexExists(client, "v_b_ticket_resolution_validations", "v_b_ticket_resolution_validations_ticket_id_key"))
+  ) {
+    // Unique ticket_id is required by ON CONFLICT upserts; some installs missed it.
+    const {
+      rows: uniqueRows
+    } = await client.query(`SELECT 1
+         FROM pg_constraint c
+         JOIN pg_class t ON t.oid = c.conrelid
+         JOIN pg_namespace n ON n.oid = t.relnamespace
+        WHERE n.nspname = 'public'
+          AND t.relname = 'v_b_ticket_resolution_validations'
+          AND c.contype IN ('u', 'p')
+          AND pg_get_constraintdef(c.oid) ILIKE '%(ticket_id)%'
+        LIMIT 1`);
+    if (uniqueRows.length === 0) {
+      plan.push("20260909_ticket_resolution_validation_ticket_id_unique.sql");
+    }
+  }
   if ((await tableExists(client, "v_b_ticket_satisfaction")) && !(await columnExists(client, "v_b_ticket_satisfaction", "ratings"))) {
     plan.push("20260627_ticket_satisfaction_criteria.sql");
   }

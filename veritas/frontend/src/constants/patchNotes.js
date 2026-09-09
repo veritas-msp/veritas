@@ -5,6 +5,13 @@
  */
 export const PATCH_NOTES = [
   {
+    version: "1.0.9",
+    date: "2026-09-09",
+    highlights: [
+      "Correctif : résolution avec validation client (erreur 500) — contrainte d'unicité ticket manquante sur certaines bases."
+    ]
+  },
+  {
     version: "1.0.8",
     date: "2026-09-09",
     highlights: [
