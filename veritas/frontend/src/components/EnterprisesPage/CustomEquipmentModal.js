@@ -95,6 +95,10 @@ export default function CustomEquipmentModal({
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const fields = useMemo(() => mergeCustomEquipmentFamilyFields(family?.fields || []), [family?.fields]);
+  const fieldsSignature = useMemo(
+    () => (fields || []).map(field => `${field.fieldKey}:${field.fieldType}:${field.label}:${field.required ? 1 : 0}`).join("|"),
+    [fields]
+  );
   const sharedFieldKeys = useMemo(() => new Set(getSharedEquipmentFieldDefs().map(field => field.key)), []);
   const commonFields = useMemo(() => fields.filter(field => sharedFieldKeys.has(field.fieldKey) && !STATUS_FIELD_KEYS.has(field.fieldKey)), [fields, sharedFieldKeys]);
   const detailFields = useMemo(
@@ -104,6 +108,8 @@ export default function CustomEquipmentModal({
   const detailInputFields = useMemo(() => detailFields.filter(field => !isEquipmentLayoutField(field)), [detailFields]);
   const detailFieldGroups = useMemo(() => groupEquipmentFieldsBySection(detailFields), [detailFields]);
   const isAddMode = !item?.id;
+  const itemId = item?.id ?? null;
+  const familyKey = family?.familyKey || "";
   const siteOptions = useMemo(() => normalizeClientSites(client?.sites || []).map(site => site.name).filter(Boolean), [client?.sites]);
   useEffect(() => {
     if (!isOpen || !family) return;
@@ -111,7 +117,9 @@ export default function CustomEquipmentModal({
     setForm(nextForm);
     setInitialSnapshot(cloneFormSnapshot(nextForm));
     setActiveSection("identity");
-  }, [isOpen, family, item, fields]);
+    // Re-init only when the modal opens or the edited entity / field schema identity changes.
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- intentionally ignore unstable item/family object identity
+  }, [isOpen, familyKey, itemId, fieldsSignature]);
   const patchForm = useCallback(patch => {
     setForm(prev => ({
       ...prev,
@@ -383,7 +391,7 @@ export default function CustomEquipmentModal({
                 <div className={styles.sectionHead}>
                   <h3 className={styles.sectionTitle}>Facturation et installation</h3>
                   <p className={styles.sectionDesc}>
-                    Champs partages par tous les equipements.
+                    Champs partagés par tous les équipements.
                   </p>
                 </div>
                 {commonFields.length === 0 ? <p className={styles.hint}>No shared fields.</p> : <div className={styles.fieldGrid2}>

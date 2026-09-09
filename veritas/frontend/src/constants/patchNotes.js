@@ -5,6 +5,14 @@
  */
 export const PATCH_NOTES = [
   {
+    version: "1.0.12",
+    date: "2026-09-09",
+    highlights: [
+      "Fiche équipement : champs Oui/Non affichés en libellé traduit (plus true/false).",
+      "Édition équipement custom : correctif du reset intempestif du formulaire pendant la saisie."
+    ]
+  },
+  {
     version: "1.0.11",
     date: "2026-09-09",
     highlights: [

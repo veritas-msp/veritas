@@ -843,6 +843,13 @@ export default function EquipmentDetailPage({
     setFormData(toDetailFormData(nextEquipment, { customFamily: family }));
     onUpdate?.(nextEquipment);
   };
+  const customEditItem = useMemo(() => {
+    if (!customEditFamily || !equipment) return null;
+    return {
+      ...equipment,
+      id: resolveEquipmentDbId(equipment) || equipment.id
+    };
+  }, [customEditFamily, equipment]);
   const loadSSIDs = async () => {
     setGlobalSSIDs([]);
     setLoadingSSIDs(false);
@@ -2253,10 +2260,15 @@ export default function EquipmentDetailPage({
 
       {editModalOpen && modalClient ? <EquipmentFormModal open={editModalOpen} onClose={() => setEditModalOpen(false)} client={modalClient} equipment={equipment} moduleKey={equipmentModuleKey || equipment?.type || "Servers"} mode="edit" peerFirewalls={peerFirewalls} peerServers={peerServers} peerStorage={peerStorage} peerBorneWifi={peerBorneWifi} onSaved={handleEquipmentModalSaved} onDeleted={handleEquipmentModalDeleted} /> : null}
 
-      <CustomEquipmentModal isOpen={Boolean(customEditFamily)} onClose={() => setCustomEditFamily(null)} family={customEditFamily} item={equipment ? {
-      ...equipment,
-      id: resolveEquipmentDbId(equipment) || equipment.id
-    } : null} client={modalClient} clientId={getEquipmentClientId(equipment)} onRefresh={handleCustomEquipmentRefresh} />
+      <CustomEquipmentModal
+        isOpen={Boolean(customEditFamily)}
+        onClose={() => setCustomEditFamily(null)}
+        family={customEditFamily}
+        item={customEditItem}
+        client={modalClient}
+        clientId={getEquipmentClientId(equipment)}
+        onRefresh={handleCustomEquipmentRefresh}
+      />
 
       <EquipmentAlertSuspensionModal open={alertModalOpen} onClose={() => setAlertModalOpen(false)} equipment={equipment} onNavigate={onNavigate} alert={alertSettings} />
 

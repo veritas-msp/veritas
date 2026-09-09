@@ -582,6 +582,22 @@ function formatComputerType(value, locale) {
   return getComputerTypeLabel(value) || value;
 }
 function formatField(fieldKey, formData, equipment, locale) {
+  const customField = equipment?.customFamily?.fields?.find?.(field => field?.fieldKey === fieldKey);
+  if (customField?.fieldType === "boolean" || customField?.fieldType === "section") {
+    if (customField.fieldType === "section") return null;
+    const raw = formData[fieldKey];
+    if (raw == null || raw === "") return null;
+    const labels = locale === "fr"
+      ? { yes: "Oui", no: "Non" }
+      : locale === "de"
+        ? { yes: "Ja", no: "Nein" }
+        : locale === "it"
+          ? { yes: "Sì", no: "No" }
+          : locale === "es"
+            ? { yes: "Sí", no: "No" }
+            : { yes: "Yes", no: "No" };
+    return formatExtensionFieldValue(customField, raw, labels);
+  }
   const formatter = FIELD_FORMATTERS[fieldKey];
   let raw = formatter ? formatter(formData, equipment) : formData[fieldKey];
   if (fieldKey === "roleHA" && raw) {
@@ -685,9 +701,13 @@ export function buildDetailFormData(equipment, options = {}) {
       name: equipment?.name || equipment?.nom || merged.name || ""
     };
     fieldDefs.forEach(field => {
-      if (!field?.fieldKey) return;
+      if (!field?.fieldKey || field.fieldType === "section") return;
       const value = customData[field.fieldKey];
       if (value == null) return;
+      if (field.fieldType === "boolean") {
+        detail[field.fieldKey] = value === true || ["true", "1", "yes", "oui", "on"].includes(String(value).trim().toLowerCase());
+        return;
+      }
       if (field.fieldType === "number") {
         detail[field.fieldKey] = value === false ? 0 : value === true ? 1 : value;
         return;
