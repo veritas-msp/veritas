@@ -2244,6 +2244,25 @@
   resize: vertical;
 }
 
+.editor img,
+.commentBody img {
+  display: inline-block;
+  max-width: 120px;
+  max-height: 90px;
+  width: auto;
+  height: auto;
+  object-fit: cover;
+  border-radius: var(--msp-radius-sm, 10px);
+  border: 1px solid var(--msp-border, #e2e8f0);
+  cursor: zoom-in;
+  vertical-align: middle;
+  margin: 0.15rem 0.25rem 0.15rem 0;
+}
+
+.editor img {
+  cursor: default;
+}
+
 .readonlyField {
   background: var(--msp-surface-2, #f7f9fc);
   color: var(--msp-muted-light, #8b9bb5);
@@ -3620,6 +3639,12 @@
   overflow: hidden;
   background: var(--msp-surface, #fff);
   text-decoration: none;
+  padding: 0;
+  margin: 0;
+  cursor: zoom-in;
+  font: inherit;
+  color: inherit;
+  appearance: none;
 }
 
 .attachmentPreviewImage {
@@ -3627,6 +3652,57 @@
   width: 120px;
   height: 90px;
   object-fit: cover;
+}
+
+.imageLightboxOverlay {
+  position: fixed;
+  inset: 0;
+  z-index: 10050;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.25rem;
+  background: rgba(15, 28, 46, 0.72);
+}
+
+.imageLightbox {
+  position: relative;
+  max-width: min(96vw, 1200px);
+  max-height: 92vh;
+}
+
+.imageLightboxImg {
+  display: block;
+  max-width: 100%;
+  max-height: 88vh;
+  width: auto;
+  height: auto;
+  object-fit: contain;
+  border-radius: 10px;
+  box-shadow: 0 18px 48px rgba(0, 0, 0, 0.35);
+  background: #0f1c2e;
+}
+
+.imageLightboxClose {
+  position: absolute;
+  top: -0.55rem;
+  right: -0.55rem;
+  z-index: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  border: none;
+  border-radius: 999px;
+  background: #fff;
+  color: #0f1c2e;
+  cursor: pointer;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.25);
+}
+
+.imageLightboxClose:hover {
+  background: #f3f6fb;
 }
 
 .contextLine {

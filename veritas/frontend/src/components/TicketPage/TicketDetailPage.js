@@ -21,6 +21,7 @@ import TicketValidationBanner from "./TicketValidationBanner";
 import TicketResolveModal from "./TicketResolveModal";
 import TicketReopenModal from "./TicketReopenModal";
 import TicketConfirmModal from "./TicketConfirmModal";
+import TicketImageLightbox from "./TicketImageLightbox";
 import TicketInsertLinkModal, { captureEditorSelection, insertLinkHtml, restoreEditorSelection } from "./TicketInsertLinkModal";
 import ProFeaturePromoModal from "../Misc/ProFeature/ProFeaturePromoModal";
 import TicketAiRunbookPanel from "./TicketAiRunbookPanel";
@@ -33,6 +34,7 @@ import { addTicketAssignee, addTicketComment, addTicketCommentWithAttachments, a
 import { fetchAiStatus, suggestTicketReplyAi, correctTicketTextAi, suggestTicketPriorityAi } from "../../api/ai";
 import API_BASE_URL from "../../config";
 import { sanitizeTicketCommentHtml } from "../../utils/sanitizeHtml";
+import { extractClipboardImageFiles, extractInlineDataImagesFromHtml, htmlContainsInlineImage } from "../../utils/ticketEditorImages";
 import { contentLooksLikeHtml, isIncomingEmailContent } from "../../utils/incomingEmailContent";
 import IncomingEmailMessage from "./IncomingEmailMessage";
 import ContactFormModal from "../ContactsPage/ContactFormModal";
@@ -1195,6 +1197,7 @@ export default function TicketDetailPage({
   const [deletingCommentId, setDeletingCommentId] = useState(null);
   const [commentInternal, setCommentInternal] = useState(false);
   const [attachmentFiles, setAttachmentFiles] = useState([]);
+  const [imageLightbox, setImageLightbox] = useState(null);
   const [vaultOptionsByKey, setVaultOptionsByKey] = useState({});
   const [isDragOverReplyBox, setIsDragOverReplyBox] = useState(false);
   const [titleDraft, setTitleDraft] = useState("");
@@ -1736,20 +1739,21 @@ export default function TicketDetailPage({
 
   const submitComment = async () => {
     const draftContentRaw = String(commentDraft || "").trim();
-    const draftContentText = htmlToPlainText(draftContentRaw);
-    if (!ticketId || !draftContentText && attachmentFiles.length === 0) return;
-    const draftContent = resolveTemplateVariables(draftContentRaw);
+    const extracted = extractInlineDataImagesFromHtml(draftContentRaw);
+    const draftFiles = mergeAttachmentFiles(attachmentFiles, extracted.files);
+    const draftContentText = htmlToPlainText(extracted.html);
+    if (!ticketId || !draftContentText && draftFiles.length === 0) return;
+    const draftContent = resolveTemplateVariables(extracted.html);
     const draftInternal = commentInternal;
-    const draftFiles = attachmentFiles;
     const vaultEntries = isPro ? collectVaultArchiveEntries(draftFiles, vaultOptionsByKey) : [];
     try {
       copy.validateAttachmentFiles(draftFiles);
       let createdComment = null;
-      if (attachmentFiles.length > 0) {
+      if (draftFiles.length > 0) {
         createdComment = await addTicketCommentWithAttachments(ticketId, {
           content: draftContent,
           isInternal: commentInternal,
-          files: attachmentFiles
+          files: draftFiles
         });
       } else {
         createdComment = await addTicketComment(ticketId, draftContent, draftInternal);
@@ -1813,26 +1817,27 @@ export default function TicketDetailPage({
   const submitConversationUpdate = async targetStatus => {
     if (!ticketId) return;
     const draftContentRaw = String(commentDraft || "").trim();
-    const draftContentText = htmlToPlainText(draftContentRaw);
-    if (!draftContentText && attachmentFiles.length === 0) {
+    const extracted = extractInlineDataImagesFromHtml(draftContentRaw);
+    const draftFiles = mergeAttachmentFiles(attachmentFiles, extracted.files);
+    const draftContentText = htmlToPlainText(extracted.html);
+    if (!draftContentText && draftFiles.length === 0) {
       toast.error(copy.toasts.submitNeedMessage);
       return false;
     }
     setSubmittingStatus(targetStatus);
     const draftInternal = commentInternal;
     try {
-      copy.validateAttachmentFiles(attachmentFiles);
-      const draftFiles = [...attachmentFiles];
+      copy.validateAttachmentFiles(draftFiles);
       const vaultEntries = isPro ? collectVaultArchiveEntries(draftFiles, vaultOptionsByKey) : [];
       let commentResult = null;
-      if (attachmentFiles.length > 0) {
+      if (draftFiles.length > 0) {
         commentResult = await addTicketCommentWithAttachments(ticketId, {
-          content: resolveTemplateVariables(draftContentRaw),
+          content: resolveTemplateVariables(extracted.html),
           isInternal: commentInternal,
-          files: attachmentFiles
+          files: draftFiles
         });
       } else {
-        commentResult = await addTicketComment(ticketId, resolveTemplateVariables(draftContentRaw), commentInternal);
+        commentResult = await addTicketComment(ticketId, resolveTemplateVariables(extracted.html), commentInternal);
       }
       notifyWhatsAppDelivery(commentResult?.whatsappDelivery, copy);
       const creditOptions = {};
@@ -2017,6 +2022,66 @@ export default function TicketDetailPage({
       toast.error(error.message || copy.attachmentInvalid);
     }
   };
+  const handleEditorPaste = event => {
+    if (isReadOnly) return;
+    const imageFiles = extractClipboardImageFiles(event.clipboardData);
+    if (imageFiles.length === 0) return;
+    event.preventDefault();
+    try {
+      if (!replyBoxExpanded) {
+        setReplyBoxExpanded(true);
+        try {
+          localStorage.setItem(REPLY_BOX_EXPANDED_KEY, "true");
+        } catch (_) {}
+      }
+      void (async () => {
+        const loaded = await Promise.all(
+          imageFiles.map(
+            file =>
+              new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = () => resolve({ dataUrl: reader.result, name: file.name });
+                reader.onerror = () => reject(new Error(copy.attachmentInvalid || "Invalid image"));
+                reader.readAsDataURL(file);
+              })
+          )
+        );
+        const editor = commentEditorRef.current;
+        if (!editor) {
+          applySelectedAttachments(imageFiles);
+          return;
+        }
+        editor.focus();
+        loaded.forEach(({ dataUrl, name }) => {
+          if (typeof dataUrl !== "string" || !dataUrl) return;
+          const safeAlt = String(name || "image").replace(/"/g, "");
+          document.execCommand("insertHTML", false, `<img src="${dataUrl}" alt="${safeAlt}">`);
+        });
+        setCommentDraft(editor.innerHTML || "");
+      })().catch(error => {
+        toast.error(error.message || copy.attachmentInvalid);
+      });
+    } catch (error) {
+      toast.error(error.message || copy.attachmentInvalid);
+    }
+  };
+  const openImageLightbox = useCallback((url, alt = "") => {
+    if (!url) return;
+    setImageLightbox({ url, alt: alt || "" });
+  }, []);
+  const closeImageLightbox = useCallback(() => setImageLightbox(null), []);
+  const handleInlineImageClick = useCallback(
+    event => {
+      const img = event.target?.closest?.("img");
+      if (!img || !event.currentTarget?.contains?.(img)) return;
+      if (event.target.closest("a, button")) return;
+      const src = img.currentSrc || img.getAttribute("src") || "";
+      if (!src) return;
+      event.preventDefault();
+      openImageLightbox(src, img.getAttribute("alt") || "");
+    },
+    [openImageLightbox]
+  );
   const toggleReplyBoxExpanded = useCallback(() => {
     setReplyBoxExpanded(prev => {
       const next = !prev;
@@ -3553,8 +3618,9 @@ export default function TicketDetailPage({
     return null;
   }, [ticketDeleteConfirm, copy]);
   const hasReplyDraft = useMemo(() => {
-    const text = String(commentDraft || "").replace(/<[^>]*>/g, "").replace(/&nbsp;/gi, " ").trim();
-    return text.length > 0 || attachmentFiles.length > 0;
+    const html = String(commentDraft || "");
+    const text = html.replace(/<[^>]*>/g, "").replace(/&nbsp;/gi, " ").trim();
+    return text.length > 0 || attachmentFiles.length > 0 || htmlContainsInlineImage(html);
   }, [commentDraft, attachmentFiles]);
   const isWhatsAppNativeTicket = ticketNativeChannel === "whatsapp";
   const isTicketChannelDisabled = useCallback(channelKey => {
@@ -4976,7 +5042,7 @@ export default function TicketDetailPage({
                         {editForm.title || ticket?.title || copy.header.titlePlaceholder}
                       </h2>
                     </div>
-                    {editForm.description || ticket?.description ? <div className={styles.commentBody}>
+                    {editForm.description || ticket?.description ? <div className={styles.commentBody} onClick={handleInlineImageClick}>
                         {renderCommentContent(editForm.description || ticket?.description, descriptionAttachments)}
                       </div> : <p className={styles.descriptionBodyPlaceholder}>{copy.description.empty}</p>}
                   </>}
@@ -5066,18 +5132,18 @@ export default function TicketDetailPage({
                       </div>
                     </div> : isResolutionProposal ? <div className={`${styles.commentBody} ${styles.commentBodyResolution}`}>
                       {renderResolutionCommentCard(comment, resolutionValidation)}
-                    </div> : <div className={styles.commentBody}>{renderCommentBody(comment)}</div>}
+                    </div> : <div className={styles.commentBody} onClick={handleInlineImageClick}>{renderCommentBody(comment)}</div>}
                   {!isEditingComment && Array.isArray(comment.attachments) && comment.attachments.length > 0 && !isIncomingEmailContent(comment.content) && <div className={styles.attachmentsList}>
                       {comment.attachments.map(attachment => {
                         const attachmentUrl = attachment.url || attachment.path;
                         if (!attachmentUrl) return null;
                         const attachmentLabel = attachment.filename || attachment.name || copy.attachmentDefault;
                         if (isImageAttachment(attachment)) {
-                          return <a key={attachment.id || attachmentUrl} href={attachmentUrl} target="_blank" rel="noopener noreferrer" className={styles.attachmentPreviewLink} title={interpolate(copy.comment.attachmentOpenTitle, {
+                          return <button type="button" key={attachment.id || attachmentUrl} className={styles.attachmentPreviewLink} title={interpolate(copy.comment.attachmentOpenTitle, {
                             name: attachmentLabel
-                          })}>
+                          })} onClick={() => openImageLightbox(attachmentUrl, attachmentLabel)}>
                               <img src={attachmentUrl} alt={attachmentLabel} className={styles.attachmentPreviewImage} loading="lazy" />
-                            </a>;
+                            </button>;
                         }
                         return <a key={attachment.id || attachmentUrl} href={attachmentUrl} target="_blank" rel="noopener noreferrer" className={styles.attachmentLink} title={`${attachmentLabel} (open in new tab)`}>
                             <Icon icon="mdi:paperclip" />
@@ -5210,7 +5276,7 @@ export default function TicketDetailPage({
                   </>}
               </div>
               {replyBoxExpanded ? <>
-                  <div ref={commentEditorRef} className={styles.editor} contentEditable={!isReadOnly} suppressContentEditableWarning onInput={e => setCommentDraft(e.currentTarget?.innerHTML || "")} style={{
+                  <div ref={commentEditorRef} className={styles.editor} contentEditable={!isReadOnly} suppressContentEditableWarning onInput={e => setCommentDraft(e.currentTarget?.innerHTML || "")} onPaste={handleEditorPaste} style={{
                   minHeight: "140px",
                   whiteSpace: "pre-wrap",
                   overflowY: "auto"
@@ -6006,5 +6072,12 @@ export default function TicketDetailPage({
           </div>
         </div>}
       </div>
+      <TicketImageLightbox
+        open={Boolean(imageLightbox?.url)}
+        src={imageLightbox?.url || ""}
+        alt={imageLightbox?.alt || ""}
+        onClose={closeImageLightbox}
+        closeAria={copy.comment?.lightboxCloseAria || "Fermer"}
+      />
     </div>;
 }

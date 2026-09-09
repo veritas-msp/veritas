@@ -109,6 +109,82 @@ export async function logTicketFieldChanges({
   return logged;
 }
 
+function resolveSalesFormDisplayValue(displayValue, rawValue) {
+  if (displayValue != null && String(displayValue).trim() !== "") {
+    return displayValue;
+  }
+  if (Array.isArray(rawValue)) {
+    return rawValue
+      .map(item => {
+        if (item == null) return "";
+        if (typeof item === "object") {
+          return item.fileName || item.name || item.file_name || item.label || "";
+        }
+        return String(item);
+      })
+      .filter(Boolean)
+      .join(", ");
+  }
+  if (typeof rawValue === "boolean") return rawValue ? "true" : "false";
+  if (rawValue == null) return null;
+  if (typeof rawValue === "object") {
+    try {
+      return JSON.stringify(rawValue);
+    } catch {
+      return String(rawValue);
+    }
+  }
+  const text = String(rawValue).trim();
+  return text === "" ? null : text;
+}
+
+/**
+ * Audit trail for sales/prestation form field edits (values / displayValues).
+ */
+export async function logSalesFormFieldChanges({
+  ticketId,
+  oldForm = null,
+  newForm = null,
+  actorUserId = null
+} = {}) {
+  if (!ticketId || !oldForm || !newForm) return [];
+  const oldValues = oldForm.values && typeof oldForm.values === "object" && !Array.isArray(oldForm.values) ? oldForm.values : {};
+  const newValues = newForm.values && typeof newForm.values === "object" && !Array.isArray(newForm.values) ? newForm.values : {};
+  const oldDisplay = oldForm.displayValues && typeof oldForm.displayValues === "object" && !Array.isArray(oldForm.displayValues) ? oldForm.displayValues : {};
+  const newDisplay = newForm.displayValues && typeof newForm.displayValues === "object" && !Array.isArray(newForm.displayValues) ? newForm.displayValues : {};
+  const labels = {
+    ...(oldForm.fieldLabels && typeof oldForm.fieldLabels === "object" ? oldForm.fieldLabels : {}),
+    ...(newForm.fieldLabels && typeof newForm.fieldLabels === "object" ? newForm.fieldLabels : {})
+  };
+  const keys = new Set([
+    ...Object.keys(oldValues),
+    ...Object.keys(newValues),
+    ...Object.keys(oldDisplay),
+    ...Object.keys(newDisplay)
+  ]);
+  const logged = [];
+  for (const key of keys) {
+    const oldValue = resolveSalesFormDisplayValue(oldDisplay[key], oldValues[key]);
+    const newValue = resolveSalesFormDisplayValue(newDisplay[key], newValues[key]);
+    if (valuesEqual(oldValue, newValue)) continue;
+    const fieldLabel = String(labels[key] || key).trim() || key;
+    const row = await logTicketActivity({
+      ticketId,
+      action: "field_changed",
+      field: fieldLabel.slice(0, 64),
+      oldValue,
+      newValue,
+      actorUserId,
+      meta: {
+        source: "sales_form",
+        fieldKey: key
+      }
+    });
+    if (row) logged.push(row);
+  }
+  return logged;
+}
+
 export async function listTicketActivity(ticketId) {
   if (!ticketId) return [];
   const ready = await ensureTicketActivitySchema();

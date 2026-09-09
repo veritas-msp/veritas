@@ -28,6 +28,8 @@ import TicketValidationBanner from "./TicketValidationBanner";
 import { getTicketValidationCopy } from "./ticketValidationI18n";
 import TicketEmojiPicker from "./TicketEmojiPicker";
 import TicketInsertLinkModal, { captureEditorSelection, insertLinkHtml, restoreEditorSelection } from "./TicketInsertLinkModal";
+import TicketImageLightbox from "./TicketImageLightbox";
+import { extractClipboardImageFiles, extractInlineDataImagesFromHtml, htmlContainsInlineImage } from "../../utils/ticketEditorImages";
 import styles from "./TicketDetailPage.module.css";
 
 const ATTACHMENT_ACCEPT = ".pdf,.jpg,.jpeg,.png,.doc,.docx,.csv,.xls,.xlsx,.mp4,.3gp,.mp3,.mpeg,.ogg,.aac,.amr,.m4a";
@@ -175,6 +177,7 @@ export default function TicketChatPanel({
   const [editingValidationRequest, setEditingValidationRequest] = useState(null);
   const [savingValidationRequest, setSavingValidationRequest] = useState(false);
   const [respondingValidationId, setRespondingValidationId] = useState(null);
+  const [imageLightbox, setImageLightbox] = useState(null);
   const [replyBoxExpanded, setReplyBoxExpanded] = useState(() => {
     try {
       return localStorage.getItem(REPLY_BOX_EXPANDED_KEY) !== "false";
@@ -197,7 +200,10 @@ export default function TicketChatPanel({
     [comments]
   );
 
-  const hasReplyDraft = useMemo(() => htmlToPlainText(commentDraft).length > 0 || attachmentFiles.length > 0, [commentDraft, attachmentFiles]);
+  const hasReplyDraft = useMemo(
+    () => htmlToPlainText(commentDraft).length > 0 || attachmentFiles.length > 0 || htmlContainsInlineImage(commentDraft),
+    [commentDraft, attachmentFiles]
+  );
 
   useEffect(() => {
     if (!canPublicReply && !commentInternal) {
@@ -418,6 +424,70 @@ export default function TicketChatPanel({
     }
   };
 
+  const handleEditorPaste = event => {
+    if (disabled) return;
+    const imageFiles = extractClipboardImageFiles(event.clipboardData);
+    if (imageFiles.length === 0) return;
+    event.preventDefault();
+    try {
+      if (!replyBoxExpanded) {
+        setReplyBoxExpanded(true);
+        try {
+          localStorage.setItem(REPLY_BOX_EXPANDED_KEY, "true");
+        } catch (_) {}
+      }
+      void (async () => {
+        const loaded = await Promise.all(
+          imageFiles.map(
+            file =>
+              new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = () => resolve({ dataUrl: reader.result, name: file.name });
+                reader.onerror = () => reject(new Error(copy.attachmentInvalid || "Invalid image"));
+                reader.readAsDataURL(file);
+              })
+          )
+        );
+        const editor = commentEditorRef.current;
+        if (!editor) {
+          applySelectedAttachments(imageFiles);
+          return;
+        }
+        editor.focus();
+        loaded.forEach(({ dataUrl, name }) => {
+          if (typeof dataUrl !== "string" || !dataUrl) return;
+          const safeAlt = String(name || "image").replace(/"/g, "");
+          document.execCommand("insertHTML", false, `<img src="${dataUrl}" alt="${safeAlt}">`);
+        });
+        setCommentDraft(editor.innerHTML || "");
+      })().catch(error => {
+        toast.error(error.message || copy.attachmentInvalid);
+      });
+    } catch (error) {
+      toast.error(error.message || copy.attachmentInvalid);
+    }
+  };
+
+  const openImageLightbox = useCallback((url, alt = "") => {
+    if (!url) return;
+    setImageLightbox({ url, alt: alt || "" });
+  }, []);
+
+  const closeImageLightbox = useCallback(() => setImageLightbox(null), []);
+
+  const handleInlineImageClick = useCallback(
+    event => {
+      const img = event.target?.closest?.("img");
+      if (!img || !event.currentTarget?.contains?.(img)) return;
+      if (event.target.closest("a, button")) return;
+      const src = img.currentSrc || img.getAttribute("src") || "";
+      if (!src) return;
+      event.preventDefault();
+      openImageLightbox(src, img.getAttribute("alt") || "");
+    },
+    [openImageLightbox]
+  );
+
   const toggleReplyBoxExpanded = useCallback(() => {
     setReplyBoxExpanded(prev => {
       const next = !prev;
@@ -477,21 +547,22 @@ export default function TicketChatPanel({
 
   const submitComment = async () => {
     const draftContentRaw = String(commentDraft || "").trim();
-    const draftContentText = htmlToPlainText(draftContentRaw);
-    if (!ticketId || (!draftContentText && attachmentFiles.length === 0) || disabled) return;
+    const extracted = extractInlineDataImagesFromHtml(draftContentRaw);
+    const draftFiles = mergeAttachmentFiles(attachmentFiles, extracted.files);
+    const draftContentText = htmlToPlainText(extracted.html);
+    if (!ticketId || (!draftContentText && draftFiles.length === 0) || disabled) return;
     setSubmitting(true);
-    const draftFiles = [...attachmentFiles];
     const vaultEntries = isPro ? collectVaultArchiveEntries(draftFiles, vaultOptionsByKey) : [];
     try {
-      copy.validateAttachmentFiles(attachmentFiles);
-      if (attachmentFiles.length > 0) {
+      copy.validateAttachmentFiles(draftFiles);
+      if (draftFiles.length > 0) {
         await addTicketCommentWithAttachments(ticketId, {
-          content: draftContentRaw,
+          content: extracted.html,
           isInternal: commentInternal,
-          files: attachmentFiles
+          files: draftFiles
         });
       } else {
-        await addTicketComment(ticketId, draftContentRaw, commentInternal);
+        await addTicketComment(ticketId, extracted.html, commentInternal);
       }
       clearComposer();
       toast.success(copy.toasts.replySent);
@@ -717,6 +788,7 @@ export default function TicketChatPanel({
                 ) : (
                   <div
                     className={styles.commentBody}
+                    onClick={handleInlineImageClick}
                     dangerouslySetInnerHTML={{
                       __html: toRichPreviewHtml(comment.content || comment.body || "")
                     }}
@@ -731,9 +803,14 @@ export default function TicketChatPanel({
                       const attachmentLabel = attachment.filename || attachment.name || "file";
                       if (isImageAttachment(attachment)) {
                         return (
-                          <a key={attachment.id || attachmentUrl} href={attachmentUrl} target="_blank" rel="noopener noreferrer" className={styles.attachmentPreviewLink}>
+                          <button
+                            type="button"
+                            key={attachment.id || attachmentUrl}
+                            className={styles.attachmentPreviewLink}
+                            onClick={() => openImageLightbox(attachmentUrl, attachmentLabel)}
+                          >
                             <img src={attachmentUrl} alt={attachmentLabel} className={styles.attachmentPreviewImage} loading="lazy" />
-                          </a>
+                          </button>
                         );
                       }
                       return (
@@ -900,6 +977,7 @@ export default function TicketChatPanel({
                   contentEditable
                   suppressContentEditableWarning
                   onInput={e => setCommentDraft(e.currentTarget?.innerHTML || "")}
+                  onPaste={handleEditorPaste}
                   style={{
                     minHeight: "140px",
                     whiteSpace: "pre-wrap",
@@ -996,6 +1074,13 @@ export default function TicketChatPanel({
         onSubmit={submitValidationRequest}
       />
       <TicketInsertLinkModal open={linkModalOpen} copy={copy.reply} initialText={linkModalText} onClose={() => setLinkModalOpen(false)} onInsert={handleInsertLink} />
+      <TicketImageLightbox
+        open={Boolean(imageLightbox?.url)}
+        src={imageLightbox?.url || ""}
+        alt={imageLightbox?.alt || ""}
+        onClose={closeImageLightbox}
+        closeAria={copy.comment?.lightboxCloseAria || "Fermer"}
+      />
     </div>
   );
 }

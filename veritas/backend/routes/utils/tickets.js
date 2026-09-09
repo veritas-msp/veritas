@@ -45,7 +45,7 @@ import { appendCollectorLogInConfig, filterExclusionRulesForCollector, normalize
 import { normalizeMailCollectSettings } from "../../services/mailCollectSettings.js";
 import { getAllMatchingExclusionRules, normalizeExclusionRule } from "../../services/mailIngestionRules.js";
 import { searchTicketsPaged, TICKET_SEARCH_MAX_LIMIT, resolveTicketListSchema } from "../../services/ticketPagedListService.js";
-import { logTicketActivity, logTicketFieldChanges, listTicketActivity } from "../../services/ticketActivityService.js";
+import { logTicketActivity, logTicketFieldChanges, logSalesFormFieldChanges, listTicketActivity } from "../../services/ticketActivityService.js";
 import { TICKET_REQUESTER_EMAIL_SQL } from "../../services/ticketEmailThread.js";
 const router = express.Router();
 router.use(verifyJWT);
@@ -3171,6 +3171,8 @@ router.put("/:id", verifyJWT, requirePermission("tickets.edit"), [param("id").is
         values.push(transform(req.body[bodyKey]));
       }
     }
+    let salesFormActivityBefore = null;
+    let salesFormActivityAfter = null;
     if (hasSalesFormData && Object.prototype.hasOwnProperty.call(req.body, "salesFormData")) {
       let current = oldTicket.sales_form_data;
       if (typeof current === "string") {
@@ -3260,6 +3262,13 @@ router.put("/:id", verifyJWT, requirePermission("tickets.edit"), [param("id").is
           ...incoming.fieldLabels
         };
       }
+      const formFieldsTouched =
+        Object.prototype.hasOwnProperty.call(incoming, "values") ||
+        Object.prototype.hasOwnProperty.call(incoming, "displayValues");
+      if (formFieldsTouched) {
+        salesFormActivityBefore = current;
+        salesFormActivityAfter = next;
+      }
       updates.push(`sales_form_data = $${p++}`);
       values.push(JSON.stringify(next));
       if (hasProgressPercent && Object.prototype.hasOwnProperty.call(incoming, "pmTasks")) {
@@ -3324,6 +3333,14 @@ router.put("/:id", verifyJWT, requirePermission("tickets.edit"), [param("id").is
       newTicket: result.rows[0],
       actorUserId: req.user?.id || null
     }).catch(() => {});
+    if (salesFormActivityBefore && salesFormActivityAfter) {
+      await logSalesFormFieldChanges({
+        ticketId: id,
+        oldForm: salesFormActivityBefore,
+        newForm: salesFormActivityAfter,
+        actorUserId: req.user?.id || null
+      }).catch(() => {});
+    }
     await dispatchNotificationEvent({
       source: "tickets",
       element: result.rows[0]?.status === "resolved" ? "resolved" : "updated",

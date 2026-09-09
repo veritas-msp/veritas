@@ -5,6 +5,15 @@
  */
 export const PATCH_NOTES = [
   {
+    version: "1.0.8",
+    date: "2026-09-09",
+    highlights: [
+      "Réponse ticket : collage d'image en miniature dans l'éditeur, envoi corrigé (sans trombone), aperçu agrandi au clic.",
+      "Listes tickets : la colonne Étiquettes se sauvegarde correctement dans le sélecteur de colonnes.",
+      "Tickets prestation : journal d'activité lors de l'édition des champs du formulaire."
+    ]
+  },
+  {
     version: "1.0.7",
     date: "2026-09-08",
     highlights: [

@@ -929,6 +929,7 @@ export default function TicketSalesDetailPage({ onNavigate, ticketData }) {
       setFormDraftValues({});
       setFormFieldErrors(false);
       toast.success(copy.form.saved);
+      await loadTicket();
     } catch (error) {
       toast.error(error.message || copy.form.saveError);
     } finally {
