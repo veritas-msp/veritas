@@ -1702,7 +1702,7 @@ const EquipmentPage = forwardRef(function EquipmentPage({
       }
       return col;
     }).filter(Boolean);
-    const extraColumns = (fieldsFor(type) || []).map(field => ({
+    const extraColumns = (fieldsFor(type) || []).filter(field => field?.fieldType !== "section").map(field => ({
       key: `ext:${field.fieldKey}`,
       label: field.label || field.fieldKey,
       field
@@ -1739,7 +1739,7 @@ const EquipmentPage = forwardRef(function EquipmentPage({
       if (!col) return null;
       return col;
     }).filter(Boolean);
-    return [...base, ...(fieldsFor(type) || []).map(field => ({
+    return [...base, ...(fieldsFor(type) || []).filter(field => field?.fieldType !== "section").map(field => ({
       key: `ext:${field.fieldKey}`,
       label: field.label || field.fieldKey,
       field
@@ -2995,7 +2995,7 @@ const EquipmentPage = forwardRef(function EquipmentPage({
         toast.error('No data to export');
         return;
       }
-      const customFields = family?.fields || [];
+      const customFields = (family?.fields || []).filter(field => field?.fieldType !== "section");
       const visibleKeys = ["name", "location", ...customFields.map(field => field.fieldKey || field.key).filter(Boolean)];
       setCsvExportModal({
         open: true,
@@ -3902,7 +3902,11 @@ const EquipmentPage = forwardRef(function EquipmentPage({
               const family = activeCustomFamily;
               const sectionKey = `Custom:${family.familyKey}`;
               const items = getCustomFamilyItems(family);
-              const fields = (family.fields || []).filter(field => !["actif", "active", "is_active", "isActive", "name", "nom"].includes(field.fieldKey));
+              const fields = (family.fields || []).filter(field => {
+                if (["actif", "active", "is_active", "isActive", "name", "nom"].includes(field.fieldKey)) return false;
+                if (field.fieldType === "section") return false;
+                return true;
+              });
               const fieldTypes = Object.fromEntries(fields.map(field => [field.fieldKey, field.fieldType]));
               const mappedItems = items.map(item => buildCustomEquipmentDetailItem(family, item));
               const sortedItems = getSortedEquipmentList(sectionKey, mappedItems, fieldTypes);

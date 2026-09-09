@@ -362,6 +362,7 @@ export function buildCustomEquipmentInjectionFamily(family, locale) {
     const key = String(field?.fieldKey || "").trim();
     const label = String(field?.label || "").trim();
     if (!label && !key) continue;
+    if (String(field?.fieldType || "").toLowerCase() === "section") continue;
     if (sharedKeys.has(key)) continue;
     if (["actif", "active", "is_active", "isActive"].includes(key)) continue;
     const type = String(field.fieldType || "text").toLowerCase();

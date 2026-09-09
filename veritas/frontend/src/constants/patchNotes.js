@@ -5,6 +5,13 @@
  */
 export const PATCH_NOTES = [
   {
+    version: "1.0.13",
+    date: "2026-09-09",
+    highlights: [
+      "Tables périphériques : les sections de familles custom ne s'affichent plus comme colonnes (titres de regroupement uniquement)."
+    ]
+  },
+  {
     version: "1.0.12",
     date: "2026-09-09",
     highlights: [

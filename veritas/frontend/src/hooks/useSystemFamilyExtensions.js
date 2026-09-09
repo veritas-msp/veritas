@@ -121,7 +121,8 @@ export default function useSystemFamilyExtensions(familyType) {
     fields: familyKey ? byKey[familyKey] || [] : [],
     fieldsFor: type => {
       const key = canonicalizeSystemFamilyKey(type);
-      return key ? byKey[key] || [] : [];
+      const fields = key ? byKey[key] || [] : [];
+      return fields.filter(field => field?.fieldType !== "section");
     },
     reload
   };
