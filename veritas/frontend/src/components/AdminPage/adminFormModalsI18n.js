@@ -94,9 +94,12 @@ const FORM_MODALS = {
       sortOrderLabel: "Ordre d'affichage",
       enabledLabel: "Activée",
       fieldsTitle: "Champs du formulaire",
-      fieldsDesc: "Définissez les informations à renseigner pour chaque matériel de cette famille.",
+      fieldsDesc: "Définissez les informations à renseigner pour chaque matériel de cette famille. Ajoutez des sections pour regrouper les champs.",
       noFields: "Aucun champ défini.",
-      fieldOrderHint: "Glissez les champs pour définir l'ordre d'affichage dans le formulaire.",
+      fieldOrderHint: "Glissez les champs et sections pour définir l'ordre d'affichage dans le formulaire.",
+      addSection: "Ajouter une section",
+      sectionLabelPlaceholder: "Titre de la section",
+      sectionBadge: "Section",
       fieldOptionsLabel: "Choix de la liste (un par ligne)",
       fieldOptionsPlaceholder: "Option 1\nOption 2\nOption 3",
       dragHandleAria: "Déplacer le champ",
@@ -131,7 +134,8 @@ const FORM_MODALS = {
         date: "Date",
         number: "Nombre",
         boolean: "Oui / Non",
-        select: "Liste déroulante"
+        select: "Liste déroulante",
+        section: "Section"
       },
       displayModes: {
         hexagon: "Hexagone (cartographie)",
@@ -365,9 +369,12 @@ const FORM_MODALS = {
       sortOrderLabel: "Display order",
       enabledLabel: "Enabled",
       fieldsTitle: "Form fields",
-      fieldsDesc: "Define information to capture for each device in this family.",
+      fieldsDesc: "Define information to capture for each device in this family. Add sections to group related fields.",
       noFields: "No fields defined.",
-      fieldOrderHint: "Drag fields to set the order shown in the equipment form.",
+      fieldOrderHint: "Drag fields and sections to set the order shown in the equipment form.",
+      addSection: "Add a section",
+      sectionLabelPlaceholder: "Section title",
+      sectionBadge: "Section",
       fieldOptionsLabel: "Dropdown choices (one per line)",
       fieldOptionsPlaceholder: "Option 1\nOption 2\nOption 3",
       dragHandleAria: "Move field",
@@ -402,7 +409,8 @@ const FORM_MODALS = {
         date: "Date",
         number: "Number",
         boolean: "Yes / No",
-        select: "Dropdown list"
+        select: "Dropdown list",
+        section: "Section"
       },
       displayModes: {
         hexagon: "Hexagon (map)",
@@ -635,9 +643,12 @@ const FORM_MODALS = {
       sortOrderLabel: "Anzeigereihenfolge",
       enabledLabel: "Aktiviert",
       fieldsTitle: "Formularfelder",
-      fieldsDesc: "Informationen für jedes Gerät dieser Familie.",
+      fieldsDesc: "Informationen für jedes Gerät dieser Familie. Abschnitte zum Gruppieren der Felder hinzufügen.",
       noFields: "Keine Felder definiert.",
-      fieldOrderHint: "Felder per Drag-and-drop sortieren.",
+      fieldOrderHint: "Felder und Abschnitte per Drag-and-drop sortieren.",
+      addSection: "Abschnitt hinzufügen",
+      sectionLabelPlaceholder: "Abschnittstitel",
+      sectionBadge: "Abschnitt",
       fieldOptionsLabel: "Auswahlwerte (einer pro Zeile)",
       fieldOptionsPlaceholder: "Option 1\nOption 2\nOption 3",
       dragHandleAria: "Feld verschieben",
@@ -672,7 +683,8 @@ const FORM_MODALS = {
         date: "Datum",
         number: "Zahl",
         boolean: "Ja / Nein",
-        select: "Dropdown-Liste"
+        select: "Dropdown-Liste",
+        section: "Abschnitt"
       },
       displayModes: {
         hexagon: "Sechseck (Karte)",
@@ -905,9 +917,12 @@ const FORM_MODALS = {
       sortOrderLabel: "Ordine di visualizzazione",
       enabledLabel: "Attiva",
       fieldsTitle: "Campi del modulo",
-      fieldsDesc: "Informazioni per ogni dispositivo di questa famiglia.",
+      fieldsDesc: "Informazioni per ogni dispositivo di questa famiglia. Aggiungi sezioni per raggruppare i campi.",
       noFields: "Nessun campo definito.",
-      fieldOrderHint: "Trascina i campi per definirne l'ordine nel modulo.",
+      fieldOrderHint: "Trascina campi e sezioni per definirne l'ordine nel modulo.",
+      addSection: "Aggiungi sezione",
+      sectionLabelPlaceholder: "Titolo della sezione",
+      sectionBadge: "Sezione",
       fieldOptionsLabel: "Scelte del menu (una per riga)",
       fieldOptionsPlaceholder: "Opzione 1\nOpzione 2\nOpzione 3",
       dragHandleAria: "Sposta campo",
@@ -942,7 +957,8 @@ const FORM_MODALS = {
         date: "Data",
         number: "Numero",
         boolean: "Sì / No",
-        select: "Elenco a discesa"
+        select: "Elenco a discesa",
+        section: "Sezione"
       },
       displayModes: {
         hexagon: "Esagono (mappa)",
@@ -1175,9 +1191,12 @@ const FORM_MODALS = {
       sortOrderLabel: "Orden de visualización",
       enabledLabel: "Activada",
       fieldsTitle: "Campos del formulario",
-      fieldsDesc: "Información para cada equipo de esta familia.",
+      fieldsDesc: "Información para cada equipo de esta familia. Añada secciones para agrupar los campos.",
       noFields: "Ningún campo definido.",
-      fieldOrderHint: "Arrastre los campos para definir el orden del formulario.",
+      fieldOrderHint: "Arrastre campos y secciones para definir el orden del formulario.",
+      addSection: "Añadir sección",
+      sectionLabelPlaceholder: "Título de la sección",
+      sectionBadge: "Sección",
       fieldOptionsLabel: "Opciones de la lista (una por línea)",
       fieldOptionsPlaceholder: "Opción 1\nOpción 2\nOpción 3",
       dragHandleAria: "Mover campo",
@@ -1212,7 +1231,8 @@ const FORM_MODALS = {
         date: "Fecha",
         number: "Número",
         boolean: "Sí / No",
-        select: "Lista desplegable"
+        select: "Lista desplegable",
+        section: "Sección"
       },
       displayModes: {
         hexagon: "Hexágono (mapa)",
@@ -1415,7 +1435,7 @@ export function getAgentFormSections(locale, isEdit = false) {
 }
 export function getEquipmentFieldTypes(locale) {
   const types = getAdminFormModalCopy(locale, "equipmentFamilyForm").fieldTypes || {};
-  return ["text", "textarea", "date", "number", "boolean", "select"].map(value => ({
+  return ["text", "textarea", "date", "number", "boolean", "select", "section"].map(value => ({
     value,
     label: types[value] || value
   }));

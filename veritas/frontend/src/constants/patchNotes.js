@@ -5,6 +5,13 @@
  */
 export const PATCH_NOTES = [
   {
+    version: "1.0.10",
+    date: "2026-09-09",
+    highlights: [
+      "Familles matériel (admin) : regroupement des champs du formulaire par sections, repris sur la fiche équipement et à l'édition."
+    ]
+  },
+  {
     version: "1.0.9",
     date: "2026-09-09",
     highlights: [

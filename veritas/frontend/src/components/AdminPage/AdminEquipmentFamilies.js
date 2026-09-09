@@ -102,7 +102,7 @@ export default function AdminEquipmentFamilies() {
           id: field.id,
           label: String(field.label || "").trim(),
           fieldType: field.fieldType || "text",
-          required: Boolean(field.required),
+          required: field.fieldType === "section" ? false : Boolean(field.required),
           options: field.fieldType === "select" ? normalizeEquipmentFieldOptions(field) : [],
           displayOrder: (index + 1) * 10
         })).filter(field => field.label))

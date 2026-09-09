@@ -357,6 +357,21 @@
   line-height: 1.45;
 }
 
+.fieldGroupBlock {
+  margin-bottom: 1.15rem;
+}
+
+.fieldGroupBlock:last-child {
+  margin-bottom: 0;
+}
+
+.fieldGroupTitle {
+  margin: 0 0 0.65rem;
+  font-size: 0.84rem;
+  font-weight: 700;
+  color: var(--msp-text, #0f1c2e);
+}
+
 .sectionHeadRow {
   display: flex;
   align-items: center;

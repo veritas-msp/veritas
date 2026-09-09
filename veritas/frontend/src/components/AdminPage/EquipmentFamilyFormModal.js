@@ -16,7 +16,9 @@ import IconPicker, { EQUIPMENT_FAMILY_ICON_CHOICES } from "./IconPicker";
 import {
   buildEquipmentFieldOptionsText,
   createEmptyEquipmentFieldDraft,
+  createEmptyEquipmentSectionDraft,
   ensureEquipmentFieldClientIds,
+  isEquipmentLayoutField,
   normalizeEquipmentFieldOptions,
   reorderEquipmentFields
 } from "../../utils/equipmentFamilyFieldUtils";
@@ -49,19 +51,21 @@ function SortableFieldRow({
     transform: CSS.Transform.toString(transform),
     transition
   };
+  const isSection = isEquipmentLayoutField(field);
   const isSelect = field.fieldType === "select";
-  return <div ref={setNodeRef} style={style} className={`${styles.fieldBlock} ${isDragging ? styles.fieldBlockDragging : ""}`}>
+  return <div ref={setNodeRef} style={style} className={`${styles.fieldBlock} ${isSection ? styles.sectionBlock : ""} ${isDragging ? styles.fieldBlockDragging : ""}`}>
       <div className={styles.fieldRow}>
         <button type="button" className={styles.dragHandle} aria-label={modalCopy.dragHandleAria} {...attributes} {...listeners}>
           <FaGripVertical aria-hidden />
         </button>
         <input type="text" className={layout.input} value={field.label || ""} onChange={e => onUpdate(index, {
         label: e.target.value
-      })} placeholder={modalCopy.fieldLabelPlaceholder} />
+      })} placeholder={isSection ? modalCopy.sectionLabelPlaceholder : modalCopy.fieldLabelPlaceholder} />
         <select className={`${layout.input} ${styles.typeSelect}`} value={field.fieldType || "text"} onChange={e => {
         const nextType = e.target.value;
         onUpdate(index, {
           fieldType: nextType,
+          required: nextType === "section" ? false : Boolean(field.required),
           options: nextType === "select" ? normalizeEquipmentFieldOptions(field) : [],
           optionsText: nextType === "select" ? field.optionsText || buildEquipmentFieldOptionsText(field.options) : ""
         });
@@ -70,12 +74,12 @@ function SortableFieldRow({
               {type.label}
             </option>)}
         </select>
-        <label className={styles.requiredToggle}>
+        {isSection ? <span className={styles.sectionBadge}>{modalCopy.sectionBadge}</span> : <label className={styles.requiredToggle}>
           <input type="checkbox" checked={Boolean(field.required)} onChange={e => onUpdate(index, {
           required: e.target.checked
         })} />
           <span>{adminCopy.required}</span>
-        </label>
+        </label>}
         <button type="button" className={styles.removeFieldBtn} onClick={() => onRemove(index)} aria-label={adminCopy.removeField}>
           <FaTimes />
         </button>
@@ -162,6 +166,12 @@ export default function EquipmentFamilyFormModal({
     setDraft(prev => ({
       ...prev,
       fields: [...(prev.fields || []), createEmptyEquipmentFieldDraft()]
+    }));
+  };
+  const addSection = () => {
+    setDraft(prev => ({
+      ...prev,
+      fields: [...(prev.fields || []), createEmptyEquipmentSectionDraft()]
     }));
   };
   const removeField = index => {
@@ -272,9 +282,14 @@ export default function EquipmentFamilyFormModal({
                   </SortableContext>
                 </DndContext>}
             </div>
-            <button type="button" className={styles.addFieldBtn} onClick={addField}>
-              <FaPlus /> {adminCopy.addField}
-            </button>
+            <div className={styles.addFieldActions}>
+              <button type="button" className={styles.addFieldBtn} onClick={addField}>
+                <FaPlus /> {adminCopy.addField}
+              </button>
+              <button type="button" className={`${styles.addFieldBtn} ${styles.addSectionBtn}`} onClick={addSection}>
+                <FaPlus /> {modalCopy.addSection}
+              </button>
+            </div>
           </>;
       case "map":
         return <>

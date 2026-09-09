@@ -88,6 +88,7 @@ export function applySystemExtensionFields(payload, formData, fields = []) {
 export function buildExtensionFormValues(source, fields = []) {
   const values = {};
   (Array.isArray(fields) ? fields : []).forEach((field) => {
+    if (!field?.fieldKey || field.fieldType === "section") return;
     const raw = readExtensionFieldValue(source, field.fieldKey);
     if (field.fieldType === "boolean") {
       values[field.fieldKey] = raw === true || ["true", "1", "yes", "oui", "on"].includes(String(raw).trim().toLowerCase());
@@ -104,7 +105,7 @@ export function buildExtensionFormValues(source, fields = []) {
 
 export function buildExtensionDistributions(items = [], fields = []) {
   return (Array.isArray(fields) ? fields : [])
-    .filter((field) => field?.fieldKey && field.fieldType !== "textarea")
+    .filter((field) => field?.fieldKey && field.fieldType !== "textarea" && field.fieldType !== "section")
     .map((field) => {
       const counts = {};
       (Array.isArray(items) ? items : []).forEach((item) => {

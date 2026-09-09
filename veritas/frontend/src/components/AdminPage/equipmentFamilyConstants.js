@@ -68,6 +68,9 @@ export const EQUIPMENT_FIELD_TYPES = [{
 }, {
   value: "select",
   label: "Dropdown list"
+}, {
+  value: "section",
+  label: "Section"
 }];
 export const EQUIPMENT_DISPLAY_MODES = [{
   value: "hexagon",

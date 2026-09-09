@@ -14,7 +14,7 @@ import { interpolate } from "../../i18n/translate";
 import { getSharedEquipmentFieldDefs, getSharedEquipmentFieldLabel, mergeCustomEquipmentFamilyFields } from "../EquipementPage/sharedEquipmentFields";
 import { getFormFields } from "../EquipementPage/equipmentFormFieldsI18n";
 import FormNumberStepper from "../EquipementPage/FormNumberStepper";
-import { getEquipmentFieldSelectOptions } from "../../utils/equipmentFamilyFieldUtils";
+import { getEquipmentFieldSelectOptions, groupEquipmentFieldsBySection, isEquipmentLayoutField } from "../../utils/equipmentFamilyFieldUtils";
 import { readEquipmentIsActive } from "../EquipementPage/equipmentFormConfig";
 const STATUS_FIELD_KEYS = new Set(["actif", "active", "is_active", "isActive"]);
 const SECTIONS = [{
@@ -44,6 +44,7 @@ function buildEmptyForm(fields = []) {
   };
   fields.forEach(field => {
     if (STATUS_FIELD_KEYS.has(field.fieldKey)) return;
+    if (field.fieldType === "section") return;
     form[field.fieldKey] = field.fieldType === "boolean" ? false : "";
   });
   return form;
@@ -53,6 +54,7 @@ function buildFormFromItem(item, fields = []) {
   form.name = item?.name || "";
   form.is_active = readItemIsActive(item);
   fields.forEach(field => {
+    if (field.fieldType === "section") return;
     const value = item?.fields?.[field.fieldKey] ?? item?.data?.[field.fieldKey];
     if (field.fieldType === "boolean") {
       form[field.fieldKey] = Boolean(value);
@@ -95,7 +97,12 @@ export default function CustomEquipmentModal({
   const fields = useMemo(() => mergeCustomEquipmentFamilyFields(family?.fields || []), [family?.fields]);
   const sharedFieldKeys = useMemo(() => new Set(getSharedEquipmentFieldDefs().map(field => field.key)), []);
   const commonFields = useMemo(() => fields.filter(field => sharedFieldKeys.has(field.fieldKey) && !STATUS_FIELD_KEYS.has(field.fieldKey)), [fields, sharedFieldKeys]);
-  const detailFields = useMemo(() => fields.filter(field => !sharedFieldKeys.has(field.fieldKey) && !STATUS_FIELD_KEYS.has(field.fieldKey)), [fields, sharedFieldKeys]);
+  const detailFields = useMemo(
+    () => fields.filter(field => !sharedFieldKeys.has(field.fieldKey) && !STATUS_FIELD_KEYS.has(field.fieldKey)),
+    [fields, sharedFieldKeys]
+  );
+  const detailInputFields = useMemo(() => detailFields.filter(field => !isEquipmentLayoutField(field)), [detailFields]);
+  const detailFieldGroups = useMemo(() => groupEquipmentFieldsBySection(detailFields), [detailFields]);
   const isAddMode = !item?.id;
   const siteOptions = useMemo(() => normalizeClientSites(client?.sites || []).map(site => site.name).filter(Boolean), [client?.sites]);
   useEffect(() => {
@@ -131,7 +138,7 @@ export default function CustomEquipmentModal({
       if (field.fieldType === "boolean") return true;
       return value != null && String(value).trim() !== "";
     });
-    const detailsDone = detailFields.every(field => {
+    const detailsDone = detailInputFields.every(field => {
       if (!field.required) return true;
       const value = form[field.fieldKey];
       if (field.fieldType === "boolean") return true;
@@ -142,7 +149,7 @@ export default function CustomEquipmentModal({
       common: commonDone,
       details: detailsDone
     };
-  }, [form, commonFields, detailFields]);
+  }, [form, commonFields, detailInputFields]);
   const handleSubmit = async () => {
     if (!clientId || !family?.familyKey) return;
     const name = String(form.name || "").trim();
@@ -152,6 +159,7 @@ export default function CustomEquipmentModal({
       return;
     }
     for (const field of fields) {
+      if (isEquipmentLayoutField(field)) continue;
       if (!field.required) continue;
       const value = form[field.fieldKey];
       if (field.fieldType === "boolean") continue;
@@ -163,6 +171,7 @@ export default function CustomEquipmentModal({
     }
     const payloadFields = {};
     fields.forEach(field => {
+      if (isEquipmentLayoutField(field)) return;
       if (STATUS_FIELD_KEYS.has(field.fieldKey)) return;
       const value = form[field.fieldKey];
       if (field.fieldType === "boolean") {
@@ -392,9 +401,16 @@ export default function CustomEquipmentModal({
                     Fields specific to the {familyLabel.toLowerCase()} family.
                   </p>
                 </div>
-                {detailFields.length === 0 ? <p className={styles.hint}>No specific fields configured for this family.</p> : <div className={styles.fieldGrid2}>
-                    {detailFields.map(field => renderFieldInput(field))}
-                  </div>}
+                {detailInputFields.length === 0 ? <p className={styles.hint}>No specific fields configured for this family.</p> : detailFieldGroups.map((group, groupIndex) => {
+                  const groupKey = group.section?.fieldKey || group.section?.clientId || `group-${groupIndex}`;
+                  const sectionLabel = String(group.section?.label || "").trim();
+                  return <div key={groupKey} className={styles.fieldGroupBlock}>
+                      {sectionLabel ? <h4 className={styles.fieldGroupTitle}>{sectionLabel}</h4> : null}
+                      <div className={styles.fieldGrid2}>
+                        {(group.fields || []).map(field => renderFieldInput(field))}
+                      </div>
+                    </div>;
+                })}
               </> : null}
           </div>
         </div>

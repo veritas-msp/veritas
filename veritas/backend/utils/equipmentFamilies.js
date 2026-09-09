@@ -1,6 +1,6 @@
 import { pool } from "../database/db.js";
 let tablesReady = false;
-const FIELD_TYPES = new Set(["text", "textarea", "date", "number", "boolean", "select"]);
+const FIELD_TYPES = new Set(["text", "textarea", "date", "number", "boolean", "select", "section"]);
 const DISPLAY_MODES = new Set(["hexagon", "brick"]);
 const TILE_SHAPES = new Set(["hexagon", "rounded", "circle", "pentagon", "octagon"]);
 function normalizeTileShape(value) {
@@ -60,7 +60,28 @@ async function applyEquipmentFieldOptionsMigration() {
       END IF;
       ALTER TABLE v_b_equipment_family_fields
         ADD CONSTRAINT v_b_equipment_family_fields_field_type_check
-          CHECK (field_type IN ('text', 'textarea', 'date', 'number', 'boolean', 'select'));
+          CHECK (field_type IN ('text', 'textarea', 'date', 'number', 'boolean', 'select', 'section'));
+    EXCEPTION
+      WHEN duplicate_object THEN NULL;
+    END $$;
+  `);
+  await pool.query(`
+    DO $$
+    BEGIN
+      IF EXISTS (
+        SELECT 1
+        FROM pg_constraint
+        WHERE conname = 'v_b_equipment_family_extension_fields_field_type_check'
+          AND conrelid = 'public.v_b_equipment_family_extension_fields'::regclass
+      ) THEN
+        ALTER TABLE v_b_equipment_family_extension_fields
+          DROP CONSTRAINT v_b_equipment_family_extension_fields_field_type_check;
+      END IF;
+      IF to_regclass('public.v_b_equipment_family_extension_fields') IS NOT NULL THEN
+        ALTER TABLE v_b_equipment_family_extension_fields
+          ADD CONSTRAINT v_b_equipment_family_extension_fields_field_type_check
+            CHECK (field_type IN ('text', 'textarea', 'date', 'number', 'boolean', 'select', 'section'));
+      END IF;
     EXCEPTION
       WHEN duplicate_object THEN NULL;
     END $$;
@@ -95,27 +116,29 @@ function normalizeFamilyFields(fields = []) {
     }
     used.add(fieldKey);
     const fieldType = FIELD_TYPES.has(field.fieldType || field.field_type) ? field.fieldType || field.field_type : "text";
+    const isSection = fieldType === "section";
     return {
       id: field.id == null || field.id === "" ? null : Number(field.id),
       fieldKey,
       label,
       fieldType,
-      required: Boolean(field.required),
-      options: normalizeFieldOptions(field.options, fieldType),
+      required: isSection ? false : Boolean(field.required),
+      options: isSection ? [] : normalizeFieldOptions(field.options, fieldType),
       displayOrder: Number.isFinite(Number(field.displayOrder ?? field.display_order)) ? Number(field.displayOrder ?? field.display_order) : (index + 1) * 10
     };
   }).filter(Boolean);
 }
 function mapFieldRow(row) {
   const fieldType = row.field_type;
+  const isSection = fieldType === "section";
   return {
     id: row.id,
     familyId: row.family_id,
     fieldKey: row.field_key,
     label: row.label,
     fieldType,
-    required: Boolean(row.required),
-    options: normalizeFieldOptions(parseStoredFieldOptions(row.options), fieldType),
+    required: isSection ? false : Boolean(row.required),
+    options: isSection ? [] : normalizeFieldOptions(parseStoredFieldOptions(row.options), fieldType),
     displayOrder: Number(row.display_order) || 0,
     createdAt: row.created_at
   };
@@ -294,6 +317,7 @@ async function replaceFamilyFields(client, familyId, fields = [], familyKey = nu
   const hasIds = normalized.some(field => Number.isInteger(field.id) && currentById.has(field.id));
   const keyMap = {};
   normalized.forEach((field, index) => {
+    if (field.fieldType === "section") return;
     const oldKey = hasIds && Number.isInteger(field.id) && currentById.has(field.id)
       ? currentById.get(field.id)
       : !hasIds
@@ -597,14 +621,15 @@ export function canonicalizeSystemFamilyKey(value) {
 
 function mapExtensionFieldRow(row) {
   const fieldType = row.field_type;
+  const isSection = fieldType === "section";
   return {
     id: row.id,
     familyKey: row.family_key,
     fieldKey: row.field_key,
     label: row.label,
     fieldType,
-    required: Boolean(row.required),
-    options: normalizeFieldOptions(parseStoredFieldOptions(row.options), fieldType),
+    required: isSection ? false : Boolean(row.required),
+    options: isSection ? [] : normalizeFieldOptions(parseStoredFieldOptions(row.options), fieldType),
     displayOrder: Number(row.display_order) || 0,
     createdAt: row.created_at
   };

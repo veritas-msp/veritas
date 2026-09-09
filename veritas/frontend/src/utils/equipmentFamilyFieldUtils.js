@@ -61,6 +61,50 @@ export function createEmptyEquipmentFieldDraft() {
   };
 }
 
+export function createEmptyEquipmentSectionDraft() {
+  return {
+    clientId: `section-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
+    fieldKey: "",
+    label: "",
+    fieldType: "section",
+    required: false,
+    options: [],
+    optionsText: ""
+  };
+}
+
+export function isEquipmentLayoutField(fieldOrType) {
+  const type = typeof fieldOrType === "string" ? fieldOrType : fieldOrType?.fieldType;
+  return String(type || "") === "section";
+}
+
+export function isEquipmentInputField(fieldOrType) {
+  return !isEquipmentLayoutField(fieldOrType);
+}
+
+/** Group ordered family fields by section markers (same pattern as sales forms). */
+export function groupEquipmentFieldsBySection(fields = []) {
+  const list = Array.isArray(fields) ? fields : [];
+  const groups = [];
+  let current = {
+    section: null,
+    fields: []
+  };
+  for (const field of list) {
+    if (isEquipmentLayoutField(field)) {
+      if (current.section || current.fields.length) groups.push(current);
+      current = {
+        section: field,
+        fields: []
+      };
+      continue;
+    }
+    current.fields.push(field);
+  }
+  if (current.section || current.fields.length) groups.push(current);
+  return groups;
+}
+
 export function reorderEquipmentFields(fields, activeId, overId) {
   if (!activeId || !overId || activeId === overId) return fields;
   const items = [...fields];

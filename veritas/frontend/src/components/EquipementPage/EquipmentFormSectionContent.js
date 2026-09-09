@@ -28,7 +28,7 @@ import VlanChipsInput from "./VlanChipsInput";
 import { getSharedEquipmentFieldLabel } from "./sharedEquipmentFields";
 import styles from "../EnterprisesPage/EnterpriseFormModal.module.css";
 import FormNumberStepper from "./FormNumberStepper";
-import { getEquipmentFieldSelectOptions } from "../../utils/equipmentFamilyFieldUtils";
+import { getEquipmentFieldSelectOptions, groupEquipmentFieldsBySection, isEquipmentLayoutField } from "../../utils/equipmentFamilyFieldUtils";
 const NETWORK_EDGE_API_TYPES = new Set(["Switch", "BorneWifi", "Alimentation", "TOIP"]);
 export default function EquipmentFormSectionContent({
   activeSection,
@@ -890,48 +890,57 @@ export default function EquipmentFormSectionContent({
     case "extra":
       return <>
           {sectionHead}
-          <div className={styles.fieldGrid2}>
-            {extensionFields.map(field => {
-              const id = `equipment-ext-${field.fieldKey}`;
-              const labelClass = field.required ? `${styles.label} ${styles.labelRequired}` : styles.label;
-              const value = formData[field.fieldKey];
-              if (field.fieldType === "textarea") {
-                return <div key={field.fieldKey} className={`${styles.field} ${styles.fieldFull}`}>
-                    <label className={labelClass} htmlFor={id}>{field.label}</label>
-                    <textarea id={id} className={styles.input} rows={4} value={value || ""} onChange={e => update(field.fieldKey, e.target.value)} />
-                  </div>;
-              }
-              if (field.fieldType === "boolean") {
-                return <div key={field.fieldKey} className={styles.field}>
-                    <label className={styles.label} htmlFor={id}>{field.label}</label>
-                    <label className={styles.label} style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-                      <input id={id} type="checkbox" checked={Boolean(value)} onChange={e => update(field.fieldKey, e.target.checked)} />
-                      {extraCopy.yes}
-                    </label>
-                  </div>;
-              }
-              if (field.fieldType === "number") {
-                return <div key={field.fieldKey} className={styles.field}>
-                    <label className={labelClass} htmlFor={id}>{field.label}</label>
-                    <FormNumberStepper id={id} value={value ?? ""} onChange={next => update(field.fieldKey, next)} />
-                  </div>;
-              }
-              if (field.fieldType === "select") {
-                const options = getEquipmentFieldSelectOptions(field);
-                return <div key={field.fieldKey} className={styles.field}>
-                    <label className={labelClass} htmlFor={id}>{field.label}</label>
-                    <select id={id} className={styles.input} value={value ?? ""} onChange={e => update(field.fieldKey, e.target.value)}>
-                      <option value="">-</option>
-                      {options.map(option => <option key={option} value={option}>{option}</option>)}
-                    </select>
-                  </div>;
-              }
-              return <div key={field.fieldKey} className={styles.field}>
-                  <label className={labelClass} htmlFor={id}>{field.label}</label>
-                  <input id={id} type={field.fieldType === "date" ? "date" : "text"} className={styles.input} value={value ?? ""} onChange={e => update(field.fieldKey, e.target.value)} />
-                </div>;
-            })}
-          </div>
+          {extensionFields.length === 0 ? null : groupEquipmentFieldsBySection(extensionFields).map((group, groupIndex) => {
+            const groupKey = group.section?.fieldKey || group.section?.id || `ext-group-${groupIndex}`;
+            const sectionLabel = String(group.section?.label || "").trim();
+            const inputFields = (group.fields || []).filter(field => !isEquipmentLayoutField(field));
+            if (!inputFields.length && !sectionLabel) return null;
+            return <div key={groupKey} className={styles.fieldGroupBlock}>
+                {sectionLabel ? <h4 className={styles.fieldGroupTitle}>{sectionLabel}</h4> : null}
+                <div className={styles.fieldGrid2}>
+                  {inputFields.map(field => {
+                    const id = `equipment-ext-${field.fieldKey}`;
+                    const labelClass = field.required ? `${styles.label} ${styles.labelRequired}` : styles.label;
+                    const value = formData[field.fieldKey];
+                    if (field.fieldType === "textarea") {
+                      return <div key={field.fieldKey} className={`${styles.field} ${styles.fieldFull}`}>
+                          <label className={labelClass} htmlFor={id}>{field.label}</label>
+                          <textarea id={id} className={styles.input} rows={4} value={value || ""} onChange={e => update(field.fieldKey, e.target.value)} />
+                        </div>;
+                    }
+                    if (field.fieldType === "boolean") {
+                      return <div key={field.fieldKey} className={styles.field}>
+                          <label className={styles.label} htmlFor={id}>{field.label}</label>
+                          <label className={styles.label} style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                            <input id={id} type="checkbox" checked={Boolean(value)} onChange={e => update(field.fieldKey, e.target.checked)} />
+                            {extraCopy.yes}
+                          </label>
+                        </div>;
+                    }
+                    if (field.fieldType === "number") {
+                      return <div key={field.fieldKey} className={styles.field}>
+                          <label className={labelClass} htmlFor={id}>{field.label}</label>
+                          <FormNumberStepper id={id} value={value ?? ""} onChange={next => update(field.fieldKey, next)} />
+                        </div>;
+                    }
+                    if (field.fieldType === "select") {
+                      const options = getEquipmentFieldSelectOptions(field);
+                      return <div key={field.fieldKey} className={styles.field}>
+                          <label className={labelClass} htmlFor={id}>{field.label}</label>
+                          <select id={id} className={styles.input} value={value ?? ""} onChange={e => update(field.fieldKey, e.target.value)}>
+                            <option value="">-</option>
+                            {options.map(option => <option key={option} value={option}>{option}</option>)}
+                          </select>
+                        </div>;
+                    }
+                    return <div key={field.fieldKey} className={styles.field}>
+                        <label className={labelClass} htmlFor={id}>{field.label}</label>
+                        <input id={id} type={field.fieldType === "date" ? "date" : "text"} className={styles.input} value={value ?? ""} onChange={e => update(field.fieldKey, e.target.value)} />
+                      </div>;
+                  })}
+                </div>
+              </div>;
+          })}
         </>;
     default:
       return null;

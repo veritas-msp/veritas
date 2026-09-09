@@ -13,6 +13,7 @@ import { normalizeStorageRoles } from "./constants/storageRoleOptions";
 import { getSharedEquipmentFieldLabel } from "./sharedEquipmentFields";
 import { parseCustomFamilyType } from "../../api/equipmentFamilies";
 import { buildExtensionFormValues, formatExtensionFieldValue, readExtensionFieldValue } from "../../utils/systemFamilyExtensions";
+import { groupEquipmentFieldsBySection, isEquipmentLayoutField } from "../../utils/equipmentFamilyFieldUtils";
 const EMPTY = "-";
 function resolveModuleKey(equipment) {
   if (!equipment) return "Servers";
@@ -324,6 +325,7 @@ function customFamilyCoversUnifiedKey(customFamily, unifiedKey) {
   if (!fields.length) return false;
   const unifiedId = customFieldIdentity(unifiedKey);
   return fields.some(field => {
+    if (String(field?.fieldType || "") === "section") return false;
     const key = String(field?.fieldKey || "").trim();
     if (!key) return false;
     if (key === unifiedKey) return true;
@@ -763,41 +765,54 @@ export function buildEquipmentDetailSections(equipment, formData, locale, option
     };
   });
   if (moduleKey === "Custom") {
-    const specificFieldKeys = customFieldDefs
-      .map(field => String(field?.fieldKey || "").trim())
-      .filter(Boolean)
-      .filter(fieldKey => !CUSTOM_SPECIFIC_EXCLUDED_KEYS.has(fieldKey));
-    sections.push({
-      id: "customSpecific",
-      label: "Champs specifiques",
-      icon: customFamily?.icon || "mdi:shape-outline",
-      description: "Champs propres a cette famille",
-      fields: buildSectionFields("customSpecific", displayData, equipment, specificFieldKeys, locale)
+    const orderedDefs = customFieldDefs.filter(field => !CUSTOM_SPECIFIC_EXCLUDED_KEYS.has(String(field?.fieldKey || "").trim()));
+    const groups = groupEquipmentFieldsBySection(orderedDefs);
+    const fallbackLabel = locale === "fr" ? "Champs spécifiques" : "Specific fields";
+    const fallbackDescription = locale === "fr" ? "Champs propres à cette famille" : "Fields specific to this family";
+    groups.forEach((group, groupIndex) => {
+      const specificFieldKeys = (group.fields || [])
+        .map(field => String(field?.fieldKey || "").trim())
+        .filter(Boolean)
+        .filter(fieldKey => !CUSTOM_SPECIFIC_EXCLUDED_KEYS.has(fieldKey));
+      if (!specificFieldKeys.length) return;
+      const sectionLabel = String(group.section?.label || "").trim() || (groups.length === 1 ? fallbackLabel : `${fallbackLabel} ${groupIndex + 1}`);
+      sections.push({
+        id: `customSpecific-${group.section?.fieldKey || groupIndex}`,
+        label: sectionLabel,
+        icon: group.section ? "mdi:folder-outline" : customFamily?.icon || "mdi:shape-outline",
+        description: group.section ? "" : fallbackDescription,
+        fields: buildSectionFields("customSpecific", displayData, equipment, specificFieldKeys, locale)
+      });
     });
   }
   const extensionFields = options.extensionFields || equipment?.systemExtensionFields || [];
   if (moduleKey !== "Custom" && extensionFields.length) {
     const labels = locale === "fr" ? { yes: "Oui", no: "Non" } : { yes: "Yes", no: "No" };
-    const extraFields = extensionFields.map(field => {
-      const raw = displayData?.[field.fieldKey] ?? readExtensionFieldValue(equipment, field.fieldKey);
-      const value = formatExtensionFieldValue(field, raw, labels);
-      return {
-        key: field.fieldKey,
-        label: field.label || field.fieldKey,
-        value: value || EMPTY,
-        mono: false,
-        source: "manual"
-      };
-    });
-    if (extraFields.length) {
+    const fallbackLabel = locale === "fr" ? "Champs perso" : "Custom fields";
+    const fallbackDescription = locale === "fr" ? "Champs ajoutés à cette famille" : "Fields added to this family";
+    const groups = groupEquipmentFieldsBySection(extensionFields);
+    groups.forEach((group, groupIndex) => {
+      const extraFields = (group.fields || []).map(field => {
+        if (isEquipmentLayoutField(field)) return null;
+        const raw = displayData?.[field.fieldKey] ?? readExtensionFieldValue(equipment, field.fieldKey);
+        const value = formatExtensionFieldValue(field, raw, labels);
+        return {
+          key: field.fieldKey,
+          label: field.label || field.fieldKey,
+          value: value || EMPTY,
+          mono: false,
+          source: "manual"
+        };
+      }).filter(Boolean);
+      if (!extraFields.length) return;
       sections.push({
-        id: "systemExtra",
-        label: locale === "fr" ? "Champs perso" : "Custom fields",
-        icon: "mdi:form-textbox",
-        description: locale === "fr" ? "Champs ajoutés à cette famille" : "Fields added to this family",
+        id: `systemExtra-${group.section?.fieldKey || groupIndex}`,
+        label: String(group.section?.label || "").trim() || (groups.length === 1 ? fallbackLabel : `${fallbackLabel} ${groupIndex + 1}`),
+        icon: group.section ? "mdi:folder-outline" : "mdi:form-textbox",
+        description: group.section ? "" : fallbackDescription,
         fields: extraFields
       });
-    }
+    });
   }
   return sections.filter(section => section.fields.length > 0);
 }

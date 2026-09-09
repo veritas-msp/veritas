@@ -188,6 +188,28 @@
   background: var(--msp-surface-2, #f8fafc);
 }
 
+.sectionBlock {
+  margin-top: 0.2rem;
+  border-style: dashed;
+  border-color: color-mix(in srgb, var(--msp-accent, #2b5fab) 40%, var(--msp-border, #e2e8f0));
+  background: color-mix(in srgb, var(--msp-accent, #2b5fab) 7%, var(--msp-surface-2, #f8fafc));
+}
+
+.sectionBadge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 2rem;
+  padding: 0 0.45rem;
+  border-radius: 999px;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: var(--msp-accent, #2b5fab);
+  background: color-mix(in srgb, var(--msp-accent, #2b5fab) 14%, transparent);
+  white-space: nowrap;
+}
+
 .fieldBlockDragging {
   opacity: 0.82;
   box-shadow: 0 8px 24px rgba(10, 22, 40, 0.12);
@@ -357,6 +379,24 @@
   color: var(--msp-accent, #2b5fab);
   font-size: 0.78rem;
   font-weight: 600;
+}
+
+.addFieldActions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.55rem;
+  margin-top: 0.55rem;
+}
+
+.addFieldActions .addFieldBtn {
+  margin-top: 0;
+  width: auto;
+}
+
+.addSectionBtn {
+  color: var(--msp-text, #0f1c2e);
+  border-color: rgba(43, 95, 171, 0.28);
+  background: rgba(15, 28, 46, 0.03);
 }
 
 .addFieldBtn:hover {

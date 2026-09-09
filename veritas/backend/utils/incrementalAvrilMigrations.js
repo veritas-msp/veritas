@@ -161,6 +161,17 @@ export async function buildIncrementalAvrilMigrationPlan(client = pool) {
   if (!(await tableExists(client, "v_b_equipment_family_definitions"))) {
     plan.push("20260629_equipment_family_definitions.sql");
   }
+  if (await tableExists(client, "v_b_equipment_family_fields")) {
+    const {
+      rows: fieldTypeConstraint
+    } = await client.query(`SELECT pg_get_constraintdef(oid) AS def
+         FROM pg_constraint
+        WHERE conname = 'v_b_equipment_family_fields_field_type_check'
+        LIMIT 1`);
+    if (!fieldTypeConstraint[0] || !String(fieldTypeConstraint[0].def || "").includes("'section'")) {
+      plan.push("20260909_equipment_family_field_section.sql");
+    }
+  }
   if (!(await tableExists(client, "v_b_equipment_monitoring_alerts"))) {
     plan.push("20260630_equipment_monitoring_alerts.sql");
   } else if (!(await indexExists(client, "v_b_equipment_monitoring_alerts", "v_b_equipment_monitoring_alerts_client_id_equipment_id_equipment_family_uniq")) && !(await indexExists(client, "v_b_equipment_monitoring_alerts", "uq_equipment_monitoring_alerts_item"))) {
