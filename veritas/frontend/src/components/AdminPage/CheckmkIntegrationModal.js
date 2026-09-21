@@ -220,28 +220,59 @@ export default function CheckmkIntegrationModal({
       <p className={formStyles.sectionDesc}>{copy.testUsesFormHint}</p>
     </>;
 
+  const bumpInterval = delta => {
+    onSyncIntervalChange?.(String(parseSyncIntervalMinutes(intervalValue + delta)));
+  };
+
   const renderMonitoring = () => <>
-      <div className={formStyles.sectionHead}>
-        <h3 className={formStyles.sectionTitle}>{copy.monitoringTitle}</h3>
-        <p className={formStyles.sectionDesc}>{copy.monitoringDesc}</p>
+      <div className={`${formStyles.sectionHead} ${checkmkStyles.sectionHead}`}>
+        <h3 className={checkmkStyles.sectionTitle}>{copy.monitoringTitle}</h3>
+        <p className={checkmkStyles.sectionSubtitle}>{copy.monitoringDesc}</p>
       </div>
 
-      <div className={formStyles.fieldStack}>
-        <div className={formStyles.field}>
+      <div className={`${formStyles.fieldStack} ${checkmkStyles.monitoringStack}`}>
+        <div className={`${formStyles.field} ${checkmkStyles.intervalField}`}>
           <label className={formStyles.label} htmlFor="checkmk-sync-interval">{copy.syncInterval}</label>
           <div className={checkmkStyles.intervalRow}>
-            <input
-              id="checkmk-sync-interval"
-              type="number"
-              min={5}
-              max={10080}
-              step={1}
-              className={formStyles.input}
-              value={intervalValue}
-              onChange={e => onSyncIntervalChange?.(String(parseSyncIntervalMinutes(e.target.value)))}
-              disabled={saving || testing}
-            />
-            <span className={checkmkStyles.intervalUnit}>{copy.syncIntervalUnit}</span>
+            <div className={checkmkStyles.intervalStepper} role="group" aria-label={copy.syncInterval}>
+              <div className={checkmkStyles.intervalCenter}>
+                <input
+                  id="checkmk-sync-interval"
+                  type="text"
+                  inputMode="numeric"
+                  pattern="[0-9]*"
+                  className={checkmkStyles.intervalInput}
+                  value={intervalValue}
+                  onChange={e => {
+                    const raw = e.target.value.replace(/\D/g, "");
+                    if (raw === "") return;
+                    onSyncIntervalChange?.(String(parseSyncIntervalMinutes(raw)));
+                  }}
+                  disabled={saving || testing}
+                />
+                <span className={checkmkStyles.intervalUnit}>{copy.syncIntervalUnit}</span>
+              </div>
+              <div className={checkmkStyles.intervalBtns}>
+                <button
+                  type="button"
+                  className={checkmkStyles.intervalBtn}
+                  onClick={() => bumpInterval(1)}
+                  disabled={saving || testing || intervalValue >= 10080}
+                  aria-label="+"
+                >
+                  <Icon icon="mdi:chevron-up" aria-hidden />
+                </button>
+                <button
+                  type="button"
+                  className={checkmkStyles.intervalBtn}
+                  onClick={() => bumpInterval(-1)}
+                  disabled={saving || testing || intervalValue <= 5}
+                  aria-label="-"
+                >
+                  <Icon icon="mdi:chevron-down" aria-hidden />
+                </button>
+              </div>
+            </div>
           </div>
           <div className={checkmkStyles.presetRow} role="group" aria-label={copy.syncInterval}>
             {intervalPresets.map(preset => <button
@@ -254,13 +285,12 @@ export default function CheckmkIntegrationModal({
               {preset.label}
             </button>)}
           </div>
-          <p className={formStyles.sectionDesc}>{copy.syncIntervalHint}</p>
         </div>
 
-        <div className={styles.statusRow}>
-          <div>
-            <span className={styles.statusLabel}>{copy.syncSuspended}</span>
-            <p className={formStyles.sectionDesc}>{copy.syncSuspendedHint}</p>
+        <div className={checkmkStyles.toggleRow}>
+          <div className={checkmkStyles.toggleCopy}>
+            <span className={checkmkStyles.toggleTitle}>{copy.syncSuspended}</span>
+            <p className={checkmkStyles.toggleHint}>{copy.syncSuspendedHint}</p>
           </div>
           <label className={formStyles.switchWrap}>
             <input type="checkbox" className={formStyles.switchInput} checked={isSettingTrue(syncSuspended) || syncSuspended === true} onChange={e => onSyncSuspendedChange?.(e.target.checked)} disabled={saving || testing} />
@@ -270,10 +300,10 @@ export default function CheckmkIntegrationModal({
           </label>
         </div>
 
-        <div className={styles.statusRow}>
-          <div>
-            <span className={styles.statusLabel}>{copy.surveillanceSuspended}</span>
-            <p className={formStyles.sectionDesc}>{copy.surveillanceSuspendedHint}</p>
+        <div className={checkmkStyles.toggleRow}>
+          <div className={checkmkStyles.toggleCopy}>
+            <span className={checkmkStyles.toggleTitle}>{copy.surveillanceSuspended}</span>
+            <p className={checkmkStyles.toggleHint}>{copy.surveillanceSuspendedHint}</p>
           </div>
           <label className={formStyles.switchWrap}>
             <input type="checkbox" className={formStyles.switchInput} checked={isSettingTrue(surveillanceSuspended) || surveillanceSuspended === true} onChange={e => onSurveillanceSuspendedChange?.(e.target.checked)} disabled={saving || testing} />

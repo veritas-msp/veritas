@@ -1339,10 +1339,9 @@ const CHECKMK = {
     password: "Mot de passe",
     site: "Site par défaut (optionnel)",
     sitePlaceholder: "ex. cmk",
-    monitoringTitle: "Surveillance & synchronisation",
-    monitoringDesc: "Définissez la fréquence de rafraîchissement CheckMK pour le centre de supervision, et suspendez la sync ou les alertes si besoin.",
+    monitoringTitle: "Surveillance et synchronisation",
+    monitoringDesc: "Fréquence de rafraîchissement Checkmk pour le centre de supervision, et suspensions éventuelles.",
     syncInterval: "Intervalle de rafraîchissement",
-    syncIntervalHint: "Minimum 5 minutes. Utilisé pour la sync auto, le poller et le seuil « pas de données » (2× cet intervalle).",
     syncIntervalUnit: "minutes",
     syncIntervalPresets: [
       { value: 5, label: "5 min" },
@@ -1400,7 +1399,6 @@ const CHECKMK = {
     monitoringTitle: "Monitoring & sync",
     monitoringDesc: "Set how often CheckMK refreshes for the supervision center, and pause sync or alerts when needed.",
     syncInterval: "Refresh interval",
-    syncIntervalHint: "Minimum 5 minutes. Used for auto sync, the poller, and the “no data” threshold (2× this interval).",
     syncIntervalUnit: "minutes",
     syncIntervalPresets: [
       { value: 5, label: "5 min" },
@@ -1458,7 +1456,6 @@ const CHECKMK = {
     monitoringTitle: "Überwachung & Sync",
     monitoringDesc: "Legen Sie fest, wie oft CheckMK für die Supervision aktualisiert wird, und pausieren Sie Sync oder Alarme bei Bedarf.",
     syncInterval: "Aktualisierungsintervall",
-    syncIntervalHint: "Minimum 5 Minuten. Für Auto-Sync, Poller und « keine Daten »-Schwelle (2× dieses Intervall).",
     syncIntervalUnit: "Minuten",
     syncIntervalPresets: [
       { value: 5, label: "5 Min" },
@@ -1516,7 +1513,6 @@ const CHECKMK = {
     monitoringTitle: "Monitoraggio e sync",
     monitoringDesc: "Impostate la frequenza di aggiornamento CheckMK e sospendete sync o alert se necessario.",
     syncInterval: "Intervallo di aggiornamento",
-    syncIntervalHint: "Minimo 5 minuti. Usato per sync auto, poller e soglia « no data » (2× questo intervallo).",
     syncIntervalUnit: "minuti",
     syncIntervalPresets: [
       { value: 5, label: "5 min" },
@@ -1574,7 +1570,6 @@ const CHECKMK = {
     monitoringTitle: "Supervisión y sincronización",
     monitoringDesc: "Defina la frecuencia de actualización CheckMK y suspenda la sync o las alertas si es necesario.",
     syncInterval: "Intervalo de actualización",
-    syncIntervalHint: "Mínimo 5 minutos. Se usa para sync auto, el poller y el umbral « sin datos » (2× este intervalo).",
     syncIntervalUnit: "minutos",
     syncIntervalPresets: [
       { value: 5, label: "5 min" },

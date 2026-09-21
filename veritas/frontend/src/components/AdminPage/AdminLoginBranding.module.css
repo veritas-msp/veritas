@@ -427,6 +427,99 @@
   font-weight: 600;
 }
 
+.previewLeftCanvas,
+.previewRightCanvas {
+  position: relative;
+  min-height: 260px;
+}
+
+.previewLeftCanvas {
+  overflow: hidden;
+}
+
+.previewRightCanvas {
+  display: block;
+  padding: 0;
+  min-height: 260px;
+}
+
+.previewCanvasHint {
+  font-weight: 500;
+  text-transform: none;
+  letter-spacing: 0;
+  color: var(--msp-muted, #7a8a9c);
+}
+
+.canvasDraggable {
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+  outline: 1px dashed transparent;
+  transition: outline-color 0.15s ease;
+}
+
+.canvasDraggable:hover,
+.canvasDraggable:focus-visible {
+  outline-color: rgba(255, 255, 255, 0.45);
+}
+
+.previewRightCanvas .canvasDraggable:hover,
+.previewRightCanvas .canvasDraggable:focus-visible {
+  outline-color: rgba(43, 95, 171, 0.45);
+}
+
+.canvasDraggable:active {
+  cursor: grabbing;
+  z-index: 5;
+}
+
+.canvasHint {
+  margin: 0 0 12px;
+  font-size: 0.84rem;
+  color: var(--msp-muted, #5b6d82);
+  line-height: 1.45;
+}
+
+.canvasGrid {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.canvasRow {
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) 1fr 1fr;
+  gap: 10px;
+  align-items: center;
+  padding: 8px 10px;
+  border: 1px solid var(--msp-border, #dde3ed);
+  border-radius: 8px;
+  background: var(--msp-surface-2, #f7f9fc);
+}
+
+.canvasRowLabel {
+  font-size: 0.84rem;
+  font-weight: 600;
+  color: var(--msp-text, #1a2b3c);
+}
+
+.canvasAxis {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--msp-muted, #5b6d82);
+}
+
+.canvasAxis span {
+  width: 12px;
+}
+
+.canvasActions {
+  margin-top: 12px;
+}
+
 @media (max-width: 1100px) {
   .workspace {
     grid-template-columns: 1fr;

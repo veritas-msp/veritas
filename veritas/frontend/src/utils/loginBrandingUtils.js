@@ -16,6 +16,7 @@ export const LOGIN_TYPO_OPTIONS = {
   contentValign: ["top", "center", "bottom"],
   logoAlign: ["left", "center"],
   htmlPosition: ["after_sub", "after_features", "bottom", "before_headline"],
+  layoutMode: ["flow", "canvas"],
   fontFamily: ["default", "geometric", "humanist", "slab", "mono"],
   headlineSize: ["sm", "md", "lg", "xl"],
   headlineWeight: ["400", "500", "600", "700", "800"],
@@ -27,11 +28,23 @@ export const LOGIN_TYPO_OPTIONS = {
   brandNameSize: ["sm", "md", "lg"]
 };
 
+export const LOGIN_CANVAS_ELEMENTS = ["brand", "headline", "sub", "features", "html", "formCard"];
+
+export const DEFAULT_CANVAS_POSITIONS = {
+  brand: { x: 8, y: 6 },
+  headline: { x: 8, y: 16 },
+  sub: { x: 8, y: 28 },
+  features: { x: 8, y: 48 },
+  html: { x: 8, y: 68 },
+  formCard: { x: 18, y: 16 }
+};
+
 export const LOGIN_TYPO_DEFAULTS = {
   contentAlign: "left",
   contentValign: "top",
   logoAlign: "left",
   htmlPosition: "after_features",
+  layoutMode: "flow",
   fontFamily: "default",
   headlineSize: "md",
   headlineWeight: "700",
@@ -87,6 +100,45 @@ function pickEnum(value, allowed, fallback) {
   const raw = String(value ?? "").trim().toLowerCase();
   return allowed.includes(raw) ? raw : fallback;
 }
+
+function clampCanvasPos(value, fallback) {
+  const n = Number(value);
+  if (!Number.isFinite(n)) return fallback;
+  return Math.min(95, Math.max(0, Math.round(n * 10) / 10));
+}
+
+export function normalizeCanvasPositions(raw) {
+  let parsed = raw;
+  if (typeof raw === "string" && raw.trim()) {
+    try {
+      parsed = JSON.parse(raw);
+    } catch {
+      parsed = null;
+    }
+  }
+  const out = {};
+  for (const key of LOGIN_CANVAS_ELEMENTS) {
+    const fallback = DEFAULT_CANVAS_POSITIONS[key];
+    const item = parsed && typeof parsed === "object" ? parsed[key] : null;
+    out[key] = {
+      x: clampCanvasPos(item?.x, fallback.x),
+      y: clampCanvasPos(item?.y, fallback.y)
+    };
+  }
+  return out;
+}
+
+/** Absolute position style from % coords (responsive, pixel-precise in editor). */
+export function canvasElementStyle(pos) {
+  if (!pos) return undefined;
+  return {
+    position: "absolute",
+    left: `${pos.x}%`,
+    top: `${pos.y}%`,
+    margin: 0,
+    maxWidth: `min(92%, calc(100% - ${pos.x}% - 3%))`
+  };
+}
 export function resolveLoginAssetUrl(relativePath) {
   const raw = String(relativePath || "").trim();
   if (!raw) return null;
@@ -128,6 +180,8 @@ export function flatToSideForm(settings = {}, side) {
     contentValign: pickEnum(settings[`${prefix}content_valign`], LOGIN_TYPO_OPTIONS.contentValign, LOGIN_TYPO_DEFAULTS.contentValign),
     logoAlign: pickEnum(settings[`${prefix}logo_align`], LOGIN_TYPO_OPTIONS.logoAlign, LOGIN_TYPO_DEFAULTS.logoAlign),
     htmlPosition: pickEnum(settings[`${prefix}html_position`], LOGIN_TYPO_OPTIONS.htmlPosition, LOGIN_TYPO_DEFAULTS.htmlPosition),
+    layoutMode: pickEnum(settings[`${prefix}layout_mode`], LOGIN_TYPO_OPTIONS.layoutMode, LOGIN_TYPO_DEFAULTS.layoutMode),
+    canvasPositions: normalizeCanvasPositions(settings[`${prefix}canvas_positions`]),
     fontFamily: pickEnum(settings[`${prefix}font_family`], LOGIN_TYPO_OPTIONS.fontFamily, LOGIN_TYPO_DEFAULTS.fontFamily),
     headlineSize: pickEnum(settings[`${prefix}headline_size`], LOGIN_TYPO_OPTIONS.headlineSize, LOGIN_TYPO_DEFAULTS.headlineSize),
     headlineWeight: pickEnum(settings[`${prefix}headline_weight`], LOGIN_TYPO_OPTIONS.headlineWeight, LOGIN_TYPO_DEFAULTS.headlineWeight),
@@ -165,6 +219,8 @@ export function sideFormToFlat(side, form = {}) {
     [`${prefix}content_valign`]: pickEnum(form.contentValign, LOGIN_TYPO_OPTIONS.contentValign, LOGIN_TYPO_DEFAULTS.contentValign),
     [`${prefix}logo_align`]: pickEnum(form.logoAlign, LOGIN_TYPO_OPTIONS.logoAlign, LOGIN_TYPO_DEFAULTS.logoAlign),
     [`${prefix}html_position`]: pickEnum(form.htmlPosition, LOGIN_TYPO_OPTIONS.htmlPosition, LOGIN_TYPO_DEFAULTS.htmlPosition),
+    [`${prefix}layout_mode`]: pickEnum(form.layoutMode, LOGIN_TYPO_OPTIONS.layoutMode, LOGIN_TYPO_DEFAULTS.layoutMode),
+    [`${prefix}canvas_positions`]: JSON.stringify(normalizeCanvasPositions(form.canvasPositions)),
     [`${prefix}font_family`]: pickEnum(form.fontFamily, LOGIN_TYPO_OPTIONS.fontFamily, LOGIN_TYPO_DEFAULTS.fontFamily),
     [`${prefix}headline_size`]: pickEnum(form.headlineSize, LOGIN_TYPO_OPTIONS.headlineSize, LOGIN_TYPO_DEFAULTS.headlineSize),
     [`${prefix}headline_weight`]: pickEnum(form.headlineWeight, LOGIN_TYPO_OPTIONS.headlineWeight, LOGIN_TYPO_DEFAULTS.headlineWeight),
@@ -195,6 +251,7 @@ export function mergeBrandingWithAuthCopy(brandingSide, authPanel, side) {
       htmlBlock: "",
       formHtml: "",
       layout: { ...LOGIN_TYPO_DEFAULTS },
+      canvasPositions: { ...DEFAULT_CANVAS_POSITIONS },
       colors: DEFAULT_SIDE_COLORS[side],
       custom: false
     };
@@ -219,6 +276,7 @@ export function mergeBrandingWithAuthCopy(brandingSide, authPanel, side) {
       contentValign: pickEnum(brandingSide.contentValign, LOGIN_TYPO_OPTIONS.contentValign, LOGIN_TYPO_DEFAULTS.contentValign),
       logoAlign: pickEnum(brandingSide.logoAlign, LOGIN_TYPO_OPTIONS.logoAlign, LOGIN_TYPO_DEFAULTS.logoAlign),
       htmlPosition: pickEnum(brandingSide.htmlPosition, LOGIN_TYPO_OPTIONS.htmlPosition, LOGIN_TYPO_DEFAULTS.htmlPosition),
+      layoutMode: pickEnum(brandingSide.layoutMode, LOGIN_TYPO_OPTIONS.layoutMode, LOGIN_TYPO_DEFAULTS.layoutMode),
       fontFamily: pickEnum(brandingSide.fontFamily, LOGIN_TYPO_OPTIONS.fontFamily, LOGIN_TYPO_DEFAULTS.fontFamily),
       headlineSize: pickEnum(brandingSide.headlineSize, LOGIN_TYPO_OPTIONS.headlineSize, LOGIN_TYPO_DEFAULTS.headlineSize),
       headlineWeight: pickEnum(brandingSide.headlineWeight, LOGIN_TYPO_OPTIONS.headlineWeight, LOGIN_TYPO_DEFAULTS.headlineWeight),
@@ -229,6 +287,7 @@ export function mergeBrandingWithAuthCopy(brandingSide, authPanel, side) {
       featuresSize: pickEnum(brandingSide.featuresSize, LOGIN_TYPO_OPTIONS.featuresSize, LOGIN_TYPO_DEFAULTS.featuresSize),
       brandNameSize: pickEnum(brandingSide.brandNameSize, LOGIN_TYPO_OPTIONS.brandNameSize, LOGIN_TYPO_DEFAULTS.brandNameSize)
     },
+    canvasPositions: normalizeCanvasPositions(brandingSide.canvasPositions),
     colors: {
       bgColorStart: brandingSide.bgColorStart || defaults.bgColorStart,
       bgColorEnd: brandingSide.bgColorEnd || defaults.bgColorEnd,

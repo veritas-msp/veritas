@@ -5,6 +5,14 @@
  */
 export const PATCH_NOTES = [
   {
+    version: "1.0.33",
+    date: "2026-09-21",
+    highlights: [
+      "Admin → Page de connexion : mode Canvas pour placer titre, sous-titre, points forts, HTML et formulaire au pixel près (agent & client), avec glisser-déposer dans l’aperçu.",
+      "Admin → Intégrations → Checkmk : section Surveillance soignée (titre en capitales, sous-titre, stepper d’intervalle), texte « minimum 5 minutes » retiré."
+    ]
+  },
+  {
     version: "1.0.32",
     date: "2026-09-21",
     highlights: [

@@ -14,7 +14,7 @@ import { interpolate } from "../../i18n/translate";
 import { getAuthCopy } from "./authI18n";
 import API_BASE_URL from "../../config";
 import { fetchLoginBranding } from "../../api/loginBranding";
-import { buildLoginBrandingStyleVars, buildLoginRightPanelStyle, buildLoginAsideClassNames, mergeBrandingWithAuthCopy } from "../../utils/loginBrandingUtils";
+import { buildLoginBrandingStyleVars, buildLoginRightPanelStyle, buildLoginAsideClassNames, mergeBrandingWithAuthCopy, canvasElementStyle, normalizeCanvasPositions } from "../../utils/loginBrandingUtils";
 import { sanitizeLoginBrandingHtml } from "../../utils/sanitizeHtml";
 import AppVersion from "../Misc/AppVersion";
 import EditionBadge from "../Misc/EditionBadge";
@@ -84,12 +84,17 @@ export default function AuthPage() {
     return sanitizeLoginBrandingHtml(activeBranding.formHtml);
   }, [activeBranding.custom, activeBranding.formHtml, isForgotView]);
   const htmlPosition = activeBranding.layout?.htmlPosition || "after_features";
+  const isCanvasLayout = Boolean(activeBranding.custom && !isForgotView && activeBranding.layout?.layoutMode === "canvas");
+  const canvasPos = useMemo(
+    () => normalizeCanvasPositions(activeBranding.canvasPositions),
+    [activeBranding.canvasPositions]
+  );
   const renderLeftHtml = position => {
-    if (!leftHtml || htmlPosition !== position) return null;
+    if (!leftHtml || isCanvasLayout || htmlPosition !== position) return null;
     return <div className={styles.loginHtmlBlock} dangerouslySetInnerHTML={{ __html: leftHtml }} />;
   };
   const leftLayoutClass = activeBranding.custom && !isForgotView
-    ? buildLoginAsideClassNames(styles, activeBranding)
+    ? [buildLoginAsideClassNames(styles, activeBranding), isCanvasLayout ? styles.leftCanvas : ""].filter(Boolean).join(" ")
     : "";
   const runSystemChecks = useCallback(async ({
     showRetrying = false
@@ -324,27 +329,46 @@ export default function AuthPage() {
 
       {}
       <aside className={`${styles.left} ${!activeBranding.custom && !isForgotView && accountType === "client" ? styles.leftClient : ""} ${activeBranding.custom && !isForgotView ? styles.leftBranded : ""} ${leftLayoutClass}`.trim()} style={brandingStyleVars || undefined}>
-        {renderLeftHtml("before_headline")}
-        <div className={styles.leftTop}>
-          <div className={styles.brand}>
-            {activeBranding.logoUrl ? <img src={activeBranding.logoUrl} alt="" className={`${styles.brandLogo}${activeBranding.logoTransparent ? ` ${styles.brandLogoFramed}` : ""}`} style={activeBranding.logoTransparent ? {
+        {isCanvasLayout ? <>
+            <div className={styles.brand} style={canvasElementStyle(canvasPos.brand)}>
+              {activeBranding.logoUrl ? <img src={activeBranding.logoUrl} alt="" className={`${styles.brandLogo}${activeBranding.logoTransparent ? ` ${styles.brandLogoFramed}` : ""}`} style={activeBranding.logoTransparent ? {
+            background: activeBranding.logoBgColor
+          } : undefined} /> : <div className={styles.brandIcon}>V</div>}
+              <span className={styles.brandName}>{activeBranding.brandName ?? "Veritas"}</span>
+              <AppVersion variant="dark" />
+            </div>
+            <h2 className={styles.leftHeadline} style={canvasElementStyle(canvasPos.headline)}>{panelHeadline}</h2>
+            <p className={styles.leftSub} style={canvasElementStyle(canvasPos.sub)}>{activeBranding.sub}</p>
+            <ul className={styles.leftFeatures} style={canvasElementStyle(canvasPos.features)}>
+              {activeBranding.features.map(f => <li key={f} className={styles.leftFeature}>
+                  <span className={styles.leftFeatureDot} />
+                  {f}
+                </li>)}
+            </ul>
+            {leftHtml ? <div className={styles.loginHtmlBlock} style={canvasElementStyle(canvasPos.html)} dangerouslySetInnerHTML={{ __html: leftHtml }} /> : null}
+          </> : <>
+            {renderLeftHtml("before_headline")}
+            <div className={styles.leftTop}>
+              <div className={styles.brand}>
+                {activeBranding.logoUrl ? <img src={activeBranding.logoUrl} alt="" className={`${styles.brandLogo}${activeBranding.logoTransparent ? ` ${styles.brandLogoFramed}` : ""}`} style={activeBranding.logoTransparent ? {
               background: activeBranding.logoBgColor
             } : undefined} /> : <div className={styles.brandIcon}>V</div>}
-            <span className={styles.brandName}>{activeBranding.brandName ?? "Veritas"}</span>
-            <AppVersion variant="dark" />
-          </div>
-          <h2 className={styles.leftHeadline}>{panelHeadline}</h2>
-          <p className={styles.leftSub}>{activeBranding.sub}</p>
-          {renderLeftHtml("after_sub")}
-        </div>
-        <ul className={styles.leftFeatures}>
-          {activeBranding.features.map(f => <li key={f} className={styles.leftFeature}>
-              <span className={styles.leftFeatureDot} />
-              {f}
-            </li>)}
-        </ul>
-        {renderLeftHtml("after_features")}
-        {renderLeftHtml("bottom")}
+                <span className={styles.brandName}>{activeBranding.brandName ?? "Veritas"}</span>
+                <AppVersion variant="dark" />
+              </div>
+              <h2 className={styles.leftHeadline}>{panelHeadline}</h2>
+              <p className={styles.leftSub}>{activeBranding.sub}</p>
+              {renderLeftHtml("after_sub")}
+            </div>
+            <ul className={styles.leftFeatures}>
+              {activeBranding.features.map(f => <li key={f} className={styles.leftFeature}>
+                  <span className={styles.leftFeatureDot} />
+                  {f}
+                </li>)}
+            </ul>
+            {renderLeftHtml("after_features")}
+            {renderLeftHtml("bottom")}
+          </>}
         <div className={styles.leftFooterMeta}>
           {apiVersion && <span className={styles.leftVersionMeta}>API v{apiVersion}</span>}
           <EditionBadge variant="dark" />
@@ -352,8 +376,8 @@ export default function AuthPage() {
       </aside>
 
       {}
-      <main className={`${styles.right}${activeBranding.custom && !isForgotView ? ` ${styles.rightBranded}` : ""}${activeBranding.custom && !isForgotView && activeBranding.rightBgImageUrl ? ` ${styles.rightBrandedImage}` : ""}`} style={rightPanelStyle}>
-        <div className={styles.card}>
+      <main className={`${styles.right}${activeBranding.custom && !isForgotView ? ` ${styles.rightBranded}` : ""}${activeBranding.custom && !isForgotView && activeBranding.rightBgImageUrl ? ` ${styles.rightBrandedImage}` : ""}${isCanvasLayout ? ` ${styles.rightCanvas}` : ""}`} style={rightPanelStyle}>
+        <div className={styles.card} style={isCanvasLayout ? canvasElementStyle(canvasPos.formCard) : undefined}>
           {busy && <div className={styles.loadingOverlay} aria-hidden="true">
               <span className={styles.spinner} />
             </div>}

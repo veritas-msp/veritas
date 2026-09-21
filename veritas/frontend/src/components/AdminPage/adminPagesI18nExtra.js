@@ -183,7 +183,14 @@ const EXTRA = {
       previewSub: "Texte d'accroche de votre espace.",
       previewButton: "Se connecter",
       layoutTitle: "Mise en page",
-      layoutDescription: "Alignement du contenu et du logo sur le panneau gauche.",
+      layoutDescription: "Mode d’affichage, alignements, ou positionnement libre au pixel près.",
+      layoutModeLabel: "Mode de mise en page",
+      layoutModeHint: "Flux = empilement automatique. Canvas = placez chaque élément librement (X/Y % ou glisser-déposer).",
+      canvasTitle: "Positionnement",
+      canvasDescription: "Placez titre, sous-titre, points forts, HTML et formulaire au pixel près.",
+      canvasHint: "Coordonnées en % du panneau (0–95). Glissez les éléments dans l’aperçu, ou saisissez X/Y.",
+      canvasDragHint: "Glisser pour déplacer",
+      canvasReset: "Réinitialiser les positions",
       contentAlignLabel: "Alignement horizontal",
       contentValignLabel: "Alignement vertical",
       logoAlignLabel: "Position du logo",
@@ -227,6 +234,15 @@ const EXTRA = {
           after_sub: "Après le sous-titre",
           after_features: "Après les points forts",
           bottom: "En bas du panneau"
+        },
+        layoutMode: { flow: "Flux (auto)", canvas: "Canvas (libre)" },
+        canvasElements: {
+          brand: "Logo / marque",
+          headline: "Titre",
+          sub: "Sous-titre",
+          features: "Points forts",
+          html: "Bloc HTML",
+          formCard: "Formulaire"
         }
       }
     },
@@ -485,7 +501,14 @@ const EXTRA = {
       previewSub: "Your portal tagline.",
       previewButton: "Sign in",
       layoutTitle: "Layout",
-      layoutDescription: "Content and logo alignment on the left panel.",
+      layoutDescription: "Display mode, alignments, or free pixel-precise positioning.",
+      layoutModeLabel: "Layout mode",
+      layoutModeHint: "Flow = automatic stacking. Canvas = place each element freely (X/Y % or drag & drop).",
+      canvasTitle: "Positioning",
+      canvasDescription: "Place headline, subtitle, highlights, HTML and form with pixel precision.",
+      canvasHint: "Coordinates are % of each panel (0–95). Drag elements in the preview, or type X/Y.",
+      canvasDragHint: "Drag to move",
+      canvasReset: "Reset positions",
       contentAlignLabel: "Horizontal alignment",
       contentValignLabel: "Vertical alignment",
       logoAlignLabel: "Logo position",
@@ -529,6 +552,15 @@ const EXTRA = {
           after_sub: "After subtitle",
           after_features: "After highlights",
           bottom: "Bottom of panel"
+        },
+        layoutMode: { flow: "Flow (auto)", canvas: "Canvas (free)" },
+        canvasElements: {
+          brand: "Logo / brand",
+          headline: "Headline",
+          sub: "Subtitle",
+          features: "Highlights",
+          html: "HTML block",
+          formCard: "Login form"
         }
       }
     },

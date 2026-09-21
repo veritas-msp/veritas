@@ -63,6 +63,26 @@
   gap: 1.25rem;
 }
 
+.leftCanvas {
+  justify-content: flex-start;
+}
+
+.leftCanvas .brand,
+.leftCanvas .leftHeadline,
+.leftCanvas .leftSub,
+.leftCanvas .leftFeatures,
+.leftCanvas .loginHtmlBlock {
+  z-index: 1;
+}
+
+.leftCanvas .leftFooterMeta {
+  position: absolute;
+  left: 40px;
+  right: 40px;
+  bottom: 28px;
+  z-index: 2;
+}
+
 .leftTop { position: relative; z-index: 1; }
 
 .brand {
@@ -298,6 +318,15 @@
 .rightBranded::before,
 .rightBranded::after {
   display: none;
+}
+
+.rightCanvas {
+  align-items: stretch;
+  justify-content: stretch;
+}
+
+.rightCanvas .card {
+  z-index: 2;
 }
 
 .rightBrandedImage {

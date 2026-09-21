@@ -23,6 +23,8 @@ const SIDE_FIELDS = [
   "content_valign",
   "logo_align",
   "html_position",
+  "layout_mode",
+  "canvas_positions",
   // Typography
   "font_family",
   "headline_size",
@@ -45,6 +47,7 @@ const ENUMS = {
   content_valign: new Set(["top", "center", "bottom"]),
   logo_align: new Set(["left", "center"]),
   html_position: new Set(["after_sub", "after_features", "bottom", "before_headline"]),
+  layout_mode: new Set(["flow", "canvas"]),
   font_family: new Set(["default", "geometric", "humanist", "slab", "mono"]),
   headline_size: new Set(["sm", "md", "lg", "xl"]),
   headline_weight: new Set(["400", "500", "600", "700", "800"]),
@@ -61,6 +64,7 @@ const ENUM_DEFAULTS = {
   content_valign: "top",
   logo_align: "left",
   html_position: "after_features",
+  layout_mode: "flow",
   font_family: "default",
   headline_size: "md",
   headline_weight: "700",
@@ -71,6 +75,44 @@ const ENUM_DEFAULTS = {
   features_size: "md",
   brand_name_size: "md"
 };
+
+const CANVAS_ELEMENT_KEYS = ["brand", "headline", "sub", "features", "html", "formCard"];
+
+const DEFAULT_CANVAS_POSITIONS = {
+  brand: { x: 8, y: 6 },
+  headline: { x: 8, y: 16 },
+  sub: { x: 8, y: 28 },
+  features: { x: 8, y: 48 },
+  html: { x: 8, y: 68 },
+  formCard: { x: 18, y: 16 }
+};
+
+function clampPos(value, fallback) {
+  const n = Number(value);
+  if (!Number.isFinite(n)) return fallback;
+  return Math.min(95, Math.max(0, Math.round(n * 10) / 10));
+}
+
+function normalizeCanvasPositions(raw) {
+  let parsed = raw;
+  if (typeof raw === "string" && raw.trim()) {
+    try {
+      parsed = JSON.parse(raw);
+    } catch {
+      parsed = null;
+    }
+  }
+  const out = {};
+  for (const key of CANVAS_ELEMENT_KEYS) {
+    const fallback = DEFAULT_CANVAS_POSITIONS[key];
+    const item = parsed && typeof parsed === "object" ? parsed[key] : null;
+    out[key] = {
+      x: clampPos(item?.x, fallback.x),
+      y: clampPos(item?.y, fallback.y)
+    };
+  }
+  return out;
+}
 
 const HTML_MAX_LEN = 12000;
 
@@ -87,6 +129,8 @@ for (const side of LOGIN_SIDES) {
   for (const field of SIDE_FIELDS) {
     if (BOOL_FIELDS.has(field)) {
       DEFAULT_LOGIN_BRANDING[`app_login_${side}_${field}`] = "false";
+    } else if (field === "canvas_positions") {
+      DEFAULT_LOGIN_BRANDING[`app_login_${side}_${field}`] = JSON.stringify(DEFAULT_CANVAS_POSITIONS);
     } else if (ENUM_DEFAULTS[field] != null) {
       DEFAULT_LOGIN_BRANDING[`app_login_${side}_${field}`] = ENUM_DEFAULTS[field];
     } else {
@@ -178,6 +222,8 @@ function normalizeSideSettings(input = {}, side) {
     contentValign: normalizeEnum(input[`${prefix}content_valign`], "content_valign"),
     logoAlign: normalizeEnum(input[`${prefix}logo_align`], "logo_align"),
     htmlPosition: normalizeEnum(input[`${prefix}html_position`], "html_position"),
+    layoutMode: normalizeEnum(input[`${prefix}layout_mode`], "layout_mode"),
+    canvasPositions: normalizeCanvasPositions(input[`${prefix}canvas_positions`]),
     fontFamily: normalizeEnum(input[`${prefix}font_family`], "font_family"),
     headlineSize: normalizeEnum(input[`${prefix}headline_size`], "headline_size"),
     headlineWeight: normalizeEnum(input[`${prefix}headline_weight`], "headline_weight"),
@@ -218,6 +264,8 @@ export function normalizeLoginBrandingFlat(input = {}) {
     out[`${prefix}content_valign`] = normalized.contentValign;
     out[`${prefix}logo_align`] = normalized.logoAlign;
     out[`${prefix}html_position`] = normalized.htmlPosition;
+    out[`${prefix}layout_mode`] = normalized.layoutMode;
+    out[`${prefix}canvas_positions`] = JSON.stringify(normalized.canvasPositions);
     out[`${prefix}font_family`] = normalized.fontFamily;
     out[`${prefix}headline_size`] = normalized.headlineSize;
     out[`${prefix}headline_weight`] = normalized.headlineWeight;

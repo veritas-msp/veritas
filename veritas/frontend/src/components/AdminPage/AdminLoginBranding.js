@@ -6,13 +6,17 @@ import { useCommonCopy } from "../../hooks/useCommonCopy";
 import { deleteLoginBrandingAsset, fetchLoginBrandingAdmin, updateLoginBranding, uploadLoginBrandingAsset } from "../../api/loginBranding";
 import { sanitizeLoginBrandingHtml } from "../../utils/sanitizeHtml";
 import {
+  DEFAULT_CANVAS_POSITIONS,
   DEFAULT_SIDE_COLORS,
   LOGIN_BRANDING_MAX_UPLOAD_BYTES,
+  LOGIN_CANVAS_ELEMENTS,
   LOGIN_SIDES,
   LOGIN_TYPO_DEFAULTS,
   LOGIN_TYPO_OPTIONS,
   buildLoginAdminPreviewStyleVars,
+  canvasElementStyle,
   flatToSideForm,
+  normalizeCanvasPositions,
   resolveBrandingText,
   resolveLoginAssetUrl,
   sideFormToFlat
@@ -39,13 +43,15 @@ const EMPTY_SIDE = {
   rightBgImagePath: "",
   footerText: "",
   ...LOGIN_TYPO_DEFAULTS,
+  canvasPositions: { ...DEFAULT_CANVAS_POSITIONS },
   htmlBlock: "",
   formHtml: ""
 };
 
 const DEFAULT_OPEN_SECTIONS = {
   content: true,
-  layout: false,
+  layout: true,
+  canvas: true,
   typo: true,
   html: false,
   visual: true
@@ -124,8 +130,12 @@ function CollapsibleSection({
     </section>;
 }
 
-function LoginPreview({ side, form, copy }) {
+function LoginPreview({ side, form, copy, onCanvasPosChange }) {
+  const leftRef = useRef(null);
+  const rightRef = useRef(null);
   const defaults = DEFAULT_SIDE_COLORS[side];
+  const isCanvas = form.layoutMode === "canvas";
+  const canvasPos = normalizeCanvasPositions(form.canvasPositions);
   const bgStart = form.bgColorStart || defaults.bgColorStart;
   const bgEnd = form.bgColorEnd || defaults.bgColorEnd;
   const accent = form.accentColor || defaults.accentColor;
@@ -141,57 +151,131 @@ function LoginPreview({ side, form, copy }) {
     background: bgImageUrl
       ? `linear-gradient(160deg, ${bgStart}dd 0%, ${bgEnd}dd 100%), url("${bgImageUrl}") center/cover`
       : `linear-gradient(160deg, ${bgStart} 0%, ${bgEnd} 100%)`,
-    textAlign: form.contentAlign === "center" ? "center" : "left",
-    justifyContent: form.contentValign === "center" ? "center" : form.contentValign === "bottom" ? "flex-end" : "flex-start",
-    alignItems: form.contentAlign === "center" ? "center" : "stretch"
+    ...(isCanvas ? {
+      textAlign: "left",
+      justifyContent: "flex-start",
+      alignItems: "stretch"
+    } : {
+      textAlign: form.contentAlign === "center" ? "center" : "left",
+      justifyContent: form.contentValign === "center" ? "center" : form.contentValign === "bottom" ? "flex-end" : "flex-start",
+      alignItems: form.contentAlign === "center" ? "center" : "stretch"
+    })
   };
-  const rightPanelStyle = rightBgImageUrl ? {
-    backgroundColor: form.rightBgColor || defaults.rightBgColor,
-    backgroundImage: `url("${rightBgImageUrl}")`,
-    backgroundSize: "cover",
-    backgroundPosition: "center"
-  } : {
-    background: form.rightBgColor || defaults.rightBgColor
+  const rightPanelStyle = {
+    ...(rightBgImageUrl ? {
+      backgroundColor: form.rightBgColor || defaults.rightBgColor,
+      backgroundImage: `url("${rightBgImageUrl}")`,
+      backgroundSize: "cover",
+      backgroundPosition: "center"
+    } : {
+      background: form.rightBgColor || defaults.rightBgColor
+    }),
+    ...(isCanvas ? { position: "relative", alignItems: "stretch", justifyContent: "stretch" } : {})
   };
   const headline1 = resolveBrandingText(form.headlineLine1, copy.previewHeadline1);
   const headline2 = resolveBrandingText(form.headlineLine2, copy.previewHeadline2);
   const sub = resolveBrandingText(form.sub, copy.previewSub);
   const brandName = form.brandName === "" ? "Veritas" : String(form.brandName || "").trim() || "";
   const htmlBlock = htmlSafe ? <div className={s.previewHtml} dangerouslySetInnerHTML={{ __html: htmlSafe }} /> : null;
+
+  const startDrag = (key, panelRef) => e => {
+    if (!isCanvas || !onCanvasPosChange || e.button !== 0) return;
+    e.preventDefault();
+    e.stopPropagation();
+    const panel = panelRef.current;
+    if (!panel) return;
+    const rect = panel.getBoundingClientRect();
+    const onMove = ev => {
+      const x = Math.min(95, Math.max(0, Math.round((ev.clientX - rect.left) / rect.width * 1000) / 10));
+      const y = Math.min(95, Math.max(0, Math.round((ev.clientY - rect.top) / rect.height * 1000) / 10));
+      onCanvasPosChange(key, { x, y });
+    };
+    const onUp = () => {
+      window.removeEventListener("pointermove", onMove);
+      window.removeEventListener("pointerup", onUp);
+    };
+    window.addEventListener("pointermove", onMove);
+    window.addEventListener("pointerup", onUp);
+  };
+
+  const canvasItem = (key, panelRef, className, children, Tag = "div") => {
+    if (!isCanvas) return <Tag className={className}>{children}</Tag>;
+    return <Tag
+      className={`${className} ${s.canvasDraggable}`}
+      style={canvasElementStyle(canvasPos[key])}
+      onPointerDown={startDrag(key, panelRef)}
+      role="button"
+      tabIndex={0}
+      title={copy.canvasDragHint || "Drag to move"}
+    >{children}</Tag>;
+  };
+
   return <div className={s.previewShell}>
-      <p className={s.previewLabel}>{copy.previewLabel}</p>
+      <p className={s.previewLabel}>{copy.previewLabel}{isCanvas ? <span className={s.previewCanvasHint}> · {copy.canvasDragHint || "Drag elements"}</span> : null}</p>
       <div className={s.previewFrame}>
-        <aside className={s.previewLeft} style={panelStyle}>
-          {form.htmlPosition === "before_headline" ? htmlBlock : null}
-          <div className={s.previewBrand} style={form.logoAlign === "center" ? { justifyContent: "center" } : undefined}>
-            {logoUrl ? <img src={logoUrl} alt="" className={s.previewLogo} style={form.logoTransparent ? { background: logoBg } : { background: "transparent" }} /> : <div className={s.previewBrandIcon} style={{ background: accent }}>V</div>}
-            <span className={s.previewBrandName}>{brandName || "\u00A0"}</span>
-          </div>
-          <h3 className={s.previewHeadline}>
-            {headline1}
-            {headline1 || headline2 ? <br /> : null}
-            {headline2}
-          </h3>
-          <p className={s.previewSub}>{sub}</p>
-          {form.htmlPosition === "after_sub" ? htmlBlock : null}
-          <ul className={s.previewFeatures} style={form.contentAlign === "center" ? { alignItems: "center" } : undefined}>
-            {features.map(item => <li key={item}>
-                <span style={{ background: accent }} />
-                {item}
-              </li>)}
-          </ul>
-          {form.htmlPosition === "after_features" || !form.htmlPosition ? htmlBlock : null}
-          {form.htmlPosition === "bottom" ? htmlBlock : null}
+        <aside ref={leftRef} className={`${s.previewLeft}${isCanvas ? ` ${s.previewLeftCanvas}` : ""}`} style={panelStyle}>
+          {isCanvas ? <>
+              {canvasItem("brand", leftRef, s.previewBrand, <>
+                  {logoUrl ? <img src={logoUrl} alt="" className={s.previewLogo} style={form.logoTransparent ? { background: logoBg } : { background: "transparent" }} /> : <div className={s.previewBrandIcon} style={{ background: accent }}>V</div>}
+                  <span className={s.previewBrandName}>{brandName || "\u00A0"}</span>
+                </>)}
+              {canvasItem("headline", leftRef, s.previewHeadline, <>
+                  {headline1}
+                  {headline1 || headline2 ? <br /> : null}
+                  {headline2}
+                </>, "h3")}
+              {canvasItem("sub", leftRef, s.previewSub, sub, "p")}
+              {canvasItem("features", leftRef, s.previewFeatures, features.map(item => <li key={item}>
+                  <span style={{ background: accent }} />
+                  {item}
+                </li>), "ul")}
+              {htmlSafe ? canvasItem("html", leftRef, s.previewHtml, <span dangerouslySetInnerHTML={{ __html: htmlSafe }} />) : null}
+            </> : <>
+              {form.htmlPosition === "before_headline" ? htmlBlock : null}
+              <div className={s.previewBrand} style={form.logoAlign === "center" ? { justifyContent: "center" } : undefined}>
+                {logoUrl ? <img src={logoUrl} alt="" className={s.previewLogo} style={form.logoTransparent ? { background: logoBg } : { background: "transparent" }} /> : <div className={s.previewBrandIcon} style={{ background: accent }}>V</div>}
+                <span className={s.previewBrandName}>{brandName || "\u00A0"}</span>
+              </div>
+              <h3 className={s.previewHeadline}>
+                {headline1}
+                {headline1 || headline2 ? <br /> : null}
+                {headline2}
+              </h3>
+              <p className={s.previewSub}>{sub}</p>
+              {form.htmlPosition === "after_sub" ? htmlBlock : null}
+              <ul className={s.previewFeatures} style={form.contentAlign === "center" ? { alignItems: "center" } : undefined}>
+                {features.map(item => <li key={item}>
+                    <span style={{ background: accent }} />
+                    {item}
+                  </li>)}
+              </ul>
+              {form.htmlPosition === "after_features" || !form.htmlPosition ? htmlBlock : null}
+              {form.htmlPosition === "bottom" ? htmlBlock : null}
+            </>}
         </aside>
-        <div className={s.previewRight} style={rightPanelStyle}>
-          <div className={s.previewCard}>
-            <div className={s.previewToggle} />
-            <div className={s.previewField} />
-            <div className={s.previewField} />
-            <button type="button" className={s.previewBtn} style={{ background: accent }}>
-              {copy.previewButton}
-            </button>
-          </div>
+        <div ref={rightRef} className={`${s.previewRight}${isCanvas ? ` ${s.previewRightCanvas}` : ""}`} style={rightPanelStyle}>
+          {isCanvas ? <div
+              className={`${s.previewCard} ${s.canvasDraggable}`}
+              style={canvasElementStyle(canvasPos.formCard)}
+              onPointerDown={startDrag("formCard", rightRef)}
+              role="button"
+              tabIndex={0}
+              title={copy.canvasDragHint || "Drag to move"}
+            >
+              <div className={s.previewToggle} />
+              <div className={s.previewField} />
+              <div className={s.previewField} />
+              <button type="button" className={s.previewBtn} style={{ background: accent }}>
+                {copy.previewButton}
+              </button>
+            </div> : <div className={s.previewCard}>
+              <div className={s.previewToggle} />
+              <div className={s.previewField} />
+              <div className={s.previewField} />
+              <button type="button" className={s.previewBtn} style={{ background: accent }}>
+                {copy.previewButton}
+              </button>
+            </div>}
         </div>
       </div>
     </div>;
@@ -228,6 +312,15 @@ export default function AdminLoginBranding({ isCommunity = false }) {
       after_sub: "After subtitle",
       after_features: "After highlights",
       bottom: "Bottom of panel"
+    },
+    layoutMode: { flow: "Flow (auto)", canvas: "Canvas (pixel)" },
+    canvasElements: {
+      brand: "Logo / brand",
+      headline: "Headline",
+      sub: "Subtitle",
+      features: "Highlights",
+      html: "HTML block",
+      formCard: "Login form"
     }
   };
   const opt = { ...FALLBACK_OPTIONS, ...(copy.options || {}) };
@@ -275,6 +368,30 @@ export default function AdminLoginBranding({ isCommunity = false }) {
         [key]: value
       }
     }));
+  };
+  const setCanvasPos = (key, pos) => {
+    setForms(prev => {
+      const current = normalizeCanvasPositions(prev[activeSide].canvasPositions);
+      return {
+        ...prev,
+        [activeSide]: {
+          ...prev[activeSide],
+          canvasPositions: {
+            ...current,
+            [key]: { x: pos.x, y: pos.y }
+          }
+        }
+      };
+    });
+  };
+  const setCanvasAxis = (key, axis, raw) => {
+    const n = Number(raw);
+    if (!Number.isFinite(n)) return;
+    const clamped = Math.min(95, Math.max(0, Math.round(n * 10) / 10));
+    setCanvasPos(key, {
+      ...(normalizeCanvasPositions(form.canvasPositions)[key] || DEFAULT_CANVAS_POSITIONS[key]),
+      [axis]: clamped
+    });
   };
   const save = async () => {
     setSaving(true);
@@ -388,12 +505,46 @@ export default function AdminLoginBranding({ isCommunity = false }) {
             open={openSections.layout}
             onToggle={() => toggleSection("layout")}
           >
-            <FormGrid cols={3}>
+            <FormGrid cols={2}>
+              <SelectField label={copy.layoutModeLabel || "Layout mode"} hint={copy.layoutModeHint} value={form.layoutMode || "flow"} onChange={v => setField("layoutMode", v)} options={LOGIN_TYPO_OPTIONS.layoutMode} optionLabels={opt.layoutMode} />
+            </FormGrid>
+            {form.layoutMode !== "canvas" ? <FormGrid cols={3}>
               <SelectField label={copy.contentAlignLabel} value={form.contentAlign} onChange={v => setField("contentAlign", v)} options={LOGIN_TYPO_OPTIONS.contentAlign} optionLabels={opt.align} />
               <SelectField label={copy.contentValignLabel} value={form.contentValign} onChange={v => setField("contentValign", v)} options={LOGIN_TYPO_OPTIONS.contentValign} optionLabels={opt.valign} />
               <SelectField label={copy.logoAlignLabel} value={form.logoAlign} onChange={v => setField("logoAlign", v)} options={LOGIN_TYPO_OPTIONS.logoAlign} optionLabels={opt.align} />
-            </FormGrid>
+            </FormGrid> : null}
           </CollapsibleSection>
+
+          {form.layoutMode === "canvas" ? <CollapsibleSection
+            title={copy.canvasTitle || "Positioning"}
+            description={copy.canvasDescription || "Place each element with X/Y (%) or drag in the preview."}
+            open={openSections.canvas}
+            onToggle={() => toggleSection("canvas")}
+          >
+            <p className={s.canvasHint}>{copy.canvasHint || "Coordinates are percentages of each panel (0–95). Drag elements in the live preview."}</p>
+            <div className={s.canvasGrid}>
+              {LOGIN_CANVAS_ELEMENTS.map(key => {
+                const pos = normalizeCanvasPositions(form.canvasPositions)[key];
+                const label = opt.canvasElements?.[key] || key;
+                return <div key={key} className={s.canvasRow}>
+                    <span className={s.canvasRowLabel}>{label}</span>
+                    <label className={s.canvasAxis}>
+                      <span>X</span>
+                      <Input type="number" min={0} max={95} step={0.1} value={pos.x} onChange={e => setCanvasAxis(key, "x", e.target.value)} />
+                    </label>
+                    <label className={s.canvasAxis}>
+                      <span>Y</span>
+                      <Input type="number" min={0} max={95} step={0.1} value={pos.y} onChange={e => setCanvasAxis(key, "y", e.target.value)} />
+                    </label>
+                  </div>;
+              })}
+            </div>
+            <div className={s.canvasActions}>
+              <Btn variant="secondary" icon="mdi:restore" onClick={() => setField("canvasPositions", { ...DEFAULT_CANVAS_POSITIONS })}>
+                {copy.canvasReset || "Reset positions"}
+              </Btn>
+            </div>
+          </CollapsibleSection> : null}
 
           <CollapsibleSection
             title={copy.typoTitle}
@@ -421,7 +572,7 @@ export default function AdminLoginBranding({ isCommunity = false }) {
             onToggle={() => toggleSection("html")}
           >
             <FormGrid cols={1}>
-              <SelectField label={copy.htmlPositionLabel} hint={copy.htmlPositionHint} value={form.htmlPosition} onChange={v => setField("htmlPosition", v)} options={LOGIN_TYPO_OPTIONS.htmlPosition} optionLabels={opt.htmlPosition} />
+              {form.layoutMode !== "canvas" ? <SelectField label={copy.htmlPositionLabel} hint={copy.htmlPositionHint} value={form.htmlPosition} onChange={v => setField("htmlPosition", v)} options={LOGIN_TYPO_OPTIONS.htmlPosition} optionLabels={opt.htmlPosition} /> : null}
               <Field label={copy.htmlBlockLabel} hint={copy.htmlBlockHint}>
                 <Textarea value={form.htmlBlock} onChange={e => setField("htmlBlock", e.target.value)} rows={6} placeholder={copy.htmlBlockPlaceholder} className={s.codeArea} />
               </Field>
@@ -464,7 +615,7 @@ export default function AdminLoginBranding({ isCommunity = false }) {
         <aside className={s.previewColumn}>
           <div className={s.previewSticky}>
             <Card title={copy.previewTitle} description={copy.previewDescription} noPadding>
-              <LoginPreview side={activeSide} form={form} copy={copy} />
+              <LoginPreview side={activeSide} form={form} copy={copy} onCanvasPosChange={setCanvasPos} />
             </Card>
           </div>
         </aside>
