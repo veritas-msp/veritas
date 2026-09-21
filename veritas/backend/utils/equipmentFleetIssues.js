@@ -219,6 +219,7 @@ export async function fetchEquipmentFleetIssues() {
   for (const equipment of fleet) {
     const family = toSupervisionFamily(equipment);
     if (!family) continue;
+    if (family === "internet" || family === "toip") continue;
     if (!isMappedViaMonitoringIntegration(equipment)) continue;
 
     const isMkMapped = true;

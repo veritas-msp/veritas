@@ -5,6 +5,14 @@
  */
 export const PATCH_NOTES = [
   {
+    version: "1.0.31",
+    date: "2026-09-21",
+    highlights: [
+      "Centre de supervision : KPI couverture en pleine largeur, ordre Firewall → Routeur → Serveur → Stockage → Switch → Borne Wi‑Fi.",
+      "Internet et TOIP retirés des KPI et des alertes du centre de supervision."
+    ]
+  },
+  {
     version: "1.0.30",
     date: "2026-09-21",
     highlights: [

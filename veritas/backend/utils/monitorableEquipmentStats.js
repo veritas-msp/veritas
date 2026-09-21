@@ -4,15 +4,12 @@ const CHECKMK_MONITORED_WHERE = "checkmk_host_name IS NOT NULL AND btrim(checkmk
 
 /** Familles affichées dans le centre de supervision (CheckMK), hors custom / ENI / projecteurs / etc. */
 export const SUPERVISION_COVERAGE_FAMILY_KEYS = [
+  "Firewalls",
+  "Routeur",
   "Serveurs",
   "Stockage",
-  "Firewalls",
   "Switch",
-  "BorneWifi",
-  "Routeur",
-  "Internet",
-  "TOIP",
-  "Alimentation"
+  "BorneWifi"
 ];
 
 export const SYSTEM_MONITORABLE_FAMILIES = [{

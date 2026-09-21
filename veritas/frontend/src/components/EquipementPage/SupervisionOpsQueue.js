@@ -195,7 +195,33 @@ function FilterChip({
     </button>;
 }
 
-const COVERAGE_EXCLUDED_KEYS = new Set(["Sauvegarde", "Ordinateurs", "Videosurveillance"]);
+const COVERAGE_EXCLUDED_KEYS = new Set([
+  "Sauvegarde",
+  "Ordinateurs",
+  "Videosurveillance",
+  "Internet",
+  "TOIP",
+  "Alimentation"
+]);
+
+/** Ordre d’affichage des KPI couverture (aligné sur SUPERVISION_COVERAGE_FAMILY_KEYS). */
+const COVERAGE_FAMILY_ORDER = [
+  "Firewalls",
+  "Routeur",
+  "Serveurs",
+  "Stockage",
+  "Switch",
+  "BorneWifi"
+];
+
+const COVERAGE_FAMILY_ICONS = {
+  Firewalls: "mdi:shield-outline",
+  Routeur: "mdi:router-wireless",
+  Serveurs: "mdi:server",
+  Stockage: "mdi:database-outline",
+  Switch: "mdi:lan-connect",
+  BorneWifi: "mdi:wifi"
+};
 
 function coverageTone(monitored, total) {
   if (!total) return "empty";
@@ -212,21 +238,32 @@ function CoverageStrip({
 }) {
   const coverageCopy = copy?.coverage || {};
   const labels = coverageCopy.families || {};
-  const items = (Array.isArray(families) ? families : []).filter(family => {
+  const byKey = new Map();
+  for (const family of Array.isArray(families) ? families : []) {
     const key = String(family?.key || "");
-    if (COVERAGE_EXCLUDED_KEYS.has(key)) return false;
-    if (family?.isCustom) return false;
-    return (Number(family?.count) || 0) > 0;
+    if (!key || COVERAGE_EXCLUDED_KEYS.has(key) || family?.isCustom) continue;
+    byKey.set(key, family);
+  }
+
+  // Toujours afficher les familles du centre (y compris à 0) pour une grille pleine largeur stable.
+  const ordered = COVERAGE_FAMILY_ORDER.map(key => {
+    const family = byKey.get(key);
+    return family || {
+      key,
+      count: 0,
+      monitoredCount: 0,
+      icon: COVERAGE_FAMILY_ICONS[key] || "mdi:devices"
+    };
   });
-  if (!items.length) return null;
+
   return <div
     className={styles.coverageGrid}
     role="group"
     aria-label={coverageCopy.aria || coverageCopy.title || "Coverage"}
     data-guide="supervision-coverage"
-    style={{ "--coverage-cols": String(Math.max(items.length, 1)) }}
+    style={{ "--coverage-cols": String(Math.max(ordered.length, 1)) }}
   >
-      {items.map(family => {
+      {ordered.map(family => {
       const key = String(family.key || "");
       const label = labels[key] || family.label || key;
       const total = Number(family.count) || 0;
@@ -248,7 +285,7 @@ function CoverageStrip({
         title={tip}
       >
               <div className={styles.coverageCardHead}>
-                <Icon icon={family.icon || "mdi:devices"} className={styles.coverageIcon} aria-hidden />
+                <Icon icon={family.icon || COVERAGE_FAMILY_ICONS[key] || "mdi:devices"} className={styles.coverageIcon} aria-hidden />
                 <span className={styles.coverageLabel}>{label}</span>
               </div>
               <div className={styles.coverageRatio}>{ratio}</div>
