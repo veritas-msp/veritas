@@ -7,11 +7,30 @@ import { fetchSupervisionAlertEvents, reopenSupervisionAlert } from "../../api/s
 import styles from "./SupervisionAlertHistory.module.css";
 
 const DOMAIN_ICONS = {
-  devices: "mdi:devices",
+  devices: "mdi:radar",
   backups: "mdi:backup-restore",
   contracts: "mdi:file-document-alert-outline",
   rmm: "mdi:laptop-off"
 };
+
+function alertRowIcon(alert) {
+  const domain = String(alert?.domain || "").toLowerCase();
+  const severity = String(alert?.severity || "").toLowerCase();
+  if (domain === "backups") return DOMAIN_ICONS.backups;
+  if (domain === "contracts") return DOMAIN_ICONS.contracts;
+  if (domain === "rmm") return DOMAIN_ICONS.rmm;
+  if (severity === "critical") return "mdi:alert-octagon";
+  if (severity === "warning") return "mdi:alert";
+  if (severity === "info") return "mdi:information-outline";
+  return DOMAIN_ICONS.devices;
+}
+
+function severityToneClass(severity) {
+  const value = String(severity || "").toLowerCase();
+  if (value === "critical") return styles.sevCritical;
+  if (value === "warning") return styles.sevWarning;
+  return styles.sevInfo;
+}
 
 function formatWhen(value, localeTag) {
   if (!value) return "—";
@@ -275,6 +294,7 @@ export default function SupervisionAlertHistory({
         </div> : <div className={styles.tableWrap}>
           <table className={styles.table}>
             <colgroup>
+              <col className={styles.colSev} />
               <col className={styles.colAlert} />
               <col className={styles.colCompany} />
               {showDomain ? <col className={styles.colDomain} /> : null}
@@ -284,6 +304,7 @@ export default function SupervisionAlertHistory({
             </colgroup>
             <thead>
               <tr>
+                <th className={styles.sevCol} aria-hidden />
                 <SortableHeader column="alert" label={columns.alert || "Alerte"} sortKey={sortKey} sortDir={sortDir} onSort={handleSort} sortAria={sortAriaFor(columns.alert || "Alerte")} />
                 <SortableHeader column="company" label={columns.company || "Entreprise"} sortKey={sortKey} sortDir={sortDir} onSort={handleSort} sortAria={sortAriaFor(columns.company || "Entreprise")} />
                 {showDomain ? <SortableHeader column="domain" label={columns.domain || "Domaine"} sortKey={sortKey} sortDir={sortDir} onSort={handleSort} sortAria={sortAriaFor(columns.domain || "Domaine")} /> : null}
@@ -303,6 +324,11 @@ export default function SupervisionAlertHistory({
               const when = alertWhen(alert);
               return <Fragment key={alert.id}>
                     <tr className={`${styles.dataRow} ${open ? styles.dataRowOpen : ""}`} onClick={() => setExpandedId(open ? null : alert.id)}>
+                      <td className={styles.sevCol}>
+                        <span className={`${styles.sevIcon} ${severityToneClass(alert.severity)}`} aria-hidden>
+                          <Icon icon={alertRowIcon(alert)} />
+                        </span>
+                      </td>
                       <td className={styles.alertCell}>
                         <div className={styles.alertBody}>
                           <span className={styles.title}>{display.reason}</span>
@@ -312,9 +338,6 @@ export default function SupervisionAlertHistory({
                       <td className={styles.companyCell}>{alert.clientName || "—"}</td>
                       {showDomain ? <td className={styles.domainCol}>
                         <span className={styles.domainCell}>
-                          <span className={styles.domainIcon} aria-hidden>
-                            <Icon icon={DOMAIN_ICONS[alert.domain] || "mdi:alert"} />
-                          </span>
                           {domainLabel}
                         </span>
                       </td> : null}
@@ -334,7 +357,7 @@ export default function SupervisionAlertHistory({
                       </td>
                     </tr>
                     {open ? <tr className={styles.detailRow}>
-                        <td colSpan={showDomain ? 6 : 5}>
+                        <td colSpan={showDomain ? 7 : 6}>
                           <div className={styles.detail}>
                             <div className={styles.detailHeader}>
                               <span className={styles.timelineTitle}>{copy.timelineTitle || "Timeline"}</span>

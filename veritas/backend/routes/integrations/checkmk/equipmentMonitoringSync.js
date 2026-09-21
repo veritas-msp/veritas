@@ -2,6 +2,7 @@ import express from 'express';
 import fetch from 'node-fetch';
 import { pool } from '../../../database/db.js';
 import verifyJWT from '../../../middleware/auth.js';
+import { evaluateMonitoringAlert } from '../../../services/equipmentMonitoringAlertDispatcher.js';
 import { getCheckmkMonitoringSettings } from '../../../utils/checkmkMonitoringSettings.js';
 const router = express.Router();
 const TABLE = 'v_b_equipment_checkmk_monitoring';

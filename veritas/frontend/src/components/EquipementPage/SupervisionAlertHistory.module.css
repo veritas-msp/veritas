@@ -145,6 +145,10 @@
   font-size: 0.8125rem;
 }
 
+.colSev {
+  width: 2.75rem;
+}
+
 .colAlert {
   width: auto;
 }
@@ -228,6 +232,39 @@
 .dataRow:hover,
 .dataRowOpen {
   background: rgba(90, 143, 212, 0.06);
+}
+
+.sevCol {
+  width: 2.75rem;
+  padding-left: 0.85rem !important;
+  padding-right: 0.35rem !important;
+  vertical-align: middle;
+}
+
+.sevIcon {
+  display: grid;
+  place-items: center;
+  width: 1.7rem;
+  height: 1.7rem;
+  border-radius: 9px;
+  flex-shrink: 0;
+  font-size: 1rem;
+  line-height: 1;
+}
+
+.sevCritical {
+  background: rgba(239, 68, 68, 0.16);
+  color: #f87171;
+}
+
+.sevWarning {
+  background: rgba(245, 158, 11, 0.16);
+  color: #fbbf24;
+}
+
+.sevInfo {
+  background: rgba(43, 95, 171, 0.16);
+  color: #7aa2e3;
 }
 
 .alertCell {

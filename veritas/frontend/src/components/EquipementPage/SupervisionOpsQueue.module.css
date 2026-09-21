@@ -87,33 +87,33 @@
 }
 
 .coverageTone_good {
-  color: #4ade80;
+  color: var(--msp-text, #c5d0df);
 }
 
 .coverageTone_good .coverageRatio,
 .coverageTone_good .coverageIcon,
 .coverageTone_good .coveragePct {
-  color: #4ade80;
+  color: var(--msp-text, #c5d0df);
 }
 
 .coverageTone_warn {
-  color: #fbbf24;
+  color: var(--msp-muted, #8fa8c4);
 }
 
 .coverageTone_warn .coverageRatio,
 .coverageTone_warn .coverageIcon,
 .coverageTone_warn .coveragePct {
-  color: #fbbf24;
+  color: var(--msp-muted, #8fa8c4);
 }
 
 .coverageTone_bad {
-  color: #f87171;
+  color: #7b8ba3;
 }
 
 .coverageTone_bad .coverageRatio,
 .coverageTone_bad .coverageIcon,
 .coverageTone_bad .coveragePct {
-  color: #f87171;
+  color: #7b8ba3;
 }
 
 .coverageTone_empty {
@@ -234,15 +234,15 @@
 }
 
 .filterTone_critical.filterChipActive {
-  border-color: rgba(239, 68, 68, 0.4);
-  background: rgba(239, 68, 68, 0.12);
-  color: #fca5a5;
+  border-color: rgba(148, 163, 184, 0.4);
+  background: rgba(148, 163, 184, 0.12);
+  color: #cbd5e1;
 }
 
 .filterTone_warning.filterChipActive {
-  border-color: rgba(245, 158, 11, 0.4);
-  background: rgba(245, 158, 11, 0.12);
-  color: #fcd34d;
+  border-color: rgba(148, 163, 184, 0.4);
+  background: rgba(148, 163, 184, 0.12);
+  color: #cbd5e1;
 }
 
 .filterCount {
@@ -324,7 +324,7 @@
 }
 
 .colSev {
-  width: 2.2rem;
+  width: 2.75rem;
 }
 
 .colAlert {
@@ -421,9 +421,10 @@
 }
 
 .sevCol {
-  width: 2.2rem;
+  width: 2.75rem;
   padding-left: 0.7rem !important;
   padding-right: 0.2rem !important;
+  vertical-align: middle;
 }
 
 .alertCell {
@@ -478,16 +479,30 @@
   flex-shrink: 0;
 }
 
+.sevIcon {
+  display: grid;
+  place-items: center;
+  width: 1.7rem;
+  height: 1.7rem;
+  border-radius: 9px;
+  flex-shrink: 0;
+  font-size: 1rem;
+  line-height: 1;
+}
+
 .sevCritical {
-  background: #ef4444;
+  background: rgba(239, 68, 68, 0.16);
+  color: #f87171;
 }
 
 .sevWarning {
-  background: #f59e0b;
+  background: rgba(245, 158, 11, 0.16);
+  color: #fbbf24;
 }
 
 .sevInfo {
-  background: #2b5fab;
+  background: rgba(43, 95, 171, 0.16);
+  color: #7aa2e3;
 }
 
 .domainIcon {
@@ -872,15 +887,15 @@
 }
 
 :global(html:not(.dark)) .filterTone_critical.filterChipActive {
-  border-color: rgba(185, 28, 28, 0.35);
-  background: rgba(185, 28, 28, 0.08);
-  color: #b91c1c;
+  border-color: rgba(100, 116, 139, 0.4);
+  background: rgba(100, 116, 139, 0.1);
+  color: #475569;
 }
 
 :global(html:not(.dark)) .filterTone_warning.filterChipActive {
-  border-color: rgba(194, 65, 12, 0.35);
-  background: rgba(194, 65, 12, 0.08);
-  color: #c2410c;
+  border-color: rgba(100, 116, 139, 0.4);
+  background: rgba(100, 116, 139, 0.1);
+  color: #475569;
 }
 
 :global(html:not(.dark)) .filterSep {

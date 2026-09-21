@@ -15,11 +15,23 @@ function toneClass(tone, severity) {
 }
 
 const DOMAIN_ICONS = {
-  devices: "mdi:devices",
+  devices: "mdi:radar",
   backups: "mdi:backup-restore",
   contracts: "mdi:file-document-alert-outline",
   rmm: "mdi:laptop-off"
 };
+
+function alertRowIcon(item) {
+  const domain = String(item?.domain || "").toLowerCase();
+  const severity = String(item?.severity || "").toLowerCase();
+  if (domain === "backups") return DOMAIN_ICONS.backups;
+  if (domain === "contracts") return DOMAIN_ICONS.contracts;
+  if (domain === "rmm") return DOMAIN_ICONS.rmm;
+  if (severity === "critical") return "mdi:alert-octagon";
+  if (severity === "warning") return "mdi:alert";
+  if (severity === "info") return "mdi:information-outline";
+  return DOMAIN_ICONS.devices;
+}
 
 function workflowBadgeClass(status) {
   if (status === "acked") return styles.wfAcked;
@@ -467,7 +479,9 @@ export default function SupervisionOpsQueue({
               if (remediation) collabBits.push(remediation);
               return <tr key={item.id} className={`${styles.dataRow} ${wf !== "open" ? styles.rowHandled : ""}`} onClick={() => onOpenItem?.(item)}>
                     <td className={styles.sevCol}>
-                      <span className={`${styles.sevDot} ${toneClass(item.tone, item.severity)}`} aria-hidden />
+                      <span className={`${styles.sevIcon} ${toneClass(item.tone, item.severity)}`} aria-hidden title={severityLabel}>
+                        <Icon icon={alertRowIcon(item)} />
+                      </span>
                     </td>
                     <td className={styles.alertCell}>
                       <div className={styles.alertBody}>

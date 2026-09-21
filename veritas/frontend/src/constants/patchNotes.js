@@ -5,6 +5,15 @@
  */
 export const PATCH_NOTES = [
   {
+    version: "1.0.30",
+    date: "2026-09-21",
+    highlights: [
+      "Centre de supervision : icône de sévérité / domaine à gauche de chaque alerte (file et historique).",
+      "KPI de couverture et filtres de sévérité : teintes grises plus discrètes.",
+      "CheckMK : correctif sync (import evaluateMonitoringAlert manquant → erreur 500)."
+    ]
+  },
+  {
     version: "1.0.29",
     date: "2026-09-21",
     highlights: [
