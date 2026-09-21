@@ -5,6 +5,13 @@
  */
 export const PATCH_NOTES = [
   {
+    version: "1.0.29",
+    date: "2026-09-21",
+    highlights: [
+      "Page de connexion (agent & client) : blocs HTML (ex. boutons de téléchargement), typographie avancée et options de positionnement."
+    ]
+  },
+  {
     version: "1.0.28",
     date: "2026-09-21",
     highlights: [

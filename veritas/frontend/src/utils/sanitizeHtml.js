@@ -67,6 +67,22 @@ export const REMEDIATION_HTML_CONFIG = {
 export function sanitizeRemediationHtml(raw) {
   return sanitizeHtml(raw, REMEDIATION_HTML_CONFIG);
 }
+
+/** Login branding HTML blocks (download buttons, links, light markup). */
+export const LOGIN_BRANDING_HTML_CONFIG = {
+  ALLOWED_TAGS: [
+    "p", "br", "strong", "em", "b", "i", "u", "s", "ul", "ol", "li",
+    "a", "span", "div", "h3", "h4", "hr", "img", "button"
+  ],
+  ALLOWED_ATTR: [
+    "href", "target", "rel", "download", "class", "title", "alt",
+    "src", "width", "height", "style", "type"
+  ]
+};
+
+export function sanitizeLoginBrandingHtml(raw) {
+  return sanitizeHtml(raw, LOGIN_BRANDING_HTML_CONFIG);
+}
 export function authFetchInit(init = {}) {
   const {
     credentials,

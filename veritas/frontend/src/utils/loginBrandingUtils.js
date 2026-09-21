@@ -2,6 +2,54 @@ import API_BASE_URL from "../config";
 const BACKEND_BASE_URL = String(API_BASE_URL || "").replace(/\/api\/?$/, "");
 export const LOGIN_SIDES = ["agent", "client"];
 export const LOGIN_BRANDING_MAX_UPLOAD_BYTES = 8 * 1024 * 1024;
+
+export const LOGIN_FONT_FAMILIES = {
+  default: 'ui-sans-serif, system-ui, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
+  geometric: '"Avenir Next", "Segoe UI", "Trebuchet MS", sans-serif',
+  humanist: 'Georgia, "Iowan Old Style", "Palatino Linotype", Palatino, serif',
+  slab: '"Rockwell", "Roboto Slab", "Courier New", Georgia, serif',
+  mono: 'ui-monospace, "SF Mono", "Cascadia Code", "Segoe UI Mono", Consolas, monospace'
+};
+
+export const LOGIN_TYPO_OPTIONS = {
+  contentAlign: ["left", "center"],
+  contentValign: ["top", "center", "bottom"],
+  logoAlign: ["left", "center"],
+  htmlPosition: ["after_sub", "after_features", "bottom", "before_headline"],
+  fontFamily: ["default", "geometric", "humanist", "slab", "mono"],
+  headlineSize: ["sm", "md", "lg", "xl"],
+  headlineWeight: ["400", "500", "600", "700", "800"],
+  headlineTracking: ["tight", "normal", "wide"],
+  subSize: ["sm", "md", "lg"],
+  subWeight: ["400", "500", "600"],
+  subLineHeight: ["tight", "normal", "relaxed"],
+  featuresSize: ["sm", "md", "lg"],
+  brandNameSize: ["sm", "md", "lg"]
+};
+
+export const LOGIN_TYPO_DEFAULTS = {
+  contentAlign: "left",
+  contentValign: "top",
+  logoAlign: "left",
+  htmlPosition: "after_features",
+  fontFamily: "default",
+  headlineSize: "md",
+  headlineWeight: "700",
+  headlineTracking: "normal",
+  subSize: "md",
+  subWeight: "400",
+  subLineHeight: "normal",
+  featuresSize: "md",
+  brandNameSize: "md"
+};
+
+const HEADLINE_SIZE_MAP = { sm: "1.55rem", md: "1.9rem", lg: "2.25rem", xl: "2.65rem" };
+const SUB_SIZE_MAP = { sm: "0.88rem", md: "0.98rem", lg: "1.08rem" };
+const FEATURES_SIZE_MAP = { sm: "0.82rem", md: "0.9rem", lg: "1rem" };
+const BRAND_SIZE_MAP = { sm: "0.95rem", md: "1.05rem", lg: "1.2rem" };
+const TRACKING_MAP = { tight: "-0.02em", normal: "0", wide: "0.04em" };
+const LINE_HEIGHT_MAP = { tight: "1.35", normal: "1.55", relaxed: "1.75" };
+
 export const DEFAULT_SIDE_COLORS = {
   agent: {
     bgColorStart: "#0f1c2e",
@@ -18,6 +66,7 @@ export const DEFAULT_SIDE_COLORS = {
     logoBgColor: "#ffffff"
   }
 };
+
 /** Empty = use hints/defaults. Whitespace-only = intentional blank (kept as a single space). */
 export function serializeTextField(value) {
   const raw = String(value ?? "");
@@ -33,6 +82,10 @@ export function resolveBrandingText(value, fallback) {
 export function resolveOptionalBrandingText(value) {
   if (value == null || value === "") return null;
   return String(value).trim();
+}
+function pickEnum(value, allowed, fallback) {
+  const raw = String(value ?? "").trim().toLowerCase();
+  return allowed.includes(raw) ? raw : fallback;
 }
 export function resolveLoginAssetUrl(relativePath) {
   const raw = String(relativePath || "").trim();
@@ -70,7 +123,22 @@ export function flatToSideForm(settings = {}, side) {
     accentColor: settings[`${prefix}accent_color`] || "",
     rightBgColor: settings[`${prefix}right_bg_color`] || "",
     rightBgImagePath: settings[`${prefix}right_bg_image_path`] || "",
-    footerText: settings[`${prefix}footer_text`] ?? ""
+    footerText: settings[`${prefix}footer_text`] ?? "",
+    contentAlign: pickEnum(settings[`${prefix}content_align`], LOGIN_TYPO_OPTIONS.contentAlign, LOGIN_TYPO_DEFAULTS.contentAlign),
+    contentValign: pickEnum(settings[`${prefix}content_valign`], LOGIN_TYPO_OPTIONS.contentValign, LOGIN_TYPO_DEFAULTS.contentValign),
+    logoAlign: pickEnum(settings[`${prefix}logo_align`], LOGIN_TYPO_OPTIONS.logoAlign, LOGIN_TYPO_DEFAULTS.logoAlign),
+    htmlPosition: pickEnum(settings[`${prefix}html_position`], LOGIN_TYPO_OPTIONS.htmlPosition, LOGIN_TYPO_DEFAULTS.htmlPosition),
+    fontFamily: pickEnum(settings[`${prefix}font_family`], LOGIN_TYPO_OPTIONS.fontFamily, LOGIN_TYPO_DEFAULTS.fontFamily),
+    headlineSize: pickEnum(settings[`${prefix}headline_size`], LOGIN_TYPO_OPTIONS.headlineSize, LOGIN_TYPO_DEFAULTS.headlineSize),
+    headlineWeight: pickEnum(settings[`${prefix}headline_weight`], LOGIN_TYPO_OPTIONS.headlineWeight, LOGIN_TYPO_DEFAULTS.headlineWeight),
+    headlineTracking: pickEnum(settings[`${prefix}headline_tracking`], LOGIN_TYPO_OPTIONS.headlineTracking, LOGIN_TYPO_DEFAULTS.headlineTracking),
+    subSize: pickEnum(settings[`${prefix}sub_size`], LOGIN_TYPO_OPTIONS.subSize, LOGIN_TYPO_DEFAULTS.subSize),
+    subWeight: pickEnum(settings[`${prefix}sub_weight`], LOGIN_TYPO_OPTIONS.subWeight, LOGIN_TYPO_DEFAULTS.subWeight),
+    subLineHeight: pickEnum(settings[`${prefix}sub_line_height`], LOGIN_TYPO_OPTIONS.subLineHeight, LOGIN_TYPO_DEFAULTS.subLineHeight),
+    featuresSize: pickEnum(settings[`${prefix}features_size`], LOGIN_TYPO_OPTIONS.featuresSize, LOGIN_TYPO_DEFAULTS.featuresSize),
+    brandNameSize: pickEnum(settings[`${prefix}brand_name_size`], LOGIN_TYPO_OPTIONS.brandNameSize, LOGIN_TYPO_DEFAULTS.brandNameSize),
+    htmlBlock: settings[`${prefix}html_block`] ?? "",
+    formHtml: settings[`${prefix}form_html`] ?? ""
   };
 }
 export function sideFormToFlat(side, form = {}) {
@@ -92,7 +160,22 @@ export function sideFormToFlat(side, form = {}) {
     [`${prefix}accent_color`]: String(form.accentColor || "").trim(),
     [`${prefix}right_bg_color`]: String(form.rightBgColor || "").trim(),
     [`${prefix}right_bg_image_path`]: String(form.rightBgImagePath || "").trim(),
-    [`${prefix}footer_text`]: serializeTextField(form.footerText)
+    [`${prefix}footer_text`]: serializeTextField(form.footerText),
+    [`${prefix}content_align`]: pickEnum(form.contentAlign, LOGIN_TYPO_OPTIONS.contentAlign, LOGIN_TYPO_DEFAULTS.contentAlign),
+    [`${prefix}content_valign`]: pickEnum(form.contentValign, LOGIN_TYPO_OPTIONS.contentValign, LOGIN_TYPO_DEFAULTS.contentValign),
+    [`${prefix}logo_align`]: pickEnum(form.logoAlign, LOGIN_TYPO_OPTIONS.logoAlign, LOGIN_TYPO_DEFAULTS.logoAlign),
+    [`${prefix}html_position`]: pickEnum(form.htmlPosition, LOGIN_TYPO_OPTIONS.htmlPosition, LOGIN_TYPO_DEFAULTS.htmlPosition),
+    [`${prefix}font_family`]: pickEnum(form.fontFamily, LOGIN_TYPO_OPTIONS.fontFamily, LOGIN_TYPO_DEFAULTS.fontFamily),
+    [`${prefix}headline_size`]: pickEnum(form.headlineSize, LOGIN_TYPO_OPTIONS.headlineSize, LOGIN_TYPO_DEFAULTS.headlineSize),
+    [`${prefix}headline_weight`]: pickEnum(form.headlineWeight, LOGIN_TYPO_OPTIONS.headlineWeight, LOGIN_TYPO_DEFAULTS.headlineWeight),
+    [`${prefix}headline_tracking`]: pickEnum(form.headlineTracking, LOGIN_TYPO_OPTIONS.headlineTracking, LOGIN_TYPO_DEFAULTS.headlineTracking),
+    [`${prefix}sub_size`]: pickEnum(form.subSize, LOGIN_TYPO_OPTIONS.subSize, LOGIN_TYPO_DEFAULTS.subSize),
+    [`${prefix}sub_weight`]: pickEnum(form.subWeight, LOGIN_TYPO_OPTIONS.subWeight, LOGIN_TYPO_DEFAULTS.subWeight),
+    [`${prefix}sub_line_height`]: pickEnum(form.subLineHeight, LOGIN_TYPO_OPTIONS.subLineHeight, LOGIN_TYPO_DEFAULTS.subLineHeight),
+    [`${prefix}features_size`]: pickEnum(form.featuresSize, LOGIN_TYPO_OPTIONS.featuresSize, LOGIN_TYPO_DEFAULTS.featuresSize),
+    [`${prefix}brand_name_size`]: pickEnum(form.brandNameSize, LOGIN_TYPO_OPTIONS.brandNameSize, LOGIN_TYPO_DEFAULTS.brandNameSize),
+    [`${prefix}html_block`]: String(form.htmlBlock || "").slice(0, 12000),
+    [`${prefix}form_html`]: String(form.formHtml || "").slice(0, 12000)
   };
 }
 export function mergeBrandingWithAuthCopy(brandingSide, authPanel, side) {
@@ -109,6 +192,9 @@ export function mergeBrandingWithAuthCopy(brandingSide, authPanel, side) {
       bgImageUrl: null,
       rightBgImageUrl: null,
       footerText: null,
+      htmlBlock: "",
+      formHtml: "",
+      layout: { ...LOGIN_TYPO_DEFAULTS },
       colors: DEFAULT_SIDE_COLORS[side],
       custom: false
     };
@@ -126,6 +212,23 @@ export function mergeBrandingWithAuthCopy(brandingSide, authPanel, side) {
     bgImageUrl: resolveLoginAssetUrl(brandingSide.bgImagePath),
     rightBgImageUrl: resolveLoginAssetUrl(brandingSide.rightBgImagePath),
     footerText: resolveOptionalBrandingText(brandingSide.footerText),
+    htmlBlock: String(brandingSide.htmlBlock || "").trim(),
+    formHtml: String(brandingSide.formHtml || "").trim(),
+    layout: {
+      contentAlign: pickEnum(brandingSide.contentAlign, LOGIN_TYPO_OPTIONS.contentAlign, LOGIN_TYPO_DEFAULTS.contentAlign),
+      contentValign: pickEnum(brandingSide.contentValign, LOGIN_TYPO_OPTIONS.contentValign, LOGIN_TYPO_DEFAULTS.contentValign),
+      logoAlign: pickEnum(brandingSide.logoAlign, LOGIN_TYPO_OPTIONS.logoAlign, LOGIN_TYPO_DEFAULTS.logoAlign),
+      htmlPosition: pickEnum(brandingSide.htmlPosition, LOGIN_TYPO_OPTIONS.htmlPosition, LOGIN_TYPO_DEFAULTS.htmlPosition),
+      fontFamily: pickEnum(brandingSide.fontFamily, LOGIN_TYPO_OPTIONS.fontFamily, LOGIN_TYPO_DEFAULTS.fontFamily),
+      headlineSize: pickEnum(brandingSide.headlineSize, LOGIN_TYPO_OPTIONS.headlineSize, LOGIN_TYPO_DEFAULTS.headlineSize),
+      headlineWeight: pickEnum(brandingSide.headlineWeight, LOGIN_TYPO_OPTIONS.headlineWeight, LOGIN_TYPO_DEFAULTS.headlineWeight),
+      headlineTracking: pickEnum(brandingSide.headlineTracking, LOGIN_TYPO_OPTIONS.headlineTracking, LOGIN_TYPO_DEFAULTS.headlineTracking),
+      subSize: pickEnum(brandingSide.subSize, LOGIN_TYPO_OPTIONS.subSize, LOGIN_TYPO_DEFAULTS.subSize),
+      subWeight: pickEnum(brandingSide.subWeight, LOGIN_TYPO_OPTIONS.subWeight, LOGIN_TYPO_DEFAULTS.subWeight),
+      subLineHeight: pickEnum(brandingSide.subLineHeight, LOGIN_TYPO_OPTIONS.subLineHeight, LOGIN_TYPO_DEFAULTS.subLineHeight),
+      featuresSize: pickEnum(brandingSide.featuresSize, LOGIN_TYPO_OPTIONS.featuresSize, LOGIN_TYPO_DEFAULTS.featuresSize),
+      brandNameSize: pickEnum(brandingSide.brandNameSize, LOGIN_TYPO_OPTIONS.brandNameSize, LOGIN_TYPO_DEFAULTS.brandNameSize)
+    },
     colors: {
       bgColorStart: brandingSide.bgColorStart || defaults.bgColorStart,
       bgColorEnd: brandingSide.bgColorEnd || defaults.bgColorEnd,
@@ -137,11 +240,24 @@ export function mergeBrandingWithAuthCopy(brandingSide, authPanel, side) {
 }
 export function buildLoginBrandingStyleVars(panel, accountType) {
   const colors = panel.colors || DEFAULT_SIDE_COLORS[accountType];
+  const layout = panel.layout || LOGIN_TYPO_DEFAULTS;
+  const fontStack = LOGIN_FONT_FAMILIES[layout.fontFamily] || LOGIN_FONT_FAMILIES.default;
   const style = {
     "--login-bg-start": colors.bgColorStart,
     "--login-bg-end": colors.bgColorEnd,
     "--login-accent": colors.accentColor,
-    "--login-right-bg": colors.rightBgColor
+    "--login-right-bg": colors.rightBgColor,
+    "--login-font-family": fontStack,
+    "--login-headline-size": HEADLINE_SIZE_MAP[layout.headlineSize] || HEADLINE_SIZE_MAP.md,
+    "--login-headline-weight": layout.headlineWeight || "700",
+    "--login-headline-tracking": TRACKING_MAP[layout.headlineTracking] || TRACKING_MAP.normal,
+    "--login-sub-size": SUB_SIZE_MAP[layout.subSize] || SUB_SIZE_MAP.md,
+    "--login-sub-weight": layout.subWeight || "400",
+    "--login-sub-line-height": LINE_HEIGHT_MAP[layout.subLineHeight] || LINE_HEIGHT_MAP.normal,
+    "--login-features-size": FEATURES_SIZE_MAP[layout.featuresSize] || FEATURES_SIZE_MAP.md,
+    "--login-brand-size": BRAND_SIZE_MAP[layout.brandNameSize] || BRAND_SIZE_MAP.md,
+    "--login-content-align": layout.contentAlign === "center" ? "center" : "flex-start",
+    "--login-text-align": layout.contentAlign === "center" ? "center" : "left"
   };
   const gradient = `linear-gradient(160deg, ${colors.bgColorStart} 0%, ${colors.bgColorEnd} 60%, ${colors.bgColorEnd} 100%)`;
   if (panel.bgImageUrl) {
@@ -166,4 +282,14 @@ export function buildLoginRightPanelStyle(panel, accountType) {
     style.backgroundRepeat = "no-repeat";
   }
   return style;
+}
+
+export function buildLoginAsideClassNames(styles, panel) {
+  const layout = panel?.layout || LOGIN_TYPO_DEFAULTS;
+  const parts = [];
+  if (layout.contentAlign === "center") parts.push(styles.leftAlignCenter);
+  if (layout.contentValign === "center") parts.push(styles.leftValignCenter);
+  if (layout.contentValign === "bottom") parts.push(styles.leftValignBottom);
+  if (layout.logoAlign === "center") parts.push(styles.leftLogoCenter);
+  return parts.filter(Boolean).join(" ");
 }

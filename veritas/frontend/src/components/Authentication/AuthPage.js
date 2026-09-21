@@ -14,7 +14,8 @@ import { interpolate } from "../../i18n/translate";
 import { getAuthCopy } from "./authI18n";
 import API_BASE_URL from "../../config";
 import { fetchLoginBranding } from "../../api/loginBranding";
-import { buildLoginBrandingStyleVars, buildLoginRightPanelStyle, mergeBrandingWithAuthCopy } from "../../utils/loginBrandingUtils";
+import { buildLoginBrandingStyleVars, buildLoginRightPanelStyle, buildLoginAsideClassNames, mergeBrandingWithAuthCopy } from "../../utils/loginBrandingUtils";
+import { sanitizeLoginBrandingHtml } from "../../utils/sanitizeHtml";
 import AppVersion from "../Misc/AppVersion";
 import EditionBadge from "../Misc/EditionBadge";
 import { getSafeReturnPath } from "../../navigation/agentRoutes";
@@ -74,6 +75,22 @@ export default function AuthPage() {
     </>;
   const brandingStyleVars = useMemo(() => activeBranding.custom && !isForgotView ? buildLoginBrandingStyleVars(activeBranding, accountType) : null, [activeBranding, accountType, isForgotView]);
   const rightPanelStyle = useMemo(() => activeBranding.custom && !isForgotView ? buildLoginRightPanelStyle(activeBranding, accountType) : undefined, [activeBranding, accountType, isForgotView]);
+  const leftHtml = useMemo(() => {
+    if (!activeBranding.custom || isForgotView || !activeBranding.htmlBlock) return "";
+    return sanitizeLoginBrandingHtml(activeBranding.htmlBlock);
+  }, [activeBranding.custom, activeBranding.htmlBlock, isForgotView]);
+  const formHtml = useMemo(() => {
+    if (!activeBranding.custom || isForgotView || !activeBranding.formHtml) return "";
+    return sanitizeLoginBrandingHtml(activeBranding.formHtml);
+  }, [activeBranding.custom, activeBranding.formHtml, isForgotView]);
+  const htmlPosition = activeBranding.layout?.htmlPosition || "after_features";
+  const renderLeftHtml = position => {
+    if (!leftHtml || htmlPosition !== position) return null;
+    return <div className={styles.loginHtmlBlock} dangerouslySetInnerHTML={{ __html: leftHtml }} />;
+  };
+  const leftLayoutClass = activeBranding.custom && !isForgotView
+    ? buildLoginAsideClassNames(styles, activeBranding)
+    : "";
   const runSystemChecks = useCallback(async ({
     showRetrying = false
   } = {}) => {
@@ -306,7 +323,8 @@ export default function AuthPage() {
       {maintenanceStatus?.enabled && <MaintenanceBanner message={maintenanceStatus.message} />}
 
       {}
-      <aside className={`${styles.left} ${!activeBranding.custom && !isForgotView && accountType === "client" ? styles.leftClient : ""} ${activeBranding.custom && !isForgotView ? styles.leftBranded : ""}`} style={brandingStyleVars || undefined}>
+      <aside className={`${styles.left} ${!activeBranding.custom && !isForgotView && accountType === "client" ? styles.leftClient : ""} ${activeBranding.custom && !isForgotView ? styles.leftBranded : ""} ${leftLayoutClass}`.trim()} style={brandingStyleVars || undefined}>
+        {renderLeftHtml("before_headline")}
         <div className={styles.leftTop}>
           <div className={styles.brand}>
             {activeBranding.logoUrl ? <img src={activeBranding.logoUrl} alt="" className={`${styles.brandLogo}${activeBranding.logoTransparent ? ` ${styles.brandLogoFramed}` : ""}`} style={activeBranding.logoTransparent ? {
@@ -317,6 +335,7 @@ export default function AuthPage() {
           </div>
           <h2 className={styles.leftHeadline}>{panelHeadline}</h2>
           <p className={styles.leftSub}>{activeBranding.sub}</p>
+          {renderLeftHtml("after_sub")}
         </div>
         <ul className={styles.leftFeatures}>
           {activeBranding.features.map(f => <li key={f} className={styles.leftFeature}>
@@ -324,6 +343,8 @@ export default function AuthPage() {
               {f}
             </li>)}
         </ul>
+        {renderLeftHtml("after_features")}
+        {renderLeftHtml("bottom")}
         <div className={styles.leftFooterMeta}>
           {apiVersion && <span className={styles.leftVersionMeta}>API v{apiVersion}</span>}
           <EditionBadge variant="dark" />
@@ -424,6 +445,7 @@ export default function AuthPage() {
                     {copy.fields.forgotPassword}
                   </button>
                 </div>
+                {formHtml ? <div className={styles.loginFormHtml} dangerouslySetInnerHTML={{ __html: formHtml }} /> : null}
               </form>}
 
             {!mfaPending && view === "forgot" && <form className={styles.form} onSubmit={handleForgot}>

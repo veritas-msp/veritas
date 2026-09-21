@@ -19,6 +19,7 @@
   padding: 48px 40px;
   position: relative;
   overflow: hidden;
+  font-family: var(--login-font-family, inherit);
 }
 
 .left::before {
@@ -31,6 +32,37 @@
   pointer-events: none;
 }
 
+.leftAlignCenter {
+  text-align: center;
+  --login-text-align: center;
+  --login-content-align: center;
+}
+
+.leftAlignCenter .brand,
+.leftLogoCenter .brand {
+  justify-content: center;
+}
+
+.leftAlignCenter .leftFeatures,
+.leftAlignCenter .leftFeature {
+  align-items: center;
+  justify-content: center;
+}
+
+.leftAlignCenter .leftFooterMeta {
+  align-items: center;
+}
+
+.leftValignCenter {
+  justify-content: center;
+  gap: 1.5rem;
+}
+
+.leftValignBottom {
+  justify-content: flex-end;
+  gap: 1.25rem;
+}
+
 .leftTop { position: relative; z-index: 1; }
 
 .brand {
@@ -39,6 +71,7 @@
   gap: 10px;
   flex-wrap: wrap;
   margin-bottom: 48px;
+  justify-content: var(--login-content-align, flex-start);
 }
 
 .brandIcon {
@@ -71,7 +104,7 @@
 }
 
 .brandName {
-  font-size: 1.25rem;
+  font-size: var(--login-brand-size, 1.25rem);
   font-weight: 700;
   color: #e8edf5;
   letter-spacing: 0.04em;
@@ -79,18 +112,22 @@
 }
 
 .leftHeadline {
-  font-size: 1.75rem;
-  font-weight: 700;
+  font-size: var(--login-headline-size, 1.75rem);
+  font-weight: var(--login-headline-weight, 700);
+  letter-spacing: var(--login-headline-tracking, 0);
   color: #fff;
   line-height: 1.35;
   margin: 0 0 14px;
+  text-align: var(--login-text-align, left);
 }
 
 .leftSub {
-  font-size: 0.9rem;
+  font-size: var(--login-sub-size, 0.9rem);
+  font-weight: var(--login-sub-weight, 400);
   color: #7b94b5;
-  line-height: 1.6;
+  line-height: var(--login-sub-line-height, 1.6);
   margin: 0;
+  text-align: var(--login-text-align, left);
 }
 
 .leftFeatures {
@@ -102,13 +139,14 @@
   gap: 10px;
   position: relative;
   z-index: 1;
+  align-items: var(--login-content-align, stretch);
 }
 
 .leftFeature {
   display: flex;
   align-items: center;
   gap: 10px;
-  font-size: 0.84rem;
+  font-size: var(--login-features-size, 0.84rem);
   color: #6a88a8;
 }
 
@@ -118,6 +156,88 @@
   border-radius: 50%;
   background: var(--login-accent, #2b5fab);
   flex-shrink: 0;
+}
+
+.loginHtmlBlock {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  margin: 0.85rem 0 0;
+  color: #c5d4e8;
+  font-size: var(--login-features-size, 0.88rem);
+  line-height: 1.5;
+  text-align: var(--login-text-align, left);
+}
+
+.loginHtmlBlock :global(a) {
+  color: #fff;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.loginHtmlBlock :global(p) {
+  margin: 0 0 0.55rem;
+}
+
+.loginHtmlBlock :global(ul),
+.loginHtmlBlock :global(ol) {
+  margin: 0 0 0.55rem;
+  padding-left: 1.1rem;
+}
+
+.loginHtmlBlock :global(img) {
+  max-width: 100%;
+  height: auto;
+  border-radius: 8px;
+}
+
+.loginHtmlBlock :global(.login-html-btn),
+.loginHtmlBlock :global(a.login-html-btn) {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  margin: 0.2rem 0.35rem 0.2rem 0;
+  padding: 0.55rem 0.95rem;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  background: var(--login-accent, #2b5fab);
+  color: #fff;
+  text-decoration: none;
+  font-weight: 650;
+  font-size: 0.86rem;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.18);
+}
+
+.loginHtmlBlock :global(.login-html-btn:hover),
+.loginHtmlBlock :global(a.login-html-btn:hover) {
+  filter: brightness(1.08);
+}
+
+.loginFormHtml {
+  margin-top: 0.85rem;
+  font-size: 0.84rem;
+  color: var(--msp-muted, #64748b);
+  line-height: 1.5;
+}
+
+.loginFormHtml :global(a) {
+  color: var(--login-accent, #2b5fab);
+  font-weight: 600;
+}
+
+.loginFormHtml :global(.login-html-btn),
+.loginFormHtml :global(a.login-html-btn) {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0.25rem 0.25rem 0 0;
+  padding: 0.5rem 0.85rem;
+  border-radius: 8px;
+  background: var(--login-accent, #2b5fab);
+  color: #fff;
+  text-decoration: none;
+  font-weight: 650;
 }
 
 .leftBranded::before {

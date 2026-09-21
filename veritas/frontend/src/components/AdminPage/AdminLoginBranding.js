@@ -3,10 +3,22 @@ import { toast } from "react-toastify";
 import { useAdminPageCopy } from "../../hooks/useAdminCopy";
 import { useCommonCopy } from "../../hooks/useCommonCopy";
 import { deleteLoginBrandingAsset, fetchLoginBrandingAdmin, updateLoginBranding, uploadLoginBrandingAsset } from "../../api/loginBranding";
-import { DEFAULT_SIDE_COLORS, LOGIN_BRANDING_MAX_UPLOAD_BYTES, LOGIN_SIDES, flatToSideForm, resolveBrandingText, resolveLoginAssetUrl, sideFormToFlat } from "../../utils/loginBrandingUtils";
+import { sanitizeLoginBrandingHtml } from "../../utils/sanitizeHtml";
+import {
+  DEFAULT_SIDE_COLORS,
+  LOGIN_BRANDING_MAX_UPLOAD_BYTES,
+  LOGIN_SIDES,
+  LOGIN_TYPO_DEFAULTS,
+  LOGIN_TYPO_OPTIONS,
+  flatToSideForm,
+  resolveBrandingText,
+  resolveLoginAssetUrl,
+  sideFormToFlat
+} from "../../utils/loginBrandingUtils";
 import { Page, Card, Field, Input, Textarea, Btn, Switch, FormGrid, SubTabs } from "./AdminUi";
 import adminUi from "./AdminUi.module.css";
 import s from "./AdminLoginBranding.module.css";
+
 const EMPTY_SIDE = {
   enabled: false,
   headlineLine1: "",
@@ -23,26 +35,31 @@ const EMPTY_SIDE = {
   accentColor: "",
   rightBgColor: "",
   rightBgImagePath: "",
-  footerText: ""
+  footerText: "",
+  ...LOGIN_TYPO_DEFAULTS,
+  htmlBlock: "",
+  formHtml: ""
 };
-function ColorField({
-  label,
-  hint,
-  value,
-  onChange,
-  fallback
-}) {
+
+function ColorField({ label, hint, value, onChange, fallback }) {
   const display = value || fallback || "#000000";
   return <Field label={label} hint={hint}>
       <div className={s.colorRow}>
         <input type="color" className={s.colorInput} value={display} onChange={e => onChange(e.target.value)} aria-label={label} />
         <Input value={value} onChange={e => onChange(e.target.value)} placeholder={fallback} />
-        {value ? <button type="button" className={s.colorReset} onClick={() => onChange("")}>
-            ×
-          </button> : null}
+        {value ? <button type="button" className={s.colorReset} onClick={() => onChange("")}>×</button> : null}
       </div>
     </Field>;
 }
+
+function SelectField({ label, hint, value, onChange, options, optionLabels }) {
+  return <Field label={label} hint={hint}>
+      <select className={s.select} value={value} onChange={e => onChange(e.target.value)}>
+        {options.map(opt => <option key={opt} value={opt}>{optionLabels?.[opt] || opt}</option>)}
+      </select>
+    </Field>;
+}
+
 function AssetUploadField({
   label,
   hint,
@@ -58,9 +75,7 @@ function AssetUploadField({
   const previewUrl = resolveLoginAssetUrl(path);
   return <Field label={label} hint={hint}>
       <div className={s.assetBox}>
-        {previewUrl ? <div className={s.assetPreview} style={previewBackground ? {
-        background: previewBackground
-      } : undefined}>
+        {previewUrl ? <div className={s.assetPreview} style={previewBackground ? { background: previewBackground } : undefined}>
             <img src={previewUrl} alt="" />
           </div> : <div className={s.assetPlaceholder}>-</div>}
         <div className={s.assetActions}>
@@ -79,11 +94,8 @@ function AssetUploadField({
       </div>
     </Field>;
 }
-function LoginPreview({
-  side,
-  form,
-  copy
-}) {
+
+function LoginPreview({ side, form, copy }) {
   const defaults = DEFAULT_SIDE_COLORS[side];
   const bgStart = form.bgColorStart || defaults.bgColorStart;
   const bgEnd = form.bgColorEnd || defaults.bgColorEnd;
@@ -93,8 +105,14 @@ function LoginPreview({
   const rightBgImageUrl = resolveLoginAssetUrl(form.rightBgImagePath);
   const logoBg = form.logoBgColor || defaults.logoBgColor;
   const features = String(form.features || "").split("\n").map(line => line.trim()).filter(Boolean).slice(0, 3);
+  const htmlSafe = form.htmlBlock ? sanitizeLoginBrandingHtml(form.htmlBlock) : "";
   const panelStyle = {
-    background: bgImageUrl ? `linear-gradient(160deg, ${bgStart}dd 0%, ${bgEnd}dd 100%), url("${bgImageUrl}") center/cover` : `linear-gradient(160deg, ${bgStart} 0%, ${bgEnd} 100%)`
+    background: bgImageUrl
+      ? `linear-gradient(160deg, ${bgStart}dd 0%, ${bgEnd}dd 100%), url("${bgImageUrl}") center/cover`
+      : `linear-gradient(160deg, ${bgStart} 0%, ${bgEnd} 100%)`,
+    textAlign: form.contentAlign === "center" ? "center" : "left",
+    justifyContent: form.contentValign === "center" ? "center" : form.contentValign === "bottom" ? "flex-end" : "flex-start",
+    alignItems: form.contentAlign === "center" ? "center" : "stretch"
   };
   const rightPanelStyle = rightBgImageUrl ? {
     backgroundColor: form.rightBgColor || defaults.rightBgColor,
@@ -108,18 +126,14 @@ function LoginPreview({
   const headline2 = resolveBrandingText(form.headlineLine2, copy.previewHeadline2);
   const sub = resolveBrandingText(form.sub, copy.previewSub);
   const brandName = form.brandName === "" ? "Veritas" : String(form.brandName || "").trim() || "";
+  const htmlBlock = htmlSafe ? <div className={s.previewHtml} dangerouslySetInnerHTML={{ __html: htmlSafe }} /> : null;
   return <div className={s.previewShell}>
       <p className={s.previewLabel}>{copy.previewLabel}</p>
       <div className={s.previewFrame}>
         <aside className={s.previewLeft} style={panelStyle}>
-          <div className={s.previewBrand}>
-            {logoUrl ? <img src={logoUrl} alt="" className={s.previewLogo} style={form.logoTransparent ? {
-            background: logoBg
-          } : {
-            background: "transparent"
-          }} /> : <div className={s.previewBrandIcon} style={{
-            background: accent
-          }}>V</div>}
+          {form.htmlPosition === "before_headline" ? htmlBlock : null}
+          <div className={s.previewBrand} style={form.logoAlign === "center" ? { justifyContent: "center" } : undefined}>
+            {logoUrl ? <img src={logoUrl} alt="" className={s.previewLogo} style={form.logoTransparent ? { background: logoBg } : { background: "transparent" }} /> : <div className={s.previewBrandIcon} style={{ background: accent }}>V</div>}
             <span>{brandName || "\u00A0"}</span>
           </div>
           <h3 className={s.previewHeadline}>
@@ -128,23 +142,22 @@ function LoginPreview({
             {headline2}
           </h3>
           <p className={s.previewSub}>{sub}</p>
-          <ul className={s.previewFeatures}>
+          {form.htmlPosition === "after_sub" ? htmlBlock : null}
+          <ul className={s.previewFeatures} style={form.contentAlign === "center" ? { alignItems: "center" } : undefined}>
             {features.map(item => <li key={item}>
-                <span style={{
-              background: accent
-            }} />
+                <span style={{ background: accent }} />
                 {item}
               </li>)}
           </ul>
+          {form.htmlPosition === "after_features" || !form.htmlPosition ? htmlBlock : null}
+          {form.htmlPosition === "bottom" ? htmlBlock : null}
         </aside>
         <div className={s.previewRight} style={rightPanelStyle}>
           <div className={s.previewCard}>
             <div className={s.previewToggle} />
             <div className={s.previewField} />
             <div className={s.previewField} />
-            <button type="button" className={s.previewBtn} style={{
-            background: accent
-          }}>
+            <button type="button" className={s.previewBtn} style={{ background: accent }}>
               {copy.previewButton}
             </button>
           </div>
@@ -152,23 +165,40 @@ function LoginPreview({
       </div>
     </div>;
 }
-export default function AdminLoginBranding({
-  isCommunity = false
-}) {
+
+export default function AdminLoginBranding({ isCommunity = false }) {
   const copy = useAdminPageCopy("loginBranding");
   const common = useCommonCopy();
   const [activeSide, setActiveSide] = useState("agent");
   const [forms, setForms] = useState({
-    agent: {
-      ...EMPTY_SIDE
-    },
-    client: {
-      ...EMPTY_SIDE
-    }
+    agent: { ...EMPTY_SIDE },
+    client: { ...EMPTY_SIDE }
   });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(null);
+  const FALLBACK_OPTIONS = {
+    align: { left: "Left", center: "Center" },
+    valign: { top: "Top", center: "Middle", bottom: "Bottom" },
+    fontFamily: {
+      default: "System",
+      geometric: "Geometric",
+      humanist: "Humanist / serif",
+      slab: "Slab",
+      mono: "Monospace"
+    },
+    size: { sm: "Small", md: "Medium", lg: "Large", xl: "Extra large" },
+    weight: { "400": "Regular", "500": "Medium", "600": "Semibold", "700": "Bold", "800": "Extra bold" },
+    tracking: { tight: "Tight", normal: "Normal", wide: "Wide" },
+    lineHeight: { tight: "Tight", normal: "Normal", relaxed: "Relaxed" },
+    htmlPosition: {
+      before_headline: "Before headline",
+      after_sub: "After subtitle",
+      after_features: "After highlights",
+      bottom: "Bottom of panel"
+    }
+  };
+  const opt = { ...FALLBACK_OPTIONS, ...(copy.options || {}) };
   const sideTabs = useMemo(() => LOGIN_SIDES.map(side => ({
     key: side,
     label: copy.tabs[side],
@@ -215,9 +245,7 @@ export default function AdminLoginBranding({
         ...sideFormToFlat("agent", forms.agent),
         ...sideFormToFlat("client", forms.client)
       };
-      const {
-        settings
-      } = await updateLoginBranding(payload);
+      const { settings } = await updateLoginBranding(payload);
       setForms({
         agent: flatToSideForm(settings, "agent"),
         client: flatToSideForm(settings, "client")
@@ -241,10 +269,7 @@ export default function AdminLoginBranding({
     }
     setUploading(kind);
     try {
-      const {
-        path,
-        key
-      } = await uploadLoginBrandingAsset(activeSide, kind, file);
+      const { path, key } = await uploadLoginBrandingAsset(activeSide, kind, file);
       const field = key.includes("right_bg_image") ? "rightBgImagePath" : key.includes("bg_image") ? "bgImagePath" : "logoPath";
       setField(field, path);
       toast.success(copy.uploadSuccess);
@@ -306,6 +331,40 @@ export default function AdminLoginBranding({
           </Field>
           <Field label={copy.footerLabel} hint={copy.blankFieldHint}>
             <Input value={form.footerText} onChange={e => setField("footerText", e.target.value)} placeholder={copy.footerPlaceholder} />
+          </Field>
+        </FormGrid>
+      </Card>
+
+      <Card title={copy.layoutTitle} description={copy.layoutDescription}>
+        <FormGrid cols={3}>
+          <SelectField label={copy.contentAlignLabel} value={form.contentAlign} onChange={v => setField("contentAlign", v)} options={LOGIN_TYPO_OPTIONS.contentAlign} optionLabels={opt.align} />
+          <SelectField label={copy.contentValignLabel} value={form.contentValign} onChange={v => setField("contentValign", v)} options={LOGIN_TYPO_OPTIONS.contentValign} optionLabels={opt.valign} />
+          <SelectField label={copy.logoAlignLabel} value={form.logoAlign} onChange={v => setField("logoAlign", v)} options={LOGIN_TYPO_OPTIONS.logoAlign} optionLabels={opt.align} />
+        </FormGrid>
+      </Card>
+
+      <Card title={copy.typoTitle} description={copy.typoDescription}>
+        <FormGrid cols={3}>
+          <SelectField label={copy.fontFamilyLabel} value={form.fontFamily} onChange={v => setField("fontFamily", v)} options={LOGIN_TYPO_OPTIONS.fontFamily} optionLabels={opt.fontFamily} />
+          <SelectField label={copy.headlineSizeLabel} value={form.headlineSize} onChange={v => setField("headlineSize", v)} options={LOGIN_TYPO_OPTIONS.headlineSize} optionLabels={opt.size} />
+          <SelectField label={copy.headlineWeightLabel} value={form.headlineWeight} onChange={v => setField("headlineWeight", v)} options={LOGIN_TYPO_OPTIONS.headlineWeight} optionLabels={opt.weight} />
+          <SelectField label={copy.headlineTrackingLabel} value={form.headlineTracking} onChange={v => setField("headlineTracking", v)} options={LOGIN_TYPO_OPTIONS.headlineTracking} optionLabels={opt.tracking} />
+          <SelectField label={copy.subSizeLabel} value={form.subSize} onChange={v => setField("subSize", v)} options={LOGIN_TYPO_OPTIONS.subSize} optionLabels={opt.size} />
+          <SelectField label={copy.subWeightLabel} value={form.subWeight} onChange={v => setField("subWeight", v)} options={LOGIN_TYPO_OPTIONS.subWeight} optionLabels={opt.weight} />
+          <SelectField label={copy.subLineHeightLabel} value={form.subLineHeight} onChange={v => setField("subLineHeight", v)} options={LOGIN_TYPO_OPTIONS.subLineHeight} optionLabels={opt.lineHeight} />
+          <SelectField label={copy.featuresSizeLabel} value={form.featuresSize} onChange={v => setField("featuresSize", v)} options={LOGIN_TYPO_OPTIONS.featuresSize} optionLabels={opt.size} />
+          <SelectField label={copy.brandNameSizeLabel} value={form.brandNameSize} onChange={v => setField("brandNameSize", v)} options={LOGIN_TYPO_OPTIONS.brandNameSize} optionLabels={opt.size} />
+        </FormGrid>
+      </Card>
+
+      <Card title={copy.htmlTitle} description={copy.htmlDescription}>
+        <FormGrid cols={2}>
+          <SelectField label={copy.htmlPositionLabel} hint={copy.htmlPositionHint} value={form.htmlPosition} onChange={v => setField("htmlPosition", v)} options={LOGIN_TYPO_OPTIONS.htmlPosition} optionLabels={opt.htmlPosition} />
+          <Field label={copy.htmlBlockLabel} spanFull hint={copy.htmlBlockHint}>
+            <Textarea value={form.htmlBlock} onChange={e => setField("htmlBlock", e.target.value)} rows={6} placeholder={copy.htmlBlockPlaceholder} style={{ fontFamily: "ui-monospace, SFMono-Regular, Consolas, monospace", fontSize: "0.8rem", lineHeight: 1.45 }} />
+          </Field>
+          <Field label={copy.formHtmlLabel} spanFull hint={copy.formHtmlHint}>
+            <Textarea value={form.formHtml} onChange={e => setField("formHtml", e.target.value)} rows={4} placeholder={copy.formHtmlPlaceholder} style={{ fontFamily: "ui-monospace, SFMono-Regular, Consolas, monospace", fontSize: "0.8rem", lineHeight: 1.45 }} />
           </Field>
         </FormGrid>
       </Card>
