@@ -36,6 +36,10 @@ export const DEFAULT_MONITORING_AUTOMATION_CONFIG = {
     addRecoveryComment: true,
     suggestCloseAfterRecoveryMinutes: 60
   },
+  /** Création auto de tickets Support depuis les alertes — désactivée : manuel via le centre de supervision. */
+  ticketCreation: {
+    enabled: false
+  },
   correlation: {
     enabled: true,
     windowMinutes: 30,

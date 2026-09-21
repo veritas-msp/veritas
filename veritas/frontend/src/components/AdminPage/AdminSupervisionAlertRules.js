@@ -13,8 +13,13 @@ export default function AdminSupervisionAlertRules() {
   const locale = useAppLocale();
   const copy = useMemo(() => getAdminSupervisionAlertRulesCopy(locale), [locale]);
   const { user } = useAuthContext();
-  const { isAdmin } = usePermissions();
-  const canManage = isAdmin || isAdminOrSuperAdminProfile(user?.profile);
+  const { isAdmin, realIsAdmin, can } = usePermissions();
+  const canManage =
+    Boolean(realIsAdmin) ||
+    Boolean(isAdmin) ||
+    isAdminOrSuperAdminProfile(user?.profile) ||
+    can("supervision.manage") ||
+    can("admin_panel.supervision_alerts");
   const {
     rules,
     catalog,

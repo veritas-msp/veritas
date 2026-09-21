@@ -9,10 +9,14 @@ import { BUILTIN_TICKET_VIEWS, BUILTIN_TICKET_VIEW_IDS, resolveBuiltinViewRules 
 import { isCommunity } from "../../utils/edition.js";
 import { loadAssignmentsByViewIds, syncViewAssignments, getUserTeamIds, isAssignedVisibility, hasAssignmentTargets, userCanAccessAssignedView, mapViewAssignments } from "../../services/ticketViewAssignments.js";
 import { userHasAnyPermission } from "../../services/permissionService.js";
+import { isAdminLevelProfile } from "../../config/permissionPresets.js";
 const router = express.Router();
 router.use(verifyJWT);
 function isAdminUser(req) {
-  return String(req.user?.role || "").toLowerCase() === "admin";
+  return (
+    String(req.user?.role || "").toLowerCase() === "admin" ||
+    isAdminLevelProfile(req.user?.profile)
+  );
 }
 function manageViewsKeyForScope(pageScope) {
   return String(pageScope || "ticket") === "ticket_sales" ? "sales.manage_views" : "tickets.manage_views";

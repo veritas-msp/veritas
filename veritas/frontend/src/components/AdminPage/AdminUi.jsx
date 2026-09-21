@@ -427,7 +427,11 @@ export function Select(props) {
   return <select className={s.select} {...props} />;
 }
 export function Textarea(props) {
-  return <textarea className={s.textarea} {...props} />;
+  const {
+    className,
+    ...rest
+  } = props;
+  return <textarea className={[s.textarea, className].filter(Boolean).join(" ")} {...rest} />;
 }
 export function FormGrid({
   children,

@@ -78,6 +78,7 @@ export function AuthProvider({
     email,
     username,
     role,
+    profile,
     client_id,
     mfa_enabled,
     avatar
@@ -87,7 +88,8 @@ export function AuthProvider({
       email,
       username: username || null,
       client_id: client_id ?? null,
-      avatar: avatar || null
+      avatar: avatar || null,
+      profile: profile || null
     });
     setUserRole(role);
     setMfaEnabled(Boolean(mfa_enabled));

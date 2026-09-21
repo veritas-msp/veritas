@@ -293,3 +293,33 @@ export function buildLoginAsideClassNames(styles, panel) {
   if (layout.logoAlign === "center") parts.push(styles.leftLogoCenter);
   return parts.filter(Boolean).join(" ");
 }
+
+/** CSS vars for the admin login branding mini-preview (scaled down from live page). */
+export function buildLoginAdminPreviewStyleVars(form = {}) {
+  const layout = {
+    fontFamily: pickEnum(form.fontFamily, LOGIN_TYPO_OPTIONS.fontFamily, LOGIN_TYPO_DEFAULTS.fontFamily),
+    headlineSize: pickEnum(form.headlineSize, LOGIN_TYPO_OPTIONS.headlineSize, LOGIN_TYPO_DEFAULTS.headlineSize),
+    headlineWeight: pickEnum(form.headlineWeight, LOGIN_TYPO_OPTIONS.headlineWeight, LOGIN_TYPO_DEFAULTS.headlineWeight),
+    headlineTracking: pickEnum(form.headlineTracking, LOGIN_TYPO_OPTIONS.headlineTracking, LOGIN_TYPO_DEFAULTS.headlineTracking),
+    subSize: pickEnum(form.subSize, LOGIN_TYPO_OPTIONS.subSize, LOGIN_TYPO_DEFAULTS.subSize),
+    subWeight: pickEnum(form.subWeight, LOGIN_TYPO_OPTIONS.subWeight, LOGIN_TYPO_DEFAULTS.subWeight),
+    subLineHeight: pickEnum(form.subLineHeight, LOGIN_TYPO_OPTIONS.subLineHeight, LOGIN_TYPO_DEFAULTS.subLineHeight),
+    featuresSize: pickEnum(form.featuresSize, LOGIN_TYPO_OPTIONS.featuresSize, LOGIN_TYPO_DEFAULTS.featuresSize),
+    brandNameSize: pickEnum(form.brandNameSize, LOGIN_TYPO_OPTIONS.brandNameSize, LOGIN_TYPO_DEFAULTS.brandNameSize)
+  };
+  const PREVIEW_HEADLINE = { sm: "0.85rem", md: "1rem", lg: "1.18rem", xl: "1.36rem" };
+  const PREVIEW_SUB = { sm: "0.62rem", md: "0.72rem", lg: "0.82rem" };
+  const PREVIEW_FEATURES = { sm: "0.58rem", md: "0.68rem", lg: "0.78rem" };
+  const PREVIEW_BRAND = { sm: "0.7rem", md: "0.82rem", lg: "0.95rem" };
+  return {
+    fontFamily: LOGIN_FONT_FAMILIES[layout.fontFamily] || LOGIN_FONT_FAMILIES.default,
+    "--pv-headline-size": PREVIEW_HEADLINE[layout.headlineSize] || PREVIEW_HEADLINE.md,
+    "--pv-headline-weight": layout.headlineWeight || "700",
+    "--pv-headline-tracking": TRACKING_MAP[layout.headlineTracking] || TRACKING_MAP.normal,
+    "--pv-sub-size": PREVIEW_SUB[layout.subSize] || PREVIEW_SUB.md,
+    "--pv-sub-weight": layout.subWeight || "400",
+    "--pv-sub-line-height": LINE_HEIGHT_MAP[layout.subLineHeight] || LINE_HEIGHT_MAP.normal,
+    "--pv-features-size": PREVIEW_FEATURES[layout.featuresSize] || PREVIEW_FEATURES.md,
+    "--pv-brand-size": PREVIEW_BRAND[layout.brandNameSize] || PREVIEW_BRAND.md
+  };
+}

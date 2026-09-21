@@ -5,6 +5,7 @@ import verifyJWT from "../../middleware/auth.js";
 import { getUserTeamIds, hasAssignmentTargets, loadAssignmentsByFormIds, mapFormAssignments, syncFormAssignments, userCanAccessForm } from "../../services/salesFormAssignments.js";
 import { normalizeTicketTargetsConfig, parseTicketTargetsFromRow } from "../../services/salesFormTicketTargets.js";
 import { normalizeVisibilityRules } from "../../services/salesFormConditions.js";
+import { isAdminLevelProfile } from "../../config/permissionPresets.js";
 const router = express.Router();
 router.use(verifyJWT);
 const SALES_KINDS = new Set(["prestation", "installation"]);
@@ -22,7 +23,10 @@ function validationErrorOrNull(req, res) {
   return false;
 }
 function isAdminUser(req) {
-  return String(req.user?.role || "").toLowerCase() === "admin";
+  return (
+    String(req.user?.role || "").toLowerCase() === "admin" ||
+    isAdminLevelProfile(req.user?.profile)
+  );
 }
 async function getUserProfileName(userId) {
   if (!userId) return null;

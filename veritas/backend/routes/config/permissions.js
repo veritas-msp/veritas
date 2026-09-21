@@ -3,7 +3,7 @@ import { pool } from "../../database/db.js";
 import verifyJWT from "../../middleware/auth.js";
 import { requirePermission } from "../../middleware/permissions.js";
 import { PERMISSION_CATALOG_NORMALIZED, PERMISSION_ACTION_LABELS, ALL_PERMISSION_KEYS, VIEW_PERMISSION_TO_MODULE_FLAG, permissionKey, getMatrixCatalog } from "../../config/permissionCatalog.js";
-import { isSuperAdminPresetProfile, SUPER_ADMIN_PROFILE_NAME, getPresetForProfile } from "../../config/permissionPresets.js";
+import { isSuperAdminPresetProfile, isAdminLevelProfile, SUPER_ADMIN_PROFILE_NAME, getPresetForProfile } from "../../config/permissionPresets.js";
 import { getUserPermissions, getProfilePermissions, invalidateProfilePermissions, sanitizeGrantedPermissions } from "../../services/permissionService.js";
 import { ensurePermissionsSchema } from "../../services/ensurePermissionsSchema.js";
 import { isCommunity } from "../../utils/edition.js";
@@ -79,8 +79,11 @@ router.get("/catalog", requirePermission("admin_panel.permissions"), (req, res) 
 router.get("/me", async (req, res) => {
   try {
     const perms = await getUserPermissions(req.user);
+    const isAdmin =
+      String(req.user.role || "").toLowerCase() === "admin" ||
+      isAdminLevelProfile(req.user.profile);
     res.json({
-      isAdmin: String(req.user.role || "").toLowerCase() === "admin",
+      isAdmin,
       permissions: Array.from(perms)
     });
   } catch (err) {

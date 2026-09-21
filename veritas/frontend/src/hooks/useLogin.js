@@ -23,6 +23,7 @@ export function useLogin(onLogin) {
       email: data.email,
       username: data.username || null,
       role: data.role,
+      profile: data.profile ?? null,
       client_id: data.client_id ?? null,
       mfa_enabled: data.mfa_enabled ?? false
     });

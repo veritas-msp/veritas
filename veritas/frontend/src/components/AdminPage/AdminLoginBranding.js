@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Icon } from "@iconify/react";
 import { toast } from "react-toastify";
 import { useAdminPageCopy } from "../../hooks/useAdminCopy";
 import { useCommonCopy } from "../../hooks/useCommonCopy";
@@ -10,6 +11,7 @@ import {
   LOGIN_SIDES,
   LOGIN_TYPO_DEFAULTS,
   LOGIN_TYPO_OPTIONS,
+  buildLoginAdminPreviewStyleVars,
   flatToSideForm,
   resolveBrandingText,
   resolveLoginAssetUrl,
@@ -39,6 +41,14 @@ const EMPTY_SIDE = {
   ...LOGIN_TYPO_DEFAULTS,
   htmlBlock: "",
   formHtml: ""
+};
+
+const DEFAULT_OPEN_SECTIONS = {
+  content: true,
+  layout: false,
+  typo: true,
+  html: false,
+  visual: true
 };
 
 function ColorField({ label, hint, value, onChange, fallback }) {
@@ -95,6 +105,25 @@ function AssetUploadField({
     </Field>;
 }
 
+function CollapsibleSection({
+  title,
+  description,
+  open,
+  onToggle,
+  children
+}) {
+  return <section className={s.section}>
+      <button type="button" className={s.sectionToggle} onClick={onToggle} aria-expanded={open}>
+        <div className={s.sectionToggleText}>
+          <span className={s.sectionTitle}>{title}</span>
+          {description ? <span className={s.sectionDesc}>{description}</span> : null}
+        </div>
+        <Icon icon={open ? "mdi:chevron-up" : "mdi:chevron-down"} className={s.sectionChevron} aria-hidden />
+      </button>
+      {open ? <div className={s.sectionBody}>{children}</div> : null}
+    </section>;
+}
+
 function LoginPreview({ side, form, copy }) {
   const defaults = DEFAULT_SIDE_COLORS[side];
   const bgStart = form.bgColorStart || defaults.bgColorStart;
@@ -106,7 +135,9 @@ function LoginPreview({ side, form, copy }) {
   const logoBg = form.logoBgColor || defaults.logoBgColor;
   const features = String(form.features || "").split("\n").map(line => line.trim()).filter(Boolean).slice(0, 3);
   const htmlSafe = form.htmlBlock ? sanitizeLoginBrandingHtml(form.htmlBlock) : "";
+  const typoStyle = buildLoginAdminPreviewStyleVars(form);
   const panelStyle = {
+    ...typoStyle,
     background: bgImageUrl
       ? `linear-gradient(160deg, ${bgStart}dd 0%, ${bgEnd}dd 100%), url("${bgImageUrl}") center/cover`
       : `linear-gradient(160deg, ${bgStart} 0%, ${bgEnd} 100%)`,
@@ -134,7 +165,7 @@ function LoginPreview({ side, form, copy }) {
           {form.htmlPosition === "before_headline" ? htmlBlock : null}
           <div className={s.previewBrand} style={form.logoAlign === "center" ? { justifyContent: "center" } : undefined}>
             {logoUrl ? <img src={logoUrl} alt="" className={s.previewLogo} style={form.logoTransparent ? { background: logoBg } : { background: "transparent" }} /> : <div className={s.previewBrandIcon} style={{ background: accent }}>V</div>}
-            <span>{brandName || "\u00A0"}</span>
+            <span className={s.previewBrandName}>{brandName || "\u00A0"}</span>
           </div>
           <h3 className={s.previewHeadline}>
             {headline1}
@@ -174,6 +205,7 @@ export default function AdminLoginBranding({ isCommunity = false }) {
     agent: { ...EMPTY_SIDE },
     client: { ...EMPTY_SIDE }
   });
+  const [openSections, setOpenSections] = useState(DEFAULT_OPEN_SECTIONS);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(null);
@@ -205,6 +237,12 @@ export default function AdminLoginBranding({ isCommunity = false }) {
     icon: side === "agent" ? "mdi:account-tie-outline" : "mdi:domain",
     proOnly: isCommunity
   })), [copy.tabs, isCommunity]);
+  const toggleSection = key => {
+    setOpenSections(prev => ({
+      ...prev,
+      [key]: !prev[key]
+    }));
+  };
   const load = useCallback(async () => {
     if (isCommunity) {
       setLoading(false);
@@ -307,91 +345,130 @@ export default function AdminLoginBranding({ isCommunity = false }) {
   return <Page>
       <SubTabs items={sideTabs} active={activeSide} onChange={setActiveSide} fullWidth />
 
-      <Card>
-        <div className={s.enabledRow}>
-          <Switch checked={form.enabled} onChange={checked => setField("enabled", checked)} label={copy.enabledLabel} />
-          <span className={adminUi.adminMutedText}>{copy.enabledHint}</span>
-        </div>
+      <div className={s.workspace}>
+        <div className={s.editor}>
+          <Card>
+            <div className={s.enabledBlock}>
+              <Switch checked={form.enabled} onChange={checked => setField("enabled", checked)} label={copy.enabledLabel} />
+              <p className={s.enabledHint}>{copy.enabledHint}</p>
+            </div>
+          </Card>
 
-        <FormGrid cols={2}>
-          <Field label={copy.headline1Label} hint={copy.blankFieldHint}>
-            <Input value={form.headlineLine1} onChange={e => setField("headlineLine1", e.target.value)} placeholder={copy.previewHeadline1} />
-          </Field>
-          <Field label={copy.headline2Label} hint={copy.blankFieldHint}>
-            <Input value={form.headlineLine2} onChange={e => setField("headlineLine2", e.target.value)} placeholder={copy.previewHeadline2} />
-          </Field>
-          <Field label={copy.subLabel} spanFull hint={copy.blankFieldHint}>
-            <Textarea value={form.sub} onChange={e => setField("sub", e.target.value)} rows={2} placeholder={copy.previewSub} />
-          </Field>
-          <Field label={copy.featuresLabel} spanFull hint={copy.featuresHint}>
-            <Textarea value={form.features} onChange={e => setField("features", e.target.value)} rows={4} placeholder={copy.featuresPlaceholder} />
-          </Field>
-          <Field label={copy.brandNameLabel} hint={copy.blankFieldHint}>
-            <Input value={form.brandName} onChange={e => setField("brandName", e.target.value)} placeholder="Veritas" />
-          </Field>
-          <Field label={copy.footerLabel} hint={copy.blankFieldHint}>
-            <Input value={form.footerText} onChange={e => setField("footerText", e.target.value)} placeholder={copy.footerPlaceholder} />
-          </Field>
-        </FormGrid>
-      </Card>
+          <CollapsibleSection
+            title={copy.contentTitle || "Contenu"}
+            description={copy.contentDescription || copy.description}
+            open={openSections.content}
+            onToggle={() => toggleSection("content")}
+          >
+            <FormGrid cols={2}>
+              <Field label={copy.headline1Label} hint={copy.blankFieldHint}>
+                <Input value={form.headlineLine1} onChange={e => setField("headlineLine1", e.target.value)} placeholder={copy.previewHeadline1} />
+              </Field>
+              <Field label={copy.headline2Label} hint={copy.blankFieldHint}>
+                <Input value={form.headlineLine2} onChange={e => setField("headlineLine2", e.target.value)} placeholder={copy.previewHeadline2} />
+              </Field>
+              <Field label={copy.subLabel} spanFull hint={copy.blankFieldHint}>
+                <Textarea value={form.sub} onChange={e => setField("sub", e.target.value)} rows={2} placeholder={copy.previewSub} />
+              </Field>
+              <Field label={copy.featuresLabel} spanFull hint={copy.featuresHint}>
+                <Textarea value={form.features} onChange={e => setField("features", e.target.value)} rows={4} placeholder={copy.featuresPlaceholder} />
+              </Field>
+              <Field label={copy.brandNameLabel} hint={copy.blankFieldHint}>
+                <Input value={form.brandName} onChange={e => setField("brandName", e.target.value)} placeholder="Veritas" />
+              </Field>
+              <Field label={copy.footerLabel} hint={copy.blankFieldHint}>
+                <Input value={form.footerText} onChange={e => setField("footerText", e.target.value)} placeholder={copy.footerPlaceholder} />
+              </Field>
+            </FormGrid>
+          </CollapsibleSection>
 
-      <Card title={copy.layoutTitle} description={copy.layoutDescription}>
-        <FormGrid cols={3}>
-          <SelectField label={copy.contentAlignLabel} value={form.contentAlign} onChange={v => setField("contentAlign", v)} options={LOGIN_TYPO_OPTIONS.contentAlign} optionLabels={opt.align} />
-          <SelectField label={copy.contentValignLabel} value={form.contentValign} onChange={v => setField("contentValign", v)} options={LOGIN_TYPO_OPTIONS.contentValign} optionLabels={opt.valign} />
-          <SelectField label={copy.logoAlignLabel} value={form.logoAlign} onChange={v => setField("logoAlign", v)} options={LOGIN_TYPO_OPTIONS.logoAlign} optionLabels={opt.align} />
-        </FormGrid>
-      </Card>
+          <CollapsibleSection
+            title={copy.layoutTitle}
+            description={copy.layoutDescription}
+            open={openSections.layout}
+            onToggle={() => toggleSection("layout")}
+          >
+            <FormGrid cols={3}>
+              <SelectField label={copy.contentAlignLabel} value={form.contentAlign} onChange={v => setField("contentAlign", v)} options={LOGIN_TYPO_OPTIONS.contentAlign} optionLabels={opt.align} />
+              <SelectField label={copy.contentValignLabel} value={form.contentValign} onChange={v => setField("contentValign", v)} options={LOGIN_TYPO_OPTIONS.contentValign} optionLabels={opt.valign} />
+              <SelectField label={copy.logoAlignLabel} value={form.logoAlign} onChange={v => setField("logoAlign", v)} options={LOGIN_TYPO_OPTIONS.logoAlign} optionLabels={opt.align} />
+            </FormGrid>
+          </CollapsibleSection>
 
-      <Card title={copy.typoTitle} description={copy.typoDescription}>
-        <FormGrid cols={3}>
-          <SelectField label={copy.fontFamilyLabel} value={form.fontFamily} onChange={v => setField("fontFamily", v)} options={LOGIN_TYPO_OPTIONS.fontFamily} optionLabels={opt.fontFamily} />
-          <SelectField label={copy.headlineSizeLabel} value={form.headlineSize} onChange={v => setField("headlineSize", v)} options={LOGIN_TYPO_OPTIONS.headlineSize} optionLabels={opt.size} />
-          <SelectField label={copy.headlineWeightLabel} value={form.headlineWeight} onChange={v => setField("headlineWeight", v)} options={LOGIN_TYPO_OPTIONS.headlineWeight} optionLabels={opt.weight} />
-          <SelectField label={copy.headlineTrackingLabel} value={form.headlineTracking} onChange={v => setField("headlineTracking", v)} options={LOGIN_TYPO_OPTIONS.headlineTracking} optionLabels={opt.tracking} />
-          <SelectField label={copy.subSizeLabel} value={form.subSize} onChange={v => setField("subSize", v)} options={LOGIN_TYPO_OPTIONS.subSize} optionLabels={opt.size} />
-          <SelectField label={copy.subWeightLabel} value={form.subWeight} onChange={v => setField("subWeight", v)} options={LOGIN_TYPO_OPTIONS.subWeight} optionLabels={opt.weight} />
-          <SelectField label={copy.subLineHeightLabel} value={form.subLineHeight} onChange={v => setField("subLineHeight", v)} options={LOGIN_TYPO_OPTIONS.subLineHeight} optionLabels={opt.lineHeight} />
-          <SelectField label={copy.featuresSizeLabel} value={form.featuresSize} onChange={v => setField("featuresSize", v)} options={LOGIN_TYPO_OPTIONS.featuresSize} optionLabels={opt.size} />
-          <SelectField label={copy.brandNameSizeLabel} value={form.brandNameSize} onChange={v => setField("brandNameSize", v)} options={LOGIN_TYPO_OPTIONS.brandNameSize} optionLabels={opt.size} />
-        </FormGrid>
-      </Card>
+          <CollapsibleSection
+            title={copy.typoTitle}
+            description={copy.typoDescription}
+            open={openSections.typo}
+            onToggle={() => toggleSection("typo")}
+          >
+            <FormGrid cols={2}>
+              <SelectField label={copy.fontFamilyLabel} value={form.fontFamily} onChange={v => setField("fontFamily", v)} options={LOGIN_TYPO_OPTIONS.fontFamily} optionLabels={opt.fontFamily} />
+              <SelectField label={copy.brandNameSizeLabel} value={form.brandNameSize} onChange={v => setField("brandNameSize", v)} options={LOGIN_TYPO_OPTIONS.brandNameSize} optionLabels={opt.size} />
+              <SelectField label={copy.headlineSizeLabel} value={form.headlineSize} onChange={v => setField("headlineSize", v)} options={LOGIN_TYPO_OPTIONS.headlineSize} optionLabels={opt.size} />
+              <SelectField label={copy.headlineWeightLabel} value={form.headlineWeight} onChange={v => setField("headlineWeight", v)} options={LOGIN_TYPO_OPTIONS.headlineWeight} optionLabels={opt.weight} />
+              <SelectField label={copy.headlineTrackingLabel} value={form.headlineTracking} onChange={v => setField("headlineTracking", v)} options={LOGIN_TYPO_OPTIONS.headlineTracking} optionLabels={opt.tracking} />
+              <SelectField label={copy.subSizeLabel} value={form.subSize} onChange={v => setField("subSize", v)} options={LOGIN_TYPO_OPTIONS.subSize} optionLabels={opt.size} />
+              <SelectField label={copy.subWeightLabel} value={form.subWeight} onChange={v => setField("subWeight", v)} options={LOGIN_TYPO_OPTIONS.subWeight} optionLabels={opt.weight} />
+              <SelectField label={copy.subLineHeightLabel} value={form.subLineHeight} onChange={v => setField("subLineHeight", v)} options={LOGIN_TYPO_OPTIONS.subLineHeight} optionLabels={opt.lineHeight} />
+              <SelectField label={copy.featuresSizeLabel} value={form.featuresSize} onChange={v => setField("featuresSize", v)} options={LOGIN_TYPO_OPTIONS.featuresSize} optionLabels={opt.size} />
+            </FormGrid>
+          </CollapsibleSection>
 
-      <Card title={copy.htmlTitle} description={copy.htmlDescription}>
-        <FormGrid cols={2}>
-          <SelectField label={copy.htmlPositionLabel} hint={copy.htmlPositionHint} value={form.htmlPosition} onChange={v => setField("htmlPosition", v)} options={LOGIN_TYPO_OPTIONS.htmlPosition} optionLabels={opt.htmlPosition} />
-          <Field label={copy.htmlBlockLabel} spanFull hint={copy.htmlBlockHint}>
-            <Textarea value={form.htmlBlock} onChange={e => setField("htmlBlock", e.target.value)} rows={6} placeholder={copy.htmlBlockPlaceholder} style={{ fontFamily: "ui-monospace, SFMono-Regular, Consolas, monospace", fontSize: "0.8rem", lineHeight: 1.45 }} />
-          </Field>
-          <Field label={copy.formHtmlLabel} spanFull hint={copy.formHtmlHint}>
-            <Textarea value={form.formHtml} onChange={e => setField("formHtml", e.target.value)} rows={4} placeholder={copy.formHtmlPlaceholder} style={{ fontFamily: "ui-monospace, SFMono-Regular, Consolas, monospace", fontSize: "0.8rem", lineHeight: 1.45 }} />
-          </Field>
-        </FormGrid>
-      </Card>
+          <CollapsibleSection
+            title={copy.htmlTitle}
+            description={copy.htmlDescription}
+            open={openSections.html}
+            onToggle={() => toggleSection("html")}
+          >
+            <FormGrid cols={1}>
+              <SelectField label={copy.htmlPositionLabel} hint={copy.htmlPositionHint} value={form.htmlPosition} onChange={v => setField("htmlPosition", v)} options={LOGIN_TYPO_OPTIONS.htmlPosition} optionLabels={opt.htmlPosition} />
+              <Field label={copy.htmlBlockLabel} hint={copy.htmlBlockHint}>
+                <Textarea value={form.htmlBlock} onChange={e => setField("htmlBlock", e.target.value)} rows={6} placeholder={copy.htmlBlockPlaceholder} className={s.codeArea} />
+              </Field>
+              <Field label={copy.formHtmlLabel} hint={copy.formHtmlHint}>
+                <Textarea value={form.formHtml} onChange={e => setField("formHtml", e.target.value)} rows={4} placeholder={copy.formHtmlPlaceholder} className={s.codeArea} />
+              </Field>
+            </FormGrid>
+          </CollapsibleSection>
 
-      <FormGrid cols={2} className={s.cardRow}>
-        <Card title={copy.visualTitle} description={copy.visualDescription}>
-          <FormGrid cols={2}>
-            <ColorField label={copy.bgStartLabel} value={form.bgColorStart} fallback={defaults.bgColorStart} onChange={value => setField("bgColorStart", value)} />
-            <ColorField label={copy.bgEndLabel} value={form.bgColorEnd} fallback={defaults.bgColorEnd} onChange={value => setField("bgColorEnd", value)} />
-            <ColorField label={copy.accentLabel} value={form.accentColor} fallback={defaults.accentColor} onChange={value => setField("accentColor", value)} />
-            <ColorField label={copy.rightBgLabel} value={form.rightBgColor} fallback={defaults.rightBgColor} onChange={value => setField("rightBgColor", value)} />
-            <AssetUploadField label={copy.logoLabel} hint={copy.logoHint} path={form.logoPath} uploading={uploading === "logo"} chooseLabel={copy.chooseFile} removeLabel={copy.removeFile} previewBackground={form.logoPath && form.logoTransparent ? form.logoBgColor || defaults.logoBgColor : undefined} onUpload={file => handleUpload("logo", file)} onDelete={() => handleDeleteAsset("logo")} />
-            <AssetUploadField label={copy.bgImageLabel} hint={copy.bgImageHint} path={form.bgImagePath} uploading={uploading === "background"} chooseLabel={copy.chooseFile} removeLabel={copy.removeFile} onUpload={file => handleUpload("background", file)} onDelete={() => handleDeleteAsset("background")} />
-            <AssetUploadField label={copy.rightBgImageLabel} hint={copy.rightBgImageHint} path={form.rightBgImagePath} uploading={uploading === "right-background"} chooseLabel={copy.chooseFile} removeLabel={copy.removeFile} onUpload={file => handleUpload("right-background", file)} onDelete={() => handleDeleteAsset("right-background")} />
-            {form.logoPath ? <>
-                <Field label={copy.logoTransparentLabel} spanFull hint={copy.logoTransparentHint}>
-                  <Switch checked={form.logoTransparent} onChange={checked => setField("logoTransparent", checked)} label={copy.logoTransparentSwitch} />
+          <CollapsibleSection
+            title={copy.visualTitle}
+            description={copy.visualDescription}
+            open={openSections.visual}
+            onToggle={() => toggleSection("visual")}
+          >
+            <FormGrid cols={2}>
+              <ColorField label={copy.bgStartLabel} value={form.bgColorStart} fallback={defaults.bgColorStart} onChange={value => setField("bgColorStart", value)} />
+              <ColorField label={copy.bgEndLabel} value={form.bgColorEnd} fallback={defaults.bgColorEnd} onChange={value => setField("bgColorEnd", value)} />
+              <ColorField label={copy.accentLabel} value={form.accentColor} fallback={defaults.accentColor} onChange={value => setField("accentColor", value)} />
+              <ColorField label={copy.rightBgLabel} value={form.rightBgColor} fallback={defaults.rightBgColor} onChange={value => setField("rightBgColor", value)} />
+            </FormGrid>
+
+            <div className={s.visualAssets}>
+              <AssetUploadField label={copy.logoLabel} hint={copy.logoHint} path={form.logoPath} uploading={uploading === "logo"} chooseLabel={copy.chooseFile} removeLabel={copy.removeFile} previewBackground={form.logoPath && form.logoTransparent ? form.logoBgColor || defaults.logoBgColor : undefined} onUpload={file => handleUpload("logo", file)} onDelete={() => handleDeleteAsset("logo")} />
+              <AssetUploadField label={copy.bgImageLabel} hint={copy.bgImageHint} path={form.bgImagePath} uploading={uploading === "background"} chooseLabel={copy.chooseFile} removeLabel={copy.removeFile} onUpload={file => handleUpload("background", file)} onDelete={() => handleDeleteAsset("background")} />
+              <AssetUploadField label={copy.rightBgImageLabel} hint={copy.rightBgImageHint} path={form.rightBgImagePath} uploading={uploading === "right-background"} chooseLabel={copy.chooseFile} removeLabel={copy.removeFile} onUpload={file => handleUpload("right-background", file)} onDelete={() => handleDeleteAsset("right-background")} />
+            </div>
+
+            {form.logoPath ? <div className={s.switchBlock}>
+                <Field label={copy.logoTransparentLabel} hint={copy.logoTransparentHint}>
+                  <div className={s.switchRow}>
+                    <Switch checked={form.logoTransparent} onChange={checked => setField("logoTransparent", checked)} label={copy.logoTransparentSwitch} />
+                  </div>
                 </Field>
                 {form.logoTransparent ? <ColorField label={copy.logoBgLabel} hint={copy.logoBgHint} value={form.logoBgColor} fallback={defaults.logoBgColor} onChange={value => setField("logoBgColor", value)} /> : null}
-              </> : null}
-          </FormGrid>
-        </Card>
+              </div> : null}
+          </CollapsibleSection>
+        </div>
 
-        <Card title={copy.previewTitle} description={copy.previewDescription} noPadding>
-          <LoginPreview side={activeSide} form={form} copy={copy} />
-        </Card>
-      </FormGrid>
+        <aside className={s.previewColumn}>
+          <div className={s.previewSticky}>
+            <Card title={copy.previewTitle} description={copy.previewDescription} noPadding>
+              <LoginPreview side={activeSide} form={form} copy={copy} />
+            </Card>
+          </div>
+        </aside>
+      </div>
 
       <div className={s.footerBar}>
         <Btn icon="mdi:content-save-outline" onClick={save} disabled={saving}>

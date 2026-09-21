@@ -2,7 +2,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useState } 
 import { fetchMyPermissions, fetchProfilePermissions } from "../api/permissions";
 import { useAuthContext } from "./AuthContext";
 import { setHasPermission } from "../utils/permissionKeys";
-import { isSuperAdminProtectedProfile } from "../utils/profileProtection";
+import { isSuperAdminProtectedProfile, isAdminOrSuperAdminProfile } from "../utils/profileProtection";
 
 const PermissionsContext = createContext(null);
 const PREVIEW_STORAGE_KEY = "veritas_profile_preview";
@@ -56,7 +56,10 @@ export function PermissionsProvider({
   const [previewProfile, setPreviewProfileState] = useState(() => readStoredPreview());
   const [previewLoading, setPreviewLoading] = useState(false);
 
-  const realIsAdmin = isAdmin || String(userRole || "").toLowerCase() === "admin";
+  const realIsAdmin =
+    isAdmin ||
+    String(userRole || "").toLowerCase() === "admin" ||
+    isAdminOrSuperAdminProfile(user?.profile);
   const canUseProfilePreview = realIsAdmin;
 
   const refresh = useCallback(async () => {
@@ -71,11 +74,18 @@ export function PermissionsProvider({
       const data = await fetchMyPermissions();
       const list = Array.isArray(data?.permissions) ? data.permissions : [];
       setPermissionSet(new Set(list));
-      setIsAdmin(Boolean(data?.isAdmin) || String(userRole || "").toLowerCase() === "admin");
+      setIsAdmin(
+        Boolean(data?.isAdmin) ||
+          String(userRole || "").toLowerCase() === "admin" ||
+          isAdminOrSuperAdminProfile(user?.profile)
+      );
     } catch (err) {
       console.warn("[permissions] Failed to load /me:", err?.message || err);
       setPermissionSet(new Set());
-      setIsAdmin(String(userRole || "").toLowerCase() === "admin");
+      setIsAdmin(
+        String(userRole || "").toLowerCase() === "admin" ||
+          isAdminOrSuperAdminProfile(user?.profile)
+      );
     } finally {
       setLoading(false);
     }

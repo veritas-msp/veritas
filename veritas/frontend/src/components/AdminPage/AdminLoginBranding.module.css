@@ -10,11 +10,134 @@
   font-size: 0.88rem;
 }
 
-.codeArea textarea,
 .codeArea {
-  font-family: ui-monospace, "SF Mono", Consolas, monospace;
-  font-size: 0.8rem;
-  line-height: 1.45;
+  font-family: ui-monospace, "SF Mono", Consolas, monospace !important;
+  font-size: 0.8rem !important;
+  line-height: 1.45 !important;
+}
+
+.workspace {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(280px, 0.95fr);
+  gap: 1rem;
+  align-items: start;
+  width: 100%;
+  min-width: 0;
+}
+
+.editor {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  min-width: 0;
+}
+
+.previewColumn {
+  min-width: 0;
+  position: sticky;
+  top: 0.75rem;
+  align-self: start;
+}
+
+.previewSticky {
+  min-width: 0;
+}
+
+.section {
+  border: 1px solid var(--msp-border, #dde3ed);
+  border-radius: 12px;
+  background: var(--msp-surface, #fff);
+  overflow: hidden;
+}
+
+.sectionToggle {
+  width: 100%;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.9rem 1rem;
+  border: none;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+  font: inherit;
+}
+
+.sectionToggle:hover {
+  background: color-mix(in srgb, var(--msp-surface-2, #f5f7fb) 80%, transparent);
+}
+
+.sectionToggleText {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  min-width: 0;
+}
+
+.sectionTitle {
+  font-size: 0.92rem;
+  font-weight: 700;
+  color: var(--msp-text, #0f1c2e);
+}
+
+.sectionDesc {
+  font-size: 0.78rem;
+  color: var(--msp-muted, #5b6d82);
+  line-height: 1.4;
+}
+
+.sectionChevron {
+  flex-shrink: 0;
+  width: 1.25rem;
+  height: 1.25rem;
+  margin-top: 0.1rem;
+  color: var(--msp-muted, #5b6d82);
+}
+
+.sectionBody {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  padding: 0 1rem 1rem;
+  border-top: 1px solid var(--msp-border-light, #eef2f7);
+  padding-top: 0.9rem;
+}
+
+.enabledBlock {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+}
+
+.enabledHint {
+  margin: 0;
+  font-size: 0.78rem;
+  color: var(--msp-muted, #5b6d82);
+  line-height: 1.4;
+}
+
+.visualAssets {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.9rem;
+}
+
+.switchBlock {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+  padding: 0.85rem 0.9rem;
+  border: 1px solid var(--msp-border-light, #eef2f7);
+  border-radius: 10px;
+  background: var(--msp-surface-2, #f7f9fc);
+}
+
+.switchRow {
+  display: flex;
+  align-items: center;
+  min-height: 2rem;
 }
 
 .previewHtml {
@@ -59,15 +182,6 @@
   max-width: 100%;
   box-sizing: border-box;
   flex-shrink: 0;
-}
-
-.cardRow {
-  align-items: stretch;
-}
-
-.cardRow > * {
-  height: 100%;
-  min-width: 0;
 }
 
 .colorRow {
@@ -165,7 +279,7 @@
 }
 
 .previewShell {
-  padding: 20px;
+  padding: 16px 18px 18px;
 }
 
 .previewLabel {
@@ -180,7 +294,7 @@
 .previewFrame {
   display: grid;
   grid-template-columns: 1.1fr 0.9fr;
-  min-height: 260px;
+  min-height: 280px;
   border-radius: 12px;
   overflow: hidden;
   border: 1px solid var(--msp-border, #dde3ed);
@@ -193,16 +307,21 @@
   display: flex;
   flex-direction: column;
   gap: 10px;
+  font-family: inherit;
 }
 
 .previewBrand {
   display: flex;
   align-items: center;
   gap: 8px;
-  font-size: 0.82rem;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.04em;
+}
+
+.previewBrandName {
+  font-size: var(--pv-brand-size, 0.82rem);
+  line-height: 1.2;
 }
 
 .previewBrandIcon,
@@ -229,15 +348,18 @@
 
 .previewHeadline {
   margin: 8px 0 0;
-  font-size: 1rem;
+  font-size: var(--pv-headline-size, 1rem);
+  font-weight: var(--pv-headline-weight, 700);
+  letter-spacing: var(--pv-headline-tracking, 0);
   line-height: 1.35;
 }
 
 .previewSub {
   margin: 0;
-  font-size: 0.72rem;
+  font-size: var(--pv-sub-size, 0.72rem);
+  font-weight: var(--pv-sub-weight, 400);
   color: rgba(255, 255, 255, 0.72);
-  line-height: 1.5;
+  line-height: var(--pv-sub-line-height, 1.5);
 }
 
 .previewFeatures {
@@ -253,7 +375,7 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  font-size: 0.68rem;
+  font-size: var(--pv-features-size, 0.68rem);
   color: rgba(255, 255, 255, 0.7);
 }
 
@@ -303,6 +425,21 @@
   color: #fff;
   font-size: 0.68rem;
   font-weight: 600;
+}
+
+@media (max-width: 1100px) {
+  .workspace {
+    grid-template-columns: 1fr;
+  }
+
+  .previewColumn {
+    position: static;
+    order: -1;
+  }
+
+  .visualAssets {
+    grid-template-columns: 1fr;
+  }
 }
 
 @media (max-width: 900px) {

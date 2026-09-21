@@ -72,8 +72,13 @@ export default function MonitoringCenterPage({
   const openPageGuide = useCallback(() => setPageGuideOpen(true), []);
   useRegisterPageGuide(openPageGuide);
   const { user } = useAuthContext();
-  const { isAdmin } = usePermissions();
-  const canManageAlertRules = isAdmin || isAdminOrSuperAdminProfile(user?.profile);
+  const { isAdmin, realIsAdmin, can } = usePermissions();
+  const canManageAlertRules =
+    Boolean(realIsAdmin) ||
+    Boolean(isAdmin) ||
+    isAdminOrSuperAdminProfile(user?.profile) ||
+    can("supervision.manage") ||
+    can("admin_panel.supervision_alerts");
   const locale = useAppLocale();
   const localeTag = getLocaleTag(locale);
   const pageCopy = useMemo(() => getSupervisionCenterCopy(locale), [locale]);

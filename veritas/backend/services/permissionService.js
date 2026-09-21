@@ -1,6 +1,6 @@
 import { pool } from "../database/db.js";
 import { ALL_PERMISSION_KEYS, PERMISSION_CATALOG_NORMALIZED, MODULE_FLAG_TO_GROUPS, defaultPermissionsForProfile, permissionKey, enforcePermissionDependencies, resolvePermissionCheckKeys } from "../config/permissionCatalog.js";
-import { getPresetForProfile } from "../config/permissionPresets.js";
+import { getPresetForProfile, isAdminLevelProfile } from "../config/permissionPresets.js";
 import { resolveEffectiveProfile } from "./profilePermissions.js";
 const ALL_PERMISSIONS_SET = new Set(ALL_PERMISSION_KEYS);
 const CACHE_TTL_MS = 60 * 1000;
@@ -98,6 +98,9 @@ export async function getUserPermissions(user) {
     return ALL_PERMISSIONS_SET;
   }
   const profileName = await resolveUserProfileName(user);
+  if (isAdminLevelProfile(profileName)) {
+    return ALL_PERMISSIONS_SET;
+  }
   if (!profileName) return new Set();
   return getProfilePermissions(profileName);
 }
@@ -106,11 +109,13 @@ function setHasPermission(perms, key) {
 }
 export async function userHasAllPermissions(user, keys) {
   if (String(user?.role || "").toLowerCase() === "admin") return true;
+  if (isAdminLevelProfile(user?.profile) || isAdminLevelProfile(await resolveUserProfileName(user))) return true;
   const perms = await getUserPermissions(user);
   return keys.every(k => setHasPermission(perms, k));
 }
 export async function userHasAnyPermission(user, keys) {
   if (String(user?.role || "").toLowerCase() === "admin") return true;
+  if (isAdminLevelProfile(user?.profile) || isAdminLevelProfile(await resolveUserProfileName(user))) return true;
   const perms = await getUserPermissions(user);
   return keys.some(k => setHasPermission(perms, k));
 }

@@ -5,6 +5,15 @@
  */
 export const PATCH_NOTES = [
   {
+    version: "1.0.32",
+    date: "2026-09-21",
+    highlights: [
+      "Super Admin / Administrateur : reconnaissance correcte (onglet Règles supervision, suppression en masse des tickets Support).",
+      "Supervision : plus de création automatique de tickets Support — uniquement via l’action manuelle.",
+      "Admin → Page de connexion : layout 2 colonnes avec aperçu live (typo), sections pliables et champs mieux espacés."
+    ]
+  },
+  {
     version: "1.0.31",
     date: "2026-09-21",
     highlights: [

@@ -299,6 +299,7 @@ export async function evaluateEquipmentCriteriaAlerts({
   }
   const config = await getMonitoringAutomationConfig();
   const rules = await getSupervisionAlertRules();
+  const autoCreateTickets = config?.ticketCreation?.enabled === true;
   const createdTickets = [];
   const skipped = [];
   for (const criterionKey of activated) {
@@ -316,6 +317,29 @@ export async function evaluateEquipmentCriteriaAlerts({
       continue;
     }
     const detail = activeCriteria.find(c => c.key === criterionKey)?.detail || null;
+
+    if (!autoCreateTickets) {
+      skipped.push({
+        criterionKey,
+        reason: "ticket_creation_disabled"
+      });
+      await recordMonitoringEvent({
+        source: "monitoring_scan",
+        eventType: "criterion_activated",
+        clientId,
+        equipmentId,
+        equipmentFamily,
+        criterionKey,
+        payload: {
+          detail,
+          ticketCreation: false
+        },
+        ticketId: null,
+        incidentGroupId: null
+      });
+      continue;
+    }
+
     const runbook = await resolveRunbookForCriterion(criterionKey);
     const ruleSeverity = getSupervisionCriterionSeverity(equipmentFamily, criterionKey, rules);
     const incidentGroup = await findOrCreateIncidentGroup({
@@ -324,6 +348,7 @@ export async function evaluateEquipmentCriteriaAlerts({
       config,
       parentTicketId: null
     });
+
     const ticket = await createCriterionAlertTicket({
       clientId,
       equipmentId,

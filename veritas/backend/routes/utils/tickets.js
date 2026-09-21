@@ -47,6 +47,7 @@ import { getAllMatchingExclusionRules, normalizeExclusionRule } from "../../serv
 import { searchTicketsPaged, TICKET_SEARCH_MAX_LIMIT, resolveTicketListSchema } from "../../services/ticketPagedListService.js";
 import { logTicketActivity, logTicketFieldChanges, logSalesFormFieldChanges, listTicketActivity } from "../../services/ticketActivityService.js";
 import { TICKET_REQUESTER_EMAIL_SQL } from "../../services/ticketEmailThread.js";
+import { isAdminLevelProfile } from "../../config/permissionPresets.js";
 const router = express.Router();
 router.use(verifyJWT);
 const TICKET_UPLOAD_DIR = path.resolve(process.cwd(), "uploads", "tickets");
@@ -129,7 +130,10 @@ function normalizeIncomingStatus(status) {
   return status === "new" ? "open" : status;
 }
 function isAdminUser(req) {
-  return String(req.user?.role || "").toLowerCase() === "admin";
+  return (
+    String(req.user?.role || "").toLowerCase() === "admin" ||
+    isAdminLevelProfile(req.user?.profile)
+  );
 }
 function parseBodyBoolean(value) {
   return value === true || value === "true" || value === "1" || value === 1;
