@@ -5,6 +5,13 @@
  */
 export const PATCH_NOTES = [
   {
+    version: "1.0.28",
+    date: "2026-09-21",
+    highlights: [
+      "Centre de supervision : KPI de couverture en cartes pleine largeur, limitées aux familles surveillables CheckMK (sans ENI, projecteurs, etc.)."
+    ]
+  },
+  {
     version: "1.0.27",
     date: "2026-09-21",
     highlights: [

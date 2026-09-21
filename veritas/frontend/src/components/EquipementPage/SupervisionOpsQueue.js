@@ -183,7 +183,7 @@ function FilterChip({
     </button>;
 }
 
-const COVERAGE_EXCLUDED_KEYS = new Set(["Sauvegarde"]);
+const COVERAGE_EXCLUDED_KEYS = new Set(["Sauvegarde", "Ordinateurs", "Videosurveillance"]);
 
 function coverageTone(monitored, total) {
   if (!total) return "empty";
@@ -203,15 +203,23 @@ function CoverageStrip({
   const items = (Array.isArray(families) ? families : []).filter(family => {
     const key = String(family?.key || "");
     if (COVERAGE_EXCLUDED_KEYS.has(key)) return false;
+    if (family?.isCustom) return false;
     return (Number(family?.count) || 0) > 0;
   });
   if (!items.length) return null;
-  return <div className={styles.coverageStrip} role="group" aria-label={coverageCopy.aria || coverageCopy.title || "Coverage"} data-guide="supervision-coverage">
+  return <div
+    className={styles.coverageGrid}
+    role="group"
+    aria-label={coverageCopy.aria || coverageCopy.title || "Coverage"}
+    data-guide="supervision-coverage"
+    style={{ "--coverage-cols": String(Math.max(items.length, 1)) }}
+  >
       {items.map(family => {
       const key = String(family.key || "");
       const label = labels[key] || family.label || key;
       const total = Number(family.count) || 0;
       const monitored = Number(family.monitoredCount ?? family.monitored) || 0;
+      const pct = total > 0 ? Math.round(monitored / total * 100) : 0;
       const tone = coverageTone(monitored, total);
       const ratio = interpolate(coverageCopy.ratio || "{monitored}/{total}", {
         monitored,
@@ -222,13 +230,21 @@ function CoverageStrip({
         monitored,
         total
       });
-      return <SmartTooltip key={key} content={tip}>
-            <div className={`${styles.coveragePill} ${styles[`coverageTone_${tone}`] || ""}`}>
-              <Icon icon={family.icon || "mdi:devices"} className={styles.coverageIcon} aria-hidden />
-              <span className={styles.coverageLabel}>{label}</span>
-              <span className={styles.coverageRatio}>{ratio}</span>
-            </div>
-          </SmartTooltip>;
+      return <article
+        key={key}
+        className={`${styles.coverageCard} ${styles[`coverageTone_${tone}`] || ""}`}
+        title={tip}
+      >
+              <div className={styles.coverageCardHead}>
+                <Icon icon={family.icon || "mdi:devices"} className={styles.coverageIcon} aria-hidden />
+                <span className={styles.coverageLabel}>{label}</span>
+              </div>
+              <div className={styles.coverageRatio}>{ratio}</div>
+              <div className={styles.coveragePct}>{pct}%</div>
+              <div className={styles.coverageBar} aria-hidden>
+                <span className={styles.coverageBarFill} style={{ width: `${pct}%` }} />
+              </div>
+            </article>;
     })}
     </div>;
 }

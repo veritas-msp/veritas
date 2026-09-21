@@ -987,7 +987,7 @@ router.get('/equipment-fleet/issues', requireAnyPermission('infrastructure.view'
 });
 router.get('/equipment-fleet/coverage', requireAnyPermission('infrastructure.view', 'supervision.view', 'clients.view', 'supervision.manage'), async (req, res) => {
   try {
-    const payload = await fetchMonitorableEquipmentStats();
+    const payload = await fetchMonitorableEquipmentStats({ scope: "supervision" });
     res.json(payload);
   } catch (err) {
     console.error('GET /equipment-fleet/coverage:', err);

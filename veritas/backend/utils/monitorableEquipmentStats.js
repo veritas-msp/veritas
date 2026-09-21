@@ -1,6 +1,20 @@
 import { pool } from "../database/db.js";
 import { listEquipmentFamilies } from "./equipmentFamilies.js";
 const CHECKMK_MONITORED_WHERE = "checkmk_host_name IS NOT NULL AND btrim(checkmk_host_name) <> ''";
+
+/** Familles affichées dans le centre de supervision (CheckMK), hors custom / ENI / projecteurs / etc. */
+export const SUPERVISION_COVERAGE_FAMILY_KEYS = [
+  "Serveurs",
+  "Stockage",
+  "Firewalls",
+  "Switch",
+  "BorneWifi",
+  "Routeur",
+  "Internet",
+  "TOIP",
+  "Alimentation"
+];
+
 export const SYSTEM_MONITORABLE_FAMILIES = [{
   key: "Ordinateurs",
   label: "Computers",
@@ -210,9 +224,16 @@ async function countCustomFamilies() {
     throw err;
   }
 }
-export async function fetchMonitorableEquipmentStats() {
+export async function fetchMonitorableEquipmentStats({
+  scope = "all"
+} = {}) {
   const families = [];
-  for (const family of SYSTEM_MONITORABLE_FAMILIES) {
+  const supervisionKeys = new Set(SUPERVISION_COVERAGE_FAMILY_KEYS);
+  const systemFamilies =
+    scope === "supervision"
+      ? SYSTEM_MONITORABLE_FAMILIES.filter(family => supervisionKeys.has(family.key))
+      : SYSTEM_MONITORABLE_FAMILIES;
+  for (const family of systemFamilies) {
     const stats = await countFamilyWithMonitoring({
       table: family.table,
       where: family.where,
@@ -227,28 +248,30 @@ export async function fetchMonitorableEquipmentStats() {
       surveillancePercent: stats.surveillancePercent
     });
   }
-  const videoStats = await countVideoSurveillance();
-  families.push({
-    key: "Videosurveillance",
-    label: "Video surveillance",
-    icon: "mdi:cctv",
-    count: videoStats.count,
-    monitoredCount: videoStats.monitoredCount,
-    surveillancePercent: videoStats.surveillancePercent
-  });
-  const customFamilies = await countCustomFamilies();
-  const systemKeys = new Set(families.map(family => family.key));
-  customFamilies.forEach(family => {
-    if (systemKeys.has(family.key)) return;
+  if (scope !== "supervision") {
+    const videoStats = await countVideoSurveillance();
     families.push({
-      key: family.key,
-      label: family.label,
-      icon: family.icon,
-      count: family.count,
-      monitoredCount: family.monitoredCount,
-      surveillancePercent: family.surveillancePercent
+      key: "Videosurveillance",
+      label: "Video surveillance",
+      icon: "mdi:cctv",
+      count: videoStats.count,
+      monitoredCount: videoStats.monitoredCount,
+      surveillancePercent: videoStats.surveillancePercent
     });
-  });
+    const customFamilies = await countCustomFamilies();
+    const systemKeys = new Set(families.map(family => family.key));
+    customFamilies.forEach(family => {
+      if (systemKeys.has(family.key)) return;
+      families.push({
+        key: family.key,
+        label: family.label,
+        icon: family.icon,
+        count: family.count,
+        monitoredCount: family.monitoredCount,
+        surveillancePercent: family.surveillancePercent
+      });
+    });
+  }
   const equipMonitoredTotal = families.reduce((sum, family) => sum + (Number(family.count) || 0), 0);
   const equipUnderSurveillanceCount = families.reduce((sum, family) => sum + (Number(family.monitoredCount) || 0), 0);
   const equipSurveillancePercent = buildSurveillancePercent(equipUnderSurveillanceCount, equipMonitoredTotal);
