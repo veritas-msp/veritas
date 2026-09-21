@@ -5,6 +5,15 @@
  */
 export const PATCH_NOTES = [
   {
+    version: "1.0.25",
+    date: "2026-09-21",
+    highlights: [
+      "Tags périphériques : catalogue dédié (séparé des tags clients/contacts), édition sur la fiche et filtre inventaire.",
+      "Alertes supervision : activées par défaut sur tous les périphériques ; icône distincte de la cloche d’abonnement.",
+      "Centre de supervision : KPI de couverture par famille (supervisés / total) au-dessus de la table d’alertes."
+    ]
+  },
+  {
     version: "1.0.24",
     date: "2026-09-18",
     highlights: [

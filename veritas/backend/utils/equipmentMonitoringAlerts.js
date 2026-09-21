@@ -30,7 +30,9 @@ export function isAlertableMonitorStatus(status) {
   return ALERTABLE_STATUSES.has(String(status || "").toLowerCase());
 }
 export function areMonitoringAlertsEnabled(settings) {
-  if (!settings?.alertsEnabled) return false;
+  // Pas de ligne = activé par défaut (centre de supervision).
+  if (settings == null) return true;
+  if (settings.alertsEnabled === false) return false;
   if (isAlertSuspensionActive(settings)) return false;
   return true;
 }
@@ -150,7 +152,8 @@ function parseDurationMinutes(value) {
 
 export function resolveAlertStatusFromSettings(settings) {
   if (isAlertSuspensionActive(settings)) return "suspended";
-  if (settings?.alertsEnabled) return "active";
+  // Absence de settings = alertes actives par défaut.
+  if (!settings || settings.alertsEnabled !== false) return "active";
   return "disabled";
 }
 

@@ -1161,7 +1161,7 @@ const EquipmentPage = forwardRef(function EquipmentPage({
   const renderAlertSuspendedBadge = equipment => {
     if (!isEquipmentAlertsSuspended(equipment)) return null;
     return <SmartTooltip content="Alerts surveillance suspendues">
-        <Icon icon="mdi:bell-off-outline" width={15} height={15} className={styles.alertSuspendedIcon} aria-label="Alerts suspendues" />
+        <Icon icon="mdi:alarm-light-off" width={15} height={15} className={styles.alertSuspendedIcon} aria-label="Alerts suspendues" />
       </SmartTooltip>;
   };
   useEffect(() => {

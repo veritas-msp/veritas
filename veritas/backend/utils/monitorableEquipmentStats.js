@@ -37,7 +37,8 @@ export const SYSTEM_MONITORABLE_FAMILIES = [{
   label: "Servers",
   icon: "mdi:server",
   table: "v_b_clients_m_servers",
-  where: "data IS NOT NULL"
+  where: "data IS NOT NULL",
+  monitoredWhere: `(agent_id IS NOT NULL OR (${CHECKMK_MONITORED_WHERE}))`
 }, {
   key: "BorneWifi",
   label: "Wi-Fi access point",
@@ -86,10 +87,42 @@ async function countFamilyWithMonitoring({
     where
   });
   let monitoredCount = 0;
+  const tryCount = async sql => {
+    const result = await pool.query(sql);
+    return Number(result.rows[0]?.count) || 0;
+  };
   try {
-    monitoredCount = await countOrZero(`SELECT COUNT(*)::int AS count FROM ${table} WHERE ${where} AND (${monitoredWhere})`);
+    // Colonne CheckMK / agent RMM, ou mapping dans la table d'intégration.
+    monitoredCount = await tryCount(
+      `SELECT COUNT(*)::int AS count
+       FROM ${table} t
+       WHERE (${where})
+         AND (
+           (${monitoredWhere})
+           OR EXISTS (
+             SELECT 1 FROM v_b_equipment_checkmk_monitoring cm
+             WHERE cm.equipment_id = t.id
+           )
+         )`
+    );
   } catch (err) {
-    if (err.code !== "42703") throw err;
+    if (err.code !== "42703" && err.code !== "42P01") throw err;
+    try {
+      monitoredCount = await tryCount(
+        `SELECT COUNT(*)::int AS count
+         FROM ${table} t
+         WHERE (${where})
+           AND EXISTS (
+             SELECT 1 FROM v_b_equipment_checkmk_monitoring cm
+             WHERE cm.equipment_id = t.id
+           )`
+      );
+    } catch (innerErr) {
+      if (innerErr.code !== "42703" && innerErr.code !== "42P01") throw innerErr;
+      monitoredCount = await countOrZero(
+        `SELECT COUNT(*)::int AS count FROM ${table} WHERE ${where} AND (${monitoredWhere})`
+      );
+    }
   }
   return {
     count,

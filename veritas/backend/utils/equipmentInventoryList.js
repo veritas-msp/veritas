@@ -598,7 +598,7 @@ function attachAlertFields(item, settingsMap, nativeCountMap, checkmkMap, mappin
   return {
     ...item,
     alertStatus,
-    alertsEnabled: Boolean(settings?.alertsEnabled),
+    alertsEnabled: settings == null ? true : Boolean(settings.alertsEnabled),
     alertSuspended: isAlertSuspensionActive(settings),
     supervisionStatus,
     supervisionMapped,

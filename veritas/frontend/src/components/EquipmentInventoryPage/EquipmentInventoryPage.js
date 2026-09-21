@@ -5,7 +5,7 @@ import { useRegisterPageGuide } from "../../hooks/useRegisterPageGuide";
 import { Icon } from "@iconify/react";
 import { FaChevronLeft, FaChevronRight, FaTimes } from "react-icons/fa";
 import { toast } from "react-toastify";
-import { getEquipmentInventoryList } from "../../api/equipment";
+import { getEquipmentInventoryList, fetchEquipmentTagsBatch } from "../../api/equipment";
 import { getLocalizedEquipmentTypeLabel } from "../../i18n/equipmentFamilyLabels";
 import { useAppLocale } from "../../hooks/useAppGeneralSettings";
 import { useTablePagination } from "../AdminPage/useTablePagination";
@@ -15,6 +15,7 @@ import EquipmentBrandIcon from "../EquipementPage/constants/EquipmentBrandIcon";
 import { toDateInputValue } from "../EquipementPage/constants/firewallLicenceUtils";
 import cyberStyles from "../CybersecuritePage/CybersecuritePage.module.css";
 import layout from "../EnterprisesPage/EnterprisesPage.module.css";
+import { getTagChipStyle } from "../EnterprisesPage/clientTagColors";
 import { getEquipmentInventoryPageCopy } from "./equipmentInventoryPageI18n";
 import InventoryEquipmentActions from "./InventoryEquipmentActions";
 import InventoryBulkEditModal from "./InventoryBulkEditModal";
@@ -39,6 +40,7 @@ function searchBlob(item) {
     item?.data && typeof item.data === "object" && !Array.isArray(item.data)
       ? Object.values(item.data)
       : [];
+  const tagLabels = Array.isArray(item?.tags) ? item.tags.map(tag => tag.label) : [];
   return [
     item?.name,
     item?.clientName,
@@ -49,6 +51,7 @@ function searchBlob(item) {
     item?.mac,
     item?.location,
     item?.model,
+    ...tagLabels,
     ...dataValues
   ]
     .filter(value => value != null && String(value).trim() !== "")
@@ -65,10 +68,15 @@ function matchesInventorySearch(item, query) {
   return Boolean(qSerial && serial.includes(qSerial));
 }
 
-function itemMatchesInventoryFilters(item, { search, selectedClients, selectedTypes, statusFilter }, omit = null) {
+function itemMatchesInventoryFilters(item, { search, selectedClients, selectedTypes, selectedTags, statusFilter }, omit = null) {
   if (omit !== "search" && search && !matchesInventorySearch(item, search)) return false;
   if (omit !== "clients" && selectedClients.size > 0 && !selectedClients.has(String(item.clientId))) return false;
   if (omit !== "types" && selectedTypes.size > 0 && !selectedTypes.has(item.type)) return false;
+  if (omit !== "tags" && selectedTags.size > 0) {
+    const labels = new Set((item.tags || []).map(tag => String(tag.label || "").toLowerCase()).filter(Boolean));
+    const hasAny = [...selectedTags].some(tag => labels.has(String(tag).toLowerCase()));
+    if (!hasAny) return false;
+  }
   if (omit !== "status") {
     if (statusFilter === "active" && item.is_active === false) return false;
     if (statusFilter === "inactive" && item.is_active !== false) return false;
@@ -190,6 +198,7 @@ const STANDARD_INVENTORY_COLUMNS = [
   "ip",
   "serial",
   "site",
+  "tags",
   "status",
   "alerts",
   "supervision",
@@ -275,6 +284,8 @@ function getInventoryColumnValue(item, columnId, { locale, copy, customFields })
       return item.serial || "";
     case "site":
       return item.location || "";
+    case "tags":
+      return Array.isArray(item.tags) ? item.tags.map(tag => tag.label).filter(Boolean).join(", ") : "";
     case "status":
       return item.is_active === false ? copy.status.inactive : copy.status.active;
     case "alerts":
@@ -303,6 +314,8 @@ function getSortValue(item, key, locale) {
       return item.serial || "";
     case "site":
       return item.location || "";
+    case "tags":
+      return Array.isArray(item.tags) ? item.tags.map(tag => tag.label).filter(Boolean).join(", ") : "";
     case "status":
       return item.is_active === false ? 1 : 0;
     case "alerts":
@@ -332,6 +345,8 @@ export default function EquipmentInventoryPage({ onNavigate }) {
   const [clientFilterSearch, setClientFilterSearch] = useState("");
   const [selectedClients, setSelectedClients] = useState(() => new Set());
   const [selectedTypes, setSelectedTypes] = useState(() => new Set());
+  const [selectedTags, setSelectedTags] = useState(() => new Set());
+  const [tagFilterSearch, setTagFilterSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [sort, setSort] = useState({ key: "company", dir: "asc" });
   const [openMenuKey, setOpenMenuKey] = useState(null);
@@ -348,7 +363,34 @@ export default function EquipmentInventoryPage({ onNavigate }) {
       const rows = await getEquipmentInventoryList({
         signal: ac.signal
       });
-      if (!ac.signal.aborted) setItems(rows);
+      if (ac.signal.aborted) return;
+      const clientIds = [...new Set((rows || []).map(row => String(row.clientId || "").trim()).filter(Boolean))];
+      let tagRows = [];
+      if (clientIds.length) {
+        try {
+          tagRows = await fetchEquipmentTagsBatch(clientIds, { signal: ac.signal });
+        } catch {
+          tagRows = [];
+        }
+      }
+      if (ac.signal.aborted) return;
+      const tagsByEquipment = new Map();
+      (Array.isArray(tagRows) ? tagRows : []).forEach(row => {
+        const key = `${row.client_id}:${row.equipment_id}`;
+        const list = tagsByEquipment.get(key) || [];
+        list.push({
+          id: row.id,
+          label: row.label,
+          color: row.color
+        });
+        tagsByEquipment.set(key, list);
+      });
+      setItems(
+        (rows || []).map(row => ({
+          ...row,
+          tags: tagsByEquipment.get(`${row.clientId}:${row.dbId}`) || []
+        }))
+      );
     } catch (err) {
       if (err?.name !== "AbortError") {
         toast.error(err.message || copy.toastLoadError);
@@ -368,9 +410,10 @@ export default function EquipmentInventoryPage({ onNavigate }) {
       search,
       selectedClients,
       selectedTypes,
+      selectedTags,
       statusFilter
     }),
-    [search, selectedClients, selectedTypes, statusFilter]
+    [search, selectedClients, selectedTypes, selectedTags, statusFilter]
   );
 
   const statusCounts = useMemo(() => {
@@ -460,6 +503,52 @@ export default function EquipmentInventoryPage({ onNavigate }) {
     );
   }, [items, filterState, selectedTypes, locale]);
 
+  const tagOptions = useMemo(() => {
+    const map = new Map();
+    items.forEach(item => {
+      if (!itemMatchesInventoryFilters(item, filterState, "tags")) return;
+      (item.tags || []).forEach(tag => {
+        const key = String(tag.label || "").trim();
+        if (!key) return;
+        const id = key.toLowerCase();
+        const existing = map.get(id);
+        if (existing) {
+          existing.count += 1;
+          return;
+        }
+        map.set(id, {
+          id,
+          label: key,
+          color: tag.color || "#2b5fab",
+          count: 1
+        });
+      });
+    });
+    selectedTags.forEach(id => {
+      if (map.has(id)) return;
+      const sample = items
+        .flatMap(item => item.tags || [])
+        .find(tag => String(tag.label || "").toLowerCase() === id);
+      map.set(id, {
+        id,
+        label: sample?.label || id,
+        color: sample?.color || "#2b5fab",
+        count: 0
+      });
+    });
+    return [...map.values()].sort((a, b) =>
+      a.label.localeCompare(b.label, locale, {
+        sensitivity: "base"
+      })
+    );
+  }, [items, filterState, selectedTags, locale]);
+
+  const filteredTagsForPane = useMemo(() => {
+    const q = tagFilterSearch.trim().toLowerCase();
+    if (!q) return tagOptions;
+    return tagOptions.filter(opt => opt.label.toLowerCase().includes(q));
+  }, [tagOptions, tagFilterSearch]);
+
   const filtered = useMemo(() => {
     let list = items.filter(item => itemMatchesInventoryFilters(item, filterState));
     const dir = sort.dir === "asc" ? 1 : -1;
@@ -508,6 +597,7 @@ export default function EquipmentInventoryPage({ onNavigate }) {
       return [
         "company",
         "name",
+        "tags",
         ...extraKeys,
         "status",
         "alerts",
@@ -523,6 +613,7 @@ export default function EquipmentInventoryPage({ onNavigate }) {
         "ip",
         "serial",
         "site",
+        "tags",
         ...extraKeys,
         "status",
         "alerts",
@@ -535,7 +626,7 @@ export default function EquipmentInventoryPage({ onNavigate }) {
       source.length > 0 &&
       source.every(item => item.isCustom || String(item.type || "").startsWith("Custom:"));
     if (allCustom) {
-      return ["company", "name", "type", "site", "status", "alerts", "supervision", "alertsMonth"];
+      return ["company", "name", "type", "site", "tags", "status", "alerts", "supervision", "alertsMonth"];
     }
     return STANDARD_INVENTORY_COLUMNS;
   }, [customFamilyView, filtered, items]);
@@ -557,12 +648,12 @@ export default function EquipmentInventoryPage({ onNavigate }) {
     paginatedItems
   } = useTablePagination(filtered, {
     initialPageSize: 25,
-    resetDeps: [search, selectedClients, selectedTypes, statusFilter, sort.key, sort.dir]
+    resetDeps: [search, selectedClients, selectedTypes, selectedTags, statusFilter, sort.key, sort.dir]
   });
 
   useEffect(() => {
     setOpenMenuKey(null);
-  }, [search, selectedClients, selectedTypes, statusFilter, page, sort]);
+  }, [search, selectedClients, selectedTypes, selectedTags, statusFilter, page, sort]);
 
   useEffect(() => {
     setSelectedIds(prev => {
@@ -627,11 +718,22 @@ export default function EquipmentInventoryPage({ onNavigate }) {
     });
   };
 
+  const toggleTag = tagId => {
+    setSelectedTags(prev => {
+      const next = new Set(prev);
+      if (next.has(tagId)) next.delete(tagId);
+      else next.add(tagId);
+      return next;
+    });
+  };
+
   const clearFilters = () => {
     setSearch("");
     setClientFilterSearch("");
+    setTagFilterSearch("");
     setSelectedClients(new Set());
     setSelectedTypes(new Set());
+    setSelectedTags(new Set());
     setStatusFilter("all");
   };
 
@@ -655,7 +757,7 @@ export default function EquipmentInventoryPage({ onNavigate }) {
   };
 
   const hasFilters = Boolean(
-    search.trim() || selectedClients.size > 0 || selectedTypes.size > 0 || statusFilter !== "all"
+    search.trim() || selectedClients.size > 0 || selectedTypes.size > 0 || selectedTags.size > 0 || statusFilter !== "all"
   );
 
   const getColumnLabel = key => {
@@ -725,6 +827,23 @@ export default function EquipmentInventoryPage({ onNavigate }) {
         return <td key={columnId}>{item.serial || "—"}</td>;
       case "site":
         return <td key={columnId}>{item.location || "—"}</td>;
+      case "tags":
+        return (
+          <td key={columnId} className={styles.tagsCell} onClick={e => e.stopPropagation()}>
+            {Array.isArray(item.tags) && item.tags.length ? (
+              <div className={styles.tagsList}>
+                {item.tags.slice(0, 3).map(tag => (
+                  <span key={tag.id || tag.label} className={styles.tagChip} style={getTagChipStyle(tag.color)}>
+                    {tag.label}
+                  </span>
+                ))}
+                {item.tags.length > 3 ? <span className={styles.tagMore}>+{item.tags.length - 3}</span> : null}
+              </div>
+            ) : (
+              "—"
+            )}
+          </td>
+        );
       case "status":
         return <td key={columnId}>{item.is_active === false ? copy.status.inactive : copy.status.active}</td>;
       case "alerts":
@@ -941,6 +1060,63 @@ export default function EquipmentInventoryPage({ onNavigate }) {
                                 className={styles.chipIcon}
                               />
                             </span>
+                          )
+                        )
+                      )}
+                    </div>
+                  </div>
+
+                  <div className={`${styles.filtersPaneSection} ${styles.filtersPaneSectionGrow}`}>
+                    <div className={styles.filtersPaneHeader}>
+                      <span className={styles.filtersPaneTitle}>{copy.filters?.tags || "Tags"}</span>
+                      {selectedTags.size > 0 ? (
+                        <button
+                          type="button"
+                          className={styles.filtersPaneAction}
+                          onClick={() => setSelectedTags(new Set())}
+                        >
+                          {copy.filters?.clear || "Clear"}
+                        </button>
+                      ) : null}
+                    </div>
+                    <div className={styles.filterSearchWrap}>
+                      <Icon icon="mdi:magnify" className={styles.filterSearchIcon} aria-hidden />
+                      <input
+                        type="text"
+                        className={styles.filterSearchInput}
+                        value={tagFilterSearch}
+                        onChange={e => setTagFilterSearch(e.target.value)}
+                        placeholder={copy.filters?.searchTag || "Rechercher un tag…"}
+                        autoComplete="off"
+                        aria-label={copy.filters?.searchTag || "Rechercher un tag…"}
+                      />
+                      {tagFilterSearch ? (
+                        <button
+                          type="button"
+                          className={styles.filterSearchClear}
+                          onClick={() => setTagFilterSearch("")}
+                          aria-label={copy.clearSearch}
+                        >
+                          <FaTimes />
+                        </button>
+                      ) : null}
+                    </div>
+                    <div className={styles.filtersList}>
+                      {filteredTagsForPane.length === 0 ? (
+                        <p className={styles.filterHint}>{copy.filters?.noTagFound || "—"}</p>
+                      ) : (
+                        filteredTagsForPane.map(opt =>
+                          renderFilterItem(
+                            opt.id,
+                            opt.label,
+                            opt.count,
+                            selectedTags.has(opt.id),
+                            () => toggleTag(opt.id),
+                            <span
+                              className={styles.filterTagSwatch}
+                              style={getTagChipStyle(opt.color)}
+                              aria-hidden
+                            />
                           )
                         )
                       )}

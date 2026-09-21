@@ -20,6 +20,16 @@ async function columnExists(client, table, column) {
      LIMIT 1`, [table, column]);
   return rows.length > 0;
 }
+async function columnDefaultLooksFalse(client, table, column) {
+  const {
+    rows
+  } = await client.query(`SELECT column_default
+     FROM information_schema.columns
+     WHERE table_schema = 'public' AND table_name = $1 AND column_name = $2
+     LIMIT 1`, [table, column]);
+  const def = String(rows[0]?.column_default || "").toLowerCase();
+  return def.includes("false");
+}
 async function columnHasDataType(client, table, column, dataType) {
   const {
     rows
@@ -203,6 +213,13 @@ export async function buildIncrementalAvrilMigrationPlan(client = pool) {
   if ((await tableExists(client, "v_b_equipment_monitoring_alerts")) && !(await columnExists(client, "v_b_equipment_monitoring_alerts", "alerts_enabled"))) {
     plan.push("20260702_equipment_monitoring_alerts_enabled.sql");
   }
+  if (
+    (await tableExists(client, "v_b_equipment_monitoring_alerts")) &&
+    (await columnExists(client, "v_b_equipment_monitoring_alerts", "alerts_enabled")) &&
+    (await columnDefaultLooksFalse(client, "v_b_equipment_monitoring_alerts", "alerts_enabled"))
+  ) {
+    plan.push("20260921_equipment_monitoring_alerts_default_on.sql");
+  }
   if ((await tableExists(client, "v_b_tickets")) && !(await columnExists(client, "v_b_tickets", "equipment_info"))) {
     plan.push("20260622_ticket_equipment_info.sql");
   }
@@ -246,6 +263,12 @@ export async function buildIncrementalAvrilMigrationPlan(client = pool) {
   }
   if (!(await tableExists(client, "v_b_equipment_tag_links"))) {
     plan.push("20260726_equipment_tag_links.sql", "20260726_equipment_tag_links_grants.sql");
+  }
+  if (
+    (await tableExists(client, "v_b_equipment_tag_links")) &&
+    !(await tableExists(client, "v_b_equipment_tags"))
+  ) {
+    plan.push("20260921_equipment_tags_catalog.sql", "20260921_equipment_tags_catalog_grants.sql");
   }
   if (!(await tableExists(client, "v_b_equipment_notes"))) {
     plan.push("20260823_equipment_notes.sql", "20260823_equipment_notes_grants.sql");
@@ -432,7 +455,7 @@ export async function buildIncrementalAvrilMigrationPlan(client = pool) {
   }
   return [...new Set(plan)];
 }
-export const INCREMENTAL_TABLE_CHECKS = ["v_b_client_tags", "v_b_client_tag_links", "v_b_contact_tag_links", "v_b_contact_site_links", "v_b_rmm_enrollment_tokens", "v_b_rmm_agents", "v_b_clients_m_ordinateurs", "v_b_clients_m_alimentation", "v_b_clients_m_routeur", "v_b_clients_m_toip", "v_b_client_support_credits", "v_b_client_support_credit_ledger", "v_b_client_support_credit_packs", "v_b_clients_m_licences", "v_b_sales_form_definitions", "v_b_sales_form_fields", "v_b_support_form_definitions", "v_b_support_form_fields", "v_b_sales_ticket_categories", "v_b_sales_ticket_category_sections", "v_b_equipment_family_definitions", "v_b_equipment_family_layout", "v_b_equipment_map_style", "v_b_equipment_monitoring_alerts", "v_b_supervision_alert_rules_config", "v_b_equipment_files", "v_b_equipment_tag_links", "v_b_equipment_notes", "v_b_rmm_client_settings", "v_b_rmm_token_settings", "v_b_rmm_metric_daily", "v_b_teams", "v_b_ticket_views", "v_b_user_notifications", "v_b_ticket_validation_requests", "v_b_kpi_report_schedules", "v_b_ai_briefings"];
+export const INCREMENTAL_TABLE_CHECKS = ["v_b_client_tags", "v_b_client_tag_links", "v_b_contact_tag_links", "v_b_contact_site_links", "v_b_rmm_enrollment_tokens", "v_b_rmm_agents", "v_b_clients_m_ordinateurs", "v_b_clients_m_alimentation", "v_b_clients_m_routeur", "v_b_clients_m_toip", "v_b_client_support_credits", "v_b_client_support_credit_ledger", "v_b_client_support_credit_packs", "v_b_clients_m_licences", "v_b_sales_form_definitions", "v_b_sales_form_fields", "v_b_support_form_definitions", "v_b_support_form_fields", "v_b_sales_ticket_categories", "v_b_sales_ticket_category_sections", "v_b_equipment_family_definitions", "v_b_equipment_family_layout", "v_b_equipment_map_style", "v_b_equipment_monitoring_alerts", "v_b_supervision_alert_rules_config", "v_b_equipment_files", "v_b_equipment_tags", "v_b_equipment_tag_links", "v_b_equipment_notes", "v_b_rmm_client_settings", "v_b_rmm_token_settings", "v_b_rmm_metric_daily", "v_b_teams", "v_b_ticket_views", "v_b_user_notifications", "v_b_ticket_validation_requests", "v_b_kpi_report_schedules", "v_b_ai_briefings"];
 export async function verifyIncrementalTables(client = pool) {
   const missing = [];
   for (const table of INCREMENTAL_TABLE_CHECKS) {

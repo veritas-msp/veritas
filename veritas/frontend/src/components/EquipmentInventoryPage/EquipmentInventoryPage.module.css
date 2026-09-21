@@ -541,3 +541,43 @@
     max-height: 180px;
   }
 }
+
+.filterTagSwatch {
+  width: 0.75rem;
+  height: 0.75rem;
+  border-radius: 999px;
+  flex-shrink: 0;
+  border: 1px solid currentColor;
+}
+
+.tagsCell {
+  max-width: 220px;
+}
+
+.tagsList {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+  align-items: center;
+}
+
+.tagChip {
+  display: inline-flex;
+  align-items: center;
+  max-width: 9rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  padding: 0.12rem 0.45rem;
+  border-radius: 999px;
+  border: 1px solid transparent;
+  font-size: 0.72rem;
+  font-weight: 650;
+  line-height: 1.2;
+}
+
+.tagMore {
+  font-size: 0.72rem;
+  color: var(--msp-muted, #5c6b82);
+  font-weight: 650;
+}

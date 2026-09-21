@@ -155,7 +155,7 @@ router.get("/:clientId/:equipmentId", verifyJWT, async (req, res) => {
     res.json({
       settings: settings || null,
       suspended: isAlertSuspensionActive(settings),
-      alertsEnabled: Boolean(settings?.alertsEnabled)
+      alertsEnabled: settings == null ? true : Boolean(settings.alertsEnabled)
     });
   } catch (err) {
     console.error("[equipment-monitoring-alerts] GET:", err.message);

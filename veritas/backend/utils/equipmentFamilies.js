@@ -1,4 +1,5 @@
 import { pool } from "../database/db.js";
+import { enableMonitoringAlertsForEquipment } from "./equipmentInventoryScan.js";
 let tablesReady = false;
 const FIELD_TYPES = new Set(["text", "textarea", "date", "number", "boolean", "select", "section"]);
 const DISPLAY_MODES = new Set(["hexagon", "brick"]);
@@ -537,7 +538,18 @@ export async function createClientCustomEquipment(clientId, familyKey, payload =
        (client_id, family_key, item_key, name, data, is_active)
      VALUES ($1, $2, $3, $4, $5, $6)
      RETURNING *`, [clientId, familyKey, name, name, JSON.stringify(storedData), isActive]);
-  return mapCustomEquipmentRow(result.rows[0]);
+  const created = mapCustomEquipmentRow(result.rows[0]);
+  try {
+    await enableMonitoringAlertsForEquipment({
+      clientId: Number(clientId),
+      equipmentId: created.id,
+      equipmentFamily: `custom:${familyKey}`,
+      equipmentName: created.name || name
+    });
+  } catch (alertError) {
+    console.warn("[createClientCustomEquipment] enable alerts:", alertError?.message || alertError);
+  }
+  return created;
 }
 export async function updateClientCustomEquipment(clientId, familyKey, itemId, payload = {}) {
   await ensureEquipmentFamilyTables();

@@ -26,7 +26,7 @@ import {
   subscribeSupervisionAlertStream
 } from "../../api/supervisionAlerts";
 import { toast } from "react-toastify";
-import { getEquipmentFleetIssues } from "../../api/equipment";
+import { getEquipmentFleetIssues, getEquipmentFleetCoverage } from "../../api/equipment";
 import { getEquipmentListKey } from "../../utils/equipmentIdentity";
 import { createTrackedAbortController } from "../../utils/pageLoadAbort";
 import { useCheckMKIntegrationEnabled } from "../../hooks/useCheckMKIntegrationEnabled";
@@ -51,6 +51,7 @@ export default function MonitoringCenterPage({
   const [deviceIssues, setDeviceIssues] = useState([]);
   const [deviceIssuesLoading, setDeviceIssuesLoading] = useState(true);
   const [deviceIssuesError, setDeviceIssuesError] = useState(null);
+  const [coverageFamilies, setCoverageFamilies] = useState([]);
   const [opsSeverityFilter, setOpsSeverityFilter] = useState("all");
   const [opsSearchQuery, setOpsSearchQuery] = useState("");
   const [opsWorkflowFilter, setOpsWorkflowFilter] = useState("all");
@@ -139,19 +140,34 @@ export default function MonitoringCenterPage({
       if (!signal?.aborted) setDeviceIssuesLoading(false);
     }
   }, [useServerDeviceIssues]);
+  const loadCoverage = useCallback(async signal => {
+    try {
+      const payload = await getEquipmentFleetCoverage({
+        signal
+      });
+      if (signal?.aborted) return;
+      setCoverageFamilies(Array.isArray(payload?.families) ? payload.families : []);
+    } catch (err) {
+      if (err?.name === "AbortError") return;
+      console.error("Error loading supervision coverage KPIs:", err);
+      if (!signal?.aborted) setCoverageFamilies([]);
+    }
+  }, []);
   useEffect(() => {
     const controller = createTrackedAbortController();
     loadDeviceIssues(controller.signal);
+    loadCoverage(controller.signal);
     const interval = setInterval(() => {
       if (document.visibilityState !== "visible") return;
       if (controller.signal.aborted) return;
       loadDeviceIssues(controller.signal);
+      loadCoverage(controller.signal);
     }, 60000);
     return () => {
       controller.abort();
       clearInterval(interval);
     };
-  }, [loadDeviceIssues]);
+  }, [loadDeviceIssues, loadCoverage]);
   const refreshAlertStates = useCallback(async signal => {
     try {
       const items = unifiedQueueRef.current || [];
@@ -377,7 +393,7 @@ export default function MonitoringCenterPage({
             <div className={`${layout.shell} ${layout.shellFull} ${styles.contentShell}`}>
               {activeTab === "operations" && !error ? <div className={`${dashStyles.dashboard} ${styles.dashboard}`} data-guide="supervision-ops">
                   <div className={`${cyberStyles.tabContent} ${styles.content}`}>
-                    <SupervisionOpsQueue items={filteredQueue} kpi={severityCounts} workflowCounts={workflowCounts} severityFilter={opsSeverityFilter} workflowFilter={opsWorkflowFilter} searchQuery={opsSearchQuery} onSeverityFilter={setOpsSeverityFilter} onWorkflowFilter={setOpsWorkflowFilter} onSearchChange={setOpsSearchQuery} onOpenItem={handleOpenQueueItem} onTicketSupport={handleTicketSupport} onTicketPresta={handleTicketPresta} onPlanEvent={handlePlanEvent} onAck={handleAckAlert} onUnack={handleUnackAlert} onResolve={handleResolveAlert} onDismiss={handleDismissAlert} busyId={alertActionBusyId} localeTag={localeTag} copy={pageCopy.ops} showDomain={false} />
+                    <SupervisionOpsQueue items={filteredQueue} kpi={severityCounts} coverageFamilies={coverageFamilies} workflowCounts={workflowCounts} severityFilter={opsSeverityFilter} workflowFilter={opsWorkflowFilter} searchQuery={opsSearchQuery} onSeverityFilter={setOpsSeverityFilter} onWorkflowFilter={setOpsWorkflowFilter} onSearchChange={setOpsSearchQuery} onOpenItem={handleOpenQueueItem} onTicketSupport={handleTicketSupport} onTicketPresta={handleTicketPresta} onPlanEvent={handlePlanEvent} onAck={handleAckAlert} onUnack={handleUnackAlert} onResolve={handleResolveAlert} onDismiss={handleDismissAlert} busyId={alertActionBusyId} localeTag={localeTag} copy={pageCopy.ops} showDomain={false} />
                   </div>
                 </div> : null}
 

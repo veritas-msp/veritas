@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import { Icon } from "@iconify/react";
 import { toast } from 'react-toastify';
-import { FaServer, FaNetworkWired, FaWifi, FaShieldAlt, FaHdd, FaGlobe, FaCamera, FaTimes, FaCube } from "react-icons/fa";
+import { FaServer, FaNetworkWired, FaWifi, FaShieldAlt, FaHdd, FaGlobe, FaCamera, FaTimes, FaCube, FaPlus } from "react-icons/fa";
 import styles from "./EquipmentDetailPage.module.css";
 import enterpriseDetailStyles from "../EnterprisesPage/EnterpriseDetailPage.module.css";
 import SmartTooltip from "../SmartTooltip";
@@ -1397,6 +1397,27 @@ export default function EquipmentDetailPage({
                 {showRmmHeroStatus && rmmDeviceHealth ? <span className={styles.heroMetaPlainItem}>
                     {rmmDeviceHealth.grade} {rmmDeviceHealth.score}/100
                   </span> : null}
+                {loadingEquipmentTags ? <span className={enterpriseDetailStyles.heroTagsLoading}>{copy.loadingTags}</span> : <>
+                    {equipmentTags.map(tag => <span key={tag.id} className={enterpriseDetailStyles.heroTagChip} style={{
+                backgroundColor: `${tag.color || "#2b5fab"}18`,
+                borderColor: `${tag.color || "#2b5fab"}55`,
+                color: tag.color || "#2b5fab"
+              }}>
+                        {tag.label}
+                        {canManageEquipmentTags ? <button type="button" className={enterpriseDetailStyles.heroTagRemove} onClick={() => handleRemoveEquipmentTag(tag.id)} aria-label={interpolate(copy.hero.removeTag, {
+                  label: tag.label
+                })}>
+                          <FaTimes />
+                        </button> : null}
+                      </span>)}
+                    {canManageEquipmentTags ? <div className={enterpriseDetailStyles.heroTagAddWrap}>
+                      <SmartTooltip content={copy.hero.addTag}>
+                        <button type="button" className={enterpriseDetailStyles.heroTagAddTrigger} onClick={() => setEquipmentTagModalOpen(true)} aria-label={copy.hero.addTag}>
+                          <FaPlus />
+                        </button>
+                      </SmartTooltip>
+                    </div> : null}
+                  </>}
               </div>
               {showRmmHeroStatus ? <RmmCollectionStatusLine equipment={equipmentWithRmmLive} heartbeatIntervalMinutes={rmmHeartbeatMinutes} locale={locale} copy={copy} compact className={enterpriseDetailStyles.heroMetaItemRmm} /> : null}
             </div>
@@ -1433,7 +1454,7 @@ export default function EquipmentDetailPage({
             status: alertSettings.loading ? "…" : alertSettings.statusLabel
           })}>
                 <button type="button" className={`${enterpriseDetailStyles.heroMenuBtn} ${styles.heroAlertBtn} ${alertSettings.suspended ? styles.heroAlertBtnSuspended : alertSettings.alertsEnabled ? styles.heroAlertBtnActive : styles.heroAlertBtnDisabled}`} onClick={() => setAlertModalOpen(true)} aria-label={copy.hero.alertsAria}>
-                  <Icon icon={alertSettings.suspended || !alertSettings.alertsEnabled ? "mdi:bell-off-outline" : "mdi:bell-ring-outline"} aria-hidden />
+                  <Icon icon={alertSettings.suspended || !alertSettings.alertsEnabled ? "mdi:alarm-light-off" : "mdi:alarm-light"} aria-hidden />
                 </button>
               </SmartTooltip> : null}
             <SmartTooltip content={copy.hero.edit}>

@@ -25,8 +25,8 @@ export function useEquipmentAlertSettings(equipment) {
   const [saving, setSaving] = useState(false);
   const [settings, setSettings] = useState(null);
   const [suspended, setSuspended] = useState(false);
-  const [alertsEnabled, setAlertsEnabled] = useState(false);
-  const [mode, setMode] = useState("disabled");
+  const [alertsEnabled, setAlertsEnabled] = useState(true);
+  const [mode, setMode] = useState("active");
   const [durationMinutes, setDurationMinutes] = useState(1440);
   const [reason, setReason] = useState("");
   useEffect(() => {
@@ -38,7 +38,7 @@ export function useEquipmentAlertSettings(equipment) {
     setLoading(true);
     fetchEquipmentAlertSettings(clientId, equipmentId, family).then(data => {
       if (!mounted) return;
-      const enabled = Boolean(data.alertsEnabled);
+      const enabled = data.settings == null ? true : Boolean(data.alertsEnabled);
       const isSuspended = Boolean(data.suspended);
       setSettings(data.settings);
       setSuspended(isSuspended);

@@ -53,6 +53,25 @@ const SUPERVISION_COPY = {
         contracts: "Contrats",
         rmm: "RMM offline"
       },
+      coverage: {
+        aria: "Couverture supervision par famille",
+        title: "Couverture",
+        ratio: "{monitored}/{total}",
+        tooltip: "{label} · {monitored}/{total} supervisés via une intégration",
+        families: {
+          Ordinateurs: "Ordinateurs",
+          Internet: "Internet",
+          Switch: "Switch",
+          Firewalls: "Firewall",
+          Routeur: "Routeur",
+          Serveurs: "Serveurs",
+          BorneWifi: "Bornes Wi-Fi",
+          Stockage: "Stockage",
+          Alimentation: "Alimentation",
+          TOIP: "TOIP",
+          Videosurveillance: "Vidéosurveillance"
+        }
+      },
       domainAria: "Filtrer par domaine",
       domains: {
         all: "Tout",
@@ -422,6 +441,25 @@ const SUPERVISION_COPY = {
         backups: "Backups",
         contracts: "Contracts",
         rmm: "RMM offline"
+      },
+      coverage: {
+        aria: "Supervision coverage by family",
+        title: "Coverage",
+        ratio: "{monitored}/{total}",
+        tooltip: "{label} · {monitored}/{total} monitored via an integration",
+        families: {
+          Ordinateurs: "Computers",
+          Internet: "Internet",
+          Switch: "Switch",
+          Firewalls: "Firewall",
+          Routeur: "Router",
+          Serveurs: "Servers",
+          BorneWifi: "Wi-Fi APs",
+          Stockage: "Storage",
+          Alimentation: "Power",
+          TOIP: "TOIP",
+          Videosurveillance: "Video surveillance"
+        }
       },
       domainAria: "Filter by domain",
       domains: {
@@ -793,6 +831,25 @@ const SUPERVISION_COPY = {
         contracts: "Verträge",
         rmm: "RMM offline"
       },
+      coverage: {
+        aria: "Überwachungsabdeckung nach Familie",
+        title: "Abdeckung",
+        ratio: "{monitored}/{total}",
+        tooltip: "{label} · {monitored}/{total} über Integration überwacht",
+        families: {
+          Ordinateurs: "Computer",
+          Internet: "Internet",
+          Switch: "Switch",
+          Firewalls: "Firewall",
+          Routeur: "Router",
+          Serveurs: "Server",
+          BorneWifi: "WLAN-APs",
+          Stockage: "Speicher",
+          Alimentation: "Strom",
+          TOIP: "TOIP",
+          Videosurveillance: "Videoüberwachung"
+        }
+      },
       domainAria: "Nach Bereich filtern",
       domains: {
         all: "Alle",
@@ -1163,6 +1220,25 @@ const SUPERVISION_COPY = {
         contracts: "Contratti",
         rmm: "RMM offline"
       },
+      coverage: {
+        aria: "Copertura supervisione per famiglia",
+        title: "Copertura",
+        ratio: "{monitored}/{total}",
+        tooltip: "{label} · {monitored}/{total} supervisionati via integrazione",
+        families: {
+          Ordinateurs: "Computer",
+          Internet: "Internet",
+          Switch: "Switch",
+          Firewalls: "Firewall",
+          Routeur: "Router",
+          Serveurs: "Server",
+          BorneWifi: "AP Wi-Fi",
+          Stockage: "Storage",
+          Alimentation: "Alimentazione",
+          TOIP: "TOIP",
+          Videosurveillance: "Videosorveglianza"
+        }
+      },
       domainAria: "Filtra per dominio",
       domains: {
         all: "Tutto",
@@ -1531,6 +1607,25 @@ const SUPERVISION_COPY = {
         backups: "Backups",
         contracts: "Contratos",
         rmm: "RMM offline"
+      },
+      coverage: {
+        aria: "Cobertura de supervisión por familia",
+        title: "Cobertura",
+        ratio: "{monitored}/{total}",
+        tooltip: "{label} · {monitored}/{total} supervisados vía integración",
+        families: {
+          Ordinateurs: "Ordenadores",
+          Internet: "Internet",
+          Switch: "Switch",
+          Firewalls: "Firewall",
+          Routeur: "Router",
+          Serveurs: "Servidores",
+          BorneWifi: "AP Wi-Fi",
+          Stockage: "Almacenamiento",
+          Alimentation: "Alimentación",
+          TOIP: "TOIP",
+          Videosurveillance: "Videovigilancia"
+        }
       },
       domainAria: "Filtrar por dominio",
       domains: {

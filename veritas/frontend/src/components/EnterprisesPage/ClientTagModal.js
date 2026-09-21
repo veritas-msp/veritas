@@ -3,6 +3,7 @@ import { createPortal } from "react-dom";
 import { Icon } from "@iconify/react";
 import { FaTimes } from "react-icons/fa";
 import { fetchTagCatalog } from "../../api/clients";
+import { fetchEquipmentTagCatalog } from "../../api/equipment";
 import { useAppLocale } from "../../hooks/useAppGeneralSettings";
 import { interpolate } from "../../i18n/translate";
 import { CLIENT_TAG_COLORS, DEFAULT_CLIENT_TAG_COLOR, getTagChipStyle, isPresetTagColor, normalizeTagColor } from "./clientTagColors";
@@ -50,7 +51,8 @@ export default function ClientTagModal({
     setActiveSection("catalog");
     let cancelled = false;
     setLoadingCatalog(true);
-    fetchTagCatalog().then(data => {
+    const loadCatalog = entityKind === "equipment" ? fetchEquipmentTagCatalog : fetchTagCatalog;
+    loadCatalog().then(data => {
       if (cancelled) return;
       const tags = Array.isArray(data) ? data : [];
       setCatalogTags(tags);
@@ -74,7 +76,7 @@ export default function ClientTagModal({
     return () => {
       cancelled = true;
     };
-  }, [open]);
+  }, [open, entityKind]);
   const previewLabel = label.trim() || copy.create.previewDefault;
   const previewColor = normalizeTagColor(color) || DEFAULT_CLIENT_TAG_COLOR;
   const normalizedCustomInput = normalizeTagColor(customColorInput);

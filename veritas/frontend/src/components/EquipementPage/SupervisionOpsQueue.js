@@ -183,9 +183,60 @@ function FilterChip({
     </button>;
 }
 
+const COVERAGE_EXCLUDED_KEYS = new Set(["Sauvegarde"]);
+
+function coverageTone(monitored, total) {
+  if (!total) return "empty";
+  if (monitored >= total) return "good";
+  if (monitored <= 0) return "bad";
+  const pct = monitored / total;
+  if (pct >= 0.7) return "warn";
+  return "bad";
+}
+
+function CoverageStrip({
+  families = [],
+  copy
+}) {
+  const coverageCopy = copy?.coverage || {};
+  const labels = coverageCopy.families || {};
+  const items = (Array.isArray(families) ? families : []).filter(family => {
+    const key = String(family?.key || "");
+    if (COVERAGE_EXCLUDED_KEYS.has(key)) return false;
+    return (Number(family?.count) || 0) > 0;
+  });
+  if (!items.length) return null;
+  return <div className={styles.coverageStrip} role="group" aria-label={coverageCopy.aria || coverageCopy.title || "Coverage"} data-guide="supervision-coverage">
+      {items.map(family => {
+      const key = String(family.key || "");
+      const label = labels[key] || family.label || key;
+      const total = Number(family.count) || 0;
+      const monitored = Number(family.monitoredCount ?? family.monitored) || 0;
+      const tone = coverageTone(monitored, total);
+      const ratio = interpolate(coverageCopy.ratio || "{monitored}/{total}", {
+        monitored,
+        total
+      });
+      const tip = interpolate(coverageCopy.tooltip || "{label} · {monitored}/{total}", {
+        label,
+        monitored,
+        total
+      });
+      return <SmartTooltip key={key} content={tip}>
+            <div className={`${styles.coveragePill} ${styles[`coverageTone_${tone}`] || ""}`}>
+              <Icon icon={family.icon || "mdi:devices"} className={styles.coverageIcon} aria-hidden />
+              <span className={styles.coverageLabel}>{label}</span>
+              <span className={styles.coverageRatio}>{ratio}</span>
+            </div>
+          </SmartTooltip>;
+    })}
+    </div>;
+}
+
 export default function SupervisionOpsQueue({
   items = [],
   kpi = {},
+  coverageFamilies = [],
   domainCounts = {},
   workflowCounts = {},
   severityFilter = "all",
@@ -332,6 +383,7 @@ export default function SupervisionOpsQueue({
 
   return <>
     <div className={styles.root}>
+      <CoverageStrip families={coverageFamilies} copy={copy} />
       <div className={styles.toolbar} data-guide="supervision-filters">
         <label className={styles.searchBox}>
           <Icon icon="mdi:magnify" aria-hidden />

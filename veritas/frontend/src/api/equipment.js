@@ -494,6 +494,28 @@ export const getEquipmentFleetIssues = async (options = {}) => {
   };
 };
 
+/** Couverture supervision : monitorés / total par famille. */
+export const getEquipmentFleetCoverage = async (options = {}) => {
+  const response = await fetch(`${API_BASE_URL}/clients/equipment-fleet/coverage`, {
+    method: "GET",
+    credentials: "include",
+    signal: options.signal,
+    headers: {
+      "Content-Type": "application/json"
+    }
+  });
+  if (!response.ok) {
+    throw new Error(`Error ${response.status}: ${response.statusText}`);
+  }
+  const data = await response.json();
+  return {
+    families: Array.isArray(data?.families) ? data.families : [],
+    equipMonitoredTotal: Number(data?.equipMonitoredTotal) || 0,
+    equipUnderSurveillanceCount: Number(data?.equipUnderSurveillanceCount) || 0,
+    equipSurveillancePercent: data?.equipSurveillancePercent ?? null
+  };
+};
+
 /** Lean list for Admin equipment purge — avoids full /clients/general dump. */
 export const getEquipmentPurgeList = async (options = {}) => {
   const response = await fetch(`${API_BASE_URL}/clients/equipment-purge`, {
@@ -1717,6 +1739,15 @@ export const syncEquipmentCheckMKMonitoring = async (payload, options = {}) => {
 async function parseEquipmentTagError(res, fallback) {
   const errorData = await res.json().catch(() => ({}));
   throw new Error(errorData.error || errorData.details || fallback);
+}
+export async function fetchEquipmentTagCatalog(options = {}) {
+  const res = await fetch(`${API_BASE_URL}/equipment/tags/catalog`, {
+    credentials: "include",
+    cache: "no-store",
+    signal: options.signal
+  });
+  if (!res.ok) await parseEquipmentTagError(res, "Error loading device tag catalog");
+  return res.json();
 }
 export async function fetchEquipmentTagsBatch(clientIds, options = {}) {
   const unique = [...new Set((clientIds || []).map(id => String(id || "").trim()).filter(Boolean))];

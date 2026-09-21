@@ -23,7 +23,7 @@ export default function EquipmentAlertSuspensionModal({
         <header className={styles.header}>
           <div>
             <h2 id="equipment-alert-modal-title" className={styles.title}>
-              <Icon icon="mdi:bell-alert-outline" className={styles.titleIcon} aria-hidden />
+              <Icon icon="mdi:alarm-light-outline" className={styles.titleIcon} aria-hidden />
               {modalCopy.title}
             </h2>
             <p className={styles.subtitle}>{modalCopy.subtitle}</p>
@@ -38,7 +38,7 @@ export default function EquipmentAlertSuspensionModal({
               <div className={styles.statusRow}>
                 <span className={styles.statusLabel}>{modalCopy.currentStatus}</span>
                 <span className={`${styles.statusBadge} ${alert.suspended ? styles.statusSuspended : alert.alertsEnabled ? styles.statusActive : styles.statusDisabled}`}>
-                  <Icon icon={alert.suspended || !alert.alertsEnabled ? "mdi:bell-off-outline" : "mdi:bell-ring-outline"} width={14} aria-hidden />
+                  <Icon icon={alert.suspended || !alert.alertsEnabled ? "mdi:alarm-light-off" : "mdi:alarm-light"} width={14} aria-hidden />
                   {alert.statusLabel}
                 </span>
               </div>

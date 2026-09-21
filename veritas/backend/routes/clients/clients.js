@@ -18,10 +18,13 @@ import { fetchEquipmentPurgeList } from '../../utils/equipmentPurgeList.js';
 import { fetchEquipmentInventoryList, bulkUpdateEquipmentInventory } from '../../utils/equipmentInventoryList.js';
 import { fetchEquipmentFleetList } from '../../utils/equipmentFleetList.js';
 import { fetchEquipmentFleetIssues } from '../../utils/equipmentFleetIssues.js';
+import { fetchMonitorableEquipmentStats } from '../../utils/monitorableEquipmentStats.js';
 import { userHasAllPermissions } from '../../services/permissionService.js';
 import { addMembership, fetchPrimaryContactNamesByClientId, sqlContactLinkedToClientAsync, attachMembershipsToContacts } from '../../services/contactClientLinks.js';
 import { propagateClientSiteRenames } from '../../services/propagateClientSiteRenames.js';
 import { pruneOrphanSiteLinksForClient } from '../../services/contactSiteLinks.js';
+import { enableMonitoringAlertsForEquipment, SUPERVISION_SCAN_FAMILIES } from '../../utils/equipmentInventoryScan.js';
+import { resolveEquipmentFamilyKey } from '../../utils/equipmentMonitoringAlerts.js';
 const router = express.Router();
 router.use(requireProForClientInfra);
 router.use(verifyJWT);
@@ -977,6 +980,19 @@ router.get('/equipment-fleet/issues', requireAnyPermission('infrastructure.view'
     console.error('GET /equipment-fleet/issues:', err);
     res.status(500).json({
       error: 'Error loading equipment fleet issues',
+      details: err.message,
+      code: err.code
+    });
+  }
+});
+router.get('/equipment-fleet/coverage', requireAnyPermission('infrastructure.view', 'supervision.view', 'clients.view', 'supervision.manage'), async (req, res) => {
+  try {
+    const payload = await fetchMonitorableEquipmentStats();
+    res.json(payload);
+  } catch (err) {
+    console.error('GET /equipment-fleet/coverage:', err);
+    res.status(500).json({
+      error: 'Error loading equipment fleet coverage',
       details: err.message,
       code: err.code
     });
@@ -3543,6 +3559,20 @@ modulesRouter.post('/:clientId/:family', requireModulePermission("create"), asyn
       });
     } catch (logError) {
       console.warn("[POST modules] equipment log:", logError?.message || logError);
+    }
+    try {
+      const alertFamily = resolveEquipmentFamilyKey(family) || String(family || "").toLowerCase();
+      const isSupervisionFamily = SUPERVISION_SCAN_FAMILIES.some(s => s.family === alertFamily);
+      if (isSupervisionFamily && created?.id) {
+        await enableMonitoringAlertsForEquipment({
+          clientId: Number(clientId),
+          equipmentId: created.id,
+          equipmentFamily: alertFamily,
+          equipmentName: created.name || finalName || null
+        });
+      }
+    } catch (alertError) {
+      console.warn("[POST modules] enable alerts:", alertError?.message || alertError);
     }
     res.status(201).json(created);
   } catch (err) {

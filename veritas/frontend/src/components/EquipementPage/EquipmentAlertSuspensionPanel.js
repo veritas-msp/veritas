@@ -50,8 +50,8 @@ export default function EquipmentAlertSuspensionPanel({
   const [saving, setSaving] = useState(false);
   const [settings, setSettings] = useState(null);
   const [suspended, setSuspended] = useState(false);
-  const [alertsEnabled, setAlertsEnabled] = useState(false);
-  const [mode, setMode] = useState("disabled");
+  const [alertsEnabled, setAlertsEnabled] = useState(true);
+  const [mode, setMode] = useState("active");
   const [durationMinutes, setDurationMinutes] = useState(1440);
   const [reason, setReason] = useState("");
   useEffect(() => {
@@ -63,7 +63,7 @@ export default function EquipmentAlertSuspensionPanel({
     setLoading(true);
     fetchEquipmentAlertSettings(clientId, equipmentId, family).then(data => {
       if (!mounted) return;
-      const enabled = Boolean(data.alertsEnabled);
+      const enabled = data.settings == null ? true : Boolean(data.alertsEnabled);
       const isSuspended = Boolean(data.suspended);
       setSettings(data.settings);
       setSuspended(isSuspended);
@@ -140,7 +140,7 @@ export default function EquipmentAlertSuspensionPanel({
       <div className={styles.header}>
         <div>
           <h2 className={styles.title}>
-            <Icon icon="mdi:bell-alert-outline" className={styles.titleIcon} aria-hidden />
+            <Icon icon="mdi:alarm-light-outline" className={styles.titleIcon} aria-hidden />
             Monitoring alerts
           </h2>
           <p className={styles.subtitle}>
@@ -150,7 +150,7 @@ export default function EquipmentAlertSuspensionPanel({
           </p>
         </div>
         <span className={`${styles.statusBadge} ${suspended ? styles.statusSuspended : alertsEnabled ? styles.statusActive : styles.statusSuspended}`}>
-          <Icon icon={suspended || !alertsEnabled ? "mdi:bell-off-outline" : "mdi:bell-ring-outline"} width={14} />
+          <Icon icon={suspended || !alertsEnabled ? "mdi:alarm-light-off" : "mdi:alarm-light"} width={14} />
           {statusLabel}
         </span>
       </div>

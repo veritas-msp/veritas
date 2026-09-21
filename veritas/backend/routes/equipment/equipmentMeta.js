@@ -57,6 +57,22 @@ function parseClientIds(raw) {
   }
   return [...new Set(ids)];
 }
+router.get("/tags/catalog", requirePermission("infrastructure.view"), async (_req, res) => {
+  try {
+    const result = await pool.query(
+      `SELECT id, label, color, created_at
+       FROM v_b_equipment_tags
+       ORDER BY label ASC`
+    );
+    res.json(result.rows);
+  } catch (err) {
+    if (isMissingTableError(err)) return res.json([]);
+    console.error("[GET /equipment/tags/catalog]", err);
+    res.status(500).json({
+      error: "Error loading device tag catalog"
+    });
+  }
+});
 router.get("/tags/batch", requirePermission("infrastructure.view"), async (req, res) => {
   try {
     const clientIds = parseClientIds(req.query.clientIds);
@@ -67,7 +83,7 @@ router.get("/tags/batch", requirePermission("infrastructure.view"), async (req, 
               t.label,
               t.color
        FROM v_b_equipment_tag_links l
-       JOIN v_b_client_tags t ON t.id = l.tag_id
+       JOIN v_b_equipment_tags t ON t.id = l.tag_id
        WHERE l.client_id::text = ANY($1::text[])
        ORDER BY l.equipment_id, t.label ASC`, [clientIds]);
     res.json(result.rows);
@@ -120,7 +136,7 @@ router.get("/:equipmentId/tags", requirePermission("infrastructure.view"), async
     });
     const result = await pool.query(`SELECT t.id, t.label, t.color, l.created_at AS linked_at
        FROM v_b_equipment_tag_links l
-       JOIN v_b_client_tags t ON t.id = l.tag_id
+       JOIN v_b_equipment_tags t ON t.id = l.tag_id
        WHERE l.equipment_id = $1 AND l.client_id = $2
        ORDER BY t.label ASC`, [equipmentId, clientId]);
     res.json(result.rows);
@@ -152,11 +168,14 @@ router.post("/:equipmentId/tags", requirePermission("infrastructure.edit"), asyn
       });
     }
     const color = req.body?.color || pickTagColor(label);
-    const tagResult = await pool.query(`INSERT INTO v_b_client_tags (label, color, created_at)
+    const tagResult = await pool.query(
+      `INSERT INTO v_b_equipment_tags (label, color, created_at)
        VALUES ($1, $2, NOW())
        ON CONFLICT (label)
-       DO UPDATE SET color = COALESCE(EXCLUDED.color, v_b_client_tags.color)
-       RETURNING *`, [label, color]);
+       DO UPDATE SET color = COALESCE(EXCLUDED.color, v_b_equipment_tags.color)
+       RETURNING *`,
+      [label, color]
+    );
     await pool.query(`INSERT INTO v_b_equipment_tag_links (equipment_id, client_id, tag_id, created_at)
        VALUES ($1, $2, $3, NOW())
        ON CONFLICT (equipment_id, tag_id) DO NOTHING`, [equipmentId, clientId, tagResult.rows[0].id]);
