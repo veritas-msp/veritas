@@ -48,6 +48,7 @@ export const CHECKMK_SERVICE_COLUMNS = [
   'display_name',
   'state',
   'state_type',
+  'hard_state',
   'plugin_output',
   'long_plugin_output',
   'perf_data',
@@ -262,6 +263,7 @@ export async function getHostServices(apiUrl, authToken, hostName, site = '') {
         const description = data.description || data.display_name || '';
         const state = data.state;
         const stateType = data.state_type;
+        const hardState = data.hard_state;
         const pluginOutput = data.plugin_output || data.long_plugin_output;
         const longPluginOutput = data.long_plugin_output;
         const performanceData = data.perf_data || data.performance_data;
@@ -275,6 +277,7 @@ export async function getHostServices(apiUrl, authToken, hostName, site = '') {
           description,
           state,
           stateType,
+          hard_state: hardState,
           pluginOutput,
           longPluginOutput,
           performanceData,

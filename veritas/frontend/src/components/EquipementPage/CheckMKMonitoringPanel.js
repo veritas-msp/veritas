@@ -428,7 +428,7 @@ export default function CheckMKMonitoringPanel({
                     Service {serviceSort.col === "service" ? (serviceSort.dir === "asc" ? "▲" : "▼") : ""}
                   </th>
                   <th>Sortie</th>
-                  <th onClick={() => toggleServiceSort("age")}>
+                  <th onClick={() => toggleServiceSort("age")} title="Durée dans l'état actuel (pas l'âge de la sync)">
                     Âge {serviceSort.col === "age" ? (serviceSort.dir === "asc" ? "▲" : "▼") : ""}
                   </th>
                 </tr>

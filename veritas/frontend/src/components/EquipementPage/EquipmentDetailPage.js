@@ -1087,7 +1087,12 @@ export default function EquipmentDetailPage({
     const equipmentId = getEquipmentDbIdLocal();
     const clientId = equipment?.clientId;
     const family = equipmentTypeToFamily(equipment?.type);
-    if (!equipmentId || !clientId || !family) return;
+    if (!equipmentId || !clientId || !family) {
+      if (force) {
+        toast.error(copy.toasts?.checkmkSyncMissingParams || "Impossible d'actualiser CheckMK (équipement / mapping incomplets).");
+      }
+      return;
+    }
     checkmkControllerRef.current?.abort();
     const controller = createTrackedAbortController();
     checkmkControllerRef.current = controller;
@@ -1125,16 +1130,34 @@ export default function EquipmentDetailPage({
         !checkmkSyncSuspended
         && (!stored?.lastSyncedAt || Date.now() - new Date(stored.lastSyncedAt).getTime() >= syncMinIntervalMs)
       );
-      if (shouldSync) {
-        const synced = await syncEquipmentCheckMKMonitoring(syncPayload, fetchOptions).catch(e => e?.name === "AbortError" ? Promise.reject(e) : null);
-        if (controller.signal.aborted) return;
-        if (synced?.checkmkData) {
-          applyCheckMKPayload(synced);
+      if (!shouldSync) return;
+      let synced;
+      try {
+        synced = await syncEquipmentCheckMKMonitoring(syncPayload, fetchOptions);
+      } catch (syncErr) {
+        if (syncErr?.name === "AbortError") throw syncErr;
+        if (force) {
+          toast.error(syncErr?.message || copy.toasts?.checkmkSyncError || "Échec de l'actualisation CheckMK.");
+        }
+        return;
+      }
+      if (controller.signal.aborted) return;
+      if (synced?.checkmkData || synced?.lastSyncedAt) {
+        applyCheckMKPayload(synced);
+      }
+      if (force) {
+        if (synced?.skipped) {
+          toast.info(synced.message || copy.toasts?.checkmkSyncSkipped || "Sync CheckMK ignorée.");
+        } else {
+          toast.success(copy.toasts?.checkmkSyncSuccess || "Données CheckMK actualisées.");
         }
       }
     } catch (error) {
       if (error?.name === "AbortError") return;
       console.error("Error lors du loading des data CheckMK:", error);
+      if (force) {
+        toast.error(error?.message || copy.toasts?.checkmkSyncError || "Échec de l'actualisation CheckMK.");
+      }
     } finally {
       if (!controller.signal.aborted) setLoadingCheckMK(false);
     }

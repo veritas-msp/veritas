@@ -7,6 +7,8 @@ const router = express.Router();
 const TABLE = 'v_b_equipment_checkmk_monitoring';
 const DEFAULT_SYNC_MIN_INTERVAL_MS = 30 * 60 * 1000;
 const RECENT_ALERT_DAYS = 7;
+/** Keep CheckMK event/notification history bounded (force refresh rebuilds this window). */
+const EVENT_RETENTION_DAYS = 90;
 function getEventTimeMs(event) {
   const raw = event?.time ?? event?.log_time ?? event?.timestamp ?? event?.event_time ?? event?.created ?? null;
   if (raw == null) return null;
@@ -31,12 +33,14 @@ function parseEventStateRaw(rawState) {
   const unwrapped = unwrapCheckmkValue(rawState);
   if (typeof unwrapped === 'number') return unwrapped;
   if (typeof unwrapped === 'string') {
-    const match = unwrapped.match(/\((OK|WARNING|CRITICAL|UNKNOWN)\)/i) || unwrapped.match(/\b(OK|WARNING|CRITICAL|UNKNOWN)\b/i);
+    const match =
+      unwrapped.match(/\((OK|WARN(?:ING)?|CRIT(?:ICAL)?|UNKNOWN|UP|DOWN|UNREACH(?:ABLE)?)\)/i) ||
+      unwrapped.match(/\b(OK|WARN(?:ING)?|CRIT(?:ICAL)?|UNKNOWN|UP|DOWN|UNREACH(?:ABLE)?)\b/i);
     if (match) {
       const s = match[1].toUpperCase();
-      if (s === 'OK') return 0;
-      if (s === 'WARNING') return 1;
-      if (s === 'CRITICAL') return 2;
+      if (s === 'OK' || s === 'UP') return 0;
+      if (s === 'WARN' || s === 'WARNING') return 1;
+      if (s === 'CRIT' || s === 'CRITICAL' || s === 'DOWN' || s === 'UNREACH' || s === 'UNREACHABLE') return 2;
       return 3;
     }
     const n = parseInt(unwrapped, 10);
@@ -113,6 +117,47 @@ function normalizeServiceStateNum(rawState) {
   return parseEventStateRaw(unwrapped);
 }
 
+/** Rank service states for "worst wins": CRIT > WARN > UNKNOWN > OK. */
+function serviceStateSeverityRank(stateNum) {
+  if (stateNum === 2) return 3;
+  if (stateNum === 1) return 2;
+  if (stateNum === 3) return 1;
+  if (stateNum === 0) return 0;
+  return -1;
+}
+
+function worseServiceState(a, b) {
+  if (a == null) return b;
+  if (b == null) return a;
+  return serviceStateSeverityRank(b) > serviceStateSeverityRank(a) ? b : a;
+}
+
+/**
+ * CheckMK host state scale differs from services: 0=UP, 1=DOWN, 2=UNREACHABLE.
+ * Map to service-equivalent severity (0 ok / 1 warn / 2 crit) for summary status.
+ */
+function normalizeHostStateToSeverity(rawState) {
+  const unwrapped = unwrapCheckmkValue(rawState);
+  if (unwrapped == null || unwrapped === "") return null;
+  if (typeof unwrapped === "string") {
+    const token = unwrapped.trim().toUpperCase();
+    if (!token) return null;
+    if (token === "UP" || token === "OK") return 0;
+    if (token === "DOWN" || token === "UNREACH" || token === "UNREACHABLE") return 2;
+    if (token === "WARN" || token === "WARNING") return 1;
+    if (token === "CRIT" || token === "CRITICAL") return 2;
+    if (token === "UNKNOWN") return 3;
+  }
+  const asInt = Number(unwrapped);
+  if (Number.isFinite(asInt) && String(Math.trunc(asInt)) === String(unwrapped).trim()) {
+    const n = Math.trunc(asInt);
+    if (n === 0) return 0;
+    // Host numeric: 1=DOWN, 2=UNREACHABLE → both critical for supervision.
+    if (n === 1 || n === 2) return 2;
+  }
+  return normalizeServiceStateNum(unwrapped);
+}
+
 function getServiceStateNum(service) {
   const candidates = [
     service?.state,
@@ -120,14 +165,18 @@ function getServiceStateNum(service) {
     service?.hard_state,
     service?.soft_state,
     service?.extensions?.state,
+    service?.extensions?.hard_state,
     service?.attributes?.state,
+    service?.attributes?.hard_state,
     Array.isArray(service?.raw) ? service.raw[1] : null
   ];
+  let worst = null;
   for (const candidate of candidates) {
     const n = normalizeServiceStateNum(candidate);
-    if (n != null) return n;
+    if (n == null) continue;
+    worst = worseServiceState(worst, n);
   }
-  return 3;
+  return worst == null ? 3 : worst;
 }
 
 function toFiniteCount(raw) {
@@ -142,6 +191,19 @@ function resolveHostDetails(monitoringData, hostDetails = null) {
     || monitoringData?.host_details
     || monitoringData?.host
     || null;
+}
+
+/** Accept plain arrays or CheckMK `{ value: [...] }` / `{ services: [...] }` wrappers. */
+function asCheckmkList(raw) {
+  const unwrapped = unwrapCheckmkValue(raw);
+  if (Array.isArray(unwrapped)) return unwrapped;
+  if (Array.isArray(raw)) return raw;
+  if (unwrapped && typeof unwrapped === "object") {
+    if (Array.isArray(unwrapped.services)) return unwrapped.services;
+    if (Array.isArray(unwrapped.events)) return unwrapped.events;
+    if (Array.isArray(unwrapped.value)) return unwrapped.value;
+  }
+  return [];
 }
 
 export function computeMonitoringSummary(monitoringData, lastSyncedAt, hostDetails = null) {
@@ -159,9 +221,9 @@ export function computeMonitoringSummary(monitoringData, lastSyncedAt, hostDetai
     };
   }
   const servicesRaw = monitoringData?.services?.services ?? monitoringData?.services;
-  const services = Array.isArray(servicesRaw) ? servicesRaw : [];
+  const services = asCheckmkList(servicesRaw);
   const eventsRaw = monitoringData?.events?.events ?? monitoringData?.events;
-  const events = Array.isArray(eventsRaw) ? eventsRaw : [];
+  const events = asCheckmkList(eventsRaw);
   const critServiceRows = services.filter(s => getServiceStateNum(s) === 2);
   const warnServiceRows = services.filter(s => getServiceStateNum(s) === 1);
   let critServices = critServiceRows.length;
@@ -187,13 +249,21 @@ export function computeMonitoringSummary(monitoringData, lastSyncedAt, hostDetai
     host?.worstServiceState ??
     host?.worst_state ??
     null;
-  const hostWorst = normalizeServiceStateNum(hostWorstRaw);
+  const hostWorstService = normalizeServiceStateNum(hostWorstRaw);
+  // hosts.js stores host.state as "UP"|"DOWN"|"UNREACHABLE" — must not be confused with service worst_state.
+  const hostStateSeverity = normalizeHostStateToSeverity(
+    host?.state ?? host?.host_state ?? host?.extensions?.state ?? host?.attributes?.state ?? null
+  );
+  const hostIsDown = hostStateSeverity === 2;
   let status = 'ok';
-  if (critServices > 0 || recentCritAlerts > 0 || hostWorst === 2) status = 'critical';
-  else if (warnServices > 0 || recentWarnAlerts > 0 || hostWorst === 1) status = 'warning';
+  if (critServices > 0 || recentCritAlerts > 0 || hostWorstService === 2 || hostIsDown) status = 'critical';
+  else if (warnServices > 0 || recentWarnAlerts > 0 || hostWorstService === 1) status = 'warning';
   let failingServices = uniqueNonEmpty(
     (critServiceRows.length ? critServiceRows : warnServiceRows).map(serviceDisplayName)
   );
+  if (!failingServices.length && hostIsDown) {
+    failingServices = ["Host DOWN"];
+  }
   if (!failingServices.length && recentAlertEvents.length) {
     const preferredEvents = status === 'critical'
       ? recentAlertEvents.filter(e => getEventStateNum(e) === 2)
@@ -214,6 +284,7 @@ export function computeMonitoringSummary(monitoringData, lastSyncedAt, hostDetai
     recentWarnAlerts,
     primaryService: failingServices[0] || null,
     failingServices,
+    hostState: host?.state ?? null,
     lastSyncedAt: lastSyncedAt || null
   };
 }
@@ -381,6 +452,24 @@ function mergeEventLists(existing = [], incoming = []) {
   for (const e of incoming) map.set(eventDedupeKey(e), e);
   return [...map.values()];
 }
+
+function pruneEventsByRetention(events = [], retentionDays = EVENT_RETENTION_DAYS) {
+  const list = Array.isArray(events) ? events : [];
+  const days = Math.min(Math.max(Number(retentionDays) || EVENT_RETENTION_DAYS, 7), 365);
+  const cutoff = Date.now() - days * 24 * 60 * 60 * 1000;
+  return list.filter(event => {
+    const t = getEventTimeMs(event);
+    // Keep undated rows so we don't wipe poorly-shaped payloads.
+    if (t == null) return true;
+    return t >= cutoff;
+  });
+}
+
+function sortEventsNewestFirst(events = []) {
+  return [...(Array.isArray(events) ? events : [])].sort(
+    (a, b) => (getEventTimeMs(b) || 0) - (getEventTimeMs(a) || 0)
+  );
+}
 function rowToResponse(row, availabilityPeriod = '1m') {
   if (!row) return null;
   const monitoringData = row.monitoring_data || {};
@@ -445,16 +534,19 @@ async function fetchAndMergeCheckMKData(req, {
   hostName,
   site,
   existingMonitoringData,
-  incrementalFrom
+  incrementalFrom,
+  fullRefresh = false
 }) {
   const now = new Date();
   const eventsEndTime = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59);
-  const eventsStartTime = incrementalFrom ? new Date(new Date(incrementalFrom).getTime() - 24 * 60 * 60 * 1000) : (() => {
-    const d = new Date(eventsEndTime);
-    d.setFullYear(d.getFullYear() - 10);
-    d.setHours(0, 0, 0, 0);
-    return d;
-  })();
+  let eventsStartTime;
+  if (fullRefresh || !incrementalFrom) {
+    eventsStartTime = new Date(eventsEndTime);
+    eventsStartTime.setDate(eventsStartTime.getDate() - EVENT_RETENTION_DAYS);
+    eventsStartTime.setHours(0, 0, 0, 0);
+  } else {
+    eventsStartTime = new Date(new Date(incrementalFrom).getTime() - 24 * 60 * 60 * 1000);
+  }
   const siteParam = site || null;
   const queryBase = {
     site: siteParam
@@ -509,20 +601,48 @@ async function fetchAndMergeCheckMKData(req, {
     });
     return data?.availability ?? null;
   })()]);
+
+  if (fullRefresh && !services) {
+    throw new Error('CheckMK services refresh failed. Verify API connectivity and host mapping.');
+  }
+  if (fullRefresh && !hostDetails) {
+    throw new Error('CheckMK host refresh failed. Verify API connectivity and host mapping.');
+  }
+
   const prev = existingMonitoringData || {};
-  const mergedEvents = events ? {
-    ...events,
-    events: mergeEventLists(prev.events?.events || [], events.events || []),
-    events_count: mergeEventLists(prev.events?.events || [], events.events || []).length
+  const incomingEvents = Array.isArray(events?.events) ? events.events : [];
+  const mergedEventsList = sortEventsNewestFirst(
+    pruneEventsByRetention(
+      fullRefresh ? incomingEvents : mergeEventLists(prev.events?.events || [], incomingEvents)
+    )
+  );
+  const mergedEvents = events || fullRefresh ? {
+    ...(events || prev.events || {}),
+    events: mergedEventsList,
+    events_count: mergedEventsList.length
   } : prev.events || null;
-  const mergedHostEvents = hostEventsDetailed ? {
-    ...hostEventsDetailed,
-    events: mergeEventLists(prev.hostEventsDetailed?.events || [], hostEventsDetailed.events || []),
-    events_count: mergeEventLists(prev.hostEventsDetailed?.events || [], hostEventsDetailed.events || []).length
+
+  const incomingHostEvents = Array.isArray(hostEventsDetailed?.events) ? hostEventsDetailed.events : [];
+  const mergedHostEventsList = sortEventsNewestFirst(
+    pruneEventsByRetention(
+      fullRefresh ? incomingHostEvents : mergeEventLists(prev.hostEventsDetailed?.events || [], incomingHostEvents)
+    )
+  );
+  const mergedHostEvents = hostEventsDetailed || fullRefresh ? {
+    ...(hostEventsDetailed || prev.hostEventsDetailed || {}),
+    events: mergedHostEventsList,
+    events_count: mergedHostEventsList.length
   } : prev.hostEventsDetailed || null;
+
   const incomingNotifications = notifications?.notifications || notifications?.events || [];
-  const mergedNotificationsList = mergeEventLists(prev.notifications?.notifications || prev.notifications?.events || [], incomingNotifications);
-  const mergedNotifications = notifications || prev.notifications ? {
+  const mergedNotificationsList = sortEventsNewestFirst(
+    pruneEventsByRetention(
+      fullRefresh
+        ? incomingNotifications
+        : mergeEventLists(prev.notifications?.notifications || prev.notifications?.events || [], incomingNotifications)
+    )
+  );
+  const mergedNotifications = notifications || prev.notifications || fullRefresh ? {
     ...(notifications || prev.notifications || {}),
     notifications: mergedNotificationsList,
     events: mergedNotificationsList,
@@ -545,14 +665,14 @@ async function fetchAndMergeCheckMKData(req, {
   };
   return {
     monitoringData: {
-      services: services || prev.services || null,
+      services: services || (fullRefresh ? null : prev.services) || null,
       events: mergedEvents,
       hostEventsDetailed: mergedHostEvents,
       notifications: mergedNotifications,
       availabilityByPeriod,
       availability: availabilityByPeriod['1m'] ?? prev.availability ?? null
     },
-    hostDetails: hostDetails || prev.hostDetails || null
+    hostDetails: hostDetails || (fullRefresh ? null : prev.hostDetails) || null
   };
 }
 export async function runEquipmentMonitoringSync(req, {
@@ -608,7 +728,8 @@ export async function runEquipmentMonitoringSync(req, {
     hostName,
     site,
     existingMonitoringData: existing?.monitoring_data || {},
-    incrementalFrom: existing?.last_synced_at || null
+    incrementalFrom: force ? null : existing?.last_synced_at || null,
+    fullRefresh: Boolean(force)
   });
   const nowIso = new Date().toISOString();
   if (existing) {

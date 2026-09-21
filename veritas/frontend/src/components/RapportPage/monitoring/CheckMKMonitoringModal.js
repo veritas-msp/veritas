@@ -145,20 +145,24 @@ export default function CheckMKMonitoringModal({
         )
       );
       if (shouldSync) {
-        const synced = await syncEquipmentCheckMKMonitoring({
-          equipmentId,
-          clientId: resolvedClientId,
-          family,
-          hostName: resolvedHost,
-          site: mapping?.checkmk_site || getCheckmkSite(equipment) || stored?.checkmkSite || null,
-          force,
-          availabilityPeriod: availabilityPeriodRef.current
-        }, fetchOptions).catch(err => {
+        let synced;
+        try {
+          synced = await syncEquipmentCheckMKMonitoring({
+            equipmentId,
+            clientId: resolvedClientId,
+            family,
+            hostName: resolvedHost,
+            site: mapping?.checkmk_site || getCheckmkSite(equipment) || stored?.checkmkSite || null,
+            force,
+            availabilityPeriod: availabilityPeriodRef.current
+          }, fetchOptions);
+        } catch (err) {
           if (err?.name === "AbortError") throw err;
-          return null;
-        });
+          if (force) setError(err?.message || "Impossible d'actualiser CheckMK.");
+          return;
+        }
         if (controller.signal.aborted) return;
-        if (synced?.checkmkData) applyPayload(synced);
+        if (synced?.checkmkData || synced?.lastSyncedAt) applyPayload(synced);
       }
     } catch (err) {
       if (err?.name === "AbortError") return;

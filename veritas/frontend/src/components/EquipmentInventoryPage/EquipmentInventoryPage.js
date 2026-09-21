@@ -133,6 +133,13 @@ function supervisionStatusMeta(item, copy) {
       tone: "warn"
     };
   }
+  if (status === "no_data") {
+    return {
+      status,
+      label: copy.supervisionStatus?.noData || "No supervision data",
+      tone: "warn"
+    };
+  }
   if (status === "ok") {
     return {
       status,

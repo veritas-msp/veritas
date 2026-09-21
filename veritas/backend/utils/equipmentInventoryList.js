@@ -562,16 +562,17 @@ async function loadCheckmkMappingsByIds(ids) {
 /**
  * Aligné sur EnterpriseDetailPage / renderSupervisionDot :
  * - non mappé → inactive
- * - mappé sans sync (ou no_data) → ok
+ * - mappé sans sync / no_data → no_data (pas « ok » fictif)
  * - warning / critical depuis les données synchronisées
  */
 function resolveSupervisionStatus(mkRow, isMapped) {
   if (!isMapped) return "inactive";
-  if (!mkRow) return "ok";
+  if (!mkRow) return "no_data";
   const summary = computeMonitoringSummary(mkRow.monitoring_data, mkRow.last_synced_at, mkRow.host_details || null);
   const status = String(summary?.status || "").toLowerCase();
   if (status === "critical") return "critical";
   if (status === "warning") return "warning";
+  if (status === "no_data") return "no_data";
   return "ok";
 }
 

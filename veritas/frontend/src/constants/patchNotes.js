@@ -5,6 +5,15 @@
  */
 export const PATCH_NOTES = [
   {
+    version: "1.0.27",
+    date: "2026-09-21",
+    highlights: [
+      "CheckMK : les hôtes DOWN / UNREACHABLE remontent correctement en critique dans le centre de supervision.",
+      "Actualiser CheckMK : sync forcée complète (fenêtre 90 j), historique events plafonné, toast succès/échec.",
+      "Inventaire : statut « pas de données » distinct du faux « ok » pour les équipements mappés sans sync."
+    ]
+  },
+  {
     version: "1.0.26",
     date: "2026-09-21",
     highlights: [

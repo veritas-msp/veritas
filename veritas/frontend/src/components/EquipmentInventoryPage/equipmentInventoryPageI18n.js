@@ -74,7 +74,8 @@ const COPY = {
       ok: "Supervision active (intégration)",
       inactive: "Supervision inactive",
       warning: "Supervision : avertissement",
-      critical: "Supervision : critique"
+      critical: "Supervision : critique",
+      noData: "Supervision : pas de données"
     },
     alertsMonthBreakdown: "{native} alerte(s) native(s) · {supervision} événement(s)/notification(s) intégration",
 
@@ -189,7 +190,8 @@ const COPY = {
       ok: "Supervision active (integration)",
       inactive: "Supervision inactive",
       warning: "Supervision: warning",
-      critical: "Supervision: critical"
+      critical: "Supervision: critical",
+      noData: "Supervision: no data"
     },
     alertsMonthBreakdown: "{native} native alert(s) · {supervision} integration event(s)/notification(s)",
     bulk: {
@@ -303,7 +305,8 @@ const COPY = {
       ok: "Supervision aktiv (Integration)",
       inactive: "Supervision inaktiv",
       warning: "Supervision: Warnung",
-      critical: "Supervision: kritisch"
+      critical: "Supervision: kritisch",
+      noData: "Supervision: keine Daten"
     },
     alertsMonthBreakdown: "{native} native Alarm(e) · {supervision} Integrations-Ereignis(se)/Benachrichtigung(en)",
     bulk: {
@@ -417,7 +420,8 @@ const COPY = {
       ok: "Supervisione attiva (integrazione)",
       inactive: "Supervisione inattiva",
       warning: "Supervisione: avviso",
-      critical: "Supervisione: critica"
+      critical: "Supervisione: critica",
+      noData: "Supervisione: nessun dato"
     },
     alertsMonthBreakdown: "{native} avviso/i nativo/i · {supervision} evento/i/notifica/e integrazione",
     bulk: {
@@ -531,7 +535,8 @@ const COPY = {
       ok: "Supervisión activa (integración)",
       inactive: "Supervisión inactiva",
       warning: "Supervisión: advertencia",
-      critical: "Supervisión: crítica"
+      critical: "Supervisión: crítica",
+      noData: "Supervisión: sin datos"
     },
     alertsMonthBreakdown: "{native} alerta(s) nativa(s) · {supervision} evento(s)/notificación(es) de integración",
     bulk: {

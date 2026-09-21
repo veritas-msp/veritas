@@ -672,7 +672,11 @@ const FR = {
     tagAdded: "Étiquette ajoutée",
     tagAddError: "Erreur lors de l'ajout de l'étiquette",
     tagRemoved: "Étiquette retirée",
-    tagRemoveError: "Erreur lors de la suppression de l'étiquette"
+    tagRemoveError: "Erreur lors de la suppression de l'étiquette",
+    checkmkSyncSuccess: "Données CheckMK actualisées.",
+    checkmkSyncSkipped: "Sync CheckMK ignorée (données déjà récentes ou sync suspendue).",
+    checkmkSyncError: "Échec de l'actualisation CheckMK.",
+    checkmkSyncMissingParams: "Impossible d'actualiser CheckMK (équipement ou mapping incomplets)."
   },
   types: {
     serverVirtual: "Serveur virtuel",
@@ -1373,7 +1377,11 @@ const EN = {
     tagAdded: "Tag added",
     tagAddError: "Error adding tag",
     tagRemoved: "Tag removed",
-    tagRemoveError: "Error removing tag"
+    tagRemoveError: "Error removing tag",
+    checkmkSyncSuccess: "CheckMK data refreshed.",
+    checkmkSyncSkipped: "CheckMK sync skipped (data already fresh or sync suspended).",
+    checkmkSyncError: "CheckMK refresh failed.",
+    checkmkSyncMissingParams: "Unable to refresh CheckMK (incomplete equipment or mapping)."
   },
   types: {
     serverVirtual: "Virtual server",
