@@ -1,8 +1,19 @@
 import { getMonitoringAutomationConfig } from "../utils/monitoringAutomationConfig.js";
 import { getEvaluationThresholdsFromRules, getOfflineAlertThresholdMinutesFromRules, getSupervisionAlertRules } from "../utils/supervisionAlertRules.js";
+import { getCheckmkMonitoringSettings } from "../utils/checkmkMonitoringSettings.js";
 import { loadSupervisionEquipmentInventory } from "../utils/equipmentInventoryScan.js";
 import { evaluateInventoryItem } from "./equipmentMonitoringAlertDispatcher.js";
 export async function runEquipmentMonitoringAlertScan() {
+  const mkSettings = await getCheckmkMonitoringSettings();
+  if (mkSettings.surveillanceSuspended) {
+    return {
+      evaluated: 0,
+      created: 0,
+      resolved: 0,
+      skipped: true,
+      reason: "surveillance_suspended"
+    };
+  }
   await getMonitoringAutomationConfig();
   const rules = await getSupervisionAlertRules();
   const offlineAlertThresholdMinutes = getOfflineAlertThresholdMinutesFromRules(rules);

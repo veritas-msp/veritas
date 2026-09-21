@@ -12,9 +12,22 @@ import checkmkStyles from "./CheckmkIntegrationModal.module.css";
 
 const SECTION_ICONS = {
   connection: "mdi:key-variant",
+  monitoring: "mdi:timer-sync-outline",
   guide: "mdi:book-open-outline",
   info: "mdi:information-outline"
 };
+
+const SYNC_INTERVAL_PRESETS = [5, 15, 30, 60, 120, 360, 720, 1440];
+
+function parseSyncIntervalMinutes(value) {
+  const n = Number.parseInt(String(value ?? ""), 10);
+  if (!Number.isFinite(n)) return 30;
+  return Math.min(10080, Math.max(5, n));
+}
+
+function isSettingTrue(value) {
+  return `${value ?? ""}`.toLowerCase() === "true";
+}
 
 function CheckmkTestResultModal({
   result,
@@ -88,21 +101,27 @@ export default function CheckmkIntegrationModal({
   username,
   password,
   site,
+  syncIntervalMinutes = "30",
+  syncSuspended = false,
+  surveillanceSuspended = false,
   onEnabledChange,
   onApiUrlChange,
   onUsernameChange,
   onPasswordChange,
   onSiteChange,
+  onSyncIntervalChange,
+  onSyncSuspendedChange,
+  onSurveillanceSuspendedChange,
   onClose,
   onSave,
   saving = false
 }) {
   const locale = useAppLocale();
   const copy = useMemo(() => getCheckmkIntegrationModalCopy(locale), [locale]);
-  const sections = useMemo(() => ["connection", "guide", "info"].map(id => ({
+  const sections = useMemo(() => ["connection", "monitoring", "guide", "info"].map(id => ({
     id,
-    label: copy.sections[id].label,
-    description: copy.sections[id].description,
+    label: copy.sections[id]?.label || copy.sections[id]?.description || id,
+    description: copy.sections[id]?.description,
     icon: SECTION_ICONS[id]
   })), [copy]);
   const [activeSection, setActiveSection] = useState("connection");
@@ -110,6 +129,11 @@ export default function CheckmkIntegrationModal({
   const [testResult, setTestResult] = useState(null);
   const [testError, setTestError] = useState(null);
   const [showTestModal, setShowTestModal] = useState(false);
+  const intervalValue = parseSyncIntervalMinutes(syncIntervalMinutes);
+  const intervalPresets = copy.syncIntervalPresets || SYNC_INTERVAL_PRESETS.map(value => ({
+    value,
+    label: `${value} min`
+  }));
 
   useEffect(() => {
     if (open) {
@@ -196,6 +220,71 @@ export default function CheckmkIntegrationModal({
       <p className={formStyles.sectionDesc}>{copy.testUsesFormHint}</p>
     </>;
 
+  const renderMonitoring = () => <>
+      <div className={formStyles.sectionHead}>
+        <h3 className={formStyles.sectionTitle}>{copy.monitoringTitle}</h3>
+        <p className={formStyles.sectionDesc}>{copy.monitoringDesc}</p>
+      </div>
+
+      <div className={formStyles.fieldStack}>
+        <div className={formStyles.field}>
+          <label className={formStyles.label} htmlFor="checkmk-sync-interval">{copy.syncInterval}</label>
+          <div className={checkmkStyles.intervalRow}>
+            <input
+              id="checkmk-sync-interval"
+              type="number"
+              min={5}
+              max={10080}
+              step={1}
+              className={formStyles.input}
+              value={intervalValue}
+              onChange={e => onSyncIntervalChange?.(String(parseSyncIntervalMinutes(e.target.value)))}
+              disabled={saving || testing}
+            />
+            <span className={checkmkStyles.intervalUnit}>{copy.syncIntervalUnit}</span>
+          </div>
+          <div className={checkmkStyles.presetRow} role="group" aria-label={copy.syncInterval}>
+            {intervalPresets.map(preset => <button
+              key={preset.value}
+              type="button"
+              className={`${checkmkStyles.presetChip} ${intervalValue === preset.value ? checkmkStyles.presetChipActive : ""}`}
+              onClick={() => onSyncIntervalChange?.(String(preset.value))}
+              disabled={saving || testing}
+            >
+              {preset.label}
+            </button>)}
+          </div>
+          <p className={formStyles.sectionDesc}>{copy.syncIntervalHint}</p>
+        </div>
+
+        <div className={styles.statusRow}>
+          <div>
+            <span className={styles.statusLabel}>{copy.syncSuspended}</span>
+            <p className={formStyles.sectionDesc}>{copy.syncSuspendedHint}</p>
+          </div>
+          <label className={formStyles.switchWrap}>
+            <input type="checkbox" className={formStyles.switchInput} checked={isSettingTrue(syncSuspended) || syncSuspended === true} onChange={e => onSyncSuspendedChange?.(e.target.checked)} disabled={saving || testing} />
+            <span className={formStyles.switchTrack} aria-hidden>
+              <span className={formStyles.switchThumb} />
+            </span>
+          </label>
+        </div>
+
+        <div className={styles.statusRow}>
+          <div>
+            <span className={styles.statusLabel}>{copy.surveillanceSuspended}</span>
+            <p className={formStyles.sectionDesc}>{copy.surveillanceSuspendedHint}</p>
+          </div>
+          <label className={formStyles.switchWrap}>
+            <input type="checkbox" className={formStyles.switchInput} checked={isSettingTrue(surveillanceSuspended) || surveillanceSuspended === true} onChange={e => onSurveillanceSuspendedChange?.(e.target.checked)} disabled={saving || testing} />
+            <span className={formStyles.switchTrack} aria-hidden>
+              <span className={formStyles.switchThumb} />
+            </span>
+          </label>
+        </div>
+      </div>
+    </>;
+
   const renderGuide = () => <>
       <div className={formStyles.sectionHead}>
         <h3 className={formStyles.sectionTitle}>{copy.guideTitle}</h3>
@@ -256,7 +345,7 @@ export default function CheckmkIntegrationModal({
                 </button>)}
             </nav>
             <div className={formStyles.content}>
-              {activeSection === "guide" ? renderGuide() : activeSection === "info" ? renderInfo() : renderConnection()}
+              {activeSection === "guide" ? renderGuide() : activeSection === "info" ? renderInfo() : activeSection === "monitoring" ? renderMonitoring() : renderConnection()}
             </div>
           </div>
 

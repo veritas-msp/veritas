@@ -37,8 +37,7 @@ export const SYSTEM_MONITORABLE_FAMILIES = [{
   label: "Servers",
   icon: "mdi:server",
   table: "v_b_clients_m_servers",
-  where: "data IS NOT NULL",
-  monitoredWhere: `(agent_id IS NOT NULL OR (${CHECKMK_MONITORED_WHERE}))`
+  where: "data IS NOT NULL"
 }, {
   key: "BorneWifi",
   label: "Wi-Fi access point",

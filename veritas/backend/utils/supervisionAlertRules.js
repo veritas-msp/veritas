@@ -93,8 +93,8 @@ export const SUPERVISION_ALERT_CRITERIA = [{
   key: "no_data",
   label: "No supervision data",
   description: "Device linked to a supervision integration but without recent data.",
-  families: ["servers", "stockage", "firewall", "switch", "wifi", "routeur", "internet", "toip"],
-  defaultEnabled: false,
+  families: ["servers", "stockage", "firewall", "switch", "wifi", "routeur", "internet", "toip", "alimentation"],
+  defaultEnabled: true,
   defaultSeverity: "normal",
   parameters: []
 }, {
@@ -331,7 +331,42 @@ export function getEvaluationThresholdsFromRules(familyKey, rules) {
 }
 let rulesCache = null;
 let rulesCacheAt = 0;
+let noDataUpgradeDone = false;
 const CACHE_TTL_MS = 5000;
+
+/** One-shot: enable no_data (historically defaulted to false in stored rules). */
+async function ensureNoDataCriterionEnabled(merged) {
+  if (noDataUpgradeDone) return merged;
+  let changed = false;
+  const next = {
+    ...merged
+  };
+  for (const family of Object.keys(next)) {
+    const familyRules = next[family];
+    if (!familyRules || typeof familyRules !== "object") continue;
+    if (!familyRules.no_data) continue;
+    if (familyRules.no_data.enabled === false) {
+      next[family] = {
+        ...familyRules,
+        no_data: {
+          ...familyRules.no_data,
+          enabled: true
+        }
+      };
+      changed = true;
+    }
+  }
+  noDataUpgradeDone = true;
+  if (!changed) return merged;
+  try {
+    await saveSupervisionAlertRules(next);
+    return next;
+  } catch (err) {
+    console.warn("[supervision-alert-rules] enable no_data upgrade skipped:", err?.message || err);
+    return next;
+  }
+}
+
 export async function getSupervisionAlertRules({
   fresh = false
 } = {}) {
@@ -339,7 +374,8 @@ export async function getSupervisionAlertRules({
     return rulesCache;
   }
   const result = await pool.query(`SELECT data FROM v_b_supervision_alert_rules_config WHERE id = $1 LIMIT 1`, [SINGLETON_ID]);
-  const merged = mergeStoredRules(result.rows[0]?.data);
+  let merged = mergeStoredRules(result.rows[0]?.data);
+  merged = await ensureNoDataCriterionEnabled(merged);
   rulesCache = merged;
   rulesCacheAt = Date.now();
   return merged;

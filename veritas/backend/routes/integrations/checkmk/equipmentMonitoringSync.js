@@ -2,9 +2,10 @@ import express from 'express';
 import fetch from 'node-fetch';
 import { pool } from '../../../database/db.js';
 import verifyJWT from '../../../middleware/auth.js';
+import { getCheckmkMonitoringSettings } from '../../../utils/checkmkMonitoringSettings.js';
 const router = express.Router();
 const TABLE = 'v_b_equipment_checkmk_monitoring';
-const SYNC_MIN_INTERVAL_MS = 30 * 60 * 1000;
+const DEFAULT_SYNC_MIN_INTERVAL_MS = 30 * 60 * 1000;
 const RECENT_ALERT_DAYS = 7;
 function getEventTimeMs(event) {
   const raw = event?.time ?? event?.log_time ?? event?.timestamp ?? event?.event_time ?? event?.created ?? null;
@@ -571,13 +572,32 @@ export async function runEquipmentMonitoringSync(req, {
     throw new Error('Equipment not found or not mapped to this CheckMK host.');
   }
   const existing = await getStoredMonitoring(equipmentId);
-  if (!force && existing?.last_synced_at) {
-    const lastSyncMs = new Date(existing.last_synced_at).getTime();
-    if (!Number.isNaN(lastSyncMs) && Date.now() - lastSyncMs < SYNC_MIN_INTERVAL_MS) {
+  const mkSettings = await getCheckmkMonitoringSettings();
+  if (!force && mkSettings.syncSuspended) {
+    if (existing) {
       return {
         ...rowToResponse(existing, availabilityPeriod),
         skipped: true,
-        message: 'Recent synchronization (< 30 min), using database data.'
+        message: 'CheckMK automatic sync is suspended in Admin → Integrations.'
+      };
+    }
+    return {
+      equipmentId,
+      checkmkData: null,
+      hostDetails: null,
+      lastSyncedAt: null,
+      skipped: true,
+      message: 'CheckMK automatic sync is suspended in Admin → Integrations.'
+    };
+  }
+  const syncMinIntervalMs = mkSettings.syncIntervalMs || DEFAULT_SYNC_MIN_INTERVAL_MS;
+  if (!force && existing?.last_synced_at) {
+    const lastSyncMs = new Date(existing.last_synced_at).getTime();
+    if (!Number.isNaN(lastSyncMs) && Date.now() - lastSyncMs < syncMinIntervalMs) {
+      return {
+        ...rowToResponse(existing, availabilityPeriod),
+        skipped: true,
+        message: `Recent synchronization (< ${mkSettings.syncIntervalMinutes} min), using database data.`
       };
     }
   }
@@ -608,17 +628,19 @@ export async function runEquipmentMonitoringSync(req, {
   }
   const updated = await getStoredMonitoring(equipmentId);
   const summary = computeMonitoringSummary(monitoringData, nowIso, hostDetails || updated?.host_details || null);
-  evaluateMonitoringAlert({
-    clientId,
-    equipmentId,
-    equipmentFamily: family,
-    equipmentName: hostName,
-    monitorStatus: summary.status,
-    source: "checkmk",
-    details: summary
-  }).catch(err => {
-    console.error("[checkmk] evaluateMonitoringAlert:", err.message);
-  });
+  if (!mkSettings.surveillanceSuspended) {
+    evaluateMonitoringAlert({
+      clientId,
+      equipmentId,
+      equipmentFamily: family,
+      equipmentName: hostName,
+      monitorStatus: summary.status,
+      source: "checkmk",
+      details: summary
+    }).catch(err => {
+      console.error("[checkmk] evaluateMonitoringAlert:", err.message);
+    });
+  }
   return {
     ...rowToResponse(updated, availabilityPeriod),
     skipped: false,

@@ -87,6 +87,7 @@ import { securityHeaders } from './middleware/securityHeaders.js';
 import { canRunAutoSchemaMigrations, isSetupMarkedComplete, markSetupComplete } from './utils/setupState.js';
 import { startMailCollectorPoller } from './services/mailCollectorPoller.js';
 import { startKpiReportPoller } from './services/kpiReportPoller.js';
+import { startMonitoringAlertPoller } from './services/monitoringAlertPoller.js';
 import { startNotificationSoonPoller } from './services/notificationSoonPoller.js';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 function resolveFrontendBuildDir() {
@@ -405,5 +406,10 @@ app.listen(PORT, '0.0.0.0', () => {
     startNotificationSoonPoller();
   } catch (err) {
     console.error("[notification-soon-poller] Failed to start:", err?.message || err);
+  }
+  try {
+    startMonitoringAlertPoller();
+  } catch (err) {
+    console.error("[monitoring-alert-poller] Failed to start:", err?.message || err);
   }
 });

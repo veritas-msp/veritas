@@ -65,7 +65,6 @@ export default function EquipmentDetailPage({
   onNavigate,
   onNavigateToEquipment
 }) {
-  const CHECKMK_SYNC_MIN_INTERVAL_MS = 30 * 60 * 1000;
   const locale = useAppLocale();
   const { fields: systemExtensionFields } = useSystemFamilyExtensions(equipment?.type);
   const modalsCopy = useMemo(() => getEquipmentModalsCopy(locale), [locale]);
@@ -77,7 +76,9 @@ export default function EquipmentDetailPage({
     isCommunity
   } = useVeritasEdition();
   const {
-    enabled: checkmkIntegrationEnabled
+    enabled: checkmkIntegrationEnabled,
+    syncIntervalMs: checkmkSyncIntervalMs,
+    syncSuspended: checkmkSyncSuspended
   } = useCheckMKIntegrationEnabled();
   const [isEditingInfo, setIsEditingInfo] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -1117,7 +1118,13 @@ export default function EquipmentDetailPage({
       if (stored?.checkmkData) {
         applyCheckMKPayload(stored);
       }
-      const shouldSync = force || !stored?.lastSyncedAt || Date.now() - new Date(stored.lastSyncedAt).getTime() >= CHECKMK_SYNC_MIN_INTERVAL_MS;
+      const syncMinIntervalMs = Number.isFinite(checkmkSyncIntervalMs) && checkmkSyncIntervalMs > 0
+        ? checkmkSyncIntervalMs
+        : 30 * 60 * 1000;
+      const shouldSync = force || (
+        !checkmkSyncSuspended
+        && (!stored?.lastSyncedAt || Date.now() - new Date(stored.lastSyncedAt).getTime() >= syncMinIntervalMs)
+      );
       if (shouldSync) {
         const synced = await syncEquipmentCheckMKMonitoring(syncPayload, fetchOptions).catch(e => e?.name === "AbortError" ? Promise.reject(e) : null);
         if (controller.signal.aborted) return;
@@ -1349,6 +1356,16 @@ export default function EquipmentDetailPage({
       toast.error(error.message || copy.toasts.tagRemoveError);
     }
   };
+  const openEnterprise = useCallback((options = {}) => {
+    const clientId = getEquipmentClientId(equipment) || equipment?.clientId;
+    if (!onNavigate || !clientId) return;
+    onNavigate("ContratDetail", {
+      clientId,
+      name: equipment?.clientName || modalClient?.name || ""
+    }, options.background ? {
+      background: true
+    } : undefined);
+  }, [equipment, modalClient?.name, onNavigate]);
   const equipmentHeroTitle = equipment?.type === "Internet" ? formData.fournisseur && formData.internetType ? `${formData.fournisseur.toUpperCase()} ${formData.internetType.toUpperCase()}` : equipment.name : equipment?.name;
   const createdAtRaw = getEquipmentCreatedAt(equipment);
   const createdAtFormatted = createdAtRaw ? formatAlertSettingsDateTime(createdAtRaw, locale) : null;
@@ -1379,6 +1396,35 @@ export default function EquipmentDetailPage({
                 <span>{equipmentHeroTitle}</span>
               </h1>
               <div className={`${enterpriseDetailStyles.heroMeta} ${styles.heroMetaPlain}`} aria-label={copy.hero.metaAria}>
+                {(() => {
+                const enterpriseId = getEquipmentClientId(equipment) || equipment?.clientId;
+                const enterpriseName = equipment?.clientName || modalClient?.name || "";
+                if (!enterpriseName) return null;
+                if (!enterpriseId || !onNavigate) {
+                  return <span className={styles.heroMetaPlainItem}>
+                        <Icon icon="mdi:domain" className={styles.heroMetaCompanyIcon} aria-hidden />
+                        {enterpriseName}
+                      </span>;
+                }
+                return <button type="button" className={`${styles.heroMetaPlainItem} ${enterpriseDetailStyles.heroMetaLink} ${styles.heroMetaCompanyLink}`} onClick={() => openEnterprise()} onMouseDown={e => {
+                  if (e.button === 1) {
+                    e.preventDefault();
+                    openEnterprise({
+                      background: true
+                    });
+                  }
+                }} onAuxClick={e => {
+                  if (e.button === 1) {
+                    e.preventDefault();
+                    openEnterprise({
+                      background: true
+                    });
+                  }
+                }} title={copy.hero.viewEnterprise} aria-label={copy.hero.viewEnterprise}>
+                      <Icon icon="mdi:domain" className={styles.heroMetaCompanyIcon} aria-hidden />
+                      {enterpriseName}
+                    </button>;
+              })()}
                 <span className={styles.heroMetaPlainItem}>{typeDisplayLabel}</span>
                 <span className={`${styles.heroMetaPlainItem} ${equipmentIsActive ? styles.heroMetaStatusOnline : styles.heroMetaStatusOffline}`}>
                   {equipmentIsActive ? copy.hero.active : copy.hero.inactive}
@@ -1612,7 +1658,7 @@ export default function EquipmentDetailPage({
                     {copy.metrics.unavailableHint}
                   </p>
                 </div> : <>
-                  <EquipmentStatsPanel copy={copy} locale={locale} equipment={equipment} loading={loadingActivity} activity={activity} datePreset={activityDatePreset} onDatePresetChange={setActivityDatePreset} customStart={activityCustomStart} customEnd={activityCustomEnd} onCustomStartChange={setActivityCustomStart} onCustomEndChange={setActivityCustomEnd} alertSettings={alertSettings} rmmManaged={rmmManaged} />
+                  <EquipmentStatsPanel copy={copy} locale={locale} equipment={equipment} loading={loadingActivity} activity={activity} datePreset={activityDatePreset} onDatePresetChange={setActivityDatePreset} customStart={activityCustomStart} customEnd={activityCustomEnd} onCustomStartChange={setActivityCustomStart} onCustomEndChange={setActivityCustomEnd} alertSettings={alertSettings} rmmManaged={rmmManaged} onOpenEnterprise={openEnterprise} />
                   <EquipmentEventsPanel copy={copy} locale={locale} loading={loadingActivity} activity={activity} datePreset={activityDatePreset} onDatePresetChange={setActivityDatePreset} customStart={activityCustomStart} customEnd={activityCustomEnd} onCustomStartChange={setActivityCustomStart} onCustomEndChange={setActivityCustomEnd} onCreateEvent={openCreateEventModal} onOpenPlanningEvent={handleOpenPlanningEvent} onOpenTicket={handleOpenLinkedTicket} isCommunity={isCommunity} proBadge={<ProFeatureBadge variant="inline" className={styles.proBadgeInline} />} hideDateFilter />
                 </>}
             </div>}

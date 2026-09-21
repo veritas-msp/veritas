@@ -1,3 +1,4 @@
+import { getCheckmkMonitoringSettings, isCheckmkSyncStale } from "./checkmkMonitoringSettings.js";
 import { pool } from "../database/db.js";
 import { computeMonitoringSummary } from "../routes/integrations/checkmk/equipmentMonitoringSync.js";
 import { isEquipmentMonitoredInventoryItem } from "./equipmentSupervisionEvaluator.js";
@@ -73,7 +74,11 @@ export async function loadAgentLastSeenMap() {
 export async function loadSupervisionEquipmentInventory({
   clientId = null
 } = {}) {
-  const [checkmkMap, agentMap] = await Promise.all([loadCheckmkMonitoringMap(), loadAgentLastSeenMap()]);
+  const [checkmkMap, agentMap, mkSettings] = await Promise.all([
+    loadCheckmkMonitoringMap(),
+    loadAgentLastSeenMap(),
+    getCheckmkMonitoringSettings()
+  ]);
   const items = [];
   for (const spec of SUPERVISION_SCAN_FAMILIES) {
     if (!(await tableExists(spec.table))) continue;
@@ -106,7 +111,17 @@ export async function loadSupervisionEquipmentInventory({
         if (mkRow) break;
       }
       if (!mkRow) mkRow = checkmkMap.get(`${clientKey}:${equipmentId}`) || null;
-      const checkmkSummary = mkRow ? computeMonitoringSummary(mkRow.monitoring_data, mkRow.last_synced_at, mkRow.host_details || null) : null;
+      const checkmkSummaryRaw = mkRow ? computeMonitoringSummary(mkRow.monitoring_data, mkRow.last_synced_at, mkRow.host_details || null) : null;
+      const syncStale = isCheckmkSyncStale(mkRow?.last_synced_at, mkSettings.staleAfterMs);
+      const checkmkSummary =
+        !checkmkSummaryRaw || (syncStale && (!checkmkSummaryRaw.status || checkmkSummaryRaw.status === "ok"))
+          ? {
+              ...(checkmkSummaryRaw || {}),
+              status: "no_data",
+              stale: true,
+              lastSyncedAt: mkRow?.last_synced_at || null
+            }
+          : checkmkSummaryRaw;
       const isMkMapped = Boolean(mkRow || data.checkmk_host_name || data.checkmkHostName);
       const agentId = row.agent_id ? String(row.agent_id) : null;
       const lastSeenAt = agentId ? agentMap.get(agentId) || null : null;

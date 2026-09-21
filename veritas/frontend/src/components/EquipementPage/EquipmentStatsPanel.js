@@ -20,7 +20,8 @@ export default function EquipmentStatsPanel({
   onCustomStartChange,
   onCustomEndChange,
   alertSettings,
-  rmmManaged
+  rmmManaged,
+  onOpenEnterprise
 }) {
   const stats = activity?.stats || {};
   const typeLabel = getEquipmentDetailTypeLabel(equipment, locale);
@@ -69,8 +70,10 @@ export default function EquipmentStatsPanel({
     });
     if (equipment?.clientName) {
       rows.push({
+        key: "clientName",
         label: copy.fields.clientName,
-        value: equipment.clientName
+        value: equipment.clientName,
+        clickable: Boolean(onOpenEnterprise)
       });
     }
     if (alertSettings?.alertsEnabled != null) {
@@ -101,7 +104,7 @@ export default function EquipmentStatsPanel({
       });
     }
     return rows;
-  }, [alertSettings?.alertsEnabled, copy, equipment, locale, rmmManaged, typeLabel]);
+  }, [alertSettings?.alertsEnabled, copy, equipment, locale, onOpenEnterprise, rmmManaged, typeLabel]);
   return <section className={enterpriseDetailStyles.panel}>
       <header className={specsStyles.panelHeader}>
         <div>
@@ -170,9 +173,11 @@ export default function EquipmentStatsPanel({
               <div className={styles.activityStatsBlock}>
                 <h3 className={styles.activityStatsTitle}>{copy.stats.deviceOverview}</h3>
                 <ul className={styles.activityStatsList}>
-                  {deviceFacts.map(row => <li key={row.label}>
+                  {deviceFacts.map(row => <li key={row.key || row.label}>
                       <span>{row.label}</span>
-                      <strong>{row.value}</strong>
+                      {row.clickable ? <button type="button" className={styles.activityStatsLink} onClick={() => onOpenEnterprise?.()} title={copy.hero?.viewEnterprise || copy.fields.clientName}>
+                          {row.value}
+                        </button> : <strong>{row.value}</strong>}
                     </li>)}
                 </ul>
               </div>

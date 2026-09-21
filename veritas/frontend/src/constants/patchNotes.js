@@ -5,6 +5,16 @@
  */
 export const PATCH_NOTES = [
   {
+    version: "1.0.26",
+    date: "2026-09-21",
+    highlights: [
+      "CheckMK (Admin → Intégrations) : intervalle de rafraîchissement configurable dès 5 min, suspension de la sync auto et de la surveillance.",
+      "Supervision : poller d’alertes cadencé sur cet intervalle ; sync obsolète remonte en « pas de données » ; critère no_data réactivé.",
+      "Fiche équipement : lien cliquable vers l’entreprise (clic molette pour ouvrir en arrière-plan).",
+      "Inventaire périphériques : clic molette ouvre la fiche en arrière-plan."
+    ]
+  },
+  {
     version: "1.0.25",
     date: "2026-09-21",
     highlights: [

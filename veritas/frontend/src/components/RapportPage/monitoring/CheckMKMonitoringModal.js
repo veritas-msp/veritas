@@ -9,9 +9,10 @@ import {
   getEquipmentCheckMKMonitoring,
   syncEquipmentCheckMKMonitoring
 } from "../../../api/equipment";
+import { useCheckMKIntegrationEnabled } from "../../../hooks/useCheckMKIntegrationEnabled";
 import { getCheckmkMapping, getCheckmkSite } from "./checkmkReportCacheUtils";
 
-const CHECKMK_SYNC_MIN_INTERVAL_MS = 30 * 60 * 1000;
+const FALLBACK_SYNC_MIN_INTERVAL_MS = 30 * 60 * 1000;
 const REPORT_MODULE_TO_FAMILY = {
   Internet: "internet",
   Firewall: "firewall",
@@ -77,6 +78,10 @@ export default function CheckMKMonitoringModal({
   const equipmentName = equipment?.nom || equipment?.name || equipment?.logiciel || "Équipement";
   const equipmentId = equipment?.id ?? equipment?.uuid ?? null;
   const resolvedClientId = clientId ?? equipment?.clientId ?? equipment?.client_id ?? null;
+  const {
+    syncIntervalMs: checkmkSyncIntervalMs,
+    syncSuspended: checkmkSyncSuspended
+  } = useCheckMKIntegrationEnabled();
   const [checkmkMapping, setCheckmkMapping] = useState(() => getCheckmkMapping(equipment));
   const [checkmkData, setCheckmkData] = useState(null);
   const [checkmkHostDetails, setCheckmkHostDetails] = useState(null);
@@ -130,8 +135,14 @@ export default function CheckMKMonitoringModal({
       if (controller.signal.aborted) return;
       if (stored?.checkmkData) applyPayload(stored);
       const resolvedHost = hostName || stored?.checkmkHostName || stored?.checkmk_host_name;
+      const syncMinIntervalMs = Number.isFinite(checkmkSyncIntervalMs) && checkmkSyncIntervalMs > 0
+        ? checkmkSyncIntervalMs
+        : FALLBACK_SYNC_MIN_INTERVAL_MS;
       const shouldSync = Boolean(resolvedHost && resolvedClientId && family) && (
-        force || !stored?.lastSyncedAt || Date.now() - new Date(stored.lastSyncedAt).getTime() >= CHECKMK_SYNC_MIN_INTERVAL_MS
+        force || (
+          !checkmkSyncSuspended
+          && (!stored?.lastSyncedAt || Date.now() - new Date(stored.lastSyncedAt).getTime() >= syncMinIntervalMs)
+        )
       );
       if (shouldSync) {
         const synced = await syncEquipmentCheckMKMonitoring({
@@ -155,7 +166,7 @@ export default function CheckMKMonitoringModal({
     } finally {
       if (!controller.signal.aborted) setLoadingCheckMK(false);
     }
-  }, [applyPayload, equipment, equipmentId, moduleKey, resolvedClientId]);
+  }, [applyPayload, checkmkSyncIntervalMs, checkmkSyncSuspended, equipment, equipmentId, moduleKey, resolvedClientId]);
 
   useEffect(() => {
     if (!isOpen || !equipment) return undefined;

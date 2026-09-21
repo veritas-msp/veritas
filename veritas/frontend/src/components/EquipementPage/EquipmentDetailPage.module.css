@@ -132,9 +132,21 @@
 .heroMetaPlainItem {
   display: inline-flex;
   align-items: center;
+  gap: 0.3rem;
   font-size: 0.8125rem;
   color: var(--msp-muted);
   font-weight: 500;
+}
+
+.heroMetaCompanyLink {
+  color: var(--msp-muted);
+}
+
+.heroMetaCompanyIcon {
+  width: 0.9rem;
+  height: 0.9rem;
+  flex-shrink: 0;
+  color: inherit;
 }
 
 .heroMetaPlainItem + .heroMetaPlainItem::before {
@@ -4104,6 +4116,22 @@
 .activityStatsList strong {
   color: var(--msp-text);
   font-weight: 700;
+}
+
+.activityStatsLink {
+  border: none;
+  background: transparent;
+  padding: 0;
+  margin: 0;
+  font: inherit;
+  font-weight: 700;
+  color: var(--msp-accent, #2b5fab);
+  cursor: pointer;
+  text-align: right;
+}
+
+.activityStatsLink:hover {
+  text-decoration: underline;
 }
 
 .activityStatsHint {

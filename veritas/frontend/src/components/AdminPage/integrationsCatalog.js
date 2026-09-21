@@ -80,6 +80,18 @@ export const INTEGRATIONS_CATALOG = [{
     key: "CHECKMK_SITE",
     label: "Default site (optional)",
     type: "text"
+  }, {
+    key: "CHECKMK_SYNC_INTERVAL_MINUTES",
+    label: "Sync refresh interval (minutes)",
+    type: "number"
+  }, {
+    key: "CHECKMK_SYNC_SUSPENDED",
+    label: "Suspend automatic sync",
+    type: "text"
+  }, {
+    key: "CHECKMK_SURVEILLANCE_SUSPENDED",
+    label: "Suspend surveillance alerts",
+    type: "text"
   }]
 }, {
   id: "unifi",

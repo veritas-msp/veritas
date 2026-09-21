@@ -96,6 +96,18 @@ const settingsMapping = {
     section: 'checkmk',
     label: 'Check MK site (optional)'
   },
+  'CHECKMK_SYNC_INTERVAL_MINUTES': {
+    section: 'checkmk',
+    label: 'Check MK sync interval (minutes)'
+  },
+  'CHECKMK_SYNC_SUSPENDED': {
+    section: 'checkmk',
+    label: 'Check MK sync suspended'
+  },
+  'CHECKMK_SURVEILLANCE_SUSPENDED': {
+    section: 'checkmk',
+    label: 'Check MK surveillance suspended'
+  },
   'INTEGRATION_HYCU_ENABLED': {
     section: 'hycu',
     label: 'HYCU integration enabled'

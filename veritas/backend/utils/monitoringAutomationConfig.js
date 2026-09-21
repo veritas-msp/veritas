@@ -7,7 +7,7 @@ export const DEFAULT_MONITORING_AUTOMATION_CONFIG = {
   version: 1,
   defaults: {
     alertsEnabledOnEnroll: true,
-    alertsEnabledOnNewEquipment: false,
+    alertsEnabledOnNewEquipment: true,
     offlineAlertThresholdMinutes: 2880
   },
   assignment: {

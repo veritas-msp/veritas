@@ -10,6 +10,8 @@ import {
   isSupervisionCriterionEnabled
 } from "./supervisionAlertRules.js";
 
+import { getCheckmkMonitoringSettings, isCheckmkSyncStale } from "./checkmkMonitoringSettings.js";
+
 /** Alerts from a monitoring integration (CheckMK is currently the only one). */
 const MONITORING_INTEGRATION_ALERT_KEYS = new Set(["monitor_critical", "monitor_warning", "no_data"]);
 
@@ -188,24 +190,28 @@ function toLeanEquipment(equipment) {
  * (CheckMK today) and only that integration's statuses (critical / warning / no data).
  */
 export async function fetchEquipmentFleetIssues() {
-  const [fleet, checkmkMap, agentMap, rules, checkmkEnabled] = await Promise.all([
+  const [fleet, checkmkMap, agentMap, rules, checkmkEnabled, mkSettings] = await Promise.all([
     fetchEquipmentFleetList(),
     loadCheckmkMonitoringMap(),
     loadAgentLastSeenMap(),
     getSupervisionAlertRules(),
-    isCheckmkIntegrationEnabled()
+    isCheckmkIntegrationEnabled(),
+    getCheckmkMonitoringSettings()
   ]);
 
   const offlineAlertThresholdMinutes = getOfflineAlertThresholdMinutesFromRules(rules);
   const items = [];
 
-  if (!checkmkEnabled) {
+  if (!checkmkEnabled || mkSettings.surveillanceSuspended) {
     return {
       items,
       meta: {
         scanned: fleet.length,
         withIssues: 0,
-        checkmkEnabled
+        checkmkEnabled,
+        surveillanceSuspended: Boolean(mkSettings.surveillanceSuspended),
+        syncSuspended: Boolean(mkSettings.syncSuspended),
+        syncIntervalMinutes: mkSettings.syncIntervalMinutes
       }
     };
   }
@@ -217,9 +223,19 @@ export async function fetchEquipmentFleetIssues() {
 
     const isMkMapped = true;
     const mkRow = lookupCheckmkRow(checkmkMap, equipment.clientId, equipment.dbId, family);
-    const checkmkSummary = mkRow
+    let checkmkSummary = mkRow
       ? computeMonitoringSummary(mkRow.monitoring_data, mkRow.last_synced_at, mkRow.host_details || null)
       : null;
+    const syncStale = isCheckmkSyncStale(mkRow?.last_synced_at, mkSettings.staleAfterMs);
+    // Mapping sans sync, ou sync trop ancienne avec statut nominal → traiter comme no_data.
+    if (!checkmkSummary || syncStale && (!checkmkSummary.status || checkmkSummary.status === "ok")) {
+      checkmkSummary = {
+        ...(checkmkSummary || {}),
+        status: "no_data",
+        stale: syncStale,
+        lastSyncedAt: mkRow?.last_synced_at || null
+      };
+    }
 
     const data = buildEvaluationData(equipment);
     const agentId = equipment.rmmAgentId || data.agentId || null;
@@ -263,7 +279,10 @@ export async function fetchEquipmentFleetIssues() {
     meta: {
       scanned: fleet.length,
       withIssues: items.length,
-      checkmkEnabled
+      checkmkEnabled,
+      surveillanceSuspended: false,
+      syncSuspended: Boolean(mkSettings.syncSuspended),
+      syncIntervalMinutes: mkSettings.syncIntervalMinutes
     }
   };
 }

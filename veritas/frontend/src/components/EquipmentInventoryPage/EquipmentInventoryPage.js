@@ -756,6 +756,15 @@ export default function EquipmentInventoryPage({ onNavigate }) {
     onNavigate("EquipmentDetail", toEquipmentDetailPayload(item));
   };
 
+  const openItemInBackground = (e, item) => {
+    if (!onNavigate || !item) return;
+    e.preventDefault();
+    e.stopPropagation();
+    onNavigate("EquipmentDetail", toEquipmentDetailPayload(item), {
+      background: true
+    });
+  };
+
   const hasFilters = Boolean(
     search.trim() || selectedClients.size > 0 || selectedTypes.size > 0 || selectedTags.size > 0 || statusFilter !== "all"
   );
@@ -1225,6 +1234,12 @@ export default function EquipmentInventoryPage({ onNavigate }) {
                                     key={item.id}
                                     className={isSelected ? styles.selectedRow : undefined}
                                     onClick={() => openItem(item)}
+                                    onMouseDown={e => {
+                                      if (e.button === 1) openItemInBackground(e, item);
+                                    }}
+                                    onAuxClick={e => {
+                                      if (e.button === 1) openItemInBackground(e, item);
+                                    }}
                                     onKeyDown={e => {
                                       if (e.key === "Enter" || e.key === " ") {
                                         e.preventDefault();

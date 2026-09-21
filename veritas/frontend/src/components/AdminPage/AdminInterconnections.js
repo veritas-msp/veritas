@@ -364,7 +364,28 @@ export default function AdminInterconnections({
 
       <AiIntegrationModal open={selected?.id === "ai"} enabled={selectedEnabled} provider={settings.AI_PROVIDER || "openai"} apiKey={settings.AI_API_KEY || ""} model={settings.AI_MODEL || ""} onEnabledChange={on => handleFieldChange(selected?.enabledKey, on ? "true" : "false")} onProviderChange={value => handleFieldChange("AI_PROVIDER", value)} onApiKeyChange={value => handleFieldChange("AI_API_KEY", value)} onModelChange={value => handleFieldChange("AI_MODEL", value)} onClose={() => !saving && setSelected(null)} onSave={handleSave} saving={saving} />
 
-      <CheckmkIntegrationModal open={selected?.id === "checkmk"} enabled={selectedEnabled} apiUrl={settings.CHECKMK_API_URL || ""} username={settings.CHECKMK_USERNAME || ""} password={settings.CHECKMK_PASSWORD || ""} site={settings.CHECKMK_SITE || ""} onEnabledChange={on => handleFieldChange(selected?.enabledKey, on ? "true" : "false")} onApiUrlChange={value => handleFieldChange("CHECKMK_API_URL", value)} onUsernameChange={value => handleFieldChange("CHECKMK_USERNAME", value)} onPasswordChange={value => handleFieldChange("CHECKMK_PASSWORD", value)} onSiteChange={value => handleFieldChange("CHECKMK_SITE", value)} onClose={() => !saving && setSelected(null)} onSave={handleSave} saving={saving} />
+      <CheckmkIntegrationModal
+        open={selected?.id === "checkmk"}
+        enabled={selectedEnabled}
+        apiUrl={settings.CHECKMK_API_URL || ""}
+        username={settings.CHECKMK_USERNAME || ""}
+        password={settings.CHECKMK_PASSWORD || ""}
+        site={settings.CHECKMK_SITE || ""}
+        syncIntervalMinutes={settings.CHECKMK_SYNC_INTERVAL_MINUTES || "30"}
+        syncSuspended={isTrue(settings.CHECKMK_SYNC_SUSPENDED)}
+        surveillanceSuspended={isTrue(settings.CHECKMK_SURVEILLANCE_SUSPENDED)}
+        onEnabledChange={on => handleFieldChange(selected?.enabledKey, on ? "true" : "false")}
+        onApiUrlChange={value => handleFieldChange("CHECKMK_API_URL", value)}
+        onUsernameChange={value => handleFieldChange("CHECKMK_USERNAME", value)}
+        onPasswordChange={value => handleFieldChange("CHECKMK_PASSWORD", value)}
+        onSiteChange={value => handleFieldChange("CHECKMK_SITE", value)}
+        onSyncIntervalChange={value => handleFieldChange("CHECKMK_SYNC_INTERVAL_MINUTES", value)}
+        onSyncSuspendedChange={on => handleFieldChange("CHECKMK_SYNC_SUSPENDED", on ? "true" : "false")}
+        onSurveillanceSuspendedChange={on => handleFieldChange("CHECKMK_SURVEILLANCE_SUSPENDED", on ? "true" : "false")}
+        onClose={() => !saving && setSelected(null)}
+        onSave={handleSave}
+        saving={saving}
+      />
 
       <UnifiIntegrationModal
         open={selected?.id === "unifi"}
