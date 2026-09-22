@@ -5,6 +5,16 @@
  */
 export const PATCH_NOTES = [
   {
+    version: "1.0.36",
+    date: "2026-09-22",
+    highlights: [
+      "Centre de supervision : alertes CheckMK avec le détail du service (ex. Warning - Memory), lignes de règles cliquables et barre d’enregistrement simplifiée.",
+      "Tickets support : résolution possible sans validation client (clôture immédiate).",
+      "Prestations : la vue Mes tickets n’affiche plus que les tickets ouverts.",
+      "Admin : catalogue Solutions en deux colonnes ; aperçu page de connexion en pleine hauteur."
+    ]
+  },
+  {
     version: "1.0.35",
     date: "2026-09-22",
     highlights: [

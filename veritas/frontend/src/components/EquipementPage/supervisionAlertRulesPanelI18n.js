@@ -34,12 +34,12 @@ const ALERT_RULES_COPY = {
     },
     criteria: {
       monitor_critical: {
-        label: "Alerte critique (supervision)",
+        label: "Critique",
         description: "État critique remonté par CheckMK ou la supervision."
       },
       monitor_warning: {
-        label: "Warning supervision",
-        description: "Avertissement remonté par CheckMK ou la supervision."
+        label: "Warning",
+        description: "Avertissement remonté par CheckMK (ex. Memory, Filesystem…)."
       },
       agent_offline: {
         label: "Agent RMM hors ligne",
@@ -122,12 +122,12 @@ const ALERT_RULES_COPY = {
     },
     criteria: {
       monitor_critical: {
-        label: "Critical alert (supervision)",
+        label: "Critical",
         description: "Critical state reported by CheckMK or supervision."
       },
       monitor_warning: {
-        label: "Monitoring warning",
-        description: "Warning reported by CheckMK or supervision."
+        label: "Warning",
+        description: "Warning reported by CheckMK (e.g. Memory, Filesystem)."
       },
       agent_offline: {
         label: "RMM agent offline",

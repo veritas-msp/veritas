@@ -37,10 +37,19 @@
   position: sticky;
   top: 0.75rem;
   align-self: start;
+  height: calc(100dvh - 1.5rem);
+  max-height: calc(100dvh - 1.5rem);
+  display: flex;
+  flex-direction: column;
 }
 
 .previewSticky {
   min-width: 0;
+  flex: 1 1 auto;
+  min-height: 0;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
 }
 
 .section {
@@ -280,6 +289,10 @@
 
 .previewShell {
   padding: 16px 18px 18px;
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
 }
 
 .previewLabel {
@@ -289,12 +302,15 @@
   color: var(--msp-muted, #5b6d82);
   text-transform: uppercase;
   letter-spacing: 0.04em;
+  flex-shrink: 0;
 }
 
 .previewFrame {
   display: grid;
   grid-template-columns: 1.1fr 0.9fr;
-  min-height: 280px;
+  flex: 1 1 auto;
+  min-height: 0;
+  height: 100%;
   border-radius: 12px;
   overflow: hidden;
   border: 1px solid var(--msp-border, #dde3ed);
@@ -302,13 +318,15 @@
 }
 
 .previewLeft {
-  padding: 20px 18px;
+  padding: 24px 20px;
   color: #fff;
   display: flex;
   flex-direction: column;
   gap: 10px;
   font-family: inherit;
-  min-height: 280px;
+  min-height: 100%;
+  height: 100%;
+  box-sizing: border-box;
 }
 
 .previewTop {
@@ -410,7 +428,10 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 16px;
+  padding: 20px 16px;
+  min-height: 100%;
+  height: 100%;
+  box-sizing: border-box;
 }
 
 .previewCard {
@@ -450,7 +471,8 @@
 .previewLeftCanvas,
 .previewRightCanvas {
   position: relative;
-  min-height: 260px;
+  min-height: 100%;
+  height: 100%;
 }
 
 .previewLeftCanvas {
@@ -460,7 +482,6 @@
 .previewRightCanvas {
   display: block;
   padding: 0;
-  min-height: 260px;
 }
 
 .previewCanvasHint {
@@ -548,6 +569,13 @@
   .previewColumn {
     position: static;
     order: -1;
+    height: auto;
+    max-height: none;
+  }
+
+  .previewFrame {
+    height: min(560px, 70vh);
+    min-height: min(560px, 70vh);
   }
 
   .visualAssets {
@@ -558,5 +586,13 @@
 @media (max-width: 900px) {
   .previewFrame {
     grid-template-columns: 1fr;
+    height: auto;
+    min-height: 420px;
+  }
+
+  .previewLeft,
+  .previewRight {
+    height: auto;
+    min-height: 240px;
   }
 }

@@ -278,9 +278,9 @@ const SUPERVISION_COPY = {
         missing_ip: "Compléter l'adresse IP dans la fiche matériel."
       },
       statusHints: {
-        critical: "Alerte supervision critique · intervention immédiate.",
+        critical: "Alerte critique · intervention immédiate.",
         offline: "Agent RMM hors ligne · vérifier connectivité du poste.",
-        warning: "Warning supervision · analyser avant dégradation.",
+        warning: "Warning CheckMK · analyser le service avant dégradation.",
         unmapped: "Équipement non lié à une supervision · activer le mapping.",
         no_data: "Aucune donnée de supervision · vérifier le mapping.",
         default: "Point de vigilance à traiter depuis la fiche matériel."

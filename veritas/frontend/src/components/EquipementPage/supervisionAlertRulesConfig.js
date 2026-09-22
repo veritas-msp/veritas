@@ -5,7 +5,7 @@ const SEVERITIES = new Set(["low", "normal", "high", "urgent"]);
 export const SUPERVISION_ALERT_CRITERIA = [
   {
     key: "monitor_critical",
-    label: "Critical alert (supervision)",
+    label: "Critical",
     description: "Critical state reported by CheckMK or monitoring.",
     families: ["servers", "stockage", "firewall", "switch", "wifi", "routeur", "internet", "toip", "alimentation"],
     defaultEnabled: true,
@@ -14,8 +14,8 @@ export const SUPERVISION_ALERT_CRITERIA = [
   },
   {
     key: "monitor_warning",
-    label: "Monitoring warning",
-    description: "Warning reported by CheckMK or monitoring.",
+    label: "Warning",
+    description: "Warning reported by CheckMK or monitoring (e.g. Memory, Filesystem).",
     families: ["servers", "stockage", "firewall", "switch", "wifi", "routeur", "internet", "toip", "alimentation"],
     defaultEnabled: true,
     defaultSeverity: "normal",

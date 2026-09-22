@@ -47,6 +47,10 @@ function formatMonitorIssueLabel(severityLabel, detail) {
     ? detail.failingServices.map(name => String(name || "").trim()).filter(Boolean)
     : [];
   if (fromList.length) return `${severityLabel} - ${fromList.slice(0, 2).join(" / ")}`;
+  const crit = Number(detail?.critServices) || 0;
+  const warn = Number(detail?.warnServices) || 0;
+  if (crit > 0) return `${severityLabel} - ${crit} service${crit > 1 ? "s" : ""}`;
+  if (warn > 0) return `${severityLabel} - ${warn} service${warn > 1 ? "s" : ""}`;
   return severityLabel;
 }
 

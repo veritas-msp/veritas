@@ -79,7 +79,7 @@ const TICKET_VIEW_COPY = {
     builtinViews: {
       __builtin_mine__: {
         name: "Mes tickets",
-        description: "Tickets qui vous sont assignés"
+        description: "Tickets qui vous sont assignés (ouverts uniquement)"
       },
       __builtin_to_validate__: {
         name: "À valider",
@@ -192,7 +192,7 @@ const TICKET_VIEW_COPY = {
     builtinViews: {
       __builtin_mine__: {
         name: "My tickets",
-        description: "Tickets assigned to you"
+        description: "Open tickets assigned to you"
       },
       __builtin_to_validate__: {
         name: "To validate",
@@ -305,7 +305,7 @@ const TICKET_VIEW_COPY = {
     builtinViews: {
       __builtin_mine__: {
         name: "Meine Tickets",
-        description: "Ihnen zugewiesene Tickets"
+        description: "Ihnen zugewiesene offene Tickets"
       },
       __builtin_to_validate__: {
         name: "Zu validieren",
@@ -418,7 +418,7 @@ const TICKET_VIEW_COPY = {
     builtinViews: {
       __builtin_mine__: {
         name: "I miei ticket",
-        description: "Ticket assegnati a te"
+        description: "Ticket aperti assegnati a te"
       },
       __builtin_to_validate__: {
         name: "Da validare",
@@ -531,7 +531,7 @@ const TICKET_VIEW_COPY = {
     builtinViews: {
       __builtin_mine__: {
         name: "Mis tickets",
-        description: "Tickets asignados a ti"
+        description: "Tickets abiertos asignados a ti"
       },
       __builtin_to_validate__: {
         name: "Por validar",

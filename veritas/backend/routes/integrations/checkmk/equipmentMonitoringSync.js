@@ -62,17 +62,43 @@ function isAlertEvent(event) {
   const state = getEventStateNum(event);
   return state === 1 || state === 2;
 }
+function stripHostPrefixFromServiceName(name) {
+  const raw = String(name || "").trim();
+  if (!raw || !raw.includes(":")) return raw;
+  // CheckMK ids are often "hostname:Service description"
+  const parts = raw.split(":");
+  const rest = parts.slice(1).join(":").trim();
+  return rest || raw;
+}
 function serviceDisplayName(service) {
-  return String(service?.title || service?.description || service?.id || service?.name || "").trim();
+  const raw = String(
+    service?.title ||
+      service?.display_name ||
+      service?.description ||
+      service?.extensions?.display_name ||
+      service?.extensions?.description ||
+      service?.attributes?.display_name ||
+      service?.attributes?.description ||
+      service?.raw?.extensions?.display_name ||
+      service?.raw?.extensions?.description ||
+      service?.id ||
+      service?.name ||
+      ""
+  ).trim();
+  return stripHostPrefixFromServiceName(raw);
 }
 function eventServiceName(event) {
-  return String(
+  const raw = String(
     event?.service ||
+      event?.service_name ||
       event?.log_service_description ||
       event?.service_description ||
       event?.serviceDescription ||
+      event?.service_display_name ||
+      event?.display_name ||
       ""
   ).trim();
+  return stripHostPrefixFromServiceName(raw);
 }
 function uniqueNonEmpty(values, limit = 3) {
   const out = [];
@@ -160,6 +186,7 @@ function normalizeHostStateToSeverity(rawState) {
 }
 
 function getServiceStateNum(service) {
+  const raw = service?.raw && typeof service.raw === "object" && !Array.isArray(service.raw) ? service.raw : null;
   const candidates = [
     service?.state,
     service?.state_num,
@@ -169,6 +196,10 @@ function getServiceStateNum(service) {
     service?.extensions?.hard_state,
     service?.attributes?.state,
     service?.attributes?.hard_state,
+    raw?.extensions?.state,
+    raw?.extensions?.hard_state,
+    raw?.extensions?.attributes?.state,
+    raw?.extensions?.attributes?.hard_state,
     Array.isArray(service?.raw) ? service.raw[1] : null
   ];
   let worst = null;
@@ -262,19 +293,53 @@ export function computeMonitoringSummary(monitoringData, lastSyncedAt, hostDetai
   let failingServices = uniqueNonEmpty(
     (critServiceRows.length ? critServiceRows : warnServiceRows).map(serviceDisplayName)
   );
+  // Host stats can flag warn/crit while service rows are empty or states unparsed → still try non-OK services.
+  if (!failingServices.length && (status === 'critical' || status === 'warning')) {
+    const nonOkRows = services.filter(s => {
+      const n = getServiceStateNum(s);
+      return n === 1 || n === 2;
+    });
+    const preferredRows = status === 'critical'
+      ? nonOkRows.filter(s => getServiceStateNum(s) === 2)
+      : nonOkRows.filter(s => getServiceStateNum(s) === 1);
+    failingServices = uniqueNonEmpty((preferredRows.length ? preferredRows : nonOkRows).map(serviceDisplayName));
+  }
   if (!failingServices.length && hostIsDown) {
     failingServices = ["Host DOWN"];
   }
-  if (!failingServices.length && recentAlertEvents.length) {
-    const preferredEvents = status === 'critical'
-      ? recentAlertEvents.filter(e => getEventStateNum(e) === 2)
-      : recentAlertEvents.filter(e => getEventStateNum(e) === 1);
-    const sourceEvents = preferredEvents.length ? preferredEvents : recentAlertEvents;
-    failingServices = uniqueNonEmpty(
+  const collectServiceNamesFromEvents = (eventList) => {
+    const preferred = status === 'critical'
+      ? eventList.filter(e => getEventStateNum(e) === 2)
+      : eventList.filter(e => getEventStateNum(e) === 1);
+    const sourceEvents = preferred.length ? preferred : eventList;
+    return uniqueNonEmpty(
       [...sourceEvents]
         .sort((a, b) => (getEventTimeMs(b) || 0) - (getEventTimeMs(a) || 0))
         .map(eventServiceName)
     );
+  };
+  if (!failingServices.length && recentAlertEvents.length) {
+    failingServices = collectServiceNamesFromEvents(recentAlertEvents);
+  }
+  // Broader fallback: any alert event in retained history (not only last 7 days).
+  if (!failingServices.length) {
+    const allAlertEvents = events.filter(isAlertEvent);
+    if (allAlertEvents.length) failingServices = collectServiceNamesFromEvents(allAlertEvents);
+  }
+  // Notifications often carry the service description when the services list is incomplete.
+  if (!failingServices.length) {
+    const notificationsRaw =
+      monitoringData?.notifications?.notifications ??
+      monitoringData?.notifications?.events ??
+      monitoringData?.notifications;
+    const notifications = asCheckmkList(notificationsRaw).filter(isAlertEvent);
+    if (notifications.length) failingServices = collectServiceNamesFromEvents(notifications);
+  }
+  if (!failingServices.length) {
+    const hostEventsRaw =
+      monitoringData?.hostEventsDetailed?.events ?? monitoringData?.hostEventsDetailed;
+    const hostEvents = asCheckmkList(hostEventsRaw).filter(isAlertEvent);
+    if (hostEvents.length) failingServices = collectServiceNamesFromEvents(hostEvents);
   }
   return {
     status,

@@ -235,15 +235,21 @@ export async function resolveTicketWithClientValidation({
   interventionType = "",
   actionType = "",
   consumeSupportCredit = false,
-  supportCreditDebits = null
+  supportCreditDebits = null,
+  skipClientValidation = false
 }) {
-  if (!(await hasResolutionValidationTable())) {
-    const err = new Error("VALIDATION_UNAVAILABLE");
-    throw err;
+  const skipValidation = Boolean(skipClientValidation);
+  if (!skipValidation) {
+    if (!(await hasResolutionValidationTable())) {
+      const err = new Error("VALIDATION_UNAVAILABLE");
+      throw err;
+    }
+    await ensureResolutionValidationSchema().catch(err => {
+      console.error("[resolution-validation] Schema ensure failed:", err.message);
+    });
+  } else {
+    await ensureResolutionValidationSchema().catch(() => {});
   }
-  await ensureResolutionValidationSchema().catch(err => {
-    console.error("[resolution-validation] Schema ensure failed:", err.message);
-  });
   await ensureTicketSolutionCatalogSchema().catch(() => {});
   const trimmedReason = String(reason || "").trim();
   const trimmedIntervention = String(interventionType || "").trim();
@@ -269,7 +275,7 @@ export async function resolveTicketWithClientValidation({
     const err = new Error("TICKET_ALREADY_CLOSED");
     throw err;
   }
-  const existingValidation = await getTicketResolutionValidation(ticketId);
+  const existingValidation = await getTicketResolutionValidation(ticketId).catch(() => null);
   if (existingValidation?.isPending) {
     const err = new Error("VALIDATION_ALREADY_PENDING");
     throw err;
@@ -295,6 +301,52 @@ export async function resolveTicketWithClientValidation({
   }
   const commentContent = `${RESOLUTION_COMMENT_PREFIX} [${trimmedIntervention}] [${trimmedAction}] ${trimmedReason}`;
   const comment = await addPublicComment(ticketId, userId, commentContent);
+
+  if (skipValidation) {
+    const finalStatus = "closed";
+    if (status !== finalStatus) {
+      await pool.query(`UPDATE v_b_tickets
+         SET status = 'closed',
+             resolved_at = COALESCE(resolved_at, NOW()),
+             closed_at = COALESCE(closed_at, NOW()),
+             updated_at = NOW()
+         WHERE id = $1`, [ticketId]);
+      await insertStatusHistory(ticketId, ticket.status, "closed", userId, "Resolution without client validation");
+      await dispatchNotificationEvent({
+        source: "tickets",
+        element: "updated",
+        enterpriseId: String(ticket.client_id || ""),
+        context: {
+          ticket: {
+            id: ticketId
+          },
+          entreprise: {
+            id: String(ticket.client_id || "")
+          }
+        }
+      }).catch(() => {});
+      await notifyInAppTicketStatusChanged({
+        ticketId,
+        newStatus: "closed",
+        changedByUserId: userId || null
+      }).catch(() => {});
+      await notifyTicketChangeEmails({
+        ticketId,
+        newStatus: "closed",
+        changedByUserId: userId || null
+      }).catch(() => {});
+    }
+    return {
+      ticket: {
+        ...ticket,
+        status: "closed"
+      },
+      validation: null,
+      comment,
+      skippedClientValidation: true
+    };
+  }
+
   if (status !== "resolved") {
     await pool.query(`UPDATE v_b_tickets
        SET status = 'resolved', resolved_at = COALESCE(resolved_at, NOW()), updated_at = NOW()
@@ -340,7 +392,8 @@ export async function resolveTicketWithClientValidation({
       status: "resolved"
     },
     validation: mapValidationRow(validationResult.rows[0]),
-    comment
+    comment,
+    skippedClientValidation: false
   };
 }
 export async function submitPortalResolutionValidation({

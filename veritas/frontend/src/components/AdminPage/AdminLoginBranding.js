@@ -618,7 +618,7 @@ export default function AdminLoginBranding({ isCommunity = false }) {
 
         <aside className={s.previewColumn}>
           <div className={s.previewSticky}>
-            <Card title={copy.previewTitle} description={copy.previewDescription} noPadding>
+            <Card title={copy.previewTitle} description={copy.previewDescription} noPadding fill fillNoScroll>
               <LoginPreview side={activeSide} form={form} copy={copy} onCanvasPosChange={setCanvasPos} />
             </Card>
           </div>

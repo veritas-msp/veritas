@@ -237,6 +237,21 @@
   padding: 0.7rem 0.8rem;
 }
 
+.criterionCardClickable {
+  cursor: pointer;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease, background-color 0.15s ease;
+}
+
+.criterionCardClickable:hover {
+  border-color: rgba(43, 95, 171, 0.4);
+  box-shadow: 0 2px 10px rgba(11, 33, 56, 0.06);
+}
+
+.criterionCardClickable:focus-visible {
+  outline: 2px solid rgba(43, 95, 171, 0.45);
+  outline-offset: 2px;
+}
+
 .criterionCardOn {
   border-color: rgba(43, 95, 171, 0.28);
   background: linear-gradient(180deg, rgba(43, 95, 171, 0.05), transparent 70%);

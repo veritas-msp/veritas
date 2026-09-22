@@ -4170,7 +4170,7 @@ router.delete("/:id/comments/:commentId", verifyJWT, requireAnyPermission("ticke
     });
   }
 });
-router.post("/:id/resolve-with-validation", verifyJWT, requirePermission("tickets_detail.resolve"), [param("id").isUUID(), body("reason").isString().notEmpty(), body("interventionType").isString().notEmpty(), body("actionType").isString().notEmpty(), body("consumeSupportCredit").optional().isBoolean(), body("supportCreditDebits").optional().isArray(), body("supportCreditDebits.*.packId").optional().isUUID(), body("supportCreditDebits.*.amount").optional().isInt({
+router.post("/:id/resolve-with-validation", verifyJWT, requirePermission("tickets_detail.resolve"), [param("id").isUUID(), body("reason").isString().notEmpty(), body("interventionType").isString().notEmpty(), body("actionType").isString().notEmpty(), body("consumeSupportCredit").optional().isBoolean(), body("skipClientValidation").optional().isBoolean(), body("supportCreditDebits").optional().isArray(), body("supportCreditDebits.*.packId").optional().isUUID(), body("supportCreditDebits.*.amount").optional().isInt({
   min: 1
 })], async (req, res) => {
   const validationResponse = validationErrorOrNull(req, res);
@@ -4183,7 +4183,8 @@ router.post("/:id/resolve-with-validation", verifyJWT, requirePermission("ticket
       interventionType: req.body.interventionType,
       actionType: req.body.actionType,
       consumeSupportCredit: Boolean(req.body.consumeSupportCredit),
-      supportCreditDebits: Array.isArray(req.body.supportCreditDebits) ? req.body.supportCreditDebits : null
+      supportCreditDebits: Array.isArray(req.body.supportCreditDebits) ? req.body.supportCreditDebits : null,
+      skipClientValidation: Boolean(req.body.skipClientValidation)
     });
     if (!result) return res.status(404).json({
       error: "Ticket not found"

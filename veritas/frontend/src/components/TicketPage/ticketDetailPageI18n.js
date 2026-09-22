@@ -423,7 +423,12 @@ const DETAIL_COPY = {
       },
       cancel: "Annuler",
       confirm: "Résoudre et demander validation",
+      confirmClose: "Résoudre et clore",
       confirming: "Résolution…",
+      confirmingClose: "Clôture…",
+      requestClientValidation: "Demander la validation client (portail)",
+      requestClientValidationHint: "Le client pourra valider depuis son portail. Sans réponse sous 48 h, le ticket sera clos automatiquement.",
+      skipClientValidationHint: "Le ticket sera résolu et clos immédiatement, sans attente de validation client.",
       closeAria: "Fermer"
     },
     footer: {
@@ -556,6 +561,7 @@ const DETAIL_COPY = {
       messageDeleted: "Message supprimé",
       messageDeleteError: "Erreur lors de la suppression du message",
       resolvedPendingValidation: "Ticket résolu · validation client demandée.",
+      resolvedClosed: "Ticket résolu et clos.",
       resolveError: "Impossible de résoudre le ticket.",
       ticketReopened: "Ticket rouvert",
       reopenError: "Impossible de rouvrir le ticket",
@@ -999,7 +1005,12 @@ const DETAIL_COPY = {
       },
       cancel: "Cancel",
       confirm: "Resolve and request validation",
+      confirmClose: "Resolve and close",
       confirming: "Resolving…",
+      confirmingClose: "Closing…",
+      requestClientValidation: "Request client validation (portal)",
+      requestClientValidationHint: "The client can validate from their portal. Without a reply within 48 h, the ticket will close automatically.",
+      skipClientValidationHint: "The ticket will be resolved and closed immediately, without waiting for client validation.",
       closeAria: "Close"
     },
     footer: {
@@ -1132,6 +1143,7 @@ const DETAIL_COPY = {
       messageDeleted: "Message deleted",
       messageDeleteError: "Error deleting message",
       resolvedPendingValidation: "Ticket resolved · client validation requested.",
+      resolvedClosed: "Ticket resolved and closed.",
       resolveError: "Unable to resolve ticket.",
       ticketReopened: "Ticket reopened",
       reopenError: "Unable to reopen ticket",

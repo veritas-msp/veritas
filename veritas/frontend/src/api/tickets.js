@@ -154,13 +154,15 @@ export async function resolveTicketWithValidation(ticketId, {
   interventionType,
   actionType,
   consumeSupportCredit = false,
-  supportCreditDebits = null
+  supportCreditDebits = null,
+  skipClientValidation = false
 } = {}) {
   const body = {
     reason,
     interventionType,
     actionType,
-    consumeSupportCredit
+    consumeSupportCredit,
+    skipClientValidation: Boolean(skipClientValidation)
   };
   if (Array.isArray(supportCreditDebits) && supportCreditDebits.length > 0) {
     body.supportCreditDebits = supportCreditDebits;

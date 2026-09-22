@@ -39,6 +39,7 @@ export default function TicketResolveModal({
   const [reason, setReason] = useState("");
   const [interventionType, setInterventionType] = useState("");
   const [actionType, setActionType] = useState("");
+  const [requestClientValidation, setRequestClientValidation] = useState(true);
   const [interventionOptions, setInterventionOptions] = useState([]);
   const [actionOptions, setActionOptions] = useState([]);
   const [loadingCatalog, setLoadingCatalog] = useState(false);
@@ -83,6 +84,7 @@ export default function TicketResolveModal({
     setReason("");
     setInterventionType("");
     setActionType("");
+    setRequestClientValidation(true);
     setActiveSection("solution");
     setPerPackAmount(1);
   }, [open]);
@@ -175,13 +177,17 @@ export default function TicketResolveModal({
       interventionType: getCanonicalSolutionCatalogLabel(interventionType.trim()),
       actionType: getCanonicalSolutionCatalogLabel(actionType.trim()),
       consumeSupportCredit: supportCreditDebits.length > 0,
-      supportCreditDebits
+      supportCreditDebits,
+      skipClientValidation: !requestClientValidation
     });
   };
   if (!open || !ticket || !copy) return null;
   const ticketNumber = ticket.ticket_number || ticket.id || "-";
   const ticketTitle = ticket.title || copy.untitledTicket;
   const canSubmit = Boolean(reason.trim()) && Boolean(interventionType.trim()) && Boolean(actionType.trim()) && !saving;
+  const confirmLabel = requestClientValidation
+    ? (saving ? copy.confirming : copy.confirm)
+    : (saving ? copy.confirmingClose || copy.confirming : copy.confirmClose || copy.confirm);
   const creditAvailableLabel = creditBalance === 1 ? interpolate(copy.creditAvailable, {
     count: creditBalance
   }) : interpolate(copy.creditAvailablePlural, {
@@ -278,6 +284,16 @@ export default function TicketResolveModal({
                   minHeight: "6.5rem"
                 }} />
                   </div>
+
+                  <label className={modalStyles.creditOption}>
+                    <input type="checkbox" checked={requestClientValidation} onChange={e => setRequestClientValidation(e.target.checked)} disabled={saving} />
+                    <span>{copy.requestClientValidation || "Demander la validation client (portail)"}</span>
+                  </label>
+                  <p className={modalStyles.validationHint}>
+                    {requestClientValidation
+                      ? (copy.requestClientValidationHint || copy.subtitle)
+                      : (copy.skipClientValidationHint || "Le ticket sera résolu et clos immédiatement, sans attente de validation client.")}
+                  </p>
                 </> : null}
 
               {activeSection === "credits" && !creditsProLocked ? <div className={modalStyles.creditPanel}>
@@ -349,7 +365,7 @@ export default function TicketResolveModal({
                 {copy.cancel}
               </button>
               <button type="submit" className={layout.primaryBtn} disabled={!canSubmit}>
-                {saving ? copy.confirming : copy.confirm}
+                {confirmLabel}
               </button>
             </div>
           </footer>

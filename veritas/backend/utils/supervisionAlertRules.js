@@ -5,7 +5,7 @@ const SINGLETON_ID = 1;
 const SEVERITIES = new Set(["low", "normal", "high", "urgent"]);
 export const SUPERVISION_ALERT_CRITERIA = [{
   key: "monitor_critical",
-  label: "Critical alert (supervision)",
+  label: "Critical",
   description: "Critical state reported by CheckMK or supervision.",
   families: ["servers", "stockage", "firewall", "switch", "wifi", "routeur", "internet", "toip", "alimentation"],
   defaultEnabled: true,
@@ -13,7 +13,7 @@ export const SUPERVISION_ALERT_CRITERIA = [{
   parameters: []
 }, {
   key: "monitor_warning",
-  label: "Supervision warning",
+  label: "Warning",
   description: "Warning reported by CheckMK or supervision.",
   families: ["servers", "stockage", "firewall", "switch", "wifi", "routeur", "internet", "toip", "alimentation"],
   defaultEnabled: true,

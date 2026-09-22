@@ -1,6 +1,6 @@
 {
   "name": "veritas",
-  "version": "1.0.35",
+  "version": "1.0.36",
   "private": true,
   "license": "AGPL-3.0-or-later",
   "description": "Veritas MSP — frontend + backend",

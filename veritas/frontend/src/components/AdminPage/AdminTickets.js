@@ -3072,127 +3072,131 @@ export default function AdminTickets({
           </Card>}
 
         {activeView === "solution-catalog" && <Card title={supportViewMeta["solution-catalog"].title} description={supportViewMeta["solution-catalog"].description} fill>
-            <div className={s.tableSplitLayout}>
-              <div className={styles.subSectionHead}>
-                <h4 className={styles.subSectionTitle}>{ss.solutions.interventionTitle}</h4>
-                <Btn icon="mdi:plus" size="sm" onClick={() => openCreateSolutionCatalogModal("intervention")}>
-                  {ss.common.actions.add}
-                </Btn>
-              </div>
+            <div className={s.tableSplitColumns}>
+              <div className={s.tableSplitColumn}>
+                <div className={s.tableSplitColumnHead}>
+                  <h4 className={s.tableSplitColumnTitle}>{ss.solutions.interventionTitle}</h4>
+                  <Btn icon="mdi:plus" size="sm" onClick={() => openCreateSolutionCatalogModal("intervention")}>
+                    {ss.common.actions.add}
+                  </Btn>
+                </div>
 
-              <div className={ui.toolRow}>
-                <div className={ui.toolLeft}>
-                  <input type="search" className={ui.fieldSearch} placeholder={ss.solutions.searchIntervention} value={solutionInterventionSearch} onChange={e => setSolutionInterventionSearch(e.target.value)} />
-                  <span className={ui.count}>
-                    {formatSupportSettingsCount(locale, "entry", filteredSolutionInterventions.length)}
-                  </span>
+                <div className={ui.toolRow}>
+                  <div className={ui.toolLeft}>
+                    <input type="search" className={ui.fieldSearch} placeholder={ss.solutions.searchIntervention} value={solutionInterventionSearch} onChange={e => setSolutionInterventionSearch(e.target.value)} />
+                    <span className={ui.count}>
+                      {formatSupportSettingsCount(locale, "entry", filteredSolutionInterventions.length)}
+                    </span>
+                  </div>
+                </div>
+
+                <div className={s.tableSectionPinned}>
+                  <div className={s.tableWrap}>
+                    <table className={s.table}>
+                      <thead>
+                        <tr>
+                          <th>{ss.common.columns.label}</th>
+                          <th>{ss.common.columns.order}</th>
+                          <th>{ss.common.columns.status}</th>
+                          <th style={{
+                        width: 88
+                      }} aria-label={ss.common.actions.actionsAria} />
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {filteredSolutionInterventions.length === 0 ? <tr>
+                            <td colSpan={4} className={s.empty}>
+                              {ss.solutions.emptyInterventions}
+                            </td>
+                          </tr> : solutionInterventionsPagination.paginatedItems.map(entry => {
+                        const linkedActionCount = countActionsForIntervention(entry);
+                        const interventionDeleteBlocked = linkedActionCount > 0;
+                        return <tr key={String(entry.id)}>
+                              <td>{entry.label || ss.common.emptyDash}</td>
+                              <td>{Number(entry.displayOrder) || 0}</td>
+                              <td>
+                                <EntityStatus active={entry.isActive !== false} {...entityStatusLabels} />
+                              </td>
+                              <td>
+                                <div className={s.actions}>
+                                  <button type="button" className={s.actionBtn} title={ss.common.actions.edit} onClick={() => openEditSolutionCatalogModal(entry)}>
+                                    <Icon icon="mdi:pencil-outline" aria-hidden />
+                                  </button>
+                                  <button type="button" className={`${s.actionBtn} ${s.actionBtnDanger}`} title={interventionDeleteBlocked ? linkedActionCount === 1 ? ss.solutions.interventionDeleteBlockedOne : interpolate(ss.solutions.interventionDeleteBlockedMany, {
+                              count: linkedActionCount
+                            }) : ss.common.actions.delete} disabled={interventionDeleteBlocked} onClick={() => requestRemoveSolutionCatalogEntry(entry)}>
+                                    <Icon icon="mdi:delete-outline" aria-hidden />
+                                  </button>
+                                </div>
+                              </td>
+                            </tr>;
+                      })}
+                      </tbody>
+                    </table>
+                  </div>
+                  {filteredSolutionInterventions.length > 0 && <Pagination page={solutionInterventionsPagination.page} totalPages={solutionInterventionsPagination.totalPages} onPageChange={solutionInterventionsPagination.setPage} pageSize={solutionInterventionsPagination.pageSize} onPageSizeChange={solutionInterventionsPagination.setPageSize} rangeLabel={solutionInterventionsPagination.rangeLabel} />}
                 </div>
               </div>
 
-              <div className={s.tableSectionPinned}>
-                <div className={s.tableWrap}>
-                  <table className={s.table}>
-                    <thead>
-                      <tr>
-                        <th>{ss.common.columns.label}</th>
-                        <th>{ss.common.columns.order}</th>
-                        <th>{ss.common.columns.status}</th>
-                        <th style={{
-                      width: 88
-                    }} aria-label={ss.common.actions.actionsAria} />
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {filteredSolutionInterventions.length === 0 ? <tr>
-                          <td colSpan={4} className={s.empty}>
-                            {ss.solutions.emptyInterventions}
-                          </td>
-                        </tr> : solutionInterventionsPagination.paginatedItems.map(entry => {
-                      const linkedActionCount = countActionsForIntervention(entry);
-                      const interventionDeleteBlocked = linkedActionCount > 0;
-                      return <tr key={String(entry.id)}>
-                            <td>{entry.label || ss.common.emptyDash}</td>
-                            <td>{Number(entry.displayOrder) || 0}</td>
-                            <td>
-                              <EntityStatus active={entry.isActive !== false} {...entityStatusLabels} />
-                            </td>
-                            <td>
-                              <div className={s.actions}>
-                                <button type="button" className={s.actionBtn} title={ss.common.actions.edit} onClick={() => openEditSolutionCatalogModal(entry)}>
-                                  <Icon icon="mdi:pencil-outline" aria-hidden />
-                                </button>
-                                <button type="button" className={`${s.actionBtn} ${s.actionBtnDanger}`} title={interventionDeleteBlocked ? linkedActionCount === 1 ? ss.solutions.interventionDeleteBlockedOne : interpolate(ss.solutions.interventionDeleteBlockedMany, {
-                            count: linkedActionCount
-                          }) : ss.common.actions.delete} disabled={interventionDeleteBlocked} onClick={() => requestRemoveSolutionCatalogEntry(entry)}>
-                                  <Icon icon="mdi:delete-outline" aria-hidden />
-                                </button>
-                              </div>
-                            </td>
-                          </tr>;
-                    })}
-                    </tbody>
-                  </table>
+              <div className={s.tableSplitColumn}>
+                <div className={s.tableSplitColumnHead}>
+                  <h4 className={s.tableSplitColumnTitle}>{ss.solutions.actionTitle}</h4>
+                  <Btn icon="mdi:plus" size="sm" onClick={() => openCreateSolutionCatalogModal("action")}>
+                    {ss.common.actions.add}
+                  </Btn>
                 </div>
-                {filteredSolutionInterventions.length > 0 && <Pagination page={solutionInterventionsPagination.page} totalPages={solutionInterventionsPagination.totalPages} onPageChange={solutionInterventionsPagination.setPage} pageSize={solutionInterventionsPagination.pageSize} onPageSizeChange={solutionInterventionsPagination.setPageSize} rangeLabel={solutionInterventionsPagination.rangeLabel} />}
-              </div>
 
-              <div className={styles.subSectionHead}>
-                <h4 className={styles.subSectionTitle}>{ss.solutions.actionTitle}</h4>
-                <Btn icon="mdi:plus" size="sm" onClick={() => openCreateSolutionCatalogModal("action")}>
-                  {ss.common.actions.add}
-                </Btn>
-              </div>
-
-              <div className={ui.toolRow}>
-                <div className={ui.toolLeft}>
-                  <input type="search" className={ui.fieldSearch} placeholder={ss.solutions.searchAction} value={solutionActionSearch} onChange={e => setSolutionActionSearch(e.target.value)} />
-                  <span className={ui.count}>
-                    {formatSupportSettingsCount(locale, "entry", filteredSolutionActions.length)}
-                  </span>
+                <div className={ui.toolRow}>
+                  <div className={ui.toolLeft}>
+                    <input type="search" className={ui.fieldSearch} placeholder={ss.solutions.searchAction} value={solutionActionSearch} onChange={e => setSolutionActionSearch(e.target.value)} />
+                    <span className={ui.count}>
+                      {formatSupportSettingsCount(locale, "entry", filteredSolutionActions.length)}
+                    </span>
+                  </div>
                 </div>
-              </div>
 
-              <div className={s.tableSection}>
-                <div className={s.tableWrap}>
-                  <table className={s.table}>
-                    <thead>
-                      <tr>
-                        <th>{ss.common.columns.label}</th>
-                        <th>{ss.common.columns.intervention}</th>
-                        <th>{ss.common.columns.order}</th>
-                        <th>{ss.common.columns.status}</th>
-                        <th style={{
-                      width: 88
-                    }} aria-label={ss.common.actions.actionsAria} />
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {filteredSolutionActions.length === 0 ? <tr>
-                          <td colSpan={5} className={s.empty}>
-                            {ss.solutions.emptyActions}
-                          </td>
-                        </tr> : solutionActionsPagination.paginatedItems.map(entry => <tr key={String(entry.id)}>
-                            <td>{entry.label || ss.common.emptyDash}</td>
-                            <td>{entry.intervention || ss.common.emptyDash}</td>
-                            <td>{Number(entry.displayOrder) || 0}</td>
-                            <td>
-                              <EntityStatus active={entry.isActive !== false} {...entityStatusLabels} />
+                <div className={s.tableSection}>
+                  <div className={s.tableWrap}>
+                    <table className={s.table}>
+                      <thead>
+                        <tr>
+                          <th>{ss.common.columns.label}</th>
+                          <th>{ss.common.columns.intervention}</th>
+                          <th>{ss.common.columns.order}</th>
+                          <th>{ss.common.columns.status}</th>
+                          <th style={{
+                        width: 88
+                      }} aria-label={ss.common.actions.actionsAria} />
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {filteredSolutionActions.length === 0 ? <tr>
+                            <td colSpan={5} className={s.empty}>
+                              {ss.solutions.emptyActions}
                             </td>
-                            <td>
-                              <div className={s.actions}>
-                                <button type="button" className={s.actionBtn} title={ss.common.actions.edit} onClick={() => openEditSolutionCatalogModal(entry)}>
-                                  <Icon icon="mdi:pencil-outline" aria-hidden />
-                                </button>
-                                <button type="button" className={`${s.actionBtn} ${s.actionBtnDanger}`} title={ss.common.actions.delete} onClick={() => requestRemoveSolutionCatalogEntry(entry)}>
-                                  <Icon icon="mdi:delete-outline" aria-hidden />
-                                </button>
-                              </div>
-                            </td>
-                          </tr>)}
-                    </tbody>
-                  </table>
+                          </tr> : solutionActionsPagination.paginatedItems.map(entry => <tr key={String(entry.id)}>
+                              <td>{entry.label || ss.common.emptyDash}</td>
+                              <td>{entry.intervention || ss.common.emptyDash}</td>
+                              <td>{Number(entry.displayOrder) || 0}</td>
+                              <td>
+                                <EntityStatus active={entry.isActive !== false} {...entityStatusLabels} />
+                              </td>
+                              <td>
+                                <div className={s.actions}>
+                                  <button type="button" className={s.actionBtn} title={ss.common.actions.edit} onClick={() => openEditSolutionCatalogModal(entry)}>
+                                    <Icon icon="mdi:pencil-outline" aria-hidden />
+                                  </button>
+                                  <button type="button" className={`${s.actionBtn} ${s.actionBtnDanger}`} title={ss.common.actions.delete} onClick={() => requestRemoveSolutionCatalogEntry(entry)}>
+                                    <Icon icon="mdi:delete-outline" aria-hidden />
+                                  </button>
+                                </div>
+                              </td>
+                            </tr>)}
+                      </tbody>
+                    </table>
+                  </div>
+                  {filteredSolutionActions.length > 0 && <Pagination page={solutionActionsPagination.page} totalPages={solutionActionsPagination.totalPages} onPageChange={solutionActionsPagination.setPage} pageSize={solutionActionsPagination.pageSize} onPageSizeChange={solutionActionsPagination.setPageSize} rangeLabel={solutionActionsPagination.rangeLabel} />}
                 </div>
-                {filteredSolutionActions.length > 0 && <Pagination page={solutionActionsPagination.page} totalPages={solutionActionsPagination.totalPages} onPageChange={solutionActionsPagination.setPage} pageSize={solutionActionsPagination.pageSize} onPageSizeChange={solutionActionsPagination.setPageSize} rangeLabel={solutionActionsPagination.rangeLabel} />}
               </div>
             </div>
           </Card>}

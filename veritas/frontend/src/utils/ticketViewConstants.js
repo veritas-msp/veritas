@@ -195,7 +195,7 @@ export const BUILTIN_TICKET_VIEWS = [{
   id: BUILTIN_TICKET_VIEW_IDS.MINE,
   name: "My tickets",
   icon: "mdi:account-circle-outline",
-  description: "Tickets assigned to me",
+  description: "Open tickets assigned to me",
   visibility: "public",
   isBuiltin: true,
   rules: {
@@ -205,6 +205,10 @@ export const BUILTIN_TICKET_VIEWS = [{
       field: "assigned_user_id",
       operator: "equals",
       value: CURRENT_USER_ASSIGNEE_VALUE
+    }, {
+      field: "status",
+      operator: "equals",
+      value: "open"
     }]
   },
   sortBy: "updated_at",

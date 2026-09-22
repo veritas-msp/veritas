@@ -21,6 +21,10 @@ export const BUILTIN_TICKET_VIEWS = [{
       field: "assigned_user_id",
       operator: "equals",
       value: CURRENT_USER_ASSIGNEE_VALUE
+    }, {
+      field: "status",
+      operator: "equals",
+      value: "open"
     }]
   }
 }, {

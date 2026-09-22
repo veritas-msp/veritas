@@ -3793,7 +3793,8 @@ export default function TicketDetailPage({
     interventionType,
     actionType,
     consumeSupportCredit: useCredit,
-    supportCreditDebits = null
+    supportCreditDebits = null,
+    skipClientValidation = false
   }) => {
     if (!ticketId || savingResolve) return;
     setSavingResolve(true);
@@ -3839,11 +3840,12 @@ export default function TicketDetailPage({
         interventionType,
         actionType,
         consumeSupportCredit: debits.length > 0,
-        supportCreditDebits: debits
+        supportCreditDebits: debits,
+        skipClientValidation: Boolean(skipClientValidation)
       });
       setTicket(updated);
       setResolveModalOpen(false);
-      toast.success(copy.toasts.resolvedPendingValidation);
+      toast.success(skipClientValidation ? copy.toasts.resolvedClosed || copy.toasts.resolvedPendingValidation : copy.toasts.resolvedPendingValidation);
       emitNotificationsUpdated();
       await loadDetail();
       if (resolveAfterReplyRef.current) {

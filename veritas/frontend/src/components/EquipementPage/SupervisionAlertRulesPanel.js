@@ -15,9 +15,9 @@ import {
 import { getSupervisionAlertRulesCopy } from "./supervisionAlertRulesPanelI18n";
 import styles from "./SupervisionAlertRulesPanel.module.css";
 
-function Toggle({ checked, onChange, disabled, label }) {
+function Toggle({ checked, onChange, disabled, label, onClick }) {
   return (
-    <label className={styles.toggle}>
+    <label className={styles.toggle} onClick={onClick}>
       <input
         type="checkbox"
         className={styles.toggleInput}
@@ -143,10 +143,6 @@ export default function MonitoringAlertRulesPanel({
     []
   );
 
-  const handleResetAll = useCallback(() => {
-    setDraft(buildDefaultMonitoringAlertRules());
-  }, []);
-
   const handleSave = async () => {
     if (!isAdmin) return;
     setSaving(true);
@@ -181,18 +177,7 @@ export default function MonitoringAlertRulesPanel({
           </h2>
           <p className={styles.subtitle}>{copy.subtitle}</p>
         </div>
-        {isAdmin ? (
-          <div className={styles.headerActions}>
-            <button type="button" className={styles.btnGhost} onClick={handleResetAll} disabled={saving}>
-              {copy.resetAll}
-            </button>
-            <button type="button" className={styles.btnPrimary} onClick={handleSave} disabled={saving || !isDirty}>
-              {saving ? copy.saving : copy.save}
-            </button>
-          </div>
-        ) : (
-          <p className={styles.readOnlyNote}>{copy.readOnly}</p>
-        )}
+        {!isAdmin ? <p className={styles.readOnlyNote}>{copy.readOnly}</p> : null}
       </header>
 
       <div className={styles.layout}>
@@ -255,10 +240,25 @@ export default function MonitoringAlertRulesPanel({
               const enabled = isRuleEnabled(rule);
               const parameters = rule.parameters || {};
               const paramFields = Array.isArray(meta.parameters) ? meta.parameters : [];
+              const canToggle = Boolean(isAdmin) && !saving;
+              const toggleCriterion = () => {
+                if (!canToggle) return;
+                handleToggle(activeFamily.key, criterion.key, !enabled);
+              };
               return (
                 <article
                   key={criterion.key}
-                  className={`${styles.criterionCard} ${enabled ? styles.criterionCardOn : styles.criterionCardOff}`}
+                  className={`${styles.criterionCard} ${enabled ? styles.criterionCardOn : styles.criterionCardOff} ${canToggle ? styles.criterionCardClickable : ""}`}
+                  role={canToggle ? "button" : undefined}
+                  tabIndex={canToggle ? 0 : undefined}
+                  aria-pressed={canToggle ? enabled : undefined}
+                  onClick={canToggle ? toggleCriterion : undefined}
+                  onKeyDown={canToggle ? event => {
+                    if (event.key === "Enter" || event.key === " ") {
+                      event.preventDefault();
+                      toggleCriterion();
+                    }
+                  } : undefined}
                 >
                   <div className={styles.criterionTop}>
                     <div className={styles.criterionText}>
@@ -272,12 +272,13 @@ export default function MonitoringAlertRulesPanel({
                     <Toggle
                       checked={enabled}
                       onChange={value => handleToggle(activeFamily.key, criterion.key, value)}
-                      disabled={!isAdmin || saving}
+                      disabled={!canToggle}
                       label={enabled ? copy.toggleOn : copy.toggleOff}
+                      onClick={event => event.stopPropagation()}
                     />
                   </div>
                   {enabled && paramFields.length > 0 ? (
-                    <div className={styles.paramGrid}>
+                    <div className={styles.paramGrid} onClick={event => event.stopPropagation()} onKeyDown={event => event.stopPropagation()}>
                       {paramFields.map(field => (
                         <label key={field.key} className={styles.paramField}>
                           <span className={styles.paramLabel}>
