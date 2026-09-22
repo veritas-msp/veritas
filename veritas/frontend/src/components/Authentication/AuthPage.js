@@ -347,8 +347,8 @@ export default function AuthPage() {
             </ul>
             {leftHtml ? <div className={styles.loginHtmlBlock} style={canvasElementStyle(canvasPos.html)} dangerouslySetInnerHTML={{ __html: leftHtml }} /> : null}
           </> : <>
-            {renderLeftHtml("before_headline")}
             <div className={styles.leftTop}>
+              {renderLeftHtml("before_headline")}
               <div className={styles.brand}>
                 {activeBranding.logoUrl ? <img src={activeBranding.logoUrl} alt="" className={`${styles.brandLogo}${activeBranding.logoTransparent ? ` ${styles.brandLogoFramed}` : ""}`} style={activeBranding.logoTransparent ? {
               background: activeBranding.logoBgColor
@@ -360,19 +360,25 @@ export default function AuthPage() {
               <p className={styles.leftSub}>{activeBranding.sub}</p>
               {renderLeftHtml("after_sub")}
             </div>
-            <ul className={styles.leftFeatures}>
-              {activeBranding.features.map(f => <li key={f} className={styles.leftFeature}>
-                  <span className={styles.leftFeatureDot} />
-                  {f}
-                </li>)}
-            </ul>
-            {renderLeftHtml("after_features")}
-            {renderLeftHtml("bottom")}
+            <div className={styles.leftBottom}>
+              {activeBranding.features?.length > 0 ? <ul className={styles.leftFeatures}>
+                  {activeBranding.features.map(f => <li key={f} className={styles.leftFeature}>
+                      <span className={styles.leftFeatureDot} />
+                      {f}
+                    </li>)}
+                </ul> : null}
+              {renderLeftHtml("after_features")}
+              {renderLeftHtml("bottom")}
+              <div className={styles.leftFooterMeta}>
+                {apiVersion && <span className={styles.leftVersionMeta}>API v{apiVersion}</span>}
+                <EditionBadge variant="dark" />
+              </div>
+            </div>
           </>}
-        <div className={styles.leftFooterMeta}>
+        {isCanvasLayout ? <div className={styles.leftFooterMeta}>
           {apiVersion && <span className={styles.leftVersionMeta}>API v{apiVersion}</span>}
           <EditionBadge variant="dark" />
-        </div>
+        </div> : null}
       </aside>
 
       {}

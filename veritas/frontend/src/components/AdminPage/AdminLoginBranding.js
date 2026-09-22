@@ -231,26 +231,30 @@ function LoginPreview({ side, form, copy, onCanvasPosChange }) {
                 </li>), "ul")}
               {htmlSafe ? canvasItem("html", leftRef, s.previewHtml, <span dangerouslySetInnerHTML={{ __html: htmlSafe }} />) : null}
             </> : <>
-              {form.htmlPosition === "before_headline" ? htmlBlock : null}
-              <div className={s.previewBrand} style={form.logoAlign === "center" ? { justifyContent: "center" } : undefined}>
-                {logoUrl ? <img src={logoUrl} alt="" className={s.previewLogo} style={form.logoTransparent ? { background: logoBg } : { background: "transparent" }} /> : <div className={s.previewBrandIcon} style={{ background: accent }}>V</div>}
-                <span className={s.previewBrandName}>{brandName || "\u00A0"}</span>
+              <div className={s.previewTop}>
+                {form.htmlPosition === "before_headline" ? htmlBlock : null}
+                <div className={s.previewBrand} style={form.logoAlign === "center" ? { justifyContent: "center" } : undefined}>
+                  {logoUrl ? <img src={logoUrl} alt="" className={s.previewLogo} style={form.logoTransparent ? { background: logoBg } : { background: "transparent" }} /> : <div className={s.previewBrandIcon} style={{ background: accent }}>V</div>}
+                  <span className={s.previewBrandName}>{brandName || "\u00A0"}</span>
+                </div>
+                <h3 className={s.previewHeadline}>
+                  {headline1}
+                  {headline1 || headline2 ? <br /> : null}
+                  {headline2}
+                </h3>
+                <p className={s.previewSub}>{sub}</p>
+                {form.htmlPosition === "after_sub" ? htmlBlock : null}
               </div>
-              <h3 className={s.previewHeadline}>
-                {headline1}
-                {headline1 || headline2 ? <br /> : null}
-                {headline2}
-              </h3>
-              <p className={s.previewSub}>{sub}</p>
-              {form.htmlPosition === "after_sub" ? htmlBlock : null}
-              <ul className={s.previewFeatures} style={form.contentAlign === "center" ? { alignItems: "center" } : undefined}>
-                {features.map(item => <li key={item}>
-                    <span style={{ background: accent }} />
-                    {item}
-                  </li>)}
-              </ul>
-              {form.htmlPosition === "after_features" || !form.htmlPosition ? htmlBlock : null}
-              {form.htmlPosition === "bottom" ? htmlBlock : null}
+              <div className={`${s.previewBottom}${form.contentValign === "center" || form.contentValign === "bottom" ? ` ${s.previewBottomInline}` : ""}`}>
+                {features.length > 0 ? <ul className={s.previewFeatures} style={form.contentAlign === "center" ? { alignItems: "center" } : undefined}>
+                    {features.map(item => <li key={item}>
+                        <span style={{ background: accent }} />
+                        {item}
+                      </li>)}
+                  </ul> : null}
+                {form.htmlPosition === "after_features" || !form.htmlPosition ? htmlBlock : null}
+                {form.htmlPosition === "bottom" ? htmlBlock : null}
+              </div>
             </>}
         </aside>
         <div ref={rightRef} className={`${s.previewRight}${isCanvas ? ` ${s.previewRightCanvas}` : ""}`} style={rightPanelStyle}>
@@ -295,7 +299,7 @@ export default function AdminLoginBranding({ isCommunity = false }) {
   const [uploading, setUploading] = useState(null);
   const FALLBACK_OPTIONS = {
     align: { left: "Left", center: "Center" },
-    valign: { top: "Top", center: "Middle", bottom: "Bottom" },
+    valign: { top: "Top · footer bottom", center: "Middle", bottom: "Bottom" },
     fontFamily: {
       default: "System",
       geometric: "Geometric",
@@ -310,7 +314,7 @@ export default function AdminLoginBranding({ isCommunity = false }) {
     htmlPosition: {
       before_headline: "Before headline",
       after_sub: "After subtitle",
-      after_features: "After highlights",
+      after_features: "With highlights (bottom)",
       bottom: "Bottom of panel"
     },
     layoutMode: { flow: "Flow (auto)", canvas: "Canvas (pixel)" },
@@ -510,7 +514,7 @@ export default function AdminLoginBranding({ isCommunity = false }) {
             </FormGrid>
             {form.layoutMode !== "canvas" ? <FormGrid cols={3}>
               <SelectField label={copy.contentAlignLabel} value={form.contentAlign} onChange={v => setField("contentAlign", v)} options={LOGIN_TYPO_OPTIONS.contentAlign} optionLabels={opt.align} />
-              <SelectField label={copy.contentValignLabel} value={form.contentValign} onChange={v => setField("contentValign", v)} options={LOGIN_TYPO_OPTIONS.contentValign} optionLabels={opt.valign} />
+              <SelectField label={copy.contentValignLabel} hint={copy.contentValignHint} value={form.contentValign} onChange={v => setField("contentValign", v)} options={LOGIN_TYPO_OPTIONS.contentValign} optionLabels={opt.valign} />
               <SelectField label={copy.logoAlignLabel} value={form.logoAlign} onChange={v => setField("logoAlign", v)} options={LOGIN_TYPO_OPTIONS.logoAlign} optionLabels={opt.align} />
             </FormGrid> : null}
           </CollapsibleSection>

@@ -5,6 +5,14 @@
  */
 export const PATCH_NOTES = [
   {
+    version: "1.0.35",
+    date: "2026-09-22",
+    highlights: [
+      "Page de connexion : en mode Flux, logo/titre en haut et points forts + HTML collés en bas du panneau gauche.",
+      "Admin → Page de connexion : aperçu et libellés mis à jour pour ce layout « footer en bas »."
+    ]
+  },
+  {
     version: "1.0.34",
     date: "2026-09-22",
     highlights: [

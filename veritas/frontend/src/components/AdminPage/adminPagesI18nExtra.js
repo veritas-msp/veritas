@@ -193,6 +193,7 @@ const EXTRA = {
       canvasReset: "Réinitialiser les positions",
       contentAlignLabel: "Alignement horizontal",
       contentValignLabel: "Alignement vertical",
+      contentValignHint: "Haut : logo et titre en haut, points forts + HTML collés en bas du panneau.",
       logoAlignLabel: "Position du logo",
       typoTitle: "Typographie",
       typoDescription: "Police, tailles et graisses des textes du panneau gauche.",
@@ -208,7 +209,7 @@ const EXTRA = {
       htmlTitle: "Bloc HTML",
       htmlDescription: "Insérez du HTML (boutons de téléchargement, liens, etc.). Scripts et iframes sont bloqués.",
       htmlPositionLabel: "Position du HTML (panneau gauche)",
-      htmlPositionHint: "Où afficher le bloc HTML par rapport au titre, sous-titre et points forts.",
+      htmlPositionHint: "Pour coller le bouton HTML en bas avec les points forts, choisissez « Avec les points forts » ou « En bas du panneau ».",
       htmlBlockLabel: "HTML · panneau gauche",
       htmlBlockHint: "Balises autorisées : a, p, div, strong, ul/li, img… Ex. bouton : <a class=\"login-html-btn\" href=\"https://…/app.exe\">Télécharger</a>",
       htmlBlockPlaceholder: "<a class=\"login-html-btn\" href=\"https://exemple.com/agent.exe\" download>Télécharger l'agent</a>",
@@ -217,7 +218,7 @@ const EXTRA = {
       formHtmlPlaceholder: "<p>Besoin d'aide ? <a href=\"mailto:support@exemple.com\">Contacter le support</a></p>",
       options: {
         align: { left: "Gauche", center: "Centré" },
-        valign: { top: "Haut", center: "Milieu", bottom: "Bas" },
+        valign: { top: "Haut · footer en bas", center: "Milieu", bottom: "Bas" },
         fontFamily: {
           default: "Système",
           geometric: "Géométrique",
@@ -232,7 +233,7 @@ const EXTRA = {
         htmlPosition: {
           before_headline: "Avant le titre",
           after_sub: "Après le sous-titre",
-          after_features: "Après les points forts",
+          after_features: "Avec les points forts (bas)",
           bottom: "En bas du panneau"
         },
         layoutMode: { flow: "Flux (auto)", canvas: "Canvas (libre)" },
@@ -511,6 +512,7 @@ const EXTRA = {
       canvasReset: "Reset positions",
       contentAlignLabel: "Horizontal alignment",
       contentValignLabel: "Vertical alignment",
+      contentValignHint: "Top: logo and title at the top, highlights + HTML pinned to the bottom of the panel.",
       logoAlignLabel: "Logo position",
       typoTitle: "Typography",
       typoDescription: "Font family, sizes and weights for left-panel texts.",
@@ -526,7 +528,7 @@ const EXTRA = {
       htmlTitle: "HTML block",
       htmlDescription: "Insert HTML (download buttons, links, etc.). Scripts and iframes are blocked.",
       htmlPositionLabel: "HTML position (left panel)",
-      htmlPositionHint: "Where to show the HTML block relative to headline, subtitle and highlights.",
+      htmlPositionHint: "To pin the HTML button at the bottom with highlights, choose “With highlights” or “Bottom of panel”.",
       htmlBlockLabel: "HTML · left panel",
       htmlBlockHint: "Allowed tags: a, p, div, strong, ul/li, img… Example: <a class=\"login-html-btn\" href=\"https://…/app.exe\">Download</a>",
       htmlBlockPlaceholder: "<a class=\"login-html-btn\" href=\"https://example.com/agent.exe\" download>Download agent</a>",
@@ -535,7 +537,7 @@ const EXTRA = {
       formHtmlPlaceholder: "<p>Need help? <a href=\"mailto:support@example.com\">Contact support</a></p>",
       options: {
         align: { left: "Left", center: "Center" },
-        valign: { top: "Top", center: "Middle", bottom: "Bottom" },
+        valign: { top: "Top · footer bottom", center: "Middle", bottom: "Bottom" },
         fontFamily: {
           default: "System",
           geometric: "Geometric",
@@ -550,7 +552,7 @@ const EXTRA = {
         htmlPosition: {
           before_headline: "Before headline",
           after_sub: "After subtitle",
-          after_features: "After highlights",
+          after_features: "With highlights (bottom)",
           bottom: "Bottom of panel"
         },
         layoutMode: { flow: "Flow (auto)", canvas: "Canvas (free)" },

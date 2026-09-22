@@ -308,6 +308,26 @@
   flex-direction: column;
   gap: 10px;
   font-family: inherit;
+  min-height: 280px;
+}
+
+.previewTop {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 100%;
+}
+
+.previewBottom {
+  margin-top: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 100%;
+}
+
+.previewBottomInline {
+  margin-top: 0;
 }
 
 .previewBrand {

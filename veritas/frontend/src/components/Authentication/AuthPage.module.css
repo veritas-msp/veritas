@@ -15,7 +15,7 @@
   background: linear-gradient(160deg, #0f1c2e 0%, #162641 60%, #1a3060 100%);
   display: flex;
   flex-direction: column;
-  justify-content: space-between;
+  justify-content: flex-start;
   padding: 48px 40px;
   position: relative;
   overflow: hidden;
@@ -83,7 +83,26 @@
   z-index: 2;
 }
 
-.leftTop { position: relative; z-index: 1; }
+.leftTop {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+}
+
+.leftBottom {
+  margin-top: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  width: 100%;
+  position: relative;
+  z-index: 1;
+}
+
+.leftValignCenter .leftBottom,
+.leftValignBottom .leftBottom {
+  margin-top: 0;
+}
 
 .brand {
   display: flex;
@@ -266,13 +285,17 @@
 
 .leftFooterMeta {
   margin: 0;
-  padding-top: 28px;
+  padding-top: 4px;
   display: flex;
   align-items: center;
   gap: 10px;
   flex-wrap: wrap;
   position: relative;
   z-index: 1;
+}
+
+.leftCanvas .leftFooterMeta {
+  padding-top: 0;
 }
 
 .leftVersionMeta {
