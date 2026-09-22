@@ -5,6 +5,14 @@
  */
 export const PATCH_NOTES = [
   {
+    version: "1.0.34",
+    date: "2026-09-22",
+    highlights: [
+      "Centre de supervision : les règles d’alerte se sauvegardent correctement et sont communes à tous les utilisateurs.",
+      "Correctif d’affichage du toggle TLS dans le modal de lien UniFi (entreprise)."
+    ]
+  },
+  {
     version: "1.0.33",
     date: "2026-09-21",
     highlights: [

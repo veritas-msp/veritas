@@ -459,18 +459,22 @@ export default function UnifiSiteLinkModal({ open, clientId, onClose, onSaved })
             autoComplete="off"
           />
         </div>
-        <label className={formStyles.switchWrap} style={{ alignSelf: "flex-start" }}>
-          <input
-            type="checkbox"
-            className={formStyles.switchInput}
-            checked={dedicatedForm.rejectUnauthorized}
-            onChange={e => setDedicatedForm(f => ({ ...f, rejectUnauthorized: e.target.checked }))}
-            disabled={saving || testing}
-          />
-          <span className={formStyles.switchTrack} aria-hidden>
-            <span className={formStyles.switchThumb} />
+        <label className={formStyles.slaToggle} style={{ marginBottom: 0, alignSelf: "stretch" }}>
+          <span className={formStyles.slaToggleLabel}>{copy.rejectTls}</span>
+          <span className={formStyles.switchWrap}>
+            <input
+              type="checkbox"
+              className={formStyles.switchInput}
+              checked={dedicatedForm.rejectUnauthorized}
+              onChange={e => setDedicatedForm(f => ({ ...f, rejectUnauthorized: e.target.checked }))}
+              disabled={saving || testing}
+              role="switch"
+              aria-checked={dedicatedForm.rejectUnauthorized}
+            />
+            <span className={formStyles.switchTrack} aria-hidden>
+              <span className={formStyles.switchThumb} />
+            </span>
           </span>
-          <span className={formStyles.sectionDesc} style={{ margin: 0 }}>{copy.rejectTls}</span>
         </label>
       </div>
     </>

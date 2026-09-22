@@ -1,5 +1,6 @@
 import { pool } from "../database/db.js";
 import { resolveEquipmentFamilyKey } from "./equipmentMonitoringAlerts.js";
+import { ensureSupervisionAlertRulesSchema } from "../services/ensureSupervisionAlertRulesSchema.js";
 const SINGLETON_ID = 1;
 const SEVERITIES = new Set(["low", "normal", "high", "urgent"]);
 export const SUPERVISION_ALERT_CRITERIA = [{
@@ -373,6 +374,13 @@ export async function getSupervisionAlertRules({
   if (!fresh && rulesCache && Date.now() - rulesCacheAt < CACHE_TTL_MS) {
     return rulesCache;
   }
+  const ready = await ensureSupervisionAlertRulesSchema();
+  if (!ready) {
+    const defaults = buildDefaultSupervisionAlertRules();
+    rulesCache = defaults;
+    rulesCacheAt = Date.now();
+    return defaults;
+  }
   const result = await pool.query(`SELECT data FROM v_b_supervision_alert_rules_config WHERE id = $1 LIMIT 1`, [SINGLETON_ID]);
   let merged = mergeStoredRules(result.rows[0]?.data);
   merged = await ensureNoDataCriterionEnabled(merged);
@@ -381,6 +389,12 @@ export async function getSupervisionAlertRules({
   return merged;
 }
 export async function saveSupervisionAlertRules(rules) {
+  const ready = await ensureSupervisionAlertRulesSchema();
+  if (!ready) {
+    const err = new Error("Supervision alert rules table is missing. Run schema migrations.");
+    err.status = 503;
+    throw err;
+  }
   const merged = mergeStoredRules(rules);
   await pool.query(`INSERT INTO v_b_supervision_alert_rules_config (id, data, updated_at)
      VALUES ($1, $2::jsonb, NOW())

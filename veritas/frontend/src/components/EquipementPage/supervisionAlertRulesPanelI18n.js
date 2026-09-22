@@ -16,7 +16,7 @@ const CRITERION_KEYS = ["monitor_critical", "monitor_warning", "agent_offline", 
 const ALERT_RULES_COPY = {
   fr: {
     title: "Règles d'alerte par périphérique",
-    subtitle: "Choisissez, pour chaque type de périphérique, les situations qui remontent dans le centre de supervision et peuvent créer un ticket (si les alertes sont actives sur l'équipement).",
+    subtitle: "Règles communes à tous les utilisateurs. Choisissez, pour chaque type de périphérique, les situations qui remontent dans le centre de supervision et peuvent créer un ticket (si les alertes sont actives sur l'équipement).",
     readOnly: "Lecture seule · réservé aux administrateurs.",
     resetAll: "Tout réinitialiser",
     save: "Enregistrer",
@@ -104,7 +104,7 @@ const ALERT_RULES_COPY = {
   },
   en: {
     title: "Alert rules by device type",
-    subtitle: "For each device type, choose which situations appear in the supervision center and may create a ticket (when alerts are enabled on the device).",
+    subtitle: "Shared rules for every user. For each device type, choose which situations appear in the supervision center and may create a ticket (when alerts are enabled on the device).",
     readOnly: "Read-only · administrators only.",
     resetAll: "Reset all",
     save: "Save",

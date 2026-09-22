@@ -69,6 +69,20 @@ export async function getProfilePermissions(profileName) {
       if (preset && !hasAnyViewPermission(perms)) {
         perms = normalizeGrantedSet(preset);
         persistProfileMatrix(name, perms).catch(err => console.warn("[permissions] Heal preset failed:", err.message));
+      } else if (preset) {
+        // New catalog keys absent from an older matrix → inherit from preset (do not override explicit denies).
+        let changed = false;
+        const knownKeys = new Set(rows.map(r => r.permission_key));
+        for (const key of preset) {
+          if (!knownKeys.has(key) && !perms.has(key)) {
+            perms.add(key);
+            changed = true;
+          }
+        }
+        if (changed) {
+          perms = normalizeGrantedSet(perms);
+          persistProfileMatrix(name, perms).catch(err => console.warn("[permissions] Heal new keys failed:", err.message));
+        }
       }
     }
   } catch (err) {

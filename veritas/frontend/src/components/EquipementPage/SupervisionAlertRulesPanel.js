@@ -159,6 +159,7 @@ export default function MonitoringAlertRulesPanel({
       setDraft(saved);
       toast.success(copy.toasts.saved);
     } catch (err) {
+      console.error("[supervision-alert-rules] save failed:", err);
       toast.error(err.message || copy.toasts.saveFailed);
     } finally {
       setSaving(false);

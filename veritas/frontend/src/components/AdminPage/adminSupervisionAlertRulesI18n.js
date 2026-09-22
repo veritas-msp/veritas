@@ -3,12 +3,12 @@ import { createLocaleGetter } from "../../i18n/translate";
 const COPY = {
   fr: {
     title: "Règles d’alerte par périphérique",
-    subtitle: "Critères d’alertes natives Veritas, organisés par type d’équipement",
+    subtitle: "Règles communes à tous les utilisateurs · critères d’alertes natives Veritas par type d’équipement",
     loading: "Chargement des règles…"
   },
   en: {
     title: "Alert rules by device type",
-    subtitle: "Native Veritas alert criteria, organized by device type",
+    subtitle: "Shared rules for every user · native Veritas alert criteria by device type",
     loading: "Loading rules…"
   },
   de: {

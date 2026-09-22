@@ -14,6 +14,7 @@ import { ensureTicketActivitySchema } from "./ensureTicketActivitySchema.js";
 import { ensureTicketValidationRequestsSchema } from "./ensureTicketValidationRequestsSchema.js";
 import { ensureMonitoringAutomationSchema } from "./ensureMonitoringAutomationSchema.js";
 import { ensureSupervisionAlertsSchema } from "./ensureSupervisionAlertsSchema.js";
+import { ensureSupervisionAlertRulesSchema } from "./ensureSupervisionAlertRulesSchema.js";
 import { ensurePermissionsSchema } from "./ensurePermissionsSchema.js";
 import { ensureSalesTicketCategoriesSchema } from "./ensureSalesTicketCategoriesSchema.js";
 import { ensureContactClientLinksSchema } from "./ensureContactClientLinksSchema.js";
@@ -44,6 +45,7 @@ export async function runPostSetupSchemaMigrations() {
   await ensureTicketValidationRequestsSchema();
   await ensureMonitoringAutomationSchema();
   await ensureSupervisionAlertsSchema();
+  await ensureSupervisionAlertRulesSchema();
   await ensureSalesTicketCategoriesSchema();
   await ensureContactClientLinksSchema();
   await ensureContactSiteLinksSchema();
@@ -67,4 +69,5 @@ export async function runPostSetupSchemaMigrations() {
   await ensureKnowledgeArticlesSchema();
   await ensurePrestatairesSchema();
   await ensureEntitySubscriptionsSchema();
+  await ensureSupervisionAlertRulesSchema();
 }
