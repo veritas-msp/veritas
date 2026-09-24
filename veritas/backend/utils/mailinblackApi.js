@@ -6,6 +6,10 @@ const PARTNER_API_GATEWAY = 'https://partner.mailinblack.com/api';
 const LEGACY_MAILINBLACK_API_URL = 'https://api.mailinblack.com';
 function normalizeApiUrl(apiUrl) {
   let raw = (apiUrl || DEFAULT_MAILINBLACK_API_URL).trim().replace(/\/+$/, '');
+  const hostMatch = raw.match(/^https?:\/\/(mibc-[a-z0-9-]+)\.mailinblack\.com(?:\/|$)/i);
+  if (hostMatch) {
+    return `https://app.mailinblack.com/${hostMatch[1].toLowerCase()}`;
+  }
   const instanceMatch = raw.match(/^(https?:\/\/[^/]+\/mibc-[a-z0-9-]+)/i);
   if (instanceMatch) return instanceMatch[1];
   raw = raw.replace(/\/auth\/api(\/v[\d.]+)?(\/.*)?$/i, '');
@@ -148,13 +152,13 @@ async function postMailinblackAuth(authBase, path, body) {
 }
 function buildAuthFailureMessage(lastStatus, lastBody, lastUrl = '') {
   if (lastStatus === 401) {
-    return "Identifiants rejetés (401). Une clé créée dans le tenant client (app.mailinblack.com/mibc-fr-XX) " + "ne fonctionne pas sur partner.mailinblack.com. Utilisez l'URL d'instance, le Client ID et l'Auth key de ce tenant.";
+    return "Identifiants rejetés (401). Une clé créée dans le tenant client (app.mailinblack.com/mibc-XX-YY) " + "ne fonctionne pas sur partner.mailinblack.com. Utilisez l'URL d'instance, le Client ID et l'Auth key de ce tenant.";
   }
   if (lastStatus === 405) {
-    return "HTTP 405 — Mailinblack a refusé la méthode (portail web au lieu de l'API). " + "Pour un tenant client, utilisez https://app.mailinblack.com/mibc-fr-XX (sans /admin/integration). " + "Pour une clé partenaire, utilisez https://partner.mailinblack.com.";
+    return "HTTP 405 — Mailinblack a refusé la méthode (portail web au lieu de l'API). " + "Pour un tenant client, utilisez https://app.mailinblack.com/mibc-XX-YY (sans /admin/integration). " + "Pour une clé partenaire, utilisez https://partner.mailinblack.com.";
   }
   if (looksLikeHtmlPayload(lastBody)) {
-    return "L'URL API renvoie le portail web au lieu de l'API JSON. Collez la racine d'instance (https://app.mailinblack.com/mibc-fr-XX) ou https://partner.mailinblack.com.";
+    return "L'URL API renvoie le portail web au lieu de l'API JSON. Collez la racine d'instance (https://app.mailinblack.com/mibc-XX-YY) ou https://partner.mailinblack.com.";
   }
   if (lastStatus) {
     const base = extractErrorMessage(lastBody, lastStatus);
@@ -299,7 +303,7 @@ export async function mailinblackV2Request(apiUrl, session, module, path, {
       const parsed = await parseResponseBody(response);
       const contentType = response.headers?.get?.('content-type') || '';
       if (looksLikeHtmlPayload(parsed, contentType)) {
-        const err = new Error("L'URL API renvoie le portail web au lieu de l'API JSON. Utilisez https://app.mailinblack.com/mibc-fr-XX ou https://partner.mailinblack.com.");
+        const err = new Error("L'URL API renvoie le portail web au lieu de l'API JSON. Utilisez https://app.mailinblack.com/mibc-XX-YY ou https://partner.mailinblack.com.");
         err.status = response.status || 404;
         err.body = parsed;
         err.requestUrl = url;

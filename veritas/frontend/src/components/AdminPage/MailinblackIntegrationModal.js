@@ -6,10 +6,12 @@ import { testGlobalMailinblackIntegration } from "../../api/mailinblackIntegrati
 import { showError } from "../../utils/toast";
 import { useAppLocale } from "../../hooks/useAppGeneralSettings";
 import { getMailinblackIntegrationModalCopy } from "./adminIntegrationModalsI18n";
+import { MAILINBLACK_PARTNER_API_URL, normalizeMailinblackApiUrl } from "../../utils/mailinblackUrl";
+import MailinblackApiUrlField from "../Mailinblack/MailinblackApiUrlField";
 import formStyles from "../EnterprisesPage/EnterpriseFormModal.module.css";
 import styles from "./BitdefenderIntegrationModal.module.css";
-const DEFAULT_API_URL = "https://partner.mailinblack.com";
-const PARTNER_PORTAL_URL = "https://partner.mailinblack.com";
+const DEFAULT_API_URL = MAILINBLACK_PARTNER_API_URL;
+const PARTNER_PORTAL_URL = MAILINBLACK_PARTNER_API_URL;
 const SECTION_ICONS = {
   connection: "mdi:key-variant",
   guide: "mdi:book-open-outline",
@@ -135,7 +137,7 @@ export default function MailinblackIntegrationModal({
     }
   }, [open]);
   const resolveCredentials = async () => {
-    const url = (apiUrl || "").trim() || DEFAULT_API_URL;
+    const url = normalizeMailinblackApiUrl(apiUrl) || (apiUrl || "").trim() || DEFAULT_API_URL;
     const key = (apiKey || "").trim();
     const clientId = (authClientId || "").trim();
     if (!clientId) {
@@ -216,13 +218,27 @@ export default function MailinblackIntegrationModal({
       </div>
 
       <div className={formStyles.fieldStack}>
-        <div className={formStyles.field}>
-          <label className={formStyles.label} htmlFor="mib-api-url">
-            {copy.apiUrl}
-          </label>
-          <input id="mib-api-url" type="url" className={formStyles.input} value={apiUrl || ""} placeholder={DEFAULT_API_URL} onChange={e => onApiUrlChange(e.target.value)} disabled={saving || testing} autoComplete="off" />
-          <p className={formStyles.sectionDesc}>{copy.apiUrlHint}</p>
-        </div>
+        <MailinblackApiUrlField
+          id="mib-api-url"
+          variant="admin"
+          value={apiUrl || ""}
+          onChange={onApiUrlChange}
+          disabled={saving || testing}
+          labels={{
+            urlKindLabel: copy.urlKindLabel,
+            partnerOption: copy.partnerOption,
+            instanceOption: copy.instanceOption,
+            apiUrlLabel: copy.apiUrl,
+            apiUrlHint: copy.apiUrlHint,
+            apiUrlPlaceholder: copy.apiUrlPlaceholder,
+            regionLabel: copy.regionLabel,
+            numberLabel: copy.numberLabel,
+            numberPlaceholder: copy.numberPlaceholder,
+            slugLabel: copy.slugLabel,
+            slugPlaceholder: copy.slugPlaceholder,
+            regions: copy.regions
+          }}
+        />
 
         <div className={formStyles.field}>
           <label className={formStyles.label} htmlFor="mib-client-id">

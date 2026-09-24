@@ -21,21 +21,15 @@ import formStyles from "./EnterpriseFormModal.module.css";
 import avStyles from "./AntivirusConfigModal.module.css";
 import asStyles from "./AntispamConfigModal.module.css";
 import MailinblackApiGuide from "./integrationGuides/MailinblackApiGuide";
+import MailinblackApiUrlField from "../Mailinblack/MailinblackApiUrlField";
 import integrationStyles from "../AdminPage/BitdefenderIntegrationModal.module.css";
 import SolutionProviderIcon from "./SolutionProviderIcon";
+import { normalizeMailinblackApiUrl } from "../../utils/mailinblackUrl";
 const SOLUTION_NAME = "Mailinblack Protect";
-const DEFAULT_MAILINBLACK_DEDICATED_API_URL = "https://app.mailinblack.com/mibc-fr-08";
 const STORED_AUTH_KEY_MASK = "••••••••••••••••";
-function normalizeMailinblackApiUrl(url) {
-  if (!url?.trim()) return DEFAULT_MAILINBLACK_DEDICATED_API_URL;
-  const raw = url.trim().replace(/\/+$/, "");
-  const instanceMatch = raw.match(/^(https?:\/\/[^/]+\/mibc-[a-z0-9-]+)/i);
-  if (instanceMatch) return instanceMatch[1];
-  return raw.replace(/\/(admin|protect|auth)(\/.*)?$/i, "");
-}
 function createEmptyDedicatedForm() {
   return {
-    apiUrl: DEFAULT_MAILINBLACK_DEDICATED_API_URL,
+    apiUrl: "",
     apiKey: "",
     authClientId: ""
   };
@@ -205,7 +199,7 @@ export default function AntispamConfigModal({
       setHasStoredAuthKey(false);
       setSelectedDedicatedTenantId(solution.mailinblackTenantId || null);
       setDedicatedForm({
-        apiUrl: DEFAULT_MAILINBLACK_DEDICATED_API_URL,
+        apiUrl: "",
         apiKey: "",
         authClientId: solution.customerId || solution.syncData?.customer?.id || ""
       });
@@ -292,7 +286,7 @@ export default function AntispamConfigModal({
         await testClientMailinblackTenant(client.id, selectedDedicatedTenantId);
       } else {
         const result = await testMailinblackCredentials({
-          apiUrl: dedicatedForm.apiUrl,
+          apiUrl: normalizeMailinblackApiUrl(dedicatedForm.apiUrl) || dedicatedForm.apiUrl,
           authKey: dedicatedForm.apiKey,
           authClientId: dedicatedForm.authClientId
         });
@@ -313,7 +307,7 @@ export default function AntispamConfigModal({
     }
   };
   const handleSaveDedicatedSolution = async () => {
-    const apiUrl = dedicatedForm.apiUrl?.trim();
+    const apiUrl = normalizeMailinblackApiUrl(dedicatedForm.apiUrl) || dedicatedForm.apiUrl?.trim();
     const resolvedAuthKey = resolveAuthKeyForSubmit(dedicatedForm.apiKey, hasStoredAuthKey);
     if (!apiUrl) {
       showError(copy.toasts.apiUrlRequired);
@@ -682,15 +676,26 @@ export default function AntispamConfigModal({
       </div>
 
       <form className={avStyles.dedicatedTenantForm} autoComplete="off" onSubmit={e => e.preventDefault()}>
-        <div className={formStyles.field}>
-          <label className={formStyles.label} htmlFor="tenant-api-url">
-            {copy.dedicated.apiUrlLabel}
-          </label>
-          <input id="tenant-api-url" name="mailinblack-tenant-api-url" type="text" inputMode="url" className={formStyles.input} value={dedicatedForm.apiUrl} onChange={e => setDedicatedForm({
-          ...dedicatedForm,
-          apiUrl: e.target.value
-        })} placeholder={DEFAULT_MAILINBLACK_DEDICATED_API_URL} autoComplete="off" data-lpignore="true" data-1p-ignore />
-        </div>
+        <MailinblackApiUrlField
+          id="tenant-api-url"
+          variant="dedicated"
+          value={dedicatedForm.apiUrl}
+          onChange={apiUrl => setDedicatedForm({
+            ...dedicatedForm,
+            apiUrl
+          })}
+          labels={{
+            apiUrlLabel: copy.dedicated.apiUrlLabel,
+            apiUrlHint: copy.dedicated.apiUrlHint,
+            apiUrlPlaceholder: copy.dedicated.apiUrlPlaceholder,
+            regionLabel: copy.dedicated.regionLabel,
+            numberLabel: copy.dedicated.numberLabel,
+            numberPlaceholder: copy.dedicated.numberPlaceholder,
+            slugLabel: copy.dedicated.slugLabel,
+            slugPlaceholder: copy.dedicated.slugPlaceholder,
+            regions: copy.dedicated.regions
+          }}
+        />
         <div className={formStyles.field}>
           <label className={formStyles.label} htmlFor="tenant-client-id">
             {copy.dedicated.clientIdLabel}

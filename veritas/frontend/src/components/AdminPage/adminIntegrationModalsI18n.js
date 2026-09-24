@@ -557,7 +557,22 @@ const MAILINBLACK = {
       }
     },
     connectionDesc: "Renseignez le Client ID et l'Auth key fournis à la création de la clé API Mailinblack.",
-    apiUrlHint: "Clé créée dans un tenant client : https://app.mailinblack.com/mibc-fr-XX. Clé partenaire : https://partner.mailinblack.com.",
+    urlKindLabel: "Type d'URL",
+    partnerOption: "Portail partenaire",
+    instanceOption: "Instance dédiée",
+    apiUrl: "URL API",
+    apiUrlHint: "Partenaire : partner.mailinblack.com. Tenant dédié : choisissez la région (fr, en…) et le n° d'instance (ex. mibc-en-03), ou collez l'URL complète.",
+    apiUrlPlaceholder: "https://app.mailinblack.com/mibc-XX-YY",
+    regionLabel: "Région d'instance",
+    numberLabel: "N° d'instance",
+    numberPlaceholder: "08",
+    slugLabel: "Slug d'instance",
+    slugPlaceholder: "mibc-xx-01",
+    regions: [
+      { value: "fr", label: "FR (mibc-fr)" },
+      { value: "en", label: "EN (mibc-en)" },
+      { value: "custom", label: "Autre" }
+    ],
     clientId: "Client ID",
     clientIdPlaceholder: "Client ID affiché à la création de la clé",
     apiKey: "Auth key",
@@ -576,16 +591,16 @@ const MAILINBLACK = {
     testFooterSuccess: "Test module protect/check réussi",
     protectCustomers: "Clients Protect",
     guideTitle: "Obtenir vos identifiants API",
-    guideDesc: "Les clés API Mailinblack (Client ID + Auth key) sont disponibles depuis votre portail partenaire.",
+    guideDesc: "Les clés API Mailinblack (Client ID + Auth key) sont disponibles depuis votre portail partenaire ou le Control Center du tenant.",
     guideSteps: [{
-      title: "Connectez-vous au portail partenaire",
-      desc: "Ouvrez partner.mailinblack.com avec votre compte revendeur MSP."
+      title: "Connectez-vous au portail",
+      desc: "Ouvrez partner.mailinblack.com (revendeur) ou le Control Center du tenant dédié (app.mailinblack.com/mibc-XX-YY)."
     }, {
       title: "Générez une clé API",
       desc: "Parcourez le menu : Espace manager → Intégration → Clés API → Générer une clé API. Choisissez le mode lecture seule et activez Management et Protect. Conservez le Client ID et l'Auth key affichés."
     }, {
       title: "Collez les identifiants dans Veritas",
-      desc: "URL API : https://app.mailinblack.com/mibc-fr-XX pour une clé de tenant client, ou https://partner.mailinblack.com pour une clé partenaire. Renseignez le Client ID et l'Auth key."
+      desc: "Choisissez le type d'URL : partenaire (https://partner.mailinblack.com) ou instance dédiée (région + n°, ex. mibc-fr-08 / mibc-en-03). Renseignez le Client ID et l'Auth key."
     }],
     infoTitle: "Module Protect",
     infoDesc: "Veritas utilise l'API partenaire Mailinblack Protect pour tester la connexion, lister vos clients et synchroniser les statistiques antispam.",
@@ -604,7 +619,22 @@ const MAILINBLACK = {
       }
     },
     connectionDesc: "Enter the Client ID and Auth key shown when creating the Mailinblack API key.",
-    apiUrlHint: "Client-tenant key: https://app.mailinblack.com/mibc-fr-XX. Partner key: https://partner.mailinblack.com.",
+    urlKindLabel: "URL type",
+    partnerOption: "Partner portal",
+    instanceOption: "Dedicated instance",
+    apiUrl: "API URL",
+    apiUrlHint: "Partner: partner.mailinblack.com. Dedicated tenant: pick region (fr, en…) and instance number (e.g. mibc-en-03), or paste the full URL.",
+    apiUrlPlaceholder: "https://app.mailinblack.com/mibc-XX-YY",
+    regionLabel: "Instance region",
+    numberLabel: "Instance number",
+    numberPlaceholder: "08",
+    slugLabel: "Instance slug",
+    slugPlaceholder: "mibc-xx-01",
+    regions: [
+      { value: "fr", label: "FR (mibc-fr)" },
+      { value: "en", label: "EN (mibc-en)" },
+      { value: "custom", label: "Other" }
+    ],
     clientId: "Client ID",
     clientIdPlaceholder: "Client ID shown when the key is created",
     apiKey: "Auth key",
@@ -623,16 +653,16 @@ const MAILINBLACK = {
     testFooterSuccess: "Protect/check module test successful",
     protectCustomers: "Protect customers",
     guideTitle: "Get your API credentials",
-    guideDesc: "Mailinblack API credentials (Client ID + Auth key) are available from your partner portal.",
+    guideDesc: "Mailinblack API credentials (Client ID + Auth key) are available from your partner portal or the tenant Control Center.",
     guideSteps: [{
-      title: "Sign in to the partner portal",
-      desc: "Open partner.mailinblack.com with your MSP reseller account."
+      title: "Sign in to the portal",
+      desc: "Open partner.mailinblack.com (reseller) or the dedicated tenant Control Center (app.mailinblack.com/mibc-XX-YY)."
     }, {
       title: "Generate an API key",
       desc: "Navigate: Manager space → Integration → API keys → Generate API key. Choose read-only mode and enable Management and Protect. Keep both the Client ID and Auth key."
     }, {
       title: "Paste the credentials in Veritas",
-      desc: "API URL: https://partner.mailinblack.com. Enter the Client ID and Auth key, then click Test or Save."
+      desc: "Choose URL type: partner (https://partner.mailinblack.com) or dedicated instance (region + number, e.g. mibc-fr-08 / mibc-en-03). Enter Client ID and Auth key."
     }],
     infoTitle: "Protect module",
     infoDesc: "Veritas uses the Mailinblack Protect partner API to test the connection, list your customers and sync antispam statistics.",
@@ -651,7 +681,22 @@ const MAILINBLACK = {
       }
     },
     connectionDesc: "Geben Sie die Client-ID und den Auth-Key ein, die bei der Erstellung des API-Schlüssels angezeigt werden.",
-    apiUrlHint: "Verwenden Sie https://partner.mailinblack.com (JSON-API unter /api — Veritas ergänzt dies automatisch).",
+    apiUrlHint: "Partner: partner.mailinblack.com. Dedizierter Tenant: Region (fr, en…) und Instanznummer wählen (z. B. mibc-en-03), oder vollständige URL einfügen.",
+    urlKindLabel: "URL-Typ",
+    partnerOption: "Partnerportal",
+    instanceOption: "Dedizierte Instanz",
+    apiUrl: "API-URL",
+    apiUrlPlaceholder: "https://app.mailinblack.com/mibc-XX-YY",
+    regionLabel: "Instanzregion",
+    numberLabel: "Instanznummer",
+    numberPlaceholder: "08",
+    slugLabel: "Instanz-Slug",
+    slugPlaceholder: "mibc-xx-01",
+    regions: [
+      { value: "fr", label: "FR (mibc-fr)" },
+      { value: "en", label: "EN (mibc-en)" },
+      { value: "custom", label: "Andere" }
+    ],
     clientId: "Client-ID",
     clientIdPlaceholder: "Client-ID bei der Schlüsselerstellung",
     apiKey: "Auth-Key",
@@ -698,7 +743,22 @@ const MAILINBLACK = {
       }
     },
     connectionDesc: "Inserite Client ID e Auth key mostrati alla creazione della chiave API Mailinblack.",
-    apiUrlHint: "Usate https://partner.mailinblack.com (API JSON sotto /api — Veritas lo aggiunge automaticamente).",
+    apiUrlHint: "Partner: partner.mailinblack.com. Tenant dedicato: scegliere regione (fr, en…) e n. istanza (es. mibc-en-03), oppure incollare l'URL completa.",
+    urlKindLabel: "Tipo di URL",
+    partnerOption: "Portale partner",
+    instanceOption: "Istanza dedicata",
+    apiUrl: "URL API",
+    apiUrlPlaceholder: "https://app.mailinblack.com/mibc-XX-YY",
+    regionLabel: "Regione istanza",
+    numberLabel: "N. istanza",
+    numberPlaceholder: "08",
+    slugLabel: "Slug istanza",
+    slugPlaceholder: "mibc-xx-01",
+    regions: [
+      { value: "fr", label: "FR (mibc-fr)" },
+      { value: "en", label: "EN (mibc-en)" },
+      { value: "custom", label: "Altro" }
+    ],
     clientId: "Client ID",
     clientIdPlaceholder: "Client ID mostrato alla creazione della chiave",
     apiKey: "Auth key",
@@ -745,7 +805,22 @@ const MAILINBLACK = {
       }
     },
     connectionDesc: "Introduzca el Client ID y la Auth key mostrados al crear la clave API Mailinblack.",
-    apiUrlHint: "Use https://partner.mailinblack.com (la API JSON está bajo /api — Veritas la añade automáticamente).",
+    apiUrlHint: "Partner: partner.mailinblack.com. Tenant dedicado: elija región (fr, en…) y n.º de instancia (p. ej. mibc-en-03), o pegue la URL completa.",
+    urlKindLabel: "Tipo de URL",
+    partnerOption: "Portal partner",
+    instanceOption: "Instancia dedicada",
+    apiUrl: "URL API",
+    apiUrlPlaceholder: "https://app.mailinblack.com/mibc-XX-YY",
+    regionLabel: "Región de instancia",
+    numberLabel: "N.º de instancia",
+    numberPlaceholder: "08",
+    slugLabel: "Slug de instancia",
+    slugPlaceholder: "mibc-xx-01",
+    regions: [
+      { value: "fr", label: "FR (mibc-fr)" },
+      { value: "en", label: "EN (mibc-en)" },
+      { value: "custom", label: "Otro" }
+    ],
     clientId: "Client ID",
     clientIdPlaceholder: "Client ID mostrado al crear la clave",
     apiKey: "Auth key",

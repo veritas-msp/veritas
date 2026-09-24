@@ -5,6 +5,13 @@
  */
 export const PATCH_NOTES = [
   {
+    version: "1.0.37",
+    date: "2026-09-24",
+    highlights: [
+      "Mail in Black : choix de l’URL (portail partenaire ou instance dédiée) avec région et n° d’instance (mibc-fr, mibc-en, autre) — Admin Intégrations et antispam entreprise."
+    ]
+  },
+  {
     version: "1.0.36",
     date: "2026-09-22",
     highlights: [
