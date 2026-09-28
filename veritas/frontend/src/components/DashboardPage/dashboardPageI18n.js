@@ -185,6 +185,7 @@ const DASHBOARD_COPY = {
       backlog90: "Backlog > 90 jours",
       evolutionTitle: "Évolution des tickets",
       volumeByPeriodTitle: "Volume des tickets",
+      volumeTotalLabel: "créés sur la période",
       volumeTabs: {
         day: "Jour",
         week: "Semaine",
@@ -1127,6 +1128,7 @@ const DASHBOARD_COPY = {
       backlog90: "Backlog > 90 days",
       evolutionTitle: "Ticket trend",
       volumeByPeriodTitle: "Ticket volume",
+      volumeTotalLabel: "created in period",
       volumeTabs: {
         day: "Day",
         week: "Week",

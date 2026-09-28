@@ -108,9 +108,10 @@ function collectAntispamExpirationCandidates(item) {
   const customer = item?.syncData?.customer || {};
   const raw = customer.raw && typeof customer.raw === "object" ? customer.raw : {};
   const domains = item?.syncData?.dashboard?.sections?.domains?.items;
-  const domainExpirations = Array.isArray(domains) ? domains.flatMap(domain => [domain?.expiration, domain?.expirationDate, domain?.license?.expirationDate, domain?.license?.expiration, domain?.licence?.expirationDate, domain?.subscription?.expirationDate]) : [];
-  const licenseExpirations = collectAntispamLicenseItems(item).flatMap(license => [license?.expirationDate, license?.expiration, license?.expiryDate, license?.renewalDate, license?.endDate, license?.validUntil]);
-  return [item?.expiration, item?.expirationDate, item?.expirityDate, customer.expiration, customer.expirationDate, raw.expirationDate, raw.expiration, raw.expiryDate, raw.renewalDate, raw.licenseExpiration, raw.licenceExpiration, raw.endDate, raw.validUntil, ...licenseExpirations, ...domainExpirations];
+  const domainExpirations = Array.isArray(domains) ? domains.flatMap(domain => [domain?.expiration, domain?.expirationDate, domain?.license?.expirationDate, domain?.license?.expiration, domain?.license?.endDate, domain?.licence?.expirationDate, domain?.subscription?.expirationDate, domain?.contract?.endDate, domain?.contractEndDate, domain?.dateFin, domain?.validUntil]) : [];
+  const licenseExpirations = collectAntispamLicenseItems(item).flatMap(license => [license?.expirationDate, license?.expiration, license?.expiryDate, license?.renewalDate, license?.endDate, license?.validUntil, license?.contractEndDate, license?.dateFin]);
+  const contract = item?.syncData?.dashboard?.sections?.licenses?.contract || {};
+  return [item?.expiration, item?.expirationDate, item?.expirityDate, customer.expiration, customer.expirationDate, contract.expiration, raw.expirationDate, raw.expiration, raw.expiryDate, raw.renewalDate, raw.licenseExpiration, raw.licenceExpiration, raw.endDate, raw.validUntil, raw.contractEndDate, raw.dateFin, raw.endOfCommitment, ...licenseExpirations, ...domainExpirations];
 }
 function resolveAntispamExpirationValue(item) {
   return pickSoonestExpirationValue(collectAntispamExpirationCandidates(item));
@@ -121,32 +122,45 @@ function resolveAntispamDomainCount(item) {
   const domainItems = dashboard?.sections?.domains?.items;
   return toLicenseNumber(item?.domainesSurveilles ?? item?.domaines ?? item?.domainsCount ?? dashboard?.sections?.domains?.total ?? (Array.isArray(domainItems) ? domainItems.length : null) ?? customer?.domainsCount);
 }
+const COMMON_LICENSE_PAGE_SIZES = new Set([10, 15, 20, 25, 50]);
+function isLikelyPageCappedLicenseTotal(total, licenseItems = [], usersTotal = null) {
+  if (total == null || !COMMON_LICENSE_PAGE_SIZES.has(Number(total))) return false;
+  const n = Number(total);
+  if (usersTotal != null && Number(usersTotal) > n) return true;
+  if (!Array.isArray(licenseItems) || !licenseItems.length) return false;
+  if (licenseItems.length !== n) return false;
+  return licenseItems.every(license => toLicenseNumber(license?.total ?? license?.quantity ?? license?.count ?? license?.seats) == null);
+}
 function resolveAntispamLicenseTotal(item) {
   const customer = item?.syncData?.customer || {};
   const raw = customer.raw && typeof customer.raw === "object" ? customer.raw : {};
   const licenseSummary = item?.syncData?.dashboard?.sections?.licenses?.summary;
-  const fromApi = toLicenseNumber(licenseSummary?.total ?? customer.licenseCount ?? (Array.isArray(raw.licenses) ? raw.licenses.length : raw.licenses) ?? raw.licenseCount ?? raw.nbLicences ?? raw.nbLicense ?? raw.totalLicenses ?? raw.licenceCount ?? raw.numberOfLicenses ?? raw.maxUsers ?? raw.maxMailboxes);
-  const persisted = toLicenseNumber(item?.licencesTotales ?? item?.totalLicenses ?? item?.nombre_licences);
-  if (fromApi != null && fromApi > 0) return fromApi;
-  if (persisted != null && persisted > 0) return persisted;
+  const contract = item?.syncData?.dashboard?.sections?.licenses?.contract || {};
   const licenseItems = collectAntispamLicenseItems(item);
+  const usersTotal = toLicenseNumber(item?.utilisateursProteges ?? item?.syncData?.dashboard?.sections?.users?.total ?? customer.usersCount);
+  const fromApi = toLicenseNumber(licenseSummary?.total ?? contract.total ?? customer.licenseCount ?? (typeof raw.licenses === "number" || typeof raw.licenses === "string" ? raw.licenses : null) ?? raw.licenseCount ?? raw.nbLicences ?? raw.nbLicense ?? raw.totalLicenses ?? raw.licenceCount ?? raw.numberOfLicenses ?? raw.maxUsers ?? raw.maxMailboxes ?? raw.nbLicenceProtect ?? raw.protectLicenses);
+  const persisted = toLicenseNumber(item?.licencesTotales ?? item?.totalLicenses ?? item?.nombre_licences);
+  if (fromApi != null && fromApi > 0 && !isLikelyPageCappedLicenseTotal(fromApi, licenseItems, usersTotal)) return fromApi;
+  if (persisted != null && persisted > 0 && !isLikelyPageCappedLicenseTotal(persisted, licenseItems, usersTotal)) return persisted;
   if (licenseItems.length) {
-    const summed = licenseItems.reduce((acc, license) => acc + (toLicenseNumber(license?.total ?? license?.quantity ?? license?.count) || 0), 0);
-    return summed > 0 ? summed : licenseItems.length;
+    const summed = licenseItems.reduce((acc, license) => acc + (toLicenseNumber(license?.total ?? license?.quantity ?? license?.seats ?? license?.nbLicences) || 0), 0);
+    if (summed > 0) return summed;
   }
   const mappedUsersCount = toLicenseNumber(customer.usersCount);
-  const usersListCount = toLicenseNumber(item?.utilisateursProteges ?? item?.syncData?.dashboard?.sections?.users?.total);
-  if (mappedUsersCount != null && mappedUsersCount > 0 && mappedUsersCount !== usersListCount) return mappedUsersCount;
-  return fromApi ?? persisted;
+  if (mappedUsersCount != null && mappedUsersCount > 0 && mappedUsersCount !== usersTotal) return mappedUsersCount;
+  return null;
 }
 function resolveAntispamLicenseUsed(item) {
   const licenseSummary = item?.syncData?.dashboard?.sections?.licenses?.summary;
-  const fromSummary = toLicenseNumber(licenseSummary?.used ?? item?.licencesUtilisees ?? item?.usedLicenses);
+  const contract = item?.syncData?.dashboard?.sections?.licenses?.contract || {};
+  const fromSummary = toLicenseNumber(licenseSummary?.used ?? contract.used ?? item?.licencesUtilisees ?? item?.usedLicenses);
   if (fromSummary != null) return fromSummary;
   const users = item?.syncData?.dashboard?.sections?.users?.items;
   if (Array.isArray(users) && users.length) {
     const protectedCount = users.filter(user => user?.status === "Protected" || user?.protected === true).length;
     if (protectedCount > 0) return protectedCount;
+    const usersTotal = toLicenseNumber(item?.syncData?.dashboard?.sections?.users?.total);
+    if (usersTotal != null && usersTotal > users.length) return usersTotal;
     return users.length;
   }
   return toLicenseNumber(item?.syncData?.dashboard?.sections?.users?.total ?? item?.utilisateursProteges);
@@ -236,6 +250,27 @@ export function computeAntispamExpirationStatus(expiration) {
   if (daysUntil <= 30) return "expire_bientot";
   return "actif";
 }
+function mapMailinblackRawStatus(value) {
+  if (value == null || value === "") return null;
+  const key = String(value).trim().toLowerCase();
+  if (!key) return null;
+  if (["active", "actif", "ok", "enabled", "valid", "validated", "running", "protected"].includes(key)) return "actif";
+  if (["inactive", "inactif", "disabled", "expired", "expiré", "expire", "cancelled", "canceled", "suspended"].includes(key)) return "inactif";
+  if (key.includes("expir") || key.includes("soon") || key.includes("bientot") || key.includes("bientôt")) return "expire_bientot";
+  return null;
+}
+export function resolveAntispamFleetStatus(solution) {
+  const normalized = normalizeAntispamItem(solution);
+  const fromExpiration = computeAntispamExpirationStatus(normalized?.expiration);
+  if (fromExpiration !== "unknown") return fromExpiration;
+  const rawStatus = normalized?.syncData?.status || normalized?.syncData?.customer?.status || normalized?.status || normalized?.syncData?.dashboard?.sections?.licenses?.contract?.status;
+  const mapped = mapMailinblackRawStatus(rawStatus);
+  if (mapped) return mapped;
+  if ((normalized?.domainesSurveilles != null && Number(normalized.domainesSurveilles) > 0) || (normalized?.utilisateursProteges != null && Number(normalized.utilisateursProteges) > 0) || (normalized?.licencesUtilisees != null && Number(normalized.licencesUtilisees) > 0)) {
+    return "actif";
+  }
+  return "unknown";
+}
 const SUBSCRIPTION_TYPE_LABELS = {
   1: "Essai",
   2: "Annuel",
@@ -292,7 +327,7 @@ export function buildAntispamFleetRow(client, solution, index = 0) {
     solutionLabel: productName,
     solutionSubtitle: tenantLabel,
     mappingMode: getAntispamSolutionModeLabel(normalized),
-    status: computeAntispamExpirationStatus(normalized.expiration),
+    status: resolveAntispamFleetStatus(normalized),
     paymentPlan: resolveAntispamPaymentPlan(normalized),
     expiration: normalized.expiration || null,
     expirationDate: normalized.expiration || null,

@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { Icon } from "@iconify/react";
-import { ColumnChart, DistributionPanel, HeroKpi, Panel, TrendBars, deltaTone, formatDelta, formatDuration, formatNumber, formatPercent } from "./dashboardWidgets";
+import { DistributionPanel, HeroKpi, Panel, TrendBars, deltaTone, formatDelta, formatDuration, formatNumber, formatPercent } from "./dashboardWidgets";
 import { buildDistributionItems } from "./DashboardCharts";
 import styles from "./DashboardPage.module.css";
 
@@ -34,6 +34,15 @@ function formatTrendLabel(period) {
       });
     }
   }
+  if (/^\d{4}-\d{2}$/.test(value)) {
+    const date = new Date(`${value}-01T00:00:00`);
+    if (!Number.isNaN(date.getTime())) {
+      return date.toLocaleDateString(undefined, {
+        month: "short",
+        year: "2-digit"
+      });
+    }
+  }
   return value;
 }
 
@@ -43,6 +52,48 @@ function toColumnItems(rows, labelFor) {
     label: labelFor(row.period),
     value: Number(row.count) || 0
   }));
+}
+
+function takeLast(rows, limit) {
+  const list = Array.isArray(rows) ? rows : [];
+  if (list.length <= limit) return list;
+  return list.slice(list.length - limit);
+}
+
+function VolumeChart({
+  items,
+  emptyLabel,
+  formatValue,
+  totalLabel
+}) {
+  if (!items?.length) {
+    return <p className={styles.emptyHint}>{emptyLabel}</p>;
+  }
+  const values = items.map(item => Number(item.value) || 0);
+  const max = Math.max(...values, 1);
+  const total = values.reduce((sum, value) => sum + value, 0);
+  const valueFor = typeof formatValue === "function" ? formatValue : value => value;
+  return <div className={styles.volumeChart}>
+      <div className={styles.volumeChartMeta}>
+        <span className={styles.volumeChartTotal}>{valueFor(total)}</span>
+        {totalLabel ? <span className={styles.volumeChartTotalLabel}>{totalLabel}</span> : null}
+      </div>
+      <div className={`${styles.volumeChartBars} ${items.length >= 10 ? styles.volumeChartBarsCompact : ""}`}>
+        {items.map(item => {
+        const value = Number(item.value) || 0;
+        const heightPct = value <= 0 ? 0 : Math.max(10, Math.round(value / max * 100));
+        return <div key={item.key} className={styles.volumeChartCol} title={`${item.label}: ${valueFor(value)}`}>
+              <span className={styles.volumeChartValue}>{valueFor(value)}</span>
+              <div className={styles.volumeChartTrack}>
+                <span className={`${styles.volumeChartFill} ${value <= 0 ? styles.volumeChartFillEmpty : ""}`} style={{
+              height: `${heightPct}%`
+            }} />
+              </div>
+              <span className={styles.volumeChartLabel}>{item.label}</span>
+            </div>;
+      })}
+      </div>
+    </div>;
 }
 
 function DualTrend({
@@ -157,13 +208,14 @@ export default function DashboardSupportCockpit({
       return toColumnItems(volume.weekdayCreated, day => cockpitCopy.weekdays?.[day] || String(day));
     }
     if (volumeTab === "week") {
-      return toColumnItems(volume.weeklyCreated, formatTrendLabel);
+      return toColumnItems(takeLast(volume.weeklyCreated, 12), formatTrendLabel);
     }
     if (volumeTab === "month") {
-      return toColumnItems(volume.monthOfYearCreated, month => cockpitCopy.months?.[month] || String(month));
+      return toColumnItems(takeLast(volume.monthlyCreated, 12), formatTrendLabel);
     }
-    return toColumnItems(volume.yearlyCreated, year => String(year));
-  }, [volumeTab, volume.weekdayCreated, volume.weeklyCreated, volume.monthOfYearCreated, volume.yearlyCreated, cockpitCopy.weekdays, cockpitCopy.months]);
+    return toColumnItems(takeLast(volume.yearlyCreated, 8), year => String(year));
+  }, [volumeTab, volume.weekdayCreated, volume.weeklyCreated, volume.monthlyCreated, volume.yearlyCreated, cockpitCopy.weekdays]);
+  const volumeTotalLabel = cockpitCopy.volumeTotalLabel || cockpitCopy.kpis?.created;
   const overview = <>
       <div className={styles.heroKpiGrid}>
         <HeroKpi helpAria={copy.helpAria} icon="mdi:ticket-confirmation-outline" value={formatNumber(volume.created)} label={cockpitCopy.kpis.created} hint={cockpitCopy.hints.created} delta={deltas.createdPct} locale={locale} />
@@ -234,7 +286,7 @@ export default function DashboardSupportCockpit({
               {cockpitCopy.volumeTabs?.[tab] || tab}
             </button>)}
         </div>}>
-        <ColumnChart emptyLabel={copy.empty} formatValue={formatNumber} items={volumeChartItems} />
+        <VolumeChart emptyLabel={copy.empty} formatValue={formatNumber} items={volumeChartItems} totalLabel={volumeTotalLabel} />
       </Panel>
       <Panel title={cockpitCopy.evolutionTitle} icon="mdi:chart-timeline-variant">
         <TrendBars items={volume.weeklyCreated?.length > 1 ? volume.weeklyCreated : volume.dailyCreated} formatLabel={formatTrendLabel} emptyLabel={copy.empty} />

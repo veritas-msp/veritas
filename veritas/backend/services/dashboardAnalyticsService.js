@@ -259,13 +259,11 @@ async function queryResultOrEmpty(sql, params = []) {
   try {
     return await pool.query(sql, params);
   } catch (err) {
-    if (err.code === "42P01" || err.code === "42703") {
-      console.warn("[analytics] support cockpit query skipped:", err.message);
-      return {
-        rows: []
-      };
-    }
-    throw err;
+    // Analytics must stay resilient: one heavy/timeout query must not zero the whole KPI cockpit.
+    console.warn("[analytics] support cockpit query skipped:", err.code || "", err.message);
+    return {
+      rows: []
+    };
   }
 }
 function buildTicketNotDeletedClause({
@@ -386,10 +384,17 @@ async function fetchSupportCockpitStats({
          COUNT(*) FILTER (WHERE t.created_at <= NOW() - INTERVAL '90 days')::int AS over90,
          AVG(EXTRACT(EPOCH FROM (NOW() - t.created_at)) / 86400.0) AS avg_age_days
        FROM v_b_tickets t
-       WHERE t.status NOT IN ${CLOSED_STATUSES}${openScope}`, openParams), queryResultOrEmpty(`WITH responses AS (
-         SELECT ${FIRST_RESPONSE_HOURS} AS hours
+       WHERE t.status NOT IN ${CLOSED_STATUSES}${openScope}`, openParams), hasStatusHistory ? queryResultOrEmpty(`WITH first_takeover AS (
+         SELECT DISTINCT ON (h.ticket_id) h.ticket_id, h.created_at
+         FROM v_b_ticket_status_history h
+         WHERE LOWER(COALESCE(h.old_status, '')) IN ('new', 'open', '')
+           AND LOWER(COALESCE(h.new_status, '')) NOT IN ('new', 'open', '')
+         ORDER BY h.ticket_id, h.created_at ASC
+       ), responses AS (
+         SELECT EXTRACT(EPOCH FROM (ft.created_at - t.created_at)) / 3600.0 AS hours
          FROM v_b_tickets t
-         WHERE ${FIRST_TAKEOVER_SUBQUERY} IS NOT NULL${createdClause}${scopeClause}
+         INNER JOIN first_takeover ft ON ft.ticket_id = t.id
+         WHERE 1=1${createdClause}${scopeClause}
        ), resolutions AS (
          SELECT ${RESOLUTION_HOURS} AS hours
          FROM v_b_tickets t
@@ -401,6 +406,19 @@ async function fetchSupportCockpitStats({
          (SELECT percentile_cont(0.5) WITHIN GROUP (ORDER BY hours) FROM responses) AS fr_median,
          (SELECT percentile_cont(0.9) WITHIN GROUP (ORDER BY hours) FROM responses) AS fr_p90,
          (SELECT percentile_cont(0.95) WITHIN GROUP (ORDER BY hours) FROM responses) AS fr_p95,
+         (SELECT AVG(hours) FROM resolutions) AS res_avg,
+         (SELECT percentile_cont(0.5) WITHIN GROUP (ORDER BY hours) FROM resolutions) AS res_median,
+         (SELECT percentile_cont(0.9) WITHIN GROUP (ORDER BY hours) FROM resolutions) AS res_p90`, params) : queryResultOrEmpty(`WITH resolutions AS (
+         SELECT ${RESOLUTION_HOURS} AS hours
+         FROM v_b_tickets t
+         WHERE t.status IN ${CLOSED_STATUSES}
+           AND COALESCE(t.closed_at, t.resolved_at) IS NOT NULL${resolvedClause}${scopeClause}
+       )
+       SELECT
+         NULL::float AS fr_avg,
+         NULL::float AS fr_median,
+         NULL::float AS fr_p90,
+         NULL::float AS fr_p95,
          (SELECT AVG(hours) FROM resolutions) AS res_avg,
          (SELECT percentile_cont(0.5) WITHIN GROUP (ORDER BY hours) FROM resolutions) AS res_median,
          (SELECT percentile_cont(0.9) WITHIN GROUP (ORDER BY hours) FROM resolutions) AS res_p90`, params), hasSlaInfo ? queryResultOrEmpty(`SELECT
@@ -516,7 +534,14 @@ async function fetchSupportCockpitStats({
          COUNT(*)::int AS tickets
        FROM v_b_tickets t
        WHERE t.client_id IS NOT NULL${prevCreatedClause}${prevScopeClause}
-       GROUP BY t.client_id`, prevParams), queryResultOrEmpty(`SELECT
+       GROUP BY t.client_id`, prevParams), hasStatusHistory ? queryResultOrEmpty(`WITH first_takeover AS (
+         SELECT DISTINCT ON (h.ticket_id) h.ticket_id, h.created_at
+         FROM v_b_ticket_status_history h
+         WHERE LOWER(COALESCE(h.old_status, '')) IN ('new', 'open', '')
+           AND LOWER(COALESCE(h.new_status, '')) NOT IN ('new', 'open', '')
+         ORDER BY h.ticket_id, h.created_at ASC
+       )
+       SELECT
          u.id AS user_id,
          COALESCE(NULLIF(TRIM(u.username), ''), u.email, 'Agent') AS label,
          u.email,
@@ -526,7 +551,29 @@ async function fetchSupportCockpitStats({
          AVG(${RESOLUTION_HOURS}) FILTER (WHERE COALESCE(t.closed_at, t.resolved_at) IS NOT NULL) AS avg_resolution_hours,
          percentile_cont(0.5) WITHIN GROUP (ORDER BY ${RESOLUTION_HOURS})
            FILTER (WHERE COALESCE(t.closed_at, t.resolved_at) IS NOT NULL) AS median_resolution_hours,
-         AVG(${FIRST_RESPONSE_HOURS}) FILTER (WHERE ${FIRST_TAKEOVER_SUBQUERY} IS NOT NULL) AS avg_first_response_hours,
+         AVG(EXTRACT(EPOCH FROM (ft.created_at - t.created_at)) / 3600.0) FILTER (WHERE ft.created_at IS NOT NULL) AS avg_first_response_hours,
+         COUNT(*) FILTER (WHERE ${slaEnabled})::int AS sla_count,
+         COUNT(*) FILTER (WHERE ${slaEnabled} AND t.status IN ${CLOSED_STATUSES} AND NOT ${slaFrBreached}
+           AND (${slaResDue} IS NULL OR COALESCE(t.closed_at, t.resolved_at) IS NULL OR COALESCE(t.closed_at, t.resolved_at) <= ${slaResDue}))::int AS sla_met
+       FROM v_b_users u
+       LEFT JOIN v_b_tickets t ON t.assigned_user_id = u.id${createdClause}${scopeClause}
+       LEFT JOIN first_takeover ft ON ft.ticket_id = t.id
+       WHERE COALESCE(u.role, '') <> 'client'
+         AND u.is_active = true
+       GROUP BY u.id, u.username, u.email
+       HAVING COUNT(t.id) > 0
+       ORDER BY closed_count DESC, assigned_count DESC
+       LIMIT 20`, params) : queryResultOrEmpty(`SELECT
+         u.id AS user_id,
+         COALESCE(NULLIF(TRIM(u.username), ''), u.email, 'Agent') AS label,
+         u.email,
+         COUNT(t.id)::int AS assigned_count,
+         COUNT(t.id) FILTER (WHERE t.status IN ${CLOSED_STATUSES})::int AS closed_count,
+         COUNT(t.id) FILTER (WHERE t.status NOT IN ${CLOSED_STATUSES})::int AS open_count,
+         AVG(${RESOLUTION_HOURS}) FILTER (WHERE COALESCE(t.closed_at, t.resolved_at) IS NOT NULL) AS avg_resolution_hours,
+         percentile_cont(0.5) WITHIN GROUP (ORDER BY ${RESOLUTION_HOURS})
+           FILTER (WHERE COALESCE(t.closed_at, t.resolved_at) IS NOT NULL) AS median_resolution_hours,
+         NULL::float AS avg_first_response_hours,
          COUNT(*) FILTER (WHERE ${slaEnabled})::int AS sla_count,
          COUNT(*) FILTER (WHERE ${slaEnabled} AND t.status IN ${CLOSED_STATUSES} AND NOT ${slaFrBreached}
            AND (${slaResDue} IS NULL OR COALESCE(t.closed_at, t.resolved_at) IS NULL OR COALESCE(t.closed_at, t.resolved_at) <= ${slaResDue}))::int AS sla_met
@@ -2028,7 +2075,29 @@ async function fetchDevicesCockpitStatsSafe(args) {
     return await fetchDevicesCockpitStats(args);
   } catch (error) {
     console.error("[dashboard] devices cockpit stats failed:", error);
-    return emptyDevicesCockpit();
+    const empty = emptyDevicesCockpit();
+    const families = args?.equipmentStats?.families || [];
+    const fleetTotal = Number(args?.equipmentStats?.equipMonitoredTotal) || 0;
+    const supervised = Number(args?.equipmentStats?.equipUnderSurveillanceCount) || 0;
+    return {
+      ...empty,
+      overview: {
+        ...empty.overview,
+        fleetTotal,
+        active: fleetTotal,
+        unsupervised: Math.max(0, fleetTotal - supervised),
+        byType: families.map(row => ({
+          key: row.key || row.family,
+          label: row.label || row.key,
+          value: Number(row.count) || 0
+        })).filter(row => row.value > 0)
+      },
+      byType: families.map(row => ({
+        key: row.key || row.family,
+        label: row.label || row.key,
+        value: Number(row.count) || 0
+      })).filter(row => row.value > 0)
+    };
   }
 }
 
@@ -2092,12 +2161,16 @@ async function fetchDevicesCockpitStats({
   const unsupervised = Math.max(0, fleetTotal - supervised);
   const clientParams = filters.clientId != null ? [filters.clientId] : [];
   const clientWhere = filters.clientId != null ? " AND client_id = $1" : "";
+  // Snapshot metrics (parc, santé) are period-agnostic. For "all", still build trends over the last 12 months.
   const period = sinceIso
     ? {
         from: new Date(sinceIso),
         to: untilIso ? new Date(untilIso) : new Date()
       }
-    : null;
+    : {
+        from: new Date(new Date().getFullYear(), new Date().getMonth() - 11, 1),
+        to: new Date()
+      };
 
   const [
     checkmkRows,
@@ -2149,6 +2222,7 @@ async function fetchDevicesCockpitStats({
   const internetHealthByClient = new Map();
   const NETWORK_FAMILIES = new Set(["internet", "routeur", "router", "firewalls", "firewall", "switch", "bornewifi", "wifi"]);
   const PERIPH_FAMILIES = new Set(["ordinateurs", "computers", "alimentation", "toip", "videosurveillance", "custom"]);
+  const anomalyEquipment = [];
 
   const bumpRisk = (clientId, amount = 1) => {
     if (clientId == null) return;
@@ -2264,7 +2338,6 @@ async function fetchDevicesCockpitStats({
   let renewal24 = 0;
   const eolByVendor = new Map();
   const eolByClientMap = new Map();
-  const anomalyEquipment = [];
   const now = new Date();
   const inMonths = (n) => new Date(now.getFullYear(), now.getMonth() + n, now.getDate());
 
@@ -3101,8 +3174,9 @@ async function queryRowsOrEmpty(sql, params = []) {
     const result = await pool.query(sql, params);
     return result.rows || [];
   } catch (err) {
-    if (err.code === "42P01" || err.code === "42703") return [];
-    throw err;
+    // Keep devices KPI resilient when period=all stresses the DB (timeouts, missing relations…).
+    console.warn("[analytics] devices query skipped:", err.code || "", err.message);
+    return [];
   }
 }
 async function fetchKnowledgeStats({

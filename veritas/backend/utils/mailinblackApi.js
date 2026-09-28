@@ -104,21 +104,37 @@ function normalizeListItem(item, normalizer) {
   }
   return normalizer(item);
 }
+const COMMON_PAGE_SIZES = new Set([10, 15, 20, 25, 50, 100]);
 function normalizePaginated(payload) {
   const items = parseList(payload);
-  const candidates = [payload?.total, payload?.totalElements, payload?.totalCount, payload?.count, payload?.nbTotal, payload?.nbElements, payload?.page?.totalElements, payload?.page?.total, payload?.page?.totalCount, payload?.meta?.total, payload?.meta?.totalElements, payload?.meta?.totalCount, payload?.pagination?.total, payload?.pagination?.totalElements, payload?.pagination?.totalCount, payload?.data?.total, payload?.data?.totalElements, payload?.data?.totalCount, payload?.data?.count];
-  for (const candidate of candidates) {
+  // Prefer explicit totals over page-local counts (MIB often exposes size/count=20).
+  const strongCandidates = [payload?.totalElements, payload?.totalCount, payload?.nbTotal, payload?.total, payload?.page?.totalElements, payload?.page?.total, payload?.page?.totalCount, payload?.meta?.total, payload?.meta?.totalElements, payload?.meta?.totalCount, payload?.pagination?.total, payload?.pagination?.totalElements, payload?.pagination?.totalCount, payload?.data?.totalElements, payload?.data?.totalCount, payload?.data?.total];
+  const weakCandidates = [payload?.count, payload?.nbElements, payload?.numberOfElements, payload?.data?.count, payload?.page?.numberOfElements];
+  for (const candidate of strongCandidates) {
     const num = Number(candidate);
     if (Number.isFinite(num) && num >= 0) {
       return {
         items,
-        total: num
+        total: num,
+        totalReliable: true
       };
     }
   }
+  for (const candidate of weakCandidates) {
+    const num = Number(candidate);
+    if (!Number.isFinite(num) || num < 0) continue;
+    // count/nbElements equal to a full page is usually "page size", not grand total.
+    const looksLikePageCap = num === items.length && COMMON_PAGE_SIZES.has(num);
+    return {
+      items,
+      total: num,
+      totalReliable: !looksLikePageCap
+    };
+  }
   return {
     items,
-    total: items.length
+    total: items.length,
+    totalReliable: !(items.length > 0 && COMMON_PAGE_SIZES.has(items.length))
   };
 }
 function resolveAuthBaseUrls(apiUrl) {
@@ -470,15 +486,16 @@ export function normalizeMailinblackCustomer(item, session = null) {
   if (!item || typeof item !== 'object') return null;
   const id = item.id ?? item.customerId ?? item.clientId ?? item.uuid ?? item.reference ?? session?.clientId;
   if (id == null) return null;
+  const nestedContract = item.contract || item.subscription || item.offer || item.licence || item.license || null;
   return {
     id: String(id),
     name: item.name || item.companyName || item.company || item.label || item.customerName || 'Mailinblack',
     domain: item.domain || item.primaryDomain || item.mainDomain || null,
     usersCount: toNumericCount(item.usersCount ?? item.users ?? item.nbUsers),
-    licenseCount: toNumericCount(item.licenseCount ?? (typeof item.licenses === 'number' || typeof item.licenses === 'string' ? item.licenses : null) ?? item.nbLicences ?? item.nbLicense ?? item.totalLicenses ?? item.licenceCount ?? item.nbLicenceProtect ?? item.protectLicenses ?? item.seats),
+    licenseCount: toNumericCount(item.licenseCount ?? (typeof item.licenses === 'number' || typeof item.licenses === 'string' ? item.licenses : null) ?? item.nbLicences ?? item.nbLicense ?? item.totalLicenses ?? item.licenceCount ?? item.nbLicenceProtect ?? item.protectLicenses ?? item.seats ?? item.purchasedLicenses ?? item.maxLicenses ?? nestedContract?.licenseCount ?? nestedContract?.nbLicences ?? nestedContract?.quantity ?? nestedContract?.seats),
     domainsCount: toNumericCount(item.domainsCount ?? item.domainCount ?? item.nbDomains ?? (typeof item.domains === 'number' || typeof item.domains === 'string' ? item.domains : Array.isArray(item.domains) ? item.domains.length : null) ?? (item.domain ? 1 : null)),
-    status: item.status || item.installationStatus || item.state || null,
-    expiration: pickSoonestExpirationIso([item.expirationDate, item.expiration, item.renewalDate, item.expiryDate, item.licenseExpiration]),
+    status: item.status || item.installationStatus || item.state || nestedContract?.status || null,
+    expiration: pickSoonestExpirationIso([item.expirationDate, item.expiration, item.renewalDate, item.expiryDate, item.licenseExpiration, item.licenceExpiration, item.endDate, item.validUntil, item.contractEndDate, item.dateFin, item.endOfCommitment, nestedContract?.expirationDate, nestedContract?.expiration, nestedContract?.renewalDate, nestedContract?.endDate, nestedContract?.validUntil, findDateOnObject(item, /expir|renew|valid(?:ity|Until|To)?|endDate|dateFin|finContrat|commitment|contractEnd|licenceEnd|licenseEnd/i), nestedContract ? findDateOnObject(nestedContract, /expir|renew|valid|endDate|dateFin|fin/i) : null]),
     raw: item
   };
 }
@@ -523,9 +540,10 @@ function extractLicenseSummaryFromPayload(payload) {
       used: null
     };
   }
+  const nested = payload.contract || payload.subscription || payload.offer || payload.licence || payload.license || payload.summary || null;
   return {
-    total: pickNumericCount(payload.totalLicenses, payload.licenseCount, payload.nbLicences, payload.nbLicense, payload.licencesTotales, payload.numberOfLicenses, payload.maxLicenses, payload.purchasedLicenses, payload.protectLicenses, payload.nbLicenceProtect, payload.seats, payload.quantity, typeof payload.licenses === 'number' || typeof payload.licenses === 'string' ? payload.licenses : null, typeof payload.licences === 'number' || typeof payload.licences === 'string' ? payload.licences : null),
-    used: pickNumericCount(payload.usedLicenses, payload.assignedLicenses, payload.consumedLicenses, payload.nbLicencesUsed, payload.licencesUtilisees, payload.assigned, payload.used, payload.consumed)
+    total: pickNumericCount(payload.totalLicenses, payload.licenseCount, payload.nbLicences, payload.nbLicense, payload.licencesTotales, payload.numberOfLicenses, payload.maxLicenses, payload.purchasedLicenses, payload.protectLicenses, payload.nbLicenceProtect, payload.seats, payload.quantity, payload.nbLicence, payload.licenceProtect, payload.licensesPurchased, typeof payload.licenses === 'number' || typeof payload.licenses === 'string' ? payload.licenses : null, typeof payload.licences === 'number' || typeof payload.licences === 'string' ? payload.licences : null, nested?.totalLicenses, nested?.licenseCount, nested?.nbLicences, nested?.nbLicenceProtect, nested?.quantity, nested?.seats, nested?.purchasedLicenses),
+    used: pickNumericCount(payload.usedLicenses, payload.assignedLicenses, payload.consumedLicenses, payload.nbLicencesUsed, payload.licencesUtilisees, payload.assigned, payload.used, payload.consumed, payload.licensesUsed, payload.nbLicencesUtilisees, nested?.usedLicenses, nested?.assigned, nested?.used, nested?.consumed)
   };
 }
 function normalizeLicense(item) {
@@ -544,8 +562,10 @@ function normalizeLicense(item) {
   }
   if (typeof item !== 'object') return null;
   const product = pickFirst(item.product, item.productName, item.offer, item.offerName, item.name, item.label, item.type, item.code, item.sku);
-  const total = pickNumericCount(item.quantity, item.count, item.total, item.nbLicences, item.licenseCount, item.seats, item.maxUsers, item.licenses);
-  const used = pickNumericCount(item.used, item.assigned, item.consumed, item.usedCount, item.assignedCount, item.nbUsed);
+  // Prefer explicit seat quantities — ignore bare `count` when the row looks like a user seat (email/userId).
+  const looksLikeSeat = Boolean(item.email || item.userId || item.user?.id || item.mailbox || item.mainEmail);
+  const total = looksLikeSeat ? pickNumericCount(item.quantity, item.nbLicences, item.licenseCount, item.seats, item.maxUsers) : pickNumericCount(item.quantity, item.nbLicences, item.licenseCount, item.seats, item.maxUsers, item.total, item.count, item.licenses, item.purchasedLicenses);
+  const used = pickNumericCount(item.used, item.assigned, item.consumed, item.usedCount, item.assignedCount, item.nbUsed, looksLikeSeat ? 1 : null);
   const id = item.id ?? item.licenseId ?? item.uuid ?? product;
   if (!id && total == null && used == null && !product) return null;
   return {
@@ -553,7 +573,7 @@ function normalizeLicense(item) {
     product: product ? String(product) : 'Protect',
     total,
     used,
-    expiration: pickSoonestExpirationIso([item.expirationDate, item.expiration, item.expiryDate, item.renewalDate, item.endDate, item.validUntil]),
+    expiration: pickSoonestExpirationIso([item.expirationDate, item.expiration, item.expiryDate, item.renewalDate, item.endDate, item.validUntil, item.contractEndDate, item.dateFin, findDateOnObject(item, /expir|renew|valid|endDate|dateFin|fin/i)]),
     status: pickFirst(item.status, item.state, item.active === true ? 'Active' : null)
   };
 }
@@ -572,8 +592,9 @@ function summarizeLicenseItems(items = []) {
       hasUsed = true;
     }
   }
+  // Never fall back to items.length — that mirrors the API page size (often 20) and caps licences.
   return {
-    total: hasTotal ? total : items.length ? items.length : null,
+    total: hasTotal ? total : null,
     used: hasUsed ? used : null
   };
 }
@@ -846,7 +867,7 @@ function normalizeDomain(item) {
     name: String(name),
     status: pickFirst(item.status, item.state, item.installationStatus, item.domainStatus, item.validationStatus, item.mxOk === true ? 'OK' : null, item.validated === true ? 'Validated' : null),
     mx: formatMx(item),
-    expiration: pickFirst(item.expirationDate, item.expiration, item.expiryDate, item.renewalDate, item.licenseExpiration, item.licenceExpiration, item.endDate, item.validUntil, item.license?.expirationDate, item.license?.expiration, item.licence?.expirationDate, item.subscription?.expirationDate, item.offer?.expirationDate, item.contractEndDate),
+    expiration: pickFirst(item.expirationDate, item.expiration, item.expiryDate, item.renewalDate, item.licenseExpiration, item.licenceExpiration, item.endDate, item.validUntil, item.contractEndDate, item.dateFin, item.endOfCommitment, item.license?.expirationDate, item.license?.expiration, item.license?.endDate, item.licence?.expirationDate, item.licence?.endDate, item.subscription?.expirationDate, item.subscription?.endDate, item.offer?.expirationDate, item.contract?.expirationDate, item.contract?.endDate, findDateOnObject(item, /expir|renew|valid(?:ity|Until|To)?|endDate|dateFin|finContrat|commitment|contractEnd|licenceEnd|licenseEnd/i)),
     autoRenew: formatFlag(autoRenewRaw),
     dnsManaged: item.dnsManaged ?? item.managed ?? item.hasDnsZone ?? null
   };
@@ -969,14 +990,17 @@ async function mailinblackFetchListSection(apiUrl, session, credentials, module,
           continue;
         }
         let items = parseList(result.data).map(item => normalizeListItem(item, normalizer)).filter(Boolean);
-        const expectedTotal = normalizePaginated(result.data).total;
-        const pageSize = Number(baseQuery.size || baseQuery.pageSize || baseQuery.limit || 0) || items.length || 50;
+        const paginated = normalizePaginated(result.data);
+        const expectedTotal = paginated.total;
+        const requestedSize = Number(baseQuery.size || baseQuery.pageSize || baseQuery.limit || 0);
+        // If API ignores size:200 and returns a default page (often 20), page by the actual page length.
+        const pageSize = requestedSize > 0 && items.length > 0 && items.length < requestedSize ? items.length : requestedSize || items.length || 50;
         const supportsPage = baseQuery.page != null || baseQuery.pageNumber != null;
         const supportsOffset = baseQuery.offset != null && baseQuery.limit != null;
         if (items.length > 0 && (supportsPage || supportsOffset)) {
           let lastPageCount = items.length;
           for (let page = 1; page < 50; page += 1) {
-            const likelyMore = lastPageCount >= pageSize || expectedTotal > items.length;
+            const likelyMore = lastPageCount >= pageSize || paginated.totalReliable && expectedTotal > items.length;
             if (!likelyMore) break;
             const nextQuery = supportsOffset ? {
               ...baseQuery,
@@ -985,7 +1009,9 @@ async function mailinblackFetchListSection(apiUrl, session, credentials, module,
             } : {
               ...baseQuery,
               page,
-              pageNumber: page
+              pageNumber: page,
+              size: pageSize,
+              pageSize
             };
             const nextResult = await safeMailinblackCall(() => mailinblackV2Request(apiUrl, session, currentModule, currentPath, {
               method: 'GET',
@@ -994,20 +1020,24 @@ async function mailinblackFetchListSection(apiUrl, session, credentials, module,
             if (!nextResult.ok) break;
             const nextItems = parseList(nextResult.data).map(item => normalizeListItem(item, normalizer)).filter(Boolean);
             if (!nextItems.length) break;
-            items = [...items, ...nextItems];
+            const seen = new Set(items.map(entry => entry?.id).filter(Boolean));
+            const uniqueNext = nextItems.filter(entry => !entry?.id || !seen.has(entry.id));
+            if (!uniqueNext.length) break;
+            items = [...items, ...uniqueNext];
             lastPageCount = nextItems.length;
             if (nextItems.length < pageSize) break;
-            if (expectedTotal > 0 && items.length >= expectedTotal) break;
+            if (paginated.totalReliable && expectedTotal > 0 && items.length >= expectedTotal) break;
           }
         }
         if (items.length > 0) {
+          const resolvedTotal = paginated.totalReliable ? Math.max(expectedTotal || 0, items.length) : items.length;
           return buildSectionFromResult({
             ok: true,
             data: result.data
           }, normalizer, {
             exploited,
             preItems: items,
-            total: Math.max(expectedTotal || 0, items.length)
+            total: resolvedTotal
           });
         }
         emptyOkResult = result;
@@ -1026,65 +1056,67 @@ async function mailinblackFetchListSection(apiUrl, session, credentials, module,
     exploited
   });
 }
-async function mailinblackFetchLicenses(apiUrl, session) {
-  const queryVariants = [{
-    page: 0,
-    size: 200
-  }, {}];
-  const attempts = [['admin', 'licenses'], ['admin', 'licences'], ['admin', 'offers'], ['admin', 'contracts'], ['protect', 'licenses'], ['protect', 'licences']];
-  let lastResult = {
-    ok: false,
-    permissionDenied: false,
-    error: 'No data returned',
-    httpStatus: null
-  };
+async function mailinblackFetchContractSummary(apiUrl, session) {
+  const attempts = [['admin', 'contract'], ['admin', 'contracts'], ['admin', 'subscription'], ['admin', 'subscriptions'], ['admin', 'client'], ['admin', 'account'], ['admin', 'me'], ['protect', 'contract'], ['protect', 'client'], ['protect', 'subscription']];
   for (const [module, path] of attempts) {
-    for (const query of queryVariants) {
-      const result = await safeMailinblackCall(() => mailinblackV2Request(apiUrl, session, module, path, {
-        method: 'GET',
-        query
-      }));
-      lastResult = result;
-      if (!result.ok) {
-        if (result.permissionDenied) break;
-        continue;
+    const result = await safeMailinblackCall(() => mailinblackV2Request(apiUrl, session, module, path, {
+      method: 'GET',
+      query: {
+        page: 0,
+        size: 50
       }
-      const items = parseList(result.data).map(item => normalizeListItem(item, normalizeLicense)).filter(Boolean);
-      const payloadSummary = extractLicenseSummaryFromPayload(result.data);
-      const itemSummary = summarizeLicenseItems(items);
-      const summary = {
-        total: payloadSummary.total ?? itemSummary.total,
-        used: payloadSummary.used ?? itemSummary.used
-      };
-      if (items.length || summary.total != null || summary.used != null) {
+    }));
+    if (!result.ok) continue;
+    const payload = result.data;
+    const list = parseList(payload);
+    const candidates = [];
+    if (payload && typeof payload === 'object' && !Array.isArray(payload)) {
+      candidates.push(payload.data, payload.contract, payload.subscription, payload.client, payload.account, payload.offer, payload);
+    }
+    if (list.length) candidates.push(...list);
+    for (const candidate of candidates) {
+      if (!candidate || typeof candidate !== 'object' || Array.isArray(candidate)) continue;
+      const summary = extractLicenseSummaryFromPayload(candidate);
+      const expiration = pickSoonestExpirationIso([candidate.expirationDate, candidate.expiration, candidate.renewalDate, candidate.expiryDate, candidate.endDate, candidate.validUntil, candidate.contractEndDate, candidate.dateFin, candidate.endOfCommitment, candidate.licenseExpiration, candidate.licenceExpiration, findDateOnObject(candidate, /expir|renew|valid|endDate|dateFin|finContrat|commitment|contractEnd|licenceEnd|licenseEnd/i)]);
+      const status = pickFirst(candidate.status, candidate.state, candidate.installationStatus, candidate.contractStatus);
+      if (summary.total != null || summary.used != null || expiration || status) {
         return {
-          status: 'ok',
-          error: null,
-          items,
-          total: items.length || summary.total || 0,
-          summary,
-          exploited: true
+          ...summary,
+          expiration,
+          status,
+          raw: candidate
         };
       }
     }
   }
-  if (isNotFoundResult(lastResult)) {
-    return {
-      ...emptyListSection(true),
-      summary: {
-        total: null,
-        used: null
-      }
-    };
-  }
   return {
-    ...buildSectionFromResult(lastResult, normalizeLicense, {
-      exploited: true
-    }),
-    summary: {
-      total: null,
-      used: null
-    }
+    total: null,
+    used: null,
+    expiration: null,
+    status: null,
+    raw: null
+  };
+}
+async function mailinblackFetchLicenses(apiUrl, session, credentials = {}) {
+  const section = await mailinblackFetchListSection(apiUrl, session, credentials, 'admin', 'licenses', normalizeLicense, {
+    exploited: true,
+    alternatePaths: ['licences', 'offers', 'contracts', 'subscriptions'],
+    modules: ['admin', 'protect']
+  });
+  const contract = await mailinblackFetchContractSummary(apiUrl, session);
+  const items = Array.isArray(section.items) ? section.items : [];
+  const itemSummary = summarizeLicenseItems(items);
+  const summary = {
+    total: pickNumericCount(contract.total, itemSummary.total),
+    used: pickNumericCount(contract.used, itemSummary.used)
+  };
+  return {
+    ...section,
+    items,
+    total: summary.total != null ? summary.total : 0,
+    summary,
+    contract,
+    status: items.length || summary.total != null || summary.used != null || contract.expiration ? 'ok' : section.status
   };
 }
 export async function mailinblackListCustomers(apiUrl, credentials) {
@@ -1205,14 +1237,24 @@ export async function mailinblackBuildDashboard(apiUrl, credentials, customerId 
   const customerRaw = customer.data?.raw && typeof customer.data.raw === 'object' ? customer.data.raw : {};
   const rawLicenseItems = collectRawLicenseItems(customerRaw).map(item => normalizeLicense(item)).filter(Boolean);
   const licenseItems = licenses.items?.length ? licenses.items : rawLicenseItems;
+  const contract = licenses.contract || {};
   const licenseSummary = {
-    total: pickNumericCount(licenses.summary?.total, customer.data?.licenseCount, extractLicenseSummaryFromPayload(customerRaw).total, summarizeLicenseItems(licenseItems).total),
-    used: pickNumericCount(licenses.summary?.used, extractLicenseSummaryFromPayload(customerRaw).used, summarizeLicenseItems(licenseItems).used, countProtectedUsers(users.items))
+    total: pickNumericCount(licenses.summary?.total, contract.total, customer.data?.licenseCount, extractLicenseSummaryFromPayload(customerRaw).total, summarizeLicenseItems(licenseItems).total),
+    used: pickNumericCount(licenses.summary?.used, contract.used, extractLicenseSummaryFromPayload(customerRaw).used, summarizeLicenseItems(licenseItems).used, countProtectedUsers(users.items), users.total)
   };
+  if (contract.expiration || contract.status) {
+    const mergedCustomer = customer.data ? {
+      ...customer.data,
+      expiration: customer.data.expiration || contract.expiration || null,
+      status: customer.data.status || contract.status || null,
+      licenseCount: customer.data.licenseCount ?? contract.total ?? null
+    } : customer.data;
+    customer.data = mergedCustomer;
+  }
   const licensesSection = {
     ...licenses,
     items: licenseItems,
-    total: licenseItems.length || licenseSummary.total || 0,
+    total: licenseSummary.total != null ? licenseSummary.total : 0,
     summary: licenseSummary,
     status: licenseItems.length || licenseSummary.total != null || licenseSummary.used != null ? 'ok' : licenses.status
   };
@@ -1241,15 +1283,17 @@ export function formatMailinblackSyncPayload(customer, mappingMode, mailinblackT
   const domainsSection = dashboard?.sections?.domains;
   const usersSection = dashboard?.sections?.users;
   const licensesSection = dashboard?.sections?.licenses;
+  const contract = licensesSection?.contract || {};
   const raw = customer.raw && typeof customer.raw === 'object' ? customer.raw : {};
   const licenseItems = licensesSection?.items?.length ? licensesSection.items : collectRawLicenseItems(raw);
-  const domainExpirations = Array.isArray(domainsSection?.items) ? domainsSection.items.flatMap(item => [item?.expiration, item?.expirationDate, item?.license?.expirationDate, item?.license?.expiration]) : [];
+  const domainExpirations = Array.isArray(domainsSection?.items) ? domainsSection.items.flatMap(item => [item?.expiration, item?.expirationDate, item?.license?.expirationDate, item?.license?.expiration, item?.license?.endDate, item?.subscription?.expirationDate, item?.contract?.endDate]) : [];
   const licenseExpirations = licenseItems.flatMap(item => [item?.expirationDate, item?.expiration, item?.expiryDate, item?.renewalDate, item?.endDate, item?.validUntil]);
-  const expiration = pickSoonestExpirationIso([customer.expiration, raw.expirationDate, raw.expiration, raw.expiryDate, raw.renewalDate, raw.licenseExpiration, raw.licenceExpiration, raw.endDate, raw.validUntil, ...licenseExpirations, ...domainExpirations]) || '';
-  const licencesTotales = pickNumericCount(licensesSection?.summary?.total, customer.licenseCount, extractLicenseSummaryFromPayload(raw).total, summarizeLicenseItems(licenseItems.map(item => item.total != null || item.used != null ? item : normalizeLicense(item)).filter(Boolean)).total, Array.isArray(raw.licenses) ? raw.licenses.length : raw.licenses, raw.licenseCount, raw.nbLicences, raw.nbLicense, raw.totalLicenses, raw.licenceCount, raw.numberOfLicenses);
-  const licencesUtilisees = pickNumericCount(licensesSection?.summary?.used, extractLicenseSummaryFromPayload(raw).used, countProtectedUsers(usersSection?.items), Array.isArray(usersSection?.items) ? usersSection.items.length : null, customer.usersCount);
+  const expiration = pickSoonestExpirationIso([customer.expiration, contract.expiration, raw.expirationDate, raw.expiration, raw.expiryDate, raw.renewalDate, raw.licenseExpiration, raw.licenceExpiration, raw.endDate, raw.validUntil, raw.contractEndDate, raw.dateFin, raw.endOfCommitment, findDateOnObject(raw, /expir|renew|valid|endDate|dateFin|finContrat|commitment|contractEnd|licenceEnd|licenseEnd/i), ...licenseExpirations, ...domainExpirations]) || '';
+  const licencesTotales = pickNumericCount(licensesSection?.summary?.total, contract.total, customer.licenseCount, extractLicenseSummaryFromPayload(raw).total, summarizeLicenseItems(licenseItems.map(item => item.total != null || item.used != null ? item : normalizeLicense(item)).filter(Boolean)).total, typeof raw.licenses === 'number' || typeof raw.licenses === 'string' ? raw.licenses : null, raw.licenseCount, raw.nbLicences, raw.nbLicense, raw.totalLicenses, raw.licenceCount, raw.numberOfLicenses, raw.nbLicenceProtect, raw.protectLicenses);
+  const licencesUtilisees = pickNumericCount(licensesSection?.summary?.used, contract.used, extractLicenseSummaryFromPayload(raw).used, countProtectedUsers(usersSection?.items), usersSection?.total, Array.isArray(usersSection?.items) ? usersSection.items.length : null, customer.usersCount);
   const utilisateursProteges = pickNumericCount(usersSection?.total, Array.isArray(usersSection?.items) ? usersSection.items.length : null, customer.usersCount) ?? 0;
   const domainesSurveilles = pickNumericCount(domainsSection?.total, Array.isArray(domainsSection?.items) ? domainsSection.items.length : null, customer.domainsCount, customer.domain ? 1 : null) ?? 0;
+  const resolvedStatus = customer.status || contract.status || null;
   return {
     solution: 'Mailinblack Protect',
     providerId: 'mailinblack',
@@ -1267,9 +1311,14 @@ export function formatMailinblackSyncPayload(customer, mappingMode, mailinblackT
     licencesUtilisees: licencesUtilisees != null && licencesUtilisees !== '' ? licencesUtilisees : null,
     expiration,
     syncData: {
-      customer,
+      customer: {
+        ...customer,
+        expiration: customer.expiration || expiration || null,
+        status: resolvedStatus,
+        licenseCount: customer.licenseCount ?? licencesTotales ?? null
+      },
       dashboard,
-      status: customer.status || null,
+      status: resolvedStatus,
       lastSync: new Date().toISOString()
     }
   };

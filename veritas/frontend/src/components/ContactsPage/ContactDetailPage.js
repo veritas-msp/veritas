@@ -865,24 +865,28 @@ export default function ContactDetailPage({
       <div className={styles.pageBody}>
         <div className={styles.pageGrid}>
           <main className={styles.mainColumn}>
-            <section className={styles.panel} data-guide="contact-overview">
+            <div className={styles.overviewTabsWrap}>
+              <nav className={styles.overviewTabBar} role="tablist" aria-label={copy.overviewTabsAria || copy.activityTitle}>
+                <button type="button" role="tab" aria-selected={overviewTab === "activity"} className={`${styles.overviewTab} ${overviewTab === "activity" ? styles.overviewTabActive : ""}`} onClick={() => setOverviewTab("activity")} data-guide="contact-activity">
+                  {copy.overviewTabActivity}
+                </button>
+                <button type="button" role="tab" aria-selected={overviewTab === "portal"} className={`${styles.overviewTab} ${overviewTab === "portal" ? styles.overviewTabActive : ""}`} onClick={() => setOverviewTab("portal")} data-guide="contact-portal">
+                  {copy.overviewTabPortal}
+                </button>
+                <button type="button" role="tab" aria-selected={overviewTab === "share"} className={`${styles.overviewTab} ${overviewTab === "share" ? styles.overviewTabActive : ""}`} onClick={() => setOverviewTab("share")} data-guide="contact-shared-access">
+                  <span className={styles.overviewTabLabelRow}>
+                    <span>{copy.overviewTabShare}</span>
+                    {isCommunity ? <ProFeatureBadge variant="inline" className={styles.proBadgeInline} /> : null}
+                  </span>
+                </button>
+              </nav>
+            </div>
+
+            {overviewTab === "activity" ? <section className={styles.panel} data-guide="contact-overview">
               <div className={styles.panelHeader}>
                 <div className={styles.panelHeaderMain}>
-                  <nav className={styles.overviewTabBar} role="tablist" aria-label={copy.overviewTabsAria || copy.activityTitle}>
-                    <button type="button" role="tab" aria-selected={overviewTab === "activity"} className={`${styles.overviewTab} ${overviewTab === "activity" ? styles.overviewTabActive : ""}`} onClick={() => setOverviewTab("activity")} data-guide="contact-activity">
-                      {copy.overviewTabActivity}
-                    </button>
-                    <button type="button" role="tab" aria-selected={overviewTab === "portal"} className={`${styles.overviewTab} ${overviewTab === "portal" ? styles.overviewTabActive : ""}`} onClick={() => setOverviewTab("portal")} data-guide="contact-portal">
-                      {copy.overviewTabPortal}
-                    </button>
-                    <button type="button" role="tab" aria-selected={overviewTab === "share"} className={`${styles.overviewTab} ${overviewTab === "share" ? styles.overviewTabActive : ""}`} onClick={() => setOverviewTab("share")} data-guide="contact-shared-access">
-                      <span className={styles.overviewTabLabelRow}>
-                        <span>{copy.overviewTabShare}</span>
-                        {isCommunity ? <ProFeatureBadge variant="inline" className={styles.proBadgeInline} /> : null}
-                      </span>
-                    </button>
-                  </nav>
-                  {overviewTab === "activity" && !loadingActivity ? <span className={styles.activityBlockCount}>
+                  <h2 className={styles.panelTitle}>{copy.activityTitle}</h2>
+                  {!loadingActivity ? <span className={styles.activityBlockCount}>
                     {(() => {
                   const total = isCommunity ? supportTickets.length + DEMO_PRESTATION_TICKETS.length : supportTickets.length + prestationTickets.length;
                   return total === 1 ? interpolate(copy.ticketCount, {
@@ -893,14 +897,9 @@ export default function ContactDetailPage({
                 })()}
                   </span> : null}
                 </div>
-                {overviewTab === "share" && contact?.id && canAccessSharing && (vaultClientId || contact?.client_id || contactCompanies.length > 0) ? <SmartTooltip content={copy.shareAccess}>
-                      <button type="button" className={`${pageLayout.primaryBtn} ${pageLayout.primaryBtnIconOnly}`} onClick={() => setShareAccessCreateOpen(true)} aria-label={copy.shareAccess} disabled={isCommunity}>
-                        <FaPlus />
-                      </button>
-                    </SmartTooltip> : null}
               </div>
               <div className={styles.panelBody}>
-                {overviewTab === "activity" ? <div className={styles.overviewTabPanel}>
+                <div className={styles.overviewTabPanel}>
                   <div className={styles.contactOverviewBlock} data-guide="contact-coordinates">
                     <h3 className={styles.contactOverviewBlockTitle}>{copy.coordinates}</h3>
 {hasCoords ? <div className={contactStyles.coordGrid}>
@@ -1084,16 +1083,38 @@ export default function ContactDetailPage({
                     </div>
                   </>}
                   </div>
-                </div> : null}
-                {overviewTab === "portal" ? <div className={styles.overviewTabPanel}>
-<ContactPortalSection contact={contact} canManage={canManagePortal} onUpdated={() => {
+                </div>
+              </div>
+            </section> : null}
+
+            {overviewTab === "portal" ? <section className={styles.panel} data-guide="contact-portal-panel">
+              <div className={styles.panelBody}>
+                <div className={`${styles.overviewTabPanel} ${contactStyles.portalTabContent}`}>
+                  <ContactPortalSection contact={contact} canManage={canManagePortal} onUpdated={() => {
                 const controller = createTrackedAbortController();
                 loadControllerRef.current?.abort();
                 loadControllerRef.current = controller;
                 loadContactData(controller.signal);
               }} />
+                </div>
+              </div>
+            </section> : null}
+
+            {overviewTab === "share" ? <section className={styles.panel} data-guide="contact-share-panel">
+              <div className={styles.panelHeader}>
+                <div className={styles.panelHeaderMain}>
+                  <h2 className={styles.panelTitle}>{copy.sharedAccessTitle}</h2>
+                </div>
+                {contact?.id && canAccessSharing && (vaultClientId || contact?.client_id || contactCompanies.length > 0) ? <div className={styles.panelToolbar}>
+                  <SmartTooltip content={copy.shareAccess}>
+                    <button type="button" className={`${pageLayout.primaryBtn} ${pageLayout.primaryBtnIconOnly}`} onClick={() => setShareAccessCreateOpen(true)} aria-label={copy.shareAccess} disabled={isCommunity}>
+                      <FaPlus />
+                    </button>
+                  </SmartTooltip>
                 </div> : null}
-                {overviewTab === "share" ? <div className={styles.overviewTabPanel}>
+              </div>
+              <div className={styles.panelBody}>
+                <div className={styles.overviewTabPanel}>
                   {contact?.id && (vaultClientId || contact?.client_id || contactCompanies.length > 0) ? <ProFeatureLock locked={isCommunity} featureLabel={copy.sharedAccessTitle} featureKey="sharedAccess">
 {contactCompanies.length > 1 ? <label className={contactStyles.vaultClientField}>
                         <span className={contactStyles.vaultClientLabel}>{copy.vaultClientLabel || copy.selectCompany}</span>
@@ -1105,9 +1126,9 @@ export default function ContactDetailPage({
                       </label> : null}
                     <VaultSecretsPanel contactId={contact.id} clientId={vaultClientId || contact.client_id || contactCompanies[0]?.id} contactName={formatContactName(contact, copy.defaultName)} createModalOpen={shareAccessCreateOpen} onCreateModalChange={setShareAccessCreateOpen} />
                   </ProFeatureLock> : <p className={contactStyles.coordEmpty}>{copy.shareNeedsCompany || copy.coordEmpty}</p>}
-                </div> : null}
+                </div>
               </div>
-            </section>
+            </section> : null}
           </main>
 
           <aside className={styles.asidePanel}>

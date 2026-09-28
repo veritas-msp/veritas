@@ -1989,24 +1989,25 @@ export default function ClientDetailPage({
     </span> : null;
   const handleInfraNodeClick = useCallback(node => {
     const familyKey = node?.familyKey || parseCustomFamilyType(node?.type);
+    setOverviewTab("map");
+    const scrollToEquipment = () => {
+      equipmentSectionRef.current?.scrollIntoView({
+        behavior: "smooth",
+        block: "start"
+      });
+    };
     if (node?.equipment?.name && !node?.isCategory) {
       setEquipmentSearchQuery(node.equipment.name);
     }
     if (familyKey) {
       equipmentPageRef.current?.focusType?.(`Custom:${familyKey}`);
-      equipmentSectionRef.current?.scrollIntoView({
-        behavior: "smooth",
-        block: "start"
-      });
+      requestAnimationFrame(scrollToEquipment);
       return;
     }
     if (node?.type) {
       equipmentPageRef.current?.focusType?.(node.type);
     }
-    equipmentSectionRef.current?.scrollIntoView({
-      behavior: "smooth",
-      block: "start"
-    });
+    requestAnimationFrame(scrollToEquipment);
   }, []);
   const loadTotalEquipment = async (clientId = null, preloadedClientData = null, modulesData = null, signal) => {
     const targetClientId = clientId || client?.id;
@@ -3027,11 +3028,14 @@ export default function ClientDetailPage({
       showActivity: () => setOverviewTab("activity"),
       showVault: () => setOverviewTab("vault"),
       focusEquipmentStats: () => {
+        setOverviewTab("map");
         equipmentPageRef.current?.focusType?.("Ordinateurs");
         setActiveEquipmentTableType("Ordinateurs");
-        equipmentSectionRef.current?.scrollIntoView({
-          behavior: "smooth",
-          block: "start"
+        requestAnimationFrame(() => {
+          equipmentSectionRef.current?.scrollIntoView({
+            behavior: "smooth",
+            block: "start"
+          });
         });
       }
     }, locale);
@@ -3295,36 +3299,34 @@ export default function ClientDetailPage({
       <div className={styles.pageBody}>
         <div className={styles.pageGrid}>
           <main className={styles.mainColumn}>
+            <div className={styles.overviewTabsWrap}>
+              <nav className={styles.overviewTabBar} role="tablist" aria-label={copy.overviewTabsAria || copy.infraMapTitle}>
+                <button type="button" role="tab" aria-selected={overviewTab === "map"} className={`${styles.overviewTab} ${overviewTab === "map" ? styles.overviewTabActive : ""}`} onClick={() => setOverviewTab("map")} data-guide="enterprise-infra-map-tab">
+                  {copy.overviewTabMap}
+                </button>
+                <button type="button" role="tab" aria-selected={overviewTab === "activity"} className={`${styles.overviewTab} ${overviewTab === "activity" ? styles.overviewTabActive : ""}`} onClick={() => setOverviewTab("activity")} data-guide="enterprise-activity">
+                  {copy.overviewTabActivity}
+                </button>
+                <button type="button" role="tab" aria-selected={overviewTab === "vault"} className={`${styles.overviewTab} ${overviewTab === "vault" ? styles.overviewTabActive : ""}`} onClick={() => setOverviewTab("vault")} data-guide="enterprise-vault">
+                  <span className={styles.overviewTabLabelRow}>
+                    <span>{copy.overviewTabVault}</span>
+                    {isCommunity ? <ProFeatureBadge variant="inline" className={styles.proBadgeInline} /> : null}
+                  </span>
+                </button>
+              </nav>
+            </div>
+
             <div className={styles.mainCommunityPanels}>
+            {overviewTab === "map" ? <>
             <section className={styles.panel} data-guide="enterprise-infra-map">
               <div className={styles.panelHeader}>
                 <div className={styles.panelHeaderMain}>
-                  <nav className={styles.overviewTabBar} role="tablist" aria-label={copy.overviewTabsAria || copy.infraMapTitle}>
-                    <button type="button" role="tab" aria-selected={overviewTab === "map"} className={`${styles.overviewTab} ${overviewTab === "map" ? styles.overviewTabActive : ""}`} onClick={() => setOverviewTab("map")}>
-                      {copy.overviewTabMap}
-                    </button>
-                    <button type="button" role="tab" aria-selected={overviewTab === "activity"} className={`${styles.overviewTab} ${overviewTab === "activity" ? styles.overviewTabActive : ""}`} onClick={() => setOverviewTab("activity")} data-guide="enterprise-activity">
-                      {copy.overviewTabActivity}
-                    </button>
-                    <button type="button" role="tab" aria-selected={overviewTab === "vault"} className={`${styles.overviewTab} ${overviewTab === "vault" ? styles.overviewTabActive : ""}`} onClick={() => setOverviewTab("vault")} data-guide="enterprise-vault">
-                      <span className={styles.overviewTabLabelRow}>
-                        <span>{copy.overviewTabVault}</span>
-                        {isCommunity ? <ProFeatureBadge variant="inline" className={styles.proBadgeInline} /> : null}
-                      </span>
-                    </button>
-                  </nav>
-                  {overviewTab === "map" ? siteFilterBadge : null}
+                  <h2 className={styles.panelTitle}>{copy.infraMapTitle}</h2>
+                  {siteFilterBadge}
                 </div>
-                {overviewTab === "vault" && client?.id && canManageVault ? <div className={styles.panelToolbar}>
-                      <SmartTooltip as="span" content={vaultCopy.panel.addToVault}>
-                        <button type="button" className={styles.addEquipmentButton} onClick={() => vaultPanelRef.current?.openUploadModal()} aria-label={vaultCopy.panel.addToVault}>
-                          <FaPlus />
-                        </button>
-                      </SmartTooltip>
-                    </div> : null}
               </div>
               <div className={styles.panelBody}>
-                {overviewTab === "map" ? <InfrastructureMap clientId={client.id} clientSnapshot={client} equipmentRevision={equipmentRevision} isCommunity={isCommunity} backupInstances={backupInstances} antivirusItems={configuredAntivirusSolutions} antispamItems={configuredAntispamSolutions} domainItems={configuredDomains} domainIntegrationReady={globalOvhConfigured} sslItems={sslData} licenceItems={licencesData} customFamilyMap={customFamilyMap} siteFilter={activeSiteFilter} campaignItems={campaigns}                 tenantInfo={{
+                <InfrastructureMap clientId={client.id} clientSnapshot={client} equipmentRevision={equipmentRevision} isCommunity={isCommunity} backupInstances={backupInstances} antivirusItems={configuredAntivirusSolutions} antispamItems={configuredAntispamSolutions} domainItems={configuredDomains} domainIntegrationReady={globalOvhConfigured} sslItems={sslData} licenceItems={licencesData} customFamilyMap={customFamilyMap} siteFilter={activeSiteFilter} campaignItems={campaigns}                 tenantInfo={{
                   configured: configuredMicrosoftTenants.length > 0 || Boolean(client?.has_azure_credentials || client?.hasAzureCredentials || client?.azureHasCredentials),
                   items: configuredMicrosoftTenants,
                   tenantId: configuredMicrosoftTenants[0]?.tenantId || client?.Office365?.tenantId || client?.microsoft?.tenantId || null,
@@ -3347,10 +3349,13 @@ export default function ClientDetailPage({
                     if (!canManageDevices && !canManageSolutions) return;
                     const family = customFamilyMap.find(entry => entry.familyKey === familyKey);
                     if (family) {
+                      setOverviewTab("map");
                       equipmentPageRef.current?.focusType?.(`Custom:${familyKey}`);
-                      equipmentSectionRef.current?.scrollIntoView({
-                        behavior: "smooth",
-                        block: "start"
+                      requestAnimationFrame(() => {
+                        equipmentSectionRef.current?.scrollIntoView({
+                          behavior: "smooth",
+                          block: "start"
+                        });
                       });
                       const itemCount = Number(family.count) || (Array.isArray(family.items) ? family.items.length : 0);
                       if (canManageDevices && itemCount === 0) {
@@ -3396,8 +3401,119 @@ export default function ClientDetailPage({
                     handleMicrosoftTenantBrickClick();
                     return;
                   }
-                } : undefined} /> : null}
-                {overviewTab === "activity" ? <div className={styles.overviewTabPanel}>
+                } : undefined} />
+              </div>
+            </section>
+
+            <section className={styles.panel} ref={equipmentSectionRef} data-guide="enterprise-equipment">
+              <div className={styles.panelHeader}>
+                <div className={styles.panelHeaderMain}>
+                  <h2 className={styles.panelTitle}>{copy.peripheralsTitle}</h2>
+                  {siteFilterBadge}
+                </div>
+                <div className={styles.panelToolbar}>
+                  <span className={styles.equipmentResultCount}>
+                    {interpolate(equipmentResultCount > 1 ? copy.resultCountPlural : copy.resultCount, {
+                      count: equipmentResultCount
+                    })}
+                  </span>
+                  {equipmentStatsAction ? <SmartTooltip as="span" content={equipmentStatsAction.label}>
+                      <button type="button" className={styles.exportHeaderButton} data-guide="enterprise-equipment-stats" onClick={() => openComputerFleetStats()} onMouseDown={e => {
+                      if (e.button === 1) {
+                        e.preventDefault();
+                        openComputerFleetStats({
+                          background: true,
+                          equipmentType: activeEquipmentTableType || undefined
+                        });
+                      }
+                    }} aria-label={equipmentStatsAction.label}>
+                        <Icon icon="mdi:chart-box-outline" />
+                      </button>
+                    </SmartTooltip> : null}
+                  <div className={styles.exportMenuWrap} ref={equipmentExportMenuRef}>
+                    <SmartTooltip as="span" content={copy.exportCsv}>
+                      <button type="button" className={styles.exportHeaderButton} onClick={() => setEquipmentExportMenuOpen(open => !open)} aria-expanded={equipmentExportMenuOpen} aria-haspopup="menu">
+                        <FaFileExport />
+                      </button>
+                    </SmartTooltip>
+                    {equipmentExportMenuOpen && <div className={styles.exportMenu} role="menu">
+                        <button type="button" className={styles.exportMenuItem} role="menuitem" onClick={() => {
+                        setEquipmentExportMenuOpen(false);
+                        equipmentPageRef.current?.handleExportCurrentTable();
+                      }}>
+                          {copy.exportCurrentTable}
+                        </button>
+                        <button type="button" className={styles.exportMenuItem} role="menuitem" onClick={() => {
+                        setEquipmentExportMenuOpen(false);
+                        equipmentPageRef.current?.handleExportAllTables();
+                      }}>
+                          {copy.exportAllTables}
+                        </button>
+                      </div>}
+                  </div>
+                  {canManageDevices ? <>
+                    <SmartTooltip as="span" content={copy.unifiLinkSite || "Lien UniFi"}>
+                      <button
+                        type="button"
+                        className={styles.addEquipmentButton}
+                        onClick={() => setUnifiLinkModalOpen(true)}
+                        aria-label={copy.unifiLinkSite || "Lien UniFi"}
+                      >
+                        <Icon icon="simple-icons:ubiquiti" aria-hidden />
+                      </button>
+                    </SmartTooltip>
+                    {unifiLink?.linked ? (
+                      <SmartTooltip as="span" content={copy.unifiImport || "Importer depuis UniFi"}>
+                        <button
+                          type="button"
+                          className={styles.addEquipmentButton}
+                          onClick={() => setUnifiImportModalOpen(true)}
+                          aria-label={copy.unifiImport || "Importer depuis UniFi"}
+                        >
+                          <Icon icon="mdi:cloud-download-outline" aria-hidden />
+                        </button>
+                      </SmartTooltip>
+                    ) : null}
+                    <SmartTooltip as="span" content={copy.addEquipment}>
+                      <button type="button" className={styles.addEquipmentButton} onClick={() => equipmentPageRef.current?.openAddEquipmentModal()}>
+                        <FaPlus />
+                      </button>
+                    </SmartTooltip>
+                  </> : null}
+                </div>
+              </div>
+              <div className={styles.panelBody}>
+                <div className={styles.equipmentSection}>
+                  <EquipmentPage ref={equipmentPageRef} embedded fixedClientId={client.id} embeddedClient={client ? {
+                    ...client,
+                    sites: formData.sites ?? client.sites ?? [],
+                    ssid: Array.isArray(client.ssids) && client.ssids.length ? client.ssids : client.ssid,
+                    ssids: Array.isArray(client.ssids) && client.ssids.length ? client.ssids : client.ssid
+                  } : null} equipmentRevision={equipmentRevision} initialEmbeddedType={initialPeripheralsUi?.activeType || null} initialTablePageByType={initialPeripheralsUi?.tablePageByType || null} initialTableSort={initialPeripheralsUi?.tableSort || null} initialEmbeddedPageSize={initialPeripheralsUi?.pageSize || null} onNavigate={onNavigate} searchQuery={equipmentSearchQuery} onSearchQueryChange={setEquipmentSearchQuery} onFilteredCountChange={setEquipmentResultCount} onTotalCountChange={setHardwareEquipmentTotalCount} onEquipmentChanged={refreshClientEquipment} onClientSsidsUpdated={ssids => {
+                    setClient(prev => prev ? {
+                      ...prev,
+                      ssid: ssids,
+                      ssids
+                    } : prev);
+                  }} customFamilyMap={filteredCustomFamilyMap} backupInstances={backupInstances} siteFilter={activeSiteFilter} onCustomFamilyManage={(family, item) => {
+                    setCustomEquipmentModal({
+                      family,
+                      item: item || null
+                    });
+                  }} onEmbeddedActiveTypeChange={setActiveEquipmentTableType} />
+                </div>
+              </div>
+            </section>
+            </> : null}
+
+            {overviewTab === "activity" ? <section className={styles.panel} data-guide="enterprise-activity-panel">
+              <div className={styles.panelHeader}>
+                <div className={styles.panelHeaderMain}>
+                  <h2 className={styles.panelTitle}>{copy.activityTitle}</h2>
+                </div>
+              </div>
+              <div className={styles.panelBody}>
+                <div className={styles.overviewTabPanel}>
                   {loadingClientActivity ? <div className={styles.activityLayout}>
                     <div className={styles.activityGridSplit}>
                       <div className={`${styles.activityBlock} ${styles.activityBlockLoading}`}>
@@ -3591,114 +3707,31 @@ export default function ClientDetailPage({
                       </div>
                     </ProFeatureLock>
                     </div>}
-                </div> : null}
-                {overviewTab === "vault" ? <div className={styles.overviewTabPanel}>
-                  <ProFeatureLock locked={isCommunity} featureLabel={copy.proFeatures.vault} featureKey="vault">
-                    {client?.id ? <EnterpriseVaultPanel ref={vaultPanelRef} copy={vaultCopy} clientId={client.id} clientName={client.name} /> : null}
-                  </ProFeatureLock>
-                </div> : null}
+                </div>
               </div>
-            </section>
+            </section> : null}
 
-            <section className={styles.panel} ref={equipmentSectionRef} data-guide="enterprise-equipment">
+            {overviewTab === "vault" ? <section className={styles.panel} data-guide="enterprise-vault-panel">
               <div className={styles.panelHeader}>
                 <div className={styles.panelHeaderMain}>
-                  <h2 className={styles.panelTitle}>{copy.peripheralsTitle}</h2>
-                  {siteFilterBadge}
+                  <h2 className={styles.panelTitle}>{copy.vaultTitle}</h2>
                 </div>
-                <div className={styles.panelToolbar}>
-                  <span className={styles.equipmentResultCount}>
-                    {interpolate(equipmentResultCount > 1 ? copy.resultCountPlural : copy.resultCount, {
-                      count: equipmentResultCount
-                    })}
-                  </span>
-                  {equipmentStatsAction ? <SmartTooltip as="span" content={equipmentStatsAction.label}>
-                      <button type="button" className={styles.exportHeaderButton} data-guide="enterprise-equipment-stats" onClick={() => openComputerFleetStats()} onMouseDown={e => {
-                      if (e.button === 1) {
-                        e.preventDefault();
-                        openComputerFleetStats({
-                          background: true,
-                          equipmentType: activeEquipmentTableType || undefined
-                        });
-                      }
-                    }} aria-label={equipmentStatsAction.label}>
-                        <Icon icon="mdi:chart-box-outline" />
-                      </button>
-                    </SmartTooltip> : null}
-                  <div className={styles.exportMenuWrap} ref={equipmentExportMenuRef}>
-                    <SmartTooltip as="span" content={copy.exportCsv}>
-                      <button type="button" className={styles.exportHeaderButton} onClick={() => setEquipmentExportMenuOpen(open => !open)} aria-expanded={equipmentExportMenuOpen} aria-haspopup="menu">
-                        <FaFileExport />
-                      </button>
-                    </SmartTooltip>
-                    {equipmentExportMenuOpen && <div className={styles.exportMenu} role="menu">
-                        <button type="button" className={styles.exportMenuItem} role="menuitem" onClick={() => {
-                        setEquipmentExportMenuOpen(false);
-                        equipmentPageRef.current?.handleExportCurrentTable();
-                      }}>
-                          {copy.exportCurrentTable}
-                        </button>
-                        <button type="button" className={styles.exportMenuItem} role="menuitem" onClick={() => {
-                        setEquipmentExportMenuOpen(false);
-                        equipmentPageRef.current?.handleExportAllTables();
-                      }}>
-                          {copy.exportAllTables}
-                        </button>
-                      </div>}
-                  </div>
-                  {canManageDevices ? <>
-                    <SmartTooltip as="span" content={copy.unifiLinkSite || "Lien UniFi"}>
-                      <button
-                        type="button"
-                        className={styles.addEquipmentButton}
-                        onClick={() => setUnifiLinkModalOpen(true)}
-                        aria-label={copy.unifiLinkSite || "Lien UniFi"}
-                      >
-                        <Icon icon="simple-icons:ubiquiti" aria-hidden />
-                      </button>
-                    </SmartTooltip>
-                    {unifiLink?.linked ? (
-                      <SmartTooltip as="span" content={copy.unifiImport || "Importer depuis UniFi"}>
-                        <button
-                          type="button"
-                          className={styles.addEquipmentButton}
-                          onClick={() => setUnifiImportModalOpen(true)}
-                          aria-label={copy.unifiImport || "Importer depuis UniFi"}
-                        >
-                          <Icon icon="mdi:cloud-download-outline" aria-hidden />
-                        </button>
-                      </SmartTooltip>
-                    ) : null}
-                    <SmartTooltip as="span" content={copy.addEquipment}>
-                    <button type="button" className={styles.addEquipmentButton} onClick={() => equipmentPageRef.current?.openAddEquipmentModal()}>
+                {client?.id && canManageVault ? <div className={styles.panelToolbar}>
+                  <SmartTooltip as="span" content={vaultCopy.panel.addToVault}>
+                    <button type="button" className={styles.addEquipmentButton} onClick={() => vaultPanelRef.current?.openUploadModal()} aria-label={vaultCopy.panel.addToVault}>
                       <FaPlus />
                     </button>
                   </SmartTooltip>
-                  </> : null}
-                </div>
+                </div> : null}
               </div>
               <div className={styles.panelBody}>
-                <div className={styles.equipmentSection}>
-                  <EquipmentPage ref={equipmentPageRef} embedded fixedClientId={client.id} embeddedClient={client ? {
-                    ...client,
-                    sites: formData.sites ?? client.sites ?? [],
-                    ssid: Array.isArray(client.ssids) && client.ssids.length ? client.ssids : client.ssid,
-                    ssids: Array.isArray(client.ssids) && client.ssids.length ? client.ssids : client.ssid
-                  } : null} equipmentRevision={equipmentRevision} initialEmbeddedType={initialPeripheralsUi?.activeType || null} initialTablePageByType={initialPeripheralsUi?.tablePageByType || null} initialTableSort={initialPeripheralsUi?.tableSort || null} initialEmbeddedPageSize={initialPeripheralsUi?.pageSize || null} onNavigate={onNavigate} searchQuery={equipmentSearchQuery} onSearchQueryChange={setEquipmentSearchQuery} onFilteredCountChange={setEquipmentResultCount} onTotalCountChange={setHardwareEquipmentTotalCount} onEquipmentChanged={refreshClientEquipment} onClientSsidsUpdated={ssids => {
-                    setClient(prev => prev ? {
-                      ...prev,
-                      ssid: ssids,
-                      ssids
-                    } : prev);
-                  }} customFamilyMap={filteredCustomFamilyMap} backupInstances={backupInstances} siteFilter={activeSiteFilter} onCustomFamilyManage={(family, item) => {
-                    setCustomEquipmentModal({
-                      family,
-                      item: item || null
-                    });
-                  }} onEmbeddedActiveTypeChange={setActiveEquipmentTableType} />
+                <div className={styles.overviewTabPanel}>
+                  <ProFeatureLock locked={isCommunity} featureLabel={copy.proFeatures.vault} featureKey="vault">
+                    {client?.id ? <EnterpriseVaultPanel ref={vaultPanelRef} copy={vaultCopy} clientId={client.id} clientName={client.name} /> : null}
+                  </ProFeatureLock>
                 </div>
               </div>
-            </section>
+            </section> : null}
             </div>
 
           </main>

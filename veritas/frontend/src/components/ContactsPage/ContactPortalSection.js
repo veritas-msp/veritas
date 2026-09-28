@@ -330,7 +330,7 @@ export default function ContactPortalSection({
           email: loginEmail
         })}
             </p>
-            <PortalRolePicker value={createPortalRole} onChange={setCreatePortalRole} disabled={busy} copy={portalCopy} stacked />
+            <PortalRolePicker value={createPortalRole} onChange={setCreatePortalRole} disabled={busy} copy={portalCopy} compact />
             <button type="button" className={s.primaryBtn} onClick={() => {
         if (portalAtLimit) {
           warnPortalLimit();

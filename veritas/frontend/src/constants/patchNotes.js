@@ -5,6 +5,15 @@
  */
 export const PATCH_NOTES = [
   {
+    version: "1.0.39",
+    date: "2026-09-28",
+    highlights: [
+      "Antispam Mail in Black : licences plus plafonnées à 20 ; statut et date d’expiration mieux récupérés (resync recommandée).",
+      "KPI : filtre 12 mois / Tout corrigé (plus de zéros) ; volume des tickets redessiné ; cockpit Périphériques stable sur « Tout ».",
+      "Fiches entreprise et contact : onglets centrés, cartographie / périphériques et portail contact condensé."
+    ]
+  },
+  {
     version: "1.0.38",
     date: "2026-09-28",
     highlights: [

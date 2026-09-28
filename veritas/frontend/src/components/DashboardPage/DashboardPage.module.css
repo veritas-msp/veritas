@@ -548,6 +548,131 @@
   padding: 0.2rem 0.1rem 0;
 }
 
+.volumeChart {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+  width: 100%;
+  min-height: 0;
+}
+
+.volumeChartMeta {
+  display: flex;
+  align-items: baseline;
+  gap: 0.45rem;
+}
+
+.volumeChartTotal {
+  font-size: 1.35rem;
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+  color: var(--msp-text);
+  line-height: 1;
+}
+
+.volumeChartTotalLabel {
+  font-size: 0.82rem;
+  font-weight: 500;
+  color: var(--dash-muted);
+}
+
+.volumeChartBars {
+  display: flex;
+  align-items: stretch;
+  gap: 0.65rem;
+  width: 100%;
+  min-height: 15.5rem;
+  padding: 0.15rem 0.05rem 0;
+}
+
+.volumeChartBarsCompact {
+  gap: 0.35rem;
+}
+
+.volumeChartCol {
+  flex: 1 1 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.volumeChartValue {
+  font-size: 0.95rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--msp-text);
+  line-height: 1;
+}
+
+.volumeChartTrack {
+  flex: 1 1 auto;
+  width: 100%;
+  max-width: 3.25rem;
+  min-height: 11.5rem;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  background: color-mix(in srgb, var(--msp-border) 22%, var(--msp-surface));
+  border: 1px solid var(--msp-border-light);
+  border-radius: 10px 10px 6px 6px;
+  overflow: hidden;
+}
+
+.volumeChartFill {
+  display: block;
+  width: 100%;
+  min-height: 4px;
+  border-radius: 8px 8px 0 0;
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--msp-accent) 72%, white) 0%,
+    var(--msp-accent) 100%
+  );
+  transition: height 0.28s ease;
+}
+
+.volumeChartFillEmpty {
+  min-height: 0;
+  background: transparent;
+}
+
+.volumeChartLabel {
+  font-size: 0.74rem;
+  font-weight: 500;
+  color: var(--dash-muted);
+  text-align: center;
+  line-height: 1.2;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+}
+
+.volumeChartBarsCompact .volumeChartValue {
+  font-size: 0.8rem;
+}
+
+.volumeChartBarsCompact .volumeChartLabel {
+  font-size: 0.66rem;
+}
+
+.volumeChartBarsCompact .volumeChartTrack {
+  max-width: 2.4rem;
+  min-height: 10rem;
+}
+
+@media (max-width: 900px) {
+  .volumeChartBars {
+    gap: 0.4rem;
+    min-height: 13rem;
+  }
+
+  .volumeChartTrack {
+    max-width: none;
+    min-height: 9rem;
+  }
+}
+
 .columnChartCol {
   flex: 1 1 0;
   min-width: 0;

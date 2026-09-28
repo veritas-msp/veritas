@@ -723,6 +723,20 @@
   min-width: 0;
 }
 
+.overviewTabsWrap {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 100%;
+  flex-shrink: 0;
+  padding: 0.15rem 0 0.1rem;
+}
+
+.overviewTabsWrap .overviewTabBar {
+  display: inline-flex;
+  justify-content: center;
+}
+
 .mainCommunityPanels {
   display: contents;
 }

@@ -1,12 +1,14 @@
 .portalSection {
   display: flex;
   flex-direction: column;
-  gap: 0.65rem;
+  gap: 0.55rem;
+  max-width: 32rem;
+  width: 100%;
 }
 
 .usageHint {
   margin: 0;
-  font-size: 0.74rem;
+  font-size: 0.72rem;
   color: var(--msp-muted, #5c6b82);
   display: flex;
   align-items: center;
@@ -21,20 +23,20 @@
 .portalHero {
   display: flex;
   align-items: center;
-  gap: 0.65rem;
+  gap: 0.55rem;
 }
 
 .portalHeroIcon {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 2.1rem;
-  height: 2.1rem;
-  border-radius: 10px;
+  width: 1.9rem;
+  height: 1.9rem;
+  border-radius: 9px;
   flex-shrink: 0;
   background: var(--msp-accent-soft, rgba(43, 95, 171, 0.1));
   color: var(--msp-accent, #2b5fab);
-  font-size: 1.1rem;
+  font-size: 1rem;
 }
 
 .portalHeroBody {
@@ -44,16 +46,16 @@
 
 .portalHeroTitle {
   margin: 0;
-  font-size: 0.86rem;
+  font-size: 0.84rem;
   font-weight: 700;
   color: var(--msp-text, #0f1c2e);
-  line-height: 1.25;
+  line-height: 1.2;
 }
 
 .portalHeroMeta {
-  margin: 0.15rem 0 0;
-  font-size: 0.74rem;
-  line-height: 1.35;
+  margin: 0.1rem 0 0;
+  font-size: 0.72rem;
+  line-height: 1.3;
   color: var(--msp-muted, #5c6b82);
   overflow: hidden;
   text-overflow: ellipsis;
@@ -61,16 +63,16 @@
 }
 
 .portalHeroDesc {
-  margin: 0.15rem 0 0;
-  font-size: 0.74rem;
-  line-height: 1.4;
+  margin: 0.1rem 0 0;
+  font-size: 0.72rem;
+  line-height: 1.35;
   color: var(--msp-muted, #5c6b82);
 }
 
 .heroRight {
   display: flex;
   align-items: center;
-  gap: 0.55rem;
+  gap: 0.45rem;
   flex-shrink: 0;
 }
 
@@ -114,22 +116,23 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 0.65rem;
+  gap: 0.55rem;
   min-width: 0;
 }
 
 .roleRowStacked {
   flex-direction: column;
   align-items: stretch;
-  gap: 0.45rem;
+  gap: 0.4rem;
 }
 
 .roleRowStacked .roleSeg {
-  width: 100%;
+  width: auto;
+  align-self: flex-start;
 }
 
 .roleRowStacked .roleBtn {
-  flex: 1;
+  flex: 0 1 auto;
 }
 
 .roleRowStacked .roleHint {
@@ -310,19 +313,20 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 0.4rem;
-  width: 100%;
-  margin-top: 0.1rem;
-  padding: 0.5rem 0.9rem;
+  gap: 0.35rem;
+  width: auto;
+  align-self: flex-start;
+  margin-top: 0.05rem;
+  padding: 0.42rem 0.85rem;
   border: none;
-  border-radius: 9px;
+  border-radius: 8px;
   background: linear-gradient(135deg, var(--msp-accent, #2b5fab) 0%, var(--msp-accent-dark, #1a3d75) 100%);
   color: #fff;
-  font-size: 0.8rem;
+  font-size: 0.76rem;
   font-weight: 600;
   font-family: inherit;
   cursor: pointer;
-  box-shadow: 0 4px 12px rgba(43, 95, 171, 0.22);
+  box-shadow: 0 3px 10px rgba(43, 95, 171, 0.2);
   transition: filter 0.15s;
 }
 
@@ -333,15 +337,16 @@
 .inviteBlock {
   display: flex;
   flex-direction: column;
-  gap: 0.65rem;
-  padding-top: 0.55rem;
+  align-items: stretch;
+  gap: 0.5rem;
+  padding-top: 0.45rem;
   border-top: 1px solid var(--msp-border, #e8edf4);
 }
 
 .inviteDesc {
   margin: 0;
-  font-size: 0.74rem;
-  line-height: 1.45;
+  font-size: 0.72rem;
+  line-height: 1.4;
   color: var(--msp-muted, #5c6b82);
 }
 
