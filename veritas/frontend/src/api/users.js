@@ -243,6 +243,7 @@ export const switchActiveProfile = async profile => {
   return await res.json();
 };
 
+export const impersonateUser = async userId => {
   const res = await fetch(`${API_BASE_URL}/auth/impersonate/users/${userId}`, {
     method: "POST",
     headers: jsonHeaders,
