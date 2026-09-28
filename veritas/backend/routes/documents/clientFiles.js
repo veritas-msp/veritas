@@ -11,6 +11,7 @@ import { ensureVisibleToClientColumn, hasVisibleToClientColumn, parseVisibleToCl
 import { ensureClientFileFoldersSchema, hasClientFileFoldersTable } from "../../services/ensureClientFileFoldersSchema.js";
 import { notifyVaultDocumentShared } from "../../services/systemNotificationService.js";
 import { allowAssetEmbedding } from "../../middleware/securityHeaders.js";
+import { decodeMulterFilename, mapFileRowFilename, repairStoredFilename } from "../../utils/multerFilename.js";
 const router = express.Router();
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const UPLOADS_DIR = path.join(__dirname, "..", "..", "uploads", "client-files");
@@ -45,10 +46,13 @@ const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
 function isUuid(value) {
   return UUID_RE.test(String(value || "").trim());
 }
+function resolveUploadOriginalName(file) {
+  return decodeMulterFilename(file?.originalname);
+}
 function isAllowedUpload(file) {
   if (!file) return false;
   if (ALLOWED_MIME.has(file.mimetype)) return true;
-  const ext = path.extname(file.originalname || "").toLowerCase();
+  const ext = path.extname(resolveUploadOriginalName(file) || "").toLowerCase();
   // Some browsers send empty / octet-stream for ZIP blobs.
   if (ZIP_EXTENSIONS.has(ext) && (!file.mimetype || file.mimetype === "application/octet-stream")) {
     return true;
@@ -62,7 +66,8 @@ const storage = multer.diskStorage({
   destination: (_req, _file, cb) => cb(null, UPLOADS_DIR),
   filename: (_req, file, cb) => {
     const timestamp = Date.now();
-    const safe = file.originalname.replace(/[^a-zA-Z0-9._-]/g, "_");
+    const original = resolveUploadOriginalName(file);
+    const safe = original.replace(/[^a-zA-Z0-9._-]/g, "_");
     cb(null, `${timestamp}_${safe}`);
   }
 });
@@ -79,6 +84,15 @@ const upload = multer({
     }
   }
 });
+function healStoredFilename(row) {
+  const mapped = mapFileRowFilename(row);
+  if (!mapped || mapped === row || mapped.file_name === row.file_name) return mapped || row;
+  pool.query(
+    `UPDATE v_b_client_files SET file_name = $1 WHERE id = $2 AND file_name = $3`,
+    [mapped.file_name, row.id, row.file_name]
+  ).catch(() => {});
+  return mapped;
+}
 function runSingleFileUpload(req, res, next) {
   upload.single("file")(req, res, err => {
     if (!err) return next();
@@ -169,7 +183,7 @@ router.get("/", verifyJWT, requireAnyPermission("documents.view", "clients_detai
        FROM v_b_client_files
        ${where}
        ORDER BY created_at DESC`, values);
-    res.json(result.rows);
+    res.json(result.rows.map(healStoredFilename));
   } catch (err) {
     console.error("[GET /client-files]", err.message);
     res.status(500).json({
@@ -383,7 +397,7 @@ router.post("/", verifyJWT, requireAnyPermission("documents.create", "clients_de
       fs.unlinkSync(req.file.path);
       return res.status(folderErr.status || 400).json({ error: folderErr.message });
     }
-    const ext = path.extname(req.file.originalname || "").toLowerCase();
+    const ext = path.extname(resolveUploadOriginalName(req.file) || "").toLowerCase();
     const mimeType =
       req.file.mimetype && req.file.mimetype !== "application/octet-stream"
         ? req.file.mimetype
@@ -394,8 +408,9 @@ router.post("/", verifyJWT, requireAnyPermission("documents.create", "clients_de
             : req.file.mimetype || "application/octet-stream";
     const safeCategory = ALLOWED_CATEGORIES.has(category) ? category : "Autre";
     const hasFolders = await hasClientFileFoldersTable();
+    const displayName = resolveUploadOriginalName(req.file);
     const columns = ["client_id", "client_name", "file_name", "file_path", "mime_type", "size_bytes", "category", "description", "uploaded_by"];
-    const values = [resolvedClientId, clientName || null, req.file.originalname, req.file.filename, mimeType, req.file.size, safeCategory, description, resolveFileUploadedBy(req.user)];
+    const values = [resolvedClientId, clientName || null, displayName, req.file.filename, mimeType, req.file.size, safeCategory, description, resolveFileUploadedBy(req.user)];
     if (hasFolders) {
       columns.push("folder_id");
       values.push(resolvedFolderId);
@@ -410,7 +425,7 @@ router.post("/", verifyJWT, requireAnyPermission("documents.create", "clients_de
     const result = await pool.query(`INSERT INTO v_b_client_files (${columns.join(", ")})
        VALUES (${placeholders.join(", ")})
        RETURNING id, client_id, client_name, file_name, mime_type, size_bytes, category, description, created_at${returningFolder}${returningVisibility}`, values);
-    const row = result.rows[0];
+    const row = healStoredFilename(result.rows[0]);
     if (shareWithClient) {
       notifyVaultDocumentShared({
         clientId: Number(clientId),
@@ -443,8 +458,9 @@ router.get("/:id/download", verifyJWT, requireAnyPermission("documents.view", "c
     if (!fs.existsSync(fullPath)) return res.status(404).json({
       error: "File missing on disk."
     });
+    const safeName = repairStoredFilename(file_name);
     res.setHeader("Content-Type", mime_type);
-    res.setHeader("Content-Disposition", `attachment; filename="${encodeURIComponent(file_name)}"`);
+    res.setHeader("Content-Disposition", `attachment; filename="${encodeURIComponent(safeName)}"`);
     fs.createReadStream(fullPath).pipe(res);
   } catch (err) {
     console.error("[GET /client-files/:id/download]", err.message);
@@ -468,8 +484,9 @@ router.get("/:id/preview", verifyJWT, requireAnyPermission("documents.view", "cl
     if (!fs.existsSync(fullPath)) return res.status(404).json({
       error: "File missing on disk."
     });
+    const safeName = repairStoredFilename(file_name);
     res.setHeader("Content-Type", mime_type);
-    res.setHeader("Content-Disposition", `inline; filename="${encodeURIComponent(file_name)}"`);
+    res.setHeader("Content-Disposition", `inline; filename="${encodeURIComponent(safeName)}"`);
     allowAssetEmbedding(res);
     fs.createReadStream(fullPath).pipe(res);
   } catch (err) {
@@ -545,7 +562,7 @@ router.patch("/:id", verifyJWT, requireAnyPermission("documents.edit", "clients_
         error: "File not found."
       });
     }
-    const row = result.rows[0];
+    const row = healStoredFilename(result.rows[0]);
     if (hasVisibility && row.visible_to_client === true && previouslyVisible === false) {
       notifyVaultDocumentShared({
         clientId: row.client_id,

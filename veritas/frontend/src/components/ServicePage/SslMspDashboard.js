@@ -78,7 +78,9 @@ export default function SslMspDashboard({
   certificates = [],
   loading = false,
   onOpenClient,
-  copy
+  copy,
+  onSync,
+  syncing = false
 }) {
   const {
     formatDate,
@@ -89,7 +91,7 @@ export default function SslMspDashboard({
   const [sortBy, setSortBy] = useState("clientName");
   const [sortDirection, setSortDirection] = useState("asc");
   const [currentPage, setCurrentPage] = useState(1);
-  const [pageSize, setPageSize] = useState(10);
+  const [pageSize, setPageSize] = useState(50);
   const fleetRows = useMemo(() => buildSslFleetFromList(certificates), [certificates]);
   const stats = useMemo(() => buildSslFleetStats(fleetRows), [fleetRows]);
   const filteredRows = useMemo(() => filterSslFleetRows(fleetRows, {
@@ -145,6 +147,18 @@ export default function SslMspDashboard({
           <Icon icon="mdi:magnify" width={18} aria-hidden />
           <input type="search" placeholder={copy.searchPlaceholder} value={search} onChange={e => setSearch(e.target.value)} />
         </label>
+        {onSync ? <div className={styles.toolbarActions}>
+            <button
+              type="button"
+              className={styles.iconBtn}
+              title={copy.checkAll}
+              aria-label={copy.checkAll}
+              onClick={onSync}
+              disabled={syncing || certificates.length === 0}
+            >
+              <Icon icon={syncing ? "mdi:loading" : "mdi:sync"} className={syncing ? styles.spin : undefined} aria-hidden />
+            </button>
+          </div> : null}
       </div>
 
       {loading ? <div className={styles.loadingState}>

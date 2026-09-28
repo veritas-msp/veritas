@@ -1,4 +1,5 @@
 import { ensureProfilesSchema } from "./ensureProfilesSchema.js";
+import { ensureUserProfilesSchema } from "./ensureUserProfilesSchema.js";
 import { ensureTeamsSchema } from "./ensureTeamsSchema.js";
 import { ensureSslSchema } from "./ensureSslSchema.js";
 import { ensureTicketViewsSchema } from "./ensureTicketViewsSchema.js";
@@ -15,6 +16,7 @@ import { ensureTicketValidationRequestsSchema } from "./ensureTicketValidationRe
 import { ensureMonitoringAutomationSchema } from "./ensureMonitoringAutomationSchema.js";
 import { ensureSupervisionAlertsSchema } from "./ensureSupervisionAlertsSchema.js";
 import { ensureSupervisionAlertRulesSchema } from "./ensureSupervisionAlertRulesSchema.js";
+import { ensureCheckmkSyncRunsSchema } from "./ensureCheckmkSyncRunsSchema.js";
 import { ensurePermissionsSchema } from "./ensurePermissionsSchema.js";
 import { ensureSalesTicketCategoriesSchema } from "./ensureSalesTicketCategoriesSchema.js";
 import { ensureContactClientLinksSchema } from "./ensureContactClientLinksSchema.js";
@@ -28,6 +30,7 @@ import { ensureEntitySubscriptionsSchema } from "./ensureEntitySubscriptionsSche
 import { runIncrementalAvrilMigrations } from "../utils/incrementalAvrilMigrations.js";
 export async function runPostSetupSchemaMigrations() {
   await ensureProfilesSchema();
+  await ensureUserProfilesSchema();
   await ensurePermissionsSchema();
   await ensureTeamsSchema();
   await ensureSslSchema();
@@ -46,6 +49,7 @@ export async function runPostSetupSchemaMigrations() {
   await ensureMonitoringAutomationSchema();
   await ensureSupervisionAlertsSchema();
   await ensureSupervisionAlertRulesSchema();
+  await ensureCheckmkSyncRunsSchema();
   await ensureSalesTicketCategoriesSchema();
   await ensureContactClientLinksSchema();
   await ensureContactSiteLinksSchema();
@@ -61,6 +65,7 @@ export async function runPostSetupSchemaMigrations() {
   }
   // Re-run after incremental patches (documents_enabled, Super Admin SQL, etc.)
   await ensureProfilesSchema();
+  await ensureUserProfilesSchema();
   await ensurePermissionsSchema();
   await ensureSalesTicketCategoriesSchema();
   await ensureContactClientLinksSchema();
@@ -70,4 +75,5 @@ export async function runPostSetupSchemaMigrations() {
   await ensurePrestatairesSchema();
   await ensureEntitySubscriptionsSchema();
   await ensureSupervisionAlertRulesSchema();
+  await ensureCheckmkSyncRunsSchema();
 }

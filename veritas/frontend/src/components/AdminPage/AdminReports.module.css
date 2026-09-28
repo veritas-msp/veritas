@@ -1,0 +1,140 @@
+.workspace {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(280px, 0.95fr);
+  gap: 1rem;
+  align-items: start;
+  width: 100%;
+  min-width: 0;
+}
+
+.editor {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  min-width: 0;
+}
+
+.previewColumn {
+  min-width: 0;
+  position: sticky;
+  top: 0.75rem;
+  align-self: start;
+  height: calc(100dvh - 1.5rem);
+  max-height: calc(100dvh - 1.5rem);
+  display: flex;
+  flex-direction: column;
+}
+
+.previewSticky {
+  min-width: 0;
+  flex: 1 1 auto;
+  min-height: 0;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.previewShell {
+  flex: 1 1 auto;
+  min-height: 0;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--msp-border-light, #e2e8f0);
+  border-radius: 0;
+  overflow: hidden;
+  background: #f8fafc;
+}
+
+.previewHeader {
+  flex-shrink: 0;
+  position: relative;
+  padding: 1.25rem 1.35rem 1.1rem;
+}
+
+.previewAccentBar {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 4px;
+}
+
+.previewBody {
+  flex: 1 1 auto;
+  min-height: 0;
+  padding: 1.1rem 1.2rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  overflow: auto;
+  background: #fff;
+}
+
+.previewBodyCard {
+  border: 1px solid var(--msp-border-light, #e2e8f0);
+  border-radius: 10px;
+  padding: 0.85rem 1rem;
+  background: #f8fafc;
+}
+
+.previewBodyTitle {
+  margin: 0 0 0.35rem;
+  font-size: 0.92rem;
+  font-weight: 700;
+}
+
+.previewBodyLine {
+  margin: 0;
+  font-size: 0.8rem;
+  color: var(--msp-muted, #5c6b82);
+  line-height: 1.45;
+}
+
+.previewFooter {
+  flex-shrink: 0;
+  padding: 1.1rem 1.2rem 1.2rem;
+  text-align: center;
+  border-top: 1px solid var(--msp-border-light, #e2e8f0);
+}
+
+.resolvedList {
+  display: grid;
+  gap: 0.35rem;
+  font-size: 0.88rem;
+  color: var(--msp-muted, #5c6b82);
+}
+
+.footerBar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  padding: 12px 14px;
+  margin-top: 4px;
+  border: 1px solid var(--msp-border, #dde3ed);
+  border-radius: 10px;
+  background: var(--msp-surface, #fff);
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+  flex-shrink: 0;
+}
+
+@media (max-width: 1100px) {
+  .workspace {
+    grid-template-columns: 1fr;
+  }
+
+  .previewColumn {
+    position: static;
+    order: -1;
+    height: auto;
+    max-height: none;
+  }
+
+  .previewShell {
+    min-height: min(520px, 70vh);
+  }
+}

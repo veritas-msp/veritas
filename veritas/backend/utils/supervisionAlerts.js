@@ -1,9 +1,46 @@
 import { pool } from "../database/db.js";
 import { listCheckmkHistoryItems } from "../routes/integrations/checkmk/equipmentMonitoringSync.js";
 import { ensureSupervisionAlertsSchema } from "../services/ensureSupervisionAlertsSchema.js";
+import { formatMonitorIssueLabel } from "./equipmentFleetIssues.js";
+import { SUPERVISION_ALERT_CRITERIA } from "./supervisionAlertRules.js";
 
 const ACTIVE_STATUSES = new Set(["open", "acked", "linked"]);
 const CLOSE_REASONS = new Set(["resolved", "dismissed"]);
+const CRITERION_LABEL_BY_KEY = new Map(SUPERVISION_ALERT_CRITERIA.map(c => [c.key, c.label]));
+
+function isBareAlertText(value) {
+  return /^(warning|critical|crit|warn|info|monitor_warning|monitor_critical)$/i.test(String(value || "").trim());
+}
+
+function isRicherAlertText(next, prev) {
+  const a = String(next || "").trim();
+  const b = String(prev || "").trim();
+  if (!a) return false;
+  if (!b) return true;
+  if (a === b) return false;
+  if (isBareAlertText(b) && !isBareAlertText(a)) return true;
+  if ((a.includes(" - ") || a.includes(" — ")) && !(b.includes(" - ") || b.includes(" — "))) return true;
+  if (a.length >= b.length + 4) return true;
+  return false;
+}
+
+function criterionDisplayLabel(criterionKey) {
+  const key = String(criterionKey || "").trim();
+  if (!key) return null;
+  return CRITERION_LABEL_BY_KEY.get(key) || key;
+}
+
+function buildMonitoringEventTitle(event) {
+  const criterionKey = event?.criterion_key || null;
+  const payload = event?.payload && typeof event.payload === "object" ? event.payload : {};
+  const detail = payload.detail && typeof payload.detail === "object" ? payload.detail : payload;
+  const baseLabel = criterionDisplayLabel(criterionKey);
+  if (criterionKey === "monitor_warning" || criterionKey === "monitor_critical") {
+    return formatMonitorIssueLabel(baseLabel || criterionKey, detail);
+  }
+  if (baseLabel) return baseLabel;
+  return event?.event_type || "alert";
+}
 
 const ALERT_SELECT_WITH_ACTORS = `
   a.*,
@@ -156,8 +193,13 @@ export async function ensureSupervisionAlertsSeen(items = []) {
     const alert = existingById.get(item.queueItemId);
     return alert?.status === "closed" && alert?.closedReason === "resolved";
   });
+  const enrichable = normalized.filter(item => {
+    const alert = existingById.get(item.queueItemId);
+    if (!alert || !ACTIVE_STATUSES.has(alert.status)) return false;
+    return isRicherAlertText(item.title, alert.title) || isRicherAlertText(item.label, alert.label) || isRicherAlertText(item.subtitle, alert.subtitle);
+  });
 
-  if (!missing.length && !reopenable.length) return existing;
+  if (!missing.length && !reopenable.length && !enrichable.length) return existing;
 
   const client = await pool.connect();
   try {
@@ -224,6 +266,25 @@ export async function ensureSupervisionAlertsSeen(items = []) {
         note: null,
         meta: { source: "seen", reason: "issue_recurring" }
       });
+    }
+    for (const item of enrichable) {
+      const current = existingById.get(item.queueItemId);
+      if (!current?.id) continue;
+      const nextTitle = isRicherAlertText(item.title, current.title) ? item.title : current.title;
+      const nextLabel = isRicherAlertText(item.label, current.label) ? item.label : current.label;
+      const nextSubtitle = isRicherAlertText(item.subtitle, current.subtitle) ? item.subtitle : current.subtitle;
+      await client.query(
+        `UPDATE v_b_supervision_alerts
+         SET title = COALESCE($2, title),
+             subtitle = COALESCE($3, subtitle),
+             label = COALESCE($4, label),
+             severity = COALESCE($5, severity),
+             last_seen_at = NOW(),
+             updated_at = NOW()
+         WHERE id = $1::uuid
+           AND status = ANY($6::text[])`,
+        [current.id, nextTitle, nextSubtitle, nextLabel, item.severity, [...ACTIVE_STATUSES]]
+      );
     }
     await client.query("COMMIT");
   } catch (err) {
@@ -414,10 +475,11 @@ export async function listRecentEquipmentAlerts({
     const criterionKey = event.criterion_key || null;
     const eventType = event.event_type || null;
     const resolved = String(eventType || "").includes("resolved");
+    const explicitTitle = buildMonitoringEventTitle(event);
     items.push({
       id: `mon-${event.id}`,
       source: "monitoring",
-      title: criterionKey || eventType || "alert",
+      title: explicitTitle,
       subtitle: null,
       typeKey: criterionKey || eventType,
       typeKind: criterionKey ? "criterion" : "event",

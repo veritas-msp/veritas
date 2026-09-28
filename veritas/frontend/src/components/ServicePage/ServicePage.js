@@ -625,7 +625,7 @@ export default function ServicePage({
               </nav>
               <SmartTooltip content={syncTooltip}>
                 <button type="button" className={layout.iconBtn} onClick={handleHeaderSync} disabled={syncingAny} aria-label={syncTooltip} data-guide="service-sync">
-                  <Icon icon="mdi:cloud-sync-outline" className={syncingAny ? cyberStyles.spinning : undefined} aria-hidden />
+                  <Icon icon={syncingAny ? "mdi:loading" : "mdi:sync"} className={syncingAny ? cyberStyles.spinning : undefined} aria-hidden />
                 </button>
               </SmartTooltip>
             </>} />
@@ -633,11 +633,11 @@ export default function ServicePage({
         <main className={`${cyberStyles.mspContent} ${cyberStyles.mspContentList}`}>
           <div className={`${layout.shell} ${layout.shellWide} ${layout.shellFull}`}>
           <div className={cyberStyles.tabContent} data-guide="service-dashboard">
-          {activeTab === "microsoft" && <MicrosoftTenantMspDashboard tenants={microsoftData} loading={loading} copy={pageCopy.microsoft} onOpenTenant={handleOpenTenant} />}
+          {activeTab === "microsoft" && <MicrosoftTenantMspDashboard tenants={microsoftData} loading={loading} copy={pageCopy.microsoft} onOpenTenant={handleOpenTenant} onSync={requestSyncMicrosoft} syncing={syncing} />}
 
-          {activeTab === "domain" && <DomainMspDashboard domains={allDomains} loading={loadingDomains} copy={pageCopy.domain} />}
+          {activeTab === "domain" && <DomainMspDashboard domains={allDomains} loading={loadingDomains} copy={pageCopy.domain} onSync={handleSyncDomains} syncing={syncingDomains} />}
 
-          {activeTab === "ssl" && <SslMspDashboard certificates={allSslCerts} loading={loadingSsl} copy={pageCopy.ssl} onOpenClient={row => {
+          {activeTab === "ssl" && <SslMspDashboard certificates={allSslCerts} loading={loadingSsl} copy={pageCopy.ssl} onSync={handleCheckAllSsl} syncing={checkingSsl} onOpenClient={row => {
                 const clientId = row.clientId || clients.find(client => client.name === row.clientName)?.id;
                 if (clientId) handleOpenServiceClient(clientId, row.clientName);
               }} />}

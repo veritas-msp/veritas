@@ -3,7 +3,7 @@ import { createPortal } from "react-dom";
 import { Icon } from "@iconify/react";
 import { FaTimes } from "react-icons/fa";
 import { toast } from "react-toastify";
-import { createTicket, fetchSalesForms, addTicketCommentWithAttachments, updateTicket } from "../../api/tickets";
+import { createTicket, fetchSalesForms, fetchTickets, addTicketCommentWithAttachments, addLinkedTicket, updateTicket } from "../../api/tickets";
 import { resolveMatchingRules, describeMatchingRulesSummary } from "../../utils/salesFormTargetRules";
 import { fetchClientsList, fetchContactsList } from "../../api/clients";
 import { fetchActiveUsers } from "../../api/users";
@@ -11,6 +11,7 @@ import { useAuthContext } from "../../contexts/AuthContext";
 import { useAppLocale } from "../../hooks/useAppGeneralSettings";
 import { getTicketSalesCreatePageCopy } from "./ticketSalesCreatePageI18n";
 import { getEquipmentPickerLabel, getEquipmentSearchText, loadClientEquipments, serializeEquipmentInfo } from "./ticketEquipmentUtils";
+import { getTicketLinkLabel, getTicketLinkSearchText } from "./ticketLinkUtils";
 import { isFileField } from "../../utils/salesFormFieldTypes";
 import { getModalDropdownZIndex } from "../../utils/dropdownPortal";
 import MspPageHero from "../Misc/MspPageHero/MspPageHero";
@@ -145,12 +146,20 @@ export default function TicketSalesCreatePage({
   const clientListRef = useRef(null);
   const equipmentDropdownRef = useRef(null);
   const equipmentListRef = useRef(null);
+  const assigneeDropdownRef = useRef(null);
+  const assigneeListRef = useRef(null);
+  const followerDropdownRef = useRef(null);
+  const followerListRef = useRef(null);
+  const linkedTicketDropdownRef = useRef(null);
+  const linkedTicketListRef = useRef(null);
   const [contacts, setContacts] = useState([]);
   const [clients, setClients] = useState([]);
   const [users, setUsers] = useState([]);
   const [salesForms, setSalesForms] = useState([]);
   const [clientEquipments, setClientEquipments] = useState([]);
   const [loadingEquipments, setLoadingEquipments] = useState(false);
+  const [clientTickets, setClientTickets] = useState([]);
+  const [loadingClientTickets, setLoadingClientTickets] = useState(false);
   const [loadingData, setLoadingData] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
@@ -174,6 +183,19 @@ export default function TicketSalesCreatePage({
   const [priority, setPriority] = useState("normal");
   const [customTitle, setCustomTitle] = useState("");
   const [fieldErrors, setFieldErrors] = useState({});
+  const [preAssigneeUserIds, setPreAssigneeUserIds] = useState([]);
+  const [preFollowerUserIds, setPreFollowerUserIds] = useState([]);
+  const [assigneeSearch, setAssigneeSearch] = useState("");
+  const [followerSearch, setFollowerSearch] = useState("");
+  const [showAssigneeDropdown, setShowAssigneeDropdown] = useState(false);
+  const [showFollowerDropdown, setShowFollowerDropdown] = useState(false);
+  const [assigneeHighlight, setAssigneeHighlight] = useState(0);
+  const [followerHighlight, setFollowerHighlight] = useState(0);
+  const [linkedTicketEnabled, setLinkedTicketEnabled] = useState(false);
+  const [linkedTicketId, setLinkedTicketId] = useState("");
+  const [linkedTicketSearch, setLinkedTicketSearch] = useState("");
+  const [showLinkedTicketDropdown, setShowLinkedTicketDropdown] = useState(false);
+  const [linkedTicketHighlight, setLinkedTicketHighlight] = useState(0);
   const agentLabel = authUser?.username?.trim() || authUser?.email || copy.agentFallback;
   const formsForKind = useMemo(() => salesForms.filter(form => form.kind === ticketKind && form.enabled !== false), [salesForms, ticketKind]);
   const selectedForm = useMemo(() => formsForKind.find(form => String(form.id) === String(selectedFormId)) || formsForKind[0] || null, [formsForKind, selectedFormId]);
@@ -238,6 +260,9 @@ export default function TicketSalesCreatePage({
   const contactDropdownCoords = useFixedAnchorRect(showContactDropdown, contactDropdownRef);
   const clientDropdownCoords = useFixedAnchorRect(showClientDropdown, clientDropdownRef);
   const equipmentDropdownCoords = useFixedAnchorRect(showEquipmentDropdown, equipmentDropdownRef);
+  const assigneeDropdownCoords = useFixedAnchorRect(showAssigneeDropdown, assigneeDropdownRef);
+  const followerDropdownCoords = useFixedAnchorRect(showFollowerDropdown, followerDropdownRef);
+  const linkedTicketDropdownCoords = useFixedAnchorRect(showLinkedTicketDropdown, linkedTicketDropdownRef);
   useEffect(() => {
     const handleClickOutside = e => {
       if (!contactDropdownRef.current?.contains(e.target) && !contactListRef.current?.contains(e.target)) {
@@ -248,6 +273,15 @@ export default function TicketSalesCreatePage({
       }
       if (!equipmentDropdownRef.current?.contains(e.target) && !equipmentListRef.current?.contains(e.target)) {
         setShowEquipmentDropdown(false);
+      }
+      if (!assigneeDropdownRef.current?.contains(e.target) && !assigneeListRef.current?.contains(e.target)) {
+        setShowAssigneeDropdown(false);
+      }
+      if (!followerDropdownRef.current?.contains(e.target) && !followerListRef.current?.contains(e.target)) {
+        setShowFollowerDropdown(false);
+      }
+      if (!linkedTicketDropdownRef.current?.contains(e.target) && !linkedTicketListRef.current?.contains(e.target)) {
+        setShowLinkedTicketDropdown(false);
       }
     };
     document.addEventListener("mousedown", handleClickOutside);
@@ -274,6 +308,36 @@ export default function TicketSalesCreatePage({
       .finally(() => {
         if (!cancelled) setLoadingEquipments(false);
       });
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedClientId]);
+  useEffect(() => {
+    setLinkedTicketId("");
+    setLinkedTicketSearch("");
+    setShowLinkedTicketDropdown(false);
+    if (!selectedClientId) {
+      setClientTickets([]);
+      setLoadingClientTickets(false);
+      return undefined;
+    }
+    let cancelled = false;
+    (async () => {
+      setLoadingClientTickets(true);
+      try {
+        const rows = await fetchTickets({
+          clientId: selectedClientId,
+          forLinking: true,
+          includeClosed: true,
+          limit: 200
+        });
+        if (!cancelled) setClientTickets(Array.isArray(rows) ? rows : []);
+      } catch {
+        if (!cancelled) setClientTickets([]);
+      } finally {
+        if (!cancelled) setLoadingClientTickets(false);
+      }
+    })();
     return () => {
       cancelled = true;
     };
@@ -327,6 +391,10 @@ export default function TicketSalesCreatePage({
     () => clientEquipments.find(eq => String(eq.id) === String(selectedEquipmentId)) || null,
     [clientEquipments, selectedEquipmentId]
   );
+  const selectedLinkedTicket = useMemo(
+    () => clientTickets.find(ticket => String(ticket.id) === String(linkedTicketId)) || null,
+    [clientTickets, linkedTicketId]
+  );
   const filteredEquipmentOptions = useMemo(() => {
     const q = equipmentSearch.trim().toLowerCase();
     const list = clientEquipments.filter(eq => {
@@ -338,6 +406,82 @@ export default function TicketSalesCreatePage({
     }
     return list.slice(0, 50);
   }, [clientEquipments, equipmentSearch, locale, selectedEquipment]);
+  const filteredLinkableTickets = useMemo(() => {
+    const q = linkedTicketSearch.trim().toLowerCase();
+    const base = q ? clientTickets.filter(ticket => getTicketLinkSearchText(ticket).includes(q)) : clientTickets;
+    return base.slice(0, 50);
+  }, [clientTickets, linkedTicketSearch]);
+  const userSearchOptions = useMemo(() => users.map(user => ({
+    id: String(user.id),
+    label: getUserLabel(user, copy)
+  })).filter(opt => opt.label), [users, copy]);
+  const filteredAssigneeOptions = useMemo(() => {
+    const q = assigneeSearch.trim().toLowerCase();
+    const available = userSearchOptions.filter(opt => !preAssigneeUserIds.includes(String(opt.id)));
+    if (!q) return available.slice(0, 50);
+    return available.filter(opt => opt.label.toLowerCase().includes(q)).slice(0, 50);
+  }, [userSearchOptions, assigneeSearch, preAssigneeUserIds]);
+  const filteredFollowerOptions = useMemo(() => {
+    const q = followerSearch.trim().toLowerCase();
+    const available = userSearchOptions.filter(opt => !preFollowerUserIds.includes(String(opt.id)));
+    if (!q) return available.slice(0, 50);
+    return available.filter(opt => opt.label.toLowerCase().includes(q)).slice(0, 50);
+  }, [userSearchOptions, followerSearch, preFollowerUserIds]);
+  const resolveUserIdLabel = useCallback(userId => {
+    const found = users.find(user => String(user.id) === String(userId));
+    return found ? getUserLabel(found, copy) : String(userId || "-");
+  }, [users, copy]);
+  const addPreAssignee = useCallback(userId => {
+    const key = String(userId || "").trim();
+    if (!key) return;
+    setPreAssigneeUserIds(prev => prev.includes(key) ? prev : [...prev, key]);
+    setAssigneeSearch("");
+    setShowAssigneeDropdown(false);
+  }, []);
+  const removePreAssignee = useCallback(userId => {
+    setPreAssigneeUserIds(prev => prev.filter(id => String(id) !== String(userId)));
+  }, []);
+  const addPreFollower = useCallback(userId => {
+    const key = String(userId || "").trim();
+    if (!key) return;
+    setPreFollowerUserIds(prev => prev.includes(key) ? prev : [...prev, key]);
+    setFollowerSearch("");
+    setShowFollowerDropdown(false);
+  }, []);
+  const removePreFollower = useCallback(userId => {
+    setPreFollowerUserIds(prev => prev.filter(id => String(id) !== String(userId)));
+  }, []);
+  const handleLinkedTicketEnabledChange = useCallback(enabled => {
+    setLinkedTicketEnabled(enabled);
+    setFieldErrors(prev => ({
+      ...prev,
+      linkedTicketId: undefined
+    }));
+    if (!enabled) {
+      setLinkedTicketId("");
+      setLinkedTicketSearch("");
+      setShowLinkedTicketDropdown(false);
+    }
+  }, []);
+  const selectLinkedTicket = useCallback(ticket => {
+    setLinkedTicketId(String(ticket.id));
+    setLinkedTicketSearch(getTicketLinkLabel(ticket));
+    setShowLinkedTicketDropdown(false);
+    setFieldErrors(prev => ({
+      ...prev,
+      linkedTicketId: undefined
+    }));
+  }, []);
+  const handleLinkedTicketSearchChange = useCallback(typed => {
+    setLinkedTicketSearch(typed);
+    setLinkedTicketId("");
+    setShowLinkedTicketDropdown(true);
+    setLinkedTicketHighlight(0);
+    setFieldErrors(prev => ({
+      ...prev,
+      linkedTicketId: undefined
+    }));
+  }, []);
   const selectClient = useCallback(client => {
     if (!client?.id) return;
     setSelectedClientId(String(client.id));
@@ -394,6 +538,7 @@ export default function TicketSalesCreatePage({
     if (!selectedClientId) errors.client = true;
     if (!selectedForm) errors.form = true;
     if (selectedForm && !validateDynamicFields(selectedForm.fields || [], dynamicValues)) errors.details = true;
+    if (linkedTicketEnabled && !linkedTicketId) errors.linkedTicketId = true;
     setFieldErrors(errors);
     if (Object.keys(errors).length > 0) {
       setErrorPulseTick(t => t + 1);
@@ -490,13 +635,23 @@ export default function TicketSalesCreatePage({
         category: selectedForm.categorySlug,
         channel: "web",
         clientId,
-        assignedUserId: null,
+        assignedUserId: preAssigneeUserIds[0] || null,
         requesterUserId: requesterUserId || null,
         requesterContactId: null,
+        assigneeUserIds: preAssigneeUserIds,
+        watcherUserIds: preFollowerUserIds,
         ...(equipmentInfo ? { equipmentInfo } : {}),
         salesFormData: salesFormDataBase
       });
       const createdTickets = created?.multiple ? Array.isArray(created.tickets) ? created.tickets : [] : created?.id ? [created] : [];
+      if (linkedTicketEnabled && selectedLinkedTicket?.id) {
+        for (const ticket of createdTickets) {
+          if (!ticket?.id) continue;
+          try {
+            await addLinkedTicket(ticket.id, selectedLinkedTicket.id);
+          } catch {}
+        }
+      }
       const {
         files,
         mapping
@@ -909,42 +1064,203 @@ export default function TicketSalesCreatePage({
                 </dl>
               </SectionPanel>
 
-              <SectionPanel title={copy.sections.settings}>
-                <div className={s.equipmentField}>
-                  <label className={s.equipmentFieldLabel} htmlFor="sales-create-priority">
-                    {copy.priorityLabel}
-                  </label>
-                  <select id="sales-create-priority" className={s.select} value={priority} disabled={priorityLocked} onChange={e => setPriority(e.target.value)}>
-                    {copy.priorityOptions.map(item => <option key={item.key} value={item.key}>
-                        {item.label}
-                      </option>)}
-                  </select>
-                  {priorityLocked && <p className={s.detailsAvailabilityTitle} style={{
-                  margin: "0.35rem 0 0"
-                }}>
-                      {copy.priorityLocked}
-                    </p>}
-                </div>
-                <div className={s.equipmentField} style={{
-                marginTop: "0.75rem"
-              }}>
-                  <p className={s.detailsAvailabilityTitle} style={{
-                  margin: 0
-                }}>
-                    {copy.generatedTickets}
-                  </p>
-                  <p className={s.detailsAvailabilityTitle} style={{
-                  margin: "0.35rem 0 0",
-                  fontWeight: 400
-                }}>
-                    {describeMatchingRulesSummary(matchingTargetRules)}
-                  </p>
-                  {matchingTargetRules.length > 0 && <ul className={salesStyles.targetRuleList}>
-                      {matchingTargetRules.map(rule => <li key={rule.id}>
-                          <strong>{rule.label}</strong>
-                          {[rule.targets?.priority ? copy.formatRulePriority(rule.targets.priority) : null, rule.targets?.status ? copy.formatRuleStatus(rule.targets.status) : null, rule.targets?.assigneeUserIds?.length || rule.targets?.assigneeFieldKeys?.length ? copy.formatRuleAssignees((rule.targets?.assigneeUserIds?.length || 0) + (rule.targets?.assigneeFieldKeys?.length || 0)) : null, rule.targets?.teamIds?.length ? copy.formatRuleTeams(rule.targets.teamIds.length) : null].filter(Boolean).join(" · ") || copy.defaultRuleProps}
-                        </li>)}
-                    </ul>}
+              <SectionPanel title={copy.sections.settings} allowOverflow>
+                <div className={s.settingsPanel}>
+                  <div className={s.equipmentField}>
+                    <label className={s.equipmentFieldLabel} htmlFor="sales-create-priority">
+                      {copy.priorityLabel}
+                    </label>
+                    <select id="sales-create-priority" className={s.select} value={priority} disabled={priorityLocked} onChange={e => setPriority(e.target.value)}>
+                      {copy.priorityOptions.map(item => <option key={item.key} value={item.key}>
+                          {item.label}
+                        </option>)}
+                    </select>
+                    {priorityLocked && <p className={s.detailsAvailabilityTitle} style={{
+                    margin: "0.35rem 0 0"
+                  }}>
+                        {copy.priorityLocked}
+                      </p>}
+                  </div>
+
+                  <div className={s.equipmentField}>
+                      <label className={s.equipmentFieldLabel}>{copy.preAssign}</label>
+                      <div className={s.contactPicker} ref={assigneeDropdownRef}>
+                        <div className={`${s.contactInputWrap} ${showAssigneeDropdown ? s.contactInputWrapOpen : ""}`}>
+                          <Icon icon="mdi:magnify" className={s.contactInputIcon} aria-hidden />
+                          <input className={s.contactInput} type="text" value={assigneeSearch} autoComplete="off" onChange={e => {
+                          setAssigneeSearch(e.target.value);
+                          setShowAssigneeDropdown(true);
+                          setAssigneeHighlight(0);
+                        }} onFocus={() => setShowAssigneeDropdown(true)} onKeyDown={e => {
+                          if (!showAssigneeDropdown || filteredAssigneeOptions.length === 0) return;
+                          if (e.key === "ArrowDown") {
+                            e.preventDefault();
+                            setAssigneeHighlight(h => Math.min(h + 1, filteredAssigneeOptions.length - 1));
+                          } else if (e.key === "ArrowUp") {
+                            e.preventDefault();
+                            setAssigneeHighlight(h => Math.max(h - 1, 0));
+                          } else if (e.key === "Enter") {
+                            e.preventDefault();
+                            const picked = filteredAssigneeOptions[assigneeHighlight];
+                            if (picked) addPreAssignee(picked.id);
+                          } else if (e.key === "Escape") {
+                            setShowAssigneeDropdown(false);
+                          }
+                        }} placeholder={copy.searchAgent} aria-label={copy.searchAgentAssignAria} aria-expanded={showAssigneeDropdown} aria-haspopup="listbox" disabled={loadingData} />
+                        </div>
+                        {showAssigneeDropdown && assigneeDropdownCoords && typeof document !== "undefined" ? createPortal(<div ref={assigneeListRef} className={s.contactDropdownPortal} role="listbox" aria-label={copy.assignAgentsAria} style={portalMenuStyle(assigneeDropdownCoords)}>
+                            {filteredAssigneeOptions.length === 0 ? <div className={s.contactEmpty}>{copy.noAgentFound}</div> : filteredAssigneeOptions.map((opt, idx) => <button key={opt.id} type="button" role="option" aria-selected={false} className={`${s.contactOption} ${assigneeHighlight === idx ? s.contactOptionActive : ""}`} onMouseEnter={() => setAssigneeHighlight(idx)} onClick={() => addPreAssignee(opt.id)}>
+                                  <span className={s.contactOptionName}>{opt.label}</span>
+                                </button>)}
+                          </div>, document.body) : null}
+                      </div>
+                      <div className={s.chipsWrap}>
+                        {preAssigneeUserIds.length === 0 ? <span className={s.emptyChipHint}>{copy.noAssignee}</span> : preAssigneeUserIds.map(userId => <span key={userId} className={s.chip}>
+                              {resolveUserIdLabel(userId)}
+                              <button type="button" onClick={() => removePreAssignee(userId)} aria-label={copy.formatRemoveAgentAria(resolveUserIdLabel(userId))}>
+                                ×
+                              </button>
+                            </span>)}
+                      </div>
+                    </div>
+
+                  <div className={s.equipmentField}>
+                      <label className={s.equipmentFieldLabel}>{copy.followers}</label>
+                      <div className={s.contactPicker} ref={followerDropdownRef}>
+                        <div className={`${s.contactInputWrap} ${showFollowerDropdown ? s.contactInputWrapOpen : ""}`}>
+                          <Icon icon="mdi:magnify" className={s.contactInputIcon} aria-hidden />
+                          <input className={s.contactInput} type="text" value={followerSearch} autoComplete="off" onChange={e => {
+                          setFollowerSearch(e.target.value);
+                          setShowFollowerDropdown(true);
+                          setFollowerHighlight(0);
+                        }} onFocus={() => setShowFollowerDropdown(true)} onKeyDown={e => {
+                          if (!showFollowerDropdown || filteredFollowerOptions.length === 0) return;
+                          if (e.key === "ArrowDown") {
+                            e.preventDefault();
+                            setFollowerHighlight(h => Math.min(h + 1, filteredFollowerOptions.length - 1));
+                          } else if (e.key === "ArrowUp") {
+                            e.preventDefault();
+                            setFollowerHighlight(h => Math.max(h - 1, 0));
+                          } else if (e.key === "Enter") {
+                            e.preventDefault();
+                            const picked = filteredFollowerOptions[followerHighlight];
+                            if (picked) addPreFollower(picked.id);
+                          } else if (e.key === "Escape") {
+                            setShowFollowerDropdown(false);
+                          }
+                        }} placeholder={copy.searchAgent} aria-label={copy.searchFollowerAria} aria-expanded={showFollowerDropdown} aria-haspopup="listbox" disabled={loadingData} />
+                        </div>
+                        {showFollowerDropdown && followerDropdownCoords && typeof document !== "undefined" ? createPortal(<div ref={followerListRef} className={s.contactDropdownPortal} role="listbox" aria-label={copy.followerAgentsAria} style={portalMenuStyle(followerDropdownCoords)}>
+                            {filteredFollowerOptions.length === 0 ? <div className={s.contactEmpty}>{copy.noAgentFound}</div> : filteredFollowerOptions.map((opt, idx) => <button key={opt.id} type="button" role="option" aria-selected={false} className={`${s.contactOption} ${followerHighlight === idx ? s.contactOptionActive : ""}`} onMouseEnter={() => setFollowerHighlight(idx)} onClick={() => addPreFollower(opt.id)}>
+                                  <span className={s.contactOptionName}>{opt.label}</span>
+                                </button>)}
+                          </div>, document.body) : null}
+                      </div>
+                      <div className={s.chipsWrap}>
+                        {preFollowerUserIds.length === 0 ? <span className={s.emptyChipHint}>{copy.noFollower}</span> : preFollowerUserIds.map(userId => <span key={userId} className={s.chip}>
+                              {resolveUserIdLabel(userId)}
+                              <button type="button" onClick={() => removePreFollower(userId)} aria-label={copy.formatRemoveAgentAria(resolveUserIdLabel(userId))}>
+                                ×
+                              </button>
+                            </span>)}
+                      </div>
+                    </div>
+
+                  <div className={s.linkTicketPanel}>
+                    <label className={s.equipmentFieldLabel}>{copy.ticketLink}</label>
+                    <div className={s.segmentedGroup} role="radiogroup" aria-label={copy.ticketLinkAria}>
+                      <button type="button" role="radio" aria-checked={!linkedTicketEnabled} className={`${s.segmentedBtn} ${!linkedTicketEnabled ? s.segmentedBtnActive : ""}`} onClick={() => handleLinkedTicketEnabledChange(false)}>
+                        <Icon icon="mdi:link-off" aria-hidden />
+                        {copy.linkNone}
+                      </button>
+                      <button type="button" role="radio" aria-checked={linkedTicketEnabled} className={`${s.segmentedBtn} ${linkedTicketEnabled ? s.segmentedBtnActive : ""}`} onClick={() => handleLinkedTicketEnabledChange(true)}>
+                        <Icon icon="mdi:link-variant" aria-hidden />
+                        {copy.existingTicket}
+                      </button>
+                    </div>
+                    {linkedTicketEnabled && <div className={s.linkTicketSubPanel}>
+                        {!selectedClientId ? <p className={s.equipmentHint}>{copy.selectCompanyFirstForLink}</p> : loadingClientTickets ? <p className={s.equipmentHint}>{copy.loadingClientTickets}</p> : clientTickets.length === 0 ? <p className={s.equipmentHint}>{copy.noClientTickets}</p> : <>
+                            <div className={s.equipmentField}>
+                              <label className={s.equipmentFieldLabel} htmlFor="sales-create-linked-ticket">
+                                {copy.ticketToLink}<span className={s.requiredMark}>*</span>
+                              </label>
+                              <div className={s.linkTicketPicker} ref={linkedTicketDropdownRef}>
+                                <div data-pulse={fieldErrors.linkedTicketId ? errorPulseTick : undefined} className={`${s.contactInputWrap} ${showLinkedTicketDropdown ? s.contactInputWrapOpen : ""} ${fieldErrors.linkedTicketId ? s.contactInputWrapError : ""} ${fieldErrors.linkedTicketId ? s.fieldErrorPulse : ""}`}>
+                                  <Icon icon="mdi:magnify" className={s.contactInputIcon} />
+                                  <input id="sales-create-linked-ticket" className={s.contactInput} type="text" value={linkedTicketSearch} onChange={e => handleLinkedTicketSearchChange(e.target.value)} onFocus={() => {
+                              if (!linkedTicketId) setShowLinkedTicketDropdown(true);
+                            }} onKeyDown={e => {
+                              if (!showLinkedTicketDropdown || filteredLinkableTickets.length === 0) return;
+                              if (e.key === "ArrowDown") {
+                                e.preventDefault();
+                                setLinkedTicketHighlight(h => Math.min(h + 1, filteredLinkableTickets.length - 1));
+                              } else if (e.key === "ArrowUp") {
+                                e.preventDefault();
+                                setLinkedTicketHighlight(h => Math.max(h - 1, 0));
+                              } else if (e.key === "Enter") {
+                                e.preventDefault();
+                                const picked = filteredLinkableTickets[linkedTicketHighlight];
+                                if (picked) selectLinkedTicket(picked);
+                              } else if (e.key === "Escape") setShowLinkedTicketDropdown(false);
+                            }} placeholder={copy.searchTicketPlaceholder} disabled={loadingData} aria-expanded={showLinkedTicketDropdown} aria-haspopup="listbox" />
+                                </div>
+                                {showLinkedTicketDropdown && linkedTicketDropdownCoords && typeof document !== "undefined" ? createPortal(<div ref={linkedTicketListRef} className={s.contactDropdownPortal} role="listbox" style={portalMenuStyle(linkedTicketDropdownCoords)}>
+                                    {filteredLinkableTickets.length === 0 ? <div className={s.contactEmpty}>{copy.noTicketFound}</div> : filteredLinkableTickets.map((ticket, idx) => <button key={ticket.id} type="button" role="option" aria-selected={idx === linkedTicketHighlight} className={`${s.contactOption} ${idx === linkedTicketHighlight ? s.contactOptionActive : ""}`} onMouseEnter={() => setLinkedTicketHighlight(idx)} onClick={() => selectLinkedTicket(ticket)}>
+                                          <span className={s.contactOptionName}>{getTicketLinkLabel(ticket)}</span>
+                                          <span className={s.contactOptionMeta}>
+                                            {ticket.status || ""}
+                                            {ticket.type ? ` · ${ticket.type}` : ""}
+                                          </span>
+                                        </button>)}
+                                  </div>, document.body) : null}
+                              </div>
+                            </div>
+                            {selectedLinkedTicket ? <div className={s.linkTicketCard}>
+                                <div className={s.linkTicketCardIcon} aria-hidden>
+                                  <Icon icon="mdi:ticket-confirmation-outline" />
+                                </div>
+                                <div className={s.linkTicketCardBody}>
+                                  <p className={s.linkTicketCardNumber}>
+                                    #{selectedLinkedTicket.ticket_number || selectedLinkedTicket.id}
+                                  </p>
+                                  <p className={s.linkTicketCardTitle}>
+                                    {selectedLinkedTicket.title || copy.untitled}
+                                  </p>
+                                  <p className={s.linkTicketCardMeta}>
+                                    {selectedLinkedTicket.status || ""}
+                                    {selectedLinkedTicket.type ? ` · ${selectedLinkedTicket.type}` : ""}
+                                  </p>
+                                </div>
+                              </div> : <div className={s.linkTicketEmpty}>
+                                <Icon icon="mdi:ticket-search-outline" className={s.linkTicketEmptyIcon} aria-hidden />
+                                <p className={s.linkTicketEmptyText}>{copy.selectTicketFromList}</p>
+                              </div>}
+                          </>}
+                      </div>}
+                  </div>
+
+                  <div className={s.equipmentField}>
+                    <p className={s.detailsAvailabilityTitle} style={{
+                    margin: 0
+                  }}>
+                      {copy.generatedTickets}
+                    </p>
+                    <p className={s.detailsAvailabilityTitle} style={{
+                    margin: "0.35rem 0 0",
+                    fontWeight: 400
+                  }}>
+                      {describeMatchingRulesSummary(matchingTargetRules)}
+                    </p>
+                    {matchingTargetRules.length > 0 && <ul className={salesStyles.targetRuleList}>
+                        {matchingTargetRules.map(rule => {
+                      const meta = [rule.targets?.priority ? copy.formatRulePriority(rule.targets.priority) : null, rule.targets?.status ? copy.formatRuleStatus(rule.targets.status) : null, rule.targets?.assigneeUserIds?.length || rule.targets?.assigneeFieldKeys?.length ? copy.formatRuleAssignees((rule.targets?.assigneeUserIds?.length || 0) + (rule.targets?.assigneeFieldKeys?.length || 0)) : null, rule.targets?.teamIds?.length ? copy.formatRuleTeams(rule.targets.teamIds.length) : null].filter(Boolean).join(" · ") || copy.defaultRuleProps;
+                      return <li key={rule.id} className={salesStyles.targetRuleItem}>
+                              <span className={salesStyles.targetRuleLabel}>{rule.label}</span>
+                              <span className={salesStyles.targetRuleMeta}>{meta}</span>
+                            </li>;
+                    })}
+                      </ul>}
+                  </div>
                 </div>
               </SectionPanel>
             </aside>

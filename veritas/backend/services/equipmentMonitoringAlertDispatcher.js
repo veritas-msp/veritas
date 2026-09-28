@@ -12,9 +12,17 @@ import { enrichAlertRunbook } from "./llmClient.js";
 import { findOrCreateIncidentGroup, linkTicketToIncidentGroup } from "./monitoringIncidentCorrelation.js";
 import { recordMonitoringEvent } from "./monitoringEventQueue.js";
 import { criteriaToActiveMap, diffCriteriaTransitions, evaluateEquipmentSupervisionCriteria } from "../utils/equipmentSupervisionEvaluator.js";
+import { formatMonitorIssueLabel } from "../utils/equipmentFleetIssues.js";
 import { getSettingsMap } from "../utils/settingsHelper.js";
 import { ALLOWED_LOCALES, GENERAL_SETTING_KEYS } from "../utils/generalSettings.js";
 const CRITERION_LABELS = new Map(SUPERVISION_ALERT_CRITERIA.map(c => [c.key, c.label]));
+function resolveExplicitCriterionLabel(criterionKey, detail) {
+  const base = getCriterionLabel(criterionKey) || CRITERION_LABELS.get(criterionKey) || criterionKey;
+  if (criterionKey === "monitor_warning" || criterionKey === "monitor_critical") {
+    return formatMonitorIssueLabel(base, detail);
+  }
+  return base;
+}
 const EQUIPMENT_FAMILY_LABELS = {
   servers: "Servers",
   ordinateurs: "Computers",
@@ -49,9 +57,13 @@ function buildCriterionDescription({
   source,
   detail
 }) {
-  const label = getCriterionLabel(criterionKey) || CRITERION_LABELS.get(criterionKey) || criterionKey;
+  const label = resolveExplicitCriterionLabel(criterionKey, detail);
   const lines = ["Automatic Veritas monitoring alert.", "", `Criterion: ${label}`, `Equipment: ${equipmentName || "Unnamed"}`, `Family: ${equipmentFamily}`, `Source: ${source === "rmm" ? "RMM agent" : source === "external" ? "External event" : "Monitoring"}`];
   if (detail && typeof detail === "object") {
+    if (detail.primaryService) lines.push(`Service: ${detail.primaryService}`);
+    else if (Array.isArray(detail.failingServices) && detail.failingServices.length) {
+      lines.push(`Services: ${detail.failingServices.slice(0, 5).join(", ")}`);
+    }
     if (detail.pendingCount) lines.push(`Pending updates: ${detail.pendingCount}`);
     if (detail.pct != null) lines.push(`Disk usage: ${detail.pct}%`);
     if (detail.drive) lines.push(`Drive: ${detail.drive}`);
@@ -92,7 +104,7 @@ async function createCriterionAlertTicket({
   incidentGroupId = null,
   ruleSeverity = null
 }) {
-  const label = getCriterionLabel(criterionKey) || criterionKey;
+  const label = resolveExplicitCriterionLabel(criterionKey, detail);
   const title = `[Monitoring] ${equipmentName || "Equipment"} — ${label}`;
   const description = buildCriterionDescription({
     equipmentName,

@@ -91,6 +91,8 @@ export default function MainApp() {
   const location = useLocation();
   const urlSyncRef = useRef(false);
   const [profile, setProfile] = useState(null);
+  const [assignedProfiles, setAssignedProfiles] = useState([]);
+
   const [refreshTrigger, setRefreshTrigger] = useState(0);
   const {
     isCommunity
@@ -980,6 +982,12 @@ export default function MainApp() {
     }).then(res => res.ok ? res.json() : null).then(data => {
       if (!data?.profile) return;
       setProfile(data.profile);
+      const list = Array.isArray(data.profiles) && data.profiles.length
+        ? data.profiles.map(p => String(p || "").trim()).filter(Boolean)
+        : data.profile
+          ? [String(data.profile)]
+          : [];
+      setAssignedProfiles(list);
       setRefreshTrigger(c => c + 1);
     }).catch(error => {
       console.log("Error lors de la récupération du profil");
@@ -989,6 +997,9 @@ export default function MainApp() {
     if (user) {
       fetchProfile();
       window.refreshProfile = fetchProfile;
+    } else {
+      setProfile(null);
+      setAssignedProfiles([]);
     }
   }, [user]);
   useEffect(() => {
@@ -1230,7 +1241,7 @@ export default function MainApp() {
       <ProfilePreviewBanner onReturnToPermissions={handleReturnToPermissions} />
       <AgentImpersonationBanner />
 
-      <Sidebar current={sidebarCurrent} onSelect={handleDocSelect} onNavigate={handleDocSelect} onLogout={handleLogoutGuarded} user={user} userRole={userRole} profile={effectiveProfile} drafts={drafts} access={access} onCollapseChange={setSidebarCollapsed} sidebarGuideAutoStart={sidebarGuideAutoStart} layout={sidebarLayout} />
+      <Sidebar current={sidebarCurrent} onSelect={handleDocSelect} onNavigate={handleDocSelect} onLogout={handleLogoutGuarded} user={user} userRole={userRole} profile={effectiveProfile} assignedProfiles={assignedProfiles} drafts={drafts} access={access} onCollapseChange={setSidebarCollapsed} sidebarGuideAutoStart={sidebarGuideAutoStart} layout={sidebarLayout} />
 
       <TabsBar tabs={tabs} activeTabId={activeTabId} onTabClick={handleTabClick} onTabClose={handleTabClose} onTabReorder={handleTabReorder} onSortTabs={tabs.length > 1 ? handleTabSort : undefined} onNewTab={showTabsBar ? handleOpenTabLauncher : undefined} launcherActive={currentDocType === "TabLauncher"} sidebarCollapsed={sidebarCollapsed} sidebarLayout={sidebarLayout} />
 

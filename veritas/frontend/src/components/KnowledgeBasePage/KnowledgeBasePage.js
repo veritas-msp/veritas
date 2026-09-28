@@ -11,7 +11,7 @@ import { interpolate } from "../../i18n/translate";
 import { formatPageInfo } from "../../i18n/commonI18n";
 import { useCommonCopy } from "../../hooks/useCommonCopy";
 import { useDefaultPageSize } from "../../hooks/useDefaultPageSize";
-import { createKnowledgeArticle, createKnowledgeFolder, deleteKnowledgeArticle, deleteKnowledgeArticles, deleteKnowledgeFolder, fetchKnowledgeArticles, fetchKnowledgeCategories, fetchKnowledgeEmojis, fetchKnowledgeFolders, moveKnowledgeArticles, reorderKnowledgeArticles, reorderKnowledgeFolders, updateKnowledgeArticle, updateKnowledgeFolder } from "../../api/knowledgeBase";
+import { createKnowledgeArticle, createKnowledgeFolder, deleteKnowledgeArticle, deleteKnowledgeArticles, deleteKnowledgeFolder, fetchKnowledgeArticles, fetchKnowledgeCategories, fetchKnowledgeEmojis, fetchKnowledgeFolders, moveKnowledgeArticles, permanentlyDeleteKnowledgeArticle, permanentlyDeleteKnowledgeArticles, reorderKnowledgeArticles, reorderKnowledgeFolders, restoreKnowledgeArticleFromTrash, restoreKnowledgeArticlesFromTrash, updateKnowledgeArticle, updateKnowledgeFolder } from "../../api/knowledgeBase";
 import ConfirmModal from "../Misc/ConfirmModal/ConfirmModal";
 import MspPageHero from "../Misc/MspPageHero/MspPageHero";
 import SmartTooltip from "../SmartTooltip";
@@ -75,12 +75,15 @@ export default function KnowledgeBasePage({ onNavigate }) {
   const [templateOpen, setTemplateOpen] = useState(false);
   const [selected, setSelected] = useState(() => new Set());
   const [confirmDelete, setConfirmDelete] = useState(null);
+  const [confirmPurge, setConfirmPurge] = useState(null);
   const [deleting, setDeleting] = useState(false);
+  const [trashCount, setTrashCount] = useState(0);
   const [folderTree, setFolderTree] = useState([]);
   const [navArticles, setNavArticles] = useState([]);
   const [navEmojis, setNavEmojis] = useState([]);
   const [emojiModal, setEmojiModal] = useState(null);
   const [currentFolder, setCurrentFolder] = useState("all");
+  const isTrashView = currentFolder === "trash";
   const [folderModal, setFolderModal] = useState(null);
   const [folderBusy, setFolderBusy] = useState(false);
   const [confirmFolderDelete, setConfirmFolderDelete] = useState(null);
@@ -101,8 +104,11 @@ export default function KnowledgeBasePage({ onNavigate }) {
 
   const loadNavArticles = useCallback(async () => {
     try {
-      const rows = await fetchKnowledgeArticles({ status: "all" });
-      setNavArticles((rows || []).map(row => ({
+      const [activeRows, trashedRows] = await Promise.all([
+        fetchKnowledgeArticles({ status: "all" }),
+        fetchKnowledgeArticles({ status: "all", trashed: "only" }).catch(() => [])
+      ]);
+      setNavArticles((activeRows || []).map(row => ({
         id: row.id,
         title: row.title,
         folderId: row.folderId || null,
@@ -110,8 +116,10 @@ export default function KnowledgeBasePage({ onNavigate }) {
         icon: row.icon || null,
         sortOrder: Number(row.sortOrder) || 0
       })));
+      setTrashCount(Array.isArray(trashedRows) ? trashedRows.length : 0);
     } catch {
       setNavArticles([]);
+      setTrashCount(0);
     }
   }, []);
 
@@ -136,22 +144,26 @@ export default function KnowledgeBasePage({ onNavigate }) {
     try {
       const rows = await fetchKnowledgeArticles({
         search: search.trim() || undefined,
-        status,
-        folderId: (search.trim() || currentFolder === "all") ? undefined : currentFolder,
-        category: categoryFilter || undefined
+        status: isTrashView ? "all" : status,
+        folderId: isTrashView
+          ? "trash"
+          : (search.trim() || currentFolder === "all") ? undefined : currentFolder,
+        category: categoryFilter || undefined,
+        trashed: isTrashView ? "only" : undefined
       });
       setArticles(rows);
       setSelected(prev => {
         const ids = new Set(rows.map(row => row.id));
         return new Set([...prev].filter(id => ids.has(id)));
       });
+      if (isTrashView) setTrashCount(rows.length);
     } catch (err) {
       setArticles([]);
       toast.error(err.message || copy.loadError);
     } finally {
       setLoading(false);
     }
-  }, [search, status, currentFolder, categoryFilter, copy.loadError]);
+  }, [search, status, currentFolder, categoryFilter, copy.loadError, isTrashView]);
 
   useEffect(() => {
     if (articleId) return undefined;
@@ -181,7 +193,7 @@ export default function KnowledgeBasePage({ onNavigate }) {
       const article = await createKnowledgeArticle({
         title: template?.title || copy.untitled,
         category: template?.category || undefined,
-        folderId: currentFolder !== "all" && currentFolder !== "root" ? currentFolder : null,
+        folderId: currentFolder !== "all" && currentFolder !== "root" && currentFolder !== "trash" ? currentFolder : null,
         contentJson: template?.json || undefined,
         contentHtml: template?.json ? templateToHtml(template.json) : undefined
       });
@@ -257,6 +269,70 @@ export default function KnowledgeBasePage({ onNavigate }) {
       setDeleting(false);
     }
   }, [selected, copy.bulkDeleted, copy.bulkDeletePartial, copy.bulkDeleteError, load, loadNavArticles]);
+
+  const restoreOne = useCallback(async (id) => {
+    setDeleting(true);
+    try {
+      await restoreKnowledgeArticleFromTrash(id);
+      toast.success(copy.restoredFromTrash);
+      setSelected(prev => {
+        const next = new Set(prev);
+        next.delete(id);
+        return next;
+      });
+      await load();
+      await loadNavArticles();
+    } catch (err) {
+      toast.error(err.message || copy.deleteError);
+    } finally {
+      setDeleting(false);
+    }
+  }, [copy.restoredFromTrash, copy.deleteError, load, loadNavArticles]);
+
+  const restoreSelected = useCallback(async () => {
+    const ids = [...selected];
+    if (!ids.length) return;
+    setDeleting(true);
+    try {
+      const result = await restoreKnowledgeArticlesFromTrash(ids);
+      toast.success(interpolate(copy.bulkRestored, { count: String(result?.restored || ids.length) }));
+      setSelected(new Set());
+      await load();
+      await loadNavArticles();
+    } catch (err) {
+      toast.error(err.message || copy.deleteError);
+    } finally {
+      setDeleting(false);
+    }
+  }, [selected, copy.bulkRestored, copy.deleteError, load, loadNavArticles]);
+
+  const confirmPurgeAction = useCallback(async () => {
+    if (!confirmPurge) return;
+    setDeleting(true);
+    try {
+      if (confirmPurge === "bulk") {
+        const ids = [...selected];
+        const result = await permanentlyDeleteKnowledgeArticles(ids);
+        toast.success(interpolate(copy.bulkPermanentlyDeleted, { count: String(result?.deleted || ids.length) }));
+        setSelected(new Set());
+      } else {
+        await permanentlyDeleteKnowledgeArticle(confirmPurge.id);
+        toast.success(copy.permanentlyDeleted);
+        setSelected(prev => {
+          const next = new Set(prev);
+          next.delete(confirmPurge.id);
+          return next;
+        });
+      }
+      setConfirmPurge(null);
+      await load();
+      await loadNavArticles();
+    } catch (err) {
+      toast.error(err.message || copy.deleteError);
+    } finally {
+      setDeleting(false);
+    }
+  }, [confirmPurge, selected, copy.bulkPermanentlyDeleted, copy.permanentlyDeleted, copy.deleteError, load, loadNavArticles]);
 
   const saveFolder = useCallback(async (payload) => {
     setFolderBusy(true);
@@ -433,6 +509,7 @@ export default function KnowledgeBasePage({ onNavigate }) {
               currentFolder={currentFolder}
               status={status}
               articles={navArticles}
+              trashCount={trashCount}
               emojis={navEmojis}
               canManage={canEdit}
               onSelect={setCurrentFolder}
@@ -467,14 +544,15 @@ export default function KnowledgeBasePage({ onNavigate }) {
               placeholder={copy.searchPlaceholder}
             />
             <div className={styles.filters}>
-              {["all", "draft", "published"].map(key => (
+              {(isTrashView ? ["all"] : ["all", "draft", "published"]).map(key => (
                 <button
                   key={key}
                   type="button"
-                  className={`${styles.filterBtn} ${status === key ? styles.filterBtnActive : ""}`}
+                  className={`${styles.filterBtn} ${status === key || isTrashView ? styles.filterBtnActive : ""}`}
                   onClick={() => setStatus(key)}
+                  disabled={isTrashView}
                 >
-                  {key === "all" ? copy.filterAll : key === "draft" ? copy.filterDraft : copy.filterPublished}
+                  {key === "all" ? (isTrashView ? copy.trash : copy.filterAll) : key === "draft" ? copy.filterDraft : copy.filterPublished}
                 </button>
               ))}
             </div>
@@ -502,26 +580,43 @@ export default function KnowledgeBasePage({ onNavigate }) {
                 <button type="button" className={styles.secondaryBtn} onClick={() => setSelected(new Set())}>
                   {copy.deselectAll}
                 </button>
-                {canEdit ? (
+                {isTrashView ? (
                   <>
-                    <select className={styles.moveSelect} value={moveTarget} onChange={event => setMoveTarget(event.target.value)}>
-                      <option value="">{copy.noFolder}</option>
-                      {folderOptions.map(folder => (
-                        <option key={folder.id} value={folder.id}>
-                          {"— ".repeat(folder.depth)}{folder.name}
-                        </option>
-                      ))}
-                    </select>
-                    <button type="button" className={styles.secondaryBtn} onClick={moveSelected}>
-                      <Icon icon="mdi:folder-move-outline" /> {copy.moveTo}
-                    </button>
+                    {canDelete ? (
+                      <>
+                        <button type="button" className={styles.secondaryBtn} onClick={restoreSelected} disabled={deleting}>
+                          <Icon icon="mdi:restore" /> {copy.bulkRestore}
+                        </button>
+                        <button type="button" className={styles.dangerBtn} onClick={() => setConfirmPurge("bulk")}>
+                          <Icon icon="mdi:delete-forever-outline" /> {copy.bulkPermanentDelete}
+                        </button>
+                      </>
+                    ) : null}
                   </>
-                ) : null}
-                {canDelete ? (
-                  <button type="button" className={styles.dangerBtn} onClick={() => setConfirmDelete("bulk")}>
-                    <Icon icon="mdi:trash-can-outline" /> {copy.bulkDelete}
-                  </button>
-                ) : null}
+                ) : (
+                  <>
+                    {canEdit ? (
+                      <>
+                        <select className={styles.moveSelect} value={moveTarget} onChange={event => setMoveTarget(event.target.value)}>
+                          <option value="">{copy.noFolder}</option>
+                          {folderOptions.map(folder => (
+                            <option key={folder.id} value={folder.id}>
+                              {"— ".repeat(folder.depth)}{folder.name}
+                            </option>
+                          ))}
+                        </select>
+                        <button type="button" className={styles.secondaryBtn} onClick={moveSelected}>
+                          <Icon icon="mdi:folder-move-outline" /> {copy.moveTo}
+                        </button>
+                      </>
+                    ) : null}
+                    {canDelete ? (
+                      <button type="button" className={styles.dangerBtn} onClick={() => setConfirmDelete("bulk")}>
+                        <Icon icon="mdi:trash-can-outline" /> {copy.bulkDelete}
+                      </button>
+                    ) : null}
+                  </>
+                )}
               </div>
             </div>
           ) : null}
@@ -529,8 +624,8 @@ export default function KnowledgeBasePage({ onNavigate }) {
             <div className={styles.empty} data-guide="kb-list">{copy.loading}</div>
           ) : articles.length === 0 ? (
             <div className={styles.empty} data-guide="kb-list">
-              <p>{search || status !== "all" || categoryFilter ? copy.emptyFiltered : currentFolder !== "all" ? copy.emptyFolder : copy.emptyTitle}</p>
-              <p className={styles.emptyHint}>{copy.emptyHint}</p>
+              <p>{isTrashView ? copy.trashEmpty : (search || status !== "all" || categoryFilter ? copy.emptyFiltered : currentFolder !== "all" ? copy.emptyFolder : copy.emptyTitle)}</p>
+              <p className={styles.emptyHint}>{isTrashView ? copy.trashEmptyHint : copy.emptyHint}</p>
             </div>
           ) : (
             <div className={styles.list} data-guide="kb-list">
@@ -598,36 +693,62 @@ export default function KnowledgeBasePage({ onNavigate }) {
                     </div>
                   </div>
                   <div className={styles.cardActions}>
-                    <button
-                      type="button"
-                      className={styles.cardAction}
-                      title={copy.read}
-                      aria-label={copy.read}
-                      onClick={() => openArticle(article.id, "read", article.title || copy.untitled)}
-                    >
-                      <Icon icon="mdi:eye-outline" width={18} />
-                    </button>
-                    {canEdit ? (
-                      <button
-                        type="button"
-                        className={styles.cardAction}
-                        title={copy.edit}
-                        aria-label={copy.edit}
-                        onClick={() => openArticle(article.id, "edit", article.title || copy.untitled)}
-                      >
-                        <Icon icon="mdi:pencil-outline" width={18} />
-                      </button>
-                    ) : null}
-                    {canDelete ? (
-                      <button
-                        type="button"
-                        className={`${styles.cardAction} ${styles.cardActionDanger}`}
-                        title={copy.delete}
-                        aria-label={copy.delete}
-                        onClick={() => setConfirmDelete({ id: article.id, title: article.title || copy.untitled })}
-                      >
-                        <Icon icon="mdi:trash-can-outline" width={18} />
-                      </button>
+                    {!isTrashView ? (
+                      <>
+                        <button
+                          type="button"
+                          className={styles.cardAction}
+                          title={copy.read}
+                          aria-label={copy.read}
+                          onClick={() => openArticle(article.id, "read", article.title || copy.untitled)}
+                        >
+                          <Icon icon="mdi:eye-outline" width={18} />
+                        </button>
+                        {canEdit ? (
+                          <button
+                            type="button"
+                            className={styles.cardAction}
+                            title={copy.edit}
+                            aria-label={copy.edit}
+                            onClick={() => openArticle(article.id, "edit", article.title || copy.untitled)}
+                          >
+                            <Icon icon="mdi:pencil-outline" width={18} />
+                          </button>
+                        ) : null}
+                        {canDelete ? (
+                          <button
+                            type="button"
+                            className={`${styles.cardAction} ${styles.cardActionDanger}`}
+                            title={copy.delete}
+                            aria-label={copy.delete}
+                            onClick={() => setConfirmDelete({ id: article.id, title: article.title || copy.untitled })}
+                          >
+                            <Icon icon="mdi:trash-can-outline" width={18} />
+                          </button>
+                        ) : null}
+                      </>
+                    ) : canDelete ? (
+                      <>
+                        <button
+                          type="button"
+                          className={styles.cardAction}
+                          title={copy.restoreFromTrash}
+                          aria-label={copy.restoreFromTrash}
+                          onClick={() => restoreOne(article.id)}
+                          disabled={deleting}
+                        >
+                          <Icon icon="mdi:restore" width={18} />
+                        </button>
+                        <button
+                          type="button"
+                          className={`${styles.cardAction} ${styles.cardActionDanger}`}
+                          title={copy.permanentDelete}
+                          aria-label={copy.permanentDelete}
+                          onClick={() => setConfirmPurge({ id: article.id, title: article.title || copy.untitled })}
+                        >
+                          <Icon icon="mdi:delete-forever-outline" width={18} />
+                        </button>
+                      </>
                     ) : null}
                   </div>
                 </div>
@@ -776,6 +897,18 @@ export default function KnowledgeBasePage({ onNavigate }) {
         loading={deleting}
         onClose={() => { if (!deleting) setConfirmDelete(null); }}
         onConfirm={confirmDelete === "bulk" ? confirmBulkDelete : confirmSingleDelete}
+      />
+      <ConfirmModal
+        open={Boolean(confirmPurge)}
+        title={confirmPurge === "bulk" ? interpolate(copy.bulkPermanentDeleteTitle, { count: String(selectedCount) }) : copy.permanentDeleteTitle}
+        message={confirmPurge === "bulk"
+          ? interpolate(copy.bulkPermanentDeleteMessage, { count: String(selectedCount) })
+          : interpolate(copy.permanentDeleteMessage, { title: confirmPurge?.title || copy.untitled })}
+        confirmLabel={copy.permanentDelete}
+        variant="danger"
+        loading={deleting}
+        onClose={() => { if (!deleting) setConfirmPurge(null); }}
+        onConfirm={confirmPurgeAction}
       />
       <PageGuideTour open={pageGuideOpen} steps={kbGuide.steps} title={kbGuide.tourTitle} locale={locale} onClose={() => setPageGuideOpen(false)} />
     </KnowledgeBaseShell>

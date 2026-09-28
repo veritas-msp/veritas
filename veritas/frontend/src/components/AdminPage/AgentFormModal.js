@@ -8,6 +8,7 @@ import { useAppLocale } from "../../hooks/useAppGeneralSettings";
 import { getAgentFormSections } from "./adminFormModalsI18n";
 import { getAdminUsersCopy, getMfaStatus } from "./adminUsersI18n";
 import { getAdminPermissionsCopy, getLocalizedProfileName } from "./adminPermissionsI18n";
+import MultiSuggestPicker from "./MultiSuggestPicker";
 import layout from "../EnterprisesPage/EnterpriseFormModal.module.css";
 import mfaStyles from "./AdminUsers.module.css";
 function MfaStatusBadge({
@@ -56,7 +57,10 @@ export default function AgentFormModal({
     return {
       identity: Boolean(String(draft?.email || "").trim().includes("@")),
       security: securityValid,
-      access: Boolean(String(draft?.profile || "").trim()),
+      access: Boolean(
+        (Array.isArray(draft?.profiles) && draft.profiles.some(p => String(p || "").trim())) ||
+          String(draft?.profile || "").trim()
+      ),
       mfa: isEdit
     };
   }, [draft, isEdit]);
@@ -134,7 +138,24 @@ export default function AgentFormModal({
               </div>
             </div>
           </>;
-      case "access":
+      case "access": {
+        const selectedProfiles = Array.isArray(draft.profiles)
+          ? draft.profiles.map(p => String(p || "").trim()).filter(Boolean)
+          : draft.profile
+            ? [String(draft.profile)]
+            : [];
+        const profileOptions = profiles.map(p => ({
+          id: p.name,
+          label: getLocalizedProfileName(p.name, permissionsCopy)
+        }));
+        const setProfiles = nextIds => {
+          const next = [...new Set((nextIds || []).map(String).filter(Boolean))];
+          const active = next.includes(String(draft.profile || "")) ? draft.profile : next[0] || "";
+          patchDraft({
+            profiles: next,
+            profile: active
+          });
+        };
         return <>
             <div className={layout.sectionHead}>
               <h3 className={layout.sectionTitle}>{modalCopy.accessTitle}</h3>
@@ -142,20 +163,46 @@ export default function AgentFormModal({
             </div>
             <div className={layout.fieldGrid2}>
               <div className={`${layout.field} ${layout.fieldFull}`}>
-                <label className={layout.label} htmlFor="agent-profile">
-                  {modalCopy.profileLabel}
+                <MultiSuggestPicker
+                  label={modalCopy.profilesLabel || modalCopy.profileLabel}
+                  placeholder={modalCopy.profilesPlaceholder || "…"}
+                  options={profileOptions}
+                  selectedIds={selectedProfiles}
+                  onChange={setProfiles}
+                  emptyHint={modalCopy.profilesEmpty || ""}
+                  emptyResultsHint={modalCopy.profilesNoResults || ""}
+                  inputId="agent-profiles"
+                />
+              </div>
+              <div className={`${layout.field} ${layout.fieldFull}`}>
+                <label className={layout.label} htmlFor="agent-active-profile">
+                  {modalCopy.activeProfileLabel || modalCopy.profileLabel}
                 </label>
-                <select id="agent-profile" className={layout.input} value={draft.profile || ""} onChange={e => patchDraft({
-                profile: e.target.value
-              })}>
-                  {profiles.map(p => <option key={p.name} value={p.name}>
-                      {getLocalizedProfileName(p.name, permissionsCopy)}
-                    </option>)}
+                <select
+                  id="agent-active-profile"
+                  className={layout.input}
+                  value={selectedProfiles.includes(draft.profile) ? draft.profile || "" : selectedProfiles[0] || ""}
+                  onChange={e => patchDraft({
+                    profile: e.target.value
+                  })}
+                  disabled={!selectedProfiles.length}
+                >
+                  {selectedProfiles.map(name => {
+                    const opt = profiles.find(p => p.name === name);
+                    return <option key={name} value={name}>
+                        {getLocalizedProfileName(opt?.name || name, permissionsCopy)}
+                      </option>;
+                  })}
                 </select>
+                {modalCopy.activeProfileHint ? (
+                  <p style={{ margin: "0.4rem 0 0", fontSize: "0.8rem", color: "var(--msp-muted, #5c6b82)" }}>
+                    {modalCopy.activeProfileHint}
+                  </p>
+                ) : null}
               </div>
             </div>
           </>;
-      case "mfa":
+      }      case "mfa":
         return <>
             <div className={layout.sectionHead}>
               <h3 className={layout.sectionTitle}>{modalCopy.mfaTitle}</h3>
@@ -176,7 +223,11 @@ export default function AgentFormModal({
         return null;
     }
   };
-  const footerParts = [draft.email?.trim() || modalCopy.footerNoEmail, draft.profile || modalCopy.footerNoProfile];
+  const footerProfile =
+    Array.isArray(draft.profiles) && draft.profiles.length > 1
+      ? `${draft.profile || draft.profiles[0]} (+${draft.profiles.length - 1})`
+      : draft.profile || draft.profiles?.[0] || modalCopy.footerNoProfile;
+  const footerParts = [draft.email?.trim() || modalCopy.footerNoEmail, footerProfile];
   if (isEdit && draft.is_active === false) {
     footerParts.push(modalCopy.footerInactive);
   }

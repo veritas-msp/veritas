@@ -243,6 +243,39 @@ async function tableExists(tableName) {
   const result = await pool.query(`SELECT to_regclass($1) IS NOT NULL AS ok`, [tableName]);
   return Boolean(result.rows[0]?.ok);
 }
+async function columnExists(tableName, columnName) {
+  const result = await pool.query(`SELECT EXISTS (
+       SELECT 1
+       FROM pg_attribute a
+       JOIN pg_class c ON c.oid = a.attrelid
+       WHERE c.oid = to_regclass($1)
+         AND a.attname = $2
+         AND a.attnum > 0
+         AND NOT a.attisdropped
+     ) AS ok`, [tableName, columnName]);
+  return Boolean(result.rows[0]?.ok);
+}
+async function queryResultOrEmpty(sql, params = []) {
+  try {
+    return await pool.query(sql, params);
+  } catch (err) {
+    if (err.code === "42P01" || err.code === "42703") {
+      console.warn("[analytics] support cockpit query skipped:", err.message);
+      return {
+        rows: []
+      };
+    }
+    throw err;
+  }
+}
+function buildTicketNotDeletedClause({
+  hasDeletedAt,
+  hasIsDeleted
+}) {
+  if (hasDeletedAt) return " AND t.deleted_at IS NULL";
+  if (hasIsDeleted) return " AND COALESCE(t.is_deleted, FALSE) = FALSE";
+  return "";
+}
 function previousDateRange(sinceIso, untilIso) {
   if (!sinceIso) {
     return {
@@ -281,38 +314,79 @@ async function fetchSupportCockpitStats({
   untilIso,
   filters = {}
 }) {
+  const [hasSlaInfo, hasDeletedAt, hasIsDeleted, hasActivity, hasStatusHistory] = await Promise.all([
+    columnExists("public.v_b_tickets", "sla_info"),
+    columnExists("public.v_b_tickets", "deleted_at"),
+    columnExists("public.v_b_tickets", "is_deleted"),
+    tableExists("public.v_b_ticket_activity"),
+    tableExists("public.v_b_ticket_status_history")
+  ]);
+  const notDeletedClause = buildTicketNotDeletedClause({
+    hasDeletedAt,
+    hasIsDeleted
+  });
+  const slaEnabled = hasSlaInfo ? SLA_ENABLED : "FALSE";
+  const slaResDue = hasSlaInfo ? SLA_RES_DUE : "NULL::timestamptz";
+  const slaFrBreached = hasSlaInfo ? SLA_FR_BREACHED : "FALSE";
+  const slaTargetHours = hasSlaInfo ? `COALESCE((t.sla_info->'policy'->>'resolutionHours')::float, 0)` : "0::float";
   const params = [];
   const createdClause = buildRangeClause(params, "t.created_at", sinceIso, untilIso);
   const resolvedClause = buildRangeClause(params, "COALESCE(t.closed_at, t.resolved_at)", sinceIso, untilIso);
   const historyClause = buildRangeClause(params, "h.created_at", sinceIso, untilIso);
   const activityClause = buildRangeClause(params, "a.created_at", sinceIso, untilIso);
-  const scopeClause = buildTicketScopeClause(params, filters, "t");
+  const scopeClause = buildTicketScopeClause(params, filters, "t") + notDeletedClause;
   const prev = previousDateRange(sinceIso, untilIso);
   const prevParams = [];
   const prevCreatedClause = buildRangeClause(prevParams, "t.created_at", prev.sinceIso, prev.untilIso);
-  const prevScopeClause = buildTicketScopeClause(prevParams, filters, "t");
+  const prevResolvedClause = buildRangeClause(prevParams, "COALESCE(t.closed_at, t.resolved_at)", prev.sinceIso, prev.untilIso);
+  const prevScopeClause = buildTicketScopeClause(prevParams, filters, "t") + notDeletedClause;
   const trunc = trendTruncUnit(sinceIso, untilIso);
   const truncSql = trunc === "day" ? "day" : trunc === "month" ? "month" : "week";
   const openParams = [];
-  const openScope = buildTicketScopeClause(openParams, filters, "t");
-  const hasActivity = await tableExists("public.v_b_ticket_activity");
-  const [volumeResult, prevVolumeResult, backlogResult, timingResult, slaResult, slaByPriorityResult, slaClientsResult, createdResolvedResult, dailyResult, weeklyResult, monthlyCreatedResult, monthlyResolvedResult, reopenResult, reopenByCategoryResult, transferredResult, cancelledResult, categoryDetailResult, clientDetailResult, prevClientResult, agentDetailResult, weekdayResult, monthOfYearResult, yearlyResult] = await Promise.all([pool.query(`SELECT
+  const openScope = buildTicketScopeClause(openParams, filters, "t") + notDeletedClause;
+  const cancelledParams = [];
+  let cancelledQuery;
+  if (hasDeletedAt || hasIsDeleted) {
+    const deletedRangeCol = hasDeletedAt ? "COALESCE(t.deleted_at, t.updated_at)" : "t.updated_at";
+    const cancelledRange = buildRangeClause(cancelledParams, deletedRangeCol, sinceIso, untilIso);
+    const cancelledScope = buildTicketScopeClause(cancelledParams, filters, "t");
+    const deletedPredicate = hasDeletedAt && hasIsDeleted ? "(COALESCE(t.is_deleted, FALSE) = TRUE OR t.deleted_at IS NOT NULL)" : hasDeletedAt ? "t.deleted_at IS NOT NULL" : "COALESCE(t.is_deleted, FALSE) = TRUE";
+    cancelledQuery = queryResultOrEmpty(`SELECT COUNT(*)::int AS count
+       FROM v_b_tickets t
+       WHERE ${deletedPredicate}${cancelledRange}${cancelledScope}`, cancelledParams);
+  } else {
+    cancelledQuery = queryResultOrEmpty(`SELECT COUNT(*)::int AS count
+       FROM v_b_tickets t
+       WHERE LOWER(COALESCE(t.status, '')) IN ('cancelled', 'canceled')${createdClause}${scopeClause}`, params);
+  }
+  const emptyCount = Promise.resolve({
+    rows: [{
+      count: 0
+    }]
+  });
+  const emptyRows = Promise.resolve({
+    rows: []
+  });
+  const [volumeResult, resolvedVolumeResult, prevVolumeResult, prevResolvedVolumeResult, backlogResult, timingResult, slaResult, slaByPriorityResult, slaClientsResult, createdResolvedResult, dailyResult, weeklyResult, monthlyCreatedResult, monthlyResolvedResult, reopenResult, reopenByCategoryResult, transferredResult, cancelledResult, categoryDetailResult, clientDetailResult, prevClientResult, agentDetailResult, weekdayResult, monthOfYearResult, yearlyResult] = await Promise.all([queryResultOrEmpty(`SELECT
          COUNT(*)::int AS created,
-         COUNT(*) FILTER (WHERE t.status IN ${CLOSED_STATUSES})::int AS closed,
          COUNT(DISTINCT t.assigned_user_id) FILTER (WHERE t.assigned_user_id IS NOT NULL)::int AS technicians
        FROM v_b_tickets t
-       WHERE 1=1${createdClause}${scopeClause}`, params), pool.query(`SELECT
-         COUNT(*)::int AS created,
-         COUNT(*) FILTER (WHERE t.status IN ${CLOSED_STATUSES})::int AS closed
+       WHERE 1=1${createdClause}${scopeClause}`, params), queryResultOrEmpty(`SELECT COUNT(*)::int AS closed
        FROM v_b_tickets t
-       WHERE 1=1${prevCreatedClause}${prevScopeClause}`, prevParams), pool.query(`SELECT
+       WHERE t.status IN ${CLOSED_STATUSES}
+         AND COALESCE(t.closed_at, t.resolved_at) IS NOT NULL${resolvedClause}${scopeClause}`, params), queryResultOrEmpty(`SELECT COUNT(*)::int AS created
+       FROM v_b_tickets t
+       WHERE 1=1${prevCreatedClause}${prevScopeClause}`, prevParams), queryResultOrEmpty(`SELECT COUNT(*)::int AS closed
+       FROM v_b_tickets t
+       WHERE t.status IN ${CLOSED_STATUSES}
+         AND COALESCE(t.closed_at, t.resolved_at) IS NOT NULL${prevResolvedClause}${prevScopeClause}`, prevParams), queryResultOrEmpty(`SELECT
          COUNT(*)::int AS total,
          COUNT(*) FILTER (WHERE t.created_at <= NOW() - INTERVAL '7 days')::int AS over7,
          COUNT(*) FILTER (WHERE t.created_at <= NOW() - INTERVAL '30 days')::int AS over30,
          COUNT(*) FILTER (WHERE t.created_at <= NOW() - INTERVAL '90 days')::int AS over90,
          AVG(EXTRACT(EPOCH FROM (NOW() - t.created_at)) / 86400.0) AS avg_age_days
        FROM v_b_tickets t
-       WHERE t.status NOT IN ${CLOSED_STATUSES}${openScope}`, openParams), pool.query(`WITH responses AS (
+       WHERE t.status NOT IN ${CLOSED_STATUSES}${openScope}`, openParams), queryResultOrEmpty(`WITH responses AS (
          SELECT ${FIRST_RESPONSE_HOURS} AS hours
          FROM v_b_tickets t
          WHERE ${FIRST_TAKEOVER_SUBQUERY} IS NOT NULL${createdClause}${scopeClause}
@@ -329,41 +403,41 @@ async function fetchSupportCockpitStats({
          (SELECT percentile_cont(0.95) WITHIN GROUP (ORDER BY hours) FROM responses) AS fr_p95,
          (SELECT AVG(hours) FROM resolutions) AS res_avg,
          (SELECT percentile_cont(0.5) WITHIN GROUP (ORDER BY hours) FROM resolutions) AS res_median,
-         (SELECT percentile_cont(0.9) WITHIN GROUP (ORDER BY hours) FROM resolutions) AS res_p90`, params), pool.query(`SELECT
-         COUNT(*) FILTER (WHERE ${SLA_ENABLED})::int AS sla_tickets,
-         COUNT(*) FILTER (WHERE ${SLA_ENABLED} AND t.status IN ${CLOSED_STATUSES} AND NOT ${SLA_FR_BREACHED}
-           AND (${SLA_RES_DUE} IS NULL OR COALESCE(t.closed_at, t.resolved_at) IS NULL OR COALESCE(t.closed_at, t.resolved_at) <= ${SLA_RES_DUE}))::int AS met,
-         COUNT(*) FILTER (WHERE ${SLA_ENABLED} AND (${SLA_FR_BREACHED}
-           OR (${SLA_RES_DUE} IS NOT NULL AND COALESCE(t.closed_at, t.resolved_at) IS NOT NULL AND COALESCE(t.closed_at, t.resolved_at) > ${SLA_RES_DUE})
-           OR (t.status NOT IN ${CLOSED_STATUSES} AND ${SLA_RES_DUE} IS NOT NULL AND NOW() > ${SLA_RES_DUE})))::int AS breached,
-         COUNT(*) FILTER (WHERE ${SLA_ENABLED} AND t.status NOT IN ${CLOSED_STATUSES}
-           AND ${SLA_RES_DUE} IS NOT NULL AND NOW() < ${SLA_RES_DUE}
-           AND ${SLA_RES_DUE} < NOW() + INTERVAL '4 hours')::int AS near_due,
-         AVG(EXTRACT(EPOCH FROM (${SLA_RES_DUE} - NOW())) / 3600.0)
-           FILTER (WHERE ${SLA_ENABLED} AND t.status NOT IN ${CLOSED_STATUSES} AND ${SLA_RES_DUE} IS NOT NULL AND ${SLA_RES_DUE} > NOW()) AS avg_hours_to_due
+         (SELECT percentile_cont(0.9) WITHIN GROUP (ORDER BY hours) FROM resolutions) AS res_p90`, params), hasSlaInfo ? queryResultOrEmpty(`SELECT
+         COUNT(*) FILTER (WHERE ${slaEnabled})::int AS sla_tickets,
+         COUNT(*) FILTER (WHERE ${slaEnabled} AND t.status IN ${CLOSED_STATUSES} AND NOT ${slaFrBreached}
+           AND (${slaResDue} IS NULL OR COALESCE(t.closed_at, t.resolved_at) IS NULL OR COALESCE(t.closed_at, t.resolved_at) <= ${slaResDue}))::int AS met,
+         COUNT(*) FILTER (WHERE ${slaEnabled} AND (${slaFrBreached}
+           OR (${slaResDue} IS NOT NULL AND COALESCE(t.closed_at, t.resolved_at) IS NOT NULL AND COALESCE(t.closed_at, t.resolved_at) > ${slaResDue})
+           OR (t.status NOT IN ${CLOSED_STATUSES} AND ${slaResDue} IS NOT NULL AND NOW() > ${slaResDue})))::int AS breached,
+         COUNT(*) FILTER (WHERE ${slaEnabled} AND t.status NOT IN ${CLOSED_STATUSES}
+           AND ${slaResDue} IS NOT NULL AND NOW() < ${slaResDue}
+           AND ${slaResDue} < NOW() + INTERVAL '4 hours')::int AS near_due,
+         AVG(EXTRACT(EPOCH FROM (${slaResDue} - NOW())) / 3600.0)
+           FILTER (WHERE ${slaEnabled} AND t.status NOT IN ${CLOSED_STATUSES} AND ${slaResDue} IS NOT NULL AND ${slaResDue} > NOW()) AS avg_hours_to_due
        FROM v_b_tickets t
-       WHERE 1=1${createdClause}${scopeClause}`, params), pool.query(`SELECT
+       WHERE 1=1${createdClause}${scopeClause}`, params) : emptyRows, hasSlaInfo ? queryResultOrEmpty(`SELECT
          LOWER(COALESCE(t.priority, 'normal')) AS key,
-         COUNT(*) FILTER (WHERE ${SLA_ENABLED})::int AS sla_count,
-         COUNT(*) FILTER (WHERE ${SLA_ENABLED} AND t.status IN ${CLOSED_STATUSES} AND NOT ${SLA_FR_BREACHED}
-           AND (${SLA_RES_DUE} IS NULL OR COALESCE(t.closed_at, t.resolved_at) IS NULL OR COALESCE(t.closed_at, t.resolved_at) <= ${SLA_RES_DUE}))::int AS met,
-         MAX(COALESCE((t.sla_info->'policy'->>'resolutionHours')::float, 0)) AS target_hours
+         COUNT(*) FILTER (WHERE ${slaEnabled})::int AS sla_count,
+         COUNT(*) FILTER (WHERE ${slaEnabled} AND t.status IN ${CLOSED_STATUSES} AND NOT ${slaFrBreached}
+           AND (${slaResDue} IS NULL OR COALESCE(t.closed_at, t.resolved_at) IS NULL OR COALESCE(t.closed_at, t.resolved_at) <= ${slaResDue}))::int AS met,
+         MAX(${slaTargetHours}) AS target_hours
        FROM v_b_tickets t
        WHERE 1=1${createdClause}${scopeClause}
        GROUP BY 1
-       ORDER BY 1`, params), pool.query(`SELECT
+       ORDER BY 1`, params) : emptyRows, hasSlaInfo ? queryResultOrEmpty(`SELECT
          c.id AS client_id,
          COALESCE(c.name, c.contrat->>'nom', 'Client') AS label,
-         COUNT(*) FILTER (WHERE ${SLA_ENABLED} AND (${SLA_FR_BREACHED}
-           OR (${SLA_RES_DUE} IS NOT NULL AND COALESCE(t.closed_at, t.resolved_at) IS NOT NULL AND COALESCE(t.closed_at, t.resolved_at) > ${SLA_RES_DUE})))::int AS breached,
-         COUNT(*) FILTER (WHERE ${SLA_ENABLED})::int AS sla_count
+         COUNT(*) FILTER (WHERE ${slaEnabled} AND (${slaFrBreached}
+           OR (${slaResDue} IS NOT NULL AND COALESCE(t.closed_at, t.resolved_at) IS NOT NULL AND COALESCE(t.closed_at, t.resolved_at) > ${slaResDue})))::int AS breached,
+         COUNT(*) FILTER (WHERE ${slaEnabled})::int AS sla_count
        FROM v_b_tickets t
        LEFT JOIN v_b_clients c ON c.id = t.client_id
        WHERE t.client_id IS NOT NULL${createdClause}${scopeClause}
        GROUP BY c.id, c.name, c.contrat
-       HAVING COUNT(*) FILTER (WHERE ${SLA_ENABLED}) > 0
+       HAVING COUNT(*) FILTER (WHERE ${slaEnabled}) > 0
        ORDER BY breached DESC, sla_count DESC
-       LIMIT 8`, params), pool.query(`SELECT
+       LIMIT 8`, params) : emptyRows, queryResultOrEmpty(`SELECT
          COALESCE(c.period, r.period) AS period,
          COALESCE(c.count, 0)::int AS created,
          COALESCE(r.count, 0)::int AS resolved
@@ -380,28 +454,28 @@ async function fetchSupportCockpitStats({
            AND COALESCE(t.closed_at, t.resolved_at) IS NOT NULL${resolvedClause}${scopeClause}
          GROUP BY 1
        ) r ON c.period = r.period
-       ORDER BY 1`, params), pool.query(`SELECT date_trunc('day', t.created_at)::date AS period, COUNT(*)::int AS count
+       ORDER BY 1`, params), queryResultOrEmpty(`SELECT date_trunc('day', t.created_at)::date AS period, COUNT(*)::int AS count
        FROM v_b_tickets t
        WHERE 1=1${createdClause}${scopeClause}
        GROUP BY 1
-       ORDER BY 1`, params), pool.query(`SELECT date_trunc('week', t.created_at)::date AS period, COUNT(*)::int AS count
+       ORDER BY 1`, params), queryResultOrEmpty(`SELECT date_trunc('week', t.created_at)::date AS period, COUNT(*)::int AS count
        FROM v_b_tickets t
        WHERE 1=1${createdClause}${scopeClause}
        GROUP BY 1
-       ORDER BY 1`, params), pool.query(`SELECT date_trunc('month', t.created_at)::date AS period, COUNT(*)::int AS count
+       ORDER BY 1`, params), queryResultOrEmpty(`SELECT date_trunc('month', t.created_at)::date AS period, COUNT(*)::int AS count
        FROM v_b_tickets t
        WHERE 1=1${createdClause}${scopeClause}
        GROUP BY 1
-       ORDER BY 1`, params), pool.query(`SELECT date_trunc('month', COALESCE(t.closed_at, t.resolved_at))::date AS period, COUNT(*)::int AS count
+       ORDER BY 1`, params), queryResultOrEmpty(`SELECT date_trunc('month', COALESCE(t.closed_at, t.resolved_at))::date AS period, COUNT(*)::int AS count
        FROM v_b_tickets t
        WHERE t.status IN ${CLOSED_STATUSES}
          AND COALESCE(t.closed_at, t.resolved_at) IS NOT NULL${resolvedClause}${scopeClause}
        GROUP BY 1
-       ORDER BY 1`, params), pool.query(`SELECT COUNT(DISTINCT h.ticket_id)::int AS count
+       ORDER BY 1`, params), hasStatusHistory ? queryResultOrEmpty(`SELECT COUNT(DISTINCT h.ticket_id)::int AS count
        FROM v_b_ticket_status_history h
        JOIN v_b_tickets t ON t.id = h.ticket_id
        WHERE LOWER(COALESCE(h.old_status, '')) IN ('resolved', 'closed')
-         AND LOWER(COALESCE(h.new_status, '')) NOT IN ('resolved', 'closed')${historyClause}${scopeClause}`, params), pool.query(`SELECT
+         AND LOWER(COALESCE(h.new_status, '')) NOT IN ('resolved', 'closed')${historyClause}${scopeClause}`, params) : emptyCount, hasStatusHistory ? queryResultOrEmpty(`SELECT
          COALESCE(NULLIF(TRIM(t.category), ''), 'Uncategorized') AS key,
          COUNT(DISTINCT h.ticket_id)::int AS count
        FROM v_b_ticket_status_history h
@@ -410,16 +484,10 @@ async function fetchSupportCockpitStats({
          AND LOWER(COALESCE(h.new_status, '')) NOT IN ('resolved', 'closed')${historyClause}${scopeClause}
        GROUP BY 1
        ORDER BY count DESC
-       LIMIT 10`, params), hasActivity ? pool.query(`SELECT COUNT(*)::int AS count
+       LIMIT 10`, params) : emptyRows, hasActivity ? queryResultOrEmpty(`SELECT COUNT(DISTINCT a.ticket_id)::int AS count
          FROM v_b_ticket_activity a
          JOIN v_b_tickets t ON t.id = a.ticket_id
-         WHERE a.action IN ('assignee_added', 'assignee_removed')${activityClause}${scopeClause}`, params) : Promise.resolve({
-    rows: [{
-      count: 0
-    }]
-  }), pool.query(`SELECT COUNT(*)::int AS count
-       FROM v_b_tickets t
-       WHERE LOWER(COALESCE(t.status, '')) IN ('cancelled', 'canceled')${createdClause}${scopeClause}`, params), pool.query(`SELECT
+         WHERE a.action = 'assignee_removed'${activityClause}${scopeClause}`, params) : emptyCount, cancelledQuery, queryResultOrEmpty(`SELECT
          COALESCE(NULLIF(TRIM(t.category), ''), 'Uncategorized') AS key,
          COUNT(*)::int AS count,
          AVG(${RESOLUTION_HOURS}) FILTER (WHERE COALESCE(t.closed_at, t.resolved_at) IS NOT NULL) AS avg_resolution_hours
@@ -427,28 +495,28 @@ async function fetchSupportCockpitStats({
        WHERE 1=1${createdClause}${scopeClause}
        GROUP BY 1
        ORDER BY count DESC
-       LIMIT 12`, params), pool.query(`SELECT
+       LIMIT 12`, params), queryResultOrEmpty(`SELECT
          c.id AS client_id,
          COALESCE(c.name, c.contrat->>'nom', 'Client') AS label,
          COUNT(*)::int AS tickets,
          COUNT(*) FILTER (WHERE t.status NOT IN ${CLOSED_STATUSES})::int AS backlog,
          COUNT(*) FILTER (WHERE LOWER(COALESCE(t.priority, '')) IN ('urgent', 'critical'))::int AS critical,
          COUNT(*) FILTER (WHERE t.created_at <= NOW() - INTERVAL '7 days' AND t.status NOT IN ${CLOSED_STATUSES})::int AS over7,
-         COUNT(*) FILTER (WHERE ${SLA_ENABLED})::int AS sla_count,
-         COUNT(*) FILTER (WHERE ${SLA_ENABLED} AND t.status IN ${CLOSED_STATUSES} AND NOT ${SLA_FR_BREACHED}
-           AND (${SLA_RES_DUE} IS NULL OR COALESCE(t.closed_at, t.resolved_at) IS NULL OR COALESCE(t.closed_at, t.resolved_at) <= ${SLA_RES_DUE}))::int AS sla_met,
+         COUNT(*) FILTER (WHERE ${slaEnabled})::int AS sla_count,
+         COUNT(*) FILTER (WHERE ${slaEnabled} AND t.status IN ${CLOSED_STATUSES} AND NOT ${slaFrBreached}
+           AND (${slaResDue} IS NULL OR COALESCE(t.closed_at, t.resolved_at) IS NULL OR COALESCE(t.closed_at, t.resolved_at) <= ${slaResDue}))::int AS sla_met,
          AVG(${RESOLUTION_HOURS}) FILTER (WHERE COALESCE(t.closed_at, t.resolved_at) IS NOT NULL) AS avg_resolution_hours
        FROM v_b_tickets t
        LEFT JOIN v_b_clients c ON c.id = t.client_id
        WHERE t.client_id IS NOT NULL${createdClause}${scopeClause}
        GROUP BY c.id, c.name, c.contrat
        ORDER BY tickets DESC
-       LIMIT 20`, params), pool.query(`SELECT
+       LIMIT 20`, params), queryResultOrEmpty(`SELECT
          t.client_id,
          COUNT(*)::int AS tickets
        FROM v_b_tickets t
        WHERE t.client_id IS NOT NULL${prevCreatedClause}${prevScopeClause}
-       GROUP BY t.client_id`, prevParams), pool.query(`SELECT
+       GROUP BY t.client_id`, prevParams), queryResultOrEmpty(`SELECT
          u.id AS user_id,
          COALESCE(NULLIF(TRIM(u.username), ''), u.email, 'Agent') AS label,
          u.email,
@@ -459,9 +527,9 @@ async function fetchSupportCockpitStats({
          percentile_cont(0.5) WITHIN GROUP (ORDER BY ${RESOLUTION_HOURS})
            FILTER (WHERE COALESCE(t.closed_at, t.resolved_at) IS NOT NULL) AS median_resolution_hours,
          AVG(${FIRST_RESPONSE_HOURS}) FILTER (WHERE ${FIRST_TAKEOVER_SUBQUERY} IS NOT NULL) AS avg_first_response_hours,
-         COUNT(*) FILTER (WHERE ${SLA_ENABLED})::int AS sla_count,
-         COUNT(*) FILTER (WHERE ${SLA_ENABLED} AND t.status IN ${CLOSED_STATUSES} AND NOT ${SLA_FR_BREACHED}
-           AND (${SLA_RES_DUE} IS NULL OR COALESCE(t.closed_at, t.resolved_at) IS NULL OR COALESCE(t.closed_at, t.resolved_at) <= ${SLA_RES_DUE}))::int AS sla_met
+         COUNT(*) FILTER (WHERE ${slaEnabled})::int AS sla_count,
+         COUNT(*) FILTER (WHERE ${slaEnabled} AND t.status IN ${CLOSED_STATUSES} AND NOT ${slaFrBreached}
+           AND (${slaResDue} IS NULL OR COALESCE(t.closed_at, t.resolved_at) IS NULL OR COALESCE(t.closed_at, t.resolved_at) <= ${slaResDue}))::int AS sla_met
        FROM v_b_users u
        LEFT JOIN v_b_tickets t ON t.assigned_user_id = u.id${createdClause}${scopeClause}
        WHERE COALESCE(u.role, '') <> 'client'
@@ -469,15 +537,15 @@ async function fetchSupportCockpitStats({
        GROUP BY u.id, u.username, u.email
        HAVING COUNT(t.id) > 0
        ORDER BY closed_count DESC, assigned_count DESC
-       LIMIT 20`, params), pool.query(`SELECT EXTRACT(ISODOW FROM t.created_at)::int AS period, COUNT(*)::int AS count
+       LIMIT 20`, params), queryResultOrEmpty(`SELECT EXTRACT(ISODOW FROM t.created_at)::int AS period, COUNT(*)::int AS count
        FROM v_b_tickets t
        WHERE 1=1${createdClause}${scopeClause}
        GROUP BY 1
-       ORDER BY 1 ASC`, params), pool.query(`SELECT EXTRACT(MONTH FROM t.created_at)::int AS period, COUNT(*)::int AS count
+       ORDER BY 1 ASC`, params), queryResultOrEmpty(`SELECT EXTRACT(MONTH FROM t.created_at)::int AS period, COUNT(*)::int AS count
        FROM v_b_tickets t
        WHERE 1=1${createdClause}${scopeClause}
        GROUP BY 1
-       ORDER BY 1 ASC`, params), pool.query(`SELECT EXTRACT(YEAR FROM t.created_at)::int AS period, COUNT(*)::int AS count
+       ORDER BY 1 ASC`, params), queryResultOrEmpty(`SELECT EXTRACT(YEAR FROM t.created_at)::int AS period, COUNT(*)::int AS count
        FROM v_b_tickets t
        WHERE 1=1${createdClause}${scopeClause}
        GROUP BY 1
@@ -488,13 +556,13 @@ async function fetchSupportCockpitStats({
   const timing = timingResult.rows[0] || {};
   const sla = slaResult.rows[0] || {};
   const reopened = Number(reopenResult.rows[0]?.count) || 0;
-  const closed = Number(volume.closed) || 0;
+  const closed = Number(resolvedVolumeResult.rows[0]?.closed) || 0;
   const created = Number(volume.created) || 0;
   const slaTickets = Number(sla.sla_tickets) || 0;
   const slaMet = Number(sla.met) || 0;
   const slaBreached = Number(sla.breached) || 0;
   const prevCreated = Number(prevVolume.created) || 0;
-  const prevClosed = Number(prevVolume.closed) || 0;
+  const prevClosed = Number(prevResolvedVolumeResult.rows[0]?.closed) || 0;
   const slaMetPct = slaTickets > 0 ? roundPct(slaMet / slaTickets * 100) : null;
   const slaBreachedPct = slaTickets > 0 ? roundPct(slaBreached / slaTickets * 100) : null;
   const prevClients = new Map((prevClientResult.rows || []).map(row => [String(row.client_id), Number(row.tickets) || 0]));
@@ -512,9 +580,9 @@ async function fetchSupportCockpitStats({
       reopened,
       reopenRate: closed > 0 ? roundPct(reopened / closed * 100) : null,
       ticketsPerTechnician: Number(volume.technicians) > 0 ? round1(created / Number(volume.technicians)) : null,
-      createdPerDay: averageTrend(dailyResult.rows),
-      createdPerWeek: averageTrend(weeklyResult.rows),
-      createdPerMonth: averageTrend(monthlyCreatedResult.rows),
+      createdPerDay: averageTrend(dailyResult.rows, sinceIso, untilIso, "day"),
+      createdPerWeek: averageTrend(weeklyResult.rows, sinceIso, untilIso, "week"),
+      createdPerMonth: averageTrend(monthlyCreatedResult.rows, sinceIso, untilIso, "month"),
       dailyCreated: buildTrend(dailyResult.rows),
       weeklyCreated: buildTrend(weeklyResult.rows),
       monthlyCreated: buildTrend(monthlyCreatedResult.rows),
@@ -610,9 +678,15 @@ async function fetchSupportCockpitStats({
     })
   };
 }
-function averageTrend(rows = []) {
+function averageTrend(rows = [], sinceIso = null, untilIso = null, unit = null) {
+  const total = (rows || []).reduce((sum, row) => sum + (Number(row.count) || 0), 0);
+  if (total <= 0) return 0;
+  if (sinceIso && untilIso && unit) {
+    const days = Math.max((new Date(untilIso).getTime() - new Date(sinceIso).getTime()) / 86400000, 1);
+    const buckets = unit === "day" ? days : unit === "week" ? days / 7 : days / 30.4375;
+    return round1(total / Math.max(buckets, 1));
+  }
   if (!rows.length) return 0;
-  const total = rows.reduce((sum, row) => sum + (Number(row.count) || 0), 0);
   return round1(total / rows.length);
 }
 function emptySupportCockpit() {
@@ -680,7 +754,8 @@ async function fetchSupportCockpitStatsSafe(args) {
   try {
     return await fetchSupportCockpitStats(args);
   } catch (err) {
-    console.warn("[analytics] support cockpit", err.message);
+    console.error("[analytics] support cockpit failed:", err?.message || err);
+    if (err?.stack) console.error(err.stack);
     return emptySupportCockpit();
   }
 }

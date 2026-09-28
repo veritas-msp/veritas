@@ -1198,7 +1198,7 @@ router.get('/gravityzone/:companyId/dashboard', async (req, res) => {
       companyId,
       page: 1,
       perPage: 30
-    }), safeBitdefenderRpc(apiUrl, apiKey, "quarantine", "getQuarantineItemsList", {
+    }), safeBitdefenderRpc(apiUrl, apiKey, "quarantine/computers", "getQuarantineItemsList", {
       companyId,
       page: 1,
       perPage: 30
@@ -1299,14 +1299,23 @@ router.get('/gravityzone/:companyId/dashboard', async (req, res) => {
         endpoint: item.endpointName || item.computerName || null,
         detectedAt: item.detectionTime || item.createdAt || null
       })),
-      quarantine: buildApiSection("quarantine", "Quarantaine", false, quarantineRes, item => ({
-        id: item.id,
-        fileName: item.fileName || item.name || "File",
-        filePath: item.filePath || item.path || null,
-        threat: item.threatName || item.detectionName || null,
-        endpoint: item.endpointName || item.computerName || null,
-        quarantinedAt: item.quarantineDate || item.date || null
-      })),
+      quarantine: buildApiSection("quarantine", "Quarantaine", false, quarantineRes, item => {
+        const details = item?.details && typeof item.details === "object" ? item.details : {};
+        const filePath = details.filePath || item.filePath || item.path || null;
+        const fileName =
+          item.fileName ||
+          item.name ||
+          (filePath ? String(filePath).split(/[/\\]/).filter(Boolean).pop() : null) ||
+          "File";
+        return {
+          id: item.id,
+          fileName,
+          filePath,
+          threat: item.threatName || item.detectionName || details.threatName || null,
+          endpoint: item.endpointName || item.computerName || null,
+          quarantinedAt: item.quarantinedOn || item.quarantineDate || item.date || null
+        };
+      }),
       patchManagement: {
         exploited: false,
         status: "preview",

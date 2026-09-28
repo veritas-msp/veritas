@@ -55,6 +55,8 @@ const CYBERSECURITE_PAGE_COPY = {
       syncAntivirusAria: "Synchroniser tous les tenants antivirus (intégration globale et dédiés)",
       syncAntispam: "Synchroniser les tenants antispam",
       syncAntispamAria: "Synchroniser tous les tenants antispam (intégration globale et dédiés)",
+      syncBackup: "Synchroniser les jobs de sauvegarde",
+      syncBackupAria: "Relancer la synchronisation globale des jobs de sauvegarde",
       addCampaign: "Nouvelle campagne"
     },
     heroPortfolio: "{av} antivirus · {as} antispam · {campaigns} campagnes",
@@ -227,6 +229,15 @@ const CYBERSECURITE_PAGE_COPY = {
         emptyInstancesText: "Configurez les instances de sauvegarde dans les fiches entreprises.",
         noResultsText: "Ajustez les filtres ou la recherche pour afficher des résultats.",
         clearInstanceFilter: "Afficher tous les jobs",
+        syncJobs: "Relancer la synchronisation des jobs",
+        syncJobsAria: "Synchroniser tous les jobs de sauvegarde mappés (CheckMK)",
+        syncJob: "Synchroniser ce job",
+        syncJobAria: "Relancer la synchronisation de ce job",
+        syncUnavailable: "Job non mappé — synchronisation indisponible",
+        syncDone: "Synchronisation terminée",
+        syncError: "Échec de la synchronisation",
+        lastSyncLabel: "Dernière sync : {date}",
+        lastSyncNever: "Dernière sync : jamais",
         kpi: {
           jobs: "Jobs",
           instances: "Instances",
@@ -440,7 +451,8 @@ const CYBERSECURITE_PAGE_COPY = {
       successErrors: ", {count} erreur(s)",
       failed: "Synchronisation échouée : {count} erreur(s)",
       errorAntivirus: "Erreur lors de la synchronisation des tenants antivirus",
-      errorAntispam: "Erreur lors de la synchronisation des tenants antispam"
+      errorAntispam: "Erreur lors de la synchronisation des tenants antispam",
+      errorBackup: "Erreur lors de la synchronisation des jobs de sauvegarde"
     }
   },
   en: {
@@ -474,6 +486,8 @@ const CYBERSECURITE_PAGE_COPY = {
       syncAntivirusAria: "Sync all antivirus tenants (global integration and dedicated)",
       syncAntispam: "Sync antispam tenants",
       syncAntispamAria: "Sync all antispam tenants (global integration and dedicated)",
+      syncBackup: "Sync backup jobs",
+      syncBackupAria: "Rerun the global backup jobs synchronization",
       addCampaign: "New campaign"
     },
     heroPortfolio: "{av} antivirus · {as} antispam · {campaigns} campaigns",
@@ -646,6 +660,15 @@ const CYBERSECURITE_PAGE_COPY = {
         emptyInstancesText: "Configure backup instances from company records.",
         noResultsText: "Adjust filters or search to show results.",
         clearInstanceFilter: "Show all jobs",
+        syncJobs: "Rerun backup jobs sync",
+        syncJobsAria: "Sync all mapped backup jobs (CheckMK)",
+        syncJob: "Sync this job",
+        syncJobAria: "Rerun sync for this job",
+        syncUnavailable: "Job not mapped — sync unavailable",
+        syncDone: "Sync completed",
+        syncError: "Sync failed",
+        lastSyncLabel: "Last sync: {date}",
+        lastSyncNever: "Last sync: never",
         kpi: {
           jobs: "Jobs",
           instances: "Instances",
@@ -859,7 +882,8 @@ const CYBERSECURITE_PAGE_COPY = {
       successErrors: ", {count} error(s)",
       failed: "Sync failed: {count} error(s)",
       errorAntivirus: "Error syncing antivirus tenants",
-      errorAntispam: "Error syncing antispam tenants"
+      errorAntispam: "Error syncing antispam tenants",
+      errorBackup: "Error syncing backup jobs"
     }
   },
   de: {
@@ -893,6 +917,8 @@ const CYBERSECURITE_PAGE_COPY = {
       syncAntivirusAria: "Alle Antivirus-Tenants synchronisieren (globale Integration und dedizierte)",
       syncAntispam: "Antispam-Tenants synchronisieren",
       syncAntispamAria: "Alle Antispam-Tenants synchronisieren (globale Integration und dedizierte)",
+      syncBackup: "Backup-Jobs synchronisieren",
+      syncBackupAria: "Globale Synchronisation der Backup-Jobs erneut starten",
       addCampaign: "Neue Kampagne"
     },
     heroPortfolio: "{av} Antivirus · {as} Antispam · {campaigns} Kampagnen",
@@ -1065,6 +1091,15 @@ const CYBERSECURITE_PAGE_COPY = {
         emptyInstancesText: "Konfigurieren Sie Backup-Instanzen in den Unternehmensakten.",
         noResultsText: "Passen Sie Filter oder Suche an, um Ergebnisse anzuzeigen.",
         clearInstanceFilter: "Alle Jobs anzeigen",
+        syncJobs: "Jobsynchronisation erneut starten",
+        syncJobsAria: "Alle gemappten Backup-Jobs synchronisieren (CheckMK)",
+        syncJob: "Diesen Job synchronisieren",
+        syncJobAria: "Synchronisation für diesen Job erneut starten",
+        syncUnavailable: "Job nicht gemappt — Synchronisation nicht verfügbar",
+        syncDone: "Synchronisation abgeschlossen",
+        syncError: "Synchronisation fehlgeschlagen",
+        lastSyncLabel: "Letzte Sync: {date}",
+        lastSyncNever: "Letzte Sync: nie",
         kpi: {
           jobs: "Jobs",
           instances: "Instanzen",
@@ -1278,7 +1313,8 @@ const CYBERSECURITE_PAGE_COPY = {
       successErrors: ", {count} Fehler",
       failed: "Synchronisation fehlgeschlagen: {count} Fehler",
       errorAntivirus: "Fehler bei der Synchronisation der Antivirus-Tenants",
-      errorAntispam: "Fehler bei der Synchronisation der Antispam-Tenants"
+      errorAntispam: "Fehler bei der Synchronisation der Antispam-Tenants",
+      errorBackup: "Fehler bei der Synchronisation der Backup-Jobs"
     }
   },
   it: {
@@ -1312,6 +1348,8 @@ const CYBERSECURITE_PAGE_COPY = {
       syncAntivirusAria: "Sincronizza tutti i tenant antivirus (integrazione globale e dedicati)",
       syncAntispam: "Sincronizza i tenant antispam",
       syncAntispamAria: "Sincronizza tutti i tenant antispam (integrazione globale e dedicati)",
+      syncBackup: "Sincronizza i job di backup",
+      syncBackupAria: "Rilancia la sincronizzazione globale dei job di backup",
       addCampaign: "Nuova campagna"
     },
     heroPortfolio: "{av} antivirus · {as} antispam · {campaigns} campagne",
@@ -1484,6 +1522,15 @@ const CYBERSECURITE_PAGE_COPY = {
         emptyInstancesText: "Configurate le istanze di backup nelle schede azienda.",
         noResultsText: "Modificate filtri o ricerca per visualizzare i risultati.",
         clearInstanceFilter: "Mostra tutti i job",
+        syncJobs: "Rilancia la sincronizzazione dei job",
+        syncJobsAria: "Sincronizza tutti i job di backup mappati (CheckMK)",
+        syncJob: "Sincronizza questo job",
+        syncJobAria: "Rilancia la sincronizzazione di questo job",
+        syncUnavailable: "Job non mappato — sincronizzazione non disponibile",
+        syncDone: "Sincronizzazione completata",
+        syncError: "Sincronizzazione non riuscita",
+        lastSyncLabel: "Ultima sync: {date}",
+        lastSyncNever: "Ultima sync: mai",
         kpi: {
           jobs: "Job",
           instances: "Istanze",
@@ -1697,7 +1744,8 @@ const CYBERSECURITE_PAGE_COPY = {
       successErrors: ", {count} errore/i",
       failed: "Sincronizzazione fallita: {count} errore/i",
       errorAntivirus: "Errore durante la sincronizzazione dei tenant antivirus",
-      errorAntispam: "Errore durante la sincronizzazione dei tenant antispam"
+      errorAntispam: "Errore durante la sincronizzazione dei tenant antispam",
+      errorBackup: "Errore durante la sincronizzazione dei job di backup"
     }
   },
   es: {
@@ -1731,6 +1779,8 @@ const CYBERSECURITE_PAGE_COPY = {
       syncAntivirusAria: "Sincronizar todos los tenants antivirus (integración global y dedicados)",
       syncAntispam: "Sincronizar tenants antispam",
       syncAntispamAria: "Sincronizar todos los tenants antispam (integración global y dedicados)",
+      syncBackup: "Sincronizar jobs de backup",
+      syncBackupAria: "Relanzar la sincronización global de los jobs de backup",
       addCampaign: "Nueva campaña"
     },
     heroPortfolio: "{av} antivirus · {as} antispam · {campaigns} campañas",
@@ -1903,6 +1953,15 @@ const CYBERSECURITE_PAGE_COPY = {
         emptyInstancesText: "Configure las instancias de copia de seguridad en las fichas de empresa.",
         noResultsText: "Ajuste los filtros o la búsqueda para mostrar resultados.",
         clearInstanceFilter: "Mostrar todos los jobs",
+        syncJobs: "Relanzar la sincronización de jobs",
+        syncJobsAria: "Sincronizar todos los jobs de copia mapeados (CheckMK)",
+        syncJob: "Sincronizar este job",
+        syncJobAria: "Relanzar la sincronización de este job",
+        syncUnavailable: "Job no mapeado — sincronización no disponible",
+        syncDone: "Sincronización completada",
+        syncError: "Error de sincronización",
+        lastSyncLabel: "Última sync: {date}",
+        lastSyncNever: "Última sync: nunca",
         kpi: {
           jobs: "Jobs",
           instances: "Instancias",
@@ -2116,7 +2175,8 @@ const CYBERSECURITE_PAGE_COPY = {
       successErrors: ", {count} error(es)",
       failed: "Sincronización fallida: {count} error(es)",
       errorAntivirus: "Error al sincronizar los tenants antivirus",
-      errorAntispam: "Error al sincronizar los tenants antispam"
+      errorAntispam: "Error al sincronizar los tenants antispam",
+      errorBackup: "Error al sincronizar los jobs de backup"
     }
   }
 };

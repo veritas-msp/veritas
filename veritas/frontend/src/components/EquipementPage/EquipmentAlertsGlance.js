@@ -14,18 +14,32 @@ const SEVERITY_ICONS = {
 };
 
 function resolveAlertTitle(alert, glance, criteriaCopy) {
+  const stored = String(alert?.title || "").trim();
   if (alert.typeKind === "criterion" && alert.criterionKey) {
-    return criteriaCopy.getCriterionLabel(alert.criterionKey, alert.title);
+    const criterionLabel = criteriaCopy.getCriterionLabel(alert.criterionKey, alert.criterionKey);
+    // Prefer an already-explicit stored title (e.g. "Warning - Filesystem E:/")
+    if (stored && stored !== alert.criterionKey) {
+      const storedLower = stored.toLowerCase();
+      const criterionLower = String(criterionLabel || "").toLowerCase();
+      if (storedLower !== criterionLower && !/^(warning|critical|info|monitor_warning|monitor_critical)$/i.test(stored)) {
+        return stored;
+      }
+      if (stored.includes(" - ") || stored.includes(" — ")) return stored;
+    }
+    return criterionLabel;
   }
   if (alert.eventType && glance.eventTypes?.[alert.eventType]) {
     const eventLabel = glance.eventTypes[alert.eventType];
+    if (stored && (stored.includes(" - ") || stored.includes(" — ") || stored.length > eventLabel.length + 2)) {
+      return stored;
+    }
     if (alert.criterionKey) {
       const criterion = criteriaCopy.getCriterionLabel(alert.criterionKey, alert.criterionKey);
       return `${criterion} · ${eventLabel}`;
     }
-    return eventLabel;
+    return stored || eventLabel;
   }
-  return alert.title || alert.typeKey || "—";
+  return stored || alert.typeKey || "—";
 }
 
 function resolveTypeLabel(alert, glance, criteriaCopy) {
@@ -35,11 +49,11 @@ function resolveTypeLabel(alert, glance, criteriaCopy) {
     }
     return glance.eventTypes?.checkmk_event || "CheckMK · événement";
   }
-  if (alert.criterionKey) {
-    return criteriaCopy.getCriterionLabel(alert.criterionKey, alert.criterionKey);
-  }
   if (alert.domain && glance.domains?.[alert.domain]) {
     return glance.domains[alert.domain];
+  }
+  if (alert.criterionKey) {
+    return criteriaCopy.getCriterionLabel(alert.criterionKey, alert.criterionKey);
   }
   return alert.typeKey || alert.domain || "—";
 }

@@ -139,7 +139,7 @@ function sortArticles(list) {
   });
 }
 
-function IconPreview({ icon, color, muted }) {
+function IconPreview({ icon, color, muted, trash }) {
   if (icon?.type === "custom") {
     return <img src={resolveKnowledgeEmojiUrl(icon.emoji)} alt="" className={styles.navEmojiIcon} />;
   }
@@ -148,11 +148,11 @@ function IconPreview({ icon, color, muted }) {
   }
   return (
     <span
-      className={`${styles.navCollectionIcon} ${muted ? styles.navCollectionIconMuted : ""}`}
-      style={muted ? undefined : { background: color }}
+      className={`${styles.navCollectionIcon} ${muted || trash ? styles.navCollectionIconMuted : ""}`}
+      style={muted || trash ? undefined : { background: color }}
       aria-hidden
     >
-      <Icon icon={muted ? "mdi:folder-hidden" : "mdi:cube-outline"} />
+      <Icon icon={trash ? "mdi:delete-outline" : muted ? "mdi:folder-hidden" : "mdi:cube-outline"} />
     </span>
   );
 }
@@ -423,6 +423,7 @@ export default function KnowledgeFolderTree({
   status = "all",
   canManage,
   articles = [],
+  trashCount = 0,
   emojis = [],
   onSelect,
   onStatusChange,
@@ -674,6 +675,32 @@ export default function KnowledgeFolderTree({
 
   const treeContent = (
     <div className={styles.folderList}>
+      <SortableContext items={rootFolderIds} strategy={verticalListSortingStrategy}>
+        {(tree || []).map(node => (
+          <FolderNode
+            key={node.id}
+            node={node}
+            copy={copy}
+            currentFolder={currentFolder}
+            depth={0}
+            expandedIds={expandedIds}
+            articlesByFolder={articlesByFolder}
+            emojiMap={emojiMap}
+            onToggle={onToggle}
+            onSelect={selectCollection}
+            onCreate={onCreate}
+            onRename={onRename}
+            onShare={onShare}
+            onDelete={onDelete}
+            onChangeIcon={onChangeIcon}
+            onChangeArticleIcon={onChangeArticleIcon}
+            onOpenArticle={onOpenArticle}
+            canManage={canManage}
+            dragEnabled={dragEnabled}
+          />
+        ))}
+      </SortableContext>
+
       <div className={styles.navFolderBlock}>
         <IntoDroppable folderId={null} isOverClass={styles.navDropTarget}>
           <div
@@ -722,31 +749,19 @@ export default function KnowledgeFolderTree({
         ) : null}
       </div>
 
-      <SortableContext items={rootFolderIds} strategy={verticalListSortingStrategy}>
-        {(tree || []).map(node => (
-          <FolderNode
-            key={node.id}
-            node={node}
-            copy={copy}
-            currentFolder={currentFolder}
-            depth={0}
-            expandedIds={expandedIds}
-            articlesByFolder={articlesByFolder}
-            emojiMap={emojiMap}
-            onToggle={onToggle}
-            onSelect={selectCollection}
-            onCreate={onCreate}
-            onRename={onRename}
-            onShare={onShare}
-            onDelete={onDelete}
-            onChangeIcon={onChangeIcon}
-            onChangeArticleIcon={onChangeArticleIcon}
-            onOpenArticle={onOpenArticle}
-            canManage={canManage}
-            dragEnabled={dragEnabled}
-          />
-        ))}
-      </SortableContext>
+      <div className={styles.navFolderBlock}>
+        <div
+          className={`${styles.navRow} ${styles.navFolderRow} ${currentFolder === "trash" ? styles.navRowActive : ""}`}
+          style={{ paddingLeft: "0.35rem" }}
+        >
+          <span className={styles.navChevronSpacer} aria-hidden />
+          <button type="button" className={styles.navMain} onClick={() => selectCollection("trash")}>
+            <IconPreview trash />
+            <span className={styles.navRowLabel}>{copy.trash}</span>
+            {trashCount > 0 ? <span className={styles.navCount}>{trashCount}</span> : null}
+          </button>
+        </div>
+      </div>
     </div>
   );
 

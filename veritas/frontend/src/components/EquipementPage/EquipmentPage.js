@@ -1505,13 +1505,6 @@ const EquipmentPage = forwardRef(function EquipmentPage({
     });
     return counts;
   }, [filteredForStats, mkStatusFilter, monitoringSummaries]);
-  const findFirstTypeMatchingMkFilter = useCallback(filterKey => {
-    if (!filterKey) return null;
-    const order = embedded ? embeddedTypeOrder : FILTER_TYPE_ORDER;
-    return order.find(type => {
-      return filteredForStats.some(eq => toDisplayEquipmentType(eq.type) === type && isMkMappedEquipment(eq) && matchesMkAlertFilter(getEquipmentMkSummary(eq)?.status, filterKey));
-    }) || null;
-  }, [embedded, embeddedTypeOrder, filteredForStats, monitoringSummaries]);
   const supervisionDeviceTypeOrder = useMemo(() => {
     const customTypes = customFamiliesForUi.map(family => `Custom:${family.familyKey}`);
     return [...FILTER_TYPE_ORDER, "Security camera", ...customTypes];
@@ -1529,9 +1522,12 @@ const EquipmentPage = forwardRef(function EquipmentPage({
   const embeddedActiveType = useMemo(() => {
     if (!embedded) return null;
     if (selectedTypes.size === 1) return [...selectedTypes][0];
+    // Filtre MK sans famille choisie → vue transverse (toutes les familles concernées).
+    if (mkStatusFilter) return null;
     const withEquipment = embeddedTypeOrder.find(type => (embeddedTypeCounts[type] || 0) > 0);
     return withEquipment || embeddedTypeOrder[0] || EMBEDDED_DEFAULT_TYPE;
-  }, [embedded, selectedTypes, embeddedTypeOrder, embeddedTypeCounts]);
+  }, [embedded, selectedTypes, embeddedTypeOrder, embeddedTypeCounts, mkStatusFilter]);
+  const showAllMkFamilies = Boolean(embedded && mkStatusFilter && !embeddedActiveType);
   const activeCustomFamily = useMemo(() => {
     if (!embeddedActiveType?.startsWith("Custom:")) return null;
     const familyKey = embeddedActiveType.slice("Custom:".length);
@@ -1594,7 +1590,9 @@ const EquipmentPage = forwardRef(function EquipmentPage({
   }, [baseEquipment]);
   useEffect(() => {
     if (!embedded || loading) return;
-    const countsForNav = mkStatusFilter && mkFilteredTypeCounts ? mkFilteredTypeCounts : embeddedTypeCounts;
+    // Sous filtre Warning/Critique : laisser selectedTypes (vide = toutes les familles concernées).
+    if (mkStatusFilter) return;
+    const countsForNav = embeddedTypeCounts;
     const firstAvailable = getFirstAvailableType(embeddedTypeOrder, countsForNav, EMBEDDED_DEFAULT_TYPE);
     if (!firstAvailable) return;
     setSelectedTypes(prev => {
@@ -1604,12 +1602,12 @@ const EquipmentPage = forwardRef(function EquipmentPage({
         return new Set([firstAvailable]);
       }
       if ((countsForNav[currentType] || 0) > 0) return prev;
-      if (!searchQuery.trim() && !mkStatusFilter) return prev;
+      if (!searchQuery.trim()) return prev;
       if ((countsForNav[firstAvailable] || 0) === 0) return prev;
       if (currentType === firstAvailable) return prev;
       return new Set([firstAvailable]);
     });
-  }, [embedded, loading, embeddedTypeOrder, embeddedTypeCounts, mkFilteredTypeCounts, mkStatusFilter, searchQuery]);
+  }, [embedded, loading, embeddedTypeOrder, embeddedTypeCounts, mkStatusFilter, searchQuery]);
   const filteredEquipment = useMemo(() => {
     let filtered = [...baseEquipment];
     if (searchQuery.trim()) {
@@ -1802,17 +1800,24 @@ const EquipmentPage = forwardRef(function EquipmentPage({
   const toggleMkStatusFilter = filterKey => {
     const next = mkStatusFilter === filterKey ? null : filterKey;
     setMkStatusFilter(next);
-    if (!next) return;
-    const currentType = selectedTypes.size === 1 ? [...selectedTypes][0] : null;
-    const currentHasMatch = Boolean(currentType && filteredForStats.some(eq => toDisplayEquipmentType(eq.type) === currentType && isMkMappedEquipment(eq) && matchesMkAlertFilter(getEquipmentMkSummary(eq)?.status, next)));
-    if (currentHasMatch) return;
-    const firstType = findFirstTypeMatchingMkFilter(next);
-    if (firstType) setSelectedTypes(new Set([firstType]));
+    if (next) {
+      // Vue transverse : toutes les familles avec des alertes du type choisi.
+      setSelectedTypes(new Set());
+      return;
+    }
+    const firstAvailable = getFirstAvailableType(
+      embedded ? embeddedTypeOrder : FILTER_TYPE_ORDER,
+      embedded ? embeddedTypeCounts : typeCounts,
+      EMBEDDED_DEFAULT_TYPE
+    );
+    if (firstAvailable) setSelectedTypes(new Set([firstAvailable]));
   };
   const handleTypeCardClick = type => {
     setSelectedTypes(prev => {
       if (embedded) {
-        if (prev.size === 1 && prev.has(type)) return prev;
+        // Sous filtre MK : recliquer la famille active = revenir à la vue toutes familles.
+        if (mkStatusFilter && prev.size === 1 && prev.has(type)) return new Set();
+        if (prev.size === 1 && prev.has(type) && !mkStatusFilter) return prev;
         return new Set([type]);
       }
       if (prev.size === 1 && prev.has(type)) return new Set();
@@ -3264,23 +3269,37 @@ const EquipmentPage = forwardRef(function EquipmentPage({
             {embedded ? <div className={styles.embeddedFilterBar}>
                 <div className={styles.embeddedTypeIconBar} role="tablist" aria-label={embeddedCopy.typeBarAria}>
                   {embeddedTypeOrder.map(type => {
-                  const count = embeddedTypeCounts[type] || 0;
+                  const mkCount = mkStatusFilter ? mkFilteredTypeCounts?.[type] || 0 : null;
+                  const count = mkStatusFilter ? mkCount : embeddedTypeCounts[type] || 0;
                   const label = getEmbeddedTypeLabel(type);
-                  const isActive = embeddedActiveType === type;
-                  const tooltip = interpolate(embeddedCopy.typeTooltip, {
-                    label,
-                    count: String(count)
-                  });
+                  const isActive = showAllMkFamilies ? false : embeddedActiveType === type;
+                  const isDimmed = Boolean(mkStatusFilter && mkCount === 0);
+                  const tooltip = mkStatusFilter
+                    ? interpolate(embeddedCopy.typeTooltipMk || embeddedCopy.typeTooltip, {
+                        label,
+                        count: String(mkCount || 0),
+                        status: mkStatusFilter === "critical" ? embeddedCopy.mkCriticalLabel : embeddedCopy.mkWarningLabel
+                      })
+                    : interpolate(embeddedCopy.typeTooltip, {
+                        label,
+                        count: String(count)
+                      });
                   const tabAria = interpolate(count > 1 ? embeddedCopy.typeTabAriaMany : embeddedCopy.typeTabAriaOne, {
                     label,
                     count: String(count)
                   });
                   return <SmartTooltip key={type} content={tooltip}>
-                        <button type="button" role="tab" aria-selected={isActive} aria-label={tabAria} className={`${styles.embeddedTypeIconBtn} ${isActive ? styles.embeddedTypeIconBtnActive : ""}`} onClick={() => handleTypeCardClick(type)}>
+                        <button type="button" role="tab" aria-selected={isActive} aria-label={tabAria} disabled={isDimmed} className={`${styles.embeddedTypeIconBtn} ${isActive ? styles.embeddedTypeIconBtnActive : ""} ${isDimmed ? styles.embeddedTypeIconBtnDimmed : ""} ${mkCount > 0 ? styles.embeddedTypeIconBtnHasAlerts : ""}`} onClick={() => !isDimmed && handleTypeCardClick(type)}>
                           <Icon icon={getEmbeddedTypeIcon(type)} aria-hidden />
+                          {mkStatusFilter && mkCount > 0 ? <span className={`${styles.embeddedTypeIconBadge} ${mkStatusFilter === "critical" ? styles.embeddedTypeIconBadgeCritical : styles.embeddedTypeIconBadgeWarning}`}>{mkCount > 9 ? "9+" : mkCount}</span> : null}
                         </button>
                       </SmartTooltip>;
                 })}
+                {showAllMkFamilies ? <span className={styles.embeddedMkAllHint} title={embeddedCopy.mkAllFamiliesHint}>
+                    {interpolate(embeddedCopy.mkAllFamiliesLabel || "{count} familles", {
+                  count: String(Object.values(mkFilteredTypeCounts || {}).filter(n => n > 0).length)
+                })}
+                  </span> : null}
                 </div>
 
                 {checkmkIntegrationEnabled && mkAlertStats.mapped > 0 && <>
@@ -3380,7 +3399,13 @@ const EquipmentPage = forwardRef(function EquipmentPage({
 
             {(embedded ? HARDWARE_TYPE_ORDER : TYPE_ORDER).map(type => {
               const equipmentList = type === "Backup" ? filteredBackupRows : equipmentByType[type] || [];
-              if (embedded && type !== embeddedActiveType) return null;
+              if (embedded) {
+                if (showAllMkFamilies) {
+                  if (equipmentList.length === 0) return null;
+                } else if (type !== embeddedActiveType) {
+                  return null;
+                }
+              }
               const TypeIcon = getTypeIcon(type);
               const columns = getColumnsForType(type);
               const sortedList = getSortedEquipmentList(type, equipmentList);
@@ -3392,13 +3417,13 @@ const EquipmentPage = forwardRef(function EquipmentPage({
               const haPairColors = buildHaPairColorMap(sortedList);
               const isBackupSection = type === "Backup";
               return <div key={type} className={`${styles.equipmentTableSection} ${embedded ? styles.equipmentTableSectionEmbedded : ""}`}>
-                  {!embedded && <div className={styles.tableSectionHeader}>
+                  {( !embedded || showAllMkFamilies) && <div className={styles.tableSectionHeader}>
                       <div className={styles.tableSectionTitle}>
                         <TypeIcon className={styles.tableSectionIcon} />
-                        <h2>{type}</h2>
+                        <h2>{embedded ? getEmbeddedTypeLabel(type) : type}</h2>
                         <span className={styles.tableSectionCount}>({equipmentList.length})</span>
                       </div>
-                      <div className={styles.tableHeaderActions}>
+                      {!embedded ? <div className={styles.tableHeaderActions}>
                         <SmartTooltip as="span" content="Export to CSV">
                           <button className={styles.exportButton} onClick={() => exportToCSV(sortedList, type, columns)}>
                             <FaFileExport />
@@ -3425,7 +3450,7 @@ const EquipmentPage = forwardRef(function EquipmentPage({
                             <FaTh />
                           </button>
                         </SmartTooltip>
-                      </div>
+                      </div> : null}
                     </div>}
                   {(viewMode[type] || 'table') === 'table' ? <div className={`${styles.tableWrapper} ${embedded ? styles.tableWrapperEmbedded : ''}`}>
                       <table className={embedded ? styles.equipmentTableEmbedded : styles.equipmentTable}>

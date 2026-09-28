@@ -3,7 +3,7 @@ import { randomUUID } from 'crypto';
 import { pool } from '../../database/db.js';
 import { transformClientModulesToFrontend } from '../../utils/transformClientModules.js';
 import { buildEquipmentLogQuery, logEquipmentCreated, logEquipmentDeleted, logEquipmentUpdated } from '../../utils/equipmentLogs.js';
-import { checkSslCertificate, isSslCheckStale, resolveSslCheckIntervalHours } from '../../utils/sslCertificateChecker.js';
+import { checkSslCertificate, isSslCheckStale, parseSslTarget, resolveSslCheckIntervalHours } from '../../utils/sslCertificateChecker.js';
 import verifyJWT from '../../middleware/auth.js';
 import { dispatchNotificationEvent } from "../../services/notificationDispatcher.js";
 import { assertCommunityClientsLimit, assertCommunitySitesLimit, assertCommunityContactsLimit, sendCommunityLimitError } from '../../utils/communityLimits.js';
@@ -283,7 +283,8 @@ async function resolveNumericClientId(id) {
 }
 function mapSslCertificateRow(row) {
   const data = row.data && typeof row.data === "object" ? row.data : {};
-  const hostname = data.hostname || data.host || row.name || row.item_key || "—";
+  const parsed = parseSslTarget(data.hostname || data.host || row.name || row.item_key || "", Number(data.port) || 443);
+  const hostname = parsed.hostname || data.hostname || data.host || row.name || row.item_key || "—";
   const checkIntervalHours = resolveSslCheckIntervalHours(data);
   let nextCheckAt = null;
   if (data.lastChecked) {
@@ -297,7 +298,7 @@ function mapSslCertificateRow(row) {
     client_id: row.client_id,
     item_key: row.item_key,
     hostname,
-    port: data.port || 443,
+    port: parsed.port || data.port || 443,
     subject: data.subject || null,
     subjectCN: data.subjectCN || null,
     subjectO: data.subjectO || null,
@@ -325,8 +326,10 @@ function mapSslCertificateRow(row) {
 }
 async function checkAndPersistSslRow(row) {
   const data = row.data && typeof row.data === "object" ? row.data : {};
-  const hostname = data.hostname || data.host || row.name || row.item_key;
-  const port = Number(data.port) || 443;
+  const rawHost = data.hostname || data.host || row.name || row.item_key;
+  const parsed = parseSslTarget(rawHost, Number(data.port) || 443);
+  const hostname = parsed.hostname;
+  const port = parsed.port;
   if (!hostname) return null;
   let payload;
   try {
@@ -342,7 +345,9 @@ async function checkAndPersistSslRow(row) {
   }
   const merged = {
     ...data,
-    ...payload
+    ...payload,
+    hostname,
+    port
   };
   if (data.checkIntervalHours != null) {
     merged.checkIntervalHours = resolveSslCheckIntervalHours(data);
@@ -1840,8 +1845,12 @@ router.post('/:id/ssl-certificates', verifyJWT, requirePermission('clients_detai
         error: "Client not found"
       });
     }
-    hostname = String(req.body?.hostname || req.body?.host || req.body?.name || "").trim();
-    const port = Number(req.body?.port) || 443;
+    const parsed = parseSslTarget(
+      req.body?.hostname || req.body?.host || req.body?.name || "",
+      Number(req.body?.port) || 443
+    );
+    hostname = parsed.hostname;
+    const port = parsed.port;
     const checkIntervalHours = resolveSslCheckIntervalHours({
       checkIntervalHours: req.body?.checkIntervalHours
     });
@@ -1971,8 +1980,12 @@ router.put('/:id/ssl-certificates/:certId', verifyJWT, requirePermission('client
     }
     const current = mapSslCertificateRow(existing.rows[0]);
     const data = existing.rows[0].data && typeof existing.rows[0].data === "object" ? existing.rows[0].data : {};
-    const hostname = String(req.body?.hostname ?? req.body?.host ?? current.hostname ?? "").trim();
-    const port = req.body?.port !== undefined ? Number(req.body.port) || 443 : current.port;
+    const parsed = parseSslTarget(
+      req.body?.hostname ?? req.body?.host ?? current.hostname ?? "",
+      req.body?.port !== undefined ? Number(req.body.port) || 443 : current.port || 443
+    );
+    const hostname = parsed.hostname;
+    const port = parsed.port;
     const checkIntervalHours = req.body?.checkIntervalHours !== undefined ? resolveSslCheckIntervalHours({
       checkIntervalHours: req.body.checkIntervalHours
     }) : resolveSslCheckIntervalHours(data);

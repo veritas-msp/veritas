@@ -1404,6 +1404,7 @@ const CHECKMK = {
     sections: {
       connection: { label: "Connexion", description: "URL API et identifiants" },
       monitoring: { label: "Surveillance", description: "Rafraîchissement et suspension" },
+      logs: { label: "Logs", description: "Dernières synchronisations" },
       guide: { label: "Guide", description: "Obtenir un accès API" },
       info: { label: "Infos", description: "Usage supervision" }
     },
@@ -1415,7 +1416,7 @@ const CHECKMK = {
     site: "Site par défaut (optionnel)",
     sitePlaceholder: "ex. cmk",
     monitoringTitle: "Surveillance et synchronisation",
-    monitoringDesc: "Fréquence de rafraîchissement Checkmk pour le centre de supervision, et suspensions éventuelles.",
+    monitoringDesc: "Fréquence de rafraîchissement Checkmk pour le centre de supervision, et suspensions éventuelles. La synchro s’exécute automatiquement en arrière-plan selon cet intervalle.",
     syncInterval: "Intervalle de rafraîchissement",
     syncIntervalUnit: "minutes",
     syncIntervalPresets: [
@@ -1432,6 +1433,31 @@ const CHECKMK = {
     syncSuspendedHint: "Aucune sync auto (fiches / poller). Une sync manuelle forcée reste possible.",
     surveillanceSuspended: "Suspendre la surveillance",
     surveillanceSuspendedHint: "Masque les alertes CheckMK du centre de supervision et bloque la création de tickets auto.",
+    logsTitle: "Journal des synchronisations",
+    logsDesc: "Historique des syncs CheckMK en arrière-plan (poller) et des exécutions manuelles depuis cette page.",
+    logsRefresh: "Actualiser",
+    logsRunNow: "Lancer une sync",
+    logsRunning: "Sync en cours…",
+    logsLoading: "Chargement des logs…",
+    logsEmpty: "Aucune synchronisation enregistrée pour le moment. Attendez le prochain cycle automatique ou lancez une sync.",
+    logsLoadError: "Impossible de charger les logs de synchronisation.",
+    logsRunError: "Échec du lancement de la synchronisation.",
+    logsRunSuccess: "Synchronisation terminée.",
+    logsRunSkipped: "Synchronisation ignorée (déjà en cours ou suspendue).",
+    logsStatus: {
+      success: "OK",
+      partial: "Partiel",
+      error: "Erreur",
+      skipped: "Ignoré",
+      running: "En cours"
+    },
+    logsTrigger: {
+      poller: "Automatique",
+      manual: "Manuel"
+    },
+    formatLogSummary: run => `${run.synced || 0} synchronisé(s) / ${run.targetsTotal || 0} cible(s)`,
+    formatLogCounts: run => `OK ${run.synced || 0} · ignorés ${run.skipped || 0} · échecs ${run.failed || 0}`,
+    formatLogAlerts: run => `Alertes +${run.alertsCreated || 0} / −${run.alertsResolved || 0}`,
     howToGetCredentials: "Comment obtenir un accès API ?",
     fillCredentialsBeforeTest: "Renseignez l’URL, l’utilisateur et le mot de passe avant de tester.",
     testUsesFormHint: "Le test de connexion utilise les valeurs saisies, sans sauvegarde.",
@@ -1461,6 +1487,7 @@ const CHECKMK = {
     sections: {
       connection: { label: "Connection", description: "API URL and credentials" },
       monitoring: { label: "Monitoring", description: "Refresh and suspension" },
+      logs: { label: "Logs", description: "Recent synchronizations" },
       guide: { label: "Guide", description: "Get API access" },
       info: { label: "Info", description: "Monitoring usage" }
     },
@@ -1472,7 +1499,7 @@ const CHECKMK = {
     site: "Default site (optional)",
     sitePlaceholder: "e.g. cmk",
     monitoringTitle: "Monitoring & sync",
-    monitoringDesc: "Set how often CheckMK refreshes for the supervision center, and pause sync or alerts when needed.",
+    monitoringDesc: "Set how often CheckMK refreshes for the supervision center, and pause sync or alerts when needed. Sync runs automatically in the background on this interval.",
     syncInterval: "Refresh interval",
     syncIntervalUnit: "minutes",
     syncIntervalPresets: [
@@ -1489,6 +1516,31 @@ const CHECKMK = {
     syncSuspendedHint: "No automatic sync (detail pages / poller). Forced manual sync still works.",
     surveillanceSuspended: "Suspend surveillance",
     surveillanceSuspendedHint: "Hides CheckMK alerts in the supervision center and blocks auto ticket creation.",
+    logsTitle: "Synchronization log",
+    logsDesc: "History of background CheckMK syncs (poller) and manual runs from this page.",
+    logsRefresh: "Refresh",
+    logsRunNow: "Run sync now",
+    logsRunning: "Syncing…",
+    logsLoading: "Loading logs…",
+    logsEmpty: "No synchronizations recorded yet. Wait for the next automatic cycle or run a sync.",
+    logsLoadError: "Unable to load synchronization logs.",
+    logsRunError: "Failed to start synchronization.",
+    logsRunSuccess: "Synchronization completed.",
+    logsRunSkipped: "Synchronization skipped (already running or suspended).",
+    logsStatus: {
+      success: "OK",
+      partial: "Partial",
+      error: "Error",
+      skipped: "Skipped",
+      running: "Running"
+    },
+    logsTrigger: {
+      poller: "Automatic",
+      manual: "Manual"
+    },
+    formatLogSummary: run => `${run.synced || 0} synced / ${run.targetsTotal || 0} targets`,
+    formatLogCounts: run => `OK ${run.synced || 0} · skipped ${run.skipped || 0} · failed ${run.failed || 0}`,
+    formatLogAlerts: run => `Alerts +${run.alertsCreated || 0} / −${run.alertsResolved || 0}`,
     howToGetCredentials: "How do I get API access?",
     fillCredentialsBeforeTest: "Enter URL, username and password before testing.",
     testUsesFormHint: "The connection test uses the values entered in the form, without saving.",
@@ -1518,6 +1570,7 @@ const CHECKMK = {
     sections: {
       connection: { label: "Verbindung", description: "API-URL und Zugangsdaten" },
       monitoring: { label: "Überwachung", description: "Aktualisierung und Pause" },
+      logs: { label: "Logs", description: "Letzte Synchronisierungen" },
       guide: { label: "Anleitung", description: "API-Zugang erhalten" },
       info: { label: "Info", description: "Monitoring-Nutzung" }
     },
@@ -1546,6 +1599,28 @@ const CHECKMK = {
     syncSuspendedHint: "Kein Auto-Sync (Detailseiten / Poller). Erzwungener manueller Sync bleibt möglich.",
     surveillanceSuspended: "Überwachung pausieren",
     surveillanceSuspendedHint: "Blendet CheckMK-Alarme im Supervisionszentrum aus und blockiert Auto-Tickets.",
+    logsTitle: "Synchronisationsprotokoll",
+    logsDesc: "Verlauf der CheckMK-Hintergrundsyncs und manueller Läufe.",
+    logsRefresh: "Aktualisieren",
+    logsRunNow: "Sync starten",
+    logsRunning: "Sync läuft…",
+    logsLoading: "Logs werden geladen…",
+    logsEmpty: "Noch keine Synchronisationen. Warten Sie auf den nächsten Zyklus oder starten Sie eine Sync.",
+    logsLoadError: "Synchronisationslogs konnten nicht geladen werden.",
+    logsRunError: "Synchronisation konnte nicht gestartet werden.",
+    logsRunSuccess: "Synchronisation abgeschlossen.",
+    logsRunSkipped: "Synchronisation übersprungen (läuft bereits oder pausiert).",
+    logsStatus: {
+      success: "OK",
+      partial: "Teilweise",
+      error: "Fehler",
+      skipped: "Übersprungen",
+      running: "Läuft"
+    },
+    logsTrigger: {
+      poller: "Automatisch",
+      manual: "Manuell"
+    },
     howToGetCredentials: "Wie erhalte ich API-Zugang?",
     fillCredentialsBeforeTest: "URL, Benutzername und Passwort vor dem Test eingeben.",
     testUsesFormHint: "Der Verbindungstest verwendet die eingegebenen Werte, ohne zu speichern.",
@@ -1575,6 +1650,7 @@ const CHECKMK = {
     sections: {
       connection: { label: "Connessione", description: "URL API e credenziali" },
       monitoring: { label: "Monitoraggio", description: "Aggiornamento e sospensione" },
+      logs: { label: "Log", description: "Ultime sincronizzazioni" },
       guide: { label: "Guida", description: "Ottenere accesso API" },
       info: { label: "Info", description: "Uso monitoraggio" }
     },
@@ -1632,6 +1708,7 @@ const CHECKMK = {
     sections: {
       connection: { label: "Conexión", description: "URL API y credenciales" },
       monitoring: { label: "Supervisión", description: "Actualización y suspensión" },
+      logs: { label: "Logs", description: "Últimas sincronizaciones" },
       guide: { label: "Guía", description: "Obtener acceso API" },
       info: { label: "Info", description: "Uso de supervisión" }
     },
@@ -1899,20 +1976,17 @@ const getShared = createLocaleGetter(SHARED);
 function mergeModalCopy(locale, specificCatalog) {
   const shared = getShared(locale);
   const specific = pickLocaleMessages(specificCatalog, locale);
-  const sections = {
-    connection: {
-      ...shared.sections.connection,
-      ...(specific.sections?.connection || {})
-    },
-    guide: {
-      ...shared.sections.guide,
-      ...(specific.sections?.guide || {})
-    },
-    info: {
-      ...shared.sections.info,
-      ...(specific.sections?.info || {})
-    }
-  };
+  const sectionIds = new Set([
+    ...Object.keys(shared.sections || {}),
+    ...Object.keys(specific.sections || {})
+  ]);
+  const sections = {};
+  for (const id of sectionIds) {
+    sections[id] = {
+      ...(shared.sections?.[id] || {}),
+      ...(specific.sections?.[id] || {})
+    };
+  }
   return {
     ...shared,
     ...specific,

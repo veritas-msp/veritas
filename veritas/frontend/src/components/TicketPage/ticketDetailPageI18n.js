@@ -58,6 +58,7 @@ const DETAIL_COPY = {
       rejected: "Solution refusée par le client",
       accepted: "Solution validée par le client",
       autoClosed: "Clos automatiquement (48 h)",
+      closedDirect: "Solution enregistrée",
       default: "Validation client",
       deadline: "Échéance {dateTime}"
     },
@@ -640,6 +641,7 @@ const DETAIL_COPY = {
       rejected: "Solution rejected by client",
       accepted: "Solution validated by client",
       autoClosed: "Auto-closed (48 h)",
+      closedDirect: "Solution recorded",
       default: "Client validation",
       deadline: "Deadline {dateTime}"
     },
@@ -1444,7 +1446,14 @@ export function getTicketDetailCopy(locale) {
       });
     },
     getResolutionStatusPresentation: resolutionValidation => {
-      if (!resolutionValidation || resolutionValidation.isPending) {
+      if (!resolutionValidation) {
+        return {
+          variant: "done",
+          icon: "mdi:check-circle-outline",
+          title: t.resolutionStatus.closedDirect
+        };
+      }
+      if (resolutionValidation.isPending) {
         return {
           variant: "pending",
           icon: "mdi:account-clock-outline",
@@ -1473,9 +1482,9 @@ export function getTicketDetailCopy(locale) {
         };
       }
       return {
-        variant: "pending",
-        icon: "mdi:account-clock-outline",
-        title: t.resolutionStatus.default
+        variant: "done",
+        icon: "mdi:check-circle-outline",
+        title: t.resolutionStatus.closedDirect
       };
     },
     formatReopenComment: reason => interpolate(t.reopenComment, {

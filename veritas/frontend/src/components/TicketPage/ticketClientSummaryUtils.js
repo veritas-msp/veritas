@@ -82,7 +82,7 @@ export function getUsableSupportCreditPacks(packs = []) {
   return (Array.isArray(packs) ? packs : []).filter(pack => String(pack?.status || "") === "active" && Number(pack?.remaining_amount ?? 0) > 0);
 }
 export function buildDefaultResolveCreditAmounts(packs = [], {
-  defaultAmount = 1,
+  defaultAmount = 0,
   legacyBalance = 0
 } = {}) {
   const amounts = {};

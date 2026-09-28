@@ -10,10 +10,12 @@
 .shapeOctagon {
   --tile-stroke: 0px;
   --tile-inner-inset: 1px;
+  --tile-content-clip: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
 }
 
 .shapeHexagon {
   overflow: hidden;
+  --tile-h: var(--hex-h, 7.2rem);
 }
 
 .shapeRounded,
@@ -52,8 +54,16 @@
   clip-path: polygon(50% 2%, 98% 38%, 80% 98%, 20% 98%, 2% 38%);
 }
 
+.shapePentagon {
+  --tile-content-clip: polygon(50% 2%, 98% 38%, 80% 98%, 20% 98%, 2% 38%);
+}
+
 .shapeOctagon,
 .shapeOctagon::before,
 .shapeOctagon > * {
   clip-path: polygon(30% 0%, 70% 0%, 100% 30%, 100% 70%, 70% 100%, 30% 100%, 0% 70%, 0% 30%);
+}
+
+.shapeOctagon {
+  --tile-content-clip: polygon(30% 0%, 70% 0%, 100% 30%, 100% 70%, 70% 100%, 30% 100%, 0% 70%, 0% 30%);
 }

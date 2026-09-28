@@ -1,4 +1,4 @@
-import { getBackupJobStatus, compareBackupJobsByStatus } from "../CybersecuritePage/backupJobStatusUtils";
+import { getBackupJobStatus, compareBackupJobsByStatus, isBackupJobMapped } from "../CybersecuritePage/backupJobStatusUtils";
 import { formatServeurLieLabel, isBackupJobActive, normalizeServeurLieList, pickBackupJobType, pickBackupJobDestination } from "../EnterprisesPage/backupJobUtils";
 const BACKUP_PROVIDER_META = {
   "HYCU Backup": {
@@ -63,6 +63,9 @@ export function buildBackupFleetRow(job) {
     status,
     lastBackup: job?.last_backup_start ?? job?.rawData?.last_backup_start ?? job?.last_backup_date ?? job?.rawData?.last_backup_date ?? null,
     isMapped: Boolean(job?.isMapped),
+    checkmkMapping: job?.checkmkMapping || null,
+    hycuMapping: job?.hycuMapping || null,
+    hycu_job_uuid: job?.hycu_job_uuid || job?.hycuMapping?.hycu_job_uuid || null,
     raw: job
   };
 }
@@ -211,7 +214,12 @@ export function buildBackupJobFromInstance(client, instance, job) {
     checkmk_service_name: job.checkmk_service_name || null,
     is_active: true
   } : null;
-  return {
+  const hycuMapping = job?.hycuMapping && typeof job.hycuMapping === "object" ? job.hycuMapping : job?.hycu_job_uuid ? {
+    hycu_job_uuid: job.hycu_job_uuid || null,
+    hycu_job_name: job.hycu_job_name || null,
+    is_active: true
+  } : null;
+  const shaped = {
     id: jobId,
     clientId,
     clientName: client?.name || client?.nom || "-",
@@ -230,13 +238,17 @@ export function buildBackupJobFromInstance(client, instance, job) {
     replicationVers: job?.replicationVers || "",
     isDefault: job?.isDefault || false,
     actif: isBackupJobActive(job),
-    isMapped: Boolean((checkmkMapping?.checkmk_host_name || checkmkMapping?.checkmk_service_name) || job?.isMapped),
-    checkmkMapping,
+    checkmkMapping: checkmkMapping?.checkmk_host_name || checkmkMapping?.checkmk_service_name ? checkmkMapping : null,
+    hycuMapping: hycuMapping?.hycu_job_uuid ? hycuMapping : null,
+    hycu_job_uuid: job?.hycu_job_uuid || hycuMapping?.hycu_job_uuid || null,
+    hycu_job_name: job?.hycu_job_name || hycuMapping?.hycu_job_name || null,
     last_backup_date: job?.last_backup_date ?? null,
     last_backup_start: job?.last_backup_start ?? null,
     last_backup_duration: job?.last_backup_duration ?? null,
     rawData: job
   };
+  shaped.isMapped = isBackupJobMapped(shaped) || Boolean(job?.isMapped);
+  return shaped;
 }
 export function buildBackupFleetFromClients(clients = []) {
   const jobs = [];

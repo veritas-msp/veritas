@@ -110,6 +110,58 @@ export function filterSslCertificates(certificates, statusFilter) {
   if (!statusFilter || statusFilter === "all") return certificates;
   return certificates.filter(cert => getSslCertStatus(cert).key === statusFilter);
 }
+
+/**
+ * Parse host + port from hostname, host:port, or full URL.
+ * Explicit port in the string wins over fallbackPort.
+ */
+export function parseSslTarget(raw, fallbackPort = 443) {
+  const input = String(raw || "").trim();
+  const defaultPort = Number(fallbackPort);
+  const safeFallback = Number.isFinite(defaultPort) && defaultPort > 0 && defaultPort <= 65535 ? defaultPort : 443;
+  if (!input) {
+    return {
+      hostname: "",
+      port: safeFallback
+    };
+  }
+  try {
+    const hasScheme = /^[a-z][a-z0-9+.-]*:\/\//i.test(input);
+    const url = new URL(hasScheme ? input : `https://${input}`);
+    const hostname = String(url.hostname || "").replace(/^\[|\]$/g, "").trim().toLowerCase();
+    if (hostname) {
+      const explicitPort = url.port ? Number(url.port) : null;
+      return {
+        hostname,
+        port: Number.isFinite(explicitPort) && explicitPort > 0 ? explicitPort : safeFallback
+      };
+    }
+  } catch {
+    /* fall through */
+  }
+  let hostPart = input.replace(/^https?:\/\//i, "").split("/")[0].split("?")[0].trim();
+  const ipv6 = hostPart.match(/^\[([^\]]+)\](?::(\d{1,5}))?$/);
+  if (ipv6) {
+    const portNum = Number(ipv6[2]);
+    return {
+      hostname: String(ipv6[1] || "").toLowerCase(),
+      port: Number.isFinite(portNum) && portNum > 0 ? portNum : safeFallback
+    };
+  }
+  const colonIdx = hostPart.lastIndexOf(":");
+  if (colonIdx > 0 && /^\d{1,5}$/.test(hostPart.slice(colonIdx + 1))) {
+    const portNum = Number(hostPart.slice(colonIdx + 1));
+    return {
+      hostname: hostPart.slice(0, colonIdx).toLowerCase(),
+      port: Number.isFinite(portNum) && portNum > 0 ? portNum : safeFallback
+    };
+  }
+  return {
+    hostname: hostPart.toLowerCase(),
+    port: safeFallback
+  };
+}
+
 export function getSslHostLabel(cert) {
   const hostname = cert?.hostname || "-";
   const port = cert?.port;

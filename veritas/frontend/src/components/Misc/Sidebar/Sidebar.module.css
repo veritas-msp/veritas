@@ -798,11 +798,20 @@
   color: #991b1b;
 }
 
-.userMenuDivider {
-  height: 1px;
-  margin: 6px 10px;
-  background: #e5e7eb;
-  border: none;
+.userMenuItem:disabled {
+  opacity: 0.72;
+  cursor: default;
+}
+
+.userMenuItem:disabled:hover {
+  background: none;
+}
+
+.userMenuItemActive:disabled,
+.userMenuItemActive:disabled:hover {
+  opacity: 1;
+  background: rgba(43, 95, 171, 0.1);
+  color: #2b5fab;
 }
 
 

@@ -22,6 +22,9 @@ import { useBreakpoint } from "../../../hooks/useBreakpoint";
 import { hasRegisteredPageGuide, openRegisteredPageGuide, subscribePageGuideRegistry } from "../../PageGuide/pageGuideRegistry";
 import GlobalSearchPalette, { getSearchShortcutLabel, useGlobalSearchHotkey } from "../GlobalSearch/GlobalSearchPalette";
 import { usePermissions } from "../../../contexts/PermissionsContext";
+import { useAuthContext } from "../../../contexts/AuthContext";
+import { switchActiveProfile } from "../../../api/users";
+import { toast } from "react-toastify";
 import { canAccessAdminPanel } from "../../../utils/adminPanelPermissions";
 function normalizeProfileLabel(profile) {
   if (profile == null) return "";
@@ -64,6 +67,7 @@ export default function Sidebar({
   user,
   userRole,
   profile,
+  assignedProfiles = [],
   drafts,
   access,
   onCollapseChange,
@@ -76,12 +80,18 @@ export default function Sidebar({
   const isHorizontalDesktop = !isMobile && layout === "horizontal";
   const {
     canAny,
-    isAdmin
+    isAdmin,
+    refresh: refreshPermissions
   } = usePermissions();
+  const {
+    refreshSession,
+    patchUser
+  } = useAuthContext() || {};
   const showAdminMenu = canAccessAdminPanel(canAny, isAdmin);
   const [showMenu, setShowMenu] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const [userMenuFixedStyle, setUserMenuFixedStyle] = useState(null);
+  const [switchingProfile, setSwitchingProfile] = useState(false);
   const userMenuRef = useRef(null);
   const userMenuDropdownRef = useRef(null);
   const closeUserMenu = useCallback(() => setUserMenuOpen(false), []);
@@ -162,6 +172,40 @@ export default function Sidebar({
   const showIconTooltip = isCollapsed || isMobile || isHorizontalDesktop;
   const userInitials = getUserInitials(user);
   const profileLabel = normalizeProfileLabel(profile);
+  const switchableProfiles = useMemo(() => {
+    const list = Array.isArray(assignedProfiles)
+      ? assignedProfiles.map(p => String(p || "").trim()).filter(Boolean)
+      : [];
+    const active = normalizeProfileLabel(profile);
+    if (active && !list.includes(active)) list.unshift(active);
+    return [...new Set(list)];
+  }, [assignedProfiles, profile]);
+  const handleSwitchProfile = useCallback(async nextProfile => {
+    const name = String(nextProfile || "").trim();
+    if (!name || name === normalizeProfileLabel(profile) || switchingProfile) return;
+    setSwitchingProfile(true);
+    try {
+      const data = await switchActiveProfile(name);
+      if (typeof patchUser === "function") {
+        patchUser({
+          profile: data.profile || name
+        });
+      }
+      if (typeof refreshSession === "function") {
+        await refreshSession();
+      }
+      window.refreshProfile?.();
+      window.dispatchEvent(new Event("refreshProfileAccess"));
+      if (typeof refreshPermissions === "function") {
+        await refreshPermissions();
+      }
+      closeUserMenu();
+    } catch (err) {
+      toast.error(err?.message || copy.account.profileSwitchError);
+    } finally {
+      setSwitchingProfile(false);
+    }
+  }, [profile, switchingProfile, patchUser, refreshSession, refreshPermissions, closeUserMenu, copy.account.profileSwitchError]);
   const openUserMenuToRight = isCollapsed && !isHorizontalDesktop;
   const showCrmSection = !!(access["Contrat"] || access["Contact"] || access["Prestataire"]);
   const showExploitationSection = !!(access["Ticket"] || access["TicketSales"] || access["Planning"]);
@@ -560,6 +604,34 @@ export default function Sidebar({
                       <Icon icon="mingcute:bug-fill" className={styles.userMenuItemIcon} />
                       {copy.account.support}
                     </button>
+                    {switchableProfiles.length > 1 ? <>
+                        <div className={styles.userMenuDivider} role="separator" />
+                        <div className={styles.userMenuDropdownTitle}>
+                          {copy.account.profilesSection}
+                        </div>
+                        {switchableProfiles.map(name => {
+                      const isActive = name === profileLabel;
+                      const switchLabel = String(copy.account.switchProfile || "{profile}").replace("{profile}", name);
+                      return <button
+                        key={name}
+                        type="button"
+                        role="menuitemradio"
+                        aria-checked={isActive}
+                        disabled={switchingProfile || isActive}
+                        className={`${styles.userMenuItem} ${isActive ? styles.userMenuItemActive : ""}`}
+                        title={switchLabel}
+                        onClick={() => {
+                          if (!isActive) handleSwitchProfile(name);
+                        }}
+                      >
+                          <Icon
+                            icon={isActive ? "mdi:check-circle" : "mdi:account-badge-outline"}
+                            className={styles.userMenuItemIcon}
+                          />
+                          <span className={styles.userMenuItemLabel}>{name}</span>
+                        </button>;
+                    })}
+                      </> : null}
                     <div className={styles.userMenuDivider} role="separator" />
                     <button type="button" role="menuitem" className={`${styles.userMenuItem} ${styles.userMenuItemDanger}`} onClick={() => runUserMenuAction(() => onLogout())}>
                       <Icon icon="mingcute:exit-fill" className={styles.userMenuItemIcon} />

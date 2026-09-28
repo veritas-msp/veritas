@@ -13,7 +13,7 @@ import { addClientSslCertificate, checkClientSslCertificates, checkClientSslCert
 import layout from "./EnterpriseFormModal.module.css";
 import styles from "./SslCertificatesModal.module.css";
 import NumberStepperInput from "../Misc/NumberStepperInput/NumberStepperInput";
-import { computeSslStats, filterSslCertificates, formatSslDate, formatSslDateTime, formatSslSanList, getSslCertStatus, getSslExpiryBarWidth, getSslHostLabel, sortSslCertificates } from "./sslCertificateUtils";
+import { computeSslStats, filterSslCertificates, formatSslDate, formatSslDateTime, formatSslSanList, getSslCertStatus, getSslExpiryBarWidth, getSslHostLabel, parseSslTarget, sortSslCertificates } from "./sslCertificateUtils";
 function getExpiryBarClass(daysRemaining) {
   if (daysRemaining == null) return styles.expiryBarUnknown;
   if (daysRemaining < 0) return styles.expiryBarExpired;
@@ -219,21 +219,26 @@ export default function SslCertificatesModal({
       setError(copy.toasts.hostnameRequired);
       return;
     }
+    const parsed = parseSslTarget(newHost.trim(), Number(newPort) || 443);
+    if (!parsed.hostname) {
+      setError(copy.toasts.hostnameRequired);
+      return;
+    }
     const interval = Number(checkIntervalHours) || 24;
     setAdding(true);
     setError(null);
     try {
       if (editingCert?.id) {
         await updateClientSslCertificate(clientId, editingCert.id, {
-          hostname: newHost.trim(),
-          port: Number(newPort) || 443,
+          hostname: parsed.hostname,
+          port: parsed.port,
           checkIntervalHours: interval
         });
         toast.success(copy.toasts.hostUpdated);
       } else {
         await addClientSslCertificate(clientId, {
-          hostname: newHost.trim(),
-          port: Number(newPort) || 443,
+          hostname: parsed.hostname,
+          port: parsed.port,
           checkIntervalHours: interval
         });
         toast.success(copy.toasts.hostAdded);
@@ -372,7 +377,15 @@ export default function SslCertificatesModal({
             <label className={`${layout.label} ${layout.labelRequired}`} htmlFor="ssl-host-input">
               {copy.add.hostname}
             </label>
-            <input id="ssl-host-input" type="text" className={layout.input} value={newHost} onChange={e => setNewHost(e.target.value)} placeholder={copy.add.hostnamePlaceholder} autoComplete="off" />
+            <input id="ssl-host-input" type="text" className={layout.input} value={newHost} onChange={e => {
+            const value = e.target.value;
+            setNewHost(value);
+            const hostPart = String(value || "").replace(/^https?:\/\//i, "").split("/")[0];
+            if (/:\d{1,5}$/.test(hostPart) || /\[[^\]]+\]:\d{1,5}$/.test(hostPart)) {
+              const parsed = parseSslTarget(value, Number(newPort) || 443);
+              if (parsed.port) setNewPort(String(parsed.port));
+            }
+          }} placeholder={copy.add.hostnamePlaceholder} autoComplete="off" />
           </div>
           <div className={layout.field}>
             <label className={layout.label} htmlFor="ssl-port-input">

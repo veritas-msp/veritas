@@ -1,7 +1,8 @@
 import express from 'express';
 import fetch from 'node-fetch';
+import jwt from 'jsonwebtoken';
 import { pool } from '../../../database/db.js';
-import verifyJWT from '../../../middleware/auth.js';
+import verifyJWT, { getJwtSecret } from '../../../middleware/auth.js';
 import { evaluateMonitoringAlert } from '../../../services/equipmentMonitoringAlertDispatcher.js';
 import { getCheckmkMonitoringSettings } from '../../../utils/checkmkMonitoringSettings.js';
 const router = express.Router();
@@ -249,6 +250,7 @@ export function computeMonitoringSummary(monitoringData, lastSyncedAt, hostDetai
       recentWarnAlerts: 0,
       primaryService: null,
       failingServices: [],
+      hostName: null,
       lastSyncedAt: lastSyncedAt || null
     };
   }
@@ -350,6 +352,7 @@ export function computeMonitoringSummary(monitoringData, lastSyncedAt, hostDetai
     recentWarnAlerts,
     primaryService: failingServices[0] || null,
     failingServices,
+    hostName: String(host?.name || host?.host_name || host?.hostname || host?.title || "").trim() || null,
     hostState: host?.state ?? null,
     lastSyncedAt: lastSyncedAt || null
   };
@@ -404,20 +407,38 @@ export function listCheckmkHistoryItems(monitoringData, {
     : Array.isArray(monitoringData?.notifications?.events)
       ? monitoringData.notifications.events
       : [];
+
+  const formatHistoryTitle = (entry, severity) => {
+    const severityLabel = severity === 'critical' ? 'Critical' : severity === 'warning' ? 'Warning' : 'Info';
+    const service = eventServiceName(entry);
+    if (service && !/^(warning|critical|ok|unknown)$/i.test(service)) {
+      return `${severityLabel} - ${service}`;
+    }
+    const raw = String(
+      entry?.description || entry?.plugin_output || entry?.text || entry?.message || ''
+    ).trim();
+    if (raw) {
+      if (/^(warning|critical)\s*[-–—]/i.test(raw)) return raw;
+      if (!/^(warning|critical|ok|unknown)$/i.test(raw)) return `${severityLabel} - ${raw}`;
+    }
+    const host = String(entry?.host_name || entry?.host || entry?.hostname || '').trim();
+    if (host) return `${severityLabel} - ${host}`;
+    return severityLabel;
+  };
+
   const items = [];
   for (const event of events) {
     const t = getEventTimeMs(event);
     if (t == null || t < cutoff) continue;
     const state = getEventStateNum(event);
     const severity = state === 2 ? 'critical' : state === 1 ? 'warning' : 'info';
-    const title = event?.description || event?.plugin_output || event?.service_description
-      || event?.text || event?.message || event?.host_name || 'CheckMK event';
+    const title = formatHistoryTitle(event, severity);
     items.push({
       id: `ckmk-evt-${t}-${String(title).slice(0, 40)}`,
       source: 'checkmk',
       kind: 'event',
       title: String(title),
-      subtitle: event?.service_description || event?.host_name || null,
+      subtitle: eventServiceName(event) || event?.host_name || null,
       typeKey: 'checkmk_event',
       typeKind: 'label',
       domain: 'devices',
@@ -434,14 +455,13 @@ export function listCheckmkHistoryItems(monitoringData, {
     if (t == null || t < cutoff) continue;
     const state = getEventStateNum(notif);
     const severity = state === 2 ? 'critical' : state === 1 ? 'warning' : 'info';
-    const title = notif?.description || notif?.plugin_output || notif?.service_description
-      || notif?.text || notif?.message || notif?.host_name || 'CheckMK notification';
+    const title = formatHistoryTitle(notif, severity);
     items.push({
       id: `ckmk-notif-${t}-${String(title).slice(0, 40)}`,
       source: 'checkmk',
       kind: 'notification',
       title: String(title),
-      subtitle: notif?.service_description || notif?.host_name || null,
+      subtitle: eventServiceName(notif) || notif?.host_name || null,
       typeKey: 'checkmk_notification',
       typeKind: 'label',
       domain: 'devices',
@@ -473,18 +493,44 @@ const EQUIPMENT_FAMILY_TABLES = {
   toip: 'v_b_clients_m_toip',
   internet: 'v_b_clients_m_internet'
 };
+
+/** Synthetic request for background fleet sync (no user session). */
+export function buildSystemCheckmkReq() {
+  return {
+    headers: {},
+    __systemCheckmk: true
+  };
+}
+
+function resolveInternalAuthHeaders(req) {
+  const headers = {
+    Accept: 'application/json'
+  };
+  if (req?.__systemCheckmk || (!req?.headers?.cookie && !req?.headers?.authorization)) {
+    const token = jwt.sign({
+      id: 0,
+      username: 'system-checkmk',
+      role: 'system',
+      purpose: null
+    }, getJwtSecret(), {
+      algorithm: 'HS256',
+      expiresIn: '10m'
+    });
+    headers.Authorization = `Bearer ${token}`;
+    return headers;
+  }
+  if (req.headers.cookie) headers.Cookie = req.headers.cookie;
+  if (req.headers.authorization) headers.Authorization = req.headers.authorization;
+  return headers;
+}
+
 async function internalCheckMKGet(req, path, query = {}) {
   const url = new URL(`${INTERNAL_BASE}/api/checkmk${path}`);
   for (const [k, v] of Object.entries(query)) {
     if (v != null && v !== '') url.searchParams.set(k, String(v));
   }
-  const headers = {
-    Accept: 'application/json'
-  };
-  if (req.headers.cookie) headers.Cookie = req.headers.cookie;
-  if (req.headers.authorization) headers.Authorization = req.headers.authorization;
   const res = await fetch(url.toString(), {
-    headers
+    headers: resolveInternalAuthHeaders(req)
   });
   if (!res.ok) {
     const text = await res.text().catch(() => '');

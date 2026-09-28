@@ -321,6 +321,11 @@
   box-sizing: border-box;
 }
 
+.paginationBar {
+  flex-shrink: 0;
+  padding-top: 0.35rem;
+}
+
 .table {
   width: 100%;
   min-width: 880px;

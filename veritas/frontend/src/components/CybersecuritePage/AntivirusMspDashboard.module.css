@@ -314,6 +314,28 @@
   cursor: not-allowed;
 }
 
+.rowSyncBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
+  border: 1px solid var(--msp-border, #c5d0df);
+  background: var(--msp-surface, #fff);
+  color: var(--msp-accent, #2b5fab);
+  cursor: pointer;
+}
+
+.rowSyncBtn:hover:not(:disabled) {
+  background: var(--msp-accent-soft, rgba(43, 95, 171, 0.1));
+}
+
+.rowSyncBtn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
 .spin {
   animation: spin 0.8s linear infinite;
 }
@@ -914,6 +936,18 @@
 
 :global(html.dark) .iconBtn:hover,
 :global(body.dark) .iconBtn:hover {
+  background: rgba(90, 143, 212, 0.15);
+}
+
+:global(html.dark) .rowSyncBtn,
+:global(body.dark) .rowSyncBtn {
+  background: #152238;
+  border-color: #2a3f5c;
+  color: #8eb6e8;
+}
+
+:global(html.dark) .rowSyncBtn:hover:not(:disabled),
+:global(body.dark) .rowSyncBtn:hover:not(:disabled) {
   background: rgba(90, 143, 212, 0.15);
 }
 

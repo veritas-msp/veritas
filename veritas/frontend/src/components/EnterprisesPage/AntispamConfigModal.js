@@ -370,13 +370,31 @@ export default function AntispamConfigModal({
         ...customer,
         id: customer?.id != null ? String(customer.id) : String(customerId)
       };
-      const basePayload = formatAntispamSyncPayload(normalizedCustomer, "dedicated", tenantId, "mailinblack");
+      const backendPayload = syncResult.data && typeof syncResult.data === "object" ? syncResult.data : null;
+      const fallbackPayload = formatAntispamSyncPayload(normalizedCustomer, "dedicated", tenantId, "mailinblack", {
+        dashboard: dashboard || syncResult.dashboard || null
+      });
+      const basePayload = backendPayload ? {
+        ...fallbackPayload,
+        ...backendPayload,
+        providerId: "mailinblack",
+        mappingMode: "dedicated",
+        mailinblackTenantId: tenantId,
+        customerId: String(backendPayload.customerId || normalizedCustomer.id),
+        syncData: {
+          ...(fallbackPayload.syncData || {}),
+          ...(backendPayload.syncData || {}),
+          customer: backendPayload.syncData?.customer || normalizedCustomer,
+          dashboard: dashboard || syncResult.dashboard || backendPayload.syncData?.dashboard || null,
+          lastSync: backendPayload.syncData?.lastSync || new Date().toISOString()
+        }
+      } : fallbackPayload;
       const newSolution = {
         ...basePayload,
         syncData: {
           ...basePayload.syncData,
-          dashboard: dashboard || syncResult.dashboard || null,
-          lastSync: new Date().toISOString()
+          dashboard: dashboard || syncResult.dashboard || basePayload.syncData?.dashboard || null,
+          lastSync: basePayload.syncData?.lastSync || new Date().toISOString()
         }
       };
       const existingEquipements = modulesData?.equipements || {};

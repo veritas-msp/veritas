@@ -12,6 +12,16 @@ import { isAdminLevelProfile } from "../../config/permissionPresets.js";
 import { assertCommunityClientPortalLimit, assertMspAgentLimit, sendCommunityLimitError } from "../../utils/communityLimits.js";
 import { USER_AVATAR_SETTING_KEY, attachUserAvatar, buildAvatarPublicPath, ensureAvatarUploadDir, upsertUserAvatarSetting, validatePresetAvatarId } from "../../utils/userAvatar.js";
 import { findPortalUserByEmail } from "../../utils/contactPortal.js";
+import {
+  attachProfilesToUser,
+  ensureUserHasProfile,
+  listUserProfileNames,
+  listUserProfilesMap,
+  normalizeProfileList,
+  replaceUserProfiles,
+  userHasAssignedProfile
+} from "../../utils/userProfiles.js";
+import { buildSessionPayload, setSessionCookie, signSessionToken } from "../../utils/authSession.js";
 const router = express.Router();
 router.use(verifyJWT);
 const DEFAULT_USER_PROFILE = "Agent";
@@ -192,10 +202,70 @@ router.get("/me", verifyJWT, async (req, res) => {
         error: "User not found"
       });
     }
-    res.json(attachUserProfileSettings(result.rows[0]));
+    const profiles = await listUserProfileNames(req.user.id);
+    const user = attachUserProfileSettings(result.rows[0]);
+    const assigned = profiles.length ? profiles : user.profile ? [String(user.profile)] : [];
+    res.json({
+      ...user,
+      profiles: assigned
+    });
   } catch (err) {
     res.status(500).json({
       error: "Server error"
+    });
+  }
+});
+
+router.post("/me/active-profile", verifyJWT, [body("profile").isString().trim().isLength({
+  min: 2,
+  max: 255
+})], async (req, res) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(400).json({
+      errors: errors.array()
+    });
+  }
+  const profileName = String(req.body.profile || "").trim();
+  try {
+    const allowed = await userHasAssignedProfile(req.user.id, profileName);
+    if (!allowed) {
+      return res.status(403).json({
+        error: "This profile is not assigned to your account."
+      });
+    }
+    await pool.query(`UPDATE v_b_users SET profile = $1 WHERE id = $2`, [profileName, req.user.id]);
+    await ensureUserHasProfile(req.user.id, profileName);
+    const { rows } = await pool.query(
+      `SELECT id, email, role, profile, client_id, username
+       FROM v_b_users WHERE id = $1`,
+      [req.user.id]
+    );
+    const user = rows[0];
+    if (!user) {
+      return res.status(404).json({
+        error: "User not found"
+      });
+    }
+    const token = signSessionToken(buildSessionPayload(user));
+    setSessionCookie(req, res, token);
+    const profiles = await listUserProfileNames(req.user.id);
+    res.json({
+      success: true,
+      profile: user.profile,
+      profiles: profiles.length ? profiles : user.profile ? [String(user.profile)] : [],
+      user: {
+        id: user.id,
+        email: user.email,
+        username: user.username || null,
+        role: user.role,
+        profile: user.profile
+      }
+    });
+  } catch (err) {
+    console.error("POST /users/me/active-profile", err);
+    res.status(err?.status || 500).json({
+      error: err?.message || "Unable to switch profile"
     });
   }
 });
@@ -305,7 +375,12 @@ router.get("/", verifyJWT, requirePermission("admin_panel.users"), async (req, r
        ${AVATAR_JOIN}
        ${AGENTS_LIST_WHERE}
        ORDER BY u.created_at DESC`);
-    res.json(result.rows.map(row => attachUserAvatar(attachHelpdeskDisplayName(row))));
+    const profilesMap = await listUserProfilesMap(result.rows.map(r => r.id));
+    res.json(
+      result.rows.map(row =>
+        attachProfilesToUser(attachUserAvatar(attachHelpdeskDisplayName(row)), profilesMap)
+      )
+    );
   } catch (err) {
     res.status(500).json({
       error: "Error retrieving users"
@@ -314,6 +389,9 @@ router.get("/", verifyJWT, requirePermission("admin_panel.users"), async (req, r
 });
 router.patch("/:id", verifyJWT, [param("id").isUUID(), body("role").optional(OPTIONAL_BODY).isIn(ALLOWED_USER_ROLES), body("profile").optional(OPTIONAL_BODY).isString().trim().isLength({
   min: 2
+}), body("profiles").optional().isArray(), body("profiles.*").optional().isString().trim().isLength({
+  min: 2,
+  max: 255
 }), body("is_active").optional().isBoolean(), body("username").optional(OPTIONAL_BODY).isString().trim().isLength({
   min: 2,
   max: 50
@@ -328,6 +406,7 @@ router.patch("/:id", verifyJWT, [param("id").isUUID(), body("role").optional(OPT
   const {
     role,
     profile,
+    profiles,
     is_active,
     username,
     email
@@ -337,7 +416,11 @@ router.patch("/:id", verifyJWT, [param("id").isUUID(), body("role").optional(OPT
       error: "Not allowed to modify this user."
     });
   }
-  const grantsAdminLevel = String(role || "").toLowerCase() === "admin" || isAdminLevelProfile(profile);
+  const profileList = Array.isArray(profiles) ? normalizeProfileList(profiles, profile) : null;
+  const grantsAdminLevel =
+    String(role || "").toLowerCase() === "admin" ||
+    isAdminLevelProfile(profile) ||
+    (profileList || []).some(name => isAdminLevelProfile(name));
   if (grantsAdminLevel && !(await isAdminLevelActor(req.user))) {
     return res.status(403).json({
       error: "Only an administrator can grant administrator access."
@@ -358,8 +441,16 @@ router.patch("/:id", verifyJWT, [param("id").isUUID(), body("role").optional(OPT
     if (role !== undefined && role !== null && String(role).trim() !== "") {
       await pool.query("UPDATE v_b_users SET role = $1 WHERE id = $2", [role, id]);
     }
-    if (profile !== undefined && profile !== null && String(profile).trim() !== "") {
+    if (profileList) {
+      if (!(await canManageUsers(req.user))) {
+        return res.status(403).json({
+          error: "Not allowed to modify assigned profiles."
+        });
+      }
+      await replaceUserProfiles(id, profileList, profile);
+    } else if (profile !== undefined && profile !== null && String(profile).trim() !== "") {
       await pool.query("UPDATE v_b_users SET profile = $1 WHERE id = $2", [profile, id]);
+      await ensureUserHasProfile(id, profile);
     }
     if (is_active !== undefined) {
       await pool.query("UPDATE v_b_users SET is_active = $1 WHERE id = $2", [is_active, id]);
@@ -376,6 +467,11 @@ router.patch("/:id", verifyJWT, [param("id").isUUID(), body("role").optional(OPT
   } catch (err) {
     if (err?.code?.startsWith("COMMUNITY_") || err?.code === "PRO_AGENT_LIMIT") {
       return sendCommunityLimitError(res, err);
+    }
+    if (err?.status === 400) {
+      return res.status(400).json({
+        error: err.message
+      });
     }
     console.error("PATCH /users/:id", err);
     res.status(500).json({
@@ -415,6 +511,9 @@ router.patch("/:id/password", verifyJWT, [param("id").isUUID(), body("newPasswor
 });
 router.post("/", verifyJWT, requirePermission("admin_panel.users"), [body("email").isEmail(), body("profile").optional(OPTIONAL_BODY).isString().isLength({
   min: 2
+}), body("profiles").optional().isArray(), body("profiles.*").optional().isString().trim().isLength({
+  min: 2,
+  max: 255
 }), body("password").isString().isLength({
   min: 6
 }), body("username").optional(OPTIONAL_BODY).isString().trim().isLength({
@@ -430,9 +529,20 @@ router.post("/", verifyJWT, requirePermission("admin_panel.users"), [body("email
     password,
     username,
     is_active,
-    profile
+    profile,
+    profiles
   } = req.body;
-  if (isAdminLevelProfile(profile) && !(await isAdminLevelActor(req.user))) {
+  let profileList = normalizeProfileList(
+    Array.isArray(profiles) && profiles.length ? profiles : null,
+    profile && String(profile).trim() ? String(profile).trim() : DEFAULT_USER_PROFILE
+  );
+  if (!profileList.length) {
+    profileList = [DEFAULT_USER_PROFILE];
+  }
+  const activeProfile = profile && String(profile).trim() && profileList.includes(String(profile).trim())
+    ? String(profile).trim()
+    : profileList[0];
+  if ((profileList.some(name => isAdminLevelProfile(name)) || isAdminLevelProfile(activeProfile)) && !(await isAdminLevelActor(req.user))) {
     return res.status(403).json({
       error: "Only an administrator can grant administrator access."
     });
@@ -443,16 +553,27 @@ router.post("/", verifyJWT, requirePermission("admin_panel.users"), [body("email
       await assertMspAgentLimit(1);
     }
     const hash = await bcrypt.hash(password, 10);
-    const profileName = profile && String(profile).trim() ? String(profile).trim() : DEFAULT_USER_PROFILE;
     const usernameValue = username !== undefined && username !== null && String(username).trim() !== "" ? String(username).trim() : null;
+    const userId = randomUUID();
     const result = await pool.query(`INSERT INTO v_b_users (id, email, username, profile, password_hash, is_active, role)
-         VALUES ($1, $2, $3, $4, $5, $6, 'utilisateur') RETURNING id`, [randomUUID(), email, usernameValue, profileName, hash, is_active === undefined ? true : is_active]);
+         VALUES ($1, $2, $3, $4, $5, $6, 'utilisateur') RETURNING id`, [userId, email, usernameValue, activeProfile, hash, is_active === undefined ? true : is_active]);
+    try {
+      await replaceUserProfiles(result.rows[0].id, profileList, activeProfile);
+    } catch (assignErr) {
+      console.warn("POST /users assign profiles:", assignErr?.message || assignErr);
+      await ensureUserHasProfile(result.rows[0].id, activeProfile);
+    }
     res.status(201).json({
       id: result.rows[0].id
     });
   } catch (err) {
     if (err?.code?.startsWith("COMMUNITY_") || err?.code === "PRO_AGENT_LIMIT") {
       return sendCommunityLimitError(res, err);
+    }
+    if (err?.status === 400) {
+      return res.status(400).json({
+        error: err.message
+      });
     }
     res.status(500).json({
       error: "Error creating user"
@@ -505,7 +626,12 @@ router.get("/:id", verifyJWT, requirePermission("admin_panel.users"), async (req
         error: "User not found"
       });
     }
-    res.json(result.rows[0]);
+    const profiles = await listUserProfileNames(id);
+    const user = result.rows[0];
+    res.json({
+      ...user,
+      profiles: profiles.length ? profiles : user.profile ? [String(user.profile)] : []
+    });
   } catch (err) {
     res.status(500).json({
       error: "Error retrieving user"

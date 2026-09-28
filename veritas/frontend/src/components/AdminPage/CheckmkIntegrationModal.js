@@ -3,7 +3,8 @@ import { createPortal } from "react-dom";
 import { Icon } from "@iconify/react";
 import { FaTimes } from "react-icons/fa";
 import { testCheckmkConnection } from "../../api/integrationConnectionTests";
-import { showError } from "../../utils/toast";
+import { fetchCheckmkSyncLogs, triggerCheckmkFleetSync } from "../../api/checkmkSyncLogs";
+import { showError, showSuccess } from "../../utils/toast";
 import { useAppLocale } from "../../hooks/useAppGeneralSettings";
 import { getCheckmkIntegrationModalCopy } from "./adminIntegrationModalsI18n";
 import formStyles from "../EnterprisesPage/EnterpriseFormModal.module.css";
@@ -13,6 +14,7 @@ import checkmkStyles from "./CheckmkIntegrationModal.module.css";
 const SECTION_ICONS = {
   connection: "mdi:key-variant",
   monitoring: "mdi:timer-sync-outline",
+  logs: "mdi:text-box-outline",
   guide: "mdi:book-open-outline",
   info: "mdi:information-outline"
 };
@@ -27,6 +29,27 @@ function parseSyncIntervalMinutes(value) {
 
 function isSettingTrue(value) {
   return `${value ?? ""}`.toLowerCase() === "true";
+}
+
+function formatSyncRunTime(value, locale) {
+  if (!value) return "—";
+  try {
+    return new Intl.DateTimeFormat(locale || "fr-FR", {
+      dateStyle: "short",
+      timeStyle: "medium"
+    }).format(new Date(value));
+  } catch {
+    return String(value);
+  }
+}
+
+function syncRunStatusClass(status) {
+  const key = String(status || "").toLowerCase();
+  if (key === "success") return checkmkStyles.logStatusSuccess;
+  if (key === "partial") return checkmkStyles.logStatusPartial;
+  if (key === "error") return checkmkStyles.logStatusError;
+  if (key === "skipped" || key === "running") return checkmkStyles.logStatusMuted;
+  return checkmkStyles.logStatusMuted;
 }
 
 function CheckmkTestResultModal({
@@ -118,7 +141,7 @@ export default function CheckmkIntegrationModal({
 }) {
   const locale = useAppLocale();
   const copy = useMemo(() => getCheckmkIntegrationModalCopy(locale), [locale]);
-  const sections = useMemo(() => ["connection", "monitoring", "guide", "info"].map(id => ({
+  const sections = useMemo(() => ["connection", "monitoring", "logs", "guide", "info"].map(id => ({
     id,
     label: copy.sections[id]?.label || copy.sections[id]?.description || id,
     description: copy.sections[id]?.description,
@@ -129,11 +152,26 @@ export default function CheckmkIntegrationModal({
   const [testResult, setTestResult] = useState(null);
   const [testError, setTestError] = useState(null);
   const [showTestModal, setShowTestModal] = useState(false);
+  const [syncLogs, setSyncLogs] = useState([]);
+  const [logsLoading, setLogsLoading] = useState(false);
+  const [logsRunning, setLogsRunning] = useState(false);
   const intervalValue = parseSyncIntervalMinutes(syncIntervalMinutes);
   const intervalPresets = copy.syncIntervalPresets || SYNC_INTERVAL_PRESETS.map(value => ({
     value,
     label: `${value} min`
   }));
+
+  const loadSyncLogs = async () => {
+    setLogsLoading(true);
+    try {
+      const data = await fetchCheckmkSyncLogs(40);
+      setSyncLogs(Array.isArray(data?.runs) ? data.runs : []);
+    } catch (err) {
+      showError(err.message || copy.logsLoadError);
+    } finally {
+      setLogsLoading(false);
+    }
+  };
 
   useEffect(() => {
     if (open) {
@@ -141,8 +179,16 @@ export default function CheckmkIntegrationModal({
       setTestResult(null);
       setTestError(null);
       setShowTestModal(false);
+      setSyncLogs([]);
     }
   }, [open]);
+
+  useEffect(() => {
+    if (open && activeSection === "logs") {
+      loadSyncLogs();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, activeSection]);
 
   const handleTest = async () => {
     if (!(apiUrl || "").trim() || !(username || "").trim() || !(password || "").trim()) {
@@ -315,6 +361,82 @@ export default function CheckmkIntegrationModal({
       </div>
     </>;
 
+  const handleRunFleetSync = async () => {
+    setLogsRunning(true);
+    try {
+      const result = await triggerCheckmkFleetSync({ force: false });
+      if (result?.skipped) {
+        showSuccess(copy.logsRunSkipped || result.reason || "Sync skipped");
+      } else {
+        showSuccess(copy.logsRunSuccess || "Fleet sync completed");
+      }
+      await loadSyncLogs();
+    } catch (err) {
+      showError(err.message || copy.logsRunError);
+    } finally {
+      setLogsRunning(false);
+    }
+  };
+
+  const renderLogs = () => <>
+      <div className={`${formStyles.sectionHead} ${checkmkStyles.sectionHead}`}>
+        <h3 className={checkmkStyles.sectionTitle}>{copy.logsTitle}</h3>
+        <p className={checkmkStyles.sectionSubtitle}>{copy.logsDesc}</p>
+      </div>
+      <div className={checkmkStyles.logsToolbar}>
+        <button
+          type="button"
+          className={formStyles.ghostBtn}
+          onClick={loadSyncLogs}
+          disabled={logsLoading || logsRunning || saving || testing}
+        >
+          <Icon icon={logsLoading ? "mdi:loading" : "mdi:refresh"} className={logsLoading ? formStyles.spinning : ""} aria-hidden />
+          {copy.logsRefresh}
+        </button>
+        <button
+          type="button"
+          className={formStyles.primaryBtn}
+          onClick={handleRunFleetSync}
+          disabled={logsLoading || logsRunning || saving || testing}
+        >
+          <Icon icon={logsRunning ? "mdi:loading" : "mdi:sync"} className={logsRunning ? formStyles.spinning : ""} aria-hidden />
+          {logsRunning ? copy.logsRunning : copy.logsRunNow}
+        </button>
+      </div>
+      {logsLoading && !syncLogs.length ? (
+        <p className={formStyles.sectionDesc}>{copy.logsLoading}</p>
+      ) : !syncLogs.length ? (
+        <p className={formStyles.sectionDesc}>{copy.logsEmpty}</p>
+      ) : (
+        <ul className={checkmkStyles.logsList}>
+          {syncLogs.map(run => (
+            <li key={run.id} className={checkmkStyles.logCard}>
+              <div className={checkmkStyles.logCardTop}>
+                <span className={`${checkmkStyles.logStatus} ${syncRunStatusClass(run.status)}`}>
+                  {copy.logsStatus?.[run.status] || run.status}
+                </span>
+                <span className={checkmkStyles.logTrigger}>
+                  {copy.logsTrigger?.[run.trigger] || run.trigger}
+                </span>
+                <time className={checkmkStyles.logTime} dateTime={run.startedAt || undefined}>
+                  {formatSyncRunTime(run.startedAt, locale)}
+                </time>
+              </div>
+              <p className={checkmkStyles.logMessage}>
+                {run.message || copy.formatLogSummary?.(run) || `${run.synced}/${run.targetsTotal} synced`}
+              </p>
+              <div className={checkmkStyles.logMeta}>
+                <span>{copy.formatLogCounts?.(run) || `✓ ${run.synced} · ⏭ ${run.skipped} · ✕ ${run.failed}`}</span>
+                {(run.alertsCreated > 0 || run.alertsResolved > 0) ? (
+                  <span>{copy.formatLogAlerts?.(run) || `alerts +${run.alertsCreated}/-${run.alertsResolved}`}</span>
+                ) : null}
+              </div>
+            </li>
+          ))}
+        </ul>
+      )}
+    </>;
+
   const renderGuide = () => <>
       <div className={formStyles.sectionHead}>
         <h3 className={formStyles.sectionTitle}>{copy.guideTitle}</h3>
@@ -375,7 +497,7 @@ export default function CheckmkIntegrationModal({
                 </button>)}
             </nav>
             <div className={formStyles.content}>
-              {activeSection === "guide" ? renderGuide() : activeSection === "info" ? renderInfo() : activeSection === "monitoring" ? renderMonitoring() : renderConnection()}
+              {activeSection === "guide" ? renderGuide() : activeSection === "info" ? renderInfo() : activeSection === "monitoring" ? renderMonitoring() : activeSection === "logs" ? renderLogs() : renderConnection()}
             </div>
           </div>
 

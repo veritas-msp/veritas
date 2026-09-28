@@ -4,6 +4,7 @@ import { fetchReportBrandingAdmin, updateReportBranding } from "../../api/report
 import { useAppLocale } from "../../hooks/useAppGeneralSettings";
 import { createLocaleGetter } from "../../i18n/translate";
 import { Page, Card, Field, Input, Textarea, Btn, FormGrid, Switch, Select } from "./AdminUi";
+import s from "./AdminReports.module.css";
 
 const EMPTY = {
   report_company_name: "",
@@ -276,27 +277,22 @@ function LivePreview({ form, preview, copy }) {
   const footerText = form.report_footer_text || EMPTY.report_footer_text;
   const footerMuted = form.report_footer_muted || EMPTY.report_footer_muted;
   const footerLink = form.report_footer_link || EMPTY.report_footer_link;
+  const accent = form.report_accent || EMPTY.report_accent;
+  const navy = form.report_navy || EMPTY.report_navy;
 
   return (
-    <div style={{ border: "1px solid var(--msp-border-light, #e2e8f0)", borderRadius: 14, overflow: "hidden" }}>
+    <div className={s.previewShell}>
       <div
+        className={s.previewHeader}
         style={{
           background: `linear-gradient(135deg, ${headerBg} 0%, ${headerBgEnd} 100%)`,
           color: headerText,
-          padding: "1.25rem 1.35rem 1.1rem",
-          position: "relative",
           fontFamily: fontSans
         }}
       >
         <div
-          style={{
-            position: "absolute",
-            left: 0,
-            right: 0,
-            bottom: 0,
-            height: 4,
-            background: `linear-gradient(90deg, ${barStart}, ${barEnd})`
-          }}
+          className={s.previewAccentBar}
+          style={{ background: `linear-gradient(90deg, ${barStart}, ${barEnd})` }}
         />
         <div style={{ display: "flex", justifyContent: "space-between", gap: "0.75rem", marginBottom: "0.85rem" }}>
           <div>
@@ -346,14 +342,38 @@ function LivePreview({ form, preview, copy }) {
           {copy.previewPill}
         </span>
       </div>
+
+      <div className={s.previewBody} style={{ fontFamily: fontSans }}>
+        <div className={s.previewBodyCard}>
+          <p className={s.previewBodyTitle} style={{ color: navy }}>
+            Synthèse
+          </p>
+          <p className={s.previewBodyLine}>
+            Aperçu du corps du rapport — les couleurs d’accent et de titres s’appliquent ici.
+          </p>
+          <div
+            style={{
+              marginTop: 10,
+              height: 6,
+              borderRadius: 999,
+              background: `linear-gradient(90deg, ${accent}, ${navy})`
+            }}
+          />
+        </div>
+        <div className={s.previewBodyCard}>
+          <p className={s.previewBodyTitle} style={{ color: navy }}>
+            Indicateurs
+          </p>
+          <p className={s.previewBodyLine}>Disponibilité · Alertes · Sauvegardes</p>
+        </div>
+      </div>
+
       <div
+        className={s.previewFooter}
         style={{
           background: footerBg,
           color: footerText,
-          padding: "1.1rem 1.2rem 1.2rem",
-          textAlign: "center",
-          fontFamily: fontSans,
-          borderTop: "1px solid var(--msp-border-light, #e2e8f0)"
+          fontFamily: fontSans
         }}
       >
         <div
@@ -464,185 +484,195 @@ export default function AdminReports({ isCommunity = false }) {
 
   return (
     <Page>
-      <Card title={copy.title} description={copy.subtitle} action={saveBtn}>
-        <p style={{ margin: 0, fontSize: "0.88rem", color: "var(--msp-muted, #5c6b82)" }}>{copy.identityHint}</p>
-      </Card>
+      <div className={s.workspace}>
+        <div className={s.editor}>
+          <Card title={copy.title} description={copy.subtitle}>
+            <p style={{ margin: 0, fontSize: "0.88rem", color: "var(--msp-muted, #5c6b82)" }}>{copy.identityHint}</p>
+          </Card>
 
-      <Card title={copy.identity}>
-        <FormGrid>
-          <Field label={copy.companyName} hint={copy.companyNameHint}>
-            <Input
-              value={form.report_company_name}
-              onChange={e => setField("report_company_name", e.target.value)}
-              placeholder={preview?.companyName || "Veritas"}
-              maxLength={120}
-              disabled={disabled}
-            />
-          </Field>
-          <Field label={copy.brandLabel} hint={copy.brandLabelHint}>
-            <Input
-              value={form.report_brand_label}
-              onChange={e => setField("report_brand_label", e.target.value)}
-              placeholder="PSI × Veritas"
-              maxLength={80}
-              disabled={disabled}
-            />
-          </Field>
-        </FormGrid>
-      </Card>
+          <Card title={copy.identity}>
+            <FormGrid>
+              <Field label={copy.companyName} hint={copy.companyNameHint}>
+                <Input
+                  value={form.report_company_name}
+                  onChange={e => setField("report_company_name", e.target.value)}
+                  placeholder={preview?.companyName || "Veritas"}
+                  maxLength={120}
+                  disabled={disabled}
+                />
+              </Field>
+              <Field label={copy.brandLabel} hint={copy.brandLabelHint}>
+                <Input
+                  value={form.report_brand_label}
+                  onChange={e => setField("report_brand_label", e.target.value)}
+                  placeholder="PSI × Veritas"
+                  maxLength={80}
+                  disabled={disabled}
+                />
+              </Field>
+            </FormGrid>
+          </Card>
 
-      <Card title={copy.contact}>
-        <FormGrid>
-          <Field label={copy.supportEmail}>
-            <Input type="email" value={form.report_support_email} onChange={e => setField("report_support_email", e.target.value)} placeholder="support@exemple.fr" maxLength={200} disabled={disabled} />
-          </Field>
-          <Field label={copy.supportPhone}>
-            <Input value={form.report_support_phone} onChange={e => setField("report_support_phone", e.target.value)} placeholder="09 00 00 00 00" maxLength={40} disabled={disabled} />
-          </Field>
-          <Field label={copy.website}>
-            <Input type="url" value={form.report_website} onChange={e => setField("report_website", e.target.value)} placeholder="https://www.exemple.fr" maxLength={200} disabled={disabled} />
-          </Field>
-          <Field label={copy.address}>
-            <Input value={form.report_address} onChange={e => setField("report_address", e.target.value)} placeholder="10 rue Example, 33000 Bordeaux" maxLength={300} disabled={disabled} />
-          </Field>
-        </FormGrid>
-      </Card>
+          <Card title={copy.contact}>
+            <FormGrid>
+              <Field label={copy.supportEmail}>
+                <Input type="email" value={form.report_support_email} onChange={e => setField("report_support_email", e.target.value)} placeholder="support@exemple.fr" maxLength={200} disabled={disabled} />
+              </Field>
+              <Field label={copy.supportPhone}>
+                <Input value={form.report_support_phone} onChange={e => setField("report_support_phone", e.target.value)} placeholder="09 00 00 00 00" maxLength={40} disabled={disabled} />
+              </Field>
+              <Field label={copy.website}>
+                <Input type="url" value={form.report_website} onChange={e => setField("report_website", e.target.value)} placeholder="https://www.exemple.fr" maxLength={200} disabled={disabled} />
+              </Field>
+              <Field label={copy.address}>
+                <Input value={form.report_address} onChange={e => setField("report_address", e.target.value)} placeholder="10 rue Example, 33000 Bordeaux" maxLength={300} disabled={disabled} />
+              </Field>
+            </FormGrid>
+          </Card>
 
-      <Card title={copy.socials} description={copy.socialsHint}>
-        <FormGrid>
-          <Field label={copy.linkedin}>
-            <Input type="url" value={form.report_social_linkedin} onChange={e => setField("report_social_linkedin", e.target.value)} placeholder="https://www.linkedin.com/company/…" disabled={disabled} />
-          </Field>
-          <Field label={copy.linkedinAlt}>
-            <Input type="url" value={form.report_social_linkedin_alt} onChange={e => setField("report_social_linkedin_alt", e.target.value)} placeholder="https://www.linkedin.com/showcase/…" disabled={disabled} />
-          </Field>
-          <Field label={copy.facebook}>
-            <Input type="url" value={form.report_social_facebook} onChange={e => setField("report_social_facebook", e.target.value)} placeholder="https://www.facebook.com/…" disabled={disabled} />
-          </Field>
-          <Field label={copy.x}>
-            <Input type="url" value={form.report_social_x} onChange={e => setField("report_social_x", e.target.value)} placeholder="https://x.com/…" disabled={disabled} />
-          </Field>
-          <Field label={copy.youtube}>
-            <Input type="url" value={form.report_social_youtube} onChange={e => setField("report_social_youtube", e.target.value)} placeholder="https://www.youtube.com/…" disabled={disabled} />
-          </Field>
-        </FormGrid>
-      </Card>
+          <Card title={copy.socials} description={copy.socialsHint}>
+            <FormGrid>
+              <Field label={copy.linkedin}>
+                <Input type="url" value={form.report_social_linkedin} onChange={e => setField("report_social_linkedin", e.target.value)} placeholder="https://www.linkedin.com/company/…" disabled={disabled} />
+              </Field>
+              <Field label={copy.linkedinAlt}>
+                <Input type="url" value={form.report_social_linkedin_alt} onChange={e => setField("report_social_linkedin_alt", e.target.value)} placeholder="https://www.linkedin.com/showcase/…" disabled={disabled} />
+              </Field>
+              <Field label={copy.facebook}>
+                <Input type="url" value={form.report_social_facebook} onChange={e => setField("report_social_facebook", e.target.value)} placeholder="https://www.facebook.com/…" disabled={disabled} />
+              </Field>
+              <Field label={copy.x}>
+                <Input type="url" value={form.report_social_x} onChange={e => setField("report_social_x", e.target.value)} placeholder="https://x.com/…" disabled={disabled} />
+              </Field>
+              <Field label={copy.youtube}>
+                <Input type="url" value={form.report_social_youtube} onChange={e => setField("report_social_youtube", e.target.value)} placeholder="https://www.youtube.com/…" disabled={disabled} />
+              </Field>
+            </FormGrid>
+          </Card>
 
-      <Card title={copy.footer}>
-        <FormGrid>
-          <Field label={copy.footerNote}>
-            <Textarea value={form.report_footer_note} onChange={e => setField("report_footer_note", e.target.value)} rows={2} maxLength={200} disabled={disabled} />
-          </Field>
-          <Field label={copy.showGeneratedAt}>
-            <Switch checked={String(form.report_show_generated_at).toLowerCase() === "true"} onChange={on => setField("report_show_generated_at", on ? "true" : "false")} disabled={disabled} />
-          </Field>
-        </FormGrid>
-      </Card>
+          <Card title={copy.footer}>
+            <FormGrid>
+              <Field label={copy.footerNote}>
+                <Textarea value={form.report_footer_note} onChange={e => setField("report_footer_note", e.target.value)} rows={2} maxLength={200} disabled={disabled} />
+              </Field>
+              <Field label={copy.showGeneratedAt}>
+                <Switch checked={String(form.report_show_generated_at).toLowerCase() === "true"} onChange={on => setField("report_show_generated_at", on ? "true" : "false")} disabled={disabled} />
+              </Field>
+            </FormGrid>
+          </Card>
 
-      <Card
-        title={copy.appearance}
-        description={copy.appearanceHint}
-        action={
-          <Btn variant="ghost" icon="mdi:restore" disabled={disabled} onClick={resetAppearance}>
-            {copy.resetAppearance}
-          </Btn>
-        }
-      >
-        <h3 style={{ margin: "0 0 0.65rem", fontSize: "0.92rem" }}>{copy.fonts}</h3>
-        <FormGrid>
-          <Field label={copy.fontSans}>
-            <Select value={form.report_font_sans} onChange={e => setField("report_font_sans", e.target.value)} disabled={disabled}>
-              {fontPresets.sans.map(opt => (
-                <option key={opt.id} value={opt.id}>
-                  {opt.label}
-                </option>
-              ))}
-            </Select>
-          </Field>
-          <Field label={copy.fontSerif}>
-            <Select value={form.report_font_serif} onChange={e => setField("report_font_serif", e.target.value)} disabled={disabled}>
-              {fontPresets.serif.map(opt => (
-                <option key={opt.id} value={opt.id}>
-                  {opt.label}
-                </option>
-              ))}
-            </Select>
-          </Field>
-        </FormGrid>
+          <Card
+            title={copy.appearance}
+            description={copy.appearanceHint}
+            action={
+              <Btn variant="ghost" icon="mdi:restore" disabled={disabled} onClick={resetAppearance}>
+                {copy.resetAppearance}
+              </Btn>
+            }
+          >
+            <h3 style={{ margin: "0 0 0.65rem", fontSize: "0.92rem" }}>{copy.fonts}</h3>
+            <FormGrid>
+              <Field label={copy.fontSans}>
+                <Select value={form.report_font_sans} onChange={e => setField("report_font_sans", e.target.value)} disabled={disabled}>
+                  {fontPresets.sans.map(opt => (
+                    <option key={opt.id} value={opt.id}>
+                      {opt.label}
+                    </option>
+                  ))}
+                </Select>
+              </Field>
+              <Field label={copy.fontSerif}>
+                <Select value={form.report_font_serif} onChange={e => setField("report_font_serif", e.target.value)} disabled={disabled}>
+                  {fontPresets.serif.map(opt => (
+                    <option key={opt.id} value={opt.id}>
+                      {opt.label}
+                    </option>
+                  ))}
+                </Select>
+              </Field>
+            </FormGrid>
 
-        <h3 style={{ margin: "1.25rem 0 0.65rem", fontSize: "0.92rem" }}>{copy.headerColors}</h3>
-        <FormGrid>
-          <ColorField label={copy.headerBg} value={form.report_header_bg} onChange={v => setField("report_header_bg", v)} disabled={disabled} />
-          <ColorField label={copy.headerBgEnd} value={form.report_header_bg_end} onChange={v => setField("report_header_bg_end", v)} disabled={disabled} />
-          <ColorField label={copy.headerText} value={form.report_header_text} onChange={v => setField("report_header_text", v)} disabled={disabled} />
-          <ColorField label={copy.headerBrandColor} value={form.report_header_brand_color} onChange={v => setField("report_header_brand_color", v)} disabled={disabled} />
-          <ColorField label={copy.headerAccentBar} value={form.report_header_accent_bar} onChange={v => setField("report_header_accent_bar", v)} disabled={disabled} />
-          <ColorField label={copy.headerAccentBarEnd} value={form.report_header_accent_bar_end} onChange={v => setField("report_header_accent_bar_end", v)} disabled={disabled} />
-        </FormGrid>
+            <h3 style={{ margin: "1.25rem 0 0.65rem", fontSize: "0.92rem" }}>{copy.headerColors}</h3>
+            <FormGrid>
+              <ColorField label={copy.headerBg} value={form.report_header_bg} onChange={v => setField("report_header_bg", v)} disabled={disabled} />
+              <ColorField label={copy.headerBgEnd} value={form.report_header_bg_end} onChange={v => setField("report_header_bg_end", v)} disabled={disabled} />
+              <ColorField label={copy.headerText} value={form.report_header_text} onChange={v => setField("report_header_text", v)} disabled={disabled} />
+              <ColorField label={copy.headerBrandColor} value={form.report_header_brand_color} onChange={v => setField("report_header_brand_color", v)} disabled={disabled} />
+              <ColorField label={copy.headerAccentBar} value={form.report_header_accent_bar} onChange={v => setField("report_header_accent_bar", v)} disabled={disabled} />
+              <ColorField label={copy.headerAccentBarEnd} value={form.report_header_accent_bar_end} onChange={v => setField("report_header_accent_bar_end", v)} disabled={disabled} />
+            </FormGrid>
 
-        <h3 style={{ margin: "1.25rem 0 0.65rem", fontSize: "0.92rem" }}>{copy.footerColors}</h3>
-        <FormGrid>
-          <ColorField label={copy.footerBg} value={form.report_footer_bg} onChange={v => setField("report_footer_bg", v)} disabled={disabled} />
-          <ColorField label={copy.footerText} value={form.report_footer_text} onChange={v => setField("report_footer_text", v)} disabled={disabled} />
-          <ColorField label={copy.footerMuted} value={form.report_footer_muted} onChange={v => setField("report_footer_muted", v)} disabled={disabled} />
-          <ColorField label={copy.footerLink} value={form.report_footer_link} onChange={v => setField("report_footer_link", v)} disabled={disabled} />
-        </FormGrid>
+            <h3 style={{ margin: "1.25rem 0 0.65rem", fontSize: "0.92rem" }}>{copy.footerColors}</h3>
+            <FormGrid>
+              <ColorField label={copy.footerBg} value={form.report_footer_bg} onChange={v => setField("report_footer_bg", v)} disabled={disabled} />
+              <ColorField label={copy.footerText} value={form.report_footer_text} onChange={v => setField("report_footer_text", v)} disabled={disabled} />
+              <ColorField label={copy.footerMuted} value={form.report_footer_muted} onChange={v => setField("report_footer_muted", v)} disabled={disabled} />
+              <ColorField label={copy.footerLink} value={form.report_footer_link} onChange={v => setField("report_footer_link", v)} disabled={disabled} />
+            </FormGrid>
 
-        <h3 style={{ margin: "1.25rem 0 0.65rem", fontSize: "0.92rem" }}>{copy.themeColors}</h3>
-        <FormGrid>
-          <ColorField label={copy.accent} value={form.report_accent} onChange={v => setField("report_accent", v)} disabled={disabled} />
-          <ColorField label={copy.navy} value={form.report_navy} onChange={v => setField("report_navy", v)} disabled={disabled} />
-        </FormGrid>
+            <h3 style={{ margin: "1.25rem 0 0.65rem", fontSize: "0.92rem" }}>{copy.themeColors}</h3>
+            <FormGrid>
+              <ColorField label={copy.accent} value={form.report_accent} onChange={v => setField("report_accent", v)} disabled={disabled} />
+              <ColorField label={copy.navy} value={form.report_navy} onChange={v => setField("report_navy", v)} disabled={disabled} />
+            </FormGrid>
 
-        <h3 style={{ margin: "1.25rem 0 0.65rem", fontSize: "0.92rem" }}>{copy.sizes}</h3>
-        <FormGrid>
-          <Field label={copy.brandSize}>
-            <Input type="number" step="0.01" min="0.5" max="1.4" value={form.report_brand_size} onChange={e => setField("report_brand_size", e.target.value)} disabled={disabled} />
-          </Field>
-          <Field label={copy.companySize}>
-            <Input type="number" step="0.01" min="0.75" max="2" value={form.report_company_size} onChange={e => setField("report_company_size", e.target.value)} disabled={disabled} />
-          </Field>
-          <Field label={copy.clientSize}>
-            <Input type="number" step="0.05" min="1.2" max="3.5" value={form.report_client_size} onChange={e => setField("report_client_size", e.target.value)} disabled={disabled} />
-          </Field>
-          <Field label={copy.footerBrandSize}>
-            <Input type="number" step="0.01" min="0.6" max="1.8" value={form.report_footer_brand_size} onChange={e => setField("report_footer_brand_size", e.target.value)} disabled={disabled} />
-          </Field>
-          <Field label={copy.footerNoteSize}>
-            <Input type="number" step="0.01" min="0.55" max="1.2" value={form.report_footer_note_size} onChange={e => setField("report_footer_note_size", e.target.value)} disabled={disabled} />
-          </Field>
-        </FormGrid>
-      </Card>
+            <h3 style={{ margin: "1.25rem 0 0.65rem", fontSize: "0.92rem" }}>{copy.sizes}</h3>
+            <FormGrid>
+              <Field label={copy.brandSize}>
+                <Input type="number" step="0.01" min="0.5" max="1.4" value={form.report_brand_size} onChange={e => setField("report_brand_size", e.target.value)} disabled={disabled} />
+              </Field>
+              <Field label={copy.companySize}>
+                <Input type="number" step="0.01" min="0.75" max="2" value={form.report_company_size} onChange={e => setField("report_company_size", e.target.value)} disabled={disabled} />
+              </Field>
+              <Field label={copy.clientSize}>
+                <Input type="number" step="0.05" min="1.2" max="3.5" value={form.report_client_size} onChange={e => setField("report_client_size", e.target.value)} disabled={disabled} />
+              </Field>
+              <Field label={copy.footerBrandSize}>
+                <Input type="number" step="0.01" min="0.6" max="1.8" value={form.report_footer_brand_size} onChange={e => setField("report_footer_brand_size", e.target.value)} disabled={disabled} />
+              </Field>
+              <Field label={copy.footerNoteSize}>
+                <Input type="number" step="0.01" min="0.55" max="1.2" value={form.report_footer_note_size} onChange={e => setField("report_footer_note_size", e.target.value)} disabled={disabled} />
+              </Field>
+            </FormGrid>
+          </Card>
 
-      <Card title={copy.livePreview} action={saveBtn}>
-        <LivePreview form={form} preview={preview} copy={copy} />
-      </Card>
+          {preview ? (
+            <Card title={copy.preview}>
+              <div className={s.resolvedList}>
+                <div>
+                  <strong>{copy.companyName}:</strong> {preview.companyName || copy.previewEmpty}
+                </div>
+                <div>
+                  <strong>{copy.brandLabel}:</strong> {preview.brandLabel || copy.previewEmpty}
+                </div>
+                <div>
+                  <strong>{copy.supportEmail}:</strong> {preview.supportEmail || copy.previewEmpty}
+                </div>
+                <div>
+                  <strong>{copy.supportPhone}:</strong> {preview.supportPhone || copy.previewEmpty}
+                </div>
+                <div>
+                  <strong>{copy.website}:</strong> {preview.website || copy.previewEmpty}
+                </div>
+                <div>
+                  <strong>{copy.socials}:</strong>{" "}
+                  {preview.socials?.length ? preview.socials.map(soc => soc.title).join(", ") : copy.previewEmpty}
+                </div>
+              </div>
+            </Card>
+          ) : null}
+        </div>
 
-      {preview ? (
-        <Card title={copy.preview}>
-          <div style={{ display: "grid", gap: "0.35rem", fontSize: "0.88rem", color: "var(--msp-muted, #5c6b82)" }}>
-            <div>
-              <strong>{copy.companyName}:</strong> {preview.companyName || copy.previewEmpty}
-            </div>
-            <div>
-              <strong>{copy.brandLabel}:</strong> {preview.brandLabel || copy.previewEmpty}
-            </div>
-            <div>
-              <strong>{copy.supportEmail}:</strong> {preview.supportEmail || copy.previewEmpty}
-            </div>
-            <div>
-              <strong>{copy.supportPhone}:</strong> {preview.supportPhone || copy.previewEmpty}
-            </div>
-            <div>
-              <strong>{copy.website}:</strong> {preview.website || copy.previewEmpty}
-            </div>
-            <div>
-              <strong>{copy.socials}:</strong>{" "}
-              {preview.socials?.length ? preview.socials.map(s => s.title).join(", ") : copy.previewEmpty}
-            </div>
+        <aside className={s.previewColumn}>
+          <div className={s.previewSticky}>
+            <Card title={copy.livePreview} noPadding fill fillNoScroll>
+              <LivePreview form={form} preview={preview} copy={copy} />
+            </Card>
           </div>
-        </Card>
-      ) : null}
+        </aside>
+      </div>
+
+      <div className={s.footerBar}>{saveBtn}</div>
     </Page>
   );
 }

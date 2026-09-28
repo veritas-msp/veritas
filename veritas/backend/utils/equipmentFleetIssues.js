@@ -40,18 +40,47 @@ const ISSUE_META = {
   missing_ip: { label: "Missing IP", tone: "warn", priority: 3, monitorStatus: "ok" }
 };
 
-function formatMonitorIssueLabel(severityLabel, detail) {
-  const fromPrimary = String(detail?.primaryService || detail?.serviceName || "").trim();
-  if (fromPrimary) return `${severityLabel} - ${fromPrimary}`;
+function isBareSeverityToken(value) {
+  return /^(warning|critical|crit|warn|info|ok|unknown)$/i.test(String(value || "").trim());
+}
+
+/**
+ * Explicit monitor alert label: "Warning - Filesystem E:/" (never severity alone when detail exists).
+ */
+export function formatMonitorIssueLabel(severityLabel, detail) {
+  const base = String(severityLabel || "").trim() || "Alert";
+  const fromPrimary = String(
+    detail?.primaryService || detail?.serviceName || detail?.service || detail?.serviceDescription || ""
+  ).trim();
+  if (fromPrimary && !isBareSeverityToken(fromPrimary)) return `${base} - ${fromPrimary}`;
+
   const fromList = Array.isArray(detail?.failingServices)
-    ? detail.failingServices.map(name => String(name || "").trim()).filter(Boolean)
+    ? detail.failingServices.map(name => String(name || "").trim()).filter(name => name && !isBareSeverityToken(name))
     : [];
-  if (fromList.length) return `${severityLabel} - ${fromList.slice(0, 2).join(" / ")}`;
+  if (fromList.length) return `${base} - ${fromList.slice(0, 2).join(" / ")}`;
+
+  const plugin = String(detail?.pluginOutput || detail?.plugin_output || detail?.description || "").trim();
+  if (plugin && !isBareSeverityToken(plugin)) {
+    if (/^(warning|critical)\s*[-–—]/i.test(plugin)) return plugin;
+    return `${base} - ${plugin}`;
+  }
+
+  const host = String(detail?.hostName || detail?.hostname || detail?.host || "").trim();
+  const hostState = String(detail?.hostState || detail?.host_state || "").toUpperCase();
+  if (hostIsDown(hostState) || hostState === "DOWN") {
+    return host ? `${base} - Host DOWN (${host})` : `${base} - Host DOWN`;
+  }
+  if (host) return `${base} - ${host}`;
+
   const crit = Number(detail?.critServices) || 0;
   const warn = Number(detail?.warnServices) || 0;
-  if (crit > 0) return `${severityLabel} - ${crit} service${crit > 1 ? "s" : ""}`;
-  if (warn > 0) return `${severityLabel} - ${warn} service${warn > 1 ? "s" : ""}`;
-  return severityLabel;
+  if (crit > 0) return `${base} - ${crit} service${crit > 1 ? "s" : ""}`;
+  if (warn > 0) return `${base} - ${warn} service${warn > 1 ? "s" : ""}`;
+  return base;
+}
+
+function hostIsDown(hostState) {
+  return hostState === "DOWN" || hostState === "UNREACHABLE" || hostState === "2";
 }
 
 function toSupervisionFamily(equipment) {

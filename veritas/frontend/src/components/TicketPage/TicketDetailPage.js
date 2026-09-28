@@ -64,6 +64,7 @@ import { getTicketVaultArchiveCopy } from "./ticketVaultArchiveI18n";
 import { archiveTicketFilesToVault } from "../../utils/archiveTicketFilesToVault";
 import { isSalesTicket, buildSalesFormFieldEntries, buildSalesFormFieldLabelMap, buildSalesFormFieldTypeMap, enrichSalesFormLinkedEntries } from "../../utils/salesTicketUtils";
 import { formatLinkedEquipmentEventLabel, getEquipmentPickerLabel, getEquipmentSearchText, mapClientEquipmentsForTicketLink } from "./ticketEquipmentUtils";
+import TicketLinkedEquipmentQuickActions from "./TicketLinkedEquipmentQuickActions";
 import { getLocalizedSolutionCatalogLabel } from "./solutionCatalogI18n";
 import { interpolate } from "../../i18n/translate";
 import { buildClientContractSummary, buildDefaultResolveCreditAmounts, buildSupportCreditDebitsPayload, computeSupportCreditTotals } from "./ticketClientSummaryUtils";
@@ -2467,7 +2468,15 @@ export default function TicketDetailPage({
           serial: selected.serial || "",
           brand: selected.manufacturer || selected.brand || "",
           model: selected.model || "",
-          source: "veritas"
+          source: "veritas",
+          remoteAccessSolution: selected.remoteAccessSolution || "",
+          remoteAccessId: selected.remoteAccessId || selected.anydeskId || "",
+          quickConnect: selected.quickConnect || "",
+          adminUrl: selected.adminUrl || "",
+          stormshieldWanUrl: selected.stormshieldWanUrl || "",
+          manageable: Boolean(selected.manageable),
+          manufacturer: selected.manufacturer || "",
+          rawData: selected.rawData || null
         }].sort((a, b) => String(a.name || "").localeCompare(String(b.name || ""), "fr"));
       });
       setLinkedEquipmentDraft("");
@@ -3781,7 +3790,7 @@ export default function TicketDetailPage({
     if (!resolveModalOpen) return;
     const packs = supportCredit?.packs || [];
     const amounts = buildDefaultResolveCreditAmounts(packs, {
-      defaultAmount: 1,
+      defaultAmount: 0,
       legacyBalance: supportCredit?.balance ?? 0
     });
     const hasCredits = supportCredit?.eligible && !supportCredit?.consumed && Object.keys(amounts).length > 0;
@@ -4404,17 +4413,19 @@ export default function TicketDetailPage({
     const actionType = getLocalizedSolutionCatalogLabel(validation?.actionType || parsed?.actionType || "", locale);
     const reason = validation?.resolutionReason || parsed?.reason || "";
     const status = copy.getResolutionStatusPresentation(validation);
+    const classification = [interventionType, actionType].filter(Boolean).join(" · ");
     return <div className={styles.resolutionCommentCompact}>
-        <span className={`${styles.resolutionCommentStatus} ${styles[`resolutionCommentStatus_${status.variant}`] || ""}`.trim()}>
-          <Icon icon={status.icon} aria-hidden />
-          {status.title}
-        </span>
-        {interventionType ? <span className={styles.validationTag}>{interventionType}</span> : null}
-        {actionType ? <span className={styles.validationTag}>{actionType}</span> : null}
-        {validation?.isPending && validation?.autoCloseAt ? <span className={styles.resolutionCommentMeta}>
-            {copy.formatResolutionDeadline(copy.formatDateTime(validation.autoCloseAt))}
-          </span> : null}
-        {reason ? <span className={styles.resolutionCommentReason}>{reason}</span> : null}
+        <div className={styles.resolutionCommentLine}>
+          <span className={`${styles.resolutionCommentStatus} ${styles[`resolutionCommentStatus_${status.variant}`] || ""}`.trim()}>
+            <Icon icon={status.icon} aria-hidden />
+            {status.title}
+          </span>
+          {validation?.isPending && validation?.autoCloseAt ? <span className={styles.resolutionCommentMeta}>
+              {copy.formatResolutionDeadline(copy.formatDateTime(validation.autoCloseAt))}
+            </span> : null}
+        </div>
+        {classification ? <p className={styles.resolutionCommentClassif}>{classification}</p> : null}
+        {reason ? <p className={styles.resolutionCommentReason}>{reason}</p> : null}
       </div>;
   };
   const renderCommentBody = comment => {
@@ -5675,10 +5686,25 @@ export default function TicketDetailPage({
                     </div>}
                 </div>
                 <div className={fs.chipsWrap}>
-                  {linkedEquipments.length === 0 ? <span className={fs.emptyChipHint}>{copy.rightPane.noLinkedEquipment}</span> : visibleLinkedEquipments.map(equipment => <span key={equipment.equipment_id} className={fs.chip}>
+                  {linkedEquipments.length === 0 ? <span className={fs.emptyChipHint}>{copy.rightPane.noLinkedEquipment}</span> : visibleLinkedEquipments.map(equipment => {
+                    const fullEquipment = clientEquipments.find(eq => String(eq.id) === String(equipment.equipment_id)) || {
+                      id: equipment.equipment_id,
+                      type: equipment.type,
+                      name: equipment.name,
+                      manufacturer: equipment.manufacturer || equipment.brand || "",
+                      remoteAccessSolution: equipment.remoteAccessSolution,
+                      remoteAccessId: equipment.remoteAccessId,
+                      quickConnect: equipment.quickConnect,
+                      adminUrl: equipment.adminUrl,
+                      stormshieldWanUrl: equipment.stormshieldWanUrl,
+                      manageable: equipment.manageable,
+                      rawData: equipment.rawData
+                    };
+                    return <span key={equipment.equipment_id} className={`${fs.chip} ${styles.chipWithActions}`}>
                         <button type="button" onClick={() => openLinkedEquipmentDetail(equipment.equipment_id, equipment.name, equipment.type)}>
                           {getEquipmentLinkLabel(equipment)}
                         </button>
+                        <TicketLinkedEquipmentQuickActions equipment={fullEquipment} locale={locale} />
                         <button type="button" onClick={e => {
                       e.preventDefault();
                       e.stopPropagation();
@@ -5686,7 +5712,8 @@ export default function TicketDetailPage({
                     }} disabled={isReadOnly} aria-label={copy.formatRemoveEquipmentAria(getEquipmentLinkLabel(equipment))}>
                           ×
                         </button>
-                      </span>)}
+                      </span>;
+                  })}
                 </div>
                 {hasMoreLinkedEquipments ? <SidebarExpandToggle copy={copy} expanded={linkedEquipmentsExpanded} onClick={() => setLinkedEquipmentsExpanded(prev => !prev)} /> : null}
             </RightPaneCollapsibleSection>

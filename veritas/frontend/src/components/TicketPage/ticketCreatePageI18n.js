@@ -132,6 +132,7 @@ const CREATE_COPY = {
     tipsTitle: "Conseils",
     tips: ["Commencez par l'écoute : laissez le client exposer son besoin sans l'interrompre.", "Reformulez pour valider · « Si je comprends bien, vous… » · avec une phrase claire et intelligible que le client peut confirmer.", "Évitez le jargon : traduisez le technique en langage simple et adaptez-vous au niveau du demandeur.", "Notez le contexte, l'impact métier, les actions déjà tentées et un créneau de rappel si besoin."],
     sections: {
+      form: "Formulaire",
       requester: "Demandeur",
       ticketDetails: "Détails du ticket",
       contract: "Contrat et services",
@@ -139,6 +140,8 @@ const CREATE_COPY = {
       equipment: "Matériel concerné",
       ticketLink: "Liaison ticket"
     },
+    loadingForms: "Chargement des formulaires…",
+    noForms: "Aucun formulaire support configuré. Créez-en un dans Administration > Paramètres support > Formulaires.",
     requesterContact: "Contact demandeur",
     searchContact: "Rechercher un contact…",
     searchContactAria: "Rechercher un contact demandeur",
@@ -415,6 +418,7 @@ const CREATE_COPY = {
     tipsTitle: "Tips",
     tips: ["Start by listening: let the client explain their need without interrupting.", "Rephrase to confirm · \"If I understand correctly, you…\" · with a clear sentence the client can validate.", "Avoid jargon: translate technical terms into plain language adapted to the requester.", "Note context, business impact, actions already tried, and a callback slot if needed."],
     sections: {
+      form: "Form",
       requester: "Requester",
       ticketDetails: "Ticket details",
       contract: "Contract and services",
@@ -422,6 +426,8 @@ const CREATE_COPY = {
       equipment: "Affected hardware",
       ticketLink: "Ticket link"
     },
+    loadingForms: "Loading forms…",
+    noForms: "No support form configured. Create one in Administration > Support settings > Forms.",
     requesterContact: "Requesting contact",
     searchContact: "Search for a contact…",
     searchContactAria: "Search for a requester contact",
@@ -698,6 +704,7 @@ const CREATE_COPY = {
     tipsTitle: "Tipps",
     tips: ["Beginnen Sie mit Zuhören: Lassen Sie den Kunden sein Anliegen ohne Unterbrechung schildern.", "Formulieren Sie zur Bestätigung um · „Wenn ich Sie richtig verstehe…“ · mit einem klaren Satz.", "Vermeiden Sie Fachjargon: Übersetzen Sie Technik in einfache Sprache.", "Notieren Sie Kontext, Geschäftsauswirkung, bereits versuchte Maßnahmen und ggf. einen Rückruftermin."],
     sections: {
+      form: "Formular",
       requester: "Anfragender",
       ticketDetails: "Ticketdetails",
       contract: "Vertrag und Services",
@@ -705,6 +712,8 @@ const CREATE_COPY = {
       equipment: "Betroffene Hardware",
       ticketLink: "Ticket-Verknüpfung"
     },
+    loadingForms: "Formulare werden geladen…",
+    noForms: "Kein Support-Formular konfiguriert. Erstellen Sie eines unter Administration > Support-Einstellungen > Formulare.",
     requesterContact: "Anfragender Kontakt",
     searchContact: "Kontakt suchen…",
     searchContactAria: "Anfragenden Kontakt suchen",
@@ -978,6 +987,7 @@ const CREATE_COPY = {
     tipsTitle: "Consigli",
     tips: ["Iniziate ascoltando: lasciate che il cliente esponga il bisogno senza interromperlo.", "Riformulate per confermare · «Se ho capito bene, lei…» · con una frase chiara che il cliente possa validare.", "Evitate il gergo: traducete il tecnico in linguaggio semplice adattato al richiedente.", "Annotate contesto, impatto business, azioni già tentate e un slot di richiamata se necessario."],
     sections: {
+      form: "Modulo",
       requester: "Richiedente",
       ticketDetails: "Dettagli del ticket",
       contract: "Contratto e servizi",
@@ -985,6 +995,8 @@ const CREATE_COPY = {
       equipment: "Hardware interessato",
       ticketLink: "Collegamento ticket"
     },
+    loadingForms: "Caricamento moduli…",
+    noForms: "Nessun modulo support configurato. Creane uno in Amministrazione > Impostazioni support > Moduli.",
     requesterContact: "Contatto richiedente",
     searchContact: "Cerca un contatto…",
     searchContactAria: "Cerca un contatto richiedente",
@@ -1258,6 +1270,7 @@ const CREATE_COPY = {
     tipsTitle: "Consejos",
     tips: ["Empiece escuchando: deje que el cliente exponga su necesidad sin interrumpirlo.", "Reformule para confirmar · «Si entiendo bien, usted…» · con una frase clara que el cliente pueda validar.", "Evite la jerga: traduzca lo técnico a un lenguaje sencillo adaptado al solicitante.", "Anote contexto, impacto empresarial, acciones ya intentadas y una franja de devolución de llamada si hace falta."],
     sections: {
+      form: "Formulario",
       requester: "Solicitante",
       ticketDetails: "Detalles del ticket",
       contract: "Contrato y servicios",
@@ -1265,6 +1278,8 @@ const CREATE_COPY = {
       equipment: "Hardware afectado",
       ticketLink: "Vinculación de ticket"
     },
+    loadingForms: "Cargando formularios…",
+    noForms: "Ningún formulario de soporte configurado. Cree uno en Administración > Ajustes de soporte > Formularios.",
     requesterContact: "Contacto solicitante",
     searchContact: "Buscar un contacto…",
     searchContactAria: "Buscar un contacto solicitante",

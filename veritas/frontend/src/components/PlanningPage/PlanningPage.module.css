@@ -598,8 +598,10 @@
   flex-shrink: 0;
   position: sticky;
   top: 0;
-  z-index: 2;
+  z-index: 40;
   background: var(--msp-bg, var(--msp-page-bg, #b7c3d4));
+  /* Cover the flex gap so scrolling events don't peek under the search bar */
+  box-shadow: 0 0.65rem 0 0 var(--msp-bg, var(--msp-page-bg, #b7c3d4));
 }
 
 /* Week / day / agenda / single month: fill the column and scroll inside the view. */
@@ -622,6 +624,10 @@
   background: var(--msp-surface, #fff);
   box-shadow: var(--msp-shadow, 0 1px 2px rgba(15, 28, 46, 0.04), 0 8px 24px rgba(15, 28, 46, 0.06));
   overflow: hidden;
+  /* Keep event z-indexes inside this panel so they can't paint over the sticky search bar */
+  position: relative;
+  z-index: 0;
+  isolation: isolate;
 }
 
 .calendarBody {

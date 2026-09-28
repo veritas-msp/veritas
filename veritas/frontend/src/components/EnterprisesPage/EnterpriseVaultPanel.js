@@ -18,11 +18,15 @@ import { useAppLocale } from "../../hooks/useAppGeneralSettings";
 import { useVeritasEdition } from "../../hooks/useVeritasEdition";
 import { getEnterpriseVaultCopy } from "./enterpriseVaultI18n";
 import VaultDocumentPreviewModal from "../shared/VaultDocumentPreviewModal/VaultDocumentPreviewModal";
+import { repairFilenameEncoding } from "../../utils/repairFilenameEncoding";
 import pageLayout from "./EnterprisesPage.module.css";
 import formStyles from "./EnterpriseFormModal.module.css";
 import styles from "./EnterpriseVaultPanel.module.css";
 const IMAGE_MIMES = new Set(["image/jpeg", "image/png", "image/gif", "image/webp"]);
 const DEFAULT_CATEGORY = "Autre";
+function displayFileName(file) {
+  return repairFilenameEncoding(file?.file_name);
+}
 export default forwardRef(function EnterpriseVaultPanel({
   clientId,
   clientName,
@@ -98,7 +102,7 @@ export default forwardRef(function EnterpriseVaultPanel({
     return files.filter(file => {
       if (categoryFilter !== "all" && file.category !== categoryFilter) return false;
       if (!q) return true;
-      return String(file.file_name || "").toLowerCase().includes(q) || String(file.category || "").toLowerCase().includes(q) || String(file.description || "").toLowerCase().includes(q);
+      return displayFileName(file).toLowerCase().includes(q) || String(file.category || "").toLowerCase().includes(q) || String(file.description || "").toLowerCase().includes(q);
     });
   }, [files, search, categoryFilter]);
   const filteredFolders = useMemo(() => {
@@ -108,7 +112,7 @@ export default forwardRef(function EnterpriseVaultPanel({
   }, [folders, search]);
   const sharedCount = useMemo(() => files.filter(file => file.visible_to_client).length, [files]);
   const handleDelete = async file => {
-    if (!window.confirm(copy.formatDeleteConfirm(file.file_name))) return;
+    if (!window.confirm(copy.formatDeleteConfirm(displayFileName(file)))) return;
     try {
       await deleteClientFile(file.id);
       setFiles(prev => prev.filter(row => row.id !== file.id));
@@ -361,13 +365,14 @@ function VaultFileCard({
 }) {
   const isImage = IMAGE_MIMES.has(file.mime_type);
   const isPdf = file.mime_type === "application/pdf";
+  const fileName = displayFileName(file);
   return <div className={styles.card}>
       <div className={styles.cardThumb} onClick={onPreview} title={copy.card.previewTitle}>
-        {isImage ? <img src={getPreviewUrl(file.id)} alt={file.file_name} className={styles.thumbImg} /> : <Icon icon={isPdf ? "mdi:file-pdf-box" : "mdi:file-document-outline"} className={`${styles.thumbIcon} ${isPdf ? styles.thumbPdf : styles.thumbDoc}`} aria-hidden />}
+        {isImage ? <img src={getPreviewUrl(file.id)} alt={fileName} className={styles.thumbImg} /> : <Icon icon={isPdf ? "mdi:file-pdf-box" : "mdi:file-document-outline"} className={`${styles.thumbIcon} ${isPdf ? styles.thumbPdf : styles.thumbDoc}`} aria-hidden />}
       </div>
       <div className={styles.cardBody}>
-        <p className={styles.cardName} title={file.file_name}>
-          {file.file_name}
+        <p className={styles.cardName} title={fileName}>
+          {fileName}
         </p>
         <div className={styles.cardBadgesRow}>
           <span className={styles.categoryBadge}>{copy.getCategoryLabel(file.category)}</span>
@@ -385,7 +390,7 @@ function VaultFileCard({
         </p>
       </div>
       <div className={styles.cardActions}>
-        <a href={getDownloadUrl(file.id)} download={file.file_name} className={styles.actionBtn} title={copy.card.downloadTitle}>
+        <a href={getDownloadUrl(file.id)} download={fileName} className={styles.actionBtn} title={copy.card.downloadTitle}>
           <Icon icon="mdi:download-outline" aria-hidden />
         </a>
         <button type="button" className={styles.actionBtn} onClick={onEditDescription} title={copy.card.editDescriptionTitle} aria-label={copy.card.editDescriptionAria}>
@@ -579,7 +584,7 @@ function VaultEditDescriptionModal({
               <h2 className={formStyles.title} id="vault-edit-description-title">
                 {modal.title}
               </h2>
-              <p className={formStyles.subtitle}>{file?.file_name}</p>
+              <p className={formStyles.subtitle}>{displayFileName(file)}</p>
             </div>
           </div>
           <button type="button" className={formStyles.closeBtn} onClick={onClose} disabled={saving} aria-label={modal.closeAria}>

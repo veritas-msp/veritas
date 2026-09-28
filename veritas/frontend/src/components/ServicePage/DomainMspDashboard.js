@@ -78,7 +78,9 @@ export default function DomainMspDashboard({
   domains = [],
   loading = false,
   onOpenDomain,
-  copy
+  copy,
+  onSync,
+  syncing = false
 }) {
   const {
     formatDate,
@@ -89,7 +91,7 @@ export default function DomainMspDashboard({
   const [sortBy, setSortBy] = useState("clientName");
   const [sortDirection, setSortDirection] = useState("asc");
   const [currentPage, setCurrentPage] = useState(1);
-  const [pageSize, setPageSize] = useState(10);
+  const [pageSize, setPageSize] = useState(50);
   const fleetRows = useMemo(() => buildDomainFleetFromList(domains), [domains]);
   const stats = useMemo(() => buildDomainFleetStats(fleetRows), [fleetRows]);
   const filteredRows = useMemo(() => filterDomainFleetRows(fleetRows, {
@@ -152,6 +154,18 @@ export default function DomainMspDashboard({
           <Icon icon="mdi:magnify" width={18} aria-hidden />
           <input type="search" placeholder={copy.searchPlaceholder} value={search} onChange={e => setSearch(e.target.value)} />
         </label>
+        {onSync ? <div className={styles.toolbarActions}>
+            <button
+              type="button"
+              className={styles.iconBtn}
+              title={copy.syncDomains}
+              aria-label={copy.syncDomains}
+              onClick={onSync}
+              disabled={syncing}
+            >
+              <Icon icon={syncing ? "mdi:loading" : "mdi:sync"} className={syncing ? styles.spin : undefined} aria-hidden />
+            </button>
+          </div> : null}
       </div>
 
       {loading ? <div className={styles.loadingState}>

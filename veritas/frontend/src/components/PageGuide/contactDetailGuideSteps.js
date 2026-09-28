@@ -7,16 +7,20 @@ const STEP_TARGETS = [{
   target: '[data-guide="contact-ticket-bookmarks"]'
 }, {
   key: "coordinates",
-  target: '[data-guide="contact-coordinates"]'
+  target: '[data-guide="contact-coordinates"]',
+  handler: "showActivity"
 }, {
   key: "activity",
-  target: '[data-guide="contact-activity"]'
+  target: '[data-guide="contact-activity"]',
+  handler: "showActivity"
 }, {
   key: "portal",
-  target: '[data-guide="contact-portal"]'
+  target: '[data-guide="contact-portal"]',
+  handler: "showPortal"
 }, {
   key: "sharedAccess",
-  target: '[data-guide="contact-shared-access"]'
+  target: '[data-guide="contact-shared-access"]',
+  handler: "showShare"
 }, {
   key: "sidebarInfo",
   target: '[data-guide="contact-sidebar-info"]'
@@ -27,14 +31,28 @@ const STEP_TARGETS = [{
   key: "heroActions",
   target: '[data-guide="contact-hero-actions"]'
 }];
-export function getContactDetailGuideSteps(locale = "fr") {
+export function getContactDetailGuideSteps(handlers = {}, locale = "fr") {
+  const {
+    showActivity = () => {},
+    showPortal = () => {},
+    showShare = () => {}
+  } = handlers;
+  const handlerMap = {
+    showActivity,
+    showPortal,
+    showShare
+  };
   const steps = getContactDetailCopy(locale).guide.steps;
   return STEP_TARGETS.map(({
     key,
-    target
+    target,
+    handler
   }) => ({
     target,
     title: steps[key].title,
-    content: steps[key].content
+    content: steps[key].content,
+    ...(handler ? {
+      onEnter: handlerMap[handler]
+    } : {})
   }));
 }

@@ -54,6 +54,9 @@ const SIDEBAR_COPY = {
       patchNotes: "Patch notes",
       admin: "Administration",
       support: "Support",
+      profilesSection: "Profils",
+      switchProfile: "Basculer vers {profile}",
+      profileSwitchError: "Impossible de changer de profil.",
       logout: "Se déconnecter"
     }
   },
@@ -111,6 +114,9 @@ const SIDEBAR_COPY = {
       patchNotes: "Patch notes",
       admin: "Administration",
       support: "Support",
+      profilesSection: "Profiles",
+      switchProfile: "Switch to {profile}",
+      profileSwitchError: "Unable to switch profile.",
       logout: "Sign out"
     }
   },
@@ -168,6 +174,9 @@ const SIDEBAR_COPY = {
       patchNotes: "Patch notes",
       admin: "Administration",
       support: "Support",
+      profilesSection: "Profile",
+      switchProfile: "Zu {profile} wechseln",
+      profileSwitchError: "Profilwechsel nicht möglich.",
       logout: "Abmelden"
     }
   },
@@ -225,6 +234,9 @@ const SIDEBAR_COPY = {
       patchNotes: "Patch notes",
       admin: "Amministrazione",
       support: "Supporto",
+      profilesSection: "Profili",
+      switchProfile: "Passa a {profile}",
+      profileSwitchError: "Impossibile cambiare profilo.",
       logout: "Disconnetti"
     }
   },
@@ -282,6 +294,9 @@ const SIDEBAR_COPY = {
       patchNotes: "Patch notes",
       admin: "Administración",
       support: "Soporte",
+      profilesSection: "Perfiles",
+      switchProfile: "Cambiar a {profile}",
+      profileSwitchError: "No se puede cambiar de perfil.",
       logout: "Cerrar sesión"
     }
   }

@@ -17,6 +17,7 @@ const FEEDBACK_MIGRATION = "schema/patches/20260827_knowledge_article_feedback.s
 const EXTRAS_MIGRATION = "schema/patches/20260827_knowledge_article_extras.sql";
 const PUBLIC_MIGRATION = "schema/patches/20260828_knowledge_article_public.sql";
 const EMOJIS_MIGRATION = "schema/patches/20260916_knowledge_emojis.sql";
+const TRASH_MIGRATION = "schema/patches/20260928_knowledge_articles_trash.sql";
 let ensured = false;
 
 async function tableExists(client, table) {
@@ -135,6 +136,7 @@ export async function ensureKnowledgeArticlesSchema() {
         CREATE INDEX IF NOT EXISTS idx_v_b_knowledge_articles_folder_sort
           ON v_b_knowledge_articles (folder_id, sort_order, title)
       `);
+      await runPatch(client, TRASH_MIGRATION);
     }
     ensured = true;
   } catch (err) {

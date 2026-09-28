@@ -799,6 +799,68 @@
   min-width: 0;
 }
 
+.overviewTabBar {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.2rem;
+  flex-wrap: wrap;
+  padding: 0.15rem;
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--msp-border, #e2e8f0) 55%, transparent);
+}
+
+.overviewTab {
+  appearance: none;
+  border: none;
+  background: transparent;
+  color: var(--msp-muted, #5c6b82);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  padding: 0.42rem 0.7rem;
+  border-radius: 8px;
+  cursor: pointer;
+  line-height: 1.2;
+  transition: background 0.12s, color 0.12s;
+}
+
+.overviewTab:hover {
+  color: var(--msp-text, #0f1c2e);
+  background: color-mix(in srgb, var(--msp-surface, #fff) 70%, transparent);
+}
+
+.overviewTabActive {
+  color: var(--msp-accent, #2b5fab);
+  background: var(--msp-surface, #fff);
+  box-shadow: 0 1px 2px rgba(15, 28, 46, 0.08);
+}
+
+.overviewTabLabelRow {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.overviewTabPanel {
+  min-width: 0;
+}
+
+.contactOverviewBlock + .contactOverviewBlock {
+  margin-top: 1.15rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--msp-border, #e2e8f0);
+}
+
+.contactOverviewBlockTitle {
+  margin: 0 0 0.7rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--msp-muted, #5c6b82);
+}
+
 .panelFilterBadge {
   display: inline-flex;
   align-items: center;
@@ -3468,6 +3530,24 @@ button.sidebarOptionIcon:hover {
   background-color: var(--msp-surface-2);
   background-image: linear-gradient(180deg, var(--msp-surface-3) 0%, var(--msp-surface-2) 100%);
   border-bottom-color: var(--msp-border);
+}
+
+:global(html.dark) .contactOverviewBlock + .contactOverviewBlock {
+  border-top-color: var(--msp-border, #2a3a55);
+}
+
+:global(html.dark) .overviewTabBar {
+  background: color-mix(in srgb, var(--msp-border, #2a3a55) 70%, transparent);
+}
+
+:global(html.dark) .overviewTab:hover {
+  color: var(--msp-text, #e8edf5);
+  background: color-mix(in srgb, var(--msp-surface, #1a2540) 75%, transparent);
+}
+
+:global(html.dark) .overviewTabActive {
+  color: var(--msp-accent, #6ea8ff);
+  background: var(--msp-surface, #1a2540);
 }
 
 :global(html.dark) .equipmentDetailPage [class*="CheckMKMonitoringPanel_panel"] {

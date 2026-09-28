@@ -106,10 +106,19 @@ function normalizeListItem(item, normalizer) {
 }
 function normalizePaginated(payload) {
   const items = parseList(payload);
-  const total = payload?.total ?? payload?.totalElements ?? payload?.totalCount ?? payload?.count ?? items.length;
+  const candidates = [payload?.total, payload?.totalElements, payload?.totalCount, payload?.count, payload?.nbTotal, payload?.nbElements, payload?.page?.totalElements, payload?.page?.total, payload?.page?.totalCount, payload?.meta?.total, payload?.meta?.totalElements, payload?.meta?.totalCount, payload?.pagination?.total, payload?.pagination?.totalElements, payload?.pagination?.totalCount, payload?.data?.total, payload?.data?.totalElements, payload?.data?.totalCount, payload?.data?.count];
+  for (const candidate of candidates) {
+    const num = Number(candidate);
+    if (Number.isFinite(num) && num >= 0) {
+      return {
+        items,
+        total: num
+      };
+    }
+  }
   return {
     items,
-    total
+    total: items.length
   };
 }
 function resolveAuthBaseUrls(apiUrl) {
@@ -467,7 +476,7 @@ export function normalizeMailinblackCustomer(item, session = null) {
     domain: item.domain || item.primaryDomain || item.mainDomain || null,
     usersCount: toNumericCount(item.usersCount ?? item.users ?? item.nbUsers),
     licenseCount: toNumericCount(item.licenseCount ?? (typeof item.licenses === 'number' || typeof item.licenses === 'string' ? item.licenses : null) ?? item.nbLicences ?? item.nbLicense ?? item.totalLicenses ?? item.licenceCount ?? item.nbLicenceProtect ?? item.protectLicenses ?? item.seats),
-    domainsCount: item.domainsCount ?? item.domains ?? item.domainCount ?? (item.domain ? 1 : null),
+    domainsCount: toNumericCount(item.domainsCount ?? item.domainCount ?? item.nbDomains ?? (typeof item.domains === 'number' || typeof item.domains === 'string' ? item.domains : Array.isArray(item.domains) ? item.domains.length : null) ?? (item.domain ? 1 : null)),
     status: item.status || item.installationStatus || item.state || null,
     expiration: pickSoonestExpirationIso([item.expirationDate, item.expiration, item.renewalDate, item.expiryDate, item.licenseExpiration]),
     raw: item
@@ -901,10 +910,12 @@ function normalizeServer(item) {
 function buildSectionFromResult(result, normalizer, columnsMeta = {}) {
   const {
     preItems,
+    total: forcedTotal,
     ...meta
   } = columnsMeta;
   const items = preItems ?? (result.ok ? parseList(result.data).map(item => normalizer ? normalizeListItem(item, normalizer) : item).filter(Boolean) : []);
-  const total = result.ok ? normalizePaginated(result.data).total || items.length : 0;
+  const parsedTotal = result.ok ? normalizePaginated(result.data).total || items.length : 0;
+  const total = forcedTotal != null ? Math.max(Number(forcedTotal) || 0, items.length) : parsedTotal;
   return {
     status: result.ok ? items.length ? 'ok' : 'empty' : result.permissionDenied ? 'permission_denied' : 'error',
     error: result.ok ? null : result.error,
@@ -915,19 +926,19 @@ function buildSectionFromResult(result, normalizer, columnsMeta = {}) {
 }
 const MAILINBLACK_LIST_QUERY_VARIANTS = [{
   page: 0,
-  size: 50
-}, {
-  page: 0,
-  size: 20
-}, {
-  page: 0,
   size: 200
 }, {
+  page: 0,
+  size: 100
+}, {
+  page: 0,
+  size: 50
+}, {
   pageNumber: 0,
-  pageSize: 50
+  pageSize: 200
 }, {
   offset: 0,
-  limit: 50
+  limit: 200
 }, {}];
 async function mailinblackFetchListSection(apiUrl, session, credentials, module, path, normalizer, {
   exploited = true,
@@ -959,10 +970,19 @@ async function mailinblackFetchListSection(apiUrl, session, credentials, module,
         }
         let items = parseList(result.data).map(item => normalizeListItem(item, normalizer)).filter(Boolean);
         const expectedTotal = normalizePaginated(result.data).total;
-        const pageSize = baseQuery.size || baseQuery.pageSize || baseQuery.limit || 50;
-        if (items.length > 0 && expectedTotal > items.length && baseQuery.page != null) {
-          for (let page = 1; page < 10; page += 1) {
-            const nextQuery = {
+        const pageSize = Number(baseQuery.size || baseQuery.pageSize || baseQuery.limit || 0) || items.length || 50;
+        const supportsPage = baseQuery.page != null || baseQuery.pageNumber != null;
+        const supportsOffset = baseQuery.offset != null && baseQuery.limit != null;
+        if (items.length > 0 && (supportsPage || supportsOffset)) {
+          let lastPageCount = items.length;
+          for (let page = 1; page < 50; page += 1) {
+            const likelyMore = lastPageCount >= pageSize || expectedTotal > items.length;
+            if (!likelyMore) break;
+            const nextQuery = supportsOffset ? {
+              ...baseQuery,
+              offset: items.length,
+              limit: pageSize
+            } : {
               ...baseQuery,
               page,
               pageNumber: page
@@ -975,7 +995,9 @@ async function mailinblackFetchListSection(apiUrl, session, credentials, module,
             const nextItems = parseList(nextResult.data).map(item => normalizeListItem(item, normalizer)).filter(Boolean);
             if (!nextItems.length) break;
             items = [...items, ...nextItems];
+            lastPageCount = nextItems.length;
             if (nextItems.length < pageSize) break;
+            if (expectedTotal > 0 && items.length >= expectedTotal) break;
           }
         }
         if (items.length > 0) {
@@ -984,7 +1006,8 @@ async function mailinblackFetchListSection(apiUrl, session, credentials, module,
             data: result.data
           }, normalizer, {
             exploited,
-            preItems: items
+            preItems: items,
+            total: Math.max(expectedTotal || 0, items.length)
           });
         }
         emptyOkResult = result;
@@ -1098,28 +1121,20 @@ export async function mailinblackGetCustomer(apiUrl, credentials, customerId) {
     const normalized = normalizeMailinblackCustomer(raw, session);
     if (normalized) return normalized;
   }
-  const [domainsRes, usersRes] = await Promise.all([safeMailinblackCall(() => mailinblackV2Request(apiUrl, session, 'admin', 'domains', {
-    method: 'GET',
-    query: {
-      page: 0,
-      size: 200
-    }
-  })), safeMailinblackCall(() => mailinblackV2Request(apiUrl, session, 'admin', 'users', {
-    method: 'GET',
-    query: {
-      page: 0,
-      size: 200
-    }
-  }))]);
-  const domains = domainsRes.ok ? parseList(domainsRes.data).map(item => normalizeListItem(item, normalizeDomain)).filter(Boolean) : [];
-  const users = usersRes.ok ? parseList(usersRes.data).map(item => normalizeListItem(item, normalizeUser)).filter(Boolean) : [];
+  const [domainsRes, usersRes] = await Promise.all([mailinblackFetchListSection(apiUrl, session, credentials, 'admin', 'domains', normalizeDomain, {
+    exploited: true
+  }), mailinblackFetchListSection(apiUrl, session, credentials, 'admin', 'users', normalizeUser, {
+    exploited: true
+  })]);
+  const domains = Array.isArray(domainsRes?.items) ? domainsRes.items : [];
+  const users = Array.isArray(usersRes?.items) ? usersRes.items : [];
   return normalizeMailinblackCustomer({
     id: customerId || session.clientId,
     clientId: session.clientId,
     name: credentials.label || 'Mailinblack',
     domain: domains[0]?.name || null,
-    usersCount: users.length,
-    domainsCount: domains.length,
+    usersCount: Math.max(Number(usersRes?.total) || 0, users.length),
+    domainsCount: Math.max(Number(domainsRes?.total) || 0, domains.length),
     expiration: pickSoonestExpirationIso(domains.map(domain => domain.expiration)),
     status: 'active'
   }, session);
@@ -1232,7 +1247,9 @@ export function formatMailinblackSyncPayload(customer, mappingMode, mailinblackT
   const licenseExpirations = licenseItems.flatMap(item => [item?.expirationDate, item?.expiration, item?.expiryDate, item?.renewalDate, item?.endDate, item?.validUntil]);
   const expiration = pickSoonestExpirationIso([customer.expiration, raw.expirationDate, raw.expiration, raw.expiryDate, raw.renewalDate, raw.licenseExpiration, raw.licenceExpiration, raw.endDate, raw.validUntil, ...licenseExpirations, ...domainExpirations]) || '';
   const licencesTotales = pickNumericCount(licensesSection?.summary?.total, customer.licenseCount, extractLicenseSummaryFromPayload(raw).total, summarizeLicenseItems(licenseItems.map(item => item.total != null || item.used != null ? item : normalizeLicense(item)).filter(Boolean)).total, Array.isArray(raw.licenses) ? raw.licenses.length : raw.licenses, raw.licenseCount, raw.nbLicences, raw.nbLicense, raw.totalLicenses, raw.licenceCount, raw.numberOfLicenses);
-  const licencesUtilisees = pickNumericCount(licensesSection?.summary?.used, extractLicenseSummaryFromPayload(raw).used, countProtectedUsers(usersSection?.items));
+  const licencesUtilisees = pickNumericCount(licensesSection?.summary?.used, extractLicenseSummaryFromPayload(raw).used, countProtectedUsers(usersSection?.items), Array.isArray(usersSection?.items) ? usersSection.items.length : null, customer.usersCount);
+  const utilisateursProteges = pickNumericCount(usersSection?.total, Array.isArray(usersSection?.items) ? usersSection.items.length : null, customer.usersCount) ?? 0;
+  const domainesSurveilles = pickNumericCount(domainsSection?.total, Array.isArray(domainsSection?.items) ? domainsSection.items.length : null, customer.domainsCount, customer.domain ? 1 : null) ?? 0;
   return {
     solution: 'Mailinblack Protect',
     providerId: 'mailinblack',
@@ -1244,8 +1261,8 @@ export function formatMailinblackSyncPayload(customer, mappingMode, mailinblackT
     customerId: customer.id,
     customerName: customer.name,
     domain: customer.domain || '',
-    utilisateursProteges: usersSection?.total ?? customer.usersCount ?? (usersSection?.items?.length != null ? usersSection.items.length : 0),
-    domainesSurveilles: domainsSection?.total ?? customer.domainsCount ?? (domainsSection?.items?.length != null ? domainsSection.items.length : 0),
+    utilisateursProteges,
+    domainesSurveilles,
     licencesTotales: licencesTotales != null && licencesTotales !== '' ? licencesTotales : null,
     licencesUtilisees: licencesUtilisees != null && licencesUtilisees !== '' ? licencesUtilisees : null,
     expiration,

@@ -49,22 +49,33 @@ export function buildEquipmentMonitoringSummary(equipment, {
   monitorStatus,
   checkmkEnabled = true,
   isMkMapped = false,
-  alertRules = null
+  alertRules = null,
+  checkmkSummary = null
 } = {}) {
   const issues = [];
   const type = equipment?.type === "NAS" ? "Storage" : equipment?.type;
   const displayType = type || "Device";
+  const mkDetail = checkmkSummary || equipment?.checkmkSummary || equipment?.monitoringSummary || null;
+  const formatMkLabel = (severityLabel) => {
+    const primary = String(mkDetail?.primaryService || mkDetail?.serviceName || "").trim();
+    if (primary) return `${severityLabel} - ${primary}`;
+    const list = Array.isArray(mkDetail?.failingServices)
+      ? mkDetail.failingServices.map(name => String(name || "").trim()).filter(Boolean)
+      : [];
+    if (list.length) return `${severityLabel} - ${list.slice(0, 2).join(" / ")}`;
+    return severityLabel;
+  };
   if (monitorStatus === "critical") {
     pushIssue(issues, {
       key: "monitor_critical",
-      label: "Critical",
+      label: formatMkLabel("Critical"),
       tone: "bad",
       priority: 0
     });
   } else if (monitorStatus === "warning") {
     pushIssue(issues, {
       key: "monitor_warning",
-      label: "Warning",
+      label: formatMkLabel("Warning"),
       tone: "warn",
       priority: 1
     });

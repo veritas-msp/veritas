@@ -835,38 +835,50 @@ export default function TicketCreatePage({
     return contacts.filter(c => getContactSearchText(c).includes(q)).slice(0, 50);
   }, [contacts, contactSearch]);
   const enabledCategories = useMemo(() => (Array.isArray(categories) ? categories : []).filter(item => item?.enabled !== false), [categories]);
-  const supportFormsForType = useMemo(
-    () => (Array.isArray(supportForms) ? supportForms : []).filter(form => form?.kind === type && form?.enabled !== false),
-    [supportForms, type]
-  );
-  const hasSupportFormsForType = supportFormsForType.length > 0;
+  const enabledSupportForms = useMemo(() => {
+    const rows = (Array.isArray(supportForms) ? supportForms : []).filter(form => form?.enabled !== false);
+    return [...rows].sort((a, b) => {
+      const orderDiff = Number(a?.displayOrder || 0) - Number(b?.displayOrder || 0);
+      if (orderDiff !== 0) return orderDiff;
+      return String(a?.label || "").localeCompare(String(b?.label || ""), undefined, {
+        sensitivity: "base"
+      });
+    });
+  }, [supportForms]);
+  const hasSupportForms = enabledSupportForms.length > 0;
   const selectedSupportForm = useMemo(
-    () => supportFormsForType.find(form => String(form.id) === String(selectedSupportFormId)) || supportFormsForType[0] || null,
-    [supportFormsForType, selectedSupportFormId]
+    () => enabledSupportForms.find(form => String(form.id) === String(selectedSupportFormId)) || enabledSupportForms[0] || null,
+    [enabledSupportForms, selectedSupportFormId]
   );
   const activeSupportFields = useMemo(
     () => filterVisibleFields((selectedSupportForm?.fields || []).filter(field => field.enabled !== false && !isFileField(field)), supportFormValues),
     [selectedSupportForm, supportFormValues]
   );
   useEffect(() => {
-    if (!hasSupportFormsForType) {
+    if (!hasSupportForms) {
       setSelectedSupportFormId("");
       return;
     }
-    if (!supportFormsForType.some(form => String(form.id) === String(selectedSupportFormId))) {
-      setSelectedSupportFormId(String(supportFormsForType[0].id));
+    if (!enabledSupportForms.some(form => String(form.id) === String(selectedSupportFormId))) {
+      setSelectedSupportFormId(String(enabledSupportForms[0].id));
     }
-  }, [hasSupportFormsForType, supportFormsForType, selectedSupportFormId]);
+  }, [hasSupportForms, enabledSupportForms, selectedSupportFormId]);
   useEffect(() => {
     setSupportFormValues({});
   }, [selectedSupportFormId]);
   useEffect(() => {
-    if (!hasSupportFormsForType || !selectedSupportForm?.categorySlug) return;
+    const nextType = String(selectedSupportForm?.kind || "").trim();
+    if (!nextType) return;
+    setType(nextType);
+    if (nextType !== "incident") setIsMajorIncident(false);
+  }, [selectedSupportForm?.kind, selectedSupportForm?.id]);
+  useEffect(() => {
+    if (!hasSupportForms || !selectedSupportForm?.categorySlug) return;
     const slug = String(selectedSupportForm.categorySlug).trim();
     if (!slug) return;
     setCategory(slug);
     setCategorySearch(slug);
-  }, [hasSupportFormsForType, selectedSupportForm?.categorySlug]);
+  }, [hasSupportForms, selectedSupportForm?.categorySlug]);
   const filteredCategoryOptions = useMemo(() => {
     const q = categorySearch.trim().toLowerCase();
     const rows = !q ? enabledCategories : enabledCategories.filter(item => {
@@ -1079,11 +1091,14 @@ export default function TicketCreatePage({
       setAvailabilityDate(getTodayDateString());
     }
   }, [availabilityDate]);
-  const handleTypeChange = useCallback(nextType => {
-    setType(nextType);
-    if (nextType !== "incident") setIsMajorIncident(false);
-    setSelectedSupportFormId("");
-    setSupportFormValues({});
+  const handleSupportFormSelect = useCallback(form => {
+    if (!form?.id) return;
+    setSelectedSupportFormId(String(form.id));
+    const nextType = String(form.kind || "").trim();
+    if (nextType) {
+      setType(nextType);
+      if (nextType !== "incident") setIsMajorIncident(false);
+    }
     setFieldErrors(prev => ({
       ...prev,
       supportForm: undefined,
@@ -1217,7 +1232,7 @@ export default function TicketCreatePage({
     const errors = {};
     if (!requesterContactId) errors.requester = true;
     if (requiresCompanySelect && !ticketClientId) errors.company = true;
-    if (hasSupportFormsForType) {
+    if (hasSupportForms) {
       if (!selectedSupportForm) errors.supportForm = true;
       else if (!validateDynamicFields(activeSupportFields, supportFormValues)) errors.supportFormDetails = true;
     } else if (!category.trim()) {
@@ -1306,11 +1321,11 @@ export default function TicketCreatePage({
         model: equipmentModel,
         serial: equipmentSerial
       });
-      const resolvedCategory = hasSupportFormsForType
+      const resolvedCategory = hasSupportForms
         ? String(selectedSupportForm?.categorySlug || category || "").trim()
         : category.trim();
       let supportFormData;
-      if (hasSupportFormsForType && selectedSupportForm) {
+      if (hasSupportForms && selectedSupportForm) {
         const visibleFields = filterVisibleFields((selectedSupportForm.fields || []).filter(field => field.enabled !== false && !isFileField(field)), supportFormValues);
         const visibleValues = Object.fromEntries(visibleFields.map(field => [field.fieldKey, supportFormValues[field.fieldKey]]));
         const displayValues = Object.fromEntries(visibleFields.map(field => {
@@ -1585,23 +1600,23 @@ export default function TicketCreatePage({
             </button>
           </>} />
           <div className={`${mspStyles.mspContent} ${mspStyles.mspContentList} mspContent`}>
-      <div className={layout.shell}>
-
-        <div className={s.typeKpiRow}>
-          {copy.ticketTypes.map(item => <button key={item.key} type="button" className={`${layout.kpiCard} ${type === item.key ? layout.kpiCardActive : ""}`} onClick={() => handleTypeChange(item.key)}>
-              <div className={`${layout.kpiIconWrap} ${layout.kpiIcon_blue}`}>
-                <Icon icon={item.icon} />
-              </div>
-              <div className={layout.kpiBody}>
-                <span className={layout.kpiValue}>{item.label}</span>
-                <span className={layout.kpiLabel}>{item.hint}</span>
-              </div>
-            </button>)}
-        </div>
+        <div className={layout.shell}>
 
         <div className={account.contentScroll}>
           <div className={account.contentGridWide}>
             <div className={s.formStack}>
+              <SectionPanel title={copy.sections.form}>
+                {!hasSupportForms ? <p className={s.detailsAvailabilityTitle} style={{ margin: 0 }}>
+                    {loadingData ? copy.loadingForms : copy.noForms}
+                  </p> : <div className={`${s.typeGrid} ${s.formTypeGrid}`} data-pulse={fieldErrors.supportForm ? errorPulseTick : undefined}>
+                    {enabledSupportForms.map(form => <button key={form.id} type="button" className={`${s.typeCard} ${String(selectedSupportForm?.id) === String(form.id) ? s.typeCardActive : ""} ${fieldErrors.supportForm ? s.fieldErrorPulse : ""}`} onClick={() => handleSupportFormSelect(form)}>
+                        <Icon icon={form.icon || "mdi:file-document-outline"} className={s.typeIcon} aria-hidden />
+                        <span className={s.typeLabel}>{form.label}</span>
+                        {form.description ? <span className={s.typeHint}>{form.description}</span> : null}
+                      </button>)}
+                  </div>}
+              </SectionPanel>
+
               <SectionPanel title={copy.sections.requester} className={s.panelAllowOverflow}>
                 <div className={s.demandeurBlock}>
                   <p className={s.detailsAvailabilityTitle}>{copy.requesterContact}</p>
@@ -1823,40 +1838,23 @@ export default function TicketCreatePage({
               <SectionPanel title={copy.sections.ticketDetails} headerExtra={<SmartTooltip content={<TicketCreateTipsTooltip copy={copy} />} tooltipClassName={s.tipsPortalTooltip} trigger="click" as="button" type="button" className={s.tipsHelpBtn} aria-label={copy.showTipsAria}>
                     <Icon icon="mdi:lightbulb-outline" aria-hidden />
                   </SmartTooltip>}>
-                {hasSupportFormsForType ? <div className={s.fieldBlock} style={{ marginBottom: "1rem" }}>
-                    <label className={s.fieldLabel}>{locale === "fr" ? "Formulaire" : "Form"}<span className={s.requiredMark}>*</span></label>
-                    <div className={s.typeGrid} data-pulse={fieldErrors.supportForm ? errorPulseTick : undefined}>
-                      {supportFormsForType.map(form => <button key={form.id} type="button" className={`${s.typeCard} ${String(selectedSupportForm?.id) === String(form.id) ? s.typeCardActive : ""} ${fieldErrors.supportForm ? s.fieldErrorPulse : ""}`} onClick={() => {
-                    setSelectedSupportFormId(String(form.id));
-                    setFieldErrors(prev => ({
-                      ...prev,
-                      supportForm: undefined,
-                      supportFormDetails: undefined
-                    }));
-                  }}>
-                          <Icon icon={form.icon || "mdi:file-document-outline"} className={s.typeIcon} aria-hidden />
-                          <span className={s.typeLabel}>{form.label}</span>
-                        </button>)}
-                    </div>
-                    {selectedSupportForm?.description ? <p className={s.detailsAvailabilityTitle} style={{ marginTop: "0.65rem" }}>{selectedSupportForm.description}</p> : null}
-                    {activeSupportFields.length > 0 ? <div style={{ marginTop: "0.85rem" }} data-pulse={fieldErrors.supportFormDetails ? errorPulseTick : undefined} className={fieldErrors.supportFormDetails ? s.fieldErrorPulse : ""}>
-                        <SalesFormFieldsRenderer
-                          fields={activeSupportFields}
-                          values={supportFormValues}
-                          users={users}
-                          contacts={contacts}
-                          clients={clients}
-                          fieldErrors={fieldErrors.supportFormDetails}
-                          errorPulseTick={errorPulseTick}
-                          onChange={nextValues => {
-                            setSupportFormValues(nextValues);
-                            setFieldErrors(prev => ({
-                              ...prev,
-                              supportFormDetails: undefined
-                            }));
-                          }}
-                        />
-                      </div> : null}
+                {hasSupportForms && activeSupportFields.length > 0 ? <div style={{ marginBottom: "1rem" }} data-pulse={fieldErrors.supportFormDetails ? errorPulseTick : undefined} className={fieldErrors.supportFormDetails ? s.fieldErrorPulse : ""}>
+                    <SalesFormFieldsRenderer
+                      fields={activeSupportFields}
+                      values={supportFormValues}
+                      users={users}
+                      contacts={contacts}
+                      clients={clients}
+                      fieldErrors={fieldErrors.supportFormDetails}
+                      errorPulseTick={errorPulseTick}
+                      onChange={nextValues => {
+                        setSupportFormValues(nextValues);
+                        setFieldErrors(prev => ({
+                          ...prev,
+                          supportFormDetails: undefined
+                        }));
+                      }}
+                    />
                   </div> : null}
                 <div className={s.fieldBlock}>
                   <label className={s.fieldLabel}>{copy.subject}<span className={s.requiredMark}>*</span></label>
@@ -2005,7 +2003,7 @@ export default function TicketCreatePage({
                     </div>}
 
                   <div className={s.settingsFieldRow}>
-                    {!hasSupportFormsForType ? <div className={s.equipmentField}>
+                    {!hasSupportForms ? <div className={s.equipmentField}>
                       <label className={s.equipmentFieldLabel} id="ticket-create-category-label">
                         {copy.itilCategory}<span className={s.requiredMark}>*</span>
                       </label>

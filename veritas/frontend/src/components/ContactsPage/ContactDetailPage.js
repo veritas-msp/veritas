@@ -186,6 +186,7 @@ export default function ContactDetailPage({
   const [loadingTags, setLoadingTags] = useState(false);
   const [tagModalOpen, setTagModalOpen] = useState(false);
   const [shareAccessCreateOpen, setShareAccessCreateOpen] = useState(false);
+  const [overviewTab, setOverviewTab] = useState("activity");
   const [vaultClientId, setVaultClientId] = useState(null);
   const [companyModalOpen, setCompanyModalOpen] = useState(false);
   const [membershipBusy, setMembershipBusy] = useState(false);
@@ -230,7 +231,11 @@ export default function ContactDetailPage({
   const closedClientTickets = useMemo(() => clientSupportTickets.filter(ticket => !isOpenTicket(ticket)).sort(sortTicketsByRecent).slice(0, 12), [clientSupportTickets]);
   const canCreateTicket = Boolean(contact?.id && (client?.id || contact?.client_id || formData.client_id || contactCompanies.length > 0));
   const contactGuideSteps = useMemo(() => {
-    const steps = getContactDetailGuideSteps(locale);
+    const steps = getContactDetailGuideSteps({
+      showActivity: () => setOverviewTab("activity"),
+      showPortal: () => setOverviewTab("portal"),
+      showShare: () => setOverviewTab("share")
+    }, locale);
     if (contact?.id && (contact?.client_id || contactCompanies.length > 0)) return steps;
     return steps.filter(step => step.target !== '[data-guide="contact-shared-access"]');
   }, [locale, contact?.id, contact?.client_id, contactCompanies.length]);
@@ -860,12 +865,45 @@ export default function ContactDetailPage({
       <div className={styles.pageBody}>
         <div className={styles.pageGrid}>
           <main className={styles.mainColumn}>
-            <section className={styles.panel} data-guide="contact-coordinates">
+            <section className={styles.panel} data-guide="contact-overview">
               <div className={styles.panelHeader}>
-                <h2 className={styles.panelTitle}>{copy.coordinates}</h2>
+                <div className={styles.panelHeaderMain}>
+                  <nav className={styles.overviewTabBar} role="tablist" aria-label={copy.overviewTabsAria || copy.activityTitle}>
+                    <button type="button" role="tab" aria-selected={overviewTab === "activity"} className={`${styles.overviewTab} ${overviewTab === "activity" ? styles.overviewTabActive : ""}`} onClick={() => setOverviewTab("activity")} data-guide="contact-activity">
+                      {copy.overviewTabActivity}
+                    </button>
+                    <button type="button" role="tab" aria-selected={overviewTab === "portal"} className={`${styles.overviewTab} ${overviewTab === "portal" ? styles.overviewTabActive : ""}`} onClick={() => setOverviewTab("portal")} data-guide="contact-portal">
+                      {copy.overviewTabPortal}
+                    </button>
+                    <button type="button" role="tab" aria-selected={overviewTab === "share"} className={`${styles.overviewTab} ${overviewTab === "share" ? styles.overviewTabActive : ""}`} onClick={() => setOverviewTab("share")} data-guide="contact-shared-access">
+                      <span className={styles.overviewTabLabelRow}>
+                        <span>{copy.overviewTabShare}</span>
+                        {isCommunity ? <ProFeatureBadge variant="inline" className={styles.proBadgeInline} /> : null}
+                      </span>
+                    </button>
+                  </nav>
+                  {overviewTab === "activity" && !loadingActivity ? <span className={styles.activityBlockCount}>
+                    {(() => {
+                  const total = isCommunity ? supportTickets.length + DEMO_PRESTATION_TICKETS.length : supportTickets.length + prestationTickets.length;
+                  return total === 1 ? interpolate(copy.ticketCount, {
+                    count: total
+                  }) : interpolate(copy.ticketCountPlural, {
+                    count: total
+                  });
+                })()}
+                  </span> : null}
+                </div>
+                {overviewTab === "share" && contact?.id && canAccessSharing && (vaultClientId || contact?.client_id || contactCompanies.length > 0) ? <SmartTooltip content={copy.shareAccess}>
+                      <button type="button" className={`${pageLayout.primaryBtn} ${pageLayout.primaryBtnIconOnly}`} onClick={() => setShareAccessCreateOpen(true)} aria-label={copy.shareAccess} disabled={isCommunity}>
+                        <FaPlus />
+                      </button>
+                    </SmartTooltip> : null}
               </div>
               <div className={styles.panelBody}>
-                {hasCoords ? <div className={contactStyles.coordGrid}>
+                {overviewTab === "activity" ? <div className={styles.overviewTabPanel}>
+                  <div className={styles.contactOverviewBlock} data-guide="contact-coordinates">
+                    <h3 className={styles.contactOverviewBlockTitle}>{copy.coordinates}</h3>
+{hasCoords ? <div className={contactStyles.coordGrid}>
                     {displayCommunications.map(entry => {
                   const typeDef = getCommunicationTypeDefLocalized(entry.type, locale);
                   const href = entry.type === "email" ? toMailtoHref(entry.value) : entry.type === "telephone" ? toTelHref(entry.value) : null;
@@ -902,25 +940,10 @@ export default function ContactDetailPage({
                   </div> : <div className={contactStyles.coordEmpty}>
                     {copy.coordEmpty}
                   </div>}
-              </div>
-            </section>
-
-            <section className={styles.panel} data-guide="contact-activity">
-              <div className={styles.panelHeader}>
-                <h2 className={styles.panelTitle}>{copy.activityTitle}</h2>
-                {!loadingActivity && <span className={styles.activityBlockCount}>
-                    {(() => {
-                  const total = isCommunity ? supportTickets.length + DEMO_PRESTATION_TICKETS.length : supportTickets.length + prestationTickets.length;
-                  return total === 1 ? interpolate(copy.ticketCount, {
-                    count: total
-                  }) : interpolate(copy.ticketCountPlural, {
-                    count: total
-                  });
-                })()}
-                  </span>}
-              </div>
-              <div className={styles.panelBody}>
-                {loadingActivity ? <div className={contactStyles.activityLoading}>
+                  </div>
+                  <div className={styles.contactOverviewBlock} data-guide="contact-activity-panel">
+                    <h3 className={styles.contactOverviewBlockTitle}>{copy.activityTitle}</h3>
+{loadingActivity ? <div className={contactStyles.activityLoading}>
                     <Icon icon="mdi:loading" className={styles.spinning} aria-hidden />
                     <span>{copy.loadingActivity}</span>
                   </div> : <>
@@ -1060,35 +1083,19 @@ export default function ContactDetailPage({
                       </div>
                     </div>
                   </>}
-              </div>
-            </section>
-
-            <section className={styles.panel} data-guide="contact-portal">
-              <div className={styles.panelHeader}>
-                <h2 className={styles.panelTitle}>{copy.portalTitle}</h2>
-              </div>
-              <div className={styles.panelBody}>
-                <ContactPortalSection contact={contact} canManage={canManagePortal} onUpdated={() => {
+                  </div>
+                </div> : null}
+                {overviewTab === "portal" ? <div className={styles.overviewTabPanel}>
+<ContactPortalSection contact={contact} canManage={canManagePortal} onUpdated={() => {
                 const controller = createTrackedAbortController();
                 loadControllerRef.current?.abort();
                 loadControllerRef.current = controller;
                 loadContactData(controller.signal);
               }} />
-              </div>
-            </section>
-
-            {contact?.id && (vaultClientId || contact?.client_id || contactCompanies.length > 0) ? <ProFeatureLock locked={isCommunity} featureLabel={copy.sharedAccessTitle} featureKey="sharedAccess">
-                <section className={styles.panel} data-guide="contact-shared-access">
-                  <div className={styles.panelHeader}>
-                    <h2 className={styles.panelTitle}>{copy.sharedAccessTitle}</h2>
-                    {canAccessSharing ? <SmartTooltip content={copy.shareAccess}>
-                      <button type="button" className={`${pageLayout.primaryBtn} ${pageLayout.primaryBtnIconOnly}`} onClick={() => setShareAccessCreateOpen(true)} aria-label={copy.shareAccess} disabled={isCommunity}>
-                        <FaPlus />
-                      </button>
-                    </SmartTooltip> : null}
-                  </div>
-                  <div className={styles.panelBody}>
-                    {contactCompanies.length > 1 ? <label className={contactStyles.vaultClientField}>
+                </div> : null}
+                {overviewTab === "share" ? <div className={styles.overviewTabPanel}>
+                  {contact?.id && (vaultClientId || contact?.client_id || contactCompanies.length > 0) ? <ProFeatureLock locked={isCommunity} featureLabel={copy.sharedAccessTitle} featureKey="sharedAccess">
+{contactCompanies.length > 1 ? <label className={contactStyles.vaultClientField}>
                         <span className={contactStyles.vaultClientLabel}>{copy.vaultClientLabel || copy.selectCompany}</span>
                         <select className={contactStyles.vaultClientSelect} value={vaultClientId || ""} onChange={e => setVaultClientId(e.target.value || null)}>
                           {contactCompanies.map(company => <option key={company.id} value={company.id}>
@@ -1097,9 +1104,10 @@ export default function ContactDetailPage({
                         </select>
                       </label> : null}
                     <VaultSecretsPanel contactId={contact.id} clientId={vaultClientId || contact.client_id || contactCompanies[0]?.id} contactName={formatContactName(contact, copy.defaultName)} createModalOpen={shareAccessCreateOpen} onCreateModalChange={setShareAccessCreateOpen} />
-                  </div>
-                </section>
-              </ProFeatureLock> : null}
+                  </ProFeatureLock> : <p className={contactStyles.coordEmpty}>{copy.shareNeedsCompany || copy.coordEmpty}</p>}
+                </div> : null}
+              </div>
+            </section>
           </main>
 
           <aside className={styles.asidePanel}>

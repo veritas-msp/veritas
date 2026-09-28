@@ -226,13 +226,20 @@ export default function AdminUsers({
     if (!agentDraft.email || !agentDraft.email.includes("@")) return toast.error(copy.toast.invalidEmail);
     if (agentDraft.password.length < 6) return toast.error(copy.toast.passwordTooShort);
     if (agentDraft.password !== agentDraft.password2) return toast.error(copy.toast.passwordMismatch);
+    const assigned = Array.isArray(agentDraft.profiles) && agentDraft.profiles.length
+      ? agentDraft.profiles
+      : agentDraft.profile
+        ? [agentDraft.profile]
+        : [];
+    if (!assigned.length) return toast.error(copy.toast.selectProfile);
     setCreatingAgent(true);
     try {
       await createUser({
         email: agentDraft.email,
         username: agentDraft.username,
         password: agentDraft.password,
-        profile: agentDraft.profile || resolveAgentProfileName(profiles),
+        profile: agentDraft.profile || assigned[0] || resolveAgentProfileName(profiles),
+        profiles: assigned,
         is_active: newActive
       });
       toast.success(copy.toast.userCreated);
@@ -409,7 +416,13 @@ export default function AdminUsers({
   };
   const getProfileLabel = name => getLocalizedProfileName(name, permissionsCopy) || name || "-";
   const getProfileDescription = (name, fallbackLabel) => getLocalizedProfileLabel(name, fallbackLabel, permissionsCopy);
-  const getUsersForProfile = profileName => users.filter(u => String(u.profile || "") === String(profileName || ""));
+  const getUsersForProfile = profileName =>
+    users.filter(u => {
+      const assigned = Array.isArray(u.profiles) && u.profiles.length
+        ? u.profiles.map(p => String(p || ""))
+        : [String(u.profile || "")];
+      return assigned.includes(String(profileName || ""));
+    });
   const isProfileProtected = name => SYSTEM_PROFILE_NAMES.has(normalizeProfileName(name));
   const editingProfileIsProtected = profileModalMode === "edit" && isProfileProtected(profileModalTarget);
   const openMfaReleaseConfirm = targetUser => {
@@ -579,7 +592,10 @@ export default function AdminUsers({
     if (!editAgentDraft.email || !editAgentDraft.email.includes("@")) {
       return toast.error(copy.toast.invalidEmail);
     }
-    if (!String(editAgentDraft.profile || "").trim()) {
+    if (
+      !String(editAgentDraft.profile || "").trim() &&
+      !(Array.isArray(editAgentDraft.profiles) && editAgentDraft.profiles.some(p => String(p || "").trim()))
+    ) {
       return toast.error(copy.toast.selectProfile);
     }
     const password = String(editAgentDraft.password || "");
@@ -696,7 +712,14 @@ export default function AdminUsers({
                         <td>
                           <MfaStatusBadge user={row} locale={locale} />
                         </td>
-                        <td><span className={s.badge}>{getProfileLabel(row.profile)}</span></td>
+                        <td>
+                          <span className={s.badge}>{getProfileLabel(row.profile)}</span>
+                          {Array.isArray(row.profiles) && row.profiles.length > 1 ? (
+                            <span className={s.badge} style={{ marginLeft: 6 }} title={row.profiles.map(getProfileLabel).join(", ")}>
+                              +{row.profiles.length - 1}
+                            </span>
+                          ) : null}
+                        </td>
                         <td className={s.dateCell}>
                           {row.created_at ? formatDate(row.created_at) : "-"}
                         </td>

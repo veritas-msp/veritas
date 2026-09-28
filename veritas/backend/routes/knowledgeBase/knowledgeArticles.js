@@ -21,8 +21,12 @@ import {
   listKnowledgeArticleRevisions,
   listKnowledgeTagCatalog,
   moveKnowledgeArticles,
+  permanentlyDeleteKnowledgeArticle,
+  permanentlyDeleteKnowledgeArticles,
   publishKnowledgeArticle,
   reorderKnowledgeArticles,
+  restoreKnowledgeArticleFromTrash,
+  restoreKnowledgeArticlesFromTrash,
   restoreKnowledgeArticleRevision,
   setArticlePublicLink,
   unpublishKnowledgeArticle,
@@ -102,18 +106,24 @@ function canSeeDrafts(canManage, article) {
 router.get(
   "/",
   requirePermission("knowledge_base.view"),
-  [query("search").optional().isString(), query("status").optional().isIn(["draft", "published", "all"]), query("folderId").optional().isString(), query("category").optional().isString()],
+  [query("search").optional().isString(), query("status").optional().isIn(["draft", "published", "all"]), query("folderId").optional().isString(), query("category").optional().isString(), query("trashed").optional().isIn(["true", "false", "1", "0", "only"])],
   async (req, res) => {
     if (validationErrorOrNull(req, res)) return;
     try {
       const canManage = await userHasAnyPermission(req.user, ["knowledge_base.create", "knowledge_base.edit"]);
       const status = req.query.status === "all" || !req.query.status ? null : req.query.status;
+      const trashedRaw = String(req.query.trashed || "").toLowerCase();
+      const trashed = trashedRaw === "true" || trashedRaw === "1" || trashedRaw === "only" || req.query.folderId === "trash";
+      if (trashed && !(await userHasAnyPermission(req.user, ["knowledge_base.delete", "knowledge_base.edit", "knowledge_base.create"]))) {
+        return res.status(403).json({ error: "Forbidden." });
+      }
       const articles = await listKnowledgeArticles({
         search: req.query.search,
         status: canManage ? status : "published",
         includeDrafts: canManage,
         folderId: req.query.folderId,
-        category: req.query.category
+        category: req.query.category,
+        trashed
       });
       res.json({ articles });
     } catch (err) {
@@ -183,11 +193,43 @@ router.post(
   async (req, res) => {
     if (validationErrorOrNull(req, res)) return;
     try {
-      const result = await deleteKnowledgeArticles(req.body.ids);
+      const result = await deleteKnowledgeArticles(req.body.ids, req.user?.id || null);
       res.json(result);
     } catch (err) {
       console.error("[POST /knowledge-articles/bulk-delete]", err);
       res.status(500).json({ error: "Error deleting articles." });
+    }
+  }
+);
+
+router.post(
+  "/bulk-restore",
+  requirePermission("knowledge_base.delete"),
+  [body("ids").isArray({ min: 1, max: 100 }), body("ids.*").isUUID()],
+  async (req, res) => {
+    if (validationErrorOrNull(req, res)) return;
+    try {
+      const result = await restoreKnowledgeArticlesFromTrash(req.body.ids);
+      res.json(result);
+    } catch (err) {
+      console.error("[POST /knowledge-articles/bulk-restore]", err);
+      res.status(500).json({ error: "Error restoring articles." });
+    }
+  }
+);
+
+router.post(
+  "/bulk-purge",
+  requirePermission("knowledge_base.delete"),
+  [body("ids").isArray({ min: 1, max: 100 }), body("ids.*").isUUID()],
+  async (req, res) => {
+    if (validationErrorOrNull(req, res)) return;
+    try {
+      const result = await permanentlyDeleteKnowledgeArticles(req.body.ids);
+      res.json(result);
+    } catch (err) {
+      console.error("[POST /knowledge-articles/bulk-purge]", err);
+      res.status(500).json({ error: "Error permanently deleting articles." });
     }
   }
 );
@@ -408,12 +450,36 @@ router.delete(
 router.delete("/:id", requirePermission("knowledge_base.delete"), [param("id").isUUID()], async (req, res) => {
   if (validationErrorOrNull(req, res)) return;
   try {
-    const ok = await deleteKnowledgeArticle(req.params.id);
+    const ok = await deleteKnowledgeArticle(req.params.id, req.user?.id || null);
     if (!ok) return res.status(404).json({ error: "Article not found." });
-    res.json({ success: true });
+    res.json({ success: true, trashed: true });
   } catch (err) {
     console.error("[DELETE /knowledge-articles/:id]", err);
     res.status(500).json({ error: "Error deleting article." });
+  }
+});
+
+router.post("/:id/restore", requirePermission("knowledge_base.delete"), [param("id").isUUID()], async (req, res) => {
+  if (validationErrorOrNull(req, res)) return;
+  try {
+    const article = await restoreKnowledgeArticleFromTrash(req.params.id);
+    if (!article) return res.status(404).json({ error: "Article not found in trash." });
+    res.json({ success: true, article });
+  } catch (err) {
+    console.error("[POST /knowledge-articles/:id/restore]", err);
+    res.status(500).json({ error: "Error restoring article." });
+  }
+});
+
+router.delete("/:id/permanent", requirePermission("knowledge_base.delete"), [param("id").isUUID()], async (req, res) => {
+  if (validationErrorOrNull(req, res)) return;
+  try {
+    const ok = await permanentlyDeleteKnowledgeArticle(req.params.id);
+    if (!ok) return res.status(404).json({ error: "Article not found." });
+    res.json({ success: true, purged: true });
+  } catch (err) {
+    console.error("[DELETE /knowledge-articles/:id/permanent]", err);
+    res.status(500).json({ error: "Error permanently deleting article." });
   }
 });
 

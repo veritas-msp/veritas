@@ -18,6 +18,55 @@ function clampCreditAmount(value, max = 999) {
   if (Number.isFinite(max) && max >= 0) return Math.min(parsed, max);
   return parsed;
 }
+
+function CreditAmountStepper({
+  value,
+  min = 0,
+  max = 999,
+  disabled = false,
+  ariaLabel,
+  onChange
+}) {
+  const current = clampCreditAmount(value, max);
+  const bump = delta => {
+    if (disabled) return;
+    onChange?.(clampCreditAmount(current + delta, max));
+  };
+  return (
+    <div className={modalStyles.creditStepper}>
+      <input
+        type="number"
+        className={modalStyles.creditAmountInput}
+        min={min}
+        max={max}
+        value={current}
+        onChange={e => onChange?.(clampCreditAmount(e.target.value, max))}
+        disabled={disabled}
+        aria-label={ariaLabel}
+      />
+      <div className={modalStyles.creditStepperBtns}>
+        <button
+          type="button"
+          className={modalStyles.creditStepperBtn}
+          onClick={() => bump(1)}
+          disabled={disabled || current >= max}
+          aria-label="+"
+        >
+          <Icon icon="mdi:chevron-up" aria-hidden />
+        </button>
+        <button
+          type="button"
+          className={modalStyles.creditStepperBtn}
+          onClick={() => bump(-1)}
+          disabled={disabled || current <= min}
+          aria-label="-"
+        >
+          <Icon icon="mdi:chevron-down" aria-hidden />
+        </button>
+      </div>
+    </div>
+  );
+}
 export default function TicketResolveModal({
   open,
   ticket,
@@ -44,7 +93,7 @@ export default function TicketResolveModal({
   const [actionOptions, setActionOptions] = useState([]);
   const [loadingCatalog, setLoadingCatalog] = useState(false);
   const [activeSection, setActiveSection] = useState("solution");
-  const [perPackAmount, setPerPackAmount] = useState(1);
+  const [perPackAmount, setPerPackAmount] = useState(0);
   const localizedInterventionOptions = useMemo(() => localizeSolutionCatalogOptions(interventionOptions, locale), [interventionOptions, locale]);
   const filteredActionOptions = useMemo(() => {
     const selected = String(interventionType || "").trim();
@@ -86,7 +135,7 @@ export default function TicketResolveModal({
     setActionType("");
     setRequestClientValidation(true);
     setActiveSection("solution");
-    setPerPackAmount(1);
+    setPerPackAmount(0);
   }, [open]);
   useEffect(() => {
     if (!interventionType.trim()) {
@@ -285,15 +334,17 @@ export default function TicketResolveModal({
                 }} />
                   </div>
 
-                  <label className={modalStyles.creditOption}>
-                    <input type="checkbox" checked={requestClientValidation} onChange={e => setRequestClientValidation(e.target.checked)} disabled={saving} />
-                    <span>{copy.requestClientValidation || "Demander la validation client (portail)"}</span>
-                  </label>
-                  <p className={modalStyles.validationHint}>
-                    {requestClientValidation
-                      ? (copy.requestClientValidationHint || copy.subtitle)
-                      : (copy.skipClientValidationHint || "Le ticket sera résolu et clos immédiatement, sans attente de validation client.")}
-                  </p>
+                  <div className={modalStyles.validationCard}>
+                    <label className={modalStyles.validationOption}>
+                      <input type="checkbox" checked={requestClientValidation} onChange={e => setRequestClientValidation(e.target.checked)} disabled={saving} />
+                      <span>{copy.requestClientValidation || "Demander la validation client (portail)"}</span>
+                    </label>
+                    <p className={modalStyles.validationHint}>
+                      {requestClientValidation
+                        ? (copy.requestClientValidationHint || copy.subtitle)
+                        : (copy.skipClientValidationHint || "Le ticket sera résolu et clos immédiatement, sans attente de validation client.")}
+                    </p>
+                  </div>
                 </> : null}
 
               {activeSection === "credits" && !creditsProLocked ? <div className={modalStyles.creditPanel}>
@@ -310,13 +361,19 @@ export default function TicketResolveModal({
                         <span>{usablePacks.length > 0 ? copy.consumeCredit : copy.consumeCreditLegacy}</span>
                       </label>
 
-                      {creditEnabled ? <>
+                      {creditEnabled ? <div className={modalStyles.creditFields}>
                           <div className={modalStyles.creditBulkRow}>
                             <div className={modalStyles.creditBulkText}>
                               <span className={modalStyles.creditBulkLabel}>{copy.creditPerPackLabel}</span>
                               <span className={modalStyles.creditBulkHint}>{copy.creditPerPackHint}</span>
                             </div>
-                            <input type="number" className={modalStyles.creditAmountInput} min={0} max={999} value={perPackAmount} onChange={e => applyPerPackAmount(e.target.value)} disabled={saving} aria-label={copy.creditPerPackLabel} />
+                            <CreditAmountStepper
+                              value={perPackAmount}
+                              max={999}
+                              disabled={saving}
+                              ariaLabel={copy.creditPerPackLabel}
+                              onChange={applyPerPackAmount}
+                            />
                           </div>
 
                           {usablePacks.length > 0 ? <div className={modalStyles.creditPackList}>
@@ -333,18 +390,28 @@ export default function TicketResolveModal({
                             })}
                                       </span>
                                     </div>
-                                    <input type="number" className={modalStyles.creditAmountInput} min={0} max={remaining} value={creditAmounts[packId] ?? 0} onChange={e => updatePackAmount(packId, e.target.value, remaining)} disabled={saving} aria-label={interpolate(copy.creditPackAmountAria, {
-                          label
-                        })} />
+                                    <CreditAmountStepper
+                                      value={creditAmounts[packId] ?? 0}
+                                      max={remaining}
+                                      disabled={saving}
+                                      ariaLabel={interpolate(copy.creditPackAmountAria, { label })}
+                                      onChange={next => updatePackAmount(packId, next, remaining)}
+                                    />
                                   </div>;
                     })}
                             </div> : <div className={modalStyles.creditPackRow}>
                               <div className={modalStyles.creditPackMeta}>
                                 <span className={modalStyles.creditPackLabel}>{copy.consumeCreditLegacy}</span>
                               </div>
-                              <input type="number" className={modalStyles.creditAmountInput} min={0} max={creditBalance} value={creditAmounts.__legacy ?? 0} onChange={e => onCreditAmountsChange?.({
-                      __legacy: clampCreditAmount(e.target.value, creditBalance)
-                    })} disabled={saving} aria-label={copy.consumeCreditLegacy} />
+                              <CreditAmountStepper
+                                value={creditAmounts.__legacy ?? 0}
+                                max={creditBalance}
+                                disabled={saving}
+                                ariaLabel={copy.consumeCreditLegacy}
+                                onChange={next => onCreditAmountsChange?.({
+                                  __legacy: clampCreditAmount(next, creditBalance)
+                                })}
+                              />
                             </div>}
 
                           <div className={modalStyles.creditTotalRow}>
@@ -352,7 +419,7 @@ export default function TicketResolveModal({
                       count: plannedDebitTotal
                     })}
                           </div>
-                        </> : null}
+                        </div> : null}
                     </> : null}
                 </div> : null}
             </div>

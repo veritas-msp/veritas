@@ -205,7 +205,10 @@ function mapArticleRow(row, extras = {}) {
     helpfulYes: extras.helpfulYes ?? (Number(row.helpful_yes) || 0),
     helpfulNo: extras.helpfulNo ?? (Number(row.helpful_no) || 0),
     publicEnabled: extras.publicEnabled ?? row.public_enabled === true,
-    publicToken: extras.publicToken ?? row.public_token ?? null
+    publicToken: extras.publicToken ?? row.public_token ?? null,
+    deletedAt: row.deleted_at || null,
+    deletedByUserId: row.deleted_by_user_id || null,
+    isTrashed: Boolean(row.deleted_at)
   };
 }
 
@@ -325,10 +328,16 @@ export async function replaceArticleAudience(articleId, clientIds, contactIds, c
   return { clientIds: clients, contactIds: contacts, clientTagIds: clientTags, contactTagIds: contactTags };
 }
 
-export async function listKnowledgeArticles({ search, status, includeDrafts = false, folderId, category } = {}) {
+export async function listKnowledgeArticles({ search, status, includeDrafts = false, folderId, category, trashed = false } = {}) {
   await ensureKnowledgeArticlesSchema();
   const conditions = [];
   const values = [];
+  const trashOnly = trashed === true || trashed === "only" || folderId === "trash";
+  if (trashOnly) {
+    conditions.push(`a.deleted_at IS NOT NULL`);
+  } else {
+    conditions.push(`a.deleted_at IS NULL`);
+  }
   if (!includeDrafts) {
     conditions.push(`a.status = 'published'`);
     conditions.push(`a.visible_to_agents = TRUE`);
@@ -340,9 +349,9 @@ export async function listKnowledgeArticles({ search, status, includeDrafts = fa
   if (q) {
     values.push(`%${q.toLowerCase()}%`);
     conditions.push(`(lower(a.title) LIKE $${values.length} OR lower(COALESCE(a.content_plain, '')) LIKE $${values.length} OR lower(COALESCE(a.category, '')) LIKE $${values.length})`);
-  } else if (folderId === "root") {
+  } else if (!trashOnly && folderId === "root") {
     conditions.push(`a.folder_id IS NULL`);
-  } else if (isUuid(folderId)) {
+  } else if (!trashOnly && isUuid(folderId)) {
     values.push(folderId);
     conditions.push(`a.folder_id IN (
       WITH RECURSIVE descendants AS (
@@ -627,7 +636,56 @@ export async function restoreKnowledgeArticleRevision(articleId, revisionId, edi
   });
 }
 
-export async function deleteKnowledgeArticle(articleId) {
+export async function trashKnowledgeArticle(articleId, deletedByUserId = null) {
+  await ensureKnowledgeArticlesSchema();
+  const { rows } = await pool.query(
+    `UPDATE v_b_knowledge_articles
+        SET deleted_at = NOW(),
+            deleted_by_user_id = $2,
+            updated_at = NOW()
+      WHERE id = $1
+        AND deleted_at IS NULL
+      RETURNING id`,
+    [articleId, deletedByUserId || null]
+  );
+  return Boolean(rows[0]);
+}
+
+export async function trashKnowledgeArticles(ids, deletedByUserId = null) {
+  const unique = uniqueIds(ids, false).filter(id => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id));
+  let deleted = 0;
+  for (const id of unique) {
+    if (await trashKnowledgeArticle(id, deletedByUserId)) deleted += 1;
+  }
+  return { deleted, requested: unique.length };
+}
+
+export async function restoreKnowledgeArticleFromTrash(articleId) {
+  await ensureKnowledgeArticlesSchema();
+  const { rows } = await pool.query(
+    `UPDATE v_b_knowledge_articles
+        SET deleted_at = NULL,
+            deleted_by_user_id = NULL,
+            updated_at = NOW()
+      WHERE id = $1
+        AND deleted_at IS NOT NULL
+      RETURNING id`,
+    [articleId]
+  );
+  if (!rows[0]) return null;
+  return getKnowledgeArticle(articleId);
+}
+
+export async function restoreKnowledgeArticlesFromTrash(ids) {
+  const unique = uniqueIds(ids, false).filter(id => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id));
+  let restored = 0;
+  for (const id of unique) {
+    if (await restoreKnowledgeArticleFromTrash(id)) restored += 1;
+  }
+  return { restored, requested: unique.length };
+}
+
+export async function permanentlyDeleteKnowledgeArticle(articleId) {
   await ensureKnowledgeArticlesSchema();
   const assets = await pool.query(
     `SELECT stored_name FROM v_b_knowledge_article_assets WHERE article_id = $1`,
@@ -646,13 +704,22 @@ export async function deleteKnowledgeArticle(articleId) {
   return true;
 }
 
-export async function deleteKnowledgeArticles(ids) {
+export async function permanentlyDeleteKnowledgeArticles(ids) {
   const unique = uniqueIds(ids, false).filter(id => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id));
   let deleted = 0;
   for (const id of unique) {
-    if (await deleteKnowledgeArticle(id)) deleted += 1;
+    if (await permanentlyDeleteKnowledgeArticle(id)) deleted += 1;
   }
   return { deleted, requested: unique.length };
+}
+
+/** Soft-delete (trash). Prefer trashKnowledgeArticle; kept for older call sites. */
+export async function deleteKnowledgeArticle(articleId, deletedByUserId = null) {
+  return trashKnowledgeArticle(articleId, deletedByUserId);
+}
+
+export async function deleteKnowledgeArticles(ids, deletedByUserId = null) {
+  return trashKnowledgeArticles(ids, deletedByUserId);
 }
 
 export async function addKnowledgeAsset({ articleId, fileName, storedName, mimeType, sizeBytes, uploadedBy }) {
@@ -787,7 +854,7 @@ export function portalVisibilitySql(clientAlias = "a") {
 export async function listPortalKnowledgeArticles(clientId, contactId, { search, folderId, category, favoritesOnly } = {}) {
   await ensureKnowledgeArticlesSchema();
   const values = [Number(clientId), contactId != null ? Number(contactId) : null];
-  const conditions = [`a.status = 'published'`, portalVisibilitySql("a")];
+  const conditions = [`a.status = 'published'`, `a.deleted_at IS NULL`, portalVisibilitySql("a")];
   const q = String(search || "").trim();
   if (q) {
     values.push(`%${q.toLowerCase()}%`);
@@ -837,6 +904,7 @@ export async function getPortalKnowledgeArticle(clientId, contactId, articleId, 
        FROM v_b_knowledge_articles a
       WHERE a.id = $3
         AND a.status = 'published'
+        AND a.deleted_at IS NULL
         AND ${portalVisibilitySql("a")}`,
     params
   );
@@ -922,7 +990,8 @@ export async function getPublicKnowledgeArticle(token) {
        FROM v_b_knowledge_articles a
       WHERE a.public_token = $1
         AND a.public_enabled = TRUE
-        AND a.status = 'published'`,
+        AND a.status = 'published'
+        AND a.deleted_at IS NULL`,
     [value]
   );
   const row = rows[0];
@@ -947,7 +1016,8 @@ export async function getPublicKnowledgeAsset(token, assetId) {
        FROM v_b_knowledge_articles a
       WHERE a.public_token = $1
         AND a.public_enabled = TRUE
-        AND a.status = 'published'`,
+        AND a.status = 'published'
+        AND a.deleted_at IS NULL`,
     [value]
   );
   const articleId = rows[0]?.id;

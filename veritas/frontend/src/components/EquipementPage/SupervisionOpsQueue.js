@@ -1,11 +1,15 @@
 import { Icon } from "@iconify/react";
 import { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
-import { FaTimes } from "react-icons/fa";
+import { FaChevronLeft, FaChevronRight, FaTimes } from "react-icons/fa";
 import MspEmptyState from "../Misc/MspEmptyState/MspEmptyState";
 import SmartTooltip from "../SmartTooltip";
+import { formatPageInfo } from "../../i18n/commonI18n";
 import { interpolate } from "../../i18n/translate";
+import { useAppLocale } from "../../hooks/useAppGeneralSettings";
 import { useCommonCopy } from "../../hooks/useCommonCopy";
+import { useDefaultPageSize } from "../../hooks/useDefaultPageSize";
+import layout from "../EnterprisesPage/EnterprisesPage.module.css";
 import styles from "./SupervisionOpsQueue.module.css";
 
 function toneClass(tone, severity) {
@@ -326,8 +330,12 @@ export default function SupervisionOpsQueue({
   showDomain = true
 }) {
   const columns = copy.columns || {};
+  const common = useCommonCopy();
+  const locale = useAppLocale();
   const [sortKey, setSortKey] = useState(null);
   const [sortDir, setSortDir] = useState("asc");
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useDefaultPageSize();
   const [createItem, setCreateItem] = useState(null);
   const closeCreateModal = () => setCreateItem(null);
   const pickCreate = (handler, item) => {
@@ -395,6 +403,17 @@ export default function SupervisionOpsQueue({
       return cmp * factor;
     });
   }, [items, sortKey, sortDir]);
+  const totalPages = Math.max(1, Math.ceil(sortedItems.length / pageSize) || 1);
+  const pagedItems = useMemo(() => {
+    const start = (currentPage - 1) * pageSize;
+    return sortedItems.slice(start, start + pageSize);
+  }, [sortedItems, currentPage, pageSize]);
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, severityFilter, domainFilter, workflowFilter, sortKey, sortDir, pageSize]);
+  useEffect(() => {
+    if (currentPage > totalPages) setCurrentPage(totalPages);
+  }, [currentPage, totalPages]);
   const sortAriaFor = label => interpolate(copy.sortBy || "Trier par {label}", {
     label
   });
@@ -473,7 +492,8 @@ export default function SupervisionOpsQueue({
 
       {items.length === 0 ? <div className={styles.emptyWrap} data-guide="supervision-queue">
           <MspEmptyState className={styles.emptyStateFill} icon="mdi:sleep" title={copy.emptyTitle} text={copy.emptyText} />
-        </div> : <div className={styles.tableWrap} data-guide="supervision-queue">
+        </div> : <>
+        <div className={styles.tableWrap} data-guide="supervision-queue">
           <table className={styles.table}>
             <colgroup>
               <col className={styles.colSev} />
@@ -498,7 +518,7 @@ export default function SupervisionOpsQueue({
               </tr>
             </thead>
             <tbody>
-              {sortedItems.map(item => {
+              {pagedItems.map(item => {
               const wf = item.workflowStatus || "open";
               const busy = busyId === item.id;
               const domainLabel = showDomain ? copy.domains?.[item.domain] || item.domain : null;
@@ -561,7 +581,34 @@ export default function SupervisionOpsQueue({
             })}
             </tbody>
           </table>
-        </div>}
+        </div>
+        {sortedItems.length > 0 ? <div className={`${layout.pagination} ${styles.paginationBar}`}>
+            <div className={layout.paginationLeft}>
+              <span className={layout.paginationLabel}>{common.perPage}</span>
+              <select className={layout.paginationSelect} value={pageSize} onChange={e => setPageSize(Number(e.target.value))}>
+                <option value={10}>10</option>
+                <option value={25}>25</option>
+                <option value={50}>50</option>
+                <option value={100}>100</option>
+              </select>
+            </div>
+            <div className={layout.paginationRight}>
+              <SmartTooltip content={common.prevPage}>
+                <button type="button" className={layout.pageBtn} onClick={() => setCurrentPage(p => Math.max(1, p - 1))} disabled={currentPage <= 1} aria-label={common.prevPage}>
+                  <FaChevronLeft />
+                </button>
+              </SmartTooltip>
+              <span className={layout.paginationInfo}>
+                {formatPageInfo(locale, currentPage, totalPages)}
+              </span>
+              <SmartTooltip content={common.nextPage}>
+                <button type="button" className={layout.pageBtn} onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))} disabled={currentPage >= totalPages} aria-label={common.nextPage}>
+                  <FaChevronRight />
+                </button>
+              </SmartTooltip>
+            </div>
+          </div> : null}
+        </>}
     </div>
     {createItem ? <RemediationChoiceModal item={createItem} copy={copy} onClose={closeCreateModal} onSupport={item => pickCreate(onTicketSupport, item)} onPresta={item => pickCreate(onTicketPresta, item)} onPlan={item => pickCreate(onPlanEvent, item)} /> : null}
   </>;

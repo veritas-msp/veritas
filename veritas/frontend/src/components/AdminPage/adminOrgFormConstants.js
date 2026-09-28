@@ -20,7 +20,8 @@ export function buildDefaultAgentDraft(defaultProfile = "") {
     username: "",
     password: "",
     password2: "",
-    profile: defaultProfile
+    profile: defaultProfile,
+    profiles: defaultProfile ? [defaultProfile] : []
   };
 }
 export const AGENT_EDIT_MFA_SECTION = {
@@ -31,13 +32,21 @@ export const AGENT_EDIT_MFA_SECTION = {
 };
 export const AGENT_EDIT_FORM_SECTIONS = [...AGENT_FORM_SECTIONS, AGENT_EDIT_MFA_SECTION];
 export function buildAgentDraftFromUser(user = {}) {
+  const profiles = Array.isArray(user.profiles) && user.profiles.length
+    ? [...new Set(user.profiles.map(p => String(p || "").trim()).filter(Boolean))]
+    : user.profile
+      ? [String(user.profile)]
+      : [];
+  const active = String(user.profile || "").trim() || profiles[0] || "";
+  if (active && !profiles.includes(active)) profiles.unshift(active);
   return {
     id: user.id,
     email: user.email || "",
     username: user.username || "",
     password: "",
     password2: "",
-    profile: user.profile || "",
+    profile: active,
+    profiles,
     is_active: user.is_active !== false,
     role: user.role || "",
     mfa_enabled: !!user.mfa_enabled,

@@ -12,7 +12,12 @@ function normalizeLabelKey(value) {
   return String(value || "").toLowerCase().replace(/[-_]/g, " ").replace(/\s+/g, " ").trim();
 }
 function isGenericMailinblackLabel(value) {
-  return GENERIC_MAILINBLACK_LABELS.has(normalizeLabelKey(value));
+  const key = normalizeLabelKey(value);
+  if (!key) return true;
+  if (GENERIC_MAILINBLACK_LABELS.has(key)) return true;
+  if (/^tenant mailinblack(?:\s+\d+)?$/.test(key)) return true;
+  if (/^mailinblack tenant(?:\s+\d+)?$/.test(key)) return true;
+  return false;
 }
 function resolveAntispamProductName(providerId, provider) {
   if (providerId === "mailinblack") {
@@ -57,6 +62,7 @@ export function getAntispamSolutionModeLabel(solution) {
 }
 function toLicenseNumber(value) {
   if (value == null || value === "") return null;
+  if (Array.isArray(value)) return value.length > 0 ? value.length : null;
   const parsed = Number(value);
   return Number.isFinite(parsed) ? parsed : null;
 }
@@ -141,8 +147,9 @@ function resolveAntispamLicenseUsed(item) {
   if (Array.isArray(users) && users.length) {
     const protectedCount = users.filter(user => user?.status === "Protected" || user?.protected === true).length;
     if (protectedCount > 0) return protectedCount;
+    return users.length;
   }
-  return null;
+  return toLicenseNumber(item?.syncData?.dashboard?.sections?.users?.total ?? item?.utilisateursProteges);
 }
 export function normalizeAntispamItem(item) {
   if (!item) return null;
@@ -165,7 +172,7 @@ export function normalizeAntispamItem(item) {
     isManual: item.isManual ?? isManualEntry,
     mailinblackTenantId: item.mailinblackTenantId || null,
     expiration: resolveAntispamExpirationValue(item) || "",
-    utilisateursProteges: item.utilisateursProteges ?? item.utilisateurs ?? item.nombre_utilisateurs ?? null,
+    utilisateursProteges: toLicenseNumber(item.utilisateursProteges ?? item.utilisateurs ?? item.nombre_utilisateurs ?? item?.syncData?.dashboard?.sections?.users?.total ?? (Array.isArray(item?.syncData?.dashboard?.sections?.users?.items) ? item.syncData.dashboard.sections.users.items.length : null)),
     domainesSurveilles: resolveAntispamDomainCount(item),
     licencesTotales: resolveAntispamLicenseTotal(item),
     licencesUtilisees: resolveAntispamLicenseUsed(item)
@@ -350,11 +357,11 @@ export function extractAntispamSolutionsFromModules(modulesData) {
   return [];
 }
 function buildConfiguredDedupeKey(item) {
-  if (item.customerId) {
-    return `api:${item.customerId}|${item.mappingMode || "reseller"}|${item.mailinblackTenantId || ""}`;
-  }
-  if (item.mailinblackTenantId != null) {
+  if (item.mailinblackTenantId != null && item.mailinblackTenantId !== "") {
     return `tenant:${item.mailinblackTenantId}`;
+  }
+  if (item.customerId) {
+    return `api:${item.customerId}|${item.mappingMode || "reseller"}`;
   }
   if (item.id != null) return `id:${item.id}`;
   if (item.item_key) return `key:${item.item_key}`;
@@ -552,9 +559,29 @@ export async function syncAndPersistAntispamSolution(clientId, solution, {
     updatedPayload
   };
 }
-export function formatAntispamSyncPayload(customer, mappingMode, mailinblackTenantId, providerId = "mailinblack") {
+export function formatAntispamSyncPayload(customer, mappingMode, mailinblackTenantId, providerId = "mailinblack", extra = {}) {
   const provider = getAntispamProvider(providerId);
   const solutionLabel = provider?.solutionName || "Mailinblack Protect";
+  const dashboard = extra?.dashboard || null;
+  const usersSection = dashboard?.sections?.users;
+  const domainsSection = dashboard?.sections?.domains;
+  const licensesSection = dashboard?.sections?.licenses;
+  const usersCount = Number.isFinite(Number(usersSection?.total)) && Number(usersSection.total) > 0
+    ? Number(usersSection.total)
+    : Array.isArray(usersSection?.items) && usersSection.items.length
+      ? usersSection.items.length
+      : customer?.usersCount != null && Number.isFinite(Number(customer.usersCount))
+        ? Number(customer.usersCount)
+        : 0;
+  const domainsCount = Number.isFinite(Number(domainsSection?.total)) && Number(domainsSection.total) > 0
+    ? Number(domainsSection.total)
+    : Array.isArray(domainsSection?.items) && domainsSection.items.length
+      ? domainsSection.items.length
+      : customer?.domainsCount != null && Number.isFinite(Number(customer.domainsCount))
+        ? Number(customer.domainsCount)
+        : customer?.domain ? 1 : 0;
+  const licencesTotales = licensesSection?.summary?.total ?? customer?.licenseCount ?? customer?.raw?.licenseCount ?? null;
+  const licencesUtilisees = licensesSection?.summary?.used ?? (usersCount > 0 ? usersCount : null);
   return {
     solution: solutionLabel,
     providerId,
@@ -566,13 +593,14 @@ export function formatAntispamSyncPayload(customer, mappingMode, mailinblackTena
     customerId: customer?.id != null ? String(customer.id) : null,
     customerName: customer?.name || "",
     domain: customer?.domain || "",
-    utilisateursProteges: customer?.usersCount != null ? Number(customer.usersCount) : 0,
-    domainesSurveilles: customer?.domainsCount != null ? Number(customer.domainsCount) : 0,
-    licencesTotales: customer?.licenseCount ?? customer?.raw?.licenseCount ?? null,
-    licencesUtilisees: null,
+    utilisateursProteges: usersCount,
+    domainesSurveilles: domainsCount,
+    licencesTotales,
+    licencesUtilisees,
     expiration: toValidExpirationDate(customer?.expiration)?.toISOString() || "",
     syncData: {
       customer,
+      dashboard,
       status: customer?.status || null,
       lastSync: new Date().toISOString()
     }

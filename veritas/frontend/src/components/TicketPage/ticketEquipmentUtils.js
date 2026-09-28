@@ -103,7 +103,18 @@ export function mapClientEquipmentsForTicketLink(clientId, equipements = {}) {
     model: eq.model || "",
     serial: eq.serial || "",
     warranty: eq.expirationGarantie || "",
-    licenses: Array.isArray(eq.licences) ? eq.licences : []
+    licenses: Array.isArray(eq.licences) ? eq.licences : [],
+    // Connexions rapides (fiche équipement)
+    ip: eq.ip || "",
+    remoteAccessSolution: eq.remoteAccessSolution || "",
+    remoteAccessId: eq.remoteAccessId || eq.anydeskId || "",
+    anydeskId: eq.anydeskId || "",
+    quickConnect: eq.quickConnect || "",
+    adminUrl: eq.adminUrl || "",
+    stormshieldWanUrl: eq.stormshieldWanUrl || "",
+    manageable: Boolean(eq.manageable),
+    storageType: eq.storageType || "",
+    rawData: eq.rawData || null
   }));
 }
 export function serializeEquipmentInfo({

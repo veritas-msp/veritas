@@ -1,9 +1,15 @@
 import { Fragment, useEffect, useMemo, useState } from "react";
 import { Icon } from "@iconify/react";
+import { FaChevronLeft, FaChevronRight } from "react-icons/fa";
 import MspEmptyState from "../Misc/MspEmptyState/MspEmptyState";
 import SmartTooltip from "../SmartTooltip";
+import { formatPageInfo } from "../../i18n/commonI18n";
 import { interpolate } from "../../i18n/translate";
 import { fetchSupervisionAlertEvents, reopenSupervisionAlert } from "../../api/supervisionAlerts";
+import { useAppLocale } from "../../hooks/useAppGeneralSettings";
+import { useCommonCopy } from "../../hooks/useCommonCopy";
+import { useDefaultPageSize } from "../../hooks/useDefaultPageSize";
+import layout from "../EnterprisesPage/EnterprisesPage.module.css";
 import styles from "./SupervisionAlertHistory.module.css";
 
 const DOMAIN_ICONS = {
@@ -78,7 +84,13 @@ function historyAlertDisplay(alert) {
   const title = String(alert?.title || "").trim();
   const label = String(alert?.label || "").trim();
   const titleIsClient = Boolean(client && title.toLowerCase() === client);
-  const reason = label || (!titleIsClient ? title : "") || title || alert?.queueItemId || "—";
+  const isBare = value => /^(warning|critical|info)$/i.test(String(value || "").trim());
+  const preferTitle = Boolean(
+    title &&
+      !titleIsClient &&
+      (!label || isBare(label) || ((title.includes(" - ") || title.includes(" — ")) && !(label.includes(" - ") || label.includes(" — "))))
+  );
+  const reason = (preferTitle ? title : label) || (!titleIsClient ? title : "") || title || alert?.queueItemId || "—";
   const parts = [];
   if (title && title !== reason && !titleIsClient) parts.push(title);
   String(alert?.subtitle || "").split(" · ").forEach(bit => {
@@ -129,6 +141,8 @@ export default function SupervisionAlertHistory({
   copy,
   showDomain = true
 }) {
+  const common = useCommonCopy();
+  const locale = useAppLocale();
   const [expandedId, setExpandedId] = useState(null);
   const [eventsByAlert, setEventsByAlert] = useState({});
   const [loadingEvents, setLoadingEvents] = useState(null);
@@ -137,6 +151,8 @@ export default function SupervisionAlertHistory({
   const hints = copy.actionHints || {};
   const [sortKey, setSortKey] = useState(null);
   const [sortDir, setSortDir] = useState("asc");
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useDefaultPageSize();
   const handleSort = column => {
     if (sortKey === column) {
       setSortDir(prev => prev === "asc" ? "desc" : "asc");
@@ -188,6 +204,17 @@ export default function SupervisionAlertHistory({
       return cmp * factor;
     });
   }, [alerts, sortKey, sortDir]);
+  const totalPages = Math.max(1, Math.ceil(sortedAlerts.length / pageSize) || 1);
+  const pagedAlerts = useMemo(() => {
+    const start = (currentPage - 1) * pageSize;
+    return sortedAlerts.slice(start, start + pageSize);
+  }, [sortedAlerts, currentPage, pageSize]);
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, domainFilter, statusFilter, sortKey, sortDir, pageSize]);
+  useEffect(() => {
+    if (currentPage > totalPages) setCurrentPage(totalPages);
+  }, [currentPage, totalPages]);
   const sortAriaFor = label => interpolate(copy.sortBy || "Trier par {label}", {
     label
   });
@@ -291,7 +318,8 @@ export default function SupervisionAlertHistory({
 
       {loading ? <div className={styles.loading}>{copy.loading}</div> : alerts.length === 0 ? <div className={styles.emptyWrap}>
           <MspEmptyState className={styles.emptyStateFill} icon="mdi:history" title={copy.emptyTitle} text={copy.emptyText} />
-        </div> : <div className={styles.tableWrap}>
+        </div> : <>
+        <div className={styles.tableWrap}>
           <table className={styles.table}>
             <colgroup>
               <col className={styles.colSev} />
@@ -314,7 +342,7 @@ export default function SupervisionAlertHistory({
               </tr>
             </thead>
             <tbody>
-              {sortedAlerts.map(alert => {
+              {pagedAlerts.map(alert => {
               const open = expandedId === alert.id;
               const events = eventsByAlert[alert.id] || [];
               const domainLabel = showDomain ? copy.domains?.[alert.domain] || alert.domain : null;
@@ -388,6 +416,33 @@ export default function SupervisionAlertHistory({
             })}
             </tbody>
           </table>
-        </div>}
+        </div>
+        {sortedAlerts.length > 0 ? <div className={`${layout.pagination} ${styles.paginationBar}`}>
+            <div className={layout.paginationLeft}>
+              <span className={layout.paginationLabel}>{common.perPage}</span>
+              <select className={layout.paginationSelect} value={pageSize} onChange={e => setPageSize(Number(e.target.value))}>
+                <option value={10}>10</option>
+                <option value={25}>25</option>
+                <option value={50}>50</option>
+                <option value={100}>100</option>
+              </select>
+            </div>
+            <div className={layout.paginationRight}>
+              <SmartTooltip content={common.prevPage}>
+                <button type="button" className={layout.pageBtn} onClick={() => setCurrentPage(p => Math.max(1, p - 1))} disabled={currentPage <= 1} aria-label={common.prevPage}>
+                  <FaChevronLeft />
+                </button>
+              </SmartTooltip>
+              <span className={layout.paginationInfo}>
+                {formatPageInfo(locale, currentPage, totalPages)}
+              </span>
+              <SmartTooltip content={common.nextPage}>
+                <button type="button" className={layout.pageBtn} onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))} disabled={currentPage >= totalPages} aria-label={common.nextPage}>
+                  <FaChevronRight />
+                </button>
+              </SmartTooltip>
+            </div>
+          </div> : null}
+        </>}
     </div>;
 }

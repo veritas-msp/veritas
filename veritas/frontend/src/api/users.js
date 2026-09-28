@@ -47,10 +47,18 @@ function buildUserUpdatePayload(user) {
   const email = String(user?.email ?? "").trim();
   const profile = String(user?.profile ?? "").trim();
   const role = String(user?.role ?? "").trim();
+  const profiles = Array.isArray(user?.profiles)
+    ? [...new Set(user.profiles.map(p => String(p || "").trim()).filter(Boolean))]
+    : null;
   if (username) payload.username = username;
   if (email) payload.email = email;
   if (profile) payload.profile = profile;
   if (role) payload.role = role;
+  if (profiles?.length) {
+    const list = [...profiles];
+    if (profile && !list.includes(profile)) list.unshift(profile);
+    payload.profiles = list;
+  }
   return payload;
 }
 async function readApiError(res, fallbackMessage) {
@@ -67,6 +75,7 @@ export const createUser = async ({
   username,
   password,
   profile,
+  profiles,
   is_active
 }) => {
   const payload = {
@@ -77,6 +86,10 @@ export const createUser = async ({
   };
   const trimmedUsername = String(username ?? "").trim();
   if (trimmedUsername) payload.username = trimmedUsername;
+  const profileList = Array.isArray(profiles)
+    ? [...new Set(profiles.map(p => String(p || "").trim()).filter(Boolean))]
+    : [];
+  if (profileList.length) payload.profiles = profileList;
   const res = await fetch(BASE_URL, {
     method: "POST",
     headers: jsonHeaders,
@@ -215,7 +228,21 @@ export const clearUserAvatar = async () => {
   return await res.json();
 };
 
-export const impersonateUser = async userId => {
+export const switchActiveProfile = async profile => {
+  const res = await fetch(`${BASE_URL}/me/active-profile`, {
+    method: "POST",
+    headers: jsonHeaders,
+    credentials: "include",
+    body: JSON.stringify({
+      profile
+    })
+  });
+  if (!res.ok) {
+    throw new Error(await readApiError(res, "Unable to switch profile"));
+  }
+  return await res.json();
+};
+
   const res = await fetch(`${API_BASE_URL}/auth/impersonate/users/${userId}`, {
     method: "POST",
     headers: jsonHeaders,

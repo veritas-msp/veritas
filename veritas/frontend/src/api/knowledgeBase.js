@@ -10,12 +10,13 @@ async function handleJsonResponse(response, fallbackMessage) {
   return data;
 }
 
-export async function fetchKnowledgeArticles({ search, status, folderId, category } = {}) {
+export async function fetchKnowledgeArticles({ search, status, folderId, category, trashed } = {}) {
   const params = new URLSearchParams();
   if (search) params.set("search", search);
   if (status) params.set("status", status);
   if (folderId) params.set("folderId", folderId);
   if (category) params.set("category", category);
+  if (trashed) params.set("trashed", trashed === true ? "only" : String(trashed));
   const query = params.toString();
   const response = await fetch(`${BASE}${query ? `?${query}` : ""}`, { credentials: "include" });
   const data = await handleJsonResponse(response, "Error loading articles.");
@@ -142,6 +143,42 @@ export async function deleteKnowledgeArticles(ids) {
     body: JSON.stringify({ ids })
   });
   return handleJsonResponse(response, "Error deleting articles.");
+}
+
+export async function restoreKnowledgeArticleFromTrash(id) {
+  const response = await fetch(`${BASE}/${id}/restore`, {
+    method: "POST",
+    credentials: "include"
+  });
+  return handleJsonResponse(response, "Error restoring article.");
+}
+
+export async function restoreKnowledgeArticlesFromTrash(ids) {
+  const response = await fetch(`${BASE}/bulk-restore`, {
+    method: "POST",
+    credentials: "include",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ ids })
+  });
+  return handleJsonResponse(response, "Error restoring articles.");
+}
+
+export async function permanentlyDeleteKnowledgeArticle(id) {
+  const response = await fetch(`${BASE}/${id}/permanent`, {
+    method: "DELETE",
+    credentials: "include"
+  });
+  await handleJsonResponse(response, "Error permanently deleting article.");
+}
+
+export async function permanentlyDeleteKnowledgeArticles(ids) {
+  const response = await fetch(`${BASE}/bulk-purge`, {
+    method: "POST",
+    credentials: "include",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ ids })
+  });
+  return handleJsonResponse(response, "Error permanently deleting articles.");
 }
 
 export async function moveKnowledgeArticles(ids, folderId) {

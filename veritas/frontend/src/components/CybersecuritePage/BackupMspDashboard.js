@@ -1,10 +1,83 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Icon } from "@iconify/react";
 import { FaChevronLeft, FaChevronRight } from "react-icons/fa";
+import { toast } from "react-toastify";
+import API_BASE_URL from "../../config";
 import { useAppFormatters } from "../../hooks/useAppGeneralSettings";
 import MspEmptyState from "../Misc/MspEmptyState/MspEmptyState";
+import { isBackupJobMapped } from "./backupJobStatusUtils";
 import styles from "./AntivirusMspDashboard.module.css";
 import { buildBackupFleetFromClients, buildBackupFleetStats, buildBackupInstanceFleetFromClients, buildBackupInstanceFleetStats, filterBackupFleetRows, sortBackupFleetRows } from "../EquipementPage/backupMspUtils";
+
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+function isUuid(value) {
+  return UUID_RE.test(String(value || "").trim());
+}
+
+function resolveJobSyncTarget(row) {
+  const raw = row?.raw || row || {};
+  const hycuUuid = row?.hycu_job_uuid || raw.hycu_job_uuid || raw.hycuMapping?.hycu_job_uuid || row?.hycuMapping?.hycu_job_uuid;
+  if (hycuUuid && row?.clientId != null && isUuid(row.id)) {
+    return {
+      type: "hycu",
+      clientId: row.clientId,
+      jobIds: [row.id]
+    };
+  }
+  const mapping = row?.checkmkMapping || raw.checkmkMapping || null;
+  const host = mapping?.checkmk_host_name || raw.checkmk_host_name || null;
+  const service = mapping?.checkmk_service_name || raw.checkmk_service_name || null;
+  const site = mapping?.checkmk_site || raw.checkmk_site || null;
+  if ((host || service) && row?.clientId != null) {
+    const payload = {
+      type: "checkmk",
+      clientId: row.clientId,
+      hostName: host || undefined,
+      site: site || undefined
+    };
+    if (isUuid(row.id)) payload.jobIds = [row.id];
+    return payload;
+  }
+  return null;
+}
+
+async function syncCheckmkSaveJobs(payload = {}) {
+  const res = await fetch(`${API_BASE_URL}/checkmk/save-jobs/sync`, {
+    method: "POST",
+    credentials: "include",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify(payload)
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.error || "Sync failed");
+  return data;
+}
+
+async function syncHycuSaveJobs(payload = {}) {
+  const res = await fetch(`${API_BASE_URL}/hycu/save-jobs/sync`, {
+    method: "POST",
+    credentials: "include",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify(payload)
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.error || "HYCU sync failed");
+  return data;
+}
+
+async function fetchCheckmkLastSync() {
+  const res = await fetch(`${API_BASE_URL}/checkmk/save-jobs/last-sync`, {
+    credentials: "include"
+  });
+  if (!res.ok) return null;
+  const data = await res.json().catch(() => ({}));
+  return data.lastSync || null;
+}
 
 function KpiCard({
   icon,
@@ -71,10 +144,15 @@ function JobTableRow({
   row,
   onOpenClient,
   getStatusMeta,
-  formatDateTime
+  formatDateTime,
+  syncTarget,
+  syncing,
+  onSyncJob,
+  syncLabels
 }) {
   const statusMeta = getStatusMeta?.(row.status) || {};
   const dotColor = statusMeta.tone === "bad" ? "#dc2626" : statusMeta.tone === "warn" ? "#d97706" : statusMeta.tone === "good" ? "#16a34a" : "#2b5fab";
+  const canSync = Boolean(syncTarget);
   return <tr>
       <td>
         <span className={styles.statusDot} style={{
@@ -98,6 +176,18 @@ function JobTableRow({
       </td>
       <td className={styles.cellMuted}>{row.server || "-"}</td>
       <td className={styles.cellMuted}>{formatDateTime(row.lastBackup)}</td>
+      <td>
+        <button
+          type="button"
+          className={styles.rowSyncBtn}
+          onClick={() => onSyncJob?.(row)}
+          disabled={!canSync || syncing}
+          title={canSync ? syncLabels.syncJob : syncLabels.syncUnavailable}
+          aria-label={canSync ? syncLabels.syncJobAria : syncLabels.syncUnavailable}
+        >
+          <Icon icon={syncing ? "mdi:loading" : "mdi:sync"} className={syncing ? styles.spin : undefined} aria-hidden />
+        </button>
+      </td>
     </tr>;
 }
 
@@ -137,7 +227,10 @@ export default function BackupMspDashboard({
   copy,
   clients = [],
   loading = false,
-  onOpenClient
+  onOpenClient,
+  onRefresh,
+  onSync,
+  syncing = false
 }) {
   const {
     formatDateTime
@@ -151,7 +244,12 @@ export default function BackupMspDashboard({
   const [sortBy, setSortBy] = useState("clientName");
   const [sortDirection, setSortDirection] = useState("asc");
   const [currentPage, setCurrentPage] = useState(1);
-  const [pageSize, setPageSize] = useState(10);
+  const [pageSize, setPageSize] = useState(50);
+  const [jobsLastSyncDate, setJobsLastSyncDate] = useState(null);
+  const [syncingAll, setSyncingAll] = useState(false);
+  const [syncingJobId, setSyncingJobId] = useState(null);
+  const prevSyncingRef = useRef(false);
+  const fleetSyncing = Boolean(onSync ? syncing : syncingAll);
   const isJobsView = view === "jobs";
   const jobRows = useMemo(() => buildBackupFleetFromClients(clients), [clients]);
   const instanceRows = useMemo(() => buildBackupInstanceFleetFromClients(clients), [clients]);
@@ -176,12 +274,41 @@ export default function BackupMspDashboard({
     const start = (currentPage - 1) * pageSize;
     return activeRows.slice(start, start + pageSize);
   }, [activeRows, currentPage, pageSize]);
+  const mappedJobsCount = useMemo(
+    () => jobRows.filter(row => row.isMapped || isBackupJobMapped(row.raw || row)).length,
+    [jobRows]
+  );
+
+  useEffect(() => {
+    let cancelled = false;
+    fetchCheckmkLastSync()
+      .then(lastSync => {
+        if (!cancelled && lastSync) setJobsLastSyncDate(lastSync);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (prevSyncingRef.current && !fleetSyncing) {
+      fetchCheckmkLastSync()
+        .then(lastSync => {
+          if (lastSync) setJobsLastSyncDate(lastSync);
+        })
+        .catch(() => {});
+    }
+    prevSyncingRef.current = fleetSyncing;
+  }, [fleetSyncing]);
+
   useEffect(() => {
     setCurrentPage(1);
   }, [search, statusFilter, sortBy, sortDirection, pageSize, view, instanceFilter]);
   useEffect(() => {
     setCurrentPage(page => Math.min(page, totalPages));
   }, [totalPages]);
+
   const handleSort = column => {
     if (sortBy === column) {
       setSortDirection(prev => prev === "asc" ? "desc" : "asc");
@@ -216,10 +343,83 @@ export default function BackupMspDashboard({
     setSortBy("clientName");
     setSortDirection("asc");
   };
+
+  const refreshClients = useCallback(async () => {
+    if (typeof onRefresh === "function") {
+      await onRefresh();
+    }
+  }, [onRefresh]);
+
+  const handleSyncAll = useCallback(async () => {
+    if (onSync) {
+      onSync();
+      return;
+    }
+    if (syncingAll) return;
+    setSyncingAll(true);
+    try {
+      const data = await syncCheckmkSaveJobs({});
+      if (data.lastSync) setJobsLastSyncDate(data.lastSync);
+      toast.success(
+        data.message && data.updated != null
+          ? `${data.message} (${data.updated})`
+          : backup?.syncDone || "OK"
+      );
+      await refreshClients();
+    } catch (err) {
+      toast.error(err?.message || backup?.syncError || "Error");
+    } finally {
+      setSyncingAll(false);
+    }
+  }, [onSync, syncingAll, backup, refreshClients]);
+
+  const handleSyncJob = useCallback(async row => {
+    const target = resolveJobSyncTarget(row);
+    if (!target || syncingJobId || fleetSyncing) return;
+    setSyncingJobId(row.id);
+    try {
+      let data;
+      if (target.type === "hycu") {
+        data = await syncHycuSaveJobs({
+          clientId: target.clientId,
+          jobIds: target.jobIds
+        });
+      } else {
+        data = await syncCheckmkSaveJobs({
+          clientId: target.clientId,
+          hostName: target.hostName,
+          site: target.site,
+          jobIds: target.jobIds
+        });
+      }
+      if (data?.lastSync) setJobsLastSyncDate(data.lastSync);
+      toast.success(
+        data?.message && data?.updated != null
+          ? `${data.message} (${data.updated})`
+          : backup?.syncDone || "OK"
+      );
+      await refreshClients();
+    } catch (err) {
+      toast.error(err?.message || backup?.syncError || "Error");
+    } finally {
+      setSyncingJobId(null);
+    }
+  }, [syncingJobId, fleetSyncing, backup, refreshClients]);
+
   if (!msp || !backup) return null;
   const getStatusMeta = copy.getBackupStatusMeta;
   const emptyTitle = sourceRows.length === 0 ? isJobsView ? backup.emptyTitle : backup.emptyInstancesTitle : backup.noResultsTitle;
   const emptyText = sourceRows.length === 0 ? isJobsView ? backup.emptyText : backup.emptyInstancesText : backup.noResultsText;
+  const lastSyncLabel = jobsLastSyncDate
+    ? String(backup.lastSyncLabel || "Dernière sync : {date}").replace("{date}", formatDisplayDateTime(jobsLastSyncDate))
+    : backup.lastSyncNever || "Dernière sync : jamais";
+  const syncLabels = {
+    syncJob: backup.syncJob || "Synchroniser ce job",
+    syncJobAria: backup.syncJobAria || backup.syncJob || "Synchroniser ce job",
+    syncUnavailable: backup.syncUnavailable || "Job non mappé"
+  };
+  const syncAllDisabled = fleetSyncing || mappedJobsCount === 0;
+
   return <div className={styles.dashboard}>
       <div className={styles.kpiStrip}>
         {isJobsView ? <>
@@ -256,6 +456,21 @@ export default function BackupMspDashboard({
         {instanceFilter ? <button type="button" className={`${styles.filterChip} ${styles.filterChipActive}`} onClick={() => setInstanceFilter(null)} title={backup.clearInstanceFilter}>
             {instanceFilter.name} ×
           </button> : null}
+        <span className={styles.toolbarMeta} title={lastSyncLabel}>
+          {lastSyncLabel}
+        </span>
+        <div className={styles.toolbarActions}>
+          <button
+            type="button"
+            className={styles.iconBtn}
+            title={backup.syncJobs}
+            aria-label={backup.syncJobsAria || backup.syncJobs}
+            onClick={handleSyncAll}
+            disabled={syncAllDisabled}
+          >
+            <Icon icon={fleetSyncing ? "mdi:loading" : "mdi:sync"} className={fleetSyncing ? styles.spin : undefined} aria-hidden />
+          </button>
+        </div>
       </div>
 
       {loading ? <div className={styles.loadingState}>
@@ -274,6 +489,7 @@ export default function BackupMspDashboard({
                     <SortableHeader column="providerName" label={msp.table.solution} sortBy={sortBy} sortDirection={sortDirection} onSort={handleSort} />
                     <SortableHeader column="server" label={msp.table.server} sortBy={sortBy} sortDirection={sortDirection} onSort={handleSort} />
                     <SortableHeader column="lastBackup" label={msp.table.lastBackup} sortBy={sortBy} sortDirection={sortDirection} onSort={handleSort} />
+                    <th aria-label={backup.syncJob || "Sync"} />
                   </tr> : <tr>
                     <SortableHeader column="clientName" label={msp.table.enterprise} sortBy={sortBy} sortDirection={sortDirection} onSort={handleSort} />
                     <SortableHeader column="instanceName" label={msp.table.instance} sortBy={sortBy} sortDirection={sortDirection} onSort={handleSort} />
@@ -284,7 +500,17 @@ export default function BackupMspDashboard({
                   </tr>}
               </thead>
               <tbody>
-                {isJobsView ? paginatedRows.map(row => <JobTableRow key={row.id} row={row} onOpenClient={onOpenClient} getStatusMeta={getStatusMeta} formatDateTime={formatDisplayDateTime} />) : paginatedRows.map(row => <InstanceTableRow key={`${row.clientId}-${row.id}`} row={row} onOpen={openInstanceJobs} onOpenClient={onOpenClient} />)}
+                {isJobsView ? paginatedRows.map(row => <JobTableRow
+                  key={row.id}
+                  row={row}
+                  onOpenClient={onOpenClient}
+                  getStatusMeta={getStatusMeta}
+                  formatDateTime={formatDisplayDateTime}
+                  syncTarget={resolveJobSyncTarget(row)}
+                  syncing={syncingJobId === row.id || fleetSyncing}
+                  onSyncJob={handleSyncJob}
+                  syncLabels={syncLabels}
+                />) : paginatedRows.map(row => <InstanceTableRow key={`${row.clientId}-${row.id}`} row={row} onOpen={openInstanceJobs} onOpenClient={onOpenClient} />)}
               </tbody>
             </table>
           </div>

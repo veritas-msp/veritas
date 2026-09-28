@@ -10,11 +10,31 @@ import { filterBySite, filterCustomFamilyMap, matchesSiteFilter } from "../../ut
 import InfraBrick from "./InfraBrick";
 import { buildHoneycombEditorTiles, buildInfraBrickGroups, buildCustomFamilyBricks, buildHoneycombThemeClusters, EMPTY_HONEYCOMB_LAYOUT, HONEYCOMB_THEME_GROUPS, INFRA_BRICK_GROUPS, honeycombDisplayOffsetRem, isHoneycombFeatured } from "./infraHoneycombLayout";
 import useSystemFamilyExtensions from "../../hooks/useSystemFamilyExtensions";
-import { isSquareTileShape, tileShapeClassName } from "./tileShapes";
+import { isSquareTileShape, normalizeTileShape, tileShapeClassName, usesSvgTileStroke, getTileSvgPolygonPoints } from "./tileShapes";
 import shapeStyles from "./honeycombTileShapes.module.css";
 import styles from "./InfrastructureMap.module.css";
 function tileShapeClass(shape) {
   return shapeStyles[tileShapeClassName(shape)] || shapeStyles.shapeHexagon;
+}
+function TileStrokeSvg({
+  shape
+}) {
+  if (!usesSvgTileStroke(shape)) return null;
+  return <svg className={styles.hexStrokeSvg} viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden>
+      <polygon points={getTileSvgPolygonPoints(shape)} fill="var(--msp-surface, #fff)" stroke="currentColor" strokeWidth="1.25" strokeLinejoin="round" vectorEffect="non-scaling-stroke" />
+    </svg>;
+}
+function HexTileShell({
+  shape,
+  children,
+  className = ""
+}) {
+  const resolved = normalizeTileShape(shape);
+  const svgStroke = usesSvgTileStroke(resolved);
+  return <span className={`${styles.hexShape} ${svgStroke ? styles.hexShapeSvgStroke : ""} ${tileShapeClass(resolved)} ${className}`.trim()} aria-hidden>
+      <TileStrokeSvg shape={resolved} />
+      <span className={styles.hexInner}>{children}</span>
+    </span>;
 }
 function InfraHexNode({
   node,
@@ -31,20 +51,19 @@ function InfraHexNode({
   const isClear = hasData && !isAttention;
   const statusTooltip = isClear ? null : copy.getStatusLabel(node.status);
   const tooltipLines = [node.displayName || node.name, statusTooltip, node.subtitle, hasData ? copy.formatEquipmentCount(node.count) : null].filter(Boolean);
+  const shape = tileShapeProp || node.tileShape;
   return <SmartTooltip content={tooltipLines.join(" · ")} as="span">
       <button type="button" className={[styles.hexNode, isCustomFamily ? styles.hexNodeCustom : "", !hasData ? styles.hexNodeDisabled : "", isAttention ? styles.hexNodeAttention : "", isClear ? styles.hexNodeClear : ""].filter(Boolean).join(" ")} style={{
       "--hex-accent": meta.color,
       "--hex-soft": meta.soft
     }} onClick={() => onClick?.(node)} aria-label={`${node.displayName || node.name}${statusTooltip ? `, ${statusTooltip}` : ""}${node.count > 0 ? `, ${copy.formatEquipmentCount(node.count)}` : ""}`}>
-        <span className={`${styles.hexShape} ${tileShapeClass(tileShapeProp || node.tileShape)}`} aria-hidden>
-          <span className={styles.hexInner}>
-            <Icon icon={icon} className={styles.hexIcon} />
-            <span className={styles.hexName}>{node.displayName || node.name}</span>
-            {node.count > 0 && <span className={styles.infraItemCount} aria-hidden>
-                {node.count}
-              </span>}
-          </span>
-        </span>
+        <HexTileShell shape={shape}>
+          <Icon icon={icon} className={styles.hexIcon} />
+          <span className={styles.hexName}>{node.displayName || node.name}</span>
+          {node.count > 0 && <span className={styles.infraItemCount} aria-hidden>
+              {node.count}
+            </span>}
+        </HexTileShell>
       </button>
     </SmartTooltip>;
 }
@@ -204,12 +223,10 @@ function InfraPlaceholderHex({
     "--hex-accent": meta.color,
     "--hex-soft": meta.soft
   }} aria-hidden>
-      <span className={`${styles.hexShape} ${tileShapeClass(tileShape)}`}>
-        <span className={styles.hexInner}>
-          <Icon icon={resolvedIcon} className={styles.hexIcon} />
-          <span className={styles.hexName}>{resolvedLabel}</span>
-        </span>
-      </span>
+      <HexTileShell shape={tileShape}>
+        <Icon icon={resolvedIcon} className={styles.hexIcon} />
+        <span className={styles.hexName}>{resolvedLabel}</span>
+      </HexTileShell>
     </div>;
 }
 function InfraEmptyMap({

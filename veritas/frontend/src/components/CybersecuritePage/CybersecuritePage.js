@@ -28,6 +28,7 @@ import { buildAntivirusDetailNavigationPayload, syncAndPersistAntivirusSolution 
 import { buildBackupFleetFromClients } from "../EquipementPage/backupMspUtils";
 import { getCybersecuritePageCopy } from "./cybersecuritePageI18n";
 import { createTrackedAbortController } from "../../utils/pageLoadAbort";
+import API_BASE_URL from "../../config";
 const MODULE_TABS = ["antivirus", "antispam", "backup", "campaigns"];
 export default function CybersecuritePage({
   onNavigate,
@@ -79,7 +80,7 @@ export default function CybersecuritePage({
   const [antivirusSortBy, setAntivirusSortBy] = useState('expirationDate');
   const [antivirusSortOrder, setAntivirusSortOrder] = useState('asc');
   const [antivirusCurrentPage, setAntivirusCurrentPage] = useState(1);
-  const [antivirusPageSize, setAntivirusPageSize] = useState(10);
+  const [antivirusPageSize, setAntivirusPageSize] = useState(50);
   const selectTab = tabKey => {
     if (tabKey === "campaigns" && isCommunity) {
       if (editionLoaded) setCampaignProPromoOpen(true);
@@ -353,6 +354,53 @@ export default function CybersecuritePage({
   const antispamSyncTargets = useMemo(() => antispamData.filter(row => row.providerId === "mailinblack" && row.customerId && row.raw), [antispamData]);
   const syncAllFleet = async () => {
     if (syncingFleet) return;
+    if (activeTab === "backup") {
+      setSyncingFleet(true);
+      setSyncProgress(0);
+      setSyncStatus(pageCopy.sync.preparing);
+      try {
+        const res = await fetch(`${API_BASE_URL}/checkmk/save-jobs/sync`, {
+          method: "POST",
+          credentials: "include",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({})
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) {
+          throw new Error(data.error || pageCopy.sync.errorBackup);
+        }
+        setSyncStatus(pageCopy.sync.done);
+        toast.success(
+          data.message && data.updated != null
+            ? `${data.message} (${data.updated})`
+            : pageCopy.msp?.backup?.syncDone || pageCopy.sync.done
+        );
+        await loadClients({
+          withModules: true,
+          force: true,
+          skipCache: true
+        });
+      } catch (error) {
+        console.error("Error during backup fleet sync:", error);
+        if (mountedRef.current) {
+          toast.error(error?.message || pageCopy.sync.errorBackup);
+        }
+      } finally {
+        if (mountedRef.current) {
+          setSyncingFleet(false);
+          setSyncProgress(100);
+          setSyncStatus(pageCopy.sync.done);
+          setTimeout(() => {
+            if (!mountedRef.current) return;
+            setSyncProgress(0);
+            setSyncStatus("");
+          }, 1200);
+        }
+      }
+      return;
+    }
     const kind = activeTab === "antispam" ? "antispam" : "antivirus";
     const targets = kind === "antispam" ? antispamSyncTargets : antivirusSyncTargets;
     if (activeTab !== "antivirus" && activeTab !== "antispam") return;
@@ -714,8 +762,19 @@ export default function CybersecuritePage({
   const campaignIssues = isCommunity ? 0 : campaigns.filter(campaign => campaign.status === "suspendue").length;
   const heroSubtitle = syncingFleet && syncStatus ? syncStatus : loadingCyberData && clients.length === 0 ? pageCopy.heroRefreshing : activeTab === "antivirus" ? avIssues > 0 ? pageCopy.formatHeroIssues("antivirus", avIssues) : pageCopy.msp?.antivirus?.heroDescOk : activeTab === "antispam" ? asIssues > 0 ? pageCopy.formatHeroIssues("antispam", asIssues) : pageCopy.msp?.antispam?.heroDescOk : activeTab === "backup" ? backupIssues > 0 ? pageCopy.formatHeroIssues("backup", backupIssues) : pageCopy.msp?.backup?.heroDescOk : activeTab === "campaigns" ? campaignIssues > 0 ? pageCopy.formatCampaignHeroIssues(campaignIssues) : pageCopy.campaigns?.heroDescOk : pageCopy.subtitle;
   const heroActionsCopy = pageCopy.heroActions || {};
-  const showFleetSync = activeTab === "antivirus" || activeTab === "antispam";
-  const syncTooltip = syncingFleet && syncStatus ? syncStatus : activeTab === "antispam" ? heroActionsCopy.syncAntispam : heroActionsCopy.syncAntivirus;
+  const showFleetSync = activeTab === "antivirus" || activeTab === "antispam" || activeTab === "backup";
+  const syncTooltip = syncingFleet && syncStatus
+    ? syncStatus
+    : activeTab === "antispam"
+      ? heroActionsCopy.syncAntispam
+      : activeTab === "backup"
+        ? heroActionsCopy.syncBackup
+        : heroActionsCopy.syncAntivirus;
+  const syncAriaLabel = activeTab === "antispam"
+    ? heroActionsCopy.syncAntispamAria || heroActionsCopy.syncAntispam
+    : activeTab === "backup"
+      ? heroActionsCopy.syncBackupAria || heroActionsCopy.syncBackup
+      : heroActionsCopy.syncAntivirusAria || heroActionsCopy.syncAntivirus;
   const moduleTabs = (pageCopy.tabs || []).filter(tab => MODULE_TABS.includes(tab.key));
   return <div className={`${styles.mspPage} ${layout.page} msp-page-grid`}>
       <div className={styles.mspLayout}>
@@ -734,8 +793,8 @@ export default function CybersecuritePage({
             })}
               </nav>
               {showFleetSync ? <SmartTooltip content={syncTooltip}>
-                <button type="button" className={layout.iconBtn} onClick={syncAllFleet} disabled={syncingFleet} aria-label={activeTab === "antispam" ? heroActionsCopy.syncAntispamAria : heroActionsCopy.syncAntivirusAria} data-guide="cyber-sync">
-                  <Icon icon="mdi:cloud-sync-outline" className={syncingFleet ? styles.spinning : undefined} aria-hidden />
+                <button type="button" className={layout.iconBtn} onClick={syncAllFleet} disabled={syncingFleet} aria-label={syncAriaLabel} data-guide="cyber-sync">
+                  <Icon icon={syncingFleet ? "mdi:loading" : "mdi:sync"} className={syncingFleet ? styles.spinning : undefined} aria-hidden />
                 </button>
               </SmartTooltip> : null}
             </>} />
@@ -743,17 +802,21 @@ export default function CybersecuritePage({
         <main className={`${styles.mspContent} ${styles.mspContentList}`}>
           <div className={`${layout.shell} ${layout.shellWide} ${layout.shellFull}`}>
           <div className={styles.tabContent} data-guide="cyber-dashboard">
-                {activeTab === "antivirus" ? <AntivirusMspDashboard copy={pageCopy} clients={clients} loading={loadingCyberData} onOpenSolution={handleViewAntivirusSolution} onOpenClient={handleOpenAntivirusClient} onSolutionsChanged={() => loadClients({
+                {activeTab === "antivirus" ? <AntivirusMspDashboard copy={pageCopy} clients={clients} loading={loadingCyberData} onOpenSolution={handleViewAntivirusSolution} onOpenClient={handleOpenAntivirusClient} onSync={syncAllFleet} syncing={syncingFleet} onSolutionsChanged={() => loadClients({
                   withModules: true,
                   force: true,
                   skipCache: true
                 })} /> : null}
-                {activeTab === "antispam" ? <AntispamMspDashboard copy={pageCopy} clients={clients} loading={loadingCyberData} onOpenSolution={handleViewAntispamSolution} onOpenClient={handleOpenAntivirusClient} onSolutionsChanged={() => loadClients({
+                {activeTab === "antispam" ? <AntispamMspDashboard copy={pageCopy} clients={clients} loading={loadingCyberData} onOpenSolution={handleViewAntispamSolution} onOpenClient={handleOpenAntivirusClient} onSync={syncAllFleet} syncing={syncingFleet} onSolutionsChanged={() => loadClients({
                   withModules: true,
                   force: true,
                   skipCache: true
                 })} /> : null}
-                {activeTab === "backup" ? <BackupMspDashboard copy={pageCopy} clients={clients} loading={loadingCyberData} onOpenClient={handleOpenAntivirusClient} /> : null}
+                {activeTab === "backup" ? <BackupMspDashboard copy={pageCopy} clients={clients} loading={loadingCyberData} onOpenClient={handleOpenAntivirusClient} onSync={syncAllFleet} syncing={syncingFleet} onRefresh={() => loadClients({
+                  withModules: true,
+                  force: true,
+                  skipCache: true
+                })} /> : null}
                 {activeTab === "campaigns" ? <CampaignsMspDashboard copy={pageCopy} campaigns={campaigns} loading={loadingCampaigns} onViewCampaign={handleViewCampaign} onOpenClient={handleOpenCampaignClient} onAddCampaign={openAddCampaign} onCampaignsChanged={async () => {
                   invalidateCampaignsCache();
                   await Promise.all([loadCampaigns({

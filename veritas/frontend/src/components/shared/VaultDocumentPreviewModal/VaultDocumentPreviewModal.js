@@ -2,6 +2,7 @@ import { createPortal } from "react-dom";
 import { Icon } from "@iconify/react";
 import { FaTimes } from "react-icons/fa";
 import { useTheme } from "../../../hooks/useTheme";
+import { repairFilenameEncoding } from "../../../utils/repairFilenameEncoding";
 import formStyles from "../../EnterprisesPage/EnterpriseFormModal.module.css";
 import styles from "./VaultDocumentPreviewModal.module.css";
 const IMAGE_MIMES = new Set(["image/jpeg", "image/png", "image/gif", "image/webp"]);
@@ -46,6 +47,7 @@ export default function VaultDocumentPreviewModal({
   const formatDate = copy?.formatDate ?? FALLBACK_COPY.formatDate;
   const formatSize = copy?.formatSize ?? FALLBACK_COPY.formatSize;
   if (!file) return null;
+  const fileName = repairFilenameEncoding(file.file_name);
   const isImage = IMAGE_MIMES.has(file.mime_type);
   const isPdf = file.mime_type === "application/pdf";
   const hasMediaPreview = isImage || isPdf;
@@ -57,10 +59,10 @@ export default function VaultDocumentPreviewModal({
         <div className={formStyles.accentBar} aria-hidden />
         <header className={styles.header}>
           <span id="vault-preview-title" className={styles.title}>
-            {file.file_name}
+            {fileName}
           </span>
           <div className={styles.headerActions}>
-            <a href={downloadUrl} download={file.file_name} className={styles.downloadLink}>
+            <a href={downloadUrl} download={fileName} className={styles.downloadLink}>
               <Icon icon="mdi:download-outline" aria-hidden /> {labels.download}
             </a>
             <button type="button" className={formStyles.closeBtn} onClick={onClose} aria-label={labels.closeAria}>
@@ -70,12 +72,12 @@ export default function VaultDocumentPreviewModal({
         </header>
 
         <div className={previewBodyClass}>
-          {isImage ? <img src={previewUrl} alt={file.file_name} className={styles.previewImage} /> : null}
-          {isPdf ? <iframe src={previewUrl} title={file.file_name} className={styles.previewPdf} /> : null}
+          {isImage ? <img src={previewUrl} alt={fileName} className={styles.previewImage} /> : null}
+          {isPdf ? <iframe src={previewUrl} title={fileName} className={styles.previewPdf} /> : null}
           {!hasMediaPreview ? <div className={styles.previewUnsupported}>
               <Icon icon="mdi:file-document-outline" className={styles.previewUnsupportedIcon} aria-hidden />
               <p>{labels.unsupported}</p>
-              <a href={downloadUrl} download={file.file_name} className={formStyles.primaryBtn}>
+              <a href={downloadUrl} download={fileName} className={formStyles.primaryBtn}>
                 <Icon icon="mdi:download-outline" aria-hidden /> {labels.download}
               </a>
             </div> : null}

@@ -5,6 +5,17 @@
  */
 export const PATCH_NOTES = [
   {
+    version: "1.0.38",
+    date: "2026-09-28",
+    highlights: [
+      "Centre de supervision : pagination Alertes/Historique et libellés d’alertes explicites (ex. Warning - Filesystem E:/).",
+      "Certificats SSL : le port des URL (ex. :7002) est respecté — plus de jours de renouvellement erronés.",
+      "Coffre-fort documentaire : accents correctement affichés dans les noms de fichiers.",
+      "Planning : le calendrier ne passe plus au-dessus de la barre de recherche au scroll.",
+      "Cybersécurité / Cloud IT & Services : 50 lignes par page par défaut ; multi-profils agents et améliorations tickets / cartographie."
+    ]
+  },
+  {
     version: "1.0.37",
     date: "2026-09-24",
     highlights: [

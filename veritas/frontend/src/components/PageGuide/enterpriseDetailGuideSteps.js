@@ -12,7 +12,8 @@ const STEP_CONFIG = [{
   handler: "expandContacts"
 }, {
   key: "infraMap",
-  target: '[data-guide="enterprise-infra-map"]'
+  target: '[data-guide="enterprise-infra-map"]',
+  handler: "showInfraMap"
 }, {
   key: "equipment",
   target: '[data-guide="enterprise-equipment"]'
@@ -22,10 +23,12 @@ const STEP_CONFIG = [{
   handler: "focusEquipmentStats"
 }, {
   key: "activity",
-  target: '[data-guide="enterprise-activity"]'
+  target: '[data-guide="enterprise-activity"]',
+  handler: "showActivity"
 }, {
   key: "vault",
-  target: '[data-guide="enterprise-vault"]'
+  target: '[data-guide="enterprise-vault"]',
+  handler: "showVault"
 }, {
   key: "sidebarNotes",
   target: '[data-guide="enterprise-sidebar-notes"]',
@@ -39,13 +42,19 @@ export function getEnterpriseDetailGuideSteps(handlers = {}, locale = "fr") {
     expandInfo = () => {},
     expandContacts = () => {},
     expandNotes = () => {},
-    focusEquipmentStats = () => {}
+    focusEquipmentStats = () => {},
+    showInfraMap = () => {},
+    showActivity = () => {},
+    showVault = () => {}
   } = handlers;
   const handlerMap = {
     expandInfo,
     expandContacts,
     expandNotes,
-    focusEquipmentStats
+    focusEquipmentStats,
+    showInfraMap,
+    showActivity,
+    showVault
   };
   const steps = getEnterpriseDetailCopy(locale).guide.steps;
   return STEP_CONFIG.map(({

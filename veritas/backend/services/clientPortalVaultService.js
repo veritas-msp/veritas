@@ -3,12 +3,13 @@ import path from "path";
 import { fileURLToPath } from "url";
 import { pool } from "../database/db.js";
 import { ensureVisibleToClientColumn, hasVisibleToClientColumn } from "../utils/clientFilesVisibility.js";
+import { repairStoredFilename } from "../utils/multerFilename.js";
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 export const CLIENT_FILES_UPLOAD_DIR = path.join(__dirname, "..", "uploads", "client-files");
 function mapPortalVaultFile(row) {
   return {
     id: row.id,
-    file_name: row.file_name,
+    file_name: repairStoredFilename(row.file_name),
     mime_type: row.mime_type,
     size_bytes: row.size_bytes,
     category: row.category,

@@ -86,6 +86,7 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  position: relative;
   width: 32px;
   height: 32px;
   padding: 0;
@@ -96,7 +97,7 @@
   cursor: pointer;
   font-size: 1.05rem;
   flex-shrink: 0;
-  transition: border-color 0.12s, color 0.12s, background 0.12s;
+  transition: border-color 0.12s, color 0.12s, background 0.12s, opacity 0.12s;
 }
 
 .embeddedTypeIconBtn:hover {
@@ -108,6 +109,50 @@
   border-color: rgba(43, 95, 171, 0.45);
   background: rgba(43, 95, 171, 0.1);
   color: var(--eq-accent, var(--msp-accent, #2b5fab));
+}
+
+.embeddedTypeIconBtnDimmed {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.embeddedTypeIconBtnHasAlerts {
+  position: relative;
+}
+
+.embeddedTypeIconBadge {
+  position: absolute;
+  top: -5px;
+  right: -5px;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  border-radius: 999px;
+  font-size: 0.62rem;
+  font-weight: 700;
+  line-height: 16px;
+  text-align: center;
+  color: #fff;
+  pointer-events: none;
+}
+
+.embeddedTypeIconBadgeCritical {
+  background: #dc2626;
+}
+
+.embeddedTypeIconBadgeWarning {
+  background: #d97706;
+}
+
+.embeddedMkAllHint {
+  margin-left: 0.35rem;
+  padding: 0.2rem 0.5rem;
+  border-radius: 999px;
+  font-size: 0.68rem;
+  font-weight: 600;
+  color: var(--eq-muted, #5c6b82);
+  background: var(--eq-surface-2, #f7f9fc);
+  white-space: nowrap;
 }
 
 .embeddedSearchWrap {

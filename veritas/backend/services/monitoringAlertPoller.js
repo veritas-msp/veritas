@@ -1,7 +1,7 @@
 import { canRunAutoSchemaMigrations } from "../utils/setupState.js";
 import { isCheckmkIntegrationEnabled } from "../utils/checkmkIntegrationStatus.js";
 import { getCheckmkMonitoringSettings } from "../utils/checkmkMonitoringSettings.js";
-import { runEquipmentMonitoringAlertScan } from "./equipmentMonitoringAlertScan.js";
+import { runCheckmkFleetSync } from "./checkmkFleetSync.js";
 
 const FIRST_RUN_DELAY_MS = 45 * 1000;
 const FALLBACK_TICK_MS = 5 * 60 * 1000;
@@ -41,11 +41,18 @@ async function runTick() {
     if (!(await isCheckmkIntegrationEnabled())) return;
     const mkSettings = await getCheckmkMonitoringSettings();
     nextDelay = mkSettings.syncIntervalMs || FALLBACK_TICK_MS;
-    if (mkSettings.syncSuspended || mkSettings.surveillanceSuspended) return;
-    const result = await runEquipmentMonitoringAlertScan();
-    if (result?.created > 0 || result?.resolved > 0) {
+    const result = await runCheckmkFleetSync({
+      trigger: "poller"
+    });
+    if (result?.skipped) {
+      if (result.reason && result.reason !== "sync_suspended" && result.reason !== "already_running") {
+        console.log(`[monitoring-alert-poller] skipped (${result.reason})`);
+      }
+      return;
+    }
+    if (result?.synced > 0 || result?.failed > 0 || result?.alertsCreated > 0 || result?.alertsResolved > 0) {
       console.log(
-        `[monitoring-alert-poller] evaluated=${result.evaluated} created=${result.created} resolved=${result.resolved}`
+        `[monitoring-alert-poller] synced=${result.synced} skipped=${result.skippedCount} failed=${result.failed} alerts+${result.alertsCreated}/-${result.alertsResolved}`
       );
     }
   } catch (err) {
@@ -62,5 +69,5 @@ export function startMonitoringAlertPoller() {
     runTick();
   }, FIRST_RUN_DELAY_MS);
   firstRunTimer.unref?.();
-  console.log("[monitoring-alert-poller] Started (interval from CheckMK admin settings).");
+  console.log("[monitoring-alert-poller] Started (CheckMK fleet sync + alerts, interval from admin settings).");
 }
