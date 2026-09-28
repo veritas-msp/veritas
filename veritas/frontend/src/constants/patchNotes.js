@@ -5,6 +5,13 @@
  */
 export const PATCH_NOTES = [
   {
+    version: "1.0.40",
+    date: "2026-09-28",
+    highlights: [
+      "Inventaire périphériques : recherche et filtre par famille (stockage, serveurs, etc.) dans le panneau latéral."
+    ]
+  },
+  {
     version: "1.0.39",
     date: "2026-09-28",
     highlights: [

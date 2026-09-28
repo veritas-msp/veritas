@@ -35,7 +35,7 @@ function compactSerial(value) {
   return String(value || "").toLowerCase().replace(/[\s\-_.]/g, "");
 }
 
-function searchBlob(item) {
+function searchBlob(item, locale) {
   const dataValues =
     item?.data && typeof item.data === "object" && !Array.isArray(item.data)
       ? Object.values(item.data)
@@ -45,7 +45,9 @@ function searchBlob(item) {
     item?.name,
     item?.clientName,
     item?.type,
+    item?.familyKey,
     item?.familyLabel,
+    typeLabel(item, locale),
     item?.ip,
     item?.serial,
     item?.mac,
@@ -59,17 +61,17 @@ function searchBlob(item) {
     .toLowerCase();
 }
 
-function matchesInventorySearch(item, query) {
+function matchesInventorySearch(item, query, locale) {
   const q = String(query || "").trim().toLowerCase();
   if (!q) return true;
-  if (searchBlob(item).includes(q)) return true;
+  if (searchBlob(item, locale).includes(q)) return true;
   const serial = compactSerial(item?.serial);
   const qSerial = compactSerial(q);
   return Boolean(qSerial && serial.includes(qSerial));
 }
 
-function itemMatchesInventoryFilters(item, { search, selectedClients, selectedTypes, selectedTags, statusFilter }, omit = null) {
-  if (omit !== "search" && search && !matchesInventorySearch(item, search)) return false;
+function itemMatchesInventoryFilters(item, { search, selectedClients, selectedTypes, selectedTags, statusFilter, locale }, omit = null) {
+  if (omit !== "search" && search && !matchesInventorySearch(item, search, locale)) return false;
   if (omit !== "clients" && selectedClients.size > 0 && !selectedClients.has(String(item.clientId))) return false;
   if (omit !== "types" && selectedTypes.size > 0 && !selectedTypes.has(item.type)) return false;
   if (omit !== "tags" && selectedTags.size > 0) {
@@ -352,6 +354,7 @@ export default function EquipmentInventoryPage({ onNavigate }) {
   const [clientFilterSearch, setClientFilterSearch] = useState("");
   const [selectedClients, setSelectedClients] = useState(() => new Set());
   const [selectedTypes, setSelectedTypes] = useState(() => new Set());
+  const [typeFilterSearch, setTypeFilterSearch] = useState("");
   const [selectedTags, setSelectedTags] = useState(() => new Set());
   const [tagFilterSearch, setTagFilterSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
@@ -418,9 +421,10 @@ export default function EquipmentInventoryPage({ onNavigate }) {
       selectedClients,
       selectedTypes,
       selectedTags,
-      statusFilter
+      statusFilter,
+      locale
     }),
-    [search, selectedClients, selectedTypes, selectedTags, statusFilter]
+    [search, selectedClients, selectedTypes, selectedTags, statusFilter, locale]
   );
 
   const statusCounts = useMemo(() => {
@@ -509,6 +513,16 @@ export default function EquipmentInventoryPage({ onNavigate }) {
       })
     );
   }, [items, filterState, selectedTypes, locale]);
+
+  const filteredTypesForPane = useMemo(() => {
+    const q = typeFilterSearch.trim().toLowerCase();
+    if (!q) return typeOptions;
+    return typeOptions.filter(opt => {
+      const name = String(opt.name || "").toLowerCase();
+      const id = String(opt.id || "").toLowerCase();
+      return name.includes(q) || id.includes(q);
+    });
+  }, [typeOptions, typeFilterSearch]);
 
   const tagOptions = useMemo(() => {
     const map = new Map();
@@ -737,6 +751,7 @@ export default function EquipmentInventoryPage({ onNavigate }) {
   const clearFilters = () => {
     setSearch("");
     setClientFilterSearch("");
+    setTypeFilterSearch("");
     setTagFilterSearch("");
     setSelectedClients(new Set());
     setSelectedTypes(new Set());
@@ -1055,11 +1070,33 @@ export default function EquipmentInventoryPage({ onNavigate }) {
                         </button>
                       ) : null}
                     </div>
+                    <div className={styles.filterSearchWrap}>
+                      <Icon icon="mdi:magnify" className={styles.filterSearchIcon} aria-hidden />
+                      <input
+                        type="text"
+                        className={styles.filterSearchInput}
+                        value={typeFilterSearch}
+                        onChange={e => setTypeFilterSearch(e.target.value)}
+                        placeholder={copy.filters?.searchType || copy.filterTypeAll}
+                        autoComplete="off"
+                        aria-label={copy.filters?.searchType || copy.filterTypeAria}
+                      />
+                      {typeFilterSearch ? (
+                        <button
+                          type="button"
+                          className={styles.filterSearchClear}
+                          onClick={() => setTypeFilterSearch("")}
+                          aria-label={copy.clearSearch}
+                        >
+                          <FaTimes />
+                        </button>
+                      ) : null}
+                    </div>
                     <div className={styles.filtersList}>
-                      {typeOptions.length === 0 ? (
+                      {filteredTypesForPane.length === 0 ? (
                         <p className={styles.filterHint}>{copy.filters?.noTypeFound || "—"}</p>
                       ) : (
-                        typeOptions.map(opt =>
+                        filteredTypesForPane.map(opt =>
                           renderFilterItem(
                             opt.id,
                             opt.name,
