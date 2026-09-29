@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
@@ -32,27 +32,46 @@ import SetupGate from "./components/Setup/SetupGate";
 import { AppGeneralSettingsProvider } from "./hooks/useAppGeneralSettings";
 import { useCommonCopy } from "./hooks/useCommonCopy";
 import { getToastPosition, subscribeToastPosition } from "./utils/toastPosition";
+
+function normalizeTickerGap(value) {
+  const parsed = Number.parseInt(value, 10);
+  if (!Number.isFinite(parsed)) return 3;
+  return Math.min(100, Math.max(1, parsed));
+}
+
 function GlobalMaintenanceTicker({
   maintenanceStatus,
   isTickerHoverZone
 }) {
   const copy = useCommonCopy();
+  const bannerRef = useRef(null);
   const maintenanceMessage = maintenanceStatus?.message?.trim() || copy.maintenanceDefault;
   const tickerDuration = Number.isFinite(Number(maintenanceStatus?.tickerSpeed)) ? Math.max(5, Math.min(60, Number(maintenanceStatus.tickerSpeed))) : 22;
   const tickerDirection = maintenanceStatus?.tickerDirection === "right" ? "right" : "left";
   const tickerColor = /^#([0-9a-fA-F]{6})$/.test(maintenanceStatus?.tickerColor || "") ? maintenanceStatus.tickerColor : "#d97706";
-  const parsedGap = Number.parseInt(maintenanceStatus?.tickerGap, 10);
-  const tickerGap = Number.isFinite(parsedGap) ? Math.min(20, Math.max(1, parsedGap)) : 3;
+  const tickerGap = normalizeTickerGap(maintenanceStatus?.tickerGap);
   const tickerText = `${copy.maintenancePrefix} - ${maintenanceMessage}`;
-  return <div className={`globalMaintenanceTicker ${isTickerHoverZone ? "hoverTransparent" : ""}`} role="status" aria-live="polite" style={{
+
+  useEffect(() => {
+    const el = bannerRef.current;
+    if (!el || typeof ResizeObserver === "undefined") return undefined;
+    const syncWidth = () => {
+      el.style.setProperty("--ticker-width", `${Math.max(1, el.clientWidth)}px`);
+    };
+    syncWidth();
+    const observer = new ResizeObserver(syncWidth);
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
+
+  return <div ref={bannerRef} className={`globalMaintenanceTicker ${isTickerHoverZone ? "hoverTransparent" : ""}`} role="status" aria-live="polite" style={{
     "--maintenance-ticker-color": tickerColor,
-    "--maintenance-ticker-gap": `${tickerGap}rem`
+    "--maintenance-ticker-gap": `${tickerGap}rem`,
+    "--maintenance-ticker-duration": `${tickerDuration}s`
   }}>
-      <div className={`globalMaintenanceTickerTrack ${tickerDirection === "right" ? "reverseDirection" : ""} ${isTickerHoverZone ? "paused" : ""}`} style={{
-      animationDuration: `${tickerDuration}s`
-    }}>
-        <span>{tickerText}</span>
-        <span>{tickerText}</span>
+      <div className={`globalMaintenanceTickerTrack ${tickerDirection === "right" ? "reverseDirection" : ""} ${isTickerHoverZone ? "paused" : ""}`}>
+        <div className="globalMaintenanceTickerSegment">{tickerText}</div>
+        <div className="globalMaintenanceTickerSegment" aria-hidden="true">{tickerText}</div>
       </div>
     </div>;
 }
@@ -73,14 +92,13 @@ export default function App() {
       try {
         const status = await getMaintenanceStatus();
         if (!mounted) return;
-        const gap = Number.parseInt(status?.tickerGap, 10);
         setMaintenanceStatus({
           enabled: Boolean(status?.enabled || status?.maintenanceMode),
           message: status?.message || "",
           tickerSpeed: Number.isFinite(Number(status?.tickerSpeed)) ? Number(status.tickerSpeed) : 22,
           tickerDirection: status?.tickerDirection === "right" ? "right" : "left",
           tickerColor: /^#([0-9a-fA-F]{6})$/.test(status?.tickerColor || "") ? status.tickerColor : "#d97706",
-          tickerGap: Number.isFinite(gap) ? Math.min(20, Math.max(1, gap)) : 3
+          tickerGap: normalizeTickerGap(status?.tickerGap)
         });
       } catch {
         if (!mounted) return;
@@ -94,14 +112,13 @@ export default function App() {
     const intervalId = setInterval(loadStatus, 15000);
     const handleMaintenanceStatusUpdated = event => {
       const payload = event?.detail || {};
-      const gap = Number.parseInt(payload?.tickerGap, 10);
       setMaintenanceStatus({
         enabled: Boolean(payload?.enabled),
         message: payload?.message || "",
         tickerSpeed: Number.isFinite(Number(payload?.tickerSpeed)) ? Number(payload.tickerSpeed) : 22,
         tickerDirection: payload?.tickerDirection === "right" ? "right" : "left",
         tickerColor: /^#([0-9a-fA-F]{6})$/.test(payload?.tickerColor || "") ? payload.tickerColor : "#d97706",
-        tickerGap: Number.isFinite(gap) ? Math.min(20, Math.max(1, gap)) : 3
+        tickerGap: normalizeTickerGap(payload?.tickerGap)
       });
     };
     window.addEventListener("maintenanceStatusUpdated", handleMaintenanceStatusUpdated);

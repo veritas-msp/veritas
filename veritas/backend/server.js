@@ -50,7 +50,7 @@ import editionRoutes from './routes/config/edition.js';
 import licenseRoutes from './routes/config/license.js';
 import { requirePro, requireProAuth } from './middleware/edition.js';
 import { getEditionPayload } from './utils/edition.js';
-import { refreshProLicenseState, ensureFreshLicense } from './utils/proLicense.js';
+import { refreshProLicenseState, getLicenseCacheMaxAgeMs } from './utils/proLicense.js';
 import verifyJWT from './middleware/auth.js';
 import statsRoutes from './routes/utils/stats.js';
 import techNewsRoutes from './routes/utils/techNews.js';
@@ -211,18 +211,16 @@ if (await canRunAutoSchemaMigrations()) {
   console.log("[setup] Installation in progress — create the schema via the wizard: http://localhost:3000/setup");
 }
 await refreshProLicenseState();
+// Refresh Pro license in background — never block every /api request.
+const licenseRefreshMs = Math.max(60_000, getLicenseCacheMaxAgeMs());
+setInterval(() => {
+  refreshProLicenseState().catch(err => {
+    console.error("[license] background refresh:", err?.message || err);
+  });
+}, licenseRefreshMs).unref?.();
 app.use('/api/setup', setupRoutes);
 app.use('/api/edition', editionRoutes);
 app.use('/api/license', licenseRoutes);
-app.use("/api", async (req, res, next) => {
-  try {
-    await ensureFreshLicense();
-    next();
-  } catch (error) {
-    console.error("[license] ensureFreshLicense:", error.message);
-    next(error);
-  }
-});
 app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
 app.use("/api/profiles", profilesRouter);

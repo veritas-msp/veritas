@@ -4,7 +4,10 @@ import { ensureFreshLicense } from "../../utils/proLicense.js";
 const router = express.Router();
 router.get("/", async (_req, res) => {
   try {
-    await ensureFreshLicense();
+    // Use cached edition for snappy UI; kick a non-blocking refresh for Pro.
+    ensureFreshLicense().catch(error => {
+      console.error("[edition] background license refresh:", error.message);
+    });
     res.json(getEditionPayload());
   } catch (error) {
     console.error("[edition] GET /:", error.message);

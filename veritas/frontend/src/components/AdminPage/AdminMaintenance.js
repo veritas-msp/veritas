@@ -1,4 +1,4 @@
-import { useMemo, useState, useEffect } from "react";
+import { useMemo, useState, useEffect, useRef } from "react";
 import { toast } from "react-toastify";
 import { getMaintenanceStatus, toggleMaintenance } from "../../api/maintenance";
 import { useCommonCopy } from "../../hooks/useCommonCopy";
@@ -21,16 +21,26 @@ const COLOR_KEYS = [{
   value: "#6b7280"
 }];
 
+const GAP_MIN = 1;
+const GAP_MAX = 100;
+
 function normalizeGap(value) {
   const parsed = Number.parseInt(value, 10);
   if (!Number.isFinite(parsed)) return 3;
-  return Math.min(20, Math.max(1, parsed));
+  return Math.min(GAP_MAX, Math.max(GAP_MIN, parsed));
+}
+
+function normalizeSpeed(value) {
+  const parsed = Number.parseInt(value, 10);
+  if (!Number.isFinite(parsed)) return 22;
+  return Math.min(60, Math.max(5, parsed));
 }
 
 export default function AdminMaintenance() {
   const copy = useAdminPageCopy("maintenance");
   const adminCopy = useAdminCommonCopy();
   const commonCopy = useCommonCopy();
+  const previewBannerRef = useRef(null);
   const colorPresets = useMemo(() => COLOR_KEYS.map(preset => ({
     ...preset,
     label: adminCopy.colors[preset.key]
@@ -47,13 +57,25 @@ export default function AdminMaintenance() {
     getMaintenanceStatus().then(data => {
       setEnabled(Boolean(data?.enabled || data?.maintenanceMode));
       setMessage(data?.message || "");
-      setSpeed(Number.isFinite(Number(data?.tickerSpeed)) ? Number(data.tickerSpeed) : 22);
+      setSpeed(normalizeSpeed(data?.tickerSpeed));
       setDirection(data?.tickerDirection === "right" ? "right" : "left");
       const c = /^#([0-9a-fA-F]{6})$/.test(data?.tickerColor || "") ? data.tickerColor : "#d97706";
       setColor(c);
       setGap(normalizeGap(data?.tickerGap));
     }).catch(() => toast.error(copy.loadError));
   }, [copy.loadError]);
+
+  useEffect(() => {
+    const el = previewBannerRef.current;
+    if (!el || typeof ResizeObserver === "undefined") return undefined;
+    const syncWidth = () => {
+      el.style.setProperty("--ticker-width", `${Math.max(1, el.clientWidth)}px`);
+    };
+    syncWidth();
+    const observer = new ResizeObserver(syncWidth);
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
 
   const dispatchUpdate = (nextEnabled, nextMessage, opts) => {
     window.dispatchEvent(new CustomEvent("maintenanceStatusUpdated", {
@@ -105,7 +127,8 @@ export default function AdminMaintenance() {
   };
 
   const previewText = message.trim() || copy.previewFallback;
-  const previewGap = `${normalizeGap(gap)}rem`;
+  const safeGap = normalizeGap(gap);
+  const safeSpeed = normalizeSpeed(speed);
 
   return <Page>
       <Card fill>
@@ -125,10 +148,10 @@ export default function AdminMaintenance() {
 
           <FormGrid cols={4}>
             <Field label={copy.speedLabel} hint={copy.speedHint}>
-              <NumberStepper block value={speed} onChange={setSpeed} min={5} max={60} suffix="s" ariaLabel={copy.speedAria} />
+              <NumberStepper block value={speed} onChange={value => setSpeed(normalizeSpeed(value))} min={5} max={60} suffix="s" ariaLabel={copy.speedAria} />
             </Field>
             <Field label={copy.gapLabel} hint={copy.gapHint}>
-              <NumberStepper block value={gap} onChange={value => setGap(normalizeGap(value))} min={1} max={20} ariaLabel={copy.gapAria} />
+              <NumberStepper block value={gap} onChange={value => setGap(normalizeGap(value))} min={GAP_MIN} max={GAP_MAX} ariaLabel={copy.gapAria} />
             </Field>
             <Field label={copy.directionLabel}>
               <Select value={direction} onChange={e => setDirection(e.target.value)}>
@@ -151,13 +174,14 @@ export default function AdminMaintenance() {
           <div className={s.previewSection}>
             <span className={s.previewLabel}>{copy.previewLabel}</span>
             <div className={s.previewFrame}>
-              <div className={s.previewBanner} style={{
+              <div ref={previewBannerRef} className={s.previewBanner} style={{
               background: color,
-              "--preview-ticker-gap": previewGap
+              "--preview-ticker-gap": `${safeGap}rem`,
+              "--preview-ticker-duration": `${safeSpeed}s`
             }}>
-                <div className={s.previewTrack}>
-                  <span className={s.previewText}>{previewText}</span>
-                  <span className={s.previewText}>{previewText}</span>
+                <div className={`${s.previewTrack} ${direction === "right" ? s.previewTrackReverse : ""}`}>
+                  <div className={s.previewSegment}>{previewText}</div>
+                  <div className={s.previewSegment} aria-hidden="true">{previewText}</div>
                 </div>
               </div>
             </div>

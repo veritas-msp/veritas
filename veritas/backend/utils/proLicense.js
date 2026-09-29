@@ -73,6 +73,10 @@ function getBillingConfig() {
 
 function formatBillingFetchError(error, billingUrl) {
   const cause = error?.cause?.code || error?.code || "";
+  const name = String(error?.name || "");
+  if (name === "AbortError" || cause === "ABORT_ERR" || /aborted|timeout/i.test(String(error?.message || ""))) {
+    return `License validation timed out (${billingUrl}). Using offline lease if available.`;
+  }
   if (cause === "ECONNREFUSED" || cause === "ENOTFOUND") {
     return `License validation service unreachable (${billingUrl}). Check network connectivity.`;
   }
@@ -89,8 +93,18 @@ function emptyCacheFields() {
     customerEmail: null,
     licenseRevision: null,
     leaseExpiresAt: null,
-    offlineLease: false,
+    offlineLease: false
   };
+}
+
+function getBillingFetchTimeoutMs() {
+  const raw = Number.parseInt(process.env.LICENSE_VALIDATE_TIMEOUT_MS || "", 10);
+  if (Number.isFinite(raw) && raw >= 500) return Math.min(30000, raw);
+  return 4000;
+}
+
+function isCommunityEdition() {
+  return String(process.env.VERITAS_EDITION || "community").trim().toLowerCase() === "community";
 }
 
 function applyOfflineLeaseToCache(networkErrorMessage) {
@@ -143,6 +157,22 @@ export async function refreshProLicenseState() {
     };
     return cache;
   }
+
+  // Community without an explicit key must never wait on billing (would block every /api call).
+  const keyFromEnv = normalizeLicenseKey(process.env.VERITAS_LICENSE_KEY || "");
+  if (isCommunityEdition() && !keyFromEnv) {
+    cache = {
+      ...cache,
+      valid: false,
+      status: "community",
+      ...emptyCacheFields(),
+      checkedAt: new Date().toISOString(),
+      checkedAtMs: Date.now(),
+      lastError: null,
+    };
+    return cache;
+  }
+
   const hydrated = hydrateLicenseKeyFromStoredLease();
   if (hydrated?.hydrated && hydrated.key) {
     persistBootSecrets({
@@ -167,6 +197,9 @@ export async function refreshProLicenseState() {
     return cache;
   }
   const { billingUrl, secret } = getBillingConfig();
+  const timeoutMs = getBillingFetchTimeoutMs();
+  const controller = typeof AbortController !== "undefined" ? new AbortController() : null;
+  const timer = controller ? setTimeout(() => controller.abort(), timeoutMs) : null;
   try {
     const res = await fetch(`${billingUrl}/api/license/validate`, {
       method: "POST",
@@ -177,6 +210,7 @@ export async function refreshProLicenseState() {
       body: JSON.stringify({
         licenseKey: key,
       }),
+      signal: controller?.signal,
     });
     const data = await res.json().catch(() => ({}));
     if (!res.ok) {
@@ -248,6 +282,8 @@ export async function refreshProLicenseState() {
       lastError: message,
     };
     return cache;
+  } finally {
+    if (timer) clearTimeout(timer);
   }
 }
 

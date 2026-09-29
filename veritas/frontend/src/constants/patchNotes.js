@@ -5,6 +5,14 @@
  */
 export const PATCH_NOTES = [
   {
+    version: "1.0.44",
+    date: "2026-09-29",
+    highlights: [
+      "Navigation plus fluide : la vérif licence ne bloque plus chaque appel API.",
+      "Message de maintenance : espace jusqu’à 100, défilement corrigé sur toute la largeur, aperçu synchronisé (couleur, vitesse, espace, direction)."
+    ]
+  },
+  {
     version: "1.0.43",
     date: "2026-09-29",
     highlights: [

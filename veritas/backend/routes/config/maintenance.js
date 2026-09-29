@@ -25,7 +25,7 @@ const DEFAULT_MAINTENANCE_STATUS = {
 function normalizeTickerGap(raw, fallback = 3) {
   const parsed = Number.parseInt(raw, 10);
   if (!Number.isFinite(parsed)) return fallback;
-  return Math.min(20, Math.max(1, parsed));
+  return Math.min(100, Math.max(1, parsed));
 }
 async function hasSystemTable() {
   if (!process.env.DATABASE_URL) return false;
