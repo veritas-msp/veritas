@@ -130,7 +130,12 @@ router.post('/sync/:customerId', async (req, res) => {
       customerId
     } = req.params;
     const credentials = await getCredentialsFromRequest(req);
-    const [customer, dashboard] = await Promise.all([mailinblackGetCustomer(credentials.apiUrl, credentials, customerId), mailinblackBuildDashboard(credentials.apiUrl, credentials, customerId).catch(() => null)]);
+    // Build dashboard without swallowing errors — same path as GET /dashboard/:customerId.
+    // Previously `.catch(() => null)` left syncData.dashboard empty while the detail page still worked.
+    const [customer, dashboard] = await Promise.all([
+      mailinblackGetCustomer(credentials.apiUrl, credentials, customerId),
+      mailinblackBuildDashboard(credentials.apiUrl, credentials, customerId)
+    ]);
     if (!customer) {
       return res.status(404).json({
         success: false,

@@ -12,6 +12,11 @@ function isBareAlertText(value) {
   return /^(warning|critical|crit|warn|info|monitor_warning|monitor_critical)$/i.test(String(value || "").trim());
 }
 
+function isCrypticMonitorTitle(value) {
+  // e.g. "Critical - /" left after mangling "Filesystem E:/"
+  return /[-–—]\s*\/\s*$/.test(String(value || "").trim());
+}
+
 function isRicherAlertText(next, prev) {
   const a = String(next || "").trim();
   const b = String(prev || "").trim();
@@ -19,6 +24,7 @@ function isRicherAlertText(next, prev) {
   if (!b) return true;
   if (a === b) return false;
   if (isBareAlertText(b) && !isBareAlertText(a)) return true;
+  if (isCrypticMonitorTitle(b) && !isCrypticMonitorTitle(a)) return true;
   if ((a.includes(" - ") || a.includes(" — ")) && !(b.includes(" - ") || b.includes(" — "))) return true;
   if (a.length >= b.length + 4) return true;
   return false;

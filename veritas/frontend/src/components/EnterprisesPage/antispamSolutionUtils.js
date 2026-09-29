@@ -1,5 +1,5 @@
 import { fetchClientModules, saveClientModules } from "../../api/clients";
-import { deleteClientMailinblackTenant, syncMailinblackCustomer } from "../../api/clientMailinblack";
+import { deleteClientMailinblackTenant, fetchMailinblackDashboard, syncMailinblackCustomer } from "../../api/clientMailinblack";
 import { getAntispamProvider, inferProviderIdFromSolution } from "./antispamFormConfig";
 function resolveAntispamProviderId(item) {
   const normalized = normalizeAntispamItem(item) || item;
@@ -50,14 +50,30 @@ function resolveAntispamProviderImage(providerId, provider) {
   }
   return null;
 }
-export function getAntispamSolutionModeLabel(solution) {
-  const normalized = normalizeAntispamItem(solution);
-  const mode = normalized?.mappingMode || (normalized?.mailinblackTenantId ? "dedicated" : normalized?.customerId ? "reseller" : "manual");
-  if (mode === "dedicated") return "Dedicated tenant";
-  if (mode === "manual" || normalized?.isManual || normalized?.providerId === "manual") {
-    return "Saisie manuelle";
+export function canonicalizeAntispamMappingMode(solution) {
+  const raw = String(solution?.mappingMode || "").trim().toLowerCase();
+  if (raw === "dedicated" || raw.includes("dedicated") || raw.includes("dédié") || raw.includes("dedie")) {
+    return "dedicated";
   }
-  if (normalized?.customerId) return "Tenant global";
+  if (
+    raw === "manual" ||
+    raw.includes("manual") ||
+    raw.includes("manuelle") ||
+    solution?.isManual === true ||
+    solution?.providerId === "manual"
+  ) {
+    return "manual";
+  }
+  if (solution?.mailinblackTenantId) return "dedicated";
+  if (raw === "reseller" || raw.includes("global") || raw.includes("reseller")) return "reseller";
+  if (solution?.customerId || solution?.customer_id || solution?.authClientId) return "reseller";
+  return "manual";
+}
+export function getAntispamSolutionModeLabel(solution) {
+  const mode = canonicalizeAntispamMappingMode(solution);
+  if (mode === "dedicated") return "Dedicated tenant";
+  if (mode === "manual") return "Saisie manuelle";
+  if (mode === "reseller") return "Tenant global";
   return "-";
 }
 function toLicenseNumber(value) {
@@ -171,7 +187,11 @@ export function normalizeAntispamItem(item) {
   const customerId = item.customerId || item.customer_id || item.authClientId || item.syncData?.customer?.id || null;
   const hasManualHints = item.mappingMode === "manual" || item.isManual === true || item.providerId === "manual";
   const providerId = item.providerId || (item.mailinblackTenantId || customerId ? "mailinblack" : hasManualHints ? "manual" : inferProviderIdFromSolution(item));
-  const mappingMode = item.mappingMode || (item.mailinblackTenantId ? "dedicated" : customerId ? "reseller" : providerId === "manual" || hasManualHints ? "manual" : "manual");
+  const mappingMode = canonicalizeAntispamMappingMode({
+    ...item,
+    customerId,
+    providerId
+  });
   const isManualEntry = hasManualHints || mappingMode === "manual" || providerId === "manual";
   return {
     ...item,
@@ -326,7 +346,8 @@ export function buildAntispamFleetRow(client, solution, index = 0) {
     productName,
     solutionLabel: productName,
     solutionSubtitle: tenantLabel,
-    mappingMode: getAntispamSolutionModeLabel(normalized),
+    mappingMode: canonicalizeAntispamMappingMode(normalized),
+    mappingModeLabel: getAntispamSolutionModeLabel(normalized),
     status: resolveAntispamFleetStatus(normalized),
     paymentPlan: resolveAntispamPaymentPlan(normalized),
     expiration: normalized.expiration || null,
@@ -541,24 +562,83 @@ export async function syncAndPersistAntispamSolution(clientId, solution, {
     throw new Error("Client Mailinblack introuvable.");
   }
   const mappingMode = normalized.mappingMode || "reseller";
+  const mailinblackTenantId = mappingMode === "dedicated" ? normalized.mailinblackTenantId : null;
+  const providerId = normalized.providerId || "mailinblack";
   const credentialContext = {
     clientId,
-    mailinblackTenantId: normalized.mailinblackTenantId,
+    mailinblackTenantId,
     mappingMode,
     signal
   };
-  const syncResult = await syncMailinblackCustomer(normalized.customerId, credentialContext);
+  // Same path as detail page / config modal: sync customer + explicit dashboard fetch.
+  // POST /sync alone can swallow dashboard failures (.catch → null) and persist empty sections.
+  const [syncResult, dashboardFromPage] = await Promise.all([
+    syncMailinblackCustomer(normalized.customerId, credentialContext),
+    fetchMailinblackDashboard(normalized.customerId, credentialContext).catch(error => {
+      if (error?.name === "AbortError") throw error;
+      return null;
+    })
+  ]);
   if (!syncResult.success) {
     throw new Error(syncResult.error || "Sync failed");
   }
-  const updatedPayload = {
-    ...syncResult.data,
-    providerId: normalized.providerId || "mailinblack",
-    mappingMode,
-    mailinblackTenantId: mappingMode === "dedicated" ? normalized.mailinblackTenantId : null,
-    customerId: normalized.customerId,
-    customerName: syncResult.data?.customerName || syncResult.customer?.name || normalized.customerName || ""
+  const customer = syncResult.customer || syncResult.data?.syncData?.customer || {
+    id: normalized.customerId,
+    name: syncResult.data?.customerName || normalized.customerName || ""
   };
+  const normalizedCustomer = {
+    ...customer,
+    id: customer?.id != null ? String(customer.id) : String(normalized.customerId)
+  };
+  const resolvedDashboard =
+    dashboardFromPage || syncResult.dashboard || syncResult.data?.syncData?.dashboard || null;
+  if (!resolvedDashboard) {
+    throw new Error("Dashboard Mailinblack inaccessible — mêmes données que la page détail indisponibles.");
+  }
+  const formattedPayload = formatAntispamSyncPayload(
+    normalizedCustomer,
+    mappingMode,
+    mailinblackTenantId,
+    providerId,
+    { dashboard: resolvedDashboard }
+  );
+  const backendPayload = syncResult.data && typeof syncResult.data === "object" ? syncResult.data : null;
+  const updatedPayload = backendPayload
+    ? {
+        ...formattedPayload,
+        ...backendPayload,
+        providerId,
+        mappingMode,
+        mailinblackTenantId,
+        customerId: String(backendPayload.customerId || normalizedCustomer.id),
+        customerName:
+          backendPayload.customerName ||
+          formattedPayload.customerName ||
+          normalizedCustomer.name ||
+          "",
+        utilisateursProteges:
+          formattedPayload.utilisateursProteges ?? backendPayload.utilisateursProteges,
+        domainesSurveilles:
+          formattedPayload.domainesSurveilles ?? backendPayload.domainesSurveilles,
+        licencesTotales: formattedPayload.licencesTotales ?? backendPayload.licencesTotales,
+        licencesUtilisees: formattedPayload.licencesUtilisees ?? backendPayload.licencesUtilisees,
+        expiration: formattedPayload.expiration || backendPayload.expiration || "",
+        syncData: {
+          ...(backendPayload.syncData || {}),
+          ...(formattedPayload.syncData || {}),
+          customer: backendPayload.syncData?.customer || normalizedCustomer,
+          dashboard: resolvedDashboard,
+          lastSync: new Date().toISOString()
+        }
+      }
+    : {
+        ...formattedPayload,
+        syncData: {
+          ...formattedPayload.syncData,
+          dashboard: resolvedDashboard,
+          lastSync: new Date().toISOString()
+        }
+      };
   const modulesData = await fetchClientModules(clientId, {
     signal
   });
@@ -590,7 +670,7 @@ export async function syncAndPersistAntispamSolution(clientId, solution, {
   });
   return {
     syncResult,
-    dashboard: syncResult.dashboard,
+    dashboard: resolvedDashboard,
     updatedPayload
   };
 }

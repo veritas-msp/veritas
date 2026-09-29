@@ -386,7 +386,7 @@ export default function EquipmentMappingModal({
   const canSave = Boolean(selectedHost.trim() && (!requireService || selectedService.trim()) && !saving);
   const helpSteps = requireService ? [copy.helpSteps[0], copy.helpServiceStep, ...copy.helpSteps.slice(1)] : copy.helpSteps;
 
-  const renderHostSection = () => <>
+  const renderHostSection = () => <div className={styles.hostSection}>
       <div className={`${styles.statusCard} ${selectedHost ? styles.statusCardMapped : ""}`}>
         <div className={styles.statusIcon} aria-hidden>
           <Icon icon={selectedHost ? "simple-icons:checkmk" : "mdi:link-variant-off"} />
@@ -415,7 +415,7 @@ export default function EquipmentMappingModal({
           </div>
         </div> : null}
 
-      <div className={formStyles.sectionHead}>
+      <div className={formStyles.sectionHead} style={{ marginBottom: 0 }}>
         <h3 className={formStyles.sectionTitle}>{copy.hostsHeading}</h3>
       </div>
 
@@ -470,7 +470,7 @@ export default function EquipmentMappingModal({
         })}
             </div>)}
       </div>
-    </>;
+    </div>;
 
   const renderServiceSection = () => {
     if (!selectedHost) {
@@ -483,7 +483,7 @@ export default function EquipmentMappingModal({
           </button>
         </div>;
     }
-    return <>
+    return <div className={styles.serviceSection}>
         <div className={`${styles.statusCard} ${selectedService ? styles.statusCardMapped : ""}`}>
           <div className={styles.statusIcon} aria-hidden>
             <Icon icon={selectedService ? "mdi:playlist-check" : "mdi:playlist-remove"} />
@@ -495,7 +495,7 @@ export default function EquipmentMappingModal({
           </div>
         </div>
 
-        <div className={formStyles.sectionHead}>
+        <div className={formStyles.sectionHead} style={{ marginBottom: 0 }}>
           <h3 className={formStyles.sectionTitle}>{interpolate(copy.servicesHeading, {
             host: selectedHost
           })}</h3>
@@ -527,7 +527,7 @@ export default function EquipmentMappingModal({
                 </button>;
         })}
         </div>
-      </>;
+      </div>;
   };
 
   const renderHelpSection = () => <>
@@ -578,7 +578,7 @@ export default function EquipmentMappingModal({
                   </span>
                 </button>)}
             </nav>
-            <div className={formStyles.content}>
+            <div className={`${formStyles.content} ${styles.contentFill}`}>
               {activeSection === "service" && requireService ? renderServiceSection() : activeSection === "help" ? renderHelpSection() : renderHostSection()}
             </div>
           </div>

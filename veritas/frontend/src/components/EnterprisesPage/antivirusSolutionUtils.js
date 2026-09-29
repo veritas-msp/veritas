@@ -44,12 +44,28 @@ export function formatAntivirusEndpointType(type) {
   return raw.charAt(0).toUpperCase() + raw.slice(1);
 }
 export function getAntivirusSolutionModeLabel(solution) {
-  const mode = solution?.mappingMode || "reseller";
+  const mode = canonicalizeAntivirusMappingMode(solution);
   if (mode === "dedicated") return "Dedicated tenant";
-  if (mode === "manual" || solution?.isManual || solution?.providerId === "manual") {
-    return "Saisie manuelle";
-  }
+  if (mode === "manual") return "Saisie manuelle";
   return "Tenant global";
+}
+export function canonicalizeAntivirusMappingMode(solution) {
+  const raw = String(solution?.mappingMode || "").trim().toLowerCase();
+  if (raw === "dedicated" || raw.includes("dedicated") || raw.includes("dédié") || raw.includes("dedie")) {
+    return "dedicated";
+  }
+  if (
+    raw === "manual" ||
+    raw.includes("manual") ||
+    raw.includes("manuelle") ||
+    solution?.isManual === true ||
+    solution?.providerId === "manual"
+  ) {
+    return "manual";
+  }
+  if (solution?.bitdefenderTenantId) return "dedicated";
+  if (raw === "reseller" || raw.includes("global") || raw.includes("reseller")) return "reseller";
+  return solution?.companyId || solution?.company_id ? "reseller" : "manual";
 }
 export function formatAntivirusSolutionLabel(solution) {
   const normalized = normalizeAntivirusItem(solution);
@@ -95,13 +111,19 @@ export function normalizeAntivirusItem(item) {
   const hasManualHints = item.mappingMode === "manual" || item.isManual === true || item.providerId === "manual";
   const providerId = item.providerId || (companyId ? "bitdefender" : hasManualHints ? "manual" : inferProviderIdFromSolution(item));
   const isManualEntry = hasManualHints || !companyId && providerId === "manual";
+  const mappingMode = canonicalizeAntivirusMappingMode({
+    ...item,
+    companyId,
+    providerId,
+    isManual: item.isManual ?? isManualEntry
+  });
   return {
     ...item,
     companyId,
     companyName: item.companyName || item.syncData?.company?.name || item.solution || item.nom || item.name || null,
     providerId: providerId || null,
-    mappingMode: item.mappingMode || (isManualEntry ? "manual" : "reseller"),
-    isManual: item.isManual ?? isManualEntry,
+    mappingMode,
+    isManual: item.isManual ?? (mappingMode === "manual" || isManualEntry),
     bitdefenderTenantId: item.bitdefenderTenantId || null
   };
 }
@@ -261,7 +283,15 @@ function ignoreUnlessAbort(error) {
   return null;
 }
 export async function fetchFullAntivirusSyncExtra(companyId, credentialContext) {
-  const [dashboard, statisticsRes, enrichedRes] = await Promise.all([fetchGravityZoneDashboard(companyId, credentialContext).catch(ignoreUnlessAbort), fetchBitdefenderStatistics(companyId, credentialContext).catch(ignoreUnlessAbort), fetchBitdefenderEnrichedEndpoints(companyId, credentialContext).catch(ignoreUnlessAbort)]);
+  // Same GETs as AntivirusOverviewPanel.loadDashboard (page détail) — dashboard is required.
+  const [dashboard, statisticsRes, enrichedRes] = await Promise.all([
+    fetchGravityZoneDashboard(companyId, credentialContext),
+    fetchBitdefenderStatistics(companyId, credentialContext).catch(ignoreUnlessAbort),
+    fetchBitdefenderEnrichedEndpoints(companyId, credentialContext).catch(ignoreUnlessAbort)
+  ]);
+  if (!dashboard) {
+    throw new Error("Dashboard GravityZone inaccessible — mêmes données que la page détail indisponibles.");
+  }
   return {
     dashboard,
     statistics: statisticsRes?.statistics || null,
@@ -342,7 +372,10 @@ export async function syncAndPersistAntivirusSolution(clientId, solution, {
     signal
   };
   const companyId = normalized.companyId;
-  const [syncResult, syncExtra] = await Promise.all([syncBitdefenderCompany(companyId, credentialContext), fetchFullAntivirusSyncExtra(companyId, credentialContext)]);
+  // Align with detail page: GravityZone dashboard/statistics/enriched first (required),
+  // then POST /sync for full endpoint inventory used by fleet KPIs.
+  const syncExtra = await fetchFullAntivirusSyncExtra(companyId, credentialContext);
+  const syncResult = await syncBitdefenderCompany(companyId, credentialContext);
   if (!syncResult.success) {
     throw new Error(syncResult.error || "Sync failed");
   }

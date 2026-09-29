@@ -44,20 +44,33 @@ function isBareSeverityToken(value) {
   return /^(warning|critical|crit|warn|info|ok|unknown)$/i.test(String(value || "").trim());
 }
 
+/** Restore readable CheckMK filesystem labels mangled by colon stripping ("E:/" → "/") or bare mounts. */
+function enrichMonitorServiceLabel(name) {
+  const raw = String(name || "").trim();
+  if (!raw) return raw;
+  if (/^filesystem\b/i.test(raw)) return raw;
+  if (raw === "/" || /^\/[\w./-]*$/.test(raw) || /^[A-Za-z]:([\\/].*)?$/.test(raw)) {
+    return `Filesystem ${raw}`;
+  }
+  return raw;
+}
+
 /**
  * Explicit monitor alert label: "Warning - Filesystem E:/" (never severity alone when detail exists).
  */
 export function formatMonitorIssueLabel(severityLabel, detail) {
   const base = String(severityLabel || "").trim() || "Alert";
-  const fromPrimary = String(
+  const fromPrimary = enrichMonitorServiceLabel(
     detail?.primaryService || detail?.serviceName || detail?.service || detail?.serviceDescription || ""
-  ).trim();
+  );
   if (fromPrimary && !isBareSeverityToken(fromPrimary)) return `${base} - ${fromPrimary}`;
 
   const fromList = Array.isArray(detail?.failingServices)
-    ? detail.failingServices.map(name => String(name || "").trim()).filter(name => name && !isBareSeverityToken(name))
+    ? detail.failingServices
+        .map(name => enrichMonitorServiceLabel(name))
+        .filter(name => name && !isBareSeverityToken(name))
     : [];
-  if (fromList.length) return `${base} - ${fromList.slice(0, 2).join(" / ")}`;
+  if (fromList.length) return `${base} - ${fromList.slice(0, 2).join(" · ")}`;
 
   const plugin = String(detail?.pluginOutput || detail?.plugin_output || detail?.description || "").trim();
   if (plugin && !isBareSeverityToken(plugin)) {

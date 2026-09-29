@@ -322,9 +322,10 @@ const CheckMKMappingModal = ({
     }} transition={{
       duration: 0.2
     }} onClick={e => e.stopPropagation()} className={adminStyles.modalContent} style={{
-      maxWidth: '1000px',
-      height: '650px',
-      maxHeight: '90vh'
+      maxWidth: '1280px',
+      width: 'min(1280px, calc(100vw - 40px))',
+      height: 'min(92vh, 960px)',
+      maxHeight: '94vh'
     }}>
         {}
         <div className={adminStyles.modalHeader}>
@@ -553,7 +554,7 @@ const CheckMKMappingModal = ({
                 <div style={{
               flex: 1,
               minHeight: '200px',
-              maxHeight: '300px',
+              maxHeight: '520px',
               overflowY: 'auto',
               border: '1px solid #e0e0e0',
               borderRadius: '6px',

@@ -10,6 +10,7 @@ import formStyles from "./EnterpriseFormModal.module.css";
 import styles from "./AntivirusOverviewModal.module.css";
 import SolutionDetailPageLayout from "./SolutionDetailPageLayout";
 import { KpiCard, StatsPieChart, StatsDistributionBars, StatsDashboardBody, StatsPanel, buildDistributionItems, statsDashboardStyles as dashStyles } from "./StatsDashboardWidgets";
+import SolutionOverviewDataTable from "./SolutionOverviewDataTable";
 function formatDate(value) {
   if (value == null || value === "" || value === 0 || value === "0") return "-";
   try {
@@ -102,33 +103,27 @@ function DataTable({
   columns,
   rows,
   emptyLabel = "No data",
-  fillHeight = false
+  fillHeight = false,
+  searchable = false,
+  searchPlaceholder = "Search…"
 }) {
-  if (!rows?.length) {
-    return <div className={fillHeight ? styles.tableScrollFill : undefined}>
-        <div className={styles.emptyState}>{emptyLabel}</div>
-      </div>;
-  }
-  return <div className={fillHeight ? styles.tableScrollFill : styles.tableScroll}>
-      <table className={styles.dataTable}>
-        <thead>
-          <tr>
-            {columns.map(col => <th key={col.key}>{col.label}</th>)}
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map((row, index) => <tr key={row.id || `${index}`}>
-              {columns.map(col => <td key={col.key} className={col.mono ? styles.mono : undefined}>
-                  {col.render ? col.render(row) : formatCellValue(row[col.key])}
-                </td>)}
-            </tr>)}
-        </tbody>
-      </table>
-    </div>;
+  return (
+    <SolutionOverviewDataTable
+      columns={columns}
+      rows={rows}
+      emptyLabel={emptyLabel}
+      fillHeight={fillHeight}
+      formatCell={formatCellValue}
+      searchable={searchable}
+      searchPlaceholder={searchPlaceholder}
+    />
+  );
 }
 function renderListSection(section, {
   preview = false,
-  fillHeight = false
+  fillHeight = false,
+  searchable = false,
+  searchPlaceholder = "Search…"
 } = {}) {
   if (!section) return <div className={styles.emptyState}>Section unavailable</div>;
   const error = isBenignListError(section.error) ? null : section.error;
@@ -145,7 +140,14 @@ function renderListSection(section, {
             {section.total} item{section.total > 1 ? "s" : ""}
           </span> : null}
       </div>
-      <DataTable columns={section.columns} rows={section.items} emptyLabel={status === "permission_denied" ? "Access denied · check the auth key and client ID" : "No data returned"} fillHeight={fillHeight} />
+      <DataTable
+        columns={section.columns}
+        rows={section.items}
+        emptyLabel={status === "permission_denied" ? "Access denied · check the auth key and client ID" : "No data returned"}
+        fillHeight={fillHeight}
+        searchable={searchable}
+        searchPlaceholder={searchPlaceholder}
+      />
     </div>;
 }
 const SECTION_COLUMNS = {
@@ -633,7 +635,9 @@ export function AntispamOverviewPanel({
         break;
       case "users":
         content = renderListSection(sectionViews.users, {
-          fillHeight: fillTables
+          fillHeight: fillTables,
+          searchable: true,
+          searchPlaceholder: "Search a user, e-mail…"
         });
         break;
       case "licenses":
@@ -653,12 +657,16 @@ export function AntispamOverviewPanel({
         break;
       case "senders":
         content = renderListSection(sectionViews.senders, {
-          fillHeight: fillTables
+          fillHeight: fillTables,
+          searchable: true,
+          searchPlaceholder: "Search a sender…"
         });
         break;
       case "spools":
         content = renderListSection(sectionViews.spools, {
-          fillHeight: fillTables
+          fillHeight: fillTables,
+          searchable: true,
+          searchPlaceholder: "Search a spool, subject…"
         });
         break;
       default:

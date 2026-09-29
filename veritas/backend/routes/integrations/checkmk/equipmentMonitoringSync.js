@@ -66,11 +66,30 @@ function isAlertEvent(event) {
 function stripHostPrefixFromServiceName(name) {
   const raw = String(name || "").trim();
   if (!raw || !raw.includes(":")) return raw;
-  // CheckMK ids are often "hostname:Service description"
-  const parts = raw.split(":");
-  const rest = parts.slice(1).join(":").trim();
-  return rest || raw;
+  // CheckMK ids are often "hostname:Service description".
+  // Never split on drive letters ("E:/") or labels that already contain a colon ("Filesystem E:/").
+  const colonIdx = raw.indexOf(":");
+  const hostPart = raw.slice(0, colonIdx).trim();
+  const rest = raw.slice(colonIdx + 1).trim();
+  if (!rest) return raw;
+  // Hostname-like: no spaces, ≥2 chars (avoids Windows "C:"), DNS charset
+  if (/^[A-Za-z0-9][A-Za-z0-9._-]*$/.test(hostPart) && hostPart.length >= 2) {
+    return rest;
+  }
+  return raw;
 }
+
+/** CheckMK filesystem checks are often bare "/" or "E:/" — make the label explicit. */
+function enrichServiceDisplayName(name) {
+  const raw = String(name || "").trim();
+  if (!raw) return raw;
+  if (/^filesystem\b/i.test(raw)) return raw;
+  if (raw === "/" || /^\/[\w./-]*$/.test(raw) || /^[A-Za-z]:([\\/].*)?$/.test(raw)) {
+    return `Filesystem ${raw}`;
+  }
+  return raw;
+}
+
 function serviceDisplayName(service) {
   const raw = String(
     service?.title ||
@@ -86,7 +105,7 @@ function serviceDisplayName(service) {
       service?.name ||
       ""
   ).trim();
-  return stripHostPrefixFromServiceName(raw);
+  return enrichServiceDisplayName(stripHostPrefixFromServiceName(raw));
 }
 function eventServiceName(event) {
   const raw = String(
@@ -99,7 +118,7 @@ function eventServiceName(event) {
       event?.display_name ||
       ""
   ).trim();
-  return stripHostPrefixFromServiceName(raw);
+  return enrichServiceDisplayName(stripHostPrefixFromServiceName(raw));
 }
 function uniqueNonEmpty(values, limit = 3) {
   const out = [];

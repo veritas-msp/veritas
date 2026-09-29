@@ -11,6 +11,7 @@ import formStyles from "./EnterpriseFormModal.module.css";
 import styles from "./AntivirusOverviewModal.module.css";
 import SolutionDetailPageLayout from "./SolutionDetailPageLayout";
 import { KpiCard, StatsDashboardBody, StatsPanel, statsDashboardStyles as dashStyles } from "./StatsDashboardWidgets";
+import SolutionOverviewDataTable from "./SolutionOverviewDataTable";
 function formatDate(value) {
   if (!value) return "-";
   try {
@@ -107,33 +108,26 @@ function DataTable({
   columns,
   rows,
   emptyLabel = "No data",
-  fillHeight = false
+  fillHeight = false,
+  searchable = false,
+  searchPlaceholder = "Search…"
 }) {
-  if (!rows?.length) {
-    return <div className={fillHeight ? styles.tableScrollFill : undefined}>
-        <div className={styles.emptyState}>{emptyLabel}</div>
-      </div>;
-  }
-  return <div className={fillHeight ? styles.tableScrollFill : styles.tableScroll}>
-      <table className={styles.dataTable}>
-        <thead>
-          <tr>
-            {columns.map(col => <th key={col.key}>{col.label}</th>)}
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map((row, index) => <tr key={row.id || `${index}`}>
-              {columns.map(col => <td key={col.key} className={col.mono ? styles.mono : undefined}>
-                  {col.render ? col.render(row) : row[col.key] ?? "-"}
-                </td>)}
-            </tr>)}
-        </tbody>
-      </table>
-    </div>;
+  return (
+    <SolutionOverviewDataTable
+      columns={columns}
+      rows={rows}
+      emptyLabel={emptyLabel}
+      fillHeight={fillHeight}
+      searchable={searchable}
+      searchPlaceholder={searchPlaceholder}
+    />
+  );
 }
 function renderListSection(section, {
   preview = false,
-  fillHeight = false
+  fillHeight = false,
+  searchable = false,
+  searchPlaceholder = "Search…"
 } = {}) {
   if (!section) return <div className={styles.emptyState}>Section unavailable</div>;
   return <div className={fillHeight ? styles.listSectionFill : undefined}>
@@ -151,7 +145,14 @@ function renderListSection(section, {
             {section.total} item{section.total > 1 ? "s" : ""}
           </span> : null}
       </div>
-      <DataTable columns={section.columns} rows={section.items} emptyLabel={section.status === "permission_denied" ? "Access denied · enable this API for the GravityZone key" : "No data returned"} fillHeight={fillHeight} />
+      <DataTable
+        columns={section.columns}
+        rows={section.items}
+        emptyLabel={section.status === "permission_denied" ? "Access denied · enable this API for the GravityZone key" : "No data returned"}
+        fillHeight={fillHeight}
+        searchable={searchable}
+        searchPlaceholder={searchPlaceholder}
+      />
     </div>;
 }
 export function AntivirusOverviewPanel({
@@ -501,7 +502,9 @@ export function AntivirusOverviewPanel({
         break;
       case "endpoints":
         content = renderListSection(sectionViews.endpoints, {
-          fillHeight: true
+          fillHeight: true,
+          searchable: true,
+          searchPlaceholder: "Search a workstation, IP, OS…"
         });
         break;
       case "license":
@@ -509,12 +512,16 @@ export function AntivirusOverviewPanel({
         break;
       case "policies":
         content = renderListSection(sectionViews.policies, {
-          fillHeight: true
+          fillHeight: true,
+          searchable: true,
+          searchPlaceholder: "Search a policy…"
         });
         break;
       case "quarantine":
         content = renderListSection(sectionViews.quarantine, {
-          fillHeight: true
+          fillHeight: true,
+          searchable: true,
+          searchPlaceholder: "Search quarantine…"
         });
         break;
       default:

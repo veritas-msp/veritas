@@ -56,13 +56,22 @@ export function buildEquipmentMonitoringSummary(equipment, {
   const type = equipment?.type === "NAS" ? "Storage" : equipment?.type;
   const displayType = type || "Device";
   const mkDetail = checkmkSummary || equipment?.checkmkSummary || equipment?.monitoringSummary || null;
+  const enrichMkService = (name) => {
+    const raw = String(name || "").trim();
+    if (!raw) return raw;
+    if (/^filesystem\b/i.test(raw)) return raw;
+    if (raw === "/" || /^\/[\w./-]*$/.test(raw) || /^[A-Za-z]:([\\/].*)?$/.test(raw)) {
+      return `Filesystem ${raw}`;
+    }
+    return raw;
+  };
   const formatMkLabel = (severityLabel) => {
-    const primary = String(mkDetail?.primaryService || mkDetail?.serviceName || "").trim();
+    const primary = enrichMkService(mkDetail?.primaryService || mkDetail?.serviceName || "");
     if (primary) return `${severityLabel} - ${primary}`;
     const list = Array.isArray(mkDetail?.failingServices)
-      ? mkDetail.failingServices.map(name => String(name || "").trim()).filter(Boolean)
+      ? mkDetail.failingServices.map(name => enrichMkService(name)).filter(Boolean)
       : [];
-    if (list.length) return `${severityLabel} - ${list.slice(0, 2).join(" / ")}`;
+    if (list.length) return `${severityLabel} - ${list.slice(0, 2).join(" · ")}`;
     return severityLabel;
   };
   if (monitorStatus === "critical") {

@@ -1,5 +1,5 @@
 import { inferProviderIdFromSolution, getAntivirusProvider } from "../EnterprisesPage/antivirusFormConfig";
-import { formatAntivirusSolutionSummary, getAntivirusSolutionModeLabel, listConfiguredAntivirusSolutions } from "../EnterprisesPage/antivirusSolutionUtils";
+import { formatAntivirusSolutionSummary, getAntivirusSolutionModeLabel, canonicalizeAntivirusMappingMode, listConfiguredAntivirusSolutions } from "../EnterprisesPage/antivirusSolutionUtils";
 export const ANTIVIRUS_STATUS_META = {
   actif: {
     label: "Active",
@@ -76,7 +76,8 @@ export function buildAntivirusFleetRow(client, solution, index = 0) {
     solutionLabel: summary.providerName || provider?.label || productName,
     solutionSubtitle: solution?.companyName || summary.label || null,
     productName,
-    mappingMode: getAntivirusSolutionModeLabel(solution),
+    mappingMode: canonicalizeAntivirusMappingMode(solution),
+    mappingModeLabel: getAntivirusSolutionModeLabel(solution),
     status,
     paymentPlan: resolvePaymentPlan(solution),
     expirationDate: solution?.expiration || null,

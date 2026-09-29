@@ -706,24 +706,38 @@ export default function CybersecuritePage({
   }, [antivirusData]);
   const handleViewAntivirusSolution = (row, options = {}) => {
     if (!onNavigate || !row) return;
+    const raw = row.raw || {};
     const payload = buildAntivirusDetailNavigationPayload({
       id: row.clientId,
       name: row.clientName
     }, {
-      ...(row.raw || {}),
-      ...row
+      ...raw,
+      clientId: row.clientId,
+      clientName: row.clientName,
+      companyId: raw.companyId || row.companyId,
+      companyName: raw.companyName || row.companyName,
+      bitdefenderTenantId: raw.bitdefenderTenantId || null,
+      mappingMode: raw.mappingMode || row.mappingMode,
+      providerId: raw.providerId || row.providerId
     });
     if (!payload) return;
     onNavigate("AntivirusDetail", payload, options);
   };
   const handleViewAntispamSolution = (row, options = {}) => {
     if (!onNavigate || !row) return;
+    const raw = row.raw || {};
     const payload = buildAntispamDetailNavigationPayload({
       id: row.clientId,
       name: row.clientName
     }, {
-      ...(row.raw || {}),
-      ...row
+      ...raw,
+      clientId: row.clientId,
+      clientName: row.clientName,
+      customerId: raw.customerId || row.customerId,
+      customerName: raw.customerName || row.customerName,
+      mailinblackTenantId: raw.mailinblackTenantId || null,
+      mappingMode: raw.mappingMode || row.mappingMode,
+      providerId: raw.providerId || row.providerId
     });
     if (!payload) return;
     onNavigate("AntispamDetail", payload, options);

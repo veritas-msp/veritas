@@ -5,6 +5,15 @@
  */
 export const PATCH_NOTES = [
   {
+    version: "1.0.41",
+    date: "2026-09-29",
+    highlights: [
+      "Centre de supervision : alertes Filesystem explicites (plus de Critical - /).",
+      "Antivirus / Antispam : pagination et recherche sur les tableaux détail ; sync globale alignée sur la page détail.",
+      "Mapping CheckMK : fenêtre plus grande et aérée, filtres famille sur une seule ligne."
+    ]
+  },
+  {
     version: "1.0.40",
     date: "2026-09-28",
     highlights: [
