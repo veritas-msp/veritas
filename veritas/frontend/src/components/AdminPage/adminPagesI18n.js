@@ -22,6 +22,9 @@ const ADMIN_PAGES = {
       speedLabel: "Vitesse",
       speedHint: "Durée d'un cycle complet (5 à 60 s).",
       speedAria: "Vitesse du bandeau en secondes",
+      gapLabel: "Espace",
+      gapHint: "Espace entre deux messages (1 à 20).",
+      gapAria: "Espace entre les messages du bandeau",
       directionLabel: "Direction",
       colorLabel: "Couleur",
       previewLabel: "Aperçu"
@@ -96,6 +99,9 @@ const ADMIN_PAGES = {
       speedLabel: "Speed",
       speedHint: "Duration of one full cycle (5 to 60 s).",
       speedAria: "Banner speed in seconds",
+      gapLabel: "Spacing",
+      gapHint: "Space between two messages (1 to 20).",
+      gapAria: "Space between banner messages",
       directionLabel: "Direction",
       colorLabel: "Color",
       previewLabel: "Preview"
@@ -170,6 +176,9 @@ const ADMIN_PAGES = {
       speedLabel: "Geschwindigkeit",
       speedHint: "Dauer eines vollständigen Zyklus (5 bis 60 s).",
       speedAria: "Bannergeschwindigkeit in Sekunden",
+      gapLabel: "Abstand",
+      gapHint: "Abstand zwischen zwei Nachrichten (1 bis 20).",
+      gapAria: "Abstand zwischen Bannernachrichten",
       directionLabel: "Richtung",
       colorLabel: "Farbe",
       previewLabel: "Vorschau"
@@ -244,6 +253,9 @@ const ADMIN_PAGES = {
       speedLabel: "Velocità",
       speedHint: "Durata di un ciclo completo (5–60 s).",
       speedAria: "Velocità del banner in secondi",
+      gapLabel: "Spazio",
+      gapHint: "Spazio tra due messaggi (1–20).",
+      gapAria: "Spazio tra i messaggi del banner",
       directionLabel: "Direzione",
       colorLabel: "Colore",
       previewLabel: "Anteprima"
@@ -318,6 +330,9 @@ const ADMIN_PAGES = {
       speedLabel: "Velocidad",
       speedHint: "Duración de un ciclo completo (5 a 60 s).",
       speedAria: "Velocidad del banner en segundos",
+      gapLabel: "Espacio",
+      gapHint: "Espacio entre dos mensajes (1 a 20).",
+      gapAria: "Espacio entre mensajes del banner",
       directionLabel: "Dirección",
       colorLabel: "Color",
       previewLabel: "Vista previa"

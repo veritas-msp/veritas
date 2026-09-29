@@ -6,6 +6,7 @@ import { useAdminCommonCopy, useAdminPageCopy } from "../../hooks/useAdminCopy";
 import { Page, Card, Field, Textarea, Btn, Switch, FormGrid, Select, NumberStepper } from "./AdminUi";
 import ui from "./AdminUi.module.css";
 import s from "./AdminMaintenance.module.css";
+
 const COLOR_KEYS = [{
   key: "blue",
   value: "#2b5fab"
@@ -19,6 +20,13 @@ const COLOR_KEYS = [{
   key: "gray",
   value: "#6b7280"
 }];
+
+function normalizeGap(value) {
+  const parsed = Number.parseInt(value, 10);
+  if (!Number.isFinite(parsed)) return 3;
+  return Math.min(20, Math.max(1, parsed));
+}
+
 export default function AdminMaintenance() {
   const copy = useAdminPageCopy("maintenance");
   const adminCopy = useAdminCommonCopy();
@@ -32,7 +40,9 @@ export default function AdminMaintenance() {
   const [speed, setSpeed] = useState(22);
   const [direction, setDirection] = useState("left");
   const [color, setColor] = useState("#d97706");
+  const [gap, setGap] = useState(3);
   const [saving, setSaving] = useState(false);
+
   useEffect(() => {
     getMaintenanceStatus().then(data => {
       setEnabled(Boolean(data?.enabled || data?.maintenanceMode));
@@ -41,8 +51,10 @@ export default function AdminMaintenance() {
       setDirection(data?.tickerDirection === "right" ? "right" : "left");
       const c = /^#([0-9a-fA-F]{6})$/.test(data?.tickerColor || "") ? data.tickerColor : "#d97706";
       setColor(c);
+      setGap(normalizeGap(data?.tickerGap));
     }).catch(() => toast.error(copy.loadError));
   }, [copy.loadError]);
+
   const dispatchUpdate = (nextEnabled, nextMessage, opts) => {
     window.dispatchEvent(new CustomEvent("maintenanceStatusUpdated", {
       detail: {
@@ -50,15 +62,19 @@ export default function AdminMaintenance() {
         message: nextMessage,
         tickerSpeed: opts.tickerSpeed,
         tickerDirection: opts.tickerDirection,
-        tickerColor: opts.tickerColor
+        tickerColor: opts.tickerColor,
+        tickerGap: opts.tickerGap
       }
     }));
   };
+
   const tickerOptions = {
     tickerSpeed: speed,
     tickerDirection: direction,
-    tickerColor: color
+    tickerColor: color,
+    tickerGap: gap
   };
+
   const save = async (nextEnabled = enabled) => {
     setSaving(true);
     try {
@@ -72,6 +88,7 @@ export default function AdminMaintenance() {
       setSaving(false);
     }
   };
+
   const handleToggle = async on => {
     setEnabled(on);
     setSaving(true);
@@ -86,7 +103,10 @@ export default function AdminMaintenance() {
       setSaving(false);
     }
   };
+
   const previewText = message.trim() || copy.previewFallback;
+  const previewGap = `${normalizeGap(gap)}rem`;
+
   return <Page>
       <Card fill>
         <div className={ui.toolRow}>
@@ -103,9 +123,12 @@ export default function AdminMaintenance() {
             <Textarea value={message} onChange={e => setMessage(e.target.value)} placeholder={copy.messagePlaceholder} rows={3} />
           </Field>
 
-          <FormGrid cols={3}>
+          <FormGrid cols={4}>
             <Field label={copy.speedLabel} hint={copy.speedHint}>
               <NumberStepper block value={speed} onChange={setSpeed} min={5} max={60} suffix="s" ariaLabel={copy.speedAria} />
+            </Field>
+            <Field label={copy.gapLabel} hint={copy.gapHint}>
+              <NumberStepper block value={gap} onChange={value => setGap(normalizeGap(value))} min={1} max={20} ariaLabel={copy.gapAria} />
             </Field>
             <Field label={copy.directionLabel}>
               <Select value={direction} onChange={e => setDirection(e.target.value)}>
@@ -129,9 +152,13 @@ export default function AdminMaintenance() {
             <span className={s.previewLabel}>{copy.previewLabel}</span>
             <div className={s.previewFrame}>
               <div className={s.previewBanner} style={{
-              background: color
+              background: color,
+              "--preview-ticker-gap": previewGap
             }}>
-                <span className={s.previewText}>{previewText}</span>
+                <div className={s.previewTrack}>
+                  <span className={s.previewText}>{previewText}</span>
+                  <span className={s.previewText}>{previewText}</span>
+                </div>
               </div>
             </div>
           </div>

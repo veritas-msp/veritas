@@ -19,8 +19,14 @@ const DEFAULT_MAINTENANCE_STATUS = {
   message: "The application is currently under maintenance. Please try again later.",
   tickerSpeed: 22,
   tickerDirection: "left",
-  tickerColor: "#d97706"
+  tickerColor: "#d97706",
+  tickerGap: 3
 };
+function normalizeTickerGap(raw, fallback = 3) {
+  const parsed = Number.parseInt(raw, 10);
+  if (!Number.isFinite(parsed)) return fallback;
+  return Math.min(20, Math.max(1, parsed));
+}
 async function hasSystemTable() {
   if (!process.env.DATABASE_URL) return false;
   try {
@@ -167,11 +173,14 @@ router.get('/status', async (req, res) => {
     let tickerSpeed = 22;
     let tickerDirection = 'left';
     let tickerColor = '#d97706';
+    let tickerGap = 3;
+    const hasTickerGap = systemColumns.has('ticker_gap');
     if (hasMonoLineSchema) {
       if (!messageColumn) {
         throw new Error('Maintenance message column not found (maintenance_message).');
       }
-      const result = await pool.query(`SELECT maintenance_mode, ${messageColumn} AS maintenance_message, ticker_color, ticker_speed, ticker_direction
+      const gapSelect = hasTickerGap ? ', ticker_gap' : '';
+      const result = await pool.query(`SELECT maintenance_mode, ${messageColumn} AS maintenance_message, ticker_color, ticker_speed, ticker_direction${gapSelect}
          FROM v_b_settings_system
          WHERE id = 1
          LIMIT 1`);
@@ -181,6 +190,9 @@ router.get('/status', async (req, res) => {
       tickerSpeed = Number.isFinite(Number(row?.ticker_speed)) ? Math.max(5, Math.min(60, Number(row.ticker_speed))) : 22;
       tickerDirection = row?.ticker_direction === 'right' ? 'right' : 'left';
       tickerColor = /^#([0-9A-Fa-f]{6})$/.test(row?.ticker_color || '') ? row.ticker_color : '#d97706';
+      if (hasTickerGap) {
+        tickerGap = normalizeTickerGap(row?.ticker_gap, 3);
+      }
     } else {
       const modeResult = await pool.query(`SELECT *
          FROM v_b_settings_system
@@ -219,6 +231,13 @@ router.get('/status', async (req, res) => {
         const savedColor = String(decryptSetting(colorResult.rows[0]) || '').trim();
         if (/^#([0-9A-Fa-f]{6})$/.test(savedColor)) tickerColor = savedColor;
       }
+      const gapResult = await pool.query(`SELECT *
+         FROM v_b_settings_system
+         WHERE key = 'MAINTENANCE_TICKER_GAP'
+         LIMIT 1`);
+      if (gapResult.rows[0]) {
+        tickerGap = normalizeTickerGap(decryptSetting(gapResult.rows[0]), 3);
+      }
     }
     res.json({
       enabled: isEnabled,
@@ -226,7 +245,8 @@ router.get('/status', async (req, res) => {
       message: message,
       tickerSpeed,
       tickerDirection,
-      tickerColor
+      tickerColor,
+      tickerGap
     });
   } catch (err) {
     console.error('GET /maintenance/status error:', err);
@@ -240,21 +260,25 @@ router.post('/toggle', verifyJWT, requirePermission('admin_panel.maintenance'), 
     const rawTickerSpeed = req.body.tickerSpeed;
     const rawTickerDirection = req.body.tickerDirection;
     const rawTickerColor = req.body.tickerColor;
+    const rawTickerGap = req.body.tickerGap;
     const systemColumns = await getSystemColumns();
     const messageColumn = resolveMaintenanceMessageColumn(systemColumns);
     const hasLegacySchema = systemColumns.has('key') || systemColumns.has('value_encrypted');
     const hasMonoLineSchema = !hasLegacySchema;
+    const hasTickerGap = systemColumns.has('ticker_gap');
     const parsedSpeed = Number.parseInt(rawTickerSpeed, 10);
     const normalizedSpeed = Number.isFinite(parsedSpeed) ? Math.min(60, Math.max(5, parsedSpeed)) : 22;
     const normalizedDirection = String(rawTickerDirection).toLowerCase() === 'right' ? 'right' : 'left';
     const normalizedColor = /^#([0-9A-Fa-f]{6})$/.test(String(rawTickerColor || '').trim()) ? String(rawTickerColor).trim() : '#d97706';
+    const normalizedGap = normalizeTickerGap(rawTickerGap, 3);
     if (hasMonoLineSchema) {
       if (!messageColumn) {
         throw new Error('Maintenance message column not found (maintenance_message).');
       }
       const hasCreatedAt = systemColumns.has('created_at');
       const hasUpdatedAt = systemColumns.has('updated_at');
-      const currentResult = await pool.query(`SELECT maintenance_mode, ${messageColumn} AS maintenance_message, ticker_speed, ticker_direction, ticker_color
+      const gapSelect = hasTickerGap ? ', ticker_gap' : '';
+      const currentResult = await pool.query(`SELECT maintenance_mode, ${messageColumn} AS maintenance_message, ticker_speed, ticker_direction, ticker_color${gapSelect}
          FROM v_b_settings_system
          WHERE id = 1
          LIMIT 1`);
@@ -264,16 +288,28 @@ router.post('/toggle', verifyJWT, requirePermission('admin_panel.maintenance'), 
       const nextSpeed = rawTickerSpeed !== undefined ? normalizedSpeed : Number.isFinite(Number(current.ticker_speed)) ? Math.min(60, Math.max(5, Number(current.ticker_speed))) : 22;
       const nextDirection = rawTickerDirection !== undefined ? normalizedDirection : current.ticker_direction === 'right' ? 'right' : 'left';
       const nextColor = rawTickerColor !== undefined ? normalizedColor : /^#([0-9A-Fa-f]{6})$/.test(current.ticker_color || '') ? current.ticker_color : '#d97706';
+      const nextGap = rawTickerGap !== undefined ? normalizedGap : hasTickerGap ? normalizeTickerGap(current.ticker_gap, 3) : 3;
       const updateClauses = ['maintenance_mode = $1', `${messageColumn} = $2`, 'ticker_color = $3', 'ticker_speed = $4', 'ticker_direction = $5'];
+      const updateParams = [nextMode, nextMessage, nextColor, nextSpeed, nextDirection];
+      if (hasTickerGap) {
+        updateClauses.push(`ticker_gap = $${updateParams.length + 1}`);
+        updateParams.push(nextGap);
+      }
       if (hasUpdatedAt) {
         updateClauses.push('updated_at = NOW()');
       }
       const updatedMono = await pool.query(`UPDATE v_b_settings_system
          SET ${updateClauses.join(', ')}
-         WHERE id = 1`, [nextMode, nextMessage, nextColor, nextSpeed, nextDirection]);
+         WHERE id = 1`, updateParams);
       if (updatedMono.rowCount === 0) {
         const insertColumns = ['id', 'maintenance_mode', messageColumn, 'ticker_color', 'ticker_speed', 'ticker_direction'];
         const insertValues = ['1', '$1', '$2', '$3', '$4', '$5'];
+        const insertParams = [nextMode, nextMessage, nextColor, nextSpeed, nextDirection];
+        if (hasTickerGap) {
+          insertColumns.push('ticker_gap');
+          insertValues.push(`$${insertParams.length + 1}`);
+          insertParams.push(nextGap);
+        }
         if (hasCreatedAt) {
           insertColumns.push('created_at');
           insertValues.push('NOW()');
@@ -283,7 +319,7 @@ router.post('/toggle', verifyJWT, requirePermission('admin_panel.maintenance'), 
           insertValues.push('NOW()');
         }
         await pool.query(`INSERT INTO v_b_settings_system (${insertColumns.join(', ')})
-           VALUES (${insertValues.join(', ')})`, [nextMode, nextMessage, nextColor, nextSpeed, nextDirection]);
+           VALUES (${insertValues.join(', ')})`, insertParams);
       }
     } else {
       await upsertLegacyEncryptedSetting('MAINTENANCE_MODE', enable ? 'true' : 'false');
@@ -298,6 +334,9 @@ router.post('/toggle', verifyJWT, requirePermission('admin_panel.maintenance'), 
       }
       if (rawTickerColor !== undefined) {
         await upsertLegacyEncryptedSetting('MAINTENANCE_TICKER_COLOR', normalizedColor);
+      }
+      if (rawTickerGap !== undefined) {
+        await upsertLegacyEncryptedSetting('MAINTENANCE_TICKER_GAP', String(normalizedGap));
       }
     }
     res.json({

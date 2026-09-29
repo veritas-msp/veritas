@@ -9,7 +9,8 @@ export async function toggleMaintenance(enabled, message, options = {}) {
   const {
     tickerSpeed,
     tickerDirection,
-    tickerColor
+    tickerColor,
+    tickerGap
   } = options;
   const res = await fetch(`${BASE_URL}/toggle`, {
     method: 'POST',
@@ -22,7 +23,8 @@ export async function toggleMaintenance(enabled, message, options = {}) {
       message,
       tickerSpeed,
       tickerDirection,
-      tickerColor
+      tickerColor,
+      tickerGap
     })
   });
   if (!res.ok) {

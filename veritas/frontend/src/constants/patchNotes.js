@@ -5,6 +5,13 @@
  */
 export const PATCH_NOTES = [
   {
+    version: "1.0.43",
+    date: "2026-09-29",
+    highlights: [
+      "Message de maintenance : réglage de l’espace entre deux passages du texte défilant."
+    ]
+  },
+  {
     version: "1.0.42",
     date: "2026-09-29",
     highlights: [

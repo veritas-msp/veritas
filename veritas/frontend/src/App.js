@@ -41,9 +41,12 @@ function GlobalMaintenanceTicker({
   const tickerDuration = Number.isFinite(Number(maintenanceStatus?.tickerSpeed)) ? Math.max(5, Math.min(60, Number(maintenanceStatus.tickerSpeed))) : 22;
   const tickerDirection = maintenanceStatus?.tickerDirection === "right" ? "right" : "left";
   const tickerColor = /^#([0-9a-fA-F]{6})$/.test(maintenanceStatus?.tickerColor || "") ? maintenanceStatus.tickerColor : "#d97706";
+  const parsedGap = Number.parseInt(maintenanceStatus?.tickerGap, 10);
+  const tickerGap = Number.isFinite(parsedGap) ? Math.min(20, Math.max(1, parsedGap)) : 3;
   const tickerText = `${copy.maintenancePrefix} - ${maintenanceMessage}`;
   return <div className={`globalMaintenanceTicker ${isTickerHoverZone ? "hoverTransparent" : ""}`} role="status" aria-live="polite" style={{
-    "--maintenance-ticker-color": tickerColor
+    "--maintenance-ticker-color": tickerColor,
+    "--maintenance-ticker-gap": `${tickerGap}rem`
   }}>
       <div className={`globalMaintenanceTickerTrack ${tickerDirection === "right" ? "reverseDirection" : ""} ${isTickerHoverZone ? "paused" : ""}`} style={{
       animationDuration: `${tickerDuration}s`
@@ -59,7 +62,8 @@ export default function App() {
     message: "",
     tickerSpeed: 22,
     tickerDirection: "left",
-    tickerColor: "#d97706"
+    tickerColor: "#d97706",
+    tickerGap: 3
   });
   const [isTickerHoverZone, setIsTickerHoverZone] = useState(false);
   const [toastPosition, setToastPosition] = useState(getToastPosition);
@@ -69,12 +73,14 @@ export default function App() {
       try {
         const status = await getMaintenanceStatus();
         if (!mounted) return;
+        const gap = Number.parseInt(status?.tickerGap, 10);
         setMaintenanceStatus({
           enabled: Boolean(status?.enabled || status?.maintenanceMode),
           message: status?.message || "",
           tickerSpeed: Number.isFinite(Number(status?.tickerSpeed)) ? Number(status.tickerSpeed) : 22,
           tickerDirection: status?.tickerDirection === "right" ? "right" : "left",
-          tickerColor: /^#([0-9a-fA-F]{6})$/.test(status?.tickerColor || "") ? status.tickerColor : "#d97706"
+          tickerColor: /^#([0-9a-fA-F]{6})$/.test(status?.tickerColor || "") ? status.tickerColor : "#d97706",
+          tickerGap: Number.isFinite(gap) ? Math.min(20, Math.max(1, gap)) : 3
         });
       } catch {
         if (!mounted) return;
@@ -88,12 +94,14 @@ export default function App() {
     const intervalId = setInterval(loadStatus, 15000);
     const handleMaintenanceStatusUpdated = event => {
       const payload = event?.detail || {};
+      const gap = Number.parseInt(payload?.tickerGap, 10);
       setMaintenanceStatus({
         enabled: Boolean(payload?.enabled),
         message: payload?.message || "",
         tickerSpeed: Number.isFinite(Number(payload?.tickerSpeed)) ? Number(payload.tickerSpeed) : 22,
         tickerDirection: payload?.tickerDirection === "right" ? "right" : "left",
-        tickerColor: /^#([0-9a-fA-F]{6})$/.test(payload?.tickerColor || "") ? payload.tickerColor : "#d97706"
+        tickerColor: /^#([0-9a-fA-F]{6})$/.test(payload?.tickerColor || "") ? payload.tickerColor : "#d97706",
+        tickerGap: Number.isFinite(gap) ? Math.min(20, Math.max(1, gap)) : 3
       });
     };
     window.addEventListener("maintenanceStatusUpdated", handleMaintenanceStatusUpdated);
