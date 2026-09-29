@@ -372,15 +372,39 @@ export function computeSlaDisplay(ticket, now = Date.now()) {
   const firstResponseAt = sla.firstResponseAt ? new Date(sla.firstResponseAt).getTime() : null;
   const resolvedAt = ticket?.resolved_at ? new Date(ticket.resolved_at).getTime() : null;
   if (closed) {
+    const resolutionAt =
+      resolvedAt ||
+      (ticket?.closed_at ? new Date(ticket.closed_at).getTime() : null) ||
+      (ticket?.updated_at ? new Date(ticket.updated_at).getTime() : null);
+    const firstOverdueMs =
+      firstResponseDue && firstResponseAt && firstResponseAt > firstResponseDue
+        ? firstResponseDue - firstResponseAt
+        : null;
+    const resolutionOverdueMs =
+      resolutionDue && resolutionAt && resolutionAt > resolutionDue
+        ? resolutionDue - resolutionAt
+        : null;
     const firstOk = !firstResponseDue || (firstResponseAt ? firstResponseAt <= firstResponseDue : true);
-    const resolutionOk = !resolutionDue || (resolvedAt ? resolvedAt <= resolutionDue : true);
+    const resolutionOk = !resolutionDue || (resolutionAt ? resolutionAt <= resolutionDue : true);
     const ok = firstOk && resolutionOk;
+    if (ok) {
+      return {
+        label: "OK",
+        tone: "ok",
+        status: "met",
+        phase: "closed",
+        remainingMs: null
+      };
+    }
+    // Worst (most overdue) breach — show elapsed overrun instead of a bare "Exp."
+    const overdueCandidates = [resolutionOverdueMs, firstOverdueMs].filter(value => value != null);
+    const overdueMs = overdueCandidates.length ? Math.min(...overdueCandidates) : null;
     return {
-      label: ok ? "OK" : "Exp.",
-      tone: ok ? "ok" : "breach",
-      status: ok ? "met" : "breached",
+      label: overdueMs != null ? formatSlaRemainingLabel(overdueMs) : "Exp.",
+      tone: "breach",
+      status: "breached",
       phase: "closed",
-      remainingMs: null
+      remainingMs: overdueMs
     };
   }
   if (isNew && firstResponseDue) {

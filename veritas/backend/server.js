@@ -185,6 +185,11 @@ app.use('/uploads/login-branding', (req, res, next) => {
   res.setHeader('Content-Security-Policy', "default-src 'none'; script-src 'none'; style-src 'unsafe-inline'");
   next();
 }, express.static('uploads/login-branding'));
+app.use('/uploads/email-assets', (req, res, next) => {
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+  next();
+}, express.static('uploads/email-assets'));
 app.use('/uploads', verifyJWT, express.static('uploads'));
 await initDBConnection();
 if (await canRunAutoSchemaMigrations()) {

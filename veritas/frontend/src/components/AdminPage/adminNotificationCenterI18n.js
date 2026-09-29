@@ -95,6 +95,27 @@ const ADMIN_NOTIFICATION_CENTER_COPY = {
           recipients: "Le contact destinataire"
         }
       },
+      sections: {
+        channels: {
+          label: "Activation",
+          description: "Canaux et destinataires",
+          title: "Activation",
+          desc: "Activez la notification et choisissez les canaux d'envoi.",
+          recipientsTitle: "Destinataires in-app"
+        },
+        email: {
+          label: "Email",
+          description: "Sujet et contenu",
+          title: "Contenu de l'email",
+          desc: "Rédigez le sujet et le corps du message SMTP."
+        },
+        inapp: {
+          label: "Centre de notifications",
+          description: "Titre et message",
+          title: "Centre de notifications",
+          desc: "Définissez le titre et le message affichés dans la cloche."
+        }
+      },
       fields: {
         enabled: "Notification active",
         enabledHint: "Si désactivé, aucun e-mail ni in-app n'est envoyé pour cette action.",
@@ -111,7 +132,23 @@ const ADMIN_NOTIFICATION_CENTER_COPY = {
         body: "Contenu de l'email",
         inAppTitle: "Titre dans le centre de notifications",
         inAppBody: "Message dans le centre de notifications",
-        variablesHint: "Cliquez une variable pour l'insérer. Exemple : {{ticket.title}}"
+        variablesHint: "Cliquez une variable pour l'insérer. Exemple : {{ticket.title}}",
+        toolbarLink: "Lien",
+        toolbarList: "Liste",
+        toolbarImageUrl: "Image URL",
+        toolbarImageUpload: "Image",
+        toolbarPreview: "Aperçu",
+        toolbarHidePreview: "Masquer l'aperçu",
+        previewLabel: "Aperçu e-mail (données d'exemple)",
+        previewSubject: "Sujet",
+        sendPreview: "Envoyer un aperçu",
+        sendingPreview: "Envoi…",
+        previewSent: "Aperçu envoyé à {email}",
+        previewSkipped: "Aperçu journalisé (SMTP non configuré) — destinataire : {email}",
+        previewError: "Impossible d'envoyer l'aperçu",
+        imageUrlPrompt: "URL publique de l'image (https://…)",
+        imageUrlInvalid: "URL invalide. Utilisez une adresse http(s) publique.",
+        imageUploadError: "Échec de l'upload de l'image"
       },
       toast: {
         saved: "Template enregistré",
@@ -309,6 +346,27 @@ const ADMIN_NOTIFICATION_CENTER_COPY = {
           recipients: "The recipient contact"
         }
       },
+      sections: {
+        channels: {
+          label: "Activation",
+          description: "Channels and recipients",
+          title: "Activation",
+          desc: "Enable the notification and choose delivery channels.",
+          recipientsTitle: "In-app recipients"
+        },
+        email: {
+          label: "Email",
+          description: "Subject and body",
+          title: "Email content",
+          desc: "Write the SMTP subject and message body."
+        },
+        inapp: {
+          label: "Notification center",
+          description: "Title and message",
+          title: "Notification center",
+          desc: "Define the title and message shown in the bell."
+        }
+      },
       fields: {
         enabled: "Notification on",
         enabledHint: "If off, no email or in-app is sent for this action.",
@@ -325,7 +383,23 @@ const ADMIN_NOTIFICATION_CENTER_COPY = {
         body: "Email content",
         inAppTitle: "Notification center title",
         inAppBody: "Notification center message",
-        variablesHint: "Click a variable to insert it. Example: {{ticket.title}}"
+        variablesHint: "Click a variable to insert it. Example: {{ticket.title}}",
+        toolbarLink: "Link",
+        toolbarList: "List",
+        toolbarImageUrl: "Image URL",
+        toolbarImageUpload: "Image",
+        toolbarPreview: "Preview",
+        toolbarHidePreview: "Hide preview",
+        previewLabel: "Email preview (sample data)",
+        previewSubject: "Subject",
+        sendPreview: "Send preview",
+        sendingPreview: "Sending…",
+        previewSent: "Preview sent to {email}",
+        previewSkipped: "Preview logged (SMTP not configured) — recipient: {email}",
+        previewError: "Unable to send preview",
+        imageUrlPrompt: "Public image URL (https://…)",
+        imageUrlInvalid: "Invalid URL. Use a public http(s) address.",
+        imageUploadError: "Image upload failed"
       },
       toast: {
         saved: "Template saved",

@@ -5,7 +5,8 @@
 }
 
 .portalTabContent {
-  max-width: 32rem;
+  max-width: none;
+  width: 100%;
 }
 
 .coordGrid {

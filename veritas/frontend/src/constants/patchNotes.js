@@ -5,6 +5,16 @@
  */
 export const PATCH_NOTES = [
   {
+    version: "1.0.42",
+    date: "2026-09-29",
+    highlights: [
+      "Administration > Notifications : liste aérée et modal de configuration en sections (activation, email, centre).",
+      "Éditeur d’email : images (URL ou upload), aperçu du rendu Veritas, envoi d’un aperçu de test par mail.",
+      "Fiche contact — Portail client : mise en page plus claire sur deux colonnes.",
+      "Tickets clôturés : le SLA affiche le retard réel au lieu de « Exp. »."
+    ]
+  },
+  {
     version: "1.0.41",
     date: "2026-09-29",
     highlights: [

@@ -36,15 +36,21 @@
 .groups {
   display: flex;
   flex-direction: column;
-  gap: 22px;
+  gap: 2rem;
+}
+
+.group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
 }
 
 .groupHeader {
   display: flex;
   align-items: baseline;
   gap: 10px;
-  padding-bottom: 8px;
-  margin-bottom: 2px;
+  padding: 0 0 0.75rem;
+  margin: 0;
   border-bottom: 1px solid var(--msp-border-light);
 }
 
@@ -55,6 +61,7 @@
   letter-spacing: 0.05em;
   text-transform: uppercase;
   color: var(--msp-muted-light);
+  line-height: 1.4;
 }
 
 .groupDesc {
@@ -72,7 +79,7 @@
 .rowsGrid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-  gap: 12px;
+  gap: 14px;
 }
 
 .row {

@@ -8,7 +8,9 @@ import { NOTIFICATION_CHANNEL_OPTIONS, NOTIFICATION_EVENT_FORM_SECTIONS, NOTIFIC
 import layout from "../EnterprisesPage/EnterpriseFormModal.module.css";
 import formStyles from "./IngestionRuleFormModal.module.css";
 import styles from "./NotificationEventFormModal.module.css";
-import { sanitizeHtml } from "../../utils/sanitizeHtml";
+import { sendNotificationEmailPreview, uploadNotificationEmailAsset } from "../../api/notificationEmailPreview";
+import { sanitizeHtml, toRichPreviewHtml } from "../../utils/sanitizeHtml";
+import { renderNotificationTemplate, wrapVeritasEmailPreview } from "../../utils/notificationEmailPreview";
 function EmailChipField({
   emails,
   inputValue,
@@ -66,8 +68,12 @@ export default function NotificationEventFormModal({
   const [emailToInput, setEmailToInput] = useState("");
   const [emailCcInput, setEmailCcInput] = useState("");
   const [showPreview, setShowPreview] = useState(false);
+  const [showEmailPreview, setShowEmailPreview] = useState(false);
+  const [sendingPreview, setSendingPreview] = useState(false);
+  const [uploadingImage, setUploadingImage] = useState(false);
   const [webhookSelectOpen, setWebhookSelectOpen] = useState(false);
   const webhookSelectRef = useRef(null);
+  const imageInputRef = useRef(null);
   const internalEditorRef = useRef(null);
   const resolvedEditorRef = editorRef || internalEditorRef;
   useEffect(() => {
@@ -76,6 +82,7 @@ export default function NotificationEventFormModal({
     setEmailToInput("");
     setEmailCcInput("");
     setShowPreview(false);
+    setShowEmailPreview(false);
     setWebhookSelectOpen(false);
   }, [open]);
   useEffect(() => {
@@ -113,6 +120,14 @@ export default function NotificationEventFormModal({
       content: contentOk
     };
   }, [draft, selectedChannels, usesMail, usesWebhook, usesInApp, runtimeChannels]);
+  const emailPreviewDoc = useMemo(() => {
+    if (!showEmailPreview || !draft) return "";
+    const body = String(draft.customMessage || "");
+    return wrapVeritasEmailPreview({
+      title: renderNotificationTemplate(String(draft.emailSubject || "Notification")),
+      content: toRichPreviewHtml(renderNotificationTemplate(body))
+    });
+  }, [showEmailPreview, draft]);
   if (!open || !draft) return null;
   const patchDraft = patch => setDraft(prev => ({
     ...prev,
@@ -161,14 +176,53 @@ export default function NotificationEventFormModal({
     });
   };
   const insertImageUrl = () => {
-    const rawUrl = window.prompt("Public image URL (https://...)", "https://");
+    const rawUrl = window.prompt("URL publique de l'image (https://…)", "https://");
     if (!rawUrl) return;
     const url = String(rawUrl || "").trim();
     if (!/^https?:\/\//i.test(url)) {
-      toast.error("Invalid image URL. Use a public http(s) URL.");
+      toast.error("URL invalide. Utilisez une adresse http(s) publique.");
       return;
     }
     execEditorCommand("insertImage", url);
+  };
+  const onPickImageFile = async event => {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (!file) return;
+    setUploadingImage(true);
+    try {
+      const uploaded = await uploadNotificationEmailAsset(file);
+      const url = String(uploaded?.url || "").trim();
+      if (!url) throw new Error("Upload failed");
+      execEditorCommand("insertImage", url);
+    } catch (error) {
+      toast.error(error?.message || "Échec de l'upload de l'image");
+    } finally {
+      setUploadingImage(false);
+    }
+  };
+  const sendPreviewEmail = async () => {
+    const htmlContent = String(resolvedEditorRef.current?.innerHTML || draft?.customMessage || "");
+    patchDraft({
+      customMessage: htmlContent
+    });
+    setSendingPreview(true);
+    try {
+      const result = await sendNotificationEmailPreview({
+        subject: draft?.emailSubject || "Notification Veritas",
+        title: draft?.emailSubject || "Notification Veritas",
+        htmlContent
+      });
+      if (result?.skipped) {
+        toast.info(`Aperçu journalisé (SMTP non configuré) — ${result.to || ""}`);
+      } else {
+        toast.success(`Aperçu envoyé à ${result?.to || ""}`);
+      }
+    } catch (error) {
+      toast.error(error?.message || "Impossible d'envoyer l'aperçu");
+    } finally {
+      setSendingPreview(false);
+    }
   };
   const modalTitle = isCreate ? "New notification event" : "Edit event";
   const modalSubtitle = isCreate ? "Trigger an automatic notification on a business event." : "Adjust the trigger, target and delivered content.";
@@ -418,10 +472,24 @@ export default function NotificationEventFormModal({
                     Variables
                   </button>
                   <button type="button" className={styles.toolBtn} onClick={insertImageUrl}>
-                    <Icon icon="mdi:image-outline" aria-hidden />
+                    <Icon icon="mdi:link-box-outline" aria-hidden />
                     Image URL
                   </button>
+                  <button type="button" className={styles.toolBtn} disabled={uploadingImage} onClick={() => imageInputRef.current?.click()}>
+                    <Icon icon={uploadingImage ? "mdi:loading" : "mdi:image-outline"} className={uploadingImage ? layout.spinning : undefined} aria-hidden />
+                    Image
+                  </button>
+                  <input ref={imageInputRef} type="file" accept="image/png,image/jpeg,image/webp,image/gif" hidden onChange={onPickImageFile} />
                   <input type="color" className={styles.colorInput} onChange={e => execEditorCommand("foreColor", e.target.value)} title="Text color" />
+                  <button type="button" className={styles.toolBtn} onClick={() => {
+                patchDraft({
+                  customMessage: String(resolvedEditorRef.current?.innerHTML || draft.customMessage || "")
+                });
+                setShowEmailPreview(prev => !prev);
+              }}>
+                    <Icon icon={showEmailPreview ? "mdi:eye-off-outline" : "mdi:eye-outline"} aria-hidden />
+                    {showEmailPreview ? "Masquer aperçu" : "Aperçu email"}
+                  </button>
                   <button type="button" className={styles.toolBtn} onClick={() => setShowPreview(prev => !prev)} disabled={!isTeamsWebhook}>
                     <Icon icon={showPreview ? "mdi:chevron-up" : "mdi:chevron-down"} aria-hidden />
                     Teams preview
@@ -454,6 +522,20 @@ export default function NotificationEventFormModal({
               customMessage: String(e.currentTarget?.innerHTML || "").replace(/\soutline:\s*[^;"']+;?/gi, "")
             })} />
 
+                <div className={styles.emailPreviewActions}>
+                  <button type="button" className={layout.ghostBtn} onClick={sendPreviewEmail} disabled={sendingPreview || saving}>
+                    {sendingPreview ? <Icon icon="mdi:loading" className={layout.spinning} /> : <Icon icon="mdi:email-fast-outline" />}
+                    {sendingPreview ? "Envoi…" : "Envoyer un aperçu"}
+                  </button>
+                </div>
+
+                {showEmailPreview && <div className={styles.emailPreviewWrap}>
+                    <div className={styles.emailPreviewHeader}>
+                      <span className={styles.emailPreviewLabel}>Aperçu e-mail (données d'exemple)</span>
+                    </div>
+                    <iframe className={styles.emailPreviewFrame} title="email-preview" sandbox="" srcDoc={emailPreviewDoc} />
+                  </div>}
+
                 {showPreview && isTeamsWebhook && <div className={styles.previewWrap}>
                     <div className={styles.previewLabel}>Teams preview</div>
                     <div className={styles.previewCard} style={{
@@ -466,8 +548,8 @@ export default function NotificationEventFormModal({
                     </div>
                   </div>}
 
-                {!isTeamsWebhook && <p className={styles.hintText}>
-                    Teams preview is only available with a Teams-type Webhook channel.
+                {!isTeamsWebhook && !showEmailPreview && <p className={styles.hintText}>
+                    Utilisez « Aperçu email » pour visualiser le rendu, ou activez un webhook Teams pour la preview Teams.
                   </p>}
               </>}
           </>;
