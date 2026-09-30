@@ -16,8 +16,8 @@ import { buildLinkedEquipmentComment, getEquipmentPickerLabel, getEquipmentSearc
 import { buildClientContractSummary, computeSupportCreditTotals } from "./ticketClientSummaryUtils";
 import { buildLinkedTicketComment, getTicketLinkLabel, getTicketLinkSearchText } from "./ticketLinkUtils";
 import { formatClientSlaRows, parseClientSla } from "../../utils/ticketSlaUtils";
-import { isFileField, findFormEquipmentFieldKeys, resolveFormScopedClientId } from "../../utils/salesFormFieldTypes";
-import { collectSupportFormFiles, resolveTicketContentFromSupportForm } from "../../utils/supportFormTicketContent";
+import { isFileField, findFormEquipmentFieldKeys, findFormClientFieldKey, resolveFormScopedClientId } from "../../utils/salesFormFieldTypes";
+import { collectSupportFormFiles, findFormDescriptionField, findFormSubjectField, resolveTicketContentFromSupportForm } from "../../utils/supportFormTicketContent";
 import ContactFormModal from "../ContactsPage/ContactFormModal";
 import SmartTooltip from "../SmartTooltip";
 import TicketKnowledgeSuggestions from "./TicketKnowledgeSuggestions";
@@ -601,6 +601,7 @@ export default function TicketCreatePage({
   const [supportCreditBalance, setSupportCreditBalance] = useState(null);
   const [supportCreditPacks, setSupportCreditPacks] = useState([]);
   const [loadingCredits, setLoadingCredits] = useState(false);
+  const supportPrefillAppliedRef = useRef("");
   useEffect(() => {
     if (!confirmModalOpen) return undefined;
     const previousOverflow = document.body.style.overflow;
@@ -889,6 +890,8 @@ export default function TicketCreatePage({
     [selectedSupportForm, supportFormValues, resolvedTicketClientId]
   );
   useEffect(() => {
+    // Pendant le chargement, ne pas vider le formulaire pré-sélectionné (sinon le préremplissage supervision est perdu).
+    if (loadingData) return;
     if (!hasSupportForms) {
       if (selectedSupportFormId) setSelectedSupportFormId("");
       return;
@@ -897,17 +900,96 @@ export default function TicketCreatePage({
       const lockedId = String(initialData.supportFormId);
       if (String(selectedSupportFormId) !== lockedId) {
         setSelectedSupportFormId(lockedId);
-        if (initialData.supportFormValues && typeof initialData.supportFormValues === "object") {
-          setSupportFormValues({ ...initialData.supportFormValues });
-        }
       }
       return;
     }
     if (!enabledSupportForms.some(form => String(form.id) === String(selectedSupportFormId))) {
       setSelectedSupportFormId(String(enabledSupportForms[0].id));
-      setSupportFormValues({});
+      if (!initialData?.supportFormId) {
+        setSupportFormValues({});
+      }
     }
-  }, [hasSupportForms, enabledSupportForms, selectedSupportFormId, initialData?.supportFormId, initialData?.supportFormValues]);
+  }, [loadingData, hasSupportForms, enabledSupportForms, selectedSupportFormId, initialData?.supportFormId]);
+
+  // Applique (ou ré-applique) le préremplissage supervision une fois le formulaire chargé.
+  useEffect(() => {
+    if (loadingData || !selectedSupportForm) return;
+    const hasPrefillPayload = Boolean(
+      initialData?.prefillSource === "supervision" ||
+      initialData?.lockSupportForm ||
+      initialData?.supportFormId ||
+      (initialData?.supportFormValues && Object.keys(initialData.supportFormValues).length > 0)
+    );
+    if (!hasPrefillPayload) return;
+
+    const stamp = [
+      String(selectedSupportForm.id || ""),
+      String(initialData?.supportFormId || ""),
+      String(initialData?.subjectFieldKey || ""),
+      String(initialData?.descriptionFieldKey || ""),
+      String(initialData?.title || ""),
+      String(initialData?.description || "").slice(0, 80),
+      String(initialData?.equipmentId || ""),
+      String(initialData?.clientId || "")
+    ].join("|");
+    if (supportPrefillAppliedRef.current === stamp) return;
+
+    const fields = (selectedSupportForm.fields || []).filter(field => field?.enabled !== false);
+    const subjectKey =
+      (initialData?.subjectFieldKey && fields.some(field => String(field.fieldKey) === String(initialData.subjectFieldKey))
+        ? String(initialData.subjectFieldKey)
+        : null) ||
+      findFormSubjectField(fields)?.fieldKey ||
+      null;
+    const descriptionKey =
+      (initialData?.descriptionFieldKey && fields.some(field => String(field.fieldKey) === String(initialData.descriptionFieldKey))
+        ? String(initialData.descriptionFieldKey)
+        : null) ||
+      findFormDescriptionField(fields)?.fieldKey ||
+      null;
+    const clientKey = findFormClientFieldKey(fields);
+    const equipmentKeys = findFormEquipmentFieldKeys(fields);
+
+    setSupportFormValues(prev => {
+      const next = {
+        ...prev
+      };
+      if (initialData?.supportFormValues && typeof initialData.supportFormValues === "object") {
+        Object.entries(initialData.supportFormValues).forEach(([key, value]) => {
+          if (!String(next[key] ?? "").trim() && value != null && String(value).trim() !== "") {
+            next[key] = value;
+          }
+        });
+      }
+      if (subjectKey && initialData?.title && !String(next[subjectKey] ?? "").trim()) {
+        next[subjectKey] = String(initialData.title);
+      }
+      if (descriptionKey && initialData?.description && !String(next[descriptionKey] ?? "").trim()) {
+        next[descriptionKey] = String(initialData.description);
+      }
+      if (clientKey && initialData?.clientId && !String(next[clientKey] ?? "").trim()) {
+        next[clientKey] = String(initialData.clientId);
+      }
+      if (equipmentKeys[0] && initialData?.equipmentId && !String(next[equipmentKeys[0]] ?? "").trim()) {
+        next[equipmentKeys[0]] = String(initialData.equipmentId);
+      }
+      return next;
+    });
+
+    supportPrefillAppliedRef.current = stamp;
+  }, [
+    loadingData,
+    selectedSupportForm,
+    initialData?.supportFormId,
+    initialData?.supportFormValues,
+    initialData?.subjectFieldKey,
+    initialData?.descriptionFieldKey,
+    initialData?.title,
+    initialData?.description,
+    initialData?.equipmentId,
+    initialData?.clientId
+  ]);
+
   useEffect(() => {
     if (!hasFormEquipmentField) return;
     const equipmentKey = formEquipmentFieldKeys[0];

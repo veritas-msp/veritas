@@ -12,11 +12,29 @@ import { isRmmManagedEquipment } from "./rmmMonitoringUtils";
 import InternetDebitCounters from "./InternetDebitCounters";
 import EquipmentRemoteAccessLaunchButton from "./EquipmentRemoteAccessLaunchButton";
 import { shouldShowRemoteAccessFieldAction } from "./equipmentDetailRemoteAccess";
+import RmmHardwareOverview from "./RmmHardwareOverview";
 import { useAppLocale } from "../../hooks/useAppGeneralSettings";
 import { getEquipmentDetailCopy } from "./equipmentDetailPageI18n";
 import useSystemFamilyExtensions from "../../hooks/useSystemFamilyExtensions";
 import styles from "./EquipmentDetailSpecsPanel.module.css";
 const DEBIT_FIELD_KEYS = new Set(["debit", "debitDownload", "debitUpload"]);
+/** Champs déjà couverts par la carte CPU/RAM/Stockage RMM — évite le doublon texte. */
+const RMM_RESOURCE_FIELD_KEYS = new Set(["processeur", "memoire", "stockage"]);
+const RMM_LIFECYCLE_FIELD_KEYS = new Set(["purchaseDate", "invoiceNumber", "installDate", "expirationGarantie"]);
+const RMM_IDENTITY_TECH_FIELD_KEYS = new Set([
+  "computerType",
+  "manufacturer",
+  "model",
+  "serial",
+  "systeme",
+  "editionWindows",
+  "windowsFeatureVersion",
+  "windowsBuild",
+  "windowsLicenseStatus",
+  "domaine",
+  "netbios",
+  "name"
+]);
 function mergeInternetDisplaySections(sections) {
   const typeSection = sections.find(section => section.id === "internetType");
   const linkSection = sections.find(section => section.id === "internetLink");
@@ -325,10 +343,65 @@ export default function EquipmentDetailSpecsPanel({
   }, [baseSections, haPeer, hostServerPeer, equipment?.type, copy.fields.firewallHAName, copy.fields.serverHAName, copy.fields.storageHAName, copy.fields.hostServerName]);
   const sectionsGridClass = resolveSectionsGridClass(sections.length);
   const rmmManagedComputer = equipment?.type === "Ordinateurs" && isRmmManagedEquipment(equipment);
-  const rmmInlineFields = useMemo(() => {
+  const rmmGroupedSections = useMemo(() => {
     if (!rmmManagedComputer) return [];
-    return sections.flatMap(section => section.fields);
-  }, [rmmManagedComputer, sections]);
+    const lifecycleFields = [];
+    const identityFields = [];
+    const seenLifecycle = new Set();
+    const seenIdentity = new Set();
+    const otherSections = [];
+    for (const section of sections) {
+      const isCustom = String(section.id || "").startsWith("systemExtra") || String(section.id || "").startsWith("customSpecific");
+      if (isCustom) {
+        otherSections.push(section);
+        continue;
+      }
+      const remaining = [];
+      for (const field of section.fields || []) {
+        if (field.key === "location" || field.key === "clientName") continue;
+        if (RMM_RESOURCE_FIELD_KEYS.has(field.key)) continue;
+        if (RMM_LIFECYCLE_FIELD_KEYS.has(field.key)) {
+          if (!seenLifecycle.has(field.key)) {
+            seenLifecycle.add(field.key);
+            lifecycleFields.push(field);
+          }
+          continue;
+        }
+        if (RMM_IDENTITY_TECH_FIELD_KEYS.has(field.key) || section.id === "technique" || section.id === "reseau") {
+          if (!seenIdentity.has(field.key)) {
+            seenIdentity.add(field.key);
+            identityFields.push(field);
+          }
+          continue;
+        }
+        remaining.push(field);
+      }
+      if (remaining.length) {
+        otherSections.push({
+          ...section,
+          fields: remaining
+        });
+      }
+    }
+    const grouped = [];
+    if (lifecycleFields.length) {
+      grouped.push({
+        id: "rmm-lifecycle",
+        label: copy.specs?.lifecycleTitle || (locale === "fr" ? "Facturation & installation" : "Billing & installation"),
+        icon: "mdi:file-document-outline",
+        fields: lifecycleFields
+      });
+    }
+    if (identityFields.length) {
+      grouped.push({
+        id: "rmm-identity",
+        label: copy.specs?.identityTitle || (locale === "fr" ? "Identité & système" : "Identity & system"),
+        icon: "mdi:laptop",
+        fields: identityFields
+      });
+    }
+    return [...grouped, ...otherSections];
+  }, [rmmManagedComputer, sections, copy.specs, locale]);
   const locationName = String(formData?.location || equipment?.location || "").trim();
   const resolvedSite = useMemo(() => locationName ? findClientSiteByLocation(clientSites, locationName) : null, [clientSites, locationName]);
   const showSiteVignette = Boolean(locationName && locationName !== "Sans site");
@@ -348,7 +421,7 @@ export default function EquipmentDetailSpecsPanel({
     }
     return null;
   };
-  if (!sections.length) {
+  if (!sections.length && !rmmManagedComputer) {
     return <section className={`${styles.panel} ${compact ? styles.panelCompact : ""}`}>
         <header className={styles.panelHeader}>
           <h2 className={styles.panelTitle}>
@@ -361,23 +434,34 @@ export default function EquipmentDetailSpecsPanel({
   }
   if (rmmManagedComputer && !compact) {
     const showLocationMap = showSiteVignette;
-    const inlineFields = rmmInlineFields.filter(field => field.key !== "location" || !showLocationMap);
-    const meaningfulFields = inlineFields.filter(field => field.key !== "clientName" && field.key !== "name");
-    if (!showLocationMap && meaningfulFields.length === 0) {
-      return null;
-    }
+    const hasGroupedContent = rmmGroupedSections.some(section => (section.fields || []).length > 0);
     return <section className={`${styles.panel} ${styles.panelRmmIdentity}`}>
-        <div className={styles.rmmIdentityLayout}>
-          {showLocationMap ? <div className={styles.rmmMapCard}>
-              <SiteLocationVignette site={resolvedSite || {
-            name: locationName
-          }} locationLabel={locationName} size="large" />
+        <div className={styles.rmmGroupedStack}>
+          {showLocationMap || hasGroupedContent ? <div className={styles.rmmIdentityLayout}>
+              {showLocationMap ? <div className={styles.rmmMapCard}>
+                  <SiteLocationVignette site={resolvedSite || {
+              name: locationName
+            }} locationLabel={locationName} size="large" />
+                </div> : null}
+              {hasGroupedContent ? <div className={styles.rmmSectionCards}>
+                  {rmmGroupedSections.map(section => {
+              const visibleFields = (section.fields || []).filter(Boolean);
+              if (!visibleFields.length) return null;
+              return <article key={section.id} className={styles.sectionCard}>
+                      <header className={styles.sectionHeader}>
+                        <Icon icon={section.icon || "mdi:information-outline"} className={styles.sectionIcon} aria-hidden />
+                        <div className={styles.sectionHeadText}>
+                          <h3 className={styles.sectionTitle}>{section.label}</h3>
+                        </div>
+                      </header>
+                      <div className={`${styles.fieldGrid} ${styles.fieldGridCompact}`}>
+                        {visibleFields.map(field => <SpecField key={field.key} field={field} remoteAccessAction={remoteAccessAction} equipmentLink={resolveEquipmentLink(field)} copy={copy} />)}
+                      </div>
+                    </article>;
+            })}
+                </div> : null}
             </div> : null}
-          {meaningfulFields.length > 0 ? <div className={styles.rmmFieldCards}>
-              {meaningfulFields.map(field => <article key={field.key} className={styles.rmmFieldCard}>
-                  <SpecField field={field} remoteAccessAction={remoteAccessAction} equipmentLink={resolveEquipmentLink(field)} layout="grid" copy={copy} />
-                </article>)}
-            </div> : null}
+          <RmmHardwareOverview equipment={equipment} variant="resources" />
         </div>
       </section>;
   }

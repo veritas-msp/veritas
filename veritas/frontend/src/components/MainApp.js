@@ -1134,7 +1134,13 @@ export default function MainApp() {
       case "Ticket":
         return <TicketPage onNavigate={handleDocSelect} pageParams={ticketPageParams} onPageParamsConsumed={() => setTicketPageParams(null)} />;
       case "TicketCreate":
-        return <TicketCreatePage onNavigate={handleDocSelect} initialData={ticketCreateData} />;
+        return <TicketCreatePage
+          key={ticketCreateData?.prefillSource === "supervision"
+            ? `supervision-${ticketCreateData?.supportFormId || "form"}-${ticketCreateData?.equipmentId || ""}-${String(ticketCreateData?.title || "").slice(0, 48)}`
+            : "ticket-create"}
+          onNavigate={handleDocSelect}
+          initialData={ticketCreateData}
+        />;
       case "TicketSales":
         return <TicketSalesPage onNavigate={handleDocSelect} pageParams={ticketSalesPageParams} onPageParamsConsumed={() => setTicketSalesPageParams(null)} />;
       case "TicketSalesCreate":

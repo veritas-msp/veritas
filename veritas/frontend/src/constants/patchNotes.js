@@ -5,6 +5,15 @@
  */
 export const PATCH_NOTES = [
   {
+    version: "1.0.53",
+    date: "2026-09-30",
+    highlights: [
+      "Supervision : préremplissage objet / description du formulaire support depuis une alerte (plus d’écrasement au chargement).",
+      "Fiche RMM · Général : infos regroupées en cartes (facturation, identité, champs perso) + CPU / RAM / stockage avec jauges.",
+      "Icônes CPU / RAM / stockage plus lisibles, dans le style habituels des fiches RMM."
+    ]
+  },
+  {
     version: "1.0.52",
     date: "2026-09-30",
     highlights: [

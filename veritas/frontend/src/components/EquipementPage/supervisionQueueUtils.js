@@ -406,6 +406,8 @@ export function countQueueByDomain(items = []) {
 /**
  * Prefill payload for TicketCreate when opening a Support ticket from the supervision queue.
  * When alert rules define a support form + subject/description field mapping, those are applied.
+ * If mapping keys are left on "auto", title/description are still passed so TicketCreate can
+ * resolve the matching form fields after the form definition is loaded.
  */
 export function buildSupervisionSupportTicketPrefill(item, rules = null) {
   const equipment = item?.equipment || item?.agent?.equipment || null;
@@ -454,7 +456,8 @@ export function buildSupervisionSupportTicketPrefill(item, rules = null) {
           lockSupportForm: true,
           subjectFieldKey,
           descriptionFieldKey,
-          supportFormValues
+          supportFormValues,
+          prefillSource: "supervision"
         }
       : {})
   };

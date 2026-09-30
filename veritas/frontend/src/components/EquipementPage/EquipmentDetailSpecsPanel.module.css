@@ -35,6 +35,43 @@
   align-items: stretch;
 }
 
+.rmmGroupedStack {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 0.75rem;
+  min-width: 0;
+}
+
+.rmmGroupedStack .rmmIdentityLayout {
+  padding: 0;
+}
+
+.rmmSectionCards {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+  min-width: 0;
+}
+
+.rmmSectionCards .sectionCard {
+  margin: 0;
+}
+
+.rmmSectionCards .sectionHeader {
+  padding: 0.55rem 0.75rem;
+}
+
+.rmmSectionCards .fieldGrid {
+  padding: 0.55rem 0.75rem 0.75rem;
+}
+
+@media (max-width: 900px) {
+  .rmmIdentityLayout {
+    grid-template-columns: 1fr;
+  }
+}
+
 .rmmMapCard {
   min-width: 0;
   border: 1px solid var(--msp-border-light, #e2e8f0);

@@ -59,8 +59,8 @@
 
 .resourceCell {
   display: grid;
-  grid-template-columns: 40px minmax(0, 1fr);
-  gap: 0.55rem;
+  grid-template-columns: 48px minmax(0, 1fr);
+  gap: 0.65rem;
   align-items: start;
   padding: 0.85rem 0.9rem;
   min-width: 0;
@@ -75,13 +75,33 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 36px;
-  height: 36px;
-  border-radius: 8px;
+  width: 48px;
+  height: 48px;
+  border-radius: 10px;
   background: color-mix(in srgb, var(--msp-accent) 12%, transparent);
   color: var(--msp-accent);
-  font-size: 1.15rem;
   flex-shrink: 0;
+}
+
+.resourceIcon_cpu {
+  background: color-mix(in srgb, #2563eb 14%, transparent);
+  color: #1d4ed8;
+}
+
+.resourceIcon_ram {
+  background: color-mix(in srgb, #7c3aed 14%, transparent);
+  color: #6d28d9;
+}
+
+.resourceIcon_storage {
+  background: color-mix(in srgb, #0d9488 14%, transparent);
+  color: #0f766e;
+}
+
+.resourceIcon svg {
+  display: block;
+  width: 26px;
+  height: 26px;
 }
 
 .resourceBody {

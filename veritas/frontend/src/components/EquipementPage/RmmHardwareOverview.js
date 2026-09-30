@@ -37,11 +37,11 @@ function KvList({ items }) {
   );
 }
 
-function ResourceCell({ icon, label, value, sub, meterPct, meterTone, trailing = null }) {
+function ResourceCell({ icon, label, value, sub, meterPct, meterTone, trailing = null, accent = "cpu" }) {
   return (
-    <div className={styles.resourceCell}>
-      <div className={styles.resourceIcon} aria-hidden>
-        <Icon icon={icon} />
+    <div className={`${styles.resourceCell} ${styles[`resourceCell_${accent}`] || ""}`}>
+      <div className={`${styles.resourceIcon} ${styles[`resourceIcon_${accent}`] || ""}`} aria-hidden>
+        <Icon icon={icon} width={26} height={26} />
       </div>
       <div className={styles.resourceBody}>
         <p className={styles.resourceLabel}>{label}</p>
@@ -103,7 +103,7 @@ function detectDiskKind(disk) {
   return "hdd";
 }
 
-export default function RmmHardwareOverview({ equipment }) {
+export default function RmmHardwareOverview({ equipment, variant = "full" }) {
   const locale = useAppLocale();
   const copy = useMemo(() => getEquipmentDetailCopy(locale), [locale]);
   const ov = copy.rmm.overview;
@@ -145,6 +145,8 @@ export default function RmmHardwareOverview({ equipment }) {
   const hasSsd = diskKinds.includes("ssd");
   const hasHdd = diskKinds.includes("hdd") || diskKinds.includes("external");
   const storageIcon = hasSsd && !hasHdd ? "mdi:harddisk-plus" : "mdi:harddisk";
+  const cpuIcon = "mdi:cpu-64-bit";
+  const ramIcon = "mdi:memory";
   const cpuName = hardware.cpu || inventory.processeur || ov.unknown;
   const ramLine =
     snapshot.ramUsedGB != null && snapshot.ramTotalGB != null
@@ -165,56 +167,75 @@ export default function RmmHardwareOverview({ equipment }) {
   const showChassis = Boolean(chassis.manufacturer || chassis.model || chassis.serial);
   const showBattery = Boolean(sensor.battery?.present);
   const infoRowClass = showChassis ? styles.infoRow : `${styles.infoRow} ${styles.infoRow_3}`;
+  const showResources = variant === "full" || variant === "resources";
+  const showIdentity = variant === "full" || variant === "identity";
+  const showBatteryPanel = showBattery && (variant === "full" || variant === "identity");
+
+  const resourcesPanel = (
+    <article className={styles.panel}>
+      <div className={styles.panelHead}>
+        <h3 className={styles.panelTitle}>
+          <Icon icon="mdi:gauge" className={styles.panelTitleIcon} aria-hidden />
+          {ov.resourcesTitle}
+        </h3>
+      </div>
+      <div className={styles.resourceRow}>
+        <ResourceCell
+          icon={cpuIcon}
+          accent="cpu"
+          label={ov.cpu}
+          value={snapshot.cpuPct != null ? formatPct(snapshot.cpuPct) : ov.unknown}
+          sub={[cpuName, coresLabel, hardware.currentClockMHz != null ? `${hardware.currentClockMHz} MHz` : null, perf.processCount != null ? `${perf.processCount} ${ov.appsRunning}` : null]
+            .filter(Boolean)
+            .join(" · ")}
+          meterPct={snapshot.cpuPct}
+          meterTone={toneForPct(snapshot.cpuPct)}
+        />
+        <ResourceCell
+          icon={ramIcon}
+          accent="ram"
+          label={ov.memory}
+          value={snapshot.ramPct != null ? formatPct(snapshot.ramPct) : ov.unknown}
+          sub={[ramLine, ramSpeed].filter(Boolean).join(" · ") || null}
+          meterPct={snapshot.ramPct}
+          meterTone={toneForPct(snapshot.ramPct, 70, 90)}
+          trailing={<RamSlotsInline modules={ramModules} slotCount={ramSlotCount} copy={ov} />}
+        />
+        <ResourceCell
+          icon={storageIcon}
+          accent="storage"
+          label={ov.storage}
+          value={storagePct != null ? formatPct(storagePct) : ov.unknown}
+          sub={[
+            storageLine,
+            drives.length ? `${drives.length} ${ov.driveCount}` : null,
+            drives
+              .slice(0, 2)
+              .map(d => `${d.label}${d.pct != null ? ` ${formatPct(d.pct)}` : ""}`)
+              .join(" · ") || null
+          ]
+            .filter(Boolean)
+            .join(" · ")}
+          meterPct={storagePct}
+          meterTone={toneForPct(storagePct, 75, 90)}
+        />
+      </div>
+    </article>
+  );
+
+  if (variant === "resources") {
+    return (
+      <section className={styles.root} aria-label={ov.aria}>
+        {resourcesPanel}
+      </section>
+    );
+  }
 
   return (
     <section className={styles.root} aria-label={ov.aria}>
-      <article className={styles.panel}>
-        <div className={styles.panelHead}>
-          <h3 className={styles.panelTitle}>
-            <Icon icon="mdi:gauge" className={styles.panelTitleIcon} aria-hidden />
-            {ov.resourcesTitle}
-          </h3>
-        </div>
-        <div className={styles.resourceRow}>
-          <ResourceCell
-            icon="mdi:chip"
-            label={ov.cpu}
-            value={snapshot.cpuPct != null ? formatPct(snapshot.cpuPct) : ov.unknown}
-            sub={[cpuName, coresLabel, hardware.currentClockMHz != null ? `${hardware.currentClockMHz} MHz` : null, perf.processCount != null ? `${perf.processCount} ${ov.appsRunning}` : null]
-              .filter(Boolean)
-              .join(" · ")}
-            meterPct={snapshot.cpuPct}
-            meterTone={toneForPct(snapshot.cpuPct)}
-          />
-          <ResourceCell
-            icon="mdi:memory"
-            label={ov.memory}
-            value={snapshot.ramPct != null ? formatPct(snapshot.ramPct) : ov.unknown}
-            sub={[ramLine, ramSpeed].filter(Boolean).join(" · ") || null}
-            meterPct={snapshot.ramPct}
-            meterTone={toneForPct(snapshot.ramPct, 70, 90)}
-            trailing={<RamSlotsInline modules={ramModules} slotCount={ramSlotCount} copy={ov} />}
-          />
-          <ResourceCell
-            icon={storageIcon}
-            label={ov.storage}
-            value={storagePct != null ? formatPct(storagePct) : ov.unknown}
-            sub={[
-              storageLine,
-              drives.length ? `${drives.length} ${ov.driveCount}` : null,
-              drives
-                .slice(0, 2)
-                .map(d => `${d.label}${d.pct != null ? ` ${formatPct(d.pct)}` : ""}`)
-                .join(" · ") || null
-            ]
-              .filter(Boolean)
-              .join(" · ")}
-            meterPct={storagePct}
-            meterTone={toneForPct(storagePct, 75, 90)}
-          />
-        </div>
-      </article>
+      {showResources ? resourcesPanel : null}
 
+      {showIdentity ? (
       <article className={styles.panel}>
         <div className={styles.panelHead}>
           <h3 className={styles.panelTitle}>
@@ -278,8 +299,9 @@ export default function RmmHardwareOverview({ equipment }) {
           />
         </div>
       </article>
+      ) : null}
 
-      {showBattery ? (
+      {showBatteryPanel ? (
         <article className={styles.panel}>
           <div className={styles.resourceRow} style={{ gridTemplateColumns: "1fr" }}>
             <ResourceCell

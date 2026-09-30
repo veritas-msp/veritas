@@ -743,7 +743,7 @@ export default function RmmMonitoringPanel({
       {!agentStatusInHero ? panelHeader : null}
 
       <div className={styles.panelBody}>
-        <RmmHardwareOverview equipment={equipment} />
+        <RmmHardwareOverview equipment={equipment} variant="identity" />
       </div>
     </section>;
 }
