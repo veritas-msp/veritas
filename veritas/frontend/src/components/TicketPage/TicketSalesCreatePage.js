@@ -12,7 +12,7 @@ import { useAppLocale } from "../../hooks/useAppGeneralSettings";
 import { getTicketSalesCreatePageCopy } from "./ticketSalesCreatePageI18n";
 import { getEquipmentPickerLabel, getEquipmentSearchText, loadClientEquipments, serializeEquipmentInfo } from "./ticketEquipmentUtils";
 import { getTicketLinkLabel, getTicketLinkSearchText } from "./ticketLinkUtils";
-import { isFileField } from "../../utils/salesFormFieldTypes";
+import { findFormEquipmentFieldKeys, isFileField } from "../../utils/salesFormFieldTypes";
 import { getModalDropdownZIndex } from "../../utils/dropdownPortal";
 import MspPageHero from "../Misc/MspPageHero/MspPageHero";
 import mspStyles from "../CybersecuritePage/CybersecuritePage.module.css";
@@ -181,7 +181,6 @@ export default function TicketSalesCreatePage({
   const [equipmentHighlight, setEquipmentHighlight] = useState(0);
   const defaultedRequesterRef = useRef(false);
   const [priority, setPriority] = useState("normal");
-  const [customTitle, setCustomTitle] = useState("");
   const [fieldErrors, setFieldErrors] = useState({});
   const [preAssigneeUserIds, setPreAssigneeUserIds] = useState([]);
   const [preFollowerUserIds, setPreFollowerUserIds] = useState([]);
@@ -198,8 +197,19 @@ export default function TicketSalesCreatePage({
   const [linkedTicketHighlight, setLinkedTicketHighlight] = useState(0);
   const agentLabel = authUser?.username?.trim() || authUser?.email || copy.agentFallback;
   const formsForKind = useMemo(() => salesForms.filter(form => form.kind === ticketKind && form.enabled !== false), [salesForms, ticketKind]);
-  const selectedForm = useMemo(() => formsForKind.find(form => String(form.id) === String(selectedFormId)) || formsForKind[0] || null, [formsForKind, selectedFormId]);
+  const hasSalesForms = formsForKind.length > 0;
+  const selectedForm = useMemo(() => {
+    if (selectedFormId) {
+      return formsForKind.find(form => String(form.id) === String(selectedFormId)) || null;
+    }
+    return null;
+  }, [formsForKind, selectedFormId]);
   const activeFields = useMemo(() => filterVisibleFields((selectedForm?.fields || []).filter(field => field.enabled !== false), dynamicValues), [selectedForm, dynamicValues]);
+  const formEquipmentFieldKeys = useMemo(
+    () => findFormEquipmentFieldKeys(selectedForm?.fields || []),
+    [selectedForm]
+  );
+  const hasFormEquipmentField = formEquipmentFieldKeys.length > 0;
   const fieldLookups = useMemo(() => ({
     users,
     contacts,
@@ -235,7 +245,7 @@ export default function TicketSalesCreatePage({
   }, []);
   useEffect(() => {
     if (!formsForKind.length) {
-      setSelectedFormId("");
+      if (selectedFormId) setSelectedFormId("");
       return;
     }
     if (!formsForKind.some(form => String(form.id) === String(selectedFormId))) {
@@ -245,6 +255,20 @@ export default function TicketSalesCreatePage({
   useEffect(() => {
     setDynamicValues({});
   }, [selectedFormId]);
+  useEffect(() => {
+    if (!hasFormEquipmentField) return;
+    const equipmentKey = formEquipmentFieldKeys[0];
+    const formEquipmentId = dynamicValues?.[equipmentKey];
+    if (!formEquipmentId) {
+      setSelectedEquipmentId("");
+      setEquipmentSearch("");
+      return;
+    }
+    const match = clientEquipments.find(eq => String(eq.id) === String(formEquipmentId));
+    if (!match) return;
+    setSelectedEquipmentId(String(match.id));
+    setEquipmentSearch(getEquipmentPickerLabel(match, { locale }));
+  }, [hasFormEquipmentField, formEquipmentFieldKeys, dynamicValues, clientEquipments, locale]);
   useEffect(() => {
     if (defaultedRequesterRef.current || !authUser?.id) return;
     defaultedRequesterRef.current = true;
@@ -510,21 +534,12 @@ export default function TicketSalesCreatePage({
     if (!option?.raw) return;
     selectRequesterAgent(option.raw);
   }, [selectRequesterAgent]);
-  const selectEquipment = useCallback(equipment => {
-    if (!equipment?.id) return;
-    setSelectedEquipmentId(String(equipment.id));
-    setEquipmentSearch(getEquipmentPickerLabel(equipment, { locale }));
-    setShowEquipmentDropdown(false);
-  }, [locale]);
-  const clearEquipment = useCallback(() => {
-    setSelectedEquipmentId("");
-    setEquipmentSearch("");
-    setShowEquipmentDropdown(false);
-  }, []);
   const handleKindChange = kind => {
     setTicketKind(kind);
     setSelectedFormId("");
     setDynamicValues({});
+    setSelectedEquipmentId("");
+    setEquipmentSearch("");
   };
   const generatedTitle = useMemo(() => {
     const formLabel = selectedForm?.label || "";
@@ -532,7 +547,7 @@ export default function TicketSalesCreatePage({
     if (!formLabel) return company;
     return `${formLabel} - ${company}`;
   }, [selectedForm?.label, clientLabel, copy.defaultClientLabel]);
-  const effectiveTitle = customTitle.trim() || generatedTitle;
+  const effectiveTitle = generatedTitle;
   const validateForm = () => {
     const errors = {};
     if (!requesterUserId) errors.requester = true;
@@ -741,7 +756,7 @@ export default function TicketSalesCreatePage({
                 <Icon icon="mdi:arrow-left" />
                 {copy.back}
               </button>
-              <button type="button" className={layout.primaryBtn} onClick={handleOpenConfirm} disabled={submitting || loadingData}>
+              <button type="button" className={layout.primaryBtn} onClick={handleOpenConfirm} disabled={submitting || loadingData || !selectedForm} title={loadingData ? copy.loadingForms : !selectedForm ? copy.noForms : undefined}>
                 <Icon icon="mdi:check" />
                 {submitting ? copy.creating : copy.createRequest}
               </button>
@@ -766,7 +781,7 @@ export default function TicketSalesCreatePage({
           <div className={account.contentGridWide}>
             <div className={s.formStack}>
               <SectionPanel title={copy.sections.nature}>
-                {formsForKind.length === 0 ? <p className={s.detailsAvailabilityTitle} style={{
+                {!hasSalesForms ? <p className={s.detailsAvailabilityTitle} style={{
                 margin: 0
               }}>
                     {loadingData ? copy.loadingForms : copy.noForms}
@@ -880,120 +895,15 @@ export default function TicketSalesCreatePage({
                         </div>, document.body) : null}
                     </div>
                   </div>
-
-                  <p className={s.detailsAvailabilityTitle} style={{ marginTop: "1rem" }}>{copy.equipmentLabel}</p>
-                  <div className={s.contactSearchRow}>
-                    <div className={s.contactPicker} ref={equipmentDropdownRef}>
-                      <div className={`${s.contactInputWrap} ${showEquipmentDropdown ? s.contactInputWrapOpen : ""}`}>
-                        <Icon icon="mdi:magnify" className={s.contactInputIcon} aria-hidden />
-                        <input
-                          type="text"
-                          className={s.contactInput}
-                          value={equipmentSearch}
-                          placeholder={copy.searchEquipment}
-                          disabled={loadingData || !selectedClientId || loadingEquipments}
-                          aria-expanded={showEquipmentDropdown}
-                          aria-haspopup="listbox"
-                          onChange={e => {
-                            setEquipmentSearch(e.target.value);
-                            setSelectedEquipmentId("");
-                            setShowEquipmentDropdown(true);
-                            setEquipmentHighlight(0);
-                          }}
-                          onFocus={() => {
-                            if (selectedClientId) setShowEquipmentDropdown(true);
-                          }}
-                          onKeyDown={e => {
-                            if (!showEquipmentDropdown || filteredEquipmentOptions.length === 0) return;
-                            if (e.key === "ArrowDown") {
-                              e.preventDefault();
-                              setEquipmentHighlight(h => Math.min(h + 1, filteredEquipmentOptions.length - 1));
-                            } else if (e.key === "ArrowUp") {
-                              e.preventDefault();
-                              setEquipmentHighlight(h => Math.max(h - 1, 0));
-                            } else if (e.key === "Enter") {
-                              e.preventDefault();
-                              const picked = filteredEquipmentOptions[equipmentHighlight];
-                              if (picked) selectEquipment(picked);
-                            } else if (e.key === "Escape") {
-                              setShowEquipmentDropdown(false);
-                              setEquipmentSearch(selectedEquipment ? getEquipmentPickerLabel(selectedEquipment, { locale }) : "");
-                            }
-                          }}
-                        />
-                        {selectedEquipmentId ? (
-                          <button
-                            type="button"
-                            onClick={clearEquipment}
-                            aria-label={copy.clearEquipment}
-                            title={copy.clearEquipment}
-                            style={{ marginRight: "0.35rem", border: "none", background: "transparent", cursor: "pointer", color: "inherit" }}
-                          >
-                            <FaTimes />
-                          </button>
-                        ) : null}
-                      </div>
-                      {showEquipmentDropdown && equipmentDropdownCoords && typeof document !== "undefined" ? createPortal(
-                        <div
-                          ref={equipmentListRef}
-                          className={s.contactDropdownPortal}
-                          role="listbox"
-                          style={portalMenuStyle(equipmentDropdownCoords)}
-                        >
-                          {!selectedClientId ? (
-                            <div className={s.contactEmpty}>{copy.selectCompanyFirst}</div>
-                          ) : loadingEquipments ? (
-                            <div className={s.contactEmpty}>{copy.loadingEquipment}</div>
-                          ) : filteredEquipmentOptions.length === 0 ? (
-                            <div className={s.contactEmpty}>{copy.noEquipmentFound}</div>
-                          ) : (
-                            filteredEquipmentOptions.map((eq, idx) => (
-                              <button
-                                key={eq.id}
-                                type="button"
-                                className={`${s.contactOption} ${idx === equipmentHighlight ? s.contactOptionActive : ""}`}
-                                onMouseEnter={() => setEquipmentHighlight(idx)}
-                                onClick={() => selectEquipment(eq)}
-                              >
-                                <span className={s.contactOptionName}>{getEquipmentPickerLabel(eq, { locale })}</span>
-                              </button>
-                            ))
-                          )}
-                        </div>,
-                        document.body
-                      ) : null}
-                    </div>
-                  </div>
                 </div>
               </SectionPanel>
 
               <SectionPanel title={copy.sections.details} allowOverflow>
-                <div className={s.fieldBlock} style={{ marginBottom: "1rem" }}>
-                  <label className={s.fieldLabel} htmlFor="sales-create-subject">
-                    {copy.subjectLabel}
-                    <span style={{ marginLeft: "0.35rem", fontWeight: 500, opacity: 0.75 }}>
-                      ({copy.subjectOptional})
-                    </span>
-                  </label>
-                  <div className={s.fieldShell}>
-                    <input
-                      id="sales-create-subject"
-                      type="text"
-                      className={s.fieldShellControl}
-                      value={customTitle}
-                      onChange={e => setCustomTitle(e.target.value.slice(0, 200))}
-                      placeholder={generatedTitle || copy.subjectPlaceholder}
-                      maxLength={200}
-                    />
-                  </div>
-                  <span className={s.charCount}>{customTitle.length}/200</span>
-                  {!customTitle.trim() ? (
-                    <p className={s.detailsAvailabilityTitle} style={{ margin: "0.35rem 0 0", fontWeight: 400 }}>
-                      {copy.formatSubjectFallbackHint(generatedTitle)}
-                    </p>
-                  ) : null}
-                </div>
-                <div data-pulse={fieldErrors.details ? errorPulseTick : undefined} className={fieldErrors.details ? s.fieldErrorPulse : undefined}>
+                {loadingData ? <p className={s.detailsAvailabilityTitle} style={{ margin: 0 }}>
+                    {copy.loadingForms}
+                  </p> : !selectedForm ? <p className={s.detailsAvailabilityTitle} style={{ margin: 0 }}>
+                    {copy.noForms}
+                  </p> : activeFields.length > 0 ? <div data-pulse={fieldErrors.details ? errorPulseTick : undefined} className={fieldErrors.details ? s.fieldErrorPulse : undefined}>
                   <SalesFormFieldsRenderer fields={activeFields} values={dynamicValues} users={users} contacts={contacts} clients={clients} equipments={clientEquipments} clientId={selectedClientId} audience="agent" fieldErrors={fieldErrors.details} errorPulseTick={errorPulseTick} onChange={nextValues => {
                   setDynamicValues(nextValues);
                   setFieldErrors(prev => ({
@@ -1001,7 +911,7 @@ export default function TicketSalesCreatePage({
                     details: undefined
                   }));
                 }} />
-                </div>
+                </div> : null}
               </SectionPanel>
             </div>
 

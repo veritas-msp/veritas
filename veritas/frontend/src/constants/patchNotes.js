@@ -5,6 +5,13 @@
  */
 export const PATCH_NOTES = [
   {
+    version: "1.0.50",
+    date: "2026-09-30",
+    highlights: [
+      "Création presta / installation : plus de champs génériques (sujet, matériel hors formulaire) ; détails uniquement via le formulaire sélectionné."
+    ]
+  },
+  {
     version: "1.0.49",
     date: "2026-09-30",
     highlights: [
