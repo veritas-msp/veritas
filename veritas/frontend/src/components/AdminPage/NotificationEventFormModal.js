@@ -85,11 +85,27 @@ export default function NotificationEventFormModal({
     setShowEmailPreview(false);
     setWebhookSelectOpen(false);
   }, [open]);
+  // Éditeur monté uniquement sur l'onglet Contenu : sync à l'entrée.
   useEffect(() => {
-    if (!open || !resolvedEditorRef?.current) return;
-    if (draft?.useTemplate) return;
-    resolvedEditorRef.current.innerHTML = String(draft?.customMessage || "");
-  }, [open, draft?.useTemplate, draft?.id, resolvedEditorRef]);
+    if (!open || activeSection !== "content" || draft?.useTemplate) return undefined;
+    let cancelled = false;
+    const fill = () => {
+      if (cancelled || !resolvedEditorRef?.current) return false;
+      resolvedEditorRef.current.innerHTML = String(draft?.customMessage || "");
+      return true;
+    };
+    if (fill()) return () => {
+      cancelled = true;
+    };
+    const frame = window.requestAnimationFrame(() => {
+      fill();
+    });
+    return () => {
+      cancelled = true;
+      window.cancelAnimationFrame(frame);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, activeSection, draft?.useTemplate, draft?.id, resolvedEditorRef]);
   useEffect(() => {
     if (!open) return;
     const handleDocumentClick = event => {
@@ -223,6 +239,15 @@ export default function NotificationEventFormModal({
     } finally {
       setSendingPreview(false);
     }
+  };
+  const selectSection = sectionId => {
+    if (sectionId === activeSection) return;
+    if (activeSection === "content" && !draft?.useTemplate && resolvedEditorRef?.current) {
+      patchDraft({
+        customMessage: String(resolvedEditorRef.current.innerHTML || "").replace(/\soutline:\s*[^;"']+;?/gi, "")
+      });
+    }
+    setActiveSection(sectionId);
   };
   const modalTitle = isCreate ? "New notification event" : "Edit event";
   const modalSubtitle = isCreate ? "Trigger an automatic notification on a business event." : "Adjust the trigger, target and delivered content.";
@@ -582,7 +607,7 @@ export default function NotificationEventFormModal({
 
         <div className={layout.body}>
           <nav className={layout.nav} aria-label="Notification sections">
-            {NOTIFICATION_EVENT_FORM_SECTIONS.map(section => <button key={section.id} type="button" className={`${layout.navItem} ${activeSection === section.id ? layout.navItemActive : ""}`} onClick={() => setActiveSection(section.id)} aria-current={activeSection === section.id ? "step" : undefined}>
+            {NOTIFICATION_EVENT_FORM_SECTIONS.map(section => <button key={section.id} type="button" className={`${layout.navItem} ${activeSection === section.id ? layout.navItemActive : ""}`} onClick={() => selectSection(section.id)} aria-current={activeSection === section.id ? "step" : undefined}>
                 <Icon icon={section.icon} className={layout.navItemIcon} aria-hidden />
                 <span className={layout.navItemText}>
                   <span className={layout.navItemLabel}>{section.label}</span>
@@ -603,7 +628,14 @@ export default function NotificationEventFormModal({
             <button type="button" className={layout.ghostBtn} onClick={onClose} disabled={saving}>
               Cancel
             </button>
-            <button type="button" className={layout.primaryBtn} onClick={onSave} disabled={saving}>
+            <button type="button" className={layout.primaryBtn} onClick={() => {
+              if (activeSection === "content" && !draft?.useTemplate && resolvedEditorRef?.current) {
+                patchDraft({
+                  customMessage: String(resolvedEditorRef.current.innerHTML || "").replace(/\soutline:\s*[^;"']+;?/gi, "")
+                });
+              }
+              onSave?.();
+            }} disabled={saving}>
               {saving ? <>
                   <Icon icon="mdi:loading" className={layout.spinning} aria-hidden />
                   Saving…

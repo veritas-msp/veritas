@@ -146,7 +146,17 @@ export default function AdminNotificationCatalog() {
       toast.error("Sélectionnez un template.");
       return;
     }
-    const customMessage = editorRef.current ? String(editorRef.current.innerHTML || "") : String(draft.customMessage || "");
+    const customMessage = (() => {
+      if (draft.useTemplate === true) return "";
+      // Si l'éditeur n'est pas monté (autre onglet), garder le draft.
+      // S'il est monté mais vide alors que le draft a du contenu, ne pas écraser.
+      if (!editorRef.current) return String(draft.customMessage || "");
+      const fromEditor = String(editorRef.current.innerHTML || "").replace(/\soutline:\s*[^;"']+;?/gi, "");
+      if (!fromEditor.trim() && String(draft.customMessage || "").trim()) {
+        return String(draft.customMessage || "");
+      }
+      return fromEditor;
+    })();
     const payload = {
       id: draft.id || newEventId(),
       source: source.key,
@@ -162,7 +172,7 @@ export default function AdminNotificationCatalog() {
       emailSubject: requiresEmail ? String(draft.emailSubject || "").trim() : "",
       useTemplate: draft.useTemplate === true,
       templateId: draft.useTemplate === true ? String(draft.templateId || "").trim() : "",
-      customMessage: draft.useTemplate === true ? "" : customMessage.replace(/\soutline:\s*[^;"']+;?/gi, ""),
+      customMessage,
       teamsThemeColor: String(draft.teamsThemeColor || "#13BA8E"),
       enabled: draft.enabled !== false && ruleChannels.length > 0
     };

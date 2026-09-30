@@ -365,6 +365,7 @@ router.post("/email-preview-test", [body("to").optional({
     res.json({
       success: true,
       to,
+      from: info?.from || null,
       messageId: info?.messageId || null,
       skipped: Boolean(info?.skipped)
     });

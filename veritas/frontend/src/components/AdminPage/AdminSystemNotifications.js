@@ -68,10 +68,29 @@ export default function AdminSystemNotifications() {
     fetchTicketAutomationConfig().then(config => setSettings(config?.notificationSettings));
   }, []);
 
+  // L'éditeur n'est monté que sur l'onglet Email : synchroniser le HTML à l'entrée
+  // (sinon innerHTML reste vide et Enregistrer écrase le template sauvegardé).
   useEffect(() => {
-    if (!draft || !editorRef.current) return;
-    editorRef.current.innerHTML = String(draft.body || "");
-  }, [draftKey]);
+    if (!draftKey || activeSection !== "email") return undefined;
+    let cancelled = false;
+    const fill = () => {
+      if (cancelled || !editorRef.current) return false;
+      editorRef.current.innerHTML = String(draft?.body || "");
+      return true;
+    };
+    if (fill()) return () => {
+      cancelled = true;
+    };
+    const frame = window.requestAnimationFrame(() => {
+      fill();
+    });
+    return () => {
+      cancelled = true;
+      window.cancelAnimationFrame(frame);
+    };
+    // Intentionnellement : ne pas dépendre de draft.body (sinon reset pendant la saisie).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [draftKey, activeSection]);
 
   const def = SYSTEM_NOTIFICATION_DEFS.find(item => item.key === draftKey);
 
@@ -132,13 +151,31 @@ export default function AdminSystemNotifications() {
     setShowEmailPreview(false);
   };
 
+  const readEditorBody = () => {
+    if (activeSection === "email" && editorRef.current) {
+      const fromEditor = String(editorRef.current.innerHTML || "");
+      // Garde-fou : éditeur pas encore synchronisé
+      if (!fromEditor.trim() && String(draft?.body || "").trim()) {
+        return String(draft.body || "");
+      }
+      return fromEditor;
+    }
+    return String(draft?.body || "");
+  };
+
   const saveDraft = async () => {
     if (!draft || !draftKey) return;
     const itemDef = SYSTEM_NOTIFICATION_DEFS.find(item => item.key === draftKey);
-    const body = editorRef.current ? String(editorRef.current.innerHTML || "") : String(draft.body || "");
+    const body = readEditorBody();
     const nextItem = {
-      ...draft,
-      body
+      enabled: draft.enabled !== false,
+      emailEnabled: draft.emailEnabled === true,
+      inAppEnabled: draft.inAppEnabled === true,
+      subject: String(draft.subject || ""),
+      title: String(draft.title || draft.subject || ""),
+      body,
+      inAppTitle: String(draft.inAppTitle || ""),
+      inAppBody: String(draft.inAppBody || "")
     };
     const nextSystem = {
       ...system,
@@ -157,13 +194,13 @@ export default function AdminSystemNotifications() {
             ...currentEvent,
             enabled: nextItem.enabled && nextItem.inAppEnabled,
             ...(fields.includes("notifyAssignees") ? {
-              notifyAssignees: nextItem.notifyAssignees !== false
+              notifyAssignees: draft.notifyAssignees !== false
             } : {}),
             ...(fields.includes("notifyWatchers") ? {
-              notifyWatchers: nextItem.notifyWatchers === true
+              notifyWatchers: draft.notifyWatchers === true
             } : {}),
             ...(fields.includes("excludeInternalComments") ? {
-              excludeInternalComments: nextItem.excludeInternalComments === true
+              excludeInternalComments: draft.excludeInternalComments === true
             } : {})
           }
         }
@@ -263,9 +300,14 @@ export default function AdminSystemNotifications() {
     }
   };
 
-  const currentBodyHtml = () => {
-    if (editorRef.current) return String(editorRef.current.innerHTML || "");
-    return String(draft?.body || "");
+  const currentBodyHtml = () => readEditorBody();
+
+  const selectSection = sectionId => {
+    if (sectionId === activeSection) return;
+    if (activeSection === "email" && editorRef.current) {
+      syncEditorBody(editorRef, setDraft);
+    }
+    setActiveSection(sectionId);
   };
 
   const previewHtmlDoc = useMemo(() => {
@@ -553,7 +595,7 @@ export default function AdminSystemNotifications() {
 
             <div className={layout.body}>
               <nav className={layout.nav} aria-label="Notification sections">
-                {sections.map(section => <button key={section.id} type="button" className={`${layout.navItem} ${activeSection === section.id ? layout.navItemActive : ""}`} onClick={() => setActiveSection(section.id)} aria-current={activeSection === section.id ? "step" : undefined}>
+                {sections.map(section => <button key={section.id} type="button" className={`${layout.navItem} ${activeSection === section.id ? layout.navItemActive : ""}`} onClick={() => selectSection(section.id)} aria-current={activeSection === section.id ? "step" : undefined}>
                     <Icon icon={section.icon} className={layout.navItemIcon} aria-hidden />
                     <span className={layout.navItemText}>
                       <span className={layout.navItemLabel}>{section.label}</span>

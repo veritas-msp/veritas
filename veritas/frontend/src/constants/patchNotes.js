@@ -5,6 +5,14 @@
  */
 export const PATCH_NOTES = [
   {
+    version: "1.0.52",
+    date: "2026-09-30",
+    highlights: [
+      "Notifications admin : le contenu email (sujet / corps) se sauvegarde correctement à nouveau.",
+      "Aperçu email : envoi avec l’adresse expéditeur des paramètres généraux SMTP."
+    ]
+  },
+  {
     version: "1.0.51",
     date: "2026-09-30",
     highlights: [

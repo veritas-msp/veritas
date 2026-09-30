@@ -461,7 +461,8 @@ router.post('/email-test', async (req, res) => {
       } : undefined
     });
     await transporter.verify();
-    const fromAddress = smtpUser || BUG_REPORT_EMAIL;
+    // Même logique que sendMail : Adresse expéditeur (BUG_REPORT_EMAIL), sinon identifiant SMTP
+    const fromAddress = String(BUG_REPORT_EMAIL || smtpUser || "").trim();
     const testEmail = {
       from: fromAddress,
       to: BUG_REPORT_EMAIL,
