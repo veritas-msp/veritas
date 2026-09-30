@@ -711,7 +711,7 @@ export default function RmmMonitoringPanel({
           <p className={styles.manualNote}>{copy.rmm.installAgentPeripherals}</p>
         </div>;
     }
-    return <section className={`${styles.panel} ${agentStatusInHero ? styles.panelBare : ""}`.trim()}>
+    return <section className={styles.panel}>
         {!agentStatusInHero ? panelHeader : null}
         <div className={styles.panelBody}>
           <RmmInventoryOverview equipment={equipment} />
@@ -724,7 +724,7 @@ export default function RmmMonitoringPanel({
           <p className={styles.manualNote}>{copy.rmm.installAgentOperations}</p>
         </div>;
     }
-    return <section className={`${styles.panel} ${agentStatusInHero ? styles.panelBare : ""}`.trim()}>
+    return <section className={styles.panel}>
         {!agentStatusInHero ? panelHeader : null}
         <div className={styles.panelBody}>
           <RmmCyberOverview equipment={equipment} syncPending={syncPending} expectedCollectionLabel={expectedCollectionLabel} />
@@ -739,7 +739,7 @@ export default function RmmMonitoringPanel({
         </div>
       </section>;
   }
-  return <section className={`${styles.panel} ${agentStatusInHero ? styles.panelBare : ""}`.trim()}>
+  return <section className={styles.panel}>
       {!agentStatusInHero ? panelHeader : null}
 
       <div className={styles.panelBody}>

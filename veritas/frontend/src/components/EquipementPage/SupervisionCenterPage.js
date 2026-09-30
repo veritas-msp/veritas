@@ -36,6 +36,7 @@ import cyberStyles from "../CybersecuritePage/CybersecuritePage.module.css";
 import layout from "../EnterprisesPage/EnterprisesPage.module.css";
 import dashStyles from "../CybersecuritePage/AntivirusMspDashboard.module.css";
 import styles from "./SupervisionCenterPage.module.css";
+import SupervisionFleetSyncModal from "./SupervisionFleetSyncModal";
 
 export default function MonitoringCenterPage({
   loading: parentLoading = false,
@@ -69,6 +70,7 @@ export default function MonitoringCenterPage({
   });
   const [pendingLinkItem, setPendingLinkItem] = useState(null);
   const [pageGuideOpen, setPageGuideOpen] = useState(false);
+  const [fleetSyncOpen, setFleetSyncOpen] = useState(false);
   const openPageGuide = useCallback(() => setPageGuideOpen(true), []);
   useRegisterPageGuide(openPageGuide);
   const { user } = useAuthContext();
@@ -376,7 +378,18 @@ export default function MonitoringCenterPage({
                 <p className={cyberStyles.mspSubtitle}>{pageCopy.subtitle}</p>
               </div>
             </div>
-            <nav className={cyberStyles.mspTabBar} role="tablist" aria-label={pageCopy.tabSectionsAria} data-guide="supervision-tabs">
+            <div className={cyberStyles.mspHeroActions}>
+              {checkmkIntegrationEnabled ? <button
+                type="button"
+                className={styles.fleetSyncBtn}
+                title={pageCopy.fleetSync?.buttonTitle}
+                onClick={() => setFleetSyncOpen(true)}
+                disabled={fleetSyncOpen}
+              >
+                <Icon icon={fleetSyncOpen ? "mdi:loading" : "mdi:cloud-sync-outline"} className={fleetSyncOpen ? styles.fleetSyncSpin : ""} aria-hidden />
+                <span>{fleetSyncOpen ? pageCopy.fleetSync?.buttonBusy : pageCopy.fleetSync?.button}</span>
+              </button> : null}
+              <nav className={cyberStyles.mspTabBar} role="tablist" aria-label={pageCopy.tabSectionsAria} data-guide="supervision-tabs">
               {visibleTabs.map(tab => {
               const badge = tabBadges[tab.id] || 0;
               const isActive = activeTab === tab.id;
@@ -391,7 +404,8 @@ export default function MonitoringCenterPage({
                     </span>
                   </button>;
             })}
-            </nav>
+              </nav>
+            </div>
           </header>
 
           <main className={cyberStyles.mspContent}>
@@ -436,6 +450,15 @@ export default function MonitoringCenterPage({
         setEventModalOpen(false);
       }} />
       <PageGuideTour open={pageGuideOpen} steps={guideSteps} title={pageCopy.guide?.tourTitle} locale={locale} onClose={() => setPageGuideOpen(false)} />
+      <SupervisionFleetSyncModal
+        open={fleetSyncOpen}
+        copy={pageCopy.fleetSync || {}}
+        onClose={() => setFleetSyncOpen(false)}
+        onFinished={() => {
+          refreshAlertStates();
+          refreshHistory();
+        }}
+      />
     </div>;
 }
 

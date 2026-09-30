@@ -18,14 +18,59 @@ export async function fetchCheckmkSyncLogs(limit = 40) {
   return handleResponse(response);
 }
 
-export async function triggerCheckmkFleetSync({ force = false } = {}) {
+export async function fetchCheckmkSyncRun(runId) {
+  const response = await fetch(`${API_BASE_URL}/checkmk/sync-logs/${encodeURIComponent(runId)}`, {
+    credentials: "include",
+    headers: {
+      "Content-Type": "application/json"
+    }
+  });
+  return handleResponse(response);
+}
+
+export async function fetchActiveCheckmkSyncRun() {
+  const response = await fetch(`${API_BASE_URL}/checkmk/sync-logs/active`, {
+    credentials: "include",
+    headers: {
+      "Content-Type": "application/json"
+    }
+  });
+  return handleResponse(response);
+}
+
+export async function triggerCheckmkFleetSync({
+  force = false,
+  wait = false
+} = {}) {
   const response = await fetch(`${API_BASE_URL}/checkmk/sync-logs/run`, {
     method: "POST",
     credentials: "include",
     headers: {
       "Content-Type": "application/json"
     },
-    body: JSON.stringify({ force })
+    body: JSON.stringify({
+      force,
+      wait
+    })
   });
   return handleResponse(response);
+}
+
+export async function pollCheckmkSyncRun(runId, {
+  intervalMs = 1200,
+  timeoutMs = 15 * 60 * 1000,
+  onUpdate
+} = {}) {
+  if (!runId) throw new Error("Missing sync run id");
+  const started = Date.now();
+  while (Date.now() - started < timeoutMs) {
+    const data = await fetchCheckmkSyncRun(runId);
+    const run = data?.run || null;
+    onUpdate?.(run);
+    if (!run || run.status !== "running") {
+      return run;
+    }
+    await new Promise(resolve => setTimeout(resolve, intervalMs));
+  }
+  throw new Error("Sync timed out");
 }

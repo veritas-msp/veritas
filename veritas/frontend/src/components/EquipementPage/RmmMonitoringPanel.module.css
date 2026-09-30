@@ -1,24 +1,9 @@
 .panel {
-  display: flex;
-  flex-direction: column;
-  min-height: 0;
-  height: 100%;
   background: var(--msp-surface);
   border: 1px solid var(--msp-border);
-  border-radius: 12px;
-  box-shadow: var(--msp-shadow-soft, 0 1px 8px rgba(11, 33, 56, 0.04));
+  border-radius: var(--msp-radius, 16px);
+  box-shadow: var(--msp-shadow);
   overflow: hidden;
-}
-
-.panelBare {
-  background: transparent;
-  border: none;
-  border-radius: 0;
-  box-shadow: none;
-}
-
-.panelBare .panelBody {
-  padding: 0;
 }
 
 .panelHeader {
@@ -191,13 +176,10 @@
 }
 
 .panelBody {
-  padding: 0.35rem 0.4rem 0.4rem;
+  padding: 0.5rem 0.55rem 0.6rem;
   display: flex;
   flex-direction: column;
-  gap: 0.35rem;
-  flex: 1 1 auto;
-  min-height: 0;
-  overflow: hidden;
+  gap: 0.4rem;
 }
 
 .operationsLayout {

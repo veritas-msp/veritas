@@ -83,6 +83,73 @@ export async function finishCheckmkSyncRun(runId, payload = {}) {
   return mapRun(result.rows[0]);
 }
 
+export async function updateCheckmkSyncRunProgress(runId, payload = {}) {
+  if (!runId) return null;
+  const ready = await ensureCheckmkSyncRunsSchema();
+  if (!ready) return null;
+  const {
+    synced = null,
+    skipped = null,
+    failed = null,
+    message = null,
+    details = null,
+    currentHost = null
+  } = payload;
+  const nextDetails =
+    details != null || currentHost != null
+      ? JSON.stringify({
+          ...(details && typeof details === "object" ? details : {}),
+          ...(currentHost != null ? { currentHost } : {})
+        })
+      : null;
+  const result = await pool.query(
+    `UPDATE v_b_checkmk_sync_runs
+        SET synced = COALESCE($2, synced),
+            skipped = COALESCE($3, skipped),
+            failed = COALESCE($4, failed),
+            message = COALESCE($5, message),
+            details = CASE
+              WHEN $6::jsonb IS NULL THEN details
+              ELSE COALESCE(details, '{}'::jsonb) || $6::jsonb
+            END
+      WHERE id = $1::uuid
+        AND status = 'running'
+      RETURNING *`,
+    [
+      runId,
+      synced == null ? null : Number(synced) || 0,
+      skipped == null ? null : Number(skipped) || 0,
+      failed == null ? null : Number(failed) || 0,
+      message || null,
+      nextDetails
+    ]
+  );
+  return mapRun(result.rows[0]);
+}
+
+export async function getCheckmkSyncRun(runId) {
+  if (!runId) return null;
+  const ready = await ensureCheckmkSyncRunsSchema();
+  if (!ready) return null;
+  const result = await pool.query(
+    `SELECT * FROM v_b_checkmk_sync_runs WHERE id = $1::uuid LIMIT 1`,
+    [runId]
+  );
+  return mapRun(result.rows[0]);
+}
+
+export async function getLatestRunningCheckmkSyncRun() {
+  const ready = await ensureCheckmkSyncRunsSchema();
+  if (!ready) return null;
+  const result = await pool.query(
+    `SELECT * FROM v_b_checkmk_sync_runs
+      WHERE status = 'running'
+      ORDER BY started_at DESC
+      LIMIT 1`
+  );
+  return mapRun(result.rows[0]);
+}
+
 export async function listCheckmkSyncRuns({ limit = 40 } = {}) {
   const ready = await ensureCheckmkSyncRunsSchema();
   if (!ready) return [];

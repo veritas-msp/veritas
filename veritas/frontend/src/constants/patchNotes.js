@@ -5,6 +5,14 @@
  */
 export const PATCH_NOTES = [
   {
+    version: "1.0.47",
+    date: "2026-09-30",
+    highlights: [
+      "Fiche poste RMM : onglets Général / Cybersécurité / Software reconstruits (contenu réaffiché, grille plus dense).",
+      "Centre de supervision : synchronisation CheckMK globale à la demande, avec modal de progression."
+    ]
+  },
+  {
     version: "1.0.46",
     date: "2026-09-30",
     highlights: [

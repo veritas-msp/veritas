@@ -1,0 +1,138 @@
+.shell {
+  width: min(520px, calc(100vw - 2rem));
+}
+
+.accentBar {
+  height: 3px;
+  background: linear-gradient(90deg, var(--msp-accent, #2b5fab), color-mix(in srgb, var(--msp-accent, #2b5fab) 40%, #fff));
+}
+
+.headerIcon {
+  background: color-mix(in srgb, var(--msp-accent, #2b5fab) 14%, transparent) !important;
+  color: var(--msp-accent, #2b5fab) !important;
+}
+
+.spin {
+  animation: fleetSyncSpin 1.1s linear infinite;
+}
+
+@keyframes fleetSyncSpin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.progressBlock {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  margin-bottom: 0.85rem;
+}
+
+.progressMeta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  font-size: 0.78rem;
+  color: var(--msp-muted);
+}
+
+.progressMeta strong {
+  font-weight: 600;
+  color: var(--msp-text);
+  font-variant-numeric: tabular-nums;
+}
+
+.progressTrack {
+  height: 8px;
+  border-radius: 999px;
+  background: var(--msp-surface-2, #e8eef6);
+  overflow: hidden;
+}
+
+.progressFill {
+  height: 100%;
+  border-radius: inherit;
+  background: var(--msp-accent, #2b5fab);
+  transition: width 0.25s ease;
+}
+
+.tone_ok .progressFill { background: var(--msp-accent, #2b5fab); }
+.tone_warn .progressFill { background: #b45309; }
+.tone_err .progressFill { background: #b91c1c; }
+.tone_muted .progressFill { background: var(--msp-muted, #64748b); }
+.tone_run .progressFill { background: var(--msp-accent, #2b5fab); }
+
+.progressHint {
+  margin: 0;
+  font-size: 0.74rem;
+  color: var(--msp-muted);
+  line-height: 1.35;
+  min-height: 1.2em;
+}
+
+.kpiGrid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.45rem;
+}
+
+.kpi {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  padding: 0.55rem 0.5rem;
+  border: 1px solid var(--msp-border);
+  border-radius: 10px;
+  background: var(--msp-surface-2, #f7f9fc);
+  text-align: center;
+  min-width: 0;
+}
+
+.kpiValue {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--msp-text);
+  font-variant-numeric: tabular-nums;
+}
+
+.kpiLabel {
+  font-size: 0.62rem;
+  font-weight: 500;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: var(--msp-muted);
+}
+
+.notice {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.55rem;
+  padding: 0.75rem 0.85rem;
+  border-radius: 10px;
+  border: 1px solid var(--msp-border);
+  background: var(--msp-surface-2, #f7f9fc);
+}
+
+.notice p {
+  margin: 0;
+  font-size: 0.82rem;
+  color: var(--msp-text);
+  line-height: 1.4;
+}
+
+.noticeError {
+  border-color: rgba(185, 28, 28, 0.28);
+  background: rgba(239, 68, 68, 0.08);
+  color: #b91c1c;
+}
+
+.noticeError p {
+  color: #991b1b;
+}
+
+@media (max-width: 560px) {
+  .kpiGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}

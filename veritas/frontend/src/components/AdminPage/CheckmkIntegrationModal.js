@@ -374,7 +374,7 @@ export default function CheckmkIntegrationModal({
   const handleRunFleetSync = async () => {
     setLogsRunning(true);
     try {
-      const result = await triggerCheckmkFleetSync({ force: false });
+      const result = await triggerCheckmkFleetSync({ force: false, wait: true });
       if (result?.skipped) {
         showSuccess(copy.logsRunSkipped || result.reason || "Sync skipped");
       } else {

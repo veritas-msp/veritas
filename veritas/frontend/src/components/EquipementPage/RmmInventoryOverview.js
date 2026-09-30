@@ -64,7 +64,7 @@ export default function RmmInventoryOverview({
       }))} />
 
         <div className={styles.inventorySide}>
-          <VulgarCard icon="mdi:folder-network" title={inv.shares} accent="network" headline={mappedDrives.length || localShares.length ? inv.sharesHeadline.replace("{mapped}", String(mappedDrives.length)).replace("{local}", String(localShares.length)) : inv.sharesEmpty} scrollable facts={[...mappedDrives.map(drive => ({
+          <VulgarCard icon="mdi:folder-network" title={inv.shares} accent="network" headline={mappedDrives.length || localShares.length ? inv.sharesHeadline.replace("{mapped}", String(mappedDrives.length)).replace("{local}", String(localShares.length)) : inv.sharesEmpty} facts={[...mappedDrives.map(drive => ({
           label: drive.drive || inv.mappedDrive,
           value: drive.remotePath || drive.provider || "—"
         })), ...localShares.map(share => ({
@@ -72,7 +72,7 @@ export default function RmmInventoryOverview({
           value: share.path || "—"
         }))]} />
 
-          <VulgarCard icon="mdi:monitor" title={inv.displays} accent="ram" headline={displayUsbCount ? inv.displaysHeadline.replace("{monitors}", String(monitors.length)).replace("{usb}", String(usbDevices.length)) : inv.displaysEmpty} scrollable facts={[...monitors.map((monitor, index) => ({
+          <VulgarCard icon="mdi:monitor" title={inv.displays} accent="ram" headline={displayUsbCount ? inv.displaysHeadline.replace("{monitors}", String(monitors.length)).replace("{usb}", String(usbDevices.length)) : inv.displaysEmpty} facts={[...monitors.map((monitor, index) => ({
           label: `${inv.screen} ${index + 1}`,
           value: [monitor.name || monitor.manufacturer, monitor.resolution || monitor.serial].filter(Boolean).join(" · ") || "—"
         })), ...usbDevices.map(device => ({
