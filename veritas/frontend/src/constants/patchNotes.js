@@ -5,6 +5,13 @@
  */
 export const PATCH_NOTES = [
   {
+    version: "1.0.54",
+    date: "2026-09-30",
+    highlights: [
+      "Supervision → ticket support : le préremplissage formulaire n’est plus effacé par la synchronisation d’URL."
+    ]
+  },
+  {
     version: "1.0.53",
     date: "2026-09-30",
     highlights: [
