@@ -45,10 +45,14 @@ export default function SalesFormFieldValue({
     }
     if (fieldType === "client") {
       onNavigate("ContratDetail", { clientId: entityId, name: label });
+      return;
+    }
+    if (fieldType === "equipment") {
+      onNavigate("EquipementDetail", { equipmentId: entityId, name: label });
     }
   };
 
-  const isLinkedEntity = (fieldType === "contact" || fieldType === "client") && entityId && typeof onNavigate === "function";
+  const isLinkedEntity = (fieldType === "contact" || fieldType === "client" || fieldType === "equipment") && entityId && typeof onNavigate === "function";
   const phone = fieldType === "contact" ? row.phone : null;
   const email = fieldType === "contact" ? row.email : null;
   const phoneHref = phone ? sanitizePhoneHref(phone) : "";

@@ -228,13 +228,19 @@ export function buildDefaultRuleValue(criterionKeyOrMeta) {
     return {
       enabled: true,
       parameters: {},
-      severity: "normal"
+      severity: "normal",
+      supportFormId: null,
+      subjectFieldKey: null,
+      descriptionFieldKey: null
     };
   }
   return {
     enabled: Boolean(meta.defaultEnabled),
     parameters: defaultParametersForCriterion(meta),
-    severity: SEVERITIES.has(meta.defaultSeverity) ? meta.defaultSeverity : "normal"
+    severity: SEVERITIES.has(meta.defaultSeverity) ? meta.defaultSeverity : "normal",
+    supportFormId: null,
+    subjectFieldKey: null,
+    descriptionFieldKey: null
   };
 }
 function clampNumber(value, field) {
@@ -271,7 +277,10 @@ export function normalizeRuleValue(raw, criterionKey) {
   return {
     enabled: raw.enabled !== undefined ? Boolean(raw.enabled) : defaults.enabled,
     parameters,
-    severity
+    severity,
+    supportFormId: raw.supportFormId != null && String(raw.supportFormId).trim() !== "" ? String(raw.supportFormId).trim() : null,
+    subjectFieldKey: raw.subjectFieldKey != null && String(raw.subjectFieldKey).trim() !== "" ? String(raw.subjectFieldKey).trim() : null,
+    descriptionFieldKey: raw.descriptionFieldKey != null && String(raw.descriptionFieldKey).trim() !== "" ? String(raw.descriptionFieldKey).trim() : null
   };
 }
 export function buildDefaultSupervisionAlertRules() {

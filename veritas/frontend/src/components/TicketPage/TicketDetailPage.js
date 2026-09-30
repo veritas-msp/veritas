@@ -1162,28 +1162,6 @@ export default function TicketDetailPage({
   const [users, setUsers] = useState([]);
   const [clients, setClients] = useState([]);
   const [contacts, setContacts] = useState([]);
-  const salesFormEntries = useMemo(
-    () =>
-      enrichSalesFormLinkedEntries(salesFormEntriesRaw, {
-        formData: salesFormData,
-        typeMap: salesFormFieldTypeMap,
-        contacts,
-        clients,
-        users
-      }),
-    [salesFormEntriesRaw, salesFormData, salesFormFieldTypeMap, contacts, clients, users]
-  );
-  const supportFormEntries = useMemo(
-    () =>
-      enrichSalesFormLinkedEntries(supportFormEntriesRaw, {
-        formData: supportFormData,
-        typeMap: supportFormFieldTypeMap,
-        contacts,
-        clients,
-        users
-      }),
-    [supportFormEntriesRaw, supportFormData, supportFormFieldTypeMap, contacts, clients, users]
-  );
   const [allTickets, setAllTickets] = useState([]);
   const [loading, setLoading] = useState(false);
   const [commentDraft, setCommentDraft] = useState("");
@@ -1230,6 +1208,30 @@ export default function TicketDetailPage({
   const [linkedEquipmentSearch, setLinkedEquipmentSearch] = useState("");
   const [clientEquipments, setClientEquipments] = useState([]);
   const [linkedEquipments, setLinkedEquipments] = useState([]);
+  const salesFormEntries = useMemo(
+    () =>
+      enrichSalesFormLinkedEntries(salesFormEntriesRaw, {
+        formData: salesFormData,
+        typeMap: salesFormFieldTypeMap,
+        contacts,
+        clients,
+        users,
+        equipments: linkedEquipments
+      }),
+    [salesFormEntriesRaw, salesFormData, salesFormFieldTypeMap, contacts, clients, users, linkedEquipments]
+  );
+  const supportFormEntries = useMemo(
+    () =>
+      enrichSalesFormLinkedEntries(supportFormEntriesRaw, {
+        formData: supportFormData,
+        typeMap: supportFormFieldTypeMap,
+        contacts,
+        clients,
+        users,
+        equipments: linkedEquipments
+      }),
+    [supportFormEntriesRaw, supportFormData, supportFormFieldTypeMap, contacts, clients, users, linkedEquipments]
+  );
   const [macroSelection, setMacroSelection] = useState("");
   const [macroAttachmentModalOpen, setMacroAttachmentModalOpen] = useState(false);
   const [pendingMacroExecution, setPendingMacroExecution] = useState(null);

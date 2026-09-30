@@ -22,6 +22,7 @@ import { getKnowledgeAsset, getPortalKnowledgeArticle, KNOWLEDGE_ASSETS_DIR, lis
 import { toggleFavorite, upsertHelpful } from "../../services/knowledgeArticleExtrasService.js";
 import { addArticleComment, deleteArticleComment, updateArticleComment, upsertArticleRating } from "../../services/knowledgeArticleFeedbackService.js";
 import { allowAssetEmbedding } from "../../middleware/securityHeaders.js";
+import { normalizeVisibilityRules } from "../../services/salesFormConditions.js";
 const router = express.Router();
 router.use(verifyJWT, requireRole("client"));
 const INFRA_TABLES = [{
@@ -840,7 +841,86 @@ router.get("/tickets/:id", [param("id").isUUID()], async (req, res) => {
     });
   }
 });
-router.post("/tickets", [body("title").notEmpty().withMessage("Title is required"), body("description").optional().isString(), body("priority").optional().isIn(["low", "normal", "high", "urgent"]), body("type").optional().isString(), body("attemptedActions").optional().isString(), body("issueNature").optional().isIn(["hardware", "software", "unsure", ""]), body("contactSlots").optional().isArray(), body("equipmentInfo").optional().isObject(), body("linkedTicketId").optional({
+
+router.get("/support-forms", async (req, res) => {
+  const ctx = await getPortalContext(req, res);
+  if (!ctx) return;
+  try {
+    const formsResult = await pool.query(
+      `SELECT *
+         FROM v_b_support_form_definitions
+        WHERE enabled = TRUE
+        ORDER BY display_order ASC, label ASC`
+    );
+    const forms = [];
+    for (const form of formsResult.rows || []) {
+      const fieldsResult = await pool.query(
+        `SELECT *
+           FROM v_b_support_form_fields
+          WHERE form_id = $1
+            AND enabled = TRUE
+          ORDER BY display_order ASC, id ASC`,
+        [form.id]
+      );
+      let visibilityRulesParser = row => {
+        let visibilityRules = row.visibility_rules;
+        if (typeof visibilityRules === "string") {
+          try {
+            visibilityRules = JSON.parse(visibilityRules);
+          } catch {
+            visibilityRules = {};
+          }
+        }
+        return normalizeVisibilityRules(visibilityRules);
+      };
+      forms.push({
+        id: form.id,
+        kind: form.kind,
+        key: form.form_key,
+        label: form.label,
+        icon: form.icon,
+        categorySlug: form.category_slug,
+        description: form.description || "",
+        displayOrder: Number(form.display_order || 0),
+        enabled: true,
+        fields: (fieldsResult.rows || [])
+          .filter(row => {
+            const type = String(row.field_type || "");
+            // Portal clients never pick agents / arbitrary contacts.
+            return type !== "file" && type !== "user" && type !== "contact";
+          })
+          .map(row => {
+            let options = row.options;
+            if (typeof options === "string") {
+              try {
+                options = JSON.parse(options);
+              } catch {
+                options = [];
+              }
+            }
+            return {
+              id: row.id,
+              fieldKey: row.field_key,
+              label: row.label,
+              fieldType: row.field_type,
+              required: row.required === true,
+              placeholder: row.placeholder || "",
+              options: Array.isArray(options) ? options : [],
+              visibilityRules: visibilityRulesParser(row),
+              displayOrder: Number(row.display_order || 0),
+              enabled: true
+            };
+          })
+      });
+    }
+    res.json(forms);
+  } catch (err) {
+    console.error("GET /client-portal/support-forms:", err);
+    res.status(500).json({ error: "Error retrieving support forms" });
+  }
+});
+
+router.post("/tickets", [body("title").notEmpty().withMessage("Title is required"), body("description").optional().isString(), body("priority").optional().isIn(["low", "normal", "high", "urgent"]), body("type").optional().isString(), body("attemptedActions").optional().isString(), body("issueNature").optional().isIn(["hardware", "software", "unsure", ""]), body("contactSlots").optional().isArray(), body("equipmentInfo").optional().isObject(), body("supportFormData").optional().isObject(), body("linkedTicketId").optional({
   nullable: true
 }).isUUID()], async (req, res) => {
   const validationResponse = validationErrorOrNull(req, res);
@@ -861,6 +941,7 @@ router.post("/tickets", [body("title").notEmpty().withMessage("Title is required
       issueNature: req.body.issueNature,
       contactSlots: req.body.contactSlots,
       equipmentInfo: req.body.equipmentInfo,
+      supportFormData: req.body.supportFormData || null,
       linkedTicketId: req.body.linkedTicketId || null
     });
     res.status(201).json(ticket);

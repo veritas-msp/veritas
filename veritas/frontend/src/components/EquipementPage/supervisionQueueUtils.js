@@ -2,6 +2,7 @@ import { buildMonitoringTodoActions } from "./equipmentMspUtils";
 import { getEquipmentDbId, getEquipmentListKey } from "../../utils/equipmentIdentity";
 import { getBackupJobStatus, getBackupJobStatusTitle } from "../CybersecuritePage/backupJobStatusUtils";
 import { formatServeurLieLabel } from "../EnterprisesPage/backupJobUtils";
+import { resolveEquipmentFamilyKey } from "./supervisionAlertRulesConfig";
 
 function joinMeta(parts, clientName = "") {
   const client = String(clientName || "").trim().toLowerCase();
@@ -107,6 +108,7 @@ export function buildDeviceQueueItems(statsItems, resolveMonitorStatus, options 
       clientId: equipment?.clientId ?? null,
       clientName,
       equipment,
+      criterionKey: String(issue?.key || "") || null,
       job: null,
       contract: null,
       agent: null,
@@ -143,6 +145,7 @@ export function buildDeviceQueueItemsFromIssues(issueRows = [], options = {}) {
       clientId: equipment?.clientId ?? null,
       clientName,
       equipment,
+      criterionKey: String(issue?.key || "") || null,
       job: null,
       contract: null,
       agent: null,
@@ -402,9 +405,9 @@ export function countQueueByDomain(items = []) {
 
 /**
  * Prefill payload for TicketCreate when opening a Support ticket from the supervision queue.
- * Category hint matches seeded "Supervision / alerting" (monitoring) or a custom "Monitoring" name.
+ * When alert rules define a support form + subject/description field mapping, those are applied.
  */
-export function buildSupervisionSupportTicketPrefill(item) {
+export function buildSupervisionSupportTicketPrefill(item, rules = null) {
   const equipment = item?.equipment || item?.agent?.equipment || null;
   const clientId = item?.clientId || equipment?.clientId || null;
   const equipmentId = getEquipmentDbId(equipment) || equipment?.id || null;
@@ -425,12 +428,34 @@ export function buildSupervisionSupportTicketPrefill(item) {
   if (item?.label && item.label !== item.title) lines.push(`Détail : ${item.label}`);
   lines.push("", "Ticket créé depuis le centre de supervision.");
 
+  const title = item?.ticketSubject || [equipment?.name, item?.title].filter(Boolean).join(" — ") || "";
+  const description = lines.filter((line, index, arr) => line !== "" || (index > 0 && arr[index - 1] !== "")).join("\n").slice(0, 5000);
+
+  const familyKey = resolveEquipmentFamilyKey(equipment?.type === "NAS" ? "Storage" : equipment?.type);
+  const criterionKey = String(item?.criterionKey || item?.issue?.key || "").trim();
+  const rule = familyKey && criterionKey && rules ? rules?.[familyKey]?.[criterionKey] : null;
+  const supportFormId = rule?.supportFormId ? String(rule.supportFormId) : null;
+  const subjectFieldKey = rule?.subjectFieldKey ? String(rule.subjectFieldKey) : null;
+  const descriptionFieldKey = rule?.descriptionFieldKey ? String(rule.descriptionFieldKey) : null;
+  const supportFormValues = {};
+  if (subjectFieldKey && title) supportFormValues[subjectFieldKey] = title;
+  if (descriptionFieldKey && description) supportFormValues[descriptionFieldKey] = description;
+
   return {
     clientId,
     equipmentId,
-    title: item?.ticketSubject || [equipment?.name, item?.title].filter(Boolean).join(" — ") || "",
-    description: lines.filter((line, index, arr) => line !== "" || (index > 0 && arr[index - 1] !== "")).join("\n").slice(0, 5000),
+    title,
+    description,
     category: "monitoring",
-    preferPrimaryContact: true
+    preferPrimaryContact: true,
+    ...(supportFormId
+      ? {
+          supportFormId,
+          lockSupportForm: true,
+          subjectFieldKey,
+          descriptionFieldKey,
+          supportFormValues
+        }
+      : {})
   };
 }

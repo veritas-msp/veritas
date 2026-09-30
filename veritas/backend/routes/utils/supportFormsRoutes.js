@@ -12,7 +12,7 @@ router.use(verifyJWT);
 const MANAGE_SUPPORT_FORMS_PERMISSION = "admin_panel.tickets";
 const requireSupportFormsAdmin = requirePermission(MANAGE_SUPPORT_FORMS_PERMISSION);
 const SUPPORT_KINDS = new Set(["incident", "demande", "probleme", "changement"]);
-const FIELD_TYPES = new Set(["section", "text", "textarea", "select", "radio", "multiselect", "checkbox", "user", "contact", "client", "number", "currency", "email", "phone", "url", "date", "time", "datetime", "rating", "file"]);
+const FIELD_TYPES = new Set(["section", "text", "textarea", "select", "radio", "multiselect", "checkbox", "user", "contact", "client", "equipment", "number", "currency", "email", "phone", "url", "date", "time", "datetime", "rating", "file"]);
 const VISIBILITY_VALUES = new Set(["public", "assigned"]);
 function validationErrorOrNull(req, res) {
   const errors = validationResult(req);

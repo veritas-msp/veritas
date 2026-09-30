@@ -68,8 +68,15 @@ function FieldPreview({
         <div className={builderStyles.canvasFieldMeta}>File upload</div>
       </div>;
   }
-  if (field.fieldType === "user" || field.fieldType === "client" || field.fieldType === "contact") {
-    const placeholder = field.fieldType === "user" ? "Select a user…" : field.fieldType === "client" ? "Select a company…" : "Select a contact…";
+  if (field.fieldType === "user" || field.fieldType === "client" || field.fieldType === "contact" || field.fieldType === "equipment") {
+    const placeholder =
+      field.fieldType === "user"
+        ? "Select a user…"
+        : field.fieldType === "client"
+          ? "Select a company…"
+          : field.fieldType === "equipment"
+            ? "Select equipment…"
+            : "Select a contact…";
     return <div className={builderStyles.canvasFieldPreview}>
         <label>{label}</label>
         <select disabled>

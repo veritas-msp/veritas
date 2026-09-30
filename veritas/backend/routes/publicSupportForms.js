@@ -25,7 +25,11 @@ function validationErrorOrNull(req, res) {
 
 function mapPublicField(row) {
   if (!row || row.enabled === false) return null;
-  if (String(row.field_type || "") === "file") return null;
+  const fieldType = String(row.field_type || "");
+  // Anonymous public forms cannot resolve authenticated entity lookups.
+  if (fieldType === "file" || fieldType === "user" || fieldType === "contact" || fieldType === "client" || fieldType === "equipment") {
+    return null;
+  }
   let options = row.options;
   if (typeof options === "string") {
     try {
@@ -248,7 +252,9 @@ router.post(
       // Strip any file-like payloads for safety
       Object.keys(values).forEach(key => {
         const field = form.fields.find(f => f.fieldKey === key);
-        if (!field || field.fieldType === "file") delete values[key];
+        if (!field || field.fieldType === "file" || field.fieldType === "user" || field.fieldType === "contact" || field.fieldType === "client" || field.fieldType === "equipment") {
+          delete values[key];
+        }
       });
 
       const tickets = await createTicketFromPublicForm({

@@ -5,6 +5,16 @@
  */
 export const PATCH_NOTES = [
   {
+    version: "1.0.48",
+    date: "2026-09-30",
+    highlights: [
+      "Fiche poste RMM : onglets Général, Cybersécurité et Software refaits en bandes denses ; applications en table scrollable.",
+      "Formulaires support : champ Matériel / périphérique ; côté portail, entreprises et équipements limités au client.",
+      "Création de ticket : avec formulaires, seuls les champs du formulaire (plus de sujet / description / documents hors form).",
+      "Règles de supervision : choix du formulaire support et mapping objet / description pour les tickets créés depuis le centre."
+    ]
+  },
+  {
     version: "1.0.47",
     date: "2026-09-30",
     highlights: [

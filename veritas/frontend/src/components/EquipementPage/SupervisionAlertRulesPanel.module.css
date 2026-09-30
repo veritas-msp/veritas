@@ -398,6 +398,23 @@
   color: #b45309;
 }
 
+.ticketMapping {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 0.65rem;
+  margin-top: 0.75rem;
+  padding-top: 0.75rem;
+  border-top: 1px dashed var(--msp-border-light, #e2e8f0);
+}
+
+.mappingHint {
+  grid-column: 1 / -1;
+  margin: 0;
+  font-size: 0.72rem;
+  color: var(--msp-muted, #5b6b7c);
+  line-height: 1.35;
+}
+
 @media (max-width: 860px) {
   .layout {
     grid-template-columns: 1fr;

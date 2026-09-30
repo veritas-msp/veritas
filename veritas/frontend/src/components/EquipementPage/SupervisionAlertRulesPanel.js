@@ -2,8 +2,10 @@ import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { Icon } from "@iconify/react";
 import { toast } from "react-toastify";
 import { updateSupervisionAlertRules } from "../../api/supervisionAlertRules";
+import { fetchSupportForms } from "../../api/tickets";
 import { useAppLocale } from "../../hooks/useAppGeneralSettings";
 import { invalidateSupervisionAlertRulesCache } from "../../hooks/useSupervisionAlertRules";
+import { listMappableSupportFormFields } from "../../utils/supportFormTicketContent";
 import {
   buildDefaultMonitoringAlertRules,
   countEnabledRulesForFamily,
@@ -74,10 +76,31 @@ export default function MonitoringAlertRulesPanel({
   const [draft, setDraft] = useState(baseline);
   const [selectedFamily, setSelectedFamily] = useState(() => families[0]?.key || "ordinateurs");
   const [saving, setSaving] = useState(false);
+  const [supportForms, setSupportForms] = useState([]);
 
   useEffect(() => {
     setDraft(baseline);
   }, [baseline]);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetchSupportForms({ includeDisabled: false })
+      .then(rows => {
+        if (!cancelled) setSupportForms(Array.isArray(rows) ? rows.filter(form => form?.enabled !== false) : []);
+      })
+      .catch(() => {
+        if (!cancelled) setSupportForms([]);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const supportFormsById = useMemo(() => {
+    const map = new Map();
+    supportForms.forEach(form => map.set(String(form.id), form));
+    return map;
+  }, [supportForms]);
 
   useEffect(() => {
     if (!families.some(f => f.key === selectedFamily) && families[0]) {
@@ -119,7 +142,7 @@ export default function MonitoringAlertRulesPanel({
       const base =
         current && typeof current === "object"
           ? { ...current, parameters: { ...(current.parameters || {}) } }
-          : { enabled: true, parameters: {}, severity: "normal" };
+          : { enabled: true, parameters: {}, severity: "normal", supportFormId: null, subjectFieldKey: null, descriptionFieldKey: null };
       const n = Number(value);
       base.parameters[paramKey] = Number.isFinite(n) ? n : value;
       return {
@@ -127,6 +150,32 @@ export default function MonitoringAlertRulesPanel({
         [familyKey]: {
           ...(prev[familyKey] || {}),
           [criterionKey]: base
+        }
+      };
+    });
+  }, []);
+
+  const handleTicketMappingChange = useCallback((familyKey, criterionKey, patch) => {
+    setDraft(prev => {
+      const current = prev?.[familyKey]?.[criterionKey];
+      const base =
+        current && typeof current === "object"
+          ? { ...current }
+          : { enabled: true, parameters: {}, severity: "normal", supportFormId: null, subjectFieldKey: null, descriptionFieldKey: null };
+      const next = { ...base, ...patch };
+      if (Object.prototype.hasOwnProperty.call(patch, "supportFormId")) {
+        const formId = patch.supportFormId ? String(patch.supportFormId) : null;
+        next.supportFormId = formId;
+        if (!formId) {
+          next.subjectFieldKey = null;
+          next.descriptionFieldKey = null;
+        }
+      }
+      return {
+        ...prev,
+        [familyKey]: {
+          ...(prev[familyKey] || {}),
+          [criterionKey]: next
         }
       };
     });
@@ -298,6 +347,81 @@ export default function MonitoringAlertRulesPanel({
                           />
                         </label>
                       ))}
+                    </div>
+                  ) : null}
+                  {enabled ? (
+                    <div className={styles.ticketMapping} onClick={event => event.stopPropagation()} onKeyDown={event => event.stopPropagation()}>
+                      <label className={styles.paramField}>
+                        <span className={styles.paramLabel}>{copy.supportFormLabel}</span>
+                        <select
+                          className={styles.paramInput}
+                          value={rule.supportFormId || ""}
+                          disabled={!isAdmin || saving}
+                          onChange={e =>
+                            handleTicketMappingChange(activeFamily.key, criterion.key, {
+                              supportFormId: e.target.value || null,
+                              subjectFieldKey: null,
+                              descriptionFieldKey: null
+                            })
+                          }
+                        >
+                          <option value="">{copy.supportFormNone}</option>
+                          {supportForms.map(form => (
+                            <option key={form.id} value={form.id}>
+                              {form.label || form.key}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+                      {rule.supportFormId ? (() => {
+                        const form = supportFormsById.get(String(rule.supportFormId));
+                        const mappable = listMappableSupportFormFields(form?.fields || []);
+                        return (
+                          <>
+                            <label className={styles.paramField}>
+                              <span className={styles.paramLabel}>{copy.subjectFieldLabel}</span>
+                              <select
+                                className={styles.paramInput}
+                                value={rule.subjectFieldKey || ""}
+                                disabled={!isAdmin || saving || mappable.length === 0}
+                                onChange={e =>
+                                  handleTicketMappingChange(activeFamily.key, criterion.key, {
+                                    subjectFieldKey: e.target.value || null
+                                  })
+                                }
+                              >
+                                <option value="">{copy.fieldAuto}</option>
+                                {mappable.map(field => (
+                                  <option key={field.fieldKey} value={field.fieldKey}>
+                                    {field.label || field.fieldKey}
+                                  </option>
+                                ))}
+                              </select>
+                            </label>
+                            <label className={styles.paramField}>
+                              <span className={styles.paramLabel}>{copy.descriptionFieldLabel}</span>
+                              <select
+                                className={styles.paramInput}
+                                value={rule.descriptionFieldKey || ""}
+                                disabled={!isAdmin || saving || mappable.length === 0}
+                                onChange={e =>
+                                  handleTicketMappingChange(activeFamily.key, criterion.key, {
+                                    descriptionFieldKey: e.target.value || null
+                                  })
+                                }
+                              >
+                                <option value="">{copy.fieldAuto}</option>
+                                {mappable.map(field => (
+                                  <option key={field.fieldKey} value={field.fieldKey}>
+                                    {field.label || field.fieldKey}
+                                  </option>
+                                ))}
+                              </select>
+                            </label>
+                          </>
+                        );
+                      })() : null}
+                      <p className={styles.mappingHint}>{copy.ticketMappingHint}</p>
                     </div>
                   ) : null}
                 </article>

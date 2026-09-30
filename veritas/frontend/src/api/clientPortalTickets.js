@@ -36,6 +36,13 @@ export async function createPortalTicket(payload) {
   });
   return handleJsonResponse(response, "Error creating ticket.");
 }
+export async function fetchPortalSupportForms() {
+  const response = await fetch(`${API_BASE_URL}/client-portal/support-forms`, {
+    credentials: "include"
+  });
+  const data = await handleJsonResponse(response, "Error fetching support forms.");
+  return Array.isArray(data) ? data : [];
+}
 export async function addPortalTicketComment(ticketId, {
   content,
   files = []

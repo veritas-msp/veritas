@@ -28,6 +28,12 @@ const ALERT_RULES_COPY = {
     unsavedChanges: "Modifications non enregistrées",
     toggleOn: "Active",
     toggleOff: "Ignorée",
+    supportFormLabel: "Formulaire support",
+    supportFormNone: "Aucun (création libre)",
+    subjectFieldLabel: "Champ objet / sujet",
+    descriptionFieldLabel: "Champ description",
+    fieldAuto: "Automatique (détection)",
+    ticketMappingHint: "À la création depuis le centre de supervision, ce formulaire est forcé et l'objet / la description d'alerte sont injectés dans les champs choisis.",
     toasts: {
       saved: "Règles d'alerte enregistrées",
       saveFailed: "Impossible d'enregistrer les règles"
@@ -116,6 +122,12 @@ const ALERT_RULES_COPY = {
     unsavedChanges: "Unsaved changes",
     toggleOn: "On",
     toggleOff: "Off",
+    supportFormLabel: "Support form",
+    supportFormNone: "None (free create)",
+    subjectFieldLabel: "Subject field",
+    descriptionFieldLabel: "Description field",
+    fieldAuto: "Automatic (detect)",
+    ticketMappingHint: "When creating a ticket from the supervision center, this form is forced and the alert subject/description are injected into the selected fields.",
     toasts: {
       saved: "Alert rules saved",
       saveFailed: "Unable to save rules"
@@ -198,6 +210,12 @@ const ALERT_RULES_COPY = {
     activeCount: "{enabled}/{total} aktiv",
     toggleOn: "Alarm aktiv",
     toggleOff: "Ignoriert",
+    supportFormLabel: "Support-Formular",
+    supportFormNone: "Keines (freie Erstellung)",
+    subjectFieldLabel: "Betreff-Feld",
+    descriptionFieldLabel: "Beschreibungs-Feld",
+    fieldAuto: "Automatisch",
+    ticketMappingHint: "Bei Ticket-Erstellung aus dem Supervision-Center wird dieses Formular erzwungen.",
     toasts: {
       saved: "Alarmregeln gespeichert",
       saveFailed: "Regeln konnten nicht gespeichert werden"
@@ -276,6 +294,12 @@ const ALERT_RULES_COPY = {
     activeCount: "{enabled}/{total} attive",
     toggleOn: "Alert attivo",
     toggleOff: "Ignorato",
+    supportFormLabel: "Modulo support",
+    supportFormNone: "Nessuno (creazione libera)",
+    subjectFieldLabel: "Campo oggetto",
+    descriptionFieldLabel: "Campo descrizione",
+    fieldAuto: "Automatico",
+    ticketMappingHint: "Alla creazione dal centro di supervisione, questo modulo è forzato.",
     toasts: {
       saved: "Regole di alert salvate",
       saveFailed: "Impossibile salvare le regole"
@@ -354,6 +378,12 @@ const ALERT_RULES_COPY = {
     activeCount: "{enabled}/{total} activas",
     toggleOn: "Alerta activa",
     toggleOff: "Ignorada",
+    supportFormLabel: "Formulario de soporte",
+    supportFormNone: "Ninguno (creación libre)",
+    subjectFieldLabel: "Campo asunto",
+    descriptionFieldLabel: "Campo descripción",
+    fieldAuto: "Automático",
+    ticketMappingHint: "Al crear desde el centro de supervisión, este formulario se fuerza.",
     toasts: {
       saved: "Reglas de alerta guardadas",
       saveFailed: "No se pudieron guardar las reglas"

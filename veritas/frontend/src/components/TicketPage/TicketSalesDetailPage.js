@@ -2659,6 +2659,9 @@ export default function TicketSalesDetailPage({ onNavigate, ticketData }) {
                               users={users}
                               contacts={contacts}
                               clients={clients}
+                              equipments={clientEquipments}
+                              clientId={clientId}
+                              audience="agent"
                               onChange={next => {
                                 setFormDraftValues(next);
                                 if (formFieldErrors) setFormFieldErrors(false);

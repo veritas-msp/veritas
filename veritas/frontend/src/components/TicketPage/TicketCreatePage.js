@@ -16,7 +16,8 @@ import { buildLinkedEquipmentComment, getEquipmentPickerLabel, getEquipmentSearc
 import { buildClientContractSummary, computeSupportCreditTotals } from "./ticketClientSummaryUtils";
 import { buildLinkedTicketComment, getTicketLinkLabel, getTicketLinkSearchText } from "./ticketLinkUtils";
 import { formatClientSlaRows, parseClientSla } from "../../utils/ticketSlaUtils";
-import { isFileField } from "../../utils/salesFormFieldTypes";
+import { isFileField, findFormEquipmentFieldKeys, resolveFormScopedClientId } from "../../utils/salesFormFieldTypes";
+import { collectSupportFormFiles, resolveTicketContentFromSupportForm } from "../../utils/supportFormTicketContent";
 import ContactFormModal from "../ContactsPage/ContactFormModal";
 import SmartTooltip from "../SmartTooltip";
 import TicketKnowledgeSuggestions from "./TicketKnowledgeSuggestions";
@@ -709,6 +710,18 @@ export default function TicketCreatePage({
     setTicketClientId(selectedContact.client_id ? String(selectedContact.client_id) : "");
   }, [selectedContact, contactClientOptions, initialData?.clientId]);
   const resolvedTicketClientId = ticketClientId || (contactClientOptions.length === 1 ? contactClientOptions[0].id : null) || selectedContact?.client_id || initialData?.clientId || null;
+  const earlySelectedSupportForm = useMemo(() => {
+    const rows = (Array.isArray(supportForms) ? supportForms : []).filter(form => form?.enabled !== false);
+    return rows.find(form => String(form.id) === String(selectedSupportFormId)) || rows[0] || null;
+  }, [supportForms, selectedSupportFormId]);
+  const hasFormEquipmentFieldEarly = useMemo(
+    () => findFormEquipmentFieldKeys(earlySelectedSupportForm?.fields || []).length > 0,
+    [earlySelectedSupportForm]
+  );
+  const equipmentLoadClientId = useMemo(() => {
+    if (!hasFormEquipmentFieldEarly) return resolvedTicketClientId;
+    return resolveFormScopedClientId(earlySelectedSupportForm?.fields || [], supportFormValues, resolvedTicketClientId) || resolvedTicketClientId;
+  }, [hasFormEquipmentFieldEarly, earlySelectedSupportForm, supportFormValues, resolvedTicketClientId]);
   const clientLabel = useMemo(() => {
     if (!selectedContact) return "";
     const selectedOption = contactClientOptions.find(opt => String(opt.id) === String(resolvedTicketClientId));
@@ -762,11 +775,13 @@ export default function TicketCreatePage({
     };
   }, [resolvedTicketClientId]);
   useEffect(() => {
-    const clientId = resolvedTicketClientId;
+    const clientId = equipmentLoadClientId;
     if (!clientId) {
       setClientEquipments([]);
-      setEquipmentId("");
-      setEquipmentSearch("");
+      if (!hasFormEquipmentFieldEarly) {
+        setEquipmentId("");
+        setEquipmentSearch("");
+      }
       setShowEquipmentDropdown(false);
       return;
     }
@@ -785,7 +800,7 @@ export default function TicketCreatePage({
     return () => {
       cancelled = true;
     };
-  }, [resolvedTicketClientId]);
+  }, [equipmentLoadClientId, hasFormEquipmentFieldEarly]);
   useEffect(() => {
     const contactId = selectedContact?.id;
     setLinkedTicketId("");
@@ -851,21 +866,56 @@ export default function TicketCreatePage({
     [enabledSupportForms, selectedSupportFormId]
   );
   const activeSupportFields = useMemo(
-    () => filterVisibleFields((selectedSupportForm?.fields || []).filter(field => field.enabled !== false && !isFileField(field)), supportFormValues),
+    () => filterVisibleFields((selectedSupportForm?.fields || []).filter(field => field.enabled !== false), supportFormValues),
     [selectedSupportForm, supportFormValues]
+  );
+  const formEquipmentFieldKeys = useMemo(
+    () => findFormEquipmentFieldKeys(selectedSupportForm?.fields || []),
+    [selectedSupportForm]
+  );
+  const hasFormEquipmentField = formEquipmentFieldKeys.length > 0;
+  const formScopedClientId = useMemo(
+    () => resolveFormScopedClientId(selectedSupportForm?.fields || [], supportFormValues, resolvedTicketClientId),
+    [selectedSupportForm, supportFormValues, resolvedTicketClientId]
   );
   useEffect(() => {
     if (!hasSupportForms) {
       setSelectedSupportFormId("");
       return;
     }
+    if (initialData?.supportFormId && enabledSupportForms.some(form => String(form.id) === String(initialData.supportFormId))) {
+      setSelectedSupportFormId(String(initialData.supportFormId));
+      return;
+    }
     if (!enabledSupportForms.some(form => String(form.id) === String(selectedSupportFormId))) {
       setSelectedSupportFormId(String(enabledSupportForms[0].id));
     }
-  }, [hasSupportForms, enabledSupportForms, selectedSupportFormId]);
+  }, [hasSupportForms, enabledSupportForms, selectedSupportFormId, initialData?.supportFormId]);
   useEffect(() => {
     setSupportFormValues({});
   }, [selectedSupportFormId]);
+  useEffect(() => {
+    if (!initialData?.supportFormValues || typeof initialData.supportFormValues !== "object") return;
+    if (!selectedSupportFormId) return;
+    if (initialData.supportFormId && String(selectedSupportFormId) !== String(initialData.supportFormId)) return;
+    setSupportFormValues(prev => ({
+      ...prev,
+      ...initialData.supportFormValues
+    }));
+  }, [selectedSupportFormId, initialData?.supportFormId, initialData?.supportFormValues]);
+  const supportFormLocked = Boolean(initialData?.lockSupportForm && initialData?.supportFormId);
+  useEffect(() => {
+    if (!hasFormEquipmentField) return;
+    const equipmentKey = formEquipmentFieldKeys[0];
+    const formEquipmentId = supportFormValues?.[equipmentKey];
+    if (!formEquipmentId) return;
+    const match = clientEquipments.find(eq => String(eq.id) === String(formEquipmentId));
+    if (!match) return;
+    setEquipmentConcerned(true);
+    setEquipmentSource("veritas");
+    setEquipmentId(String(match.id));
+    setEquipmentSearch(getEquipmentPickerLabel(match, { locale }));
+  }, [hasFormEquipmentField, formEquipmentFieldKeys, supportFormValues, clientEquipments, locale]);
   useEffect(() => {
     const nextType = String(selectedSupportForm?.kind || "").trim();
     if (!nextType) return;
@@ -1093,6 +1143,7 @@ export default function TicketCreatePage({
   }, [availabilityDate]);
   const handleSupportFormSelect = useCallback(form => {
     if (!form?.id) return;
+    if (supportFormLocked) return;
     setSelectedSupportFormId(String(form.id));
     const nextType = String(form.kind || "").trim();
     if (nextType) {
@@ -1104,7 +1155,24 @@ export default function TicketCreatePage({
       supportForm: undefined,
       supportFormDetails: undefined
     }));
-  }, []);
+  }, [supportFormLocked]);
+  const resolvedFormTicketContent = useMemo(() => {
+    if (!hasSupportForms || !selectedSupportForm) {
+      return {
+        title: title.trim(),
+        description: description.trim()
+      };
+    }
+    return resolveTicketContentFromSupportForm({
+      fields: activeSupportFields.filter(field => !isFileField(field)),
+      values: supportFormValues,
+      formLabel: selectedSupportForm.label,
+      fallbackTitle: title,
+      fallbackDescription: description,
+      subjectFieldKey: initialData?.subjectFieldKey || null,
+      descriptionFieldKey: initialData?.descriptionFieldKey || null
+    });
+  }, [hasSupportForms, selectedSupportForm, activeSupportFields, supportFormValues, title, description, initialData?.subjectFieldKey, initialData?.descriptionFieldKey]);
   const handleMajorIncidentChange = useCallback(checked => {
     setIsMajorIncident(checked);
     if (checked) setPriority("urgent");
@@ -1238,8 +1306,22 @@ export default function TicketCreatePage({
     } else if (!category.trim()) {
       errors.category = true;
     }
-    if (title.trim().length < 3) errors.title = true;
-    if (description.trim().length < 10) errors.description = true;
+    if (!hasSupportForms) {
+      if (title.trim().length < 3) errors.title = true;
+      if (description.trim().length < 10) errors.description = true;
+    } else {
+      const preview = resolveTicketContentFromSupportForm({
+        fields: activeSupportFields,
+        values: supportFormValues,
+        formLabel: selectedSupportForm?.label,
+        fallbackTitle: title,
+        fallbackDescription: description,
+        subjectFieldKey: initialData?.subjectFieldKey || null,
+        descriptionFieldKey: initialData?.descriptionFieldKey || null
+      });
+      if (preview.title.trim().length < 3) errors.supportFormDetails = true;
+      if (preview.description.trim().length < 3) errors.supportFormDetails = true;
+    }
     if (availabilityMode === "from") {
       if (!availabilityDate || !availabilityStart) {
         errors.contactSlots = true;
@@ -1266,10 +1348,12 @@ export default function TicketCreatePage({
     if (type === "incident" && isMajorIncident && priority !== "urgent") {
       errors.priority = true;
     }
-    try {
-      copy.validateAttachmentFiles(attachmentFiles);
-    } catch {
-      errors.attachments = true;
+    if (!hasSupportForms) {
+      try {
+        copy.validateAttachmentFiles(attachmentFiles);
+      } catch {
+        errors.attachments = true;
+      }
     }
     return errors;
   };
@@ -1325,14 +1409,19 @@ export default function TicketCreatePage({
         ? String(selectedSupportForm?.categorySlug || category || "").trim()
         : category.trim();
       let supportFormData;
+      let resolvedTitle = title.trim();
+      let resolvedDescription = description.trim();
+      let formFiles = [];
       if (hasSupportForms && selectedSupportForm) {
-        const visibleFields = filterVisibleFields((selectedSupportForm.fields || []).filter(field => field.enabled !== false && !isFileField(field)), supportFormValues);
+        const visibleFields = filterVisibleFields((selectedSupportForm.fields || []).filter(field => field.enabled !== false), supportFormValues);
+        const nonFileFields = visibleFields.filter(field => !isFileField(field));
         const visibleValues = Object.fromEntries(visibleFields.map(field => [field.fieldKey, supportFormValues[field.fieldKey]]));
-        const displayValues = Object.fromEntries(visibleFields.map(field => {
+        const displayValues = Object.fromEntries(nonFileFields.map(field => {
           const line = buildDynamicFieldLines([field], supportFormValues, {
             users,
             clients,
-            contacts
+            contacts,
+            equipments: clientEquipments
           })[0] || "";
           const display = line.includes(": ") ? line.split(": ").slice(1).join(": ") : "";
           return [field.fieldKey, display === "-" ? "" : display];
@@ -1342,6 +1431,19 @@ export default function TicketCreatePage({
             .filter(field => field?.fieldKey)
             .map(field => [field.fieldKey, String(field.label || "").trim() || field.fieldKey])
         );
+        const resolved = resolveTicketContentFromSupportForm({
+          fields: nonFileFields,
+          values: supportFormValues,
+          displayValues,
+          formLabel: selectedSupportForm.label,
+          fallbackTitle: title,
+          fallbackDescription: description,
+          subjectFieldKey: initialData?.subjectFieldKey || null,
+          descriptionFieldKey: initialData?.descriptionFieldKey || null
+        });
+        resolvedTitle = resolved.title;
+        resolvedDescription = resolved.description;
+        formFiles = collectSupportFormFiles(visibleFields, supportFormValues).files;
         supportFormData = {
           formId: selectedSupportForm.id,
           formKey: selectedSupportForm.key,
@@ -1354,8 +1456,8 @@ export default function TicketCreatePage({
         };
       }
       const created = await createTicket({
-        title: title.trim(),
-        description: description.trim(),
+        title: resolvedTitle,
+        description: resolvedDescription,
         priority: type === "incident" && isMajorIncident ? "urgent" : priority,
         status: "new",
         type: supportFormData?.kind || type,
@@ -1392,12 +1494,13 @@ export default function TicketCreatePage({
           await addTicketComment(created.id, buildLinkedTicketComment(selectedLinkedTicket), true);
         } catch {}
       }
-      if (attachmentFiles.length > 0) {
+      const filesToUpload = hasSupportForms ? formFiles : attachmentFiles;
+      if (filesToUpload.length > 0) {
         try {
           await addTicketCommentWithAttachments(created.id, {
             content: "",
             isInternal: true,
-            files: attachmentFiles
+            files: filesToUpload
           });
         } catch {
           toast.warning(copy.attachmentsUploadWarning);
@@ -1475,9 +1578,14 @@ export default function TicketCreatePage({
     return selectedLinkedTicket ? getTicketLinkLabel(selectedLinkedTicket) : "-";
   }, [linkedTicketEnabled, selectedLinkedTicket, copy]);
   const attachmentsSummary = useMemo(() => {
+    if (hasSupportForms) {
+      const { files } = collectSupportFormFiles(activeSupportFields, supportFormValues);
+      if (files.length === 0) return copy.none;
+      return files.map(file => file.name).join(", ");
+    }
     if (attachmentFiles.length === 0) return copy.none;
     return attachmentFiles.map(file => file.name).join(", ");
-  }, [attachmentFiles, copy]);
+  }, [hasSupportForms, activeSupportFields, supportFormValues, attachmentFiles, copy]);
   const userSearchOptions = useMemo(() => users.map(user => ({
     id: String(user.id),
     label: getUserLabel(user, copy.agentFallback)
@@ -1609,7 +1717,7 @@ export default function TicketCreatePage({
                 {!hasSupportForms ? <p className={s.detailsAvailabilityTitle} style={{ margin: 0 }}>
                     {loadingData ? copy.loadingForms : copy.noForms}
                   </p> : <div className={`${s.typeGrid} ${s.formTypeGrid}`} data-pulse={fieldErrors.supportForm ? errorPulseTick : undefined}>
-                    {enabledSupportForms.map(form => <button key={form.id} type="button" className={`${s.typeCard} ${String(selectedSupportForm?.id) === String(form.id) ? s.typeCardActive : ""} ${fieldErrors.supportForm ? s.fieldErrorPulse : ""}`} onClick={() => handleSupportFormSelect(form)}>
+                    {enabledSupportForms.map(form => <button key={form.id} type="button" className={`${s.typeCard} ${String(selectedSupportForm?.id) === String(form.id) ? s.typeCardActive : ""} ${fieldErrors.supportForm ? s.fieldErrorPulse : ""}`} onClick={() => handleSupportFormSelect(form)} disabled={supportFormLocked && String(form.id) !== String(selectedSupportForm?.id)} aria-disabled={supportFormLocked && String(form.id) !== String(selectedSupportForm?.id)}>
                         <Icon icon={form.icon || "mdi:file-document-outline"} className={s.typeIcon} aria-hidden />
                         <span className={s.typeLabel}>{form.label}</span>
                         {form.description ? <span className={s.typeHint}>{form.description}</span> : null}
@@ -1845,6 +1953,9 @@ export default function TicketCreatePage({
                       users={users}
                       contacts={contacts}
                       clients={clients}
+                      equipments={clientEquipments}
+                      clientId={formScopedClientId || resolvedTicketClientId}
+                      audience="agent"
                       fieldErrors={fieldErrors.supportFormDetails}
                       errorPulseTick={errorPulseTick}
                       onChange={nextValues => {
@@ -1856,6 +1967,7 @@ export default function TicketCreatePage({
                       }}
                     />
                   </div> : null}
+                {!hasSupportForms ? <>
                 <div className={s.fieldBlock}>
                   <label className={s.fieldLabel}>{copy.subject}<span className={s.requiredMark}>*</span></label>
                   <div data-pulse={fieldErrors.title ? errorPulseTick : undefined} className={`${s.fieldShell} ${fieldErrors.title ? s.fieldShellError : ""} ${fieldErrors.title ? s.fieldErrorPulse : ""}`}>
@@ -1928,6 +2040,7 @@ export default function TicketCreatePage({
                   })}
                     </ul>}
                 </div>
+                </> : null}
 
                 {formError && <div className={s.errorBox} role="alert">
                     <Icon icon="mdi:alert-circle-outline" className={s.errorIcon} />
@@ -2438,7 +2551,7 @@ export default function TicketCreatePage({
               </div>
 
               <div className={s.confirmBody}>
-                <TicketCreateRecap title={title} description={description} type={type} isMajorIncident={isMajorIncident} priority={priority} channel={channel} category={category} selectedContact={selectedContact} clientLabel={clientLabel} agentLabel={agentLabel} filledContactSlots={filledContactSlots} equipmentSummary={equipmentSummary} linkedTicketSummary={linkedTicketSummary} preAssigneesSummary={preAssigneesSummary} preFollowersSummary={preFollowersSummary} attachmentsSummary={attachmentsSummary} copy={copy} />
+                <TicketCreateRecap title={resolvedFormTicketContent.title} description={resolvedFormTicketContent.description} type={type} isMajorIncident={isMajorIncident} priority={priority} channel={channel} category={category} selectedContact={selectedContact} clientLabel={clientLabel} agentLabel={agentLabel} filledContactSlots={filledContactSlots} equipmentSummary={equipmentSummary} linkedTicketSummary={linkedTicketSummary} preAssigneesSummary={preAssigneesSummary} preFollowersSummary={preFollowersSummary} attachmentsSummary={attachmentsSummary} copy={copy} />
 
                 {formError && <div className={s.errorBox} role="alert">
                     <Icon icon="mdi:alert-circle-outline" className={s.errorIcon} />

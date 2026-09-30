@@ -405,8 +405,60 @@ export const PALETTE_FIELD_TYPES = [
     label: "Contact",
     icon: "mdi:card-account-details-outline",
     group: "variables"
+  },
+  {
+    type: "equipment",
+    label: "Equipment",
+    icon: "mdi:desktop-classic",
+    group: "variables"
   }
 ];
+
+/** Entity lookup fields that need authenticated entity lists (not for anonymous public forms). */
+export const ENTITY_LOOKUP_FIELD_TYPES = new Set(["user", "client", "contact", "equipment"]);
+
+export function isEntityLookupField(fieldOrType) {
+  const type = typeof fieldOrType === "string" ? fieldOrType : fieldOrType?.fieldType;
+  return ENTITY_LOOKUP_FIELD_TYPES.has(String(type || ""));
+}
+
+/** First company field key in a form (used to scope equipment choices). */
+export function findFormClientFieldKey(fields = []) {
+  const field = (Array.isArray(fields) ? fields : []).find(item => String(item?.fieldType || "") === "client" && item?.fieldKey);
+  return field?.fieldKey || null;
+}
+
+export function findFormEquipmentFieldKeys(fields = []) {
+  return (Array.isArray(fields) ? fields : [])
+    .filter(item => String(item?.fieldType || "") === "equipment" && item?.fieldKey)
+    .map(item => item.fieldKey);
+}
+
+/**
+ * Resolve which company scopes equipment picks:
+ * form company field value first, else fallback (ticket/portal active client).
+ */
+export function resolveFormScopedClientId(fields = [], values = {}, fallbackClientId = null) {
+  const clientKey = findFormClientFieldKey(fields);
+  if (clientKey) {
+    const fromForm = values?.[clientKey];
+    if (fromForm != null && String(fromForm).trim() !== "") return String(fromForm).trim();
+    return null;
+  }
+  if (fallbackClientId != null && String(fallbackClientId).trim() !== "") return String(fallbackClientId).trim();
+  return null;
+}
+
+export function filterEquipmentsForClientScope(equipments = [], clientId = null) {
+  const rows = Array.isArray(equipments) ? equipments : [];
+  if (!clientId) return [];
+  const needle = String(clientId);
+  return rows.filter(eq => {
+    const eqClient = eq?.clientId ?? eq?.client_id ?? null;
+    if (eqClient == null || eqClient === "") return true;
+    return String(eqClient) === needle;
+  });
+}
 
 export const FIELD_TYPE_OPTIONS = PALETTE_FIELD_TYPES.map(({
   type,

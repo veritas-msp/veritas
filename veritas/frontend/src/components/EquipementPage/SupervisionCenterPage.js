@@ -323,8 +323,8 @@ export default function MonitoringCenterPage({
     linkRemediation(item, {
       linkedTicketKind: "support"
     });
-    onNavigate?.("TicketCreate", buildSupervisionSupportTicketPrefill(item));
-  }, [onNavigate, linkRemediation]);
+    onNavigate?.("TicketCreate", buildSupervisionSupportTicketPrefill(item, alertRules));
+  }, [onNavigate, linkRemediation, alertRules]);
   const handleTicketPresta = useCallback(item => {
     linkRemediation(item, {
       linkedTicketKind: "prestation"

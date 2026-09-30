@@ -611,6 +611,7 @@ export async function createPortalTicket({
   equipmentInfo = {
     concerned: false
   },
+  supportFormData = null,
   linkedTicketId = null,
   attemptedActions = "",
   issueNature = ""
@@ -618,6 +619,7 @@ export async function createPortalTicket({
   const hasRequesterContact = await hasRequesterContactColumn();
   const hasContactSlots = await hasTicketColumn("contact_slots");
   const hasEquipmentInfo = await hasTicketColumn("equipment_info");
+  const hasSupportFormData = await hasTicketColumn("support_form_data");
   const hasSlaInfo = await hasTicketColumn("sla_info");
   const normalizedContactSlots = normalizeContactSlots(contactSlots);
   const normalizedEquipmentInfo = normalizeEquipmentInfo(equipmentInfo);
@@ -625,8 +627,19 @@ export async function createPortalTicket({
     attemptedActions,
     issueNature
   });
+  const formCategory = supportFormData?.categorySlug ? String(supportFormData.categorySlug).trim() : "";
+  const formType = supportFormData?.kind ? String(supportFormData.kind).trim() : "";
   const columns = ["title", "description", "status", "priority", "type", "category", "channel", "client_id"];
-  const values = [String(title).trim(), fullDescription, "open", ["low", "normal", "high", "urgent"].includes(priority) ? priority : "normal", ["incident", "demande", "request", "probleme", "changement"].includes(type) ? type : "incident", "", "web", clientId];
+  const values = [
+    String(title).trim(),
+    fullDescription,
+    "open",
+    ["low", "normal", "high", "urgent"].includes(priority) ? priority : "normal",
+    ["incident", "demande", "request", "probleme", "changement"].includes(formType || type) ? (formType || type) : "incident",
+    formCategory,
+    "web",
+    clientId
+  ];
   if (hasRequesterContact) {
     columns.push("requester_contact_id");
     values.push(contactId || null);
@@ -640,6 +653,10 @@ export async function createPortalTicket({
   if (hasEquipmentInfo) {
     columns.push("equipment_info");
     values.push(JSON.stringify(normalizedEquipmentInfo));
+  }
+  if (hasSupportFormData && supportFormData && typeof supportFormData === "object") {
+    columns.push("support_form_data");
+    values.push(JSON.stringify(supportFormData));
   }
   if (hasSlaInfo) {
     const clientContrat = await loadClientContrat(clientId);

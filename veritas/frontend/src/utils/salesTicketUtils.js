@@ -47,7 +47,7 @@ export function humanizeSalesFieldKey(key) {
   const raw = String(key || "").trim();
   if (!raw) return "";
   return raw
-    .replace(/^(text|textarea|select|checkbox|user|contact|client|number|date)_/i, "")
+    .replace(/^(text|textarea|select|checkbox|user|contact|client|equipment|number|date)_/i, "")
     .replace(/[_-]+/g, " ")
     .trim() || raw;
 }
@@ -70,7 +70,7 @@ export function buildSalesFormFieldTypeMap(formOrFields) {
   );
 }
 
-const LINKED_FIELD_TYPES = new Set(["contact", "client", "user"]);
+const LINKED_FIELD_TYPES = new Set(["contact", "client", "user", "equipment"]);
 
 function inferLinkedFieldType(key, typeMap = {}) {
   const fromMap = String(typeMap?.[key] || "").trim().toLowerCase();
@@ -79,6 +79,7 @@ function inferLinkedFieldType(key, typeMap = {}) {
   if (raw.startsWith("contact_")) return "contact";
   if (raw.startsWith("client_")) return "client";
   if (raw.startsWith("user_")) return "user";
+  if (raw.startsWith("equipment_") || raw.startsWith("materiel_") || raw.startsWith("matériel_")) return "equipment";
   return fromMap || null;
 }
 
@@ -103,7 +104,7 @@ function contactDisplayName(contact) {
 }
 
 /**
- * Enrich form fact rows so linked fields (contact / client / user) carry entity ids
+ * Enrich form fact rows so linked fields (contact / client / user / equipment) carry entity ids
  * and contact phone/email for clickable UI.
  */
 export function enrichSalesFormLinkedEntries(entries, {
@@ -111,7 +112,8 @@ export function enrichSalesFormLinkedEntries(entries, {
   typeMap = {},
   contacts = [],
   clients = [],
-  users = []
+  users = [],
+  equipments = []
 } = {}) {
   if (!Array.isArray(entries) || entries.length === 0) return [];
   const values = formData?.values && typeof formData.values === "object" ? formData.values : {};
@@ -143,6 +145,20 @@ export function enrichSalesFormLinkedEntries(entries, {
     if (fieldType === "client") {
       const client = (Array.isArray(clients) ? clients : []).find(c => String(c?.id) === entityId) || null;
       const label = client?.name || client?.nom || row.value;
+      return {
+        ...row,
+        value: label || row.value,
+        fieldType,
+        entityId,
+        phone: null,
+        email: null
+      };
+    }
+    if (fieldType === "equipment") {
+      const equipment = (Array.isArray(equipments) ? equipments : []).find(eq => String(eq?.id || eq?.equipment_id) === entityId) || null;
+      const label = equipment
+        ? [equipment.type, equipment.name || equipment.model].filter(Boolean).join(" · ") || row.value
+        : row.value;
       return {
         ...row,
         value: label || row.value,

@@ -993,7 +993,7 @@ export default function TicketSalesCreatePage({
                   ) : null}
                 </div>
                 <div data-pulse={fieldErrors.details ? errorPulseTick : undefined} className={fieldErrors.details ? s.fieldErrorPulse : undefined}>
-                  <SalesFormFieldsRenderer fields={activeFields} values={dynamicValues} users={users} contacts={contacts} clients={clients} fieldErrors={fieldErrors.details} errorPulseTick={errorPulseTick} onChange={nextValues => {
+                  <SalesFormFieldsRenderer fields={activeFields} values={dynamicValues} users={users} contacts={contacts} clients={clients} equipments={clientEquipments} clientId={selectedClientId} audience="agent" fieldErrors={fieldErrors.details} errorPulseTick={errorPulseTick} onChange={nextValues => {
                   setDynamicValues(nextValues);
                   setFieldErrors(prev => ({
                     ...prev,

@@ -8,7 +8,7 @@ import {
   submitPublicSupportForm
 } from "../../api/publicSupportForms";
 import { useAppLocale } from "../../hooks/useAppGeneralSettings";
-import { isFileField } from "../../utils/salesFormFieldTypes";
+import { isFileField, isEntityLookupField } from "../../utils/salesFormFieldTypes";
 import SalesFormFieldsRenderer, {
   buildDynamicFieldLines,
   filterVisibleFields,
@@ -77,7 +77,7 @@ export default function PublicSupportFormPage() {
   const [result, setResult] = useState(null);
 
   const publicFields = useMemo(
-    () => (Array.isArray(form?.fields) ? form.fields : []).filter(field => field && !isFileField(field)),
+    () => (Array.isArray(form?.fields) ? form.fields : []).filter(field => field && !isFileField(field) && !isEntityLookupField(field)),
     [form]
   );
   const visibleFields = useMemo(() => filterVisibleFields(publicFields, values), [publicFields, values]);

@@ -3,7 +3,8 @@ import { createPortal } from "react-dom";
 import { Icon } from "@iconify/react";
 import s from "./TicketCreatePage.module.css";
 import { fieldIsVisible, filterVisibleFields } from "../../utils/salesFormConditions";
-import { SHELL_FIELD_TYPES, formatFileFieldAccept, getFileFieldConfig, groupFieldsBySection, isLayoutField, validateSalesFormFile } from "../../utils/salesFormFieldTypes";
+import { SHELL_FIELD_TYPES, formatFileFieldAccept, getFileFieldConfig, groupFieldsBySection, isLayoutField, validateSalesFormFile, filterEquipmentsForClientScope, resolveFormScopedClientId } from "../../utils/salesFormFieldTypes";
+import { getEquipmentPickerLabel } from "./ticketEquipmentUtils";
 import { getModalDropdownZIndex } from "../../utils/dropdownPortal";
 
 const SEARCHABLE_DROPDOWN_MAX_HEIGHT = 260;
@@ -206,7 +207,8 @@ function isValidUrl(value) {
 function formatFieldValue(field, value, {
   users = [],
   clients = [],
-  contacts = []
+  contacts = [],
+  equipments = []
 } = {}) {
   if (field.fieldType === "checkbox") return value ? "Yes" : "No";
   if (field.fieldType === "user") {
@@ -220,6 +222,10 @@ function formatFieldValue(field, value, {
   if (field.fieldType === "contact") {
     const contact = contacts.find(row => String(row.id) === String(value));
     return getContactDisplayName(contact) || value || "";
+  }
+  if (field.fieldType === "equipment") {
+    const equipment = equipments.find(row => String(row.id) === String(value));
+    return equipment ? getEquipmentPickerLabel(equipment) : value || "";
   }
   if (field.fieldType === "multiselect") {
     const selected = Array.isArray(value) ? value : String(value || "").split(",").map(part => part.trim()).filter(Boolean);
@@ -244,10 +250,12 @@ export function buildDynamicFieldLines(fields = [], values = {}, usersOrLookups 
   let users = [];
   let clientsList = clients;
   let contactsList = contacts;
+  let equipmentsList = [];
   if (usersOrLookups && typeof usersOrLookups === "object" && !Array.isArray(usersOrLookups)) {
     users = Array.isArray(usersOrLookups.users) ? usersOrLookups.users : [];
     clientsList = Array.isArray(usersOrLookups.clients) ? usersOrLookups.clients : clients;
     contactsList = Array.isArray(usersOrLookups.contacts) ? usersOrLookups.contacts : contacts;
+    equipmentsList = Array.isArray(usersOrLookups.equipments) ? usersOrLookups.equipments : [];
   } else {
     users = Array.isArray(usersOrLookups) ? usersOrLookups : [];
   }
@@ -256,7 +264,8 @@ export function buildDynamicFieldLines(fields = [], values = {}, usersOrLookups 
     const display = formatFieldValue(field, raw, {
       users,
       clients: clientsList,
-      contacts: contactsList
+      contacts: contactsList,
+      equipments: equipmentsList
     });
     return `${field.label}: ${String(display || "").trim() || "-"}`;
   });
@@ -441,12 +450,25 @@ export default function SalesFormFieldsRenderer({
   users = [],
   contacts = [],
   clients = [],
+  equipments = [],
+  /** Fallback company id when the form has no company field (ticket / portal active client). */
+  clientId = null,
+  /** "agent" sees full lists passed by parent; "portal" parents must already scope clients/equipments. */
+  audience = "agent",
   onChange,
   fieldErrors = false,
   errorPulseTick = 0,
   className = ""
 }) {
   const groups = useMemo(() => groupFieldsBySection(fields), [fields]);
+  const scopedClientId = useMemo(
+    () => resolveFormScopedClientId(fields, values, clientId),
+    [fields, values, clientId]
+  );
+  const scopedEquipments = useMemo(
+    () => filterEquipmentsForClientScope(equipments, scopedClientId),
+    [equipments, scopedClientId]
+  );
   const visibleGroups = useMemo(() => groups.map(group => {
     if (group.section && !fieldIsVisible(group.section, values)) return null;
     const visibleFields = group.fields.filter(field => !isLayoutField(field) && fieldIsVisible(field, values));
@@ -465,10 +487,20 @@ export default function SalesFormFieldsRenderer({
       </p>;
   }
   const patchValue = (fieldKey, value) => {
-    onChange?.({
+    const next = {
       ...values,
       [fieldKey]: value
-    });
+    };
+    // Changing company clears equipment picks that belong to another company.
+    const changedField = (Array.isArray(fields) ? fields : []).find(field => String(field?.fieldKey) === String(fieldKey));
+    if (changedField?.fieldType === "client") {
+      (Array.isArray(fields) ? fields : []).forEach(field => {
+        if (field?.fieldType === "equipment" && field.fieldKey) {
+          next[field.fieldKey] = "";
+        }
+      });
+    }
+    onChange?.(next);
   };
   const renderField = field => {
     const emptyDefault = field.fieldType === "checkbox" ? false : field.fieldType === "multiselect" || field.fieldType === "file" ? [] : "";
@@ -508,6 +540,9 @@ export default function SalesFormFieldsRenderer({
       return <FileUploadInput field={field} value={value} onChange={next => patchValue(field.fieldKey, next)} />;
     }
     if (field.fieldType === "user") {
+      if (audience === "portal") {
+        return <p className={s.detailsAvailabilityTitle} style={{ margin: 0 }}>Not available on the client portal.</p>;
+      }
       const options = users.map(user => ({
         id: user.id,
         label: getUserDisplayName(user) || `#${user.id}`,
@@ -521,15 +556,31 @@ export default function SalesFormFieldsRenderer({
         label: getClientDisplayName(client) || `#${client.id}`,
         hint: client.code || client.ville || ""
       }));
-      return <SearchableSelectField value={value} options={options} placeholder={field.placeholder || "Search a company…"} emptyResultsHint="No company found" onChange={next => patchValue(field.fieldKey, next)} />;
+      return <SearchableSelectField value={value} options={options} placeholder={field.placeholder || "Search a company…"} emptyResultsHint={audience === "portal" ? "No company available" : "No company found"} onChange={next => patchValue(field.fieldKey, next)} />;
     }
     if (field.fieldType === "contact") {
+      if (audience === "portal") {
+        return <p className={s.detailsAvailabilityTitle} style={{ margin: 0 }}>Not available on the client portal.</p>;
+      }
       const options = contacts.map(contact => ({
         id: contact.id,
         label: getContactDisplayName(contact) || `#${contact.id}`,
         hint: contact.email || contact.client_name || contact.entreprise || ""
       }));
       return <SearchableSelectField value={value} options={options} placeholder={field.placeholder || "Search a contact…"} emptyResultsHint="No contact found" onChange={next => patchValue(field.fieldKey, next)} />;
+    }
+    if (field.fieldType === "equipment") {
+      const options = scopedEquipments.map(eq => ({
+        id: eq.id,
+        label: getEquipmentPickerLabel(eq),
+        hint: [eq.type, eq.serial].filter(Boolean).join(" · ")
+      }));
+      const emptyHint = !scopedClientId
+        ? "Select a company first"
+        : audience === "portal"
+          ? "No equipment available"
+          : "No equipment found";
+      return <SearchableSelectField value={value} options={options} placeholder={field.placeholder || "Search equipment…"} emptyResultsHint={emptyHint} onChange={next => patchValue(field.fieldKey, next)} />;
     }
     if (field.fieldType === "currency") {
       return <div style={{
