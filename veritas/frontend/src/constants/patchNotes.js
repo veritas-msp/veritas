@@ -5,6 +5,16 @@
  */
 export const PATCH_NOTES = [
   {
+    version: "1.0.49",
+    date: "2026-09-30",
+    highlights: [
+      "Formulaires : champ Oui / Non traduit avec preview ; pièces jointes en zone glisser-déposer.",
+      "Champ Contact configurable : filtrer par entreprise, agents ou profils d’agents.",
+      "Création ticket support : formulaires obligatoires (plus de champs génériques) ; prefill supervision sans saut d’écran.",
+      "Centre de supervision : action directe Ticket Support sur une alerte (plus de choix événement / presta)."
+    ]
+  },
+  {
     version: "1.0.48",
     date: "2026-09-30",
     highlights: [

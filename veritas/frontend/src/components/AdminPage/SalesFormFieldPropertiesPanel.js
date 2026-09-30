@@ -1,20 +1,65 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Icon } from "@iconify/react";
 import layout from "../EnterprisesPage/EnterpriseFormModal.module.css";
 import builderStyles from "./SalesFormBuilder.module.css";
 import FormConditionsEditor from "./FormConditionsEditor";
-import { FIELD_TYPE_OPTIONS, FILE_FIELD_ALLOWED_EXTENSIONS, FILE_FIELD_SERVER_MAX_FILES, FILE_FIELD_SERVER_MAX_SIZE_MB, OPTION_BASED_FIELD_TYPES, getFileFieldConfig, isFileField, isLayoutField } from "../../utils/salesFormFieldTypes";
+import MultiSuggestPicker from "./MultiSuggestPicker";
+import { FILE_FIELD_ALLOWED_EXTENSIONS, FILE_FIELD_SERVER_MAX_FILES, FILE_FIELD_SERVER_MAX_SIZE_MB, OPTION_BASED_FIELD_TYPES, findFormClientFieldKey, getFieldTypeOptions, getFileFieldConfig, isContactField, isFileField, isLayoutField } from "../../utils/salesFormFieldTypes";
+import { useAppLocale } from "../../hooks/useAppGeneralSettings";
+
+function getContactPropsCopy(locale = "fr") {
+  if (locale === "en") {
+    return {
+      sourceLabel: "People source",
+      sourceContacts: "Company contacts",
+      sourceAgents: "Agents",
+      scopeByClient: "Only contacts of the selected company",
+      scopeHint: "Requires a Company field on this form. Changing the company clears this answer.",
+      scopeMissing: "Add a Company field to enable company filtering.",
+      profilesLabel: "Filter by agent profiles",
+      profilesPlaceholder: "Search a profile…",
+      profilesEmpty: "All profiles",
+      profilesHint: "Leave empty to include every profile.",
+      agentsLabel: "Restrict to specific agents",
+      agentsPlaceholder: "Search an agent…",
+      agentsEmpty: "All agents",
+      agentsHint: "Optional. Combined with profile filters when both are set."
+    };
+  }
+  return {
+    sourceLabel: "Source des personnes",
+    sourceContacts: "Contacts entreprise",
+    sourceAgents: "Agents",
+    scopeByClient: "Uniquement les contacts de l’entreprise sélectionnée",
+    scopeHint: "Nécessite un champ Entreprise sur ce formulaire. Changer l’entreprise vide cette réponse.",
+    scopeMissing: "Ajoutez un champ Entreprise pour activer ce filtre.",
+    profilesLabel: "Filtrer par profils d’agents",
+    profilesPlaceholder: "Rechercher un profil…",
+    profilesEmpty: "Tous les profils",
+    profilesHint: "Laissez vide pour inclure tous les profils.",
+    agentsLabel: "Limiter à des agents précis",
+    agentsPlaceholder: "Rechercher un agent…",
+    agentsEmpty: "Tous les agents",
+    agentsHint: "Optionnel. Combiné avec les filtres de profils si les deux sont renseignés."
+  };
+}
 
 export default function SalesFormFieldPropertiesPanel({
   fieldDraft,
   formFields = [],
+  userOptions = [],
+  profileOptions = [],
   saving = false,
   onChange,
   onSave,
   onDelete,
   onClose
 }) {
+  const locale = useAppLocale();
+  const fieldTypeOptions = useMemo(() => getFieldTypeOptions(locale), [locale]);
+  const contactCopy = useMemo(() => getContactPropsCopy(locale), [locale]);
   const [activeTab, setActiveTab] = useState("properties");
+  const hasClientField = Boolean(findFormClientFieldKey(formFields));
   if (!fieldDraft) {
     return <aside className={builderStyles.propsPanel}>
         <div className={builderStyles.propsHead}>
@@ -37,7 +82,8 @@ export default function SalesFormFieldPropertiesPanel({
   });
   const isSection = isLayoutField(fieldDraft);
   const isFile = isFileField(fieldDraft);
-  const needsOptions = !isSection && !isFile && OPTION_BASED_FIELD_TYPES.has(fieldDraft.fieldType);
+  const isContact = isContactField(fieldDraft);
+  const needsOptions = !isSection && !isFile && !isContact && OPTION_BASED_FIELD_TYPES.has(fieldDraft.fieldType);
   const fileConfig = isFile ? getFileFieldConfig({
     options: [{
       __fileConfig: true,
@@ -46,6 +92,7 @@ export default function SalesFormFieldPropertiesPanel({
       extensions: fieldDraft.fileExtensionsText
     }]
   }) : null;
+  const contactSource = fieldDraft.contactSource === "agents" ? "agents" : "contacts";
   const conditionFields = formFields;
   return <aside className={builderStyles.propsPanel}>
       <div className={builderStyles.propsHead}>
@@ -95,9 +142,16 @@ export default function SalesFormFieldPropertiesPanel({
               nextPatch.fileExtensionsText = cfg.extensions.join(", ");
               nextPatch.optionsText = "";
             }
+            if (nextType === "contact") {
+              nextPatch.contactSource = fieldDraft.contactSource === "agents" ? "agents" : "contacts";
+              nextPatch.contactScopeByClient = fieldDraft.contactScopeByClient === true;
+              nextPatch.contactProfileNames = Array.isArray(fieldDraft.contactProfileNames) ? fieldDraft.contactProfileNames : [];
+              nextPatch.contactUserIds = Array.isArray(fieldDraft.contactUserIds) ? fieldDraft.contactUserIds : [];
+              nextPatch.optionsText = "";
+            }
             patch(nextPatch);
           }}>
-                {FIELD_TYPE_OPTIONS.map(opt => <option key={opt.value} value={opt.value}>
+                {fieldTypeOptions.map(opt => <option key={opt.value} value={opt.value}>
                     {opt.label}
                   </option>)}
               </select>
@@ -143,6 +197,46 @@ export default function SalesFormFieldPropertiesPanel({
             }}>Allowed on server: {FILE_FIELD_ALLOWED_EXTENSIONS.join(", ")}</p>
                 </div>
               </>}
+            {isContact ? <>
+                <div className={layout.field}>
+                  <label className={layout.label}>{contactCopy.sourceLabel}</label>
+                  <select className={layout.input} value={contactSource} onChange={e => patch({
+                contactSource: e.target.value === "agents" ? "agents" : "contacts",
+                contactScopeByClient: e.target.value === "agents" ? false : fieldDraft.contactScopeByClient === true
+              })}>
+                    <option value="contacts">{contactCopy.sourceContacts}</option>
+                    <option value="agents">{contactCopy.sourceAgents}</option>
+                  </select>
+                </div>
+                {contactSource === "contacts" ? <>
+                    <label className={layout.label} style={{
+                opacity: hasClientField ? 1 : 0.55
+              }}>
+                      <input type="checkbox" checked={fieldDraft.contactScopeByClient === true} disabled={!hasClientField} onChange={e => patch({
+                  contactScopeByClient: e.target.checked
+                })} />{" "}
+                      {contactCopy.scopeByClient}
+                    </label>
+                    <p className={builderStyles.canvasDesc} style={{
+                marginTop: "-0.35rem"
+              }}>
+                      {hasClientField ? contactCopy.scopeHint : contactCopy.scopeMissing}
+                    </p>
+                  </> : <>
+                    <MultiSuggestPicker inputId={`contact-field-profiles-${fieldDraft.fieldKey || "draft"}`} label={contactCopy.profilesLabel} placeholder={contactCopy.profilesPlaceholder} options={profileOptions} selectedIds={Array.isArray(fieldDraft.contactProfileNames) ? fieldDraft.contactProfileNames : []} emptyHint={contactCopy.profilesEmpty} onChange={contactProfileNames => patch({
+                contactProfileNames
+              })} />
+                    <p className={builderStyles.canvasDesc} style={{
+                marginTop: "-0.35rem"
+              }}>{contactCopy.profilesHint}</p>
+                    <MultiSuggestPicker inputId={`contact-field-agents-${fieldDraft.fieldKey || "draft"}`} label={contactCopy.agentsLabel} placeholder={contactCopy.agentsPlaceholder} options={userOptions} selectedIds={Array.isArray(fieldDraft.contactUserIds) ? fieldDraft.contactUserIds : []} emptyHint={contactCopy.agentsEmpty} onChange={contactUserIds => patch({
+                contactUserIds
+              })} />
+                    <p className={builderStyles.canvasDesc} style={{
+                marginTop: "-0.35rem"
+              }}>{contactCopy.agentsHint}</p>
+                  </>}
+              </> : null}
             {!isSection && <label className={layout.label}>
                 <input type="checkbox" checked={fieldDraft.required === true} onChange={e => patch({
             required: e.target.checked

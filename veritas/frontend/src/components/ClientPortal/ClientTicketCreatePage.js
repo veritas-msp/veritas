@@ -638,7 +638,8 @@ export default function ClientTicketCreatePage() {
             const line =
               buildDynamicFieldLines([field], supportFormValues, {
                 clients: portalClients,
-                equipments: clientEquipments
+                equipments: clientEquipments,
+                locale
               })[0] || "";
             const display = line.includes(": ") ? line.split(": ").slice(1).join(": ") : "";
             return [field.fieldKey, display === "-" ? "" : display];

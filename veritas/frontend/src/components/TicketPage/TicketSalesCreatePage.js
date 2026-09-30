@@ -203,8 +203,9 @@ export default function TicketSalesCreatePage({
   const fieldLookups = useMemo(() => ({
     users,
     contacts,
-    clients
-  }), [users, contacts, clients]);
+    clients,
+    locale
+  }), [users, contacts, clients, locale]);
   const formTicketTargets = useMemo(() => selectedForm?.ticketTargets || {}, [selectedForm]);
   const matchingTargetRules = useMemo(() => resolveMatchingRules(formTicketTargets, dynamicValues), [formTicketTargets, dynamicValues]);
   const priorityLocked = matchingTargetRules.length === 1 && Boolean(matchingTargetRules[0]?.targets?.priority);

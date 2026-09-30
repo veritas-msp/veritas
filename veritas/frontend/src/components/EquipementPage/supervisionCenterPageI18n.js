@@ -181,7 +181,8 @@ const SUPERVISION_COPY = {
         resolved: "Alerte résolue — déplacée dans l'historique",
         dismissed: "Alerte ignorée — déplacée dans l'historique",
         linked: "Remédiation liée à l'alerte",
-        actionFailed: "Action impossible sur l'alerte"
+        actionFailed: "Action impossible sur l'alerte",
+        supportFormRequired: "Configurez un formulaire support dans la règle d’alerte avant de créer un ticket."
       },
       detailBackups: "Détail sauvegardes",
       detailContracts: "Détail contrats & licences",
@@ -602,7 +603,8 @@ const SUPERVISION_COPY = {
         resolved: "Alert resolved — moved to history",
         dismissed: "Alert dismissed — moved to history",
         linked: "Remediation linked to alert",
-        actionFailed: "Could not update alert"
+        actionFailed: "Could not update alert",
+        supportFormRequired: "Configure a support form in the alert rule before creating a ticket."
       },
       detailBackups: "Backup details",
       detailContracts: "Contracts & licenses details",
@@ -991,7 +993,8 @@ const SUPERVISION_COPY = {
         resolved: "Alarm gelöst — in den Verlauf verschoben",
         dismissed: "Alarm ignoriert — in den Verlauf verschoben",
         linked: "Maßnahme mit Alarm verknüpft",
-        actionFailed: "Alarm konnte nicht aktualisiert werden"
+        actionFailed: "Alarm konnte nicht aktualisiert werden",
+        supportFormRequired: "Konfigurieren Sie ein Support-Formular in der Alarmregel, bevor Sie ein Ticket erstellen."
       },
       detailBackups: "Backup-Details",
       detailContracts: "Verträge & Lizenzen",
@@ -1380,7 +1383,8 @@ const SUPERVISION_COPY = {
         resolved: "Allarme risolto — spostato in cronologia",
         dismissed: "Allarme ignorato — spostato in cronologia",
         linked: "Rimedio collegato all'allarme",
-        actionFailed: "Impossibile aggiornare l'allarme"
+        actionFailed: "Impossibile aggiornare l'allarme",
+        supportFormRequired: "Configura un modulo support nella regola di allarme prima di creare un ticket."
       },
       detailBackups: "Dettaglio backup",
       detailContracts: "Dettaglio contratti e licenze",
@@ -1768,7 +1772,8 @@ const SUPERVISION_COPY = {
         resolved: "Alerta resuelta — movida al historial",
         dismissed: "Alerta ignorada — movida al historial",
         linked: "Remediación vinculada a la alerta",
-        actionFailed: "No se pudo actualizar la alerta"
+        actionFailed: "No se pudo actualizar la alerta",
+        supportFormRequired: "Configure un formulario de soporte en la regla de alerta antes de crear un ticket."
       },
       detailBackups: "Detalle backups",
       detailContracts: "Detalle contratos y licencias",

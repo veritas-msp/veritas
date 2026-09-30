@@ -3,13 +3,16 @@ import { Icon } from "@iconify/react";
 import { useDroppable } from "@dnd-kit/core";
 import { SortableContext, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { isLayoutField, sortSalesFormFields } from "../../utils/salesFormFieldTypes";
+import { getCheckboxFieldCopy, isLayoutField, sortSalesFormFields } from "../../utils/salesFormFieldTypes";
+import { useAppLocale } from "../../hooks/useAppGeneralSettings";
 import builderStyles from "./SalesFormBuilder.module.css";
 import { describeVisibilityRules } from "../../utils/salesFormConditions";
 import adminStyles from "./AdminTickets.module.css";
 function FieldPreview({
   field
 }) {
+  const locale = useAppLocale();
+  const yesNo = getCheckboxFieldCopy(locale);
   const label = <>
       {field.label || "No label"}
       {field.required ? " *" : null}
@@ -53,7 +56,16 @@ function FieldPreview({
   if (field.fieldType === "checkbox") {
     return <div className={builderStyles.canvasFieldPreview}>
         <label>{label}</label>
-        <div className={builderStyles.canvasFieldMeta}>Yes / No</div>
+        <div className={builderStyles.canvasYesNo} aria-hidden>
+          <span className={builderStyles.canvasYesNoBtn}>
+            <Icon icon="mdi:close-circle-outline" aria-hidden />
+            {yesNo.no}
+          </span>
+          <span className={`${builderStyles.canvasYesNoBtn} ${builderStyles.canvasYesNoBtnActive}`}>
+            <Icon icon="mdi:check-circle-outline" aria-hidden />
+            {yesNo.yes}
+          </span>
+        </div>
       </div>;
   }
   if (field.fieldType === "rating") {
@@ -63,9 +75,13 @@ function FieldPreview({
       </div>;
   }
   if (field.fieldType === "file") {
+    const dropLabel = locale === "fr" ? "Glissez vos fichiers ici" : "Drag files here";
     return <div className={builderStyles.canvasFieldPreview}>
         <label>{label}</label>
-        <div className={builderStyles.canvasFieldMeta}>File upload</div>
+        <div className={builderStyles.canvasFileDrop} aria-hidden>
+          <Icon icon="mdi:cloud-upload-outline" aria-hidden />
+          <span>{dropLabel}</span>
+        </div>
       </div>;
   }
   if (field.fieldType === "user" || field.fieldType === "client" || field.fieldType === "contact" || field.fieldType === "equipment") {

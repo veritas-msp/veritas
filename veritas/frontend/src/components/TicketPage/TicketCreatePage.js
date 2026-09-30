@@ -537,8 +537,12 @@ export default function TicketCreatePage({
   const [showCategoryDropdown, setShowCategoryDropdown] = useState(false);
   const [categoryHighlight, setCategoryHighlight] = useState(0);
   const [supportForms, setSupportForms] = useState([]);
-  const [selectedSupportFormId, setSelectedSupportFormId] = useState("");
-  const [supportFormValues, setSupportFormValues] = useState({});
+  const [selectedSupportFormId, setSelectedSupportFormId] = useState(() => initialData?.supportFormId ? String(initialData.supportFormId) : "");
+  const [supportFormValues, setSupportFormValues] = useState(() => (
+    initialData?.supportFormValues && typeof initialData.supportFormValues === "object"
+      ? { ...initialData.supportFormValues }
+      : {}
+  ));
   const [availabilityMode, setAvailabilityMode] = useState("none");
   const [availabilityDate, setAvailabilityDate] = useState("");
   const [availabilityStart, setAvailabilityStart] = useState("09:00");
@@ -861,10 +865,16 @@ export default function TicketCreatePage({
     });
   }, [supportForms]);
   const hasSupportForms = enabledSupportForms.length > 0;
-  const selectedSupportForm = useMemo(
-    () => enabledSupportForms.find(form => String(form.id) === String(selectedSupportFormId)) || enabledSupportForms[0] || null,
-    [enabledSupportForms, selectedSupportFormId]
-  );
+  const supportFormLocked = Boolean(initialData?.lockSupportForm && initialData?.supportFormId);
+  const selectedSupportForm = useMemo(() => {
+    if (selectedSupportFormId) {
+      const exact = enabledSupportForms.find(form => String(form.id) === String(selectedSupportFormId));
+      if (exact) return exact;
+      // Wait for the locked / preselected form — never flash the first form briefly.
+      if (supportFormLocked || initialData?.supportFormId) return null;
+    }
+    return enabledSupportForms[0] || null;
+  }, [enabledSupportForms, selectedSupportFormId, supportFormLocked, initialData?.supportFormId]);
   const activeSupportFields = useMemo(
     () => filterVisibleFields((selectedSupportForm?.fields || []).filter(field => field.enabled !== false), supportFormValues),
     [selectedSupportForm, supportFormValues]
@@ -880,30 +890,24 @@ export default function TicketCreatePage({
   );
   useEffect(() => {
     if (!hasSupportForms) {
-      setSelectedSupportFormId("");
+      if (selectedSupportFormId) setSelectedSupportFormId("");
       return;
     }
     if (initialData?.supportFormId && enabledSupportForms.some(form => String(form.id) === String(initialData.supportFormId))) {
-      setSelectedSupportFormId(String(initialData.supportFormId));
+      const lockedId = String(initialData.supportFormId);
+      if (String(selectedSupportFormId) !== lockedId) {
+        setSelectedSupportFormId(lockedId);
+        if (initialData.supportFormValues && typeof initialData.supportFormValues === "object") {
+          setSupportFormValues({ ...initialData.supportFormValues });
+        }
+      }
       return;
     }
     if (!enabledSupportForms.some(form => String(form.id) === String(selectedSupportFormId))) {
       setSelectedSupportFormId(String(enabledSupportForms[0].id));
+      setSupportFormValues({});
     }
-  }, [hasSupportForms, enabledSupportForms, selectedSupportFormId, initialData?.supportFormId]);
-  useEffect(() => {
-    setSupportFormValues({});
-  }, [selectedSupportFormId]);
-  useEffect(() => {
-    if (!initialData?.supportFormValues || typeof initialData.supportFormValues !== "object") return;
-    if (!selectedSupportFormId) return;
-    if (initialData.supportFormId && String(selectedSupportFormId) !== String(initialData.supportFormId)) return;
-    setSupportFormValues(prev => ({
-      ...prev,
-      ...initialData.supportFormValues
-    }));
-  }, [selectedSupportFormId, initialData?.supportFormId, initialData?.supportFormValues]);
-  const supportFormLocked = Boolean(initialData?.lockSupportForm && initialData?.supportFormId);
+  }, [hasSupportForms, enabledSupportForms, selectedSupportFormId, initialData?.supportFormId, initialData?.supportFormValues]);
   useEffect(() => {
     if (!hasFormEquipmentField) return;
     const equipmentKey = formEquipmentFieldKeys[0];
@@ -1049,32 +1053,23 @@ export default function TicketCreatePage({
   }, []);
   const handlePageDragEnter = useCallback(event => {
     if (!hasFileDrag(event)) return;
+    // Attachments are handled by support form file fields only.
     event.preventDefault();
-    setIsAttachmentDragOver(true);
   }, [hasFileDrag]);
   const handlePageDragLeave = useCallback(event => {
     if (!hasFileDrag(event)) return;
     event.preventDefault();
-    if (event.currentTarget.contains(event.relatedTarget)) return;
     resetPageDragState();
   }, [hasFileDrag, resetPageDragState]);
   const handlePageDragOver = useCallback(event => {
     if (!hasFileDrag(event)) return;
     event.preventDefault();
-    event.dataTransfer.dropEffect = "copy";
   }, [hasFileDrag]);
   const handlePageDrop = useCallback(event => {
     if (!hasFileDrag(event)) return;
     event.preventDefault();
     resetPageDragState();
-    const droppedFiles = Array.from(event.dataTransfer?.files || []);
-    if (droppedFiles.length === 0) return;
-    try {
-      applySelectedAttachments(droppedFiles);
-    } catch (error) {
-      toast.error(error.message || copy.attachmentInvalid);
-    }
-  }, [applySelectedAttachments, hasFileDrag, resetPageDragState]);
+  }, [hasFileDrag, resetPageDragState]);
   useEffect(() => {
     window.addEventListener("dragend", resetPageDragState);
     return () => window.removeEventListener("dragend", resetPageDragState);
@@ -1144,7 +1139,13 @@ export default function TicketCreatePage({
   const handleSupportFormSelect = useCallback(form => {
     if (!form?.id) return;
     if (supportFormLocked) return;
-    setSelectedSupportFormId(String(form.id));
+    const nextId = String(form.id);
+    setSelectedSupportFormId(nextId);
+    if (initialData?.supportFormId && nextId === String(initialData.supportFormId) && initialData.supportFormValues && typeof initialData.supportFormValues === "object") {
+      setSupportFormValues({ ...initialData.supportFormValues });
+    } else {
+      setSupportFormValues({});
+    }
     const nextType = String(form.kind || "").trim();
     if (nextType) {
       setType(nextType);
@@ -1155,7 +1156,7 @@ export default function TicketCreatePage({
       supportForm: undefined,
       supportFormDetails: undefined
     }));
-  }, [supportFormLocked]);
+  }, [supportFormLocked, initialData?.supportFormId, initialData?.supportFormValues]);
   const resolvedFormTicketContent = useMemo(() => {
     if (!hasSupportForms || !selectedSupportForm) {
       return {
@@ -1300,15 +1301,10 @@ export default function TicketCreatePage({
     const errors = {};
     if (!requesterContactId) errors.requester = true;
     if (requiresCompanySelect && !ticketClientId) errors.company = true;
-    if (hasSupportForms) {
-      if (!selectedSupportForm) errors.supportForm = true;
-      else if (!validateDynamicFields(activeSupportFields, supportFormValues)) errors.supportFormDetails = true;
-    } else if (!category.trim()) {
-      errors.category = true;
-    }
-    if (!hasSupportForms) {
-      if (title.trim().length < 3) errors.title = true;
-      if (description.trim().length < 10) errors.description = true;
+    if (!hasSupportForms || !selectedSupportForm) {
+      errors.supportForm = true;
+    } else if (!validateDynamicFields(activeSupportFields, supportFormValues)) {
+      errors.supportFormDetails = true;
     } else {
       const preview = resolveTicketContentFromSupportForm({
         fields: activeSupportFields,
@@ -1348,13 +1344,6 @@ export default function TicketCreatePage({
     if (type === "incident" && isMajorIncident && priority !== "urgent") {
       errors.priority = true;
     }
-    if (!hasSupportForms) {
-      try {
-        copy.validateAttachmentFiles(attachmentFiles);
-      } catch {
-        errors.attachments = true;
-      }
-    }
     return errors;
   };
   const scrollToFirstFieldError = useCallback(() => {
@@ -1392,6 +1381,14 @@ export default function TicketCreatePage({
   };
   const handleConfirmCreate = async () => {
     setFormError("");
+    if (!hasSupportForms || !selectedSupportForm) {
+      setFormError(copy.noForms);
+      setFieldErrors({
+        supportForm: true
+      });
+      setConfirmModalOpen(false);
+      return;
+    }
     setSubmitting(true);
     try {
       const equipmentInfo = serializeEquipmentInfo({
@@ -1405,14 +1402,12 @@ export default function TicketCreatePage({
         model: equipmentModel,
         serial: equipmentSerial
       });
-      const resolvedCategory = hasSupportForms
-        ? String(selectedSupportForm?.categorySlug || category || "").trim()
-        : category.trim();
+      const resolvedCategory = String(selectedSupportForm?.categorySlug || category || "").trim();
       let supportFormData;
       let resolvedTitle = title.trim();
       let resolvedDescription = description.trim();
       let formFiles = [];
-      if (hasSupportForms && selectedSupportForm) {
+      if (selectedSupportForm) {
         const visibleFields = filterVisibleFields((selectedSupportForm.fields || []).filter(field => field.enabled !== false), supportFormValues);
         const nonFileFields = visibleFields.filter(field => !isFileField(field));
         const visibleValues = Object.fromEntries(visibleFields.map(field => [field.fieldKey, supportFormValues[field.fieldKey]]));
@@ -1421,7 +1416,8 @@ export default function TicketCreatePage({
             users,
             clients,
             contacts,
-            equipments: clientEquipments
+            equipments: clientEquipments,
+            locale
           })[0] || "";
           const display = line.includes(": ") ? line.split(": ").slice(1).join(": ") : "";
           return [field.fieldKey, display === "-" ? "" : display];
@@ -1494,7 +1490,7 @@ export default function TicketCreatePage({
           await addTicketComment(created.id, buildLinkedTicketComment(selectedLinkedTicket), true);
         } catch {}
       }
-      const filesToUpload = hasSupportForms ? formFiles : attachmentFiles;
+      const filesToUpload = formFiles;
       if (filesToUpload.length > 0) {
         try {
           await addTicketCommentWithAttachments(created.id, {
@@ -1702,7 +1698,7 @@ export default function TicketCreatePage({
               <Icon icon="mdi:arrow-left" />
               {copy.back}
             </button>
-            <button type="button" className={layout.primaryBtn} onClick={handleOpenConfirm} disabled={submitting || loadingData} title={loadingData ? copy.loadingData : undefined}>
+            <button type="button" className={layout.primaryBtn} onClick={handleOpenConfirm} disabled={submitting || loadingData || !hasSupportForms} title={loadingData ? copy.loadingData : !hasSupportForms ? copy.noForms : undefined}>
               <Icon icon="mdi:check" />
               {submitting ? copy.creating : copy.createTicket}
             </button>
@@ -1946,7 +1942,11 @@ export default function TicketCreatePage({
               <SectionPanel title={copy.sections.ticketDetails} headerExtra={<SmartTooltip content={<TicketCreateTipsTooltip copy={copy} />} tooltipClassName={s.tipsPortalTooltip} trigger="click" as="button" type="button" className={s.tipsHelpBtn} aria-label={copy.showTipsAria}>
                     <Icon icon="mdi:lightbulb-outline" aria-hidden />
                   </SmartTooltip>}>
-                {hasSupportForms && activeSupportFields.length > 0 ? <div style={{ marginBottom: "1rem" }} data-pulse={fieldErrors.supportFormDetails ? errorPulseTick : undefined} className={fieldErrors.supportFormDetails ? s.fieldErrorPulse : ""}>
+                {loadingData ? <p className={s.detailsAvailabilityTitle} style={{ margin: 0 }}>
+                    {copy.loadingForms}
+                  </p> : !hasSupportForms ? <p className={s.detailsAvailabilityTitle} style={{ margin: 0 }}>
+                    {copy.noForms}
+                  </p> : activeSupportFields.length > 0 ? <div style={{ marginBottom: "1rem" }} data-pulse={fieldErrors.supportFormDetails ? errorPulseTick : undefined} className={fieldErrors.supportFormDetails ? s.fieldErrorPulse : ""}>
                     <SalesFormFieldsRenderer
                       fields={activeSupportFields}
                       values={supportFormValues}
@@ -1966,81 +1966,9 @@ export default function TicketCreatePage({
                         }));
                       }}
                     />
-                  </div> : null}
-                {!hasSupportForms ? <>
-                <div className={s.fieldBlock}>
-                  <label className={s.fieldLabel}>{copy.subject}<span className={s.requiredMark}>*</span></label>
-                  <div data-pulse={fieldErrors.title ? errorPulseTick : undefined} className={`${s.fieldShell} ${fieldErrors.title ? s.fieldShellError : ""} ${fieldErrors.title ? s.fieldErrorPulse : ""}`}>
-                    <input type="text" className={s.fieldShellControl} value={title} onChange={e => {
-                    setTitle(e.target.value);
-                    setFieldErrors(prev => ({
-                      ...prev,
-                      title: undefined
-                    }));
-                  }} placeholder={copy.getTitlePlaceholder(type)} maxLength={200} />
-                  </div>
-                  <span className={s.charCount}>{title.length}/200</span>
-                  <TicketKnowledgeSuggestions
-                    query={title}
-                    copy={copy}
-                    onOpen={article => onNavigate?.("KnowledgeBaseArticle", { articleId: article.id, mode: "read", title: article.title })}
-                  />
-                </div>
-
-                <div className={s.fieldBlock}>
-                  <label className={s.fieldLabel}>{copy.detailedDescription}<span className={s.requiredMark}>*</span></label>
-                  <div data-pulse={fieldErrors.description ? errorPulseTick : undefined} className={`${s.fieldShell} ${s.fieldShellMultiline} ${fieldErrors.description ? s.fieldShellError : ""} ${fieldErrors.description ? s.fieldErrorPulse : ""}`}>
-                    <textarea className={`${s.fieldShellControl} ${s.fieldShellTextarea}`} value={description} onChange={e => {
-                    setDescription(e.target.value);
-                    setFieldErrors(prev => ({
-                      ...prev,
-                      description: undefined
-                    }));
-                  }} placeholder={copy.getDescriptionPlaceholder(type)} rows={8} maxLength={5000} />
-                  </div>
-                  <span className={s.charCount}>{description.length}/5000</span>
-                </div>
-
-                <div className={s.fieldBlock}>
-                  <label className={s.fieldLabel} id="ticket-create-attachments-label">
-                    {copy.documents}
-                  </label>
-                  <div data-pulse={fieldErrors.attachments ? errorPulseTick : undefined} className={`${s.attachmentDropZone} ${isAttachmentDragOver ? s.attachmentDropZoneActive : ""} ${fieldErrors.attachments ? s.attachmentDropZoneError : ""} ${fieldErrors.attachments ? s.fieldErrorPulse : ""}`}>
-                    <Icon icon="mdi:paperclip" className={s.attachmentDropIcon} aria-hidden />
-                    <p className={s.attachmentDropTitle}>{copy.dragFiles}</p>
-                    <p className={s.attachmentDropHint}>{copy.formatAttachmentHint(MAX_ATTACHMENT_FILES)}</p>
-                    <label className={s.attachmentUploadBtn}>
-                      <Icon icon="mdi:upload-outline" aria-hidden />
-                      {copy.addFiles}
-                      <input ref={attachmentInputRef} type="file" multiple accept={ATTACHMENT_ACCEPT} aria-labelledby="ticket-create-attachments-label" onChange={e => {
-                      const selectedFiles = Array.from(e.target.files || []);
-                      try {
-                        applySelectedAttachments(selectedFiles);
-                      } catch (error) {
-                        toast.error(error.message || copy.attachmentInvalid);
-                      } finally {
-                        e.target.value = "";
-                      }
-                    }} disabled={loadingData || attachmentFiles.length >= MAX_ATTACHMENT_FILES} />
-                    </label>
-                  </div>
-                  {attachmentFiles.length > 0 && <ul className={s.attachmentFileList}>
-                      {attachmentFiles.map(file => {
-                    const fileKey = `${file.name}-${file.size}-${file.lastModified || 0}`;
-                    return <li key={fileKey} className={s.attachmentFileItem}>
-                            <Icon icon="mdi:file-document-outline" className={s.attachmentFileIcon} aria-hidden />
-                            <span className={s.attachmentFileName} title={file.name}>
-                              {file.name}
-                            </span>
-                            <span className={s.attachmentFileSize}>{copy.formatAttachmentSize(file.size)}</span>
-                            <button type="button" className={s.attachmentFileRemove} onClick={() => removeAttachmentFile(fileKey)} aria-label={copy.formatRemoveFileAria(file.name)}>
-                              <Icon icon="mdi:close" aria-hidden />
-                            </button>
-                          </li>;
-                  })}
-                    </ul>}
-                </div>
-                </> : null}
+                  </div> : <p className={s.detailsAvailabilityTitle} style={{ margin: 0 }}>
+                    {copy.loadingForms}
+                  </p>}
 
                 {formError && <div className={s.errorBox} role="alert">
                     <Icon icon="mdi:alert-circle-outline" className={s.errorIcon} />
@@ -2116,64 +2044,6 @@ export default function TicketCreatePage({
                     </div>}
 
                   <div className={s.settingsFieldRow}>
-                    {!hasSupportForms ? <div className={s.equipmentField}>
-                      <label className={s.equipmentFieldLabel} id="ticket-create-category-label">
-                        {copy.itilCategory}<span className={s.requiredMark}>*</span>
-                      </label>
-                      <div className={s.contactPicker} ref={categoryDropdownRef}>
-                        <div data-pulse={fieldErrors.category ? errorPulseTick : undefined} className={`${s.contactInputWrap} ${showCategoryDropdown ? s.contactInputWrapOpen : ""} ${fieldErrors.category ? s.contactInputWrapError : ""} ${fieldErrors.category ? s.fieldErrorPulse : ""}`}>
-                          <Icon icon="mdi:magnify" className={s.contactInputIcon} aria-hidden />
-                          <input type="text" className={s.contactInput} value={categorySearch} placeholder={copy.searchCategory} aria-labelledby="ticket-create-category-label" aria-expanded={showCategoryDropdown} aria-haspopup="listbox" aria-autocomplete="list" disabled={loadingData} onChange={e => {
-                          const typed = e.target.value;
-                          setCategorySearch(typed);
-                          if (typed.trim() !== category) setCategory("");
-                          setShowCategoryDropdown(true);
-                          setCategoryHighlight(0);
-                          setFieldErrors(prev => ({
-                            ...prev,
-                            category: undefined
-                          }));
-                        }} onFocus={() => setShowCategoryDropdown(true)} onKeyDown={e => {
-                          if (!showCategoryDropdown || filteredCategoryOptions.length === 0) return;
-                          if (e.key === "ArrowDown") {
-                            e.preventDefault();
-                            setCategoryHighlight(h => Math.min(h + 1, filteredCategoryOptions.length - 1));
-                          } else if (e.key === "ArrowUp") {
-                            e.preventDefault();
-                            setCategoryHighlight(h => Math.max(h - 1, 0));
-                          } else if (e.key === "Enter") {
-                            e.preventDefault();
-                            const picked = filteredCategoryOptions[categoryHighlight];
-                            if (picked) selectCategory(picked);
-                          } else if (e.key === "Escape") {
-                            setShowCategoryDropdown(false);
-                          }
-                        }} />
-                        </div>
-                        {showCategoryDropdown && categoryDropdownCoords && typeof document !== "undefined" ? createPortal(<div ref={categoryListRef} className={s.contactDropdownPortal} role="listbox" aria-labelledby="ticket-create-category-label" style={{
-                            top: categoryDropdownCoords.top,
-                            bottom: categoryDropdownCoords.bottom,
-                            left: categoryDropdownCoords.left,
-                            width: categoryDropdownCoords.width,
-                            maxHeight: categoryDropdownCoords.maxHeight
-                          }}>
-                            {filteredCategoryOptions.length === 0 ? <div className={s.contactEmpty}>{copy.noCategoryFound}</div> : (() => {
-                          let optionIndex = -1;
-                          return filteredCategoryGroups.map(([section, items]) => <div key={section}>
-                                    <div className={s.categoryDropdownSection}>{section}</div>
-                                    {items.map(item => {
-                              optionIndex += 1;
-                              const idx = optionIndex;
-                              return <button key={String(item.id)} type="button" role="option" aria-selected={category === String(item.name || "")} className={`${s.contactOption} ${categoryHighlight === idx ? s.contactOptionActive : ""}`} onMouseEnter={() => setCategoryHighlight(idx)} onClick={() => selectCategory(item)}>
-                                          <span className={s.contactOptionName}>{String(item.name || "")}</span>
-                                        </button>;
-                            })}
-                                  </div>);
-                        })()}
-                          </div>, document.body) : null}
-                      </div>
-                    </div> : null}
-
                     <div className={s.equipmentField}>
                       <label className={s.equipmentFieldLabel} htmlFor="ticket-create-priority">
                         {copy.priorityLabel}<span className={s.requiredMark}>*</span>

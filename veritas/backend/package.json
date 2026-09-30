@@ -1,6 +1,6 @@
 {
   "name": "veritas-backend",
-  "version": "1.0.48",
+  "version": "1.0.49",
   "license": "AGPL-3.0-or-later",
   "type": "module",
   "main": "server.js",

@@ -3,9 +3,11 @@ import { createPortal } from "react-dom";
 import { Icon } from "@iconify/react";
 import s from "./TicketCreatePage.module.css";
 import { fieldIsVisible, filterVisibleFields } from "../../utils/salesFormConditions";
-import { SHELL_FIELD_TYPES, formatFileFieldAccept, getFileFieldConfig, groupFieldsBySection, isLayoutField, validateSalesFormFile, filterEquipmentsForClientScope, resolveFormScopedClientId } from "../../utils/salesFormFieldTypes";
+import { SHELL_FIELD_TYPES, formatFileFieldAccept, filterContactFieldChoices, findFormClientFieldKey, findFormContactFieldKeysScopedByClient, getCheckboxFieldCopy, getContactFieldConfig, getFileFieldConfig, groupFieldsBySection, isLayoutField, validateSalesFormFile, filterEquipmentsForClientScope, resolveFormScopedClientId } from "../../utils/salesFormFieldTypes";
 import { getEquipmentPickerLabel } from "./ticketEquipmentUtils";
 import { getModalDropdownZIndex } from "../../utils/dropdownPortal";
+import { useAppLocale } from "../../hooks/useAppGeneralSettings";
+import { getTicketCreateCopy } from "./ticketCreatePageI18n";
 
 const SEARCHABLE_DROPDOWN_MAX_HEIGHT = 260;
 
@@ -208,9 +210,13 @@ function formatFieldValue(field, value, {
   users = [],
   clients = [],
   contacts = [],
-  equipments = []
+  equipments = [],
+  locale = "fr"
 } = {}) {
-  if (field.fieldType === "checkbox") return value ? "Yes" : "No";
+  if (field.fieldType === "checkbox") {
+    const yesNo = getCheckboxFieldCopy(locale);
+    return value ? yesNo.yes : yesNo.no;
+  }
   if (field.fieldType === "user") {
     const user = users.find(row => String(row.id) === String(value));
     return getUserDisplayName(user) || value || "";
@@ -220,6 +226,11 @@ function formatFieldValue(field, value, {
     return getClientDisplayName(client) || value || "";
   }
   if (field.fieldType === "contact") {
+    const cfg = getContactFieldConfig(field);
+    if (cfg.source === "agents") {
+      const user = users.find(row => String(row.id) === String(value));
+      return getUserDisplayName(user) || value || "";
+    }
     const contact = contacts.find(row => String(row.id) === String(value));
     return getContactDisplayName(contact) || value || "";
   }
@@ -251,11 +262,13 @@ export function buildDynamicFieldLines(fields = [], values = {}, usersOrLookups 
   let clientsList = clients;
   let contactsList = contacts;
   let equipmentsList = [];
+  let locale = "fr";
   if (usersOrLookups && typeof usersOrLookups === "object" && !Array.isArray(usersOrLookups)) {
     users = Array.isArray(usersOrLookups.users) ? usersOrLookups.users : [];
     clientsList = Array.isArray(usersOrLookups.clients) ? usersOrLookups.clients : clients;
     contactsList = Array.isArray(usersOrLookups.contacts) ? usersOrLookups.contacts : contacts;
     equipmentsList = Array.isArray(usersOrLookups.equipments) ? usersOrLookups.equipments : [];
+    if (usersOrLookups.locale) locale = usersOrLookups.locale;
   } else {
     users = Array.isArray(usersOrLookups) ? usersOrLookups : [];
   }
@@ -265,7 +278,8 @@ export function buildDynamicFieldLines(fields = [], values = {}, usersOrLookups 
       users,
       clients: clientsList,
       contacts: contactsList,
-      equipments: equipmentsList
+      equipments: equipmentsList,
+      locale
     });
     return `${field.label}: ${String(display || "").trim() || "-"}`;
   });
@@ -368,11 +382,17 @@ function FileUploadInput({
   value,
   onChange
 }) {
+  const locale = useAppLocale();
+  const copy = useMemo(() => getTicketCreateCopy(locale), [locale]);
   const inputRef = useRef(null);
+  const dragDepthRef = useRef(0);
   const [error, setError] = useState("");
+  const [isDragOver, setIsDragOver] = useState(false);
   const cfg = getFileFieldConfig(field);
   const files = Array.isArray(value) ? value : [];
   const accept = formatFileFieldAccept(cfg);
+  const atLimit = files.length >= cfg.maxFiles;
+  const hasFileDrag = event => Array.from(event?.dataTransfer?.types || []).includes("Files");
   const addFiles = selected => {
     const incoming = Array.from(selected || []);
     if (!incoming.length) return;
@@ -400,27 +420,79 @@ function FileUploadInput({
     onChange(files.filter(item => item.localId !== localId && item.id !== localId));
     setError("");
   };
+  const resetDrag = () => {
+    dragDepthRef.current = 0;
+    setIsDragOver(false);
+  };
+  const handleDragEnter = event => {
+    if (atLimit || !hasFileDrag(event)) return;
+    event.preventDefault();
+    event.stopPropagation();
+    dragDepthRef.current += 1;
+    setIsDragOver(true);
+  };
+  const handleDragOver = event => {
+    if (atLimit || !hasFileDrag(event)) return;
+    event.preventDefault();
+    event.stopPropagation();
+    if (event.dataTransfer) event.dataTransfer.dropEffect = "copy";
+  };
+  const handleDragLeave = event => {
+    if (!hasFileDrag(event)) return;
+    event.preventDefault();
+    event.stopPropagation();
+    dragDepthRef.current = Math.max(0, dragDepthRef.current - 1);
+    if (dragDepthRef.current === 0) setIsDragOver(false);
+  };
+  const handleDrop = event => {
+    if (!hasFileDrag(event)) return;
+    event.preventDefault();
+    event.stopPropagation();
+    resetDrag();
+    if (atLimit) return;
+    addFiles(event.dataTransfer?.files);
+  };
+  const hint = locale === "fr"
+    ? `Max ${cfg.maxFiles} · ${cfg.maxSizeMb} Mo · ${cfg.extensions.join(", ")}`
+    : `Max ${cfg.maxFiles} · ${cfg.maxSizeMb} MB · ${cfg.extensions.join(", ")}`;
   return <div className={s.salesFileUpload}>
-      <div className={s.salesFileUploadActions}>
-        <button type="button" className={s.segmentedBtn} onClick={() => inputRef.current?.click()} disabled={files.length >= cfg.maxFiles}>
-          <Icon icon="mdi:paperclip" aria-hidden />
-          Add files
-        </button>
-        <input ref={inputRef} type="file" accept={accept} multiple={cfg.maxFiles > 1} hidden onChange={e => addFiles(e.target.files)} />
-        <span className={s.salesFileUploadHint}>
-          Max {cfg.maxFiles} · {cfg.maxSizeMb} MB · {cfg.extensions.join(", ")}
-        </span>
+      <div
+        className={`${s.attachmentDropZone} ${isDragOver ? s.attachmentDropZoneActive : ""} ${error ? s.attachmentDropZoneError : ""}`}
+        onDragEnter={handleDragEnter}
+        onDragOver={handleDragOver}
+        onDragLeave={handleDragLeave}
+        onDrop={handleDrop}
+      >
+        <Icon icon="mdi:cloud-upload-outline" className={s.attachmentDropIcon} aria-hidden />
+        <p className={s.attachmentDropTitle}>{copy.dragFiles}</p>
+        <p className={s.attachmentDropHint}>{hint}</p>
+        <label className={`${s.attachmentUploadBtn} ${atLimit ? s.segmentedBtnDisabled : ""}`}>
+          <Icon icon="mdi:upload-outline" aria-hidden />
+          {copy.addFiles}
+          <input
+            ref={inputRef}
+            type="file"
+            accept={accept}
+            multiple={cfg.maxFiles > 1}
+            disabled={atLimit}
+            onChange={e => addFiles(e.target.files)}
+          />
+        </label>
       </div>
       {error ? <p className={s.salesFileUploadError}>{error}</p> : null}
-      {files.length > 0 ? <ul className={s.salesFileUploadList}>
-          {files.map(item => <li key={item.localId || item.id || item.name}>
-              <Icon icon="mdi:file-outline" aria-hidden />
-              <span>{item.name || item.fileName}</span>
-              <em>{formatBytes(item.size || item.fileSize)}</em>
-              <button type="button" onClick={() => removeFile(item.localId || item.id)} aria-label="Remove file">
-                <Icon icon="mdi:close" aria-hidden />
-              </button>
-            </li>)}
+      {files.length > 0 ? <ul className={s.attachmentFileList}>
+          {files.map(item => {
+            const key = item.localId || item.id || item.name;
+            const name = item.name || item.fileName;
+            return <li key={key} className={s.attachmentFileItem}>
+                <Icon icon="mdi:file-document-outline" className={s.attachmentFileIcon} aria-hidden />
+                <span className={s.attachmentFileName} title={name}>{name}</span>
+                <span className={s.attachmentFileSize}>{formatBytes(item.size || item.fileSize)}</span>
+                <button type="button" className={s.attachmentFileRemove} onClick={() => removeFile(item.localId || item.id)} aria-label={copy.formatRemoveFileAria(name)}>
+                  <Icon icon="mdi:close" aria-hidden />
+                </button>
+              </li>;
+          })}
         </ul> : null}
     </div>;
 }
@@ -460,11 +532,14 @@ export default function SalesFormFieldsRenderer({
   errorPulseTick = 0,
   className = ""
 }) {
+  const locale = useAppLocale();
+  const yesNo = useMemo(() => getCheckboxFieldCopy(locale), [locale]);
   const groups = useMemo(() => groupFieldsBySection(fields), [fields]);
   const scopedClientId = useMemo(
     () => resolveFormScopedClientId(fields, values, clientId),
     [fields, values, clientId]
   );
+  const hasClientField = useMemo(() => Boolean(findFormClientFieldKey(fields)), [fields]);
   const scopedEquipments = useMemo(
     () => filterEquipmentsForClientScope(equipments, scopedClientId),
     [equipments, scopedClientId]
@@ -499,6 +574,9 @@ export default function SalesFormFieldsRenderer({
           next[field.fieldKey] = "";
         }
       });
+      findFormContactFieldKeysScopedByClient(fields).forEach(fieldKey => {
+        next[fieldKey] = "";
+      });
     }
     onChange?.(next);
   };
@@ -525,11 +603,11 @@ export default function SalesFormFieldsRenderer({
       return <div className={s.segmentedGroup} role="radiogroup" aria-label={field.label}>
           <button type="button" role="radio" aria-checked={!value} className={`${s.segmentedBtn} ${!value ? s.segmentedBtnActive : ""}`} onClick={() => patchValue(field.fieldKey, false)}>
             <Icon icon="mdi:close-circle-outline" aria-hidden />
-            No
+            {yesNo.no}
           </button>
           <button type="button" role="radio" aria-checked={Boolean(value)} className={`${s.segmentedBtn} ${value ? s.segmentedBtnActive : ""}`} onClick={() => patchValue(field.fieldKey, true)}>
             <Icon icon="mdi:check-circle-outline" aria-hidden />
-            Yes
+            {yesNo.yes}
           </button>
         </div>;
     }
@@ -562,12 +640,34 @@ export default function SalesFormFieldsRenderer({
       if (audience === "portal") {
         return <p className={s.detailsAvailabilityTitle} style={{ margin: 0 }}>Not available on the client portal.</p>;
       }
-      const options = contacts.map(contact => ({
-        id: contact.id,
-        label: getContactDisplayName(contact) || `#${contact.id}`,
-        hint: contact.email || contact.client_name || contact.entreprise || ""
-      }));
-      return <SearchableSelectField value={value} options={options} placeholder={field.placeholder || "Search a contact…"} emptyResultsHint="No contact found" onChange={next => patchValue(field.fieldKey, next)} />;
+      const choice = filterContactFieldChoices({
+        field,
+        contacts,
+        users,
+        clientId: scopedClientId,
+        hasClientField
+      });
+      const options = choice.source === "agents"
+        ? choice.rows.map(user => ({
+          id: user.id,
+          label: getUserDisplayName(user) || `#${user.id}`,
+          hint: user.email || user.profile || ""
+        }))
+        : choice.rows.map(contact => ({
+          id: contact.id,
+          label: getContactDisplayName(contact) || `#${contact.id}`,
+          hint: contact.email || contact.client_name || contact.entreprise || ""
+        }));
+      const emptyHint = choice.waitingForClient
+        ? (locale === "fr" ? "Sélectionnez d’abord une entreprise" : "Select a company first")
+        : choice.source === "agents"
+          ? (locale === "fr" ? "Aucun agent trouvé" : "No agent found")
+          : (locale === "fr" ? "Aucun contact trouvé" : "No contact found");
+      const placeholder = field.placeholder
+        || (choice.source === "agents"
+          ? (locale === "fr" ? "Rechercher un agent…" : "Search an agent…")
+          : (locale === "fr" ? "Rechercher un contact…" : "Search a contact…"));
+      return <SearchableSelectField value={value} options={options} placeholder={placeholder} emptyResultsHint={emptyHint} onChange={next => patchValue(field.fieldKey, next)} />;
     }
     if (field.fieldType === "equipment") {
       const options = scopedEquipments.map(eq => ({

@@ -34,7 +34,7 @@ import SalesFormFieldPalette, { PALETTE_FIELD_TYPES } from "./SalesFormFieldPale
 import SalesFormBuilderCanvas from "./SalesFormBuilderCanvas";
 import SalesFormFieldPropertiesPanel from "./SalesFormFieldPropertiesPanel";
 import SalesFormFieldsRenderer from "../TicketPage/SalesFormFieldsRenderer";
-import { buildFileFieldOptionsFromDraft, cloneSalesFormField, getDuplicableFieldBlock, getFileFieldConfig, isFileField, reorderSalesFormFields } from "../../utils/salesFormFieldTypes";
+import { buildContactFieldOptionsFromDraft, buildFileFieldOptionsFromDraft, cloneSalesFormField, findFormClientFieldKey, getContactFieldConfig, getDuplicableFieldBlock, getFileFieldConfig, isContactField, isFileField, reorderSalesFormFields } from "../../utils/salesFormFieldTypes";
 import { normalizeVisibilityRules } from "../../utils/salesFormConditions";
 import { useAppLocale } from "../../hooks/useAppGeneralSettings";
 import { useCommonCopy } from "../../hooks/useCommonCopy";
@@ -131,23 +131,30 @@ function fieldToDraft(field) {
     ...EMPTY_FIELD
   };
   const fileConfig = isFileField(field) ? getFileFieldConfig(field) : null;
+  const contactConfig = isContactField(field) ? getContactFieldConfig(field) : null;
   return {
     fieldKey: field.fieldKey || "",
     label: field.label || "",
     fieldType: field.fieldType || "text",
     required: field.required === true,
     placeholder: field.placeholder || "",
-    optionsText: isFileField(field) ? "" : Array.isArray(field.options) ? field.options.map(opt => typeof opt === "string" ? opt : opt.label || opt.value).join("\n") : "",
+    optionsText: isFileField(field) || isContactField(field) ? "" : Array.isArray(field.options) ? field.options.map(opt => typeof opt === "string" ? opt : opt.label || opt.value).join("\n") : "",
     fileMaxSizeMb: fileConfig?.maxSizeMb,
     fileMaxFiles: fileConfig?.maxFiles,
     fileExtensionsText: fileConfig ? fileConfig.extensions.join(", ") : "",
+    contactSource: contactConfig?.source || "contacts",
+    contactScopeByClient: contactConfig?.scopeByClient === true,
+    contactProfileNames: contactConfig?.profileNames || [],
+    contactUserIds: contactConfig?.userIds || [],
     displayOrder: field.displayOrder || 0,
     enabled: field.enabled !== false,
     visibilityMatchMode: field.visibilityRules?.matchMode === "any" ? "any" : field.visibilityRules?.matchMode === "mixed" ? "mixed" : "all",
     visibilityConditions: normalizeVisibilityRules(field.visibilityRules || {}).conditions
   };
 }
-function createLocalField(fieldType, displayOrder = 0) {
+function createLocalField(fieldType, displayOrder = 0, {
+  hasClientField = false
+} = {}) {
   const meta = PALETTE_FIELD_TYPES.find(item => item.type === fieldType);
   const suffix = Date.now().toString(36).slice(-4);
   return {
@@ -157,7 +164,14 @@ function createLocalField(fieldType, displayOrder = 0) {
     fieldType,
     required: false,
     placeholder: "",
-    options: fieldType === "file" ? buildFileFieldOptionsFromDraft({}) : [],
+    options: fieldType === "file"
+      ? buildFileFieldOptionsFromDraft({})
+      : fieldType === "contact"
+        ? buildContactFieldOptionsFromDraft({
+          contactSource: "contacts",
+          contactScopeByClient: hasClientField
+        })
+        : [],
     displayOrder,
     enabled: true,
     visibilityRules: {
@@ -169,6 +183,9 @@ function createLocalField(fieldType, displayOrder = 0) {
 function normalizeFieldOptions(field) {
   if (isFileField(field) || field?.fieldType === "file") {
     return buildFileFieldOptionsFromDraft(field);
+  }
+  if (isContactField(field) || field?.fieldType === "contact") {
+    return buildContactFieldOptionsFromDraft(field);
   }
   const fromText = String(field?.optionsText ?? "").split(/\r?\n/).map(line => line.trim()).filter(Boolean).map(line => ({
     label: line,
@@ -186,7 +203,7 @@ function normalizeFieldOptions(field) {
         value
       } : null;
     }
-    if (opt?.__fileConfig) return null;
+    if (opt?.__fileConfig || opt?.__contactConfig) return null;
     const label = String(opt?.label || opt?.value || "").trim();
     const value = String(opt?.value || opt?.label || "").trim();
     if (!label && !value) return null;
@@ -535,7 +552,9 @@ export default function SalesFormModal({
   const addFieldFromType = fieldType => {
     // Local-only: never persist/validate the parent form while composing fields.
     const nextOrder = fields.length ? Math.max(...fields.map(f => Number(f.displayOrder || 0))) + 10 : 10;
-    const localField = createLocalField(fieldType, nextOrder);
+    const localField = createLocalField(fieldType, nextOrder, {
+      hasClientField: Boolean(findFormClientFieldKey(fields))
+    });
     setFields(prev => [...prev, localField]);
     selectField(localField);
   };
@@ -1002,7 +1021,7 @@ export default function SalesFormModal({
       <div className={builderStyles.builderMain}>
         <SalesFormFieldPalette onQuickAdd={handlePaletteQuickAdd} />
         <SalesFormBuilderCanvas formLabel={formDraft.label} formDescription={formDraft.description} fields={fields} selectedFieldId={selectedFieldId} onSelectField={selectField} onDuplicateField={duplicateFieldOrSection} onRemoveField={requestRemoveField} />
-        <SalesFormFieldPropertiesPanel fieldDraft={fieldDraft} formFields={fields} saving={savingField} onChange={updateFieldDraft} onSave={handleSaveField} onDelete={fieldDraft ? () => requestRemoveField(fields.find(f => String(f.id) === String(selectedFieldId))) : null} onClose={resetFieldSelection} />
+        <SalesFormFieldPropertiesPanel fieldDraft={fieldDraft} formFields={fields} userOptions={userOptions} profileOptions={profileOptions} saving={savingField} onChange={updateFieldDraft} onSave={handleSaveField} onDelete={fieldDraft ? () => requestRemoveField(fields.find(f => String(f.id) === String(selectedFieldId))) : null} onClose={resetFieldSelection} />
       </div>
       <DragOverlay>
         {activeDragType ? <div className={builderStyles.paletteItem}>

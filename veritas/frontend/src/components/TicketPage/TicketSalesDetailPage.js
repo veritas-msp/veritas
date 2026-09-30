@@ -945,7 +945,7 @@ export default function TicketSalesDetailPage({ onNavigate, ticketData }) {
       toast.error(copy.form.validationError);
       return;
     }
-    const fieldLookups = { users, clients, contacts };
+    const fieldLookups = { users, clients, contacts, locale };
     const visibleFields = filterVisibleFields(allFields, formDraftValues);
     const nextValues = Object.fromEntries(
       visibleFields.map(field => {

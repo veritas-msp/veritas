@@ -13,7 +13,6 @@ import { getSupervisionCenterCopy } from "./supervisionCenterPageI18n";
 import { buildUnifiedSupervisionQueue, filterSupervisionQueue, countQueueBySeverity, mergeQueueWithAlertState, countQueueByWorkflow, buildSupervisionSupportTicketPrefill } from "./supervisionQueueUtils";
 import SupervisionOpsQueue from "./SupervisionOpsQueue";
 import SupervisionAlertHistory from "./SupervisionAlertHistory";
-import PlanningEventModalBridge from "../PlanningPage/PlanningEventModalBridge";
 import {
   ackSupervisionAlert,
   unackSupervisionAlert,
@@ -27,7 +26,6 @@ import {
 } from "../../api/supervisionAlerts";
 import { toast } from "react-toastify";
 import { getEquipmentFleetIssues, getEquipmentFleetCoverage } from "../../api/equipment";
-import { getEquipmentListKey } from "../../utils/equipmentIdentity";
 import { createTrackedAbortController } from "../../utils/pageLoadAbort";
 import { useCheckMKIntegrationEnabled } from "../../hooks/useCheckMKIntegrationEnabled";
 import { Icon } from "@iconify/react";
@@ -62,13 +60,6 @@ export default function MonitoringCenterPage({
   const [historyLoading, setHistoryLoading] = useState(false);
   const [historySearch, setHistorySearch] = useState("");
   const [historyStatus, setHistoryStatus] = useState("all");
-  const [eventModalOpen, setEventModalOpen] = useState(false);
-  const [eventPrefill, setEventPrefill] = useState({
-    clientId: null,
-    clientName: "",
-    equipmentId: null
-  });
-  const [pendingLinkItem, setPendingLinkItem] = useState(null);
   const [pageGuideOpen, setPageGuideOpen] = useState(false);
   const [fleetSyncOpen, setFleetSyncOpen] = useState(false);
   const openPageGuide = useCallback(() => setPageGuideOpen(true), []);
@@ -307,42 +298,17 @@ export default function MonitoringCenterPage({
       toast.error(err?.message || pageCopy.ops?.toasts?.actionFailed || "Error");
     }
   }, [applyAlertResult, pageCopy.ops]);
-  const openPlanningForContext = useCallback(({
-    clientId,
-    clientName,
-    equipmentId
-  }) => {
-    setEventPrefill({
-      clientId: clientId || null,
-      clientName: clientName || "",
-      equipmentId: equipmentId || null
-    });
-    setEventModalOpen(true);
-  }, []);
   const handleTicketSupport = useCallback(item => {
+    const prefill = buildSupervisionSupportTicketPrefill(item, alertRules);
+    if (!prefill?.supportFormId) {
+      toast.error(pageCopy.ops?.toasts?.supportFormRequired || "Configure a support form in the alert rule before creating a ticket.");
+      return;
+    }
     linkRemediation(item, {
       linkedTicketKind: "support"
     });
-    onNavigate?.("TicketCreate", buildSupervisionSupportTicketPrefill(item, alertRules));
-  }, [onNavigate, linkRemediation, alertRules]);
-  const handleTicketPresta = useCallback(item => {
-    linkRemediation(item, {
-      linkedTicketKind: "prestation"
-    });
-    onNavigate?.("TicketSalesCreate", {
-      kind: "prestation",
-      clientId: item?.clientId || item?.equipment?.clientId || null
-    });
-  }, [onNavigate, linkRemediation]);
-  const handlePlanEvent = useCallback(item => {
-    const equipment = item?.equipment || item?.agent?.equipment || null;
-    setPendingLinkItem(item);
-    openPlanningForContext({
-      clientId: item?.clientId || equipment?.clientId || null,
-      clientName: item?.clientName || equipment?.clientName || "",
-      equipmentId: equipment?.id || getEquipmentListKey(equipment) || null
-    });
-  }, [openPlanningForContext]);
+    onNavigate?.("TicketCreate", prefill);
+  }, [onNavigate, linkRemediation, alertRules, pageCopy.ops?.toasts?.supportFormRequired]);
   const handleOpenQueueItem = useCallback(item => {
     if (!item?.equipment) return;
     onEquipmentOpen?.(item.equipment);
@@ -412,7 +378,7 @@ export default function MonitoringCenterPage({
             <div className={`${layout.shell} ${layout.shellFull} ${styles.contentShell}`}>
               {activeTab === "operations" && !error ? <div className={`${dashStyles.dashboard} ${styles.dashboard}`} data-guide="supervision-ops">
                   <div className={`${cyberStyles.tabContent} ${styles.content}`}>
-                    <SupervisionOpsQueue items={filteredQueue} kpi={severityCounts} coverageFamilies={coverageFamilies} workflowCounts={workflowCounts} severityFilter={opsSeverityFilter} workflowFilter={opsWorkflowFilter} searchQuery={opsSearchQuery} onSeverityFilter={setOpsSeverityFilter} onWorkflowFilter={setOpsWorkflowFilter} onSearchChange={setOpsSearchQuery} onOpenItem={handleOpenQueueItem} onTicketSupport={handleTicketSupport} onTicketPresta={handleTicketPresta} onPlanEvent={handlePlanEvent} onAck={handleAckAlert} onUnack={handleUnackAlert} onResolve={handleResolveAlert} onDismiss={handleDismissAlert} busyId={alertActionBusyId} localeTag={localeTag} copy={pageCopy.ops} showDomain={false} />
+                    <SupervisionOpsQueue items={filteredQueue} kpi={severityCounts} coverageFamilies={coverageFamilies} workflowCounts={workflowCounts} severityFilter={opsSeverityFilter} workflowFilter={opsWorkflowFilter} searchQuery={opsSearchQuery} onSeverityFilter={setOpsSeverityFilter} onWorkflowFilter={setOpsWorkflowFilter} onSearchChange={setOpsSearchQuery} onOpenItem={handleOpenQueueItem} onTicketSupport={handleTicketSupport} onAck={handleAckAlert} onUnack={handleUnackAlert} onResolve={handleResolveAlert} onDismiss={handleDismissAlert} busyId={alertActionBusyId} localeTag={localeTag} copy={pageCopy.ops} showDomain={false} />
                   </div>
                 </div> : null}
 
@@ -436,19 +402,6 @@ export default function MonitoringCenterPage({
           </main>
         </div>
       </div>
-      <PlanningEventModalBridge open={eventModalOpen} editingEvent={null} initialClientId={eventPrefill.clientId} initialClientName={eventPrefill.clientName} initialEquipmentId={eventPrefill.equipmentId} onClose={() => {
-        setEventModalOpen(false);
-        setPendingLinkItem(null);
-      }} onSaved={saved => {
-        if (pendingLinkItem) {
-          linkRemediation(pendingLinkItem, {
-            linkedEventId: saved?.id || saved?.event?.id || null,
-            linkedTicketKind: "planning"
-          });
-        }
-        setPendingLinkItem(null);
-        setEventModalOpen(false);
-      }} />
       <PageGuideTour open={pageGuideOpen} steps={guideSteps} title={pageCopy.guide?.tourTitle} locale={locale} onClose={() => setPageGuideOpen(false)} />
       <SupervisionFleetSyncModal
         open={fleetSyncOpen}

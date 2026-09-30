@@ -1,7 +1,8 @@
 import { useDraggable } from "@dnd-kit/core";
 import { Icon } from "@iconify/react";
 import builderStyles from "./SalesFormBuilder.module.css";
-import { PALETTE_FIELD_TYPES, PALETTE_GROUPS } from "../../utils/salesFormFieldTypes";
+import { getFieldTypeLabel, PALETTE_FIELD_TYPES, PALETTE_GROUPS } from "../../utils/salesFormFieldTypes";
+import { useAppLocale } from "../../hooks/useAppGeneralSettings";
 
 export { PALETTE_FIELD_TYPES, FIELD_TYPE_OPTIONS, OPTION_BASED_FIELD_TYPES, SHELL_FIELD_TYPES, LAYOUT_FIELD_TYPES, isLayoutField, isFileField, groupFieldsBySection, cloneSalesFormField, getDuplicableFieldBlock, getFileFieldConfig } from "../../utils/salesFormFieldTypes";
 
@@ -34,6 +35,7 @@ function PaletteItem({
 export default function SalesFormFieldPalette({
   onQuickAdd
 }) {
+  const locale = useAppLocale();
   return <aside className={builderStyles.palette}>
       <div className={builderStyles.paletteHead}>
         <p className={builderStyles.paletteTitle}>Fields</p>
@@ -50,7 +52,7 @@ export default function SalesFormFieldPalette({
         return <div key={group.id} className={builderStyles.paletteGroup}>
               <p className={builderStyles.paletteGroupTitle}>{group.title}</p>
               <div className={builderStyles.paletteGroupList}>
-                {items.map(item => <PaletteItem key={item.type} {...item} onQuickAdd={onQuickAdd} />)}
+                {items.map(item => <PaletteItem key={item.type} type={item.type} icon={item.icon} label={getFieldTypeLabel(item.type, locale)} onQuickAdd={onQuickAdd} />)}
               </div>
             </div>;
       })}

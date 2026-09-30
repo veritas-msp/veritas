@@ -372,6 +372,7 @@ export const PALETTE_FIELD_TYPES = [
   {
     type: "checkbox",
     label: "Yes / No",
+    labelFr: "Oui / Non",
     icon: "mdi:toggle-switch-outline",
     group: "basic"
   },
@@ -460,6 +461,124 @@ export function filterEquipmentsForClientScope(equipments = [], clientId = null)
   });
 }
 
+export function isContactField(fieldOrType) {
+  const type = typeof fieldOrType === "string" ? fieldOrType : fieldOrType?.fieldType;
+  return String(type || "") === "contact";
+}
+
+export const DEFAULT_CONTACT_FIELD_CONFIG = {
+  source: "contacts",
+  scopeByClient: false,
+  profileNames: [],
+  userIds: []
+};
+
+export function getContactFieldConfig(fieldOrOptions) {
+  const options = Array.isArray(fieldOrOptions) ? fieldOrOptions : Array.isArray(fieldOrOptions?.options) ? fieldOrOptions.options : [];
+  const raw = options.find(item => item && typeof item === "object" && (item.__contactConfig || item.source != null || item.scopeByClient != null || item.profileNames != null || item.userIds != null)) || null;
+  const source = String(raw?.source || "").toLowerCase() === "agents" ? "agents" : "contacts";
+  const profileNames = Array.isArray(raw?.profileNames)
+    ? [...new Set(raw.profileNames.map(name => String(name || "").trim()).filter(Boolean))]
+    : [];
+  const userIds = Array.isArray(raw?.userIds)
+    ? [...new Set(raw.userIds.map(id => String(id || "").trim()).filter(Boolean))]
+    : [];
+  return {
+    __contactConfig: true,
+    source,
+    scopeByClient: raw?.scopeByClient === true,
+    profileNames,
+    userIds
+  };
+}
+
+export function buildContactFieldOptionsFromDraft(draft = {}) {
+  return [getContactFieldConfig({
+    options: [{
+      __contactConfig: true,
+      source: draft.contactSource,
+      scopeByClient: draft.contactScopeByClient,
+      profileNames: draft.contactProfileNames,
+      userIds: draft.contactUserIds
+    }]
+  })];
+}
+
+export function contactBelongsToClient(contact, clientId) {
+  if (!contact || clientId == null || clientId === "") return false;
+  const cid = String(clientId);
+  if (String(contact.client_id ?? contact.clientId ?? "") === cid) return true;
+  const memberships = Array.isArray(contact.clients) ? contact.clients : [];
+  return memberships.some(m => String(m.client_id ?? m.id ?? "") === cid);
+}
+
+export function userMatchesProfiles(user, profileNames = []) {
+  const wanted = (Array.isArray(profileNames) ? profileNames : []).map(name => String(name || "").trim().toLowerCase()).filter(Boolean);
+  if (!wanted.length) return true;
+  const userProfiles = [
+    user?.profile,
+    ...(Array.isArray(user?.profiles) ? user.profiles : [])
+  ].map(name => String(name || "").trim().toLowerCase()).filter(Boolean);
+  if (!userProfiles.length) return false;
+  return wanted.some(name => userProfiles.includes(name));
+}
+
+/**
+ * Filter contact-field options according to __contactConfig.
+ * source=contacts → contacts list (optionally scoped by company)
+ * source=agents → users list (optionally by profiles / userIds)
+ */
+export function filterContactFieldChoices({
+  field,
+  contacts = [],
+  users = [],
+  clientId = null,
+  hasClientField = false
+} = {}) {
+  const cfg = getContactFieldConfig(field);
+  if (cfg.source === "agents") {
+    let rows = Array.isArray(users) ? users : [];
+    if (cfg.profileNames.length) {
+      rows = rows.filter(user => userMatchesProfiles(user, cfg.profileNames));
+    }
+    if (cfg.userIds.length) {
+      const allowed = new Set(cfg.userIds.map(String));
+      rows = rows.filter(user => allowed.has(String(user?.id)));
+    }
+    return {
+      source: "agents",
+      rows,
+      needsClient: false,
+      waitingForClient: false
+    };
+  }
+  let rows = Array.isArray(contacts) ? contacts : [];
+  const shouldScope = cfg.scopeByClient === true && hasClientField;
+  if (shouldScope) {
+    if (!clientId) {
+      return {
+        source: "contacts",
+        rows: [],
+        needsClient: true,
+        waitingForClient: true
+      };
+    }
+    rows = rows.filter(contact => contactBelongsToClient(contact, clientId));
+  }
+  return {
+    source: "contacts",
+    rows,
+    needsClient: shouldScope,
+    waitingForClient: false
+  };
+}
+
+export function findFormContactFieldKeysScopedByClient(fields = []) {
+  return (Array.isArray(fields) ? fields : [])
+    .filter(item => isContactField(item) && item?.fieldKey && getContactFieldConfig(item).scopeByClient === true && getContactFieldConfig(item).source === "contacts")
+    .map(item => item.fieldKey);
+}
+
 export const FIELD_TYPE_OPTIONS = PALETTE_FIELD_TYPES.map(({
   type,
   label
@@ -467,6 +586,56 @@ export const FIELD_TYPE_OPTIONS = PALETTE_FIELD_TYPES.map(({
   value: type,
   label
 }));
+
+/** Localized Yes/No labels for checkbox fields (builder + runtime). */
+export function getCheckboxFieldCopy(locale = "fr") {
+  const copies = {
+    fr: {
+      yes: "Oui",
+      no: "Non",
+      typeLabel: "Oui / Non"
+    },
+    en: {
+      yes: "Yes",
+      no: "No",
+      typeLabel: "Yes / No"
+    },
+    de: {
+      yes: "Ja",
+      no: "Nein",
+      typeLabel: "Ja / Nein"
+    },
+    it: {
+      yes: "Sì",
+      no: "No",
+      typeLabel: "Sì / No"
+    },
+    es: {
+      yes: "Sí",
+      no: "No",
+      typeLabel: "Sí / No"
+    }
+  };
+  return copies[locale] || copies.fr;
+}
+
+/** Localized palette / type-dropdown label for a field type. */
+export function getFieldTypeLabel(type, locale = "fr") {
+  if (String(type || "") === "checkbox") return getCheckboxFieldCopy(locale).typeLabel;
+  const item = PALETTE_FIELD_TYPES.find(entry => entry.type === type);
+  if (!item) return type || "";
+  if (locale === "en") return item.label;
+  return item.labelFr || item.label;
+}
+
+export function getFieldTypeOptions(locale = "fr") {
+  return PALETTE_FIELD_TYPES.map(({
+    type
+  }) => ({
+    value: type,
+    label: getFieldTypeLabel(type, locale)
+  }));
+}
 
 export const PALETTE_GROUPS = [{
   id: "layout",
