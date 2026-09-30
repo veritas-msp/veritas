@@ -1,7 +1,6 @@
 import express from 'express';
-import fetch from 'node-fetch';
 import verifyJWT from '../../../middleware/auth.js';
-import { getCheckMKSettings, authenticateCheckMK, computeCheckMKLogtimeFromDays, filterCheckMKEventsByPeriod, appendCheckmkColumns } from './utils.js';
+import { getCheckMKSettings, authenticateCheckMK, computeCheckMKLogtimeFromDays, filterCheckMKEventsByPeriod, appendCheckmkColumns, checkmkFetch } from './utils.js';
 const router = express.Router();
 router.get('/events/:hostName', verifyJWT, async (req, res) => {
   try {
@@ -14,7 +13,7 @@ router.get('/events/:hostName', verifyJWT, async (req, res) => {
         error: 'Check MK configuration incomplete. Please configure settings in Settings.'
       });
     }
-    const authData = await authenticateCheckMK(settings.apiUrl, settings.username, settings.password);
+    const authData = await authenticateCheckMK(settings.apiUrl, settings.username, settings.password, settings.verifyTls);
     const normalizedApiUrl = settings.apiUrl.replace(/\/+$/, '');
     const eventsUrl = `${normalizedApiUrl}/domain-types/event_console/collections/all`;
     const queryExpression = JSON.stringify({
@@ -32,7 +31,7 @@ router.get('/events/:hostName', verifyJWT, async (req, res) => {
     const urlWithParams = new URL(eventsUrl);
     urlWithParams.searchParams.set('query', queryExpression);
     try {
-      const response = await fetch(urlWithParams.toString(), {
+      const response = await checkmkFetch(urlWithParams.toString(), {
         method: 'GET',
         headers: {
           'Accept': 'application/json',
@@ -111,7 +110,7 @@ router.get('/host-events/:hostName', verifyJWT, async (req, res) => {
         error: 'Check MK configuration incomplete. Please configure settings in Settings.'
       });
     }
-    const authData = await authenticateCheckMK(settings.apiUrl, settings.username, settings.password);
+    const authData = await authenticateCheckMK(settings.apiUrl, settings.username, settings.password, settings.verifyTls);
     const normalizedApiUrl = settings.apiUrl.replace(/\/+$/, '');
     const possibleEndpoints = [`${normalizedApiUrl}/domain-types/eventconsoleevent/collections/all`, `${normalizedApiUrl}/domain-types/event_console/collections/all`];
     const columns = ['event_id', 'event_phase', 'event_state', 'event_text', 'event_first', 'event_last', 'event_count', 'event_owner', 'event_rule_id', 'event_core_host', 'event_host'];
@@ -141,7 +140,7 @@ router.get('/host-events/:hostName', verifyJWT, async (req, res) => {
         if (start_time) url.searchParams.set('start_time', start_time);
         if (end_time) url.searchParams.set('end_time', end_time);
         if (site || settings.site) url.searchParams.set('site', site || settings.site);
-        const response = await fetch(url.toString(), {
+        const response = await checkmkFetch(url.toString(), {
           method: 'GET',
           headers: {
             'Accept': 'application/json',
@@ -217,9 +216,9 @@ router.get('/events-period/:hostName', verifyJWT, async (req, res) => {
       urlParams.append('site', checkmkSite);
     }
     const fullUrl = `${viewUrl}?${urlParams.toString()}`;
-    const authData = await authenticateCheckMK(settings.apiUrl, settings.username, settings.password);
+    const authData = await authenticateCheckMK(settings.apiUrl, settings.username, settings.password, settings.verifyTls);
     try {
-      const response = await fetch(fullUrl, {
+      const response = await checkmkFetch(fullUrl, {
         method: 'GET',
         headers: {
           'Accept': 'application/json',

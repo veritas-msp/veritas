@@ -1,7 +1,6 @@
 import express from 'express';
-import fetch from 'node-fetch';
 import verifyJWT from '../../../middleware/auth.js';
-import { getCheckMKSettings, authenticateCheckMK, computeCheckMKLogtimeFromDays, filterCheckMKEventsByPeriod, parseCheckMKEventTime, getCheckMkViewPyUrl } from './utils.js';
+import { getCheckMKSettings, authenticateCheckMK, computeCheckMKLogtimeFromDays, filterCheckMKEventsByPeriod, parseCheckMKEventTime, getCheckMkViewPyUrl, checkmkFetch } from './utils.js';
 const router = express.Router();
 router.get('/report-period/:hostName', verifyJWT, async (req, res) => {
   try {
@@ -25,7 +24,7 @@ router.get('/report-period/:hostName', verifyJWT, async (req, res) => {
       });
     }
     const checkmkSite = site || settings.site || '';
-    const authData = await authenticateCheckMK(settings.apiUrl, settings.username, settings.password);
+    const authData = await authenticateCheckMK(settings.apiUrl, settings.username, settings.password, settings.verifyTls);
     const startDate = new Date(start_time);
     const endDate = new Date(end_time);
     const logtimeFromDays = computeCheckMKLogtimeFromDays(start_time, end_time);
@@ -48,7 +47,7 @@ router.get('/report-period/:hostName', verifyJWT, async (req, res) => {
         view_name: 'hostnotifications'
       });
       if (checkmkSite) eventParams.append('site', checkmkSite);
-      const eventRes = await fetch(`${viewUrl}?${eventParams.toString()}`, {
+      const eventRes = await checkmkFetch(`${viewUrl}?${eventParams.toString()}`, {
         method: 'GET',
         headers: {
           'Accept': 'application/json',
@@ -177,7 +176,7 @@ router.get('/report-period/:hostName', verifyJWT, async (req, res) => {
       const avTo = Math.floor(endDate.getTime() / 1000);
       avParams.append('av_from', String(avFrom));
       avParams.append('av_to', String(avTo));
-      const avRes = await fetch(`${viewUrl}?${avParams.toString()}`, {
+      const avRes = await checkmkFetch(`${viewUrl}?${avParams.toString()}`, {
         method: 'GET',
         headers: {
           'Accept': 'application/json',

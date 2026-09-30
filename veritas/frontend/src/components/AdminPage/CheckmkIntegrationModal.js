@@ -124,6 +124,7 @@ export default function CheckmkIntegrationModal({
   username,
   password,
   site,
+  verifyTls = "false",
   syncIntervalMinutes = "30",
   syncSuspended = false,
   surveillanceSuspended = false,
@@ -132,6 +133,7 @@ export default function CheckmkIntegrationModal({
   onUsernameChange,
   onPasswordChange,
   onSiteChange,
+  onVerifyTlsChange,
   onSyncIntervalChange,
   onSyncSuspendedChange,
   onSurveillanceSuspendedChange,
@@ -203,7 +205,8 @@ export default function CheckmkIntegrationModal({
         apiUrl: (apiUrl || "").trim(),
         username: (username || "").trim(),
         password: password || "",
-        site: (site || "").trim()
+        site: (site || "").trim(),
+        verifyTls: String(verifyTls || "false")
       });
       setTestResult(data);
       setShowTestModal(true);
@@ -261,6 +264,13 @@ export default function CheckmkIntegrationModal({
         <div className={formStyles.field}>
           <label className={formStyles.label} htmlFor="checkmk-site">{copy.site}</label>
           <input id="checkmk-site" type="text" className={formStyles.input} value={site || ""} placeholder={copy.sitePlaceholder} onChange={e => onSiteChange(e.target.value)} disabled={saving || testing} autoComplete="off" />
+        </div>
+        <div className={formStyles.field}>
+          <label className={formStyles.label} htmlFor="checkmk-verify-tls">{copy.verifyTls}</label>
+          <select id="checkmk-verify-tls" className={formStyles.input} value={String(verifyTls || "false")} onChange={e => onVerifyTlsChange?.(e.target.value)} disabled={saving || testing}>
+            <option value="false">{copy.verifyTlsNo}</option>
+            <option value="true">{copy.verifyTlsYes}</option>
+          </select>
         </div>
       </div>
       <p className={formStyles.sectionDesc}>{copy.testUsesFormHint}</p>

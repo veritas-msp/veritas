@@ -1,13 +1,6 @@
 import express from 'express';
-import fetch from 'node-fetch';
 import verifyJWT from '../../../middleware/auth.js';
-import {
-  getCheckMKSettings,
-  authenticateCheckMK,
-  computeCheckMKLogtimeFromDays,
-  filterCheckMKEventsByPeriod,
-  parseCheckMKEventTime
-} from './utils.js';
+import { getCheckMKSettings, authenticateCheckMK, computeCheckMKLogtimeFromDays, filterCheckMKEventsByPeriod, parseCheckMKEventTime, checkmkFetch } from './utils.js';
 
 const router = express.Router();
 
@@ -115,7 +108,7 @@ router.get('/notifications/:hostName', verifyJWT, async (req, res) => {
     baseUrl = baseUrl.replace(/\/+$/, '');
 
     const checkmkSite = site || settings.site || '';
-    const authData = await authenticateCheckMK(settings.apiUrl, settings.username, settings.password);
+    const authData = await authenticateCheckMK(settings.apiUrl, settings.username, settings.password, settings.verifyTls);
 
     const endIso = end_time || new Date().toISOString();
     const startIso = start_time || (() => {
@@ -135,7 +128,7 @@ router.get('/notifications/:hostName', verifyJWT, async (req, res) => {
     });
     if (checkmkSite) eventParams.append('site', checkmkSite);
 
-    const eventRes = await fetch(`${viewUrl}?${eventParams.toString()}`, {
+    const eventRes = await checkmkFetch(`${viewUrl}?${eventParams.toString()}`, {
       method: 'GET',
       headers: {
         Accept: 'application/json',

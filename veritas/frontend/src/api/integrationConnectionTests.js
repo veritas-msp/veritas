@@ -15,7 +15,8 @@ export async function testCheckmkConnection({
   apiUrl,
   username,
   password,
-  site
+  site,
+  verifyTls
 } = {}) {
   const res = await fetch(`${API_BASE_URL}/checkmk/test`, {
     method: "POST",
@@ -27,7 +28,8 @@ export async function testCheckmkConnection({
       CHECKMK_API_URL: apiUrl,
       CHECKMK_USERNAME: username,
       CHECKMK_PASSWORD: password,
-      CHECKMK_SITE: site
+      CHECKMK_SITE: site,
+      CHECKMK_VERIFY_TLS: verifyTls
     })
   });
   return handleTestResponse(res);

@@ -1,7 +1,6 @@
 import express from 'express';
-import fetch from 'node-fetch';
 import verifyJWT from '../../../middleware/auth.js';
-import { authenticateCheckMK, getCheckMKCredentialsFromRequest } from './utils.js';
+import { authenticateCheckMK, getCheckMKCredentialsFromRequest, checkmkFetch } from './utils.js';
 
 const router = express.Router();
 
@@ -10,7 +9,7 @@ function countHosts(data) {
   return Array.isArray(hosts) ? hosts.length : 0;
 }
 
-async function fetchHostsCount(apiUrl, authHeader) {
+async function fetchHostsCount(apiUrl, authHeader, verifyTls) {
   const possibleEndpoints = [
     `${apiUrl}/domain-types/host_config/collections/all`,
     `${apiUrl}/objects/host`,
@@ -19,12 +18,13 @@ async function fetchHostsCount(apiUrl, authHeader) {
   ];
   for (const endpoint of possibleEndpoints) {
     try {
-      const response = await fetch(endpoint, {
+      const response = await checkmkFetch(endpoint, {
         method: 'GET',
         headers: {
           Accept: 'application/json',
           Authorization: authHeader
-        }
+        },
+        verifyTls
       });
       if (!response.ok) {
         if (response.status === 404) continue;
@@ -43,8 +43,8 @@ async function fetchHostsCount(apiUrl, authHeader) {
 router.post('/test', verifyJWT, async (req, res) => {
   try {
     const credentials = await getCheckMKCredentialsFromRequest(req);
-    const authData = await authenticateCheckMK(credentials.apiUrl, credentials.username, credentials.password);
-    const hostsCount = await fetchHostsCount(credentials.apiUrl, authData.auth_header);
+    const authData = await authenticateCheckMK(credentials.apiUrl, credentials.username, credentials.password, credentials.verifyTls);
+    const hostsCount = await fetchHostsCount(credentials.apiUrl, authData.auth_header, credentials.verifyTls);
     res.json({
       success: true,
       message: 'Checkmk connection OK',

@@ -151,7 +151,8 @@ export const INTEGRATIONS_CATALOG_I18N = {
         "CHECKMK_API_URL": "URL API Checkmk",
         "CHECKMK_USERNAME": "Nom d'utilisateur",
         "CHECKMK_PASSWORD": "Mot de passe",
-        "CHECKMK_SITE": "Site par défaut (optionnel)"
+        "CHECKMK_SITE": "Site par défaut (optionnel)",
+        "CHECKMK_VERIFY_TLS": "Vérifier TLS"
       },
       "hycu": {
         "HYCU_API_URL": "URL du contrôleur",
@@ -336,7 +337,8 @@ export const INTEGRATIONS_CATALOG_I18N = {
         "CHECKMK_API_URL": "Checkmk API URL",
         "CHECKMK_USERNAME": "Username",
         "CHECKMK_PASSWORD": "Password",
-        "CHECKMK_SITE": "Default site (optional)"
+        "CHECKMK_SITE": "Default site (optional)",
+        "CHECKMK_VERIFY_TLS": "Verify TLS"
       },
       "hycu": {
         "HYCU_API_URL": "Controller URL",
@@ -521,7 +523,8 @@ export const INTEGRATIONS_CATALOG_I18N = {
         "CHECKMK_API_URL": "Checkmk API URL",
         "CHECKMK_USERNAME": "Username",
         "CHECKMK_PASSWORD": "Password",
-        "CHECKMK_SITE": "Default site (optional)"
+        "CHECKMK_SITE": "Default site (optional)",
+        "CHECKMK_VERIFY_TLS": "Verify TLS"
       },
       "hycu": {
         "HYCU_API_URL": "Controller URL",
@@ -706,7 +709,8 @@ export const INTEGRATIONS_CATALOG_I18N = {
         "CHECKMK_API_URL": "Checkmk API URL",
         "CHECKMK_USERNAME": "Username",
         "CHECKMK_PASSWORD": "Password",
-        "CHECKMK_SITE": "Default site (optional)"
+        "CHECKMK_SITE": "Default site (optional)",
+        "CHECKMK_VERIFY_TLS": "Verify TLS"
       },
       "hycu": {
         "HYCU_API_URL": "Controller URL",
@@ -891,7 +895,8 @@ export const INTEGRATIONS_CATALOG_I18N = {
         "CHECKMK_API_URL": "Checkmk API URL",
         "CHECKMK_USERNAME": "Username",
         "CHECKMK_PASSWORD": "Password",
-        "CHECKMK_SITE": "Default site (optional)"
+        "CHECKMK_SITE": "Default site (optional)",
+        "CHECKMK_VERIFY_TLS": "Verify TLS"
       },
       "hycu": {
         "HYCU_API_URL": "Controller URL",

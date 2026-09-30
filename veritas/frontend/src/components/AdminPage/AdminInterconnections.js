@@ -371,6 +371,7 @@ export default function AdminInterconnections({
         username={settings.CHECKMK_USERNAME || ""}
         password={settings.CHECKMK_PASSWORD || ""}
         site={settings.CHECKMK_SITE || ""}
+        verifyTls={settings.CHECKMK_VERIFY_TLS || "false"}
         syncIntervalMinutes={settings.CHECKMK_SYNC_INTERVAL_MINUTES || "30"}
         syncSuspended={isTrue(settings.CHECKMK_SYNC_SUSPENDED)}
         surveillanceSuspended={isTrue(settings.CHECKMK_SURVEILLANCE_SUSPENDED)}
@@ -379,6 +380,7 @@ export default function AdminInterconnections({
         onUsernameChange={value => handleFieldChange("CHECKMK_USERNAME", value)}
         onPasswordChange={value => handleFieldChange("CHECKMK_PASSWORD", value)}
         onSiteChange={value => handleFieldChange("CHECKMK_SITE", value)}
+        onVerifyTlsChange={value => handleFieldChange("CHECKMK_VERIFY_TLS", value)}
         onSyncIntervalChange={value => handleFieldChange("CHECKMK_SYNC_INTERVAL_MINUTES", value)}
         onSyncSuspendedChange={on => handleFieldChange("CHECKMK_SYNC_SUSPENDED", on ? "true" : "false")}
         onSurveillanceSuspendedChange={on => handleFieldChange("CHECKMK_SURVEILLANCE_SUSPENDED", on ? "true" : "false")}

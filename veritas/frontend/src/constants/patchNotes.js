@@ -5,6 +5,13 @@
  */
 export const PATCH_NOTES = [
   {
+    version: "1.0.45",
+    date: "2026-09-30",
+    highlights: [
+      "CheckMK : option pour accepter les certificats TLS auto-signés (connexion lab / monitoring interne)."
+    ]
+  },
+  {
     version: "1.0.44",
     date: "2026-09-29",
     highlights: [

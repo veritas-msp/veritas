@@ -1,7 +1,6 @@
 import express from 'express';
-import fetch from 'node-fetch';
 import verifyJWT from '../../../middleware/auth.js';
-import { getCheckMKSettings, authenticateCheckMK } from './utils.js';
+import { getCheckMKSettings, authenticateCheckMK, checkmkFetch } from './utils.js';
 const router = express.Router();
 router.get('/metrics/:clientId', verifyJWT, async (req, res) => {
   try {
@@ -28,7 +27,7 @@ router.get('/metrics/:clientId', verifyJWT, async (req, res) => {
         error: 'Check MK configuration incomplete. Please configure settings in Settings.'
       });
     }
-    const authData = await authenticateCheckMK(settings.apiUrl, settings.username, settings.password);
+    const authData = await authenticateCheckMK(settings.apiUrl, settings.username, settings.password, settings.verifyTls);
     const checkmkSite = site || settings.site || '';
     const apiUrl = settings.apiUrl;
     const normalizedApiUrl = apiUrl.replace(/\/+$/, '');
@@ -76,7 +75,7 @@ router.get('/metrics/:clientId', verifyJWT, async (req, res) => {
       let success = false;
       for (const endpointUrl of possibleEndpoints) {
         try {
-          const response = await fetch(endpointUrl, {
+          const response = await checkmkFetch(endpointUrl, {
             method: 'POST',
             headers: {
               'Accept': 'application/json',
@@ -142,7 +141,7 @@ router.get('/metrics/:clientId', verifyJWT, async (req, res) => {
             fetchOptions.headers['Content-Type'] = 'application/json';
             fetchOptions.body = JSON.stringify(endpointConfig.body);
           }
-          const response = await fetch(url, fetchOptions);
+          const response = await checkmkFetch(url, fetchOptions);
           if (response.ok) {
             const data = await response.json();
             metricsData = data;

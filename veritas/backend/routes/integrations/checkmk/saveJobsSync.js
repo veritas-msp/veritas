@@ -249,7 +249,7 @@ export async function runSaveJobsSync({
   if (!settings?.apiUrl || !settings.username || !settings.password) {
     throw new Error('Check MK configuration incomplete.');
   }
-  const authData = await authenticateCheckMK(settings.apiUrl, settings.username, settings.password);
+  const authData = await authenticateCheckMK(settings.apiUrl, settings.username, settings.password, settings.verifyTls);
   if (!authData?.auth_header) {
     throw new Error('Unable to authenticate to Check MK.');
   }

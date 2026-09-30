@@ -1,7 +1,6 @@
 import express from 'express';
-import fetch from 'node-fetch';
 import verifyJWT from '../../../middleware/auth.js';
-import { getCheckMKSettings, authenticateCheckMK, getHostServices, getCheckMkViewPyUrl, stripHostPrefixFromService } from './utils.js';
+import { getCheckMKSettings, authenticateCheckMK, getHostServices, getCheckMkViewPyUrl, stripHostPrefixFromService, checkmkFetch } from './utils.js';
 const router = express.Router();
 router.get('/services/:hostName', verifyJWT, async (req, res) => {
   try {
@@ -19,7 +18,7 @@ router.get('/services/:hostName', verifyJWT, async (req, res) => {
         error: 'Check MK configuration incomplete. Please configure settings in Settings.'
       });
     }
-    const authData = await authenticateCheckMK(settings.apiUrl, settings.username, settings.password);
+    const authData = await authenticateCheckMK(settings.apiUrl, settings.username, settings.password, settings.verifyTls);
     const services = await getHostServices(settings.apiUrl, authData.auth_header, hostName, site || settings.site);
     res.json({
       host_name: hostName,
@@ -52,7 +51,7 @@ router.get('/service-data/:hostName/:serviceName', verifyJWT, async (req, res) =
         error: 'Check MK configuration incomplete. Please configure settings in Settings.'
       });
     }
-    const authData = await authenticateCheckMK(settings.apiUrl, settings.username, settings.password);
+    const authData = await authenticateCheckMK(settings.apiUrl, settings.username, settings.password, settings.verifyTls);
     const apiSite = site || settings.site;
     const parseDatesFromOutput = output => {
       if (!output) return {
@@ -126,7 +125,7 @@ router.get('/service-data/:hostName/:serviceName', verifyJWT, async (req, res) =
         });
         const urlWithParams = new URL(eventsUrl);
         urlWithParams.searchParams.set('query', queryExpression);
-        const response = await fetch(urlWithParams.toString(), {
+        const response = await checkmkFetch(urlWithParams.toString(), {
           method: 'GET',
           headers: {
             'Accept': 'application/json',
@@ -186,7 +185,7 @@ router.get('/service-data/:hostName/:serviceName', verifyJWT, async (req, res) =
         viewParams.append('site', apiSite);
       }
       const viewUrl = `${viewPyUrl}?${viewParams.toString()}`;
-      const viewResponse = await fetch(viewUrl, {
+      const viewResponse = await checkmkFetch(viewUrl, {
         method: 'GET',
         headers: {
           'Accept': 'application/json',

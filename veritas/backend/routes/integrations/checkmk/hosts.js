@@ -1,7 +1,6 @@
 import express from 'express';
-import fetch from 'node-fetch';
 import verifyJWT from '../../../middleware/auth.js';
-import { getCheckMKSettings, authenticateCheckMK, CHECKMK_HOST_COLUMNS, appendCheckmkColumns } from './utils.js';
+import { getCheckMKSettings, authenticateCheckMK, CHECKMK_HOST_COLUMNS, appendCheckmkColumns, checkmkFetch } from './utils.js';
 const router = express.Router();
 router.get('/host/:hostName', verifyJWT, async (req, res) => {
   try {
@@ -17,7 +16,7 @@ router.get('/host/:hostName', verifyJWT, async (req, res) => {
         error: 'Check MK configuration incomplete. Please configure settings in Settings.'
       });
     }
-    const authData = await authenticateCheckMK(settings.apiUrl, settings.username, settings.password);
+    const authData = await authenticateCheckMK(settings.apiUrl, settings.username, settings.password, settings.verifyTls);
     const possibleEndpoints = [`${settings.apiUrl}/objects/host/${encodeURIComponent(hostName)}`, `${settings.apiUrl}/domain-types/host/objects/${encodeURIComponent(hostName)}`, `${settings.apiUrl}/objects/host_config/${encodeURIComponent(hostName)}`];
     let hostDetails = null;
     let lastError = null;
@@ -43,7 +42,7 @@ router.get('/host/:hostName', verifyJWT, async (req, res) => {
     };
     for (const endpoint of possibleEndpoints) {
       try {
-        const response = await fetch(endpoint, {
+        const response = await checkmkFetch(endpoint, {
           method: 'GET',
           headers: {
             'Accept': 'application/json',
@@ -81,7 +80,7 @@ router.get('/host/:hostName', verifyJWT, async (req, res) => {
       if (site) {
         statusUrl.searchParams.set('site', site);
       }
-      const statusResponse = await fetch(statusUrl.toString(), {
+      const statusResponse = await checkmkFetch(statusUrl.toString(), {
         method: 'GET',
         headers: {
           'Accept': 'application/json',
@@ -189,7 +188,7 @@ router.get('/hosts', verifyJWT, async (req, res) => {
     }
     let authData;
     try {
-      authData = await authenticateCheckMK(settings.apiUrl, settings.username, settings.password);
+      authData = await authenticateCheckMK(settings.apiUrl, settings.username, settings.password, settings.verifyTls);
     } catch (authError) {
       return res.status(401).json({
         success: false,
@@ -203,7 +202,7 @@ router.get('/hosts', verifyJWT, async (req, res) => {
     let lastError;
     for (const endpoint of possibleEndpoints) {
       try {
-        response = await fetch(endpoint, {
+        response = await checkmkFetch(endpoint, {
           method: 'GET',
           headers: {
             'Accept': 'application/json',
@@ -301,9 +300,9 @@ router.get('/availability-table/:hostName', verifyJWT, async (req, res) => {
       }
     }
     const fullUrl = `${viewUrl}?${urlParams.toString()}`;
-    const authData = await authenticateCheckMK(settings.apiUrl, settings.username, settings.password);
+    const authData = await authenticateCheckMK(settings.apiUrl, settings.username, settings.password, settings.verifyTls);
     try {
-      const response = await fetch(fullUrl, {
+      const response = await checkmkFetch(fullUrl, {
         method: 'GET',
         headers: {
           'Accept': 'application/json',

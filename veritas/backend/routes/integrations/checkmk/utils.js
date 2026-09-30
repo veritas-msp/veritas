@@ -1,5 +1,52 @@
+import https from 'https';
 import fetch from 'node-fetch';
 import { getSettingsMap } from '../../../utils/settingsHelper.js';
+
+export function parseCheckMkVerifyTls(value, fallback = false) {
+  const raw = `${value ?? ''}`.trim().toLowerCase();
+  if (!raw) return fallback;
+  if (['1', 'true', 'yes', 'oui', 'on'].includes(raw)) return true;
+  if (['0', 'false', 'no', 'non', 'off'].includes(raw)) return false;
+  return fallback;
+}
+
+function createCheckMkAgent(verifyTls) {
+  return new https.Agent({
+    rejectUnauthorized: Boolean(verifyTls)
+  });
+}
+
+let cachedVerifyTls = null;
+let cachedVerifyTlsAt = 0;
+
+export async function resolveCheckMkVerifyTls() {
+  if (cachedVerifyTls != null && Date.now() - cachedVerifyTlsAt < 5000) {
+    return cachedVerifyTls;
+  }
+  try {
+    const settings = await getSettingsMap(['CHECKMK_VERIFY_TLS']);
+    cachedVerifyTls = parseCheckMkVerifyTls(settings.CHECKMK_VERIFY_TLS, false);
+  } catch {
+    cachedVerifyTls = false;
+  }
+  cachedVerifyTlsAt = Date.now();
+  return cachedVerifyTls;
+}
+
+/** node-fetch wrapper: ignore self-signed CheckMK certs unless VERIFY_TLS is enabled. */
+export async function checkmkFetch(url, options = {}) {
+  const {
+    verifyTls: verifyTlsOption,
+    ...rest
+  } = options || {};
+  const verifyTls = verifyTlsOption != null ? Boolean(verifyTlsOption) : await resolveCheckMkVerifyTls();
+  const href = String(url || '');
+  return fetch(href, {
+    ...rest,
+    agent: href.startsWith('https:') ? createCheckMkAgent(verifyTls) : undefined
+  });
+}
+
 export function extractPerformanceValue(performanceData, pluginOutput) {
   if (!performanceData && !pluginOutput) return null;
   if (performanceData) {
@@ -141,7 +188,7 @@ export async function fetchShowServiceDetails(apiUrl, authToken, hostName, servi
   showUrl.searchParams.set('service_description', description);
   if (site) showUrl.searchParams.set('site', site);
   try {
-    const response = await fetch(showUrl.toString(), {
+    const response = await checkmkFetch(showUrl.toString(), {
       method: 'GET',
       headers: {
         Accept: 'application/json',
@@ -175,12 +222,13 @@ export async function fetchShowServiceDetails(apiUrl, authToken, hostName, servi
 
 export async function getCheckMKSettings() {
   try {
-    const settings = await getSettingsMap(['CHECKMK_API_URL', 'CHECKMK_USERNAME', 'CHECKMK_PASSWORD', 'CHECKMK_SITE']);
+    const settings = await getSettingsMap(['CHECKMK_API_URL', 'CHECKMK_USERNAME', 'CHECKMK_PASSWORD', 'CHECKMK_SITE', 'CHECKMK_VERIFY_TLS']);
     return {
       apiUrl: normalizeCheckMKApiUrl(settings.CHECKMK_API_URL),
       username: settings.CHECKMK_USERNAME || '',
       password: settings.CHECKMK_PASSWORD || '',
-      site: settings.CHECKMK_SITE || ''
+      site: settings.CHECKMK_SITE || '',
+      verifyTls: parseCheckMkVerifyTls(settings.CHECKMK_VERIFY_TLS, false)
     };
   } catch (error) {
     return null;
@@ -192,12 +240,14 @@ export async function getCheckMKCredentialsFromRequest(req) {
   const bodyUsername = (req.body?.CHECKMK_USERNAME || req.body?.username || '').trim();
   const bodyPassword = (req.body?.CHECKMK_PASSWORD || req.body?.password || '').trim();
   const bodySite = (req.body?.CHECKMK_SITE || req.body?.site || '').trim();
+  const bodyVerify = req.body?.CHECKMK_VERIFY_TLS ?? req.body?.verifyTls;
   if (bodyUrl && bodyUsername && bodyPassword) {
     return {
       apiUrl: normalizeCheckMKApiUrl(bodyUrl),
       username: bodyUsername,
       password: bodyPassword,
       site: bodySite,
+      verifyTls: parseCheckMkVerifyTls(bodyVerify, false),
       source: 'inline'
     };
   }
@@ -210,21 +260,23 @@ export async function getCheckMKCredentialsFromRequest(req) {
     source: 'settings'
   };
 }
-export async function authenticateCheckMK(apiUrl, username, password) {
+export async function authenticateCheckMK(apiUrl, username, password, verifyTls) {
   try {
     if (!apiUrl || !username || !password) {
       throw new Error('URL, username and password required');
     }
     const authHeader = `Bearer ${username} ${password}`;
     const testUrl = `${apiUrl}/version`;
+    const tls = verifyTls != null ? Boolean(verifyTls) : await resolveCheckMkVerifyTls();
     let testResponse;
     try {
-      testResponse = await fetch(testUrl, {
+      testResponse = await checkmkFetch(testUrl, {
         method: 'GET',
         headers: {
           'Accept': 'application/json',
           'Authorization': authHeader
-        }
+        },
+        verifyTls: tls
       });
     } catch (fetchError) {
       throw new Error(`Unable to connect to Check MK: ${fetchError.message}`);
@@ -310,7 +362,7 @@ export async function getHostServices(apiUrl, authToken, hostName, site = '') {
         showUrl.searchParams.set('site', site);
       }
       try {
-        const response = await fetch(showUrl.toString(), {
+        const response = await checkmkFetch(showUrl.toString(), {
           method: 'GET',
           headers: {
             'Accept': 'application/json',
@@ -348,7 +400,7 @@ export async function getHostServices(apiUrl, authToken, hostName, site = '') {
       if (site) {
         statusUrl.searchParams.set('site', site);
       }
-      const response = await fetch(statusUrl.toString(), {
+      const response = await checkmkFetch(statusUrl.toString(), {
         method: 'GET',
         headers: {
           'Accept': 'application/json',
@@ -408,7 +460,7 @@ export async function getHostServices(apiUrl, authToken, hostName, site = '') {
       if (site) {
         servicesUrl.searchParams.set('site', site);
       }
-      const response = await fetch(servicesUrl.toString(), {
+      const response = await checkmkFetch(servicesUrl.toString(), {
         method: 'GET',
         headers: {
           'Accept': 'application/json',
@@ -429,7 +481,7 @@ export async function getHostServices(apiUrl, authToken, hostName, site = '') {
       if (site) {
         hostUrl.searchParams.set('site', site);
       }
-      const response = await fetch(hostUrl.toString(), {
+      const response = await checkmkFetch(hostUrl.toString(), {
         method: 'GET',
         headers: {
           'Accept': 'application/json',
@@ -488,7 +540,7 @@ export async function getServicePluginOutputViaViewPy(apiUrl, authHeader, hostNa
     viewParams.append('output_format', 'json_export');
     if (site) viewParams.append('site', site);
     const viewUrl = `${viewPyUrl}?${viewParams.toString()}`;
-    const response = await fetch(viewUrl, {
+    const response = await checkmkFetch(viewUrl, {
       method: 'GET',
       headers: {
         Accept: 'application/json',
@@ -542,7 +594,7 @@ export async function calculateAvailabilityFromHistory(apiUrl, authToken, hostNa
         params.append('end_time', endTime);
         if (site) params.append('site', site);
         const url = `${endpoint}?${params.toString()}`;
-        const response = await fetch(url, {
+        const response = await checkmkFetch(url, {
           method: 'GET',
           headers: {
             'Accept': 'application/json',
@@ -581,7 +633,7 @@ export async function calculateAvailabilityFromHistory(apiUrl, authToken, hostNa
             params.append('end_time', endTime);
             if (site) params.append('site', site);
             const url = `${endpoint}?${params.toString()}`;
-            const response = await fetch(url, {
+            const response = await checkmkFetch(url, {
               method: 'GET',
               headers: {
                 'Accept': 'application/json',
@@ -684,7 +736,7 @@ export async function getHostStateHistory(apiUrl, authToken, hostName, startTime
         if (site) {
           url += `&site=${encodeURIComponent(site)}`;
         }
-        const response = await fetch(url, {
+        const response = await checkmkFetch(url, {
           method: 'GET',
           headers: {
             'Accept': 'application/json',
@@ -880,7 +932,7 @@ export async function getAvailabilityAnalysis(apiUrl, authToken, hostName, start
           fetchOptions.headers['Content-Type'] = 'application/json';
           fetchOptions.body = JSON.stringify(endpointConfig.body);
         }
-        const response = await fetch(url, fetchOptions);
+        const response = await checkmkFetch(url, fetchOptions);
         if (response.ok) {
           const data = await response.json();
           return data;

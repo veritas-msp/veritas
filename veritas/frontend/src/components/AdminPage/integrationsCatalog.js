@@ -81,6 +81,10 @@ export const INTEGRATIONS_CATALOG = [{
     label: "Default site (optional)",
     type: "text"
   }, {
+    key: "CHECKMK_VERIFY_TLS",
+    label: "Verify TLS",
+    type: "text"
+  }, {
     key: "CHECKMK_SYNC_INTERVAL_MINUTES",
     label: "Sync refresh interval (minutes)",
     type: "number"

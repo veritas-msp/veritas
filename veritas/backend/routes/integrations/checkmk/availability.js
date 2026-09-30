@@ -32,7 +32,7 @@ router.get('/availability/:clientId', verifyJWT, async (req, res) => {
         data: []
       });
     }
-    const authData = await authenticateCheckMK(settings.apiUrl, settings.username, settings.password);
+    const authData = await authenticateCheckMK(settings.apiUrl, settings.username, settings.password, settings.verifyTls);
     const availabilityData = [];
     for (const mapping of mappingResult.rows) {
       try {
