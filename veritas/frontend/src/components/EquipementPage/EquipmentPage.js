@@ -920,7 +920,10 @@ const EquipmentPage = forwardRef(function EquipmentPage({
   initialTablePageByType = null,
   initialTableSort = null,
   initialEmbeddedPageSize = null,
-  equipmentRevision = 0
+  equipmentRevision = 0,
+  /** When true, skip embedded skeleton (parent shows a unified map-tab skeleton). */
+  hideEmbeddedSkeleton = false,
+  onLoadingChange
 }, ref) {
   const {
     userRole
@@ -943,6 +946,9 @@ const EquipmentPage = forwardRef(function EquipmentPage({
   const [equipmentTagsMap, setEquipmentTagsMap] = useState({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const hasLoadedOnceRef = useRef(false);
+  const onLoadingChangeRef = useRef(onLoadingChange);
+  onLoadingChangeRef.current = onLoadingChange;
   const [selectedEquipment, setSelectedEquipment] = useState(null);
   const [internalSearchQuery, setInternalSearchQuery] = useState("");
   const isExternalSearch = embedded && onSearchQueryChange != null;
@@ -975,7 +981,7 @@ const EquipmentPage = forwardRef(function EquipmentPage({
   const [globalPageSize, setGlobalPageSize] = useDefaultPageSize();
   const [embeddedPageSize, setEmbeddedPageSize] = useState(() => {
     const saved = Number(initialEmbeddedPageSize);
-    return Number.isFinite(saved) && saved > 0 ? saved : 10;
+    return Number.isFinite(saved) && saved > 0 ? saved : 50;
   });
   const pageSize = embedded ? embeddedPageSize : globalPageSize;
   const setPageSize = embedded ? setEmbeddedPageSize : setGlobalPageSize;
@@ -1086,6 +1092,7 @@ const EquipmentPage = forwardRef(function EquipmentPage({
       isMountedRef.current = true;
       setLoading(false);
       setError(null);
+      hasLoadedOnceRef.current = false;
       return () => {
         isMountedRef.current = false;
       };
@@ -1105,6 +1112,12 @@ const EquipmentPage = forwardRef(function EquipmentPage({
       controller.abort();
     };
   }, [embedded, fixedClientId, embeddedClient?.id, equipmentRevision]);
+  useEffect(() => {
+    if (!embedded) return;
+    hasLoadedOnceRef.current = false;
+    setLoading(true);
+    onLoadingChangeRef.current?.(true);
+  }, [embedded, fixedClientId, embeddedClient?.id]);
   const refreshMonitoringSummaries = useCallback(async signal => {
     const clientId = embeddedClient?.id || fixedClientId || null;
     const mappedIds = allEquipment.filter(eq => eq.checkmkMapping?.checkmk_host_name && isCheckMKMappableType(eq.type)).map(eq => getEquipmentDbId(eq)).filter(id => id && UUID_RE.test(String(id)));
@@ -1298,7 +1311,11 @@ const EquipmentPage = forwardRef(function EquipmentPage({
     fresh = false
   } = {}) => {
     if (embedded && fixedClientId) {
-      setLoading(true);
+      const softRefresh = hasLoadedOnceRef.current;
+      if (!softRefresh) {
+        setLoading(true);
+        onLoadingChangeRef.current?.(true);
+      }
       setError(null);
       try {
         const equipment = await getClientHardwareEquipment(fixedClientId, {
@@ -1312,7 +1329,11 @@ const EquipmentPage = forwardRef(function EquipmentPage({
         setError(err.message || "Error loading equipment");
         console.error("Error loading equipment:", err);
       } finally {
-        if (isMountedRef.current) setLoading(false);
+        if (isMountedRef.current) {
+          hasLoadedOnceRef.current = true;
+          setLoading(false);
+          onLoadingChangeRef.current?.(false);
+        }
       }
       return;
     }
@@ -3181,7 +3202,7 @@ const EquipmentPage = forwardRef(function EquipmentPage({
   }, [getTablePage, pageSize]);
   const renderEquipmentPagination = useCallback((pageKey, total) => {
     if (!total) return null;
-    const safePageSize = Math.max(1, Number(pageSize) || 10);
+    const safePageSize = Math.max(1, Number(pageSize) || 50);
     const totalPages = Math.max(1, Math.ceil(total / safePageSize));
     const page = Math.min(getTablePage(pageKey), totalPages);
     const rangeStart = (page - 1) * safePageSize + 1;
@@ -3261,11 +3282,12 @@ const EquipmentPage = forwardRef(function EquipmentPage({
           </div>)}
       </div>
     </div>;
+  const showEmbeddedInitialSkeleton = loading && !hasLoadedOnceRef.current;
   return <>
     {embedded ? <div className={styles.hardwarePageEmbedded}>
       <div className={styles.mainContent}>
         <>
-        {loading ? embedded ? renderEmbeddedLoadingSkeleton() : <div className={styles.loading}>Loading equipment...</div> : error ? <div className={styles.error}>{error}</div> : <div ref={scrollContainerRef} className={`${styles.tablesContainer} ${!embedded && mkAlertStats.mapped > 0 ? styles.tablesContainerWithMkBar : ''} ${embedded ? styles.tablesContainerEmbedded : ''}`}>
+        {showEmbeddedInitialSkeleton ? hideEmbeddedSkeleton ? null : renderEmbeddedLoadingSkeleton() : error ? <div className={styles.error}>{error}</div> : <div ref={scrollContainerRef} className={`${styles.tablesContainer} ${!embedded && mkAlertStats.mapped > 0 ? styles.tablesContainerWithMkBar : ''} ${embedded ? styles.tablesContainerEmbedded : ''}`}>
             {embedded ? <div className={styles.embeddedFilterBar}>
                 <div className={styles.embeddedTypeIconBar} role="tablist" aria-label={embeddedCopy.typeBarAria}>
                   {embeddedTypeOrder.map(type => {

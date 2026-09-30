@@ -107,11 +107,12 @@ function SpecField({
 }
 function SiteLocationVignette({
   site,
-  locationLabel
+  locationLabel,
+  size = "default"
 }) {
   const address = buildSiteAddress(site);
   const label = getSiteDisplayName(site) || locationLabel;
-  return <div className={styles.siteVignette}>
+  return <div className={`${styles.siteVignette} ${size === "large" ? styles.siteVignetteLarge : ""}`.trim()}>
       <div className={styles.siteVignetteMap}>
         <SiteMapPreview latitude={site.latitude} longitude={site.longitude} label={label} address={address} compact />
       </div>
@@ -365,14 +366,18 @@ export default function EquipmentDetailSpecsPanel({
     if (!showLocationMap && meaningfulFields.length === 0) {
       return null;
     }
-    return <section className={`${styles.panel} ${styles.panelRmmSlim}`}>
-        <div className={styles.rmmVeritasStrip}>
-          {showLocationMap ? <SiteLocationVignette site={resolvedSite || {
-          name: locationName
-        }} locationLabel={locationName} /> : null}
-          <div className={styles.rmmVeritasFields}>
-              {meaningfulFields.map(field => <SpecField key={field.key} field={field} remoteAccessAction={remoteAccessAction} equipmentLink={resolveEquipmentLink(field)} layout="inline" copy={copy} />)}
-            </div>
+    return <section className={`${styles.panel} ${styles.panelRmmIdentity}`}>
+        <div className={styles.rmmIdentityLayout}>
+          {showLocationMap ? <div className={styles.rmmMapCard}>
+              <SiteLocationVignette site={resolvedSite || {
+            name: locationName
+          }} locationLabel={locationName} size="large" />
+            </div> : null}
+          {meaningfulFields.length > 0 ? <div className={styles.rmmFieldCards}>
+              {meaningfulFields.map(field => <article key={field.key} className={styles.rmmFieldCard}>
+                  <SpecField field={field} remoteAccessAction={remoteAccessAction} equipmentLink={resolveEquipmentLink(field)} layout="grid" copy={copy} />
+                </article>)}
+            </div> : null}
         </div>
       </section>;
   }

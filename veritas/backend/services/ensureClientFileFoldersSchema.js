@@ -8,6 +8,7 @@ import { adaptMigrationSql } from "../utils/migrationSql.js";
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const root = path.join(__dirname, "..");
 const MIGRATION = "schema/patches/20260917_client_file_folders.sql";
+const VISIBILITY_MIGRATION = "schema/patches/20260930_client_file_folders_visibility.sql";
 let ensured = false;
 
 async function tableExists(client, table) {
@@ -26,6 +27,18 @@ async function columnExists(client, table, column) {
   return rows.length > 0;
 }
 
+async function runMigrationFile(client, relativePath) {
+  const filePath = path.join(root, relativePath);
+  if (!fs.existsSync(filePath)) {
+    console.warn("[client-file-folders] Migration not found:", relativePath);
+    return false;
+  }
+  const userResult = await client.query("SELECT current_user");
+  const dbUser = userResult.rows[0]?.current_user || "postgres";
+  await client.query(adaptMigrationSql(fs.readFileSync(filePath, "utf8"), dbUser));
+  return true;
+}
+
 export async function ensureClientFileFoldersSchema() {
   if (ensured) return true;
   if (!(await canRunAutoSchemaMigrations())) return false;
@@ -36,14 +49,11 @@ export async function ensureClientFileFoldersSchema() {
       (await tableExists(client, "v_b_client_files"))
       && !(await columnExists(client, "v_b_client_files", "folder_id"));
     if (needsFolders || needsFolderCol) {
-      const filePath = path.join(root, MIGRATION);
-      if (!fs.existsSync(filePath)) {
-        console.warn("[client-file-folders] Migration not found:", MIGRATION);
-        return false;
-      }
-      const userResult = await client.query("SELECT current_user");
-      const dbUser = userResult.rows[0]?.current_user || "postgres";
-      await client.query(adaptMigrationSql(fs.readFileSync(filePath, "utf8"), dbUser));
+      await runMigrationFile(client, MIGRATION);
+    }
+    if (await tableExists(client, "v_b_client_file_folders")
+      && !(await columnExists(client, "v_b_client_file_folders", "visible_to_client"))) {
+      await runMigrationFile(client, VISIBILITY_MIGRATION);
     }
     ensured = true;
     return true;

@@ -45,18 +45,45 @@ const ENTERPRISE_VAULT_COPY = {
       folderDeleteError: "Impossible de supprimer le dossier.",
       openFolder: "Ouvrir le dossier",
       filesCount: "{count} fichier(s)",
-      subfoldersCount: "{count} sous-dossier(s)"
+      subfoldersCount: "{count} sous-dossier(s)",
+      treeTitle: "Arborescence",
+      treeRoot: "Racine du coffre",
+      moveItem: "Déplacer",
+      moveHere: "Déplacer ici",
+      moveToRoot: "À la racine",
+      moveModalTitle: "Déplacer vers…",
+      moveModalSubtitle: "Choisissez le dossier de destination.",
+      moved: "Élément déplacé.",
+      moveError: "Impossible de déplacer cet élément.",
+      renameFolderTitle: "Renommer le dossier",
+      folderRenamed: "Dossier renommé.",
+      folderRenameError: "Impossible de renommer le dossier.",
+      folderVisiblePortal: "Dossier visible portail",
+      folderHiddenPortal: "Dossier masqué portail",
+      toggleFolderVisibility: "Visibilité portail du dossier",
+      toggleFileVisibility: "Visibilité portail du document",
+      visibilityOn: "Visible",
+      visibilityOff: "Masqué",
+      colName: "Nom",
+      colType: "Type",
+      colVisibility: "Portail",
+      colDate: "Date",
+      colActions: "Actions",
+      folderType: "Dossier",
+      itemsInView: "{count} élément(s)",
+      dragHint: "Utilisez Déplacer pour ranger un document ou un dossier."
     },
     card: {
       previewTitle: "Prévisualiser",
       visiblePortal: "Visible portail",
       notShared: "Non partagé",
-      notSharedTitle: "Document réservé aux agents · cliquer pour le partager sur le portail client",
+      notSharedTitle: "Document réservé aux agents · cliquer pour basculer la visibilité portail",
       noDescription: "Aucune description",
       downloadTitle: "Télécharger",
-      editDescriptionTitle: "Modifier la description",
-      editDescriptionAria: "Modifier la description",
-      removeTitle: "Retirer"
+      editDescriptionTitle: "Modifier",
+      editDescriptionAria: "Modifier le document",
+      removeTitle: "Retirer",
+      moveTitle: "Déplacer"
     },
     uploadModal: {
       eyebrow: "Coffre-fort documentaire",
@@ -161,18 +188,45 @@ const ENTERPRISE_VAULT_COPY = {
       folderDeleteError: "Unable to delete folder.",
       openFolder: "Open folder",
       filesCount: "{count} file(s)",
-      subfoldersCount: "{count} subfolder(s)"
+      subfoldersCount: "{count} subfolder(s)",
+      treeTitle: "Folder tree",
+      treeRoot: "Vault root",
+      moveItem: "Move",
+      moveHere: "Move here",
+      moveToRoot: "To root",
+      moveModalTitle: "Move to…",
+      moveModalSubtitle: "Choose the destination folder.",
+      moved: "Item moved.",
+      moveError: "Unable to move this item.",
+      renameFolderTitle: "Rename folder",
+      folderRenamed: "Folder renamed.",
+      folderRenameError: "Unable to rename folder.",
+      folderVisiblePortal: "Folder visible on portal",
+      folderHiddenPortal: "Folder hidden on portal",
+      toggleFolderVisibility: "Folder portal visibility",
+      toggleFileVisibility: "Document portal visibility",
+      visibilityOn: "Visible",
+      visibilityOff: "Hidden",
+      colName: "Name",
+      colType: "Type",
+      colVisibility: "Portal",
+      colDate: "Date",
+      colActions: "Actions",
+      folderType: "Folder",
+      itemsInView: "{count} item(s)",
+      dragHint: "Use Move to organize documents and folders."
     },
     card: {
       previewTitle: "Preview",
       visiblePortal: "Visible on portal",
       notShared: "Not shared",
-      notSharedTitle: "Agent-only document · click to share on the client portal",
+      notSharedTitle: "Agent-only document · click to toggle portal visibility",
       noDescription: "No description",
       downloadTitle: "Download",
-      editDescriptionTitle: "Edit description",
-      editDescriptionAria: "Edit description",
-      removeTitle: "Remove"
+      editDescriptionTitle: "Edit",
+      editDescriptionAria: "Edit document",
+      removeTitle: "Remove",
+      moveTitle: "Move"
     },
     uploadModal: {
       eyebrow: "Document vault",
@@ -543,30 +597,67 @@ const ENTERPRISE_VAULT_COPY = {
 };
 export function getEnterpriseVaultCopy(locale) {
   const code = normalizeLocale(locale);
+  const fallback = ENTERPRISE_VAULT_COPY.fr;
   const t = pickLocaleMessages(ENTERPRISE_VAULT_COPY, code);
+  const merged = {
+    ...fallback,
+    ...t,
+    categories: {
+      ...fallback.categories,
+      ...(t.categories || {})
+    },
+    panel: {
+      ...fallback.panel,
+      ...(t.panel || {})
+    },
+    card: {
+      ...fallback.card,
+      ...(t.card || {})
+    },
+    uploadModal: {
+      ...fallback.uploadModal,
+      ...(t.uploadModal || {})
+    },
+    editModal: {
+      ...fallback.editModal,
+      ...(t.editModal || {})
+    },
+    previewModal: {
+      ...fallback.previewModal,
+      ...(t.previewModal || {})
+    },
+    size: {
+      ...fallback.size,
+      ...(t.size || {})
+    },
+    toast: {
+      ...fallback.toast,
+      ...(t.toast || {})
+    }
+  };
   const bcp47 = LOCALE_BCP47[code] || LOCALE_BCP47.fr;
   return {
-    ...t,
+    ...merged,
     categoryKeys: CATEGORY_KEYS,
-    getCategoryLabel: category => t.categories[category] || category,
+    getCategoryLabel: category => merged.categories[category] || category,
     formatIntroSharedCount: count => {
       if (count <= 0) return "";
-      const template = count > 1 ? t.panel.sharedCountMany : t.panel.sharedCountOne;
+      const template = count > 1 ? merged.panel.sharedCountMany : merged.panel.sharedCountOne;
       return interpolate(template, {
         count: String(count)
       });
     },
     formatSize: bytes => {
       const value = Number(bytes) || 0;
-      if (value < 1024) return interpolate(t.size.bytes, {
+      if (value < 1024) return interpolate(merged.size.bytes, {
         value: String(value)
       });
       if (value < 1024 * 1024) {
-        return interpolate(t.size.kb, {
+        return interpolate(merged.size.kb, {
           value: (value / 1024).toFixed(1)
         });
       }
-      return interpolate(t.size.mb, {
+      return interpolate(merged.size.mb, {
         value: (value / (1024 * 1024)).toFixed(1)
       });
     },
@@ -575,7 +666,7 @@ export function getEnterpriseVaultCopy(locale) {
       const d = new Date(value);
       return Number.isNaN(d.getTime()) ? "-" : d.toLocaleDateString(bcp47);
     },
-    formatDeleteConfirm: name => interpolate(t.confirmDelete, {
+    formatDeleteConfirm: name => interpolate(merged.confirmDelete, {
       name: String(name || "")
     })
   };

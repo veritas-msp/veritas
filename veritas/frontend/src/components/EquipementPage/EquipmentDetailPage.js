@@ -52,6 +52,8 @@ import ProFeatureBadge from "../Misc/ProFeature/ProFeatureBadge";
 import ProFeaturePromoModal from "../Misc/ProFeature/ProFeaturePromoModal";
 import { notifyProFeature, setProFeaturePromoHandler } from "../Misc/ProFeature/proFeatureUtils";
 import { findEquipmentInList, getEquipmentClientId, getEquipmentDbId as resolveEquipmentDbId, getEquipmentListKey, equipmentNeedsHydration } from "../../utils/equipmentIdentity";
+import { getClientNumber, getClientNameWithoutCode } from "../../utils/clientDisplay";
+import StatusDot from "../shared/StatusDot/StatusDot";
 import { getRmmAgentId, getRmmAgentVersion, buildRmmAgentRowFromEquipment, getRmmSyncRequestedAt, isRmmManagedEquipment, patchEquipmentRmmSyncRequest, resolveRmmSyncRequestState, rmmSyncTimestampsMatch, formatRmmExpectedCollectionLabel, resolveRmmHeartbeatIntervalMinutes, agentSupportsImmediateFullSync, getRmmAgentStatusKey } from "./rmmMonitoringUtils";
 import { computeRmmDeviceHealth } from "./rmmDeviceHealthUtils";
 import { ScoreAside } from "./RmmDeviceScore";
@@ -1418,18 +1420,33 @@ export default function EquipmentDetailPage({
               <h1 className={enterpriseDetailStyles.heroTitle}>
                 <span>{equipmentHeroTitle}</span>
               </h1>
-              <div className={`${enterpriseDetailStyles.heroMeta} ${styles.heroMetaPlain}`} aria-label={copy.hero.metaAria}>
+              <div className={enterpriseDetailStyles.heroMeta} aria-label={copy.hero.metaAria}>
                 {(() => {
                 const enterpriseId = getEquipmentClientId(equipment) || equipment?.clientId;
                 const enterpriseName = equipment?.clientName || modalClient?.name || "";
-                if (!enterpriseName) return null;
+                if (!enterpriseName && !enterpriseId) return null;
+                const enterpriseClient = modalClient && String(modalClient.id) === String(enterpriseId) ? modalClient : {
+                  id: enterpriseId,
+                  name: enterpriseName,
+                  client_number: equipment?.clientNumber ?? equipment?.client_number,
+                  clientNumber: equipment?.clientNumber ?? equipment?.client_number
+                };
+                const code = getClientNumber(enterpriseClient);
+                const label = getClientNameWithoutCode(enterpriseClient) || enterpriseName || "";
+                if (!label && !code) return null;
+                const companyContent = <>
+                      <Icon icon="mdi:domain" aria-hidden />
+                      {code ? <>
+                          <span className={enterpriseDetailStyles.headerClientCode}>{code}</span>
+                          {label}
+                        </> : label}
+                    </>;
                 if (!enterpriseId || !onNavigate) {
-                  return <span className={styles.heroMetaPlainItem}>
-                        <Icon icon="mdi:domain" className={styles.heroMetaCompanyIcon} aria-hidden />
-                        {enterpriseName}
+                  return <span className={enterpriseDetailStyles.heroMetaItem}>
+                        {companyContent}
                       </span>;
                 }
-                return <button type="button" className={`${styles.heroMetaPlainItem} ${enterpriseDetailStyles.heroMetaLink} ${styles.heroMetaCompanyLink}`} onClick={() => openEnterprise()} onMouseDown={e => {
+                return <button type="button" className={`${enterpriseDetailStyles.heroMetaItem} ${enterpriseDetailStyles.heroMetaLink}`} onClick={() => openEnterprise()} onMouseDown={e => {
                   if (e.button === 1) {
                     e.preventDefault();
                     openEnterprise({
@@ -1444,26 +1461,33 @@ export default function EquipmentDetailPage({
                     });
                   }
                 }} title={copy.hero.viewEnterprise} aria-label={copy.hero.viewEnterprise}>
-                      <Icon icon="mdi:domain" className={styles.heroMetaCompanyIcon} aria-hidden />
-                      {enterpriseName}
+                      {companyContent}
                     </button>;
               })()}
-                <span className={styles.heroMetaPlainItem}>{typeDisplayLabel}</span>
-                <span className={`${styles.heroMetaPlainItem} ${equipmentIsActive ? styles.heroMetaStatusOnline : styles.heroMetaStatusOffline}`}>
+                <span className={enterpriseDetailStyles.heroMetaItem}>
+                  <Icon icon="mdi:devices" aria-hidden />
+                  {typeDisplayLabel}
+                </span>
+                <span className={`${enterpriseDetailStyles.statusChip} ${equipmentIsActive ? enterpriseDetailStyles.statusChipActive : enterpriseDetailStyles.statusChipInactive}`}>
+                  <StatusDot active={equipmentIsActive} />
                   {equipmentIsActive ? copy.hero.active : copy.hero.inactive}
                 </span>
-                {createdAtLabel ? <span className={styles.heroMetaPlainItem} title={copy.stats.createdInVeritas}>
+                {createdAtLabel ? <span className={enterpriseDetailStyles.heroMetaItem} title={copy.stats.createdInVeritas}>
+                    <Icon icon="mdi:calendar-plus" aria-hidden />
                     {createdAtLabel}
                   </span> : null}
-                {showRmmHeroStatus && rmmAgentVersion ? <span className={styles.heroMetaPlainItem} title={copy.agent.versionTitle}>
+                {showRmmHeroStatus && rmmAgentVersion ? <span className={enterpriseDetailStyles.heroMetaItem} title={copy.agent.versionTitle}>
+                    <Icon icon="mdi:cellphone-arrow-down" aria-hidden />
                     {interpolate(copy.agent.chip, {
                 version: rmmAgentVersion
               })}
                   </span> : null}
-                {showRmmHeroStatus && rmmStatusLabel ? <span className={`${styles.heroMetaPlainItem} ${rmmStatusKey === "online" ? styles.heroMetaStatusOnline : rmmStatusKey === "offline" ? styles.heroMetaStatusOffline : ""}`}>
+                {showRmmHeroStatus && rmmStatusLabel ? <span className={enterpriseDetailStyles.heroMetaItem}>
+                    <StatusDot active={rmmStatusKey === "online"} />
                     {rmmStatusLabel}
                   </span> : null}
-                {showRmmHeroStatus && rmmDeviceHealth ? <span className={styles.heroMetaPlainItem}>
+                {showRmmHeroStatus && rmmDeviceHealth ? <span className={enterpriseDetailStyles.heroMetaItem}>
+                    <Icon icon="mdi:heart-pulse" aria-hidden />
                     {rmmDeviceHealth.grade} {rmmDeviceHealth.score}/100
                   </span> : null}
                 {loadingEquipmentTags ? <span className={enterpriseDetailStyles.heroTagsLoading}>{copy.loadingTags}</span> : <>
@@ -1624,7 +1648,19 @@ export default function EquipmentDetailPage({
               </div>
               {showRmmHeroStatus && rmmDeviceHealth ? <div className={styles.dashboardAside}>
                 <ScoreAside health={rmmDeviceHealth} copy={{
-              scoreTitle: copy.rmm.overview?.scoreTitle || copy.rmm.cyber?.scoreTitle
+              scoreTitle: copy.rmm.overview?.scoreTitle || copy.rmm.cyber?.scoreTitle,
+              breakdownTitle: copy.rmm.overview?.scoreBreakdownTitle,
+              breakdownHint: copy.rmm.overview?.scoreBreakdownHint,
+              breakdownEmpty: copy.rmm.overview?.scoreBreakdownEmpty,
+              statusOk: copy.rmm.overview?.scoreStatusOk,
+              statusBad: copy.rmm.overview?.scoreStatusBad,
+              statusUnknown: copy.rmm.overview?.scoreStatusUnknown,
+              statusOkHint: copy.rmm.overview?.scoreStatusOkHint,
+              statusUnknownHint: copy.rmm.overview?.scoreStatusUnknownHint,
+              checks: copy.rmm.overview?.scoreChecks,
+              formatPenalty: points => interpolate(copy.rmm.overview?.scorePenalty || "−{points}", {
+                points: String(points)
+              })
             }} />
               </div> : null}
             </div>}
@@ -1725,7 +1761,19 @@ export default function EquipmentDetailPage({
               </div>
               <div className={styles.dashboardAside}>
                 {showRmmHeroStatus && rmmDeviceHealth ? <ScoreAside health={rmmDeviceHealth} copy={{
-              scoreTitle: copy.rmm.overview?.scoreTitle || copy.rmm.cyber?.scoreTitle
+              scoreTitle: copy.rmm.overview?.scoreTitle || copy.rmm.cyber?.scoreTitle,
+              breakdownTitle: copy.rmm.overview?.scoreBreakdownTitle,
+              breakdownHint: copy.rmm.overview?.scoreBreakdownHint,
+              breakdownEmpty: copy.rmm.overview?.scoreBreakdownEmpty,
+              statusOk: copy.rmm.overview?.scoreStatusOk,
+              statusBad: copy.rmm.overview?.scoreStatusBad,
+              statusUnknown: copy.rmm.overview?.scoreStatusUnknown,
+              statusOkHint: copy.rmm.overview?.scoreStatusOkHint,
+              statusUnknownHint: copy.rmm.overview?.scoreStatusUnknownHint,
+              checks: copy.rmm.overview?.scoreChecks,
+              formatPenalty: points => interpolate(copy.rmm.overview?.scorePenalty || "−{points}", {
+                points: String(points)
+              })
             }} /> : null}
               </div>
             </div> : null}

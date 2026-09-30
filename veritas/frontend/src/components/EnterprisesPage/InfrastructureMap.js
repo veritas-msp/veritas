@@ -351,7 +351,10 @@ export default function InfrastructureMap({
   equipmentRevision = 0,
   onNodeClick,
   onBrickClick,
-  isCommunity = false
+  isCommunity = false,
+  /** When true, skip local skeleton (parent shows a unified map-tab skeleton). */
+  hideSkeleton = false,
+  onLoadingChange
 }) {
   const locale = useAppLocale();
   const copy = useMemo(() => getInfraMapCopy(locale), [locale]);
@@ -365,17 +368,29 @@ export default function InfrastructureMap({
   const [error, setError] = useState(null);
   const clientSnapshotRef = useRef(clientSnapshot);
   clientSnapshotRef.current = clientSnapshot;
+  const hasLoadedOnceRef = useRef(false);
+  const onLoadingChangeRef = useRef(onLoadingChange);
+  onLoadingChangeRef.current = onLoadingChange;
   const equipementsCount = useMemo(() => {
     const equipements = clientSnapshot?.equipements;
     if (!equipements || typeof equipements !== "object") return 0;
     return Object.values(equipements).reduce((total, list) => total + (Array.isArray(list) ? list.length : 0), 0);
   }, [clientSnapshot]);
   useEffect(() => {
+    hasLoadedOnceRef.current = false;
+    setLoading(true);
+    onLoadingChangeRef.current?.(true);
+  }, [clientId]);
+  useEffect(() => {
     if (!clientId) return undefined;
     const controller = new AbortController();
     let cancelled = false;
+    const softRefresh = hasLoadedOnceRef.current;
     (async () => {
-      setLoading(true);
+      if (!softRefresh) {
+        setLoading(true);
+        onLoadingChangeRef.current?.(true);
+      }
       setError(null);
       try {
         const [clientEquipment, summaryData] = await Promise.all([getClientHardwareEquipment(clientId, {
@@ -399,7 +414,11 @@ export default function InfrastructureMap({
         setEquipment([]);
         setSummaries({});
       } finally {
-        if (!cancelled) setLoading(false);
+        if (!cancelled) {
+          hasLoadedOnceRef.current = true;
+          setLoading(false);
+          onLoadingChangeRef.current?.(false);
+        }
       }
     })();
     return () => {
@@ -518,7 +537,8 @@ export default function InfrastructureMap({
     isCommunity,
     copy
   };
-  if (loading) {
+  if (loading && !hasLoadedOnceRef.current) {
+    if (hideSkeleton) return null;
     return <InfraMapSkeleton copy={copy} />;
   }
   if (error) {

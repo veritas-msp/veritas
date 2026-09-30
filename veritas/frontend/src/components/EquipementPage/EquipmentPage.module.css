@@ -437,7 +437,12 @@
 
 .tableWrapperEmbedded {
   width: 100%;
+  max-width: 100%;
+  min-width: 0;
   overflow-x: auto;
+  overflow-y: hidden;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
   border: 1px solid var(--eq-border, var(--msp-border, #e2e8f0));
   border-radius: var(--eq-radius, var(--msp-radius-sm, 10px));
   background: var(--eq-surface, var(--msp-surface, #ffffff));
@@ -1513,6 +1518,13 @@
 
 .hardwarePageEmbedded .tableWrapper,
 .hardwarePageEmbedded .tableWrapperEmbedded {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
   background: var(--eq-surface, var(--msp-surface, #ffffff));
   border: 1px solid var(--eq-border, var(--msp-border, #e2e8f0));
   border-radius: var(--eq-radius, var(--msp-radius-sm, 10px));

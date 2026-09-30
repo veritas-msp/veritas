@@ -3,9 +3,10 @@
 .root {
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
+  gap: 0.65rem;
   min-width: 0;
   width: 100%;
+  flex: 1;
 }
 
 .panel {
@@ -58,10 +59,10 @@
 
 .resourceCell {
   display: grid;
-  grid-template-columns: 36px minmax(0, 1fr);
-  gap: 0.45rem;
+  grid-template-columns: 40px minmax(0, 1fr);
+  gap: 0.55rem;
   align-items: start;
-  padding: 0.55rem 0.7rem;
+  padding: 0.85rem 0.9rem;
   min-width: 0;
   border-right: 1px solid var(--msp-border);
 }
@@ -183,8 +184,8 @@
 .infoCell {
   display: flex;
   flex-direction: column;
-  gap: 0.25rem;
-  padding: 0.55rem 0.7rem;
+  gap: 0.35rem;
+  padding: 0.85rem 0.9rem;
   min-width: 0;
   border-right: 1px solid var(--msp-border);
 }
@@ -475,27 +476,35 @@
 
 /* Score aside (device health rail) */
 .scoreAside {
-  display: grid;
-  grid-template-columns: auto 1fr;
-  gap: 0.5rem;
-  align-items: center;
-  padding: 0.55rem 0.7rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+  padding: 0.85rem 0.9rem;
   border: 1px solid var(--msp-border);
   border-radius: 12px;
   background: var(--msp-surface);
   box-shadow: var(--msp-shadow-soft, 0 1px 8px rgba(11, 33, 56, 0.04));
   min-width: 0;
+  height: 100%;
+  min-height: 0;
+}
+
+.scoreAsideHero {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 0.65rem;
+  align-items: center;
 }
 
 .scoreAsideGrade {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 2.1rem;
-  height: 2.1rem;
-  border-radius: 8px;
-  font-size: 1.05rem;
-  font-weight: 600;
+  width: 2.75rem;
+  height: 2.75rem;
+  border-radius: 10px;
+  font-size: 1.25rem;
+  font-weight: 700;
   background: var(--msp-surface-2, #f7f9fc);
   color: var(--msp-text);
 }
@@ -519,13 +528,13 @@
   min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: 0.05rem;
+  gap: 0.1rem;
 }
 
 .scoreAsideTitle {
   margin: 0;
-  font-size: 0.62rem;
-  font-weight: 500;
+  font-size: 0.68rem;
+  font-weight: 600;
   letter-spacing: 0.04em;
   text-transform: uppercase;
   color: var(--msp-muted);
@@ -533,22 +542,22 @@
 
 .scoreAsideScore {
   margin: 0;
-  font-size: 0.95rem;
-  font-weight: 600;
+  font-size: 1.25rem;
+  font-weight: 700;
   line-height: 1.15;
   color: var(--msp-text);
 }
 
 .scoreAsideOutOf {
-  font-size: 0.68rem;
+  font-size: 0.75rem;
   font-weight: 500;
   color: var(--msp-muted);
-  margin-left: 0.1rem;
+  margin-left: 0.15rem;
 }
 
 .scoreAsideMeter {
-  margin-top: 0.2rem;
-  height: 3px;
+  margin-top: 0.35rem;
+  height: 5px;
   border-radius: 999px;
   background: var(--msp-surface-2, #e8eef6);
   overflow: hidden;
@@ -557,6 +566,98 @@
 .scoreAsideMeter .meterFill {
   height: 100%;
   border-radius: inherit;
+}
+
+.scoreAsideBreakdownTitle {
+  margin: 0;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--msp-muted);
+}
+
+.scoreAsideBreakdownHint {
+  margin: -0.25rem 0 0;
+  font-size: 0.72rem;
+  line-height: 1.4;
+  color: var(--msp-muted-light, #8b9bb5);
+}
+
+.scoreAsideChecks {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  flex: 1;
+  min-height: 0;
+}
+
+.scoreAsideCheck {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 0.45rem;
+  align-items: center;
+  padding: 0.5rem 0.55rem;
+  border-radius: 10px;
+  border: 1px solid var(--msp-border-light, #e2e8f0);
+  background: var(--msp-surface-2, #f7f9fc);
+}
+
+.scoreAsideCheckIcon {
+  display: inline-flex;
+  color: var(--msp-muted);
+  font-size: 1.05rem;
+}
+
+.scoreAsideCheck_good .scoreAsideCheckIcon {
+  color: var(--msp-accent, #2b5fab);
+}
+
+.scoreAsideCheck_bad .scoreAsideCheckIcon {
+  color: #b42318;
+}
+
+.scoreAsideCheckBody {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+}
+
+.scoreAsideCheckLabel {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--msp-text);
+}
+
+.scoreAsideCheckDetail {
+  font-size: 0.68rem;
+  color: var(--msp-muted);
+}
+
+.scoreAsideCheckStatus {
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: var(--msp-muted);
+}
+
+.scoreAsideCheck_good .scoreAsideCheckStatus {
+  color: var(--msp-accent, #2b5fab);
+}
+
+.scoreAsideCheck_bad .scoreAsideCheckStatus {
+  color: #b42318;
+}
+
+.scoreAsideEmpty {
+  margin: 0;
+  font-size: 0.74rem;
+  color: var(--msp-muted);
 }
 
 @media (max-width: 1100px) {

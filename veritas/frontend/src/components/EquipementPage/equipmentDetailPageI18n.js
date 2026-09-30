@@ -420,7 +420,25 @@ const FR = {
       ramSlotEmpty: "Emplacement vide",
       ramSlotsMissing: "Barrettes non remontées",
       ramSpeed: "Fréquence",
-      scoreTitle: "Note du périphérique"
+      scoreTitle: "Note du périphérique",
+      scoreBreakdownTitle: "Détail du calcul",
+      scoreBreakdownHint: "Départ à 100. Chaque critère OK maintient la note ; un problème retire des points.",
+      scoreBreakdownEmpty: "Pas encore assez de données pour détailler la note.",
+      scoreStatusOk: "OK",
+      scoreStatusBad: "À traiter",
+      scoreStatusUnknown: "Inconnu",
+      scoreStatusOkHint: "Critère respecté",
+      scoreStatusUnknownHint: "Donnée manquante",
+      scorePenalty: "−{points} pts",
+      scoreChecks: {
+        defender: "Antivirus",
+        firewall: "Pare-feu",
+        bitlocker: "Chiffrement",
+        updates: "Mises à jour",
+        services: "Services",
+        online: "Connexion agent",
+        disk: "Espace disque"
+      }
     },
     cyber: {
       aria: "Cybersécurité du poste",
@@ -1132,7 +1150,25 @@ const EN = {
       ramSlotEmpty: "Empty slot",
       ramSlotsMissing: "Sticks not reported",
       ramSpeed: "Speed",
-      scoreTitle: "Device score"
+      scoreTitle: "Device score",
+      scoreBreakdownTitle: "Score breakdown",
+      scoreBreakdownHint: "Starts at 100. Each healthy check keeps the score; issues subtract points.",
+      scoreBreakdownEmpty: "Not enough data yet to explain the score.",
+      scoreStatusOk: "OK",
+      scoreStatusBad: "Needs attention",
+      scoreStatusUnknown: "Unknown",
+      scoreStatusOkHint: "Check passed",
+      scoreStatusUnknownHint: "Missing data",
+      scorePenalty: "−{points} pts",
+      scoreChecks: {
+        defender: "Antivirus",
+        firewall: "Firewall",
+        bitlocker: "Encryption",
+        updates: "Updates",
+        services: "Services",
+        online: "Agent online",
+        disk: "Disk space"
+      }
     },
     cyber: {
       aria: "Device cybersecurity",

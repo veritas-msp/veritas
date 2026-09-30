@@ -24,8 +24,14 @@ public sealed class AgentUpdater
             _logger.LogDebug("Auto-update disabled by server settings — skipping {Latest}", latestVersion);
             return;
         }
-        if (!IsNewer(latestVersion, AgentConstants.AgentVersion))
-            return;
+
+        var newer = IsNewer(latestVersion, AgentConstants.AgentVersion);
+        // Forced console update: allow reinstall of the same package (repair); never downgrade.
+        if (!newer)
+        {
+            if (!force || !IsSame(latestVersion, AgentConstants.AgentVersion))
+                return;
+        }
 
         if (force)
             _logger.LogInformation("Forced update requested: {Latest} (current {Current})", latestVersion, AgentConstants.AgentVersion);
@@ -60,6 +66,13 @@ public sealed class AgentUpdater
         if (!Version.TryParse(Normalize(candidate), out var next)) return false;
         if (!Version.TryParse(Normalize(current), out var cur)) return true;
         return next > cur;
+    }
+
+    public static bool IsSame(string candidate, string current)
+    {
+        if (!Version.TryParse(Normalize(candidate), out var next)) return false;
+        if (!Version.TryParse(Normalize(current), out var cur)) return false;
+        return next == cur;
     }
 
     private static string Normalize(string version)

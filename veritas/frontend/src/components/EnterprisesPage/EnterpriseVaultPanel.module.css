@@ -4,6 +4,311 @@
   gap: 0.85rem;
 }
 
+.vaultHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.vaultHeaderText {
+  flex: 1;
+  min-width: 220px;
+}
+
+.introText {
+  margin: 0;
+  color: var(--msp-muted, #5c6b82);
+  font-size: 0.88rem;
+  line-height: 1.45;
+}
+
+.hintText {
+  margin: 0.35rem 0 0;
+  color: var(--msp-muted-light, #8b9bb5);
+  font-size: 0.78rem;
+}
+
+.vaultHeaderStats {
+  display: inline-flex;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+}
+
+.statChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.28rem 0.55rem;
+  border-radius: 999px;
+  background: var(--msp-surface-2, #f4f7fb);
+  border: 1px solid var(--msp-border-light, #e8eef5);
+  color: var(--msp-muted, #5c6b82);
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+
+.vaultLayout {
+  display: grid;
+  grid-template-columns: minmax(180px, 240px) minmax(0, 1fr);
+  gap: 0.85rem;
+  align-items: start;
+  min-height: 22rem;
+}
+
+.treePane {
+  border: 1px solid var(--msp-border, #e2e8f0);
+  border-radius: 12px;
+  background: var(--msp-surface, #fff);
+  padding: 0.55rem;
+  max-height: min(70vh, 560px);
+  overflow: auto;
+}
+
+.treePaneHeader {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.35rem 0.45rem 0.55rem;
+  color: var(--msp-muted, #5c6b82);
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.treeBranch {
+  display: flex;
+  flex-direction: column;
+}
+
+.treeItem {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  width: 100%;
+  border: 0;
+  background: transparent;
+  color: var(--msp-text, #1a2b3c);
+  font-size: 0.82rem;
+  font-weight: 500;
+  text-align: left;
+  padding: 0.4rem 0.55rem;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.treeItem:hover {
+  background: rgba(43, 95, 171, 0.08);
+}
+
+.treeItemActive {
+  background: var(--msp-accent-soft, rgba(43, 95, 171, 0.12));
+  color: var(--msp-accent, #2b5fab);
+  font-weight: 650;
+}
+
+.treeItemLabel {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.treeHiddenIcon {
+  margin-left: auto;
+  opacity: 0.55;
+  flex-shrink: 0;
+}
+
+.contentPane {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.tableWrap {
+  border: 1px solid var(--msp-border, #e2e8f0);
+  border-radius: 12px;
+  background: var(--msp-surface, #fff);
+  overflow: auto;
+  max-width: 100%;
+}
+
+.vaultTable {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.84rem;
+}
+
+.vaultTable th {
+  text-align: left;
+  padding: 0.65rem 0.85rem;
+  background: var(--msp-surface-2, #f7f9fc);
+  color: var(--msp-muted, #5c6b82);
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  border-bottom: 1px solid var(--msp-border, #e2e8f0);
+  white-space: nowrap;
+}
+
+.vaultTable td {
+  padding: 0.55rem 0.85rem;
+  border-bottom: 1px solid var(--msp-border-light, #eef2f7);
+  vertical-align: middle;
+}
+
+.vaultTable tbody tr:hover td {
+  background: rgba(43, 95, 171, 0.04);
+}
+
+.folderRow td {
+  background: rgba(232, 163, 23, 0.04);
+}
+
+.rowNameBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  border: 0;
+  background: transparent;
+  padding: 0;
+  cursor: pointer;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  max-width: 100%;
+}
+
+.rowName {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 600;
+}
+
+.rowFolderIcon {
+  color: #e8a317;
+  flex-shrink: 0;
+}
+
+.rowFileIcon {
+  color: var(--msp-accent, #2b5fab);
+  flex-shrink: 0;
+}
+
+.typeBadge,
+.categoryBadge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.15rem 0.45rem;
+  border-radius: 999px;
+  background: var(--msp-surface-2, #f4f7fb);
+  border: 1px solid var(--msp-border-light, #e8eef5);
+  color: var(--msp-muted, #5c6b82);
+  font-size: 0.72rem;
+  font-weight: 650;
+  white-space: nowrap;
+}
+
+.visibilityPill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.28rem;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  padding: 0.18rem 0.5rem;
+  font-size: 0.72rem;
+  font-weight: 650;
+  cursor: pointer;
+}
+
+.visibilityPillOn {
+  background: rgba(16, 185, 129, 0.12);
+  color: #047857;
+  border-color: rgba(16, 185, 129, 0.25);
+}
+
+.visibilityPillOff {
+  background: rgba(100, 116, 139, 0.1);
+  color: #64748b;
+  border-color: rgba(100, 116, 139, 0.2);
+}
+
+.mutedCell {
+  color: var(--msp-muted, #5c6b82);
+  white-space: nowrap;
+  font-size: 0.78rem;
+}
+
+.colActions {
+  width: 1%;
+  white-space: nowrap;
+  text-align: right;
+}
+
+.rowActions {
+  display: inline-flex;
+  gap: 0.2rem;
+  justify-content: flex-end;
+}
+
+.moveList {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  max-height: min(50vh, 360px);
+  overflow: auto;
+  border: 1px solid var(--msp-border-light, #e8eef5);
+  border-radius: 10px;
+  padding: 0.35rem;
+}
+
+.moveOption {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  width: 100%;
+  border: 0;
+  background: transparent;
+  text-align: left;
+  padding: 0.55rem 0.65rem;
+  border-radius: 8px;
+  cursor: pointer;
+  color: var(--msp-text, #1a2b3c);
+  font-size: 0.84rem;
+}
+
+.moveOption:hover:not(:disabled) {
+  background: rgba(43, 95, 171, 0.08);
+}
+
+.moveOptionCurrent {
+  background: var(--msp-accent-soft, rgba(43, 95, 171, 0.12));
+}
+
+.moveOptionAction {
+  margin-left: auto;
+  color: var(--msp-accent, #2b5fab);
+  font-size: 0.75rem;
+  font-weight: 650;
+}
+
+@media (max-width: 900px) {
+  .vaultLayout {
+    grid-template-columns: 1fr;
+  }
+
+  .treePane {
+    max-height: 180px;
+  }
+}
+
 .toolbar {
   display: flex;
   align-items: flex-start;
@@ -15,13 +320,6 @@
 .toolbarIntro {
   flex: 1;
   min-width: 220px;
-}
-
-.introText {
-  margin: 0;
-  color: var(--msp-muted, #5c6b82);
-  font-size: 0.88rem;
-  line-height: 1.45;
 }
 
 .vaultNavRow {

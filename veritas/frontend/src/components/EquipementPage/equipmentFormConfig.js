@@ -230,7 +230,13 @@ export function inferComputerTypeFromInventory(inventory = {}) {
     const mapped = mapSmbiosChassisType(code);
     if (COMPUTER_TYPE_VALUES.has(mapped)) return mapped;
   }
-  return canonicalizeComputerType(hardware.formFactor || chassis.model || "");
+  const pcSystemType = Number(chassis.pcSystemType ?? inventory.pcSystemType ?? inventory.domain?.pcSystemType);
+  if (Number.isFinite(pcSystemType)) {
+    if (pcSystemType === 2) return "laptop";
+    if (pcSystemType === 8) return "tablet";
+    if (pcSystemType === 1 || pcSystemType === 3) return "desktop";
+  }
+  return canonicalizeComputerType(hardware.formFactor || chassis.model || inventory.modele || inventory.model || "");
 }
 export const FIREWALL_TYPE_OPTIONS = [{
   value: "materiel",

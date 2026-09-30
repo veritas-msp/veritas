@@ -9,12 +9,12 @@ public sealed class InventoryCollector
 {
     private static readonly HashSet<string> LightCollectors = new(StringComparer.OrdinalIgnoreCase)
     {
-        "os", "domain", "session", "network", "hardware", "updates", "performance", "sensors", "security"
+        "os", "domain", "session", "network", "hardware", "chassis", "updates", "performance", "sensors", "security"
     };
 
     private static readonly HashSet<string> FullOnlyCollectors = new(StringComparer.OrdinalIgnoreCase)
     {
-        "chassis", "license", "printers", "shares", "services", "peripherals", "software"
+        "license", "printers", "shares", "services", "peripherals", "software"
     };
 
     public Dictionary<string, object?> Collect(IReadOnlyDictionary<string, bool> collectors, string mode)
@@ -149,21 +149,30 @@ public sealed class InventoryCollector
 
     private static void CollectChassis(Dictionary<string, object?> inventory)
     {
-        var cs = QueryObjects("SELECT Manufacturer, Model FROM Win32_ComputerSystem").FirstOrDefault();
+        var cs = QueryObjects("SELECT Manufacturer, Model, PCSystemType FROM Win32_ComputerSystem").FirstOrDefault();
         var bios = QueryObjects("SELECT SerialNumber FROM Win32_BIOS").FirstOrDefault();
-        var enclosure = QueryObjects("SELECT ChassisTypes FROM Win32_SystemEnclosure").FirstOrDefault();
-        var manufacturer = NormalizeText(Str(cs, "Manufacturer"));
+        var enclosure = QueryObjects("SELECT ChassisTypes, SerialNumber, Manufacturer FROM Win32_SystemEnclosure").FirstOrDefault();
+        var manufacturer = NormalizeText(Str(cs, "Manufacturer")) ?? NormalizeText(Str(enclosure, "Manufacturer"));
         var model = NormalizeText(Str(cs, "Model"));
-        var serial = NormalizeText(Str(bios, "SerialNumber"));
-        if (manufacturer is null && model is null && serial is null) return;
+        var serial = NormalizeText(Str(bios, "SerialNumber")) ?? NormalizeText(Str(enclosure, "SerialNumber"));
+        var chassisTypes = ToIntArray(enclosure?["ChassisTypes"]);
+        var pcSystemType = ToInt(cs?["PCSystemType"]);
+        if (manufacturer is null && model is null && serial is null && chassisTypes.Length == 0 && pcSystemType is null)
+            return;
 
-        inventory["chassis"] = new Dictionary<string, object?>
+        var chassis = new Dictionary<string, object?>
         {
             ["manufacturer"] = manufacturer,
             ["model"] = model,
             ["serialNumber"] = serial,
-            ["chassisTypes"] = ToIntArray(enclosure?["ChassisTypes"])
+            ["chassisTypes"] = chassisTypes
         };
+        if (pcSystemType is int pst)
+            chassis["pcSystemType"] = pst;
+        inventory["chassis"] = chassis;
+        if (pcSystemType is int pstTop)
+            inventory["pcSystemType"] = pstTop;
+
         if (manufacturer is not null)
         {
             inventory["fabricant"] = manufacturer;
@@ -180,6 +189,54 @@ public sealed class InventoryCollector
             inventory["numeroSerie"] = serial;
             inventory["serial"] = serial;
         }
+
+        var computerType = MapComputerType(chassisTypes, pcSystemType, model);
+        if (computerType is not null)
+        {
+            inventory["computerType"] = computerType;
+            inventory["type"] = computerType;
+        }
+    }
+
+    private static string? MapComputerType(int[] chassisTypes, int? pcSystemType, string? model)
+    {
+        foreach (var code in chassisTypes)
+        {
+            var mapped = code switch
+            {
+                3 or 4 or 5 or 6 or 7 or 15 or 16 => "desktop",
+                8 or 9 or 10 or 14 or 31 or 32 => "laptop",
+                11 or 30 => "tablet",
+                13 => "all-in-one",
+                24 or 35 or 36 => "mini-pc",
+                _ => null
+            };
+            if (mapped is not null) return mapped;
+        }
+
+        if (pcSystemType is int pst)
+        {
+            var mapped = pst switch
+            {
+                1 or 3 => "desktop",
+                2 => "laptop",
+                8 => "tablet",
+                _ => null
+            };
+            if (mapped is not null) return mapped;
+        }
+
+        if (string.IsNullOrWhiteSpace(model)) return null;
+        var hint = model.ToLowerInvariant();
+        if (hint.Contains("laptop") || hint.Contains("notebook") || hint.Contains("thinkpad") || hint.Contains("latitude") || hint.Contains("elitebook") || hint.Contains("probook") || hint.Contains("yoga") || hint.Contains("xps"))
+            return "laptop";
+        if (hint.Contains("optiplex") || hint.Contains("thinkcentre") || hint.Contains("prodesk") || hint.Contains("elitedesk") || hint.Contains("precision"))
+            return "desktop";
+        if (hint.Contains("nuc") || hint.Contains("mini") || hint.Contains("tiny") || hint.Contains("micro"))
+            return "mini-pc";
+        if (hint.Contains("aio") || hint.Contains("all-in-one") || hint.Contains("ideacentre aio"))
+            return "all-in-one";
+        return null;
     }
 
     private static void CollectHardware(Dictionary<string, object?> inventory, bool full)
@@ -667,10 +724,24 @@ public sealed class InventoryCollector
 
     private static int[] ToIntArray(object? value)
     {
+        if (value is null) return Array.Empty<int>();
         if (value is ushort[] us) return us.Select(v => (int)v).ToArray();
-        if (value is int[] ints) return ints;
         if (value is short[] sh) return sh.Select(v => (int)v).ToArray();
-        return Array.Empty<int>();
+        if (value is int[] ints) return ints;
+        if (value is uint[] uints) return uints.Select(v => (int)v).ToArray();
+        if (value is byte[] bytes) return bytes.Select(v => (int)v).ToArray();
+        if (value is Array arr)
+        {
+            var list = new List<int>(arr.Length);
+            foreach (var item in arr)
+            {
+                var n = ToInt(item);
+                if (n is int i and > 0) list.Add(i);
+            }
+            return list.ToArray();
+        }
+        var single = ToInt(value);
+        return single is int s and > 0 ? new[] { s } : Array.Empty<int>();
     }
 
     private static double? BytesToGb(object? value)

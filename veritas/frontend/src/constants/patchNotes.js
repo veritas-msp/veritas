@@ -5,6 +5,16 @@
  */
 export const PATCH_NOTES = [
   {
+    version: "1.0.51",
+    date: "2026-09-30",
+    highlights: [
+      "Coffre-fort documentaire : arborescence, déplacement de dossiers/documents, renommage, et visibilité portail (dossier ou document).",
+      "Fiche entreprise : un seul squelette de chargement sur la carte ; coffre-fort en explorateur plus clair.",
+      "Équipements : défilement horizontal des périphériques, pagination par 50, en-tête de fiche aligné contacts / entreprises.",
+      "RMM : marque, modèle, numéro de série et type d’ordinateur mieux remontés (agent + inventaire)."
+    ]
+  },
+  {
     version: "1.0.50",
     date: "2026-09-30",
     highlights: [

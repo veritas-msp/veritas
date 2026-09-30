@@ -141,11 +141,55 @@ function mapFolderRow(row) {
     parentId: row.parent_id || null,
     name: row.name || "",
     sortOrder: Number(row.sort_order) || 0,
+    visibleToClient: row.visible_to_client === true,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
     fileCount: Number(row.file_count) || 0,
     childCount: Number(row.child_count) || 0
   };
+}
+
+async function assertFolderMoveAllowed(clientId, folderId, newParentId) {
+  if (!newParentId) return;
+  if (String(newParentId) === String(folderId)) {
+    const err = new Error("A folder cannot be moved into itself.");
+    err.status = 400;
+    throw err;
+  }
+  const { rows } = await pool.query(
+    `WITH RECURSIVE descendants AS (
+       SELECT id FROM v_b_client_file_folders
+        WHERE id = $1 AND client_id = $2 AND is_deleted = FALSE
+       UNION ALL
+       SELECT f.id
+         FROM v_b_client_file_folders f
+         JOIN descendants d ON f.parent_id = d.id
+        WHERE f.client_id = $2 AND f.is_deleted = FALSE
+     )
+     SELECT 1 FROM descendants WHERE id = $3 LIMIT 1`,
+    [folderId, clientId, newParentId]
+  );
+  if (rows.length) {
+    const err = new Error("A folder cannot be moved into one of its subfolders.");
+    err.status = 400;
+    throw err;
+  }
+}
+
+async function hasFolderVisibilityColumn() {
+  try {
+    const { rows } = await pool.query(
+      `SELECT 1
+         FROM information_schema.columns
+        WHERE table_schema = 'public'
+          AND table_name = 'v_b_client_file_folders'
+          AND column_name = 'visible_to_client'
+        LIMIT 1`
+    );
+    return rows.length > 0;
+  } catch {
+    return false;
+  }
 }
 
 router.get("/", verifyJWT, requireAnyPermission("documents.view", "clients_detail.vault"), async (req, res) => {
@@ -202,15 +246,19 @@ router.get("/folders", verifyJWT, requireAnyPermission("documents.view", "client
     if (!Number.isFinite(clientId) || clientId <= 0) {
       return res.status(400).json({ error: "clientId required." });
     }
-    const parentRaw = req.query.parentId;
+    const treeMode = String(req.query.tree || "") === "1" || String(req.query.tree || "").toLowerCase() === "true";
     const values = [clientId];
-    let parentClause = "f.parent_id IS NULL";
-    if (parentRaw && parentRaw !== "root" && parentRaw !== "null") {
-      if (!isUuid(parentRaw)) {
-        return res.status(400).json({ error: "parentId invalide." });
+    let parentClause = "";
+    if (!treeMode) {
+      const parentRaw = req.query.parentId;
+      parentClause = "AND f.parent_id IS NULL";
+      if (parentRaw && parentRaw !== "root" && parentRaw !== "null") {
+        if (!isUuid(parentRaw)) {
+          return res.status(400).json({ error: "parentId invalide." });
+        }
+        values.push(parentRaw);
+        parentClause = `AND f.parent_id = $${values.length}`;
       }
-      values.push(parentRaw);
-      parentClause = `f.parent_id = $${values.length}`;
     }
     const { rows } = await pool.query(
       `SELECT f.*,
@@ -219,7 +267,7 @@ router.get("/folders", verifyJWT, requireAnyPermission("documents.view", "client
               (SELECT COUNT(*)::int FROM v_b_client_file_folders c
                 WHERE c.parent_id = f.id AND c.is_deleted = FALSE) AS child_count
          FROM v_b_client_file_folders f
-        WHERE f.client_id = $1 AND f.is_deleted = FALSE AND ${parentClause}
+        WHERE f.client_id = $1 AND f.is_deleted = FALSE ${parentClause}
         ORDER BY f.sort_order ASC, lower(f.name) ASC`,
       values
     );
@@ -245,6 +293,8 @@ router.post("/folders", verifyJWT, requireAnyPermission("documents.create", "cli
       return res.status(400).json({ error: "Folder name required." });
     }
     const parentId = await resolveFolderIdForClient(clientId, req.body?.parentId);
+    const visibleToClient = parseVisibleToClient(req.body?.visibleToClient ?? req.body?.visible_to_client);
+    const hasVisibility = await hasFolderVisibilityColumn();
     const { rows: sortRows } = await pool.query(
       `SELECT COALESCE(MAX(sort_order), -1) + 1 AS next
          FROM v_b_client_file_folders
@@ -253,10 +303,14 @@ router.post("/folders", verifyJWT, requireAnyPermission("documents.create", "cli
     );
     const sortOrder = Number(sortRows[0]?.next) || 0;
     const { rows } = await pool.query(
-      `INSERT INTO v_b_client_file_folders (client_id, parent_id, name, sort_order)
-       VALUES ($1, $2, $3, $4)
-       RETURNING *, 0 AS file_count, 0 AS child_count`,
-      [clientId, parentId, name, sortOrder]
+      hasVisibility
+        ? `INSERT INTO v_b_client_file_folders (client_id, parent_id, name, sort_order, visible_to_client)
+           VALUES ($1, $2, $3, $4, $5)
+           RETURNING *, 0 AS file_count, 0 AS child_count`
+        : `INSERT INTO v_b_client_file_folders (client_id, parent_id, name, sort_order)
+           VALUES ($1, $2, $3, $4)
+           RETURNING *, 0 AS file_count, 0 AS child_count`,
+      hasVisibility ? [clientId, parentId, name, sortOrder, visibleToClient] : [clientId, parentId, name, sortOrder]
     );
     res.status(201).json({ folder: mapFolderRow(rows[0]) });
   } catch (err) {
@@ -271,10 +325,17 @@ router.patch("/folders/:id", verifyJWT, requireAnyPermission("documents.edit", "
     if (!(await hasClientFileFoldersTable()) || !isUuid(req.params.id)) {
       return res.status(404).json({ error: "Folder not found." });
     }
+    const existing = await pool.query(
+      `SELECT * FROM v_b_client_file_folders WHERE id = $1 AND is_deleted = FALSE`,
+      [req.params.id]
+    );
+    if (!existing.rows.length) return res.status(404).json({ error: "Folder not found." });
+    const current = existing.rows[0];
     const name = req.body?.name != null ? String(req.body.name).trim().slice(0, 160) : null;
     if (name != null && !name) {
       return res.status(400).json({ error: "Folder name required." });
     }
+    const hasVisibilityBody = req.body?.visibleToClient !== undefined || req.body?.visible_to_client !== undefined;
     const sets = ["updated_at = NOW()"];
     const values = [];
     if (name != null) {
@@ -282,17 +343,17 @@ router.patch("/folders/:id", verifyJWT, requireAnyPermission("documents.edit", "
       sets.push(`name = $${values.length}`);
     }
     if (req.body?.parentId !== undefined) {
-      const existing = await pool.query(
-        `SELECT client_id FROM v_b_client_file_folders WHERE id = $1 AND is_deleted = FALSE`,
-        [req.params.id]
-      );
-      if (!existing.rows.length) return res.status(404).json({ error: "Folder not found." });
-      const parentId = await resolveFolderIdForClient(existing.rows[0].client_id, req.body.parentId);
-      if (parentId === req.params.id) {
-        return res.status(400).json({ error: "A folder cannot be moved into itself." });
-      }
+      const parentId = await resolveFolderIdForClient(current.client_id, req.body.parentId);
+      await assertFolderMoveAllowed(current.client_id, req.params.id, parentId);
       values.push(parentId);
       sets.push(`parent_id = $${values.length}`);
+    }
+    if (hasVisibilityBody) {
+      if (!(await hasFolderVisibilityColumn())) {
+        return res.status(503).json({ error: "Folder visibility unavailable (migration in progress)." });
+      }
+      values.push(parseVisibleToClient(req.body.visibleToClient ?? req.body.visible_to_client));
+      sets.push(`visible_to_client = $${values.length}`);
     }
     if (values.length === 0) {
       return res.status(400).json({ error: "No data to update." });
@@ -507,7 +568,8 @@ router.patch("/:id", verifyJWT, requireAnyPermission("documents.edit", "clients_
     const hasDescription = req.body?.description !== undefined;
     const hasVisibility = req.body?.visibleToClient !== undefined || req.body?.visible_to_client !== undefined;
     const hasCategory = req.body?.category !== undefined;
-    if (!hasDescription && !hasVisibility && !hasCategory) {
+    const hasFolderId = req.body?.folderId !== undefined || req.body?.folder_id !== undefined;
+    if (!hasDescription && !hasVisibility && !hasCategory && !hasFolderId) {
       return res.status(400).json({
         error: "No data to update."
       });
@@ -550,13 +612,31 @@ router.patch("/:id", verifyJWT, requireAnyPermission("documents.edit", "clients_
       const before = await pool.query(`SELECT visible_to_client FROM v_b_client_files WHERE id = $1 AND is_deleted = FALSE`, [req.params.id]);
       previouslyVisible = before.rows[0]?.visible_to_client === true;
     }
+    if (hasFolderId) {
+      await ensureClientFileFoldersSchema();
+      const fileRow = await pool.query(
+        `SELECT client_id FROM v_b_client_files WHERE id = $1 AND is_deleted = FALSE`,
+        [req.params.id]
+      );
+      if (!fileRow.rows.length) {
+        return res.status(404).json({ error: "File not found." });
+      }
+      const nextFolderId = await resolveFolderIdForClient(
+        fileRow.rows[0].client_id,
+        req.body.folderId ?? req.body.folder_id
+      );
+      values.push(nextFolderId);
+      sets.push(`folder_id = $${values.length}`);
+    }
     values.push(req.params.id);
     const visibilitySelect = await resolveVisibilitySelect();
+    const hasFolders = await hasClientFileFoldersTable();
+    const folderSelect = hasFolders ? "folder_id" : "NULL::uuid AS folder_id";
     const result = await pool.query(`UPDATE v_b_client_files
        SET ${sets.join(", ")}, updated_at = NOW()
        WHERE id = $${values.length} AND is_deleted = FALSE
        RETURNING id, client_id, client_name, file_name, mime_type, size_bytes,
-                 category, description, uploaded_by, created_at, ${visibilitySelect}`, values);
+                 category, description, uploaded_by, created_at, ${folderSelect}, ${visibilitySelect}`, values);
     if (!result.rows.length) {
       return res.status(404).json({
         error: "File not found."

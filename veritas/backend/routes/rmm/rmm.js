@@ -432,8 +432,10 @@ router.post("/enroll", rmmEnrollRateLimit, async (req, res) => {
     const secretHash = hashRmmSecret(agentSecret);
     const existing = await pool.query(`SELECT id, status, agent_version FROM v_b_rmm_agents WHERE machine_id = $1 LIMIT 1`, [String(machineId)]);
     let agentRow;
+    // Request an immediate full sync after enroll so chassis / serial / software land ASAP.
     const familyConfig = JSON.stringify({
-      equipmentFamily
+      equipmentFamily,
+      syncRequestedAt: new Date().toISOString()
     });
     if (existing.rows.length) {
       const updated = await pool.query(`UPDATE v_b_rmm_agents
@@ -1158,7 +1160,7 @@ router.post("/agents/:id/request-update", verifyJWT, requireAdmin, async (req, r
         latest_agent_version: WINDOWS_INSTALLER_VERSION
       });
     }
-    if (!agentMsiAvailable() && process.platform !== "win32") {
+    if (!agentMsiAvailable()) {
       return res.status(404).json({
         error: "Agent MSI package unavailable on server",
         code: "MSI_UNAVAILABLE",
@@ -1221,7 +1223,7 @@ router.post("/agents/:id/cancel-update", verifyJWT, requireAdmin, async (req, re
       });
     }
     const result = await pool.query(`UPDATE v_b_rmm_agents
-       SET config = COALESCE(config, '{}'::jsonb) - 'updateRequestedAt' - 'heartbeatRequestedAt',
+       SET config = COALESCE(config, '{}'::jsonb) - 'updateRequestedAt',
            updated_at = NOW()
        WHERE id = $1 AND status = 'active'
        RETURNING id, config`, [req.params.id]);

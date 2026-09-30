@@ -60,6 +60,7 @@ import EquipmentPage from "../EquipementPage/EquipmentPage";
 import InfrastructureMap from "./InfrastructureMap";
 import EnterpriseRmmEnrollmentHero from "../Rmm/EnterpriseRmmEnrollmentHero";
 import EnterpriseDetailSkeleton from "./EnterpriseDetailSkeleton";
+import EnterpriseMapTabSkeleton from "./EnterpriseMapTabSkeleton";
 import UpcomingEventBookmarks from "./UpcomingEventBookmarks";
 import styles from "./EnterpriseDetailPage.module.css";
 import { useContractModuleOptions } from "../../hooks/useContractModuleOptions";
@@ -451,6 +452,9 @@ export default function ClientDetailPage({
   const [recentEvents, setRecentEvents] = useState([]);
   const [loadingClientActivity, setLoadingClientActivity] = useState(false);
   const [overviewTab, setOverviewTab] = useState("map");
+  const [mapInfraLoading, setMapInfraLoading] = useState(true);
+  const [mapEquipmentLoading, setMapEquipmentLoading] = useState(true);
+  const mapTabReadyRef = useRef(false);
   const [antivirusData, setAntivirusData] = useState([]);
   const [antispamData, setAntispamData] = useState([]);
   const [mailinblackTenants, setMailinblackTenants] = useState([]);
@@ -905,6 +909,24 @@ export default function ClientDetailPage({
       window.clearTimeout(timeout);
     };
   }, [loading, client?.id]);
+  useEffect(() => {
+    if (overviewTab !== "map") return;
+    mapTabReadyRef.current = false;
+    setMapInfraLoading(true);
+    setMapEquipmentLoading(true);
+  }, [client?.id, overviewTab]);
+  const mapTabContentReady = !mapInfraLoading && !mapEquipmentLoading;
+  useEffect(() => {
+    if (mapTabContentReady) mapTabReadyRef.current = true;
+  }, [mapTabContentReady]);
+  const handleMapInfraLoadingChange = useCallback(isLoading => {
+    if (isLoading && mapTabReadyRef.current) return;
+    setMapInfraLoading(Boolean(isLoading));
+  }, []);
+  const handleMapEquipmentLoadingChange = useCallback(isLoading => {
+    if (isLoading && mapTabReadyRef.current) return;
+    setMapEquipmentLoading(Boolean(isLoading));
+  }, []);
   useEffect(() => {
     const timer = window.setInterval(() => setSlaNow(Date.now()), 60000);
     return () => window.clearInterval(timer);
@@ -3318,6 +3340,8 @@ export default function ClientDetailPage({
 
             <div className={styles.mainCommunityPanels}>
             {overviewTab === "map" ? <>
+            {!mapTabContentReady ? <EnterpriseMapTabSkeleton infraTitle={copy.infraMapTitle} peripheralsTitle={copy.peripheralsTitle} loadingAria={copy.mapTabLoadingAria} /> : null}
+            <div className={mapTabContentReady ? undefined : styles.mapTabContentHidden} aria-hidden={!mapTabContentReady}>
             <section className={styles.panel} data-guide="enterprise-infra-map">
               <div className={styles.panelHeader}>
                 <div className={styles.panelHeaderMain}>
@@ -3326,7 +3350,7 @@ export default function ClientDetailPage({
                 </div>
               </div>
               <div className={styles.panelBody}>
-                <InfrastructureMap clientId={client.id} clientSnapshot={client} equipmentRevision={equipmentRevision} isCommunity={isCommunity} backupInstances={backupInstances} antivirusItems={configuredAntivirusSolutions} antispamItems={configuredAntispamSolutions} domainItems={configuredDomains} domainIntegrationReady={globalOvhConfigured} sslItems={sslData} licenceItems={licencesData} customFamilyMap={customFamilyMap} siteFilter={activeSiteFilter} campaignItems={campaigns}                 tenantInfo={{
+                <InfrastructureMap clientId={client.id} clientSnapshot={client} equipmentRevision={equipmentRevision} isCommunity={isCommunity} hideSkeleton onLoadingChange={handleMapInfraLoadingChange} backupInstances={backupInstances} antivirusItems={configuredAntivirusSolutions} antispamItems={configuredAntispamSolutions} domainItems={configuredDomains} domainIntegrationReady={globalOvhConfigured} sslItems={sslData} licenceItems={licencesData} customFamilyMap={customFamilyMap} siteFilter={activeSiteFilter} campaignItems={campaigns}                 tenantInfo={{
                   configured: configuredMicrosoftTenants.length > 0 || Boolean(client?.has_azure_credentials || client?.hasAzureCredentials || client?.azureHasCredentials),
                   items: configuredMicrosoftTenants,
                   tenantId: configuredMicrosoftTenants[0]?.tenantId || client?.Office365?.tenantId || client?.microsoft?.tenantId || null,
@@ -3489,7 +3513,7 @@ export default function ClientDetailPage({
                     sites: formData.sites ?? client.sites ?? [],
                     ssid: Array.isArray(client.ssids) && client.ssids.length ? client.ssids : client.ssid,
                     ssids: Array.isArray(client.ssids) && client.ssids.length ? client.ssids : client.ssid
-                  } : null} equipmentRevision={equipmentRevision} initialEmbeddedType={initialPeripheralsUi?.activeType || null} initialTablePageByType={initialPeripheralsUi?.tablePageByType || null} initialTableSort={initialPeripheralsUi?.tableSort || null} initialEmbeddedPageSize={initialPeripheralsUi?.pageSize || null} onNavigate={onNavigate} searchQuery={equipmentSearchQuery} onSearchQueryChange={setEquipmentSearchQuery} onFilteredCountChange={setEquipmentResultCount} onTotalCountChange={setHardwareEquipmentTotalCount} onEquipmentChanged={refreshClientEquipment} onClientSsidsUpdated={ssids => {
+                  } : null} equipmentRevision={equipmentRevision} hideEmbeddedSkeleton onLoadingChange={handleMapEquipmentLoadingChange} initialEmbeddedType={initialPeripheralsUi?.activeType || null} initialTablePageByType={initialPeripheralsUi?.tablePageByType || null} initialTableSort={initialPeripheralsUi?.tableSort || null} initialEmbeddedPageSize={initialPeripheralsUi?.pageSize || null} onNavigate={onNavigate} searchQuery={equipmentSearchQuery} onSearchQueryChange={setEquipmentSearchQuery} onFilteredCountChange={setEquipmentResultCount} onTotalCountChange={setHardwareEquipmentTotalCount} onEquipmentChanged={refreshClientEquipment} onClientSsidsUpdated={ssids => {
                     setClient(prev => prev ? {
                       ...prev,
                       ssid: ssids,
@@ -3504,6 +3528,7 @@ export default function ClientDetailPage({
                 </div>
               </div>
             </section>
+            </div>
             </> : null}
 
             {overviewTab === "activity" ? <section className={styles.panel} data-guide="enterprise-activity-panel">

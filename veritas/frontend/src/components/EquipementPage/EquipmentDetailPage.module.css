@@ -95,11 +95,13 @@
 
 .dashboardSplit {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(220px, 260px);
-  gap: 0.5rem;
-  align-items: start;
+  grid-template-columns: minmax(0, 1fr) minmax(280px, 340px);
+  gap: 0.75rem;
+  align-items: stretch;
   width: 100%;
   min-width: 0;
+  flex: 1;
+  min-height: 0;
 }
 
 .dashboardSplitSolo {
@@ -109,8 +111,9 @@
 .dashboardMain {
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
+  gap: 0.65rem;
   min-width: 0;
+  min-height: 0;
 }
 
 .dashboardAside {
@@ -118,49 +121,12 @@
   flex-direction: column;
   gap: 0.5rem;
   min-width: 0;
+  min-height: 0;
   position: sticky;
   top: 5.5rem;
-}
-
-.heroMetaPlain {
-  align-items: center;
-  gap: 0;
-  flex-wrap: wrap;
-}
-
-.heroMetaPlainItem {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.3rem;
-  font-size: 0.8125rem;
-  color: var(--msp-muted);
-  font-weight: 500;
-}
-
-.heroMetaCompanyLink {
-  color: var(--msp-muted);
-}
-
-.heroMetaCompanyIcon {
-  width: 0.9rem;
-  height: 0.9rem;
-  flex-shrink: 0;
-  color: inherit;
-}
-
-.heroMetaPlainItem + .heroMetaPlainItem::before {
-  content: "·";
-  margin: 0 0.45rem;
-  color: var(--msp-muted-light, #94a3b8);
-  font-weight: 400;
-}
-
-.heroMetaStatusOnline {
-  color: var(--msp-accent);
-}
-
-.heroMetaStatusOffline {
-  color: var(--msp-muted);
+  align-self: start;
+  max-height: calc(100vh - 6.5rem);
+  overflow: auto;
 }
 
 .activityStack {

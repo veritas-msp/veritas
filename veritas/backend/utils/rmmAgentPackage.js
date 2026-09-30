@@ -7,7 +7,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const BACKEND_DIR = path.resolve(__dirname, "..");
 const VERITAS_ROOT = path.resolve(BACKEND_DIR, "..");
 
-export const WINDOWS_INSTALLER_VERSION = "1.0.13";
+export const WINDOWS_INSTALLER_VERSION = "1.0.16";
 const WINDOWS_MSI_FILE = "VeritasAgent-Windows-Setup.msi";
 
 function resolveAgentRoot() {

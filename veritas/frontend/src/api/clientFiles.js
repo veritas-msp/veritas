@@ -28,11 +28,16 @@ export async function fetchClientFiles({
 export async function fetchClientFileFolders({
   clientId,
   parentId = null,
+  tree = false,
   signal
 } = {}) {
   const params = new URLSearchParams();
   if (clientId) params.set("clientId", clientId);
-  if (parentId) params.set("parentId", parentId);
+  if (tree) {
+    params.set("tree", "1");
+  } else if (parentId) {
+    params.set("parentId", parentId);
+  }
   const res = await fetch(`${BASE}/folders?${params}`, {
     credentials: "include",
     signal
@@ -48,13 +53,14 @@ export async function fetchClientFileFolders({
 export async function createClientFileFolder({
   clientId,
   name,
-  parentId = null
+  parentId = null,
+  visibleToClient = false
 }) {
   const res = await fetch(`${BASE}/folders`, {
     method: "POST",
     credentials: "include",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ clientId, name, parentId: parentId || null })
+    body: JSON.stringify({ clientId, name, parentId: parentId || null, visibleToClient: Boolean(visibleToClient) })
   });
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
@@ -64,12 +70,21 @@ export async function createClientFileFolder({
   return data.folder;
 }
 
-export async function renameClientFileFolder(id, name) {
+export async function updateClientFileFolder(id, {
+  name,
+  parentId,
+  visibleToClient
+} = {}) {
+  const body = {};
+  if (name !== undefined) body.name = name;
+  if (parentId !== undefined) body.parentId = parentId;
+  if (visibleToClient !== undefined) body.visibleToClient = visibleToClient;
+  if (!Object.keys(body).length) throw new Error("No data to update.");
   const res = await fetch(`${BASE}/folders/${id}`, {
     method: "PATCH",
     credentials: "include",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ name })
+    body: JSON.stringify(body)
   });
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
@@ -77,6 +92,11 @@ export async function renameClientFileFolder(id, name) {
   }
   const data = await res.json();
   return data.folder;
+}
+
+/** @deprecated Prefer updateClientFileFolder */
+export async function renameClientFileFolder(id, name) {
+  return updateClientFileFolder(id, { name });
 }
 
 export async function deleteClientFileFolder(id) {
@@ -130,12 +150,14 @@ export async function deleteClientFile(id) {
 export async function updateClientFile(id, {
   description,
   visibleToClient,
-  category
+  category,
+  folderId
 } = {}) {
   const body = {};
   if (description !== undefined) body.description = description;
   if (visibleToClient !== undefined) body.visibleToClient = visibleToClient;
   if (category !== undefined) body.category = category;
+  if (folderId !== undefined) body.folderId = folderId;
   if (!Object.keys(body).length) {
     throw new Error("No data to update.");
   }

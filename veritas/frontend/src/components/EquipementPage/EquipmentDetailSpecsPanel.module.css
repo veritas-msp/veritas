@@ -22,6 +22,58 @@
   border-radius: 10px;
 }
 
+.panelRmmIdentity {
+  flex: 0 0 auto;
+  border-radius: 12px;
+}
+
+.rmmIdentityLayout {
+  display: grid;
+  grid-template-columns: minmax(220px, 320px) minmax(0, 1fr);
+  gap: 0.75rem;
+  padding: 0.75rem;
+  align-items: stretch;
+}
+
+.rmmMapCard {
+  min-width: 0;
+  border: 1px solid var(--msp-border-light, #e2e8f0);
+  border-radius: 12px;
+  background: var(--msp-surface-2, #f7f9fc);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.rmmFieldCards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 0.55rem;
+  min-width: 0;
+  align-content: start;
+}
+
+.rmmFieldCard {
+  min-width: 0;
+  padding: 0.55rem 0.65rem;
+  border: 1px solid var(--msp-border-light, #e2e8f0);
+  border-radius: 10px;
+  background: var(--msp-surface-2, #f7f9fc);
+}
+
+.rmmFieldCard .field {
+  gap: 0.2rem;
+}
+
+.rmmFieldCard .fieldLabel {
+  font-size: 0.62rem;
+}
+
+.rmmFieldCard .fieldValue {
+  font-size: 0.82rem;
+  line-height: 1.3;
+}
+
 .rmmVeritasStrip {
   display: flex;
   flex-wrap: wrap;
@@ -395,6 +447,51 @@
   font-size: 0.68rem;
   line-height: 1.35;
   color: var(--msp-muted, #5c6b82);
+}
+
+.siteVignetteLarge {
+  margin: 0;
+  height: 100%;
+  min-height: 180px;
+  grid-template-columns: 1fr;
+  grid-template-rows: minmax(140px, 1fr) auto;
+  gap: 0.55rem;
+  padding: 0.55rem;
+  border: none;
+  background: transparent;
+  align-items: stretch;
+}
+
+.siteVignetteLarge .siteVignetteMap {
+  width: 100%;
+  height: auto;
+  min-height: 140px;
+  border-radius: 10px;
+}
+
+.siteVignetteLarge .siteVignetteName {
+  font-size: 0.84rem;
+  font-weight: 600;
+}
+
+.siteVignetteLarge .siteVignetteAddress {
+  font-size: 0.74rem;
+}
+
+@media (max-width: 1100px) {
+  .rmmIdentityLayout {
+    grid-template-columns: 1fr;
+  }
+
+  .siteVignetteLarge {
+    min-height: 160px;
+    grid-template-columns: minmax(160px, 240px) minmax(0, 1fr);
+    grid-template-rows: auto;
+  }
+
+  .siteVignetteLarge .siteVignetteMap {
+    min-height: 120px;
+  }
 }
 
 @media (max-width: 1100px) {
