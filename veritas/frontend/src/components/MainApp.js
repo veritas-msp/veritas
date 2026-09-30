@@ -438,7 +438,28 @@ export default function MainApp() {
     setAntispamDetailData(routeState.antispamDetailData);
     setTenantDetailData(routeState.tenantDetailData);
     setTicketDetailData(routeState.ticketDetailData);
-    setTicketCreateData(routeState.ticketCreateData);
+    setTicketCreateData(prev => {
+      // La query /tickets/new ne sérialise que clientId/contactId : ne pas écraser un préremplissage
+      // supervision (formulaire + objet/description) lors d'une re-sync URL.
+      if (routeState.docType !== "TicketCreate") return null;
+      const fromRoute = routeState.ticketCreateData;
+      if (!fromRoute) return prev;
+      const prevHasPrefill = Boolean(
+        prev?.prefillSource === "supervision" ||
+        prev?.supportFormId ||
+        prev?.lockSupportForm ||
+        (prev?.supportFormValues && typeof prev.supportFormValues === "object" && Object.keys(prev.supportFormValues).length > 0) ||
+        prev?.title ||
+        prev?.description
+      );
+      if (!prevHasPrefill) return fromRoute;
+      return {
+        ...fromRoute,
+        ...prev,
+        clientId: fromRoute.clientId || prev.clientId,
+        contactId: fromRoute.contactId || prev.contactId
+      };
+    });
     setTicketSalesCreateData(routeState.ticketSalesCreateData);
     setContactDetailData(routeState.contactDetailData);
     setPrestataireDetailData(routeState.prestataireDetailData);
