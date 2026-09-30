@@ -103,19 +103,21 @@ export default function EquipmentAlertsGlance({
     };
   }, [equipmentId, days, limit, glance.error]);
 
-  return <section className={styles.root} aria-label={glance.title}>
+  const isEmpty = !loading && !error && alerts.length === 0;
+
+  return <section className={`${styles.root} ${isEmpty ? styles.rootCompact : ""}`.trim()} aria-label={glance.title}>
       <header className={styles.header}>
         <div className={styles.headerText}>
           <h2 className={styles.title}>
             <Icon icon="mdi:history" className={styles.titleIcon} aria-hidden />
             {glance.title}
           </h2>
-          <p className={styles.subtitle}>{glance.subtitle}</p>
+          {!isEmpty ? <p className={styles.subtitle}>{glance.subtitle}</p> : null}
         </div>
-        {!loading && !error ? <span className={styles.count}>{alerts.length}</span> : null}
+        {isEmpty ? <p className={styles.emptyInline}>{glance.empty}</p> : !loading && !error ? <span className={styles.count}>{alerts.length}</span> : null}
       </header>
 
-      {loading ? <p className={styles.state}>{glance.loading}</p> : error ? <p className={`${styles.state} ${styles.stateError}`}>{glance.error}</p> : alerts.length === 0 ? <p className={styles.state}>{glance.empty}</p> : <div className={styles.tableWrap}>
+      {loading ? <p className={styles.state}>{glance.loading}</p> : error ? <p className={`${styles.state} ${styles.stateError}`}>{glance.error}</p> : alerts.length === 0 ? null : <div className={styles.tableWrap}>
           <table className={styles.table}>
             <thead>
               <tr>

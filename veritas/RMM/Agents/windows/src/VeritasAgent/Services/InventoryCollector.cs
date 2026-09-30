@@ -318,10 +318,15 @@ public sealed class InventoryCollector
     private static void CollectPerformance(Dictionary<string, object?> inventory)
     {
         var os = QueryObjects("SELECT TotalVisibleMemorySize, FreePhysicalMemory, LastBootUpTime FROM Win32_OperatingSystem").FirstOrDefault();
-        var cpus = QueryObjects("SELECT LoadPercentage FROM Win32_Processor");
-        double? cpuLoad = null;
-        var loads = cpus.Select(c => ToDouble(c["LoadPercentage"])).Where(v => v is not null).Select(v => v!.Value).ToList();
-        if (loads.Count > 0) cpuLoad = Math.Round(loads.Average(), 1);
+        // Win32_Processor.LoadPercentage is a single WMI snapshot that often stays at 0 on modern Windows.
+        // Prefer the Processor performance counter (two samples) and fall back to WMI.
+        var cpuLoad = ReadCpuUsagePct();
+        if (cpuLoad is null)
+        {
+            var cpus = QueryObjects("SELECT LoadPercentage FROM Win32_Processor");
+            var loads = cpus.Select(c => ToDouble(c["LoadPercentage"])).Where(v => v is not null).Select(v => v!.Value).ToList();
+            if (loads.Count > 0) cpuLoad = Math.Round(loads.Average(), 1);
+        }
 
         double? ramTotal = null, ramFree = null, ramUsed = null, ramPct = null;
         if (os is not null)
@@ -352,6 +357,26 @@ public sealed class InventoryCollector
             ["uptimeSeconds"] = uptime,
             ["processCount"] = System.Diagnostics.Process.GetProcesses().Length
         };
+    }
+
+    /// <summary>
+    /// Reliable CPU load via performance counters. First NextValue() is typically 0 — sample twice.
+    /// </summary>
+    private static double? ReadCpuUsagePct()
+    {
+        try
+        {
+            using var counter = new System.Diagnostics.PerformanceCounter("Processor", "% Processor Time", "_Total", readOnly: true);
+            _ = counter.NextValue();
+            Thread.Sleep(450);
+            var value = counter.NextValue();
+            if (double.IsNaN(value) || double.IsInfinity(value)) return null;
+            return Math.Round(Math.Clamp(value, 0d, 100d), 1);
+        }
+        catch
+        {
+            return null;
+        }
     }
 
     private static void CollectSensors(Dictionary<string, object?> inventory)

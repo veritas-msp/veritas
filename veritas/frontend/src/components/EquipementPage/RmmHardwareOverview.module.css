@@ -1,12 +1,12 @@
 .scoreHero {
   display: grid;
-  grid-template-columns: minmax(90px, 18%) minmax(0, 1fr);
-  min-height: 120px;
+  grid-template-columns: minmax(72px, 16%) minmax(0, 1fr);
+  min-height: 0;
   border: 1px solid var(--msp-border);
-  border-radius: 14px;
+  border-radius: 12px;
   background: var(--msp-surface);
   overflow: hidden;
-  box-shadow: var(--msp-shadow-soft, 0 2px 12px rgba(11, 33, 56, 0.05));
+  box-shadow: var(--msp-shadow-soft, 0 1px 8px rgba(11, 33, 56, 0.04));
 }
 
 .scoreHero_good .scoreVisual {
@@ -29,10 +29,10 @@
 }
 
 .scoreGrade {
-  font-size: clamp(2.2rem, 4vw, 3.2rem);
-  font-weight: 900;
+  font-size: clamp(1.6rem, 3vw, 2.2rem);
+  font-weight: 600;
   line-height: 1;
-  letter-spacing: -0.04em;
+  letter-spacing: -0.02em;
   color: var(--msp-text);
 }
 
@@ -44,62 +44,62 @@
   display: flex;
   flex-direction: column;
   justify-content: center;
-  gap: 0.25rem;
-  padding: 0.75rem 1rem;
+  gap: 0.15rem;
+  padding: 0.5rem 0.75rem;
   min-width: 0;
 }
 
 .scoreEyebrow {
   margin: 0;
   font-size: 0.62rem;
-  font-weight: 700;
-  letter-spacing: 0.06em;
+  font-weight: 500;
+  letter-spacing: 0.04em;
   text-transform: uppercase;
   color: var(--msp-muted);
 }
 
 .scoreHeadline {
   margin: 0;
-  font-size: clamp(1.25rem, 2vw, 1.65rem);
-  font-weight: 850;
-  line-height: 1;
+  font-size: clamp(1.05rem, 1.6vw, 1.35rem);
+  font-weight: 600;
+  line-height: 1.1;
   color: var(--msp-text);
 }
 
 .scoreOutOf {
-  font-size: 0.45em;
-  font-weight: 650;
+  font-size: 0.5em;
+  font-weight: 500;
   color: var(--msp-muted);
   margin-left: 0.15rem;
 }
 
 .scoreHint {
   margin: 0;
-  font-size: 0.78rem;
+  font-size: 0.72rem;
   color: var(--msp-muted);
 }
 
 .scoreMeters {
   max-width: 280px;
-  margin-top: 0.1rem;
+  margin-top: 0.05rem;
 }
 
 .scoreMeta {
-  margin: 0.1rem 0 0;
-  font-size: 0.72rem;
+  margin: 0.05rem 0 0;
+  font-size: 0.68rem;
   color: var(--msp-muted);
 }
 
 .scoreChip {
   display: inline-flex;
   align-items: center;
-  gap: 0.45rem;
-  padding: 0.35rem 0.7rem;
+  gap: 0.35rem;
+  padding: 0.25rem 0.55rem;
   border-radius: 999px;
   border: 1px solid var(--msp-border);
   background: var(--msp-surface);
-  font-size: 0.78rem;
-  font-weight: 700;
+  font-size: 0.74rem;
+  font-weight: 500;
   color: var(--msp-text);
 }
 
@@ -111,36 +111,37 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-width: 1.4rem;
-  height: 1.4rem;
+  min-width: 1.25rem;
+  height: 1.25rem;
   border-radius: 999px;
   background: color-mix(in srgb, currentColor 16%, transparent);
-  font-weight: 850;
+  font-weight: 600;
 }
 
 .scoreAside {
   display: grid;
   grid-template-columns: auto 1fr;
-  gap: 0.65rem;
+  gap: 0.5rem;
   align-items: center;
-  padding: 0.65rem 0.8rem;
+  padding: 0.5rem 0.65rem;
   border: 1px solid var(--msp-border);
-  border-radius: var(--msp-radius, 16px);
+  border-radius: 12px;
   background: var(--msp-surface);
-  box-shadow: var(--msp-shadow);
+  box-shadow: var(--msp-shadow-soft, 0 1px 8px rgba(11, 33, 56, 0.04));
   min-width: 0;
+  flex-shrink: 0;
 }
 
 .scoreAsideGrade {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 2.4rem;
-  height: 2.4rem;
-  border-radius: 10px;
-  font-size: 1.15rem;
-  font-weight: 850;
-  letter-spacing: -0.02em;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 8px;
+  font-size: 1rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
   background: var(--msp-surface-2, #f7f9fc);
   color: var(--msp-text);
 }
@@ -164,36 +165,36 @@
   min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: 0.1rem;
+  gap: 0.05rem;
 }
 
 .scoreAsideTitle {
   margin: 0;
-  font-size: 0.68rem;
-  font-weight: 700;
-  letter-spacing: 0.06em;
+  font-size: 0.62rem;
+  font-weight: 500;
+  letter-spacing: 0.04em;
   text-transform: uppercase;
   color: var(--msp-muted);
 }
 
 .scoreAsideScore {
   margin: 0;
-  font-size: 1.05rem;
-  font-weight: 750;
+  font-size: 0.95rem;
+  font-weight: 600;
   line-height: 1.15;
   color: var(--msp-text);
 }
 
 .scoreAsideOutOf {
-  font-size: 0.72rem;
-  font-weight: 600;
+  font-size: 0.68rem;
+  font-weight: 500;
   color: var(--msp-muted);
   margin-left: 0.1rem;
 }
 
 .scoreAsideHint {
   margin: 0;
-  font-size: 0.7rem;
+  font-size: 0.68rem;
   color: var(--msp-muted);
   white-space: nowrap;
   overflow: hidden;
@@ -201,8 +202,8 @@
 }
 
 .scoreAsideMeter {
-  margin-top: 0.25rem;
-  height: 4px;
+  margin-top: 0.2rem;
+  height: 3px;
   border-radius: 999px;
   background: var(--msp-surface-2, #e8eef6);
   overflow: hidden;
@@ -216,72 +217,91 @@
 .root {
   display: flex;
   flex-direction: column;
-  gap: 0.7rem;
+  gap: 0.4rem;
   min-width: 0;
+  min-height: 0;
   width: 100%;
+  flex: 1 1 auto;
+  height: 100%;
 }
 
 .sectionHeader {
   display: flex;
   flex-direction: column;
-  gap: 0.15rem;
+  gap: 0.1rem;
   min-width: 0;
 }
 
 .sectionTitle {
   margin: 0;
-  font-size: 0.98rem;
-  font-weight: 750;
-  letter-spacing: -0.01em;
+  font-size: 0.9rem;
+  font-weight: 600;
+  letter-spacing: 0;
   color: var(--msp-text);
   text-transform: none;
 }
 
 .sectionSubtitle {
   margin: 0;
-  font-size: 0.78rem;
+  font-size: 0.74rem;
   color: var(--msp-muted);
 }
 
 .grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 0.7rem;
+  grid-auto-rows: 1fr;
+  gap: 0.4rem;
   align-items: stretch;
+  flex: 1 1 auto;
+  min-height: 0;
 }
 
 .inventoryStack {
   display: flex;
   flex-direction: column;
-  gap: 0.7rem;
+  gap: 0.4rem;
   min-width: 0;
+  min-height: 0;
+  flex: 1 1 auto;
+  height: 100%;
 }
 
 .inventorySplit {
   display: grid;
-  grid-template-columns: minmax(0, 1.15fr) minmax(0, 0.85fr);
-  gap: 0.7rem;
+  grid-template-columns: minmax(0, 1.25fr) minmax(0, 0.75fr);
+  gap: 0.4rem;
   align-items: stretch;
   min-width: 0;
+  min-height: 0;
+  flex: 1 1 auto;
+  height: 100%;
 }
 
 .inventorySide {
   display: flex;
   flex-direction: column;
-  gap: 0.7rem;
+  gap: 0.4rem;
   min-width: 0;
+  min-height: 0;
+}
+
+.inventorySide > * {
+  flex: 1 1 0;
+  min-height: 0;
 }
 
 .cardScrollable {
-  min-height: 240px;
-  max-height: min(55vh, 480px);
+  min-height: 0;
+  max-height: none;
   align-items: stretch;
+  height: 100%;
 }
 
 .inventorySoftwareCard {
-  min-height: 100%;
+  min-height: 0;
   height: 100%;
-  max-height: min(60vh, 520px);
+  max-height: none;
 }
 
 .cardScrollable .cardVisual {
@@ -297,33 +317,33 @@
 
 .factListScroll {
   flex: 1 1 auto;
-  min-height: 8rem;
+  min-height: 0;
   max-height: none;
   overflow-y: auto;
   overscroll-behavior: contain;
-  padding-right: 0.65rem;
-  margin: 0.1rem 0 0;
+  padding-right: 0.4rem;
+  margin: 0.05rem 0 0;
   scrollbar-gutter: stable;
 }
 
 .factListScroll li {
-  padding-right: 0.25rem;
+  padding-right: 0.15rem;
 }
 
 .factListScroll .factValue {
-  padding-right: 0.1rem;
+  padding-right: 0.05rem;
 }
 
 .card {
   display: grid;
-  grid-template-columns: minmax(72px, 18%) minmax(0, 1fr);
+  grid-template-columns: minmax(52px, 12%) minmax(0, 1fr);
   min-height: 0;
   min-width: 0;
   border: 1px solid var(--msp-border);
-  border-radius: 14px;
+  border-radius: 12px;
   background: var(--msp-surface);
   overflow: hidden;
-  box-shadow: var(--msp-shadow-soft, 0 2px 12px rgba(11, 33, 56, 0.05));
+  box-shadow: var(--msp-shadow-soft, 0 1px 8px rgba(11, 33, 56, 0.04));
 }
 
 .cardVisual {
@@ -332,13 +352,13 @@
   justify-content: center;
   background: transparent;
   border-right: 1px solid var(--msp-border);
-  padding: 0.55rem 0.35rem;
+  padding: 0.35rem 0.2rem;
 }
 
 .cardIcon {
-  font-size: 2.35rem;
+  font-size: 1.65rem;
   color: var(--msp-accent);
-  opacity: 0.88;
+  opacity: 0.9;
   filter: none;
 }
 
@@ -352,26 +372,26 @@
   display: flex;
   flex-direction: column;
   justify-content: center;
-  gap: 0.28rem;
-  padding: 0.75rem 0.9rem 0.8rem;
+  gap: 0.15rem;
+  padding: 0.45rem 0.65rem 0.5rem;
   min-width: 0;
 }
 
 .cardEyebrow {
   margin: 0;
-  font-size: 0.62rem;
-  font-weight: 700;
-  letter-spacing: 0.06em;
+  font-size: 0.58rem;
+  font-weight: 500;
+  letter-spacing: 0.04em;
   text-transform: uppercase;
   color: var(--msp-muted);
 }
 
 .cardHeadline {
   margin: 0;
-  font-size: clamp(1.05rem, 1.6vw, 1.35rem);
-  font-weight: 800;
-  line-height: 1.15;
-  letter-spacing: -0.02em;
+  font-size: clamp(0.92rem, 1.2vw, 1.1rem);
+  font-weight: 600;
+  line-height: 1.2;
+  letter-spacing: 0;
   color: var(--msp-text);
   overflow: hidden;
   display: -webkit-box;
@@ -381,17 +401,17 @@
 
 .cardHint {
   margin: 0;
-  font-size: 0.78rem;
-  line-height: 1.3;
+  font-size: 0.72rem;
+  line-height: 1.25;
   color: var(--msp-muted);
 }
 
 .meter {
-  height: 6px;
+  height: 4px;
   border-radius: 999px;
   background: color-mix(in srgb, var(--msp-border) 75%, transparent);
   overflow: hidden;
-  margin-top: 0.05rem;
+  margin-top: 0.02rem;
   max-width: 100%;
 }
 
@@ -418,31 +438,32 @@
 
 .factList {
   list-style: none;
-  margin: 0.2rem 0 0;
-  padding: 0.35rem 0 0;
+  margin: 0.1rem 0 0;
+  padding: 0.25rem 0 0;
   border-top: 1px solid color-mix(in srgb, var(--msp-border) 80%, transparent);
   display: flex;
   flex-direction: column;
-  gap: 0.22rem;
+  gap: 0.1rem;
   min-width: 0;
 }
 
 .factList li {
   display: grid;
   grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
-  gap: 0.5rem;
+  gap: 0.35rem;
   align-items: baseline;
   min-width: 0;
 }
 
 .factLabel {
-  font-size: 0.72rem;
+  font-size: 0.68rem;
+  font-weight: 400;
   color: var(--msp-muted);
 }
 
 .factValue {
-  font-size: 0.78rem;
-  font-weight: 700;
+  font-size: 0.72rem;
+  font-weight: 500;
   color: var(--msp-text);
   text-align: right;
   overflow: hidden;
@@ -453,28 +474,28 @@
 .ramBoard {
   display: flex;
   flex-direction: column;
-  gap: 0.35rem;
-  margin-top: 0.2rem;
+  gap: 0.2rem;
+  margin-top: 0.1rem;
   min-width: 0;
 }
 
 .ramSlots {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.35rem;
+  gap: 0.25rem;
   align-items: flex-end;
 }
 
 .ramSlot {
-  width: 32px;
-  height: 58px;
-  border-radius: 6px;
+  width: 24px;
+  height: 42px;
+  border-radius: 5px;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: flex-end;
-  gap: 0.2rem;
-  padding: 0.3rem 0.15rem 0.25rem;
+  gap: 0.15rem;
+  padding: 0.2rem 0.1rem 0.18rem;
   position: relative;
   transition: transform 0.15s ease, box-shadow 0.15s ease;
 }
@@ -482,11 +503,11 @@
 .ramSlot::before {
   content: "";
   position: absolute;
-  top: 7px;
+  top: 5px;
   left: 50%;
   transform: translateX(-50%);
-  width: 12px;
-  height: 5px;
+  width: 9px;
+  height: 4px;
   border-radius: 2px;
   background: currentColor;
   opacity: 0.35;
@@ -496,7 +517,7 @@
   color: #fff;
   background: linear-gradient(180deg, color-mix(in srgb, var(--msp-accent) 88%, #fff) 0%, var(--msp-accent) 100%);
   border: 1px solid color-mix(in srgb, var(--msp-accent) 80%, var(--msp-text));
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.18), 0 4px 10px color-mix(in srgb, var(--msp-accent) 22%, transparent);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.18), 0 2px 6px color-mix(in srgb, var(--msp-accent) 18%, transparent);
 }
 
 .ramSlotEmpty {
@@ -508,7 +529,7 @@
 
 .ramSlotChip {
   width: 70%;
-  height: 3px;
+  height: 2px;
   border-radius: 999px;
   background: rgba(255, 255, 255, 0.35);
 }
@@ -518,55 +539,54 @@
 }
 
 .ramSlotLabel {
-  font-size: 0.58rem;
-  font-weight: 800;
+  font-size: 0.52rem;
+  font-weight: 600;
   color: #fff;
   line-height: 1;
 }
 
 .ramSlotEmpty .ramSlotLabel {
   color: var(--msp-muted);
-  font-weight: 650;
+  font-weight: 500;
 }
 
 .ramSlotsCaption {
   margin: 0;
-  font-size: 0.76rem;
+  font-size: 0.7rem;
   color: var(--msp-text);
 }
 
 .ramSlotsCaption strong {
-  font-size: 0.88rem;
-  font-weight: 800;
+  font-size: 0.78rem;
+  font-weight: 600;
 }
 
 .ramSlotsCaptionMuted {
   color: var(--msp-muted);
-  font-weight: 500;
+  font-weight: 400;
 }
 
 .ramSlotsMissing {
-  margin: 0.2rem 0 0;
-  font-size: 0.72rem;
+  margin: 0.1rem 0 0;
+  font-size: 0.68rem;
   color: var(--msp-muted);
 }
 
 @media (max-width: 1100px) {
   .scoreHero {
-    grid-template-columns: minmax(90px, 22%) minmax(0, 1fr);
-    min-height: 130px;
+    grid-template-columns: minmax(72px, 20%) minmax(0, 1fr);
   }
 
   .card {
-    grid-template-columns: minmax(64px, 16%) minmax(0, 1fr);
+    grid-template-columns: minmax(48px, 14%) minmax(0, 1fr);
   }
 
   .cardIcon {
-    font-size: 2rem;
+    font-size: 1.45rem;
   }
 
   .cardBody {
-    padding: 0.65rem 0.75rem;
+    padding: 0.4rem 0.55rem;
   }
 }
 
@@ -576,11 +596,12 @@
   }
 
   .inventorySoftwareCard {
-    max-height: min(45vh, 360px);
+    max-height: min(40vh, 320px);
   }
 
   .grid {
     grid-template-columns: 1fr;
+    grid-auto-rows: auto;
   }
 
   .scoreHero {
@@ -591,7 +612,7 @@
   .scoreVisual {
     border-right: none;
     border-bottom: 1px solid var(--msp-border);
-    padding: 0.75rem 0;
+    padding: 0.5rem 0;
   }
 
   .card {

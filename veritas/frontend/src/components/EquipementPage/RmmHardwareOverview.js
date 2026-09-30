@@ -42,7 +42,7 @@ function HardwareCard({
         {visibleFacts.length > 0 ? <ul className={styles.factList}>
             {visibleFacts.map(fact => <li key={`${fact.label}-${fact.value}`}>
                 <span className={styles.factLabel}>{fact.label}</span>
-                <strong className={styles.factValue}>{fact.value}</strong>
+                <span className={styles.factValue}>{fact.value}</span>
               </li>)}
           </ul> : null}
       </div>

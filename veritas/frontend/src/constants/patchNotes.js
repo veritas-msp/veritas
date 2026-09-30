@@ -5,6 +5,14 @@
  */
 export const PATCH_NOTES = [
   {
+    version: "1.0.46",
+    date: "2026-09-30",
+    highlights: [
+      "Fiche poste RMM : onglets Général, Cybersécurité et Software plus condensés, typo allégée, hauteur d’écran mieux utilisée.",
+      "Métriques Activité : mesure CPU plus fiable (agent 1.0.14) — fin des historiques à 0 % dus à WMI."
+    ]
+  },
+  {
     version: "1.0.45",
     date: "2026-09-30",
     highlights: [

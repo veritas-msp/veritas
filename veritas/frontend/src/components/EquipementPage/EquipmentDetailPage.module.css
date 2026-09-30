@@ -10,9 +10,15 @@
 }
 
 .equipmentDetailPage {
-  
   position: relative;
   z-index: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.equipmentDetailPage.equipmentDetailPageFill {
+  overflow: hidden;
 }
 
 .pageHero {
@@ -45,9 +51,13 @@
   max-width: none;
   width: 100%;
   margin: 0;
-  padding: 1rem 1.25rem 2rem;
-  gap: 0.75rem;
+  padding: 0.65rem 1rem 0.85rem;
+  gap: 0.45rem;
   box-sizing: border-box;
+}
+
+.equipmentDetailPageFill .shell {
+  overflow: hidden;
 }
 
 .tabBar {
@@ -89,18 +99,27 @@
 .mainContent {
   display: flex;
   flex-direction: column;
-  gap: 0.55rem;
+  gap: 0.4rem;
   min-width: 0;
   width: 100%;
 }
 
+.mainContentFill {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: hidden;
+}
+
 .dashboardSplit {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(240px, 280px);
-  gap: 0.55rem;
-  align-items: start;
+  grid-template-columns: minmax(0, 1fr) minmax(200px, 240px);
+  gap: 0.4rem;
+  align-items: stretch;
   width: 100%;
   min-width: 0;
+  min-height: 0;
+  height: 100%;
+  flex: 1 1 auto;
 }
 
 .dashboardSplitSolo {
@@ -110,17 +129,35 @@
 .dashboardMain {
   display: flex;
   flex-direction: column;
-  gap: 0.55rem;
+  gap: 0.4rem;
   min-width: 0;
+  min-height: 0;
+  height: 100%;
+  overflow: hidden;
+}
+
+.dashboardMain > :last-child {
+  flex: 1 1 auto;
+  min-height: 0;
 }
 
 .dashboardAside {
   display: flex;
   flex-direction: column;
-  gap: 0.65rem;
+  gap: 0.4rem;
   min-width: 0;
+  align-self: start;
   position: sticky;
-  top: 5.5rem;
+  top: 0;
+}
+
+.tabPanelFill {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
+  height: 100%;
+  overflow: hidden;
 }
 
 .heroMetaPlain {
@@ -260,6 +297,23 @@
 @media (max-width: 1100px) {
   .dashboardSplit {
     grid-template-columns: 1fr;
+  }
+
+  .equipmentDetailPage.equipmentDetailPageFill {
+    overflow: auto;
+  }
+
+  .mainContentFill {
+    overflow: visible;
+    height: auto;
+    flex: none;
+  }
+
+  .dashboardSplit,
+  .dashboardMain,
+  .tabPanelFill {
+    height: auto;
+    overflow: visible;
   }
 }
 

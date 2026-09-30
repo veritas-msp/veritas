@@ -8,10 +8,10 @@
     <UseWindowsForms>true</UseWindowsForms>
     <RootNamespace>VeritasAgent</RootNamespace>
     <AssemblyName>VeritasAgent</AssemblyName>
-    <Version>1.0.13</Version>
-    <AssemblyVersion>1.0.13.0</AssemblyVersion>
-    <FileVersion>1.0.13.0</FileVersion>
-    <InformationalVersion>1.0.13</InformationalVersion>
+    <Version>1.0.14</Version>
+    <AssemblyVersion>1.0.14.0</AssemblyVersion>
+    <FileVersion>1.0.14.0</FileVersion>
+    <InformationalVersion>1.0.14</InformationalVersion>
     <Company>Veritas</Company>
     <Product>Veritas Agent</Product>
     <Description>Veritas RMM Windows agent service</Description>
@@ -28,6 +28,7 @@
     <PackageReference Include="Microsoft.Extensions.Hosting" Version="10.0.10" />
     <PackageReference Include="Microsoft.Extensions.Hosting.WindowsServices" Version="10.0.10" />
     <PackageReference Include="System.IO.FileSystem.AccessControl" Version="5.0.0" />
+    <PackageReference Include="System.Diagnostics.PerformanceCounter" Version="10.0.10" />
     <PackageReference Include="System.Management" Version="10.0.10" />
     <PackageReference Include="System.ServiceProcess.ServiceController" Version="10.0.10" />
   </ItemGroup>

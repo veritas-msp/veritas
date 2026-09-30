@@ -222,6 +222,7 @@ export default function EquipmentDetailPage({
   const showRmmMetricsTab = equipment?.type === "Ordinateurs" && rmmManaged;
   const showRmmPeripheralsTab = showRmmMetricsTab;
   const showRmmOperationsTab = showRmmMetricsTab;
+  const fillHeightTab = rightPanelTab === "dashboard" || rightPanelTab === "operations" && showRmmOperationsTab || rightPanelTab === "peripherals" && showRmmPeripheralsTab;
   const showSupervisionTab = Boolean(checkmkIntegrationEnabled && checkmkMapping?.checkmk_host_name && isCheckMKMappableType(equipment?.type) && equipment?.type !== "Internet");
   const rmmMetricsAgent = useMemo(() => showRmmMetricsTab ? buildRmmAgentRowFromEquipment(equipment) : null, [equipment, showRmmMetricsTab]);
   useEffect(() => {
@@ -1407,7 +1408,7 @@ export default function EquipmentDetailPage({
         <div className={styles.error}>{copy.notFound}</div>
       </div>;
   }
-  return <div className={`${enterpriseDetailStyles.contratDetailPage} ${enterpriseDetailStyles.enterpriseDetailPage} ${styles.equipmentDetailPage}`}>
+  return <div className={`${enterpriseDetailStyles.contratDetailPage} ${enterpriseDetailStyles.enterpriseDetailPage} ${styles.equipmentDetailPage} ${fillHeightTab ? styles.equipmentDetailPageFill : ""}`.trim()}>
       <header className={enterpriseDetailStyles.pageHero} data-guide="equipment-hero">
         <div className={enterpriseDetailStyles.heroRow}>
           <div className={enterpriseDetailStyles.heroMain}>
@@ -1613,7 +1614,7 @@ export default function EquipmentDetailPage({
 
         {rmmManaged && rmmSyncPending ? <RmmSyncPendingNotice equipment={equipment} syncRequestedAt={rmmSyncRequestedAt} heartbeatIntervalMinutes={rmmHeartbeatMinutes} onCancel={handleRmmCancelSync} cancelling={rmmSyncRequesting} /> : null}
 
-        <div className={styles.mainContent}>
+        <div className={`${styles.mainContent} ${fillHeightTab ? styles.mainContentFill : ""}`.trim()}>
           {rightPanelTab === 'dashboard' && <div className={`${styles.dashboardSplit} ${showRmmHeroStatus && rmmDeviceHealth ? "" : styles.dashboardSplitSolo}`.trim()}>
               <div className={styles.dashboardMain}>
                 <EquipmentDetailSpecsPanel equipment={equipment} formData={formData} clientSites={clientSites} clientSsids={clientSsids} peerFirewalls={peerFirewalls} peerServers={peerServers} peerStorage={peerStorage} onOpenEquipment={openLinkedEquipment} remoteAccessAction={remoteAccessAction} />
@@ -1717,7 +1718,7 @@ export default function EquipmentDetailPage({
               </div>
             </section>}
 
-          {rightPanelTab === "peripherals" && showRmmPeripheralsTab ? <RmmMonitoringPanel equipment={equipment} heartbeatIntervalMinutes={rmmHeartbeatMinutes} variant="peripherals" agentStatusInHero={showRmmHeroStatus} /> : null}
+          {rightPanelTab === "peripherals" && showRmmPeripheralsTab ? <div className={styles.tabPanelFill}><RmmMonitoringPanel equipment={equipment} heartbeatIntervalMinutes={rmmHeartbeatMinutes} variant="peripherals" agentStatusInHero={showRmmHeroStatus} /></div> : null}
 
           {rightPanelTab === "operations" && showRmmOperationsTab ? <div className={styles.dashboardSplit}>
               <div className={styles.dashboardMain}>

@@ -3,7 +3,7 @@ namespace VeritasAgent;
 internal static class AgentConstants
 {
     public const string ServiceName = "VeritasAgent";
-    public const string AgentVersion = "1.0.13";
+    public const string AgentVersion = "1.0.14";
     public const string MutexName = @"Global\VeritasAgentSingleton";
 
     public static string ProgramDataDir =>

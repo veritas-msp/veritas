@@ -42,6 +42,8 @@ export function dimIdToDrive(dimId) {
   return `${String.fromCharCode(64 + id)}:`;
 }
 function clampSmallInt(value, max = 32767) {
+  // Number(null) === 0 in JS — treat nullish as missing so we don't store fake zeros.
+  if (value == null || value === "") return null;
   const n = Math.round(Number(value));
   if (!Number.isFinite(n)) return null;
   return Math.max(0, Math.min(max, n));
@@ -89,8 +91,10 @@ export function extractRmmMetricSamples(inventory = {}, collectors = {}) {
   }
   if (collectors.performance !== false) {
     const perf = inventory.performance || {};
-    const cpu = clampSmallInt(perf.cpuUsagePct, 100);
-    const ram = clampSmallInt(perf.ramUsagePct, 100);
+    const cpuRaw = perf.cpuUsagePct ?? perf.cpu_usage_pct ?? perf.cpuPercent ?? perf.cpu;
+    const ramRaw = perf.ramUsagePct ?? perf.ram_usage_pct ?? perf.ramPercent ?? perf.ram;
+    const cpu = clampSmallInt(cpuRaw, 100);
+    const ram = clampSmallInt(ramRaw, 100);
     if (cpu != null) {
       samples.push({
         metricId: RMM_METRIC_ID.CPU_USAGE_PCT,
