@@ -27,14 +27,6 @@
   border-radius: 12px;
 }
 
-.rmmIdentityLayout {
-  display: grid;
-  grid-template-columns: minmax(220px, 320px) minmax(0, 1fr);
-  gap: 0.75rem;
-  padding: 0.75rem;
-  align-items: stretch;
-}
-
 .rmmGroupedStack {
   display: flex;
   flex-direction: column;
@@ -43,19 +35,25 @@
   min-width: 0;
 }
 
-.rmmGroupedStack .rmmIdentityLayout {
-  padding: 0;
+.rmmGroupedStack .rmmMapCard {
+  max-width: 420px;
 }
 
 .rmmSectionCards {
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 0.65rem;
+  align-items: stretch;
   min-width: 0;
+  width: 100%;
 }
 
 .rmmSectionCards .sectionCard {
   margin: 0;
+  min-width: 0;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
 }
 
 .rmmSectionCards .sectionHeader {
@@ -64,11 +62,22 @@
 
 .rmmSectionCards .fieldGrid {
   padding: 0.55rem 0.75rem 0.75rem;
+  flex: 1;
 }
 
-@media (max-width: 900px) {
-  .rmmIdentityLayout {
+@media (max-width: 1100px) {
+  .rmmSectionCards {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 700px) {
+  .rmmSectionCards {
     grid-template-columns: 1fr;
+  }
+
+  .rmmGroupedStack .rmmMapCard {
+    max-width: none;
   }
 }
 
@@ -516,10 +525,6 @@
 }
 
 @media (max-width: 1100px) {
-  .rmmIdentityLayout {
-    grid-template-columns: 1fr;
-  }
-
   .siteVignetteLarge {
     min-height: 160px;
     grid-template-columns: minmax(160px, 240px) minmax(0, 1fr);

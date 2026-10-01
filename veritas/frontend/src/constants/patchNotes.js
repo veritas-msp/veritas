@@ -5,6 +5,13 @@
  */
 export const PATCH_NOTES = [
   {
+    version: "1.0.55",
+    date: "2026-10-01",
+    highlights: [
+      "Fiche RMM · Général : les cartes d’infos (facturation, identité, champs perso) s’affichent sur une même ligne (3 par rangée)."
+    ]
+  },
+  {
     version: "1.0.54",
     date: "2026-09-30",
     highlights: [

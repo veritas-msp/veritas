@@ -437,29 +437,27 @@ export default function EquipmentDetailSpecsPanel({
     const hasGroupedContent = rmmGroupedSections.some(section => (section.fields || []).length > 0);
     return <section className={`${styles.panel} ${styles.panelRmmIdentity}`}>
         <div className={styles.rmmGroupedStack}>
-          {showLocationMap || hasGroupedContent ? <div className={styles.rmmIdentityLayout}>
-              {showLocationMap ? <div className={styles.rmmMapCard}>
-                  <SiteLocationVignette site={resolvedSite || {
-              name: locationName
-            }} locationLabel={locationName} size="large" />
-                </div> : null}
-              {hasGroupedContent ? <div className={styles.rmmSectionCards}>
-                  {rmmGroupedSections.map(section => {
-              const visibleFields = (section.fields || []).filter(Boolean);
-              if (!visibleFields.length) return null;
-              return <article key={section.id} className={styles.sectionCard}>
-                      <header className={styles.sectionHeader}>
-                        <Icon icon={section.icon || "mdi:information-outline"} className={styles.sectionIcon} aria-hidden />
-                        <div className={styles.sectionHeadText}>
-                          <h3 className={styles.sectionTitle}>{section.label}</h3>
-                        </div>
-                      </header>
-                      <div className={`${styles.fieldGrid} ${styles.fieldGridCompact}`}>
-                        {visibleFields.map(field => <SpecField key={field.key} field={field} remoteAccessAction={remoteAccessAction} equipmentLink={resolveEquipmentLink(field)} copy={copy} />)}
+          {showLocationMap ? <div className={styles.rmmMapCard}>
+              <SiteLocationVignette site={resolvedSite || {
+            name: locationName
+          }} locationLabel={locationName} size="large" />
+            </div> : null}
+          {hasGroupedContent ? <div className={styles.rmmSectionCards}>
+              {rmmGroupedSections.map(section => {
+            const visibleFields = (section.fields || []).filter(Boolean);
+            if (!visibleFields.length) return null;
+            return <article key={section.id} className={styles.sectionCard}>
+                    <header className={styles.sectionHeader}>
+                      <Icon icon={section.icon || "mdi:information-outline"} className={styles.sectionIcon} aria-hidden />
+                      <div className={styles.sectionHeadText}>
+                        <h3 className={styles.sectionTitle}>{section.label}</h3>
                       </div>
-                    </article>;
-            })}
-                </div> : null}
+                    </header>
+                    <div className={`${styles.fieldGrid} ${styles.fieldGridCompact}`}>
+                      {visibleFields.map(field => <SpecField key={field.key} field={field} remoteAccessAction={remoteAccessAction} equipmentLink={resolveEquipmentLink(field)} copy={copy} />)}
+                    </div>
+                  </article>;
+          })}
             </div> : null}
           <RmmHardwareOverview equipment={equipment} variant="resources" />
         </div>
