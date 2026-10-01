@@ -1,5 +1,5 @@
 import { Icon } from "@iconify/react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { FaChevronLeft, FaChevronRight } from "react-icons/fa";
 import MspEmptyState from "../Misc/MspEmptyState/MspEmptyState";
 import SmartTooltip from "../SmartTooltip";
@@ -251,7 +251,8 @@ export default function SupervisionOpsQueue({
   busyId = null,
   localeTag,
   copy,
-  showDomain = true
+  showDomain = true,
+  animateNewRows = false
 }) {
   const columns = copy.columns || {};
   const common = useCommonCopy();
@@ -260,6 +261,51 @@ export default function SupervisionOpsQueue({
   const [sortDir, setSortDir] = useState("asc");
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useDefaultPageSize();
+  const knownIdsRef = useRef(new Set());
+  const primedRef = useRef(false);
+  const [enteringIds, setEnteringIds] = useState(() => new Set());
+  const enterTimersRef = useRef(new Map());
+
+  useEffect(() => {
+    const nextIds = (Array.isArray(items) ? items : []).map(item => item?.id).filter(Boolean);
+    if (!primedRef.current) {
+      knownIdsRef.current = new Set(nextIds);
+      primedRef.current = true;
+      return undefined;
+    }
+    if (!animateNewRows) {
+      knownIdsRef.current = new Set(nextIds);
+      return undefined;
+    }
+    const fresh = nextIds.filter(id => !knownIdsRef.current.has(id));
+    nextIds.forEach(id => knownIdsRef.current.add(id));
+    if (!fresh.length) return undefined;
+    setEnteringIds(prev => {
+      const merged = new Set(prev);
+      fresh.forEach(id => merged.add(id));
+      return merged;
+    });
+    fresh.forEach(id => {
+      const existing = enterTimersRef.current.get(id);
+      if (existing) clearTimeout(existing);
+      const timer = setTimeout(() => {
+        setEnteringIds(prev => {
+          if (!prev.has(id)) return prev;
+          const next = new Set(prev);
+          next.delete(id);
+          return next;
+        });
+        enterTimersRef.current.delete(id);
+      }, 900);
+      enterTimersRef.current.set(id, timer);
+    });
+    return undefined;
+  }, [items, animateNewRows]);
+
+  useEffect(() => () => {
+    enterTimersRef.current.forEach(timer => clearTimeout(timer));
+    enterTimersRef.current.clear();
+  }, []);
   const handleSort = column => {
     if (sortKey === column) {
       setSortDir(prev => prev === "asc" ? "desc" : "asc");
@@ -452,7 +498,7 @@ export default function SupervisionOpsQueue({
                 }));
               }
               if (remediation) collabBits.push(remediation);
-              return <tr key={item.id} className={`${styles.dataRow} ${wf !== "open" ? styles.rowHandled : ""}`} onClick={() => onOpenItem?.(item)}>
+              return <tr key={item.id} className={`${styles.dataRow} ${wf !== "open" ? styles.rowHandled : ""} ${enteringIds.has(item.id) ? styles.rowEnter : ""}`} onClick={() => onOpenItem?.(item)}>
                     <td className={styles.sevCol}>
                       <span className={`${styles.sevIcon} ${toneClass(item.tone, item.severity)}`} aria-hidden title={severityLabel}>
                         <Icon icon={alertRowIcon(item)} />

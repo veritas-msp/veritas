@@ -5,6 +5,15 @@
  */
 export const PATCH_NOTES = [
   {
+    version: "1.0.56",
+    date: "2026-10-01",
+    highlights: [
+      "Centre de supervision : la colonne Entreprise affiche bien le client rattaché au périphérique.",
+      "Sync globale : modal réductible, barre de progression dans l’en-tête, alertes qui apparaissent en direct avec animation.",
+      "Historique : réouverture des alertes « Ticket associé », chevron pour déplier la timeline, corbeille (restaurer / supprimer définitivement)."
+    ]
+  },
+  {
     version: "1.0.55",
     date: "2026-10-01",
     highlights: [

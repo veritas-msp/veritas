@@ -98,6 +98,126 @@
   to { transform: rotate(360deg); }
 }
 
+.fleetSyncProgress {
+  display: inline-flex;
+  align-items: stretch;
+  gap: 0.2rem;
+  min-width: min(280px, 42vw);
+  max-width: min(360px, 54vw);
+  padding: 0.28rem;
+  border-radius: 12px;
+  border: 1px solid color-mix(in srgb, var(--msp-accent, #2b5fab) 32%, transparent);
+  background: color-mix(in srgb, var(--msp-accent, #2b5fab) 8%, var(--msp-surface, #fff));
+  box-shadow: 0 4px 14px rgba(43, 95, 171, 0.08);
+}
+
+.fleetSyncProgressMain {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.28rem;
+  padding: 0.28rem 0.55rem 0.38rem;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.fleetSyncProgressTop {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  min-width: 0;
+  color: var(--msp-accent, #2b5fab);
+  font-size: 0.74rem;
+  font-weight: 600;
+}
+
+.fleetSyncProgressLabel {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.fleetSyncProgressPct {
+  flex-shrink: 0;
+  font-variant-numeric: tabular-nums;
+  font-size: 0.72rem;
+}
+
+.fleetSyncProgressTrack {
+  display: block;
+  height: 5px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--msp-accent, #2b5fab) 14%, var(--msp-surface-2, #e8eef6));
+  overflow: hidden;
+}
+
+.fleetSyncProgressFill {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--msp-accent, #2b5fab);
+  transition: width 0.3s ease;
+}
+
+.fleetSyncProgressHost {
+  font-size: 0.66rem;
+  font-weight: 500;
+  color: var(--msp-muted, #64748b);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.fleetSyncProgressDismiss {
+  display: inline-grid;
+  place-items: center;
+  width: 1.85rem;
+  flex-shrink: 0;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--msp-muted, #64748b);
+  cursor: pointer;
+  font-size: 1rem;
+}
+
+.fleetSyncProgressDismiss:hover {
+  color: var(--msp-text, #0f1c2e);
+  background: color-mix(in srgb, var(--msp-text, #0f1c2e) 6%, transparent);
+}
+
+.fleetSyncProgressDone {
+  border-color: color-mix(in srgb, #059669 35%, transparent);
+  background: color-mix(in srgb, #059669 8%, var(--msp-surface, #fff));
+}
+
+.fleetSyncProgressDone .fleetSyncProgressTop {
+  color: #047857;
+}
+
+.fleetSyncProgressDone .fleetSyncProgressFill {
+  background: #059669;
+}
+
+.fleetSyncProgressErr {
+  border-color: color-mix(in srgb, #b91c1c 35%, transparent);
+  background: color-mix(in srgb, #ef4444 8%, var(--msp-surface, #fff));
+}
+
+.fleetSyncProgressErr .fleetSyncProgressTop {
+  color: #b91c1c;
+}
+
+.fleetSyncProgressErr .fleetSyncProgressFill {
+  background: #b91c1c;
+}
+
 .tabCount {
   min-width: 1.15rem;
   height: 1.15rem;

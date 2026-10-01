@@ -8,6 +8,7 @@ import { adaptMigrationSql } from "../utils/migrationSql.js";
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const root = path.join(__dirname, "..");
 const MIGRATION_FILE = "schema/patches/20260801_supervision_alerts.sql";
+const TRASH_MIGRATION_FILE = "schema/patches/20261001_supervision_alerts_trash.sql";
 let ensured = false;
 
 async function tableExists(client, tableName) {
@@ -19,6 +20,17 @@ async function tableExists(client, tableName) {
   return result.rows.length > 0;
 }
 
+async function runPatch(client, relativePath) {
+  const filePath = path.join(root, relativePath);
+  if (!fs.existsSync(filePath)) {
+    console.warn("[supervision-alerts] Migration file not found:", relativePath);
+    return;
+  }
+  const userResult = await client.query("SELECT current_user");
+  const dbUser = userResult.rows[0]?.current_user || "postgres";
+  await client.query(adaptMigrationSql(fs.readFileSync(filePath, "utf8"), dbUser));
+}
+
 export async function ensureSupervisionAlertsSchema() {
   if (ensured) return;
   if (!(await canRunAutoSchemaMigrations())) return;
@@ -26,14 +38,10 @@ export async function ensureSupervisionAlertsSchema() {
   try {
     const exists = await tableExists(client, "v_b_supervision_alerts");
     if (!exists) {
-      const filePath = path.join(root, MIGRATION_FILE);
-      if (!fs.existsSync(filePath)) {
-        console.warn("[supervision-alerts] Migration file not found:", MIGRATION_FILE);
-        return;
-      }
-      const userResult = await client.query("SELECT current_user");
-      const dbUser = userResult.rows[0]?.current_user || "postgres";
-      await client.query(adaptMigrationSql(fs.readFileSync(filePath, "utf8"), dbUser));
+      await runPatch(client, MIGRATION_FILE);
+    }
+    if (await tableExists(client, "v_b_supervision_alerts")) {
+      await runPatch(client, TRASH_MIGRATION_FILE);
     }
     ensured = true;
   } catch (err) {

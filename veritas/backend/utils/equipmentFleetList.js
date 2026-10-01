@@ -253,7 +253,11 @@ function mapFleetRow(row, familyMeta) {
     id: dbId,
     dbId,
     clientId,
-    clientName: row.client_name || String(clientId),
+    clientName: row.client_name && String(row.client_name).trim()
+      ? String(row.client_name).trim()
+      : clientId != null
+        ? String(clientId)
+        : "",
     type,
     family: familyMeta.family,
     name,

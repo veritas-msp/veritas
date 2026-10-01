@@ -1,11 +1,18 @@
 import { Fragment, useEffect, useMemo, useState } from "react";
 import { Icon } from "@iconify/react";
 import { FaChevronLeft, FaChevronRight } from "react-icons/fa";
+import { toast } from "react-toastify";
 import MspEmptyState from "../Misc/MspEmptyState/MspEmptyState";
 import SmartTooltip from "../SmartTooltip";
 import { formatPageInfo } from "../../i18n/commonI18n";
 import { interpolate } from "../../i18n/translate";
-import { fetchSupervisionAlertEvents, reopenSupervisionAlert } from "../../api/supervisionAlerts";
+import {
+  fetchSupervisionAlertEvents,
+  purgeSupervisionAlert,
+  reopenSupervisionAlert,
+  restoreSupervisionAlert,
+  trashSupervisionAlert
+} from "../../api/supervisionAlerts";
 import { useAppLocale } from "../../hooks/useAppGeneralSettings";
 import { useCommonCopy } from "../../hooks/useCommonCopy";
 import { useDefaultPageSize } from "../../hooks/useDefaultPageSize";
@@ -63,14 +70,20 @@ function statusBadgeClass(status) {
   return styles.statusOpen;
 }
 
+function canReopenAlert(alert) {
+  const status = String(alert?.status || "").toLowerCase();
+  return status === "closed" || status === "linked" || status === "acked";
+}
+
 function HistoryActionButton({
   hint,
   icon,
   onClick,
-  disabled = false
+  disabled = false,
+  danger = false
 }) {
   return <SmartTooltip as="span" content={hint}>
-      <button type="button" className={styles.actionBtn} aria-label={hint} disabled={disabled} onClick={e => {
+      <button type="button" className={`${styles.actionBtn} ${danger ? styles.actionBtnDanger : ""}`} aria-label={hint} disabled={disabled} onClick={e => {
       e.stopPropagation();
       onClick?.(e);
     }}>
@@ -80,7 +93,7 @@ function HistoryActionButton({
 }
 
 function historyAlertDisplay(alert) {
-  const client = String(alert?.clientName || "").trim().toLowerCase();
+  const client = String(alert?.clientName || alert?.meta?.clientName || "").trim().toLowerCase();
   const title = String(alert?.title || "").trim();
   const label = String(alert?.label || "").trim();
   const titleIsClient = Boolean(client && title.toLowerCase() === client);
@@ -101,12 +114,13 @@ function historyAlertDisplay(alert) {
   });
   return {
     reason,
-    subject: [...new Set(parts)].join(" · ")
+    subject: [...new Set(parts)].join(" · "),
+    clientName: String(alert?.clientName || alert?.meta?.clientName || "").trim()
   };
 }
 
 function alertWhen(alert) {
-  return alert?.createdAt || null;
+  return alert?.deletedAt || alert?.createdAt || null;
 }
 
 function SortableHeader({
@@ -133,10 +147,12 @@ export default function SupervisionAlertHistory({
   searchQuery = "",
   domainFilter = "all",
   statusFilter = "all",
+  trashMode = false,
   onSearchChange,
   onDomainFilter,
   onStatusFilter,
-  onReopened,
+  onTrashModeChange,
+  onChanged,
   localeTag,
   copy,
   showDomain = true
@@ -180,7 +196,7 @@ export default function SupervisionAlertHistory({
           });
           break;
         case "company":
-          cmp = text(a.clientName).localeCompare(text(b.clientName), undefined, {
+          cmp = text(historyAlertDisplay(a).clientName).localeCompare(text(historyAlertDisplay(b).clientName), undefined, {
             sensitivity: "base"
           });
           break;
@@ -211,7 +227,7 @@ export default function SupervisionAlertHistory({
   }, [sortedAlerts, currentPage, pageSize]);
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchQuery, domainFilter, statusFilter, sortKey, sortDir, pageSize]);
+  }, [searchQuery, domainFilter, statusFilter, trashMode, sortKey, sortDir, pageSize]);
   useEffect(() => {
     if (currentPage > totalPages) setCurrentPage(totalPages);
   }, [currentPage, totalPages]);
@@ -248,21 +264,35 @@ export default function SupervisionAlertHistory({
     };
   }, [expandedId, eventsByAlert]);
 
-  const handleReopen = async alert => {
+  const clearEventsCache = alertId => {
+    setEventsByAlert(prev => {
+      const next = { ...prev };
+      delete next[alertId];
+      return next;
+    });
+  };
+
+  const runRowAction = async (alert, actionFn) => {
     setBusyId(alert.id);
     try {
-      await reopenSupervisionAlert(alert);
-      setEventsByAlert(prev => {
-        const next = {
-          ...prev
-        };
-        delete next[alert.id];
-        return next;
-      });
-      onReopened?.(alert);
+      await actionFn(alert);
+      clearEventsCache(alert.id);
+      if (expandedId === alert.id) setExpandedId(null);
+      onChanged?.(alert);
+    } catch (err) {
+      toast.error(err?.message || "Error");
     } finally {
       setBusyId(null);
     }
+  };
+
+  const handleReopen = alert => runRowAction(alert, reopenSupervisionAlert);
+  const handleTrash = alert => runRowAction(alert, trashSupervisionAlert);
+  const handleRestore = alert => runRowAction(alert, restoreSupervisionAlert);
+  const handlePurge = alert => {
+    const ok = window.confirm(copy.purgeConfirm || "Delete permanently?");
+    if (!ok) return;
+    return runRowAction(alert, purgeSupervisionAlert);
   };
 
   const domainChips = showDomain ? [{
@@ -300,7 +330,7 @@ export default function SupervisionAlertHistory({
           <input type="search" value={searchQuery} onChange={e => onSearchChange?.(e.target.value)} placeholder={copy.searchPlaceholder} />
         </label>
         <div className={styles.filtersBar} role="group" aria-label={copy.filterAria || "Filters"}>
-          {domainChips.length ? <>
+          {domainChips.length && !trashMode ? <>
             <div className={styles.filterGroup}>
               {domainChips.map(chip => <button key={chip.id} type="button" className={`${styles.chip} ${domainFilter === chip.id ? styles.chipActive : ""}`} onClick={() => onDomainFilter?.(chip.id)}>
                 {chip.label}
@@ -308,16 +338,30 @@ export default function SupervisionAlertHistory({
             </div>
             <span className={styles.filterSep} aria-hidden />
           </> : null}
-          <div className={styles.filterGroup}>
+          {!trashMode ? <div className={styles.filterGroup}>
             {statusChips.map(chip => <button key={chip.id} type="button" className={`${styles.chip} ${statusFilter === chip.id ? styles.chipActive : ""}`} onClick={() => onStatusFilter?.(statusFilter === chip.id ? "all" : chip.id)}>
                 {chip.label}
               </button>)}
-          </div>
+          </div> : null}
+          <button
+            type="button"
+            className={`${styles.trashToggle} ${trashMode ? styles.trashToggleActive : ""}`}
+            onClick={() => onTrashModeChange?.(!trashMode)}
+            aria-pressed={trashMode}
+          >
+            <Icon icon="mdi:delete-outline" aria-hidden />
+            <span>{copy.trash || "Corbeille"}</span>
+          </button>
         </div>
       </div>
 
       {loading ? <div className={styles.loading}>{copy.loading}</div> : alerts.length === 0 ? <div className={styles.emptyWrap}>
-          <MspEmptyState className={styles.emptyStateFill} icon="mdi:history" title={copy.emptyTitle} text={copy.emptyText} />
+          <MspEmptyState
+            className={styles.emptyStateFill}
+            icon={trashMode ? "mdi:delete-outline" : "mdi:history"}
+            title={trashMode ? (copy.emptyTrashTitle || "Corbeille vide") : copy.emptyTitle}
+            text={trashMode ? (copy.emptyTrashText || "") : copy.emptyText}
+          />
         </div> : <>
         <div className={styles.tableWrap}>
           <table className={styles.table}>
@@ -346,7 +390,7 @@ export default function SupervisionAlertHistory({
               const open = expandedId === alert.id;
               const events = eventsByAlert[alert.id] || [];
               const domainLabel = showDomain ? copy.domains?.[alert.domain] || alert.domain : null;
-              const expandHint = open ? hints.collapse || copy.collapse || "Replier la timeline" : hints.expand || copy.expand || "Voir la timeline";
+              const expandHint = open ? hints.collapse || "Replier" : hints.expand || "Déplier";
               const reopenHint = hints.reopen || copy.reopen;
               const display = historyAlertDisplay(alert);
               const when = alertWhen(alert);
@@ -359,11 +403,16 @@ export default function SupervisionAlertHistory({
                       </td>
                       <td className={styles.alertCell}>
                         <div className={styles.alertBody}>
-                          <span className={styles.title}>{display.reason}</span>
+                          <span className={styles.titleRow}>
+                            <span className={styles.expandIcon} title={expandHint} aria-hidden>
+                              <Icon icon={open ? "mdi:chevron-down" : "mdi:chevron-right"} />
+                            </span>
+                            <span className={styles.title}>{display.reason}</span>
+                          </span>
                           {display.subject ? <span className={styles.meta}>{display.subject}</span> : null}
                         </div>
                       </td>
-                      <td className={styles.companyCell}>{alert.clientName || "—"}</td>
+                      <td className={styles.companyCell}>{display.clientName || "—"}</td>
                       {showDomain ? <td className={styles.domainCol}>
                         <span className={styles.domainCell}>
                           {domainLabel}
@@ -379,8 +428,13 @@ export default function SupervisionAlertHistory({
                       </td>
                       <td className={styles.actionsCol} onClick={e => e.stopPropagation()}>
                         <div className={styles.rowActions} role="group">
-                          {alert.status === "closed" ? <HistoryActionButton hint={reopenHint} icon="mdi:restore" disabled={busyId === alert.id} onClick={() => handleReopen(alert)} /> : null}
-                          <HistoryActionButton hint={expandHint} icon={open ? "mdi:chevron-up" : "mdi:history"} onClick={() => setExpandedId(open ? null : alert.id)} />
+                          {trashMode ? <>
+                              <HistoryActionButton hint={hints.restore || copy.restoreHint || copy.restore} icon="mdi:delete-restore" disabled={busyId === alert.id} onClick={() => handleRestore(alert)} />
+                              <HistoryActionButton hint={hints.purge || copy.purgeHint || copy.purge} icon="mdi:delete-forever-outline" danger disabled={busyId === alert.id} onClick={() => handlePurge(alert)} />
+                            </> : <>
+                              {canReopenAlert(alert) ? <HistoryActionButton hint={reopenHint} icon="mdi:restore" disabled={busyId === alert.id} onClick={() => handleReopen(alert)} /> : null}
+                              <HistoryActionButton hint={hints.trash || copy.trashHint || copy.trash} icon="mdi:delete-outline" disabled={busyId === alert.id} onClick={() => handleTrash(alert)} />
+                            </>}
                         </div>
                       </td>
                     </tr>
@@ -443,6 +497,6 @@ export default function SupervisionAlertHistory({
               </SmartTooltip>
             </div>
           </div> : null}
-        </>}
+      </>}
     </div>;
 }

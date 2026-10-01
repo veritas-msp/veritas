@@ -432,6 +432,27 @@
   background: rgba(245, 158, 11, 0.04);
 }
 
+.rowEnter {
+  animation: supervisionRowEnter 0.7s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.rowEnter td:first-child {
+  box-shadow: inset 3px 0 0 var(--msp-accent, #2b5fab);
+}
+
+@keyframes supervisionRowEnter {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+    background: color-mix(in srgb, var(--msp-accent, #2b5fab) 14%, transparent);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+    background: transparent;
+  }
+}
+
 .sevCol {
   width: 2.75rem;
   padding-left: 0.7rem !important;

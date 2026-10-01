@@ -14,6 +14,40 @@ function alertReason(reason, fallback = "") {
   return value || fallback || "—";
 }
 
+/** Resolve enterprise label from queue/issue/equipment payloads (camel or snake). */
+export function resolveQueueClientName(...sources) {
+  for (const source of sources) {
+    if (source == null) continue;
+    if (typeof source === "string" || typeof source === "number") {
+      const text = String(source).trim();
+      if (text) return text;
+      continue;
+    }
+    const name = String(
+      source.clientName ||
+        source.client_name ||
+        source.equipment?.clientName ||
+        source.equipment?.client_name ||
+        source.client?.name ||
+        source.client?.nom ||
+        source.meta?.clientName ||
+        source.meta?.client_name ||
+        ""
+    ).trim();
+    if (name) return name;
+  }
+  return "";
+}
+
+function resolveQueueClientId(...sources) {
+  for (const source of sources) {
+    if (source == null) continue;
+    const id = source.clientId ?? source.client_id ?? source.equipment?.clientId ?? source.equipment?.client_id ?? source.client?.id ?? null;
+    if (id != null && id !== "") return id;
+  }
+  return null;
+}
+
 const SEVERITY_RANK = {
   critical: 0,
   warning: 1,
@@ -95,7 +129,7 @@ export function buildDeviceQueueItems(statsItems, resolveMonitorStatus, options 
     if (!isMonitoringIntegrationIssue(issue)) return [];
     const severity = severityFromTone(issue?.tone, status);
     const reason = alertReason([issue?.label, issue?.detail].filter(Boolean).join(" — "), status);
-    const clientName = equipment?.clientName || "";
+    const clientName = resolveQueueClientName(equipment, action);
     const assetName = equipment?.name || options.fallbackName || "—";
     return {
       id: `device-${getEquipmentListKey(equipment)}`,
@@ -105,7 +139,7 @@ export function buildDeviceQueueItems(statsItems, resolveMonitorStatus, options 
       title: reason,
       subtitle: joinMeta([assetName, equipment?.type, equipment?.ip], clientName),
       label: reason,
-      clientId: equipment?.clientId ?? null,
+      clientId: resolveQueueClientId(equipment, action),
       clientName,
       equipment,
       criterionKey: String(issue?.key || "") || null,
@@ -132,7 +166,7 @@ export function buildDeviceQueueItemsFromIssues(issueRows = [], options = {}) {
     const status = issue.monitorStatus || row?.monitorStatus || "ok";
     const severity = severityFromTone(issue?.tone, status);
     const reason = alertReason([issue?.label, issue?.detail].filter(Boolean).join(" — "), status);
-    const clientName = equipment?.clientName || "";
+    const clientName = resolveQueueClientName(equipment, row);
     const assetName = equipment?.name || options.fallbackName || "—";
     return [{
       id: `device-${getEquipmentListKey(equipment)}`,
@@ -142,7 +176,7 @@ export function buildDeviceQueueItemsFromIssues(issueRows = [], options = {}) {
       title: reason,
       subtitle: joinMeta([assetName, equipment?.type, equipment?.ip], clientName),
       label: reason,
-      clientId: equipment?.clientId ?? null,
+      clientId: resolveQueueClientId(equipment, row),
       clientName,
       equipment,
       criterionKey: String(issue?.key || "") || null,
@@ -338,9 +372,13 @@ export function mergeQueueWithAlertState(items = [], alerts = []) {
   const byId = new Map((Array.isArray(alerts) ? alerts : []).map(a => [a.queueItemId, a]));
   return (Array.isArray(items) ? items : []).map(item => {
     const state = byId.get(item.id);
+    const clientName = resolveQueueClientName(item, item?.equipment, state, state?.meta);
+    const clientId = resolveQueueClientId(item, item?.equipment, state) ?? item.clientId ?? null;
     if (!state) {
       return {
         ...item,
+        clientId,
+        clientName,
         workflowStatus: "open",
         alertState: null,
         notifiedAt: null,
@@ -352,6 +390,8 @@ export function mergeQueueWithAlertState(items = [], alerts = []) {
     }
     return {
       ...item,
+      clientId,
+      clientName,
       workflowStatus: state.status || "open",
       alertState: state,
       notifiedAt: state.createdAt || null,

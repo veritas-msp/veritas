@@ -12,6 +12,50 @@
   color: var(--msp-accent, #2b5fab) !important;
 }
 
+.headerActions {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  flex-shrink: 0;
+}
+
+.iconBtn {
+  display: inline-grid;
+  place-items: center;
+  width: 2rem;
+  height: 2rem;
+  border: 1px solid var(--msp-border, #d5deea);
+  border-radius: 8px;
+  background: var(--msp-surface, #fff);
+  color: var(--msp-muted, #64748b);
+  cursor: pointer;
+  font-size: 1.05rem;
+}
+
+.iconBtn:hover {
+  color: var(--msp-text, #0f1c2e);
+  border-color: color-mix(in srgb, var(--msp-accent, #2b5fab) 35%, var(--msp-border, #d5deea));
+}
+
+.secondaryBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  padding: 0.55rem 0.95rem;
+  border-radius: 10px;
+  border: 1px solid var(--msp-border, #d5deea);
+  background: var(--msp-surface, #fff);
+  color: var(--msp-text, #0f1c2e);
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.secondaryBtn:hover {
+  border-color: color-mix(in srgb, var(--msp-accent, #2b5fab) 40%, var(--msp-border, #d5deea));
+}
+
 .spin {
   animation: fleetSyncSpin 1.1s linear infinite;
 }

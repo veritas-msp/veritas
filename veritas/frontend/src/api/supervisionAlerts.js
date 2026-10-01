@@ -86,11 +86,19 @@ export async function fetchSupervisionAlertEvents(alertId) {
 }
 
 function itemPayload(item, extra = {}) {
+  const clientName = String(
+    item.clientName ||
+      item.equipment?.clientName ||
+      item.agent?.client_name ||
+      item.agent?.equipment?.clientName ||
+      ""
+  ).trim();
   return {
     queueItemId: item.queueItemId || item.id,
     domain: item.domain,
     severity: item.severity,
-    clientId: item.clientId,
+    clientId: item.clientId ?? item.equipment?.clientId ?? item.agent?.client_id ?? null,
+    clientName: clientName || null,
     equipmentId: getEquipmentDbId(item.equipment) || getEquipmentDbId(item.agent?.equipment) || item.equipmentId || null,
     refKey: item.job?.id || item.contract?.id || item.agent?.id || item.equipment?.id || item.refKey || null,
     title: item.title,
@@ -98,7 +106,8 @@ function itemPayload(item, extra = {}) {
     label: item.label,
     meta: {
       tone: item.tone,
-      ticketSubject: item.ticketSubject
+      ticketSubject: item.ticketSubject,
+      ...(clientName ? { clientName } : {})
     },
     ...extra
   };
@@ -140,6 +149,35 @@ export async function dismissSupervisionAlert(item, note) {
 export async function reopenSupervisionAlert(item) {
   const qid = item.queueItemId || item.id;
   return postAction(qid, "reopen", itemPayload(item));
+}
+
+export async function trashSupervisionAlert(alert) {
+  const alertId = alert?.id;
+  if (!alertId) throw new Error("alert id required");
+  const response = await authFetch(`${API_BASE_URL}/supervision/alerts/item/${encodeURIComponent(alertId)}/trash`, {
+    method: "POST",
+    body: JSON.stringify({})
+  });
+  return handleResponse(response);
+}
+
+export async function restoreSupervisionAlert(alert) {
+  const alertId = alert?.id;
+  if (!alertId) throw new Error("alert id required");
+  const response = await authFetch(`${API_BASE_URL}/supervision/alerts/item/${encodeURIComponent(alertId)}/restore`, {
+    method: "POST",
+    body: JSON.stringify({})
+  });
+  return handleResponse(response);
+}
+
+export async function purgeSupervisionAlert(alert) {
+  const alertId = alert?.id;
+  if (!alertId) throw new Error("alert id required");
+  const response = await authFetch(`${API_BASE_URL}/supervision/alerts/item/${encodeURIComponent(alertId)}`, {
+    method: "DELETE"
+  });
+  return handleResponse(response);
 }
 
 function sleep(ms) {

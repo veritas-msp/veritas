@@ -200,12 +200,27 @@ function mapCriterionToIssue(criterion) {
   };
 }
 
+function resolveEquipmentClientName(equipment) {
+  const fromFields = String(
+    equipment?.clientName ||
+      equipment?.client_name ||
+      equipment?.client?.name ||
+      equipment?.client?.nom ||
+      ""
+  ).trim();
+  if (fromFields) return fromFields;
+  if (equipment?.clientId != null && equipment.clientId !== "") {
+    return String(equipment.clientId);
+  }
+  return "";
+}
+
 function toLeanEquipment(equipment) {
   return {
     id: equipment.id || equipment.dbId,
     dbId: equipment.dbId || equipment.id,
-    clientId: equipment.clientId,
-    clientName: equipment.clientName,
+    clientId: equipment.clientId ?? equipment.client_id ?? null,
+    clientName: resolveEquipmentClientName(equipment),
     type: equipment.type,
     family: equipment.family,
     name: equipment.name,
@@ -310,8 +325,11 @@ export async function fetchEquipmentFleetIssues() {
     const primaryIssue = issues[0];
     const monitorStatus = primaryIssue?.monitorStatus || "ok";
 
+    const lean = toLeanEquipment(equipment);
     items.push({
-      equipment: toLeanEquipment(equipment),
+      equipment: lean,
+      clientId: lean.clientId,
+      clientName: lean.clientName,
       monitorStatus,
       issues,
       primaryIssue,

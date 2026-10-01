@@ -60,8 +60,12 @@ export default function MonitoringCenterPage({
   const [historyLoading, setHistoryLoading] = useState(false);
   const [historySearch, setHistorySearch] = useState("");
   const [historyStatus, setHistoryStatus] = useState("all");
+  const [historyTrashMode, setHistoryTrashMode] = useState(false);
   const [pageGuideOpen, setPageGuideOpen] = useState(false);
-  const [fleetSyncOpen, setFleetSyncOpen] = useState(false);
+  const [fleetSyncActive, setFleetSyncActive] = useState(false);
+  const [fleetSyncExpanded, setFleetSyncExpanded] = useState(false);
+  const [fleetSyncProgress, setFleetSyncProgress] = useState(null);
+  const fleetSyncRefreshAtRef = useRef(0);
   const openPageGuide = useCallback(() => setPageGuideOpen(true), []);
   useRegisterPageGuide(openPageGuide);
   const { user } = useAuthContext();
@@ -200,13 +204,54 @@ export default function MonitoringCenterPage({
       }
     }
   }, [unifiedQueueIdsKey]);
+
+  const refreshLiveQueue = useCallback(async () => {
+    const controller = createTrackedAbortController();
+    try {
+      await Promise.all([
+        loadDeviceIssues(controller.signal),
+        loadCoverage(controller.signal)
+      ]);
+      await refreshAlertStates(controller.signal);
+    } catch (err) {
+      if (err?.name !== "AbortError") {
+        console.error("Error refreshing supervision queue during sync:", err);
+      }
+    }
+  }, [loadDeviceIssues, loadCoverage, refreshAlertStates]);
+
+  const handleFleetSyncProgress = useCallback(progress => {
+    setFleetSyncProgress(progress);
+    const running = Boolean(progress?.starting || progress?.run?.status === "running");
+    if (!running) return;
+    const now = Date.now();
+    if (now - fleetSyncRefreshAtRef.current < 2500) return;
+    fleetSyncRefreshAtRef.current = now;
+    refreshLiveQueue();
+  }, [refreshLiveQueue]);
+
+  const startFleetSync = useCallback(() => {
+    setFleetSyncActive(true);
+    setFleetSyncExpanded(true);
+    setFleetSyncProgress(null);
+    fleetSyncRefreshAtRef.current = 0;
+    setActiveTab("operations");
+  }, []);
+
+  const dismissFleetSync = useCallback(() => {
+    setFleetSyncActive(false);
+    setFleetSyncExpanded(false);
+    setFleetSyncProgress(null);
+  }, []);
+
   const refreshHistory = useCallback(async signal => {
     if (!signal?.aborted) setHistoryLoading(true);
     try {
       const alerts = await fetchSupervisionAlertsHistory({
         domain: "devices",
-        status: historyStatus === "all" ? undefined : historyStatus,
+        status: historyTrashMode || historyStatus === "all" ? undefined : historyStatus,
         q: historySearch || undefined,
+        trash: historyTrashMode ? "1" : undefined,
         limit: 150,
         signal
       });
@@ -219,7 +264,21 @@ export default function MonitoringCenterPage({
     } finally {
       if (!signal?.aborted) setHistoryLoading(false);
     }
-  }, [historyStatus, historySearch]);
+  }, [historyStatus, historySearch, historyTrashMode]);
+
+  const handleFleetSyncFinished = useCallback((run, meta = {}) => {
+    refreshLiveQueue();
+    refreshHistory();
+    const copy = pageCopy.fleetSync || {};
+    if (meta?.error) {
+      toast.error(meta.error);
+      return;
+    }
+    const status = run?.status;
+    if (status === "success") toast.success(copy.status?.success || "Synchronisation terminée");
+    else if (status === "partial") toast.warn(copy.status?.partial || "Terminée avec des erreurs partielles");
+    else if (status === "error") toast.error(copy.status?.error || "Échec de la synchronisation");
+  }, [refreshLiveQueue, refreshHistory, pageCopy.fleetSync]);
   useEffect(() => {
     const controller = createTrackedAbortController();
     refreshAlertStates(controller.signal);
@@ -345,16 +404,78 @@ export default function MonitoringCenterPage({
               </div>
             </div>
             <div className={cyberStyles.mspHeroActions}>
-              {checkmkIntegrationEnabled ? <button
-                type="button"
-                className={styles.fleetSyncBtn}
-                title={pageCopy.fleetSync?.buttonTitle}
-                onClick={() => setFleetSyncOpen(true)}
-                disabled={fleetSyncOpen}
-              >
-                <Icon icon={fleetSyncOpen ? "mdi:loading" : "mdi:cloud-sync-outline"} className={fleetSyncOpen ? styles.fleetSyncSpin : ""} aria-hidden />
-                <span>{fleetSyncOpen ? pageCopy.fleetSync?.buttonBusy : pageCopy.fleetSync?.button}</span>
-              </button> : null}
+              {checkmkIntegrationEnabled ? (
+                fleetSyncActive && !fleetSyncExpanded ? (
+                  <div className={`${styles.fleetSyncProgress} ${fleetSyncProgress?.error || fleetSyncProgress?.tone === "err" ? styles.fleetSyncProgressErr : ""} ${fleetSyncProgress?.isTerminal && !fleetSyncProgress?.error ? styles.fleetSyncProgressDone : ""}`}>
+                    <button
+                      type="button"
+                      className={styles.fleetSyncProgressMain}
+                      onClick={() => setFleetSyncExpanded(true)}
+                      title={pageCopy.fleetSync?.expandTitle || "Afficher la synchronisation"}
+                      aria-label={pageCopy.fleetSync?.expandAria || "Afficher la synchronisation"}
+                    >
+                      <span className={styles.fleetSyncProgressTop}>
+                        <Icon
+                          icon={
+                            fleetSyncProgress?.error || fleetSyncProgress?.tone === "err"
+                              ? "mdi:alert-circle-outline"
+                              : fleetSyncProgress?.isTerminal
+                                ? "mdi:check-circle-outline"
+                                : "mdi:sync"
+                          }
+                          className={!fleetSyncProgress?.isTerminal && !fleetSyncProgress?.error ? styles.fleetSyncSpin : ""}
+                          aria-hidden
+                        />
+                        <span className={styles.fleetSyncProgressLabel}>
+                          {fleetSyncProgress?.statusLabel || pageCopy.fleetSync?.buttonBusy || "Sync en cours…"}
+                        </span>
+                        <strong className={styles.fleetSyncProgressPct}>
+                          {fleetSyncProgress?.total > 0
+                            ? `${fleetSyncProgress.pct}%`
+                            : fleetSyncProgress?.starting
+                              ? "…"
+                              : fleetSyncProgress?.isTerminal
+                                ? "100%"
+                                : ""}
+                        </strong>
+                      </span>
+                      <span className={styles.fleetSyncProgressTrack} aria-hidden>
+                        <span
+                          className={styles.fleetSyncProgressFill}
+                          style={{ width: `${Math.max(fleetSyncProgress?.pct || 0, fleetSyncProgress?.starting ? 4 : 0)}%` }}
+                        />
+                      </span>
+                      {fleetSyncProgress?.currentHost && !fleetSyncProgress?.isTerminal ? (
+                        <span className={styles.fleetSyncProgressHost}>
+                          {(pageCopy.fleetSync?.currentHost || "En cours · {host}").replace("{host}", fleetSyncProgress.currentHost)}
+                        </span>
+                      ) : null}
+                    </button>
+                    {fleetSyncProgress?.isTerminal || fleetSyncProgress?.error ? (
+                      <button
+                        type="button"
+                        className={styles.fleetSyncProgressDismiss}
+                        onClick={dismissFleetSync}
+                        aria-label={pageCopy.fleetSync?.closeAria || "Fermer"}
+                        title={pageCopy.fleetSync?.close || "Fermer"}
+                      >
+                        <Icon icon="mdi:close" aria-hidden />
+                      </button>
+                    ) : null}
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    className={styles.fleetSyncBtn}
+                    title={pageCopy.fleetSync?.buttonTitle}
+                    onClick={startFleetSync}
+                    disabled={fleetSyncActive}
+                  >
+                    <Icon icon={fleetSyncActive ? "mdi:loading" : "mdi:cloud-sync-outline"} className={fleetSyncActive ? styles.fleetSyncSpin : ""} aria-hidden />
+                    <span>{fleetSyncActive ? pageCopy.fleetSync?.buttonBusy : pageCopy.fleetSync?.button}</span>
+                  </button>
+                )
+              ) : null}
               <nav className={cyberStyles.mspTabBar} role="tablist" aria-label={pageCopy.tabSectionsAria} data-guide="supervision-tabs">
               {visibleTabs.map(tab => {
               const badge = tabBadges[tab.id] || 0;
@@ -378,16 +499,33 @@ export default function MonitoringCenterPage({
             <div className={`${layout.shell} ${layout.shellFull} ${styles.contentShell}`}>
               {activeTab === "operations" && !error ? <div className={`${dashStyles.dashboard} ${styles.dashboard}`} data-guide="supervision-ops">
                   <div className={`${cyberStyles.tabContent} ${styles.content}`}>
-                    <SupervisionOpsQueue items={filteredQueue} kpi={severityCounts} coverageFamilies={coverageFamilies} workflowCounts={workflowCounts} severityFilter={opsSeverityFilter} workflowFilter={opsWorkflowFilter} searchQuery={opsSearchQuery} onSeverityFilter={setOpsSeverityFilter} onWorkflowFilter={setOpsWorkflowFilter} onSearchChange={setOpsSearchQuery} onOpenItem={handleOpenQueueItem} onTicketSupport={handleTicketSupport} onAck={handleAckAlert} onUnack={handleUnackAlert} onResolve={handleResolveAlert} onDismiss={handleDismissAlert} busyId={alertActionBusyId} localeTag={localeTag} copy={pageCopy.ops} showDomain={false} />
+                    <SupervisionOpsQueue items={filteredQueue} kpi={severityCounts} coverageFamilies={coverageFamilies} workflowCounts={workflowCounts} severityFilter={opsSeverityFilter} workflowFilter={opsWorkflowFilter} searchQuery={opsSearchQuery} onSeverityFilter={setOpsSeverityFilter} onWorkflowFilter={setOpsWorkflowFilter} onSearchChange={setOpsSearchQuery} onOpenItem={handleOpenQueueItem} onTicketSupport={handleTicketSupport} onAck={handleAckAlert} onUnack={handleUnackAlert} onResolve={handleResolveAlert} onDismiss={handleDismissAlert} busyId={alertActionBusyId} localeTag={localeTag} copy={pageCopy.ops} showDomain={false} animateNewRows />
                   </div>
                 </div> : null}
 
               {activeTab === "history" && !error ? <div className={`${dashStyles.dashboard} ${styles.dashboard}`} data-guide="supervision-history">
                   <div className={`${cyberStyles.tabContent} ${styles.content}`}>
-                    <SupervisionAlertHistory alerts={historyAlerts} loading={historyLoading} searchQuery={historySearch} statusFilter={historyStatus} onSearchChange={setHistorySearch} onStatusFilter={setHistoryStatus} onReopened={() => {
-                refreshAlertStates();
-                refreshHistory();
-              }} localeTag={localeTag} copy={pageCopy.history} showDomain={false} />
+                    <SupervisionAlertHistory
+                      alerts={historyAlerts}
+                      loading={historyLoading}
+                      searchQuery={historySearch}
+                      statusFilter={historyStatus}
+                      trashMode={historyTrashMode}
+                      onSearchChange={setHistorySearch}
+                      onStatusFilter={setHistoryStatus}
+                      onTrashModeChange={setHistoryTrashMode}
+                      onChanged={() => {
+                        refreshAlertStates();
+                        refreshHistory();
+                      }}
+                      onReopened={() => {
+                        refreshAlertStates();
+                        refreshHistory();
+                      }}
+                      localeTag={localeTag}
+                      copy={pageCopy.history}
+                      showDomain={false}
+                    />
                   </div>
                 </div> : null}
 
@@ -404,13 +542,14 @@ export default function MonitoringCenterPage({
       </div>
       <PageGuideTour open={pageGuideOpen} steps={guideSteps} title={pageCopy.guide?.tourTitle} locale={locale} onClose={() => setPageGuideOpen(false)} />
       <SupervisionFleetSyncModal
-        open={fleetSyncOpen}
+        active={fleetSyncActive}
+        expanded={fleetSyncExpanded}
         copy={pageCopy.fleetSync || {}}
-        onClose={() => setFleetSyncOpen(false)}
-        onFinished={() => {
-          refreshAlertStates();
-          refreshHistory();
-        }}
+        onMinimize={() => setFleetSyncExpanded(false)}
+        onExpand={() => setFleetSyncExpanded(true)}
+        onDismiss={dismissFleetSync}
+        onRunChange={handleFleetSyncProgress}
+        onFinished={handleFleetSyncFinished}
       />
     </div>;
 }

@@ -23,9 +23,26 @@ function statusTone(status) {
   return "run";
 }
 
+export function getFleetSyncProgress(run, starting = false) {
+  const doneCount = (run?.synced || 0) + (run?.skipped || 0) + (run?.failed || 0);
+  const total = run?.targetsTotal || 0;
+  const pct = run?.status === "running"
+    ? clampPct(doneCount, total)
+    : run && run.status !== "running"
+      ? 100
+      : starting
+        ? 2
+        : 0;
+  return { doneCount, total, pct, tone: statusTone(run?.status || (starting ? "running" : null)) };
+}
+
 export default function SupervisionFleetSyncModal({
-  open,
-  onClose,
+  active = false,
+  expanded = true,
+  onMinimize,
+  onExpand,
+  onDismiss,
+  onRunChange,
   onFinished,
   copy = {}
 }) {
@@ -36,18 +53,10 @@ export default function SupervisionFleetSyncModal({
   const startedRef = useRef(false);
   const finishedNotifiedRef = useRef(false);
 
-  const doneCount = (run?.synced || 0) + (run?.skipped || 0) + (run?.failed || 0);
-  const total = run?.targetsTotal || 0;
-  const pct = run?.status === "running"
-    ? clampPct(doneCount, total)
-    : run && run.status !== "running"
-      ? 100
-      : starting
-        ? 2
-        : 0;
-  const tone = statusTone(run?.status || (starting ? "running" : null));
+  const { doneCount, total, pct, tone } = getFleetSyncProgress(run, starting);
   const currentHost = run?.details?.currentHost || null;
-  const isTerminal = run && run.status !== "running";
+  const isTerminal = Boolean(run && run.status !== "running");
+  const canDismiss = isTerminal || Boolean(error);
 
   const statusLabel = useMemo(() => {
     if (error) return copy.errorTitle || "Erreur";
@@ -57,7 +66,19 @@ export default function SupervisionFleetSyncModal({
   }, [copy, error, run, starting]);
 
   useEffect(() => {
-    if (!open) {
+    onRunChange?.({
+      run,
+      starting,
+      error,
+      statusLabel,
+      ...getFleetSyncProgress(run, starting),
+      currentHost,
+      isTerminal: Boolean(run && run.status !== "running") || Boolean(error)
+    });
+  }, [run, starting, error, statusLabel, currentHost, onRunChange]);
+
+  useEffect(() => {
+    if (!active) {
       startedRef.current = false;
       finishedNotifiedRef.current = false;
       setRun(null);
@@ -94,12 +115,12 @@ export default function SupervisionFleetSyncModal({
       setStarting(true);
       setError(null);
       try {
-        const active = await fetchActiveCheckmkSyncRun().catch(() => null);
+        const activeRun = await fetchActiveCheckmkSyncRun().catch(() => null);
         if (cancelled || pollAbortRef.current !== token) return;
-        if (active?.run?.status === "running" && active.run.id) {
-          setRun(active.run);
+        if (activeRun?.run?.status === "running" && activeRun.run.id) {
+          setRun(activeRun.run);
           setStarting(false);
-          await trackRun(active.run.id);
+          await trackRun(activeRun.run.id);
           return;
         }
 
@@ -128,7 +149,7 @@ export default function SupervisionFleetSyncModal({
         }
         await trackRun(runId);
       } catch (err) {
-        if (!cancelled && pollAbortRef.current !== token) {
+        if (!cancelled && pollAbortRef.current === token) {
           setError(err?.message || copy.errorGeneric || "Sync failed");
           setStarting(false);
         }
@@ -143,18 +164,18 @@ export default function SupervisionFleetSyncModal({
       cancelled = true;
       pollAbortRef.current += 1;
     };
-  }, [open, copy]);
+  }, [active, copy]);
 
   useEffect(() => {
-    if (!open || !isTerminal || finishedNotifiedRef.current) return;
+    if (!active || !(isTerminal || error) || finishedNotifiedRef.current) return;
     finishedNotifiedRef.current = true;
-    onFinished?.(run);
-  }, [open, isTerminal, run, onFinished]);
+    onFinished?.(run, { error });
+  }, [active, isTerminal, error, run, onFinished]);
 
-  if (!open) return null;
+  if (!active || !expanded) return null;
 
   return createPortal(
-    <div className={`${formStyles.overlay} ${formStyles.overlayStacked}`} onClick={isTerminal || error ? onClose : undefined} role="presentation">
+    <div className={`${formStyles.overlay} ${formStyles.overlayStacked}`} onClick={canDismiss ? onDismiss : undefined} role="presentation">
       <div
         className={`${formStyles.shell} ${styles.shell}`}
         onClick={e => e.stopPropagation()}
@@ -166,7 +187,7 @@ export default function SupervisionFleetSyncModal({
         <header className={formStyles.header}>
           <div className={formStyles.headerMain}>
             <div className={`${formStyles.headerIconWrap} ${styles.headerIcon}`} aria-hidden>
-              <Icon icon={isTerminal ? (tone === "err" ? "mdi:alert-circle-outline" : "mdi:check-circle-outline") : "mdi:sync"} className={!isTerminal && !error ? styles.spin : ""} />
+              <Icon icon={isTerminal ? (tone === "err" || error ? "mdi:alert-circle-outline" : "mdi:check-circle-outline") : "mdi:sync"} className={!isTerminal && !error ? styles.spin : ""} />
             </div>
             <div className={formStyles.headerText}>
               <p className={formStyles.eyebrow}>{copy.eyebrow || "Surveillance"}</p>
@@ -176,15 +197,28 @@ export default function SupervisionFleetSyncModal({
               <p className={formStyles.subtitle}>{statusLabel}</p>
             </div>
           </div>
-          <button
-            type="button"
-            className={formStyles.closeBtn}
-            onClick={onClose}
-            aria-label={copy.closeAria || "Fermer"}
-            disabled={!isTerminal && !error}
-          >
-            <FaTimes />
-          </button>
+          <div className={styles.headerActions}>
+            {!canDismiss ? (
+              <button
+                type="button"
+                className={styles.iconBtn}
+                onClick={onMinimize}
+                aria-label={copy.minimizeAria || "Réduire"}
+                title={copy.minimize || "Réduire"}
+              >
+                <Icon icon="mdi:window-minimize" aria-hidden />
+              </button>
+            ) : null}
+            <button
+              type="button"
+              className={formStyles.closeBtn}
+              onClick={canDismiss ? onDismiss : onMinimize}
+              aria-label={canDismiss ? (copy.closeAria || "Fermer") : (copy.minimizeAria || "Réduire")}
+              title={canDismiss ? (copy.close || "Fermer") : (copy.minimize || "Réduire")}
+            >
+              <FaTimes />
+            </button>
+          </div>
         </header>
 
         <div className={formStyles.bodySingle}>
@@ -243,18 +277,22 @@ export default function SupervisionFleetSyncModal({
 
         <footer className={formStyles.footer}>
           <span className={formStyles.footerHint}>
-            {isTerminal || error
+            {canDismiss
               ? copy.footerDone || "Vous pouvez fermer cette fenêtre."
-              : copy.footerRunning || "Ne fermez pas la page pendant la synchronisation."}
+              : copy.footerRunning || "Vous pouvez réduire la fenêtre et continuer à travailler."}
           </span>
           <div className={formStyles.footerActions}>
+            {!canDismiss ? (
+              <button type="button" className={styles.secondaryBtn} onClick={onMinimize}>
+                {copy.minimize || "Réduire"}
+              </button>
+            ) : null}
             <button
               type="button"
               className={formStyles.primaryBtn}
-              onClick={onClose}
-              disabled={!isTerminal && !error}
+              onClick={canDismiss ? onDismiss : onMinimize}
             >
-              {copy.close || "Fermer"}
+              {canDismiss ? (copy.close || "Fermer") : (copy.minimize || "Réduire")}
             </button>
           </div>
         </footer>

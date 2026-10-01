@@ -9,13 +9,19 @@ import {
   listRecentEquipmentAlerts,
   listSupervisionAlertHistory,
   listSupervisionAlertsByQueueItemIds,
+  purgeSupervisionAlert,
   removeSupervisionAlertStreamClient,
+  restoreSupervisionAlert,
+  trashSupervisionAlert,
   upsertAndActOnSupervisionAlert
 } from "../../utils/supervisionAlerts.js";
 
 const router = express.Router();
 
 function payloadFromBody(body = {}) {
+  const clientName = String(body.clientName || body.client_name || body.meta?.clientName || "").trim();
+  const meta = body.meta && typeof body.meta === "object" ? { ...body.meta } : {};
+  if (clientName) meta.clientName = clientName;
   return {
     queueItemId: body.queueItemId || body.queue_item_id,
     domain: body.domain,
@@ -26,7 +32,7 @@ function payloadFromBody(body = {}) {
     title: body.title,
     subtitle: body.subtitle,
     label: body.label,
-    meta: body.meta || {},
+    meta,
     note: body.note || null,
     linkedTicketId: body.linkedTicketId ?? body.linked_ticket_id ?? null,
     linkedTicketKind: body.linkedTicketKind ?? body.linked_ticket_kind ?? null,
@@ -80,7 +86,8 @@ router.get("/history", verifyJWT, requireAnyPermission("supervision.view", "supe
       status: req.query.status || null,
       query: req.query.q || req.query.query || null,
       equipmentId: req.query.equipmentId || req.query.equipment_id || null,
-      clientId: req.query.clientId || req.query.client_id || null
+      clientId: req.query.clientId || req.query.client_id || null,
+      trash: req.query.trash === "1" || req.query.trash === "true" || req.query.trash === true
     });
     res.json({ alerts });
   } catch (err) {
@@ -136,6 +143,48 @@ router.get("/stream", verifyJWT, requireAnyPermission("supervision.view", "super
     if (!res.headersSent) {
       res.status(500).json({ error: "Realtime stream unavailable." });
     }
+  }
+});
+
+router.post("/item/:alertId/trash", verifyJWT, requireAnyPermission("supervision.manage", "supervision.view"), async (req, res) => {
+  try {
+    const result = await trashSupervisionAlert({
+      alertId: req.params.alertId,
+      actorUserId: req.user?.id || null
+    });
+    res.json(result);
+  } catch (err) {
+    console.error("[supervision-alerts] POST trash:", err.message);
+    const status = /not found/i.test(err.message) ? 404 : 500;
+    res.status(status).json({ error: err.message || "Server error" });
+  }
+});
+
+router.post("/item/:alertId/restore", verifyJWT, requireAnyPermission("supervision.manage", "supervision.view"), async (req, res) => {
+  try {
+    const result = await restoreSupervisionAlert({
+      alertId: req.params.alertId,
+      actorUserId: req.user?.id || null
+    });
+    res.json(result);
+  } catch (err) {
+    console.error("[supervision-alerts] POST restore:", err.message);
+    const status = /not found/i.test(err.message) ? 404 : 500;
+    res.status(status).json({ error: err.message || "Server error" });
+  }
+});
+
+router.delete("/item/:alertId", verifyJWT, requireAnyPermission("supervision.manage", "supervision.view"), async (req, res) => {
+  try {
+    const result = await purgeSupervisionAlert({
+      alertId: req.params.alertId,
+      actorUserId: req.user?.id || null
+    });
+    res.json(result);
+  } catch (err) {
+    console.error("[supervision-alerts] DELETE purge:", err.message);
+    const status = /not found|Only trashed/i.test(err.message) ? 400 : 500;
+    res.status(status).json({ error: err.message || "Server error" });
   }
 });
 

@@ -50,14 +50,26 @@ function buildMonitoringEventTitle(event) {
 
 const ALERT_SELECT_WITH_ACTORS = `
   a.*,
+  NULLIF(TRIM(COALESCE(c.name, '')), '') AS client_name,
   COALESCE(NULLIF(TRIM(ack_u.username), ''), NULLIF(TRIM(ack_u.email), '')) AS acked_by_name,
   COALESCE(NULLIF(TRIM(cls_u.username), ''), NULLIF(TRIM(cls_u.email), '')) AS closed_by_name
 `;
 
 const ALERT_ACTOR_JOINS = `
+  LEFT JOIN v_b_clients c ON c.id = a.client_id
   LEFT JOIN v_b_users ack_u ON ack_u.id = a.acked_by
   LEFT JOIN v_b_users cls_u ON cls_u.id = a.closed_by
 `;
+
+function resolveAlertClientName(row) {
+  const meta = row?.meta && typeof row.meta === "object" ? row.meta : {};
+  return String(
+    row?.client_name ||
+      meta.clientName ||
+      meta.client_name ||
+      ""
+  ).trim() || null;
+}
 
 function mapAlert(row) {
   if (!row) return null;
@@ -67,6 +79,7 @@ function mapAlert(row) {
     domain: row.domain,
     severity: row.severity,
     clientId: row.client_id,
+    clientName: resolveAlertClientName(row),
     equipmentId: row.equipment_id,
     refKey: row.ref_key,
     title: row.title,
@@ -85,6 +98,8 @@ function mapAlert(row) {
     linkedEventId: row.linked_event_id,
     note: row.note,
     meta: row.meta || {},
+    deletedAt: row.deleted_at || null,
+    deletedBy: row.deleted_by || null,
     lastSeenAt: row.last_seen_at,
     createdAt: row.created_at,
     updatedAt: row.updated_at
@@ -156,6 +171,7 @@ export async function listActiveSupervisionAlerts() {
      FROM v_b_supervision_alerts a
      ${ALERT_ACTOR_JOINS}
      WHERE a.status = ANY($1)
+       AND a.deleted_at IS NULL
      ORDER BY a.updated_at DESC`,
     [["open", "acked", "linked"]]
   );
@@ -175,37 +191,50 @@ export async function ensureSupervisionAlertsSeen(items = []) {
     const domain = String(raw?.domain || "").trim();
     if (!queueItemId || !domain || seenIds.has(queueItemId)) continue;
     seenIds.add(queueItemId);
+    const clientName = String(
+      raw?.clientName ||
+        raw?.client_name ||
+        raw?.equipment?.clientName ||
+        raw?.meta?.clientName ||
+        ""
+    ).trim();
+    const baseMeta = raw?.meta && typeof raw.meta === "object" ? { ...raw.meta } : {};
+    if (clientName && !baseMeta.clientName) baseMeta.clientName = clientName;
     normalized.push({
       queueItemId,
       domain,
       severity: raw?.severity || null,
-      clientId: raw?.clientId ?? raw?.client_id ?? null,
+      clientId: raw?.clientId ?? raw?.client_id ?? raw?.equipment?.clientId ?? null,
       equipmentId: raw?.equipmentId ?? raw?.equipment_id ?? null,
       refKey: raw?.refKey ?? raw?.ref_key ?? null,
       title: clip(raw?.title, 255),
       subtitle: raw?.subtitle || null,
       label: clip(raw?.label, 255),
-      meta: raw?.meta && typeof raw.meta === "object" ? raw.meta : {}
+      meta: baseMeta
     });
     if (normalized.length >= 500) break;
   }
   if (!normalized.length) return [];
 
   const ids = normalized.map(item => item.queueItemId);
-  const existing = await listSupervisionAlertsByQueueItemIds(ids);
+  const existing = await listSupervisionAlertsByQueueItemIds(ids, { includeDeleted: true });
   const existingById = new Map(existing.map(alert => [alert.queueItemId, alert]));
   const missing = normalized.filter(item => !existingById.has(item.queueItemId));
   const reopenable = normalized.filter(item => {
     const alert = existingById.get(item.queueItemId);
+    if (!alert) return false;
+    if (alert.deletedAt) return true;
     return alert?.status === "closed" && alert?.closedReason === "resolved";
   });
   const enrichable = normalized.filter(item => {
     const alert = existingById.get(item.queueItemId);
-    if (!alert || !ACTIVE_STATUSES.has(alert.status)) return false;
+    if (!alert || alert.deletedAt || !ACTIVE_STATUSES.has(alert.status)) return false;
     return isRicherAlertText(item.title, alert.title) || isRicherAlertText(item.label, alert.label) || isRicherAlertText(item.subtitle, alert.subtitle);
   });
 
-  if (!missing.length && !reopenable.length && !enrichable.length) return existing;
+  if (!missing.length && !reopenable.length && !enrichable.length) {
+    return existing.filter(alert => !alert.deletedAt);
+  }
 
   const client = await pool.connect();
   try {
@@ -255,9 +284,13 @@ export async function ensureSupervisionAlertsSeen(items = []) {
              closed_at = NULL,
              closed_by = NULL,
              closed_reason = NULL,
+             acked_at = NULL,
+             acked_by = NULL,
+             deleted_at = NULL,
+             deleted_by = NULL,
              last_seen_at = NOW(),
              updated_at = NOW()
-         WHERE id = $1::uuid AND status = 'closed' AND closed_reason = 'resolved'
+         WHERE id = $1::uuid
          RETURNING *`,
         [current.id, item.severity, item.title, item.subtitle, item.label]
       );
@@ -267,10 +300,10 @@ export async function ensureSupervisionAlertsSeen(items = []) {
         alertId: row.id,
         action: "reopened",
         actorUserId: null,
-        oldStatus: "closed",
+        oldStatus: current.status,
         newStatus: "open",
         note: null,
-        meta: { source: "seen", reason: "issue_recurring" }
+        meta: { source: "seen", reason: current.deletedAt ? "restored_from_trash" : "issue_recurring" }
       });
     }
     for (const item of enrichable) {
@@ -304,7 +337,7 @@ export async function ensureSupervisionAlertsSeen(items = []) {
 }
 
 /** All persisted states (incl. closed) for the given queue item ids — used to hide dismissed/resolved alerts. */
-export async function listSupervisionAlertsByQueueItemIds(queueItemIds = []) {
+export async function listSupervisionAlertsByQueueItemIds(queueItemIds = [], { includeDeleted = false } = {}) {
   await ensureSupervisionAlertsSchema();
   const ids = [...new Set((Array.isArray(queueItemIds) ? queueItemIds : []).map(id => String(id || "").trim()).filter(Boolean))];
   if (!ids.length) return [];
@@ -313,6 +346,7 @@ export async function listSupervisionAlertsByQueueItemIds(queueItemIds = []) {
      FROM v_b_supervision_alerts a
      ${ALERT_ACTOR_JOINS}
      WHERE a.queue_item_id = ANY($1::text[])
+       ${includeDeleted ? "" : "AND a.deleted_at IS NULL"}
      ORDER BY a.updated_at DESC`,
     [ids]
   );
@@ -326,17 +360,25 @@ export async function listSupervisionAlertHistory({
   status = null,
   query = null,
   equipmentId = null,
-  clientId = null
+  clientId = null,
+  trash = false
 } = {}) {
   await ensureSupervisionAlertsSchema();
   const params = [];
   const where = [];
 
+  const inTrash = trash === true || trash === "1" || trash === "true";
+  if (inTrash) {
+    where.push("a.deleted_at IS NOT NULL");
+  } else {
+    where.push("a.deleted_at IS NULL");
+  }
+
   const statusRaw = status == null ? "" : String(status).trim().toLowerCase();
   if (statusRaw && statusRaw !== "all" && statusRaw !== "*") {
     params.push(statusRaw);
     where.push(`a.status = $${params.length}`);
-  } else if (!statusRaw) {
+  } else if (!statusRaw && !inTrash) {
     // Default history: closed + currently handled (acked/linked)
     params.push(["acked", "linked", "closed"]);
     where.push(`a.status = ANY($${params.length})`);
@@ -364,7 +406,9 @@ export async function listSupervisionAlertHistory({
       `(LOWER(COALESCE(a.title, '')) LIKE $${params.length}
         OR LOWER(COALESCE(a.subtitle, '')) LIKE $${params.length}
         OR LOWER(COALESCE(a.label, '')) LIKE $${params.length}
-        OR LOWER(COALESCE(a.queue_item_id, '')) LIKE $${params.length})`
+        OR LOWER(COALESCE(a.queue_item_id, '')) LIKE $${params.length}
+        OR LOWER(COALESCE(c.name, '')) LIKE $${params.length}
+        OR LOWER(COALESCE(a.meta->>'clientName', '')) LIKE $${params.length})`
     );
   }
 
@@ -378,7 +422,7 @@ export async function listSupervisionAlertHistory({
      FROM v_b_supervision_alerts a
      ${ALERT_ACTOR_JOINS}
      WHERE ${where.length ? where.join(" AND ") : "TRUE"}
-     ORDER BY COALESCE(a.closed_at, a.updated_at, a.created_at) DESC
+     ORDER BY COALESCE(a.deleted_at, a.closed_at, a.updated_at, a.created_at) DESC
      LIMIT $${params.length - 1} OFFSET $${params.length}`,
     params
   );
@@ -430,6 +474,7 @@ export async function listRecentEquipmentAlerts({
      FROM v_b_supervision_alerts a
      ${ALERT_ACTOR_JOINS}
      WHERE a.created_at >= NOW() - ($2::int * INTERVAL '1 day')
+       AND a.deleted_at IS NULL
        AND NULLIF(TRIM(a.equipment_id), '') IS NOT NULL
        AND (
          LOWER(TRIM(a.equipment_id)) = $1
@@ -567,6 +612,11 @@ export async function upsertAndActOnSupervisionAlert({
     const resolvedDomain = domain || row?.domain || null;
     if (!resolvedDomain) throw new Error("domain required");
 
+    const incomingMeta = meta && typeof meta === "object" ? { ...meta } : {};
+    const clientNameFromMeta = String(incomingMeta.clientName || incomingMeta.client_name || "").trim();
+    if (clientNameFromMeta) incomingMeta.clientName = clientNameFromMeta;
+    const metaJson = Object.keys(incomingMeta).length ? JSON.stringify(incomingMeta) : null;
+
     if (!row) {
       const insert = await client.query(
         `INSERT INTO v_b_supervision_alerts
@@ -583,7 +633,7 @@ export async function upsertAndActOnSupervisionAlert({
           title || null,
           subtitle || null,
           label || null,
-          JSON.stringify(meta || {})
+          JSON.stringify(incomingMeta)
         ]
       );
       row = insert.rows[0];
@@ -597,6 +647,13 @@ export async function upsertAndActOnSupervisionAlert({
         meta: { source: "upsert" }
       });
     } else {
+      const existingMeta = row.meta && typeof row.meta === "object" ? row.meta : {};
+      const mergedMeta = {
+        ...existingMeta,
+        ...incomingMeta
+      };
+      if (clientNameFromMeta) mergedMeta.clientName = clientNameFromMeta;
+      else if (existingMeta.clientName && !mergedMeta.clientName) mergedMeta.clientName = existingMeta.clientName;
       await client.query(
         `UPDATE v_b_supervision_alerts SET
           severity = COALESCE($2, severity),
@@ -619,7 +676,7 @@ export async function upsertAndActOnSupervisionAlert({
           title || null,
           subtitle || null,
           label || null,
-          meta ? JSON.stringify(meta) : null
+          metaJson ? JSON.stringify(mergedMeta) : null
         ]
       );
       const refreshed = await client.query(`SELECT * FROM v_b_supervision_alerts WHERE id = $1`, [row.id]);
@@ -676,6 +733,8 @@ export async function upsertAndActOnSupervisionAlert({
       patch.closed_reason = null;
       patch.acked_at = null;
       patch.acked_by = null;
+      patch.deleted_at = null;
+      patch.deleted_by = null;
     } else if (action === "note") {
       if (note) patch.note = note;
       eventAction = "note";
@@ -774,6 +833,141 @@ export function broadcastSupervisionAlertHeartbeat() {
     type: "heartbeat",
     at: new Date().toISOString()
   });
+}
+
+async function getAlertRowById(alertId) {
+  const result = await pool.query(
+    `SELECT ${ALERT_SELECT_WITH_ACTORS}
+     FROM v_b_supervision_alerts a
+     ${ALERT_ACTOR_JOINS}
+     WHERE a.id = $1::uuid
+     LIMIT 1`,
+    [alertId]
+  );
+  return result.rows[0] || null;
+}
+
+export async function trashSupervisionAlert({ alertId, queueItemId, actorUserId }) {
+  await ensureSupervisionAlertsSchema();
+  let row = null;
+  if (alertId) {
+    row = await getAlertRowById(alertId);
+  } else if (queueItemId) {
+    const result = await pool.query(
+      `SELECT ${ALERT_SELECT_WITH_ACTORS}
+       FROM v_b_supervision_alerts a
+       ${ALERT_ACTOR_JOINS}
+       WHERE a.queue_item_id = $1
+       LIMIT 1`,
+      [queueItemId]
+    );
+    row = result.rows[0] || null;
+  }
+  if (!row) throw new Error("Alert not found");
+  if (row.deleted_at) {
+    return { alert: mapAlert(row) };
+  }
+  const updated = await pool.query(
+    `UPDATE v_b_supervision_alerts
+     SET deleted_at = NOW(),
+         deleted_by = $2,
+         updated_at = NOW()
+     WHERE id = $1::uuid
+     RETURNING id`,
+    [row.id, actorUserId || null]
+  );
+  if (!updated.rows[0]) throw new Error("Alert not found");
+  await pool.query(
+    `INSERT INTO v_b_supervision_alert_events
+      (alert_id, action, actor_user_id, old_status, new_status, note, meta)
+     VALUES ($1, 'trashed', $2, $3, $3, NULL, '{}'::jsonb)`,
+    [row.id, actorUserId || null, row.status]
+  );
+  const fresh = await getAlertRowById(row.id);
+  const alert = mapAlert(fresh);
+  broadcastSupervisionAlertUpdate({
+    type: "alert",
+    action: "trashed",
+    alert,
+    actorUserId: actorUserId || null
+  });
+  return { alert };
+}
+
+export async function restoreSupervisionAlert({ alertId, queueItemId, actorUserId }) {
+  await ensureSupervisionAlertsSchema();
+  let row = null;
+  if (alertId) {
+    row = await getAlertRowById(alertId);
+  } else if (queueItemId) {
+    const result = await pool.query(
+      `SELECT ${ALERT_SELECT_WITH_ACTORS}
+       FROM v_b_supervision_alerts a
+       ${ALERT_ACTOR_JOINS}
+       WHERE a.queue_item_id = $1
+       LIMIT 1`,
+      [queueItemId]
+    );
+    row = result.rows[0] || null;
+  }
+  if (!row) throw new Error("Alert not found");
+  if (!row.deleted_at) {
+    return { alert: mapAlert(row) };
+  }
+  await pool.query(
+    `UPDATE v_b_supervision_alerts
+     SET deleted_at = NULL,
+         deleted_by = NULL,
+         updated_at = NOW()
+     WHERE id = $1::uuid`,
+    [row.id]
+  );
+  await pool.query(
+    `INSERT INTO v_b_supervision_alert_events
+      (alert_id, action, actor_user_id, old_status, new_status, note, meta)
+     VALUES ($1, 'restored', $2, $3, $3, NULL, '{}'::jsonb)`,
+    [row.id, actorUserId || null, row.status]
+  );
+  const fresh = await getAlertRowById(row.id);
+  const alert = mapAlert(fresh);
+  broadcastSupervisionAlertUpdate({
+    type: "alert",
+    action: "restored",
+    alert,
+    actorUserId: actorUserId || null
+  });
+  return { alert };
+}
+
+export async function purgeSupervisionAlert({ alertId, queueItemId, actorUserId }) {
+  await ensureSupervisionAlertsSchema();
+  let row = null;
+  if (alertId) {
+    row = await getAlertRowById(alertId);
+  } else if (queueItemId) {
+    const result = await pool.query(
+      `SELECT ${ALERT_SELECT_WITH_ACTORS}
+       FROM v_b_supervision_alerts a
+       ${ALERT_ACTOR_JOINS}
+       WHERE a.queue_item_id = $1
+       LIMIT 1`,
+      [queueItemId]
+    );
+    row = result.rows[0] || null;
+  }
+  if (!row) throw new Error("Alert not found");
+  if (!row.deleted_at) {
+    throw new Error("Only trashed alerts can be permanently deleted");
+  }
+  const alert = mapAlert(row);
+  await pool.query(`DELETE FROM v_b_supervision_alerts WHERE id = $1::uuid`, [row.id]);
+  broadcastSupervisionAlertUpdate({
+    type: "alert",
+    action: "purged",
+    alert: { ...alert, purged: true },
+    actorUserId: actorUserId || null
+  });
+  return { alert: { ...alert, purged: true } };
 }
 
 export { ACTIVE_STATUSES };
