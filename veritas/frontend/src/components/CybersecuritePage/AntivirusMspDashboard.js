@@ -1,35 +1,19 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Icon } from "@iconify/react";
-import { FaChevronLeft, FaChevronRight } from "react-icons/fa";
+import { FaChevronLeft, FaChevronRight, FaTimes } from "react-icons/fa";
 import { toast } from "react-toastify";
 import { useAppFormatters } from "../../hooks/useAppGeneralSettings";
 import MspEmptyState from "../Misc/MspEmptyState/MspEmptyState";
+import PageSkeleton from "../Misc/Skeleton/PageSkeleton";
 import ConfirmModal from "../Misc/ConfirmModal/ConfirmModal";
+import SmartTooltip from "../SmartTooltip";
 import { bulkRemoveAntivirusSolutions, syncAndPersistAntivirusSolution } from "../EnterprisesPage/antivirusSolutionUtils";
+import layout from "../EnterprisesPage/EnterprisesPage.module.css";
 import styles from "./AntivirusMspDashboard.module.css";
 import { buildAntivirusFleetFromClients, buildAntivirusFleetStats, filterAntivirusFleetRows, sortAntivirusFleetRows } from "./antivirusMspUtils";
 import CyberBulkBar from "./CyberBulkBar";
 import { fleetRowKey, useCyberBulkSelection } from "./useCyberBulkSelection";
 import { createTrackedAbortController } from "../../utils/pageLoadAbort";
-
-function KpiCard({
-  icon,
-  label,
-  value,
-  tone = "neutral",
-  active,
-  onClick
-}) {
-  return <button type="button" className={`${styles.kpiCard} ${active ? styles.kpiCardActive : ""}`} onClick={onClick}>
-      <span className={`${styles.kpiIcon} ${styles[`kpiIcon_${tone}`]}`}>
-        <Icon icon={icon} />
-      </span>
-      <span className={styles.kpiBody}>
-        <span className={styles.kpiValue}>{value}</span>
-        <span className={styles.kpiLabel}>{label}</span>
-      </span>
-    </button>;
-}
 
 function SortableHeader({
   column,
@@ -256,23 +240,31 @@ export default function AntivirusMspDashboard({
     }
   };
   if (!msp || !av) return null;
-  const statusLabels = Object.fromEntries((copy.statusFilters || []).map(filter => [filter.id, filter.label]));
+  const statusFilterItems = copy.statusFilters || [];
   return <div className={styles.dashboard}>
-      <div className={styles.kpiStrip}>
-        <KpiCard icon="mdi:shield-search" label={msp.kpi.solutions} value={stats.total} tone="neutral" active={statusFilter === "all"} onClick={() => {
-        setStatusFilter("all");
-        setSearch("");
-      }} />
-        <KpiCard icon="mdi:shield-check" label={statusLabels.actif || msp.kpi.active} value={stats.statusCounts.actif} tone="good" active={statusFilter === "actif"} onClick={() => toggleStatus("actif")} />
-        <KpiCard icon="mdi:clock-alert-outline" label={statusLabels.expire_bientot} value={stats.statusCounts.expire_bientot} tone="warn" active={statusFilter === "expire_bientot"} onClick={() => toggleStatus("expire_bientot")} />
-        <KpiCard icon="mdi:shield-off-outline" label={statusLabels.inactif} value={stats.statusCounts.inactif} tone="bad" active={statusFilter === "inactif"} onClick={() => toggleStatus("inactif")} />
-      </div>
-
-      <div className={styles.toolbar}>
-        <label className={styles.searchBox}>
-          <Icon icon="mdi:magnify" width={18} aria-hidden />
-          <input type="search" placeholder={av.searchPlaceholder} value={search} onChange={e => setSearch(e.target.value)} />
-        </label>
+      <div className={`${layout.toolbar} ${layout.toolbarWithFilters}`}>
+        <div className={layout.searchWrap}>
+          <Icon icon="mdi:magnify" className={layout.searchIcon} aria-hidden />
+          <input type="search" inputMode="search" enterKeyHint="search" placeholder={av.searchPlaceholder} value={search} onChange={e => setSearch(e.target.value)} className={layout.searchInput} aria-label={av.searchPlaceholder} />
+          {search ? <SmartTooltip content={msp.clearSearch || "Effacer"}>
+              <button type="button" onClick={() => setSearch("")} className={layout.clearButton} aria-label={msp.clearSearch || "Effacer"}>
+                <FaTimes />
+              </button>
+            </SmartTooltip> : null}
+        </div>
+        <div className={layout.statusChips} role="group">
+          {statusFilterItems.map(item => {
+            const count = stats.statusCounts[item.id] || 0;
+            const active = statusFilter === item.id;
+            return <button key={item.id} type="button" className={`${layout.statusChip} ${active ? layout.statusChipActive : ""} ${count === 0 ? layout.statusChipDisabled : ""}`} onClick={() => toggleStatus(item.id)} disabled={loading || count === 0}>
+                <span className={`${layout.statusChipIcon} ${layout[`kpiIcon_${item.kpiTone}`]}`}>
+                  <Icon icon={item.icon} />
+                </span>
+                <span className={layout.statusChipLabel}>{item.label}</span>
+                <span className={layout.statusChipCount}>{count}</span>
+              </button>;
+          })}
+        </div>
         {onSync ? <div className={styles.toolbarActions}>
             <button
               type="button"
@@ -287,12 +279,12 @@ export default function AntivirusMspDashboard({
           </div> : null}
       </div>
 
-      {loading ? <div className={styles.loadingState}>
-          <Icon icon="mdi:loading" className={styles.spin} width={28} />
-          <span>{av.loading}</span>
-        </div> : filteredRows.length === 0 ? <MspEmptyState icon="mdi:shield-off-outline" title={fleetRows.length === 0 ? av.emptyTitle : av.noResultsTitle} text={fleetRows.length === 0 ? av.emptyText : av.noResultsText} /> : <section className={styles.panel}>
+      {loading ? (
+        <PageSkeleton variant="list" rows={8} label={av.loading} />
+      ) : filteredRows.length === 0 ? <MspEmptyState icon="mdi:shield-off-outline" title={fleetRows.length === 0 ? av.emptyTitle : av.noResultsTitle} text={fleetRows.length === 0 ? av.emptyText : av.noResultsText} /> : <section className={styles.panel}>
           <CyberBulkBar copy={copy} selectedCount={selectedCount} allSelected={allSelected} filteredCount={sortedRows.length} busy={busy} onSelectAll={selectAll} onRefresh={handleBulkRefresh} onDelete={() => setDeleteOpen(true)} onClear={clearSelection} />
           <div className={styles.tableWrap}>
+            <div className={styles.tableScroll}>
             <table className={styles.table}>
               <thead>
                 <tr>
@@ -317,8 +309,8 @@ export default function AntivirusMspDashboard({
             }} />)}
               </tbody>
             </table>
-          </div>
-          {sortedRows.length > 0 ? <div className={styles.paginationBar}>
+            </div>
+            {sortedRows.length > 0 ? <div className={styles.paginationBar}>
               <div className={styles.paginationLeft}>
                 <span className={styles.paginationLabel}>{msp.rowsPerPage}</span>
                 <select className={styles.paginationSelect} value={pageSize} onChange={e => setPageSize(Number(e.target.value))}>
@@ -340,6 +332,7 @@ export default function AntivirusMspDashboard({
                 </button>
               </div>
             </div> : null}
+          </div>
         </section>}
       <ConfirmModal open={deleteOpen} variant="danger" title={copy.bulk.deleteTitle} message={copy.formatBulkDeleteMessage(selectedCount)} confirmLabel={copy.bulk.deleteConfirm} loading={busy} onClose={() => setDeleteOpen(false)} onConfirm={handleBulkDelete} />
     </div>;

@@ -5,6 +5,17 @@
  */
 export const PATCH_NOTES = [
   {
+    version: "1.0.57",
+    date: "2026-10-01",
+    highlights: [
+      "Optimisation de l’UI : listes cyber et services allégées (recherche, filtres et table, sans bandes KPI).",
+      "Harmonisation des barres de filtres, pagination dans les tableaux et squelettes de chargement plus cohérents.",
+      "Création de tickets support : panneaux affichés progressivement selon le formulaire choisi.",
+      "Supervision : recherche/filtres type entreprises, libellés d’expiration corrigés et polish de l’historique.",
+      "Polish général des fiches entreprises, contacts, prestataires et accueil."
+    ]
+  },
+  {
     version: "1.0.56",
     date: "2026-10-01",
     highlights: [

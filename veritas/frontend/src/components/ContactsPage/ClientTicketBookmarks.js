@@ -1,6 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Icon } from "@iconify/react";
-import { FaPlus } from "react-icons/fa";
 import SmartTooltip from "../SmartTooltip";
 import { useAppFormatters, useAppLocale } from "../../hooks/useAppGeneralSettings";
 import { getContactDetailCopy, interpolate } from "./contactDetailI18n";
@@ -270,9 +269,6 @@ export default function ClientTicketBookmarks({
   loading = false,
   statusLabels = {},
   onTicketClick,
-  onCreateTicket,
-  onOpenTicketList,
-  canCreate = true,
   clients = [],
   inPageHero = false
 }) {
@@ -368,19 +364,6 @@ export default function ClientTicketBookmarks({
                 {closed.length === 0 ? <span className={styles.sectionEmptyHint}>{bookmarksCopy.noClosed}</span> : closed.map(ticket => <TicketBookmark key={`closed-${ticket.id}`} ticket={ticket} mode="closed" {...bookmarkProps} />)}
               </>}
           </div>
-        </div>
-
-        <div className={styles.barActions}>
-          <SmartTooltip content={bookmarksCopy.viewAll}>
-            <button type="button" className={styles.barActionBtn} onClick={onOpenTicketList} aria-label={bookmarksCopy.viewAll}>
-              <Icon icon="mingcute:ticket-fill" aria-hidden />
-            </button>
-          </SmartTooltip>
-          <SmartTooltip content={canCreate ? bookmarksCopy.createTicket : bookmarksCopy.createTicketNeedEnterprise}>
-            <button type="button" className={`${styles.barActionBtn} ${styles.barActionBtnPrimary}`} onClick={onCreateTicket} disabled={!canCreate} aria-label={bookmarksCopy.createTicket}>
-              <FaPlus aria-hidden />
-            </button>
-          </SmartTooltip>
         </div>
       </div>
     </div>;

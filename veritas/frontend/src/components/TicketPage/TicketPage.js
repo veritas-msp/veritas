@@ -7,6 +7,7 @@ import { CSS } from "@dnd-kit/utilities";
 import { toast } from "react-toastify";
 import layout from "../EnterprisesPage/EnterprisesPage.module.css";
 import styles from "./TicketPage.module.css";
+import PageSkeleton from "../Misc/Skeleton/PageSkeleton";
 import SmartTooltip from "../SmartTooltip";
 import { searchTickets, fetchAllMatchingTickets, restoreTicket, permanentlyDeleteTicket, fetchTicketViews, fetchTicketViewCounts, fetchTicketSatisfactionCounts, bulkUpdateTickets, updateTicketView, fetchTicketTableColumns } from "../../api/tickets";
 import { fetchUsers } from "../../api/users";
@@ -39,8 +40,10 @@ import { TICKET_SATISFACTION_VIEWS, TICKET_SATISFACTION_VIEW_IDS, isTicketSatisf
 import TicketSatisfactionsPanel from "./TicketSatisfactionsPanel";
 import { getTicketPageCopy } from "./ticketPageI18n";
 import MspPageHero from "../Misc/MspPageHero/MspPageHero";
+import ContextMenu from "../Misc/ContextMenu/ContextMenu";
 import mspStyles from "../CybersecuritePage/CybersecuritePage.module.css";
 import { createTrackedAbortController } from "../../utils/pageLoadAbort";
+import { buildAgentPath } from "../../navigation/agentRoutes";
 const VIEW_SECTION_KEYS = ["public", "assigned", "private"];
 const PAGE_SCOPE = "ticket";
 const VIEWS_PANE_COLLAPSED_KEY = "veritas_ticket_views_collapsed";
@@ -235,6 +238,7 @@ export default function TicketPage({
   const [loadingRandom, setLoadingRandom] = useState(false);
   const [slaNow, setSlaNow] = useState(() => Date.now());
   const [selectedIds, setSelectedIds] = useState(() => new Set());
+  const [contextMenu, setContextMenu] = useState(null);
   const [bulkModalOpen, setBulkModalOpen] = useState(false);
   const [bulkDeleting, setBulkDeleting] = useState(false);
   const [confirmModal, setConfirmModal] = useState(null);
@@ -789,6 +793,141 @@ export default function TicketPage({
       background: true
     } : undefined);
   };
+  const copyTicketText = useCallback(async (text, successToast) => {
+    const raw = String(text || "").trim();
+    if (!raw) {
+      toast.info(pageCopy.contextMenu?.copyUnavailable || "Rien a copier");
+      return;
+    }
+    try {
+      if (navigator?.clipboard?.writeText) {
+        await navigator.clipboard.writeText(raw);
+      } else {
+        const textarea = document.createElement("textarea");
+        textarea.value = raw;
+        textarea.style.position = "fixed";
+        textarea.style.opacity = "0";
+        document.body.appendChild(textarea);
+        textarea.select();
+        document.execCommand("copy");
+        document.body.removeChild(textarea);
+      }
+      toast.success(successToast || pageCopy.contextMenu?.copied || "Copie");
+    } catch {
+      toast.error(pageCopy.contextMenu?.copyFailed || "Impossible de copier");
+    }
+  }, [pageCopy.contextMenu]);
+  const getTicketLink = useCallback(ticket => {
+    const path = buildAgentPath("TicketDetail", {
+      ticketId: ticket?.id,
+      ticketNumber: ticket?.ticket_number,
+      title: ticket?.title
+    });
+    if (!path) return "";
+    try {
+      return `${window.location.origin}${path}`;
+    } catch {
+      return path;
+    }
+  }, []);
+  const openTicketContextMenu = useCallback((event, ticket) => {
+    event.preventDefault();
+    event.stopPropagation();
+    if (!ticket?.id) return;
+    setContextMenu({
+      x: event.clientX,
+      y: event.clientY,
+      ticket
+    });
+  }, []);
+  const closeTicketContextMenu = useCallback(() => setContextMenu(null), []);
+  const ticketContextMenuItems = useMemo(() => {
+    const ticket = contextMenu?.ticket;
+    if (!ticket) return [];
+    const numberLabel = ticket.ticket_number ? `#${ticket.ticket_number}` : `#${ticket.id}`;
+    const cm = pageCopy.contextMenu || {};
+    const items = [
+      {
+        key: "open",
+        icon: "mdi:open-in-app",
+        label: cm.open || "Ouvrir",
+        onSelect: () => openTicket(ticket)
+      },
+      {
+        key: "open-bg",
+        icon: "mdi:tab-plus",
+        label: cm.openBackground || "Ouvrir en arriere-plan",
+        onSelect: () => openTicket(ticket, true)
+      },
+      { key: "sep-copy", separator: true },
+      {
+        key: "copy-number",
+        icon: "mdi:pound",
+        label: cm.copyNumber || "Copier le numero",
+        onSelect: () => copyTicketText(numberLabel, cm.copiedNumber || "Numero copie")
+      },
+      {
+        key: "copy-link",
+        icon: "mdi:link-variant",
+        label: cm.copyLink || "Copier le lien",
+        onSelect: () => copyTicketText(getTicketLink(ticket), cm.copiedLink || "Lien copie")
+      }
+    ];
+    const clientId = resolveClientId(ticket);
+    const contactId = resolveRequesterContactId(ticket);
+    if (clientId || contactId) {
+      items.push({ key: "sep-nav", separator: true });
+      if (clientId) {
+        items.push({
+          key: "open-client",
+          icon: "mdi:domain",
+          label: cm.openClient || "Ouvrir l'entreprise",
+          onSelect: () => onNavigate?.("ContratDetail", {
+            clientId,
+            name: resolveClientLabel(ticket)
+          })
+        });
+      }
+      if (contactId) {
+        items.push({
+          key: "open-contact",
+          icon: "mdi:account-outline",
+          label: cm.openContact || "Ouvrir le demandeur",
+          onSelect: () => onNavigate?.("ContactDetail", { contactId })
+        });
+      }
+    }
+    if (viewMode === "trash") {
+      items.push({ key: "sep-trash", separator: true });
+      items.push({
+        key: "restore",
+        icon: "mdi:restore",
+        label: cm.restore || pageCopy.table?.restoreTitle || "Restaurer",
+        onSelect: () => handleRestoreTicket(ticket.id)
+      });
+      if (canHardPurge) {
+        items.push({
+          key: "purge",
+          icon: "mdi:delete-forever-outline",
+          label: cm.purge || pageCopy.table?.purgeTitle || "Supprimer definitivement",
+          danger: true,
+          onSelect: () => handlePermanentDelete(ticket.id)
+        });
+      }
+    }
+    return items;
+  }, [
+    contextMenu?.ticket,
+    pageCopy.contextMenu,
+    pageCopy.table,
+    viewMode,
+    canHardPurge,
+    copyTicketText,
+    getTicketLink,
+    onNavigate,
+    handleRestoreTicket,
+    handlePermanentDelete
+  ]);
   const openCreateViewModal = () => {
     if (!canManageViews) return;
     setEditingView(null);
@@ -1173,10 +1312,9 @@ export default function TicketPage({
               </div>
             </div>
 
-            {loading ? <div className={layout.stateBox}>
-            <Icon icon="mdi:loading" className={layout.spinning} />
-            <span>{pageCopy.loadingTickets}</span>
-          </div> : totalCount === 0 && !refreshing ? <div className={layout.emptyState}>
+            {loading ? (
+            <PageSkeleton variant="list" rows={8} label={pageCopy.loadingTickets} />
+          ) : totalCount === 0 && !refreshing ? <div className={layout.emptyState}>
             <Icon icon="mingcute:ticket-fill" className={layout.emptyStateIcon} />
             <p className={layout.emptyStateTitle}>
               {viewMode === "trash" ? pageCopy.empty.trashTitle : pageCopy.empty.noTicketsTitle}
@@ -1258,7 +1396,7 @@ export default function TicketPage({
                               const ticketStatus = normalizeStatus(t.status);
                               const majorIncident = isMajorIncidentTicket(t);
                               const isSelected = selectedIds.has(t.id);
-                              return <tr key={t.id} className={`${majorIncident ? styles.majorIncidentRow : ""} ${isSelected ? styles.selectedRow : ""}`.trim() || undefined} onClick={() => openTicket(t)} onAuxClick={e => {
+                              return <tr key={t.id} className={`${majorIncident ? styles.majorIncidentRow : ""} ${isSelected ? styles.selectedRow : ""}`.trim() || undefined} onClick={() => openTicket(t)} onContextMenu={e => openTicketContextMenu(e, t)} onAuxClick={e => {
                                 if (e.button === 1) {
                                   e.preventDefault();
                                   openTicket(t, true);
@@ -1438,29 +1576,38 @@ export default function TicketPage({
             </tbody>
                 </table>
               </div>
-            </div>
 
-            <div className={layout.pagination}>
-              <div className={layout.paginationLeft}>
-                <span className={layout.paginationLabel}>{commonCopy.perPage}</span>
-                <select className={layout.paginationSelect} value={pageSize} onChange={e => setPageSize(Number(e.target.value))}>
-                  <option value={10}>10</option>
-                  <option value={25}>25</option>
-                  <option value={50}>50</option>
-                  <option value={100}>100</option>
-                </select>
+            {totalCount > 0 ? (
+              <div className={`${layout.pagination} ${layout.paginationEmbedded}`}>
+                <div className={layout.paginationLeft}>
+                  <span className={layout.paginationLabel}>{commonCopy.perPage}</span>
+                  <select className={layout.paginationSelect} value={pageSize} onChange={e => setPageSize(Number(e.target.value))}>
+                    <option value={10}>10</option>
+                    <option value={25}>25</option>
+                    <option value={50}>50</option>
+                    <option value={100}>100</option>
+                  </select>
+                  <span className={layout.paginationInfo}>
+                    {interpolate(commonCopy.rangeInfo || "{start}–{end} / {total}", {
+                      start: String((currentPage - 1) * pageSize + 1),
+                      end: String(Math.min(currentPage * pageSize, totalCount)),
+                      total: String(totalCount)
+                    })}
+                  </span>
+                </div>
+                <div className={layout.paginationRight}>
+                  <button type="button" className={layout.pageBtn} onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))} disabled={currentPage <= 1} aria-label={commonCopy.prevPage}>
+                    <FaChevronLeft />
+                  </button>
+                  <span className={layout.paginationInfo}>
+                    {formatPageInfo(locale, currentPage, totalPages)}
+                  </span>
+                  <button type="button" className={layout.pageBtn} onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))} disabled={currentPage >= totalPages} aria-label={commonCopy.nextPage}>
+                    <FaChevronRight />
+                  </button>
+                </div>
               </div>
-              <div className={layout.paginationRight}>
-                <button type="button" className={layout.pageBtn} onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))} disabled={currentPage <= 1} aria-label={commonCopy.prevPage}>
-                  <FaChevronLeft />
-                </button>
-                <span className={layout.paginationInfo}>
-                  {formatPageInfo(locale, currentPage, totalPages)} · {totalCount}
-                </span>
-                <button type="button" className={layout.pageBtn} onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))} disabled={currentPage >= totalPages} aria-label={commonCopy.nextPage}>
-                  <FaChevronRight />
-                </button>
-              </div>
+            ) : null}
             </div>
           </>}
               </>}
@@ -1470,6 +1617,17 @@ export default function TicketPage({
         <TicketConfirmModal open={Boolean(confirmModal)} title={confirmModal?.title} message={confirmModal?.message} confirmLabel={confirmModal?.confirmLabel} icon={confirmModal?.icon} variant={confirmModal?.variant} loading={bulkDeleting} onClose={closeConfirmModal} onConfirm={confirmModal?.onConfirm} />
 
         <TicketBulkActionModal open={bulkModalOpen} onClose={() => setBulkModalOpen(false)} ticketIds={[...selectedIds]} users={users} contacts={contacts} onSuccess={handleBulkActionSuccess} />
+
+        {contextMenu ? (
+          <ContextMenu
+            x={contextMenu.x}
+            y={contextMenu.y}
+            title={contextMenu.ticket?.ticket_number ? `#${contextMenu.ticket.ticket_number}` : (contextMenu.ticket?.title || pageCopy.contextMenu?.aria || "Ticket")}
+            items={ticketContextMenuItems}
+            onClose={closeTicketContextMenu}
+            ariaLabel={pageCopy.contextMenu?.aria || "Menu contextuel ticket"}
+          />
+        ) : null}
 
         <TicketViewModal open={viewModalOpen} onClose={() => {
               setViewModalOpen(false);

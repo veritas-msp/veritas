@@ -168,6 +168,14 @@ export function buildSiteAddress(site) {
   }
   return local;
 }
+
+/** Adresse entreprise dérivée du lieu principal (ou du premier lieu). */
+export function buildClientAddressFromSites(sites) {
+  const list = normalizeClientSites(sites);
+  if (!list.length) return "";
+  const primary = list.find(site => site.isPrimary) || list[0];
+  return buildSiteAddress(primary);
+}
 export function siteMatchesQuery(site, query) {
   const needle = String(query || "").trim().toLowerCase();
   if (!needle) return true;

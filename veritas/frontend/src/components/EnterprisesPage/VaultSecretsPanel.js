@@ -186,10 +186,10 @@ function NumberStepper({
       <input id={id} type="number" className={styles.numberStepperInput} value={numericValue} min={min} max={max} disabled={disabled} onChange={e => onChange(clampStepperValue(e.target.value, min, max, min))} />
       <div className={styles.numberStepperActions}>
         <button type="button" className={styles.numberStepperBtn} onClick={() => applyDelta(1)} disabled={disabled || numericValue >= max} aria-label={stepperCopy.increase}>
-          <Icon icon="mdi:plus" aria-hidden />
+          <Icon icon="mdi:chevron-up" aria-hidden />
         </button>
         <button type="button" className={styles.numberStepperBtn} onClick={() => applyDelta(-1)} disabled={disabled || numericValue <= min} aria-label={stepperCopy.decrease}>
-          <Icon icon="mdi:minus" aria-hidden />
+          <Icon icon="mdi:chevron-down" aria-hidden />
         </button>
       </div>
     </div>;
@@ -206,7 +206,6 @@ function VaultShareSecretModal({
   const toastCopy = copy.toast;
   const stepperCopy = copy.stepper;
   const [title, setTitle] = useState("");
-  const [description, setDescription] = useState("");
   const [login, setLogin] = useState("");
   const [secret, setSecret] = useState("");
   const [showSecret, setShowSecret] = useState(false);
@@ -229,7 +228,7 @@ function VaultShareSecretModal({
         contactId,
         clientId,
         title: title.trim(),
-        description: description.trim(),
+        description: "",
         login: login.trim(),
         secret: secret.trim(),
         expiresInDays,
@@ -267,22 +266,11 @@ function VaultShareSecretModal({
 
         <form className={styles.modalForm} onSubmit={handleSubmit}>
           <div className={styles.modalFormBody}>
-            <p className={styles.uploadHint}>
-              {modalCopy.hint}
-            </p>
-
             <div className={formStyles.field}>
               <label className={`${formStyles.label} ${formStyles.labelRequired}`} htmlFor="vault-secret-title">
                 {modalCopy.titleLabel}
               </label>
               <input id="vault-secret-title" className={formStyles.input} value={title} onChange={e => setTitle(e.target.value)} placeholder={modalCopy.titlePlaceholder} maxLength={200} disabled={saving} />
-            </div>
-
-            <div className={formStyles.field}>
-              <label className={formStyles.label} htmlFor="vault-secret-description">
-                {modalCopy.contextLabel}
-              </label>
-              <input id="vault-secret-description" className={formStyles.input} value={description} onChange={e => setDescription(e.target.value)} placeholder={modalCopy.contextPlaceholder} maxLength={2000} disabled={saving} />
             </div>
 
             <div className={formStyles.field}>

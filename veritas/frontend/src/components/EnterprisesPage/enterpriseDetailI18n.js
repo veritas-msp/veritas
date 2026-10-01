@@ -13,8 +13,8 @@ const DETAIL_COPY = {
     backToEnterprises: "Retour aux entreprises",
     loadError: "Erreur lors du chargement des données",
     heroMetaAria: "Informations et étiquettes client",
-    companyStatusActive: "Active",
-    companyStatusInactive: "Inactive",
+    companyStatusActive: "Actif",
+    companyStatusInactive: "Inactif",
     equipmentCount: "{count} équipement",
     equipmentCountPlural: "{count} équipements",
     contactCount: "{count} contact",
@@ -44,7 +44,7 @@ const DETAIL_COPY = {
     overviewTabsAria: "Sections entreprise",
     overviewTabMap: "Cartographie",
     overviewTabActivity: "Activité",
-    overviewTabVault: "Coffre fort documentaire",
+    overviewTabVault: "Coffre-fort",
     filterBadge: "Filtre : {value}",
     clearSiteFilter: "Retirer le filtre",
     clearSiteFilterAria: "Retirer le filtre de lieu {value}",
@@ -65,6 +65,10 @@ const DETAIL_COPY = {
     onboardingBannerTitle: "Client en onboarding",
     onboardingBannerHint: "Créé il y a {days} j. · encore {remaining} j. dans la fenêtre des 30 jours.",
     onboardingBannerHintToday: "Créé aujourd'hui · encore {remaining} j. dans la fenêtre des 30 jours.",
+    kpiSupportTotal: "Support total",
+    kpiSupportOpen: "Support ouverts",
+    kpiPrestationTotal: "Prestations total",
+    kpiPrestationOpen: "Prestations ouvertes",
     openCount: "{count} ouvert(s)",
     prestationsTitle: "Ticket de Prestations / Services",
     prestationsCount: "{count} ticket(s)",
@@ -82,7 +86,7 @@ const DETAIL_COPY = {
       untitled: "Campagne sans nom",
       add: "Créer une campagne"
     },
-    vaultTitle: "Coffre-fort documentaire",
+    vaultTitle: "Coffre-fort",
     addToVault: "Ajouter au coffre-fort",
     sidebar: {
       showMore: "Voir plus",
@@ -134,11 +138,18 @@ const DETAIL_COPY = {
     searchSites: "Rechercher un lieu…",
     searchSitesAria: "Rechercher un lieu",
     noSiteResults: "Aucun lieu ne correspond à la recherche.",
+    searchContacts: "Rechercher un contact…",
+    searchContactsAria: "Rechercher un contact",
+    noContactResults: "Aucun contact ne correspond à la recherche.",
+    searchProviders: "Rechercher un prestataire…",
+    searchProvidersAria: "Rechercher un prestataire",
+    noProviderResults: "Aucun prestataire ne correspond à la recherche.",
     sitesRange: "{start}–{end} sur {total}",
     sitePrimary: "Principal",
     filterSiteTitle: "Filtrer la cartographie sur {name}",
     notesTitle: "Notes",
     loadingNotes: "Chargement des notes...",
+    noNotes: "Aucune note",
     addNote: "Ajouter une note",
     editNote: "Modifier",
     editNoteAria: "Modifier la note",
@@ -205,7 +216,7 @@ const DETAIL_COPY = {
           content: "Suivez les tickets support, les prestations et les événements planifiés liés à ce client. Cliquez sur une ligne pour ouvrir le détail."
         },
         vault: {
-          title: "Coffre-fort documentaire",
+          title: "Coffre-fort",
           content: "Factures, notices, guides et rapports partagés avec le contact sur son portail client. Recherchez, filtrez par type et déposez un document avec le bouton +. Indiquez si le fichier est visible côté portail."
         },
         sidebarNotes: {
@@ -279,7 +290,7 @@ const DETAIL_COPY = {
       creditPacks: "Carnets de crédits support",
       sla: "SLA support",
       prestations: "Ticket de Prestations / Services",
-      vault: "Coffre-fort documentaire"
+      vault: "Coffre-fort"
     },
     contractTypes: {
       EDUCATION: "Éducation / scolaire",
@@ -462,7 +473,7 @@ const DETAIL_COPY = {
     overviewTabsAria: "Company sections",
     overviewTabMap: "Map",
     overviewTabActivity: "Activity",
-    overviewTabVault: "Document vault",
+    overviewTabVault: "Vault",
     filterBadge: "Filter: {value}",
     clearSiteFilter: "Clear filter",
     clearSiteFilterAria: "Clear location filter {value}",
@@ -483,6 +494,10 @@ const DETAIL_COPY = {
     onboardingBannerTitle: "Client onboarding",
     onboardingBannerHint: "Created {days} day(s) ago · {remaining} day(s) left in the 30-day window.",
     onboardingBannerHintToday: "Created today · {remaining} day(s) left in the 30-day window.",
+    kpiSupportTotal: "Support total",
+    kpiSupportOpen: "Support open",
+    kpiPrestationTotal: "Services total",
+    kpiPrestationOpen: "Services open",
     openCount: "{count} open",
     prestationsTitle: "Services / delivery tickets",
     prestationsCount: "{count} ticket(s)",
@@ -500,7 +515,7 @@ const DETAIL_COPY = {
       untitled: "Untitled campaign",
       add: "Create a campaign"
     },
-    vaultTitle: "Document vault",
+    vaultTitle: "Vault",
     addToVault: "Add to vault",
     sidebar: {
       showMore: "Show more",
@@ -552,11 +567,18 @@ const DETAIL_COPY = {
     searchSites: "Search a location…",
     searchSitesAria: "Search a location",
     noSiteResults: "No location matches this search.",
+    searchContacts: "Search a contact…",
+    searchContactsAria: "Search a contact",
+    noContactResults: "No contact matches this search.",
+    searchProviders: "Search a provider…",
+    searchProvidersAria: "Search a provider",
+    noProviderResults: "No provider matches this search.",
     sitesRange: "{start}–{end} of {total}",
     sitePrimary: "Primary",
     filterSiteTitle: "Filter map on {name}",
     notesTitle: "Notes",
     loadingNotes: "Loading notes...",
+    noNotes: "No notes",
     addNote: "Add a note",
     editNote: "Edit",
     editNoteAria: "Edit note",
@@ -623,7 +645,7 @@ const DETAIL_COPY = {
           content: "Track support tickets, service requests and scheduled events for this client. Click a row to open details."
         },
         vault: {
-          title: "Document vault",
+          title: "Vault",
           content: "Invoices, manuals, guides and reports shared with contacts on their client portal. Search, filter by type and upload with the + button. Choose whether each file is visible on the portal."
         },
         sidebarNotes: {
@@ -697,7 +719,7 @@ const DETAIL_COPY = {
       creditPacks: "Support credit packs",
       sla: "Support SLA",
       prestations: "Services / delivery tickets",
-      vault: "Document vault"
+      vault: "Vault"
     },
     contractTypes: {
       EDUCATION: "Education / school",
@@ -878,7 +900,7 @@ const DETAIL_COPY = {
     overviewTabsAria: "Unternehmensbereiche",
     overviewTabMap: "Kartografie",
     overviewTabActivity: "Aktivität",
-    overviewTabVault: "Dokumententresor",
+    overviewTabVault: "Tresor",
     filterBadge: "Filter: {value}",
     clearSiteFilter: "Filter entfernen",
     clearSiteFilterAria: "Standortfilter {value} entfernen",
@@ -899,6 +921,10 @@ const DETAIL_COPY = {
     onboardingBannerTitle: "Kunde im Onboarding",
     onboardingBannerHint: "Erstellt vor {days} T. · noch {remaining} T. im 30-Tage-Fenster.",
     onboardingBannerHintToday: "Heute erstellt · noch {remaining} T. im 30-Tage-Fenster.",
+    kpiSupportTotal: "Support gesamt",
+    kpiSupportOpen: "Support offen",
+    kpiPrestationTotal: "Leistungen gesamt",
+    kpiPrestationOpen: "Leistungen offen",
     openCount: "{count} offen",
     prestationsTitle: "Leistungs-Tickets",
     prestationsCount: "{count} Ticket(s)",
@@ -916,7 +942,7 @@ const DETAIL_COPY = {
       untitled: "Kampagne ohne Namen",
       add: "Kampagne erstellen"
     },
-    vaultTitle: "Dokumententresor",
+    vaultTitle: "Tresor",
     addToVault: "Zum Tresor hinzufügen",
     sidebar: {
       showMore: "Mehr anzeigen",
@@ -965,11 +991,18 @@ const DETAIL_COPY = {
     searchSites: "Standort suchen…",
     searchSitesAria: "Standort suchen",
     noSiteResults: "Kein Standort entspricht der Suche.",
+    searchContacts: "Kontakt suchen…",
+    searchContactsAria: "Kontakt suchen",
+    noContactResults: "Kein Kontakt entspricht der Suche.",
+    searchProviders: "Dienstleister suchen…",
+    searchProvidersAria: "Dienstleister suchen",
+    noProviderResults: "Kein Dienstleister entspricht der Suche.",
     sitesRange: "{start}–{end} von {total}",
     sitePrimary: "Hauptstandort",
     filterSiteTitle: "Karte filtern auf {name}",
     notesTitle: "Notizen",
     loadingNotes: "Notizen werden geladen...",
+    noNotes: "Keine Notizen",
     addNote: "Notiz hinzufügen",
     editNote: "Bearbeiten",
     editNoteAria: "Notiz bearbeiten",
@@ -1036,7 +1069,7 @@ const DETAIL_COPY = {
           content: "Support-Tickets, Leistungen und geplante Ereignisse verfolgen. Zeile anklicken für Details."
         },
         vault: {
-          title: "Dokumententresor",
+          title: "Tresor",
           content: "Rechnungen, Handbücher, Anleitungen und Berichte, die mit Kontakten im Kundenportal geteilt werden. Suchen, nach Typ filtern und mit + hochladen. Legen Sie fest, ob die Datei im Portal sichtbar ist."
         },
         sidebarNotes: {
@@ -1110,7 +1143,7 @@ const DETAIL_COPY = {
       creditPacks: "Support-Guthabenpakete",
       sla: "Support-SLA",
       prestations: "Leistungs-Tickets",
-      vault: "Dokumententresor"
+      vault: "Tresor"
     },
     contractTypes: {
       EDUCATION: "Bildung / Schule",
@@ -1291,7 +1324,7 @@ const DETAIL_COPY = {
     overviewTabsAria: "Sezioni azienda",
     overviewTabMap: "Cartografia",
     overviewTabActivity: "Attività",
-    overviewTabVault: "Cassaforte documentale",
+    overviewTabVault: "Cassaforte",
     filterBadge: "Filtro: {value}",
     clearSiteFilter: "Rimuovi filtro",
     clearSiteFilterAria: "Rimuovi il filtro luogo {value}",
@@ -1312,6 +1345,10 @@ const DETAIL_COPY = {
     onboardingBannerTitle: "Cliente in onboarding",
     onboardingBannerHint: "Creato {days} g. fa · ancora {remaining} g. nella finestra di 30 giorni.",
     onboardingBannerHintToday: "Creato oggi · ancora {remaining} g. nella finestra di 30 giorni.",
+    kpiSupportTotal: "Supporto totale",
+    kpiSupportOpen: "Supporto aperti",
+    kpiPrestationTotal: "Prestazioni totale",
+    kpiPrestationOpen: "Prestazioni aperte",
     openCount: "{count} aperto/i",
     prestationsTitle: "Ticket Prestazioni / Servizi",
     prestationsCount: "{count} ticket",
@@ -1329,7 +1366,7 @@ const DETAIL_COPY = {
       untitled: "Campagna senza nome",
       add: "Crea campagna"
     },
-    vaultTitle: "Cassaforte documenti",
+    vaultTitle: "Cassaforte",
     addToVault: "Aggiungi alla cassaforte",
     sidebar: {
       showMore: "Mostra di più",
@@ -1378,11 +1415,18 @@ const DETAIL_COPY = {
     searchSites: "Cerca una sede…",
     searchSitesAria: "Cerca una sede",
     noSiteResults: "Nessuna sede corrisponde alla ricerca.",
+    searchContacts: "Cerca un contatto…",
+    searchContactsAria: "Cerca un contatto",
+    noContactResults: "Nessun contatto corrisponde alla ricerca.",
+    searchProviders: "Cerca un fornitore…",
+    searchProvidersAria: "Cerca un fornitore",
+    noProviderResults: "Nessun fornitore corrisponde alla ricerca.",
     sitesRange: "{start}–{end} di {total}",
     sitePrimary: "Principale",
     filterSiteTitle: "Filtra mappa su {name}",
     notesTitle: "Note",
     loadingNotes: "Caricamento note...",
+    noNotes: "Nessuna nota",
     addNote: "Aggiungi nota",
     editNote: "Modifica",
     editNoteAria: "Modifica nota",
@@ -1449,7 +1493,7 @@ const DETAIL_COPY = {
           content: "Ticket supporto, prestazioni ed eventi pianificati. Clicca una riga per i dettagli."
         },
         vault: {
-          title: "Cassaforte documenti",
+          title: "Cassaforte",
           content: "Fatture, manuali, guide e report condivisi con i contatti sul portale cliente. Cerca, filtra per tipo e carica con il pulsante +. Indica se il file è visibile sul portale."
         },
         sidebarNotes: {
@@ -1523,7 +1567,7 @@ const DETAIL_COPY = {
       creditPacks: "Carnet crediti supporto",
       sla: "SLA supporto",
       prestations: "Ticket Prestazioni / Servizi",
-      vault: "Cassaforte documenti"
+      vault: "Cassaforte"
     },
     contractTypes: {
       EDUCATION: "Istruzione / scuola",
@@ -1704,7 +1748,7 @@ const DETAIL_COPY = {
     overviewTabsAria: "Secciones de la empresa",
     overviewTabMap: "Cartografía",
     overviewTabActivity: "Actividad",
-    overviewTabVault: "Caja fuerte documental",
+    overviewTabVault: "Caja fuerte",
     filterBadge: "Filtro: {value}",
     clearSiteFilter: "Quitar filtro",
     clearSiteFilterAria: "Quitar el filtro de emplazamiento {value}",
@@ -1725,6 +1769,10 @@ const DETAIL_COPY = {
     onboardingBannerTitle: "Cliente en onboarding",
     onboardingBannerHint: "Creado hace {days} d. · quedan {remaining} d. en la ventana de 30 días.",
     onboardingBannerHintToday: "Creado hoy · quedan {remaining} d. en la ventana de 30 días.",
+    kpiSupportTotal: "Soporte total",
+    kpiSupportOpen: "Soporte abiertos",
+    kpiPrestationTotal: "Prestaciones total",
+    kpiPrestationOpen: "Prestaciones abiertas",
     openCount: "{count} abierto(s)",
     prestationsTitle: "Tickets Prestaciones / Servicios",
     prestationsCount: "{count} ticket(s)",
@@ -1742,7 +1790,7 @@ const DETAIL_COPY = {
       untitled: "Campaña sin nombre",
       add: "Crear campaña"
     },
-    vaultTitle: "Caja fuerte documental",
+    vaultTitle: "Caja fuerte",
     addToVault: "Añadir a la caja fuerte",
     sidebar: {
       showMore: "Ver más",
@@ -1791,11 +1839,18 @@ const DETAIL_COPY = {
     searchSites: "Buscar una ubicación…",
     searchSitesAria: "Buscar una ubicación",
     noSiteResults: "Ninguna ubicación coincide con la búsqueda.",
+    searchContacts: "Buscar un contacto…",
+    searchContactsAria: "Buscar un contacto",
+    noContactResults: "Ningún contacto coincide con la búsqueda.",
+    searchProviders: "Buscar un proveedor…",
+    searchProvidersAria: "Buscar un proveedor",
+    noProviderResults: "Ningún proveedor coincide con la búsqueda.",
     sitesRange: "{start}–{end} de {total}",
     sitePrimary: "Principal",
     filterSiteTitle: "Filtrar mapa en {name}",
     notesTitle: "Notas",
     loadingNotes: "Cargando notas...",
+    noNotes: "Ninguna nota",
     addNote: "Añadir nota",
     editNote: "Editar",
     editNoteAria: "Editar nota",
@@ -1862,7 +1917,7 @@ const DETAIL_COPY = {
           content: "Tickets soporte, prestaciones y eventos planificados. Haga clic en una fila para detalles."
         },
         vault: {
-          title: "Caja fuerte documental",
+          title: "Caja fuerte",
           content: "Facturas, manuales, guías e informes compartidos con los contactos en su portal cliente. Busque, filtre por tipo y suba un documento con el botón +. Indique si el archivo es visible en el portal."
         },
         sidebarNotes: {
@@ -1936,7 +1991,7 @@ const DETAIL_COPY = {
       creditPacks: "Carnets de créditos soporte",
       sla: "SLA soporte",
       prestations: "Tickets Prestaciones / Servicios",
-      vault: "Caja fuerte documental"
+      vault: "Caja fuerte"
     },
     contractTypes: {
       EDUCATION: "Educación / escolar",

@@ -1,0 +1,97 @@
+.contextMenu {
+  position: fixed;
+  z-index: 1200;
+  min-width: 12.5rem;
+  max-width: min(20rem, calc(100vw - 16px));
+  padding: 0.35rem;
+  border: 1px solid var(--msp-border, #e2e8f0);
+  border-radius: 12px;
+  background: var(--msp-surface, #fff);
+  box-shadow: 0 10px 30px rgba(15, 28, 46, 0.18);
+  color: var(--msp-text, #0a1422);
+}
+
+.contextMenuTitle {
+  padding: 0.4rem 0.65rem 0.45rem;
+  margin-bottom: 0.15rem;
+  border-bottom: 1px solid var(--msp-border-light, #e8eef5);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: var(--msp-muted, #5c6b82);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.contextMenuItem {
+  appearance: none;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  padding: 0.48rem 0.65rem;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-size: 0.84rem;
+  font-weight: 560;
+  text-align: left;
+  cursor: pointer;
+}
+
+.contextMenuItem:hover,
+.contextMenuItem:focus-visible {
+  background: var(--msp-accent-soft, rgba(43, 95, 171, 0.12));
+  color: var(--msp-accent, #2b5fab);
+  outline: none;
+}
+
+.contextMenuItem:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.contextMenuItem:disabled:hover {
+  background: transparent;
+  color: inherit;
+}
+
+.contextMenuItem svg {
+  font-size: 1.05rem;
+  flex-shrink: 0;
+  opacity: 0.9;
+}
+
+.contextMenuItemDanger {
+  color: #b42318;
+}
+
+.contextMenuItemDanger:hover,
+.contextMenuItemDanger:focus-visible {
+  background: rgba(180, 35, 24, 0.1);
+  color: #912018;
+}
+
+.contextMenuSep {
+  height: 1px;
+  margin: 0.3rem 0.4rem;
+  background: var(--msp-border-light, #e8eef5);
+}
+
+:global(html.dark) .contextMenu {
+  background: var(--msp-surface, #1a2540);
+  border-color: var(--msp-border, #2a3a55);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.45);
+}
+
+:global(html.dark) .contextMenuTitle {
+  border-bottom-color: var(--msp-border, #2a3a55);
+  color: var(--msp-muted, #8fa8c4);
+}
+
+:global(html.dark) .contextMenuSep {
+  background: var(--msp-border, #2a3a55);
+}

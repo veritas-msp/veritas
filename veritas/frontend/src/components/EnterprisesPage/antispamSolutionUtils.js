@@ -413,11 +413,12 @@ export function extractAntispamSolutionsFromModules(modulesData) {
   return [];
 }
 function buildConfiguredDedupeKey(item) {
-  if (item.mailinblackTenantId != null && item.mailinblackTenantId !== "") {
-    return `tenant:${item.mailinblackTenantId}`;
-  }
+  // Prefer customerId so module rows and Mailinblack tenants of the same link collapse to one.
   if (item.customerId) {
     return `api:${item.customerId}|${item.mappingMode || "reseller"}`;
+  }
+  if (item.mailinblackTenantId != null && item.mailinblackTenantId !== "") {
+    return `tenant:${item.mailinblackTenantId}`;
   }
   if (item.id != null) return `id:${item.id}`;
   if (item.item_key) return `key:${item.item_key}`;
@@ -429,7 +430,8 @@ export function listConfiguredAntispamSolutions(client, antispamItems = [], modu
     equipements: client?.equipements
   });
   const tenantSolutions = buildSolutionsFromMailinblackTenants(mailinblackTenants);
-  const sources = [...moduleSolutions, ...tenantSolutions, ...(antispamItems || []).map(item => normalizeAntispamItem(item)).filter(Boolean)];
+  // Prefer tenants (richest link metadata), then modules, then extra API items.
+  const sources = [...tenantSolutions, ...moduleSolutions, ...(antispamItems || []).map(item => normalizeAntispamItem(item)).filter(Boolean)];
   const seen = new Set();
   const configured = [];
   for (const item of sources) {

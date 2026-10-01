@@ -186,6 +186,10 @@
   color: #16a34a;
 }
 
+.portalStatusPending {
+  color: #2563eb;
+}
+
 .portalStatusInactive {
   color: #d97706;
 }
@@ -211,6 +215,22 @@
 .colContactEnterprise,
 .colContactRole {
   max-width: 11rem;
+}
+
+.colContactTickets {
+  text-align: right;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+  width: 1%;
+}
+
+.ticketStatValue {
+  font-weight: 600;
+  color: var(--msp-text, #0f172a);
+}
+
+.ticketStatLive {
+  color: #2563eb;
 }
 
 .contactTags {
@@ -368,6 +388,10 @@ a.iconActionBtn:hover {
 
 :global(html.dark) .portalStatusActive {
   color: #4ade80;
+}
+
+:global(html.dark) .portalStatusPending {
+  color: #60a5fa;
 }
 
 :global(html.dark) .portalStatusInactive {

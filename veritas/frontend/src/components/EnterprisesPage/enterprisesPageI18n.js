@@ -1,10 +1,10 @@
 import { interpolate, pickLocaleMessages } from "../../i18n/translate";
 import { normalizeCompanyStatusKey } from "./enterpriseFormUtils";
-const STATUS_FILTER_KEYS = ["active", "expiring", "expired", "suspended"];
+const STATUS_FILTER_KEYS = ["active", "expiring", "expired"];
 const STATUS_FILTER_META = {
   active: {
-    icon: "mdi:check-circle",
-    color: "#2b5fab",
+    icon: "mdi:file-check-outline",
+    color: "#2563eb",
     kpiTone: "blue"
   },
   expiring: {
@@ -16,21 +16,16 @@ const STATUS_FILTER_META = {
     icon: "mdi:alert-circle",
     color: "#dc2626",
     kpiTone: "red"
-  },
-  suspended: {
-    icon: "mdi:pause-circle",
-    color: "#f59e0b",
-    kpiTone: "orange"
   }
 };
 const COMPANY_STATUS_FILTER_KEYS = ["active", "inactive"];
 const COMPANY_STATUS_FILTER_META = {
   active: {
-    icon: "mdi:domain",
+    icon: "mdi:check-circle",
     kpiTone: "green"
   },
   inactive: {
-    icon: "mdi:domain-off",
+    icon: "mdi:close-circle",
     kpiTone: "gray"
   }
 };
@@ -70,6 +65,7 @@ const ENTERPRISES_COPY = {
     prevPage: "Page précédente",
     nextPage: "Page suivante",
     pageInfo: "Page {current} / {total}",
+    rangeInfo: "{start}–{end} sur {total}",
     table: {
       company: "Entreprise",
       clientNumber: "N° client",
@@ -84,16 +80,16 @@ const ENTERPRISES_COPY = {
     statusFilters: {
       active: "Actifs",
       expiring: "Expire bientôt",
-      expired: "Expirés",
+      expired: "Expirées",
       suspended: "Suspendus"
     },
     companyStatusFilters: {
-      active: "Actives",
-      inactive: "Inactives"
+      active: "Actifs",
+      inactive: "Inactifs"
     },
     companyStatus: {
-      active: "Active",
-      inactive: "Inactive"
+      active: "Actif",
+      inactive: "Inactif"
     },
     contractStatus: {
       suspended: "Suspendu",
@@ -156,6 +152,7 @@ const ENTERPRISES_COPY = {
     favorites: {
       add: "Ajouter aux favoris",
       remove: "Retirer des favoris",
+      columnLabel: "Favoris",
       columnAria: "Favoris"
     },
     bulkModal: {
@@ -167,8 +164,8 @@ const ENTERPRISES_COPY = {
       editExpiration: "Date de fin du contrat",
       editModules: "Modules du contrat",
       editStatut: "Statut",
-      statutActive: "Active",
-      statutInactive: "Inactive",
+      statutActive: "Actif",
+      statutInactive: "Inactif",
       modulesHint: "Les modules ci-dessous remplaceront ceux des entreprises sélectionnées.",
       commercialSearchPlaceholder: "Rechercher un agent…",
       loadingAgents: "Chargement des agents…",
@@ -217,6 +214,7 @@ const ENTERPRISES_COPY = {
     prevPage: "Previous page",
     nextPage: "Next page",
     pageInfo: "Page {current} / {total}",
+    rangeInfo: "{start}–{end} of {total}",
     table: {
       company: "Company",
       clientNumber: "Client no.",
@@ -303,6 +301,7 @@ const ENTERPRISES_COPY = {
     favorites: {
       add: "Add to favorites",
       remove: "Remove from favorites",
+      columnLabel: "Favorites",
       columnAria: "Favorites"
     },
     bulkModal: {
@@ -364,6 +363,7 @@ const ENTERPRISES_COPY = {
     prevPage: "Vorherige Seite",
     nextPage: "Nächste Seite",
     pageInfo: "Seite {current} / {total}",
+    rangeInfo: "{start}–{end} von {total}",
     table: {
       company: "Unternehmen",
       clientNumber: "Kundennr.",
@@ -450,6 +450,7 @@ const ENTERPRISES_COPY = {
     favorites: {
       add: "Zu Favoriten hinzufügen",
       remove: "Aus Favoriten entfernen",
+      columnLabel: "Favoriten",
       columnAria: "Favoriten"
     },
     bulkModal: {
@@ -511,6 +512,7 @@ const ENTERPRISES_COPY = {
     prevPage: "Pagina precedente",
     nextPage: "Pagina successiva",
     pageInfo: "Pagina {current} / {total}",
+    rangeInfo: "{start}–{end} di {total}",
     table: {
       company: "Azienda",
       clientNumber: "N° cliente",
@@ -523,7 +525,7 @@ const ENTERPRISES_COPY = {
       companyStatus: "Stato"
     },
     statusFilters: {
-      active: "Attive",
+      active: "Attivi",
       expiring: "In scadenza",
       expired: "Scadute",
       suspended: "Sospese"
@@ -597,6 +599,7 @@ const ENTERPRISES_COPY = {
     favorites: {
       add: "Aggiungi ai preferiti",
       remove: "Rimuovi dai preferiti",
+      columnLabel: "Preferiti",
       columnAria: "Preferiti"
     },
     bulkModal: {
@@ -658,6 +661,7 @@ const ENTERPRISES_COPY = {
     prevPage: "Página anterior",
     nextPage: "Página siguiente",
     pageInfo: "Página {current} / {total}",
+    rangeInfo: "{start}–{end} de {total}",
     table: {
       company: "Empresa",
       clientNumber: "N° cliente",
@@ -670,7 +674,7 @@ const ENTERPRISES_COPY = {
       companyStatus: "Estado"
     },
     statusFilters: {
-      active: "Activas",
+      active: "Activos",
       expiring: "Por vencer",
       expired: "Vencidas",
       suspended: "Suspendidas"
@@ -744,6 +748,7 @@ const ENTERPRISES_COPY = {
     favorites: {
       add: "Añadir a favoritos",
       remove: "Quitar de favoritos",
+      columnLabel: "Favoritos",
       columnAria: "Favoritos"
     },
     bulkModal: {
@@ -815,6 +820,11 @@ export function getEnterprisesPageCopy(locale) {
     },
     formatPageInfo: (current, total) => interpolate(t.pageInfo, {
       current: String(current),
+      total: String(total)
+    }),
+    formatRangeInfo: (start, end, total) => interpolate(t.rangeInfo || "{start}–{end} / {total}", {
+      start: String(start),
+      end: String(end),
       total: String(total)
     }),
     formatLoadErrorStatus: status => interpolate(t.loadErrorStatus, {

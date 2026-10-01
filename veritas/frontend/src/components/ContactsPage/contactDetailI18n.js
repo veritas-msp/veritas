@@ -60,14 +60,20 @@ const DETAIL_COPY = {
     coordFavorite: "Coordonnée favorite",
     coordEmpty: "Aucune coordonnée renseignée pour ce contact.",
     copyCoord: "Copier {label}",
+    sectionEmails: "E-mail",
+    sectionPhones: "Téléphone",
+    addEmail: "Ajouter un e-mail",
+    addPhone: "Ajouter un téléphone",
+    noEmails: "Aucun e-mail renseigné",
+    noPhones: "Aucun téléphone renseigné",
     activityTitle: "Activité MSP",
     ticketCount: "{count} ticket",
     ticketCountPlural: "{count} tickets",
     loadingActivity: "Chargement de l'activité…",
-    kpiOpenSupport: "Support ouverts",
-    kpiSupportTickets: "Tickets Support",
-    kpiPrestations: "Prestations",
-    kpiClientEvents: "Événements client",
+    kpiSupportTotal: "Support total",
+    kpiSupportOpen: "Support ouverts",
+    kpiPrestationTotal: "Prestations total",
+    kpiPrestationOpen: "Prestations ouvertes",
     supportTicketsTitle: "Tickets Support",
     openCount: "{count} ouvert(s)",
     prestationsTitle: "Ticket de Prestations / Services",
@@ -93,6 +99,7 @@ const DETAIL_COPY = {
       number: "N°",
       title: "Titre",
       status: "Statut",
+      sla: "SLA",
       updated: "Mis à jour",
       type: "Type",
       created: "Créée le",
@@ -116,6 +123,14 @@ const DETAIL_COPY = {
         coordinates: {
           title: "Coordonnées",
           content: "E-mails, téléphones et autres moyens de communication du contact. Cliquez sur une ligne pour appeler ou envoyer un message."
+        },
+        emails: {
+          title: "E-mails",
+          content: "Consultez les adresses e-mail du contact, copiez-les ou ajoutez-en une depuis le bouton +."
+        },
+        phones: {
+          title: "Téléphones",
+          content: "Consultez les numéros du contact, copiez-les ou ajoutez-en un depuis le bouton +."
         },
         activity: {
           title: "Activité MSP",
@@ -268,8 +283,8 @@ const DETAIL_COPY = {
       impersonateTitle: "Visualiser le portail client avec le compte de ce contact",
       revoke: "Révoquer l'accès",
       emptyTitle: "Aucun accès portail",
-      emptyDesc: "Activez l'espace client pour {email}. Vous pourrez ensuite envoyer un e-mail d'invitation.",
-      emptyDescInvite: "Activez l'espace client pour {email}. Vous pourrez ensuite envoyer un e-mail d'invitation.",
+      emptyDesc: "Activez l'accès pour {email}, puis envoyez l'invitation.",
+      emptyDescInvite: "Activez l'accès pour {email}, puis envoyez l'invitation.",
       createAccess: "Activer l'espace client",
       limitTooltip: "Limite Community : {max} accès actifs maximum",
       limitWarn: "Limite Community : {max} comptes portail client maximum. Passez à Veritas Pro pour en ajouter davantage.",
@@ -404,14 +419,20 @@ const DETAIL_COPY = {
     coordFavorite: "Preferred contact detail",
     coordEmpty: "No contact details for this contact.",
     copyCoord: "Copy {label}",
+    sectionEmails: "Email",
+    sectionPhones: "Phone",
+    addEmail: "Add email",
+    addPhone: "Add phone",
+    noEmails: "No email on file",
+    noPhones: "No phone on file",
     activityTitle: "MSP activity",
     ticketCount: "{count} ticket",
     ticketCountPlural: "{count} tickets",
     loadingActivity: "Loading activity…",
-    kpiOpenSupport: "Open support",
-    kpiSupportTickets: "Support tickets",
-    kpiPrestations: "Services",
-    kpiClientEvents: "Client events",
+    kpiSupportTotal: "Support total",
+    kpiSupportOpen: "Support open",
+    kpiPrestationTotal: "Services total",
+    kpiPrestationOpen: "Services open",
     supportTicketsTitle: "Support tickets",
     openCount: "{count} open",
     prestationsTitle: "Services / delivery tickets",
@@ -437,6 +458,7 @@ const DETAIL_COPY = {
       number: "No.",
       title: "Title",
       status: "Status",
+      sla: "SLA",
       updated: "Updated",
       type: "Type",
       created: "Created",
@@ -460,6 +482,14 @@ const DETAIL_COPY = {
         coordinates: {
           title: "Contact details",
           content: "Emails, phones and other contact methods. Click a row to call or send a message."
+        },
+        emails: {
+          title: "Emails",
+          content: "Review this contact's email addresses, copy them, or add one with the + button."
+        },
+        phones: {
+          title: "Phones",
+          content: "Review this contact's phone numbers, copy them, or add one with the + button."
         },
         activity: {
           title: "MSP activity",
@@ -612,8 +642,8 @@ const DETAIL_COPY = {
       impersonateTitle: "View the client portal with this contact's account",
       revoke: "Revoke access",
       emptyTitle: "No portal access",
-      emptyDesc: "Enable the client space for {email}. You can send an invitation email afterwards.",
-      emptyDescInvite: "Enable the client space for {email}. You can send an invitation email afterwards.",
+      emptyDesc: "Enable access for {email}, then send the invitation.",
+      emptyDescInvite: "Enable access for {email}, then send the invitation.",
       createAccess: "Enable client space",
       limitTooltip: "Community limit: {max} active accesses maximum",
       limitWarn: "Community limit: {max} client portal accounts maximum. Upgrade to Veritas Pro for more.",
@@ -746,14 +776,20 @@ const DETAIL_COPY = {
     coordFavorite: "Bevorzugte Koordinate",
     coordEmpty: "Keine Kontaktdaten für diesen Kontakt.",
     copyCoord: "{label} kopieren",
+    sectionEmails: "E-Mail",
+    sectionPhones: "Telefon",
+    addEmail: "E-Mail hinzufügen",
+    addPhone: "Telefon hinzufügen",
+    noEmails: "Keine E-Mail hinterlegt",
+    noPhones: "Kein Telefon hinterlegt",
     activityTitle: "MSP-Aktivität",
     ticketCount: "{count} Ticket",
     ticketCountPlural: "{count} Tickets",
     loadingActivity: "Aktivität wird geladen…",
-    kpiOpenSupport: "Offener Support",
-    kpiSupportTickets: "Support-Tickets",
-    kpiPrestations: "Leistungen",
-    kpiClientEvents: "Kundenereignisse",
+    kpiSupportTotal: "Support gesamt",
+    kpiSupportOpen: "Support offen",
+    kpiPrestationTotal: "Leistungen gesamt",
+    kpiPrestationOpen: "Leistungen offen",
     supportTicketsTitle: "Support-Tickets",
     openCount: "{count} offen",
     prestationsTitle: "Leistungs-Tickets",
@@ -779,6 +815,7 @@ const DETAIL_COPY = {
       number: "Nr.",
       title: "Titel",
       status: "Status",
+      sla: "SLA",
       updated: "Aktualisiert",
       type: "Typ",
       created: "Erstellt",
@@ -802,6 +839,14 @@ const DETAIL_COPY = {
         coordinates: {
           title: "Kontaktdaten",
           content: "E-Mails, Telefone und andere Kommunikationswege. Klicken zum Anrufen oder Nachricht senden."
+        },
+        emails: {
+          title: "E-Mails",
+          content: "E-Mail-Adressen des Kontakts einsehen, kopieren oder über + hinzufügen."
+        },
+        phones: {
+          title: "Telefone",
+          content: "Telefonnummern des Kontakts einsehen, kopieren oder über + hinzufügen."
         },
         activity: {
           title: "MSP-Aktivität",
@@ -1085,14 +1130,20 @@ const DETAIL_COPY = {
     coordFavorite: "Contatto preferito",
     coordEmpty: "Nessun contatto per questo contatto.",
     copyCoord: "Copia {label}",
+    sectionEmails: "E-mail",
+    sectionPhones: "Telefono",
+    addEmail: "Aggiungi e-mail",
+    addPhone: "Aggiungi telefono",
+    noEmails: "Nessuna e-mail indicata",
+    noPhones: "Nessun telefono indicato",
     activityTitle: "Attività MSP",
     ticketCount: "{count} ticket",
     ticketCountPlural: "{count} ticket",
     loadingActivity: "Caricamento attività…",
-    kpiOpenSupport: "Supporto aperti",
-    kpiSupportTickets: "Ticket Supporto",
-    kpiPrestations: "Prestazioni",
-    kpiClientEvents: "Eventi cliente",
+    kpiSupportTotal: "Supporto totale",
+    kpiSupportOpen: "Supporto aperti",
+    kpiPrestationTotal: "Prestazioni totale",
+    kpiPrestationOpen: "Prestazioni aperte",
     supportTicketsTitle: "Ticket Supporto",
     openCount: "{count} aperto/i",
     prestationsTitle: "Ticket Prestazioni / Servizi",
@@ -1118,6 +1169,7 @@ const DETAIL_COPY = {
       number: "N°",
       title: "Titolo",
       status: "Stato",
+      sla: "SLA",
       updated: "Aggiornato",
       type: "Tipo",
       created: "Creato",
@@ -1141,6 +1193,14 @@ const DETAIL_COPY = {
         coordinates: {
           title: "Contatti",
           content: "Email, telefoni e altri mezzi di comunicazione. Clicca per chiamare o inviare un messaggio."
+        },
+        emails: {
+          title: "E-mail",
+          content: "Consulta le e-mail del contatto, copiale o aggiungine una con il pulsante +."
+        },
+        phones: {
+          title: "Telefoni",
+          content: "Consulta i numeri del contatto, copiali o aggiungine uno con il pulsante +."
         },
         activity: {
           title: "Attività MSP",
@@ -1424,14 +1484,20 @@ const DETAIL_COPY = {
     coordFavorite: "Dato preferido",
     coordEmpty: "Ningún dato de contacto para este contacto.",
     copyCoord: "Copiar {label}",
+    sectionEmails: "Correo",
+    sectionPhones: "Teléfono",
+    addEmail: "Añadir correo",
+    addPhone: "Añadir teléfono",
+    noEmails: "Ningún correo indicado",
+    noPhones: "Ningún teléfono indicado",
     activityTitle: "Actividad MSP",
     ticketCount: "{count} ticket",
     ticketCountPlural: "{count} tickets",
     loadingActivity: "Cargando actividad…",
-    kpiOpenSupport: "Soporte abiertos",
-    kpiSupportTickets: "Tickets Soporte",
-    kpiPrestations: "Prestaciones",
-    kpiClientEvents: "Eventos cliente",
+    kpiSupportTotal: "Soporte total",
+    kpiSupportOpen: "Soporte abiertos",
+    kpiPrestationTotal: "Prestaciones total",
+    kpiPrestationOpen: "Prestaciones abiertas",
     supportTicketsTitle: "Tickets Soporte",
     openCount: "{count} abierto(s)",
     prestationsTitle: "Tickets Prestaciones / Servicios",
@@ -1457,6 +1523,7 @@ const DETAIL_COPY = {
       number: "N°",
       title: "Título",
       status: "Estado",
+      sla: "SLA",
       updated: "Actualizado",
       type: "Tipo",
       created: "Creado",
@@ -1480,6 +1547,14 @@ const DETAIL_COPY = {
         coordinates: {
           title: "Datos de contacto",
           content: "Emails, teléfonos y otros medios. Haga clic para llamar o enviar un mensaje."
+        },
+        emails: {
+          title: "Correos",
+          content: "Consulte los correos del contacto, cópielos o añada uno con el botón +."
+        },
+        phones: {
+          title: "Teléfonos",
+          content: "Consulte los números del contacto, cópielos o añada uno con el botón +."
         },
         activity: {
           title: "Actividad MSP",
@@ -1711,7 +1786,7 @@ export function getContactStatusLocalized(statut, locale) {
   const labels = getContactDetailCopy(locale).status;
   const value = (statut || "").toLowerCase();
   if (value.includes("inact")) return {
-    status: "suspended",
+    status: "inactive",
     label: labels.inactive
   };
   if (value.includes("act")) return {

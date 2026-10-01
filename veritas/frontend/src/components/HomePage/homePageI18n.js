@@ -109,7 +109,8 @@ const HOME_COPY = {
     },
     empty: {
       tickets: "Aucun ticket ne vous est assigné",
-      events: "Aucun événement assigné sur les 7 prochains jours",
+      eventsTitle: "Zzz... tout est calme",
+      eventsText: "Aucun événement assigné sur les 7 prochains jours.",
       todo: "Rien à traiter pour le moment"
     },
     noTitle: "Sans titre",
@@ -321,7 +322,8 @@ const HOME_COPY = {
     },
     empty: {
       tickets: "No tickets assigned to you",
-      events: "No events assigned to you in the next 7 days",
+      eventsTitle: "Zzz... all quiet",
+      eventsText: "No events assigned to you in the next 7 days.",
       todo: "Nothing to do right now"
     },
     noTitle: "Untitled",
@@ -533,7 +535,8 @@ const HOME_COPY = {
     },
     empty: {
       tickets: "Ihnen sind keine Tickets zugewiesen",
-      events: "Keine Termine in den nächsten 7 Tagen",
+      eventsTitle: "Zzz... alles ruhig",
+      eventsText: "Keine Termine in den nächsten 7 Tagen.",
       todo: "Aktuell nichts zu erledigen"
     },
     noTitle: "Ohne Titel",
@@ -745,7 +748,8 @@ const HOME_COPY = {
     },
     empty: {
       tickets: "Nessun ticket assegnato",
-      events: "Nessun evento assegnato nei prossimi 7 giorni",
+      eventsTitle: "Zzz... tutto calmo",
+      eventsText: "Nessun evento assegnato nei prossimi 7 giorni.",
       todo: "Niente da trattare al momento"
     },
     noTitle: "Senza titolo",
@@ -957,7 +961,8 @@ const HOME_COPY = {
     },
     empty: {
       tickets: "No tienes tickets asignados",
-      events: "No tienes eventos asignados en los próximos 7 días",
+      eventsTitle: "Zzz... todo en calma",
+      eventsText: "No tienes eventos asignados en los próximos 7 días.",
       todo: "Nada por tratar por ahora"
     },
     noTitle: "Sin título",
@@ -1140,10 +1145,6 @@ export function getHomePageCopy(locale) {
           target: '[data-guide="home-events"]',
           title: steps.events.title,
           content: steps.events.content
-        }, {
-          target: '[data-guide="home-todo"]',
-          title: steps.todo.title,
-          content: steps.todo.content
         });
       }
       result.push({

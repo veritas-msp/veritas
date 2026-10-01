@@ -215,7 +215,7 @@ const FIELD_LABEL_FALLBACKS = {
     supportTelephone: "Support téléphone",
     dateMiseEnService: "Mise en service",
     boxModele: "Modèle box",
-    monitoring: "MK",
+    monitoring: "Supervision",
     agentStatus: "Agent RMM",
     activeStatus: "Actif",
     maintenanceLicense: "Date licence maintenance"
@@ -262,7 +262,7 @@ const FIELD_LABEL_FALLBACKS = {
     supportTelephone: "Support phone",
     dateMiseEnService: "Service start",
     boxModele: "Box model",
-    monitoring: "MK",
+    monitoring: "Supervision",
     agentStatus: "RMM agent",
     activeStatus: "Active",
     maintenanceLicense: "Maintenance license date"

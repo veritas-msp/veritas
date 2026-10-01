@@ -30,19 +30,23 @@ const INFRA_MAP_COPY = {
       Internet: "Internet",
       Firewalls: "Pare-feu",
       Serveurs: "Serveurs",
-      Stockage: "Stockage",
+      Servers: "Serveurs",
+      Stockage: "NAS",
+      Storage: "NAS",
       Switch: "Switch",
       BorneWifi: "WiFi",
       Routeur: "Routeur",
-      Alimentation: "Alim.",
+      Alimentation: "UPS",
       TOIP: "TOIP",
-      Ordinateurs: "Ordinateurs"
+      Ordinateurs: "PC",
+      Backup: "Backup",
+      "Security camera": "Caméra"
     },
     brickGroups: {
       cybersecurity: "Cybersécurité",
       services: "Services",
       licensing: "Licences & abonnements",
-      campaign: "Campagne"
+      campaign: "Campagnes"
     },
     brickTypes: {
       Antivirus: "Antivirus",
@@ -97,19 +101,23 @@ const INFRA_MAP_COPY = {
       Internet: "Internet",
       Firewalls: "Firewall",
       Servers: "Servers",
-      Storage: "Storage",
+      Serveurs: "Servers",
+      Storage: "NAS",
+      Stockage: "NAS",
       Switch: "Switch",
       BorneWifi: "WiFi",
       Routeur: "Router",
-      Alimentation: "Power",
+      Alimentation: "UPS",
       TOIP: "VoIP",
-      Ordinateurs: "Computers"
+      Ordinateurs: "PC",
+      Backup: "Backup",
+      "Security camera": "Camera"
     },
     brickGroups: {
       cybersecurity: "Cybersecurity",
       services: "Services",
       licensing: "Licenses & subscriptions",
-      campaign: "Campaign"
+      campaign: "Campaigns"
     },
     brickTypes: {
       Antivirus: "Antivirus",
@@ -163,13 +171,17 @@ const INFRA_MAP_COPY = {
       Internet: "Internet",
       Firewalls: "Firewall",
       Serveurs: "Server",
-      Stockage: "Speicher",
+      Servers: "Server",
+      Stockage: "NAS",
+      Storage: "NAS",
       Switch: "Switch",
       BorneWifi: "WiFi",
       Routeur: "Router",
-      Alimentation: "Strom",
+      Alimentation: "UPS",
       TOIP: "VoIP",
-      Ordinateurs: "Computer"
+      Ordinateurs: "PC",
+      Backup: "Backup",
+      "Security camera": "Kamera"
     },
     brickGroups: {
       cybersecurity: "Cybersicherheit",
@@ -229,13 +241,17 @@ const INFRA_MAP_COPY = {
       Internet: "Internet",
       Firewalls: "Firewall",
       Serveurs: "Server",
-      Stockage: "Storage",
+      Servers: "Server",
+      Stockage: "NAS",
+      Storage: "NAS",
       Switch: "Switch",
       BorneWifi: "WiFi",
       Routeur: "Router",
-      Alimentation: "Alim.",
+      Alimentation: "UPS",
       TOIP: "VoIP",
-      Ordinateurs: "Computer"
+      Ordinateurs: "PC",
+      Backup: "Backup",
+      "Security camera": "Camera"
     },
     brickGroups: {
       cybersecurity: "Cybersicurezza",
@@ -295,13 +311,17 @@ const INFRA_MAP_COPY = {
       Internet: "Internet",
       Firewalls: "Firewall",
       Serveurs: "Servidores",
-      Stockage: "Almacenamiento",
+      Servers: "Servidores",
+      Stockage: "NAS",
+      Storage: "NAS",
       Switch: "Switch",
       BorneWifi: "WiFi",
       Routeur: "Router",
-      Alimentation: "Alim.",
+      Alimentation: "UPS",
       TOIP: "VoIP",
-      Ordinateurs: "Ordenadores"
+      Ordinateurs: "PC",
+      Backup: "Backup",
+      "Security camera": "Cámara"
     },
     brickGroups: {
       cybersecurity: "Ciberseguridad",
@@ -351,7 +371,13 @@ export function getInfraMapCopy(locale) {
     getHoneycombTypeLabel: (type, fallback = null) => {
       if (fallback) return fallback;
       if (type?.startsWith("Custom:")) return type.slice(7);
-      return t.honeycombTypes[type] || type || "";
+      if (t.honeycombTypes[type]) return t.honeycombTypes[type];
+      // UI type ids vs localized dictionary keys
+      if (type === "Servers") return t.honeycombTypes.Serveurs || t.honeycombTypes.Servers || type;
+      if (type === "Storage") return t.honeycombTypes.Stockage || t.honeycombTypes.Storage || type;
+      if (type === "Serveurs") return t.honeycombTypes.Servers || t.honeycombTypes.Serveurs || type;
+      if (type === "Stockage") return t.honeycombTypes.Storage || t.honeycombTypes.Stockage || type;
+      return type || "";
     },
     getBrickGroupLabel: groupId => t.brickGroups[groupId] || groupId,
     getBrickTypeLabel: type => {

@@ -157,13 +157,7 @@
   border-radius: 10px;
   border: 1px solid var(--msp-border-light, #e2e8f0);
   background: var(--msp-surface-2, #f7f9fc);
-  cursor: pointer;
   text-align: left;
-  transition: border-color 0.15s, background 0.15s;
-}
-
-.kpiCard:hover {
-  border-color: var(--msp-accent, #2b5fab);
 }
 
 .kpiCardActive {
@@ -274,10 +268,11 @@
 }
 
 .toolbarMeta {
-  margin-left: auto;
+  margin-left: 0;
   font-size: 0.68rem;
   color: var(--msp-muted, #5c6b82);
   white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .toolbarMeta strong {
@@ -289,7 +284,7 @@
   align-items: center;
   gap: 0.35rem;
   flex-shrink: 0;
-  margin-left: auto;
+  margin-left: 0.15rem;
 }
 
 .iconBtn {
@@ -359,10 +354,18 @@
 .tableWrap {
   flex: 1;
   min-height: 0;
-  overflow: auto;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
   border: 1px solid var(--msp-border, #dde3ed);
   border-radius: var(--msp-radius, 10px);
   background: var(--msp-surface, #fff);
+}
+
+.tableScroll {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
 }
 
 .table {
@@ -806,7 +809,11 @@
   justify-content: space-between;
   flex-shrink: 0;
   gap: 1rem;
-  padding: 0.65rem 0.25rem 0;
+  padding: 0.65rem 0.85rem 0.7rem;
+  margin-top: 0;
+  border-top: 1px solid var(--msp-border-light, #eef2f7);
+  background: var(--msp-surface-2, #f7f9fc);
+  border-radius: 0 0 var(--msp-radius, 10px) var(--msp-radius, 10px);
 }
 
 .paginationLeft,
@@ -855,11 +862,6 @@
   color: var(--msp-muted, #5c6b82);
 }
 
-
-:global(html.dark) .kpiCard:hover,
-:global(body.dark) .kpiCard:hover {
-  border-color: #4a8fd4;
-}
 
 :global(html.dark) .kpiCardActive,
 :global(body.dark) .kpiCardActive {
@@ -1003,4 +1005,10 @@
 :global(html.dark) .viewSwitchBtnActive,
 :global(body.dark) .viewSwitchBtnActive {
   background: #5a8fd4;
+}
+
+:global(html.dark) .paginationBar,
+:global(body.dark) .paginationBar {
+  background: var(--msp-surface-2, #152035);
+  border-top-color: var(--msp-border, #2a3a55);
 }

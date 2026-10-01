@@ -64,18 +64,17 @@
 }
 
 .fleetSyncBtn {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.4rem;
-  padding: 0.45rem 0.8rem;
+  display: inline-grid;
+  place-items: center;
+  width: 2.35rem;
+  height: 2.35rem;
+  padding: 0;
   border-radius: var(--msp-radius-sm, 10px);
   border: 1px solid color-mix(in srgb, var(--msp-accent, #2b5fab) 35%, transparent);
   background: color-mix(in srgb, var(--msp-accent, #2b5fab) 10%, var(--msp-surface, #fff));
   color: var(--msp-accent, #2b5fab);
-  font-size: 0.78rem;
-  font-weight: 600;
+  font-size: 1.15rem;
   cursor: pointer;
-  white-space: nowrap;
   transition: background 0.15s, border-color 0.15s;
 }
 
@@ -101,9 +100,9 @@
 .fleetSyncProgress {
   display: inline-flex;
   align-items: stretch;
-  gap: 0.2rem;
-  min-width: min(280px, 42vw);
-  max-width: min(360px, 54vw);
+  gap: 0.25rem;
+  min-width: min(420px, 56vw);
+  max-width: min(560px, 68vw);
   padding: 0.28rem;
   border-radius: 12px;
   border: 1px solid color-mix(in srgb, var(--msp-accent, #2b5fab) 32%, transparent);
@@ -174,6 +173,24 @@
   white-space: nowrap;
 }
 
+.fleetSyncProgressMeta {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  min-width: 0;
+  font-size: 0.66rem;
+  font-weight: 500;
+  color: var(--msp-muted, #64748b);
+}
+
+.fleetSyncProgressMeta > span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.fleetSyncProgressStop,
 .fleetSyncProgressDismiss {
   display: inline-grid;
   place-items: center;
@@ -185,6 +202,19 @@
   color: var(--msp-muted, #64748b);
   cursor: pointer;
   font-size: 1rem;
+}
+
+.fleetSyncProgressStop {
+  color: #b91c1c;
+}
+
+.fleetSyncProgressStop:hover:not(:disabled) {
+  background: color-mix(in srgb, #b91c1c 10%, transparent);
+}
+
+.fleetSyncProgressStop:disabled {
+  opacity: 0.55;
+  cursor: wait;
 }
 
 .fleetSyncProgressDismiss:hover {

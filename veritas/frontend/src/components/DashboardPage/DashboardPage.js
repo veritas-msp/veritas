@@ -13,6 +13,7 @@ import DashboardScheduleModal from "./DashboardScheduleModal";
 import AiBriefingPanel from "../Misc/AiBriefingPanel/AiBriefingPanel";
 import { generateDashboardBriefingAi } from "../../api/ai";
 import MspPageHero from "../Misc/MspPageHero/MspPageHero";
+import PageSkeleton from "../Misc/Skeleton/PageSkeleton";
 import layout from "../EnterprisesPage/EnterprisesPage.module.css";
 import mspStyles from "../CybersecuritePage/CybersecuritePage.module.css";
 import SmartTooltip from "../SmartTooltip";
@@ -251,10 +252,7 @@ export default function DashboardPage() {
                 </div>
               </div>
               <div className={styles.tabContent} role="tabpanel" data-guide="kpi-content">
-                {loading && <div className={styles.loadingState}>
-                    <Icon icon="mdi:loading" className={styles.spinner} aria-hidden />
-                    <span>{copy.loading}</span>
-                  </div>}
+                {loading ? <PageSkeleton variant="panels" panels={3} label={copy.loading} /> : null}
                 {proRequired && <div className={styles.proBanner}>
                     <Icon icon="mdi:lock-outline" aria-hidden />
                     <span>{copy.proRequired}</span>

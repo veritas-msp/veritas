@@ -15,6 +15,7 @@ import { getEnterpriseFormModalCopy } from "../../EnterprisesPage/enterpriseForm
 import { normalizeClientSlaInContrat, createDefaultClientSla } from "../../../utils/ticketSlaUtils";
 import { normalizeLegalIdentifier } from "../../../utils/siret";
 import { getClientNumber } from "../../../utils/clientDisplay";
+import { buildClientAddressFromSites } from "../../../utils/clientSites";
 const splitAddress = address => {
   if (!address) {
     return {
@@ -207,14 +208,7 @@ export default function ClientModal({
   };
   const submitClient = async () => {
     if (!isEditing && !validateCreateForm()) return;
-    const street = form.addressStreet?.trim();
-    const postal = form.addressPostalCode?.trim();
-    const city = form.addressCity?.trim();
-    let fullAddress = form.address?.trim() || "";
-    if (street || postal || city) {
-      const cityPart = [postal, city].filter(Boolean).join(" ");
-      fullAddress = [street, cityPart].filter(Boolean).join(", ");
-    }
+    const fullAddress = buildClientAddressFromSites(form.sites);
     const contratPayload = normalizeClientSlaInContrat({
       ...form.contrat,
       type: form.contrat?.type || "PROFESSIONNEL"

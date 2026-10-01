@@ -562,7 +562,7 @@ export default function Sidebar({
                     <Icon icon={themeMenuIcon} className={styles.squareBtnIcon} aria-hidden />
                   </button>}
 
-                <NotificationBell onNavigate={onNavigate || onSelect} isCollapsed={isCollapsed} isMobile={isMobile} showIconTooltip={showIconTooltip} TooltipComponent={SidebarTooltip} triggerClassName={styles.squareBtn} triggerIconClassName={styles.squareBtnIcon} rootClassName={styles.notificationBellRoot} />
+                <NotificationBell onNavigate={onNavigate || onSelect} isCollapsed={isCollapsed} isMobile={isMobile} isHorizontal={isHorizontalDesktop} showIconTooltip={showIconTooltip} TooltipComponent={SidebarTooltip} triggerClassName={styles.squareBtn} triggerIconClassName={styles.squareBtnIcon} rootClassName={styles.notificationBellRoot} />
               </div>
             </div>
 

@@ -1,7 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { Icon } from "@iconify/react";
-import { FaCalendarAlt, FaPlus } from "react-icons/fa";
 import SmartTooltip from "../SmartTooltip";
 import ProFeatureLock from "../Misc/ProFeature/ProFeatureLock";
 import ProFeatureBadge from "../Misc/ProFeature/ProFeatureBadge";
@@ -500,8 +499,6 @@ export default function UpcomingEventBookmarks({
   users = [],
   onEditEvent,
   onGoToPlanning,
-  onAddEvent,
-  onOpenPlanning,
   proLocked = false,
   inPageHero = false,
   collapseStorageKey = "veritas.heroBookmarks.enterpriseEvents.collapsed",
@@ -591,20 +588,6 @@ export default function UpcomingEventBookmarks({
       upcoming: String(upcoming.length)
     });
   }, [proLocked, showLoading, isEmpty, recent.length, upcoming.length, labels]);
-  const handleOpenPlanning = () => {
-    if (proLocked) {
-      notifyProFeature(proFeatureLabel, proFeatureKey);
-      return;
-    }
-    onOpenPlanning?.();
-  };
-  const handleAddEvent = () => {
-    if (proLocked) {
-      notifyProFeature(proFeatureLabel, proFeatureKey);
-      return;
-    }
-    onAddEvent?.();
-  };
   const bar = <div className={[inPageHero ? styles.barInPageHero : styles.bar, inPageHero ? styles.barInPageHeroShell : "", proLocked && !inPageHero ? styles.barInProPanel : ""].filter(Boolean).join(" ")} aria-label={labels.barAria}>
       <div className={styles.barInner}>
         <div className={[styles.trackWrap, fade.left ? styles.trackFadeLeft : "", fade.right ? styles.trackFadeRight : ""].filter(Boolean).join(" ")}>
@@ -630,19 +613,6 @@ export default function UpcomingEventBookmarks({
                 {upcoming.length === 0 ? <span className={styles.sectionEmptyHint}>{labels.noneUpcoming}</span> : upcoming.map(event => <EventBookmark key={`upcoming-${event.id}`} event={event} typeLabels={typeLabels} labels={labels} locale={locale} users={users} mode="upcoming" menuOpen={actionMenu?.event?.id === event.id} buttonRef={node => registerBookmarkRef(event.id, node)} onClick={handleBookmarkClick} />)}
               </> : null}
           </div>
-        </div>
-
-        <div className={styles.barActions}>
-          <SmartTooltip content={proLocked ? labels.openPlanningProTooltip : labels.openPlanning}>
-            <button type="button" className={styles.barActionBtn} onClick={handleOpenPlanning} aria-label={proLocked ? labels.openPlanningPro : labels.openPlanningAria}>
-              <FaCalendarAlt aria-hidden />
-            </button>
-          </SmartTooltip>
-          <SmartTooltip content={proLocked ? labels.createEventProTooltip : labels.createEvent}>
-            <button type="button" className={`${styles.barActionBtn} ${styles.barActionBtnPrimary}`} onClick={handleAddEvent} aria-label={proLocked ? labels.createEventPro : labels.createEventAria}>
-              <FaPlus aria-hidden />
-            </button>
-          </SmartTooltip>
         </div>
       </div>
     </div>;

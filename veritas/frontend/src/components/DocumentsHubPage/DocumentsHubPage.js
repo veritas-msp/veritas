@@ -16,6 +16,7 @@ import { getDocumentsHubGuide } from "../PageGuide/documentsHubGuideSteps";
 import { useRegisterPageGuide } from "../../hooks/useRegisterPageGuide";
 import DocumentsBulkEditModal from "./DocumentsBulkEditModal";
 import SuggestionAutocomplete from "../shared/SuggestionAutocomplete/SuggestionAutocomplete";
+import PageSkeleton from "../Misc/Skeleton/PageSkeleton";
 import styles from "./DocumentsHubPage.module.css";
 import { createTrackedAbortController } from "../../utils/pageLoadAbort";
 const IMAGE_MIMES = new Set(["image/jpeg", "image/png", "image/gif", "image/webp"]);
@@ -315,10 +316,9 @@ export default function DocumentsHubPage() {
                 </select>
               </div>
 
-              {loading ? <div className={styles.loadingState}>
-                  <span className={styles.spinner} aria-hidden />
-                  <p>{copy.loading}</p>
-                </div> : filtered.length === 0 ? <div className={styles.empty} data-guide="docs-table">
+              {loading ? (
+                <PageSkeleton variant="list" rows={8} label={copy.loading} />
+              ) : filtered.length === 0 ? <div className={styles.empty} data-guide="docs-table">
                   <div className={styles.emptyIconWrap}>
                     <Icon icon="mdi:folder-open-outline" className={styles.emptyIcon} />
                   </div>

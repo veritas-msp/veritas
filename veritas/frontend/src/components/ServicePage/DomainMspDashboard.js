@@ -1,29 +1,13 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { Icon } from "@iconify/react";
-import { FaChevronLeft, FaChevronRight } from "react-icons/fa";
+import { FaChevronLeft, FaChevronRight, FaTimes } from "react-icons/fa";
 import { useAppFormatters } from "../../hooks/useAppGeneralSettings";
 import MspEmptyState from "../Misc/MspEmptyState/MspEmptyState";
+import PageSkeleton from "../Misc/Skeleton/PageSkeleton";
+import SmartTooltip from "../SmartTooltip";
+import layout from "../EnterprisesPage/EnterprisesPage.module.css";
 import styles from "../CybersecuritePage/AntivirusMspDashboard.module.css";
 import { buildDomainFleetFromList, buildDomainFleetStats, buildOvhDomainUrl, filterDomainFleetRows, sortDomainFleetRows } from "./domainMspUtils";
-
-function KpiCard({
-  icon,
-  label,
-  value,
-  tone = "neutral",
-  active,
-  onClick
-}) {
-  return <button type="button" className={`${styles.kpiCard} ${active ? styles.kpiCardActive : ""}`} onClick={onClick}>
-      <span className={`${styles.kpiIcon} ${styles[`kpiIcon_${tone}`]}`}>
-        <Icon icon={icon} />
-      </span>
-      <span className={styles.kpiBody}>
-        <span className={styles.kpiValue}>{value}</span>
-        <span className={styles.kpiLabel}>{label}</span>
-      </span>
-    </button>;
-}
 
 function SortableHeader({
   column,
@@ -138,22 +122,31 @@ export default function DomainMspDashboard({
     window.open(buildOvhDomainUrl(row.domainName), "_blank", "noopener,noreferrer");
   };
   if (!copy) return null;
-  const statusLabels = Object.fromEntries((copy.statusFilters || []).map(filter => [filter.id, filter.label]));
+  const statusFilterItems = copy.statusFilters || [];
   return <div className={styles.dashboard}>
-      <div className={styles.kpiStrip}>
-        <KpiCard icon="mdi:web" label={copy.kpi.domains} value={stats.total} tone="neutral" active={statusFilter === "all"} onClick={() => {
-        setStatusFilter("all");
-        setSearch("");
-      }} />
-        <KpiCard icon="mdi:clock-alert-outline" label={statusLabels.expire_bientot} value={stats.statusCounts.expire_bientot} tone="warn" active={statusFilter === "expire_bientot"} onClick={() => toggleStatus("expire_bientot")} />
-        <KpiCard icon="mdi:web-off" label={statusLabels.expiré} value={stats.statusCounts.expiré} tone="bad" active={statusFilter === "expiré"} onClick={() => toggleStatus("expiré")} />
-      </div>
-
-      <div className={styles.toolbar}>
-        <label className={styles.searchBox}>
-          <Icon icon="mdi:magnify" width={18} aria-hidden />
-          <input type="search" placeholder={copy.searchPlaceholder} value={search} onChange={e => setSearch(e.target.value)} />
-        </label>
+      <div className={`${layout.toolbar} ${layout.toolbarWithFilters}`}>
+        <div className={layout.searchWrap}>
+          <Icon icon="mdi:magnify" className={layout.searchIcon} aria-hidden />
+          <input type="search" inputMode="search" enterKeyHint="search" placeholder={copy.searchPlaceholder} value={search} onChange={e => setSearch(e.target.value)} className={layout.searchInput} aria-label={copy.searchPlaceholder} />
+          {search ? <SmartTooltip content={copy.clearSearch || "Effacer"}>
+              <button type="button" onClick={() => setSearch("")} className={layout.clearButton} aria-label={copy.clearSearch || "Effacer"}>
+                <FaTimes />
+              </button>
+            </SmartTooltip> : null}
+        </div>
+        <div className={layout.statusChips} role="group">
+          {statusFilterItems.map(item => {
+            const count = stats.statusCounts[item.id] || 0;
+            const active = statusFilter === item.id;
+            return <button key={item.id} type="button" className={`${layout.statusChip} ${active ? layout.statusChipActive : ""} ${count === 0 ? layout.statusChipDisabled : ""}`} onClick={() => toggleStatus(item.id)} disabled={loading || count === 0}>
+                <span className={`${layout.statusChipIcon} ${layout[`kpiIcon_${item.kpiTone}`]}`}>
+                  <Icon icon={item.icon} />
+                </span>
+                <span className={layout.statusChipLabel}>{item.label}</span>
+                <span className={layout.statusChipCount}>{count}</span>
+              </button>;
+          })}
+        </div>
         {onSync ? <div className={styles.toolbarActions}>
             <button
               type="button"
@@ -168,11 +161,11 @@ export default function DomainMspDashboard({
           </div> : null}
       </div>
 
-      {loading ? <div className={styles.loadingState}>
-          <Icon icon="mdi:loading" className={styles.spin} width={28} />
-          <span>{copy.loading}</span>
-        </div> : filteredRows.length === 0 ? <MspEmptyState icon="mdi:web-off" title={fleetRows.length === 0 ? copy.emptyTitleNone : copy.emptyTitleNoMatch} text={fleetRows.length === 0 ? copy.emptyTextNone : copy.emptyTextNoMatch} /> : <section className={styles.panel}>
+      {loading ? (
+        <PageSkeleton variant="list" rows={8} label={copy.loading} />
+      ) : filteredRows.length === 0 ? <MspEmptyState icon="mdi:web-off" title={fleetRows.length === 0 ? copy.emptyTitleNone : copy.emptyTitleNoMatch} text={fleetRows.length === 0 ? copy.emptyTextNone : copy.emptyTextNoMatch} /> : <section className={styles.panel}>
           <div className={styles.tableWrap}>
+            <div className={styles.tableScroll}>
             <table className={styles.table}>
               <thead>
                 <tr>
@@ -191,8 +184,8 @@ export default function DomainMspDashboard({
             }} />)}
               </tbody>
             </table>
-          </div>
-          {sortedRows.length > 0 ? <div className={styles.paginationBar}>
+            </div>
+            {sortedRows.length > 0 ? <div className={styles.paginationBar}>
               <div className={styles.paginationLeft}>
                 <span className={styles.paginationLabel}>{copy.rowsPerPage}</span>
                 <select className={styles.paginationSelect} value={pageSize} onChange={e => setPageSize(Number(e.target.value))}>
@@ -214,6 +207,7 @@ export default function DomainMspDashboard({
                 </button>
               </div>
             </div> : null}
+          </div>
         </section>}
     </div>;
 }

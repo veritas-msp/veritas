@@ -35,6 +35,8 @@
 .dashboardMain {
   min-width: 0;
   min-height: 0;
+  display: flex;
+  flex-direction: column;
   overflow-x: hidden;
   overflow-y: auto;
 }
@@ -50,6 +52,7 @@
 .homeHeroWrap {
   position: relative;
   margin: 0 0 1rem;
+  flex-shrink: 0;
 }
 
 .homeHero {
@@ -263,44 +266,11 @@
 }
 
 
-.skeleton {
-  margin-bottom: 1rem;
-}
-
-.skeletonKpiRow {
-  display: grid;
-  grid-template-columns: repeat(var(--kpi-count, 3), minmax(0, 1fr));
-  gap: 0.75rem;
-  margin-bottom: 1.25rem;
-}
-
-.skeletonKpi {
-  min-height: 5.5rem;
-  border-radius: 12px;
-  background: linear-gradient(90deg, var(--msp-surface-3) 25%, var(--msp-surface-2) 50%, var(--msp-surface-3) 75%);
-  background-size: 200% 100%;
-  animation: shimmer 1.2s ease-in-out infinite;
-  border: 1px solid var(--msp-border-light);
-}
-
-.skeletonOps {
+.pageSkeleton {
+  flex: 1 1 auto;
+  min-height: 0;
   display: flex;
   flex-direction: column;
-  gap: 1rem;
-}
-
-.skeletonPanel {
-  min-height: 10rem;
-  border-radius: 14px;
-  background: linear-gradient(90deg, var(--msp-surface-3) 25%, var(--msp-surface-2) 50%, var(--msp-surface-3) 75%);
-  background-size: 200% 100%;
-  animation: shimmer 1.2s ease-in-out infinite;
-  border: 1px solid var(--msp-border-light);
-}
-
-@keyframes shimmer {
-  0% { background-position: 200% 0; }
-  100% { background-position: -200% 0; }
 }
 
 
@@ -311,8 +281,7 @@
   margin-bottom: 1rem;
 }
 
-.kpiRow:has(> :only-child),
-.skeletonKpiRow:has(> :only-child) {
+.kpiRow:has(> :only-child) {
   grid-template-columns: minmax(0, 14rem);
 }
 
@@ -468,7 +437,8 @@
   display: flex;
   flex-direction: column;
   gap: var(--home-card-gap, 1rem);
-  margin-bottom: 1rem;
+  margin-bottom: 0;
+  min-height: 0;
 }
 
 .mobileSectionTabs {
@@ -480,6 +450,7 @@
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: var(--home-card-gap, 1rem);
   min-width: 0;
+  flex-shrink: 0;
 }
 
 .ticketPanelsRowSingle {
@@ -554,18 +525,13 @@
   text-align: left;
   font: inherit;
   cursor: pointer;
-  opacity: 0;
-  transform: translateY(8px);
-  animation: homeKpiIn 0.45s ease-out forwards;
-  animation-delay: var(--kpi-delay, 0ms);
-  transition: border-color 0.18s, background 0.18s, box-shadow 0.18s, transform 0.18s;
+  transition: border-color 0.18s, background 0.18s, box-shadow 0.18s;
 }
 
 .ticketKpiCard:hover {
   border-color: var(--msp-accent);
   background: var(--msp-surface);
   box-shadow: 0 6px 16px rgba(43, 95, 171, 0.1);
-  transform: translateY(-2px);
 }
 
 .ticketKpiCard:focus-visible {
@@ -577,21 +543,28 @@
   font-size: 1.55rem;
 }
 
-.kpiLive .kpiIconWrap {
-  animation: homeIconPulse 2.8s ease-in-out infinite;
-}
-
-.kpiLive .kpiValue {
-  animation: none;
-}
-
 .panelBodyFlush {
   padding: 0;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
 }
 
 .homeTableWrap {
   width: 100%;
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.homeTableScroll {
+  flex: 1 1 auto;
+  min-height: 0;
   overflow-x: auto;
+  overflow-y: hidden;
 }
 
 .homeTable {
@@ -668,6 +641,7 @@
   padding: 0.55rem 0.85rem;
   border-top: 1px solid var(--msp-border-light);
   background: var(--msp-surface-2);
+  flex-shrink: 0;
 }
 
 .homeListPagerInfo {
@@ -870,6 +844,7 @@
   gap: 0.75rem;
   padding: 0.9rem 1.1rem;
   border-bottom: 1px solid var(--msp-border-light);
+  flex-shrink: 0;
 }
 
 .panelHeaderMain {
@@ -1413,11 +1388,29 @@
 }
 
 
+.emptyWrap {
+  display: flex;
+  flex: 1 1 auto;
+  width: 100%;
+  min-height: 8.5rem;
+  padding: 0.75rem;
+  box-sizing: border-box;
+}
+
+.emptyStateFill {
+  flex: 1;
+  width: 100%;
+  min-height: 0;
+  box-sizing: border-box;
+}
+
 .emptyState {
   display: flex;
   flex-direction: row;
   align-items: center;
   justify-content: center;
+  flex: 1 1 auto;
+  min-height: 0;
   padding: 1rem 0.85rem;
   text-align: left;
   color: var(--msp-muted-light);
@@ -1428,7 +1421,6 @@
   font-size: 1.15rem;
   flex-shrink: 0;
   opacity: 0.55;
-  animation: homeEmptyFloat 3.4s ease-in-out infinite;
 }
 
 .emptyState p {
@@ -1437,72 +1429,30 @@
   line-height: 1.35;
 }
 
-/* Presence / motion (same spirit as MFA login illustration) */
-.reveal {
-  opacity: 0;
-  transform: translateY(10px);
-  animation: homeReveal 0.5s ease-out forwards;
-  animation-delay: var(--reveal-delay, 0ms);
-}
-
-@keyframes homeReveal {
-  from {
-    opacity: 0;
-    transform: translateY(10px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-@keyframes homeKpiIn {
-  from {
-    opacity: 0;
-    transform: translateY(8px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-@keyframes homeIconPulse {
-  0%, 100% {
-    transform: scale(1);
-    box-shadow: 0 0 0 0 transparent;
-  }
-  50% {
-    transform: scale(1.06);
-    box-shadow: 0 0 0 4px color-mix(in srgb, var(--msp-accent) 12%, transparent);
-  }
-}
-
-@keyframes homeEmptyFloat {
-  0%, 100% { transform: translateY(0); opacity: 0.5; }
-  50% { transform: translateY(-3px); opacity: 0.75; }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .reveal,
-  .ticketKpiCard,
-  .kpiLive .kpiIconWrap,
-  .emptyIcon {
-    animation: none !important;
-  }
-
-  .reveal,
-  .ticketKpiCard {
-    opacity: 1;
-    transform: none;
-  }
-}
-
-
 @media (min-width: 1440px) {
   .pageLayout {
     grid-template-columns: minmax(0, 1fr) 380px;
     padding: 1.35rem 1.5rem 1.5rem;
+  }
+}
+
+@media (min-width: 1024px) {
+  .dashboardMain {
+    overflow-y: hidden;
+  }
+
+  .opsStack {
+    flex: 1 1 auto;
+  }
+
+  .opsStack > [data-home-section="events"] {
+    flex: 1 1 0;
+    min-height: 0;
+  }
+
+  .pageSkeleton {
+    flex: 1 1 auto;
+    min-height: 0;
   }
 }
 
@@ -1552,8 +1502,7 @@
     gap: var(--home-card-gap);
   }
 
-  .errorBanner,
-  .skeleton {
+  .errorBanner {
     margin-bottom: 0;
   }
 
@@ -1562,8 +1511,7 @@
     min-height: 0;
   }
 
-  .kpiRow:not(:has(> :only-child)),
-  .skeletonKpiRow:not(:has(> :only-child)) {
+  .kpiRow:not(:has(> :only-child)) {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 
@@ -1681,8 +1629,7 @@
 
   .opsStack[data-mobile-section="support"] [data-home-section="support"],
   .opsStack[data-mobile-section="sales"] [data-home-section="sales"],
-  .opsStack[data-mobile-section="events"] [data-home-section="events"],
-  .opsStack[data-mobile-section="todo"] [data-home-section="todo"] {
+  .opsStack[data-mobile-section="events"] [data-home-section="events"] {
     display: flex;
     flex-direction: column;
     min-height: 0;
@@ -1763,8 +1710,7 @@
     white-space: nowrap;
   }
 
-  .kpiRow:not(:has(> :only-child)),
-  .skeletonKpiRow:not(:has(> :only-child)) {
+  .kpiRow:not(:has(> :only-child)) {
     grid-template-columns: 1fr;
   }
 

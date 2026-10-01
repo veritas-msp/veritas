@@ -476,20 +476,28 @@ export function buildHoneycombThemeClusters(items = []) {
 export const INFRA_BRICK_GROUPS = [{
   id: "cybersecurity",
   label: "Cybersecurity",
+  icon: "mdi:shield-lock-outline",
   types: ["Antivirus", "Antispam"]
 }, {
   id: "services",
   label: "Services",
+  icon: "mdi:cloud-outline",
   types: ["TenantMicrosoft", "GoogleWorkspace", "Backup"]
 }, {
   id: "licensing",
   label: "Licenses & abonnements",
+  icon: "mdi:certificate-outline",
   types: ["NDD", "CertificatsSSL", "LicensesAbonnements"]
 }, {
   id: "campaign",
-  label: "Campagne",
+  label: "Campagnes",
+  icon: "mdi:bullhorn-outline",
   types: ["Campagne"]
 }];
+
+export const INFRA_BRICK_GROUP_ICONS = Object.fromEntries(
+  INFRA_BRICK_GROUPS.map(group => [group.id, group.icon])
+);
 const BRICK_TYPE_META = {
   Antivirus: {
     id: "antivirus",
@@ -779,6 +787,7 @@ export function buildInfraBrickGroups(options = {}) {
   return INFRA_BRICK_GROUPS.map(group => ({
     id: group.id,
     label: resolveGroupLabel(group.id, group.label),
+    icon: group.icon,
     bricks: group.types.map(type => bricksByType[type]).filter(Boolean)
   }));
 }

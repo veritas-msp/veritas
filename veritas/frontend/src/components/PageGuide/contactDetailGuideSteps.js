@@ -6,10 +6,6 @@ const STEP_TARGETS = [{
   key: "ticketBookmarks",
   target: '[data-guide="contact-ticket-bookmarks"]'
 }, {
-  key: "coordinates",
-  target: '[data-guide="contact-coordinates"]',
-  handler: "showActivity"
-}, {
   key: "activity",
   target: '[data-guide="contact-activity"]',
   handler: "showActivity"
@@ -25,8 +21,11 @@ const STEP_TARGETS = [{
   key: "sidebarInfo",
   target: '[data-guide="contact-sidebar-info"]'
 }, {
-  key: "sidebarDates",
-  target: '[data-guide="contact-sidebar-dates"]'
+  key: "emails",
+  target: '[data-guide="contact-sidebar-emails"]'
+}, {
+  key: "phones",
+  target: '[data-guide="contact-sidebar-phones"]'
 }, {
   key: "heroActions",
   target: '[data-guide="contact-hero-actions"]'
@@ -47,12 +46,16 @@ export function getContactDetailGuideSteps(handlers = {}, locale = "fr") {
     key,
     target,
     handler
-  }) => ({
-    target,
-    title: steps[key].title,
-    content: steps[key].content,
-    ...(handler ? {
-      onEnter: handlerMap[handler]
-    } : {})
-  }));
+  }) => {
+    const step = steps[key];
+    if (!step) return null;
+    return {
+      target,
+      title: step.title,
+      content: step.content,
+      ...(handler ? {
+        onEnter: handlerMap[handler]
+      } : {})
+    };
+  }).filter(Boolean);
 }

@@ -1,6 +1,6 @@
 import { Icon } from "@iconify/react";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { FaChevronLeft, FaChevronRight } from "react-icons/fa";
+import { FaChevronLeft, FaChevronRight, FaTimes } from "react-icons/fa";
 import MspEmptyState from "../Misc/MspEmptyState/MspEmptyState";
 import SmartTooltip from "../SmartTooltip";
 import { formatPageInfo } from "../../i18n/commonI18n";
@@ -117,11 +117,16 @@ function FilterChip({
   onClick,
   label,
   count,
-  tone
+  icon,
+  kpiTone = "gray"
 }) {
-  return <button type="button" className={`${styles.filterChip} ${active ? styles.filterChipActive : ""} ${tone ? styles[`filterTone_${tone}`] || "" : ""}`} onClick={onClick}>
-      {label}
-      {count != null ? <span className={styles.filterCount}>{count}</span> : null}
+  const disabled = count != null && count === 0;
+  return <button type="button" className={`${layout.statusChip} ${active ? layout.statusChipActive : ""} ${disabled ? layout.statusChipDisabled : ""}`} onClick={onClick} disabled={disabled}>
+      {icon ? <span className={`${layout.statusChipIcon} ${layout[`kpiIcon_${kpiTone}`] || layout.kpiIcon_gray}`}>
+          <Icon icon={icon} />
+        </span> : null}
+      <span className={layout.statusChipLabel}>{label}</span>
+      {count != null ? <span className={layout.statusChipCount}>{count}</span> : null}
     </button>;
 }
 
@@ -384,73 +389,90 @@ export default function SupervisionOpsQueue({
   const domainChips = showDomain ? [{
     id: "all",
     label: copy.domains.all,
-    count: workflowCounts.total || 0
+    count: workflowCounts.total || 0,
+    icon: "mdi:view-grid-outline",
+    kpiTone: "gray"
   }, {
     id: "devices",
     label: copy.domains.devices,
-    count: domainCounts.devices || 0
+    count: domainCounts.devices || 0,
+    icon: DOMAIN_ICONS.devices,
+    kpiTone: "blue"
   }, {
     id: "backups",
     label: copy.domains.backups,
-    count: domainCounts.backups || 0
+    count: domainCounts.backups || 0,
+    icon: DOMAIN_ICONS.backups,
+    kpiTone: "cyan"
   }, {
     id: "contracts",
     label: copy.domains.contracts,
-    count: domainCounts.contracts || 0
+    count: domainCounts.contracts || 0,
+    icon: DOMAIN_ICONS.contracts,
+    kpiTone: "amber"
   }, {
     id: "rmm",
     label: copy.domains.rmm,
-    count: domainCounts.rmm || 0
+    count: domainCounts.rmm || 0,
+    icon: DOMAIN_ICONS.rmm,
+    kpiTone: "violet"
   }] : [];
 
   const severityChips = [{
     id: "critical",
     label: copy.kpi.critical,
     count: kpi.critical || 0,
-    tone: "critical"
+    icon: "mdi:alert-octagon",
+    kpiTone: "red"
   }, {
     id: "warning",
     label: copy.kpi.warning,
     count: kpi.warning || 0,
-    tone: "warning"
+    icon: "mdi:alert",
+    kpiTone: "amber"
   }];
 
   const workflowChips = [{
     id: "open",
     label: copy.workflow?.open || "Open",
-    count: workflowCounts.open || 0
+    count: workflowCounts.open || 0,
+    icon: "mdi:circle-outline",
+    kpiTone: "blue"
   }, {
     id: "acked",
     label: copy.workflow?.acked || "Acked",
-    count: workflowCounts.acked || 0
+    count: workflowCounts.acked || 0,
+    icon: "mdi:account-check",
+    kpiTone: "teal"
   }, {
     id: "linked",
     label: copy.workflow?.linked || "Linked",
-    count: workflowCounts.linked || 0
+    count: workflowCounts.linked || 0,
+    icon: "mdi:link-variant",
+    kpiTone: "violet"
   }];
 
   return <>
     <div className={styles.root}>
       <CoverageStrip families={coverageFamilies} copy={copy} />
-      <div className={styles.toolbar} data-guide="supervision-filters">
-        <label className={styles.searchBox}>
-          <Icon icon="mdi:magnify" aria-hidden />
-          <input type="search" value={searchQuery} onChange={e => onSearchChange?.(e.target.value)} placeholder={copy.searchPlaceholder} />
-        </label>
-        <div className={styles.filtersBar} role="group" aria-label={copy.kpi?.aria || copy.domainAria} data-guide="supervision-kpis">
+      <div className={`${layout.toolbar} ${layout.toolbarWithFilters}`} data-guide="supervision-filters">
+        <div className={layout.searchWrap}>
+          <Icon icon="mdi:magnify" className={layout.searchIcon} aria-hidden />
+          <input type="search" inputMode="search" enterKeyHint="search" className={layout.searchInput} value={searchQuery} onChange={e => onSearchChange?.(e.target.value)} placeholder={copy.searchPlaceholder} aria-label={copy.searchPlaceholder} />
+          {searchQuery ? <SmartTooltip content={copy.clearSearch || "Effacer"}>
+              <button type="button" onClick={() => onSearchChange?.("")} className={layout.clearButton} aria-label={copy.clearSearch || "Effacer"}>
+                <FaTimes />
+              </button>
+            </SmartTooltip> : null}
+        </div>
+        <div className={layout.statusChips} role="group" aria-label={copy.kpi?.aria || copy.domainAria} data-guide="supervision-kpis">
           {domainChips.length ? <>
-              <div className={styles.filterGroup}>
-                {domainChips.map(chip => <FilterChip key={chip.id} label={chip.label} count={chip.count} active={domainFilter === chip.id} onClick={() => onDomainFilter?.(chip.id)} />)}
-              </div>
-              <span className={styles.filterSep} aria-hidden />
+              {domainChips.map(chip => <FilterChip key={chip.id} label={chip.label} count={chip.count} icon={chip.icon} kpiTone={chip.kpiTone} active={domainFilter === chip.id} onClick={() => onDomainFilter?.(chip.id)} />)}
+              <span className={layout.statusChipSeparator} aria-hidden />
             </> : null}
-          <div className={styles.filterGroup}>
-            {severityChips.map(chip => <FilterChip key={chip.id} label={chip.label} count={chip.count} tone={chip.tone} active={severityFilter === chip.id} onClick={() => onSeverityFilter?.(severityFilter === chip.id ? "all" : chip.id)} />)}
-          </div>
-          <span className={styles.filterSep} aria-hidden />
-          <div className={styles.filterGroup} role="group" aria-label={copy.workflow?.aria || "Workflow"}>
-            {workflowChips.map(chip => <FilterChip key={chip.id} label={chip.label} count={chip.count} active={workflowFilter === chip.id} onClick={() => onWorkflowFilter?.(workflowFilter === chip.id ? "all" : chip.id)} />)}
-          </div>
+          {severityChips.map(chip => <FilterChip key={chip.id} label={chip.label} count={chip.count} icon={chip.icon} kpiTone={chip.kpiTone} active={severityFilter === chip.id} onClick={() => onSeverityFilter?.(severityFilter === chip.id ? "all" : chip.id)} />)}
+          <span className={layout.statusChipSeparator} aria-hidden />
+          {workflowChips.map(chip => <FilterChip key={chip.id} label={chip.label} count={chip.count} icon={chip.icon} kpiTone={chip.kpiTone} active={workflowFilter === chip.id} onClick={() => onWorkflowFilter?.(workflowFilter === chip.id ? "all" : chip.id)} />)}
         </div>
       </div>
 

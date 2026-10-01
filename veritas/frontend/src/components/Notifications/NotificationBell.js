@@ -43,6 +43,7 @@ export default function NotificationBell({
   onNavigate,
   isCollapsed,
   isMobile,
+  isHorizontal = false,
   showIconTooltip,
   TooltipComponent,
   triggerClassName,
@@ -72,7 +73,8 @@ export default function NotificationBell({
     archiveAll,
     loadMore
   } = useNotifications();
-  const openToRight = isCollapsed && !isMobile;
+  // Rail vertical : panneau à droite. Barre horizontale : sous le trigger (sinon hors écran).
+  const openToRight = isCollapsed && !isMobile && !isHorizontal;
   const sections = useMemo(() => showArchived ? groupArchivedNotifications(items, copy.sections) : groupNotificationsByPriority(items, copy.sections), [items, showArchived, copy.sections]);
   const updateDropdownPosition = useCallback(() => {
     const trigger = triggerRef.current;
@@ -101,7 +103,9 @@ export default function NotificationBell({
       });
       return;
     }
-    const left = Math.min(Math.max(pad, rect.left), window.innerWidth - width - pad);
+    // Aligné à droite du trigger en horizontal (cloche près du bord droit).
+    const preferredLeft = isHorizontal ? rect.right - width : rect.left;
+    const left = Math.min(Math.max(pad, preferredLeft), window.innerWidth - width - pad);
     const spaceBelow = window.innerHeight - rect.bottom - gap - pad;
     const spaceAbove = rect.top - gap - pad;
     const openUpward = spaceBelow < Math.min(estimatedHeight, 320) && spaceAbove > spaceBelow;
@@ -124,7 +128,7 @@ export default function NotificationBell({
       width,
       zIndex: 12000
     });
-  }, [open, openToRight]);
+  }, [open, openToRight, isHorizontal]);
   useLayoutEffect(() => {
     if (!open) {
       setFixedStyle(null);

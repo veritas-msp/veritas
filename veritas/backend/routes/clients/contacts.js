@@ -25,6 +25,7 @@ import {
 } from '../../services/contactClientLinks.js';
 import { attachOrphanTicketsToContact } from '../../services/ticketEmailThread.js';
 import { normalizePortalTicketRole } from '../../utils/portalTicketRole.js';
+import { SUPPORT_TICKET_SQL } from '../../utils/ticketEditionGuard.js';
 const PORTAL_PASSWORD_ERROR = `Password too weak: at least ${PORTAL_PASSWORD_MIN_LENGTH} characters, with at least one letter and one digit.`;
 const router = express.Router();
 router.use(verifyJWT);
@@ -142,7 +143,62 @@ function hydrateContactRow(row) {
 }
 async function enrichContactRows(rows) {
   const hydrated = (Array.isArray(rows) ? rows : []).map(hydrateContactRow).filter(Boolean);
-  return attachMembershipsToContacts(hydrated);
+  const withMemberships = await attachMembershipsToContacts(hydrated);
+  return attachSupportTicketStatsToContacts(withMemberships);
+}
+
+async function attachSupportTicketStatsToContacts(contacts) {
+  const list = Array.isArray(contacts) ? contacts : [];
+  if (!list.length) return list;
+  const ids = list.map(contact => Number(contact.id)).filter(id => Number.isInteger(id) && id > 0);
+  if (!ids.length) {
+    return list.map(contact => ({
+      ...contact,
+      support_tickets_total: 0,
+      support_tickets_in_progress: 0
+    }));
+  }
+  const runStatsQuery = async excludeDeleted => {
+    const deletedClause = excludeDeleted ? "AND t.deleted_at IS NULL" : "";
+    const {
+      rows
+    } = await pool.query(`SELECT t.requester_contact_id AS contact_id,
+              COUNT(*)::int AS support_tickets_total,
+              COUNT(*) FILTER (
+                WHERE LOWER(COALESCE(t.status, '')) = 'in_progress'
+              )::int AS support_tickets_in_progress
+       FROM v_b_tickets t
+       WHERE t.requester_contact_id = ANY($1::bigint[])
+         AND (${SUPPORT_TICKET_SQL})
+         ${deletedClause}
+       GROUP BY t.requester_contact_id`, [ids]);
+    return rows;
+  };
+  try {
+    let rows;
+    try {
+      rows = await runStatsQuery(true);
+    } catch (err) {
+      if (!/deleted_at/i.test(String(err?.message || ""))) throw err;
+      rows = await runStatsQuery(false);
+    }
+    const byId = new Map(rows.map(row => [Number(row.contact_id), row]));
+    return list.map(contact => {
+      const stats = byId.get(Number(contact.id));
+      return {
+        ...contact,
+        support_tickets_total: Number(stats?.support_tickets_total) || 0,
+        support_tickets_in_progress: Number(stats?.support_tickets_in_progress) || 0
+      };
+    });
+  } catch (err) {
+    console.warn("[contacts] support ticket stats:", err.message);
+    return list.map(contact => ({
+      ...contact,
+      support_tickets_total: Number(contact.support_tickets_total) || 0,
+      support_tickets_in_progress: Number(contact.support_tickets_in_progress) || 0
+    }));
+  }
 }
 function payloadHasMemberships(payload = {}) {
   return Array.isArray(payload.memberships) || Array.isArray(payload.client_ids);

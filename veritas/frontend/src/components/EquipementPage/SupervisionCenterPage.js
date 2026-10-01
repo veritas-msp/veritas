@@ -1,6 +1,7 @@
-﻿import MonitoringAlertRulesPanel from "./SupervisionAlertRulesPanel";
+import MonitoringAlertRulesPanel from "./SupervisionAlertRulesPanel";
 import { useSupervisionAlertRules } from "../../hooks/useSupervisionAlertRules";
 import MspEmptyState from "../Misc/MspEmptyState/MspEmptyState";
+import PageSkeleton from "../Misc/Skeleton/PageSkeleton";
 import PageGuideTour from "../PageGuide/PageGuideTour";
 import { getSupervisionCenterGuideSteps } from "../PageGuide/supervisionCenterGuideSteps";
 import { useRegisterPageGuide } from "../../hooks/useRegisterPageGuide";
@@ -34,7 +35,11 @@ import cyberStyles from "../CybersecuritePage/CybersecuritePage.module.css";
 import layout from "../EnterprisesPage/EnterprisesPage.module.css";
 import dashStyles from "../CybersecuritePage/AntivirusMspDashboard.module.css";
 import styles from "./SupervisionCenterPage.module.css";
-import SupervisionFleetSyncModal from "./SupervisionFleetSyncModal";
+import SupervisionFleetSyncModal, { getFleetSyncProgress } from "./SupervisionFleetSyncModal";
+import {
+  cancelCheckmkFleetSync,
+  fetchActiveCheckmkSyncRun
+} from "../../api/checkmkSyncLogs";
 
 export default function MonitoringCenterPage({
   loading: parentLoading = false,
@@ -64,7 +69,9 @@ export default function MonitoringCenterPage({
   const [pageGuideOpen, setPageGuideOpen] = useState(false);
   const [fleetSyncActive, setFleetSyncActive] = useState(false);
   const [fleetSyncExpanded, setFleetSyncExpanded] = useState(false);
+  const [fleetSyncAutoStart, setFleetSyncAutoStart] = useState(false);
   const [fleetSyncProgress, setFleetSyncProgress] = useState(null);
+  const [fleetSyncCancelling, setFleetSyncCancelling] = useState(false);
   const fleetSyncRefreshAtRef = useRef(0);
   const openPageGuide = useCallback(() => setPageGuideOpen(true), []);
   useRegisterPageGuide(openPageGuide);
@@ -222,6 +229,7 @@ export default function MonitoringCenterPage({
 
   const handleFleetSyncProgress = useCallback(progress => {
     setFleetSyncProgress(progress);
+    if (progress?.cancelling) setFleetSyncCancelling(true);
     const running = Boolean(progress?.starting || progress?.run?.status === "running");
     if (!running) return;
     const now = Date.now();
@@ -231,18 +239,108 @@ export default function MonitoringCenterPage({
   }, [refreshLiveQueue]);
 
   const startFleetSync = useCallback(() => {
+    setFleetSyncAutoStart(true);
     setFleetSyncActive(true);
     setFleetSyncExpanded(true);
     setFleetSyncProgress(null);
+    setFleetSyncCancelling(false);
     fleetSyncRefreshAtRef.current = 0;
     setActiveTab("operations");
   }, []);
 
+  const attachFleetSync = useCallback((run, { expand = false } = {}) => {
+    if (!run?.id) return;
+    setFleetSyncActive(true);
+    if (expand) setFleetSyncExpanded(true);
+    setFleetSyncAutoStart(false);
+    setFleetSyncCancelling(Boolean(run?.details?.cancelRequested));
+    const progress = getFleetSyncProgress(run);
+    setFleetSyncProgress({
+      run,
+      starting: false,
+      error: null,
+      statusLabel: pageCopy.fleetSync?.status?.[run.status] || run.status,
+      ...progress,
+      currentHost: run?.details?.currentHost || null,
+      startedBy: run?.details?.startedBy || null,
+      isTerminal: run.status !== "running"
+    });
+  }, [pageCopy.fleetSync]);
+
   const dismissFleetSync = useCallback(() => {
     setFleetSyncActive(false);
     setFleetSyncExpanded(false);
+    setFleetSyncAutoStart(false);
     setFleetSyncProgress(null);
+    setFleetSyncCancelling(false);
   }, []);
+
+  const stopFleetSync = useCallback(async () => {
+    const runId = fleetSyncProgress?.run?.id;
+    if (!runId || fleetSyncCancelling) return;
+    setFleetSyncCancelling(true);
+    try {
+      await cancelCheckmkFleetSync(runId, {
+        cancelledBy: user?.username || user?.email || undefined
+      });
+    } catch (err) {
+      setFleetSyncCancelling(false);
+      toast.error(err?.message || pageCopy.fleetSync?.cancelError || "Impossible d'arreter la synchronisation.");
+    }
+  }, [fleetSyncProgress?.run?.id, fleetSyncCancelling, user?.username, user?.email, pageCopy.fleetSync?.cancelError]);
+
+  useEffect(() => {
+    if (!checkmkIntegrationEnabled) return undefined;
+    let cancelled = false;
+    const pollActive = async () => {
+      try {
+        const data = await fetchActiveCheckmkSyncRun();
+        if (cancelled) return;
+        const run = data?.run;
+        if (run?.status === "running") {
+          if (!fleetSyncActive) {
+            attachFleetSync(run, { expand: false });
+          } else if (!fleetSyncProgress?.run?.id || fleetSyncProgress.run.id === run.id) {
+            // Keep header fresh when modal is minimized / another agent views the page.
+            if (!fleetSyncExpanded) {
+              const progress = getFleetSyncProgress(run);
+              setFleetSyncProgress(prev => ({
+                ...(prev || {}),
+                run,
+                starting: false,
+                error: null,
+                statusLabel: pageCopy.fleetSync?.status?.running || "Synchronisation en cours...",
+                ...progress,
+                currentHost: run?.details?.currentHost || null,
+                startedBy: run?.details?.startedBy || prev?.startedBy || null,
+                cancelling: Boolean(run?.details?.cancelRequested) || prev?.cancelling,
+                isTerminal: false
+              }));
+              if (run?.details?.cancelRequested) setFleetSyncCancelling(true);
+            }
+          }
+        }
+      } catch {
+        /* ignore poll errors */
+      }
+    };
+    pollActive();
+    const interval = setInterval(() => {
+      if (document.visibilityState !== "visible") return;
+      pollActive();
+    }, 2500);
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+    };
+  }, [
+    checkmkIntegrationEnabled,
+    fleetSyncActive,
+    fleetSyncExpanded,
+    fleetSyncProgress?.run?.id,
+    attachFleetSync,
+    pageCopy.fleetSync?.status?.running
+  ]);
 
   const refreshHistory = useCallback(async signal => {
     if (!signal?.aborted) setHistoryLoading(true);
@@ -269,15 +367,17 @@ export default function MonitoringCenterPage({
   const handleFleetSyncFinished = useCallback((run, meta = {}) => {
     refreshLiveQueue();
     refreshHistory();
+    setFleetSyncCancelling(false);
     const copy = pageCopy.fleetSync || {};
     if (meta?.error) {
       toast.error(meta.error);
       return;
     }
     const status = run?.status;
-    if (status === "success") toast.success(copy.status?.success || "Synchronisation terminée");
-    else if (status === "partial") toast.warn(copy.status?.partial || "Terminée avec des erreurs partielles");
-    else if (status === "error") toast.error(copy.status?.error || "Échec de la synchronisation");
+    if (status === "success") toast.success(copy.status?.success || "Synchronisation terminee");
+    else if (status === "partial") toast.warn(copy.status?.partial || "Terminee avec des erreurs partielles");
+    else if (status === "cancelled") toast.info(copy.status?.cancelled || "Synchronisation arretee");
+    else if (status === "error") toast.error(copy.status?.error || "Echec de la synchronisation");
   }, [refreshLiveQueue, refreshHistory, pageCopy.fleetSync]);
   useEffect(() => {
     const controller = createTrackedAbortController();
@@ -383,9 +483,10 @@ export default function MonitoringCenterPage({
   const showBootLoader = loading && !deviceIssues.length && !statsItems.length;
   if (showBootLoader) {
     return <div className={`${cyberStyles.mspPage} ${layout.page} msp-page-grid`}>
-        <div className={styles.loadingScreen} role="status" aria-live="polite" aria-busy="true">
-          <Icon icon="mdi:loading" className={styles.loadingSpinner} aria-hidden />
-          <p className={styles.loadingLabel}>{pageCopy.loading}</p>
+        <div className={cyberStyles.mspLayout}>
+          <div className={`${cyberStyles.mspMain} ${styles.pageColumn}`}>
+            <PageSkeleton variant="panels" panels={3} label={pageCopy.loading} />
+          </div>
         </div>
       </div>;
   }
@@ -406,7 +507,7 @@ export default function MonitoringCenterPage({
             <div className={cyberStyles.mspHeroActions}>
               {checkmkIntegrationEnabled ? (
                 fleetSyncActive && !fleetSyncExpanded ? (
-                  <div className={`${styles.fleetSyncProgress} ${fleetSyncProgress?.error || fleetSyncProgress?.tone === "err" ? styles.fleetSyncProgressErr : ""} ${fleetSyncProgress?.isTerminal && !fleetSyncProgress?.error ? styles.fleetSyncProgressDone : ""}`}>
+                  <div className={`${styles.fleetSyncProgress} ${fleetSyncProgress?.error || fleetSyncProgress?.tone === "err" ? styles.fleetSyncProgressErr : ""} ${fleetSyncProgress?.isTerminal && !fleetSyncProgress?.error && fleetSyncProgress?.tone !== "err" ? styles.fleetSyncProgressDone : ""}`}>
                     <button
                       type="button"
                       className={styles.fleetSyncProgressMain}
@@ -420,20 +521,20 @@ export default function MonitoringCenterPage({
                             fleetSyncProgress?.error || fleetSyncProgress?.tone === "err"
                               ? "mdi:alert-circle-outline"
                               : fleetSyncProgress?.isTerminal
-                                ? "mdi:check-circle-outline"
+                                ? (fleetSyncProgress?.tone === "muted" ? "mdi:cancel" : "mdi:check-circle-outline")
                                 : "mdi:sync"
                           }
                           className={!fleetSyncProgress?.isTerminal && !fleetSyncProgress?.error ? styles.fleetSyncSpin : ""}
                           aria-hidden
                         />
                         <span className={styles.fleetSyncProgressLabel}>
-                          {fleetSyncProgress?.statusLabel || pageCopy.fleetSync?.buttonBusy || "Sync en cours…"}
+                          {fleetSyncProgress?.statusLabel || pageCopy.fleetSync?.buttonBusy || "Sync en cours..."}
                         </span>
                         <strong className={styles.fleetSyncProgressPct}>
                           {fleetSyncProgress?.total > 0
                             ? `${fleetSyncProgress.pct}%`
                             : fleetSyncProgress?.starting
-                              ? "…"
+                              ? "..."
                               : fleetSyncProgress?.isTerminal
                                 ? "100%"
                                 : ""}
@@ -445,12 +546,34 @@ export default function MonitoringCenterPage({
                           style={{ width: `${Math.max(fleetSyncProgress?.pct || 0, fleetSyncProgress?.starting ? 4 : 0)}%` }}
                         />
                       </span>
-                      {fleetSyncProgress?.currentHost && !fleetSyncProgress?.isTerminal ? (
-                        <span className={styles.fleetSyncProgressHost}>
-                          {(pageCopy.fleetSync?.currentHost || "En cours · {host}").replace("{host}", fleetSyncProgress.currentHost)}
-                        </span>
-                      ) : null}
+                      <span className={styles.fleetSyncProgressMeta}>
+                        {fleetSyncProgress?.startedBy || fleetSyncProgress?.run?.details?.startedBy ? (
+                          <span>
+                            {(pageCopy.fleetSync?.startedBy || "Lancee par {user}").replace(
+                              "{user}",
+                              fleetSyncProgress?.startedBy || fleetSyncProgress?.run?.details?.startedBy
+                            )}
+                          </span>
+                        ) : null}
+                        {fleetSyncProgress?.currentHost && !fleetSyncProgress?.isTerminal ? (
+                          <span>
+                            {(pageCopy.fleetSync?.currentHost || "En cours - {host}").replace("{host}", fleetSyncProgress.currentHost)}
+                          </span>
+                        ) : null}
+                      </span>
                     </button>
+                    {!fleetSyncProgress?.isTerminal && !fleetSyncProgress?.error ? (
+                      <button
+                        type="button"
+                        className={styles.fleetSyncProgressStop}
+                        onClick={stopFleetSync}
+                        disabled={fleetSyncCancelling}
+                        aria-label={pageCopy.fleetSync?.cancelAria || "Arreter la synchronisation"}
+                        title={pageCopy.fleetSync?.cancel || "Arreter"}
+                      >
+                        <Icon icon={fleetSyncCancelling ? "mdi:loading" : "mdi:stop-circle-outline"} className={fleetSyncCancelling ? styles.fleetSyncSpin : ""} aria-hidden />
+                      </button>
+                    ) : null}
                     {fleetSyncProgress?.isTerminal || fleetSyncProgress?.error ? (
                       <button
                         type="button"
@@ -468,11 +591,11 @@ export default function MonitoringCenterPage({
                     type="button"
                     className={styles.fleetSyncBtn}
                     title={pageCopy.fleetSync?.buttonTitle}
+                    aria-label={pageCopy.fleetSync?.buttonAria || pageCopy.fleetSync?.buttonTitle || "Synchroniser"}
                     onClick={startFleetSync}
                     disabled={fleetSyncActive}
                   >
-                    <Icon icon={fleetSyncActive ? "mdi:loading" : "mdi:cloud-sync-outline"} className={fleetSyncActive ? styles.fleetSyncSpin : ""} aria-hidden />
-                    <span>{fleetSyncActive ? pageCopy.fleetSync?.buttonBusy : pageCopy.fleetSync?.button}</span>
+                    <Icon icon={fleetSyncActive ? "mdi:loading" : "mdi:sync"} className={fleetSyncActive ? styles.fleetSyncSpin : ""} aria-hidden />
                   </button>
                 )
               ) : null}
@@ -544,6 +667,8 @@ export default function MonitoringCenterPage({
       <SupervisionFleetSyncModal
         active={fleetSyncActive}
         expanded={fleetSyncExpanded}
+        autoStart={fleetSyncAutoStart}
+        startedBy={user?.username || user?.email || null}
         copy={pageCopy.fleetSync || {}}
         onMinimize={() => setFleetSyncExpanded(false)}
         onExpand={() => setFleetSyncExpanded(true)}

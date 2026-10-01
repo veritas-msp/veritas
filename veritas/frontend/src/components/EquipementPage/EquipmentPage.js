@@ -884,6 +884,20 @@ function normalizeMkAlertStatus(status) {
   if (value === "warning") return "warning";
   return value;
 }
+/** Current alert level for filter chips — prefer live service counts over historical recentCritAlerts. */
+function getEquipmentMkAlertLevel(summary) {
+  if (!summary) return null;
+  const critServices = Number(summary.critServices) || 0;
+  const warnServices = Number(summary.warnServices) || 0;
+  if (critServices > 0) return "critical";
+  if (warnServices > 0) return "warning";
+  const status = String(summary.status || "").toLowerCase();
+  // Host-level down/offline without service rows
+  if (status === "down" || status === "offline") return "critical";
+  // Do not promote to critical from recentCritAlerts alone when nothing is currently crit/warn
+  if (status === "warning") return "warning";
+  return null;
+}
 function matchesMkAlertFilter(status, filterKey) {
   const normalized = normalizeMkAlertStatus(status);
   if (filterKey === "critical") return normalized === "critical";
@@ -1065,14 +1079,16 @@ const EquipmentPage = forwardRef(function EquipmentPage({
       onLabel: "Supervision active",
       offLabel: "Supervision inactive"
     });
-    const summary = getEquipmentMkSummary(equipment);
-    const status = String(summary?.status || "").toLowerCase();
-    const isCritical = status === "critical" || status === "down" || status === "offline";
-    const isWarning = status === "warning";
-    if (isCritical || isWarning) {
+    const level = getEquipmentMkAlertLevel(getEquipmentMkSummary(equipment));
+    if (level === "critical") {
+      return <SmartTooltip content="Supervision : critique">
+        <Icon icon="mdi:circle" width={12} height={12} style={{ color: "#dc2626" }} aria-label="Supervision : critique" />
+      </SmartTooltip>;
+    }
+    if (level === "warning") {
       return renderStateIcon(false, {
         warn: true,
-        warnLabel: isCritical ? "Supervision : critique" : "Supervision : avertissement"
+        warnLabel: "Supervision : avertissement"
       });
     }
     return renderStateIcon(true, {
@@ -1526,6 +1542,24 @@ const EquipmentPage = forwardRef(function EquipmentPage({
     });
     return counts;
   }, [filteredForStats, mkStatusFilter, monitoringSummaries]);
+  /** Worst current MK alert level per equipment family (for filter chip indicators). */
+  const typeMkAlertLevel = useMemo(() => {
+    const levels = {};
+    filteredForStats.forEach(eq => {
+      if (!isMkMappedEquipment(eq)) return;
+      const level = getEquipmentMkAlertLevel(getEquipmentMkSummary(eq));
+      if (!level) return;
+      const displayType = toDisplayEquipmentType(eq.type);
+      if (level === "critical") {
+        levels[displayType] = "critical";
+        return;
+      }
+      if (levels[displayType] !== "critical") {
+        levels[displayType] = "warning";
+      }
+    });
+    return levels;
+  }, [filteredForStats, monitoringSummaries]);
   const supervisionDeviceTypeOrder = useMemo(() => {
     const customTypes = customFamiliesForUi.map(family => `Custom:${family.familyKey}`);
     return [...FILTER_TYPE_ORDER, "Security camera", ...customTypes];
@@ -3293,6 +3327,7 @@ const EquipmentPage = forwardRef(function EquipmentPage({
                   {embeddedTypeOrder.map(type => {
                   const mkCount = mkStatusFilter ? mkFilteredTypeCounts?.[type] || 0 : null;
                   const count = mkStatusFilter ? mkCount : embeddedTypeCounts[type] || 0;
+                  const alertLevel = typeMkAlertLevel[type] || null;
                   const label = getEmbeddedTypeLabel(type);
                   const isActive = showAllMkFamilies ? false : embeddedActiveType === type;
                   const isDimmed = Boolean(mkStatusFilter && mkCount === 0);
@@ -3302,6 +3337,12 @@ const EquipmentPage = forwardRef(function EquipmentPage({
                         count: String(mkCount || 0),
                         status: mkStatusFilter === "critical" ? embeddedCopy.mkCriticalLabel : embeddedCopy.mkWarningLabel
                       })
+                    : alertLevel
+                      ? interpolate(embeddedCopy.typeTooltipAlert || "{label} · {count} · {status}", {
+                          label,
+                          count: String(count),
+                          status: alertLevel === "critical" ? embeddedCopy.mkCriticalLabel : embeddedCopy.mkWarningLabel
+                        })
                     : interpolate(embeddedCopy.typeTooltip, {
                         label,
                         count: String(count)
@@ -3311,9 +3352,13 @@ const EquipmentPage = forwardRef(function EquipmentPage({
                     count: String(count)
                   });
                   return <SmartTooltip key={type} content={tooltip}>
-                        <button type="button" role="tab" aria-selected={isActive} aria-label={tabAria} disabled={isDimmed} className={`${styles.embeddedTypeIconBtn} ${isActive ? styles.embeddedTypeIconBtnActive : ""} ${isDimmed ? styles.embeddedTypeIconBtnDimmed : ""} ${mkCount > 0 ? styles.embeddedTypeIconBtnHasAlerts : ""}`} onClick={() => !isDimmed && handleTypeCardClick(type)}>
-                          <Icon icon={getEmbeddedTypeIcon(type)} aria-hidden />
-                          {mkStatusFilter && mkCount > 0 ? <span className={`${styles.embeddedTypeIconBadge} ${mkStatusFilter === "critical" ? styles.embeddedTypeIconBadgeCritical : styles.embeddedTypeIconBadgeWarning}`}>{mkCount > 9 ? "9+" : mkCount}</span> : null}
+                        <button type="button" role="tab" aria-selected={isActive} aria-label={tabAria} disabled={isDimmed} className={`${styles.embeddedTypeIconBtn} ${isActive ? styles.embeddedTypeIconBtnActive : ""} ${isDimmed ? styles.embeddedTypeIconBtnDimmed : ""} ${alertLevel || mkCount > 0 ? styles.embeddedTypeIconBtnHasAlerts : ""}`} onClick={() => !isDimmed && handleTypeCardClick(type)}>
+                          <Icon icon={getEmbeddedTypeIcon(type)} className={styles.embeddedTypeIconGlyph} aria-hidden />
+                          <span className={styles.embeddedTypeIconLabel}>{label}</span>
+                          {count > 0 ? <span className={styles.embeddedTypeIconCount}>{count}</span> : null}
+                          {mkStatusFilter && mkCount > 0 ? <span className={`${styles.embeddedTypeIconBadge} ${mkStatusFilter === "critical" ? styles.embeddedTypeIconBadgeCritical : styles.embeddedTypeIconBadgeWarning}`}>{mkCount > 9 ? "9+" : mkCount}</span> : alertLevel ? <span className={`${styles.embeddedTypeIconBadge} ${styles.embeddedTypeIconBadgeIcon} ${alertLevel === "critical" ? styles.embeddedTypeIconBadgeCritical : styles.embeddedTypeIconBadgeWarning}`} aria-hidden>
+                                <Icon icon={alertLevel === "critical" ? "mdi:alert-circle" : "mdi:alert"} />
+                              </span> : null}
                         </button>
                       </SmartTooltip>;
                 })}

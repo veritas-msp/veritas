@@ -659,7 +659,7 @@ export default function PrestataireFormModal({
               aria-pressed={form.statut === "actif"}
             >
               {form.statut === "actif" && <Icon icon="mdi:check-circle" className={styles.moduleCheck} aria-hidden />}
-              <Icon icon="mdi:account-check-outline" className={styles.moduleTileIcon} aria-hidden />
+              <Icon icon="mdi:check-circle-outline" className={styles.moduleTileIcon} aria-hidden />
               <span className={styles.moduleTileLabel}>{copy.statutActive}</span>
             </button>
             <button
@@ -669,11 +669,10 @@ export default function PrestataireFormModal({
               aria-pressed={form.statut === "inactif"}
             >
               {form.statut === "inactif" && <Icon icon="mdi:check-circle" className={styles.moduleCheck} aria-hidden />}
-              <Icon icon="mdi:account-off-outline" className={styles.moduleTileIcon} aria-hidden />
+              <Icon icon="mdi:close-circle-outline" className={styles.moduleTileIcon} aria-hidden />
               <span className={styles.moduleTileLabel}>{copy.statutInactive}</span>
             </button>
           </div>
-          <p className={styles.modulesSummary}>{copy.statusInactiveHint}</p>
         </>;
       default:
         return null;

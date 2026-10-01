@@ -309,11 +309,6 @@
   background: rgba(43, 95, 171, 0.08) !important;
 }
 
-.mainColumn :global(.pagination) {
-  padding: 0.45rem 0.15rem 0;
-  margin-top: 0;
-}
-
 .sortableTh {
   cursor: pointer;
   user-select: none;

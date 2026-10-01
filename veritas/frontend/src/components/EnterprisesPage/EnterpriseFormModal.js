@@ -461,13 +461,13 @@ export default function EnterpriseFormModal({
     const contact = form?.primaryContact || {};
     return {
       identity: Boolean(form?.name?.trim()),
-      location: false,
+      location: clientSites.length > 0,
       contact: Boolean(contact.nom?.trim()),
       contract: false,
       modules: activeModulesCount > 0,
       support: Boolean(form?.contrat?.sla?.enabled)
     };
-  }, [form, activeModulesCount]);
+  }, [form, activeModulesCount, clientSites.length]);
   // Contact principal obligatoire uniquement à la création : en édition, on peut
   // enregistrer contrat / commercial / identité même si aucun contact n'est lié.
   const isRequiredSectionIncomplete = sectionId => {
@@ -545,7 +545,7 @@ export default function EnterpriseFormModal({
                 </label>
                 <SiretInput id="enterprise-form-siret" className={styles.input} value={form.siret || ""} onChange={value => patchForm({
                 siret: value
-              })} />
+              })} placeholder={f.legalIdentifierPlaceholder} />
               </div>
               <div className={styles.field}>
                 <label className={styles.label} htmlFor="enterprise-form-secteur">
@@ -559,44 +559,17 @@ export default function EnterpriseFormModal({
           </>;
       case "location":
         return <>
-            <div className={styles.sectionHead}>
-              <h3 className={styles.sectionTitle}>{section?.label}</h3>
-              <p className={styles.sectionDesc}>{section?.description}</p>
-            </div>
-            <div className={styles.fieldGrid3}>
-              <div className={styles.field}>
-                <label className={styles.label} htmlFor="enterprise-form-street">
-                  {f.address}
-                </label>
-                <input id="enterprise-form-street" type="text" className={styles.input} value={form.addressStreet || ""} onChange={e => patchForm({
-                addressStreet: e.target.value
-              })} placeholder={f.addressPlaceholder} />
+            <div className={`${styles.sectionHead} ${styles.sectionHeadWithAction}`.trim()}>
+              <div className={styles.sectionHeadText}>
+                <h3 className={styles.sectionTitle}>{section?.label}</h3>
+                <p className={styles.sectionDesc}>{section?.description}</p>
               </div>
-              <div className={styles.field}>
-                <label className={styles.label} htmlFor="enterprise-form-postal">
-                  {f.postalCode}
-                </label>
-                <input id="enterprise-form-postal" type="text" inputMode="numeric" className={styles.input} value={form.addressPostalCode || ""} onChange={e => patchForm({
-                addressPostalCode: e.target.value
-              })} placeholder={f.postalPlaceholder} />
-              </div>
-              <div className={styles.field}>
-                <label className={styles.label} htmlFor="enterprise-form-city">
-                  {f.city}
-                </label>
-                <input id="enterprise-form-city" type="text" className={styles.input} value={form.addressCity || ""} onChange={e => patchForm({
-                addressCity: e.target.value
-              })} placeholder={f.cityPlaceholder} />
-              </div>
+              <button type="button" className={styles.manageSitesBtn} onClick={openSitesManager}>
+                <Icon icon="mdi:map-marker-radius" aria-hidden />
+                {copy.formatManageSites(clientSites.length)}
+              </button>
             </div>
             <div className={styles.sitesBlock}>
-              <div className={styles.sitesBlockHead}>
-                <p className={styles.sitesLabel}>{f.sitesLabel}</p>
-                <button type="button" className={styles.manageSitesBtn} onClick={openSitesManager}>
-                  <Icon icon="mdi:map-marker-radius" aria-hidden />
-                  {copy.formatManageSites(clientSites.length)}
-                </button>
-              </div>
               {clientSites.length === 0 ? <span className={styles.sectionDesc}>{f.noSites}</span> : <div className={styles.siteSummaryList}>
                   {clientSites.map(site => {
                 const address = buildSiteAddress(site);
@@ -735,18 +708,17 @@ export default function EnterpriseFormModal({
               statut: "actif"
             })} aria-pressed={isActive}>
                 {isActive && <Icon icon="mdi:check-circle" className={styles.moduleCheck} aria-hidden />}
-                <Icon icon="mdi:domain" className={styles.moduleTileIcon} aria-hidden />
+                <Icon icon="mdi:check-circle-outline" className={styles.moduleTileIcon} aria-hidden />
                 <span className={styles.moduleTileLabel}>{copy.statutActive}</span>
               </button>
               <button type="button" className={`${styles.moduleTile} ${isInactive ? styles.moduleTileActive : ""}`} onClick={() => patchForm({
               statut: "inactive"
             })} aria-pressed={isInactive}>
                 {isInactive && <Icon icon="mdi:check-circle" className={styles.moduleCheck} aria-hidden />}
-                <Icon icon="mdi:domain-off-outline" className={styles.moduleTileIcon} aria-hidden />
+                <Icon icon="mdi:close-circle-outline" className={styles.moduleTileIcon} aria-hidden />
                 <span className={styles.moduleTileLabel}>{copy.statutInactive}</span>
               </button>
             </div>
-            <p className={styles.modulesSummary}>{copy.statusInactiveHint}</p>
           </>;
         }
       case "modules":
@@ -772,9 +744,6 @@ export default function EnterpriseFormModal({
                   <span className={styles.moduleTileProHint}>{copy.modules.proCustomServices}</span>
                 </button> : null}
             </div>
-            <p className={styles.modulesSummary}>
-              {copy.formatModulesSummary(activeModulesCount, localizedEnabledModules.length)}
-            </p>
           </>;
       case "support":
         {

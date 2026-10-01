@@ -10,7 +10,7 @@ import { useAppLocale } from "../../hooks/useAppGeneralSettings";
 import { useCommonCopy } from "../../hooks/useCommonCopy";
 import styles from "../EnterprisesPage/EnterpriseFormModal.module.css";
 import { getModalDropdownZIndex } from "../../utils/dropdownPortal";
-import { enforcePrimaryCommunications, syncLegacyContactFields, hasIncompleteCommunications, normalizeContactCommunications, getPrimaryCommunicationValue } from "../../utils/contactCommunications";
+import { enforcePrimaryCommunications, syncLegacyContactFields, hasIncompleteCommunications, normalizeContactCommunications, getPrimaryCommunicationValue, createCommunicationEntry } from "../../utils/contactCommunications";
 import { getPortalStatusFromContact } from "../../api/contactPortal";
 import ContactCommunicationsEditor from "./ContactCommunicationsEditor";
 import ContactPortalEmailChangeModal from "./ContactPortalEmailChangeModal";
@@ -123,6 +123,8 @@ function MembershipSitesPicker({
   clientList,
   selectedSites,
   copy,
+  expanded = false,
+  onToggleExpand,
   onToggleSite,
   onToggleSitePrimary
 }) {
@@ -130,55 +132,40 @@ function MembershipSitesPicker({
     const listed = clientList.find(c => String(c.id) === String(clientId));
     return normalizeClientSites(listed?.sites);
   }, [clientList, clientId]);
-  if (availableSites.length === 0) {
-    return <p className={styles.hint} style={{
-      marginTop: "0.55rem",
-      marginBottom: 0
-    }}>{copy.noSitesForCompany}</p>;
-  }
-  const selectedMap = new Map(normalizeMembershipSites({
+  if (availableSites.length === 0) return null;
+  const normalizedSelected = normalizeMembershipSites({
     sites: selectedSites
-  }).map(site => [site.site_id, site]));
-  return <div className={styles.field} style={{
-    marginTop: "0.65rem",
-    marginBottom: 0
-  }}>
-      <label className={styles.label}>{copy.sitesLabel}</label>
-      <p className={styles.hint} style={{
-      marginTop: 0
-    }}>{copy.sitesHint}</p>
-      <div className={styles.fieldStack}>
-        {availableSites.map(site => {
+  });
+  const selectedMap = new Map(normalizedSelected.map(site => [site.site_id, site]));
+  const selectedCount = normalizedSelected.length;
+  const toggleLabel = selectedCount > 0 ? interpolate(copy.sitesCount || "{count}", {
+    count: selectedCount
+  }) : copy.sitesCountNone || copy.sitesLabel;
+  return <>
+      <button type="button" className={styles.membershipSitesToggle} onClick={onToggleExpand} aria-expanded={expanded} aria-label={copy.toggleSitesAria || toggleLabel}>
+        <Icon icon="mdi:map-marker-outline" aria-hidden />
+        <span>{toggleLabel}</span>
+        <Icon icon={expanded ? "mdi:chevron-up" : "mdi:chevron-down"} aria-hidden />
+      </button>
+      {expanded ? <div className={styles.membershipSitesBody}>
+          {availableSites.map(site => {
         const siteId = getSiteId(site) || site.id;
         const selected = selectedMap.get(String(siteId));
         const checked = Boolean(selected);
         const label = getSiteDisplayName(site);
-        return <div key={siteId} style={{
-          display: "flex",
-          flexDirection: "column",
-          gap: "0.25rem"
-        }}>
-              <label className={styles.primaryContactToggle} style={{
-            marginTop: 0
-          }}>
-                <input type="checkbox" checked={checked} onChange={() => onToggleSite(clientId, siteId)} />
-                <Icon icon="mdi:map-marker-outline" aria-hidden style={{
-              fontSize: "1rem",
-              color: "var(--msp-accent, #2b5fab)"
-            }} />
-                <span>{label}</span>
-              </label>
-              {checked ? <label className={styles.primaryContactToggle} style={{
-            marginTop: 0,
-            marginLeft: "1.55rem"
-          }}>
-                  <input type="checkbox" checked={Boolean(selected?.is_primary)} onChange={() => onToggleSitePrimary(clientId, siteId)} />
-                  {copy.primaryForSite}
-                </label> : null}
-            </div>;
+        return <div key={siteId} className={styles.membershipSiteRow}>
+                <label className={styles.primaryContactToggle}>
+                  <input type="checkbox" checked={checked} onChange={() => onToggleSite(clientId, siteId)} />
+                  <span>{label}</span>
+                </label>
+                {checked ? <label className={styles.primaryContactToggle}>
+                    <input type="checkbox" checked={Boolean(selected?.is_primary)} onChange={() => onToggleSitePrimary(clientId, siteId)} />
+                    {copy.primaryForSite}
+                  </label> : null}
+              </div>;
       })}
-      </div>
-    </div>;
+        </div> : null}
+    </>;
 }
 export default function ContactFormModal({
   open = true,
@@ -190,6 +177,8 @@ export default function ContactFormModal({
   draftMode = false,
   hideEnterpriseSection = false,
   stacked = false,
+  initialSection = null,
+  seedCommunicationType = null,
   onClose,
   onSuccess,
   onDraftSave
@@ -216,12 +205,13 @@ export default function ContactFormModal({
   const [enterpriseSearch, setEnterpriseSearch] = useState("");
   const [enterpriseDropdownOpen, setEnterpriseDropdownOpen] = useState(false);
   const [enterpriseDropdownStyle, setEnterpriseDropdownStyle] = useState(null);
+  const [expandedMembershipSites, setExpandedMembershipSites] = useState(() => new Set());
   const [portalEmailConfirm, setPortalEmailConfirm] = useState(null);
   const enterpriseAutocompleteRef = useRef(null);
   const enterpriseDropdownRef = useRef(null);
   // Reset only when the modal opens or the edited contact / locked client changes —
   // not when parents pass a new `clients` / `initialContact` object reference each render.
-  const formSessionKey = `${initialContact?.id ?? "new"}|${lockedClientId ?? ""}|${defaultClientId ?? ""}`;
+  const formSessionKey = `${initialContact?.id ?? "new"}|${lockedClientId ?? ""}|${defaultClientId ?? ""}|${initialSection || ""}|${seedCommunicationType || ""}`;
   const lastFormSessionKeyRef = useRef(null);
   const hasChanges = useMemo(() => {
     const formChanged = !contactFormsEqual(form, initialSnapshot);
@@ -235,7 +225,17 @@ export default function ContactFormModal({
     }
     if (lastFormSessionKeyRef.current === formSessionKey) return;
     lastFormSessionKeyRef.current = formSessionKey;
-    const nextForm = buildContactFormFromInitial(initialContact, lockedClientId ?? defaultClientId);
+    let nextForm = buildContactFormFromInitial(initialContact, lockedClientId ?? defaultClientId);
+    if (seedCommunicationType === "email" || seedCommunicationType === "telephone") {
+      const existing = Array.isArray(nextForm.communications) ? nextForm.communications : [];
+      const hasSameType = existing.some(entry => entry.type === seedCommunicationType);
+      nextForm = {
+        ...nextForm,
+        communications: enforcePrimaryCommunications([...existing, createCommunicationEntry(seedCommunicationType, {
+          isPrimary: !hasSameType
+        })])
+      };
+    }
     const nextMemberships = buildMembershipsFromInitial(initialContact, lockedClientId, defaultClientId, clientList, {
       forcePrimary: draftMode
     });
@@ -243,11 +243,12 @@ export default function ContactFormModal({
     setInitialSnapshot(cloneContactFormSnapshot(nextForm));
     setMemberships(nextMemberships);
     setInitialMembershipsSnapshot(serializeMemberships(nextMemberships));
-    setActiveSection("identity");
+    setActiveSection(initialSection || "identity");
     setEnterpriseDropdownOpen(false);
     setEnterpriseSearch("");
+    setExpandedMembershipSites(new Set());
     setPortalEmailConfirm(null);
-  }, [open, formSessionKey, initialContact, lockedClientId, defaultClientId, clientList, draftMode]);
+  }, [open, formSessionKey, initialContact, lockedClientId, defaultClientId, clientList, draftMode, initialSection, seedCommunicationType]);
   useEffect(() => {
     if (!open || clientList.length === 0) return;
     setMemberships(prev => {
@@ -399,6 +400,15 @@ export default function ContactFormModal({
       } : m);
     });
   }, [clientList, form.poste]);
+  const toggleMembershipSitesExpand = useCallback(clientId => {
+    if (!clientId) return;
+    setExpandedMembershipSites(prev => {
+      const next = new Set(prev);
+      const key = String(clientId);
+      if (next.has(key)) next.delete(key);else next.add(key);
+      return next;
+    });
+  }, []);
   const toggleMembershipSite = useCallback((clientId, siteId) => {
     if (!clientId || !siteId) return;
     setMemberships(prev => {
@@ -619,47 +629,39 @@ export default function ContactFormModal({
             <div className={styles.fieldStack}>
               {isEnterpriseLocked ? <div className={styles.field}>
                   <label className={styles.label}>{copy.companiesLabel || copy.enterpriseLabel}</label>
-                  <input type="text" className={styles.input} value={lockedClientId ? getClientLabel(lockedClient, copy) || copy.currentClient : lockedEnterpriseLabel || copy.enterprisePendingName} readOnly disabled />
-                  {!draftMode && (lockedClientId || memberships[0]?.client_id) ? <label className={styles.primaryContactToggle}>
-                      <input type="checkbox" checked={Boolean((memberships.find(m => String(m.client_id) === String(lockedClientId || memberships[0]?.client_id)) || memberships[0])?.is_primary)} onChange={() => toggleMembershipPrimary(lockedClientId || memberships[0]?.client_id)} />
-                      {copy.primaryForCompany}
-                    </label> : null}
-                  {!draftMode && (lockedClientId || memberships[0]?.client_id) ? <MembershipSitesPicker clientId={lockedClientId || memberships[0]?.client_id} clientList={clientList} selectedSites={(memberships.find(m => String(m.client_id) === String(lockedClientId || memberships[0]?.client_id)) || memberships[0])?.sites || []} copy={copy} onToggleSite={toggleMembershipSite} onToggleSitePrimary={toggleMembershipSitePrimary} /> : null}
+                  <div className={styles.membershipList}>
+                    <div className={styles.membershipRow}>
+                      <div className={styles.membershipRowMain}>
+                        <span className={styles.membershipRowName}>{lockedClientId ? getClientLabel(lockedClient, copy) || copy.currentClient : lockedEnterpriseLabel || copy.enterprisePendingName}</span>
+                        {!draftMode && (lockedClientId || memberships[0]?.client_id) ? <button type="button" className={`${styles.membershipPrimaryBtn} ${Boolean((memberships.find(m => String(m.client_id) === String(lockedClientId || memberships[0]?.client_id)) || memberships[0])?.is_primary) ? styles.membershipPrimaryBtnActive : ""}`} onClick={() => toggleMembershipPrimary(lockedClientId || memberships[0]?.client_id)} aria-pressed={Boolean((memberships.find(m => String(m.client_id) === String(lockedClientId || memberships[0]?.client_id)) || memberships[0])?.is_primary)} title={copy.primaryForCompany}>
+                            <Icon icon="mdi:star" aria-hidden />
+                            {copy.primaryShort || copy.primaryForCompany}
+                          </button> : null}
+                      </div>
+                      {!draftMode && (lockedClientId || memberships[0]?.client_id) ? <MembershipSitesPicker clientId={lockedClientId || memberships[0]?.client_id} clientList={clientList} selectedSites={(memberships.find(m => String(m.client_id) === String(lockedClientId || memberships[0]?.client_id)) || memberships[0])?.sites || []} copy={copy} expanded={expandedMembershipSites.has(String(lockedClientId || memberships[0]?.client_id))} onToggleExpand={() => toggleMembershipSitesExpand(lockedClientId || memberships[0]?.client_id)} onToggleSite={toggleMembershipSite} onToggleSitePrimary={toggleMembershipSitePrimary} /> : null}
+                    </div>
+                  </div>
                 </div> : <>
                   {memberships.length > 0 && <div className={styles.field}>
                       <label className={styles.label}>{copy.companiesLabel || copy.enterpriseLabel}</label>
-                      <div className={styles.fieldStack}>
+                      <div className={styles.membershipList}>
                         {memberships.map(membership => {
                     const label = membership.name || copy.getClientLabel(membership.client_id);
-                    return <div key={membership.client_id} className={styles.field} style={{
-                      border: "1px solid var(--msp-border, #e2e8f0)",
-                      borderRadius: "10px",
-                      padding: "0.75rem 0.9rem",
-                      background: "var(--msp-surface-2, #f7f9fc)"
-                    }}>
-                              <div style={{
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "space-between",
-                        gap: "0.75rem"
-                      }}>
-                                <span style={{
-                          fontWeight: 600
-                        }}>{label}</span>
-                                <button type="button" className={styles.ghostBtn} onClick={() => removeMembership(membership.client_id)} aria-label={interpolate(copy.removeCompanyAria || "{name}", {
+                    const clientKey = String(membership.client_id);
+                    return <div key={membership.client_id} className={styles.membershipRow}>
+                              <div className={styles.membershipRowMain}>
+                                <span className={styles.membershipRowName} title={label}>{label}</span>
+                                <button type="button" className={`${styles.membershipPrimaryBtn} ${membership.is_primary ? styles.membershipPrimaryBtnActive : ""}`} onClick={() => toggleMembershipPrimary(membership.client_id)} aria-pressed={Boolean(membership.is_primary)} title={copy.primaryForCompany}>
+                                  <Icon icon="mdi:star" aria-hidden />
+                                  {copy.primaryShort || copy.primaryForCompany}
+                                </button>
+                                <button type="button" className={styles.membershipRemoveBtn} onClick={() => removeMembership(membership.client_id)} aria-label={interpolate(copy.removeCompanyAria || "{name}", {
                           name: label
-                        })} style={{
-                          padding: "0.35rem 0.55rem",
-                          minHeight: 0
-                        }}>
+                        })}>
                                   <FaTimes aria-hidden />
                                 </button>
                               </div>
-                              <label className={styles.primaryContactToggle}>
-                                <input type="checkbox" checked={Boolean(membership.is_primary)} onChange={() => toggleMembershipPrimary(membership.client_id)} />
-                                {copy.primaryForCompany}
-                              </label>
-                              <MembershipSitesPicker clientId={membership.client_id} clientList={clientList} selectedSites={membership.sites || []} copy={copy} onToggleSite={toggleMembershipSite} onToggleSitePrimary={toggleMembershipSitePrimary} />
+                              <MembershipSitesPicker clientId={membership.client_id} clientList={clientList} selectedSites={membership.sites || []} copy={copy} expanded={expandedMembershipSites.has(clientKey)} onToggleExpand={() => toggleMembershipSitesExpand(membership.client_id)} onToggleSite={toggleMembershipSite} onToggleSitePrimary={toggleMembershipSitePrimary} />
                             </div>;
                   })}
                       </div>
@@ -712,18 +714,17 @@ export default function ContactFormModal({
               statut: "actif"
             })} aria-pressed={form.statut === "actif"}>
                 {form.statut === "actif" && <Icon icon="mdi:check-circle" className={styles.moduleCheck} aria-hidden />}
-                <Icon icon="mdi:account-check-outline" className={styles.moduleTileIcon} aria-hidden />
+                <Icon icon="mdi:check-circle-outline" className={styles.moduleTileIcon} aria-hidden />
                 <span className={styles.moduleTileLabel}>{copy.statutActive}</span>
               </button>
               <button type="button" className={`${styles.moduleTile} ${form.statut === "inactif" || form.statut === "inactive" ? styles.moduleTileActive : ""}`} onClick={() => patchForm({
               statut: "inactive"
             })} aria-pressed={form.statut === "inactive" || form.statut === "inactif"}>
                 {(form.statut === "inactive" || form.statut === "inactif") && <Icon icon="mdi:check-circle" className={styles.moduleCheck} aria-hidden />}
-                <Icon icon="mdi:account-off-outline" className={styles.moduleTileIcon} aria-hidden />
+                <Icon icon="mdi:close-circle-outline" className={styles.moduleTileIcon} aria-hidden />
                 <span className={styles.moduleTileLabel}>{copy.statutInactive}</span>
               </button>
             </div>
-            <p className={styles.modulesSummary}>{copy.statusInactiveHint}</p>
           </>;
       default:
         return null;

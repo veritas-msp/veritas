@@ -1,6 +1,6 @@
 import { Fragment, useEffect, useMemo, useState } from "react";
 import { Icon } from "@iconify/react";
-import { FaChevronLeft, FaChevronRight } from "react-icons/fa";
+import { FaChevronLeft, FaChevronRight, FaTimes } from "react-icons/fa";
 import { toast } from "react-toastify";
 import MspEmptyState from "../Misc/MspEmptyState/MspEmptyState";
 import SmartTooltip from "../SmartTooltip";
@@ -297,62 +297,85 @@ export default function SupervisionAlertHistory({
 
   const domainChips = showDomain ? [{
     id: "all",
-    label: copy.domains.all
+    label: copy.domains.all,
+    icon: "mdi:view-grid-outline",
+    kpiTone: "gray"
   }, {
     id: "devices",
-    label: copy.domains.devices
+    label: copy.domains.devices,
+    icon: DOMAIN_ICONS.devices,
+    kpiTone: "blue"
   }, {
     id: "backups",
-    label: copy.domains.backups
+    label: copy.domains.backups,
+    icon: DOMAIN_ICONS.backups,
+    kpiTone: "cyan"
   }, {
     id: "contracts",
-    label: copy.domains.contracts
+    label: copy.domains.contracts,
+    icon: DOMAIN_ICONS.contracts,
+    kpiTone: "amber"
   }, {
     id: "rmm",
-    label: copy.domains.rmm
+    label: copy.domains.rmm,
+    icon: DOMAIN_ICONS.rmm,
+    kpiTone: "violet"
   }] : [];
 
   const statusChips = [{
     id: "closed",
-    label: copy.status.closed
+    label: copy.status.closed,
+    icon: "mdi:check-circle",
+    kpiTone: "green"
   }, {
     id: "acked",
-    label: copy.status.acked
+    label: copy.status.acked,
+    icon: "mdi:account-check",
+    kpiTone: "teal"
   }, {
     id: "linked",
-    label: copy.status.linked
+    label: copy.status.linked,
+    icon: "mdi:link-variant",
+    kpiTone: "violet"
   }];
 
   return <div className={styles.root}>
-      <div className={styles.toolbar}>
-        <label className={styles.searchBox}>
-          <Icon icon="mdi:magnify" aria-hidden />
-          <input type="search" value={searchQuery} onChange={e => onSearchChange?.(e.target.value)} placeholder={copy.searchPlaceholder} />
-        </label>
-        <div className={styles.filtersBar} role="group" aria-label={copy.filterAria || "Filters"}>
-          {domainChips.length && !trashMode ? <>
-            <div className={styles.filterGroup}>
-              {domainChips.map(chip => <button key={chip.id} type="button" className={`${styles.chip} ${domainFilter === chip.id ? styles.chipActive : ""}`} onClick={() => onDomainFilter?.(chip.id)}>
-                {chip.label}
-              </button>)}
-            </div>
-            <span className={styles.filterSep} aria-hidden />
-          </> : null}
-          {!trashMode ? <div className={styles.filterGroup}>
-            {statusChips.map(chip => <button key={chip.id} type="button" className={`${styles.chip} ${statusFilter === chip.id ? styles.chipActive : ""}`} onClick={() => onStatusFilter?.(statusFilter === chip.id ? "all" : chip.id)}>
-                {chip.label}
-              </button>)}
-          </div> : null}
-          <button
-            type="button"
-            className={`${styles.trashToggle} ${trashMode ? styles.trashToggleActive : ""}`}
-            onClick={() => onTrashModeChange?.(!trashMode)}
-            aria-pressed={trashMode}
-          >
-            <Icon icon="mdi:delete-outline" aria-hidden />
-            <span>{copy.trash || "Corbeille"}</span>
-          </button>
+      <div className={`${layout.toolbar} ${layout.toolbarWithFilters}`}>
+        <div className={layout.searchWrap}>
+          <Icon icon="mdi:magnify" className={layout.searchIcon} aria-hidden />
+          <input type="search" inputMode="search" enterKeyHint="search" className={layout.searchInput} value={searchQuery} onChange={e => onSearchChange?.(e.target.value)} placeholder={copy.searchPlaceholder} aria-label={copy.searchPlaceholder} />
+          {searchQuery ? <SmartTooltip content={copy.clearSearch || "Effacer"}>
+              <button type="button" onClick={() => onSearchChange?.("")} className={layout.clearButton} aria-label={copy.clearSearch || "Effacer"}>
+                <FaTimes />
+              </button>
+            </SmartTooltip> : null}
         </div>
+        <div className={layout.statusChips} role="group" aria-label={copy.filterAria || "Filters"}>
+          {domainChips.length && !trashMode ? <>
+              {domainChips.map(chip => <button key={chip.id} type="button" className={`${layout.statusChip} ${domainFilter === chip.id ? layout.statusChipActive : ""}`} onClick={() => onDomainFilter?.(chip.id)}>
+                  <span className={`${layout.statusChipIcon} ${layout[`kpiIcon_${chip.kpiTone}`] || layout.kpiIcon_gray}`}>
+                    <Icon icon={chip.icon} />
+                  </span>
+                  <span className={layout.statusChipLabel}>{chip.label}</span>
+                </button>)}
+              <span className={layout.statusChipSeparator} aria-hidden />
+            </> : null}
+          {!trashMode ? statusChips.map(chip => <button key={chip.id} type="button" className={`${layout.statusChip} ${statusFilter === chip.id ? layout.statusChipActive : ""}`} onClick={() => onStatusFilter?.(statusFilter === chip.id ? "all" : chip.id)}>
+                <span className={`${layout.statusChipIcon} ${layout[`kpiIcon_${chip.kpiTone}`] || layout.kpiIcon_gray}`}>
+                  <Icon icon={chip.icon} />
+                </span>
+                <span className={layout.statusChipLabel}>{chip.label}</span>
+              </button>) : null}
+        </div>
+        <button
+          type="button"
+          className={`${styles.trashToggle} ${trashMode ? styles.trashToggleActive : ""}`}
+          onClick={() => onTrashModeChange?.(!trashMode)}
+          aria-pressed={trashMode}
+        >
+          <Icon icon="mdi:delete-outline" aria-hidden />
+          <span>{copy.trash || "Corbeille"}</span>
+        </button>
       </div>
 
       {loading ? <div className={styles.loading}>{copy.loading}</div> : alerts.length === 0 ? <div className={styles.emptyWrap}>
@@ -368,9 +391,9 @@ export default function SupervisionAlertHistory({
             <colgroup>
               <col className={styles.colSev} />
               <col className={styles.colAlert} />
+              <col className={styles.colStatus} />
               <col className={styles.colCompany} />
               {showDomain ? <col className={styles.colDomain} /> : null}
-              <col className={styles.colStatus} />
               <col className={styles.colWhen} />
               <col className={styles.colActions} />
             </colgroup>
@@ -378,9 +401,9 @@ export default function SupervisionAlertHistory({
               <tr>
                 <th className={styles.sevCol} aria-hidden />
                 <SortableHeader column="alert" label={columns.alert || "Alerte"} sortKey={sortKey} sortDir={sortDir} onSort={handleSort} sortAria={sortAriaFor(columns.alert || "Alerte")} />
+                <SortableHeader column="status" label={columns.status || "Statut"} sortKey={sortKey} sortDir={sortDir} onSort={handleSort} sortAria={sortAriaFor(columns.status || "Statut")} />
                 <SortableHeader column="company" label={columns.company || "Entreprise"} sortKey={sortKey} sortDir={sortDir} onSort={handleSort} sortAria={sortAriaFor(columns.company || "Entreprise")} />
                 {showDomain ? <SortableHeader column="domain" label={columns.domain || "Domaine"} sortKey={sortKey} sortDir={sortDir} onSort={handleSort} sortAria={sortAriaFor(columns.domain || "Domaine")} /> : null}
-                <SortableHeader column="status" label={columns.status || "Statut"} sortKey={sortKey} sortDir={sortDir} onSort={handleSort} sortAria={sortAriaFor(columns.status || "Statut")} />
                 <SortableHeader column="when" label={columns.when || "Date"} sortKey={sortKey} sortDir={sortDir} onSort={handleSort} sortAria={sortAriaFor(columns.when || "Date")} />
                 <th className={styles.actionsCol}>{columns.actions || "Actions"}</th>
               </tr>
@@ -397,20 +420,27 @@ export default function SupervisionAlertHistory({
               return <Fragment key={alert.id}>
                     <tr className={`${styles.dataRow} ${open ? styles.dataRowOpen : ""}`} onClick={() => setExpandedId(open ? null : alert.id)}>
                       <td className={styles.sevCol}>
-                        <span className={`${styles.sevIcon} ${severityToneClass(alert.severity)}`} aria-hidden>
-                          <Icon icon={alertRowIcon(alert)} />
+                        <span className={styles.leadingIcons}>
+                          <span className={styles.expandIcon} title={expandHint} aria-hidden>
+                            <Icon icon={open ? "mdi:chevron-down" : "mdi:chevron-right"} />
+                          </span>
+                          <span className={`${styles.sevIcon} ${severityToneClass(alert.severity)}`} aria-hidden>
+                            <Icon icon={alertRowIcon(alert)} />
+                          </span>
                         </span>
                       </td>
                       <td className={styles.alertCell}>
                         <div className={styles.alertBody}>
                           <span className={styles.titleRow}>
-                            <span className={styles.expandIcon} title={expandHint} aria-hidden>
-                              <Icon icon={open ? "mdi:chevron-down" : "mdi:chevron-right"} />
-                            </span>
                             <span className={styles.title}>{display.reason}</span>
                           </span>
                           {display.subject ? <span className={styles.meta}>{display.subject}</span> : null}
                         </div>
+                      </td>
+                      <td>
+                        <span className={`${styles.statusBadge} ${statusBadgeClass(alert.status)}`}>
+                          {copy.status[alert.status] || alert.status}
+                        </span>
                       </td>
                       <td className={styles.companyCell}>{display.clientName || "—"}</td>
                       {showDomain ? <td className={styles.domainCol}>
@@ -418,11 +448,6 @@ export default function SupervisionAlertHistory({
                           {domainLabel}
                         </span>
                       </td> : null}
-                      <td>
-                        <span className={`${styles.statusBadge} ${statusBadgeClass(alert.status)}`}>
-                          {copy.status[alert.status] || alert.status}
-                        </span>
-                      </td>
                       <td className={styles.whenCell}>
                         <time dateTime={when || undefined}>{formatWhen(when, localeTag)}</time>
                       </td>

@@ -6,6 +6,42 @@ const TAB_ICONS = {
   domain: "mdi:web",
   ssl: "mdi:certificate-outline"
 };
+const DOMAIN_STATUS_FILTER_META = {
+  actif: {
+    icon: "mdi:check-circle",
+    kpiTone: "green"
+  },
+  expire_bientot: {
+    icon: "mdi:clock-alert",
+    kpiTone: "amber"
+  },
+  expiré: {
+    icon: "mdi:alert-circle",
+    kpiTone: "red"
+  }
+};
+const SSL_STATUS_FILTER_META = {
+  active: {
+    icon: "mdi:check-circle",
+    kpiTone: "green"
+  },
+  warning: {
+    icon: "mdi:clock-alert",
+    kpiTone: "amber"
+  },
+  expired: {
+    icon: "mdi:alert-circle",
+    kpiTone: "red"
+  },
+  error: {
+    icon: "mdi:close-circle",
+    kpiTone: "red"
+  },
+  unknown: {
+    icon: "mdi:help-circle",
+    kpiTone: "gray"
+  }
+};
 const LOCALE_BCP47 = {
   fr: "fr-FR",
   en: "en-GB",
@@ -1633,19 +1669,13 @@ export function getServicePageCopy(locale) {
         label: t.domain.statusMeta[status] || t.domain.statusMeta.inconnu,
         tone: status === "expiré" ? "bad" : status === "expire_bientot" ? "warn" : status === "actif" ? "good" : "neutral"
       }),
-      statusFilters: [{
-        id: "all",
-        label: t.domain.statusFilters.all
-      }, {
-        id: "actif",
-        label: t.domain.statusFilters.actif
-      }, {
-        id: "expire_bientot",
-        label: t.domain.statusFilters.expire_bientot
-      }, {
-        id: "expiré",
-        label: t.domain.statusFilters.expiré
-      }]
+      statusFilters: ["actif", "expire_bientot", "expiré"].map(id => ({
+        id,
+        key: id,
+        label: t.domain.statusFilters[id],
+        icon: DOMAIN_STATUS_FILTER_META[id].icon,
+        kpiTone: DOMAIN_STATUS_FILTER_META[id].kpiTone
+      }))
     },
     formatSyncProgress: (current, total, name) => interpolate(t.toasts.syncProgress, {
       current: String(current),
@@ -1678,25 +1708,13 @@ export function getServicePageCopy(locale) {
         label: t.ssl.statusMeta[statusKey] || t.ssl.statusMeta.unknown,
         tone: statusKey === "expired" || statusKey === "error" ? "bad" : statusKey === "warning" ? "warn" : statusKey === "active" ? "good" : "neutral"
       }),
-      statusFilters: [{
-        id: "all",
-        label: t.ssl.statusFilters.all
-      }, {
-        id: "active",
-        label: t.ssl.statusFilters.active
-      }, {
-        id: "warning",
-        label: t.ssl.statusFilters.warning
-      }, {
-        id: "expired",
-        label: t.ssl.statusFilters.expired
-      }, {
-        id: "error",
-        label: t.ssl.statusFilters.error
-      }, {
-        id: "unknown",
-        label: t.ssl.statusFilters.unknown
-      }]
+      statusFilters: ["active", "warning", "expired", "error"].map(id => ({
+        id,
+        key: id,
+        label: t.ssl.statusFilters[id],
+        icon: SSL_STATUS_FILTER_META[id].icon,
+        kpiTone: SSL_STATUS_FILTER_META[id].kpiTone
+      }))
     }
   };
 }

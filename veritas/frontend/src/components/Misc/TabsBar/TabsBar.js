@@ -35,7 +35,7 @@ function getTabIcon(type, tabData) {
     case "ContratDetail":
       return "mdi:office-building";
     case "ContactDetail":
-      return "mdi:phone";
+      return "mdi:account";
     case "PrestataireDetail":
       return "mdi:handshake";
     case "Equipment":

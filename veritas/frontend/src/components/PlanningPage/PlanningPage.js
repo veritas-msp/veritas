@@ -2,6 +2,7 @@ import React, { useState, useMemo, useEffect, useRef, useCallback } from "react"
 import { Icon } from "@iconify/react";
 import { FaTimes, FaPlus } from "react-icons/fa";
 import layout from "../EnterprisesPage/EnterprisesPage.module.css";
+import PageSkeleton from "../Misc/Skeleton/PageSkeleton";
 import { Calendar, momentLocalizer } from "react-big-calendar";
 import withDragAndDrop from "react-big-calendar/lib/addons/dragAndDrop";
 import moment from "moment";
@@ -2194,10 +2195,9 @@ export default function PlanningPage({
               </div>
             </div>
 
-            {loading ? <div className={layout.stateBox}>
-                <Icon icon="mdi:loading" className={layout.spinning} />
-                <span>{planningCopy.loading}</span>
-              </div> : <div className={styles.calendarPanel}>
+            {loading ? (
+              <PageSkeleton variant="panels" panels={2} label={planningCopy.loading} />
+            ) : <div className={styles.calendarPanel}>
                 <div className={`${styles.calendarBody} ${view === "month" ? styles.calendarBodyMonth : ""} ${view === "month" && monthsShown === 1 ? styles.calendarBodyMonthSingle : ""} ${view === "week" ? styles.calendarBodyWeek : ""} ${view === "day" ? styles.calendarBodyDay : ""} ${view === "agenda" ? styles.calendarBodyAgenda : ""}`}>
                 {view === "month" ? <>
                     <PlanningToolbar />

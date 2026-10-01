@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import { Icon } from "@iconify/react";
 import { toast } from 'react-toastify';
-import { FaServer, FaNetworkWired, FaWifi, FaShieldAlt, FaHdd, FaGlobe, FaCamera, FaTimes, FaCube, FaPlus } from "react-icons/fa";
+import { FaTimes, FaPlus } from "react-icons/fa";
 import styles from "./EquipmentDetailPage.module.css";
 import enterpriseDetailStyles from "../EnterprisesPage/EnterpriseDetailPage.module.css";
 import SmartTooltip from "../SmartTooltip";
@@ -37,7 +37,7 @@ import { buildDetailFormData } from "./equipmentDetailConfig";
 import { resolveClientWifiSsidCatalog } from "./wifiApSsidUtils";
 import useSystemFamilyExtensions from "../../hooks/useSystemFamilyExtensions";
 import { patchEquipmentWithSharedFields } from "./sharedEquipmentFields";
-import { getEquipmentDetailTypeLabel, getEquipmentDetailCopy, formatEquipmentDetailRelative, formatAlertSettingsDateTime, getEquipmentCreatedAt } from "./equipmentDetailPageI18n";
+import { getEquipmentDetailTypeLabel, getEquipmentDetailCopy, formatEquipmentDetailRelative, getEquipmentCreatedAt } from "./equipmentDetailPageI18n";
 import { canonicalizeComputerType, patchEquipmentLocation, readEquipmentIsActive } from "./equipmentFormConfig";
 import { ConfirmModal } from "../AdminPage/AdminUi";
 import { useAppLocale } from "../../hooks/useAppGeneralSettings";
@@ -54,7 +54,7 @@ import { notifyProFeature, setProFeaturePromoHandler } from "../Misc/ProFeature/
 import { findEquipmentInList, getEquipmentClientId, getEquipmentDbId as resolveEquipmentDbId, getEquipmentListKey, equipmentNeedsHydration } from "../../utils/equipmentIdentity";
 import { getClientNumber, getClientNameWithoutCode } from "../../utils/clientDisplay";
 import StatusDot from "../shared/StatusDot/StatusDot";
-import { getRmmAgentId, getRmmAgentVersion, buildRmmAgentRowFromEquipment, getRmmSyncRequestedAt, isRmmManagedEquipment, patchEquipmentRmmSyncRequest, resolveRmmSyncRequestState, rmmSyncTimestampsMatch, formatRmmExpectedCollectionLabel, resolveRmmHeartbeatIntervalMinutes, agentSupportsImmediateFullSync, getRmmAgentStatusKey } from "./rmmMonitoringUtils";
+import { getRmmAgentId, getRmmAgentVersion, buildRmmAgentRowFromEquipment, getRmmSyncRequestedAt, isRmmManagedEquipment, patchEquipmentRmmSyncRequest, resolveRmmSyncRequestState, rmmSyncTimestampsMatch, formatRmmExpectedCollectionLabel, resolveRmmHeartbeatIntervalMinutes, agentSupportsImmediateFullSync } from "./rmmMonitoringUtils";
 import { computeRmmDeviceHealth } from "./rmmDeviceHealthUtils";
 import { ScoreAside } from "./RmmDeviceScore";
 import { fetchEquipmentFamilies, mapCustomEquipmentItem, parseCustomFamilyType } from "../../api/equipmentFamilies";
@@ -1287,42 +1287,6 @@ export default function EquipmentDetailPage({
       }
     }
   };
-  const getTypeIcon = type => {
-    const icons = {
-      'Servers': FaServer,
-      'NAS': FaHdd,
-      'Firewalls': FaShieldAlt,
-      'Switch': FaNetworkWired,
-      'BorneWifi': FaWifi,
-      'Internet': FaGlobe
-    };
-    return icons[type] || FaServer;
-  };
-  const getStorageIcon = equipment => {
-    const storageType = equipment?.rawData?.type || equipment?.type || '';
-    const typeLower = storageType.toLowerCase();
-    if (typeLower.includes('san')) {
-      return 'mdi:server-network-outline';
-    } else if (typeLower.includes('robot')) {
-      return 'mdi:vhs';
-    } else if (typeLower.includes('disque')) {
-      return 'mdi:harddisk';
-    } else {
-      return 'mdi:nas';
-    }
-  };
-  let TypeIcon = equipment ? getTypeIcon(equipment.type) : FaServer;
-  let StorageIconName = null;
-  if (equipment && equipment.type === 'NAS') {
-    StorageIconName = getStorageIcon(equipment);
-  } else if (equipment && equipment.type === 'Servers') {
-    const serverType = equipment.typeServer || equipment.rawData?.type || '';
-    if (serverType === 'virtuel' || serverType === 'Virtual') {
-      TypeIcon = FaCube;
-    } else {
-      TypeIcon = FaServer;
-    }
-  }
   const storageTypeValue = (formData.type || equipment?.rawData?.type || equipment?.type || '').toString().toLowerCase();
   const isNasOrSanStorage = equipment?.type === 'NAS' && (storageTypeValue.includes('nas') || storageTypeValue.includes('san'));
   const isSynologyNasStorage = isNasOrSanStorage && isSynologyBrand(formData.manufacturer);
@@ -1393,13 +1357,22 @@ export default function EquipmentDetailPage({
   }, [equipment, modalClient?.name, onNavigate]);
   const equipmentHeroTitle = equipment?.type === "Internet" ? formData.fournisseur && formData.internetType ? `${formData.fournisseur.toUpperCase()} ${formData.internetType.toUpperCase()}` : equipment.name : equipment?.name;
   const createdAtRaw = getEquipmentCreatedAt(equipment);
-  const createdAtFormatted = createdAtRaw ? formatAlertSettingsDateTime(createdAtRaw, locale) : null;
-  const createdAtLabel = createdAtFormatted && createdAtFormatted !== "-" ? interpolate(copy.hero.createdInVeritas, {
+  const createdAtFormatted = (() => {
+    if (!createdAtRaw) return null;
+    const date = new Date(createdAtRaw);
+    if (Number.isNaN(date.getTime())) return null;
+    const localeCode = locale === "en" ? "en-GB" : locale === "de" ? "de-DE" : locale === "it" ? "it-IT" : locale === "es" ? "es-ES" : "fr-FR";
+    return date.toLocaleDateString(localeCode, {
+      day: "2-digit",
+      month: "short",
+      year: "numeric"
+    });
+  })();
+  const createdAtLabel = createdAtFormatted ? interpolate(copy.hero.createdInVeritas, {
     date: createdAtFormatted
   }) : null;
   const equipmentIsActive = readEquipmentIsActive(equipment);
-  const rmmStatusKey = showRmmHeroStatus ? getRmmAgentStatusKey(equipmentWithRmmLive) : null;
-  const rmmStatusLabel = rmmStatusKey === "online" ? copy.agent.online : rmmStatusKey === "offline" ? copy.agent.offline : rmmStatusKey === "manual" ? copy.agent.manual : rmmStatusKey ? copy.agent.unknown : null;
+  const equipmentStatusLabel = equipmentIsActive ? copy.hero.active : copy.hero.inactive;
   const showQuickConnectHero = Boolean(isSynologyNasStorage && formData.quickConnect);
   const showCheckmkHeroMenu = Boolean(checkmkIntegrationEnabled && equipment?.type !== "Internet");
   const showRmmHeroMenu = Boolean(rmmManaged && rmmAgentId);
@@ -1413,14 +1386,16 @@ export default function EquipmentDetailPage({
       <header className={enterpriseDetailStyles.pageHero} data-guide="equipment-hero">
         <div className={enterpriseDetailStyles.heroRow}>
           <div className={enterpriseDetailStyles.heroMain}>
-            <div className={enterpriseDetailStyles.heroAvatar}>
-              {StorageIconName ? <Icon icon={StorageIconName} aria-hidden /> : <TypeIcon aria-hidden />}
-            </div>
             <div className={enterpriseDetailStyles.heroText}>
               <h1 className={enterpriseDetailStyles.heroTitle}>
-                <span>{equipmentHeroTitle}</span>
+                <StatusDot active={equipmentIsActive} label={equipmentStatusLabel} className={enterpriseDetailStyles.heroTitleStatus} />
+                <span className={enterpriseDetailStyles.heroTitleName}>{equipmentHeroTitle}</span>
               </h1>
               <div className={enterpriseDetailStyles.heroMeta} aria-label={copy.hero.metaAria}>
+                {typeDisplayLabel ? <span className={enterpriseDetailStyles.heroMetaItem}>
+                    <Icon icon="mdi:devices" aria-hidden />
+                    {typeDisplayLabel}
+                  </span> : null}
                 {(() => {
                 const enterpriseId = getEquipmentClientId(equipment) || equipment?.clientId;
                 const enterpriseName = equipment?.clientName || modalClient?.name || "";
@@ -1464,31 +1439,9 @@ export default function EquipmentDetailPage({
                       {companyContent}
                     </button>;
               })()}
-                <span className={enterpriseDetailStyles.heroMetaItem}>
-                  <Icon icon="mdi:devices" aria-hidden />
-                  {typeDisplayLabel}
-                </span>
-                <span className={`${enterpriseDetailStyles.statusChip} ${equipmentIsActive ? enterpriseDetailStyles.statusChipActive : enterpriseDetailStyles.statusChipInactive}`}>
-                  <StatusDot active={equipmentIsActive} />
-                  {equipmentIsActive ? copy.hero.active : copy.hero.inactive}
-                </span>
                 {createdAtLabel ? <span className={enterpriseDetailStyles.heroMetaItem} title={copy.stats.createdInVeritas}>
                     <Icon icon="mdi:calendar-plus" aria-hidden />
                     {createdAtLabel}
-                  </span> : null}
-                {showRmmHeroStatus && rmmAgentVersion ? <span className={enterpriseDetailStyles.heroMetaItem} title={copy.agent.versionTitle}>
-                    <Icon icon="mdi:cellphone-arrow-down" aria-hidden />
-                    {interpolate(copy.agent.chip, {
-                version: rmmAgentVersion
-              })}
-                  </span> : null}
-                {showRmmHeroStatus && rmmStatusLabel ? <span className={enterpriseDetailStyles.heroMetaItem}>
-                    <StatusDot active={rmmStatusKey === "online"} />
-                    {rmmStatusLabel}
-                  </span> : null}
-                {showRmmHeroStatus && rmmDeviceHealth ? <span className={enterpriseDetailStyles.heroMetaItem}>
-                    <Icon icon="mdi:heart-pulse" aria-hidden />
-                    {rmmDeviceHealth.grade} {rmmDeviceHealth.score}/100
                   </span> : null}
                 {loadingEquipmentTags ? <span className={enterpriseDetailStyles.heroTagsLoading}>{copy.loadingTags}</span> : <>
                     {equipmentTags.map(tag => <span key={tag.id} className={enterpriseDetailStyles.heroTagChip} style={{

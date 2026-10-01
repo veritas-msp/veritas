@@ -28,8 +28,8 @@ function expirationIssue(keyPrefix, labelPrefix, rawDate, {
   if (status === "expired") {
     return {
       key: `${keyPrefix}_expired`,
-      label: `${labelPrefix} expirede`,
-      detail: formatted ? `Since le ${formatted}` : undefined,
+      label: `${labelPrefix} expirée`,
+      detail: formatted ? `Depuis le ${formatted}` : undefined,
       tone: "bad",
       priority: priorityExpired
     };
@@ -37,7 +37,7 @@ function expirationIssue(keyPrefix, labelPrefix, rawDate, {
   if (status === "soon") {
     return {
       key: `${keyPrefix}_soon`,
-      label: `${labelPrefix} expires soon`,
+      label: `${labelPrefix} expire bientôt`,
       detail: formatted ? `Le ${formatted}` : undefined,
       tone: "warn",
       priority: prioritySoon
@@ -122,7 +122,7 @@ export function buildEquipmentMonitoringSummary(equipment, {
     }
   }
   if (displayType === "Firewalls") {
-    const maintIssue = expirationIssue("maintenance", "Maintenance license", readMaintenanceDate(equipment), {
+    const maintIssue = expirationIssue("maintenance", "Licence maintenance", readMaintenanceDate(equipment), {
       priorityExpired: 0,
       prioritySoon: 1
     });
@@ -134,7 +134,7 @@ export function buildEquipmentMonitoringSummary(equipment, {
       prioritySoon: 2
     });
     if (batteryIssue) {
-      batteryIssue.label = batteryIssue.key === "battery_expired" ? "Battery to replace" : "Battery to monitor";
+      batteryIssue.label = batteryIssue.key === "battery_expired" ? "Batterie à remplacer" : "Batterie à surveiller";
       pushIssue(issues, batteryIssue);
     }
   }
@@ -186,7 +186,7 @@ export function buildEquipmentMonitoringSummary(equipment, {
     issues: filteredIssues,
     tone,
     isUpToDate: filteredIssues.length === 0,
-    label: filteredIssues.length === 0 ? "OK" : tone === "bad" ? "Action requise" : "To monitor",
+    label: filteredIssues.length === 0 ? "OK" : tone === "bad" ? "Action requise" : "À surveiller",
     primaryIssue: filteredIssues[0] || null,
     warrantyStatus,
     maintenanceStatus,

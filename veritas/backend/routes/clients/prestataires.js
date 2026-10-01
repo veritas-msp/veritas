@@ -2,6 +2,7 @@ import express from "express";
 import { pool } from "../../database/db.js";
 import verifyJWT from "../../middleware/auth.js";
 import { requirePermission } from "../../middleware/permissions.js";
+import { userHasAllPermissions } from "../../services/permissionService.js";
 import { ensurePrestatairesSchema } from "../../services/ensurePrestatairesSchema.js";
 
 const router = express.Router();
@@ -302,6 +303,65 @@ router.get("/:id", requirePermission("prestataires.view"), async (req, res) => {
   } catch (err) {
     return res.status(500).json({
       error: "Error retrieving provider",
+      details: err.message
+    });
+  }
+});
+
+router.post("/bulk", async (req, res) => {
+  try {
+    const action = String(req.body?.action || "delete").trim().toLowerCase();
+    const rawIds = Array.isArray(req.body?.prestataireIds) ? req.body.prestataireIds : [];
+    const prestataireIds = [...new Set(rawIds.map(id => Number.parseInt(id, 10)).filter(id => Number.isFinite(id) && id > 0))];
+    if (prestataireIds.length === 0) {
+      return res.status(400).json({
+        error: "No providers selected"
+      });
+    }
+    if (prestataireIds.length > 200) {
+      return res.status(400).json({
+        error: "Too many providers (max 200)"
+      });
+    }
+    if (action !== "delete") {
+      return res.status(400).json({
+        error: "Unsupported bulk action"
+      });
+    }
+    if (!(await userHasAllPermissions(req.user, ["prestataires_detail.delete"]))) {
+      return res.status(403).json({
+        error: "You do not have permission to perform this action.",
+        code: "PERMISSION_DENIED"
+      });
+    }
+    const deletedIds = [];
+    const failed = [];
+    for (const id of prestataireIds) {
+      try {
+        const result = await pool.query(`DELETE FROM v_b_prestataires WHERE id = $1 RETURNING id`, [id]);
+        if (!result.rows[0]) {
+          failed.push({
+            id,
+            error: "Provider not found"
+          });
+          continue;
+        }
+        deletedIds.push(id);
+      } catch (err) {
+        failed.push({
+          id,
+          error: err.message || "Delete failed"
+        });
+      }
+    }
+    return res.json({
+      deleted: deletedIds.length,
+      deletedIds,
+      failed
+    });
+  } catch (err) {
+    return res.status(500).json({
+      error: "Error bulk deleting providers",
       details: err.message
     });
   }

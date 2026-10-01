@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Icon } from "@iconify/react";
+import PageSkeleton from "../Misc/Skeleton/PageSkeleton";
 import styles from "./RapportCreateWizard.module.css";
 
 function getClientName(client, copy) {
@@ -72,11 +73,9 @@ export default function ReportCreateWizard({
               </button> : null}
           </label>
 
-          {loading ? <div className={styles.list} aria-hidden>
-              {Array.from({
-            length: 8
-          }).map((_, index) => <div key={index} className={styles.rowSkeleton} />)}
-            </div> : filteredClients.length === 0 ? <div className={styles.empty}>
+          {loading ? (
+            <PageSkeleton variant="list" rows={8} label={copy.loadingClients || wizard?.loadingClients} />
+          ) : filteredClients.length === 0 ? <div className={styles.empty}>
               <p>{copy.create.noEnterprise}</p>
               {enterpriseSearch ? <button type="button" className={styles.textBtn} onClick={() => setEnterpriseSearch("")}>
                   {wizard.clearSearch}

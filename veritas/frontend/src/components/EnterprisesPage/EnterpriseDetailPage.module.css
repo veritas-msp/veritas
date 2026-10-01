@@ -17,6 +17,8 @@
   --msp-radius-sm: 10px;
   --msp-shadow: 0 1px 2px rgba(15, 28, 46, 0.08), 0 10px 28px rgba(15, 28, 46, 0.14);
 
+  display: flex;
+  flex-direction: column;
   min-height: 100%;
   height: 100%;
   overflow-y: auto;
@@ -38,6 +40,7 @@
   position: sticky;
   top: 0;
   z-index: 50;
+  flex: 0 0 auto;
   padding: 1rem 1.5rem;
   background-color: var(--msp-surface);
   border-bottom: 1px solid var(--msp-border);
@@ -253,14 +256,44 @@
 
 .heroTitle {
   margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  min-width: 0;
   font-size: clamp(1.25rem, 2.2vw, 1.65rem);
   font-weight: 700;
   letter-spacing: -0.03em;
   line-height: 1.2;
   color: var(--msp-text);
+}
+
+.heroTitleStatus {
+  width: 0.5rem;
+  height: 0.5rem;
+  flex-shrink: 0;
+}
+
+.heroTitleCode,
+.heroTitleName {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.heroTitleCode {
+  flex-shrink: 0;
+  font-weight: 700;
+  color: var(--msp-text);
+}
+
+.heroTitleSep {
+  flex-shrink: 0;
+  color: var(--msp-muted-light);
+  font-weight: 500;
+}
+
+.heroTitleName {
+  min-width: 0;
 }
 
 .headerClientCode {
@@ -546,25 +579,34 @@
   min-height: 2.375rem;
 }
 
-.enterpriseDetailPage .heroAvatar,
-.contactDetailPage .heroAvatar {
-  width: 38px;
-  height: 38px;
-  border-radius: 10px;
-  font-size: 0.7rem;
-  border-width: 1.5px;
-}
-
 .enterpriseDetailPage .heroTitle,
 .contactDetailPage .heroTitle {
   font-size: clamp(1.05rem, 1.7vw, 1.28rem);
   line-height: 1.15;
 }
 
-.enterpriseDetailPage .headerClientCode,
-.contactDetailPage .headerClientCode {
-  padding: 0.05rem 0.35rem;
-  font-size: 0.8em;
+.enterpriseDetailPage .heroTitleStatus,
+.contactDetailPage .heroTitleStatus {
+  width: 0.45rem;
+  height: 0.45rem;
+}
+
+.heroMetaClientCode,
+.heroMetaClientName {
+  font: inherit;
+  font-weight: 600;
+  color: inherit;
+  letter-spacing: inherit;
+}
+
+.heroMetaClientCode {
+  flex-shrink: 0;
+}
+
+.heroMeta .heroTitleSep {
+  margin: 0 0.15rem;
+  color: var(--msp-muted-light);
+  font-weight: 500;
 }
 
 .enterpriseDetailPage .heroMeta,
@@ -725,16 +767,19 @@
 
 .overviewTabsWrap {
   display: flex;
-  justify-content: center;
-  align-items: center;
+  justify-content: stretch;
+  align-items: stretch;
   width: 100%;
   flex-shrink: 0;
-  padding: 0.15rem 0 0.1rem;
+  padding: 0;
+  overflow: visible;
 }
 
 .overviewTabsWrap .overviewTabBar {
-  display: inline-flex;
-  justify-content: center;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  width: 100%;
+  justify-content: stretch;
 }
 
 .mainCommunityPanels {
@@ -803,6 +848,16 @@
   letter-spacing: 0.04em;
   text-transform: uppercase;
   color: var(--msp-muted);
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  min-width: 0;
+}
+
+.panelTitleIcon {
+  font-size: 1rem;
+  flex-shrink: 0;
+  opacity: 0.9;
 }
 
 .panelHeaderMain {
@@ -814,46 +869,91 @@
 }
 
 .overviewTabBar {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.2rem;
-  flex-wrap: wrap;
-  padding: 0.15rem;
-  border-radius: 10px;
-  background: color-mix(in srgb, var(--msp-border, #e2e8f0) 55%, transparent);
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  align-items: stretch;
+  gap: 0;
+  width: 100%;
+  padding: 0;
+  border: 1px solid var(--msp-border, #e2e8f0);
+  border-radius: var(--msp-radius);
+  background: var(--msp-surface, #fff);
+  box-shadow: var(--msp-shadow);
+  overflow: hidden;
 }
 
 .overviewTab {
   appearance: none;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
   border: none;
+  border-right: 1px solid var(--msp-border, #e2e8f0);
   background: transparent;
   color: var(--msp-muted, #5c6b82);
-  font-size: 0.72rem;
-  font-weight: 700;
-  letter-spacing: 0.03em;
+  font-family: inherit;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
   text-transform: uppercase;
-  padding: 0.42rem 0.7rem;
-  border-radius: 8px;
+  padding: 0.7rem 0.9rem;
+  border-radius: 0;
   cursor: pointer;
-  line-height: 1.2;
-  transition: background 0.12s, color 0.12s;
+  line-height: 1.25;
+  transition: background 0.15s ease, color 0.15s ease;
+  min-width: 0;
+  justify-self: stretch;
+}
+
+.overviewTab:last-child {
+  border-right: none;
 }
 
 .overviewTab:hover {
   color: var(--msp-text, #0f1c2e);
-  background: color-mix(in srgb, var(--msp-surface, #fff) 70%, transparent);
+  background: var(--msp-surface-2, #f7f9fc);
 }
 
 .overviewTabActive {
   color: var(--msp-accent, #2b5fab);
   background: var(--msp-surface, #fff);
-  box-shadow: 0 1px 2px rgba(15, 28, 46, 0.08);
+  font-weight: 600;
+  /* Full-width underline — more stable than inset box-shadow across tab switches */
+  box-shadow: none;
+}
+
+.overviewTabActive::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 2px;
+  background: var(--msp-accent, #2b5fab);
+  pointer-events: none;
 }
 
 .overviewTabLabelRow {
   display: inline-flex;
   align-items: center;
-  gap: 0.35rem;
+  justify-content: center;
+  gap: 0.4rem;
+  width: 100%;
+  min-width: 0;
+}
+
+.overviewTabIcon {
+  font-size: 1.25rem;
+  flex-shrink: 0;
+  opacity: 0.85;
+  color: inherit;
+}
+
+.overviewTabActive .overviewTabIcon {
+  opacity: 1;
+  color: var(--msp-accent, #2b5fab);
 }
 
 .overviewTabPanel {
@@ -929,12 +1029,15 @@
 .panel[data-guide="enterprise-equipment"] {
   min-width: 0;
   overflow: hidden;
+  border-radius: var(--msp-radius);
 }
 
 .panel[data-guide="enterprise-equipment"] .panelBody {
   min-width: 0;
   max-width: 100%;
-  overflow: visible;
+  overflow-x: auto;
+  overflow-y: visible;
+  padding-top: 0.95rem;
 }
 
 
@@ -1256,10 +1359,49 @@
   margin-top: 0.85rem;
 }
 
+.mapTabSkeletonModules {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 1rem;
+  min-height: 9rem;
+}
+
+.mapTabSkeletonModuleCol {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.2rem;
+  padding: 0.55rem 0.45rem 0.65rem;
+  min-width: 0;
+  border: 1px solid var(--msp-border);
+  border-radius: var(--msp-radius);
+  background-color: var(--msp-surface);
+  box-shadow: var(--msp-shadow);
+}
+
+.mapTabSkeletonModuleLabel {
+  width: 5.5rem;
+  height: 0.7rem;
+  border-radius: 4px;
+  margin: 0 0.15rem 0.45rem;
+}
+
 .mapTabSkeletonBrick {
-  width: 4.75rem;
-  height: 2.35rem;
+  width: 100%;
+  height: 2.15rem;
   border-radius: 8px;
+}
+
+@media (max-width: 1100px) {
+  .mapTabSkeletonModules {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 640px) {
+  .mapTabSkeletonModules {
+    grid-template-columns: 1fr;
+  }
 }
 
 .mapTabSkeletonFilterRow {
@@ -1276,7 +1418,38 @@
 }
 
 /* Keep map+equipment mounted & fetching while the unified skeleton is shown */
+.mapTabStack {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  min-width: 0;
+}
+
+.mapModulesBlock {
+  min-width: 0;
+}
+
+.mapModulesToolbar {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  margin-bottom: 0.55rem;
+}
+
 .mapTabContentHidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+  pointer-events: none;
+}
+
+.pageBootHidden {
   position: absolute;
   width: 1px;
   height: 1px;
@@ -1360,7 +1533,7 @@
   width: 100%;
   overflow-x: auto;
   border: 1px solid var(--msp-border);
-  border-radius: var(--msp-radius-sm);
+  border-radius: var(--msp-radius);
   background-color: var(--msp-surface);
   box-shadow: var(--msp-shadow);
 }
@@ -1454,6 +1627,109 @@
   gap: 1rem;
 }
 
+.mainColumnVault {
+  min-height: 0;
+  height: 100%;
+  max-height: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  background: var(--msp-bg);
+}
+
+.mainColumnVault .overviewTabsWrap {
+  flex: 0 0 auto;
+  background: transparent;
+}
+
+.mainColumnVault .overviewTabBar {
+  /* Avoid heavy drop shadow darkening the page gap under the tabs */
+  box-shadow: 0 1px 2px rgba(15, 28, 46, 0.06);
+}
+
+.mainColumnVault .mainCommunityPanels {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  background: var(--msp-bg);
+}
+
+.mainColumnVault .vaultTabStack {
+  flex: 1 1 auto;
+  min-height: 0;
+  max-height: 100%;
+  display: flex;
+  flex-direction: column;
+  background: var(--msp-bg);
+  overflow: hidden;
+}
+
+.mainColumnVault .vaultTabLock {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  background: transparent;
+}
+
+.mainColumnVault .vaultTabLock > * {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  background: transparent;
+}
+
+/* Activity / vault: fill remaining page height under the sticky hero */
+.enterpriseDetailPage:has(.pageBodyFill) {
+  overflow: hidden;
+}
+
+.enterpriseDetailPage:has(.pageBodyFill) > .pageHero {
+  flex: 0 0 auto;
+}
+
+.enterpriseDetailPage .pageBody {
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+.enterpriseDetailPage .pageBodyFill {
+  display: flex;
+  flex-direction: column;
+  padding-top: 1.25rem;
+  padding-bottom: 1.5rem;
+  box-sizing: border-box;
+  overflow: hidden;
+  background: var(--msp-bg);
+}
+
+.pageBodyFill .pageGrid {
+  flex: 1 1 auto;
+  min-height: 0;
+  height: 100%;
+  align-items: start;
+}
+
+.pageBodyFill .mainColumn {
+  min-height: 0;
+  align-self: stretch;
+  height: 100%;
+  max-height: 100%;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.pageBodyFill .asidePanel {
+  height: auto;
+  max-height: 100%;
+  position: sticky;
+  top: 0;
+  align-self: start;
+}
+
 .activityGridSplit {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -1465,11 +1741,148 @@
   display: flex;
   flex-direction: column;
   gap: 1rem;
+  min-width: 0;
+}
+
+.activityKpiRow {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.65rem;
+}
+
+.activityKpiCard {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.15rem;
+  padding: 0.75rem 0.85rem;
+  border: 1px solid var(--msp-border);
+  border-radius: var(--msp-radius);
+  background: var(--msp-surface);
+  min-width: 0;
+}
+
+.activityKpiValue {
+  font-size: 1.35rem;
+  font-weight: 700;
+  line-height: 1.1;
+  color: var(--msp-accent);
+  font-variant-numeric: tabular-nums;
+}
+
+.activityKpiLabel {
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: var(--msp-muted-light);
+}
+
+.activityKpiProLock {
+  border-radius: var(--msp-radius);
+  min-width: 0;
+}
+
+.activityKpiProLock .activityKpiCard {
+  height: 100%;
+}
+
+@media (max-width: 900px) {
+  .activityKpiRow {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
 
 .activityCampaignsRow {
   width: 100%;
   min-width: 0;
+}
+
+.activityLayout .dataTable {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: auto;
+  font-size: 0.8125rem;
+}
+
+.activityLayout .dataTable thead {
+  background: var(--msp-surface-2);
+}
+
+.activityLayout .dataTable th,
+.activityLayout .dataTable td {
+  padding: 0.55rem 0.85rem;
+  font-size: 0.8125rem;
+  vertical-align: middle;
+  white-space: nowrap;
+}
+
+.activityLayout .dataTable th {
+  font-weight: 600;
+  font-family: inherit;
+  letter-spacing: normal;
+  text-transform: none;
+  color: var(--msp-muted);
+  border-bottom: 1px solid var(--msp-border);
+}
+
+.activityLayout .dataTable td {
+  font-weight: 400;
+  color: var(--msp-text);
+  border-bottom: 1px solid var(--msp-border-light);
+  background: var(--msp-surface);
+  transition: background 0.12s;
+}
+
+.activityLayout .dataTable tbody tr {
+  transition: background 0.12s;
+}
+
+.activityLayout .dataTable tbody tr:nth-child(even) td {
+  background: var(--msp-surface-2);
+}
+
+.activityLayout .dataTable tbody tr.dataTableRowClickable:hover td,
+.activityLayout .dataTable tbody tr.dataTableRowClickable:nth-child(even):hover td {
+  background: var(--msp-accent-soft);
+}
+
+.activityLayout .dataTableWrapper {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+  border: 1px solid var(--msp-border);
+  border-radius: var(--msp-radius-sm);
+  background: var(--msp-surface);
+  box-shadow: var(--msp-shadow);
+}
+
+.activityLayout .panelBody {
+  background-color: var(--msp-surface);
+}
+
+.activityLayout .dataTableEmptyCell {
+  border-bottom: none !important;
+  text-align: center;
+  padding: 1.25rem 1rem !important;
+  background: transparent !important;
+  white-space: normal;
+}
+
+.activityLayout .activityTitleCell {
+  white-space: nowrap;
+}
+
+.activityTitleCell {
+  min-width: 0;
+  max-width: 18rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .activityRightColumn {
@@ -1483,6 +1896,28 @@
   .activityGridSplit {
     grid-template-columns: 1fr;
   }
+
+  .mainColumnVault {
+    min-height: 0;
+    height: auto;
+  }
+
+  .enterpriseDetailPage .pageBodyFill {
+    height: auto;
+    max-height: none;
+    overflow: visible;
+    padding-bottom: 1.5rem;
+  }
+
+  .pageBodyFill .mainColumn {
+    height: auto;
+    max-height: none;
+    overflow: visible;
+  }
+
+  .mainColumnVault .mainCommunityPanels {
+    display: contents;
+  }
 }
 
 .activityBlock {
@@ -1493,11 +1928,13 @@
 }
 
 .activityBlockLoading {
-  padding: 0.85rem;
-  border-radius: var(--msp-radius-sm);
-  border: 1px solid var(--msp-border);
-  background: var(--msp-surface);
-  box-shadow: var(--msp-shadow);
+  pointer-events: none;
+}
+
+.activityBlockLoading .panelBody {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
 }
 
 .activityBlockHeader {
@@ -1610,7 +2047,8 @@
 }
 
 .activityBlockProLock {
-  border-radius: var(--msp-radius-sm);
+  border-radius: var(--msp-radius);
+  min-width: 0;
 }
 
 .proBadgeInline {
@@ -1783,11 +2221,6 @@
   flex-shrink: 0;
   font-size: 0.82rem;
   color: var(--msp-muted-light, #8b9bb5);
-}
-
-.activityTitleCell {
-  min-width: 0;
-  max-width: 16rem;
 }
 
 .ticketTitleWithBadge {
@@ -2117,14 +2550,16 @@
   width: 100%;
 }
 
-.sitesToolbar {
+.sitesToolbar,
+.sidebarSearchToolbar {
   position: relative;
   display: flex;
   align-items: center;
-  margin: 0 0 0.55rem;
+  margin: 0.7rem 0 0.55rem;
 }
 
-.sitesSearchIcon {
+.sitesSearchIcon,
+.sidebarSearchIcon {
   position: absolute;
   left: 0.5rem;
   font-size: 0.9rem;
@@ -2132,7 +2567,8 @@
   pointer-events: none;
 }
 
-.sitesSearchInput {
+.sitesSearchInput,
+.sidebarSearchInput {
   width: 100%;
   height: 32px;
   padding: 0.3rem 1.75rem 0.3rem 1.75rem;
@@ -2148,19 +2584,26 @@
 .sitesSearchInput::-webkit-search-decoration,
 .sitesSearchInput::-webkit-search-cancel-button,
 .sitesSearchInput::-webkit-search-results-button,
-.sitesSearchInput::-webkit-search-results-decoration {
+.sitesSearchInput::-webkit-search-results-decoration,
+.sidebarSearchInput::-webkit-search-decoration,
+.sidebarSearchInput::-webkit-search-cancel-button,
+.sidebarSearchInput::-webkit-search-results-button,
+.sidebarSearchInput::-webkit-search-results-decoration {
   display: none;
   -webkit-appearance: none;
 }
 
 .sitesSearchInput:focus,
-.sitesSearchInput:focus-visible {
+.sitesSearchInput:focus-visible,
+.sidebarSearchInput:focus,
+.sidebarSearchInput:focus-visible {
   outline: none;
   border-color: var(--msp-accent, #2b5fab);
   box-shadow: 0 0 0 3px rgba(43, 95, 171, 0.12);
 }
 
-.sitesSearchClear {
+.sitesSearchClear,
+.sidebarSearchClear {
   position: absolute;
   right: 0.25rem;
   display: inline-flex;
@@ -2176,25 +2619,10 @@
   cursor: pointer;
 }
 
-.sitesSearchClear:hover {
+.sitesSearchClear:hover,
+.sidebarSearchClear:hover {
   background: var(--msp-accent-soft, rgba(43, 95, 171, 0.08));
   color: var(--msp-text, #0f1c2e);
-}
-
-.sitesEmptySearch {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 0.3rem;
-  padding: 0.85rem 0.5rem;
-  text-align: center;
-  color: var(--msp-muted, #5c6b82);
-  font-size: 0.74rem;
-}
-
-.sitesEmptySearch p {
-  margin: 0;
 }
 
 .sitesPager {
@@ -2515,35 +2943,6 @@
   cursor: not-allowed;
 }
 
-.clientNotesEmpty {
-  font-size: 0.78rem;
-  color: var(--msp-muted);
-  margin-top: 0.55rem;
-  margin-bottom: 0.25rem;
-}
-
-.clientNotesAddButton {
-  width: 100%;
-  padding: 0.55rem 0.75rem;
-  border: 1px dashed var(--msp-border);
-  border-radius: 8px;
-  background: transparent;
-  color: var(--msp-accent);
-  font-size: 0.78rem;
-  font-weight: 600;
-  cursor: pointer;
-}
-
-.clientNotesAddButton:hover {
-  background: var(--msp-accent-soft);
-  border-color: var(--msp-accent);
-}
-
-#enterprise-sidebar-notes .sidebarBodyActions {
-  margin: 0.2rem 0 0.35rem;
-  padding-top: 0;
-}
-
 .clientNotesList {
   list-style: none;
   margin: 0;
@@ -2717,25 +3116,66 @@ button.sidebarOptionIcon:hover {
 .sidebarCollapseHeader {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 0.5rem;
+  gap: 0.4rem;
   width: 100%;
+  min-height: 2.25rem;
   height: 2.25rem;
-  padding: 0 1rem;
+  padding: 0 0.55rem 0 1rem;
   box-sizing: border-box;
   border: none;
   background: transparent;
+  text-align: left;
+}
+
+.sidebarCollapseMain {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  flex: 1 1 auto;
+  min-width: 0;
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: inherit;
   cursor: pointer;
   text-align: left;
-  transition: background-color 0.12s ease;
 }
 
 .sidebarCollapseHeader:hover {
-  background: var(--msp-surface-2);
+  background: var(--msp-surface-2, #f7f9fc);
 }
 
 .sidebarCollapseHeaderLocked {
   cursor: pointer;
+}
+
+.sidebarHeaderActions {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  flex-shrink: 0;
+}
+
+.sidebarCollapseChevronBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.6rem;
+  height: 1.6rem;
+  margin: 0;
+  padding: 0;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.sidebarCollapseChevronBtn:hover {
+  background: var(--msp-surface-2);
 }
 
 .sidebarCollapseChevron {
@@ -2794,11 +3234,6 @@ button.sidebarOptionIcon:hover {
 
 .sidebarSlaSection .sidebarBody {
   padding-top: 0;
-}
-
-.sidebarSlaSection .sidebarSummaryValue {
-  display: block;
-  margin-top: 0.55rem;
 }
 
 .sidebarSlaTable {
@@ -3621,17 +4056,31 @@ button.sidebarOptionIcon:hover {
 }
 
 :global(html.dark) .overviewTabBar {
-  background: color-mix(in srgb, var(--msp-border, #2a3a55) 70%, transparent);
+  background: var(--msp-surface, #1a2540);
+  border-color: var(--msp-border, #2a3a55);
+  box-shadow: var(--msp-shadow);
+}
+
+:global(html.dark) .overviewTab {
+  border-right-color: var(--msp-border, #2a3a55);
+  background: transparent;
+  color: var(--msp-muted, #8fa8c4);
 }
 
 :global(html.dark) .overviewTab:hover {
   color: var(--msp-text, #e8edf5);
-  background: color-mix(in srgb, var(--msp-surface, #1a2540) 75%, transparent);
+  background: var(--msp-surface-2, #152035);
 }
 
 :global(html.dark) .overviewTabActive {
   color: var(--msp-accent, #6ea8ff);
   background: var(--msp-surface, #1a2540);
+  box-shadow: none;
+  font-weight: 600;
+}
+
+:global(html.dark) .overviewTabActive::after {
+  background: var(--msp-accent, #6ea8ff);
 }
 
 :global(html.dark) .equipmentDetailPage [class*="CheckMKMonitoringPanel_panel"] {
@@ -3679,6 +4128,40 @@ button.sidebarOptionIcon:hover {
 
 :global(html.dark) .dataTable tbody tr:nth-child(even) {
   background: var(--msp-surface-2);
+}
+
+:global(html.dark) .activityLayout .dataTable thead {
+  background: var(--msp-surface-2);
+}
+
+:global(html.dark) .activityKpiCard {
+  background: var(--msp-surface-2);
+  border-color: var(--msp-border);
+}
+
+:global(html.dark) .activityLayout .dataTableWrapper {
+  background: var(--msp-surface);
+  border-color: var(--msp-border);
+}
+
+:global(html.dark) .activityLayout .dataTable th {
+  color: var(--msp-muted);
+  border-bottom-color: var(--msp-border);
+}
+
+:global(html.dark) .activityLayout .dataTable td {
+  color: var(--msp-text);
+  border-bottom-color: var(--msp-border-light);
+  background: var(--msp-surface);
+}
+
+:global(html.dark) .activityLayout .dataTable tbody tr:nth-child(even) td {
+  background: var(--msp-surface-2);
+}
+
+:global(html.dark) .activityLayout .dataTable tbody tr.dataTableRowClickable:hover td,
+:global(html.dark) .activityLayout .dataTable tbody tr.dataTableRowClickable:nth-child(even):hover td {
+  background: var(--msp-accent-soft);
 }
 
 :global(html.dark) .dataTable tbody tr.dataTableRowClickable:hover,
@@ -3886,7 +4369,9 @@ button.sidebarOptionIcon:hover {
 }
 
 :global(html.dark) .sitesSearchInput:not([type="checkbox"]):not([type="radio"]),
-:global(html.dark) .sitesSearchInput:not([type="checkbox"]):not([type="radio"]):hover {
+:global(html.dark) .sitesSearchInput:not([type="checkbox"]):not([type="radio"]):hover,
+:global(html.dark) .sidebarSearchInput:not([type="checkbox"]):not([type="radio"]),
+:global(html.dark) .sidebarSearchInput:not([type="checkbox"]):not([type="radio"]):hover {
   background: var(--msp-surface-2) !important;
   background-color: var(--msp-surface-2) !important;
   border-color: var(--msp-border) !important;
@@ -3895,7 +4380,9 @@ button.sidebarOptionIcon:hover {
 }
 
 :global(html.dark) .sitesSearchInput:not([type="checkbox"]):not([type="radio"]):focus,
-:global(html.dark) .sitesSearchInput:not([type="checkbox"]):not([type="radio"]):focus-visible {
+:global(html.dark) .sitesSearchInput:not([type="checkbox"]):not([type="radio"]):focus-visible,
+:global(html.dark) .sidebarSearchInput:not([type="checkbox"]):not([type="radio"]):focus,
+:global(html.dark) .sidebarSearchInput:not([type="checkbox"]):not([type="radio"]):focus-visible {
   background: var(--msp-surface-2) !important;
   background-color: var(--msp-surface-2) !important;
   border-color: var(--msp-accent) !important;

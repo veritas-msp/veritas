@@ -23,6 +23,9 @@ function isRicherAlertText(next, prev) {
   if (!a) return false;
   if (!b) return true;
   if (a === b) return false;
+  // Correct known mangled labels (e.g. "expirede", "Since le …").
+  if (/\bexpirede\b/i.test(b) && !/\bexpirede\b/i.test(a)) return true;
+  if (/\bsince\s+le\b/i.test(b) && !/\bsince\s+le\b/i.test(a)) return true;
   if (isBareAlertText(b) && !isBareAlertText(a)) return true;
   if (isCrypticMonitorTitle(b) && !isCrypticMonitorTitle(a)) return true;
   if ((a.includes(" - ") || a.includes(" — ")) && !(b.includes(" - ") || b.includes(" — "))) return true;

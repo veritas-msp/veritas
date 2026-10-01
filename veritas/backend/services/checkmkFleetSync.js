@@ -5,6 +5,7 @@ import {
   startCheckmkSyncRun,
   finishCheckmkSyncRun,
   updateCheckmkSyncRunProgress,
+  getCheckmkSyncRun,
   getLatestRunningCheckmkSyncRun
 } from "../utils/checkmkSyncRuns.js";
 import { runEquipmentMonitoringSync, buildSystemCheckmkReq } from "../routes/integrations/checkmk/equipmentMonitoringSync.js";
@@ -24,9 +25,25 @@ const EQUIPMENT_FAMILY_TABLES = {
 
 const CONCURRENCY = 2;
 let fleetSyncInFlight = false;
+const cancelledRunIds = new Set();
 
 export function isCheckmkFleetSyncRunning() {
   return fleetSyncInFlight;
+}
+
+export function requestCheckmkFleetSyncCancel(runId) {
+  const id = runId ? String(runId) : "";
+  if (!id) return false;
+  cancelledRunIds.add(id);
+  return true;
+}
+
+export function isCheckmkFleetSyncCancelRequested(runId) {
+  return Boolean(runId && cancelledRunIds.has(String(runId)));
+}
+
+function clearCheckmkFleetSyncCancel(runId) {
+  if (runId) cancelledRunIds.delete(String(runId));
 }
 
 async function queryMappedFromTable(family, table) {
@@ -107,18 +124,23 @@ export async function listMappedCheckmkTargets() {
   return targets;
 }
 
-async function mapPool(items, concurrency, worker) {
+async function mapPool(items, concurrency, worker, { shouldStop } = {}) {
   const results = [];
   let index = 0;
-  const runners = Array.from({ length: Math.min(concurrency, items.length) }, async () => {
+  let stopped = false;
+  const runners = Array.from({ length: Math.min(concurrency, items.length || 1) }, async () => {
     while (index < items.length) {
+      if (shouldStop?.()) {
+        stopped = true;
+        break;
+      }
       const current = index;
       index += 1;
       results[current] = await worker(items[current], current);
     }
   });
   await Promise.all(runners);
-  return results;
+  return { results, stopped };
 }
 
 async function executeCheckmkFleetSyncBody({
@@ -135,8 +157,10 @@ async function executeCheckmkFleetSyncBody({
   const failures = [];
   let processed = 0;
   const total = targets.length;
+  let cancelled = false;
+  const baseDetails = run?.details && typeof run.details === "object" ? { ...run.details } : {};
 
-  const pushProgress = async (currentHost = null) => {
+  const pushProgress = async (currentHost = null, extraDetails = null) => {
     if (!run?.id) return;
     const done = synced + skipped + failed;
     await updateCheckmkSyncRunProgress(run.id, {
@@ -144,87 +168,129 @@ async function executeCheckmkFleetSyncBody({
       skipped,
       failed,
       currentHost,
-      message: total
-        ? `Synchronisation ${done}/${total}${currentHost ? ` · ${currentHost}` : ""}`
-        : "Aucun périphérique mappé"
+      message: cancelled
+        ? "Arrêt en cours..."
+        : total
+          ? `Synchronisation ${done}/${total}${currentHost ? ` - ${currentHost}` : ""}`
+          : "Aucun peripherique mappe",
+      details: extraDetails
     }).catch(() => {});
   };
 
   await pushProgress(null);
 
-  await mapPool(targets, CONCURRENCY, async target => {
-    try {
-      await pushProgress(target.hostName);
-      const result = await runEquipmentMonitoringSync(req, {
-        equipmentId: target.equipmentId,
-        clientId: target.clientId,
-        family: target.family,
-        hostName: target.hostName,
-        site: target.site,
-        force: Boolean(force),
-        availabilityPeriod: "1m"
-      });
-      if (result?.skipped) {
-        skipped += 1;
-      } else {
-        synced += 1;
+  const { stopped } = await mapPool(
+    targets,
+    CONCURRENCY,
+    async target => {
+      if (isCheckmkFleetSyncCancelRequested(run?.id)) {
+        cancelled = true;
+        return null;
       }
-    } catch (err) {
-      failed += 1;
-      if (failures.length < 15) {
-        failures.push({
+      try {
+        await pushProgress(target.hostName);
+        const result = await runEquipmentMonitoringSync(req, {
           equipmentId: target.equipmentId,
-          hostName: target.hostName,
+          clientId: target.clientId,
           family: target.family,
-          error: err?.message || String(err)
+          hostName: target.hostName,
+          site: target.site,
+          force: Boolean(force),
+          availabilityPeriod: "1m"
         });
+        if (isCheckmkFleetSyncCancelRequested(run?.id)) {
+          cancelled = true;
+        }
+        if (result?.skipped) {
+          skipped += 1;
+        } else {
+          synced += 1;
+        }
+      } catch (err) {
+        failed += 1;
+        if (failures.length < 15) {
+          failures.push({
+            equipmentId: target.equipmentId,
+            hostName: target.hostName,
+            family: target.family,
+            error: err?.message || String(err)
+          });
+        }
+      } finally {
+        processed += 1;
+        if (processed === total || processed % 1 === 0) {
+          await pushProgress(null);
+        }
       }
-    } finally {
-      processed += 1;
-      if (processed === total || processed % 1 === 0) {
-        await pushProgress(null);
+    },
+    {
+      shouldStop: () => {
+        if (isCheckmkFleetSyncCancelRequested(run?.id)) {
+          cancelled = true;
+          return true;
+        }
+        return false;
       }
     }
-  });
+  );
+
+  if (stopped || isCheckmkFleetSyncCancelRequested(run?.id)) {
+    cancelled = true;
+  }
 
   let alertsCreated = 0;
   let alertsResolved = 0;
   let alertScanSkipped = false;
-  if (run?.id) {
-    await updateCheckmkSyncRunProgress(run.id, {
-      synced,
-      skipped,
-      failed,
-      message: "Analyse des alertes…"
-    }).catch(() => {});
-  }
-  if (!mkSettings.surveillanceSuspended) {
-    try {
-      const scan = await runEquipmentMonitoringAlertScan();
-      alertsCreated = scan?.created || 0;
-      alertsResolved = scan?.resolved || 0;
-      alertScanSkipped = Boolean(scan?.skipped);
-    } catch (err) {
-      console.error("[checkmk-fleet-sync] alert scan:", err?.message || err);
-      if (failures.length < 15) {
-        failures.push({
-          stage: "alert_scan",
-          error: err?.message || String(err)
-        });
+  if (!cancelled) {
+    if (run?.id) {
+      await updateCheckmkSyncRunProgress(run.id, {
+        synced,
+        skipped,
+        failed,
+        message: "Analyse des alertes..."
+      }).catch(() => {});
+    }
+    if (!mkSettings.surveillanceSuspended) {
+      try {
+        const scan = await runEquipmentMonitoringAlertScan();
+        alertsCreated = scan?.created || 0;
+        alertsResolved = scan?.resolved || 0;
+        alertScanSkipped = Boolean(scan?.skipped);
+      } catch (err) {
+        console.error("[checkmk-fleet-sync] alert scan:", err?.message || err);
+        if (failures.length < 15) {
+          failures.push({
+            stage: "alert_scan",
+            error: err?.message || String(err)
+          });
+        }
       }
+    } else {
+      alertScanSkipped = true;
     }
   } else {
     alertScanSkipped = true;
+    await pushProgress(null, { cancelRequested: true });
   }
 
-  const status = failed === 0 ? "success" : synced > 0 || skipped > 0 ? "partial" : "error";
-  const messageParts = [
-    `${synced} synced`,
-    `${skipped} skipped`,
-    `${failed} failed`
-  ];
-  if (alertScanSkipped) messageParts.push("alert scan skipped");
-  else messageParts.push(`alerts +${alertsCreated}/-${alertsResolved}`);
+  const status = cancelled
+    ? "cancelled"
+    : failed === 0
+      ? "success"
+      : synced > 0 || skipped > 0
+        ? "partial"
+        : "error";
+  const messageParts = cancelled
+    ? [`Annulee apres ${synced + skipped + failed}/${total}`, `${synced} ok`, `${failed} echecs`]
+    : [
+        `${synced} synced`,
+        `${skipped} skipped`,
+        `${failed} failed`
+      ];
+  if (!cancelled) {
+    if (alertScanSkipped) messageParts.push("alert scan skipped");
+    else messageParts.push(`alerts +${alertsCreated}/-${alertsResolved}`);
+  }
 
   if (run?.id) {
     await finishCheckmkSyncRun(run.id, {
@@ -234,22 +300,28 @@ async function executeCheckmkFleetSyncBody({
       failed,
       alertsCreated,
       alertsResolved,
-      message: messageParts.join(" · "),
+      message: messageParts.join(" - "),
       details: {
+        ...baseDetails,
         failures,
         surveillanceSuspended: mkSettings.surveillanceSuspended,
-        syncIntervalMinutes: mkSettings.syncIntervalMinutes
+        syncIntervalMinutes: mkSettings.syncIntervalMinutes,
+        cancelled,
+        cancelRequested: cancelled
       },
       targetsTotal: targets.length
     });
   }
 
+  clearCheckmkFleetSyncCancel(run?.id);
+
   console.log(
-    `[checkmk-fleet-sync] trigger=${trigger} targets=${targets.length} synced=${synced} skipped=${skipped} failed=${failed}`
+    `[checkmk-fleet-sync] trigger=${trigger} targets=${targets.length} synced=${synced} skipped=${skipped} failed=${failed} cancelled=${cancelled}`
   );
 
   return {
     skipped: false,
+    cancelled,
     runId: run?.id || null,
     targets: targets.length,
     synced,
@@ -267,7 +339,9 @@ async function executeCheckmkFleetSyncBody({
  */
 export async function runCheckmkFleetSync({
   trigger = "poller",
-  force = false
+  force = false,
+  startedBy = null,
+  startedByUserId = null
 } = {}) {
   if (fleetSyncInFlight) {
     const active = await getLatestRunningCheckmkSyncRun().catch(() => null);
@@ -288,15 +362,21 @@ export async function runCheckmkFleetSync({
       };
     }
     const mkSettings = await getCheckmkMonitoringSettings();
+    const starterDetails = {
+      ...(startedBy ? { startedBy: String(startedBy).slice(0, 80) } : {}),
+      ...(startedByUserId ? { startedByUserId: String(startedByUserId) } : {})
+    };
     if (!force && mkSettings.syncSuspended) {
       run = await startCheckmkSyncRun({
         trigger,
-        targetsTotal: 0
+        targetsTotal: 0,
+        details: starterDetails
       });
       if (run?.id) {
         await finishCheckmkSyncRun(run.id, {
           status: "skipped",
-          message: "Automatic sync suspended in Admin → Integrations."
+          message: "Automatic sync suspended in Admin → Integrations.",
+          details: starterDetails
         });
       }
       return {
@@ -309,7 +389,8 @@ export async function runCheckmkFleetSync({
     const targets = await listMappedCheckmkTargets();
     run = await startCheckmkSyncRun({
       trigger,
-      targetsTotal: targets.length
+      targetsTotal: targets.length,
+      details: starterDetails
     });
     return await executeCheckmkFleetSyncBody({
       trigger,
@@ -322,11 +403,13 @@ export async function runCheckmkFleetSync({
     if (run?.id) {
       await finishCheckmkSyncRun(run.id, {
         status: "error",
-        message: err?.message || String(err)
+        message: err?.message || String(err),
+        details: run.details || {}
       }).catch(() => {});
     }
     throw err;
   } finally {
+    clearCheckmkFleetSyncCancel(run?.id);
     fleetSyncInFlight = false;
   }
 }
@@ -337,7 +420,9 @@ export async function runCheckmkFleetSync({
  */
 export async function beginCheckmkFleetSync({
   trigger = "manual",
-  force = false
+  force = false,
+  startedBy = null,
+  startedByUserId = null
 } = {}) {
   if (fleetSyncInFlight) {
     const active = await getLatestRunningCheckmkSyncRun().catch(() => null);
@@ -359,15 +444,21 @@ export async function beginCheckmkFleetSync({
   }
 
   const mkSettings = await getCheckmkMonitoringSettings();
+  const starterDetails = {
+    ...(startedBy ? { startedBy: String(startedBy).slice(0, 80) } : {}),
+    ...(startedByUserId ? { startedByUserId: String(startedByUserId) } : {})
+  };
   if (!force && mkSettings.syncSuspended) {
     const run = await startCheckmkSyncRun({
       trigger,
-      targetsTotal: 0
+      targetsTotal: 0,
+      details: starterDetails
     });
     if (run?.id) {
       await finishCheckmkSyncRun(run.id, {
         status: "skipped",
-        message: "Automatic sync suspended in Admin → Integrations."
+        message: "Automatic sync suspended in Admin → Integrations.",
+        details: starterDetails
       });
     }
     return {
@@ -384,13 +475,14 @@ export async function beginCheckmkFleetSync({
     const targets = await listMappedCheckmkTargets();
     run = await startCheckmkSyncRun({
       trigger,
-      targetsTotal: targets.length
+      targetsTotal: targets.length,
+      details: starterDetails
     });
     if (run?.id) {
       await updateCheckmkSyncRunProgress(run.id, {
         message: targets.length
-          ? `Démarrage · ${targets.length} périphérique(s)`
-          : "Aucun périphérique mappé CheckMK"
+          ? `Demarrage - ${targets.length} peripherique(s)`
+          : "Aucun peripherique mappe CheckMK"
       }).catch(() => {});
     }
 
@@ -407,11 +499,13 @@ export async function beginCheckmkFleetSync({
           if (run?.id) {
             await finishCheckmkSyncRun(run.id, {
               status: "error",
-              message: err?.message || String(err)
+              message: err?.message || String(err),
+              details: run.details || {}
             }).catch(() => {});
           }
         })
         .finally(() => {
+          clearCheckmkFleetSyncCancel(run?.id);
           fleetSyncInFlight = false;
         });
     });
@@ -425,12 +519,65 @@ export async function beginCheckmkFleetSync({
     };
   } catch (err) {
     fleetSyncInFlight = false;
+    clearCheckmkFleetSyncCancel(run?.id);
     if (run?.id) {
       await finishCheckmkSyncRun(run.id, {
         status: "error",
-        message: err?.message || String(err)
+        message: err?.message || String(err),
+        details: starterDetails
       }).catch(() => {});
     }
     throw err;
   }
+}
+
+/**
+ * Request cancellation of a running fleet sync.
+ * In-flight host syncs finish; remaining targets are skipped.
+ */
+export async function cancelCheckmkFleetSync(runId, { cancelledBy = null } = {}) {
+  const id = runId ? String(runId) : "";
+  if (!id) {
+    return { success: false, reason: "missing_id" };
+  }
+
+  const run = await getCheckmkSyncRun(id);
+  if (!run) {
+    return { success: false, reason: "not_found" };
+  }
+  if (run.status !== "running") {
+    return { success: true, alreadyFinished: true, run };
+  }
+
+  requestCheckmkFleetSyncCancel(id);
+
+  const details = {
+    ...(run.details && typeof run.details === "object" ? run.details : {}),
+    cancelRequested: true,
+    ...(cancelledBy ? { cancelledBy: String(cancelledBy).slice(0, 80) } : {})
+  };
+
+  await updateCheckmkSyncRunProgress(id, {
+    message: "Arret demande...",
+    details
+  }).catch(() => {});
+
+  // Orphaned DB row (process restarted): close immediately.
+  if (!fleetSyncInFlight) {
+    const finished = await finishCheckmkSyncRun(id, {
+      status: "cancelled",
+      synced: run.synced,
+      skipped: run.skipped,
+      failed: run.failed,
+      alertsCreated: run.alertsCreated,
+      alertsResolved: run.alertsResolved,
+      message: "Annulee",
+      details: { ...details, cancelled: true },
+      targetsTotal: run.targetsTotal
+    });
+    clearCheckmkFleetSyncCancel(id);
+    return { success: true, finished: true, run: finished };
+  }
+
+  return { success: true, cancelling: true, runId: id };
 }

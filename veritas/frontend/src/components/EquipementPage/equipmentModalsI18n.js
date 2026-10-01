@@ -118,6 +118,10 @@ const EQUIPMENT_MODALS = {
         label: "Identité",
         description: "Nom et lieux"
       },
+      status: {
+        label: "Statut",
+        description: "Disponibilité du périphérique"
+      },
       hardware: {
         label: "Matériel",
         description: "Marque, modèle et série"
@@ -332,6 +336,10 @@ const EQUIPMENT_MODALS = {
         label: "Identity",
         description: "Name and location"
       },
+      status: {
+        label: "Status",
+        description: "Device availability"
+      },
       hardware: {
         label: "Hardware",
         description: "Brand, model and serial"
@@ -543,6 +551,10 @@ const EQUIPMENT_MODALS = {
       identity: {
         label: "Identität",
         description: "Name und Standort"
+      },
+      status: {
+        label: "Status",
+        description: "Geräteverfügbarkeit"
       },
       hardware: {
         label: "Hardware",
@@ -756,6 +768,10 @@ const EQUIPMENT_MODALS = {
         label: "Identità",
         description: "Nome e sede"
       },
+      status: {
+        label: "Stato",
+        description: "Disponibilità del dispositivo"
+      },
       hardware: {
         label: "Hardware",
         description: "Marca e modello"
@@ -967,6 +983,10 @@ const EQUIPMENT_MODALS = {
       identity: {
         label: "Identidad",
         description: "Nombre y ubicación"
+      },
+      status: {
+        label: "Estado",
+        description: "Disponibilidad del dispositivo"
       },
       hardware: {
         label: "Hardware",

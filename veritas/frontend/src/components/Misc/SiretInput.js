@@ -1,11 +1,27 @@
-import { LEGAL_IDENTIFIER_PLACEHOLDER, normalizeLegalIdentifier } from "../../utils/siret";
+import { useMemo } from "react";
+import { useAppLocale } from "../../hooks/useAppGeneralSettings";
+import { getLegalIdentifierCopy, normalizeLegalIdentifier } from "../../utils/siret";
+
 export default function SiretInput({
   id,
   value,
   onChange,
   className,
-  placeholder = LEGAL_IDENTIFIER_PLACEHOLDER,
+  placeholder,
   ...props
 }) {
-  return <input id={id} type="text" autoComplete="off" className={className} value={value ?? ""} onChange={event => onChange(normalizeLegalIdentifier(event.target.value))} placeholder={placeholder} {...props} />;
+  const locale = useAppLocale();
+  const copy = useMemo(() => getLegalIdentifierCopy(locale), [locale]);
+  return (
+    <input
+      id={id}
+      type="text"
+      autoComplete="off"
+      className={className}
+      value={value ?? ""}
+      onChange={event => onChange(normalizeLegalIdentifier(event.target.value))}
+      placeholder={placeholder ?? copy.placeholder}
+      {...props}
+    />
+  );
 }

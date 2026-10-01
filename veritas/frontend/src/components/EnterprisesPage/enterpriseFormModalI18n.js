@@ -33,6 +33,7 @@ const COPY = {
       clientNumberPlaceholder: "31",
       name: "Nom de l'entreprise",
       namePlaceholder: "Société Dupont",
+      legalIdentifierPlaceholder: "Numéro d'immatriculation",
       sector: "Secteur d'activité",
       address: "Adresse",
       addressPlaceholder: "10 rue du Château",
@@ -71,7 +72,7 @@ const COPY = {
       },
       location: {
         label: "Lieux",
-        description: "Adresse postale et sites physiques"
+        description: "Sites et implantations de l'entreprise"
       },
       contact: {
         label: "Contact",
@@ -90,9 +91,8 @@ const COPY = {
         description: "Engagements SLA de réponse et résolution"
       }
     },
-    statutActive: "Active",
-    statutInactive: "Inactive",
-    statusInactiveHint: "Les entreprises inactives restent consultables dans le portefeuille.",
+    statutActive: "Actif",
+    statutInactive: "Inactif",
     modules: {
       summaryOne: "{count} service sélectionné sur {total} disponibles",
       summaryMany: "{count} services sélectionnés sur {total} disponibles",
@@ -170,6 +170,7 @@ const COPY = {
       clientNumberPlaceholder: "31",
       name: "Company name",
       namePlaceholder: "Dupont Ltd",
+      legalIdentifierPlaceholder: "Registration number",
       sector: "Industry sector",
       address: "Address",
       addressPlaceholder: "10 Castle Street",
@@ -208,7 +209,7 @@ const COPY = {
       },
       location: {
         label: "Locations",
-        description: "Postal address and physical sites"
+        description: "Company sites and premises"
       },
       contact: {
         label: "Contact",
@@ -229,7 +230,6 @@ const COPY = {
     },
     statutActive: "Active",
     statutInactive: "Inactive",
-    statusInactiveHint: "Inactive companies remain visible in the portfolio.",
     modules: {
       summaryOne: "{count} service selected of {total} available",
       summaryMany: "{count} services selected of {total} available",
@@ -307,6 +307,7 @@ const COPY = {
       clientNumberPlaceholder: "31",
       name: "Unternehmensname",
       namePlaceholder: "Dupont GmbH",
+      legalIdentifierPlaceholder: "Handelsregisternummer",
       sector: "Branche",
       address: "Adresse",
       addressPlaceholder: "Schlossstraße 10",
@@ -345,7 +346,7 @@ const COPY = {
       },
       location: {
         label: "Standorte",
-        description: "Postadresse und physische Standorte"
+        description: "Standorte und Niederlassungen des Unternehmens"
       },
       contact: {
         label: "Kontakt",
@@ -366,7 +367,6 @@ const COPY = {
     },
     statutActive: "Aktiv",
     statutInactive: "Inaktiv",
-    statusInactiveHint: "Inaktive Unternehmen bleiben im Portfolio sichtbar.",
     modules: {
       summaryOne: "{count} Service ausgewählt von {total} verfügbar",
       summaryMany: "{count} Services ausgewählt von {total} verfügbar",
@@ -444,6 +444,7 @@ const COPY = {
       clientNumberPlaceholder: "31",
       name: "Nome azienda",
       namePlaceholder: "Dupont Srl",
+      legalIdentifierPlaceholder: "Numero di registrazione",
       sector: "Settore di attività",
       address: "Indirizzo",
       addressPlaceholder: "Via del Castello 10",
@@ -482,7 +483,7 @@ const COPY = {
       },
       location: {
         label: "Sedi",
-        description: "Indirizzo postale e siti fisici"
+        description: "Siti e sedi dell'azienda"
       },
       contact: {
         label: "Contatto",
@@ -503,7 +504,6 @@ const COPY = {
     },
     statutActive: "Attiva",
     statutInactive: "Inattiva",
-    statusInactiveHint: "Le aziende inattive restano consultabili nel portafoglio.",
     modules: {
       summaryOne: "{count} servizio selezionato su {total} disponibili",
       summaryMany: "{count} servizi selezionati su {total} disponibili",
@@ -581,6 +581,7 @@ const COPY = {
       clientNumberPlaceholder: "31",
       name: "Nombre de la empresa",
       namePlaceholder: "Dupont S.L.",
+      legalIdentifierPlaceholder: "Número de registro",
       sector: "Sector de actividad",
       address: "Dirección",
       addressPlaceholder: "Calle Mayor 10",
@@ -619,7 +620,7 @@ const COPY = {
       },
       location: {
         label: "Ubicaciones",
-        description: "Dirección postal y sedes físicas"
+        description: "Sedes e implantaciones de la empresa"
       },
       contact: {
         label: "Contacto",
@@ -640,7 +641,6 @@ const COPY = {
     },
     statutActive: "Activa",
     statutInactive: "Inactiva",
-    statusInactiveHint: "Las empresas inactivas siguen siendo consultables en la cartera.",
     modules: {
       summaryOne: "{count} servicio seleccionado de {total} disponibles",
       summaryMany: "{count} servicios seleccionados de {total} disponibles",

@@ -7,7 +7,7 @@ const STATUS_FILTER_META = {
     kpiTone: "green"
   },
   inactive: {
-    icon: "mdi:pause-circle",
+    icon: "mdi:close-circle",
     kpiTone: "gray"
   }
 };
@@ -90,7 +90,40 @@ const PRESTATAIRES_COPY = {
     favorites: {
       add: "Ajouter aux favoris",
       remove: "Retirer des favoris",
+      columnLabel: "Favoris",
       columnAria: "Favoris"
+    },
+    toasts: {
+      bulkDeleteSuccess: "{count} prestataire supprimé",
+      bulkDeleteSuccessPlural: "{count} prestataires supprimés",
+      bulkPartial: "{updated} traités - {failed} échec(s)",
+      bulkError: "Erreur lors de la suppression en masse"
+    },
+    bulk: {
+      selected: "prestataire sélectionné",
+      selectedPlural: "prestataires sélectionnés",
+      delete: "Supprimer",
+      clearSelection: "Effacer la sélection",
+      selectAll: "Tout sélectionner sur la page",
+      selectRow: "Sélectionner {name}"
+    },
+    bulkDeleteModal: {
+      title: "Supprimer les prestataires",
+      subtitleOne: "1 prestataire sera définitivement supprimé.",
+      subtitleMany: "{count} prestataires seront définitivement supprimés.",
+      countOne: "1 prestataire",
+      countMany: "{count} prestataires",
+      consequences: "Conséquences",
+      bullets: [
+        "Les fiches prestataires seront supprimées",
+        "Les liens avec les entreprises seront retirés",
+        "Cette action est irréversible"
+      ],
+      cancel: "Annuler",
+      confirm: "Supprimer",
+      deleting: "Suppression...",
+      close: "Fermer",
+      submitError: "Impossible de supprimer les prestataires"
     },
     clientPrefix: "Client #",
     unnamed: "Sans nom"
@@ -165,7 +198,40 @@ const PRESTATAIRES_COPY = {
     favorites: {
       add: "Add to favorites",
       remove: "Remove from favorites",
+      columnLabel: "Favorites",
       columnAria: "Favorites"
+    },
+    toasts: {
+      bulkDeleteSuccess: "{count} provider deleted",
+      bulkDeleteSuccessPlural: "{count} providers deleted",
+      bulkPartial: "{updated} processed - {failed} failed",
+      bulkError: "Error during bulk deletion"
+    },
+    bulk: {
+      selected: "provider selected",
+      selectedPlural: "providers selected",
+      delete: "Delete",
+      clearSelection: "Clear selection",
+      selectAll: "Select all on page",
+      selectRow: "Select {name}"
+    },
+    bulkDeleteModal: {
+      title: "Delete providers",
+      subtitleOne: "1 provider will be permanently deleted.",
+      subtitleMany: "{count} providers will be permanently deleted.",
+      countOne: "1 provider",
+      countMany: "{count} providers",
+      consequences: "Consequences",
+      bullets: [
+        "Provider records will be deleted",
+        "Links with companies will be removed",
+        "This action cannot be undone"
+      ],
+      cancel: "Cancel",
+      confirm: "Delete",
+      deleting: "Deleting...",
+      close: "Close",
+      submitError: "Unable to delete providers"
     },
     clientPrefix: "Client #",
     unnamed: "Unnamed"
@@ -198,6 +264,29 @@ export function getPrestatairePageCopy(locale) {
     getClientLabel: (clientId, clientName) => {
       if (clientName) return clientName;
       return clientId ? `${t.clientPrefix}${clientId}` : "";
+    },
+    formatBulkSelectRow: name => interpolate(t.bulk.selectRow, {
+      name: String(name || "")
+    }),
+    formatBulkDeleteSuccess: count => interpolate(
+      count > 1 ? t.toasts.bulkDeleteSuccessPlural : t.toasts.bulkDeleteSuccess,
+      { count: String(count) }
+    ),
+    formatBulkPartial: (updated, failed) => interpolate(t.toasts.bulkPartial, {
+      updated: String(updated),
+      failed: String(failed)
+    }),
+    formatBulkDeleteSubtitle: count => {
+      if (count === 1) return t.bulkDeleteModal.subtitleOne;
+      return interpolate(t.bulkDeleteModal.subtitleMany, {
+        count: String(count)
+      });
+    },
+    formatBulkDeleteCount: count => {
+      if (count === 1) return t.bulkDeleteModal.countOne;
+      return interpolate(t.bulkDeleteModal.countMany, {
+        count: String(count)
+      });
     }
   };
 }

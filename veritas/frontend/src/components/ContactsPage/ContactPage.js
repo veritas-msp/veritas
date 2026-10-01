@@ -30,6 +30,7 @@ import {
   normalizeTicketTableColumns
 } from "../../utils/ticketTableColumns";
 import MspPageHero from "../Misc/MspPageHero/MspPageHero";
+import PageSkeleton from "../Misc/Skeleton/PageSkeleton";
 import mspStyles from "../CybersecuritePage/CybersecuritePage.module.css";
 import { useBreakpoint } from "../../hooks/useBreakpoint";
 import { usePermissions } from "../../contexts/PermissionsContext";
@@ -61,7 +62,9 @@ function contactsColumnClass(columnId) {
     role: styles.colContactRole,
     email: styles.colContactEmail,
     phone: styles.colContactPhone,
-    portal: styles.colContactPortal
+    portal: styles.colContactPortal,
+    support_tickets_total: styles.colContactTickets,
+    support_tickets_in_progress: styles.colContactTickets
   };
   return map[columnId] || "";
 }
@@ -387,6 +390,8 @@ export default function ContactPage({
     const portalStatus = getPortalStatusFromContact(contact);
     const portalLabel = portalStatus === "active"
       ? pageCopy.portal.active
+      : portalStatus === "pending"
+        ? pageCopy.portal.pending
       : portalStatus === "inactive"
         ? pageCopy.portal.inactive
         : pageCopy.portal.none;
@@ -459,6 +464,9 @@ export default function ContactPage({
       } else if (sortBy === "statut") {
         aVal = normalizeContactStatusKey(a.statut);
         bVal = normalizeContactStatusKey(b.statut);
+      } else if (sortBy === "support_tickets_total" || sortBy === "support_tickets_in_progress") {
+        aVal = Number(a[sortBy]) || 0;
+        bVal = Number(b[sortBy]) || 0;
       } else {
         aVal = String(a[sortBy] || "").toLowerCase();
         bVal = String(b[sortBy] || "").toLowerCase();
@@ -599,6 +607,8 @@ export default function ContactPage({
       const portalLabel =
         portalStatus === "active"
           ? pageCopy.portal.active
+          : portalStatus === "pending"
+            ? pageCopy.portal.pending
           : portalStatus === "inactive"
             ? pageCopy.portal.inactive
             : pageCopy.portal.none;
@@ -615,6 +625,8 @@ export default function ContactPage({
         if (columnId === "email") return contact.email || "";
         if (columnId === "phone") return contact.telephone || "";
         if (columnId === "portal") return portalLabel || "";
+        if (columnId === "support_tickets_total") return Number(contact.support_tickets_total) || 0;
+        if (columnId === "support_tickets_in_progress") return Number(contact.support_tickets_in_progress) || 0;
         return "";
       });
       rows.push(row);
@@ -642,6 +654,13 @@ export default function ContactPage({
       return <SmartTooltip content={pageCopy.portal.active}>
           <span className={`${styles.portalStatusIcon} ${styles.portalStatusActive}`} aria-label={pageCopy.portal.active}>
             <Icon icon="mdi:account-check" aria-hidden />
+          </span>
+        </SmartTooltip>;
+    }
+    if (ps === "pending") {
+      return <SmartTooltip content={pageCopy.portal.pending}>
+          <span className={`${styles.portalStatusIcon} ${styles.portalStatusPending}`} aria-label={pageCopy.portal.pending}>
+            <Icon icon="mdi:email-fast-outline" aria-hidden />
           </span>
         </SmartTooltip>;
     }
@@ -725,10 +744,9 @@ export default function ContactPage({
             </div>
         </div>
 
-        {loading ? <div className={layout.stateBox}>
-            <Icon icon="mdi:loading" className={layout.spinning} />
-            <span>{pageCopy.loading}</span>
-          </div> : error ? <div className={`${layout.stateBox} ${layout.stateBoxError}`}>
+        {loading ? (
+          <PageSkeleton variant="list" rows={8} label={pageCopy.loading} />
+        ) : error ? <div className={`${layout.stateBox} ${layout.stateBoxError}`}>
             <Icon icon="mdi:alert-circle-outline" />
             <span>{error}</span>
           </div> : paginatedContacts.length === 0 ? <div className={layout.emptyState}>
@@ -761,6 +779,7 @@ export default function ContactPage({
               </div> : null}
             <div className={layout.listArea}>
               <div className={layout.dataTableWrap}>
+                <div className={layout.dataTableScroll}>
                 <table className={layout.dataTable}>
                   <thead>
                     <tr>
@@ -782,9 +801,7 @@ export default function ContactPage({
                           </th>;
                       })}
                       <th className={styles.colContactActions}>{pageCopy.table.actions}</th>
-                      <th className={`${layout.favoriteCell} ${styles.colContactFavorite}`.trim()} aria-label={pageCopy.favorites.columnAria}>
-                        <Icon icon="mdi:star-outline" aria-hidden />
-                      </th>
+                      <th className={`${layout.favoriteCell} ${styles.colContactFavorite}`.trim()}>{pageCopy.favorites.columnLabel}</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -896,6 +913,18 @@ export default function ContactPage({
                                   {renderPortalStatus(contact)}
                                 </td>;
                             }
+                            if (columnId === "support_tickets_total") {
+                              const total = Number(contact.support_tickets_total) || 0;
+                              return <td key={columnId} className={`${styles.colContactTickets} ${layout.colMuted}`.trim()}>
+                                  <span className={styles.ticketStatValue}>{total}</span>
+                                </td>;
+                            }
+                            if (columnId === "support_tickets_in_progress") {
+                              const inProgress = Number(contact.support_tickets_in_progress) || 0;
+                              return <td key={columnId} className={`${styles.colContactTickets} ${layout.colMuted}`.trim()}>
+                                  <span className={`${styles.ticketStatValue} ${inProgress > 0 ? styles.ticketStatLive : ""}`}>{inProgress}</span>
+                                </td>;
+                            }
                             return <td key={columnId} className={contactsColumnClass(columnId)}>-</td>;
                           })}
                           <td className={`${styles.actionsCell} ${styles.colContactActions}`.trim()} onClick={e => e.stopPropagation()}>
@@ -936,10 +965,9 @@ export default function ContactPage({
                     })}
                   </tbody>
                 </table>
-              </div>
-            </div>
+                </div>
 
-            {filteredAndSortedContacts.length > 0 && <div className={layout.pagination}>
+                {filteredAndSortedContacts.length > 0 ? <div className={`${layout.pagination} ${layout.paginationEmbedded}`}>
                 <div className={layout.paginationLeft}>
                   <span className={layout.paginationLabel}>{common.perPage}</span>
                   <select className={layout.paginationSelect} value={pageSize} onChange={e => setPageSize(Number(e.target.value))}>
@@ -948,6 +976,13 @@ export default function ContactPage({
                     <option value={50}>50</option>
                     <option value={100}>100</option>
                   </select>
+                  <span className={layout.paginationInfo}>
+                    {interpolate(common.rangeInfo || "{start}–{end} / {total}", {
+                      start: String((currentPage - 1) * pageSize + 1),
+                      end: String(Math.min(currentPage * pageSize, filteredAndSortedContacts.length)),
+                      total: String(filteredAndSortedContacts.length)
+                    })}
+                  </span>
                 </div>
                 <div className={layout.paginationRight}>
                   <SmartTooltip content={common.prevPage}>
@@ -964,7 +999,9 @@ export default function ContactPage({
                     </button>
                   </SmartTooltip>
                 </div>
-              </div>}
+              </div> : null}
+              </div>
+            </div>
           </div>}
             </div>
           </main>

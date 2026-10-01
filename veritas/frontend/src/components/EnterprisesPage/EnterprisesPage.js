@@ -2,6 +2,8 @@ import { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import { createPortal } from "react-dom";
 import { toast } from "react-toastify";
 import API_BASE_URL from "../../config";
+import MspPageHero from "../Misc/MspPageHero/MspPageHero";
+import PageSkeleton from "../Misc/Skeleton/PageSkeleton";
 import styles from "./EnterprisesPage.module.css";
 import { FaTimes, FaChevronLeft, FaChevronRight, FaPlus } from "react-icons/fa";
 import { Icon } from "@iconify/react";
@@ -27,7 +29,6 @@ import {
   TICKET_TABLE_COLUMN_SORT_KEYS,
   normalizeTicketTableColumns
 } from "../../utils/ticketTableColumns";
-import MspPageHero from "../Misc/MspPageHero/MspPageHero";
 import mspStyles from "../CybersecuritePage/CybersecuritePage.module.css";
 import { useBreakpoint } from "../../hooks/useBreakpoint";
 import { usePermissions } from "../../contexts/PermissionsContext";
@@ -160,12 +161,18 @@ export default function EnterprisesPage({
     const raw = pageParams?.highlight;
     if (!raw) return;
     const key = String(raw).trim().toLowerCase();
-    const allowed = new Set(["active", "expiring", "expired", "suspended"]);
-    if (!allowed.has(key)) {
+    const allowedContract = new Set(["expiring", "expired", "suspended"]);
+    const allowedCompany = new Set(["active", "inactive"]);
+    if (allowedContract.has(key)) {
+      setStatusFilters(new Set([key]));
+      setCompanyStatusFilters(new Set());
+    } else if (allowedCompany.has(key)) {
+      setCompanyStatusFilters(new Set([key]));
+      setStatusFilters(new Set());
+    } else {
       onPageParamsConsumed?.();
       return;
     }
-    setStatusFilters(new Set([key]));
     onPageParamsConsumed?.();
   }, [pageParams, onPageParamsConsumed]);
   useEffect(() => {
@@ -304,31 +311,47 @@ export default function EnterprisesPage({
   };
   const getTabDisplayName = client => formatClientTabLabel(client);
   const matchesSearch = useCallback((client, query) => {
-    const modulesObj = client.options || client.contrat?.modules || {};
-    const activeModuleKeys = getAllActiveModuleKeys(modulesObj, contractModules);
-    const moduleLabels = activeModuleKeys.map(key => resolveModuleLabel(key));
-    const companyStatus = copy.getCompanyStatus(client.statut);
-    const contractStatus = getContractStatus(client.contrat?.expiration, client.contrat?.suspendu);
-    const onboarding = getClientOnboardingInfo(client);
-    return matchesSearchQuery(query, [
-      client.name,
-      getClientNumber(client),
-      getClientNameWithoutCode(client),
-      formatClientTabLabel(client),
-      client.email,
-      client.phone,
-      client.commercial,
-      client.primaryContactName,
-      companyStatus.label,
-      contractStatus.label,
-      formatters.formatDate(client.contrat?.expiration),
-      activeModuleKeys.length === 0 ? copy.noModuleOptions : "",
-      onboarding ? copy.onboardingBadge : "",
-      ...activeModuleKeys,
-      ...moduleLabels,
-      ...collectTagSearchValues(client.tags)
-    ]);
-  }, [contractModules, copy, formatters, getContractStatus, resolveModuleLabel]);
+    const values = [];
+    tableColumns.forEach(columnId => {
+      if (columnId === "client_number") {
+        values.push(getClientNumber(client));
+        return;
+      }
+      if (columnId === "company") {
+        values.push(client.name, getClientNameWithoutCode(client), formatClientTabLabel(client));
+        return;
+      }
+      if (columnId === "company_status") {
+        values.push(copy.getCompanyStatus(client.statut).label);
+        return;
+      }
+      if (columnId === "primary_contact") {
+        values.push(client.primaryContactName);
+        return;
+      }
+      if (columnId === "commercial") {
+        values.push(client.commercial);
+        return;
+      }
+      if (columnId === "modules") {
+        const modulesObj = client.options || client.contrat?.modules || {};
+        const activeModuleKeys = getAllActiveModuleKeys(modulesObj, contractModules);
+        values.push(...activeModuleKeys, ...activeModuleKeys.map(key => resolveModuleLabel(key)));
+        if (activeModuleKeys.length === 0) values.push(copy.noModuleOptions);
+        if (getClientOnboardingInfo(client)) values.push(copy.onboardingBadge);
+        return;
+      }
+      if (columnId === "expiration") {
+        const contractStatus = getContractStatus(client.contrat?.expiration, client.contrat?.suspendu);
+        values.push(contractStatus.label, formatters.formatDate(client.contrat?.expiration));
+        return;
+      }
+      if (columnId === "tags") {
+        values.push(...collectTagSearchValues(client.tags));
+      }
+    });
+    return matchesSearchQuery(query, values);
+  }, [tableColumns, contractModules, copy, formatters, getContractStatus, resolveModuleLabel]);
   const kpiFilteredClients = useMemo(() => {
     let base = [...clients];
     if (searchQuery.trim()) {
@@ -650,17 +673,6 @@ export default function EnterprisesPage({
               </SmartTooltip>}
           </div>
           <div className={styles.statusChips} role="group">
-              {copy.statusFilterItems.map(item => {
-                const count = statusCounts[item.key] || 0;
-                const active = statusFilters.has(item.key);
-                return <button key={item.key} type="button" className={`${styles.statusChip} ${active ? styles.statusChipActive : ""} ${count === 0 ? styles.statusChipDisabled : ""}`} onClick={() => toggleStatusFilter(item.key)} disabled={loading || error || count === 0}>
-                    <span className={`${styles.statusChipIcon} ${styles[`kpiIcon_${item.kpiTone}`]}`}>
-                      <Icon icon={item.icon} />
-                    </span>
-                    <span className={styles.statusChipLabel}>{item.label}</span>
-                    <span className={styles.statusChipCount}>{count}</span>
-                  </button>;
-              })}
               {copy.companyStatusFilterItems.map(item => {
                 const count = companyStatusCounts[item.key] || 0;
                 const active = companyStatusFilters.has(item.key);
@@ -672,13 +684,24 @@ export default function EnterprisesPage({
                     <span className={styles.statusChipCount}>{count}</span>
                   </button>;
               })}
+              <span className={styles.statusChipSeparator} aria-hidden />
+              {copy.statusFilterItems.map(item => {
+                const count = statusCounts[item.key] || 0;
+                const active = statusFilters.has(item.key);
+                return <button key={item.key} type="button" className={`${styles.statusChip} ${active ? styles.statusChipActive : ""} ${count === 0 ? styles.statusChipDisabled : ""}`} onClick={() => toggleStatusFilter(item.key)} disabled={loading || error || count === 0}>
+                    <span className={`${styles.statusChipIcon} ${styles[`kpiIcon_${item.kpiTone}`]}`}>
+                      <Icon icon={item.icon} />
+                    </span>
+                    <span className={styles.statusChipLabel}>{item.label}</span>
+                    <span className={styles.statusChipCount}>{count}</span>
+                  </button>;
+              })}
             </div>
         </div>
 
-        {loading ? <div className={styles.stateBox}>
-            <Icon icon="mdi:loading" className={styles.spinning} />
-            <span>{copy.loading}</span>
-          </div> : error ? <div className={`${styles.stateBox} ${styles.stateBoxError}`}>
+        {loading ? (
+          <PageSkeleton variant="list" rows={8} label={copy.loading} />
+        ) : error ? <div className={`${styles.stateBox} ${styles.stateBoxError}`}>
             <Icon icon="mdi:alert-circle-outline" />
             <span>{error}</span>
           </div> : paginatedClients.length === 0 ? <div className={styles.emptyState}>
@@ -710,6 +733,7 @@ export default function EnterprisesPage({
               </div> : null}
             <div className={styles.listArea}>
               <div className={styles.dataTableWrap}>
+                <div className={styles.dataTableScroll}>
                 <table className={styles.dataTable}>
                   <thead>
                     <tr>
@@ -728,9 +752,7 @@ export default function EnterprisesPage({
                             <ThSort label={label} col={sortKey} />
                           </th>;
                       })}
-                      <th className={styles.favoriteCell} aria-label={copy.favorites.columnAria}>
-                        <Icon icon="mdi:star-outline" aria-hidden />
-                      </th>
+                      <th className={styles.favoriteCell}>{copy.favorites.columnLabel}</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -843,10 +865,9 @@ export default function EnterprisesPage({
                     })}
                   </tbody>
                 </table>
-              </div>
-            </div>
+                </div>
 
-            {filteredAndSortedClients.length > 0 && <div className={styles.pagination}>
+                {filteredAndSortedClients.length > 0 ? <div className={`${styles.pagination} ${styles.paginationEmbedded}`}>
                 <div className={styles.paginationLeft}>
                   <span className={styles.paginationLabel}>{copy.perPage}</span>
                   <select className={styles.paginationSelect} value={pageSize} onChange={e => setPageSize(Number(e.target.value))}>
@@ -855,6 +876,9 @@ export default function EnterprisesPage({
                     <option value={50}>50</option>
                     <option value={100}>100</option>
                   </select>
+                  <span className={styles.paginationInfo}>
+                    {copy.formatRangeInfo((currentPage - 1) * pageSize + 1, Math.min(currentPage * pageSize, filteredAndSortedClients.length), filteredAndSortedClients.length)}
+                  </span>
                 </div>
                 <div className={styles.paginationRight}>
                   <SmartTooltip content={copy.prevPage}>
@@ -871,7 +895,9 @@ export default function EnterprisesPage({
                     </button>
                   </SmartTooltip>
                 </div>
-              </div>}
+              </div> : null}
+              </div>
+            </div>
           </div>}
             </div>
           </main>

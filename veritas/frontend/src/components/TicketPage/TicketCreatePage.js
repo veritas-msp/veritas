@@ -523,7 +523,14 @@ export default function TicketCreatePage({
   const [categories, setCategories] = useState([]);
   const [users, setUsers] = useState([]);
   const [loadingData, setLoadingData] = useState(true);
-  const [type, setType] = useState("incident");
+  const [type, setType] = useState(() => {
+    const initialType = String(initialData?.type || "").trim();
+    return ["incident", "demande", "probleme", "changement"].includes(initialType) ? initialType : "incident";
+  });
+  const [ticketKind, setTicketKind] = useState(() => {
+    const initialType = String(initialData?.type || "").trim();
+    return ["incident", "demande", "probleme", "changement"].includes(initialType) ? initialType : "incident";
+  });
   const [isMajorIncident, setIsMajorIncident] = useState(false);
   const [title, setTitle] = useState(initialData?.title || "");
   const [description, setDescription] = useState(initialData?.description || "");
@@ -717,8 +724,10 @@ export default function TicketCreatePage({
   const resolvedTicketClientId = ticketClientId || (contactClientOptions.length === 1 ? contactClientOptions[0].id : null) || selectedContact?.client_id || initialData?.clientId || null;
   const earlySelectedSupportForm = useMemo(() => {
     const rows = (Array.isArray(supportForms) ? supportForms : []).filter(form => form?.enabled !== false);
-    return rows.find(form => String(form.id) === String(selectedSupportFormId)) || rows[0] || null;
-  }, [supportForms, selectedSupportFormId]);
+    const selected = rows.find(form => String(form.id) === String(selectedSupportFormId));
+    if (selected) return selected;
+    return rows.find(form => String(form.kind || "").trim() === ticketKind) || rows[0] || null;
+  }, [supportForms, selectedSupportFormId, ticketKind]);
   const hasFormEquipmentFieldEarly = useMemo(
     () => findFormEquipmentFieldKeys(earlySelectedSupportForm?.fields || []).length > 0,
     [earlySelectedSupportForm]
@@ -865,17 +874,17 @@ export default function TicketCreatePage({
       });
     });
   }, [supportForms]);
-  const hasSupportForms = enabledSupportForms.length > 0;
+  const formsForKind = useMemo(
+    () => enabledSupportForms.filter(form => String(form.kind || "").trim() === ticketKind),
+    [enabledSupportForms, ticketKind]
+  );
+  const hasSupportForms = formsForKind.length > 0;
   const supportFormLocked = Boolean(initialData?.lockSupportForm && initialData?.supportFormId);
   const selectedSupportForm = useMemo(() => {
-    if (selectedSupportFormId) {
-      const exact = enabledSupportForms.find(form => String(form.id) === String(selectedSupportFormId));
-      if (exact) return exact;
-      // Wait for the locked / preselected form — never flash the first form briefly.
-      if (supportFormLocked || initialData?.supportFormId) return null;
-    }
-    return enabledSupportForms[0] || null;
-  }, [enabledSupportForms, selectedSupportFormId, supportFormLocked, initialData?.supportFormId]);
+    if (!selectedSupportFormId) return null;
+    return formsForKind.find(form => String(form.id) === String(selectedSupportFormId)) || null;
+  }, [formsForKind, selectedSupportFormId]);
+  const hasSelectedSupportForm = Boolean(selectedSupportForm);
   const activeSupportFields = useMemo(
     () => filterVisibleFields((selectedSupportForm?.fields || []).filter(field => field.enabled !== false), supportFormValues),
     [selectedSupportForm, supportFormValues]
@@ -890,26 +899,35 @@ export default function TicketCreatePage({
     [selectedSupportForm, supportFormValues, resolvedTicketClientId]
   );
   useEffect(() => {
+    if (!enabledSupportForms.length || !initialData?.supportFormId) return;
+    const lockedForm = enabledSupportForms.find(form => String(form.id) === String(initialData.supportFormId));
+    const lockedKind = String(lockedForm?.kind || "").trim();
+    if (lockedKind && lockedKind !== ticketKind) {
+      setTicketKind(lockedKind);
+      setType(lockedKind);
+    }
+  }, [enabledSupportForms, initialData?.supportFormId, ticketKind]);
+  useEffect(() => {
     // Pendant le chargement, ne pas vider le formulaire pré-sélectionné (sinon le préremplissage supervision est perdu).
     if (loadingData) return;
     if (!hasSupportForms) {
       if (selectedSupportFormId) setSelectedSupportFormId("");
       return;
     }
-    if (initialData?.supportFormId && enabledSupportForms.some(form => String(form.id) === String(initialData.supportFormId))) {
+    if (initialData?.supportFormId && formsForKind.some(form => String(form.id) === String(initialData.supportFormId))) {
       const lockedId = String(initialData.supportFormId);
       if (String(selectedSupportFormId) !== lockedId) {
         setSelectedSupportFormId(lockedId);
       }
       return;
     }
-    if (!enabledSupportForms.some(form => String(form.id) === String(selectedSupportFormId))) {
-      setSelectedSupportFormId(String(enabledSupportForms[0].id));
+    if (selectedSupportFormId && !formsForKind.some(form => String(form.id) === String(selectedSupportFormId))) {
+      setSelectedSupportFormId("");
       if (!initialData?.supportFormId) {
         setSupportFormValues({});
       }
     }
-  }, [loadingData, hasSupportForms, enabledSupportForms, selectedSupportFormId, initialData?.supportFormId]);
+  }, [loadingData, hasSupportForms, formsForKind, selectedSupportFormId, initialData?.supportFormId]);
 
   // Applique (ou ré-applique) le préremplissage supervision une fois le formulaire chargé.
   useEffect(() => {
@@ -1006,6 +1024,7 @@ export default function TicketCreatePage({
     const nextType = String(selectedSupportForm?.kind || "").trim();
     if (!nextType) return;
     setType(nextType);
+    setTicketKind(prev => (prev === nextType ? prev : nextType));
     if (nextType !== "incident") setIsMajorIncident(false);
   }, [selectedSupportForm?.kind, selectedSupportForm?.id]);
   useEffect(() => {
@@ -1230,6 +1249,7 @@ export default function TicketCreatePage({
     }
     const nextType = String(form.kind || "").trim();
     if (nextType) {
+      setTicketKind(nextType);
       setType(nextType);
       if (nextType !== "incident") setIsMajorIncident(false);
     }
@@ -1239,6 +1259,21 @@ export default function TicketCreatePage({
       supportFormDetails: undefined
     }));
   }, [supportFormLocked, initialData?.supportFormId, initialData?.supportFormValues]);
+  const handleKindChange = useCallback(kind => {
+    if (supportFormLocked) return;
+    const nextKind = String(kind || "").trim();
+    if (!nextKind || nextKind === ticketKind) return;
+    setTicketKind(nextKind);
+    setType(nextKind);
+    if (nextKind !== "incident") setIsMajorIncident(false);
+    setSelectedSupportFormId("");
+    setSupportFormValues({});
+    setFieldErrors(prev => ({
+      ...prev,
+      supportForm: undefined,
+      supportFormDetails: undefined
+    }));
+  }, [supportFormLocked, ticketKind]);
   const resolvedFormTicketContent = useMemo(() => {
     if (!hasSupportForms || !selectedSupportForm) {
       return {
@@ -1788,14 +1823,35 @@ export default function TicketCreatePage({
           <div className={`${mspStyles.mspContent} ${mspStyles.mspContentList} mspContent`}>
         <div className={layout.shell}>
 
+        <div className={s.typeKpiRow}>
+          {copy.ticketTypes.map(item => (
+            <button
+              key={item.key}
+              type="button"
+              className={`${layout.kpiCard} ${ticketKind === item.key ? layout.kpiCardActive : ""}`}
+              onClick={() => handleKindChange(item.key)}
+              disabled={supportFormLocked && ticketKind !== item.key}
+              aria-pressed={ticketKind === item.key}
+            >
+              <div className={`${layout.kpiIconWrap} ${layout.kpiIcon_blue}`}>
+                <Icon icon={item.icon} />
+              </div>
+              <div className={layout.kpiBody}>
+                <span className={layout.kpiValue}>{item.label}</span>
+                <span className={layout.kpiLabel}>{item.hint}</span>
+              </div>
+            </button>
+          ))}
+        </div>
+
         <div className={account.contentScroll}>
           <div className={account.contentGridWide}>
             <div className={s.formStack}>
-              <SectionPanel title={copy.sections.form}>
+              <SectionPanel title={copy.sections.nature || copy.sections.form}>
                 {!hasSupportForms ? <p className={s.detailsAvailabilityTitle} style={{ margin: 0 }}>
-                    {loadingData ? copy.loadingForms : copy.noForms}
+                    {loadingData ? copy.loadingForms : (enabledSupportForms.length > 0 ? copy.noFormsForKind || copy.noForms : copy.noForms)}
                   </p> : <div className={`${s.typeGrid} ${s.formTypeGrid}`} data-pulse={fieldErrors.supportForm ? errorPulseTick : undefined}>
-                    {enabledSupportForms.map(form => <button key={form.id} type="button" className={`${s.typeCard} ${String(selectedSupportForm?.id) === String(form.id) ? s.typeCardActive : ""} ${fieldErrors.supportForm ? s.fieldErrorPulse : ""}`} onClick={() => handleSupportFormSelect(form)} disabled={supportFormLocked && String(form.id) !== String(selectedSupportForm?.id)} aria-disabled={supportFormLocked && String(form.id) !== String(selectedSupportForm?.id)}>
+                    {formsForKind.map(form => <button key={form.id} type="button" className={`${s.typeCard} ${String(selectedSupportForm?.id) === String(form.id) ? s.typeCardActive : ""} ${fieldErrors.supportForm ? s.fieldErrorPulse : ""}`} onClick={() => handleSupportFormSelect(form)} disabled={supportFormLocked && String(form.id) !== String(selectedSupportForm?.id)} aria-disabled={supportFormLocked && String(form.id) !== String(selectedSupportForm?.id)}>
                         <Icon icon={form.icon || "mdi:file-document-outline"} className={s.typeIcon} aria-hidden />
                         <span className={s.typeLabel}>{form.label}</span>
                         {form.description ? <span className={s.typeHint}>{form.description}</span> : null}
@@ -1803,7 +1859,7 @@ export default function TicketCreatePage({
                   </div>}
               </SectionPanel>
 
-              <SectionPanel title={copy.sections.requester} className={s.panelAllowOverflow}>
+              {hasSelectedSupportForm ? <SectionPanel title={copy.sections.requester} className={s.panelAllowOverflow}>
                 <div className={s.demandeurBlock}>
                   <p className={s.detailsAvailabilityTitle}>{copy.requesterContact}</p>
                   <div className={s.contactSearchRow}>
@@ -2019,9 +2075,9 @@ export default function TicketCreatePage({
                       </div>}
                   </div>
                 </div>
-              </SectionPanel>
+              </SectionPanel> : null}
 
-              <SectionPanel title={copy.sections.ticketDetails} headerExtra={<SmartTooltip content={<TicketCreateTipsTooltip copy={copy} />} tooltipClassName={s.tipsPortalTooltip} trigger="click" as="button" type="button" className={s.tipsHelpBtn} aria-label={copy.showTipsAria}>
+              {hasSelectedSupportForm ? <SectionPanel title={copy.sections.ticketDetails} headerExtra={<SmartTooltip content={<TicketCreateTipsTooltip copy={copy} />} tooltipClassName={s.tipsPortalTooltip} trigger="click" as="button" type="button" className={s.tipsHelpBtn} aria-label={copy.showTipsAria}>
                     <Icon icon="mdi:lightbulb-outline" aria-hidden />
                   </SmartTooltip>}>
                 {loadingData ? <p className={s.detailsAvailabilityTitle} style={{ margin: 0 }}>
@@ -2056,7 +2112,7 @@ export default function TicketCreatePage({
                     <Icon icon="mdi:alert-circle-outline" className={s.errorIcon} />
                     <span>{formError}</span>
                   </div>}
-              </SectionPanel>
+              </SectionPanel> : null}
             </div>
 
             <aside className={`${s.formStack} ${s.sideColumn}`}>
@@ -2110,22 +2166,7 @@ export default function TicketCreatePage({
 
               <SectionPanel title={copy.sections.settings} className={s.panelAllowOverflow}>
                 <div className={s.settingsPanel}>
-                  {type === "incident" && <div className={s.settingsMajorTop}>
-                      <div className={s.majorSwitchRow}>
-                        <div className={s.majorSwitchText}>
-                          <span className={s.majorSwitchLabel}>
-                            <Icon icon="mdi:alert-octagon" className={s.majorSwitchIcon} />
-                            {copy.majorIncident}
-                          </span>
-                        </div>
-                        <label className={s.switch}>
-                          <input type="checkbox" className={s.switchInput} checked={isMajorIncident} onChange={e => handleMajorIncidentChange(e.target.checked)} />
-                          <span className={s.switchTrack} aria-hidden />
-                        </label>
-                      </div>
-                    </div>}
-
-                  <div className={s.settingsFieldRow}>
+                  <div className={type === "incident" ? s.settingsFieldRow : undefined}>
                     <div className={s.equipmentField}>
                       <label className={s.equipmentFieldLabel} htmlFor="ticket-create-priority">
                         {copy.priorityLabel}<span className={s.requiredMark}>*</span>
@@ -2144,6 +2185,18 @@ export default function TicketCreatePage({
                       </div>
                       {aiPriorityHint ? <p className={s.priorityAiHint}>{aiPriorityHint}</p> : null}
                     </div>
+                    {type === "incident" ? <div className={s.equipmentField}>
+                        <span className={s.equipmentFieldLabel}>{copy.majorIncident}</span>
+                        <div className={s.majorSwitchInline}>
+                          <span className={s.majorSwitchInlineHint}>
+                            <Icon icon="mdi:alert-octagon" className={s.majorSwitchIcon} aria-hidden />
+                          </span>
+                          <label className={s.switch}>
+                            <input type="checkbox" className={s.switchInput} checked={isMajorIncident} onChange={e => handleMajorIncidentChange(e.target.checked)} aria-label={copy.majorIncident} />
+                            <span className={s.switchTrack} aria-hidden />
+                          </label>
+                        </div>
+                      </div> : null}
                   </div>
 
                   <div className={s.equipmentField}>
@@ -2263,7 +2316,7 @@ export default function TicketCreatePage({
                 </div>
               </SectionPanel>
 
-              <SectionPanel title={copy.sections.equipment} className={s.panelAllowOverflow}>
+              {hasSelectedSupportForm ? <SectionPanel title={copy.sections.equipment} className={s.panelAllowOverflow}>
                 <div className={s.equipmentPanel}>
                   <div className={s.segmentedGroup} role="radiogroup" aria-label={copy.equipmentConcernedAria}>
                     <button type="button" role="radio" aria-checked={!equipmentConcerned} className={`${s.segmentedBtn} ${!equipmentConcerned ? s.segmentedBtnActive : ""}`} onClick={() => handleEquipmentConcernedChange(false)}>
@@ -2391,9 +2444,9 @@ export default function TicketCreatePage({
                         </div>}
                     </div>}
                 </div>
-              </SectionPanel>
+              </SectionPanel> : null}
 
-              <SectionPanel title={copy.sections.ticketLink} className={s.panelAllowOverflow}>
+              {hasSelectedSupportForm ? <SectionPanel title={copy.sections.ticketLink} className={s.panelAllowOverflow}>
                 <div className={s.linkTicketPanel}>
                   <div className={s.segmentedGroup} role="radiogroup" aria-label={copy.ticketLinkAria}>
                     <button type="button" role="radio" aria-checked={!linkedTicketEnabled} className={`${s.segmentedBtn} ${!linkedTicketEnabled ? s.segmentedBtnActive : ""}`} onClick={() => handleLinkedTicketEnabledChange(false)}>
@@ -2473,7 +2526,7 @@ export default function TicketCreatePage({
                         </>}
                     </div>}
                 </div>
-              </SectionPanel>
+              </SectionPanel> : null}
             </aside>
           </div>
         </div>

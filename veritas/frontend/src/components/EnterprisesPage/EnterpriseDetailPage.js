@@ -10,7 +10,7 @@ import { mapCustomEquipmentItem, parseCustomFamilyType } from "../../api/equipme
 import { getClientEquipmentTotal, mapClientHardwareEquipment } from "../../api/equipment";
 import { equipmentMatchesFleetFamily } from "../../utils/equipmentFamilyStats";
 import { filterCustomFamilyMap, filterBySite } from "../../utils/siteFilterUtils";
-import { readEnterprisePeripheralsUi, writeEnterprisePeripheralsUi } from "../../utils/enterprisePeripheralsUiState";
+import { readEnterprisePeripheralsUi, writeEnterprisePeripheralsUi, normalizeEnterpriseOverviewTab } from "../../utils/enterprisePeripheralsUiState";
 import { repairRmmTextEncoding } from "../../utils/rmmTextEncoding";
 import { fetchUsers, fetchActiveUsers } from "../../api/users";
 import { getClientCampaigns, createClientCampaign } from "../../api/campaigns";
@@ -19,7 +19,7 @@ import { fetchEvents } from "../../api/events";
 import { filterRecentEvents, filterUpcomingEvents, mapCampaignsToBookmarkEvents } from "../../utils/eventFilters";
 import { usePlanningEventTypes } from "../PlanningPage/usePlanningEventTypes";
 import { getPlanningEventTypesList } from "../PlanningPage/planningEventTypes";
-import { getClientInitials, getClientNumber, getClientNameWithoutCode } from "../../utils/clientDisplay";
+import { getClientNumber, getClientNameWithoutCode } from "../../utils/clientDisplay";
 import { getClientOnboardingInfo } from "../../utils/clientOnboarding";
 import API_BASE_URL from "../../config";
 import SmartTooltip from "../SmartTooltip";
@@ -51,10 +51,10 @@ import { exportReversibilityFolder } from "./exportReversibilityDossier";
 import EnterpriseVaultPanel from "./EnterpriseVaultPanel";
 import { getEnterpriseVaultCopy } from "./enterpriseVaultI18n";
 import { splitClientAddress, buildClientAddress, emptyPrimaryContact, mapContactToPrimary, pickPrimaryContact, normalizePrimaryContact, buildAdditiveMembershipsForEnterprise, isPrimaryContactPoste, isContactPrimaryForClient, sortContactsPrimaryFirst, normalizeCompanyStatusKey, toCompanyStatusValue } from "./enterpriseFormUtils";
-import { buildSiteAddress, detectClientSiteRenames, formatSitesForLog, getSiteDisplayName, getSiteId, getSiteLocationValue, normalizeClientSites, serializeSitesForCompare, siteMatchesQuery } from "../../utils/clientSites";
+import { buildSiteAddress, buildClientAddressFromSites, detectClientSiteRenames, formatSitesForLog, getSiteDisplayName, getSiteId, getSiteLocationValue, normalizeClientSites, serializeSitesForCompare, siteMatchesQuery } from "../../utils/clientSites";
 import { normalizeServeurLieList, pickBackupJobType } from "./backupJobUtils";
 import SiteMapPreview from "./SiteMapPreview";
-import { normalizeLegalIdentifier, LEGAL_IDENTIFIER_LABEL } from "../../utils/siret";
+import { normalizeLegalIdentifier, getLegalIdentifierCopy } from "../../utils/siret";
 import { normalizeContactCommunications, getCommunicationTypeDef, buildContactApiPayload } from "../../utils/contactCommunications";
 import EquipmentPage from "../EquipementPage/EquipmentPage";
 import InfrastructureMap from "./InfrastructureMap";
@@ -73,7 +73,7 @@ import { usePermissions } from "../../contexts/PermissionsContext";
 import { useAppLocale } from "../../hooks/useAppGeneralSettings";
 import { useCommonCopy } from "../../hooks/useCommonCopy";
 import { useVeritasEdition } from "../../hooks/useVeritasEdition";
-import { getEnterpriseDetailCopy, getContractStatusDetail, getContractTypeLabel, getPrestationCategoryLabel, getTicketStatusLabel, getEventTypeLabels, getCampaignTypeLabel, getCampaignStatusLabel, interpolate } from "./enterpriseDetailI18n";
+import { getEnterpriseDetailCopy, getContractTypeLabel, getPrestationCategoryLabel, getTicketStatusLabel, getEventTypeLabels, getCampaignTypeLabel, getCampaignStatusLabel, interpolate } from "./enterpriseDetailI18n";
 import ProFeatureBadge from "../Misc/ProFeature/ProFeatureBadge";
 import ProFeatureLock from "../Misc/ProFeature/ProFeatureLock";
 import ProFeaturePromoModal from "../Misc/ProFeature/ProFeaturePromoModal";
@@ -135,22 +135,41 @@ const isOngoingCampaign = campaign => {
 };
 const isPrestationTicket = ticket => isSalesTicket(ticket);
 const normalizeTicketStatus = status => status === "open" ? "new" : status;
+const isOpenTicket = ticket => {
+  const status = normalizeTicketStatus(ticket?.status);
+  return !["resolved", "closed"].includes(status);
+};
 function getContactInitials(contact) {
   const prenom = (contact?.prenom || "").trim();
   const nom = (contact?.nom || "").trim();
   if (prenom && nom) return `${prenom[0]}${nom[0]}`.toUpperCase();
   return (nom || prenom || "-").slice(0, 2).toUpperCase();
 }
-function SidebarExpandToggle({
-  expanded,
-  onClick,
-  panelStyles,
-  copy
+function SidebarSectionHeader({
+  title,
+  count = null,
+  badge = null,
+  expanded = false,
+  onToggle,
+  locked = false,
+  controlsId,
+  actions = null,
+  panelStyles
 }) {
-  return <div className={panelStyles.sidebarShowMoreWrap}>
-      <button type="button" className={panelStyles.sidebarShowMoreBtn} onClick={onClick} aria-expanded={expanded} aria-label={expanded ? copy.sidebar.collapseSection : copy.sidebar.expandSection}>
-        <Icon icon={expanded ? "mdi:chevron-up" : "mdi:chevron-down"} className={panelStyles.sidebarShowMoreIcon} aria-hidden />
-        <span>{expanded ? copy.sidebar.showLess : copy.sidebar.showMore}</span>
+  const handleToggle = () => {
+    onToggle?.();
+  };
+  return <div className={`${panelStyles.sidebarCollapseHeader} ${locked ? panelStyles.sidebarCollapseHeaderLocked : ""}`.trim()}>
+      <button type="button" className={panelStyles.sidebarCollapseMain} onClick={handleToggle} aria-expanded={locked ? false : expanded} aria-controls={controlsId || undefined}>
+        <span className={panelStyles.sidebarInfoTitle}>
+          {title}
+          {count != null ? <span className={panelStyles.sidebarSectionCount}>{count}</span> : null}
+          {badge}
+        </span>
+      </button>
+      {actions ? <div className={panelStyles.sidebarHeaderActions}>{actions}</div> : null}
+      <button type="button" className={panelStyles.sidebarCollapseChevronBtn} onClick={handleToggle} tabIndex={-1} aria-hidden="true">
+        <Icon icon={!locked && expanded ? "mdi:chevron-up" : "mdi:chevron-down"} className={panelStyles.sidebarCollapseChevron} />
       </button>
     </div>;
 }
@@ -292,6 +311,7 @@ export default function ClientDetailPage({
   const locale = useAppLocale();
   const common = useCommonCopy();
   const copy = useMemo(() => getEnterpriseDetailCopy(locale), [locale]);
+  const legalIdCopy = useMemo(() => getLegalIdentifierCopy(locale), [locale]);
   const vaultCopy = useMemo(() => getEnterpriseVaultCopy(locale), [locale]);
   const campaignsCopy = useMemo(() => getCybersecuritePageCopy(locale).campaigns, [locale]);
   const catalogTypes = usePlanningEventTypes();
@@ -392,9 +412,9 @@ export default function ClientDetailPage({
   const [slaExpanded, setSlaExpanded] = useState(false);
   const [creditsExpanded, setCreditsExpanded] = useState(false);
   const [slaNow, setSlaNow] = useState(() => Date.now());
-  const [contactsExpanded, setContactsExpanded] = useState(false);
-  const [prestatairesExpanded, setPrestatairesExpanded] = useState(false);
   const [sitesSearch, setSitesSearch] = useState("");
+  const [contactsSearch, setContactsSearch] = useState("");
+  const [prestatairesSearch, setPrestatairesSearch] = useState("");
   const [sitesPage, setSitesPage] = useState(1);
   const [contactsSectionExpanded, setContactsSectionExpanded] = useState(false);
   const [prestatairesSectionExpanded, setPrestatairesSectionExpanded] = useState(false);
@@ -402,7 +422,6 @@ export default function ClientDetailPage({
   const [notesSectionExpanded, setNotesSectionExpanded] = useState(false);
   const [proPromoFeature, setProPromoFeature] = useState(null);
   const [supportCreditModalOpen, setSupportCreditModalOpen] = useState(false);
-  const [infoExpanded, setInfoExpanded] = useState(false);
   const [contactModalOpen, setContactModalOpen] = useState(false);
   const [editingContact, setEditingContact] = useState(null);
   const [showPrestataireModal, setShowPrestataireModal] = useState(false);
@@ -451,7 +470,7 @@ export default function ClientDetailPage({
   const [upcomingEvents, setUpcomingEvents] = useState([]);
   const [recentEvents, setRecentEvents] = useState([]);
   const [loadingClientActivity, setLoadingClientActivity] = useState(false);
-  const [overviewTab, setOverviewTab] = useState("map");
+  const [overviewTab, setOverviewTab] = useState(() => normalizeEnterpriseOverviewTab(initialPeripheralsUi?.overviewTab));
   const [mapInfraLoading, setMapInfraLoading] = useState(true);
   const [mapEquipmentLoading, setMapEquipmentLoading] = useState(true);
   const mapTabReadyRef = useRef(false);
@@ -586,31 +605,23 @@ export default function ClientDetailPage({
   });
   const [initialFormData, setInitialFormData] = useState(null);
   const [hasChanges, setHasChanges] = useState(false);
-  const uniqueAntivirusData = useMemo(() => {
-    const seen = new Set();
-    return (antivirusData || []).map(item => normalizeAntivirusItem(item)).filter(item => {
-      if (!item?.companyId) return false;
-      const key = `${item.companyId}|${item.mappingMode || "reseller"}|${item.bitdefenderTenantId || ""}`;
-      if (seen.has(key)) return false;
-      seen.add(key);
-      return true;
-    });
-  }, [antivirusData]);
-  const configuredAntivirusSolutions = useMemo(() => listConfiguredAntivirusSolutions(client, uniqueAntivirusData), [client, uniqueAntivirusData]);
-  const uniqueAntispamData = useMemo(() => {
-    const seen = new Set();
-    return (antispamData || []).map(item => normalizeAntispamItem(item)).filter(item => {
-      const key = (item?.id ?? item?.item_key ?? item?.nom ?? item?.name ?? item?.solution ?? "") + "";
-      const normKey = key.toString().toLowerCase().trim();
-      if (!normKey) return true;
-      if (seen.has(normKey)) return false;
-      seen.add(normKey);
-      return true;
-    });
-  }, [antispamData]);
-  const configuredAntispamSolutions = useMemo(() => listConfiguredAntispamSolutions(client, uniqueAntispamData, client?.equipements ? {
-    equipements: client.equipements
-  } : null, mailinblackTenants), [client, uniqueAntispamData, mailinblackTenants]);
+  const configuredAntivirusSolutions = useMemo(
+    () => listConfiguredAntivirusSolutions(
+      client,
+      antivirusData,
+      client?.equipements ? { equipements: client.equipements } : null
+    ),
+    [client, antivirusData]
+  );
+  const configuredAntispamSolutions = useMemo(
+    () => listConfiguredAntispamSolutions(
+      client,
+      antispamData,
+      client?.equipements ? { equipements: client.equipements } : null,
+      mailinblackTenants
+    ),
+    [client, antispamData, mailinblackTenants]
+  );
   const configuredMicrosoftTenants = useMemo(() => listConfiguredMicrosoftTenants(client), [client]);
   useEffect(() => {
     if (!client?.id) {
@@ -619,9 +630,14 @@ export default function ClientDetailPage({
     }
     listClientMailinblackTenants(client.id).then(result => setMailinblackTenants(result?.tenants || [])).catch(() => setMailinblackTenants([]));
   }, [client?.id]);
-  const configuredDomains = useMemo(() => listConfiguredDomains(client, domainsData, client?.equipements ? {
-    equipements: client.equipements
-  } : null), [client, domainsData, equipmentRevision]);
+  const configuredDomains = useMemo(
+    () => listConfiguredDomains(
+      client,
+      domainsData,
+      client?.equipements ? { equipements: client.equipements } : null
+    ),
+    [client, domainsData]
+  );
   useEffect(() => {
     if (!client?.id) {
       setGlobalOvhConfigured(false);
@@ -649,7 +665,6 @@ export default function ClientDetailPage({
     }
     return normalizeClientOptions(modulesSource, contractModules);
   }, [contractModules]);
-  const clientDisplayAddress = useMemo(() => buildClientAddress(formData), [formData.address, formData.addressStreet, formData.addressPostalCode, formData.addressCity]);
   const normalizeMonitoringModules = (source = {}) => {
     let raw = source?.modules_monitoring || source?.modules || source || {};
     if (typeof raw === "string") {
@@ -763,7 +778,7 @@ export default function ClientDetailPage({
   });
   const detectInfoChanges = (currentData, initialData) => {
     if (!initialData) return false;
-    const infoFields = ["clientNumber", "name", "commercialId", "secteur", "addressStreet", "addressPostalCode", "addressCity", "statut"];
+    const infoFields = ["clientNumber", "name", "commercialId", "secteur", "statut"];
     for (const field of infoFields) {
       if (String(currentData[field] || "").trim() !== String(initialData[field] || "").trim()) {
         return true;
@@ -840,32 +855,30 @@ export default function ClientDetailPage({
     if (prev != null && String(prev) !== String(id)) {
       // Switched to another enterprise in the same mount: reset section chrome.
       setSlaExpanded(false);
-      setContactsExpanded(false);
       setContactsSectionExpanded(false);
-      setPrestatairesExpanded(false);
       setPrestatairesSectionExpanded(false);
       setSitesSectionExpanded(false);
       setNotesSectionExpanded(false);
-      setInfoExpanded(isCommunity);
       setSitesSearch("");
+      setContactsSearch("");
+      setPrestatairesSearch("");
       setSitesPage(1);
       const saved = readEnterprisePeripheralsUi(id);
+      setOverviewTab(normalizeEnterpriseOverviewTab(saved?.overviewTab));
       setActiveSiteFilter(saved?.siteFilter || null);
       setEquipmentSearchQuery(saved?.searchQuery || "");
       setActiveEquipmentTableType(saved?.activeType || null);
-      return;
     }
-    // Same client (or first resolve): keep restored peripherals UI; only apply community default for info panel.
-    setInfoExpanded(prevExpanded => (prev == null ? isCommunity : prevExpanded));
-  }, [client?.id, isCommunity]);
+  }, [client?.id]);
   useEffect(() => {
     if (!client?.id) return;
     writeEnterprisePeripheralsUi(client.id, {
+      overviewTab,
       searchQuery: equipmentSearchQuery || "",
       siteFilter: activeSiteFilter || null,
       activeType: activeEquipmentTableType || null
     });
-  }, [client?.id, equipmentSearchQuery, activeSiteFilter, activeEquipmentTableType]);
+  }, [client?.id, overviewTab, equipmentSearchQuery, activeSiteFilter, activeEquipmentTableType]);
   useEffect(() => {
     const el = pageRootRef.current;
     if (!el || !client?.id) return undefined;
@@ -908,13 +921,18 @@ export default function ClientDetailPage({
       cancelAnimationFrame(raf);
       window.clearTimeout(timeout);
     };
-  }, [loading, client?.id]);
+  }, [loading, client?.id, overviewTab]);
+  useEffect(() => {
+    mapTabReadyRef.current = false;
+    setMapInfraLoading(true);
+    setMapEquipmentLoading(true);
+  }, [client?.id]);
   useEffect(() => {
     if (overviewTab !== "map") return;
     mapTabReadyRef.current = false;
     setMapInfraLoading(true);
     setMapEquipmentLoading(true);
-  }, [client?.id, overviewTab]);
+  }, [overviewTab]);
   const mapTabContentReady = !mapInfraLoading && !mapEquipmentLoading;
   useEffect(() => {
     if (mapTabContentReady) mapTabReadyRef.current = true;
@@ -1163,7 +1181,7 @@ export default function ClientDetailPage({
     };
   }, [client?.id, hydrateServicesFromModules]);
   const refreshAntivirusState = useCallback(async () => {
-    if (!client?.id) return;
+    if (!client?.id) return null;
     const modulesData = await fetchClientModules(client.id);
     hydrateServicesFromModules(modulesData);
     setClient(prev => {
@@ -1175,64 +1193,47 @@ export default function ClientDetailPage({
       };
     });
     setEquipmentRevision(revision => revision + 1);
+    return modulesData;
   }, [client?.id, hydrateServicesFromModules]);
   const handleRemoveAntivirusSolution = useCallback(async solution => {
     if (!client?.id) return;
     await removeAntivirusSolution(client.id, solution);
     await refreshAntivirusState();
   }, [client?.id, refreshAntivirusState]);
-  const handleAntivirusBrickClick = useCallback(async () => {
+  const handleAntivirusBrickClick = useCallback(() => {
     if (!client?.id) return;
-    try {
-      const modulesData = await fetchClientModules(client.id);
-      const configured = listConfiguredAntivirusSolutions(client, [], modulesData);
-      if (configured.length > 0) {
-        hydrateServicesFromModules(modulesData);
-        setClient(prev => prev ? {
-          ...prev,
-          equipements: modulesData?.equipements ?? prev.equipements,
-          modules_monitoring: modulesData?.modules_monitoring ?? prev.modules_monitoring
-        } : prev);
-      }
-      if (configured.length === 0) {
-        openAntivirusConfigModal("solution");
-        return;
-      }
-      setAntivirusPickerSolutions(configured);
-      setAntivirusPickerOpen(true);
-    } catch (error) {
-      console.error(error);
+    const cached = configuredAntivirusSolutions;
+    if (cached.length === 0) {
       openAntivirusConfigModal("solution");
+    } else {
+      setAntivirusPickerSolutions(cached);
+      setAntivirusPickerOpen(true);
     }
-  }, [client?.id, openAntivirusConfigModal, hydrateServicesFromModules]);
-  const handleAntispamBrickClick = useCallback(async () => {
+    // Soft-refresh in background — do not block the modal open.
+    refreshAntivirusState()
+      .then(modulesData => {
+        if (!modulesData) return;
+        const fresh = listConfiguredAntivirusSolutions(client, [], modulesData);
+        if (fresh.length > 0) setAntivirusPickerSolutions(fresh);
+      })
+      .catch(error => console.error(error));
+  }, [client, configuredAntivirusSolutions, openAntivirusConfigModal, refreshAntivirusState]);
+  const handleAntispamBrickClick = useCallback(() => {
     if (!client?.id) return;
-    try {
-      const [modulesData, tenantsResult] = await Promise.all([fetchClientModules(client.id), listClientMailinblackTenants(client.id).catch(() => ({
-        tenants: []
-      }))]);
-      const tenants = tenantsResult?.tenants || [];
-      setMailinblackTenants(tenants);
-      const configured = listConfiguredAntispamSolutions(client, [], modulesData, tenants);
-      if (configured.length > 0) {
-        hydrateServicesFromModules(modulesData);
-        setClient(prev => prev ? {
-          ...prev,
-          equipements: modulesData?.equipements ?? prev.equipements,
-          modules_monitoring: modulesData?.modules_monitoring ?? prev.modules_monitoring
-        } : prev);
-      }
-      if (configured.length === 0) {
-        openAntispamConfigModal("solution");
-        return;
-      }
-      setAntispamPickerSolutions(configured);
-      setAntispamPickerOpen(true);
-    } catch (error) {
-      console.error(error);
+    const cached = configuredAntispamSolutions;
+    if (cached.length === 0) {
       openAntispamConfigModal("solution");
+    } else {
+      setAntispamPickerSolutions(cached);
+      setAntispamPickerOpen(true);
     }
-  }, [client?.id, openAntispamConfigModal, hydrateServicesFromModules]);
+    refreshAntispamState()
+      .then(({ modulesData, tenants } = {}) => {
+        const fresh = listConfiguredAntispamSolutions(client, [], modulesData, tenants || []);
+        if (fresh.length > 0) setAntispamPickerSolutions(fresh);
+      })
+      .catch(error => console.error(error));
+  }, [client, configuredAntispamSolutions, openAntispamConfigModal, refreshAntispamState]);
   const refreshMicrosoftTenantState = useCallback(async () => {
     if (!client?.id) return [];
     try {
@@ -1268,59 +1269,41 @@ export default function ClientDetailPage({
       openMicrosoftTenantConfigModal("configuration", null);
     }
   }, [client?.id, openMicrosoftTenantConfigModal, refreshMicrosoftTenantState]);
-  const handleNddBrickClick = useCallback(async () => {
+  const handleNddBrickClick = useCallback(() => {
     if (!client?.id) return;
-    try {
-      const [modulesData, ovhStatus] = await Promise.all([fetchClientModules(client.id), getGlobalOvhStatus().catch(() => ({
-        configured: false
-      }))]);
-      const ovhConfigured = Boolean(ovhStatus?.configured);
-      setGlobalOvhConfigured(ovhConfigured);
-      const configured = listConfiguredDomains(client, [], modulesData);
-      if (configured.length > 0) {
-        hydrateServicesFromModules(modulesData);
-        setDomainsData(extractDomainsFromModules(modulesData));
-        setClient(prev => prev ? {
-          ...prev,
-          equipements: modulesData?.equipements ?? prev.equipements,
-          modules_monitoring: modulesData?.modules_monitoring ?? prev.modules_monitoring
-        } : prev);
+    const cached = configuredDomains;
+    if (cached.length === 0) {
+      openDomainsConfigModal("provider");
+    } else {
+      setDomainPickerDomains(cached);
+      setDomainPickerOpen(true);
+    }
+    refreshDomainsState()
+      .then(({ modulesData } = {}) => {
+        const fresh = listConfiguredDomains(client, domainsData, modulesData);
+        if (fresh.length > 0) setDomainPickerDomains(fresh);
+      })
+      .catch(error => console.error(error));
+  }, [client, configuredDomains, domainsData, openDomainsConfigModal, refreshDomainsState]);
+  const handleSslBrickClick = useCallback(() => {
+    if (!client?.id) return;
+    setSslModalOpen(true);
+    fetchClientSslCertificates(client.id, { autoCheck: true })
+      .then(items => {
+        setSslData(Array.isArray(items) ? items : []);
         setEquipmentRevision(revision => revision + 1);
-        setDomainPickerDomains(configured);
-        setDomainPickerOpen(true);
-        return;
-      }
-      openDomainsConfigModal("provider");
-    } catch (error) {
-      console.error(error);
-      openDomainsConfigModal("provider");
-    }
-  }, [client, openDomainsConfigModal, hydrateServicesFromModules]);
-  const handleSslBrickClick = useCallback(async () => {
-    if (!client?.id) return;
-    try {
-      const items = await fetchClientSslCertificates(client.id, {
-        autoCheck: true
-      });
-      setSslData(items);
-      setEquipmentRevision(revision => revision + 1);
-      setSslModalOpen(true);
-    } catch (error) {
-      console.error(error);
-      setSslModalOpen(true);
-    }
+      })
+      .catch(error => console.error(error));
   }, [client?.id]);
-  const handleLicensesBrickClick = useCallback(async () => {
+  const handleLicensesBrickClick = useCallback(() => {
     if (!client?.id) return;
-    try {
-      const items = await fetchClientLicences(client.id);
-      setLicensesData(items);
-      setEquipmentRevision(revision => revision + 1);
-      setLicensesModalOpen(true);
-    } catch (error) {
-      console.error(error);
-      setLicensesModalOpen(true);
-    }
+    setLicensesModalOpen(true);
+    fetchClientLicences(client.id)
+      .then(items => {
+        setLicensesData(Array.isArray(items) ? items : []);
+        setEquipmentRevision(revision => revision + 1);
+      })
+      .catch(error => console.error(error));
   }, [client?.id]);
   const enrichAzureCredentials = async (clientInfo, signal, isCurrentRequest) => {
     if (!clientInfo?.id) return clientInfo;
@@ -1887,6 +1870,11 @@ export default function ClientDetailPage({
     const source = isCommunity ? DEMO_CAMPAIGNS : campaigns;
     return source.filter(isOngoingCampaign);
   }, [campaigns, isCommunity]);
+  const openSupportCount = useMemo(() => supportTickets.filter(isOpenTicket).length, [supportTickets]);
+  const openPrestationCount = useMemo(() => {
+    const source = isCommunity ? DEMO_PRESTATION_TICKETS : prestationTickets;
+    return source.filter(isOpenTicket).length;
+  }, [isCommunity, prestationTickets]);
 
   const campaignBookmarkEvents = useMemo(
     () => (isCommunity ? [] : mapCampaignsToBookmarkEvents(campaigns, client?.id)),
@@ -1926,14 +1914,6 @@ export default function ClientDetailPage({
     if (!client?.id || isCommunity) return;
     void reloadSupportCredits();
   }, [client?.id, isCommunity, reloadSupportCredits]);
-  const handleOpenSupportCreditsAdmin = () => {
-    try {
-      sessionStorage.setItem("veritas_admin_nav", JSON.stringify({
-        tab: "support-credits"
-      }));
-    } catch {}
-    onNavigate?.("Admin");
-  };
   const getEnterpriseEquipment = useCallback((tableType) => {
     if (!client?.id) return [];
     const familyKey = parseCustomFamilyType(tableType);
@@ -2141,7 +2121,6 @@ export default function ClientDetailPage({
       toast.info(copy.share.cancelled);
     }
   };
-  const resolveContractStatus = (expirationDate, isSuspended = false) => getContractStatusDetail(expirationDate, isSuspended, locale);
   const handleBack = () => {
     if (onNavigate) {
       onNavigate("Contrat");
@@ -2314,7 +2293,7 @@ export default function ClientDetailPage({
         contrat: contratPayload,
         options: formData.modules,
         siret: normalizeLegalIdentifier(formData.siret) || null,
-        address: buildClientAddress(formData),
+        address: buildClientAddressFromSites(formData.sites) || buildClientAddress(formData),
         secteur: formData.secteur?.trim() || "",
         statut: toCompanyStatusValue(formData.statut)
       };
@@ -2615,14 +2594,30 @@ export default function ClientDetailPage({
     const targetClientId = clientId || client?.id;
     if (!targetClientId) return;
     try {
-      const [sslCerts, licences] = await Promise.all([fetchClientSslCertificates(targetClientId, {
-        signal
-      }).catch(e => e?.name === "AbortError" ? Promise.reject(e) : []), fetchClientLicences(targetClientId, {
-        signal
-      }).catch(e => e?.name === "AbortError" ? Promise.reject(e) : [])]);
+      const [sslCerts, licences, modulesData] = await Promise.all([
+        fetchClientSslCertificates(targetClientId, { signal }).catch(e => e?.name === "AbortError" ? Promise.reject(e) : []),
+        fetchClientLicences(targetClientId, { signal }).catch(e => e?.name === "AbortError" ? Promise.reject(e) : []),
+        getClientModulesOnce(targetClientId, signal).catch(e => e?.name === "AbortError" ? Promise.reject(e) : null)
+      ]);
       if (signal?.aborted) return;
-      setSslData(Array.isArray(sslCerts) ? sslCerts : []);
-      setLicensesData(Array.isArray(licences) ? licences : []);
+      if (modulesData) {
+        setClient(prev => {
+          if (!prev || String(prev.id) !== String(targetClientId)) return prev;
+          return {
+            ...prev,
+            equipements: modulesData.equipements ?? prev.equipements,
+            modules_monitoring: modulesData.modules_monitoring ?? prev.modules_monitoring
+          };
+        });
+      }
+      const sslFromApi = Array.isArray(sslCerts) ? sslCerts : [];
+      const sslFromModules = Array.isArray(modulesData?.equipements?.CertificatsSSL)
+        ? modulesData.equipements.CertificatsSSL
+        : [];
+      setSslData(sslFromApi.length ? sslFromApi : sslFromModules);
+      const licencesFromApi = Array.isArray(licences) ? licences : [];
+      const licencesFromModules = modulesData ? extractLicensesFromModules(modulesData) : [];
+      setLicensesData(licencesFromApi.length ? licencesFromApi : licencesFromModules);
     } catch (error) {
       if (error?.name === "AbortError") return;
       console.error("Error while loading SSL / licences:", error);
@@ -2632,42 +2627,49 @@ export default function ClientDetailPage({
     const targetClientId = clientId || client?.id;
     if (!targetClientId) return;
     try {
-      const [antivirus, antispam, domains, sslCerts, licences] = await Promise.all([fetchClientAntivirus(targetClientId, {
-        signal
-      }).catch(e => e?.name === "AbortError" ? Promise.reject(e) : []), fetchClientAntispam(targetClientId, {
-        signal
-      }).catch(e => e?.name === "AbortError" ? Promise.reject(e) : []), fetchClientDomains(targetClientId, {
-        signal
-      }).catch(e => e?.name === "AbortError" ? Promise.reject(e) : []), fetchClientSslCertificates(targetClientId, {
-        signal
-      }).catch(e => e?.name === "AbortError" ? Promise.reject(e) : []), fetchClientLicences(targetClientId, {
-        signal
-      }).catch(e => e?.name === "AbortError" ? Promise.reject(e) : [])]);
+      const [antivirus, antispam, domains, sslCerts, licences, modulesData] = await Promise.all([
+        fetchClientAntivirus(targetClientId, { signal }).catch(e => e?.name === "AbortError" ? Promise.reject(e) : []),
+        fetchClientAntispam(targetClientId, { signal }).catch(e => e?.name === "AbortError" ? Promise.reject(e) : []),
+        fetchClientDomains(targetClientId, { signal }).catch(e => e?.name === "AbortError" ? Promise.reject(e) : []),
+        fetchClientSslCertificates(targetClientId, { signal }).catch(e => e?.name === "AbortError" ? Promise.reject(e) : []),
+        fetchClientLicences(targetClientId, { signal }).catch(e => e?.name === "AbortError" ? Promise.reject(e) : []),
+        getClientModulesOnce(targetClientId, signal).catch(e => e?.name === "AbortError" ? Promise.reject(e) : null)
+      ]);
       if (signal?.aborted) return;
-      if (antivirus.length === 0 && antispam.length === 0) {
-        const modulesData = await getClientModulesOnce(targetClientId, signal).catch(e => e?.name === "AbortError" ? Promise.reject(e) : null);
-        if (modulesData) {
-          setAntivirusData(extractAntivirusFromModules(modulesData));
-          setAntispamData(extractAntispamFromModules(modulesData));
-        }
-      } else {
-        const modulesData = await getClientModulesOnce(targetClientId, signal).catch(e => e?.name === "AbortError" ? Promise.reject(e) : null);
-        setAntivirusData(modulesData ? mergeAntivirusSources(antivirus, modulesData) : antivirus);
-        setAntispamData(modulesData ? mergeAntispamSources(antispam, modulesData) : antispam);
+
+      if (modulesData) {
+        setClient(prev => {
+          if (!prev || String(prev.id) !== String(targetClientId)) return prev;
+          return {
+            ...prev,
+            equipements: modulesData.equipements ?? prev.equipements,
+            modules_monitoring: modulesData.modules_monitoring ?? prev.modules_monitoring
+          };
+        });
       }
-      if (domains.length > 0) {
-        setDomainsData(domains);
-      } else {
-        const modulesData = await getClientModulesOnce(targetClientId, signal).catch(e => e?.name === "AbortError" ? Promise.reject(e) : null);
-        setDomainsData(modulesData ? extractDomainsFromModules(modulesData) : []);
-      }
-      setSslData(Array.isArray(sslCerts) ? sslCerts : []);
-      if (licences.length > 0) {
-        setLicensesData(licences);
-      } else {
-        const modulesData = await getClientModulesOnce(targetClientId, signal).catch(e => e?.name === "AbortError" ? Promise.reject(e) : null);
-        setLicensesData(modulesData ? extractLicensesFromModules(modulesData) : []);
-      }
+
+      const mergedAntivirus = modulesData
+        ? mergeAntivirusSources(Array.isArray(antivirus) ? antivirus : [], modulesData)
+        : (Array.isArray(antivirus) ? antivirus : []);
+      const mergedAntispam = modulesData
+        ? mergeAntispamSources(Array.isArray(antispam) ? antispam : [], modulesData)
+        : (Array.isArray(antispam) ? antispam : []);
+      setAntivirusData(mergedAntivirus.length ? mergedAntivirus : (modulesData ? extractAntivirusFromModules(modulesData) : []));
+      setAntispamData(mergedAntispam.length ? mergedAntispam : (modulesData ? extractAntispamFromModules(modulesData) : []));
+
+      const domainsFromApi = Array.isArray(domains) ? domains : [];
+      const domainsFromModules = modulesData ? extractDomainsFromModules(modulesData) : [];
+      setDomainsData(domainsFromApi.length ? domainsFromApi : domainsFromModules);
+
+      const sslFromApi = Array.isArray(sslCerts) ? sslCerts : [];
+      const sslFromModules = Array.isArray(modulesData?.equipements?.CertificatsSSL)
+        ? modulesData.equipements.CertificatsSSL
+        : [];
+      setSslData(sslFromApi.length ? sslFromApi : sslFromModules);
+
+      const licencesFromApi = Array.isArray(licences) ? licences : [];
+      const licencesFromModules = modulesData ? extractLicensesFromModules(modulesData) : [];
+      setLicensesData(licencesFromApi.length ? licencesFromApi : licencesFromModules);
     } catch (error) {
       if (error?.name === "AbortError") return;
       console.error('Error loading cybersecurity data:', error);
@@ -3019,11 +3021,26 @@ export default function ClientDetailPage({
     const list = contacts.filter(c => String(c.statut || "").toLowerCase().includes("actif") && !String(c.statut || "").toLowerCase().includes("inactive"));
     return sortContactsPrimaryFirst(list, client?.id);
   }, [contacts, client?.id]);
+  const filteredContacts = useMemo(() => {
+    const query = contactsSearch.trim().toLowerCase();
+    if (!query) return activeContacts;
+    return activeContacts.filter(contact => {
+      const values = [contact.nom, contact.prenom, contact.poste, contact.email, contact.telephone, ...(Array.isArray(contact.communications) ? contact.communications.map(entry => entry?.value) : [])].filter(Boolean).map(value => String(value).toLowerCase());
+      return values.some(value => value.includes(query));
+    });
+  }, [activeContacts, contactsSearch]);
   const activeContactCount = activeContacts.length;
-  const visibleContacts = contactsExpanded ? activeContacts : activeContacts.slice(0, 1);
-  const hasMoreContacts = activeContacts.length > 1;
-  const visiblePrestataires = prestatairesExpanded ? prestataires : prestataires.slice(0, 1);
-  const hasMorePrestataires = prestataires.length > 1;
+  const visibleContacts = filteredContacts;
+  const filteredPrestataires = useMemo(() => {
+    const query = prestatairesSearch.trim().toLowerCase();
+    if (!query) return prestataires;
+    return prestataires.filter(prestataire => {
+      const primary = Array.isArray(prestataire.contacts) ? prestataire.contacts[0] : null;
+      const values = [prestataire.nom, prestataire.type, prestataire.email, prestataire.telephone, primary?.email, primary?.telephone, primary?.nom, primary?.prenom, prestataire.contact_nom, prestataire.contact_prenom].filter(Boolean).map(value => String(value).toLowerCase());
+      return values.some(value => value.includes(query));
+    });
+  }, [prestataires, prestatairesSearch]);
+  const visiblePrestataires = filteredPrestataires;
   const clientSites = useMemo(() => normalizeClientSites(formData.sites), [formData.sites]);
   const filteredSites = useMemo(() => {
     const query = sitesSearch.trim();
@@ -3043,7 +3060,7 @@ export default function ClientDetailPage({
   }, [sitesTotalPages]);
   const enterpriseGuideSteps = useMemo(() => {
     const steps = getEnterpriseDetailGuideSteps({
-      expandInfo: () => setInfoExpanded(true),
+      expandInfo: () => {},
       expandContacts: () => setContactsSectionExpanded(true),
       expandNotes: () => setNotesSectionExpanded(true),
       showInfraMap: () => setOverviewTab("map"),
@@ -3154,7 +3171,7 @@ export default function ClientDetailPage({
   if (loading && !client) {
     return <EnterpriseDetailSkeleton />;
   }
-  if (error || !client) {
+  if (!loading && (error || !client)) {
     return <div className={`${styles.contratDetailPage} msp-page-grid`}>
         <div className={styles.error}>
           <Icon icon="mdi:alert-circle-outline" />
@@ -3165,7 +3182,9 @@ export default function ClientDetailPage({
         </div>
       </div>;
   }
-  const contractStatus = resolveContractStatus(formData.contrat?.expiration, formData.contrat?.suspendu);
+  if (!client) {
+    return <EnterpriseDetailSkeleton />;
+  }
   const companyStatusKey = normalizeCompanyStatusKey(formData.statut);
   const companyStatusLabel = companyStatusKey === "inactive" ? copy.companyStatusInactive : copy.companyStatusActive;
   const clientCode = getClientNumber(client);
@@ -3176,38 +3195,30 @@ export default function ClientDetailPage({
       <header className={`${styles.pageHero} ${isCommunity ? styles.pageHeroProTeaser : ""}`} ref={headerRef} data-guide="enterprise-hero">
         <div className={styles.heroRow}>
           <div className={styles.heroMain}>
-            <div className={styles.heroAvatar}>
-              {getClientInitials(client)}
-            </div>
             <div className={styles.heroText}>
               <h1 className={styles.heroTitle}>
-                {clientCode && <span className={styles.headerClientCode}>{clientCode}</span>}
-                <span>{clientNameWithoutCode}</span>
+                <StatusDot active={companyStatusKey === "active"} label={companyStatusLabel} className={styles.heroTitleStatus} />
+                {clientCode ? <span className={styles.heroTitleCode}>{clientCode}</span> : null}
+                {clientCode ? <span className={styles.heroTitleSep} aria-hidden>·</span> : null}
+                <span className={styles.heroTitleName}>{clientNameWithoutCode}</span>
               </h1>
               <div className={styles.heroMeta} aria-label={copy.heroMetaAria}>
-                <span className={`${styles.statusChip} ${companyStatusKey === "active" ? styles.statusChipActive : styles.statusChipInactive}`}>
-                  <StatusDot active={companyStatusKey === "active"} />
-                  {companyStatusLabel}
-                </span>
-                {companyStatusKey === "active" ? <span className={`${styles.contractBadge} ${styles[`contractBadge_${contractStatus.status}`] || styles.contractBadge_unknown}`}>
-                    {contractStatus.label}
-                  </span> : null}
-                {commercialLabel && <span className={styles.heroMetaItem}>
+                {commercialLabel ? <span className={styles.heroMetaItem}>
                     <Icon icon="mdi:account-tie-outline" aria-hidden />
                     {commercialLabel}
-                  </span>}
+                  </span> : null}
                 <span className={styles.heroMetaItem}>
                   <Icon icon="mdi:server-outline" aria-hidden />
                   {interpolate(heroEquipmentTotalCount > 1 ? copy.equipmentCountPlural : copy.equipmentCount, {
                   count: heroEquipmentTotalCount
                 })}
                 </span>
-                {activeContactCount > 0 && <span className={styles.heroMetaItem}>
+                {activeContactCount > 0 ? <span className={styles.heroMetaItem}>
                     <Icon icon="mdi:account-group-outline" aria-hidden />
                     {interpolate(activeContactCount > 1 ? copy.contactCountPlural : copy.contactCount, {
                   count: activeContactCount
                 })}
-                  </span>}
+                  </span> : null}
                 <EnterpriseRmmEnrollmentHero clientId={client?.id} isAdmin={userRole === "admin"} compact itemClassName={`${styles.heroMetaItem} ${styles.heroMetaItemRmm}`} tokenWrapClassName={styles.heroRmmToken} />
                 {loadingTags ? <span className={styles.heroTagsLoading}>{copy.loadingTags}</span> : <>
                     {clientTags.map(tag => <span key={tag.id} className={styles.heroTagChip} style={{
@@ -3309,28 +3320,30 @@ export default function ClientDetailPage({
             focusDate: start,
             clientId: event?.client_id ?? client?.id ?? null
           });
-        }} onAddEvent={canScheduleEvent ? () => {
-          setEditingEvent(null);
-          setEventModalOpen(true);
-        } : undefined} onOpenPlanning={() => {
-          onNavigate?.("Planning");
         }} />
         </div>
       </header>
 
-      <div className={styles.pageBody}>
+      <div className={`${styles.pageBody} ${overviewTab === "vault" ? styles.pageBodyFill : ""}`.trim()}>
         <div className={styles.pageGrid}>
-          <main className={styles.mainColumn}>
+          <main className={`${styles.mainColumn} ${overviewTab === "vault" ? styles.mainColumnVault : ""}`.trim()}>
             <div className={styles.overviewTabsWrap}>
               <nav className={styles.overviewTabBar} role="tablist" aria-label={copy.overviewTabsAria || copy.infraMapTitle}>
                 <button type="button" role="tab" aria-selected={overviewTab === "map"} className={`${styles.overviewTab} ${overviewTab === "map" ? styles.overviewTabActive : ""}`} onClick={() => setOverviewTab("map")} data-guide="enterprise-infra-map-tab">
-                  {copy.overviewTabMap}
+                  <span className={styles.overviewTabLabelRow}>
+                    <Icon icon="mdi:sitemap-outline" className={styles.overviewTabIcon} aria-hidden />
+                    <span>{copy.overviewTabMap}</span>
+                  </span>
                 </button>
                 <button type="button" role="tab" aria-selected={overviewTab === "activity"} className={`${styles.overviewTab} ${overviewTab === "activity" ? styles.overviewTabActive : ""}`} onClick={() => setOverviewTab("activity")} data-guide="enterprise-activity">
-                  {copy.overviewTabActivity}
+                  <span className={styles.overviewTabLabelRow}>
+                    <Icon icon="mdi:clipboard-text-clock-outline" className={styles.overviewTabIcon} aria-hidden />
+                    <span>{copy.overviewTabActivity}</span>
+                  </span>
                 </button>
                 <button type="button" role="tab" aria-selected={overviewTab === "vault"} className={`${styles.overviewTab} ${overviewTab === "vault" ? styles.overviewTabActive : ""}`} onClick={() => setOverviewTab("vault")} data-guide="enterprise-vault">
                   <span className={styles.overviewTabLabelRow}>
+                    <Icon icon="mdi:safe-square-outline" className={styles.overviewTabIcon} aria-hidden />
                     <span>{copy.overviewTabVault}</span>
                     {isCommunity ? <ProFeatureBadge variant="inline" className={styles.proBadgeInline} /> : null}
                   </span>
@@ -3341,16 +3354,10 @@ export default function ClientDetailPage({
             <div className={styles.mainCommunityPanels}>
             {overviewTab === "map" ? <>
             {!mapTabContentReady ? <EnterpriseMapTabSkeleton infraTitle={copy.infraMapTitle} peripheralsTitle={copy.peripheralsTitle} loadingAria={copy.mapTabLoadingAria} /> : null}
-            <div className={mapTabContentReady ? undefined : styles.mapTabContentHidden} aria-hidden={!mapTabContentReady}>
-            <section className={styles.panel} data-guide="enterprise-infra-map">
-              <div className={styles.panelHeader}>
-                <div className={styles.panelHeaderMain}>
-                  <h2 className={styles.panelTitle}>{copy.infraMapTitle}</h2>
-                  {siteFilterBadge}
-                </div>
-              </div>
-              <div className={styles.panelBody}>
-                <InfrastructureMap clientId={client.id} clientSnapshot={client} equipmentRevision={equipmentRevision} isCommunity={isCommunity} hideSkeleton onLoadingChange={handleMapInfraLoadingChange} backupInstances={backupInstances} antivirusItems={configuredAntivirusSolutions} antispamItems={configuredAntispamSolutions} domainItems={configuredDomains} domainIntegrationReady={globalOvhConfigured} sslItems={sslData} licenceItems={licencesData} customFamilyMap={customFamilyMap} siteFilter={activeSiteFilter} campaignItems={campaigns}                 tenantInfo={{
+            <div className={`${styles.mapTabStack} ${mapTabContentReady ? "" : styles.mapTabContentHidden}`.trim()} aria-hidden={!mapTabContentReady}>
+            <div className={styles.mapModulesBlock} data-guide="enterprise-infra-map">
+              {siteFilterBadge ? <div className={styles.mapModulesToolbar}>{siteFilterBadge}</div> : null}
+              <InfrastructureMap clientId={client.id} clientSnapshot={client} equipmentRevision={equipmentRevision} isCommunity={isCommunity} hideSkeleton onLoadingChange={handleMapInfraLoadingChange} backupInstances={backupInstances} antivirusItems={configuredAntivirusSolutions} antispamItems={configuredAntispamSolutions} domainItems={configuredDomains} domainIntegrationReady={globalOvhConfigured} sslItems={sslData} licenceItems={licencesData} customFamilyMap={customFamilyMap} siteFilter={activeSiteFilter} campaignItems={campaigns}                 tenantInfo={{
                   configured: configuredMicrosoftTenants.length > 0 || Boolean(client?.has_azure_credentials || client?.hasAzureCredentials || client?.azureHasCredentials),
                   items: configuredMicrosoftTenants,
                   tenantId: configuredMicrosoftTenants[0]?.tenantId || client?.Office365?.tenantId || client?.microsoft?.tenantId || null,
@@ -3426,13 +3433,15 @@ export default function ClientDetailPage({
                     return;
                   }
                 } : undefined} />
-              </div>
-            </section>
+            </div>
 
             <section className={styles.panel} ref={equipmentSectionRef} data-guide="enterprise-equipment">
               <div className={styles.panelHeader}>
                 <div className={styles.panelHeaderMain}>
-                  <h2 className={styles.panelTitle}>{copy.peripheralsTitle}</h2>
+                  <h2 className={styles.panelTitle}>
+                    <Icon icon="mdi:devices" className={styles.panelTitleIcon} aria-hidden />
+                    {copy.peripheralsTitle}
+                  </h2>
                   {siteFilterBadge}
                 </div>
                 <div className={styles.panelToolbar}>
@@ -3531,79 +3540,75 @@ export default function ClientDetailPage({
             </div>
             </> : null}
 
-            {overviewTab === "activity" ? <section className={styles.panel} data-guide="enterprise-activity-panel">
-              <div className={styles.panelHeader}>
-                <div className={styles.panelHeaderMain}>
-                  <h2 className={styles.panelTitle}>{copy.activityTitle}</h2>
-                </div>
-              </div>
-              <div className={styles.panelBody}>
-                <div className={styles.overviewTabPanel}>
-                  {loadingClientActivity ? <div className={styles.activityLayout}>
-                    <div className={styles.activityGridSplit}>
-                      <div className={`${styles.activityBlock} ${styles.activityBlockLoading}`}>
-                        <div className={`${styles.skeleton} ${styles.activitySkeletonTitle}`} />
-                        <div className={`${styles.skeleton} ${styles.activitySkeletonRow}`} />
-                        <div className={`${styles.skeleton} ${styles.activitySkeletonRow}`} />
-                        <div className={`${styles.skeleton} ${styles.activitySkeletonRow}`} />
+            {overviewTab === "activity" ? <div className={styles.activityLayout} data-guide="enterprise-activity-panel">
+                    <div className={styles.activityKpiRow}>
+                      <div className={styles.activityKpiCard}>
+                        <span className={styles.activityKpiValue}>{supportTickets.length}</span>
+                        <span className={styles.activityKpiLabel}>{copy.kpiSupportTotal}</span>
                       </div>
-                      <div className={`${styles.activityBlock} ${styles.activityBlockLoading}`}>
-                        <div className={`${styles.skeleton} ${styles.activitySkeletonTitle}`} />
-                        <div className={`${styles.skeleton} ${styles.activitySkeletonRow}`} />
-                        <div className={`${styles.skeleton} ${styles.activitySkeletonRow}`} />
-                        <div className={`${styles.skeleton} ${styles.activitySkeletonRow}`} />
+                      <div className={styles.activityKpiCard}>
+                        <span className={styles.activityKpiValue}>{openSupportCount}</span>
+                        <span className={styles.activityKpiLabel}>{copy.kpiSupportOpen}</span>
                       </div>
+                      <ProFeatureLock locked={isCommunity} featureLabel={copy.proFeatures.prestations} featureKey="prestations" className={styles.activityKpiProLock}>
+                        <div className={styles.activityKpiCard}>
+                          <span className={styles.activityKpiValue}>{(isCommunity ? DEMO_PRESTATION_TICKETS : prestationTickets).length}</span>
+                          <span className={styles.activityKpiLabel}>{copy.kpiPrestationTotal}</span>
+                        </div>
+                      </ProFeatureLock>
+                      <ProFeatureLock locked={isCommunity} featureLabel={copy.proFeatures.prestations} featureKey="prestations" className={styles.activityKpiProLock}>
+                        <div className={styles.activityKpiCard}>
+                          <span className={styles.activityKpiValue}>{openPrestationCount}</span>
+                          <span className={styles.activityKpiLabel}>{copy.kpiPrestationOpen}</span>
+                        </div>
+                      </ProFeatureLock>
                     </div>
-                    <div className={`${styles.activityBlock} ${styles.activityBlockLoading} ${styles.activityCampaignsRow}`}>
-                      <div className={`${styles.skeleton} ${styles.activitySkeletonTitle}`} />
-                      <div className={`${styles.skeleton} ${styles.activitySkeletonRow}`} />
-                      <div className={`${styles.skeleton} ${styles.activitySkeletonRow}`} />
-                      <div className={`${styles.skeleton} ${styles.activitySkeletonRow}`} />
-                    </div>
-                  </div> : <div className={styles.activityLayout}>
                     <div className={styles.activityGridSplit}>
-                      <div className={styles.activityBlock}>
-                        <div className={styles.activityBlockHeader}>
-                          <h3 className={styles.activityBlockTitle}>
-                            <Icon icon="mdi:ticket-outline" aria-hidden />
-                            {copy.supportTicketsTitle}
-                          </h3>
+                      <section className={styles.panel}>
+                        <div className={styles.panelHeader}>
+                          <div className={styles.panelHeaderMain}>
+                            <h2 className={styles.panelTitle}>
+                              <Icon icon="mdi:ticket-outline" className={styles.panelTitleIcon} aria-hidden />
+                              {copy.supportTicketsTitle}
+                            </h2>
+                          </div>
                           <span className={styles.activityBlockCount}>
                             {interpolate(copy.openCount, {
-                          count: supportTickets.filter(t => !["resolved", "closed"].includes(normalizeTicketStatus(t.status))).length
-                        })}
+                        count: openSupportCount
+                      })}
                           </span>
                         </div>
-                        <div className={styles.dataTableWrapper}>
-                          <table className={styles.dataTable}>
-                            <thead>
-                              <tr>
-                                <th>{copy.table.number}</th>
-                                <th>{copy.table.title}</th>
-                                <th>{copy.table.status}</th>
-                                {!isCommunity && <th>{copy.table.sla}</th>}
-                                <th>{copy.table.updated}</th>
-                              </tr>
-                            </thead>
-                            <tbody>
-                              {supportTickets.length === 0 ? <tr>
-                                  <td colSpan={isCommunity ? 4 : 5} className={styles.dataTableEmptyCell}>
-                                    {copy.emptySupportTickets}
-                                  </td>
-                                </tr> : supportTickets.slice(0, 8).map(ticket => {
-                            const status = normalizeTicketStatus(ticket.status);
-                            const sla = getTicketSlaDisplay(ticket, {
-                              clients: client ? [client] : [],
-                              now: slaNow
-                            });
-                            return <tr key={ticket.id} className={styles.dataTableRowClickable} onClick={() => handleOpenTicket(ticket)} onAuxClick={e => {
-                              if (e.button === 1) {
-                                e.preventDefault();
-                                handleOpenTicket(ticket, true);
-                              }
-                            }}>
+                        <div className={styles.panelBody}>
+                          <div className={styles.dataTableWrapper}>
+                            <table className={styles.dataTable}>
+                              <thead>
+                                <tr>
+                                  <th>{copy.table.number}</th>
+                                  <th>{copy.table.title}</th>
+                                  <th>{copy.table.status}</th>
+                                  {!isCommunity && <th>{copy.table.sla}</th>}
+                                  <th>{copy.table.updated}</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {supportTickets.length === 0 ? <tr className={styles.dataTableEmptyRow}>
+                                    <td colSpan={isCommunity ? 4 : 5} className={styles.dataTableEmptyCell}>
+                                      {copy.emptySupportTickets}
+                                    </td>
+                                  </tr> : supportTickets.slice(0, 8).map(ticket => {
+                          const status = normalizeTicketStatus(ticket.status);
+                          const sla = getTicketSlaDisplay(ticket, {
+                            clients: client ? [client] : [],
+                            now: slaNow
+                          });
+                          return <tr key={ticket.id} className={styles.dataTableRowClickable} onClick={() => handleOpenTicket(ticket)} onAuxClick={e => {
+                            if (e.button === 1) {
+                              e.preventDefault();
+                              handleOpenTicket(ticket, true);
+                            }
+                          }}>
                                       <td>#{ticket.ticket_number || "-"}</td>
-                                      <td className={styles.activityTitleCell}>
+                                      <td className={styles.activityTitleCell} title={ticket.title || undefined}>
                                         {ticket.title || "-"}
                                       </td>
                                       <td>
@@ -3614,51 +3619,55 @@ export default function ClientDetailPage({
                                       {!isCommunity && <td>{sla.label}</td>}
                                       <td>{formatRelativeFrench(ticket.updated_at || ticket.created_at)}</td>
                                     </tr>;
-                          })}
-                            </tbody>
-                          </table>
+                        })}
+                              </tbody>
+                            </table>
+                          </div>
                         </div>
-                      </div>
+                      </section>
 
-                    <ProFeatureLock locked={isCommunity} featureLabel={copy.proFeatures.prestations} featureKey="prestations" className={styles.activityBlockProLock} badgePosition="none">
-                      <div className={styles.activityBlock}>
-                        <div className={styles.activityBlockHeader}>
-                          <h3 className={styles.activityBlockTitle}>
-                            <Icon icon="mdi:briefcase-outline" aria-hidden />
-                            {copy.prestationsTitle}
-                            {isCommunity ? <ProFeatureBadge variant="inline" className={styles.proBadgeInline} /> : null}
-                          </h3>
-                          <span className={styles.activityBlockCount}>
-                            {interpolate(copy.prestationsCount, {
-                            count: (isCommunity ? DEMO_PRESTATION_TICKETS : prestationTickets).length
-                          })}
-                          </span>
-                        </div>
-                        <div className={styles.dataTableWrapper}>
-                          <table className={styles.dataTable}>
-                            <thead>
-                              <tr>
-                                <th>{copy.table.number}</th>
-                                <th>{copy.table.type}</th>
-                                <th>{copy.table.status}</th>
-                                <th>{copy.table.created}</th>
-                              </tr>
-                            </thead>
-                            <tbody>
-                              {(isCommunity ? DEMO_PRESTATION_TICKETS : prestationTickets).length === 0 ? <tr>
-                                  <td colSpan={4} className={styles.dataTableEmptyCell}>
-                                    {copy.emptyPrestationTickets}
-                                  </td>
-                                </tr> : (isCommunity ? DEMO_PRESTATION_TICKETS : prestationTickets).slice(0, 8).map(ticket => {
-                              const status = normalizeTicketStatus(ticket.status);
-                              return <tr key={ticket.id} className={isCommunity ? undefined : styles.dataTableRowClickable} onClick={isCommunity ? undefined : () => handleOpenTicket(ticket)} onAuxClick={isCommunity ? undefined : e => {
-                                if (e.button === 1) {
-                                  e.preventDefault();
-                                  handleOpenTicket(ticket, true);
-                                }
-                              }}>
+                      <ProFeatureLock locked={isCommunity} featureLabel={copy.proFeatures.prestations} featureKey="prestations" className={styles.activityBlockProLock} badgePosition="none">
+                        <section className={styles.panel}>
+                          <div className={styles.panelHeader}>
+                            <div className={styles.panelHeaderMain}>
+                              <h2 className={styles.panelTitle}>
+                                <Icon icon="mdi:briefcase-outline" className={styles.panelTitleIcon} aria-hidden />
+                                {copy.prestationsTitle}
+                                {isCommunity ? <ProFeatureBadge variant="inline" className={styles.proBadgeInline} /> : null}
+                              </h2>
+                            </div>
+                            <span className={styles.activityBlockCount}>
+                              {interpolate(copy.prestationsCount, {
+                          count: (isCommunity ? DEMO_PRESTATION_TICKETS : prestationTickets).length
+                        })}
+                            </span>
+                          </div>
+                          <div className={styles.panelBody}>
+                            <div className={styles.dataTableWrapper}>
+                              <table className={styles.dataTable}>
+                                <thead>
+                                  <tr>
+                                    <th>{copy.table.number}</th>
+                                    <th>{copy.table.type}</th>
+                                    <th>{copy.table.status}</th>
+                                    <th>{copy.table.created}</th>
+                                  </tr>
+                                </thead>
+                                <tbody>
+                                  {(isCommunity ? DEMO_PRESTATION_TICKETS : prestationTickets).length === 0 ? <tr className={styles.dataTableEmptyRow}>
+                                      <td colSpan={4} className={styles.dataTableEmptyCell}>
+                                        {copy.emptyPrestationTickets}
+                                      </td>
+                                    </tr> : (isCommunity ? DEMO_PRESTATION_TICKETS : prestationTickets).slice(0, 8).map(ticket => {
+                            const status = normalizeTicketStatus(ticket.status);
+                            return <tr key={ticket.id} className={isCommunity ? undefined : styles.dataTableRowClickable} onClick={isCommunity ? undefined : () => handleOpenTicket(ticket)} onAuxClick={isCommunity ? undefined : e => {
+                              if (e.button === 1) {
+                                e.preventDefault();
+                                handleOpenTicket(ticket, true);
+                              }
+                            }}>
                                         <td>#{ticket.ticket_number || "-"}</td>
-                                        <td className={styles.activityTitleCell}>
+                                        <td className={styles.activityTitleCell} title={getPrestationCategoryLabel(ticket.category, locale)}>
                                           {getPrestationCategoryLabel(ticket.category, locale)}
                                         </td>
                                         <td>
@@ -3668,27 +3677,31 @@ export default function ClientDetailPage({
                                         </td>
                                         <td>{formatTableDate(ticket.created_at)}</td>
                                       </tr>;
-                            })}
-                            </tbody>
-                          </table>
-                        </div>
-                      </div>
-                    </ProFeatureLock>
+                          })}
+                                </tbody>
+                              </table>
+                            </div>
+                          </div>
+                        </section>
+                      </ProFeatureLock>
                     </div>
 
-                    <ProFeatureLock locked={isCommunity} featureLabel={copy.proFeatures.campaigns} featureKey="cyberCampaigns" className={`${styles.activityBlockProLock} ${styles.activityCampaignsRow}`} badgePosition="none">
-                      <div className={styles.activityBlock}>
-                        <div className={styles.activityBlockHeader}>
-                          <h3 className={styles.activityBlockTitle}>
-                            <Icon icon="mdi:bullhorn-outline" aria-hidden />
-                            {copy.campaignsTitle}
-                            {isCommunity ? <ProFeatureBadge variant="inline" className={styles.proBadgeInline} /> : null}
-                          </h3>
-                          <div className={styles.activityBlockHeaderActions}>
+                    <div className={styles.activityCampaignsRow}>
+                    <ProFeatureLock locked={isCommunity} featureLabel={copy.proFeatures.campaigns} featureKey="cyberCampaigns" className={styles.activityBlockProLock} badgePosition="none">
+                      <section className={styles.panel}>
+                        <div className={styles.panelHeader}>
+                          <div className={styles.panelHeaderMain}>
+                            <h2 className={styles.panelTitle}>
+                              <Icon icon="mdi:bullhorn-outline" className={styles.panelTitleIcon} aria-hidden />
+                              {copy.campaignsTitle}
+                              {isCommunity ? <ProFeatureBadge variant="inline" className={styles.proBadgeInline} /> : null}
+                            </h2>
+                          </div>
+                          <div className={styles.panelToolbar}>
                             <span className={styles.activityBlockCount}>
                               {interpolate(copy.campaignsOngoing, {
-                            count: ongoingCampaigns.length
-                          })}
+                          count: ongoingCampaigns.length
+                        })}
                             </span>
                             {!isCommunity && canManageCampaigns && client?.id ? <SmartTooltip as="span" content={copy.addCampaign}>
                                 <button type="button" className={styles.addEquipmentButton} onClick={handleOpenCreateCampaign} aria-label={copy.addCampaign}>
@@ -3697,24 +3710,25 @@ export default function ClientDetailPage({
                               </SmartTooltip> : null}
                           </div>
                         </div>
-                        <div className={styles.dataTableWrapper}>
-                          <table className={styles.dataTable}>
-                            <thead>
-                              <tr>
-                                <th>{copy.table.name}</th>
-                                <th>{copy.table.type}</th>
-                                <th>{copy.table.status}</th>
-                                <th>{copy.table.progress}</th>
-                                <th>{copy.table.start}</th>
-                              </tr>
-                            </thead>
-                            <tbody>
-                              {ongoingCampaigns.length === 0 ? <tr>
-                                  <td colSpan={5} className={styles.dataTableEmptyCell}>
-                                    {copy.emptyCampaigns}
-                                  </td>
-                                </tr> : ongoingCampaigns.slice(0, 8).map(campaign => <tr key={campaign.id} className={isCommunity ? undefined : styles.dataTableRowClickable} onClick={isCommunity ? undefined : () => handleOpenCampaign(campaign)}>
-                                    <td className={styles.activityTitleCell}>{campaign.name || "-"}</td>
+                        <div className={styles.panelBody}>
+                          <div className={styles.dataTableWrapper}>
+                            <table className={styles.dataTable}>
+                              <thead>
+                                <tr>
+                                  <th>{copy.table.name}</th>
+                                  <th>{copy.table.type}</th>
+                                  <th>{copy.table.status}</th>
+                                  <th>{copy.table.progress}</th>
+                                  <th>{copy.table.start}</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {ongoingCampaigns.length === 0 ? <tr className={styles.dataTableEmptyRow}>
+                                    <td colSpan={5} className={styles.dataTableEmptyCell}>
+                                      {copy.emptyCampaigns}
+                                    </td>
+                                  </tr> : ongoingCampaigns.slice(0, 8).map(campaign => <tr key={campaign.id} className={isCommunity ? undefined : styles.dataTableRowClickable} onClick={isCommunity ? undefined : () => handleOpenCampaign(campaign)}>
+                                    <td className={styles.activityTitleCell} title={campaign.name || undefined}>{campaign.name || "-"}</td>
                                     <td>{getCampaignTypeLabel(campaign.type, locale)}</td>
                                     <td>
                                       <span className={styles.ticketStatusBadge}>
@@ -3726,37 +3740,22 @@ export default function ClientDetailPage({
                                     </td>
                                     <td>{formatTableDate(campaign.start_date)}</td>
                                   </tr>)}
-                            </tbody>
-                          </table>
+                              </tbody>
+                            </table>
+                          </div>
                         </div>
-                      </div>
+                      </section>
                     </ProFeatureLock>
-                    </div>}
-                </div>
-              </div>
-            </section> : null}
+                    </div>
+            </div> : null}
 
-            {overviewTab === "vault" ? <section className={styles.panel} data-guide="enterprise-vault-panel">
-              <div className={styles.panelHeader}>
-                <div className={styles.panelHeaderMain}>
-                  <h2 className={styles.panelTitle}>{copy.vaultTitle}</h2>
-                </div>
-                {client?.id && canManageVault ? <div className={styles.panelToolbar}>
-                  <SmartTooltip as="span" content={vaultCopy.panel.addToVault}>
-                    <button type="button" className={styles.addEquipmentButton} onClick={() => vaultPanelRef.current?.openUploadModal()} aria-label={vaultCopy.panel.addToVault}>
-                      <FaPlus />
-                    </button>
-                  </SmartTooltip>
-                </div> : null}
+            {overviewTab === "vault" ? <div className={styles.vaultTabStack} data-guide="enterprise-vault-panel">
+              <div className={styles.vaultTabLock}>
+                <ProFeatureLock locked={isCommunity} featureLabel={copy.proFeatures.vault} featureKey="vault">
+                  {client?.id ? <EnterpriseVaultPanel ref={vaultPanelRef} copy={vaultCopy} clientId={client.id} clientName={client.name} /> : null}
+                </ProFeatureLock>
               </div>
-              <div className={styles.panelBody}>
-                <div className={styles.overviewTabPanel}>
-                  <ProFeatureLock locked={isCommunity} featureLabel={copy.proFeatures.vault} featureKey="vault">
-                    {client?.id ? <EnterpriseVaultPanel ref={vaultPanelRef} copy={vaultCopy} clientId={client.id} clientName={client.name} /> : null}
-                  </ProFeatureLock>
-                </div>
-              </div>
-            </section> : null}
+            </div> : null}
             </div>
 
           </main>
@@ -3768,22 +3767,6 @@ export default function ClientDetailPage({
                 <span className={styles.sidebarInfoTitle}>{copy.sidebarInfo}</span>
               </div>
               <div className={styles.sidebarSummaryList}>
-                {infoExpanded && <>
-                    <div className={styles.sidebarSummaryItem}>
-                      <span className={styles.sidebarSummaryLabel}>{LEGAL_IDENTIFIER_LABEL}</span>
-                      {formData.siret ? <span className={styles.sidebarSummaryValue}>
-                          {normalizeLegalIdentifier(formData.siret)}
-                        </span> : <span className={styles.sidebarSummaryValueEmpty}>-</span>}
-                    </div>
-                    <div className={styles.sidebarSummaryItem}>
-                      <span className={styles.sidebarSummaryLabel}>{copy.sectorLabel}</span>
-                      {formData.secteur?.trim() ? <span className={styles.sidebarSummaryValue}>{formData.secteur.trim()}</span> : <span className={styles.sidebarSummaryValueEmpty}>-</span>}
-                    </div>
-                    <div className={styles.sidebarSummaryItem}>
-                      <span className={styles.sidebarSummaryLabel}>{copy.addressLabel}</span>
-                      {clientDisplayAddress ? <span className={styles.sidebarSummaryValue}>{clientDisplayAddress}</span> : <span className={styles.sidebarSummaryValueEmpty}>-</span>}
-                    </div>
-                  </>}
                 <div className={styles.sidebarFieldsRow}>
                   <div className={styles.sidebarSummaryItem}>
                     <span className={styles.sidebarSummaryLabel}>{copy.startDateLabel}</span>
@@ -3811,138 +3794,130 @@ export default function ClientDetailPage({
                     })}
                   </div>
                 </div>
+                <div className={styles.sidebarSummaryItem}>
+                  <span className={styles.sidebarSummaryLabel}>{legalIdCopy.label}</span>
+                  {formData.siret ? <span className={styles.sidebarSummaryValue}>
+                      {normalizeLegalIdentifier(formData.siret)}
+                    </span> : <span className={styles.sidebarSummaryValueEmpty}>-</span>}
+                </div>
+                <div className={styles.sidebarSummaryItem}>
+                  <span className={styles.sidebarSummaryLabel}>{copy.sectorLabel}</span>
+                  {formData.secteur?.trim() ? <span className={styles.sidebarSummaryValue}>{formData.secteur.trim()}</span> : <span className={styles.sidebarSummaryValueEmpty}>-</span>}
+                </div>
               </div>
-              <SidebarExpandToggle expanded={infoExpanded} onClick={() => setInfoExpanded(prev => !prev)} panelStyles={styles} copy={copy} />
             </section>
 
-            {(isCommunity || supportCreditBalance !== null) && <section className={`${styles.sidebarSection} ${styles.sidebarCreditsSection}`}>
-                <button type="button" className={`${styles.sidebarCollapseHeader} ${isCommunity ? styles.sidebarCollapseHeaderLocked : ""}`} onClick={() => {
-                if (isCommunity) {
-                  notifyProFeature(copy.proFeatures.creditPacks, "credits");
-                  return;
-                }
-                setCreditsExpanded(prev => !prev);
-              }} aria-expanded={isCommunity ? false : creditsExpanded} aria-controls="enterprise-sidebar-credits">
-                  <span className={styles.sidebarInfoTitle}>
-                    {copy.creditsTitle}
-                    {!isCommunity && supportCreditBalance != null ? (
-                      <span className={styles.sidebarCreditsBadge} title={copy.creditsTitle}>
-                        {Number(supportCreditBalance) || 0}
-                      </span>
-                    ) : null}
-                    {isCommunity ? <ProFeatureBadge variant="inline" className={styles.proBadgeInline} /> : null}
-                  </span>
-                  <Icon icon={!isCommunity && creditsExpanded ? "mdi:chevron-up" : "mdi:chevron-down"} className={styles.sidebarCollapseChevron} aria-hidden />
-                </button>
-                {!isCommunity && creditsExpanded && <div className={styles.sidebarBody} id="enterprise-sidebar-credits">
-                    {canAddCredits && <div className={styles.sidebarBodyActions}>
-                        <SmartTooltip content={copy.addCreditPack}>
-                          <button type="button" className={styles.editInfoButton} onClick={() => setSupportCreditModalOpen(true)} aria-label={copy.addCreditPack}>
-                            <FaPlus />
+            <section className={styles.sidebarSection}>
+              <SidebarSectionHeader
+                title={copy.sitesTitle}
+                count={(formData.sites || []).length > 0 ? clientSites.length : null}
+                expanded={sitesSectionExpanded}
+                onToggle={() => setSitesSectionExpanded(prev => !prev)}
+                controlsId="enterprise-sidebar-sites"
+                panelStyles={styles}
+                actions={canManageSites ? <SmartTooltip content={copy.manageSites}>
+                    <button type="button" className={styles.editInfoButton} onClick={e => {
+                  e.stopPropagation();
+                  setSitesModalOpen(true);
+                }} aria-label={copy.manageSites}>
+                      <FaPencilAlt />
+                    </button>
+                  </SmartTooltip> : null}
+              />
+              {sitesSectionExpanded && <div className={styles.sidebarBody} id="enterprise-sidebar-sites">
+                {(formData.sites || []).length === 0 ? <div className={styles.emptyState}>
+                    <Icon icon="mdi:map-marker-outline" className={styles.emptyIcon} aria-hidden />
+                    <h5>{copy.noSites}</h5>
+                  </div> : <>
+                  <div className={styles.sidebarSearchToolbar}>
+                    <Icon icon="mdi:magnify" className={styles.sidebarSearchIcon} aria-hidden />
+                    <input type="text" inputMode="search" autoComplete="off" className={styles.sidebarSearchInput} value={sitesSearch} onChange={event => {
+                    setSitesSearch(event.target.value);
+                    setSitesPage(1);
+                  }} placeholder={copy.searchSites} aria-label={copy.searchSitesAria} />
+                    {sitesSearch ? <button type="button" className={styles.sidebarSearchClear} onClick={() => {
+                    setSitesSearch("");
+                    setSitesPage(1);
+                  }} aria-label={common.close}>
+                        <Icon icon="mdi:close" aria-hidden />
+                      </button> : null}
+                  </div>
+                  {filteredSites.length === 0 ? <div className={styles.emptyState}>
+                      <Icon icon="mdi:magnify" className={styles.emptyIcon} aria-hidden />
+                      <h5>{copy.noSiteResults}</h5>
+                    </div> : <>
+                      <div className={styles.sitesDisplayCards}>
+                        {pagedSites.map(site => {
+                    const address = buildSiteAddress(site);
+                    const siteValue = getSiteLocationValue(site);
+                    const isActive = activeSiteFilter === siteValue;
+                    return <button type="button" key={getSiteId(site)} className={`${styles.sitePreviewCard} ${styles.siteFilterButton} ${isActive ? styles.siteFilterButtonActive : ""}`} onClick={() => setActiveSiteFilter(isActive ? null : siteValue)} title={interpolate(copy.filterSiteTitle, {
+                      name: getSiteDisplayName(site)
+                    })}>
+                              <div className={styles.sitePreviewMain}>
+                                <strong className={styles.sitePreviewName}>
+                                  {getSiteDisplayName(site)}
+                                  {site.isPrimary ? <span className={styles.sitePreviewPrimary}>{copy.sitePrimary}</span> : null}
+                                </strong>
+                                {address ? <span className={styles.sitePreviewAddress}>{address}</span> : null}
+                              </div>
+                              <div className={styles.sitePreviewMap} onClick={event => event.stopPropagation()}>
+                                <SiteMapPreview latitude={site.latitude} longitude={site.longitude} label={getSiteDisplayName(site)} address={address} compact />
+                              </div>
+                            </button>;
+                  })}
+                      </div>
+                      {sitesTotalPages > 1 ? <div className={styles.sitesPager}>
+                          <button type="button" className={styles.sitesPagerBtn} onClick={() => setSitesPage(safeSitesPage - 1)} disabled={safeSitesPage <= 1} aria-label={common.prevPage} title={common.prevPage}>
+                            <Icon icon="mdi:chevron-left" aria-hidden />
                           </button>
-                        </SmartTooltip>
-                        <SmartTooltip content={copy.openCreditsAdmin}>
-                          <button type="button" className={styles.editInfoButton} onClick={handleOpenSupportCreditsAdmin} aria-label={copy.openCreditsAdmin}>
-                            <Icon icon="mdi:cog-outline" aria-hidden />
+                          <span className={styles.sitesPagerInfo}>{interpolate(copy.sitesRange, {
+                      start: String(sitesRangeStart),
+                      end: String(sitesRangeEnd),
+                      total: String(filteredSites.length)
+                    })}</span>
+                          <button type="button" className={styles.sitesPagerBtn} onClick={() => setSitesPage(safeSitesPage + 1)} disabled={safeSitesPage >= sitesTotalPages} aria-label={common.nextPage} title={common.nextPage}>
+                            <Icon icon="mdi:chevron-right" aria-hidden />
                           </button>
-                        </SmartTooltip>
-                      </div>}
-                    <ProFeatureLock locked={isCommunity} featureLabel={copy.proFeatures.creditPacks} featureKey="credits" badgePosition="none" softLocked={isCommunity}>
-                      {visibleSupportPacks.length > 0 && !isCommunity ? <ul className={styles.activityCreditList}>
-                          {visibleSupportPacks.map(pack => {
-                      const remaining = Number(pack.remaining_amount) || 0;
-                      const initial = Number(pack.initial_amount) || 0;
-                      const until = pack.valid_until ? new Date(pack.valid_until).toLocaleDateString("en-GB") : null;
-                      const status = String(pack.status || "active");
-                      return <li key={pack.id} className={`${styles.activityCreditCard} ${status === "depleted" || status === "expired" ? styles.activityCreditCardMuted : ""}`.trim()}>
-                                <div className={styles.activityCreditIcon} aria-hidden>
-                                  <Icon icon="mdi:ticket-confirmation-outline" />
-                                </div>
-                                <div className={styles.activityCreditBody}>
-                                  <div className={styles.activityCreditTop}>
-                                    <span className={styles.activityCreditLabel}>
-                                      {pack.label || copy.creditPackDefault}
-                                    </span>
-                                    <span className={`${styles.activityCreditValue} ${remaining <= 0 ? styles.activityCreditValueEmpty : ""}`}>
-                                      {remaining}/{initial}
-                                    </span>
-                                  </div>
-                                  <div className={styles.activityCreditMeta}>
-                                    <Icon icon="mdi:calendar-end" className={styles.activityCreditMetaIcon} aria-hidden />
-                                    <span>
-                                      {until ? interpolate(copy.creditValidUntil, {
-                                date: until
-                              }) : copy.creditNoExpiry}
-                                    </span>
-                                  </div>
-                                </div>
-                              </li>;
-                    })}
-                        </ul> : isCommunity ? <span className={styles.sidebarSummaryValue}>{copy.noCreditPack}</span> : canAddCredits ? <div className={styles.clientNotesEmpty}>
-                          <button type="button" className={styles.clientNotesAddButton} onClick={() => setSupportCreditModalOpen(true)}>
-                            {copy.addCredit}
-                          </button>
-                        </div> : <span className={styles.sidebarSummaryValue}>{copy.noActiveCreditPack}</span>}
-                    </ProFeatureLock>
-                  </div>}
-              </section>}
-
-            <section className={`${styles.sidebarSection} ${styles.sidebarSlaSection}`}>
-              <button type="button" className={`${styles.sidebarCollapseHeader} ${isCommunity ? styles.sidebarCollapseHeaderLocked : ""}`} onClick={() => {
-                if (isCommunity) {
-                  notifyProFeature(copy.proFeatures.sla, "sla");
-                  return;
-                }
-                setSlaExpanded(prev => !prev);
-              }} aria-expanded={isCommunity ? false : slaExpanded} aria-controls="enterprise-sidebar-sla">
-                <span className={styles.sidebarInfoTitle}>
-                  {copy.slaTitle}
-                  {isCommunity ? <ProFeatureBadge variant="inline" className={styles.proBadgeInline} /> : null}
-                </span>
-                <Icon icon={!isCommunity && slaExpanded ? "mdi:chevron-up" : "mdi:chevron-down"} className={styles.sidebarCollapseChevron} aria-hidden />
-              </button>
-              {!isCommunity && slaExpanded && <div className={styles.sidebarBody} id="enterprise-sidebar-sla">
-                  <ProFeatureLock locked={isCommunity} featureLabel={copy.proFeatures.sla} featureKey="sla" badgePosition="none" softLocked={isCommunity}>
-                    {parseClientSla(client?.contrat).enabled ? <table className={styles.sidebarSlaTable}>
-                        <thead>
-                          <tr>
-                            <th scope="col" />
-                            <th scope="col">{copy.slaFirstCol}</th>
-                            <th scope="col">{copy.slaResolutionCol}</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {formatClientSlaRows(client?.contrat).map(row => <tr key={row.key}>
-                              <th scope="row">{SLA_PRIORITY_LABELS[row.key] || row.label}</th>
-                              <td>{row.firstResponseHours}h</td>
-                              <td>{row.resolutionHours}h</td>
-                            </tr>)}
-                        </tbody>
-                      </table> : <span className={styles.sidebarSummaryValue}>{copy.noActiveSla}</span>}
-                  </ProFeatureLock>
-                </div>}
+                        </div> : null}
+                    </>}
+                  </>}
+              </div>}
             </section>
 
             <section className={styles.sidebarSection} data-guide="enterprise-sidebar-contacts">
-              <button type="button" className={styles.sidebarCollapseHeader} onClick={() => setContactsSectionExpanded(prev => !prev)} aria-expanded={contactsSectionExpanded} aria-controls="enterprise-sidebar-contacts">
-                <span className={styles.sidebarInfoTitle}>
-                  {copy.contactsTitle}
-                  {!loadingContacts && contacts.length > 0 ? <span className={styles.sidebarSectionCount}>{activeContactCount}</span> : null}
-                </span>
-                <Icon icon={contactsSectionExpanded ? "mdi:chevron-up" : "mdi:chevron-down"} className={styles.sidebarCollapseChevron} aria-hidden />
-              </button>
-              {contactsSectionExpanded && <div className={styles.sidebarBody} id="enterprise-sidebar-contacts">
-                <div className={styles.sidebarBodyActions}>
-                  {canAddContact ? <SmartTooltip content={copy.addContact}>
-                    <button type="button" className={styles.editInfoButton} onClick={handleAddContact} aria-label={copy.addContact}>
+              <SidebarSectionHeader
+                title={copy.contactsTitle}
+                count={!loadingContacts && contacts.length > 0 ? activeContactCount : null}
+                expanded={contactsSectionExpanded}
+                onToggle={() => setContactsSectionExpanded(prev => !prev)}
+                controlsId="enterprise-sidebar-contacts"
+                panelStyles={styles}
+                actions={canAddContact ? <SmartTooltip content={copy.addContact}>
+                    <button type="button" className={styles.editInfoButton} onClick={e => {
+                  e.stopPropagation();
+                  handleAddContact();
+                }} aria-label={copy.addContact}>
                       <FaPlus />
                     </button>
                   </SmartTooltip> : null}
-                </div>
+              />
+              {contactsSectionExpanded && <div className={styles.sidebarBody} id="enterprise-sidebar-contacts">
               {loadingContacts ? <div className={styles.loadingState}>{copy.loadingContacts}</div> : !contacts || contacts.length === 0 ? <div className={styles.emptyState}>
-                  <Icon icon="mdi:account-multiple" className={styles.emptyIcon} />
+                  <Icon icon="mdi:account-multiple-outline" className={styles.emptyIcon} aria-hidden />
                   <h5>{copy.noContacts}</h5>
                 </div> : <>
+                <div className={styles.sidebarSearchToolbar}>
+                  <Icon icon="mdi:magnify" className={styles.sidebarSearchIcon} aria-hidden />
+                  <input type="text" inputMode="search" autoComplete="off" className={styles.sidebarSearchInput} value={contactsSearch} onChange={event => setContactsSearch(event.target.value)} placeholder={copy.searchContacts} aria-label={copy.searchContactsAria} />
+                  {contactsSearch ? <button type="button" className={styles.sidebarSearchClear} onClick={() => setContactsSearch("")} aria-label={common.close}>
+                      <Icon icon="mdi:close" aria-hidden />
+                    </button> : null}
+                </div>
+                {filteredContacts.length === 0 ? <div className={styles.emptyState}>
+                    <Icon icon="mdi:magnify" className={styles.emptyIcon} aria-hidden />
+                    <h5>{copy.noContactResults}</h5>
+                  </div> : <>
                 <ul className={styles.sidebarContactsList}>
                   {visibleContacts.map(contact => <SmartTooltip as="li" key={contact.id} className={styles.sidebarContactItem} onClick={() => {
                       if (onNavigate) {
@@ -4034,31 +4009,44 @@ export default function ClientDetailPage({
                       </div>
                     </SmartTooltip>)}
                 </ul>
-                {hasMoreContacts && <SidebarExpandToggle expanded={contactsExpanded} onClick={() => setContactsExpanded(prev => !prev)} panelStyles={styles} copy={copy} />}
+                </>}
                 </>}
               </div>}
             </section>
 
             <section className={styles.sidebarSection} data-guide="enterprise-sidebar-prestataires">
-              <button type="button" className={styles.sidebarCollapseHeader} onClick={() => setPrestatairesSectionExpanded(prev => !prev)} aria-expanded={prestatairesSectionExpanded} aria-controls="enterprise-sidebar-prestataires">
-                <span className={styles.sidebarInfoTitle}>
-                  {copy.providersTitle}
-                  {!loadingPrestataires && prestataires.length > 0 ? <span className={styles.sidebarSectionCount}>{prestataires.length}</span> : null}
-                </span>
-                <Icon icon={prestatairesSectionExpanded ? "mdi:chevron-up" : "mdi:chevron-down"} className={styles.sidebarCollapseChevron} aria-hidden />
-              </button>
-              {prestatairesSectionExpanded && <div className={styles.sidebarBody} id="enterprise-sidebar-prestataires">
-                <div className={styles.sidebarBodyActions}>
-                  {canAddPrestataire ? <SmartTooltip content={copy.addProvider}>
-                    <button type="button" className={styles.editInfoButton} onClick={openPrestataireAttachModal} aria-label={copy.addProvider}>
+              <SidebarSectionHeader
+                title={copy.providersTitle}
+                count={!loadingPrestataires && prestataires.length > 0 ? prestataires.length : null}
+                expanded={prestatairesSectionExpanded}
+                onToggle={() => setPrestatairesSectionExpanded(prev => !prev)}
+                controlsId="enterprise-sidebar-prestataires"
+                panelStyles={styles}
+                actions={canAddPrestataire ? <SmartTooltip content={copy.addProvider}>
+                    <button type="button" className={styles.editInfoButton} onClick={e => {
+                  e.stopPropagation();
+                  openPrestataireAttachModal();
+                }} aria-label={copy.addProvider}>
                       <FaPlus />
                     </button>
                   </SmartTooltip> : null}
-                </div>
+              />
+              {prestatairesSectionExpanded && <div className={styles.sidebarBody} id="enterprise-sidebar-prestataires">
               {loadingPrestataires ? <div className={styles.loadingState}>{copy.loadingProviders}</div> : !prestataires || prestataires.length === 0 ? <div className={styles.emptyState}>
-                  <Icon icon="mdi:handshake-outline" className={styles.emptyIcon} />
+                  <Icon icon="mdi:handshake-outline" className={styles.emptyIcon} aria-hidden />
                   <h5>{copy.noProviders}</h5>
                 </div> : <>
+                <div className={styles.sidebarSearchToolbar}>
+                  <Icon icon="mdi:magnify" className={styles.sidebarSearchIcon} aria-hidden />
+                  <input type="text" inputMode="search" autoComplete="off" className={styles.sidebarSearchInput} value={prestatairesSearch} onChange={event => setPrestatairesSearch(event.target.value)} placeholder={copy.searchProviders} aria-label={copy.searchProvidersAria} />
+                  {prestatairesSearch ? <button type="button" className={styles.sidebarSearchClear} onClick={() => setPrestatairesSearch("")} aria-label={common.close}>
+                      <Icon icon="mdi:close" aria-hidden />
+                    </button> : null}
+                </div>
+                {filteredPrestataires.length === 0 ? <div className={styles.emptyState}>
+                    <Icon icon="mdi:magnify" className={styles.emptyIcon} aria-hidden />
+                    <h5>{copy.noProviderResults}</h5>
+                  </div> : <>
                 <ul className={styles.sidebarContactsList}>
                   {visiblePrestataires.map(prestataire => <SmartTooltip as="li" key={prestataire.id} className={styles.sidebarContactItem} onClick={() => {
                       if (onNavigate) {
@@ -4107,107 +4095,142 @@ export default function ClientDetailPage({
                       </div>
                     </SmartTooltip>)}
                 </ul>
-                {hasMorePrestataires && <SidebarExpandToggle expanded={prestatairesExpanded} onClick={() => setPrestatairesExpanded(prev => !prev)} panelStyles={styles} copy={copy} />}
+                </>}
                 </>}
               </div>}
             </section>
 
-            <section className={styles.sidebarSection}>
-              <button type="button" className={styles.sidebarCollapseHeader} onClick={() => setSitesSectionExpanded(prev => !prev)} aria-expanded={sitesSectionExpanded} aria-controls="enterprise-sidebar-sites">
-                <span className={styles.sidebarInfoTitle}>
-                  {copy.sitesTitle}
-                  {(formData.sites || []).length > 0 ? <span className={styles.sidebarSectionCount}>{clientSites.length}</span> : null}
-                </span>
-                <Icon icon={sitesSectionExpanded ? "mdi:chevron-up" : "mdi:chevron-down"} className={styles.sidebarCollapseChevron} aria-hidden />
-              </button>
-              {sitesSectionExpanded && <div className={styles.sidebarBody} id="enterprise-sidebar-sites">
-                <div className={styles.sidebarBodyActions}>
-                  {canManageSites ? <SmartTooltip content={copy.manageSites}>
-                    <button type="button" className={styles.editInfoButton} onClick={() => setSitesModalOpen(true)} aria-label={copy.manageSites}>
-                      <FaPencilAlt />
-                    </button>
-                  </SmartTooltip> : null}
-                </div>
-                {(formData.sites || []).length === 0 ? <div className={styles.emptyState}>
-                    <Icon icon="mdi:map-marker-outline" className={styles.emptyIcon} />
-                    <h5>{copy.noSites}</h5>
-                  </div> : <>
-                  <div className={styles.sitesToolbar}>
-                    <Icon icon="mdi:magnify" className={styles.sitesSearchIcon} aria-hidden />
-                    <input type="text" inputMode="search" autoComplete="off" className={styles.sitesSearchInput} value={sitesSearch} onChange={event => {
-                    setSitesSearch(event.target.value);
-                    setSitesPage(1);
-                  }} placeholder={copy.searchSites} aria-label={copy.searchSitesAria} />
-                    {sitesSearch ? <button type="button" className={styles.sitesSearchClear} onClick={() => {
-                    setSitesSearch("");
-                    setSitesPage(1);
-                  }} aria-label={common.close}>
-                        <Icon icon="mdi:close" aria-hidden />
-                      </button> : null}
-                  </div>
-                  {filteredSites.length === 0 ? <div className={styles.sitesEmptySearch}>
-                      <Icon icon="mdi:magnify" aria-hidden />
-                      <p>{copy.noSiteResults}</p>
-                    </div> : <>
-                      <div className={styles.sitesDisplayCards}>
-                        {pagedSites.map(site => {
-                    const address = buildSiteAddress(site);
-                    const siteValue = getSiteLocationValue(site);
-                    const isActive = activeSiteFilter === siteValue;
-                    return <button type="button" key={getSiteId(site)} className={`${styles.sitePreviewCard} ${styles.siteFilterButton} ${isActive ? styles.siteFilterButtonActive : ""}`} onClick={() => setActiveSiteFilter(isActive ? null : siteValue)} title={interpolate(copy.filterSiteTitle, {
-                      name: getSiteDisplayName(site)
-                    })}>
-                              <div className={styles.sitePreviewMain}>
-                                <strong className={styles.sitePreviewName}>
-                                  {getSiteDisplayName(site)}
-                                  {site.isPrimary ? <span className={styles.sitePreviewPrimary}>{copy.sitePrimary}</span> : null}
-                                </strong>
-                                {address ? <span className={styles.sitePreviewAddress}>{address}</span> : null}
-                              </div>
-                              <div className={styles.sitePreviewMap} onClick={event => event.stopPropagation()}>
-                                <SiteMapPreview latitude={site.latitude} longitude={site.longitude} label={getSiteDisplayName(site)} address={address} compact />
-                              </div>
-                            </button>;
-                  })}
-                      </div>
-                      {sitesTotalPages > 1 ? <div className={styles.sitesPager}>
-                          <button type="button" className={styles.sitesPagerBtn} onClick={() => setSitesPage(safeSitesPage - 1)} disabled={safeSitesPage <= 1} aria-label={common.prevPage} title={common.prevPage}>
-                            <Icon icon="mdi:chevron-left" aria-hidden />
-                          </button>
-                          <span className={styles.sitesPagerInfo}>{interpolate(copy.sitesRange, {
-                      start: String(sitesRangeStart),
-                      end: String(sitesRangeEnd),
-                      total: String(filteredSites.length)
-                    })}</span>
-                          <button type="button" className={styles.sitesPagerBtn} onClick={() => setSitesPage(safeSitesPage + 1)} disabled={safeSitesPage >= sitesTotalPages} aria-label={common.nextPage} title={common.nextPage}>
-                            <Icon icon="mdi:chevron-right" aria-hidden />
-                          </button>
-                        </div> : null}
-                    </>}
-                  </>}
-              </div>}
+            <section className={`${styles.sidebarSection} ${styles.sidebarSlaSection}`}>
+              <SidebarSectionHeader
+                title={copy.slaTitle}
+                badge={isCommunity ? <ProFeatureBadge variant="inline" className={styles.proBadgeInline} /> : null}
+                expanded={slaExpanded}
+                locked={isCommunity}
+                onToggle={() => {
+                  if (isCommunity) {
+                    notifyProFeature(copy.proFeatures.sla, "sla");
+                    return;
+                  }
+                  setSlaExpanded(prev => !prev);
+                }}
+                controlsId="enterprise-sidebar-sla"
+                panelStyles={styles}
+              />
+              {!isCommunity && slaExpanded && <div className={styles.sidebarBody} id="enterprise-sidebar-sla">
+                  <ProFeatureLock locked={isCommunity} featureLabel={copy.proFeatures.sla} featureKey="sla" badgePosition="none" softLocked={isCommunity}>
+                    {parseClientSla(client?.contrat).enabled ? <table className={styles.sidebarSlaTable}>
+                        <thead>
+                          <tr>
+                            <th scope="col" />
+                            <th scope="col">{copy.slaFirstCol}</th>
+                            <th scope="col">{copy.slaResolutionCol}</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {formatClientSlaRows(client?.contrat).map(row => <tr key={row.key}>
+                              <th scope="row">{SLA_PRIORITY_LABELS[row.key] || row.label}</th>
+                              <td>{row.firstResponseHours}h</td>
+                              <td>{row.resolutionHours}h</td>
+                            </tr>)}
+                        </tbody>
+                      </table> : <div className={styles.emptyState}>
+                          <Icon icon="mdi:timer-sand" className={styles.emptyIcon} aria-hidden />
+                          <h5>{copy.noActiveSla}</h5>
+                        </div>}
+                  </ProFeatureLock>
+                </div>}
             </section>
 
+            {(isCommunity || supportCreditBalance !== null) && <section className={`${styles.sidebarSection} ${styles.sidebarCreditsSection}`}>
+                <SidebarSectionHeader
+                  title={copy.creditsTitle}
+                  badge={<>
+                      {!isCommunity && supportCreditBalance != null ? <span className={styles.sidebarCreditsBadge} title={copy.creditsTitle}>
+                          {Number(supportCreditBalance) || 0}
+                        </span> : null}
+                      {isCommunity ? <ProFeatureBadge variant="inline" className={styles.proBadgeInline} /> : null}
+                    </>}
+                  expanded={creditsExpanded}
+                  locked={isCommunity}
+                  onToggle={() => {
+                    if (isCommunity) {
+                      notifyProFeature(copy.proFeatures.creditPacks, "credits");
+                      return;
+                    }
+                    setCreditsExpanded(prev => !prev);
+                  }}
+                  controlsId="enterprise-sidebar-credits"
+                  panelStyles={styles}
+                  actions={!isCommunity && canAddCredits ? <SmartTooltip content={copy.addCreditPack}>
+                          <button type="button" className={styles.editInfoButton} onClick={e => {
+                    e.stopPropagation();
+                    setSupportCreditModalOpen(true);
+                  }} aria-label={copy.addCreditPack}>
+                            <FaPlus />
+                          </button>
+                        </SmartTooltip> : null}
+                />
+                {!isCommunity && creditsExpanded && <div className={styles.sidebarBody} id="enterprise-sidebar-credits">
+                    <ProFeatureLock locked={isCommunity} featureLabel={copy.proFeatures.creditPacks} featureKey="credits" badgePosition="none" softLocked={isCommunity}>
+                      {visibleSupportPacks.length > 0 && !isCommunity ? <ul className={styles.activityCreditList}>
+                          {visibleSupportPacks.map(pack => {
+                      const remaining = Number(pack.remaining_amount) || 0;
+                      const initial = Number(pack.initial_amount) || 0;
+                      const until = pack.valid_until ? new Date(pack.valid_until).toLocaleDateString("en-GB") : null;
+                      const status = String(pack.status || "active");
+                      return <li key={pack.id} className={`${styles.activityCreditCard} ${status === "depleted" || status === "expired" ? styles.activityCreditCardMuted : ""}`.trim()}>
+                                <div className={styles.activityCreditIcon} aria-hidden>
+                                  <Icon icon="mdi:ticket-confirmation-outline" />
+                                </div>
+                                <div className={styles.activityCreditBody}>
+                                  <div className={styles.activityCreditTop}>
+                                    <span className={styles.activityCreditLabel}>
+                                      {pack.label || copy.creditPackDefault}
+                                    </span>
+                                    <span className={`${styles.activityCreditValue} ${remaining <= 0 ? styles.activityCreditValueEmpty : ""}`}>
+                                      {remaining}/{initial}
+                                    </span>
+                                  </div>
+                                  <div className={styles.activityCreditMeta}>
+                                    <Icon icon="mdi:calendar-end" className={styles.activityCreditMetaIcon} aria-hidden />
+                                    <span>
+                                      {until ? interpolate(copy.creditValidUntil, {
+                                date: until
+                              }) : copy.creditNoExpiry}
+                                    </span>
+                                  </div>
+                                </div>
+                              </li>;
+                    })}
+                        </ul> : <div className={styles.emptyState}>
+                          <Icon icon="mdi:ticket-confirmation-outline" className={styles.emptyIcon} aria-hidden />
+                          <h5>{copy.noCreditPack}</h5>
+                        </div>}
+                    </ProFeatureLock>
+                  </div>}
+              </section>}
+
             <section className={styles.sidebarSection} data-guide="enterprise-sidebar-notes">
-              <button type="button" className={styles.sidebarCollapseHeader} onClick={() => setNotesSectionExpanded(prev => !prev)} aria-expanded={notesSectionExpanded} aria-controls="enterprise-sidebar-notes">
-                <span className={styles.sidebarInfoTitle}>
-                  {copy.notesTitle}
-                  {!loadingNotes && notes.length > 0 ? <span className={styles.sidebarSectionCount}>{notes.length}</span> : null}
-                </span>
-                <Icon icon={notesSectionExpanded ? "mdi:chevron-up" : "mdi:chevron-down"} className={styles.sidebarCollapseChevron} aria-hidden />
-              </button>
+              <SidebarSectionHeader
+                title={copy.notesTitle}
+                count={!loadingNotes && notes.length > 0 ? notes.length : null}
+                expanded={notesSectionExpanded}
+                onToggle={() => setNotesSectionExpanded(prev => !prev)}
+                controlsId="enterprise-sidebar-notes"
+                panelStyles={styles}
+                actions={canManageNotes ? <SmartTooltip content={copy.addNote}>
+                    <button type="button" className={styles.editInfoButton} onClick={e => {
+                  e.stopPropagation();
+                  openCreateNoteModal();
+                }} aria-label={copy.addNote}>
+                      <FaPlus />
+                    </button>
+                  </SmartTooltip> : null}
+              />
               {notesSectionExpanded && <div className={styles.sidebarBody} id="enterprise-sidebar-notes">
-                {!loadingNotes && notes.length > 0 && canManageNotes ? <div className={styles.sidebarBodyActions}>
-                    <SmartTooltip content={copy.addNote}>
-                      <button type="button" className={styles.editInfoButton} onClick={openCreateNoteModal} aria-label={copy.addNote}>
-                        <FaPlus />
-                      </button>
-                    </SmartTooltip>
-                  </div> : null}
-              {loadingNotes ? <div className={styles.loadingState}>{copy.loadingNotes}</div> : notes.length === 0 ? <div className={styles.clientNotesEmpty}>
-                  {canManageNotes ? <button type="button" className={styles.clientNotesAddButton} onClick={openCreateNoteModal}>
-                    {copy.addNote}
-                  </button> : null}
+              {loadingNotes ? <div className={styles.loadingState}>{copy.loadingNotes}</div> : notes.length === 0 ? <div className={styles.emptyState}>
+                  <Icon icon="mdi:note-text-outline" className={styles.emptyIcon} aria-hidden />
+                  <h5>{copy.noNotes}</h5>
                 </div> : <ul className={styles.clientNotesList}>
                   {notes.map(note => <li key={note.id} className={styles.clientNoteItem}>
                       <div className={styles.clientNoteHeader}>

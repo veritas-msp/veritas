@@ -32,14 +32,6 @@ const toMailtoHref = value => {
   return email ? `mailto:${encodeURIComponent(email)}` : "";
 };
 
-function getPrestataireInitials(prestataire) {
-  const nom = (prestataire?.nom || "").trim();
-  if (!nom) return "PR";
-  const parts = nom.split(/\s+/).filter(Boolean);
-  if (parts.length >= 2) return `${parts[0][0]}${parts[1][0]}`.toUpperCase();
-  return nom.slice(0, 2).toUpperCase();
-}
-
 function formatPersonName(contact, fallback = "") {
   const parts = [contact?.prenom, contact?.nom].filter(Boolean);
   return parts.join(" ") || fallback;
@@ -253,16 +245,12 @@ export default function PrestataireDetailPage({
       <header className={styles.pageHero}>
         <div className={styles.heroRow}>
           <div className={styles.heroMain}>
-            <div className={styles.heroAvatar}>{getPrestataireInitials(prestataire)}</div>
             <div className={styles.heroText}>
               <h1 className={styles.heroTitle}>
-                <span>{displayName}</span>
+                <StatusDot active={status.status === "active"} label={status.label} className={styles.heroTitleStatus} />
+                <span className={styles.heroTitleName}>{displayName}</span>
               </h1>
               <div className={styles.heroMeta} aria-label={copy.heroMetaAria}>
-                <span className={`${styles.statusChip} ${status.status === "active" ? styles.statusChipActive : styles.statusChipInactive}`}>
-                  <StatusDot active={status.status === "active"} />
-                  {status.label}
-                </span>
                 {prestataire.type ? (
                   <span className={styles.heroMetaItem}>
                     <Icon icon="mdi:tag-outline" aria-hidden />
@@ -330,8 +318,7 @@ export default function PrestataireDetailPage({
       </header>
 
       <div className={styles.pageBody}>
-        <div className={`${styles.pageGrid} ${localStyles.pageGridSingle}`}>
-          <main className={styles.mainColumn}>
+        <main className={`${styles.mainColumn} ${localStyles.fullWidthMain}`}>
             <section className={styles.panel}>
               <div className={styles.panelHeader}>
                 <h2 className={styles.panelTitle}>{copy.infoTitle}</h2>
@@ -465,7 +452,6 @@ export default function PrestataireDetailPage({
               </div>
             </section>
           </main>
-        </div>
       </div>
 
       <PrestataireFormModal

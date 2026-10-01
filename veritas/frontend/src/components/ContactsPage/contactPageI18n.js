@@ -1,17 +1,13 @@
 import { interpolate, pickLocaleMessages } from "../../i18n/translate";
-const STATUS_FILTER_KEYS = ["active", "inactive", "unknown"];
+const STATUS_FILTER_KEYS = ["active", "inactive"];
 const STATUS_FILTER_META = {
   active: {
     icon: "mdi:check-circle",
     kpiTone: "green"
   },
   inactive: {
-    icon: "mdi:pause-circle",
+    icon: "mdi:close-circle",
     kpiTone: "gray"
-  },
-  unknown: {
-    icon: "mdi:help-circle",
-    kpiTone: "amber"
   }
 };
 const SORT_OPTION_VALUES = ["nom:asc", "nom:desc", "prenom:asc", "client:asc", "email:asc", "poste:asc"];
@@ -46,12 +42,13 @@ const CONTACTS_COPY = {
       email: "Email",
       phone: "Téléphone",
       portal: "Portail",
+      supportTicketsTotal: "Total tickets support",
+      supportTicketsInProgress: "Tickets support en cours",
       actions: "Actions"
     },
     statusFilters: {
       active: "Actifs",
-      inactive: "Inactifs",
-      unknown: "Non renseigné"
+      inactive: "Inactifs"
     },
     portalFilter: "Portail",
     contactStatus: {
@@ -69,6 +66,7 @@ const CONTACTS_COPY = {
     },
     portal: {
       active: "Portail actif",
+      pending: "Invitation en attente",
       inactive: "Portail désactivé",
       none: "Aucun accès portail",
       label: "Portail"
@@ -151,6 +149,7 @@ const CONTACTS_COPY = {
     favorites: {
       add: "Ajouter aux favoris",
       remove: "Retirer des favoris",
+      columnLabel: "Favoris",
       columnAria: "Favoris"
     },
     bulkModal: {
@@ -219,12 +218,13 @@ const CONTACTS_COPY = {
       email: "Email",
       phone: "Phone",
       portal: "Portal",
+      supportTicketsTotal: "Total support tickets",
+      supportTicketsInProgress: "Support tickets in progress",
       actions: "Actions"
     },
     statusFilters: {
       active: "Active",
-      inactive: "Inactive",
-      unknown: "Not specified"
+      inactive: "Inactive"
     },
     portalFilter: "Portal",
     contactStatus: {
@@ -242,6 +242,7 @@ const CONTACTS_COPY = {
     },
     portal: {
       active: "Portal active",
+      pending: "Invitation pending",
       inactive: "Portal disabled",
       none: "No portal access",
       label: "Portal"
@@ -324,6 +325,7 @@ const CONTACTS_COPY = {
     favorites: {
       add: "Add to favorites",
       remove: "Remove from favorites",
+      columnLabel: "Favorites",
       columnAria: "Favorites"
     },
     bulkModal: {
@@ -392,12 +394,13 @@ const CONTACTS_COPY = {
       email: "E-Mail",
       phone: "Telefon",
       portal: "Portal",
+      supportTicketsTotal: "Support-Tickets gesamt",
+      supportTicketsInProgress: "Support-Tickets in Bearbeitung",
       actions: "Aktionen"
     },
     statusFilters: {
       active: "Aktiv",
-      inactive: "Inaktiv",
-      unknown: "Nicht angegeben"
+      inactive: "Inaktiv"
     },
     portalFilter: "Portal",
     contactStatus: {
@@ -415,6 +418,7 @@ const CONTACTS_COPY = {
     },
     portal: {
       active: "Portal aktiv",
+      pending: "Einladung ausstehend",
       inactive: "Portal deaktiviert",
       none: "Kein Portalzugang",
       label: "Portal"
@@ -497,6 +501,7 @@ const CONTACTS_COPY = {
     favorites: {
       add: "Zu Favoriten hinzufügen",
       remove: "Aus Favoriten entfernen",
+      columnLabel: "Favoriten",
       columnAria: "Favoriten"
     },
     bulkModal: {
@@ -565,12 +570,13 @@ const CONTACTS_COPY = {
       email: "Email",
       phone: "Telefono",
       portal: "Portale",
+      supportTicketsTotal: "Totale ticket support",
+      supportTicketsInProgress: "Ticket support in corso",
       actions: "Azioni"
     },
     statusFilters: {
       active: "Attivi",
-      inactive: "Inattivi",
-      unknown: "Non indicato"
+      inactive: "Inattivi"
     },
     portalFilter: "Portale",
     contactStatus: {
@@ -588,6 +594,7 @@ const CONTACTS_COPY = {
     },
     portal: {
       active: "Portale attivo",
+      pending: "Invito in attesa",
       inactive: "Portale disattivato",
       none: "Nessun accesso al portale",
       label: "Portale"
@@ -670,6 +677,7 @@ const CONTACTS_COPY = {
     favorites: {
       add: "Aggiungi ai preferiti",
       remove: "Rimuovi dai preferiti",
+      columnLabel: "Preferiti",
       columnAria: "Preferiti"
     },
     bulkModal: {
@@ -738,12 +746,13 @@ const CONTACTS_COPY = {
       email: "Email",
       phone: "Teléfono",
       portal: "Portal",
+      supportTicketsTotal: "Total tickets soporte",
+      supportTicketsInProgress: "Tickets soporte en curso",
       actions: "Acciones"
     },
     statusFilters: {
       active: "Activos",
-      inactive: "Inactivos",
-      unknown: "No indicado"
+      inactive: "Inactivos"
     },
     portalFilter: "Portal",
     contactStatus: {
@@ -761,6 +770,7 @@ const CONTACTS_COPY = {
     },
     portal: {
       active: "Portal activo",
+      pending: "Invitación pendiente",
       inactive: "Portal desactivado",
       none: "Sin acceso al portal",
       label: "Portal"
@@ -843,6 +853,7 @@ const CONTACTS_COPY = {
     favorites: {
       add: "Añadir a favoritos",
       remove: "Quitar de favoritos",
+      columnLabel: "Favoritos",
       columnAria: "Favoritos"
     },
     bulkModal: {

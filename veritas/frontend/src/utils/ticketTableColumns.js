@@ -53,7 +53,9 @@ export const TICKET_TABLE_COLUMN_IDS_BY_SCOPE = Object.freeze({
     "role",
     "email",
     "phone",
-    "portal"
+    "portal",
+    "support_tickets_total",
+    "support_tickets_in_progress"
   ])
 });
 
@@ -64,7 +66,17 @@ export const DEFAULT_TICKET_TABLE_COLUMNS_BY_SCOPE = Object.freeze({
   ticket: Object.freeze([...TICKET_TABLE_COLUMN_IDS_BY_SCOPE.ticket]),
   ticket_sales: Object.freeze([...TICKET_TABLE_COLUMN_IDS_BY_SCOPE.ticket_sales]),
   enterprises: Object.freeze([...TICKET_TABLE_COLUMN_IDS_BY_SCOPE.enterprises]),
-  contacts: Object.freeze([...TICKET_TABLE_COLUMN_IDS_BY_SCOPE.contacts])
+  // Colonnes tickets support optionnelles : activables via le modal colonnes.
+  contacts: Object.freeze([
+    "contact",
+    "gender",
+    "status",
+    "enterprise",
+    "role",
+    "email",
+    "phone",
+    "portal"
+  ])
 });
 
 export const DEFAULT_TICKET_TABLE_COLUMNS = DEFAULT_TICKET_TABLE_COLUMNS_BY_SCOPE.ticket;
@@ -121,7 +133,9 @@ export const TICKET_TABLE_COLUMN_SORT_KEYS = Object.freeze({
   role: "poste",
   email: "email",
   phone: "telephone",
-  portal: null
+  portal: null,
+  support_tickets_total: "support_tickets_total",
+  support_tickets_in_progress: "support_tickets_in_progress"
 });
 
 export const ENTERPRISES_COLUMN_LABEL_KEYS = Object.freeze({
@@ -143,7 +157,9 @@ export const CONTACTS_COLUMN_LABEL_KEYS = Object.freeze({
   role: "role",
   email: "email",
   phone: "phone",
-  portal: "portal"
+  portal: "portal",
+  support_tickets_total: "supportTicketsTotal",
+  support_tickets_in_progress: "supportTicketsInProgress"
 });
 
 export function normalizeTicketTableColumns(raw, {
@@ -190,7 +206,9 @@ export function filterColumnsForEdition(columns, { isCommunity = false, pageScop
 }
 
 export function getConfigurableTicketColumns({ isCommunity = false, pageScope = "ticket" } = {}) {
-  return filterColumnsForEdition(defaultsForScope(pageScope), { isCommunity, pageScope });
+  const scope = normalizeTicketTableColumnsPageScope(pageScope);
+  const catalog = [...(TICKET_TABLE_COLUMN_IDS_BY_SCOPE[scope] || TICKET_TABLE_COLUMN_IDS_BY_SCOPE.ticket)];
+  return filterColumnsForEdition(catalog, { isCommunity, pageScope: scope });
 }
 
 export function resolveEffectiveTicketTableColumns({

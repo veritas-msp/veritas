@@ -94,6 +94,28 @@ export async function deletePrestataire(prestataireId) {
   return await res.json();
 }
 
+export async function bulkUpdatePrestataires({
+  prestataireIds = [],
+  action = "delete"
+} = {}) {
+  const res = await fetch(`${BASE_URL}/bulk`, {
+    method: "POST",
+    credentials: "include",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({
+      prestataireIds,
+      action
+    })
+  });
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({}));
+    throw new Error(errorData.details || errorData.error || "Error bulk updating providers");
+  }
+  return await res.json();
+}
+
 export async function addPrestataireMembership(prestataireId, { client_id } = {}) {
   const res = await fetch(`${BASE_URL}/${prestataireId}/memberships`, {
     method: "POST",

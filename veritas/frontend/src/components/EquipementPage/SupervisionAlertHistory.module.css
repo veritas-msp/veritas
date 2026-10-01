@@ -151,7 +151,7 @@
 }
 
 .colSev {
-  width: 2.75rem;
+  width: 4.1rem;
 }
 
 .colAlert {
@@ -240,10 +240,16 @@
 }
 
 .sevCol {
-  width: 2.75rem;
-  padding-left: 0.85rem !important;
+  width: 4.1rem;
+  padding-left: 0.75rem !important;
   padding-right: 0.35rem !important;
   vertical-align: middle;
+}
+
+.leadingIcons {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.2rem;
 }
 
 .sevIcon {
@@ -309,20 +315,23 @@
   display: inline-flex;
   align-items: center;
   gap: 0.35rem;
-  margin-left: auto;
-  padding: 0.32rem 0.7rem;
+  flex-shrink: 0;
+  margin-left: 0.15rem;
+  height: 34px;
+  padding: 0 0.7rem;
   border-radius: 999px;
-  border: 1px solid var(--msp-border, #2f4260);
-  background: transparent;
-  color: var(--msp-muted, #8fa8c4);
-  font-size: 0.74rem;
+  border: 1px solid var(--msp-border, #dde3ed);
+  background: var(--msp-surface-2, #f7f9fc);
+  color: var(--msp-muted, #5c6b82);
+  font-size: 0.72rem;
   font-weight: 600;
   cursor: pointer;
 }
 
 .trashToggle:hover {
-  color: var(--msp-text, #e8edf5);
-  border-color: color-mix(in srgb, var(--msp-accent, #2b5fab) 40%, var(--msp-border, #2f4260));
+  color: var(--msp-text, #0f1c2e);
+  border-color: #c5d4ea;
+  background: #edf2f9;
 }
 
 .trashToggleActive {

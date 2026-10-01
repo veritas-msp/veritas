@@ -8,8 +8,11 @@ import { toast } from "react-toastify";
 import { getEquipmentInventoryList, fetchEquipmentTagsBatch } from "../../api/equipment";
 import { getLocalizedEquipmentTypeLabel } from "../../i18n/equipmentFamilyLabels";
 import { useAppLocale } from "../../hooks/useAppGeneralSettings";
+import { useCommonCopy } from "../../hooks/useCommonCopy";
+import { interpolate } from "../../i18n/translate";
 import { useTablePagination } from "../AdminPage/useTablePagination";
 import MspPageHero from "../Misc/MspPageHero/MspPageHero";
+import PageSkeleton from "../Misc/Skeleton/PageSkeleton";
 import SmartTooltip from "../SmartTooltip";
 import EquipmentBrandIcon from "../EquipementPage/constants/EquipmentBrandIcon";
 import { toDateInputValue } from "../EquipementPage/constants/firewallLicenceUtils";
@@ -340,6 +343,7 @@ function getSortValue(item, key, locale) {
 
 export default function EquipmentInventoryPage({ onNavigate }) {
   const locale = useAppLocale();
+  const common = useCommonCopy();
   const { fieldsFor } = useSystemFamilyExtensions();
   const copy = useMemo(() => getEquipmentInventoryPageCopy(locale), [locale]);
   const [pageGuideOpen, setPageGuideOpen] = useState(false);
@@ -1204,10 +1208,7 @@ export default function EquipmentInventoryPage({ onNavigate }) {
                     </div>
                   </div>
                   {loading ? (
-                    <div className={layout.stateBox}>
-                      <Icon icon="mdi:loading" className={layout.spinning} />
-                      <span>{copy.loading}</span>
-                    </div>
+                    <PageSkeleton variant="list" rows={8} label={copy.loading} />
                   ) : filtered.length === 0 ? (
                     <div className={layout.emptyState} data-guide="inventory-table">
                       <Icon icon="mdi:devices" className={layout.emptyStateIcon} />
@@ -1331,47 +1332,56 @@ export default function EquipmentInventoryPage({ onNavigate }) {
                             </tbody>
                           </table>
                         </div>
-                      </div>
 
-                      <div className={layout.pagination}>
-                        <div className={layout.paginationLeft}>
-                          <span className={layout.paginationLabel}>{copy.perPage}</span>
-                          <select
-                            className={layout.paginationSelect}
-                            value={pageSize}
-                            onChange={e => setPageSize(Number(e.target.value))}
-                          >
-                            <option value={10}>10</option>
-                            <option value={25}>25</option>
-                            <option value={50}>50</option>
-                            <option value={100}>100</option>
-                          </select>
-                        </div>
-                        <div className={layout.paginationRight}>
-                          <SmartTooltip content={copy.prevPage}>
-                            <button
-                              type="button"
-                              className={layout.pageBtn}
-                              onClick={() => setPage(Math.max(1, page - 1))}
-                              disabled={page <= 1}
-                              aria-label={copy.prevPage}
+                      {filtered.length > 0 ? (
+                        <div className={`${layout.pagination} ${layout.paginationEmbedded}`}>
+                          <div className={layout.paginationLeft}>
+                            <span className={layout.paginationLabel}>{copy.perPage}</span>
+                            <select
+                              className={layout.paginationSelect}
+                              value={pageSize}
+                              onChange={e => setPageSize(Number(e.target.value))}
                             >
-                              <FaChevronLeft />
-                            </button>
-                          </SmartTooltip>
-                          <span className={layout.paginationInfo}>{copy.formatPageInfo(page, totalPages)}</span>
-                          <SmartTooltip content={copy.nextPage}>
-                            <button
-                              type="button"
-                              className={layout.pageBtn}
-                              onClick={() => setPage(Math.min(totalPages, page + 1))}
-                              disabled={page >= totalPages}
-                              aria-label={copy.nextPage}
-                            >
-                              <FaChevronRight />
-                            </button>
-                          </SmartTooltip>
+                              <option value={10}>10</option>
+                              <option value={25}>25</option>
+                              <option value={50}>50</option>
+                              <option value={100}>100</option>
+                            </select>
+                            <span className={layout.paginationInfo}>
+                              {interpolate(common.rangeInfo || "{start}–{end} / {total}", {
+                                start: String((page - 1) * pageSize + 1),
+                                end: String(Math.min(page * pageSize, filtered.length)),
+                                total: String(filtered.length)
+                              })}
+                            </span>
+                          </div>
+                          <div className={layout.paginationRight}>
+                            <SmartTooltip content={copy.prevPage}>
+                              <button
+                                type="button"
+                                className={layout.pageBtn}
+                                onClick={() => setPage(Math.max(1, page - 1))}
+                                disabled={page <= 1}
+                                aria-label={copy.prevPage}
+                              >
+                                <FaChevronLeft />
+                              </button>
+                            </SmartTooltip>
+                            <span className={layout.paginationInfo}>{copy.formatPageInfo(page, totalPages)}</span>
+                            <SmartTooltip content={copy.nextPage}>
+                              <button
+                                type="button"
+                                className={layout.pageBtn}
+                                onClick={() => setPage(Math.min(totalPages, page + 1))}
+                                disabled={page >= totalPages}
+                                aria-label={copy.nextPage}
+                              >
+                                <FaChevronRight />
+                              </button>
+                            </SmartTooltip>
+                          </div>
                         </div>
+                      ) : null}
                       </div>
                     </>
                   )}

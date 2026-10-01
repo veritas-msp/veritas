@@ -391,7 +391,7 @@ export default function DomainsConfigModal({
         <input id="manual-domain-name" type="text" className={formStyles.input} value={manualForm.nom} onChange={e => setManualForm({
         ...manualForm,
         nom: e.target.value
-      })} placeholder="exemple.fr" />
+      })} placeholder={copy.manual.domainNamePlaceholder} />
       </div>
       <div className={formStyles.field}>
         <label className={formStyles.label} htmlFor="manual-domain-registrar">

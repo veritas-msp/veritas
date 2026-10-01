@@ -467,6 +467,7 @@ const ANTISPAM_MODAL_COPY = {
       apiKeyHint: "Veritas tauscht diesen Schlüssel automatisch gegen ein Sitzungstoken.",
       detectedAccountLabel: "Erkanntes Konto",
       clientIdLabel: "Client-ID",
+      clientIdPlaceholder: "Client-ID bei der Erstellung des Schlüssels angezeigt",
       apiKeyGuideLink: "Wie erhält man den API-Schlüssel?"
     },
     loading: "Antispam-Konfiguration wird geladen…",
@@ -643,6 +644,7 @@ const ANTISPAM_MODAL_COPY = {
       apiKeyHint: "Veritas scambia automaticamente questa chiave con un token di sessione.",
       detectedAccountLabel: "Account rilevato",
       clientIdLabel: "Client ID",
+      clientIdPlaceholder: "Client ID mostrato alla creazione della chiave",
       apiKeyGuideLink: "Come ottenere la chiave API?"
     },
     loading: "Caricamento configurazione antispam…",
@@ -819,6 +821,7 @@ const ANTISPAM_MODAL_COPY = {
       apiKeyHint: "Veritas intercambia automáticamente esta clave por un token de sesión.",
       detectedAccountLabel: "Cuenta detectada",
       clientIdLabel: "Client ID",
+      clientIdPlaceholder: "Client ID mostrado al crear la clave",
       apiKeyGuideLink: "¿Cómo obtener la clave API?"
     },
     loading: "Cargando configuración antispam…",

@@ -1,11 +1,12 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Icon } from "@iconify/react";
-import { FaChevronLeft, FaChevronRight } from "react-icons/fa";
+import { FaChevronLeft, FaChevronRight, FaTimes } from "react-icons/fa";
 import { toast } from "react-toastify";
 import { useAppFormatters } from "../../hooks/useAppGeneralSettings";
 import { deleteCampaign, updateClientCampaign } from "../../api/campaigns";
 import API_BASE_URL from "../../config";
 import MspEmptyState from "../Misc/MspEmptyState/MspEmptyState";
+import PageSkeleton from "../Misc/Skeleton/PageSkeleton";
 import ConfirmModal from "../Misc/ConfirmModal/ConfirmModal";
 import SmartTooltip from "../SmartTooltip";
 import layout from "../EnterprisesPage/EnterprisesPage.module.css";
@@ -14,41 +15,6 @@ import CyberBulkBar from "./CyberBulkBar";
 import CyberBulkEditModal from "./CyberBulkEditModal";
 import { useCyberBulkSelection } from "./useCyberBulkSelection";
 import { createTrackedAbortController } from "../../utils/pageLoadAbort";
-const HERO_KPI_KEYS = [{
-  key: "all",
-  icon: "mdi:bullhorn-outline",
-  tone: "neutral"
-}, {
-  key: "active",
-  icon: "mdi:shield-check",
-  tone: "good"
-}, {
-  key: "en_preparation",
-  icon: "mdi:calendar-clock",
-  tone: "neutral"
-}, {
-  key: "suspendue",
-  icon: "mdi:alert-circle-outline",
-  tone: "warn"
-}];
-function KpiCard({
-  icon,
-  label,
-  value,
-  tone = "neutral",
-  active,
-  onClick
-}) {
-  return <button type="button" className={`${styles.kpiCard} ${active ? styles.kpiCardActive : ""}`} onClick={onClick}>
-      <span className={`${styles.kpiIcon} ${styles[`kpiIcon_${tone}`]}`}>
-        <Icon icon={icon} />
-      </span>
-      <span className={styles.kpiBody}>
-        <span className={styles.kpiValue}>{value}</span>
-        <span className={styles.kpiLabel}>{label}</span>
-      </span>
-    </button>;
-}
 function SortableHeader({
   column,
   label,
@@ -191,14 +157,6 @@ export default function CampaignsMspDashboard({
     if (!value) return "-";
     return formatDate(value) || "-";
   };
-  const getHeroKpiValue = key => {
-    if (key === "all") return stats.total;
-    return stats.statusCounts[key] ?? 0;
-  };
-  const getHeroKpiLabel = key => {
-    if (key === "all") return campaignsCopy?.eyebrow || msp?.kpi?.solutions;
-    return campaignsCopy?.statusFilters?.[key];
-  };
   const reload = useCallback(async () => {
     await onCampaignsChanged?.();
   }, [onCampaignsChanged]);
@@ -290,20 +248,31 @@ export default function CampaignsMspDashboard({
     }
   };
   if (!campaignsCopy || !msp) return null;
+  const statusFilterItems = copy.campaignStatusFilters || [];
   return <div className={styles.dashboard}>
-      <div className={styles.kpiStrip}>
-        {HERO_KPI_KEYS.map(item => {
-          const isActive = item.key === "all" ? statusFilter === "all" : statusFilter === item.key;
-          const tone = item.key === "suspendue" && stats.issues > 0 ? "warn" : item.tone;
-          return <KpiCard key={item.key} icon={item.icon} label={getHeroKpiLabel(item.key)} value={getHeroKpiValue(item.key)} tone={tone} active={isActive} onClick={() => setStatusFilter(item.key === statusFilter && item.key !== "all" ? "all" : item.key)} />;
-        })}
-      </div>
-
-      <div className={styles.toolbar}>
-        <label className={styles.searchBox}>
-          <Icon icon="mdi:magnify" width={18} aria-hidden />
-          <input type="search" placeholder={campaignsCopy.searchPlaceholder} value={search} onChange={e => setSearch(e.target.value)} />
-        </label>
+      <div className={`${layout.toolbar} ${layout.toolbarWithFilters}`}>
+        <div className={layout.searchWrap}>
+          <Icon icon="mdi:magnify" className={layout.searchIcon} aria-hidden />
+          <input type="search" inputMode="search" enterKeyHint="search" placeholder={campaignsCopy.searchPlaceholder} value={search} onChange={e => setSearch(e.target.value)} className={layout.searchInput} aria-label={campaignsCopy.searchPlaceholder} />
+          {search ? <SmartTooltip content={msp.clearSearch || "Effacer"}>
+              <button type="button" onClick={() => setSearch("")} className={layout.clearButton} aria-label={msp.clearSearch || "Effacer"}>
+                <FaTimes />
+              </button>
+            </SmartTooltip> : null}
+        </div>
+        <div className={layout.statusChips} role="group">
+          {statusFilterItems.map(item => {
+            const count = stats.statusCounts[item.id] || 0;
+            const active = statusFilter === item.id;
+            return <button key={item.id} type="button" className={`${layout.statusChip} ${active ? layout.statusChipActive : ""} ${count === 0 ? layout.statusChipDisabled : ""}`} onClick={() => setStatusFilter(item.id === statusFilter ? "all" : item.id)} disabled={loading || count === 0}>
+                <span className={`${layout.statusChipIcon} ${layout[`kpiIcon_${item.kpiTone}`]}`}>
+                  <Icon icon={item.icon} />
+                </span>
+                <span className={layout.statusChipLabel}>{item.label}</span>
+                <span className={layout.statusChipCount}>{count}</span>
+              </button>;
+          })}
+        </div>
         {onAddCampaign ? <div className={styles.toolbarActions}>
             <SmartTooltip content={copy.heroActions?.addCampaign || campaignsCopy.emptyCta}>
               <button type="button" className={`${layout.primaryBtn} ${layout.primaryBtnIconOnly}`} onClick={onAddCampaign} aria-label={copy.heroActions?.addCampaign || campaignsCopy.emptyCta}>
@@ -313,12 +282,12 @@ export default function CampaignsMspDashboard({
           </div> : null}
       </div>
 
-      {loading ? <div className={styles.loadingState}>
-          <Icon icon="mdi:loading" className={styles.spin} width={28} />
-          <span>{campaignsCopy.loading}</span>
-        </div> : filteredRows.length === 0 ? <MspEmptyState icon="mdi:shield-lock-off" title={campaigns.length === 0 ? campaignsCopy.emptyTitle : msp.antivirus.noResultsTitle} text={campaigns.length === 0 ? campaignsCopy.emptyText : msp.antivirus.noResultsText} actionLabel={campaigns.length === 0 ? campaignsCopy.emptyCta : null} onAction={campaigns.length === 0 ? onAddCampaign : null} /> : <section className={styles.panel}>
+      {loading ? (
+        <PageSkeleton variant="list" rows={8} label={campaignsCopy.loading} />
+      ) : filteredRows.length === 0 ? <MspEmptyState icon="mdi:bullhorn-outline" title={campaigns.length === 0 ? campaignsCopy.emptyTitle : msp.antivirus.noResultsTitle} text={campaigns.length === 0 ? campaignsCopy.emptyText : msp.antivirus.noResultsText} actionLabel={campaigns.length === 0 ? campaignsCopy.emptyCta : null} onAction={campaigns.length === 0 ? onAddCampaign : null} /> : <section className={styles.panel}>
           <CyberBulkBar copy={copy} selectedCount={selectedCount} allSelected={allSelected} filteredCount={sortedRows.length} busy={busy} onSelectAll={selectAll} onEdit={() => setEditOpen(true)} onRefresh={handleBulkRefresh} onDelete={() => setDeleteOpen(true)} onClear={clearSelection} />
           <div className={styles.tableWrap}>
+            <div className={styles.tableScroll}>
             <table className={styles.table}>
               <thead>
                 <tr>
@@ -368,8 +337,8 @@ export default function CampaignsMspDashboard({
             })}
               </tbody>
             </table>
-          </div>
-          {sortedRows.length > 0 ? <div className={styles.paginationBar}>
+            </div>
+            {sortedRows.length > 0 ? <div className={styles.paginationBar}>
               <div className={styles.paginationLeft}>
                 <span className={styles.paginationLabel}>{campaignsCopy.rowsPerPage}</span>
                 <select className={styles.paginationSelect} value={pageSize} onChange={e => setPageSize(Number(e.target.value))}>
@@ -391,6 +360,7 @@ export default function CampaignsMspDashboard({
                 </button>
               </div>
             </div> : null}
+          </div>
         </section>}
       <CyberBulkEditModal open={editOpen} kind="campaigns" items={selectedItems} copy={copy} campaignStatuses={copy.campaignStatuses || []} onClose={() => setEditOpen(false)} onSubmit={handleBulkEdit} />
       <ConfirmModal open={deleteOpen} variant="danger" title={copy.bulk.deleteTitle} message={copy.formatBulkDeleteMessage(selectedCount)} confirmLabel={copy.bulk.deleteConfirm} loading={busy} onClose={() => setDeleteOpen(false)} onConfirm={handleBulkDelete} />

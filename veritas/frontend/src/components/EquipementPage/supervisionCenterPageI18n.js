@@ -5,13 +5,14 @@ const SUPERVISION_COPY = {
   fr: {
     eyebrow: "Services managés",
     pageTitle: "Centre de supervision",
-    subtitle: "Alertes de monitoring Â· périphériques mappés via une intégration (CheckMK).",
-    loading: "Balayage en coursâ€¦",
+    subtitle: "Alertes de monitoring",
+    loading: "Balayage en cours...",
     tabSectionsAria: "Sections supervision",
     fleetSync: {
-      button: "Sync surveillance",
-      buttonBusy: "Sync en coursâ€¦",
+      button: "Synchroniser",
+      buttonBusy: "Sync en cours...",
       buttonTitle: "Lancer une synchronisation CheckMK sur tous les périphériques mappés",
+      buttonAria: "Lancer la synchronisation globale",
       eyebrow: "Surveillance",
       title: "Synchronisation globale",
       close: "Fermer",
@@ -20,27 +21,34 @@ const SUPERVISION_COPY = {
       minimizeAria: "Réduire la synchronisation",
       expandTitle: "Réouvrir la synchronisation",
       expandAria: "Afficher la synchronisation",
-      starting: "Démarrage de la synchronisationâ€¦",
+      starting: "Démarrage de la synchronisation...",
+      cancelling: "Arrêt en cours...",
+      cancel: "Arrêter",
+      cancelAria: "Arrêter la synchronisation",
+      cancelError: "Impossible d'arrêter la synchronisation.",
       idle: "En attente",
       progressLabel: "Progression",
-      hint: "Synchronisation des périphériques mappés CheckMKâ€¦",
-      currentHost: "En cours Â· {host}",
+      hint: "Synchronisation des périphériques mappés CheckMK...",
+      currentHost: "En cours - {host}",
+      startedBy: "Lancée par {user}",
       synced: "OK",
       skipped: "Ignorés",
-      failed: "Ã‰checs",
+      failed: "Échecs",
       alerts: "Alertes",
-      footerRunning: "Vous pouvez réduire la fenêtre et suivre la progression dans lâ€™en-tête.",
+      footerRunning: "Vous pouvez réduire la fenêtre et suivre la progression dans l'en-tête.",
       footerDone: "Synchronisation terminée.",
-      errorTitle: "Ã‰chec",
+      errorTitle: "Échec",
       errorGeneric: "Impossible de lancer la synchronisation.",
-      integrationDisabled: "Lâ€™intégration CheckMK est désactivée.",
+      noActive: "Aucune synchronisation en cours.",
+      integrationDisabled: "L'intégration CheckMK est désactivée.",
       syncSuspended: "La sync auto est suspendue. Relancez avec force ou réactivez-la dans Administration.",
       alreadyRunning: "Une synchronisation est déjà en cours.",
       status: {
-        running: "Synchronisation en coursâ€¦",
+        running: "Synchronisation en cours...",
         success: "Synchronisation terminée",
         partial: "Terminée avec des erreurs partielles",
-        error: "Ã‰chec de la synchronisation",
+        error: "Échec de la synchronisation",
+        cancelled: "Synchronisation arrêtée",
         skipped: "Synchronisation ignorée"
       }
     },
@@ -55,7 +63,7 @@ const SUPERVISION_COPY = {
       steps: {
         hero: {
           title: "Centre de notifications",
-          content: "Cette page affiche uniquement les alertes des périphériques mappés à une intégration de monitoring (CheckMK). Consultez-les et agissez depuis une file unique."
+          content: "Cette page affiche uniquement les alertes des périphériques mappés à une intégration de monitoring. Consultez-les et agissez depuis une file unique."
         },
         tabs: {
           title: "Vues principales",
@@ -93,7 +101,7 @@ const SUPERVISION_COPY = {
         aria: "Couverture supervision par famille",
         title: "Couverture",
         ratio: "{monitored}/{total}",
-        tooltip: "{label} Â· {monitored}/{total} supervisés via une intégration",
+        tooltip: "{label} · {monitored}/{total} supervisés via une intégration",
         families: {
           Ordinateurs: "Ordinateurs",
           Internet: "Internet",
@@ -124,13 +132,13 @@ const SUPERVISION_COPY = {
         linked: "Ticket associé",
         closed: "Closes"
       },
-      searchPlaceholder: "Rechercher une alerte, un clientâ€¦",
+      searchPlaceholder: "Rechercher une alerte, un client...",
       sortBy: "Trier par {label}",
       backupReasons: {
         critical: "Dernière sauvegarde il y a plus de 48 h, ou inconnue",
         warning: "Dernière sauvegarde il y a plus de 24 h"
       },
-      emptyTitle: "Zzzâ€¦ tout est calme",
+      emptyTitle: "Zzz... tout est calme",
       emptyText: "Aucune alerte pour le moment. On peut souffler un peu.",
       actionsAria: "Actions sur l'alerte",
       severityInfo: "Info",
@@ -138,7 +146,7 @@ const SUPERVISION_COPY = {
         handledBy: "Pris en charge par {name}",
         ticketSupport: "Ticket Support lié",
         ticketPresta: "Ticket Presta lié",
-        planning: "Ã‰vénement planifié",
+        planning: "Événement planifié",
         remediation: "Remédiation liée"
       },
       actions: {
@@ -181,12 +189,12 @@ const SUPERVISION_COPY = {
       },
       toasts: {
         acked: "Alerte prise en charge",
-        unacked: "Alerte rendue â€” plus personne n'est assigné",
-        resolved: "Alerte résolue â€” déplacée dans l'historique",
-        dismissed: "Alerte ignorée â€” déplacée dans l'historique",
+        unacked: "Alerte rendue — plus personne n'est assigné",
+        resolved: "Alerte résolue — déplacée dans l'historique",
+        dismissed: "Alerte ignorée — déplacée dans l'historique",
         linked: "Ticket associé à l'alerte",
         actionFailed: "Action impossible sur l'alerte",
-        supportFormRequired: "Configurez un formulaire support dans la règle dâ€™alerte avant de créer un ticket."
+        supportFormRequired: "Configurez un formulaire support dans la règle d'alerte avant de créer un ticket."
       },
       detailBackups: "Détail sauvegardes",
       detailContracts: "Détail contrats & licences",
@@ -194,10 +202,10 @@ const SUPERVISION_COPY = {
       offline: "Hors ligne"
     },
     history: {
-      searchPlaceholder: "Rechercher dans l'historiqueâ€¦",
+      searchPlaceholder: "Rechercher dans l'historique...",
       sortBy: "Trier par {label}",
-      loading: "Chargement de l'historiqueâ€¦",
-      loadingEvents: "Chargement de la timelineâ€¦",
+      loading: "Chargement de l'historique...",
+      loadingEvents: "Chargement de la timeline...",
       emptyTitle: "Aucun historique",
       emptyText: "Les alertes prises en charge, avec ticket ou closes apparaîtront ici.",
       emptyTrashTitle: "Corbeille vide",
@@ -329,11 +337,11 @@ const SUPERVISION_COPY = {
         missing_ip: "Compléter l'adresse IP dans la fiche matériel."
       },
       statusHints: {
-        critical: "Alerte critique Â· intervention immédiate.",
-        offline: "Agent RMM hors ligne Â· vérifier connectivité du poste.",
-        warning: "Warning CheckMK Â· analyser le service avant dégradation.",
-        unmapped: "Ã‰quipement non lié à une supervision Â· activer le mapping.",
-        no_data: "Aucune donnée de supervision Â· vérifier le mapping.",
+        critical: "Alerte critique · intervention immédiate.",
+        offline: "Agent RMM hors ligne · vérifier connectivité du poste.",
+        warning: "Warning CheckMK · analyser le service avant dégradation.",
+        unmapped: "Équipement non lié à une supervision · activer le mapping.",
+        no_data: "Aucune donnée de supervision · vérifier le mapping.",
         default: "Point de vigilance à traiter depuis la fiche matériel."
       }
     },
@@ -343,13 +351,13 @@ const SUPERVISION_COPY = {
       monitored: "Supervisé",
       uncovered: "Non couvert",
       supervisedLabel: "supervisé",
-      tooltip: "{label} Â· {monitored}/{total} supervisés",
+      tooltip: "{label} · {monitored}/{total} supervisés",
       openFamily: "Voir les périphériques {label}"
     },
     overview: {
       hexTitle: "Vue d'ensemble",
       hexKpi: {
-        todo: "Ã€ traiter",
+        todo: "À traiter",
         devices: "Périphériques",
         issues: "Alertes",
         critical: "Critiques",
@@ -357,13 +365,13 @@ const SUPERVISION_COPY = {
         backups: "Sauvegardes",
         supervised: "Supervisé"
       },
-      priorityTitle: "Ã€ traiter en priorité",
+      priorityTitle: "À traiter en priorité",
       viewAll: "Voir tout",
       familyTitle: "Supervision par type de périphérique"
     },
     search: {
-      devices: "Rechercher un périphérique, client, IPâ€¦",
-      rmm: "Rechercher un poste, client, IP, OSâ€¦",
+      devices: "Rechercher un périphérique, client, IP...",
+      rmm: "Rechercher un poste, client, IP, OS...",
       clients: "Clients",
       clearFilters: "Effacer ({count})",
       agentCount: "{count} agent",
@@ -403,7 +411,7 @@ const SUPERVISION_COPY = {
         noMatchTitle: "Aucun agent ne correspond",
         allOnlineTitle: "Tous les agents sont en ligne",
         noAgentsTitle: "Aucun agent RMM",
-        noMatchText: "Ajustez la recherche (poste, client, IP, OS, domaineâ€¦).",
+        noMatchText: "Ajustez la recherche (poste, client, IP, OS, domaine...).",
         allOnlineText: "Aucun poste n'est actuellement hors ligne.",
         noAgentsText: "Déployez l'agent Veritas sur les postes clients pour la supervision RMM."
       },
@@ -441,13 +449,14 @@ const SUPERVISION_COPY = {
   en: {
     eyebrow: "Managed services",
     pageTitle: "Monitoring center",
-    subtitle: "Monitoring alerts Â· devices mapped via an integration (CheckMK).",
-    loading: "Scanningâ€¦",
+    subtitle: "Monitoring alerts",
+    loading: "Scanning...",
     tabSectionsAria: "Monitoring sections",
-    fleetSync: {
-      button: "Monitoring sync",
-      buttonBusy: "Syncingâ€¦",
+        fleetSync: {
+      button: "Sync",
+      buttonBusy: "Syncing...",
       buttonTitle: "Run a CheckMK sync on all mapped devices",
+      buttonAria: "Start global synchronization",
       eyebrow: "Monitoring",
       title: "Global synchronization",
       close: "Close",
@@ -456,11 +465,16 @@ const SUPERVISION_COPY = {
       minimizeAria: "Minimize synchronization",
       expandTitle: "Reopen synchronization",
       expandAria: "Show synchronization",
-      starting: "Starting synchronizationâ€¦",
+      starting: "Starting synchronization...",
+      cancelling: "Stopping...",
+      cancel: "Stop",
+      cancelAria: "Stop synchronization",
+      cancelError: "Unable to stop synchronization.",
       idle: "Waiting",
       progressLabel: "Progress",
-      hint: "Syncing CheckMK-mapped devicesâ€¦",
-      currentHost: "In progress Â· {host}",
+      hint: "Syncing CheckMK-mapped devices...",
+      currentHost: "In progress - {host}",
+      startedBy: "Started by {user}",
       synced: "OK",
       skipped: "Skipped",
       failed: "Failed",
@@ -469,14 +483,16 @@ const SUPERVISION_COPY = {
       footerDone: "Synchronization finished.",
       errorTitle: "Failed",
       errorGeneric: "Unable to start synchronization.",
+      noActive: "No synchronization in progress.",
       integrationDisabled: "CheckMK integration is disabled.",
       syncSuspended: "Automatic sync is suspended. Force-run or re-enable it in Administration.",
       alreadyRunning: "A synchronization is already running.",
       status: {
-        running: "Synchronization in progressâ€¦",
+        running: "Synchronization in progress...",
         success: "Synchronization completed",
         partial: "Completed with partial errors",
         error: "Synchronization failed",
+        cancelled: "Synchronization stopped",
         skipped: "Synchronization skipped"
       }
     },
@@ -491,7 +507,7 @@ const SUPERVISION_COPY = {
       steps: {
         hero: {
           title: "Notification center",
-          content: "This page shows only alerts from devices mapped to a monitoring integration (CheckMK). Review and act from a single queue."
+          content: "This page shows only alerts from devices mapped to a monitoring integration. Review and act from a single queue."
         },
         tabs: {
           title: "Main views",
@@ -533,7 +549,7 @@ const SUPERVISION_COPY = {
         aria: "Supervision coverage by family",
         title: "Coverage",
         ratio: "{monitored}/{total}",
-        tooltip: "{label} Â· {monitored}/{total} monitored via an integration",
+        tooltip: "{label} · {monitored}/{total} monitored via an integration",
         families: {
           Ordinateurs: "Computers",
           Internet: "Internet",
@@ -564,13 +580,13 @@ const SUPERVISION_COPY = {
         linked: "With ticket",
         closed: "Closed"
       },
-      searchPlaceholder: "Search an alert, a clientâ€¦",
+      searchPlaceholder: "Search an alert, a client...",
       sortBy: "Sort by {label}",
       backupReasons: {
         critical: "Last backup more than 48 h ago, or unknown",
         warning: "Last backup more than 24 h ago"
       },
-      emptyTitle: "Zzzâ€¦ all quiet",
+      emptyTitle: "Zzz... all quiet",
       emptyText: "No alerts right now. Time for a little break.",
       actionsAria: "Alert actions",
       severityInfo: "Info",
@@ -593,7 +609,7 @@ const SUPERVISION_COPY = {
         dismiss: "Dismiss"
       },
       actionHints: {
-        ack: "Acknowledge this alert â€” mark that you are handling it",
+        ack: "Acknowledge this alert — mark that you are handling it",
         unack: "Release this alert and unassign yourself",
         create: "Create a ticket or schedule an event",
         support: "Create a Support ticket linked to this alert",
@@ -621,9 +637,9 @@ const SUPERVISION_COPY = {
       },
       toasts: {
         acked: "Alert acknowledged",
-        unacked: "Alert released â€” no longer assigned",
-        resolved: "Alert resolved â€” moved to history",
-        dismissed: "Alert dismissed â€” moved to history",
+        unacked: "Alert released — no longer assigned",
+        resolved: "Alert resolved — moved to history",
+        dismissed: "Alert dismissed — moved to history",
         linked: "Remediation linked to alert",
         actionFailed: "Could not update alert",
         supportFormRequired: "Configure a support form in the alert rule before creating a ticket."
@@ -634,10 +650,10 @@ const SUPERVISION_COPY = {
       offline: "Offline"
     },
     history: {
-      searchPlaceholder: "Search historyâ€¦",
+      searchPlaceholder: "Search history...",
       sortBy: "Sort by {label}",
-      loading: "Loading historyâ€¦",
-      loadingEvents: "Loading timelineâ€¦",
+      loading: "Loading history...",
+      loadingEvents: "Loading timeline...",
       emptyTitle: "No history yet",
       emptyText: "Acknowledged, ticket-linked or closed alerts will appear here.",
       emptyTrashTitle: "Trash is empty",
@@ -769,11 +785,11 @@ const SUPERVISION_COPY = {
         missing_ip: "Complete the IP address in the hardware record."
       },
       statusHints: {
-        critical: "Critical supervision alert Â· immediate action required.",
-        offline: "RMM agent offline Â· check endpoint connectivity.",
-        warning: "Monitoring warning Â· analyze before degradation.",
-        unmapped: "Device not linked to supervision Â· enable mapping.",
-        no_data: "No supervision data Â· verify mapping.",
+        critical: "Critical supervision alert · immediate action required.",
+        offline: "RMM agent offline · check endpoint connectivity.",
+        warning: "Monitoring warning · analyze before degradation.",
+        unmapped: "Device not linked to supervision · enable mapping.",
+        no_data: "No supervision data · verify mapping.",
         default: "Item to handle from the hardware record."
       }
     },
@@ -783,7 +799,7 @@ const SUPERVISION_COPY = {
       monitored: "Monitored",
       uncovered: "Not covered",
       supervisedLabel: "monitored",
-      tooltip: "{label} Â· {monitored}/{total} monitored",
+      tooltip: "{label} · {monitored}/{total} monitored",
       openFamily: "View {label} devices"
     },
     overview: {
@@ -802,8 +818,8 @@ const SUPERVISION_COPY = {
       familyTitle: "Monitoring by device type"
     },
     search: {
-      devices: "Search device, client, IPâ€¦",
-      rmm: "Search workstation, client, IP, OSâ€¦",
+      devices: "Search device, client, IP...",
+      rmm: "Search workstation, client, IP, OS...",
       clients: "Clients",
       clearFilters: "Clear ({count})",
       agentCount: "{count} agent",
@@ -843,7 +859,7 @@ const SUPERVISION_COPY = {
         noMatchTitle: "No matching agents",
         allOnlineTitle: "All agents are online",
         noAgentsTitle: "No RMM agents",
-        noMatchText: "Adjust your search (workstation, client, IP, OS, domainâ€¦).",
+        noMatchText: "Adjust your search (workstation, client, IP, OS, domain...).",
         allOnlineText: "No workstations are currently offline.",
         noAgentsText: "Deploy the Veritas agent on client workstations for RMM supervision."
       },
@@ -880,42 +896,42 @@ const SUPERVISION_COPY = {
   },
   de: {
     eyebrow: "Managed Services",
-    pageTitle: "Ãœberwachungszentrum",
-    subtitle: "Monitoring-Alarme Â· GerÃ¤te, die über eine Integration gemappt sind (CheckMK).",
-    loading: "Abtastung lÃ¤uftâ€¦",
-    tabSectionsAria: "Ãœberwachungsbereiche",
+    pageTitle: "Überwachungszentrum",
+    subtitle: "Monitoring-Alarme",
+    loading: "Abtastung läuft...",
+    tabSectionsAria: "Überwachungsbereiche",
     tabs: {
       operations: "Alarme",
       history: "Verlauf",
       settings: "Regeln"
     },
     guide: {
-      fabLabel: "Leitfaden Ãœberwachungszentrum",
-      tourTitle: "Ãœberwachungszentrum",
+      fabLabel: "Leitfaden Überwachungszentrum",
+      tourTitle: "Überwachungszentrum",
       steps: {
         hero: {
           title: "Benachrichtigungszentrum",
-          content: "Diese Seite zeigt nur Alarme von GerÃ¤ten, die einer Monitoring-Integration (CheckMK) zugeordnet sind. Prüfen und handeln Sie in einer gemeinsamen Warteschlange."
+          content: "Diese Seite zeigt nur Alarme von Geräten, die einer Monitoring-Integration zugeordnet sind. Prüfen und handeln Sie in einer gemeinsamen Warteschlange."
         },
         tabs: {
           title: "Hauptansichten",
-          content: "Alarme = aktive Alarmtabelle. Verlauf = bestÃ¤tigte oder geschlossene Alarme mit Timeline. Regeln (Admin) = Ãœberwachungskriterien."
+          content: "Alarme = aktive Alarmtabelle. Verlauf = bestätigte oder geschlossene Alarme mit Timeline. Regeln (Admin) = Überwachungskriterien."
         },
         kpis: {
           title: "Kennzahlen",
-          content: "Kritisch / Warnung filtern nach Schweregrad. Statusfilter (Offen, BestÃ¤tigt, Verknüpft) gelten für dieselbe Warteschlange."
+          content: "Kritisch / Warnung filtern nach Schweregrad. Statusfilter (Offen, Bestätigt, Verknüpft) gelten für dieselbe Warteschlange."
         },
         filters: {
           title: "Suche und Bereiche",
-          content: "Suchen Sie einen Alarm oder Kunden, dann nach Bereich eingrenzen. Filter Ã¤ndern nur die angezeigte Liste."
+          content: "Suchen Sie einen Alarm oder Kunden, dann nach Bereich eingrenzen. Filter ändern nur die angezeigte Liste."
         },
         queue: {
           title: "Alarmwarteschlange",
-          content: "Jede Karte hat dasselbe Format: Titel, Bereich, Status. BestÃ¤tigen, Support-/Service-Ticket, planen, lÃ¶sen oder ignorieren."
+          content: "Jede Karte hat dasselbe Format: Titel, Bereich, Status. Bestätigen, Support-/Service-Ticket, planen, lösen oder ignorieren."
         },
         fleet: {
           title: "Park",
-          content: "GerÃ¤teliste der Kunden für Maßnahmen außerhalb der Alarmwarteschlange."
+          content: "Geräteliste der Kunden für Maßnahmen außerhalb der Alarmwarteschlange."
         },
         history: {
           title: "Verlauf",
@@ -928,16 +944,16 @@ const SUPERVISION_COPY = {
         aria: "Alarmindikatoren",
         critical: "Kritisch",
         warning: "Warnungen",
-        devices: "GerÃ¤te",
+        devices: "Geräte",
         backups: "Backups",
-        contracts: "VertrÃ¤ge",
+        contracts: "Verträge",
         rmm: "RMM offline"
       },
       coverage: {
-        aria: "Ãœberwachungsabdeckung nach Familie",
+        aria: "Überwachungsabdeckung nach Familie",
         title: "Abdeckung",
         ratio: "{monitored}/{total}",
-        tooltip: "{label} Â· {monitored}/{total} über Integration überwacht",
+        tooltip: "{label} · {monitored}/{total} über Integration überwacht",
         families: {
           Ordinateurs: "Computer",
           Internet: "Internet",
@@ -955,31 +971,31 @@ const SUPERVISION_COPY = {
       domainAria: "Nach Bereich filtern",
       domains: {
         all: "Alle",
-        devices: "GerÃ¤te",
+        devices: "Geräte",
         backups: "Backups",
-        contracts: "VertrÃ¤ge",
+        contracts: "Verträge",
         rmm: "RMM"
       },
       workflow: {
         aria: "Nach Status filtern",
         all: "Aktiv",
         open: "Offen",
-        acked: "BestÃ¤tigt",
+        acked: "Bestätigt",
         linked: "Mit Ticket",
         closed: "Geschlossen"
       },
-      searchPlaceholder: "Alarm oder Kunde suchenâ€¦",
+      searchPlaceholder: "Alarm oder Kunde suchen...",
       sortBy: "Nach {label} sortieren",
       backupReasons: {
         critical: "Letztes Backup vor mehr als 48 h, oder unbekannt",
         warning: "Letztes Backup vor mehr als 24 h"
       },
-      emptyTitle: "Zzzâ€¦ alles ruhig",
+      emptyTitle: "Zzz... alles ruhig",
       emptyText: "Keine Alarme im Moment. Zeit für eine kleine Pause.",
       actionsAria: "Alarmaktionen",
       severityInfo: "Info",
       collab: {
-        handledBy: "Ãœbernommen von {name}",
+        handledBy: "Übernommen von {name}",
         ticketSupport: "Support-Ticket verknüpft",
         ticketPresta: "Service-Ticket verknüpft",
         planning: "Termin verknüpft",
@@ -990,28 +1006,28 @@ const SUPERVISION_COPY = {
         presta: "Service-Ticket",
         plan: "Planen",
         create: "Erstellen",
-        open: "Ã–ffnen",
-        ack: "BestÃ¤tigen",
+        open: "Öffnen",
+        ack: "Bestätigen",
         unack: "Freigeben",
-        resolve: "LÃ¶sen",
+        resolve: "Lösen",
         dismiss: "Ignorieren"
       },
       actionHints: {
-        ack: "Diesen Alarm bestÃ¤tigen (übernehmen)",
+        ack: "Diesen Alarm bestätigen (übernehmen)",
         unack: "Diesen Alarm freigeben und sich selbst entfernen",
         create: "Ticket erstellen oder Termin planen",
         support: "Support-Ticket zu diesem Alarm erstellen",
         presta: "Service-Ticket zu diesem Alarm erstellen",
         plan: "Termin zu diesem Alarm planen",
-        resolve: "Als gelÃ¶st markieren und in den Verlauf verschieben",
+        resolve: "Als gelöst markieren und in den Verlauf verschieben",
         dismiss: "Alarm ignorieren und in den Verlauf verschieben",
-        open: "ZugehÃ¶rigen Datensatz oder Details Ã¶ffnen"
+        open: "Zugehörigen Datensatz oder Details öffnen"
       },
       createModal: {
         title: "Maßnahme erstellen",
-        subtitle: "WÃ¤hlen Sie die Aktion, die mit diesem Alarm verknüpft wird.",
-        supportDesc: "Support-Ticket zu diesem Alarm Ã¶ffnen",
-        prestaDesc: "Service-Ticket zu diesem Alarm Ã¶ffnen",
+        subtitle: "Wählen Sie die Aktion, die mit diesem Alarm verknüpft wird.",
+        supportDesc: "Support-Ticket zu diesem Alarm öffnen",
+        prestaDesc: "Service-Ticket zu diesem Alarm öffnen",
         planDesc: "Termin zu diesem Alarm planen"
       },
       columns: {
@@ -1024,54 +1040,54 @@ const SUPERVISION_COPY = {
         actions: "Aktionen"
       },
       toasts: {
-        acked: "Alarm bestÃ¤tigt",
-        unacked: "Alarm freigegeben â€” niemand mehr zugewiesen",
-        resolved: "Alarm gelÃ¶st â€” in den Verlauf verschoben",
-        dismissed: "Alarm ignoriert â€” in den Verlauf verschoben",
+        acked: "Alarm bestätigt",
+        unacked: "Alarm freigegeben — niemand mehr zugewiesen",
+        resolved: "Alarm gelöst — in den Verlauf verschoben",
+        dismissed: "Alarm ignoriert — in den Verlauf verschoben",
         linked: "Maßnahme mit Alarm verknüpft",
         actionFailed: "Alarm konnte nicht aktualisiert werden",
         supportFormRequired: "Konfigurieren Sie ein Support-Formular in der Alarmregel, bevor Sie ein Ticket erstellen."
       },
       detailBackups: "Backup-Details",
-      detailContracts: "VertrÃ¤ge & Lizenzen",
+      detailContracts: "Verträge & Lizenzen",
       detailRmm: "RMM-Agenten",
       offline: "Offline"
     },
     history: {
-      searchPlaceholder: "Verlauf durchsuchenâ€¦",
+      searchPlaceholder: "Verlauf durchsuchen...",
       sortBy: "Nach {label} sortieren",
-      loading: "Verlauf wird geladenâ€¦",
-      loadingEvents: "Timeline wird geladenâ€¦",
+      loading: "Verlauf wird geladen...",
+      loadingEvents: "Timeline wird geladen...",
       emptyTitle: "Kein Verlauf",
-      emptyText: "BestÃ¤tigte, verknüpfte oder geschlossene Alarme erscheinen hier.",
+      emptyText: "Bestätigte, verknüpfte oder geschlossene Alarme erscheinen hier.",
       noEvents: "Keine Ereignisse",
-      reopen: "Erneut Ã¶ffnen",
+      reopen: "Erneut öffnen",
       timelineTitle: "Timeline",
       filterAria: "Verlaufsfilter",
       systemActor: "System",
       unknownActor: "Unbekannter Benutzer",
       domains: {
         all: "Alle",
-        devices: "GerÃ¤te",
+        devices: "Geräte",
         backups: "Backups",
-        contracts: "VertrÃ¤ge",
+        contracts: "Verträge",
         rmm: "RMM"
       },
       status: {
         all: "Alle Status",
         closed: "Geschlossen",
-        acked: "BestÃ¤tigt",
+        acked: "Bestätigt",
         linked: "Mit Ticket",
         open: "Offen"
       },
       actions: {
-        opened: "GeÃ¶ffnet",
-        ack: "BestÃ¤tigt",
+        opened: "Geöffnet",
+        ack: "Bestätigt",
         unack: "Freigegeben",
         link: "Maßnahme verknüpft",
-        resolved: "GelÃ¶st",
+        resolved: "Gelöst",
         dismissed: "Ignoriert",
-        reopen: "Erneut geÃ¶ffnet",
+        reopen: "Erneut geöffnet",
         note: "Notiz"
       },
       columns: {
@@ -1083,7 +1099,7 @@ const SUPERVISION_COPY = {
         actions: "Aktionen"
       },
       actionHints: {
-        reopen: "Diesen Alarm wieder Ã¶ffnen und in die aktive Tabelle zurücksetzen",
+        reopen: "Diesen Alarm wieder öffnen und in die aktive Tabelle zurücksetzen",
         expand: "Timeline des Alarms anzeigen",
         collapse: "Timeline einklappen"
       }
@@ -1095,7 +1111,7 @@ const SUPERVISION_COPY = {
     },
     contractStatus: {
       expired: "Abgelaufen",
-      expiring: "LÃ¤uft bald ab",
+      expiring: "Läuft bald ab",
       suspended: "Ausgesetzt"
     },
     licenseModules: {
@@ -1123,19 +1139,19 @@ const SUPERVISION_COPY = {
       sortBy: "Sortieren nach {label}"
     },
     contracts: {
-      okTitle: "VertrÃ¤ge und Lizenzen OK",
-      okText: "Keine abgelaufenen oder bald fÃ¤lligen VerlÃ¤ngerungen in den nÃ¤chsten 60 Tagen.",
+      okTitle: "Verträge und Lizenzen OK",
+      okText: "Keine abgelaufenen oder bald fälligen Verlängerungen in den nächsten 60 Tagen.",
       alertCount: "{count} Alarm",
       alertCountPlural: "{count} Alarme",
       expiredCount: "{count} abgelaufen",
       expiredCountPlural: "{count} abgelaufen",
       expiringCount: "{count} zu erneuern",
       viewEnterprise: "Unternehmen anzeigen",
-      panelTitle: "VertrÃ¤ge & Lizenzen zu bearbeiten"
+      panelTitle: "Verträge & Lizenzen zu bearbeiten"
     },
     priority: {
-      emptyTitle: "Keine GerÃ¤tealarme",
-      emptyText: "Alle überwachten GerÃ¤te sind im Normalzustand.",
+      emptyTitle: "Keine Gerätealarme",
+      emptyText: "Alle überwachten Geräte sind im Normalzustand.",
       intervene: "Eingreifen",
       analyze: "Analysieren",
       treat: "Bearbeiten",
@@ -1145,10 +1161,10 @@ const SUPERVISION_COPY = {
         monitor_critical: "CheckMK-Alarm bearbeiten und Dienst wiederherstellen.",
         monitor_warning: "CheckMK-Warnung vor Verschlechterung analysieren.",
         agent_offline: "Strom, Netzwerk und RMM-Agent prüfen (offline seit über 48 h).",
-        unmapped: "GerÃ¤t in der Hardware-Akte mit einer Supervisions-Integration verknüpfen.",
+        unmapped: "Gerät in der Hardware-Akte mit einer Supervisions-Integration verknüpfen.",
         no_data: "CheckMK-Mapping und Metriken prüfen.",
         warranty_expired: "Herstellergarantie erneuern oder aktualisieren.",
-        warranty_soon: "GarantieverlÃ¤ngerung planen.",
+        warranty_soon: "Garantieverlängerung planen.",
         maintenance_expired: "Firewall-Wartungslizenz erneuern.",
         maintenance_soon: "Wartungslizenz rechtzeitig erneuern.",
         battery_expired: "USV-/PDU-Batterie ersetzen.",
@@ -1156,46 +1172,46 @@ const SUPERVISION_COPY = {
         updates_pending: "Windows-Updates einplanen.",
         disk_critical: "Speicherplatz dringend freigeben oder erweitern.",
         disk_warn: "Speicherplatz überwachen und Bereinigung planen.",
-        missing_ip: "IP-Adresse in der Hardware-Akte ergÃ¤nzen."
+        missing_ip: "IP-Adresse in der Hardware-Akte ergänzen."
       },
       statusHints: {
-        critical: "Kritischer Ãœberwachungsalarm Â· sofort handeln.",
-        offline: "RMM-Agent offline Â· KonnektivitÃ¤t prüfen.",
-        warning: "Ãœberwachungswarnung Â· vor Verschlechterung analysieren.",
-        unmapped: "GerÃ¤t nicht mit einer Supervision verknüpft Â· Mapping aktivieren.",
-        no_data: "Keine Ãœberwachungsdaten Â· Mapping prüfen.",
+        critical: "Kritischer Überwachungsalarm · sofort handeln.",
+        offline: "RMM-Agent offline · Konnektivität prüfen.",
+        warning: "Überwachungswarnung · vor Verschlechterung analysieren.",
+        unmapped: "Gerät nicht mit einer Supervision verknüpft · Mapping aktivieren.",
+        no_data: "Keine Überwachungsdaten · Mapping prüfen.",
         default: "Punkt aus der Hardware-Akte bearbeiten."
       }
     },
     familyStats: {
-      emptyTitle: "Keine inventarisierten GerÃ¤te",
+      emptyTitle: "Keine inventarisierten Geräte",
       emptyText: "Familienstatistiken erscheinen, sobald Hardware erfasst ist.",
-      monitored: "Ãœberwacht",
+      monitored: "Überwacht",
       uncovered: "Nicht abgedeckt",
       supervisedLabel: "überwacht",
-      tooltip: "{label} Â· {monitored}/{total} überwacht",
-      openFamily: "GerÃ¤te {label} anzeigen"
+      tooltip: "{label} · {monitored}/{total} überwacht",
+      openFamily: "Geräte {label} anzeigen"
     },
     overview: {
-      hexTitle: "Ãœbersicht",
+      hexTitle: "Übersicht",
       hexKpi: {
         todo: "Zu erledigen",
-        devices: "GerÃ¤te",
+        devices: "Geräte",
         issues: "Alarme",
         critical: "Kritisch",
         offline: "Offline",
         backups: "Backups",
-        supervised: "Ãœberwacht"
+        supervised: "Überwacht"
       },
-      priorityTitle: "PrioritÃ¤t",
+      priorityTitle: "Priorität",
       viewAll: "Alle anzeigen",
-      familyTitle: "Ãœberwachung nach GerÃ¤tetyp"
+      familyTitle: "Überwachung nach Gerätetyp"
     },
     search: {
-      devices: "GerÃ¤t, Kunde, IP suchenâ€¦",
-      rmm: "Arbeitsplatz, Kunde, IP, OS suchenâ€¦",
+      devices: "Gerät, Kunde, IP suchen...",
+      rmm: "Arbeitsplatz, Kunde, IP, OS suchen...",
       clients: "Kunden",
-      clearFilters: "LÃ¶schen ({count})",
+      clearFilters: "Löschen ({count})",
       agentCount: "{count} Agent",
       agentCountPlural: "{count} Agenten"
     },
@@ -1207,12 +1223,12 @@ const SUPERVISION_COPY = {
       panelTitle: "RMM-Agenten",
       offlineCount: "{count} offline",
       syncRequested: "Sync angefordert",
-      lastActivity: "Letzte AktivitÃ¤t",
+      lastActivity: "Letzte Aktivität",
       notLinked: "Arbeitsplatz nicht verknüpft",
       sortBy: "Sortieren nach {label}",
       summary: {
         workstation: "{count} Arbeitsplatz",
-        workstationPlural: "{count} ArbeitsplÃ¤tze",
+        workstationPlural: "{count} Arbeitsplätze",
         offline: "offline",
         pendingUpdates: "Updates ausstehend",
         diskAlert: "Festplatte > 85%",
@@ -1226,16 +1242,16 @@ const SUPERVISION_COPY = {
         ip: "IP",
         updates: "Windows-Updates",
         agent: "Agent",
-        lastSeen: "Letzte AktivitÃ¤t",
+        lastSeen: "Letzte Aktivität",
         actions: "Aktionen"
       },
       empty: {
         noMatchTitle: "Kein passender Agent",
         allOnlineTitle: "Alle Agenten sind online",
         noAgentsTitle: "Keine RMM-Agenten",
-        noMatchText: "Suche anpassen (Arbeitsplatz, Kunde, IP, OS, DomÃ¤neâ€¦).",
-        allOnlineText: "Derzeit sind keine ArbeitsplÃ¤tze offline.",
-        noAgentsText: "Veritas-Agent auf Kunden-ArbeitsplÃ¤tzen für RMM-Ãœberwachung bereitstellen."
+        noMatchText: "Suche anpassen (Arbeitsplatz, Kunde, IP, OS, Domäne...).",
+        allOnlineText: "Derzeit sind keine Arbeitsplätze offline.",
+        noAgentsText: "Veritas-Agent auf Kunden-Arbeitsplätzen für RMM-Überwachung bereitstellen."
       },
       menu: {
         viewEnterprise: "Unternehmen anzeigen",
@@ -1250,15 +1266,15 @@ const SUPERVISION_COPY = {
         hostName: "Arbeitsplatzname",
         ipAddress: "IP-Adresse",
         copied: "{label} kopiert",
-        copyFailed: "Kopieren nicht mÃ¶glich"
+        copyFailed: "Kopieren nicht möglich"
       },
       toasts: {
-        syncRequested: "Vollsync für {hostname} angefordert. Inventar wird beim nÃ¤chsten Agentenlauf aktualisiert.",
+        syncRequested: "Vollsync für {hostname} angefordert. Inventar wird beim nächsten Agentenlauf aktualisiert.",
         syncRequestFailed: "Synchronisation konnte nicht angefordert werden",
         syncCancelled: "Vollsync-Anfrage für {hostname} abgebrochen.",
         syncCancelFailed: "Synchronisation konnte nicht abgebrochen werden",
         revokeFailed: "Arbeitsplatz zum Widerruf dieses Agenten nicht gefunden",
-        metricsNoEquipment: "Kein mit diesem Agenten verknüpftes GerÃ¤t für Metriken"
+        metricsNoEquipment: "Kein mit diesem Agenten verknüpftes Gerät für Metriken"
       }
     },
     time: {
@@ -1271,8 +1287,8 @@ const SUPERVISION_COPY = {
   it: {
     eyebrow: "Servizi gestiti",
     pageTitle: "Centro di supervisione",
-    subtitle: "Allarmi di monitoraggio Â· dispositivi mappati tramite un'integrazione (CheckMK).",
-    loading: "Scansione in corsoâ€¦",
+    subtitle: "Allarmi di monitoraggio",
+    loading: "Scansione in corso...",
     tabSectionsAria: "Sezioni supervisione",
     tabs: {
       operations: "Allarmi",
@@ -1285,7 +1301,7 @@ const SUPERVISION_COPY = {
       steps: {
         hero: {
           title: "Centro notifiche",
-          content: "Questa pagina mostra solo gli allarmi dei dispositivi mappati a un'integrazione di monitoraggio (CheckMK). Consultali e agisci da una coda unica."
+          content: "Questa pagina mostra solo gli allarmi dei dispositivi mappati a un'integrazione di monitoraggio. Consultali e agisci da una coda unica."
         },
         tabs: {
           title: "Viste principali",
@@ -1327,7 +1343,7 @@ const SUPERVISION_COPY = {
         aria: "Copertura supervisione per famiglia",
         title: "Copertura",
         ratio: "{monitored}/{total}",
-        tooltip: "{label} Â· {monitored}/{total} supervisionati via integrazione",
+        tooltip: "{label} · {monitored}/{total} supervisionati via integrazione",
         families: {
           Ordinateurs: "Computer",
           Internet: "Internet",
@@ -1358,14 +1374,14 @@ const SUPERVISION_COPY = {
         linked: "Con ticket",
         closed: "Chiuse"
       },
-      searchPlaceholder: "Cerca un allarme, un clienteâ€¦",
+      searchPlaceholder: "Cerca un allarme, un cliente...",
       sortBy: "Ordina per {label}",
       backupReasons: {
-        critical: "Ultimo backup da piÃ¹ di 48 h, o sconosciuto",
-        warning: "Ultimo backup da piÃ¹ di 24 h"
+        critical: "Ultimo backup da più di 48 h, o sconosciuto",
+        warning: "Ultimo backup da più di 24 h"
       },
-      emptyTitle: "Zzzâ€¦ tutto calmo",
-      emptyText: "Nessun allarme al momento. Si puÃ² tirare il fiato.",
+      emptyTitle: "Zzz... tutto calmo",
+      emptyText: "Nessun allarme al momento. Si può tirare il fiato.",
       actionsAria: "Azioni sull'allarme",
       severityInfo: "Info",
       collab: {
@@ -1415,9 +1431,9 @@ const SUPERVISION_COPY = {
       },
       toasts: {
         acked: "Allarme preso in carico",
-        unacked: "Allarme rilasciato â€” nessuno piÃ¹ assegnato",
-        resolved: "Allarme risolto â€” spostato in cronologia",
-        dismissed: "Allarme ignorato â€” spostato in cronologia",
+        unacked: "Allarme rilasciato — nessuno più assegnato",
+        resolved: "Allarme risolto — spostato in cronologia",
+        dismissed: "Allarme ignorato — spostato in cronologia",
         linked: "Rimedio collegato all'allarme",
         actionFailed: "Impossibile aggiornare l'allarme",
         supportFormRequired: "Configura un modulo support nella regola di allarme prima di creare un ticket."
@@ -1428,10 +1444,10 @@ const SUPERVISION_COPY = {
       offline: "Offline"
     },
     history: {
-      searchPlaceholder: "Cerca nella cronologiaâ€¦",
+      searchPlaceholder: "Cerca nella cronologia...",
       sortBy: "Ordina per {label}",
-      loading: "Caricamento cronologiaâ€¦",
-      loadingEvents: "Caricamento timelineâ€¦",
+      loading: "Caricamento cronologia...",
+      loadingEvents: "Caricamento timeline...",
       emptyTitle: "Nessuna cronologia",
       emptyText: "Gli allarmi presi in carico, collegati o chiusi appariranno qui.",
       noEvents: "Nessun evento",
@@ -1548,11 +1564,11 @@ const SUPERVISION_COPY = {
         missing_ip: "Completare l'indirizzo IP nella scheda hardware."
       },
       statusHints: {
-        critical: "Alert supervisione critico Â· intervento immediato.",
-        offline: "Agente RMM offline Â· verificare connettività.",
-        warning: "Warning supervisione Â· analizzare prima del degrado.",
-        unmapped: "Apparecchiatura non collegata a una supervisione Â· attivare il mapping.",
-        no_data: "Nessun dato supervisione Â· verificare mapping.",
+        critical: "Alert supervisione critico · intervento immediato.",
+        offline: "Agente RMM offline · verificare connettività.",
+        warning: "Warning supervisione · analizzare prima del degrado.",
+        unmapped: "Apparecchiatura non collegata a una supervisione · attivare il mapping.",
+        no_data: "Nessun dato supervisione · verificare mapping.",
         default: "Punto da trattare dalla scheda hardware."
       }
     },
@@ -1562,7 +1578,7 @@ const SUPERVISION_COPY = {
       monitored: "Supervisionato",
       uncovered: "Non coperto",
       supervisedLabel: "supervisionato",
-      tooltip: "{label} Â· {monitored}/{total} supervisionati",
+      tooltip: "{label} · {monitored}/{total} supervisionati",
       openFamily: "Vedi dispositivi {label}"
     },
     overview: {
@@ -1581,8 +1597,8 @@ const SUPERVISION_COPY = {
       familyTitle: "Supervisione per tipo di dispositivo"
     },
     search: {
-      devices: "Cerca dispositivo, cliente, IPâ€¦",
-      rmm: "Cerca postazione, cliente, IP, OSâ€¦",
+      devices: "Cerca dispositivo, cliente, IP...",
+      rmm: "Cerca postazione, cliente, IP, OS...",
       clients: "Clienti",
       clearFilters: "Cancella ({count})",
       agentCount: "{count} agente",
@@ -1622,7 +1638,7 @@ const SUPERVISION_COPY = {
         noMatchTitle: "Nessun agente corrispondente",
         allOnlineTitle: "Tutti gli agenti sono online",
         noAgentsTitle: "Nessun agente RMM",
-        noMatchText: "Modifica la ricerca (postazione, cliente, IP, OS, dominioâ€¦).",
+        noMatchText: "Modifica la ricerca (postazione, cliente, IP, OS, dominio...).",
         allOnlineText: "Nessuna postazione è attualmente offline.",
         noAgentsText: "Distribuisci l'agente Veritas sulle postazioni clienti per la supervisione RMM."
       },
@@ -1660,8 +1676,8 @@ const SUPERVISION_COPY = {
   es: {
     eyebrow: "Servicios gestionados",
     pageTitle: "Centro de supervisión",
-    subtitle: "Alertas de monitorización Â· dispositivos mapeados vÃ­a una integración (CheckMK).",
-    loading: "Escaneo en cursoâ€¦",
+    subtitle: "Alertas de monitorización",
+    loading: "Escaneo en curso...",
     tabSectionsAria: "Secciones de supervisión",
     tabs: {
       operations: "Alertas",
@@ -1669,28 +1685,28 @@ const SUPERVISION_COPY = {
       settings: "Reglas"
     },
     guide: {
-      fabLabel: "GuÃ­a del centro de supervisión",
+      fabLabel: "Guía del centro de supervisión",
       tourTitle: "Centro de supervisión",
       steps: {
         hero: {
           title: "Centro de notificaciones",
-          content: "Esta pÃ¡gina muestra solo las alertas de dispositivos mapeados a una integración de monitorización (CheckMK). ConsÃºltelas y actÃºe desde una cola Ãºnica."
+          content: "Esta página muestra solo las alertas de dispositivos mapeados a una integración de monitorización. Consúltelas y actúe desde una cola única."
         },
         tabs: {
           title: "Vistas principales",
-          content: "Alertas = tabla de alertas activas. Historial = alertas acusadas o cerradas, con cronologÃ­a. Reglas (admin) = criterios de monitorización."
+          content: "Alertas = tabla de alertas activas. Historial = alertas acusadas o cerradas, con cronología. Reglas (admin) = criterios de monitorización."
         },
         kpis: {
           title: "Indicadores",
-          content: "CrÃ­ticas / Warnings filtran por severidad. Los filtros de estado (Abiertas, Acusadas, Vinculadas) actÃºan sobre la misma cola."
+          content: "Críticas / Warnings filtran por severidad. Los filtros de estado (Abiertas, Acusadas, Vinculadas) actúan sobre la misma cola."
         },
         filters: {
-          title: "BÃºsqueda y dominios",
+          title: "Búsqueda y dominios",
           content: "Busque una alerta o un cliente, luego acote por dominio. Los filtros solo cambian la lista mostrada."
         },
         queue: {
           title: "Cola de alertas",
-          content: "Cada tarjeta tiene el mismo formato: tÃ­tulo, dominio, estado. Acuse, ticket Soporte o Presta, planifique, resuelva o ignore."
+          content: "Cada tarjeta tiene el mismo formato: título, dominio, estado. Acuse, ticket Soporte o Presta, planifique, resuelva o ignore."
         },
         fleet: {
           title: "Parque",
@@ -1705,7 +1721,7 @@ const SUPERVISION_COPY = {
     ops: {
       kpi: {
         aria: "Indicadores de alertas",
-        critical: "CrÃ­ticas",
+        critical: "Críticas",
         warning: "Warnings",
         devices: "Dispositivos",
         backups: "Backups",
@@ -1716,7 +1732,7 @@ const SUPERVISION_COPY = {
         aria: "Cobertura de supervisión por familia",
         title: "Cobertura",
         ratio: "{monitored}/{total}",
-        tooltip: "{label} Â· {monitored}/{total} supervisados vÃ­a integración",
+        tooltip: "{label} · {monitored}/{total} supervisados vía integración",
         families: {
           Ordinateurs: "Ordenadores",
           Internet: "Internet",
@@ -1747,13 +1763,13 @@ const SUPERVISION_COPY = {
         linked: "Con ticket",
         closed: "Cerradas"
       },
-      searchPlaceholder: "Buscar una alerta, un clienteâ€¦",
+      searchPlaceholder: "Buscar una alerta, un cliente...",
       sortBy: "Ordenar por {label}",
       backupReasons: {
-        critical: "Ãšltima copia hace mÃ¡s de 48 h, o desconocida",
-        warning: "Ãšltima copia hace mÃ¡s de 24 h"
+        critical: "Última copia hace más de 48 h, o desconocida",
+        warning: "Última copia hace más de 24 h"
       },
-      emptyTitle: "Zzzâ€¦ todo en calma",
+      emptyTitle: "Zzz... todo en calma",
       emptyText: "Ninguna alerta por ahora. Se puede descansar un poco.",
       actionsAria: "Acciones sobre la alerta",
       severityInfo: "Info",
@@ -1804,9 +1820,9 @@ const SUPERVISION_COPY = {
       },
       toasts: {
         acked: "Alerta acusada",
-        unacked: "Alerta liberada â€” ya no hay nadie asignado",
-        resolved: "Alerta resuelta â€” movida al historial",
-        dismissed: "Alerta ignorada â€” movida al historial",
+        unacked: "Alerta liberada — ya no hay nadie asignado",
+        resolved: "Alerta resuelta — movida al historial",
+        dismissed: "Alerta ignorada — movida al historial",
         linked: "Remediación vinculada a la alerta",
         actionFailed: "No se pudo actualizar la alerta",
         supportFormRequired: "Configure un formulario de soporte en la regla de alerta antes de crear un ticket."
@@ -1814,15 +1830,15 @@ const SUPERVISION_COPY = {
       detailBackups: "Detalle backups",
       detailContracts: "Detalle contratos y licencias",
       detailRmm: "Detalle agentes RMM",
-      offline: "Fuera de lÃ­nea"
+      offline: "Fuera de línea"
     },
     history: {
-      searchPlaceholder: "Buscar en el historialâ€¦",
+      searchPlaceholder: "Buscar en el historial...",
       sortBy: "Ordenar por {label}",
-      loading: "Cargando historialâ€¦",
-      loadingEvents: "Cargando timelineâ€¦",
+      loading: "Cargando historial...",
+      loadingEvents: "Cargando timeline...",
       emptyTitle: "Sin historial",
-      emptyText: "Las alertas acusadas, vinculadas o cerradas aparecerÃ¡n aquÃ­.",
+      emptyText: "Las alertas acusadas, vinculadas o cerradas aparecerán aquí.",
       noEvents: "Sin eventos",
       reopen: "Reabrir",
       timelineTitle: "Timeline",
@@ -1863,8 +1879,8 @@ const SUPERVISION_COPY = {
       },
       actionHints: {
         reopen: "Reabrir esta alerta y devolverla a la tabla activa",
-        expand: "Mostrar la cronologÃ­a de la alerta",
-        collapse: "Ocultar la cronologÃ­a"
+        expand: "Mostrar la cronología de la alerta",
+        collapse: "Ocultar la cronología"
       }
     },
     fleet: {
@@ -1903,7 +1919,7 @@ const SUPERVISION_COPY = {
     },
     contracts: {
       okTitle: "Contratos y licencias OK",
-      okText: "NingÃºn vencimiento o renovación en los próximos 60 dÃ­as.",
+      okText: "Ningún vencimiento o renovación en los próximos 60 días.",
       alertCount: "{count} alerta",
       alertCountPlural: "{count} alertas",
       expiredCount: "{count} expirado",
@@ -1914,7 +1930,7 @@ const SUPERVISION_COPY = {
     },
     priority: {
       emptyTitle: "Ninguna alerta de dispositivo",
-      emptyText: "Todos los equipos supervisados estÃ¡n en estado nominal.",
+      emptyText: "Todos los equipos supervisados están en estado nominal.",
       intervene: "Intervenir",
       analyze: "Analizar",
       treat: "Tratar",
@@ -1923,36 +1939,36 @@ const SUPERVISION_COPY = {
       hints: {
         monitor_critical: "Actuar sobre la alerta CheckMK y restablecer el servicio.",
         monitor_warning: "Analizar el warning CheckMK antes de la degradación.",
-        agent_offline: "Comprobar alimentación, red y agente RMM (offline mÃ¡s de 48 h).",
+        agent_offline: "Comprobar alimentación, red y agente RMM (offline más de 48 h).",
         unmapped: "Vincular el equipo a una integración de supervisión desde la ficha hardware.",
         no_data: "Verificar mapping CheckMK y métricas.",
-        warranty_expired: "Renovar o actualizar la garantÃ­a del fabricante.",
-        warranty_soon: "Planificar renovación de garantÃ­a.",
+        warranty_expired: "Renovar o actualizar la garantía del fabricante.",
+        warranty_soon: "Planificar renovación de garantía.",
         maintenance_expired: "Renovar licencia de mantenimiento firewall.",
         maintenance_soon: "Anticipar renovación de licencia de mantenimiento.",
-        battery_expired: "Reemplazar baterÃ­a SAI/PDU.",
-        battery_soon: "Pedir o planificar reemplazo de baterÃ­a.",
+        battery_expired: "Reemplazar batería SAI/PDU.",
+        battery_soon: "Pedir o planificar reemplazo de batería.",
         updates_pending: "Planificar instalación de actualizaciones Windows.",
         disk_critical: "Liberar o ampliar espacio en disco urgentemente.",
         disk_warn: "Supervisar espacio en disco y planificar limpieza.",
         missing_ip: "Completar la dirección IP en la ficha hardware."
       },
       statusHints: {
-        critical: "Alerta crÃ­tica de supervisión Â· intervención inmediata.",
-        offline: "Agente RMM offline Â· verificar conectividad.",
-        warning: "Warning de supervisión Â· analizar antes de degradación.",
-        unmapped: "Equipo no vinculado a una supervisión Â· activar el mapeo.",
-        no_data: "Sin datos de supervisión Â· verificar mapping.",
+        critical: "Alerta crítica de supervisión · intervención inmediata.",
+        offline: "Agente RMM offline · verificar conectividad.",
+        warning: "Warning de supervisión · analizar antes de degradación.",
+        unmapped: "Equipo no vinculado a una supervisión · activar el mapeo.",
+        no_data: "Sin datos de supervisión · verificar mapping.",
         default: "Punto a tratar desde la ficha hardware."
       }
     },
     familyStats: {
-      emptyTitle: "NingÃºn dispositivo inventariado",
-      emptyText: "Las estadÃ­sticas por familia aparecerÃ¡n al registrar hardware.",
+      emptyTitle: "Ningún dispositivo inventariado",
+      emptyText: "Las estadísticas por familia aparecerán al registrar hardware.",
       monitored: "Supervisado",
       uncovered: "No cubierto",
       supervisedLabel: "supervisado",
-      tooltip: "{label} Â· {monitored}/{total} supervisados",
+      tooltip: "{label} · {monitored}/{total} supervisados",
       openFamily: "Ver dispositivos {label}"
     },
     overview: {
@@ -1961,7 +1977,7 @@ const SUPERVISION_COPY = {
         todo: "Por tratar",
         devices: "Dispositivos",
         issues: "Alertas",
-        critical: "CrÃ­ticos",
+        critical: "Críticos",
         offline: "Desconectados",
         backups: "Copias",
         supervised: "Supervisado"
@@ -1971,22 +1987,22 @@ const SUPERVISION_COPY = {
       familyTitle: "Supervisión por tipo de dispositivo"
     },
     search: {
-      devices: "Buscar dispositivo, cliente, IPâ€¦",
-      rmm: "Buscar equipo, cliente, IP, SOâ€¦",
+      devices: "Buscar dispositivo, cliente, IP...",
+      rmm: "Buscar equipo, cliente, IP, SO...",
       clients: "Clientes",
       clearFilters: "Borrar ({count})",
       agentCount: "{count} agente",
       agentCountPlural: "{count} agentes"
     },
     rmm: {
-      online: "En lÃ­nea",
+      online: "En línea",
       offline: "Desconectado",
       workstation: "Equipo",
       viewWorkstation: "Ver equipo",
       panelTitle: "Agentes RMM",
       offlineCount: "{count} desconectados",
       syncRequested: "Sync solicitada",
-      lastActivity: "Ãšltima actividad",
+      lastActivity: "Última actividad",
       notLinked: "Equipo no vinculado",
       sortBy: "Ordenar por {label}",
       summary: {
@@ -2005,15 +2021,15 @@ const SUPERVISION_COPY = {
         ip: "IP",
         updates: "Actualizaciones Windows",
         agent: "Agente",
-        lastSeen: "Ãšltima actividad",
+        lastSeen: "Última actividad",
         actions: "Acciones"
       },
       empty: {
-        noMatchTitle: "NingÃºn agente coincide",
-        allOnlineTitle: "Todos los agentes estÃ¡n en lÃ­nea",
-        noAgentsTitle: "NingÃºn agente RMM",
-        noMatchText: "Ajusta la bÃºsqueda (equipo, cliente, IP, SO, dominioâ€¦).",
-        allOnlineText: "NingÃºn equipo estÃ¡ desconectado actualmente.",
+        noMatchTitle: "Ningún agente coincide",
+        allOnlineTitle: "Todos los agentes están en línea",
+        noAgentsTitle: "Ningún agente RMM",
+        noMatchText: "Ajusta la búsqueda (equipo, cliente, IP, SO, dominio...).",
+        allOnlineText: "Ningún equipo está desconectado actualmente.",
         noAgentsText: "Despliega el agente Veritas en los equipos clientes para la supervisión RMM."
       },
       menu: {
@@ -2032,12 +2048,12 @@ const SUPERVISION_COPY = {
         copyFailed: "No se puede copiar"
       },
       toasts: {
-        syncRequested: "Sync completo solicitado para {hostname}. El inventario se actualizarÃ¡ en el próximo paso del agente.",
+        syncRequested: "Sync completo solicitado para {hostname}. El inventario se actualizará en el próximo paso del agente.",
         syncRequestFailed: "No se puede solicitar la sincronización",
         syncCancelled: "Solicitud de sync completo cancelada para {hostname}.",
         syncCancelFailed: "No se puede cancelar la sincronización",
         revokeFailed: "Equipo no encontrado para revocar este agente",
-        metricsNoEquipment: "NingÃºn equipo vinculado a este agente para mostrar métricas"
+        metricsNoEquipment: "Ningún equipo vinculado a este agente para mostrar métricas"
       }
     },
     time: {

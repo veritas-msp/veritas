@@ -275,6 +275,22 @@ const TICKETS_COPY = {
       dragColumn: "Glisser la colonne {name}",
       save: "Enregistrer"
     },
+    contextMenu: {
+      aria: "Menu contextuel ticket",
+      open: "Ouvrir",
+      openBackground: "Ouvrir en arrière-plan",
+      copyNumber: "Copier le numéro",
+      copyLink: "Copier le lien",
+      openClient: "Ouvrir l'entreprise",
+      openContact: "Ouvrir le demandeur",
+      restore: "Restaurer",
+      purge: "Supprimer définitivement",
+      copied: "Copié",
+      copiedNumber: "Numéro copié",
+      copiedLink: "Lien copié",
+      copyUnavailable: "Rien à copier",
+      copyFailed: "Impossible de copier"
+    },
     toasts: {
       loadColumns: "Erreur lors du chargement des colonnes",
       loadViews: "Erreur lors du chargement des vues",
@@ -546,6 +562,22 @@ const TICKETS_COPY = {
       reorderHint: "Drag rows to change the column order in the table.",
       dragColumn: "Drag column {name}",
       save: "Save"
+    },
+    contextMenu: {
+      aria: "Ticket context menu",
+      open: "Open",
+      openBackground: "Open in background",
+      copyNumber: "Copy number",
+      copyLink: "Copy link",
+      openClient: "Open company",
+      openContact: "Open requester",
+      restore: "Restore",
+      purge: "Delete permanently",
+      copied: "Copied",
+      copiedNumber: "Number copied",
+      copiedLink: "Link copied",
+      copyUnavailable: "Nothing to copy",
+      copyFailed: "Unable to copy"
     },
     toasts: {
       loadColumns: "Error loading columns",
@@ -819,6 +851,22 @@ const TICKETS_COPY = {
       dragColumn: "Spalte {name} ziehen",
       save: "Speichern"
     },
+    contextMenu: {
+      aria: "Ticket-Kontextmenue",
+      open: "Oeffnen",
+      openBackground: "Im Hintergrund oeffnen",
+      copyNumber: "Nummer kopieren",
+      copyLink: "Link kopieren",
+      openClient: "Unternehmen oeffnen",
+      openContact: "Anforderer oeffnen",
+      restore: "Wiederherstellen",
+      purge: "Endgueltig loeschen",
+      copied: "Kopiert",
+      copiedNumber: "Nummer kopiert",
+      copiedLink: "Link kopiert",
+      copyUnavailable: "Nichts zu kopieren",
+      copyFailed: "Kopieren fehlgeschlagen"
+    },
     toasts: {
       loadColumns: "Fehler beim Laden der Spalten",
       loadViews: "Fehler beim Laden der Ansichten",
@@ -1091,6 +1139,22 @@ const TICKETS_COPY = {
       dragColumn: "Trascina la colonna {name}",
       save: "Salva"
     },
+    contextMenu: {
+      aria: "Menu contestuale ticket",
+      open: "Apri",
+      openBackground: "Apri in secondo piano",
+      copyNumber: "Copia numero",
+      copyLink: "Copia link",
+      openClient: "Apri azienda",
+      openContact: "Apri richiedente",
+      restore: "Ripristina",
+      purge: "Elimina definitivamente",
+      copied: "Copiato",
+      copiedNumber: "Numero copiato",
+      copiedLink: "Link copiato",
+      copyUnavailable: "Niente da copiare",
+      copyFailed: "Impossibile copiare"
+    },
     toasts: {
       loadColumns: "Errore nel caricamento delle colonne",
       loadViews: "Errore nel caricamento delle viste",
@@ -1362,6 +1426,22 @@ const TICKETS_COPY = {
       reorderHint: "Arrastre las filas para cambiar el orden de las columnas en la tabla.",
       dragColumn: "Arrastrar la columna {name}",
       save: "Guardar"
+    },
+    contextMenu: {
+      aria: "Menu contextual del ticket",
+      open: "Abrir",
+      openBackground: "Abrir en segundo plano",
+      copyNumber: "Copiar numero",
+      copyLink: "Copiar enlace",
+      openClient: "Abrir empresa",
+      openContact: "Abrir solicitante",
+      restore: "Restaurar",
+      purge: "Eliminar definitivamente",
+      copied: "Copiado",
+      copiedNumber: "Numero copiado",
+      copiedLink: "Enlace copiado",
+      copyUnavailable: "Nada que copiar",
+      copyFailed: "No se pudo copiar"
     },
     toasts: {
       loadColumns: "Error al cargar las columnas",

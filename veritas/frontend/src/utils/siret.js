@@ -1,5 +1,35 @@
-export const LEGAL_IDENTIFIER_LABEL = "Legal identifier";
-export const LEGAL_IDENTIFIER_PLACEHOLDER = "Registration number";
+import { createLocaleGetter } from "../i18n/translate";
+
+const LEGAL_IDENTIFIER_COPY = {
+  fr: {
+    label: "Identifiant légal",
+    placeholder: "Numéro d'immatriculation"
+  },
+  en: {
+    label: "Legal identifier",
+    placeholder: "Registration number"
+  },
+  de: {
+    label: "Rechtliche Kennung",
+    placeholder: "Handelsregisternummer"
+  },
+  it: {
+    label: "Identificativo legale",
+    placeholder: "Numero di registrazione"
+  },
+  es: {
+    label: "Identificador legal",
+    placeholder: "Número de registro"
+  }
+};
+
+export const getLegalIdentifierCopy = createLocaleGetter(LEGAL_IDENTIFIER_COPY);
+
+/** @deprecated Prefer getLegalIdentifierCopy(locale).label */
+export const LEGAL_IDENTIFIER_LABEL = LEGAL_IDENTIFIER_COPY.en.label;
+/** @deprecated Prefer getLegalIdentifierCopy(locale).placeholder */
+export const LEGAL_IDENTIFIER_PLACEHOLDER = LEGAL_IDENTIFIER_COPY.en.placeholder;
+
 export function normalizeLegalIdentifier(value) {
   const trimmed = String(value ?? "").trim();
   return trimmed;

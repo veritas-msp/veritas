@@ -55,7 +55,9 @@ export const TICKET_TABLE_COLUMN_IDS_BY_SCOPE = Object.freeze({
     "role",
     "email",
     "phone",
-    "portal"
+    "portal",
+    "support_tickets_total",
+    "support_tickets_in_progress"
   ])
 });
 
@@ -63,7 +65,16 @@ export const DEFAULT_TICKET_TABLE_COLUMNS_BY_SCOPE = Object.freeze({
   ticket: Object.freeze([...TICKET_TABLE_COLUMN_IDS_BY_SCOPE.ticket]),
   ticket_sales: Object.freeze([...TICKET_TABLE_COLUMN_IDS_BY_SCOPE.ticket_sales]),
   enterprises: Object.freeze([...TICKET_TABLE_COLUMN_IDS_BY_SCOPE.enterprises]),
-  contacts: Object.freeze([...TICKET_TABLE_COLUMN_IDS_BY_SCOPE.contacts])
+  contacts: Object.freeze([
+    "contact",
+    "gender",
+    "status",
+    "enterprise",
+    "role",
+    "email",
+    "phone",
+    "portal"
+  ])
 });
 
 export const TICKET_TABLE_COLUMNS_PUBLIC_KEYS = Object.freeze({

@@ -2,6 +2,7 @@ import { createLocaleGetter } from "../../i18n/translate";
 const FR = {
   fields: {
     name: "Nom",
+    namePlaceholder: "Salle de réunion A",
     nameVeritas: "Nom Veritas",
     netbios: "Nom NetBIOS",
     netbiosReadonlyTitle: "Nom remonté par l'agent RMM (non modifiable)",
@@ -526,6 +527,7 @@ const FR = {
 const EN = {
   fields: {
     name: "Name",
+    namePlaceholder: "Meeting room A",
     nameVeritas: "Veritas name",
     netbios: "NetBIOS name",
     netbiosReadonlyTitle: "Name reported by the RMM agent (read-only)",
@@ -1053,6 +1055,7 @@ const DE = {
   fields: {
     ...EN.fields,
     name: "Name",
+    namePlaceholder: "Besprechungsraum A",
     location: "Standort",
     locationPlaceholder: "Standort suchen oder eingeben…",
     status: "Status",
@@ -1112,6 +1115,7 @@ const IT = {
   fields: {
     ...EN.fields,
     name: "Nome",
+    namePlaceholder: "Sala riunioni A",
     location: "Sede",
     locationPlaceholder: "Cerca o inserisci una sede…",
     status: "Stato",
@@ -1171,6 +1175,7 @@ const ES = {
   fields: {
     ...EN.fields,
     name: "Nombre",
+    namePlaceholder: "Sala de reuniones A",
     location: "Sitio",
     locationPlaceholder: "Buscar o introducir un sitio…",
     status: "Estado",

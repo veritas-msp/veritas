@@ -333,6 +333,15 @@
   display: none;
 }
 
+.statusChipSeparator {
+  flex-shrink: 0;
+  align-self: stretch;
+  width: 1px;
+  min-height: 1.4rem;
+  margin: 0 0.35rem;
+  background: var(--msp-border, #dde3ed);
+}
+
 .statusChip {
   display: inline-flex;
   align-items: center;
@@ -639,10 +648,18 @@
 .dataTableWrap {
   flex: 1;
   min-height: 0;
-  overflow: auto;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
   border: 1px solid var(--msp-border);
   border-radius: var(--msp-radius);
   background: var(--msp-surface);
+}
+
+.dataTableScroll {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
 }
 
 .checkboxCell {
@@ -1040,7 +1057,7 @@
 }
 
 .listBody .pagination {
-  margin-top: auto;
+  margin-top: 0;
 }
 
 .stateBox {
@@ -1426,6 +1443,14 @@
   overflow-x: auto;
 }
 
+.paginationEmbedded {
+  padding: 0.65rem 0.85rem 0.7rem;
+  border-top: 1px solid var(--msp-border-light, #eef2f7);
+  margin-top: 0;
+  background: var(--msp-surface-2, #f7f9fc);
+  border-radius: 0 0 var(--msp-radius) var(--msp-radius);
+}
+
 .paginationLeft,
 .paginationRight {
   display: flex;
@@ -1655,6 +1680,10 @@
   color: var(--msp-text);
 }
 
+:global(html.dark) .statusChipSeparator {
+  background: var(--msp-border, #2a3a55);
+}
+
 :global(html.dark) .page .card:hover {
   background: var(--msp-surface-3, #1e2d4a);
 }
@@ -1691,6 +1720,11 @@
   background: var(--msp-surface-2);
   border-color: var(--msp-border);
   color: var(--msp-text);
+}
+
+:global(html.dark) .paginationEmbedded {
+  background: var(--msp-surface-2, #152035);
+  border-top-color: var(--msp-border, #2a3a55);
 }
 
 :global(html.dark) .page .pageBtn {

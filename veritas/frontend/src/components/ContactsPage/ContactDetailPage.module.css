@@ -15,6 +15,65 @@
   gap: 0.65rem;
 }
 
+.commSectionPanel {
+  overflow: hidden;
+}
+
+.commList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+}
+
+.sidebarCommList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.sidebarCommSection {
+  margin-top: 0;
+  margin-bottom: 0;
+  padding-top: 0;
+}
+
+.sidebarCommBodyWrap {
+  padding-top: 0.55rem;
+}
+
+.sidebarCommItem {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.4rem 0.5rem;
+  border: 1px solid var(--msp-border, #e2e8f0);
+  border-radius: 8px;
+  background: var(--msp-surface, #fff);
+  min-width: 0;
+}
+
+.sidebarCommBody {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  min-width: 0;
+  flex: 1;
+}
+
+.sidebarCommBody .coordValueLink,
+.sidebarCommBody .coordValue {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .coordCard {
   display: flex;
   align-items: center;
@@ -200,6 +259,7 @@
 }
 
 :global(html.dark) .coordCard,
+:global(html.dark) .sidebarCommItem,
 :global(html.dark) .enterpriseCard,
 :global(html.dark) .coordEmpty {
   background: var(--msp-surface-2, #152035);
@@ -231,7 +291,7 @@
   gap: 0.15rem;
   padding: 0.75rem 0.85rem;
   border: 1px solid var(--msp-border, #e2e8f0);
-  border-radius: var(--msp-radius-sm, 10px);
+  border-radius: var(--msp-radius, 16px);
   background: var(--msp-surface-2, #f7f9fc);
 }
 
@@ -252,7 +312,7 @@
 }
 
 .mspKpiProLock {
-  border-radius: var(--msp-radius-sm, 10px);
+  border-radius: var(--msp-radius, 16px);
   min-width: 0;
 }
 

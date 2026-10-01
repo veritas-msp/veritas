@@ -73,6 +73,7 @@ const DOMAINS_MODAL_COPY = {
       title: "Autre registrar · saisie manuelle",
       description: "Enregistrez un nom de domaine sans connecteur API.",
       domainName: "Nom de domaine",
+      domainNamePlaceholder: "exemple.fr",
       registrar: "Registrar (optionnel)",
       registrarPlaceholder: "Ex. Gandi, Ionos…",
       expiration: "Date d'expiration"
@@ -223,6 +224,7 @@ const DOMAINS_MODAL_COPY = {
       title: "Other registrar · manual entry",
       description: "Record a domain name without an API connector.",
       domainName: "Domain name",
+      domainNamePlaceholder: "example.com",
       registrar: "Registrar (optional)",
       registrarPlaceholder: "e.g. Gandi, Ionos…",
       expiration: "Expiration date"
@@ -371,6 +373,7 @@ const DOMAINS_MODAL_COPY = {
       title: "Anderer Registrar · manuelle Eingabe",
       description: "Domainname ohne API-Connector erfassen.",
       domainName: "Domainname",
+      domainNamePlaceholder: "beispiel.de",
       registrar: "Registrar (optional)",
       registrarPlaceholder: "z. B. Gandi, Ionos…",
       expiration: "Ablaufdatum"
@@ -519,6 +522,7 @@ const DOMAINS_MODAL_COPY = {
       title: "Altro registrar · inserimento manuale",
       description: "Registra un nome di dominio senza connettore API.",
       domainName: "Nome di dominio",
+      domainNamePlaceholder: "esempio.it",
       registrar: "Registrar (opzionale)",
       registrarPlaceholder: "Es. Gandi, Ionos…",
       expiration: "Data di scadenza"
@@ -667,6 +671,7 @@ const DOMAINS_MODAL_COPY = {
       title: "Otro registrar · entrada manual",
       description: "Registre un nombre de dominio sin conector API.",
       domainName: "Nombre de dominio",
+      domainNamePlaceholder: "ejemplo.es",
       registrar: "Registrar (opcional)",
       registrarPlaceholder: "Ej. Gandi, Ionos…",
       expiration: "Fecha de vencimiento"

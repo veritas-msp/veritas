@@ -1,38 +1,34 @@
 import React from "react";
+import { Icon } from "@iconify/react";
 import styles from "./EnterpriseDetailPage.module.css";
 
 /**
- * Single coordinated skeleton for the cartographie tab (infra map + peripherals).
- * Replaces the two independent section skeletons that caused layout jump.
+ * Coordinated skeleton for cartographie tab (modules strip + peripherals).
  */
 export default function EnterpriseMapTabSkeleton({
-  infraTitle,
   peripheralsTitle,
   loadingAria
 }) {
   return (
     <div className={styles.mapTabSkeleton} aria-busy="true" aria-label={loadingAria || undefined}>
-      <section className={styles.panel}>
-        <div className={styles.panelHeader}>
-          <div className={styles.panelHeaderMain}>
-            <h2 className={styles.panelTitle}>{infraTitle}</h2>
+      <div className={styles.mapTabSkeletonModules} aria-hidden>
+        {[0, 1, 2, 3].map(col => (
+          <div key={col} className={styles.mapTabSkeletonModuleCol}>
+            <div className={`${styles.skeleton} ${styles.mapTabSkeletonModuleLabel}`} />
+            <div className={`${styles.skeleton} ${styles.mapTabSkeletonBrick}`} />
+            <div className={`${styles.skeleton} ${styles.mapTabSkeletonBrick}`} />
+            {col < 3 ? <div className={`${styles.skeleton} ${styles.mapTabSkeletonBrick}`} /> : null}
           </div>
-        </div>
-        <div className={styles.panelBody}>
-          <div className={`${styles.skeleton} ${styles.skeletonMap}`} />
-          <div className={styles.mapTabSkeletonBrickRow}>
-            <div className={`${styles.skeleton} ${styles.mapTabSkeletonBrick}`} />
-            <div className={`${styles.skeleton} ${styles.mapTabSkeletonBrick}`} />
-            <div className={`${styles.skeleton} ${styles.mapTabSkeletonBrick}`} />
-            <div className={`${styles.skeleton} ${styles.mapTabSkeletonBrick}`} />
-          </div>
-        </div>
-      </section>
+        ))}
+      </div>
 
       <section className={styles.panel}>
         <div className={styles.panelHeader}>
           <div className={styles.panelHeaderMain}>
-            <h2 className={styles.panelTitle}>{peripheralsTitle}</h2>
+            <h2 className={styles.panelTitle}>
+              <Icon icon="mdi:devices" className={styles.panelTitleIcon} aria-hidden />
+              {peripheralsTitle}
+            </h2>
           </div>
         </div>
         <div className={styles.panelBody}>

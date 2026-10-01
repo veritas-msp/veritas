@@ -134,10 +134,13 @@ export function listConfiguredDomains(client, domainItems = [], modulesData = nu
   const equipements = modulesData?.equipements || client?.equipements;
   const nddFromEquipements = Array.isArray(equipements?.NDD) ? equipements.NDD : null;
   const fromModules = (nddFromEquipements || []).map(item => normalizeDomainItem(item)).filter(Boolean);
-  if (nddFromEquipements != null) {
-    return uniqueConfiguredDomains(fromModules);
-  }
   const fromItems = (domainItems || []).map(item => normalizeDomainItem(item)).filter(Boolean);
+  // Prefer modules when they contain domains; otherwise fall back to API/loaded items.
+  // Always merge when both exist so the brick count matches the picker.
+  if (fromModules.length > 0 && fromItems.length > 0) {
+    return uniqueConfiguredDomains([...fromModules, ...fromItems]);
+  }
+  if (fromModules.length > 0) return uniqueConfiguredDomains(fromModules);
   return uniqueConfiguredDomains(fromItems);
 }
 export function isClientDomainsConfigured(client, domainItems = [], modulesData = null) {

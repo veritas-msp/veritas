@@ -1,4 +1,4 @@
-import { useMemo, useState, useEffect, useCallback, useRef, Fragment } from "react";
+import { useMemo, useState, useEffect, useCallback, useRef } from "react";
 import { Icon } from "@iconify/react";
 import { useAuthContext } from "../../contexts/AuthContext";
 import { useAppFormatters, useAppLocale } from "../../hooks/useAppGeneralSettings";
@@ -10,15 +10,20 @@ import PageGuideTour from "../PageGuide/PageGuideTour";
 import { getHomePageGuideSteps } from "../PageGuide/homePageGuideSteps";
 import { useRegisterPageGuide } from "../../hooks/useRegisterPageGuide";
 import { useBreakpoint } from "../../hooks/useBreakpoint";
-import { buildHomeTodoActions } from "./homeTodoActions";
 import { getHomeEventTypeMeta } from "./homeEventTypes";
 import MspPageHero from "../Misc/MspPageHero/MspPageHero";
+import MspEmptyState from "../Misc/MspEmptyState/MspEmptyState";
+import PageSkeleton from "../Misc/Skeleton/PageSkeleton";
 import styles from "./HomePage.module.css";
 import { createTrackedAbortController } from "../../utils/pageLoadAbort";
 import { formatPageInfo, getCommonCopy } from "../../i18n/commonI18n";
 import { interpolate } from "../../i18n/translate";
 
 const HOME_LIST_LIMIT = 5;
+const HOME_LIST_MIN_ROWS = 3;
+const HOME_LIST_MAX_ROWS = 24;
+const HOME_LIST_ROW_HEIGHT = 41;
+const HOME_LIST_PAGER_HEIGHT = 42;
 
 function compareHomeTableValues(left, right, direction) {
   const dir = direction === "desc" ? -1 : 1;
@@ -62,22 +67,49 @@ function useHomeTableSort(items, resolveValue) {
 function useHomeListPagination(items, pageSize = HOME_LIST_LIMIT, resetKey = "") {
   const [page, setPage] = useState(1);
   const list = Array.isArray(items) ? items : [];
+  const size = Math.max(1, Number(pageSize) || HOME_LIST_LIMIT);
   useEffect(() => {
     setPage(1);
-  }, [list.length, resetKey]);
-  const totalPages = Math.max(1, Math.ceil(list.length / pageSize));
+  }, [list.length, resetKey, size]);
+  const totalPages = Math.max(1, Math.ceil(list.length / size));
   const currentPage = Math.min(page, totalPages);
   useEffect(() => {
     if (page > totalPages) setPage(totalPages);
   }, [page, totalPages]);
-  const paginatedItems = useMemo(() => list.slice((currentPage - 1) * pageSize, currentPage * pageSize), [list, currentPage, pageSize]);
+  const paginatedItems = useMemo(() => list.slice((currentPage - 1) * size, currentPage * size), [list, currentPage, size]);
   return {
     page: currentPage,
     setPage,
     totalPages,
     paginatedItems,
-    showPager: list.length > pageSize
+    showPager: list.length > size
   };
+}
+
+function useHomeFitPageSize(wrapRef, itemCount = 0) {
+  const [pageSize, setPageSize] = useState(HOME_LIST_LIMIT);
+  useEffect(() => {
+    const el = wrapRef.current;
+    if (!el || typeof ResizeObserver === "undefined") return undefined;
+    const measure = () => {
+      const wrapH = el.clientHeight;
+      if (wrapH < 48) return;
+      const head = el.querySelector("thead");
+      const headH = head?.getBoundingClientRect().height || 34;
+      const availableWithoutPager = Math.max(0, wrapH - headH);
+      let rows = Math.floor(availableWithoutPager / HOME_LIST_ROW_HEIGHT);
+      if (itemCount > Math.max(rows, HOME_LIST_MIN_ROWS)) {
+        rows = Math.floor(Math.max(0, wrapH - headH - HOME_LIST_PAGER_HEIGHT) / HOME_LIST_ROW_HEIGHT);
+      }
+      const next = Math.min(HOME_LIST_MAX_ROWS, Math.max(HOME_LIST_MIN_ROWS, rows || HOME_LIST_MIN_ROWS));
+      setPageSize(prev => prev === next ? prev : next);
+    };
+    const observer = new ResizeObserver(measure);
+    observer.observe(el);
+    measure();
+    return () => observer.disconnect();
+  }, [itemCount, wrapRef]);
+  return pageSize;
 }
 
 function formatDisplayNameFromEmailLocal(local) {
@@ -222,9 +254,6 @@ export default function HomePage({
   );
   const upcomingEvents = dashboard?.upcomingEvents || [];
   const visibleEvents = upcomingEvents;
-  const todoActions = useMemo(() => buildHomeTodoActions(dashboard, {
-    locale
-  }), [dashboard, locale]);
   const homeGuideSteps = useMemo(() => getHomePageGuideSteps({
     isCommunity,
     locale
@@ -234,7 +263,7 @@ export default function HomePage({
   const canAccessPlanning = access.Planning !== false;
   const showSupportTickets = canAccessSupport;
   const showSalesTickets = !isCommunity && canAccessSales;
-  const showEventsAndTodo = !isCommunity && canAccessPlanning;
+  const showEvents = !isCommunity && canAccessPlanning;
   const mobileTabs = useMemo(() => {
     const tabs = [];
     if (showSupportTickets) {
@@ -251,30 +280,25 @@ export default function HomePage({
         icon: "mdi:briefcase-edit-outline"
       });
     }
-    if (showEventsAndTodo) {
+    if (showEvents) {
       tabs.push({
         id: "events",
         label: copy.mobileTabs.events,
         icon: "mdi:calendar-month-outline"
       });
-      tabs.push({
-        id: "todo",
-        label: copy.mobileTabs.todo,
-        icon: "mdi:checkbox-marked-outline"
-      });
     }
     return tabs;
-  }, [copy.mobileTabs, showEventsAndTodo, showSalesTickets, showSupportTickets]);
+  }, [copy.mobileTabs, showEvents, showSalesTickets, showSupportTickets]);
   const [mobileSection, setMobileSection] = useState("support");
   useEffect(() => {
     if (!mobileTabs.some(tab => tab.id === mobileSection)) {
       setMobileSection(mobileTabs[0]?.id || "support");
     }
   }, [mobileSection, mobileTabs]);
-  return <div className={`${styles.pageWrapper} ${styles.pageAlive}`}>
+  return <div className={styles.pageWrapper}>
       <div className={styles.pageLayout}>
         <div className={styles.dashboardMain}>
-          <div data-guide="home-hero" className={styles.reveal} style={{ "--reveal-delay": "0ms" }}>
+          <div data-guide="home-hero">
             <div className={styles.homeHeroWrap}>
               <MspPageHero className={styles.homeHero} stackOnMobile title={userName ? copy.heroGreeting(userName) : copy.heroTitle} subtitle={isPhone ? null : copy.heroSubtitle} icon="mdi:view-dashboard-outline" />
               <div className={styles.heroAside}>
@@ -286,7 +310,14 @@ export default function HomePage({
             </div>
           </div>
 
-          {loading && !dashboard ? <HomeSkeleton showEventsAndTodo={showEventsAndTodo} /> : null}
+          {loading && !dashboard ? (
+            <PageSkeleton
+              variant="panels"
+              panels={showEvents ? 2 : 1}
+              label={copy.loading}
+              className={styles.pageSkeleton}
+            />
+          ) : null}
 
           {loadError ? <div className={styles.errorBanner} role="alert">
               <p className={styles.errorBannerText}>{loadError}</p>
@@ -303,12 +334,12 @@ export default function HomePage({
                     </button>)}
                 </div> : null}
               <div className={styles.opsStack} data-mobile-section={mobileSection}>
-                {showSupportTickets || showSalesTickets ? <div className={`${styles.ticketPanelsRow} ${showSupportTickets && showSalesTickets ? "" : styles.ticketPanelsRowSingle} ${styles.reveal}`.trim()} style={{ "--reveal-delay": "60ms" }} data-guide="home-tickets">
+                {showSupportTickets || showSalesTickets ? <div className={`${styles.ticketPanelsRow} ${showSupportTickets && showSalesTickets ? "" : styles.ticketPanelsRowSingle}`.trim()} data-guide="home-tickets">
                   {showSupportTickets ? <section className={`${styles.panel} ${styles.panelFull}`} data-home-section="support">
                     <PanelHeader title={copy.panels.tickets.supportTitle} eyebrow />
                     <div className={styles.panelBody}>
                       <div className={styles.ticketKpiRow} role="list" aria-label={copy.panels.tickets.supportKpiAriaLabel}>
-                        {supportTicketKpiCards.map((card, index) => <button key={card.key} type="button" role="listitem" className={`${styles.ticketKpiCard} ${styles[`kpiTone_${card.tone}`]} ${Number(card.value) > 0 ? styles.kpiLive : ""}`} style={{ "--kpi-delay": `${80 + index * 45}ms` }} onClick={() => navigate("Ticket", card.viewId ? { viewId: card.viewId } : null)} title={card.label} aria-label={`${card.label}: ${formatNumber(card.value)}`}>
+                        {supportTicketKpiCards.map(card => <button key={card.key} type="button" role="listitem" className={`${styles.ticketKpiCard} ${styles[`kpiTone_${card.tone}`]} ${Number(card.value) > 0 ? styles.kpiLive : ""}`} onClick={() => navigate("Ticket", card.viewId ? { viewId: card.viewId } : null)} title={card.label} aria-label={`${card.label}: ${formatNumber(card.value)}`}>
                             <span className={styles.kpiIconWrap} aria-hidden>
                               <Icon icon={card.icon} />
                             </span>
@@ -323,7 +354,7 @@ export default function HomePage({
                       <PanelHeader title={copy.panels.tickets.salesTitle} eyebrow />
                       <div className={styles.panelBody}>
                         <div className={styles.ticketKpiRow} role="list" aria-label={copy.panels.tickets.salesKpiAriaLabel}>
-                          {salesTicketKpiCards.map((card, index) => <button key={card.key} type="button" role="listitem" className={`${styles.ticketKpiCard} ${styles[`kpiTone_${card.tone}`]} ${Number(card.value) > 0 ? styles.kpiLive : ""}`} style={{ "--kpi-delay": `${120 + index * 45}ms` }} onClick={() => navigate("TicketSales", card.viewId ? { viewId: card.viewId } : null)} title={card.label} aria-label={`${card.label}: ${formatNumber(card.value)}`}>
+                          {salesTicketKpiCards.map(card => <button key={card.key} type="button" role="listitem" className={`${styles.ticketKpiCard} ${styles[`kpiTone_${card.tone}`]} ${Number(card.value) > 0 ? styles.kpiLive : ""}`} onClick={() => navigate("TicketSales", card.viewId ? { viewId: card.viewId } : null)} title={card.label} aria-label={`${card.label}: ${formatNumber(card.value)}`}>
                               <span className={styles.kpiIconWrap} aria-hidden>
                                 <Icon icon={card.icon} />
                               </span>
@@ -335,43 +366,29 @@ export default function HomePage({
                     </section> : null}
                 </div> : null}
 
-                {showEventsAndTodo ? <section className={`${styles.panel} ${styles.panelFull} ${styles.reveal}`} style={{ "--reveal-delay": "140ms" }} data-guide="home-events" data-home-section="events">
+                {showEvents ? <section className={`${styles.panel} ${styles.panelFull}`} data-guide="home-events" data-home-section="events">
                     <PanelHeader title={copy.panels.events.title} titleMeta={<span className={styles.panelTitleMeta}>{copy.panels.events.weekHint}</span>} eyebrow />
                     <div className={`${styles.panelBody} ${styles.panelBodyFlush}`}>
-                      {visibleEvents.length > 0 ? <HomeEventsList events={visibleEvents} locale={locale} copy={copy} formatEventRange={formatters.formatEventRange} onOpen={() => navigate("Planning")} /> : <EmptyState icon="mdi:calendar-blank-outline" text={copy.empty.events} />}
-                    </div>
-                  </section> : null}
-
-                {showEventsAndTodo ? <section className={`${styles.panel} ${styles.panelFull} ${styles.reveal}`} style={{ "--reveal-delay": "200ms" }} data-guide="home-todo" data-home-section="todo">
-                    <PanelHeader title={copy.panels.todo.title} eyebrow />
-                    <div className={`${styles.panelBody} ${styles.panelBodyFlush}`}>
-                      <HomeTodoList actions={todoActions} copy={copy} locale={locale} onNavigate={navigate} />
+                      {visibleEvents.length > 0 ? <HomeEventsList events={visibleEvents} locale={locale} copy={copy} formatEventRange={formatters.formatEventRange} onOpen={() => navigate("Planning")} /> : <div className={styles.emptyWrap}>
+                          <MspEmptyState
+                            className={styles.emptyStateFill}
+                            icon="mdi:sleep"
+                            title={copy.empty.eventsTitle}
+                            text={copy.empty.eventsText}
+                          />
+                        </div>}
                     </div>
                   </section> : null}
               </div>
             </> : null}
         </div>
 
-        <div className={`${styles.newsAside} ${styles.reveal}`} style={{ "--reveal-delay": "100ms" }} data-guide="home-news">
+        <div className={styles.newsAside} data-guide="home-news">
           <HomeTechNewsColumn locale={locale} />
         </div>
       </div>
 
       <PageGuideTour open={pageGuideOpen} steps={homeGuideSteps} title={copy.guide.tourTitle} locale={locale} onClose={() => setPageGuideOpen(false)} />
-    </div>;
-}
-
-function HomeSkeleton({
-  showEventsAndTodo
-}) {
-  return <div className={styles.skeleton} aria-hidden>
-      <div className={styles.skeletonOps}>
-        <div className={styles.skeletonPanel} />
-        {showEventsAndTodo ? <>
-            <div className={styles.skeletonPanel} />
-            <div className={styles.skeletonPanel} />
-          </> : null}
-      </div>
     </div>;
 }
 
@@ -427,6 +444,7 @@ function HomeEventsList({
   formatEventRange,
   onOpen
 }) {
+  const wrapRef = useRef(null);
   const resolveEventSortValue = useCallback((event, key) => {
     switch (key) {
       case "when":
@@ -446,185 +464,56 @@ function HomeEventsList({
     sort,
     toggleSort
   } = useHomeTableSort(events, resolveEventSortValue);
+  const pageSize = useHomeFitPageSize(wrapRef, sortedItems.length);
   const {
     page,
     setPage,
     totalPages,
     paginatedItems,
     showPager
-  } = useHomeListPagination(sortedItems, HOME_LIST_LIMIT, `${sort.key}:${sort.direction}`);
+  } = useHomeListPagination(sortedItems, pageSize, `${sort.key}:${sort.direction}`);
   const cols = copy.eventsTable;
-  return <div className={styles.homeTableWrap}>
-      <table className={styles.homeTable}>
-        <thead>
-          <tr>
-            <HomeSortableTh columnKey="when" label={cols.when} sort={sort} onSort={toggleSort} sortByTemplate={copy.tableSort.sortBy} />
-            <HomeSortableTh columnKey="type" label={cols.type} sort={sort} onSort={toggleSort} sortByTemplate={copy.tableSort.sortBy} />
-            <HomeSortableTh columnKey="title" label={cols.title} sort={sort} onSort={toggleSort} sortByTemplate={copy.tableSort.sortBy} />
-            <HomeSortableTh columnKey="company" label={cols.company} sort={sort} onSort={toggleSort} sortByTemplate={copy.tableSort.sortBy} />
-          </tr>
-        </thead>
-        <tbody>
-          {paginatedItems.map(event => {
-          const typeMeta = getHomeEventTypeMeta(event.type, event.typeLabel, locale);
-          const title = truncateText(String(event.title || "").trim() || copy.noTitle, 72);
-          const fullTitle = String(event.title || "").trim() || copy.noTitle;
-          const clientLabel = event.clientName || copy.noClient;
-          const whenLabel = formatEventRange(event.start, event.end, {
-            allDay: event.allDay
-          });
-          return <tr key={event.id} className={styles.homeTableRow} title={`${fullTitle} · ${clientLabel}`} onClick={onOpen} onKeyDown={e => {
-            if (e.key === "Enter" || e.key === " ") {
-              e.preventDefault();
-              onOpen();
-            }
-          }} tabIndex={0} role="link">
-                <td className={styles.colDate}>{whenLabel}</td>
-                <td>
-                  <span className={styles.typeBadge}>
-                    <Icon icon={typeMeta.icon} aria-hidden />
-                    {typeMeta.label}
-                  </span>
-                </td>
-                <td className={styles.colMain}>{title}</td>
-                <td className={styles.colMuted}>{clientLabel}</td>
-              </tr>;
-        })}
-        </tbody>
-      </table>
-      {showPager ? <HomeListPager page={page} totalPages={totalPages} onPageChange={setPage} locale={locale} ariaLabel={copy.panels.events.pagerAria} /> : null}
-    </div>;
-}
-
-function HomeTodoList({
-  actions,
-  copy,
-  locale,
-  onNavigate
-}) {
-  const [expandedId, setExpandedId] = useState(null);
-  const resolveTodoSortValue = useCallback((action, key) => {
-    const toneOrder = {
-      bad: 0,
-      warn: 1
-    };
-    switch (key) {
-      case "source":
-        return action.sourceLabel || "";
-      case "label":
-        return `${toneOrder[action.tone] ?? 9}\u0000${action.label || ""}`;
-      case "title":
-        return action.title || "";
-      case "detail":
-        return action.meta || "";
-      default:
-        return null;
-    }
-  }, []);
-  const {
-    sortedItems,
-    sort,
-    toggleSort
-  } = useHomeTableSort(actions, resolveTodoSortValue);
-  const {
-    page,
-    setPage,
-    totalPages,
-    paginatedItems,
-    showPager
-  } = useHomeListPagination(sortedItems, HOME_LIST_LIMIT, `${sort.key}:${sort.direction}`);
-  useEffect(() => {
-    setExpandedId(null);
-  }, [page, sort.key, sort.direction]);
-  if (!actions.length) {
-    return <EmptyState icon="mdi:check-circle-outline" text={copy.empty.todo} />;
-  }
-  const cols = copy.todoTable;
-  const openAction = action => {
-    if (!action?.navigateType) return;
-    onNavigate(action.navigateType, action.navigateData || null);
-  };
-  return <div className={styles.homeTableWrap}>
-      <table className={styles.homeTable}>
-        <thead>
-          <tr>
-            <HomeSortableTh columnKey="source" label={cols.source} sort={sort} onSort={toggleSort} sortByTemplate={copy.tableSort.sortBy} />
-            <HomeSortableTh columnKey="label" label={cols.label} sort={sort} onSort={toggleSort} sortByTemplate={copy.tableSort.sortBy} />
-            <HomeSortableTh columnKey="title" label={cols.title} sort={sort} onSort={toggleSort} sortByTemplate={copy.tableSort.sortBy} />
-            <HomeSortableTh columnKey="detail" label={cols.detail} sort={sort} onSort={toggleSort} sortByTemplate={copy.tableSort.sortBy} />
-          </tr>
-        </thead>
-        <tbody>
-          {paginatedItems.map(action => {
-            const isBulk = Boolean(action.bulk && action.children?.length);
-            const expanded = isBulk && expandedId === action.id;
-            return <Fragment key={action.id}>
-                <tr
-                  className={`${styles.homeTableRow} ${styles[`homeTableRow_${action.tone}`]} ${isBulk ? styles.homeTableRowBulk : ""}`}
-                  onClick={() => openAction(action)}
-                  onKeyDown={e => {
-                    if (e.key === "Enter" || e.key === " ") {
-                      e.preventDefault();
-                      openAction(action);
-                    }
-                  }}
-                  tabIndex={0}
-                  role="link"
-                >
+  return <div className={styles.homeTableWrap} ref={wrapRef}>
+      <div className={styles.homeTableScroll}>
+        <table className={styles.homeTable}>
+          <thead>
+            <tr>
+              <HomeSortableTh columnKey="when" label={cols.when} sort={sort} onSort={toggleSort} sortByTemplate={copy.tableSort.sortBy} />
+              <HomeSortableTh columnKey="type" label={cols.type} sort={sort} onSort={toggleSort} sortByTemplate={copy.tableSort.sortBy} />
+              <HomeSortableTh columnKey="title" label={cols.title} sort={sort} onSort={toggleSort} sortByTemplate={copy.tableSort.sortBy} />
+              <HomeSortableTh columnKey="company" label={cols.company} sort={sort} onSort={toggleSort} sortByTemplate={copy.tableSort.sortBy} />
+            </tr>
+          </thead>
+          <tbody>
+            {paginatedItems.map(event => {
+            const typeMeta = getHomeEventTypeMeta(event.type, event.typeLabel, locale);
+            const title = truncateText(String(event.title || "").trim() || copy.noTitle, 72);
+            const fullTitle = String(event.title || "").trim() || copy.noTitle;
+            const clientLabel = event.clientName || copy.noClient;
+            const whenLabel = formatEventRange(event.start, event.end, {
+              allDay: event.allDay
+            });
+            return <tr key={event.id} className={styles.homeTableRow} title={`${fullTitle} · ${clientLabel}`} onClick={onOpen} onKeyDown={e => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                onOpen();
+              }
+            }} tabIndex={0} role="link">
+                  <td className={styles.colDate}>{whenLabel}</td>
                   <td>
                     <span className={styles.typeBadge}>
-                      <Icon icon={action.sourceIcon} aria-hidden />
-                      {action.sourceLabel}
+                      <Icon icon={typeMeta.icon} aria-hidden />
+                      {typeMeta.label}
                     </span>
                   </td>
-                  <td>
-                    <span className={`${styles.todoToneBadge} ${styles[`todoToneBadge_${action.tone}`]}`}>
-                      {action.label}
-                      {isBulk ? <span className={styles.todoCountBadge}>{action.count}</span> : null}
-                    </span>
-                  </td>
-                  <td className={styles.colMain}>
-                    <span className={styles.todoTitleRow}>
-                      <span>{action.title}</span>
-                      {isBulk ? <button
-                        type="button"
-                        className={styles.todoExpandBtn}
-                        aria-expanded={expanded}
-                        aria-label={expanded ? copy.todo.bulk.collapse : copy.todo.bulk.expand}
-                        onClick={e => {
-                          e.stopPropagation();
-                          setExpandedId(prev => prev === action.id ? null : action.id);
-                        }}
-                      >
-                        <Icon icon={expanded ? "mdi:chevron-up" : "mdi:chevron-down"} aria-hidden />
-                      </button> : null}
-                    </span>
-                  </td>
-                  <td className={styles.colMuted}>{action.meta || "—"}</td>
-                </tr>
-                {expanded ? action.children.map(child => <tr
-                  key={child.id}
-                  className={`${styles.homeTableRow} ${styles.homeTableRowChild}`}
-                  onClick={() => openAction(child)}
-                  onKeyDown={e => {
-                    if (e.key === "Enter" || e.key === " ") {
-                      e.preventDefault();
-                      openAction(child);
-                    }
-                  }}
-                  tabIndex={0}
-                  role="link"
-                >
-                    <td />
-                    <td />
-                    <td className={styles.colMain}>{child.title}</td>
-                    <td className={styles.colMuted}>{child.meta || "—"}</td>
-                  </tr>) : null}
-              </Fragment>;
+                  <td className={styles.colMain}>{title}</td>
+                  <td className={styles.colMuted}>{clientLabel}</td>
+                </tr>;
           })}
-        </tbody>
-      </table>
-      {showPager ? <HomeListPager page={page} totalPages={totalPages} onPageChange={setPage} locale={locale} ariaLabel={copy.panels.todo.pagerAria} /> : null}
+          </tbody>
+        </table>
+      </div>
+      {showPager ? <HomeListPager page={page} totalPages={totalPages} onPageChange={setPage} locale={locale} ariaLabel={copy.panels.events.pagerAria} /> : null}
     </div>;
 }
 
@@ -646,15 +535,5 @@ function PanelHeader({
           </div>}
         {headerMeta}
       </div>
-    </div>;
-}
-
-function EmptyState({
-  icon,
-  text
-}) {
-  return <div className={styles.emptyState}>
-      <Icon icon={icon} className={styles.emptyIcon} />
-      <p>{text}</p>
     </div>;
 }

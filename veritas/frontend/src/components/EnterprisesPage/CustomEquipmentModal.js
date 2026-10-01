@@ -24,6 +24,11 @@ const SECTIONS = [{
   description: "Name and site",
   icon: "mdi:tag-outline"
 }, {
+  id: "status",
+  label: "Statut",
+  description: "Disponibilité du périphérique",
+  icon: "mdi:toggle-switch-outline"
+}, {
   id: "common",
   label: "Facturation et installation",
   description: "Champs communs",
@@ -210,6 +215,14 @@ export default function CustomEquipmentModal({
       details: detailsDone
     };
   }, [form, commonFields, detailInputFields]);
+  const navSections = useMemo(() => SECTIONS.map(section => {
+    if (section.id !== "status") return section;
+    return {
+      ...section,
+      label: formFields.status || section.label,
+      description: locale === "fr" ? "Disponibilité du périphérique" : "Device availability"
+    };
+  }), [formFields.status, locale]);
   const handleSubmit = async () => {
     if (!clientId || !family?.familyKey) return;
     const name = String(form.name || "").trim();
@@ -311,7 +324,7 @@ export default function CustomEquipmentModal({
           <label className={labelClass} htmlFor={id}>{field.label || formFields.location || "Lieux"}</label>
           <SiteSuggestInput id={id} value={value || ""} onChange={nextValue => patchForm({
           site: nextValue
-        })} sites={availableSites} placeholder={formFields.locationPlaceholder || "Rechercher ou saisir un lieu…"} />
+        })} sites={availableSites} placeholder={formFields.locationPlaceholder || ""} />
         </div>;
     }
     if (field.fieldType === "textarea") {
@@ -397,7 +410,7 @@ export default function CustomEquipmentModal({
 
         <div className={styles.body}>
           <nav className={styles.nav} aria-label="Form sections">
-            {SECTIONS.map(section => <button key={section.id} type="button" className={`${styles.navItem} ${activeSection === section.id ? styles.navItemActive : ""}`} onClick={() => setActiveSection(section.id)} aria-current={activeSection === section.id ? "step" : undefined}>
+            {navSections.map(section => <button key={section.id} type="button" className={`${styles.navItem} ${activeSection === section.id ? styles.navItemActive : ""}`} onClick={() => setActiveSection(section.id)} aria-current={activeSection === section.id ? "step" : undefined}>
                 <Icon icon={section.icon} className={styles.navItemIcon} aria-hidden />
                 <span className={styles.navItemText}>
                   <span className={styles.navItemLabel}>{section.label}</span>
@@ -418,43 +431,49 @@ export default function CustomEquipmentModal({
                 <div className={styles.fieldGrid2}>
                   <div className={`${styles.field} ${styles.fieldFull}`}>
                     <label className={`${styles.label} ${styles.labelRequired}`} htmlFor="custom-equipment-name">
-                      Name / label
+                      {formFields.name || "Name"}
                     </label>
                     <input id="custom-equipment-name" type="text" className={styles.input} value={form.name} onChange={e => patchForm({
                     name: e.target.value
-                  })} placeholder="Meeting room A" required />
+                  })} placeholder={formFields.namePlaceholder || ""} required />
                   </div>
                   <div className={`${styles.field} ${styles.fieldFull}`}>
                     <label className={styles.label} htmlFor="custom-equipment-site">
-                      {formFields.location || "Lieux"}
+                      {formFields.location || "Site"}
                     </label>
                     <SiteSuggestInput
                       id="custom-equipment-site"
                       value={form.site || ""}
                       onChange={nextValue => patchForm({ site: nextValue })}
                       sites={availableSites.length ? availableSites : siteOptions}
-                      placeholder={formFields.locationPlaceholder || "Rechercher ou saisir un lieu…"}
+                      placeholder={formFields.locationPlaceholder || ""}
                     />
                   </div>
-                  <div className={`${styles.field} ${styles.fieldFull}`}>
-                    <span className={styles.label}>{formFields.status || "Statut"}</span>
-                    <div className={styles.modulesGrid}>
-                      <button type="button" className={`${styles.moduleTile} ${form.is_active !== false ? styles.moduleTileActive : ""}`} onClick={() => patchForm({
-                      is_active: true
-                    })} aria-pressed={form.is_active !== false}>
-                        {form.is_active !== false && <Icon icon="mdi:check-circle" className={styles.moduleCheck} aria-hidden />}
-                        <Icon icon="mdi:check-circle-outline" className={styles.moduleTileIcon} aria-hidden />
-                        <span className={styles.moduleTileLabel}>{formFields.active || "Actif"}</span>
-                      </button>
-                      <button type="button" className={`${styles.moduleTile} ${form.is_active === false ? styles.moduleTileActive : ""}`} onClick={() => patchForm({
-                      is_active: false
-                    })} aria-pressed={form.is_active === false}>
-                        {form.is_active === false && <Icon icon="mdi:check-circle" className={styles.moduleCheck} aria-hidden />}
-                        <Icon icon="mdi:close-circle-outline" className={styles.moduleTileIcon} aria-hidden />
-                        <span className={styles.moduleTileLabel}>{formFields.inactive || "Inactif"}</span>
-                      </button>
-                    </div>
-                  </div>
+                </div>
+              </> : null}
+
+            {activeSection === "status" ? <>
+                <div className={styles.sectionHead}>
+                  <h3 className={styles.sectionTitle}>{formFields.status || "Statut"}</h3>
+                  <p className={styles.sectionDesc}>
+                    {locale === "fr" ? "Disponibilité du périphérique" : "Device availability"}
+                  </p>
+                </div>
+                <div className={styles.modulesGrid}>
+                  <button type="button" className={`${styles.moduleTile} ${form.is_active !== false ? styles.moduleTileActive : ""}`} onClick={() => patchForm({
+                  is_active: true
+                })} aria-pressed={form.is_active !== false}>
+                      {form.is_active !== false && <Icon icon="mdi:check-circle" className={styles.moduleCheck} aria-hidden />}
+                      <Icon icon="mdi:check-circle-outline" className={styles.moduleTileIcon} aria-hidden />
+                      <span className={styles.moduleTileLabel}>{formFields.active || "Actif"}</span>
+                    </button>
+                  <button type="button" className={`${styles.moduleTile} ${form.is_active === false ? styles.moduleTileActive : ""}`} onClick={() => patchForm({
+                  is_active: false
+                })} aria-pressed={form.is_active === false}>
+                      {form.is_active === false && <Icon icon="mdi:check-circle" className={styles.moduleCheck} aria-hidden />}
+                      <Icon icon="mdi:close-circle-outline" className={styles.moduleTileIcon} aria-hidden />
+                      <span className={styles.moduleTileLabel}>{formFields.inactive || "Inactif"}</span>
+                    </button>
                 </div>
               </> : null}
 

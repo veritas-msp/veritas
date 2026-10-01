@@ -2309,6 +2309,23 @@ button.switch:disabled {
   color: var(--msp-muted, #5c6b82);
 }
 
+.majorSwitchInline {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.65rem;
+  min-height: 38px;
+  padding: 0 0.55rem;
+  border: 1px solid var(--msp-border, #dde3ed);
+  border-radius: var(--msp-radius-sm, 10px);
+  background: var(--msp-surface-2, #f7f9fc);
+}
+
+.majorSwitchInlineHint {
+  display: inline-flex;
+  align-items: center;
+}
+
 .settingsMajorTop {
   padding-bottom: 0.55rem;
   margin-bottom: 0.1rem;

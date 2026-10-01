@@ -1,12 +1,26 @@
 import { interpolate, pickLocaleMessages } from "../../i18n/translate";
 const TAB_KEYS = ["antivirus", "antispam", "backup", "campaigns"];
 const TAB_ICONS = {
-  antivirus: "mdi:shield-search",
-  antispam: "mdi:email-secure",
+  antivirus: "mdi:shield-check-outline",
+  antispam: "mdi:email-secure-outline",
   backup: "mdi:backup-restore",
   campaigns: "mdi:bullhorn-outline"
 };
 const STATUS_FILTER_IDS = ["all", "actif", "expire_bientot", "inactif"];
+const STATUS_FILTER_META = {
+  actif: {
+    icon: "mdi:check-circle",
+    kpiTone: "green"
+  },
+  expire_bientot: {
+    icon: "mdi:clock-alert",
+    kpiTone: "amber"
+  },
+  inactif: {
+    icon: "mdi:close-circle",
+    kpiTone: "gray"
+  }
+};
 const STATUS_META_KEYS = ["actif", "expire_bientot", "inactif", "inconnu"];
 const CAMPAIGN_TYPE_KEYS = ["microsoft_security", "cybersecurity_training", "rgpd_audit", "penetration_test", "phishing_simulation", "vulnerability_scan", "incident_response", "compliance_audit"];
 const CAMPAIGN_STATUS_KEYS = ["en_preparation", "active", "suspendue", "inactive"];
@@ -23,6 +37,34 @@ const CAMPAIGN_STATUS_TONES = {
   inactive: "neutral"
 };
 const CAMPAIGN_STATUS_FILTER_IDS = ["all", "en_preparation", "active", "suspendue", "inactive"];
+const CAMPAIGN_STATUS_FILTER_META = {
+  en_preparation: {
+    icon: "mdi:calendar-clock",
+    kpiTone: "amber"
+  },
+  active: {
+    icon: "mdi:check-circle",
+    kpiTone: "green"
+  },
+  suspendue: {
+    icon: "mdi:alert-circle",
+    kpiTone: "red"
+  },
+  inactive: {
+    icon: "mdi:close-circle",
+    kpiTone: "gray"
+  }
+};
+const BACKUP_STATUS_FILTER_META = {
+  ok: {
+    icon: "mdi:check-circle",
+    kpiTone: "green"
+  },
+  issues: {
+    icon: "mdi:alert-circle",
+    kpiTone: "amber"
+  }
+};
 const CYBERSECURITE_PAGE_COPY = {
   fr: {
     eyebrow: "Services managés",
@@ -2215,9 +2257,12 @@ export function getCybersecuritePageCopy(locale) {
       icon: TAB_ICONS[key],
       proOnly: key === "campaigns"
     })),
-    statusFilters: STATUS_FILTER_IDS.map(id => ({
+    statusFilters: STATUS_FILTER_IDS.filter(id => id !== "all").map(id => ({
       id,
-      label: t.msp.statusFilters[id]
+      key: id,
+      label: t.msp.statusFilters[id],
+      icon: STATUS_FILTER_META[id].icon,
+      kpiTone: STATUS_FILTER_META[id].kpiTone
     })),
     statusMeta,
     campaignTypes: CAMPAIGN_TYPE_KEYS.map(value => ({
@@ -2229,9 +2274,19 @@ export function getCybersecuritePageCopy(locale) {
       label: t.campaigns.statuses[value],
       color: CAMPAIGN_STATUS_COLORS[value]
     })),
-    campaignStatusFilters: CAMPAIGN_STATUS_FILTER_IDS.map(id => ({
+    campaignStatusFilters: CAMPAIGN_STATUS_FILTER_IDS.filter(id => id !== "all").map(id => ({
       id,
-      label: t.campaigns.statusFilters[id]
+      key: id,
+      label: t.campaigns.statusFilters[id],
+      icon: CAMPAIGN_STATUS_FILTER_META[id].icon,
+      kpiTone: CAMPAIGN_STATUS_FILTER_META[id].kpiTone
+    })),
+    backupStatusFilters: Object.keys(BACKUP_STATUS_FILTER_META).map(id => ({
+      id,
+      key: id,
+      label: id === "ok" ? t.msp.backup?.kpi?.ok || t.msp.statusFilters.actif : t.msp.backup?.kpi?.toReview || t.msp.kpi.todo,
+      icon: BACKUP_STATUS_FILTER_META[id].icon,
+      kpiTone: BACKUP_STATUS_FILTER_META[id].kpiTone
     })),
     getCampaignStatusMeta: status => ({
       label: t.campaigns.statuses[status] || status,

@@ -1,15 +1,50 @@
 .panelRoot {
   display: flex;
   flex-direction: column;
-  gap: 0.85rem;
+  gap: 0.75rem;
+  height: 100%;
+  min-height: 0;
+  flex: 1 1 auto;
+  position: relative;
+  background: transparent;
+}
+
+.panelRootFileDrop {
+  outline: 2px dashed var(--msp-accent, #2b5fab);
+  outline-offset: -2px;
+  border-radius: 12px;
+}
+
+.fileDropOverlay {
+  position: absolute;
+  inset: 0;
+  z-index: 8;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.55rem;
+  padding: 1.25rem;
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--msp-surface, #fff) 82%, var(--msp-accent, #2b5fab));
+  color: var(--msp-accent, #2b5fab);
+  font-size: 0.95rem;
+  font-weight: 700;
+  text-align: center;
+  pointer-events: none;
+}
+
+.fileDropOverlay svg {
+  font-size: 2rem;
 }
 
 .vaultHeader {
   display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
+  align-items: center;
+  justify-content: flex-end;
   gap: 1rem;
   flex-wrap: wrap;
+  flex: 0 0 auto;
 }
 
 .vaultHeaderText {
@@ -53,29 +88,62 @@
   display: grid;
   grid-template-columns: minmax(180px, 240px) minmax(0, 1fr);
   gap: 0.85rem;
-  align-items: start;
-  min-height: 22rem;
+  align-items: stretch;
+  flex: 1 1 auto;
+  min-height: 0;
+  height: 100%;
 }
 
 .treePane {
-  border: 1px solid var(--msp-border, #e2e8f0);
-  border-radius: 12px;
+  border: 1px solid var(--msp-border, #9aabc0);
+  border-radius: var(--msp-radius, 16px);
   background: var(--msp-surface, #fff);
-  padding: 0.55rem;
-  max-height: min(70vh, 560px);
+  box-shadow: 0 1px 2px rgba(15, 28, 46, 0.06), 0 6px 18px rgba(15, 28, 46, 0.08);
+  padding: 0.65rem 0.55rem;
+  height: 100%;
+  min-height: 0;
   overflow: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
 }
 
 .treePaneHeader {
   display: flex;
   align-items: center;
+  justify-content: space-between;
   gap: 0.35rem;
-  padding: 0.35rem 0.45rem 0.55rem;
+  padding: 0.2rem 0.2rem 0.45rem 0.35rem;
   color: var(--msp-muted, #5c6b82);
   font-size: 0.75rem;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.04em;
+}
+
+.treePaneHeaderTitle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  min-width: 0;
+}
+
+.treeAddFolderBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.7rem;
+  height: 1.7rem;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--msp-accent, #2b5fab);
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.treeAddFolderBtn:hover {
+  background: var(--msp-accent-soft, rgba(43, 95, 171, 0.12));
 }
 
 .treeBranch {
@@ -86,7 +154,7 @@
 .treeItem {
   display: flex;
   align-items: center;
-  gap: 0.4rem;
+  gap: 0.15rem;
   width: 100%;
   border: 0;
   background: transparent;
@@ -94,9 +162,38 @@
   font-size: 0.82rem;
   font-weight: 500;
   text-align: left;
-  padding: 0.4rem 0.55rem;
+  padding: 0.15rem 0.25rem;
+  border-radius: 8px;
+}
+
+.treeItemBtn {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  flex: 1 1 auto;
+  min-width: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  padding: 0.35rem 0.4rem;
   border-radius: 8px;
   cursor: pointer;
+}
+
+.treeItemBtn:hover {
+  background: rgba(43, 95, 171, 0.08);
+}
+
+.treeItemDropTarget {
+  outline: 2px solid var(--msp-accent, #2b5fab);
+  outline-offset: -2px;
+  background: var(--msp-accent-soft, rgba(43, 95, 171, 0.12));
+}
+
+.treeItemDragging {
+  opacity: 0.45;
 }
 
 .treeItem:hover {
@@ -127,14 +224,96 @@
   display: flex;
   flex-direction: column;
   gap: 0.75rem;
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+  border: 1px solid var(--msp-border, #9aabc0);
+  border-radius: var(--msp-radius, 16px);
+  background: var(--msp-surface, #fff);
+  box-shadow: 0 1px 2px rgba(15, 28, 46, 0.06), 0 6px 18px rgba(15, 28, 46, 0.08);
+  padding: 0.85rem 1rem 1rem;
+  box-sizing: border-box;
 }
 
 .tableWrap {
-  border: 1px solid var(--msp-border, #e2e8f0);
-  border-radius: 12px;
-  background: var(--msp-surface, #fff);
+  border: none;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
   overflow: auto;
   max-width: 100%;
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+.colDrag {
+  width: 2rem;
+  padding-left: 0.45rem !important;
+  padding-right: 0.2rem !important;
+}
+
+.dragHandle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.55rem;
+  height: 1.55rem;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--msp-muted-light, #8b9bb5);
+  cursor: grab;
+  flex-shrink: 0;
+}
+
+.dragHandle:hover {
+  background: rgba(43, 95, 171, 0.08);
+  color: var(--msp-accent, #2b5fab);
+}
+
+.dragHandle:active {
+  cursor: grabbing;
+}
+
+.rowDropTarget td {
+  background: var(--msp-accent-soft, rgba(43, 95, 171, 0.14)) !important;
+}
+
+.rowDragging {
+  opacity: 0.4;
+}
+
+.dragOverlayChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.45rem 0.75rem;
+  border-radius: 10px;
+  border: 1px solid var(--msp-border, #e2e8f0);
+  background: var(--msp-surface, #fff);
+  box-shadow: 0 8px 24px rgba(15, 28, 46, 0.18);
+  color: var(--msp-text, #1a2b3c);
+  font-size: 0.84rem;
+  font-weight: 600;
+  max-width: 18rem;
+}
+
+.dragOverlayChip span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.emptyDropTarget {
+  outline: 2px dashed var(--msp-accent, #2b5fab);
+  outline-offset: -2px;
+  background: var(--msp-accent-soft, rgba(43, 95, 171, 0.08));
+}
+
+.emptyDropHint {
+  margin: 0.35rem 0 0;
+  color: var(--msp-muted-light, #8b9bb5);
+  font-size: 0.78rem;
 }
 
 .vaultTable {
@@ -146,7 +325,7 @@
 .vaultTable th {
   text-align: left;
   padding: 0.65rem 0.85rem;
-  background: var(--msp-surface-2, #f7f9fc);
+  background: var(--msp-surface, #fff);
   color: var(--msp-muted, #5c6b82);
   font-size: 0.72rem;
   font-weight: 700;
@@ -160,6 +339,7 @@
   padding: 0.55rem 0.85rem;
   border-bottom: 1px solid var(--msp-border-light, #eef2f7);
   vertical-align: middle;
+  background: var(--msp-surface, #fff);
 }
 
 .vaultTable tbody tr:hover td {
@@ -167,7 +347,7 @@
 }
 
 .folderRow td {
-  background: rgba(232, 163, 23, 0.04);
+  background: var(--msp-surface, #fff);
 }
 
 .rowNameBtn {
@@ -197,9 +377,65 @@
   flex-shrink: 0;
 }
 
+.folderDocCount {
+  flex-shrink: 0;
+  min-width: 1.25rem;
+  padding: 0.05rem 0.35rem;
+  border-radius: 999px;
+  background: color-mix(in srgb, #e8a317 14%, var(--msp-surface-2, #f4f7fb));
+  color: var(--msp-muted, #5c6b82);
+  font-size: 0.68rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.3;
+}
+
 .rowFileIcon {
   color: var(--msp-accent, #2b5fab);
   flex-shrink: 0;
+}
+
+.colVisibility {
+  width: 3.25rem;
+  text-align: center;
+}
+
+.colSize {
+  width: 5.5rem;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.visibilityIconBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.85rem;
+  height: 1.85rem;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: transparent;
+  cursor: pointer;
+  font-size: 1.05rem;
+  line-height: 1;
+  transition: background 0.12s ease, color 0.12s ease, border-color 0.12s ease;
+}
+
+.visibilityIconOn {
+  color: #047857;
+  background: rgba(16, 185, 129, 0.1);
+  border-color: rgba(16, 185, 129, 0.22);
+}
+
+.visibilityIconOff {
+  color: #64748b;
+  background: rgba(100, 116, 139, 0.08);
+  border-color: rgba(100, 116, 139, 0.18);
+}
+
+.visibilityIconBtn:hover {
+  filter: brightness(0.96);
 }
 
 .typeBadge,
@@ -431,6 +667,7 @@
   flex: 1 1 240px;
   max-width: none;
   overflow: hidden;
+  background: var(--msp-surface, #fff);
 }
 
 .filters .searchWrap :global(input:not([type="checkbox"]):not([type="radio"])),
@@ -465,6 +702,7 @@
   min-width: 160px;
   appearance: none;
   -webkit-appearance: none;
+  background: var(--msp-surface, #fff);
 }
 
 :global(html.dark) .filters .searchWrap,
@@ -685,7 +923,7 @@
   padding: 3rem 1.5rem;
   border: 1px dashed var(--msp-border, #c5d0df);
   border-radius: 14px;
-  background: var(--msp-surface-2, #f7f9fc);
+  background: transparent;
   color: var(--msp-muted, #5c6b82);
   text-align: center;
 }
@@ -1124,7 +1362,8 @@
   border: none;
   background: transparent;
   color: var(--msp-muted, #5c6b82);
-  font-size: 0.95rem;
+  font-size: 1rem;
+  line-height: 1;
   cursor: pointer;
   transition: background 0.12s ease, color 0.12s ease;
 }
@@ -1228,5 +1467,93 @@
 
 .visibilitySwitchOn .visibilitySwitchState {
   color: var(--msp-accent-dark, #1a3d75);
+}
+
+.contextMenu {
+  position: fixed;
+  z-index: 1200;
+  min-width: 12.5rem;
+  max-width: min(20rem, calc(100vw - 16px));
+  padding: 0.35rem;
+  border: 1px solid var(--msp-border, #e2e8f0);
+  border-radius: 12px;
+  background: var(--msp-surface, #fff);
+  box-shadow: 0 10px 30px rgba(15, 28, 46, 0.18);
+  color: var(--msp-text, #0a1422);
+}
+
+.contextMenuTitle {
+  padding: 0.4rem 0.65rem 0.45rem;
+  margin-bottom: 0.15rem;
+  border-bottom: 1px solid var(--msp-border-light, #e8eef5);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: var(--msp-muted, #5c6b82);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.contextMenuItem {
+  appearance: none;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  padding: 0.48rem 0.65rem;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-size: 0.84rem;
+  font-weight: 560;
+  text-align: left;
+  cursor: pointer;
+}
+
+.contextMenuItem:hover,
+.contextMenuItem:focus-visible {
+  background: var(--msp-accent-soft, rgba(43, 95, 171, 0.12));
+  color: var(--msp-accent, #2b5fab);
+  outline: none;
+}
+
+.contextMenuItem svg {
+  font-size: 1.05rem;
+  flex-shrink: 0;
+  opacity: 0.9;
+}
+
+.contextMenuItemDanger {
+  color: #b42318;
+}
+
+.contextMenuItemDanger:hover,
+.contextMenuItemDanger:focus-visible {
+  background: rgba(180, 35, 24, 0.1);
+  color: #912018;
+}
+
+.contextMenuSep {
+  height: 1px;
+  margin: 0.3rem 0.4rem;
+  background: var(--msp-border-light, #e8eef5);
+}
+
+:global(html.dark) .contextMenu {
+  background: var(--msp-surface, #1a2540);
+  border-color: var(--msp-border, #2a3a55);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.45);
+}
+
+:global(html.dark) .contextMenuTitle {
+  border-bottom-color: var(--msp-border, #2a3a55);
+  color: var(--msp-muted, #8fa8c4);
+}
+
+:global(html.dark) .contextMenuSep {
+  background: var(--msp-border, #2a3a55);
 }
 

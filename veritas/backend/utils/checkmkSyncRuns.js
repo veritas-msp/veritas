@@ -24,15 +24,20 @@ function mapRun(row) {
 
 export async function startCheckmkSyncRun({
   trigger = "poller",
-  targetsTotal = 0
+  targetsTotal = 0,
+  details = {}
 } = {}) {
   const ready = await ensureCheckmkSyncRunsSchema();
   if (!ready) return null;
   const result = await pool.query(
-    `INSERT INTO v_b_checkmk_sync_runs (status, trigger_source, targets_total)
-     VALUES ('running', $1, $2)
+    `INSERT INTO v_b_checkmk_sync_runs (status, trigger_source, targets_total, details)
+     VALUES ('running', $1, $2, $3::jsonb)
      RETURNING *`,
-    [String(trigger || "poller").slice(0, 40), Number(targetsTotal) || 0]
+    [
+      String(trigger || "poller").slice(0, 40),
+      Number(targetsTotal) || 0,
+      JSON.stringify(details && typeof details === "object" ? details : {})
+    ]
   );
   return mapRun(result.rows[0]);
 }

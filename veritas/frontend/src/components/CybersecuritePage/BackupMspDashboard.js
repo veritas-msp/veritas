@@ -1,11 +1,14 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Icon } from "@iconify/react";
-import { FaChevronLeft, FaChevronRight } from "react-icons/fa";
+import { FaChevronLeft, FaChevronRight, FaTimes } from "react-icons/fa";
 import { toast } from "react-toastify";
 import API_BASE_URL from "../../config";
 import { useAppFormatters } from "../../hooks/useAppGeneralSettings";
 import MspEmptyState from "../Misc/MspEmptyState/MspEmptyState";
+import PageSkeleton from "../Misc/Skeleton/PageSkeleton";
+import SmartTooltip from "../SmartTooltip";
 import { isBackupJobMapped } from "./backupJobStatusUtils";
+import layout from "../EnterprisesPage/EnterprisesPage.module.css";
 import styles from "./AntivirusMspDashboard.module.css";
 import { buildBackupFleetFromClients, buildBackupFleetStats, buildBackupInstanceFleetFromClients, buildBackupInstanceFleetStats, filterBackupFleetRows, sortBackupFleetRows } from "../EquipementPage/backupMspUtils";
 
@@ -77,25 +80,6 @@ async function fetchCheckmkLastSync() {
   if (!res.ok) return null;
   const data = await res.json().catch(() => ({}));
   return data.lastSync || null;
-}
-
-function KpiCard({
-  icon,
-  label,
-  value,
-  tone = "neutral",
-  active,
-  onClick
-}) {
-  return <button type="button" className={`${styles.kpiCard} ${active ? styles.kpiCardActive : ""}`} onClick={onClick}>
-      <span className={`${styles.kpiIcon} ${styles[`kpiIcon_${tone}`]}`}>
-        <Icon icon={icon} />
-      </span>
-      <span className={styles.kpiBody}>
-        <span className={styles.kpiValue}>{value}</span>
-        <span className={styles.kpiLabel}>{label}</span>
-      </span>
-    </button>;
 }
 
 function SortableHeader({
@@ -421,24 +405,7 @@ export default function BackupMspDashboard({
   const syncAllDisabled = fleetSyncing || mappedJobsCount === 0;
 
   return <div className={styles.dashboard}>
-      <div className={styles.kpiStrip}>
-        {isJobsView ? <>
-            <KpiCard icon="mdi:backup-restore" label={backup.kpi.jobs} value={jobStats.total} tone="neutral" active={statusFilter === "all" && !search && !instanceFilter} onClick={() => {
-          setStatusFilter("all");
-          setSearch("");
-          setInstanceFilter(null);
-        }} />
-            <KpiCard icon="mdi:office-building-outline" label={msp.kpi.enterprises} value={jobStats.clients} tone="neutral" />
-            <KpiCard icon="mdi:check-circle-outline" label={backup.kpi.ok} value={jobStats.statusCounts.ok} tone="good" active={statusFilter === "ok"} onClick={() => toggleStatus("ok")} />
-            <KpiCard icon="mdi:alert-circle-outline" label={backup.kpi.toReview} value={jobStats.issues} tone={jobStats.issues > 0 ? "warn" : "good"} active={statusFilter === "issues"} onClick={() => toggleStatus("issues")} />
-          </> : <>
-            <KpiCard icon="mdi:server-outline" label={backup.kpi.instances} value={instanceStats.total} tone="neutral" active={!search} onClick={() => setSearch("")} />
-            <KpiCard icon="mdi:office-building-outline" label={msp.kpi.enterprises} value={instanceStats.clients} tone="neutral" />
-            <KpiCard icon="mdi:backup-restore" label={backup.kpi.jobs} value={instanceStats.jobs} tone="neutral" />
-          </>}
-      </div>
-
-      <div className={styles.toolbar}>
+      <div className={`${layout.toolbar} ${layout.toolbarWithFilters}`}>
         <div className={styles.viewSwitch} role="radiogroup" aria-label={backup.viewAria}>
           <button type="button" role="radio" aria-checked={!isJobsView} className={`${styles.viewSwitchBtn} ${!isJobsView ? styles.viewSwitchBtnActive : ""}`} onClick={() => setViewMode("instances")}>
             <Icon icon="mdi:server-outline" width={16} aria-hidden />
@@ -449,13 +416,35 @@ export default function BackupMspDashboard({
             {backup.viewJob}
           </button>
         </div>
-        <label className={styles.searchBox}>
-          <Icon icon="mdi:magnify" width={18} aria-hidden />
-          <input type="search" placeholder={isJobsView ? backup.searchPlaceholder : backup.searchInstancesPlaceholder} value={search} onChange={e => setSearch(e.target.value)} />
-        </label>
-        {instanceFilter ? <button type="button" className={`${styles.filterChip} ${styles.filterChipActive}`} onClick={() => setInstanceFilter(null)} title={backup.clearInstanceFilter}>
-            {instanceFilter.name} ×
-          </button> : null}
+        <div className={layout.searchWrap}>
+          <Icon icon="mdi:magnify" className={layout.searchIcon} aria-hidden />
+          <input type="search" inputMode="search" enterKeyHint="search" placeholder={isJobsView ? backup.searchPlaceholder : backup.searchInstancesPlaceholder} value={search} onChange={e => setSearch(e.target.value)} className={layout.searchInput} aria-label={isJobsView ? backup.searchPlaceholder : backup.searchInstancesPlaceholder} />
+          {search ? <SmartTooltip content={msp.clearSearch || "Effacer"}>
+              <button type="button" onClick={() => setSearch("")} className={layout.clearButton} aria-label={msp.clearSearch || "Effacer"}>
+                <FaTimes />
+              </button>
+            </SmartTooltip> : null}
+        </div>
+        <div className={layout.statusChips} role="group">
+          {instanceFilter ? <button type="button" className={`${layout.statusChip} ${layout.statusChipActive}`} onClick={() => setInstanceFilter(null)} title={backup.clearInstanceFilter}>
+              <span className={`${layout.statusChipIcon} ${layout.kpiIcon_blue}`}>
+                <Icon icon="mdi:server-outline" />
+              </span>
+              <span className={layout.statusChipLabel}>{instanceFilter.name}</span>
+              <span className={layout.statusChipCount}>×</span>
+            </button> : null}
+          {isJobsView ? (copy.backupStatusFilters || []).map(item => {
+            const count = item.id === "ok" ? jobStats.statusCounts.ok || 0 : jobStats.issues || 0;
+            const active = statusFilter === item.id;
+            return <button key={item.id} type="button" className={`${layout.statusChip} ${active ? layout.statusChipActive : ""} ${count === 0 ? layout.statusChipDisabled : ""}`} onClick={() => toggleStatus(item.id)} disabled={loading || count === 0}>
+                <span className={`${layout.statusChipIcon} ${layout[`kpiIcon_${item.kpiTone}`]}`}>
+                  <Icon icon={item.icon} />
+                </span>
+                <span className={layout.statusChipLabel}>{item.label}</span>
+                <span className={layout.statusChipCount}>{count}</span>
+              </button>;
+          }) : null}
+        </div>
         <span className={styles.toolbarMeta} title={lastSyncLabel}>
           {lastSyncLabel}
         </span>
@@ -473,11 +462,11 @@ export default function BackupMspDashboard({
         </div>
       </div>
 
-      {loading ? <div className={styles.loadingState}>
-          <Icon icon="mdi:loading" className={styles.spin} width={28} />
-          <span>{isJobsView ? backup.loading : backup.loadingInstances}</span>
-        </div> : activeRows.length === 0 ? <MspEmptyState icon={sourceRows.length === 0 ? "mdi:backup-restore" : "mdi:magnify"} title={emptyTitle} text={emptyText} /> : <section className={styles.panel}>
+      {loading ? (
+        <PageSkeleton variant="list" rows={8} label={isJobsView ? backup.loading : backup.loadingInstances} />
+      ) : activeRows.length === 0 ? <MspEmptyState icon={sourceRows.length === 0 ? "mdi:backup-restore" : "mdi:magnify"} title={emptyTitle} text={emptyText} /> : <section className={styles.panel}>
           <div className={styles.tableWrap}>
+            <div className={styles.tableScroll}>
             <table className={styles.table}>
               <thead>
                 {isJobsView ? <tr>
@@ -513,8 +502,8 @@ export default function BackupMspDashboard({
                 />) : paginatedRows.map(row => <InstanceTableRow key={`${row.clientId}-${row.id}`} row={row} onOpen={openInstanceJobs} onOpenClient={onOpenClient} />)}
               </tbody>
             </table>
-          </div>
-          {activeRows.length > 0 ? <div className={styles.paginationBar}>
+            </div>
+            {activeRows.length > 0 ? <div className={styles.paginationBar}>
               <div className={styles.paginationLeft}>
                 <span className={styles.paginationLabel}>{msp.rowsPerPage}</span>
                 <select className={styles.paginationSelect} value={pageSize} onChange={e => setPageSize(Number(e.target.value))}>
@@ -536,6 +525,7 @@ export default function BackupMspDashboard({
                 </button>
               </div>
             </div> : null}
+          </div>
         </section>}
     </div>;
 }

@@ -3,6 +3,7 @@ import { Icon } from "@iconify/react";
 import { FaChevronLeft, FaChevronRight } from "react-icons/fa";
 import { useAppFormatters } from "../../hooks/useAppGeneralSettings";
 import MspEmptyState from "../Misc/MspEmptyState/MspEmptyState";
+import PageSkeleton from "../Misc/Skeleton/PageSkeleton";
 import styles from "../CybersecuritePage/AntivirusMspDashboard.module.css";
 import { buildMicrosoftTenantFleetStats, formatMicrosoftGlobalScore, isMicrosoftTenantIssue, microsoftScoreTone } from "./microsoftTenantMspUtils";
 
@@ -10,13 +11,9 @@ function KpiCard({
   icon,
   label,
   value,
-  tone = "neutral",
-  active,
-  onClick
+  tone = "neutral"
 }) {
-  return <button type="button" className={`${styles.kpiCard} ${active ? styles.kpiCardActive : ""}`} onClick={onClick} style={onClick ? undefined : {
-    cursor: "default"
-  }}>
+  return <div className={styles.kpiCard}>
       <span className={`${styles.kpiIcon} ${styles[`kpiIcon_${tone}`]}`}>
         <Icon icon={icon} />
       </span>
@@ -24,7 +21,7 @@ function KpiCard({
         <span className={styles.kpiValue}>{value}</span>
         <span className={styles.kpiLabel}>{label}</span>
       </span>
-    </button>;
+    </div>;
 }
 
 function SortableHeader({
@@ -184,10 +181,7 @@ export default function MicrosoftTenantMspDashboard({
   const statusLabels = copy.status || {};
   return <div className={styles.dashboard}>
       <div className={styles.kpiStrip}>
-        <KpiCard icon="mdi:microsoft-azure" label={copy.kpi.tenants} value={stats.total} tone="neutral" onClick={() => {
-        setStatusFilter("all");
-        setSearch("");
-      }} />
+        <KpiCard icon="mdi:microsoft-azure" label={copy.kpi.tenants} value={stats.total} tone="neutral" />
         <KpiCard icon="mdi:shield-star-outline" label={copy.kpi.globalScore} value={formatMicrosoftGlobalScore(stats.globalScore)} tone={microsoftScoreTone(stats.globalScore)} />
         <KpiCard icon="mdi:license" label={copy.kpi.licenses} value={stats.licenseTotal} tone="neutral" />
         <KpiCard icon="mdi:account-group-outline" label={copy.kpi.users} value={stats.userTotal} tone="neutral" />
@@ -212,11 +206,11 @@ export default function MicrosoftTenantMspDashboard({
           </div> : null}
       </div>
 
-      {loading ? <div className={styles.loadingState}>
-          <Icon icon="mdi:loading" className={styles.spin} width={28} />
-          <span>{copy.loading}</span>
-        </div> : filteredRows.length === 0 ? <MspEmptyState icon="mdi:microsoft-azure" title={tenants.length === 0 ? copy.emptyTitleNone : copy.emptyTitleNoMatch} text={tenants.length === 0 ? copy.emptyTextNone : copy.emptyTextNoMatch} /> : <section className={styles.panel}>
+      {loading ? (
+        <PageSkeleton variant="list" rows={8} label={copy.loading} />
+      ) : filteredRows.length === 0 ? <MspEmptyState icon="mdi:microsoft-azure" title={tenants.length === 0 ? copy.emptyTitleNone : copy.emptyTitleNoMatch} text={tenants.length === 0 ? copy.emptyTextNone : copy.emptyTextNoMatch} /> : <section className={styles.panel}>
           <div className={styles.tableWrap}>
+            <div className={styles.tableScroll}>
             <table className={styles.table}>
               <thead>
                 <tr>
@@ -237,8 +231,8 @@ export default function MicrosoftTenantMspDashboard({
             }} />)}
               </tbody>
             </table>
-          </div>
-          {sortedRows.length > 0 ? <div className={styles.paginationBar}>
+            </div>
+            {sortedRows.length > 0 ? <div className={styles.paginationBar}>
               <div className={styles.paginationLeft}>
                 <span className={styles.paginationLabel}>{copy.rowsPerPage}</span>
                 <select className={styles.paginationSelect} value={pageSize} onChange={e => setPageSize(Number(e.target.value))}>
@@ -260,6 +254,7 @@ export default function MicrosoftTenantMspDashboard({
                 </button>
               </div>
             </div> : null}
+          </div>
         </section>}
     </div>;
 }

@@ -4,11 +4,13 @@ import { fetchClientsList } from "../../api/clients";
 import { toast } from "react-toastify";
 import layout from "../EnterprisesPage/EnterprisesPage.module.css";
 import styles from "./PrestatairePage.module.css";
+import PageSkeleton from "../Misc/Skeleton/PageSkeleton";
 import { FaTimes, FaChevronLeft, FaChevronRight, FaPlus } from "react-icons/fa";
 import { Icon } from "@iconify/react";
 import SmartTooltip from "../SmartTooltip";
 import StatusDot from "../shared/StatusDot/StatusDot";
 import PrestataireModal from "./PrestataireModal";
+import PrestataireBulkDeleteModal from "./PrestataireBulkDeleteModal";
 import { useDefaultPageSize } from "../../hooks/useDefaultPageSize";
 import { useCommonCopy } from "../../hooks/useCommonCopy";
 import { useAppLocale } from "../../hooks/useAppGeneralSettings";
@@ -70,12 +72,16 @@ export default function PrestatairePage({
   const locale = useAppLocale();
   const { can } = usePermissions();
   const canCreate = can("prestataires.create");
+  const canBulkDelete = can("prestataires_detail.delete");
   const { isPhone } = useBreakpoint();
+  const showBulkSelection = canBulkDelete && !isPhone;
   const pageCopy = useMemo(() => getPrestatairePageCopy(locale), [locale]);
   const { isFavorite, toggleFavorite } = useEntityFavorites("prestataires_favorites");
   const [statusFilters, setStatusFilters] = useState(new Set());
   const [showModal, setShowModal] = useState(false);
   const [modalInitial, setModalInitial] = useState(null);
+  const [selectedIds, setSelectedIds] = useState(() => new Set());
+  const [bulkDeleteModalOpen, setBulkDeleteModalOpen] = useState(false);
   const loadControllerRef = useRef(null);
   const clientsControllerRef = useRef(null);
   const isMountedRef = useRef(true);
@@ -370,6 +376,59 @@ export default function PrestatairePage({
     if (currentPage > totalPages) setCurrentPage(totalPages);
   }, [currentPage, totalPages]);
 
+  useEffect(() => {
+    setSelectedIds(prev => {
+      if (!prev.size) return prev;
+      const valid = new Set(filteredAndSorted.map(row => String(row.id)));
+      const next = [...prev].filter(id => valid.has(String(id)));
+      return next.length === prev.size ? prev : new Set(next);
+    });
+  }, [filteredAndSorted]);
+
+  const pageIds = useMemo(() => paginated.map(row => String(row.id)), [paginated]);
+  const selectedCount = selectedIds.size;
+  const allOnPageSelected = pageIds.length > 0 && pageIds.every(id => selectedIds.has(id));
+  const clearSelection = () => setSelectedIds(new Set());
+  const toggleRowSelection = (rowId, checked) => {
+    const id = String(rowId);
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      if (checked) next.add(id);
+      else next.delete(id);
+      return next;
+    });
+  };
+  const toggleSelectAllOnPage = () => {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      if (allOnPageSelected) {
+        pageIds.forEach(id => next.delete(id));
+      } else {
+        pageIds.forEach(id => next.add(id));
+      }
+      return next;
+    });
+  };
+  const refreshPrestatairesSilent = () => {
+    const refreshController = createTrackedAbortController();
+    loadControllerRef.current?.abort();
+    loadControllerRef.current = refreshController;
+    loadData(refreshController.signal, { silent: true });
+  };
+  const handleBulkDeleteSuccess = result => {
+    const deleted = Number(result?.deleted) || 0;
+    const failed = Array.isArray(result?.failed) ? result.failed.length : 0;
+    if (deleted > 0 && failed === 0) {
+      toast.success(pageCopy.formatBulkDeleteSuccess(deleted));
+    } else if (deleted > 0 && failed > 0) {
+      toast.warn(pageCopy.formatBulkPartial(deleted, failed));
+    } else {
+      toast.error(pageCopy.toasts.bulkError);
+    }
+    clearSelection();
+    refreshPrestatairesSilent();
+  };
+
   const portfolioTotal = prestataires.length;
   const toggleStatusFilter = statusKey => {
     setStatusFilters(prev => {
@@ -492,10 +551,7 @@ export default function PrestatairePage({
               </div>
 
               {loading ? (
-                <div className={layout.stateBox}>
-                  <Icon icon="mdi:loading" className={layout.spinning} />
-                  <span>{pageCopy.loading}</span>
-                </div>
+                <PageSkeleton variant="list" rows={8} label={pageCopy.loading} />
               ) : error ? (
                 <div className={`${layout.stateBox} ${layout.stateBoxError}`}>
                   <Icon icon="mdi:alert-circle-outline" />
@@ -515,11 +571,43 @@ export default function PrestatairePage({
                 </div>
               ) : (
                 <div className={layout.listBody}>
+                  {selectedCount > 0 && showBulkSelection ? (
+                    <div className={layout.bulkBar}>
+                      <div className={layout.bulkInfo}>
+                        <strong>{selectedCount}</strong>
+                        <span>{selectedCount > 1 ? pageCopy.bulk.selectedPlural : pageCopy.bulk.selected}</span>
+                      </div>
+                      <div className={layout.bulkActions}>
+                        {canBulkDelete ? (
+                          <button type="button" className={layout.bulkBtn} onClick={() => setBulkDeleteModalOpen(true)}>
+                            <Icon icon="mdi:delete-outline" />
+                            {pageCopy.bulk.delete}
+                          </button>
+                        ) : null}
+                        <button type="button" className={layout.bulkBtnGhost} onClick={clearSelection}>
+                          {pageCopy.bulk.clearSelection}
+                        </button>
+                      </div>
+                    </div>
+                  ) : null}
                   <div className={layout.listArea}>
                     <div className={layout.dataTableWrap}>
+                      <div className={layout.dataTableScroll}>
                       <table className={layout.dataTable}>
                         <thead>
                           <tr>
+                            {showBulkSelection ? (
+                              <th className={`${layout.checkboxCell} ${styles.colCheckbox}`.trim()}>
+                                <input
+                                  type="checkbox"
+                                  className={layout.rowCheckbox}
+                                  checked={allOnPageSelected}
+                                  onChange={toggleSelectAllOnPage}
+                                  onClick={e => e.stopPropagation()}
+                                  aria-label={pageCopy.bulk.selectAll}
+                                />
+                              </th>
+                            ) : null}
                             <th className={styles.colName} aria-sort={sortBy === "nom" ? (sortOrder === "asc" ? "ascending" : "descending") : "none"}>
                               <ThSort label={pageCopy.table.name} col="nom" />
                             </th>
@@ -542,7 +630,7 @@ export default function PrestatairePage({
                               <ThSort label={pageCopy.table.enterprises} col="entreprises" />
                             </th>
                             <th className={styles.colActions}>{pageCopy.table.actions}</th>
-                            <th className={`${layout.favoriteCell} ${styles.colFavorite}`.trim()} aria-label={pageCopy.favorites.columnAria} />
+                            <th className={`${layout.favoriteCell} ${styles.colFavorite}`.trim()}>{pageCopy.favorites.columnLabel}</th>
                           </tr>
                         </thead>
                         <tbody>
@@ -553,10 +641,13 @@ export default function PrestatairePage({
                             const telHref = telephone ? toTelHref(telephone) : "";
                             const mailHref = email ? toMailtoHref(email) : "";
                             const favorited = isFavorite(row.id);
+                            const rowIdStr = String(row.id);
+                            const isSelected = selectedIds.has(rowIdStr);
+                            const rowName = row.nom || pageCopy.unnamed;
                             return (
                               <tr
                                 key={row.id}
-                                className={layout.dataTableRow}
+                                className={`${layout.dataTableRow} ${isSelected ? layout.selectedRow : ""}`}
                                 onClick={() => openPrestataire(row)}
                                 onAuxClick={e => {
                                   if (e.button === 1) {
@@ -573,9 +664,20 @@ export default function PrestatairePage({
                                 role="button"
                                 tabIndex={0}
                               >
+                                {showBulkSelection ? (
+                                  <td className={`${layout.checkboxCell} ${styles.colCheckbox}`.trim()} onClick={e => e.stopPropagation()}>
+                                    <input
+                                      type="checkbox"
+                                      className={layout.rowCheckbox}
+                                      checked={isSelected}
+                                      onChange={e => toggleRowSelection(row.id, e.target.checked)}
+                                      aria-label={pageCopy.formatBulkSelectRow(rowName)}
+                                    />
+                                  </td>
+                                ) : null}
                                 <td className={`${layout.colCompany} ${styles.colName}`.trim()}>
-                                  <SmartTooltip content={row.nom || pageCopy.unnamed} as="span" className={layout.clientNameText}>
-                                    {row.nom || pageCopy.unnamed}
+                                  <SmartTooltip content={rowName} as="span" className={layout.clientNameText}>
+                                    {rowName}
                                   </SmartTooltip>
                                 </td>
                                 <td className={`${layout.colMuted} ${styles.colType}`.trim()}>
@@ -700,10 +802,9 @@ export default function PrestatairePage({
                         </tbody>
                       </table>
                     </div>
-                  </div>
 
-                  {filteredAndSorted.length > 0 && (
-                    <div className={layout.pagination}>
+                  {filteredAndSorted.length > 0 ? (
+                    <div className={`${layout.pagination} ${layout.paginationEmbedded}`}>
                       <div className={layout.paginationLeft}>
                         <span className={layout.paginationLabel}>{common.perPage}</span>
                         <select className={layout.paginationSelect} value={pageSize} onChange={e => setPageSize(Number(e.target.value))}>
@@ -712,6 +813,13 @@ export default function PrestatairePage({
                           <option value={50}>50</option>
                           <option value={100}>100</option>
                         </select>
+                        <span className={layout.paginationInfo}>
+                          {interpolate(common.rangeInfo || "{start}–{end} / {total}", {
+                            start: String((currentPage - 1) * pageSize + 1),
+                            end: String(Math.min(currentPage * pageSize, filteredAndSorted.length)),
+                            total: String(filteredAndSorted.length)
+                          })}
+                        </span>
                       </div>
                       <div className={layout.paginationRight}>
                         <SmartTooltip content={common.prevPage}>
@@ -741,7 +849,9 @@ export default function PrestatairePage({
                         </SmartTooltip>
                       </div>
                     </div>
-                  )}
+                  ) : null}
+                    </div>
+                  </div>
                 </div>
               )}
             </div>
@@ -758,6 +868,12 @@ export default function PrestatairePage({
           clients={clients}
         />
       )}
+      <PrestataireBulkDeleteModal
+        open={bulkDeleteModalOpen}
+        onClose={() => setBulkDeleteModalOpen(false)}
+        prestataireIds={[...selectedIds]}
+        onSuccess={handleBulkDeleteSuccess}
+      />
     </div>
   );
 }

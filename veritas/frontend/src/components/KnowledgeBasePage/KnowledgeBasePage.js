@@ -14,6 +14,7 @@ import { useDefaultPageSize } from "../../hooks/useDefaultPageSize";
 import { createKnowledgeArticle, createKnowledgeFolder, deleteKnowledgeArticle, deleteKnowledgeArticles, deleteKnowledgeFolder, fetchKnowledgeArticles, fetchKnowledgeCategories, fetchKnowledgeEmojis, fetchKnowledgeFolders, moveKnowledgeArticles, permanentlyDeleteKnowledgeArticle, permanentlyDeleteKnowledgeArticles, reorderKnowledgeArticles, reorderKnowledgeFolders, restoreKnowledgeArticleFromTrash, restoreKnowledgeArticlesFromTrash, updateKnowledgeArticle, updateKnowledgeFolder } from "../../api/knowledgeBase";
 import ConfirmModal from "../Misc/ConfirmModal/ConfirmModal";
 import MspPageHero from "../Misc/MspPageHero/MspPageHero";
+import PageSkeleton from "../Misc/Skeleton/PageSkeleton";
 import SmartTooltip from "../SmartTooltip";
 import cyberStyles from "../CybersecuritePage/CybersecuritePage.module.css";
 import layout from "../EnterprisesPage/EnterprisesPage.module.css";
@@ -621,7 +622,7 @@ export default function KnowledgeBasePage({ onNavigate }) {
             </div>
           ) : null}
           {loading ? (
-            <div className={styles.empty} data-guide="kb-list">{copy.loading}</div>
+            <PageSkeleton variant="list" rows={8} label={copy.loading} />
           ) : articles.length === 0 ? (
             <div className={styles.empty} data-guide="kb-list">
               <p>{isTrashView ? copy.trashEmpty : (search || status !== "all" || categoryFilter ? copy.emptyFiltered : currentFolder !== "all" ? copy.emptyFolder : copy.emptyTitle)}</p>

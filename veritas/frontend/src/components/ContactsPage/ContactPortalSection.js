@@ -261,104 +261,126 @@ export default function ContactPortalSection({
       </span>;
   };
   return <section className={s.portalSection}>
-      <div className={s.portalHero}>
-        <div className={s.portalHeroIcon} aria-hidden>
-          <Icon icon="mdi:monitor-dashboard" />
-        </div>
-        <div className={s.portalHeroBody}>
-          <p className={s.portalHeroTitle}>{portalCopy.heroTitle}</p>
-          {hasPortal ? null : <p className={s.portalHeroDesc}>{portalCopy.heroDesc}</p>}
-        </div>
-        <div className={s.heroRight}>
-          {statusBadge()}
-          {hasPortal && canManage ? <label className={s.switch} title={contact.portal_active ? portalCopy.toggleActive : portalCopy.toggleInactive}>
-              <input type="checkbox" checked={Boolean(contact.portal_active)} disabled={busy || contactInactive || !contact.portal_active && portalAtLimit} onChange={e => handleToggle(e.target.checked)} aria-label={portalCopy.toggleAria} />
-              <span className={s.switchTrack} />
-            </label> : null}
-        </div>
-      </div>
-
-      {maxPortalUsers != null && <p className={s.usageHint}>
-          {interpolate(portalCopy.usageHint, {
-        active: String(activePortalCount),
-        max: String(maxPortalUsers)
-      })}
-          {portalAtLimit ? <>
-              {" "}
-              {portalCopy.limitReached} <ProFeatureBadge variant="inline" className={s.proBadgeInline} />
-            </> : null}
-        </p>}
-
-      {!canCreate && !hasPortal && <div className={s.alert} role="status">
-          <Icon icon="mdi:information-outline" className={s.alertIcon} aria-hidden />
-          <span>{portalCopy.alertNeedEmail}</span>
-        </div>}
-
-      {contactInactive && <div className={`${s.alert} ${s.alertWarning}`} role="status">
-          <Icon icon="mdi:alert-outline" className={s.alertIcon} aria-hidden />
-          <span>{portalCopy.alertInactive}</span>
-        </div>}
-
-      {hasPortal ? <div className={s.portalGrid}>
-          <div className={s.portalCard}>
-            <p className={s.portalCardTitle}>{portalCopy.accessCardTitle || portalCopy.heroTitle}</p>
-            <div className={s.metaList}>
-              <div className={s.metaItem}>
-                <span className={s.metaLabel}>{portalCopy.loginEmailLabel}</span>
-                <span className={s.metaValue}>{loginEmail || "-"}</span>
-              </div>
-              <div className={s.metaItem}>
-                <span className={s.metaLabel}>{portalCopy.lastLoginLabel}</span>
-                <span className={s.metaValue}>{lastLogin || portalCopy.never}</span>
-              </div>
+      {hasPortal ? <>
+          <div className={s.portalHero}>
+            <div className={s.portalHeroIcon} aria-hidden>
+              <Icon icon="mdi:monitor-dashboard" />
             </div>
-            <PortalRolePicker value={contact.portal_role} onChange={handleRoleChange} disabled={busy || !canManage} copy={portalCopy} stacked />
+            <div className={s.portalHeroBody}>
+              <p className={s.portalHeroTitle}>{portalCopy.heroTitle}</p>
+              {loginEmail ? <p className={s.portalHeroMeta}>{loginEmail}</p> : null}
+            </div>
+            <div className={s.heroRight}>
+              {statusBadge()}
+              {canManage ? <label className={s.switch} title={contact.portal_active ? portalCopy.toggleActive : portalCopy.toggleInactive}>
+                  <input type="checkbox" checked={Boolean(contact.portal_active)} disabled={busy || contactInactive || !contact.portal_active && portalAtLimit} onChange={e => handleToggle(e.target.checked)} aria-label={portalCopy.toggleAria} />
+                  <span className={s.switchTrack} />
+                </label> : null}
+            </div>
           </div>
 
-          {(canManage || (contact.portal_active && !contactInactive)) ? <div className={s.portalCard}>
-            <p className={s.portalCardTitle}>{portalCopy.actionsCardTitle || portalCopy.actionsLabel || "Actions"}</p>
-            <div className={s.actions}>
-              {canManage && (status === "pending" || contact.portal_pending) ? <button type="button" className={`${s.actionBtn} ${s.actionBtnInvite || ""}`.trim()} onClick={handleSendInvite} disabled={busy} title={portalCopy.resendInvite || portalCopy.sendInvite}>
-                  <Icon icon="mdi:email-fast-outline" aria-hidden />
-                  {portalCopy.sendInvite}
-                </button> : null}
-              {canManage ? <button type="button" className={s.actionBtn} onClick={() => setPasswordModal("reset")} disabled={busy}>
-                <Icon icon="mdi:key-outline" aria-hidden />
-                {portalCopy.resetPassword}
-              </button> : null}
-              {contact.portal_active && !contactInactive ? <button type="button" className={`${s.actionBtn} ${s.actionBtnImpersonate}`} onClick={handleImpersonate} disabled={busy} title={portalCopy.impersonateTitle}>
-                  <Icon icon="mdi:incognito" aria-hidden />
-                  {portalCopy.impersonate}
-                </button> : null}
-              {canManage ? <button type="button" className={`${s.actionBtn} ${s.actionBtnDanger}`} onClick={() => setShowRevoke(true)} disabled={busy}>
-                <Icon icon="mdi:link-off" aria-hidden />
-                {portalCopy.revoke}
-              </button> : null}
+          {maxPortalUsers != null && <p className={s.usageHint}>
+              {interpolate(portalCopy.usageHint, {
+            active: String(activePortalCount),
+            max: String(maxPortalUsers)
+          })}
+              {portalAtLimit ? <>
+                  {" "}
+                  {portalCopy.limitReached} <ProFeatureBadge variant="inline" className={s.proBadgeInline} />
+                </> : null}
+            </p>}
+
+          {contactInactive && <div className={`${s.alert} ${s.alertWarning}`} role="status">
+              <Icon icon="mdi:alert-outline" className={s.alertIcon} aria-hidden />
+              <span>{portalCopy.alertInactive}</span>
+            </div>}
+
+          <div className={s.portalGrid}>
+            <div className={s.portalCard}>
+              <div className={s.metaList}>
+                <div className={s.metaItem}>
+                  <span className={s.metaLabel}>{portalCopy.loginEmailLabel}</span>
+                  <span className={s.metaValue}>{loginEmail || "-"}</span>
+                </div>
+                <div className={s.metaItem}>
+                  <span className={s.metaLabel}>{portalCopy.lastLoginLabel}</span>
+                  <span className={s.metaValue}>{lastLogin || portalCopy.never}</span>
+                </div>
+              </div>
+              <PortalRolePicker value={contact.portal_role} onChange={handleRoleChange} disabled={busy || !canManage} copy={portalCopy} compact />
             </div>
-          </div> : <div className={s.portalCard}>
-            <p className={s.portalCardTitle}>{portalCopy.actionsCardTitle || "Actions"}</p>
-            <p className={s.inviteDesc}>{portalCopy.noActionsHint || portalCopy.roleUserHint}</p>
-          </div>}
-        </div> : canManage && canCreate && <div className={s.inviteBlock}>
-            <p className={s.inviteDesc}>
-              {interpolate(portalCopy.emptyDesc, {
-          email: loginEmail
-        })}
-            </p>
-            <PortalRolePicker value={createPortalRole} onChange={setCreatePortalRole} disabled={busy} copy={portalCopy} stacked />
-            <button type="button" className={s.primaryBtn} onClick={() => {
-        if (portalAtLimit) {
-          warnPortalLimit();
-          return;
-        }
-        handleCreateAccess();
-      }} disabled={busy || contactInactive || portalAtLimit} title={portalAtLimit ? interpolate(portalCopy.limitTooltip, {
-        max: String(maxPortalUsers)
-      }) : undefined}>
-              <Icon icon="mdi:account-check-outline" aria-hidden />
-              {portalCopy.createAccess}
-            </button>
-          </div>}
+
+            {(canManage || contact.portal_active && !contactInactive) ? <div className={s.portalCard}>
+                <div className={s.actions}>
+                  {canManage && (status === "pending" || contact.portal_pending) ? <button type="button" className={`${s.actionBtn} ${s.actionBtnInvite || ""}`.trim()} onClick={handleSendInvite} disabled={busy} title={portalCopy.resendInvite || portalCopy.sendInvite}>
+                      <Icon icon="mdi:email-fast-outline" aria-hidden />
+                      {portalCopy.sendInvite}
+                    </button> : null}
+                  {canManage ? <button type="button" className={s.actionBtn} onClick={() => setPasswordModal("reset")} disabled={busy}>
+                      <Icon icon="mdi:key-outline" aria-hidden />
+                      {portalCopy.resetPassword}
+                    </button> : null}
+                  {contact.portal_active && !contactInactive ? <button type="button" className={`${s.actionBtn} ${s.actionBtnImpersonate}`} onClick={handleImpersonate} disabled={busy} title={portalCopy.impersonateTitle}>
+                      <Icon icon="mdi:incognito" aria-hidden />
+                      {portalCopy.impersonate}
+                    </button> : null}
+                  {canManage ? <button type="button" className={`${s.actionBtn} ${s.actionBtnDanger}`} onClick={() => setShowRevoke(true)} disabled={busy}>
+                      <Icon icon="mdi:link-off" aria-hidden />
+                      {portalCopy.revoke}
+                    </button> : null}
+                </div>
+              </div> : <div className={s.portalCard}>
+                <p className={s.inviteDesc}>{portalCopy.noActionsHint || portalCopy.roleUserHint}</p>
+              </div>}
+          </div>
+        </> : <div className={s.setupCard}>
+          <div className={s.setupHeader}>
+            <div className={s.portalHeroIcon} aria-hidden>
+              <Icon icon="mdi:monitor-dashboard" />
+            </div>
+            <div className={s.portalHeroBody}>
+              <p className={s.portalHeroTitle}>{portalCopy.heroTitle}</p>
+              <p className={s.setupDesc}>
+                {canCreate
+                  ? interpolate(portalCopy.emptyDesc, { email: loginEmail })
+                  : portalCopy.alertNeedEmail}
+              </p>
+            </div>
+            {statusBadge()}
+          </div>
+
+          {maxPortalUsers != null && <p className={s.usageHint}>
+              {interpolate(portalCopy.usageHint, {
+            active: String(activePortalCount),
+            max: String(maxPortalUsers)
+          })}
+              {portalAtLimit ? <>
+                  {" "}
+                  {portalCopy.limitReached} <ProFeatureBadge variant="inline" className={s.proBadgeInline} />
+                </> : null}
+            </p>}
+
+          {contactInactive && <div className={`${s.alert} ${s.alertWarning}`} role="status">
+              <Icon icon="mdi:alert-outline" className={s.alertIcon} aria-hidden />
+              <span>{portalCopy.alertInactive}</span>
+            </div>}
+
+          {canManage && canCreate ? <div className={s.setupFooter}>
+              <PortalRolePicker value={createPortalRole} onChange={setCreatePortalRole} disabled={busy} copy={portalCopy} compact />
+              <button type="button" className={s.primaryBtn} onClick={() => {
+            if (portalAtLimit) {
+              warnPortalLimit();
+              return;
+            }
+            handleCreateAccess();
+          }} disabled={busy || contactInactive || portalAtLimit} title={portalAtLimit ? interpolate(portalCopy.limitTooltip, {
+            max: String(maxPortalUsers)
+          }) : undefined}>
+                <Icon icon="mdi:account-check-outline" aria-hidden />
+                {portalCopy.createAccess}
+              </button>
+            </div> : null}
+        </div>}
 
       <ContactPortalPasswordModal open={passwordModal === "reset"} mode="reset" contact={contact} saving={busy} onClose={() => setPasswordModal(null)} onSubmit={handleReset} />
 

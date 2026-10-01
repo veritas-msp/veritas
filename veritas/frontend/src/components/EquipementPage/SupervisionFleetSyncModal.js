@@ -1,8 +1,8 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { Icon } from "@iconify/react";
-import { FaTimes } from "react-icons/fa";
 import {
+  cancelCheckmkFleetSync,
   fetchActiveCheckmkSyncRun,
   pollCheckmkSyncRun,
   triggerCheckmkFleetSync
@@ -19,6 +19,7 @@ function statusTone(status) {
   if (status === "success") return "ok";
   if (status === "partial") return "warn";
   if (status === "error") return "err";
+  if (status === "cancelled") return "muted";
   if (status === "skipped") return "muted";
   return "run";
 }
@@ -39,6 +40,8 @@ export function getFleetSyncProgress(run, starting = false) {
 export default function SupervisionFleetSyncModal({
   active = false,
   expanded = true,
+  autoStart = false,
+  startedBy = null,
   onMinimize,
   onExpand,
   onDismiss,
@@ -48,41 +51,61 @@ export default function SupervisionFleetSyncModal({
 }) {
   const [run, setRun] = useState(null);
   const [starting, setStarting] = useState(false);
+  const [cancelling, setCancelling] = useState(false);
   const [error, setError] = useState(null);
   const pollAbortRef = useRef(0);
-  const startedRef = useRef(false);
   const finishedNotifiedRef = useRef(false);
+  const autoStartRef = useRef(autoStart);
+  const startedByRef = useRef(startedBy);
+  const copyRef = useRef(copy);
+
+  useEffect(() => {
+    autoStartRef.current = autoStart;
+  }, [autoStart]);
+
+  useEffect(() => {
+    startedByRef.current = startedBy;
+  }, [startedBy]);
+
+  useEffect(() => {
+    copyRef.current = copy;
+  }, [copy]);
 
   const { doneCount, total, pct, tone } = getFleetSyncProgress(run, starting);
   const currentHost = run?.details?.currentHost || null;
+  const startedByLabel = run?.details?.startedBy || startedBy || null;
   const isTerminal = Boolean(run && run.status !== "running");
   const canDismiss = isTerminal || Boolean(error);
+  const canCancel = Boolean(run?.id && run.status === "running" && !cancelling);
 
   const statusLabel = useMemo(() => {
     if (error) return copy.errorTitle || "Erreur";
-    if (!run && starting) return copy.starting || "Démarrage…";
+    if (cancelling) return copy.cancelling || "Arret en cours...";
+    if (!run && starting) return copy.starting || "Demarrage...";
     if (!run) return copy.idle || "En attente";
     return copy.status?.[run.status] || run.status;
-  }, [copy, error, run, starting]);
+  }, [copy, error, run, starting, cancelling]);
 
   useEffect(() => {
     onRunChange?.({
       run,
       starting,
+      cancelling,
       error,
       statusLabel,
       ...getFleetSyncProgress(run, starting),
       currentHost,
+      startedBy: startedByLabel,
       isTerminal: Boolean(run && run.status !== "running") || Boolean(error)
     });
-  }, [run, starting, error, statusLabel, currentHost, onRunChange]);
+  }, [run, starting, cancelling, error, statusLabel, currentHost, startedByLabel, onRunChange]);
 
   useEffect(() => {
     if (!active) {
-      startedRef.current = false;
       finishedNotifiedRef.current = false;
       setRun(null);
       setStarting(false);
+      setCancelling(false);
       setError(null);
       pollAbortRef.current += 1;
       return undefined;
@@ -91,27 +114,28 @@ export default function SupervisionFleetSyncModal({
     const token = pollAbortRef.current + 1;
     pollAbortRef.current = token;
     let cancelled = false;
+    const labels = () => copyRef.current || {};
 
     const trackRun = async runId => {
       if (!runId) return;
       try {
         await pollCheckmkSyncRun(runId, {
           intervalMs: 1000,
+          shouldStop: () => cancelled || pollAbortRef.current !== token,
           onUpdate: next => {
             if (cancelled || pollAbortRef.current !== token) return;
             setRun(next);
+            if (next?.details?.cancelRequested) setCancelling(true);
           }
         });
       } catch (err) {
         if (!cancelled && pollAbortRef.current === token) {
-          setError(err?.message || copy.errorGeneric || "Sync failed");
+          setError(err?.message || labels().errorGeneric || "Sync failed");
         }
       }
     };
 
     (async () => {
-      if (startedRef.current) return;
-      startedRef.current = true;
       setStarting(true);
       setError(null);
       try {
@@ -120,19 +144,28 @@ export default function SupervisionFleetSyncModal({
         if (activeRun?.run?.status === "running" && activeRun.run.id) {
           setRun(activeRun.run);
           setStarting(false);
+          if (activeRun.run.details?.cancelRequested) setCancelling(true);
           await trackRun(activeRun.run.id);
           return;
         }
 
-        const started = await triggerCheckmkFleetSync({ force: true });
+        if (!autoStartRef.current) {
+          setStarting(false);
+          return;
+        }
+
+        const started = await triggerCheckmkFleetSync({
+          force: true,
+          startedBy: startedByRef.current || undefined
+        });
         if (cancelled || pollAbortRef.current !== token) return;
         if (started?.skipped && started.reason === "integration_disabled") {
-          setError(copy.integrationDisabled || "Intégration CheckMK désactivée.");
+          setError(labels().integrationDisabled || "Integration CheckMK desactivee.");
           setStarting(false);
           return;
         }
         if (started?.skipped && started.reason === "sync_suspended" && !started.runId) {
-          setError(copy.syncSuspended || "Synchronisation suspendue dans Administration.");
+          setError(labels().syncSuspended || "Synchronisation suspendue dans Administration.");
           setStarting(false);
           return;
         }
@@ -141,16 +174,16 @@ export default function SupervisionFleetSyncModal({
         setStarting(false);
         if (!runId) {
           if (started?.skipped) {
-            setError(copy.alreadyRunning || started.reason || "Sync ignorée");
+            setError(labels().alreadyRunning || started.reason || "Sync ignoree");
           } else {
-            setError(copy.errorGeneric || "Unable to start sync");
+            setError(labels().errorGeneric || "Unable to start sync");
           }
           return;
         }
         await trackRun(runId);
       } catch (err) {
         if (!cancelled && pollAbortRef.current === token) {
-          setError(err?.message || copy.errorGeneric || "Sync failed");
+          setError(err?.message || labels().errorGeneric || "Sync failed");
           setStarting(false);
         }
       } finally {
@@ -164,13 +197,26 @@ export default function SupervisionFleetSyncModal({
       cancelled = true;
       pollAbortRef.current += 1;
     };
-  }, [active, copy]);
+  }, [active]);
 
   useEffect(() => {
     if (!active || !(isTerminal || error) || finishedNotifiedRef.current) return;
     finishedNotifiedRef.current = true;
     onFinished?.(run, { error });
   }, [active, isTerminal, error, run, onFinished]);
+
+  const handleCancel = useCallback(async () => {
+    if (!run?.id || cancelling) return;
+    setCancelling(true);
+    try {
+      await cancelCheckmkFleetSync(run.id, {
+        cancelledBy: startedBy || undefined
+      });
+    } catch (err) {
+      setCancelling(false);
+      setError(err?.message || copy.cancelError || "Impossible d'arreter la synchronisation.");
+    }
+  }, [run?.id, cancelling, startedBy, copy.cancelError]);
 
   if (!active || !expanded) return null;
 
@@ -187,7 +233,7 @@ export default function SupervisionFleetSyncModal({
         <header className={formStyles.header}>
           <div className={formStyles.headerMain}>
             <div className={`${formStyles.headerIconWrap} ${styles.headerIcon}`} aria-hidden>
-              <Icon icon={isTerminal ? (tone === "err" || error ? "mdi:alert-circle-outline" : "mdi:check-circle-outline") : "mdi:sync"} className={!isTerminal && !error ? styles.spin : ""} />
+              <Icon icon={isTerminal ? (tone === "err" || error ? "mdi:alert-circle-outline" : tone === "muted" ? "mdi:cancel" : "mdi:check-circle-outline") : "mdi:sync"} className={!isTerminal && !error ? styles.spin : ""} />
             </div>
             <div className={formStyles.headerText}>
               <p className={formStyles.eyebrow}>{copy.eyebrow || "Surveillance"}</p>
@@ -197,28 +243,17 @@ export default function SupervisionFleetSyncModal({
               <p className={formStyles.subtitle}>{statusLabel}</p>
             </div>
           </div>
-          <div className={styles.headerActions}>
-            {!canDismiss ? (
-              <button
-                type="button"
-                className={styles.iconBtn}
-                onClick={onMinimize}
-                aria-label={copy.minimizeAria || "Réduire"}
-                title={copy.minimize || "Réduire"}
-              >
-                <Icon icon="mdi:window-minimize" aria-hidden />
-              </button>
-            ) : null}
+          {!canDismiss ? (
             <button
               type="button"
-              className={formStyles.closeBtn}
-              onClick={canDismiss ? onDismiss : onMinimize}
-              aria-label={canDismiss ? (copy.closeAria || "Fermer") : (copy.minimizeAria || "Réduire")}
-              title={canDismiss ? (copy.close || "Fermer") : (copy.minimize || "Réduire")}
+              className={styles.iconBtn}
+              onClick={onMinimize}
+              aria-label={copy.minimizeAria || "Reduire"}
+              title={copy.minimize || "Reduire"}
             >
-              <FaTimes />
+              <Icon icon="mdi:window-minimize" aria-hidden />
             </button>
-          </div>
+          ) : null}
         </header>
 
         <div className={formStyles.bodySingle}>
@@ -234,8 +269,8 @@ export default function SupervisionFleetSyncModal({
                   <div className={styles.progressMeta}>
                     <span>{copy.progressLabel || "Progression"}</span>
                     <strong>
-                      {total > 0 ? `${doneCount}/${total}` : starting ? "…" : "0/0"}
-                      {total > 0 ? ` · ${pct}%` : ""}
+                      {total > 0 ? `${doneCount}/${total}` : starting ? "..." : "0/0"}
+                      {total > 0 ? ` - ${pct}%` : ""}
                     </strong>
                   </div>
                   <div className={`${styles.progressTrack} ${styles[`tone_${tone}`]}`} aria-hidden>
@@ -243,9 +278,14 @@ export default function SupervisionFleetSyncModal({
                   </div>
                   <p className={styles.progressHint}>
                     {currentHost && run?.status === "running"
-                      ? (copy.currentHost || "En cours · {host}").replace("{host}", currentHost)
-                      : run?.message || copy.hint || "Synchronisation des périphériques mappés CheckMK…"}
+                      ? (copy.currentHost || "En cours - {host}").replace("{host}", currentHost)
+                      : run?.message || copy.hint || "Synchronisation des peripheriques mappes CheckMK..."}
                   </p>
+                  {startedByLabel ? (
+                    <p className={styles.startedBy}>
+                      {(copy.startedBy || "Lancee par {user}").replace("{user}", startedByLabel)}
+                    </p>
+                  ) : null}
                 </div>
 
                 <div className={styles.kpiGrid}>
@@ -255,17 +295,17 @@ export default function SupervisionFleetSyncModal({
                   </div>
                   <div className={styles.kpi}>
                     <span className={styles.kpiValue}>{run?.skipped ?? 0}</span>
-                    <span className={styles.kpiLabel}>{copy.skipped || "Ignorés"}</span>
+                    <span className={styles.kpiLabel}>{copy.skipped || "Ignores"}</span>
                   </div>
                   <div className={styles.kpi}>
                     <span className={styles.kpiValue}>{run?.failed ?? 0}</span>
-                    <span className={styles.kpiLabel}>{copy.failed || "Échecs"}</span>
+                    <span className={styles.kpiLabel}>{copy.failed || "Echecs"}</span>
                   </div>
                   <div className={styles.kpi}>
                     <span className={styles.kpiValue}>
                       {(run?.alertsCreated ?? 0) + (run?.alertsResolved ?? 0) > 0
                         ? `+${run?.alertsCreated ?? 0}/-${run?.alertsResolved ?? 0}`
-                        : "—"}
+                        : "-"}
                     </span>
                     <span className={styles.kpiLabel}>{copy.alerts || "Alertes"}</span>
                   </div>
@@ -278,13 +318,19 @@ export default function SupervisionFleetSyncModal({
         <footer className={formStyles.footer}>
           <span className={formStyles.footerHint}>
             {canDismiss
-              ? copy.footerDone || "Vous pouvez fermer cette fenêtre."
-              : copy.footerRunning || "Vous pouvez réduire la fenêtre et continuer à travailler."}
+              ? copy.footerDone || "Vous pouvez fermer cette fenetre."
+              : copy.footerRunning || "Vous pouvez reduire la fenetre et suivre la progression dans l'en-tete."}
           </span>
           <div className={formStyles.footerActions}>
-            {!canDismiss ? (
-              <button type="button" className={styles.secondaryBtn} onClick={onMinimize}>
-                {copy.minimize || "Réduire"}
+            {canCancel ? (
+              <button
+                type="button"
+                className={styles.dangerBtn}
+                onClick={handleCancel}
+                disabled={cancelling}
+              >
+                <Icon icon="mdi:stop-circle-outline" aria-hidden />
+                {cancelling ? (copy.cancelling || "Arret...") : (copy.cancel || "Arreter")}
               </button>
             ) : null}
             <button
@@ -292,7 +338,7 @@ export default function SupervisionFleetSyncModal({
               className={formStyles.primaryBtn}
               onClick={canDismiss ? onDismiss : onMinimize}
             >
-              {canDismiss ? (copy.close || "Fermer") : (copy.minimize || "Réduire")}
+              {canDismiss ? (copy.close || "Fermer") : (copy.minimize || "Reduire")}
             </button>
           </div>
         </footer>

@@ -115,6 +115,37 @@
   min-height: 1.2em;
 }
 
+.startedBy {
+  margin: 0;
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--msp-text, #0f1c2e);
+}
+
+.dangerBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  padding: 0.55rem 0.95rem;
+  border-radius: 10px;
+  border: 1px solid color-mix(in srgb, #b91c1c 35%, var(--msp-border, #d5deea));
+  background: color-mix(in srgb, #ef4444 8%, var(--msp-surface, #fff));
+  color: #b91c1c;
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.dangerBtn:hover:not(:disabled) {
+  background: color-mix(in srgb, #ef4444 14%, var(--msp-surface, #fff));
+}
+
+.dangerBtn:disabled {
+  opacity: 0.65;
+  cursor: wait;
+}
+
 .kpiGrid {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));

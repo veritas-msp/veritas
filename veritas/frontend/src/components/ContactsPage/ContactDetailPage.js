@@ -4,8 +4,6 @@ import { Icon } from "@iconify/react";
 import { toast } from "react-toastify";
 import { fetchClientsList, addContactTag, removeContactTag, deleteContact, addContactMembership, removeContactMembership } from "../../api/clients";
 import { fetchTickets } from "../../api/tickets";
-import { fetchEvents } from "../../api/events";
-import { filterUpcomingEvents } from "../../utils/eventFilters";
 import styles from "../EnterprisesPage/EnterpriseDetailPage.module.css";
 import pageLayout from "../EnterprisesPage/EnterprisesPage.module.css";
 import contactStyles from "./ContactDetailPage.module.css";
@@ -13,7 +11,6 @@ import SmartTooltip from "../SmartTooltip";
 import StatusDot from "../shared/StatusDot/StatusDot";
 import SubscribeBellButton from "../shared/SubscribeBellButton/SubscribeBellButton";
 import ClientTicketBookmarks from "./ClientTicketBookmarks";
-import { getClientNumber, getClientNameWithoutCode } from "../../utils/clientDisplay";
 import { getContactSexeIcon, normalizeContactSexe } from "../../utils/contactSexe";
 import { FaTimes, FaPlus } from "react-icons/fa";
 import API_BASE_URL from "../../config";
@@ -24,11 +21,14 @@ import ContactCompanyModal from "./ContactCompanyModal";
 import ContactDeleteModal from "./ContactDeleteModal";
 import ClientTagModal from "../EnterprisesPage/ClientTagModal";
 import { formatTableDate } from "../../utils/tableDateFormat";
+import { getTicketSlaDisplay } from "../../utils/ticketSlaUtils";
+import { formatRelativeFrench } from "../EquipementPage/checkmkMonitoringUtils";
 import { useVeritasEdition } from "../../hooks/useVeritasEdition";
 import { usePermissions } from "../../contexts/PermissionsContext";
-import { useAppFormatters, useAppLocale } from "../../hooks/useAppGeneralSettings";
-import { getContactDetailCopy, getContactStatusLocalized, getPrestationCategoryLabel as getPrestationCategoryLabelI18n, getTicketStatusLabels, formatContactRelativeTime, interpolate } from "./contactDetailI18n";
-import { getCommunicationTypeDefLocalized, getContactSexeLabelLocalized } from "./contactFormModalI18n";
+import { useAppLocale } from "../../hooks/useAppGeneralSettings";
+import { getContactDetailCopy, getContactStatusLocalized, getPrestationCategoryLabel as getPrestationCategoryLabelI18n, getTicketStatusLabels, interpolate } from "./contactDetailI18n";
+import { getTicketStatusLabel } from "../EnterprisesPage/enterpriseDetailI18n";
+import { getContactSexeLabelLocalized } from "./contactFormModalI18n";
 import ProFeatureLock from "../Misc/ProFeature/ProFeatureLock";
 import ProFeatureBadge from "../Misc/ProFeature/ProFeatureBadge";
 import { isSalesTicket } from "../../utils/salesTicketUtils";
@@ -38,6 +38,35 @@ import { normalizeContactCommunications, sortCommunicationsByType } from "../../
 import PageGuideTour from "../PageGuide/PageGuideTour";
 import { getContactDetailGuideSteps } from "../PageGuide/contactDetailGuideSteps";
 import { useRegisterPageGuide } from "../../hooks/useRegisterPageGuide";
+
+function SidebarSectionHeader({
+  title,
+  count = null,
+  badge = null,
+  expanded = false,
+  onToggle,
+  locked = false,
+  controlsId,
+  actions = null,
+  panelStyles
+}) {
+  const handleToggle = () => {
+    onToggle?.();
+  };
+  return <div className={`${panelStyles.sidebarCollapseHeader} ${locked ? panelStyles.sidebarCollapseHeaderLocked : ""}`.trim()}>
+      <button type="button" className={panelStyles.sidebarCollapseMain} onClick={handleToggle} aria-expanded={locked ? false : expanded} aria-controls={controlsId || undefined}>
+        <span className={panelStyles.sidebarInfoTitle}>
+          {title}
+          {count != null ? <span className={panelStyles.sidebarSectionCount}>{count}</span> : null}
+          {badge}
+        </span>
+      </button>
+      {actions ? <div className={panelStyles.sidebarHeaderActions}>{actions}</div> : null}
+      <button type="button" className={panelStyles.sidebarCollapseChevronBtn} onClick={handleToggle} tabIndex={-1} aria-hidden="true">
+        <Icon icon={!locked && expanded ? "mdi:chevron-up" : "mdi:chevron-down"} className={panelStyles.sidebarCollapseChevron} />
+      </button>
+    </div>;
+}
 import { createTrackedAbortController } from "../../utils/pageLoadAbort";
 import { getSiteDisplayName, normalizeClientSites } from "../../utils/clientSites";
 const normalizePhone = value => {
@@ -55,12 +84,6 @@ const toMailtoHref = value => {
   const email = (value || "").toString().trim();
   return email ? `mailto:${encodeURIComponent(email)}` : "";
 };
-function getContactInitials(contact) {
-  const prenom = (contact?.prenom || "").trim();
-  const nom = (contact?.nom || "").trim();
-  if (prenom && nom) return `${prenom[0]}${nom[0]}`.toUpperCase();
-  return (nom || prenom || "-").slice(0, 2).toUpperCase();
-}
 function formatContactName(contact, fallback = "Contact") {
   const prenom = (contact?.prenom || "").trim();
   const nom = (contact?.nom || "").trim();
@@ -80,33 +103,6 @@ const DEMO_PRESTATION_TICKETS = [{
   status: "in_progress",
   created_at: new Date(Date.now() - 86400000 * 8).toISOString()
 }];
-function buildDemoUpcomingEvents() {
-  const now = new Date();
-  const start1 = new Date(now);
-  start1.setDate(start1.getDate() + 2);
-  start1.setHours(10, 0, 0, 0);
-  const end1 = new Date(start1);
-  end1.setHours(12, 0, 0, 0);
-  const start2 = new Date(now);
-  start2.setDate(start2.getDate() + 5);
-  start2.setHours(14, 30, 0, 0);
-  const end2 = new Date(start2);
-  end2.setHours(16, 0, 0, 0);
-  return [{
-    id: "demo-event-1",
-    type: "intervention",
-    title: "Intervention sur site",
-    start: start1.toISOString(),
-    end: end1.toISOString()
-  }, {
-    id: "demo-event-2",
-    type: "maintenance_preventive",
-    title: "Maintenance serveurs",
-    start: start2.toISOString(),
-    end: end2.toISOString()
-  }];
-}
-const DEMO_UPCOMING_EVENTS = buildDemoUpcomingEvents();
 const isPrestationTicket = ticket => isSalesTicket(ticket);
 const normalizeTicketStatus = status => status === "open" ? "new" : status;
 const isOpenTicket = ticket => {
@@ -114,17 +110,6 @@ const isOpenTicket = ticket => {
   return !["resolved", "closed"].includes(status);
 };
 const getPrestationCategoryLabel = (category, locale) => getPrestationCategoryLabelI18n(category, locale);
-const formatShortDate = (value, formatDate) => {
-  if (!value) return "-";
-  if (formatDate) return formatDate(value);
-  const d = new Date(value);
-  if (Number.isNaN(d.getTime())) return "-";
-  return d.toLocaleDateString(undefined, {
-    day: "2-digit",
-    month: "short",
-    year: "numeric"
-  });
-};
 const sortTicketsByRecent = (a, b) => {
   const aTime = new Date(a?.updated_at || a?.created_at || 0).getTime();
   const bTime = new Date(b?.updated_at || b?.created_at || 0).getTime();
@@ -141,10 +126,6 @@ export default function ContactDetailPage({
   const copy = useMemo(() => getContactDetailCopy(locale), [locale]);
   const ticketStatusLabels = useMemo(() => getTicketStatusLabels(locale), [locale]);
   const {
-    formatDate
-  } = useAppFormatters();
-  const formatRelativeTime = useCallback(value => formatContactRelativeTime(value, locale, formatDate), [locale, formatDate]);
-  const {
     isCommunity
   } = useVeritasEdition();
   const {
@@ -160,6 +141,13 @@ export default function ContactDetailPage({
   const [client, setClient] = useState(null);
   const [allClients, setAllClients] = useState([]);
   const [contactModalOpen, setContactModalOpen] = useState(false);
+  const [contactModalOptions, setContactModalOptions] = useState({
+    initialSection: null,
+    seedCommunicationType: null
+  });
+  const [emailSectionExpanded, setEmailSectionExpanded] = useState(false);
+  const [phoneSectionExpanded, setPhoneSectionExpanded] = useState(false);
+  const [companiesSectionExpanded, setCompaniesSectionExpanded] = useState(false);
   const [contactActionsMenuOpen, setContactActionsMenuOpen] = useState(false);
   const [deleteContactModalOpen, setDeleteContactModalOpen] = useState(false);
   const [deletingContact, setDeletingContact] = useState(false);
@@ -194,11 +182,11 @@ export default function ContactDetailPage({
   const [addingTag, setAddingTag] = useState(false);
   const [supportTickets, setSupportTickets] = useState([]);
   const [prestationTickets, setPrestationTickets] = useState([]);
-  const [clientTickets, setClientTickets] = useState([]);
-  const [upcomingEvents, setUpcomingEvents] = useState([]);
   const [loadingActivity, setLoadingActivity] = useState(false);
   const activityControllerRef = useRef(null);
   const displayCommunications = useMemo(() => sortCommunicationsByType(normalizeContactCommunications(contact || {})), [contact]);
+  const emailCommunications = useMemo(() => displayCommunications.filter(entry => entry.type === "email"), [displayCommunications]);
+  const phoneCommunications = useMemo(() => displayCommunications.filter(entry => entry.type === "telephone"), [displayCommunications]);
   const contactCompanies = useMemo(() => {
     const linked = Array.isArray(contact?.clients) ? contact.clients : [];
     if (linked.length > 0) {
@@ -226,10 +214,20 @@ export default function ContactDetailPage({
     return [];
   }, [contact, client]);
   const openSupportCount = useMemo(() => supportTickets.filter(isOpenTicket).length, [supportTickets]);
-  const clientSupportTickets = useMemo(() => clientTickets.filter(ticket => !isPrestationTicket(ticket)), [clientTickets]);
-  const openClientTickets = useMemo(() => clientSupportTickets.filter(isOpenTicket).sort(sortTicketsByRecent), [clientSupportTickets]);
-  const closedClientTickets = useMemo(() => clientSupportTickets.filter(ticket => !isOpenTicket(ticket)).sort(sortTicketsByRecent).slice(0, 12), [clientSupportTickets]);
-  const canCreateTicket = Boolean(contact?.id && (client?.id || contact?.client_id || formData.client_id || contactCompanies.length > 0));
+  const openPrestationCount = useMemo(() => {
+    const source = isCommunity ? DEMO_PRESTATION_TICKETS : prestationTickets;
+    return source.filter(isOpenTicket).length;
+  }, [isCommunity, prestationTickets]);
+  const openContactTickets = useMemo(() => supportTickets.filter(isOpenTicket).sort(sortTicketsByRecent), [supportTickets]);
+  const closedContactTickets = useMemo(
+    () => supportTickets.filter(ticket => !isOpenTicket(ticket)).sort(sortTicketsByRecent).slice(0, 12),
+    [supportTickets]
+  );
+  const [slaNow, setSlaNow] = useState(() => Date.now());
+  useEffect(() => {
+    const timer = window.setInterval(() => setSlaNow(Date.now()), 60000);
+    return () => window.clearInterval(timer);
+  }, []);
   const contactGuideSteps = useMemo(() => {
     const steps = getContactDetailGuideSteps({
       showActivity: () => setOverviewTab("activity"),
@@ -517,34 +515,23 @@ export default function ContactDetailPage({
   const loadContactActivity = async (contactId, clientId, signal) => {
     setLoadingActivity(true);
     try {
-      const [contactTicketRows, clientTicketRows, upcomingEventRows] = await Promise.all([fetchTickets({
+      const contactTicketRows = await fetchTickets({
         requesterContactId: contactId,
         limit: 100
-      }).catch(() => []), clientId ? fetchTickets({
-        clientId,
-        limit: 100,
+      }, {
         signal
-      }).catch(() => []) : Promise.resolve([]), !isCommunity && clientId ? fetchEvents({
-        clientId,
-        upcoming: true,
-        limit: 20,
-        signal
-      }).catch(() => []) : Promise.resolve([])]);
+      }).catch(() => []);
       if (signal?.aborted || !isMountedRef.current) return;
       const tickets = Array.isArray(contactTicketRows) ? contactTicketRows : [];
       const supportOnly = tickets.filter(t => !isPrestationTicket(t));
       setPrestationTickets(isCommunity ? [] : tickets.filter(isPrestationTicket));
       setSupportTickets(supportOnly);
-      setClientTickets(Array.isArray(clientTicketRows) ? clientTicketRows : []);
-      setUpcomingEvents(filterUpcomingEvents(Array.isArray(upcomingEventRows) ? upcomingEventRows : []));
     } catch (err) {
       if (err?.name === "AbortError") return;
       console.error("Error loading contact activity:", err);
       if (isMountedRef.current) {
         setSupportTickets([]);
         setPrestationTickets([]);
-        setClientTickets([]);
-        setUpcomingEvents([]);
       }
     } finally {
       if (isMountedRef.current) setLoadingActivity(false);
@@ -568,29 +555,28 @@ export default function ContactDetailPage({
       background: true
     } : undefined);
   };
-  const handleCreateTicket = () => {
-    if (!onNavigate || !contact?.id) return;
-    const clientId = client?.id || contact?.client_id || formData.client_id;
-    if (!clientId) {
-      toast.info(copy.toast.createTicketNeedEnterprise);
-      return;
-    }
-    onNavigate("TicketCreate", {
-      contactId: contact.id,
-      clientId
-    });
-  };
-  const handleOpenTicketList = () => {
-    onNavigate?.("Ticket");
-  };
-  const handleOpenEditModal = async () => {
+  const handleOpenEditModal = async (options = {}) => {
     setContactActionsMenuOpen(false);
     const ok = await ensureClientsLoaded();
     if (!ok) return;
+    setContactModalOptions({
+      initialSection: options.initialSection || null,
+      seedCommunicationType: options.seedCommunicationType || null
+    });
     setContactModalOpen(true);
+  };
+  const handleOpenAddCommunication = type => {
+    handleOpenEditModal({
+      initialSection: "coordinates",
+      seedCommunicationType: type
+    });
   };
   const handleContactModalClose = () => {
     setContactModalOpen(false);
+    setContactModalOptions({
+      initialSection: null,
+      seedCommunicationType: null
+    });
   };
   const handleContactModalSuccess = updated => {
     if (updated?.id) {
@@ -724,57 +710,23 @@ export default function ContactDetailPage({
     prenom: formData.prenom,
     nom: formData.nom
   }, copy.defaultName);
-  const hasCoords = displayCommunications.length > 0;
   return <div className={`${styles.contratDetailPage} ${styles.enterpriseDetailPage} ${contactStyles.contactDetailPage} msp-page-grid`}>
       <header className={styles.pageHero} data-guide="contact-hero">
         <div className={styles.heroRow}>
           <div className={styles.heroMain}>
-            <div className={styles.heroAvatar}>
-              {getContactInitials(contact)}
-            </div>
             <div className={styles.heroText}>
               <h1 className={styles.heroTitle}>
-                <span>{displayName}</span>
+                <StatusDot active={contactStatus.status === "active"} label={contactStatus.label} className={styles.heroTitleStatus} />
+                <span className={styles.heroTitleName}>{displayName}</span>
               </h1>
               <div className={styles.heroMeta} aria-label={copy.heroMetaAria}>
-                <span className={`${styles.statusChip} ${contactStatus.status === "active" ? styles.statusChipActive : styles.statusChipInactive}`}>
-                  <StatusDot active={contactStatus.status === "active"} />
-                  {contactStatus.label}
-                </span>
-                {formData.poste && <span className={styles.heroMetaItem}>
-                    <Icon icon="mdi:briefcase-outline" aria-hidden />
-                    {formData.poste}
-                  </span>}
                 {formData.sexe && <span className={styles.heroMetaItem}>
                     <Icon icon={getContactSexeIcon(formData.sexe)} aria-hidden />
                     {getContactSexeLabelLocalized(formData.sexe, locale)}
                   </span>}
-                {contactCompanies.map(company => {
-                const listed = allClients.find(c => String(c.id) === String(company.id));
-                const code = getClientNumber(listed || company);
-                const label = getClientNameWithoutCode(listed || company) || company.name || "";
-                return company.id ? <button key={company.id} type="button" className={`${styles.heroMetaItem} ${styles.heroMetaLink}`} onClick={() => openEnterprise({
-                  id: company.id,
-                  name: company.name
-                })} title={copy.viewEnterprise}>
-                        <Icon icon="mdi:domain" aria-hidden />
-                        {code ? <>
-                            <span className={styles.headerClientCode}>{code}</span>
-                            {label}
-                          </> : label}
-                        {company.is_primary ? <span className={styles.sitePreviewPrimary}>{copy.primaryBadge}</span> : null}
-                      </button> : <span key={company.name || "company"} className={styles.heroMetaItem}>
-                        <Icon icon="mdi:domain" aria-hidden />
-                        {label}
-                      </span>;
-              })}
-                {!loadingActivity && <span className={styles.heroMetaItem}>
-                    <Icon icon="mdi:ticket-outline" aria-hidden />
-                    {openSupportCount === 1 ? interpolate(copy.openTickets, {
-                  count: openSupportCount
-                }) : interpolate(copy.openTicketsPlural, {
-                  count: openSupportCount
-                })}
+                {formData.poste && <span className={styles.heroMetaItem}>
+                    <Icon icon="mdi:briefcase-outline" aria-hidden />
+                    {formData.poste}
                   </span>}
                 {loadingTags ? <span className={styles.heroTagsLoading}>{copy.loadingTags}</span> : <>
                     {contactTags.map(tag => <span key={tag.id} className={styles.heroTagChip} style={{
@@ -858,7 +810,7 @@ export default function ContactDetailPage({
           </div>
         </div>
         <div className={`${styles.pageHeroBookmarks}`} data-guide="contact-ticket-bookmarks">
-        <ClientTicketBookmarks openTickets={openClientTickets} closedTickets={closedClientTickets} loading={loadingActivity} statusLabels={ticketStatusLabels} onTicketClick={handleOpenTicket} onCreateTicket={handleCreateTicket} onOpenTicketList={handleOpenTicketList} canCreate={canCreateTicket} clients={allClients} inPageHero />
+        <ClientTicketBookmarks openTickets={openContactTickets} closedTickets={closedContactTickets} loading={loadingActivity} statusLabels={ticketStatusLabels} onTicketClick={handleOpenTicket} clients={allClients} inPageHero />
         </div>
       </header>
 
@@ -882,210 +834,152 @@ export default function ContactDetailPage({
               </nav>
             </div>
 
-            {overviewTab === "activity" ? <section className={styles.panel} data-guide="contact-overview">
-              <div className={styles.panelHeader}>
-                <div className={styles.panelHeaderMain}>
-                  <h2 className={styles.panelTitle}>{copy.activityTitle}</h2>
-                  {!loadingActivity ? <span className={styles.activityBlockCount}>
-                    {(() => {
-                  const total = isCommunity ? supportTickets.length + DEMO_PRESTATION_TICKETS.length : supportTickets.length + prestationTickets.length;
-                  return total === 1 ? interpolate(copy.ticketCount, {
-                    count: total
-                  }) : interpolate(copy.ticketCountPlural, {
-                    count: total
-                  });
-                })()}
-                  </span> : null}
-                </div>
-              </div>
-              <div className={styles.panelBody}>
-                <div className={styles.overviewTabPanel}>
-                  <div className={styles.contactOverviewBlock} data-guide="contact-coordinates">
-                    <h3 className={styles.contactOverviewBlockTitle}>{copy.coordinates}</h3>
-{hasCoords ? <div className={contactStyles.coordGrid}>
-                    {displayCommunications.map(entry => {
-                  const typeDef = getCommunicationTypeDefLocalized(entry.type, locale);
-                  const href = entry.type === "email" ? toMailtoHref(entry.value) : entry.type === "telephone" ? toTelHref(entry.value) : null;
-                  const copyLabel = typeDef.label;
-                  return <div key={entry.id} className={contactStyles.coordCard}>
-                          <span className={contactStyles.coordIconWrap}>
-                            <Icon icon={typeDef.icon} aria-hidden />
-                          </span>
-                          <span className={contactStyles.coordText}>
-                            <span className={contactStyles.coordLabelRow}>
-                              <span className={contactStyles.coordLabel}>{typeDef.label}</span>
-                              {entry.isPrimary ? <Icon icon="mdi:star" className={contactStyles.coordFavoriteStar} title={copy.coordFavorite} aria-label={copy.coordFavorite} /> : null}
-                            </span>
-                            {href ? <a href={href} className={contactStyles.coordValueLink} onClick={e => e.stopPropagation()}>
-                                {entry.value}
-                              </a> : <span className={contactStyles.coordValue}>{entry.value}</span>}
-                          </span>
-                          <SmartTooltip content={interpolate(copy.copyCoord, {
-                      label: copyLabel.toLowerCase()
-                    })}>
-                            <button type="button" className={contactStyles.coordCopyBtn} title={interpolate(copy.copyCoord, {
-                        label: copyLabel.toLowerCase()
-                      })} aria-label={interpolate(copy.copyCoord, {
-                        label: copyLabel.toLowerCase()
-                      })} onClick={e => {
-                        e.stopPropagation();
-                        copyCoordValue(entry.value, copyLabel);
-                      }}>
-                              <Icon icon="mdi:content-copy" aria-hidden />
-                            </button>
-                          </SmartTooltip>
-                        </div>;
-                })}
-                  </div> : <div className={contactStyles.coordEmpty}>
-                    {copy.coordEmpty}
-                  </div>}
-                  </div>
-                  <div className={styles.contactOverviewBlock} data-guide="contact-activity-panel">
-                    <h3 className={styles.contactOverviewBlockTitle}>{copy.activityTitle}</h3>
-{loadingActivity ? <div className={contactStyles.activityLoading}>
-                    <Icon icon="mdi:loading" className={styles.spinning} aria-hidden />
-                    <span>{copy.loadingActivity}</span>
-                  </div> : <>
-                    <div className={contactStyles.mspKpiRow}>
-                      <div className={contactStyles.mspKpiCard}>
-                        <span className={contactStyles.mspKpiValue}>{openSupportCount}</span>
-                        <span className={contactStyles.mspKpiLabel}>{copy.kpiOpenSupport}</span>
+            {overviewTab === "activity" ? <div className={styles.activityLayout} data-guide="contact-activity-panel">
+                    <div className={styles.activityKpiRow}>
+                      <div className={styles.activityKpiCard}>
+                        <span className={styles.activityKpiValue}>{supportTickets.length}</span>
+                        <span className={styles.activityKpiLabel}>{copy.kpiSupportTotal}</span>
                       </div>
-                      <div className={contactStyles.mspKpiCard}>
-                        <span className={contactStyles.mspKpiValue}>{supportTickets.length}</span>
-                        <span className={contactStyles.mspKpiLabel}>{copy.kpiSupportTickets}</span>
+                      <div className={styles.activityKpiCard}>
+                        <span className={styles.activityKpiValue}>{openSupportCount}</span>
+                        <span className={styles.activityKpiLabel}>{copy.kpiSupportOpen}</span>
                       </div>
-                      <ProFeatureLock locked={isCommunity} featureLabel={copy.proFeatures.prestations} featureKey="prestations" className={contactStyles.mspKpiProLock}>
-                        <div className={contactStyles.mspKpiCard}>
-                          <span className={contactStyles.mspKpiValue}>
-                            {isCommunity ? DEMO_PRESTATION_TICKETS.length : prestationTickets.length}
-                          </span>
-                          <span className={contactStyles.mspKpiLabel}>{copy.kpiPrestations}</span>
+                      <ProFeatureLock locked={isCommunity} featureLabel={copy.proFeatures.prestations} featureKey="prestations" className={styles.activityKpiProLock}>
+                        <div className={styles.activityKpiCard}>
+                          <span className={styles.activityKpiValue}>{(isCommunity ? DEMO_PRESTATION_TICKETS : prestationTickets).length}</span>
+                          <span className={styles.activityKpiLabel}>{copy.kpiPrestationTotal}</span>
                         </div>
                       </ProFeatureLock>
-                      <ProFeatureLock locked={isCommunity} featureLabel={copy.proFeatures.planning} featureKey="planning" className={contactStyles.mspKpiProLock}>
-                        <div className={contactStyles.mspKpiCard}>
-                          <span className={contactStyles.mspKpiValue}>
-                            {isCommunity ? DEMO_UPCOMING_EVENTS.length : upcomingEvents.length}
-                          </span>
-                          <span className={contactStyles.mspKpiLabel}>{copy.kpiClientEvents}</span>
+                      <ProFeatureLock locked={isCommunity} featureLabel={copy.proFeatures.prestations} featureKey="prestations" className={styles.activityKpiProLock}>
+                        <div className={styles.activityKpiCard}>
+                          <span className={styles.activityKpiValue}>{openPrestationCount}</span>
+                          <span className={styles.activityKpiLabel}>{copy.kpiPrestationOpen}</span>
                         </div>
                       </ProFeatureLock>
                     </div>
-
                     <div className={styles.activityGridSplit}>
-                      <div className={styles.activityBlock}>
-                        <div className={styles.activityBlockHeader}>
-                          <h3 className={styles.activityBlockTitle}>
-                            <Icon icon="mdi:ticket-outline" aria-hidden />
-                            {copy.supportTicketsTitle}
-                          </h3>
+                      <section className={styles.panel}>
+                        <div className={styles.panelHeader}>
+                          <div className={styles.panelHeaderMain}>
+                            <h2 className={styles.panelTitle}>
+                              <Icon icon="mdi:ticket-outline" className={styles.panelTitleIcon} aria-hidden />
+                              {copy.supportTicketsTitle}
+                            </h2>
+                          </div>
                           <span className={styles.activityBlockCount}>
                             {interpolate(copy.openCount, {
-                          count: supportTickets.filter(t => !["resolved", "closed"].includes(normalizeTicketStatus(t.status))).length
-                        })}
+                        count: openSupportCount
+                      })}
                           </span>
                         </div>
-                        <div className={styles.dataTableWrapper}>
-                          <table className={styles.dataTable}>
-                            <thead>
-                              <tr>
-                                <th>{copy.table.number}</th>
-                                <th>{copy.table.title}</th>
-                                <th>{copy.table.status}</th>
-                                <th>{copy.table.updated}</th>
-                              </tr>
-                            </thead>
-                            <tbody>
-                              {supportTickets.length === 0 ? <tr>
-                                  <td colSpan={4} className={styles.dataTableEmptyCell}>
-                                    {copy.emptySupportTickets}
-                                  </td>
-                                </tr> : supportTickets.slice(0, 8).map(ticket => {
-                            const status = normalizeTicketStatus(ticket.status);
-                            return <tr key={ticket.id} className={styles.dataTableRowClickable} onClick={() => handleOpenTicket(ticket)} onAuxClick={e => {
-                              if (e.button === 1) {
-                                e.preventDefault();
-                                handleOpenTicket(ticket, true);
-                              }
-                            }}>
-                                      <td>#{ticket.ticket_number || "-"}</td>
-                                      <td className={styles.activityTitleCell}>{ticket.title || "-"}</td>
-                                      <td>
-                                        <span className={styles.ticketStatusBadge}>
-                                          {ticketStatusLabels[status] || status || "-"}
-                                        </span>
-                                      </td>
-                                      <td>{formatRelativeTime(ticket.updated_at || ticket.created_at)}</td>
-                                    </tr>;
-                          })}
-                            </tbody>
-                          </table>
-                        </div>
-                      </div>
-
-                      <div className={styles.activityRightColumn}>
-                      <ProFeatureLock locked={isCommunity} featureLabel={copy.proFeatures.prestationTickets} featureKey="prestations" className={styles.activityBlockProLock} badgePosition="none">
-                        <div className={styles.activityBlock}>
-                          <div className={styles.activityBlockHeader}>
-                            <h3 className={styles.activityBlockTitle}>
-                              <Icon icon="mdi:briefcase-outline" aria-hidden />
-                              {copy.prestationsTitle}
-                              {isCommunity ? <ProFeatureBadge variant="inline" className={styles.proBadgeInline} /> : null}
-                            </h3>
-                            <span className={styles.activityBlockCount}>
-                              {interpolate(copy.prestationsCount, {
-                              count: (isCommunity ? DEMO_PRESTATION_TICKETS : prestationTickets).length
-                            })}
-                            </span>
-                          </div>
+                        <div className={styles.panelBody}>
                           <div className={styles.dataTableWrapper}>
                             <table className={styles.dataTable}>
                               <thead>
                                 <tr>
                                   <th>{copy.table.number}</th>
-                                  <th>{copy.table.type}</th>
+                                  <th>{copy.table.title}</th>
                                   <th>{copy.table.status}</th>
-                                  <th>{copy.table.created}</th>
+                                  {!isCommunity && <th>{copy.table.sla}</th>}
+                                  <th>{copy.table.updated}</th>
                                 </tr>
                               </thead>
                               <tbody>
-                                {(isCommunity ? DEMO_PRESTATION_TICKETS : prestationTickets).length === 0 ? <tr>
-                                    <td colSpan={4} className={styles.dataTableEmptyCell}>
-                                      {copy.emptyPrestationTickets}
+                                {supportTickets.length === 0 ? <tr className={styles.dataTableEmptyRow}>
+                                    <td colSpan={isCommunity ? 4 : 5} className={styles.dataTableEmptyCell}>
+                                      {copy.emptySupportTickets}
                                     </td>
-                                  </tr> : (isCommunity ? DEMO_PRESTATION_TICKETS : prestationTickets).slice(0, 8).map(ticket => {
-                                const status = normalizeTicketStatus(ticket.status);
-                                return <tr key={ticket.id} className={isCommunity ? undefined : styles.dataTableRowClickable} onClick={isCommunity ? undefined : () => handleOpenTicket(ticket)} onAuxClick={isCommunity ? undefined : e => {
-                                  if (e.button === 1) {
-                                    e.preventDefault();
-                                    handleOpenTicket(ticket, true);
-                                  }
-                                }}>
-                                          <td>#{ticket.ticket_number || "-"}</td>
-                                          <td className={styles.activityTitleCell}>
-                                            {getPrestationCategoryLabel(ticket.category, locale)}
-                                          </td>
-                                          <td>
-                                            <span className={styles.ticketStatusBadge}>
-                                              {ticketStatusLabels[status] || status || "-"}
-                                            </span>
-                                          </td>
-                                          <td>{formatTableDate(ticket.created_at)}</td>
-                                        </tr>;
-                              })}
+                                  </tr> : supportTickets.slice(0, 8).map(ticket => {
+                          const status = normalizeTicketStatus(ticket.status);
+                          const sla = getTicketSlaDisplay(ticket, {
+                            clients: allClients.length ? allClients : client ? [client] : [],
+                            now: slaNow
+                          });
+                          return <tr key={ticket.id} className={styles.dataTableRowClickable} onClick={() => handleOpenTicket(ticket)} onAuxClick={e => {
+                            if (e.button === 1) {
+                              e.preventDefault();
+                              handleOpenTicket(ticket, true);
+                            }
+                          }}>
+                                      <td>#{ticket.ticket_number || "-"}</td>
+                                      <td className={styles.activityTitleCell} title={ticket.title || undefined}>
+                                        {ticket.title || "-"}
+                                      </td>
+                                      <td>
+                                        <span className={styles.ticketStatusBadge}>
+                                          {getTicketStatusLabel(status, locale)}
+                                        </span>
+                                      </td>
+                                      {!isCommunity && <td>{sla.label}</td>}
+                                      <td>{formatRelativeFrench(ticket.updated_at || ticket.created_at)}</td>
+                                    </tr>;
+                        })}
                               </tbody>
                             </table>
                           </div>
                         </div>
+                      </section>
+
+                      <ProFeatureLock locked={isCommunity} featureLabel={copy.proFeatures.prestations} featureKey="prestations" className={styles.activityBlockProLock} badgePosition="none">
+                        <section className={styles.panel}>
+                          <div className={styles.panelHeader}>
+                            <div className={styles.panelHeaderMain}>
+                              <h2 className={styles.panelTitle}>
+                                <Icon icon="mdi:briefcase-outline" className={styles.panelTitleIcon} aria-hidden />
+                                {copy.prestationsTitle}
+                                {isCommunity ? <ProFeatureBadge variant="inline" className={styles.proBadgeInline} /> : null}
+                              </h2>
+                            </div>
+                            <span className={styles.activityBlockCount}>
+                              {interpolate(copy.prestationsCount, {
+                          count: (isCommunity ? DEMO_PRESTATION_TICKETS : prestationTickets).length
+                        })}
+                            </span>
+                          </div>
+                          <div className={styles.panelBody}>
+                            <div className={styles.dataTableWrapper}>
+                              <table className={styles.dataTable}>
+                                <thead>
+                                  <tr>
+                                    <th>{copy.table.number}</th>
+                                    <th>{copy.table.type}</th>
+                                    <th>{copy.table.status}</th>
+                                    <th>{copy.table.created}</th>
+                                  </tr>
+                                </thead>
+                                <tbody>
+                                  {(isCommunity ? DEMO_PRESTATION_TICKETS : prestationTickets).length === 0 ? <tr className={styles.dataTableEmptyRow}>
+                                      <td colSpan={4} className={styles.dataTableEmptyCell}>
+                                        {copy.emptyPrestationTickets}
+                                      </td>
+                                    </tr> : (isCommunity ? DEMO_PRESTATION_TICKETS : prestationTickets).slice(0, 8).map(ticket => {
+                            const status = normalizeTicketStatus(ticket.status);
+                            return <tr key={ticket.id} className={isCommunity ? undefined : styles.dataTableRowClickable} onClick={isCommunity ? undefined : () => handleOpenTicket(ticket)} onAuxClick={isCommunity ? undefined : e => {
+                              if (e.button === 1) {
+                                e.preventDefault();
+                                handleOpenTicket(ticket, true);
+                              }
+                            }}>
+                                        <td>#{ticket.ticket_number || "-"}</td>
+                                        <td className={styles.activityTitleCell} title={getPrestationCategoryLabel(ticket.category, locale)}>
+                                          {getPrestationCategoryLabel(ticket.category, locale)}
+                                        </td>
+                                        <td>
+                                          <span className={styles.ticketStatusBadge}>
+                                            {getTicketStatusLabel(status, locale)}
+                                          </span>
+                                        </td>
+                                        <td>{formatTableDate(ticket.created_at)}</td>
+                                      </tr>;
+                          })}
+                                </tbody>
+                              </table>
+                            </div>
+                          </div>
+                        </section>
                       </ProFeatureLock>
-                      </div>
                     </div>
-                  </>}
-                  </div>
-                </div>
-              </div>
-            </section> : null}
+            </div> : null}
 
             {overviewTab === "portal" ? <section className={styles.panel} data-guide="contact-portal-panel">
               <div className={styles.panelBody}>
@@ -1138,24 +1032,20 @@ export default function ContactDetailPage({
                   <span className={styles.sidebarInfoTitle}>{copy.sidebarInfo}</span>
                 </div>
                 <div className={styles.sidebarSummaryList}>
-                  <div className={styles.sidebarSummaryItem}>
-                    <span className={styles.sidebarSummaryLabel}>{copy.fields.lastName}</span>
-                    <span className={styles.sidebarSummaryValue}>{formData.nom || "-"}</span>
-                  </div>
-                  <div className={styles.sidebarSummaryItem}>
-                    <span className={styles.sidebarSummaryLabel}>{copy.fields.firstName}</span>
-                    <span className={styles.sidebarSummaryValue}>{formData.prenom || "-"}</span>
+                  <div className={styles.sidebarFieldsRow}>
+                    <div className={styles.sidebarSummaryItem}>
+                      <span className={styles.sidebarSummaryLabel}>{copy.fields.lastName}</span>
+                      <span className={styles.sidebarSummaryValue}>{formData.nom || "-"}</span>
+                    </div>
+                    <div className={styles.sidebarSummaryItem}>
+                      <span className={styles.sidebarSummaryLabel}>{copy.fields.firstName}</span>
+                      <span className={styles.sidebarSummaryValue}>{formData.prenom || "-"}</span>
+                    </div>
                   </div>
                   <div className={styles.sidebarSummaryItem}>
                     <span className={styles.sidebarSummaryLabel}>{copy.fields.civility}</span>
                     <span className={styles.sidebarSummaryValue}>
                       {formData.sexe ? getContactSexeLabelLocalized(formData.sexe, locale) : "-"}
-                    </span>
-                  </div>
-                  <div className={styles.sidebarSummaryItem}>
-                    <span className={styles.sidebarSummaryLabel}>{copy.fields.status}</span>
-                    <span className={styles.sidebarSummaryValue}>
-                      {contactStatus.label}
                     </span>
                   </div>
                   <div className={styles.sidebarSummaryItem}>
@@ -1165,19 +1055,24 @@ export default function ContactDetailPage({
                 </div>
               </section>
 
-              <section className={styles.sidebarSection} data-guide="contact-sidebar-companies">
-                <div className={styles.sidebarInfoHeader}>
-                  <span className={styles.sidebarInfoTitle}>
-                    {copy.companies || copy.share.lines.enterprise}
-                    {contactCompanies.length > 0 ? <span className={styles.sidebarSectionCount}>{contactCompanies.length}</span> : null}
-                  </span>
-                  {canEditContact ? <SmartTooltip content={copy.addCompany}>
-                      <button type="button" className={styles.editInfoButton} onClick={openCompanyModal} disabled={membershipBusy} aria-label={copy.addCompany}>
+              <section className={`${styles.sidebarSection} ${contactStyles.sidebarCommSection}`} data-guide="contact-sidebar-companies">
+                <SidebarSectionHeader
+                  title={copy.companies || copy.share.lines.enterprise}
+                  count={contactCompanies.length > 0 ? contactCompanies.length : null}
+                  expanded={companiesSectionExpanded}
+                  onToggle={() => setCompaniesSectionExpanded(prev => !prev)}
+                  controlsId="contact-sidebar-companies"
+                  panelStyles={styles}
+                  actions={canEditContact ? <SmartTooltip content={copy.addCompany}>
+                      <button type="button" className={styles.editInfoButton} onClick={e => {
+                  e.stopPropagation();
+                  openCompanyModal();
+                }} disabled={membershipBusy} aria-label={copy.addCompany}>
                         <FaPlus />
                       </button>
                     </SmartTooltip> : null}
-                </div>
-                <div className={styles.sidebarBody}>
+                />
+                {companiesSectionExpanded ? <div className={`${styles.sidebarBody} ${contactStyles.sidebarCommBodyWrap}`} id="contact-sidebar-companies">
                   {contactCompanies.length === 0 ? <span className={styles.sidebarSummaryValueEmpty}>-</span> : <ul className={styles.sidebarContactsList}>
                       {contactCompanies.map(company => <SmartTooltip as="li" key={company.id} className={styles.sidebarContactItem} onClick={() => openEnterprise({
                   id: company.id,
@@ -1227,34 +1122,106 @@ export default function ContactDetailPage({
                           </div>
                         </SmartTooltip>)}
                     </ul>}
-                </div>
+                </div> : null}
               </section>
 
-              <section className={styles.sidebarSection} data-guide="contact-sidebar-dates">
-                <div className={styles.sidebarInfoHeader}>
-                  <span className={styles.sidebarInfoTitle}>{copy.sidebarDates}</span>
-                </div>
-                <div className={styles.sidebarSummaryList}>
-                  <div className={styles.sidebarSummaryItem}>
-                    <span className={styles.sidebarSummaryLabel}>{copy.fields.created}</span>
-                    <span className={styles.sidebarSummaryValue}>
-                      {formatShortDate(contact?.created_at, formatDate)}
-                    </span>
-                  </div>
-                  <div className={styles.sidebarSummaryItem}>
-                    <span className={styles.sidebarSummaryLabel}>{copy.fields.updated}</span>
-                    <span className={styles.sidebarSummaryValue}>
-                      {formatShortDate(contact?.updated_at, formatDate)}
-                    </span>
-                  </div>
-                </div>
+              <section className={`${styles.sidebarSection} ${contactStyles.sidebarCommSection}`} data-guide="contact-sidebar-emails">
+                <SidebarSectionHeader
+                  title={copy.sectionEmails}
+                  count={emailCommunications.length > 0 ? emailCommunications.length : null}
+                  expanded={emailSectionExpanded}
+                  onToggle={() => setEmailSectionExpanded(prev => !prev)}
+                  controlsId="contact-sidebar-emails"
+                  panelStyles={styles}
+                  actions={canEditContact ? <SmartTooltip content={copy.addEmail}>
+                      <button type="button" className={styles.editInfoButton} onClick={e => {
+                  e.stopPropagation();
+                  handleOpenAddCommunication("email");
+                }} aria-label={copy.addEmail}>
+                        <FaPlus />
+                      </button>
+                    </SmartTooltip> : null}
+                />
+                {emailSectionExpanded ? <div className={`${styles.sidebarBody} ${contactStyles.sidebarCommBodyWrap}`} id="contact-sidebar-emails">
+                    {emailCommunications.length === 0 ? <span className={styles.sidebarSummaryValueEmpty}>{copy.noEmails}</span> : <ul className={contactStyles.sidebarCommList}>
+                        {emailCommunications.map(entry => {
+                    const href = toMailtoHref(entry.value);
+                    return <li key={entry.id} className={contactStyles.sidebarCommItem}>
+                            <span className={contactStyles.sidebarCommBody}>
+                              {href ? <a href={href} className={contactStyles.coordValueLink} onClick={e => e.stopPropagation()}>
+                                  {entry.value}
+                                </a> : <span className={contactStyles.coordValue}>{entry.value}</span>}
+                              {entry.isPrimary ? <Icon icon="mdi:star" className={contactStyles.coordFavoriteStar} title={copy.coordFavorite} aria-label={copy.coordFavorite} /> : null}
+                            </span>
+                            <SmartTooltip content={interpolate(copy.copyCoord, {
+                        label: copy.sectionEmails.toLowerCase()
+                      })}>
+                              <button type="button" className={styles.sidebarCopyButton} onClick={e => {
+                          e.stopPropagation();
+                          copyCoordValue(entry.value, copy.sectionEmails);
+                        }} aria-label={interpolate(copy.copyCoord, {
+                          label: copy.sectionEmails.toLowerCase()
+                        })}>
+                                <Icon icon="mdi:content-copy" aria-hidden />
+                              </button>
+                            </SmartTooltip>
+                          </li>;
+                  })}
+                      </ul>}
+                  </div> : null}
+              </section>
+
+              <section className={`${styles.sidebarSection} ${contactStyles.sidebarCommSection}`} data-guide="contact-sidebar-phones">
+                <SidebarSectionHeader
+                  title={copy.sectionPhones}
+                  count={phoneCommunications.length > 0 ? phoneCommunications.length : null}
+                  expanded={phoneSectionExpanded}
+                  onToggle={() => setPhoneSectionExpanded(prev => !prev)}
+                  controlsId="contact-sidebar-phones"
+                  panelStyles={styles}
+                  actions={canEditContact ? <SmartTooltip content={copy.addPhone}>
+                      <button type="button" className={styles.editInfoButton} onClick={e => {
+                  e.stopPropagation();
+                  handleOpenAddCommunication("telephone");
+                }} aria-label={copy.addPhone}>
+                        <FaPlus />
+                      </button>
+                    </SmartTooltip> : null}
+                />
+                {phoneSectionExpanded ? <div className={`${styles.sidebarBody} ${contactStyles.sidebarCommBodyWrap}`} id="contact-sidebar-phones">
+                    {phoneCommunications.length === 0 ? <span className={styles.sidebarSummaryValueEmpty}>{copy.noPhones}</span> : <ul className={contactStyles.sidebarCommList}>
+                        {phoneCommunications.map(entry => {
+                    const href = toTelHref(entry.value);
+                    return <li key={entry.id} className={contactStyles.sidebarCommItem}>
+                            <span className={contactStyles.sidebarCommBody}>
+                              {href ? <a href={href} className={contactStyles.coordValueLink} onClick={e => e.stopPropagation()}>
+                                  {entry.value}
+                                </a> : <span className={contactStyles.coordValue}>{entry.value}</span>}
+                              {entry.isPrimary ? <Icon icon="mdi:star" className={contactStyles.coordFavoriteStar} title={copy.coordFavorite} aria-label={copy.coordFavorite} /> : null}
+                            </span>
+                            <SmartTooltip content={interpolate(copy.copyCoord, {
+                        label: copy.sectionPhones.toLowerCase()
+                      })}>
+                              <button type="button" className={styles.sidebarCopyButton} onClick={e => {
+                          e.stopPropagation();
+                          copyCoordValue(entry.value, copy.sectionPhones);
+                        }} aria-label={interpolate(copy.copyCoord, {
+                          label: copy.sectionPhones.toLowerCase()
+                        })}>
+                                <Icon icon="mdi:content-copy" aria-hidden />
+                              </button>
+                            </SmartTooltip>
+                          </li>;
+                  })}
+                      </ul>}
+                  </div> : null}
               </section>
             </div>
           </aside>
         </div>
       </div>
 
-      <ContactFormModal open={contactModalOpen} initialContact={contact} clients={allClients} onClose={handleContactModalClose} onSuccess={handleContactModalSuccess} />
+      <ContactFormModal open={contactModalOpen} initialContact={contact} clients={allClients} initialSection={contactModalOptions.initialSection} seedCommunicationType={contactModalOptions.seedCommunicationType} onClose={handleContactModalClose} onSuccess={handleContactModalSuccess} />
 
       <ContactCompanyModal open={companyModalOpen} contactName={displayName} companies={availableCompaniesToAdd} loading={clientsLoading} saving={membershipBusy} onClose={closeCompanyModal} onSelect={handleAddCompanyMembership} />
 
