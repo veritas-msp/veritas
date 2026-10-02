@@ -1461,14 +1461,19 @@ export default function TicketPage({
                           );
                         }
                         if (columnId === "requester") {
+                          const requesterLabel = resolveContactLabel(resolveRequesterContactId(t), resolveRequesterFallback(t));
                           return (
                             <td key={columnId}>
-                              {resolveRequesterContactId(t) ? <button type="button" className={styles.linkCellBtn} onClick={e => {
-                                e.stopPropagation();
-                                onNavigate?.("ContactDetail", { contactId: resolveRequesterContactId(t) });
-                              }}>
-                                {resolveContactLabel(resolveRequesterContactId(t), resolveRequesterFallback(t))}
-                              </button> : <span>{resolveContactLabel(resolveRequesterContactId(t), resolveRequesterFallback(t))}</span>}
+                              <span className={styles.requesterCell} title={requesterLabel !== "-" ? requesterLabel : undefined}>
+                                <span className={styles.cellEllipsis}>
+                                  {resolveRequesterContactId(t) ? <button type="button" className={styles.linkCellBtn} onClick={e => {
+                                    e.stopPropagation();
+                                    onNavigate?.("ContactDetail", { contactId: resolveRequesterContactId(t) });
+                                  }}>
+                                    {requesterLabel}
+                                  </button> : requesterLabel}
+                                </span>
+                              </span>
                             </td>
                           );
                         }
@@ -1477,13 +1482,15 @@ export default function TicketPage({
                           const clientLabel = resolveClientLabel(t);
                           return (
                             <td key={columnId}>
-                              <span className={styles.clientCell}>
-                                {resolveClientId(t) ? <button type="button" className={styles.linkCellBtn} onClick={e => {
-                                e.stopPropagation();
-                                onNavigate?.("ContratDetail", { clientId: resolveClientId(t), name: clientLabel });
-                              }}>
-                                {clientLabel}
-                              </button> : <span>{clientLabel}</span>}
+                              <span className={styles.clientCell} title={clientLabel !== "-" ? clientLabel : undefined}>
+                                <span className={styles.cellEllipsis}>
+                                  {resolveClientId(t) ? <button type="button" className={styles.linkCellBtn} onClick={e => {
+                                    e.stopPropagation();
+                                    onNavigate?.("ContratDetail", { clientId: resolveClientId(t), name: clientLabel });
+                                  }}>
+                                    {clientLabel}
+                                  </button> : clientLabel}
+                                </span>
                                 <ClientOnboardingBadge client={clientRecord} label={pageCopy.onboardingBadge} />
                               </span>
                             </td>

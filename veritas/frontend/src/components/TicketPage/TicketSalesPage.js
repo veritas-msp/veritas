@@ -1393,31 +1393,41 @@ export default function TicketSalesPage({
                                   return <td key={columnId}>{getCategoryLabel(t.category, categoryLabels)}</td>;
                                 }
                                 if (columnId === "client") {
+                                  const clientLabel = resolveClientLabel(t);
                                   return (
                                     <td key={columnId}>
-                                      {resolveClientId(t) ? <button type="button" className={styles.linkCellBtn} onClick={e => {
-                                        e.stopPropagation();
-                                        onNavigate?.("ContratDetail", {
-                                          clientId: resolveClientId(t),
-                                          name: resolveClientLabel(t)
-                                        });
-                                      }}>
-                                          {resolveClientLabel(t)}
-                                        </button> : <span>{resolveClientLabel(t)}</span>}
+                                      <span className={styles.clientCell} title={clientLabel !== "-" ? clientLabel : undefined}>
+                                        <span className={styles.cellEllipsis}>
+                                          {resolveClientId(t) ? <button type="button" className={styles.linkCellBtn} onClick={e => {
+                                            e.stopPropagation();
+                                            onNavigate?.("ContratDetail", {
+                                              clientId: resolveClientId(t),
+                                              name: clientLabel
+                                            });
+                                          }}>
+                                              {clientLabel}
+                                            </button> : clientLabel}
+                                        </span>
+                                      </span>
                                     </td>
                                   );
                                 }
                                 if (columnId === "requester") {
+                                  const requesterLabel = resolveContactLabel(resolveRequesterContactId(t), resolveRequesterFallback(t));
                                   return (
                                     <td key={columnId}>
-                                      {resolveRequesterContactId(t) ? <button type="button" className={styles.linkCellBtn} onClick={e => {
-                                        e.stopPropagation();
-                                        onNavigate?.("ContactDetail", {
-                                          contactId: resolveRequesterContactId(t)
-                                        });
-                                      }}>
-                                          {resolveContactLabel(resolveRequesterContactId(t), resolveRequesterFallback(t))}
-                                        </button> : <span>{resolveContactLabel(resolveRequesterContactId(t), resolveRequesterFallback(t))}</span>}
+                                      <span className={styles.requesterCell} title={requesterLabel !== "-" ? requesterLabel : undefined}>
+                                        <span className={styles.cellEllipsis}>
+                                          {resolveRequesterContactId(t) ? <button type="button" className={styles.linkCellBtn} onClick={e => {
+                                            e.stopPropagation();
+                                            onNavigate?.("ContactDetail", {
+                                              contactId: resolveRequesterContactId(t)
+                                            });
+                                          }}>
+                                              {requesterLabel}
+                                            </button> : requesterLabel}
+                                        </span>
+                                      </span>
                                     </td>
                                   );
                                 }

@@ -5,6 +5,13 @@
  */
 export const PATCH_NOTES = [
   {
+    version: "1.0.60",
+    date: "2026-10-02",
+    highlights: [
+      "Liste des tickets : colonnes Demandeur et Client sur une seule ligne avec ellipsis."
+    ]
+  },
+  {
     version: "1.0.59",
     date: "2026-10-02",
     highlights: [

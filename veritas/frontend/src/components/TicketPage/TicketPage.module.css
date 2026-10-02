@@ -394,12 +394,31 @@
   color: var(--msp-accent-dark, #1a3d75);
 }
 
+.requesterCell,
 .clientCell {
-  display: inline-flex;
+  display: flex;
   align-items: center;
-  gap: 0.4rem;
+  gap: 0.35rem;
   min-width: 0;
-  flex-wrap: wrap;
+  max-width: 200px;
+  flex-wrap: nowrap;
+}
+
+.cellEllipsis {
+  display: block;
+  min-width: 0;
+  flex: 1 1 auto;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cellEllipsis .linkCellBtn {
+  display: block;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .statusBadge {
