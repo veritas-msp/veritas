@@ -38,7 +38,7 @@ import { loadSlaSettings } from "../../utils/slaSettingsStore.js";
 import { maybeSendWhatsAppReplyForComment } from "../../services/whatsappService.js";
 import { loadAuthorProfilesByUserIds } from "../../utils/userAvatar.js";
 import { requirePro } from "../../middleware/edition.js";
-import { appendCommunityTicketFilters, COMMUNITY_SALES_TICKET_SQL, isSalesTicketRow, rejectCommunitySalesTicketCreate, rejectCommunitySalesTicketUpdate, sendProSalesTicketError } from "../../utils/ticketEditionGuard.js";
+import { appendCommunityTicketFilters, appendSupportTicketFilters, COMMUNITY_SALES_TICKET_SQL, isSalesTicketRow, rejectCommunitySalesTicketCreate, rejectCommunitySalesTicketUpdate, sendProSalesTicketError } from "../../utils/ticketEditionGuard.js";
 import { isCommunity } from "../../utils/edition.js";
 import { assertCommunityTicketAutomationLimits, sendCommunityLimitError } from "../../utils/communityLimits.js";
 import { appendCollectorLogInConfig, filterExclusionRulesForCollector, normalizeMailCollector, peekCollectorMailboxMessages, processMailCollector, withImapClient } from "../../services/mailCollectorIngest.js";
@@ -2935,6 +2935,7 @@ router.get("/random", verifyJWT, requirePermission("tickets.random_mode"), [quer
       where.push(`t.id <> $${i++}`);
       values.push(excludeId);
     }
+    appendSupportTicketFilters(where);
     appendCommunityTicketFilters(where);
     const result = await pool.query(`SELECT
           t.id,

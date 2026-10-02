@@ -69,19 +69,19 @@
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  flex-wrap: nowrap;
-  /* overflow-x creates a clip box on both axes — keep padding so alert badges stay visible */
-  overflow-x: auto;
-  overflow-y: hidden;
+  flex-wrap: wrap;
+  row-gap: 0.45rem;
+  overflow: visible;
   padding: 0.45rem 0.45rem 0.2rem 0.15rem;
-  scrollbar-width: thin;
 }
 
 .embeddedTypeIconBar {
   display: inline-flex;
   align-items: center;
-  gap: 0.45rem;
-  flex-shrink: 0;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  flex: 1 1 auto;
+  min-width: 0;
   padding-top: 0.1rem;
   padding-right: 0.15rem;
 }
@@ -498,10 +498,7 @@
   width: 100%;
   max-width: 100%;
   min-width: 0;
-  overflow-x: auto;
-  overflow-y: hidden;
-  -webkit-overflow-scrolling: touch;
-  scrollbar-width: thin;
+  overflow: hidden;
   border: 1px solid var(--eq-border, var(--msp-border, #e2e8f0));
   border-radius: var(--eq-radius, var(--msp-radius-sm, 10px));
   background: var(--eq-surface, var(--msp-surface, #ffffff));
@@ -509,10 +506,10 @@
 }
 
 .equipmentTableEmbedded {
-  width: max-content;
-  min-width: 100%;
+  width: 100%;
+  min-width: 0;
   border-collapse: collapse;
-  table-layout: auto;
+  table-layout: fixed;
   font-size: 0.8125rem;
   color: var(--eq-text, var(--msp-text, #0f1c2e));
 }
@@ -522,7 +519,7 @@
 }
 
 .equipmentTableEmbedded th {
-  padding: 0.55rem 0.85rem;
+  padding: 0.5rem 0.55rem;
   text-align: left;
   font-size: 0.8125rem;
   font-weight: 600;
@@ -532,11 +529,13 @@
   color: var(--eq-muted, var(--msp-muted, #5c6b82));
   border-bottom: 1px solid var(--eq-border, var(--msp-border, #e2e8f0));
   white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
   vertical-align: middle;
 }
 
 .equipmentTableEmbedded td {
-  padding: 0.55rem 0.85rem;
+  padding: 0.5rem 0.55rem;
   font-size: 0.8125rem;
   font-weight: 400;
   font-family: inherit;
@@ -546,6 +545,8 @@
   border-bottom: 1px solid var(--eq-border-light, var(--msp-border-light, #eef2f7));
   vertical-align: middle;
   white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .equipmentTableEmbedded .internetCellBold,
@@ -564,6 +565,10 @@
   font-weight: inherit;
   letter-spacing: inherit;
   text-transform: inherit;
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .equipmentTableEmbedded tbody tr.equipmentRowEmbedded {
@@ -1632,6 +1637,7 @@
   padding-left: 0.5rem;
   padding-right: 0.65rem;
   text-align: right;
+  overflow: visible;
 }
 
 .embeddedRowActions {

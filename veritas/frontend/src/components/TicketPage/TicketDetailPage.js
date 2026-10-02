@@ -1085,6 +1085,7 @@ export default function TicketDetailPage({
     if (ticket && isSalesTicket(ticket)) return true;
     return false;
   }, [ticket, ticketData?.fromPage, ticketData?.ticketFamily]);
+  const showRandomMode = canRandomMode && !isSalesTicketDetail;
   const ticketsListDocType = isSalesTicketDetail ? "TicketSales" : "Ticket";
   const salesFormData = useMemo(() => ticket?.sales_form_data || ticket?.salesFormData || null, [ticket]);
   const supportFormData = useMemo(() => ticket?.support_form_data || ticket?.supportFormData || null, [ticket]);
@@ -1865,7 +1866,7 @@ export default function TicketDetailPage({
         await maybeArchiveAttachmentsToVault(vaultEntries);
       }
       await loadDetail();
-      if (!draftInternal) {
+      if (!draftInternal && !isSalesTicketDetail) {
         await advanceToNextRandomTicket(onNavigate, ticketId);
         setPlayMode(isTicketPlayModeEnabled());
       }
@@ -1927,6 +1928,7 @@ export default function TicketDetailPage({
     await submitConversationUpdate(selectedSubmitAction);
   };
   const handleRandomTicketClick = async event => {
+    if (isSalesTicketDetail) return;
     if (event.shiftKey || playMode) {
       setTicketPlayModeEnabled(false);
       setPlayMode(false);
@@ -3957,8 +3959,10 @@ export default function TicketDetailPage({
       await loadDetail();
       if (resolveAfterReplyRef.current) {
         resolveAfterReplyRef.current = false;
-        await advanceToNextRandomTicket(onNavigate, ticketId);
-        setPlayMode(isTicketPlayModeEnabled());
+        if (!isSalesTicketDetail) {
+          await advanceToNextRandomTicket(onNavigate, ticketId);
+          setPlayMode(isTicketPlayModeEnabled());
+        }
       }
     } catch (error) {
       toast.error(error.message || copy.toasts.resolveError);
@@ -4718,7 +4722,7 @@ export default function TicketDetailPage({
                     </button> : null}
                   </div>, document.body) : null}
           </div> : null}
-        {playMode && canRandomMode ? <button type="button" className={playModeStyles.playModeBanner} onClick={handleDisablePlayMode} title={copy.playMode.disableTooltip} aria-label={copy.playMode.disableAria}>
+        {playMode && showRandomMode ? <button type="button" className={playModeStyles.playModeBanner} onClick={handleDisablePlayMode} title={copy.playMode.disableTooltip} aria-label={copy.playMode.disableAria}>
             <Icon icon="mdi:dice-5" aria-hidden />
             {copy.playMode.banner}
             <Icon icon="mdi:close" className={playModeStyles.playModeBannerClose} aria-hidden />
@@ -4731,7 +4735,7 @@ export default function TicketDetailPage({
             {isCommunity ? <span className={styles.reminderProBadge}>{copy.header.proBadge}</span> : null}
           </div>
         </SmartTooltip>
-        {canRandomMode ? <button type="button" className={`${styles.ticketHeaderIconBtn} ${playMode ? playModeStyles.diceBtnActive : ""}`} onClick={handleRandomTicketClick} disabled={loadingRandom || isReadOnly || !ticket} title={playMode ? copy.playMode.disableTooltip : copy.playMode.tooltip} aria-label={playMode ? copy.playMode.disableAria : copy.playMode.aria} aria-pressed={playMode}>
+        {showRandomMode ? <button type="button" className={`${styles.ticketHeaderIconBtn} ${playMode ? playModeStyles.diceBtnActive : ""}`} onClick={handleRandomTicketClick} disabled={loadingRandom || isReadOnly || !ticket} title={playMode ? copy.playMode.disableTooltip : copy.playMode.tooltip} aria-label={playMode ? copy.playMode.disableAria : copy.playMode.aria} aria-pressed={playMode}>
           <Icon icon={loadingRandom ? "mdi:loading" : "mdi:dice-5"} className={loadingRandom ? playModeStyles.spinning : undefined} />
         </button> : null}
       </div>

@@ -70,6 +70,7 @@ export default function SupervisionFleetSyncModal({
   const { doneCount, total, pct, tone } = getFleetSyncProgress(run, starting);
   const currentHost = run?.details?.currentHost || null;
   const startedByLabel = run?.details?.startedBy || startedBy || null;
+  const failures = Array.isArray(run?.details?.failures) ? run.details.failures : [];
   const isTerminal = Boolean(run && run.status !== "running");
   const canDismiss = isTerminal || Boolean(error);
   const canCancel = Boolean(run?.id && run.status === "running" && !cancelling);
@@ -309,6 +310,23 @@ export default function SupervisionFleetSyncModal({
                     <span className={styles.kpiLabel}>{copy.alerts || "Alertes"}</span>
                   </div>
                 </div>
+
+                {isTerminal && failures.length > 0 ? (
+                  <div className={`${styles.notice} ${styles.noticeError}`}>
+                    <Icon icon="mdi:alert-circle-outline" aria-hidden />
+                    <div className={styles.failureList}>
+                      <p className={styles.failureTitle}>{copy.failuresTitle || "Echecs CheckMK"}</p>
+                      <ul>
+                        {failures.slice(0, 8).map((item, index) => (
+                          <li key={`${item?.hostName || "fail"}-${index}`}>
+                            <strong>{item?.hostName || item?.stage || "—"}</strong>
+                            {item?.error ? ` · ${item.error}` : ""}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  </div>
+                ) : null}
               </>
             )}
           </div>

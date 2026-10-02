@@ -301,7 +301,7 @@ export default function SupervisionOpsQueue({
           return next;
         });
         enterTimersRef.current.delete(id);
-      }, 900);
+      }, 950);
       enterTimersRef.current.set(id, timer);
     });
     return undefined;

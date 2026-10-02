@@ -111,7 +111,7 @@ export async function loadSupervisionEquipmentInventory({
         if (mkRow) break;
       }
       if (!mkRow) mkRow = checkmkMap.get(`${clientKey}:${equipmentId}`) || null;
-      const checkmkSummaryRaw = mkRow ? computeMonitoringSummary(mkRow.monitoring_data, mkRow.last_synced_at, mkRow.host_details || null) : null;
+      const checkmkSummaryRaw = mkRow ? computeMonitoringSummary(mkRow.monitoring_data, mkRow.last_synced_at, mkRow.host_details || null, { liveOnly: true }) : null;
       const syncStale = isCheckmkSyncStale(mkRow?.last_synced_at, mkSettings.staleAfterMs);
       const checkmkSummary =
         !checkmkSummaryRaw || (syncStale && (!checkmkSummaryRaw.status || checkmkSummaryRaw.status === "ok"))

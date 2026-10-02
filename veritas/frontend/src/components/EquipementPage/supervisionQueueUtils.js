@@ -77,6 +77,11 @@ export function isEquipmentMappedViaMonitoringIntegration(equipment, {
 
 function pickMonitoringIntegrationIssue(row) {
   const issues = Array.isArray(row?.issues) ? row.issues : [];
+  const preferred = issues.find(issue => {
+    const key = String(issue?.key || "");
+    return key === "monitor_critical" || key === "monitor_warning";
+  });
+  if (preferred) return preferred;
   const fromList = issues.find(isMonitoringIntegrationIssue);
   if (fromList) return fromList;
   if (isMonitoringIntegrationIssue(row?.primaryIssue)) return row.primaryIssue;

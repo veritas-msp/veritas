@@ -5,6 +5,16 @@
  */
 export const PATCH_NOTES = [
   {
+    version: "1.0.62",
+    date: "2026-10-02",
+    highlights: [
+      "Supervision : sync flotte CheckMK plus rapide (état live), anti-doublons et apparition en fondu des alertes.",
+      "Fiche entreprise : filtres périphériques sans scroll (types présents uniquement) et tableau qui s’adapte à la largeur.",
+      "Fiche entreprise : espacement corrigé au-dessus des carnets de crédits.",
+      "Satisfaction tickets : libellés traduits ; mode aléatoire limité aux tickets support."
+    ]
+  },
+  {
     version: "1.0.61",
     date: "2026-10-02",
     highlights: [

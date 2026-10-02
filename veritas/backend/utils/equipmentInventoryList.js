@@ -568,7 +568,9 @@ async function loadCheckmkMappingsByIds(ids) {
 function resolveSupervisionStatus(mkRow, isMapped) {
   if (!isMapped) return "inactive";
   if (!mkRow) return "no_data";
-  const summary = computeMonitoringSummary(mkRow.monitoring_data, mkRow.last_synced_at, mkRow.host_details || null);
+  const summary = computeMonitoringSummary(mkRow.monitoring_data, mkRow.last_synced_at, mkRow.host_details || null, {
+    liveOnly: true
+  });
   const status = String(summary?.status || "").toLowerCase();
   if (status === "critical") return "critical";
   if (status === "warning") return "warning";

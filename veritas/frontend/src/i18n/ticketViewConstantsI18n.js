@@ -98,7 +98,7 @@ const TICKET_VIEW_COPY = {
         description: "Tickets en attente de retour"
       },
       __builtin_open__: {
-        name: "Tous les tickets ouvert",
+        name: "Tous les tickets ouverts",
         description: "Tickets ouverts (nouveau, en cours, en attente)"
       },
       __builtin_all__: {

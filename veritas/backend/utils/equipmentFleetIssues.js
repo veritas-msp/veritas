@@ -286,7 +286,9 @@ export async function fetchEquipmentFleetIssues() {
     const isMkMapped = true;
     const mkRow = lookupCheckmkRow(checkmkMap, equipment.clientId, equipment.dbId, family);
     let checkmkSummary = mkRow
-      ? computeMonitoringSummary(mkRow.monitoring_data, mkRow.last_synced_at, mkRow.host_details || null)
+      ? computeMonitoringSummary(mkRow.monitoring_data, mkRow.last_synced_at, mkRow.host_details || null, {
+          liveOnly: true
+        })
       : null;
     const syncStale = isCheckmkSyncStale(mkRow?.last_synced_at, mkSettings.staleAfterMs);
     // Mapping sans sync, ou sync trop ancienne avec statut nominal → traiter comme no_data.

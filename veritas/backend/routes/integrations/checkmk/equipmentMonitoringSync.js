@@ -258,7 +258,8 @@ function asCheckmkList(raw) {
   return [];
 }
 
-export function computeMonitoringSummary(monitoringData, lastSyncedAt, hostDetails = null) {
+export function computeMonitoringSummary(monitoringData, lastSyncedAt, hostDetails = null, options = {}) {
+  const liveOnly = Boolean(options?.liveOnly);
   if (!monitoringData || typeof monitoringData !== 'object') {
     return {
       status: 'no_data',
@@ -276,7 +277,7 @@ export function computeMonitoringSummary(monitoringData, lastSyncedAt, hostDetai
   const servicesRaw = monitoringData?.services?.services ?? monitoringData?.services;
   const services = asCheckmkList(servicesRaw);
   const eventsRaw = monitoringData?.events?.events ?? monitoringData?.events;
-  const events = asCheckmkList(eventsRaw);
+  const events = liveOnly ? [] : asCheckmkList(eventsRaw);
   const critServiceRows = services.filter(s => getServiceStateNum(s) === 2);
   const warnServiceRows = services.filter(s => getServiceStateNum(s) === 1);
   let critServices = critServiceRows.length;
@@ -309,8 +310,12 @@ export function computeMonitoringSummary(monitoringData, lastSyncedAt, hostDetai
   );
   const hostIsDown = hostStateSeverity === 2;
   let status = 'ok';
-  if (critServices > 0 || recentCritAlerts > 0 || hostWorstService === 2 || hostIsDown) status = 'critical';
-  else if (warnServices > 0 || recentWarnAlerts > 0 || hostWorstService === 1) status = 'warning';
+  // Live / supervision: status comes from current services + host state only.
+  // Historical events must not keep a resolved host in warning/critical.
+  if (critServices > 0 || hostWorstService === 2 || hostIsDown) status = 'critical';
+  else if (warnServices > 0 || hostWorstService === 1) status = 'warning';
+  else if (!liveOnly && (recentCritAlerts > 0)) status = 'critical';
+  else if (!liveOnly && (recentWarnAlerts > 0)) status = 'warning';
   let failingServices = uniqueNonEmpty(
     (critServiceRows.length ? critServiceRows : warnServiceRows).map(serviceDisplayName)
   );
@@ -339,16 +344,16 @@ export function computeMonitoringSummary(monitoringData, lastSyncedAt, hostDetai
         .map(eventServiceName)
     );
   };
-  if (!failingServices.length && recentAlertEvents.length) {
+  if (!liveOnly && !failingServices.length && recentAlertEvents.length) {
     failingServices = collectServiceNamesFromEvents(recentAlertEvents);
   }
   // Broader fallback: any alert event in retained history (not only last 7 days).
-  if (!failingServices.length) {
+  if (!liveOnly && !failingServices.length) {
     const allAlertEvents = events.filter(isAlertEvent);
     if (allAlertEvents.length) failingServices = collectServiceNamesFromEvents(allAlertEvents);
   }
   // Notifications often carry the service description when the services list is incomplete.
-  if (!failingServices.length) {
+  if (!liveOnly && !failingServices.length) {
     const notificationsRaw =
       monitoringData?.notifications?.notifications ??
       monitoringData?.notifications?.events ??
@@ -356,7 +361,7 @@ export function computeMonitoringSummary(monitoringData, lastSyncedAt, hostDetai
     const notifications = asCheckmkList(notificationsRaw).filter(isAlertEvent);
     if (notifications.length) failingServices = collectServiceNamesFromEvents(notifications);
   }
-  if (!failingServices.length) {
+  if (!liveOnly && !failingServices.length) {
     const hostEventsRaw =
       monitoringData?.hostEventsDetailed?.events ?? monitoringData?.hostEventsDetailed;
     const hostEvents = asCheckmkList(hostEventsRaw).filter(isAlertEvent);
@@ -543,20 +548,34 @@ function resolveInternalAuthHeaders(req) {
   return headers;
 }
 
-async function internalCheckMKGet(req, path, query = {}) {
+async function internalCheckMKGet(req, path, query = {}, { timeoutMs = 25000 } = {}) {
   const url = new URL(`${INTERNAL_BASE}/api/checkmk${path}`);
   for (const [k, v] of Object.entries(query)) {
     if (v != null && v !== '') url.searchParams.set(k, String(v));
   }
-  const res = await fetch(url.toString(), {
-    headers: resolveInternalAuthHeaders(req)
-  });
-  if (!res.ok) {
-    const text = await res.text().catch(() => '');
-    console.warn(`[checkmk equipment-sync] ${path} → ${res.status}: ${text.slice(0, 150)}`);
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), Math.max(Number(timeoutMs) || 25000, 5000));
+  try {
+    const res = await fetch(url.toString(), {
+      headers: resolveInternalAuthHeaders(req),
+      signal: controller.signal
+    });
+    if (!res.ok) {
+      const text = await res.text().catch(() => '');
+      console.warn(`[checkmk equipment-sync] ${path} → ${res.status}: ${text.slice(0, 150)}`);
+      return null;
+    }
+    return res.json();
+  } catch (err) {
+    if (err?.name === "AbortError") {
+      console.warn(`[checkmk equipment-sync] ${path} → timeout after ${timeoutMs}ms`);
+      return null;
+    }
+    console.warn(`[checkmk equipment-sync] ${path} → ${err?.message || err}`);
     return null;
+  } finally {
+    clearTimeout(timer);
   }
-  return res.json();
 }
 function getAvailabilityPeriodRange(periodKey) {
   const endTime = new Date();
@@ -666,8 +685,10 @@ async function fetchAndMergeCheckMKData(req, {
   site,
   existingMonitoringData,
   incrementalFrom,
-  fullRefresh = false
+  fullRefresh = false,
+  mode = "full"
 }) {
+  const fleetMode = String(mode || "full").toLowerCase() === "fleet";
   const now = new Date();
   const eventsEndTime = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59);
   let eventsStartTime;
@@ -682,6 +703,34 @@ async function fetchAndMergeCheckMKData(req, {
   const queryBase = {
     site: siteParam
   };
+
+  // Fleet / supervision center: live status only (services + host). Keep historical
+  // events/availability from previous syncs — those are for reports, not alert queue.
+  if (fleetMode) {
+    const [services, hostDetails] = await Promise.all([
+      internalCheckMKGet(req, `/services/${encodeURIComponent(hostName)}`, queryBase, { timeoutMs: 20000 }),
+      internalCheckMKGet(req, `/host/${encodeURIComponent(hostName)}`, queryBase, { timeoutMs: 20000 })
+    ]);
+    if (!services) {
+      throw new Error('CheckMK services refresh failed. Verify API connectivity and host mapping.');
+    }
+    if (!hostDetails) {
+      throw new Error('CheckMK host refresh failed. Verify API connectivity and host mapping.');
+    }
+    const prev = existingMonitoringData || {};
+    return {
+      monitoringData: {
+        services,
+        events: prev.events || null,
+        hostEventsDetailed: prev.hostEventsDetailed || null,
+        notifications: prev.notifications || null,
+        availabilityByPeriod: prev.availabilityByPeriod || {},
+        availability: prev.availability ?? prev.availabilityByPeriod?.['1m'] ?? null
+      },
+      hostDetails
+    };
+  }
+
   const [services, events, hostDetails, hostEventsDetailed, notifications, avail1m, avail3m, avail1y] = await Promise.all([internalCheckMKGet(req, `/services/${encodeURIComponent(hostName)}`, {
     ...queryBase,
     start_time: eventsStartTime.toISOString(),
@@ -813,6 +862,8 @@ export async function runEquipmentMonitoringSync(req, {
   hostName,
   site,
   force = false,
+  syncMode = "full",
+  mkSettings: mkSettingsArg = null,
   availabilityPeriod = '1m'
 }) {
   if (!equipmentId || !clientId || !family || !hostName) {
@@ -823,7 +874,8 @@ export async function runEquipmentMonitoringSync(req, {
     throw new Error('Equipment not found or not mapped to this CheckMK host.');
   }
   const existing = await getStoredMonitoring(equipmentId);
-  const mkSettings = await getCheckmkMonitoringSettings();
+  const mkSettings = mkSettingsArg || await getCheckmkMonitoringSettings();
+  const fleetMode = String(syncMode || "full").toLowerCase() === "fleet";
   if (!force && mkSettings.syncSuspended) {
     if (existing) {
       return {
@@ -859,8 +911,9 @@ export async function runEquipmentMonitoringSync(req, {
     hostName,
     site,
     existingMonitoringData: existing?.monitoring_data || {},
-    incrementalFrom: force ? null : existing?.last_synced_at || null,
-    fullRefresh: Boolean(force)
+    incrementalFrom: force && !fleetMode ? null : existing?.last_synced_at || null,
+    fullRefresh: Boolean(force) && !fleetMode,
+    mode: fleetMode ? "fleet" : "full"
   });
   const nowIso = new Date().toISOString();
   if (existing) {
@@ -879,8 +932,14 @@ export async function runEquipmentMonitoringSync(req, {
        VALUES ($1::uuid, $2, $3, $4, $5, $6::jsonb, $7::jsonb, $8::timestamptz)`, [equipmentId, clientId, family, hostName, site || null, JSON.stringify(monitoringData), hostDetails ? JSON.stringify(hostDetails) : null, nowIso]);
   }
   const updated = await getStoredMonitoring(equipmentId);
-  const summary = computeMonitoringSummary(monitoringData, nowIso, hostDetails || updated?.host_details || null);
-  if (!mkSettings.surveillanceSuspended) {
+  const summary = computeMonitoringSummary(
+    monitoringData,
+    nowIso,
+    hostDetails || updated?.host_details || null,
+    { liveOnly: fleetMode }
+  );
+  // Ticket automation stays on the dedicated alert scan / poller — fleet sync only refreshes live status.
+  if (!fleetMode && !mkSettings.surveillanceSuspended) {
     evaluateMonitoringAlert({
       clientId,
       equipmentId,
@@ -896,6 +955,7 @@ export async function runEquipmentMonitoringSync(req, {
   return {
     ...rowToResponse(updated, availabilityPeriod),
     skipped: false,
+    summary,
     message: 'Synchronization completed.'
   };
 }

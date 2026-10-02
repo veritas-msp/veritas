@@ -1035,7 +1035,7 @@
 .panel[data-guide="enterprise-equipment"] .panelBody {
   min-width: 0;
   max-width: 100%;
-  overflow-x: auto;
+  overflow-x: hidden;
   overflow-y: visible;
   padding-top: 0.95rem;
 }
@@ -3110,7 +3110,7 @@ button.sidebarOptionIcon:hover {
 }
 
 .sidebarCreditsSection .sidebarBody {
-  padding-top: 0;
+  padding-top: 0.55rem;
 }
 
 .sidebarCollapseHeader {
@@ -3724,10 +3724,7 @@ button.sidebarOptionIcon:hover {
   width: 100%;
   max-width: 100%;
   min-width: 0;
-  overflow-x: auto;
-  overflow-y: hidden;
-  -webkit-overflow-scrolling: touch;
-  scrollbar-width: thin;
+  overflow: hidden;
   border: 1px solid var(--msp-border);
   border-radius: var(--msp-radius-sm);
   background: var(--msp-surface);
@@ -3735,10 +3732,10 @@ button.sidebarOptionIcon:hover {
 }
 
 .equipmentSection [class*="equipmentTableEmbedded"] {
-  width: max-content;
-  min-width: 100%;
+  width: 100%;
+  min-width: 0;
   border-collapse: collapse;
-  table-layout: auto;
+  table-layout: fixed;
   font-size: 0.8125rem;
 }
 
@@ -3748,10 +3745,12 @@ button.sidebarOptionIcon:hover {
 
 .equipmentSection [class*="equipmentTableEmbedded"] th,
 .equipmentSection [class*="equipmentTableEmbedded"] td {
-  padding: 0.55rem 0.85rem;
+  padding: 0.5rem 0.55rem;
   font-size: 0.8125rem;
   vertical-align: middle;
   white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .equipmentSection [class*="equipmentTableEmbedded"] th {
@@ -3821,6 +3820,7 @@ button.sidebarOptionIcon:hover {
   min-width: 6.5rem;
   max-width: 6.5rem;
   text-align: right;
+  overflow: visible;
 }
 
 .equipmentSection [class*="equipmentTableEmbedded"] th[class*="embeddedColActions"] {

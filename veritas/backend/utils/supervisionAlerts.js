@@ -6,7 +6,23 @@ import { SUPERVISION_ALERT_CRITERIA } from "./supervisionAlertRules.js";
 
 const ACTIVE_STATUSES = new Set(["open", "acked", "linked"]);
 const CLOSE_REASONS = new Set(["resolved", "dismissed"]);
+/** Avoid reopening the same resolved alert when a sync runs again too soon. */
+const ALERT_REOPEN_COOLDOWN_MS = 5 * 60 * 1000;
 const CRITERION_LABEL_BY_KEY = new Map(SUPERVISION_ALERT_CRITERIA.map(c => [c.key, c.label]));
+
+function msSince(value) {
+  if (!value) return Number.POSITIVE_INFINITY;
+  const t = new Date(value).getTime();
+  if (Number.isNaN(t)) return Number.POSITIVE_INFINITY;
+  return Date.now() - t;
+}
+
+function sameAlertFingerprint(existingMeta, nextMeta) {
+  const a = String(existingMeta?.fingerprint || "").trim();
+  const b = String(nextMeta?.fingerprint || "").trim();
+  if (!a || !b) return false;
+  return a === b;
+}
 
 function isBareAlertText(value) {
   return /^(warning|critical|crit|warn|info|monitor_warning|monitor_critical)$/i.test(String(value || "").trim());
@@ -226,13 +242,33 @@ export async function ensureSupervisionAlertsSeen(items = []) {
   const reopenable = normalized.filter(item => {
     const alert = existingById.get(item.queueItemId);
     if (!alert) return false;
-    if (alert.deletedAt) return true;
-    return alert?.status === "closed" && alert?.closedReason === "resolved";
+    if (alert.deletedAt) {
+      return msSince(alert.deletedAt) >= ALERT_REOPEN_COOLDOWN_MS;
+    }
+    if (alert?.status === "closed" && alert?.closedReason === "resolved") {
+      // Same issue coming back immediately after resolve/sync → keep it closed.
+      if (sameAlertFingerprint(alert.meta, item.meta) && msSince(alert.closedAt || alert.lastSeenAt) < ALERT_REOPEN_COOLDOWN_MS) {
+        return false;
+      }
+      return msSince(alert.closedAt) >= ALERT_REOPEN_COOLDOWN_MS;
+    }
+    return false;
   });
   const enrichable = normalized.filter(item => {
     const alert = existingById.get(item.queueItemId);
     if (!alert || alert.deletedAt || !ACTIVE_STATUSES.has(alert.status)) return false;
-    return isRicherAlertText(item.title, alert.title) || isRicherAlertText(item.label, alert.label) || isRicherAlertText(item.subtitle, alert.subtitle);
+    // Touch last_seen even when text is identical so the row stays warm.
+    if (sameAlertFingerprint(alert.meta, item.meta) && msSince(alert.lastSeenAt) < 30 * 1000) {
+      return false;
+    }
+    return (
+      isRicherAlertText(item.title, alert.title) ||
+      isRicherAlertText(item.label, alert.label) ||
+      isRicherAlertText(item.subtitle, alert.subtitle) ||
+      String(item.severity || "") !== String(alert.severity || "") ||
+      String(item.meta?.fingerprint || "") !== String(alert.meta?.fingerprint || "") ||
+      msSince(alert.lastSeenAt) >= 30 * 1000
+    );
   });
 
   if (!missing.length && !reopenable.length && !enrichable.length) {
@@ -284,6 +320,7 @@ export async function ensureSupervisionAlertsSeen(items = []) {
              title = COALESCE($3, title),
              subtitle = COALESCE($4, subtitle),
              label = COALESCE($5, label),
+             meta = COALESCE(meta, '{}'::jsonb) || COALESCE($6::jsonb, '{}'::jsonb),
              closed_at = NULL,
              closed_by = NULL,
              closed_reason = NULL,
@@ -295,7 +332,7 @@ export async function ensureSupervisionAlertsSeen(items = []) {
              updated_at = NOW()
          WHERE id = $1::uuid
          RETURNING *`,
-        [current.id, item.severity, item.title, item.subtitle, item.label]
+        [current.id, item.severity, item.title, item.subtitle, item.label, JSON.stringify(item.meta || {})]
       );
       const row = updated.rows[0];
       if (!row) continue;
@@ -321,11 +358,20 @@ export async function ensureSupervisionAlertsSeen(items = []) {
              subtitle = COALESCE($3, subtitle),
              label = COALESCE($4, label),
              severity = COALESCE($5, severity),
+             meta = COALESCE(meta, '{}'::jsonb) || COALESCE($6::jsonb, '{}'::jsonb),
              last_seen_at = NOW(),
              updated_at = NOW()
          WHERE id = $1::uuid
-           AND status = ANY($6::text[])`,
-        [current.id, nextTitle, nextSubtitle, nextLabel, item.severity, [...ACTIVE_STATUSES]]
+           AND status = ANY($7::text[])`,
+        [
+          current.id,
+          nextTitle,
+          nextSubtitle,
+          nextLabel,
+          item.severity,
+          JSON.stringify(item.meta || {}),
+          [...ACTIVE_STATUSES]
+        ]
       );
     }
     await client.query("COMMIT");

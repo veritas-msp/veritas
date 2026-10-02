@@ -433,7 +433,7 @@
 }
 
 .rowEnter {
-  animation: supervisionRowEnter 0.7s cubic-bezier(0.22, 1, 0.36, 1);
+  animation: supervisionRowEnter 0.85s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 .rowEnter td:first-child {
@@ -443,8 +443,12 @@
 @keyframes supervisionRowEnter {
   from {
     opacity: 0;
-    transform: translateY(-8px);
-    background: color-mix(in srgb, var(--msp-accent, #2b5fab) 14%, transparent);
+    transform: translateY(-10px);
+    background: color-mix(in srgb, var(--msp-accent, #2b5fab) 18%, transparent);
+  }
+  55% {
+    opacity: 1;
+    background: color-mix(in srgb, var(--msp-accent, #2b5fab) 8%, transparent);
   }
   to {
     opacity: 1;

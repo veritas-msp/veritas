@@ -206,6 +206,37 @@
   color: #991b1b;
 }
 
+.failureList {
+  min-width: 0;
+  flex: 1;
+}
+
+.failureTitle {
+  margin: 0 0 0.35rem;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: #991b1b;
+}
+
+.failureList ul {
+  margin: 0;
+  padding-left: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.failureList li {
+  font-size: 0.75rem;
+  line-height: 1.35;
+  color: #7f1d1d;
+  word-break: break-word;
+}
+
+.kpiGrid + .notice {
+  margin-top: 0.75rem;
+}
+
 @media (max-width: 560px) {
   .kpiGrid {
     grid-template-columns: repeat(2, minmax(0, 1fr));

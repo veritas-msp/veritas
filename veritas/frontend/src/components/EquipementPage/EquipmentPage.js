@@ -1583,6 +1583,17 @@ const EquipmentPage = forwardRef(function EquipmentPage({
     return withEquipment || embeddedTypeOrder[0] || EMBEDDED_DEFAULT_TYPE;
   }, [embedded, selectedTypes, embeddedTypeOrder, embeddedTypeCounts, mkStatusFilter]);
   const showAllMkFamilies = Boolean(embedded && mkStatusFilter && !embeddedActiveType);
+  /** En vue entreprise : n'afficher que les familles présentes (évite le scroll horizontal des filtres). */
+  const visibleEmbeddedTypes = useMemo(() => {
+    if (!embedded) return embeddedTypeOrder;
+    const counts = mkStatusFilter ? mkFilteredTypeCounts : embeddedTypeCounts;
+    const withItems = embeddedTypeOrder.filter(type => (counts?.[type] || 0) > 0);
+    if (!withItems.length) return embeddedTypeOrder;
+    if (embeddedActiveType && !withItems.includes(embeddedActiveType)) {
+      return [...withItems, embeddedActiveType];
+    }
+    return withItems;
+  }, [embedded, embeddedTypeOrder, embeddedTypeCounts, mkFilteredTypeCounts, mkStatusFilter, embeddedActiveType]);
   const activeCustomFamily = useMemo(() => {
     if (!embeddedActiveType?.startsWith("Custom:")) return null;
     const familyKey = embeddedActiveType.slice("Custom:".length);
@@ -3324,7 +3335,7 @@ const EquipmentPage = forwardRef(function EquipmentPage({
         {showEmbeddedInitialSkeleton ? hideEmbeddedSkeleton ? null : renderEmbeddedLoadingSkeleton() : error ? <div className={styles.error}>{error}</div> : <div ref={scrollContainerRef} className={`${styles.tablesContainer} ${!embedded && mkAlertStats.mapped > 0 ? styles.tablesContainerWithMkBar : ''} ${embedded ? styles.tablesContainerEmbedded : ''}`}>
             {embedded ? <div className={styles.embeddedFilterBar}>
                 <div className={styles.embeddedTypeIconBar} role="tablist" aria-label={embeddedCopy.typeBarAria}>
-                  {embeddedTypeOrder.map(type => {
+                  {visibleEmbeddedTypes.map(type => {
                   const mkCount = mkStatusFilter ? mkFilteredTypeCounts?.[type] || 0 : null;
                   const count = mkStatusFilter ? mkCount : embeddedTypeCounts[type] || 0;
                   const alertLevel = typeMkAlertLevel[type] || null;
@@ -3528,7 +3539,7 @@ const EquipmentPage = forwardRef(function EquipmentPage({
                           const isSorted = sortState?.key === col.key;
                           const isSortable = isColumnSortable(col.key);
                           const embeddedCellClass = embedded ? getEmbeddedCellClassName(col.key, styles) : undefined;
-                          return <th key={col.key} className={[isSortable ? styles.sortableTh : undefined, embeddedCellClass].filter(Boolean).join(" ") || undefined} onClick={() => isSortable && handleTableSort(type, col.key)} title={col.key === "brandIcon" ? "Brand" : isSortable ? "Trier par " + col.label : undefined} aria-label={col.key === "brandIcon" ? "Brand" : undefined} aria-sort={isSortable ? isSorted ? sortState.direction === "asc" ? "ascending" : "descending" : "none" : undefined}>
+                          return <th key={col.key} className={[isSortable ? styles.sortableTh : undefined, embeddedCellClass].filter(Boolean).join(" ") || undefined} onClick={() => isSortable && handleTableSort(type, col.key)} title={col.key === "brandIcon" ? "Brand" : col.label || undefined} aria-label={col.key === "brandIcon" ? "Brand" : undefined} aria-sort={isSortable ? isSorted ? sortState.direction === "asc" ? "ascending" : "descending" : "none" : undefined}>
                                 <span className={styles.thContent}>
                                   {col.label}
                                   {isSortable && <span className={styles.sortIndicator} aria-hidden="true">
@@ -3552,10 +3563,11 @@ const EquipmentPage = forwardRef(function EquipmentPage({
                             if (String(col.key).startsWith("ext:")) {
                               const field = col.field || (fieldsFor(type) || []).find(entry => `ext:${entry.fieldKey}` === col.key);
                               const fieldKey = field?.fieldKey || String(col.key).slice(4);
-                              return <td key={col.key}>{formatExtensionFieldValue(field, readExtensionFieldValue(equipment, fieldKey), {
+                              const extValue = formatExtensionFieldValue(field, readExtensionFieldValue(equipment, fieldKey), {
                                 yes: pageCopy.yes,
                                 no: pageCopy.no
-                              })}</td>;
+                              });
+                              return <td key={col.key} title={extValue != null && extValue !== "" ? String(extValue) : undefined}>{extValue}</td>;
                             }
                             const value = equipment[col.key];
                             if (col.key === "brandIcon") {

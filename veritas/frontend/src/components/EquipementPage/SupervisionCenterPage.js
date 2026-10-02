@@ -372,10 +372,21 @@ export default function MonitoringCenterPage({
       return;
     }
     const status = run?.status;
+    const failures = Array.isArray(run?.details?.failures) ? run.details.failures : [];
+    const failureHint = failures
+      .slice(0, 3)
+      .map(item => item?.hostName || item?.error)
+      .filter(Boolean)
+      .join(", ");
     if (status === "success") toast.success(copy.status?.success || "Synchronisation terminee");
-    else if (status === "partial") toast.warn(copy.status?.partial || "Terminee avec des erreurs partielles");
-    else if (status === "cancelled") toast.info(copy.status?.cancelled || "Synchronisation arretee");
-    else if (status === "error") toast.error(copy.status?.error || "Echec de la synchronisation");
+    else if (status === "partial") {
+      const base = copy.status?.partial || "Terminee avec des erreurs partielles";
+      toast.warn(failureHint ? `${base} · ${failureHint}` : base);
+    } else if (status === "cancelled") toast.info(copy.status?.cancelled || "Synchronisation arretee");
+    else if (status === "error") {
+      const base = copy.status?.error || "Echec de la synchronisation";
+      toast.error(failureHint ? `${base} · ${failureHint}` : base);
+    }
   }, [refreshLiveQueue, refreshHistory, pageCopy.fleetSync]);
   useEffect(() => {
     const controller = createTrackedAbortController();
