@@ -5,6 +5,14 @@
  */
 export const PATCH_NOTES = [
   {
+    version: "1.0.59",
+    date: "2026-10-02",
+    highlights: [
+      "Portail client : détail ticket remplit correctement l’écran ; cibles formulaire (assignés, catégorie) appliquées à la création.",
+      "Tickets agent : panneau Formulaire retiré ; suggestions base de connaissances alignées sur le style des autres sections."
+    ]
+  },
+  {
     version: "1.0.58",
     date: "2026-10-02",
     highlights: [

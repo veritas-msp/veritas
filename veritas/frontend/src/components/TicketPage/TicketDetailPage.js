@@ -64,7 +64,7 @@ import TicketVaultArchiveOptions, {
 import { getTicketVaultArchiveCopy } from "./ticketVaultArchiveI18n";
 import { archiveTicketFilesToVault } from "../../utils/archiveTicketFilesToVault";
 import { isSalesTicket, buildSalesFormFieldEntries, buildSalesFormFieldLabelMap, buildSalesFormFieldTypeMap, enrichSalesFormLinkedEntries } from "../../utils/salesTicketUtils";
-import { extractSupportFormSubjectTitle, pickTicketDisplayTitle, shouldHideSupportFormDetailField } from "../../utils/supportFormTicketContent";
+import { extractSupportFormSubjectTitle, pickTicketDisplayTitle } from "../../utils/supportFormTicketContent";
 import { formatLinkedEquipmentEventLabel, getEquipmentPickerLabel, getEquipmentSearchText, mapClientEquipmentsForTicketLink } from "./ticketEquipmentUtils";
 import TicketLinkedEquipmentQuickActions from "./TicketLinkedEquipmentQuickActions";
 import { getLocalizedSolutionCatalogLabel } from "./solutionCatalogI18n";
@@ -1091,10 +1091,8 @@ export default function TicketDetailPage({
   const [salesFormFieldLabelMap, setSalesFormFieldLabelMap] = useState({});
   const [salesFormFieldTypeMap, setSalesFormFieldTypeMap] = useState({});
   const [supportFormFieldLabelMap, setSupportFormFieldLabelMap] = useState({});
-  const [supportFormFieldTypeMap, setSupportFormFieldTypeMap] = useState({});
   const salesPlanningEvent = useMemo(() => ticket?.planningEvent || ticket?.planning_event || null, [ticket]);
   const salesFormEntriesRaw = useMemo(() => buildSalesFormFieldEntries(salesFormData, salesFormFieldLabelMap), [salesFormData, salesFormFieldLabelMap]);
-  const supportFormEntriesRaw = useMemo(() => buildSalesFormFieldEntries(supportFormData, supportFormFieldLabelMap), [supportFormData, supportFormFieldLabelMap]);
   useEffect(() => {
     if (!isSalesTicketDetail) {
       setSalesFormFieldLabelMap({});
@@ -1131,13 +1129,11 @@ export default function TicketDetailPage({
   useEffect(() => {
     if (isSalesTicketDetail) {
       setSupportFormFieldLabelMap({});
-      setSupportFormFieldTypeMap({});
       return undefined;
     }
     const formId = supportFormData?.formId;
     if (!formId) {
       setSupportFormFieldLabelMap({});
-      setSupportFormFieldTypeMap({});
       return undefined;
     }
     let cancelled = false;
@@ -1148,13 +1144,11 @@ export default function TicketDetailPage({
       .then(form => {
         if (!cancelled) {
           setSupportFormFieldLabelMap(buildSalesFormFieldLabelMap(form));
-          setSupportFormFieldTypeMap(buildSalesFormFieldTypeMap(form));
         }
       })
       .catch(error => {
         if (error?.name === "AbortError" || cancelled) return;
         setSupportFormFieldLabelMap({});
-        setSupportFormFieldTypeMap({});
       });
     return () => {
       cancelled = true;
@@ -1222,18 +1216,6 @@ export default function TicketDetailPage({
         equipments: linkedEquipments
       }),
     [salesFormEntriesRaw, salesFormData, salesFormFieldTypeMap, contacts, clients, users, linkedEquipments]
-  );
-  const supportFormEntries = useMemo(
-    () =>
-      enrichSalesFormLinkedEntries(supportFormEntriesRaw, {
-        formData: supportFormData,
-        typeMap: supportFormFieldTypeMap,
-        contacts,
-        clients,
-        users,
-        equipments: linkedEquipments
-      }).filter(row => !shouldHideSupportFormDetailField(row, supportFormFieldTypeMap)),
-    [supportFormEntriesRaw, supportFormData, supportFormFieldTypeMap, contacts, clients, users, linkedEquipments]
   );
   const supportFormSubjectTitle = useMemo(
     () => extractSupportFormSubjectTitle(supportFormData, supportFormFieldLabelMap),
@@ -5587,31 +5569,6 @@ export default function TicketDetailPage({
                 </RightPaneStaticSection>
               </> : null}
 
-            {!isSalesTicketDetail && supportFormData ? <RightPaneStaticSection title={locale === "fr" ? "Formulaire" : "Form"} titleId="ticket-support-form-title">
-                {supportFormData.formLabel ? <p className={styles.emptyText} style={{ marginBottom: supportFormEntries.length ? "0.55rem" : 0 }}>{supportFormData.formLabel}</p> : null}
-                {supportFormEntries.length === 0 ? null : <dl className={styles.salesFormFacts}>
-                    {supportFormEntries.map(row => <div key={row.key} className={styles.salesFormFact}>
-                        <dt>{row.label}</dt>
-                        <dd>
-                          <SalesFormFieldValue
-                            row={row}
-                            onNavigate={onNavigate}
-                            linkClassName={styles.contextLink}
-                            linkButtonClassName={styles.linkLikeBtn}
-                            stackClassName={styles.formLinkedStack}
-                            metaClassName={styles.formLinkedMeta}
-                          />
-                        </dd>
-                      </div>)}
-                  </dl>}
-              </RightPaneStaticSection> : null}
-
-            <TicketKnowledgeSuggestions
-              query={ticketDisplayTitle || editForm.title || ticket?.title || titleDraft}
-              copy={copy}
-              onOpen={article => onNavigate?.("KnowledgeBaseArticle", { articleId: article.id, mode: "read", title: article.title })}
-            />
-
             <RightPaneCollapsibleSection sectionId="ticket-detail-contact-body" title={copy.rightPane.contact} expanded={rightPaneCollapse.contact} onToggle={() => toggleRightPaneCollapse("contact")}>
               <div className={`${styles.contextLine} ${styles.contextLineWithAction}`.trim()}>
                 <div className={styles.contextLineMain}>
@@ -5638,6 +5595,13 @@ export default function TicketDetailPage({
               </div>
               <div className={styles.contextLine}><strong>{copy.rightPane.role}</strong> {requesterRole}</div>
             </RightPaneCollapsibleSection>
+
+            <TicketKnowledgeSuggestions
+              variant="sidebar"
+              query={ticketDisplayTitle || editForm.title || ticket?.title || titleDraft}
+              copy={copy}
+              onOpen={article => onNavigate?.("KnowledgeBaseArticle", { articleId: article.id, mode: "read", title: article.title })}
+            />
 
             <RightPaneCollapsibleSection sectionId="ticket-detail-contract-body" title={copy.contract} expanded={rightPaneCollapse.contract} onToggle={() => toggleRightPaneCollapse("contract")} headerExtra={contractValidityAlert ? <span className={`${styles.contractHeaderStatus} ${CONTRACT_HEADER_STATUS_CLASS[contractValidityAlert.status] || ""}`.trim()}>
                     {contractValidityAlert.shortLabel}

@@ -4,7 +4,7 @@ import multer from "multer";
 import { pool } from "../database/db.js";
 import { loadAuthorProfilesByUserIds } from "../utils/userAvatar.js";
 import { dispatchNotificationEvent } from "./notificationDispatcher.js";
-import { notifyTicketCommented, notifyTicketCreatedAck, notifyTicketCreatedAgents } from "./systemNotificationService.js";
+import { notifyTicketCommented, notifyTicketCreatedAck, notifyTicketCreatedAgents, notifyTicketAssignedUsers } from "./systemNotificationService.js";
 import { notifyInAppTicketCommented, notifyInAppTicketCreated } from "./userNotificationService.js";
 import { getTicketSatisfaction, submitPortalTicketSatisfaction, updatePortalTicketSatisfaction, hasSatisfactionTable } from "./ticketSatisfactionService.js";
 import { ensureTicketStatusMatchesValidation, getTicketResolutionValidation, submitPortalResolutionValidation, hasResolutionValidationTable } from "./ticketResolutionValidationService.js";
@@ -13,6 +13,15 @@ import { isCommunity } from "../utils/edition.js";
 import { SUPPORT_TICKET_SQL, SUPPORT_TICKET_SQL_PLAIN } from "../utils/ticketEditionGuard.js";
 import { isPortalSupervisor, normalizePortalTicketRole } from "../utils/portalTicketRole.js";
 import { ensurePortalTicketRoleSchema } from "./ensurePortalTicketRoleSchema.js";
+import {
+  applyFormTicketTargets,
+  loadFormFieldMetaByKey,
+  loadFormTicketTargetsConfig,
+  mergeCreateOptionsFromTargets,
+  normalizeTicketTargets,
+  resolveAssigneeUserIds,
+  resolveMatchingRules
+} from "./salesFormTicketTargets.js";
 const TICKET_UPLOAD_DIR = path.resolve(process.cwd(), "uploads", "tickets");
 fs.mkdirSync(TICKET_UPLOAD_DIR, {
   recursive: true
@@ -627,16 +636,117 @@ export async function createPortalTicket({
     attemptedActions,
     issueNature
   });
-  const formCategory = supportFormData?.categorySlug ? String(supportFormData.categorySlug).trim() : "";
-  const formType = supportFormData?.kind ? String(supportFormData.kind).trim() : "";
+
+  const formId = supportFormData?.formId ? String(supportFormData.formId).trim() : "";
+  const formFieldValues =
+    supportFormData?.values && typeof supportFormData.values === "object" ? supportFormData.values : {};
+  let formCategorySlug = supportFormData?.categorySlug ? String(supportFormData.categorySlug).trim() : "";
+  let formKind = supportFormData?.kind ? String(supportFormData.kind).trim() : "";
+  let matchedRule = null;
+  let ruleTargets = normalizeTicketTargets({});
+  let formTargetContext = {
+    values: formFieldValues,
+    fieldsByKey: {}
+  };
+
+  if (formId) {
+    try {
+      const formRow = await pool.query(
+        `SELECT category_slug, kind
+           FROM v_b_support_form_definitions
+          WHERE id = $1
+          LIMIT 1`,
+        [formId]
+      );
+      const row = formRow.rows?.[0];
+      if (row) {
+        if (!formCategorySlug) formCategorySlug = String(row.category_slug || "").trim();
+        if (!formKind) formKind = String(row.kind || "").trim();
+      }
+    } catch (err) {
+      console.warn("[portal] load support form meta:", err?.message || err);
+    }
+
+    try {
+      const targetsConfig = await loadFormTicketTargetsConfig(formId, { family: "support" });
+      const matchingRules = resolveMatchingRules(targetsConfig, formFieldValues);
+      if (matchingRules.length === 0) {
+        matchedRule = {
+          id: "fallback",
+          label: "Ticket principal",
+          targets: normalizeTicketTargets({})
+        };
+        ruleTargets = normalizeTicketTargets({});
+      } else {
+        matchedRule = matchingRules[0];
+        // Portal creates a single ticket: merge assignees/teams/watchers from all matched rules.
+        const merged = normalizeTicketTargets(matchingRules[0].targets || {});
+        for (const rule of matchingRules.slice(1)) {
+          const next = normalizeTicketTargets(rule.targets || {});
+          if (!merged.priority && next.priority) merged.priority = next.priority;
+          if (!merged.status && next.status) merged.status = next.status;
+          if (!merged.categorySlug && next.categorySlug) merged.categorySlug = next.categorySlug;
+          merged.assigneeUserIds = [...new Set([...merged.assigneeUserIds, ...next.assigneeUserIds])];
+          merged.watcherUserIds = [...new Set([...merged.watcherUserIds, ...next.watcherUserIds])];
+          merged.teamIds = [...new Set([...merged.teamIds, ...next.teamIds])];
+          merged.assigneeFieldKeys = [...new Set([...merged.assigneeFieldKeys, ...next.assigneeFieldKeys])];
+          merged.watcherFieldKeys = [...new Set([...merged.watcherFieldKeys, ...next.watcherFieldKeys])];
+        }
+        ruleTargets = merged;
+      }
+      const fieldsByKey = await loadFormFieldMetaByKey(formId, { family: "support" });
+      formTargetContext = {
+        values: formFieldValues,
+        fieldsByKey
+      };
+    } catch (err) {
+      console.warn("[portal] load support form targets:", err?.message || err);
+    }
+  }
+
+  const incomingPriority = ["low", "normal", "high", "urgent"].includes(priority) ? priority : "normal";
+  const mergedCreate = mergeCreateOptionsFromTargets(ruleTargets, {
+    priority: incomingPriority,
+    status: "open"
+  });
+  const ticketPriority = ["low", "normal", "high", "urgent"].includes(mergedCreate.priority)
+    ? mergedCreate.priority
+    : incomingPriority;
+  const ticketCategory = String(ruleTargets.categorySlug || formCategorySlug || "").trim();
+  const resolvedTypeCandidate = formKind || type;
+  const ticketType = ["incident", "demande", "request", "probleme", "changement"].includes(resolvedTypeCandidate)
+    ? resolvedTypeCandidate
+    : "incident";
+
+  let resolvedAssignedUserId = null;
+  if (formId) {
+    try {
+      const targetAssigneeIds = await resolveAssigneeUserIds(ruleTargets, formTargetContext);
+      if (targetAssigneeIds.length > 0) resolvedAssignedUserId = targetAssigneeIds[0];
+    } catch (err) {
+      console.warn("[portal] resolve form assignees:", err?.message || err);
+    }
+  }
+
+  const ticketSupportFormData =
+    supportFormData && typeof supportFormData === "object"
+      ? {
+          ...supportFormData,
+          kind: formKind || supportFormData.kind || ticketType,
+          categorySlug: formCategorySlug || supportFormData.categorySlug || ticketCategory || null,
+          targetRuleId: matchedRule?.id || null,
+          targetRuleLabel: matchedRule?.label || null
+        }
+      : null;
+
   const columns = ["title", "description", "status", "priority", "type", "category", "channel", "client_id"];
   const values = [
     String(title).trim(),
     fullDescription,
     "open",
-    ["low", "normal", "high", "urgent"].includes(priority) ? priority : "normal",
-    ["incident", "demande", "request", "probleme", "changement"].includes(formType || type) ? (formType || type) : "incident",
-    formCategory,
+    ticketPriority,
+    ticketType,
+    ticketCategory,
     "web",
     clientId
   ];
@@ -645,7 +755,7 @@ export async function createPortalTicket({
     values.push(contactId || null);
   }
   columns.push("requester_user_id", "assigned_user_id", "created_by");
-  values.push(userId || null, null, userId || null);
+  values.push(userId || null, resolvedAssignedUserId || null, userId || null);
   if (hasContactSlots) {
     columns.push("contact_slots");
     values.push(JSON.stringify(normalizedContactSlots));
@@ -654,14 +764,14 @@ export async function createPortalTicket({
     columns.push("equipment_info");
     values.push(JSON.stringify(normalizedEquipmentInfo));
   }
-  if (hasSupportFormData && supportFormData && typeof supportFormData === "object") {
+  if (hasSupportFormData && ticketSupportFormData) {
     columns.push("support_form_data");
-    values.push(JSON.stringify(supportFormData));
+    values.push(JSON.stringify(ticketSupportFormData));
   }
   if (hasSlaInfo) {
     const clientContrat = await loadClientContrat(clientId);
     const slaInfo = await buildSlaInfoForTicket({
-      priority: values[3],
+      priority: ticketPriority,
       clientContrat,
       createdAt: new Date()
     });
@@ -674,9 +784,32 @@ export async function createPortalTicket({
   const result = await pool.query(`INSERT INTO v_b_tickets (${columns.join(", ")})
      VALUES (${placeholders.join(", ")})
      RETURNING *`, values);
-  const created = result.rows[0];
+  let created = result.rows[0];
   await pool.query(`INSERT INTO v_b_ticket_status_history (ticket_id, old_status, new_status, changed_by, note, created_at)
      VALUES ($1, NULL, $2, $3, $4, NOW())`, [created.id, created.status, userId || null, "Created through the client portal"]);
+
+  if (formId) {
+    try {
+      const appliedTargets = await applyFormTicketTargets(created.id, ruleTargets, formTargetContext);
+      if (Array.isArray(appliedTargets?.assigneeUserIds) && appliedTargets.assigneeUserIds.length > 0) {
+        await notifyTicketAssignedUsers({
+          ticketId: created.id,
+          userIds: appliedTargets.assigneeUserIds,
+          assignedByUserId: userId || null,
+          extraContext: {
+            agent: {
+              id: userId || null
+            }
+          }
+        }).catch(() => {});
+      }
+      const refreshed = await pool.query(`SELECT * FROM v_b_tickets WHERE id = $1`, [created.id]);
+      if (refreshed.rows[0]) created = refreshed.rows[0];
+    } catch (err) {
+      console.warn("[portal] apply support form targets:", err?.message || err);
+    }
+  }
+
   if (normalizedEquipmentInfo.concerned && normalizedEquipmentInfo.source === "veritas" && normalizedEquipmentInfo.equipmentId) {
     await insertInternalTicketComment(created.id, userId, buildLinkedEquipmentComment({
       id: normalizedEquipmentInfo.equipmentId,

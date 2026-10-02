@@ -4,33 +4,39 @@
   box-sizing: border-box;
 }
 
-/* Pull out of .mainScroll uneven padding, then re-apply a single equal inset. */
+/*
+ * Ticket detail should fill the portal viewport (conversation + résumé side by side),
+ * not hug content and leave a large empty band underneath.
+ */
 .portalDetailShell {
   --portal-detail-inset: 12px;
   box-sizing: border-box;
-  flex: 1;
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  align-self: stretch;
+  min-width: 0;
   min-height: 0;
-  width: auto;
+  width: 100%;
   max-width: none;
-  margin: calc(var(--portal-scroll-pad-top, 20px) * -1)
-    calc(var(--portal-scroll-pad-x, 24px) * -1)
-    calc(var(--portal-scroll-pad-bottom, 32px) * -1);
-  height: calc(
-    100% + var(--portal-scroll-pad-top, 20px) + var(--portal-scroll-pad-bottom, 32px)
-  );
-  padding: var(--portal-detail-inset) !important;
+  height: auto;
+  margin: 0;
+  padding: 0 !important;
   gap: var(--portal-detail-inset);
+  overflow: hidden;
 }
 
 @media (max-width: 768px) {
   .portalDetailShell {
     --portal-detail-inset: 10px;
+    overflow: visible;
   }
 }
 
 .portalWorkspace {
-  flex: 1;
+  flex: 1 1 auto;
   min-height: 0;
+  width: 100%;
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(260px, 320px);
   gap: var(--portal-detail-inset, 12px);
@@ -38,19 +44,27 @@
 }
 
 .portalCenterPane {
-  flex: 1;
   min-width: 0;
   min-height: 0;
-  height: 100%;
+  height: auto;
+  align-self: stretch;
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
   padding: 0.75rem 0.85rem !important;
   box-sizing: border-box;
+  overflow: hidden;
 }
 
 .portalTimelineWrap {
-  flex: 1;
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.portalTimelineWrap :global([class*="timeline"]) {
+  flex: 1 1 auto;
   min-height: 0;
 }
 
@@ -102,7 +116,8 @@
 .portalTicketAside {
   min-width: 0;
   min-height: 0;
-  height: 100%;
+  height: auto;
+  align-self: stretch;
   border: 1px solid var(--portal-border, #e4e8ee);
   border-radius: var(--msp-radius, 16px);
   background: var(--portal-surface, #fff);
@@ -160,11 +175,18 @@
 @media (max-width: 960px) {
   .portalWorkspace {
     grid-template-columns: 1fr;
+    overflow: auto;
+  }
+
+  .portalCenterPane {
+    overflow: visible;
+    min-height: min(60vh, 520px);
   }
 
   .portalTicketAside {
     order: -1;
     max-height: none;
+    overflow: visible;
   }
 }
 

@@ -3786,6 +3786,64 @@
   line-height: 1.45;
 }
 
+.kbSuggestList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.kbSuggestItem {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.45rem;
+  width: 100%;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  padding: 0.35rem 0.2rem;
+  margin: 0 -0.2rem;
+  cursor: pointer;
+  border-radius: 8px;
+}
+
+.kbSuggestItem:hover {
+  background: var(--msp-accent-soft, rgba(43, 95, 171, 0.08));
+}
+
+.kbSuggestItem svg {
+  flex-shrink: 0;
+  margin-top: 0.12rem;
+  font-size: 1rem;
+  color: var(--msp-accent, #2b5fab);
+}
+
+.kbSuggestText {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  gap: 0.1rem;
+}
+
+.kbSuggestText > span {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--msp-text, #0f1c2e);
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+
+.kbSuggestText small {
+  color: var(--msp-muted, #5c6b82);
+  font-size: 0.72rem;
+  font-weight: 500;
+  line-height: 1.3;
+}
+
 .contextLineWithAction {
   display: flex;
   align-items: center;
