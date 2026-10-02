@@ -645,6 +645,14 @@ export default {
       demande: {
         label: "Request",
         hint: "Need or question"
+      },
+      probleme: {
+        label: "Problem",
+        hint: "Recurring root cause"
+      },
+      changement: {
+        label: "Change",
+        hint: "Planned modification"
       }
     },
     typeLabels: {
@@ -804,6 +812,9 @@ export default {
       tipsAria: "Show input tips",
       tips: ["Describe the issue or need precisely, including business context.", "Indicate the impact on your activity (people affected, services involved).", "List steps already tried to speed up diagnosis.", "Attach screenshots or documents useful for support."],
       detailsTitle: "Ticket details",
+      formSectionTitle: "Form",
+      noForms: "No declaration form is available at the moment.",
+      noFormsForKind: "No form available for this declaration type.",
       subject: "Subject",
       description: "Detailed description",
       attemptedActions: "Steps already tried",

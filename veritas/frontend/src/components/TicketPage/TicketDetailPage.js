@@ -1927,7 +1927,7 @@ export default function TicketDetailPage({
     await submitConversationUpdate(selectedSubmitAction);
   };
   const handleRandomTicketClick = async event => {
-    if (event.shiftKey) {
+    if (event.shiftKey || playMode) {
       setTicketPlayModeEnabled(false);
       setPlayMode(false);
       toast.info(copy.toasts.playModeDisabled);
@@ -1945,6 +1945,12 @@ export default function TicketDetailPage({
     } finally {
       setLoadingRandom(false);
     }
+  };
+  const handleDisablePlayMode = () => {
+    if (!playMode) return;
+    setTicketPlayModeEnabled(false);
+    setPlayMode(false);
+    toast.info(copy.toasts.playModeDisabled);
   };
   const runEditorCommand = (command, value = null) => {
     if (!commentEditorRef.current) return;
@@ -4712,10 +4718,11 @@ export default function TicketDetailPage({
                     </button> : null}
                   </div>, document.body) : null}
           </div> : null}
-        {playMode && canRandomMode ? <span className={playModeStyles.playModeBanner}>
+        {playMode && canRandomMode ? <button type="button" className={playModeStyles.playModeBanner} onClick={handleDisablePlayMode} title={copy.playMode.disableTooltip} aria-label={copy.playMode.disableAria}>
             <Icon icon="mdi:dice-5" aria-hidden />
             {copy.playMode.banner}
-          </span> : null}
+            <Icon icon="mdi:close" className={playModeStyles.playModeBannerClose} aria-hidden />
+          </button> : null}
         <SmartTooltip content={isCommunity ? copy.header.reminderProTooltip : copy.reminderModal.formatReminderButtonTitle(ticketReminder)}>
           <div className={isCommunity ? styles.reminderProWrap : undefined}>
             <button type="button" className={`${styles.ticketHeaderIconBtn} ${!isCommunity && ticketReminder ? styles.reminderBtnActive : ""}`} onClick={openReminderModal} disabled={isReadOnly || !ticket} aria-label={isCommunity ? copy.header.reminderProAria : ticketReminder ? copy.header.reminderEditAria : copy.header.reminderScheduleAria}>
@@ -4724,7 +4731,7 @@ export default function TicketDetailPage({
             {isCommunity ? <span className={styles.reminderProBadge}>{copy.header.proBadge}</span> : null}
           </div>
         </SmartTooltip>
-        {canRandomMode ? <button type="button" className={`${styles.ticketHeaderIconBtn} ${playMode ? playModeStyles.diceBtnActive : ""}`} onClick={handleRandomTicketClick} disabled={loadingRandom || isReadOnly || !ticket} title={copy.playMode.tooltip} aria-label={copy.playMode.aria} aria-pressed={playMode}>
+        {canRandomMode ? <button type="button" className={`${styles.ticketHeaderIconBtn} ${playMode ? playModeStyles.diceBtnActive : ""}`} onClick={handleRandomTicketClick} disabled={loadingRandom || isReadOnly || !ticket} title={playMode ? copy.playMode.disableTooltip : copy.playMode.tooltip} aria-label={playMode ? copy.playMode.disableAria : copy.playMode.aria} aria-pressed={playMode}>
           <Icon icon={loadingRandom ? "mdi:loading" : "mdi:dice-5"} className={loadingRandom ? playModeStyles.spinning : undefined} />
         </button> : null}
       </div>

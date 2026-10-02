@@ -645,6 +645,14 @@ export default {
       demande: {
         label: "Solicitud",
         hint: "Necesidad o consulta"
+      },
+      probleme: {
+        label: "Problema",
+        hint: "Causa raíz recurrente"
+      },
+      changement: {
+        label: "Cambio",
+        hint: "Modificación planificada"
       }
     },
     typeLabels: {
@@ -804,6 +812,9 @@ export default {
       tipsAria: "Mostrar consejos de entrada",
       tips: ["Describa el problema o la necesidad con precisión, incluyendo el contexto empresarial.", "Indique el impacto en su actividad (personas afectadas, servicios implicados).", "Enumere los pasos ya intentados para acelerar el diagnóstico.", "Adjunte capturas de pantalla o documentos útiles para el soporte."],
       detailsTitle: "Detalles del ticket",
+      formSectionTitle: "Formulario",
+      noForms: "No hay ningún formulario de declaración disponible por el momento.",
+      noFormsForKind: "No hay formulario disponible para este tipo de declaración.",
       subject: "Asunto",
       description: "Descripción detallada",
       attemptedActions: "Pasos ya intentados",

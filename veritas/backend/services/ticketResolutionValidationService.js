@@ -157,6 +157,40 @@ export async function getTicketResolutionValidation(ticketId) {
      LIMIT 1`, [ticketId]);
   return mapValidationRow(result.rows[0] || null);
 }
+
+/**
+ * If the ticket is already closed but a resolution validation stayed "pending"
+ * (e.g. agent closed without client response), clear the stale pending state so
+ * the portal can collect satisfaction feedback.
+ */
+export async function reconcileStalePendingResolutionValidation(ticketId, ticketStatus = null) {
+  if (!(await hasResolutionValidationTable())) return null;
+  let status = String(ticketStatus || "").toLowerCase();
+  if (!status) {
+    const ticketResult = await pool.query(`SELECT status FROM v_b_tickets WHERE id = $1 LIMIT 1`, [ticketId]);
+    status = String(ticketResult.rows[0]?.status || "").toLowerCase();
+  }
+  if (status !== "closed") {
+    return getTicketResolutionValidation(ticketId);
+  }
+  const validation = await getTicketResolutionValidation(ticketId);
+  if (!validation?.isPending) return validation;
+  await pool.query(
+    `UPDATE v_b_ticket_resolution_validations
+        SET outcome = 'auto_closed',
+            responded_at = COALESCE(responded_at, NOW()),
+            rejection_message = COALESCE(
+              NULLIF(TRIM(rejection_message), ''),
+              'Ticket already closed before client validation'
+            ),
+            updated_at = NOW()
+      WHERE ticket_id = $1
+        AND outcome = 'pending'`,
+    [ticketId]
+  );
+  return getTicketResolutionValidation(ticketId);
+}
+
 export async function ensureTicketStatusMatchesValidation(ticketId) {
   if (!(await hasResolutionValidationTable())) return false;
   const validation = await getTicketResolutionValidation(ticketId);

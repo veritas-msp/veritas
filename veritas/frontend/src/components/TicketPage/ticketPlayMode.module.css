@@ -61,13 +61,32 @@
   background: rgba(43, 95, 171, 0.08);
   font-size: 0.75rem;
   font-weight: 600;
+  font-family: inherit;
   color: var(--msp-accent, #2b5fab);
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s, box-shadow 0.15s;
+}
+
+.playModeBanner:hover {
+  background: rgba(43, 95, 171, 0.14);
+  border-color: rgba(43, 95, 171, 0.4);
+  box-shadow: 0 0 0 1px rgba(43, 95, 171, 0.12);
+}
+
+.playModeBannerClose {
+  font-size: 0.9rem;
+  opacity: 0.75;
 }
 
 :global(html.dark) .playModeBanner {
   border-color: rgba(90, 143, 212, 0.35);
   background: rgba(90, 143, 212, 0.12);
   color: #a8d4ff;
+}
+
+:global(html.dark) .playModeBanner:hover {
+  background: rgba(90, 143, 212, 0.2);
+  border-color: rgba(90, 143, 212, 0.5);
 }
 
 .spinning {

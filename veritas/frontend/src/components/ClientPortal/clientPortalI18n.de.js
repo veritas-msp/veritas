@@ -645,6 +645,14 @@ export default {
       demande: {
         label: "Anfrage",
         hint: "Bedarf oder Frage"
+      },
+      probleme: {
+        label: "Problem",
+        hint: "Wiederkehrende Ursache"
+      },
+      changement: {
+        label: "Änderung",
+        hint: "Geplante Änderung"
       }
     },
     typeLabels: {
@@ -804,6 +812,9 @@ export default {
       tipsAria: "Eingabetipps anzeigen",
       tips: ["Beschreiben Sie das Problem oder den Bedarf präzise, einschließlich des geschäftlichen Kontexts.", "Geben Sie die Auswirkungen auf Ihre Tätigkeit an (betroffene Personen, betroffene Dienste).", "Listen Sie bereits durchgeführte Schritte auf, um die Diagnose zu beschleunigen.", "Fügen Sie Screenshots oder Dokumente bei, die für den Support hilfreich sind."],
       detailsTitle: "Ticket-Details",
+      formSectionTitle: "Formular",
+      noForms: "Derzeit ist kein Meldeformular verfügbar.",
+      noFormsForKind: "Für diesen Meldungstyp ist kein Formular verfügbar.",
       subject: "Betreff",
       description: "Ausführliche Beschreibung",
       attemptedActions: "Bereits durchgeführte Schritte",

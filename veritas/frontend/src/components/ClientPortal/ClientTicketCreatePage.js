@@ -31,7 +31,9 @@ const ALLOWED_ATTACHMENT_EXTENSIONS = new Set([".pdf", ".jpg", ".jpeg", ".png", 
 const ATTACHMENT_ACCEPT = ".pdf,.jpg,.jpeg,.png,.doc,.docx,.csv,.xls,.xlsx,.mp4,.3gp,.mp3,.mpeg,.ogg,.aac,.amr,.m4a";
 const RECAP_TYPE_BADGE = {
   incident: s.recapTypeBadge_incident,
-  demande: s.recapTypeBadge_demande
+  demande: s.recapTypeBadge_demande,
+  probleme: s.recapTypeBadge_probleme,
+  changement: s.recapTypeBadge_changement
 };
 function validateAttachmentFiles(files = [], copy) {
   const tc = copy.ticket.create;
@@ -314,10 +316,15 @@ export default function ClientTicketCreatePage() {
       return String(a?.label || "").localeCompare(String(b?.label || ""), undefined, { sensitivity: "base" });
     });
   }, [supportForms]);
-  const hasSupportForms = enabledSupportForms.length > 0;
+  const hasAnySupportForms = enabledSupportForms.length > 0;
+  const formsForKind = useMemo(
+    () => enabledSupportForms.filter(form => String(form.kind || "").trim() === type),
+    [enabledSupportForms, type]
+  );
+  const hasSupportForms = formsForKind.length > 0;
   const selectedSupportForm = useMemo(
-    () => enabledSupportForms.find(form => String(form.id) === String(selectedSupportFormId)) || enabledSupportForms[0] || null,
-    [enabledSupportForms, selectedSupportFormId]
+    () => formsForKind.find(form => String(form.id) === String(selectedSupportFormId)) || null,
+    [formsForKind, selectedSupportFormId]
   );
   const activeSupportFields = useMemo(
     () =>
@@ -331,14 +338,21 @@ export default function ClientTicketCreatePage() {
   const formEquipmentFieldKeys = useMemo(() => findFormEquipmentFieldKeys(selectedSupportForm?.fields || []), [selectedSupportForm]);
   const hasFormEquipmentField = formEquipmentFieldKeys.length > 0;
   useEffect(() => {
+    if (!hasAnySupportForms) return;
+    const hasFormsForCurrentType = enabledSupportForms.some(form => String(form.kind || "").trim() === type);
+    if (hasFormsForCurrentType) return;
+    const firstKind = String(enabledSupportForms[0]?.kind || "").trim();
+    if (firstKind && firstKind !== type) setType(firstKind);
+  }, [hasAnySupportForms, enabledSupportForms, type]);
+  useEffect(() => {
     if (!hasSupportForms) {
-      setSelectedSupportFormId("");
+      if (selectedSupportFormId) setSelectedSupportFormId("");
       return;
     }
-    if (!enabledSupportForms.some(form => String(form.id) === String(selectedSupportFormId))) {
-      setSelectedSupportFormId(String(enabledSupportForms[0].id));
+    if (!formsForKind.some(form => String(form.id) === String(selectedSupportFormId))) {
+      setSelectedSupportFormId(String(formsForKind[0].id));
     }
-  }, [hasSupportForms, enabledSupportForms, selectedSupportFormId]);
+  }, [hasSupportForms, formsForKind, selectedSupportFormId]);
   useEffect(() => {
     setSupportFormValues(prev => {
       const next = {};
@@ -346,10 +360,6 @@ export default function ClientTicketCreatePage() {
       return next;
     });
   }, [selectedSupportFormId, formClientFieldKey, clientId]);
-  useEffect(() => {
-    const nextType = String(selectedSupportForm?.kind || "").trim();
-    if (nextType) setType(nextType);
-  }, [selectedSupportForm?.kind, selectedSupportForm?.id]);
   useEffect(() => {
     if (!hasFormEquipmentField) return;
     const equipmentKey = formEquipmentFieldKeys[0];
@@ -520,11 +530,37 @@ export default function ClientTicketCreatePage() {
       linkedTicketId: undefined
     }));
   };
+  const handleKindChange = useCallback(nextKind => {
+    const kind = String(nextKind || "").trim();
+    if (!kind || kind === type) return;
+    setType(kind);
+    setSelectedSupportFormId("");
+    setSupportFormValues({});
+    setFieldErrors(prev => ({
+      ...prev,
+      supportForm: undefined,
+      supportFormDetails: undefined
+    }));
+  }, [type]);
+  const handleSupportFormSelect = useCallback(form => {
+    if (!form?.id) return;
+    if (String(form.id) === String(selectedSupportFormId)) return;
+    setSelectedSupportFormId(String(form.id));
+    setSupportFormValues({});
+    setFieldErrors(prev => ({
+      ...prev,
+      supportForm: undefined,
+      supportFormDetails: undefined
+    }));
+  }, [selectedSupportFormId]);
   const validate = () => {
     const errors = {};
-    if (!hasSupportForms) {
+    if (!hasAnySupportForms) {
       if (title.trim().length < 3) errors.title = true;
       if (description.trim().length < 10) errors.description = true;
+    }
+    if (hasAnySupportForms) {
+      if (!hasSupportForms || !selectedSupportForm) errors.supportForm = true;
     }
     if (availabilityMode === "from") {
       if (!availabilityDate || !availabilityStart) errors.contactSlots = true;
@@ -566,7 +602,7 @@ export default function ClientTicketCreatePage() {
       }
     }
     if (linkedTicketEnabled && !linkedTicketId) errors.linkedTicketId = true;
-    if (!hasSupportForms) {
+    if (!hasAnySupportForms) {
       try {
         validateAttachmentFiles(attachmentFiles, copy);
       } catch {
@@ -740,7 +776,7 @@ export default function ClientTicketCreatePage() {
                 <Icon icon="mdi:arrow-left" aria-hidden />
                 {copy.common.back}
               </Link>
-              <button type="button" className={layout.primaryBtn} onClick={handleOpenConfirm} disabled={submitting}>
+              <button type="button" className={layout.primaryBtn} onClick={handleOpenConfirm} disabled={submitting || (hasAnySupportForms && !hasSupportForms)} title={hasAnySupportForms && !hasSupportForms ? tc.noFormsForKind : undefined}>
                 <Icon icon="mdi:check" aria-hidden />
                 {submitting ? tc.creating : tc.createBtn}
               </button>
@@ -749,44 +785,62 @@ export default function ClientTicketCreatePage() {
         />
 
         <div className={s.typeKpiRow}>
-          {hasSupportForms
-            ? enabledSupportForms.map(form => (
-                <button
-                  key={form.id}
-                  type="button"
-                  className={`${layout.kpiCard} ${String(selectedSupportForm?.id) === String(form.id) ? layout.kpiCardActive : ""}`.trim()}
-                  onClick={() => setSelectedSupportFormId(String(form.id))}
-                  aria-pressed={String(selectedSupportForm?.id) === String(form.id)}
-                >
-                  <div className={`${layout.kpiIconWrap} ${layout.kpiIcon_blue}`}>
-                    <Icon icon={form.icon || "mdi:clipboard-text-outline"} aria-hidden />
-                  </div>
-                  <div className={layout.kpiBody}>
-                    <span className={layout.kpiValue}>{form.label}</span>
-                    <span className={layout.kpiLabel}>{form.description || form.kind}</span>
-                  </div>
-                </button>
-              ))
-            : ticketTypes.map(item => (
-                <button key={item.key} type="button" className={`${layout.kpiCard} ${type === item.key ? layout.kpiCardActive : ""}`.trim()} onClick={() => setType(item.key)} aria-pressed={type === item.key}>
-                  <div className={`${layout.kpiIconWrap} ${layout.kpiIcon_blue}`}>
-                    <Icon icon={item.icon} aria-hidden />
-                  </div>
-                  <div className={layout.kpiBody}>
-                    <span className={layout.kpiValue}>{item.label}</span>
-                    <span className={layout.kpiLabel}>{item.hint}</span>
-                  </div>
-                </button>
-              ))}
+          {ticketTypes.map(item => (
+            <button
+              key={item.key}
+              type="button"
+              className={`${layout.kpiCard} ${type === item.key ? layout.kpiCardActive : ""}`.trim()}
+              onClick={() => handleKindChange(item.key)}
+              aria-pressed={type === item.key}
+            >
+              <div className={`${layout.kpiIconWrap} ${layout.kpiIcon_blue}`}>
+                <Icon icon={item.icon} aria-hidden />
+              </div>
+              <div className={layout.kpiBody}>
+                <span className={layout.kpiValue}>{item.label}</span>
+                <span className={layout.kpiLabel}>{item.hint}</span>
+              </div>
+            </button>
+          ))}
         </div>
 
         <div className={account.contentScroll}>
           <div className={account.contentGridWide}>
             <div className={s.formStack}>
+              {hasAnySupportForms ? (
+                <SectionPanel title={tc.formSectionTitle}>
+                  {!hasSupportForms ? (
+                    <p className={s.detailsAvailabilityTitle} style={{ margin: 0 }}>
+                      {tc.noFormsForKind || tc.noForms}
+                    </p>
+                  ) : (
+                    <div
+                      className={`${s.typeGrid} ${s.formTypeGrid}`}
+                      data-pulse={fieldErrors.supportForm ? errorPulseTick : undefined}
+                    >
+                      {formsForKind.map(form => (
+                        <button
+                          key={form.id}
+                          type="button"
+                          className={`${s.typeCard} ${String(selectedSupportForm?.id) === String(form.id) ? s.typeCardActive : ""} ${fieldErrors.supportForm ? s.fieldErrorPulse : ""}`.trim()}
+                          onClick={() => handleSupportFormSelect(form)}
+                          aria-pressed={String(selectedSupportForm?.id) === String(form.id)}
+                        >
+                          <Icon icon={form.icon || "mdi:file-document-outline"} className={s.typeIcon} aria-hidden />
+                          <span className={s.typeLabel}>{form.label}</span>
+                          {form.description ? <span className={s.typeHint}>{form.description}</span> : null}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </SectionPanel>
+              ) : null}
+
+              {(hasSupportForms && selectedSupportForm) || !hasAnySupportForms ? (
               <SectionPanel title={tc.detailsTitle} headerExtra={<SmartTooltip content={<TicketCreateTipsTooltip tips={tc.tips} title={tc.tipsTitle} />} tooltipClassName={s.tipsPortalTooltip} trigger="click" as="button" type="button" className={s.tipsHelpBtn} aria-label={tc.tipsAria}>
                     <Icon icon="mdi:lightbulb-outline" aria-hidden />
                   </SmartTooltip>}>
-                {hasSupportForms && activeSupportFields.length > 0 ? (
+                {hasSupportForms && selectedSupportForm && activeSupportFields.length > 0 ? (
                   <div
                     style={{ marginBottom: "1rem" }}
                     data-pulse={fieldErrors.supportFormDetails ? errorPulseTick : undefined}
@@ -811,7 +865,7 @@ export default function ClientTicketCreatePage() {
                     />
                   </div>
                 ) : null}
-                {!hasSupportForms ? <>
+                {!hasAnySupportForms ? <>
                 <div className={s.fieldBlock}>
                   <label className={s.fieldLabel} htmlFor="portal-ticket-title">
                     {tc.subject}<span className={s.requiredMark}>*</span>
@@ -902,6 +956,7 @@ export default function ClientTicketCreatePage() {
                 </div>
                 </> : null}
               </SectionPanel>
+              ) : null}
 
               <SectionPanel title={tc.availabilityTitle}>
                 <div className={s.demandeurBlock}>

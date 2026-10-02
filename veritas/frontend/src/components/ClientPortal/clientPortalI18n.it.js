@@ -645,6 +645,14 @@ export default {
       demande: {
         label: "Richiesta",
         hint: "Esigenza o domanda"
+      },
+      probleme: {
+        label: "Problema",
+        hint: "Causa radice ricorrente"
+      },
+      changement: {
+        label: "Modifica",
+        hint: "Modifica pianificata"
       }
     },
     typeLabels: {
@@ -804,6 +812,9 @@ export default {
       tipsAria: "Mostra suggerimenti di compilazione",
       tips: ["Descrivi con precisione il problema o l'esigenza, includendo il contesto aziendale.", "Indica l'impatto sulla tua attività (persone coinvolte, servizi interessati).", "Elenca le azioni già tentate per accelerare la diagnosi.", "Allega screenshot o documenti utili al supporto."],
       detailsTitle: "Dettagli del ticket",
+      formSectionTitle: "Modulo",
+      noForms: "Nessun modulo di dichiarazione disponibile al momento.",
+      noFormsForKind: "Nessun modulo disponibile per questo tipo di dichiarazione.",
       subject: "Oggetto",
       description: "Descrizione dettagliata",
       attemptedActions: "Azioni già tentate",

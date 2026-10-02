@@ -601,8 +601,10 @@ const DETAIL_COPY = {
     },
     playMode: {
       banner: "Mode aléatoire",
-      tooltip: "Ticket aléatoire · enchaîne après chaque envoi (Maj+clic pour arrêter)",
-      aria: "Ouvrir un ticket aléatoire"
+      tooltip: "Ticket aléatoire · enchaîne après chaque envoi (cliquer à nouveau pour arrêter)",
+      aria: "Ouvrir un ticket aléatoire",
+      disableTooltip: "Désactiver le mode aléatoire",
+      disableAria: "Désactiver le mode aléatoire"
     }
   },
   en: {
@@ -1195,8 +1197,10 @@ const DETAIL_COPY = {
     },
     playMode: {
       banner: "Random mode",
-      tooltip: "Random ticket · continues after each reply (Shift+click to stop)",
-      aria: "Open a random ticket"
+      tooltip: "Random ticket · continues after each reply (click again to stop)",
+      aria: "Open a random ticket",
+      disableTooltip: "Disable random mode",
+      disableAria: "Disable random mode"
     }
   }
 };

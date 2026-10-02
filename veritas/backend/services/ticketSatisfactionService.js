@@ -1,7 +1,7 @@
 import { pool } from "../database/db.js";
 import { notifyTicketSatisfaction } from "./systemNotificationService.js";
 import { notifyInAppTicketSatisfaction } from "./userNotificationService.js";
-import { getTicketResolutionValidation } from "./ticketResolutionValidationService.js";
+import { reconcileStalePendingResolutionValidation } from "./ticketResolutionValidationService.js";
 import { TICKET_SATISFACTION_CRITERIA, computeSatisfactionAverage, normalizeSatisfactionRatingsInput, resolveStoredRatings } from "./ticketSatisfactionCriteria.js";
 let satisfactionTableExistsCache = null;
 export async function hasSatisfactionTable() {
@@ -120,7 +120,7 @@ export async function submitPortalTicketSatisfaction({
     const err = new Error("TICKET_NOT_CLOSED");
     throw err;
   }
-  const pendingValidation = await getTicketResolutionValidation(ticketId);
+  const pendingValidation = await reconcileStalePendingResolutionValidation(ticketId, ticket.status);
   if (pendingValidation?.isPending) {
     const err = new Error("VALIDATION_PENDING");
     throw err;
@@ -193,7 +193,7 @@ export async function updatePortalTicketSatisfaction({
     const err = new Error("TICKET_NOT_CLOSED");
     throw err;
   }
-  const pendingValidation = await getTicketResolutionValidation(ticketId);
+  const pendingValidation = await reconcileStalePendingResolutionValidation(ticketId, ticket.status);
   if (pendingValidation?.isPending) {
     const err = new Error("VALIDATION_PENDING");
     throw err;

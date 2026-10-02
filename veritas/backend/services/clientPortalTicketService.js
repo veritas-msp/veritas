@@ -7,7 +7,7 @@ import { dispatchNotificationEvent } from "./notificationDispatcher.js";
 import { notifyTicketCommented, notifyTicketCreatedAck, notifyTicketCreatedAgents, notifyTicketAssignedUsers } from "./systemNotificationService.js";
 import { notifyInAppTicketCommented, notifyInAppTicketCreated } from "./userNotificationService.js";
 import { getTicketSatisfaction, submitPortalTicketSatisfaction, updatePortalTicketSatisfaction, hasSatisfactionTable } from "./ticketSatisfactionService.js";
-import { ensureTicketStatusMatchesValidation, getTicketResolutionValidation, submitPortalResolutionValidation, hasResolutionValidationTable } from "./ticketResolutionValidationService.js";
+import { ensureTicketStatusMatchesValidation, getTicketResolutionValidation, reconcileStalePendingResolutionValidation, submitPortalResolutionValidation, hasResolutionValidationTable } from "./ticketResolutionValidationService.js";
 import { buildSlaInfoForTicket, loadClientContrat } from "../utils/ticketSla.js";
 import { isCommunity } from "../utils/edition.js";
 import { SUPPORT_TICKET_SQL, SUPPORT_TICKET_SQL_PLAIN } from "../utils/ticketEditionGuard.js";
@@ -560,6 +560,9 @@ export async function getPortalTicketDetail(clientId, ticketId, scope = {}) {
   });
   const refreshedTicket = await assertPortalTicketAccess(clientId, ticketId, scope);
   if (!refreshedTicket) return null;
+  await reconcileStalePendingResolutionValidation(ticketId, refreshedTicket.status).catch(err => {
+    console.error(`[portal] reconcileStalePendingResolutionValidation ${ticketId}:`, err.message);
+  });
   const hasCommentUpdatedAt = await hasCommentColumn("updated_at");
   const commentsResult = await pool.query(`SELECT id, ticket_id, author_user_id, content, is_internal, created_at, ${commentUpdatedAtSelectSql(hasCommentUpdatedAt)}
      FROM v_b_ticket_comments

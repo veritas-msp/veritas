@@ -88,9 +88,12 @@ const CHANNEL_ICONS = {
   api: "mdi:api",
   whatsapp: "mdi:whatsapp"
 };
+const TICKET_TYPE_KEYS = ["incident", "demande", "probleme", "changement"];
 const TICKET_TYPE_ICONS = {
   incident: "mdi:alert-circle-outline",
-  demande: "mdi:hand-extended-outline"
+  demande: "mdi:hand-extended-outline",
+  probleme: "mdi:bug-outline",
+  changement: "mdi:swap-horizontal"
 };
 const ISSUE_NATURE_ICONS = {
   hardware: "mdi:desktop-classic",
@@ -247,10 +250,10 @@ export function getClientPortalCopy(locale) {
       icon: STATUS_FILTER_META[key].icon,
       kpiTone: STATUS_FILTER_META[key].kpiTone
     })),
-    getTicketTypes: () => ["incident", "demande"].map(key => ({
+    getTicketTypes: () => TICKET_TYPE_KEYS.map(key => ({
       key,
-      label: t.ticket.types[key].label,
-      hint: t.ticket.types[key].hint,
+      label: t.ticket.types[key]?.label ?? t.ticket.typeLabels?.[key] ?? key,
+      hint: t.ticket.types[key]?.hint ?? "",
       icon: TICKET_TYPE_ICONS[key]
     })),
     getPriorityOptions: () => ["low", "normal", "high", "urgent"].map(key => ({

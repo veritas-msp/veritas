@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import { Link, useOutletContext, useParams } from "react-router-dom";
 import { Icon } from "@iconify/react";
 import { toast } from "react-toastify";
 import API_BASE_URL from "../../config";
@@ -161,6 +161,10 @@ export default function ClientTicketDetailPage() {
   const {
     user
   } = useAuthContext();
+  const {
+    dashboard: outletDashboard,
+    companies: outletCompanies = []
+  } = useOutletContext() || {};
   const locale = useAppLocale();
   const copy = useMemo(() => getClientPortalCopy(locale), [locale]);
   const td = copy.ticket.detail;
@@ -208,6 +212,21 @@ export default function ClientTicketDetailPage() {
   const canReply = !isFinishedTicket;
   const showSatisfaction = isFinishedTicket && !resolutionPending;
   const hasSatisfaction = Boolean(ticket?.satisfaction?.id || ticket?.satisfaction?.rating);
+  const requesterDisplayName = useMemo(() => {
+    const fromTicket = String(ticket?.requester_name || "").trim();
+    if (fromTicket) return fromTicket;
+    return String(user?.username || user?.email || "").trim() || td.supportAuthor;
+  }, [ticket?.requester_name, user?.username, user?.email, td.supportAuthor]);
+  const clientDisplayName = useMemo(() => {
+    const ticketClientId = ticket?.client_id != null ? String(ticket.client_id) : "";
+    const fromCompanies = (Array.isArray(outletCompanies) ? outletCompanies : []).find(
+      company => String(company?.client_id || company?.id || "") === ticketClientId
+    );
+    const companyName = String(
+      fromCompanies?.name || fromCompanies?.nom || fromCompanies?.client_name || outletDashboard?.client?.name || ""
+    ).trim();
+    return companyName || requesterDisplayName;
+  }, [ticket?.client_id, outletCompanies, outletDashboard?.client?.name, requesterDisplayName]);
   const handleSatisfactionRatingChange = (key, star) => {
     setSatisfactionRatings(prev => ({
       ...prev,
@@ -457,12 +476,12 @@ export default function ClientTicketDetailPage() {
               </div> : null}
 
             {ticket.description ? <article className={`${tdStyles.commentItem} ${tdStyles.commentItemInitial}`}>
-                <UserAvatar className={tdStyles.commentAvatarSide} name={td.initialDescription} size={40} variant="client" />
+                <UserAvatar className={tdStyles.commentAvatarSide} name={requesterDisplayName} size={40} variant="client" />
                 <div className={tdStyles.commentBubble}>
                   <div className={tdStyles.commentHeader}>
                     <div className={tdStyles.commentHeaderMain}>
                       <div className={tdStyles.commentMetaStrip}>
-                        <span className={tdStyles.initialRequestBadge}>{td.initialDescription}</span>
+                        <span className={tdStyles.initialRequestBadge}>{clientDisplayName}</span>
                       </div>
                     </div>
                   </div>

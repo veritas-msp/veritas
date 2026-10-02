@@ -645,6 +645,14 @@ export default {
       demande: {
         label: "Demande",
         hint: "Besoin ou question"
+      },
+      probleme: {
+        label: "Problème",
+        hint: "Cause racine récurrente"
+      },
+      changement: {
+        label: "Changement",
+        hint: "Modification planifiée"
       }
     },
     typeLabels: {
@@ -804,6 +812,9 @@ export default {
       tipsAria: "Afficher les conseils de saisie",
       tips: ["Décrivez précisément le problème ou le besoin, avec le contexte métier.", "Indiquez l'impact sur votre activité (nombre de personnes, services concernés).", "Listez les manipulations déjà tentées pour accélérer le diagnostic.", "Joignez des captures d'écran ou documents utiles à la prise en charge."],
       detailsTitle: "Détails du ticket",
+      formSectionTitle: "Formulaire",
+      noForms: "Aucun formulaire de déclaration n'est disponible pour le moment.",
+      noFormsForKind: "Aucun formulaire disponible pour ce type de déclaration.",
       subject: "Sujet",
       description: "Description détaillée",
       attemptedActions: "Manipulations déjà tentées",

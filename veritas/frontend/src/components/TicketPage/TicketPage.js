@@ -1182,7 +1182,7 @@ export default function TicketPage({
     }
   }, [currentPage, totalPages]);
   const handleRandomTicketClick = async event => {
-    if (event.shiftKey) {
+    if (event.shiftKey || playMode) {
       setTicketPlayModeEnabled(false);
       setPlayMode(false);
       toast.info(pageCopy.playModeDisabled);
@@ -1199,6 +1199,12 @@ export default function TicketPage({
     } finally {
       setLoadingRandom(false);
     }
+  };
+  const handleDisablePlayMode = () => {
+    if (!playMode) return;
+    setTicketPlayModeEnabled(false);
+    setPlayMode(false);
+    toast.info(pageCopy.playModeDisabled);
   };
   const pageSubtitle = pageCopy.formatSubtitle(
     loading,
@@ -1220,12 +1226,13 @@ export default function TicketPage({
             }} aria-label={pageCopy.trashSwitchAria} />
                   <span className={styles.trashSwitchSlider} aria-hidden />
                 </label> : null}
-                {playMode && canRandomMode && <span className={playModeStyles.playModeBanner}>
+                {playMode && canRandomMode && <button type="button" className={playModeStyles.playModeBanner} onClick={handleDisablePlayMode} title={pageCopy.playModeDisableTooltip} aria-label={pageCopy.playModeDisableAria}>
                     <Icon icon="mdi:dice-5" aria-hidden />
                     {pageCopy.playModeBanner}
-                  </span>}
-                {canRandomMode ? <SmartTooltip content={pageCopy.playModeTooltip}>
-                  <button type="button" className={`${playModeStyles.diceBtn} ${playMode ? playModeStyles.diceBtnActive : ""}`} onClick={handleRandomTicketClick} disabled={loadingRandom || viewMode === "trash"} aria-label={pageCopy.playModeAria} aria-pressed={playMode}>
+                    <Icon icon="mdi:close" className={playModeStyles.playModeBannerClose} aria-hidden />
+                  </button>}
+                {canRandomMode ? <SmartTooltip content={playMode ? pageCopy.playModeDisableTooltip : pageCopy.playModeTooltip}>
+                  <button type="button" className={`${playModeStyles.diceBtn} ${playMode ? playModeStyles.diceBtnActive : ""}`} onClick={handleRandomTicketClick} disabled={loadingRandom || viewMode === "trash"} aria-label={playMode ? pageCopy.playModeDisableAria : pageCopy.playModeAria} aria-pressed={playMode}>
                     <Icon icon={loadingRandom ? "mdi:loading" : "mdi:dice-5"} className={loadingRandom ? playModeStyles.spinning : undefined} />
                   </button>
                 </SmartTooltip> : null}

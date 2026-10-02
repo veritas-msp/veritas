@@ -5,6 +5,16 @@
  */
 export const PATCH_NOTES = [
   {
+    version: "1.0.61",
+    date: "2026-10-02",
+    highlights: [
+      "Portail client : choix du type de déclaration (incident, demande, problème, changement) avec formulaires adaptés.",
+      "Portail client : description initiale affichée avec les initiales du demandeur et le nom de l’entreprise.",
+      "Tickets agent : désactivation simple du mode aléatoire (clic sur le bandeau ou le dé).",
+      "Satisfaction portail : avis débloqué lorsque le ticket est clos avec une validation obsolète."
+    ]
+  },
+  {
     version: "1.0.60",
     date: "2026-10-02",
     highlights: [
