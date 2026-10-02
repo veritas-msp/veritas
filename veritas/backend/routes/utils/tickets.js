@@ -97,6 +97,7 @@ const FIRST_TAKEOVER_AT_SQL = `(SELECT h.created_at
            LIMIT 1) AS first_takeover_at`;
 let requesterContactColumnExistsCache = null;
 let ticketAssigneesTableExistsCache = null;
+let ticketAssigneeTeamsTableExistsCache = null;
 const ticketColumnExistsCache = new Map();
 const ticketCommentColumnExistsCache = new Map();
 const DEFAULT_TICKET_AUTOMATION_CONFIG = {
@@ -509,7 +510,8 @@ async function getTicketById(ticketId) {
          ORDER BY created_at ASC`, [ticketId]) : Promise.resolve({
     rows: []
   });
-  const [commentsResult, historyResult, tagsResult, watchersResult, attachmentsResult, assigneesResult, activityHistory] = await Promise.all([pool.query(`SELECT id, ticket_id, author_user_id, content, is_internal, created_at, ${commentUpdatedAtSelectSql(hasCommentUpdatedAt)}
+  const assigneeTeamsPromise = loadTicketAssigneeTeams(ticketId);
+  const [commentsResult, historyResult, tagsResult, watchersResult, attachmentsResult, assigneesResult, assigneeTeams, activityHistory] = await Promise.all([pool.query(`SELECT id, ticket_id, author_user_id, content, is_internal, created_at, ${commentUpdatedAtSelectSql(hasCommentUpdatedAt)}
        FROM v_b_ticket_comments
        WHERE ticket_id = $1
        ORDER BY created_at ASC`, [ticketId]), pool.query(`SELECT id, ticket_id, old_status, new_status, changed_by, note, created_at
@@ -525,7 +527,7 @@ async function getTicketById(ticketId) {
        ORDER BY created_at ASC`, [ticketId]), pool.query(`SELECT id, ticket_id, comment_id, task_id, uploaded_by, file_name, file_path, mime_type, file_size, created_at
        FROM v_b_ticket_attachments
        WHERE ticket_id = $1
-       ORDER BY created_at DESC`, [ticketId]), assigneesPromise, listTicketActivity(ticketId)]);
+       ORDER BY created_at DESC`, [ticketId]), assigneesPromise, assigneeTeamsPromise, listTicketActivity(ticketId)]);
   const satisfaction = await getTicketSatisfaction(ticketId).catch(() => null);
   const resolutionValidation = await getTicketResolutionValidation(ticketId).catch(() => null);
   const [watchers, assignees] = await Promise.all([
@@ -541,6 +543,7 @@ async function getTicketById(ticketId) {
     watchers,
     attachments: attachmentsResult.rows,
     assignees,
+    assigneeTeams,
     supportCredit: await getTicketCreditStatus(ticketResult.rows[0]).catch(() => null),
     satisfaction,
     resolutionValidation
@@ -639,6 +642,45 @@ async function hasTicketAssigneesTable() {
   const result = await pool.query(`SELECT to_regclass('v_b_ticket_assignees') IS NOT NULL AS has_table`);
   ticketAssigneesTableExistsCache = Boolean(result.rows?.[0]?.has_table);
   return ticketAssigneesTableExistsCache;
+}
+async function hasTicketAssigneeTeamsTable() {
+  if (ticketAssigneeTeamsTableExistsCache !== null) {
+    return ticketAssigneeTeamsTableExistsCache;
+  }
+  const result = await pool.query(`SELECT to_regclass('v_b_ticket_assignee_teams') IS NOT NULL AS has_table`);
+  ticketAssigneeTeamsTableExistsCache = Boolean(result.rows?.[0]?.has_table);
+  return ticketAssigneeTeamsTableExistsCache;
+}
+async function loadTicketAssigneeTeams(ticketId) {
+  const hasTable = await hasTicketAssigneeTeamsTable();
+  if (!hasTable) return [];
+  const result = await pool.query(
+    `SELECT at.ticket_id, at.team_id, at.created_at,
+            tm.name AS team_name, tm.color AS team_color, tm.icon AS team_icon
+       FROM v_b_ticket_assignee_teams at
+       JOIN v_b_teams tm ON tm.id = at.team_id
+      WHERE at.ticket_id = $1
+      ORDER BY at.created_at ASC`,
+    [ticketId]
+  );
+  return (result.rows || []).map(row => ({
+    team_id: row.team_id,
+    created_at: row.created_at,
+    name: row.team_name,
+    color: row.team_color,
+    icon: row.team_icon || "mdi:account-group-outline"
+  }));
+}
+async function listTeamMemberUserIds(teamIds = []) {
+  const ids = [...new Set((Array.isArray(teamIds) ? teamIds : []).map(id => String(id || "").trim()).filter(Boolean))];
+  if (ids.length === 0) return [];
+  const result = await pool.query(
+    `SELECT DISTINCT user_id
+       FROM v_b_team_members
+      WHERE team_id = ANY($1::uuid[])`,
+    [ids]
+  );
+  return (result.rows || []).map(row => String(row.user_id)).filter(Boolean);
 }
 async function hasTicketColumn(columnName) {
   if (ticketColumnExistsCache.has(columnName)) {
@@ -1613,9 +1655,11 @@ router.post("/", verifyJWT, requirePermission("tickets.create"), [body("title").
       salesFormData = null,
       supportFormData = null,
       assigneeUserIds = [],
+      assigneeTeamIds = [],
       watcherUserIds = []
     } = req.body;
     const explicitAssigneeUserIds = Array.isArray(assigneeUserIds) ? assigneeUserIds.map(id => String(id || "").trim()).filter(Boolean) : [];
+    const explicitAssigneeTeamIds = Array.isArray(assigneeTeamIds) ? assigneeTeamIds.map(id => String(id || "").trim()).filter(Boolean) : [];
     const explicitWatcherUserIds = Array.isArray(watcherUserIds) ? watcherUserIds.map(id => String(id || "").trim()).filter(Boolean) : [];
     const activeFormData = salesFormData && typeof salesFormData === "object" && salesFormData.formId
       ? salesFormData
@@ -1757,7 +1801,20 @@ router.post("/", verifyJWT, requirePermission("tickets.create"), [body("title").
       await executor.query(`INSERT INTO v_b_ticket_status_history (ticket_id, old_status, new_status, changed_by, note, created_at)
            VALUES ($1, NULL, $2, $3, $4, NOW())`, [createdTicket.id, normalizedStatus, createdBy, historyNote]);
       if (formId) {
-        await applyFormTicketTargets(createdTicket.id, ruleTargets, formTargetContext);
+        const appliedTargets = await applyFormTicketTargets(createdTicket.id, ruleTargets, formTargetContext);
+        if (Array.isArray(appliedTargets?.assigneeTeamIds) && appliedTargets.assigneeTeamIds.length > 0) {
+          const teamMemberIds = await listTeamMemberUserIds(appliedTargets.assigneeTeamIds);
+          if (teamMemberIds.length > 0) {
+            await notifyTicketAssignedUsers({
+              ticketId: createdTicket.id,
+              userIds: teamMemberIds,
+              assignedByUserId: createdBy,
+              extraContext: {
+                agent: req.user
+              }
+            }).catch(() => {});
+          }
+        }
         const refreshed = await executor.query(`SELECT * FROM v_b_tickets WHERE id = $1`, [createdTicket.id]);
         return refreshed.rows[0] || createdTicket;
       }
@@ -1779,6 +1836,27 @@ router.post("/", verifyJWT, requirePermission("tickets.create"), [body("title").
         if (!created.assigned_user_id) {
           await pool.query(`UPDATE v_b_tickets SET assigned_user_id = $1, updated_at = NOW() WHERE id = $2`, [explicitAssigneeUserIds[0], created.id]);
           created.assigned_user_id = explicitAssigneeUserIds[0];
+        }
+      }
+      if (explicitAssigneeTeamIds.length > 0) {
+        const hasAssigneeTeams = await hasTicketAssigneeTeamsTable();
+        if (hasAssigneeTeams) {
+          for (const teamId of explicitAssigneeTeamIds) {
+            await pool.query(`INSERT INTO v_b_ticket_assignee_teams (ticket_id, team_id, created_at)
+               VALUES ($1, $2, NOW())
+               ON CONFLICT (ticket_id, team_id) DO NOTHING`, [created.id, teamId]);
+          }
+          const teamMemberIds = await listTeamMemberUserIds(explicitAssigneeTeamIds);
+          if (teamMemberIds.length > 0) {
+            await notifyTicketAssignedUsers({
+              ticketId: created.id,
+              userIds: teamMemberIds,
+              assignedByUserId: req.user?.id || null,
+              extraContext: {
+                agent: req.user
+              }
+            }).catch(() => {});
+          }
         }
       }
       if (explicitWatcherUserIds.length > 0) {
@@ -4468,6 +4546,100 @@ router.delete("/:id/assignees/:userId", verifyJWT, requireAnyPermission("tickets
     console.error("Failed to delete assignee:", err);
     res.status(500).json({
       error: "Error deleting assignee"
+    });
+  }
+});
+router.post("/:id/assignee-teams", verifyJWT, requireAnyPermission("tickets.view", "sales.view"), [param("id").isUUID(), body("teamId").isUUID()], async (req, res) => {
+  const validationResponse = validationErrorOrNull(req, res);
+  if (validationResponse) return;
+  try {
+    const hasAssigneeTeams = await hasTicketAssigneeTeamsTable();
+    if (!hasAssigneeTeams) {
+      return res.status(400).json({
+        error: "Team assignee support is not available (ticket_assignee_teams migration not applied)."
+      });
+    }
+    const { id } = req.params;
+    const { teamId } = req.body;
+    const teamExists = await pool.query(`SELECT id, name FROM v_b_teams WHERE id = $1 AND COALESCE(is_active, TRUE) = TRUE`, [teamId]);
+    if (teamExists.rows.length === 0) {
+      return res.status(404).json({ error: "Team not found." });
+    }
+    const insertResult = await pool.query(
+      `INSERT INTO v_b_ticket_assignee_teams (ticket_id, team_id, created_at)
+         VALUES ($1, $2, NOW())
+         ON CONFLICT (ticket_id, team_id) DO NOTHING
+         RETURNING team_id`,
+      [id, teamId]
+    );
+    if (insertResult.rows.length > 0) {
+      await logTicketActivity({
+        ticketId: id,
+        action: "assignee_team_added",
+        field: "assignee_team",
+        newValue: teamId,
+        actorUserId: req.user?.id || null
+      }).catch(() => {});
+      const memberIds = await listTeamMemberUserIds([teamId]);
+      for (const userId of memberIds) {
+        await notifyInAppTicketAssigned({
+          ticketId: id,
+          assignedUserId: userId,
+          assignedByUserId: req.user?.id || null
+        }).catch(() => {});
+      }
+      if (memberIds.length > 0) {
+        await notifyTicketAssignedUsers({
+          ticketId: id,
+          userIds: memberIds,
+          assignedByUserId: req.user?.id || null,
+          extraContext: { agent: req.user }
+        }).catch(() => {});
+      }
+    }
+    res.status(201).json({
+      success: true,
+      team: {
+        team_id: teamId,
+        name: teamExists.rows[0].name
+      }
+    });
+  } catch (err) {
+    console.error("Error adding assignee team:", err);
+    res.status(500).json({
+      error: "Error adding assignee team"
+    });
+  }
+});
+router.delete("/:id/assignee-teams/:teamId", verifyJWT, requireAnyPermission("tickets.view", "sales.view"), [param("id").isUUID(), param("teamId").isUUID()], async (req, res) => {
+  const validationResponse = validationErrorOrNull(req, res);
+  if (validationResponse) return;
+  try {
+    const hasAssigneeTeams = await hasTicketAssigneeTeamsTable();
+    if (!hasAssigneeTeams) {
+      return res.status(400).json({
+        error: "Team assignee support is not available (ticket_assignee_teams migration not applied)."
+      });
+    }
+    const { id, teamId } = req.params;
+    const deleted = await pool.query(
+      `DELETE FROM v_b_ticket_assignee_teams WHERE ticket_id = $1 AND team_id = $2 RETURNING team_id`,
+      [id, teamId]
+    );
+    if (deleted.rows.length > 0) {
+      await logTicketActivity({
+        ticketId: id,
+        action: "assignee_team_removed",
+        field: "assignee_team",
+        oldValue: teamId,
+        actorUserId: req.user?.id || null
+      }).catch(() => {});
+    }
+    res.json({ success: true });
+  } catch (err) {
+    console.error("Failed to delete assignee team:", err);
+    res.status(500).json({
+      error: "Error deleting assignee team"
     });
   }
 });

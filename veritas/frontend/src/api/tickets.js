@@ -394,6 +394,29 @@ export async function removeTicketAssignee(ticketId, userId) {
   });
   return handleJsonResponse(response, "Error removing assignee");
 }
+export async function addTicketAssigneeTeam(ticketId, teamId) {
+  const response = await fetch(`${API_BASE_URL}/tickets/${ticketId}/assignee-teams`, {
+    method: "POST",
+    credentials: "include",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({
+      teamId
+    })
+  });
+  return handleJsonResponse(response, "Error adding assignee team");
+}
+export async function removeTicketAssigneeTeam(ticketId, teamId) {
+  const response = await fetch(`${API_BASE_URL}/tickets/${ticketId}/assignee-teams/${teamId}`, {
+    method: "DELETE",
+    credentials: "include",
+    headers: {
+      "Content-Type": "application/json"
+    }
+  });
+  return handleJsonResponse(response, "Error removing assignee team");
+}
 export async function deleteTicket(ticketId) {
   const response = await fetch(`${API_BASE_URL}/tickets/${ticketId}`, {
     method: "DELETE",

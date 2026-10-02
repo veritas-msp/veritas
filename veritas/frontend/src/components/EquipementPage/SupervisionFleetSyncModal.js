@@ -40,7 +40,7 @@ export function getFleetSyncProgress(run, starting = false) {
 export default function SupervisionFleetSyncModal({
   active = false,
   expanded = true,
-  autoStart = false,
+  startKey = 0,
   startedBy = null,
   onMinimize,
   onExpand,
@@ -55,13 +55,9 @@ export default function SupervisionFleetSyncModal({
   const [error, setError] = useState(null);
   const pollAbortRef = useRef(0);
   const finishedNotifiedRef = useRef(false);
-  const autoStartRef = useRef(autoStart);
+  const handledStartKeyRef = useRef(0);
   const startedByRef = useRef(startedBy);
   const copyRef = useRef(copy);
-
-  useEffect(() => {
-    autoStartRef.current = autoStart;
-  }, [autoStart]);
 
   useEffect(() => {
     startedByRef.current = startedBy;
@@ -115,6 +111,7 @@ export default function SupervisionFleetSyncModal({
     pollAbortRef.current = token;
     let cancelled = false;
     const labels = () => copyRef.current || {};
+    const wantsManualStart = startKey > 0 && startKey > handledStartKeyRef.current;
 
     const trackRun = async runId => {
       if (!runId) return;
@@ -142,6 +139,7 @@ export default function SupervisionFleetSyncModal({
         const activeRun = await fetchActiveCheckmkSyncRun().catch(() => null);
         if (cancelled || pollAbortRef.current !== token) return;
         if (activeRun?.run?.status === "running" && activeRun.run.id) {
+          if (wantsManualStart) handledStartKeyRef.current = startKey;
           setRun(activeRun.run);
           setStarting(false);
           if (activeRun.run.details?.cancelRequested) setCancelling(true);
@@ -149,7 +147,8 @@ export default function SupervisionFleetSyncModal({
           return;
         }
 
-        if (!autoStartRef.current) {
+        // Manual only: start solely when the user clicks Sync (new startKey).
+        if (!wantsManualStart) {
           setStarting(false);
           return;
         }
@@ -159,6 +158,7 @@ export default function SupervisionFleetSyncModal({
           startedBy: startedByRef.current || undefined
         });
         if (cancelled || pollAbortRef.current !== token) return;
+        handledStartKeyRef.current = startKey;
         if (started?.skipped && started.reason === "integration_disabled") {
           setError(labels().integrationDisabled || "Integration CheckMK desactivee.");
           setStarting(false);
@@ -197,8 +197,7 @@ export default function SupervisionFleetSyncModal({
       cancelled = true;
       pollAbortRef.current += 1;
     };
-  }, [active]);
-
+  }, [active, startKey]);
   useEffect(() => {
     if (!active || !(isTerminal || error) || finishedNotifiedRef.current) return;
     finishedNotifiedRef.current = true;
@@ -319,7 +318,7 @@ export default function SupervisionFleetSyncModal({
           <span className={formStyles.footerHint}>
             {canDismiss
               ? copy.footerDone || "Vous pouvez fermer cette fenetre."
-              : copy.footerRunning || "Vous pouvez reduire la fenetre et suivre la progression dans l'en-tete."}
+              : copy.footerRunning || "Vous pouvez reduire la fenetre (en-tete) et suivre la progression."}
           </span>
           <div className={formStyles.footerActions}>
             {canCancel ? (
@@ -333,13 +332,15 @@ export default function SupervisionFleetSyncModal({
                 {cancelling ? (copy.cancelling || "Arret...") : (copy.cancel || "Arreter")}
               </button>
             ) : null}
-            <button
-              type="button"
-              className={formStyles.primaryBtn}
-              onClick={canDismiss ? onDismiss : onMinimize}
-            >
-              {canDismiss ? (copy.close || "Fermer") : (copy.minimize || "Reduire")}
-            </button>
+            {canDismiss ? (
+              <button
+                type="button"
+                className={formStyles.primaryBtn}
+                onClick={onDismiss}
+              >
+                {copy.close || "Fermer"}
+              </button>
+            ) : null}
           </div>
         </footer>
       </div>

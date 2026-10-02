@@ -6,6 +6,7 @@ import { toast } from "react-toastify";
 import { createTicket, fetchTicketCategories, fetchSupportForms, addTicketComment, fetchTickets, addTicketAssignee, addTicketWatcher, addTicketCommentWithAttachments } from "../../api/tickets";
 import { fetchClientsList, fetchContactsList, fetchClientSupportCredits } from "../../api/clients";
 import { fetchUsers } from "../../api/users";
+import { fetchTeams } from "../../api/teams";
 import { fetchAiStatus, suggestTicketPriorityAi } from "../../api/ai";
 import { useAuthContext } from "../../contexts/AuthContext";
 import { usePermissions } from "../../contexts/PermissionsContext";
@@ -585,6 +586,8 @@ export default function TicketCreatePage({
   const equipmentDropdownCoords = useFixedAnchorRect(showEquipmentDropdown, equipmentDropdownRef);
   const linkedTicketDropdownCoords = useFixedAnchorRect(showLinkedTicketDropdown, linkedTicketDropdownRef);
   const [preAssigneeUserIds, setPreAssigneeUserIds] = useState([]);
+  const [preAssigneeTeamIds, setPreAssigneeTeamIds] = useState([]);
+  const [teams, setTeams] = useState([]);
   const [preFollowerUserIds, setPreFollowerUserIds] = useState([]);
   const [assigneeSearch, setAssigneeSearch] = useState("");
   const [followerSearch, setFollowerSearch] = useState("");
@@ -622,12 +625,13 @@ export default function TicketCreatePage({
     (async () => {
       setLoadingData(true);
       try {
-        const [contactRows, clientRows, categoryRows, userRows, supportFormRows] = await Promise.all([fetchContactsList().catch(() => []), fetchClientsList().catch(() => []), fetchTicketCategories().catch(() => []), fetchUsers().catch(() => []), fetchSupportForms().catch(() => [])]);
+        const [contactRows, clientRows, categoryRows, userRows, supportFormRows, teamRows] = await Promise.all([fetchContactsList().catch(() => []), fetchClientsList().catch(() => []), fetchTicketCategories().catch(() => []), fetchUsers().catch(() => []), fetchSupportForms().catch(() => []), fetchTeams().catch(() => [])]);
         if (cancelled) return;
         setContacts(Array.isArray(contactRows) ? contactRows : []);
         setClients(Array.isArray(clientRows) ? clientRows : []);
         setCategories(Array.isArray(categoryRows) ? categoryRows : []);
         setUsers(Array.isArray(userRows) ? userRows : []);
+        setTeams(Array.isArray(teamRows) ? teamRows.filter(team => team?.is_active !== false) : []);
         setSupportForms(Array.isArray(supportFormRows) ? supportFormRows : []);
       } finally {
         if (!cancelled) setLoadingData(false);
@@ -1584,6 +1588,7 @@ export default function TicketCreatePage({
         contactSlots: serializeContactSlots(availabilitySlots),
         equipmentInfo,
         assigneeUserIds: preAssigneeUserIds,
+        assigneeTeamIds: preAssigneeTeamIds,
         watcherUserIds: preFollowerUserIds,
         ...(supportFormData ? { supportFormData } : {})
       });
@@ -1705,10 +1710,26 @@ export default function TicketCreatePage({
   })), [users, copy.agentFallback]);
   const filteredAssigneeOptions = useMemo(() => {
     const q = assigneeSearch.trim().toLowerCase();
-    const available = userSearchOptions.filter(opt => !preAssigneeUserIds.includes(String(opt.id)));
+    const teamOptions = teams
+      .filter(team => !preAssigneeTeamIds.includes(String(team.id)))
+      .map(team => ({
+        id: String(team.id),
+        kind: "team",
+        label: team.name || String(team.id),
+        icon: team.icon || "mdi:account-group-outline"
+      }));
+    const agentOptions = userSearchOptions
+      .filter(opt => !preAssigneeUserIds.includes(String(opt.id)))
+      .map(opt => ({
+        id: String(opt.id),
+        kind: "user",
+        label: opt.label,
+        icon: "mdi:account-outline"
+      }));
+    const available = [...teamOptions, ...agentOptions];
     if (!q) return available.slice(0, 50);
     return available.filter(opt => opt.label.toLowerCase().includes(q)).slice(0, 50);
-  }, [userSearchOptions, assigneeSearch, preAssigneeUserIds]);
+  }, [teams, userSearchOptions, assigneeSearch, preAssigneeUserIds, preAssigneeTeamIds]);
   const filteredFollowerOptions = useMemo(() => {
     const q = followerSearch.trim().toLowerCase();
     const available = userSearchOptions.filter(opt => !preFollowerUserIds.includes(String(opt.id)));
@@ -1719,10 +1740,17 @@ export default function TicketCreatePage({
     const found = users.find(user => String(user.id) === String(userId));
     return found ? getUserLabel(found, copy.agentFallback) : String(userId || "-");
   }, [users, copy.agentFallback]);
+  const resolveTeamIdLabel = useCallback(teamId => {
+    const found = teams.find(team => String(team.id) === String(teamId));
+    return found?.name || String(teamId || "-");
+  }, [teams]);
   const preAssigneesSummary = useMemo(() => {
-    if (preAssigneeUserIds.length === 0) return "-";
-    return preAssigneeUserIds.map(userId => resolveUserIdLabel(userId)).join(", ");
-  }, [preAssigneeUserIds, resolveUserIdLabel]);
+    const parts = [
+      ...preAssigneeTeamIds.map(teamId => resolveTeamIdLabel(teamId)),
+      ...preAssigneeUserIds.map(userId => resolveUserIdLabel(userId))
+    ];
+    return parts.length > 0 ? parts.join(", ") : "-";
+  }, [preAssigneeTeamIds, preAssigneeUserIds, resolveTeamIdLabel, resolveUserIdLabel]);
   const preFollowersSummary = useMemo(() => {
     if (preFollowerUserIds.length === 0) return "-";
     return preFollowerUserIds.map(userId => resolveUserIdLabel(userId)).join(", ");
@@ -1734,8 +1762,23 @@ export default function TicketCreatePage({
     setAssigneeSearch("");
     setShowAssigneeDropdown(false);
   }, []);
+  const addPreAssigneeTeam = useCallback(teamId => {
+    const key = String(teamId || "").trim();
+    if (!key) return;
+    setPreAssigneeTeamIds(prev => prev.includes(key) ? prev : [...prev, key]);
+    setAssigneeSearch("");
+    setShowAssigneeDropdown(false);
+  }, []);
+  const pickPreAssigneeOption = useCallback(option => {
+    if (!option) return;
+    if (option.kind === "team") addPreAssigneeTeam(option.id);
+    else addPreAssignee(option.id);
+  }, [addPreAssignee, addPreAssigneeTeam]);
   const removePreAssignee = useCallback(userId => {
     setPreAssigneeUserIds(prev => prev.filter(id => String(id) !== String(userId)));
+  }, []);
+  const removePreAssigneeTeam = useCallback(teamId => {
+    setPreAssigneeTeamIds(prev => prev.filter(id => String(id) !== String(teamId)));
   }, []);
   const addPreFollower = useCallback(userId => {
     const key = String(userId || "").trim();
@@ -2237,11 +2280,11 @@ export default function TicketCreatePage({
                           } else if (e.key === "Enter") {
                             e.preventDefault();
                             const picked = filteredAssigneeOptions[assigneeHighlight];
-                            if (picked) addPreAssignee(picked.id);
+                            if (picked) pickPreAssigneeOption(picked);
                           } else if (e.key === "Escape") {
                             setShowAssigneeDropdown(false);
                           }
-                        }} placeholder={copy.searchAgent} aria-label={copy.searchAgentAssignAria} aria-expanded={showAssigneeDropdown} aria-haspopup="listbox" disabled={loadingData} />
+                        }} placeholder={copy.searchAgentTeam || copy.searchAgent} aria-label={copy.searchAgentAssignAria} aria-expanded={showAssigneeDropdown} aria-haspopup="listbox" disabled={loadingData} />
                         </div>
                         {showAssigneeDropdown && assigneeDropdownCoords && typeof document !== "undefined" ? createPortal(<div ref={assigneeListRef} className={s.contactDropdownPortal} role="listbox" aria-label={copy.assignAgentsAria} style={{
                             top: assigneeDropdownCoords.top,
@@ -2250,18 +2293,30 @@ export default function TicketCreatePage({
                             width: assigneeDropdownCoords.width,
                             maxHeight: assigneeDropdownCoords.maxHeight
                           }}>
-                            {filteredAssigneeOptions.length === 0 ? <div className={s.contactEmpty}>{copy.noAgentFound}</div> : filteredAssigneeOptions.map((opt, idx) => <button key={opt.id} type="button" role="option" aria-selected={false} className={`${s.contactOption} ${assigneeHighlight === idx ? s.contactOptionActive : ""}`} onMouseEnter={() => setAssigneeHighlight(idx)} onClick={() => addPreAssignee(opt.id)}>
-                                  <span className={s.contactOptionName}>{opt.label}</span>
+                            {filteredAssigneeOptions.length === 0 ? <div className={s.contactEmpty}>{copy.noAgentFound}</div> : filteredAssigneeOptions.map((opt, idx) => <button key={`${opt.kind}-${opt.id}`} type="button" role="option" aria-selected={false} className={`${s.contactOption} ${assigneeHighlight === idx ? s.contactOptionActive : ""}`} onMouseEnter={() => setAssigneeHighlight(idx)} onClick={() => pickPreAssigneeOption(opt)}>
+                                  <span className={s.contactOptionName}>
+                                    <Icon icon={opt.icon} aria-hidden style={{ marginRight: "0.35rem", verticalAlign: "-0.15em" }} />
+                                    {opt.label}
+                                  </span>
                                 </button>)}
                           </div>, document.body) : null}
                       </div>
                       <div className={s.chipsWrap}>
-                        {preAssigneeUserIds.length === 0 ? <span className={s.emptyChipHint}>{copy.noAssignee}</span> : preAssigneeUserIds.map(userId => <span key={userId} className={s.chip}>
+                        {preAssigneeUserIds.length === 0 && preAssigneeTeamIds.length === 0 ? <span className={s.emptyChipHint}>{copy.noAssignee}</span> : <>
+                            {preAssigneeTeamIds.map(teamId => <span key={`team-${teamId}`} className={s.chip}>
+                                <Icon icon="mdi:account-group-outline" aria-hidden style={{ marginRight: "0.25rem" }} />
+                                {resolveTeamIdLabel(teamId)}
+                                <button type="button" onClick={() => removePreAssigneeTeam(teamId)} aria-label={copy.formatRemoveAgentAria?.(resolveTeamIdLabel(teamId)) || resolveTeamIdLabel(teamId)}>
+                                  ×
+                                </button>
+                              </span>)}
+                            {preAssigneeUserIds.map(userId => <span key={userId} className={s.chip}>
                               {resolveUserIdLabel(userId)}
                               <button type="button" onClick={() => removePreAssignee(userId)} aria-label={copy.formatRemoveAgentAria(resolveUserIdLabel(userId))}>
                                 ×
                               </button>
                             </span>)}
+                          </>}
                       </div>
                     </div>
 

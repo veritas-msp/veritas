@@ -69,7 +69,7 @@ export default function MonitoringCenterPage({
   const [pageGuideOpen, setPageGuideOpen] = useState(false);
   const [fleetSyncActive, setFleetSyncActive] = useState(false);
   const [fleetSyncExpanded, setFleetSyncExpanded] = useState(false);
-  const [fleetSyncAutoStart, setFleetSyncAutoStart] = useState(false);
+  const [fleetSyncStartKey, setFleetSyncStartKey] = useState(0);
   const [fleetSyncProgress, setFleetSyncProgress] = useState(null);
   const [fleetSyncCancelling, setFleetSyncCancelling] = useState(false);
   const fleetSyncRefreshAtRef = useRef(0);
@@ -239,7 +239,7 @@ export default function MonitoringCenterPage({
   }, [refreshLiveQueue]);
 
   const startFleetSync = useCallback(() => {
-    setFleetSyncAutoStart(true);
+    setFleetSyncStartKey(key => key + 1);
     setFleetSyncActive(true);
     setFleetSyncExpanded(true);
     setFleetSyncProgress(null);
@@ -252,7 +252,6 @@ export default function MonitoringCenterPage({
     if (!run?.id) return;
     setFleetSyncActive(true);
     if (expand) setFleetSyncExpanded(true);
-    setFleetSyncAutoStart(false);
     setFleetSyncCancelling(Boolean(run?.details?.cancelRequested));
     const progress = getFleetSyncProgress(run);
     setFleetSyncProgress({
@@ -270,7 +269,6 @@ export default function MonitoringCenterPage({
   const dismissFleetSync = useCallback(() => {
     setFleetSyncActive(false);
     setFleetSyncExpanded(false);
-    setFleetSyncAutoStart(false);
     setFleetSyncProgress(null);
     setFleetSyncCancelling(false);
   }, []);
@@ -667,7 +665,7 @@ export default function MonitoringCenterPage({
       <SupervisionFleetSyncModal
         active={fleetSyncActive}
         expanded={fleetSyncExpanded}
-        autoStart={fleetSyncAutoStart}
+        startKey={fleetSyncStartKey}
         startedBy={user?.username || user?.email || null}
         copy={pageCopy.fleetSync || {}}
         onMinimize={() => setFleetSyncExpanded(false)}

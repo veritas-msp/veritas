@@ -1,7 +1,6 @@
 import express from 'express';
 import { pool } from '../../../database/db.js';
 import verifyJWT from '../../../middleware/auth.js';
-import { runEquipmentMonitoringSync } from './equipmentMonitoringSync.js';
 const router = express.Router();
 
 /** Canonical sources (one row per DB table) — used when listing mappings. */
@@ -27,24 +26,9 @@ const TYPE_ALIASES = {
 };
 
 const TYPE_TO_TABLE = Object.fromEntries(EQUIPMENT_MAPPING_SOURCES.map(src => [src.type, src.table]));
-const TYPE_TO_FAMILY = Object.fromEntries(EQUIPMENT_MAPPING_SOURCES.map(src => [src.type, src.family]));
 for (const [alias, canonical] of Object.entries(TYPE_ALIASES)) {
   if (TYPE_TO_TABLE[canonical]) TYPE_TO_TABLE[alias] = TYPE_TO_TABLE[canonical];
-  if (TYPE_TO_FAMILY[canonical]) TYPE_TO_FAMILY[alias] = TYPE_TO_FAMILY[canonical];
 }
-
-/** Families that can sync live CheckMK monitoring into supervision. */
-const SYNCABLE_FAMILIES = new Set([
-  'servers',
-  'stockage',
-  'firewall',
-  'switch',
-  'wifi',
-  'alimentation',
-  'routeur',
-  'toip'
-]);
-
 function mappingFromEquipmentRow(row, equipmentType, clientId) {
   return {
     id: row.id,
@@ -227,20 +211,7 @@ router.post('/mapping', verifyJWT, async (req, res) => {
         details: `No row with client_id=${client_id} and id=${equipment_id}`
       });
     }
-    // Sync monitoring ASAP so inventory voyants + supervision center see warning/critical.
-    const family = TYPE_TO_FAMILY[equipment_type] || null;
-    if (family && hostName && SYNCABLE_FAMILIES.has(family)) {
-      runEquipmentMonitoringSync(req, {
-        equipmentId: equipment_id,
-        clientId: client_id,
-        family,
-        hostName,
-        site: siteVal,
-        force: true
-      }).catch(err => {
-        console.warn('[checkmk mapping] post-map sync:', err.message);
-      });
-    }
+    // Fleet / equipment sync is manual-only (Supervision Center or Admin → CheckMK).
     res.json(mapping);
   } catch (error) {
     console.error('Mapping error:', error.message, error.detail);

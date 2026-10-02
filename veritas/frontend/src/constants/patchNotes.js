@@ -5,6 +5,16 @@
  */
 export const PATCH_NOTES = [
   {
+    version: "1.0.58",
+    date: "2026-10-02",
+    highlights: [
+      "Tickets : titre issu du formulaire corrigé ; champs redondants masqués dans le panneau Formulaire.",
+      "Assignation d’équipes conservée comme équipes (sans éclater tous les membres).",
+      "Matériel lié affiché en cartes pleine largeur ; menu Compte : profils repliables.",
+      "Supervision : sync CheckMK manuelle uniquement ; bouton Réduire retiré du bas de la modal."
+    ]
+  },
+  {
     version: "1.0.57",
     date: "2026-10-01",
     highlights: [

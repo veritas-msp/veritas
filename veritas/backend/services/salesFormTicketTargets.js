@@ -253,17 +253,13 @@ async function resolveUserIdsFromFieldKeys(fieldKeys = [], context = {}) {
 export async function resolveAssigneeUserIds(targets = {}, context = {}) {
   const normalized = normalizeTicketTargets(targets);
   const userIds = new Set(normalized.assigneeUserIds);
-  if (normalized.teamIds.length > 0) {
-    const result = await pool.query(`SELECT DISTINCT user_id
-       FROM v_b_team_members
-       WHERE team_id = ANY($1::uuid[])`, [normalized.teamIds]);
-    for (const row of result.rows || []) {
-      if (row.user_id) userIds.add(String(row.user_id));
-    }
-  }
+  // Teams are persisted as team assignees (not expanded into members).
   const fromFields = await resolveUserIdsFromFieldKeys(normalized.assigneeFieldKeys, context);
   for (const userId of fromFields) userIds.add(userId);
   return [...userIds];
+}
+export async function resolveAssigneeTeamIds(targets = {}) {
+  return normalizeTicketTargets(targets).teamIds;
 }
 export async function resolveWatcherUserIds(targets = {}, context = {}) {
   const normalized = normalizeTicketTargets(targets);
@@ -276,6 +272,10 @@ async function hasTicketAssigneesTable() {
   const result = await pool.query(`SELECT to_regclass('public.v_b_ticket_assignees') IS NOT NULL AS ok`);
   return Boolean(result.rows[0]?.ok);
 }
+async function hasTicketAssigneeTeamsTable() {
+  const result = await pool.query(`SELECT to_regclass('public.v_b_ticket_assignee_teams') IS NOT NULL AS ok`);
+  return Boolean(result.rows[0]?.ok);
+}
 async function hasTicketWatchersTable() {
   const result = await pool.query(`SELECT to_regclass('public.v_b_ticket_watchers') IS NOT NULL AS ok`);
   return Boolean(result.rows[0]?.ok);
@@ -283,6 +283,7 @@ async function hasTicketWatchersTable() {
 export async function applyFormTicketTargets(ticketId, targets = {}, context = {}) {
   const normalized = normalizeTicketTargets(targets);
   const assigneeUserIds = await resolveAssigneeUserIds(normalized, context);
+  const assigneeTeamIds = await resolveAssigneeTeamIds(normalized);
   const watcherUserIds = await resolveWatcherUserIds(normalized, context);
   const hasAssignees = await hasTicketAssigneesTable();
   if (hasAssignees && assigneeUserIds.length > 0) {
@@ -294,6 +295,15 @@ export async function applyFormTicketTargets(ticketId, targets = {}, context = {
     }
     await pool.query(`UPDATE v_b_tickets SET assigned_user_id = $1, updated_at = NOW() WHERE id = $2`, [assigneeUserIds[0], ticketId]);
   }
+  const hasAssigneeTeams = await hasTicketAssigneeTeamsTable();
+  if (hasAssigneeTeams && assigneeTeamIds.length > 0) {
+    await pool.query("DELETE FROM v_b_ticket_assignee_teams WHERE ticket_id = $1", [ticketId]);
+    for (const teamId of assigneeTeamIds) {
+      await pool.query(`INSERT INTO v_b_ticket_assignee_teams (ticket_id, team_id, created_at)
+         VALUES ($1, $2, NOW())
+         ON CONFLICT (ticket_id, team_id) DO NOTHING`, [ticketId, teamId]);
+    }
+  }
   const hasWatchers = await hasTicketWatchersTable();
   if (hasWatchers && watcherUserIds.length > 0) {
     for (const userId of watcherUserIds) {
@@ -304,6 +314,7 @@ export async function applyFormTicketTargets(ticketId, targets = {}, context = {
   }
   return {
     assigneeUserIds,
+    assigneeTeamIds,
     watcherUserIds
   };
 }
@@ -318,7 +329,20 @@ function formatTemplateFieldValue(raw) {
   if (raw === true) return "Yes";
   if (raw === false) return "No";
   if (raw === undefined || raw === null) return "";
-  return String(raw).trim();
+  if (Array.isArray(raw)) {
+    return raw
+      .map(item => formatTemplateFieldValue(item))
+      .filter(Boolean)
+      .join(", ");
+  }
+  if (typeof raw === "object") {
+    const label = raw.label || raw.name || raw.displayName || raw.fileName || raw.email || raw.title || raw.value;
+    if (label != null && String(label).trim()) return String(label).trim();
+    if (raw.id != null) return String(raw.id).trim();
+    return "";
+  }
+  const text = String(raw).trim();
+  return text === "[object Object]" ? "" : text;
 }
 export function resolveSalesFormTicketTemplate(template, context = {}) {
   const raw = String(template || "");
@@ -341,14 +365,20 @@ export function resolveSalesFormTicketTemplate(template, context = {}) {
 }
 export function buildTicketTitle(baseTitle, rule, context = {}) {
   const template = rule?.targets?.titleTemplate;
+  const base = String(baseTitle || "").trim();
   if (template && String(template).trim()) {
-    return resolveSalesFormTicketTemplate(template, context) || String(baseTitle || "").trim();
+    const resolved = resolveSalesFormTicketTemplate(template, context).trim();
+    if (!resolved) return base;
+    // Prefer the client-resolved subject when a template concatenates description + title.
+    if (base && resolved !== base && resolved.includes(base) && resolved.length > base.length + 10) {
+      return base;
+    }
+    return resolved;
   }
   const suffix = rule?.targets?.titleSuffix || rule?.label;
-  const title = String(baseTitle || "").trim();
-  if (!suffix || suffix === "Primary ticket" || suffix === "Ticket principal") return title;
-  if (title.includes(suffix)) return title;
-  return `${title} — ${suffix}`;
+  if (!suffix || suffix === "Primary ticket" || suffix === "Ticket principal") return base;
+  if (base.includes(suffix)) return base;
+  return base ? `${base} — ${suffix}` : String(suffix);
 }
 export function buildTicketDescription(baseDescription, rule, context = {}) {
   const template = rule?.targets?.descriptionTemplate;

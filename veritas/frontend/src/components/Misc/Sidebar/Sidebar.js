@@ -92,9 +92,13 @@ export default function Sidebar({
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const [userMenuFixedStyle, setUserMenuFixedStyle] = useState(null);
   const [switchingProfile, setSwitchingProfile] = useState(false);
+  const [profilesMenuOpen, setProfilesMenuOpen] = useState(false);
   const userMenuRef = useRef(null);
   const userMenuDropdownRef = useRef(null);
-  const closeUserMenu = useCallback(() => setUserMenuOpen(false), []);
+  const closeUserMenu = useCallback(() => {
+    setUserMenuOpen(false);
+    setProfilesMenuOpen(false);
+  }, []);
   const {
     theme,
     toggleTheme
@@ -263,6 +267,7 @@ export default function Sidebar({
   useLayoutEffect(() => {
     if (!userMenuOpen) {
       setUserMenuFixedStyle(null);
+      setProfilesMenuOpen(false);
       return;
     }
     updateUserMenuPosition();
@@ -276,6 +281,10 @@ export default function Sidebar({
       window.removeEventListener("scroll", onResize, true);
     };
   }, [userMenuOpen, updateUserMenuPosition, isCollapsed, isMobile, isHorizontalDesktop]);
+  useLayoutEffect(() => {
+    if (!userMenuOpen || !profilesMenuOpen) return;
+    updateUserMenuPosition();
+  }, [profilesMenuOpen, userMenuOpen, updateUserMenuPosition]);
   const runUserMenuAction = fn => {
     fn();
     closeUserMenu();
@@ -606,10 +615,27 @@ export default function Sidebar({
                     </button>
                     {switchableProfiles.length > 1 ? <>
                         <div className={styles.userMenuDivider} role="separator" />
-                        <div className={styles.userMenuDropdownTitle}>
-                          {copy.account.profilesSection}
-                        </div>
-                        {switchableProfiles.map(name => {
+                        <button
+                          type="button"
+                          role="menuitem"
+                          aria-expanded={profilesMenuOpen}
+                          aria-haspopup="menu"
+                          className={`${styles.userMenuItem} ${styles.userMenuSubmenuTrigger} ${profilesMenuOpen ? styles.userMenuSubmenuTriggerOpen : ""}`}
+                          onClick={() => setProfilesMenuOpen(open => !open)}
+                        >
+                          <Icon icon="mdi:account-badge-outline" className={styles.userMenuItemIcon} />
+                          <span className={styles.userMenuItemLabelStack}>
+                            <span className={styles.userMenuItemLabel}>{copy.account.profilesSection}</span>
+                            {profileLabel ? <span className={styles.userMenuItemMeta}>{profileLabel}</span> : null}
+                          </span>
+                          <Icon
+                            icon={profilesMenuOpen ? "mdi:chevron-up" : "mdi:chevron-down"}
+                            className={styles.userMenuChevron}
+                            aria-hidden
+                          />
+                        </button>
+                        {profilesMenuOpen ? <div className={styles.userMenuSubmenu} role="group" aria-label={copy.account.profilesSection}>
+                            {switchableProfiles.map(name => {
                       const isActive = name === profileLabel;
                       const switchLabel = String(copy.account.switchProfile || "{profile}").replace("{profile}", name);
                       return <button
@@ -618,19 +644,20 @@ export default function Sidebar({
                         role="menuitemradio"
                         aria-checked={isActive}
                         disabled={switchingProfile || isActive}
-                        className={`${styles.userMenuItem} ${isActive ? styles.userMenuItemActive : ""}`}
+                        className={`${styles.userMenuItem} ${styles.userMenuSubmenuItem} ${isActive ? styles.userMenuItemActive : ""}`}
                         title={switchLabel}
                         onClick={() => {
                           if (!isActive) handleSwitchProfile(name);
                         }}
                       >
                           <Icon
-                            icon={isActive ? "mdi:check-circle" : "mdi:account-badge-outline"}
+                            icon={isActive ? "mdi:check-circle" : "mdi:account-outline"}
                             className={styles.userMenuItemIcon}
                           />
                           <span className={styles.userMenuItemLabel}>{name}</span>
                         </button>;
                     })}
+                          </div> : null}
                       </> : null}
                     <div className={styles.userMenuDivider} role="separator" />
                     <button type="button" role="menuitem" className={`${styles.userMenuItem} ${styles.userMenuItemDanger}`} onClick={() => runUserMenuAction(() => onLogout())}>

@@ -784,6 +784,54 @@
   min-width: 0;
 }
 
+.userMenuItemLabelStack {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.05rem;
+  min-width: 0;
+  flex: 1;
+}
+
+.userMenuItemMeta {
+  font-size: 0.72rem;
+  font-weight: 500;
+  color: #6b7280;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.userMenuSubmenuTrigger {
+  padding-right: 10px;
+}
+
+.userMenuSubmenuTriggerOpen {
+  background: #f3f4f6;
+}
+
+.userMenuChevron {
+  margin-left: auto;
+  flex-shrink: 0;
+  font-size: 1.05rem;
+  color: #9ca3af;
+}
+
+.userMenuSubmenu {
+  display: flex;
+  flex-direction: column;
+  padding: 0.15rem 0 0.25rem;
+  background: rgba(15, 28, 46, 0.03);
+  border-top: 1px solid rgba(15, 28, 46, 0.06);
+  border-bottom: 1px solid rgba(15, 28, 46, 0.06);
+}
+
+.userMenuSubmenuItem {
+  padding-left: 1.85rem;
+  font-size: 0.84rem;
+}
+
 .userMenuItem:hover .userMenuItemIcon,
 .userMenuItemActive .userMenuItemIcon {
   color: inherit;
@@ -1080,6 +1128,24 @@
 :global(html.dark) .userMenuItemActive {
   background: rgba(43, 95, 171, 0.22);
   color: #7eb0e8;
+}
+
+:global(html.dark) .userMenuItemMeta {
+  color: var(--msp-muted, #8fa8c4);
+}
+
+:global(html.dark) .userMenuSubmenuTriggerOpen {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+:global(html.dark) .userMenuSubmenu {
+  background: rgba(255, 255, 255, 0.03);
+  border-top-color: rgba(255, 255, 255, 0.08);
+  border-bottom-color: rgba(255, 255, 255, 0.08);
+}
+
+:global(html.dark) .userMenuChevron {
+  color: var(--msp-muted, #8fa8c4);
 }
 
 :global(html.dark) .userMenuItemIcon {

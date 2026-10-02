@@ -566,17 +566,19 @@ export default function TicketSalesPage({
     return requesterContact?.client_name || requesterContact?.entreprise || "-";
   };
   const resolveAssigneesLabel = ticket => {
+    const teamLabels = (Array.isArray(ticket?.assignee_teams) ? ticket.assignee_teams : Array.isArray(ticket?.assigneeTeams) ? ticket.assigneeTeams : [])
+      .map(team => team?.name || team?.team_name || "")
+      .filter(Boolean);
     const assignees = Array.isArray(ticket?.assignees) ? ticket.assignees : [];
-    if (assignees.length > 0) {
-      const labels = assignees.map(a => {
-        if (a === null || a === undefined) return "";
-        if (typeof a === "string" || typeof a === "number") {
-          return resolveUserLabel(a);
-        }
-        return resolveUserLabel(a.user_id || a.userId || a.id || a.value, a.name || a.nom || a.email || "");
-      }).filter(label => label && label !== "-");
-      return labels.length > 0 ? labels.join(", ") : "-";
-    }
+    const userLabels = assignees.map(a => {
+      if (a === null || a === undefined) return "";
+      if (typeof a === "string" || typeof a === "number") {
+        return resolveUserLabel(a);
+      }
+      return resolveUserLabel(a.user_id || a.userId || a.id || a.value, a.name || a.nom || a.email || "");
+    }).filter(label => label && label !== "-");
+    const labels = [...teamLabels, ...userLabels];
+    if (labels.length > 0) return labels.join(", ");
     return resolveUserLabel(ticket?.assigned_user_id, ticket?.assigned_email);
   };
   const getTicketKindLabel = ticket => pageCopy.getKindLabel(ticket);

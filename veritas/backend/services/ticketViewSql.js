@@ -106,28 +106,43 @@ function buildAssignedUserIdCriterionSql(operator, criterion, values, ctx) {
     if (operator === "not_in") return "TRUE";
     return "FALSE";
   }
+  const teamMembershipExists = (userParams) => {
+    if (!ctx.hasTicketAssigneeTeams) return null;
+    return `EXISTS (
+      SELECT 1 FROM v_b_ticket_assignee_teams tat
+      JOIN v_b_team_members tm ON tm.team_id = tat.team_id
+      WHERE tat.ticket_id = t.id AND LOWER(tm.user_id::text) IN (${userParams.join(", ")})
+    )`;
+  };
   if (operator === "equals") {
     const param = pushParam(values, normalizedValues[0]);
+    const teamSql = teamMembershipExists([param]);
     if (ctx.hasTicketAssignees) {
       return `(LOWER(t.assigned_user_id::text) = ${param} OR EXISTS (
         SELECT 1 FROM v_b_ticket_assignees a
         WHERE a.ticket_id = t.id AND LOWER(a.user_id::text) = ${param}
-      ))`;
+      )${teamSql ? ` OR ${teamSql}` : ""})`;
     }
-    return `(LOWER(t.assigned_user_id::text) = ${param})`;
+    return teamSql
+      ? `(LOWER(t.assigned_user_id::text) = ${param} OR ${teamSql})`
+      : `(LOWER(t.assigned_user_id::text) = ${param})`;
   }
   if (operator === "not_equals") {
     const param = pushParam(values, normalizedValues[0]);
+    const teamSql = teamMembershipExists([param]);
     if (ctx.hasTicketAssignees) {
       return `(LOWER(COALESCE(t.assigned_user_id::text, '')) <> ${param} AND NOT EXISTS (
         SELECT 1 FROM v_b_ticket_assignees a
         WHERE a.ticket_id = t.id AND LOWER(a.user_id::text) = ${param}
-      ))`;
+      )${teamSql ? ` AND NOT (${teamSql})` : ""})`;
     }
-    return `(LOWER(COALESCE(t.assigned_user_id::text, '')) <> ${param})`;
+    return teamSql
+      ? `(LOWER(COALESCE(t.assigned_user_id::text, '')) <> ${param} AND NOT (${teamSql}))`
+      : `(LOWER(COALESCE(t.assigned_user_id::text, '')) <> ${param})`;
   }
   if (operator === "in") {
     const params = normalizedValues.map(value => pushParam(values, value));
+    const teamSql = teamMembershipExists(params);
     if (ctx.hasTicketAssignees) {
       return `(
         LOWER(t.assigned_user_id::text) IN (${params.join(", ")})
@@ -135,12 +150,16 @@ function buildAssignedUserIdCriterionSql(operator, criterion, values, ctx) {
           SELECT 1 FROM v_b_ticket_assignees a
           WHERE a.ticket_id = t.id AND LOWER(a.user_id::text) IN (${params.join(", ")})
         )
+        ${teamSql ? `OR ${teamSql}` : ""}
       )`;
     }
-    return `(LOWER(t.assigned_user_id::text) IN (${params.join(", ")}))`;
+    return teamSql
+      ? `(LOWER(t.assigned_user_id::text) IN (${params.join(", ")}) OR ${teamSql})`
+      : `(LOWER(t.assigned_user_id::text) IN (${params.join(", ")}))`;
   }
   if (operator === "not_in") {
     const params = normalizedValues.map(value => pushParam(values, value));
+    const teamSql = teamMembershipExists(params);
     if (ctx.hasTicketAssignees) {
       return `(
         (t.assigned_user_id IS NULL OR LOWER(t.assigned_user_id::text) NOT IN (${params.join(", ")}))
@@ -148,9 +167,12 @@ function buildAssignedUserIdCriterionSql(operator, criterion, values, ctx) {
           SELECT 1 FROM v_b_ticket_assignees a
           WHERE a.ticket_id = t.id AND LOWER(a.user_id::text) IN (${params.join(", ")})
         )
+        ${teamSql ? `AND NOT (${teamSql})` : ""}
       )`;
     }
-    return `(t.assigned_user_id IS NULL OR LOWER(t.assigned_user_id::text) NOT IN (${params.join(", ")}))`;
+    return teamSql
+      ? `((t.assigned_user_id IS NULL OR LOWER(t.assigned_user_id::text) NOT IN (${params.join(", ")})) AND NOT (${teamSql}))`
+      : `(t.assigned_user_id IS NULL OR LOWER(t.assigned_user_id::text) NOT IN (${params.join(", ")}))`;
   }
   return null;
 }
@@ -343,18 +365,22 @@ function buildCriterionSql(criterion, values, ctx) {
   }
   if (rawField === "assigned_user_id") {
     if (operator === "is_empty") {
-      if (ctx.hasTicketAssignees) {
-        return `(t.assigned_user_id IS NULL AND NOT EXISTS (
+      if (ctx.hasTicketAssignees || ctx.hasTicketAssigneeTeams) {
+        return `(t.assigned_user_id IS NULL${ctx.hasTicketAssignees ? ` AND NOT EXISTS (
           SELECT 1 FROM v_b_ticket_assignees a WHERE a.ticket_id = t.id
-        ))`;
+        )` : ""}${ctx.hasTicketAssigneeTeams ? ` AND NOT EXISTS (
+          SELECT 1 FROM v_b_ticket_assignee_teams tat WHERE tat.ticket_id = t.id
+        )` : ""})`;
       }
       return "t.assigned_user_id IS NULL";
     }
     if (operator === "is_not_empty") {
-      if (ctx.hasTicketAssignees) {
-        return `(t.assigned_user_id IS NOT NULL OR EXISTS (
+      if (ctx.hasTicketAssignees || ctx.hasTicketAssigneeTeams) {
+        return `(t.assigned_user_id IS NOT NULL${ctx.hasTicketAssignees ? ` OR EXISTS (
           SELECT 1 FROM v_b_ticket_assignees a WHERE a.ticket_id = t.id
-        ))`;
+        )` : ""}${ctx.hasTicketAssigneeTeams ? ` OR EXISTS (
+          SELECT 1 FROM v_b_ticket_assignee_teams tat WHERE tat.ticket_id = t.id
+        )` : ""})`;
       }
       return "t.assigned_user_id IS NOT NULL";
     }

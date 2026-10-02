@@ -30,7 +30,7 @@ import TicketAiEnrichMenu from "./TicketAiEnrichMenu";
 import TicketTagSuggestField from "./TicketTagSuggestField";
 import { createEvent, updateEvent, deleteEvent, fetchEvents } from "../../api/events";
 import { buildReminderEventPayload } from "../../utils/ticketReminderEvent";
-import { addTicketAssignee, addTicketComment, addTicketCommentWithAttachments, addLinkedTicket, addTicketTag, addTicketWatcher, createTicketValidationRequest, deleteTicket, fetchTicketCategories, fetchTicket, fetchTickets, fetchSalesForm, fetchSupportForm, permanentlyDeleteTicket, removeTicketTag, removeTicketAssignee, removeTicketWatcher, respondTicketValidationRequest, restoreTicket, updateTicket, updateTicketComment, deleteTicketComment, updateTicketStatus, updateTicketValidationRequest, resolveTicketWithValidation } from "../../api/tickets";
+import { addTicketAssignee, addTicketAssigneeTeam, addTicketComment, addTicketCommentWithAttachments, addLinkedTicket, addTicketTag, addTicketWatcher, createTicketValidationRequest, deleteTicket, fetchTicketCategories, fetchTicket, fetchTickets, fetchSalesForm, fetchSupportForm, permanentlyDeleteTicket, removeTicketTag, removeTicketAssignee, removeTicketAssigneeTeam, removeTicketWatcher, respondTicketValidationRequest, restoreTicket, updateTicket, updateTicketComment, deleteTicketComment, updateTicketStatus, updateTicketValidationRequest, resolveTicketWithValidation } from "../../api/tickets";
 import { fetchAiStatus, suggestTicketReplyAi, correctTicketTextAi, suggestTicketPriorityAi } from "../../api/ai";
 import API_BASE_URL from "../../config";
 import { sanitizeTicketCommentHtml } from "../../utils/sanitizeHtml";
@@ -40,6 +40,7 @@ import IncomingEmailMessage from "./IncomingEmailMessage";
 import ContactFormModal from "../ContactsPage/ContactFormModal";
 import TicketLinkRequesterEmailModal from "./TicketLinkRequesterEmailModal";
 import { fetchActiveUsers, fetchCurrentUser } from "../../api/users";
+import { fetchTeams } from "../../api/teams";
 import { fetchClients, fetchClientsList, fetchContactsList, fetchClientModules, fetchClientSupportCredits } from "../../api/clients";
 import { fetchPrestataires } from "../../api/prestataires";
 import { useAuthContext } from "../../contexts/AuthContext";
@@ -63,6 +64,7 @@ import TicketVaultArchiveOptions, {
 import { getTicketVaultArchiveCopy } from "./ticketVaultArchiveI18n";
 import { archiveTicketFilesToVault } from "../../utils/archiveTicketFilesToVault";
 import { isSalesTicket, buildSalesFormFieldEntries, buildSalesFormFieldLabelMap, buildSalesFormFieldTypeMap, enrichSalesFormLinkedEntries } from "../../utils/salesTicketUtils";
+import { extractSupportFormSubjectTitle, pickTicketDisplayTitle, shouldHideSupportFormDetailField } from "../../utils/supportFormTicketContent";
 import { formatLinkedEquipmentEventLabel, getEquipmentPickerLabel, getEquipmentSearchText, mapClientEquipmentsForTicketLink } from "./ticketEquipmentUtils";
 import TicketLinkedEquipmentQuickActions from "./TicketLinkedEquipmentQuickActions";
 import { getLocalizedSolutionCatalogLabel } from "./solutionCatalogI18n";
@@ -1160,6 +1162,7 @@ export default function TicketDetailPage({
     };
   }, [isSalesTicketDetail, supportFormData?.formId]);
   const [users, setUsers] = useState([]);
+  const [teams, setTeams] = useState([]);
   const [clients, setClients] = useState([]);
   const [contacts, setContacts] = useState([]);
   const [allTickets, setAllTickets] = useState([]);
@@ -1229,8 +1232,12 @@ export default function TicketDetailPage({
         clients,
         users,
         equipments: linkedEquipments
-      }),
+      }).filter(row => !shouldHideSupportFormDetailField(row, supportFormFieldTypeMap)),
     [supportFormEntriesRaw, supportFormData, supportFormFieldTypeMap, contacts, clients, users, linkedEquipments]
+  );
+  const supportFormSubjectTitle = useMemo(
+    () => extractSupportFormSubjectTitle(supportFormData, supportFormFieldLabelMap),
+    [supportFormData, supportFormFieldLabelMap]
   );
   const [macroSelection, setMacroSelection] = useState("");
   const [macroAttachmentModalOpen, setMacroAttachmentModalOpen] = useState(false);
@@ -1342,6 +1349,15 @@ export default function TicketDetailPage({
     assignedUserId: "",
     requesterContactId: ""
   });
+  const ticketDisplayTitle = useMemo(
+    () =>
+      pickTicketDisplayTitle(
+        editForm.title || ticket?.title || "",
+        supportFormSubjectTitle,
+        editForm.description || ticket?.description || ""
+      ),
+    [editForm.title, editForm.description, ticket?.title, ticket?.description, supportFormSubjectTitle]
+  );
   const [ticketCategories, setTicketCategories] = useState([]);
   const [categorySearch, setCategorySearch] = useState("");
   const [showRequesterDropdown, setShowRequesterDropdown] = useState(false);
@@ -1437,7 +1453,7 @@ export default function TicketDetailPage({
     detailAbortRef.current = controller;
     if (!silent) setLoading(true);
     try {
-      const [ticketRes, usersRes, clientsRes, contactsRes, categoriesRes] = await Promise.all([fetchTicket(ticketId, {
+      const [ticketRes, usersRes, clientsRes, contactsRes, categoriesRes, teamsRes] = await Promise.all([fetchTicket(ticketId, {
         signal: controller.signal
       }), fetchActiveUsers({
         signal: controller.signal
@@ -1447,7 +1463,7 @@ export default function TicketDetailPage({
         signal: controller.signal
       }).catch(error => error?.name === "AbortError" ? Promise.reject(error) : []), fetchTicketCategories({
         signal: controller.signal
-      }).catch(error => error?.name === "AbortError" ? Promise.reject(error) : [])]);
+      }).catch(error => error?.name === "AbortError" ? Promise.reject(error) : []), fetchTeams().catch(() => [])]);
       const ticketsRes = await fetchTickets({
         limit: 200
       }, {
@@ -1458,6 +1474,7 @@ export default function TicketDetailPage({
       setSalesProgress(Math.max(0, Math.min(100, Math.round(Number(ticketRes?.progress_percent ?? ticketRes?.progressPercent ?? 0) || 0))));
       setTicketNativeChannel(ticketRes.channel || "web");
       setUsers(Array.isArray(usersRes) ? usersRes : []);
+      setTeams(Array.isArray(teamsRes) ? teamsRes.filter(team => team?.is_active !== false) : []);
       setClients(Array.isArray(clientsRes) ? clientsRes : []);
       setContacts(Array.isArray(contactsRes) ? contactsRes : []);
       setTicketCategories(Array.isArray(categoriesRes) ? categoriesRes : []);
@@ -2327,6 +2344,67 @@ export default function TicketDetailPage({
       toast.error(error.message || copy.toasts.assigneeRemoveError);
     }
   };
+  const addAssigneeTeam = async teamId => {
+    if (!ticketId || !teamId) return;
+    if (assigneeTeamIds.some(id => String(id) === String(teamId))) {
+      setAssigneeSearch("");
+      return;
+    }
+    const teamMeta = teams.find(team => String(team.id) === String(teamId));
+    try {
+      await addTicketAssigneeTeam(ticketId, teamId);
+      setTicket(prev => {
+        if (!prev) return prev;
+        const current = Array.isArray(prev.assigneeTeams)
+          ? prev.assigneeTeams
+          : Array.isArray(prev.assignee_teams)
+            ? prev.assignee_teams
+            : [];
+        const nextRow = {
+          team_id: teamId,
+          name: teamMeta?.name || "",
+          color: teamMeta?.color || null,
+          icon: teamMeta?.icon || "mdi:account-group-outline",
+          created_at: new Date().toISOString()
+        };
+        return {
+          ...prev,
+          assigneeTeams: [...current, nextRow],
+          assignee_teams: [...current, nextRow]
+        };
+      });
+      setAssigneeSearch("");
+      setShowAssigneeDropdown(false);
+      toast.success(copy.toasts.assigneeTeamAdded || copy.toasts.assigneeAdded);
+      void refreshTicketHistory();
+    } catch (error) {
+      toast.error(error.message || copy.toasts.assigneeTeamAddError || copy.toasts.assigneeAddError);
+    }
+  };
+  const removeAssigneeTeam = async teamId => {
+    if (!ticketId || !teamId) return;
+    try {
+      await removeTicketAssigneeTeam(ticketId, teamId);
+      setTicket(prev => {
+        if (!prev) return prev;
+        const filterTeams = rows => (Array.isArray(rows) ? rows : []).filter(row => String(row.team_id || row.id) !== String(teamId));
+        return {
+          ...prev,
+          assigneeTeams: filterTeams(prev.assigneeTeams),
+          assignee_teams: filterTeams(prev.assignee_teams)
+        };
+      });
+      toast.success(copy.toasts.assigneeTeamRemoved || copy.toasts.assigneeRemoved);
+      void refreshTicketHistory();
+    } catch (error) {
+      toast.error(error.message || copy.toasts.assigneeTeamRemoveError || copy.toasts.assigneeRemoveError);
+    }
+  };
+  const pickAssigneeOption = option => {
+    if (!option) return;
+    if (option.kind === "team") addAssigneeTeam(String(option.id));
+    else addAssignee(String(option.id));
+  };
   const commitTitleChange = async () => {
     const nextTitle = String(titleDraft || "").trim();
     if (!nextTitle) {
@@ -2361,13 +2439,13 @@ export default function TicketDetailPage({
   const initialRequestEditing = titleEditing || descriptionEditing;
   const startInitialRequestEdit = () => {
     if (isReadOnly) return;
-    setTitleDraft(editForm.title || ticket?.title || "");
+    setTitleDraft(ticketDisplayTitle || editForm.title || ticket?.title || "");
     setDescriptionDraft(editForm.description || ticket?.description || "");
     setTitleEditing(true);
     setDescriptionEditing(true);
   };
   const cancelInitialRequestEdit = () => {
-    setTitleDraft(editForm.title || ticket?.title || "");
+    setTitleDraft(ticketDisplayTitle || editForm.title || ticket?.title || "");
     setDescriptionDraft(editForm.description || ticket?.description || "");
     setTitleEditing(false);
     setDescriptionEditing(false);
@@ -3046,7 +3124,7 @@ export default function TicketDetailPage({
     const raw = String(text || "");
     if (isCommunity) return raw;
     const ticketNumber = String(ticket?.ticket_number || ticketId || "");
-    const ticketTitle = String(editForm.title || ticket?.title || "");
+    const ticketTitle = String(ticketDisplayTitle || editForm.title || ticket?.title || "");
     const ticketStatus = String(copy.getStatusLabel(ticket?.status === "open" ? "new" : ticket?.status));
     const agentName = String(resolveAgentDisplayName(currentAgentUser) || resolveAgentDisplayName(user) || "");
     const agentEmail = String(currentAgentUser?.email || user?.email || "");
@@ -3259,12 +3337,26 @@ export default function TicketDetailPage({
     if (ticket?.assigned_user_id) return [String(ticket.assigned_user_id)];
     return [];
   }, [ticket]);
+  const assigneeTeams = useMemo(() => {
+    const rows = Array.isArray(ticket?.assigneeTeams)
+      ? ticket.assigneeTeams
+      : Array.isArray(ticket?.assignee_teams)
+        ? ticket.assignee_teams
+        : [];
+    return rows.map(row => ({
+      team_id: String(row.team_id || row.id || ""),
+      name: row.name || row.team_name || "",
+      color: row.color || row.team_color || null,
+      icon: row.icon || row.team_icon || "mdi:account-group-outline"
+    })).filter(row => row.team_id);
+  }, [ticket]);
+  const assigneeTeamIds = useMemo(() => assigneeTeams.map(row => row.team_id), [assigneeTeams]);
   useEffect(() => {
     setRequesterSearch(requesterDisplayName && requesterDisplayName !== "-" ? requesterDisplayName : "");
   }, [requesterDisplayName]);
   useEffect(() => {
     setAssigneeSearch("");
-  }, [assigneeUserIds.join(",")]);
+  }, [assigneeUserIds.join(","), assigneeTeamIds.join(",")]);
   const watcherUserIds = useMemo(() => (ticket?.watchers || []).map(w => String(w.user_id)), [ticket?.watchers]);
   const isMajorIncident = Boolean(ticket?.is_major_incident);
   const enabledCategories = useMemo(() => (Array.isArray(ticketCategories) ? ticketCategories : []).filter(item => item?.enabled !== false), [ticketCategories]);
@@ -3275,10 +3367,26 @@ export default function TicketDetailPage({
   }, [contacts, requesterSearch]);
   const filteredAssigneeOptions = useMemo(() => {
     const q = assigneeSearch.trim().toLowerCase();
-    const available = userSearchOptions.filter(opt => !assigneeUserIds.includes(String(opt.id)));
+    const teamOptions = teams
+      .filter(team => !assigneeTeamIds.includes(String(team.id)))
+      .map(team => ({
+        id: String(team.id),
+        kind: "team",
+        label: team.name || String(team.id),
+        icon: team.icon || "mdi:account-group-outline"
+      }));
+    const userOptions = userSearchOptions
+      .filter(opt => !assigneeUserIds.includes(String(opt.id)))
+      .map(opt => ({
+        id: String(opt.id),
+        kind: "user",
+        label: opt.label,
+        icon: "mdi:account-outline"
+      }));
+    const available = [...teamOptions, ...userOptions];
     if (!q) return available.slice(0, 50);
     return available.filter(opt => opt.label.toLowerCase().includes(q)).slice(0, 50);
-  }, [userSearchOptions, assigneeSearch, assigneeUserIds]);
+  }, [teams, userSearchOptions, assigneeSearch, assigneeUserIds, assigneeTeamIds]);
   const filteredFollowerOptions = useMemo(() => {
     const q = followerSearch.trim().toLowerCase();
     const available = userSearchOptions.filter(opt => !watcherUserIds.includes(String(opt.id)));
@@ -4539,9 +4647,12 @@ export default function TicketDetailPage({
       </button>
 
       <div className={styles.ticketHeroTrack} aria-label={copy.header.ticketContextAria}>
-        <h1 className={styles.ticketHeroTitle}>
-          {ticket ? copy.formatTicketNumber(ticket.ticket_number || ticket.id) : copy.pageTitle}
+        <h1 className={styles.ticketHeroTitle} title={ticketDisplayTitle || undefined}>
+          {ticketDisplayTitle || (ticket ? copy.formatTicketNumber(ticket.ticket_number || ticket.id) : copy.pageTitle)}
         </h1>
+        {ticket ? <span className={styles.ticketFamilyChip} title={copy.formatTicketNumber(ticket.ticket_number || ticket.id)}>
+            {copy.formatTicketNumber(ticket.ticket_number || ticket.id)}
+          </span> : null}
         <span
           className={`${styles.ticketFamilyChip} ${isSalesTicketDetail ? styles.ticketFamilyChip_sales : styles.ticketFamilyChip_support}`}
           title={isSalesTicketDetail ? copy.header.familyServices : copy.header.familySupport}
@@ -4698,7 +4809,7 @@ export default function TicketDetailPage({
                   <div className={fs.contactPicker} ref={assigneeDropdownRef}>
                     <div className={`${fs.contactInputWrap} ${showAssigneeDropdown ? fs.contactInputWrapOpen : ""}`}>
                       <Icon icon="mdi:magnify" className={fs.contactInputIcon} aria-hidden />
-                      <input className={fs.contactInput} type="text" value={assigneeSearch} autoComplete="off" placeholder={copy.searchAgent} disabled={isReadOnly} aria-expanded={showAssigneeDropdown} aria-haspopup="listbox" onChange={e => {
+                      <input className={fs.contactInput} type="text" value={assigneeSearch} autoComplete="off" placeholder={copy.searchAssignee || copy.searchAgent} disabled={isReadOnly} aria-expanded={showAssigneeDropdown} aria-haspopup="listbox" onChange={e => {
                       setAssigneeSearch(e.target.value);
                       setShowAssigneeDropdown(true);
                       setAssigneeHighlight(0);
@@ -4713,7 +4824,7 @@ export default function TicketDetailPage({
                       } else if (e.key === "Enter") {
                         e.preventDefault();
                         const picked = filteredAssigneeOptions[assigneeHighlight];
-                        if (picked) addAssignee(String(picked.id));
+                        if (picked) pickAssigneeOption(picked);
                       } else if (e.key === "Escape") {
                         setShowAssigneeDropdown(false);
                       }
@@ -4727,13 +4838,28 @@ export default function TicketDetailPage({
                       </button>
                     </div>
                     {showAssigneeDropdown && <div className={fs.contactDropdown} role="listbox">
-                        {filteredAssigneeOptions.length === 0 ? <div className={fs.contactEmpty}>{copy.noAgentFound}</div> : filteredAssigneeOptions.map((opt, idx) => <button key={opt.id} type="button" role="option" className={`${fs.contactOption} ${assigneeHighlight === idx ? fs.contactOptionActive : ""}`} onMouseEnter={() => setAssigneeHighlight(idx)} onClick={() => addAssignee(String(opt.id))}>
-                              <span className={fs.contactOptionName}>{opt.label}</span>
+                        {filteredAssigneeOptions.length === 0 ? <div className={fs.contactEmpty}>{copy.noAssigneeOptionFound || copy.noAgentFound}</div> : filteredAssigneeOptions.map((opt, idx) => <button key={`${opt.kind}-${opt.id}`} type="button" role="option" className={`${fs.contactOption} ${assigneeHighlight === idx ? fs.contactOptionActive : ""}`} onMouseEnter={() => setAssigneeHighlight(idx)} onClick={() => pickAssigneeOption(opt)}>
+                              <span className={fs.contactOptionName}>
+                                <Icon icon={opt.icon} aria-hidden style={{ marginRight: "0.35rem", verticalAlign: "-0.15em" }} />
+                                {opt.kind === "team" ? (copy.teamAssigneePrefix ? `${copy.teamAssigneePrefix} ${opt.label}` : opt.label) : opt.label}
+                              </span>
                             </button>)}
                       </div>}
                   </div>
                   <div className={fs.chipsWrap}>
-                    {assigneeUserIds.length === 0 ? <span className={fs.emptyChipHint}>{copy.noAssignee}</span> : assigneeUserIds.map(userId => <span key={userId} className={fs.chip}>
+                    {assigneeUserIds.length === 0 && assigneeTeams.length === 0 ? <span className={fs.emptyChipHint}>{copy.noAssignee}</span> : <>
+                        {assigneeTeams.map(team => <span key={`team-${team.team_id}`} className={fs.chip} title={copy.teamAssigneeChipTitle || undefined}>
+                            <Icon icon={team.icon || "mdi:account-group-outline"} aria-hidden style={{ marginRight: "0.25rem" }} />
+                            {team.name || team.team_id}
+                            <button type="button" onClick={e => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      removeAssigneeTeam(team.team_id);
+                    }} disabled={isReadOnly} aria-label={`Retirer ${team.name || team.team_id}`}>
+                              ×
+                            </button>
+                          </span>)}
+                        {assigneeUserIds.map(userId => <span key={userId} className={fs.chip}>
                           {resolveUserLabel(userId)}
                           <button type="button" onClick={e => {
                       e.preventDefault();
@@ -4743,6 +4869,7 @@ export default function TicketDetailPage({
                             ×
                           </button>
                         </span>)}
+                      </>}
                   </div>
                 </div>
 
@@ -5060,8 +5187,8 @@ export default function TicketDetailPage({
                       </div>
                     </div> : <>
                       <div className={styles.initialRequestTitleWrap}>
-                        <h2 className={`${styles.descriptionTitle} ${!(editForm.title || ticket?.title) ? styles.descriptionTitlePlaceholder : ""}`.trim()}>
-                          {editForm.title || ticket?.title || copy.header.titlePlaceholder}
+                        <h2 className={`${styles.descriptionTitle} ${!ticketDisplayTitle ? styles.descriptionTitlePlaceholder : ""}`.trim()}>
+                          {ticketDisplayTitle || copy.header.titlePlaceholder}
                         </h2>
                       </div>
                       {editForm.description || ticket?.description ? <div className={styles.commentBody} onClick={handleInlineImageClick}>
@@ -5461,8 +5588,8 @@ export default function TicketDetailPage({
               </> : null}
 
             {!isSalesTicketDetail && supportFormData ? <RightPaneStaticSection title={locale === "fr" ? "Formulaire" : "Form"} titleId="ticket-support-form-title">
-                {supportFormData.formLabel ? <p className={styles.emptyText} style={{ marginBottom: "0.55rem" }}>{supportFormData.formLabel}</p> : null}
-                {supportFormEntries.length === 0 ? <p className={styles.emptyText}>{locale === "fr" ? "Aucun champ renseigné" : "No fields filled"}</p> : <dl className={styles.salesFormFacts}>
+                {supportFormData.formLabel ? <p className={styles.emptyText} style={{ marginBottom: supportFormEntries.length ? "0.55rem" : 0 }}>{supportFormData.formLabel}</p> : null}
+                {supportFormEntries.length === 0 ? null : <dl className={styles.salesFormFacts}>
                     {supportFormEntries.map(row => <div key={row.key} className={styles.salesFormFact}>
                         <dt>{row.label}</dt>
                         <dd>
@@ -5480,7 +5607,7 @@ export default function TicketDetailPage({
               </RightPaneStaticSection> : null}
 
             <TicketKnowledgeSuggestions
-              query={editForm.title || ticket?.title || titleDraft}
+              query={ticketDisplayTitle || editForm.title || ticket?.title || titleDraft}
               copy={copy}
               onOpen={article => onNavigate?.("KnowledgeBaseArticle", { articleId: article.id, mode: "read", title: article.title })}
             />
@@ -5687,7 +5814,7 @@ export default function TicketDetailPage({
                           </button>)}
                     </div>}
                 </div>
-                <div className={fs.chipsWrap}>
+                <div className={styles.linkedEquipmentList}>
                   {linkedEquipments.length === 0 ? <span className={fs.emptyChipHint}>{copy.rightPane.noLinkedEquipment}</span> : visibleLinkedEquipments.map(equipment => {
                     const fullEquipment = clientEquipments.find(eq => String(eq.id) === String(equipment.equipment_id)) || {
                       id: equipment.equipment_id,
@@ -5702,19 +5829,22 @@ export default function TicketDetailPage({
                       manageable: equipment.manageable,
                       rawData: equipment.rawData
                     };
-                    return <span key={equipment.equipment_id} className={`${fs.chip} ${styles.chipWithActions}`}>
-                        <button type="button" onClick={() => openLinkedEquipmentDetail(equipment.equipment_id, equipment.name, equipment.type)}>
-                          {getEquipmentLinkLabel(equipment)}
+                    return <div key={equipment.equipment_id} className={styles.linkedEquipmentCard}>
+                        <button type="button" className={styles.linkedEquipmentCardMain} onClick={() => openLinkedEquipmentDetail(equipment.equipment_id, equipment.name, equipment.type)}>
+                          <Icon icon="mdi:server-outline" className={styles.linkedEquipmentCardIcon} aria-hidden />
+                          <span className={styles.linkedEquipmentCardLabel}>{getEquipmentLinkLabel(equipment)}</span>
                         </button>
-                        <TicketLinkedEquipmentQuickActions equipment={fullEquipment} locale={locale} />
-                        <button type="button" onClick={e => {
+                        <div className={styles.linkedEquipmentCardActions}>
+                          <TicketLinkedEquipmentQuickActions equipment={fullEquipment} locale={locale} />
+                          <button type="button" className={styles.linkedEquipmentCardRemove} onClick={e => {
                       e.preventDefault();
                       e.stopPropagation();
                       removeLinkedEquipment(equipment.equipment_id);
                     }} disabled={isReadOnly} aria-label={copy.formatRemoveEquipmentAria(getEquipmentLinkLabel(equipment))}>
-                          ×
-                        </button>
-                      </span>;
+                            ×
+                          </button>
+                        </div>
+                      </div>;
                   })}
                 </div>
                 {hasMoreLinkedEquipments ? <SidebarExpandToggle copy={copy} expanded={linkedEquipmentsExpanded} onClick={() => setLinkedEquipmentsExpanded(prev => !prev)} /> : null}
