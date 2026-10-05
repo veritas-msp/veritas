@@ -66,6 +66,7 @@ import { archiveTicketFilesToVault } from "../../utils/archiveTicketFilesToVault
 import { isSalesTicket, buildSalesFormFieldEntries, buildSalesFormFieldLabelMap, buildSalesFormFieldTypeMap, enrichSalesFormLinkedEntries } from "../../utils/salesTicketUtils";
 import { extractSupportFormSubjectTitle, pickTicketDisplayTitle } from "../../utils/supportFormTicketContent";
 import { formatLinkedEquipmentEventLabel, getEquipmentPickerLabel, getEquipmentSearchText, mapClientEquipmentsForTicketLink } from "./ticketEquipmentUtils";
+import { getContactClientOptions, getContactSiteOptions, resolveSiteLabel } from "./ticketContactClientUtils";
 import TicketLinkedEquipmentQuickActions from "./TicketLinkedEquipmentQuickActions";
 import { getLocalizedSolutionCatalogLabel } from "./solutionCatalogI18n";
 import { interpolate } from "../../i18n/translate";
@@ -1329,6 +1330,7 @@ export default function TicketDetailPage({
     category: "",
     channel: "web",
     clientId: "",
+    siteId: "",
     assignedUserId: "",
     requesterContactId: ""
   });
@@ -1478,6 +1480,7 @@ export default function TicketDetailPage({
         category: ticketRes.category || "",
         channel: ticketRes.channel || "web",
         clientId: ticketRes.client_id || "",
+        siteId: ticketRes.site_id || "",
         assignedUserId: ticketRes.assigned_user_id || "",
         requesterContactId: ticketRes.requester_contact_id || ""
       });
@@ -1609,6 +1612,9 @@ export default function TicketDetailPage({
         }
         if (Object.prototype.hasOwnProperty.call(patch, "clientId")) {
           next.client_id = patch.clientId;
+        }
+        if (Object.prototype.hasOwnProperty.call(patch, "siteId")) {
+          next.site_id = patch.siteId;
         }
         if (Object.prototype.hasOwnProperty.call(patch, "type")) {
           next.type = patch.type;
@@ -3208,10 +3214,19 @@ export default function TicketDetailPage({
   };
   const ticketActivityLog = useMemo(() => buildTicketActivityLog(ticket, resolveUserLabel, copy, locale, resolveContactLabel, resolveClientLabel), [ticket, users, contacts, clients, copy, locale]);
   const breadcrumbClientId = useMemo(() => {
-    if (requesterContact?.client_id) return requesterContact.client_id;
-    return ticket?.client_id || null;
-  }, [requesterContact, ticket]);
+    return editForm.clientId || ticket?.client_id || requesterContact?.client_id || null;
+  }, [editForm.clientId, ticket, requesterContact]);
   const effectiveTicketClientId = useMemo(() => breadcrumbClientId || ticket?.client_id || requesterContact?.client_id || null, [breadcrumbClientId, ticket, requesterContact]);
+  const contactClientOptions = useMemo(() => getContactClientOptions(requesterContact, clients), [requesterContact, clients]);
+  const requiresCompanySelect = contactClientOptions.length > 1;
+  const contactSiteOptions = useMemo(
+    () => getContactSiteOptions(requesterContact, effectiveTicketClientId, clients),
+    [requesterContact, effectiveTicketClientId, clients]
+  );
+  const ticketSiteLabel = useMemo(
+    () => resolveSiteLabel(editForm.siteId || ticket?.site_id, contactSiteOptions, clients, effectiveTicketClientId),
+    [editForm.siteId, ticket?.site_id, contactSiteOptions, clients, effectiveTicketClientId]
+  );
 
   useEffect(() => {
     if (!showSideConversationModal) return undefined;
@@ -3240,13 +3255,16 @@ export default function TicketDetailPage({
   }, [showSideConversationModal, canViewPrestataires, sideConversation.team, effectiveTicketClientId]);
 
   const breadcrumbClientLabel = useMemo(() => {
-    if (requesterContact?.client_name) return requesterContact.client_name;
-    if (requesterContact?.client_id) {
-      const requesterClient = clients.find(c => String(c.id) === String(requesterContact.client_id));
-      if (requesterClient) return requesterClient.name || requesterClient.nom || "-";
+    const id = breadcrumbClientId;
+    if (id) {
+      const selectedOption = contactClientOptions.find(opt => String(opt.id) === String(id));
+      if (selectedOption?.name) return selectedOption.name;
+      const found = clients.find(c => String(c.id) === String(id));
+      if (found) return found.name || found.nom || "-";
     }
+    if (requesterContact?.client_name) return requesterContact.client_name;
     return clientLabel;
-  }, [requesterContact, clients, clientLabel]);
+  }, [breadcrumbClientId, contactClientOptions, clients, requesterContact, clientLabel]);
   const ticketClient = useMemo(() => clients.find(client => String(client.id) === String(effectiveTicketClientId)) || null, [clients, effectiveTicketClientId]);
   const clientContractSummary = useMemo(() => buildClientContractSummary(ticketClient), [ticketClient]);
   const activeContractOptionLabels = useMemo(() => {
@@ -3428,6 +3446,24 @@ export default function TicketDetailPage({
     }
     if (nextClientId) {
       patch.clientId = nextClientId;
+      const siteOptions = getContactSiteOptions(contact, nextClientId, clients);
+      if (siteOptions.length === 1) {
+        patch.siteId = siteOptions[0].id;
+      } else if (String(editForm.clientId || ticket?.client_id || "") !== String(nextClientId)) {
+        patch.siteId = null;
+      }
+    }
+    if (Object.prototype.hasOwnProperty.call(patch, "siteId")) {
+      setEditForm(p => ({
+        ...p,
+        siteId: patch.siteId || ""
+      }));
+    }
+    if (Object.prototype.hasOwnProperty.call(patch, "clientId")) {
+      setEditForm(p => ({
+        ...p,
+        clientId: patch.clientId || ""
+      }));
     }
     await updateTicketLive(patch, {
       successMessage: copy.toasts.requesterUpdated
@@ -4639,12 +4675,6 @@ export default function TicketDetailPage({
       </button>
 
       <div className={styles.ticketHeroTrack} aria-label={copy.header.ticketContextAria}>
-        <h1 className={styles.ticketHeroTitle} title={ticketDisplayTitle || undefined}>
-          {ticketDisplayTitle || (ticket ? copy.formatTicketNumber(ticket.ticket_number || ticket.id) : copy.pageTitle)}
-        </h1>
-        {ticket ? <span className={styles.ticketFamilyChip} title={copy.formatTicketNumber(ticket.ticket_number || ticket.id)}>
-            {copy.formatTicketNumber(ticket.ticket_number || ticket.id)}
-          </span> : null}
         <span
           className={`${styles.ticketFamilyChip} ${isSalesTicketDetail ? styles.ticketFamilyChip_sales : styles.ticketFamilyChip_support}`}
           title={isSalesTicketDetail ? copy.header.familyServices : copy.header.familySupport}
@@ -4652,6 +4682,12 @@ export default function TicketDetailPage({
           <Icon icon={isSalesTicketDetail ? "mdi:briefcase-outline" : "mdi:message-processing-outline"} aria-hidden />
           {isSalesTicketDetail ? copy.header.familyServices : copy.header.familySupport}
         </span>
+        {ticket ? <span className={styles.ticketFamilyChip} title={copy.formatTicketNumber(ticket.ticket_number || ticket.id)}>
+            {copy.formatTicketNumber(ticket.ticket_number || ticket.id)}
+          </span> : null}
+        <h1 className={styles.ticketHeroTitle} title={ticketDisplayTitle || undefined}>
+          {ticketDisplayTitle || (ticket ? copy.formatTicketNumber(ticket.ticket_number || ticket.id) : copy.pageTitle)}
+        </h1>
         <span className={styles.ticketHeroMetaDot} aria-hidden>
           ·
         </span>
@@ -4678,6 +4714,13 @@ export default function TicketDetailPage({
             <Icon icon="mdi:office-building-outline" aria-hidden />
             {breadcrumbClientLabel}
           </span>}
+        {ticketSiteLabel ? <>
+            <span className={styles.ticketHeroMetaSep} aria-hidden>|</span>
+            <span className={styles.ticketHeroMetaItem} title={ticketSiteLabel}>
+              <Icon icon="mdi:map-marker-outline" aria-hidden />
+              <span className={styles.ticketHeroMetaText}>{ticketSiteLabel}</span>
+            </span>
+          </> : null}
         {!isSalesTicketDetail ? <ClientOnboardingBadge client={ticketClient} label={copy.header.onboardingBadge} /> : null}
         {!isSalesTicketDetail && !isCommunity && ticket && ticketSlaView.label && ticketSlaView.label !== "-" ? <>
             <span className={styles.ticketHeroMetaDot} aria-hidden>
@@ -4796,6 +4839,64 @@ export default function TicketDetailPage({
                       </div>}
                   </div>
                 </div>
+
+                {requesterContact && requiresCompanySelect ? <div className={fs.equipmentField}>
+                    <label className={fs.equipmentFieldLabel} htmlFor="ticket-detail-company">{copy.leftPane.company || copy.enterprise}</label>
+                    <select id="ticket-detail-company" className={fs.select} value={editForm.clientId || ticket?.client_id || ""} disabled={isReadOnly} onChange={async e => {
+                  const nextClientId = e.target.value || null;
+                  const siteOptions = getContactSiteOptions(requesterContact, nextClientId, clients);
+                  const nextSiteId = siteOptions.length === 1 ? siteOptions[0].id : null;
+                  setEditForm(p => ({
+                    ...p,
+                    clientId: nextClientId || "",
+                    siteId: nextSiteId || ""
+                  }));
+                  await updateTicketLive({
+                    clientId: nextClientId,
+                    siteId: nextSiteId
+                  }, {
+                    successMessage: copy.toasts.companyUpdated
+                  });
+                  if (nextClientId && ticketReminder?.id) {
+                    try {
+                      await updateEvent(ticketReminder.id, {
+                        clientId: nextClientId
+                      });
+                      setTicketReminder(prev => prev ? {
+                        ...prev,
+                        client_id: nextClientId,
+                        clientId: nextClientId
+                      } : prev);
+                    } catch {}
+                  }
+                }}>
+                      <option value="">{copy.leftPane.selectCompany || copy.selectCompany || "—"}</option>
+                      {contactClientOptions.map(opt => <option key={opt.id} value={opt.id}>
+                          {opt.name}
+                        </option>)}
+                    </select>
+                  </div> : null}
+
+                {effectiveTicketClientId && contactSiteOptions.length > 0 ? <div className={fs.equipmentField}>
+                    <label className={fs.equipmentFieldLabel} htmlFor="ticket-detail-site">{copy.leftPane.site || "Lieu"}</label>
+                    <select id="ticket-detail-site" className={fs.select} value={editForm.siteId || ticket?.site_id || ""} disabled={isReadOnly} onChange={async e => {
+                  const nextSiteId = e.target.value || null;
+                  setEditForm(p => ({
+                    ...p,
+                    siteId: nextSiteId || ""
+                  }));
+                  await updateTicketLive({
+                    siteId: nextSiteId
+                  }, {
+                    successMessage: copy.toasts.siteUpdated
+                  });
+                }}>
+                      <option value="">{copy.leftPane.selectSite || "Sélectionner un lieu"}</option>
+                      {contactSiteOptions.map(opt => <option key={opt.id} value={opt.id}>
+                          {opt.name}
+                        </option>)}
+                    </select>
+                  </div> : null}
 
                 <div className={fs.equipmentField}>
                   <label className={fs.equipmentFieldLabel}>{copy.leftPane.assignee}</label>

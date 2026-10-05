@@ -1,5 +1,6 @@
 import { Icon } from "@iconify/react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { FaChevronLeft, FaChevronRight, FaTimes } from "react-icons/fa";
 import MspEmptyState from "../Misc/MspEmptyState/MspEmptyState";
 import SmartTooltip from "../SmartTooltip";
@@ -11,6 +12,29 @@ import { useDefaultPageSize } from "../../hooks/useDefaultPageSize";
 import { formatEquipmentDetailRelative } from "./equipmentDetailPageI18n";
 import layout from "../EnterprisesPage/EnterprisesPage.module.css";
 import styles from "./SupervisionOpsQueue.module.css";
+
+const MUTE_MENU_GAP = 6;
+const MUTE_MENU_VIEWPORT_PAD = 8;
+
+function getMuteMenuPosition(triggerEl, menuEl) {
+  if (!triggerEl) return null;
+  const triggerRect = triggerEl.getBoundingClientRect();
+  const menuWidth = menuEl?.offsetWidth || 200;
+  const menuHeight = menuEl?.offsetHeight || 220;
+  let top = triggerRect.bottom + MUTE_MENU_GAP;
+  let left = triggerRect.right - menuWidth;
+  if (left < MUTE_MENU_VIEWPORT_PAD) left = MUTE_MENU_VIEWPORT_PAD;
+  if (left + menuWidth > window.innerWidth - MUTE_MENU_VIEWPORT_PAD) {
+    left = window.innerWidth - menuWidth - MUTE_MENU_VIEWPORT_PAD;
+  }
+  if (top + menuHeight > window.innerHeight - MUTE_MENU_VIEWPORT_PAD) {
+    top = triggerRect.top - menuHeight - MUTE_MENU_GAP;
+  }
+  return {
+    top: Math.max(MUTE_MENU_VIEWPORT_PAD, top),
+    left: Math.max(MUTE_MENU_VIEWPORT_PAD, left)
+  };
+}
 
 function toneClass(tone, severity) {
   if (tone === "bad" || severity === "critical") return styles.sevCritical;
@@ -101,14 +125,69 @@ function FreshnessBadge({ item, copy, locale }) {
   );
 }
 
-function MuteMenu({ item, copy, localeTag, onMute, onUnmute, onClose }) {
+function MuteMenu({
+  item,
+  copy,
+  localeTag,
+  anchorRef,
+  onMute,
+  onUnmute,
+  onClose
+}) {
+  const menuRef = useRef(null);
+  const [menuStyle, setMenuStyle] = useState(null);
   const options = [
     { id: "2h", label: copy?.mute?.hours2 || "2h", durationMinutes: 120 },
     { id: "tomorrow", label: copy?.mute?.tomorrow || "Tomorrow 8am", durationMinutes: minutesUntilTomorrowMorning() },
     { id: "24h", label: copy?.mute?.hours24 || "24h", durationMinutes: 1440 }
   ];
-  return (
-    <div className={styles.muteMenu} role="menu">
+
+  const updatePosition = () => {
+    const next = getMuteMenuPosition(anchorRef?.current, menuRef.current);
+    if (next) setMenuStyle(next);
+  };
+
+  useLayoutEffect(() => {
+    updatePosition();
+    const raf = window.requestAnimationFrame(updatePosition);
+    return () => window.cancelAnimationFrame(raf);
+  }, [item?.id, item?.muted, item?.mutedUntil]);
+
+  useEffect(() => {
+    const handleReposition = () => updatePosition();
+    window.addEventListener("resize", handleReposition);
+    window.addEventListener("scroll", handleReposition, true);
+    return () => {
+      window.removeEventListener("resize", handleReposition);
+      window.removeEventListener("scroll", handleReposition, true);
+    };
+  }, []);
+
+  useEffect(() => {
+    const handleClickOutside = event => {
+      const target = event.target;
+      if (menuRef.current?.contains(target) || anchorRef?.current?.contains(target)) return;
+      onClose?.();
+    };
+    const handleEscape = event => {
+      if (event.key === "Escape") onClose?.();
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    document.addEventListener("keydown", handleEscape);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+      document.removeEventListener("keydown", handleEscape);
+    };
+  }, [anchorRef, onClose]);
+
+  const menu = (
+    <div
+      ref={menuRef}
+      className={styles.muteMenu}
+      role="menu"
+      style={menuStyle || { visibility: "hidden" }}
+      onClick={e => e.stopPropagation()}
+    >
       <p className={styles.muteMenuHint}>{copy?.mute?.hint}</p>
       {item.muted ? (
         <button type="button" className={styles.muteMenuItem} onClick={() => onUnmute?.(item)}>
@@ -148,6 +227,9 @@ function MuteMenu({ item, copy, localeTag, onMute, onUnmute, onClose }) {
       </button>
     </div>
   );
+
+  if (typeof document === "undefined") return null;
+  return createPortal(menu, document.body);
 }
 
 function QueueActionButton({
@@ -156,15 +238,16 @@ function QueueActionButton({
   icon,
   onClick,
   disabled = false,
-  primary = false
+  primary = false,
+  buttonRef = null
 }) {
   const tip = hint || label;
   return <SmartTooltip as="span" content={tip}>
-      <button type="button" className={`${styles.actionBtn} ${primary ? styles.actionBtnPrimary : ""}`} aria-label={tip} disabled={disabled} onClick={e => {
+      <button ref={buttonRef} type="button" className={`${styles.actionBtn} ${primary ? styles.actionBtnPrimary : ""}`} aria-label={tip} disabled={disabled} onClick={e => {
       e.stopPropagation();
       onClick?.(e);
     }}>
-        <Icon icon={icon} aria-hidden />
+        <Icon icon={icon} width={18} height={18} aria-hidden />
       </button>
     </SmartTooltip>;
 }
@@ -354,6 +437,7 @@ export default function SupervisionOpsQueue({
   const primedRef = useRef(false);
   const [enteringIds, setEnteringIds] = useState(() => new Set());
   const [muteMenuId, setMuteMenuId] = useState(null);
+  const muteAnchorRef = useRef(null);
   const enterTimersRef = useRef(new Map());
 
   useEffect(() => {
@@ -685,13 +769,18 @@ export default function SupervisionOpsQueue({
                             label={item.muted ? copy.actions.unmute : copy.actions.mute}
                             icon={item.muted ? "mdi:alarm-light" : "mdi:alarm-light-off"}
                             disabled={busy}
-                            onClick={() => setMuteMenuId(id => id === item.id ? null : item.id)}
+                            buttonRef={muteMenuId === item.id ? muteAnchorRef : undefined}
+                            onClick={e => {
+                              muteAnchorRef.current = e.currentTarget;
+                              setMuteMenuId(id => id === item.id ? null : item.id);
+                            }}
                           />
                           {muteMenuId === item.id ? (
                             <MuteMenu
                               item={item}
                               copy={copy}
                               localeTag={localeTag}
+                              anchorRef={muteAnchorRef}
                               onMute={(target, payload) => {
                                 setMuteMenuId(null);
                                 onMute?.(target, payload);

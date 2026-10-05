@@ -117,16 +117,19 @@ export function parseDashboardEntityFilters(input = {}) {
   const agentId = String(input.agentId || "").trim() || null;
   const clientRaw = input.clientId;
   const contactRaw = input.contactId;
+  const siteRaw = input.siteId;
   const clientId = clientRaw != null && clientRaw !== "" && Number.isFinite(Number(clientRaw)) ? Number(clientRaw) : null;
   const contactId = contactRaw != null && contactRaw !== "" && Number.isFinite(Number(contactRaw)) ? Number(contactRaw) : null;
+  const siteId = siteRaw != null && String(siteRaw).trim() !== "" ? String(siteRaw).trim() : null;
   return {
     agentId,
     clientId,
-    contactId
+    contactId,
+    siteId: clientId != null ? siteId : null
   };
 }
 function hasEntityFilters(filters = {}) {
-  return Boolean(filters.agentId || filters.clientId || filters.contactId);
+  return Boolean(filters.agentId || filters.clientId || filters.contactId || filters.siteId);
 }
 function buildTicketScopeClause(params, filters = {}, alias = "t") {
   let clause = "";
@@ -142,8 +145,93 @@ function buildTicketScopeClause(params, filters = {}, alias = "t") {
     params.push(filters.contactId);
     clause += ` AND ${alias}.requester_contact_id = $${params.length}`;
   }
+  if (filters.siteId) {
+    params.push(filters.siteId);
+    clause += ` AND ${alias}.site_id = $${params.length}`;
+  }
   return clause;
 }
+
+/** Normalize free-text equipment type / alert family to KPI family keys. */
+function sqlTicketFamilyKeyExpr(alias = "t") {
+  return `CASE
+    WHEN LOWER(COALESCE(
+      ${alias}.monitoring_meta->>'family',
+      ${alias}.monitoring_meta->>'equipmentFamily',
+      ${alias}.equipment_info->>'type',
+      ${alias}.equipment_info->>'equipmentType',
+      ''
+    )) ~ '(ordinateur|computer|\\bpc\\b|workstation)' THEN 'ordinateurs'
+    WHEN LOWER(COALESCE(
+      ${alias}.monitoring_meta->>'family',
+      ${alias}.monitoring_meta->>'equipmentFamily',
+      ${alias}.equipment_info->>'type',
+      ''
+    )) ~ '(serveur|server)' THEN 'servers'
+    WHEN LOWER(COALESCE(
+      ${alias}.monitoring_meta->>'family',
+      ${alias}.monitoring_meta->>'equipmentFamily',
+      ${alias}.equipment_info->>'type',
+      ''
+    )) ~ '(stockage|storage|\\bnas\\b)' THEN 'stockage'
+    WHEN LOWER(COALESCE(
+      ${alias}.monitoring_meta->>'family',
+      ${alias}.monitoring_meta->>'equipmentFamily',
+      ${alias}.equipment_info->>'type',
+      ''
+    )) ~ 'firewall' THEN 'firewall'
+    WHEN LOWER(COALESCE(
+      ${alias}.monitoring_meta->>'family',
+      ${alias}.monitoring_meta->>'equipmentFamily',
+      ${alias}.equipment_info->>'type',
+      ''
+    )) ~ 'switch' THEN 'switch'
+    WHEN LOWER(COALESCE(
+      ${alias}.monitoring_meta->>'family',
+      ${alias}.monitoring_meta->>'equipmentFamily',
+      ${alias}.equipment_info->>'type',
+      ''
+    )) ~ '(wifi|borne)' THEN 'wifi'
+    WHEN LOWER(COALESCE(
+      ${alias}.monitoring_meta->>'family',
+      ${alias}.monitoring_meta->>'equipmentFamily',
+      ${alias}.equipment_info->>'type',
+      ''
+    )) ~ '(routeur|router|sd-?wan)' THEN 'routeur'
+    WHEN LOWER(COALESCE(
+      ${alias}.monitoring_meta->>'family',
+      ${alias}.monitoring_meta->>'equipmentFamily',
+      ${alias}.equipment_info->>'type',
+      ''
+    )) ~ '(toip|voip|pbx)' THEN 'toip'
+    WHEN LOWER(COALESCE(
+      ${alias}.monitoring_meta->>'family',
+      ${alias}.monitoring_meta->>'equipmentFamily',
+      ${alias}.equipment_info->>'type',
+      ''
+    )) ~ 'internet' THEN 'internet'
+    WHEN LOWER(COALESCE(
+      ${alias}.monitoring_meta->>'family',
+      ${alias}.monitoring_meta->>'equipmentFamily',
+      ${alias}.equipment_info->>'type',
+      ''
+    )) ~ '(alimentation|ups|ondulateur|pdu|battery)' THEN 'alimentation'
+    ELSE NULL
+  END`;
+}
+
+const FAMILY_ACTIVITY_LABELS = {
+  ordinateurs: "Ordinateurs",
+  servers: "Serveurs",
+  stockage: "Stockage",
+  firewall: "Firewalls",
+  switch: "Switch",
+  wifi: "Wi‑Fi",
+  routeur: "Routeur",
+  internet: "Internet",
+  toip: "TOIP",
+  alimentation: "Alimentation"
+};
 function buildEventScopeClause(params, filters = {}, alias = "e") {
   let clause = "";
   if (filters.agentId) {
@@ -1908,6 +1996,260 @@ async function fetchReportsStats({
     monthlyTrend: buildTrend(trendResult.rows)
   };
 }
+async function fetchFamilyActivityStats({
+  sinceIso,
+  untilIso,
+  filters = {}
+} = {}) {
+  const empty = {
+    families: [],
+    sites: [],
+    siteId: filters.siteId || null
+  };
+  try {
+    const [hasEquipmentInfo, hasMonitoringMeta, hasSiteId, hasAlerts, hasDeletedAt, hasIsDeleted] = await Promise.all([
+      columnExists("public.v_b_tickets", "equipment_info"),
+      columnExists("public.v_b_tickets", "monitoring_meta"),
+      columnExists("public.v_b_tickets", "site_id"),
+      tableExists("public.v_b_supervision_alerts"),
+      columnExists("public.v_b_tickets", "deleted_at"),
+      columnExists("public.v_b_tickets", "is_deleted")
+    ]);
+    if (!hasEquipmentInfo && !hasMonitoringMeta && !hasAlerts) return empty;
+
+    let sites = [];
+    if (filters.clientId != null) {
+      const clientRes = await queryResultOrEmpty(
+        `SELECT sites FROM v_b_clients WHERE id = $1 LIMIT 1`,
+        [filters.clientId]
+      );
+      let rawSites = clientRes.rows?.[0]?.sites;
+      if (typeof rawSites === "string") {
+        try {
+          rawSites = JSON.parse(rawSites);
+        } catch {
+          rawSites = [];
+        }
+      }
+      sites = (Array.isArray(rawSites) ? rawSites : [])
+        .map((site, index) => {
+          if (site == null) return null;
+          if (typeof site === "string") {
+            const name = site.trim();
+            return name ? { id: `legacy-${index}`, name } : null;
+          }
+          const id = String(site.id || site.site_id || `legacy-${index}`).trim();
+          const name = String(site.name || site.label || site.site || "").trim();
+          if (!name && !id) return null;
+          return { id: id || `legacy-${index}`, name: name || id };
+        })
+        .filter(Boolean);
+    }
+
+    const siteName = filters.siteId
+      ? sites.find(s => String(s.id) === String(filters.siteId))?.name || null
+      : null;
+
+    const ticketParams = [];
+    let ticketWhere = "TRUE";
+    if (sinceIso) {
+      ticketParams.push(sinceIso);
+      ticketWhere += ` AND t.created_at >= $${ticketParams.length}`;
+    }
+    if (untilIso) {
+      ticketParams.push(untilIso);
+      ticketWhere += ` AND t.created_at <= $${ticketParams.length}`;
+    }
+    const scopeFilters = {
+      ...filters,
+      siteId: hasSiteId ? filters.siteId : null
+    };
+    ticketWhere += buildTicketScopeClause(ticketParams, scopeFilters, "t");
+    ticketWhere += buildTicketNotDeletedClause({ hasDeletedAt, hasIsDeleted });
+
+    const familyExpr = hasEquipmentInfo || hasMonitoringMeta
+      ? sqlTicketFamilyKeyExpr("t")
+      : "NULL";
+
+    const ticketAgg = hasEquipmentInfo || hasMonitoringMeta
+      ? await queryResultOrEmpty(
+          `SELECT
+             fam.key AS family_key,
+             COUNT(*)::int AS tickets_created,
+             COUNT(*) FILTER (WHERE LOWER(COALESCE(t.status, '')) IN ('resolved', 'closed'))::int AS tickets_resolved
+           FROM v_b_tickets t
+           CROSS JOIN LATERAL (SELECT ${familyExpr} AS key) fam
+           WHERE ${ticketWhere}
+             AND fam.key IS NOT NULL
+           GROUP BY fam.key`,
+          ticketParams
+        )
+      : { rows: [] };
+
+    const categoryAgg = hasEquipmentInfo || hasMonitoringMeta
+      ? await queryResultOrEmpty(
+          `SELECT
+             fam.key AS family_key,
+             COALESCE(NULLIF(TRIM(t.category), ''), 'Uncategorized') AS category,
+             COUNT(*)::int AS count
+           FROM v_b_tickets t
+           CROSS JOIN LATERAL (SELECT ${familyExpr} AS key) fam
+           WHERE ${ticketWhere}
+             AND fam.key IS NOT NULL
+           GROUP BY fam.key, COALESCE(NULLIF(TRIM(t.category), ''), 'Uncategorized')
+           ORDER BY count DESC`,
+          ticketParams
+        )
+      : { rows: [] };
+
+    let alertRows = [];
+    if (hasAlerts) {
+      const alertParams = [];
+      let alertWhere = `a.deleted_at IS NULL AND a.status IN ('open', 'acked', 'linked')`;
+      if (filters.clientId != null) {
+        alertParams.push(filters.clientId);
+        alertWhere += ` AND a.client_id = $${alertParams.length}`;
+      }
+      if (filters.agentId) {
+        // Alerts are not agent-scoped; keep all for client/global.
+      }
+      if (siteName) {
+        alertParams.push(`%${siteName}%`);
+        alertWhere += ` AND (
+          LOWER(COALESCE(a.subtitle, '')) LIKE LOWER($${alertParams.length})
+          OR LOWER(COALESCE(a.meta->>'equipmentName', '')) LIKE LOWER($${alertParams.length})
+          OR LOWER(COALESCE(a.meta->>'location', '')) LIKE LOWER($${alertParams.length})
+        )`;
+      }
+      const periodParams = [...alertParams];
+      let periodWhere = alertWhere;
+      if (sinceIso) {
+        periodParams.push(sinceIso);
+        periodWhere += ` AND COALESCE(a.created_at, a.last_seen_at) >= $${periodParams.length}`;
+      }
+      if (untilIso) {
+        periodParams.push(untilIso);
+        periodWhere += ` AND COALESCE(a.created_at, a.last_seen_at) <= $${periodParams.length}`;
+      }
+      const openAgg = await queryResultOrEmpty(
+        `SELECT
+           LOWER(COALESCE(NULLIF(TRIM(a.meta->>'family'), ''), 'unknown')) AS family_key,
+           COUNT(*)::int AS alerts_open
+         FROM v_b_supervision_alerts a
+         WHERE ${alertWhere}
+         GROUP BY 1`,
+        alertParams
+      );
+      const periodAgg = await queryResultOrEmpty(
+        `SELECT
+           LOWER(COALESCE(NULLIF(TRIM(a.meta->>'family'), ''), 'unknown')) AS family_key,
+           COUNT(*)::int AS alerts_period
+         FROM v_b_supervision_alerts a
+         WHERE ${periodWhere}
+         GROUP BY 1`,
+        periodParams
+      );
+      const byFamily = new Map();
+      for (const row of openAgg.rows || []) {
+        const key = normalizeFamilyActivityKey(row.family_key);
+        if (!key) continue;
+        const cur = byFamily.get(key) || { alertsOpen: 0, alertsInPeriod: 0 };
+        cur.alertsOpen += Number(row.alerts_open) || 0;
+        byFamily.set(key, cur);
+      }
+      for (const row of periodAgg.rows || []) {
+        const key = normalizeFamilyActivityKey(row.family_key);
+        if (!key) continue;
+        const cur = byFamily.get(key) || { alertsOpen: 0, alertsInPeriod: 0 };
+        cur.alertsInPeriod += Number(row.alerts_period) || 0;
+        byFamily.set(key, cur);
+      }
+      alertRows = [...byFamily.entries()].map(([key, value]) => ({ family_key: key, ...value }));
+    }
+
+    const familiesMap = new Map();
+    const ensureFamily = key => {
+      if (!familiesMap.has(key)) {
+        familiesMap.set(key, {
+          key,
+          label: FAMILY_ACTIVITY_LABELS[key] || key,
+          ticketsCreated: 0,
+          ticketsResolved: 0,
+          alertsOpen: 0,
+          alertsInPeriod: 0,
+          categories: [],
+          resolutionRate: null
+        });
+      }
+      return familiesMap.get(key);
+    };
+
+    for (const row of ticketAgg.rows || []) {
+      const key = normalizeFamilyActivityKey(row.family_key);
+      if (!key) continue;
+      const fam = ensureFamily(key);
+      fam.ticketsCreated = Number(row.tickets_created) || 0;
+      fam.ticketsResolved = Number(row.tickets_resolved) || 0;
+      fam.resolutionRate = fam.ticketsCreated > 0
+        ? roundPct((fam.ticketsResolved / fam.ticketsCreated) * 100)
+        : null;
+    }
+    const categoriesByFamily = new Map();
+    for (const row of categoryAgg.rows || []) {
+      const key = normalizeFamilyActivityKey(row.family_key);
+      if (!key) continue;
+      const list = categoriesByFamily.get(key) || [];
+      if (list.length >= 8) continue;
+      list.push({
+        key: String(row.category || "Uncategorized"),
+        label: String(row.category || "Uncategorized"),
+        count: Number(row.count) || 0
+      });
+      categoriesByFamily.set(key, list);
+    }
+    for (const [key, list] of categoriesByFamily) {
+      ensureFamily(key).categories = list;
+    }
+    for (const row of alertRows) {
+      const key = normalizeFamilyActivityKey(row.family_key);
+      if (!key) continue;
+      const fam = ensureFamily(key);
+      fam.alertsOpen = Number(row.alertsOpen) || 0;
+      fam.alertsInPeriod = Number(row.alertsInPeriod) || 0;
+    }
+
+    const families = [...familiesMap.values()]
+      .filter(row => row.ticketsCreated > 0 || row.alertsOpen > 0 || row.alertsInPeriod > 0)
+      .sort((a, b) => (b.ticketsCreated + b.alertsInPeriod) - (a.ticketsCreated + a.alertsInPeriod));
+
+    return {
+      families,
+      sites,
+      siteId: filters.siteId || null
+    };
+  } catch (err) {
+    console.error("[dashboard] family activity stats failed:", err);
+    return empty;
+  }
+}
+
+function normalizeFamilyActivityKey(raw) {
+  const value = String(raw || "").trim().toLowerCase();
+  if (!value || value === "unknown") return null;
+  if (FAMILY_ACTIVITY_LABELS[value]) return value;
+  if (/(ordinateur|computer|\bpc\b|workstation)/.test(value)) return "ordinateurs";
+  if (/(serveur|server)/.test(value)) return "servers";
+  if (/(stockage|storage|\bnas\b)/.test(value)) return "stockage";
+  if (/firewall/.test(value)) return "firewall";
+  if (/switch/.test(value)) return "switch";
+  if (/(wifi|borne)/.test(value)) return "wifi";
+  if (/(routeur|router|sd-?wan)/.test(value)) return "routeur";
+  if (/(toip|voip|pbx)/.test(value)) return "toip";
+  if (/internet/.test(value)) return "internet";
+  if (/(alimentation|ups|ondulateur|pdu|battery)/.test(value)) return "alimentation";
+  return null;
+}
+
 async function fetchDevicesStats({
   sinceIso,
   untilIso,
@@ -1916,7 +2258,7 @@ async function fetchDevicesStats({
   const equipmentStats = await fetchMonitorableEquipmentStats();
   const clientParams = filters.clientId != null ? [filters.clientId] : [];
   const clientWhere = filters.clientId != null ? " AND client_id = $1" : "";
-  const [agentsResult, rmmResult, computersResult] = await Promise.all([countTableOrZero(`SELECT COUNT(*)::int AS count FROM v_b_users WHERE is_active = true AND COALESCE(role, '') <> 'client'`), tableExists("public.v_b_rmm_agents").then(ok => ok ? pool.query(`SELECT
+  const [agentsResult, rmmResult, computersResult, familyActivity] = await Promise.all([countTableOrZero(`SELECT COUNT(*)::int AS count FROM v_b_users WHERE is_active = true AND COALESCE(role, '') <> 'client'`), tableExists("public.v_b_rmm_agents").then(ok => ok ? pool.query(`SELECT
            COUNT(*) FILTER (WHERE COALESCE(status, 'active') = 'active')::int AS active,
            COUNT(*) FILTER (WHERE COALESCE(status, 'active') = 'active' AND last_seen_at >= NOW() - INTERVAL '15 minutes')::int AS online
          FROM v_b_rmm_agents
@@ -1944,9 +2286,21 @@ async function fetchDevicesStats({
       total: 0,
       active: 0
     }]
+  }), fetchFamilyActivityStats({
+    sinceIso,
+    untilIso,
+    filters
   })]);
   const rmmRow = rmmResult.rows?.[0] || {};
   const computersRow = computersResult.rows?.[0] || {};
+  const cockpit = await fetchDevicesCockpitStatsSafe({
+    sinceIso,
+    untilIso,
+    filters,
+    equipmentStats,
+    rmmRow,
+    computersRow
+  });
   return {
     equipTotal: equipmentStats.equipMonitoredTotal || 0,
     equipMonitoredTotal: equipmentStats.equipMonitoredTotal || 0,
@@ -1964,14 +2318,10 @@ async function fetchDevicesStats({
     rmmOnline: Number(rmmRow.online) || 0,
     computersTotal: Number(computersRow.total) || 0,
     computersActive: Number(computersRow.active) || 0,
-    cockpit: await fetchDevicesCockpitStatsSafe({
-      sinceIso,
-      untilIso,
-      filters,
-      equipmentStats,
-      rmmRow,
-      computersRow
-    })
+    cockpit: {
+      ...cockpit,
+      familyActivity
+    }
   };
 }
 
@@ -3463,7 +3813,8 @@ export async function fetchAnalyticsDashboard(options = "365d") {
     endAt,
     agentId,
     clientId,
-    contactId
+    contactId,
+    siteId
   } = input;
   const range = resolveDashboardDateRange({
     period,
@@ -3477,8 +3828,12 @@ export async function fetchAnalyticsDashboard(options = "365d") {
   const filters = parseDashboardEntityFilters({
     agentId,
     clientId,
-    contactId
+    contactId,
+    siteId
   });
+  if (filters.siteId && !(await columnExists("public.v_b_tickets", "site_id"))) {
+    filters.siteId = null;
+  }
   const [support, cockpit, planning, enterprise, reports, devices, knowledge, satisfactionAvailable] = await Promise.all([fetchSupportStats({
     sinceIso,
     untilIso,
@@ -3517,6 +3872,7 @@ export async function fetchAnalyticsDashboard(options = "365d") {
       agentId: filters.agentId,
       clientId: filters.clientId,
       contactId: filters.contactId,
+      siteId: filters.siteId,
       active: hasEntityFilters(filters)
     },
     modules: {

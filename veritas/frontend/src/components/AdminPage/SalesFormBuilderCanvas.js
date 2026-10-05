@@ -84,7 +84,7 @@ function FieldPreview({
         </div>
       </div>;
   }
-  if (field.fieldType === "user" || field.fieldType === "client" || field.fieldType === "contact" || field.fieldType === "equipment") {
+  if (field.fieldType === "user" || field.fieldType === "client" || field.fieldType === "contact" || field.fieldType === "equipment" || field.fieldType === "site") {
     const placeholder =
       field.fieldType === "user"
         ? "Select a user…"
@@ -92,7 +92,9 @@ function FieldPreview({
           ? "Select a company…"
           : field.fieldType === "equipment"
             ? "Select equipment…"
-            : "Select a contact…";
+            : field.fieldType === "site"
+              ? "Select a site…"
+              : "Select a contact…";
     return <div className={builderStyles.canvasFieldPreview}>
         <label>{label}</label>
         <select disabled>

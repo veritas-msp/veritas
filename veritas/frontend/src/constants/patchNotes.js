@@ -5,6 +5,15 @@
  */
 export const PATCH_NOTES = [
   {
+    version: "1.0.67",
+    date: "2026-10-05",
+    highlights: [
+      "Tickets et formulaires : association entreprise + lieu (site), avec champ Lieu dans les formulaires support/vente.",
+      "Tableau de bord KPI : activité par famille de matériel (tickets, résolutions, catégories, alertes) filtrable par entreprise et lieu.",
+      "Centre de supervision : correction du rognage des actions et du menu Suspendre masqué."
+    ]
+  },
+  {
     version: "1.0.66",
     date: "2026-10-05",
     highlights: [

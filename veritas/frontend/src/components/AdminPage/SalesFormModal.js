@@ -160,7 +160,7 @@ function createLocalField(fieldType, displayOrder = 0, {
   return {
     id: `temp-${Date.now()}`,
     fieldKey: `${fieldType}_${suffix}`,
-    label: meta?.label || "New field",
+    label: meta?.labelFr || meta?.label || "New field",
     fieldType,
     required: false,
     placeholder: "",
@@ -1026,7 +1026,7 @@ export default function SalesFormModal({
       <DragOverlay>
         {activeDragType ? <div className={builderStyles.paletteItem}>
             <Icon icon={PALETTE_FIELD_TYPES.find(item => item.type === activeDragType)?.icon || "mdi:form-textbox"} className={builderStyles.paletteItemIcon} />
-            {PALETTE_FIELD_TYPES.find(item => item.type === activeDragType)?.label || "Field"}
+            {PALETTE_FIELD_TYPES.find(item => item.type === activeDragType)?.labelFr || PALETTE_FIELD_TYPES.find(item => item.type === activeDragType)?.label || "Field"}
           </div> : null}
       </DragOverlay>
     </DndContext>;

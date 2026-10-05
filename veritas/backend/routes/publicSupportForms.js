@@ -27,7 +27,7 @@ function mapPublicField(row) {
   if (!row || row.enabled === false) return null;
   const fieldType = String(row.field_type || "");
   // Anonymous public forms cannot resolve authenticated entity lookups.
-  if (fieldType === "file" || fieldType === "user" || fieldType === "contact" || fieldType === "client" || fieldType === "equipment") {
+  if (fieldType === "file" || fieldType === "user" || fieldType === "contact" || fieldType === "client" || fieldType === "equipment" || fieldType === "site") {
     return null;
   }
   let options = row.options;
@@ -252,7 +252,7 @@ router.post(
       // Strip any file-like payloads for safety
       Object.keys(values).forEach(key => {
         const field = form.fields.find(f => f.fieldKey === key);
-        if (!field || field.fieldType === "file" || field.fieldType === "user" || field.fieldType === "contact" || field.fieldType === "client" || field.fieldType === "equipment") {
+        if (!field || field.fieldType === "file" || field.fieldType === "user" || field.fieldType === "contact" || field.fieldType === "client" || field.fieldType === "equipment" || field.fieldType === "site") {
           delete values[key];
         }
       });

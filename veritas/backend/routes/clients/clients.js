@@ -580,7 +580,7 @@ function appendClientSsidUpdate({
   });
   return paramIndex;
 }
-const CLIENTS_LIST_SELECT_COLUMNS = ["id", "name", "client_number", "address", "siret", "secteur", "statut", "contrat", "options", "modules", "commercial_id", "created_at", "updated_at"];
+const CLIENTS_LIST_SELECT_COLUMNS = ["id", "name", "client_number", "address", "siret", "secteur", "statut", "contrat", "options", "modules", "sites", "commercial_id", "created_at", "updated_at"];
 async function queryClientsListBaseRows() {
   const available = await getClientsAvailableColumns();
   const clientCols = CLIENTS_LIST_SELECT_COLUMNS.filter(col => available.has(col));
@@ -639,6 +639,17 @@ function mapClientsListRow(row) {
   if (!modules || typeof modules !== "object") {
     modules = {};
   }
+  let sites = client.sites || [];
+  if (typeof sites === "string") {
+    try {
+      sites = JSON.parse(sites);
+    } catch {
+      sites = [];
+    }
+  }
+  if (!Array.isArray(sites)) {
+    sites = [];
+  }
   if (hasAzureCredentials || hasO365Equipment) {
     modules = {
       ...modules,
@@ -659,7 +670,7 @@ function mapClientsListRow(row) {
     modules,
     email: null,
     phone: null,
-    sites: [],
+    sites,
     commercial: client.username || client.user_email || null
   };
 }

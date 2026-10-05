@@ -7,8 +7,8 @@ const SUBJECT_HINT = /\b(sujet|subject|objet|title|titre)\b/i;
 const DESCRIPTION_HINT = /description|detail|détail|details|message|contenu|content|body/i;
 const CATEGORY_HINT = /cat[eé]gor|category/i;
 const IMPACTED_USERS_HINT = /utilisateurs?\s*impact|impacted\s*users|nombre\s+d['’]?\s*utilisateurs/i;
-const NON_TEXT_FIELD_TYPES = new Set(["section", "file", "checkbox", "rating", "user", "client", "contact", "equipment", "multiselect"]);
-const HIDDEN_SUPPORT_FORM_DETAIL_TYPES = new Set(["user", "client", "contact", "equipment"]);
+const NON_TEXT_FIELD_TYPES = new Set(["section", "file", "checkbox", "rating", "user", "client", "contact", "equipment", "site", "multiselect"]);
+const HIDDEN_SUPPORT_FORM_DETAIL_TYPES = new Set(["user", "client", "contact", "equipment", "site"]);
 
 function normalizeHaystack(fieldOrKey, label = "") {
   if (fieldOrKey && typeof fieldOrKey === "object") {
@@ -144,7 +144,7 @@ export function shouldHideSupportFormDetailField(row, typeMap = {}) {
   const hay = normalizeHaystack(key, label);
   const type = String(typeMap?.[key] || "").toLowerCase();
   if (HIDDEN_SUPPORT_FORM_DETAIL_TYPES.has(type)) return true;
-  if (/^(user|client|contact|equipment|company|entreprise)_/i.test(key)) return true;
+  if (/^(user|client|contact|equipment|site|company|entreprise|lieu)_/i.test(key)) return true;
   if (SUBJECT_HINT.test(hay)) return true;
   if (DESCRIPTION_HINT.test(hay)) return true;
   if (CATEGORY_HINT.test(hay)) return true;

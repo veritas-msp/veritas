@@ -9,7 +9,7 @@ import { isAdminLevelProfile } from "../../config/permissionPresets.js";
 const router = express.Router();
 router.use(verifyJWT);
 const SALES_KINDS = new Set(["prestation", "installation"]);
-const FIELD_TYPES = new Set(["section", "text", "textarea", "select", "radio", "multiselect", "checkbox", "user", "contact", "client", "equipment", "number", "currency", "email", "phone", "url", "date", "time", "datetime", "rating", "file"]);
+const FIELD_TYPES = new Set(["section", "text", "textarea", "select", "radio", "multiselect", "checkbox", "user", "contact", "client", "equipment", "site", "number", "currency", "email", "phone", "url", "date", "time", "datetime", "rating", "file"]);
 const VISIBILITY_VALUES = new Set(["public", "assigned"]);
 function validationErrorOrNull(req, res) {
   const errors = validationResult(req);

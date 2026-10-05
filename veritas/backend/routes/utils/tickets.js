@@ -1623,7 +1623,10 @@ router.post("/", verifyJWT, requirePermission("tickets.create"), [body("title").
 }).isUUID(), body("assignedUserId").optional({
   nullable: true,
   checkFalsy: true
-}).isUUID(), body("isMajorIncident").optional().isBoolean(), body("contactSlots").optional().isArray(), body("equipmentInfo").optional().isObject(), body("salesFormData").optional().isObject(), body("supportFormData").optional().isObject(), body("assigneeUserIds").optional().isArray(), body("assigneeUserIds.*").optional().isUUID(), body("watcherUserIds").optional().isArray(), body("watcherUserIds.*").optional().isUUID()], async (req, res) => {
+}).isUUID(), body("isMajorIncident").optional().isBoolean(), body("contactSlots").optional().isArray(), body("equipmentInfo").optional().isObject(), body("salesFormData").optional().isObject(), body("supportFormData").optional().isObject(), body("siteId").optional({
+  nullable: true,
+  checkFalsy: true
+}).isString(), body("assigneeUserIds").optional().isArray(), body("assigneeUserIds.*").optional().isUUID(), body("watcherUserIds").optional().isArray(), body("watcherUserIds.*").optional().isUUID()], async (req, res) => {
   const validationResponse = validationErrorOrNull(req, res);
   if (validationResponse) return;
   if (rejectCommunitySalesTicketCreate(req, res)) return;
@@ -1635,6 +1638,7 @@ router.post("/", verifyJWT, requirePermission("tickets.create"), [body("title").
     const hasSlaInfo = await hasTicketColumn("sla_info");
     const hasSalesFormData = await hasTicketColumn("sales_form_data");
     const hasSupportFormData = await hasTicketColumn("support_form_data");
+    const hasSiteId = await hasTicketColumn("site_id");
     const {
       title,
       description = null,
@@ -1654,10 +1658,12 @@ router.post("/", verifyJWT, requirePermission("tickets.create"), [body("title").
       },
       salesFormData = null,
       supportFormData = null,
+      siteId = null,
       assigneeUserIds = [],
       assigneeTeamIds = [],
       watcherUserIds = []
     } = req.body;
+    const resolvedSiteId = siteId != null && String(siteId).trim() ? String(siteId).trim() : null;
     const explicitAssigneeUserIds = Array.isArray(assigneeUserIds) ? assigneeUserIds.map(id => String(id || "").trim()).filter(Boolean) : [];
     const explicitAssigneeTeamIds = Array.isArray(assigneeTeamIds) ? assigneeTeamIds.map(id => String(id || "").trim()).filter(Boolean) : [];
     const explicitWatcherUserIds = Array.isArray(watcherUserIds) ? watcherUserIds.map(id => String(id || "").trim()).filter(Boolean) : [];
@@ -1789,6 +1795,10 @@ router.post("/", verifyJWT, requirePermission("tickets.create"), [body("title").
       if (hasSupportFormData && ticketSupportFormData) {
         columns.push("support_form_data");
         values.push(JSON.stringify(ticketSupportFormData));
+      }
+      if (hasSiteId) {
+        columns.push("site_id");
+        values.push(resolvedSiteId);
       }
       columns.push("created_at", "updated_at");
       const placeholders = values.map((_, idx) => `$${idx + 1}`);
@@ -3194,7 +3204,10 @@ router.put("/:id", verifyJWT, requirePermission("tickets.edit"), [param("id").is
 }).isInt({
   min: 0,
   max: 100
-}), body("salesFormData").optional().isObject()], async (req, res) => {
+}), body("salesFormData").optional().isObject(), body("siteId").optional({
+  nullable: true,
+  checkFalsy: true
+}).isString()], async (req, res) => {
   const validationResponse = validationErrorOrNull(req, res);
   if (validationResponse) return;
   try {
@@ -3204,6 +3217,7 @@ router.put("/:id", verifyJWT, requirePermission("tickets.edit"), [param("id").is
     const hasEquipmentInfo = await hasTicketColumn("equipment_info");
     const hasProgressPercent = await hasTicketColumn("progress_percent");
     const hasSalesFormData = await hasTicketColumn("sales_form_data");
+    const hasSiteId = await hasTicketColumn("site_id");
     const {
       id
     } = req.params;
@@ -3244,6 +3258,9 @@ router.put("/:id", verifyJWT, requirePermission("tickets.edit"), [param("id").is
     }
     if (hasProgressPercent) {
       map.push(["progressPercent", "progress_percent", v => v === null || v === "" || v === undefined ? null : Math.max(0, Math.min(100, Number(v)))]);
+    }
+    if (hasSiteId) {
+      map.push(["siteId", "site_id", v => v != null && String(v).trim() ? String(v).trim() : null]);
     }
     const updates = [];
     const values = [];
@@ -3398,6 +3415,14 @@ router.put("/:id", verifyJWT, requirePermission("tickets.edit"), [param("id").is
           updates.push(`client_id = $${p++}`);
           values.push(contactClientId);
         }
+      }
+    }
+    // Changement d'entreprise sans site explicite → invalider le lieu précédent
+    if (hasSiteId && !Object.prototype.hasOwnProperty.call(req.body, "siteId")) {
+      const clientIdx = updates.findIndex(u => u.startsWith("client_id ="));
+      if (clientIdx >= 0 && String(values[clientIdx] ?? "") !== String(oldTicket.client_id ?? "")) {
+        updates.push(`site_id = $${p++}`);
+        values.push(null);
       }
     }
     if (updates.length === 0) {

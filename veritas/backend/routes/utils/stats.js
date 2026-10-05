@@ -1043,13 +1043,15 @@ router.get("/analytics-dashboard", verifyJWT, async (req, res) => {
     const agentId = String(req.query.agentId || "").trim() || null;
     const clientId = String(req.query.clientId || "").trim() || null;
     const contactId = String(req.query.contactId || "").trim() || null;
+    const siteId = String(req.query.siteId || "").trim() || null;
     const payload = await fetchAnalyticsDashboard({
       period: startAt || endAt ? null : period || "365d",
       startAt,
       endAt,
       agentId,
       clientId,
-      contactId
+      contactId,
+      siteId
     });
     res.json(payload);
   } catch (err) {
@@ -1076,6 +1078,7 @@ function analyticsQueryFromReq(req) {
     agentId: String(req.query.agentId || req.body?.agentId || "").trim() || null,
     clientId: String(req.query.clientId || req.body?.clientId || "").trim() || null,
     contactId: String(req.query.contactId || req.body?.contactId || "").trim() || null,
+    siteId: String(req.query.siteId || req.body?.siteId || "").trim() || null,
     categories: req.body?.categories || req.query.categories,
     locale: String(req.body?.locale || req.query.locale || "fr").slice(0, 2)
   };

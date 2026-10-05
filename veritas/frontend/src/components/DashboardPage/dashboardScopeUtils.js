@@ -3,7 +3,8 @@ export const DEFAULT_SCOPE_FILTER = {
   type: "all",
   agentId: null,
   clientId: null,
-  contactId: null
+  contactId: null,
+  siteId: null
 };
 export function parseScopeFilter(value) {
   const type = DASHBOARD_SCOPE_TYPES.includes(value?.type) ? value.type : "all";
@@ -14,7 +15,8 @@ export function parseScopeFilter(value) {
     type,
     agentId: type === "agent" ? String(value?.agentId || "").trim() || null : null,
     clientId: type === "client" ? String(value?.clientId || "").trim() || null : null,
-    contactId: type === "contact" ? String(value?.contactId || "").trim() || null : null
+    contactId: type === "contact" ? String(value?.contactId || "").trim() || null : null,
+    siteId: type === "client" ? String(value?.siteId || "").trim() || null : null
   };
 }
 export function isScopeFilterReady(value) {
@@ -35,7 +37,8 @@ export function normalizeScopeFilter(value) {
       type: "agent",
       agentId: parsed.agentId,
       clientId: null,
-      contactId: null
+      contactId: null,
+      siteId: null
     };
   }
   if (parsed.type === "client" && parsed.clientId) {
@@ -43,7 +46,8 @@ export function normalizeScopeFilter(value) {
       type: "client",
       agentId: null,
       clientId: parsed.clientId,
-      contactId: null
+      contactId: null,
+      siteId: parsed.siteId || null
     };
   }
   if (parsed.type === "contact" && parsed.contactId) {
@@ -51,7 +55,8 @@ export function normalizeScopeFilter(value) {
       type: "contact",
       agentId: null,
       clientId: null,
-      contactId: parsed.contactId
+      contactId: parsed.contactId,
+      siteId: null
     };
   }
   return {
@@ -66,6 +71,7 @@ export function buildScopeQueryParams(scopeFilter) {
   }
   if (normalized.type === "client" && normalized.clientId) {
     params.set("clientId", normalized.clientId);
+    if (normalized.siteId) params.set("siteId", normalized.siteId);
   }
   if (normalized.type === "contact" && normalized.contactId) {
     params.set("contactId", normalized.contactId);

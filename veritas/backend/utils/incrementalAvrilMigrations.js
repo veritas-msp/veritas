@@ -226,6 +226,9 @@ export async function buildIncrementalAvrilMigrationPlan(client = pool) {
   if ((await tableExists(client, "v_b_tickets")) && !(await columnExists(client, "v_b_tickets", "sla_info"))) {
     plan.push("20260623_ticket_sla_info.sql");
   }
+  if ((await tableExists(client, "v_b_tickets")) && !(await columnExists(client, "v_b_tickets", "site_id"))) {
+    plan.push("20261005_ticket_site_id.sql");
+  }
   if ((await tableExists(client, "v_b_tickets")) && !(await columnExists(client, "v_b_tickets", "is_major_incident"))) {
     plan.push("20260621_ticket_major_incident_contact_slots.sql");
   }

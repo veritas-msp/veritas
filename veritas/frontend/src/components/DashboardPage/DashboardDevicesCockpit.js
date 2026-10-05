@@ -8,6 +8,9 @@ const NAV = [{
   key: "overview",
   icon: "mdi:view-dashboard-outline"
 }, {
+  key: "activity",
+  icon: "mdi:chart-box-outline"
+}, {
   key: "network",
   icon: "mdi:lan"
 }, {
@@ -142,6 +145,7 @@ export default function DashboardDevicesCockpit({
   scopeHint
 }) {
   const [view, setView] = useState("overview");
+  const [selectedFamilyKey, setSelectedFamilyKey] = useState(null);
   const t = copy.devicesCockpit;
   const cockpit = data?.devices?.cockpit || {};
   const overview = cockpit.overview || {};
@@ -150,6 +154,12 @@ export default function DashboardDevicesCockpit({
   const peripherals = cockpit.peripherals || {};
   const lifecycle = cockpit.lifecycle || {};
   const renewal = cockpit.renewalHorizon || {};
+  const familyActivity = cockpit.familyActivity || {};
+  const familyRows = familyActivity.families || [];
+  const selectedFamily = useMemo(
+    () => familyRows.find(row => String(row.key) === String(selectedFamilyKey)) || null,
+    [familyRows, selectedFamilyKey]
+  );
 
   const typeItems = useMemo(() => toDist(cockpit.byType || overview.byType), [cockpit.byType, overview.byType]);
   const techItems = useMemo(() => toDist(cockpit.internetTech), [cockpit.internetTech]);
@@ -174,6 +184,75 @@ export default function DashboardDevicesCockpit({
     name: t.backupUnknown,
     count: Number(cockpit.backupStatus?.unknown) || 0
   }]).items, [cockpit.backupStatus, t.backupOk, t.backupFailed, t.backupUnknown]);
+
+  const activityView = <>
+      <div className={styles.heroKpiGrid}>
+        <HeroKpi helpAria={copy.helpAria} icon="mdi:shape-outline" value={formatNumber(familyRows.length)} label={t.kpis.familiesActive || t.kpis.byType} hint={t.hints.familiesActive || t.hints.byType} locale={locale} />
+        <HeroKpi helpAria={copy.helpAria} icon="mdi:ticket-outline" value={formatNumber(familyRows.reduce((sum, row) => sum + (Number(row.ticketsCreated) || 0), 0))} label={t.kpis.familyTickets || "Tickets"} hint={t.hints.familyTickets} locale={locale} />
+        <HeroKpi helpAria={copy.helpAria} icon="mdi:check-circle-outline" value={formatNumber(familyRows.reduce((sum, row) => sum + (Number(row.ticketsResolved) || 0), 0))} label={t.kpis.familyResolved || "Résolus"} hint={t.hints.familyResolved} locale={locale} />
+        <HeroKpi helpAria={copy.helpAria} icon="mdi:bell-alert-outline" value={formatNumber(familyRows.reduce((sum, row) => sum + (Number(row.alertsInPeriod) || 0), 0))} label={t.kpis.familyAlerts || "Alertes"} hint={t.hints.familyAlerts} locale={locale} help invert />
+      </div>
+      <Panel title={t.familyActivityTitle || "Activité par famille de matériel"} icon="mdi:table" note={t.familyActivityNote || "Tickets liés à un matériel / monitoring et alertes du centre de supervision, sur la période."}>
+        <DataTable
+          emptyLabel={copy.empty}
+          columns={[
+            {
+              key: "family",
+              label: t.cols.family || "Famille",
+              render: row => (
+                <button type="button" className={styles.linkLikeBtn || undefined} style={{ background: "none", border: "none", padding: 0, color: "inherit", font: "inherit", fontWeight: 600, cursor: "pointer", textDecoration: selectedFamilyKey === row.key ? "underline" : "none" }} onClick={() => setSelectedFamilyKey(current => current === row.key ? null : row.key)}>
+                  {row.label || row.key}
+                </button>
+              )
+            },
+            {
+              key: "tickets",
+              label: t.cols.ticketsCreated || "Tickets",
+              render: row => formatNumber(row.ticketsCreated)
+            },
+            {
+              key: "resolved",
+              label: t.cols.ticketsResolved || "Résolus",
+              render: row => formatNumber(row.ticketsResolved)
+            },
+            {
+              key: "resolution",
+              label: t.cols.resolutionRate || "Résolution",
+              render: row => row.resolutionRate != null ? formatPercent(copy, row.resolutionRate) : copy.units.none
+            },
+            {
+              key: "alertsOpen",
+              label: t.cols.alertsOpen || "Alertes ouvertes",
+              warn: row => (Number(row.alertsOpen) || 0) > 0,
+              render: row => formatNumber(row.alertsOpen)
+            },
+            {
+              key: "alertsPeriod",
+              label: t.cols.alertsPeriod || "Alertes période",
+              render: row => formatNumber(row.alertsInPeriod)
+            }
+          ]}
+          rows={familyRows.map(row => ({ ...row, id: row.key }))}
+        />
+      </Panel>
+      {selectedFamily ? <div className={styles.grid2}>
+          <DistributionPanel
+            title={(t.familyCategoriesTitle || "Catégories — {family}").replace("{family}", selectedFamily.label || selectedFamily.key)}
+            icon="mdi:tag-outline"
+            items={toDist(selectedFamily.categories || [])}
+            emptyLabel={copy.empty}
+          />
+          <Panel title={t.familySelectedKpis || "Synthèse famille"} icon="mdi:chart-donut">
+            <FollowCards items={[
+              { label: t.cols.ticketsCreated || "Tickets", value: formatNumber(selectedFamily.ticketsCreated) },
+              { label: t.cols.ticketsResolved || "Résolus", value: formatNumber(selectedFamily.ticketsResolved) },
+              { label: t.cols.resolutionRate || "Résolution", value: selectedFamily.resolutionRate != null ? formatPercent(copy, selectedFamily.resolutionRate) : copy.units.none },
+              { label: t.cols.alertsOpen || "Alertes ouvertes", value: formatNumber(selectedFamily.alertsOpen) },
+              { label: t.cols.alertsPeriod || "Alertes période", value: formatNumber(selectedFamily.alertsInPeriod) }
+            ]} />
+          </Panel>
+        </div> : null}
+    </>;
 
   const overviewView = <>
       <div className={styles.heroKpiGrid}>
@@ -436,6 +515,7 @@ export default function DashboardDevicesCockpit({
 
   const views = {
     overview: overviewView,
+    activity: activityView,
     network: networkView,
     systems: systemsView,
     peripherals: peripheralsView,

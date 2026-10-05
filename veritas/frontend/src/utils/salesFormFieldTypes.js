@@ -1,3 +1,5 @@
+import { getSiteDisplayName, getSiteId, normalizeClientSites } from "./clientSites";
+
 /** Shared sales-form field type metadata (palette + renderer + API whitelist helpers). */
 
 /** Field types that store options (one per line in the properties panel). */
@@ -392,31 +394,42 @@ export const PALETTE_FIELD_TYPES = [
   {
     type: "user",
     label: "User",
+    labelFr: "Utilisateur",
     icon: "mdi:account-outline",
     group: "variables"
   },
   {
     type: "client",
     label: "Company",
+    labelFr: "Entreprise",
     icon: "mdi:office-building-outline",
     group: "variables"
   },
   {
     type: "contact",
     label: "Contact",
+    labelFr: "Contact",
     icon: "mdi:card-account-details-outline",
     group: "variables"
   },
   {
     type: "equipment",
     label: "Equipment",
+    labelFr: "Équipement",
     icon: "mdi:desktop-classic",
+    group: "variables"
+  },
+  {
+    type: "site",
+    label: "Site",
+    labelFr: "Lieu",
+    icon: "mdi:map-marker-outline",
     group: "variables"
   }
 ];
 
 /** Entity lookup fields that need authenticated entity lists (not for anonymous public forms). */
-export const ENTITY_LOOKUP_FIELD_TYPES = new Set(["user", "client", "contact", "equipment"]);
+export const ENTITY_LOOKUP_FIELD_TYPES = new Set(["user", "client", "contact", "equipment", "site"]);
 
 export function isEntityLookupField(fieldOrType) {
   const type = typeof fieldOrType === "string" ? fieldOrType : fieldOrType?.fieldType;
@@ -433,6 +446,23 @@ export function findFormEquipmentFieldKeys(fields = []) {
   return (Array.isArray(fields) ? fields : [])
     .filter(item => String(item?.fieldType || "") === "equipment" && item?.fieldKey)
     .map(item => item.fieldKey);
+}
+
+export function findFormSiteFieldKeys(fields = []) {
+  return (Array.isArray(fields) ? fields : [])
+    .filter(item => String(item?.fieldType || "") === "site" && item?.fieldKey)
+    .map(item => item.fieldKey);
+}
+
+/** Sites of a company for a form "site" (lieu) field. */
+export function getFormSiteOptionsForClient(clients = [], clientId = null) {
+  if (clientId == null || clientId === "") return [];
+  const client = (Array.isArray(clients) ? clients : []).find(c => String(c.id) === String(clientId));
+  return normalizeClientSites(client?.sites).map(site => ({
+    id: getSiteId(site),
+    label: getSiteDisplayName(site),
+    name: getSiteDisplayName(site)
+  }));
 }
 
 /**

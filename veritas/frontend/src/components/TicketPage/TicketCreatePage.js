@@ -14,8 +14,9 @@ import { getTicketCreateCopy } from "./ticketCreatePageI18n";
 import { buildLinkedEquipmentComment, getEquipmentPickerLabel, getEquipmentSearchText, loadClientEquipments, serializeEquipmentInfo } from "./ticketEquipmentUtils";
 import { buildClientContractSummary, computeSupportCreditTotals } from "./ticketClientSummaryUtils";
 import { buildLinkedTicketComment, getTicketLinkLabel, getTicketLinkSearchText } from "./ticketLinkUtils";
+import { getContactClientOptions, getContactSiteOptions } from "./ticketContactClientUtils";
 import { formatClientSlaRows, parseClientSla } from "../../utils/ticketSlaUtils";
-import { isFileField, findFormEquipmentFieldKeys, findFormClientFieldKey, resolveFormScopedClientId } from "../../utils/salesFormFieldTypes";
+import { isFileField, findFormEquipmentFieldKeys, findFormClientFieldKey, findFormSiteFieldKeys, resolveFormScopedClientId } from "../../utils/salesFormFieldTypes";
 import { collectSupportFormFiles, findFormDescriptionField, findFormSubjectField, resolveTicketContentFromSupportForm } from "../../utils/supportFormTicketContent";
 import ContactFormModal from "../ContactsPage/ContactFormModal";
 import SmartTooltip from "../SmartTooltip";
@@ -96,27 +97,6 @@ function getContactLabel(contact, copy) {
   const base = fullName || contact?.email || copy.formatContactFallback(contact?.id);
   if (contact?.email && fullName) return `${fullName} · ${contact.email}`;
   return base;
-}
-function getContactClientOptions(contact, clients = []) {
-  const linked = Array.isArray(contact?.clients) ? contact.clients : [];
-  if (linked.length > 0) {
-    return linked.map(row => {
-      const id = row.id ?? row.client_id;
-      const listed = clients.find(c => String(c.id) === String(id));
-      return {
-        id,
-        name: row.name || row.client_name || listed?.name || listed?.nom || (id != null ? `Client #${id}` : "")
-      };
-    }).filter(row => row.id != null);
-  }
-  if (contact?.client_id) {
-    const listed = clients.find(c => String(c.id) === String(contact.client_id));
-    return [{
-      id: contact.client_id,
-      name: contact.client_name || contact.entreprise || listed?.name || listed?.nom || `Client #${contact.client_id}`
-    }];
-  }
-  return [];
 }
 function contactBelongsToClient(contact, clientId) {
   if (!contact || clientId == null || clientId === "") return false;
@@ -569,6 +549,7 @@ export default function TicketCreatePage({
   const [loadingClientTickets, setLoadingClientTickets] = useState(false);
   const [requesterContactId, setRequesterContactId] = useState(initialData?.contactId || "");
   const [ticketClientId, setTicketClientId] = useState(initialData?.clientId || "");
+  const [ticketSiteId, setTicketSiteId] = useState("");
   const [contactSearch, setContactSearch] = useState("");
   const [showContactDropdown, setShowContactDropdown] = useState(false);
   const [contactHighlight, setContactHighlight] = useState(0);
@@ -717,6 +698,22 @@ export default function TicketCreatePage({
     setTicketClientId(selectedContact.client_id ? String(selectedContact.client_id) : "");
   }, [selectedContact, contactClientOptions, initialData?.clientId]);
   const resolvedTicketClientId = ticketClientId || (contactClientOptions.length === 1 ? contactClientOptions[0].id : null) || selectedContact?.client_id || initialData?.clientId || null;
+  const contactSiteOptions = useMemo(
+    () => getContactSiteOptions(selectedContact, resolvedTicketClientId, clients),
+    [selectedContact, resolvedTicketClientId, clients]
+  );
+  const requiresSiteSelect = contactSiteOptions.length > 0;
+  useEffect(() => {
+    if (!resolvedTicketClientId || contactSiteOptions.length === 0) {
+      setTicketSiteId("");
+      return;
+    }
+    setTicketSiteId(prev => {
+      if (prev && contactSiteOptions.some(opt => String(opt.id) === String(prev))) return prev;
+      if (contactSiteOptions.length === 1) return String(contactSiteOptions[0].id);
+      return "";
+    });
+  }, [resolvedTicketClientId, contactSiteOptions]);
   const earlySelectedSupportForm = useMemo(() => {
     const rows = (Array.isArray(supportForms) ? supportForms : []).filter(form => form?.enabled !== false);
     const selected = rows.find(form => String(form.id) === String(selectedSupportFormId));
@@ -889,6 +886,18 @@ export default function TicketCreatePage({
     [selectedSupportForm]
   );
   const hasFormEquipmentField = formEquipmentFieldKeys.length > 0;
+  const formSiteFieldKeys = useMemo(
+    () => findFormSiteFieldKeys(selectedSupportForm?.fields || []),
+    [selectedSupportForm]
+  );
+  const hasFormSiteField = formSiteFieldKeys.length > 0;
+  const formSiteId = useMemo(() => {
+    for (const key of formSiteFieldKeys) {
+      const raw = supportFormValues?.[key];
+      if (raw != null && String(raw).trim() !== "") return String(raw).trim();
+    }
+    return "";
+  }, [formSiteFieldKeys, supportFormValues]);
   const formScopedClientId = useMemo(
     () => resolveFormScopedClientId(selectedSupportForm?.fields || [], supportFormValues, resolvedTicketClientId),
     [selectedSupportForm, supportFormValues, resolvedTicketClientId]
@@ -1559,6 +1568,7 @@ export default function TicketCreatePage({
         category: resolvedCategory,
         channel,
         clientId: resolvedTicketClientId || null,
+        siteId: formSiteId || ticketSiteId || null,
         assignedUserId: preAssigneeUserIds[0] || null,
         requesterUserId: null,
         requesterContactId,
@@ -1952,6 +1962,7 @@ export default function TicketCreatePage({
                       </label>
                       <select id="ticket-create-company" className={`${s.input} ${fieldErrors.company ? s.inputError : ""}`.trim()} value={ticketClientId || ""} onChange={e => {
                   setTicketClientId(e.target.value);
+                  setTicketSiteId("");
                   setFieldErrors(prev => ({
                     ...prev,
                     company: undefined
@@ -1965,6 +1976,20 @@ export default function TicketCreatePage({
                       {fieldErrors.company ? <p className={s.equipmentHint}>{copy.companyRequired}</p> : null}
                     </div> : null}
 
+                  {selectedContact && resolvedTicketClientId && requiresSiteSelect && !hasFormSiteField ? <div className={s.fieldBlock} style={{
+                  marginTop: "0.85rem"
+                }}>
+                      <label className={s.fieldLabel} htmlFor="ticket-create-site">
+                        {copy.selectSite || copy.site || "Lieu"}
+                      </label>
+                      <select id="ticket-create-site" className={s.input} value={ticketSiteId || ""} onChange={e => setTicketSiteId(e.target.value)}>
+                        <option value="">{copy.selectSite || "Sélectionner un lieu"}</option>
+                        {contactSiteOptions.map(opt => <option key={opt.id} value={opt.id}>
+                            {opt.name}
+                          </option>)}
+                      </select>
+                    </div> : null}
+
                   {selectedContact && <div className={s.contactSummaryCard}>
                       <div className={s.contactSummaryMain}>
                         <div className={s.clientAvatarSm} aria-hidden>
@@ -1973,7 +1998,9 @@ export default function TicketCreatePage({
                         <div className={s.contactSummaryTop}>
                           <div className={s.contactSummaryIdentity}>
                             <p className={s.contactSummaryName}>{getContactDisplayName(selectedContact, copy)}</p>
-                            {clientLabel && <p className={s.contactSummaryCompany}>{clientLabel}</p>}
+                            {(clientLabel || ticketSiteId) && <p className={s.contactSummaryCompany}>
+                                {[clientLabel, contactSiteOptions.find(opt => String(opt.id) === String(ticketSiteId))?.name].filter(Boolean).join(" | ")}
+                              </p>}
                           </div>
                           <button type="button" className={s.contactEditBtn} onClick={openContactEditModal} aria-label={copy.editContactAria}>
                             <Icon icon="mdi:pencil-outline" aria-hidden />

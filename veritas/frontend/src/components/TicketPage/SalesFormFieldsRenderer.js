@@ -3,7 +3,7 @@ import { createPortal } from "react-dom";
 import { Icon } from "@iconify/react";
 import s from "./TicketCreatePage.module.css";
 import { fieldIsVisible, filterVisibleFields } from "../../utils/salesFormConditions";
-import { SHELL_FIELD_TYPES, formatFileFieldAccept, filterContactFieldChoices, findFormClientFieldKey, findFormContactFieldKeysScopedByClient, getCheckboxFieldCopy, getContactFieldConfig, getFileFieldConfig, groupFieldsBySection, isLayoutField, validateSalesFormFile, filterEquipmentsForClientScope, resolveFormScopedClientId } from "../../utils/salesFormFieldTypes";
+import { SHELL_FIELD_TYPES, formatFileFieldAccept, filterContactFieldChoices, findFormClientFieldKey, findFormContactFieldKeysScopedByClient, getCheckboxFieldCopy, getContactFieldConfig, getFileFieldConfig, getFormSiteOptionsForClient, groupFieldsBySection, isLayoutField, validateSalesFormFile, filterEquipmentsForClientScope, resolveFormScopedClientId } from "../../utils/salesFormFieldTypes";
 import { getEquipmentPickerLabel } from "./ticketEquipmentUtils";
 import { getModalDropdownZIndex } from "../../utils/dropdownPortal";
 import { useAppLocale } from "../../hooks/useAppGeneralSettings";
@@ -237,6 +237,13 @@ function formatFieldValue(field, value, {
   if (field.fieldType === "equipment") {
     const equipment = equipments.find(row => String(row.id) === String(value));
     return equipment ? getEquipmentPickerLabel(equipment) : value || "";
+  }
+  if (field.fieldType === "site") {
+    for (const client of Array.isArray(clients) ? clients : []) {
+      const match = getFormSiteOptionsForClient([client], client?.id).find(row => String(row.id) === String(value));
+      if (match) return match.label || match.name || value || "";
+    }
+    return value || "";
   }
   if (field.fieldType === "multiselect") {
     const selected = Array.isArray(value) ? value : String(value || "").split(",").map(part => part.trim()).filter(Boolean);
@@ -570,7 +577,7 @@ export default function SalesFormFieldsRenderer({
     const changedField = (Array.isArray(fields) ? fields : []).find(field => String(field?.fieldKey) === String(fieldKey));
     if (changedField?.fieldType === "client") {
       (Array.isArray(fields) ? fields : []).forEach(field => {
-        if (field?.fieldType === "equipment" && field.fieldKey) {
+        if ((field?.fieldType === "equipment" || field?.fieldType === "site") && field.fieldKey) {
           next[field.fieldKey] = "";
         }
       });
@@ -681,6 +688,25 @@ export default function SalesFormFieldsRenderer({
           ? "No equipment available"
           : "No equipment found";
       return <SearchableSelectField value={value} options={options} placeholder={field.placeholder || "Search equipment…"} emptyResultsHint={emptyHint} onChange={next => patchValue(field.fieldKey, next)} />;
+    }
+    if (field.fieldType === "site") {
+      const siteOptions = getFormSiteOptionsForClient(clients, scopedClientId).map(site => ({
+        id: site.id,
+        label: site.label || site.name,
+        hint: ""
+      }));
+      const emptyHint = !scopedClientId
+        ? (locale === "fr" ? "Sélectionnez d’abord une entreprise" : "Select a company first")
+        : siteOptions.length === 0
+          ? (locale === "fr" ? "Aucun lieu pour cette entreprise" : "No site for this company")
+          : (locale === "fr" ? "Aucun lieu trouvé" : "No site found");
+      return <SearchableSelectField
+        value={value}
+        options={siteOptions}
+        placeholder={field.placeholder || (locale === "fr" ? "Rechercher un lieu…" : "Search a site…")}
+        emptyResultsHint={emptyHint}
+        onChange={next => patchValue(field.fieldKey, next)}
+      />;
     }
     if (field.fieldType === "currency") {
       return <div style={{

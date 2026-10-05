@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Icon } from "@iconify/react";
 import { fetchActiveUsers } from "../../api/users";
 import { fetchClientsList, fetchContactsList } from "../../api/clients";
+import { normalizeClientSites, getSiteDisplayName, getSiteId } from "../../utils/clientSites";
 import { DEFAULT_SCOPE_FILTER, normalizeScopeFilter, parseScopeFilter } from "./dashboardScopeUtils";
 import styles from "./DashboardScopeFilter.module.css";
 function getUserLabel(user) {
@@ -20,6 +21,12 @@ function getContactLabel(contact) {
     : contact?.client_name || contact?.entreprise || "";
   if (fullName && company) return `${fullName} · ${company}`;
   return fullName || contact?.email || `#${contact?.id}` || "-";
+}
+function getClientSiteOptions(client) {
+  return normalizeClientSites(client?.sites).map(site => ({
+    value: getSiteId(site),
+    label: getSiteDisplayName(site)
+  })).filter(opt => opt.value && opt.label);
 }
 export default function DashboardScopeFilter({
   copy,
@@ -81,6 +88,13 @@ export default function DashboardScopeFilter({
     return [];
   }, [agents, clients, contacts, scopeType]);
   const selectedEntityId = scopeType === "agent" ? parsed.agentId || "" : scopeType === "client" ? parsed.clientId || "" : scopeType === "contact" ? parsed.contactId || "" : "";
+  const selectedClient = useMemo(
+    () => (scopeType === "client" && selectedEntityId
+      ? clients.find(row => String(row.id) === String(selectedEntityId)) || null
+      : null),
+    [scopeType, selectedEntityId, clients]
+  );
+  const siteOptions = useMemo(() => getClientSiteOptions(selectedClient), [selectedClient]);
   const handleTypeChange = event => {
     const nextType = event.target.value;
     if (nextType === "all") {
@@ -93,7 +107,8 @@ export default function DashboardScopeFilter({
       type: nextType,
       agentId: null,
       clientId: null,
-      contactId: null
+      contactId: null,
+      siteId: null
     });
   };
   const handleEntityChange = event => {
@@ -109,7 +124,8 @@ export default function DashboardScopeFilter({
         type: "agent",
         agentId: entityId,
         clientId: null,
-        contactId: null
+        contactId: null,
+        siteId: null
       });
       return;
     }
@@ -118,7 +134,8 @@ export default function DashboardScopeFilter({
         type: "client",
         agentId: null,
         clientId: entityId,
-        contactId: null
+        contactId: null,
+        siteId: null
       });
       return;
     }
@@ -126,7 +143,18 @@ export default function DashboardScopeFilter({
       type: "contact",
       agentId: null,
       clientId: null,
-      contactId: entityId
+      contactId: entityId,
+      siteId: null
+    });
+  };
+  const handleSiteChange = event => {
+    const nextSiteId = event.target.value || null;
+    onChange?.({
+      type: "client",
+      agentId: null,
+      clientId: selectedEntityId,
+      contactId: null,
+      siteId: nextSiteId
     });
   };
   const handleClear = () => {
@@ -155,6 +183,16 @@ export default function DashboardScopeFilter({
           </select>
         </label> : null}
 
+      {scopeType === "client" && selectedEntityId && siteOptions.length > 0 ? <label className={`${styles.field} ${styles.fieldEntity}`}>
+          {compact ? null : <span className={styles.fieldLabel}>{copy.siteLabel || "Lieu"}</span>}
+          <select className={styles.select} value={parsed.siteId || ""} onChange={handleSiteChange} disabled={disabled || loading} aria-label={copy.siteAria || copy.siteLabel || "Lieu"}>
+            <option value="">{copy.allSites || "Tous les lieux"}</option>
+            {siteOptions.map(option => <option key={option.value} value={option.value}>
+                {option.label}
+              </option>)}
+          </select>
+        </label> : null}
+
       {scopeType !== "all" && selectedEntityId ? <button type="button" className={styles.clearBtn} onClick={handleClear} disabled={disabled} aria-label={copy.clearAria}>
           <Icon icon="mdi:close-circle-outline" aria-hidden />
           <span>{copy.clear}</span>
@@ -176,7 +214,11 @@ export function getScopeFilterSummary(scopeFilter, copy, {
   if (normalized.type === "client") {
     const match = clients.find(row => String(row.id) === String(normalized.clientId));
     const label = match ? getClientLabel(match) : normalized.clientId;
-    return copy.activeClient.replace("{name}", label);
+    const site = normalized.siteId
+      ? getClientSiteOptions(match).find(opt => String(opt.value) === String(normalized.siteId))
+      : null;
+    const base = copy.activeClient.replace("{name}", label);
+    return site?.label ? `${base} · ${site.label}` : base;
   }
   const match = contacts.find(row => String(row.id) === String(normalized.contactId));
   const label = match ? getContactLabel(match) : normalized.contactId;
