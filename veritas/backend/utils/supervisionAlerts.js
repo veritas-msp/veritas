@@ -2,7 +2,14 @@ import { pool } from "../database/db.js";
 import { listCheckmkHistoryItems } from "../routes/integrations/checkmk/equipmentMonitoringSync.js";
 import { ensureSupervisionAlertsSchema } from "../services/ensureSupervisionAlertsSchema.js";
 import { formatMonitorIssueLabel } from "./monitorIssueLabel.js";
-import { SUPERVISION_ALERT_CRITERIA } from "./supervisionAlertRules.js";
+import { SUPERVISION_ALERT_CRITERIA, getSupervisionAlertRules, isSupervisionCriterionEnabled } from "./supervisionAlertRules.js";
+import { getCheckmkMonitoringSettings, isCheckmkSyncStale } from "./checkmkMonitoringSettings.js";
+import {
+  areMonitoringAlertsEnabled,
+  isAlertSuspensionActive,
+  resolveAlertStatusFromSettings
+} from "./equipmentMonitoringAlerts.js";
+import { isClientMonitoringAlertsSuspended } from "./clientMonitoringAlerts.js";
 
 const ACTIVE_STATUSES = new Set(["open", "acked", "linked"]);
 const CLOSE_REASONS = new Set(["resolved", "dismissed"]);
@@ -200,7 +207,195 @@ export async function listActiveSupervisionAlerts() {
        COALESCE(a.created_at, a.last_seen_at) ASC`,
     [["open", "acked", "linked"]]
   );
-  return result.rows.map(mapAlert);
+  return enrichSupervisionAlertsLiveContext(result.rows.map(mapAlert));
+}
+
+function emaSettingsFromRow(row) {
+  if (!row) return null;
+  return {
+    alertsEnabled: row.alerts_enabled !== false,
+    suspensionType: row.suspension_type || null,
+    suspendedUntil: row.suspended_until || null,
+    suspensionReason: row.suspension_reason || null
+  };
+}
+
+export async function enrichSupervisionAlertsLiveContext(alerts = []) {
+  const list = Array.isArray(alerts) ? alerts.filter(Boolean) : [];
+  if (!list.length) return list;
+
+  const equipmentIds = [...new Set(list.map(a => String(a.equipmentId || "").trim()).filter(isUuid))];
+  const clientIds = [
+    ...new Set(list.map(a => Number(a.clientId)).filter(id => Number.isFinite(id) && id > 0))
+  ];
+
+  const [mkSettings, rules, mkRes, emaRes, clientRes] = await Promise.all([
+    getCheckmkMonitoringSettings().catch(() => null),
+    getSupervisionAlertRules().catch(() => null),
+    equipmentIds.length
+      ? queryOrEmpty(
+          `SELECT equipment_id, last_synced_at, checkmk_host_name, checkmk_site
+             FROM v_b_equipment_checkmk_monitoring
+            WHERE equipment_id = ANY($1::uuid[])`,
+          [equipmentIds]
+        )
+      : { rows: [] },
+    equipmentIds.length
+      ? queryOrEmpty(
+          `SELECT client_id, equipment_id, equipment_family, alerts_enabled,
+                  suspension_type, suspended_until, suspension_reason
+             FROM v_b_equipment_monitoring_alerts
+            WHERE equipment_id = ANY($1::uuid[])`,
+          [equipmentIds]
+        )
+      : { rows: [] },
+    clientIds.length
+      ? queryOrEmpty(
+          `SELECT id,
+                  monitoring_alerts_suspension_type,
+                  monitoring_alerts_suspended_until,
+                  monitoring_alerts_suspension_reason
+             FROM v_b_clients
+            WHERE id = ANY($1::bigint[])`,
+          [clientIds]
+        )
+      : { rows: [] }
+  ]);
+
+  const mkByEq = new Map(
+    (mkRes.rows || []).map(row => [String(row.equipment_id), row])
+  );
+  const emaByEqClient = new Map();
+  for (const row of emaRes.rows || []) {
+    emaByEqClient.set(`${row.client_id}:${row.equipment_id}`, row);
+  }
+  const clientById = new Map((clientRes.rows || []).map(row => [Number(row.id), row]));
+
+  return list.map(alert => {
+    const eqId = String(alert.equipmentId || "").trim();
+    const mk = mkByEq.get(eqId);
+    const ema = emaByEqClient.get(`${alert.clientId}:${eqId}`) || null;
+    const clientRow = clientById.get(Number(alert.clientId));
+    const eqSettings = emaSettingsFromRow(ema);
+    const clientSuspended = isClientMonitoringAlertsSuspended({
+      suspensionType: clientRow?.monitoring_alerts_suspension_type || null,
+      suspendedUntil: clientRow?.monitoring_alerts_suspended_until || null
+    });
+    const eqMuted = eqSettings ? !areMonitoringAlertsEnabled(eqSettings) : false;
+    const muted = Boolean(clientSuspended || eqMuted);
+    let muteStatus = "active";
+    if (clientSuspended) muteStatus = "client_suspended";
+    else if (eqSettings) muteStatus = resolveAlertStatusFromSettings(eqSettings);
+    const lastSyncedAt = mk?.last_synced_at || alert.meta?.lastSyncedAt || null;
+    const stale = lastSyncedAt
+      ? isCheckmkSyncStale(lastSyncedAt, mkSettings?.staleAfterMs)
+      : true;
+    const family = String(alert.meta?.family || ema?.equipment_family || "").trim() || null;
+    const criterionKey = String(alert.meta?.criterionKey || "").trim() || null;
+    const ruleEnabled =
+      family && criterionKey && rules
+        ? isSupervisionCriterionEnabled(family, criterionKey, rules)
+        : null;
+    return {
+      ...alert,
+      lastSyncedAt,
+      stale,
+      freshnessMinutes: lastSyncedAt
+        ? Math.max(0, Math.round((Date.now() - new Date(lastSyncedAt).getTime()) / 60000))
+        : null,
+      hostName: alert.meta?.hostName || mk?.checkmk_host_name || null,
+      checkmkSite: mk?.checkmk_site || null,
+      muted,
+      muteStatus,
+      mutedUntil: eqSettings?.suspendedUntil || clientRow?.monitoring_alerts_suspended_until || null,
+      muteReason:
+        eqSettings?.suspensionReason ||
+        clientRow?.monitoring_alerts_suspension_reason ||
+        null,
+      family,
+      ruleEnabled,
+      eqAlertsEnabled: eqSettings == null ? true : eqSettings.alertsEnabled !== false,
+      eqSuspended: isAlertSuspensionActive(eqSettings)
+    };
+  });
+}
+
+export async function getSupervisionAlertById(alertId) {
+  await ensureSupervisionAlertsSchema();
+  const id = String(alertId || "").trim();
+  if (!isUuid(id)) return null;
+  const result = await pool.query(
+    `SELECT ${ALERT_SELECT_WITH_ACTORS}
+     FROM v_b_supervision_alerts a
+     ${ALERT_ACTOR_JOINS}
+     WHERE a.id = $1::uuid
+     LIMIT 1`,
+    [id]
+  );
+  const mapped = mapAlert(result.rows[0]);
+  if (!mapped) return null;
+  const [enriched] = await enrichSupervisionAlertsLiveContext([mapped]);
+  return enriched || mapped;
+}
+
+export async function getSupervisionAlertDiagnostic(alertId) {
+  const alert = await getSupervisionAlertById(alertId);
+  if (!alert) return null;
+  const events = await getSupervisionAlertEvents(alertId);
+  const criterionKey = alert.meta?.criterionKey || null;
+  const serviceName = alert.meta?.serviceName || alert.meta?.primaryService || null;
+  const lastAction = events[0] || null;
+  const whyOpen = [
+    serviceName
+      ? `Service CheckMK « ${serviceName} » en ${alert.severity || "alerte"}`
+      : `Alerte ${alert.severity || ""}`.trim(),
+    criterionKey ? `règle ${criterionKey}` : null,
+    alert.ruleEnabled === false ? "règle actuellement désactivée" : null,
+    alert.stale ? "snapshot CheckMK périmé" : null,
+    alert.muted ? `alertes fiche : ${alert.muteStatus}` : null
+  ]
+    .filter(Boolean)
+    .join(" · ");
+  const whyClosed =
+    alert.status === "closed"
+      ? [
+          lastAction?.action || alert.closedReason || "closed",
+          lastAction?.note || null,
+          alert.meta?.autoResolved ? "auto-resolve (retour OK)" : null
+        ]
+          .filter(Boolean)
+          .join(" · ")
+      : null;
+  return {
+    alert,
+    events,
+    diagnostic: {
+      serviceName,
+      hostName: alert.hostName || alert.meta?.hostName || null,
+      checkmkSite: alert.checkmkSite || null,
+      family: alert.family || alert.meta?.family || null,
+      criterionKey,
+      fingerprint: alert.meta?.fingerprint || null,
+      lastSyncedAt: alert.lastSyncedAt || null,
+      stale: Boolean(alert.stale),
+      ruleEnabled: alert.ruleEnabled,
+      muteStatus: alert.muteStatus,
+      mutedUntil: alert.mutedUntil,
+      muteReason: alert.muteReason,
+      pluginOutput: alert.meta?.pluginOutput || null,
+      source: alert.meta?.source || null,
+      whyOpen,
+      whyClosed,
+      lastAction: lastAction
+        ? {
+            action: lastAction.action,
+            at: lastAction.createdAt,
+            actor: lastAction.actorName || null,
+            note: lastAction.note || null
+          }
+        : null
+    }
+  };
 }
 
 export async function listOpenSupervisionAlertsForEquipment(equipmentId) {

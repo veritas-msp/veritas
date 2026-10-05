@@ -227,6 +227,7 @@ const FR = {
     statusDisabled: "Désactivées",
     durations: {
       "60": "1 heure",
+      "120": "2 heures",
       "240": "4 heures",
       "1440": "24 heures",
       "10080": "7 jours",
@@ -959,6 +960,7 @@ const EN = {
     statusDisabled: "Disabled",
     durations: {
       "60": "1 hour",
+      "120": "2 hours",
       "240": "4 hours",
       "1440": "24 hours",
       "10080": "7 days",
@@ -1803,6 +1805,7 @@ const DE = {
     statusDisabled: "Deaktiviert",
     durations: {
       "60": "1 Stunde",
+      "120": "2 Stunden",
       "240": "4 Stunden",
       "1440": "24 Stunden",
       "10080": "7 Tage",
@@ -2174,6 +2177,7 @@ const IT = {
     statusDisabled: "Disattivate",
     durations: {
       "60": "1 ora",
+      "120": "2 ore",
       "240": "4 ore",
       "1440": "24 ore",
       "10080": "7 giorni",
@@ -2545,6 +2549,7 @@ const ES = {
     statusDisabled: "Desactivadas",
     durations: {
       "60": "1 hora",
+      "120": "2 horas",
       "240": "4 horas",
       "1440": "24 horas",
       "10080": "7 días",
@@ -2588,7 +2593,7 @@ const PAGE_COPY = {
   it: IT,
   es: ES
 };
-const ALERT_DURATION_VALUES = [60, 240, 1440, 10080, 43200];
+const ALERT_DURATION_VALUES = [60, 120, 240, 1440, 10080, 43200];
 export const getEquipmentDetailCopy = createLocaleGetter(PAGE_COPY);
 export function getAlertStatusLabel(locale, suspended, alertsEnabled) {
   const labels = getEquipmentDetailCopy(locale).alertSettings;

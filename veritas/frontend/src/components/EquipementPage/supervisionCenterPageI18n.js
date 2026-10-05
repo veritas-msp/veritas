@@ -170,7 +170,11 @@ const SUPERVISION_COPY = {
         ack: "Prendre en charge",
         unack: "Rendre",
         resolve: "Résoudre",
-        dismiss: "Ignorer"
+        dismiss: "Ignorer",
+        resync: "Resync",
+        mute: "Mute",
+        unmute: "Réactiver",
+        diagnose: "Diagnostic"
       },
       actionHints: {
         ack: "Prendre en charge cette alerte",
@@ -181,7 +185,50 @@ const SUPERVISION_COPY = {
         plan: "Planifier un événement lié à cette alerte",
         resolve: "Marquer comme résolue et envoyer dans l'historique",
         dismiss: "Ignorer l'alerte et l'envoyer dans l'historique",
-        open: "Ouvrir la fiche ou le détail lié"
+        open: "Ouvrir la fiche ou le détail lié",
+        resync: "Relancer la sync CheckMK de cet hôte",
+        mute: "Suspendre les alertes de ce périphérique (comme sur la fiche)",
+        unmute: "Réactiver les alertes de ce périphérique",
+        diagnose: "Voir le diagnostic admin de cette alerte"
+      },
+      freshness: {
+        fresh: "Sync récente",
+        stale: "Données périmées",
+        never: "Jamais sync",
+        ago: "Sync il y a {time}"
+      },
+      mute: {
+        title: "Mute périphérique",
+        hint: "Même réglage que le bouton Alertes de la fiche matériel.",
+        hours2: "2 heures",
+        tomorrow: "Jusqu’à demain 8h",
+        hours24: "24 heures",
+        disabled: "Désactiver les alertes",
+        unmute: "Réactiver les alertes",
+        muted: "Mute",
+        until: "jusqu’à {date}",
+        disabledBadge: "Alertes off",
+        client: "Client suspendu"
+      },
+      showMuted: "Afficher les alertes en mute",
+      mutedCount: "{count} en mute",
+      diagnose: {
+        title: "Diagnostic alerte",
+        close: "Fermer",
+        service: "Service CheckMK",
+        host: "Hôte",
+        lastSync: "Dernière sync",
+        rule: "Règle appliquée",
+        ruleOn: "activée",
+        ruleOff: "désactivée",
+        fingerprint: "Fingerprint",
+        whyOpen: "Pourquoi ouverte",
+        whyClosed: "Pourquoi fermée",
+        mute: "État alertes fiche",
+        output: "Sortie plugin",
+        events: "Historique",
+        loading: "Chargement du diagnostic…",
+        error: "Impossible de charger le diagnostic."
       },
       createModal: {
         title: "Créer une remédiation",
@@ -206,7 +253,12 @@ const SUPERVISION_COPY = {
         dismissed: "Alerte ignorée — déplacée dans l'historique",
         linked: "Ticket associé à l'alerte",
         actionFailed: "Action impossible sur l'alerte",
-        supportFormRequired: "Configurez un formulaire support dans la règle d'alerte avant de créer un ticket."
+        supportFormRequired: "Configurez un formulaire support dans la règle d'alerte avant de créer un ticket.",
+        resyncOk: "Hôte resynchronisé",
+        resyncFail: "Resync impossible",
+        muted: "Alertes suspendues pour ce périphérique",
+        unmuted: "Alertes réactivées pour ce périphérique",
+        muteFail: "Impossible de modifier le mute"
       },
       detailBackups: "Détail sauvegardes",
       detailContracts: "Détail contrats & licences",
@@ -626,7 +678,11 @@ const SUPERVISION_COPY = {
         ack: "Acknowledge",
         unack: "Release",
         resolve: "Resolve",
-        dismiss: "Dismiss"
+        dismiss: "Dismiss",
+        resync: "Resync",
+        mute: "Mute",
+        unmute: "Unmute",
+        diagnose: "Diagnose"
       },
       actionHints: {
         ack: "Acknowledge this alert — mark that you are handling it",
@@ -637,7 +693,50 @@ const SUPERVISION_COPY = {
         plan: "Schedule a planning event linked to this alert",
         resolve: "Mark as resolved and move to history",
         dismiss: "Dismiss the alert and move it to history",
-        open: "Open the related record or details"
+        open: "Open the related record or details",
+        resync: "Re-run CheckMK sync for this host",
+        mute: "Suspend alerts for this device (same as the equipment header)",
+        unmute: "Re-enable alerts for this device",
+        diagnose: "Open admin diagnostic for this alert"
+      },
+      freshness: {
+        fresh: "Fresh sync",
+        stale: "Stale data",
+        never: "Never synced",
+        ago: "Synced {time} ago"
+      },
+      mute: {
+        title: "Device mute",
+        hint: "Same setting as the Alerts button on the equipment page.",
+        hours2: "2 hours",
+        tomorrow: "Until tomorrow 8am",
+        hours24: "24 hours",
+        disabled: "Disable alerts",
+        unmute: "Re-enable alerts",
+        muted: "Muted",
+        until: "until {date}",
+        disabledBadge: "Alerts off",
+        client: "Client suspended"
+      },
+      showMuted: "Show muted alerts",
+      mutedCount: "{count} muted",
+      diagnose: {
+        title: "Alert diagnostic",
+        close: "Close",
+        service: "CheckMK service",
+        host: "Host",
+        lastSync: "Last sync",
+        rule: "Applied rule",
+        ruleOn: "enabled",
+        ruleOff: "disabled",
+        fingerprint: "Fingerprint",
+        whyOpen: "Why it is open",
+        whyClosed: "Why it was closed",
+        mute: "Equipment alert status",
+        output: "Plugin output",
+        events: "History",
+        loading: "Loading diagnostic…",
+        error: "Unable to load diagnostic."
       },
       createModal: {
         title: "Create a remediation",
@@ -662,7 +761,12 @@ const SUPERVISION_COPY = {
         dismissed: "Alert dismissed — moved to history",
         linked: "Remediation linked to alert",
         actionFailed: "Could not update alert",
-        supportFormRequired: "Configure a support form in the alert rule before creating a ticket."
+        supportFormRequired: "Configure a support form in the alert rule before creating a ticket.",
+        resyncOk: "Host resynced",
+        resyncFail: "Unable to resync host",
+        muted: "Alerts suspended for this device",
+        unmuted: "Alerts re-enabled for this device",
+        muteFail: "Unable to change mute"
       },
       detailBackups: "Backup details",
       detailContracts: "Contracts & licenses details",

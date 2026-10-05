@@ -211,6 +211,32 @@ export async function reconcileEquipmentSupervisionAlerts({
     return { created: 0, refreshed: 0, resolved: 0, desired: 0, skipped: true, reason: "surveillance_suspended" };
   }
 
+  const familyKey = String(family || "").toLowerCase();
+  try {
+    const { areMonitoringAlertsEnabled, getEquipmentAlertSettings } = await import(
+      "./equipmentMonitoringAlerts.js"
+    );
+    const { getClientMonitoringAlertPolicy, isClientMonitoringAlertsSuspended } = await import(
+      "./clientMonitoringAlerts.js"
+    );
+    const [eqSettings, clientPolicy] = await Promise.all([
+      getEquipmentAlertSettings(clientId, equipmentId, familyKey),
+      getClientMonitoringAlertPolicy(clientId)
+    ]);
+    if (isClientMonitoringAlertsSuspended(clientPolicy) || !areMonitoringAlertsEnabled(eqSettings)) {
+      return {
+        created: 0,
+        refreshed: 0,
+        resolved: 0,
+        desired: 0,
+        skipped: true,
+        reason: "alerts_muted"
+      };
+    }
+  } catch (err) {
+    console.warn("[supervision-reconcile] mute check:", err?.message || err);
+  }
+
   const rules = rulesArg || (await getSupervisionAlertRules());
   const desired = buildDesiredMonitoringAlerts({
     clientId,

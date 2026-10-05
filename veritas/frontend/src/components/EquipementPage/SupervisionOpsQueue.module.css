@@ -574,6 +574,81 @@
   color: #fca5a5;
 }
 
+.rowMetaRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.freshBadge,
+.muteBadge {
+  display: inline-flex;
+  align-items: center;
+  max-width: 100%;
+  padding: 0.08rem 0.38rem;
+  border-radius: 999px;
+  font-size: 0.62rem;
+  font-weight: 650;
+  line-height: 1.3;
+}
+
+.freshBadgeOk {
+  background: rgba(34, 160, 107, 0.12);
+  color: #15803d;
+}
+
+.freshBadgeStale {
+  background: rgba(217, 119, 6, 0.14);
+  color: #b45309;
+}
+
+.muteBadge {
+  background: rgba(100, 116, 139, 0.14);
+  color: #475569;
+}
+
+.muteWrap {
+  position: relative;
+  display: inline-flex;
+}
+
+.muteMenu {
+  position: absolute;
+  top: calc(100% + 0.25rem);
+  right: 0;
+  z-index: 8;
+  min-width: 12.5rem;
+  padding: 0.4rem;
+  border-radius: 10px;
+  border: 1px solid var(--msp-border, #d7e0ec);
+  background: var(--msp-surface, #fff);
+  box-shadow: 0 8px 22px rgba(15, 23, 42, 0.12);
+}
+
+.muteMenuHint {
+  margin: 0.15rem 0.35rem 0.35rem;
+  font-size: 0.64rem;
+  color: var(--msp-muted, #64748b);
+}
+
+.muteMenuItem {
+  display: block;
+  width: 100%;
+  padding: 0.35rem 0.45rem;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+  font-size: 0.75rem;
+  cursor: pointer;
+}
+
+.muteMenuItem:hover {
+  background: color-mix(in srgb, var(--msp-accent, #2b5fab) 10%, transparent);
+}
+
 .rowTitle {
   font-size: 0.86rem;
   font-weight: 650;

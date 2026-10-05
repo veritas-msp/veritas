@@ -106,7 +106,19 @@ export function buildQueueItemsFromSupervisionAlerts(alerts = [], labels = {}) {
         handledByName: alert.ackedByName || null,
         linkedTicketKind: alert.linkedTicketKind || null,
         linkedTicketId: alert.linkedTicketId || null,
-        linkedEventId: alert.linkedEventId || null
+        linkedEventId: alert.linkedEventId || null,
+        lastSyncedAt: alert.lastSyncedAt || null,
+        stale: Boolean(alert.stale),
+        freshnessMinutes: alert.freshnessMinutes ?? null,
+        muted: Boolean(alert.muted),
+        muteStatus: alert.muteStatus || "active",
+        mutedUntil: alert.mutedUntil || null,
+        muteReason: alert.muteReason || null,
+        family: alert.family || alert.meta?.family || null,
+        hostName: alert.hostName || alert.meta?.hostName || null,
+        checkmkSite: alert.checkmkSite || null,
+        ruleEnabled: alert.ruleEnabled,
+        alertId: alert.id || null
       };
     })
     .sort((a, b) => {

@@ -8,6 +8,7 @@ import { interpolate } from "../../i18n/translate";
 import { useAppLocale } from "../../hooks/useAppGeneralSettings";
 import { useCommonCopy } from "../../hooks/useCommonCopy";
 import { useDefaultPageSize } from "../../hooks/useDefaultPageSize";
+import { formatEquipmentDetailRelative } from "./equipmentDetailPageI18n";
 import layout from "../EnterprisesPage/EnterprisesPage.module.css";
 import styles from "./SupervisionOpsQueue.module.css";
 
@@ -73,6 +74,80 @@ function remediationLabel(item, copy) {
   if (kind === "planning" || item.linkedEventId) return copy.collab?.planning;
   if (item.linkedTicketId || item.linkedEventId) return copy.collab?.remediation;
   return null;
+}
+
+function minutesUntilTomorrowMorning() {
+  const now = new Date();
+  const next = new Date(now);
+  next.setHours(8, 0, 0, 0);
+  if (next.getTime() <= now.getTime()) next.setDate(next.getDate() + 1);
+  return Math.max(30, Math.round((next.getTime() - now.getTime()) / 60000));
+}
+
+function FreshnessBadge({ item, copy, locale }) {
+  const last = item?.lastSyncedAt;
+  const stale = Boolean(item?.stale) || !last;
+  const label = !last
+    ? copy?.freshness?.never || "Never"
+    : (copy?.freshness?.ago || "Sync {time}").replace("{time}", formatEquipmentDetailRelative(last, locale));
+  return (
+    <span
+      className={`${styles.freshBadge} ${stale ? styles.freshBadgeStale : styles.freshBadgeOk}`}
+      title={label}
+    >
+      {stale ? copy?.freshness?.stale || "Stale" : copy?.freshness?.fresh || "Fresh"}
+      {last ? ` · ${formatEquipmentDetailRelative(last, locale)}` : ""}
+    </span>
+  );
+}
+
+function MuteMenu({ item, copy, localeTag, onMute, onUnmute, onClose }) {
+  const options = [
+    { id: "2h", label: copy?.mute?.hours2 || "2h", durationMinutes: 120 },
+    { id: "tomorrow", label: copy?.mute?.tomorrow || "Tomorrow 8am", durationMinutes: minutesUntilTomorrowMorning() },
+    { id: "24h", label: copy?.mute?.hours24 || "24h", durationMinutes: 1440 }
+  ];
+  return (
+    <div className={styles.muteMenu} role="menu">
+      <p className={styles.muteMenuHint}>{copy?.mute?.hint}</p>
+      {item.muted ? (
+        <button type="button" className={styles.muteMenuItem} onClick={() => onUnmute?.(item)}>
+          {copy?.mute?.unmute || "Unmute"}
+        </button>
+      ) : (
+        <>
+          {options.map(opt => (
+            <button
+              key={opt.id}
+              type="button"
+              className={styles.muteMenuItem}
+              onClick={() => onMute?.(item, { mode: "temporary", durationMinutes: opt.durationMinutes })}
+            >
+              {opt.label}
+            </button>
+          ))}
+          <button
+            type="button"
+            className={styles.muteMenuItem}
+            onClick={() => onMute?.(item, { mode: "disabled" })}
+          >
+            {copy?.mute?.disabled || "Disable"}
+          </button>
+        </>
+      )}
+      {item.mutedUntil ? (
+        <p className={styles.muteMenuHint}>
+          {(copy?.mute?.until || "until {date}").replace(
+            "{date}",
+            new Date(item.mutedUntil).toLocaleString(localeTag, { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })
+          )}
+        </p>
+      ) : null}
+      <button type="button" className={styles.muteMenuItem} onClick={onClose}>
+        {copy?.diagnose?.close || "Close"}
+      </button>
+    </div>
+  );
 }
 
 function QueueActionButton({
@@ -253,6 +328,15 @@ export default function SupervisionOpsQueue({
   onUnack,
   onResolve,
   onDismiss,
+  onResync,
+  onMute,
+  onUnmute,
+  onDiagnose,
+  canDiagnose = false,
+  resyncBusyId = null,
+  showMuted = false,
+  mutedCount = 0,
+  onToggleMuted,
   busyId = null,
   localeTag,
   copy,
@@ -269,6 +353,7 @@ export default function SupervisionOpsQueue({
   const knownIdsRef = useRef(new Set());
   const primedRef = useRef(false);
   const [enteringIds, setEnteringIds] = useState(() => new Set());
+  const [muteMenuId, setMuteMenuId] = useState(null);
   const enterTimersRef = useRef(new Map());
 
   useEffect(() => {
@@ -477,6 +562,19 @@ export default function SupervisionOpsQueue({
           {severityChips.map(chip => <FilterChip key={chip.id} label={chip.label} count={chip.count} icon={chip.icon} kpiTone={chip.kpiTone} active={severityFilter === chip.id} onClick={() => onSeverityFilter?.(severityFilter === chip.id ? "all" : chip.id)} />)}
           <span className={layout.statusChipSeparator} aria-hidden />
           {workflowChips.map(chip => <FilterChip key={chip.id} label={chip.label} count={chip.count} icon={chip.icon} kpiTone={chip.kpiTone} active={workflowFilter === chip.id} onClick={() => onWorkflowFilter?.(workflowFilter === chip.id ? "all" : chip.id)} />)}
+          {onToggleMuted ? (
+            <>
+              <span className={layout.statusChipSeparator} aria-hidden />
+              <FilterChip
+                label={copy.showMuted || "Muted"}
+                count={mutedCount}
+                icon="mdi:alarm-light-off"
+                kpiTone="amber"
+                active={showMuted}
+                onClick={() => onToggleMuted(!showMuted)}
+              />
+            </>
+          ) : null}
         </div>
       </div>
 
@@ -538,6 +636,18 @@ export default function SupervisionOpsQueue({
                     <td className={styles.alertCell}>
                       <div className={styles.alertBody}>
                         <span className={styles.rowTitle}>{item.title}</span>
+                        <span className={styles.rowMetaRow}>
+                          <FreshnessBadge item={item} copy={copy} locale={locale} />
+                          {item.muted ? (
+                            <span className={styles.muteBadge}>
+                              {item.muteStatus === "disabled"
+                                ? copy.mute?.disabledBadge
+                                : item.muteStatus === "client_suspended"
+                                  ? copy.mute?.client
+                                  : copy.mute?.muted}
+                            </span>
+                          ) : null}
+                        </span>
                         {metaBits.length ? <span className={styles.rowMeta}>{metaBits.join(" · ")}</span> : null}
                         {collabBits.length ? <span className={styles.rowCollab}>
                             <Icon icon="mdi:account-outline" aria-hidden />
@@ -569,6 +679,47 @@ export default function SupervisionOpsQueue({
                         <QueueActionButton hint={actionHint(copy, "support")} label={copy.actions.support} icon="mdi:message-processing-outline" disabled={busy} onClick={() => onTicketSupport?.(item)} />
                         <QueueActionButton hint={actionHint(copy, "resolve")} label={copy.actions.resolve} icon="mdi:check-circle-outline" disabled={busy} onClick={() => onResolve?.(item)} />
                         <QueueActionButton hint={actionHint(copy, "dismiss")} label={copy.actions.dismiss} icon="mdi:close-circle-outline" disabled={busy} onClick={() => onDismiss?.(item)} />
+                        <span className={styles.muteWrap}>
+                          <QueueActionButton
+                            hint={item.muted ? actionHint(copy, "unmute") : actionHint(copy, "mute")}
+                            label={item.muted ? copy.actions.unmute : copy.actions.mute}
+                            icon={item.muted ? "mdi:alarm-light" : "mdi:alarm-light-off"}
+                            disabled={busy}
+                            onClick={() => setMuteMenuId(id => id === item.id ? null : item.id)}
+                          />
+                          {muteMenuId === item.id ? (
+                            <MuteMenu
+                              item={item}
+                              copy={copy}
+                              localeTag={localeTag}
+                              onMute={(target, payload) => {
+                                setMuteMenuId(null);
+                                onMute?.(target, payload);
+                              }}
+                              onUnmute={target => {
+                                setMuteMenuId(null);
+                                onUnmute?.(target);
+                              }}
+                              onClose={() => setMuteMenuId(null)}
+                            />
+                          ) : null}
+                        </span>
+                        <QueueActionButton
+                          hint={actionHint(copy, "resync")}
+                          label={copy.actions.resync}
+                          icon={resyncBusyId === item.id ? "mdi:loading" : "mdi:sync"}
+                          disabled={busy || resyncBusyId === item.id}
+                          onClick={() => onResync?.(item)}
+                        />
+                        {canDiagnose ? (
+                          <QueueActionButton
+                            hint={actionHint(copy, "diagnose")}
+                            label={copy.actions.diagnose}
+                            icon="mdi:stethoscope"
+                            disabled={busy || !item.alertId}
+                            onClick={() => onDiagnose?.(item)}
+                          />
+                        ) : null}
                         <QueueActionButton hint={actionHint(copy, "open")} label={copy.actions.open} icon="mdi:open-in-new" primary onClick={() => onOpenItem?.(item)} />
                       </div>
                     </td>

@@ -5,6 +5,15 @@
  */
 export const PATCH_NOTES = [
   {
+    version: "1.0.66",
+    date: "2026-10-05",
+    highlights: [
+      "Centre de supervision : indicateur de fraîcheur des données CheckMK et resync d’un hôte depuis une alerte.",
+      "Mute temporaire / désactivation des alertes depuis le centre (même réglage que la fiche périphérique).",
+      "Diagnostic admin d’une alerte : service, sync, règle, fingerprint et motif d’ouverture/fermeture."
+    ]
+  },
+  {
     version: "1.0.65",
     date: "2026-10-05",
     highlights: [

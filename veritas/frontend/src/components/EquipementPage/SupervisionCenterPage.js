@@ -14,6 +14,9 @@ import { getSupervisionCenterCopy } from "./supervisionCenterPageI18n";
 import { buildQueueItemsFromSupervisionAlerts, filterSupervisionQueue, countQueueBySeverity, countQueueByWorkflow, buildSupervisionSupportTicketPrefill } from "./supervisionQueueUtils";
 import SupervisionOpsQueue from "./SupervisionOpsQueue";
 import SupervisionAlertHistory from "./SupervisionAlertHistory";
+import SupervisionAlertDiagnosticModal from "./SupervisionAlertDiagnosticModal";
+import { syncEquipmentCheckMKMonitoring } from "../../api/equipment";
+import { updateEquipmentAlertSuspension } from "../../api/equipmentMonitoringAlerts";
 import {
   ackSupervisionAlert,
   unackSupervisionAlert,
@@ -59,6 +62,9 @@ export default function MonitoringCenterPage({
   const [opsSeverityFilter, setOpsSeverityFilter] = useState("all");
   const [opsSearchQuery, setOpsSearchQuery] = useState("");
   const [opsWorkflowFilter, setOpsWorkflowFilter] = useState("all");
+  const [showMutedAlerts, setShowMutedAlerts] = useState(false);
+  const [resyncBusyId, setResyncBusyId] = useState(null);
+  const [diagnoseAlertId, setDiagnoseAlertId] = useState(null);
   const [alertActionBusyId, setAlertActionBusyId] = useState(null);
   const [historyAlerts, setHistoryAlerts] = useState([]);
   const [historyLoading, setHistoryLoading] = useState(false);
@@ -108,14 +114,19 @@ export default function MonitoringCenterPage({
       }),
     [activeAlerts, pageCopy.priority?.noName]
   );
-  const filteredQueue = useMemo(() => filterSupervisionQueue(enrichedQueue, {
+  const mutedCount = useMemo(() => enrichedQueue.filter(item => item.muted).length, [enrichedQueue]);
+  const visibleQueue = useMemo(
+    () => (showMutedAlerts ? enrichedQueue : enrichedQueue.filter(item => !item.muted)),
+    [enrichedQueue, showMutedAlerts]
+  );
+  const filteredQueue = useMemo(() => filterSupervisionQueue(visibleQueue, {
     severity: opsSeverityFilter,
     query: opsSearchQuery,
     workflowStatus: opsWorkflowFilter
-  }), [enrichedQueue, opsSeverityFilter, opsSearchQuery, opsWorkflowFilter]);
-  const severityCounts = useMemo(() => countQueueBySeverity(enrichedQueue), [enrichedQueue]);
-  const workflowCounts = useMemo(() => countQueueByWorkflow(enrichedQueue), [enrichedQueue]);
-  const totalIssues = enrichedQueue.length;
+  }), [visibleQueue, opsSeverityFilter, opsSearchQuery, opsWorkflowFilter]);
+  const severityCounts = useMemo(() => countQueueBySeverity(visibleQueue), [visibleQueue]);
+  const workflowCounts = useMemo(() => countQueueByWorkflow(visibleQueue), [visibleQueue]);
+  const totalIssues = visibleQueue.length;
   const loadActiveAlerts = useCallback(async signal => {
     setAlertsLoading(true);
     setAlertsError(null);
@@ -430,6 +441,92 @@ export default function MonitoringCenterPage({
   const handleUnackAlert = useCallback(item => runAlertAction(item, i => unackSupervisionAlert(i), "unacked"), [runAlertAction]);
   const handleResolveAlert = useCallback(item => runAlertAction(item, i => resolveSupervisionAlert(i), "resolved"), [runAlertAction]);
   const handleDismissAlert = useCallback(item => runAlertAction(item, i => dismissSupervisionAlert(i), "dismissed"), [runAlertAction]);
+
+  const resolveMuteFamily = useCallback(item => {
+    return item?.family || item?.alertState?.meta?.family || item?.equipment?.family || null;
+  }, []);
+
+  const handleResyncHost = useCallback(async item => {
+    const equipmentId = item?.equipmentId || item?.equipment?.id;
+    const clientId = item?.clientId;
+    const family = resolveMuteFamily(item);
+    const hostName = item?.hostName || item?.alertState?.meta?.hostName;
+    if (!equipmentId || !clientId || !family || !hostName) {
+      toast.error(pageCopy.ops?.toasts?.resyncFail || "Resync impossible");
+      return;
+    }
+    setResyncBusyId(item.id);
+    try {
+      await syncEquipmentCheckMKMonitoring({
+        equipmentId,
+        clientId,
+        family,
+        hostName,
+        force: true
+      });
+      await loadActiveAlerts();
+      toast.success(pageCopy.ops?.toasts?.resyncOk || "OK");
+    } catch (err) {
+      toast.error(err?.message || pageCopy.ops?.toasts?.resyncFail || "Resync impossible");
+    } finally {
+      setResyncBusyId(null);
+    }
+  }, [loadActiveAlerts, pageCopy.ops?.toasts, resolveMuteFamily]);
+
+  const handleMuteEquipment = useCallback(async (item, payload = {}) => {
+    const equipmentId = item?.equipmentId || item?.equipment?.id;
+    const clientId = item?.clientId;
+    const family = resolveMuteFamily(item);
+    if (!equipmentId || !clientId || !family) {
+      toast.error(pageCopy.ops?.toasts?.muteFail || "Mute impossible");
+      return;
+    }
+    try {
+      const body =
+        payload.mode === "disabled"
+          ? {
+              family,
+              equipmentName: item?.equipment?.name || item?.subtitle,
+              suspensionType: "none",
+              alertsEnabled: false
+            }
+          : {
+              family,
+              equipmentName: item?.equipment?.name || item?.subtitle,
+              suspensionType: "temporary",
+              alertsEnabled: true,
+              durationMinutes: payload.durationMinutes || 120,
+              reason: "Mute depuis le centre de supervision"
+            };
+      await updateEquipmentAlertSuspension(clientId, equipmentId, body);
+      await loadActiveAlerts();
+      toast.success(pageCopy.ops?.toasts?.muted || "Muted");
+    } catch (err) {
+      toast.error(err?.message || pageCopy.ops?.toasts?.muteFail || "Mute impossible");
+    }
+  }, [loadActiveAlerts, pageCopy.ops?.toasts, resolveMuteFamily]);
+
+  const handleUnmuteEquipment = useCallback(async item => {
+    const equipmentId = item?.equipmentId || item?.equipment?.id;
+    const clientId = item?.clientId;
+    const family = resolveMuteFamily(item);
+    if (!equipmentId || !clientId || !family) {
+      toast.error(pageCopy.ops?.toasts?.muteFail || "Mute impossible");
+      return;
+    }
+    try {
+      await updateEquipmentAlertSuspension(clientId, equipmentId, {
+        family,
+        equipmentName: item?.equipment?.name || item?.subtitle,
+        suspensionType: "none",
+        alertsEnabled: true
+      });
+      await loadActiveAlerts();
+      toast.success(pageCopy.ops?.toasts?.unmuted || "Unmuted");
+    } catch (err) {
+      toast.error(err?.message || pageCopy.ops?.toasts?.muteFail || "Mute impossible");
+    }
+  }, [loadActiveAlerts, pageCopy.ops?.toasts, resolveMuteFamily]);
   const linkRemediation = useCallback(async (item, link) => {
     if (!item?.id) return;
     try {
@@ -664,7 +761,7 @@ export default function MonitoringCenterPage({
             <div className={`${layout.shell} ${layout.shellFull} ${styles.contentShell}`}>
               {activeTab === "operations" && !error ? <div className={`${dashStyles.dashboard} ${styles.dashboard}`} data-guide="supervision-ops">
                   <div className={`${cyberStyles.tabContent} ${styles.content}`}>
-                    <SupervisionOpsQueue items={filteredQueue} kpi={severityCounts} coverageFamilies={coverageFamilies} workflowCounts={workflowCounts} severityFilter={opsSeverityFilter} workflowFilter={opsWorkflowFilter} searchQuery={opsSearchQuery} onSeverityFilter={setOpsSeverityFilter} onWorkflowFilter={setOpsWorkflowFilter} onSearchChange={setOpsSearchQuery} onOpenItem={handleOpenQueueItem} onTicketSupport={handleTicketSupport} onAck={handleAckAlert} onUnack={handleUnackAlert} onResolve={handleResolveAlert} onDismiss={handleDismissAlert} busyId={alertActionBusyId} localeTag={localeTag} copy={pageCopy.ops} showDomain={false} animateNewRows />
+                    <SupervisionOpsQueue items={filteredQueue} kpi={severityCounts} coverageFamilies={coverageFamilies} workflowCounts={workflowCounts} severityFilter={opsSeverityFilter} workflowFilter={opsWorkflowFilter} searchQuery={opsSearchQuery} onSeverityFilter={setOpsSeverityFilter} onWorkflowFilter={setOpsWorkflowFilter} onSearchChange={setOpsSearchQuery} onOpenItem={handleOpenQueueItem} onTicketSupport={handleTicketSupport} onAck={handleAckAlert} onUnack={handleUnackAlert} onResolve={handleResolveAlert} onDismiss={handleDismissAlert} onResync={handleResyncHost} onMute={handleMuteEquipment} onUnmute={handleUnmuteEquipment} onDiagnose={item => setDiagnoseAlertId(item.alertId)} canDiagnose={canManageAlertRules} resyncBusyId={resyncBusyId} showMuted={showMutedAlerts} mutedCount={mutedCount} onToggleMuted={setShowMutedAlerts} busyId={alertActionBusyId} localeTag={localeTag} copy={pageCopy.ops} showDomain={false} animateNewRows />
                   </div>
                 </div> : null}
 
@@ -705,6 +802,13 @@ export default function MonitoringCenterPage({
           </main>
         </div>
       </div>
+      <SupervisionAlertDiagnosticModal
+        open={Boolean(diagnoseAlertId)}
+        alertId={diagnoseAlertId}
+        locale={locale}
+        copy={pageCopy.ops?.diagnose}
+        onClose={() => setDiagnoseAlertId(null)}
+      />
       <PageGuideTour open={pageGuideOpen} steps={guideSteps} title={pageCopy.guide?.tourTitle} locale={locale} onClose={() => setPageGuideOpen(false)} />
       <SupervisionFleetSyncModal
         active={fleetSyncActive}

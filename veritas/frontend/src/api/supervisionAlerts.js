@@ -31,6 +31,13 @@ export async function fetchSupervisionAlertsActive({
   return data?.alerts || [];
 }
 
+export async function fetchSupervisionAlertDiagnostic(alertId) {
+  const id = String(alertId || "").trim();
+  if (!id) throw new Error("alert id required");
+  const response = await authFetch(`${API_BASE_URL}/supervision/alerts/item/${encodeURIComponent(id)}/diagnostic`);
+  return handleResponse(response);
+}
+
 export async function fetchSupervisionAlertStates(queueItemIds = [], {
   signal
 } = {}) {

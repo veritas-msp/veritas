@@ -8,6 +8,7 @@ import {
   listActiveSupervisionAlerts,
   listRecentEquipmentAlerts,
   listSupervisionAlertHistory,
+  getSupervisionAlertDiagnostic,
   listSupervisionAlertsByQueueItemIds,
   purgeSupervisionAlert,
   removeSupervisionAlertStreamClient,
@@ -166,6 +167,24 @@ router.get("/stream", verifyJWT, requireAnyPermission("supervision.view", "super
     }
   }
 });
+
+router.get(
+  "/item/:alertId/diagnostic",
+  verifyJWT,
+  requireAnyPermission("supervision.manage", "admin_panel.supervision_alerts"),
+  async (req, res) => {
+    try {
+      const payload = await getSupervisionAlertDiagnostic(req.params.alertId);
+      if (!payload) {
+        return res.status(404).json({ error: "Alert not found" });
+      }
+      res.json(payload);
+    } catch (err) {
+      console.error("[supervision-alerts] GET diagnostic:", err.message);
+      res.status(500).json({ error: "Server error" });
+    }
+  }
+);
 
 router.post("/item/:alertId/trash", verifyJWT, requireAnyPermission("supervision.manage", "supervision.view"), async (req, res) => {
   try {
