@@ -1683,27 +1683,28 @@ export function readEquipmentIsActive(equipment) {
   const raw = equipment?.rawData && typeof equipment.rawData === "object" ? equipment.rawData : null;
   const nested = raw?.data && typeof raw.data === "object" ? raw.data : null;
   const fields = equipment?.fields && typeof equipment.fields === "object" ? equipment.fields : null;
+  // Top-level / DB column is_active is the source of truth (form modal writes it).
   const parsed = parseEquipmentActiveFlag(
+    equipment?.is_active,
+    equipment?.isActive,
+    raw?.is_active,
+    raw?.isActive,
+    data?.is_active,
+    data?.isActive,
+    nested?.is_active,
+    nested?.isActive,
+    fields?.is_active,
+    fields?.isActive,
+    equipment?.actif,
+    raw?.actif,
     data?.actif,
     nested?.actif,
-    raw?.actif,
     fields?.actif,
-    equipment?.actif,
+    equipment?.active,
+    raw?.active,
     data?.active,
     nested?.active,
-    raw?.active,
-    fields?.active,
-    equipment?.active,
-    data?.isActive,
-    nested?.isActive,
-    raw?.isActive,
-    fields?.isActive,
-    equipment?.isActive,
-    data?.is_active,
-    nested?.is_active,
-    raw?.is_active,
-    fields?.is_active,
-    equipment?.is_active
+    fields?.active
   );
   return parsed !== undefined ? parsed : true;
 }

@@ -38,6 +38,16 @@ export async function fetchActiveCheckmkSyncRun() {
   return handleResponse(response);
 }
 
+export async function fetchCheckmkSyncStatus() {
+  const response = await fetch(`${API_BASE_URL}/checkmk/sync-status`, {
+    credentials: "include",
+    headers: {
+      "Content-Type": "application/json"
+    }
+  });
+  return handleResponse(response);
+}
+
 export async function triggerCheckmkFleetSync({
   force = false,
   wait = false,

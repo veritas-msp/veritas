@@ -63,6 +63,60 @@
   box-shadow: 0 6px 18px rgba(43, 95, 171, 0.28) !important;
 }
 
+.pollerStatus {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 0.12rem;
+  min-width: 0;
+  max-width: min(280px, 42vw);
+  padding: 0.28rem 0.65rem;
+  border-radius: var(--msp-radius-sm, 10px);
+  border: 1px solid color-mix(in srgb, var(--msp-border, #d7e0ec) 80%, transparent);
+  background: color-mix(in srgb, var(--msp-surface-2, #f3f6fa) 70%, var(--msp-surface, #fff));
+  font-size: 0.68rem;
+  line-height: 1.25;
+  color: var(--msp-muted, #64748b);
+}
+
+.pollerStatusRow {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.pollerStatusDot {
+  width: 0.45rem;
+  height: 0.45rem;
+  border-radius: 50%;
+  flex-shrink: 0;
+  background: #94a3b8;
+}
+
+.pollerStatusActive .pollerStatusDot {
+  background: #22a06b;
+  box-shadow: 0 0 0 3px rgba(34, 160, 107, 0.16);
+}
+
+.pollerStatusSuspended .pollerStatusDot {
+  background: #d97706;
+  box-shadow: 0 0 0 3px rgba(217, 119, 6, 0.14);
+}
+
+.pollerStatusStrong {
+  color: var(--msp-text, #1e293b);
+  font-weight: 600;
+}
+
+.pollerStatusMeta {
+  color: var(--msp-muted, #64748b);
+  font-weight: 500;
+}
+
 .fleetSyncBtn {
   display: inline-grid;
   place-items: center;

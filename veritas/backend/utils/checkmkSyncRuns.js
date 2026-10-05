@@ -168,6 +168,26 @@ export async function listCheckmkSyncRuns({ limit = 40 } = {}) {
   return result.rows.map(mapRun);
 }
 
+/** Dernière run terminée pour un trigger (exclut running / skipped). */
+export async function getLatestFinishedCheckmkSyncRun({ trigger = null } = {}) {
+  const ready = await ensureCheckmkSyncRunsSchema();
+  if (!ready) return null;
+  const params = [];
+  let where = `status NOT IN ('running', 'skipped')`;
+  if (trigger) {
+    params.push(String(trigger).slice(0, 40));
+    where += ` AND trigger_source = $${params.length}`;
+  }
+  const result = await pool.query(
+    `SELECT * FROM v_b_checkmk_sync_runs
+      WHERE ${where}
+      ORDER BY COALESCE(finished_at, started_at) DESC
+      LIMIT 1`,
+    params
+  );
+  return mapRun(result.rows[0]);
+}
+
 async function pruneCheckmkSyncRuns() {
   await pool.query(
     `DELETE FROM v_b_checkmk_sync_runs

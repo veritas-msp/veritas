@@ -3890,30 +3890,39 @@ modulesRouter.patch('/:clientId/:family/checkmk-mapping', requireModulePermissio
     const clearHycuSql = hasHycuColumns
       ? `, hycu_job_uuid = NULL, hycu_job_name = NULL`
       : "";
-    const clearHycuJson = `,
+    // When unmapping, strip nested checkmk* keys so JSON cannot revive a stale host.
+    const dataSql = hostName
+      ? `(COALESCE(data::jsonb, '{}'::jsonb) || jsonb_build_object(
+               'checkmk_host_name', to_jsonb($1::varchar),
+               'checkmk_site', to_jsonb($2::varchar),
+               'checkmk_service_name', to_jsonb($3::varchar),
                'hycu_job_uuid', 'null'::jsonb,
                'hycu_job_name', 'null'::jsonb,
-               'hycuMapping', 'null'::jsonb`;
+               'hycuMapping', 'null'::jsonb
+             )) - 'hycuMapping'`
+      : `(COALESCE(data::jsonb, '{}'::jsonb) || jsonb_build_object(
+               'hycu_job_uuid', 'null'::jsonb,
+               'hycu_job_name', 'null'::jsonb,
+               'hycuMapping', 'null'::jsonb
+             ))
+             - 'hycuMapping'
+             - 'checkmkMapping'
+             - 'checkmk_host_name'
+             - 'checkmk_site'
+             - 'checkmk_service_name'
+             - 'checkmkHostName'`;
     if (hasCheckmkColumns) {
       result = await pool.query(`UPDATE ${table}
          SET checkmk_host_name = $1::varchar,
              checkmk_site = $2::varchar,
              checkmk_service_name = $3::varchar${clearHycuSql},
-             data = (COALESCE(data::jsonb, '{}'::jsonb) || jsonb_build_object(
-               'checkmk_host_name', to_jsonb($1::varchar),
-               'checkmk_site', to_jsonb($2::varchar),
-               'checkmk_service_name', to_jsonb($3::varchar)${clearHycuJson}
-             )) - 'hycuMapping',
+             data = ${dataSql},
              updated_at = NOW()
          WHERE ${whereClause}
          RETURNING id, name, item_key, checkmk_host_name, checkmk_site, checkmk_service_name`, [hostName, siteVal, serviceVal, ...whereParams]);
     } else {
       result = await pool.query(`UPDATE ${table}
-         SET data = (COALESCE(data::jsonb, '{}'::jsonb) || jsonb_build_object(
-               'checkmk_host_name', to_jsonb($1::varchar),
-               'checkmk_site', to_jsonb($2::varchar),
-               'checkmk_service_name', to_jsonb($3::varchar)${clearHycuJson}
-             )) - 'hycuMapping',
+         SET data = ${dataSql},
              updated_at = NOW()
          WHERE ${whereClause}
          RETURNING id, name, item_key,
@@ -3970,11 +3979,14 @@ modulesRouter.patch('/:clientId/:family/checkmk-mapping', requireModulePermissio
     } catch (logError) {
       console.warn("[PATCH checkmk-mapping] equipment log:", logError?.message || logError);
     }
+    const mappedHost = mapping.checkmk_host_name && String(mapping.checkmk_host_name).trim()
+      ? String(mapping.checkmk_host_name).trim()
+      : null;
     res.json({
-      checkmk_host_name: mapping.checkmk_host_name,
-      checkmk_site: mapping.checkmk_site,
-      checkmk_service_name: mapping.checkmk_service_name,
-      is_active: true,
+      checkmk_host_name: mappedHost,
+      checkmk_site: mappedHost ? mapping.checkmk_site || null : null,
+      checkmk_service_name: mappedHost ? mapping.checkmk_service_name || null : null,
+      is_active: Boolean(mappedHost),
       replacedHycu: true
     });
   } catch (err) {

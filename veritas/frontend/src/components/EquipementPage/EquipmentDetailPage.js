@@ -454,14 +454,17 @@ export default function EquipmentDetailPage({
     if (!(needsHydration && alreadyHydrated)) {
       setFormData(toDetailFormData(equipment));
     }
-    const mapping = equipment.checkmkMapping || checkmkMapping || null;
-    setCheckmkMapping(mapping);
+    // Prefer prop mapping when present (including explicit null after unmap).
+    const mapping = Object.prototype.hasOwnProperty.call(equipment, "checkmkMapping")
+      ? equipment.checkmkMapping
+      : checkmkMapping || null;
+    setCheckmkMapping(mapping && mapping.checkmk_host_name ? mapping : null);
     if (checkmkIntegrationEnabled && mapping && mapping.checkmk_host_name) {
       loadCheckMKData();
     } else if (!needsHydration) {
       setCheckmkData(null);
     }
-  }, [equipmentIdentityKey, needsHydration, checkmkIntegrationEnabled, clientSites, clientSsids]);
+  }, [equipmentIdentityKey, needsHydration, checkmkIntegrationEnabled, clientSites, clientSsids, equipment?.checkmkMapping]);
   useEffect(() => {
     if (!needsHydration) return undefined;
     const clientId = getEquipmentClientId(equipment);
@@ -800,6 +803,28 @@ export default function EquipmentDetailPage({
         nextEquipment = patchEquipmentLocation(nextEquipment, submitData.location);
       }
       nextEquipment = patchEquipmentWithSharedFields(nextEquipment, submitData);
+      if (submitData.is_active !== undefined || submitData.isActive !== undefined) {
+        const active = (submitData.is_active ?? submitData.isActive) !== false;
+        const raw = {
+          ...(nextEquipment.rawData || {})
+        };
+        const inner = raw.data && typeof raw.data === "object" && !Array.isArray(raw.data) ? {
+          ...raw.data
+        } : {};
+        raw.is_active = active;
+        raw.actif = active;
+        inner.is_active = active;
+        inner.actif = active;
+        nextEquipment = {
+          ...nextEquipment,
+          is_active: active,
+          actif: active,
+          rawData: {
+            ...raw,
+            data: Object.keys(inner).length ? inner : raw.data
+          }
+        };
+      }
       if (submitData.computerType !== undefined) {
         const computerType = canonicalizeComputerType(submitData.computerType);
         nextEquipment = {
@@ -1275,14 +1300,41 @@ export default function EquipmentDetailPage({
     } else {
       setCheckmkMapping(null);
       setCheckmkData(null);
+      setCheckmkHostDetails(null);
       if (onUpdate) {
         const {
           checkmkMapping: _removed,
+          checkmk_host_name: _host,
+          checkmk_site: _site,
+          checkmk_service_name: _service,
           ...equipmentWithoutMapping
         } = equipment;
+        const raw = {
+          ...(equipment.rawData || {})
+        };
+        const inner = raw.data && typeof raw.data === "object" && !Array.isArray(raw.data) ? {
+          ...raw.data
+        } : null;
+        delete raw.checkmkMapping;
+        delete raw.checkmk_host_name;
+        delete raw.checkmk_site;
+        delete raw.checkmk_service_name;
+        if (inner) {
+          delete inner.checkmkMapping;
+          delete inner.checkmk_host_name;
+          delete inner.checkmk_site;
+          delete inner.checkmk_service_name;
+        }
         onUpdate({
           ...equipmentWithoutMapping,
-          checkmkMapping: null
+          checkmkMapping: null,
+          checkmk_host_name: null,
+          checkmk_site: null,
+          checkmk_service_name: null,
+          rawData: inner ? {
+            ...raw,
+            data: inner
+          } : raw
         });
       }
     }

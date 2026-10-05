@@ -11,6 +11,7 @@ import {
   cancelCheckmkFleetSync,
   isCheckmkFleetSyncRunning
 } from "../../../services/checkmkFleetSync.js";
+import { getMonitoringAlertPollerStatus } from "../../../services/monitoringAlertPoller.js";
 
 const router = express.Router();
 
@@ -48,6 +49,21 @@ router.get("/sync-logs/active", verifyJWT, async (req, res) => {
     });
   } catch (err) {
     console.error("[checkmk sync-logs] GET active:", err.message);
+    res.status(500).json({
+      error: err.message || "Server error"
+    });
+  }
+});
+
+router.get("/sync-status", verifyJWT, async (req, res) => {
+  try {
+    const status = await getMonitoringAlertPollerStatus();
+    res.json({
+      success: true,
+      ...status
+    });
+  } catch (err) {
+    console.error("[checkmk sync-status] GET:", err.message);
     res.status(500).json({
       error: err.message || "Server error"
     });

@@ -5,6 +5,15 @@
  */
 export const PATCH_NOTES = [
   {
+    version: "1.0.64",
+    date: "2026-10-05",
+    highlights: [
+      "Supervision : sync auto CheckMK réactivée selon le réglage Administration → Intégrations → CheckMK.",
+      "Centre de supervision : statut du poller (actif/suspendu), dernière sync auto et dernière sync manuelle.",
+      "Périphériques : correction du mapping CheckMK (démappage) et du statut actif/inactif synchronisés entre les vues."
+    ]
+  },
+  {
     version: "1.0.63",
     date: "2026-10-05",
     highlights: [

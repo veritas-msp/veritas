@@ -274,12 +274,16 @@ export function mapClientHardwareEquipment(client) {
       const dedupeKey = dbId ? `db:${dbId}` : stableId;
       if (equipmentMap.has(dedupeKey)) return;
       let checkmkMapping = null;
-      if (equipment.checkmk_host_name && String(equipment.checkmk_host_name).trim()) {
+      const mappedHost = String(
+        equipment.checkmkMapping?.checkmk_host_name || equipment.checkmk_host_name || ""
+      ).trim();
+      if (mappedHost) {
         checkmkMapping = {
-          checkmk_host_name: equipment.checkmk_host_name,
-          checkmk_site: equipment.checkmk_site || null,
-          checkmk_service_name: equipment.checkmk_service_name || null,
-          is_active: true
+          checkmk_host_name: mappedHost,
+          checkmk_site: equipment.checkmkMapping?.checkmk_site || equipment.checkmk_site || null,
+          checkmk_service_name:
+            equipment.checkmkMapping?.checkmk_service_name || equipment.checkmk_service_name || null,
+          is_active: equipment.checkmkMapping?.is_active !== false
         };
       }
       const processeur = equipment.processeur || equipment.data?.processeur || equipment.cpu || equipment.vcpu || "";
@@ -855,8 +859,12 @@ function buildEquipmentDataPayload(type, formData, existingData = {}, equipment 
   }
   const extensionFields = formData.__systemExtensionFields || [];
   const payload = applySystemExtensionFields(applySharedEquipmentFields(updatedData, sharedFields), formData, extensionFields);
+  // Keep JSON flags aligned with the DB column written by create/update.
+  const activeFlag = resolveEquipmentIsActivePayload(formData, [existingData, equipment]);
+  payload.is_active = activeFlag;
+  payload.actif = activeFlag;
   const extensionKeys = new Set(extensionFields.map(field => field?.fieldKey).filter(Boolean));
-  const fieldsToPreserve = ['site', 'location', 'emplacement', 'checkmk_host_name', 'checkmk_site', 'ipNonDesktop', 'unifiApiHost', 'unifiApiKey', 'unifiApiRejectUnauthorized', 'unifiApiConfiguredAt', 'stormshieldWanUrl', 'purchaseDate', 'invoiceNumber', 'installDate', 'expirationGarantie'];
+  const fieldsToPreserve = ['site', 'location', 'emplacement', 'checkmk_host_name', 'checkmk_site', 'ipNonDesktop', 'unifiApiHost', 'unifiApiKey', 'unifiApiRejectUnauthorized', 'unifiApiConfiguredAt', 'stormshieldWanUrl', 'purchaseDate', 'invoiceNumber', 'installDate', 'expirationGarantie', 'is_active', 'actif'];
   if (type === 'Serveurs') fieldsToPreserve.push('role');
   Object.keys(payload).forEach(key => {
     const value = payload[key];

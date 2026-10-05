@@ -38,7 +38,8 @@ import styles from "./SupervisionCenterPage.module.css";
 import SupervisionFleetSyncModal, { getFleetSyncProgress } from "./SupervisionFleetSyncModal";
 import {
   cancelCheckmkFleetSync,
-  fetchActiveCheckmkSyncRun
+  fetchActiveCheckmkSyncRun,
+  fetchCheckmkSyncStatus
 } from "../../api/checkmkSyncLogs";
 
 export default function MonitoringCenterPage({
@@ -72,6 +73,7 @@ export default function MonitoringCenterPage({
   const [fleetSyncStartKey, setFleetSyncStartKey] = useState(0);
   const [fleetSyncProgress, setFleetSyncProgress] = useState(null);
   const [fleetSyncCancelling, setFleetSyncCancelling] = useState(false);
+  const [syncStatus, setSyncStatus] = useState(null);
   const fleetSyncRefreshAtRef = useRef(0);
   const openPageGuide = useCallback(() => setPageGuideOpen(true), []);
   useRegisterPageGuide(openPageGuide);
@@ -266,12 +268,26 @@ export default function MonitoringCenterPage({
     });
   }, [pageCopy.fleetSync]);
 
+  const refreshSyncStatus = useCallback(async () => {
+    if (!checkmkIntegrationEnabled) {
+      setSyncStatus(null);
+      return;
+    }
+    try {
+      const data = await fetchCheckmkSyncStatus();
+      setSyncStatus(data);
+    } catch {
+      /* ignore */
+    }
+  }, [checkmkIntegrationEnabled]);
+
   const dismissFleetSync = useCallback(() => {
     setFleetSyncActive(false);
     setFleetSyncExpanded(false);
     setFleetSyncProgress(null);
     setFleetSyncCancelling(false);
-  }, []);
+    refreshSyncStatus();
+  }, [refreshSyncStatus]);
 
   const stopFleetSync = useCallback(async () => {
     const runId = fleetSyncProgress?.run?.id;
@@ -339,6 +355,24 @@ export default function MonitoringCenterPage({
     attachFleetSync,
     pageCopy.fleetSync?.status?.running
   ]);
+
+  useEffect(() => {
+    if (!checkmkIntegrationEnabled) {
+      setSyncStatus(null);
+      return undefined;
+    }
+    refreshSyncStatus();
+    const interval = setInterval(() => {
+      if (document.visibilityState !== "visible") return;
+      refreshSyncStatus();
+    }, 30000);
+    return () => clearInterval(interval);
+  }, [checkmkIntegrationEnabled, refreshSyncStatus]);
+
+  useEffect(() => {
+    if (!fleetSyncProgress?.isTerminal) return;
+    refreshSyncStatus();
+  }, [fleetSyncProgress?.isTerminal, refreshSyncStatus]);
 
   const refreshHistory = useCallback(async signal => {
     if (!signal?.aborted) setHistoryLoading(true);
@@ -514,6 +548,65 @@ export default function MonitoringCenterPage({
               </div>
             </div>
             <div className={cyberStyles.mspHeroActions}>
+              {checkmkIntegrationEnabled && syncStatus ? (
+                <div
+                  className={`${styles.pollerStatus} ${
+                    syncStatus.pollerActive ? styles.pollerStatusActive : styles.pollerStatusSuspended
+                  }`}
+                  title={
+                    syncStatus.pollerActive
+                      ? pageCopy.fleetSync?.poller?.titleActive
+                      : pageCopy.fleetSync?.poller?.titleSuspended
+                  }
+                >
+                  <div className={styles.pollerStatusRow}>
+                    <span className={styles.pollerStatusDot} aria-hidden />
+                    <span className={styles.pollerStatusStrong}>
+                      {pageCopy.fleetSync?.poller?.label || "Sync auto"}
+                      {" · "}
+                      {syncStatus.pollerActive
+                        ? pageCopy.fleetSync?.poller?.active || "Actif"
+                        : pageCopy.fleetSync?.poller?.suspended || "Suspendu"}
+                    </span>
+                    {syncStatus.pollerActive && syncStatus.syncIntervalMinutes ? (
+                      <span className={styles.pollerStatusMeta}>
+                        {(pageCopy.fleetSync?.poller?.interval || "toutes les {minutes} min").replace(
+                          "{minutes}",
+                          String(syncStatus.syncIntervalMinutes)
+                        )}
+                      </span>
+                    ) : null}
+                  </div>
+                  <div className={styles.pollerStatusRow}>
+                    <span>
+                      {(pageCopy.fleetSync?.poller?.lastAuto || "Dernière auto") +
+                        " · " +
+                        (syncStatus.lastPollerAt
+                          ? new Date(syncStatus.lastPollerAt).toLocaleString(localeTag, {
+                              day: "2-digit",
+                              month: "2-digit",
+                              hour: "2-digit",
+                              minute: "2-digit"
+                            })
+                          : pageCopy.fleetSync?.poller?.never || "Jamais")}
+                    </span>
+                  </div>
+                  <div className={styles.pollerStatusRow}>
+                    <span>
+                      {(pageCopy.fleetSync?.poller?.lastManual || "Dernière manuelle") +
+                        " · " +
+                        (syncStatus.lastManualAt
+                          ? new Date(syncStatus.lastManualAt).toLocaleString(localeTag, {
+                              day: "2-digit",
+                              month: "2-digit",
+                              hour: "2-digit",
+                              minute: "2-digit"
+                            })
+                          : pageCopy.fleetSync?.poller?.never || "Jamais")}
+                    </span>
+                  </div>
+                </div>
+              ) : null}
               {checkmkIntegrationEnabled ? (
                 fleetSyncActive && !fleetSyncExpanded ? (
                   <div className={`${styles.fleetSyncProgress} ${fleetSyncProgress?.error || fleetSyncProgress?.tone === "err" ? styles.fleetSyncProgressErr : ""} ${fleetSyncProgress?.isTerminal && !fleetSyncProgress?.error && fleetSyncProgress?.tone !== "err" ? styles.fleetSyncProgressDone : ""}`}>

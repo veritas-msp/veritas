@@ -24,15 +24,24 @@ function pickCheckmkFields(row = {}, data = {}) {
     : row.checkmkMapping && typeof row.checkmkMapping === "object"
       ? row.checkmkMapping
       : {};
-  const host = firstCheckmkString(
-    row.checkmk_host_name,
-    data.checkmk_host_name,
-    mapping.checkmk_host_name,
-    data.checkmkHostName,
-    row.checkmkHostName
-  );
-  const site = firstCheckmkString(row.checkmk_site, data.checkmk_site, mapping.checkmk_site);
-  const service = firstCheckmkString(row.checkmk_service_name, data.checkmk_service_name, mapping.checkmk_service_name);
+  // Dedicated DB columns are the source of truth when present on the row.
+  // Do not revive a stale nested data.checkmkMapping after an unmap (columns null).
+  const hasHostColumn = Object.prototype.hasOwnProperty.call(row, "checkmk_host_name");
+  const host = hasHostColumn
+    ? firstCheckmkString(row.checkmk_host_name)
+    : firstCheckmkString(
+        row.checkmk_host_name,
+        data.checkmk_host_name,
+        mapping.checkmk_host_name,
+        data.checkmkHostName,
+        row.checkmkHostName
+      );
+  const site = hasHostColumn
+    ? firstCheckmkString(row.checkmk_site, data.checkmk_site)
+    : firstCheckmkString(row.checkmk_site, data.checkmk_site, mapping.checkmk_site);
+  const service = hasHostColumn
+    ? firstCheckmkString(row.checkmk_service_name, data.checkmk_service_name)
+    : firstCheckmkString(row.checkmk_service_name, data.checkmk_service_name, mapping.checkmk_service_name);
   return {
     checkmk_host_name: host,
     checkmk_site: site,

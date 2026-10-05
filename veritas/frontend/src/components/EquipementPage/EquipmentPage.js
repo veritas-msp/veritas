@@ -257,6 +257,13 @@ const patchEquipmentFromFormData = (equipment, formData, moduleKey) => {
     ip: nextIp ?? equipment.ip,
     rawData: raw
   };
+  if (formData.is_active !== undefined || formData.isActive !== undefined) {
+    const active = (formData.is_active ?? formData.isActive) !== false;
+    patched.is_active = active;
+    patched.actif = active;
+    setRawField(raw, "is_active", active, ["actif", "active", "isActive"]);
+    raw.actif = active;
+  }
   if (type === "Internet") {
     if (formData.internetType !== undefined) setRawField(raw, "type", formData.internetType);
     if (formData.fournisseur !== undefined) raw.fournisseur = formData.fournisseur;
@@ -584,11 +591,19 @@ const isFullEquipmentListItem = value => !!value && typeof value === "object" &&
 const mergeEquipmentListItem = (current, update, moduleKey) => {
   if (!update) return current;
   if (isFullEquipmentListItem(update)) {
+    const nextMapping = Object.prototype.hasOwnProperty.call(update, "checkmkMapping")
+      ? update.checkmkMapping
+      : current.checkmkMapping;
+    const nextActive = Object.prototype.hasOwnProperty.call(update, "is_active")
+      ? update.is_active !== false
+      : current.is_active;
     return {
       ...current,
       ...update,
       id: update.id || current.id,
-      checkmkMapping: update.checkmkMapping ?? current.checkmkMapping,
+      is_active: nextActive,
+      // null must win over a previous mapping (?? would keep the old one).
+      checkmkMapping: nextMapping,
       rawData: update.rawData ?? current.rawData
     };
   }

@@ -51,6 +51,17 @@ const SUPERVISION_COPY = {
         error: "Échec de la synchronisation",
         cancelled: "Synchronisation arrêtée",
         skipped: "Synchronisation ignorée"
+      },
+      poller: {
+        label: "Sync auto",
+        active: "Actif",
+        suspended: "Suspendu",
+        interval: "toutes les {minutes} min",
+        lastAuto: "Dernière auto",
+        lastManual: "Dernière manuelle",
+        never: "Jamais",
+        titleActive: "Poller CheckMK actif (Administration → Intégrations → CheckMK)",
+        titleSuspended: "Sync automatique suspendue dans Administration → Intégrations → CheckMK"
       }
     },
     tabs: {
@@ -496,6 +507,17 @@ const SUPERVISION_COPY = {
         error: "Synchronization failed",
         cancelled: "Synchronization stopped",
         skipped: "Synchronization skipped"
+      },
+      poller: {
+        label: "Auto sync",
+        active: "Active",
+        suspended: "Suspended",
+        interval: "every {minutes} min",
+        lastAuto: "Last auto",
+        lastManual: "Last manual",
+        never: "Never",
+        titleActive: "CheckMK poller active (Administration → Integrations → CheckMK)",
+        titleSuspended: "Automatic sync suspended in Administration → Integrations → CheckMK"
       }
     },
     tabs: {
